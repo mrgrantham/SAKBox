@@ -26,7 +26,7 @@ cc_library(
     name = "app",
     srcs = ["src/demos/app.cpp"],
     hdrs = ["src/demos/app.h", "src/demos/ogl_headers.h"],
-    defines = ["GL_DEPRECATION"],
+    defines = ["GL_SILENCE_DEPRECATION"],
     deps = [":gl", ":timing", ":cyclone"],
     strip_include_prefix = "/src",
 )
@@ -34,6 +34,86 @@ cc_library(
 cc_binary(
     name = "ballistic",
     srcs = ["src/demos/ballistic/ballistic.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app",
+    ],
+)
+
+cc_binary(
+    name = "bigballistic",
+    srcs = ["src/demos/bigballistic/bigballistic.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app",
+    ],
+)
+
+cc_binary(
+    name = "blob",
+    srcs = ["src/demos/blob/blob.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app",
+    ],
+)
+
+cc_binary(
+    name = "bridge",
+    srcs = ["src/demos/bridge/bridge.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app",
+    ],
+)
+
+cc_binary(
+    name = "explosion",
+    srcs = ["src/demos/explosion/explosion.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app",
+    ],
+)
+
+cc_binary(
+    name = "fireworks",
+    srcs = ["src/demos/fireworks/fireworks.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app",
+    ],
+)
+
+cc_binary(
+    name = "flightsim",
+    srcs = ["src/demos/flightsim/flightsim.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app",
+    ],
+)
+
+cc_binary(
+    name = "fracture",
+    srcs = ["src/demos/fracture/fracture.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app",
+    ],
+)
+
+cc_binary(
+    name = "platform",
+    srcs = ["src/demos/platform/platform.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app",
+    ],
+)
+
+cc_binary(
+    name = "ragdoll",
+    srcs = ["src/demos/ragdoll/ragdoll.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app",
+    ],
+)
+
+cc_binary(
+    name = "sailboat",
+    srcs = ["src/demos/sailboat/sailboat.cpp", "src/demos/main.cpp"],
     deps = [
         ":app",
     ],
