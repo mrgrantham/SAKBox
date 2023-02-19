@@ -11,5 +11,6 @@ cc_binary(
     srcs = ["main.cpp"],
     deps = [
         ":hellolib",
+        "@fmt",
     ],
 )

@@ -1,7 +1,7 @@
-#include <iostream>
+#include "fmt/core.h"
 #include "hello.h"
 
 int main(int argc, char** argv) {
-    std::cout << "testing this repo: " << makeGreeting() << std::endl;
+    fmt::print("testing this repo: {}\n", makeGreeting());
     return 0;
 }
