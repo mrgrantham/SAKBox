@@ -1,4 +1,4 @@
-#include <FlexMatrix.hpp>
+#include "FlexMatrix.hpp"
 namespace Flex::Math {
 
   FlexMatrix::FlexMatrix(std::initializer_list<FlexVector> matrix) : _matrix(matrix) {

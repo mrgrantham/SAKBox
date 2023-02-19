@@ -23,9 +23,28 @@ git_repository(
 )
 
 http_archive(
+    name = "bazel_skylib",
+    sha256 = "b8a1527901774180afc798aeb28c4634bdccf19c4d98e7bdd1ce79d1fe9aaad7",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.4.1/bazel-skylib-1.4.1.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.1/bazel-skylib-1.4.1.tar.gz",
+    ],
+)
+
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
+
+http_archive(
   name = "com_google_googletest",
   urls = ["https://github.com/google/googletest/archive/refs/tags/v1.13.0.zip"],
   strip_prefix = "googletest-1.13.0",
+)
+
+http_archive(
+    name = "catch2",
+    strip_prefix = "Catch2-3.3.1",
+    urls = ["https://github.com/catchorg/Catch2/archive/refs/tags/v3.3.1.zip"],
 )
 
 http_archive(
