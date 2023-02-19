@@ -1,7 +1,7 @@
 
 #include "hello.h"
 
- auto makeGreeting() -> std::string {
+auto makeGreeting() -> std::string {
     std::array greetingArray{"hello","hi","how are ya","greetings"};
     std::mt19937 rng(time(0)); // seed the random number generator with the current time
     std::uniform_int_distribution<int> dist(0, 3); // initialize a uniform distribution over [0, 3]
