@@ -11,29 +11,29 @@ cc_library(
 
 cc_library(
     name = "gl",
-    includes = ["include/gl/glut.h","src/demos/ogl_headers.h"],
+    hdrs = ["include/gl/glut.h"],
+    strip_include_prefix = "/include",
 )
 
 cc_library(
     name = "timing",
     srcs = ["src/demos/timing.cpp"],
-    includes = ["src/demos/timing.h"],
+    hdrs = ["src/demos/timing.h"],
     copts = ["-O2", "-fPIC"],
-    strip_include_prefix = "/src/demos",
 )
 
 cc_library(
     name = "app",
-    srcs = ["app.cpp"],
-    includes = ["src/demos/app.h"],
+    srcs = ["src/demos/app.cpp"],
+    hdrs = ["src/demos/app.h", "src/demos/ogl_headers.h"],
     defines = ["GL_DEPRECATION"],
     deps = [":gl", ":timing", ":cyclone"],
+    strip_include_prefix = "/src",
 )
 
 cc_binary(
     name = "ballistic",
     srcs = ["src/demos/ballistic/ballistic.cpp", "src/demos/main.cpp"],
-    hdrs = ["src/demos/ogl_headers.h"],
     deps = [
         ":app",
     ],
