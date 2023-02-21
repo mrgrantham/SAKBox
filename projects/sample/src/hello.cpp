@@ -1,5 +1,4 @@
-
-#include "hello.h"
+#include "hello.hpp"
 
 auto makeGreeting() -> std::string {
     std::array greetingArray{"hello","hi","how are ya","greetings"};
