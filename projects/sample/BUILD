@@ -9,9 +9,17 @@ cc_library(
 
 cc_binary(
     name = "greet",
-    srcs = ["src/main.cpp"],
+    srcs = ["src/hello_main.cpp"],
     deps = [
         ":hellolib",
         "@fmt",
+    ],
+)
+
+cc_binary(
+    name = "spd_example",
+    srcs = ["src/spd_example_main.cpp"],
+    deps = [
+        "@spdlog",
     ],
 )

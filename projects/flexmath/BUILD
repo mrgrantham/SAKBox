@@ -25,7 +25,7 @@ cc_test(
     srcs = ["tests/test_FlexGroup.cpp"],
     deps = [
         ":flexmath",
-        "@catch2",
+        "@catch2//:catch2_main",
     ],
 )
 
@@ -34,7 +34,7 @@ cc_test(
     srcs = ["tests/test_FlexMatrix.cpp"],
     deps = [
         ":flexmath",
-        "@catch2",
+        "@catch2//:catch2_main",
     ],
 )
 
@@ -43,7 +43,9 @@ cc_test(
     srcs = ["tests/test_FlexPoint.cpp"],
     deps = [
         ":flexmath",
-        "@com_google_googletest//:gtest_main",
+        "@gtest//:gtest",
+        "@fmtlog",
+        "@spdlog",
     ],
 )
 
@@ -52,6 +54,6 @@ cc_test(
     srcs = ["tests/test_FlexVector.cpp"],
     deps = [
         ":flexmath",
-        "@catch2",
+        "@catch2//:catch2_main",
     ],
 )

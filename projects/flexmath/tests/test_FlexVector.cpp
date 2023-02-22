@@ -1,7 +1,4 @@
-#define CATCH_CONFIG_MAIN
 #include <catch2/catch_test_macros.hpp>
-// #include <catch2/single_include/catch.hpp>
-// #include <catch2/catch_test_macros.hpp>
 
 #include <FlexVector.hpp>
 #include <iostream>

@@ -36,7 +36,7 @@ load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 bazel_skylib_workspace()
 
 http_archive(
-    name = "com_google_googletest",
+    name = "gtest",
     strip_prefix = "googletest-1.13.0",
     urls = ["https://github.com/google/googletest/archive/refs/tags/v1.13.0.zip"],
 )
@@ -53,4 +53,20 @@ http_archive(
     sha256 = "faeda03d28499b7120208d7e70759bf1832511b6d64f546ab32103e9ba400f03",
     strip_prefix = "cyclone-physics-master",
     url = "https://github.com/idmillington/cyclone-physics/archive/refs/heads/master.zip",
+)
+
+http_archive(
+    name = "spdlog",
+    build_file = "@//third_party:spdlog.BUILD",
+    sha256 = "33f83c6b86ec0fbbd0eb0f4e980da6767494dc0ad063900bcfae8bc3e9c75f21",
+    strip_prefix = "spdlog-1.11.0",
+    url = "https://github.com/gabime/spdlog/archive/refs/tags/v1.11.0.zip",
+)
+
+http_archive(
+    name = "fmtlog",
+    build_file = "@//third_party:fmtlog.BUILD",
+    sha256 = "c70458b9f67682093d88fd64f20fe1d387d2e7194f5a6d9f7f8a7b78a9c9d966",
+    strip_prefix = "fmtlog-2.2.1",
+    url = "https://github.com/MengRao/fmtlog/archive/refs/tags/v2.2.1.zip",
 )
