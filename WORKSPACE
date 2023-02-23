@@ -1,7 +1,16 @@
 workspace(name = "graphFun")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository","new_git_repository")
+
+http_archive(
+   name = "rules_foreign_cc",
+   strip_prefix = "rules_foreign_cc-0.9.0",
+   url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
+   sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51",
+)
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+rules_foreign_cc_dependencies()
 
 git_repository(
     name = "fmt",
@@ -69,4 +78,48 @@ http_archive(
     sha256 = "c70458b9f67682093d88fd64f20fe1d387d2e7194f5a6d9f7f8a7b78a9c9d966",
     strip_prefix = "fmtlog-2.2.1",
     url = "https://github.com/MengRao/fmtlog/archive/refs/tags/v2.2.1.zip",
+)
+
+http_archive(
+    name = "imgui",
+    build_file = "@//third_party:imgui.BUILD",
+    urls = [
+        "https://github.com/ocornut/imgui/archive/refs/tags/v1.89.3.zip",
+    ],
+    strip_prefix = "imgui-1.89.3",
+    sha256 = "265fe6ebe98534a89a7862661b588dd41b1d13f5d897b77d43e4a28fe9ef0488",
+)
+
+new_git_repository(
+    name = "glfw",
+    remote = "https://github.com/glfw/glfw.git",
+    build_file = "@//third_party:glfw.BUILD",
+    tag = "3.3.8",
+)
+
+http_archive(
+    name = "com_github_nelhage_rules_boost",
+
+    # Replace the commit hash in both places (below) with the latest, rather than using the stale one here.
+    # Even better, set up Renovate and let it do the work for you (see "Suggestion: Updates" in the README).
+    url = "https://github.com/nelhage/rules_boost/archive/96e9b631f104b43a53c21c87b01ac538ad6f3b48.tar.gz",
+    strip_prefix = "rules_boost-96e9b631f104b43a53c21c87b01ac538ad6f3b48",
+    # When you first run this tool, it'll recommend a sha256 hash to put here with a message like: "DEBUG: Rule 'com_github_nelhage_rules_boost' indicated that a canonical reproducible form can be obtained by modifying arguments sha256 = ..."
+)
+load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
+boost_deps()
+
+http_archive(
+  name = "glew",
+  build_file = "@//third_party:glew.BUILD",
+  sha256 = "a9046a913774395a095edcc0b0ac2d81c3aacca61787b39839b941e9be14e0d4",
+  strip_prefix = "glew-2.2.0",
+  urls = ["https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0.zip"],
+)
+
+new_git_repository(
+    name = "backward-cpp",
+    remote = "https://github.com/bombela/backward-cpp.git",
+    build_file = "@//third_party:backward-cpp.BUILD",
+    tag = "v1.6",
 )
