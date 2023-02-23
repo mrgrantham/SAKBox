@@ -1,8 +1,8 @@
 #pragma once
 
-#include <random>
-#include <ctime> 
-#include <string>
 #include <array>
+#include <ctime>
+#include <random>
+#include <string>
 
 auto makeGreeting() -> std::string;

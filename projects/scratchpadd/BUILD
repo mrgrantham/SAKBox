@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("//tools/clang_format:clang_format.bzl", "clang_format")
 
 cc_library(
     name = "scratchpadd",
@@ -45,3 +46,5 @@ cc_binary(
         # "@backward-cpp",
     ],
 )
+
+clang_format(name = "flexmath")
