@@ -1,37 +1,37 @@
 #pragma once
-#include <vector>
-#include <initializer_list>
 #include <FlexPoint.hpp>
+#include <initializer_list>
+#include <vector>
 
 namespace Flex::Math {
 
-
 class FlexVector {
-    private:
-    std::vector<FlexPoint> _vector;
-    public:
-    FlexVector(std::initializer_list<FlexPoint> vector);
-    FlexVector();
-    FlexVector operator+(const FlexVector &vector) const;
-    FlexVector operator-(const FlexVector &vector) const;	
-    FlexVector operator*(const FlexVector &vector) const;
-    FlexVector operator*(const FlexPoint &vector) const;
+private:
+  std::vector<FlexPoint> _vector;
 
-    FlexVector& operator =(const FlexVector& vector);
-    FlexVector& operator +=(const FlexVector& vector);
-    FlexVector& operator -=(const FlexVector& vector);
-    FlexVector& operator *=(const FlexVector& vector);
+public:
+  FlexVector(std::initializer_list<FlexPoint> vector);
+  FlexVector();
+  FlexVector operator+(const FlexVector &vector) const;
+  FlexVector operator-(const FlexVector &vector) const;
+  FlexVector operator*(const FlexVector &vector) const;
+  FlexVector operator*(const FlexPoint &vector) const;
 
-    auto operator<=>(const FlexVector &vector) = delete;
-    auto operator==(const FlexVector &vector) const {
-        assert(_vector.size() == vector._vector.size());
+  FlexVector &operator=(const FlexVector &vector);
+  FlexVector &operator+=(const FlexVector &vector);
+  FlexVector &operator-=(const FlexVector &vector);
+  FlexVector &operator*=(const FlexVector &vector);
 
-        for ( int i = 0; i < _vector.size(); i++) {
-            if (this->_vector[i] != vector._vector[i])
-                return false;
-        }
-        return true;
+  auto operator<=>(const FlexVector &vector) = delete;
+  auto operator==(const FlexVector &vector) const {
+    assert(_vector.size() == vector._vector.size());
+
+    for (int i = 0; i < _vector.size(); i++) {
+      if (this->_vector[i] != vector._vector[i])
+        return false;
     }
+    return true;
+  }
 };
 
-}
+} // namespace Flex::Math

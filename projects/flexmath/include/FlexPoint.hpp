@@ -1,27 +1,30 @@
 #pragma once
 
 #include <FlexController.hpp>
-#include <cstdint>
-#include <type_traits>
 #include <compare>
-#include <limits>
+#include <cstdint>
 #include <fmt/format.h>
+#include <limits>
+#include <type_traits>
 
 namespace Flex::Math {
 
 class FlexPoint {
- public:
+public:
   typedef int64_t FlexPointPrecision;
   FlexPoint() {}
 
-  template <typename Integer,std::enable_if_t<std::is_integral<Integer>::value, bool> = true>
+  template <typename Integer,
+            std::enable_if_t<std::is_integral<Integer>::value, bool> = true>
   FlexPoint(Integer value) {
     // TODO: Conveter int to fixed point based on flextype
     flexGroupID_ = FlexController::getInstance()->registerFlexPoint(this);
   }
 
   ~FlexPoint() {
-    FlexController::getInstance()->getFlexGroup(flexGroupID_)->deregisterFlexPoint(this);
+    FlexController::getInstance()
+        ->getFlexGroup(flexGroupID_)
+        ->deregisterFlexPoint(this);
   }
 
   template <
@@ -32,8 +35,9 @@ class FlexPoint {
     flexGroupID_ = FlexController::getInstance()->registerFlexPoint(this);
   }
 
-  void setFractionalComponent(int32_t precision) { fractionalComponent_ = precision; }
-
+  void setFractionalComponent(int32_t precision) {
+    fractionalComponent_ = precision;
+  }
 
   FlexPoint operator-(const FlexPoint &value) const {
     FlexPoint newValue;
@@ -56,27 +60,25 @@ class FlexPoint {
     return newValue;
   }
 
-  FlexPoint& operator =(const FlexPoint& b);
-  FlexPoint& operator =(const double& b);
-  FlexPoint& operator +=(const FlexPoint& b);
-  FlexPoint& operator -=(const FlexPoint& b);
-  FlexPoint& operator *=(const FlexPoint& b);
+  FlexPoint &operator=(const FlexPoint &b);
+  FlexPoint &operator=(const double &b);
+  FlexPoint &operator+=(const FlexPoint &b);
+  FlexPoint &operator-=(const FlexPoint &b);
+  FlexPoint &operator*=(const FlexPoint &b);
 
   inline double convertFixedToDouble(double fixedValue) const {
-      return static_cast<double>(valueFixed_) / static_cast<double>(1 << fractionalComponent_);
+    return static_cast<double>(valueFixed_) /
+           static_cast<double>(1 << fractionalComponent_);
   }
 
   inline FlexPointPrecision convertDoubleToFixed(double fixedValue) const {
-      return static_cast<FlexPointPrecision>(valueFixed_ * (1 << fractionalComponent_));
+    return static_cast<FlexPointPrecision>(valueFixed_ *
+                                           (1 << fractionalComponent_));
   }
 
-  double value() const {
-    return convertFixedToDouble(valueFixed_);
-  }
+  double value() const { return convertFixedToDouble(valueFixed_); }
 
-  FlexPointPrecision valueFixed() const {
-    return valueFixed_;
-  }
+  FlexPointPrecision valueFixed() const { return valueFixed_; }
 
   auto operator<=>(const FlexPoint &value) const {
     return (*this - value).value();
@@ -85,30 +87,27 @@ class FlexPoint {
     return this->value() == value.value();
   }
 
-  int16_t getFractionalComponent() const {
-    return fractionalComponent_;
+  int16_t getFractionalComponent() const { return fractionalComponent_; }
+
+  friend std::ostream &operator<<(std::ostream &os,
+                                  const FlexPoint &flexPoint) {
+    os << fmt::format("(v{:.6f} p{:d})", flexPoint.value(),
+                      flexPoint.getFractionalComponent());
+    return os;
   }
 
-  friend std::ostream& operator<<(std::ostream& os, const FlexPoint& flexPoint) {
-      os << fmt::format("(v{:.6f} p{:d})", flexPoint.value(),flexPoint.getFractionalComponent());
-      return os;
-  }
-
- private:
-
+private:
   FlexGroupID flexGroupID_;
   int16_t fractionalComponent_{8};
   FlexPointPrecision valueFixed_{0};
-
 };
 
-
-}  // namespace Flex::Math
+} // namespace Flex::Math
 
 template <> struct fmt::formatter<Flex::Math::FlexPoint> {
   char underlying_formatter_type = 'f';
   // // Parses format specifications of the form ['f' | 'e'].
-  constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin()) {
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
     // [ctx.begin(), ctx.end()) is a character range that contains a part of
     // the format string starting from the format specifications to be parsed,
     // e.g. in
@@ -122,10 +121,12 @@ template <> struct fmt::formatter<Flex::Math::FlexPoint> {
 
     // Parse the presentation format and store it in the formatter:
     auto it = ctx.begin(), end = ctx.end();
-    if (it != end && (*it == 'f' || *it == 'x')) underlying_formatter_type = *it++;
+    if (it != end && (*it == 'f' || *it == 'x'))
+      underlying_formatter_type = *it++;
 
     // Check if reached the end of the range:
-    if (it != end && *it != '}') throw format_error("invalid format");
+    if (it != end && *it != '}')
+      throw format_error("invalid format");
 
     // Return an iterator past the end of the parsed range:
     return it;
@@ -134,10 +135,13 @@ template <> struct fmt::formatter<Flex::Math::FlexPoint> {
   // Formats the point p using the parsed format specification (presentation)
   // stored in this formatter.
   template <typename FormatContext>
-  auto format(const Flex::Math::FlexPoint& p, FormatContext& ctx) -> decltype(ctx.out()) {
+  auto format(const Flex::Math::FlexPoint &p, FormatContext &ctx)
+      -> decltype(ctx.out()) {
     // ctx.out() is an output iterator to write to.
     return underlying_formatter_type == 'f'
-              ? format_to(ctx.out(), "(v{:.6f} f{:d})", p.value(),p.getFractionalComponent())
-              : format_to(ctx.out(), "(v{:x} f{:d})", p.valueFixed(),p.getFractionalComponent());
+               ? format_to(ctx.out(), "(v{:.6f} f{:d})", p.value(),
+                           p.getFractionalComponent())
+               : format_to(ctx.out(), "(v{:x} f{:d})", p.valueFixed(),
+                           p.getFractionalComponent());
   }
 };
