@@ -1,9 +1,8 @@
 #pragma once
-#include <GL/glew.h> 
+#include <GL/glew.h>
 
-static void glfw_error_callback(int error, const char* description)
-{
-    spdlog::error("Glfw Error {}: {}\n", error, description);
+static void glfw_error_callback(int error, const char *description) {
+  spdlog::error("Glfw Error {}: {}\n", error, description);
 }
 
 static void clearOpenGLErrors() {

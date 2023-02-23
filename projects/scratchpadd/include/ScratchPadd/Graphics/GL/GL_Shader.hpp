@@ -1,32 +1,30 @@
 #pragma once
-#include <GL/glew.h> 
+#include <GL/glew.h>
 
 #include <filesystem>
 #include <fstream>
 #include <spdlog/spdlog.h>
 
-const std::string vertexShader =
-    "#version 330 core\n"
-    "\n"
-    "layout(location = 0) in vec4 position;\n"
-    "\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = position;\n"
-    "}\n";
+const std::string vertexShader = "#version 330 core\n"
+                                 "\n"
+                                 "layout(location = 0) in vec4 position;\n"
+                                 "\n"
+                                 "void main()\n"
+                                 "{\n"
+                                 "   gl_Position = position;\n"
+                                 "}\n";
 
-const std::string fragmentShader =
-    "#version 330 core\n"
-    "\n"
-    "layout(location = 0) out vec4 color;"
-    "\n"
-    "void main()\n"
-    "{\n"
-    "   color =  vec4(1.0,0.5,0.5,0.5);\n"
-    "}\n";
+const std::string fragmentShader = "#version 330 core\n"
+                                   "\n"
+                                   "layout(location = 0) out vec4 color;"
+                                   "\n"
+                                   "void main()\n"
+                                   "{\n"
+                                   "   color =  vec4(1.0,0.5,0.5,0.5);\n"
+                                   "}\n";
 
 class GL_Shader {
-  private:
+private:
   unsigned int programID_{0};
   unsigned int compileShader(unsigned int type, const std::string &source) {
     unsigned int id = glCreateShader(type);
@@ -49,37 +47,51 @@ class GL_Shader {
     }
     return id;
   }
-  public:
-  void generate(const std::string &&vertexShaderFile, const std::string &&fragmentShaderFile) {
-    spdlog::info("Current Path: {}",std::filesystem::current_path().string());
-    spdlog::info("vertexShaderFile: {}",vertexShaderFile);
-    spdlog::info("fragmentShaderFile: {}",fragmentShaderFile);
+
+public:
+  void generate(const std::string &&vertexShaderFile,
+                const std::string &&fragmentShaderFile) {
+    spdlog::info("Current Path: {}", std::filesystem::current_path().string());
+    spdlog::info("vertexShaderFile: {}", vertexShaderFile);
+    spdlog::info("fragmentShaderFile: {}", fragmentShaderFile);
 
     std::filesystem::path vertexShaderFilePath(vertexShaderFile);
     std::error_code vertexShaderFileError;
-    auto vertexShaderFileAbsolutePath = std::filesystem::weakly_canonical(vertexShaderFilePath, vertexShaderFileError).string();
+    auto vertexShaderFileAbsolutePath =
+        std::filesystem::weakly_canonical(vertexShaderFilePath,
+                                          vertexShaderFileError)
+            .string();
     if (vertexShaderFileError) {
-      spdlog::error("Shader Path Error: {}",vertexShaderFileError.message());
+      spdlog::error("Shader Path Error: {}", vertexShaderFileError.message());
     }
-    spdlog::info("Vertex Shader Path: {}",vertexShaderFileAbsolutePath);
+    spdlog::info("Vertex Shader Path: {}", vertexShaderFileAbsolutePath);
     std::ifstream vertexShaderInputStream(vertexShaderFileAbsolutePath);
-		const std::string vertexShaderString((std::istreambuf_iterator<char>(vertexShaderInputStream)), std::istreambuf_iterator<char>());
-    spdlog::info("Vertex Shader: \n{}",vertexShaderString);
+    const std::string vertexShaderString(
+        (std::istreambuf_iterator<char>(vertexShaderInputStream)),
+        std::istreambuf_iterator<char>());
+    spdlog::info("Vertex Shader: \n{}", vertexShaderString);
 
     std::filesystem::path fragmentShaderFilePath(fragmentShaderFile);
     std::error_code fragmentShaderFileError;
-    auto fragmentShaderFileAbsolutePath = std::filesystem::canonical(fragmentShaderFilePath, fragmentShaderFileError).string();
+    auto fragmentShaderFileAbsolutePath =
+        std::filesystem::canonical(fragmentShaderFilePath,
+                                   fragmentShaderFileError)
+            .string();
     if (fragmentShaderFileError) {
-      spdlog::error("Fragment Path Error: {}",fragmentShaderFileError.message());
+      spdlog::error("Fragment Path Error: {}",
+                    fragmentShaderFileError.message());
     }
-    spdlog::info("Fragment Shader Path: {}",fragmentShaderFileAbsolutePath);
-		std::ifstream fragmentShaderInputStream(fragmentShaderFileAbsolutePath);
-		const std::string fragmentShaderString((std::istreambuf_iterator<char>(fragmentShaderInputStream)), std::istreambuf_iterator<char>());
-    spdlog::info("Fragment Shader: \n{}",fragmentShaderString);
+    spdlog::info("Fragment Shader Path: {}", fragmentShaderFileAbsolutePath);
+    std::ifstream fragmentShaderInputStream(fragmentShaderFileAbsolutePath);
+    const std::string fragmentShaderString(
+        (std::istreambuf_iterator<char>(fragmentShaderInputStream)),
+        std::istreambuf_iterator<char>());
+    spdlog::info("Fragment Shader: \n{}", fragmentShaderString);
 
     programID_ = glCreateProgram();
     unsigned int v_shader = compileShader(GL_VERTEX_SHADER, vertexShaderString);
-    unsigned int f_shader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderString);
+    unsigned int f_shader =
+        compileShader(GL_FRAGMENT_SHADER, fragmentShaderString);
     glAttachShader(programID_, v_shader);
     glAttachShader(programID_, f_shader);
     glLinkProgram(programID_);
@@ -89,7 +101,8 @@ class GL_Shader {
       int status_length = 0;
       glGetProgramiv(programID_, GL_INFO_LOG_LENGTH, &status_length);
       auto message = std::make_unique<char[]>(status_length);
-      glGetProgramInfoLog(programID_, status_length, &status_length, message.get());
+      glGetProgramInfoLog(programID_, status_length, &status_length,
+                          message.get());
       spdlog::error("Error in glLinkProgram: {}", message.get());
     }
     glValidateProgram(programID_);
@@ -103,17 +116,12 @@ class GL_Shader {
   void update() {
     // setVec4(ScratchPadd::Color::Shape_Color,"uniform_color");
   }
-  void setVec4(const ImVec4& vec4, const std::string& name)
-	{
-		GLint myLoc = glGetUniformLocation(programID_, name.c_str());
-		glProgramUniform4fv(programID_, myLoc, 1, (float*)&vec4);
-	}
-
-  void use() {
-		glUseProgram(programID_);
+  void setVec4(const ImVec4 &vec4, const std::string &name) {
+    GLint myLoc = glGetUniformLocation(programID_, name.c_str());
+    glProgramUniform4fv(programID_, myLoc, 1, (float *)&vec4);
   }
 
-  void destroy() {
-    glDeleteProgram(programID_);
-  }
+  void use() { glUseProgram(programID_); }
+
+  void destroy() { glDeleteProgram(programID_); }
 };
