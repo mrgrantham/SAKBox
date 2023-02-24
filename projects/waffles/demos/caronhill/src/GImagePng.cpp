@@ -18,6 +18,7 @@
 #include <WClasses/GHolders.h>
 #include <WClasses/GFile.h>
 #include <WClasses/GBits.h>
+#include <fmt/core.h>
 
 namespace GClasses {
 
@@ -89,12 +90,16 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 	else
 		png_set_gamma(reader.m_pReadStruct, 2.2, 1.0 / 2.2); // 1.0 = viewing gamma, 2.2 = screen gamma
 
+	fmt::print("before png_read_update_info\n");
 	// Update the 'info' struct with the gamma information
 	png_read_update_info(reader.m_pReadStruct, reader.m_pInfoStruct);
+	fmt::print("after png_read_update_info\n");
 
 	// Tell it to expand palettes to full channels
 	png_set_expand(reader.m_pReadStruct);
+	fmt::print("after png_set_expand\n");
 	png_set_gray_to_rgb(reader.m_pReadStruct);
+	fmt::print("after png_set_gray_to_rgb\n");
 
 	// Allocate the row pointers
 	unsigned long rowbytes = png_get_rowbytes(reader.m_pReadStruct, reader.m_pInfoStruct);

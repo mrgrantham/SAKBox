@@ -43,7 +43,7 @@ cc_binary(
     srcs = ["src/main.cpp"],
     deps = [
         ":scratchpadd",
-        "@backward-cpp",
+        "@backward",
     ],
 )
 

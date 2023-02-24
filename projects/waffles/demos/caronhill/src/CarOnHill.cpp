@@ -94,7 +94,7 @@ public:
 
 		// Load the car image and add some border so we can rotate it
 		GImage tmp;
-		loadPng(&tmp, "projects/waffles/demos/caronhill/data/minicar1.png");
+		loadPng(&tmp, "projects/waffles/demos/caronhill/data/pngwing.png");
 		m_pCar = new GImage();
 		m_pCar->setSize(70, 60);
 		GRect r(0, 0, 60, 36);

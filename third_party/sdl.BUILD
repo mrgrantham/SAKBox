@@ -24,7 +24,7 @@ cmake(
     # working_directory = "build/cmake",
     # out_lib_dir = "sdl2/lib",
     visibility = ["//visibility:public"],
-    out_static_libs = ["libSDL2d.a"],
+    out_static_libs = ["libSDL2.a"],
     cache_entries = {"SDL_SHARED":"OFF","SDL_STATIC":"ON"},
     linkopts = select({
         "@platforms//os:windows": [

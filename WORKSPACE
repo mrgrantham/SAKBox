@@ -182,3 +182,10 @@ http_archive(
     strip_prefix = "SDL2-2.26.3",
     build_file = "//third_party:sdl.BUILD",
 )
+
+new_git_repository(
+    name = "zlib",
+    remote = "https://github.com/madler/zlib.git",
+    build_file = "//third_party:zlib.BUILD",
+    tag = "v1.2.13",
+)

@@ -13,12 +13,16 @@ configure_make(
     name = "libpng",
     configure_in_place = True,
     lib_source = ":sources",
+    configure_options = ["CC=\"gcc\"","CXX=\"gcc\"","CFLAGS=","AR=\"ar\""],
     # targets = [
     #     "install",
     # ],
-    configure_options = ["--disable-static"],
-    out_shared_libs = ["libpng16.dylib"],
+    # out_lib_dir = "libpng",
+    # configure_options = ["--disable-static"],
+    # out_shared_libs = ["libpng16.dylib","libpng16.16.dylib"],
+    # cc_toolchain = "//:gcc",
     visibility = ["//visibility:public"],
+    deps = ["@zlib"],
 )
 
 # cc_library(
