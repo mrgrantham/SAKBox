@@ -1,0 +1,56 @@
+body,center
+{
+	font-family: verdana, tahoma, geneva, sans-serif;
+	font-size: 18px;
+}
+
+a
+{
+	text-decoration: none;
+}
+
+a:hover
+{
+	text-decoration: underline;
+}
+
+#wholepage
+{
+	color: #000040;
+}
+
+#header
+{
+	background: #c2c2b6;
+	padding: 5px;
+	margin: 0px 0px 0px 0px;
+	text-align: center;
+	vertical-align: middle;
+}
+
+#sidebar
+{
+	background: #c2c2b6;
+	margin: 0px 0px 0px 0px;
+	padding: 5px;
+	width: 190px;
+	vertical-align: top;
+}
+
+#mainbody
+{
+	border: 1px solid #604000;
+	background: #F4f4e0;
+	margin: 0px 0px 0px 0px;
+	padding: 15px;
+	width: 970px;
+}
+
+#footer
+{
+	background: #c2c2b6;
+	margin: 0px 0px 10px 0px;
+	padding: 5px;
+	text-align: center;
+	vertical-align: middle;
+}

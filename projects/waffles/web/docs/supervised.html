@@ -1,0 +1,94 @@
+<html><body bgcolor=#d0d0a0><br><br><br><br>
+<table align=center cellpadding=50 border=1 bgcolor=#e0e0d0 width=1000><tr><td>
+<a href="../index.html#toc">Back to the table of contents</a><br>
+
+<br>
+<a href="matrices.html">Previous</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="new_learner.html">Next</a>
+
+
+
+
+
+
+
+<h2>Coding With Supervised Learners</h2>
+
+<p>The GSupervisedLearner class is declared in Learner.h. All classes that inherit from GSupervisedLearner must implement a method named
+<pre>
+	void train(const GMatrix&amp; features, const GMatrix&amp; labels);
+</pre>
+and one named
+<pre>
+	void predict(const GVec&amp; in, GVec&amp; out);
+</pre>
+. As you might expect, the train method trains the model, and the predict method uses a trained model to make a prediction.</p>
+
+<p>The train method expects two matrices to be passed in as parameters. The first parameter contains the features (or input patterns),
+and the second parameter contains the corresponding labels (or target outputs). These two matrices are expected to have the same number of rows.</p>
+
+<p>If your data is stored in one table that contains both features and labels, then you will need to divide it into two separate matrices before
+you call the train method. Here is an example that will load an ARFF file, swap the first column with the last one, then split it into a feature
+matrix and a label matrix. In this case, the last 2 columns will be used for the label matrix:</p>
+
+<pre>
+	GMatrix data;
+	data.loadArff("mydata.arff");
+	data.swapColumns(1, data.cols() - 1);
+	GDataColSplitter splitter(data, 2);
+	GMatrix&amp; features = splitter.features();
+	GMatrix&amp; labels = splitter.labels();
+</pre>
+
+<p>Notice that you are not restricted to having one-dimensional labels. Our supervised learning algorithms can implicitly handle labels
+of arbitrary dimensionality. This is particularly convenient when you need to predict things like pixel colors (which are generally
+comprised of 3 channel values), or points in <i>n</i>-dimensional space, or control vectors for systems with several knobs and levers, etc.</p>
+
+<p>So, training a model is as simple as calling the train method.</p>
+<pre>
+	GDecisionTree model;
+	model.train(features, labels);
+</pre>
+or
+<pre>
+	GKNN model;
+	model.setNeighborCount(3);
+	model.train(features, labels);
+</pre>
+etc. For a full list of all of our supervised learning algorithms, take a look in the <a href="../apidoc/html/index.html">API docs</a> at
+the class hierarchy. Expand GTransducer to show all the classes that inherit from it.
+Then, expand GSupervisedLearner (which inherits from GTransducer) to show all the classes that inherit from it.
+Also, expand GIncrementalLearner.</p>
+
+<p>To make a prediction using a trained model, just pass one row of features in to the predict method, and the predicted label
+vector will come out. Example:</p>
+<pre>
+	GVec out(2);
+	model.predict(features[10], out);
+</pre>
+
+<p>Note that some learning algorithms may not implicitly support all types of data. This problem can be solved by wrapping
+the learning algorithm in a filter. A filter is a class that converts the data to a suitable type before passing it to
+the learning algorithm. Perhaps, the easiest filter to use is GAutoFilter. Example:</p>
+
+<pre>
+	GNaiveBayes model;
+	GAutoFilter af(&amp;model, false);
+	af.train(features, labels); // It is okay if features and/or labels contains continuous values,
+	                            // even though naive Bayes only supports categorical values. The
+	                            // GAutoFilter class will take care of type conversions as needed.
+
+	...
+
+	af.predict(pattern, prediction);
+</pre>
+
+
+
+
+<br>
+<a href="matrices.html">Previous</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="new_learner.html">Next</a>
+
+<br><br><a href="../index.html#toc">Back to the table of contents</a><br>
+</td></tr></table>
+</td></tr></table><br><br><br><br><br>
+</body></html>
