@@ -6,13 +6,10 @@ filegroup(
     visibility = ["//simple_make:__subpackages__"],
 )
 
-# Shows a standard library
-cmake(
-    name = "backward-cpp",
-    lib_source = ":sources",
-    # pass include/version123 to C/C++ provider as include directory
-    # out_include_dir = "include/version123",
-    # working_directory = "build/cmake",
+cc_library(
+    name = "backward",
+    hdrs = ["backward.hpp"],
+    includes = ["."],
     visibility = ["//visibility:public"],
-    out_static_libs = ["libbackward.a"],
+    include_prefix = "backward",
 )

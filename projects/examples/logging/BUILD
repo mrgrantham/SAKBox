@@ -25,4 +25,4 @@ cc_binary(
     ],
 )
 
-clang_format(name = "flexmath")
+clang_format(name = "logging")

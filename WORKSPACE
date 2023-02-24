@@ -102,7 +102,7 @@ new_git_repository(
 http_archive(
     name = "com_github_nelhage_rules_boost",
     strip_prefix = "rules_boost-96e9b631f104b43a53c21c87b01ac538ad6f3b48",
-
+    sha256 = "5ea00abc70cdf396a23fb53201db19ebce2837d28887a08544429d27783309ed",
     # Replace the commit hash in both places (below) with the latest, rather than using the stale one here.
     # Even better, set up Renovate and let it do the work for you (see "Suggestion: Updates" in the README).
     url = "https://github.com/nelhage/rules_boost/archive/96e9b631f104b43a53c21c87b01ac538ad6f3b48.tar.gz",
@@ -122,8 +122,49 @@ http_archive(
 )
 
 new_git_repository(
-    name = "backward-cpp",
+    name = "backward",
     build_file = "@//third_party:backward-cpp.BUILD",
     remote = "https://github.com/bombela/backward-cpp.git",
     tag = "v1.6",
 )
+
+
+http_archive(
+    name = "elfutils",
+    url = "https://sourceware.org/elfutils/ftp/0.188/elfutils-0.188.tar.bz2",
+    sha256 = "fa489deccbcae7d8c920f60d85906124c1989c591196d90e0fd668e3dc05042e",
+    strip_prefix = "elfutils-0.188",
+    build_file = "//third_party:elfutils.BUILD",
+)
+
+new_git_repository(
+    name = "rapidyaml",
+    remote = "https://github.com/biojppm/rapidyaml.git",
+    build_file = "//third_party:rapidyaml.BUILD",
+    tag = "v0.5.0",
+    recursive_init_submodules = True,
+)
+
+
+
+new_git_repository(
+    name = "variadic_table",
+    remote = "https://github.com/friedmud/variadic_table.git",
+    build_file = "//third_party:variadic_table.BUILD",
+    commit = "70ddeb66f000a351b36b5a8d04b0820dfeda129f",
+)
+
+new_git_repository(
+    name = "yamlcpp",
+    remote = "https://github.com/jbeder/yaml-cpp.git",
+    build_file = "//third_party:yamlcpp.BUILD",
+    tag = "yaml-cpp-0.7.0",
+)
+
+new_git_repository(
+    name = "tabulate",
+    remote = "https://github.com/p-ranav/tabulate.git",
+    build_file = "//third_party:tabulate.BUILD",
+    tag = "v1.5",
+)
+
