@@ -168,3 +168,17 @@ new_git_repository(
     tag = "v1.5",
 )
 
+http_archive(
+    name = "libpng",
+    url = "https://downloads.sourceforge.net/project/libpng/libpng16/1.6.39/libpng-1.6.39.tar.gz",
+    sha256 = "af4fb7f260f839919e5958e5ab01a275d4fe436d45442a36ee62f73e5beb75ba",
+    strip_prefix = "libpng-1.6.39",
+    build_file = "//third_party:libpng.BUILD",
+)
+
+http_archive(
+    name = "sdl2",
+    url = "https://github.com/libsdl-org/SDL/releases/download/release-2.26.3/SDL2-2.26.3.tar.gz",
+    strip_prefix = "SDL2-2.26.3",
+    build_file = "//third_party:sdl.BUILD",
+)
