@@ -3,7 +3,7 @@ load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
 filegroup(
     name = "source",
     srcs = glob(["**"]),
-    visibility = ["//visibility:public"],
+    visibility = ["//simple_make:__subpackages__"],
 )
 
 configure_make(
@@ -14,5 +14,10 @@ configure_make(
         "simple",
         "install",
     ],
-    deps = [":built_with_bazel"],
+    configure_options = ["CC=\"gcc\"","CXX=\"gcc\"","CFLAGS=","AR=\"ar\"","LDFLAGS=","--enable-linker-build-id"],
+    visibility = ["//visibility:public"],
+    out_static_libs = ["libdw.a","libelf.a"],
+    linkopts = ["-largp",],
+    # deps = ["@libargp"],
+
 )

@@ -40,6 +40,7 @@ void whereAmI() {
         fmt::print("{}\n",dirEntry.path().string());
 }
 
+backward::SignalHandling sh;
 
 int main(int argc, char *argv[])
 {

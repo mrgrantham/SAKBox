@@ -14,6 +14,7 @@ cc_binary(
         "@libpng",
         "@sdl2",
         "@fmt",
+        "@backward",
     ],
 )
 

@@ -58,6 +58,14 @@ http_archive(
     urls = ["https://github.com/catchorg/Catch2/archive/refs/tags/v3.3.1.zip"],
 )
 
+
+http_archive(
+    name = "binutils",
+    strip_prefix = "binutils-2.40",
+    build_file = "@//third_party:binutils.BUILD",
+    urls = ["https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz"],
+)
+
 http_archive(
     name = "cyclone",
     build_file = "@//third_party:cyclone.BUILD",
@@ -132,7 +140,7 @@ new_git_repository(
 http_archive(
     name = "elfutils",
     url = "https://sourceware.org/elfutils/ftp/0.188/elfutils-0.188.tar.bz2",
-    sha256 = "fa489deccbcae7d8c920f60d85906124c1989c591196d90e0fd668e3dc05042e",
+    sha256 = "fb8b0e8d0802005b9a309c60c1d8de32dd2951b56f0c3a3cb56d21ce01595dff",
     strip_prefix = "elfutils-0.188",
     build_file = "//third_party:elfutils.BUILD",
 )
@@ -189,3 +197,22 @@ new_git_repository(
     build_file = "//third_party:zlib.BUILD",
     tag = "v1.2.13",
 )
+
+
+
+# new_git_repository(
+#     name = "libargp",
+#     remote = "https://github.com/alexreg/libargp.git",
+#     build_file = "//third_party:libargp.BUILD",
+#     commit = "d111f205e32d78cf73a9a9997092c0432ef9e895",
+#     shallow_since = "1419207665 +0000",
+# )
+
+
+http_archive(
+    name = "libargp",
+    url = "https://github.com/alexreg/libargp/archive/refs/heads/master.zip",
+    strip_prefix = "libargp-master",
+    build_file = "//third_party:libargp.BUILD",
+)
+
