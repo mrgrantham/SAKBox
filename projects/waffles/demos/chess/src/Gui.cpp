@@ -50,8 +50,6 @@ ViewBase::ViewBase()
 	if(!window_)
 		window_ = makeScreen(windowWidth, windowHeight);
 	m_pScreen = window_;
-	fmt::println("making window surface");
-	// window_surface = SDL_GetWindowSurface(window_);
 	sdlRenderer = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
 	sdlTexture = SDL_CreateTexture(sdlRenderer,
 										SDL_PIXELFORMAT_BGRA8888,
