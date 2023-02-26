@@ -9,7 +9,7 @@
 #ifndef __CARONHILL_H__
 #define __CARONHILL_H__
 
-#include "Gui.h"
+#include "gui/Gui.h"
 #include "backward/backward.hpp"
 
 

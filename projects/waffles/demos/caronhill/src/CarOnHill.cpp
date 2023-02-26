@@ -20,7 +20,7 @@
 #include <WClasses/GReinforcement.h>
 #include <math.h>
 #include <sstream>
-#include "GImagePng.h"
+#include "png/GImagePng.h"
 #include <fmt/core.h>
 
 using namespace GClasses;

@@ -24,7 +24,7 @@
 #include <WClasses/GTime.h>
 #include <WClasses/GWidgets.h>
 #include <WClasses/GThread.h>
-#include "Gui.h"
+#include "gui/Gui.h"
 #include "GChess.h"
 #ifdef WINDOWS
 #	include <direct.h>
@@ -32,7 +32,7 @@
 #include <math.h>
 #include <exception>
 #include <iostream>
-#include "GImagePng.h"
+#include "png/GImagePng.h"
 #include <filesystem>
 #include <fmt/core.h>
 using namespace GClasses;

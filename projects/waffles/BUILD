@@ -13,6 +13,31 @@ cc_library(
     strip_include_prefix = "src",
 )
 
+cc_library(
+    name = "gui",
+    srcs = glob(["src/gui/*.cpp",
+    ]),
+    hdrs = glob([
+        "src/gui/*.h",
+    ]),
+    deps = ["@sdl2","//projects/waffles:WClasses","@fmt"],
+    visibility = ["//visibility:public"],
+    strip_include_prefix = "src",
+)
+
+cc_library(
+    name = "png",
+    srcs = glob(["src/png/*.cpp",
+    ]),
+    hdrs = glob([
+        "src/png/*.h",
+    ]),
+    deps = ["@libpng","//projects/waffles:WClasses",
+],
+    visibility = ["//visibility:public"],
+    strip_include_prefix = "src",
+)
+
 cc_binary(
     name = "audio",
     srcs = ["src/audio/main.cpp"],
