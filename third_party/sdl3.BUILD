@@ -1,12 +1,3 @@
-# load("@rules_cc//cc:defs.bzl", "cc_library")
-
-# cc_library(
-#     name = "sdl2",
-#     hdrs = glob(["Headers/*.h"]),
-#     includes = ["Header"], # Optional. 
-#     visibility = ["//visibility:public"],
-# )
-
 load("@rules_foreign_cc//foreign_cc:defs.bzl","cmake")
 
 filegroup(
@@ -17,15 +8,17 @@ filegroup(
 
 # Shows a standard library
 cmake(
-    name = "sdl2",
+    name = "sdl3",
     lib_source = ":sources",
     # pass include/version123 to C/C++ provider as include directory
     # out_include_dir = "include/version123",
     # working_directory = "build/cmake",
     # out_lib_dir = "sdl2/lib",
+    # install = False,
     visibility = ["//visibility:public"],
-    out_static_libs = ["libSDL2.a"],
-    cache_entries = {"SDL_SHARED":"OFF","SDL_STATIC":"ON","SDL_METAL":"ON"},
+    # out_shared_libs = select({"@platxforms//os:macos":["libSDL3.dylib"],"//conditions:default": ["libSDL3.so"]}),
+    out_static_libs = ["libSDL3.a"],
+    cache_entries = {"SDL_SHARED":"ON","SDL_STATIC":"ON","SDL_METAL":"ON"},
     linkopts = select({
         "@platforms//os:windows": [
             "-DEFAULTLIB:user32.lib",
@@ -38,6 +31,7 @@ cmake(
             "-Wl,-framework,IOKit",
             "-Wl,-framework,CoreFoundation",
             "-Wl,-framework,CoreVideo",
+            "-Wl,-framework,QuartzCore",
             "-Wl,-framework,CoreAudio",
             "-Wl,-framework,GameController",
             "-Wl,-framework,ForceFeedback",

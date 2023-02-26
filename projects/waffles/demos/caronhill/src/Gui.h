@@ -15,28 +15,28 @@ class ControllerBase;
 
 #ifndef NOGUI
 #include <SDL2/SDL.h>
+#include <unordered_map>
 
-
-inline Uint32* getPixMem32(SDL_Surface *surface, int x, int y)
+inline Uint32* getPixMem32(int *pixels,int pitch, int x, int y)
 {
-	return (Uint32*)((Uint8*)surface->pixels + y * surface->pitch + (x << 2));
+	return (Uint32*)((Uint8*)pixels + y * pitch + (x << 2));
 }
 
-inline Uint16* getPixMem16(SDL_Surface *pScreen, int x, int y)
+inline Uint16* getPixMem16(int *pixels,int pitch, int x, int y)
 {
-	return (Uint16*)pScreen->pixels + y * pScreen->pitch / 2 + x;
+	return (Uint16*)pixels + y * pitch / 2 + x;
 }
 
 
 class ViewBase
 {
 protected:
-	static SDL_Surface* s_pScreen;
-	SDL_Surface* m_pScreen;
+	static SDL_Window* window_;
+	SDL_Window* m_pScreen;
 	GClasses::GRect m_screenRect;
 	SDL_Renderer *sdlRenderer;
-
-
+	SDL_Surface *window_surface; // software render
+	SDL_Texture *sdlTexture; // hardware render
 public:
 	ViewBase();
 	virtual ~ViewBase();
@@ -52,12 +52,12 @@ public:
 	void captureScreen(GClasses::GImage* pImage);
 
 protected:
-	static void blitImage(SDL_Surface* pScreen, int x, int y, GClasses::GImage* pImage);
-	static void stretchClipAndBlitImage(SDL_Surface* pScreen, GClasses::GRect* pDestRect, GClasses::GRect* pClipRect, GClasses::GImage* pImage);
+	static void blitImage(int* pixels,int pitch,Uint32 format, int x, int y, GClasses::GImage* pImage);
+	static void stretchClipAndBlitImage(int* pixels,int pitch,Uint32 format, GClasses::GRect* pDestRect, GClasses::GRect* pClipRect, GClasses::GImage* pImage);
 
-	virtual void draw(SDL_Surface* pScreen) = 0;
-	void drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int nSize);
-	SDL_Surface* makeScreen(int x, int y);
+	virtual void draw(int* pixels, int pitch) = 0;
+	void drawDot(int* pixels,int pitch,Uint32 format, int x, int y, unsigned int col, int nSize);
+	SDL_Window* makeScreen(int x, int y);
 };
 
 // when *pKeepRunning is false, the popup will close
@@ -155,7 +155,7 @@ protected:
 		Repeating,
 	};
 
-	int m_keyboard[SDL_NUM_SCANCODES];
+	std::unordered_map<int,int> m_keyboard;
 	int m_mouse[4];
 	int m_mouseX;
 	int m_mouseY;

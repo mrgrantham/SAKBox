@@ -42,6 +42,7 @@
 #define STDERR stdout   /* For DOS */
 
 #include "png.h"
+#include "fmt/core.h"
 
 /* Known chunks that exist in pngtest.png must be supported or pngtest will fail
  * simply as a result of re-ordering them.  This may be fixed in 1.7
@@ -406,6 +407,7 @@ pngtest_read_data(png_structp png_ptr, png_bytep data, size_t length)
    }
 
 #ifdef PNG_IO_STATE_SUPPORTED
+printf("checking io state");
    pngtest_check_io_state(png_ptr, length, PNG_IO_READING);
 #endif
 }
@@ -894,13 +896,16 @@ test_one_file(const char *inname, const char *outname)
 
    pngtest_debug("Allocating read and write structures");
 #if defined(PNG_USER_MEM_SUPPORTED) && PNG_DEBUG
+   fmt::println("png_create_read_struct_2");
    read_ptr =
        png_create_read_struct_2(PNG_LIBPNG_VER_STRING, NULL,
        NULL, NULL, NULL, png_debug_malloc, png_debug_free);
 #else
+   fmt::println("png_create_read_struct");
    read_ptr =
        png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 #endif
+fmt::println("png_set_error_fn");
    png_set_error_fn(read_ptr, &error_parameters, pngtest_error,
        pngtest_warning);
 
@@ -925,13 +930,14 @@ test_one_file(const char *inname, const char *outname)
 #endif
 
 #ifdef PNG_READ_USER_CHUNKS_SUPPORTED
+fmt::println("init_callback_info");
    init_callback_info(read_info_ptr);
    png_set_read_user_chunk_fn(read_ptr, &user_chunk_data,
        read_user_chunk_callback);
 #endif
 
 #ifdef PNG_SETJMP_SUPPORTED
-   pngtest_debug("Setting jmpbuf for read struct");
+   fmt::println("Setting jmpbuf for read struct");
    if (setjmp(png_jmpbuf(read_ptr)))
    {
       fprintf(STDERR, "%s -> %s: libpng read error\n", inname, outname);
@@ -941,6 +947,7 @@ test_one_file(const char *inname, const char *outname)
         fprintf(STDERR, "   destroy read structs\n");
       png_destroy_read_struct(&read_ptr, &read_info_ptr, &end_info_ptr);
 #ifdef PNG_WRITE_SUPPORTED
+   pngtest_debug("PNG_WRITE_SUPPORTED");
       if (verbose != 0)
         fprintf(STDERR, "   destroy write structs\n");
       png_destroy_info_struct(write_ptr, &write_end_info_ptr);
@@ -974,6 +981,8 @@ test_one_file(const char *inname, const char *outname)
 #endif
 
 #ifdef PNG_BENIGN_ERRORS_SUPPORTED
+   fmt::println("PNG_BENIGN_ERRORS_SUPPORTED");
+
    if (strict != 0)
    {
       /* Treat png_benign_error() as errors on read */
@@ -1010,13 +1019,15 @@ test_one_file(const char *inname, const char *outname)
    }
 #endif /* BENIGN_ERRORS */
 
-   pngtest_debug("Initializing input and output streams");
+   fmt::println("Initializing input and output streams");
 #ifdef PNG_STDIO_SUPPORTED
+   printf("other stuff\n");
    png_init_io(read_ptr, fpin);
 #  ifdef PNG_WRITE_SUPPORTED
    png_init_io(write_ptr, fpout);
 #  endif
 #else
+   printf("png_set_read_fn\n");
    png_set_read_fn(read_ptr, (png_voidp)fpin, pngtest_read_data);
 #  ifdef PNG_WRITE_SUPPORTED
    png_set_write_fn(write_ptr, (png_voidp)fpout,  pngtest_write_data,
@@ -1041,10 +1052,12 @@ test_one_file(const char *inname, const char *outname)
 #ifdef PNG_WRITE_SUPPORTED
       png_set_write_status_fn(write_ptr, NULL);
 #endif
+printf("set_read");
       png_set_read_status_fn(read_ptr, NULL);
    }
 
 #ifdef PNG_READ_USER_TRANSFORM_SUPPORTED
+fmt::println("PNG_READ_USER_TRANSFORM_SUPPORTED");
    png_set_read_user_transform_fn(read_ptr, read_user_callback);
 #endif
 #ifdef PNG_WRITE_USER_TRANSFORM_SUPPORTED
@@ -1053,6 +1066,8 @@ test_one_file(const char *inname, const char *outname)
 #endif
 
 #ifdef PNG_SET_UNKNOWN_CHUNKS_SUPPORTED
+fmt::println("PNG_SET_UNKNOWN_CHUNKS_SUPPORTED");
+
    /* Preserve all the unknown chunks, if possible.  If this is disabled then,
     * even if the png_{get,set}_unknown_chunks stuff is enabled, we can't use
     * libpng to *save* the unknown chunks on read (because we can't switch the
@@ -1062,6 +1077,8 @@ test_one_file(const char *inname, const char *outname)
     * unknown chunks and write will write them all.
     */
 #ifdef PNG_SAVE_UNKNOWN_CHUNKS_SUPPORTED
+fmt::println("PNG_SAVE_UNKNOWN_CHUNKS_SUPPORTED");
+
    png_set_keep_unknown_chunks(read_ptr, PNG_HANDLE_CHUNK_ALWAYS,
        NULL, 0);
 #endif
@@ -1071,7 +1088,7 @@ test_one_file(const char *inname, const char *outname)
 #endif
 #endif
 
-   pngtest_debug("Reading info struct");
+   fmt::println("Reading info struct");
    png_read_info(read_ptr, read_info_ptr);
 
 #ifdef PNG_READ_USER_CHUNKS_SUPPORTED
@@ -1814,7 +1831,8 @@ test_one_file(const char *inname, const char *outname)
 static const char *inname = "pngtest/png";
 static const char *outname = "pngout/png";
 #else
-static const char *inname = "projects/examples/png/data/pngtest.png";
+static const char *inname = "projects/examples/png/data/minicar.png";
+// static const char *inname = "projects/examples/png/data/pngtest.png";
 static const char *outname = "pngout.png";
 #endif
 

@@ -46,6 +46,8 @@ ViewBase::ViewBase()
 {
 	if(!s_pScreen)
 		s_pScreen = makeScreen(1010, 690);
+
+	window_surface = SDL_GetWindowSurface(s_pScreen);
 	m_pScreen = s_pScreen;
 	m_screenRect.x = 0;
 	m_screenRect.y = 0;

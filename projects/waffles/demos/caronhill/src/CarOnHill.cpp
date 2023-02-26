@@ -21,6 +21,7 @@
 #include <math.h>
 #include <sstream>
 #include "GImagePng.h"
+#include <fmt/core.h>
 
 using namespace GClasses;
 using std::string;
@@ -94,7 +95,7 @@ public:
 
 		// Load the car image and add some border so we can rotate it
 		GImage tmp;
-		loadPng(&tmp, "projects/waffles/demos/caronhill/data/pngwing.png");
+		loadPng(&tmp, "projects/waffles/demos/caronhill/data/minicar.png");
 		m_pCar = new GImage();
 		m_pCar->setSize(70, 60);
 		GRect r(0, 0, 60, 36);
@@ -265,11 +266,13 @@ public:
 
 	void Iterate(bool forw)
 	{
+		// fmt::println("iterate");
 		g_updateView = m_pUpdateDisplay->isChecked();
 		if(!g_updateView && m_prng->next(100000) == 0)
 			g_updateView = true;
 		m_pModel->IterateModel(m_pBullets->selection(), forw);
 		m_pCanvas->setImage(m_pImage);
+		// fmt::println("iterate end");
 	}
 };
 
@@ -325,15 +328,18 @@ public:
 	}
 
 protected:
-	virtual void draw(SDL_Surface *pScreen)
+	virtual void draw(int* pixels, int pitch)
 	{
 		m_pDialog->Iterate(m_forw);
 
 		// Clear the screen
-		SDL_FillRect(pScreen, NULL/*&r*/, 0x000000);
-
+		SDL_SetRenderDrawColor(sdlRenderer,0,0,0,0);
+		SDL_Rect windowRect{m_screenRect.x,m_screenRect.y,m_screenRect.w,m_screenRect.h};
+		SDL_RenderFillRect(sdlRenderer,&windowRect);
+		Uint32 format; // SDL_PixelFormatEnum
+		SDL_QueryTexture(sdlTexture,&format, NULL,NULL,NULL);
 		// Draw the dialog
-		blitImage(pScreen, m_screenRect.x, m_screenRect.y, m_pDialog->image());
+		blitImage(pixels,pitch,format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
 	}
 };
 
@@ -363,10 +369,10 @@ void CarOnHillController::RunModal()
 		if(handleEvents(time - timeOld) || g_updateView)
 		{
 			m_pView->update();
-			GThread::sleep(20);
 		}
-		else
+		else {
 			((CarOnHillView*)m_pView)->iterate();
+		}
 		timeOld = time;
 	}
 }

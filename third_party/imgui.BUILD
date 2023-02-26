@@ -23,11 +23,22 @@ cc_library(
     deps = [":imgui",],
 )
 
+
+
+cc_library(
+    name = "imgui_backend_sdl3",
+    srcs = ["backends/imgui_impl_sdl3.cpp"],
+    hdrs = ["backends/imgui_impl_sdl3.h",],
+    visibility = ["//visibility:public"],
+    strip_include_prefix = "backends",
+    deps = [":imgui","@sdl3"],
+)
+
 cc_binary(
-    name = "imgui_sdl2",
-    srcs = ["backends/imgui_impl_opengl3.cpp","examples/example_sdl2_opengl3/main.cpp"],
-    deps = ["@sdl2",
-    ":imgui_backends"],
+    name = "imgui_sdl3",
+    srcs = ["examples/example_sdl3_opengl3/main.cpp"],
+    deps = ["@sdl3",
+    ":imgui_backend_opengl3",":imgui_backend_sdl3"],
     linkopts = ["-framework OpenGL", "-framework CoreFoundation"],
 )
 
@@ -38,6 +49,7 @@ cc_binary(
     ":imgui_backend_opengl3",":imgui_backend_glfw"],
     linkopts = ["-framework OpenGL", "-framework CoreFoundation"],
 )
+
 
 # brew install sdl2
 # c++ `sdl2-config --cflags` -I .. -I ../.. -I ../../backends

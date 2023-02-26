@@ -12,6 +12,6 @@ cc_library(
     includes = ["."],
     visibility = ["//visibility:public"],
     include_prefix = "backward",
-    deps = ["@binutils"],
-    defines = ["BACKWARD_HAS_BFD=1"],
+    # deps = ["@binutils"],
+    # defines = ["BACKWARD_HAS_BFD=1"],
 )

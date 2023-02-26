@@ -198,7 +198,12 @@ new_git_repository(
     tag = "v1.2.13",
 )
 
-
+new_git_repository(
+    name = "sdl3",
+    remote = "https://github.com/libsdl-org/SDL.git",
+    build_file = "//third_party:sdl3.BUILD",
+    branch = "main",
+)
 
 # new_git_repository(
 #     name = "libargp",

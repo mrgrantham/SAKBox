@@ -163,7 +163,7 @@ protected:
 		Repeating,
 	};
 
-	int m_keyboard[SDLK_LAST];
+	int m_keyboard[SDLK_LAST] = {};
 	int m_mouse[4];
 	int m_mouseX;
 	int m_mouseY;

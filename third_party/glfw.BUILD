@@ -193,4 +193,27 @@ cmake(
             "_GLFW_X11",
         ],
     }),
+    linkopts = select({
+        "@platforms//os:windows": [
+            "-DEFAULTLIB:user32.lib",
+            "-DEFAULTLIB:gdi32.lib",
+            "-DEFAULTLIB:shell32.lib",
+        ],
+        "@platforms//os:macos": [
+            "-Wl,-framework,OpenGL",
+            "-Wl,-framework,Cocoa",
+            "-Wl,-framework,IOKit",
+            "-Wl,-framework,CoreFoundation",
+            "-Wl,-framework,CoreVideo",
+            "-Wl,-framework,CoreAudio",
+            "-Wl,-framework,GameController",
+            "-Wl,-framework,ForceFeedback",
+            "-Wl,-framework,AudioToolbox",
+            "-Wl,-weak_framework,CoreHaptics",
+            "-Wl,-weak_framework,Metal",
+            "-Wl,-framework,Carbon",
+            "-Wl,-liconv",
+        ],
+        "//conditions:default": [],
+    }),
 )
