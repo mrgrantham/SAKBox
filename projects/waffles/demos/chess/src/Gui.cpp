@@ -33,6 +33,7 @@
 #endif
 #include <string>
 #include <iostream>
+#include <fmt/core.h>
 
 using namespace GClasses;
 using std::cout;
@@ -40,52 +41,74 @@ using std::string;
 
 
 #ifndef NOGUI
-SDL_Surface* ViewBase::s_pScreen = NULL;
+SDL_Window* ViewBase::window_ = nullptr;
 
 ViewBase::ViewBase()
 {
-	if(!s_pScreen)
-		s_pScreen = makeScreen(1010, 690);
-
-	window_surface = SDL_GetWindowSurface(s_pScreen);
-	m_pScreen = s_pScreen;
+	const int windowWidth = 1010;
+	const int windowHeight = 690;
+	if(!window_)
+		window_ = makeScreen(windowWidth, windowHeight);
+	m_pScreen = window_;
+	fmt::println("making window surface");
+	// window_surface = SDL_GetWindowSurface(window_);
+	sdlRenderer = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
+	sdlTexture = SDL_CreateTexture(sdlRenderer,
+										SDL_PIXELFORMAT_BGRA8888,
+										SDL_TEXTUREACCESS_STREAMING,
+										windowWidth, windowHeight);
 	m_screenRect.x = 0;
 	m_screenRect.y = 0;
-	m_screenRect.w = m_pScreen->w;
-	m_screenRect.h = m_pScreen->h;
+	m_screenRect.w = windowWidth;
+	m_screenRect.h = windowHeight;
 }
 
 ViewBase::~ViewBase()
 {
+	SDL_DestroyTexture(sdlTexture);
+	SDL_DestroyRenderer(sdlRenderer);
+	m_pScreen = nullptr;
+	SDL_DestroyWindow(window_);
 }
 
-SDL_Surface* ViewBase::makeScreen(int x, int y)
+SDL_Window* ViewBase::makeScreen(int x, int y)
 {
-	unsigned int flags =
-//		SDL_FULLSCREEN |
-//		SDL_HWSURFACE |
-		SDL_SWSURFACE |
-//		SDL_DOUBLEBUF |
-		SDL_ANYFORMAT;
-	SDL_Surface* pScreen = SDL_SetVideoMode(x, y, 32, flags);
-	if(!pScreen)
+SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+SDL_Window *sdlWindow = SDL_CreateWindow("Car On Hill",
+                             SDL_WINDOWPOS_UNDEFINED,
+                             SDL_WINDOWPOS_UNDEFINED,
+                             x, y,
+                             window_flags);
+if(!sdlWindow)
 	{
 		// SDL_GetError();
 		throw "failed to create SDL screen";
 	}
-	return pScreen;
+	return sdlWindow;
 }
 
 void ViewBase::captureScreen(GImage* pImage)
 {
+	Uint32 format; // SDL_PixelFormatEnum
+	SDL_QueryTexture(sdlTexture,&format, NULL,NULL,NULL);
 	pImage->setSize(m_screenRect.w, m_screenRect.h);
-	if(s_pScreen->format->BytesPerPixel == 4)
+
+	int *pixels = nullptr;
+	int pitch = 0;
+	const SDL_Rect* SDL_LOCK_ENTIRE_TEXTURE = nullptr;
+	if ( SDL_LockTexture(sdlTexture,SDL_LOCK_ENTIRE_TEXTURE,(void **)&pixels,&pitch) < 0 )
+	{
+		GAssert(false); // SDL_GetError(); // failed to lock the surface
+		return;
+	}
+
+	if(SDL_BYTESPERPIXEL(format) == 4)
 	{
 		unsigned int* pRGB = pImage->pixels();
 		int y;
 		for(y = 0; y < m_screenRect.h; y++)
 		{
-			Uint32* pPix = getPixMem32(s_pScreen, m_screenRect.x, m_screenRect.y + y);
+			Uint32* pPix = getPixMem32(pixels,pitch, m_screenRect.x, m_screenRect.y + y);
 			memcpy(&pRGB[y * pImage->width()], pPix, pImage->width() * sizeof(unsigned int));
 		}
 	}
@@ -96,10 +119,10 @@ void ViewBase::captureScreen(GImage* pImage)
 		Uint8 r, g, b;
 		for(y = 0; y < m_screenRect.h; y++)
 		{
-			Uint16* pPix = getPixMem16(s_pScreen, m_screenRect.x, m_screenRect.y + y);
+			Uint16* pPix = getPixMem16(pixels,pitch, m_screenRect.x, m_screenRect.y + y);
 			for(x = 0; x < m_screenRect.w; x++)
 			{
-				SDL_GetRGB(*pPix, s_pScreen->format, &r, &g, &b);
+				SDL_GetRGB(*pPix, window_surface->format, &r, &g, &b);
 				*pRGB = gRGB(r, g, b);
 				pPix++;
 				pRGB++;
@@ -108,22 +131,22 @@ void ViewBase::captureScreen(GImage* pImage)
 	}
 }
 
-/*static*/ void ViewBase::blitImage(SDL_Surface* pScreen, int x, int y, GImage* pImage)
+/*static*/ void ViewBase::blitImage(int* pixels,int pitch, Uint32 format, int x, int y, GImage* pImage)
 {
-	if(pScreen->format->BytesPerPixel == 4)
-	{
+	if(SDL_BYTESPERPIXEL(format) == 4)
+	{		
 		// 32 bits per pixel
 		unsigned int* pRGB = pImage->pixels();
-		int w = pImage->width();
-		int h = pImage->height();
+		const int width = pImage->width();
+		const int height = pImage->height();
 		int yy;
 		Uint32* pPix;
-		for(yy = 0; yy < h; yy++)
+		for(yy = 0; yy < height; yy++)
 		{
-			pPix = getPixMem32(pScreen, x, y);
+			pPix = getPixMem32(pixels,pitch, x, y);
 #ifdef __APPLE__
-			unsigned int* pRaw = &pRGB[yy * w];
-			for(size_t i = 0; i < w; i++)
+			unsigned int* pRaw = &pRGB[yy * width];
+			for(size_t i = 0; i < width; i++)
 				*(pPix++) = ntohl(*(pRaw++));
 #else
 			memcpy(pPix, &pRGB[yy * w], w * sizeof(unsigned int));
@@ -134,7 +157,8 @@ void ViewBase::captureScreen(GImage* pImage)
 	else
 	{
 		// 16 bits per pixel
-		GAssert(pScreen->format->BytesPerPixel == 2); // Only 16 and 32 bit video modes are supported
+		GAssert(SDL_BYTESPERPIXEL(format) == 2); // Only 16 and 32 bit video modes are supported
+		// fmt::println("16 bit pic blitImage");
 		int w = pImage->width();
 		int h = pImage->height();
 		int xx, yy;
@@ -142,11 +166,12 @@ void ViewBase::captureScreen(GImage* pImage)
 		Uint16* pPix;
 		for(yy = 0; yy < h; yy++)
 		{
-			pPix = (Uint16*)pScreen->pixels + y * pScreen->pitch / 2 + x;
+			pPix = (Uint16*)pixels + y * pitch / 2 + x;
 			for(xx = 0; xx < w; xx++)
 			{
+				auto sdlFormat = SDL_AllocFormat(format);
 				colIn = pImage->pixel(xx, yy);
-				*pPix = (Uint16)SDL_MapRGB(pScreen->format, gRed(colIn), gGreen(colIn), gBlue(colIn));
+				*pPix = (Uint16)SDL_MapRGB(sdlFormat, gRed(colIn), gGreen(colIn), gBlue(colIn));
 				pPix++;
 			}
 			y++;
@@ -154,7 +179,7 @@ void ViewBase::captureScreen(GImage* pImage)
 	}
 }
 
-/*static*/ void ViewBase::stretchClipAndBlitImage(SDL_Surface* pScreen, GRect* pDestRect, GRect* pClipRect, GImage* pImage)
+/*static*/ void ViewBase::stretchClipAndBlitImage(int* pixels,int pitch, Uint32 format, GRect* pDestRect, GRect* pClipRect, GImage* pImage)
 {
 	float fSourceDX =  (float)(pImage->width() - 1) / (float)(pDestRect->w - 1);
 	GAssert((int)((pDestRect->w - 1) * fSourceDX) < (int)pImage->width()); // Extends past source image width
@@ -186,14 +211,14 @@ void ViewBase::captureScreen(GImage* pImage)
 	// Blit
 	int x, y;
 	float fSX;
-	if(pScreen->format->BytesPerPixel == 4)
+	if(SDL_BYTESPERPIXEL(format) == 4)
 	{
 		// 32 bits per pixel
 		Uint32* pPix;
 		for(y = yStart; y < yEnd; y++)
 		{
 			fSX = fSourceX;
-			pPix = getPixMem32(pScreen, xStart, y);
+			pPix = getPixMem32(pixels,pitch, xStart, y);
 			for(x = xStart; x < xEnd; x++)
 			{
 				*pPix = pImage->pixel((int)fSX, (int)fSourceY);
@@ -212,11 +237,12 @@ void ViewBase::captureScreen(GImage* pImage)
 		for(y = yStart; y < yEnd; y++)
 		{
 			fSX = fSourceX;
-			pPix = getPixMem16(pScreen, xStart, y);
+			pPix = getPixMem16(pixels,pitch, xStart, y);
 			for(x = xStart; x < xEnd; x++)
 			{
 				colIn = pImage->pixel((int)fSX, (int)fSourceY);
-				*pPix = (Uint16)SDL_MapRGB(pScreen->format, gRed(colIn), gGreen(colIn), gBlue(colIn));
+				auto sdlFormat = SDL_AllocFormat(format);
+				*pPix = (Uint16)SDL_MapRGB(sdlFormat, gRed(colIn), gGreen(colIn), gBlue(colIn));
 				pPix++;
 				fSX += fSourceDX;
 			}
@@ -225,7 +251,7 @@ void ViewBase::captureScreen(GImage* pImage)
 	}
 }
 
-void ViewBase::drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int nSize)
+void ViewBase::drawDot(int *pixels,int pitch,Uint32 format, int x, int y, unsigned int col, int nSize)
 {
 	int nWhiteAmount;
 	int nColorAmount;
@@ -234,7 +260,7 @@ void ViewBase::drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int
 	int nXMax = std::min(x + nSize, m_screenRect.x + m_screenRect.w);
 	int nSizeSquared = nSize * nSize;
 	int nDoubleSizeSquared = nSizeSquared + nSizeSquared;
-	if(pScreen->format->BytesPerPixel == 4)
+	if(SDL_BYTESPERPIXEL(format) == 4)
 	{
 		// 32 bits per pixel
 		for(yy = std::max(m_screenRect.y, y - nSize); yy < nYMax; yy++)
@@ -246,7 +272,7 @@ void ViewBase::drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int
 					continue;
 				nWhiteAmount += nWhiteAmount;
 				nColorAmount = nDoubleSizeSquared - nWhiteAmount;
-				*getPixMem32(pScreen, xx, yy) =	gARGB(
+				*getPixMem32(pixels,pitch, xx, yy) =	gARGB(
 						0xff,
 						(nColorAmount * gRed(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
 						(nColorAmount * gGreen(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
@@ -258,7 +284,7 @@ void ViewBase::drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int
 	else
 	{
 		// 16 bits per pixel
-		GAssert(pScreen->format->BytesPerPixel == 2); // Only 16 and 32 bit video modes are supported
+		GAssert(SDL_BYTESPERPIXEL(format) == 2); // Only 16 and 32 bit video modes are supported
 		for(yy = std::max(m_screenRect.y, y - nSize); yy < nYMax; yy++)
 		{
 			for(xx = std::max(m_screenRect.x, x - nSize); xx < nXMax; xx++)
@@ -268,8 +294,9 @@ void ViewBase::drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int
 					continue;
 				nWhiteAmount += nWhiteAmount;
 				nColorAmount = nDoubleSizeSquared - nWhiteAmount;
-				*getPixMem16(pScreen, xx, yy) =
-					(Uint16)SDL_MapRGB(pScreen->format,
+				auto sdlFormat = SDL_AllocFormat(format);
+				*getPixMem16(pixels,pitch, xx, yy) =
+					(Uint16)SDL_MapRGB(sdlFormat,
 						(nColorAmount * gRed(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
 						(nColorAmount * gGreen(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
 						(nColorAmount * gBlue(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared
@@ -282,25 +309,33 @@ void ViewBase::drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int
 void ViewBase::update()
 {
 	// Lock the screen for direct access to the pixels
-	SDL_Surface *pScreen = m_pScreen;
-	if ( SDL_MUSTLOCK(pScreen) )
-	{
-		if ( SDL_LockSurface(pScreen) < 0 )
+	// SDL_Surface *pScreen = window_surface;
+	SDL_Texture *currentTexture = sdlTexture;
+	// if ( SDL_MUSTLOCK(pScreen) )
+	// {
+		int *pixels = nullptr;
+		int pitch = 0;
+		const SDL_Rect* SDL_LOCK_ENTIRE_TEXTURE = nullptr;
+		if ( SDL_LockTexture(currentTexture,SDL_LOCK_ENTIRE_TEXTURE,(void **)&pixels,&pitch) < 0 )
 		{
+			fmt::println("ERROR");
 			GAssert(false); // SDL_GetError(); // failed to lock the surface
 			return;
 		}
-	}
+	// }
 
+	// fmt::println("start draw");	
 	// Draw the screen
-	draw(pScreen);
+	draw(pixels,pitch);
+	// fmt::println("after draw");	
 
 	// Unlock the screen
-	if ( SDL_MUSTLOCK(pScreen) )
-		SDL_UnlockSurface(pScreen);
+	// if ( SDL_MUSTLOCK(pScreen) )
+		SDL_UnlockTexture(currentTexture);
 
+	SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
 	// Update the whole screen
-	SDL_UpdateRect(pScreen, m_screenRect.x, m_screenRect.y, m_screenRect.w, m_screenRect.h);
+	 SDL_RenderPresent(sdlRenderer);
 }
 
 
@@ -319,7 +354,7 @@ ControllerBase::ControllerBase()
 
 	// Init the keyboard
 	int n;
-	for(n = 0; n < SDLK_LAST; n++)
+	for(n = 0; n < SDL_NUM_SCANCODES; n++)
 		m_keyboard[n] = 0;
 
 	m_mouse[1] = 0;
@@ -342,7 +377,6 @@ bool ControllerBase::handleEvents(double dTimeDelta)
 {
 	if(!m_pView)
 		return false;
-
 	// Check for events
 	bool bRet = false;
 	SDL_Event event;
@@ -350,11 +384,12 @@ bool ControllerBase::handleEvents(double dTimeDelta)
 	{
 		switch(event.type)
 		{
-			case SDL_KEYDOWN:
+			case SDL_KEYDOWN: {
 				m_keyboard[event.key.keysym.sym] = 1;
-				handleKeyPress(event.key.keysym.sym, event.key.keysym.mod);
+				handleKeyPress(event.key.keysym.sym, (SDL_Keymod)event.key.keysym.mod);
 				bRet = true;
 				break;
+			}
 
 			case SDL_KEYUP:
 				m_keyboard[event.key.keysym.sym] = 0;
@@ -383,12 +418,10 @@ bool ControllerBase::handleEvents(double dTimeDelta)
 			case SDL_QUIT:
 				m_bKeepRunning = false;
 				break;
-
 			default:
 				break;
 		}
 	}
-
 	if(bRet)
 	{
 	}
@@ -413,14 +446,13 @@ bool ControllerBase::handleEvents(double dTimeDelta)
 				if(m_dKeyRepeatTimer > KEY_REPEAT_RATE)
 				{
 					m_dKeyRepeatTimer -= KEY_REPEAT_RATE;
-					handleKeyPress(m_lastPressedKey, event.key.keysym.mod);
+					handleKeyPress(m_lastPressedKey, (SDL_Keymod)event.key.keysym.mod);
 				}
 				break;
 			default:
 				GAssert(false); // unexpected case
 		}
-	}
-	else if(onMousePos(m_mouseX, m_mouseY))
+	}else if(onMousePos(m_mouseX, m_mouseY))
 	{
 	}
 	else
@@ -431,7 +463,7 @@ bool ControllerBase::handleEvents(double dTimeDelta)
 	return true; // true = need to update the view
 }
 
-void ControllerBase::handleKeyPress(SDLKey key, SDLMod mod)
+void ControllerBase::handleKeyPress(SDL_Keycode key, SDL_Keymod mod)
 {
 	char cKey = GSDL::filterKey(key);
 	if(cKey == 0)
@@ -518,11 +550,14 @@ public:
 	}
 
 protected:
-	virtual void draw(SDL_Surface *pScreen)
+	virtual void draw(int* pixels, int pitch)
 	{
+		fmt::println("draw");
 		GImage* pDialogImage = m_pDialog->image();
 		m_pBackgroundImage->blit(m_x, m_y, pDialogImage, m_pDialog->rect());
-		blitImage(pScreen, m_nLeft, m_nTop, m_pBackgroundImage);
+		Uint32 format; // SDL_PixelFormatEnum
+		SDL_QueryTexture(sdlTexture,&format, NULL,NULL,NULL);
+		blitImage(pixels,pitch,format, m_nLeft, m_nTop, m_pBackgroundImage);
 	}
 };
 
@@ -556,8 +591,8 @@ public:
 			time = GTime::seconds();
 			if(handleEvents(time - timeOld)) // HandleEvents returns true if it thinks the view needs to be updated
 				m_pView->update();
-			else
-				GThread::sleep(10);
+			// else
+			// 	GThread::sleep(10);
 			timeOld = time;
 		}
 	}
@@ -710,7 +745,7 @@ void OpenFile(const char* szFilename)
 			cout.flush();
 		}
 	}
-#endif // !__APPLE__
+#endif // !DARWIN
 #endif // !WINDOWS
 }
 

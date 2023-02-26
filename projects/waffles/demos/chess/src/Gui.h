@@ -1,20 +1,10 @@
-/*
-  The contents of this file are dedicated by all of its authors, including
-
-    Michael S. Gashler,
-    anonymous contributors,
-
-  to the public domain (http://creativecommons.org/publicdomain/zero/1.0/).
-
-  Note that some moral obligations still exist in the absence of legal ones.
-  For example, it would still be dishonest to deliberately misrepresent the
-  origin of a work. Although we impose no legal requirements to obtain a
-  license, it is beseeming for those who build on the works of others to
-  give back useful improvements, or pay it forward in their own field. If
-  you would like to cite us, a published paper about Waffles can be found
-  at http://jmlr.org/papers/volume12/gashler11a/gashler11a.pdf. If you find
-  our code to be useful, the Waffles team would love to hear how you use it.
-*/
+// -------------------------------------------------------------
+// The contents of this file may be distributed under the CC0
+// license (http://creativecommons.org/publicdomain/zero/1.0/).
+// Of course you may also distribute it under a more restrictive
+// license, such as any of the OSI-approved licenses
+// (http://www.opensource.org/licenses).
+// -------------------------------------------------------------
 
 #ifndef __GUI_H__
 #define __GUI_H__
@@ -24,27 +14,29 @@
 class ControllerBase;
 
 #ifndef NOGUI
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
+#include <unordered_map>
 
-
-inline Uint32* getPixMem32(SDL_Surface *surface, int x, int y)
+inline Uint32* getPixMem32(int *pixels,int pitch, int x, int y)
 {
-	return (Uint32*)((Uint8*)surface->pixels + y * surface->pitch + (x << 2));
+	return (Uint32*)((Uint8*)pixels + y * pitch + (x << 2));
 }
 
-inline Uint16* getPixMem16(SDL_Surface *pScreen, int x, int y)
+inline Uint16* getPixMem16(int *pixels,int pitch, int x, int y)
 {
-	return (Uint16*)pScreen->pixels + y * pScreen->pitch / 2 + x;
+	return (Uint16*)pixels + y * pitch / 2 + x;
 }
 
 
 class ViewBase
 {
 protected:
-	static SDL_Surface* s_pScreen;
-	SDL_Surface* m_pScreen;
+	static SDL_Window* window_;
+	SDL_Window* m_pScreen;
 	GClasses::GRect m_screenRect;
-
+	SDL_Renderer *sdlRenderer;
+	SDL_Surface *window_surface; // software render
+	SDL_Texture *sdlTexture; // hardware render
 public:
 	ViewBase();
 	virtual ~ViewBase();
@@ -60,12 +52,12 @@ public:
 	void captureScreen(GClasses::GImage* pImage);
 
 protected:
-	static void blitImage(SDL_Surface* pScreen, int x, int y, GClasses::GImage* pImage);
-	static void stretchClipAndBlitImage(SDL_Surface* pScreen, GClasses::GRect* pDestRect, GClasses::GRect* pClipRect, GClasses::GImage* pImage);
+	static void blitImage(int* pixels,int pitch,Uint32 format, int x, int y, GClasses::GImage* pImage);
+	static void stretchClipAndBlitImage(int* pixels,int pitch,Uint32 format, GClasses::GRect* pDestRect, GClasses::GRect* pClipRect, GClasses::GImage* pImage);
 
-	virtual void draw(SDL_Surface* pScreen) = 0;
-	void drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int nSize);
-	SDL_Surface* makeScreen(int x, int y);
+	virtual void draw(int* pixels, int pitch) = 0;
+	void drawDot(int* pixels,int pitch,Uint32 format, int x, int y, unsigned int col, int nSize);
+	SDL_Window* makeScreen(int x, int y);
 };
 
 // when *pKeepRunning is false, the popup will close
@@ -163,12 +155,12 @@ protected:
 		Repeating,
 	};
 
-	int m_keyboard[SDLK_LAST];
+	std::unordered_map<int,int> m_keyboard;
 	int m_mouse[4];
 	int m_mouseX;
 	int m_mouseY;
 	KeyState m_eKeyState;
-	SDLKey m_lastPressedKey;
+	SDL_Keycode m_lastPressedKey;
 	double m_dKeyRepeatTimer;
 	ViewBase* m_pView;
 #endif // !NOGUI
@@ -191,7 +183,7 @@ public:
 
 protected:
 #ifndef NOGUI
-	void handleKeyPress(SDLKey eKey, SDLMod mod);
+	void handleKeyPress(SDL_Keycode eKey, SDL_Keymod mod);
 	void handleMouseClick(int nButton);
 #endif // !NOGUI
 };

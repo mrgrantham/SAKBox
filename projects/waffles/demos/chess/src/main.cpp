@@ -33,7 +33,8 @@
 #include <exception>
 #include <iostream>
 #include "GImagePng.h"
-
+#include <filesystem>
+#include <fmt/core.h>
 using namespace GClasses;
 using std::cerr;
 
@@ -81,6 +82,12 @@ protected:
 	int m_hintMoveCount;
 
 public:
+
+using recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
+void whereAmI() {
+    for (const auto& dirEntry : recursive_directory_iterator("."))
+        fmt::print("{}\n",dirEntry.path().string());
+}
 	ChessDialog(ChessController* pController, int w, int h)
 	: GWidgetDialog(w, h, 0xff90d0f0)
 	{
@@ -106,7 +113,8 @@ public:
 		m_pLightStrategy->setSelection(0);
 
 		m_pPieces = new GImage();
-		loadPng(m_pPieces, "pieces.png");
+		whereAmI();
+		loadPng(m_pPieces, "chess.runfiles/graphFun/projects/waffles/demos/chess/data/pieces.png");
 		m_pPieces->replaceColor(0xff00ff00, 0x00000000); // Change opaque green to translucent black
 		m_pMoveIterators = new GChessMoveIterator[MAX_DEPTH_EVER];
 		m_maxDepth = 6;
@@ -459,15 +467,20 @@ public:
 	}
 
 protected:
-	virtual void draw(SDL_Surface *pScreen)
+	virtual void draw(int* pixels, int pitch)
 	{
 		m_pDialog->Iterate();
 
 		// Clear the screen
-		SDL_FillRect(pScreen, NULL/*&r*/, 0x000000);
+		// Clear the screen
+		SDL_SetRenderDrawColor(sdlRenderer,0,0,0,0);
+		SDL_Rect windowRect{m_screenRect.x,m_screenRect.y,m_screenRect.w,m_screenRect.h};
+		SDL_RenderFillRect(sdlRenderer,&windowRect);
+		Uint32 format; // SDL_PixelFormatEnum
+		SDL_QueryTexture(sdlTexture,&format, NULL,NULL,NULL);
 
 		// Draw the dialog
-		blitImage(pScreen, m_screenRect.x, m_screenRect.y, m_pDialog->image());
+		blitImage(pixels,pitch,format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
 	}
 };
 

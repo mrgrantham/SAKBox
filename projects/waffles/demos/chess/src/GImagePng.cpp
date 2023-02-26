@@ -103,8 +103,8 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 	png_read_update_info(reader.m_pReadStruct, reader.m_pInfoStruct);
 
 	// Tell it to expand palettes to full channels
-	png_set_expand(reader.m_pReadStruct);
-	png_set_gray_to_rgb(reader.m_pReadStruct);
+	// png_set_expand(reader.m_pReadStruct);
+	// png_set_gray_to_rgb(reader.m_pReadStruct);
 
 	// Allocate the row pointers
 	unsigned long rowbytes = png_get_rowbytes(reader.m_pReadStruct, reader.m_pInfoStruct);
