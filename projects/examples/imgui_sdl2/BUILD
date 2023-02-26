@@ -1,3 +1,5 @@
+load("//tools/clang_format:clang_format.bzl", "clang_format")
+
 cc_library(
     name = "imgui_backend_sdl2",
     srcs = ["src/backend/imgui_impl_sdl2.cpp"],
@@ -12,4 +14,4 @@ cc_binary(
     srcs = ["src/main.cpp"],
     deps = ["@imgui//:imgui_backend_opengl3",":imgui_backend_sdl2"],
 )
-
+clang_format(name = "imgui_sdl2")
