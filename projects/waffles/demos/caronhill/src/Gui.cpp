@@ -54,7 +54,7 @@ ViewBase::ViewBase()
 	// window_surface = SDL_GetWindowSurface(window_);
 	sdlRenderer = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
 	sdlTexture = SDL_CreateTexture(sdlRenderer,
-										SDL_PIXELFORMAT_ARGB8888,
+										SDL_PIXELFORMAT_BGRA8888,
 										SDL_TEXTUREACCESS_STREAMING,
 										windowWidth, windowHeight);
 	m_screenRect.x = 0;
@@ -65,6 +65,10 @@ ViewBase::ViewBase()
 
 ViewBase::~ViewBase()
 {
+	SDL_DestroyTexture(sdlTexture);
+	SDL_DestroyRenderer(sdlRenderer);
+	m_pScreen = nullptr;
+	SDL_DestroyWindow(window_);
 }
 
 SDL_Window* ViewBase::makeScreen(int x, int y)
@@ -100,7 +104,6 @@ void ViewBase::captureScreen(GImage* pImage)
 
 	if(SDL_BYTESPERPIXEL(format) == 4)
 	{
-		fmt::println("32 bit pic");
 		unsigned int* pRGB = pImage->pixels();
 		int y;
 		for(y = 0; y < m_screenRect.h; y++)
@@ -111,7 +114,6 @@ void ViewBase::captureScreen(GImage* pImage)
 	}
 	else
 	{
-		fmt::println("16 bit pic");
 		unsigned int* pRGB = pImage->pixels();
 		int x, y;
 		Uint8 r, g, b;
@@ -132,20 +134,19 @@ void ViewBase::captureScreen(GImage* pImage)
 /*static*/ void ViewBase::blitImage(int* pixels,int pitch, Uint32 format, int x, int y, GImage* pImage)
 {
 	if(SDL_BYTESPERPIXEL(format) == 4)
-	{
-		// fmt::println("32 bit pic blitImage");
+	{		
 		// 32 bits per pixel
 		unsigned int* pRGB = pImage->pixels();
-		int w = pImage->width();
-		int h = pImage->height();
+		const int width = pImage->width();
+		const int height = pImage->height();
 		int yy;
 		Uint32* pPix;
-		for(yy = 0; yy < h; yy++)
+		for(yy = 0; yy < height; yy++)
 		{
 			pPix = getPixMem32(pixels,pitch, x, y);
 #ifdef __APPLE__
-			unsigned int* pRaw = &pRGB[yy * w];
-			for(size_t i = 0; i < w; i++)
+			unsigned int* pRaw = &pRGB[yy * width];
+			for(size_t i = 0; i < width; i++)
 				*(pPix++) = ntohl(*(pRaw++));
 #else
 			memcpy(pPix, &pRGB[yy * w], w * sizeof(unsigned int));
