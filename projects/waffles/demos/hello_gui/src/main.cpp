@@ -24,7 +24,7 @@
 #include <WClasses/GTime.h>
 #include <WClasses/GWidgets.h>
 #include <WClasses/GThread.h>
-#include "Gui.h"
+#include "gui/Gui.h"
 #include <exception>
 #include <iostream>
 
@@ -159,15 +159,18 @@ public:
 	}
 
 protected:
-	virtual void draw(SDL_Surface *pScreen)
+	virtual void draw(int* pixels, int pitch)
 	{
 		m_pDialog->update();
 
 		// Clear the screen
-		SDL_FillRect(pScreen, NULL/*&r*/, 0x000000);
-
+		SDL_SetRenderDrawColor(sdlRenderer,0,0,0,0);
+		SDL_Rect windowRect{m_screenRect.x,m_screenRect.y,m_screenRect.w,m_screenRect.h};
+		SDL_RenderFillRect(sdlRenderer,&windowRect);
+		Uint32 format; // SDL_PixelFormatEnum
+		SDL_QueryTexture(sdlTexture,&format, NULL,NULL,NULL);
 		// Draw the dialog
-		blitImage(pScreen, m_screenRect.x, m_screenRect.y, m_pDialog->image());
+		blitImage(pixels,pitch,format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
 	}
 };
 
