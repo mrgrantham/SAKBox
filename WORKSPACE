@@ -221,3 +221,9 @@ http_archive(
     build_file = "//third_party:libargp.BUILD",
 )
 
+new_git_repository(
+    name = "eigen",
+    remote = "https://gitlab.com/libeigen/eigen.git",
+    build_file = "//third_party:eigen.BUILD",
+    tag = "3.4.0",
+)
