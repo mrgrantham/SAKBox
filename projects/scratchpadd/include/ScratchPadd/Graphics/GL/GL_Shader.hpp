@@ -51,21 +51,12 @@ private:
 public:
   void generate(const std::string &&vertexShaderFile,
                 const std::string &&fragmentShaderFile) {
-    spdlog::info("Current Path: {}", std::filesystem::current_path().string());
     spdlog::info("vertexShaderFile: {}", vertexShaderFile);
     spdlog::info("fragmentShaderFile: {}", fragmentShaderFile);
 
     std::filesystem::path vertexShaderFilePath(vertexShaderFile);
-    std::error_code vertexShaderFileError;
-    auto vertexShaderFileAbsolutePath =
-        std::filesystem::weakly_canonical(vertexShaderFilePath,
-                                          vertexShaderFileError)
-            .string();
-    if (vertexShaderFileError) {
-      spdlog::error("Shader Path Error: {}", vertexShaderFileError.message());
-    }
-    spdlog::info("Vertex Shader Path: {}", vertexShaderFileAbsolutePath);
-    std::ifstream vertexShaderInputStream(vertexShaderFileAbsolutePath);
+    spdlog::info("Vertex Shader Path: {}", vertexShaderFilePath.string());
+    std::ifstream vertexShaderInputStream(vertexShaderFilePath);
     const std::string vertexShaderString(
         (std::istreambuf_iterator<char>(vertexShaderInputStream)),
         std::istreambuf_iterator<char>());
@@ -73,16 +64,8 @@ public:
 
     std::filesystem::path fragmentShaderFilePath(fragmentShaderFile);
     std::error_code fragmentShaderFileError;
-    auto fragmentShaderFileAbsolutePath =
-        std::filesystem::canonical(fragmentShaderFilePath,
-                                   fragmentShaderFileError)
-            .string();
-    if (fragmentShaderFileError) {
-      spdlog::error("Fragment Path Error: {}",
-                    fragmentShaderFileError.message());
-    }
-    spdlog::info("Fragment Shader Path: {}", fragmentShaderFileAbsolutePath);
-    std::ifstream fragmentShaderInputStream(fragmentShaderFileAbsolutePath);
+    spdlog::info("Fragment Shader Path: {}", fragmentShaderFilePath.string());
+    std::ifstream fragmentShaderInputStream(fragmentShaderFilePath);
     const std::string fragmentShaderString(
         (std::istreambuf_iterator<char>(fragmentShaderInputStream)),
         std::istreambuf_iterator<char>());

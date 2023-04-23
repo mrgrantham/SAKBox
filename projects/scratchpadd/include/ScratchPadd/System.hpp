@@ -1,7 +1,7 @@
 #pragma once
 
 #if defined(SCRATCHPADD_TEST)
-#pragma warning "Using Scratchpadd Test Messages"
+#pragma warning "Using ScratchPadd Test Messages"
 #include <ScratchPadd/Tests/Message.hpp>
 #else
 #include <ScratchPadd/Message.hpp>
