@@ -2,7 +2,6 @@
 
 namespace ScratchPadd::MessageType {
 
-
 namespace Transform {
 struct Translate {};
 struct Scale {};
@@ -34,4 +33,4 @@ struct Triangle {
   }
 };
 
-}
+} // namespace ScratchPadd::MessageType

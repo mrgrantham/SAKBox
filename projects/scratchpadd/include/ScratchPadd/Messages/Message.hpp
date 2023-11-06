@@ -1,8 +1,8 @@
 #pragma once
 
 #include <ScratchPadd/Helper.hpp>
-#include <ScratchPadd/Messages/Geometry.hpp>
 #include <ScratchPadd/Messages/Controls.hpp>
+#include <ScratchPadd/Messages/Geometry.hpp>
 #include <array>
 #include <functional>
 #include <iostream>
@@ -16,8 +16,10 @@
 // This is the namespace for all data structures passed between padds
 #define MessageTypes                                                           \
   ScratchPadd::MessageType::Point, ScratchPadd::MessageType::Triangle,         \
-      ScratchPadd::MessageType::Text, ScratchPadd::MessageType::ControlSnapshot,\
-      ScratchPadd::MessageType::ControlChange, ScratchPadd::MessageType::ControlRequest
+      ScratchPadd::MessageType::Text,                                          \
+      ScratchPadd::MessageType::ControlSnapshot,                               \
+      ScratchPadd::MessageType::ControlChange,                                 \
+      ScratchPadd::MessageType::ControlRequest
 
 namespace ScratchPadd {
 namespace MessageType {
@@ -35,8 +37,7 @@ struct Text {
 using MessageVariant = std::variant<MessageTypes>;
 using Message = std::shared_ptr<MessageVariant>;
 
-template <class MessageType>
-static Message MakeMsg(MessageType &&messageType) {
+template <class MessageType> static Message MakeMsg(MessageType &&messageType) {
   return std::make_shared<MessageVariant>(std::move(messageType));
 }
 } // namespace ScratchPadd

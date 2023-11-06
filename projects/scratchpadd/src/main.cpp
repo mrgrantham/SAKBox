@@ -1,11 +1,11 @@
+#include <ScratchPadd/DataDependencies.hpp>
+#include <ScratchPadd/ScratchPadd.hpp>
 #include <Workers.hpp>
 #include <boost/program_options.hpp>
-#include <iostream>
-#include <spdlog/spdlog.h>
-#include <ScratchPadd/ScratchPadd.hpp>
-#include <ScratchPadd/DataDependencies.hpp>
 #include <chrono>
+#include <iostream>
 #include <signal.h> //  our new library
+#include <spdlog/spdlog.h>
 
 // backward::SignalHandling sh;
 // volatile sig_atomic_t flag = 0;
@@ -23,7 +23,7 @@ ScratchPadd::System *spsystem =
 int main(int argc, char **argv) {
   ScratchPadd::Data::ConfigureDependencies(argv[0]);
   SCOPED_METHOD_TIMER();
-  
+
   // signal(SIGINT, signal_handler);
   spdlog::info("Welcome to SCRATCHPADD!");
   spsystem->instantiate();

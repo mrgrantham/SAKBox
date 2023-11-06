@@ -14,8 +14,8 @@
 #include <ScratchPadd/EventTimer.hpp>
 
 #include <ScratchPadd/Helper.hpp>
-#include <ScratchPadd/System.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
+#include <ScratchPadd/System.hpp>
 
 namespace ScratchPadd {
 
@@ -34,8 +34,7 @@ private:
   std::unordered_map<std::string, ControlTypeVariant> controlMap_;
 
 public:
-  Base(System *system) : system_(system) { paddName_ = __CLASS_NAME__; 
-  }
+  Base(System *system) : system_(system) { paddName_ = __CLASS_NAME__; }
 
   virtual ~Base() {
     // spdlog gets torn down before the destructor
@@ -57,17 +56,19 @@ public:
 
   std::string getName() { return paddName_; }
 
-  virtual std::unordered_map<std::string, ControlTypeVariant> generateControls() = 0;
+  virtual std::unordered_map<std::string, ControlTypeVariant>
+  generateControls() = 0;
 
-  // This method takes the controlMap which has references to the actual variables
-  // and create a snapshot which is just all the same info but has a copy by value
-  // of the control values at that point in time
+  // This method takes the controlMap which has references to the actual
+  // variables and create a snapshot which is just all the same info but has a
+  // copy by value of the control values at that point in time
   ScratchPadd::MessageType::ControlSnapshot generateControlsSnapshot() {
-    return  ScratchPadd::MessageType::ControlSnapshot{.paddName = paddName_, .controlMap = controlMap_};
+    return ScratchPadd::MessageType::ControlSnapshot{.paddName = paddName_,
+                                                     .controlMap = controlMap_};
   }
 
   void receive(const MessageType::ControlRequest &request) {
-      send(MakeMsg(generateControlsSnapshot()));
+    send(MakeMsg(generateControlsSnapshot()));
   }
 
   virtual bool runOnMainThread() { return false; }
@@ -132,7 +133,7 @@ public:
 
   // If you want some method to repeat at a regular interval, you
   // can implement the repeat() method and set a repeat interval.
-  // A lambda for the repeating work will be added to the work queue 
+  // A lambda for the repeating work will be added to the work queue
   // and processed immediately.
   void startRepeater() {
     if (repeating_interval_) {
@@ -164,7 +165,9 @@ public:
   void send(Message &&message) { system_->send(this, message); }
 
   template <typename UnderlyingMessageContents>
-  void send(UnderlyingMessageContents messageContents) { system_->send(this, MakeMsg(messageContents)); }
+  void send(UnderlyingMessageContents messageContents) {
+    system_->send(this, MakeMsg(messageContents));
+  }
   void sendIncludeSender(Message &message) {
     system_->sendIncludeSender(message);
   }

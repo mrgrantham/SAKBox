@@ -18,8 +18,7 @@ private:
   bool on_{false};
 
 public:
-
-  const std::tuple<std::unique_ptr<Workers>...>& getWorkers() const {
+  const std::tuple<std::unique_ptr<Workers>...> &getWorkers() const {
     return workers_;
   }
 

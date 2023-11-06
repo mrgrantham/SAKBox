@@ -24,7 +24,10 @@ public:
     work_thread_sleep_interval_ = 0;
   }
 
-  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant> generateControls() override {return {};}
+  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>
+  generateControls() override {
+    return {};
+  }
 
   virtual void starting() override {
     spdlog::info("Starting Window Setup");
@@ -88,9 +91,11 @@ public:
                                << "\n";
                      setupControlView(message);
                    },
-                  [&](auto &message) {
-                     std::cout << paddName_ << "Random Type: " << TypeName(message) << "\n";
-                   },},
+                   [&](auto &message) {
+                     std::cout << paddName_
+                               << "Random Type: " << TypeName(message) << "\n";
+                   },
+               },
                messageVariant);
   }
 };

@@ -10,51 +10,53 @@
 #include <ScratchPadd/DataDependencies.hpp>
 
 static std::string getShaderPath(const std::string &&shaderName) {
-  
-// #if defined(__APPLE__)
 
-//   CFBundleRef mainBundle;
+  // #if defined(__APPLE__)
 
-//   // Get the main bundle for the app
-//   mainBundle = CFBundleGetMainBundle();
-//   CFURLRef shaderURL;
-//   // Look for a resource in the main bundle by name and type.
-//   CFStringRef shaderNameCFStr = CFStringCreateWithCString(
-//       NULL, shaderName.c_str(), kCFStringEncodingUTF8);
+  //   CFBundleRef mainBundle;
 
-//   shaderURL = CFBundleCopyResourceURL(mainBundle, shaderNameCFStr,
-//                                       CFSTR("shader"), NULL);
+  //   // Get the main bundle for the app
+  //   mainBundle = CFBundleGetMainBundle();
+  //   CFURLRef shaderURL;
+  //   // Look for a resource in the main bundle by name and type.
+  //   CFStringRef shaderNameCFStr = CFStringCreateWithCString(
+  //       NULL, shaderName.c_str(), kCFStringEncodingUTF8);
 
-//   if (shaderURL == NULL) {
-//     for (auto const& dir_entry : boost::filesystem::recursive_directory_iterator("."))
-//     {
-//         std::cout << dir_entry << '\n';
-//     }
-//     spdlog::error("Shader file not found");
-//     exit(1);
-//   }
-//   CFStringRef shaderFilePathStringRef;
-//   shaderFilePathStringRef = CFURLGetString(shaderURL);
+  //   shaderURL = CFBundleCopyResourceURL(mainBundle, shaderNameCFStr,
+  //                                       CFSTR("shader"), NULL);
 
-//   const char *shaderPath =
-//       CFStringGetCStringPtr(shaderFilePathStringRef, kCFStringEncodingUTF8);
-//   std::string shaderPathString(shaderPath);
-//   std::string URLPrefix = "file://";
+  //   if (shaderURL == NULL) {
+  //     for (auto const& dir_entry :
+  //     boost::filesystem::recursive_directory_iterator("."))
+  //     {
+  //         std::cout << dir_entry << '\n';
+  //     }
+  //     spdlog::error("Shader file not found");
+  //     exit(1);
+  //   }
+  //   CFStringRef shaderFilePathStringRef;
+  //   shaderFilePathStringRef = CFURLGetString(shaderURL);
 
-//   std::string::size_type prefixIndex = shaderPathString.find(URLPrefix);
+  //   const char *shaderPath =
+  //       CFStringGetCStringPtr(shaderFilePathStringRef,
+  //       kCFStringEncodingUTF8);
+  //   std::string shaderPathString(shaderPath);
+  //   std::string URLPrefix = "file://";
 
-//   if (prefixIndex != std::string::npos) {
-//     spdlog::info("Found the file prefix");
-//     shaderPathString.erase(prefixIndex, URLPrefix.length());
-//   } else {
-//     spdlog::error("File prefix not found");
-//   }
-// #else
+  //   std::string::size_type prefixIndex = shaderPathString.find(URLPrefix);
 
-  auto shaderPathString =
-      ScratchPadd::Data::GetFullDependencyPath("graphFun/projects/scratchpadd/include/ScratchPadd/Graphics/GL/Shaders/" + shaderName +
-      ".shader");
-// #endif
+  //   if (prefixIndex != std::string::npos) {
+  //     spdlog::info("Found the file prefix");
+  //     shaderPathString.erase(prefixIndex, URLPrefix.length());
+  //   } else {
+  //     spdlog::error("File prefix not found");
+  //   }
+  // #else
+
+  auto shaderPathString = ScratchPadd::Data::GetFullDependencyPath(
+      "graphFun/projects/scratchpadd/include/ScratchPadd/Graphics/GL/Shaders/" +
+      shaderName + ".shader");
+  // #endif
   if (!shaderPathString) {
     spdlog::error("Shader file not found");
     exit(1);

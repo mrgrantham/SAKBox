@@ -1,6 +1,7 @@
 #pragma once
 
-// These data structures will handle the lifecycle of generic controls that are advertised by each padd.
+// These data structures will handle the lifecycle of generic controls that are
+// advertised by each padd.
 
 namespace ScratchPadd {
 struct BaseControlType {
@@ -13,10 +14,8 @@ struct Double : public BaseControlType {
   std::optional<std::pair<double, double>> enforcableRange;
 
   Double(double initialValue = 0.0,
-         std::optional<std::pair<double, double>> range = std::nullopt) :
-    value(initialValue),
-    enforcableRange(range){
-  }
+         std::optional<std::pair<double, double>> range = std::nullopt)
+      : value(initialValue), enforcableRange(range) {}
 };
 
 struct Integer : public BaseControlType {
@@ -31,10 +30,7 @@ struct Integer : public BaseControlType {
 
 struct Boolean : public BaseControlType {
   bool value;
-  Boolean(
-      bool initialValue = 0.0) {
-    value = initialValue;
-  }
+  Boolean(bool initialValue = 0.0) { value = initialValue; }
 };
 
 struct String : public BaseControlType {
@@ -42,8 +38,7 @@ struct String : public BaseControlType {
   std::optional<std::vector<std::string>> enforcableRange;
   std::optional<std::function<void(std::string)>> handler;
   String(std::string initialValue,
-         std::optional<std::vector<std::string>> range = std::nullopt
-         ) {
+         std::optional<std::vector<std::string>> range = std::nullopt) {
     value = initialValue;
     enforcableRange = range;
   }
@@ -58,7 +53,6 @@ using ControlValueMap = std::unordered_map<std::string, ControlTypeVariant>;
 using ControlRefMap = std::unordered_map<std::string, ControlTypeVariant>;
 
 namespace MessageType {
-
 
 struct ControlSnapshot {
   std::string paddName;
@@ -77,5 +71,5 @@ struct ControlRequest {
   std::optional<std::string> paddName;
 };
 
-}
-}
+} // namespace MessageType
+} // namespace ScratchPadd

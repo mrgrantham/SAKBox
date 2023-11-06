@@ -32,23 +32,22 @@ public:
     send(triangle);
   }
 
-  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>  generateControls() override {
+  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>
+  generateControls() override {
     return {
-        {"tellastory", ScratchPadd::ControlType::Double(
-                           20.0, std::make_optional(std::make_pair(0.0, 200.0)))},
-        {"aDouble",
+        {"tellastory",
          ScratchPadd::ControlType::Double(
              20.0, std::make_optional(std::make_pair(0.0, 200.0)))},
-        {"aString", ScratchPadd::ControlType::String(
-                        "DefaultString",
-                        std::make_optional(std::vector<std::string>(
-                            {"DefaultString", "AnotherString", "YetAnother"})))},
-        {"aBool",
-         ScratchPadd::ControlType::Boolean(
-             true)},
-        {"anInt",
-         ScratchPadd::ControlType::Integer(
-             5, std::make_optional(std::make_pair(2, 9)))}};
+        {"aDouble", ScratchPadd::ControlType::Double(
+                        20.0, std::make_optional(std::make_pair(0.0, 200.0)))},
+        {"aString",
+         ScratchPadd::ControlType::String(
+             "DefaultString",
+             std::make_optional(std::vector<std::string>(
+                 {"DefaultString", "AnotherString", "YetAnother"})))},
+        {"aBool", ScratchPadd::ControlType::Boolean(true)},
+        {"anInt", ScratchPadd::ControlType::Integer(
+                      5, std::make_optional(std::make_pair(2, 9)))}};
   }
 
   void receive(ScratchPadd::Message message) override {

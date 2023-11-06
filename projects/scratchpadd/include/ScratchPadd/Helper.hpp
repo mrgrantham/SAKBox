@@ -4,9 +4,8 @@
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 
-#include <iostream>
 #include <cxxabi.h>
-
+#include <iostream>
 
 inline std::string className(const std::string &classMethod) {
   size_t scopeResolutionOpIndex = classMethod.find("::");
@@ -22,11 +21,10 @@ inline std::string className(const std::string &classMethod) {
 
 #define __CLASS_NAME__ className(__PRETTY_FUNCTION__)
 
-#define DEMANGLE_TYPEID_NAME(x) abi::__cxa_demangle(typeid((x)).name(), NULL, NULL, NULL)
+#define DEMANGLE_TYPEID_NAME(x)                                                \
+  abi::__cxa_demangle(typeid((x)).name(), NULL, NULL, NULL)
 
-std::string TypeName(auto x) {
-  return DEMANGLE_TYPEID_NAME(x);
-}
+std::string TypeName(auto x) { return DEMANGLE_TYPEID_NAME(x); }
 
 template <class... Ts> struct VariantHandler : Ts... {
   using Ts::operator()...;
