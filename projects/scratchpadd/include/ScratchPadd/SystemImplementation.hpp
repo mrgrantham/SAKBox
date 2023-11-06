@@ -1,4 +1,5 @@
 #pragma once
+#include <ScratchPadd/Base.hpp>
 #include <ScratchPadd/System.hpp>
 #include <condition_variable>
 #include <spdlog/spdlog.h>
