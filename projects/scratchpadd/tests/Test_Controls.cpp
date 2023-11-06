@@ -87,7 +87,7 @@ std::string name() override {
                    },
                     [&](ScratchPadd::MessageType::ControlSnapshot &messageContent) {
                      std::cout << name()
-                               << "Control change padd name:" << messageContent.paddName
+                               << "Control snapshot padd name:" << messageContent.paddName
                                << "\n";
                      setupControlView(messageContent);
                    },
@@ -123,13 +123,16 @@ TEST(ControlsTest, BasicAssertions) {
         spsystem->start();
       }
     );
+    spsystem->waitForStart();
 
-    spdlog::info("GEtting workers");
+    spdlog::info("Getting workers");
     auto &workers = spsystem->getWorkers();
     
     auto &controlGenPadd = std::get<std::unique_ptr<ControlGeneratorPadd>>(workers);
     auto &controlExpPadd = std::get<std::unique_ptr<ControlGeneratorPadd>>(workers);
 
+    controlGenPadd->waitForWorkCompletion();
+    controlExpPadd->waitForWorkCompletion();
     spdlog::info("Ending to SCRATCHPADD!");
     spsystem->stop();
 

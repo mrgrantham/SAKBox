@@ -15,7 +15,6 @@ private:
   std::tuple<std::unique_ptr<Workers>...> workers_;
   std::condition_variable scratchPaddSystemConditionVariable_;
   std::mutex scratchPaddSystemMutex_;
-  bool stopped_{false};
   bool on_{false};
 
 public:
@@ -30,21 +29,26 @@ public:
   }
 
   virtual void start() override {
-    on_ = true;
+    notifyStarted();
+    // Prepare all workers
+    std::apply(
+        [](auto const &...worker) {
+          (worker->prepareWrapper(), ...);
+        },
+        workers_);
+
     // Start workers on independant threads
     std::apply(
         [](auto const &...worker) {
-          (worker->prepare(), ...);
-          (worker->start(), ...);
+          (worker->runIfIndependentThread(), ...);
         },
         workers_);
 
     // Start the workers on the main threads
-
     std::apply(
         [this](auto const &...worker) {
           (worker->startingIfMainThread(), ...);
-          while (!stopped_) {
+          while (on_) {
             (worker->runIfMainThread(), ...);
           }
           (worker->finishingIfMainThread(), ...);
@@ -55,19 +59,30 @@ public:
 
   virtual void stop() override {
     std::apply([](auto const &...worker) { (worker->stop(), ...); }, workers_);
+    std::apply([](auto const &...worker) { (worker->cleanupWrapper(), ...); }, workers_);
     notifyStopped();
-    on_ = false;
   }
+
   void waitForStop() {
     std::unique_lock<std::mutex> lk(scratchPaddSystemMutex_);
     spdlog::info("Waiting For Stop...");
-    scratchPaddSystemConditionVariable_.wait(lk, [this] { return stopped_; });
+    scratchPaddSystemConditionVariable_.wait(lk, [this] { return !on_; });
+  }
+
+  void waitForStart() {
+    std::unique_lock<std::mutex> lk(scratchPaddSystemMutex_);
+    spdlog::info("Waiting For Start...");
+    scratchPaddSystemConditionVariable_.wait(lk, [this] { return on_; });
   }
 
   virtual bool isRunning() override { return on_; }
 
   void notifyStopped() {
-    stopped_ = true;
+    on_ = false;
+    scratchPaddSystemConditionVariable_.notify_all();
+  }
+  void notifyStarted() {
+    on_ = true;
     scratchPaddSystemConditionVariable_.notify_all();
   }
   void sendAnyway(ScratchPadd::Base *possibleReceiver, Message &message) {

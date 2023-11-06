@@ -10,7 +10,7 @@ private:
   std::unique_ptr<Graphics> graphics_;
 
 public:
-  virtual void prepare() override {
+  void prepare() override {
     spdlog::info("Preparing: {}", name());
     setRepeatInterval(16); // 16 = ~60hz    32 = ~ 30hz
     performanceTimer_.setTimerName(name());
@@ -29,11 +29,11 @@ public:
     return {};
   }
 
-  virtual void starting() override {
-    spdlog::info("Starting Window Setup");
+  void starting() override {
+    spdlog::info("Starting Window Setup for DisplayPadd");
     graphics_->setupWindow();
   }
-  virtual void finishing() override {
+  void finishing() override {
     spdlog::info("[{}] Avg Repeating Interval: {}", name(),
                  performanceTimer_.getAverageIntervalString());
     performanceTimer_.markTimeAndPrint();
@@ -42,7 +42,7 @@ public:
 
   virtual ~DisplayPadd() { spdlog::info("Destroying: {}", name()); }
 
-  virtual void repeat() override {
+  void repeat() override {
     performanceTimer_.markInterval();
     static int count = 0;
     if (count % 30 == 0) {

@@ -18,6 +18,7 @@
 #include <ScratchPadd/System.hpp>
 
 namespace ScratchPadd {
+using namespace std::chrono_literals;
 
 class Base {
 protected:
@@ -28,6 +29,9 @@ protected:
   EventTimer repeatingTimer_;
   System *system_;
   boost::lockfree::queue<std::function<void()> *> work_queue_{100};
+  std::atomic<ssize_t> pendingWork_{0};
+  std::condition_variable workCompletionConditionVariable_;
+  std::mutex workCompletionMutex_;
 
 private:
   std::unordered_map<std::string, ControlTypeVariant> controlMap_;
@@ -42,15 +46,6 @@ public:
   }
 
   bool isRunning() { return on_; }
-
-  void start() {
-    spdlog::info("Start: {}", name());
-    controlMap_ = generateControls();
-    if (!runOnMainThread()) {
-      workerThread_ = std::thread(&Base::run, this);
-    }
-    startRepeater();
-  }
 
   virtual std::unordered_map<std::string, ControlTypeVariant>
   generateControls() = 0;
@@ -67,15 +62,62 @@ public:
     send(MakeMsg(generateControlsSnapshot()));
   }
 
+  ssize_t pendingWorkCount() {
+    return pendingWork_;
+  }
+
+  void waitForWorkCompletion() {
+    std::unique_lock<std::mutex> lk(workCompletionMutex_);
+    workCompletionConditionVariable_.wait_for(lk, 3000ms, [this]{ return pendingWork_ == 0; });
+  }
+
   // Every Padd needs to implement this so their name can be setup for use in
   // the system
   virtual std::string name() = 0;
   virtual bool runOnMainThread() { return false; }
-  virtual void config() {}
+  // Any setup where order of for Padds may be necessary
+  // Called from primary thread used by System instance before start
+  // Padd thread (if applicable)
   virtual void prepare() {}
+
+  // Any setup where order of for Padds may be necessary
+  // Called from primary thread used by System instance after stopping
+  // the Padd thread (if applicable)
   virtual void cleanup() {}
+
+  // Any setup that is necessary in the Padd thread should
+  // be added by overriding this method
   virtual void starting() {}
+
+  // Any cleanup that is necessary in the Padd thread should
+  // be added by overriding this method
   virtual void finishing() {}
+
+  // These wrappers will allow tracking calls and adding metrics
+  // as well as handling any eventual additional internal setup
+  // associated with Padd lifecycle
+  void prepareWrapper() {
+    controlMap_ = generateControls();
+    prepare();
+  }
+
+  void cleanupWrapper() {
+    cleanup();
+  }
+
+  void startingWrapper() {
+    spdlog::info("Starting {}",
+                 name());
+    starting();
+    startRepeater();
+  }
+
+  void finishingWrapper() {
+    spdlog::info("Finishing {}",
+            name());
+    finishing();
+  }
+
   virtual void repeat() {
     spdlog::info("Base::repeat() called. Padd set a repeat interval of {} with "
                  "no method override",
@@ -88,24 +130,32 @@ public:
     }
   }
 
+  void runIfIndependentThread() {
+    if (!runOnMainThread()) {
+      spdlog::info("Start Independent Thread: {}", name());
+      workerThread_ = std::thread(&Base::run, this);
+    }
+  }
+
+
   void startingIfMainThread() {
     if (runOnMainThread()) {
-      starting();
+      startingWrapper();
     }
   }
 
   void finishingIfMainThread() {
     if (runOnMainThread()) {
-      finishing();
+      finishingWrapper();
     }
   }
 
   void run() {
-    starting();
+    startingWrapper();
     while (on_) {
       loop();
     }
-    finishing();
+    finishingWrapper();
   }
 
   void run_once() {
@@ -120,8 +170,10 @@ public:
       if (!work)
         spdlog::error("work is null");
       work->operator()();
+      pendingWork_--;
       delete work;
     }
+    workCompletionConditionVariable_.notify_all();
     // spdlog::warn("sleeping work_queue_ {} for {}ms",name(),
     // work_thread_sleep_interval_);
     std::this_thread::sleep_for(
@@ -136,7 +188,7 @@ public:
   // and processed immediately.
   void startRepeater() {
     if (repeating_interval_) {
-      spdlog::info("repeat() interval set to {}", repeating_interval_);
+      spdlog::info("repeat() interval set to {} for {}", repeating_interval_,name());
       repeatingTimer_.startRepeatingEvent(
           [=, this] {
             std::function<void()> *work =
@@ -145,11 +197,11 @@ public:
           },
           repeating_interval_);
     } else {
-      spdlog::info("No repeat() interval set");
+      spdlog::info("No repeat() interval set for: {}",name());
     }
   }
 
-  void push(std::function<void()> *work) { work_queue_.push(work); }
+  void push(std::function<void()> *work) {pendingWork_++; work_queue_.push(work); }
 
   virtual void receive(Message message) = 0;
 
