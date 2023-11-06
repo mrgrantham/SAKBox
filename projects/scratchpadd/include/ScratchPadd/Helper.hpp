@@ -7,24 +7,46 @@
 #include <cxxabi.h>
 #include <iostream>
 
-inline std::string className(const std::string &classMethod) {
-  size_t scopeResolutionOpIndex = classMethod.find("::");
-  if (scopeResolutionOpIndex == std::string::npos) {
-    return "::";
-  }
-  size_t classNameStartIndex =
-      classMethod.substr(0, scopeResolutionOpIndex).rfind(" ") + 1;
-  size_t classNameLength = scopeResolutionOpIndex - classNameStartIndex;
+// inline std::string className(const std::string &classMethod) {
+//   std::cout << "FUNCTION: " << classMethod << std::endl;
+//   size_t scopeResolutionOpIndex = classMethod.find("::");
+//   if (scopeResolutionOpIndex == std::string::npos) {
+//     return "::";
+//   }
+//   size_t classNameStartIndex =
+//       classMethod.substr(0, scopeResolutionOpIndex).rfind(" ") + 1;
+//   size_t classNameLength = scopeResolutionOpIndex - classNameStartIndex;
 
-  return classMethod.substr(classNameStartIndex, classNameLength);
-}
+//   return classMethod.substr(classNameStartIndex, classNameLength);
+// }
 
-#define __CLASS_NAME__ className(__PRETTY_FUNCTION__)
+// #define __CLASS_NAME__ ([] { \
+//     const char* name = __PRETTY_FUNCTION__; \
+//     size_t start = 0; \
+//     size_t end = 0; \
+//     for (size_t i = 0; name[i]; i++) { \
+//         if (name[i] == ':' && name[i + 1] != ':') { \
+//             start = i + 1; \
+//         } else if (name[i] == '(') { \
+//             end = i; \
+//             break; \
+//         } \
+//     } \
+//     return std::string(name + start, end - start); \
+// }())
+
+// #define __CLASS_NAME__ className(__PRETTY_FUNCTION__)
+
+
+
+
 
 #define DEMANGLE_TYPEID_NAME(x)                                                \
   abi::__cxa_demangle(typeid((x)).name(), NULL, NULL, NULL)
 
 std::string TypeName(auto x) { return DEMANGLE_TYPEID_NAME(x); }
+
+#define __CLASS_NAME__ DEMANGLE_TYPEID_NAME(*this)
 
 template <class... Ts> struct VariantHandler : Ts... {
   using Ts::operator()...;

@@ -3,6 +3,7 @@
 #include <ScratchPadd/Graphics/Graphics.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/Timer.hpp>
+
 class DisplayPadd : public ScratchPadd::Base {
 private:
   ScratchPadd::Timer performanceTimer_;
