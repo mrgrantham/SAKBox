@@ -31,17 +31,12 @@ public:
   virtual void start() override {
     notifyStarted();
     // Prepare all workers
-    std::apply(
-        [](auto const &...worker) {
-          (worker->prepareWrapper(), ...);
-        },
-        workers_);
+    std::apply([](auto const &...worker) { (worker->prepareWrapper(), ...); },
+               workers_);
 
     // Start workers on independant threads
     std::apply(
-        [](auto const &...worker) {
-          (worker->runIfIndependentThread(), ...);
-        },
+        [](auto const &...worker) { (worker->runIfIndependentThread(), ...); },
         workers_);
 
     // Start the workers on the main threads
@@ -59,7 +54,8 @@ public:
 
   virtual void stop() override {
     std::apply([](auto const &...worker) { (worker->stop(), ...); }, workers_);
-    std::apply([](auto const &...worker) { (worker->cleanupWrapper(), ...); }, workers_);
+    std::apply([](auto const &...worker) { (worker->cleanupWrapper(), ...); },
+               workers_);
     notifyStopped();
   }
 
@@ -97,7 +93,7 @@ public:
     }
   }
   virtual void send(ScratchPadd::Base *sender, Message message) override {
-    std::cout << "sending" << std::endl;
+    spdlog::info("sending from {}", sender->name());
     (sendIfUnmatched(sender, std::get<std::unique_ptr<Workers>>(workers_).get(),
                      message),
      ...);

@@ -62,13 +62,12 @@ public:
     send(MakeMsg(generateControlsSnapshot()));
   }
 
-  ssize_t pendingWorkCount() {
-    return pendingWork_;
-  }
+  ssize_t pendingWorkCount() { return pendingWork_; }
 
   void waitForWorkCompletion() {
     std::unique_lock<std::mutex> lk(workCompletionMutex_);
-    workCompletionConditionVariable_.wait_for(lk, 3000ms, [this]{ return pendingWork_ == 0; });
+    workCompletionConditionVariable_.wait_for(
+        lk, 3000ms, [this] { return pendingWork_ == 0; });
   }
 
   // Every Padd needs to implement this so their name can be setup for use in
@@ -101,20 +100,16 @@ public:
     prepare();
   }
 
-  void cleanupWrapper() {
-    cleanup();
-  }
+  void cleanupWrapper() { cleanup(); }
 
   void startingWrapper() {
-    spdlog::info("Starting {}",
-                 name());
+    spdlog::info("Starting {}", name());
     starting();
     startRepeater();
   }
 
   void finishingWrapper() {
-    spdlog::info("Finishing {}",
-            name());
+    spdlog::info("Finishing {}", name());
     finishing();
   }
 
@@ -124,12 +119,6 @@ public:
                  repeating_interval_);
   }
 
-  void runIfMainThread() {
-    if (runOnMainThread()) {
-      run_once();
-    }
-  }
-
   void runIfIndependentThread() {
     if (!runOnMainThread()) {
       spdlog::info("Start Independent Thread: {}", name());
@@ -137,6 +126,11 @@ public:
     }
   }
 
+  void runIfMainThread() {
+    if (runOnMainThread()) {
+      run_once();
+    }
+  }
 
   void startingIfMainThread() {
     if (runOnMainThread()) {
@@ -188,7 +182,8 @@ public:
   // and processed immediately.
   void startRepeater() {
     if (repeating_interval_) {
-      spdlog::info("repeat() interval set to {} for {}", repeating_interval_,name());
+      spdlog::info("repeat() interval set to {} for {}", repeating_interval_,
+                   name());
       repeatingTimer_.startRepeatingEvent(
           [=, this] {
             std::function<void()> *work =
@@ -197,11 +192,14 @@ public:
           },
           repeating_interval_);
     } else {
-      spdlog::info("No repeat() interval set for: {}",name());
+      spdlog::info("No repeat() interval set for: {}", name());
     }
   }
 
-  void push(std::function<void()> *work) {pendingWork_++; work_queue_.push(work); }
+  void push(std::function<void()> *work) {
+    pendingWork_++;
+    work_queue_.push(work);
+  }
 
   virtual void receive(Message message) = 0;
 

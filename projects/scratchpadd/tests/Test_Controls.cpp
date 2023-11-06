@@ -25,6 +25,13 @@ bool runOnMainThread() override { return true; }
                      updateControl(message);
                     }
                    },
+
+                                [&](ScratchPadd::MessageType::ControlRequest &messageContent) {
+                     std::cout << name()
+                               << "Control request padd name:" << messageContent.paddName.value_or("None")
+                               << "\n";
+                    send(generateControlsSnapshot());
+                   },
                    [&](auto &message) {
                     std::cout << "Other messages" << std::endl;
                    }},
@@ -46,7 +53,8 @@ std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>  generateContro
         {"anInt",
          ScratchPadd::ControlType::Integer(
              5, std::make_optional(std::make_pair(2, 9))
-             )}};
+             )},
+             };
   }
 
   void updateControl(ScratchPadd::MessageType::ControlChange &message) {
@@ -108,6 +116,7 @@ std::string name() override {
 
 // Demonstrate some basic assertions.
 TEST(ControlsTest, BasicAssertions) {
+    using namespace std::chrono_literals;
 
     auto *spsystem =
     dynamic_cast<ScratchPadd::SystemImplementation<ControlGeneratorPadd, ControlExposurePadd>*>(ScratchPadd::SystemBuilder<ControlGeneratorPadd, ControlExposurePadd>());
@@ -131,8 +140,12 @@ TEST(ControlsTest, BasicAssertions) {
     auto &controlGenPadd = std::get<std::unique_ptr<ControlGeneratorPadd>>(workers);
     auto &controlExpPadd = std::get<std::unique_ptr<ControlGeneratorPadd>>(workers);
 
+    // controlExpPadd->send(ScratchPadd::MessageType::ControlRequest{});
+
     controlGenPadd->waitForWorkCompletion();
     controlExpPadd->waitForWorkCompletion();
+
+    std::this_thread::sleep_for(1000ms);
     spdlog::info("Ending to SCRATCHPADD!");
     spsystem->stop();
 
