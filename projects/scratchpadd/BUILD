@@ -69,6 +69,30 @@ cc_binary(
     ],
 )
 
+cc_test(
+  name = "Test_Controls",
+  size = "small",
+  srcs = ["tests/Test_Controls.cpp"],
+  deps = ["@gtest//:gtest_main",
+  ":scratchpadd"],
+)
+
+cc_test(
+  name = "Test_Messages",
+  size = "small",
+  srcs = ["tests/Test_Messages.cpp"],
+  deps = ["@gtest//:gtest_main",
+  ":scratchpadd"],
+)
+
+cc_test(
+  name = "Test_Threading",
+  size = "small",
+  srcs = ["tests/Test_Threading.cpp"],
+  deps = ["@gtest//:gtest_main",
+  ":scratchpadd"],
+)
+
 # macos_application(
 #     name = "macos_demo",
 #     bundle_id = "com.scratchpadd.macos_demo",

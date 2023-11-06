@@ -15,6 +15,7 @@
 
 #include <ScratchPadd/Helper.hpp>
 #include <ScratchPadd/System.hpp>
+#include <ScratchPadd/Messages/Message.hpp>
 
 namespace ScratchPadd {
 
@@ -28,10 +29,13 @@ protected:
   EventTimer repeatingTimer_;
   System *system_;
   boost::lockfree::queue<std::function<void()> *> work_queue_{100};
+
+private:
   std::unordered_map<std::string, ControlTypeVariant> controlMap_;
 
 public:
-  Base(System *system) : system_(system) { paddName_ = __CLASS_NAME__; }
+  Base(System *system) : system_(system) { paddName_ = __CLASS_NAME__; 
+  }
 
   virtual ~Base() {
     // spdlog gets torn down before the destructor
@@ -44,6 +48,7 @@ public:
 
   void start() {
     spdlog::info("Start: {}", paddName_);
+    controlMap_ = generateControls();
     if (!runOnMainThread()) {
       workerThread_ = std::thread(&Base::run, this);
     }
@@ -52,11 +57,18 @@ public:
 
   std::string getName() { return paddName_; }
 
-  virtual void initializeControls() = 0;
+  virtual std::unordered_map<std::string, ControlTypeVariant> generateControls() = 0;
 
-  MessageType::Control getControls() { return {paddName_, controlMap_}; }
+  // This method takes the controlMap which has references to the actual variables
+  // and create a snapshot which is just all the same info but has a copy by value
+  // of the control values at that point in time
+  ScratchPadd::MessageType::ControlSnapshot generateControlsSnapshot() {
+    return  ScratchPadd::MessageType::ControlSnapshot{.paddName = paddName_, .controlMap = controlMap_};
+  }
 
-  void broadcastControls() { send(Make_Msg(getControls())); }
+  void receive(const MessageType::ControlRequest &request) {
+      send(MakeMsg(generateControlsSnapshot()));
+  }
 
   virtual bool runOnMainThread() { return false; }
   virtual void config() {}
@@ -78,8 +90,6 @@ public:
 
   void startingIfMainThread() {
     if (runOnMainThread()) {
-      initializeControls();
-      broadcastControls();
       starting();
     }
   }
@@ -91,8 +101,6 @@ public:
   }
 
   void run() {
-    initializeControls();
-    broadcastControls();
     starting();
     while (on_) {
       loop();
@@ -122,6 +130,10 @@ public:
 
   void setRepeatInterval(int interval) { repeating_interval_ = interval; }
 
+  // If you want some method to repeat at a regular interval, you
+  // can implement the repeat() method and set a repeat interval.
+  // A lambda for the repeating work will be added to the work queue 
+  // and processed immediately.
   void startRepeater() {
     if (repeating_interval_) {
       spdlog::info("repeat() interval set to {}", repeating_interval_);
@@ -149,8 +161,10 @@ public:
       workerThread_.join();
     }
   }
+  void send(Message &&message) { system_->send(this, message); }
 
-  void send(Message message) { system_->send(this, message); }
+  template <typename UnderlyingMessageContents>
+  void send(UnderlyingMessageContents messageContents) { system_->send(this, MakeMsg(messageContents)); }
   void sendIncludeSender(Message &message) {
     system_->sendIncludeSender(message);
   }

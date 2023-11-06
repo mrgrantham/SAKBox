@@ -1,7 +1,7 @@
 #pragma once
 #include <ScratchPadd/Base.hpp>
 #include <ScratchPadd/Graphics/Graphics.hpp>
-#include <ScratchPadd/Message.hpp>
+#include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/Timer.hpp>
 class DisplayPadd : public ScratchPadd::Base {
 private:
@@ -24,7 +24,7 @@ public:
     work_thread_sleep_interval_ = 0;
   }
 
-  void initializeControls() override {}
+  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant> generateControls() override {return {};}
 
   virtual void starting() override {
     spdlog::info("Starting Window Setup");
@@ -58,7 +58,7 @@ public:
 
   virtual bool runOnMainThread() override { return true; }
 
-  void setupControlView(ScratchPadd::MessageType::Control &control) {
+  void setupControlView(ScratchPadd::MessageType::ControlSnapshot &control) {
     auto controlView = ControlViewBuilder();
     controlView->setControls(control);
     std::cout << "controlView is: " << typeid(controlView).name() << '\n';
@@ -82,12 +82,15 @@ public:
                    [&](ScratchPadd::MessageType::Text &message) {
                      std::cout << paddName_ << "Text: " << message << "\n";
                    },
-                   [&](ScratchPadd::MessageType::Control &message) {
+                   [&](ScratchPadd::MessageType::ControlSnapshot &message) {
                      std::cout << paddName_
-                               << "Control sourcename:" << message.sourceName
+                               << "Control sourcename:" << message.paddName
                                << "\n";
                      setupControlView(message);
-                   }},
+                   },
+                  [&](auto &message) {
+                     std::cout << paddName_ << "Random Type: " << TypeName(message) << "\n";
+                   },},
                messageVariant);
   }
 };

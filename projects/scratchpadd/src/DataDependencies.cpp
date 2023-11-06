@@ -26,11 +26,11 @@ std::optional<std::string> ScratchPadd::Data::GetFullDependencyPath(const std::s
     std::string path = runfiles->Rlocation(dependencyPath);
     if (!std::filesystem::exists(path)) {
         spdlog::info("Path does not exist: {}",path);
-        // for (auto const& dir_entry : std::filesystem::recursive_directory_iterator("/private/var/tmp/_bazel_jamesgrantham")) {
-        //   spdlog::info("entry: {}",dir_entry.path().string());
-        // }
+        for (auto const& dir_entry : std::filesystem::recursive_directory_iterator("/private/var/tmp/_bazel_jamesgrantham")) {
+          spdlog::info("entry: {}",dir_entry.path().string());
+        }
         return std::nullopt;
     }
-    // spdlog::info("GetFullDependencyPath: {}",path);
+    spdlog::info("GetFullDependencyPath: {}",path);
     return path;
 }

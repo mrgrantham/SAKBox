@@ -18,6 +18,11 @@ private:
   bool on_{false};
 
 public:
+
+  const std::tuple<std::unique_ptr<Workers>...>& getWorkers() const {
+    return workers_;
+  }
+
   virtual void instantiate() override {
     ((std::get<std::unique_ptr<Workers>>(workers_) =
           std::make_unique<Workers>(this)),
@@ -76,13 +81,13 @@ public:
       sendAnyway(possibleReceiver, message);
     }
   }
-  virtual void send(ScratchPadd::Base *sender, Message &message) override {
+  virtual void send(ScratchPadd::Base *sender, Message message) override {
     std::cout << "sending" << std::endl;
     (sendIfUnmatched(sender, std::get<std::unique_ptr<Workers>>(workers_).get(),
                      message),
      ...);
   }
-  virtual void sendIncludeSender(ScratchPadd::Message &message) override {
+  virtual void sendIncludeSender(ScratchPadd::Message message) override {
     (sendAnyway(std::get<std::unique_ptr<Workers>>(workers_).get(), message),
      ...);
   }

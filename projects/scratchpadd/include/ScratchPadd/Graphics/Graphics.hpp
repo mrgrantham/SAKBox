@@ -7,7 +7,7 @@
 #include <spdlog/spdlog.h>
 #pragma clang diagnostic pop
 #include <ScratchPadd/Graphics/Colors.hpp>
-#include <ScratchPadd/Message.hpp>
+#include <ScratchPadd/Messages/Message.hpp>
 
 class Graphics {
 public:
@@ -28,14 +28,14 @@ public:
 
   class ControlView : public View {
   protected:
-    ScratchPadd::MessageType::Control controls_;
+    ScratchPadd::MessageType::ControlSnapshot controls_;
     std::vector<std::string> orderedControlVector_;
-    void buildControls(ScratchPadd::MessageType::Control &controls);
+    void buildControls(ScratchPadd::MessageType::ControlSnapshot &controls);
 
   public:
     void setBackgroundColor(ImVec4 &backgroundColor) override{};
     ImVec4 *getBackgroundColor() override { return {}; };
-    void setControls(ScratchPadd::MessageType::Control &controls);
+    void setControls(ScratchPadd::MessageType::ControlSnapshot &controls);
   };
 
   class ViewCollection : View {

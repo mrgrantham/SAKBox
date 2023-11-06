@@ -2,7 +2,7 @@
 #include <ScratchPadd/Graphics/Graphics.hpp>
 
 void Graphics::ControlView::setControls(
-    ScratchPadd::MessageType::Control &controls) {
+    ScratchPadd::MessageType::ControlSnapshot &controls) {
   controls_ = controls;
   for (auto &&[key, value] : controls_.controlMap) {
     orderedControlVector_.push_back(key);
@@ -11,7 +11,7 @@ void Graphics::ControlView::setControls(
 }
 
 void Graphics::ControlView::buildControls(
-    ScratchPadd::MessageType::Control &controls) {
+    ScratchPadd::MessageType::ControlSnapshot &controls) {
   for (auto &&controlName : orderedControlVector_) {
     ScratchPadd::ControlTypeVariant &controlTypeVariant =
         controls.controlMap[controlName];

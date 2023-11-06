@@ -13,7 +13,7 @@ public:
   }
   virtual ~AudioPadd() { spdlog::info("Destroying: {}", __CLASS_NAME__); }
 
-  void initializeControls() override {}
+  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant> generateControls() override {return {};}
 
   virtual void receive(ScratchPadd::Message message) override {
     ScratchPadd::MessageVariant &messageVariant = *message.get();

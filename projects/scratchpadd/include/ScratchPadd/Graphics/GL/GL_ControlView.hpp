@@ -5,7 +5,7 @@ class GL_ControlView : public Graphics::ControlView {
 public:
   void draw() override {
     ImGui::SetNextWindowSize({300, 150}, ImGuiCond_FirstUseEver);
-    ImGui::Begin(controls_.sourceName.c_str());
+    ImGui::Begin(controls_.paddName.c_str());
     buildControls(controls_);
     ImGui::End();
   }
