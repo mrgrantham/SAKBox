@@ -22,7 +22,6 @@ namespace ScratchPadd {
 class Base {
 protected:
   bool on_{true};
-  std::string paddName_;
   std::thread workerThread_;
   int repeating_interval_{0};
   int work_thread_sleep_interval_{500};
@@ -34,27 +33,24 @@ private:
   std::unordered_map<std::string, ControlTypeVariant> controlMap_;
 
 public:
-  Base(System *system) : system_(system) { paddName_ = __CLASS_NAME__; }
+  Base(System *system) : system_(system) {}
 
   virtual ~Base() {
     // spdlog gets torn down before the destructor
     // need cout in order to know about destructors called
-    // spdlog::info("Destroying: {}", __CLASS_NAME__);
-    std::cout << "Base() Destroying: " << paddName_ << std::endl;
+    std::cout << "Base() Destroying: " << __CLASS_NAME__ << std::endl;
   }
 
   bool isRunning() { return on_; }
 
   void start() {
-    spdlog::info("Start: {}", paddName_);
+    spdlog::info("Start: {}", name());
     controlMap_ = generateControls();
     if (!runOnMainThread()) {
       workerThread_ = std::thread(&Base::run, this);
     }
     startRepeater();
   }
-
-  std::string getName() { return paddName_; }
 
   virtual std::unordered_map<std::string, ControlTypeVariant>
   generateControls() = 0;
@@ -63,7 +59,7 @@ public:
   // variables and create a snapshot which is just all the same info but has a
   // copy by value of the control values at that point in time
   ScratchPadd::MessageType::ControlSnapshot generateControlsSnapshot() {
-    return ScratchPadd::MessageType::ControlSnapshot{.paddName = paddName_,
+    return ScratchPadd::MessageType::ControlSnapshot{.paddName = name(),
                                                      .controlMap = controlMap_};
   }
 
@@ -71,6 +67,9 @@ public:
     send(MakeMsg(generateControlsSnapshot()));
   }
 
+  // Every Padd needs to implement this so their name can be setup for use in
+  // the system
+  virtual std::string name() = 0;
   virtual bool runOnMainThread() { return false; }
   virtual void config() {}
   virtual void prepare() {}
@@ -123,7 +122,7 @@ public:
       work->operator()();
       delete work;
     }
-    // spdlog::warn("sleeping work_queue_ {} for {}ms",paddName_,
+    // spdlog::warn("sleeping work_queue_ {} for {}ms",name(),
     // work_thread_sleep_interval_);
     std::this_thread::sleep_for(
         std::chrono::milliseconds(work_thread_sleep_interval_));
@@ -155,7 +154,7 @@ public:
   virtual void receive(Message message) = 0;
 
   void stop() {
-    spdlog::info("Stopping: {}", paddName_);
+    spdlog::info("Stopping: {}", name());
     on_ = false;
     repeatingTimer_.stop();
     if (workerThread_.joinable()) {

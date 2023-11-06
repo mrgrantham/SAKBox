@@ -7,18 +7,21 @@
 class ControlGeneratorPadd : public ScratchPadd::Base {
 public:
       ControlGeneratorPadd(ScratchPadd::System *system) : Base(system) {
-    spdlog::info("Constructing: {}", __CLASS_NAME__);
-  }
-virtual bool runOnMainThread() override { return true; }
+    spdlog::info("Constructing: {}", name());
+}
+std::string name() override {
+  return __CLASS_NAME__;
+}
+bool runOnMainThread() override { return true; }
 
   virtual void receive(ScratchPadd::Message message) override {
     ScratchPadd::MessageVariant &messageVariant = *message.get();
     std::visit(VariantHandler{
                    [this](ScratchPadd::MessageType::ControlChange &message) {
-                     std::cout << this->paddName_
+                     std::cout << this->name()
                                << "Control controlName:" << message.controlName
                                << "\n";
-                    if (message.paddName == paddName_) {
+                    if (message.paddName == name()) {
                      updateControl(message);
                     }
                    },
@@ -55,9 +58,11 @@ std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>  generateContro
 class ControlExposurePadd : public ScratchPadd::Base {
 
     public:
-
+std::string name() override {
+  return __CLASS_NAME__;
+}
           ControlExposurePadd(ScratchPadd::System *system) : Base(system) {
-    spdlog::info("Constructing: {}", __CLASS_NAME__);
+    spdlog::info("Constructing: {}", name());
   }
     virtual bool runOnMainThread() override { return true; }
 
@@ -69,24 +74,24 @@ class ControlExposurePadd : public ScratchPadd::Base {
     ScratchPadd::MessageVariant &messageVariant = *message.get();
     std::visit(VariantHandler{
                    [&](ScratchPadd::MessageType::ControlRequest &messageContent) {
-                     std::cout << paddName_
+                     std::cout << name()
                                << "Control request padd name:" << messageContent.paddName.value_or("None")
                                << "\n";
                      setupControlView(messageContent);
                    },
                 [&](ScratchPadd::MessageType::ControlChange &messageContent) {
-                     std::cout << paddName_
+                     std::cout << name()
                                << "Control change padd name:" << messageContent.paddName
                                << "\n";
                      setupControlView(messageContent);
                    },
                     [&](ScratchPadd::MessageType::ControlSnapshot &messageContent) {
-                     std::cout << paddName_
+                     std::cout << name()
                                << "Control change padd name:" << messageContent.paddName
                                << "\n";
                      setupControlView(messageContent);
                    },
-[&](auto &message) {
+                [&](auto &message) {
                     std::cout << "Other messages" << std::endl;
                    }},
                messageVariant);
@@ -112,13 +117,23 @@ TEST(ControlsTest, BasicAssertions) {
     // signal(SIGINT, signal_handler);
     spdlog::info("Welcome to SCRATCHPADD!");
     spsystem->instantiate();
-    spsystem->start();
 
+    auto systemThread = std::thread(
+      [&]{
+        spsystem->start();
+      }
+    );
+
+    spdlog::info("GEtting workers");
     auto &workers = spsystem->getWorkers();
+    
+    auto &controlGenPadd = std::get<std::unique_ptr<ControlGeneratorPadd>>(workers);
+    auto &controlExpPadd = std::get<std::unique_ptr<ControlGeneratorPadd>>(workers);
 
-
+    spdlog::info("Ending to SCRATCHPADD!");
     spsystem->stop();
 
+    systemThread.join();
     // Expect two strings not to be equal.
     EXPECT_STRNE("hello", "world");
     // Expect equality.

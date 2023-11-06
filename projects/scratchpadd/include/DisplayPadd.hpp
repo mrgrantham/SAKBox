@@ -10,14 +10,13 @@ private:
 
 public:
   virtual void prepare() override {
-    spdlog::info("Preparing: {}", __CLASS_NAME__);
+    spdlog::info("Preparing: {}", name());
     setRepeatInterval(16); // 16 = ~60hz    32 = ~ 30hz
-    performanceTimer_.setTimerName(paddName_);
+    performanceTimer_.setTimerName(name());
     performanceTimer_.start();
   }
   DisplayPadd(ScratchPadd::System *system) : Base(system) {
-    spdlog::info("Constructing: {}", __CLASS_NAME__);
-    paddName_ = __CLASS_NAME__;
+    spdlog::info("Constructing: {}", name());
     graphics_ = GraphicsBuilder();
     // We dont want the work loop to sleep
     // TODO make this sleep/wake from semaphore
@@ -34,13 +33,13 @@ public:
     graphics_->setupWindow();
   }
   virtual void finishing() override {
-    spdlog::info("[{}] Avg Repeating Interval: {}", paddName_,
+    spdlog::info("[{}] Avg Repeating Interval: {}", name(),
                  performanceTimer_.getAverageIntervalString());
     performanceTimer_.markTimeAndPrint();
     graphics_->tearDown();
   }
 
-  virtual ~DisplayPadd() { spdlog::info("Destroying: {}", __CLASS_NAME__); }
+  virtual ~DisplayPadd() { spdlog::info("Destroying: {}", name()); }
 
   virtual void repeat() override {
     performanceTimer_.markInterval();
@@ -59,7 +58,9 @@ public:
     }
   }
 
-  virtual bool runOnMainThread() override { return true; }
+  std::string name() override { return __CLASS_NAME__; }
+
+  bool runOnMainThread() override { return true; }
 
   void setupControlView(ScratchPadd::MessageType::ControlSnapshot &control) {
     auto controlView = ControlViewBuilder();
@@ -73,27 +74,27 @@ public:
     // dynamic_unique_cast<Graphics::View>(std::move(controlView));
   }
 
-  virtual void receive(ScratchPadd::Message message) override {
+  void receive(ScratchPadd::Message message) override {
     ScratchPadd::MessageVariant &messageVariant = *message.get();
     std::visit(VariantHandler{
                    [&](ScratchPadd::MessageType::Triangle &message) {
-                     std::cout << paddName_ << "Triangle: " << message << "\n";
+                     std::cout << name() << "Triangle: " << message << "\n";
                    },
                    [&](ScratchPadd::MessageType::Point &message) {
-                     std::cout << paddName_ << "Point: " << message << "\n";
+                     std::cout << name() << "Point: " << message << "\n";
                    },
                    [&](ScratchPadd::MessageType::Text &message) {
-                     std::cout << paddName_ << "Text: " << message << "\n";
+                     std::cout << name() << "Text: " << message << "\n";
                    },
                    [&](ScratchPadd::MessageType::ControlSnapshot &message) {
-                     std::cout << paddName_
+                     std::cout << name()
                                << "Control sourcename:" << message.paddName
                                << "\n";
                      setupControlView(message);
                    },
                    [&](auto &message) {
-                     std::cout << paddName_
-                               << "Random Type: " << TypeName(message) << "\n";
+                     std::cout << name() << "Random Type: " << TypeName(message)
+                               << "\n";
                    },
                },
                messageVariant);
