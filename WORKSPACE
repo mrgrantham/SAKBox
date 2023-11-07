@@ -18,7 +18,6 @@ git_repository(
     name = "fmt",
     branch = "master",
     patch_cmds = [
-        "mv support/bazel/.bazelrc .bazelrc",
         "mv support/bazel/.bazelversion .bazelversion",
         "mv support/bazel/BUILD.bazel BUILD.bazel",
         "mv support/bazel/WORKSPACE.bazel WORKSPACE.bazel",
