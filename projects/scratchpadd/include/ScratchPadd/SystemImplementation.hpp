@@ -26,6 +26,8 @@ public:
     ((std::get<std::unique_ptr<Workers>>(workers_) =
           std::make_unique<Workers>(this)),
      ...);
+    std::apply([](auto const &...worker) { (worker->initialize(), ...); },
+               workers_);
   }
 
   virtual void start() override {

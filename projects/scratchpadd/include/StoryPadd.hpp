@@ -2,6 +2,7 @@
 #include <ScratchPadd/Base.hpp>
 #include <optional>
 
+using namespace std::chrono_literals;
 class StoryPadd : public ScratchPadd::Base {
   ScratchPadd::Timer performanceTimer_;
 
@@ -9,7 +10,6 @@ public:
   std::string name() override { return __CLASS_NAME__; }
   void prepare() override {
     spdlog::info("Preparing: {}", name());
-    setRepeatInterval(1000);
     performanceTimer_.setTimerName(name());
     performanceTimer_.start();
   }
@@ -30,6 +30,9 @@ public:
     ScratchPadd::MessageType::Triangle triangle;
     // send(ScratchPadd::MakeMsg(triangle));
     send(triangle);
+  }
+  std::optional<std::chrono::milliseconds> repeatInterval() override {
+    return 1000ms;
   }
 
   std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>

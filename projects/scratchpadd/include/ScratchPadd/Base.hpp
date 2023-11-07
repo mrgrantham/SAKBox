@@ -24,7 +24,6 @@ class Base {
 protected:
   bool on_{true};
   std::thread workerThread_;
-  int repeating_interval_{0};
   int work_thread_sleep_interval_{500};
   EventTimer repeatingTimer_;
   System *system_;
@@ -35,6 +34,9 @@ protected:
 
 private:
   std::unordered_map<std::string, ControlTypeVariant> controlMap_;
+  std::optional<std::chrono::milliseconds> repeatInterval_{std::nullopt};
+  std::string name_{"Unnamed Padd"};
+  bool shouldUseMainThread_{false};
 
 public:
   Base(System *system) : system_(system) {}
@@ -47,14 +49,11 @@ public:
 
   bool isRunning() { return on_; }
 
-  virtual std::unordered_map<std::string, ControlTypeVariant>
-  generateControls() = 0;
-
   // This method takes the controlMap which has references to the actual
   // variables and create a snapshot which is just all the same info but has a
   // copy by value of the control values at that point in time
   ScratchPadd::MessageType::ControlSnapshot generateControlsSnapshot() {
-    return ScratchPadd::MessageType::ControlSnapshot{.paddName = name(),
+    return ScratchPadd::MessageType::ControlSnapshot{.paddName = name_,
                                                      .controlMap = controlMap_};
   }
 
@@ -73,7 +72,35 @@ public:
   // Every Padd needs to implement this so their name can be setup for use in
   // the system
   virtual std::string name() = 0;
-  virtual bool runOnMainThread() { return false; }
+
+  // Implementing this to true will execute the Padd work queue in whatever
+  // thread the overall system was started in. Overriding this method to return
+  // false will run the work queue in its own background thread
+  virtual bool shouldUseMainThread() { return false; }
+
+  // Overriding this to return a std::chrono::duration interval will setup
+  // the padd to call the repeat() virtual method repeatedly on the interval
+  // provided
+  virtual std::optional<std::chrono::milliseconds> repeatInterval() {
+    return std::nullopt;
+  }
+
+  // Overriding this method sets up a series of data structures that can be
+  // broadcast to another Padd that is setup to expose them to a user in some
+  // way. The values can then be updated here and used to impact logic in the
+  // Padd in some as yet unspecified way.
+  virtual std::unordered_map<std::string, ControlTypeVariant>
+  generateControls() = 0;
+
+  // Initialize all compoments that require virtual methods implemented
+  // in child class
+  void initialize() {
+    name_ = name();
+    repeatInterval_ = repeatInterval();
+    shouldUseMainThread_ = shouldUseMainThread();
+    controlMap_ = generateControls();
+  }
+
   // Any setup where order of for Padds may be necessary
   // Called from primary thread used by System instance before start
   // Padd thread (if applicable)
@@ -95,51 +122,49 @@ public:
   // These wrappers will allow tracking calls and adding metrics
   // as well as handling any eventual additional internal setup
   // associated with Padd lifecycle
-  void prepareWrapper() {
-    controlMap_ = generateControls();
-    prepare();
-  }
+  void prepareWrapper() { prepare(); }
 
   void cleanupWrapper() { cleanup(); }
 
   void startingWrapper() {
-    spdlog::info("Starting {}", name());
+    spdlog::info("Starting {}", name_);
     starting();
     startRepeater();
   }
 
   void finishingWrapper() {
-    spdlog::info("Finishing {}", name());
+    spdlog::info("Finishing {}", name_);
     finishing();
   }
 
   virtual void repeat() {
-    spdlog::info("Base::repeat() called. Padd set a repeat interval of {} with "
-                 "no method override",
-                 repeating_interval_);
+    spdlog::info(
+        "Base::repeat() called. Padd set a repeat interval of {}ms with "
+        "no method override",
+        repeatInterval_.value().count());
   }
 
   void runIfIndependentThread() {
-    if (!runOnMainThread()) {
-      spdlog::info("Start Independent Thread: {}", name());
+    if (!shouldUseMainThread_) {
+      spdlog::info("Start Independent Thread: {}", name_);
       workerThread_ = std::thread(&Base::run, this);
     }
   }
 
   void runIfMainThread() {
-    if (runOnMainThread()) {
+    if (shouldUseMainThread_) {
       run_once();
     }
   }
 
   void startingIfMainThread() {
-    if (runOnMainThread()) {
+    if (shouldUseMainThread_) {
       startingWrapper();
     }
   }
 
   void finishingIfMainThread() {
-    if (runOnMainThread()) {
+    if (shouldUseMainThread_) {
       finishingWrapper();
     }
   }
@@ -168,31 +193,29 @@ public:
       delete work;
     }
     workCompletionConditionVariable_.notify_all();
-    // spdlog::warn("sleeping work_queue_ {} for {}ms",name(),
+    // spdlog::warn("sleeping work_queue_ {} for {}ms",name_,
     // work_thread_sleep_interval_);
     std::this_thread::sleep_for(
         std::chrono::milliseconds(work_thread_sleep_interval_));
   }
-
-  void setRepeatInterval(int interval) { repeating_interval_ = interval; }
 
   // If you want some method to repeat at a regular interval, you
   // can implement the repeat() method and set a repeat interval.
   // A lambda for the repeating work will be added to the work queue
   // and processed immediately.
   void startRepeater() {
-    if (repeating_interval_) {
-      spdlog::info("repeat() interval set to {} for {}", repeating_interval_,
-                   name());
+    if (repeatInterval_) {
+      spdlog::info("repeat() interval set to {}ms for {}",
+                   repeatInterval_.value().count(), name_);
       repeatingTimer_.startRepeatingEvent(
           [=, this] {
             std::function<void()> *work =
                 new std::function<void()>([=, this] { this->repeat(); });
             work_queue_.push(work);
           },
-          repeating_interval_);
+          repeatInterval_.value());
     } else {
-      spdlog::info("No repeat() interval set for: {}", name());
+      spdlog::info("No repeat() interval set for: {}", name_);
     }
   }
 
@@ -204,7 +227,7 @@ public:
   virtual void receive(Message message) = 0;
 
   void stop() {
-    spdlog::info("Stopping: {}", name());
+    spdlog::info("Stopping: {}", name_);
     on_ = false;
     repeatingTimer_.stop();
     if (workerThread_.joinable()) {

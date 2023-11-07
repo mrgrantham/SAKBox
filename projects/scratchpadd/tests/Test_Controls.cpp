@@ -12,7 +12,7 @@ public:
 std::string name() override {
   return __CLASS_NAME__;
 }
-bool runOnMainThread() override { return true; }
+bool shouldUseMainThread() override { return true; }
 
   virtual void receive(ScratchPadd::Message message) override {
     ScratchPadd::MessageVariant &messageVariant = *message.get();
@@ -72,7 +72,7 @@ std::string name() override {
           ControlExposurePadd(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());
   }
-    virtual bool runOnMainThread() override { return true; }
+    virtual bool shouldUseMainThread() override { return true; }
 
     virtual void starting() override {
         send(ScratchPadd::MessageType::ControlRequest{});

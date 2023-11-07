@@ -3,6 +3,7 @@
 #include <ScratchPadd/Graphics/Graphics.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/Timer.hpp>
+using namespace std::chrono_literals;
 
 class DisplayPadd : public ScratchPadd::Base {
 private:
@@ -12,7 +13,6 @@ private:
 public:
   void prepare() override {
     spdlog::info("Preparing: {}", name());
-    setRepeatInterval(16); // 16 = ~60hz    32 = ~ 30hz
     performanceTimer_.setTimerName(name());
     performanceTimer_.start();
   }
@@ -24,6 +24,9 @@ public:
     work_thread_sleep_interval_ = 0;
   }
 
+  std::optional<std::chrono::milliseconds> repeatInterval() override {
+    return 16ms;
+  }
   std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>
   generateControls() override {
     return {};
@@ -61,7 +64,7 @@ public:
 
   std::string name() override { return __CLASS_NAME__; }
 
-  bool runOnMainThread() override { return true; }
+  bool shouldUseMainThread() override { return true; }
 
   void setupControlView(ScratchPadd::MessageType::ControlSnapshot &control) {
     auto controlView = ControlViewBuilder();
