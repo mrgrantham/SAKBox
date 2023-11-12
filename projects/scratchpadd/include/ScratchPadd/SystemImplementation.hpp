@@ -1,8 +1,9 @@
 #pragma once
 #include <ScratchPadd/Base.hpp>
+#include <ScratchPadd/Logger.hpp>
 #include <ScratchPadd/System.hpp>
 #include <condition_variable>
-#include <spdlog/spdlog.h>
+
 #include <tuple>
 
 namespace ScratchPadd {
@@ -10,7 +11,9 @@ namespace ScratchPadd {
 // NOTE: When using new clang upgrade to use
 // std::enable_shared_from_this<System<Workers...>> instead of passing the
 // sender as a raw pointer
-template <typename... Workers> class SystemImplementation : public System {
+template <typename... Workers>
+class SystemImplementation : public System, public Logger {
+
 private:
   std::tuple<std::unique_ptr<Workers>...> workers_;
   std::condition_variable scratchPaddSystemConditionVariable_;
@@ -23,6 +26,7 @@ public:
   }
 
   virtual void instantiate() override {
+    createLoggerIfNeeded("scratchpadd");
     ((std::get<std::unique_ptr<Workers>>(workers_) =
           std::make_unique<Workers>(this)),
      ...);
@@ -32,6 +36,7 @@ public:
 
   virtual void start() override {
     notifyStarted();
+    logger().info("Starting system");
     // Prepare all workers
     std::apply([](auto const &...worker) { (worker->prepareWrapper(), ...); },
                workers_);
@@ -63,14 +68,13 @@ public:
 
   void waitForStop() {
     std::unique_lock<std::mutex> lk(scratchPaddSystemMutex_);
-    spdlog::info("Waiting For Stop...");
+    logger().info("Waiting For Stop...");
     scratchPaddSystemConditionVariable_.wait(lk, [this] { return !on_; });
   }
 
   void waitForStart() {
-    std::unique_lock<std::mutex> lk(scratchPaddSystemMutex_);
-    spdlog::info("Waiting For Start...");
-    scratchPaddSystemConditionVariable_.wait(lk, [this] { return on_; });
+    std::apply([](auto const &...worker) { (worker->waitForStart(), ...); },
+               workers_);
   }
 
   virtual bool isRunning() override { return on_; }
@@ -83,25 +87,28 @@ public:
     on_ = true;
     scratchPaddSystemConditionVariable_.notify_all();
   }
-  void sendAnyway(ScratchPadd::Base *possibleReceiver, Message &message) {
+  void sendWork(ScratchPadd::Base *receiver, Message &message) {
+    logger().info("sendWork() to {}", receiver->name());
     std::function<void()> *work =
-        new std::function<void()>([=] { possibleReceiver->receive(message); });
-    possibleReceiver->push(work);
+        new std::function<void()>([=] { receiver->receive(message); });
+    receiver->push(work);
   }
+
+  // Send to receiver if they are node same as the sender
   void sendIfUnmatched(ScratchPadd::Base *sender, Base *possibleReceiver,
                        Message &message) {
     if (sender != possibleReceiver) {
-      sendAnyway(possibleReceiver, message);
+      sendWork(possibleReceiver, message);
     }
   }
   virtual void send(ScratchPadd::Base *sender, Message message) override {
-    spdlog::info("sending from {}", sender->name());
+    logger().info("sending from {}", sender->name());
     (sendIfUnmatched(sender, std::get<std::unique_ptr<Workers>>(workers_).get(),
                      message),
      ...);
   }
   virtual void sendIncludeSender(ScratchPadd::Message message) override {
-    (sendAnyway(std::get<std::unique_ptr<Workers>>(workers_).get(), message),
+    (sendWork(std::get<std::unique_ptr<Workers>>(workers_).get(), message),
      ...);
   }
 };

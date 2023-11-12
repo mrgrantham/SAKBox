@@ -2,6 +2,8 @@
 
 ScratchPadd is a simple tool for managing message passing between discrete subsystems of a single process. 
 
+All padds must be implemented with a contructor that takes an instance that implements the `System`` interface
+
 Use the following command to format the files using clang format
 ```
 bazel run --jobs=1 --test_output=all //projects/scratchpadd:clang_format

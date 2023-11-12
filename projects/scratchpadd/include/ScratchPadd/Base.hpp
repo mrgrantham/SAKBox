@@ -5,7 +5,6 @@
 #include <thread>
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#include <spdlog/spdlog.h>
 
 #pragma clang diagnostic ignored "-Wambiguous-reversed-operator"
 #include <boost/lockfree/queue.hpp>
@@ -14,29 +13,32 @@
 #include <ScratchPadd/EventTimer.hpp>
 
 #include <ScratchPadd/Helper.hpp>
+#include <ScratchPadd/Logger.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/System.hpp>
 
 namespace ScratchPadd {
 using namespace std::chrono_literals;
 
-class Base {
+class Base : public Logger {
 protected:
-  bool on_{true};
+  bool on_{false};
   std::thread workerThread_;
-  int work_thread_sleep_interval_{500};
+  std::chrono::duration<double> work_thread_sleep_interval_{500ms};
   EventTimer repeatingTimer_;
   System *system_;
   boost::lockfree::queue<std::function<void()> *> work_queue_{100};
   std::atomic<ssize_t> pendingWork_{0};
   std::condition_variable workCompletionConditionVariable_;
   std::mutex workCompletionMutex_;
+  std::condition_variable scratchPaddConditionVariable_;
 
 private:
   std::unordered_map<std::string, ControlTypeVariant> controlMap_;
   std::optional<std::chrono::milliseconds> repeatInterval_{std::nullopt};
   std::string name_{"Unnamed Padd"};
   bool shouldUseMainThread_{false};
+  std::mutex scratchPaddMutex_;
 
 public:
   Base(System *system) : system_(system) {}
@@ -44,7 +46,7 @@ public:
   virtual ~Base() {
     // spdlog gets torn down before the destructor
     // need cout in order to know about destructors called
-    std::cout << "Base() Destroying: " << __CLASS_NAME__ << std::endl;
+    logger().info("Base() Destroying: {}", name_);
   }
 
   bool isRunning() { return on_; }
@@ -57,16 +59,19 @@ public:
                                                      .controlMap = controlMap_};
   }
 
-  void receive(const MessageType::ControlRequest &request) {
-    send(MakeMsg(generateControlsSnapshot()));
-  }
+  // void receive(const MessageType::ControlRequest &request) {
+  //   send(MakeMsg(generateControlsSnapshot()));
+  // }
 
   ssize_t pendingWorkCount() { return pendingWork_; }
 
   void waitForWorkCompletion() {
     std::unique_lock<std::mutex> lk(workCompletionMutex_);
-    workCompletionConditionVariable_.wait_for(
-        lk, 3000ms, [this] { return pendingWork_ == 0; });
+    workCompletionConditionVariable_.wait_for(lk, 3000ms, [this] {
+      logger().info("waitingForWorkCompletion in {}: {} jobs left", name_,
+                    pendingWork_);
+      return pendingWork_ == 0;
+    });
   }
 
   // Every Padd needs to implement this so their name can be setup for use in
@@ -89,13 +94,36 @@ public:
   // broadcast to another Padd that is setup to expose them to a user in some
   // way. The values can then be updated here and used to impact logic in the
   // Padd in some as yet unspecified way.
-  virtual std::unordered_map<std::string, ControlTypeVariant>
-  generateControls() = 0;
+  virtual ScratchPadd::ControlValueMap generateControls() = 0;
+
+  void notifyStart() {
+    on_ = true;
+    scratchPaddConditionVariable_.notify_all();
+  }
+
+  void notifyStop() {
+    on_ = false;
+    scratchPaddConditionVariable_.notify_all();
+  }
+
+  void waitForStop() {
+    std::unique_lock<std::mutex> lk(scratchPaddMutex_);
+    logger().info("Waiting For {} to Stop...", name_);
+    scratchPaddConditionVariable_.wait(lk, [this] { return !on_; });
+  }
+
+  void waitForStart() {
+    std::unique_lock<std::mutex> lk(scratchPaddMutex_);
+    logger().info("Waiting For {} to Start...", name_);
+    scratchPaddConditionVariable_.wait(lk, [this] { return on_; });
+    logger().info("Wait completed for starting {}...", name_);
+  }
 
   // Initialize all compoments that require virtual methods implemented
   // in child class
   void initialize() {
     name_ = name();
+    createLoggerIfNeeded(name_);
     repeatInterval_ = repeatInterval();
     shouldUseMainThread_ = shouldUseMainThread();
     controlMap_ = generateControls();
@@ -127,18 +155,19 @@ public:
   void cleanupWrapper() { cleanup(); }
 
   void startingWrapper() {
-    spdlog::info("Starting {}", name_);
+    logger().info("Starting {}", name_);
     starting();
     startRepeater();
+    notifyStart();
   }
 
   void finishingWrapper() {
-    spdlog::info("Finishing {}", name_);
+    logger().info("Finishing {}", name_);
     finishing();
   }
 
   virtual void repeat() {
-    spdlog::info(
+    logger().info(
         "Base::repeat() called. Padd set a repeat interval of {}ms with "
         "no method override",
         repeatInterval_.value().count());
@@ -146,7 +175,7 @@ public:
 
   void runIfIndependentThread() {
     if (!shouldUseMainThread_) {
-      spdlog::info("Start Independent Thread: {}", name_);
+      logger().info("Start Independent Thread: {}", name_);
       workerThread_ = std::thread(&Base::run, this);
     }
   }
@@ -187,16 +216,15 @@ public:
     std::function<void()> *work = nullptr;
     while (work_queue_.pop(work) && on_) {
       if (!work)
-        spdlog::error("work is null");
+        logger().error("work is null");
       work->operator()();
       pendingWork_--;
       delete work;
     }
     workCompletionConditionVariable_.notify_all();
-    // spdlog::warn("sleeping work_queue_ {} for {}ms",name_,
+    // logger().warn("sleeping work_queue_ {} for {}ms",name_,
     // work_thread_sleep_interval_);
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(work_thread_sleep_interval_));
+    std::this_thread::sleep_for(work_thread_sleep_interval_);
   }
 
   // If you want some method to repeat at a regular interval, you
@@ -205,17 +233,17 @@ public:
   // and processed immediately.
   void startRepeater() {
     if (repeatInterval_) {
-      spdlog::info("repeat() interval set to {}ms for {}",
-                   repeatInterval_.value().count(), name_);
+      logger().info("repeat() interval set to {}ms for {}",
+                    repeatInterval_.value().count(), name_);
       repeatingTimer_.startRepeatingEvent(
           [=, this] {
             std::function<void()> *work =
                 new std::function<void()>([=, this] { this->repeat(); });
-            work_queue_.push(work);
+            push(work);
           },
           repeatInterval_.value());
     } else {
-      spdlog::info("No repeat() interval set for: {}", name_);
+      logger().info("No repeat() interval set for: {}", name_);
     }
   }
 
@@ -224,24 +252,57 @@ public:
     work_queue_.push(work);
   }
 
+  // virtual void receive(Message message) {
+  //     ScratchPadd::MessageVariant &messageVariant = *message.get();
+  //   std::visit([](const auto & messageContents){ receive(messageContents); },
+  //   messageVariant);
+  // }
+
   virtual void receive(Message message) = 0;
 
+  bool innerReceive(Message message) { return false; }
+
+  void receiveWrapper(Message message) {
+    bool didMatchReceiver = innerReceive(message);
+    if (!didMatchReceiver) {
+      receive(message);
+    }
+  }
+
+  // void f(const C & c) { std::visit([](const auto & x){ f(x); }, c); }
+
   void stop() {
-    spdlog::info("Stopping: {}", name_);
-    on_ = false;
-    repeatingTimer_.stop();
+    logger().info("Stopping: {}", name_);
+    repeatingTimer_.stop(); // might need to flush the queue
+    notifyStop();
     if (workerThread_.joinable()) {
       workerThread_.join();
     }
   }
+
+  // Sends message to be consumed by all other Padds except
+  // the one that sent it
   void send(Message &&message) { system_->send(this, message); }
 
+  // Convenience method to package the message contents in
+  // a shared pointer by default
   template <typename UnderlyingMessageContents>
   void send(UnderlyingMessageContents messageContents) {
+    logger().info("send({}) from {}", TypeName(messageContents), name_);
     system_->send(this, MakeMsg(messageContents));
   }
+
+  // Sends message to be consumed by all Padds including
+  // the one that sent it
   void sendIncludeSender(Message &message) {
     system_->sendIncludeSender(message);
+  }
+
+  // Convenience method to package the message contents in
+  // a shared pointer by default
+  template <typename UnderlyingMessageContents>
+  void sendIncludeSender(UnderlyingMessageContents messageContents) {
+    system_->sendIncludeSender(this, MakeMsg(messageContents));
   }
 };
 

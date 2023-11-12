@@ -70,6 +70,14 @@ cc_binary(
 )
 
 cc_test(
+  name = "Test_Base",
+  size = "small",
+  srcs = ["tests/Test_Base.cpp"],
+  deps = ["@gtest//:gtest_main",
+  ":scratchpadd"],
+)
+
+cc_test(
   name = "Test_Controls",
   size = "small",
   srcs = ["tests/Test_Controls.cpp"],

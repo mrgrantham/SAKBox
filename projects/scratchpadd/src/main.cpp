@@ -25,7 +25,6 @@ int main(int argc, char **argv) {
   SCOPED_METHOD_TIMER();
 
   // signal(SIGINT, signal_handler);
-  spdlog::info("Welcome to SCRATCHPADD!");
   spsystem->instantiate();
   spsystem->start();
 }
