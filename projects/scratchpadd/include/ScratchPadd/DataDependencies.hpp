@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 namespace ScratchPadd::Data {
 void ConfigureDependencies(const std::string &processName);

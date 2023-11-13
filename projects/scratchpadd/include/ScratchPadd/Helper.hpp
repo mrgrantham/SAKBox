@@ -77,3 +77,10 @@ template <typename T> auto Make_Handler(T &handler) {
   return VariantHandler{
       handler, [&](auto &value) { std::cout << "Invalid Type" << std::endl; }};
 }
+
+// Helper function to check if two variants hold the same type
+template <typename... Types>
+bool VariantsHoldSameType(const std::variant<Types...> &v1,
+                          const std::variant<Types...> &v2) {
+  return v1.index() == v2.index();
+}

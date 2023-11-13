@@ -4,6 +4,7 @@
 #include <ScratchPadd/System.hpp>
 #include <condition_variable>
 
+#include <set>
 #include <tuple>
 
 namespace ScratchPadd {
@@ -25,6 +26,22 @@ public:
     return workers_;
   }
 
+  // Check that all workers are implemented with unique strings used for their
+  // names, as these are used to send messages to specific padds or avoid
+  // others.
+  bool workerNamesUnique() {
+    std::vector<std::string> workerNamesVector;
+    std::apply(
+        [&](auto const &...worker) {
+          (workerNamesVector.push_back(worker->name()), ...);
+        },
+        workers_);
+
+    std::set<std::string> workerNamesSet(workerNamesVector.begin(),
+                                         workerNamesVector.end());
+    return workerNamesSet.size() == workerNamesVector.size();
+  }
+
   virtual void instantiate() override {
     createLoggerIfNeeded("scratchpadd");
     ((std::get<std::unique_ptr<Workers>>(workers_) =
@@ -32,6 +49,7 @@ public:
      ...);
     std::apply([](auto const &...worker) { (worker->initialize(), ...); },
                workers_);
+    assert(workerNamesUnique());
   }
 
   virtual void start() override {
@@ -75,6 +93,21 @@ public:
   void waitForStart() {
     std::apply([](auto const &...worker) { (worker->waitForStart(), ...); },
                workers_);
+  }
+
+  // For testing only. We assume that the work will settle
+  // on its own.
+  // TODO: Update to ensure that all lambda's have been completed
+  void waitForWorkCompletion() {
+    int pendingWorkCount = 0;
+    do {
+      pendingWorkCount = std::apply(
+          [](auto const &...worker) {
+            return (worker->pendingWorkCount() + ...);
+          },
+          workers_);
+      // logger().info("pendingWorkCount: {}",pendingWorkCount);
+    } while (pendingWorkCount);
   }
 
   virtual bool isRunning() override { return on_; }

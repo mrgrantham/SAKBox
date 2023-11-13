@@ -68,7 +68,7 @@ public:
   void waitForWorkCompletion() {
     std::unique_lock<std::mutex> lk(workCompletionMutex_);
     workCompletionConditionVariable_.wait_for(lk, 3000ms, [this] {
-      logger().info("waitingForWorkCompletion in {}: {} jobs left", name_,
+      logger().info("waitForWorkCompletion in {}: {} jobs left", name_,
                     pendingWork_);
       return pendingWork_ == 0;
     });
@@ -303,6 +303,24 @@ public:
   template <typename UnderlyingMessageContents>
   void sendIncludeSender(UnderlyingMessageContents messageContents) {
     system_->sendIncludeSender(this, MakeMsg(messageContents));
+  }
+
+  void updateControl(ScratchPadd::MessageType::ControlChange &controlChange) {
+    logger().error("Implement updating controls");
+    if (controlMap_.contains(controlChange.controlName)) {
+      auto &controlTypeVariant = controlMap_.at(controlChange.controlName);
+      if (VariantsHoldSameType(controlChange.controlTypeValue,
+                               controlTypeVariant)) {
+        logger().info("Changing control value");
+        controlTypeVariant = controlChange.controlTypeValue;
+      } else {
+        logger().error("In {}, ControlChange holds different value type than "
+                       "ControlMap for {}",
+                       name_, controlChange.controlName);
+      }
+    } else {
+      logger().error("Error updating controls");
+    }
   }
 };
 
