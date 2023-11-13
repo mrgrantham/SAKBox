@@ -16,26 +16,14 @@ std::string name() override {
 }
 bool shouldUseMainThread() override { return true; }
 
-  virtual void receive(ScratchPadd::Message message) override {
-    ScratchPadd::MessageVariant &messageVariant = *message.get();
-    std::visit(VariantHandler{
-                  [this](ScratchPadd::MessageType::ControlChange &message) {
-                    logger().info("{} Control controlName: {}", this->name(), message.controlName);
-                    if (message.paddName == name()) {
-                      updateControl(message);
-                    }
-                    send(generateControlsSnapshot());
-                  },
-                  [&](ScratchPadd::MessageType::ControlRequest &messageContent) {
-                     logger().info("{} Control request padd name: {}", name(), messageContent.paddName.value_or("None"));
-                    send(generateControlsSnapshot());
-                   },
-                  [&](auto &message) {
-                    logger().error("Unhandled messages in {} receiver",name());
-                   }},
-               messageVariant);
-  }
-
+void receive(ScratchPadd::Message message) override {
+  logger().error("Unimplemented receive()");
+  // ScratchPadd::MessageVariant &messageVariant = *message.get();
+  // std::visit([&](auto &&messageContents) {
+  //   logger().info("inside receive std::visit");
+  //   receive(messageContents);
+  // }, messageVariant);
+}
 ScratchPadd::ControlValueMap  generateControls() override {
     logger().info("Generating controls for {}",name());
     return {
@@ -75,30 +63,24 @@ std::string name() override {
           ControlExposurePadd(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());
   }
-    virtual bool shouldUseMainThread() override { return true; }
+    bool shouldUseMainThread() override { return true; }
 
-    virtual void starting() override {
+    void starting() override {
         send(ScratchPadd::MessageType::ControlRequest{});
     }
 
-  virtual void receive(ScratchPadd::Message message) override {
-    ScratchPadd::MessageVariant &messageVariant = *message.get();
-    std::visit(VariantHandler{
-                  [&](ScratchPadd::MessageType::ControlRequest &messageContent) {
-                      spdlog::info("{} Control request padd name: {}",name(), messageContent.paddName.value_or("None"));
-                   },
-                  [&](ScratchPadd::MessageType::ControlChange &messageContent) {
-                      spdlog::info("{} Control change padd name: {}", name(), messageContent.paddName);
-                   },
-                  [&](ScratchPadd::MessageType::ControlSnapshot &messageContent) {
-                      spdlog::info("{} Control snapshot padd name: {}", name(), messageContent.paddName);
-                      setupControlView(messageContent);
-                   },
-                [&](auto &message) {
-                    spdlog::error("Unhandled messages in {} receiver",name());
-                   }},
-               messageVariant);
-  }
+     void handleControlSnapshot(ScratchPadd::MessageType::ControlSnapshot &controlSnapshot) override {
+        setupControlView(controlSnapshot);
+    }
+
+
+   void receive(ScratchPadd::Message message) override {
+      // ScratchPadd::MessageVariant &messageVariant = *message.get();
+      // std::visit([&](auto &&messageContents) {
+      //   logger().info("inside receive std::visit");
+      //   receive(messageContents);
+      // }, messageVariant);
+    }
 
   void setupControlView(ScratchPadd::MessageType::ControlSnapshot &controlSnapshot) {
     logger().info("Setting up control view from type {}", TypeName(controlSnapshot));

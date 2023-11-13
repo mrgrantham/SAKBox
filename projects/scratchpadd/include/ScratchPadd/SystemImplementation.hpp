@@ -123,7 +123,7 @@ public:
   void sendWork(ScratchPadd::Base *receiver, Message &message) {
     logger().info("sendWork() to {}", receiver->name());
     std::function<void()> *work =
-        new std::function<void()>([=] { receiver->receive(message); });
+        new std::function<void()>([=] { receiver->receiveWrapper(message); });
     receiver->push(work);
   }
 

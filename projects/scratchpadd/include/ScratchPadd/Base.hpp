@@ -258,13 +258,57 @@ public:
   //   messageVariant);
   // }
 
+  bool receive(ScratchPadd::MessageType::ControlChange &controlChange) {
+    logger().info("{} Control controlName: {}", this->name(),
+                  controlChange.controlName);
+    if (controlChange.paddName == name()) {
+      updateControl(controlChange);
+    }
+    send(generateControlsSnapshot());
+    return true;
+  }
+
+  bool receive(ScratchPadd::MessageType::ControlRequest &controlRequest) {
+    logger().info("{} Control request padd name: {}", name(),
+                  controlRequest.paddName.value_or("None"));
+    send(generateControlsSnapshot());
+    return true;
+  }
+
+  virtual void handleControlSnapshot(
+      ScratchPadd::MessageType::ControlSnapshot &controlSnapshot) {
+    logger().error("handleControlSnapshot not implemented");
+  }
+
+  bool receive(ScratchPadd::MessageType::ControlSnapshot &controlSnapshot) {
+    handleControlSnapshot(controlSnapshot);
+    return true;
+  }
+
+  bool receive(auto &&message) {
+    logger().error("no inner receive for this message type");
+    return false;
+  }
+
   virtual void receive(Message message) = 0;
 
-  bool innerReceive(Message message) { return false; }
+  bool innerReceive(Message message) {
+    logger().info("inside innerReceive start");
+    ScratchPadd::MessageVariant &messageVariant = *message.get();
+    return std::visit(
+        [&](auto &&messageContents) -> bool {
+          logger().info("inside innerReceive std::visit");
+          return receive(messageContents);
+        },
+        messageVariant);
+    logger().info("inside innerReceive end");
+  }
 
   void receiveWrapper(Message message) {
-    bool didMatchReceiver = innerReceive(message);
-    if (!didMatchReceiver) {
+    logger().info("inside receiveWrapper start");
+    bool innerReceiverUsed = innerReceive(message);
+    if (!innerReceiverUsed) {
+      logger().info("Trying to use outer message");
       receive(message);
     }
   }
@@ -306,12 +350,10 @@ public:
   }
 
   void updateControl(ScratchPadd::MessageType::ControlChange &controlChange) {
-    logger().error("Implement updating controls");
     if (controlMap_.contains(controlChange.controlName)) {
       auto &controlTypeVariant = controlMap_.at(controlChange.controlName);
       if (VariantsHoldSameType(controlChange.controlTypeValue,
                                controlTypeVariant)) {
-        logger().info("Changing control value");
         controlTypeVariant = controlChange.controlTypeValue;
       } else {
         logger().error("In {}, ControlChange holds different value type than "
@@ -319,7 +361,7 @@ public:
                        name_, controlChange.controlName);
       }
     } else {
-      logger().error("Error updating controls");
+      logger().error("No contol named {}", controlChange.controlName);
     }
   }
 };
