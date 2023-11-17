@@ -13,16 +13,14 @@ private:
 public:
   void prepare() override {
     spdlog::info("Preparing: {}", name());
+    // We dont want the work loop to sleep
+    // TODO make this sleep/wake from semaphore
+    work_thread_sleep_interval_ = 0ms;
+    graphics_ = GraphicsBuilder();
     performanceTimer_.setTimerName(name());
     performanceTimer_.start();
   }
-  DisplayPadd(ScratchPadd::System *system) : Base(system) {
-    spdlog::info("Constructing: {}", name());
-    graphics_ = GraphicsBuilder();
-    // We dont want the work loop to sleep
-    // TODO make this sleep/wake from semaphore
-    work_thread_sleep_interval_ = 0;
-  }
+  DisplayPadd(ScratchPadd::System *system) : Base(system) {}
 
   std::optional<std::chrono::milliseconds> repeatInterval() override {
     return 16ms;
