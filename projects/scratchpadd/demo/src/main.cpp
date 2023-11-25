@@ -1,6 +1,11 @@
 #include <ScratchPadd/DataDependencies.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
-#include <Workers.hpp>
+
+// Worker Padds used in system
+#include <AudioPadd.hpp>
+#include <DisplayPadd.hpp>
+#include <StoryPadd.hpp>
+
 #include <boost/program_options.hpp>
 #include <chrono>
 #include <iostream>
