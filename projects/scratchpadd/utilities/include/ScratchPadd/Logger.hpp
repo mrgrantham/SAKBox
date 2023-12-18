@@ -17,6 +17,9 @@ private:
   std::shared_ptr<spdlog::logger> logger_;
 
 public:
+  static std::shared_ptr<spdlog::logger> GetGlobalLogger();
+  static std::shared_ptr<spdlog::logger> GetThreadLogger();
+  static std::shared_ptr<spdlog::logger> GetActiveLogger();
   // Handles loggers made once only once for each class. Helpful when running
   // in tests
   void createLoggerIfNeeded(const std::string &name) {
@@ -29,6 +32,25 @@ public:
     assert(logger_);
     return *logger_;
   }
+
+  // Sets the default logger used by the macro on the thread this method is
+  // called from
+  void setLoggerToThread();
+
+  void clearThreadLogger();
 };
 
 } // namespace ScratchPadd
+
+#define PADDLOG(level, message...)                                             \
+  ScratchPadd::Logger::GetActiveLogger()->log(level, message);
+
+#define PADDLOG_INTERVAL(level, interval, message...)                          \
+  {                                                                            \
+    static std::chrono::steady_clock::time_point intervalEndTime =             \
+        std::chrono::steady_clock::now() + interval;                           \
+    if (std::chrono::steady_clock::now() > intervalEndTime) {                  \
+      ScratchPadd::Logger::GetActiveLogger()->log(level, message);             \
+      intervalEndTime = std::chrono::steady_clock::now() + interval;           \
+    }                                                                          \
+  }

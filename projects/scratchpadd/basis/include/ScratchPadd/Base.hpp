@@ -35,7 +35,7 @@ protected:
 
 private:
   std::unordered_map<std::string, ControlTypeVariant> controlMap_;
-  std::optional<std::chrono::milliseconds> repeatInterval_{std::nullopt};
+  std::optional<std::chrono::duration<double>> repeatInterval_{std::nullopt};
   std::string name_{"Unnamed Padd"};
   bool shouldUseMainThread_{false};
   std::mutex scratchPaddMutex_;
@@ -86,7 +86,7 @@ public:
   // Overriding this to return a std::chrono::duration interval will setup
   // the padd to call the repeat() virtual method repeatedly on the interval
   // provided
-  virtual std::optional<std::chrono::milliseconds> repeatInterval() {
+  virtual std::optional<std::chrono::duration<double>> repeatInterval() {
     return std::nullopt;
   }
 

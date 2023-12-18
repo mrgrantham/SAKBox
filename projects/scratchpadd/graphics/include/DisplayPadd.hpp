@@ -22,8 +22,8 @@ public:
   }
   DisplayPadd(ScratchPadd::System *system) : Base(system) {}
 
-  std::optional<std::chrono::milliseconds> repeatInterval() override {
-    return 16ms;
+  std::optional<std::chrono::duration<double>> repeatInterval() override {
+    return 15666666ns;
   }
   std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>
   generateControls() override {
@@ -45,14 +45,12 @@ public:
 
   void repeat() override {
     performanceTimer_.markInterval();
-    static int count = 0;
-    if (count % 30 == 0) {
-      spdlog::info("DisplayPadd drawing at {:.3f}s interval",
-                   performanceTimer_.getAverageIntervalInSeconds(5));
-      spdlog::info("DisplayPadd drawing at {:.3f} fps",
-                   1.0 / performanceTimer_.getAverageIntervalInSeconds(5));
-    }
-    count++;
+    PADDLOG_INTERVAL(spdlog::level::info, 1000ms,
+                     "DisplayPadd drawing at {:.3f}s interval",
+                     performanceTimer_.getAverageIntervalInSeconds(5));
+    PADDLOG_INTERVAL(spdlog::level::info, 1000ms,
+                     "DisplayPadd drawing at {:.3f} fps",
+                     1.0 / performanceTimer_.getAverageIntervalInSeconds(5));
 
     if (!graphics_->draw()) {
       spdlog::info("Stop drawing");

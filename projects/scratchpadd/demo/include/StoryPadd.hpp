@@ -31,7 +31,7 @@ public:
     // send(ScratchPadd::MakeMsg(triangle));
     send(triangle);
   }
-  std::optional<std::chrono::milliseconds> repeatInterval() override {
+  std::optional<std::chrono::duration<double>> repeatInterval() override {
     return 1000ms;
   }
 

@@ -54,7 +54,8 @@ static std::string getShaderPath(const std::string &&shaderName) {
   // #else
 
   auto shaderPathString = ScratchPadd::Data::GetFullDependencyPath(
-      "graphFun/projects/scratchpadd/graphics/include/ScratchPadd/Graphics/GL/Shaders/" +
+      "graphFun/projects/scratchpadd/graphics/include/ScratchPadd/Graphics/GL/"
+      "Shaders/" +
       shaderName + ".shader");
   // #endif
   if (!shaderPathString) {
