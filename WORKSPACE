@@ -3,16 +3,47 @@ workspace(name = "graphFun")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
+# rules_python_version = "740825b7f74930c62f44af95c9a4c1bd428d2c53" # Latest @ 2021-06-23
+# http_archive(
+#     name = "rules_python",
+#     sha256 = "09a3c4791c61b62c2cbc5b2cbea4ccc32487b38c7a2cc8f87a794d7a659cc742",
+#     strip_prefix = "rules_python-{}".format(rules_python_version),
+#     url = "https://github.com/bazelbuild/rules_python/archive/{}.zip".format(rules_python_version),
+# )
+
+# load("@rules_python//python:repositories.bzl", "python_register_toolchains")
+
+
 http_archive(
     name = "rules_foreign_cc",
-    sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51",
-    strip_prefix = "rules_foreign_cc-0.9.0",
-    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
+    sha256 = "476303bd0f1b04cc311fc258f1708a5f6ef82d3091e53fd1977fa20383425a6a",
+    strip_prefix = "rules_foreign_cc-0.10.1",
+    url = "https://github.com/bazelbuild/rules_foreign_cc/releases/download/0.10.1/rules_foreign_cc-0.10.1.tar.gz",
 )
 
 load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
 
 rules_foreign_cc_dependencies()
+
+http_archive(
+    name = "build_bazel_rules_apple",
+    sha256 = "9e26307516c4d5f2ad4aee90ac01eb8cd31f9b8d6ea93619fc64b3cbc81b0944",
+    url = "https://github.com/bazelbuild/rules_apple/releases/download/2.2.0/rules_apple.2.2.0.tar.gz",
+)
+
+load(
+    "@build_bazel_rules_apple//apple:repositories.bzl",
+    "apple_rules_dependencies",
+)
+
+apple_rules_dependencies()
+
+load(
+    "@build_bazel_apple_support//lib:repositories.bzl",
+    "apple_support_dependencies",
+)
+
+apple_support_dependencies()
 
 git_repository(
     name = "fmt",
@@ -92,10 +123,9 @@ http_archive(
 http_archive(
     name = "imgui",
     build_file = "@//third_party:imgui.BUILD",
-    sha256 = "265fe6ebe98534a89a7862661b588dd41b1d13f5d897b77d43e4a28fe9ef0488",
-    strip_prefix = "imgui-1.89.3",
+    strip_prefix = "imgui-1.90",
     urls = [
-        "https://github.com/ocornut/imgui/archive/refs/tags/v1.89.3.zip",
+        "https://github.com/ocornut/imgui/archive/refs/tags/v1.90.zip",
     ],
 )
 
@@ -225,4 +255,20 @@ new_git_repository(
     remote = "https://gitlab.com/libeigen/eigen.git",
     build_file = "//third_party:eigen.BUILD",
     tag = "3.4.0",
+)
+
+new_git_repository(
+    name = "opencv",
+    remote = "https://github.com/opencv/opencv.git",
+    build_file = "//third_party:opencv.BUILD",
+    tag = "4.7.0",
+)
+
+
+# Can't seem to get get the build rule to find the built dylib
+new_git_repository(
+    name = "openpnp-capture",
+    remote = "https://github.com/openpnp/openpnp-capture.git",
+    build_file = "//third_party:openpnp-capture.BUILD",
+    tag = "v0.0.24",
 )
