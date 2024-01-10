@@ -33,6 +33,16 @@ public:
   void starting() override {
     spdlog::info("Starting Window Setup for DisplayPadd");
     graphics_->setupWindow();
+    PADDLOG_INFO("Window setup is complete");
+    // auto view = std::make_unique<GL_View>();
+    // GL_ViewBuilder viewBuilder;
+    auto view = GetGL_ViewBuilder()
+                    .setName("GLL Example")
+                    .setFrameBuffer(800, 600)
+                    .setFragmentShaderPath(getShaderPath("fragment"))
+                    .setVertexShaderPath(getShaderPath("vertex"))
+                    .build();
+    graphics_->addView(std::move(view));
   }
   void finishing() override {
     spdlog::info("[{}] Avg Repeating Interval: {}", name(),

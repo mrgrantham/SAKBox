@@ -70,10 +70,11 @@ public:
     std::string glewVersion =
         reinterpret_cast<const char *>(glewGetString(GLEW_VERSION));
     spdlog::info("Status: Using GLEW {}\n", glewVersion);
-    views_.emplace_back(std::make_unique<GL_View>());
-    views_.back()->setup("GL Example");
-    viewBackgroundColor = views_.back()->getBackgroundColor();
-    viewShapeColor = views_.back()->getShapeColor();
+
+    // This was based on the back view that no longer is set here
+    // making the view contained empty and the following lines seg fault
+    // viewBackgroundColor = views_.back()->getBackgroundColor();
+    // viewShapeColor = views_.back()->getShapeColor();
   }
 
   void addView(std::unique_ptr<Graphics::View> view) override {
@@ -121,12 +122,13 @@ public:
         ImGui::ColorEdit3(
             "app background color",
             (float *)&appBackground); // Edit 3 floats representing a color
-        ImGui::ColorEdit3(
-            "gl window color",
-            (float *)viewBackgroundColor); // Edit 3 floats representing a color
-        ImGui::ColorEdit3(
-            "gl shape color",
-            (float *)viewShapeColor); // Edit 3 floats representing a color
+        // ImGui::ColorEdit3(
+        //     "gl window color",
+        //     (float *)viewBackgroundColor); // Edit 3 floats representing a
+        //     color
+        // ImGui::ColorEdit3(
+        //     "gl shape color",
+        //     (float *)viewShapeColor); // Edit 3 floats representing a color
 
         if (ImGui::Button(
                 "Button")) // Buttons return true when clicked (most widgets

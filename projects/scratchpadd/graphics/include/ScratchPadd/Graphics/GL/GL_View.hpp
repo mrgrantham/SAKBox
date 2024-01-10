@@ -65,7 +65,11 @@ static std::string getShaderPath(const std::string &&shaderName) {
   return shaderPathString.value();
 }
 
+class GL_ViewBuilder;
+
 class GL_View : public Graphics::View {
+  friend class GL_ViewBuilder;
+
 private:
   std::unique_ptr<Graphics::FrameBuffer> frameBuffer_;
   std::unique_ptr<Graphics::VertexIndexBuffer> vertexIndexBuffer_;
@@ -77,10 +81,13 @@ public:
   GL_View()
       : frameBuffer_(std::make_unique<GL_FrameBuffer>()),
         vertexIndexBuffer_(std::make_unique<GL_VertexIndexBuffer>()) {}
+
   void setup(const std::string &&name) override {
+    spdlog::info("setting up the view");
     name_ = name;
     frameBuffer_->create(800, 600);
-    vertexIndexBuffer_->create(vertices, indices);
+    vertexIndexBuffer_->create(GL_SampleItems::vertices,
+                               GL_SampleItems::indices);
     shader_.generate(getShaderPath("vertex"), getShaderPath("fragment"));
   }
 
@@ -121,10 +128,66 @@ public:
   }
 
   void destroy() override { vertexIndexBuffer_->destroy(); }
-
   virtual void reset() override {}
 };
 
-static std::unique_ptr<Graphics::View> ViewBuilder() {
-  return std::make_unique<GL_View>();
+// This will set all the configuration info before generating
+// the GL_View object
+class GL_ViewBuilder {
+private:
+  std::string name_ = "Not Set";
+  int frameBufferX_ = 0;
+  int frameBufferY_ = 0;
+  std::string vertexShaderPath_;
+  std::string fragmentShaderPath_;
+
+public:
+  // Build commands
+  GL_ViewBuilder &setName(const std::string &name) {
+    spdlog::info("setting name");
+    name_ = name;
+    return *this;
+  }
+
+  GL_ViewBuilder &setFrameBuffer(int x, int y) {
+    spdlog::info("setting fb");
+    frameBufferX_ = x;
+    frameBufferY_ = y;
+    spdlog::info("done setting fb");
+    return *this;
+  }
+  GL_ViewBuilder &setVertexShaderPath(const std::string &vertexShaderPath) {
+    spdlog::info("setting shader v");
+    vertexShaderPath_ = vertexShaderPath;
+    return *this;
+  }
+  GL_ViewBuilder &setFragmentShaderPath(const std::string &fragmentShaderPath) {
+    spdlog::info("setting shader f");
+    fragmentShaderPath_ = fragmentShaderPath;
+    return *this;
+  }
+
+  std::unique_ptr<Graphics::View> build() {
+    spdlog::info("building the view");
+    auto view = std::make_unique<GL_View>();
+    view->name_ = name_;
+    view->frameBuffer_->create(frameBufferX_, frameBufferY_);
+    view->vertexIndexBuffer_->create(GL_SampleItems::vertices,
+                                     GL_SampleItems::indices);
+    spdlog::info("Fragment shader: {} Vertex shader: {}", fragmentShaderPath_,
+                 vertexShaderPath_);
+    view->shader_.generate(std::move(vertexShaderPath_),
+                           std::move(fragmentShaderPath_));
+    spdlog::info("built the view");
+    return view;
+  }
+};
+
+// static std::unique_ptr<Graphics::View> ViewBuilder() {
+//   return std::make_unique<GL_View>();
+// }
+
+static GL_ViewBuilder GetGL_ViewBuilder() {
+  GL_ViewBuilder viewBuilder;
+  return viewBuilder;
 }
