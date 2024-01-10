@@ -45,6 +45,15 @@ public:
 #define PADDLOG(level, message...)                                             \
   ScratchPadd::Logger::GetActiveLogger()->log(level, message);
 
+#define PADDLOG_INFO(message...)                                               \
+  ScratchPadd::Logger::GetActiveLogger()->log(spdlog::level::info, message);
+
+#define PADDLOG_DEBUG(message...)                                              \
+  ScratchPadd::Logger::GetActiveLogger()->log(spdlog::level::debug, message);
+
+#define PADDLOG_ERROR(message...)                                              \
+  ScratchPadd::Logger::GetActiveLogger()->log(spdlog::level::error, message);
+
 #define PADDLOG_INTERVAL(level, interval, message...)                          \
   {                                                                            \
     static std::chrono::steady_clock::time_point intervalEndTime =             \
