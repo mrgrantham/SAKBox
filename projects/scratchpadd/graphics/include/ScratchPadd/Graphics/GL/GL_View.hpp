@@ -4,15 +4,15 @@
 #endif
 #include <filesystem>
 
-#include "GL_SampleItems.hpp"
 #include "GL_VertexIndexBuffer.hpp"
+#include <ScratchPadd/Graphics/SampleItems.hpp>
 
 #include <ScratchPadd/DataDependencies.hpp>
 
-static std::string getShaderPath(
-    const std::string &shaderName,
-    const std::string &shaderDirPath = "/projects/scratchpadd/graphics/include/"
-                                       "ScratchPadd/Graphics/GL/Shaders/") {
+static std::string getShaderPath(const std::string &shaderName,
+                                 const std::string &shaderDirPath =
+                                     "/projects/scratchpadd/graphics/include/"
+                                     "ScratchPadd/Graphics/GL/Shaders/") {
 
   // #if defined(__APPLE__)
 
@@ -94,8 +94,7 @@ public:
     spdlog::info("setting up the view");
     name_ = name;
     frameBuffer_->create(800, 600);
-    vertexIndexBuffer_->create(GL_SampleItems::vertices,
-                               GL_SampleItems::indices);
+    vertexIndexBuffer_->create(SampleItems::vertices, SampleItems::indices);
     shader_.generate(getShaderPath("vertex"), getShaderPath("fragment"));
   }
 
@@ -191,8 +190,8 @@ public:
     auto view = std::make_unique<GL_View>();
     view->name_ = name_;
     view->frameBuffer_->create(frameBufferX_, frameBufferY_);
-    view->vertexIndexBuffer_->create(GL_SampleItems::vertices,
-                                     GL_SampleItems::indices);
+    view->vertexIndexBuffer_->create(SampleItems::vertices,
+                                     SampleItems::indices);
 
     view->shader_.generate(std::move(vertexShaderPath_),
                            std::move(fragmentShaderPath_));

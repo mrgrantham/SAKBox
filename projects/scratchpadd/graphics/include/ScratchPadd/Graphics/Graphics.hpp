@@ -13,7 +13,7 @@ class Graphics {
 public:
   class View {
   protected:
-    ImVec4 shapeColor_{ScratchPadd::Color::Red};
+    ImVec4 shapeColor_{ScratchPadd::Color::Green};
 
   public:
     virtual void setBackgroundColor(ImVec4 &backgroundColor) = 0;
