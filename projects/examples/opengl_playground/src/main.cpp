@@ -43,8 +43,9 @@ public:
             .setFrameBuffer(800, 600)
             .setSize(300, 300)
             .setPosition(20, 40)
-            .setFragmentShaderPath(getShaderPath("fragment_play", shaderFolder))
-            .setVertexShaderPath(getShaderPath("vertex_play", shaderFolder))
+            .setFragmentShaderPath(
+                getShaderPath("fragment_play2", shaderFolder))
+            .setVertexShaderPath(getShaderPath("vertex_play2", shaderFolder))
             .build();
     PADDLOG_INFO("created view 1");
     graphics_->addView(std::move(view1));

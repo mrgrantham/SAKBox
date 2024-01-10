@@ -2,6 +2,7 @@
 #if defined(__APPLE__)
 #import <CoreFoundation/CoreFoundation.h>
 #endif
+#include <chrono>
 #include <filesystem>
 
 #include "GL_VertexIndexBuffer.hpp"
@@ -84,11 +85,14 @@ private:
   ImVec2 pos_{200, 300};
   std::string name_{"Unnamed"};
   bool open_{true};
+  std::chrono::time_point<std::chrono::system_clock> start_;
 
 public:
   GL_View()
       : frameBuffer_(std::make_unique<GL_FrameBuffer>()),
-        vertexIndexBuffer_(std::make_unique<GL_VertexIndexBuffer>()) {}
+        vertexIndexBuffer_(std::make_unique<GL_VertexIndexBuffer>()) {
+    start_ = std::chrono::system_clock::now();
+  }
 
   void setup(const std::string &&name) override {
     spdlog::info("setting up the view");
@@ -106,13 +110,29 @@ public:
     return frameBuffer_->getBackgroundColor();
   }
 
+  float getSecondsSinceStart() {
+    auto now = std::chrono::system_clock::now();
+    // Get the time since epoch in seconds as a double
+    const std::chrono::duration<float> elapsed = now - start_;
+
+    double seconds_since_epoch = elapsed.count();
+
+    return seconds_since_epoch;
+  }
+
   void draw() override {
     shader_.use();
+
     // light_->update(shader_.get());
 
     frameBuffer_->bind();
 
     shader_.setVec4(shapeColor_, "uniform_color");
+
+    float secondsSinceEpoch = getSecondsSinceStart();
+    spdlog::info("Draw Time {:.5f}", secondsSinceEpoch);
+    shader_.setFloat(secondsSinceEpoch, "time");
+
     shader_.update();
     vertexIndexBuffer_->draw();
 

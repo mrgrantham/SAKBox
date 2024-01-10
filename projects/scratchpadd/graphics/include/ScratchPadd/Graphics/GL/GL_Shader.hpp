@@ -5,23 +5,23 @@
 #include <fstream>
 #include <spdlog/spdlog.h>
 
-const std::string vertexShader = "#version 330 core\n"
-                                 "\n"
-                                 "layout(location = 0) in vec4 position;\n"
-                                 "\n"
-                                 "void main()\n"
-                                 "{\n"
-                                 "   gl_Position = position;\n"
-                                 "}\n";
+// const std::string vertexShader = "#version 330 core\n"
+//                                  "\n"
+//                                  "layout(location = 0) in vec4 position;\n"
+//                                  "\n"
+//                                  "void main()\n"
+//                                  "{\n"
+//                                  "   gl_Position = position;\n"
+//                                  "}\n";
 
-const std::string fragmentShader = "#version 330 core\n"
-                                   "\n"
-                                   "layout(location = 0) out vec4 color;"
-                                   "\n"
-                                   "void main()\n"
-                                   "{\n"
-                                   "   color =  vec4(1.0,0.5,0.5,0.5);\n"
-                                   "}\n";
+// const std::string fragmentShader = "#version 330 core\n"
+//                                    "\n"
+//                                    "layout(location = 0) out vec4 color;"
+//                                    "\n"
+//                                    "void main()\n"
+//                                    "{\n"
+//                                    "   color =  vec4(1.0,0.5,0.5,0.5);\n"
+//                                    "}\n";
 
 class GL_Shader {
 private:
@@ -102,6 +102,11 @@ public:
   void setVec4(const ImVec4 &vec4, const std::string &name) {
     GLint myLoc = glGetUniformLocation(programID_, name.c_str());
     glProgramUniform4fv(programID_, myLoc, 1, (float *)&vec4);
+  }
+
+  void setFloat(const float &val, const std::string &name) {
+    GLint myLoc = glGetUniformLocation(programID_, name.c_str());
+    glProgramUniform1fv(programID_, myLoc, 1, (float *)&val);
   }
 
   void use() { glUseProgram(programID_); }
