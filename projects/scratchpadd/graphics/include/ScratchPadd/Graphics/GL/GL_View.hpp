@@ -130,7 +130,6 @@ public:
     shader_.setVec4(shapeColor_, "uniform_color");
 
     float secondsSinceEpoch = getSecondsSinceStart();
-    spdlog::info("Draw Time {:.5f}", secondsSinceEpoch);
     shader_.setFloat(secondsSinceEpoch, "time");
 
     shader_.update();
@@ -210,8 +209,10 @@ public:
     auto view = std::make_unique<GL_View>();
     view->name_ = name_;
     view->frameBuffer_->create(frameBufferX_, frameBufferY_);
-    view->vertexIndexBuffer_->create(SampleItems::vertices,
-                                     SampleItems::indices);
+    // view->vertexIndexBuffer_->create(SampleItems::vertices,
+    //                                  SampleItems::indices);
+    SampleItems::Circle circle(0.0, 0.0, 0.9, 50);
+    view->vertexIndexBuffer_->create(circle.vertices(), circle.indices());
 
     view->shader_.generate(std::move(vertexShaderPath_),
                            std::move(fragmentShaderPath_));

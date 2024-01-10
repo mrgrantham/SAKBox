@@ -63,8 +63,8 @@ public:
     virtual ~FrameBuffer() {}
   };
   struct VertexPair {
-    float position[3];
-    float normal[3];
+    float position[3] = {0.0f, 0.0f, 0.0f};
+    float normal[3] = {0.0f, 0.0f, 0.0f};
   };
   class VertexIndexBuffer {
   public:
