@@ -43,6 +43,7 @@ public:
                     .setPosition(20, 40)
                     .setFragmentShaderPath(getShaderPath("fragment"))
                     .setVertexShaderPath(getShaderPath("vertex"))
+                    .setGeometry(SampleItems::vertices, SampleItems::indices)
                     .build();
     graphics_->addView(std::move(view));
   }

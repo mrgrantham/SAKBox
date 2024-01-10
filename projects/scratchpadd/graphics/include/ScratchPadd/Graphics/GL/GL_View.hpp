@@ -173,6 +173,8 @@ private:
   int posY_ = 0;
   std::string vertexShaderPath_;
   std::string fragmentShaderPath_;
+  std::vector<uint32_t> indices_;
+  std::vector<Graphics::VertexPair> vertices_;
 
 public:
   // Build commands
@@ -205,15 +207,22 @@ public:
     return *this;
   }
 
+  GL_ViewBuilder &setGeometry(const std::vector<Graphics::VertexPair> &vertices,
+                              const std::vector<uint32_t> &indices) {
+    vertices_ = vertices;
+    indices_ = indices;
+    return *this;
+  }
+
   std::unique_ptr<Graphics::View> build() {
     auto view = std::make_unique<GL_View>();
     view->name_ = name_;
     view->frameBuffer_->create(frameBufferX_, frameBufferY_);
     // view->vertexIndexBuffer_->create(SampleItems::vertices,
     //                                  SampleItems::indices);
-    SampleItems::Circle circle(0.0, 0.0, 0.9, 50);
-    view->vertexIndexBuffer_->create(circle.vertices(), circle.indices());
-
+    // SampleItems::Circle circle(0.0, 0.0, 0.8, 100);
+    // view->vertexIndexBuffer_->create(circle.vertices(), circle.indices());
+    view->vertexIndexBuffer_->create(vertices_, indices_);
     view->shader_.generate(std::move(vertexShaderPath_),
                            std::move(fragmentShaderPath_));
     view->pos_.x = posX_;

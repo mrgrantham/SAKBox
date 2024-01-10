@@ -37,6 +37,7 @@ public:
     const std::string shaderFolder =
         "/projects/examples/opengl_playground/shaders/";
 
+    SampleItems::Circle circle(0.0, 0.0, 0.8, 100);
     auto view1 =
         GetGL_ViewBuilder()
             .setName("GL Example View 1")
@@ -46,6 +47,7 @@ public:
             .setFragmentShaderPath(
                 getShaderPath("fragment_play2", shaderFolder))
             .setVertexShaderPath(getShaderPath("vertex_play2", shaderFolder))
+            .setGeometry(circle.vertices(), circle.indices())
             .build();
     PADDLOG_INFO("created view 1");
     graphics_->addView(std::move(view1));
@@ -59,6 +61,7 @@ public:
             .setPosition(20, 500)
             .setFragmentShaderPath(getShaderPath("fragment_play", shaderFolder))
             .setVertexShaderPath(getShaderPath("vertex_play", shaderFolder))
+            .setGeometry(SampleItems::vertices, SampleItems::indices)
             .build();
     PADDLOG_INFO("created view 2");
 
