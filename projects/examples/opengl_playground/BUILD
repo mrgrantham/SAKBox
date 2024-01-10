@@ -6,7 +6,9 @@ cc_binary(
         srcs = ["src/main.cpp"],
         deps = [
         "//projects/scratchpadd/basis:basis",
-        "//projects/scratchpadd/messages:messages"
+        "//projects/scratchpadd/graphics:graphics",
+        "//projects/scratchpadd/messages:messages",
+        "@backward",
         ],
 )
 
