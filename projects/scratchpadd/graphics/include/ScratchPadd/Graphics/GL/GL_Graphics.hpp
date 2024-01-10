@@ -22,7 +22,7 @@ class GL_Graphics : public Graphics {
 
 public:
   GLFWwindow *window;
-  void setupWindow() override {
+  void setupWindow(const int width, const int height) override {
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) {
       spdlog::error("Could not init GLFW!");
@@ -33,7 +33,7 @@ public:
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    window = glfwCreateWindow(1366, 768, PROJECT_NAME, nullptr, nullptr);
+    window = glfwCreateWindow(width, height, PROJECT_NAME, nullptr, nullptr);
     if (!window) {
       spdlog::error("No window created!");
       glfwTerminate();

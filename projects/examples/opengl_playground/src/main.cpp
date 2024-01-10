@@ -31,25 +31,34 @@ public:
 
   void starting() override {
     PADDLOG_INFO("setting up windows");
-    graphics_->setupWindow();
+    graphics_->setupWindow(1400, 1000);
     PADDLOG_INFO("setup windows");
 
-    auto view1 = GetGL_ViewBuilder()
-                     .setName("GL Example View 1")
-                     .setFrameBuffer(800, 600)
-                     .setFragmentShaderPath(getShaderPath("fragment"))
-                     .setVertexShaderPath(getShaderPath("vertex"))
-                     .build();
+    const std::string shaderFolder =
+        "/projects/examples/opengl_playground/shaders/";
+
+    auto view1 =
+        GetGL_ViewBuilder()
+            .setName("GL Example View 1")
+            .setFrameBuffer(800, 600)
+            .setSize(300, 300)
+            .setPosition(20, 40)
+            .setFragmentShaderPath(getShaderPath("fragment_play", shaderFolder))
+            .setVertexShaderPath(getShaderPath("vertex_play", shaderFolder))
+            .build();
     PADDLOG_INFO("created view 1");
     graphics_->addView(std::move(view1));
     PADDLOG_INFO("added view 1");
 
-    auto view2 = GetGL_ViewBuilder()
-                     .setName("GL Example View 2")
-                     .setFrameBuffer(400, 500)
-                     .setFragmentShaderPath(getShaderPath("fragment"))
-                     .setVertexShaderPath(getShaderPath("vertex"))
-                     .build();
+    auto view2 =
+        GetGL_ViewBuilder()
+            .setName("GL Example View 2")
+            .setFrameBuffer(400, 500)
+            .setSize(200, 200)
+            .setPosition(20, 500)
+            .setFragmentShaderPath(getShaderPath("fragment_play", shaderFolder))
+            .setVertexShaderPath(getShaderPath("vertex_play", shaderFolder))
+            .build();
     PADDLOG_INFO("created view 2");
 
     graphics_->addView(std::move(view2));

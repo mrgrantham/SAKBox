@@ -32,13 +32,15 @@ public:
 
   void starting() override {
     spdlog::info("Starting Window Setup for DisplayPadd");
-    graphics_->setupWindow();
+    graphics_->setupWindow(1366, 768);
     PADDLOG_INFO("Window setup is complete");
     // auto view = std::make_unique<GL_View>();
     // GL_ViewBuilder viewBuilder;
     auto view = GetGL_ViewBuilder()
                     .setName("GLL Example")
                     .setFrameBuffer(800, 600)
+                    .setSize(300, 300)
+                    .setPosition(20, 40)
                     .setFragmentShaderPath(getShaderPath("fragment"))
                     .setVertexShaderPath(getShaderPath("vertex"))
                     .build();

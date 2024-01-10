@@ -9,7 +9,10 @@
 
 #include <ScratchPadd/DataDependencies.hpp>
 
-static std::string getShaderPath(const std::string &&shaderName) {
+static std::string getShaderPath(
+    const std::string &shaderName,
+    const std::string &shaderDirPath = "/projects/scratchpadd/graphics/include/"
+                                       "ScratchPadd/Graphics/GL/Shaders/") {
 
   // #if defined(__APPLE__)
 
@@ -53,10 +56,13 @@ static std::string getShaderPath(const std::string &&shaderName) {
   //   }
   // #else
 
+  // Workspace name is determined by the root name given in the WORKSPACE file
+  // workspace(name = "monograntham")
+  // if this changes then the workspace name needs to change too
+  std::string workspace = "monograntham";
+
   auto shaderPathString = ScratchPadd::Data::GetFullDependencyPath(
-      "graphFun/projects/scratchpadd/graphics/include/ScratchPadd/Graphics/GL/"
-      "Shaders/" +
-      shaderName + ".shader");
+      workspace + shaderDirPath + shaderName + ".shader");
   // #endif
   if (!shaderPathString) {
     spdlog::error("Shader file not found");
@@ -74,8 +80,10 @@ private:
   std::unique_ptr<Graphics::FrameBuffer> frameBuffer_;
   std::unique_ptr<Graphics::VertexIndexBuffer> vertexIndexBuffer_;
   GL_Shader shader_;
-  ImVec2 size_;
+  ImVec2 size_{200, 300};
+  ImVec2 pos_{200, 300};
   std::string name_{"Unnamed"};
+  bool open_{true};
 
 public:
   GL_View()
@@ -111,18 +119,21 @@ public:
 
     frameBuffer_->unbind();
 
-    ImGui::Begin(name_.c_str());
+    ImGui::SetNextWindowPos(pos_, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(size_, ImGuiCond_Once);
+    ImGui::Begin(name_.c_str(), &open_);
 
     ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-    size_ = {viewportPanelSize.x, viewportPanelSize.y};
+    // size_ = {viewportPanelSize.x, viewportPanelSize.y};
 
     // mCamera->set_aspect(mSize.x / mSize.y);
     // mCamera->update(mShader.get());
 
     // add rendered texture to ImGUI scene window
     uint64_t textureID = frameBuffer_->get();
-    ImGui::Image(reinterpret_cast<void *>(textureID), ImVec2{size_.x, size_.y},
-                 ImVec2{0, 1}, ImVec2{1, 0});
+    ImGui::Image(reinterpret_cast<void *>(textureID),
+                 ImVec2{viewportPanelSize.x, viewportPanelSize.y}, ImVec2{0, 1},
+                 ImVec2{1, 0});
 
     ImGui::End();
   }
@@ -138,6 +149,10 @@ private:
   std::string name_ = "Not Set";
   int frameBufferX_ = 0;
   int frameBufferY_ = 0;
+  int viewWidth_ = 0;
+  int viewHeight_ = 0;
+  int posX_ = 0;
+  int posY_ = 0;
   std::string vertexShaderPath_;
   std::string fragmentShaderPath_;
 
@@ -151,6 +166,16 @@ public:
   GL_ViewBuilder &setFrameBuffer(int x, int y) {
     frameBufferX_ = x;
     frameBufferY_ = y;
+    return *this;
+  }
+  GL_ViewBuilder &setSize(int width, int height) {
+    viewWidth_ = width;
+    viewHeight_ = height;
+    return *this;
+  }
+  GL_ViewBuilder &setPosition(int x, int y) {
+    posX_ = x;
+    posY_ = y;
     return *this;
   }
   GL_ViewBuilder &setVertexShaderPath(const std::string &vertexShaderPath) {
@@ -171,6 +196,10 @@ public:
 
     view->shader_.generate(std::move(vertexShaderPath_),
                            std::move(fragmentShaderPath_));
+    view->pos_.x = posX_;
+    view->pos_.y = posY_;
+    view->size_.x = viewWidth_;
+    view->size_.y = viewHeight_;
     return view;
   }
 };

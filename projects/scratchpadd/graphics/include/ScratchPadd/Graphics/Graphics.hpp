@@ -77,7 +77,7 @@ public:
     virtual ~VertexIndexBuffer() {}
   };
 
-  virtual void setupWindow() = 0;
+  virtual void setupWindow(const int width, const int height) = 0;
   virtual void addView(std::unique_ptr<Graphics::View> view) = 0;
   virtual bool draw() = 0;
   virtual void tearDown() = 0;
