@@ -144,41 +144,33 @@ private:
 public:
   // Build commands
   GL_ViewBuilder &setName(const std::string &name) {
-    spdlog::info("setting name");
     name_ = name;
     return *this;
   }
 
   GL_ViewBuilder &setFrameBuffer(int x, int y) {
-    spdlog::info("setting fb");
     frameBufferX_ = x;
     frameBufferY_ = y;
-    spdlog::info("done setting fb");
     return *this;
   }
   GL_ViewBuilder &setVertexShaderPath(const std::string &vertexShaderPath) {
-    spdlog::info("setting shader v");
     vertexShaderPath_ = vertexShaderPath;
     return *this;
   }
   GL_ViewBuilder &setFragmentShaderPath(const std::string &fragmentShaderPath) {
-    spdlog::info("setting shader f");
     fragmentShaderPath_ = fragmentShaderPath;
     return *this;
   }
 
   std::unique_ptr<Graphics::View> build() {
-    spdlog::info("building the view");
     auto view = std::make_unique<GL_View>();
     view->name_ = name_;
     view->frameBuffer_->create(frameBufferX_, frameBufferY_);
     view->vertexIndexBuffer_->create(GL_SampleItems::vertices,
                                      GL_SampleItems::indices);
-    spdlog::info("Fragment shader: {} Vertex shader: {}", fragmentShaderPath_,
-                 vertexShaderPath_);
+
     view->shader_.generate(std::move(vertexShaderPath_),
                            std::move(fragmentShaderPath_));
-    spdlog::info("built the view");
     return view;
   }
 };
