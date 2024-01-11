@@ -46,6 +46,8 @@ public:
                     .setGeometry(SampleItems::vertices, SampleItems::indices)
                     .build();
     graphics_->addView(std::move(view));
+
+    graphics_->addView(std::make_unique<Graphics::ImguiView>());
   }
   void finishing() override {
     spdlog::info("[{}] Avg Repeating Interval: {}", name(),
