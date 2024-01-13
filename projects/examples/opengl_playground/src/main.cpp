@@ -31,7 +31,7 @@ public:
 
   void starting() override {
     PADDLOG_INFO("setting up windows");
-    graphics_->setupWindow(1400, 1000);
+    graphics_->setupWindow(1600, 1000);
     PADDLOG_INFO("setup windows");
 
     const std::string shaderFolder =
@@ -90,6 +90,20 @@ public:
                          SampleItems::Square::indices)
             .build();
     graphics_->addView(std::move(view4));
+
+    auto view5 =
+        GetGL_ViewBuilder()
+            .setName("GL Example View 5")
+            .setFrameBuffer(300, 300)
+            .setSize(300, 300)
+            .setPosition(1200, 40)
+            .setFragmentShaderPath(
+                getShaderPath("fragment_play5", shaderFolder))
+            .setVertexShaderPath(getShaderPath("vertex_default", shaderFolder))
+            .setGeometry(SampleItems::Square::vertices,
+                         SampleItems::Square::indices)
+            .build();
+    graphics_->addView(std::move(view5));
   }
 
   void finishing() override {

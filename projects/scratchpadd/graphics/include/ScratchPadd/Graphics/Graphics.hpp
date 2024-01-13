@@ -1,6 +1,7 @@
 #pragma once
 #include "imgui.h"
 #include <GL/glew.h>
+#include <GLFW/glfw3.h>
 #include <string>
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -8,7 +9,7 @@
 #pragma clang diagnostic pop
 #include <ScratchPadd/Graphics/Colors.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
-
+class GLFWwindow;
 class Graphics {
 public:
   class View {
@@ -16,6 +17,7 @@ public:
     ImVec4 shapeColor_{ScratchPadd::Color::Green};
 
   public:
+    virtual void setWindow(GLFWwindow *window) = 0;
     virtual void setBackgroundColor(ImVec4 &backgroundColor) = 0;
     virtual ImVec4 *getBackgroundColor() = 0;
     ImVec4 *getShapeColor() { return &shapeColor_; }

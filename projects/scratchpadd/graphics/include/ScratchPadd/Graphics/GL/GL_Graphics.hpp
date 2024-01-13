@@ -76,6 +76,7 @@ public:
   }
 
   void addView(std::unique_ptr<Graphics::View> view) override {
+    view->setWindow(window);
     views_.push_back(std::move(view));
   }
 

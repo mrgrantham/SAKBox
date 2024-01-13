@@ -86,6 +86,7 @@ private:
   std::string name_{"Unnamed"};
   bool open_{true};
   std::chrono::time_point<std::chrono::system_clock> start_;
+  GLFWwindow *window_{nullptr};
 
 public:
   GL_View()
@@ -93,6 +94,8 @@ public:
         vertexIndexBuffer_(std::make_unique<GL_VertexIndexBuffer>()) {
     start_ = std::chrono::system_clock::now();
   }
+
+  void setWindow(GLFWwindow *window) override { window_ = window; }
 
   void setup(const std::string &&name) override {
     spdlog::info("setting up the view");
@@ -121,6 +124,20 @@ public:
   }
 
   void draw() override {
+
+    // ImGui::SetNextWindowPos(pos_, ImGuiCond_Once);
+    // ImGui::SetNextWindowSize(size_, ImGuiCond_Once);
+    ImGui::SetNextWindowPos(pos_, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(size_, ImGuiCond_Always);
+
+    // These vars ensure that the padding is removed so that mouse coords can be
+    // calculated correctly
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.f, 0.f));
+    ImGui::Begin(name_.c_str(), &open_);
+
+    ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+
     shader_.use();
 
     // light_->update(shader_.get());
@@ -138,6 +155,30 @@ public:
     shader_.setVec2(iResolution, "iResolution");
     shader_.setVec4(shapeColor_, "uniform_color");
 
+    double xpos, ypos;
+    glfwGetCursorPos(window_, &xpos, &ypos);
+
+    ImVec2 vMin = ImGui::GetWindowContentRegionMin();
+    spdlog::info("content region min x: {} y: {}", vMin.x, vMin.y);
+    // ImVec2 vMax = ImGui::GetWindowContentRegionMax();
+
+    vMin.x += ImGui::GetWindowPos().x;
+    vMin.y += ImGui::GetWindowPos().y;
+    spdlog::info("content region min adjusted x: {} y: {}", vMin.x, vMin.y);
+
+    // vMax.x += ImGui::GetWindowPos().x;
+    // vMax.y += ImGui::GetWindowPos().y;
+
+    float buttonState =
+        glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+    if (buttonState == 1.0f) {
+      spdlog::info("cursor x: {} y: {}", xpos, ypos);
+    }
+    shader_.setVec4(ImVec4{static_cast<float>(xpos - vMin.x),
+                           static_cast<float>(ypos - vMin.y), buttonState,
+                           0.0f},
+                    "iMouse");
+
     float secondsSinceEpoch = getSecondsSinceStart();
     shader_.setFloat(secondsSinceEpoch, "time");
 
@@ -145,13 +186,6 @@ public:
     vertexIndexBuffer_->draw();
 
     frameBuffer_->unbind();
-
-    ImGui::SetNextWindowPos(pos_, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(size_, ImGuiCond_Once);
-    ImGui::Begin(name_.c_str(), &open_);
-
-    ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-    // size_ = {viewportPanelSize.x, viewportPanelSize.y};
 
     // mCamera->set_aspect(mSize.x / mSize.y);
     // mCamera->update(mShader.get());
@@ -163,6 +197,8 @@ public:
                  ImVec2{1, 0});
 
     ImGui::End();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleVar();
   }
 
   void destroy() override { vertexIndexBuffer_->destroy(); }
