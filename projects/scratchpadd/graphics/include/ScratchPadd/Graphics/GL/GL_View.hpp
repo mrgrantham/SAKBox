@@ -127,6 +127,15 @@ public:
 
     frameBuffer_->bind();
 
+    auto [width, height] = frameBuffer_->getSize();
+
+    // This grabs the actual value and should be equal to the size used to set
+    // the framebuffer GLint m_viewport[4]; glGetIntegerv( GL_VIEWPORT,
+    // m_viewport ); ImVec2
+    // iResolution(static_cast<float>(m_viewport[2]),static_cast<float>(m_viewport[3]));
+
+    ImVec2 iResolution(static_cast<float>(width), static_cast<float>(height));
+    shader_.setVec2(iResolution, "iResolution");
     shader_.setVec4(shapeColor_, "uniform_color");
 
     float secondsSinceEpoch = getSecondsSinceStart();

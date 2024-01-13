@@ -49,9 +49,7 @@ public:
             .setVertexShaderPath(getShaderPath("vertex_play2", shaderFolder))
             .setGeometry(circle.vertices(), circle.indices())
             .build();
-    PADDLOG_INFO("created view 1");
     graphics_->addView(std::move(view1));
-    PADDLOG_INFO("added view 1");
 
     auto view2 =
         GetGL_ViewBuilder()
@@ -63,12 +61,35 @@ public:
             .setVertexShaderPath(getShaderPath("vertex_play", shaderFolder))
             .setGeometry(SampleItems::vertices, SampleItems::indices)
             .build();
-    PADDLOG_INFO("created view 2");
-
     graphics_->addView(std::move(view2));
-    PADDLOG_INFO("added view 2");
 
-    PADDLOG_INFO("Added views");
+    auto view3 =
+        GetGL_ViewBuilder()
+            .setName("GL Example View 3")
+            .setFrameBuffer(800, 600)
+            .setSize(300, 300)
+            .setPosition(400, 40)
+            .setFragmentShaderPath(
+                getShaderPath("fragment_play3", shaderFolder))
+            .setVertexShaderPath(getShaderPath("vertex_play3", shaderFolder))
+            .setGeometry(SampleItems::Square::vertices,
+                         SampleItems::Square::indices)
+            .build();
+    graphics_->addView(std::move(view3));
+
+    auto view4 =
+        GetGL_ViewBuilder()
+            .setName("GL Example View 4")
+            .setFrameBuffer(300, 300)
+            .setSize(300, 300)
+            .setPosition(800, 40)
+            .setFragmentShaderPath(
+                getShaderPath("fragment_play4", shaderFolder))
+            .setVertexShaderPath(getShaderPath("vertex_play4", shaderFolder))
+            .setGeometry(SampleItems::Square::vertices,
+                         SampleItems::Square::indices)
+            .build();
+    graphics_->addView(std::move(view4));
   }
 
   void finishing() override {

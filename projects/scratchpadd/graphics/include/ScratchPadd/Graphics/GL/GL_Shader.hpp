@@ -26,7 +26,8 @@
 class GL_Shader {
 private:
   unsigned int programID_{0};
-  unsigned int compileShader(unsigned int type, const std::string &source) {
+  unsigned int compileShader(unsigned int type, const std::string &shaderFile,
+                             const std::string &source) {
     unsigned int id = glCreateShader(type);
     const char *source_c_str = source.c_str();
     glShaderSource(id, 1, &source_c_str, nullptr);
@@ -44,6 +45,8 @@ private:
                     message.get());
       glDeleteShader(id);
       return 0;
+    } else {
+      spdlog::info("Successful compile of {}", shaderFile);
     }
     return id;
   }
@@ -72,9 +75,10 @@ public:
     spdlog::info("Fragment Shader: \n{}", fragmentShaderString);
 
     programID_ = glCreateProgram();
-    unsigned int v_shader = compileShader(GL_VERTEX_SHADER, vertexShaderString);
-    unsigned int f_shader =
-        compileShader(GL_FRAGMENT_SHADER, fragmentShaderString);
+    unsigned int v_shader =
+        compileShader(GL_VERTEX_SHADER, vertexShaderFile, vertexShaderString);
+    unsigned int f_shader = compileShader(
+        GL_FRAGMENT_SHADER, fragmentShaderFile, fragmentShaderString);
     glAttachShader(programID_, v_shader);
     glAttachShader(programID_, f_shader);
     glLinkProgram(programID_);
@@ -102,6 +106,11 @@ public:
   void setVec4(const ImVec4 &vec4, const std::string &name) {
     GLint myLoc = glGetUniformLocation(programID_, name.c_str());
     glProgramUniform4fv(programID_, myLoc, 1, (float *)&vec4);
+  }
+
+  void setVec2(const ImVec2 &vec2, const std::string &name) {
+    GLint myLoc = glGetUniformLocation(programID_, name.c_str());
+    glProgramUniform2fv(programID_, myLoc, 1, (float *)&vec2);
   }
 
   void setFloat(const float &val, const std::string &name) {

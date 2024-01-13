@@ -9,6 +9,9 @@ private:
   int32_t width_ = 0;
 
 public:
+  std::pair<int32_t, int32_t> getSize() override {
+    return std::make_pair(width_, height_);
+  }
   void create(int32_t width, int32_t height) override {
     width_ = width;
     height_ = height;

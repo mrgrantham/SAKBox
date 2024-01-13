@@ -51,6 +51,7 @@ public:
     ImVec4 backgroundColor_{ScratchPadd::Color::Blue};
 
   public:
+    virtual std::pair<int32_t, int32_t> getSize() = 0;
     ImVec4 *getBackgroundColor() { return &backgroundColor_; }
     void setBackgroundColor(ImVec4 &backgroundColor) {
       backgroundColor_ = backgroundColor;
