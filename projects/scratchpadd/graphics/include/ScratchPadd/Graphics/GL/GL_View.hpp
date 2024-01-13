@@ -155,19 +155,30 @@ public:
     shader_.setVec2(iResolution, "iResolution");
     shader_.setVec4(shapeColor_, "uniform_color");
 
+    int wWidth, wHeight;
+    glfwGetWindowSize(window_, &wWidth, &wHeight);
+    spdlog::info("Window w: {} h: {}", wWidth, wHeight);
     double xpos, ypos;
     glfwGetCursorPos(window_, &xpos, &ypos);
+
+    ImVec2 vMax = ImGui::GetWindowContentRegionMax();
+    spdlog::info("content region max x: {} y: {}", vMax.x, vMax.y);
 
     ImVec2 vMin = ImGui::GetWindowContentRegionMin();
     spdlog::info("content region min x: {} y: {}", vMin.x, vMin.y);
     // ImVec2 vMax = ImGui::GetWindowContentRegionMax();
 
-    vMin.x += ImGui::GetWindowPos().x;
-    vMin.y += ImGui::GetWindowPos().y;
+    ImVec2 wPos(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y);
+    spdlog::info("GetWindowPos x: {} y: {}", wPos.x, wPos.y);
+
+    vMin.x += wPos.x;
+    vMin.y += wPos.y;
     spdlog::info("content region min adjusted x: {} y: {}", vMin.x, vMin.y);
 
     // vMax.x += ImGui::GetWindowPos().x;
     // vMax.y += ImGui::GetWindowPos().y;
+    vMax.x += wPos.x;
+    vMax.y += wPos.y;
 
     float buttonState =
         glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
