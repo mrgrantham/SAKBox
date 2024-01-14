@@ -129,7 +129,7 @@ public:
     // ImGui::SetNextWindowSize(size_, ImGuiCond_Once);
     ImGui::SetNextWindowPos(pos_, ImGuiCond_Always);
     ImGui::SetNextWindowSize(size_, ImGuiCond_Always);
-
+    // ImGui::SetNextWindowContentSize(size_);
     // These vars ensure that the padding is removed so that mouse coords can be
     // calculated correctly
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
@@ -157,38 +157,49 @@ public:
 
     int wWidth, wHeight;
     glfwGetWindowSize(window_, &wWidth, &wHeight);
-    spdlog::info("Window w: {} h: {}", wWidth, wHeight);
-    double xpos, ypos;
-    glfwGetCursorPos(window_, &xpos, &ypos);
+    // spdlog::info("Window w: {} h: {}", wWidth, wHeight);
+    double cursorPosX, cursorPosY;
+    glfwGetCursorPos(window_, &cursorPosX, &cursorPosY);
+    // spdlog::info("glfwGetCursorPos x: {} y: {}", cursorPosX, cursorPosY);
+    ImVec2 mousePos = ImGui::GetMousePos();
+    // spdlog::info("GetMousePos x: {} y: {}", mousePos.x, mousePos.y);
 
     ImVec2 vMax = ImGui::GetWindowContentRegionMax();
-    spdlog::info("content region max x: {} y: {}", vMax.x, vMax.y);
+    // spdlog::info("content region max x: {} y: {}", vMax.x, vMax.y);
 
     ImVec2 vMin = ImGui::GetWindowContentRegionMin();
-    spdlog::info("content region min x: {} y: {}", vMin.x, vMin.y);
+    // spdlog::info("content region min x: {} y: {}", vMin.x, vMin.y);
     // ImVec2 vMax = ImGui::GetWindowContentRegionMax();
 
-    ImVec2 wPos(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y);
-    spdlog::info("GetWindowPos x: {} y: {}", wPos.x, wPos.y);
+    ImVec2 windowPos(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y);
+    // spdlog::info("GetWindowPos windowPos.x: {} windowPos.y: {}", windowPos.x,
+    // windowPos.y);
 
-    vMin.x += wPos.x;
-    vMin.y += wPos.y;
-    spdlog::info("content region min adjusted x: {} y: {}", vMin.x, vMin.y);
-
-    // vMax.x += ImGui::GetWindowPos().x;
-    // vMax.y += ImGui::GetWindowPos().y;
-    vMax.x += wPos.x;
-    vMax.y += wPos.y;
+    ImVec2 adjusted(vMin.x + windowPos.x, vMin.y + windowPos.y);
+    // spdlog::info("content region min adjusted adjusted.x: {} adjusted.y: {}",
+    // adjusted.x, adjusted.y);
 
     float buttonState =
         glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-    if (buttonState == 1.0f) {
-      spdlog::info("cursor x: {} y: {}", xpos, ypos);
-    }
-    shader_.setVec4(ImVec4{static_cast<float>(xpos - vMin.x),
-                           static_cast<float>(ypos - vMin.y), buttonState,
-                           0.0f},
-                    "iMouse");
+
+    float yRatio = vMax.y / viewportPanelSize.y;
+
+    float contentAdjustedY =
+        (viewportPanelSize.y - (cursorPosY - adjusted.y)) * yRatio;
+
+    ImVec4 iMouse(static_cast<float>(cursorPosX - adjusted.x), contentAdjustedY,
+                  buttonState, 0.0f);
+    // spdlog::info("iMouse x: {} y: {} z: {} w: {}", iMouse.x,
+    // iMouse.y,iMouse.z,iMouse.w); spdlog::info("ViewPort Panel Size x: {} y:
+    // {}", viewportPanelSize.x, viewportPanelSize.y);
+
+    // Getting imouse calculations correct is a bit cumbersome.
+    // Currently window padding is off in imgui to avoid additional
+    // calculations.
+
+    // Also TODO: translate between the framebufffer size and the content area.
+    // Currently they need to be the same size to get iMouse to work correctly
+    shader_.setVec4(iMouse, "iMouse");
 
     float secondsSinceEpoch = getSecondsSinceStart();
     shader_.setFloat(secondsSinceEpoch, "time");

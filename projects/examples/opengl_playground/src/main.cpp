@@ -54,9 +54,9 @@ public:
     auto view2 =
         GetGL_ViewBuilder()
             .setName("GL Example View 2")
-            .setFrameBuffer(400, 500)
-            .setSize(200, 200)
-            .setPosition(20, 500)
+            .setFrameBuffer(300, 300)
+            .setSize(300, 300)
+            .setPosition(20, 350)
             .setFragmentShaderPath(getShaderPath("fragment_play", shaderFolder))
             .setVertexShaderPath(getShaderPath("vertex_play", shaderFolder))
             .setGeometry(SampleItems::vertices, SampleItems::indices)
@@ -104,6 +104,47 @@ public:
                          SampleItems::Square::indices)
             .build();
     graphics_->addView(std::move(view5));
+
+    auto view6 =
+        GetGL_ViewBuilder()
+            .setName("GL Example View 6")
+            .setFrameBuffer(300, 300)
+            .setSize(300, 300)
+            .setPosition(400, 350)
+            .setFragmentShaderPath(
+                getShaderPath("fragment_play6", shaderFolder))
+            .setVertexShaderPath(getShaderPath("vertex_default", shaderFolder))
+            .setGeometry(SampleItems::vertices, SampleItems::indices)
+            .build();
+    graphics_->addView(std::move(view6));
+
+    auto view7 =
+        GetGL_ViewBuilder()
+            .setName("GL Example View 7")
+            .setFrameBuffer(300, 300)
+            .setSize(300, 300)
+            .setPosition(800, 350)
+            .setFragmentShaderPath(
+                getShaderPath("fragment_play7", shaderFolder))
+            .setVertexShaderPath(getShaderPath("vertex_default", shaderFolder))
+            .setGeometry(SampleItems::Square::vertices,
+                         SampleItems::Square::indices)
+            .build();
+    graphics_->addView(std::move(view7));
+
+    auto view8 =
+        GetGL_ViewBuilder()
+            .setName("GL Example View 8")
+            .setFrameBuffer(300, 300)
+            .setSize(300, 300)
+            .setPosition(1200, 350)
+            .setFragmentShaderPath(
+                getShaderPath("fragment_play8", shaderFolder))
+            .setVertexShaderPath(getShaderPath("vertex_default", shaderFolder))
+            .setGeometry(SampleItems::Square::vertices,
+                         SampleItems::Square::indices)
+            .build();
+    graphics_->addView(std::move(view8));
   }
 
   void finishing() override {
