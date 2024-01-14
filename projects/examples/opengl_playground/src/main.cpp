@@ -145,6 +145,20 @@ public:
                          SampleItems::Square::indices)
             .build();
     graphics_->addView(std::move(view8));
+
+    auto view9 =
+        GetGL_ViewBuilder()
+            .setName("GL Example View 9")
+            .setFrameBuffer(300, 300)
+            .setSize(300, 300)
+            .setPosition(20, 670)
+            .setFragmentShaderPath(
+                getShaderPath("fragment_play9", shaderFolder))
+            .setVertexShaderPath(getShaderPath("vertex_default", shaderFolder))
+            .setGeometry(SampleItems::Square::vertices,
+                         SampleItems::Square::indices)
+            .build();
+    graphics_->addView(std::move(view9));
   }
 
   void finishing() override {
