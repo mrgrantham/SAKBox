@@ -202,7 +202,7 @@ public:
     shader_.setVec4(iMouse, "iMouse");
 
     float secondsSinceEpoch = getSecondsSinceStart();
-    shader_.setFloat(secondsSinceEpoch, "time");
+    shader_.setFloat(secondsSinceEpoch, "iTime");
 
     shader_.update();
     vertexIndexBuffer_->draw();

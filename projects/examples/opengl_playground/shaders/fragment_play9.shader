@@ -6,7 +6,7 @@ layout(location = 0) out vec4 color;
 uniform vec4 uniform_color;
 uniform vec2 iResolution;
 uniform vec4 iMouse;
-uniform float time;
+uniform float iTime;
 
 vec3 palette( float t) {
     vec3 a = vec3(0.5, 0.5, 0.5);
@@ -23,8 +23,8 @@ void main() {
     for (float i = 0.0; i < 4.0; i++) {
         uv = fract(uv * 1.5) - 0.5;
         float d = length(uv) * exp(-length(uv0));
-        vec3 col = palette(length(uv0) + i*.4 + time*.4);
-        d = sin(d*8. + time)/8.f;
+        vec3 col = palette(length(uv0) + i*.4 + iTime*.4);
+        d = sin(d*8. + iTime)/8.f;
         d = abs(d);
         d = 0.01 / d;
         finalColor += col * d;

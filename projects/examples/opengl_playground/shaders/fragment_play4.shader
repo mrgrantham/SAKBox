@@ -5,7 +5,7 @@ layout(location = 0) out vec4 color;
 
 uniform vec4 uniform_color;
 uniform vec2 iResolution;
-uniform float time;
+uniform float iTime;
 
 void main() {
 

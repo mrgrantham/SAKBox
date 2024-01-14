@@ -6,7 +6,7 @@ layout(location = 0) out vec4 color;
 uniform vec4 uniform_color;
 uniform vec2 iResolution;
 uniform vec4 iMouse;
-uniform float time;
+uniform float iTime;
 
 float dot2( vec2 v ) { return dot(v,v); }
 float sdfCoolS( in vec2 p )

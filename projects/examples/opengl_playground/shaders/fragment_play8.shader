@@ -6,13 +6,13 @@ layout(location = 0) out vec4 color;
 uniform vec4 uniform_color;
 uniform vec2 iResolution;
 uniform vec4 iMouse;
-uniform float time;
+uniform float iTime;
 
 float sun(vec2 uv, float battery)
 {
  	float val = smoothstep(0.3, 0.29, length(uv));
  	float bloom = smoothstep(0.7, 0.0, length(uv));
-    float cut = 3.0 * sin((uv.y + time * 0.2 * (battery + 0.02)) * 100.0) 
+    float cut = 3.0 * sin((uv.y + iTime * 0.2 * (battery + 0.02)) * 100.0) 
 				+ clamp(uv.y * 14.0 + 1.0, -6.0, 6.0);
     cut = clamp(cut, 0.0, 1.0);
     return clamp(val * cut, 0.0, 1.0) + bloom * 0.6;
@@ -21,7 +21,7 @@ float sun(vec2 uv, float battery)
 float grid(vec2 uv, float battery)
 {
     vec2 size = vec2(uv.y, uv.y * uv.y * 0.2) * 0.01;
-    uv += vec2(0.0, time * 4.0 * (battery + 0.05));
+    uv += vec2(0.0, iTime * 4.0 * (battery + 0.05));
     uv = abs(fract(uv) - 0.5);
  	vec2 lines = smoothstep(size, vec2(0.0), uv);
  	lines += smoothstep(size * 5.0, vec2(0.0), uv) * 0.4 * battery;
@@ -116,7 +116,7 @@ void main() {
             
             // fuji
             float fujiVal = sdTrapezoid( uv  + vec2(-0.75+sunUV.y * 0.0, 0.5), 1.75 + pow(uv.y * uv.y, 2.1), 0.2, 0.5);
-            float waveVal = uv.y + sin(uv.x * 20.0 + time * 2.0) * 0.05 + 0.2;
+            float waveVal = uv.y + sin(uv.x * 20.0 + iTime * 2.0) * 0.05 + 0.2;
             float wave_width = smoothstep(0.0,0.01,(waveVal));
             
             // fuji color
@@ -133,8 +133,8 @@ void main() {
             
             // cloud
             vec2 cloudUV = uv;
-            cloudUV.x = mod(cloudUV.x + time * 0.1, 4.0) - 2.0;
-            float cloudTime = time * 0.5;
+            cloudUV.x = mod(cloudUV.x + iTime * 0.1, 4.0) - 2.0;
+            float cloudTime = iTime * 0.5;
             float cloudY = -0.5;
             float cloudVal1 = sdCloud(cloudUV, 
                                      vec2(0.1 + sin(cloudTime + 140.5)*0.1,cloudY), 
