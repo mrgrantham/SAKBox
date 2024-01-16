@@ -214,6 +214,10 @@ cmake(
             "-Wl,-framework,Carbon",
             "-Wl,-liconv",
         ],
+        "@platforms//os:linux": [
+        "-lGL",
+        "-lX11",
+    ],
         "//conditions:default": [],
     }),
 )

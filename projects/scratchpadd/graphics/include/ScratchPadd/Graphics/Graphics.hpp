@@ -87,6 +87,7 @@ public:
     bool show_another_window = false;
 
   public:
+    void setWindow(GLFWwindow *window) override {}
     void setBackgroundColor(ImVec4 &backgroundColor) override {
       appBackground_ = backgroundColor;
     };

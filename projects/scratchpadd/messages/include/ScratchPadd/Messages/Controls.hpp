@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 
 // These data structures will handle the lifecycle of generic controls that are
 // advertised by each padd.
