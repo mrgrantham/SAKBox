@@ -7,7 +7,7 @@ filegroup(
 )
 
 cc_binary(
-    name = "opengl_playground",
+    name = "shader_playground",
         srcs = ["src/main.cpp"],
         deps = [
         "//projects/scratchpadd/basis:basis",
@@ -20,4 +20,4 @@ cc_binary(
 
 
 
-clang_format(name = "opengl_playground")
+clang_format(name = "shader_playground")

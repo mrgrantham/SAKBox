@@ -35,7 +35,7 @@ public:
     PADDLOG_INFO("setup windows");
 
     const std::string shaderFolder =
-        "/projects/examples/opengl_playground/shaders/";
+        "/projects/examples/shader_playground/shaders/";
 
     SampleItems::Circle circle(0.0, 0.0, 0.8, 100);
     auto view1 =
