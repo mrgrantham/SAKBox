@@ -1,9 +1,10 @@
 #include <spdlog/spdlog.h>
 #include <stdlib.h>
-
 #include "backward/backward.hpp"
+
 #include <ScratchPadd/Graphics/Graphics.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <DataDepRetriever/DataDependencies.hpp>
 
 using namespace std::chrono_literals;
 
@@ -190,9 +191,9 @@ public:
 };
 
 int main(int argc, char **argv) {
-  // Makes data deps declared in BUILD file retrievable. Will hang otherwise
-  // when GetFullDependencyPath is called
-  ScratchPadd::Data::ConfigureDependencies(argv[0]);
+  // Makes data deps declared in BUILD file retrievable. Will hang
+  // when GetFullDependencyPath is called if this is not called first
+  DataDepRetriever::ConfigureDependencies(argv[0]);
   spdlog::info("Signal handling");
   backward::SignalHandling sh;
   ScratchPadd::System *spsystem = ScratchPadd::SystemBuilder<Playground>();

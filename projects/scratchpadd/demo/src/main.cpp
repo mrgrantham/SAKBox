@@ -1,4 +1,3 @@
-#include <ScratchPadd/DataDependencies.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 
 // Worker Padds used in system
@@ -26,7 +25,7 @@ ScratchPadd::System *spsystem =
 #endif
 
 int main(int argc, char **argv) {
-  ScratchPadd::Data::ConfigureDependencies(argv[0]);
+  DataDepRetriever::ConfigureDependencies(argv[0]);
   SCOPED_METHOD_TIMER();
 
   // signal(SIGINT, signal_handler);

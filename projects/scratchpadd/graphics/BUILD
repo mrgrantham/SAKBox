@@ -38,6 +38,7 @@ cc_library(
         "@imgui//:imgui_backend_opengl3",
         "//projects/scratchpadd/basis:basis",
         "//projects/scratchpadd/messages:messages",
+        "//projects/data_dep_retriever:data_dep_retriever",
     ],
     data = [":shaders"],
 )

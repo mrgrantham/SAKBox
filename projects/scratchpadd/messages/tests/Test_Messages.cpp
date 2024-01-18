@@ -1,6 +1,6 @@
 #include <ScratchPadd/Base.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
-#include <ScratchPadd/DataDependencies.hpp>
+#include <DataDepRetriever/DataDependencies.hpp>
 
 #include <gtest/gtest.h>
 // This will best be tested by implementing a dummy System subclass 

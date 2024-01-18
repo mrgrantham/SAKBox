@@ -5,7 +5,7 @@ load("//tools/clang_format:clang_format.bzl", "clang_format")
 cc_library(
     name = "basis",
     hdrs = glob(["include/**/*.hpp"]),
-    srcs = ["src/DataDependencies.cpp",],
+    srcs = [],
     visibility = ["//visibility:public"],
     defines = [
         "PROJECT_NAME=\\\"SCRATCHPADD\\\"",
@@ -17,7 +17,6 @@ cc_library(
         "@boost//:filesystem",
         "@fmt",
         "@spdlog",
-        "@bazel_tools//tools/cpp/runfiles",
         "//projects/scratchpadd/utilities:utilities",
     ],
 )

@@ -8,7 +8,7 @@
 #include "GL_VertexIndexBuffer.hpp"
 #include <ScratchPadd/Graphics/SampleItems.hpp>
 
-#include <ScratchPadd/DataDependencies.hpp>
+#include <DataDepRetriever/DataDependencies.hpp>
 
 const std::string VEXTEX_SHADER_EXTENSION = "vert";
 const std::string FRAGMENT_SHADER_EXTENSION = "frag";
@@ -67,7 +67,7 @@ static std::string GetShaderPath(
 
   std::string relativePath = workspace + dirPath + name + "." + extension;
   auto shaderPathString =
-      ScratchPadd::Data::GetFullDependencyPath(relativePath);
+      DataDepRetriever::GetFullDependencyPath(relativePath);
   // #endif
   if (!shaderPathString) {
     spdlog::error("Shader file not found at : {}", relativePath);

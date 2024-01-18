@@ -1,4 +1,4 @@
-#include <ScratchPadd/DataDependencies.hpp>
+#include <DataDepRetriever/DataDependencies.hpp>
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #include <spdlog/spdlog.h>
 
@@ -11,7 +11,7 @@ using bazel::tools::cpp::runfiles::Runfiles;
 std::unique_ptr<Runfiles> runfiles;
 
 // TODO: make this only runnable once with an assert
-void ScratchPadd::Data::ConfigureDependencies(const std::string &processName) {
+void DataDepRetriever::ConfigureDependencies(const std::string &processName) {
   std::string error;
   runfiles.reset(Runfiles::Create(processName, &error));
   if (runfiles == nullptr) {
@@ -22,14 +22,15 @@ void ScratchPadd::Data::ConfigureDependencies(const std::string &processName) {
 }
 
 std::optional<std::string>
-ScratchPadd::Data::GetFullDependencyPath(const std::string &dependencyPath) {
+DataDepRetriever::GetFullDependencyPath(const std::string &dependencyPath) {
   std::string path = runfiles->Rlocation(dependencyPath);
   if (!std::filesystem::exists(path)) {
     spdlog::info("Path does not exist: {}", path);
-    for (auto const &dir_entry : std::filesystem::recursive_directory_iterator(
-             "/private/var/tmp/_bazel_jamesgrantham")) {
-      spdlog::info("entry: {}", dir_entry.path().string());
-    }
+    // for (auto const &dir_entry :
+    // std::filesystem::recursive_directory_iterator(
+    //          "/private/var/tmp/_bazel_jamesgrantham")) {
+    //   spdlog::info("entry: {}", dir_entry.path().string());
+    // }
     return std::nullopt;
   }
   spdlog::info("GetFullDependencyPath: {}", path);
