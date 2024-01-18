@@ -3,7 +3,7 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
 filegroup(
     name = "shaders",
-    data = glob(["include/ScratchPadd/Graphics/GL/Shaders/*.shader"]),
+    data = glob(["include/ScratchPadd/Graphics/GL/Shaders/**"]),
 )
 
 cc_library(

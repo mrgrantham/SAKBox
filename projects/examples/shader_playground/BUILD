@@ -3,7 +3,7 @@ load("//tools/clang_format:clang_format.bzl", "clang_format")
 
 filegroup(
     name = "shaders",
-    data = glob(["shaders/*.shader"]),
+    data = glob(["shaders/**"],allow_empty = False),
 )
 
 cc_binary(

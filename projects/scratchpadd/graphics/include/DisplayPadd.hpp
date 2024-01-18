@@ -41,8 +41,8 @@ public:
                     .setFrameBuffer(800, 600)
                     .setSize(300, 300)
                     .setPosition(20, 40)
-                    .setFragmentShaderPath(getShaderPath("fragment"))
-                    .setVertexShaderPath(getShaderPath("vertex"))
+                    .setFragmentShaderPath(GetFragmentShaderPath("example"))
+                    .setVertexShaderPath(GetVertexShaderPath("example"))
                     .setGeometry(SampleItems::vertices, SampleItems::indices)
                     .build();
     graphics_->addView(std::move(view));

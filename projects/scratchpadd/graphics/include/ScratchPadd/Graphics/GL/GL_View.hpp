@@ -10,10 +10,13 @@
 
 #include <ScratchPadd/DataDependencies.hpp>
 
-static std::string getShaderPath(const std::string &shaderName,
-                                 const std::string &shaderDirPath =
-                                     "/projects/scratchpadd/graphics/include/"
-                                     "ScratchPadd/Graphics/GL/Shaders/") {
+const std::string VEXTEX_SHADER_EXTENSION = "vert";
+const std::string FRAGMENT_SHADER_EXTENSION = "frag";
+
+static std::string GetShaderPath(
+    const std::string &name, const std::string &extension,
+    const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
+                                 "ScratchPadd/Graphics/GL/Shaders/") {
 
   // #if defined(__APPLE__)
 
@@ -62,14 +65,29 @@ static std::string getShaderPath(const std::string &shaderName,
   // if this changes then the workspace name needs to change too
   std::string workspace = "monograntham";
 
-  auto shaderPathString = ScratchPadd::Data::GetFullDependencyPath(
-      workspace + shaderDirPath + shaderName + ".shader");
+  std::string relativePath = workspace + dirPath + name + "." + extension;
+  auto shaderPathString =
+      ScratchPadd::Data::GetFullDependencyPath(relativePath);
   // #endif
   if (!shaderPathString) {
-    spdlog::error("Shader file not found");
+    spdlog::error("Shader file not found at : {}", relativePath);
     exit(1);
   }
   return shaderPathString.value();
+}
+
+static std::string GetVertexShaderPath(
+    const std::string &name,
+    const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
+                                 "ScratchPadd/Graphics/GL/Shaders/") {
+  return GetShaderPath(name, VEXTEX_SHADER_EXTENSION, dirPath);
+}
+
+static std::string GetFragmentShaderPath(
+    const std::string &name,
+    const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
+                                 "ScratchPadd/Graphics/GL/Shaders/") {
+  return GetShaderPath(name, FRAGMENT_SHADER_EXTENSION, dirPath);
 }
 
 class GL_ViewBuilder;
@@ -102,7 +120,8 @@ public:
     name_ = name;
     frameBuffer_->create(800, 600);
     vertexIndexBuffer_->create(SampleItems::vertices, SampleItems::indices);
-    shader_.generate(getShaderPath("vertex"), getShaderPath("fragment"));
+    shader_.generate(GetVertexShaderPath("example"),
+                     GetFragmentShaderPath("example"));
   }
 
   void setBackgroundColor(ImVec4 &backgroundColor) override {

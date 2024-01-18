@@ -44,9 +44,8 @@ public:
             .setFrameBuffer(800, 600)
             .setSize(300, 300)
             .setPosition(20, 40)
-            .setFragmentShaderPath(
-                getShaderPath("fragment_play2", shaderFolder))
-            .setVertexShaderPath(getShaderPath("vertex_play2", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("play2", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("play2", shaderFolder))
             .setGeometry(circle.vertices(), circle.indices())
             .build();
     graphics_->addView(std::move(view1));
@@ -57,8 +56,8 @@ public:
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(20, 350)
-            .setFragmentShaderPath(getShaderPath("fragment_play", shaderFolder))
-            .setVertexShaderPath(getShaderPath("vertex_play", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("play", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("play", shaderFolder))
             .setGeometry(SampleItems::vertices, SampleItems::indices)
             .build();
     graphics_->addView(std::move(view2));
@@ -69,9 +68,8 @@ public:
             .setFrameBuffer(800, 600)
             .setSize(300, 300)
             .setPosition(400, 40)
-            .setFragmentShaderPath(
-                getShaderPath("fragment_play3", shaderFolder))
-            .setVertexShaderPath(getShaderPath("vertex_play3", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("play3", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("play3", shaderFolder))
             .setGeometry(SampleItems::Square::vertices,
                          SampleItems::Square::indices)
             .build();
@@ -83,9 +81,8 @@ public:
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(800, 40)
-            .setFragmentShaderPath(
-                getShaderPath("fragment_play4", shaderFolder))
-            .setVertexShaderPath(getShaderPath("vertex_play4", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("play4", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("play4", shaderFolder))
             .setGeometry(SampleItems::Square::vertices,
                          SampleItems::Square::indices)
             .build();
@@ -97,9 +94,8 @@ public:
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(1200, 40)
-            .setFragmentShaderPath(
-                getShaderPath("fragment_play5", shaderFolder))
-            .setVertexShaderPath(getShaderPath("vertex_default", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("play5", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
             .setGeometry(SampleItems::Square::vertices,
                          SampleItems::Square::indices)
             .build();
@@ -111,9 +107,8 @@ public:
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(400, 350)
-            .setFragmentShaderPath(
-                getShaderPath("fragment_play6", shaderFolder))
-            .setVertexShaderPath(getShaderPath("vertex_default", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("play6", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
             .setGeometry(SampleItems::vertices, SampleItems::indices)
             .build();
     graphics_->addView(std::move(view6));
@@ -124,9 +119,8 @@ public:
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(800, 350)
-            .setFragmentShaderPath(
-                getShaderPath("fragment_play7", shaderFolder))
-            .setVertexShaderPath(getShaderPath("vertex_default", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("play7", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
             .setGeometry(SampleItems::Square::vertices,
                          SampleItems::Square::indices)
             .build();
@@ -138,9 +132,8 @@ public:
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(1200, 350)
-            .setFragmentShaderPath(
-                getShaderPath("fragment_play8", shaderFolder))
-            .setVertexShaderPath(getShaderPath("vertex_default", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("play8", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
             .setGeometry(SampleItems::Square::vertices,
                          SampleItems::Square::indices)
             .build();
@@ -152,9 +145,8 @@ public:
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(20, 670)
-            .setFragmentShaderPath(
-                getShaderPath("fragment_play9", shaderFolder))
-            .setVertexShaderPath(getShaderPath("vertex_default", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("play9", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
             .setGeometry(SampleItems::Square::vertices,
                          SampleItems::Square::indices)
             .build();
