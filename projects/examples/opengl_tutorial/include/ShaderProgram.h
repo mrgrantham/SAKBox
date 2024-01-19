@@ -15,4 +15,5 @@ public:
 
   void activate();
   void destroy();
+  GLuint ID();
 };

@@ -118,9 +118,10 @@ int main(int argc, char **argv) {
                                    6 * sizeof(float),
                                    (void *)(3 * sizeof(float)));
   vertexArrayObject.unbind();
-
   vertexBufferObject.unbind();
   elementBufferObject.unbind();
+
+  GLuint uniformID = glGetUniformLocation(shaderProgram.ID(), "scale");
 
   checkOpenGLErrors("elementBufferObject");
 
@@ -133,6 +134,7 @@ int main(int argc, char **argv) {
     glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     shaderProgram.activate();
+    glUniform1f(uniformID, 0.25f);
     vertexArrayObject.bind();
     glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
     glfwSwapBuffers(window);

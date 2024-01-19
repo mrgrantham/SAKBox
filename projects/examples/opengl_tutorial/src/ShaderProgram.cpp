@@ -65,3 +65,5 @@ ShaderProgram::ShaderProgram(const std::string &vertexFile,
 
 void ShaderProgram::activate() { glUseProgram(ID_); }
 void ShaderProgram::destroy() { glDeleteProgram(ID_); }
+
+GLuint ShaderProgram::ID() { return ID_; }
