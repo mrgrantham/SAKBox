@@ -7,8 +7,11 @@
 #include <spdlog/spdlog.h>
 
 #include <DataDepRetriever/DataDependencies.hpp>
+#include <ElementBufferObject.h>
 #include <Error.h>
 #include <Shader.h>
+#include <VertexArrayObject.h>
+#include <VertexBufferObject.h>
 
 static std::string GetShaderPath(const std::string &name,
                                  const std::string &extension,
@@ -94,30 +97,18 @@ int main(int argc, char **argv) {
 
   Shader shader(vertexShaderFilePath, fragmentShaderFilePath);
 
-  GLuint vertexArrayObject, vertexBufferObject, elementBufferObject;
+  VertexArrayObject vertexArrayObject;
+  vertexArrayObject.bind();
+  VertexBufferObject vertexBufferObject(vertices, sizeof(vertices));
+  ElementBufferObject elementBufferObject(indices, sizeof(indices));
 
-  glGenVertexArrays(1, &vertexArrayObject);
-  glGenBuffers(1, &vertexBufferObject);
-  glGenBuffers(1, &elementBufferObject);
+  vertexArrayObject.linkVertexBufferObject(vertexBufferObject, 0);
+  vertexArrayObject.unbind();
 
-  glBindVertexArray(vertexArrayObject);
+  vertexBufferObject.unbind();
+  elementBufferObject.unbind();
 
-  glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferObject);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
-               GL_STATIC_DRAW);
-
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-  glEnableVertexAttribArray(0);
-  checkOpenGLErrors("glEnableVertexAttribArray");
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glBindVertexArray(0);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-  checkOpenGLErrors("glBindVertexArray");
+  checkOpenGLErrors("elementBufferObject");
 
   glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
@@ -128,7 +119,7 @@ int main(int argc, char **argv) {
     glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     shader.activate();
-    glBindVertexArray(vertexArrayObject);
+    vertexArrayObject.bind();
     glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
     glfwSwapBuffers(window);
 
@@ -137,9 +128,8 @@ int main(int argc, char **argv) {
   }
 
   // Clean up
-  glDeleteVertexArrays(1, &vertexArrayObject);
-  glDeleteBuffers(1, &vertexBufferObject);
-
+  vertexArrayObject.destroy();
+  vertexBufferObject.destroy();
   shader.destroy();
 
   glfwDestroyWindow(window);

@@ -9,7 +9,7 @@ filegroup(
 cc_library(
     name = "opengl_tutorial_lib",
     hdrs = glob(["include/**/*.h"]),
-        srcs = ["src/Shader.cpp"],
+        srcs = ["src/Shader.cpp","src/VertexBufferObject.cpp","src/ElementBufferObject.cpp", "src/VertexArrayObject.cpp"],
         strip_include_prefix = "include/",
         deps = [
         "@glew",
