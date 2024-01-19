@@ -272,3 +272,11 @@ new_git_repository(
     build_file = "//third_party:openpnp-capture.BUILD",
     tag = "v0.0.24",
 )
+
+# Library used in opengl tutorial for textures (//projects/examples/opengl_totorial)
+new_git_repository(
+    name = "stb",
+    remote = "https://github.com/nothings/stb.git",
+    build_file = "//third_party:stb.BUILD",
+    commit = "f4a71b13373436a2866c5d68f8f80ac6f0bc1ffe", # latest commit for master on 01.19.2024
+)

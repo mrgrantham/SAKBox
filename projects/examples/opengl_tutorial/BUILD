@@ -3,13 +3,18 @@ load("//tools/clang_format:clang_format.bzl", "clang_format")
 
 filegroup(
     name = "shaders",
-    data = glob(["shaders/**"]),
+    data = glob(["resources/shaders/**"]),
+)
+
+filegroup(
+    name = "textures",
+    data = glob(["resources/textures/**"]),
 )
 
 cc_library(
     name = "opengl_tutorial_lib",
     hdrs = glob(["include/**/*.h"]),
-        srcs = ["src/ShaderProgram.cpp","src/VertexBufferObject.cpp","src/ElementBufferObject.cpp", "src/VertexArrayObject.cpp"],
+        srcs = ["src/ShaderProgram.cpp","src/VertexBufferObject.cpp","src/ElementBufferObject.cpp", "src/VertexArrayObject.cpp", "src/Texture.cpp"],
         strip_include_prefix = "include/",
         deps = [
         "@glew",
@@ -17,6 +22,7 @@ cc_library(
         "@backward",
         "@spdlog",
         "//projects/data_dep_retriever:data_dep_retriever",
+        "@stb"
         ],
         data = [":shaders"],
 )
@@ -32,7 +38,7 @@ cc_binary(
         "//projects/data_dep_retriever:data_dep_retriever",
         ":opengl_tutorial_lib",
         ],
-        data = [":shaders"],
+        data = [":shaders",":textures"],
 )
 
 

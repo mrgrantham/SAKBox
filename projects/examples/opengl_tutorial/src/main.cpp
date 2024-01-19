@@ -10,20 +10,23 @@
 #include <ElementBufferObject.h>
 #include <Error.h>
 #include <ShaderProgram.h>
+#include <Texture.h>
 #include <VertexArrayObject.h>
 #include <VertexBufferObject.h>
 
-static std::string GetShaderPath(const std::string &name,
-                                 const std::string &extension,
-                                 const std::string &dirPath) {
+static std::string GetFilePath(const std::string &name,
+                               const std::string &extension,
+                               const std::string &projectPath) {
 
-  std::string workspace = "monograntham";
+  std::string workspace = "monograntham/";
+  std::string project = "projects/examples/opengl_tutorial/";
 
-  std::string relativePath = workspace + dirPath + name + "." + extension;
+  std::string relativePath =
+      workspace + project + projectPath + name + "." + extension;
   auto shaderPathString = DataDepRetriever::GetFullDependencyPath(relativePath);
   // #endif
   if (!shaderPathString) {
-    spdlog::error("Shader file not found at : {}", relativePath);
+    spdlog::error("File not found at : {}", relativePath);
     exit(1);
   }
   return shaderPathString.value();
@@ -35,10 +38,10 @@ int main(int argc, char **argv) {
   // when GetFullDependencyPath is called if this is not called first
   DataDepRetriever::ConfigureDependencies(argv[0]);
 
-  std::string fragmentShaderFilePath = GetShaderPath(
-      "shader", "frag", "/projects/examples/opengl_tutorial/shaders/");
-  std::string vertexShaderFilePath = GetShaderPath(
-      "shader", "vert", "/projects/examples/opengl_tutorial/shaders/");
+  std::string fragmentShaderFilePath =
+      GetFilePath("shader", "frag", "resources/shaders/");
+  std::string vertexShaderFilePath =
+      GetFilePath("shader", "vert", "resources/shaders/");
 
   glfwInit();
 
@@ -50,26 +53,41 @@ int main(int argc, char **argv) {
   // This line is necessary for mac to work
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
+  //     // Orange Triforce
+  //   GLfloat vertices[] = {
+  //       //          COORDINATES                             //   COLORS
+  //       -0.5f,     -0.5f * float(sqrt(3)) / 3,    0.0f, 0.8f, 0.3f,
+  //       0.02f, // Lower left corner
+  //       0.5f,      -0.5f * float(sqrt(3)) / 3,    0.0f, 0.8f, 0.2f,
+  //       0.02f, // Lower right corner
+  //       0.0f,      0.5f * float(sqrt(3)) * 2 / 3, 0.0f, 1.0f, 0.6f,
+  //       0.32f, // Upper corner
+  //       -0.5f / 2, 0.5f * float(sqrt(3)) / 6,     0.0f, 0.9f, 0.45f,
+  //       0.17f, // Inner left
+  //       0.5f / 2,  0.5f * float(sqrt(3)) / 6,     0.0f, 0.9f, 0.45f,
+  //       0.17f, // Inner Right
+  //       0.0f,      -0.5f * float(sqrt(3)) / 3,    0.0f, 0.8f, 0.3f,
+  //       0.02f // Inner down
+  //   };
+
+  //   GLuint indices[] = {
+  //       0, 3, 5, // Lower left triangle
+  //       3, 2, 4, // Lower right triangle
+  //       5, 4, 1  // Upper triangle
+  //   };
+
+  // Square
   GLfloat vertices[] = {
       //          COORDINATES                             //   COLORS
-      -0.5f,     -0.5f * float(sqrt(3)) / 3,    0.0f, 0.8f, 0.3f,
-      0.02f, // Lower left corner
-      0.5f,      -0.5f * float(sqrt(3)) / 3,    0.0f, 0.8f, 0.2f,
-      0.02f, // Lower right corner
-      0.0f,      0.5f * float(sqrt(3)) * 2 / 3, 0.0f, 1.0f, 0.6f,
-      0.32f, // Upper corner
-      -0.5f / 2, 0.5f * float(sqrt(3)) / 6,     0.0f, 0.9f, 0.45f,
-      0.17f, // Inner left
-      0.5f / 2,  0.5f * float(sqrt(3)) / 6,     0.0f, 0.9f, 0.45f,
-      0.17f, // Inner Right
-      0.0f,      -0.5f * float(sqrt(3)) / 3,    0.0f, 0.8f, 0.3f,
-      0.02f // Inner down
+      -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // Lower left corner
+      -0.5f, 0.5f,  0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, // Upper left corner
+      0.5f,  0.5f,  0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // Upper right corner
+      0.5f,  -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, // Lower right corner
   };
 
   GLuint indices[] = {
-      0, 3, 5, // Lower left triangle
-      3, 2, 4, // Lower right triangle
-      5, 4, 1  // Upper triangle
+      0, 2, 1, // Upper triangle
+      0, 3, 2, // Lower triangle
   };
 
   int windowWidth = 800;
@@ -112,22 +130,31 @@ int main(int argc, char **argv) {
   // second argument aligns with location value specified in vertex shader
   // inputs This one is for aPos since second arguement is 0 so (location = 0)
   vertexArrayObject.linkAttributes(vertexBufferObject, 0, 3, GL_FLOAT,
-                                   6 * sizeof(float), (void *)0);
+                                   8 * sizeof(float), (void *)0);
   // This one is for aColor since second arguement is 1 so (location = 1)
   vertexArrayObject.linkAttributes(vertexBufferObject, 1, 3, GL_FLOAT,
-                                   6 * sizeof(float),
+                                   8 * sizeof(float),
                                    (void *)(3 * sizeof(float)));
+  vertexArrayObject.linkAttributes(vertexBufferObject, 2, 2, GL_FLOAT,
+                                   8 * sizeof(float),
+                                   (void *)(6 * sizeof(float)));
   vertexArrayObject.unbind();
   vertexBufferObject.unbind();
   elementBufferObject.unbind();
 
+  // Get the idendifier to set the uniform called "scale" declared in your
+  // shader
   GLuint uniformID = glGetUniformLocation(shaderProgram.ID(), "scale");
+  checkOpenGLErrors("glGetUniformLocation");
 
-  checkOpenGLErrors("elementBufferObject");
+  // Texture handling
 
-  glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-  glfwSwapBuffers(window);
+  std::string popCatImagePath =
+      GetFilePath("pop_cat", "png", "resources/textures/");
+  Texture popCatTexture(popCatImagePath, GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA,
+                        GL_UNSIGNED_BYTE);
+
+  popCatTexture.textureUnit(shaderProgram, "tex0", 0);
 
   while (!glfwWindowShouldClose(window)) {
 
@@ -135,6 +162,7 @@ int main(int argc, char **argv) {
     glClear(GL_COLOR_BUFFER_BIT);
     shaderProgram.activate();
     glUniform1f(uniformID, 0.25f);
+    popCatTexture.bind();
     vertexArrayObject.bind();
     glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
     glfwSwapBuffers(window);
@@ -146,8 +174,8 @@ int main(int argc, char **argv) {
   // Clean up
   vertexArrayObject.destroy();
   vertexBufferObject.destroy();
+  popCatTexture.destroy();
   shaderProgram.destroy();
-
   glfwDestroyWindow(window);
   glfwTerminate();
   return 0;
