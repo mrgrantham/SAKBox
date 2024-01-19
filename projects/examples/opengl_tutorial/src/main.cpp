@@ -9,7 +9,7 @@
 #include <DataDepRetriever/DataDependencies.hpp>
 #include <ElementBufferObject.h>
 #include <Error.h>
-#include <Shader.h>
+#include <ShaderProgram.h>
 #include <VertexArrayObject.h>
 #include <VertexBufferObject.h>
 
@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
 
   glViewport(0, 0, windowWidth, windowHeight);
 
-  Shader shader(vertexShaderFilePath, fragmentShaderFilePath);
+  ShaderProgram shaderProgram(vertexShaderFilePath, fragmentShaderFilePath);
 
   VertexArrayObject vertexArrayObject;
   vertexArrayObject.bind();
@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
 
     glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    shader.activate();
+    shaderProgram.activate();
     vertexArrayObject.bind();
     glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
     glfwSwapBuffers(window);
@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
   // Clean up
   vertexArrayObject.destroy();
   vertexBufferObject.destroy();
-  shader.destroy();
+  shaderProgram.destroy();
 
   glfwDestroyWindow(window);
   glfwTerminate();

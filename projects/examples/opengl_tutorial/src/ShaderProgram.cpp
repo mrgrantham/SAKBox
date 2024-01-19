@@ -1,5 +1,5 @@
 #include <Error.h>
-#include <Shader.h>
+#include <ShaderProgram.h>
 
 #include <filesystem>
 #include <fstream>
@@ -29,7 +29,8 @@ static void CompileAndVerifyShader(GLuint shader, const char *shaderSource) {
   }
 }
 
-Shader::Shader(const std::string &vertexFile, const std::string &fragmentFile) {
+ShaderProgram::ShaderProgram(const std::string &vertexFile,
+                             const std::string &fragmentFile) {
   std::string fragmentShaderSourceString = GetFileContents(fragmentFile);
   std::string vertexShaderSourceString = GetFileContents(vertexFile);
 
@@ -62,5 +63,5 @@ Shader::Shader(const std::string &vertexFile, const std::string &fragmentFile) {
   glDeleteShader(fragmentShader);
 }
 
-void Shader::activate() { glUseProgram(ID_); }
-void Shader::destroy() { glDeleteProgram(ID_); }
+void ShaderProgram::activate() { glUseProgram(ID_); }
+void ShaderProgram::destroy() { glDeleteProgram(ID_); }

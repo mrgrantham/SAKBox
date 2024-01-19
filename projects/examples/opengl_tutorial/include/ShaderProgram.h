@@ -5,10 +5,10 @@
 
 static std::string GetFileContents(const std::string &pathString);
 
-class Shader {
+class ShaderProgram {
 public:
   GLuint ID_;
-  Shader(const std::string &vertexFile, const std::string &fragmentFile);
+  ShaderProgram(const std::string &vertexFile, const std::string &fragmentFile);
 
   void activate();
   void destroy();
