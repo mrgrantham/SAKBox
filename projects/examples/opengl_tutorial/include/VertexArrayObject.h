@@ -9,7 +9,7 @@ private:
 
 public:
   VertexArrayObject();
-  void linkAttributes(VertexBufferObject vertexBufferObject, GLuint layout,
+  void linkAttributes(VertexBufferObject &vertexBufferObject, GLuint layout,
                       GLuint componentCount, GLenum type, GLsizeiptr stride,
                       void *offset);
 
