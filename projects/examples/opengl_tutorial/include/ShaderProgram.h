@@ -5,7 +5,8 @@
 
 static std::string GetFileContents(const std::string &pathString);
 
-// Handles generating the shader program from the provided vertex and fragment shaders
+// Handles generating the shader program from the provided vertex and fragment
+// shaders
 
 class ShaderProgram {
 public:

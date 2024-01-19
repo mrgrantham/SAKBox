@@ -51,12 +51,19 @@ int main(int argc, char **argv) {
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
   GLfloat vertices[] = {
-      -0.5f,     -0.5f * float(sqrt(3)) / 3,    0.0f, // Lower left corner
-      0.5f,      -0.5f * float(sqrt(3)) / 3,    0.0f, // Lower right corner
-      0.0f,      0.5f * float(sqrt(3)) * 2 / 3, 0.0f, // Upper corner
-      -0.5f / 2, 0.5f * float(sqrt(3)) / 6,     0.0f, // Inner left
-      0.5f / 2,  0.5f * float(sqrt(3)) / 6,     0.0f, // Inner Right
-      0.0f,      -0.5f * float(sqrt(3)) / 3,    0.0f, // Inner down
+      //          COORDINATES                             //   COLORS
+      -0.5f,     -0.5f * float(sqrt(3)) / 3,    0.0f, 0.8f, 0.3f,
+      0.02f, // Lower left corner
+      0.5f,      -0.5f * float(sqrt(3)) / 3,    0.0f, 0.8f, 0.2f,
+      0.02f, // Lower right corner
+      0.0f,      0.5f * float(sqrt(3)) * 2 / 3, 0.0f, 1.0f, 0.6f,
+      0.32f, // Upper corner
+      -0.5f / 2, 0.5f * float(sqrt(3)) / 6,     0.0f, 0.9f, 0.45f,
+      0.17f, // Inner left
+      0.5f / 2,  0.5f * float(sqrt(3)) / 6,     0.0f, 0.9f, 0.45f,
+      0.17f, // Inner Right
+      0.0f,      -0.5f * float(sqrt(3)) / 3,    0.0f, 0.8f, 0.3f,
+      0.02f // Inner down
   };
 
   GLuint indices[] = {
@@ -102,7 +109,14 @@ int main(int argc, char **argv) {
   VertexBufferObject vertexBufferObject(vertices, sizeof(vertices));
   ElementBufferObject elementBufferObject(indices, sizeof(indices));
 
-  vertexArrayObject.linkVertexBufferObject(vertexBufferObject, 0);
+  // second argument aligns with location value specified in vertex shader
+  // inputs This one is for aPos since second arguement is 0 so (location = 0)
+  vertexArrayObject.linkAttributes(vertexBufferObject, 0, 3, GL_FLOAT,
+                                   6 * sizeof(float), (void *)0);
+  // This one is for aColor since second arguement is 1 so (location = 1)
+  vertexArrayObject.linkAttributes(vertexBufferObject, 1, 3, GL_FLOAT,
+                                   6 * sizeof(float),
+                                   (void *)(3 * sizeof(float)));
   vertexArrayObject.unbind();
 
   vertexBufferObject.unbind();
