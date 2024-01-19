@@ -3,7 +3,7 @@ load("//tools/clang_format:clang_format.bzl", "clang_format")
 
 filegroup(
     name = "shaders",
-    data = glob(["shaders/*.shader"]),
+    data = glob(["shaders/**"]),
 )
 
 cc_binary(
@@ -14,6 +14,7 @@ cc_binary(
         "@glfw",
         "@backward",
         "@spdlog",
+        "//projects/data_dep_retriever:data_dep_retriever",
         ],
         data = [":shaders"],
 )
