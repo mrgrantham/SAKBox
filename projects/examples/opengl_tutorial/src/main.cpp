@@ -9,6 +9,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <Camera.h>
 #include <DataDepRetriever/DataDependencies.hpp>
 #include <ElementBufferObject.h>
 #include <Error.h>
@@ -166,11 +167,6 @@ int main(int argc, char **argv) {
   vertexBufferObject.unbind();
   elementBufferObject.unbind();
 
-  // Get the idendifier to set the uniform called "scale" declared in your
-  // shader
-  GLuint uniformID = glGetUniformLocation(shaderProgram.ID(), "scale");
-  checkOpenGLErrors("glGetUniformLocation");
-
   // Texture handling
 
   std::string popCatImagePath =
@@ -180,11 +176,10 @@ int main(int argc, char **argv) {
 
   popCatTexture.textureUnit(shaderProgram, "tex0", 0);
 
-  float rotation = 0.0f;
-  double previousTime = glfwGetTime();
-
   // Allows opengl to know which shaped to cover others when drawing
   glEnable(GL_DEPTH_TEST);
+
+  Camera camera(windowWidth, windowHeight, glm::vec3(0.0f, 0.0f, 2.0f));
 
   while (!glfwWindowShouldClose(window)) {
 
@@ -192,32 +187,8 @@ int main(int argc, char **argv) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     shaderProgram.activate();
 
-    double currentTime = glfwGetTime();
-    if (currentTime - previousTime >= 1 / 60) {
-      rotation += 0.5f;
-      previousTime = currentTime;
-    }
-    glm::mat4 model(1.0f);
-    glm::mat4 view(1.0f);
-    glm::mat4 projection(1.0f);
-
-    model =
-        glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
-
-    view = glm::translate(view, glm::vec3(0.0f, -0.5f, -2.0f));
-
-    // field of view, aspect ratio, closest you can see, furthest you can see
-    projection = glm::perspective(
-        glm::radians(45.0f), ((float)windowWidth / windowHeight), 0.1f, 100.0f);
-
-    int modelLoc = glGetUniformLocation(shaderProgram.ID(), "model");
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    int viewLoc = glGetUniformLocation(shaderProgram.ID(), "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    int projectionLoc = glGetUniformLocation(shaderProgram.ID(), "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    glUniform1f(uniformID, 0.25f);
+    camera.inputs(window);
+    camera.matrix(45.0f, 0.1f, 100.0f, shaderProgram, "cameraMatrix");
     popCatTexture.bind();
     vertexArrayObject.bind();
     glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT,
