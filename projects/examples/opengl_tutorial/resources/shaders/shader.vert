@@ -9,10 +9,12 @@ out vec2 texCoord;
 
 uniform float scale;
 
-void main() {
-    vec3 scaled = aPos.xyz + (aPos.xyz * scale);
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
 
-    gl_Position = vec4(scaled, 1.0);
+void main() {
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
     color = aColor;
     texCoord = aTex;
 }

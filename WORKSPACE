@@ -280,3 +280,10 @@ new_git_repository(
     build_file = "//third_party:stb.BUILD",
     commit = "f4a71b13373436a2866c5d68f8f80ac6f0bc1ffe", # latest commit for master on 01.19.2024
 )
+
+new_git_repository(
+    name = "glm",
+    remote = "https://github.com/g-truc/glm.git",
+    build_file = "//third_party:glm.BUILD",
+    branch = "master", # latest commit for master on 01.19.2024
+)

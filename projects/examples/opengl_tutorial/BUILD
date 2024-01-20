@@ -22,7 +22,8 @@ cc_library(
         "@backward",
         "@spdlog",
         "//projects/data_dep_retriever:data_dep_retriever",
-        "@stb"
+        "@stb",
+        "@glm",
         ],
         data = [":shaders"],
 )

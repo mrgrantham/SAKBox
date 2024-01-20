@@ -1,6 +1,6 @@
 #include <Texture.h>
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include <stb/stb_image.h>
 
 Texture::Texture(const std::string &image, GLenum textureType, GLenum slot,
                  GLenum format, GLenum pixelType) {
