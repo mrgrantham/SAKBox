@@ -1,6 +1,10 @@
 #version 330 core
 // Link to adapted shadertoy example
 // https://www.shadertoy.com/view/mtyGWy
+
+// Tutorial origin
+// https://www.youtube.com/watch?v=f4s1h2YETNY
+
 layout(location = 0) out vec4 color;
 
 
