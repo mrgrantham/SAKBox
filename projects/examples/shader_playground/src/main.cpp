@@ -41,11 +41,11 @@ public:
     SampleItems::Circle circle(0.0, 0.0, 0.8, 100);
     auto view1 =
         GetGL_ViewBuilder()
-            .setName("GL Example View 1")
+            .setName("Blob")
             .setFrameBuffer(800, 600)
             .setSize(300, 300)
             .setPosition(20, 40)
-            .setFragmentShaderPath(GetFragmentShaderPath("play2", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("blob", shaderFolder))
             .setVertexShaderPath(GetVertexShaderPath("play2", shaderFolder))
             .setGeometry(circle.vertices(), circle.indices())
             .build();
@@ -76,82 +76,108 @@ public:
             .build();
     graphics_->addView(std::move(view3));
 
-    auto view4 =
+    auto viewGradient =
         GetGL_ViewBuilder()
-            .setName("GL Example View 4")
+            .setName("Gradient")
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(800, 40)
-            .setFragmentShaderPath(GetFragmentShaderPath("play4", shaderFolder))
-            .setVertexShaderPath(GetVertexShaderPath("play4", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("gradient", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("gradient", shaderFolder))
             .setGeometry(SampleItems::Square::vertices,
                          SampleItems::Square::indices)
             .build();
-    graphics_->addView(std::move(view4));
+    graphics_->addView(std::move(viewGradient));
 
-    auto view5 =
+    auto viewDisk =
         GetGL_ViewBuilder()
-            .setName("GL Example View 5")
+            .setName("Disk")
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(1200, 40)
-            .setFragmentShaderPath(GetFragmentShaderPath("play5", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("disk", shaderFolder))
             .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
             .setGeometry(SampleItems::Square::vertices,
                          SampleItems::Square::indices)
             .build();
-    graphics_->addView(std::move(view5));
+    graphics_->addView(std::move(viewDisk));
 
-    auto view6 =
+    auto viewParallelagramDisk =
         GetGL_ViewBuilder()
-            .setName("GL Example View 6")
+            .setName("Parallelagram Disk")
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(400, 350)
-            .setFragmentShaderPath(GetFragmentShaderPath("play6", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("disk", shaderFolder))
             .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
             .setGeometry(SampleItems::vertices, SampleItems::indices)
             .build();
-    graphics_->addView(std::move(view6));
+    graphics_->addView(std::move(viewParallelagramDisk));
 
-    auto view7 =
+    auto viewCoolS =
         GetGL_ViewBuilder()
-            .setName("GL Example View 7")
+            .setName("Cool S")
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(800, 350)
-            .setFragmentShaderPath(GetFragmentShaderPath("play7", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("cools", shaderFolder))
             .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
             .setGeometry(SampleItems::Square::vertices,
                          SampleItems::Square::indices)
             .build();
-    graphics_->addView(std::move(view7));
+    graphics_->addView(std::move(viewCoolS));
 
-    auto view8 =
+    auto viewCyberFuji2020 =
         GetGL_ViewBuilder()
-            .setName("GL Example View 8")
+            .setName("Cyber Fuji 2020")
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(1200, 350)
-            .setFragmentShaderPath(GetFragmentShaderPath("play8", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("cyberfuji2020", shaderFolder))
             .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
             .setGeometry(SampleItems::Square::vertices,
                          SampleItems::Square::indices)
             .build();
-    graphics_->addView(std::move(view8));
+    graphics_->addView(std::move(viewCyberFuji2020));
 
-    auto view9 =
+    auto viewShadingArtCodeIntro =
         GetGL_ViewBuilder()
-            .setName("GL Example View 9")
+            .setName("Shading Art Code Intro")
             .setFrameBuffer(300, 300)
             .setSize(300, 300)
             .setPosition(20, 670)
-            .setFragmentShaderPath(GetFragmentShaderPath("play9", shaderFolder))
+            .setFragmentShaderPath(GetFragmentShaderPath("shadingartcodingintro", shaderFolder))
             .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
             .setGeometry(SampleItems::Square::vertices,
                          SampleItems::Square::indices)
             .build();
-    graphics_->addView(std::move(view9));
+    graphics_->addView(std::move(viewShadingArtCodeIntro));
+
+    auto viewFractalLand =
+        GetGL_ViewBuilder()
+            .setName("Fractal Land")
+            .setFrameBuffer(300, 300)
+            .setSize(300, 300)
+            .setPosition(400, 670)
+            .setFragmentShaderPath(GetFragmentShaderPath("fractalland", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
+            .setGeometry(SampleItems::Square::vertices,
+                         SampleItems::Square::indices)
+            .build();
+    graphics_->addView(std::move(viewFractalLand));
+
+      auto viewMandalaFlowers =
+        GetGL_ViewBuilder()
+            .setName("Mandala Flowers")
+            .setFrameBuffer(300, 300)
+            .setSize(300, 300)
+            .setPosition(800, 670)
+            .setFragmentShaderPath(GetFragmentShaderPath("mandalaflowers", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
+            .setGeometry(SampleItems::Square::vertices,
+                         SampleItems::Square::indices)
+            .build();
+    graphics_->addView(std::move(viewMandalaFlowers));
   }
 
   void finishing() override {

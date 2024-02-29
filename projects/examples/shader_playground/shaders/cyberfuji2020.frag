@@ -1,5 +1,8 @@
 #version 330 core
 
+// Link to adapted Cyber Fuji 2020 shadertoy example
+// https://www.shadertoy.com/view/Wt33Wf
+
 layout(location = 0) out vec4 color;
 
 

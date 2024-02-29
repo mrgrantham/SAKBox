@@ -1,5 +1,6 @@
 #version 330 core
-
+// Link to adapted shadertoy example
+// https://www.shadertoy.com/view/mtyGWy
 layout(location = 0) out vec4 color;
 
 

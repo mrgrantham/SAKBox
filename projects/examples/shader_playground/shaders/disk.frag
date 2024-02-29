@@ -2,6 +2,8 @@
 
 layout(location = 0) out vec4 color;
 
+// Link to adapted Disk shadertoy example
+// https://www.shadertoy.com/view/3ltSW2
 
 uniform vec4 uniform_color;
 uniform vec2 iResolution;

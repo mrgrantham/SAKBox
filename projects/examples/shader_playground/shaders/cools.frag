@@ -2,6 +2,8 @@
 
 layout(location = 0) out vec4 color;
 
+// Link to adapted Cool S shadertoy example
+// https://www.shadertoy.com/view/clVXWc
 
 uniform vec4 uniform_color;
 uniform vec2 iResolution;
