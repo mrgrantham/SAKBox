@@ -178,6 +178,19 @@ public:
                          SampleItems::Square::indices)
             .build();
     graphics_->addView(std::move(viewMandalaFlowers));
+
+          auto viewFlame =
+        GetGL_ViewBuilder()
+            .setName("Flame")
+            .setFrameBuffer(300, 300)
+            .setSize(300, 300)
+            .setPosition(1200, 670)
+            .setFragmentShaderPath(GetFragmentShaderPath("flame", shaderFolder))
+            .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
+            .setGeometry(SampleItems::Square::vertices,
+                         SampleItems::Square::indices)
+            .build();
+    graphics_->addView(std::move(viewFlame));
   }
 
   void finishing() override {
