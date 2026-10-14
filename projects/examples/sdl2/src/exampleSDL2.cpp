@@ -68,7 +68,6 @@ int main()
 			return 1;
 		}
         // SDL_UpdateWindowSurface(window);
-        SDL_SetRenderTarget(sdlTexture)
         SDL_UnlockTexture(sdlTexture);
     	SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
 	    // Update the whole screen
