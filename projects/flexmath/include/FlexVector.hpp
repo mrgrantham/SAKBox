@@ -1,5 +1,6 @@
 #pragma once
 #include <FlexPoint.hpp>
+#include <cassert>
 #include <initializer_list>
 #include <vector>
 
