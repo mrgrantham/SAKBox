@@ -23,7 +23,7 @@ static std::string GetFilePath(const std::string &name,
                                const std::string &extension,
                                const std::string &projectPath) {
 
-  std::string workspace = "monograntham/";
+  std::string workspace = "_main/"; // main repository runfiles directory under Bzlmod
   std::string project = "projects/examples/opengl_tutorial/";
 
   std::string relativePath =
