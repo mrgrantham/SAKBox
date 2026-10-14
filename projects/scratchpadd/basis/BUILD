@@ -17,6 +17,7 @@ cc_library(
         "@boost.filesystem",
         "@fmt",
         "@spdlog",
+        "//projects/scratchpadd/messages",
         "//projects/scratchpadd/utilities:utilities",
     ],
 )
@@ -27,7 +28,7 @@ cc_test(
   size = "small",
   srcs = ["tests/Test_Base.cpp"],
   deps = ["@gtest//:gtest_main",
-  ":scratchpadd"],
+  ":basis"],
 )
 
 
@@ -36,7 +37,7 @@ cc_test(
   size = "small",
   srcs = ["tests/Test_Threading.cpp"],
   deps = ["@gtest//:gtest_main",
-  ":scratchpadd"],
+  ":basis"],
 )
 
 clang_format(name = "basis")

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <ScratchPadd/Base.hpp>
+#include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
 
 class TestSenderPadd : public ScratchPadd::Base {
@@ -10,7 +11,7 @@ class TestSenderPadd : public ScratchPadd::Base {
         return true;
     }
 
-    BaseTestPadd(ScratchPadd::System *system) : Base(system) {
+    TestSenderPadd(ScratchPadd::System *system) : Base(system) {
         spdlog::info("Constructing: {}", name());
     }
 
@@ -36,7 +37,7 @@ class TestReceiverPadd : public ScratchPadd::Base {
         return true;
     }
 
-    BaseTestPadd(ScratchPadd::System *system) : Base(system) {
+    TestReceiverPadd(ScratchPadd::System *system) : Base(system) {
         spdlog::info("Constructing: {}", name());
     }
 
@@ -85,11 +86,18 @@ TEST(BaseTest, TestSending) {
     TestSenderPadd testSenderPadd(&testSystem);
     TestReceiverPadd testReceiverPadd(&testSystem);
 
+    // SystemImplementation normally does this; Base's destructor needs the
+    // logger that initialize() creates.
+    testSenderPadd.initialize();
+    testReceiverPadd.initialize();
+    EXPECT_EQ(testSenderPadd.name(), "TestSenderPadd");
+    EXPECT_EQ(testReceiverPadd.name(), "TestReceiverPadd");
+
 }
 
 TEST(BaseTest, TestRecieveWrapper) {
     auto *spsystem =
-    dynamic_cast<ScratchPadd::SystemImplementation<ControlGeneratorPadd, ControlExposurePadd>*>(ScratchPadd::SystemBuilder<TestSenderPadd, TestReceiverPadd>());
+    dynamic_cast<ScratchPadd::SystemImplementation<TestSenderPadd, TestReceiverPadd>*>(ScratchPadd::SystemBuilder<TestSenderPadd, TestReceiverPadd>());
     spsystem->instantiate();
 
     auto systemThread = std::thread(
@@ -97,11 +105,16 @@ TEST(BaseTest, TestRecieveWrapper) {
         spsystem->start();
       }
     );
+    spsystem->waitForStart();
 
-        spdlog::info("Getting workers");
+    spdlog::info("Getting workers");
     auto &workers = spsystem->getWorkers();
-    
-    auto &controlGenPadd = std::get<std::unique_ptr<TestSenderPadd>>(workers);
-    auto &controlExpPadd = std::get<std::unique_ptr<TestReceiverPadd>>(workers);
 
+    auto &senderPadd = std::get<std::unique_ptr<TestSenderPadd>>(workers);
+    auto &receiverPadd = std::get<std::unique_ptr<TestReceiverPadd>>(workers);
+    EXPECT_EQ(senderPadd->name(), "TestSenderPadd");
+    EXPECT_EQ(receiverPadd->name(), "TestReceiverPadd");
+
+    spsystem->stop();
+    systemThread.join();
 }
