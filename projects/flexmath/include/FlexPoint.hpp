@@ -135,7 +135,7 @@ template <> struct fmt::formatter<Flex::Math::FlexPoint> {
   // Formats the point p using the parsed format specification (presentation)
   // stored in this formatter.
   template <typename FormatContext>
-  auto format(const Flex::Math::FlexPoint &p, FormatContext &ctx)
+  auto format(const Flex::Math::FlexPoint &p, FormatContext &ctx) const
       -> decltype(ctx.out()) {
     // ctx.out() is an output iterator to write to.
     return underlying_formatter_type == 'f'

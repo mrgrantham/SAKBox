@@ -4,7 +4,7 @@ load("//tools/clang_format:clang_format.bzl", "clang_format")
 
 cc_binary(
     name = "hello_gui",
-    srcs = glob(["src/*.cpp","src/*.h"]),
+    srcs = ["src/main.cpp"],
     linkopts = ["-pthread"],
     deps = [
         "//projects/waffles:WClasses",

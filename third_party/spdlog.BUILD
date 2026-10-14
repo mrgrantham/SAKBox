@@ -10,10 +10,7 @@ package(
 
 cc_library(
     name = "spdlog",
-    hdrs = glob([
-        "include/**/*.cc",
-        "include/**/*.h",
-    ]),
+    hdrs = glob(["include/**/*.h"]),
     includes = ["include"],
     visibility = ["//visibility:public"],
 )

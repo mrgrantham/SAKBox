@@ -1,0 +1,195 @@
+module(name = "sakbox")
+
+# Rule sets
+bazel_dep(name = "rules_cc", version = "0.2.26")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
+bazel_dep(name = "rules_python", version = "2.4.2")
+bazel_dep(name = "rules_foreign_cc", version = "0.16.0")
+bazel_dep(name = "rules_apple", version = "5.3.0", repo_name = "build_bazel_rules_apple")
+bazel_dep(name = "apple_support", version = "2.10.1", repo_name = "build_bazel_apple_support")
+
+# Libraries from the Bazel Central Registry
+# fmt, spdlog and fmtlog are kept on the same fmt major version (11).
+# fmt 10 does not compile with Apple clang 21 in C++20 mode.
+bazel_dep(name = "fmt", version = "11.2.0.bcr.1")
+bazel_dep(name = "googletest", version = "1.18.0.bcr.1", repo_name = "gtest")
+bazel_dep(name = "catch2", version = "3.15.1")
+bazel_dep(name = "boost.lockfree", version = "1.90.0.bcr.1")
+bazel_dep(name = "boost.program_options", version = "1.90.0.bcr.1")
+bazel_dep(name = "boost.filesystem", version = "1.90.0.bcr.1")
+
+# Libraries built with our own BUILD files in //third_party
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+new_git_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+
+http_archive(
+    name = "binutils",
+    build_file = "//third_party:binutils.BUILD",
+    strip_prefix = "binutils-2.40",
+    urls = ["https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz"],
+)
+
+http_archive(
+    name = "cyclone",
+    build_file = "//third_party:cyclone.BUILD",
+    sha256 = "faeda03d28499b7120208d7e70759bf1832511b6d64f546ab32103e9ba400f03",
+    strip_prefix = "cyclone-physics-master",
+    url = "https://github.com/idmillington/cyclone-physics/archive/refs/heads/master.zip",
+)
+
+http_archive(
+    name = "spdlog",
+    build_file = "//third_party:spdlog.BUILD",
+    sha256 = "b74274c32c8be5dba70b7006c1d41b7d3e5ff0dff8390c8b6390c1189424e094",
+    strip_prefix = "spdlog-1.15.3",  # bundles fmt 11.2
+    url = "https://github.com/gabime/spdlog/archive/refs/tags/v1.15.3.zip",
+)
+
+http_archive(
+    name = "fmtlog",
+    build_file = "//third_party:fmtlog.BUILD",
+    sha256 = "e7c8b4db16bdab16ab317b05b601f111535726f4cab8b9e13d557a066d673223",
+    strip_prefix = "fmtlog-2.3.0",  # built against fmt 11
+    url = "https://github.com/MengRao/fmtlog/archive/refs/tags/v2.3.0.zip",
+)
+
+http_archive(
+    name = "imgui",
+    build_file = "//third_party:imgui.BUILD",
+    strip_prefix = "imgui-1.90",
+    urls = ["https://github.com/ocornut/imgui/archive/refs/tags/v1.90.zip"],
+)
+
+new_git_repository(
+    name = "glfw",
+    build_file = "//third_party:glfw.BUILD",
+    remote = "https://github.com/glfw/glfw.git",
+    tag = "3.3.8",
+)
+
+http_archive(
+    name = "glew",
+    build_file = "//third_party:glew.BUILD",
+    sha256 = "a9046a913774395a095edcc0b0ac2d81c3aacca61787b39839b941e9be14e0d4",
+    strip_prefix = "glew-2.2.0",
+    urls = ["https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0.zip"],
+)
+
+new_git_repository(
+    name = "backward",
+    build_file = "//third_party:backward-cpp.BUILD",
+    remote = "https://github.com/bombela/backward-cpp.git",
+    tag = "v1.6",
+)
+
+http_archive(
+    name = "elfutils",
+    build_file = "//third_party:elfutils.BUILD",
+    sha256 = "fb8b0e8d0802005b9a309c60c1d8de32dd2951b56f0c3a3cb56d21ce01595dff",
+    strip_prefix = "elfutils-0.188",
+    url = "https://sourceware.org/elfutils/ftp/0.188/elfutils-0.188.tar.bz2",
+)
+
+new_git_repository(
+    name = "rapidyaml",
+    build_file = "//third_party:rapidyaml.BUILD",
+    recursive_init_submodules = True,
+    remote = "https://github.com/biojppm/rapidyaml.git",
+    tag = "v0.5.0",
+)
+
+new_git_repository(
+    name = "variadic_table",
+    build_file = "//third_party:variadic_table.BUILD",
+    commit = "70ddeb66f000a351b36b5a8d04b0820dfeda129f",
+    remote = "https://github.com/friedmud/variadic_table.git",
+)
+
+new_git_repository(
+    name = "yamlcpp",
+    build_file = "//third_party:yamlcpp.BUILD",
+    remote = "https://github.com/jbeder/yaml-cpp.git",
+    tag = "yaml-cpp-0.7.0",
+)
+
+new_git_repository(
+    name = "tabulate",
+    build_file = "//third_party:tabulate.BUILD",
+    remote = "https://github.com/p-ranav/tabulate.git",
+    tag = "v1.5",
+)
+
+http_archive(
+    name = "libpng",
+    build_file = "//third_party:libpng.BUILD",
+    sha256 = "708f4398f996325819936d447f982e0db90b6b8212b7507e7672ea232210949a",
+    strip_prefix = "libpng-1.6.50",  # 1.6.39 fails on newer macOS SDKs ('fp.h' not found)
+    url = "https://downloads.sourceforge.net/project/libpng/libpng16/1.6.50/libpng-1.6.50.tar.gz",
+)
+
+http_archive(
+    name = "sdl2",
+    build_file = "//third_party:sdl.BUILD",
+    strip_prefix = "SDL2-2.26.3",
+    url = "https://github.com/libsdl-org/SDL/releases/download/release-2.26.3/SDL2-2.26.3.tar.gz",
+)
+
+new_git_repository(
+    name = "zlib",
+    build_file = "//third_party:zlib.BUILD",
+    remote = "https://github.com/madler/zlib.git",
+    tag = "v1.3.1",  # 1.2.13 fails to compile against macOS 27 SDK (fdopen macro clash)
+)
+
+new_git_repository(
+    name = "sdl3",
+    branch = "main",
+    build_file = "//third_party:sdl3.BUILD",
+    remote = "https://github.com/libsdl-org/SDL.git",
+)
+
+http_archive(
+    name = "libargp",
+    build_file = "//third_party:libargp.BUILD",
+    strip_prefix = "libargp-master",
+    url = "https://github.com/alexreg/libargp/archive/refs/heads/master.zip",
+)
+
+new_git_repository(
+    name = "eigen",
+    build_file = "//third_party:eigen.BUILD",
+    remote = "https://gitlab.com/libeigen/eigen.git",
+    tag = "3.4.0",
+)
+
+new_git_repository(
+    name = "opencv",
+    build_file = "//third_party:opencv.BUILD",
+    remote = "https://github.com/opencv/opencv.git",
+    tag = "4.7.0",
+)
+
+# Can't seem to get get the build rule to find the built dylib
+new_git_repository(
+    name = "openpnp-capture",
+    build_file = "//third_party:openpnp-capture.BUILD",
+    remote = "https://github.com/openpnp/openpnp-capture.git",
+    tag = "v0.0.24",
+)
+
+# Library used in opengl tutorial for textures (//projects/examples/opengl_tutorial)
+new_git_repository(
+    name = "stb",
+    build_file = "//third_party:stb.BUILD",
+    commit = "f4a71b13373436a2866c5d68f8f80ac6f0bc1ffe",  # latest commit for master on 01.19.2024
+    remote = "https://github.com/nothings/stb.git",
+)
+
+new_git_repository(
+    name = "glm",
+    commit = "b06b775c1c80af51a1183c0e167f9de3b2351a79",  # master as of 01.19.2024; newer glm requires GLM_ENABLE_EXPERIMENTAL
+    build_file = "//third_party:glm.BUILD",
+    remote = "https://github.com/g-truc/glm.git",
+)

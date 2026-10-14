@@ -13,7 +13,8 @@ configure_make(
     name = "libpng",
     configure_in_place = True,
     lib_source = ":sources",
-    configure_options = ["CC=\"gcc\"","CXX=\"gcc\"","CFLAGS=","AR=\"ar\""],
+    # Use plain ar: autotools cannot drive Apple's libtool, which Bazel uses as the archiver on macOS.
+    configure_options = ["CFLAGS=", "AR=\"ar\"", "AR_FLAGS=cr"],
     # targets = [
     #     "install",
     # ],

@@ -69,7 +69,7 @@ public:
     std::unique_lock<std::mutex> lk(workCompletionMutex_);
     workCompletionConditionVariable_.wait_for(lk, 3000ms, [this] {
       logger().info("waitForWorkCompletion in {}: {} jobs left", name_,
-                    pendingWork_);
+                    pendingWork_.load());
       return pendingWork_ == 0;
     });
   }

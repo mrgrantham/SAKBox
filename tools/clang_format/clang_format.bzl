@@ -1,3 +1,4 @@
+load("@rules_python//python:py_binary.bzl", "py_binary")
 load(":collect_cpp_files.bzl", "collect_cpp_files")
 
 
@@ -15,7 +16,7 @@ def clang_format(name="empty"):
         deps = deps
     )
 
-    native.py_binary(
+    py_binary(
         name = "clang_format",
         srcs = ["//tools/clang_format:clang_format_runner.py"],
         main = "clang_format_runner.py",

@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 load("//tools/clang_format:clang_format.bzl", "clang_format")
 
@@ -12,9 +12,9 @@ cc_library(
     ],
     strip_include_prefix = "include/",
     deps = [
-        "@boost//:lockfree",
-        "@boost//:program_options",
-        "@boost//:filesystem",
+        "@boost.lockfree",
+        "@boost.program_options",
+        "@boost.filesystem",
         "@fmt",
         "@spdlog",
         "//projects/scratchpadd/utilities:utilities",

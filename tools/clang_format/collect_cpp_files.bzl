@@ -1,3 +1,5 @@
+load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+
 CollectedCppFilesInfo = provider(
     fields = {
         'files': 'depset of cpp files'
