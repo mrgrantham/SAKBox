@@ -60,10 +60,8 @@ static std::string GetShaderPath(
   //   }
   // #else
 
-  // Workspace name is determined by the root name given in the WORKSPACE file
-  // workspace(name = "monograntham")
-  // if this changes then the workspace name needs to change too
-  std::string workspace = "monograntham";
+  // With Bzlmod the main repository's runfiles directory is always "_main"
+  std::string workspace = "_main";
 
   std::string relativePath = workspace + dirPath + name + "." + extension;
   auto shaderPathString =
