@@ -114,7 +114,7 @@ void whereAmI() {
 
 		m_pPieces = new GImage();
 		whereAmI();
-		loadPng(m_pPieces, "chess.runfiles/graphFun/projects/waffles/demos/chess/data/pieces.png");
+		loadPng(m_pPieces, "chess.runfiles/_main/projects/waffles/demos/chess/data/pieces.png");
 		m_pPieces->replaceColor(0xff00ff00, 0x00000000); // Change opaque green to translucent black
 		m_pMoveIterators = new GChessMoveIterator[MAX_DEPTH_EVER];
 		m_maxDepth = 6;
