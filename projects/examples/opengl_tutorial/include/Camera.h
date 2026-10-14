@@ -15,6 +15,7 @@ private:
   glm::vec3 position_;
   glm::vec3 orientation_{0.0f, 0.0f, -1.0f};
   glm::vec3 up_{0.0f, 1.0f, 0.0f};
+  glm::mat4 cameraMatrix_{1.0f};
 
   bool firstClick_{true};
 
@@ -27,7 +28,7 @@ private:
 public:
   Camera(int width, int height, glm::vec3 position);
 
-  void matrix(float FOVdegrees, float nearPlane, float farPlane,
-              ShaderProgram &shaderProgram, const char *uniform);
+  void updateMatrix(float FOVdegrees, float nearPlane, float farPlane);
+  void matrix(ShaderProgram &shaderProgram, const char *uniform);
   void inputs(GLFWwindow *window);
 };

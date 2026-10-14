@@ -3,8 +3,7 @@
 Camera::Camera(int width, int height, glm::vec3 position)
     : position_(position), width_(width), height_(height) {}
 
-void Camera::matrix(float FOVdegrees, float nearPlane, float farPlane,
-                    ShaderProgram &shaderProgram, const char *uniform) {
+void Camera::updateMatrix(float FOVdegrees, float nearPlane, float farPlane) {
   glm::mat4 view(1.0f);
   glm::mat4 projection(1.0f);
 
@@ -12,9 +11,12 @@ void Camera::matrix(float FOVdegrees, float nearPlane, float farPlane,
   projection =
       glm::perspective(glm::radians(FOVdegrees),
                        (float)((float)width_ / height_), nearPlane, farPlane);
+  cameraMatrix_ = projection * view;
+}
 
+void Camera::matrix(ShaderProgram &shaderProgram, const char *uniform) {
   glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID(), uniform), 1,
-                     GL_FALSE, glm::value_ptr(projection * view));
+                     GL_FALSE, glm::value_ptr(cameraMatrix_));
 }
 void Camera::inputs(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {

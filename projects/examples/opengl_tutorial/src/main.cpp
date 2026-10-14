@@ -95,22 +95,64 @@ int main(int argc, char **argv) {
   //     0, 3, 2, // Lower triangle
   // };
 
-  // Pyramid
+  // Pyramid. Each face has its own vertices so it can carry its own normal.
   GLfloat vertices[] = {
-      //  COORDINATES    //   COLORS    // TEX COORDS //
-      -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f, 0.0f,  0.0f,  -0.5f, 0.0f,
-      -0.5f, 0.83f, 0.70f, 0.44f, 5.0f,  0.0f,  0.5f,  0.0f,  -0.5f, 0.83f,
-      0.70f, 0.44f, 0.0f,  0.0f,  0.5f,  0.0f,  0.5f,  0.83f, 0.70f, 0.44f,
-      5.0f,  0.0f,  0.0f,  0.8f,  0.0f,  0.92f, 0.86f, 0.76f, 2.5f,  5.0f,
+      //  COORDINATES      //     COLORS        // TEX COORDS //   NORMALS   //
+      -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,   0.0f, -1.0f,  0.0f, // Bottom
+      -0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 5.0f,   0.0f, -1.0f,  0.0f,
+       0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,  5.0f, 5.0f,   0.0f, -1.0f,  0.0f,
+       0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  5.0f, 0.0f,   0.0f, -1.0f,  0.0f,
+
+      -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,  -0.8f,  0.5f,  0.0f, // Left
+      -0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,  5.0f, 0.0f,  -0.8f,  0.5f,  0.0f,
+       0.0f, 0.8f,  0.0f,  0.92f, 0.86f, 0.76f,  2.5f, 5.0f,  -0.8f,  0.5f,  0.0f,
+
+      -0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,  5.0f, 0.0f,   0.0f,  0.5f, -0.8f, // Back
+       0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,   0.0f,  0.5f, -0.8f,
+       0.0f, 0.8f,  0.0f,  0.92f, 0.86f, 0.76f,  2.5f, 5.0f,   0.0f,  0.5f, -0.8f,
+
+       0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,   0.8f,  0.5f,  0.0f, // Right
+       0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  5.0f, 0.0f,   0.8f,  0.5f,  0.0f,
+       0.0f, 0.8f,  0.0f,  0.92f, 0.86f, 0.76f,  2.5f, 5.0f,   0.8f,  0.5f,  0.0f,
+
+       0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  5.0f, 0.0f,   0.0f,  0.5f,  0.8f, // Front
+      -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,   0.0f,  0.5f,  0.8f,
+       0.0f, 0.8f,  0.0f,  0.92f, 0.86f, 0.76f,  2.5f, 5.0f,   0.0f,  0.5f,  0.8f,
   };
 
   GLuint indices[] = {
-      0, 1, 2, // Upper triangle
-      0, 2, 3, // Lower triangle
-      0, 1, 4, // Lower triangle
-      1, 2, 4, // Lower triangle
-      2, 3, 4, // Lower triangle
-      3, 0, 4, // Lower triangle
+      0,  1,  2,  // Bottom
+      0,  2,  3,  // Bottom
+      4,  6,  5,  // Left
+      7,  9,  8,  // Back
+      10, 12, 11, // Right
+      13, 15, 14, // Front
+  };
+
+  GLfloat lightVertices[] = {
+    -0.1f, -0.1f, 0.1f,
+    -0.1f, -0.1f, -0.1f,
+    0.1f, -0.1f, -0.1f,
+    0.1f, -0.1f, 0.1f,
+    -0.1f, 0.1f, 0.1f,
+    -0.1f, 0.1f, -0.1f,
+    0.1f, 0.1f, -0.1f,
+    0.1f, 0.1f, 0.1f,
+  };
+
+  GLuint lightIndices[] = {
+    0,1,2,
+    0,2,3,
+    0,4,7,
+    0,7,3,
+    3,7,6,
+    3,6,2,
+    2,6,5,
+    2,5,1,
+    1,5,4,
+    1,4,0,
+    4,5,6,
+    4,6,7,
   };
 
   const unsigned int windowWidth = 800;
@@ -155,26 +197,63 @@ int main(int argc, char **argv) {
   // second argument aligns with location value specified in vertex shader
   // inputs This one is for aPos since second arguement is 0 so (location = 0)
   vertexArrayObject.linkAttributes(vertexBufferObject, 0, 3, GL_FLOAT,
-                                   8 * sizeof(float), (void *)0);
+                                   11 * sizeof(float), (void *)0);
   // This one is for aColor since second arguement is 1 so (location = 1)
   vertexArrayObject.linkAttributes(vertexBufferObject, 1, 3, GL_FLOAT,
-                                   8 * sizeof(float),
+                                   11 * sizeof(float),
                                    (void *)(3 * sizeof(float)));
   vertexArrayObject.linkAttributes(vertexBufferObject, 2, 2, GL_FLOAT,
-                                   8 * sizeof(float),
+                                   11 * sizeof(float),
                                    (void *)(6 * sizeof(float)));
+  vertexArrayObject.linkAttributes(vertexBufferObject, 3, 3, GL_FLOAT,
+                                   11 * sizeof(float),
+                                   (void *)(8 * sizeof(float)));
   vertexArrayObject.unbind();
   vertexBufferObject.unbind();
   elementBufferObject.unbind();
+
+
+  // Light handling
+
+  ShaderProgram lightShader(GetFilePath("lighting", "vert", "resources/shaders/"),GetFilePath("lighting", "frag", "resources/shaders/"));
+
+ VertexArrayObject lightVAO;
+ lightVAO.bind();
+VertexBufferObject lightVBO(lightVertices, sizeof(lightVertices));
+ElementBufferObject lightEBO(lightIndices, sizeof(lightIndices));
+
+  lightVAO.linkAttributes(lightVBO,0,3,GL_FLOAT,3 * sizeof(float),(void*)0);
+
+  lightVAO.unbind();
+  lightVBO.unbind();
+  lightEBO.unbind();
+
+  glm::vec4 lightColor(1.0f,0.5f,0.0f,1.0f);
+  glm::vec3 lightPosition(0.5f,0.5f,0.5f);
+  glm::mat4 lightModel(1.0f);
+  lightModel = glm::translate(lightModel, lightPosition);
+
+  glm::vec3 pyramidPosition(0.0f,0.0f,0.0f);
+  glm::mat4 pyramidModel(1.0f);
+  pyramidModel = glm::translate(pyramidModel, pyramidPosition);
+
+  lightShader.activate();
+  glUniformMatrix4fv(glGetUniformLocation(lightShader.ID(),"model"),1, GL_FALSE,glm::value_ptr(lightModel));
+  glUniform4f(glGetUniformLocation(lightShader.ID(),"lightColor"),lightColor.x,lightColor.y,lightColor.z,lightColor.w);
+  shaderProgram.activate();
+  glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID(),"model"),1, GL_FALSE,glm::value_ptr(pyramidModel));
+  glUniform4f(glGetUniformLocation(shaderProgram.ID(),"lightColor"),lightColor.x,lightColor.y,lightColor.z,lightColor.w);
+  glUniform3f(glGetUniformLocation(shaderProgram.ID(),"lightPosition"),lightPosition.x,lightPosition.y,lightPosition.z);
+
 
   // Texture handling
 
   std::string popCatImagePath =
       GetFilePath("brick", "png", "resources/textures/");
-  Texture popCatTexture(popCatImagePath, GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA,
+  Texture brickTexture(popCatImagePath, GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA,
                         GL_UNSIGNED_BYTE);
 
-  popCatTexture.textureUnit(shaderProgram, "tex0", 0);
+  brickTexture.textureUnit(shaderProgram, "tex0", 0);
 
   // Allows opengl to know which shaped to cover others when drawing
   glEnable(GL_DEPTH_TEST);
@@ -185,13 +264,22 @@ int main(int argc, char **argv) {
 
     glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    shaderProgram.activate();
 
     camera.inputs(window);
-    camera.matrix(45.0f, 0.1f, 100.0f, shaderProgram, "cameraMatrix");
-    popCatTexture.bind();
+    camera.updateMatrix(45.0f, 0.1f, 100.0f);
+
+    shaderProgram.activate();
+    camera.matrix(shaderProgram, "cameraMatrix");
+
+    brickTexture.bind();
     vertexArrayObject.bind();
     glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT,
+                   0);
+
+    lightShader.activate();
+    camera.matrix(lightShader,"cameraMatrix");
+    lightVAO.bind();
+    glDrawElements(GL_TRIANGLES, sizeof(lightIndices) / sizeof(int), GL_UNSIGNED_INT,
                    0);
     glfwSwapBuffers(window);
 
@@ -202,8 +290,15 @@ int main(int argc, char **argv) {
   // Clean up
   vertexArrayObject.destroy();
   vertexBufferObject.destroy();
-  popCatTexture.destroy();
+  elementBufferObject.destroy();
+  brickTexture.destroy();
   shaderProgram.destroy();
+
+  lightVAO.destroy();
+  lightVBO.destroy();
+  lightEBO.destroy();
+  lightShader.destroy();
+
   glfwDestroyWindow(window);
   glfwTerminate();
   return 0;
