@@ -32,14 +32,6 @@ http_archive(
 )
 
 http_archive(
-    name = "cyclone",
-    build_file = "//third_party:cyclone.BUILD",
-    sha256 = "faeda03d28499b7120208d7e70759bf1832511b6d64f546ab32103e9ba400f03",
-    strip_prefix = "cyclone-physics-master",
-    url = "https://github.com/idmillington/cyclone-physics/archive/refs/heads/master.zip",
-)
-
-http_archive(
     name = "spdlog",
     build_file = "//third_party:spdlog.BUILD",
     sha256 = "b74274c32c8be5dba70b7006c1d41b7d3e5ff0dff8390c8b6390c1189424e094",
