@@ -18,6 +18,7 @@ cc_test(
   srcs = ["tests/Test_Controls.cpp"],
   deps = ["@gtest//:gtest_main",
   "//projects/scratchpadd/basis:basis",
+  "//projects/data_dep_retriever",
   ":messages"],
 )
 
@@ -27,6 +28,7 @@ cc_test(
   srcs = ["tests/Test_Messages.cpp"],
   deps = ["@gtest//:gtest_main",
   "//projects/scratchpadd/basis:basis",
+  "//projects/data_dep_retriever",
   ":messages",
   ],
 )
