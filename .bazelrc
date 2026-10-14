@@ -10,3 +10,9 @@ build --cxxopt='-Werror=return-type'
 # can be removed when bazel addresses
 # build --linkopt=-Wl
 # build --linkopt=-no_fixup_chains
+
+build --color=yes
+
+build:3ds --cpu=arm11 --define=3ds=true
+build:3ds --compiler=/opt/devkitpro/devkitARM/bin/arm-none-eabi-gcc
+build:3ds --linker=/opt/devkitpro/devkitARM/bin/arm-none-eabi-gcc

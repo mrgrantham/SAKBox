@@ -95,14 +95,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test",
-    srcs = ["src/test/main.cpp"],
-    deps = [
-        ":WClasses",
-    ],
-)
-
-cc_binary(
     name = "transform",
     srcs = ["src/transform/main.cpp"],
     deps = [
@@ -117,5 +109,17 @@ cc_binary(
         ":WClasses",
     ],
 )
+
+cc_test(
+    name = "test",
+    srcs = ["src/test/main.cpp"],
+    deps = [
+        ":WClasses",
+        "@fmtlog",
+        "@gtest",
+        "@spdlog",
+    ],
+)
+
 
 clang_format(name = "waffles")

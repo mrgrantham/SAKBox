@@ -33,13 +33,13 @@ void Loader::loadStockData(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testF
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		x[0] = double(i) / train_size;
@@ -66,13 +66,13 @@ void Loader::loadPrecipitationData(GMatrix &trainFeat, GMatrix &trainLab, GMatri
 	{
 		if(i < TRAIN_SIZE)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - TRAIN_SIZE];
-			y = testLab[i - TRAIN_SIZE];
+			x = testFeat[i - TRAIN_SIZE].data();
+			y = testLab[i - TRAIN_SIZE].data();
 		}
 		
 		x[0] = double(i) / TRAIN_SIZE;
@@ -113,13 +113,13 @@ void Loader::loadTemperatureData(GMatrix &trainFeat, GMatrix &trainLab, GMatrix 
 	{
 		if(i < TRAIN_SIZE)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - TRAIN_SIZE];
-			y = testLab[i - TRAIN_SIZE];
+			x = testFeat[i - TRAIN_SIZE].data();
+			y = testLab[i - TRAIN_SIZE].data();
 		}
 		
 		x[0] = double(i) / TRAIN_SIZE;
@@ -168,13 +168,13 @@ void Loader::loadLaborData(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testF
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		*x = double(i) / train_size;
@@ -203,13 +203,13 @@ void Loader::loadLaborData2(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &test
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		*x = double(i) / train_size;
@@ -238,13 +238,13 @@ void Loader::loadMackeyGlassData(GMatrix &trainFeat, GMatrix &trainLab, GMatrix 
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		*x = double(i) / train_size;
@@ -275,13 +275,13 @@ void Loader::loadSunSpotData(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &tes
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		*x = double(i) / train_size;
@@ -327,13 +327,13 @@ void Loader::loadToyData(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testFea
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		*x = i / double(train_size);
@@ -365,13 +365,13 @@ void Loader::loadToyData2(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testFe
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		*x = i / double(train_size);
@@ -410,13 +410,13 @@ void Loader::loadTest01(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testFeat
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		*x = i / double(train_size);
@@ -449,13 +449,13 @@ void Loader::loadTest02(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testFeat
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		*x = i / double(train_size);
@@ -485,13 +485,13 @@ void Loader::loadTest04(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testFeat
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		*x = i / double(train_size);
@@ -521,13 +521,13 @@ void Loader::loadNASDAQ(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testFeat
 	{
 		if(i < rawTrain.rows())
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - rawTrain.rows()];
-			y = testLab[i - rawTrain.rows()];
+			x = testFeat[i - rawTrain.rows()].data();
+			y = testLab[i - rawTrain.rows()].data();
 		}
 		
 		*x = double(i) / rawTrain.rows();
@@ -562,13 +562,13 @@ void Loader::loadAirPassengerData(GMatrix &trainFeat, GMatrix &trainLab, GMatrix
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		*x = double(i) / train_size;
@@ -600,13 +600,13 @@ void Loader::loadOzoneData(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testF
 	{
 		if(i < train_size)
 		{
-			x = trainFeat[i];
-			y = trainLab[i];
+			x = trainFeat[i].data();
+			y = trainLab[i].data();
 		}
 		else
 		{
-			x = testFeat[i - train_size];
-			y = testLab[i - train_size];
+			x = testFeat[i - train_size].data();
+			y = testLab[i - train_size].data();
 		}
 		
 		*x = double(i) / train_size;

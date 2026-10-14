@@ -22,6 +22,7 @@ cc_library(
     visibility = ["//visibility:public"],
     strip_include_prefix = "/backends",
     deps = [":imgui",],
+    linkopts = ["-framework OpenGL", "-framework CoreFoundation"],
 )
 
 

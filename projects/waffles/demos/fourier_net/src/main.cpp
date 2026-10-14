@@ -24,7 +24,7 @@
 #include <WClasses/GFourier.h>
 #include <WClasses/GHolders.h>
 #include <WClasses/GNeuralNet.h>
-#include <WClasses/GActivation.h>
+// #include <WClasses/GActivation.h>
 #include <WClasses/GPlot.h>
 #include <WClasses/GBits.h>
 #include <WClasses/GVec.h>
