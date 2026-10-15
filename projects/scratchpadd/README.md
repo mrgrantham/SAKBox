@@ -65,7 +65,7 @@ int main() {
 
 Every padd must implement `name()` (unique within the system) and `generateControls()`, and have a constructor that takes a `ScratchPadd::System *`. These examples are compiled and run by `basis/tests/Test_Examples.cpp`.
 
-To see a bigger system, run the demo: a window with a shader view and the Dear ImGui demo, a padd that logs on a timer, and a demo-defined `Triangle` message logged by another padd. Close the window to quit.
+To see a bigger system, run the demo: a window with a shader view, the Dear ImGui demo, and a control panel for `StoryPadd`'s controls (edits are logged), plus a demo-defined `Triangle` message logged by another padd. Close the window to quit.
 
 ```bash
 bazel run //projects/scratchpadd/demo
@@ -139,13 +139,25 @@ ScratchPadd::ControlValueMap generateControls() override {
 
 The control types are `Double` and `Integer` (each with an optional range), `Boolean`, and `String` (with an optional list of allowed values).
 
-Controls are designed to be shown and edited by another padd, such as a UI panel, through three messages that `Base` handles automatically:
+Read a control's current value on the padd's own thread with `control<C>(name)`, and override `controlChanged(name)` to react when one is edited:
 
-1. The panel sends a `ControlRequest`.
-2. Every padd replies with a `ControlSnapshot` of its controls. The panel handles them with `receive<ControlSnapshot>()`.
-3. To change a value, the panel sends a `ControlChange` naming the padd and control. That padd updates its value if the type matches, and the padds send fresh snapshots so the panel stays in sync.
+```cpp
+double speed = control<ScratchPadd::ControlType::Double>("speed").value;
 
-A padd reads its current values from `generateControlsSnapshot().controlMap`. `messages/tests/Test_Controls.cpp` shows the whole round trip.
+void controlChanged(const std::string &name) override {
+  if (name == "speed") { /* use the new speed */ }
+}
+```
+
+**The control panel.** `DisplayPadd` shows every padd's controls in its window, one ImGui panel per padd: sliders for ranged numbers, input boxes for unranged ones, checkboxes, and a combo box or text field for strings. A padd gets a panel just by returning controls from `generateControls()`.
+
+Behind the panel are three messages; `Base` handles the owner's side automatically:
+
+1. **Discover.** The panel sends a `ControlRequest` (`DisplayPadd` does this once its window is up). Every padd with controls replies with a `ControlSnapshot`: its name and all its controls. A request can name one padd to ask only that padd.
+2. **Edit.** When the user edits a widget, the panel sends a `ControlChange` carrying the owner's name (copied from the snapshot), the control's name and the new value. There's no direct addressing, so every padd receives it, and only the padd it names acts on it.
+3. **Apply and confirm.** The owner enforces its own rules: numbers are clamped to the control's range, strings must be one of the allowed values, and the type must match; only the value is taken, so a change can't alter a range. If the change is valid it's stored and `controlChanged()` is called. Either way the owner replies with a fresh snapshot, so the panel shows the value the owner actually holds (a clamped number snaps back, for example).
+
+The panel only ever holds copies from snapshots, and each owner changes its own values on its own thread, so no locking is needed. `messages/tests/Test_Controls.cpp` covers the round trip, range enforcement, rejection and who replies.
 
 ### Logging and Timing
 
@@ -209,7 +221,7 @@ bazel run //projects/scratchpadd/basis:clang_format   # format the basis package
 | `basis:Test_Base` | Padd names, and a system starting and stopping |
 | `basis:Test_Threading` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd |
 | `messages:Test_Messages` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message |
-| `messages:Test_Controls` | The control request, snapshot and change round trip |
+| `messages:Test_Controls` | The control round trip: who replies to requests and changes, range clamping, rejected changes, `controlChanged()` and `control<C>()` |
 | `utilities:Test_EventTimer` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
@@ -218,12 +230,12 @@ bazel run //projects/scratchpadd/basis:clang_format   # format the basis package
 - **Handlers are fixed once a padd starts.** A padd can't start or stop listening for a type while running.
 - **No direct addressing.** A message goes to every padd that handles its type; to target one padd, put its name in the message (as `ControlChange` does).
 - **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled; a message nobody handles is silently dropped.
-- **Controls are not wired up in the demo.** Nothing sends a `ControlRequest`, `DisplayPadd` doesn't handle `ControlSnapshot`, the control panel's text input writes past its string buffer, and edits aren't sent back as `ControlChange`. Every padd also sends a snapshot for every `ControlChange`, not only the one that changed.
+- **Controls are fixed at startup.** `generateControls()` is read once, so a padd can't add or remove controls later. If an owner changes a value itself (by calling `updateControl()`), panels aren't told until the next edit or `ControlRequest`.
 - Audio is a stub.
 
 ## Roadmap
 
 1. Wake padds with a condition variable when work arrives, instead of polling.
-2. Wire up the control panels in the demo and fix the issues listed above.
+2. Let owners push control updates (and add or remove controls) so panels stay current.
 3. Use the cached `name_` everywhere instead of calling `name()` repeatedly.
 4. Implement audio.
