@@ -16,6 +16,15 @@ __[flexmath](projects/flexmath/README.md)__ - Numeric precision that can change 
 
 The third party folder contains custom build files for a number of libraries that I thought might be useful for various projects I had in mind.
 
+## Editor Setup ##
+Editors that use clangd (VS Code's clangd extension, CLion, Neovim, ...) need a `compile_commands.json` to know the include paths and C++20 flags Bazel uses. Generate it with:
+
+``` bash
+python3 tools/compile_commands/refresh.py
+```
+
+Re-run it after adding source files or changing BUILD deps. The generated files are git-ignored.
+
 
 ## For Linux ##
 For linux you will need to build bazel if on arm
