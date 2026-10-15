@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 # Cyclone physics engine by Ian Millington (MIT, see LICENSE), vendored from
 # https://github.com/idmillington/cyclone-physics (master, Jan 2024).
@@ -10,6 +10,18 @@ cc_library(
     srcs = ["src/body.cpp","src/collide_coarse.cpp","src/collide_fine.cpp","src/contacts.cpp","src/core.cpp","src/fgen.cpp","src/joints.cpp","src/particle.cpp","src/pcontacts.cpp","src/pfgen.cpp","src/plinks.cpp","src/pworld.cpp","src/random.cpp","src/world.cpp"],
     hdrs = ["include/cyclone/body.h","include/cyclone/cyclone.h","include/cyclone/collide_coarse.h","include/cyclone/collide_fine.h","include/cyclone/contacts.h","include/cyclone/core.h","include/cyclone/fgen.h","include/cyclone/joints.h","include/cyclone/particle.h","include/cyclone/precision.h","include/cyclone/pcontacts.h","include/cyclone/pfgen.h","include/cyclone/plinks.h","include/cyclone/pworld.h","include/cyclone/random.h","include/cyclone/world.h"],
     copts = ["-O2", "-fPIC"],
+    strip_include_prefix = "include",
+    linkopts = ["-framework GLUT", "-framework OpenGL", "-framework Cocoa"],
+)
+
+cc_library(
+    name = "cyclone_flex",
+    srcs = ["src/body.cpp","src/collide_coarse.cpp","src/collide_fine.cpp","src/contacts.cpp","src/core.cpp","src/fgen.cpp","src/joints.cpp","src/particle.cpp","src/pcontacts.cpp","src/pfgen.cpp","src/plinks.cpp","src/pworld.cpp","src/random.cpp","src/world.cpp"],
+    hdrs = ["include/cyclone/body.h","include/cyclone/cyclone.h","include/cyclone/collide_coarse.h","include/cyclone/collide_fine.h","include/cyclone/contacts.h","include/cyclone/core.h","include/cyclone/fgen.h","include/cyclone/joints.h","include/cyclone/particle.h","include/cyclone/precision.h","include/cyclone/pcontacts.h","include/cyclone/pfgen.h","include/cyclone/plinks.h","include/cyclone/pworld.h","include/cyclone/random.h","include/cyclone/world.h"],
+    copts = ["-O2", "-fPIC"],
+    # cyclone::real becomes flexmath's FlexReal; propagates to dependents
+    defines = ["CYCLONE_FLEX_REAL"],
+    deps = ["//projects/flexmath"],
     strip_include_prefix = "include",
     linkopts = ["-framework GLUT", "-framework OpenGL", "-framework Cocoa"],
 )
@@ -121,5 +133,32 @@ cc_binary(
     srcs = ["src/demos/sailboat/sailboat.cpp", "src/demos/main.cpp"],
     deps = [
         ":app",
+    ],
+)
+# Cyclone built with an adjustable-precision real (flexmath FlexReal)
+cc_library(
+    name = "app_flex",
+    srcs = ["src/demos/app.cpp"],
+    hdrs = ["src/demos/app.h", "src/demos/ogl_headers.h"],
+    defines = ["GL_SILENCE_DEPRECATION"],
+    deps = [":gl", ":timing", ":cyclone_flex"],
+    strip_include_prefix = "src",
+)
+
+cc_binary(
+    name = "flightsim_flex",
+    srcs = ["src/demos/flightsim/flightsim.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app_flex",
+    ],
+)
+
+cc_test(
+    name = "flex_test",
+    size = "small",
+    srcs = ["tests/flex_test.cpp"],
+    deps = [
+        ":cyclone_flex",
+        "@gtest//:gtest_main",
     ],
 )

@@ -206,8 +206,8 @@ void FlightSimDemo::display()
     sprintf(
         buffer,
         "Altitude: %.1f | Speed %.1f",
-        aircraft.getPosition().y,
-        aircraft.getVelocity().magnitude()
+        (double)aircraft.getPosition().y,
+        (double)aircraft.getVelocity().magnitude()
         );
     glColor3f(0,0,0);
     renderText(10.0f, 24.0f, buffer);
@@ -215,9 +215,20 @@ void FlightSimDemo::display()
     sprintf(
         buffer,
         "Left Wing: %.1f | Right Wing: %.1f | Rudder %.1f",
-        left_wing_control, right_wing_control, rudder_control
+        (double)left_wing_control, (double)right_wing_control, (double)rudder_control
         );
     renderText(10.0f, 10.0f, buffer);
+
+#if defined(CYCLONE_FLEX_REAL)
+    const Flex::Math::Precision &precision = Flex::Math::activePrecision();
+    if (precision.fracBits >= 52)
+        sprintf(buffer, "Precision: full | [ ] change");
+    else
+        sprintf(buffer, "Precision: %d bits (step %g, %s) | [ ] change, N rounding, F full",
+            precision.fracBits, precision.step(),
+            precision.rounding == Flex::Math::Rounding::Nearest ? "nearest" : "truncate");
+    renderText(10.0f, 38.0f, buffer);
+#endif
 }
 
 void FlightSimDemo::update()
@@ -302,6 +313,36 @@ void FlightSimDemo::key(unsigned char key)
     case 'r': case 'R':
         resetPlane();
         break;
+
+#if defined(CYCLONE_FLEX_REAL)
+    // Whole-engine precision. Below 6 bits the frame duration itself
+    // truncates to zero, which integrate() asserts against.
+    case '[':
+    {
+        int &bits = Flex::Math::activePrecision().fracBits;
+        bits = bits >= 52 ? 24 : (bits > 6 ? bits - 1 : 6);
+        break;
+    }
+
+    case ']':
+    {
+        int &bits = Flex::Math::activePrecision().fracBits;
+        bits = bits >= 24 ? 52 : bits + 1;
+        break;
+    }
+
+    case 'n': case 'N':
+    {
+        Flex::Math::Rounding &rounding = Flex::Math::activePrecision().rounding;
+        rounding = rounding == Flex::Math::Rounding::Nearest ? Flex::Math::Rounding::TowardZero
+                                                             : Flex::Math::Rounding::Nearest;
+    }
+        break;
+
+    case 'f': case 'F':
+        Flex::Math::activePrecision().fracBits = 52;
+        break;
+#endif
 
     default:
         Application::key(key);

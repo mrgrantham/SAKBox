@@ -27,9 +27,30 @@
 
 #include <float.h>
 
+#if defined(CYCLONE_FLEX_REAL)
+#include <FlexReal.hpp>
+#endif
+
 namespace cyclone {
 
-#if 0
+#if defined(CYCLONE_FLEX_REAL)
+    /**
+     * SAKBox addition: real snaps to a precision that can change at
+     * runtime (flexmath's FlexReal, see projects/flexmath).
+     */
+    #define FLEX_PRECISION
+    typedef Flex::Math::FlexReal real;
+    #define REAL_MAX DBL_MAX
+    #define real_sqrt Flex::Math::flex_sqrt
+    #define real_abs Flex::Math::flex_abs
+    #define real_sin Flex::Math::flex_sin
+    #define real_cos Flex::Math::flex_cos
+    #define real_exp Flex::Math::flex_exp
+    #define real_pow Flex::Math::flex_pow
+    #define real_fmod Flex::Math::flex_fmod
+    #define real_epsilon DBL_EPSILON
+    #define R_PI 3.14159265358979
+#elif 0
     /**
      * Defines we're in single precision mode, for any code
      * that needs to be conditionally compiled.
