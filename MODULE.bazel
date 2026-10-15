@@ -160,7 +160,7 @@ new_git_repository(
     name = "opencv",
     build_file = "//third_party:opencv.BUILD",
     remote = "https://github.com/opencv/opencv.git",
-    tag = "4.7.0",
+    tag = "4.12.0",
 )
 
 # Can't seem to get get the build rule to find the built dylib

@@ -19,5 +19,19 @@ cmake(
     # out_static_libs = ["opencv.a"],
     out_shared_libs = ["libopencv_core.dylib","libopencv_flann.dylib","libopencv_imgproc.dylib","libopencv_ml.dylib","libopencv_photo.dylib","libopencv_dnn.dylib","libopencv_features2d.dylib","libopencv_imgcodecs.dylib","libopencv_videoio.dylib","libopencv_objdetect.dylib","libopencv_highgui.dylib","libopencv_calib3d.dylib","libopencv_stitching.dylib","libopencv_video.dylib"],
     deps = ["@zlib","@eigen"],
-    cache_entries = {"OPENCV_EXTRA_FLAGS":"-DOPENCV_DISABLE_EIGEN_TENSOR_SUPPORT=1","BUILD_ZLIB":"OFF"},
+    cache_entries = {
+        "OPENCV_EXTRA_FLAGS": "-DOPENCV_DISABLE_EIGEN_TENSOR_SUPPORT=1",
+        "BUILD_ZLIB": "OFF",
+        # Only the C++ libraries are used. The binding generators also fail to
+        # configure because they can't read the Eigen version.
+        "BUILD_JAVA": "OFF",
+        "BUILD_opencv_java_bindings_generator": "OFF",
+        "BUILD_opencv_js_bindings_generator": "OFF",
+        "BUILD_opencv_objc_bindings_generator": "OFF",
+        "BUILD_opencv_python_bindings_generator": "OFF",
+        "BUILD_opencv_python3": "OFF",
+        "BUILD_TESTS": "OFF",
+        "BUILD_PERF_TESTS": "OFF",
+        "BUILD_opencv_apps": "OFF",
+    },
 )
