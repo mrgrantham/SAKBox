@@ -9,6 +9,9 @@ class DisplayPadd : public ScratchPadd::Base {
 private:
   ScratchPadd::Timer performanceTimer_;
   std::unique_ptr<Graphics> graphics_;
+  // One control panel per padd with controls, by padd name. The views are
+  // owned by graphics_; this map finds them to update in place.
+  std::unordered_map<std::string, Graphics::ControlView *> controlViews_;
 
 public:
   void prepare() override {
@@ -24,6 +27,10 @@ public:
     receive<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
       std::cout << name() << " Text: " << text << "\n";
     });
+    receive<ScratchPadd::MessageType::ControlSnapshot>(
+        [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
+          showControls(snapshot);
+        });
   }
 
   std::optional<std::chrono::duration<double>> repeatInterval() override {
@@ -52,6 +59,9 @@ public:
     graphics_->addView(std::move(view));
 
     graphics_->addView(std::make_unique<Graphics::ImguiView>());
+
+    // Ask every padd with controls for them; each reply becomes a panel.
+    send(ScratchPadd::MessageType::ControlRequest{});
   }
   void finishing() override {
     spdlog::info("[{}] Avg Repeating Interval: {}", name(),
@@ -81,15 +91,20 @@ public:
 
   bool shouldUseMainThread() override { return true; }
 
-  void setupControlView(ScratchPadd::MessageType::ControlSnapshot &control) {
-    auto controlView = ControlViewBuilder();
-    controlView->setControls(control);
-    std::cout << "controlView is: " << typeid(controlView).name() << '\n';
-    // std::unique_ptr<Graphics::View> view(std::move(controlView));
-    // graphics_->addView(std::move(controlView));
-    graphics_->addView(
-        dynamic_unique_cast<Graphics::View>(std::move(controlView)));
-    // std::unique_ptr<Graphics::View> view =
-    // dynamic_unique_cast<Graphics::View>(std::move(controlView));
+  // Shows `snapshot` in that padd's control panel, creating the panel the
+  // first time. Edits in the panel are sent back to the padd as
+  // ControlChanges; its reply arrives here as the next snapshot.
+  void showControls(const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
+    auto existing = controlViews_.find(snapshot.paddName);
+    if (existing != controlViews_.end()) {
+      existing->second->setControls(snapshot);
+      return;
+    }
+    auto view = ControlViewBuilder();
+    view->setControls(snapshot);
+    view->setOnChange(
+        [this](const ScratchPadd::MessageType::ControlChange &change) { send(change); });
+    controlViews_[snapshot.paddName] = view.get();
+    graphics_->addView(std::move(view));
   }
 };

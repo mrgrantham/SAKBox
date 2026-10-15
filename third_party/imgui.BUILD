@@ -57,3 +57,12 @@ cc_binary(
 # c++ `sdl2-config --cflags` -I .. -I ../.. -I ../../backends
 #   main.cpp ../../backends/imgui_impl_sdl2.cpp ../../backends/imgui_impl_opengl3.cpp ../../imgui*.cpp
 #   `sdl2-config --libs` -framework OpenGl -framework CoreFoundation
+# ImGui::InputText and friends for std::string (resizes as you type)
+cc_library(
+    name = "imgui_stdlib",
+    srcs = ["misc/cpp/imgui_stdlib.cpp"],
+    hdrs = ["misc/cpp/imgui_stdlib.h"],
+    strip_include_prefix = "misc/cpp",
+    visibility = ["//visibility:public"],
+    deps = [":imgui"],
+)

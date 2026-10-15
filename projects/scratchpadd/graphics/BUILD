@@ -36,6 +36,7 @@ cc_library(
         "@glew",
         "@imgui//:imgui_backend_glfw",
         "@imgui//:imgui_backend_opengl3",
+        "@imgui//:imgui_stdlib",
         "//projects/scratchpadd/basis:basis",
         "//projects/scratchpadd/messages:messages",
         "//projects/data_dep_retriever:data_dep_retriever",

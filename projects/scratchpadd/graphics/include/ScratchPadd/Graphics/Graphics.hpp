@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <functional>
 #include <string>
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -28,16 +29,32 @@ public:
     virtual ~View() {}
   };
 
+  // A panel showing one padd's controls as widgets. Edits update the panel's
+  // copy immediately and are reported through the change handler; the owning
+  // padd's reply (a new snapshot passed to setControls) confirms or corrects
+  // them.
   class ControlView : public View {
+  public:
+    using ChangeHandler =
+        std::function<void(const ScratchPadd::MessageType::ControlChange &)>;
+
   protected:
     ScratchPadd::MessageType::ControlSnapshot controls_;
-    std::vector<std::string> orderedControlVector_;
-    void buildControls(ScratchPadd::MessageType::ControlSnapshot &controls);
+    std::vector<std::string> orderedControlVector_; // control names, sorted
+    ChangeHandler onChange_;
+
+    // Draws a widget for each control: sliders for ranged numbers, input
+    // boxes otherwise, a checkbox for booleans, and a combo box or text field
+    // for strings.
+    void buildControls();
 
   public:
     void setBackgroundColor(ImVec4 &backgroundColor) override{};
     ImVec4 *getBackgroundColor() override { return {}; };
-    void setControls(ScratchPadd::MessageType::ControlSnapshot &controls);
+    // Shows `controls`, replacing whatever was shown before.
+    void setControls(const ScratchPadd::MessageType::ControlSnapshot &controls);
+    // Called with a ControlChange each time the user edits a control.
+    void setOnChange(ChangeHandler onChange) { onChange_ = std::move(onChange); }
   };
 
   class ViewCollection : View {

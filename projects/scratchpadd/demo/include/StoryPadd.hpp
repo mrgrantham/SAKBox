@@ -30,6 +30,15 @@ public:
 
   ~StoryPadd() { spdlog::info("Destroying: {}", name()); }
 
+  // Called when a control is edited in DisplayPadd's control panel.
+  void controlChanged(const std::string &controlName) override {
+    std::visit(
+        [&](const auto &control) {
+          spdlog::info("{}: control {} is now {}", name(), controlName, control.value);
+        },
+        generateControlsSnapshot().controlMap.at(controlName));
+  }
+
   void starting() override {
     // A message type defined by the demo, not the library (DemoMessages.hpp)
     send(Demo::Triangle{.position = {.x = 1, .y = 2}});

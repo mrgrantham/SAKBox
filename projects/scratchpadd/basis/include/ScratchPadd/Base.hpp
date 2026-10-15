@@ -1,11 +1,13 @@
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <cassert>
 #include <functional>
 #include <typeindex>
 #include <unordered_map>
 #include <chrono>
+#include <cmath>
 #include <condition_variable>
 #include <mutex>
 #include <memory>
@@ -55,16 +57,24 @@ private:
 
 public:
   Base(System *system) : system_(system) {
-    // Every padd answers control requests and applies control changes.
+    // Every padd with controls answers control requests (all of them, or
+    // those naming it) with a snapshot.
     receive<MessageType::ControlRequest>([this](const MessageType::ControlRequest &request) {
-      logger().info("{} Control request padd name: {}", name(),
-                    request.paddName.value_or("None"));
+      if (controlMap_.empty() || (request.paddName && *request.paddName != name_)) {
+        return;
+      }
       send(generateControlsSnapshot());
     });
+    // A change names the padd it's for; every other padd ignores it. The owner
+    // applies it (if valid) and always replies with a snapshot, so a panel
+    // shows the value the owner actually holds, e.g. after clamping.
     receive<MessageType::ControlChange>([this](const MessageType::ControlChange &change) {
-      logger().info("{} Control controlName: {}", name(), change.controlName);
-      if (change.paddName == name()) {
-        updateControl(change);
+      if (change.paddName != name_) {
+        return;
+      }
+      logger().info("{} control change: {}", name_, change.controlName);
+      if (updateControl(change)) {
+        controlChanged(change.controlName);
       }
       send(generateControlsSnapshot());
     });
@@ -85,6 +95,18 @@ public:
     return ScratchPadd::MessageType::ControlSnapshot{.paddName = name_,
                                                      .controlMap = controlMap_};
   }
+
+  // This padd's control `name`, as control type C (e.g.
+  // control<ControlType::Double>("speed").value). Throws std::out_of_range for
+  // an unknown name and std::bad_variant_access for the wrong type. Call from
+  // the padd's own thread, where changes are applied.
+  template <typename C> const C &control(const std::string &name) const {
+    return std::get<C>(controlMap_.at(name));
+  }
+
+  // Called on the padd's thread after a ControlChange to control `name` has
+  // been applied. Override to react to edits from a control panel.
+  virtual void controlChanged(const std::string &name) {}
 
   ssize_t pendingWorkCount() { return pendingWork_; }
 
@@ -346,20 +368,65 @@ public:
     sendIncludeSender(makeMessage(std::move(contents)));
   }
 
-  void updateControl(const ScratchPadd::MessageType::ControlChange &controlChange) {
-    if (controlMap_.contains(controlChange.controlName)) {
-      auto &controlTypeVariant = controlMap_.at(controlChange.controlName);
-      if (VariantsHoldSameType(controlChange.controlTypeValue,
-                               controlTypeVariant)) {
-        controlTypeVariant = controlChange.controlTypeValue;
-      } else {
-        logger().error("In {}, ControlChange holds different value type than "
-                       "ControlMap for {}",
-                       name_, controlChange.controlName);
-      }
-    } else {
-      logger().error("No contol named {}", controlChange.controlName);
+  // Applies the value in `controlChange` to this padd's control, enforcing
+  // the control's own rules: numbers are clamped to its range, strings must
+  // be one of its allowed values, and the type must match. Only the value is
+  // copied, so a change can't alter a control's range. Returns true if the
+  // change was applied.
+  bool updateControl(const ScratchPadd::MessageType::ControlChange &controlChange) {
+    auto control = controlMap_.find(controlChange.controlName);
+    if (control == controlMap_.end()) {
+      logger().error("No control named {}", controlChange.controlName);
+      return false;
     }
+    if (!VariantsHoldSameType(controlChange.controlTypeValue, control->second)) {
+      logger().error("In {}, ControlChange holds different value type than "
+                     "ControlMap for {}",
+                     name_, controlChange.controlName);
+      return false;
+    }
+    const auto &incoming = controlChange.controlTypeValue;
+    return std::visit(
+        VariantHandler{
+            [&](ControlType::Double &current) {
+              double value = std::get<ControlType::Double>(incoming).value;
+              if (std::isnan(value)) {
+                return false;
+              }
+              if (current.enforcableRange) {
+                value = std::clamp(value, current.enforcableRange->first,
+                                   current.enforcableRange->second);
+              }
+              current.value = value;
+              return true;
+            },
+            [&](ControlType::Integer &current) {
+              int32_t value = std::get<ControlType::Integer>(incoming).value;
+              if (current.enforcableRange) {
+                value = std::clamp(value, current.enforcableRange->first,
+                                   current.enforcableRange->second);
+              }
+              current.value = value;
+              return true;
+            },
+            [&](ControlType::Boolean &current) {
+              current.value = std::get<ControlType::Boolean>(incoming).value;
+              return true;
+            },
+            [&](ControlType::String &current) {
+              const std::string &value = std::get<ControlType::String>(incoming).value;
+              if (current.enforcableRange &&
+                  std::find(current.enforcableRange->begin(), current.enforcableRange->end(),
+                            value) == current.enforcableRange->end()) {
+                logger().error("In {}, \"{}\" is not an allowed value for {}", name_, value,
+                               controlChange.controlName);
+                return false;
+              }
+              current.value = value;
+              return true;
+            },
+        },
+        control->second);
   }
 };
 
