@@ -1,6 +1,9 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <memory>
 #include <thread>
 #pragma clang diagnostic push
@@ -22,7 +25,8 @@ using namespace std::chrono_literals;
 
 class Base : public Logger {
 protected:
-  bool on_{false};
+  // Read by the work loop and written from other threads (e.g. stop()).
+  std::atomic<bool> on_{false};
   std::thread workerThread_;
   std::chrono::duration<double> work_thread_sleep_interval_{500ms};
   EventTimer repeatingTimer_;
@@ -96,13 +100,21 @@ public:
   // Padd in some as yet unspecified way.
   virtual ScratchPadd::ControlValueMap generateControls() = 0;
 
+  // on_ is changed while holding scratchPaddMutex_ so a thread in
+  // waitForStart()/waitForStop() can't check it and then miss the notify.
   void notifyStart() {
-    on_ = true;
+    {
+      std::lock_guard<std::mutex> lk(scratchPaddMutex_);
+      on_ = true;
+    }
     scratchPaddConditionVariable_.notify_all();
   }
 
   void notifyStop() {
-    on_ = false;
+    {
+      std::lock_guard<std::mutex> lk(scratchPaddMutex_);
+      on_ = false;
+    }
     scratchPaddConditionVariable_.notify_all();
   }
 
@@ -115,7 +127,7 @@ public:
   void waitForStart() {
     std::unique_lock<std::mutex> lk(scratchPaddMutex_);
     logger().info("Waiting For {} to Start...", name_);
-    scratchPaddConditionVariable_.wait(lk, [this] { return on_; });
+    scratchPaddConditionVariable_.wait(lk, [this] { return on_.load(); });
     logger().info("Wait completed for starting {}...", name_);
   }
 

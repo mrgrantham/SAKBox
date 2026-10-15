@@ -2,7 +2,9 @@
 #include <ScratchPadd/Base.hpp>
 #include <ScratchPadd/Logger.hpp>
 #include <ScratchPadd/System.hpp>
+#include <atomic>
 #include <condition_variable>
+#include <mutex>
 
 #include <set>
 #include <tuple>
@@ -19,7 +21,8 @@ private:
   std::tuple<std::unique_ptr<Workers>...> workers_;
   std::condition_variable scratchPaddSystemConditionVariable_;
   std::mutex scratchPaddSystemMutex_;
-  bool on_{false};
+  // Read by the main-thread run loop and written by stop() from any thread.
+  std::atomic<bool> on_{false};
 
 public:
   const std::tuple<std::unique_ptr<Workers>...> &getWorkers() const {
@@ -53,7 +56,6 @@ public:
   }
 
   virtual void start() override {
-    notifyStarted();
     logger().info("Starting system");
     // Prepare all workers
     std::apply([](auto const &...worker) { (worker->prepareWrapper(), ...); },
@@ -63,6 +65,10 @@ public:
     std::apply(
         [](auto const &...worker) { (worker->runIfIndependentThread(), ...); },
         workers_);
+
+    // Only report started once every padd thread exists, so a stop() from
+    // another thread after waitForStart() sees them all.
+    notifyStarted();
 
     // Start the workers on the main threads
     std::apply(
@@ -90,7 +96,12 @@ public:
     scratchPaddSystemConditionVariable_.wait(lk, [this] { return !on_; });
   }
 
+  // Waits until start() has launched every padd and each one is running.
   void waitForStart() {
+    {
+      std::unique_lock<std::mutex> lk(scratchPaddSystemMutex_);
+      scratchPaddSystemConditionVariable_.wait(lk, [this] { return on_.load(); });
+    }
     std::apply([](auto const &...worker) { (worker->waitForStart(), ...); },
                workers_);
   }
@@ -112,12 +123,20 @@ public:
 
   virtual bool isRunning() override { return on_; }
 
+  // on_ is changed while holding scratchPaddSystemMutex_ so waitForStop()
+  // can't check it and then miss the notify.
   void notifyStopped() {
-    on_ = false;
+    {
+      std::lock_guard<std::mutex> lk(scratchPaddSystemMutex_);
+      on_ = false;
+    }
     scratchPaddSystemConditionVariable_.notify_all();
   }
   void notifyStarted() {
-    on_ = true;
+    {
+      std::lock_guard<std::mutex> lk(scratchPaddSystemMutex_);
+      on_ = true;
+    }
     scratchPaddSystemConditionVariable_.notify_all();
   }
   void sendWork(ScratchPadd::Base *receiver, Message &message) {
