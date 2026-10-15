@@ -4,6 +4,8 @@
 #include <gtest/gtest.h>
 
 #include <future>
+#include <mutex>
+#include <vector>
 #include <memory>
 #include <thread>
 
@@ -93,7 +95,7 @@ TEST(ThreadingTest, TestAllBackgroundThreads) {
 
 // Implementing shouldUseMainThread() differently for different padds gives
 // each padd the correct behavior.
-TEST(ThreadingTest, TesMixedlBackgroundAndMainThreads) {
+TEST(ThreadingTest, TestMixedBackgroundAndMainThreads) {
   RunningSystem<MainA, BackgroundA, MainB, BackgroundB> running;
   const auto mainId = running.mainThread.get_id();
 
@@ -139,4 +141,115 @@ TEST(ThreadingTest, TestStartStopHandoffBetweenThreads) {
     EXPECT_FALSE(padd.isRunning());
     stopper.join();
   }
+}
+
+namespace {
+
+// Records which hook ran on which thread, in order, across all padds.
+struct HookLog {
+  struct Entry {
+    std::string hook;
+    std::string padd;
+    std::thread::id thread;
+  };
+  std::mutex mutex;
+  std::vector<Entry> entries;
+
+  void add(const std::string &hook, const std::string &padd) {
+    std::lock_guard<std::mutex> lk(mutex);
+    entries.push_back({hook, padd, std::this_thread::get_id()});
+  }
+};
+HookLog hookLog;
+
+template <bool UseMainThread, int Id>
+class RecordingPadd : public ThreadPadd<UseMainThread, Id> {
+public:
+  using ThreadPadd<UseMainThread, Id>::ThreadPadd;
+  void finishing() override { hookLog.add("finishing", this->name()); }
+  void cleanup() override { hookLog.add("cleanup", this->name()); }
+};
+
+// Calls system_->stop() from inside its own repeat().
+template <bool UseMainThread, int Id>
+class SelfStoppingPadd : public ThreadPadd<UseMainThread, Id> {
+public:
+  using ThreadPadd<UseMainThread, Id>::ThreadPadd;
+  std::optional<std::chrono::duration<double>> repeatInterval() override { return 5ms; }
+  void repeat() override { this->system_->stop(); }
+};
+
+// A main-thread padd that sleeps for a long time between passes.
+class SlowMainPadd : public ThreadPadd<true, 9> {
+public:
+  SlowMainPadd(ScratchPadd::System *system) : ThreadPadd(system) {
+    work_thread_sleep_interval_ = 500ms;
+  }
+};
+
+// Runs start() on a new thread and reports whether it returns in time.
+template <typename... Padds> bool startReturnsAfterSelfStop() {
+  ScratchPadd::SystemImplementation<Padds...> system;
+  system.instantiate();
+  std::promise<void> returned;
+  auto future = returned.get_future();
+  std::thread mainThread([&] {
+    system.start();
+    returned.set_value();
+  });
+  const bool inTime = future.wait_for(2s) == std::future_status::ready;
+  if (!inTime)
+    system.stop(); // don't leave the thread running
+  mainThread.join();
+  return inTime;
+}
+
+} // namespace
+
+// finishing() runs for every padd before any cleanup(); cleanup() runs on the
+// thread that called start(); finishing() runs on each padd's own thread.
+TEST(ThreadingTest, TestShutdownOrder) {
+  using Main = RecordingPadd<true, 5>;
+  using Background = RecordingPadd<false, 6>;
+  hookLog.entries.clear();
+  std::thread::id mainId;
+  {
+    RunningSystem<Main, Background> running;
+    mainId = running.mainThread.get_id();
+  } // stops the system
+
+  std::lock_guard<std::mutex> lk(hookLog.mutex);
+  ASSERT_EQ(hookLog.entries.size(), 4u);
+  EXPECT_EQ(hookLog.entries[0].hook, "finishing");
+  EXPECT_EQ(hookLog.entries[1].hook, "finishing");
+  EXPECT_EQ(hookLog.entries[2].hook, "cleanup");
+  EXPECT_EQ(hookLog.entries[3].hook, "cleanup");
+  for (const auto &entry : hookLog.entries) {
+    if (entry.hook == "cleanup" || entry.padd == "ThreadPadd5") {
+      EXPECT_EQ(entry.thread, mainId) << entry.hook << " " << entry.padd;
+    } else {
+      EXPECT_NE(entry.thread, mainId) << entry.hook << " " << entry.padd;
+    }
+  }
+}
+
+// A padd can stop the system from inside itself, whichever thread it runs on.
+TEST(ThreadingTest, TestStopFromInsideMainThreadPadd) {
+  EXPECT_TRUE((startReturnsAfterSelfStop<SelfStoppingPadd<true, 7>, BackgroundA>()));
+}
+
+TEST(ThreadingTest, TestStopFromInsideBackgroundPadd) {
+  EXPECT_TRUE((startReturnsAfterSelfStop<SelfStoppingPadd<false, 8>, MainA>()));
+}
+
+// Main-thread padds don't add up their sleeps: a fast padd sharing the loop
+// with a slow one still responds at its own pace.
+TEST(ThreadingTest, TestMainThreadSleepsDontStack) {
+  RunningSystem<MainA, SlowMainPadd> running;
+  // Let the loop settle into a sleep before measuring.
+  std::this_thread::sleep_for(50ms);
+
+  const auto start = std::chrono::steady_clock::now();
+  running.padd<MainA>().workThreadId();
+  EXPECT_LT(std::chrono::steady_clock::now() - start, 200ms);
 }

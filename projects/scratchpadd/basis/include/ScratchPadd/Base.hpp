@@ -192,9 +192,16 @@ public:
     }
   }
 
+  bool usesMainThread() const { return shouldUseMainThread_; }
+
+  std::chrono::duration<double> workSleepInterval() const {
+    return work_thread_sleep_interval_;
+  }
+
+  // Called by the system's main-thread loop, which does the sleeping.
   void runIfMainThread() {
-    if (shouldUseMainThread_) {
-      run_once();
+    if (shouldUseMainThread_ && on_) {
+      processWork();
     }
   }
 
@@ -210,33 +217,30 @@ public:
     }
   }
 
+  // The work loop of a padd with its own thread.
   void run() {
     startingWrapper();
     while (on_) {
-      loop();
+      processWork();
+      std::this_thread::sleep_for(work_thread_sleep_interval_);
     }
     finishingWrapper();
   }
 
-  void run_once() {
-    if (on_) {
-      loop();
-    }
-  }
-
-  void loop() {
+  // Runs every queued job, stopping early if the padd is stopped. on_ is
+  // checked before popping, so a job is never popped and then dropped.
+  void processWork() {
     std::function<void()> *work = nullptr;
-    while (work_queue_.pop(work) && on_) {
-      if (!work)
+    while (on_ && work_queue_.pop(work)) {
+      if (work) {
+        (*work)();
+        delete work;
+      } else {
         logger().error("work is null");
-      work->operator()();
+      }
       pendingWork_--;
-      delete work;
     }
     workCompletionConditionVariable_.notify_all();
-    // logger().warn("sleeping work_queue_ {} for {}ms",name_,
-    // work_thread_sleep_interval_);
-    std::this_thread::sleep_for(work_thread_sleep_interval_);
   }
 
   // If you want some method to repeat at a regular interval, you

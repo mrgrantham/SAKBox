@@ -2,7 +2,9 @@
 #include <ScratchPadd/Base.hpp>
 #include <ScratchPadd/Logger.hpp>
 #include <ScratchPadd/System.hpp>
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 
@@ -23,6 +25,68 @@ private:
   std::mutex scratchPaddSystemMutex_;
   // Read by the main-thread run loop and written by stop() from any thread.
   std::atomic<bool> on_{false};
+  // Set by stop(); start() then shuts the system down on its own thread.
+  std::atomic<bool> stopRequested_{false};
+
+  // Shortest work_thread_sleep_interval_ among the main-thread padds.
+  std::chrono::duration<double> mainThreadSleepInterval() {
+    auto shortest = std::chrono::duration<double>::max();
+    std::apply(
+        [&](auto const &...worker) {
+          (
+              [&] {
+                if (worker->usesMainThread())
+                  shortest = std::min(shortest, worker->workSleepInterval());
+              }(),
+              ...);
+        },
+        workers_);
+    return shortest;
+  }
+
+  // Sleeps for `duration`, waking early if stop() is called.
+  void sleepUnlessStopRequested(std::chrono::duration<double> duration) {
+    std::unique_lock<std::mutex> lk(scratchPaddSystemMutex_);
+    scratchPaddSystemConditionVariable_.wait_for(
+        lk, duration, [this] { return stopRequested_.load(); });
+  }
+
+  // The main-thread padds share this loop: each pass runs every one's queued
+  // work, then sleeps once for the shortest of their sleep intervals. With no
+  // main-thread padds it just waits for stop().
+  void runMainThreadPadds() {
+    const bool anyMainThreadPadds = std::apply(
+        [](auto const &...worker) { return (worker->usesMainThread() || ...); },
+        workers_);
+    if (!anyMainThreadPadds) {
+      std::unique_lock<std::mutex> lk(scratchPaddSystemMutex_);
+      scratchPaddSystemConditionVariable_.wait(
+          lk, [this] { return stopRequested_.load(); });
+      return;
+    }
+
+    std::apply(
+        [](auto const &...worker) { (worker->startingIfMainThread(), ...); },
+        workers_);
+    while (!stopRequested_) {
+      std::apply(
+          [](auto const &...worker) { (worker->runIfMainThread(), ...); },
+          workers_);
+      sleepUnlessStopRequested(mainThreadSleepInterval());
+    }
+  }
+
+  void shutdown() {
+    // Ends each padd's repeat timer and work loop. A background padd runs
+    // finishing() on its own thread before stop() joins it.
+    std::apply([](auto const &...worker) { (worker->stop(), ...); }, workers_);
+    std::apply(
+        [](auto const &...worker) { (worker->finishingIfMainThread(), ...); },
+        workers_);
+    std::apply([](auto const &...worker) { (worker->cleanupWrapper(), ...); },
+               workers_);
+    notifyStopped();
+  }
 
 public:
   const std::tuple<std::unique_ptr<Workers>...> &getWorkers() const {
@@ -55,6 +119,10 @@ public:
     assert(workerNamesUnique());
   }
 
+  // Runs the system on the calling thread until stop() is called, then shuts
+  // it down on this thread: every padd is stopped (background padds run
+  // finishing() on their own threads), then finishing() runs for main-thread
+  // padds, then cleanup() for every padd.
   virtual void start() override {
     logger().info("Starting system");
     // Prepare all workers
@@ -70,26 +138,22 @@ public:
     // another thread after waitForStart() sees them all.
     notifyStarted();
 
-    // Start the workers on the main threads
-    std::apply(
-        [this](auto const &...worker) {
-          (worker->startingIfMainThread(), ...);
-          while (on_) {
-            (worker->runIfMainThread(), ...);
-          }
-          (worker->finishingIfMainThread(), ...);
-        },
-        workers_);
-    waitForStop();
+    runMainThreadPadds();
+    shutdown();
   }
 
+  // Asks start() to shut the system down and returns immediately; start()
+  // returns once every padd has finished. Safe to call from any thread,
+  // including from inside a padd.
   virtual void stop() override {
-    std::apply([](auto const &...worker) { (worker->stop(), ...); }, workers_);
-    std::apply([](auto const &...worker) { (worker->cleanupWrapper(), ...); },
-               workers_);
-    notifyStopped();
+    {
+      std::lock_guard<std::mutex> lk(scratchPaddSystemMutex_);
+      stopRequested_ = true;
+    }
+    scratchPaddSystemConditionVariable_.notify_all();
   }
 
+  // Waits until start() has finished shutting the system down.
   void waitForStop() {
     std::unique_lock<std::mutex> lk(scratchPaddSystemMutex_);
     logger().info("Waiting For Stop...");
