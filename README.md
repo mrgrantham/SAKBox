@@ -1,67 +1,92 @@
-# SAKBox #
-A Swiss-Army Knife Toolbox. Monorepo of various projects and their dependencies
+# SAKBox
 
-## Examples ##
-Simple examples programs using some of the dependencies that are defined in the `WORKSPACE` file
+A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the third-party libraries they use.
 
+## Getting Started
 
+**Prerequisites**
 
-## Projects ##
+- [Bazelisk](https://github.com/bazelbuild/bazelisk) (recommended), which installs and runs the Bazel version pinned in `.bazelversion` (9.2.0). A plain Bazel 9 install also works.
+- A C++20 compiler: Xcode (Apple clang) on macOS, or clang/gcc on Linux.
+- On Linux, the system packages listed under [Linux](#linux).
 
-__ScratchPadd__ - Library for message passing and thread management
+All other dependencies are declared in `MODULE.bazel` and downloaded by Bazel on the first build.
 
-__[flexmath](projects/flexmath/README.md)__ - Numeric precision that can change at runtime: fixed-point values, precision groups and powerup-style overrides
+**Build, test and run**
+
+``` bash
+bazel build //...      # build everything
+bazel test //...       # run all the tests
+bazel run //projects/examples/precision_flight:precision_flight   # run one target
+```
+
+The first build takes a while, mostly to compile OpenCV, SDL2 and Boost; later builds are cached. Arguments for the program go after `--`, e.g. `bazel run //projects/examples/camera:exampleCamera -- 1`.
+
+## Projects
+
+| Project | Description |
+| --- | --- |
+| [ScratchPadd](projects/scratchpadd/README.md) | Message passing and thread management between subsystems ("padds") of one process, with an OpenGL/ImGui display padd. Demo: `bazel run //projects/scratchpadd/demo` |
+| [flexmath](projects/flexmath/README.md) | Numeric precision that can change at runtime: fixed-point values, precision groups and powerup-style overrides |
+| [Waffles](projects/waffles/README.md) | Mike Gashler's machine learning and data mining library (public domain), built with Bazel here. Includes its command-line tools (`learn`, `cluster`, `plot`, ...) and demos such as `chess` and `caronhill` |
+| data_dep_retriever | Small helper that finds a binary's data files (shaders, textures, ...) in Bazel's runfiles at runtime |
+
+## Examples
+
+Small programs under `projects/examples/`, mostly one per library. Run any of them with `bazel run <target>`.
+
+| Example | Target | What it does |
+| --- | --- | --- |
+| Precision Flight | `//projects/examples/precision_flight:precision_flight` | Star Fox-style rail game built on flexmath, where powerups change numeric precision. `--autopilot` plays itself |
+| Camera | `//projects/examples/camera:exampleCamera` | Live webcam feed with OpenCV and SDL2. M mirrors, Q quits; optional camera index argument |
+| OpenGL tutorial | `//projects/examples/opengl_tutorial:opengl_tutorial` | GLFW/GLEW scene with a textured, lit pyramid; WASD and Space move the camera |
+| Shader playground | `//projects/examples/shader_playground:shader_playground` | Shadertoy-style fragment shaders rendered through ScratchPadd |
+| ImGui + SDL2 | `//projects/examples/imgui_sdl2:exampleImguiSDL2` | Dear ImGui's demo window on SDL2 and OpenGL 3 |
+| SDL2 | `//projects/examples/sdl2:exampleSDL2` | Opens an SDL2 window and renders a blank streaming texture (a starting template) |
+| PNG | `//projects/examples/png:examplePng` | libpng's `pngtest`: reads a PNG and writes it back out |
+| Logging | `//projects/examples/logging:spd_example`, `:greet` | spdlog and fmt basics |
+| Backtrace | `//projects/examples/backtrace:exampleBacktrace` | Prints a stack trace with backward-cpp |
+| Tabulate | `//projects/examples/tabulate:exampleTabulate` | Formatted terminal tables |
+| YAML table | `//projects/examples/yamltable:exampleYaml` | Parses YAML with rapidyaml and yaml-cpp and prints a table |
+| 3DS read-controls | `//projects/examples/read-controls:read-controls` | Nintendo 3DS homebrew; needs devkitPro (see its Makefile and `--config=3ds`) |
 
 ## Third Party
 
-The third party folder contains custom build files for a number of libraries that I thought might be useful for various projects I had in mind.
+`third_party/` holds Bazel build files for libraries that aren't in the [Bazel Central Registry](https://registry.bazel.build/); `MODULE.bazel` points each one at its upstream source. Libraries that are in the registry (fmt, googletest, Boost, Catch2, ...) are plain `bazel_dep`s.
 
-## Editor Setup ##
+One library is vendored (copied into the repo) rather than downloaded:
+
+- **[Cyclone](third_party/cyclone)**, Ian Millington's physics engine (MIT). Upstream has been unmaintained since 2020; this copy is patched to build with Bazel and adds a flexmath build in which every `real` is a `FlexReal`. Demos: `bazel run //third_party/cyclone:<demo>` for `ballistic`, `bigballistic`, `blob`, `bridge`, `explosion`, `fireworks`, `flightsim`, `fracture`, `platform`, `ragdoll` or `sailboat`. `flightsim_flex` is the flight sim at adjustable precision (`[` and `]` step it).
+
+A few targets are tagged `manual`, so `//...` skips them: the 3DS example, and the Waffles `fourier_net` and `hello_ml` demos, which were written for an older Waffles API.
+
+## Editor Setup
+
 Editors that use clangd (VS Code's clangd extension, CLion, Neovim, ...) need a `compile_commands.json` to know the include paths and C++20 flags Bazel uses. Generate it with:
 
 ``` bash
 python3 tools/compile_commands/refresh.py
 ```
 
-Re-run it after adding source files or changing BUILD deps. The generated files are git-ignored.
+Re-run it after adding source files or changing BUILD deps, then restart clangd. The generated files are git-ignored.
 
+To format a package's C++ files with clang-format, run its `clang_format` target, e.g. `bazel run //projects/flexmath:clang_format`. Most packages have one: `bazel query 'attr(name, "^clang_format$", //...)'` lists them.
 
-## For Linux ##
-For linux you will need to build bazel if on arm
-https://github.com/koenvervloesem/bazel-on-arm
+## Platform Notes
 
-Might need to install default jdk on raspbian rather than `sudo make requirements`
+Development and testing happen on **macOS** (Apple Silicon, Xcode).
 
-Then install bazel 6.4.0 (7.0.0 has issues with symlinks on linux)
-`./scripts/build_bazel.sh 6.4.0`
+### Linux
 
-For OpenGL reqs in scratchpadd and other projects you might need to install the following:
-``` bash
-sudo apt install libxinerama-dev
-sudo apt install libxrandr-dev
-sudo apt install libxcursor-dev
-sudo apt install libxi-dev
-sudo apt install libglu1-mesa-dev
-```
-
-### The below will vary between Ubuntu and Raspbian ###
-You can install mesa an implementation of OpenGL. See indications in the answer.
-
-Therefore, if you have an error such that:
-
-Could NOT find OpenGL
-Then, you want to install libgl1-mesa-dev. With debian-based system:
+Not tested recently, but the build is meant to work. Bazelisk provides Bazel for x86-64 and ARM64 (including 64-bit Raspberry Pi OS). The windowing and OpenGL examples need the X11 and Mesa development packages:
 
 ``` bash
-sudo apt install libgl1-mesa-dev
+sudo apt install libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
+                 libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev
 ```
 
-For an error, such that:
+`Could NOT find OpenGL` means `libgl1-mesa-dev` is missing; `Could NOT find OpenGL (missing: EGL)` means `libegl1-mesa-dev` is. Package names can differ slightly between Ubuntu and Raspberry Pi OS.
 
-Could NOT find OpenGL (missing: EGL)
-Then, you want to install libegl1-mesa-dev. With debian-based system:
+### Windows
 
-``` bash
-sudo apt install libegl1-mesa-dev
-```
-
+Not supported yet. Most libraries build there in principle, but nothing has been tested, and the OpenCV build (used by the camera example) only handles macOS and Linux library names so far.

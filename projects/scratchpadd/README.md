@@ -6,7 +6,7 @@ All padds must be implemented with a contructor that takes an instance that impl
 
 Use the following command to format the files using clang format
 ```
-bazel run --jobs=1 --test_output=all //projects/scratchpadd:clang_format
+bazel run //projects/scratchpadd/basis:clang_format
 ```
 
 TODO
