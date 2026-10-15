@@ -37,7 +37,7 @@ Small programs under `projects/examples/`, mostly one per library. Run any of th
 
 | Example | Target | What it does |
 | --- | --- | --- |
-| Precision Flight | `//projects/examples/precision_flight:precision_flight` | Star Fox-style rail game built on flexmath, where powerups change numeric precision. `--autopilot` plays itself |
+| [Precision Flight](projects/examples/precision_flight/README.md) | `//projects/examples/precision_flight:precision_flight` | Star Fox-style rail game built on flexmath and ScratchPadd, where powerups change numeric precision. `--autopilot` plays itself |
 | Camera | `//projects/examples/camera:exampleCamera` | Live webcam feed with OpenCV and SDL2. M mirrors, Q quits; optional camera index argument |
 | OpenGL tutorial | `//projects/examples/opengl_tutorial:opengl_tutorial` | GLFW/GLEW scene with a textured, lit pyramid; WASD and Space move the camera |
 | Shader playground | `//projects/examples/shader_playground:shader_playground` | Shadertoy-style fragment shaders rendered through ScratchPadd |
