@@ -7,21 +7,29 @@ filegroup(
     visibility = ["//simple_make:__subpackages__"],
 )
 
-# Shows a standard library
+# Only the modules the examples use are built (BUILD_LIST); add one there and
+# to _MODULES to use it.
+_MODULES = ["core", "imgproc", "imgcodecs", "videoio"]  # videoio links imgcodecs
+
 cmake(
     name = "opencv",
     lib_source = ":sources",
-    # pass include/version123 to C/C++ provider as include directory
-    # out_include_dir = "include/version123",
-    # out_lib_dir = ["opencv/lib"],
-    # working_directory = "build/cmake",
     visibility = ["//visibility:public"],
-    # out_static_libs = ["opencv.a"],
-    out_shared_libs = ["libopencv_core.dylib","libopencv_flann.dylib","libopencv_imgproc.dylib","libopencv_ml.dylib","libopencv_photo.dylib","libopencv_dnn.dylib","libopencv_features2d.dylib","libopencv_imgcodecs.dylib","libopencv_videoio.dylib","libopencv_objdetect.dylib","libopencv_highgui.dylib","libopencv_calib3d.dylib","libopencv_stitching.dylib","libopencv_video.dylib"],
-    deps = ["@zlib","@eigen"],
+    # Headers install to include/opencv4/opencv2/..., so expose include/opencv4
+    # and code can use the usual #include <opencv2/...>.
+    out_include_dir = "include/opencv4",
+    # Windows isn't wired up yet: it installs version-suffixed names
+    # (opencv_core4120.dll/.lib) under x64/vc*/ instead of lib/.
+    out_shared_libs = select({
+        "@platforms//os:macos": ["libopencv_%s.dylib" % m for m in _MODULES],
+        "//conditions:default": ["libopencv_%s.so" % m for m in _MODULES],
+    }),
+    deps = ["@eigen"],
     cache_entries = {
+        "BUILD_LIST": ",".join(_MODULES),
         "OPENCV_EXTRA_FLAGS": "-DOPENCV_DISABLE_EIGEN_TENSOR_SUPPORT=1",
-        "BUILD_ZLIB": "OFF",
+        # Bundled zlib links statically; @zlib's libz.1.dylib isn't in runfiles.
+        "BUILD_ZLIB": "ON",
         # Only the C++ libraries are used. The binding generators also fail to
         # configure because they can't read the Eigen version.
         "BUILD_JAVA": "OFF",
@@ -33,5 +41,8 @@ cmake(
         "BUILD_TESTS": "OFF",
         "BUILD_PERF_TESTS": "OFF",
         "BUILD_opencv_apps": "OFF",
+        # Give the libraries unversioned names (libopencv_core.dylib/.so, not
+        # libopencv_core.412.dylib/.so.412) to match out_shared_libs.
+        "CMAKE_PLATFORM_NO_VERSIONED_SONAME": "ON",
     },
 )
