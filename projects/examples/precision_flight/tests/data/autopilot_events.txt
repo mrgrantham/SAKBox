@@ -1,0 +1,99 @@
+[   40.0] GATE  +100
+[   72.1] GATE  +100
+[  103.3] FOCUS  flight precision up
+[  148.8] GOLD GATE  +300
+[  173.7] GATE  +100
+[  205.8] GATE  +100
+[  237.9] GATE  +100
+[  269.6] FOCUS  flight precision up
+[  315.0] GOLD GATE  +300
+[  340.0] GATE  +100
+[  355.8] GATE  +100
+[  383.3] PHASE  hull precision down
+[  426.3] PHASED  +150
+[  454.2] GATE  +100
+[  485.4] PHASE  hull precision down
+[  527.9] PHASED  +150
+[  556.3] FOCUS  flight precision up
+[  600.8] GOLD GATE  +300
+[  625.8] GATE  +100
+[  657.5] PHASE  hull precision down
+[  700.0] PHASED  +150
+[  728.3] GATE  +100
+[  760.0] GATE  +100
+[  775.8] GATE  +100
+[  803.7] GATE  +100
+[  820.0] GATE  +100
+[  847.5] FOCUS  flight precision up
+[  892.9] GOLD GATE  +300
+[  917.9] GATE  +100
+[  933.7] GATE  +100
+[  961.2] PHASE  hull precision down
+[ 1004.2] PHASED  +150
+[ 1032.1] FOCUS  flight precision up
+[ 1077.1] GOLD GATE  +300
+[ 1102.1] GATE  +100
+[ 1117.9] GATE  +100
+[ 1145.8] GATE  +100
+[ 1162.1] GATE  +100
+[ 1190.0] GATE  +100
+[ 1205.8] GATE  +100
+[ 1233.8] GATE  +100
+[ 1265.8] GATE  +100
+[ 1297.9] GATE  +100
+[ 1313.8] GATE  +100
+[ 1342.1] GATE  +100
+[ 1373.8] GATE  +100
+[ 1405.8] GATE  +100
+[ 1422.1] GATE  +100
+[ 1449.6] FOCUS  flight precision up
+[ 1495.0] GOLD GATE  +300
+[ 1519.6] PHASE  hull precision down
+[ 1562.1] PHASED  +150
+[ 1590.0] GATE  +100
+[ 1621.3] FOCUS  flight precision up
+[ 1667.1] GOLD GATE  +300
+[ 1691.3] PHASE  hull precision down
+[ 1734.2] PHASED  +150
+[ 1762.1] FOCUS  flight precision up
+[ 1807.1] GOLD GATE  +300
+[ 1832.1] GATE  +100
+[ 1863.8] GATE  +100
+[ 1895.4] FOCUS  flight precision up
+[ 1940.8] GOLD GATE  +300
+[ 1965.4] FOCUS  flight precision up
+[ 2010.8] GOLD GATE  +300
+[ 2035.8] GATE  +100
+[ 2067.5] PHASE  hull precision down
+[ 2110.0] PHASED  +150
+[ 2138.3] GATE  +100
+[ 2154.2] GATE  +100
+[ 2182.1] GATE  +100
+[ 2197.9] GATE  +100
+[ 2225.4] FOCUS  flight precision up
+[ 2270.8] GOLD GATE  +300
+[ 2295.4] PHASE  hull precision down
+[ 2337.9] PHASED  +150
+[ 2366.3] PHASE  hull precision down
+[ 2407.9] PHASED  +150
+[ 2436.3] GATE  +100
+[ 2452.1] GATE  +100
+[ 2480.0] GATE  +100
+[ 2495.8] GATE  +100
+[ 2523.3] PHASE  hull precision down
+[ 2566.2] PHASED  +150
+[ 2594.2] FOCUS  flight precision up
+[ 2638.7] GOLD GATE  +300
+[ 2663.7] GATE  +100
+[ 2680.0] GATE  +100
+[ 2707.5] FOCUS  flight precision up
+[ 2752.9] GOLD GATE  +300
+[ 2777.5] FOCUS  flight precision up
+[ 2822.9] GOLD GATE  +300
+[ 2847.9] GATE  +100
+[ 2864.2] GATE  +100
+[ 2892.1] GATE  +100
+[ 2923.3] FOCUS  flight precision up
+[ 2969.2] GOLD GATE  +300
+[ 2994.2] GATE  +100
+END score=10800 shield=100.0 gates=48 gold=15 phased=10 over=0 z=-3000.000
