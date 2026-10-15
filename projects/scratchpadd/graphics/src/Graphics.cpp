@@ -1,5 +1,6 @@
 
 #include <ScratchPadd/Graphics/Graphics.hpp>
+#include <ScratchPadd/Helper.hpp>
 
 void Graphics::ControlView::setControls(
     ScratchPadd::MessageType::ControlSnapshot &controls) {

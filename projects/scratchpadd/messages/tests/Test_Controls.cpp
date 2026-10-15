@@ -16,14 +16,6 @@ std::string name() override {
 }
 bool shouldUseMainThread() override { return true; }
 
-void receive(ScratchPadd::Message message) override {
-  logger().error("Unimplemented receive()");
-  // ScratchPadd::MessageVariant &messageVariant = *message.get();
-  // std::visit([&](auto &&messageContents) {
-  //   logger().info("inside receive std::visit");
-  //   receive(messageContents);
-  // }, messageVariant);
-}
 ScratchPadd::ControlValueMap  generateControls() override {
     logger().info("Generating controls for {}",name());
     return {
@@ -62,6 +54,10 @@ std::string name() override {
 }
           ControlExposurePadd(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());
+    on<ScratchPadd::MessageType::ControlSnapshot>(
+        [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
+          setupControlView(snapshot);
+        });
   }
     bool shouldUseMainThread() override { return true; }
 
@@ -69,20 +65,7 @@ std::string name() override {
         send(ScratchPadd::MessageType::ControlRequest{});
     }
 
-     void handleControlSnapshot(ScratchPadd::MessageType::ControlSnapshot &controlSnapshot) override {
-        setupControlView(controlSnapshot);
-    }
-
-
-   void receive(ScratchPadd::Message message) override {
-      // ScratchPadd::MessageVariant &messageVariant = *message.get();
-      // std::visit([&](auto &&messageContents) {
-      //   logger().info("inside receive std::visit");
-      //   receive(messageContents);
-      // }, messageVariant);
-    }
-
-  void setupControlView(ScratchPadd::MessageType::ControlSnapshot &controlSnapshot) {
+  void setupControlView(const ScratchPadd::MessageType::ControlSnapshot &controlSnapshot) {
     logger().info("Setting up control view from type {}", TypeName(controlSnapshot));
     if (paddControls_.contains(controlSnapshot.paddName)) {
       logger().info("Control map already added. Updating...");

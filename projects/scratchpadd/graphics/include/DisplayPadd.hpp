@@ -20,7 +20,11 @@ public:
     performanceTimer_.setTimerName(name());
     performanceTimer_.start();
   }
-  DisplayPadd(ScratchPadd::System *system) : Base(system) {}
+  DisplayPadd(ScratchPadd::System *system) : Base(system) {
+    on<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
+      std::cout << name() << " Text: " << text << "\n";
+    });
+  }
 
   std::optional<std::chrono::duration<double>> repeatInterval() override {
     return 15666666ns;
@@ -87,31 +91,5 @@ public:
         dynamic_unique_cast<Graphics::View>(std::move(controlView)));
     // std::unique_ptr<Graphics::View> view =
     // dynamic_unique_cast<Graphics::View>(std::move(controlView));
-  }
-
-  void receive(ScratchPadd::Message message) override {
-    ScratchPadd::MessageVariant &messageVariant = *message.get();
-    std::visit(VariantHandler{
-                   [&](ScratchPadd::MessageType::Triangle &message) {
-                     std::cout << name() << "Triangle: " << message << "\n";
-                   },
-                   [&](ScratchPadd::MessageType::Point &message) {
-                     std::cout << name() << "Point: " << message << "\n";
-                   },
-                   [&](ScratchPadd::MessageType::Text &message) {
-                     std::cout << name() << "Text: " << message << "\n";
-                   },
-                   [&](ScratchPadd::MessageType::ControlSnapshot &message) {
-                     std::cout << name()
-                               << "Control sourcename:" << message.paddName
-                               << "\n";
-                     setupControlView(message);
-                   },
-                   [&](auto &message) {
-                     std::cout << name() << "Random Type: " << TypeName(message)
-                               << "\n";
-                   },
-               },
-               messageVariant);
   }
 };

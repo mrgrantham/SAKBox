@@ -21,7 +21,6 @@ public:
   }
   std::string name() override { return "Ticker"; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
-  void receive(ScratchPadd::Message message) override {}
 
   // Call repeat() every second, on this padd's thread.
   std::optional<std::chrono::duration<double>> repeatInterval() override {
@@ -39,20 +38,13 @@ class Printer : public ScratchPadd::Base {
 public:
   Printer(ScratchPadd::System *system) : Base(system) {
     work_thread_sleep_interval_ = 1ms; // test only
+    on<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
+      logger().info("received {}", text.contents);
+      record(text.contents); // test only
+    });
   }
   std::string name() override { return "Printer"; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
-
-  void receive(ScratchPadd::Message message) override {
-    std::visit(VariantHandler{
-                   [&](ScratchPadd::MessageType::Text &text) {
-                     logger().info("received {}", text.contents);
-                     record(text.contents); // test only
-                   },
-                   [](auto &) {}, // ignore every other message type
-               },
-               *message);
-  }
 
   // test only
   std::vector<std::string> received() {
@@ -74,7 +66,6 @@ class Mover : public ScratchPadd::Base {
 public:
   Mover(ScratchPadd::System *system) : Base(system) {}
   std::string name() override { return "Mover"; }
-  void receive(ScratchPadd::Message message) override {}
 
   ScratchPadd::ControlValueMap generateControls() override {
     return {

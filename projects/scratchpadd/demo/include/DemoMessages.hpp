@@ -1,14 +1,12 @@
 #pragma once
+// Messages defined by the demo app rather than the library: any copyable
+// struct can be sent between padds (see Base::on and Base::send).
 
-namespace ScratchPadd::MessageType {
+#include <array>
+#include <iostream>
 
-namespace Transform {
-struct Translate {};
-struct Scale {};
-struct Rotate {};
-} // namespace Transform
+namespace Demo {
 
-struct Color {};
 struct Point {
   double x{0};
   double y{0};
@@ -18,10 +16,8 @@ struct Point {
   }
 };
 
-struct Position : Point {};
-
 struct Triangle {
-  Position position;
+  Point position;
   std::array<Point, 3> vertexes;
   friend std::ostream &operator<<(std::ostream &output, const Triangle &T) {
     output << " { position:" << T.position << ", vertexes: {\n";
@@ -33,4 +29,4 @@ struct Triangle {
   }
 };
 
-} // namespace ScratchPadd::MessageType
+} // namespace Demo

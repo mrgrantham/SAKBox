@@ -1,6 +1,10 @@
 #pragma once
 
 #include <atomic>
+#include <cassert>
+#include <functional>
+#include <typeindex>
+#include <unordered_map>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -46,9 +50,25 @@ private:
   std::string name_{"Unnamed Padd"};
   bool shouldUseMainThread_{false};
   std::mutex scratchPaddMutex_;
+  // Message handlers by message type. Only changed before the padd starts.
+  std::unordered_map<std::type_index, std::function<void(const MessageBase &)>> handlers_;
 
 public:
-  Base(System *system) : system_(system) {}
+  Base(System *system) : system_(system) {
+    // Every padd answers control requests and applies control changes.
+    on<MessageType::ControlRequest>([this](const MessageType::ControlRequest &request) {
+      logger().info("{} Control request padd name: {}", name(),
+                    request.paddName.value_or("None"));
+      send(generateControlsSnapshot());
+    });
+    on<MessageType::ControlChange>([this](const MessageType::ControlChange &change) {
+      logger().info("{} Control controlName: {}", name(), change.controlName);
+      if (change.paddName == name()) {
+        updateControl(change);
+      }
+      send(generateControlsSnapshot());
+    });
+  }
 
   virtual ~Base() {
     // spdlog gets torn down before the destructor
@@ -65,10 +85,6 @@ public:
     return ScratchPadd::MessageType::ControlSnapshot{.paddName = name_,
                                                      .controlMap = controlMap_};
   }
-
-  // void receive(const MessageType::ControlRequest &request) {
-  //   send(MakeMsg(generateControlsSnapshot()));
-  // }
 
   ssize_t pendingWorkCount() { return pendingWork_; }
 
@@ -276,68 +292,32 @@ public:
     work_queue_.push(work);
   }
 
-  // virtual void receive(Message message) {
-  //     ScratchPadd::MessageVariant &messageVariant = *message.get();
-  //   std::visit([](const auto & messageContents){ receive(messageContents); },
-  //   messageVariant);
-  // }
-
-  bool receive(ScratchPadd::MessageType::ControlChange &controlChange) {
-    logger().info("{} Control controlName: {}", this->name(),
-                  controlChange.controlName);
-    if (controlChange.paddName == name()) {
-      updateControl(controlChange);
-    }
-    send(generateControlsSnapshot());
-    return true;
+  // Registers `handler` for messages of type T, replacing any earlier
+  // handler for T. The handler runs on this padd's thread and gets the
+  // contents as a const reference; the message is shared with other padds.
+  //
+  // Call from the constructor or prepare(): handlers can't change once the
+  // padd is running, which lets its threads read them without locking. The
+  // system only queues a message for padds that have a handler for its type.
+  template <typename T, typename Handler> void on(Handler handler) {
+    assert(!on_ && "register message handlers before the padd starts");
+    handlers_[std::type_index(typeid(T))] =
+        [handler = std::move(handler)](const MessageBase &message) {
+          handler(static_cast<const MessageOf<T> &>(message).value);
+        };
   }
 
-  bool receive(ScratchPadd::MessageType::ControlRequest &controlRequest) {
-    logger().info("{} Control request padd name: {}", name(),
-                  controlRequest.paddName.value_or("None"));
-    send(generateControlsSnapshot());
-    return true;
-  }
+  // Whether this padd has a handler for messages of `type`.
+  bool handles(std::type_index type) const { return handlers_.contains(type); }
 
-  virtual void handleControlSnapshot(
-      ScratchPadd::MessageType::ControlSnapshot &controlSnapshot) {
-    logger().error("handleControlSnapshot not implemented");
-  }
-
-  bool receive(ScratchPadd::MessageType::ControlSnapshot &controlSnapshot) {
-    handleControlSnapshot(controlSnapshot);
-    return true;
-  }
-
-  bool receive(auto &&message) {
-    logger().error("no inner receive for this message type");
-    return false;
-  }
-
-  virtual void receive(Message message) = 0;
-
-  bool innerReceive(Message message) {
-    logger().info("inside innerReceive start");
-    ScratchPadd::MessageVariant &messageVariant = *message.get();
-    return std::visit(
-        [&](auto &&messageContents) -> bool {
-          logger().info("inside innerReceive std::visit");
-          return receive(messageContents);
-        },
-        messageVariant);
-    logger().info("inside innerReceive end");
-  }
-
-  void receiveWrapper(Message message) {
-    logger().info("inside receiveWrapper start");
-    bool innerReceiverUsed = innerReceive(message);
-    if (!innerReceiverUsed) {
-      logger().info("Trying to use outer message");
-      receive(message);
+  // Runs this padd's handler for `message`. Called on the padd's thread by
+  // the work queue.
+  void deliver(const Message &message) {
+    auto handler = handlers_.find(message->type());
+    if (handler != handlers_.end()) {
+      handler->second(*message);
     }
   }
-
-  // void f(const C & c) { std::visit([](const auto & x){ f(x); }, c); }
 
   void stop() {
     logger().info("Stopping: {}", name_);
@@ -348,32 +328,25 @@ public:
     }
   }
 
-  // Sends message to be consumed by all other Padds except
-  // the one that sent it
-  void send(Message &&message) { system_->send(this, message); }
-
-  // Convenience method to package the message contents in
-  // a shared pointer by default
-  template <typename UnderlyingMessageContents>
-  void send(UnderlyingMessageContents messageContents) {
-    logger().info("send({}) from {}", TypeName(messageContents), name_);
-    system_->send(this, MakeMsg(messageContents));
+  // Sends `message` to every other padd that handles its type.
+  void send(Message message) {
+    logger().info("send({}) from {}", message->typeName(), name_);
+    system_->send(this, std::move(message));
   }
 
-  // Sends message to be consumed by all Padds including
-  // the one that sent it
-  void sendIncludeSender(Message &message) {
-    system_->sendIncludeSender(message);
+  // Sends `contents` (any copyable struct) to every other padd that handles
+  // its type.
+  template <typename T> void send(T contents) { send(makeMessage(std::move(contents))); }
+
+  // Sends `message` to every padd that handles its type, including this one.
+  void sendIncludeSender(Message message) { system_->sendIncludeSender(std::move(message)); }
+
+  // Sends `contents` to every padd that handles its type, including this one.
+  template <typename T> void sendIncludeSender(T contents) {
+    sendIncludeSender(makeMessage(std::move(contents)));
   }
 
-  // Convenience method to package the message contents in
-  // a shared pointer by default
-  template <typename UnderlyingMessageContents>
-  void sendIncludeSender(UnderlyingMessageContents messageContents) {
-    system_->sendIncludeSender(this, MakeMsg(messageContents));
-  }
-
-  void updateControl(ScratchPadd::MessageType::ControlChange &controlChange) {
+  void updateControl(const ScratchPadd::MessageType::ControlChange &controlChange) {
     if (controlMap_.contains(controlChange.controlName)) {
       auto &controlTypeVariant = controlMap_.at(controlChange.controlName);
       if (VariantsHoldSameType(controlChange.controlTypeValue,

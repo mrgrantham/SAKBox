@@ -207,16 +207,21 @@ public:
     }
     scratchPaddSystemConditionVariable_.notify_all();
   }
-  void sendWork(ScratchPadd::Base *receiver, Message &message) {
+  // Queues `message` for `receiver` if it has a handler for the message's
+  // type; padds that don't handle it never see it.
+  void sendWork(ScratchPadd::Base *receiver, const Message &message) {
+    if (!receiver->handles(message->type())) {
+      return;
+    }
     logger().info("sendWork() to {}", receiver->name());
     std::function<void()> *work =
-        new std::function<void()>([=] { receiver->receiveWrapper(message); });
+        new std::function<void()>([=] { receiver->deliver(message); });
     receiver->push(work);
   }
 
-  // Send to receiver if they are node same as the sender
+  // Send to receiver if they are not the same as the sender
   void sendIfUnmatched(ScratchPadd::Base *sender, Base *possibleReceiver,
-                       Message &message) {
+                       const Message &message) {
     if (sender != possibleReceiver) {
       sendWork(possibleReceiver, message);
     }

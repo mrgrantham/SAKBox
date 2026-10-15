@@ -1,4 +1,5 @@
 #pragma once
+#include <DemoMessages.hpp>
 #include <ScratchPadd/Base.hpp>
 #include <optional>
 
@@ -15,6 +16,9 @@ public:
   }
   StoryPadd(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());
+    on<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
+      std::cout << name() << " Text: " << text << "\n";
+    });
   }
 
   void repeat() override {
@@ -27,9 +31,9 @@ public:
   ~StoryPadd() { spdlog::info("Destroying: {}", name()); }
 
   void starting() override {
-    ScratchPadd::MessageType::Triangle triangle;
-    // send(ScratchPadd::MakeMsg(triangle));
-    send(triangle);
+    // A message type defined by the demo, not the library (DemoMessages.hpp)
+    send(Demo::Triangle{.position = {.x = 1, .y = 2}});
+    send(ScratchPadd::MessageType::Text{"Once upon a time..."});
   }
   std::optional<std::chrono::duration<double>> repeatInterval() override {
     return 1000ms;
@@ -51,21 +55,5 @@ public:
         {"aBool", ScratchPadd::ControlType::Boolean(true)},
         {"anInt", ScratchPadd::ControlType::Integer(
                       5, std::make_optional(std::make_pair(2, 9)))}};
-  }
-
-  void receive(ScratchPadd::Message message) override {
-    ScratchPadd::MessageVariant &messageVariant = *message.get();
-    std::visit(VariantHandler{
-                   [&](ScratchPadd::MessageType::Triangle &message) {
-                     std::cout << name() << "Triangle: " << message << "\n";
-                   },
-                   [&](ScratchPadd::MessageType::Point &message) {
-                     std::cout << name() << "Point: " << message << "\n";
-                   },
-                   [&](ScratchPadd::MessageType::Text &message) {
-                     std::cout << name() << "Text: " << message << "\n";
-                   },
-                   [&](auto &message) { std::cout << name() << " auto\n"; }},
-               messageVariant);
   }
 };

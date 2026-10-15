@@ -1,11 +1,6 @@
 #pragma once
 
-#if defined(SCRATCHPADD_TEST)
-#pragma warning "Using ScratchPadd Test Messages"
-#include <ScratchPadd/Tests/Message.hpp>
-#else
 #include <ScratchPadd/Messages/Message.hpp>
-#endif
 namespace ScratchPadd {
 class Base;
 class System {

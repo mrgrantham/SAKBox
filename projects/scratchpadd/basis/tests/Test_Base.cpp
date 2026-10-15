@@ -19,10 +19,6 @@ class TestSenderPadd : public ScratchPadd::Base {
         return __CLASS_NAME__;
     }
 
-    void receive(ScratchPadd::Message message) override {
-
-    }
-
  ScratchPadd::ControlValueMap
   generateControls() override {
     return {};
@@ -43,10 +39,6 @@ class TestReceiverPadd : public ScratchPadd::Base {
 
     std::string name() override {
         return __CLASS_NAME__;
-    }
-
-    void receive(ScratchPadd::Message message) override {
-
     }
 
  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>

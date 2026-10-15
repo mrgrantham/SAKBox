@@ -23,7 +23,6 @@ public:
   std::string name() override { return "ThreadPadd" + std::to_string(Id); }
   bool shouldUseMainThread() override { return UseMainThread; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
-  void receive(ScratchPadd::Message message) override {}
 
   // Queues a job and returns the id of the thread that ran it.
   std::thread::id workThreadId() {
