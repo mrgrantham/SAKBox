@@ -3,7 +3,7 @@
 // Messages passed between padds.
 //
 // Any copyable struct can be a message: padds register a handler for it with
-// Base::on<T>() and send it with Base::send(). The library itself only defines
+// Base::receive<T>() and send it with Base::send(). The library itself only defines
 // the generic Text message below and the control messages in Controls.hpp;
 // applications define their own types without touching ScratchPadd.
 

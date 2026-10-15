@@ -54,7 +54,7 @@ std::string name() override {
 }
           ControlExposurePadd(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());
-    on<ScratchPadd::MessageType::ControlSnapshot>(
+    receive<ScratchPadd::MessageType::ControlSnapshot>(
         [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
           setupControlView(snapshot);
         });

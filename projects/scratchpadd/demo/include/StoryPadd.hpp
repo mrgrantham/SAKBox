@@ -16,7 +16,7 @@ public:
   }
   StoryPadd(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());
-    on<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
+    receive<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
       std::cout << name() << " Text: " << text << "\n";
     });
   }

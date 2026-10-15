@@ -33,12 +33,12 @@ template <int Id> class RecordingPadd : public ScratchPadd::Base {
 public:
   RecordingPadd(ScratchPadd::System *system) : Base(system) {
     work_thread_sleep_interval_ = 1ms;
-    on<Shape>([this](const Shape &shape) {
+    receive<Shape>([this](const Shape &shape) {
       std::lock_guard<std::mutex> lk(mutex_);
       shapes_.push_back(shape);
       shapeAddresses_.push_back(&shape);
     });
-    on<Ping>([this](const Ping &ping) {
+    receive<Ping>([this](const Ping &ping) {
       std::lock_guard<std::mutex> lk(mutex_);
       pings_.push_back(ping.id);
     });
@@ -75,7 +75,7 @@ class PingOnlyPadd : public ScratchPadd::Base {
 public:
   PingOnlyPadd(ScratchPadd::System *system) : Base(system) {
     work_thread_sleep_interval_ = 1ms;
-    on<Ping>([this](const Ping &) { ++pings_; });
+    receive<Ping>([this](const Ping &) { ++pings_; });
   }
   std::string name() override { return "PingOnlyPadd"; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }

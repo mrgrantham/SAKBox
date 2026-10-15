@@ -56,12 +56,12 @@ private:
 public:
   Base(System *system) : system_(system) {
     // Every padd answers control requests and applies control changes.
-    on<MessageType::ControlRequest>([this](const MessageType::ControlRequest &request) {
+    receive<MessageType::ControlRequest>([this](const MessageType::ControlRequest &request) {
       logger().info("{} Control request padd name: {}", name(),
                     request.paddName.value_or("None"));
       send(generateControlsSnapshot());
     });
-    on<MessageType::ControlChange>([this](const MessageType::ControlChange &change) {
+    receive<MessageType::ControlChange>([this](const MessageType::ControlChange &change) {
       logger().info("{} Control controlName: {}", name(), change.controlName);
       if (change.paddName == name()) {
         updateControl(change);
@@ -299,7 +299,7 @@ public:
   // Call from the constructor or prepare(): handlers can't change once the
   // padd is running, which lets its threads read them without locking. The
   // system only queues a message for padds that have a handler for its type.
-  template <typename T, typename Handler> void on(Handler handler) {
+  template <typename T, typename Handler> void receive(Handler handler) {
     assert(!on_ && "register message handlers before the padd starts");
     handlers_[std::type_index(typeid(T))] =
         [handler = std::move(handler)](const MessageBase &message) {

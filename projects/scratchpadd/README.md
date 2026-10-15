@@ -44,7 +44,7 @@ And this one prints the `Text` messages it receives, by registering a handler fo
 class Printer : public ScratchPadd::Base {
 public:
   Printer(ScratchPadd::System *system) : Base(system) {
-    on<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
+    receive<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
       logger().info("received {}", text.contents);
     });
   }
@@ -87,7 +87,7 @@ After that, each padd goes through these hooks. All except the constructor are o
 | `prepare()` | start of `start()`, before any padd thread exists | the thread calling `start()` |
 | `starting()` | when the padd's work loop starts | the padd's thread |
 | `repeat()` | every `repeatInterval()`, if set | the padd's thread |
-| `on<T>()` handlers | for each message of type T | the padd's thread |
+| `receive<T>()` handlers | for each message of type T | the padd's thread |
 | `finishing()` | when the padd's work loop ends | the padd's thread |
 | `cleanup()` | at shutdown, after every padd's `finishing()` | the thread calling `start()` |
 
@@ -105,13 +105,13 @@ When its queue is empty, a padd's thread sleeps for `work_thread_sleep_interval_
 
 ### Messages
 
-Any copyable struct can be a message. Define it in your own code, register a handler for it with `on<T>()`, and send it with `send()`:
+Any copyable struct can be a message. Define it in your own code, register a handler for it with `receive<T>()`, and send it with `send()`:
 
 ```cpp
 struct GatePassed { int gate; };
 
 // In a padd's constructor: runs on this padd's thread for every GatePassed
-on<GatePassed>([this](const GatePassed &event) { logger().info("gate {}", event.gate); });
+receive<GatePassed>([this](const GatePassed &event) { logger().info("gate {}", event.gate); });
 
 // In any other padd
 send(GatePassed{3});
@@ -142,7 +142,7 @@ The control types are `Double` and `Integer` (each with an optional range), `Boo
 Controls are designed to be shown and edited by another padd, such as a UI panel, through three messages that `Base` handles automatically:
 
 1. The panel sends a `ControlRequest`.
-2. Every padd replies with a `ControlSnapshot` of its controls. The panel receives them with `on<ControlSnapshot>()`.
+2. Every padd replies with a `ControlSnapshot` of its controls. The panel handles them with `receive<ControlSnapshot>()`.
 3. To change a value, the panel sends a `ControlChange` naming the padd and control. That padd updates its value if the type matches, and the padds send fresh snapshots so the panel stays in sync.
 
 A padd reads its current values from `generateControlsSnapshot().controlMap`. `messages/tests/Test_Controls.cpp` shows the whole round trip.

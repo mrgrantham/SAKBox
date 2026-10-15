@@ -21,7 +21,7 @@ public:
     performanceTimer_.start();
   }
   DisplayPadd(ScratchPadd::System *system) : Base(system) {
-    on<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
+    receive<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
       std::cout << name() << " Text: " << text << "\n";
     });
   }

@@ -38,7 +38,7 @@ class Printer : public ScratchPadd::Base {
 public:
   Printer(ScratchPadd::System *system) : Base(system) {
     work_thread_sleep_interval_ = 1ms; // test only
-    on<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
+    receive<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
       logger().info("received {}", text.contents);
       record(text.contents); // test only
     });
