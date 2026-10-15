@@ -102,7 +102,7 @@ namespace cyclone {
         /**
          * Processes all the physics for the world.
          */
-        void runPhysics(real duration);
+        void runPhysics(real_duration duration);
 
         /**
          * Initialises the world for a simulation frame. This clears

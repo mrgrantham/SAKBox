@@ -162,7 +162,7 @@ namespace cyclone {
          * linear approximation to the correct integral. For this reason it
          * may be inaccurate in some cases.
          */
-        void integrate(real duration);
+        void integrate(real_duration duration);
 
         /*@}*/
 

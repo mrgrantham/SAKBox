@@ -56,7 +56,7 @@ Small programs under `projects/examples/`, mostly one per library. Run any of th
 
 One library is vendored (copied into the repo) rather than downloaded:
 
-- **[Cyclone](third_party/cyclone)**, Ian Millington's physics engine (MIT). Upstream has been unmaintained since 2020; this copy is patched to build with Bazel and adds a flexmath build in which every `real` is a `FlexReal`. Demos: `bazel run //third_party/cyclone:<demo>` for `ballistic`, `bigballistic`, `blob`, `bridge`, `explosion`, `fireworks`, `flightsim`, `fracture`, `platform`, `ragdoll` or `sailboat`. `flightsim_flex` is the flight sim at adjustable precision (`[` and `]` step it).
+- **[Cyclone](third_party/cyclone)**, Ian Millington's physics engine (MIT). Upstream has been unmaintained since 2020; this copy is patched to build with Bazel and adds a flexmath build in which every `real` is a `FlexReal`. Demos: `bazel run //third_party/cyclone:<demo>` for `ballistic`, `bigballistic`, `blob`, `bridge`, `explosion`, `fireworks`, `flightsim`, `fracture`, `platform`, `ragdoll` or `sailboat`. `flightsim_flex` is the flight sim at adjustable precision: `[` and `]` step it, N switches between stochastic, truncating and nearest rounding.
 
 A few targets are tagged `manual`, so `//...` skips them: the 3DS example, and the Waffles `fourier_net` and `hello_ml` demos, which were written for an older Waffles API.
 

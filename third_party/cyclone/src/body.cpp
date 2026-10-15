@@ -151,9 +151,20 @@ void RigidBody::calculateDerivedData()
 
 }
 
-void RigidBody::integrate(real duration)
+void RigidBody::integrate(real_duration timeStep)
 {
     if (!isAwake) return;
+
+    // SAKBox: the time step and the per-frame factors derived from it keep
+    // full precision in the flex build; only the body's state snaps.
+    real duration, linearDrag, angularDrag, sleepBias;
+    {
+        CYCLONE_FULL_PRECISION_SCOPE;
+        duration = timeStep;
+        linearDrag = real_pow(linearDamping, duration);
+        angularDrag = real_pow(angularDamping, duration);
+        sleepBias = real_pow(0.5, duration);
+    }
 
     // Calculate linear acceleration from force inputs.
     lastFrameAcceleration = acceleration;
@@ -171,8 +182,8 @@ void RigidBody::integrate(real duration)
     rotation.addScaledVector(angularAcceleration, duration);
 
     // Impose drag.
-    velocity *= real_pow(linearDamping, duration);
-    rotation *= real_pow(angularDamping, duration);
+    velocity *= linearDrag;
+    rotation *= angularDrag;
 
     // Adjust positions
     // Update linear position.
@@ -194,7 +205,7 @@ void RigidBody::integrate(real duration)
         real currentMotion = velocity.scalarProduct(velocity) +
             rotation.scalarProduct(rotation);
 
-        real bias = real_pow(0.5, duration);
+        real bias = sleepBias;
         motion = bias*motion + (1-bias)*currentMotion;
 
         if (motion < sleepEpsilon) setAwake(false);

@@ -12,6 +12,7 @@ It was built for a Star Fox-style flying game in which collected powerups change
 - [Quick start](#quick-start)
 - [Concepts](#concepts)
   - [Precision and `quantize()`](#precision-and-quantize)
+  - [Rounding and bias](#rounding-and-bias)
   - [Groups and policies](#groups-and-policies)
   - [Overrides](#overrides)
   - [The controller](#the-controller)
@@ -69,7 +70,7 @@ A `Precision` (in `FlexPrecision.hpp`) describes how finely and how far a value 
 |---|---|---|
 | `fracBits` | Values snap to multiples of `2^-fracBits`: 4 means steps of 1/16, 0 whole numbers, −1 steps of 2. 52 or more leaves a `double` untouched. | 52 (full) |
 | `intBits` | With `overflow` set, values are limited to `[-2^intBits, 2^intBits)`. So `intBits = 4` behaves like a 5-bit signed register. | 0 |
-| `rounding` | `TowardZero` (drop the excess) or `Nearest` (exact halves round away from zero). | `TowardZero` |
+| `rounding` | `TowardZero` (drop the excess), `Nearest` (exact halves round away from zero), or `Stochastic` (up or down at random, weighted by distance; see [Rounding and bias](#rounding-and-bias)). | `TowardZero` |
 | `overflow` | `None` (unlimited range), `Saturate` (clamp), or `Wrap` (wrap around like a register). | `None` |
 
 `quantize(value, precision)` applies one to a `double`; `FlexPoint::quantized(precision)` does the same with integer arithmetic:
@@ -84,7 +85,25 @@ quantize(100.0, Precision{.fracBits = 4, .intBits = 4,
                           .overflow = Overflow::Saturate});                   // 15.9375
 ```
 
-Two properties hold for every precision: snapping twice gives the same result as snapping once, and snapping never reorders values. That's what makes low-precision behaviour predictable enough to design gameplay around.
+Two properties hold for `TowardZero` and `Nearest`: snapping twice gives the same result as snapping once, and snapping never reorders values. That's what makes low-precision behaviour predictable enough to design gameplay around. `Stochastic` keeps the first property but not the second.
+
+### Rounding and bias
+
+`TowardZero` and `Nearest` are *biased*: each one errs the same way every time for a given value. That's fine for a single read, but in a loop that feeds its result back in, such as integrating velocity or applying drag every frame, the errors add up instead of cancelling:
+
+- **Truncation** shrinks every result a little, so a simulation steadily loses energy. At 6 bits, a plane that should reach 16 m/s tops out around 13.
+- **Nearest** drops any change smaller than half a step. Small accelerations, and drag on a slow object, vanish entirely.
+
+`Rounding::Stochastic` rounds up with probability equal to how far the value is past the lower grid point: 1.25 at 0 bits becomes 2 a quarter of the time and 1 otherwise. Each result is still on the grid, but the *average* is exact, so even changes far smaller than a step add up correctly. Low precision then shows up as noise rather than drift:
+
+```cpp
+Precision sixteenths{.fracBits = 4, .rounding = Rounding::Stochastic};
+double total = 0;
+for (int i = 0; i < 10000; ++i)
+  total = quantize(total + 0.001, sixteenths); // ~10; TowardZero and Nearest give 0
+```
+
+The random numbers come from a small generator per thread with a fixed starting seed, so a run is reproducible as long as it performs the same operations in the same order. Call `seedStochasticRounding(seed)` to vary it. Stochastic rounding is the standard fix for this problem in low-precision arithmetic (it's widely used for training neural networks in 8- and 16-bit formats).
 
 `Overflow::Wrap` is there to create range glitches *on purpose*, such as an enemy flung across the map when its position wraps. Accidental overflow inside other math is much harder to control.
 
@@ -205,7 +224,9 @@ bazel test //third_party/cyclone:flex_test
 
 The plain `//third_party/cyclone:cyclone` build is unaffected and doesn't depend on flexmath.
 
-Practical limit: Cyclone integrates using the frame time (about 1/60 s), and below 6 fractional bits that time step itself truncates to zero, which Cyclone asserts against. So `flightsim_flex` keeps precision at 6 bits or more.
+Precision applies to the bodies' *state*: positions, velocities, orientations, and every result computed from them. The time step and the per-frame drag factors derived from it (`pow(damping, dt)`) keep full precision. Snapping those would bias every frame the same way: at 6 bits a drag factor of 0.99644 truncates to 0.984375, four times the drag, and the flight sim's plane slowed to a crawl. The `real_duration` type and `CYCLONE_FULL_PRECISION_SCOPE` in `precision.h` implement this.
+
+`flightsim_flex` starts in stochastic rounding, so lowering precision makes the flight noisier without slowing it down. Press N to compare truncation and nearest rounding, which bias the flight. Precision goes down to 2 bits.
 
 ## Building and testing
 
@@ -218,6 +239,7 @@ bazel test  //projects/flexmath/...
 |---|---|
 | `test_FlexPoint` | Fixed-point arithmetic, rounding, overflow modes, and agreement between the integer and `double` snapping paths over thousands of random cases |
 | `test_FlexReal` | Per-operation snapping, nested scopes, `quantize()` properties (snapping twice = once, order preserved) |
+| `test_Rounding` | Stochastic rounding: on-grid values unchanged, results are neighbouring grid values, unbiased on average, small increments accumulate, seeding, overflow |
 | `test_FlexGroup` | Overrides (stacking, release order, moves), policies, `activate()`, the controller, and the two Precision Flight mechanics as library properties |
 | `test_FlexVector`, `test_FlexMatrix` | Element-wise operations, products, quantization, dimension checks |
 | `test_Examples` | Every code example in this README |

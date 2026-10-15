@@ -63,7 +63,7 @@ unsigned ParticleWorld::generateContacts()
     return maxContacts - limit;
 }
 
-void ParticleWorld::integrate(real duration)
+void ParticleWorld::integrate(real_duration duration)
 {
     for (Particles::iterator p = particles.begin();
         p != particles.end();
@@ -74,7 +74,7 @@ void ParticleWorld::integrate(real duration)
     }
 }
 
-void ParticleWorld::runPhysics(real duration)
+void ParticleWorld::runPhysics(real_duration duration)
 {
     // First apply the force generators
     registry.updateForces(duration);

@@ -22,12 +22,21 @@ using namespace cyclone;
  * --------------------------------------------------------------------------
  */
 
-void Particle::integrate(real duration)
+void Particle::integrate(real_duration timeStep)
 {
     // We don't integrate things with zero mass.
     if (inverseMass <= 0.0f) return;
 
-    assert(duration > 0.0);
+    assert(timeStep > 0.0);
+
+    // SAKBox: the time step and the drag factor keep full precision in the
+    // flex build; only the particle's state snaps.
+    real duration, drag;
+    {
+        CYCLONE_FULL_PRECISION_SCOPE;
+        duration = timeStep;
+        drag = real_pow(damping, duration);
+    }
 
     // Update linear position.
     position.addScaledVector(velocity, duration);
@@ -40,7 +49,7 @@ void Particle::integrate(real duration)
     velocity.addScaledVector(resultingAcc, duration);
 
     // Impose drag.
-    velocity *= real_pow(damping, duration);
+    velocity *= drag;
 
     // Clear the forces.
     clearAccumulator();

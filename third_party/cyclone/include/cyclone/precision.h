@@ -103,6 +103,23 @@ namespace cyclone {
     #define real_epsilon DBL_EPSILON
     #define R_PI 3.14159265358979
 #endif
+
+    /**
+     * SAKBox addition: the type of a time step. In the flex build it is a
+     * double, so the time step keeps full precision instead of snapping
+     * like real; integrate() derives per-frame factors from it inside
+     * CYCLONE_FULL_PRECISION_SCOPE, and only the body's state snaps.
+     * Snapping the time step or the drag factor would bias every frame the
+     * same way (see projects/flexmath/README.md). Otherwise it is just real.
+     */
+#if defined(CYCLONE_FLEX_REAL)
+    typedef double real_duration;
+    #define CYCLONE_FULL_PRECISION_SCOPE \
+        Flex::Math::ScopedActivePrecision cyclone_full_precision_scope(Flex::Math::kFullPrecision)
+#else
+    typedef real real_duration;
+    #define CYCLONE_FULL_PRECISION_SCOPE do {} while (0)
+#endif
 }
 
 #endif // CYCLONE_PRECISION_H

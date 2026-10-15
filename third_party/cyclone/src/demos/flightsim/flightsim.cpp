@@ -99,6 +99,13 @@ windspeed(0,0,0)
     aircraft.setAwake();
     aircraft.setCanSleep(false);
 
+#if defined(CYCLONE_FLEX_REAL)
+    // Stochastic rounding is unbiased, so lowering precision adds noise to
+    // the flight instead of steadily slowing the plane. N cycles through the
+    // biased modes for comparison.
+    Flex::Math::activePrecision().rounding = Flex::Math::Rounding::Stochastic;
+#endif
+
     registry.add(&aircraft, &left_wing);
     registry.add(&aircraft, &right_wing);
     registry.add(&aircraft, &rudder);
@@ -226,7 +233,9 @@ void FlightSimDemo::display()
     else
         sprintf(buffer, "Precision: %d bits (step %g, %s) | [ ] change, N rounding, F full",
             precision.fracBits, precision.step(),
-            precision.rounding == Flex::Math::Rounding::Nearest ? "nearest" : "truncate");
+            precision.rounding == Flex::Math::Rounding::Nearest      ? "nearest"
+            : precision.rounding == Flex::Math::Rounding::Stochastic ? "stochastic"
+                                                                     : "truncate");
     renderText(10.0f, 38.0f, buffer);
 #endif
 }
@@ -315,12 +324,12 @@ void FlightSimDemo::key(unsigned char key)
         break;
 
 #if defined(CYCLONE_FLEX_REAL)
-    // Whole-engine precision. Below 6 bits the frame duration itself
-    // truncates to zero, which integrate() asserts against.
+    // Whole-engine precision, down to 2 bits (steps of 1/4). The time step
+    // and drag factors keep full precision (see RigidBody::integrate).
     case '[':
     {
         int &bits = Flex::Math::activePrecision().fracBits;
-        bits = bits >= 52 ? 24 : (bits > 6 ? bits - 1 : 6);
+        bits = bits >= 52 ? 24 : (bits > 2 ? bits - 1 : 2);
         break;
     }
 
@@ -333,9 +342,11 @@ void FlightSimDemo::key(unsigned char key)
 
     case 'n': case 'N':
     {
+        // stochastic -> truncate -> nearest -> stochastic
         Flex::Math::Rounding &rounding = Flex::Math::activePrecision().rounding;
-        rounding = rounding == Flex::Math::Rounding::Nearest ? Flex::Math::Rounding::TowardZero
-                                                             : Flex::Math::Rounding::Nearest;
+        rounding = rounding == Flex::Math::Rounding::Stochastic ? Flex::Math::Rounding::TowardZero
+                   : rounding == Flex::Math::Rounding::TowardZero ? Flex::Math::Rounding::Nearest
+                                                                  : Flex::Math::Rounding::Stochastic;
     }
         break;
 
