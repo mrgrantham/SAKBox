@@ -10,6 +10,8 @@ Simple examples programs using some of the dependencies that are defined in the 
 
 __ScratchPadd__ - Library for message passing and thread management
 
+__[flexmath](projects/flexmath/README.md)__ - Numeric precision that can change at runtime: fixed-point values, precision groups and powerup-style overrides
+
 ## Third Party
 
 The third party folder contains custom build files for a number of libraries that I thought might be useful for various projects I had in mind.

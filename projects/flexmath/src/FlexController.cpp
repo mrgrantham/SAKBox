@@ -1,32 +1,28 @@
 #include "FlexController.hpp"
+
+#include <stdexcept>
+
 namespace Flex::Math {
 
-std::shared_ptr<Flex::Math::FlexGroup> FlexController::getLatestFlexGroup() {
-  return getFlexGroup(latestFlexGroupID_);
+FlexGroup &FlexController::addGroup(const std::string &name, Precision base, Policy policy) {
+  auto [it, inserted] = groups_.try_emplace(name, nullptr);
+  if (!inserted) {
+    throw std::invalid_argument("FlexController: group '" + name + "' already exists");
+  }
+  it->second = std::make_unique<FlexGroup>(name, base, policy);
+  return *it->second;
 }
 
-void FlexController::setActiveFlexGroup(FlexGroupID flexGroupID) {
-  activeFlexGroup_ = groupRegistry_[latestFlexGroupID_];
+FlexGroup &FlexController::group(const std::string &name) {
+  auto it = groups_.find(name);
+  if (it == groups_.end()) {
+    throw std::out_of_range("FlexController: no group named '" + name + "'");
+  }
+  return *it->second;
 }
 
-std::shared_ptr<Flex::Math::FlexGroup> FlexController::getActiveFlexGroup() {
-  return activeFlexGroup_;
+const FlexGroup &FlexController::group(const std::string &name) const {
+  return const_cast<FlexController *>(this)->group(name);
 }
 
-FlexGroupID FlexController::registerFlexGroup(
-    std::shared_ptr<Flex::Math::FlexGroup> flexGroup) {
-  latestFlexGroupID_++;
-  groupRegistry_[latestFlexGroupID_] = flexGroup;
-  return latestFlexGroupID_;
-}
-
-std::shared_ptr<FlexController> FlexController::getInstance() {
-  static std::shared_ptr<FlexController> flexController;
-  return flexController;
-}
-
-FlexGroupID FlexController::registerFlexPoint(FlexPoint *flexPoint) {
-  getLatestFlexGroup()->registerFlexPoint(flexPoint);
-  return latestFlexGroupID_;
-}
 } // namespace Flex::Math

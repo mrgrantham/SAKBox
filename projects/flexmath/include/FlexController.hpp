@@ -1,48 +1,56 @@
-// FlexController will be a central control center that
-// can change the precision of all FlexPoint objects instantiated
-// with a reference to it.
+// FlexController.hpp - the central control center for a game or
+// simulation's precision.
 
 #pragma once
-#include <FlexGroup.hpp>
-#include <memory>
-#include <unordered_map>
-// TODO:
-// Controller is statically allocated for all flexpoint operations. Every
-// flexpoint object registers with it on contruction and deregisters on deletion
 
-// Through this interface all flexpoint objects can change their precision
+#include <FlexGroup.hpp>
+#include <map>
+#include <memory>
+#include <string>
+
 namespace Flex::Math {
 
-typedef size_t FlexGroupID;
-
+// Owns a game's FlexGroups and finds them by name, so any code - powerups,
+// level scripts, debug tools - can reach any subsystem's precision.
+//
+// It is an ordinary object, not a singleton: the game owns one, and tests or
+// separate simulations each create their own.
+//
+// Example:
+//   FlexController precision;
+//   FlexGroup &flight = precision.addGroup("Flight", Precision{.fracBits = 1});
+//   precision.addGroup("Render", Precision{.fracBits = 9});
+//
+//   // Later, e.g. when a powerup is collected:
+//   FlexOverride glitch = precision.group("Render").push(Precision{.fracBits = 3});
+//
+// References returned by addGroup() and group() stay valid for the lifetime
+// of the controller. Like FlexGroup, the controller is not thread-safe.
 class FlexController {
 public:
-  std::shared_ptr<Flex::Math::FlexGroup> getLatestFlexGroup();
+  // Creates a group. Throws std::invalid_argument if the name is taken.
+  FlexGroup &addGroup(const std::string &name, Precision base = kFullPrecision,
+                      Policy policy = Policy::View);
 
-  std::shared_ptr<Flex::Math::FlexGroup> getFlexGroup(FlexGroupID flexGroupID) {
-    return groupRegistry_[flexGroupID];
+  bool hasGroup(const std::string &name) const { return groups_.contains(name); }
+
+  // The named group. Throws std::out_of_range if there is none.
+  FlexGroup &group(const std::string &name);
+  const FlexGroup &group(const std::string &name) const;
+
+  size_t groupCount() const { return groups_.size(); }
+
+  // Calls f(FlexGroup &) for every group, in name order - e.g. to draw a
+  // debug panel or reset every base precision.
+  template <typename F> void forEachGroup(F &&f) {
+    for (auto &[name, group] : groups_) {
+      f(*group);
+    }
   }
 
-  void setActiveFlexGroup(FlexGroupID flexGroupID);
-  std::shared_ptr<Flex::Math::FlexGroup> getActiveFlexGroup();
-
-  FlexGroupID
-  registerFlexGroup(std::shared_ptr<Flex::Math::FlexGroup> flexGroup);
-
-  static std::shared_ptr<FlexController> getInstance();
-
-  FlexGroupID registerFlexPoint(FlexPoint *flexPoint);
-
 private:
-  FlexController() {
-    auto defaultFlexGroup = std::make_shared<FlexGroup>();
-    auto defaultFlexGroupID = registerFlexGroup(defaultFlexGroup);
-    setActiveFlexGroup(defaultFlexGroupID);
-  };
-
-  FlexGroupID latestFlexGroupID_;
-  std::unordered_map<FlexGroupID, std::shared_ptr<Flex::Math::FlexGroup>>
-      groupRegistry_;
-  std::shared_ptr<FlexGroup> activeFlexGroup_;
+  // unique_ptr keeps each group at a stable address for its overrides
+  std::map<std::string, std::unique_ptr<FlexGroup>> groups_;
 };
+
 } // namespace Flex::Math

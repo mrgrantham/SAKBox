@@ -1,147 +1,148 @@
+// FlexPoint.hpp - flexmath's fixed-point value type.
+
 #pragma once
 
-#include <FlexController.hpp>
+#include <FlexPrecision.hpp>
 #include <compare>
 #include <cstdint>
 #include <fmt/format.h>
-#include <limits>
+#include <ostream>
 #include <type_traits>
 
 namespace Flex::Math {
 
+// A signed Q32.32 fixed-point number: a 64-bit integer counting units of
+// 2^-32. All arithmetic is integer arithmetic, so results are bit-identical
+// on every machine and compiler - use FlexPoint for state that must replay
+// or stay in sync across machines.
+//
+// A FlexPoint always holds full Q32.32 precision. Reduced precision is
+// applied when the value is read or committed, normally through a FlexGroup
+// (group.view(p), group.commit(p)) or directly with quantized().
+//
+// Range and accuracy:
+// - Values must stay within about +-2^31 (+-2,147,483,648). Exceeding it,
+//   in construction or arithmetic, overflows the underlying int64_t.
+// - The smallest step is 2^-32 (about 2.3e-10).
+// - value() converts to double exactly while |value| < 2^21; beyond that the
+//   double rounds the low bits.
+//
+// Arithmetic rounding:
+// - + and - are exact.
+// - * keeps the exact product's high bits, rounding toward negative infinity
+//   in the last place (2^-32).
+// - / truncates toward zero in the last place. Dividing by zero is undefined
+//   behaviour (an integer division by zero), so check divisors first.
+//
+// Example:
+//   FlexPoint a = 1.5, b = 2;            // from floating point or integers
+//   FlexPoint c = a * b + 0.25;          // 3.25, exactly
+//   c.quantized(Precision{.fracBits = 1}).value();   // 3.0
+//   fmt::print("{} {:x}\n", c, c);       // "3.250000 0x340000000"
 class FlexPoint {
 public:
+  // The underlying integer type: the value multiplied by 2^32.
   typedef int64_t FlexPointPrecision;
-  FlexPoint() {}
+  static constexpr int kFractionalBits = 32;
 
+  // Zero.
+  constexpr FlexPoint() {}
+
+  // From an integer, exactly. `value` must be within +-2^31.
   template <typename Integer,
             std::enable_if_t<std::is_integral<Integer>::value, bool> = true>
-  FlexPoint(Integer value) {
-    // TODO: Conveter int to fixed point based on flextype
-    flexGroupID_ = FlexController::getInstance()->registerFlexPoint(this);
+  constexpr FlexPoint(Integer value)
+      : valueFixed_(static_cast<FlexPointPrecision>(value) * kOne) {}
+
+  // From floating point, rounded to the nearest multiple of 2^-32.
+  // `value` must be finite and within +-2^31.
+  template <typename Floating,
+            std::enable_if_t<std::is_floating_point<Floating>::value, bool> = true>
+  FlexPoint(Floating value)
+      : valueFixed_(static_cast<FlexPointPrecision>(
+            std::llround(std::ldexp(static_cast<double>(value), kFractionalBits)))) {}
+
+  // From the raw fixed-point representation (the value times 2^32), e.g. one
+  // previously read with valueFixed() or loaded from a save or network.
+  static constexpr FlexPoint fromFixed(FlexPointPrecision valueFixed) {
+    FlexPoint point;
+    point.valueFixed_ = valueFixed;
+    return point;
   }
 
-  ~FlexPoint() {
-    FlexController::getInstance()
-        ->getFlexGroup(flexGroupID_)
-        ->deregisterFlexPoint(this);
+  // The value as a double (exact while |value| < 2^21).
+  double value() const { return std::ldexp(static_cast<double>(valueFixed_), -kFractionalBits); }
+
+  // The raw fixed-point representation: the value times 2^32.
+  constexpr FlexPointPrecision valueFixed() const { return valueFixed_; }
+
+  constexpr FlexPoint operator+(const FlexPoint &b) const { return fromFixed(valueFixed_ + b.valueFixed_); }
+  constexpr FlexPoint operator-(const FlexPoint &b) const { return fromFixed(valueFixed_ - b.valueFixed_); }
+  constexpr FlexPoint operator-() const { return fromFixed(-valueFixed_); }
+
+  // Rounds toward negative infinity in the last place (see class comment).
+  constexpr FlexPoint operator*(const FlexPoint &b) const {
+    return fromFixed(static_cast<FlexPointPrecision>(
+        (static_cast<__int128>(valueFixed_) * b.valueFixed_) >> kFractionalBits));
   }
 
-  template <
-      typename Floating,
-      std::enable_if_t<std::is_floating_point<Floating>::value, bool> = true>
-  FlexPoint(Floating value) {
-    // TODO: Conveter floating point to fixed point based on flextype
-    flexGroupID_ = FlexController::getInstance()->registerFlexPoint(this);
-  }
+  // Truncates toward zero in the last place. `b` must not be zero.
+  FlexPoint operator/(const FlexPoint &b) const;
 
-  void setFractionalComponent(int32_t precision) {
-    fractionalComponent_ = precision;
-  }
+  constexpr FlexPoint &operator+=(const FlexPoint &b) { return *this = *this + b; }
+  constexpr FlexPoint &operator-=(const FlexPoint &b) { return *this = *this - b; }
+  constexpr FlexPoint &operator*=(const FlexPoint &b) { return *this = *this * b; }
+  FlexPoint &operator/=(const FlexPoint &b) { return *this = *this / b; }
 
-  FlexPoint operator-(const FlexPoint &value) const {
-    FlexPoint newValue;
-    newValue.setFractionalComponent(this->getFractionalComponent());
-    newValue = this->valueFixed_ - value.valueFixed_;
-    return newValue;
-  }
+  // Exact comparison of the underlying fixed-point values. To compare at a
+  // reduced precision, compare quantized values:
+  //   a.quantized(p) == b.quantized(p)
+  constexpr auto operator<=>(const FlexPoint &b) const = default;
+  constexpr bool operator==(const FlexPoint &b) const = default;
 
-  FlexPoint operator+(const FlexPoint &value) const {
-    FlexPoint newValue;
-    newValue.setFractionalComponent(this->getFractionalComponent());
-    newValue = this->valueFixed_ + value.valueFixed_;
-    return newValue;
-  }
+  // This value as seen at `precision`, following the same rules as
+  // quantize(): snap to 2^-fracBits with the precision's rounding, then apply
+  // the integer range. Computed with integer arithmetic, so it is exact and
+  // deterministic. fracBits of 32 or more leave the fraction unchanged, and
+  // intBits of 31 or more leave the range unchanged (Q32.32's own limit).
+  FlexPoint quantized(const Precision &precision) const;
 
-  FlexPoint operator*(const FlexPoint &value) const {
-    FlexPoint newValue;
-    newValue.setFractionalComponent(this->getFractionalComponent());
-    newValue = this->valueFixed_ * value.valueFixed_;
-    return newValue;
-  }
-
-  FlexPoint &operator=(const FlexPoint &b);
-  FlexPoint &operator=(const double &b);
-  FlexPoint &operator+=(const FlexPoint &b);
-  FlexPoint &operator-=(const FlexPoint &b);
-  FlexPoint &operator*=(const FlexPoint &b);
-
-  inline double convertFixedToDouble(double fixedValue) const {
-    return static_cast<double>(valueFixed_) /
-           static_cast<double>(1 << fractionalComponent_);
-  }
-
-  inline FlexPointPrecision convertDoubleToFixed(double fixedValue) const {
-    return static_cast<FlexPointPrecision>(valueFixed_ *
-                                           (1 << fractionalComponent_));
-  }
-
-  double value() const { return convertFixedToDouble(valueFixed_); }
-
-  FlexPointPrecision valueFixed() const { return valueFixed_; }
-
-  auto operator<=>(const FlexPoint &value) const {
-    return (*this - value).value();
-  }
-  auto operator==(const FlexPoint &value) const {
-    return this->value() == value.value();
-  }
-
-  int16_t getFractionalComponent() const { return fractionalComponent_; }
-
-  friend std::ostream &operator<<(std::ostream &os,
-                                  const FlexPoint &flexPoint) {
-    os << fmt::format("(v{:.6f} p{:d})", flexPoint.value(),
-                      flexPoint.getFractionalComponent());
-    return os;
-  }
+  // Writes the value with six decimals, the same as fmt's "{}".
+  friend std::ostream &operator<<(std::ostream &os, const FlexPoint &flexPoint);
 
 private:
-  FlexGroupID flexGroupID_;
-  int16_t fractionalComponent_{8};
+  static constexpr FlexPointPrecision kOne = FlexPointPrecision{1} << kFractionalBits;
+
   FlexPointPrecision valueFixed_{0};
 };
 
 } // namespace Flex::Math
 
+// fmt support: "{}" or "{:f}" prints the value with six decimals ("3.250000"),
+// "{:x}" prints the raw fixed-point bits in hex ("0x340000000").
 template <> struct fmt::formatter<Flex::Math::FlexPoint> {
   char underlying_formatter_type = 'f';
-  // // Parses format specifications of the form ['f' | 'e'].
-  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
-    // [ctx.begin(), ctx.end()) is a character range that contains a part of
-    // the format string starting from the format specifications to be parsed,
-    // e.g. in
-    //
-    //   fmt::format("{:f} - point of interest", point{1, 2});
-    //
-    // the range will contain "f} - point of interest". The formatter should
-    // parse specifiers until '}' or the end of the range. In this example
-    // the formatter should parse the 'f' specifier and return an iterator
-    // pointing to '}'.
 
-    // Parse the presentation format and store it in the formatter:
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
     auto it = ctx.begin(), end = ctx.end();
     if (it != end && (*it == 'f' || *it == 'x'))
       underlying_formatter_type = *it++;
-
-    // Check if reached the end of the range:
     if (it != end && *it != '}')
       throw format_error("invalid format");
-
-    // Return an iterator past the end of the parsed range:
     return it;
   }
 
-  // Formats the point p using the parsed format specification (presentation)
-  // stored in this formatter.
   template <typename FormatContext>
-  auto format(const Flex::Math::FlexPoint &p, FormatContext &ctx) const
-      -> decltype(ctx.out()) {
-    // ctx.out() is an output iterator to write to.
-    return underlying_formatter_type == 'f'
-               ? format_to(ctx.out(), "(v{:.6f} f{:d})", p.value(),
-                           p.getFractionalComponent())
-               : format_to(ctx.out(), "(v{:x} f{:d})", p.valueFixed(),
-                           p.getFractionalComponent());
+  auto format(const Flex::Math::FlexPoint &p, FormatContext &ctx) const -> decltype(ctx.out()) {
+    return underlying_formatter_type == 'f' ? fmt::format_to(ctx.out(), "{:.6f}", p.value())
+                                            : fmt::format_to(ctx.out(), "{:#x}", p.valueFixed());
   }
 };
+
+namespace Flex::Math {
+
+inline std::ostream &operator<<(std::ostream &os, const FlexPoint &flexPoint) {
+  return os << fmt::format("{}", flexPoint);
+}
+
+} // namespace Flex::Math

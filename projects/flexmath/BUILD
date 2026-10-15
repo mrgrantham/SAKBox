@@ -15,10 +15,23 @@ cc_library(
         "include/FlexGroup.hpp",
         "include/FlexMatrix.hpp",
         "include/FlexPoint.hpp",
+        "include/FlexPrecision.hpp",
+        "include/FlexReal.hpp",
         "include/FlexVector.hpp",
     ],
     strip_include_prefix = "include/",
+    visibility = ["//visibility:public"],
     deps = ["@fmt"],
+)
+
+# The examples from README.md and the header comments
+cc_test(
+    name = "test_Examples",
+    srcs = ["tests/test_Examples.cpp"],
+    deps = [
+        ":flexmath",
+        "@catch2//:catch2_main",
+    ],
 )
 
 cc_test(
@@ -47,6 +60,15 @@ cc_test(
         "@fmtlog",
         "@gtest",
         "@spdlog",
+    ],
+)
+
+cc_test(
+    name = "test_FlexReal",
+    srcs = ["tests/test_FlexReal.cpp"],
+    deps = [
+        ":flexmath",
+        "@gtest//:gtest_main",
     ],
 )
 
