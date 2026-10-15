@@ -76,6 +76,10 @@ private:
     }
   }
 
+  // Runs on start()'s thread once stop() is requested: stops every padd
+  // (joining background threads after their finishing()), then runs
+  // finishing() for main-thread padds and cleanup() for every padd, and
+  // finally marks the system stopped so waitForStop() returns.
   void shutdown() {
     // Ends each padd's repeat timer and work loop. A background padd runs
     // finishing() on its own thread before stop() joins it.

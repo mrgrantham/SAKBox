@@ -28,6 +28,9 @@ protected:
   // Read by the work loop and written from other threads (e.g. stop()).
   std::atomic<bool> on_{false};
   std::thread workerThread_;
+  // How long the work loop sleeps once its queue is empty, which is also how
+  // long a new message can wait to be picked up. Padds that need lower
+  // latency can shorten it in their constructor or prepare().
   std::chrono::duration<double> work_thread_sleep_interval_{500ms};
   EventTimer repeatingTimer_;
   System *system_;
@@ -192,8 +195,13 @@ public:
     }
   }
 
+  // shouldUseMainThread() as read by initialize(); the system uses this to
+  // decide which padds run in its main-thread loop.
   bool usesMainThread() const { return shouldUseMainThread_; }
 
+  // How long the work loop sleeps when the queue is empty (see
+  // work_thread_sleep_interval_). The main-thread loop sleeps for the
+  // shortest of these among its padds.
   std::chrono::duration<double> workSleepInterval() const {
     return work_thread_sleep_interval_;
   }
