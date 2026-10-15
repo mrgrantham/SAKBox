@@ -213,7 +213,7 @@ public:
     if (!receiver->handles(message->type())) {
       return;
     }
-    logger().info("sendWork() to {}", receiver->name());
+    logger().debug("sendWork() to {}", receiver->name());
     std::function<void()> *work =
         new std::function<void()>([=] { receiver->deliver(message); });
     receiver->push(work);
@@ -227,7 +227,7 @@ public:
     }
   }
   virtual void send(ScratchPadd::Base *sender, Message message) override {
-    logger().info("sending from {}", sender->name());
+    logger().debug("sending from {}", sender->name());
     (sendIfUnmatched(sender, std::get<std::unique_ptr<Workers>>(workers_).get(),
                      message),
      ...);

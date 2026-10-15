@@ -352,7 +352,7 @@ public:
 
   // Sends `message` to every other padd that handles its type.
   void send(Message message) {
-    logger().info("send({}) from {}", message->typeName(), name_);
+    logger().debug("send({}) from {}", message->typeName(), name_);
     system_->send(this, std::move(message));
   }
 
