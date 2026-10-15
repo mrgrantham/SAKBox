@@ -5,9 +5,9 @@ ScratchPadd organizes a program as a set of independent subsystems, called **pad
 It suits programs made of loosely coupled parts that run at different rates: for example a display that draws at 60 fps, a simulation that steps on a timer, and a control panel that tweaks both.
 
 ```
-            ┌──────────────── System ────────────────┐
-  send() ──►│ broadcast to every other padd's queue  │
-            └──────┬──────────────┬──────────────┬───┘
+            ┌───────────────── System ──────────────────┐
+  send() ──►│ queue for each padd that handles the type │
+            └──────┬──────────────┬──────────────┬──────┘
                    ▼              ▼              ▼
               DisplayPadd     StoryPadd      AudioPadd
               (main thread)   (own thread)   (own thread)
@@ -26,7 +26,6 @@ public:
   Ticker(ScratchPadd::System *system) : Base(system) {}
   std::string name() override { return "Ticker"; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
-  void receive(ScratchPadd::Message message) override {}
 
   // Call repeat() every second, on this padd's thread.
   std::optional<std::chrono::duration<double>> repeatInterval() override { return 1s; }
@@ -39,24 +38,18 @@ private:
 };
 ```
 
-And this one prints the messages it receives:
+And this one prints the `Text` messages it receives, by registering a handler for that type:
 
 ```cpp
 class Printer : public ScratchPadd::Base {
 public:
-  Printer(ScratchPadd::System *system) : Base(system) {}
+  Printer(ScratchPadd::System *system) : Base(system) {
+    on<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
+      logger().info("received {}", text.contents);
+    });
+  }
   std::string name() override { return "Printer"; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
-
-  void receive(ScratchPadd::Message message) override {
-    std::visit(VariantHandler{
-                   [&](ScratchPadd::MessageType::Text &text) {
-                     logger().info("received {}", text.contents);
-                   },
-                   [](auto &) {}, // ignore every other message type
-               },
-               *message);
-  }
 };
 ```
 
@@ -70,9 +63,9 @@ int main() {
 }
 ```
 
-Every padd must implement `name()` (unique within the system), `generateControls()` and `receive(Message)`, and have a constructor that takes a `ScratchPadd::System *`. These examples are compiled and run by `basis/tests/Test_Examples.cpp`.
+Every padd must implement `name()` (unique within the system) and `generateControls()`, and have a constructor that takes a `ScratchPadd::System *`. These examples are compiled and run by `basis/tests/Test_Examples.cpp`.
 
-To see a bigger system, run the demo: a window with a shader view and the Dear ImGui demo, plus a padd that logs on a timer. Close the window to quit.
+To see a bigger system, run the demo: a window with a shader view and the Dear ImGui demo, a padd that logs on a timer, and a demo-defined `Triangle` message logged by another padd. Close the window to quit.
 
 ```bash
 bazel run //projects/scratchpadd/demo
@@ -94,7 +87,7 @@ After that, each padd goes through these hooks. All except the constructor are o
 | `prepare()` | start of `start()`, before any padd thread exists | the thread calling `start()` |
 | `starting()` | when the padd's work loop starts | the padd's thread |
 | `repeat()` | every `repeatInterval()`, if set | the padd's thread |
-| `receive()` | for each message | the padd's thread |
+| `on<T>()` handlers | for each message of type T | the padd's thread |
 | `finishing()` | when the padd's work loop ends | the padd's thread |
 | `cleanup()` | at shutdown, after every padd's `finishing()` | the thread calling `start()` |
 
@@ -112,22 +105,24 @@ When its queue is empty, a padd's thread sleeps for `work_thread_sleep_interval_
 
 ### Messages
 
-A `ScratchPadd::Message` is a `std::shared_ptr` to a `std::variant` of every message type, so a broadcast shares one copy between all receivers instead of copying it. Treat a received message as read-only.
+Any copyable struct can be a message. Define it in your own code, register a handler for it with `on<T>()`, and send it with `send()`:
 
-- `send(contents)` delivers to every padd except the sender.
-- `sendIncludeSender(message)` delivers to every padd, including the sender.
+```cpp
+struct GatePassed { int gate; };
 
-Receive messages by overriding `receive(Message)` and using `std::visit`. `VariantHandler` combines lambdas into one visitor; end it with an `auto &` lambda to ignore the types you don't handle, as `Printer` does above.
+// In a padd's constructor: runs on this padd's thread for every GatePassed
+on<GatePassed>([this](const GatePassed &event) { logger().info("gate {}", event.gate); });
 
-The message types are listed in [`messages/include/ScratchPadd/Messages/Message.hpp`](messages/include/ScratchPadd/Messages/Message.hpp):
+// In any other padd
+send(GatePassed{3});
+```
 
-| Type | Contents |
-| --- | --- |
-| `Text` | a string |
-| `Point`, `Triangle` | 2D geometry (`Geometry.hpp`) |
-| `ControlRequest`, `ControlSnapshot`, `ControlChange` | the control system (below) |
+- `send(contents)` delivers to every *other* padd that has a handler for the type; `sendIncludeSender(contents)` includes the sender. Padds without a handler never see the message, not even in their queue.
+- Register handlers in the constructor or `prepare()`. They can't change once the padd is running (an assert checks this), which is what lets padd threads read them without locking.
+- A message is created once and shared by every receiver, so handlers get it as a `const` reference.
+- To send one prepared message several times, wrap it once with `makeMessage(contents)` and pass the resulting `ScratchPadd::Message`. `messageAs<T>(message)` unwraps it, or returns null if it holds another type.
 
-**To add a message type**, define the struct in the `ScratchPadd::MessageType` namespace and add it to the `MessageTypes` list in `Message.hpp`. Every padd's `std::visit` must then either handle it or have a catch-all lambda.
+The library defines only general-purpose messages in [`messages/include/ScratchPadd/Messages/`](messages/include/ScratchPadd/Messages/): `Text` (a string) and the three control messages below. The demo's `Triangle` (`demo/include/DemoMessages.hpp`) is an example of an app-defined message.
 
 ### Controls
 
@@ -147,7 +142,7 @@ The control types are `Double` and `Integer` (each with an optional range), `Boo
 Controls are designed to be shown and edited by another padd, such as a UI panel, through three messages that `Base` handles automatically:
 
 1. The panel sends a `ControlRequest`.
-2. Every padd replies with a `ControlSnapshot` of its controls. The panel receives it by overriding `handleControlSnapshot()`.
+2. Every padd replies with a `ControlSnapshot` of its controls. The panel receives them with `on<ControlSnapshot>()`.
 3. To change a value, the panel sends a `ControlChange` naming the padd and control. That padd updates its value if the type matches, and the padds send fresh snapshots so the panel stays in sync.
 
 A padd reads its current values from `generateControlsSnapshot().controlMap`. `messages/tests/Test_Controls.cpp` shows the whole round trip.
@@ -194,7 +189,7 @@ void finishing() override { graphics_->tearDown(); }
 | Bazel target | Contents |
 | --- | --- |
 | `//projects/scratchpadd/basis` | The core: `Base`, `System`, `SystemBuilder`. Depend on this; it includes `messages` and `utilities` |
-| `//projects/scratchpadd/messages` | Message and control types |
+| `//projects/scratchpadd/messages` | The message wrapper (`Message`, `makeMessage`), `Text`, and the control types |
 | `//projects/scratchpadd/utilities` | Logging, `Timer`, `EventTimer` and helpers like `VariantHandler` |
 | `//projects/scratchpadd/graphics` | GLFW/ImGui/OpenGL window and views |
 | `//projects/scratchpadd/audio` | Placeholder; `AudioPadd` only logs the messages it receives |
@@ -213,25 +208,22 @@ bazel run //projects/scratchpadd/basis:clang_format   # format the basis package
 | `basis:Test_Examples` | The examples in this README |
 | `basis:Test_Base` | Padd names, and a system starting and stopping |
 | `basis:Test_Threading` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd |
-| `messages:Test_Messages` | Delivery between padds: contents intact, not echoed to the sender, ignored types skipped, `sendIncludeSender()` |
+| `messages:Test_Messages` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message |
 | `messages:Test_Controls` | The control request, snapshot and change round trip |
 | `utilities:Test_EventTimer` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
 
 - **Polling.** An idle padd checks its queue every `work_thread_sleep_interval_` instead of waking when work arrives, which adds latency (see [Threads](#threads)). Setting the interval to 0 removes the latency but keeps that thread busy.
-- **Every message goes to every padd.** There is no subscription or direct addressing, and `Base` logs a spurious "no inner receive for this message type" error for each non-control message.
-- **The message list is closed.** Adding a type means editing `Message.hpp` and rebuilding every padd, and app-specific types (`Point`, `Triangle`) live in the library.
-- **Messages are shared but mutable.** Receivers get non-const references to the same object, so a receiver that modifies a message races with the others.
-- **Controls are not wired up in the demo.** Nothing sends a `ControlRequest`, `DisplayPadd` doesn't implement `handleControlSnapshot()`, the control panel's text input writes past its string buffer, and edits aren't sent back as `ControlChange`. Every padd also sends a snapshot for every `ControlChange`, not only the one that changed.
-- `sendIncludeSender(contents)`, the convenience overload that wraps the contents, doesn't compile if used; build the message with `MakeMsg()` and pass that instead.
+- **Handlers are fixed once a padd starts.** A padd can't start or stop listening for a type while running.
+- **No direct addressing.** A message goes to every padd that handles its type; to target one padd, put its name in the message (as `ControlChange` does).
+- **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled; a message nobody handles is silently dropped.
+- **Controls are not wired up in the demo.** Nothing sends a `ControlRequest`, `DisplayPadd` doesn't handle `ControlSnapshot`, the control panel's text input writes past its string buffer, and edits aren't sent back as `ControlChange`. Every padd also sends a snapshot for every `ControlChange`, not only the one that changed.
 - Audio is a stub.
 
 ## Roadmap
 
 1. Wake padds with a condition variable when work arrives, instead of polling.
-2. Make received messages `const`.
-3. Let applications supply their own message types, e.g. as a template parameter, instead of editing the library.
-4. Wire up the control panels in the demo and fix the issues listed above.
-5. Use the cached `name_` everywhere instead of calling `name()` repeatedly.
-6. Implement audio.
+2. Wire up the control panels in the demo and fix the issues listed above.
+3. Use the cached `name_` everywhere instead of calling `name()` repeatedly.
+4. Implement audio.
