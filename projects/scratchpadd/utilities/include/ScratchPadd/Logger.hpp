@@ -42,24 +42,24 @@ public:
 
 } // namespace ScratchPadd
 
-#define PADDLOG(level, message...)                                             \
-  ScratchPadd::Logger::GetActiveLogger()->log(level, message);
+#define PADDLOG(level, ...)                                                    \
+  ScratchPadd::Logger::GetActiveLogger()->log(level, __VA_ARGS__);
 
-#define PADDLOG_INFO(message...)                                               \
-  ScratchPadd::Logger::GetActiveLogger()->log(spdlog::level::info, message);
+#define PADDLOG_INFO(...)                                               \
+  ScratchPadd::Logger::GetActiveLogger()->log(spdlog::level::info, __VA_ARGS__);
 
-#define PADDLOG_DEBUG(message...)                                              \
-  ScratchPadd::Logger::GetActiveLogger()->log(spdlog::level::debug, message);
+#define PADDLOG_DEBUG(...)                                              \
+  ScratchPadd::Logger::GetActiveLogger()->log(spdlog::level::debug, __VA_ARGS__);
 
-#define PADDLOG_ERROR(message...)                                              \
-  ScratchPadd::Logger::GetActiveLogger()->log(spdlog::level::error, message);
+#define PADDLOG_ERROR(...)                                              \
+  ScratchPadd::Logger::GetActiveLogger()->log(spdlog::level::error, __VA_ARGS__);
 
-#define PADDLOG_INTERVAL(level, interval, message...)                          \
+#define PADDLOG_INTERVAL(level, interval, ...)                          \
   {                                                                            \
     static std::chrono::steady_clock::time_point intervalEndTime =             \
         std::chrono::steady_clock::now() + interval;                           \
     if (std::chrono::steady_clock::now() > intervalEndTime) {                  \
-      ScratchPadd::Logger::GetActiveLogger()->log(level, message);             \
+      ScratchPadd::Logger::GetActiveLogger()->log(level, __VA_ARGS__);             \
       intervalEndTime = std::chrono::steady_clock::now() + interval;           \
     }                                                                          \
   }

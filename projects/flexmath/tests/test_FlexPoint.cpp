@@ -2,15 +2,12 @@
 #include <FlexPoint.hpp>
 #include <iostream>
 #include <random>
-#include "fmtlog/fmtlog.h"
 
 using namespace Flex::Math;
 
 
 TEST(FlexPointTest,TestAssignment) {
     fmt::print("VERSION IS {}\n",FMT_VERSION);
-    FMTLOG(fmtlog::INF, "The answer is {}.\n", 42);
-    fmtlog::poll();
     FlexPoint value1(40);
     FlexPoint value2 = value1;
     EXPECT_TRUE(value1 == value2);

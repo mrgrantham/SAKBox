@@ -57,9 +57,7 @@ cc_test(
     srcs = ["tests/test_FlexPoint.cpp"],
     deps = [
         ":flexmath",
-        "@fmtlog",
         "@gtest",
-        "@spdlog",
     ],
 )
 

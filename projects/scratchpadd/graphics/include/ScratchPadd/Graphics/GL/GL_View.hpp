@@ -1,7 +1,4 @@
 #pragma once
-#if defined(__APPLE__)
-#import <CoreFoundation/CoreFoundation.h>
-#endif
 #include <chrono>
 #include <filesystem>
 

@@ -471,37 +471,30 @@ namespace cyclone {
     class Quaternion
     {
     public:
-        union {
-            struct {
-                /**
-                 * Holds the real component of the quaternion.
-                 */
-                real r;
+        // SAKBox: r, i, j, k were an anonymous struct in a union with an
+        // unused real data[4] (a GNU extension); plain members are standard C++.
+        /**
+         * Holds the real component of the quaternion.
+         */
+        real r;
 
-                /**
-                 * Holds the first complex component of the
-                 * quaternion.
-                 */
-                real i;
+        /**
+         * Holds the first complex component of the
+         * quaternion.
+         */
+        real i;
 
-                /**
-                 * Holds the second complex component of the
-                 * quaternion.
-                 */
-                real j;
+        /**
+         * Holds the second complex component of the
+         * quaternion.
+         */
+        real j;
 
-                /**
-                 * Holds the third complex component of the
-                 * quaternion.
-                 */
-                real k;
-            };
-
-            /**
-             * Holds the quaternion data in array form.
-             */
-            real data[4];
-        };
+        /**
+         * Holds the third complex component of the
+         * quaternion.
+         */
+        real k;
 
         // ... other Quaternion code as before ...
 
