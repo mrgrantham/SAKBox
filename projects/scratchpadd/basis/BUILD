@@ -33,6 +33,15 @@ cc_test(
 
 
 cc_test(
+  name = "Test_Examples",
+  size = "small",
+  srcs = ["tests/Test_Examples.cpp"],
+  deps = ["@gtest//:gtest_main",
+  ":basis"],
+)
+
+
+cc_test(
   name = "Test_Threading",
   size = "small",
   srcs = ["tests/Test_Threading.cpp"],
