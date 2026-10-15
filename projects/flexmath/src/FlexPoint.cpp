@@ -21,6 +21,17 @@ FlexPoint FlexPoint::quantized(const Precision &precision) const {
     if (precision.rounding == Rounding::Nearest) {
       // Halves round away from zero, matching std::round in quantize()
       raw = raw >= 0 ? ((raw + unit / 2) / unit) * unit : -(((-raw + unit / 2) / unit) * unit);
+    } else if (precision.rounding == Rounding::Stochastic) {
+      // Round down to the grid (masking floors in two's complement), then up
+      // with probability remainder / unit, using `drop` random bits
+      const FlexPointPrecision below = raw & ~(unit - 1);
+      const FlexPointPrecision remainder = raw - below;
+      raw = below;
+      if (remainder != 0 &&
+          static_cast<FlexPointPrecision>(detail::nextStochasticRoundingBits() >> (64 - drop)) <
+              remainder) {
+        raw += unit;
+      }
     } else {
       raw = (raw / unit) * unit; // integer division truncates toward zero
     }

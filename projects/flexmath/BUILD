@@ -73,6 +73,15 @@ cc_test(
 )
 
 cc_test(
+    name = "test_Rounding",
+    srcs = ["tests/test_Rounding.cpp"],
+    deps = [
+        ":flexmath",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "test_FlexVector",
     srcs = ["tests/test_FlexVector.cpp"],
     deps = [

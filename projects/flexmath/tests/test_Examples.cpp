@@ -5,6 +5,7 @@
 #include <FlexController.hpp>
 #include <FlexMatrix.hpp>
 #include <fmt/format.h>
+#include <cmath>
 #include <stdexcept>
 
 using namespace Flex::Math;
@@ -31,6 +32,26 @@ TEST_CASE( "README quantize examples", "[examples]" ) {
     REQUIRE(quantize(16.0, Precision{.intBits = 4, .overflow = Overflow::Wrap}) == -16.0);
     REQUIRE(quantize(100.0, Precision{.fracBits = 4, .intBits = 4, .overflow = Overflow::Saturate}) ==
             15.9375);
+}
+
+TEST_CASE( "README stochastic rounding example", "[examples]" ) {
+    auto accumulate = [](Rounding rounding) {
+        Precision sixteenths{.fracBits = 4, .rounding = rounding};
+        double total = 0;
+        for (int i = 0; i < 10000; ++i)
+            total = quantize(total + 0.001, sixteenths);
+        return total;
+    };
+    seedStochasticRounding(1);
+    REQUIRE(std::abs(accumulate(Rounding::Stochastic) - 10.0) < 1.0);
+    REQUIRE(accumulate(Rounding::TowardZero) == 0.0);
+    REQUIRE(accumulate(Rounding::Nearest) == 0.0);
+
+    // 1.25 at 0 bits is 2 a quarter of the time and 1 otherwise
+    int ups = 0;
+    for (int i = 0; i < 100000; ++i)
+        ups += quantize(1.25, Precision{.fracBits = 0, .rounding = Rounding::Stochastic}) == 2.0;
+    REQUIRE(std::abs(ups / 100000.0 - 0.25) < 0.01);
 }
 
 TEST_CASE( "README policy pattern", "[examples]" ) {
