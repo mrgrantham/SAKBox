@@ -79,8 +79,9 @@ class TestSystem : public ScratchPadd::System {
 
 
 
-// Demonstrate some basic assertions.
-TEST(BaseTest, TestSending) {
+// A padd built on __CLASS_NAME__ reports its class name as its name(), with
+// no system running (TestSystem is a do-nothing System).
+TEST(BaseTest, PaddNamesComeFromClassName) {
     TestSystem testSystem;
 
     TestSenderPadd testSenderPadd(&testSystem);
@@ -95,7 +96,9 @@ TEST(BaseTest, TestSending) {
 
 }
 
-TEST(BaseTest, TestRecieveWrapper) {
+// A system built with SystemBuilder constructs its padds, starts them, and
+// stops cleanly.
+TEST(BaseTest, SystemStartsAndStops) {
     auto *spsystem =
     dynamic_cast<ScratchPadd::SystemImplementation<TestSenderPadd, TestReceiverPadd>*>(ScratchPadd::SystemBuilder<TestSenderPadd, TestReceiverPadd>());
     spsystem->instantiate();

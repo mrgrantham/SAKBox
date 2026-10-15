@@ -98,7 +98,8 @@ std::string name() override {
 };
 
 
-// Demonstrate some basic assertions.
+// On startup ControlExposurePadd sends a ControlRequest; ControlGeneratorPadd
+// answers with a ControlSnapshot holding all four of its controls.
 TEST(ControlsTest, TestControlRequest) {
 
     using namespace std::chrono_literals;
@@ -144,7 +145,8 @@ TEST(ControlsTest, TestControlRequest) {
     systemThread.join();
 }
 
-// Demonstrate some basic assertions.
+// A ControlChange sent to ControlGeneratorPadd updates its value, and the
+// snapshot it sends back brings ControlExposurePadd's copy into sync.
 TEST(ControlsTest, TestControlChange) {
     using namespace std::chrono_literals;
 
