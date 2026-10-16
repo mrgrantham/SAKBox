@@ -198,4 +198,14 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "collision_test",
+    size = "small",
+    srcs = ["tests/collision_test.cpp"],
+    deps = [
+        ":cyclone",
+        "@gtest//:gtest_main",
+    ],
+)
+
 clang_format(name = "cyclone")

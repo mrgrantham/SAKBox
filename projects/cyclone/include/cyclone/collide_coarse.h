@@ -122,7 +122,7 @@ public:
    */
   BVHNode(BVHNode *parent, const BoundingVolumeClass &volume,
           RigidBody *body = NULL)
-      : parent(parent), volume(volume), body(body) {
+      : volume(volume), body(body), parent(parent) {
     children[0] = children[1] = NULL;
   }
 
@@ -191,7 +191,8 @@ protected:
 template <class BoundingVolumeClass>
 bool BVHNode<BoundingVolumeClass>::overlaps(
     const BVHNode<BoundingVolumeClass> *other) const {
-  return volume->overlaps(other->volume);
+  // SAKBox: volume is held by value (this didn't compile once instantiated)
+  return volume.overlaps(&other->volume);
 }
 
 template <class BoundingVolumeClass>
@@ -290,9 +291,16 @@ BVHNode<BoundingVolumeClass>::getPotentialContacts(PotentialContact *contacts,
   if (isLeaf() || limit == 0)
     return 0;
 
-  // Get the potential contacts of one of our children with
-  // the other
-  return children[0]->getPotentialContactsWith(children[1], contacts, limit);
+  // SAKBox: pairs within each child count too; this only checked the two
+  // children against each other, so bodies that shared a subtree were never
+  // reported.
+  unsigned count = children[0]->getPotentialContacts(contacts, limit);
+  if (count < limit)
+    count += children[1]->getPotentialContacts(contacts + count, limit - count);
+  if (count < limit)
+    count += children[0]->getPotentialContactsWith(
+        children[1], contacts + count, limit - count);
+  return count;
 }
 
 template <class BoundingVolumeClass>
@@ -315,7 +323,7 @@ unsigned BVHNode<BoundingVolumeClass>::getPotentialContactsWith(
   // a leaf, then we descend the other. If both are branches,
   // then we use the one with the largest size.
   if (other->isLeaf() ||
-      (!isLeaf() && volume->getSize() >= other->volume->getSize())) {
+      (!isLeaf() && volume.getSize() >= other->volume.getSize())) {
     // Recurse into ourself
     unsigned count =
         children[0]->getPotentialContactsWith(other, contacts, limit);

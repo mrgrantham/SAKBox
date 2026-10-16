@@ -68,9 +68,20 @@ static inline bool overlapOnAxis(const CollisionBox &one,
   return (distance < oneProject + twoProject);
 }
 
+// SAKBox: a cross product of parallel edges is (almost) zero and can't
+// separate anything, but compared 0 < 0 and reported the boxes apart; skip it
+// as CollisionDetector::boxAndBox's tryAxis does.
+static inline bool overlapOnAxisOrDegenerate(const CollisionBox &one,
+                                             const CollisionBox &two,
+                                             const Vector3 &axis,
+                                             const Vector3 &toCentre) {
+  return axis.squareMagnitude() < 0.0001 ||
+         overlapOnAxis(one, two, axis, toCentre);
+}
+
 // This preprocessor definition is only used as a convenience
 // in the boxAndBox intersection  method.
-#define TEST_OVERLAP(axis) overlapOnAxis(one, two, (axis), toCentre)
+#define TEST_OVERLAP(axis) overlapOnAxisOrDegenerate(one, two, (axis), toCentre)
 
 bool IntersectionTests::boxAndBox(const CollisionBox &one,
                                   const CollisionBox &two) {
@@ -603,8 +614,10 @@ unsigned CollisionDetector::boxAndHalfSpace(const CollisionBox &box,
       // The contact point is halfway between the vertex and the
       // plane - we multiply the direction by half the separation
       // distance and add the vertex location.
+      // SAKBox: this added the whole (negative) separation, putting the
+      // point as far again below the vertex.
       contact->contactPoint = plane.direction;
-      contact->contactPoint *= (vertexDistance - plane.offset);
+      contact->contactPoint *= (plane.offset - vertexDistance) * (real)0.5;
       contact->contactPoint += vertexPos;
       contact->contactNormal = plane.direction;
       contact->penetration = plane.offset - vertexDistance;
@@ -615,8 +628,10 @@ unsigned CollisionDetector::boxAndHalfSpace(const CollisionBox &box,
       // Move onto the next contact
       contact++;
       contactsUsed++;
+      // SAKBox: stop when the array is full, but still record the contacts
+      // (this returned early, so they were never counted).
       if (contactsUsed == (unsigned)data->contactsLeft)
-        return contactsUsed;
+        break;
     }
   }
 
