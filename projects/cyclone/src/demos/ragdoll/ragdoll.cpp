@@ -282,7 +282,6 @@ void RagdollDemo::initGraphics() {
 
 void RagdollDemo::display() {
   const static GLfloat lightPosition[] = {0.7f, -1, 0.4f, 0};
-  const static GLfloat lightPositionMirror[] = {0.7f, 1, 0.4f, 0};
 
   RigidBodyApplication::display();
 

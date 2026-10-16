@@ -59,15 +59,15 @@ public:
 FlightSimDemo::FlightSimDemo()
     : Application(),
 
-      right_wing(cyclone::Matrix3(0, 0, 0, -1, -0.5f, 0, 0, 0, 0),
-                 cyclone::Matrix3(0, 0, 0, -0.995f, -0.5f, 0, 0, 0, 0),
-                 cyclone::Matrix3(0, 0, 0, -1.005f, -0.5f, 0, 0, 0, 0),
-                 cyclone::Vector3(-1.0f, 0.0f, 2.0f), &windspeed),
-
       left_wing(cyclone::Matrix3(0, 0, 0, -1, -0.5f, 0, 0, 0, 0),
                 cyclone::Matrix3(0, 0, 0, -0.995f, -0.5f, 0, 0, 0, 0),
                 cyclone::Matrix3(0, 0, 0, -1.005f, -0.5f, 0, 0, 0, 0),
                 cyclone::Vector3(-1.0f, 0.0f, -2.0f), &windspeed),
+
+      right_wing(cyclone::Matrix3(0, 0, 0, -1, -0.5f, 0, 0, 0, 0),
+                 cyclone::Matrix3(0, 0, 0, -0.995f, -0.5f, 0, 0, 0, 0),
+                 cyclone::Matrix3(0, 0, 0, -1.005f, -0.5f, 0, 0, 0, 0),
+                 cyclone::Vector3(-1.0f, 0.0f, 2.0f), &windspeed),
 
       rudder(cyclone::Matrix3(0, 0, 0, 0, 0, 0, 0, 0, 0),
              cyclone::Matrix3(0, 0, 0, 0, 0, 0, 0.01f, 0, 0),
@@ -77,9 +77,9 @@ FlightSimDemo::FlightSimDemo()
       tail(cyclone::Matrix3(0, 0, 0, -1, -0.5f, 0, 0, 0, -0.1f),
            cyclone::Vector3(2.0f, 0, 0), &windspeed),
 
-      left_wing_control(0), right_wing_control(0), rudder_control(0),
+      windspeed(0, 0, 0),
 
-      windspeed(0, 0, 0) {
+      left_wing_control(0), right_wing_control(0), rudder_control(0) {
   // Set up the aircraft rigid body.
   resetPlane();
 
@@ -201,29 +201,30 @@ void FlightSimDemo::display() {
   glPopMatrix();
 
   char buffer[256];
-  sprintf(buffer, "Altitude: %.1f | Speed %.1f",
-          (double)aircraft.getPosition().y,
-          (double)aircraft.getVelocity().magnitude());
+  snprintf(buffer, sizeof(buffer), "Altitude: %.1f | Speed %.1f",
+           (double)aircraft.getPosition().y,
+           (double)aircraft.getVelocity().magnitude());
   glColor3f(0, 0, 0);
   renderText(10.0f, 24.0f, buffer);
 
-  sprintf(buffer, "Left Wing: %.1f | Right Wing: %.1f | Rudder %.1f",
-          (double)left_wing_control, (double)right_wing_control,
-          (double)rudder_control);
+  snprintf(buffer, sizeof(buffer),
+           "Left Wing: %.1f | Right Wing: %.1f | Rudder %.1f",
+           (double)left_wing_control, (double)right_wing_control,
+           (double)rudder_control);
   renderText(10.0f, 10.0f, buffer);
 
 #if defined(CYCLONE_FLEX_REAL)
   const Flex::Math::Precision &precision = Flex::Math::activePrecision();
   if (precision.fracBits >= 52)
-    sprintf(buffer, "Precision: full | [ ] change");
+    snprintf(buffer, sizeof(buffer), "Precision: full | [ ] change");
   else
-    sprintf(buffer,
-            "Precision: %d bits (step %g, %s) | [ ] change, N rounding, F full",
-            precision.fracBits, precision.step(),
-            precision.rounding == Flex::Math::Rounding::Nearest ? "nearest"
-            : precision.rounding == Flex::Math::Rounding::Stochastic
-                ? "stochastic"
-                : "truncate");
+    snprintf(
+        buffer, sizeof(buffer),
+        "Precision: %d bits (step %g, %s) | [ ] change, N rounding, F full",
+        precision.fracBits, precision.step(),
+        precision.rounding == Flex::Math::Rounding::Nearest      ? "nearest"
+        : precision.rounding == Flex::Math::Rounding::Stochastic ? "stochastic"
+                                                                 : "truncate");
   renderText(10.0f, 38.0f, buffer);
 #endif
 }

@@ -62,11 +62,10 @@ public:
 
 // Method definitions
 BridgeDemo::BridgeDemo()
-    : MassAggregateApplication(12), cables(0), supports(0), rods(0),
+    : MassAggregateApplication(12), supports(0), cables(0), rods(0),
       massPos(0, 0, 0.5f) {
   // Create the masses and connections.
   for (unsigned i = 0; i < 12; i++) {
-    unsigned x = (i % 12) / 2;
     particleArray[i].setPosition(cyclone::real(i / 2) * 2.0f - 5.0f, 4,
                                  cyclone::real(i % 2) * 2.0f - 1.0f);
     particleArray[i].setVelocity(0, 0, 0);

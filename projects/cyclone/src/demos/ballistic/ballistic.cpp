@@ -139,6 +139,9 @@ void BallisticDemo::fire() {
     shot->particle.setAcceleration(0.0f, 0.0f, 0.0f); // No gravity
     shot->particle.setDamping(0.99f);
     break;
+
+  case UNUSED: // an empty ammo slot, never the selected type
+    break;
   }
 
   // Set the data common to all particle types
@@ -227,6 +230,8 @@ void BallisticDemo::display() {
     break;
   case LASER:
     renderText(10.0f, 10.0f, "Current Ammo: Laser");
+    break;
+  case UNUSED:
     break;
   }
 }

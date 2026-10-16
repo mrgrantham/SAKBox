@@ -162,7 +162,7 @@ void MassAggregateApplication::update() {
 }
 
 RigidBodyApplication::RigidBodyApplication()
-    : theta(0.0f), phi(15.0f), resolver(maxContacts * 8),
+    : resolver(maxContacts * 8), theta(0.0f), phi(15.0f),
 
       renderDebugInfo(false), pauseSimulation(true),
       autoPauseSimulation(false) {

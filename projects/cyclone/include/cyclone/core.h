@@ -166,7 +166,7 @@ public:
 
 private:
   /** Padding to ensure 4 word alignment. */
-  real pad;
+  [[maybe_unused]] real pad;
 
 public:
   /** The default constructor creates a zero vector. */
@@ -746,18 +746,20 @@ public:
    * the given quaternion.
    */
   void setOrientationAndPos(const Quaternion &q, const Vector3 &pos) {
+    // SAKBox: upstream filled in the transpose (the opposite rotation); this
+    // now matches the rigid-body transform in body.cpp.
     data[0] = 1 - (2 * q.j * q.j + 2 * q.k * q.k);
-    data[1] = 2 * q.i * q.j + 2 * q.k * q.r;
-    data[2] = 2 * q.i * q.k - 2 * q.j * q.r;
+    data[1] = 2 * q.i * q.j - 2 * q.k * q.r;
+    data[2] = 2 * q.i * q.k + 2 * q.j * q.r;
     data[3] = pos.x;
 
-    data[4] = 2 * q.i * q.j - 2 * q.k * q.r;
+    data[4] = 2 * q.i * q.j + 2 * q.k * q.r;
     data[5] = 1 - (2 * q.i * q.i + 2 * q.k * q.k);
-    data[6] = 2 * q.j * q.k + 2 * q.i * q.r;
+    data[6] = 2 * q.j * q.k - 2 * q.i * q.r;
     data[7] = pos.y;
 
-    data[8] = 2 * q.i * q.k + 2 * q.j * q.r;
-    data[9] = 2 * q.j * q.k - 2 * q.i * q.r;
+    data[8] = 2 * q.i * q.k - 2 * q.j * q.r;
+    data[9] = 2 * q.j * q.k + 2 * q.i * q.r;
     data[10] = 1 - (2 * q.i * q.i + 2 * q.j * q.j);
     data[11] = pos.z;
   }
@@ -1109,14 +1111,16 @@ public:
    * the given quaternion.
    */
   void setOrientation(const Quaternion &q) {
+    // SAKBox: upstream filled in the transpose (the opposite rotation); this
+    // now matches the rigid-body transform in body.cpp.
     data[0] = 1 - (2 * q.j * q.j + 2 * q.k * q.k);
-    data[1] = 2 * q.i * q.j + 2 * q.k * q.r;
-    data[2] = 2 * q.i * q.k - 2 * q.j * q.r;
-    data[3] = 2 * q.i * q.j - 2 * q.k * q.r;
+    data[1] = 2 * q.i * q.j - 2 * q.k * q.r;
+    data[2] = 2 * q.i * q.k + 2 * q.j * q.r;
+    data[3] = 2 * q.i * q.j + 2 * q.k * q.r;
     data[4] = 1 - (2 * q.i * q.i + 2 * q.k * q.k);
-    data[5] = 2 * q.j * q.k + 2 * q.i * q.r;
-    data[6] = 2 * q.i * q.k + 2 * q.j * q.r;
-    data[7] = 2 * q.j * q.k - 2 * q.i * q.r;
+    data[5] = 2 * q.j * q.k - 2 * q.i * q.r;
+    data[6] = 2 * q.i * q.k - 2 * q.j * q.r;
+    data[7] = 2 * q.j * q.k + 2 * q.i * q.r;
     data[8] = 1 - (2 * q.i * q.i + 2 * q.j * q.j);
   }
 

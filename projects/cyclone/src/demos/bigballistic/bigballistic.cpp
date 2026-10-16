@@ -79,6 +79,9 @@ public:
       body->setDamping(0.99f, 0.8f);
       radius = 0.2f;
       break;
+
+    case UNUSED: // an empty ammo slot, never the selected type
+      break;
     }
 
     body->setCanSleep(false);
@@ -350,6 +353,8 @@ void BigBallisticDemo::display() {
     break;
   case LASER:
     renderText(10.0f, 10.0f, "Current Ammo: Laser");
+    break;
+  case UNUSED:
     break;
   }
 }

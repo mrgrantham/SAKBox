@@ -231,7 +231,7 @@ public:
 
 // Method definitions
 BlobDemo::BlobDemo()
-    : xAxis(0), yAxis(0), world(PLATFORM_COUNT + BLOB_COUNT, PLATFORM_COUNT) {
+    : world(PLATFORM_COUNT + BLOB_COUNT, PLATFORM_COUNT), xAxis(0), yAxis(0) {
   // Create the blob storage
   blobs = new cyclone::Particle[BLOB_COUNT];
   cyclone::Random r;

@@ -123,6 +123,28 @@ TEST(QuaternionTest, RotatesVectors) {
   expectNear(rotated(quarterTurn, Vector3(0, 1, 0)), Vector3(-1, 0, 0));
 }
 
+// The matrix setters rotate the same way as rigid bodies (they used to build
+// the transpose, rotating the opposite way).
+TEST(QuaternionTest, MatrixSettersMatchBodyTransform) {
+  const Quaternion q = rotation(0.8, Vector3(0.48, 0.6, 0.64));
+  RigidBody body = makeBody(Vector3(1, 2, 3));
+  body.setOrientation(q);
+  body.calculateDerivedData();
+  const Vector3 v(0.3, -1.2, 2.0);
+
+  Matrix3 m3;
+  m3.setOrientation(q);
+  expectNear(m3.transform(v), body.getDirectionInWorldSpace(v));
+
+  Matrix4 m4;
+  m4.setOrientationAndPos(q, Vector3(1, 2, 3));
+  expectNear(m4.transform(v), body.getPointInWorldSpace(v));
+
+  Matrix3 quarterTurn;
+  quarterTurn.setOrientation(rotation(M_PI / 2, Vector3(0, 0, 1)));
+  expectNear(quarterTurn.transform(Vector3(1, 0, 0)), Vector3(0, 1, 0));
+}
+
 TEST(QuaternionTest, AddScaledVectorIntegratesAngularVelocity) {
   // Spin at 1 rad/s about z for pi/2 seconds in small steps
   Quaternion q(1, 0, 0, 0);
@@ -282,6 +304,7 @@ TEST(CollisionTest, SphereAndSphere) {
   const Contact &contact = fixture.contacts[0];
   expectNear(contact.contactNormal, Vector3(-1, 0, 0)); // from two towards one
   EXPECT_NEAR(contact.penetration, 0.5, kTolerance);
+  expectNear(contact.contactPoint, Vector3(0.75, 0, 0)); // midway between the centres
   EXPECT_EQ(contact.body[0], &one);
   EXPECT_EQ(contact.body[1], &two);
   EXPECT_DOUBLE_EQ(contact.friction, 0.5);

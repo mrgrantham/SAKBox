@@ -203,7 +203,9 @@ unsigned CollisionDetector::sphereAndSphere(const CollisionSphere &one,
 
   Contact *contact = data->contacts;
   contact->contactNormal = normal;
-  contact->contactPoint = positionOne + midline * (real)0.5;
+  // SAKBox: upstream used positionOne + midline / 2, a point outside sphere
+  // one on the far side from sphere two.
+  contact->contactPoint = positionTwo + midline * (real)0.5;
   contact->penetration = (one.radius + two.radius - size);
   contact->setBodyData(one.body, two.body, data->friction, data->restitution);
 

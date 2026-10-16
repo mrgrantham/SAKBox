@@ -308,12 +308,6 @@ public:
    */
   unsigned positionIterationsUsed;
 
-private:
-  /**
-   * Keeps track of whether the internal settings are valid.
-   */
-  bool validSettings;
-
 public:
   /**
    * Creates a new contact resolver with the given number of iterations

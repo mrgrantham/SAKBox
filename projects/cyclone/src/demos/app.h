@@ -35,6 +35,10 @@
  * annoying need to implement an empty function that isn't needed.
  */
 class Application {
+public:
+  // Virtual: main.cpp deletes the demo through an Application pointer.
+  virtual ~Application() = default;
+
 protected:
   /**
    * Holds the height of the application window.

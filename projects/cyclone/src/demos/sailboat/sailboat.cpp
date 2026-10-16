@@ -55,14 +55,14 @@ public:
 SailboatDemo::SailboatDemo()
     : Application(),
 
+      buoyancy(cyclone::Vector3(0.0f, 0.5f, 0.0f), 1.0f, 3.0f, 1.6f),
+
       sail(cyclone::Matrix3(0, 0, 0, 0, 0, 0, 0, 0, -1.0f),
            cyclone::Vector3(2.0f, 0, 0), &windspeed),
 
-      buoyancy(cyclone::Vector3(0.0f, 0.5f, 0.0f), 1.0f, 3.0f, 1.6f),
+      windspeed(0, 0, 0),
 
-      sail_control(0),
-
-      windspeed(0, 0, 0) {
+      sail_control(0) {
   // Set up the boat's rigid body.
   sailboat.setPosition(0, 1.6f, 0);
   sailboat.setOrientation(1, 0, 0, 0);
@@ -156,11 +156,12 @@ void SailboatDemo::display() {
   glPopMatrix();
 
   char buffer[256];
-  sprintf(buffer, "Speed %.1f", sailboat.getVelocity().magnitude());
+  snprintf(buffer, sizeof(buffer), "Speed %.1f",
+           sailboat.getVelocity().magnitude());
   glColor3f(0, 0, 0);
   renderText(10.0f, 24.0f, buffer);
 
-  sprintf(buffer, "Sail Control: %.1f", sail_control);
+  snprintf(buffer, sizeof(buffer), "Sail Control: %.1f", sail_control);
   renderText(10.0f, 10.0f, buffer);
 }
 
