@@ -1,6 +1,7 @@
 #include <WClasses/GRand.h>
 #include <math.h>
 #include "loader.h"
+#include <vector>
 
 #define TRAIN_SIZE	100
 #define TEST_SIZE	100
@@ -309,7 +310,7 @@ void Loader::loadToyData(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testFea
 	GRand r(time(NULL));
 	size_t sines = 3;
 	size_t randsPerDim = 2 * sines + 2;
-	double rands[dims * randsPerDim];
+	std::vector<double> rands(dims * randsPerDim);
 	
 	for(size_t i = 0; i < dims; i++)
 	{
@@ -392,7 +393,7 @@ void Loader::loadTest01(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testFeat
 	
 	size_t sines = 3;
 	size_t randsPerDim = 2 * sines + 2;
-	double rands[dims * randsPerDim];
+	std::vector<double> rands(dims * randsPerDim);
 	
 	for(size_t i = 0; i < dims; i++)
 	{
