@@ -7,7 +7,7 @@ A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the 
 **Prerequisites**
 
 - [Bazelisk](https://github.com/bazelbuild/bazelisk) (recommended), which installs and runs the Bazel version pinned in `.bazelversion` (9.2.0). A plain Bazel 9 install also works.
-- A C++20 compiler: Xcode (Apple clang) on macOS, or clang/gcc on Linux.
+- A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`), with `-pedantic-errors` for the code under `projects/`.
 - On Linux, the system packages listed under [Linux](#linux).
 
 All other dependencies are declared in `MODULE.bazel` and downloaded by Bazel on the first build.
@@ -59,7 +59,7 @@ A few targets are tagged `manual`, so `//...` skips them: the 3DS example, and t
 
 ## Editor Setup
 
-Editors that use clangd (VS Code's clangd extension, CLion, Neovim, ...) need a `compile_commands.json` to know the include paths and C++20 flags Bazel uses. Generate it with:
+Editors that use clangd (VS Code's clangd extension, CLion, Neovim, ...) need a `compile_commands.json` to know the include paths and C++26 flags Bazel uses. Generate it with:
 
 ``` bash
 python3 tools/compile_commands/refresh.py

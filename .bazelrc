@@ -1,4 +1,4 @@
-build --cxxopt='-std=c++23'
+build --cxxopt='-std=c++26'
 # Strict ISO C++ for the repo's own code: compiler extensions are errors.
 # External libraries are left alone.
 build --per_file_copt='^projects/.*@-pedantic-errors'
