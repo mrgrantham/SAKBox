@@ -9,7 +9,7 @@ A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the 
 - [Bazelisk](https://github.com/bazelbuild/bazelisk) (recommended), which installs and runs the Bazel version pinned in `.bazelversion` (9.2.0). A plain Bazel 9 install also works.
 - A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`), with `-pedantic-errors` for the code under `projects/`.
 - On Linux, the system packages listed under [Linux](#linux).
-- For the 3DS example only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine. Without Docker running, that one target fails with a message saying so.
+- For the 3DS example only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine (see [`tools/devkitpro`](tools/devkitpro/README.md)). Without Docker running, that one target fails with a message saying so.
 
 All other dependencies are declared in `MODULE.bazel` and downloaded by Bazel on the first build.
 
@@ -50,7 +50,7 @@ Small programs under `projects/examples/`, mostly one per library. Run any of th
 | Backtrace | `//projects/examples/backtrace:exampleBacktrace` | Prints a stack trace with backward-cpp |
 | Tabulate | `//projects/examples/tabulate:exampleTabulate` | Formatted terminal tables |
 | YAML table | `//projects/examples/yamltable:exampleYaml` | Parses YAML with rapidyaml and yaml-cpp and prints a table |
-| 3DS read-controls | `//projects/examples/read-controls:read-controls` | Nintendo 3DS homebrew: shows the buttons pressed and the circle pad's position. Builds `read-controls.3dsx` (run it with the Homebrew Launcher or an emulator) using the devkitPro toolchain from `//tools/devkitpro`, which needs Docker |
+| [3DS read-controls](projects/examples/read-controls/README.md) | `//projects/examples/read-controls:read-controls` | Nintendo 3DS homebrew: shows the buttons pressed and the circle pad's position. Builds `read-controls.3dsx` (run it with the Homebrew Launcher, or in the Azahar emulator as its README describes) using the devkitPro toolchain from `//tools/devkitpro`, which needs Docker |
 
 ## Third Party
 
