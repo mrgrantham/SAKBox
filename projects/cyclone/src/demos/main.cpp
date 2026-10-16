@@ -19,6 +19,8 @@
 // Include the timing functions
 #include "timing.h"
 
+#include <cstring>
+
 // Forward declaration of the function that will return the
 // application object for this particular demo. This should be
 // implemented in the demo's .cpp file.
@@ -88,7 +90,8 @@ void keyboard(unsigned char key, int x, int y) {
 void motion(int x, int y) { app->mouseDrag(x, y); }
 
 /**
- * The main entry point. We pass arguments onto GLUT.
+ * The main entry point. We pass arguments onto GLUT. SAKBox: `--run` starts
+ * demos that normally begin paused (the rigid-body demos) already running.
  */
 int main(int argc, char **argv) {
   // Set up GLUT and the timers
@@ -97,6 +100,11 @@ int main(int argc, char **argv) {
 
   // Create the application and its window
   app = getApplication();
+  for (int i = 1; i < argc; ++i) {
+    if (std::strcmp(argv[i], "--run") == 0) {
+      app->startRunning();
+    }
+  }
   createWindow(app->getTitle());
 
   // Set up the appropriate handler functions

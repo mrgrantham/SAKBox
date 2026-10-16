@@ -50,7 +50,7 @@ Each demo is a binary: `bazel run //projects/cyclone:<name>`. They open a GLUT w
 | `flightsim_flex` | The flight sim on `cyclone_flex` | As `flightsim`, plus `[` and `]` step the engine's precision (down to 2 bits), N cycles stochastic, truncating and nearest rounding, F returns to full precision |
 | `sailboat` | A boat with a sail and buoyancy | Q/E trim the sail, W centres it |
 
-The rigid-body demos (`bigballistic`, `explosion`, `fracture`, `ragdoll`) share these keys: P pauses or resumes, Space advances one frame, R resets, C toggles drawing contacts. Drag with the mouse to turn the camera.
+The rigid-body demos (`bigballistic`, `explosion`, `fracture`, `ragdoll`) start paused and share these keys: P pauses or resumes, Space advances one frame, R resets, C toggles drawing contacts. Drag with the mouse to turn the camera. Pass `--run` to start them running, e.g. `bazel run //projects/cyclone:fracture -- --run`.
 
 ## What SAKBox has changed
 
@@ -62,6 +62,7 @@ Compared with the last upstream version:
   - `Matrix3::setOrientation` and `Matrix4::setOrientationAndPos` built the transposed matrix, rotating the opposite way. They now match the rigid-body transform.
   - `CollisionDetector::sphereAndSphere` placed the contact point outside the first sphere instead of midway between the two, so friction spun that sphere the wrong way.
   - `Application`, the demos' base class, lacked a virtual destructor although demos are deleted through it.
+- **Demo option:** `--run` starts the rigid-body demos unpaused.
 - **Cleanups:** `Quaternion`'s components are plain members rather than an anonymous struct in a union (a GNU extension), `sprintf` became `snprintf`, constructor initialisers follow declaration order, and unused code is gone.
 
 Changes inside the code are marked with `SAKBox:` comments.
@@ -76,4 +77,5 @@ Changes inside the code are marked with `SAKBox:` comments.
 ## Known limitations
 
 - **The demos use GLUT,** which macOS has deprecated; its warnings are silenced with `GL_SILENCE_DEPRECATION`, and the demo framework links the macOS GLUT, OpenGL and Cocoa frameworks, so the demos only build on macOS (the engine libraries build anywhere). Porting the demos to GLFW, like the rest of the repo, would make them cross-platform.
+- **The ragdoll flies away** instead of collapsing: once running, it launches upward and off into the distance. The original upstream code does the same (checked by building it), so it's an existing bug, not a SAKBox change; the cause is still to be found.
 - **Most of the engine has no tests yet:** box collisions, joints, the contact resolver and the force generators are covered only by the demos.

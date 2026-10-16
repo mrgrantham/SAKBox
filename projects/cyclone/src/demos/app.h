@@ -39,6 +39,10 @@ public:
   // Virtual: main.cpp deletes the demo through an Application pointer.
   virtual ~Application() = default;
 
+  // SAKBox: called for the --run command-line option. Demos that start
+  // paused begin running instead; the others ignore it.
+  virtual void startRunning() {}
+
 protected:
   /**
    * Holds the height of the application window.
@@ -230,6 +234,12 @@ public:
    * Creates a new application object.
    */
   RigidBodyApplication();
+
+  // Starts with the simulation running instead of paused (--run).
+  virtual void startRunning() {
+    pauseSimulation = false;
+    autoPauseSimulation = false;
+  }
 
   /** Display the application. */
   virtual void display();
