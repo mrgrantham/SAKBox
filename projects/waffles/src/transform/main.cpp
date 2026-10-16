@@ -1936,7 +1936,7 @@ void _function(GArgReader& args)
 	for(int i = 1; true; i++)
 	{
 		// Find the function
-		sprintf(szFuncName, "f%d", i);
+		snprintf(szFuncName, sizeof(szFuncName), "f%d", i);
 		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 		{
@@ -1954,7 +1954,7 @@ void _function(GArgReader& args)
 	vector<double> params;
 	for(int i = 1; true; i++)
 	{
-		sprintf(szFuncName, "f%d", i);
+		snprintf(szFuncName, sizeof(szFuncName), "f%d", i);
 		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 			break;
@@ -1990,7 +1990,7 @@ void _function2(GArgReader& args)
 	for(int i = 1; true; i++)
 	{
 		// Find the function
-		sprintf(szFuncName, "f%d", i);
+		snprintf(szFuncName, sizeof(szFuncName), "f%d", i);
 		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 		{
@@ -2006,7 +2006,7 @@ void _function2(GArgReader& args)
 	for(int i = 1; true; i++)
 	{
 		// Find the function
-		sprintf(szFuncName, "g%d", i);
+		snprintf(szFuncName, sizeof(szFuncName), "g%d", i);
 		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 			break;
@@ -2034,7 +2034,7 @@ void _function2(GArgReader& args)
 			{
 				for(int i = 1; true; i++)
 				{
-					sprintf(szFuncName, "g%d", i);
+					snprintf(szFuncName, sizeof(szFuncName), "g%d", i);
 					GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 					if(!pFunc)
 						break;
@@ -2052,18 +2052,18 @@ void _function2(GArgReader& args)
 		// Add "h#" constants to represent the gsum values
 		for(int i = 1; true; i++)
 		{
-			sprintf(szFuncName, "g%d", i);
+			snprintf(szFuncName, sizeof(szFuncName), "g%d", i);
 			GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 			if(!pFunc)
 				break;
-			sprintf(buf, "h%d=%f", i, gsum[i - 1]);
+			snprintf(buf, sizeof(buf), "h%d=%f", i, gsum[i - 1]);
 			mfp.add(buf);
 		}
 
 		// Compute the "f" functions for this row
 		for(int i = 1; true; i++)
 		{
-			sprintf(szFuncName, "f%d", i);
+			snprintf(szFuncName, sizeof(szFuncName), "f%d", i);
 			GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 			if(!pFunc)
 				break;

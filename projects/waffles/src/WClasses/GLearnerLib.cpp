@@ -1158,7 +1158,7 @@ void GLearnerLib::predictDistribution(GArgReader& args)
 
 void GLearnerLib::leftJustifiedString(const char* pIn, char* pOut, size_t outLen)
 {
-	for(size_t i = 0; outLen > 0 && *pIn != '\0'; i++)
+	for([[maybe_unused]] size_t i = 0; outLen > 0 && *pIn != '\0'; i++)
 	{
 		*(pOut++) = *(pIn++);
 		outLen--;

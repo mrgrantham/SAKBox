@@ -533,7 +533,7 @@ public:
 		}
 		else if(m_mode == mode_struct)
 		{
-			int stringPos = 0;
+			[[maybe_unused]] int stringPos = 0; // only checked by GAssert
 			int structPos = 0;
 			int lonerPos = 0;
 			for(size_t i = 0; i < m_pOrigNode->parts().size(); i++)

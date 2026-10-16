@@ -236,7 +236,7 @@ void whereAmI() {
 				m_winCounts[1]++;
 			else
 				m_winCounts[2]++;
-				RestartGame();
+			RestartGame();
 		}
 		SetLastMove(xSrc, ySrc, xDest, yDest);
 		PassTurn();

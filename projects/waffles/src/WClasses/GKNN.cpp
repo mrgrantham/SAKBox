@@ -560,7 +560,7 @@ void GKNN::interpolateLinear(size_t nc, const GVec& in, GPrediction* out, GVec* 
 			// Nominal label
 			int nValueCount = (int)m_pLabels->relation().valueCount(i);
 			m_valueCounts.fill(0.0, 0, nValueCount);
-			double dSumWeight = 0;
+			[[maybe_unused]] double dSumWeight = 0;
 			for(size_t j = 0; j < nc; j++)
 			{
 				size_t k = m_pNeighborFinder->neighbor(j);

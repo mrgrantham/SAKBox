@@ -173,7 +173,7 @@ double GCollaborativeFilter::trainAndTest(GMatrix& dataTrain, GMatrix& dataTest,
 	train(dataTrain);
 	double sse = 0.0;
 	double se = 0.0;
-	size_t hits = 0;
+	[[maybe_unused]] size_t hits = 0;
 	for(size_t j = 0; j < dataTest.rows(); j++)
 	{
 		GVec& vec = dataTest[j];
@@ -573,8 +573,8 @@ multimap<double,ArrayWrapper> GInstanceRecommender::getNeighbors(size_t user, si
 		throw Ex("User and/or item not in the provided data set");
 
 	// Find the k-nearest neighbors
-		if(m_user_depq.find(user) == m_user_depq.end())
-		{
+	if(m_user_depq.find(user) == m_user_depq.end())
+	{
 		multimap<double,ArrayWrapper> depq; // double-ended priority-queue that maps from similarity to user-id
 		for(size_t neigh = 0; neigh < m_pData->rows(); neigh++)
 		{
@@ -598,8 +598,8 @@ multimap<double,ArrayWrapper> GInstanceRecommender::getNeighbors(size_t user, si
 			if(depq.size() > m_neighbors)
 				depq.erase(depq.begin());
 		}
-				m_user_depq[user] = depq;
-		}
+		m_user_depq[user] = depq;
+	}
 
 	return m_user_depq[user];
 }
@@ -1126,7 +1126,7 @@ void GMatrixFactorization::train(GMatrix& data)
 	double prevErr = 1e10;
 	double learningRate = 0.01;
 	GVec pT(m_intrinsicDims + 1);
-	size_t epochs = 0;
+	[[maybe_unused]] size_t epochs = 0;
 	while(learningRate >= 0.001)
 	{
 		GMatrix backupP(*m_pP);

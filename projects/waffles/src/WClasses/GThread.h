@@ -21,6 +21,7 @@
 #define __GTHREAD_H__
 
 #include "GError.h"
+#include <atomic>
 #ifndef WINDOWS
 #	include <pthread.h>
 #	include <unistd.h>
@@ -183,7 +184,8 @@ protected:
 	size_t m_jobCount;
 	std::vector<GWorkerThread*> m_workers;
 	GSpinLock* m_pMasterLock;
-	volatile size_t m_activeWorkers;
+	// SAKBox: atomic rather than volatile; it is polled without the lock.
+	std::atomic<size_t> m_activeWorkers;
 
 public:
 	GMasterThread();

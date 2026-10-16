@@ -984,8 +984,8 @@ void GPackageServer_serial_test()
 	char buf[MAX_PACKET_LEN];
 	size_t sends = 0;
 	size_t receives = 0;
-	size_t bounces = 0;
-	size_t iters = 0;
+	[[maybe_unused]] size_t bounces = 0;
+	[[maybe_unused]] size_t iters = 0;
 	while(receives < TEST_LEN)
 	{
 		size_t turn = size_t(randMaster.next(3 * CLIENT_COUNT));

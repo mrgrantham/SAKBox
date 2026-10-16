@@ -79,7 +79,7 @@ void GParticleSwarm::reset()
 	}
 
 	// Update velocities
-	size_t nPos = 0;
+	[[maybe_unused]] size_t nPos = 0;
 	for(size_t i = 0; i < m_nPopulation; i++)
 	{
 		for(size_t j = 0; j < m_nDimensions; j++)

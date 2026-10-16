@@ -864,7 +864,7 @@ double GManifoldSculpting::squishPass(size_t nSeedDataPoint)
 
 	// Start at the seed point and correct outward in a breadth-first mannner
 	m_q.push_back(nSeedDataPoint);
-	size_t nVisitedNodes = 0;
+	[[maybe_unused]] size_t nVisitedNodes = 0;
 	size_t nSteps = 0;
 	double dError = 0;
 	double dTotalError = 0;

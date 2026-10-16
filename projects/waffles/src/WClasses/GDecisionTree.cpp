@@ -1317,7 +1317,7 @@ void GMeanMarginsTree::predictDistribution(const GVec& in, GPrediction* out)
 void GMeanMarginsTree::predict(const GVec& in, GVec& out)
 {
 	GMeanMarginsTreeNode* pNode = m_pRoot;
-	size_t nDepth = 1;
+	[[maybe_unused]] size_t nDepth = 1;
 	while(!pNode->IsLeaf())
 	{
 		if(((GMeanMarginsTreeInteriorNode*)pNode)->Test(in, m_internalFeatureDims))

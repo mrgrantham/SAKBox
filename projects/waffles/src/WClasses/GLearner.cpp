@@ -1669,7 +1669,7 @@ GBaselineLearner::GBaselineLearner(const GDomNode* pNode)
 	GDomNode* pred = pNode->get("pred");
 	GDomListIterator it(pred);
 	m_prediction.reserve(it.remaining());
-	for(size_t i = 0; it.current(); i++)
+	for([[maybe_unused]] size_t i = 0; it.current(); i++)
 	{
 		m_prediction.push_back(it.currentDouble());
 		it.advance();

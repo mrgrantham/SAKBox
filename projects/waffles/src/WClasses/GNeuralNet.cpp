@@ -3527,7 +3527,7 @@ std::string GNeuralNet::to_str(const std::string& line_prefix, bool includeWeigh
 {
 	std::ostringstream oss;
 	oss << line_prefix << "[GNeuralNet: " << inputs() << "->" << outputs() << ", Weights=" << GClasses::to_str(weightCount()) << "\n";
-	size_t pos = 0;
+	[[maybe_unused]] size_t pos = 0;
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
 		oss << line_prefix << "  " << to_fixed_str(i, 2, ' ') << ") ";

@@ -128,7 +128,7 @@ void GKeyPair::generateKeyPair(unsigned int uintCount, const unsigned int* pRawC
 		q.setUInt(i, pRawCryptographicBytes2[i]);
 	p.setBit(0, true);
 	q.setBit(0, true);
-	int nTries = 0;
+	[[maybe_unused]] int nTries = 0;
 	while(!p.isPrime())
 	{
 		p.increment();

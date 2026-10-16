@@ -101,7 +101,7 @@ void GBezier::point(double t, G3DVector* pOutPoint)
 	pOutPoint->m_vals[2] = m_pPoints[n].point.m_vals[2] * fw;
 	double u = t / (1.0 - t); // t/(1-t) in "monomialization trick" 
 	double bc = 1.0; // binomial coefficient
-	double den = 1.0; // denominator in P(t)/(1-t)^n
+	[[maybe_unused]] double den = 1.0; // denominator in P(t)/(1-t)^n
 	double aux; // auxiliary variable - efficiency
 
 	int i;

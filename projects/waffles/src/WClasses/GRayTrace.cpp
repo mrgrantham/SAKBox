@@ -1628,7 +1628,7 @@ GRayTraceTriMesh::GRayTraceTriMesh(GDomNode* pNode, GRayTraceScene* pScene)
 	GDomNode* pNormalsNode = pNode->getIfExists("normals");
 	GDomNode* pCoordsNode = pNode->getIfExists("coords");
 	GDomListIterator it1(pPointsNode);
-	for(size_t i = 0; it1.current(); i++)
+	for([[maybe_unused]] size_t i = 0; it1.current(); i++)
 	{
 		G3DVector tmp;
 		tmp.deserialize(it1.current());
@@ -1638,7 +1638,7 @@ GRayTraceTriMesh::GRayTraceTriMesh(GDomNode* pNode, GRayTraceScene* pScene)
 	GDomListIterator it2(pTrianglesNode);
 	if(it2.remaining() % 3 != 0)
 		throw Ex("triangle points are not a multiple of 3");
-	for(size_t i = 0; it2.current(); i++)
+	for([[maybe_unused]] size_t i = 0; it2.current(); i++)
 	{
 		m_triangles.push_back((size_t)it2.currentInt());
 		it2.advance();

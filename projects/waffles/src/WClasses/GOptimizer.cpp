@@ -168,7 +168,7 @@ void GNeuralNetOptimizer::optimizeWithValidation(const GMatrix &features, const 
 	double bestError = 1e308, currentError;
 	size_t k = 0;
 	GRandomIndexIterator ii(features.rows(), m_rand);
-	for(size_t i = 0;; ++i, ++k)
+	for([[maybe_unused]] size_t i = 0;; ++i, ++k)
 	{
 		for(size_t j = 0; j < batchesPerEpoch; ++j)
 			optimizeBatch(features, labels, ii, m_batchSize);

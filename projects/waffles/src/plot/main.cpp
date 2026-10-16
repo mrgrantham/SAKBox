@@ -481,7 +481,7 @@ void PlotEquation(GArgReader& args, std::ostream& stream = std::cout)
 	char szFuncName[32];
 	for(size_t i = 1; true; i++)
 	{
-		sprintf(szFuncName, "f%d", (int)i);
+		snprintf(szFuncName, sizeof(szFuncName), "f%d", (int)i);
 		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 		{
@@ -497,7 +497,7 @@ void PlotEquation(GArgReader& args, std::ostream& stream = std::cout)
 	for(size_t i = 0; i < equationCount; i++)
 	{
 		// Find the function
-		sprintf(szFuncName, "f%d", (int)i + 1);
+		snprintf(szFuncName, sizeof(szFuncName), "f%d", (int)i + 1);
 		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 			break;
