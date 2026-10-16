@@ -137,8 +137,8 @@ class GroundContacts : public cyclone::ParticleContactGenerator {
 public:
   void init(cyclone::ParticleWorld::Particles *particles);
 
-  virtual unsigned addContact(cyclone::ParticleContact *contact,
-                              unsigned limit) const;
+  unsigned addContact(cyclone::ParticleContact *contact,
+                      unsigned limit) const override;
 };
 
 } // namespace cyclone

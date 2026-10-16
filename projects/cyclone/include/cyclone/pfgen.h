@@ -50,7 +50,7 @@ public:
   ParticleGravity(const Vector3 &gravity);
 
   /** Applies the gravitational force to the given particle. */
-  virtual void updateForce(Particle *particle, real duration);
+  void updateForce(Particle *particle, real duration) override;
 };
 
 /**
@@ -69,7 +69,7 @@ public:
   ParticleDrag(real k1, real k2);
 
   /** Applies the drag force to the given particle. */
-  virtual void updateForce(Particle *particle, real duration);
+  void updateForce(Particle *particle, real duration) override;
 };
 
 /**
@@ -100,7 +100,7 @@ public:
   void init(Vector3 *anchor, real springConstant, real restLength);
 
   /** Applies the spring force to the given particle. */
-  virtual void updateForce(Particle *particle, real duration);
+  void updateForce(Particle *particle, real duration) override;
 };
 
 /**
@@ -110,7 +110,7 @@ public:
 class ParticleAnchoredBungee : public ParticleAnchoredSpring {
 public:
   /** Applies the spring force to the given particle. */
-  virtual void updateForce(Particle *particle, real duration);
+  void updateForce(Particle *particle, real duration) override;
 };
 
 /**
@@ -132,7 +132,7 @@ public:
   ParticleFakeSpring(Vector3 *anchor, real springConstant, real damping);
 
   /** Applies the spring force to the given particle. */
-  virtual void updateForce(Particle *particle, real duration);
+  void updateForce(Particle *particle, real duration) override;
 };
 
 /**
@@ -153,7 +153,7 @@ public:
   ParticleSpring(Particle *other, real springConstant, real restLength);
 
   /** Applies the spring force to the given particle. */
-  virtual void updateForce(Particle *particle, real duration);
+  void updateForce(Particle *particle, real duration) override;
 };
 
 /**
@@ -178,7 +178,7 @@ public:
   ParticleBungee(Particle *other, real springConstant, real restLength);
 
   /** Applies the spring force to the given particle. */
-  virtual void updateForce(Particle *particle, real duration);
+  void updateForce(Particle *particle, real duration) override;
 };
 
 /**
@@ -215,7 +215,7 @@ public:
                    real liquidDensity = 1000.0f);
 
   /** Applies the buoyancy force to the given particle. */
-  virtual void updateForce(Particle *particle, real duration);
+  void updateForce(Particle *particle, real duration) override;
 };
 
 /**

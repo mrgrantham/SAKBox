@@ -67,10 +67,10 @@ public:
 
   class ViewCollection : View {
   public:
-    virtual void draw() {}
-    virtual void destroy() {}
-    virtual void reset() {}
-    virtual void setup(const std::string &&name) {}
+    void draw() override {}
+    void destroy() override {}
+    void reset() override {}
+    void setup(const std::string &&name) override {}
   };
 
   class FrameBuffer {

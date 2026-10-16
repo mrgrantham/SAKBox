@@ -50,7 +50,7 @@ public:
   Gravity(const Vector3 &gravity);
 
   /** Applies the gravitational force to the given rigid body. */
-  virtual void updateForce(RigidBody *body, real duration);
+  void updateForce(RigidBody *body, real duration) override;
 };
 
 /**
@@ -85,7 +85,7 @@ public:
          real restLength);
 
   /** Applies the spring force to the given rigid body. */
-  virtual void updateForce(RigidBody *body, real duration);
+  void updateForce(RigidBody *body, real duration) override;
 };
 
 /**
@@ -206,13 +206,13 @@ public:
    * Calculates and applies the force that the explosion
    * has on the given rigid body.
    */
-  virtual void updateForce(RigidBody *body, real duration);
+  void updateForce(RigidBody *body, real duration) override;
 
   /**
    * Calculates and applies the force that the explosion has
    * on the given particle.
    */
-  virtual void updateForce(Particle *particle, real duration) = 0;
+  void updateForce(Particle *particle, real duration) override = 0;
 };
 
 /**
@@ -251,7 +251,7 @@ public:
   /**
    * Applies the force to the given rigid body.
    */
-  virtual void updateForce(RigidBody *body, real duration);
+  void updateForce(RigidBody *body, real duration) override;
 
 protected:
   /**
@@ -319,7 +319,7 @@ public:
   /**
    * Applies the force to the given rigid body.
    */
-  virtual void updateForce(RigidBody *body, real duration);
+  void updateForce(RigidBody *body, real duration) override;
 };
 
 /**
@@ -351,7 +351,7 @@ public:
   /**
    * Applies the force to the given rigid body.
    */
-  virtual void updateForce(RigidBody *body, real duration);
+  void updateForce(RigidBody *body, real duration) override;
 };
 
 /**
@@ -394,7 +394,7 @@ public:
   /**
    * Applies the force to the given rigid body.
    */
-  virtual void updateForce(RigidBody *body, real duration);
+  void updateForce(RigidBody *body, real duration) override;
 };
 
 /**

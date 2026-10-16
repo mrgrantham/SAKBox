@@ -64,7 +64,7 @@ public:
    * Generates the contacts required to restore the joint if it
    * has been violated.
    */
-  unsigned addContact(Contact *contact, unsigned limit) const;
+  unsigned addContact(Contact *contact, unsigned limit) const override;
 };
 
 } // namespace cyclone

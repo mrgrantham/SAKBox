@@ -55,8 +55,8 @@ public:
    * virtual) in the parent class, but is replicated here for
    * documentation purposes.
    */
-  virtual unsigned addContact(ParticleContact *contact,
-                              unsigned limit) const = 0;
+  unsigned addContact(ParticleContact *contact,
+                      unsigned limit) const override = 0;
 };
 
 /**
@@ -80,7 +80,7 @@ public:
    * Fills the given contact structure with the contact needed
    * to keep the cable from over-extending.
    */
-  virtual unsigned addContact(ParticleContact *contact, unsigned limit) const;
+  unsigned addContact(ParticleContact *contact, unsigned limit) const override;
 };
 
 /**
@@ -99,7 +99,7 @@ public:
    * Fills the given contact structure with the contact needed
    * to keep the rod from extending or compressing.
    */
-  virtual unsigned addContact(ParticleContact *contact, unsigned limit) const;
+  unsigned addContact(ParticleContact *contact, unsigned limit) const override;
 };
 
 /**
@@ -137,8 +137,8 @@ public:
    * virtual) in the parent class, but is replicated here for
    * documentation purposes.
    */
-  virtual unsigned addContact(ParticleContact *contact,
-                              unsigned limit) const = 0;
+  unsigned addContact(ParticleContact *contact,
+                      unsigned limit) const override = 0;
 };
 
 /**
@@ -162,7 +162,7 @@ public:
    * Fills the given contact structure with the contact needed
    * to keep the cable from over-extending.
    */
-  virtual unsigned addContact(ParticleContact *contact, unsigned limit) const;
+  unsigned addContact(ParticleContact *contact, unsigned limit) const override;
 };
 
 /**
@@ -181,7 +181,7 @@ public:
    * Fills the given contact structure with the contact needed
    * to keep the rod from extending or compressing.
    */
-  virtual unsigned addContact(ParticleContact *contact, unsigned limit) const;
+  unsigned addContact(ParticleContact *contact, unsigned limit) const override;
 };
 } // namespace cyclone
 
