@@ -330,7 +330,7 @@ void BlobDemo::display() {
     const cyclone::Vector3 &p = blobs[i].getPosition();
     glPushMatrix();
     glTranslatef(p.x, p.y, p.z);
-    glutSolidSphere(BLOB_RADIUS, 12, 12);
+    solidSphere(BLOB_RADIUS, 12, 12);
     glPopMatrix();
   }
 
@@ -341,16 +341,16 @@ void BlobDemo::display() {
   glPushMatrix();
   glTranslatef(p.x - BLOB_RADIUS * 0.2f, p.y, BLOB_RADIUS);
   glColor3f(1, 1, 1);
-  glutSolidSphere(BLOB_RADIUS * 0.2f, 8, 8);
+  solidSphere(BLOB_RADIUS * 0.2f, 8, 8);
   glTranslatef(0, 0, BLOB_RADIUS * 0.2f);
   glColor3f(0, 0, 0);
-  glutSolidSphere(BLOB_RADIUS * 0.1f, 8, 8);
+  solidSphere(BLOB_RADIUS * 0.1f, 8, 8);
   glTranslatef(BLOB_RADIUS * 0.4f, 0, -BLOB_RADIUS * 0.2f);
   glColor3f(1, 1, 1);
-  glutSolidSphere(BLOB_RADIUS * 0.2f, 8, 8);
+  solidSphere(BLOB_RADIUS * 0.2f, 8, 8);
   glTranslatef(0, 0, BLOB_RADIUS * 0.2f);
   glColor3f(0, 0, 0);
-  glutSolidSphere(BLOB_RADIUS * 0.1f, 8, 8);
+  solidSphere(BLOB_RADIUS * 0.1f, 8, 8);
   glPopMatrix();
 }
 

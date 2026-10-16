@@ -36,7 +36,7 @@ public:
 
     glPushMatrix();
     glMultMatrixf(mat);
-    glutSolidSphere(radius, 20, 20);
+    solidSphere(radius, 20, 20);
     glPopMatrix();
   }
 
@@ -117,7 +117,7 @@ public:
     glPushMatrix();
     glMultMatrixf(mat);
     glScalef(halfSize.x * 2, halfSize.y * 2, halfSize.z * 2);
-    glutSolidCube(1.0f);
+    solidCube(1.0f);
     glPopMatrix();
   }
 
@@ -298,11 +298,11 @@ void BigBallisticDemo::display() {
   glColor3f(0.0f, 0.0f, 0.0f);
   glPushMatrix();
   glTranslatef(0.0f, 1.5f, 0.0f);
-  glutSolidSphere(0.1f, 5, 5);
+  solidSphere(0.1f, 5, 5);
   glTranslatef(0.0f, -1.5f, 0.0f);
   glColor3f(0.75f, 0.75f, 0.75f);
   glScalef(1.0f, 0.1f, 1.0f);
-  glutSolidSphere(0.1f, 5, 5);
+  solidSphere(0.1f, 5, 5);
   glPopMatrix();
 
   // Draw some scale lines
@@ -396,7 +396,7 @@ void BigBallisticDemo::generateContacts() {
 
 void BigBallisticDemo::mouse(int button, int state, int x, int y) {
   // Fire the current weapon.
-  if (state == GLUT_DOWN)
+  if (state == MOUSE_DOWN)
     fire();
 }
 

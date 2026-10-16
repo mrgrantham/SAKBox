@@ -14,6 +14,12 @@
 #include "timing.h"
 #include <cstring>
 
+// stb_easy_font's helpers are static; not all of them are used
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#include <stb/stb_easy_font.h>
+#pragma GCC diagnostic pop
+
 void Application::initGraphics() {
   glClearColor(0.9f, 0.95f, 1.0f, 1.0f);
   glEnable(GL_DEPTH_TEST);
@@ -42,7 +48,7 @@ const char *Application::getTitle() { return "Cyclone Demo"; }
 
 void Application::deinit() {}
 
-void Application::update() { glutPostRedisplay(); }
+void Application::update() {}
 
 void Application::key(unsigned char key) {}
 
@@ -55,6 +61,9 @@ void Application::resize(int width, int height) {
   Application::width = width;
   Application::height = height;
   glViewport(0, 0, width, height);
+  // SAKBox: lines as thick on screen as under GLUT, which drew high-DPI
+  // displays at half resolution
+  glLineWidth(pixelScale);
   setView();
 }
 
@@ -63,7 +72,7 @@ void Application::mouse(int button, int state, int x, int y) {}
 void Application::mouseDrag(int x, int y) {}
 
 // The following methods aren't intended to be overloaded
-void Application::renderText(float x, float y, const char *text, void *font) {
+void Application::renderText(float x, float y, const char *text) {
   glDisable(GL_DEPTH_TEST);
 
   // Temporarily set up the view in orthographic projection.
@@ -77,25 +86,18 @@ void Application::renderText(float x, float y, const char *text, void *font) {
   glPushMatrix();
   glLoadIdentity();
 
-  // Ensure we have a font
-  if (font == NULL) {
-    font = GLUT_BITMAP_HELVETICA_10;
-  }
-
-  // Loop through characters displaying them.
-  size_t len = strlen(text);
-
-  glRasterPos2f(x, y);
-  for (const char *letter = text; letter < text + len; letter++) {
-
-    // If we meet a newline, then move down by the line-height
-    // TODO: Make the line-height a function of the font
-    if (*letter == '\n') {
-      y -= 12.0f;
-      glRasterPos2f(x, y);
-    }
-    glutBitmapCharacter(font, *letter);
-  }
+  // SAKBox: GLUT's bitmap font is replaced by stb_easy_font, which builds
+  // the text from quads (12 points per line, as before). Its y axis points
+  // down, so flip it, and scale points to pixels.
+  static char quads[64 * 1024];
+  int count = stb_easy_font_print(0, 0, const_cast<char *>(text), nullptr,
+                                  quads, sizeof(quads));
+  glTranslatef(x * pixelScale, (y + 8.0f) * pixelScale, 0);
+  glScalef(pixelScale, -pixelScale, 1);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glVertexPointer(2, GL_FLOAT, 16, quads);
+  glDrawArrays(GL_QUADS, 0, count * 4);
+  glDisableClientState(GL_VERTEX_ARRAY);
 
   // Pop the matrices to return to how we were before.
   glPopMatrix();
@@ -141,7 +143,7 @@ void MassAggregateApplication::display() {
     const cyclone::Vector3 &pos = particle->getPosition();
     glPushMatrix();
     glTranslatef(pos.x, pos.y, pos.z);
-    glutSolidSphere(0.1f, 20, 10);
+    solidSphere(0.1f, 20, 10);
     glPopMatrix();
   }
 }

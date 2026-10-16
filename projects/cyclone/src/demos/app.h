@@ -15,11 +15,11 @@
 
 /**
  * An application is the base class for all demonstration progams.
- * GLUT is a c-style API, which calls bare functions. This makes
- * it more difficult to provide default services for all demos and
- * only override them when needed.
+ * The windowing API (GLUT originally; SAKBox uses GLFW) calls bare
+ * functions. This makes it more difficult to provide default services
+ * for all demos and only override them when needed.
  *
- * To solve this, the GLUT API is translated into calls on a
+ * To solve this, the windowing API is translated into calls on a
  * generic application object. Each demonstration will create a
  * concrete subclass of Application, providing the behaviours it
  * needs. The common code for all demos manages dispatch of
@@ -45,14 +45,24 @@ public:
 
 protected:
   /**
-   * Holds the height of the application window.
+   * Holds the height of the application window, in pixels.
    */
-  int height;
+  int height = 320;
 
   /**
-   * Holds the current width of the application window.
+   * Holds the current width of the application window, in pixels.
    */
-  int width;
+  int width = 640;
+
+  /**
+   * SAKBox: pixels per point (2 on a Retina display). Text is drawn this
+   * much larger so it keeps its size on screen.
+   */
+  float pixelScale = 1.0f;
+
+public:
+  // SAKBox: set by main.cpp from the window's framebuffer and point sizes.
+  void setPixelScale(float scale) { pixelScale = scale; }
 
 public:
   /**
@@ -129,14 +139,16 @@ public:
   virtual void resize(int width, int height);
 
   /**
-   * Called when GLUT detects a mouse button press.
+   * Called when a mouse button is pressed or released (button is one of
+   * the MOUSE_*_BUTTON values and state MOUSE_DOWN or MOUSE_UP, from
+   * ogl_headers.h; x and y are in window points).
    *
    * The default implementation does nothing.
    */
   virtual void mouse(int button, int state, int x, int y);
 
   /**
-   * Called when GLUT detects a mouse drag.
+   * Called when the mouse moves with a button held.
    *
    * The default implementation does nothing.
    */
@@ -147,10 +159,10 @@ public:
 
   /**
    * Renders the given text to the given x,y location (in screen space)
-   * on the window. This is used to pass status information to the
-   * application.
+   * on the window, in points from the bottom left. This is used to pass
+   * status information to the application.
    */
-  void renderText(float x, float y, const char *text, void *font = NULL);
+  void renderText(float x, float y, const char *text);
 };
 
 /**

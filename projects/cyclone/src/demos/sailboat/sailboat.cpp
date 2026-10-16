@@ -94,28 +94,28 @@ static void drawBoat() {
   glPushMatrix();
   glTranslatef(0, 0, -1.0f);
   glScalef(2.0f, 0.4f, 0.4f);
-  glutSolidCube(1.0f);
+  solidCube(1.0f);
   glPopMatrix();
 
   // Right Hull
   glPushMatrix();
   glTranslatef(0, 0, 1.0f);
   glScalef(2.0f, 0.4f, 0.4f);
-  glutSolidCube(1.0f);
+  solidCube(1.0f);
   glPopMatrix();
 
   // Deck
   glPushMatrix();
   glTranslatef(0, 0.3f, 0);
   glScalef(1.0f, 0.1f, 2.0f);
-  glutSolidCube(1.0f);
+  solidCube(1.0f);
   glPopMatrix();
 
   // Mast
   glPushMatrix();
   glTranslatef(0, 1.8f, 0);
   glScalef(0.1f, 3.0f, 0.1f);
-  glutSolidCube(1.0f);
+  solidCube(1.0f);
   glPopMatrix();
 }
 

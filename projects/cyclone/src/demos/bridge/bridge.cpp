@@ -208,7 +208,7 @@ void BridgeDemo::display() {
   glColor3f(1, 0, 0);
   glPushMatrix();
   glTranslatef(massDisplayPos.x, massDisplayPos.y + 0.25f, massDisplayPos.z);
-  glutSolidSphere(0.25f, 20, 10);
+  solidSphere(0.25f, 20, 10);
   glPopMatrix();
 }
 

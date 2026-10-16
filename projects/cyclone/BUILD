@@ -27,12 +27,6 @@ cc_library(
 )
 
 cc_library(
-    name = "gl",
-    hdrs = ["include/gl/glut.h"],
-    strip_include_prefix = "include",
-)
-
-cc_library(
     name = "timing",
     srcs = ["src/demos/timing.cpp"],
     hdrs = ["src/demos/timing.h"],
@@ -41,14 +35,18 @@ cc_library(
 
 cc_library(
     name = "app",
-    srcs = ["src/demos/app.cpp"],
-    hdrs = ["src/demos/app.h", "src/demos/ogl_headers.h"],
+    srcs = ["src/demos/app.cpp", "src/demos/shapes.cpp"],
+    hdrs = ["src/demos/app.h", "src/demos/ogl_headers.h", "src/demos/shapes.h"],
     defines = ["GL_SILENCE_DEPRECATION"],
-    deps = [":gl", ":timing", ":cyclone"],
+    deps = [":timing", ":cyclone", "@glfw", "@stb"],
     strip_include_prefix = "src",
-    # The demos draw with GLUT (macOS frameworks); the engine itself has no
-    # platform dependency.
-    linkopts = ["-framework GLUT", "-framework OpenGL", "-framework Cocoa"],
+    # The demos open a GLFW window and draw with legacy OpenGL and GLU (GLFW
+    # links OpenGL on macOS); the engine itself has no platform dependency.
+    linkopts = select({
+        "@platforms//os:linux": ["-lGL", "-lGLU"],
+        "@platforms//os:windows": ["opengl32.lib", "glu32.lib"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_binary(
@@ -150,14 +148,18 @@ cc_binary(
 # Cyclone built with an adjustable-precision real (flexmath FlexReal)
 cc_library(
     name = "app_flex",
-    srcs = ["src/demos/app.cpp"],
-    hdrs = ["src/demos/app.h", "src/demos/ogl_headers.h"],
+    srcs = ["src/demos/app.cpp", "src/demos/shapes.cpp"],
+    hdrs = ["src/demos/app.h", "src/demos/ogl_headers.h", "src/demos/shapes.h"],
     defines = ["GL_SILENCE_DEPRECATION"],
-    deps = [":gl", ":timing", ":cyclone_flex"],
+    deps = [":timing", ":cyclone_flex", "@glfw", "@stb"],
     strip_include_prefix = "src",
-    # The demos draw with GLUT (macOS frameworks); the engine itself has no
-    # platform dependency.
-    linkopts = ["-framework GLUT", "-framework OpenGL", "-framework Cocoa"],
+    # The demos open a GLFW window and draw with legacy OpenGL and GLU (GLFW
+    # links OpenGL on macOS); the engine itself has no platform dependency.
+    linkopts = select({
+        "@platforms//os:linux": ["-lGL", "-lGLU"],
+        "@platforms//os:windows": ["opengl32.lib", "glu32.lib"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_binary(

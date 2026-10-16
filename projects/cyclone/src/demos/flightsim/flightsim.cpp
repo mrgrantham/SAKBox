@@ -124,35 +124,35 @@ static void drawAircraft() {
   glPushMatrix();
   glTranslatef(-0.5f, 0, 0);
   glScalef(2.0f, 0.8f, 1.0f);
-  glutSolidCube(1.0f);
+  solidCube(1.0f);
   glPopMatrix();
 
   // Rear Fuselage
   glPushMatrix();
   glTranslatef(1.0f, 0.15f, 0);
   glScalef(2.75f, 0.5f, 0.5f);
-  glutSolidCube(1.0f);
+  solidCube(1.0f);
   glPopMatrix();
 
   // Wings
   glPushMatrix();
   glTranslatef(0, 0.3f, 0);
   glScalef(0.8f, 0.1f, 6.0f);
-  glutSolidCube(1.0f);
+  solidCube(1.0f);
   glPopMatrix();
 
   // Rudder
   glPushMatrix();
   glTranslatef(2.0f, 0.775f, 0);
   glScalef(0.75f, 1.15f, 0.1f);
-  glutSolidCube(1.0f);
+  solidCube(1.0f);
   glPopMatrix();
 
   // Tail-plane
   glPushMatrix();
   glTranslatef(1.9f, 0, 0);
   glScalef(0.85f, 0.1f, 2.0f);
-  glutSolidCube(1.0f);
+  solidCube(1.0f);
   glPopMatrix();
 }
 

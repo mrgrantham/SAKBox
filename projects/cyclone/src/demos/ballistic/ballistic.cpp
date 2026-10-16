@@ -39,14 +39,14 @@ class BallisticDemo : public Application {
       glColor3f(0, 0, 0);
       glPushMatrix();
       glTranslatef(position.x, position.y, position.z);
-      glutSolidSphere(0.3f, 5, 4);
+      solidSphere(0.3f, 5, 4);
       glPopMatrix();
 
       glColor3f(0.75, 0.75, 0.75);
       glPushMatrix();
       glTranslatef(position.x, 0, position.z);
       glScalef(1.0f, 0.1f, 1.0f);
-      glutSolidSphere(0.6f, 5, 4);
+      solidSphere(0.6f, 5, 4);
       glPopMatrix();
     }
   };
@@ -190,11 +190,11 @@ void BallisticDemo::display() {
   glColor3f(0.0f, 0.0f, 0.0f);
   glPushMatrix();
   glTranslatef(0.0f, 1.5f, 0.0f);
-  glutSolidSphere(0.1f, 5, 5);
+  solidSphere(0.1f, 5, 5);
   glTranslatef(0.0f, -1.5f, 0.0f);
   glColor3f(0.75f, 0.75f, 0.75f);
   glScalef(1.0f, 0.1f, 1.0f);
-  glutSolidSphere(0.1f, 5, 5);
+  solidSphere(0.1f, 5, 5);
   glPopMatrix();
 
   // Draw some scale lines
@@ -238,7 +238,7 @@ void BallisticDemo::display() {
 
 void BallisticDemo::mouse(int button, int state, int x, int y) {
   // Fire the current weapon.
-  if (state == GLUT_DOWN)
+  if (state == MOUSE_DOWN)
     fire();
 }
 

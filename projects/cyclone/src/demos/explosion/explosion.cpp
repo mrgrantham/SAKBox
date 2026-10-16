@@ -42,7 +42,7 @@ public:
 
     glPushMatrix();
     glMultMatrixf(mat);
-    glutSolidSphere(radius, 20, 20);
+    solidSphere(radius, 20, 20);
     glPopMatrix();
   }
 
@@ -55,7 +55,7 @@ public:
     glPushMatrix();
     glScalef(1.0f, 0, 1.0f);
     glMultMatrixf(mat);
-    glutSolidSphere(radius, 20, 20);
+    solidSphere(radius, 20, 20);
     glPopMatrix();
   }
 
@@ -121,7 +121,7 @@ public:
     glPushMatrix();
     glMultMatrixf(mat);
     glScalef(halfSize.x * 2, halfSize.y * 2, halfSize.z * 2);
-    glutSolidCube(1.0f);
+    solidCube(1.0f);
     glPopMatrix();
   }
 
@@ -135,7 +135,7 @@ public:
     glScalef(1.0f, 0, 1.0f);
     glMultMatrixf(mat);
     glScalef(halfSize.x * 2, halfSize.y * 2, halfSize.z * 2);
-    glutSolidCube(1.0f);
+    solidCube(1.0f);
     glPopMatrix();
   }
 

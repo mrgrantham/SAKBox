@@ -25,6 +25,10 @@
 #include <string>
 #include <vector>
 
+// SAKBox: the demos run in a GLFW window; they originally used GLUT. GLFW
+// calls the functions below, which pass events to the demo, as GLUT's
+// callbacks did.
+
 // Forward declaration of the function that will return the
 // application object for this particular demo. This should be
 // implemented in the demo's .cpp file.
@@ -33,87 +37,57 @@ extern Application *getApplication();
 // Store the global application object.
 Application *app;
 
-/**
- * Creates a window in which to display the scene.
- */
-void createWindow(const char *title) {
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-  glutInitWindowSize(640, 320);
-  glutInitWindowPosition(0, 0);
-  glutCreateWindow(title);
+// Whether a mouse button is held, so moves are reported as drags
+static bool mouseHeld = false;
+
+static void framebufferResized(GLFWwindow *window, int width, int height) {
+  int pointsWide = 0, pointsHigh = 0;
+  glfwGetWindowSize(window, &pointsWide, &pointsHigh);
+  app->setPixelScale(pointsWide > 0 ? (float)width / pointsWide : 1.0f);
+  app->resize(width, height);
 }
 
-/**
- * Called each frame to update the 3D scene. Delegates to
- * the application.
- */
-void update() {
-  // Update the timing.
-  TimingData::get().update();
-
-  // Delegate to the application.
-  app->update();
+static void typed(GLFWwindow *, unsigned int codepoint) {
+  // The demos' keys are all ASCII
+  if (codepoint < 128)
+    app->key(static_cast<unsigned char>(codepoint));
 }
 
-/**
- * Called each frame to display the 3D scene. Delegates to
- * the application.
- */
-void display() {
-  app->display();
-
-  // Update the displayed content.
-  glFlush();
-  glutSwapBuffers();
+static void mouseButton(GLFWwindow *window, int button, int action, int) {
+  int demoButton = button == GLFW_MOUSE_BUTTON_RIGHT    ? MOUSE_RIGHT_BUTTON
+                   : button == GLFW_MOUSE_BUTTON_MIDDLE ? MOUSE_MIDDLE_BUTTON
+                                                        : MOUSE_LEFT_BUTTON;
+  mouseHeld = action == GLFW_PRESS;
+  double x, y;
+  glfwGetCursorPos(window, &x, &y);
+  app->mouse(demoButton, mouseHeld ? MOUSE_DOWN : MOUSE_UP, (int)x, (int)y);
 }
 
-/**
- * Called when a mouse button is pressed. Delegates to the
- * application.
- */
-void mouse(int button, int state, int x, int y) {
-  app->mouse(button, state, x, y);
+static void mouseMoved(GLFWwindow *, double x, double y) {
+  if (mouseHeld)
+    app->mouseDrag((int)x, (int)y);
 }
-
-/**
- * Called when the display window changes size.
- */
-void reshape(int width, int height) { app->resize(width, height); }
-
-/**
- * Called when a key is pressed.
- */
-void keyboard(unsigned char key, int x, int y) {
-  // Note we omit passing on the x and y: they are rarely needed.
-  app->key(key);
-}
-
-/**
- * Called when the mouse is dragged.
- */
-void motion(int x, int y) { app->mouseDrag(x, y); }
 
 // SAKBox: --keys "SECONDS:INPUT,..." plays input into the demo, for testing
 // its controls without touching the keyboard. At each time (seconds after
 // launch) every character of INPUT goes to the demo's key handler in turn,
 // or INPUT "click" is a left click. E.g. --keys "1:2,1.5:click,3:r".
 struct ScriptedInput {
-  int atMs;
+  double atSeconds;
   std::string input;
 };
 static std::vector<ScriptedInput> scriptedInput;
 
-static void playScriptedInput(int index) {
-  const std::string &input = scriptedInput[index].input;
-  if (input == "click") {
-    app->mouse(GLUT_LEFT_BUTTON, GLUT_DOWN, 0, 0);
-    app->mouse(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0);
+static void playScriptedInput(const ScriptedInput &scripted) {
+  if (scripted.input == "click") {
+    app->mouse(MOUSE_LEFT_BUTTON, MOUSE_DOWN, 0, 0);
+    app->mouse(MOUSE_LEFT_BUTTON, MOUSE_UP, 0, 0);
   } else {
-    for (char key : input)
+    for (char key : scripted.input)
       app->key(static_cast<unsigned char>(key));
   }
-  std::printf("scripted input at %.2f s: %s\n",
-              scriptedInput[index].atMs / 1000.0, input.c_str());
+  std::printf("scripted input at %.2f s: %s\n", scripted.atSeconds,
+              scripted.input.c_str());
   std::fflush(stdout);
 }
 
@@ -130,19 +104,16 @@ static bool parseScriptedInput(const char *script) {
     const double seconds = std::strtod(entry.c_str(), &end);
     if (end != entry.c_str() + colon || seconds < 0)
       return false;
-    scriptedInput.push_back(
-        {static_cast<int>(seconds * 1000), entry.substr(colon + 1)});
+    scriptedInput.push_back({seconds, entry.substr(colon + 1)});
   }
   return true;
 }
 
-/**
- * The main entry point. We pass arguments onto GLUT. SAKBox: `--run` starts
- * demos that normally begin paused (the rigid-body demos) already running.
- */
 int main(int argc, char **argv) {
-  // Set up GLUT and the timers
-  glutInit(&argc, argv);
+  if (!glfwInit()) {
+    std::fprintf(stderr, "Couldn't start GLFW\n");
+    return 1;
+  }
   TimingData::init();
 
   // Create the application and its window
@@ -158,26 +129,50 @@ int main(int argc, char **argv) {
       }
     }
   }
-  createWindow(app->getTitle());
+
+  // The default context: legacy OpenGL, which the demos draw with
+  glfwWindowHint(GLFW_DEPTH_BITS, 24);
+  GLFWwindow *window =
+      glfwCreateWindow(640, 320, app->getTitle(), nullptr, nullptr);
+  if (!window) {
+    std::fprintf(stderr, "Couldn't create a window\n");
+    glfwTerminate();
+    return 1;
+  }
+  glfwMakeContextCurrent(window);
+  glfwSwapInterval(1);
 
   // Set up the appropriate handler functions
-  glutReshapeFunc(reshape);
-  glutKeyboardFunc(keyboard);
-  glutDisplayFunc(display);
-  glutIdleFunc(update);
-  glutMouseFunc(mouse);
-  glutMotionFunc(motion);
-
-  for (size_t i = 0; i < scriptedInput.size(); ++i)
-    glutTimerFunc(scriptedInput[i].atMs, playScriptedInput,
-                  static_cast<int>(i));
+  glfwSetFramebufferSizeCallback(window, framebufferResized);
+  glfwSetCharCallback(window, typed);
+  glfwSetMouseButtonCallback(window, mouseButton);
+  glfwSetCursorPosCallback(window, mouseMoved);
 
   // Run the application
+  int width = 0, height = 0;
+  glfwGetFramebufferSize(window, &width, &height);
+  framebufferResized(window, width, height);
   app->initGraphics();
-  glutMainLoop();
+  const double start = glfwGetTime();
+  size_t nextScripted = 0;
+  while (!glfwWindowShouldClose(window)) {
+    glfwPollEvents();
+    while (nextScripted < scriptedInput.size() &&
+           glfwGetTime() - start >= scriptedInput[nextScripted].atSeconds)
+      playScriptedInput(scriptedInput[nextScripted++]);
+
+    // Update the timing, then the demo, then draw it
+    TimingData::get().update();
+    app->update();
+    app->display();
+    glFlush();
+    glfwSwapBuffers(window);
+  }
 
   // Clean up the application
   app->deinit();
   delete app;
   TimingData::deinit();
+  glfwDestroyWindow(window);
+  glfwTerminate();
 }

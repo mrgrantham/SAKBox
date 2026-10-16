@@ -33,7 +33,7 @@ static void renderBone(const ragdoll::Bone &bone) {
   glPushMatrix();
   glMultMatrixf(mat);
   glScalef(bone.halfSize.x * 2, bone.halfSize.y * 2, bone.halfSize.z * 2);
-  glutSolidCube(1.0f);
+  solidCube(1.0f);
   glPopMatrix();
 }
 

@@ -43,7 +43,7 @@ public:
     glPushMatrix();
     glMultMatrixf(mat);
     glScalef(halfSize.x * 2, halfSize.y * 2, halfSize.z * 2);
-    glutSolidCube(1.0f);
+    solidCube(1.0f);
     glPopMatrix();
   }
 
@@ -424,7 +424,7 @@ void FractureDemo::display() {
     glPushMatrix();
     cyclone::Vector3 pos = ball.body->getPosition();
     glTranslatef(pos.x, pos.y, pos.z);
-    glutSolidSphere(0.25f, 16, 8);
+    solidSphere(0.25f, 16, 8);
     glPopMatrix();
   }
 
