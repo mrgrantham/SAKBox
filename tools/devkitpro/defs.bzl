@@ -8,7 +8,9 @@ update, pick a dated tag from https://hub.docker.com/r/devkitpro/devkitarm/tags,
 
 The image holds Linux programs, so building needs a container runtime (on
 macOS: `brew install colima docker`, then `colima start`). The apps it makes
-run on a 3DS (via the Homebrew Launcher) or in an emulator.
+run on a 3DS (via the Homebrew Launcher) or in an emulator. The image is
+built for x86-64 and ARM, and the build step is Python, so this works on
+macOS, Linux and Windows hosts alike.
 """
 
 # devkitpro/devkitarm:20260610 (devkitARM r68, GCC 16.1, libctru 2.7.0,
@@ -47,8 +49,7 @@ devkitpro_3ds_app = rule(
         "srcs": attr.label_list(allow_files = True, mandatory = True),
         "app_name": attr.string(doc = "Output name (default: the target name)"),
         "_build": attr.label(
-            default = "//tools/devkitpro:build_3ds.sh",
-            allow_single_file = True,
+            default = "//tools/devkitpro:build_3ds",
             executable = True,
             cfg = "exec",
         ),

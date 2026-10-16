@@ -5,24 +5,25 @@ Builds Nintendo 3DS homebrew with [devkitPro](https://devkitpro.org)'s toolchain
 | File | What it is |
 | --- | --- |
 | `defs.bzl` | `DEVKITARM_IMAGE` (the pinned image) and the `devkitpro_3ds_app` rule |
-| `build_3ds.sh` | Runs devkitPro's `make` inside the image. Sources go in and the built files come out through `tar` on stdin/stdout, so no folders are shared with the container. |
+| `build_3ds.py` | Runs devkitPro's `make` inside the image. Sources go in and the built files come out as tar streams on stdin/stdout, so no folders are shared with the container and nothing it writes ends up owned by root. Python, so it runs the same on every host. |
 
 The pinned image is `devkitpro/devkitarm:20260610`: devkitARM r68 (GCC 16.1), libctru 2.7.0, citro2d 1.7.0, citro3d 1.7.1, 3dstools 1.3.1 and the `3ds-*` libraries (zlib, curl, freetype, box2d, ...). It is built for both arm64 (Apple Silicon, runs natively) and amd64.
 
 ## Setup
 
-The image contains Linux programs, so you need a container runtime. On macOS:
+The image contains Linux programs, so you need a container runtime. The output is the same whichever you use: the `.3dsx` built on macOS and on Linux is byte-for-byte identical.
 
-```
-brew install colima docker
-colima start
-```
+| Host | Runtime | Status |
+| --- | --- | --- |
+| macOS | `brew install colima docker`, then `colima start` (or Docker Desktop) | Tested (Apple Silicon) |
+| Linux | Docker Engine; your user needs to be in the `docker` group (or use rootless Docker) so builds can reach it without `sudo` | Build step tested on Linux (ARM, in a container); a full Bazel build on a Linux machine hasn't been tried |
+| Windows | Docker Desktop (WSL2 backend) | Untested |
 
-`colima start` is needed again after a reboot; `brew services start colima` starts it at login instead. Docker Desktop works too. On Linux, install Docker.
+On macOS, `colima start` is needed again after a reboot; `brew services start colima` starts it at login instead.
 
-That's all. The first build pulls the image (about 520 MB) into the runtime's VM; later builds reuse it, and Bazel caches the results like any other action.
+The first build pulls the image (a 520 MB download, about 2 GB unpacked) into the runtime; later builds reuse it, and Bazel caches the results like any other action.
 
-If Docker isn't running, 3DS targets fail with `Docker isn't running. Start it (colima start) and build again.` Everything else in the repo still builds.
+If Docker isn't running, 3DS targets fail with `Docker isn't running. Start it (colima start, or Docker Desktop) and build again.` Everything else in the repo still builds.
 
 ## Using it
 

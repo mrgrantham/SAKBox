@@ -4,7 +4,7 @@ Nintendo 3DS homebrew: libctru's "read controls" sample by Aurelio Mannara. It p
 
 ## Building
 
-Needs Docker running (see [`tools/devkitpro`](../../../tools/devkitpro/README.md); on macOS, `brew install colima docker` then `colima start`).
+Needs Docker running: on macOS, `brew install colima docker` then `colima start`; on Linux or Windows, see [`tools/devkitpro`](../../../tools/devkitpro/README.md).
 
 ```
 bazel build //projects/examples/read-controls
@@ -15,6 +15,8 @@ This builds `bazel-bin/projects/examples/read-controls/read-controls.3dsx` (plus
 ## Testing in an emulator
 
 [Azahar](https://github.com/azahar-emu/azahar) is the maintained 3DS emulator (the successor to Citra and Lime3DS). Homebrew like this runs without any Nintendo system files.
+
+Azahar publishes builds for macOS, Linux and Windows. The steps below are for macOS (tested); on Linux or Windows, download the build for your system from [its releases](https://github.com/azahar-emu/azahar/releases) and open `read-controls.3dsx` with **File → Load File…** (or pass its full path on the command line). The controls and behaviour below are the same everywhere.
 
 ### Installing Azahar on macOS
 
@@ -30,7 +32,7 @@ mv azahar-macos-arm64-2126.2/Azahar.app /Applications/
 
 The app isn't notarized by Apple. Downloaded with `curl` it opens normally; if it was downloaded with a browser and macOS refuses to open it, right-click it and choose **Open**.
 
-### Running the app
+### Running the app (macOS)
 
 ```
 open -a Azahar --args ~/Programming_Projects/SAKBox/bazel-bin/projects/examples/read-controls/read-controls.3dsx
