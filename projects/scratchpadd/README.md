@@ -97,11 +97,11 @@ Use `prepare()`/`cleanup()` for setup that must happen in order across padds, an
 
 By default each padd gets its own thread, which processes its work queue: incoming messages and `repeat()` calls, one at a time, in order.
 
-A padd whose `shouldUseMainThread()` returns `true` instead runs on the thread that called `start()`. Use this for anything that must run on the main thread, like windowing on macOS. All main-thread padds share one loop: each pass runs every one's queued work, then sleeps once, for the shortest of their sleep intervals.
+A padd whose `shouldUseMainThread()` returns `true` instead runs on the thread that called `start()`. Use this for anything that must run on the main thread, like windowing on macOS. All main-thread padds share one loop: each pass runs every one's queued work, in the order the padds are listed, then sleeps until work is pushed to any of them.
 
 `start()` blocks until `stop()` is called. `stop()` only requests shutdown and returns immediately, so it is safe from any thread, including from inside a padd: the demo's `DisplayPadd` calls `system_->stop()` when its window closes. `start()` then shuts down on its own thread, in order: every padd stops (background padds run `finishing()` on their own threads), main-thread padds run `finishing()`, and every padd runs `cleanup()`. `start()` returns once that is done. Tests start the system on a separate thread and call `waitForStart()` to wait until every padd is running.
 
-When its queue is empty, a padd's thread sleeps for `work_thread_sleep_interval_` (500 ms by default) before checking again, so a message can take up to that long to be picked up. Padds that need lower latency can shorten it in their constructor or `prepare()`; `DisplayPadd` sets it to 0.
+**Padds don't poll.** A padd with nothing to do sleeps, using no CPU, and wakes the moment work is pushed to it: a message, a `repeat()` tick, or `stop()`. Work runs in the order it was pushed, and a job can push more work (to its own padd too). For periodic work use `repeatInterval()`; for work that should run as often as something else allows, such as drawing at the display's refresh rate, have each run `push()` the next one, as `DisplayPadd` does below.
 
 ### Messages
 
@@ -181,11 +181,18 @@ void starting() override {
                          .setVertexShaderPath(GetVertexShaderPath("example"))
                          .setGeometry(SampleItems::vertices, SampleItems::indices)
                          .build());
+  push([this] { drawFrame(); }); // start drawing
 }
 
-void repeat() override { // with repeatInterval() set to about 16 ms
-  if (!graphics_->draw()) // false once the window is closed
+// Queued once at the end of starting(); each frame queues the next. The
+// buffer swap waits for the display's refresh, so frames run at the
+// display's rate with no timer and no spinning.
+void drawFrame() {
+  if (!graphics_->draw()) { // false once the window is closed
     system_->stop();
+    return;
+  }
+  push([this] { drawFrame(); });
 }
 
 void finishing() override { graphics_->tearDown(); }
@@ -219,14 +226,13 @@ bazel run //projects/scratchpadd/basis:clang_format   # format the basis package
 | --- | --- |
 | `basis:Test_Examples` | The examples in this README |
 | `basis:Test_Base` | Padd names, and a system starting and stopping |
-| `basis:Test_Threading` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd |
+| `basis:Test_Threading` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
 | `messages:Test_Messages` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message |
 | `messages:Test_Controls` | The control round trip: who replies to requests and changes, range clamping, rejected changes, `controlChanged()` and `control<C>()` |
 | `utilities:Test_EventTimer` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
 
-- **Polling.** An idle padd checks its queue every `work_thread_sleep_interval_` instead of waking when work arrives, which adds latency (see [Threads](#threads)). Setting the interval to 0 removes the latency but keeps that thread busy.
 - **Handlers are fixed once a padd starts.** A padd can't start or stop listening for a type while running.
 - **No direct addressing.** A message goes to every padd that handles its type; to target one padd, put its name in the message (as `ControlChange` does).
 - **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled; a message nobody handles is silently dropped.
@@ -235,7 +241,6 @@ bazel run //projects/scratchpadd/basis:clang_format   # format the basis package
 
 ## Roadmap
 
-1. Wake padds with a condition variable when work arrives, instead of polling.
-2. Let owners push control updates (and add or remove controls) so panels stay current.
-3. Use the cached `name_` everywhere instead of calling `name()` repeatedly.
-4. Implement audio.
+1. Let owners push control updates (and add or remove controls) so panels stay current.
+2. Use the cached `name_` everywhere instead of calling `name()` repeatedly.
+3. Implement audio.
