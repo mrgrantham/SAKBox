@@ -152,7 +152,7 @@ new_git_repository(
     name = "eigen",
     build_file = "//third_party:eigen.BUILD",
     remote = "https://gitlab.com/libeigen/eigen.git",
-    tag = "3.4.0",
+    tag = "5.0.1",
 )
 
 new_git_repository(
