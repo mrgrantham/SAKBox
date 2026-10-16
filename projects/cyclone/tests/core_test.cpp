@@ -357,3 +357,25 @@ TEST(CollisionTest, StopsWhenContactArrayIsFull) {
             0u);
   EXPECT_FALSE(fixture.data.hasMoreContacts());
 }
+
+// Friction acts at the contact point, so it spins a sliding sphere the way
+// physics says. Sphere one moves toward sphere two (along +x) while sliding
+// along +y. Friction pushes one along -y at its +x side and two along +y at
+// its -x side, so both turn about -z. With the old contact point (on one's
+// far side) sphere one turned about +z.
+TEST(CollisionTest, SphereFrictionSpinsTheRightWay) {
+  ContactFixture fixture;
+  fixture.data.friction = 0.9;
+  fixture.data.restitution = 0.0;
+  RigidBody one = makeBody(Vector3(0, 0, 0));
+  RigidBody two = makeBody(Vector3(1.9, 0, 0));
+  one.setVelocity(2, 5, 0);
+  ASSERT_EQ(CollisionDetector::sphereAndSphere(sphereOn(one, 1), sphereOn(two, 1), &fixture.data), 1u);
+
+  ContactResolver resolver(10);
+  resolver.resolveContacts(fixture.contacts, fixture.data.contactCount, 0.01);
+
+  EXPECT_LT(one.getRotation().z, 0.0);
+  EXPECT_LT(two.getRotation().z, 0.0);
+  EXPECT_LT(one.getVelocity().y, 5.0); // friction slowed the sliding
+}
