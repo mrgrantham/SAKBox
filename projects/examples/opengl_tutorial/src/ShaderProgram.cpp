@@ -6,7 +6,7 @@
 
 #include <spdlog/spdlog.h>
 
-std::string GetFileContents(const std::string &pathString) {
+static std::string GetFileContents(const std::string &pathString) {
   std::filesystem::path filePath(pathString);
   std::ifstream fileInputStream(filePath);
   return std::string((std::istreambuf_iterator<char>(fileInputStream)),
