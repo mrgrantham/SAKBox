@@ -164,21 +164,21 @@ protected:
    * Holds the amount of motion of the body. This is a recency
    * weighted mean that can be used to put a body to sleap.
    */
-  real motion;
+  real motion = 0; // SAKBox: these three were left uninitialised
 
   /**
    * A body can be put to sleep to avoid it being updated
    * by the integration functions or affected by collisions
    * with the world.
    */
-  bool isAwake;
+  bool isAwake = false;
 
   /**
    * Some bodies may never be allowed to fall asleep.
    * User controlled bodies, for example, should be
    * always awake.
    */
-  bool canSleep;
+  bool canSleep = true;
 
   /**
    * Holds a transform matrix for converting body space into

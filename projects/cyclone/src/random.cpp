@@ -28,7 +28,9 @@ void Random::seed(unsigned s) {
   // Fill the buffer with some basic random numbers
   for (unsigned i = 0; i < 17; i++) {
     // Simple linear congruential generator
-    s = s * 2891336453 + 1;
+    // SAKBox: an unsigned constant; as a (signed) long the product overflowed.
+    // Same results, since only the low 32 bits are kept.
+    s = s * 2891336453u + 1;
     buffer[i] = s;
   }
 
