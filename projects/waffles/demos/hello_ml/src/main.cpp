@@ -23,7 +23,6 @@
 #include <WClasses/GError.h>
 #include <WClasses/GDecisionTree.h>
 #include <WClasses/GNeuralNet.h>
-#include <WClasses/GActivation.h>
 #include <WClasses/GKNN.h>
 #include <WClasses/GNaiveBayes.h>
 #include <WClasses/GEnsemble.h>
