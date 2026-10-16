@@ -55,7 +55,7 @@ Small programs under `projects/examples/`, mostly one per library. Run any of th
 
 `third_party/` holds Bazel build files for libraries that aren't in the [Bazel Central Registry](https://registry.bazel.build/); `MODULE.bazel` points each one at its upstream source. Libraries that are in the registry (fmt, googletest, Boost, Catch2, ...) are plain `bazel_dep`s.
 
-A few targets are tagged `manual`, so `//...` skips them: the 3DS example, and the Waffles `fourier_net` and `hello_ml` demos, which were written for an older Waffles API.
+One target is tagged `manual`, so `//...` skips it: the 3DS example.
 
 ## Editor Setup
 
