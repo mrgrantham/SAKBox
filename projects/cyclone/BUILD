@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("//tools/clang_format:clang_format.bzl", "clang_format")
 
 # Cyclone physics engine by Ian Millington (MIT, see LICENSE). Originally from
 # https://github.com/idmillington/cyclone-physics (master, Jan 2024); maintained
@@ -173,3 +174,5 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+clang_format(name = "cyclone")

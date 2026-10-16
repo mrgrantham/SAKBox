@@ -9,14 +9,14 @@
  * implies agreement with all terms and conditions of the accompanying
  * software licence.
  */
-#include "precision.h"
-#include "core.h"
-#include "random.h"
-#include "particle.h"
 #include "body.h"
-#include "pcontacts.h"
-#include "pworld.h"
 #include "collide_fine.h"
 #include "contacts.h"
+#include "core.h"
 #include "fgen.h"
 #include "joints.h"
+#include "particle.h"
+#include "pcontacts.h"
+#include "precision.h"
+#include "pworld.h"
+#include "random.h"

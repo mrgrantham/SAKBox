@@ -13,7 +13,8 @@ namespace {
 
 constexpr double kTolerance = 1e-9;
 
-void expectNear(const Vector3 &actual, const Vector3 &expected, double tolerance = kTolerance) {
+void expectNear(const Vector3 &actual, const Vector3 &expected,
+                double tolerance = kTolerance) {
   EXPECT_NEAR(actual.x, expected.x, tolerance);
   EXPECT_NEAR(actual.y, expected.y, tolerance);
   EXPECT_NEAR(actual.z, expected.z, tolerance);
@@ -76,7 +77,8 @@ TEST(Vector3Test, ScalarAndVectorProducts) {
   Vector3 a(1, 2, 3), b(4, -5, 6);
   EXPECT_DOUBLE_EQ(a * b, 12.0); // scalar product
   EXPECT_DOUBLE_EQ(a.scalarProduct(b), 12.0);
-  expectNear(Vector3(1, 0, 0) % Vector3(0, 1, 0), Vector3(0, 0, 1)); // vector product
+  expectNear(Vector3(1, 0, 0) % Vector3(0, 1, 0),
+             Vector3(0, 0, 1)); // vector product
   expectNear(a.vectorProduct(b), Vector3(27, 6, -13));
   EXPECT_NEAR((a % b) * a, 0.0, kTolerance); // perpendicular to both
 }
@@ -143,10 +145,12 @@ TEST(Matrix3Test, InverseAndTranspose) {
 
 TEST(Matrix4Test, TransformRoundTrips) {
   Matrix4 m;
-  m.setOrientationAndPos(rotation(0.9, Vector3(0, 0.6, 0.8)), Vector3(5, -1, 2));
+  m.setOrientationAndPos(rotation(0.9, Vector3(0, 0.6, 0.8)),
+                         Vector3(5, -1, 2));
   const Vector3 point(1, 2, 3), direction(0, 0, 1);
   expectNear(m.transformInverse(m.transform(point)), point);
-  expectNear(m.transformInverseDirection(m.transformDirection(direction)), direction);
+  expectNear(m.transformInverseDirection(m.transformDirection(direction)),
+             direction);
   expectNear(m.inverse().transform(m.transform(point)), point);
   expectNear(m.getAxisVector(3), Vector3(5, -1, 2)); // translation column
   // Directions ignore the translation
@@ -177,7 +181,8 @@ TEST(RigidBodyTest, FreeFlightMatchesIntegratorClosedForm) {
     body.integrate(dt);
   }
   expectNear(body.getVelocity(), Vector3(3, -10 * n * dt, 0));
-  expectNear(body.getPosition(), Vector3(3 * n * dt, -10 * dt * dt * n * (n + 1) / 2, 0));
+  expectNear(body.getPosition(),
+             Vector3(3 * n * dt, -10 * dt * dt * n * (n + 1) / 2, 0));
 }
 
 TEST(RigidBodyTest, ForcesAccelerateByInverseMass) {
@@ -206,7 +211,8 @@ TEST(RigidBodyTest, RotationTurnsTheBody) {
   for (int i = 0; i < steps; ++i) {
     body.integrate((M_PI / 2) / steps);
   }
-  expectNear(body.getDirectionInWorldSpace(Vector3(1, 0, 0)), Vector3(0, 1, 0), 1e-3);
+  expectNear(body.getDirectionInWorldSpace(Vector3(1, 0, 0)), Vector3(0, 1, 0),
+             1e-3);
 }
 
 TEST(RigidBodyTest, LocalAndWorldSpaceRoundTrip) {
@@ -214,7 +220,8 @@ TEST(RigidBodyTest, LocalAndWorldSpaceRoundTrip) {
   body.setOrientation(rotation(1.2, Vector3(0, 1, 0)));
   body.calculateDerivedData();
   const Vector3 point(1, -1, 0.5);
-  expectNear(body.getPointInLocalSpace(body.getPointInWorldSpace(point)), point);
+  expectNear(body.getPointInLocalSpace(body.getPointInWorldSpace(point)),
+             point);
   expectNear(body.getPointInWorldSpace(Vector3()), Vector3(2, 3, 4));
 }
 
@@ -233,7 +240,8 @@ TEST(ParticleTest, IntegrationMatchesClosedForm) {
     p.integrate(dt);
   }
   expectNear(p.getVelocity(), Vector3(1, -10 * n * dt, 0));
-  expectNear(p.getPosition(), Vector3(n * dt, -10 * dt * dt * n * (n - 1) / 2, 0));
+  expectNear(p.getPosition(),
+             Vector3(n * dt, -10 * dt * dt * n * (n - 1) / 2, 0));
 }
 
 // ---------------------------------------------------------------------------
@@ -267,7 +275,9 @@ TEST(CollisionTest, SphereAndSphere) {
   ContactFixture fixture;
   RigidBody one = makeBody(Vector3(0, 0, 0));
   RigidBody two = makeBody(Vector3(1.5, 0, 0));
-  ASSERT_EQ(CollisionDetector::sphereAndSphere(sphereOn(one, 1), sphereOn(two, 1), &fixture.data), 1u);
+  ASSERT_EQ(CollisionDetector::sphereAndSphere(sphereOn(one, 1),
+                                               sphereOn(two, 1), &fixture.data),
+            1u);
 
   const Contact &contact = fixture.contacts[0];
   expectNear(contact.contactNormal, Vector3(-1, 0, 0)); // from two towards one
@@ -282,7 +292,9 @@ TEST(CollisionTest, SeparatedSpheresDontTouch) {
   ContactFixture fixture;
   RigidBody one = makeBody(Vector3(0, 0, 0));
   RigidBody two = makeBody(Vector3(2.5, 0, 0));
-  EXPECT_EQ(CollisionDetector::sphereAndSphere(sphereOn(one, 1), sphereOn(two, 1), &fixture.data), 0u);
+  EXPECT_EQ(CollisionDetector::sphereAndSphere(sphereOn(one, 1),
+                                               sphereOn(two, 1), &fixture.data),
+            0u);
   EXPECT_EQ(fixture.data.contactCount, 0u);
 }
 
@@ -292,15 +304,20 @@ TEST(CollisionTest, SphereAndHalfSpace) {
   CollisionPlane ground;
   ground.direction = Vector3(0, 1, 0);
   ground.offset = 0;
-  ASSERT_EQ(CollisionDetector::sphereAndHalfSpace(sphereOn(ball, 1), ground, &fixture.data), 1u);
+  ASSERT_EQ(CollisionDetector::sphereAndHalfSpace(sphereOn(ball, 1), ground,
+                                                  &fixture.data),
+            1u);
 
   const Contact &contact = fixture.contacts[0];
   expectNear(contact.contactNormal, Vector3(0, 1, 0));
   EXPECT_NEAR(contact.penetration, 0.5, kTolerance);
-  expectNear(contact.contactPoint, Vector3(0, 0, 0)); // on the plane, below the centre
+  expectNear(contact.contactPoint,
+             Vector3(0, 0, 0)); // on the plane, below the centre
 
   RigidBody high = makeBody(Vector3(0, 3, 0));
-  EXPECT_EQ(CollisionDetector::sphereAndHalfSpace(sphereOn(high, 1), ground, &fixture.data), 0u);
+  EXPECT_EQ(CollisionDetector::sphereAndHalfSpace(sphereOn(high, 1), ground,
+                                                  &fixture.data),
+            0u);
 }
 
 // No contacts are written once the array is full.
@@ -309,7 +326,11 @@ TEST(CollisionTest, StopsWhenContactArrayIsFull) {
   fixture.data.reset(1);
   RigidBody one = makeBody(Vector3(0, 0, 0));
   RigidBody two = makeBody(Vector3(1, 0, 0));
-  EXPECT_EQ(CollisionDetector::sphereAndSphere(sphereOn(one, 1), sphereOn(two, 1), &fixture.data), 1u);
-  EXPECT_EQ(CollisionDetector::sphereAndSphere(sphereOn(one, 1), sphereOn(two, 1), &fixture.data), 0u);
+  EXPECT_EQ(CollisionDetector::sphereAndSphere(sphereOn(one, 1),
+                                               sphereOn(two, 1), &fixture.data),
+            1u);
+  EXPECT_EQ(CollisionDetector::sphereAndSphere(sphereOn(one, 1),
+                                               sphereOn(two, 1), &fixture.data),
+            0u);
   EXPECT_FALSE(fixture.data.hasMoreContacts());
 }

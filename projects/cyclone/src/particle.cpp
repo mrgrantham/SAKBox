@@ -15,160 +15,118 @@
 
 using namespace cyclone;
 
-
 /*
  * --------------------------------------------------------------------------
  * FUNCTIONS DECLARED IN HEADER:
  * --------------------------------------------------------------------------
  */
 
-void Particle::integrate(real_duration timeStep)
-{
-    // We don't integrate things with zero mass.
-    if (inverseMass <= 0.0f) return;
+void Particle::integrate(real_duration timeStep) {
+  // We don't integrate things with zero mass.
+  if (inverseMass <= 0.0f)
+    return;
 
-    assert(timeStep > 0.0);
+  assert(timeStep > 0.0);
 
-    // SAKBox: the time step and the drag factor keep full precision in the
-    // flex build; only the particle's state snaps.
-    real duration, drag;
-    {
-        CYCLONE_FULL_PRECISION_SCOPE;
-        duration = timeStep;
-        drag = real_pow(damping, duration);
-    }
+  // SAKBox: the time step and the drag factor keep full precision in the
+  // flex build; only the particle's state snaps.
+  real duration, drag;
+  {
+    CYCLONE_FULL_PRECISION_SCOPE;
+    duration = timeStep;
+    drag = real_pow(damping, duration);
+  }
 
-    // Update linear position.
-    position.addScaledVector(velocity, duration);
+  // Update linear position.
+  position.addScaledVector(velocity, duration);
 
-    // Work out the acceleration from the force
-    Vector3 resultingAcc = acceleration;
-    resultingAcc.addScaledVector(forceAccum, inverseMass);
+  // Work out the acceleration from the force
+  Vector3 resultingAcc = acceleration;
+  resultingAcc.addScaledVector(forceAccum, inverseMass);
 
-    // Update linear velocity from the acceleration.
-    velocity.addScaledVector(resultingAcc, duration);
+  // Update linear velocity from the acceleration.
+  velocity.addScaledVector(resultingAcc, duration);
 
-    // Impose drag.
-    velocity *= drag;
+  // Impose drag.
+  velocity *= drag;
 
-    // Clear the forces.
-    clearAccumulator();
+  // Clear the forces.
+  clearAccumulator();
 }
 
-
-
-void Particle::setMass(const real mass)
-{
-    assert(mass != 0);
-    Particle::inverseMass = ((real)1.0)/mass;
+void Particle::setMass(const real mass) {
+  assert(mass != 0);
+  Particle::inverseMass = ((real)1.0) / mass;
 }
 
-real Particle::getMass() const
-{
-    if (inverseMass == 0) {
-        return REAL_MAX;
-    } else {
-        return ((real)1.0)/inverseMass;
-    }
+real Particle::getMass() const {
+  if (inverseMass == 0) {
+    return REAL_MAX;
+  } else {
+    return ((real)1.0) / inverseMass;
+  }
 }
 
-void Particle::setInverseMass(const real inverseMass)
-{
-    Particle::inverseMass = inverseMass;
+void Particle::setInverseMass(const real inverseMass) {
+  Particle::inverseMass = inverseMass;
 }
 
-real Particle::getInverseMass() const
-{
-    return inverseMass;
+real Particle::getInverseMass() const { return inverseMass; }
+
+bool Particle::hasFiniteMass() const { return inverseMass >= 0.0f; }
+
+void Particle::setDamping(const real damping) { Particle::damping = damping; }
+
+real Particle::getDamping() const { return damping; }
+
+void Particle::setPosition(const Vector3 &position) {
+  Particle::position = position;
 }
 
-bool Particle::hasFiniteMass() const
-{
-    return inverseMass >= 0.0f;
+void Particle::setPosition(const real x, const real y, const real z) {
+  position.x = x;
+  position.y = y;
+  position.z = z;
 }
 
-void Particle::setDamping(const real damping)
-{
-    Particle::damping = damping;
+void Particle::getPosition(Vector3 *position) const {
+  *position = Particle::position;
 }
 
-real Particle::getDamping() const
-{
-    return damping;
+Vector3 Particle::getPosition() const { return position; }
+
+void Particle::setVelocity(const Vector3 &velocity) {
+  Particle::velocity = velocity;
 }
 
-void Particle::setPosition(const Vector3 &position)
-{
-    Particle::position = position;
+void Particle::setVelocity(const real x, const real y, const real z) {
+  velocity.x = x;
+  velocity.y = y;
+  velocity.z = z;
 }
 
-void Particle::setPosition(const real x, const real y, const real z)
-{
-    position.x = x;
-    position.y = y;
-    position.z = z;
+void Particle::getVelocity(Vector3 *velocity) const {
+  *velocity = Particle::velocity;
 }
 
-void Particle::getPosition(Vector3 *position) const
-{
-    *position = Particle::position;
+Vector3 Particle::getVelocity() const { return velocity; }
+
+void Particle::setAcceleration(const Vector3 &acceleration) {
+  Particle::acceleration = acceleration;
 }
 
-Vector3 Particle::getPosition() const
-{
-    return position;
+void Particle::setAcceleration(const real x, const real y, const real z) {
+  acceleration.x = x;
+  acceleration.y = y;
+  acceleration.z = z;
 }
 
-void Particle::setVelocity(const Vector3 &velocity)
-{
-    Particle::velocity = velocity;
+void Particle::getAcceleration(Vector3 *acceleration) const {
+  *acceleration = Particle::acceleration;
 }
 
-void Particle::setVelocity(const real x, const real y, const real z)
-{
-    velocity.x = x;
-    velocity.y = y;
-    velocity.z = z;
-}
+Vector3 Particle::getAcceleration() const { return acceleration; }
 
-void Particle::getVelocity(Vector3 *velocity) const
-{
-    *velocity = Particle::velocity;
-}
+void Particle::clearAccumulator() { forceAccum.clear(); }
 
-Vector3 Particle::getVelocity() const
-{
-    return velocity;
-}
-
-void Particle::setAcceleration(const Vector3 &acceleration)
-{
-    Particle::acceleration = acceleration;
-}
-
-void Particle::setAcceleration(const real x, const real y, const real z)
-{
-    acceleration.x = x;
-    acceleration.y = y;
-    acceleration.z = z;
-}
-
-void Particle::getAcceleration(Vector3 *acceleration) const
-{
-    *acceleration = Particle::acceleration;
-}
-
-Vector3 Particle::getAcceleration() const
-{
-    return acceleration;
-}
-
-void Particle::clearAccumulator()
-{
-    forceAccum.clear();
-}
-
-void Particle::addForce(const Vector3 &force)
-{
-    forceAccum += force;
-}
+void Particle::addForce(const Vector3 &force) { forceAccum += force; }

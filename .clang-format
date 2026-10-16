@@ -1,0 +1,3 @@
+# Repo-wide C++ style. LLVM is what clang-format falls back to without a
+# config, so this only makes the choice explicit.
+BasedOnStyle: LLVM
