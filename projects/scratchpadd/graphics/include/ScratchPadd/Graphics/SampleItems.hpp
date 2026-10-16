@@ -33,7 +33,6 @@ private:
 
   std::vector<uint32_t> computeIndices() const {
     std::vector<uint32_t> indices;
-    bool loopAround = false;
     for (int i = 1; i < vertices_.size(); i++) {
       indices.push_back(i);
       if (i + 1 >= vertices_.size()) {

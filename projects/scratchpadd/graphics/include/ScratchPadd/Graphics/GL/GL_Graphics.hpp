@@ -10,8 +10,6 @@
 
 class GL_Graphics : public Graphics {
   ImVec4 appBackground = ScratchPadd::Color::Black;
-  ImVec4 *viewShapeColor = nullptr;
-  ImVec4 *viewBackgroundColor = nullptr;
 
   // Our state
   const char *glsl_version = "#version 330 core";
@@ -68,11 +66,6 @@ public:
     std::string glewVersion =
         reinterpret_cast<const char *>(glewGetString(GLEW_VERSION));
     spdlog::info("Status: Using GLEW {}\n", glewVersion);
-
-    // This was based on the back view that no longer is set here
-    // making the view contained empty and the following lines seg fault
-    // viewBackgroundColor = views_.back()->getBackgroundColor();
-    // viewShapeColor = views_.back()->getShapeColor();
   }
 
   void addView(std::unique_ptr<Graphics::View> view) override {
@@ -129,6 +122,6 @@ public:
   }
 };
 
-static std::unique_ptr<Graphics> GraphicsBuilder() {
+inline std::unique_ptr<Graphics> GraphicsBuilder() {
   return std::make_unique<GL_Graphics>();
 }

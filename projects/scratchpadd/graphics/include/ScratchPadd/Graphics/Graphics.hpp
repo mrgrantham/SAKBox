@@ -11,7 +11,7 @@
 #pragma clang diagnostic pop
 #include <ScratchPadd/Graphics/Colors.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
-class GLFWwindow;
+struct GLFWwindow; // declared as a struct by GLFW
 class Graphics {
 public:
   class View {

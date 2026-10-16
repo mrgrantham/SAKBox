@@ -25,6 +25,6 @@ public:
   void setup(const std::string &&name) override {}
 };
 
-static std::unique_ptr<Graphics::ControlView> ControlViewBuilder() {
+inline std::unique_ptr<Graphics::ControlView> ControlViewBuilder() {
   return std::make_unique<GL_ControlView>();
 }

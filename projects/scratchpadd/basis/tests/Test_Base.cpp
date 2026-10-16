@@ -7,7 +7,7 @@
 class TestSenderPadd : public ScratchPadd::Base {
     public:
 
-    bool shouldUseMainThread() {
+    bool shouldUseMainThread() override {
         return true;
     }
 
@@ -29,7 +29,7 @@ class TestSenderPadd : public ScratchPadd::Base {
 class TestReceiverPadd : public ScratchPadd::Base {
     public:
 
-    bool shouldUseMainThread() {
+    bool shouldUseMainThread() override {
         return true;
     }
 

@@ -2,8 +2,8 @@ build --cxxopt='-std=c++23'
 # Strict ISO C++ for the repo's own code: compiler extensions are errors.
 # External libraries are left alone.
 build --per_file_copt='^projects/.*@-pedantic-errors'
-# Cyclone is warning-free; keep it that way.
-build --per_file_copt='^projects/cyclone/.*@-Werror'
+# These projects are warning-free; keep them that way.
+build --per_file_copt='^projects/(cyclone|flexmath|scratchpadd|examples/precision_flight)/.*@-Werror'
 build --cxxopt='-Wpedantic'
 build:clang --cxxopt='-Werror=inconsistent-missing-override'
 build:clang --cxxopt='-Werror=delete-abstract-non-virtual-dtor'

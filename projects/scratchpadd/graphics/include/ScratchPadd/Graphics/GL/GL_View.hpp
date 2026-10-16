@@ -10,7 +10,7 @@
 const std::string VEXTEX_SHADER_EXTENSION = "vert";
 const std::string FRAGMENT_SHADER_EXTENSION = "frag";
 
-static std::string GetShaderPath(
+inline std::string GetShaderPath(
     const std::string &name, const std::string &extension,
     const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
                                  "ScratchPadd/Graphics/GL/Shaders/") {
@@ -71,14 +71,14 @@ static std::string GetShaderPath(
   return shaderPathString.value();
 }
 
-static std::string GetVertexShaderPath(
+inline std::string GetVertexShaderPath(
     const std::string &name,
     const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
                                  "ScratchPadd/Graphics/GL/Shaders/") {
   return GetShaderPath(name, VEXTEX_SHADER_EXTENSION, dirPath);
 }
 
-static std::string GetFragmentShaderPath(
+inline std::string GetFragmentShaderPath(
     const std::string &name,
     const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
                                  "ScratchPadd/Graphics/GL/Shaders/") {
@@ -175,8 +175,6 @@ public:
     double cursorPosX, cursorPosY;
     glfwGetCursorPos(window_, &cursorPosX, &cursorPosY);
     // spdlog::info("glfwGetCursorPos x: {} y: {}", cursorPosX, cursorPosY);
-    ImVec2 mousePos = ImGui::GetMousePos();
-    // spdlog::info("GetMousePos x: {} y: {}", mousePos.x, mousePos.y);
 
     ImVec2 vMax = ImGui::GetWindowContentRegionMax();
     // spdlog::info("content region max x: {} y: {}", vMax.x, vMax.y);
@@ -318,7 +316,7 @@ public:
 //   return std::make_unique<GL_View>();
 // }
 
-static GL_ViewBuilder GetGL_ViewBuilder() {
+inline GL_ViewBuilder GetGL_ViewBuilder() {
   GL_ViewBuilder viewBuilder;
   return viewBuilder;
 }
