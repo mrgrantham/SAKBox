@@ -66,3 +66,12 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [":imgui"],
 )
+
+cc_library(
+    name = "imgui_backend_sdl2",
+    srcs = ["backends/imgui_impl_sdl2.cpp"],
+    hdrs = ["backends/imgui_impl_sdl2.h"],
+    visibility = ["//visibility:public"],
+    strip_include_prefix = "/backends",
+    deps = [":imgui", "@//third_party/sdl2_flat_includes"],
+)

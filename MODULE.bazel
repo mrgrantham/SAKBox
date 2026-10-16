@@ -49,8 +49,8 @@ http_archive(
 http_archive(
     name = "imgui",
     build_file = "//third_party:imgui.BUILD",
-    strip_prefix = "imgui-1.90",
-    urls = ["https://github.com/ocornut/imgui/archive/refs/tags/v1.90.zip"],
+    strip_prefix = "imgui-1.93.0",
+    urls = ["https://github.com/ocornut/imgui/archive/refs/tags/v1.93.0.zip"],
 )
 
 new_git_repository(
