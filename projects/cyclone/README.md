@@ -52,6 +52,8 @@ Each demo is a binary: `bazel run //projects/cyclone:<name>`. They open a GLUT w
 
 The rigid-body demos (`bigballistic`, `explosion`, `fracture`, `ragdoll`) start paused and share these keys: P pauses or resumes, Space advances one frame, R resets, C toggles drawing contacts. Drag with the mouse to turn the camera. Pass `--run` to start them running, e.g. `bazel run //projects/cyclone:fracture -- --run`.
 
+Every demo also takes `--keys "SECONDS:INPUT,..."`, which plays input into it so its controls can be tested without touching the keyboard: at each time (seconds after launch) each character of INPUT goes to the demo's key handler, or INPUT `click` is a left click. For example `bazel run //projects/cyclone:bigballistic -- --run --keys "1:2,1.5:click,4:r"` picks artillery, fires it and resets.
+
 ## What SAKBox has changed
 
 Compared with the last upstream version:
@@ -70,7 +72,7 @@ Compared with the last upstream version:
   - The bounding-volume tree (`BVHNode`) didn't compile once used (it treated its volume as a pointer), and `getPotentialContacts` only paired bodies across the root's two halves, missing pairs within either half. No demo uses it.
   - `RigidBody` left `isAwake`, `canSleep` and `motion` uninitialised (it has no constructor), and `setCanSleep` reads `isAwake`. They now start asleep, allowed to sleep, and still. Bodies created with `new RigidBody()` used to be zero-filled, so they could never sleep: fracture's broken pieces and explosion's bodies now fall asleep once they settle (drawn blue), as those demos are written to expect.
   - `Random::seed` multiplied by a signed `long` constant that overflowed (undefined behaviour); it is unsigned now, with the same sequence.
-- **Demo option:** `--run` starts the rigid-body demos unpaused.
+- **Demo options:** `--run` starts the rigid-body demos unpaused; `--keys` plays scripted key presses and clicks.
 - **Cleanups:** `Quaternion`'s components are plain members rather than an anonymous struct in a union (a GNU extension), `sprintf` became `snprintf`, constructor initialisers follow declaration order, and unused code is gone.
 
 Changes inside the code are marked with `SAKBox:` comments.

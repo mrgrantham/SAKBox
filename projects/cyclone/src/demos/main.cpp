@@ -19,7 +19,11 @@
 // Include the timing functions
 #include "timing.h"
 
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <string>
+#include <vector>
 
 // Forward declaration of the function that will return the
 // application object for this particular demo. This should be
@@ -89,6 +93,49 @@ void keyboard(unsigned char key, int x, int y) {
  */
 void motion(int x, int y) { app->mouseDrag(x, y); }
 
+// SAKBox: --keys "SECONDS:INPUT,..." plays input into the demo, for testing
+// its controls without touching the keyboard. At each time (seconds after
+// launch) every character of INPUT goes to the demo's key handler in turn,
+// or INPUT "click" is a left click. E.g. --keys "1:2,1.5:click,3:r".
+struct ScriptedInput {
+  int atMs;
+  std::string input;
+};
+static std::vector<ScriptedInput> scriptedInput;
+
+static void playScriptedInput(int index) {
+  const std::string &input = scriptedInput[index].input;
+  if (input == "click") {
+    app->mouse(GLUT_LEFT_BUTTON, GLUT_DOWN, 0, 0);
+    app->mouse(GLUT_LEFT_BUTTON, GLUT_UP, 0, 0);
+  } else {
+    for (char key : input)
+      app->key(static_cast<unsigned char>(key));
+  }
+  std::printf("scripted input at %.2f s: %s\n",
+              scriptedInput[index].atMs / 1000.0, input.c_str());
+  std::fflush(stdout);
+}
+
+static bool parseScriptedInput(const char *script) {
+  std::string rest = script;
+  while (!rest.empty()) {
+    const size_t comma = rest.find(',');
+    const std::string entry = rest.substr(0, comma);
+    rest = comma == std::string::npos ? "" : rest.substr(comma + 1);
+    const size_t colon = entry.find(':');
+    if (colon == std::string::npos || colon + 1 == entry.size())
+      return false;
+    char *end = nullptr;
+    const double seconds = std::strtod(entry.c_str(), &end);
+    if (end != entry.c_str() + colon || seconds < 0)
+      return false;
+    scriptedInput.push_back(
+        {static_cast<int>(seconds * 1000), entry.substr(colon + 1)});
+  }
+  return true;
+}
+
 /**
  * The main entry point. We pass arguments onto GLUT. SAKBox: `--run` starts
  * demos that normally begin paused (the rigid-body demos) already running.
@@ -103,6 +150,12 @@ int main(int argc, char **argv) {
   for (int i = 1; i < argc; ++i) {
     if (std::strcmp(argv[i], "--run") == 0) {
       app->startRunning();
+    } else if (std::strcmp(argv[i], "--keys") == 0 && i + 1 < argc) {
+      if (!parseScriptedInput(argv[++i])) {
+        std::fprintf(stderr, "--keys wants \"SECONDS:INPUT,...\", got %s\n",
+                     argv[i]);
+        return 1;
+      }
     }
   }
   createWindow(app->getTitle());
@@ -114,6 +167,10 @@ int main(int argc, char **argv) {
   glutIdleFunc(update);
   glutMouseFunc(mouse);
   glutMotionFunc(motion);
+
+  for (size_t i = 0; i < scriptedInput.size(); ++i)
+    glutTimerFunc(scriptedInput[i].atMs, playScriptedInput,
+                  static_cast<int>(i));
 
   // Run the application
   app->initGraphics();
