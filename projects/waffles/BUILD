@@ -122,4 +122,14 @@ cc_test(
 )
 
 
+cc_test(
+    name = "activation_test",
+    size = "small",
+    srcs = ["tests/activation_test.cpp"],
+    deps = [
+        ":WClasses",
+        "@gtest//:gtest_main",
+    ],
+)
+
 clang_format(name = "waffles")

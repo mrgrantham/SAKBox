@@ -456,7 +456,10 @@ public:
 	virtual GBlockElPos* clone() const override { return new GBlockElPos(*this); }
 	virtual double eval(double x) const override { return x == UNKNOWN_REAL_VALUE ? UNKNOWN_REAL_VALUE : (x < 0 ? std::exp(x) : x + 1); }
 	virtual double derivative(double x, double f_x) const override { return x == UNKNOWN_REAL_VALUE ? 0.0 : (x < 0 ? std::exp(x) : 1.0); }
-	virtual double inverse(double y) const override { return y = UNKNOWN_REAL_VALUE ? UNKNOWN_REAL_VALUE : (y < 0 ? std::log(y) : y + 1); }
+	// SAKBox: was "y = UNKNOWN_REAL_VALUE ? ..." (an assignment, so always unknown),
+	// and inverted the wrong pieces; eval is exp(x) below 0 (values below 1) and
+	// x + 1 above.
+	virtual double inverse(double y) const override { return y == UNKNOWN_REAL_VALUE ? UNKNOWN_REAL_VALUE : (y < 1 ? std::log(y) : y - 1); }
 };
 
 
