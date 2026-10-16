@@ -1,14 +1,9 @@
+load("//tools/devkitpro:defs.bzl", "devkitpro_3ds_app")
 
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/clang_format:clang_format.bzl", "clang_format")
-
-cc_binary(
+# Nintendo 3DS homebrew (libctru's read-controls sample): shows which buttons
+# are pressed and where the circle pad is. Builds read-controls.3dsx with the
+# devkitPro toolchain pinned in //tools/devkitpro, which needs Docker running.
+devkitpro_3ds_app(
     name = "read-controls",
-    srcs = ["source/main.c"],
-    # Nintendo 3DS homebrew: needs devkitPro (see Makefile), so //... skips it.
-    tags = ["manual"],
-    deps = [
-        "@fmt",
-        "@libpng",
-    ],
+    srcs = ["Makefile"] + glob(["source/**"]),
 )
