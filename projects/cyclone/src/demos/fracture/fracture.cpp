@@ -1,5 +1,15 @@
 /*
- * The fracture demo.
+ * Fracture: a block that shatters when hit.
+ *
+ * A ball is thrown at a large block (both rigid bodies; the throw is
+ * randomised a little in reset()). When generateContacts() finds the ball
+ * touching the block, update() calls divideBlock(), which replaces the
+ * block with eight smaller ones. It cuts the block three ways: through the
+ * point of impact across the two axes perpendicular to the hit, and
+ * through the centre along it. Each piece gets mass in proportion to its
+ * volume and a 10 m/s push away from the impact. From then on the pieces
+ * collide with each other and the ground like any other boxes, and fall
+ * asleep (blue) once they settle.
  *
  * Part of the Cyclone physics system.
  *
@@ -233,26 +243,36 @@ class FractureDemo : public RigidBodyApplication {
   cyclone::CollisionSphere ball;
 
   /** Processes the contact generation code. */
-  virtual void generateContacts();
+  void generateContacts() override;
 
   /** Processes the objects in the simulation forward in time. */
-  virtual void updateObjects(cyclone::real duration);
+  void updateObjects(cyclone::real duration) override;
 
   /** Resets the position of all the blocks. */
-  virtual void reset();
+  void reset() override;
 
   /** Processes the physics. */
-  virtual void update();
+  void update() override;
 
 public:
   /** Creates a new demo object. */
   FractureDemo();
 
   /** Returns the window title for the demo. */
-  virtual const char *getTitle();
+  const char *getTitle() override;
+
+  /** SAKBox: the overlay explaining the demo (H hides it). */
+  const char *getDescription() override {
+    return "A block that shatters: when the ball hits it, the block is "
+           "replaced by\n"
+           "eight smaller blocks split around the point of impact, each pushed "
+           "away\n"
+           "from it. The pieces then collide and settle (blue when "
+           "asleep).\n" RIGID_BODY_KEYS;
+  }
 
   /** Display the particle positions. */
-  virtual void display();
+  void display() override;
 };
 
 // Method definitions

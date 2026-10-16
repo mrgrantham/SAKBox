@@ -60,6 +60,9 @@ protected:
    */
   float pixelScale = 1.0f;
 
+  /** SAKBox: whether the description overlay is showing. */
+  bool showOverlay = true;
+
 public:
   // SAKBox: set by main.cpp from the window's framebuffer and point sizes.
   void setPixelScale(float scale) { pixelScale = scale; }
@@ -71,6 +74,22 @@ public:
    * The default implementation returns a generic title.
    */
   virtual const char *getTitle();
+
+  /**
+   * SAKBox: a few lines explaining what the demo shows and how to drive
+   * it, drawn over the top left of the window (H hides it). Lines are
+   * separated by '\n'. The default, nullptr, shows nothing.
+   */
+  virtual const char *getDescription() { return nullptr; }
+
+  /** SAKBox: shows or hides the description overlay (the H key). */
+  void toggleOverlay() { showOverlay = !showOverlay; }
+
+  /**
+   * SAKBox: draws the description over the scene. main.cpp calls it after
+   * display() each frame.
+   */
+  void renderOverlay();
 
   /**
    * Sets up the graphics, and allows the application to acquire
@@ -180,14 +199,19 @@ public:
   virtual ~MassAggregateApplication();
 
   /** Update the particle positions. */
-  virtual void update();
+  void update() override;
 
   /** Sets up the graphic rendering. */
-  virtual void initGraphics();
+  void initGraphics() override;
 
   /** Display the particles. */
-  virtual void display();
+  void display() override;
 };
+
+// SAKBox: the keys every RigidBodyApplication handles, for the demos'
+// overlays (see Application::getDescription)
+#define RIGID_BODY_KEYS                                                        \
+  "P: run/pause   Space: one frame   R: reset   C: contacts   Drag: camera"
 
 /**
  * This application adds additional functionality used in many of the
@@ -248,23 +272,23 @@ public:
   RigidBodyApplication();
 
   // Starts with the simulation running instead of paused (--run).
-  virtual void startRunning() {
+  void startRunning() override {
     pauseSimulation = false;
     autoPauseSimulation = false;
   }
 
   /** Display the application. */
-  virtual void display();
+  void display() override;
 
   /** Update the objects. */
-  virtual void update();
+  void update() override;
 
   /** Handle a mouse click. */
-  virtual void mouse(int button, int state, int x, int y);
+  void mouse(int button, int state, int x, int y) override;
 
   /** Handle a mouse drag */
-  virtual void mouseDrag(int x, int y);
+  void mouseDrag(int x, int y) override;
 
   /** Handles a key press. */
-  virtual void key(unsigned char key);
+  void key(unsigned char key) override;
 };

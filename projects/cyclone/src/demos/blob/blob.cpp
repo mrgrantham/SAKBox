@@ -1,5 +1,13 @@
 /*
- * The Blob demo.
+ * Blob: particles held together by a custom force.
+ *
+ * Five particles make a blob. BlobForceGenerator pushes any two apart when
+ * they are closer than their natural distance and pulls them together when
+ * they drift apart (up to a limit), so the blob holds a loose shape like
+ * a jelly; it also lifts the head particle more the more of the blob is
+ * near it. The Platforms are particle contact generators: lines the blob
+ * rests and rolls on. The keys push the head particle; the camera follows
+ * the blob.
  *
  * Part of the Cyclone physics system.
  *
@@ -36,8 +44,8 @@ public:
    */
   cyclone::Particle *particles;
 
-  virtual unsigned addContact(cyclone::ParticleContact *contact,
-                              unsigned limit) const;
+  unsigned addContact(cyclone::ParticleContact *contact,
+                      unsigned limit) const override;
 };
 
 unsigned Platform::addContact(cyclone::ParticleContact *contact,
@@ -150,7 +158,8 @@ public:
    */
   cyclone::real maxDistance;
 
-  virtual void updateForce(cyclone::Particle *particle, cyclone::real duration);
+  void updateForce(cyclone::Particle *particle,
+                   cyclone::real duration) override;
 };
 
 void BlobForceGenerator::updateForce(cyclone::Particle *particle,
@@ -217,16 +226,26 @@ public:
   virtual ~BlobDemo();
 
   /** Returns the window title for the demo. */
-  virtual const char *getTitle();
+  const char *getTitle() override;
+
+  /** SAKBox: the overlay explaining the demo (H hides it). */
+  const char *getDescription() override {
+    return "A jelly-like blob: 5 particles that repel when too close and "
+           "attract\n"
+           "when they drift apart (a custom force generator). The sloping "
+           "lines are\n"
+           "contact generators the blob rests and rolls on.\n"
+           "A/D: push left/right   W: lift   S: push down   R: reset";
+  }
 
   /** Display the particles. */
-  virtual void display();
+  void display() override;
 
   /** Update the particle positions. */
-  virtual void update();
+  void update() override;
 
   /** Handle a key press. */
-  virtual void key(unsigned char key);
+  void key(unsigned char key) override;
 };
 
 // Method definitions

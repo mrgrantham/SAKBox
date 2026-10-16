@@ -1,5 +1,12 @@
 /*
- * The fireworks demo.
+ * Fireworks: particles that spawn more particles.
+ *
+ * A Firework is a particle with a type and an age (its fuse). Each frame
+ * update() integrates every live firework and counts its fuse down; when
+ * it burns out, the FireworkRule for its type launches its payloads: so
+ * many new fireworks of given types, inheriting the parent's velocity plus
+ * a random spread. initFireworkRules() defines the nine types, some of
+ * which burst into others, and a slot pool holds the fireworks in flight.
  *
  * Part of the Cyclone physics system.
  *
@@ -197,19 +204,29 @@ public:
   ~FireworksDemo();
 
   /** Sets up the graphic rendering. */
-  virtual void initGraphics();
+  void initGraphics() override;
 
   /** Returns the window title for the demo. */
-  virtual const char *getTitle();
+  const char *getTitle() override;
+
+  /** SAKBox: the overlay explaining the demo (H hides it). */
+  const char *getDescription() override {
+    return "Particles that spawn more particles: each firework is a particle "
+           "with a\n"
+           "fuse. When the fuse burns out, its type's rule launches a payload "
+           "of new\n"
+           "fireworks, which may burst again.\n"
+           "1-9: launch one of the nine firework types";
+  }
 
   /** Update the particle positions. */
-  virtual void update();
+  void update() override;
 
   /** Display the particle positions. */
-  virtual void display();
+  void display() override;
 
   /** Handle a keypress. */
-  virtual void key(unsigned char key);
+  void key(unsigned char key) override;
 };
 
 // Method definitions

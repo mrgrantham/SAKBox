@@ -1,5 +1,13 @@
 /*
- * The ballistic demo.
+ * Ballistic: particle projectiles.
+ *
+ * Each shot is one cyclone::Particle, integrated on its own every frame:
+ * there are no forces, links or contacts here. The four kinds of shot
+ * differ only in the particle's mass, launch velocity, constant
+ * acceleration (standing in for gravity) and damping, all set in fire().
+ * update() integrates the live shots and retires any that hit the ground,
+ * fly past 200 m or live 5 s; display() draws the range and each shot with
+ * its shadow.
  *
  * Part of the Cyclone physics system.
  *
@@ -71,19 +79,29 @@ public:
   BallisticDemo();
 
   /** Returns the window title for the demo. */
-  virtual const char *getTitle();
+  const char *getTitle() override;
+
+  /** SAKBox: the overlay explaining the demo (H hides it). */
+  const char *getDescription() override {
+    return "Particle projectiles: each shot is a single particle with its own "
+           "mass,\n"
+           "launch velocity, constant acceleration and damping.\n"
+           "Pistol: fast, light gravity.   Artillery: heavy, high arc.\n"
+           "Fireball: slow, floats upward.   Laser: very fast, no gravity.\n"
+           "Click: fire   1-4: choose the shot";
+  }
 
   /** Update the particle positions. */
-  virtual void update();
+  void update() override;
 
   /** Display the particle positions. */
-  virtual void display();
+  void display() override;
 
   /** Handle a mouse click. */
-  virtual void mouse(int button, int state, int x, int y);
+  void mouse(int button, int state, int x, int y) override;
 
   /** Handle a keypress. */
-  virtual void key(unsigned char key);
+  void key(unsigned char key) override;
 };
 
 // Method definitions

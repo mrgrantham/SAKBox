@@ -1,5 +1,14 @@
 /*
- * The bridge demo.
+ * Bridge: a rope bridge of particles, cables and rods.
+ *
+ * Twelve particles make the deck. Each hangs from a fixed point above by a
+ * ParticleCableConstraint (a cable to an anchor: it can go slack but never
+ * stretch), neighbours along each side are joined by ParticleCables, and
+ * rigid ParticleRods hold the two sides apart. The ParticleWorld (in
+ * MassAggregateApplication) turns all of these into contacts and resolves
+ * them each frame. A 10 kg weight, drawn in red, is shared between the
+ * deck particles nearest it (updateAdditionalMass()), so the deck sags
+ * wherever it is.
  *
  * Part of the Cyclone physics system.
  *
@@ -48,16 +57,29 @@ public:
   virtual ~BridgeDemo();
 
   /** Returns the window title for the demo. */
-  virtual const char *getTitle();
+  const char *getTitle() override;
+
+  /** SAKBox: the overlay explaining the demo (H hides it). */
+  const char *getDescription() override {
+    return "A rope bridge: 12 particles hang from fixed points by cables, "
+           "which\n"
+           "can go slack but never stretch. Cables join the deck along each "
+           "side\n"
+           "and rigid rods hold the sides apart.\n"
+           "A 10 kg weight (red) rides on the particles nearest it, and the "
+           "deck\n"
+           "sags under it.\n"
+           "W/S: move the weight across   A/D: move it along the bridge";
+  }
 
   /** Display the particles. */
-  virtual void display();
+  void display() override;
 
   /** Update the particle positions. */
-  virtual void update();
+  void update() override;
 
   /** Handle a key press. */
-  virtual void key(unsigned char key);
+  void key(unsigned char key) override;
 };
 
 // Method definitions

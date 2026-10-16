@@ -1,5 +1,13 @@
 /*
- * The ragdoll demo.
+ * Ragdoll: rigid bones held together by joints.
+ *
+ * Twelve boxes are the bones (head, chest, arms, legs) and eleven Joints
+ * link them at the shoulders, elbows, hips, knees and neck. A joint
+ * produces a contact whenever its two attachment points drift apart, so
+ * the contact resolver holds the body together just as it keeps boxes out
+ * of the ground. The physics lives in ragdoll_physics.h, shared with
+ * ragdoll_test; reset() stands the ragdoll up and gives it a small shove,
+ * and it collapses.
  *
  * Part of the Cyclone physics system.
  *
@@ -47,26 +55,36 @@ class RagdollDemo : public RigidBodyApplication {
   ragdoll::Ragdoll model;
 
   /** Processes the contact generation code. */
-  virtual void generateContacts();
+  void generateContacts() override;
 
   /** Processes the objects in the simulation forward in time. */
-  virtual void updateObjects(cyclone::real duration);
+  void updateObjects(cyclone::real duration) override;
 
   /** Resets the position of all the bones. */
-  virtual void reset();
+  void reset() override;
 
 public:
   /** Creates a new demo object. */
   RagdollDemo();
 
   /** Sets up the rendering. */
-  virtual void initGraphics();
+  void initGraphics() override;
 
   /** Returns the window title for the demo. */
-  virtual const char *getTitle();
+  const char *getTitle() override;
+
+  /** SAKBox: the overlay explaining the demo (H hides it). */
+  const char *getDescription() override {
+    return "A ragdoll: 12 rigid boxes for bones, linked by 11 joints. Each "
+           "joint\n"
+           "makes a contact when its ends drift apart, so the contact resolver "
+           "holds\n"
+           "the body together. It starts with a small shove and "
+           "collapses.\n" RIGID_BODY_KEYS;
+  }
 
   /** Display the particle positions. */
-  virtual void display();
+  void display() override;
 };
 
 // Method definitions

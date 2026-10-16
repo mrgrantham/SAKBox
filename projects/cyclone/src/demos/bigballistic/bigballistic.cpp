@@ -1,5 +1,12 @@
 /*
- * The BigBallistic demo.
+ * Big ballistic: rigid-body projectiles hitting boxes.
+ *
+ * The ballistic demo again, with rigid bodies: each shot is a sphere
+ * (AmmoRound, a CollisionSphere on a RigidBody) and the targets are boxes
+ * (Box). generateContacts() asks the CollisionDetector for box-ground and
+ * box-shot contacts each frame; the shared RigidBodyApplication resolves
+ * them, so a hit shoves and spins the box. A shot that hits is retired.
+ * Boxes don't collide with each other.
  *
  * Part of the Cyclone physics system.
  *
@@ -174,13 +181,13 @@ class BigBallisticDemo : public RigidBodyApplication {
   ShotType currentShotType;
 
   /** Resets the position of all the boxes and primes the explosion. */
-  virtual void reset();
+  void reset() override;
 
   /** Build the contacts for the current situation. */
-  virtual void generateContacts();
+  void generateContacts() override;
 
   /** Processes the objects in the simulation forward in time. */
-  virtual void updateObjects(cyclone::real duration);
+  void updateObjects(cyclone::real duration) override;
 
   /** Dispatches a round. */
   void fire();
@@ -190,19 +197,29 @@ public:
   BigBallisticDemo();
 
   /** Returns the window title for the demo. */
-  virtual const char *getTitle();
+  const char *getTitle() override;
+
+  /** SAKBox: the overlay explaining the demo (H hides it). */
+  const char *getDescription() override {
+    return "Rigid-body projectiles: shots are spheres and the targets are "
+           "boxes.\n"
+           "Collision detection finds the contacts and the resolver pushes and "
+           "spins\n"
+           "the boxes where they are hit.\n"
+           "Click: fire   1-4: choose the shot\n" RIGID_BODY_KEYS;
+  }
 
   /** Sets up the rendering. */
-  virtual void initGraphics();
+  void initGraphics() override;
 
   /** Display world. */
-  virtual void display();
+  void display() override;
 
   /** Handle a mouse click. */
-  virtual void mouse(int button, int state, int x, int y);
+  void mouse(int button, int state, int x, int y) override;
 
   /** Handle a keypress. */
-  virtual void key(unsigned char key);
+  void key(unsigned char key) override;
 };
 
 // Method definitions

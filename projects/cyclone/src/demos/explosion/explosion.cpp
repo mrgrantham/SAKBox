@@ -1,5 +1,14 @@
 /*
- * The explosion demo.
+ * Explosion: boxes and balls colliding.
+ *
+ * Five boxes and five balls, all rigid bodies, start stacked and tumble
+ * into a heap. generateContacts() checks every pair (box-box, box-ball,
+ * ball-ball) and each against the ground, and the shared resolver handles
+ * the contacts. Resting bodies fall asleep (drawn blue; a box overlapping
+ * another box is green) and W wakes them. The explosion itself was never
+ * finished upstream: fire(), which would push the first ball, is not
+ * called. Edit and up modes move the first box with the mouse, for setting
+ * up collisions.
  *
  * Part of the Cyclone physics system.
  *
@@ -205,32 +214,44 @@ class ExplosionDemo : public RigidBodyApplication {
   void fire();
 
   /** Resets the position of all the boxes and primes the explosion. */
-  virtual void reset();
+  void reset() override;
 
   /** Processes the contact generation code. */
-  virtual void generateContacts();
+  void generateContacts() override;
 
   /** Processes the objects in the simulation forward in time. */
-  virtual void updateObjects(cyclone::real duration);
+  void updateObjects(cyclone::real duration) override;
 
 public:
   /** Creates a new demo object. */
   ExplosionDemo();
 
   /** Sets up the rendering. */
-  virtual void initGraphics();
+  void initGraphics() override;
 
   /** Returns the window title for the demo. */
-  virtual const char *getTitle();
+  const char *getTitle() override;
+
+  /** SAKBox: the overlay explaining the demo (H hides it). */
+  const char *getDescription() override {
+    return "Rigid boxes and balls tumbling into a heap: collision detection "
+           "between\n"
+           "every pair and the ground, contact resolution, and bodies sleeping "
+           "once\n"
+           "they settle. (Cyclone's explosion itself was never finished.)\n"
+           "E: drag moves the first box along the ground   T: drag moves it "
+           "up/down\n"
+           "W: wake all bodies\n" RIGID_BODY_KEYS;
+  }
 
   /** Display the particle positions. */
-  virtual void display();
+  void display() override;
 
   /** Handles a key press. */
-  virtual void key(unsigned char key);
+  void key(unsigned char key) override;
 
   /** Handle a mouse drag */
-  virtual void mouseDrag(int x, int y);
+  void mouseDrag(int x, int y) override;
 };
 
 // Method definitions

@@ -13,6 +13,8 @@
 #include "ogl_headers.h"
 #include "timing.h"
 #include <cstring>
+#include <string>
+#include <vector>
 
 // stb_easy_font's helpers are static; not all of them are used
 #pragma GCC diagnostic push
@@ -72,6 +74,56 @@ void Application::mouse(int button, int state, int x, int y) {}
 void Application::mouseDrag(int x, int y) {}
 
 // The following methods aren't intended to be overloaded
+void Application::renderOverlay() {
+  const char *description = getDescription();
+  if (!description)
+    return;
+  std::string text = showOverlay ? std::string(description) + "\n\nH: hide"
+                                 : std::string("H: what is this demo?");
+
+  // The panel's size in points, from stb_easy_font's measurements, with a
+  // margin; it sits 8 points in from the top-left corner.
+  const float margin = 6, inset = 8;
+  const float textWidth = (float)stb_easy_font_width(text.data());
+  const float textHeight = (float)stb_easy_font_height(text.data());
+  const float top = height / pixelScale - inset;
+  const float left = inset, right = left + textWidth + 2 * margin;
+  const float bottom = top - textHeight - 2 * margin;
+
+  glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT);
+  glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  // A translucent white panel, so the text reads on light and dark scenes
+  glMatrixMode(GL_PROJECTION);
+  glPushMatrix();
+  glLoadIdentity();
+  glOrtho(0.0, (double)width, 0.0, (double)height, -1.0, 1.0);
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+  glLoadIdentity();
+  glScalef(pixelScale, pixelScale, 1);
+  glColor4f(1.0f, 1.0f, 1.0f, 0.8f);
+  glBegin(GL_QUADS);
+  glVertex2f(left, bottom);
+  glVertex2f(right, bottom);
+  glVertex2f(right, top);
+  glVertex2f(left, top);
+  glEnd();
+  glPopMatrix();
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix();
+  glMatrixMode(GL_MODELVIEW);
+
+  // renderText takes the top line's baseline position
+  glColor3f(0.1f, 0.1f, 0.15f);
+  renderText(left + margin, top - margin - 8.0f, text.c_str());
+  glPopAttrib();
+}
+
 void Application::renderText(float x, float y, const char *text) {
   glDisable(GL_DEPTH_TEST);
 
@@ -89,13 +141,14 @@ void Application::renderText(float x, float y, const char *text) {
   // SAKBox: GLUT's bitmap font is replaced by stb_easy_font, which builds
   // the text from quads (12 points per line, as before). Its y axis points
   // down, so flip it, and scale points to pixels.
-  static char quads[64 * 1024];
+  // stb_easy_font needs about 270 bytes of vertices per character
+  std::vector<char> quads(std::strlen(text) * 300 + 64);
   int count = stb_easy_font_print(0, 0, const_cast<char *>(text), nullptr,
-                                  quads, sizeof(quads));
+                                  quads.data(), (int)quads.size());
   glTranslatef(x * pixelScale, (y + 8.0f) * pixelScale, 0);
   glScalef(pixelScale, -pixelScale, 1);
   glEnableClientState(GL_VERTEX_ARRAY);
-  glVertexPointer(2, GL_FLOAT, 16, quads);
+  glVertexPointer(2, GL_FLOAT, 16, quads.data());
   glDrawArrays(GL_QUADS, 0, count * 4);
   glDisableClientState(GL_VERTEX_ARRAY);
 

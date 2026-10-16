@@ -1,5 +1,12 @@
 /*
- * The sailboat demo.
+ * Sailboat: a sail and buoyancy on a rigid body.
+ *
+ * The boat is one rigid body. Buoyancy lifts it according to how deep its
+ * centre of buoyancy is below the water line (more when deeper), against
+ * its weight, so it floats and bobs. The sail is an aerodynamic surface
+ * (Aero, applied 2 m from the boat's centre along its length) driven by
+ * the wind, which drifts randomly every frame; its force pushes the boat
+ * along. The view follows the boat.
  *
  * Part of the Cyclone physics system.
  *
@@ -39,16 +46,26 @@ public:
   virtual ~SailboatDemo();
 
   /** Returns the window title for the demo. */
-  virtual const char *getTitle();
+  const char *getTitle() override;
+
+  /** SAKBox: the overlay explaining the demo (H hides it). */
+  const char *getDescription() override {
+    return "A boat as one rigid body: buoyancy lifts it more the deeper it "
+           "sits, so it\n"
+           "floats and bobs, and the sail turns a randomly drifting wind into "
+           "a force\n"
+           "that pushes it along.\n"
+           "Q/E: trim the sail   W: centre it";
+  }
 
   /** Display the particles. */
-  virtual void display();
+  void display() override;
 
   /** Update the particle positions. */
-  virtual void update();
+  void update() override;
 
   /** Handle a key press. */
-  virtual void key(unsigned char key);
+  void key(unsigned char key) override;
 };
 
 // Method definitions

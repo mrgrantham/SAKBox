@@ -48,8 +48,11 @@ static void framebufferResized(GLFWwindow *window, int width, int height) {
 }
 
 static void typed(GLFWwindow *, unsigned int codepoint) {
-  // The demos' keys are all ASCII
-  if (codepoint < 128)
+  // H shows or hides the description overlay; no demo uses it. The demos'
+  // keys are all ASCII.
+  if (codepoint == 'h' || codepoint == 'H')
+    app->toggleOverlay();
+  else if (codepoint < 128)
     app->key(static_cast<unsigned char>(codepoint));
 }
 
@@ -83,8 +86,9 @@ static void playScriptedInput(const ScriptedInput &scripted) {
     app->mouse(MOUSE_LEFT_BUTTON, MOUSE_DOWN, 0, 0);
     app->mouse(MOUSE_LEFT_BUTTON, MOUSE_UP, 0, 0);
   } else {
+    // Through typed(), as real key presses are (so H works here too)
     for (char key : scripted.input)
-      app->key(static_cast<unsigned char>(key));
+      typed(nullptr, static_cast<unsigned char>(key));
   }
   std::printf("scripted input at %.2f s: %s\n", scripted.atSeconds,
               scripted.input.c_str());
@@ -165,6 +169,7 @@ int main(int argc, char **argv) {
     TimingData::get().update();
     app->update();
     app->display();
+    app->renderOverlay();
     glFlush();
     glfwSwapBuffers(window);
   }

@@ -1,5 +1,13 @@
 /*
- * The flightsim demo.
+ * Flight sim: an aircraft flown by aerodynamic surfaces.
+ *
+ * The aircraft is one rigid body. A constant propeller force pushes it
+ * forward, and four aerodynamic surfaces turn the air flowing past them
+ * into forces at their positions on the airframe: two wings and a rudder
+ * (AeroControl: their response changes with the control setting, like
+ * ailerons and a rudder) and a fixed tail plane (Aero). The resulting
+ * torques pitch, roll and yaw the plane. update() adds the forces,
+ * integrates, and treats the ground very simply (crash if too fast).
  *
  * Part of the Cyclone physics system.
  *
@@ -43,16 +51,32 @@ public:
   virtual ~FlightSimDemo();
 
   /** Returns the window title for the demo. */
-  virtual const char *getTitle();
+  const char *getTitle() override;
+
+  /** SAKBox: the overlay explaining the demo (H hides it). */
+  const char *getDescription() override {
+    return "An aircraft as one rigid body: a propeller pushes it and four "
+           "aerodynamic\n"
+           "surfaces (two wings, rudder, tail) turn the oncoming air into "
+           "forces.\n"
+           "Moving the control surfaces turns those forces into pitch, roll "
+           "and yaw.\n"
+           "W/S: pitch   A/D: roll   Q/E: yaw   X: centre controls   R: reset"
+#if defined(CYCLONE_FLEX_REAL)
+           "\n[ / ]: fewer / more bits of precision   N: rounding mode   F: "
+           "full"
+#endif
+        ;
+  }
 
   /** Display the particles. */
-  virtual void display();
+  void display() override;
 
   /** Update the particle positions. */
-  virtual void update();
+  void update() override;
 
   /** Handle a key press. */
-  virtual void key(unsigned char key);
+  void key(unsigned char key) override;
 };
 
 // Method definitions

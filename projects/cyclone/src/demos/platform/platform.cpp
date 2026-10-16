@@ -1,5 +1,13 @@
 /*
- * The platform demo.
+ * Platform: a see-saw of particles and rods.
+ *
+ * Six particles are joined by fifteen ParticleRods into a rigid frame: two
+ * particles rest on the ground and four make the top corners. Rods only
+ * keep their particles a fixed distance apart, so the frame's rigidity
+ * comes entirely from contacts the ParticleWorld resolves each frame. A
+ * 10 kg weight, drawn in red, is shared between the four top corners
+ * (updateAdditionalMass()); moving it shifts the centre of mass and the
+ * frame tips over onto its heavier side.
  *
  * Part of the Cyclone physics system.
  *
@@ -44,16 +52,26 @@ public:
   virtual ~PlatformDemo();
 
   /** Returns the window title for the demo. */
-  virtual const char *getTitle();
+  const char *getTitle() override;
+
+  /** SAKBox: the overlay explaining the demo (H hides it). */
+  const char *getDescription() override {
+    return "A see-saw: 6 particles held in a rigid frame by 15 rods, balanced "
+           "on\n"
+           "two points on the ground. A 10 kg weight (red) is shared between "
+           "the top\n"
+           "corners; move it and the frame tips toward the heavier side.\n"
+           "A/D: move the weight along   W/S: move it across";
+  }
 
   /** Display the particles. */
-  virtual void display();
+  void display() override;
 
   /** Update the particle positions. */
-  virtual void update();
+  void update() override;
 
   /** Handle a key press. */
-  virtual void key(unsigned char key);
+  void key(unsigned char key) override;
 };
 
 // Method definitions
