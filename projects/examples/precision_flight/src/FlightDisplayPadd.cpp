@@ -405,6 +405,7 @@ void FlightDisplayPadd::showControls(const ScratchPadd::MessageType::ControlSnap
   auto view = ControlViewBuilder();
   view->setControls(snapshot);
   view->setOnChange([this](const ScratchPadd::MessageType::ControlChange &change) { send(change); });
+  view->setInitialPlacement(ImVec2(1, 0)); // top-right, clear of the HUD at top-left
   views[snapshot.paddName] = std::move(view);
 }
 

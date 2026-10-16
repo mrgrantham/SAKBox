@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <functional>
+#include <optional>
 #include <string>
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -55,6 +56,13 @@ public:
     void setControls(const ScratchPadd::MessageType::ControlSnapshot &controls);
     // Called with a ControlChange each time the user edits a control.
     void setOnChange(ChangeHandler onChange) { onChange_ = std::move(onChange); }
+    // Where the panel first appears, as a fraction of the window: (0, 0) is
+    // the top-left corner, (1, 0) the top-right. Without this, ImGui picks
+    // a spot. The user can still move the panel.
+    void setInitialPlacement(ImVec2 placement) { placement_ = placement; }
+
+  protected:
+    std::optional<ImVec2> placement_;
   };
 
   class ViewCollection : View {
