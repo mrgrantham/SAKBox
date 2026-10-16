@@ -22,9 +22,6 @@ public:
 
   void prepare() override {
     PADDLOG_INFO("Preparing: {}", name());
-    // We dont want the work loop to sleep
-    // TODO make this sleep/wake from semaphore
-    work_thread_sleep_interval_ = 0ms;
     graphics_ = GraphicsBuilder();
     performanceTimer_.setTimerName(name());
     performanceTimer_.start();
@@ -191,6 +188,8 @@ public:
                          SampleItems::Square::indices)
             .build();
     graphics_->addView(std::move(viewFlame));
+
+    push([this] { drawFrame(); }); // start drawing frames
   }
 
   void finishing() override {
@@ -207,11 +206,11 @@ public:
     return {};
   }
 
-  std::optional<std::chrono::duration<double>> repeatInterval() override {
-    return 16ms;
-  }
 
-  void repeat() override {
+  // Draws one frame, then queues the next. The buffer swap waits for the
+  // display's refresh (vsync), so this runs at the display's rate without a
+  // timer and without spinning.
+  void drawFrame() {
     performanceTimer_.markInterval();
     PADDLOG_INTERVAL(spdlog::level::info, 1000ms,
                      "DisplayPadd drawing at {:.3f}s interval",
@@ -223,7 +222,9 @@ public:
     if (!graphics_->draw()) {
       PADDLOG_INFO("Stop drawing");
       system_->stop();
+      return;
     }
+    push([this] { drawFrame(); });
   }
 };
 

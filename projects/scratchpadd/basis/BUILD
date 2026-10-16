@@ -12,7 +12,6 @@ cc_library(
     ],
     strip_include_prefix = "include/",
     deps = [
-        "@boost.lockfree",
         "@boost.program_options",
         "@boost.filesystem",
         "@fmt",

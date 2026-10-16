@@ -29,7 +29,6 @@ namespace {
 class DriverPadd : public ScratchPadd::Base {
 public:
   DriverPadd(ScratchPadd::System *system) : Base(system) {
-    work_thread_sleep_interval_ = 0ms;
     receive<WorldSnapshot>([this](const WorldSnapshot &world) {
       {
         std::lock_guard<std::mutex> lk(mutex_);

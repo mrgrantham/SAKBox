@@ -17,7 +17,6 @@ namespace {
 class Ticker : public ScratchPadd::Base {
 public:
   Ticker(ScratchPadd::System *system) : Base(system) {
-    work_thread_sleep_interval_ = 1ms; // test only: keep the test fast
   }
   std::string name() override { return "Ticker"; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
@@ -37,7 +36,6 @@ private:
 class Printer : public ScratchPadd::Base {
 public:
   Printer(ScratchPadd::System *system) : Base(system) {
-    work_thread_sleep_interval_ = 1ms; // test only
     receive<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
       logger().info("received {}", text.contents);
       record(text.contents); // test only

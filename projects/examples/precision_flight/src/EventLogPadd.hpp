@@ -21,7 +21,6 @@ public:
   };
 
   EventLogPadd(ScratchPadd::System *system) : Base(system) {
-    work_thread_sleep_interval_ = std::chrono::milliseconds(20);
     logEvents<GatePassed, Crashed, PowerupCollected, WallPhased, GameOver>();
   }
 

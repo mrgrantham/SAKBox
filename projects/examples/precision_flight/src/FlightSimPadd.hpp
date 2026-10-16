@@ -23,7 +23,6 @@ struct FlightOptions {
 class FlightSimPadd : public ScratchPadd::Base {
 public:
   FlightSimPadd(ScratchPadd::System *system) : Base(system) {
-    work_thread_sleep_interval_ = std::chrono::milliseconds(0);
     sim_.settings.autopilot = FlightOptions::autopilot;
     receive<FrameInput>([this](const FrameInput &input) { runFrame(input); });
     receive<GameCommand>([this](const GameCommand &command) { runCommand(command); });

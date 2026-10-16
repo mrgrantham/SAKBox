@@ -240,7 +240,7 @@ using ScratchPadd::MessageType::ControlSnapshot;
 // changed.
 template <int Id> class OwnerPadd : public ScratchPadd::Base {
 public:
-  OwnerPadd(ScratchPadd::System *system) : Base(system) { work_thread_sleep_interval_ = 1ms; }
+  OwnerPadd(ScratchPadd::System *system) : Base(system) {}
   std::string name() override { return "Owner" + std::to_string(Id); }
   ScratchPadd::ControlValueMap generateControls() override {
     return {
@@ -270,7 +270,7 @@ using OwnerB = OwnerPadd<2>;
 
 class NoControlsPadd : public ScratchPadd::Base {
 public:
-  NoControlsPadd(ScratchPadd::System *system) : Base(system) { work_thread_sleep_interval_ = 1ms; }
+  NoControlsPadd(ScratchPadd::System *system) : Base(system) {}
   std::string name() override { return "NoControls"; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 };
@@ -279,7 +279,6 @@ public:
 class PanelPadd : public ScratchPadd::Base {
 public:
   PanelPadd(ScratchPadd::System *system) : Base(system) {
-    work_thread_sleep_interval_ = 1ms;
     receive<ControlSnapshot>([this](const ControlSnapshot &snapshot) {
       std::lock_guard<std::mutex> lk(mutex_);
       snapshots_.push_back(snapshot);

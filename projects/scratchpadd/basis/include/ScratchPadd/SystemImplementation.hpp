@@ -27,52 +27,37 @@ private:
   std::atomic<bool> on_{false};
   // Set by stop(); start() then shuts the system down on its own thread.
   std::atomic<bool> stopRequested_{false};
-
-  // Shortest work_thread_sleep_interval_ among the main-thread padds.
-  std::chrono::duration<double> mainThreadSleepInterval() {
-    auto shortest = std::chrono::duration<double>::max();
-    std::apply(
-        [&](auto const &...worker) {
-          (
-              [&] {
-                if (worker->usesMainThread())
-                  shortest = std::min(shortest, worker->workSleepInterval());
-              }(),
-              ...);
-        },
-        workers_);
-    return shortest;
-  }
-
-  // Sleeps for `duration`, waking early if stop() is called.
-  void sleepUnlessStopRequested(std::chrono::duration<double> duration) {
-    std::unique_lock<std::mutex> lk(scratchPaddSystemMutex_);
-    scratchPaddSystemConditionVariable_.wait_for(
-        lk, duration, [this] { return stopRequested_.load(); });
-  }
+  // Shared by the main-thread padds' queues: a push to any of them, or
+  // stop(), wakes the main-thread loop.
+  WakeSignal mainThreadSignal_;
 
   // The main-thread padds share this loop: each pass runs every one's queued
-  // work, then sleeps once for the shortest of their sleep intervals. With no
+  // work in list order, then sleeps until work is pushed to any of them (their
+  // queues all notify mainThreadSignal_) or stop() is called. With no
   // main-thread padds it just waits for stop().
   void runMainThreadPadds() {
+    const auto stopping = [this] { return stopRequested_.load(); };
     const bool anyMainThreadPadds = std::apply(
         [](auto const &...worker) { return (worker->usesMainThread() || ...); },
         workers_);
     if (!anyMainThreadPadds) {
-      std::unique_lock<std::mutex> lk(scratchPaddSystemMutex_);
-      scratchPaddSystemConditionVariable_.wait(
-          lk, [this] { return stopRequested_.load(); });
+      while (!stopping()) {
+        mainThreadSignal_.waitForChange(mainThreadSignal_.generation(), stopping);
+      }
       return;
     }
 
     std::apply(
         [](auto const &...worker) { (worker->startingIfMainThread(), ...); },
         workers_);
-    while (!stopRequested_) {
+    while (!stopping()) {
+      // Read before draining, so work pushed meanwhile (often by these same
+      // padds) means the wait below returns at once.
+      const std::uint64_t seen = mainThreadSignal_.generation();
       std::apply(
           [](auto const &...worker) { (worker->runIfMainThread(), ...); },
           workers_);
-      sleepUnlessStopRequested(mainThreadSleepInterval());
+      mainThreadSignal_.waitForChange(seen, stopping);
     }
   }
 
@@ -121,6 +106,14 @@ public:
     std::apply([](auto const &...worker) { (worker->initialize(), ...); },
                workers_);
     assert(workerNamesUnique());
+    // Main-thread padds share one loop, so they share its wake-up signal.
+    std::apply(
+        [this](auto const &...worker) {
+          ((worker->usesMainThread() ? worker->useWakeSignal(mainThreadSignal_)
+                                     : void()),
+           ...);
+        },
+        workers_);
   }
 
   // Runs the system on the calling thread until stop() is called, then shuts
@@ -150,11 +143,8 @@ public:
   // returns once every padd has finished. Safe to call from any thread,
   // including from inside a padd.
   virtual void stop() override {
-    {
-      std::lock_guard<std::mutex> lk(scratchPaddSystemMutex_);
-      stopRequested_ = true;
-    }
-    scratchPaddSystemConditionVariable_.notify_all();
+    stopRequested_ = true;
+    mainThreadSignal_.notify(); // wakes the main-thread loop to shut down
   }
 
   // Waits until start() has finished shutting the system down.
@@ -214,9 +204,7 @@ public:
       return;
     }
     logger().debug("sendWork() to {}", receiver->name());
-    std::function<void()> *work =
-        new std::function<void()>([=] { receiver->deliver(message); });
-    receiver->push(work);
+    receiver->push([receiver, message] { receiver->deliver(message); });
   }
 
   // Send to receiver if they are not the same as the sender

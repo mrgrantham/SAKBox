@@ -32,7 +32,6 @@ struct Unhandled {
 template <int Id> class RecordingPadd : public ScratchPadd::Base {
 public:
   RecordingPadd(ScratchPadd::System *system) : Base(system) {
-    work_thread_sleep_interval_ = 1ms;
     receive<Shape>([this](const Shape &shape) {
       std::lock_guard<std::mutex> lk(mutex_);
       shapes_.push_back(shape);
@@ -74,7 +73,6 @@ using OtherReceiver = RecordingPadd<3>;
 class PingOnlyPadd : public ScratchPadd::Base {
 public:
   PingOnlyPadd(ScratchPadd::System *system) : Base(system) {
-    work_thread_sleep_interval_ = 1ms;
     receive<Ping>([this](const Ping &) { ++pings_; });
   }
   std::string name() override { return "PingOnlyPadd"; }

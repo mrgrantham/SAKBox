@@ -290,7 +290,6 @@ struct FlightDisplayPadd::ControlPanels {
 FlightDisplayPadd::FlightDisplayPadd(ScratchPadd::System *system)
     : Base(system), renderer_(std::make_unique<Renderer>()),
       controlPanels_(std::make_unique<ControlPanels>()) {
-  work_thread_sleep_interval_ = std::chrono::milliseconds(0);
   receive<WorldSnapshot>([this](const WorldSnapshot &world) { drawFrame(world); });
   receive<ScratchPadd::MessageType::ControlSnapshot>(
       [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot) { showControls(snapshot); });

@@ -16,9 +16,6 @@ private:
 public:
   void prepare() override {
     spdlog::info("Preparing: {}", name());
-    // We dont want the work loop to sleep
-    // TODO make this sleep/wake from semaphore
-    work_thread_sleep_interval_ = 0ms;
     graphics_ = GraphicsBuilder();
     performanceTimer_.setTimerName(name());
     performanceTimer_.start();
@@ -33,9 +30,6 @@ public:
         });
   }
 
-  std::optional<std::chrono::duration<double>> repeatInterval() override {
-    return 15666666ns;
-  }
   std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>
   generateControls() override {
     return {};
@@ -62,6 +56,8 @@ public:
 
     // Ask every padd with controls for them; each reply becomes a panel.
     send(ScratchPadd::MessageType::ControlRequest{});
+
+    push([this] { drawFrame(); }); // start drawing frames
   }
   void finishing() override {
     spdlog::info("[{}] Avg Repeating Interval: {}", name(),
@@ -72,7 +68,10 @@ public:
 
   virtual ~DisplayPadd() { spdlog::info("Destroying: {}", name()); }
 
-  void repeat() override {
+  // Draws one frame, then queues the next. The buffer swap waits for the
+  // display's refresh (vsync), so this runs at the display's rate without a
+  // timer and without spinning.
+  void drawFrame() {
     performanceTimer_.markInterval();
     PADDLOG_INTERVAL(spdlog::level::info, 1000ms,
                      "DisplayPadd drawing at {:.3f}s interval",
@@ -84,7 +83,9 @@ public:
     if (!graphics_->draw()) {
       spdlog::info("Stop drawing");
       system_->stop();
+      return;
     }
+    push([this] { drawFrame(); });
   }
 
   std::string name() override { return __CLASS_NAME__; }

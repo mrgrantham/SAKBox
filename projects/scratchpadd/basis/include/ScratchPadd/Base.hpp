@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdint>
 #include <cassert>
 #include <functional>
 #include <typeindex>
@@ -12,19 +13,13 @@
 #include <mutex>
 #include <memory>
 #include <thread>
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-
-#pragma clang diagnostic ignored "-Wambiguous-reversed-operator"
-#include <boost/lockfree/queue.hpp>
-
-#pragma clang diagnostic pop
 #include <ScratchPadd/EventTimer.hpp>
 
 #include <ScratchPadd/Helper.hpp>
 #include <ScratchPadd/Logger.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/System.hpp>
+#include <ScratchPadd/WorkQueue.hpp>
 
 namespace ScratchPadd {
 using namespace std::chrono_literals;
@@ -34,14 +29,14 @@ protected:
   // Read by the work loop and written from other threads (e.g. stop()).
   std::atomic<bool> on_{false};
   std::thread workerThread_;
-  // How long the work loop sleeps once its queue is empty, which is also how
-  // long a new message can wait to be picked up. Padds that need lower
-  // latency can shorten it in their constructor or prepare().
-  std::chrono::duration<double> work_thread_sleep_interval_{500ms};
   EventTimer repeatingTimer_;
   System *system_;
-  boost::lockfree::queue<std::function<void()> *> work_queue_{100};
+  // Wakes this padd's own thread when work arrives. Main-thread padds are
+  // switched to the system's shared signal instead (useWakeSignal).
+  WakeSignal ownSignal_;
+  WorkQueue workQueue_{&ownSignal_};
   std::atomic<ssize_t> pendingWork_{0};
+  std::atomic<std::uint64_t> workLoopPasses_{0};
   std::condition_variable workCompletionConditionVariable_;
   std::mutex workCompletionMutex_;
   std::condition_variable scratchPaddConditionVariable_;
@@ -109,6 +104,10 @@ public:
   virtual void controlChanged(const std::string &name) {}
 
   ssize_t pendingWorkCount() { return pendingWork_; }
+
+  // How many times the work loop has drained this padd's queue. An idle padd
+  // sleeps, so this only grows when work arrives (tests use it).
+  std::uint64_t workLoopPasses() const { return workLoopPasses_; }
 
   void waitForWorkCompletion() {
     std::unique_lock<std::mutex> lk(workCompletionMutex_);
@@ -237,14 +236,12 @@ public:
   // decide which padds run in its main-thread loop.
   bool usesMainThread() const { return shouldUseMainThread_; }
 
-  // How long the work loop sleeps when the queue is empty (see
-  // work_thread_sleep_interval_). The main-thread loop sleeps for the
-  // shortest of these among its padds.
-  std::chrono::duration<double> workSleepInterval() const {
-    return work_thread_sleep_interval_;
-  }
+  // Makes pushes to this padd wake `signal` instead of the padd's own. The
+  // system calls this for main-thread padds, so that a push to any of them
+  // wakes their shared loop. Only valid before the padd starts.
+  void useWakeSignal(WakeSignal &signal) { workQueue_.setSignal(&signal); }
 
-  // Called by the system's main-thread loop, which does the sleeping.
+  // Called by the system's main-thread loop, which does the waiting.
   void runIfMainThread() {
     if (shouldUseMainThread_ && on_) {
       processWork();
@@ -263,29 +260,31 @@ public:
     }
   }
 
-  // The work loop of a padd with its own thread.
+  // The work loop of a padd with its own thread: run whatever is queued,
+  // then sleep until more work arrives or the padd is stopped.
   void run() {
     startingWrapper();
+    WakeSignal &signal = workQueue_.signal();
     while (on_) {
+      // Read before draining: work pushed while draining changes the
+      // generation, so the wait below returns straight away for it.
+      const std::uint64_t seen = signal.generation();
       processWork();
-      std::this_thread::sleep_for(work_thread_sleep_interval_);
+      signal.waitForChange(seen, [this] { return !on_; });
     }
     finishingWrapper();
   }
 
-  // Runs every queued job, stopping early if the padd is stopped. on_ is
-  // checked before popping, so a job is never popped and then dropped.
+  // Runs every job queued so far, oldest first. Jobs taken after the padd
+  // has been stopped are discarded rather than run.
   void processWork() {
-    std::function<void()> *work = nullptr;
-    while (on_ && work_queue_.pop(work)) {
-      if (work) {
-        (*work)();
-        delete work;
-      } else {
-        logger().error("work is null");
+    for (WorkQueue::Job &job : workQueue_.takeAll()) {
+      if (on_) {
+        job();
       }
       pendingWork_--;
     }
+    ++workLoopPasses_;
     workCompletionConditionVariable_.notify_all();
   }
 
@@ -298,20 +297,18 @@ public:
       logger().info("repeat() interval set to {}ms for {}",
                     repeatInterval_.value().count(), name_);
       repeatingTimer_.startRepeatingEvent(
-          [=, this] {
-            std::function<void()> *work =
-                new std::function<void()>([=, this] { this->repeat(); });
-            push(work);
-          },
+          [this] { push([this] { repeat(); }); },
           repeatInterval_.value());
     } else {
       logger().info("No repeat() interval set for: {}", name_);
     }
   }
 
-  void push(std::function<void()> *work) {
+  // Queues `job` to run on this padd's thread and wakes it. Safe from any
+  // thread.
+  void push(WorkQueue::Job job) {
     pendingWork_++;
-    work_queue_.push(work);
+    workQueue_.push(std::move(job));
   }
 
   // Registers `handler` for messages of type T, replacing any earlier
@@ -345,6 +342,7 @@ public:
     logger().info("Stopping: {}", name_);
     repeatingTimer_.stop(); // might need to flush the queue
     notifyStop();
+    workQueue_.signal().notify(); // wake the work loop so it sees on_ is false
     if (workerThread_.joinable()) {
       workerThread_.join();
     }

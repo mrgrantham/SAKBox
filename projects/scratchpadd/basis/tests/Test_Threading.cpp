@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <future>
 #include <mutex>
 #include <vector>
@@ -17,9 +18,7 @@ namespace {
 // on and report back that thread's id.
 template <bool UseMainThread, int Id> class ThreadPadd : public ScratchPadd::Base {
 public:
-  ThreadPadd(ScratchPadd::System *system) : Base(system) {
-    work_thread_sleep_interval_ = 1ms; // keep the tests fast
-  }
+  ThreadPadd(ScratchPadd::System *system) : Base(system) {}
   std::string name() override { return "ThreadPadd" + std::to_string(Id); }
   bool shouldUseMainThread() override { return UseMainThread; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
@@ -28,8 +27,7 @@ public:
   std::thread::id workThreadId() {
     auto promise = std::make_shared<std::promise<std::thread::id>>();
     auto future = promise->get_future();
-    push(new std::function<void()>(
-        [promise] { promise->set_value(std::this_thread::get_id()); }));
+    push([promise] { promise->set_value(std::this_thread::get_id()); });
     EXPECT_EQ(future.wait_for(2s), std::future_status::ready)
         << name() << " never ran its work";
     return future.valid() ? future.get() : std::thread::id{};
@@ -178,14 +176,6 @@ public:
   void repeat() override { this->system_->stop(); }
 };
 
-// A main-thread padd that sleeps for a long time between passes.
-class SlowMainPadd : public ThreadPadd<true, 9> {
-public:
-  SlowMainPadd(ScratchPadd::System *system) : ThreadPadd(system) {
-    work_thread_sleep_interval_ = 500ms;
-  }
-};
-
 // Runs start() on a new thread and reports whether it returns in time.
 template <typename... Padds> bool startReturnsAfterSelfStop() {
   ScratchPadd::SystemImplementation<Padds...> system;
@@ -241,14 +231,60 @@ TEST(ThreadingTest, TestStopFromInsideBackgroundPadd) {
   EXPECT_TRUE((startReturnsAfterSelfStop<SelfStoppingPadd<false, 8>, MainA>()));
 }
 
-// Main-thread padds don't add up their sleeps: a fast padd sharing the loop
-// with a slow one still responds at its own pace.
-TEST(ThreadingTest, TestMainThreadSleepsDontStack) {
-  RunningSystem<MainA, SlowMainPadd> running;
-  // Let the loop settle into a sleep before measuring.
-  std::this_thread::sleep_for(50ms);
+// Padds don't poll: with no work, their loops sleep instead of spinning.
+TEST(ThreadingTest, IdlePaddsDontSpin) {
+  RunningSystem<MainA, BackgroundA> running;
+  std::this_thread::sleep_for(50ms); // let startup work finish
+  const auto mainBefore = running.padd<MainA>().workLoopPasses();
+  const auto backgroundBefore = running.padd<BackgroundA>().workLoopPasses();
+  std::this_thread::sleep_for(200ms);
+  EXPECT_EQ(running.padd<MainA>().workLoopPasses(), mainBefore);
+  EXPECT_EQ(running.padd<BackgroundA>().workLoopPasses(), backgroundBefore);
+}
 
+// Work wakes a sleeping padd straight away, on either kind of thread.
+TEST(ThreadingTest, WorkWakesAnIdlePaddPromptly) {
+  RunningSystem<MainA, BackgroundA> running;
+  std::this_thread::sleep_for(100ms); // both loops are asleep by now
+  for (int i = 0; i < 2; ++i) {
+    const auto start = std::chrono::steady_clock::now();
+    i == 0 ? running.padd<MainA>().workThreadId() : running.padd<BackgroundA>().workThreadId();
+    EXPECT_LT(std::chrono::steady_clock::now() - start, 50ms) << (i == 0 ? "main" : "background");
+  }
+}
+
+// stop() wakes idle padds, so shutdown doesn't wait on a sleep.
+TEST(ThreadingTest, StopIsPromptWhenIdle) {
+  RunningSystem<MainA, BackgroundA> running;
+  std::this_thread::sleep_for(100ms);
   const auto start = std::chrono::steady_clock::now();
-  running.padd<MainA>().workThreadId();
-  EXPECT_LT(std::chrono::steady_clock::now() - start, 200ms);
+  running.stop();
+  EXPECT_LT(std::chrono::steady_clock::now() - start, 100ms);
+}
+
+// Many threads pushing to one padd at once: every job runs exactly once, and
+// each sender's jobs run in the order it pushed them.
+TEST(ThreadingTest, ConcurrentSendersLoseNothing) {
+  RunningSystem<BackgroundA> running;
+  auto &padd = running.padd<BackgroundA>();
+  constexpr int kSenders = 8, kJobs = 1000;
+  std::vector<std::vector<int>> seen(kSenders); // written only on the padd's thread
+  std::vector<std::thread> senders;
+  for (int sender = 0; sender < kSenders; ++sender) {
+    senders.emplace_back([&, sender] {
+      for (int job = 0; job < kJobs; ++job) {
+        padd.push([&seen, sender, job] { seen[sender].push_back(job); });
+      }
+    });
+  }
+  for (std::thread &t : senders) {
+    t.join();
+  }
+  padd.workThreadId(); // queued after everything above, so runs last
+  for (int sender = 0; sender < kSenders; ++sender) {
+    ASSERT_EQ(seen[sender].size(), static_cast<size_t>(kJobs)) << sender;
+    for (int job = 0; job < kJobs; ++job) {
+      EXPECT_EQ(seen[sender][job], job);
+    }
+  }
 }
