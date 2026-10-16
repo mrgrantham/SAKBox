@@ -218,4 +218,14 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "contacts_test",
+    size = "small",
+    srcs = ["tests/contacts_test.cpp"],
+    deps = [
+        ":cyclone",
+        "@gtest//:gtest_main",
+    ],
+)
+
 clang_format(name = "cyclone")
