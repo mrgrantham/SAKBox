@@ -1,4 +1,33 @@
 # Waffles
+
+Mike Gashler's machine learning and data mining library: neural networks, decision trees, k-nearest neighbours, manifold learning, recommender systems, clustering and more, with command-line tools that use them. It is public domain.
+
+It comes from [mikegashler/waffles](https://github.com/mikegashler/waffles). This copy was imported in February 2023 and matches upstream commit `f0cfa46` (2023-01-05). Upstream has had one commit since, `d6b734b` (2023-11-29); its two fixes were taken (see below) and the rest, which stubs out part of `GJsonAsADatabase`, was not. SAKBox maintains this copy from here.
+
+## Building
+
+| Target | What it is |
+| --- | --- |
+| `//projects/waffles:WClasses` | The library. Include `<WClasses/...>`; the namespace is still `GClasses`. |
+| `:learn`, `:cluster`, `:dimred`, `:plot`, `:recommend`, `:sparse`, `:transform`, `:audio`, `:wizard` | The command-line tools |
+| `//projects/waffles/demos/...` | Demos built with Bazel: `chess`, `caronhill`, `eigen`, `hello_gui`, plus `fourier_net` and `hello_ml` (tagged `manual`: written for an older Waffles API) |
+| `:test` | Waffles' own test suite |
+| `:activation_test` | Neural-network activations: each `inverse()` undoes `eval()` |
+
+It builds with the rest of the repo as strict C++26 with `-Werror`. The other demos and the upstream Makefiles, CMake and Visual Studio files are kept but not used.
+
+## What SAKBox has changed
+
+- **Layout:** the library folder `src/GClasses` is `src/WClasses`, and includes use `<WClasses/...>` rather than relative paths. Platform checks use `__APPLE__` instead of a `DARWIN` define.
+- **Modern C++:** `std::random_shuffle` became `std::shuffle`, `sprintf` became `snprintf`, missing `override`s were added, an exception is caught by reference, and `GMasterThread`'s worker count is `std::atomic` rather than `volatile` (it is read without the lock).
+- **Bug fix:** `GBlockElPos::inverse` assigned instead of comparing (`y = UNKNOWN_REAL_VALUE ? ...`), so it always returned "unknown", and it inverted the wrong pieces of the function.
+- **Warnings:** counters that are computed but never read (`epochs`, `hits`, `nDepth`, `nTries`, ...) are kept, as instrumentation, and marked `[[maybe_unused]]`.
+- `GFile::loadFile` reports the missing path and the current directory when a file isn't found.
+
+Changes inside the code are marked with `SAKBox:` comments where they fix behaviour.
+
+## Upstream's README
+
 Waffles is a comprehensive machine learning and data mining library. It includes many tools and algorithms from neural networks to recommender systems.
 
 # Build Instructions
