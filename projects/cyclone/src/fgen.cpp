@@ -55,8 +55,11 @@ void Buoyancy::updateForce(RigidBody *body, real duration) {
   }
 
   // Otherwise we are partly submerged
-  force.y =
-      liquidDensity * volume * (depth - maxDepth - waterHeight) / 2 * maxDepth;
+  // SAKBox: the submerged fraction runs from 0 at the top of the band to 1
+  // at the bottom; this was (depth - maxDepth - waterHeight) / 2 * maxDepth,
+  // negative throughout (a partly submerged body was pushed down).
+  force.y = liquidDensity * volume * (waterHeight + maxDepth - depth) /
+            (2 * maxDepth);
   body->addForceAtBodyPoint(force, centreOfBuoyancy);
 }
 
@@ -87,9 +90,9 @@ void Spring::updateForce(RigidBody *body, real duration) {
   Vector3 force = lws - ows;
 
   // Calculate the magnitude of the force
+  // SAKBox: signed, so a squashed spring pushes (real_abs made it always pull)
   real magnitude = force.magnitude();
-  magnitude = real_abs(magnitude - restLength);
-  magnitude *= springConstant;
+  magnitude = (magnitude - restLength) * springConstant;
 
   // Calculate the final force and apply it
   force.normalise();

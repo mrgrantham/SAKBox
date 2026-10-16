@@ -66,9 +66,9 @@ void ParticleSpring::updateForce(Particle *particle, real duration) {
   force -= other->getPosition();
 
   // Calculate the magnitude of the force
+  // SAKBox: signed, so a squashed spring pushes (real_abs made it always pull)
   real magnitude = force.magnitude();
-  magnitude = real_abs(magnitude - restLength);
-  magnitude *= springConstant;
+  magnitude = (magnitude - restLength) * springConstant;
 
   // Calculate the final force and apply it
   force.normalise();
@@ -98,7 +98,9 @@ void ParticleBuoyancy::updateForce(Particle *particle, real duration) {
   }
 
   // Otherwise we are partly submerged
-  force.y = liquidDensity * volume * (depth - maxDepth - waterHeight) /
+  // SAKBox: (depth - maxDepth - waterHeight) was negative throughout, so a
+  // partly submerged particle was pushed down.
+  force.y = liquidDensity * volume * (waterHeight + maxDepth - depth) /
             (2 * maxDepth);
   particle->addForce(force);
 }
@@ -117,8 +119,10 @@ void ParticleBungee::updateForce(Particle *particle, real duration) {
   if (magnitude <= restLength)
     return;
 
-  // Calculate the magnitude of the force
-  magnitude = springConstant * (restLength - magnitude);
+  // Calculate the magnitude of the force. SAKBox: this was
+  // springConstant * (restLength - magnitude), negative when stretched, so the
+  // bungee pushed the particle away instead of pulling it back.
+  magnitude = springConstant * (magnitude - restLength);
 
   // Calculate the final force and apply it
   force.normalise();
