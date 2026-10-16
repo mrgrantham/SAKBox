@@ -1,7 +1,7 @@
 build --cxxopt='-std=c++23'
 # Strict ISO C++ for the repo's own code: compiler extensions are errors.
 # External libraries are left alone.
-build --per_file_copt='^projects/.*,^third_party/cyclone/.*@-pedantic-errors'
+build --per_file_copt='^projects/.*@-pedantic-errors'
 build --cxxopt='-Wpedantic'
 build:clang --cxxopt='-Werror=inconsistent-missing-override'
 build:clang --cxxopt='-Werror=delete-abstract-non-virtual-dtor'

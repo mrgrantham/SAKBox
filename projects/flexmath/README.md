@@ -4,7 +4,7 @@
 
 flexmath lets a game or simulation lower or raise the precision of whole subsystems on the fly: physics that turns slippery, collisions that skip past thin walls, geometry that wobbles and snaps. Precision becomes something a powerup or level event can change, not a compile-time choice.
 
-It was built for a Star Fox-style flying game in which collected powerups change precision as part of play. You can see it at work in [`//projects/examples/precision_flight`](../examples/precision_flight) and in Cyclone's flex build ([`//third_party/cyclone:cyclone_flex`](../../third_party/cyclone)).
+It was built for a Star Fox-style flying game in which collected powerups change precision as part of play. You can see it at work in [`//projects/examples/precision_flight`](../examples/precision_flight) and in Cyclone's flex build ([`//projects/cyclone:cyclone_flex`](../../third_party/cyclone)).
 
 ## Contents
 
@@ -215,14 +215,14 @@ Quantizing state does *not* make floating point deterministic by itself. It make
 
 ## Using flexmath with Cyclone
 
-The vendored Cyclone physics engine has a flex build in which its `real` type is `Flex::Math::FlexReal`, so the whole engine runs at an adjustable precision:
+SAKBox's copy of the Cyclone physics engine ([`projects/cyclone`](../cyclone)) has a flex build in which its `real` type is `Flex::Math::FlexReal`, so the whole engine runs at an adjustable precision:
 
 ```sh
-bazel run //third_party/cyclone:flightsim_flex    # [ and ] change precision, N rounding, F full
-bazel test //third_party/cyclone:flex_test
+bazel run //projects/cyclone:flightsim_flex    # [ and ] change precision, N rounding, F full
+bazel test //projects/cyclone:flex_test
 ```
 
-The plain `//third_party/cyclone:cyclone` build is unaffected and doesn't depend on flexmath.
+The plain `//projects/cyclone:cyclone` build is unaffected and doesn't depend on flexmath.
 
 Precision applies to the bodies' *state*: positions, velocities, orientations, and every result computed from them. The time step and the per-frame drag factors derived from it (`pow(damping, dt)`) keep full precision. Snapping those would bias every frame the same way: at 6 bits a drag factor of 0.99644 truncates to 0.984375, four times the drag, and the flight sim's plane slowed to a crawl. The `real_duration` type and `CYCLONE_FULL_PRECISION_SCOPE` in `precision.h` implement this.
 

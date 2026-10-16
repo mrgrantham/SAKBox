@@ -43,7 +43,7 @@ private:
 // computation, not just its inputs and outputs.
 //
 // It is designed as a drop-in replacement for a `real` typedef: Cyclone's
-// flex build (//third_party/cyclone:cyclone_flex) compiles its whole engine
+// flex build (//projects/cyclone:cyclone_flex) compiles its whole engine
 // with `typedef Flex::Math::FlexReal real;`.
 //
 // Behaviour to know about:

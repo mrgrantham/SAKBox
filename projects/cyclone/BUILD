@@ -1,7 +1,8 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
-# Cyclone physics engine by Ian Millington (MIT, see LICENSE), vendored from
-# https://github.com/idmillington/cyclone-physics (master, Jan 2024).
+# Cyclone physics engine by Ian Millington (MIT, see LICENSE). Originally from
+# https://github.com/idmillington/cyclone-physics (master, Jan 2024); maintained
+# in SAKBox since upstream stopped.
 
 package(default_visibility = ["//visibility:public"])
 
