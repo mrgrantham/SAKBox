@@ -61,9 +61,11 @@ public:
                            GL_TEXTURE_2D, depthID_, 0);
     checkOpenGLErrors("glFramebufferTexture2D");
 
-    GLenum buffers[4] = {GL_COLOR_ATTACHMENT0};
-    glDrawBuffers(textureID_, buffers);
-    checkOpenGLErrors("glDrawBuffers(textureID_, buffers)");
+    // Draw into the one colour attachment. (This passed textureID_ as the
+    // buffer count, which OpenGL rejected for every view after the first.)
+    const GLenum buffers[1] = {GL_COLOR_ATTACHMENT0};
+    glDrawBuffers(1, buffers);
+    checkOpenGLErrors("glDrawBuffers(1, buffers)");
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
       spdlog::info("FrameBuffer is complete");
