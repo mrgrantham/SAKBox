@@ -1,0 +1,5 @@
+# Commits that only reformat code. `git blame` skips them with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# cyclone: convert to LF and clang-format (format only)
+e5875d0223ca6aa7ceb8246dfe52710cecccdf77
