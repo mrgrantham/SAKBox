@@ -16,9 +16,9 @@ bazel run //projects/cyclone:fracture      # or any demo below
 | --- | --- |
 | `//projects/cyclone:cyclone` | The engine, in double precision. Include `<cyclone/cyclone.h>`. |
 | `//projects/cyclone:cyclone_flex` | The same engine with `cyclone::real` as flexmath's `FlexReal`, so the whole engine runs at a precision you can change while it runs (see [flexmath](../flexmath/README.md#using-flexmath-with-cyclone)). |
-| `:app`, `:app_flex`, `:timing`, `:gl` | The demo framework (GLUT window, camera, timing), for each engine build. |
+| `:app`, `:app_flex`, `:timing` | The demo framework (GLFW window, camera, timing, text, sphere and cube drawing), for each engine build. |
 
-The engine libraries are plain C++ with no graphics or platform dependency; only the demo framework links GLUT and OpenGL.
+The engine libraries are plain C++ with no graphics or platform dependency; only the demo framework links GLFW and OpenGL.
 
 The main pieces of the engine, in `include/cyclone/`:
 
@@ -33,7 +33,7 @@ The main pieces of the engine, in `include/cyclone/`:
 
 ## Demos
 
-Each demo is a binary: `bazel run //projects/cyclone:<name>`. They open a GLUT window.
+Each demo is a binary: `bazel run //projects/cyclone:<name>`. They open a GLFW window and draw with legacy (fixed-function) OpenGL and GLU.
 
 | Demo | Shows | Controls |
 | --- | --- | --- |
@@ -73,6 +73,7 @@ Compared with the last upstream version:
   - `RigidBody` left `isAwake`, `canSleep` and `motion` uninitialised (it has no constructor), and `setCanSleep` reads `isAwake`. They now start asleep, allowed to sleep, and still. Bodies created with `new RigidBody()` used to be zero-filled, so they could never sleep: fracture's broken pieces and explosion's bodies now fall asleep once they settle (drawn blue), as those demos are written to expect.
   - `Random::seed` multiplied by a signed `long` constant that overflowed (undefined behaviour); it is unsigned now, with the same sequence.
 - **Demo options:** `--run` starts the rigid-body demos unpaused; `--keys` plays scripted key presses and clicks.
+- **GLFW instead of GLUT:** the demos open a GLFW window (GLUT is deprecated on macOS and tied the demos to it). GLUT's sphere, cube and bitmap text are replaced by `src/demos/shapes.cpp` (the same geometry: GLU spheres, GLUT's cube faces and normals) and `stb_easy_font`. They draw at full Retina resolution, with text and line widths scaled to keep their size on screen.
 - **Cleanups:** `Quaternion`'s components are plain members rather than an anonymous struct in a union (a GNU extension), `sprintf` became `snprintf`, constructor initialisers follow declaration order, and unused code is gone.
 
 Changes inside the code are marked with `SAKBox:` comments.
@@ -90,7 +91,7 @@ Changes inside the code are marked with `SAKBox:` comments.
 
 ## Known limitations
 
-- **The demos use GLUT,** which macOS has deprecated; its warnings are silenced with `GL_SILENCE_DEPRECATION`, and the demo framework links the macOS GLUT, OpenGL and Cocoa frameworks, so the demos only build on macOS (the engine libraries build anywhere). Porting the demos to GLFW, like the rest of the repo, would make them cross-platform.
+- **The demos draw with legacy OpenGL,** which macOS has deprecated (its warnings are silenced with `GL_SILENCE_DEPRECATION`) but still provides. They are tested on macOS; on Linux they link GL and GLU and on Windows opengl32 and glu32, but neither has been tried.
 - **Not yet tested:** aerodynamics (`Aero`, `AeroControl`), `World` and `ParticleWorld`'s other generators, and resting stacks of several bodies are covered only by the demos.
 - **Buoyancy has no g:** `Buoyancy` and `ParticleBuoyancy` apply `density x volume x fraction` as the force, so a fully submerged 1 m^3 of water lifts 1000 units, not 1000 g newtons. The demos are tuned for this, so it is left as is.
 - **The sailboat's sea is drawn at y = 0** while its buoyancy uses a water line of 1.6, so the boat floats a little above the drawn tiles.
