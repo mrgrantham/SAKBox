@@ -215,7 +215,7 @@ Quantizing state does *not* make floating point deterministic by itself. It make
 
 ## Using flexmath with Cyclone
 
-SAKBox's copy of the Cyclone physics engine ([`projects/cyclone`](../cyclone)) has a flex build in which its `real` type is `Flex::Math::FlexReal`, so the whole engine runs at an adjustable precision:
+SAKBox's copy of the Cyclone physics engine ([`projects/cyclone`](../cyclone/README.md)) has a flex build in which its `real` type is `Flex::Math::FlexReal`, so the whole engine runs at an adjustable precision:
 
 ```sh
 bazel run //projects/cyclone:flightsim_flex    # [ and ] change precision, N rounding, F full
