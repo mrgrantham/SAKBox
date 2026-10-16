@@ -62,6 +62,7 @@ Compared with the last upstream version:
   - `Matrix3::setOrientation` and `Matrix4::setOrientationAndPos` built the transposed matrix, rotating the opposite way. They now match the rigid-body transform.
   - `CollisionDetector::sphereAndSphere` placed the contact point outside the first sphere instead of midway between the two, so friction spun that sphere the wrong way.
   - `Application`, the demos' base class, lacked a virtual destructor although demos are deleted through it.
+  - The ragdoll flew away instead of falling over. It was pushed with forces of 500-1000 N applied for one frame, so the push grew with the frame length: 0.05 s frames launched it at 65 m/s. The push is now a velocity change (a sideways shove and a twist of the chest), the same at any frame rate. Its physics lives in `src/demos/ragdoll/ragdoll_physics.h`, shared with `ragdoll_test`.
 - **Demo option:** `--run` starts the rigid-body demos unpaused.
 - **Cleanups:** `Quaternion`'s components are plain members rather than an anonymous struct in a union (a GNU extension), `sprintf` became `snprintf`, constructor initialisers follow declaration order, and unused code is gone.
 
@@ -72,10 +73,10 @@ Changes inside the code are marked with `SAKBox:` comments.
 | Test | Covers |
 | --- | --- |
 | `core_test` | `Vector3`, `Quaternion`, `Matrix3` and `Matrix4` maths; rigid-body and particle integration against their closed forms; damping; local and world space; sphere-sphere and sphere-plane contacts. Written against the original engine before it was reformatted, so it also guards the cleanups. |
+| `ragdoll_test` | The ragdoll demo's physics without a window: it collapses in place when not pushed, and a push knocks it over nearby at both 1/60 s and 0.05 s steps |
 | `flex_test` | The flex build: `FlexReal` as `real`, precision snapping in the engine, and that time steps and drag stay at full precision (stochastic rounding keeps drag unbiased) |
 
 ## Known limitations
 
 - **The demos use GLUT,** which macOS has deprecated; its warnings are silenced with `GL_SILENCE_DEPRECATION`, and the demo framework links the macOS GLUT, OpenGL and Cocoa frameworks, so the demos only build on macOS (the engine libraries build anywhere). Porting the demos to GLFW, like the rest of the repo, would make them cross-platform.
-- **The ragdoll flies away** instead of collapsing: once running, it launches upward and off into the distance. The original upstream code does the same (checked by building it), so it's an existing bug, not a SAKBox change; the cause is still to be found.
 - **Most of the engine has no tests yet:** box collisions, joints, the contact resolver and the force generators are covered only by the demos.

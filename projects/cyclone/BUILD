@@ -123,11 +123,20 @@ cc_binary(
     ],
 )
 
+# The ragdoll's physics, shared by the demo and ragdoll_test
+cc_library(
+    name = "ragdoll_physics",
+    hdrs = ["src/demos/ragdoll/ragdoll_physics.h"],
+    strip_include_prefix = "src/demos/ragdoll",
+    deps = [":cyclone"],
+)
+
 cc_binary(
     name = "ragdoll",
     srcs = ["src/demos/ragdoll/ragdoll.cpp", "src/demos/main.cpp"],
     deps = [
         ":app",
+        ":ragdoll_physics",
     ],
 )
 
@@ -175,6 +184,16 @@ cc_test(
     srcs = ["tests/core_test.cpp"],
     deps = [
         ":cyclone",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ragdoll_test",
+    size = "small",
+    srcs = ["tests/ragdoll_test.cpp"],
+    deps = [
+        ":ragdoll_physics",
         "@gtest//:gtest_main",
     ],
 )
