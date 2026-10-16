@@ -13,7 +13,6 @@ cc_library(
     hdrs = ["include/cyclone/body.h","include/cyclone/cyclone.h","include/cyclone/collide_coarse.h","include/cyclone/collide_fine.h","include/cyclone/contacts.h","include/cyclone/core.h","include/cyclone/fgen.h","include/cyclone/joints.h","include/cyclone/particle.h","include/cyclone/precision.h","include/cyclone/pcontacts.h","include/cyclone/pfgen.h","include/cyclone/plinks.h","include/cyclone/pworld.h","include/cyclone/random.h","include/cyclone/world.h"],
     copts = ["-O2", "-fPIC"],
     strip_include_prefix = "include",
-    linkopts = ["-framework GLUT", "-framework OpenGL", "-framework Cocoa"],
 )
 
 cc_library(
@@ -25,7 +24,6 @@ cc_library(
     defines = ["CYCLONE_FLEX_REAL"],
     deps = ["//projects/flexmath"],
     strip_include_prefix = "include",
-    linkopts = ["-framework GLUT", "-framework OpenGL", "-framework Cocoa"],
 )
 
 cc_library(
@@ -48,6 +46,9 @@ cc_library(
     defines = ["GL_SILENCE_DEPRECATION"],
     deps = [":gl", ":timing", ":cyclone"],
     strip_include_prefix = "src",
+    # The demos draw with GLUT (macOS frameworks); the engine itself has no
+    # platform dependency.
+    linkopts = ["-framework GLUT", "-framework OpenGL", "-framework Cocoa"],
 )
 
 cc_binary(
@@ -145,6 +146,9 @@ cc_library(
     defines = ["GL_SILENCE_DEPRECATION"],
     deps = [":gl", ":timing", ":cyclone_flex"],
     strip_include_prefix = "src",
+    # The demos draw with GLUT (macOS frameworks); the engine itself has no
+    # platform dependency.
+    linkopts = ["-framework GLUT", "-framework OpenGL", "-framework Cocoa"],
 )
 
 cc_binary(
