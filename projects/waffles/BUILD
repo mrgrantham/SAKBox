@@ -123,45 +123,34 @@ cc_test(
     ],
 )
 
-
-cc_test(
-    name = "activation_test",
+# SAKBox's tests of Waffles (alongside upstream's suite, :test above), one
+# file per area of the library, named after its header: tests/matrix_test.cpp
+# for GMatrix.h and so on. A test's comment says why it exists, such as the
+# bug it caught.
+[cc_test(
+    name = name,
     size = "small",
-    srcs = ["tests/activation_test.cpp"],
+    srcs = ["tests/%s.cpp" % name],
     deps = [
         ":WClasses",
         "@gtest//:gtest_main",
     ],
-)
-
-cc_test(
-    name = "regression_test",
-    size = "small",
-    srcs = ["tests/regression_test.cpp"],
-    deps = [
-        ":WClasses",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "behaviour_test",
-    size = "small",
-    srcs = ["tests/behaviour_test.cpp"],
-    deps = [
-        ":WClasses",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "mesh_orientation_test",
-    size = "small",
-    srcs = ["tests/mesh_orientation_test.cpp"],
-    deps = [
-        ":WClasses",
-        "@gtest//:gtest_main",
-    ],
-)
+) for name in [
+    "app_test",
+    "cluster_test",
+    "dom_test",
+    "error_test",
+    "function_test",
+    "http_test",
+    "image_test",
+    "learner_test",
+    "math_test",
+    "matrix_test",
+    "neural_net_test",
+    "raytrace_test",
+    "recommender_test",
+    "transform_test",
+    "vec_test",
+]]
 
 clang_format(name = "waffles")

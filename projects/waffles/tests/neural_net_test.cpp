@@ -1,4 +1,5 @@
-// Neural-network activation functions: inverse() must undo eval().
+// GNeuralNet: activation functions (inverse() must undo eval()) and
+// GNeuralNetLearner.
 #include <gtest/gtest.h>
 
 #include <WClasses/GNeuralNet.h>
@@ -26,4 +27,17 @@ TEST(ActivationTest, InversesUndoEval) {
     EXPECT_NEAR(identity.inverse(identity.eval(x)), x, 1e-12);
     EXPECT_NEAR(tanh.inverse(tanh.eval(x)), x, 1e-9);
   }
+}
+
+TEST(NeuralNetLearnerTest, LabelRangeIsTanhs) {
+  GNeuralNetLearner learner;
+  double lo = 0, hi = 0;
+  EXPECT_FALSE(learner.supportedLabelRange(&lo, &hi));
+  EXPECT_EQ(lo, -1.0);
+  EXPECT_EQ(hi, 1.0);
+  learner.nn().add(new GBlockLinear(3, 2));
+  lo = hi = 0;
+  EXPECT_FALSE(learner.supportedLabelRange(&lo, &hi));
+  EXPECT_EQ(lo, -1.0);
+  EXPECT_EQ(hi, 1.0);
 }

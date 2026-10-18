@@ -12,9 +12,7 @@ It comes from [mikegashler/waffles](https://github.com/mikegashler/waffles). Thi
 | `:learn`, `:cluster`, `:dimred`, `:plot`, `:recommend`, `:sparse`, `:transform`, `:audio`, `:wizard` | The command-line tools |
 | `//projects/waffles/demos/...` | Demos built with Bazel: `chess`, `caronhill`, `eigen`, `hello_gui`, `hello_ml` (several learners predicting a pizza's taste and price) and `fourier_net` (the Fourier-initialised network from arXiv:1405.2262, trained on a NASDAQ series; `bazel run //projects/waffles/demos/fourier_net -- --epochs 5`, or no `--epochs` to run until stopped; it writes `fourier.svg` and `progress.svg` where it is run) |
 | `:test` | Waffles' own test suite, including its command-line tool tests (the tools are its data deps). It fails if any test fails or, under `bazel test`, if the tools can't be run. |
-| `:activation_test` | Neural-network activations: each `inverse()` undoes `eval()` |
-| `:regression_test` | Tests for the bugs SAKBox fixed (below); each fails on the old code |
-| `:mesh_orientation_test` | `GRayTraceTriMesh::orientTriangles` and `makeCylinder` |
+| `:app_test`, `:cluster_test`, `:matrix_test`, ... | SAKBox's tests, one per area of the library (see Tests below) |
 
 It builds with the rest of the repo as strict C++26 with `-Werror`. The other demos and the upstream Makefiles, CMake and Visual Studio files are kept but not used.
 
@@ -22,7 +20,7 @@ It builds with the rest of the repo as strict C++26 with `-Werror`. The other de
 
 - **Layout:** the library folder `src/GClasses` is `src/WClasses`, and includes use `<WClasses/...>` rather than relative paths. Platform checks use `__APPLE__` instead of a `DARWIN` define.
 - **Modern C++:** `std::random_shuffle` (removed in C++17) became a Fisher-Yates shuffle with the learner's own seeded `GRand`, `sprintf` became `snprintf`, missing `override`s were added, an exception is caught by reference, and `GMasterThread`'s worker count is `std::atomic` rather than `volatile` (it is read without the lock).
-- **Bug fixes** (all upstream bugs; those with a visible effect have a test in `:regression_test` or Waffles' own suite):
+- **Bug fixes** (all upstream bugs; those with a visible effect have a test, in SAKBox's tests or Waffles' own suite):
   - `GBlockElPos::inverse` assigned instead of comparing (`y = UNKNOWN_REAL_VALUE ? ...`), so it always returned "unknown", and it inverted the wrong pieces of the function.
   - `GBitTable` and `GMatrix` assignment destroyed the data when assigned to themselves.
   - Integer division: sparse k-means' and `GRecommender`'s running means were wiped at every step, `GMath::wilcoxonPValue` truncated n(n+1)/4, and `GCluster` and `GRecommender` lost fractions.
@@ -40,6 +38,13 @@ It builds with the rest of the repo as strict C++26 with `-Werror`. The other de
 - `GFile::loadFile` reports the missing path and the current directory when a file isn't found.
 
 Changes inside the code are marked with `SAKBox:` comments where they fix behaviour.
+
+## Tests
+
+Two kinds:
+
+- `:test` is upstream's own suite (`src/test/main.cpp`), including the command-line tool tests.
+- SAKBox's tests are googletest files in `tests/`, one per area of the library and named after its header: `matrix_test.cpp` covers `GMatrix.h`, `raytrace_test.cpp` covers `GRayTrace.h`, and so on. Each is its own target (`:matrix_test`), listed in `BUILD`. Put a new test in the file for the area it tests, adding a file (and its name to the list in `BUILD`) if there isn't one yet, rather than grouping tests by why they were written. Say why a test exists in its comment instead: the bug it caught, or that it pins down behaviour before a rewrite (some values, like `image_test`'s pixel fingerprint, were recorded from the code before a rewrite rather than worked out).
 
 ## Roadmap
 

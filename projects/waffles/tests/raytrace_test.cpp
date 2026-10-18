@@ -1,5 +1,6 @@
-// GRayTraceTriMesh::orientTriangles: making a mesh's triangles face the same
-// way as their neighbors (revived from code dead upstream since 2011).
+// GRayTrace: GRayTraceTriMesh::orientTriangles, making a mesh's triangles
+// face the same way as their neighbors (revived from code dead upstream
+// since 2011), and G3dLetterMaker.
 #include <gtest/gtest.h>
 
 #include <WClasses/G3D.h>
@@ -9,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -176,4 +178,26 @@ TEST(MeshOrientationTest, GeneratedCylinderIsConsistent) {
     EXPECT_TRUE(mesh->orientTriangles(&flipped));
     EXPECT_EQ(flipped, 0u);
   }
+}
+
+TEST(LetterMakerTest, LetterWidths) {
+  GRayTracePhysicalMaterial material; // its mesh builder needs one
+  G3dLetterMaker maker(&material);
+  const double line = 0.1, space = 0.4; // its defaults
+  auto width = [&](char c) { return maker.letterWidth(c) - line; };
+  EXPECT_DOUBLE_EQ(width(' '), space);
+  EXPECT_DOUBLE_EQ(width('"'), 2 * line);
+  EXPECT_DOUBLE_EQ(width('\''), line);
+  for (char c : std::string("(),i"))
+    EXPECT_DOUBLE_EQ(width(c), 0.1) << c;
+  EXPECT_DOUBLE_EQ(width('.'), 0.2);
+  for (char c : std::string("jl"))
+    EXPECT_DOUBLE_EQ(width(c), 0.225) << c;
+  EXPECT_DOUBLE_EQ(width('t'), 0.3);
+  for (char c : std::string("+-"))
+    EXPECT_DOUBLE_EQ(width(c), 0.4) << c;
+  for (char c : std::string("@MWmqw"))
+    EXPECT_DOUBLE_EQ(width(c), 0.6) << c;
+  for (char c : std::string("aAbBzZ09?"))
+    EXPECT_DOUBLE_EQ(width(c), 0.5) << c; // everything else
 }
