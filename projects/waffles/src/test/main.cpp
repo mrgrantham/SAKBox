@@ -973,10 +973,6 @@ public:
 		bool runCommandLineTests = false;
 		try
 		{
-			string s = "waffles_transform";
-#ifdef WIN32
-			s += ".exe";
-#endif
 			GExpectException ee;
 			GPipe pipeStdOut;
 			if(sysExec("waffles_transform", "usage", &pipeStdOut) != 0)
