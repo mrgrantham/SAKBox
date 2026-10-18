@@ -778,7 +778,9 @@ GDomNode* GSparseClusterRecommender::serialize(GDom* pDoc) const
 void GSparseClusterRecommender::test()
 {
 	GSparseClusterRecommender rec(6);
-	rec.basicTest(1.31);
+	// SAKBox: was 1.31, which passed with GKMeansSparse broken (MSE 1.256,
+	// worse than GBaselineRecommender's 1.152); fixed, it's 0.882
+	rec.basicTest(0.95);
 }
 
 
