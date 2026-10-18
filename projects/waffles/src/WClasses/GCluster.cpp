@@ -34,9 +34,11 @@
 #include "GTime.h"
 #include "GGraph.h"
 #include "GDom.h"
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <memory>
+#include <vector>
 
 using namespace GClasses;
 using std::cout;
@@ -1062,6 +1064,8 @@ void GKMeansSparse::cluster(GSparseMatrix* pData)
 	memset(m_pClusters, 0xff, sizeof(size_t) * pData->rows());
 	double bestSim = -1e300;
 	size_t patience = 16;
+	std::vector<double> rowSim(pData->rows()); // each row's similarity to its centre
+	std::vector<size_t> members(m_nClusters);
 	while(true)
 	{
 		// Determine the cluster of each point
@@ -1087,6 +1091,33 @@ void GKMeansSparse::cluster(GSparseMatrix* pData)
 				somethingChanged = true;
 			pClust++;
 			sumSim += maxSimilarity;
+			rowSim[i] = maxSimilarity;
+		}
+
+		// SAKBox: restart any cluster left with no rows (its centre would
+		// never move again) from the row of the largest cluster that fits its
+		// centre worst. Empty clusters come from starting centres that point
+		// the same way, which cosine similarity can't tell apart.
+		std::fill(members.begin(), members.end(), 0);
+		for(size_t i = 0; i < pData->rows(); i++)
+			members[m_pClusters[i]]++;
+		for(size_t j = 0; j < m_nClusters; j++)
+		{
+			if(members[j] > 0)
+				continue;
+			size_t largest = std::max_element(members.begin(), members.end()) - members.begin();
+			if(members[largest] < 2)
+				break; // fewer rows than clusters
+			size_t worst = INVALID_INDEX;
+			for(size_t i = 0; i < pData->rows(); i++)
+			{
+				if(m_pClusters[i] == largest && (worst == INVALID_INDEX || rowSim[i] < rowSim[worst]))
+					worst = i;
+			}
+			m_pClusters[worst] = j;
+			members[largest]--;
+			members[j]++;
+			somethingChanged = true;
 		}
 		if(!somethingChanged)
 			break;
@@ -1105,11 +1136,14 @@ void GKMeansSparse::cluster(GSparseMatrix* pData)
 		for(size_t j = 0; j < m_nClusters; j++)
 		{
 			memset(pCounts, '\0', sizeof(size_t) * pData->cols());
-			size_t* pClusts = m_pClusters;
 			GVec& mean = means.row(j);
 			for(size_t i = 0; i < pData->rows(); i++)
 			{
-				if(*pClusts != j)
+				// SAKBox: was a pointer into m_pClusters that only moved on for
+				// rows in cluster j, so after the first row of another cluster
+				// every row was judged by that row's cluster, and only the
+				// cluster of the first row was ever recomputed
+				if(m_pClusters[i] != j)
 					continue;
 
 				// Update only the mean of the elements that this row specifies
@@ -1122,7 +1156,6 @@ void GKMeansSparse::cluster(GSparseMatrix* pData)
 					mean[it->first] += (1.0 / (pCounts[it->first] + 1) * it->second);
 					pCounts[it->first]++;
 				}
-				pClusts++;
 			}
 		}
 	}
