@@ -97,7 +97,7 @@ python3 tools/clang_tidy/run.py --fix projects/cyclone   # apply clang-tidy's fi
 python3 tools/clang_tidy/run.py --checks='-*,modernize-use-nullptr' --fix   # one check only
 ```
 
-It skips `projects/examples/png/src/pngtest.cpp` (libpng's own test program, kept as published). It prints each finding once (a header's findings aren't repeated per file that includes it), then a count per check, and exits 1 if there are any. It finds clang-tidy on your `PATH`, in Homebrew's LLVM, or at `$CLANG_TIDY`. Its findings are advice, not part of the build: review fixes before committing them, and rebuild and test afterwards.
+It skips `projects/examples/png/src/pngtest.cpp` (libpng's own test program, kept as published). It prints each finding once (a header's findings aren't repeated per file that includes it), then a count per check, and exits 1 if there are any. It finds clang-tidy on your `PATH`, in Homebrew's LLVM, or at `$CLANG_TIDY`. If a header can't be found, it stops and asks you to rebuild instead of listing findings: Bazel removes a dependency's headers from its output when a later build doesn't need them, and a file analysed without its headers gives wrong findings. Rebuild what you're checking (`bazel build //...`, or one project's targets) and run it again. Its findings are advice, not part of the build: review fixes before committing them, and rebuild and test afterwards.
 
 ### Checking each commit
 
@@ -111,7 +111,7 @@ Then each `git commit` checks the staged C++ files (in the projects the runner c
 
 - It checks the files as they are on disk, so stage everything you mean to commit.
 - `git commit --no-verify` skips it for one commit.
-- Without clang-tidy installed or a `compile_commands.json`, it says so and lets the commit through. A new source file isn't in `compile_commands.json` until you rerun `tools/compile_commands/refresh.py`; the hook tells you when it skips one.
+- Without clang-tidy installed or a `compile_commands.json`, or with a stale build (headers missing), it says so and lets the commit through. A new source file isn't in `compile_commands.json` until you rerun `tools/compile_commands/refresh.py`; the hook tells you when it skips one.
 
 ## Platform Notes
 

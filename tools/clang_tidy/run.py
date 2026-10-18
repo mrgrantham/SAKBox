@@ -11,7 +11,8 @@ Usage (from anywhere in the repo):
 Needs clang-tidy (not part of Xcode: `brew install llvm` on macOS) and a
 current compile_commands.json (`python3 tools/compile_commands/refresh.py`).
 Prints each finding once, with its path in the repo, then a count per
-check. Exits 1 if there are findings. tools/git_hooks/pre-commit uses this
+check. Exits 1 if there are findings. If a header can't be found (a stale
+build), it says so and stops instead, since the results would be wrong. tools/git_hooks/pre-commit uses this
 file's functions to check the files being committed.
 """
 
@@ -112,6 +113,21 @@ def tidy(file_regex, fix=False, checks=None, jobs=None):
     return sorted(findings), result
 
 
+def missing_headers(findings):
+    """The "file not found" errors among the findings. They mean the build is
+    stale rather than the code wrong: Bazel removes a dependency's headers
+    from its output tree when a later build doesn't need them, and a file
+    whose includes are missing is only partly analysed, so the other
+    findings can't be trusted either."""
+    return [f for f in findings if f[2] == "error" and "file not found" in f[3]]
+
+
+STALE_BUILD_ADVICE = ("Some headers are missing, so the build outputs are probably stale "
+                      "(Bazel drops a dependency's headers when a later build doesn't need "
+                      "them) and these results can't be trusted. Rebuild what you're "
+                      "checking, e.g. bazel build //..., and run again.")
+
+
 def print_findings(findings, fixed=False):
     for path, line, kind, message, check in findings:
         print(f"{path}:{line}: {kind}: {message} [{check}]")
@@ -133,6 +149,11 @@ def main():
         sys.exit("No compile_commands.json: run python3 tools/compile_commands/refresh.py first.")
 
     findings, result = tidy(source_regex(args.paths or DEFAULT_PATHS), args.fix, args.checks, args.j)
+    missing = missing_headers(findings)
+    if missing:
+        for path, line, kind, message, check in missing:
+            print(f"{path}:{line}: {kind}: {message} [{check}]", file=sys.stderr)
+        sys.exit(STALE_BUILD_ADVICE)
     print_findings(findings, args.fix)
     if not findings and result.returncode != 0:
         # No findings but a failure: clang-tidy itself didn't run properly

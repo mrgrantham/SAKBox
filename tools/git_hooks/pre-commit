@@ -12,7 +12,8 @@ those files. A staged header is checked through its project's source files
 
 It checks the files as they are in the working tree, so stage everything
 you mean to commit. If clang-tidy isn't installed or there's no
-compile_commands.json, it says so and lets the commit through.
+compile_commands.json, or the build is stale (headers missing), it says
+so and lets the commit through.
 """
 
 import importlib.util
@@ -76,6 +77,9 @@ def main():
         return 0
 
     findings, result = run.tidy(run.source_regex(sorted(targets)))
+    if run.missing_headers(findings):
+        note(run.STALE_BUILD_ADVICE + " Not checking this commit.")
+        return 0
     mine = [f for f in findings if f[0] in files]
     if not mine and result.returncode != 0 and not findings:
         note("clang-tidy didn't run properly, so not blocking:\n" + result.stderr[-1500:])
