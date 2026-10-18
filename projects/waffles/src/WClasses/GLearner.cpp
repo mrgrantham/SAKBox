@@ -1469,7 +1469,9 @@ void GAutoFilter::setupDataDependentFilters(GSupervisedLearner* pLearner, const 
 				dataMin = std::min(labels.columnMin(i), dataMin);
 				dataMax = std::max(labels.columnMax(i), dataMax);
 			}
-			if(hasNominalLabels && !canImplicitlyHandleNominalLabels())
+			// SAKBox: asked this filter (which handles anything) instead of the
+			// learner, so it never ran
+			if(hasNominalLabels && !pLearner->canImplicitlyHandleNominalLabels())
 			{
 				supportedMin = std::min(0.0, supportedMin);
 				supportedMax = std::max(1.0, supportedMax);
@@ -1496,7 +1498,9 @@ void GAutoFilter::setupDataDependentFilters(GSupervisedLearner* pLearner, const 
 				dataMin = std::min(features.columnMin(i), dataMin);
 				dataMax = std::max(features.columnMax(i), dataMax);
 			}
-			if(hasNominalLabels && !canImplicitlyHandleNominalLabels())
+			// SAKBox: asked this filter instead of the learner (so it never ran), and
+			// about labels: nominal features are what get one-hot coded here
+			if(hasNominalFeatures && !pLearner->canImplicitlyHandleNominalFeatures())
 			{
 				supportedMin = std::min(0.0, supportedMin);
 				supportedMax = std::max(1.0, supportedMax);
@@ -1514,7 +1518,7 @@ void GAutoFilter::setupBasicFilters(GSupervisedLearner* pLearner, bool hasNomina
 	// Nomcat labels if necessary
 	if(hasNominalLabels && !pLearner->canImplicitlyHandleNominalLabels())
 	{
-		if(!canImplicitlyHandleContinuousLabels())
+		if(!pLearner->canImplicitlyHandleContinuousLabels()) // SAKBox: asked this filter, so never threw
 			throw Ex("Expected a learner that can handle either nominal or continuous labels");
 		m_pLearner = new GLabelFilter(m_pLearner, new GNominalToCat(16));
 	}
@@ -1522,7 +1526,7 @@ void GAutoFilter::setupBasicFilters(GSupervisedLearner* pLearner, bool hasNomina
 	// Nomcat features if necessary
 	if(hasNominalFeatures && !pLearner->canImplicitlyHandleNominalFeatures())
 	{
-		if(!canImplicitlyHandleContinuousFeatures())
+		if(!pLearner->canImplicitlyHandleContinuousFeatures()) // SAKBox: asked this filter, so never threw
 			throw Ex("Expected a learner that can handle either nominal or continuous features");
 		m_pLearner = new GFeatureFilter(m_pLearner, new GNominalToCat(16));
 	}
@@ -1530,7 +1534,7 @@ void GAutoFilter::setupBasicFilters(GSupervisedLearner* pLearner, bool hasNomina
 	// Discretize labels if necessary
 	if(hasContinuousLabels && !pLearner->canImplicitlyHandleContinuousLabels())
 	{
-		if(!canImplicitlyHandleNominalLabels())
+		if(!pLearner->canImplicitlyHandleNominalLabels()) // SAKBox: asked this filter, so never threw
 			throw Ex("Expected a learner that can handle either nominal or continuous labels");
 		m_pLearner = new GLabelFilter(m_pLearner, new GDiscretize());
 	}
@@ -1538,7 +1542,7 @@ void GAutoFilter::setupBasicFilters(GSupervisedLearner* pLearner, bool hasNomina
 	// Discretize features if necessary
 	if(hasContinuousFeatures && !pLearner->canImplicitlyHandleContinuousFeatures())
 	{
-		if(!canImplicitlyHandleNominalFeatures())
+		if(!pLearner->canImplicitlyHandleNominalFeatures()) // SAKBox: asked this filter, so never threw
 			throw Ex("Expected a learner that can handle either nominal or continuous features");
 		m_pLearner = new GFeatureFilter(m_pLearner, new GDiscretize());
 	}

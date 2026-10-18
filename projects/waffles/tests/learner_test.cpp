@@ -5,6 +5,8 @@
 #include <WClasses/GLearner.h>
 #include <WClasses/GMatrix.h>
 
+#include <vector>
+
 using namespace GClasses;
 
 namespace {
@@ -73,4 +75,82 @@ TEST(AutoFilterTest, RescalesValuesUsingLittleOfTheRange) {
   EXPECT_DOUBLE_EQ(c.featureMax, 1.0);
   EXPECT_DOUBLE_EQ(c.labelMin, -1.0);
   EXPECT_DOUBLE_EQ(c.labelMax, 1.0);
+}
+
+// GAutoFilter asked itself (a filter, which handles anything) instead of
+// the learner whether nominal values were a problem, so these rules never
+// ran, and the features' rule checked the labels.
+namespace {
+// Wants features and labels in [2, 3] and can't take nominal values
+// (nominal ones are one-hot coded to 0 and 1 for it)
+struct NeedsTwoToThree : RangeRecorder {
+  bool canImplicitlyHandleNominalFeatures() override { return false; }
+  bool canImplicitlyHandleNominalLabels() override { return false; }
+  bool supportedFeatureRange(double *pMin, double *pMax) override {
+    *pMin = 2.0;
+    *pMax = 3.0;
+    return false;
+  }
+  bool supportedLabelRange(double *pMin, double *pMax) override {
+    *pMin = 2.0;
+    *pMax = 3.0;
+    return false;
+  }
+};
+} // namespace
+
+// Numbers in [2.4, 2.6] use under a quarter of [2, 3], so they're spread
+// out; with nominal values beside them, the range is widened to take in
+// their one-hot 0 and 1 too, giving [0, 3].
+TEST(AutoFilterTest, RangeTakesInOneHotValues) {
+  for (bool nominalFeature : {false, true}) {
+    for (bool nominalLabel : {false, true}) {
+      SCOPED_TRACE(testing::Message() << "nominal feature " << nominalFeature
+                                      << ", nominal label " << nominalLabel);
+      std::vector<size_t> f = {0}, l = {0};
+      if (nominalFeature)
+        f.push_back(3);
+      if (nominalLabel)
+        l.push_back(3);
+      GMatrix features(f), labels(l);
+      for (size_t i = 0; i < 3; i++) {
+        GVec &fr = features.newRow();
+        GVec &lr = labels.newRow();
+        fr[0] = lr[0] = 2.4 + 0.1 * i;
+        if (nominalFeature)
+          fr[1] = (double)i;
+        if (nominalLabel)
+          lr[1] = (double)i;
+      }
+      NeedsTwoToThree rec;
+      GAutoFilter af(&rec, false);
+      af.train(features, labels);
+      EXPECT_DOUBLE_EQ(rec.featureMin, nominalFeature ? 0.0 : 2.0);
+      EXPECT_DOUBLE_EQ(rec.featureMax, 3.0);
+      EXPECT_DOUBLE_EQ(rec.labelMin, nominalLabel ? 0.0 : 2.0);
+      EXPECT_DOUBLE_EQ(rec.labelMax, 3.0);
+    }
+  }
+}
+
+namespace {
+// Can't take labels of either kind
+struct NoLabelsAtAll : RangeRecorder {
+  bool canImplicitlyHandleNominalLabels() override { return false; }
+  bool canImplicitlyHandleContinuousLabels() override { return false; }
+};
+} // namespace
+
+// A learner that can take neither kind of label is an error (it used to
+// pass the check, since the filter answered for it)
+TEST(AutoFilterTest, LearnerMustTakeSomeKindOfLabel) {
+  std::vector<size_t> category = {3};
+  GMatrix features(3, 1), labels(category);
+  for (size_t i = 0; i < 3; i++) {
+    features[i][0] = (double)i;
+    labels.newRow()[0] = (double)i;
+  }
+  NoLabelsAtAll rec;
+  GAutoFilter af(&rec, false);
+  EXPECT_THROW(af.train(features, labels), std::exception);
 }
