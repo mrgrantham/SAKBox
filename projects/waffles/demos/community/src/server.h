@@ -46,7 +46,7 @@ public:
 	std::string m_toolsPath;
 
 	Server(int port, GRand* pRand);
-	virtual ~Server();
+	~Server() override;
 	NeuralRecommender& recommender() { return m_recommender; }
 	GJsonAsADatabase& jaad() { return *m_pJaad; }
 	void saveState();
@@ -65,8 +65,8 @@ public:
 	bool onRenameAccount(const char* szOldName, const char* szNewName);
 	GDomNode* serializeState(GDom* pDoc);
 	void deserializeState(const GDomNode* pNode);
-	virtual GDynamicPageSessionExtension* deserializeSessionExtension(const GDomNode* pNode);
-	virtual GDynamicPageConnection* makeConnection(SOCKET sock);
+	GDynamicPageSessionExtension* deserializeSessionExtension(const GDomNode* pNode) override;
+	GDynamicPageConnection* makeConnection(SOCKET sock) override;
 	std::string& cache(const char* szFilename);
 	static void getLocalStorageFolder(char* buf);
 
@@ -245,7 +245,7 @@ public:
 			throw Ex("Mismatching sizes");
 	}
 
-	virtual ~Terminal()
+	~Terminal() override
 	{
 		for(size_t i = 0; i < m_accounts.size(); i++)
 			delete(m_accounts[i]);
@@ -253,11 +253,11 @@ public:
 
 	/// Called when the sessions are destroyed, or a new GDynamicPageSessionExtension is
 	/// explicitly associated with this cookie.
-	virtual void onDisown()
+	void onDisown() override
 	{
 	}
 
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = pDoc->newObj();
 		pObj->add(pDoc, "loggedin", m_currentAccount);
@@ -380,11 +380,11 @@ public:
 	{
 	}
 
-	virtual ~Connection()
+	~Connection() override
 	{
 	}
 
-	virtual void handleRequest(GDynamicPageSession* pSession, std::ostream& response);
+	void handleRequest(GDynamicPageSession* pSession, std::ostream& response) override;
 	void handleAjax(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
 	void handleTools(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
 	bool is_admin(Terminal* pTerminal, const char** ppParamsMessage);

@@ -62,7 +62,7 @@ void Forum::format_comment_recursive(Server* pServer, Account* pAccount, GDomNod
 			for(size_t i = 0; i < pReplies->size(); i++)
 			{
 				string child_id = my_id;
-				child_id += "_";
+				child_id += '_';
 				child_id += to_str(i);
 				bool child_allow_direct_replies = true;
 				if(i == pReplies->size() - 1)

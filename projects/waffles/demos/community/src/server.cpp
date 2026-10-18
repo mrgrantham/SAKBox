@@ -487,9 +487,9 @@ const char* g_auto_name_3[] =
 std::string Terminal::generateUsername(GRand& rand)
 {
 	std::string s = g_auto_name_1[rand.next(AUTO_NAME_1_COUNT)];
-	s += "_";
+	s += '_';
 	s += g_auto_name_2[rand.next(AUTO_NAME_2_COUNT)];
-	s += "_";
+	s += '_';
 	s += g_auto_name_3[rand.next(AUTO_NAME_3_COUNT)];
 	return s;
 }

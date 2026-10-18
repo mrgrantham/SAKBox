@@ -26,6 +26,7 @@
 #include <map>
 #include <cmath>
 #include <algorithm>
+#include <utility>
 #include "server.h"
 
 
@@ -40,7 +41,7 @@ using std::pair;
 
 
 User::User(string username, GRand& rand)
-: m_username(username)
+: m_username(std::move(username))
 {
 	m_personality.resize(USER_PROFILE_SIZE);
 	for(size_t i = 0; i < USER_PROFILE_SIZE; i++)
@@ -94,8 +95,6 @@ GDomNode* User::toDom(GDom* pDoc)
 		pPersonality->add(pDoc, m_personality[i]);
 
 	// Serialize the ratings
-	size_t count = 0;
-	count += 2 * m_map.size();
 	GDomNode* pRatings = pUser->add(pDoc, "ratings", pDoc->newList());
 	for(std::map<size_t, float>::iterator it = m_map.begin(); it != m_map.end(); it++)
 	{
@@ -448,7 +447,7 @@ void NeuralRecommender::addUser(User* pUser)
 
 void NeuralRecommender::addItem(const char* szLeft, const char* szRight, const char* szUsername)
 {
-	m_items.push_back(new Item(szLeft, szRight, szUsername, time(NULL), &rand));
+	m_items.push_back(new Item(szLeft, szRight, szUsername, time(nullptr), &rand));
 }
 
 Item& NeuralRecommender::item(size_t id)
@@ -574,7 +573,7 @@ void Submit::pageSurvey(Server* pServer, GDynamicPageSession* pSession, ostream&
 #ifdef WINDOWS
 					size_t itemId = (size_t)_strtoui64(szName + 12, NULL, 10);
 #else
-					size_t itemId = (size_t)strtoull(szName + 12, NULL, 10);
+					size_t itemId = (size_t)strtoull(szName + 12, nullptr, 10);
 #endif
 					checks.insert(itemId);
 				}
@@ -589,7 +588,7 @@ void Submit::pageSurvey(Server* pServer, GDynamicPageSession* pSession, ostream&
 #ifdef WINDOWS
 					size_t itemId = (size_t)_strtoui64(szName + 6, NULL, 10);
 #else
-					size_t itemId = (size_t)strtoull(szName + 6, NULL, 10);
+					size_t itemId = (size_t)strtoull(szName + 6, nullptr, 10);
 #endif
 					set<size_t>::iterator tmp = checks.find(itemId);
 					if(tmp != checks.end())
@@ -1136,6 +1135,7 @@ void Submit::pageStats(Server* pServer, GDynamicPageSession* pSession, ostream& 
 
 	// Make a table of items sorted by controversy
 	std::vector<ItemStats*> items;
+	items.reserve(rec.items().size());
 	for(size_t i = 0; i < rec.items().size(); i++)
 		items.push_back(new ItemStats(rec.item(i), i, pAccs, accountCount));
 	std::sort(items.begin(), items.end(), ItemStats::comparer);

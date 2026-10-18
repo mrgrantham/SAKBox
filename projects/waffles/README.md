@@ -10,7 +10,7 @@ It comes from [mikegashler/waffles](https://github.com/mikegashler/waffles). Thi
 | --- | --- |
 | `//projects/waffles:WClasses` | The library. Include `<WClasses/...>`; the namespace is still `GClasses`. |
 | `:learn`, `:cluster`, `:dimred`, `:plot`, `:recommend`, `:sparse`, `:transform`, `:audio`, `:wizard` | The command-line tools |
-| `//projects/waffles/demos/...` | Demos built with Bazel: `chess`, `caronhill`, `eigen`, `hello_gui`, `hello_ml` (several learners predicting a pizza's taste and price) and `fourier_net` (the Fourier-initialised network from arXiv:1405.2262, trained on a NASDAQ series; `bazel run //projects/waffles/demos/fourier_net -- --epochs 5`, or no `--epochs` to run until stopped; it writes `fourier.svg` and `progress.svg` where it is run) |
+| `//projects/waffles/demos/...` | Demos built with Bazel: `chess`, `caronhill`, `community` (a multi-user forum and recommender, served on port 8988 to the network, keeping its data in `GJsonAsADatabase` files), `eigen`, `hello_gui`, `hello_ml` (several learners predicting a pizza's taste and price) and `fourier_net` (the Fourier-initialised network from arXiv:1405.2262, trained on a NASDAQ series; `bazel run //projects/waffles/demos/fourier_net -- --epochs 5`, or no `--epochs` to run until stopped; it writes `fourier.svg` and `progress.svg` where it is run) |
 | `:test` | Waffles' own test suite, including its command-line tool tests (the tools are its data deps). It fails if any test fails or, under `bazel test`, if the tools can't be run. |
 | `:app_test`, `:cluster_test`, `:matrix_test`, ... | SAKBox's tests, one per area of the library (see Tests below) |
 

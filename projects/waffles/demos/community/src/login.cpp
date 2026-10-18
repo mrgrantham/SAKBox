@@ -283,7 +283,7 @@ void Login::pageNewAccount(Server* pServer, GDynamicPageSession* pSession, ostre
 	if(pSession->paramsLen() > 0)
 	{
 		// Get the action
-		const char* szError = NULL;
+		const char* szError = nullptr;
 		const char* szAction = params.find("action");
 		if(!szAction)
 			szError = "Expected an action param";

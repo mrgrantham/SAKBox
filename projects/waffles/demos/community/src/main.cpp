@@ -84,7 +84,7 @@ void doit(void* pArg)
 {
 	{
 		int port = 8988;
-		size_t seed = getpid() * (size_t)time(NULL);
+		size_t seed = getpid() * (size_t)time(nullptr);
 		GRand prng(seed);
 		char statePath[300];
 		Server::getLocalStorageFolder(statePath);
@@ -167,7 +167,7 @@ int main(int nArgs, char* pArgs[])
 		if(nArgs > 1 && strcmp(pArgs[1], "daemon") == 0)
 			doItAsDaemon();
 		else
-			doit(NULL);
+			doit(nullptr);
 		nRet = 0;
 	}
 	catch(std::exception& e)
