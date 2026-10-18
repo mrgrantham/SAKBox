@@ -884,8 +884,14 @@ unsigned int GArgReader::pop_uint()
 
 double GArgReader::pop_double()
 {
+	// SAKBox: reject anything that isn't a number (atof turned "abc" into 0),
+	// as pop_uint does
 	const char* str = pop_string();
-	return atof(str);
+	char* end = nullptr;
+	double value = strtod(str, &end);
+	if(end == str || *end != '\0')
+		throw Ex("Expected a number for parameter ", to_str(m_argPos), ". (Got \"", str, "\".)");
+	return value;
 }
 
 bool GArgReader::if_pop(const char* flagName)

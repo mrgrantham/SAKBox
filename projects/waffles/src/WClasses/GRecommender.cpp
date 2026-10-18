@@ -541,7 +541,7 @@ double GInstanceRecommender::predict(size_t user, size_t item)
 				double similarity = m_pMetric->similarity(m_pData->row(user), m_pData->row(neigh));
 
 				if(count < m_significanceWeight)
-						similarity *= count / m_significanceWeight;
+						similarity *= (double)count / m_significanceWeight; // SAKBox: was integer division (always 0 here)
 
 				// If the queue is overfull, drop the worst item
 				depq.insert(std::make_pair(similarity, neigh));
@@ -590,7 +590,7 @@ multimap<double,ArrayWrapper> GInstanceRecommender::getNeighbors(size_t user, si
 			double similarity = m_pMetric->similarity(m_pData->row(user), m_pData->row(neigh));
 
 			if(count < m_significanceWeight)
-				similarity *= count / m_significanceWeight;
+				similarity *= (double)count / m_significanceWeight; // SAKBox: was integer division (always 0 here)
 
 			// If the queue is overfull, drop the worst item
 			ArrayWrapper temp = {{neigh, count}};
@@ -621,7 +621,7 @@ void GInstanceRecommender::impute(GVec& vec, size_t dims)
 		double similarity = m_pMetric->similarity(m_pData->row(neigh), vec);
 
 		if(count < m_significanceWeight)
-			similarity *= count / m_significanceWeight;
+			similarity *= (double)count / m_significanceWeight; // SAKBox: was integer division (always 0 here)
 
 		// If the queue is overfull, drop the worst item
 		depq.insert(std::make_pair(similarity, neigh));

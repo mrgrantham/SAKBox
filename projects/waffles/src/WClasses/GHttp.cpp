@@ -695,8 +695,8 @@ bool GWebSocketClient::get(const char* szUrl)
 	s += "Connection: Upgrade\r\n";
 	s += "Host: ";
 	s += szHost;
-	s += ":";
-	s += nPort;
+	s += ':';
+	s += to_str(nPort); // SAKBox: += nPort appended a single character with that code
 	s += "\r\nOrigin: null\r\n\r\n";
 	m_pSocket->send(s.c_str(), s.length());
 
@@ -789,7 +789,7 @@ GHttpServer::GHttpServer(int nPort)
 	m_pReceiveBuf = new char[2048];
 	m_pSocket = new GHttpServerSocket(nPort, this);
 	if(!m_pSocket)
-		throw("failed to open port");
+		throw Ex("failed to open port"); // SAKBox: was a bare string, which catch (std::exception&) misses
 }
 
 GHttpServer::~GHttpServer()

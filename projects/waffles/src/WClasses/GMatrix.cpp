@@ -942,6 +942,10 @@ GMatrix::GMatrix(const GMatrix& orig, size_t rowStart, size_t colStart, size_t r
 
 GMatrix& GMatrix::operator=(const GMatrix& orig)
 {
+	// SAKBox: copy() empties this matrix first, so m = m lost its data (copy
+	// only asserts this != &that, in debug builds)
+	if(this == &orig)
+		return *this;
 	copy(orig);
 	return *this;
 }

@@ -573,13 +573,13 @@ size_t GSparseNeighborFinder::findNearest(size_t k, size_t index)
 // virtual
 size_t GSparseNeighborFinder::findWithinRadius(double squaredRadius, const GVec& vec)
 {
-	throw new Ex("Sorry, not implemented yet");
+	throw Ex("Sorry, not implemented yet"); // SAKBox: was throw new, which catch (std::exception&) misses (and leaks)
 }
 
 // virtual
 size_t GSparseNeighborFinder::findWithinRadius(double squaredRadius, size_t index)
 {
-	throw new Ex("Sorry, not implemented yet");
+	throw Ex("Sorry, not implemented yet"); // SAKBox: was throw new, which catch (std::exception&) misses (and leaks)
 }
 
 // --------------------------------------------------------------------------------

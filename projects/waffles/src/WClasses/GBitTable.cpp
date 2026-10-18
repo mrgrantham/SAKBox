@@ -42,6 +42,9 @@ GBitTable::GBitTable(const GBitTable&o)
 
 GBitTable& GBitTable::operator=(const GBitTable& o)
 {
+	// SAKBox: t = t freed the bits and then copied from the freed memory
+	if(this == &o)
+		return *this;
 	delete[] m_pBits;
 	m_size = o.m_size;
 	m_pBits = new size_t[m_size];

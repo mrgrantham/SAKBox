@@ -132,4 +132,14 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "regression_test",
+    size = "small",
+    srcs = ["tests/regression_test.cpp"],
+    deps = [
+        ":WClasses",
+        "@gtest//:gtest_main",
+    ],
+)
+
 clang_format(name = "waffles")

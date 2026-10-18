@@ -1116,7 +1116,9 @@ void GKMeansSparse::cluster(GSparseMatrix* pData)
 				GSparseMatrix::Iter it;
 				for(it = pData->rowBegin(i); it != pData->rowEnd(i); it++)
 				{
-					mean[it->first] *= (pCounts[it->first] / (pCounts[it->first] + 1));
+					// SAKBox: real division; with integers count / (count + 1)
+					// was always 0, so each step wiped the running mean
+					mean[it->first] *= ((double)pCounts[it->first] / (pCounts[it->first] + 1));
 					mean[it->first] += (1.0 / (pCounts[it->first] + 1) * it->second);
 					pCounts[it->first]++;
 				}

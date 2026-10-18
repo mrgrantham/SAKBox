@@ -2326,7 +2326,7 @@ void GRayTraceSphere::drawWireFrame(GCamera* pCamera, GImage* pImage)
 // virtual
 void GRayTraceSphere::center(G3DVector* pOutPoint)
 {
-	memcpy((void*)pOutPoint, &m_center, sizeof(G3DVector));
+	*pOutPoint = m_center; // SAKBox: was memcpy, undefined for a class with its own operator=
 }
 
 // -----------------------------------------------------------------------------

@@ -80,7 +80,7 @@ SDL_Window *sdlWindow = SDL_CreateWindow("Car On Hill",
 if(!sdlWindow)
 	{
 		// SDL_GetError();
-		throw "failed to create SDL screen";
+		throw GClasses::Ex("failed to create SDL screen"); // SAKBox: was a bare string
 	}
 	return sdlWindow;
 }
