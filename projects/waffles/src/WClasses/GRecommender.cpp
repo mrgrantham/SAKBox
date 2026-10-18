@@ -841,7 +841,11 @@ void GDenseClusterRecommender::train(GMatrix& data)
 	m_users = users;
 	m_items = items;
 	{
+		// SAKBox: GMatrix doesn't clear new rows, so the ratings a user hadn't
+		// given were whatever was in memory; mark them unknown instead (the
+		// fuzzy k-means and its distance skip unknown values)
 		GMatrix dense(users, items);
+		dense.fill(UNKNOWN_REAL_VALUE);
 		for(size_t i = 0; i < data.rows(); i++)
 		{
 			GVec& vec = data.row(i);
@@ -900,7 +904,8 @@ GDomNode* GDenseClusterRecommender::serialize(GDom* pDoc) const
 void GDenseClusterRecommender::test()
 {
 	GDenseClusterRecommender rec(6);
-	rec.basicTest(0.0);
+	// SAKBox: was 0.0, a placeholder (and this test wasn't run); measured 0.338
+	rec.basicTest(0.40);
 }
 
 
