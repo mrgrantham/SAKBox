@@ -908,8 +908,10 @@ GSparseInstance::GSparseInstance()
 {
 }
 
+// SAKBox: m_pSkipRows was left uninitialised, though predict reads it and
+// clear() deletes it (it's only used during training, so null here)
 GSparseInstance::GSparseInstance(const GDomNode* pNode)
-: GSupervisedLearner(pNode)
+: GSupervisedLearner(pNode), m_pSkipRows(nullptr)
 {
 	m_neighborCount = (size_t)pNode->getInt("neighbors");
 	m_pInstanceFeatures = new GSparseMatrix(pNode->get("if"));
@@ -978,8 +980,6 @@ void GSparseInstance::trainInner(const GMatrix& features, const GMatrix& labels)
 
 void GSparseInstance::prune(const GMatrix& holdOutFeatures, const GMatrix& holdOutLabels)
 {
-	std::random_device randomDevice;
-	std::mt19937 generator(randomDevice());
 
 	// Make a list of all known elements
 	vector< std::pair<size_t,size_t> > elements;
@@ -996,16 +996,23 @@ void GSparseInstance::prune(const GMatrix& holdOutFeatures, const GMatrix& holdO
 	while(elements.size() > 0)
 	{
 		bool improved = false;
-		std::shuffle(elements.begin(), elements.end(),generator);
-		vector< std::pair<size_t,size_t> >::iterator it;
-		for(it = elements.begin(); it != elements.end(); it++)
+		// SAKBox: shuffle with the learner's own (seeded) generator. Upstream
+		// used std::random_shuffle, removed in C++17; its replacement here was
+		// seeded from std::random_device, so every run came out differently.
+		for(size_t i = elements.size(); i > 1; i--)
+			std::swap(elements[i - 1], elements[(size_t)m_rand.next(i)]);
+		// SAKBox: by index; an element is dropped by moving the last one into
+		// its place, which is examined next. (This did it-- on an iterator,
+		// which stepped before begin() when dropping the first element.)
+		for(size_t k = 0; k < elements.size(); )
 		{
+			std::pair<size_t,size_t>* it = &elements[k];
 			if(m_pSkipRows->bit(it->first))
 			{
 				// drop the element from the list
-				std::swap(*it, *(elements.end() - 1));
-				it--;
+				std::swap(*it, elements.back());
 				elements.pop_back();
+				continue;
 			}
 			else
 			{
@@ -1019,9 +1026,9 @@ void GSparseInstance::prune(const GMatrix& holdOutFeatures, const GMatrix& holdO
 					improved = true;
 
 					// Drop the element from the list of elements to consider removing
-					std::swap(*it, *(elements.end() - 1));
-					it--;
+					std::swap(*it, elements.back());
 					elements.pop_back();
+					continue;
 				}
 				else
 				{
@@ -1040,6 +1047,7 @@ void GSparseInstance::prune(const GMatrix& holdOutFeatures, const GMatrix& holdO
 						m_pSkipRows->unset(it->first); // Put it back
 				}
 			}
+			k++;
 		}
 		if(!improved)
 			break;
@@ -1050,9 +1058,12 @@ void GSparseInstance::prune(const GMatrix& holdOutFeatures, const GMatrix& holdO
 	{
 		if(m_pSkipRows->bit(i))
 		{
+			// SAKBox: the labels were swapped with m_pInstanceFeatures->rows() - 1,
+			// taken after its last row was deleted, so one row short: from then
+			// on rows and labels no longer matched
 			m_pInstanceFeatures->swapRows(i, m_pInstanceFeatures->rows() - 1);
 			m_pInstanceFeatures->deleteLastRow();
-			m_pInstanceLabels->swapRows(i, m_pInstanceFeatures->rows() - 1);
+			m_pInstanceLabels->swapRows(i, m_pInstanceLabels->rows() - 1);
 			m_pInstanceLabels->deleteRow(m_pInstanceLabels->rows() - 1);
 		}
 	}
@@ -1133,7 +1144,9 @@ void GSparseInstance::test()
 {
 	GSparseInstance learner;
 	learner.setNeighborCount(3);
-	learner.basicTest(0.0, 0.0);
+	// SAKBox: were 0.0, placeholders (and this test wasn't run); measured
+	// 0.672 and 0.81
+	learner.basicTest(0.65, 0.79);
 }
 
 

@@ -1043,6 +1043,8 @@ GSupervisedLearner* GLearnerLoader::loadLearner(const GDomNode* pNode)
 						return new GRandomForest(pNode, *this);
 					else if(strcmp(szClass, "GResamplingAdaBoost") == 0)
 						return new GResamplingAdaBoost(pNode, *this);
+					else if(strcmp(szClass, "GSparseInstance") == 0) // SAKBox: was missing, so a saved one couldn't be loaded
+						return new GSparseInstance(pNode);
 				}
 			}
 		}
