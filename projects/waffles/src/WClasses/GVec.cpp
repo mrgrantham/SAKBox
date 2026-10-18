@@ -1624,7 +1624,7 @@ void GTensor::parseArff(GTokenizer& tok)
 	shape[1] = colCount;
 	pHolder = new GVec(data_buf.size());
 	setData(*pHolder);
-	for(size_t i = 0; i < data_buf.size(); i++)
+	for(size_t i = 0; !data_buf.empty(); i++)
 	{
 		(*this)[i] = data_buf.front();
 		data_buf.pop();
