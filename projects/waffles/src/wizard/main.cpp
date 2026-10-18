@@ -235,9 +235,8 @@ public:
 		{
 			if(*szVal == '.')
 				periods++;
-			else if(*szVal >= 'a' && *szVal <= 'z' && *szVal != 'e')
-				alphas++;
-			else if(*szVal >= 'A' && *szVal <= 'Z' && *szVal != 'e')
+			else if(((*szVal >= 'a' && *szVal <= 'z') || (*szVal >= 'A' && *szVal <= 'Z'))
+				&& *szVal != 'e' && *szVal != 'E') // a letter, but not a number's exponent (SAKBox: upper case checked 'e', so 1.5E3 looked like a filename)
 				alphas++;
 			szVal++;
 		}
