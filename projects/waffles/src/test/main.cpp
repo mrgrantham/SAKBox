@@ -47,6 +47,7 @@
 #include "WClasses/GError.h"
 #include "WClasses/GFile.h"
 #include "WClasses/GFourier.h"
+#include "WClasses/GFunction.h"
 #include "WClasses/GGaussianProcess.h"
 #include "WClasses/GGraph.h"
 #include "WClasses/GHashTable.h"
@@ -919,12 +920,14 @@ public:
 		runTest("GCrypto", GCrypto::test);
 		runTest("GCycleCut", GCycleCut::test);
 		runTest("GDecisionTree", GDecisionTree::test);
+		runTest("GDenseClusterRecommender", GDenseClusterRecommender::test);
 		runTest("GDijkstra", GDijkstra::test);
 		runTest("GDistanceMetric", GDistanceMetric::test);
 		runTest("GDom", GDom::test);
 		runTest("GError.h - to_str", test_to_str);
 		runTest("GFloydWarshall", GFloydWarshall::test);
 		runTest("GFourier", GFourier::test);
+		runTest("GFunctionParser", GFunctionParser::test);
 		runTest("GGaussianProcess", GGaussianProcess::test);
 		runTest("GGraphCut", GGraphCut::test);
 		runTest("GHashTable", GHashTable::test);
@@ -967,6 +970,7 @@ public:
 		runTest("GShortcutPruner", GShortcutPruner::test);
 		runTest("GSimplePriorityQueue", GSimplePriorityQueue_test);
 		runTest("GSparseClusterRecommender", GSparseClusterRecommender::test);
+		runTest("GSparseInstance", GSparseInstance::test);
 		runTest("GSparseMatrix", GSparseMatrix::test);
 		runTest("GSpinLock", GSpinLock::test);
 		runTest("GSubImageFinder", GSubImageFinder::test);
