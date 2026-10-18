@@ -5,7 +5,7 @@ Turn it on once per clone:   git config core.hooksPath tools/git_hooks
 Skip it for one commit:      git commit --no-verify
 
 It checks the staged C++ files under the projects tools/clang_tidy/run.py
-covers (not Waffles or upstream code it excludes), with the repo's
+covers (not upstream code it excludes), with the repo's
 .clang-tidy, and blocks the commit only if clang-tidy finds something in
 those files. A staged header is checked through its project's source files
 (clang-tidy sees headers only as part of the files that include them).

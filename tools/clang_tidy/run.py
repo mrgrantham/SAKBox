@@ -2,7 +2,7 @@
 """Runs clang-tidy over the repo's own code, with the checks in .clang-tidy.
 
 Usage (from anywhere in the repo):
-  python3 tools/clang_tidy/run.py                 # everything except Waffles
+  python3 tools/clang_tidy/run.py                 # all the repo's own code
   python3 tools/clang_tidy/run.py projects/cyclone projects/flexmath/src/x.cpp
   python3 tools/clang_tidy/run.py --fix projects/cyclone   # apply fixes
   python3 tools/clang_tidy/run.py --checks='-*,modernize-use-nullptr' --fix
@@ -26,13 +26,14 @@ import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 
-# Waffles has thousands of findings and isn't converted yet
+# The repo's own code
 DEFAULT_PATHS = [
     "projects/cyclone",
     "projects/data_dep_retriever",
     "projects/examples",
     "projects/flexmath",
     "projects/scratchpadd",
+    "projects/waffles",
 ]
 
 # Upstream code kept as published, checked by its own project, not ours
@@ -122,7 +123,7 @@ def print_findings(findings, fixed=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("paths", nargs="*", help="repo folders or files to check (default: all but Waffles)")
+    parser.add_argument("paths", nargs="*", help="repo folders or files to check (default: all the repo's own code)")
     parser.add_argument("--fix", action="store_true", help="apply clang-tidy's suggested fixes")
     parser.add_argument("--checks", help="checks to run instead of .clang-tidy's (clang-tidy's -checks syntax)")
     parser.add_argument("-j", type=int, default=os.cpu_count(), help="parallel jobs")

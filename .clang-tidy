@@ -44,9 +44,8 @@ Checks: >
   -performance-no-int-to-ptr
 
 # Report problems in the repo's own headers (directly or through Bazel's
-# _virtual_includes), not third-party ones; Waffles isn't converted yet.
+# _virtual_includes), not third-party ones.
 HeaderFilterRegex: 'projects/'
-ExcludeHeaderFilterRegex: 'projects/waffles/|WClasses/'
 
 # Homebrew's clang (newer than Xcode's) calls __COUNTER__, used by Catch2's
 # macros, an extension, which -pedantic-errors makes an error.
