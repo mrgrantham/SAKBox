@@ -193,9 +193,13 @@ void BlobForceGenerator::updateForce(cyclone::Particle *particle,
 
   // If the particle is the head, and we've got a join count, then float it.
   if (particle == particles && joinCount > 0 && maxFloat > 0) {
-    // SAKBox: real division. joinCount / maxFloat divided integers, so one
-    // neighbour gave no lift at all instead of half (the clamp below shows
-    // fractions were intended).
+    // SAKBox: real division, so the lift ramps up to full at maxFloat
+    // particles as maxFloat's comment describes. joinCount / maxFloat
+    // divided integers (in every upstream version), giving no lift at all
+    // below maxFloat. "Joined" means pushing or pulling, not merely near:
+    // at rest the head has none, and while the blob is driven around it has
+    // one about 7% of the time and two or more under 1%, so before this the
+    // head was almost never floated.
     cyclone::real force = cyclone::real(joinCount) / maxFloat * floatHead;
     if (force > floatHead)
       force = floatHead;
