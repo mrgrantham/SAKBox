@@ -222,7 +222,7 @@ public:
     logger().info(
         "Base::repeat() called. Padd set a repeat interval of {}ms with "
         "no method override",
-        repeatInterval_.value().count());
+        repeatInterval_ ? repeatInterval_->count() : 0);
   }
 
   void runIfIndependentThread() {

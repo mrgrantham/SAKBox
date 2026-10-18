@@ -4,8 +4,11 @@
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 
+#include <cstdlib>
 #include <cxxabi.h>
 #include <iostream>
+#include <memory>
+#include <string>
 #include <variant>
 
 // inline std::string className(const std::string &classMethod) {
@@ -38,10 +41,22 @@
 
 // #define __CLASS_NAME__ className(__PRETTY_FUNCTION__)
 
-#define DEMANGLE_TYPEID_NAME(x)                                                \
-  abi::__cxa_demangle(typeid((x)).name(), NULL, NULL, NULL)
+namespace ScratchPadd {
+// The readable name for a mangled type name. abi::__cxa_demangle returns
+// memory from malloc that the caller must free (the old macro leaked it on
+// every call, and name() runs on every message); falls back to the mangled
+// name if demangling fails.
+inline std::string demangle(const char *mangled) {
+  int status = 0;
+  std::unique_ptr<char, void (*)(void *)> name(
+      abi::__cxa_demangle(mangled, nullptr, nullptr, &status), std::free);
+  return status == 0 && name ? std::string(name.get()) : std::string(mangled);
+}
+} // namespace ScratchPadd
 
-std::string TypeName(auto x) { return DEMANGLE_TYPEID_NAME(x); }
+#define DEMANGLE_TYPEID_NAME(x) ::ScratchPadd::demangle(typeid((x)).name())
+
+std::string TypeName(const auto &x) { return DEMANGLE_TYPEID_NAME(x); }
 
 #define __CLASS_NAME__ DEMANGLE_TYPEID_NAME(*this)
 

@@ -242,5 +242,5 @@ bazel run //projects/scratchpadd/basis:clang_format   # format the basis package
 ## Roadmap
 
 1. Let owners push control updates (and add or remove controls) so panels stay current.
-2. Use the cached `name_` everywhere instead of calling `name()` repeatedly.
+2. Use the cached `name_` everywhere instead of calling `name()` repeatedly. Padds built on `__CLASS_NAME__` demangle their class name on every call (it used to leak the demangled string each time too; that's fixed), and `name()` is called for every message sent.
 3. Implement audio.

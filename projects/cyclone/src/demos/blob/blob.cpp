@@ -193,7 +193,10 @@ void BlobForceGenerator::updateForce(cyclone::Particle *particle,
 
   // If the particle is the head, and we've got a join count, then float it.
   if (particle == particles && joinCount > 0 && maxFloat > 0) {
-    cyclone::real force = cyclone::real(joinCount / maxFloat) * floatHead;
+    // SAKBox: real division. joinCount / maxFloat divided integers, so one
+    // neighbour gave no lift at all instead of half (the clamp below shows
+    // fractions were intended).
+    cyclone::real force = cyclone::real(joinCount) / maxFloat * floatHead;
     if (force > floatHead)
       force = floatHead;
     particle->addForce(cyclone::Vector3(0, force, 0));

@@ -12,9 +12,6 @@
 
 #include "timing.h"
 
-// Hold internal timing data for the performance counter.
-static bool qpcFlag;
-
 #if (__APPLE__ || __unix)
 #define TIMING_UNIX 1
 
@@ -31,6 +28,8 @@ typedef unsigned long long LONGLONG;
 #include <mmsystem.h>
 #include <windows.h>
 
+// Hold internal timing data for the performance counter (Windows only).
+static bool qpcFlag;
 static double qpcFrequency;
 #endif
 
@@ -78,7 +77,7 @@ unsigned long TimingData::getClock() {
 // Sets up the timing system and registers the performance timer.
 void initTime() {
 #if TIMING_UNIX
-  qpcFlag = false;
+  // gettimeofday needs no setup
 #else
   LONGLONG time;
 
