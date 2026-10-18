@@ -374,18 +374,15 @@ void GHttpClient::processBody(const unsigned char* szData, size_t nSize)
 
 void GHttpClient::onLoseConnection()
 {
-	if(m_bChunked)
+	if(m_bChunked || m_nContentSize > 0)
 	{
-		if(m_status == Downloading)
-			m_status = Error;
-	}
-	else if(m_nContentSize > 0)
-	{
+		// The body's length was known (chunked, or a Content-Length), so it was cut short
 		if(m_status == Downloading)
 			m_status = Error;
 	}
 	else
 	{
+		// No length was given: the server marks the end of the body by closing the connection
 		if(m_status == Downloading)
 			m_status = Done;
 		string s = m_chunkBuf.str();
@@ -1265,18 +1262,21 @@ GHttpParamParser::~GHttpParamParser()
 }
 
 // static
+// The characters a scrubbed parameter value keeps: letters, digits and
+// space ! # $ % ( ) * + , - . / : < = > ? @. The rest (" & ' ; [ \ ] ^ _ `
+// { | } ~, control and non-ASCII bytes) become '_'.
+static bool isSafeParamChar(char c)
+{
+	return (c >= 'a' && c <= 'z') || (c >= '<' && c <= 'Z') || (c >= '(' && c <= ':')
+		|| (c >= '#' && c <= '%') || c == ' ' || c == '!';
+}
+
 void GHttpParamParser::scrubValue(char* value)
 {
-	while(*value != '\0')
+	for( ; *value != '\0'; value++)
 	{
-		if(*value >= 'a' && *value <= 'z') {}
-		else if(*value >= '(' && *value <= ':') {}
-		else if(*value >= ' ' && *value <= '!') {}
-		else if(*value >= '<' && *value <= 'Z') {}
-		else if(*value >= '#' && *value <= '%') {}
-		else
+		if(!isSafeParamChar(*value))
 			*value = '_';
-		value++;
 	}
 }
 

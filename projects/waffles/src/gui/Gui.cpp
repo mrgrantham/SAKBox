@@ -421,9 +421,8 @@ bool ControllerBase::handleEvents(double dTimeDelta)
 		}
 	}
 	if(bRet)
-	{
-	}
-	else if(m_keyboard[m_lastPressedKey])
+		return true; // an event was handled
+	if(m_keyboard[m_lastPressedKey])
 	{
 		switch(m_eKeyState)
 		{
@@ -450,10 +449,8 @@ bool ControllerBase::handleEvents(double dTimeDelta)
 			default:
 				GAssert(false); // unexpected case
 		}
-	}else if(onMousePos(m_mouseX, m_mouseY))
-	{
 	}
-	else
+	else if(!onMousePos(m_mouseX, m_mouseY))
 	{
 		m_eKeyState = Normal;
 		return false; // false = don't bother updating the view

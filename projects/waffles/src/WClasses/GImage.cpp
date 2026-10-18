@@ -2404,17 +2404,14 @@ void GImage::textChar(char ch, int x, int y, int wid, int hgt, float size, unsig
 					}
 				}
 
-				if(v && xt >= IDEAL_MARGIN)
-					*pPix = col;
-				else if(u && yt >= IDEAL_MARGIN)
-					*pPix = col;
-				else if(d)
-					*pPix = col;
-				else if(xt + yt >= 0.5f && xt >= IDEAL_MARGIN && yt >= IDEAL_MARGIN)
-					*pPix = col;
-				else if(e && xt + yt > 0.5f && xt > IDEAL_MARGIN && 0.5f - yt > IDEAL_MARGIN)
-					*pPix = col;
-				else if(f && xt + yt > 0.5f && 0.5f - xt > IDEAL_MARGIN && yt > IDEAL_MARGIN)
+				// The pixel is inside the character if any of these hold
+				bool inside = (v && xt >= IDEAL_MARGIN)
+					|| (u && yt >= IDEAL_MARGIN)
+					|| d
+					|| (xt + yt >= 0.5f && xt >= IDEAL_MARGIN && yt >= IDEAL_MARGIN)
+					|| (e && xt + yt > 0.5f && xt > IDEAL_MARGIN && 0.5f - yt > IDEAL_MARGIN)
+					|| (f && xt + yt > 0.5f && 0.5f - xt > IDEAL_MARGIN && yt > IDEAL_MARGIN);
+				if(inside)
 					*pPix = col;
 			}
 			else

@@ -4974,17 +4974,9 @@ bool GNeuralNetLearner::supportedFeatureRange(double* pOutMin, double* pOutMax)
 // virtual
 bool GNeuralNetLearner::supportedLabelRange(double* pOutMin, double* pOutMax)
 {
-	if(nn().layerCount() > 0)
-	{
-		*pOutMin = -1.0;
-		*pOutMax = 1.0;
-	}
-	else
-	{
-		// Assume the tanh function is the default
-		*pOutMin = -1.0;
-		*pOutMax = 1.0;
-	}
+	// Assumes tanh's range; the network's actual output layer isn't checked
+	*pOutMin = -1.0;
+	*pOutMax = 1.0;
 	return false;
 }
 

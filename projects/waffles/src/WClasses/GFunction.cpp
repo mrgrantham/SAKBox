@@ -486,13 +486,8 @@ int GFunctionParser::findOperatorWithLowestPrecidence(vector<string>& tokens, in
 			// times/divide/modulus	8
 			// plus/minus		4
 			char c = tok[0];
-			if(GFunctionTokenizer::IsNameChar(c))
-			{
-			}
-			else if(GFunctionTokenizer::IsDigit(c) || c == '.')
-			{
-			}
-			else
+			bool isOperand = GFunctionTokenizer::IsNameChar(c) || GFunctionTokenizer::IsDigit(c) || c == '.';
+			if(!isOperand) // names and numbers aren't operators
 			{
 				if(c == '-' && (i == 0 || (
 							!GFunctionTokenizer::IsDigit(tokens[start + i - 1][0]) &&

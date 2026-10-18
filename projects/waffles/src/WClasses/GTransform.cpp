@@ -310,12 +310,9 @@ GIncrementalTransform* GDataPreprocessor::autoTrans(const GMatrix& data, bool al
 			minVal = std::min(0.0, minVal);
 			maxVal = std::max(1.0, maxVal);
 		}
-		bool normalizationIsNeeded = false;
-		if(dataMin < minVal || dataMax > maxVal)
-			normalizationIsNeeded = true;
-		else if((dataMax - dataMin) >= 1e-12 && (dataMax - dataMin) * 4 < maxVal - minVal)
-			normalizationIsNeeded = true;
-		if(normalizationIsNeeded)
+		bool outOfRange = dataMin < minVal || dataMax > maxVal;
+		bool usesLittleOfRange = (dataMax - dataMin) >= 1e-12 && (dataMax - dataMin) * 4 < maxVal - minVal;
+		if(outOfRange || usesLittleOfRange)
 			pTrans = GIncrementalTransformChainer::chain(new GNormalize(minVal, maxVal), pTrans);
 	}
 
@@ -913,14 +910,7 @@ GRelation* GNominalToCat::init()
 	for(size_t i = 0; i < nAttrCount; i++)
 	{
 		size_t nValues = before().valueCount(i);
-		if(nValues == 0)
-			nDims++;
-		else if(nValues < 3 || nValues >= m_valueCap)
-			nDims++;
-		else if(nValues < m_valueCap)
-			nDims += nValues;
-		else
-			nDims++;
+		nDims += oneHot(nValues) ? nValues : 1;
 	}
 	return new GUniformRelation(nDims);
 }
@@ -985,7 +975,7 @@ void GNominalToCat::transform(const GVec& in, GVec& out)
 					out[j++] = in[i];
 			}
 		}
-		else if(nValues < m_valueCap)
+		else if(oneHot(nValues))
 		{
 			if(in[i] >= 0)
 			{
@@ -1040,7 +1030,7 @@ void GNominalToCat::untransform(const GVec& in, GVec& out)
 				j++;
 			}
 		}
-		else if(nValues < m_valueCap)
+		else if(oneHot(nValues))
 		{
 			double max = in[j++];
 			out[i] = 0.0;
@@ -1102,7 +1092,7 @@ void GNominalToCat::untransformToDistribution(const GVec& in, GPrediction* out)
 			j++;
 			out++;
 		}
-		else if(nValues < m_valueCap)
+		else if(oneHot(nValues))
 		{
 			GCategoricalDistribution* pCat = out->makeCategorical();
 			pCat->setValues(nValues, in.data() + j);
@@ -1126,13 +1116,13 @@ void GNominalToCat::reverseAttrMap(vector<size_t>& rmap)
 	for(size_t i = 0; i < nInAttrCount; i++)
 	{
 		size_t nValues = before().valueCount(i);
-		if(nValues < 3 || nValues >= m_valueCap)
-			rmap.push_back(i);
-		else
+		if(oneHot(nValues))
 		{
 			for(size_t j = 0; j < nValues; j++)
 				rmap.push_back(i);
 		}
+		else
+			rmap.push_back(i);
 	}
 }
 

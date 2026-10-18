@@ -244,12 +244,8 @@ void GNaiveInstance::evalInput(size_t nInputDim, double dInput)
 				break;
 			goRight = true;
 		}
-		else if(itRight == instances.end())
-			goRight = false;
-		else if(dInput - itLeft->first < itRight->first - dInput)
-			goRight = false;
-		else
-			goRight = true;
+		else // go right if there is a right neighbour, unless the left one is closer
+			goRight = itRight != instances.end() && !(dInput - itLeft->first < itRight->first - dInput);
 
 		// Accumulate values
 		const double* pOutputVec = goRight ? itRight->second : itLeft->second;

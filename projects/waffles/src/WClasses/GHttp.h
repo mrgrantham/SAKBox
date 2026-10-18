@@ -275,9 +275,10 @@ protected:
 
 public:
 	/// szParams should be everything in the URL after the "?".
-	/// If scrub is true, then the values will be scrubbed. That is,
-	/// all characters not in {a-z;A-Z;0-9;!;@;#;$;-;+;*;/;(;);.;,;:}
-	/// will be replaced with an '_' character.
+	/// If scrub is true, then the values will be scrubbed: characters other
+	/// than letters, digits and space ! # $ % ( ) * + , - . / : < = > ? @
+	/// are replaced with '_'. (SAKBox: this used to list fewer than the code
+	/// keeps; see isSafeParamChar in GHttp.cpp.)
 	GHttpParamParser(const char* szParams, bool scrub = true);
 	~GHttpParamParser();
 

@@ -710,7 +710,7 @@ void sha2_hash(const unsigned char data[], const unsigned long len, sha2_ctx ctx
     switch(ctx->sha2_len)
     {
         case 32: sha256_hash(data, len, CTX_256(ctx)); return;
-        case 48: sha384_hash(data, len, CTX_384(ctx)); return;
+        case 48: sha384_hash(data, len, CTX_384(ctx)); return; // NOLINT(bugprone-branch-clone): SAKBox: SHA-384 runs SHA-512's code (sha384_hash and CTX_384 are aliases); reference code, kept as published
         case 64: sha512_hash(data, len, CTX_512(ctx)); return;
     }
 }

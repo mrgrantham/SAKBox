@@ -44,12 +44,10 @@ bool g_exceptionExpected = false;
 
 void Ex::setMessage(const std::string& message)
 {
-	if(g_exceptionExpected)
-		m_message = message;
-	else
-	{
-		m_message = message;
+	m_message = message;
 #ifdef _DEBUG
+	if(!g_exceptionExpected)
+	{
 		/*
 		// Attempt to add a backtrace to the error message. (This will only produce human-readable results if the "-rdynamic" flag is used with the linker.)
 		m_message += "\n";
@@ -67,8 +65,8 @@ void Ex::setMessage(const std::string& message)
 		cerr << "Unexpected exception: " << m_message << "\nRaising SIGINT...";
 		cerr.flush();
 		raise(SIGINT);
-#endif
 	}
+#endif
 }
 
 const char* Ex::what() const throw()

@@ -1436,9 +1436,7 @@ GDomNode* GJsonAsADatabase::findNode(GDom* pDoc, GDomNode* pOb, GDom* pResponseD
 					throw Ex("No field named ", field);
 				else if(szCmd[i] == '.') // the next connector will be a '.'
 					pChild = pOb->add(pDoc, field.c_str(), pDoc->newObj());
-				else if(szCmd[i] == '[') // the next connector will be a '['
-					pChild = pOb->add(pDoc, field.c_str(), pDoc->newList());
-				else if(op == '+') // There is no next connector, so use the operator
+				else if(szCmd[i] == '[' || op == '+') // indexed next, or (with no next connector) appended to: a list
 					pChild = pOb->add(pDoc, field.c_str(), pDoc->newList());
 				else
 					throw Ex("Cannot determine the type for missing field ", field);

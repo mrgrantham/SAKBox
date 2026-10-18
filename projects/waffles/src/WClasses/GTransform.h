@@ -517,6 +517,11 @@ public:
 	void preserveUnknowns() { m_preserveUnknowns = true; }
 
 protected:
+	/// Whether a column with nValues values becomes one column per value.
+	/// (Numbers, columns with 2 values and columns with m_valueCap or more
+	/// stay a single column.)
+	bool oneHot(size_t nValues) const { return nValues >= 3 && nValues < m_valueCap; }
+
 	GRelation* init();
 
 	/// See the comment for GIncrementalTransform::train

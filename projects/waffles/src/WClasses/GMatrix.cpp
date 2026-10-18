@@ -87,7 +87,7 @@ void GRelation::print(ostream& stream) const
 		printAttrName(stream, i);
 		stream << " ";
 		size_t vals = valueCount(i);
-		if(vals == 0) // continuous
+		if(vals == 0 || vals == (size_t)-2) // continuous, or a date (stored, and saved, as a number)
 			stream << "real";
 		else if(vals < (size_t)-10) // nominal
 		{
@@ -102,8 +102,6 @@ void GRelation::print(ostream& stream) const
 		}
 		else if(vals == (size_t)-1) // string
 			stream << "string";
-		else if(vals == (size_t)-2) // date
-			stream << "real";
 		stream << "\n";
 	}
 
@@ -5253,9 +5251,7 @@ void GCSVParser::parse(GMatrix& outMatrix, const char* pFile, size_t len)
 			{
 				const char* el = rows[rowNum].m_elements[attr];
 				double val;
-				if(el[0] == '\0')
-					val = UNKNOWN_REAL_VALUE;
-				else if(strcmp(el, "?") == 0)
+				if(el[0] == '\0' || strcmp(el, "?") == 0) // missing
 					val = UNKNOWN_REAL_VALUE;
 				else if(!GBits::isValidFloat(el, strlen(el)))
 				{
@@ -5330,9 +5326,7 @@ void GCSVParser::parse(GMatrix& outMatrix, const char* pFile, size_t len)
 			for(size_t rowNum = m_columnNamesInFirstRow ? 1 : 0; rowNum < rows.size(); rowNum++)
 			{
 				const char* el = rows[rowNum].m_elements[attr];
-				if(el[0] == '\0')
-					outMatrix[i][attr] = UNKNOWN_DISCRETE_VALUE;
-				else if(strcmp(el, "?") == 0)
+				if(el[0] == '\0' || strcmp(el, "?") == 0) // missing
 					outMatrix[i][attr] = UNKNOWN_DISCRETE_VALUE;
 				else
 				{

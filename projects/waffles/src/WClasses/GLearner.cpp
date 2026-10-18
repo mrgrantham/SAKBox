@@ -1474,12 +1474,9 @@ void GAutoFilter::setupDataDependentFilters(GSupervisedLearner* pLearner, const 
 				supportedMin = std::min(0.0, supportedMin);
 				supportedMax = std::max(1.0, supportedMax);
 			}
-			bool normalizationIsNeeded = false;
-			if(dataMin < supportedMin || dataMax > supportedMax)
-				normalizationIsNeeded = true;
-			else if((dataMax - dataMin) >= 1e-12 && (dataMax - dataMin) * 4 < supportedMax - supportedMin)
-				normalizationIsNeeded = true;
-			if(normalizationIsNeeded)
+			bool outOfRange = dataMin < supportedMin || dataMax > supportedMax;
+			bool usesLittleOfRange = (dataMax - dataMin) >= 1e-12 && (dataMax - dataMin) * 4 < supportedMax - supportedMin;
+			if(outOfRange || usesLittleOfRange)
 				m_pLearner = new GLabelFilter(m_pLearner, new GNormalize(supportedMin, supportedMax));
 		}
 	}
@@ -1504,12 +1501,9 @@ void GAutoFilter::setupDataDependentFilters(GSupervisedLearner* pLearner, const 
 				supportedMin = std::min(0.0, supportedMin);
 				supportedMax = std::max(1.0, supportedMax);
 			}
-			bool normalizationIsNeeded = false;
-			if(dataMin < supportedMin || dataMax > supportedMax)
-				normalizationIsNeeded = true;
-			else if((dataMax - dataMin) >= 1e-12 && (dataMax - dataMin) * 4 < supportedMax - supportedMin)
-				normalizationIsNeeded = true;
-			if(normalizationIsNeeded)
+			bool outOfRange = dataMin < supportedMin || dataMax > supportedMax;
+			bool usesLittleOfRange = (dataMax - dataMin) >= 1e-12 && (dataMax - dataMin) * 4 < supportedMax - supportedMin;
+			if(outOfRange || usesLittleOfRange)
 				m_pLearner = new GFeatureFilter(m_pLearner, new GNormalize(supportedMin, supportedMax));
 		}
 	}

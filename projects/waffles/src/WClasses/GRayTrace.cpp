@@ -2596,22 +2596,12 @@ double G3dLetterMaker::letterWidth(char c)
 		case ' ': w = m_spaceWidth; break;
 		case '"': w = m_lineWidth + m_lineWidth; break;
 		case '\'': w = m_lineWidth; break;
-		case '(': w = 0.1; break;
-		case ')': w = 0.1; break;
-		case '+': w = 0.4; break;
-		case ',': w = 0.1; break;
-		case '-': w = 0.4; break;
+		case '(': case ')': case ',': case 'i': w = 0.1; break;
 		case '.': w = 0.2; break;
-		case '@': w = 0.6; break;
-		case 'M': w = 0.6; break;
-		case 'W': w = 0.6; break;
-		case 'i': w = 0.1; break;
-		case 'j': w = 0.225; break;
-		case 'l': w = 0.225; break;
-		case 'm': w = 0.6; break;
-		case 'q': w = 0.6; break;
+		case 'j': case 'l': w = 0.225; break;
 		case 't': w = 0.3; break;
-		case 'w': w = 0.6; break;
+		case '+': case '-': w = 0.4; break;
+		case '@': case 'M': case 'W': case 'm': case 'q': case 'w': w = 0.6; break;
 	}
 	return w + m_lineWidth;
 }
