@@ -5,3 +5,6 @@ bazel*
 compile_commands.json
 .cache/
 external
+
+# Python bytecode (tools/)
+__pycache__/

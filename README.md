@@ -9,7 +9,7 @@ A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the 
 - [Bazelisk](https://github.com/bazelbuild/bazelisk) (recommended), which installs and runs the Bazel version pinned in `.bazelversion` (9.2.0). A plain Bazel 9 install also works.
 - A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`). The code under `projects/` also builds with `-pedantic-errors` (no compiler extensions), `-Werror` (no warnings) and `-Wsuggest-override` / `-Wsuggest-destructor-override` (overriding functions must say `override`; see [Code conventions](#code-conventions); Waffles is exempt from these for now).
 - On Linux, the system packages listed under [Linux](#linux).
-- Optional, for static analysis: clang-tidy, which Xcode doesn't include. On macOS, `brew install llvm` (Homebrew keeps it off your `PATH`, so your compiler stays Xcode's); on Linux, your distribution's `clang-tidy` package. See [Static analysis](#static-analysis).
+- Optional, for static analysis: clang-tidy, which Xcode doesn't include. On macOS, `brew install llvm` (Homebrew keeps it off your `PATH`, so your compiler stays Xcode's); on Linux, your distribution's `clang-tidy` package. See [Static analysis](#static-analysis), which also covers the optional pre-commit hook that runs it on each commit (`git config core.hooksPath tools/git_hooks`).
 - For the 3DS example only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine (see [`tools/devkitpro`](tools/devkitpro/README.md)). Without Docker running, that one target fails with a message saying so.
 
 All other dependencies are declared in `MODULE.bazel` and downloaded by Bazel on the first build.
@@ -98,6 +98,20 @@ python3 tools/clang_tidy/run.py --checks='-*,modernize-use-nullptr' --fix   # on
 ```
 
 It skips Waffles (not converted yet) and `projects/examples/png/src/pngtest.cpp` (libpng's own test program, kept as published). It prints each finding once (a header's findings aren't repeated per file that includes it), then a count per check, and exits 1 if there are any. It finds clang-tidy on your `PATH`, in Homebrew's LLVM, or at `$CLANG_TIDY`. Its findings are advice, not part of the build: review fixes before committing them, and rebuild and test afterwards.
+
+### Checking each commit
+
+A git pre-commit hook in `tools/git_hooks/` runs clang-tidy on the C++ files you commit. Turn it on once per clone:
+
+``` bash
+git config core.hooksPath tools/git_hooks
+```
+
+Then each `git commit` checks the staged C++ files (in the projects the runner covers) and stops the commit if clang-tidy finds anything in them, listing the findings. Problems elsewhere don't block it. A staged header is checked through its project's source files, since clang-tidy only sees headers as part of a file that includes them. It takes about half a second for a source file and a few seconds for a header in a big project.
+
+- It checks the files as they are on disk, so stage everything you mean to commit.
+- `git commit --no-verify` skips it for one commit.
+- Without clang-tidy installed or a `compile_commands.json`, it says so and lets the commit through. A new source file isn't in `compile_commands.json` until you rerun `tools/compile_commands/refresh.py`; the hook tells you when it skips one.
 
 ## Platform Notes
 
