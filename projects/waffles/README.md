@@ -11,21 +11,40 @@ It comes from [mikegashler/waffles](https://github.com/mikegashler/waffles). Thi
 | `//projects/waffles:WClasses` | The library. Include `<WClasses/...>`; the namespace is still `GClasses`. |
 | `:learn`, `:cluster`, `:dimred`, `:plot`, `:recommend`, `:sparse`, `:transform`, `:audio`, `:wizard` | The command-line tools |
 | `//projects/waffles/demos/...` | Demos built with Bazel: `chess`, `caronhill`, `eigen`, `hello_gui`, `hello_ml` (several learners predicting a pizza's taste and price) and `fourier_net` (the Fourier-initialised network from arXiv:1405.2262, trained on a NASDAQ series; `bazel run //projects/waffles/demos/fourier_net -- --epochs 5`, or no `--epochs` to run until stopped; it writes `fourier.svg` and `progress.svg` where it is run) |
-| `:test` | Waffles' own test suite |
+| `:test` | Waffles' own test suite, including its command-line tool tests (the tools are its data deps). It fails if any test fails or, under `bazel test`, if the tools can't be run. |
 | `:activation_test` | Neural-network activations: each `inverse()` undoes `eval()` |
+| `:regression_test` | Tests for the bugs SAKBox fixed (below); each fails on the old code |
+| `:mesh_orientation_test` | `GRayTraceTriMesh::orientTriangles` and `makeCylinder` |
 
 It builds with the rest of the repo as strict C++26 with `-Werror`. The other demos and the upstream Makefiles, CMake and Visual Studio files are kept but not used.
 
 ## What SAKBox has changed
 
 - **Layout:** the library folder `src/GClasses` is `src/WClasses`, and includes use `<WClasses/...>` rather than relative paths. Platform checks use `__APPLE__` instead of a `DARWIN` define.
-- **Modern C++:** `std::random_shuffle` became `std::shuffle`, `sprintf` became `snprintf`, missing `override`s were added, an exception is caught by reference, and `GMasterThread`'s worker count is `std::atomic` rather than `volatile` (it is read without the lock).
-- **Bug fix:** `GBlockElPos::inverse` assigned instead of comparing (`y = UNKNOWN_REAL_VALUE ? ...`), so it always returned "unknown", and it inverted the wrong pieces of the function.
+- **Modern C++:** `std::random_shuffle` (removed in C++17) became a Fisher-Yates shuffle with the learner's own seeded `GRand`, `sprintf` became `snprintf`, missing `override`s were added, an exception is caught by reference, and `GMasterThread`'s worker count is `std::atomic` rather than `volatile` (it is read without the lock).
+- **Bug fixes** (all upstream bugs; those with a visible effect have a test in `:regression_test` or Waffles' own suite):
+  - `GBlockElPos::inverse` assigned instead of comparing (`y = UNKNOWN_REAL_VALUE ? ...`), so it always returned "unknown", and it inverted the wrong pieces of the function.
+  - `GBitTable` and `GMatrix` assignment destroyed the data when assigned to themselves.
+  - Integer division: sparse k-means' and `GRecommender`'s running means were wiped at every step, `GMath::wilcoxonPValue` truncated n(n+1)/4, and `GCluster` and `GRecommender` lost fractions.
+  - `GArgReader::pop_double` turned non-numbers into 0; it now rejects them.
+  - `GKMeansSparse` only ever recomputed the first row's cluster (a pointer into the cluster list stopped moving), and left an empty cluster empty; it's now restarted from the largest cluster's worst-fitting row. This also fixes `GSparseClusterRecommender`, whose test limit was loose enough to pass with the bug.
+  - `GDenseClusterRecommender` clustered uninitialised memory for unrated items; they're now marked unknown.
+  - `GSparseInstance` couldn't be reloaded once saved (missing from `GLearnerLoader`, and its loading constructor left a pointer uninitialised), mismatched rows and labels when pruning, and stepped an iterator before `begin()`.
+  - `GTensor::parseArff` loaded only half of a file's values and divided by zero for a file with no attributes; its errors now name the column.
+  - `GRayTraceTriMesh::makeCylinder` built its triangles facing inward. Upstream's dead mesh-orientation code is revived as `orientTriangles`.
+  - Smaller fixes clang-tidy found: wrong `throw`s, `GHttp`'s port, `memcpy` of a non-trivial type, and how the `plot` and `wizard` tools seed their generators.
+- **Tests:** the suite used to pass whatever failed (failures were printed, not reported) and skipped the command-line tool tests under Bazel; both are fixed. Three test functions that were never run (`GDenseClusterRecommender`, `GFunctionParser`, `GSparseInstance`) now are, with real limits instead of placeholders. `GWavelet::test` stays out: it reads a file on its author's machine.
+- **Static analysis:** Waffles is checked by the repo's clang-tidy setup like the rest of the repo (see the top-level README). Fixes clang-tidy applied itself (`override`, `nullptr`, `const &` parameters) are in.
 - **Warnings:** counters that are computed but never read (`epochs`, `hits`, `nDepth`, `nTries`, ...) are kept, as instrumentation, and marked `[[maybe_unused]]`.
 - **Demos brought up to date:** upstream changed the neural network API in 2016-2019 (layers became blocks, several blocks per layer, weights in one vector) without updating every demo. `hello_ml` only needed a dead include removed. `fourier_net` was rewritten for blocks, using upstream's last version of the deleted `GNeuralNet::fourier` (2017) and the 2015 layer helpers it relied on as references; its data, deleted upstream in 2015, is restored from history.
 - `GFile::loadFile` reports the missing path and the current directory when a file isn't found.
 
 Changes inside the code are marked with `SAKBox:` comments where they fix behaviour.
+
+## Roadmap
+
+1. Make `GRand` a standard C++ random bit generator: add `result_type`, `min()`, `max()` and `operator()` (forwarding to `next()`), so `<random>` engine adaptors and algorithms that take a generator can use a Waffles `GRand` directly. Keep Waffles' own shuffle and distributions wherever exact results matter: the standard leaves `std::shuffle`'s and the `<random>` distributions' algorithms to each library, so the same seed gives different results on different platforms.
+2. Only if something needs it: a `GRand` subclass backed by a `<random>` engine (for example `std::mt19937_64`, whose output the standard fixes, so it repeats on every platform). `GRand`'s methods are already virtual, so it only needs `next()` and `setSeed()`. Learners hold their `GRand m_rand` by value, so using it inside a learner would also mean holding the generator by pointer.
 
 ## Upstream's README
 
