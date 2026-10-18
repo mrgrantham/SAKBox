@@ -23,6 +23,7 @@
 #include <math.h>
 #include "G3D.h"
 #include "GRand.h"
+#include <deque>
 #include <vector>
 #include <cmath>
 
@@ -612,7 +613,23 @@ public:
 	/// Automatically compute phong normals at the vertices to make the object appear smooth
 	void computePhongNormals();
 
+	/// Makes every triangle face the same way as its neighbors, so that two
+	/// triangles sharing a side go around it in opposite directions (which
+	/// back-face culling and computePhongNormals rely on). Each connected
+	/// piece keeps the orientation of its first triangle, and triangles that
+	/// disagree are flipped (two of their vertices swapped). Returns false if
+	/// some piece can't be oriented consistently, as with a Moebius strip, in
+	/// which case its triangles are left as the walk found them. If pFlipped
+	/// is given, it receives the number of triangles flipped. Call
+	/// computePhongNormals afterwards if the mesh uses them.
+	bool orientTriangles(size_t* pFlipped = nullptr);
+
 protected:
+	/// Sets the facing (+1 same, -1 flipped) of triangle i's unvisited
+	/// neighbors from its own and queues them; false if a visited neighbor
+	/// disagrees. Part of orientTriangles.
+	bool computeTriangleNeighborSides(std::deque<size_t>& queue, GNodeHashTable& edges, std::vector<int>& faces, size_t i);
+
 	bool isPointWithinPlanarPolygon(G3DVector* pPoint, G3DVector** ppVertices, size_t nVertices);
 };
 

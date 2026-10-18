@@ -142,4 +142,14 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "mesh_orientation_test",
+    size = "small",
+    srcs = ["tests/mesh_orientation_test.cpp"],
+    deps = [
+        ":WClasses",
+        "@gtest//:gtest_main",
+    ],
+)
+
 clang_format(name = "waffles")

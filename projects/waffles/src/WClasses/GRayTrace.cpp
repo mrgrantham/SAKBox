@@ -21,6 +21,7 @@
 #include "GHashTable.h"
 #include "GDom.h"
 #include <algorithm>
+#include <deque>
 #include "GImage.h"
 #include "GMath.h"
 #include <cmath>
@@ -1726,99 +1727,158 @@ void GRayTraceTriMesh::setNormal(size_t nIndex, G3DVector* pNormal)
 	m_pNormals[nIndex] = *pNormal;
 }
 
+// SAKBox: EdgeRecord and computeTriangleNeighborSides were dead upstream
+// since at least 2011 (the function was commented out, and EdgeRecord's
+// Hash/Equals didn't match HashTableNode's hash/equals, so it couldn't be
+// instantiated). They are revived here, ported to the current mesh and hash
+// table, behind GRayTraceTriMesh::orientTriangles.
+
+/// One edge of a triangle mesh, keyed by its two vertices (in either order),
+/// with the triangles that share it.
 class EdgeRecord : public HashTableNode
 {
 protected:
-	int m_v1;
-	int m_v2;
-	vector<int> m_triangles;
+	size_t m_v1;
+	size_t m_v2;
+	vector<size_t> m_triangles;
 
 public:
-	EdgeRecord(int v1, int v2) : HashTableNode()
+	EdgeRecord(size_t v1, size_t v2) : HashTableNode()
 	{
-		SetEdge(v1, v2);
+		setEdge(v1, v2);
 	}
 
-	~EdgeRecord() override
+	vector<size_t>& triangles() { return m_triangles; }
+
+	void setEdge(size_t v1, size_t v2)
 	{
+		m_v1 = std::min(v1, v2);
+		m_v2 = std::max(v1, v2);
 	}
 
-	vector<int>& GetTriangles() { return m_triangles; }
-
-	void SetEdge(int v1, int v2)
-	{
-		if(v1 < v2)
-		{
-			m_v1 = v1;
-			m_v2 = v2;
-		}
-		else
-		{
-			m_v1 = v2;
-			m_v2 = v1;
-		}
-	}
-
-	virtual unsigned int Hash(int nBucketCount)
+	size_t hash(size_t nBucketCount) override
 	{
 		return (m_v1 * 7387 + m_v2) % nBucketCount;
 	}
 
-	virtual bool Equals(HashTableNode* pThat)
+	bool equals(HashTableNode* pThat) override
 	{
 		EdgeRecord* pOther = (EdgeRecord*)pThat;
-		return ((m_v1 == pOther->m_v1) && (m_v2 == pOther->m_v2));
+		return m_v1 == pOther->m_v1 && m_v2 == pOther->m_v2;
 	}
-	
-	void AddTriangle(int i)
+
+	void addTriangle(size_t i)
 	{
 		m_triangles.push_back(i);
 	}
 };
-/*
-void GRayTraceTriMesh::ComputeTriangleNeighborSides(GIntQueue* pQ, GNodeHashTable* pEdges, int* pFaces, int i)
+
+void GRayTraceTriMesh::triangle(size_t index, size_t* v1, size_t* v2, size_t* v3)
 {
-	GAssert(pFaces[i] != 0); // Expected to already know the facing direction of triangle i
-	EdgeRecord tmp(-1, -1);
-	int j, l, n;
-	for(j = 0; j < 3; j++) // j = which side of the main triangle
+	// SAKBox: this was declared but never defined
+	*v1 = m_triangles[3 * index];
+	*v2 = m_triangles[3 * index + 1];
+	*v3 = m_triangles[3 * index + 2];
+}
+
+bool GRayTraceTriMesh::computeTriangleNeighborSides(std::deque<size_t>& queue, GNodeHashTable& edges, std::vector<int>& faces, size_t i)
+{
+	GAssert(faces[i] != 0); // Expected to already know the facing direction of triangle i
+	bool consistent = true;
+	EdgeRecord tmp(0, 0);
+	for(size_t j = 0; j < 3; j++) // j = which side of the main triangle
 	{
-		tmp.SetEdge(m_pTriangles[3 * i + j], m_pTriangles[3 * i + ((j + 1) % 3)]);
-		EdgeRecord* pEdge = (EdgeRecord*)pEdges->Get(&tmp);
+		const size_t a = m_triangles[3 * i + j];
+		const size_t b = m_triangles[3 * i + (j + 1) % 3];
+		tmp.setEdge(a, b);
+		EdgeRecord* pEdge = (EdgeRecord*)edges.get(&tmp);
 		GAssert(pEdge); // No record of this edge
-		vector<int>& triangles = pEdge->GetTriangles();
-		for(size_t k = 0; k < triangles.size(); k++) // k = which neighbor index
+		for(size_t n : pEdge->triangles()) // n = a neighbor across that side
 		{
-			n = triangles[k];
 			if(n == i)
 				continue; // It's the same triangle
-			if(pFaces[n] != 0)
-				continue; // That triangle has already been done
 
-			// Find the first matching vertex
-			for(l = 0; l < 3; l++) // l = which vertex on the neighbor
+			// Find the neighbor's copy of the side's first vertex
+			size_t l;
+			for(l = 0; l < 3; l++)
 			{
-				if(m_pTriangles[3 * n + l] == m_pTriangles[3 * i + j])
+				if(m_triangles[3 * n + l] == a)
 					break;
 			}
-			GAssert(l < 3); // Expected neighbor to have matching vertex
+			if(l == 3)
+				continue; // Not really a neighbor (can't happen with a valid edge table)
 
-			// Determine whether the triangles face the same way
-			if(m_pTriangles[3 * n + ((l + 1) % 3)] == m_pTriangles[3 * i + ((j + 1) % 3)])
-				pFaces[n] = -pFaces[i];
-			else
+			// Triangles facing the same way go around a shared side in
+			// opposite directions: if the neighbor also goes a -> b, it faces
+			// the other way
+			const bool sameDirection = m_triangles[3 * n + (l + 1) % 3] == b;
+			const int expected = sameDirection ? -faces[i] : faces[i];
+			if(faces[n] == 0)
 			{
-				GAssert(m_pTriangles[3 * n + ((l + 2) % 3)] == m_pTriangles[3 * i + ((j + 1) % 3)]); // Expected a matching side
-				pFaces[n] = pFaces[i];
+				faces[n] = expected;
+				queue.push_back(n); // Visit its neighbors in turn
 			}
+			else if(faces[n] != expected)
+				consistent = false; // Reached by two paths that disagree
+		}
+	}
+	return consistent;
+}
 
-			// Add the neighbor to the queue
-			pQ->Push(n);
+bool GRayTraceTriMesh::orientTriangles(size_t* pFlipped)
+{
+	// Index every edge by the triangles that share it
+	const size_t count = triangleCount();
+	GNodeHashTable edges(true, std::max<size_t>(16, 3 * count));
+	for(size_t i = 0; i < count; i++)
+	{
+		for(size_t j = 0; j < 3; j++)
+		{
+			EdgeRecord tmp(m_triangles[3 * i + j], m_triangles[3 * i + (j + 1) % 3]);
+			EdgeRecord* pEdge = (EdgeRecord*)edges.get(&tmp);
+			if(!pEdge)
+			{
+				pEdge = new EdgeRecord(tmp);
+				edges.add(pEdge);
+			}
+			pEdge->addTriangle(i);
 		}
 	}
 
+	// Walk each connected piece from its first triangle, which keeps its
+	// orientation (+1); each neighbor gets +1 (same way) or -1 (flip it)
+	std::vector<int> faces(count, 0);
+	std::deque<size_t> queue;
+	bool consistent = true;
+	for(size_t start = 0; start < count; start++)
+	{
+		if(faces[start] != 0)
+			continue;
+		faces[start] = 1;
+		queue.push_back(start);
+		while(!queue.empty())
+		{
+			const size_t i = queue.front();
+			queue.pop_front();
+			if(!computeTriangleNeighborSides(queue, edges, faces, i))
+				consistent = false;
+		}
+	}
+
+	// Flip the triangles that face the wrong way by swapping two vertices
+	size_t flipped = 0;
+	for(size_t i = 0; i < count; i++)
+	{
+		if(faces[i] < 0)
+		{
+			std::swap(m_triangles[3 * i + 1], m_triangles[3 * i + 2]);
+			flipped++;
+		}
+	}
+	if(pFlipped)
+		*pFlipped = flipped;
+	return consistent;
 }
-*/
 class GTriangleIndexArray
 {
 public:
@@ -2209,13 +2269,20 @@ GRayTraceTriMesh* GRayTraceTriMesh::makeCylinder(GRayTraceMaterial* pMaterial, G
 			pMesh->setTextureCoord(pMesh->pointCount() - 1, (G3DReal)(pImage->width() - 1), y);
 		}
 
-		// Make the triangles
-		pMesh->addTriangle(pMesh->pointCount() - 1, pMesh->pointCount() - 2, nPrevVertexPos - 1);
-		pMesh->addTriangle(nPrevVertexPos - 2, nPrevVertexPos - 1, pMesh->pointCount() - 2);
+		// Make the triangles, all facing outward (their vertices go
+		// counter-clockwise seen from outside, which is the front for
+		// rayDistanceToTriangle's culling).
+		// SAKBox: the walls and the second cap used to face inward and the
+		// first cap outward, so the mesh was inside out and inconsistent;
+		// with culling on, most of a cylinder was invisible from outside.
+		const size_t n1 = pMesh->pointCount() - 2, n2 = pMesh->pointCount() - 1; // new edge
+		const size_t p1i = nPrevVertexPos - 2, p2i = nPrevVertexPos - 1; // previous edge
+		pMesh->addTriangle(n2, p2i, n1);
+		pMesh->addTriangle(p1i, n1, p2i);
 		if(bEndCaps)
 		{
-			pMesh->addTriangle(pMesh->pointCount() - 2, nPrevVertexPos - 2, 0);
-			pMesh->addTriangle(pMesh->pointCount() - 1, nPrevVertexPos - 1, 1);
+			pMesh->addTriangle(n1, p1i, 0);
+			pMesh->addTriangle(p2i, n2, 1);
 		}
 
 		nPrevVertexPos = pMesh->pointCount();
