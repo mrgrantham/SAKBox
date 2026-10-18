@@ -199,15 +199,17 @@ GDomNode* GDomNode::set(GDom* pDoc, size_t index, GDomNode* pNode)
 {
 	if(m_type != type_list)
 		throw Ex(to_str_brief(*this), " is not a list");
-	if(index == m_value.m_pArrayList->m_size)
+	// SAKBox: size(), not m_pArrayList->m_size: a new list has no array yet,
+	// so setting its first element dereferenced null
+	if(index == size())
 		return add(pDoc, pNode);
-	else if(index < m_value.m_pArrayList->m_size)
+	else if(index < size())
 	{
 		m_value.m_pArrayList->m_items[index] = pNode;
 		return pNode;
 	}
 	else
-		throw Ex("tried to set index ", to_str(index), " in a list of size ", to_str(m_value.m_pArrayList->m_size));
+		throw Ex("tried to set index ", to_str(index), " in a list of size ", to_str(size()));
 }
 
 GDomNode* GDomNode::add(GDom* pDoc, const char* szName, GDomNode* pNode)
@@ -1534,6 +1536,7 @@ GDomNode* GJsonAsADatabase::findLValue(GDom* pDoc, GDomNode* pOb, GDom* pRespons
 			{
 			}
 			string field(szCmd + pos + 1, i - (pos + 1));
+			field = trim(field); // SAKBox: as findNode does; ".a = 1" made a field named "a "
 			if(pOutField)
 				*pOutField = field;
 			if(field.length() == 0)
@@ -1543,15 +1546,17 @@ GDomNode* GJsonAsADatabase::findLValue(GDom* pDoc, GDomNode* pOb, GDom* pRespons
 			pOb = pOb->getIfExists(field.c_str());
 			if(!pOb)
 			{
+				// SAKBox: these used pOb, which is null here: adding through it
+				// crashed, and returning it made apply replace the whole document
 				size_t nextPos = i;
 				while(szCmd[nextPos] != '\0' && szCmd[nextPos] <= ' ')
 					nextPos++;
 				if(szCmd[nextPos] == '.')
-					pOb = pOb->add(pDoc, field.c_str(), pDoc->newObj());
+					pOb = pPrevOb->add(pDoc, field.c_str(), pDoc->newObj());
 				else if(szCmd[nextPos] == '[')
-					pOb = pOb->add(pDoc, field.c_str(), pDoc->newList());
+					pOb = pPrevOb->add(pDoc, field.c_str(), pDoc->newList());
 				else if(szCmd[nextPos] == '\0')
-					return pOb;
+					return pPrevOb; // the object to add the field to
 				else
 					throw Ex("Unexpected token: ", string(szCmd + nextPos, 1));
 			}
@@ -1590,10 +1595,12 @@ GDomNode* GJsonAsADatabase::findLValue(GDom* pDoc, GDomNode* pOb, GDom* pRespons
 						nextPos++;
 					while(szCmd[nextPos] != '\0' && szCmd[nextPos] <= ' ')
 						nextPos++;
+					// SAKBox: appends the element, and pOb->get(index) below then
+					// finds it (it used to look the index up in the new element)
 					if(szCmd[nextPos] == '.')
-						pOb = pOb->add(pDoc, pDoc->newObj());
+						pOb->add(pDoc, pDoc->newObj());
 					else if(szCmd[nextPos] == '[')
-						pOb = pOb->add(pDoc, pDoc->newList());
+						pOb->add(pDoc, pDoc->newList());
 					else if(szCmd[nextPos] == '\0')
 						return pOb;
 					else

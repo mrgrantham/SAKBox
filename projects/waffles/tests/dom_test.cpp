@@ -56,3 +56,21 @@ TEST(JsonAsADatabaseTest, MissingFieldsAreCreatedByWhatComesNext) {
   EXPECT_EQ(jsonAfter({".h[0] += 6"}, &threw), "{\"h\":[]}");
   EXPECT_TRUE(threw);
 }
+
+// Assigning ("=") a field that didn't exist yet went wrong in findLValue:
+// with more path after it (".a.b = 1"), it called add on the null pointer
+// it had just got back, crashing; as the last field (".a = 1") it returned
+// that null, which apply took to mean "no document" and replaced the whole
+// database with the value. Indexing one past the end of a list with more
+// path after it (".l[1].x = 2") appended a node, then looked up the index
+// in that new node instead of the list.
+TEST(JsonAsADatabaseTest, AssigningCreatesWhatsMissing) {
+  EXPECT_EQ(jsonAfter({".a = 1"}), "{\"a\":1}");
+  EXPECT_EQ(jsonAfter({".a = 1", ".b = 2"}), "{\"a\":1,\"b\":2}");
+  EXPECT_EQ(jsonAfter({".a.b = 1"}), "{\"a\":{\"b\":1}}");
+  EXPECT_EQ(jsonAfter({".a[0] = 5"}), "{\"a\":[5]}");
+  EXPECT_EQ(jsonAfter({".l += 1", ".l[1].x = 2"}), "{\"l\":[1,{\"x\":2}]}");
+  // Existing fields and elements are still replaced
+  EXPECT_EQ(jsonAfter({".a = 1", ".a = 3"}), "{\"a\":3}");
+  EXPECT_EQ(jsonAfter({".l += 1", ".l[0] = 9"}), "{\"l\":[9]}");
+}
