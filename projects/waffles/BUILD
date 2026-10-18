@@ -145,6 +145,16 @@ cc_test(
 )
 
 cc_test(
+    name = "behaviour_test",
+    size = "small",
+    srcs = ["tests/behaviour_test.cpp"],
+    deps = [
+        ":WClasses",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "mesh_orientation_test",
     size = "small",
     srcs = ["tests/mesh_orientation_test.cpp"],
