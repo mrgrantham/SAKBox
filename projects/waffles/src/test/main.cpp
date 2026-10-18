@@ -977,6 +977,7 @@ public:
 
 		// Test whether we can find and execute the command-line tools
 		bool runCommandLineTests = false;
+		string whyNot; // SAKBox: why the tools can't be used, for the message
 		try
 		{
 			GExpectException ee;
@@ -988,9 +989,12 @@ public:
 			buf[255] = '\0';
 			if(strstr(buf, "waffles_transform [command]"))
 				runCommandLineTests = true;
+			else
+				whyNot = "its usage output doesn't start with \"waffles_transform [command]\"";
 		}
-		catch(const std::exception&)
+		catch(const std::exception& e)
 		{
+			whyNot = e.what();
 		}
 
 // #ifdef WINDOWS
@@ -1010,6 +1014,15 @@ public:
 			runTest("document classification", test_document_classification);
 //#endif
 		}
+		else if(getenv("TEST_SRCDIR"))
+		{
+			// SAKBox: under bazel test the tools are this test's data deps
+			// (see useBazelTools), so not finding them means something is
+			// broken: fail rather than silently skip their tests
+			printTestName("command-line tools");
+			cout << "\nwaffles_transform isn't usable: " << whyNot << "\n\nFAILED!!!\n";
+			m_failures.push_back("command-line tools");
+		}
 		else
 		{
 			cout << "Skipping the command-line tool tests because the command-line tools are not found in a path specified in the ";
@@ -1018,7 +1031,7 @@ public:
 #else
 			cout << "$PATH";
 #endif
-			cout << " environment variable.\n\n";
+			cout << " environment variable (waffles_transform: " << whyNot << ").\n\n";
 		}
 
 		cout << "Done.\n";
