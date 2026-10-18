@@ -100,7 +100,7 @@ int sysExec(const char* szAppName, const char* szArgs, GPipe* pStdOut = nullptr,
 #ifdef WINDOWS
 	s += ".exe";
 #endif
-	s += " ";
+	s += ' ';
 	s += szArgs;
 	return GApp::systemExecute(s.c_str(), true, pStdOut, pStdErr, pStdIn);
 }
@@ -213,8 +213,8 @@ return
 ///
 ///\return the output printed to stdout and standard error
 ///
-std::string run_dimred_attributeselector(std::string dataset,
-					 std::string extension,
+std::string run_dimred_attributeselector(const std::string& dataset,
+					 const std::string& extension,
 					 std::vector<int> labels,
 					 std::vector<int> ignored,
 					 int& retval
@@ -233,14 +233,14 @@ std::string run_dimred_attributeselector(std::string dataset,
     it = labels.begin();
     args += " -labels "+ to_str(*it);
     for(++it; it != labels.end(); ++it){
-      args += ","; args += to_str(*it);
+      args += ','; args += to_str(*it);
     }
   }
   if(ignored.size() > 0){
     it = ignored.begin();
     args += " -ignore "+ to_str(*it);
     for(++it; it != ignored.end(); ++it){
-      args += ","; args += to_str(*it);
+      args += ','; args += to_str(*it);
     }
   }
   args += " -seed 0";
@@ -272,8 +272,8 @@ std::string run_dimred_attributeselector(std::string dataset,
 ///
 ///\return the output printed to stdout and standard error
 ///
-std::string run_transform_keeponlycolumns(std::string dataset,
-					 std::string extension,
+std::string run_transform_keeponlycolumns(const std::string& dataset,
+					 const std::string& extension,
 					 std::vector<int> tokeep,
 					 int& retval
 					 ){
@@ -291,7 +291,7 @@ std::string run_transform_keeponlycolumns(std::string dataset,
     it = tokeep.begin();
     args += " "+ to_str(*it);
     for(++it; it != tokeep.end(); ++it){
-      args += ","; args += to_str(*it);
+      args += ','; args += to_str(*it);
     }
   }
 
@@ -829,7 +829,7 @@ public:
 	///testname.  You can also think about it as returning true
 	///iff testname contains one of the strings passed on the
 	///command line as a pattern which the test names must match.
-	bool willRunTest(std::string testName) const{
+	bool willRunTest(const std::string& testName) const{
 		std::list<std::string>::const_iterator pat;
 		const std::list<std::string>& pats = m_testNameSubstr;
 		for(pat = pats.begin(); pat != pats.end(); ++pat){

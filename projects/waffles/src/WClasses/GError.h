@@ -98,13 +98,13 @@ std::string to_str(const std::vector<bool>& vv);
 ///\brief Convert a pair to a string (should allow converting nested
 ///stl containers like pair<list<vector...>, multiset<foo> > to strings)
 template<typename T, typename U>
-std::string to_str(std::pair<T,U> v){
+std::string to_str(const std::pair<T,U>& v){
   return std::string("<")+to_str(v.first)+","+to_str(v.second)+">";
 }
 
 ///\brief Convert an stl container-like object to a string
 template<typename T>
-std::string to_str(T begin, T end, std::string spec = "")
+std::string to_str(T begin, T end, const std::string& spec = "")
 {
 	std::ostringstream os;
 	os.precision(14);
@@ -179,23 +179,23 @@ protected:
 
 public:
 	typedef std::string s;
-	Ex(s a) { setMessage(a); }
-	Ex(s a, s b) { setMessage(a + b); }
-	Ex(s a, s b, s c) { setMessage(a + b + c); }
-	Ex(s a, s b, s c, s d) { setMessage(a + b + c + d); }
-	Ex(s a, s b, s c, s d, s e) { setMessage(a + b + c + d + e); }
-	Ex(s a, s b, s c, s d, s e, s f) { setMessage(a + b + c + d + e + f); }
-	Ex(s a, s b, s c, s d, s e, s f, s g) { setMessage(a + b + c + d + e + f + g); }
-	Ex(s a, s b, s c, s d, s e, s f, s g, s h) { setMessage(a + b + c + d + e + f + g + h); }
-	Ex(s a, s b, s c, s d, s e, s f, s g, s h, s i) { setMessage(a + b + c + d + e + f + g + h + i); }
-	Ex(s a, s b, s c, s d, s e, s f, s g, s h, s i, s j) { setMessage(a + b + c + d + e + f + g + h + i + j); }
+	Ex(const s& a) { setMessage(a); }
+	Ex(const s& a, const s& b) { setMessage(a + b); }
+	Ex(const s& a, const s& b, const s& c) { setMessage(a + b + c); }
+	Ex(const s& a, const s& b, const s& c, const s& d) { setMessage(a + b + c + d); }
+	Ex(const s& a, const s& b, const s& c, const s& d, const s& e) { setMessage(a + b + c + d + e); }
+	Ex(const s& a, const s& b, const s& c, const s& d, const s& e, const s& f) { setMessage(a + b + c + d + e + f); }
+	Ex(const s& a, const s& b, const s& c, const s& d, const s& e, const s& f, const s& g) { setMessage(a + b + c + d + e + f + g); }
+	Ex(const s& a, const s& b, const s& c, const s& d, const s& e, const s& f, const s& g, const s& h) { setMessage(a + b + c + d + e + f + g + h); }
+	Ex(const s& a, const s& b, const s& c, const s& d, const s& e, const s& f, const s& g, const s& h, const s& i) { setMessage(a + b + c + d + e + f + g + h + i); }
+	Ex(const s& a, const s& b, const s& c, const s& d, const s& e, const s& f, const s& g, const s& h, const s& i, const s& j) { setMessage(a + b + c + d + e + f + g + h + i + j); }
 
 	~Ex() throw() override
 	{
 	}
 
 	/// Sets the message on the exception. (This method is called by all constructors of this object.)
-	void setMessage(std::string message);
+	void setMessage(const std::string& message);
 
 	/// Returns the error message corresponding to this exception
 	const char* what() const throw() override;
@@ -296,7 +296,7 @@ long filelength(int filedes);
 ///                  understand why it was written and have some help
 ///                  in diagnosing the bug.
 template<class T1, class T2>
-void TestEqual(const T1& expected, const T2& got, std::string test_descr)
+void TestEqual(const T1& expected, const T2& got, const std::string& test_descr)
 {
 	using std::endl;
 	if(!(expected == got)){
@@ -312,13 +312,13 @@ void TestEqual(const T1& expected, const T2& got, std::string test_descr)
 }
 
 ///"Specialization" of TestEqual for c-strings done using overloading
-void TestEqual(char const* expected, char const* got, std::string desc);
+void TestEqual(char const* expected, char const* got, const std::string& desc);
 
 ///"Specialization" of TestEqual for c-strings done using overloading
-void TestEqual(char const* expected, char* got, std::string desc);
+void TestEqual(char const* expected, char* got, const std::string& desc);
 
 ///"Specialization" of TestEqual for c-strings done using overloading
-void TestEqual(char* expected, char* got, std::string desc);
+void TestEqual(char* expected, char* got, const std::string& desc);
 
 ///\brief Verify that \a expectedSubstring is a substring of \a got for test code. Unlike Assert, this check does not disappear in optimized builds.
 ///
@@ -343,8 +343,8 @@ void TestEqual(char* expected, char* got, std::string desc);
 ///                  easily find the failing test in the code and
 ///                  understand why it was written and have some help
 ///                  in diagnosing the bug.
-void TestContains(std::string expectedSubstring, std::string got,
-                  std::string desc);
+void TestContains(const std::string& expectedSubstring, const std::string& got,
+                  const std::string& desc);
 
 } // namespace GClasses
 

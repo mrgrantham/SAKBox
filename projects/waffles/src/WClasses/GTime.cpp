@@ -280,19 +280,19 @@ const char* GProgressEstimator::estimate(size_t iter)
 					size_t years = days / 365;
 					days -= years * 365;
 					m_message += to_str(years);
-					m_message += "y";
+					m_message += 'y';
 				}
 				m_message += to_str(days);
-				m_message += "d";
+				m_message += 'd';
 			}
 			m_message += to_str(hours);
-			m_message += "h";
+			m_message += 'h';
 		}
 		m_message += to_str(mins);
-		m_message += "m";
+		m_message += 'm';
 	}
 	m_message += to_str(secs);
-	m_message += "s";
+	m_message += 's';
 	return m_message.c_str();
 }
 

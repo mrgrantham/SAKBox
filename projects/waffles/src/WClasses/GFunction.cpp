@@ -26,6 +26,7 @@
 #include <cmath>
 #include <string>
 #include <memory>
+#include <utility>
 
 using namespace GClasses;
 using std::vector;
@@ -162,7 +163,7 @@ public:
 	{
 	}
 
-	GFunctionCall(string name) : GFunctionNode(), m_name(name), m_pFunction(nullptr)
+	GFunctionCall(string name) : GFunctionNode(), m_name(std::move(name)), m_pFunction(nullptr)
 	{
 	}
 

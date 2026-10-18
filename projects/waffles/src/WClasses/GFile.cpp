@@ -282,7 +282,7 @@ void GFile::folderListRecursive(std::vector<std::string>& list, const char* dir)
 	for(size_t i = 0; i < folders.size(); i++)
 	{
 		string sDir = dir;
-		sDir += "/";
+		sDir += '/';
 		sDir += folders[i];
 		folderListRecursive(list, sDir.c_str());
 	}
@@ -300,7 +300,7 @@ void GFile::fileListRecursive(std::vector<std::string>& list, const char* dir)
 		for(size_t j = 0; j < files.size(); j++)
 		{
 			string s = folders[i];
-			s += "/";
+			s += '/';
 			s += files[j];
 			list.push_back(s);
 		}

@@ -311,7 +311,7 @@ namespace GClasses {
 
       //For each node, add a line between it and its nearest neighbors
       //to the set of lines to draw.
-      std::vector<Node> nodes = map.nodes();
+      const std::vector<Node>& nodes = map.nodes();
       if(nodes.size() > 0){
 	std::size_t numWeights = nodes.at(1).weights.size();
 	if(numWeights <= m_xDim){

@@ -2289,7 +2289,7 @@ void GWidgetFileSystemBrowser::dirFoldersAndFiles(string* pOutDir, vector<string
 	if(!getcwd(szPath, 300))
 		throw Ex("error getting cwd");
 	*pOutDir = szPath;
-	(*pOutDir) += "/";
+	(*pOutDir) += '/';
 
 	// Get the folders
 	if(pOutDir->length() >

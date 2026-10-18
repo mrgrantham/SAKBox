@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <sstream>
+#include <utility>
 #ifndef WINDOWS
 #	include <execinfo.h>
 #endif
@@ -41,7 +42,7 @@ namespace GClasses {
 
 bool g_exceptionExpected = false;
 
-void Ex::setMessage(std::string message)
+void Ex::setMessage(const std::string& message)
 {
 	if(g_exceptionExpected)
 		m_message = message;
@@ -90,20 +91,20 @@ GExpectException::~GExpectException()
 
 
 
-void TestEqual(char const*expected, char const*got, std::string desc){
+void TestEqual(char const*expected, char const*got, const std::string& desc){
   TestEqual(std::string(expected), std::string(got), desc);
 }
 
-void TestEqual(char const* expected, char* got, std::string desc){
+void TestEqual(char const* expected, char* got, const std::string& desc){
   TestEqual(std::string(expected), std::string(got), desc);
 }
 
-void TestEqual(char* expected, char* got, std::string desc){
+void TestEqual(char* expected, char* got, const std::string& desc){
   TestEqual(std::string(expected), std::string(got), desc);
 }
 
-void TestContains(std::string expectedSubstring, std::string got,
-                  std::string descr){
+void TestContains(const std::string& expectedSubstring, const std::string& got,
+                  const std::string& descr){
 	using std::endl;
 	if(got.find(expectedSubstring) == std::string::npos){
 		std::cerr

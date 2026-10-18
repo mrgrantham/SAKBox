@@ -240,7 +240,7 @@ bool GHttpClient::sendGetRequest(const char* szUrl, bool headersOnly)
 	s += szHost;
 	if(nPort != 80)
 	{
-		s += ":";
+		s += ':';
 		s += to_str(nPort);
 	}
 // todo: undo the next line

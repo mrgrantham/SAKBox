@@ -18,6 +18,7 @@
 
 #include "GTree.h"
 #include <string>
+#include <utility>
 
 using std::string;
 
@@ -29,7 +30,7 @@ public:
 	string m_s;
 	int m_n;
 
-	MyRelationalObject(int n, string s) : m_s(s), m_n(n) {}
+	MyRelationalObject(int n, string s) : m_s(std::move(s)), m_n(n) {}
 };
 
 class MyRelationalObjectComparer

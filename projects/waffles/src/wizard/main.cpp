@@ -425,7 +425,7 @@ public:
 					{
 						s2 = "\"";
 						s2 += pValue;
-						s2 += "\"";
+						s2 += '\"';
 						pValue = s2.c_str();
 					}
 
@@ -1003,7 +1003,7 @@ void LaunchBrowser(const char* szAddress)
 void do_wizard()
 {
 	int port = 8421;
-	size_t seed = (size_t)(getpid() * (unsigned int)time(nullptr));
+	size_t seed = (size_t)getpid() * (size_t)time(nullptr);
 	GRand prng(seed);
 	bool serverStarted = false;
 	try

@@ -21,6 +21,7 @@
 #include "GError.h"
 #include "GTransform.h"
 #include "GHolders.h"
+#include <utility>
 #include <vector>
 #include <list>
 #include <set>
@@ -359,7 +360,7 @@ class GDistanceMetric;
       SVG2DWeightReporter(std::string baseFilename,
 			  std::size_t xDim, std::size_t yDim,
 			  bool showTrainingData = false)
-	:m_baseFilename(baseFilename), m_nextNumberToOutput(1),
+	:m_baseFilename(std::move(baseFilename)), m_nextNumberToOutput(1),
 	 m_xDim(xDim), m_yDim(yDim),
 	 m_showTrainingData(showTrainingData), m_trainingData(){}
 

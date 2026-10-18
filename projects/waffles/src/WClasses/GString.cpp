@@ -70,7 +70,7 @@ std::string to_fixed_str(double val, size_t total_chars, char pad)
 		return std::string(total_chars - s.length(), pad) + s;
 	else if(s.length() > total_chars)
 	{
-		size_t dot = s.find_last_of(".");
+		size_t dot = s.find_last_of('.');
 		if(dot == string::npos)
 			throw Ex("Not enough characters to represent the value ", s);
 		size_t e = s.find_last_of("eE");
@@ -126,13 +126,13 @@ bool ends_with(std::string const &fullString, std::string const &ending)
 
 namespace{
 	template<class container, class T>
-		void CFill(container& c, const T a){
+		void CFill(container& c, const T& a){
 		c.insert(c.end(), a);
 	}
 
 
 	template<class container, class T>
-		void CFill(container& c, const T a, const T b){
+		void CFill(container& c, const T& a, const T& b){
 		CFill(c,a);
 		CFill(c,b);
 	}

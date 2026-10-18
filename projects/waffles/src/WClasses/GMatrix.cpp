@@ -71,7 +71,7 @@ void GRelation::print(ostream& stream) const
 	if(type() == ARFF)
 	{
 		std::string name = ((GArffRelation*)this)->name();
-		if(name.find(" ") != string::npos)
+		if(name.find(' ') != string::npos)
 			stream << "'" << name << "'";
 		else
 			stream << name;
@@ -655,7 +655,7 @@ void GArffRelation::parseAttribute(GArffTokenizer& tok)
 			addAttribute(dataname.c_str(), (size_t)-1, nullptr);
 		else if(_stricmp(szType, "DATE") == 0)
 		{
-			dataname += ":";
+			dataname += ':';
 			tok.skipWhile(tok.m_spaces);
 			while(true)
 			{
@@ -678,7 +678,7 @@ void GArffRelation::parseAttribute(GArffTokenizer& tok)
 void GArffRelation::printAttrName(std::ostream& stream, size_t column) const
 {
 	std::string s = attrName(column);
-	if(s.find(" ") != std::string::npos)
+	if(s.find(' ') != std::string::npos)
 		stream << "'" << s << "'";
 	else
 		stream << s;
@@ -5127,10 +5127,10 @@ void GCSVParser::parse(GMatrix& outMatrix, const char* pFile, size_t len)
 					quot = true;
 				string attrName = "";
 				if(quot)
-					attrName += "\"";
+					attrName += '\"';
 				attrName += rows[0].m_elements[attr];
 				if(quot)
-					attrName += "\"";
+					attrName += '\"';
 				pRelation->addAttribute(attrName.c_str(), 0, nullptr);
 			}
 			else
@@ -5236,10 +5236,10 @@ void GCSVParser::parse(GMatrix& outMatrix, const char* pFile, size_t len)
 					quot = true;
 				string attrName = "";
 				if(quot)
-					attrName += "\"";
+					attrName += '\"';
 				attrName += rows[0].m_elements[attr];
 				if(quot)
-					attrName += "\"";
+					attrName += '\"';
 				pRelation->addAttribute(attrName.c_str(), 0, nullptr);
 			}
 			else
@@ -5288,7 +5288,7 @@ void GCSVParser::parse(GMatrix& outMatrix, const char* pFile, size_t len)
 				{
 					m_report[attr] += ", such as \"";
 					m_report[attr] += firstRealError;
-					m_report[attr] += "\"";
+					m_report[attr] += '\"';
 					string tmp = m_report[attr];
 					m_report[attr] = "ERROR   ";
 					m_report[attr] += tmp;
@@ -5299,7 +5299,7 @@ void GCSVParser::parse(GMatrix& outMatrix, const char* pFile, size_t len)
 					m_report[attr] = "OK      ";
 					m_report[attr] += tmp;
 				}
-				m_report[attr] += ".";
+				m_report[attr] += '.';
 			}
 			else if(uniqueVals < m_clearlyNumericalThreshold)
 			{
@@ -5410,10 +5410,10 @@ void GCSVParser::parse(GMatrix& outMatrix, const char* pFile, size_t len)
 					quot = true;
 				string attrName = "";
 				if(quot)
-					attrName += "\"";
+					attrName += '\"';
 				attrName += rows[0].m_elements[attr];
 				if(quot)
-					attrName += "\"";
+					attrName += '\"';
 				if(!specified && valueCount > m_maxVals)
 				{
 					attrName += "_aborted_due_to_too_many_vals";

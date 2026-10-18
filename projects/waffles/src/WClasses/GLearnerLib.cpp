@@ -1712,7 +1712,7 @@ void GLearnerLib::PrecisionRecall(GArgReader& args)
 			}
 			if(valCount > 1)
 			{
-				s += "_";
+				s += '_';
 				ostringstream oss;
 				pLabels->relation().printAttrValue(oss, i, val);
 				s += oss.str();

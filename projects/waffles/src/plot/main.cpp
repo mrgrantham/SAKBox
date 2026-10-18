@@ -1962,7 +1962,7 @@ void LaunchBrowser(const char* szAddress)
 void graph(GArgReader& args)
 {
 	int port = 8421;
-	size_t seed = (size_t)(getpid() * (unsigned int)time(nullptr));
+	size_t seed = (size_t)getpid() * (size_t)time(nullptr);
 	GRand prng(seed);
 	bool serverStarted = false;
 	try

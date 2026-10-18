@@ -865,7 +865,8 @@ void GSupervisedLearner_basicTest2(GSupervisedLearner* pLearner, double minAccur
 		return; // skip this test
 	vector<size_t> featureVals;
 	size_t cols = 10;
-	for(size_t i = 0; i < cols; i++)
+	featureVals.reserve(cols);
+for(size_t i = 0; i < cols; i++)
 		featureVals.push_back(3);
 	GMatrix features(featureVals);
 	vector<size_t> labelVals;

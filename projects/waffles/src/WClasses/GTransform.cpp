@@ -786,7 +786,8 @@ GRelation* GAttributeSelector::trainInner(const GMatrix& data)
 	GMatrix* pLabels = new GMatrix(*pNormData, 0, data.cols() - m_labelDims, data.rows(), m_labelDims);
 	std::unique_ptr<GMatrix> hLabels(pLabels);
 	vector<size_t> indexMap;
-	for(size_t i = 0; i < curDims; i++)
+	indexMap.reserve(curDims);
+for(size_t i = 0; i < curDims; i++)
 		indexMap.push_back(i);
 
 	// Produce a ranked attributed ordering by deselecting the weakest attribute each time

@@ -323,7 +323,7 @@ public:
 	virtual void swapAAndB(){
 		std::vector<int> tmp = aForB;
 		aForB = bForA;
-		bForA = tmp;
+		bForA = std::move(tmp);
 	}
 
 	///\brief A do-nothing destructor needed since there may be subclasses

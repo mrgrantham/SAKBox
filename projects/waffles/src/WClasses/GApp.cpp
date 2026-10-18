@@ -926,7 +926,7 @@ bool GArgReader::next_is_uint()
 	}
 	const char* s = peek();
 	if (s == nullptr || *s == '\0'){
-		return 0;
+		return false;
   	}
   	char * p;
   	if(strtoul (s, &p, 10) == 0)
