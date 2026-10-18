@@ -739,6 +739,9 @@ protected:
 	///testNameSubstr strings.  Any string contains the empty string as
 	///a substring, so the empty string matches all strings.
 	std::list<std::string> m_testNameSubstr;
+
+	///The names of the tests that failed
+	std::vector<std::string> m_failures;
 public:
 	///Create a test harness that runs tests matching the substrings
 	///passed on the command line. argc and argv are interpreted as if
@@ -875,7 +878,10 @@ public:
 			if(passed)
 				cout << "Passed\n";
 			else
+			{
 				cout << "FAILED!!!\n";
+				m_failures.push_back(szTestName);
+			}
 			return passed;
 		}
 		else
@@ -1016,8 +1022,18 @@ public:
 		}
 
 		cout << "Done.\n";
+		if(!m_failures.empty())
+		{
+			cout << m_failures.size() << " test(s) FAILED:\n";
+			for(const string& name : m_failures)
+				cout << "  " << name << "\n";
+		}
 		cout.flush();
 	}
+
+	// SAKBox: failures used to be printed but not reported, so the program
+	// exited 0 (and bazel test passed) whatever failed
+	bool anyFailed() const { return !m_failures.empty(); }
 };
 
 // SAKBox: under bazel test, put the command-line tools (built as
@@ -1061,6 +1077,8 @@ int main(int argc, char *argv[])
 	{
 		GTestHarness harness(argc, argv);
 		harness.runAllTests();
+		if(harness.anyFailed())
+			nRet = 1;
 	}
 	catch(const std::exception& e)
 	{
