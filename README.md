@@ -7,8 +7,9 @@ A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the 
 **Prerequisites**
 
 - [Bazelisk](https://github.com/bazelbuild/bazelisk) (recommended), which installs and runs the Bazel version pinned in `.bazelversion` (9.2.0). A plain Bazel 9 install also works.
-- A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`), with `-pedantic-errors` for the code under `projects/`.
+- A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`). The code under `projects/` also builds with `-pedantic-errors` (no compiler extensions), `-Werror` (no warnings) and `-Wsuggest-override` (overriding functions must say `override`; Waffles is exempt from this one for now).
 - On Linux, the system packages listed under [Linux](#linux).
+- Optional, for static analysis: clang-tidy, which Xcode doesn't include. On macOS, `brew install llvm` (Homebrew keeps it off your `PATH`, so your compiler stays Xcode's); on Linux, your distribution's `clang-tidy` package. See [Static analysis](#static-analysis).
 - For the 3DS example only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine (see [`tools/devkitpro`](tools/devkitpro/README.md)). Without Docker running, that one target fails with a message saying so.
 
 All other dependencies are declared in `MODULE.bazel` and downloaded by Bazel on the first build.
@@ -67,6 +68,19 @@ python3 tools/compile_commands/refresh.py
 Re-run it after adding source files or changing BUILD deps, then restart clangd. The generated files are git-ignored.
 
 To format a package's C++ files with clang-format, run its `clang_format` target, e.g. `bazel run //projects/flexmath:clang_format`. Most packages have one: `bazel query 'attr(name, "^clang_format$", //...)'` lists them.
+
+## Static analysis
+
+[clang-tidy](https://clang.llvm.org/extra/clang-tidy/) checks the code for likely bugs, avoidable slowness and outdated C++, using the checks chosen (with the reasons for leaving some out) in [`.clang-tidy`](.clang-tidy):
+
+``` bash
+python3 tools/compile_commands/refresh.py          # once, and after BUILD changes
+python3 tools/clang_tidy/run.py                    # everything except Waffles
+python3 tools/clang_tidy/run.py projects/cyclone   # one project
+python3 tools/clang_tidy/run.py --fix projects/cyclone   # apply clang-tidy's fixes
+```
+
+It prints each finding once (a header's findings aren't repeated per file that includes it), then a count per check, and exits 1 if there are any. It finds clang-tidy on your `PATH`, in Homebrew's LLVM, or at `$CLANG_TIDY`. Its findings are advice, not part of the build: review fixes before committing them, and rebuild and test afterwards.
 
 ## Platform Notes
 

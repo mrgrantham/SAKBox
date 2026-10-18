@@ -1,0 +1,42 @@
+# clang-tidy checks for the repo's own code. Run them with
+# python3 tools/clang_tidy/run.py (see the README's "Static analysis").
+#
+# On: likely bugs (bugprone-*), avoidable slowness (performance-*), and a
+# few mechanical modernisations clang-tidy can apply itself (--fix).
+# Off, because they mostly flag intended code here:
+#   throwing-static-initialization  every googletest TEST() trips it
+#   easily-swappable-parameters     style: any two parameters of one type
+#   narrowing-conversions           Cyclone and flexmath mix float and double on purpose
+#   reserved-identifier             old-style _HEADER_H_ include guards
+#   signed-bitwise                  bit flags in int enums (OpenGL, ImGui style)
+#   macro-parentheses               upstream macros, deliberately bare
+#   exception-escape                main() and destructors that may throw by design
+#   pointer-arithmetic-on-polymorphic-object  Cyclone's arrays of bodies
+#   enum-size, avoid-endl           micro-optimisations
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  modernize-use-override,
+  modernize-use-nullptr,
+  modernize-use-bool-literals,
+  misc-redundant-expression,
+  -bugprone-throwing-static-initialization,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-reserved-identifier,
+  -bugprone-signed-bitwise,
+  -bugprone-macro-parentheses,
+  -bugprone-exception-escape,
+  -bugprone-pointer-arithmetic-on-polymorphic-object,
+  -performance-enum-size,
+  -performance-avoid-endl
+
+# Report problems in the repo's own headers (directly or through Bazel's
+# _virtual_includes), not third-party ones; Waffles isn't converted yet.
+HeaderFilterRegex: 'projects/'
+ExcludeHeaderFilterRegex: 'projects/waffles/|WClasses/'
+
+# Homebrew's clang (newer than Xcode's) calls __COUNTER__, used by Catch2's
+# macros, an extension, which -pedantic-errors makes an error.
+ExtraArgs: ['-Wno-c2y-extensions']
