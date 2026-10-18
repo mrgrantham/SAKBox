@@ -49,7 +49,7 @@ protected:
 	GUnivariateDistribution* m_pDistribution;
 
 public:
-	GPrediction() : m_pDistribution(NULL)
+	GPrediction() : m_pDistribution(nullptr)
 	{
 	}
 
@@ -137,7 +137,7 @@ public:
 
 	/// Trains and tests this learner. Returns the sum-squared-error.
 	/// if pOutSAE is not NULL, the sum absolute error will be placed there.
-	virtual double trainAndTest(const GMatrix& trainFeatures, const GMatrix& trainLabels, const GMatrix& testFeatures, const GMatrix& testLabels, double* pOutSAE = NULL);
+	virtual double trainAndTest(const GMatrix& trainFeatures, const GMatrix& trainLabels, const GMatrix& testFeatures, const GMatrix& testLabels, double* pOutSAE = nullptr);
 
 	/// Makes a confusion matrix for a transduction algorithm
 	void transductiveConfusionMatrix(const GMatrix& trainFeatures, const GMatrix& trainLabels, const GMatrix& testFeatures, const GMatrix& testLabels, std::vector<GMatrix*>& stats);
@@ -149,7 +149,7 @@ public:
 	/// pThis is just a pointer that will be passed to the callback for you
 	/// to use however you want. It doesn't affect this method.
 	/// if pOutSAE is not NULL, the sum absolute error will be placed there.
-	double crossValidate(const GMatrix& features, const GMatrix& labels, size_t nFolds, double* pOutSAE = NULL, RepValidateCallback pCB = NULL, size_t nRep = 0, void* pThis = NULL);
+	double crossValidate(const GMatrix& features, const GMatrix& labels, size_t nFolds, double* pOutSAE = nullptr, RepValidateCallback pCB = nullptr, size_t nRep = 0, void* pThis = nullptr);
 
 	/// Perform cross validation "nReps" times and return the
 	/// average score. pCB is an optional callback method for reporting intermediate stats
@@ -157,7 +157,7 @@ public:
 	/// pThis is just a pointer that will be passed to the callback for you
 	/// to use however you want. It doesn't affect this method.
 	/// if pOutSAE is not NULL, the sum absolute error will be placed there.
-	double repValidate(const GMatrix& features, const GMatrix& labels, size_t reps, size_t nFolds, double* pOutSAE = NULL, RepValidateCallback pCB = NULL, void* pThis = NULL);
+	double repValidate(const GMatrix& features, const GMatrix& labels, size_t reps, size_t nFolds, double* pOutSAE = nullptr, RepValidateCallback pCB = nullptr, void* pThis = nullptr);
 
 	/// Returns a reference to the random number generator associated with this object.
 	/// For example, you could use it to change the random seed, to make this algorithm behave differently.
@@ -224,7 +224,7 @@ public:
 	GSupervisedLearner(const GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GSupervisedLearner();
+	~GSupervisedLearner() override;
 
 	/// Marshal this object into a DOM that can be converted to a variety
 	/// of formats. (Implementations of this method should use baseDomNode.)
@@ -232,7 +232,7 @@ public:
 
 	/// Returns true because fully supervised learners have an internal
 	/// model that allows them to generalize previously unseen rows.
-	virtual bool canGeneralize() { return true; }
+	bool canGeneralize() override { return true; }
 
 	/// Returns a reference to the feature relation (meta-data about the input attributes).
 	const GRelation& relFeatures();
@@ -278,7 +278,7 @@ public:
 
 	/// Computes the sum-squared-error for predicting the labels from the features.
 	/// For categorical labels, Hamming distance is used.
-	double sumSquaredError(const GMatrix& features, const GMatrix& labels, double* pOutSAE = NULL);
+	double sumSquaredError(const GMatrix& features, const GMatrix& labels, double* pOutSAE = nullptr);
 
 	/// label specifies which output to measure. (It should be 0 if there is only one label dimension.)
 	/// The measurement will be performed "nReps" times and results averaged together
@@ -289,7 +289,7 @@ public:
 	void precisionRecall(double* pOutPrecision, size_t nPrecisionSize, GMatrix& features, GMatrix& labels, size_t label, size_t nReps);
 
 	/// Trains and tests this learner. Returns sum-squared-error.
-	virtual double trainAndTest(const GMatrix& trainFeatures, const GMatrix& trainLabels, const GMatrix& testFeatures, const GMatrix& testLabels, double* pOutSAE = NULL);
+	double trainAndTest(const GMatrix& trainFeatures, const GMatrix& trainLabels, const GMatrix& testFeatures, const GMatrix& testLabels, double* pOutSAE = nullptr) override;
 
 	/// This is a helper method used by the unit tests of several model learners
 	void basicTest(double minAccuracy1, double minAccuracy2, double deviation = 1e-6, bool printAccuracy = false, double warnRange = 0.035);
@@ -305,7 +305,7 @@ protected:
 	virtual void trainInner(const GMatrix& features, const GMatrix& labels) = 0;
 
 	/// See GTransducer::transduce
-	virtual std::unique_ptr<GMatrix> transduceInner(const GMatrix& features1, const GMatrix& labels1, const GMatrix& features2);
+	std::unique_ptr<GMatrix> transduceInner(const GMatrix& features1, const GMatrix& labels1, const GMatrix& features2) override;
 
 	/// This method determines which data filters (normalize, discretize,
 	/// and/or nominal-to-cat) are needed and trains them.
@@ -346,15 +346,15 @@ public:
 	}
 
 	/// Destructor
-	virtual ~GIncrementalLearner()
+	~GIncrementalLearner() override
 	{
 	}
 
 	/// Only the GFilter class should return true to this method
-	virtual bool isFilter() { return false; }
+	bool isFilter() override { return false; }
 
 	/// Returns true
-	virtual bool canTrainIncrementally() { return true; }
+	bool canTrainIncrementally() override { return true; }
 
 	/// You must call this method before you call trainIncremental.
 	void beginIncrementalLearning(const GRelation& featureRel, const GRelation& labelRel);
@@ -436,9 +436,9 @@ protected:
 	/// Deserialization constructor
 	GFilter(const GDomNode* pNode, GLearnerLoader& ll);
 
-	virtual ~GFilter();
+	~GFilter() override;
 
-	virtual bool canTrainIncrementally() { return m_pLearner->canTrainIncrementally(); }
+	bool canTrainIncrementally() override { return m_pLearner->canTrainIncrementally(); }
 
 	/// Discards any filters between this filter and the base learner
 	void discardIntermediateFilters();
@@ -451,10 +451,10 @@ protected:
 
 public:
 	/// See the comment for GSupervisedLearner::clear
-	virtual void clear();
+	void clear() override;
 
 	/// Returns true
-	virtual bool isFilter() { return true; }
+	bool isFilter() override { return true; }
 
 	/// Initialize (or train) this filter without calling train on any of the
 	/// interior components. (This might be used when filtering a learner that
@@ -479,7 +479,7 @@ public:
 	/// Returns a pointer to the base larner
 	GSupervisedLearner* baseLearner() { return m_pOriginal; }
 	/// Throws an exception
-	virtual void trainSparse(GSparseMatrix& features, GMatrix& labels);
+	void trainSparse(GSparseMatrix& features, GMatrix& labels) override;
 };
 
 
@@ -499,35 +499,35 @@ using GFilter::prefilterLabels;
 	GFeatureFilter(const GDomNode* pNode, GLearnerLoader& ll);
 
 	/// Deletes the supervised learner and the transform
-	virtual ~GFeatureFilter();
+	~GFeatureFilter() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistributionInner
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// See the comment for GIncrementalLearner::trainIncremental
-	virtual void trainIncremental(const GVec& in, const GVec& out);
+	void trainIncremental(const GVec& in, const GVec& out) override;
 
 	/// Transform a feature vector to the form for presenting to the inner learner
-	virtual const GVec& prefilterFeatures(const GVec& in);
+	const GVec& prefilterFeatures(const GVec& in) override;
 
 	/// Transform a label vector to the form for presenting to the inner learner
-	virtual const GVec& prefilterLabels(const GVec& in);
+	const GVec& prefilterLabels(const GVec& in) override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	virtual void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel);
+	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
 
 	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	virtual void beginIncrementalLearningInner(const GMatrix& features, const GMatrix& labels);
+	void beginIncrementalLearningInner(const GMatrix& features, const GMatrix& labels) override;
 };
 
 
@@ -548,35 +548,35 @@ using GFilter::prefilterLabels;
 	GLabelFilter(const GDomNode* pNode, GLearnerLoader& ll);
 
 	/// Deletes the supervised learner and the transform
-	virtual ~GLabelFilter();
+	~GLabelFilter() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// See the comment for GIncrementalLearner::trainIncremental
-	virtual void trainIncremental(const GVec& in, const GVec& out);
+	void trainIncremental(const GVec& in, const GVec& out) override;
 
 	/// Transform a feature vector to the form for presenting to the inner learner
-	virtual const GVec& prefilterFeatures(const GVec& in);
+	const GVec& prefilterFeatures(const GVec& in) override;
 
 	/// Transform a label vector to the form for presenting to the inner learner
-	virtual const GVec& prefilterLabels(const GVec& in);
+	const GVec& prefilterLabels(const GVec& in) override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	virtual void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel);
+	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
 
 	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	virtual void beginIncrementalLearningInner(const GMatrix& features, const GMatrix& labels);
+	void beginIncrementalLearningInner(const GMatrix& features, const GMatrix& labels) override;
 };
 
 
@@ -598,25 +598,25 @@ using GFilter::prefilterLabels;
 	GAutoFilter(const GDomNode* pNode, GLearnerLoader& ll);
 
 	/// Deletes the supervised learner and the transform
-	virtual ~GAutoFilter();
+	~GAutoFilter() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// See the comment for GIncrementalLearner::trainIncremental
-	virtual void trainIncremental(const GVec& in, const GVec& out);
+	void trainIncremental(const GVec& in, const GVec& out) override;
 
 	/// Transform a feature vector to the form for presenting to the inner learner
-	virtual const GVec& prefilterFeatures(const GVec& in);
+	const GVec& prefilterFeatures(const GVec& in) override;
 
 	/// Transform a label vector to the form for presenting to the inner learner
-	virtual const GVec& prefilterLabels(const GVec& in);
+	const GVec& prefilterLabels(const GVec& in) override;
 
 	/// Prefilters multiple datasets and stores the results in the same order in a vector that can be retrieved by calling data().
 	void prefilterData(const GMatrix* pFeatures1, const GMatrix* pLabels1, const GMatrix* pFeatures2 = nullptr, const GMatrix* pLabels2 = nullptr, const GMatrix* pFeatures3 = nullptr, const GMatrix* pLabels3 = nullptr, const GMatrix* pFeatures4 = nullptr, const GMatrix* pLabels4 = nullptr);
@@ -626,13 +626,13 @@ using GFilter::prefilterLabels;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	virtual void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel);
+	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
 
 	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	virtual void beginIncrementalLearningInner(const GMatrix& features, const GMatrix& labels);
+	void beginIncrementalLearningInner(const GMatrix& features, const GMatrix& labels) override;
 
 	void whatTypesAreNeeded(const GRelation& featureRel, const GRelation& labelRel, bool& hasNominalFeatures, bool& hasContinuousFeatures, bool& hasNominalLabels, bool& hasContinuousLabels);
 	void setupDataDependentFilters(GSupervisedLearner* pLearner, const GMatrix& features, const GMatrix& labels, bool hasNominalFeatures, bool hasContinuousFeatures, bool hasNominalLabels, bool hasContinuousLabels);
@@ -659,29 +659,29 @@ public:
 	GBaselineLearner(const GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBaselineLearner();
+	~GBaselineLearner() override;
 
 	/// Run unit tests for this class.
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::clear
-	virtual void clear();
+	void clear() override;
 
 	/// This model has no parameters to tune, so this method is a noop.
 	void autoTune(GMatrix& features, GMatrix& labels);
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 };
 
 
@@ -702,23 +702,23 @@ public:
 	GIdentityFunction(const GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GIdentityFunction();
+	~GIdentityFunction() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::clear
-	virtual void clear();
+	void clear() override;
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 };
 
 

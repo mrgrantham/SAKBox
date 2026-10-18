@@ -11,7 +11,7 @@ namespace GClasses {
 
 GSmtp::GSmtp(const char* szTo, const char* szFrom, const char* szSubject, const char* szMessage, const char* szSMPTServer)
 {
-	m_pSocket = NULL;
+	m_pSocket = nullptr;
 	m_szFrom = szFrom;
 	m_szTo = szTo;
 	m_szSubject = szSubject;

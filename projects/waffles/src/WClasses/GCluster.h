@@ -42,7 +42,7 @@ protected:
 
 public:
 	GClusterer(size_t nClusterCount);
-	virtual ~GClusterer();
+	~GClusterer() override;
 
 	/// If own is true, then this object will delete pMetric when it is destroyed.
 	void setMetric(GDistanceMetric* pMetric, bool own);
@@ -52,7 +52,7 @@ public:
 
 	/// Clusters pIn and outputs a dataset with one column that specifies
 	/// the cluster number for each row.
-	virtual GMatrix* reduce(const GMatrix& in)
+	GMatrix* reduce(const GMatrix& in) override
 	{
 		cluster(&in);
 		GMatrix* pOut = new GMatrix(new GUniformRelation(1, m_clusterCount));
@@ -111,16 +111,16 @@ protected:
 
 public:
 	GAgglomerativeClusterer(size_t nClusterCount);
-	virtual ~GAgglomerativeClusterer();
+	~GAgglomerativeClusterer() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Performs clustering
-	virtual void cluster(const GMatrix* pData);
+	void cluster(const GMatrix* pData) override;
 
 	/// Identifies the cluster of the specified row
-	virtual size_t whichCluster(size_t nVector);
+	size_t whichCluster(size_t nVector) override;
 };
 
 
@@ -135,7 +135,7 @@ protected:
 
 public:
 	GAgglomerativeTransducer();
-	virtual ~GAgglomerativeTransducer();
+	~GAgglomerativeTransducer() override;
 
 	/// Specify the metric to use to determine the distance between points.
 	/// If own is true, then this object will take care to delete pMetric.
@@ -147,10 +147,10 @@ public:
 protected:
 	/// See the comment for GTransducer::transduce.
 	/// Throws if labels1 has more than one column.
-	virtual std::unique_ptr<GMatrix> transduceInner(const GMatrix& features1, const GMatrix& labels1, const GMatrix& features2);
+	std::unique_ptr<GMatrix> transduceInner(const GMatrix& features1, const GMatrix& labels1, const GMatrix& features2) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleContinuousLabels
-	virtual bool canImplicitlyHandleContinuousLabels() { return false; }
+	bool canImplicitlyHandleContinuousLabels() override { return false; }
 };
 
 
@@ -165,13 +165,13 @@ protected:
 
 public:
 	GKMeans(size_t nClusters, GRand* pRand);
-	~GKMeans();
+	~GKMeans() override;
 
 	/// Performs clustering
-	virtual void cluster(const GMatrix* pData);
+	void cluster(const GMatrix* pData) override;
 
 	/// Identifies the cluster of the specified row
-	virtual size_t whichCluster(size_t nVector);
+	size_t whichCluster(size_t nVector) override;
 
 	/// Selects random centroids and initializes internal data structures
 	void init(const GMatrix* pData);
@@ -211,13 +211,13 @@ protected:
 
 public:
 	GFuzzyKMeans(size_t nClusters, GRand* pRand);
-	~GFuzzyKMeans();
+	~GFuzzyKMeans() override;
 
 	/// Performs clustering
-	virtual void cluster(const GMatrix* pData);
+	void cluster(const GMatrix* pData) override;
 
 	/// Identifies the cluster of the specified row
-	virtual size_t whichCluster(size_t nVector);
+	size_t whichCluster(size_t nVector) override;
 
 	/// Selects random centroids and initializes internal data structures
 	void init(const GMatrix* pData);
@@ -256,13 +256,13 @@ protected:
 
 public:
 	GKMedoids(size_t clusters);
-	virtual ~GKMedoids();
+	~GKMedoids() override;
 
 	/// Performs clustering
-	virtual void cluster(const GMatrix* pData);
+	void cluster(const GMatrix* pData) override;
 
 	/// Identifies the cluster of the specified row
-	virtual size_t whichCluster(size_t nVector);
+	size_t whichCluster(size_t nVector) override;
 
 protected:
 	double curErr(const GMatrix* pData);
@@ -280,13 +280,13 @@ protected:
 
 public:
 	GKMedoidsSparse(size_t clusters);
-	virtual ~GKMedoidsSparse();
+	~GKMedoidsSparse() override;
 
 	/// Performs clustering
-	virtual void cluster(GSparseMatrix* pData);
+	void cluster(GSparseMatrix* pData) override;
 
 	/// Identifies the cluster of the specified row
-	virtual size_t whichCluster(size_t nVector);
+	size_t whichCluster(size_t nVector) override;
 
 protected:
 	double curGoodness();
@@ -305,13 +305,13 @@ protected:
 
 public:
 	GKMeansSparse(size_t nClusters, GRand* pRand);
-	~GKMeansSparse();
+	~GKMeansSparse() override;
 
 	/// Performs clustering
-	virtual void cluster(GSparseMatrix* pData);
+	void cluster(GSparseMatrix* pData) override;
 
 	/// Identifies the cluster of the specified row
-	virtual size_t whichCluster(size_t nVector);
+	size_t whichCluster(size_t nVector) override;
 };
 
 
@@ -326,7 +326,7 @@ protected:
 
 public:
 	GGraphCutTransducer();
-	virtual ~GGraphCutTransducer();
+	~GGraphCutTransducer() override;
 
 	/// Sets the number of neighbors to use to form the graph. The default is 12
 	void setNeighbors(size_t k);
@@ -341,10 +341,10 @@ public:
 protected:
 	/// See the comment for GTransducer::transduce.
 	/// Only supports one-dimensional labels.
-	virtual std::unique_ptr<GMatrix> transduceInner(const GMatrix& features1, const GMatrix& labels1, const GMatrix& features2);
+	std::unique_ptr<GMatrix> transduceInner(const GMatrix& features1, const GMatrix& labels1, const GMatrix& features2) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleContinuousLabels
-	virtual bool canImplicitlyHandleContinuousLabels() { return false; }
+	bool canImplicitlyHandleContinuousLabels() override { return false; }
 };
 
 

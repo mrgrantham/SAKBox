@@ -92,7 +92,7 @@ public:
 		m_nValueCount = 0;
 	}
 
-	virtual ~GCategoricalDistribution()
+	~GCategoricalDistribution() override
 	{
 	}
 
@@ -103,13 +103,13 @@ public:
 	GDomNode* serialize(GDom* pDoc) const;
 
 	/// Returns categorical
-	virtual Type type() const
+	Type type() const override
 	{
 		return categorical;
 	}
 
 	/// Returns true
-	virtual bool isDiscrete() const
+	bool isDiscrete() const override
 	{
 		return true;
 	}
@@ -117,19 +117,19 @@ public:
 	/// Returns true if x is within the range of support. If x is
 	/// not an integer, it will round x to the nearest integer and
 	/// then return true if that value is supported.
-	virtual bool isSupported(double x) const;
+	bool isSupported(double x) const override;
 
 	/// Returns the mode
-	virtual double mode() const
+	double mode() const override
 	{
 		return (double)m_nMode;
 	}
 
 	/// See the comment for GUnivariateDistribution::logLikelihood
-	virtual double logLikelihood(double x);
+	double logLikelihood(double x) override;
 
 	/// See the comment for GUnivariateDistribution::likelihood
-	virtual double likelihood(double x)
+	double likelihood(double x) override
 	{
 		size_t index = (size_t)x;
 		if(index >= m_nValueCount)
@@ -266,41 +266,41 @@ public:
 		m_height = 0;
 	}
 
-	virtual ~GNormalDistribution()
+	~GNormalDistribution() override
 	{
 	}
 
-	virtual Type type() const
+	Type type() const override
 	{
 		return normal;
 	}
 
 	/// Returns false
-	virtual bool isDiscrete() const
+	bool isDiscrete() const override
 	{
 		return false;
 	}
 
 	/// Returns true for all values
-	virtual bool isSupported(double x) const
+	bool isSupported(double x) const override
 	{
 		return true;
 	}
 
 	/// Returns the mode (which is also the mean)
-	virtual double mode() const
+	double mode() const override
 	{
 		return mean();
 	}
 
 	/// See the comment for GUnivariateDistribution::logLikelihood
-	virtual double logLikelihood(double x)
+	double logLikelihood(double x) override
 	{
 		return -0.5 * (log(m_variance) + (x - m_mean) * (x - m_mean) / m_variance);
 	}
 
 	/// See the comment for GUnivariateDistribution::likelihood
-	virtual double likelihood(double x)
+	double likelihood(double x) override
 	{
 		if(m_height == 0)
 			precompute();
@@ -363,23 +363,23 @@ public:
 	{
 	}
 
-	virtual ~GUniformDistribution()
+	~GUniformDistribution() override
 	{
 	}
 
-	virtual Type type() const
+	Type type() const override
 	{
 		return uniform;
 	}
 
 	/// Returns false
-	virtual bool isDiscrete() const
+	bool isDiscrete() const override
 	{
 		return false;
 	}
 
 	/// Returns true iff a <= x < b
-	virtual bool isSupported(double x) const
+	bool isSupported(double x) const override
 	{
 		if(x >= m_a && x < m_b)
 			return true;
@@ -388,19 +388,19 @@ public:
 	}
 
 	/// Returns the middle value (which is also the mean and median)
-	virtual double mode() const
+	double mode() const override
 	{
 		return mean();
 	}
 
 	/// See the comment for GUnivariateDistribution::logLikelihood
-	virtual double logLikelihood(double x)
+	double logLikelihood(double x) override
 	{
 		return log(likelihood(x));
 	}
 
 	/// See the comment for GUnivariateDistribution::likelihood
-	virtual double likelihood(double x)
+	double likelihood(double x) override
 	{
 		return 1.0 / (m_a - m_b);
 	}
@@ -432,39 +432,39 @@ public:
 	{
 	}
 
-	virtual ~GPoissonDistribution()
+	~GPoissonDistribution() override
 	{
 	}
 
-	virtual Type type() const
+	Type type() const override
 	{
 		return poisson;
 	}
 
 	/// Returns true
-	virtual bool isDiscrete() const
+	bool isDiscrete() const override
 	{
 		return true;
 	}
 
 	/// Returns true iff x rounds to a non-negative value
-	virtual bool isSupported(double x) const
+	bool isSupported(double x) const override
 	{
 		int n = (int)floor(x + 0.5);
 		return (n >= 0);
 	}
 
 	/// Returns the mode (which is also the mean)
-	virtual double mode() const
+	double mode() const override
 	{
 		return mean();
 	}
 
 	/// See the comment for GUnivariateDistribution::logLikelihood
-	virtual double logLikelihood(double x);
+	double logLikelihood(double x) override;
 
 	/// See the comment for GUnivariateDistribution::likelihood
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// Sets the parameters of this distribution
 	void setParams(double rate)
@@ -497,29 +497,29 @@ public:
 	{
 	}
 
-	virtual ~GGammaDistribution()
+	~GGammaDistribution() override
 	{
 	}
 
-	virtual Type type() const
+	Type type() const override
 	{
 		return gamma;
 	}
 
 	/// Returns false
-	virtual bool isDiscrete() const
+	bool isDiscrete() const override
 	{
 		return false;
 	}
 
 	/// Returns true iff x is non-negative
-	virtual bool isSupported(double x) const
+	bool isSupported(double x) const override
 	{
 		return (x >= 0);
 	}
 
 	/// Returns the mode
-	virtual double mode() const
+	double mode() const override
 	{
 		if(m_shape >= 1)
 			return (m_shape - 1) * m_scale;
@@ -528,10 +528,10 @@ public:
 	}
 
 	/// See the comment for GUnivariateDistribution::logLikelihood
-	virtual double logLikelihood(double x);
+	double logLikelihood(double x) override;
 
 	/// See the comment for GUnivariateDistribution::likelihood
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// Sets the parameters of this distribution
 	void setParams(double shape, double scale)
@@ -559,41 +559,41 @@ public:
 	{
 	}
 
-	virtual ~GInverseGammaDistribution()
+	~GInverseGammaDistribution() override
 	{
 	}
 
-	virtual Type type() const
+	Type type() const override
 	{
 		return inverseGamma;
 	}
 
 	/// Returns false
-	virtual bool isDiscrete() const
+	bool isDiscrete() const override
 	{
 		return false;
 	}
 
 	/// Returns true iff x is positive
-	virtual bool isSupported(double x) const
+	bool isSupported(double x) const override
 	{
 		return (x > 0);
 	}
 
 	/// Returns the mode
-	virtual double mode() const
+	double mode() const override
 	{
 		return m_scale / (m_shape + 1);
 	}
 
 	/// See the comment for GUnivariateDistribution::logLikelihood
-	virtual double logLikelihood(double x)
+	double logLikelihood(double x) override
 	{
 		return -(m_shape+1.0) * log(x) - (m_scale / x);
 	}
 
 	/// See the comment for GUnivariateDistribution::likelihood
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// Sets the parameters of this distribution
 	void setParams(double shape, double scale)
@@ -621,29 +621,29 @@ public:
 	{
 	}
 
-	virtual ~GBetaDistribution()
+	~GBetaDistribution() override
 	{
 	}
 
-	virtual Type type() const
+	Type type() const override
 	{
 		return beta;
 	}
 
 	/// Returns false
-	virtual bool isDiscrete() const
+	bool isDiscrete() const override
 	{
 		return false;
 	}
 
 	/// Returns true iff 0 <= x <= 1
-	virtual bool isSupported(double x) const
+	bool isSupported(double x) const override
 	{
 		return (x >= 0 && x <= 1);
 	}
 
 	/// Returns the mode
-	virtual double mode() const
+	double mode() const override
 	{
 		if(m_alpha > 1 && m_beta > 1)
 			return (m_alpha - 1) / (m_alpha + m_beta - 2);
@@ -654,10 +654,10 @@ public:
 	}
 
 	/// See the comment for GUnivariateDistribution::logLikelihood
-	virtual double logLikelihood(double x);
+	double logLikelihood(double x) override;
 
 	/// See the comment for GUnivariateDistribution::likelihood
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// Sets the parameters of this distribution
 	void setParams(double newalpha, double newbeta)
@@ -685,38 +685,38 @@ public:
 	{
 	}
 
-	virtual ~GSoftImpulseDistribution()
+	~GSoftImpulseDistribution() override
 	{
 	}
 
-	virtual Type type() const
+	Type type() const override
 	{
 		return softImpulse;
 	}
 
 	/// Returns true
-	virtual bool isDiscrete() const
+	bool isDiscrete() const override
 	{
 		return false;
 	}
 
 	/// Returns true iff 0 <= x <= 1
-	virtual bool isSupported(double x) const
+	bool isSupported(double x) const override
 	{
 		return (x >= 0 && x <= 1);
 	}
 
 	/// Returns the mode
-	virtual double mode() const
+	double mode() const override
 	{
 		return 0.5;
 	}
 
 	/// See the comment for GUnivariateDistribution::logLikelihood
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// See the comment for GUnivariateDistribution::likelihood
-	virtual double logLikelihood(double x);
+	double logLikelihood(double x) override;
 
 	/// Sets the parameter of this distribution
 	void setParams(double steepness)

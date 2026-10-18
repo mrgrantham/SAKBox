@@ -61,22 +61,22 @@ public:
 		m_pAccuracy = new double[labelDims];
 	}
 
-	virtual ~GKnnScaleFactorCritic()
+	~GKnnScaleFactorCritic() override
 	{
 		delete[] m_pAccuracy;
 	}
 
-	virtual void initVector(GVec& pVector)
+	void initVector(GVec& pVector) override
 	{
 		GDistanceMetric* pMetric = m_pLearner->metric();
 		pVector.copy(pMetric->scaleFactors());
 	}
 
-	virtual bool isStable() { return false; }
+	bool isStable() override { return false; }
 	virtual bool isConstrained() { return false; }
 
 protected:
-	virtual double computeError(const GVec& pVector)
+	double computeError(const GVec& pVector) override
 	{
 		// todo: this method is WAAAY too inefficient
 		GMatrix* pFeatures = m_pLearner->features();
@@ -96,29 +96,29 @@ GKNN::GKNN()
 	m_eInterpolationMethod = Linear;
 	m_eTrainMethod = StoreAll;
 	m_trainParam = 0.0;
-	m_pLearner = NULL;
+	m_pLearner = nullptr;
 	m_bOwnLearner = false;
 	m_nNeighbors = 1;
-	m_pFeatures = NULL;
-	m_pSparseFeatures = NULL;
-	m_pLabels = NULL;
-	m_pNeighborFinder = NULL;
+	m_pFeatures = nullptr;
+	m_pSparseFeatures = nullptr;
+	m_pLabels = nullptr;
+	m_pNeighborFinder = nullptr;
 	m_normalizeScaleFactors = true;
 	m_optimizeScaleFactors = false;
-	m_pDistanceMetric = NULL;
-	m_pSparseMetric = NULL;
+	m_pDistanceMetric = nullptr;
+	m_pSparseMetric = nullptr;
 	m_ownMetric = false;
-	m_pCritic = NULL;
-	m_pScaleFactorOptimizer = NULL;
+	m_pCritic = nullptr;
+	m_pScaleFactorOptimizer = nullptr;
 }
 
 GKNN::GKNN(const GDomNode* pNode)
 : GIncrementalLearner(pNode)
 {
-	m_pNeighborFinder = NULL;
-	m_pCritic = NULL;
-	m_pScaleFactorOptimizer = NULL;
-	m_pLearner = NULL;
+	m_pNeighborFinder = nullptr;
+	m_pCritic = nullptr;
+	m_pScaleFactorOptimizer = nullptr;
+	m_pLearner = nullptr;
 	m_bOwnLearner = false;
 	m_nNeighbors = (size_t)pNode->getInt("neighbors");
 	m_eInterpolationMethod = (InterpolationMethod)pNode->getInt("interpMethod");
@@ -126,8 +126,8 @@ GKNN::GKNN(const GDomNode* pNode)
 	m_trainParam = pNode->getDouble("trainParam");
 	m_normalizeScaleFactors = pNode->getBool("normalize");
 	m_optimizeScaleFactors = pNode->getBool("optimize");
-	GMatrix* pFeatures = NULL;
-	GSparseMatrix* pSparseFeatures = NULL;
+	GMatrix* pFeatures = nullptr;
+	GSparseMatrix* pSparseFeatures = nullptr;
 	GDomNode* pFeaturesNode = pNode->getIfExists("features");
 	if(pFeaturesNode)
 		pFeatures = new GMatrix(pFeaturesNode);
@@ -135,16 +135,16 @@ GKNN::GKNN(const GDomNode* pNode)
 		pSparseFeatures = new GSparseMatrix(pNode->get("sparseFeatures"));
 	GMatrix* pLabels = new GMatrix(pNode->get("labels"));
 	GDomNode* pMetricNode = pNode->getIfExists("metric");
-	m_pDistanceMetric = NULL;
-	m_pSparseMetric = NULL;
+	m_pDistanceMetric = nullptr;
+	m_pSparseMetric = nullptr;
 	if(pMetricNode)
 		m_pDistanceMetric = GDistanceMetric::deserialize(pNode->get("metric"));
 	else
 		m_pSparseMetric = GSparseSimilarity::deserialize(pNode->get("sparseMetric"));
 	m_ownMetric = true;
-	m_pFeatures = NULL;
-	m_pSparseFeatures = NULL;
-	m_pLabels = NULL;
+	m_pFeatures = nullptr;
+	m_pSparseFeatures = nullptr;
+	m_pLabels = nullptr;
 	if(pFeatures)
 		beginIncrementalLearningInner(pFeatures->relation(), pLabels->relation());
 	else
@@ -256,7 +256,7 @@ size_t GKNN::addVector(const GVec& feat, const GVec& lab)
 	if(m_pNeighborFinder)
 	{
 		delete(m_pNeighborFinder);
-		m_pNeighborFinder = NULL;
+		m_pNeighborFinder = nullptr;
 	}
 	index = m_pFeatures->rows();
 	m_pFeatures->newRow().copy(feat);
@@ -284,7 +284,7 @@ void GKNN::setMetric(GDistanceMetric* pMetric, bool own)
 		delete(m_pSparseMetric);
 	}
 	m_pDistanceMetric = pMetric;
-	m_pSparseMetric = NULL;
+	m_pSparseMetric = nullptr;
 	m_ownMetric = own;
 }
 
@@ -295,7 +295,7 @@ void GKNN::setMetric(GSparseSimilarity* pMetric, bool own)
 		delete(m_pDistanceMetric);
 		delete(m_pSparseMetric);
 	}
-	m_pDistanceMetric = NULL;
+	m_pDistanceMetric = nullptr;
 	m_pSparseMetric = pMetric;
 	m_ownMetric = own;
 }
@@ -611,9 +611,9 @@ void GKNN::predictDistribution(const GVec& in, GPrediction* out)
 	size_t nc = findNeighbors(in);
 	switch(m_eInterpolationMethod)
 	{
-		case Linear: interpolateLinear(nc, in, out, NULL); break;
-		case Mean: interpolateMean(nc, in, out, NULL); break;
-		case Learner: interpolateLearner(nc, in, out, NULL); break;
+		case Linear: interpolateLinear(nc, in, out, nullptr); break;
+		case Mean: interpolateMean(nc, in, out, nullptr); break;
+		case Learner: interpolateLearner(nc, in, out, nullptr); break;
 		default:
 			GAssert(false); // unexpected enumeration
 			break;
@@ -626,9 +626,9 @@ void GKNN::predict(const GVec& in, GVec& out)
 	size_t nc = findNeighbors(in);
 	switch(m_eInterpolationMethod)
 	{
-		case Linear: interpolateLinear(nc, in, NULL, &out); break;
-		case Mean: interpolateMean(nc, in, NULL, &out); break;
-		case Learner: interpolateLearner(nc, in, NULL, &out); break;
+		case Linear: interpolateLinear(nc, in, nullptr, &out); break;
+		case Mean: interpolateMean(nc, in, nullptr, &out); break;
+		case Learner: interpolateLearner(nc, in, nullptr, &out); break;
 		default:
 			GAssert(false); // unexpected enumeration
 			break;
@@ -638,12 +638,12 @@ void GKNN::predict(const GVec& in, GVec& out)
 // virtual
 void GKNN::clear()
 {
-	delete(m_pNeighborFinder); m_pNeighborFinder = NULL;
-	delete(m_pFeatures); m_pFeatures = NULL;
-	delete(m_pSparseFeatures); m_pSparseFeatures = NULL;
-	delete(m_pLabels); m_pLabels = NULL;
-	delete(m_pScaleFactorOptimizer); m_pScaleFactorOptimizer = NULL;
-	delete(m_pCritic); m_pCritic = NULL;
+	delete(m_pNeighborFinder); m_pNeighborFinder = nullptr;
+	delete(m_pFeatures); m_pFeatures = nullptr;
+	delete(m_pSparseFeatures); m_pSparseFeatures = nullptr;
+	delete(m_pLabels); m_pLabels = nullptr;
+	delete(m_pScaleFactorOptimizer); m_pScaleFactorOptimizer = nullptr;
+	delete(m_pCritic); m_pCritic = nullptr;
 	m_valueCounts.resize(0);
 }
 
@@ -701,7 +701,7 @@ std::unique_ptr<GMatrix> GNeighborTransducer::transduceInner(const GMatrix& feat
 	out->newRows(features2.rows());
 
 	// Find friends
-	GNeighborFinder* pNF = new GNeighborGraph(new GKdTree(&featuresAll, NULL, true), true, m_friendCount);
+	GNeighborFinder* pNF = new GNeighborGraph(new GKdTree(&featuresAll, nullptr, true), true, m_friendCount);
 	std::unique_ptr<GNeighborFinder> hNF(pNF);
 
 	// Transduce
@@ -801,7 +801,7 @@ GInstanceTable::GInstanceTable(size_t dims, size_t* pDims)
 		m_product *= pDims[i];
 		m_pDims[i] = pDims[i];
 	}
-	m_pTable = NULL;
+	m_pTable = nullptr;
 	clear();
 }
 
@@ -817,7 +817,7 @@ GInstanceTable::~GInstanceTable()
 GDomNode* GInstanceTable::serialize(GDom* pDoc) const
 {
 	throw Ex("not implemented yet");
-	return NULL;
+	return nullptr;
 }
 
 // virtual
@@ -859,7 +859,7 @@ void GInstanceTable::predict(const GVec& in, GVec& out)
 void GInstanceTable::clear()
 {
 	delete[] m_pTable;
-	m_pTable = NULL;
+	m_pTable = nullptr;
 }
 
 // virtual
@@ -904,7 +904,7 @@ void GInstanceTable::trainIncremental(const GVec& in, const GVec& out)
 
 
 GSparseInstance::GSparseInstance()
-: GSupervisedLearner(), m_neighborCount(1), m_pInstanceFeatures(NULL), m_pInstanceLabels(NULL), m_pMetric(NULL), m_pSkipRows(NULL)
+: GSupervisedLearner(), m_neighborCount(1), m_pInstanceFeatures(nullptr), m_pInstanceLabels(nullptr), m_pMetric(nullptr), m_pSkipRows(nullptr)
 {
 }
 
@@ -1057,7 +1057,7 @@ void GSparseInstance::prune(const GMatrix& holdOutFeatures, const GMatrix& holdO
 		}
 	}
 	delete(m_pSkipRows);
-	m_pSkipRows = NULL;
+	m_pSkipRows = nullptr;
 }
 
 void GSparseInstance::setMetric(GSparseSimilarity* pMetric)
@@ -1119,13 +1119,13 @@ void GSparseInstance::predict(const GVec& in, GVec& out)
 void GSparseInstance::clear()
 {
 	delete(m_pInstanceFeatures);
-	m_pInstanceFeatures = NULL;
+	m_pInstanceFeatures = nullptr;
 	delete(m_pInstanceLabels);
-	m_pInstanceLabels = NULL;
+	m_pInstanceLabels = nullptr;
 	delete(m_pMetric);
-	m_pMetric = NULL;
+	m_pMetric = nullptr;
 	delete(m_pSkipRows);
-	m_pSkipRows = NULL;
+	m_pSkipRows = nullptr;
 }
 
 //static

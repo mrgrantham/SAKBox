@@ -95,10 +95,10 @@ protected:
 
 public:
 	GManifoldSculpting(size_t nNeighbors, size_t targetDims, GRand* pRand);
-	virtual ~GManifoldSculpting();
+	~GManifoldSculpting() override;
 
 	/// Perform NLDR.
-	virtual GMatrix* reduce(const GMatrix& in);
+	GMatrix* reduce(const GMatrix& in) override;
 
 	const GRelation& relationAfter() { return *m_pRelationAfter; }
 
@@ -190,7 +190,7 @@ protected:
 public:
 	GIsomap(size_t neighborCount, size_t targetDims, GRand* pRand);
 	GIsomap(GDomNode* pNode);
-	virtual ~GIsomap();
+	~GIsomap() override;
 
 	/// Serializes this object
 	GDomNode* serialize(GDom* pDoc) const;
@@ -207,7 +207,7 @@ public:
 	void setNeighborFinder(GNeighborFinder* pNF);
 
 	/// Performs NLDR
-	virtual GMatrix* reduce(const GMatrix& in);
+	GMatrix* reduce(const GMatrix& in) override;
 };
 
 
@@ -224,7 +224,7 @@ protected:
 public:
 	GLLE(size_t neighborCount, size_t targetDims, GRand* pRand);
 	GLLE(GDomNode* pNode);
-	virtual ~GLLE();
+	~GLLE() override;
 
 	/// Serialize this object
 	GDomNode* serialize(GDom* pDoc) const;
@@ -236,7 +236,7 @@ public:
 	void setNeighborFinder(GNeighborFinder* pNF);
 
 	/// Performs NLDR
-	virtual GMatrix* reduce(const GMatrix& in);
+	GMatrix* reduce(const GMatrix& in) override;
 };
 
 
@@ -258,7 +258,7 @@ public:
 	/// results together. If you just want fast results, use reps=1.
 	GBreadthFirstUnfolding(size_t reps, size_t neighborCount, size_t targetDims);
 	GBreadthFirstUnfolding(GDomNode* pNode);
-	virtual ~GBreadthFirstUnfolding();
+	~GBreadthFirstUnfolding() override;
 
 	/// Serialize this object
 	GDomNode* serialize(GDom* pDoc) const;
@@ -267,7 +267,7 @@ public:
 	void setNeighborFinder(GNeighborFinder* pNF);
 
 	/// Perform NLDR
-	virtual GMatrix* reduce(const GMatrix& in);
+	GMatrix* reduce(const GMatrix& in) override;
 
 	/// Specify to use multi-dimensional scaling instead of PCA to reduce in local patches.
 	void useMds(bool b) { m_useMds = b; }
@@ -306,7 +306,7 @@ protected:
 public:
 	GScalingUnfolder();
 	GScalingUnfolder(GDomNode* pNode);
-	virtual ~GScalingUnfolder();
+	~GScalingUnfolder() override;
 
 	/// Specify the number of neighbors to use. (The default is 14.)
 	void setNeighborCount(size_t n) { m_neighborCount = n; }
@@ -327,11 +327,11 @@ public:
 	GRand& rand() { return m_rand; }
 
 	/// Reduces the dimensionality of "in".
-	virtual GMatrix* reduce(const GMatrix& in);
+	GMatrix* reduce(const GMatrix& in) override;
 
 	/// Unfolds the points in intrinsic, such that distances specified in nf are preserved.
 	/// If pVisible is non-NULL, then pEncoder will be incrementally trained to encode pVisible to intrinsic.
-	void unfold(GMatrix& intrinsic, GNeighborGraph& nf, size_t encoderTrainIters = 0, GNeuralNetLearner* pEncoder = NULL, GNeuralNetLearner* pDecoder = NULL, const GMatrix* pVisible = NULL);
+	void unfold(GMatrix& intrinsic, GNeighborGraph& nf, size_t encoderTrainIters = 0, GNeuralNetLearner* pEncoder = nullptr, GNeuralNetLearner* pDecoder = nullptr, const GMatrix* pVisible = nullptr);
 
 	/// Perform a single pass over all the edges and attempt to restore local relationships
 	static void restore_local_distances_pass(GMatrix& intrinsic, GNeighborGraph& ng, size_t neighborCount, GRand& rand);

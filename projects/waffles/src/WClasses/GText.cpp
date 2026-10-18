@@ -93,12 +93,12 @@ GVocabulary::GVocabulary(bool stemWords)
 	if(stemWords)
 		m_pStemmer = new GStemmer();
 	else
-		m_pStemmer = NULL;
+		m_pStemmer = nullptr;
 	m_pStopWords = new GConstStringHashTable(113, false);
 	m_pVocabulary = new GConstStringToIndexHashTable(3571, false);
 	m_pHeap = new GHeap(1024);
 	m_docNumber = 0;
-	m_pWordStats = NULL;
+	m_pWordStats = nullptr;
 }
 
 GVocabulary::~GVocabulary()
@@ -115,13 +115,13 @@ void GVocabulary::addStopWord(const char* szWord)
 	const char* pWord = szWord;
 	if(m_pStemmer)
 		pWord = m_pStemmer->getStem(szWord, strlen(szWord));
-	m_pStopWords->add(m_pHeap->add(pWord), NULL);
+	m_pStopWords->add(m_pHeap->add(pWord), nullptr);
 }
 
 void GVocabulary::addTypicalStopWords()
 {
 	for(size_t i = 0; i < (sizeof(g_szStopWords) / sizeof(const char*)); i++)
-		m_pStopWords->add(g_szStopWords[i], NULL);
+		m_pStopWords->add(g_szStopWords[i], nullptr);
 }
 
 void GVocabulary::addWord(const char* szWord, size_t nLen)

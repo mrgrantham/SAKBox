@@ -270,19 +270,19 @@ public:
 		m_target[2] = 0.3831;
 	}
 
-	virtual ~GProbeSearchTestCritic()
+	~GProbeSearchTestCritic() override
 	{
 	}
 
-	virtual bool isStable() { return true; }
+	bool isStable() override { return true; }
 	virtual bool isConstrained() { return false; }
 
 protected:
-	virtual void initVector(GVec& pVector)
+	void initVector(GVec& pVector) override
 	{
 	}
 
-	virtual double computeError(const GVec& pVector)
+	double computeError(const GVec& pVector) override
 	{
 		if(pVector[0] < 0.5)
 			return 0.001;

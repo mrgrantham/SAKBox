@@ -88,7 +88,7 @@ if(!sdlWindow)
 void ViewBase::captureScreen(GImage* pImage)
 {
 	Uint32 format; // SDL_PixelFormatEnum
-	SDL_QueryTexture(sdlTexture,&format, NULL,NULL,NULL);
+	SDL_QueryTexture(sdlTexture,&format, nullptr,nullptr,nullptr);
 	pImage->setSize(m_screenRect.w, m_screenRect.h);
 
 	int *pixels = nullptr;
@@ -331,7 +331,7 @@ void ViewBase::update()
 	// if ( SDL_MUSTLOCK(pScreen) )
 		SDL_UnlockTexture(currentTexture);
 
-	SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
+	SDL_RenderCopy(sdlRenderer, sdlTexture, nullptr, nullptr);
 	// Update the whole screen
 	 SDL_RenderPresent(sdlRenderer);
 }
@@ -348,7 +348,7 @@ ControllerBase::ControllerBase()
 	m_bKeepRunning = true;
 
 #ifndef NOGUI
-	m_pView = NULL;
+	m_pView = nullptr;
 
 	// Init the keyboard
 	int n;
@@ -515,46 +515,46 @@ public:
 		m_y = (m_pBackgroundImage->height() - m_pDialog->rect()->h) / 2;
 	}
 
-	virtual ~PopupView()
+	~PopupView() override
 	{
 		delete(m_pBackgroundImage);
 	}
 
-	virtual void onMouseDown(int button, int x, int y)
+	void onMouseDown(int button, int x, int y) override
 	{
 		m_pDialog->pressButton(button, x - (m_x + m_screenRect.x), y - (m_y + m_screenRect.y));
 	}
 
-	virtual void onMouseUp(int button, int x, int y)
+	void onMouseUp(int button, int x, int y) override
 	{
 		m_pDialog->releaseButton(button);
 	}
 
-	virtual bool onMousePos(int x, int y)
+	bool onMousePos(int x, int y) override
 	{
 		x -= (m_x + m_screenRect.x);
 		y -= (m_y + m_screenRect.y);
 		return m_pDialog->handleMousePos(x, y);
 	}
 
-	virtual void onChar(char c)
+	void onChar(char c) override
 	{
 		m_pDialog->handleChar(c);
 	}
 
-	virtual void onSpecialKey(int key)
+	void onSpecialKey(int key) override
 	{
 		m_pDialog->handleSpecialKey(key);
 	}
 
 protected:
-	virtual void draw(int* pixels, int pitch)
+	void draw(int* pixels, int pitch) override
 	{
 		fmt::println("draw");
 		GImage* pDialogImage = m_pDialog->image();
 		m_pBackgroundImage->blit(m_x, m_y, pDialogImage, m_pDialog->rect());
 		Uint32 format; // SDL_PixelFormatEnum
-		SDL_QueryTexture(sdlTexture,&format, NULL,NULL,NULL);
+		SDL_QueryTexture(sdlTexture,&format, nullptr,nullptr,nullptr);
 		blitImage(pixels,pitch,format, m_nLeft, m_nTop, m_pBackgroundImage);
 	}
 };
@@ -574,7 +574,7 @@ public:
 		m_pView = new PopupView(pDialog);
 	}
 
-	virtual ~PopupController()
+	~PopupController() override
 	{
 		delete(m_pView);
 	}
@@ -849,7 +849,7 @@ GetOpenFilenameDialog::GetOpenFilenameDialog(const char* szMessage, const char* 
 	new GWidgetTextLabel(this, 10, 5, 300, 20, szMessage, 0xff442200);
 	m_pFileBrowser = new GWidgetFileSystemBrowser(this, 10, 30, m_rect.w - 20, m_rect.h - 65, szExt);
 	m_pCancel = new GWidgetTextButton(this, (m_rect.w - 100) / 2, m_rect.h - 30, 100, 24, "Cancel");
-	m_szFilename = NULL;
+	m_szFilename = nullptr;
 }
 
 // virtual
@@ -880,7 +880,7 @@ void GetOpenFilenameDialog::onReleaseTextButton(GWidgetTextButton* pButton)
 	if(pButton == m_pCancel)
 	{
 		delete[] m_szFilename;
-		m_szFilename = NULL;
+		m_szFilename = nullptr;
 		close();
 	}
 }
@@ -893,7 +893,7 @@ const char* GetOpenFilenameDialog::filename()
 char* GetOpenFilenameDialog::releaseFilename()
 {
 	char* szFilename = m_szFilename;
-	m_szFilename = NULL;
+	m_szFilename = nullptr;
 	return szFilename;
 }
 
@@ -909,7 +909,7 @@ GetSaveFilenameDialog::GetSaveFilenameDialog(const char* szMessage, const char* 
 	setFocusWidget(m_pFilename);
 	m_pSave = new GWidgetTextButton(this, m_rect.w / 2 - 120, m_rect.h - 30, 100, 24, "Save");
 	m_pCancel = new GWidgetTextButton(this, m_rect.w / 2 + 20, m_rect.h - 30, 100, 24, "Cancel");
-	m_szFilename = NULL;
+	m_szFilename = nullptr;
 }
 
 // virtual
@@ -929,7 +929,7 @@ void GetSaveFilenameDialog::onReleaseTextButton(GWidgetTextButton* pButton)
 	if(pButton == m_pCancel)
 	{
 		delete[] m_szFilename;
-		m_szFilename = NULL;
+		m_szFilename = nullptr;
 		close();
 	}
 	else if(pButton == m_pSave)
@@ -958,7 +958,7 @@ const char* GetSaveFilenameDialog::filename()
 char* GetSaveFilenameDialog::releaseFilename()
 {
 	char* szFilename = m_szFilename;
-	m_szFilename = NULL;
+	m_szFilename = nullptr;
 	return szFilename;
 }
 

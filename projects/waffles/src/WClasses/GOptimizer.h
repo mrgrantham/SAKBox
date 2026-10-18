@@ -135,13 +135,13 @@ public:
 	GSGDOptimizer(GNeuralNet& model, GRand& rand, const GMatrix* pTrainingFeatures = nullptr, const GMatrix* pTrainingLabels = nullptr);
 	
 	/// Prepare for optimization (i.e. allocate buffers).
-	virtual void init() override;
+	void init() override;
 	
 	/// Evaluate feat and lab, and update the model's gradient.
-	virtual void computeGradient(const GVec &feat, const GVec &lab) override;
+	void computeGradient(const GVec &feat, const GVec &lab) override;
 	
 	/// Step the model's parameters in the direction of the calculated gradient scaled by learningRate.
-	virtual void descendGradient(double learningRate) override;
+	void descendGradient(double learningRate) override;
 
 #ifdef GCUDA
 	virtual void computeGradientCuda(const GCudaVector& feat, const GCudaVector& lab);
@@ -169,13 +169,13 @@ public:
 	GAdamOptimizer(GNeuralNet& model, GRand& rand, const GMatrix* pTrainingFeatures = nullptr, const GMatrix* pTrainingLabels = nullptr);
 	
 	/// Prepare for optimization (i.e. allocate buffers).
-	virtual void init() override;
+	void init() override;
 	
 	/// Evaluate feat and lab, and update the model's gradient.
-	virtual void computeGradient(const GVec &feat, const GVec &lab) override;
+	void computeGradient(const GVec &feat, const GVec &lab) override;
 	
 	/// Step the model's parameters in the direction of the calculated gradient scaled by learningRate.
-	virtual void descendGradient(double learningRate) override;
+	void descendGradient(double learningRate) override;
 	
 #ifdef GCUDA
 	virtual void computeGradientCuda(const GCudaVector& feat, const GCudaVector& lab);
@@ -203,13 +203,13 @@ public:
 	GRMSPropOptimizer(GNeuralNet& model, GRand& rand, const GMatrix* pTrainingFeatures = nullptr, const GMatrix* pTrainingLabels = nullptr);
 	
 	/// Prepare for optimization (i.e. allocate buffers).
-	virtual void init() override;
+	void init() override;
 	
 	/// Evaluate feat and lab, and update the model's gradient.
-	virtual void computeGradient(const GVec &feat, const GVec &lab) override;
+	void computeGradient(const GVec &feat, const GVec &lab) override;
 	
 	/// Step the model's parameters in the direction of the calculated gradient scaled by learningRate.
-	virtual void descendGradient(double learningRate) override;
+	void descendGradient(double learningRate) override;
 	
 #ifdef GCUDA
 	virtual void computeGradientCuda(const GCudaVector& feat, const GCudaVector& lab);
@@ -271,7 +271,7 @@ class GOptimizerBasicTestTargetFunction : public GTargetFunction
 public:
 	GOptimizerBasicTestTargetFunction() : GTargetFunction(3) {}
 
-	virtual double computeError(const GVec& vector);
+	double computeError(const GVec& vector) override;
 };
 
 

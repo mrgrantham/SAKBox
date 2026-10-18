@@ -73,7 +73,7 @@ public:
 	/// continuous. Missing values are indicated with UNKNOWN_REAL_VALUE.
 	/// If pLabels is non-NULL, then the labels will be appended as
 	/// additional items.
-	void trainDenseMatrix(const GMatrix& data, const GMatrix* pLabels = NULL);
+	void trainDenseMatrix(const GMatrix& data, const GMatrix* pLabels = nullptr);
 
 	/// This returns a prediction for how the specified user
 	/// will rate the specified item. (The model must be trained before
@@ -101,11 +101,11 @@ public:
 	/// values for the items in the fold, and returns the mean-squared
 	/// difference between the predictions and the actual ratings.
 	/// If pOutMAE is non-NULL, it will be set to the mean-absolute error.
-	double crossValidate(GMatrix& data, size_t folds, double* pOutMAE = NULL);
+	double crossValidate(GMatrix& data, size_t folds, double* pOutMAE = nullptr);
 
 	/// This trains on the training set, and then tests on the test set.
 	/// Returns the mean-squared difference between actual and target predictions.
-	double trainAndTest(GMatrix& train, GMatrix& test, double* pOutMAE = NULL);
+	double trainAndTest(GMatrix& train, GMatrix& test, double* pOutMAE = nullptr);
 
 	/// This divides the data into two equal-size parts. It trains on one part, and
 	/// then measures the precision/recall using the other part. It returns a
@@ -153,19 +153,19 @@ public:
 	GBaselineRecommender(const GDomNode* pNode, GLearnerLoader& ll);
 
 	/// Destructor
-	virtual ~GBaselineRecommender();
+	~GBaselineRecommender() override;
 
 	/// See the comment for GCollaborativeFilter::train
-	virtual void train(GMatrix& data);
+	void train(GMatrix& data) override;
 
 	/// See the comment for GCollaborativeFilter::predict
-	virtual double predict(size_t user, size_t item);
+	double predict(size_t user, size_t item) override;
 
 	/// See the comment for GCollaborativeFilter::impute
-	virtual void impute(GVec& vec, size_t dims);
+	void impute(GVec& vec, size_t dims) override;
 
 	/// See the comment for GCollaborativeFilter::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Performs unit tests. Throws if a failure occurs. Returns if successful.
 	static void test();
@@ -189,7 +189,7 @@ protected:
 public:
 	GInstanceRecommender(size_t neighbors);
 	GInstanceRecommender(const GDomNode* pNode, GLearnerLoader& ll);
-	virtual ~GInstanceRecommender();
+	~GInstanceRecommender() override;
 
 	/// Sets the similarity metric to use. if own is true, then this object will take care
 	/// of deleting it as appropriate.
@@ -200,16 +200,16 @@ public:
 	GSparseSimilarity* metric() { return m_pMetric; }
 
 	/// See the comment for GCollaborativeFilter::train
-	virtual void train(GMatrix& data);
+	void train(GMatrix& data) override;
 
 	/// See the comment for GCollaborativeFilter::predict
-	virtual double predict(size_t user, size_t item);
+	double predict(size_t user, size_t item) override;
 
 	/// See the comment for GCollaborativeFilter::impute
-	virtual void impute(GVec& vec, size_t dims);
+	void impute(GVec& vec, size_t dims) override;
 
 	/// See the comment for GCollaborativeFilter::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Set the value for significance weighting. The default value is zero. If there
 	/// are fewer matching items between users than the specified values, the
@@ -249,7 +249,7 @@ protected:
 
 public:
 	GSparseClusterRecommender(size_t clusters);
-	virtual ~GSparseClusterRecommender();
+	~GSparseClusterRecommender() override;
 
 	/// Returns the number of clusters
 	size_t clusterCount() { return m_clusters; }
@@ -258,16 +258,16 @@ public:
 	void setClusterer(GSparseClusterer* pClusterer, bool own);
 
 	/// See the comment for GCollaborativeFilter::train
-	virtual void train(GMatrix& data);
+	void train(GMatrix& data) override;
 
 	/// See the comment for GCollaborativeFilter::predict
-	virtual double predict(size_t user, size_t item);
+	double predict(size_t user, size_t item) override;
 
 	/// See the comment for GCollaborativeFilter::impute
-	virtual void impute(GVec& vec, size_t dims);
+	void impute(GVec& vec, size_t dims) override;
 
 	/// See the comment for GCollaborativeFilter::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Performs unit tests. Throws if a failure occurs. Returns if successful.
 	static void test();
@@ -288,7 +288,7 @@ protected:
 
 public:
 	GDenseClusterRecommender(size_t clusters);
-	virtual ~GDenseClusterRecommender();
+	~GDenseClusterRecommender() override;
 
 	/// Returns the number of clusters
 	size_t clusterCount() { return m_clusters; }
@@ -297,16 +297,16 @@ public:
 	void setClusterer(GClusterer* pClusterer, bool own);
 
 	/// See the comment for GCollaborativeFilter::train
-	virtual void train(GMatrix& data);
+	void train(GMatrix& data) override;
 
 	/// See the comment for GCollaborativeFilter::predict
-	virtual double predict(size_t user, size_t item);
+	double predict(size_t user, size_t item) override;
 
 	/// See the comment for GCollaborativeFilter::impute
-	virtual void impute(GVec& vec, size_t dims);
+	void impute(GVec& vec, size_t dims) override;
 
 	/// See the comment for GCollaborativeFilter::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// The behavior of this method is only defined if GFuzzyKMeans
 	/// is used as the clusterer. (It is the default.) This sets
@@ -351,7 +351,7 @@ public:
 	GMatrixFactorization(const GDomNode* pNode, GLearnerLoader& ll);
 
 	/// Destructor
-	virtual ~GMatrixFactorization();
+	~GMatrixFactorization() override;
 
 	/// Set the regularization value
 	void setRegularizer(double d) { m_regularizer = d; }
@@ -376,13 +376,13 @@ public:
 	void nonNegative() { m_nonNeg = true; }
 
 	/// See the comment for GCollaborativeFilter::train
-	virtual void train(GMatrix& data);
+	void train(GMatrix& data) override;
 
 	/// See the comment for GCollaborativeFilter::predict
-	virtual double predict(size_t user, size_t item);
+	double predict(size_t user, size_t item) override;
 
 	/// See the comment for GCollaborativeFilter::impute
-	virtual void impute(GVec& vec, size_t dims);
+	void impute(GVec& vec, size_t dims) override;
 
 	/// Returns the matrix of user preference vectors
 	GMatrix* getP() { return m_pP; }
@@ -391,13 +391,13 @@ public:
 	GMatrix* getQ() { return m_pQ; }
 
 	/// Returns the matrix of user preference vectors, and gives ownership to the caller.
-	GMatrix* dropP() { GMatrix* tmp = m_pP; m_pP = NULL; return tmp; }
+	GMatrix* dropP() { GMatrix* tmp = m_pP; m_pP = nullptr; return tmp; }
 
 	/// Returns the matrix of item weight vectors, and gives ownership to the caller.
-	GMatrix* dropQ() { GMatrix* tmp = m_pQ; m_pQ = NULL; return tmp; }
+	GMatrix* dropQ() { GMatrix* tmp = m_pQ; m_pQ = nullptr; return tmp; }
 
 	/// See the comment for GCollaborativeFilter::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Set the min number of iterations to train
 	void setMinIters(size_t i) { m_minIters = i; }
@@ -576,7 +576,7 @@ public:
 	GBagOfRecommenders(const GDomNode* pNode, GLearnerLoader& ll);
 
 	/// Destructor
-	virtual ~GBagOfRecommenders();
+	~GBagOfRecommenders() override;
 
 	/// Returns the vector of filters
 	std::vector<GCollaborativeFilter*>& filters() { return m_filters; }
@@ -585,19 +585,19 @@ public:
 	void addRecommender(GCollaborativeFilter* pRecommender);
 
 	/// See the comment for GCollaborativeFilter::train
-	virtual void train(GMatrix& data);
+	void train(GMatrix& data) override;
 
 	/// See the comment for GCollaborativeFilter::predict
-	virtual double predict(size_t user, size_t item);
+	double predict(size_t user, size_t item) override;
 
 	/// See the comment for GCollaborativeFilter::impute
-	virtual void impute(GVec& vec, size_t dims);
+	void impute(GVec& vec, size_t dims) override;
 
 	/// Delete all of the filters
 	void clear();
 
 	/// See the comment for GCollaborativeFilter::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Performs unit tests. Throws if a failure occurs. Returns if successful.
 	static void test();
@@ -618,20 +618,20 @@ protected:
 public:
 	/// General-purpose constructor
 	GContentBasedFilter(GArgReader copy)
-	: GCollaborativeFilter(), m_itemAttrs(NULL), m_args(copy)
+	: GCollaborativeFilter(), m_itemAttrs(nullptr), m_args(copy)
 	{
 		m_init_pos = copy.get_pos();
 	}
 
 	/// Destructor
-	virtual ~GContentBasedFilter();
+	~GContentBasedFilter() override;
 
-	virtual void train(GMatrix& data);
+	void train(GMatrix& data) override;
 
-	virtual double predict(size_t user, size_t item);
+	double predict(size_t user, size_t item) override;
 
 	/// See the comment for GCollaborativeFilter::impute
-	virtual void impute(GVec& vec, size_t dims);
+	void impute(GVec& vec, size_t dims) override;
 
 	/// Delete all of the learners
 	void clear();
@@ -639,7 +639,7 @@ public:
 	void setItemAttributes(GMatrix& itemAttrs);
 
 	/// See the comment for GCollaborativeFilter::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	std::map<size_t, size_t> getUserMap(){ return m_userMap; }
 
@@ -662,16 +662,16 @@ public:
 	GContentBoostedCF(GArgReader copy);
 
 	/// Destructor
-	virtual ~GContentBoostedCF();
+	~GContentBoostedCF() override;
 
-	virtual void train(GMatrix& data);
+	void train(GMatrix& data) override;
 
-	virtual double predict(size_t user, size_t item);
+	double predict(size_t user, size_t item) override;
 
-	virtual void impute(GVec& vec, size_t dims);
+	void impute(GVec& vec, size_t dims) override;
 
 	/// See the comment for GCollaborativeFilter::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const { return NULL; };
+	GDomNode* serialize(GDom* pDoc) const override { return nullptr; };
 
 };
 

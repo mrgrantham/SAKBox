@@ -60,13 +60,13 @@ class GBNConstant : public GBNNode
 public:
 	/// General-purpose constructor
 	GBNConstant(double val) : GBNNode() { m_observed = true; m_observedValue = val; }
-	virtual ~GBNConstant() {}
+	~GBNConstant() override {}
 
 	/// Returns the constant value
-	virtual double currentValue() { return m_observedValue; }
+	double currentValue() override { return m_observedValue; }
 
 	/// This method is a no-op.
-	virtual void onNewChild(GBNVariable* pChild) {}
+	void onNewChild(GBNVariable* pChild) override {}
 };
 
 
@@ -80,17 +80,17 @@ protected:
 public:
 	/// General-purpose constructor
 	GBNSum() : GBNNode(), m_gotChildren(false) { m_observed = true; }
-	virtual ~GBNSum() {}
+	~GBNSum() override {}
 
 	/// Adds a new parent node to this one, to be included in the summation.
 	/// All parents must be added before any child nodes are added.
 	void addParent(GBNNode* pNode);
 
 	/// Returns the sum of the current values of all the parents of this node.
-	virtual double currentValue();
+	double currentValue() override;
 
 	/// This method links all the parent nodes of this node back to the child.
-	virtual void onNewChild(GBNVariable* pChild);
+	void onNewChild(GBNVariable* pChild) override;
 };
 
 
@@ -104,16 +104,16 @@ protected:
 public:
 	/// General-purpose constructor
 	GBNProduct() : GBNNode(), m_gotChildren(false) { m_observed = true; }
-	virtual ~GBNProduct() {}
+	~GBNProduct() override {}
 
 	/// Adds a new parent node to this one, to be included in the summation
 	void addParent(GBNNode* pNode);
 
 	/// Returns the sum of the current values of all the parents of this node.
-	virtual double currentValue();
+	double currentValue() override;
 
 	/// This method links all the parent nodes of this node back to the child.
-	virtual void onNewChild(GBNVariable* pChild);
+	void onNewChild(GBNVariable* pChild) override;
 };
 
 
@@ -141,13 +141,13 @@ protected:
 public:
 	/// General-purpose constructor
 	GBNMath(GBNNode* pParent, math_op operation) : GBNNode(), m_parent(pParent), m_op(operation) { m_observed = true; }
-	virtual ~GBNMath() {}
+	~GBNMath() override {}
 
 	/// Returns the sum of the current values of all the parents of this node.
-	virtual double currentValue();
+	double currentValue() override;
 
 	/// This method links the parent node of this node back to the child.
-	virtual void onNewChild(GBNVariable* pChild);
+	void onNewChild(GBNVariable* pChild) override;
 };
 
 
@@ -160,7 +160,7 @@ protected:
 
 public:
 	GBNVariable();
-	virtual ~GBNVariable();
+	~GBNVariable() override;
 
 	/// Returns all nodes that are known to depend on this one.
 	const std::vector<GBNVariable*>& children() { return m_children; }
@@ -177,7 +177,7 @@ public:
 	virtual double likelihood(double x) = 0;
 
 	/// Return the most recent value sampled from this node.
-	virtual double currentValue() = 0;
+	double currentValue() override = 0;
 
 	/// Draw a new Gibbs sample for this node given the current values of all other nodes
 	/// it its Markov blanket.
@@ -205,7 +205,7 @@ public:
 	size_t currentCatIndex();
 
 	/// This method links back to the child node that just added this node as a parent.
-	virtual void onNewChild(GBNVariable* pChild);
+	void onNewChild(GBNVariable* pChild) override;
 };
 
 
@@ -227,34 +227,34 @@ public:
 	/// of pDefaultWeight. Typically, you will want to change these (by calling setWeights)
 	/// after you construct a node.
 	GBNCategorical(size_t categories, GBNNode* pDefaultWeight);
-	virtual ~GBNCategorical() {}
+	~GBNCategorical() override {}
 
 	/// Returns the number of categories supported by this distribution.
 	size_t categories() { return m_categories; }
 
 	/// Returns the most recent value sampled from this node.
-	virtual double currentValue();
+	double currentValue() override;
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setWeights) after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal);
+	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
 
 	/// Set the weights for one of the categorical distributions of this node.
 	/// If there are n categories in this node, then the first n parameters should be non-NULL.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this categorical distribution is being specified.
-	void setWeights(size_t cat, GBNNode* pW1, GBNNode* pW2, GBNNode* pW3 = NULL, GBNNode* pW4 = NULL, GBNNode* pW5 = NULL, GBNNode* pW6 = NULL, GBNNode* pW7 = NULL, GBNNode* pW8 = NULL);
+	void setWeights(size_t cat, GBNNode* pW1, GBNNode* pW2, GBNNode* pW3 = nullptr, GBNNode* pW4 = nullptr, GBNNode* pW5 = nullptr, GBNNode* pW6 = nullptr, GBNNode* pW7 = nullptr, GBNNode* pW8 = nullptr);
 
 	/// Draws a new Gibbs sample for this node given the current values of all other nodes
 	/// it its Markov blanket.
-	virtual void sample(GRand* pRand);
+	void sample(GRand* pRand) override;
 
 	/// Computes the likelihood that the specified value (after being truncated to an integer)
 	/// would be drawn from this categorical distribution given the current values of all the
 	/// parent nodes of this class.
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 };
 
 
@@ -270,14 +270,14 @@ protected:
 public:
 	/// General-purpose constructor.
 	GBNMetropolisNode();
-	virtual ~GBNMetropolisNode() {}
+	~GBNMetropolisNode() override {}
 
 	/// Returns the most recent value sampled from this node.
-	virtual double currentValue();
+	double currentValue() override;
 
 	/// Draws a new Gibbs sample for this node given the current values of all other nodes
 	/// it its Markov blanket. Uses the Metropolis algorithm to do so.
-	void sample(GRand* pRand);
+	void sample(GRand* pRand) override;
 
 	/// This should return true iff this node supports only discrete values
 	virtual bool isDiscrete() = 0;
@@ -313,13 +313,13 @@ public:
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setMeanAndDev) after constructing this node.
 	GBNNormal(GBNNode* pDefaultVal);
-	virtual ~GBNNormal() {}
+	~GBNNormal() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setMeanAndDev) after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal);
+	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
 
 	/// Set the mean and deviation for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
@@ -332,14 +332,14 @@ public:
 	void setMeanAndVariance(size_t cat, GBNNode* pMean, GBNNode* pVariance);
 
 	/// Returns false.
-	virtual bool isDiscrete() { return false; }
+	bool isDiscrete() override { return false; }
 
 	/// Returns the likelihood that the value x would be drawn from this distribution given
 	/// the current values of all the parent nodes.
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// See the comment for GBNMetropolisNode::initMean()
-	virtual double initMean();
+	double initMean() override;
 };
 
 
@@ -357,13 +357,13 @@ public:
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setMeanAndDev) after constructing this node.
 	GBNLogNormal(GBNNode* pDefaultVal);
-	virtual ~GBNLogNormal() {}
+	~GBNLogNormal() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setMeanAndDev) after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal);
+	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
 
 	/// Set the mean and deviation for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
@@ -371,14 +371,14 @@ public:
 	void setMeanAndDev(size_t cat, GBNNode* pMean, GBNNode* pDeviation);
 
 	/// Returns false.
-	virtual bool isDiscrete() { return false; }
+	bool isDiscrete() override { return false; }
 
 	/// Returns the likelihood that the value x would be drawn from this distribution given
 	/// the current values of all the parent nodes.
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// See the comment for GBNMetropolisNode::initMean()
-	virtual double initMean();
+	double initMean() override;
 };
 
 
@@ -396,13 +396,13 @@ public:
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setAlphaAndM) after constructing this node.
 	GBNPareto(GBNNode* pDefaultVal);
-	virtual ~GBNPareto() {}
+	~GBNPareto() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setAlphaAndM) after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal);
+	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
 
 	/// Set the alpha and M parameters for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
@@ -410,14 +410,14 @@ public:
 	void setAlphaAndM(size_t cat, GBNNode* pAlpha, GBNNode* pM);
 
 	/// Returns false.
-	virtual bool isDiscrete() { return false; }
+	bool isDiscrete() override { return false; }
 
 	/// Returns the likelihood that the value x would be drawn from this distribution given
 	/// the current values of all the parent nodes.
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// See the comment for GBNMetropolisNode::initMean()
-	virtual double initMean();
+	double initMean() override;
 };
 
 
@@ -435,13 +435,13 @@ public:
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setMinAndMax) after constructing this node.
 	GBNUniformDiscrete(GBNNode* pDefaultVal);
-	virtual ~GBNUniformDiscrete() {}
+	~GBNUniformDiscrete() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setMinAndMax) after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal);
+	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
 
 	/// Set the min and max parameters for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
@@ -449,14 +449,14 @@ public:
 	void setMinAndMax(size_t cat, GBNNode* pMin, GBNNode* pMax);
 
 	/// Returns true.
-	virtual bool isDiscrete() { return true; }
+	bool isDiscrete() override { return true; }
 
 	/// Returns the likelihood that the value x would be drawn from this distribution given
 	/// the current values of all the parent nodes.
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// See the comment for GBNMetropolisNode::initMean()
-	virtual double initMean();
+	double initMean() override;
 };
 
 
@@ -474,13 +474,13 @@ public:
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setMinAndMax) after constructing this node.
 	GBNUniformContinuous(GBNNode* pDefaultVal);
-	virtual ~GBNUniformContinuous() {}
+	~GBNUniformContinuous() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setMinAndMax) after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal);
+	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
 
 	/// Set the min and max parameters for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
@@ -488,14 +488,14 @@ public:
 	void setMinAndMax(size_t cat, GBNNode* pMin, GBNNode* pMax);
 
 	/// Returns false.
-	virtual bool isDiscrete() { return false; }
+	bool isDiscrete() override { return false; }
 
 	/// Returns the likelihood that the value x would be drawn from this distribution given
 	/// the current values of all the parent nodes.
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// See the comment for GBNMetropolisNode::initMean()
-	virtual double initMean();
+	double initMean() override;
 };
 
 
@@ -513,13 +513,13 @@ public:
 	/// used for the parameter of this distribution. Typically, you will
 	/// change this value (by calling setLambda) after constructing this node.
 	GBNPoisson(GBNNode* pDefaultVal);
-	virtual ~GBNPoisson() {}
+	~GBNPoisson() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setLambda) after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal);
+	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
 
 	/// Set the lambda parameter for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
@@ -527,14 +527,14 @@ public:
 	void setLambda(size_t cat, GBNNode* pLambda);
 
 	/// Returns true.
-	virtual bool isDiscrete() { return true; }
+	bool isDiscrete() override { return true; }
 
 	/// Returns the likelihood that the value x would be drawn from this distribution given
 	/// the current values of all the parent nodes.
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// See the comment for GBNMetropolisNode::initMean()
-	virtual double initMean();
+	double initMean() override;
 };
 
 
@@ -552,13 +552,13 @@ public:
 	/// used for the parameter of this distribution. Typically, you will
 	/// change this value (by calling setLambda) after constructing this node.
 	GBNExponential(GBNNode* pDefaultVal);
-	virtual ~GBNExponential() {}
+	~GBNExponential() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setLambda) after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal);
+	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
 
 	/// Set the lambda parameter for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
@@ -566,14 +566,14 @@ public:
 	void setLambda(size_t cat, GBNNode* pLambda);
 
 	/// Returns true.
-	virtual bool isDiscrete() { return false; }
+	bool isDiscrete() override { return false; }
 
 	/// Returns the likelihood that the value x would be drawn from this distribution given
 	/// the current values of all the parent nodes.
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// See the comment for GBNMetropolisNode::initMean()
-	virtual double initMean();
+	double initMean() override;
 };
 
 
@@ -591,13 +591,13 @@ public:
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setAlphaAndBeta) after constructing this node.
 	GBNBeta(GBNNode* pDefaultVal);
-	virtual ~GBNBeta() {}
+	~GBNBeta() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setAlphaAndBeta) after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal);
+	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
 
 	/// Set the alpha and beta values for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
@@ -605,14 +605,14 @@ public:
 	void setAlphaAndBeta(size_t cat, GBNNode* pAlpha, GBNNode* pBeta);
 
 	/// Returns false.
-	virtual bool isDiscrete() { return false; }
+	bool isDiscrete() override { return false; }
 
 	/// Returns the likelihood that the value x would be drawn from this distribution given
 	/// the current values of all the parent nodes.
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// See the comment for GBNMetropolisNode::initMean()
-	virtual double initMean();
+	double initMean() override;
 };
 
 
@@ -633,13 +633,13 @@ public:
 	/// If the "beta" parameter is scale (typically denoted with theta) instead of rate,
 	/// then betaIsScaleInsteadOfRate should be set to true.
 	GBNGamma(GBNNode* pDefaultVal);
-	virtual ~GBNGamma() {}
+	~GBNGamma() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setAlphaAndBeta or setShapeAndScale) after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal);
+	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
 
 	/// Set the shape and rate (alpha and beta) values for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
@@ -652,14 +652,14 @@ public:
 	void setShapeAndScale(size_t cat, GBNNode* pK, GBNNode* pTheta);
 
 	/// Returns false.
-	virtual bool isDiscrete() { return false; }
+	bool isDiscrete() override { return false; }
 
 	/// Returns the likelihood that the value x would be drawn from this distribution given
 	/// the current values of all the parent nodes.
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// See the comment for GBNMetropolisNode::initMean()
-	virtual double initMean();
+	double initMean() override;
 };
 
 
@@ -679,13 +679,13 @@ public:
 	/// If the "beta" parameter is scale (typically denoted with theta) instead of rate,
 	/// then betaIsScaleInsteadOfRate should be set to true.
 	GBNInverseGamma(GBNNode* pDefaultVal);
-	virtual ~GBNInverseGamma() {}
+	~GBNInverseGamma() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setAlphaAndBeta) after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal);
+	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
 
 	/// Set the shape and scale (alpha and beta) values for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
@@ -693,14 +693,14 @@ public:
 	void setAlphaAndBeta(size_t cat, GBNNode* pAlpha, GBNNode* pBeta);
 
 	/// Returns false.
-	virtual bool isDiscrete() { return false; }
+	bool isDiscrete() override { return false; }
 
 	/// Returns the likelihood that the value x would be drawn from this distribution given
 	/// the current values of all the parent nodes.
-	virtual double likelihood(double x);
+	double likelihood(double x) override;
 
 	/// See the comment for GBNMetropolisNode::initMean()
-	virtual double initMean();
+	double initMean() override;
 };
 
 

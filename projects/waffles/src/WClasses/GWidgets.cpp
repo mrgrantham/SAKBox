@@ -172,7 +172,7 @@ void GWidgetCommon::drawClipped(GImage* pCanvas, int x, int y, GWidget* pWidget,
 GWidget::GWidget(GWidgetGroup* pParent, int x, int y, int w, int h)
 {
 	m_pParent = pParent;
-	m_common = pParent ? pParent->m_common : NULL;
+	m_common = pParent ? pParent->m_common : nullptr;
 	m_rect.set(x, y, w, h);
 	if(pParent)
 		pParent->addWidget(this);
@@ -303,7 +303,7 @@ void GWidgetGroup::addWidget(GWidget* pWidget)
 			}
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 int GWidgetGroup::childWidgetCount()
@@ -345,14 +345,14 @@ void GWidgetGroup::setClean()
 // ----------------------------------------------------------------------
 
 GWidgetDialog::GWidgetDialog(int w, int h, unsigned int cBackground)
- : GWidgetGroup(NULL, 0, 0, w, h)
+ : GWidgetGroup(nullptr, 0, 0, w, h)
 {
 	m_cBackground = cBackground;
 	m_image.setSize(w, h);
 	m_image.clear(cBackground);
 	m_common = new GWidgetCommon();
-	m_pGrabbedWidget = NULL;
-	m_pFocusWidget = NULL;
+	m_pGrabbedWidget = nullptr;
+	m_pFocusWidget = nullptr;
 	m_prevMouseX = 0;
 	m_prevMouseY = 0;
 	m_bRunning = true;
@@ -439,7 +439,7 @@ void GWidgetDialog::releaseButton(int button)
 
 	// Use a local var in case the handler destroys this dialog
 	GWidgetAtomic* pGrabbedWidget = m_pGrabbedWidget;
-	m_pGrabbedWidget = NULL;
+	m_pGrabbedWidget = nullptr;
 	pGrabbedWidget->release(button);
 }
 
@@ -451,12 +451,12 @@ void GWidgetDialog::onDestroyWidget(GWidget* pWidget)
 		GRect* pRect = pWidget->rect();
 		m_image.boxFill(pRect->x, pRect->y, pRect->w, pRect->h, m_cBackground);
 		m_dirtyChildren.clear();
-		tattle(NULL);
+		tattle(nullptr);
 	}
 	if(pWidget == m_pGrabbedWidget)
-		m_pGrabbedWidget = NULL;
+		m_pGrabbedWidget = nullptr;
 	if(pWidget == m_pFocusWidget)
-		m_pFocusWidget = NULL;
+		m_pFocusWidget = nullptr;
 	GWidgetGroup::onDestroyWidget(pWidget);
 }
 
@@ -1885,13 +1885,13 @@ GWidgetGrid::GWidgetGrid(GWidgetGroup* pParent, int nColumns, int x, int y, int 
 {
 	m_cBackground = cBackground;
 	m_nColumns = 0;
-	m_pColumnHeaders = NULL;
-	m_nColumnWidths = NULL;
+	m_pColumnHeaders = nullptr;
+	m_nColumnWidths = nullptr;
 	m_nRowHeight = 12;
 	m_nHeaderHeight = 12;
 	int nScrollBarSize = 16;
-	m_pVertScrollBar = NULL;
-	m_pHorizScrollBar = NULL;
+	m_pVertScrollBar = nullptr;
+	m_pHorizScrollBar = nullptr;
 	m_pVertScrollBar = new GWidgetVertScrollBar(this, w - nScrollBarSize, 0, nScrollBarSize, h, h - m_nHeaderHeight - nScrollBarSize, h);
 	m_pHorizScrollBar = new GWidgetHorizScrollBar(this, 0, h - nScrollBarSize, w - nScrollBarSize, nScrollBarSize, w - nScrollBarSize, 80 * nColumns);
 	setColumnCount(nColumns);
@@ -1940,7 +1940,7 @@ void GWidgetGrid::addBlankRow()
 	GWidget** pNewRow = new GWidget*[m_nColumns];
 	int n;
 	for(n = 0; n < m_nColumns; n++)
-		pNewRow[n] = NULL;
+		pNewRow[n] = nullptr;
 	m_rows.push_back(pNewRow);
 	m_pParent->tattle(this);
 }
@@ -1954,7 +1954,7 @@ GWidget* GWidgetGrid::widget(int col, int row)
 
 void GWidgetGrid::setWidget(int col, int row, GWidget* pWidget)
 {
-	if(pWidget->m_pParent == NULL)
+	if(pWidget->m_pParent == nullptr)
 	{
 		pWidget->m_pParent = this;
 		addWidget(pWidget);
@@ -1990,7 +1990,7 @@ void GWidgetGrid::setColumnCount(int n)
 	}
 	for(; i < n; i++)
 	{
-		pNewColumnHeaders[i] = NULL;
+		pNewColumnHeaders[i] = nullptr;
 		pNewColumnWidths[i] = nDefaultColumnWidth;
 	}
 	delete[] m_pColumnHeaders;
@@ -2006,7 +2006,7 @@ void GWidgetGrid::setColumnCount(int n)
 		for(i = 0; i < n && i < m_nColumns; i++)
 			pNewRow[i] = pOldRow[i];
 		for(; i < n; i++)
-			pNewRow[i] = NULL;
+			pNewRow[i] = nullptr;
 		delete[] pOldRow;
 		m_rows[j] = pNewRow;
 	}
@@ -2140,7 +2140,7 @@ void GWidgetGrid::flushItems(bool deleteWidgets)
 		else
 		{
 			onDestroyWidget(pWidget);
-			pWidget->m_pParent = NULL;
+			pWidget->m_pParent = nullptr;
 		}
 		n--;
 	}
@@ -2184,9 +2184,9 @@ void GWidgetGrid::flushItems(bool deleteWidgets)
 		if(y >= 0 && y < (int)m_rows.size())
 			pRow = m_rows[y];
 		else
-			return NULL;
+			return nullptr;
 	}
-	GWidget* pWidget = NULL;
+	GWidget* pWidget = nullptr;
 	int nColLeft = 0;
 	int n;
 	for(n = 0; n < m_nColumns; n++)
@@ -2208,7 +2208,7 @@ void GWidgetGrid::flushItems(bool deleteWidgets)
 			return ((GWidgetGroup*)pWidget)->findAtomicWidget(xOrig - pRectangle->x, yOrig - pRectangle->y);
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 // ----------------------------------------------------------------------
@@ -2244,7 +2244,7 @@ GWidgetFileSystemBrowser::GWidgetFileSystemBrowser(GWidgetGroup* pParent, int x,
 		strcpy(m_szExtensions, szExtensions);
 	}
 	else
-		m_szExtensions = NULL;
+		m_szExtensions = nullptr;
 
 	m_bFileListDirty = true;
 }
@@ -2637,7 +2637,7 @@ GWidgetCanvas::GWidgetCanvas(GWidgetGroup* pParent, int x, int y, int w, int h, 
 	m_nHScroll = 0;
 	m_nVScroll = 0;
 	m_pImageIn = pImage;
-	m_pSelectionMask = NULL;
+	m_pSelectionMask = nullptr;
 	m_pressed = false;
 	m_nMouseX = 0;
 	m_nMouseY = 0;
@@ -2770,7 +2770,7 @@ void GWidgetCanvas::setVertScroll(int y)
 GWidgetWave::GWidgetWave(GWidgetGroup* pParent, int x, int y, int w, int h)
 : GWidgetAtomic(pParent, x, y, w, h)
 {
-	m_pWave = NULL;
+	m_pWave = nullptr;
 	m_pos = 0;
 	m_width = w;
 	m_selectionPos = -1;

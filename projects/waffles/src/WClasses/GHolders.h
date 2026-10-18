@@ -46,7 +46,7 @@ public:
 	char* m_pBuf;
 	GTempBufHelper(size_t nSize)
 	{
-		m_pBuf = ((nSize > MAX_STACK_TEMP_BUFFER) ? new char[nSize] : NULL);
+		m_pBuf = ((nSize > MAX_STACK_TEMP_BUFFER) ? new char[nSize] : nullptr);
 	}
 
 	~GTempBufHelper()
@@ -108,7 +108,7 @@ private:
 	T* m_p;
 
 public:
-	Holder(T* p = NULL)
+	Holder(T* p = nullptr)
 	{
 		//COMPILER_ASSERT(sizeof(T) > sizeof(double));
 		m_p = p;
@@ -158,7 +158,7 @@ public:
 	T* release()
 	{
 		T* pTmp = m_p;
-		m_p = NULL;
+		m_p = nullptr;
 		return pTmp;
 	}
 
@@ -181,7 +181,7 @@ private:
 	T* m_p;
 
 public:
-	ArrayHolder(T* p = NULL)
+	ArrayHolder(T* p = nullptr)
 	{
 		m_p = p;
 	}
@@ -242,7 +242,7 @@ private:
 public:
 	FileHolder()
 	{
-		m_pFile = NULL;
+		m_pFile = nullptr;
 	}
 
 	FileHolder(FILE* pFile)
@@ -258,7 +258,7 @@ public:
 	}
 
 	/// Close the file and set this holder to hold NULL
-	void reset(FILE* pFile = NULL);
+	void reset(FILE* pFile = nullptr);
 
 	/// Returns a pointer to the FILE being held
 	FILE* get()
@@ -270,7 +270,7 @@ public:
 	FILE* release()
 	{
 		FILE* pFile = m_pFile;
-		m_pFile = NULL;
+		m_pFile = nullptr;
 		return pFile;
 	}
 };

@@ -44,10 +44,10 @@ protected:
 
 public:
 	GParticleSwarm(GTargetFunction* pCritic, size_t nPopulation, double dMin, double dRange, GRand* pRand);
-	virtual ~GParticleSwarm();
+	~GParticleSwarm() override;
 
 	/// Perform a little more optimization
-	virtual double iterate();
+	double iterate() override;
 
 	/// Specify the learning rate
 	void setLearningRate(double d) { m_dLearningRate = d; }
@@ -71,12 +71,12 @@ public:
 	double m_probSpurt;
 
 	GBouncyBalls(GTargetFunction* pCritic, size_t population, GRand& rand, double probTeleport = 0.01);
-	virtual ~GBouncyBalls();
+	~GBouncyBalls() override;
 
 	static void test();
 
-	virtual double iterate();
-	virtual const GVec& currentVector() { return m_positions[m_bestIndex]; }
+	double iterate() override;
+	const GVec& currentVector() override { return m_positions[m_bestIndex]; }
 };
 
 

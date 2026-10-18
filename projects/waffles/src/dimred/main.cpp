@@ -78,7 +78,7 @@ size_t getAttrVal(const char* szString, size_t attrCount)
 #ifdef WIN32
 	size_t val = (size_t)_strtoui64(szString, (char**)NULL, 10);
 #else
-	size_t val = strtoull(szString, (char**)NULL, 10);
+	size_t val = strtoull(szString, (char**)nullptr, 10);
 #endif
 	if(fromRight)
 		val = attrCount - 1 - val;
@@ -329,7 +329,7 @@ GNeighborFinder* instantiateNeighborFinder(GMatrix* pData, size_t neighborCount,
 {
 	// Get the algorithm name
 	int argPos = args.get_pos();
-	GNeighborFinder* pNF = NULL;
+	GNeighborFinder* pNF = nullptr;
 	const char* alg = args.pop_string();
 
 	try
@@ -347,11 +347,11 @@ GNeighborFinder* instantiateNeighborFinder(GMatrix* pData, size_t neighborCount,
 		// Parse required algorithms
 		if(_stricmp(alg, "bruteforce") == 0)
 		{
-			pNF = new GBruteForceNeighborFinder(pData, NULL, true);
+			pNF = new GBruteForceNeighborFinder(pData, nullptr, true);
 		}
 		else if(_stricmp(alg, "kdtree") == 0)
 		{
-			pNF = new GKdTree(pData, NULL, true);
+			pNF = new GKdTree(pData, nullptr, true);
 		}
 		else
 			throw Ex("Unrecognized neighbor finding algorithm: ", alg);
@@ -383,7 +383,7 @@ void attributeSelector(GArgReader& args)
 	loadDataWithSwitches(data, args, labelDims, originalIndices);
 
 	// Parse the options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	int targetFeatures = 1;
 	string outFilename = "";
 	while(args.next_is_flag())
@@ -423,7 +423,7 @@ void blendEmbeddings(GArgReader& args)
 	// Load the files and params
 	GMatrix* pDataOrig = loadData(args.pop_string());
 	Holder<GMatrix> hDataOrig(pDataOrig);
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	GRand prng(seed);
 	size_t neighborCount = args.pop_uint();
 	GNeighborFinder* pNF = instantiateNeighborFinder(pDataOrig, neighborCount, &prng, args);
@@ -470,7 +470,7 @@ void breadthFirstUnfolding(GArgReader& args)
 	// Load the file and params
 	GMatrix* pData = loadData(args.pop_string());
 	Holder<GMatrix> hData(pData);
-	size_t nSeed = getpid() * (unsigned int)time(NULL);
+	size_t nSeed = getpid() * (unsigned int)time(nullptr);
 	GRand prng(nSeed);
 	size_t neighborCount = args.pop_uint();
 	GNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
@@ -479,7 +479,7 @@ void breadthFirstUnfolding(GArgReader& args)
 
 	// Parse Options
 	size_t reps = 1;
-	Holder<GMatrix> hControlData(NULL);
+	Holder<GMatrix> hControlData(nullptr);
 	while(args.size() > 0)
 	{
 		if(args.if_pop("-seed"))
@@ -504,7 +504,7 @@ void isomap(GArgReader& args)
 	// Load the file and params
 	GMatrix* pData = loadData(args.pop_string());
 	Holder<GMatrix> hData(pData);
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	GRand prng(nSeed);
 	size_t neighborCount = args.pop_uint();
 	GNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
@@ -538,7 +538,7 @@ void lle(GArgReader& args)
 	// Load the file and params
 	GMatrix* pData = loadData(args.pop_string());
 	Holder<GMatrix> hData(pData);
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	GRand prng(nSeed);
 	size_t neighborCount = args.pop_uint();
 	GNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
@@ -567,7 +567,7 @@ void ManifoldSculpting(GArgReader& args)
 	// Load the file and params
 	GMatrix* pData = loadData(args.pop_string());
 	Holder<GMatrix> hData(pData);
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	GRand prng(nSeed);
 	size_t neighborCount = args.pop_uint();
 	GNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
@@ -575,7 +575,7 @@ void ManifoldSculpting(GArgReader& args)
 	size_t targetDims = args.pop_uint();
 
 	// Parse Options
-	const char* szPreprocessedData = NULL;
+	const char* szPreprocessedData = nullptr;
 	double scaleRate = 0.999;
 	while(args.size() > 0)
 	{
@@ -590,8 +590,8 @@ void ManifoldSculpting(GArgReader& args)
 	}
 
 	// Load the hint data
-	GMatrix* pDataHint = NULL;
-	Holder<GMatrix> hDataHint(NULL);
+	GMatrix* pDataHint = nullptr;
+	Holder<GMatrix> hDataHint(nullptr);
 	if(szPreprocessedData)
 	{
 		pDataHint = loadData(szPreprocessedData);
@@ -643,7 +643,7 @@ void principalComponentAnalysis(GArgReader& args)
 
 	// Parse options
 	string roundTrip;
-	size_t seed = getpid() * (unsigned int)time(NULL);
+	size_t seed = getpid() * (unsigned int)time(nullptr);
 	string eigenvalues;
 	string components;
 	string modelIn;
@@ -670,7 +670,7 @@ void principalComponentAnalysis(GArgReader& args)
 	}
 
 	// Transform the data
-	GPCA* pTransform = NULL;
+	GPCA* pTransform = nullptr;
 	if(modelIn.length() > 0)
 	{
 		GDom doc;
@@ -696,7 +696,7 @@ void principalComponentAnalysis(GArgReader& args)
 	if(eigenvalues.length() > 0)
 	{
 		GArffRelation* pRelation = new GArffRelation();
-		pRelation->addAttribute("eigenvalues", 0, NULL);
+		pRelation->addAttribute("eigenvalues", 0, nullptr);
 		GMatrix dataEigenvalues(pRelation);
 		dataEigenvalues.newRows(nTargetDims);
 		GVec& pEigVals = pTransform->eigVals();
@@ -733,7 +733,7 @@ void scalingUnfolder(GArgReader& args)
 	// Load the file and params
 	GMatrix* pData = loadData(args.pop_string());
 	Holder<GMatrix> hData(pData);
-	size_t nSeed = getpid() * (unsigned int)time(NULL);
+	size_t nSeed = getpid() * (unsigned int)time(nullptr);
 	GRand prng(nSeed);
 	size_t neighborCount = args.pop_uint();
 	GNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
@@ -778,9 +778,9 @@ void selfOrganizingMap(GArgReader& args){
 	       "A map must be at least 1 dimensional.");
   }
 
-  GRand rand(getpid() * (unsigned int)time(NULL));
+  GRand rand(getpid() * (unsigned int)time(nullptr));
   Holder<SOM::ReporterChain> reporters(new SOM::ReporterChain);
-  Holder<SOM::TrainingAlgorithm> alg(NULL);
+  Holder<SOM::TrainingAlgorithm> alg(nullptr);
   Holder<GDistanceMetric> weightDist(new GRowDistance);
   Holder<GDistanceMetric> nodeDist(new GRowDistance);
   Holder<SOM::NodeLocationInitialization> topology(new SOM::GridTopology);

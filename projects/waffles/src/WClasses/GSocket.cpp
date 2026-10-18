@@ -78,7 +78,7 @@ bool GSocket_isReady(SOCKET s)
 	struct timeval timeout;
 	timeout.tv_sec = 0;
 	timeout.tv_usec = 0;
-	int ret = select((int)s + 1, &sockSet, NULL, NULL, &timeout);
+	int ret = select((int)s + 1, &sockSet, nullptr, nullptr, &timeout);
 	if(ret < 0)
 	{
 #ifdef WINDOWS
@@ -198,7 +198,7 @@ SOCKET GSocket_connect(const char* addr, unsigned short port, int timeoutSecs)
 {
 	struct addrinfo hints, *res, *res0;
 	int error;
-	res0 = NULL;
+	res0 = nullptr;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
@@ -237,7 +237,7 @@ SOCKET GSocket_connect(const char* addr, unsigned short port, int timeoutSecs)
 				int result = select((int)sock + 1, NULL, &socketSet, NULL, &timeout);
 				if(result < 0 && WSAGetLastError() != WSAEINTR)
 #else
-				int result = select(sock + 1, NULL, &socketSet, NULL, &timeout);
+				int result = select(sock + 1, nullptr, &socketSet, nullptr, &timeout);
 				if(result < 0 && errno != EINTR)
 #endif
 					throw Ex("Failed to connect to ", addr, " on port ", to_str(port));
@@ -636,7 +636,7 @@ int GPackageConnection::receive(unsigned int maxBufSize, unsigned int maxPackage
 			if(m_payloadBytes >= m_header[1])
 			{
 				m_q.push(GPackageConnectionBuf(m_pBuf, m_bufSize, m_payloadBytes));
-				m_pBuf = NULL;
+				m_pBuf = nullptr;
 				m_bufSize = 0;
 				m_payloadBytes = 0;
 				m_headerBytes = 0;
@@ -660,7 +660,7 @@ int GPackageConnection::receive(unsigned int maxBufSize, unsigned int maxPackage
 char* GPackageConnection::next(size_t* pOutSize)
 {
 	if(m_q.size() == 0)
-		return NULL;
+		return nullptr;
 	GPackageConnectionBuf& package = m_q.front();
 	if(m_bufSize == 0)
 	{
@@ -792,7 +792,7 @@ char* GPackageClient::receive(size_t* pLen)
 			onReceiveBadData("Package too big");
 		else if(status == 3)
 			onReceiveBadData("Breach of protocol");
-		return NULL;
+		return nullptr;
 	}
 	else
 		return m_conn.next(pLen);
@@ -963,7 +963,7 @@ char* GPackageServer::receive(size_t* pOutLen, GPackageConnection** pOutConn)
 			}
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 
@@ -1088,7 +1088,7 @@ const GDomNode* GDomClient::receive()
 		return m_doc.root();
 	}
 	else
-		return NULL;
+		return nullptr;
 }
 
 
@@ -1115,7 +1115,7 @@ const GDomNode* GDomServer::receive(GPackageConnection** pOutConn)
 		return m_doc.root();
 	}
 	else
-		return NULL;
+		return nullptr;
 }
 
 

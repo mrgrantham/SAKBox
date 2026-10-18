@@ -48,7 +48,7 @@ protected:
 public:
 	GHeap(size_t nMinBlockSize)
 	{
-		m_pCurrentBlock = NULL;
+		m_pCurrentBlock = nullptr;
 		m_nMinBlockSize = nMinBlockSize;
 		m_nCurrentPos = nMinBlockSize;
 	}

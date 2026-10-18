@@ -41,7 +41,7 @@ GDistanceMetric::GDistanceMetric(GDomNode* pNode)
 // virtual
 GDistanceMetric::~GDistanceMetric()
 {
-	setRelation(NULL, false);
+	setRelation(nullptr, false);
 }
 
 void GDistanceMetric::setRelation(const GRelation* pRelation, bool own)
@@ -81,7 +81,7 @@ GDistanceMetric* GDistanceMetric::deserialize(GDomNode* pNode)
 	if(strcmp(szClass, "GKernelDistance") == 0)
 		return new GKernelDistance(pNode);
 	throw Ex("Unrecognized class: ", szClass);
-	return NULL;
+	return nullptr;
 }
 
 void GDistanceMetric_exerciseMetric(GDistanceMetric& metric)
@@ -324,7 +324,7 @@ double GKernelDistance::squaredDistance(const GVec& a, const GVec& b) const
 GSparseSimilarity* GSparseSimilarity::deserialize(GDomNode* pNode)
 {
 	const char* szClass = pNode->getString("class");
-	GSparseSimilarity* pObj = NULL;
+	GSparseSimilarity* pObj = nullptr;
 	if(strcmp(szClass, "GCosineSimilarity") == 0)
 		return new GCosineSimilarity(pNode);
 	else if(strcmp(szClass, "GEuclidSimilarity") == 0)

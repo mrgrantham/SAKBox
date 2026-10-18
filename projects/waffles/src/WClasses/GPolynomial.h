@@ -42,7 +42,7 @@ public:
 	/// Load from a DOM.
 	GPolynomial(const GDomNode* pNode);
 
-	virtual ~GPolynomial();
+	~GPolynomial() override;
 
 	/// Set the number of control points in the Bezier representation of the
 	/// polynomial (which is one more than the polynomial order). The default
@@ -60,26 +60,26 @@ public:
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::clear
-	virtual void clear();
+	void clear() override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
-	virtual bool canImplicitlyHandleNominalFeatures() { return false; }
+	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
-	virtual bool canImplicitlyHandleNominalLabels() { return false; }
+	bool canImplicitlyHandleNominalLabels() override { return false; }
 };
 
 

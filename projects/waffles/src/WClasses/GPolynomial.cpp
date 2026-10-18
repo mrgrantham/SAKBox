@@ -252,20 +252,20 @@ public:
 		m_pPolynomial = pPolynomial;
 	}
 
-	virtual ~GPolynomialRegressCritic()
+	~GPolynomialRegressCritic() override
 	{
 	}
 
-	virtual bool isStable() { return true; }
+	bool isStable() override { return true; }
 	virtual bool isConstrained() { return false; }
 
 protected:
-	virtual void initVector(GVec& pVector)
+	void initVector(GVec& pVector) override
 	{
 		pVector.fill(0.0);
 	}
 
-	virtual double computeError(const GVec& pVector)
+	double computeError(const GVec& pVector) override
 	{
 		m_pPolynomial->setCoefficients(pVector);
 		m_pPolynomial->fromBezierCoefficients();

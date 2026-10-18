@@ -60,7 +60,7 @@ GMixtureOfGaussians* GMixtureOfGaussians::stochasticHammer(int nMinKernelCount, 
 {
 	double dBestLogLikelihood = -1e300;
 	double d;
-	GMixtureOfGaussians* pBestMog = NULL;
+	GMixtureOfGaussians* pBestMog = nullptr;
 	GMixtureOfGaussians* pMog;
 	int trial, i;
 	for(trial = 0; trial < nTrials; trial++)
@@ -74,7 +74,7 @@ GMixtureOfGaussians* GMixtureOfGaussians::stochasticHammer(int nMinKernelCount, 
 			dBestLogLikelihood = d;
 			delete(pBestMog);
 			pBestMog = pMog;
-			pMog = NULL;
+			pMog = nullptr;
 		}
 		else
 			delete(pMog);

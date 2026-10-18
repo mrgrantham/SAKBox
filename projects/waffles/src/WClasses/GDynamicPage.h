@@ -122,10 +122,10 @@ public:
 
 
 	GDynamicPageConnection(SOCKET sock, GDynamicPageServer* pServer);
-	virtual ~GDynamicPageConnection();
+	~GDynamicPageConnection() override;
 
-	virtual void doGet(std::ostream& response);
-	virtual void doPost(std::ostream& response);
+	void doGet(std::ostream& response) override;
+	void doPost(std::ostream& response) override;
 
 	/// Concatenates szJailPath+szLocalPath, and makes sure that the result is within szJailPath, then
 	/// it automatically determines the mime type from the extension, and sends the file.
@@ -135,8 +135,8 @@ protected:
 	/// This method is called by doGet or doPost when a client requests something from the server
 	virtual void handleRequest(GDynamicPageSession* pSession, std::ostream& response) = 0;
 
-	virtual bool hasBeenModifiedSince(const char* szUrl, const char* szDate);
-	virtual void setHeaders(const char* szUrl, const char* szParams);
+	bool hasBeenModifiedSince(const char* szUrl, const char* szDate) override;
+	void setHeaders(const char* szUrl, const char* szParams) override;
 	GDynamicPageSession* establishSession();
 
 	void sendFile(const char* szMimeType, const char* szFilename, std::ostream& response);
@@ -159,7 +159,7 @@ protected:
 
 public:
 	GDynamicPageServer(int port, GRand* pRand);
-	virtual ~GDynamicPageServer();
+	~GDynamicPageServer() override;
 
 	virtual GDynamicPageSessionExtension* deserializeSessionExtension(const GDomNode* pNode)
 	{

@@ -58,7 +58,7 @@ GKernel* GKernel::deserialize(GDomNode* pNode)
 		return new GKernelNormalize(pNode);
 	else
 		throw Ex("Unrecognized activation function: ", szName);
-	return NULL;
+	return nullptr;
 }
 
 GKernel* GKernel::kernelComplex1()

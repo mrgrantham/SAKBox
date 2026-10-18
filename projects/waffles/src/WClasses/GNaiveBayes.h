@@ -41,17 +41,17 @@ public:
 	/// Load from a DOM.
 	GNaiveBayes(const GDomNode* pNode);
 
-	virtual ~GNaiveBayes();
+	~GNaiveBayes() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalLearner::trainSparse
 	/// This method assumes that the values in pData are all binary values (0 or 1).
-	virtual void trainSparse(GSparseMatrix& features, GMatrix& labels);
+	void trainSparse(GSparseMatrix& features, GMatrix& labels) override;
 
 	/// To ensure that unsampled values don't dominate the joint
 	/// distribution by multiplying by a zero, each value is given
@@ -64,33 +64,33 @@ public:
 	double equivalentSampleSize() { return m_equivalentSampleSize; }
 
 	/// See the comment for GSupervisedLearner::clear
-	virtual void clear();
+	void clear() override;
 
 	/// Uses cross-validation to find a set of parameters that works well with
 	/// the provided data.
 	void autoTune(GMatrix& features, GMatrix& labels);
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// Adds a single training sample to the collection
-	virtual void trainIncremental(const GVec& in, const GVec& out);
+	void trainIncremental(const GVec& in, const GVec& out) override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleContinuousFeatures
-	virtual bool canImplicitlyHandleContinuousFeatures() { return false; }
+	bool canImplicitlyHandleContinuousFeatures() override { return false; }
 
 	/// See the comment for GTransducer::canImplicitlyHandleContinuousLabels
-	virtual bool canImplicitlyHandleContinuousLabels() { return false; }
+	bool canImplicitlyHandleContinuousLabels() override { return false; }
 
 	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	virtual void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel);
+	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
 };
 
 } // namespace GClasses

@@ -47,12 +47,12 @@ public:
 	{
 	}
 
-	virtual ~GHttpClientSocket()
+	~GHttpClientSocket() override
 	{
 	}
 
 protected:
-	virtual void onDisconnect()
+	void onDisconnect() override
 	{
 		m_pParent->onLoseConnection();
 	}
@@ -63,13 +63,13 @@ protected:
 GHttpClient::GHttpClient()
 {
 	m_pReceiveBuf = new char[2048];
-	m_pSocket = NULL;
+	m_pSocket = nullptr;
 	m_status = Error;
-	m_pData = NULL;
+	m_pData = nullptr;
 	m_bPastHeader = false;
 	m_aborted = false;
 	strcpy(m_szServer, "\0");
-	m_szRedirect = NULL;
+	m_szRedirect = nullptr;
 	m_dLastReceiveTime = 0;
 	strcpy(m_szClientName, "GHttpClient/1.0");
 }
@@ -176,7 +176,7 @@ bool GHttpClient::sendGetRequest(const char* szUrl, bool headersOnly)
 
 	// Get the port
 	int nHostIndex, nPortIndex, nPathIndex;
-	GHttpClient_parseURL(szNewUrl, &nHostIndex, &nPortIndex, &nPathIndex, NULL);
+	GHttpClient_parseURL(szNewUrl, &nHostIndex, &nPortIndex, &nPathIndex, nullptr);
 	int nPort;
 	if(nPathIndex > nPortIndex)
 		nPort = atoi(&szNewUrl[nPortIndex + 1]); // the "+1" is for the ':'
@@ -194,7 +194,7 @@ bool GHttpClient::sendGetRequest(const char* szUrl, bool headersOnly)
 	if(!m_pSocket || GTime::seconds() - m_dLastReceiveTime > 10 || !m_pSocket->isConnected() || strcmp(szHost, m_szServer) != 0)
 	{
 		delete(m_pSocket);
-		m_pSocket = NULL;
+		m_pSocket = nullptr;
 		try
 		{
 			m_pSocket = new GHttpClientSocket(this);
@@ -257,7 +257,7 @@ bool GHttpClient::sendGetRequest(const char* szUrl, bool headersOnly)
 	m_bPastHeader = false;
 	m_nHeaderPos = 0;
 	delete(m_pData);
-	m_pData = NULL;
+	m_pData = nullptr;
 	m_status = Downloading;
 	m_aborted = false;
 	return true;
@@ -288,7 +288,7 @@ void GHttpClient::processHeader(const unsigned char* szData, size_t nSize)
 					if(!sendGetRequest(m_szRedirect))
 						m_status = Error;
 					delete(m_szRedirect);
-					m_szRedirect = NULL;
+					m_szRedirect = nullptr;
 				}
 				else if(nSize > 0 && (m_bChunked || m_nContentSize > 0))
 				{
@@ -541,7 +541,7 @@ unsigned char* GHttpClient::data(size_t* pnSize)
 	{
 		// it's really not done, so don't return anything [rdp]
 		*pnSize = 0;
-		return NULL;
+		return nullptr;
 	}
 	*pnSize = m_nContentSize;
 	return m_pData;
@@ -551,8 +551,8 @@ unsigned char* GHttpClient::releaseData(size_t* pnSize)
 {
 	unsigned char* pData = data(pnSize);
 	if(!pData)
-		return NULL;
-	m_pData = NULL;
+		return nullptr;
+	m_pData = nullptr;
 	return pData;
 }
 
@@ -617,7 +617,7 @@ public:
 	{
 	}
 
-	virtual ~GWebSocketClientSocket()
+	~GWebSocketClientSocket() override
 	{
 	}
 
@@ -629,7 +629,7 @@ protected:
 };
 
 GWebSocketClient::GWebSocketClient()
-: m_pSocket(NULL)
+: m_pSocket(nullptr)
 {
 }
 
@@ -646,7 +646,7 @@ bool GWebSocketClient::get(const char* szUrl)
 
 	// Get the port
 	int nHostIndex, nPortIndex, nPathIndex;
-	GHttpClient_parseURL(szNewUrl, &nHostIndex, &nPortIndex, &nPathIndex, NULL);
+	GHttpClient_parseURL(szNewUrl, &nHostIndex, &nPortIndex, &nPathIndex, nullptr);
 	int nPort;
 	if(nPathIndex > nPortIndex)
 		nPort = atoi(&szNewUrl[nPortIndex + 1]); // the "+1" is for the ':'
@@ -663,7 +663,7 @@ bool GWebSocketClient::get(const char* szUrl)
 	if(!m_pSocket || !m_pSocket->isConnected())
 	{
 		delete(m_pSocket);
-		m_pSocket = NULL;
+		m_pSocket = nullptr;
 		try
 		{
 			m_pSocket = new GWebSocketClientSocket(this);
@@ -713,7 +713,7 @@ void GWebSocketClient::onLoseConnection()
 
 
 
-GHttpConnection::GHttpConnection(SOCKET sock) : GTCPConnection(sock), m_pPostBuffer(NULL)
+GHttpConnection::GHttpConnection(SOCKET sock) : GTCPConnection(sock), m_pPostBuffer(nullptr)
 {
 	reset();
 }
@@ -734,7 +734,7 @@ void GHttpConnection::reset()
 	m_szCookieIncoming[0] = '\0';
 	m_nContentLength = 0;
 	delete[] m_pPostBuffer;
-	m_pPostBuffer = NULL;
+	m_pPostBuffer = nullptr;
 	setContentType("text/html");
 	setCookie("", false);
 	m_modifiedTime = 0;
@@ -773,12 +773,12 @@ public:
 	{
 	}
 
-	virtual ~GHttpServerSocket()
+	~GHttpServerSocket() override
 	{
 	}
 
 protected:
-	virtual GTCPConnection* makeConnection(SOCKET s)
+	GTCPConnection* makeConnection(SOCKET s) override
 	{
 		return m_pServer->makeConnection(s);
 	}
@@ -876,7 +876,7 @@ void GHttpServer::onReceiveFullPostRequest(GHttpConnection* pConn)
 	pConn->m_pContent = pConn->m_pPostBuffer;
 	pConn->doPost(m_stream);
 	delete(pConn->m_pPostBuffer);
-	pConn->m_pPostBuffer = NULL;
+	pConn->m_pPostBuffer = nullptr;
 	pConn->m_nPos = 0;
 	try
 	{
@@ -962,7 +962,7 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 				pConn->m_pPostBuffer = new char[pConn->m_nContentLength + 1];
 			else
 			{
-				pConn->m_pPostBuffer = NULL;
+				pConn->m_pPostBuffer = nullptr;
 				onReceiveFullPostRequest(pConn);
 			}
 			pConn->m_nPos = 0;
@@ -1060,7 +1060,7 @@ void GHttpServer::sendResponse(GHttpConnection* pConn)
 	// Set the date header
 	{
 		os << "Date: ";
-		time_t t = time((time_t*)0);
+		time_t t = time((time_t*)nullptr);
 #ifdef WINDOWS
 		struct tm thetime;
 		gmtime_s(&thetime, &t);
@@ -1228,7 +1228,7 @@ bool GHttpServer::parseFileParam(const char* pParams, size_t nParamsLen, const c
 
 GHttpParamParser::GHttpParamParser(const char* szParams, bool scrub)
 {
-	m_pHeap = NULL;
+	m_pHeap = nullptr;
 	if(szParams)
 	{
 		m_pHeap = new GHeap(1024);
@@ -1284,7 +1284,7 @@ const char* GHttpParamParser::find(const char* szName)
 {
 	std::map<const char*, const char*, strComp>::iterator it = m_map.find(szName);
 	if(it == m_map.end())
-		return NULL;
+		return nullptr;
 	return it->second;
 }
 

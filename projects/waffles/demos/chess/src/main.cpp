@@ -44,7 +44,7 @@ protected:
 
 public:
 	ChessController();
-	virtual ~ChessController();
+	~ChessController() override;
 
 	void RunModal();
 };
@@ -132,7 +132,7 @@ void whereAmI() {
 		RestartGame();
 	}
 
-	virtual ~ChessDialog()
+	~ChessDialog() override
 	{
 		delete(m_pImage);
 		delete(m_prng);
@@ -412,7 +412,7 @@ void whereAmI() {
 		m_pCanvas->setImage(m_pImage);
 	}
 
-	virtual void onReleaseTextButton(GWidgetTextButton* pButton)
+	void onReleaseTextButton(GWidgetTextButton* pButton) override
 	{
 		GAssert(false); // unknown button
 	}
@@ -439,35 +439,35 @@ public:
 		m_pDialog = new ChessDialog(pController, m_screenRect.w, m_screenRect.h);
 	}
 
-	virtual ~ChessView()
+	~ChessView() override
 	{
 		delete(m_pDialog);
 	}
 
-	virtual void onChar(char c)
+	void onChar(char c) override
 	{
 		m_pDialog->handleChar(c);
 	}
 
-	virtual void onMouseDown(int nButton, int x, int y)
+	void onMouseDown(int nButton, int x, int y) override
 	{
 		m_pDialog->pressButton(nButton, x - m_screenRect.x, y - m_screenRect.y);
 		m_pDialog->DoMouseDown(x - m_screenRect.x, y - m_screenRect.y);
 	}
 
-	virtual void onMouseUp(int nButton, int x, int y)
+	void onMouseUp(int nButton, int x, int y) override
 	{
 		m_pDialog->releaseButton(nButton);
 		m_pDialog->DoMouseUp(x, y);
 	}
 
-	virtual bool onMousePos(int x, int y)
+	bool onMousePos(int x, int y) override
 	{
 		return m_pDialog->handleMousePos(x - m_screenRect.x, y - m_screenRect.y);
 	}
 
 protected:
-	virtual void draw(int* pixels, int pitch)
+	void draw(int* pixels, int pitch) override
 	{
 		m_pDialog->Iterate();
 
@@ -477,7 +477,7 @@ protected:
 		SDL_Rect windowRect{m_screenRect.x,m_screenRect.y,m_screenRect.w,m_screenRect.h};
 		SDL_RenderFillRect(sdlRenderer,&windowRect);
 		Uint32 format; // SDL_PixelFormatEnum
-		SDL_QueryTexture(sdlTexture,&format, NULL,NULL,NULL);
+		SDL_QueryTexture(sdlTexture,&format, nullptr,nullptr,nullptr);
 
 		// Draw the dialog
 		blitImage(pixels,pitch,format, m_screenRect.x, m_screenRect.y, m_pDialog->image());

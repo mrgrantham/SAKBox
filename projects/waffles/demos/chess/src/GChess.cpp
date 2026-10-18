@@ -316,7 +316,7 @@ bool GChessBoard::move(int xSrc, int ySrc, int xDest, int yDest)
 
 GChessMoveIterator::GChessMoveIterator()
 {
-	m_pBoard = NULL;
+	m_pBoard = nullptr;
 	m_white = true;
 }
 

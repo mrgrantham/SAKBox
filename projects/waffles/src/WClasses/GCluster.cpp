@@ -44,7 +44,7 @@ using std::vector;
 using std::map;
 
 GClusterer::GClusterer(size_t nClusterCount)
-: GTransform(), m_clusterCount(nClusterCount), m_pMetric(NULL), m_ownMetric(false)
+: GTransform(), m_clusterCount(nClusterCount), m_pMetric(nullptr), m_ownMetric(false)
 {
 }
 
@@ -71,7 +71,7 @@ void GClusterer::setMetric(GDistanceMetric* pMetric, bool own)
 GSparseClusterer::GSparseClusterer(size_t clusters)
 : m_clusterCount(clusters)
 {
-	m_pMetric = NULL;
+	m_pMetric = nullptr;
 	m_ownMetric = false;
 }
 
@@ -95,7 +95,7 @@ void GSparseClusterer::setMetric(GSparseSimilarity* pMetric, bool own)
 
 
 GAgglomerativeClusterer::GAgglomerativeClusterer(size_t clusters)
-: GClusterer(clusters), m_pClusters(NULL)
+: GClusterer(clusters), m_pClusters(nullptr)
 {
 }
 
@@ -113,7 +113,7 @@ void GAgglomerativeClusterer::cluster(const GMatrix* pData)
 	m_pMetric->init(&pData->relation(), false);
 
 	// Find enough neighbors to form a connected graph
-	GNeighborGraph* pNF = NULL;
+	GNeighborGraph* pNF = nullptr;
 	std::unique_ptr<GNeighborGraph> hNF;
 	size_t neighbors = 6;
 	while(true)
@@ -330,7 +330,7 @@ void GAgglomerativeClusterer::test()
 // -----------------------------------------------------------------------------------------
 
 GAgglomerativeTransducer::GAgglomerativeTransducer()
-: GTransducer(), m_pMetric(NULL), m_ownMetric(false)
+: GTransducer(), m_pMetric(nullptr), m_ownMetric(false)
 {
 }
 
@@ -366,7 +366,7 @@ std::unique_ptr<GMatrix> GAgglomerativeTransducer::transduceInner(const GMatrix&
 	featuresAll.copyBlock(features2, 0, 0, features2.rows(), features2.cols(), features1.rows(), 0, false);
 
 	// Find enough neighbors to form a connected graph
-	GNeighborGraph* pNF = NULL;
+	GNeighborGraph* pNF = nullptr;
 	size_t neighbors = 6;
 	while(true)
 	{
@@ -453,7 +453,7 @@ std::unique_ptr<GMatrix> GAgglomerativeTransducer::transduceInner(const GMatrix&
 // -----------------------------------------------------------------------------------------
 
 GKMeans::GKMeans(size_t clusters, GRand* pRand)
-: GClusterer(clusters), m_pCentroids(NULL), m_pClusters(NULL), m_reps(1), m_pRand(pRand)
+: GClusterer(clusters), m_pCentroids(nullptr), m_pClusters(nullptr), m_reps(1), m_pRand(pRand)
 {
 }
 
@@ -599,7 +599,7 @@ void GKMeans::recomputeCentroids(const GMatrix* pData)
 // virtual
 void GKMeans::cluster(const GMatrix* pData)
 {
-	size_t* pBest = NULL;
+	size_t* pBest = nullptr;
 	double bestErr = 1e308;
 	for(size_t i = 0; i < m_reps; i++)
 	{
@@ -619,7 +619,7 @@ void GKMeans::cluster(const GMatrix* pData)
 			bestErr = d;
 			delete[] pBest;
 			pBest = m_pClusters;
-			m_pClusters = NULL;
+			m_pClusters = nullptr;
 		}
 	}
 	if(pBest)
@@ -639,7 +639,7 @@ size_t GKMeans::whichCluster(size_t index)
 // -----------------------------------------------------------------------------------------
 
 GFuzzyKMeans::GFuzzyKMeans(size_t clusters, GRand* pRand)
-: GClusterer(clusters), m_pCentroids(NULL), m_pWeights(NULL), m_fuzzifier(1.3), m_reps(1), m_pRand(pRand)
+: GClusterer(clusters), m_pCentroids(nullptr), m_pWeights(nullptr), m_fuzzifier(1.3), m_reps(1), m_pRand(pRand)
 {
 }
 
@@ -788,7 +788,7 @@ void GFuzzyKMeans::recomputeCentroids(const GMatrix* pData)
 // virtual
 void GFuzzyKMeans::cluster(const GMatrix* pData)
 {
-	GMatrix* pBest = NULL;
+	GMatrix* pBest = nullptr;
 	double bestErr = 1e308;
 	for(size_t i = 0; i < m_reps; i++)
 	{
@@ -807,7 +807,7 @@ void GFuzzyKMeans::cluster(const GMatrix* pData)
 		{
 			bestErr = d;
 			pBest = m_pWeights;
-			m_pWeights = NULL;
+			m_pWeights = nullptr;
 		}
 	}
 	if(pBest)
@@ -827,7 +827,7 @@ size_t GFuzzyKMeans::whichCluster(size_t index)
 // -----------------------------------------------------------------------------------------
 
 GKMedoids::GKMedoids(size_t clusters)
-: GClusterer(clusters), m_pData(NULL)
+: GClusterer(clusters), m_pData(nullptr)
 {
 	m_pMedoids = new size_t[clusters];
 }
@@ -922,7 +922,7 @@ GKMedoidsSparse::GKMedoidsSparse(size_t clusters)
 : GSparseClusterer(clusters)
 {
 	m_pMedoids = new size_t[clusters];
-	m_pData = NULL;
+	m_pData = nullptr;
 }
 
 // virtual
@@ -1015,7 +1015,7 @@ GKMeansSparse::GKMeansSparse(size_t nClusters, GRand* pRand)
 {
 	m_pRand = pRand;
 	m_nClusters = nClusters;
-	m_pClusters = NULL;
+	m_pClusters = nullptr;
 }
 
 GKMeansSparse::~GKMeansSparse()

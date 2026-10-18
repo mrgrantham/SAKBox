@@ -93,7 +93,7 @@ public:
 	/// stream will be redirected to append to the specified file.
 	/// (On Windows, this method just calls pDaemonMain normally, and does
 	/// not fork off a separate process.)
-	static void launchDaemon(DaemonMainFunc pDaemonMain, void* pArg, const char* stdoutFilename = NULL, const char* stderrFilename = NULL);
+	static void launchDaemon(DaemonMainFunc pDaemonMain, void* pArg, const char* stdoutFilename = nullptr, const char* stderrFilename = nullptr);
 
 	/// Returns the full name (including path) of the executing application.
 	/// Returns the length of the returned string, or -1 if it failed.
@@ -122,7 +122,7 @@ public:
 	/// the stdout output of the called process. Likewise with pStdErr.
 	/// If pStdIn is non-NULL, then it should point to the read end of
 	/// a pipe, and it will be used for stdin with the called process.
-	static int systemExecute(const char* szCommand, bool wait, GPipe* pStdOut = NULL, GPipe* pStdErr = NULL, GPipe* pStdIn = NULL);
+	static int systemExecute(const char* szCommand, bool wait, GPipe* pStdOut = nullptr, GPipe* pStdErr = nullptr, GPipe* pStdIn = nullptr);
 
 	/// If you're having trouble with bogus floating point values
 	/// (like NAN or INF), this method will cause an exception to

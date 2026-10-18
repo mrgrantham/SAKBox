@@ -53,9 +53,9 @@ private:
 	GVec m_innerBuf;
 
 public:
-	GIncrementalTransform() : GTransform(), m_pRelationBefore(NULL), m_pRelationAfter(NULL) {}
+	GIncrementalTransform() : GTransform(), m_pRelationBefore(nullptr), m_pRelationAfter(nullptr) {}
 	GIncrementalTransform(const GDomNode* pNode);
-	virtual ~GIncrementalTransform();
+	~GIncrementalTransform() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -99,7 +99,7 @@ public:
 	virtual void transform(const GVec& in, GVec& out) = 0;
 
 	/// This calls train, then calls transformBatch, and returns the result.
-	virtual GMatrix* reduce(const GMatrix& in);
+	GMatrix* reduce(const GMatrix& in) override;
 
 	/// This assumes that train has already been called, and
 	/// transforms all the rows in in returning the resulting
@@ -126,7 +126,7 @@ public:
 
 protected:
 	/// Child classes should use this in their implementation of serialize
-	virtual GDomNode* baseDomNode(GDom* pDoc, const char* szClassName) const;
+	GDomNode* baseDomNode(GDom* pDoc, const char* szClassName) const override;
 
 	/// This method implements the functionality called by train.
 	/// The data passed in may be used to guide training.
@@ -195,29 +195,29 @@ public:
 
 	/// Deserializing constructor
 	GIncrementalTransformChainer(const GDomNode* pNode, GLearnerLoader& ll);
-	virtual ~GIncrementalTransformChainer();
+	~GIncrementalTransformChainer() override;
 
 	/// If pA or pB is nullptr, returns the other one, else chains them together.
 	static GIncrementalTransform* chain(GIncrementalTransform* pA, GIncrementalTransform* pB);
 	
 	/// See the comment for GIncrementalTransform::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalTransform::train
-	virtual void transform(const GVec& in, GVec& out);
+	void transform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransform
-	virtual void untransform(const GVec& in, GVec& out);
+	void untransform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransformToDistribution
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut);
+	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GMatrix& data);
+	GRelation* trainInner(const GMatrix& data) override;
 
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GRelation& relation);
+	GRelation* trainInner(const GRelation& relation) override;
 };
 
 
@@ -243,10 +243,10 @@ public:
 	/// Load from a DOM.
 	GPCA(const GDomNode* pNode);
 
-	virtual ~GPCA();
+	~GPCA() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Specify to compute the eigenvalues during training. This
 	/// method must be called before train is called.
@@ -271,24 +271,24 @@ public:
 
 	/// See the comment for GIncrementalTransform::transform.
 	/// Projects the specified point into fewer dimensions.
-	virtual void transform(const GVec& in, GVec& out);
+	void transform(const GVec& in, GVec& out) override;
 
 	/// Computes a (lossy) high-dimensional point that corresponds with the
 	/// specified low-dimensional coordinates.
-	virtual void untransform(const GVec& in, GVec& out);
+	void untransform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransformToDistribution
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut);
+	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// Returns a reference to the pseudo-random number generator used by this object.
 	GRand& rand() { return m_rand; }
 
 protected:
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GMatrix& data);
+	GRelation* trainInner(const GMatrix& data) override;
 
 	/// Throws an exception (because this transform cannot be trained without data)
-	virtual GRelation* trainInner(const GRelation& relation);
+	GRelation* trainInner(const GRelation& relation) override;
 };
 
 
@@ -307,23 +307,23 @@ public:
 	/// Load from a DOM.
 	GNoiseGenerator(const GDomNode* pNode);
 
-	virtual ~GNoiseGenerator();
+	~GNoiseGenerator() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalTransform::transform
-	virtual void transform(const GVec& in, GVec& out);
+	void transform(const GVec& in, GVec& out) override;
 
 	/// Sets the mean and deviation of the noise
 	void setMeanAndDeviation(double m, double d) { m_mean = m; m_deviation = d; }
 
 	/// Throws an exception (because this transform cannot be reversed).
-	virtual void untransform(const GVec& in, GVec& out)
+	void untransform(const GVec& in, GVec& out) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 	/// Throws an exception (because this transform cannot be undone).
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut)
+	void untransformToDistribution(const GVec& in, GPrediction* pOut) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 	/// Returns a reference to the rand object used to generate noise.
@@ -331,10 +331,10 @@ public:
 
 protected:
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GMatrix& data);
+	GRelation* trainInner(const GMatrix& data) override;
 
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GRelation& relation);
+	GRelation* trainInner(const GRelation& relation) override;
 };
 
 
@@ -352,28 +352,28 @@ public:
 	/// Load from a DOM.
 	GPairProduct(const GDomNode* pNode);
 
-	virtual ~GPairProduct();
+	~GPairProduct() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalTransform::transform
-	virtual void transform(const GVec& in, GVec& out);
+	void transform(const GVec& in, GVec& out) override;
 
 	/// Throws an exception (because this transform cannot be reversed).
-	virtual void untransform(const GVec& in, GVec& out)
+	void untransform(const GVec& in, GVec& out) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 	/// Throws an exception (because this transform cannot be undone).
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut)
+	void untransformToDistribution(const GVec& in, GPrediction* pOut) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 protected:
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GMatrix& data);
+	GRelation* trainInner(const GMatrix& data) override;
 
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GRelation& relation);
+	GRelation* trainInner(const GRelation& relation) override;
 };
 
 
@@ -394,26 +394,26 @@ public:
 	/// Load from a DOM
 	GDataAugmenter(const GDomNode* pNode, GLearnerLoader& ll);
 
-	virtual ~GDataAugmenter();
+	~GDataAugmenter() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalTransform::transform
-	virtual void transform(const GVec& in, GVec& out);
+	void transform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransform
-	virtual void untransform(const GVec& in, GVec& out);
+	void untransform(const GVec& in, GVec& out) override;
 
 	/// Throws an exception
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut);
+	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GMatrix& data);
+	GRelation* trainInner(const GMatrix& data) override;
 
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GRelation& relation);
+	GRelation* trainInner(const GRelation& relation) override;
 };
 
 
@@ -436,16 +436,16 @@ public:
 
 	GAttributeSelector(const GDomNode* pNode);
 
-	virtual ~GAttributeSelector()
+	~GAttributeSelector() override
 	{
 	}
 
 	static void test();
 
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalTransform::transform
-	virtual void transform(const GVec& in, GVec& out);
+	void transform(const GVec& in, GVec& out) override;
 
 	/// Specifies the number of features to select. (This method must be called
 	/// after train.)
@@ -456,11 +456,11 @@ public:
 	std::vector<size_t>& ranks() { return m_ranks; }
 
 	/// Throws an exception (because this transform cannot be reversed).
-	virtual void untransform(const GVec& in, GVec& out)
+	void untransform(const GVec& in, GVec& out) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 	/// Throws an exception (because this transform cannot be reversed).
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut)
+	void untransformToDistribution(const GVec& in, GPrediction* pOut) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 	/// Sets a random seed to use with this attribute selector
@@ -468,10 +468,10 @@ public:
 
 protected:
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GMatrix& data);
+	GRelation* trainInner(const GMatrix& data) override;
 
 	/// Throws an exception (because this transform cannot be trained without data)
-	virtual GRelation* trainInner(const GRelation& relation);
+	GRelation* trainInner(const GRelation& relation) override;
 };
 
 
@@ -495,19 +495,19 @@ public:
 	/// Load from a DOM.
 	GNominalToCat(const GDomNode* pNode);
 
-	virtual ~GNominalToCat();
+	~GNominalToCat() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalTransform::transform
-	virtual void transform(const GVec& in, GVec& out);
+	void transform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransform
-	virtual void untransform(const GVec& in, GVec& out);
+	void untransform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransformToDistribution
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut);
+	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// Makes a mapping from the post-transform attribute indexes to the pre-transform attribute indexes
 	void reverseAttrMap(std::vector<size_t>& rmap);
@@ -520,10 +520,10 @@ protected:
 	GRelation* init();
 
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GMatrix& data);
+	GRelation* trainInner(const GMatrix& data) override;
 
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GRelation& relation);
+	GRelation* trainInner(const GRelation& relation) override;
 };
 
 
@@ -545,29 +545,29 @@ public:
 	/// Load from a DOM.
 	GNormalize(const GDomNode* pNode);
 
-	virtual ~GNormalize();
+	~GNormalize() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalTransform::transform
-	virtual void transform(const GVec& in, GVec& out);
+	void transform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransform
-	virtual void untransform(const GVec& in, GVec& out);
+	void untransform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransformToDistribution
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut);
+	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// Specify the input min and range values for each attribute
 	void setMinsAndRanges(const GRelation& pRel, const GVec& mins, const GVec& ranges);
 
 protected:
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GMatrix& data);
+	GRelation* trainInner(const GMatrix& data) override;
 
 	/// Throws an exception (because this transform cannot be trained without data)
-	virtual GRelation* trainInner(const GRelation& relation);
+	GRelation* trainInner(const GRelation& relation) override;
 };
 
 
@@ -590,26 +590,26 @@ public:
 	/// Load from a DOM.
 	GDiscretize(const GDomNode* pNode);
 
-	virtual ~GDiscretize();
+	~GDiscretize() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalTransform::transform
-	virtual void transform(const GVec& in, GVec& out);
+	void transform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransform
-	virtual void untransform(const GVec& in, GVec& out);
+	void untransform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransformToDistribution
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut);
+	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GMatrix& data);
+	GRelation* trainInner(const GMatrix& data) override;
 
 	/// Throws an exception (because this transform cannot be trained without data)
-	virtual GRelation* trainInner(const GRelation& relation);
+	GRelation* trainInner(const GRelation& relation) override;
 };
 
 
@@ -629,19 +629,19 @@ public:
 	/// Deserializing constructor
 	GImputeMissingVals(const GDomNode* pNode, GLearnerLoader& ll);
 
-	virtual ~GImputeMissingVals();
+	~GImputeMissingVals() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalTransform::transform
-	virtual void transform(const GVec& in, GVec& out);
+	void transform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransform
-	virtual void untransform(const GVec& in, GVec& out);
+	void untransform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransformToDistribution
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut);
+	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// Sets the collaborative filter used to impute missing values. Takes
 	/// ownership of pCF. If no collaborative filter is set, the default is to use
@@ -657,14 +657,14 @@ public:
 	/// to this method is the same that was used to train it. (This assumption
 	/// is necessary in order to utilize the additional label information that
 	/// may be available at training time, which can be important for imputation.)
-	virtual GMatrix* transformBatch(const GMatrix& in);
+	GMatrix* transformBatch(const GMatrix& in) override;
 
 protected:
 	/// See the comment for GIncrementalTransform::train
-	virtual GRelation* trainInner(const GMatrix& data);
+	GRelation* trainInner(const GMatrix& data) override;
 
 	/// Throws an exception (because this transform cannot be trained without data)
-	virtual GRelation* trainInner(const GRelation& relation);
+	GRelation* trainInner(const GRelation& relation) override;
 };
 
 
@@ -678,26 +678,26 @@ public:
 	/// Load from a DOM.
 	GLogify(const GDomNode* pNode);
 
-	virtual ~GLogify();
+	~GLogify() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalTransform::transform
-	virtual void transform(const GVec& in, GVec& out);
+	void transform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransform
-	virtual void untransform(const GVec& in, GVec& out);
+	void untransform(const GVec& in, GVec& out) override;
 
 	/// See the comment for GIncrementalTransform::untransformToDistribution
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut);
+	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GIncrementalTransform::trainInner
-	virtual GRelation* trainInner(const GMatrix& data);
+	GRelation* trainInner(const GMatrix& data) override;
 
 	/// See the comment for GIncrementalTransform::trainInner
-	virtual GRelation* trainInner(const GRelation& relation);
+	GRelation* trainInner(const GRelation& relation) override;
 };
 
 } // namespace GClasses

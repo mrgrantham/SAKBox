@@ -429,9 +429,9 @@ GRayTraceScene::GRayTraceScene(GRand* pRand)
   m_ambientLight(1, (G3DReal).3, (G3DReal).3, (G3DReal).3), m_pRand(pRand)
 {
 	m_pCamera = new GRayTraceCamera(320, 240);
-	m_pBoundingBoxTree = NULL;
-	m_pImage = NULL;
-	m_pDistanceMap = NULL;
+	m_pBoundingBoxTree = nullptr;
+	m_pImage = nullptr;
+	m_pDistanceMap = nullptr;
 	m_nY = -1;
 	m_toneMappingConstant = .5;
 	m_eMode = FAST_RAY_TRACE;
@@ -501,7 +501,7 @@ void GRayTraceScene::flushObjects()
 		delete(*it);
 	m_objects.clear();
 	delete(m_pBoundingBoxTree);
-	m_pBoundingBoxTree = NULL;
+	m_pBoundingBoxTree = nullptr;
 }
 
 void GRayTraceScene::swapObjects(GRayTraceScene* pOther)
@@ -821,7 +821,7 @@ bool GRayTraceScene::renderLine()
 	G3DVector screenPoint(m_pixSide);
 	int nWidth = m_pImage->width();
 	G3DReal distance;
-	G3DReal* pDistance = m_pDistanceMap ? &distance : NULL;
+	G3DReal* pDistance = m_pDistanceMap ? &distance : nullptr;
 	unsigned int col = 0;
 	for(x = 0; x < nWidth; x++)
 	{
@@ -874,7 +874,7 @@ unsigned int GRayTraceScene::renderSinglePixel(int x, int y)
 
 	// Cast the ray
 	GRayTraceRay ray(m_pRand);
-	unsigned int c = renderPixel(&ray, &screenPoint, NULL);
+	unsigned int c = renderPixel(&ray, &screenPoint, nullptr);
 	return c;
 }
 
@@ -915,7 +915,7 @@ GRayTraceLight* GRayTraceLight::deserialize(GDomNode* pNode, GRayTraceScene* pSc
 			return new GRayTraceAreaLight(pNode, pScene);
 	}
 	throw Ex("Unrecognized light type");
-	return NULL;
+	return nullptr;
 }
 
 // -----------------------------------------------------------------------------
@@ -1186,7 +1186,7 @@ GRayTraceMaterial* GRayTraceMaterial::deserialize(GDomNode* pNode)
 		case Image:
 			return new GRayTraceImageTexture(pNode);
 	}
-	return NULL;
+	return nullptr;
 }
 
 void GRayTraceMaterial::computeColor(GRayTraceScene* pScene, GRayTraceRay* pRay, bool bAmbient, bool bSpecular)
@@ -1322,7 +1322,7 @@ void GRayTracePhysicalMaterial::setColor(ColorType eType, G3DReal r, G3DReal g, 
 
 GRayTraceImageTexture::GRayTraceImageTexture()
 {
-	m_pTextureImage = NULL;
+	m_pTextureImage = nullptr;
 	m_bDeleteTextureImage = false;
 }
 
@@ -1358,7 +1358,7 @@ bool GRayTraceImageTexture::isSame(GRayTraceMaterial* pThat)
 GRayTraceMaterial* GRayTraceImageTexture::copy()
 {
 	throw Ex("Sorry, not implemented yet");
-	return NULL;
+	return nullptr;
 }
 
 void GRayTraceImageTexture::setTextureImage(GImage* pImage, bool bDeleteImage)
@@ -1537,7 +1537,7 @@ bool GRayTraceBoundingBoxBase::DoesRayHitBox(G3DVector* pRayOrigin, G3DVector* p
 GRayTraceObject* GRayTraceBoundingBoxInterior::closestIntersection(G3DVector* pRayOrigin, G3DVector* pDirectionVector, G3DReal* pOutDistance)
 {
 	if(!DoesRayHitBox(pRayOrigin, pDirectionVector))
-		return NULL;
+		return nullptr;
 	G3DReal lesserDist = 0;
 	G3DReal greaterDist = 0;
 	GRayTraceObject* pLesser = m_pLesser->closestIntersection(pRayOrigin, pDirectionVector, &lesserDist);
@@ -1590,12 +1590,12 @@ GRayTraceBoundingBoxLeaf::~GRayTraceBoundingBoxLeaf()
 GRayTraceObject* GRayTraceBoundingBoxLeaf::closestIntersection(G3DVector* pRayOrigin, G3DVector* pDirectionVector, G3DReal* pOutDistance)
 {
 	if(!DoesRayHitBox(pRayOrigin, pDirectionVector))
-		return NULL;
+		return nullptr;
 
 	// Find the closest intersection
 	G3DReal distance;
 	G3DReal closestDistance = (G3DReal)1e30;
-	GRayTraceObject* pClosestObject = NULL;
+	GRayTraceObject* pClosestObject = nullptr;
 	int n;
 	for(n = 0; n < m_nObjectCount; n++)
 	{
@@ -1656,7 +1656,7 @@ GRayTraceTriMesh::GRayTraceTriMesh(GDomNode* pNode, GRayTraceScene* pScene)
 		}
 	}
 	else
-		m_pNormals = NULL;
+		m_pNormals = nullptr;
 	if(pCoordsNode)
 	{
 		GDomListIterator it4(pCoordsNode);
@@ -1670,7 +1670,7 @@ GRayTraceTriMesh::GRayTraceTriMesh(GDomNode* pNode, GRayTraceScene* pScene)
 		}
 	}
 	else
-		m_pTextureCoords = NULL;
+		m_pTextureCoords = nullptr;
 	m_bCulling = pNode->getBool("culling");
 }
 
@@ -1739,7 +1739,7 @@ public:
 		SetEdge(v1, v2);
 	}
 
-	virtual ~EdgeRecord()
+	~EdgeRecord() override
 	{
 	}
 
@@ -2162,7 +2162,7 @@ GRayTraceTriMesh* GRayTraceTriMesh::makeCylinder(GRayTraceMaterial* pMaterial, G
 	// Make the mesh
 	size_t nVertices = nSides * 2 + (bEndCaps ? 2 : 0);
 	bool imageTexture = (pMaterial->materialType() == GRayTraceMaterial::Image);
-	GImage* pImage = imageTexture ? ((GRayTraceImageTexture*)pMaterial)->textureImage() : NULL;
+	GImage* pImage = imageTexture ? ((GRayTraceImageTexture*)pMaterial)->textureImage() : nullptr;
 	GRayTraceTriMesh* pMesh = new GRayTraceTriMesh(pMaterial);
 	G3DVector p1(*pCenter1);
 	p1.add(u);
@@ -2237,7 +2237,7 @@ GRayTraceObject* GRayTraceObject::deserialize(GDomNode* pNode, GRayTraceScene* p
 			return new GRayTraceTriangle(pNode, pScene);
 	}
 	throw Ex("Unexpected type");
-	return NULL;
+	return nullptr;
 }
 
 // -----------------------------------------------------------------------------

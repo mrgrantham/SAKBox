@@ -401,7 +401,7 @@ void GFourier::test()
 
 
 GWavelet::GWavelet()
-: m_pBuf(NULL), m_bufSize(0)
+: m_pBuf(nullptr), m_bufSize(0)
 {
 }
 

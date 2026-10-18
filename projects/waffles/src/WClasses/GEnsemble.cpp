@@ -55,12 +55,12 @@ GDomNode* GWeightedModel::serialize(GDom* pDoc) const
 
 
 GEnsemble::GEnsemble()
-: GSupervisedLearner(), m_pLabelRel(NULL), m_workerThreads(1), m_pPredictMaster(NULL)
+: GSupervisedLearner(), m_pLabelRel(nullptr), m_workerThreads(1), m_pPredictMaster(nullptr)
 {
 }
 
 GEnsemble::GEnsemble(const GDomNode* pNode, GLearnerLoader& ll)
-: GSupervisedLearner(pNode), m_pPredictMaster(NULL)
+: GSupervisedLearner(pNode), m_pPredictMaster(nullptr)
 {
 	m_pLabelRel = GRelation::deserialize(pNode->get("labelrel"));
 	size_t accumulatorDims = (size_t)pNode->getInt("accum");
@@ -101,10 +101,10 @@ void GEnsemble::clearBase()
 	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		(*it)->m_pModel->clear();
 	delete(m_pLabelRel);
-	m_pLabelRel = NULL;
+	m_pLabelRel = nullptr;
 	m_accumulator.resize(0);
 	delete(m_pPredictMaster);
-	m_pPredictMaster = NULL;
+	m_pPredictMaster = nullptr;
 }
 
 // virtual
@@ -221,11 +221,11 @@ public:
 		m_prediction.resize(outDims);
 	}
 
-	virtual ~GEnsemblePredictWorker()
+	~GEnsemblePredictWorker() override
 	{
 	}
 
-	virtual void doJob(size_t jobId)
+	void doJob(size_t jobId) override
 	{
 		const GVec& in = *(const GVec*)m_pEnsemble->m_pPredictInput;
 		GWeightedModel* pWM = m_pEnsemble->models()[jobId];
@@ -271,12 +271,12 @@ void GEnsemble::predictDistribution(const GVec& in, GPrediction* out)
 
 
 GBag::GBag()
-: GEnsemble(), m_pCB(NULL), m_pThis(NULL), m_trainSize(1.0)
+: GEnsemble(), m_pCB(nullptr), m_pThis(nullptr), m_trainSize(1.0)
 {
 }
 
 GBag::GBag(const GDomNode* pNode, GLearnerLoader& ll)
-: GEnsemble(pNode, ll), m_pCB(NULL), m_pThis(NULL)
+: GEnsemble(pNode, ll), m_pCB(nullptr), m_pThis(nullptr)
 {
 	m_trainSize = pNode->getDouble("ts");
 }
@@ -341,11 +341,11 @@ public:
 		m_drawnLabels.reserve(m_drawSize);
 	}
 
-	virtual ~GBagTrainWorker()
+	~GBagTrainWorker() override
 	{
 	}
 
-	virtual void doJob(size_t jobId)
+	void doJob(size_t jobId) override
 	{
 		// Randomly draw some data (with replacement)
 		GReleaseDataHolder hDrawnFeatures(&m_drawnFeatures);
@@ -568,7 +568,7 @@ GResamplingAdaBoost::GResamplingAdaBoost(GSupervisedLearner* pLearner, bool ownL
 }
 
 GResamplingAdaBoost::GResamplingAdaBoost(const GDomNode* pNode, GLearnerLoader& ll)
-: GEnsemble(pNode, ll), m_pLearner(NULL), m_ownLearner(false), m_pLoader(NULL)
+: GEnsemble(pNode, ll), m_pLearner(nullptr), m_ownLearner(false), m_pLoader(nullptr)
 {
 	m_trainSize = pNode->getDouble("ts");
 	m_ensembleSize = (size_t)pNode->getInt("es");
@@ -708,7 +708,7 @@ GGradBoost::GGradBoost(GSupervisedLearner* pLearner, bool ownLearner, GLearnerLo
 }
 
 GGradBoost::GGradBoost(const GDomNode* pNode, GLearnerLoader& ll)
-: GEnsemble(pNode, ll), m_pLearner(NULL), m_ownLearner(false), m_pLoader(NULL)
+: GEnsemble(pNode, ll), m_pLearner(nullptr), m_ownLearner(false), m_pLoader(nullptr)
 {
 	m_trainSize = pNode->getDouble("ts");
 	m_ensembleSize = (size_t)pNode->getInt("es");

@@ -184,7 +184,7 @@ const char* _strnstr(const char* big, const char* small, size_t len)
 GDynamicPageSession* GDynamicPageConnection::establishSession()
 {
 	// Check for a cookie in the HTTP header
-	GDynamicPageSession* pSession = NULL;
+	GDynamicPageSession* pSession = nullptr;
 	if(m_szCookieIncoming[0] != '\0')
 	{
 		const char* crumb = strstr(m_szCookieIncoming, "GDPSI=");
@@ -194,7 +194,7 @@ GDynamicPageSession* GDynamicPageConnection::establishSession()
 #ifdef WINDOWS
 			unsigned long long nSessionID = _strtoui64(crumb, NULL, 10);
 #else
-			unsigned long long nSessionID = strtoull(crumb, NULL, 10);
+			unsigned long long nSessionID = strtoull(crumb, nullptr, 10);
 #endif
 			pSession = m_pServer->findSession(nSessionID);
 			if(!pSession)
@@ -220,7 +220,7 @@ GDynamicPageSession* GDynamicPageConnection::establishSession()
 #ifdef WINDOWS
 			unsigned long long nSessionID = _strtoui64(crumb, NULL, 10);
 #else
-			unsigned long long nSessionID = strtoull(crumb, NULL, 10);
+			unsigned long long nSessionID = strtoull(crumb, nullptr, 10);
 #endif
 			pSession = m_pServer->findSession(nSessionID);
 			if(!pSession)
@@ -421,7 +421,7 @@ GDynamicPageSession* GDynamicPageServer::findSession(unsigned long long id)
 {
 	map<unsigned long long, GDynamicPageSession*>::iterator it = m_sessions.find(id);
 	if(it == m_sessions.end())
-		return NULL;
+		return nullptr;
 	else
 		return it->second;
 }

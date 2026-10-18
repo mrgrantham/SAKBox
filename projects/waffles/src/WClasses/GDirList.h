@@ -96,7 +96,7 @@ protected:
 	std::string* m_pBaseName;
 
 public:
-	GFolderDeserializer(std::string* pBaseName = NULL);
+	GFolderDeserializer(std::string* pBaseName = nullptr);
 	~GFolderDeserializer();
 
 	void doNext(const char* pBuf, size_t bufLen);

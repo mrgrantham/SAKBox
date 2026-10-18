@@ -384,7 +384,7 @@ public:
 	}
 
 	/// Destructor
-	virtual ~GRandMersenneTwister(){}
+	~GRandMersenneTwister() override{}
 
 	/// Sets the seed
 	///
@@ -393,7 +393,7 @@ public:
 	///
 	/// \param seed the seed to use for generating numbers from the
 	///        random number generator
-	virtual void setSeed(uint64_t seed){
+	void setSeed(uint64_t seed) override{
 		GRand::setSeed(seed);
 		init_genrand64(seed);
 	}
@@ -401,7 +401,7 @@ public:
 	///\brief Returns an unsigned pseudo-random 64-bit value
 	///
 	///\return an unsigned pseudo-random 64-bit value
-	virtual uint64_t next()	{
+	uint64_t next() override	{
 		return genrand64_int64();
 	}
 
@@ -414,7 +414,7 @@ public:
 	///
 	///\return a random number uniformly distributed on the [0,1)
 	///interval.  This interval includes 0, but does not include 1.
-	virtual double uniform(){
+	double uniform() override{
 		return (next() >> 11) * (1.0/9007199254740992.0);
 	}
 
@@ -427,7 +427,7 @@ public:
 	/// \param max the supremum of the interval on which the samples
 	/// returned are distributed.  max will not be generated unless max
 	/// == min or unless the interval is otherwise pathological
-	virtual double uniform(double min, double max){
+	double uniform(double min, double max) override{
 		return uniform()*(max-min)+min;
 	}
 

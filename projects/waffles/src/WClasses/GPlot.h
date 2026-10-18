@@ -236,12 +236,12 @@ public:
 	/// Label the horizontal axis. If maxLabels is 0, then no grid-lines will be drawn. If maxLabels is -1, then
 	/// Logarithmic grid-lines will be drawn. If pLabels is non-NULL, then its values will be used to label
 	/// the grid-lines instead of the continuous values.
-	void horizMarks(int maxLabels, bool notext = false, std::vector<std::string>* pLabels = NULL);
+	void horizMarks(int maxLabels, bool notext = false, std::vector<std::string>* pLabels = nullptr);
 
 	/// Label the vertical axis. If maxLabels is 0, then no grid-lines will be drawn. If maxLabels is -1, then
 	/// Logarithmic grid-lines will be drawn. If pLabels is non-NULL, then its values will be used to label
 	/// the grid-lines instead of the continuous values.
-	void vertMarks(int maxLabels, bool notext = false, std::vector<std::string>* pLabels = NULL);
+	void vertMarks(int maxLabels, bool notext = false, std::vector<std::string>* pLabels = nullptr);
 
 	/// Returns a good y position for the horizontal axis label
 	double horizLabelPos();

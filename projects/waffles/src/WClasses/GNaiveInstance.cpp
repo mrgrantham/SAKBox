@@ -83,16 +83,16 @@ public:
 // -----------------------------------------------------------
 
 GNaiveInstance::GNaiveInstance()
-: GIncrementalLearner(), m_pHeap(NULL)
+: GIncrementalLearner(), m_pHeap(nullptr)
 {
 	m_nNeighbors = 12;
-	m_pAttrs = NULL;
+	m_pAttrs = nullptr;
 }
 
 GNaiveInstance::GNaiveInstance(const GDomNode* pNode)
-: GIncrementalLearner(pNode), m_pHeap(NULL)
+: GIncrementalLearner(pNode), m_pHeap(nullptr)
 {
-	m_pAttrs = NULL;
+	m_pAttrs = nullptr;
 	m_nNeighbors = (size_t)pNode->getInt("neighbors");
 	beginIncrementalLearningInner(*m_pRelFeatures, *m_pRelLabels);
 	GDomNode* pAttrs = pNode->get("attrs");
@@ -122,10 +122,10 @@ void GNaiveInstance::clear()
 			delete(m_pAttrs[i]);
 		delete[] m_pAttrs;
 	}
-	m_pAttrs = NULL;
+	m_pAttrs = nullptr;
 	m_pValueSums.resize(0);
 	delete(m_pHeap);
-	m_pHeap = NULL;
+	m_pHeap = nullptr;
 }
 
 // virtual

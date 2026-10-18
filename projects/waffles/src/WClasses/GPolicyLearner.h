@@ -80,22 +80,22 @@ protected:
 
 public:
 	GDiscreteActionIterator(int action_count) : GAgentActionIterator(), m_count(action_count) {}
-	virtual ~GDiscreteActionIterator() {}
+	~GDiscreteActionIterator() override {}
 
 	/// Returns the total number of action values
-	virtual int actionCount() { return m_count; }
+	int actionCount() override { return m_count; }
 
 	/// Returns 1
-	virtual int actionDims() { return 1; }
+	int actionDims() override { return 1; }
 
 	/// Returns a random action
-	virtual void randomAction(double* pOutAction, GRand* pRand);
+	void randomAction(double* pOutAction, GRand* pRand) override;
 
 	/// Resets the iterator
-	virtual void reset(const double* pState);
+	void reset(const double* pState) override;
 	
 	/// Iterates to the next action. Returns false if there are no more.
-	virtual bool nextAction(double* pOutAction);
+	bool nextAction(double* pOutAction) override;
 };
 
 

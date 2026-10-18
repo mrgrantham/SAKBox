@@ -383,7 +383,7 @@ void GBillboardWorld::drawSection(GImage* pImage, double* pDepthMap, GCamera& ca
 		int xBegin = std::max(0, (int)floor(a));
 		int xEnd = std::min((int)pImage->width() - 1, (int)ceil(b));
 		double* pDM = pDepthMap + pImage->width() * y + xBegin;
-		unsigned int* pPix = xBegin <= xEnd ? pImage->pixelRef(xBegin, pImage->height() - 1 - y) : NULL;
+		unsigned int* pPix = xBegin <= xEnd ? pImage->pixelRef(xBegin, pImage->height() - 1 - y) : nullptr;
 		for(int x = xBegin; x <= xEnd; x++)
 		{
 			unsigned int col = bb.getPixel(camera, x, y, &z);

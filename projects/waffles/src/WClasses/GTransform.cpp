@@ -436,7 +436,7 @@ void GIncrementalTransformChainer::untransformToDistribution(const GVec& in, GPr
 // ---------------------------------------------------------------
 
 GPCA::GPCA(size_t target_Dims)
-: GIncrementalTransform(), m_targetDims(target_Dims), m_pBasisVectors(NULL), m_aboutOrigin(false), m_rand(0)
+: GIncrementalTransform(), m_targetDims(target_Dims), m_pBasisVectors(nullptr), m_aboutOrigin(false), m_rand(0)
 {
 }
 
@@ -1389,19 +1389,19 @@ void GDiscretize::untransformToDistribution(const GVec& in, GPrediction* out)
 
 
 GImputeMissingVals::GImputeMissingVals()
-: m_pCF(NULL), m_pNTC(NULL), m_pLabels(NULL), m_pBatch(NULL)
+: m_pCF(nullptr), m_pNTC(nullptr), m_pLabels(nullptr), m_pBatch(nullptr)
 {
 }
 
 GImputeMissingVals::GImputeMissingVals(const GDomNode* pNode, GLearnerLoader& ll)
-: GIncrementalTransform(pNode), m_pLabels(NULL), m_pBatch(NULL)
+: GIncrementalTransform(pNode), m_pLabels(nullptr), m_pBatch(nullptr)
 {
 	m_pCF = ll.loadCollaborativeFilter(pNode->get("cf"));
 	GDomNode* pNTC = pNode->getIfExists("ntc");
 	if(pNTC)
 		m_pNTC = new GNominalToCat(pNTC);
 	else
-		m_pNTC = NULL;
+		m_pNTC = nullptr;
 }
 
 // virtual
@@ -1435,7 +1435,7 @@ GRelation* GImputeMissingVals::trainInner(const GMatrix& data)
 	if(data.relation().areContinuous())
 	{
 		delete(m_pNTC);
-		m_pNTC = NULL;
+		m_pNTC = nullptr;
 	}
 	else if(!m_pNTC)
 	{

@@ -84,7 +84,7 @@ public:
 	/// Load from a DOM.
 	GKNN(const GDomNode* pNode);
 
-	virtual ~GKNN();
+	~GKNN() override;
 
 	/// Returns the number of neighbors
 	size_t neighborCount() { return m_nNeighbors; }
@@ -96,19 +96,19 @@ public:
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// See the comment for GIncrementalLearner::trainSparse
-	virtual void trainSparse(GSparseMatrix& features, GMatrix& labels);
+	void trainSparse(GSparseMatrix& features, GMatrix& labels) override;
 
 	/// Discard any training (but not any settings) so it can be trained again
-	virtual void clear();
+	void clear() override;
 
 	/// Sets the distance metric to use for finding neighbors. If own is true, then
 	/// this object will delete pMetric when it is done with it.
@@ -161,10 +161,10 @@ public:
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	virtual void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel);
+	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
 
 	/// Adds a vector to the internal set. Also, if the (k+1)th nearest
 	/// neighbor of that vector is less than "elbow room" from it, then
@@ -175,7 +175,7 @@ protected:
 	/// Also, If you make this decision based on a closer neighbor, then big
 	/// holes may form in the model if points are sampled in a poor order.)
 	/// Call SetElbowRoom to specify the elbow room distance.
-	virtual void trainIncremental(const GVec& in, const GVec& out);
+	void trainIncremental(const GVec& in, const GVec& out) override;
 
 	/// Finds the nearest neighbors of pVector. Returns the number of neighbors found.
 	size_t findNeighbors(const GVec& vector);
@@ -192,7 +192,7 @@ protected:
 	void interpolateLearner(size_t nc, const GVec& in, GPrediction* pOut, GVec* pOut2);
 
 	/// See the comment for GTransducer::canImplicitlyHandleMissingFeatures
-	virtual bool canImplicitlyHandleMissingFeatures() { return false; }
+	bool canImplicitlyHandleMissingFeatures() override { return false; }
 };
 
 
@@ -218,13 +218,13 @@ public:
 
 protected:
 	/// See the comment for GTransducer::transduce
-	virtual std::unique_ptr<GMatrix> transduceInner(const GMatrix& features1, const GMatrix& labels1, const GMatrix& features2);
+	std::unique_ptr<GMatrix> transduceInner(const GMatrix& features1, const GMatrix& labels1, const GMatrix& features2) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
-	virtual bool canImplicitlyHandleNominalFeatures() { return false; }
+	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
 	/// See the comment for GTransducer::canImplicitlyHandleContinuousLabels
-	virtual bool canImplicitlyHandleContinuousLabels() { return false; }
+	bool canImplicitlyHandleContinuousLabels() override { return false; }
 };
 
 
@@ -242,35 +242,35 @@ public:
 	/// dims specifies the number of feature dimensions.
 	/// pDims specifies the number of discrete zero-based values for each feature dim.
 	GInstanceTable(size_t dims, size_t* pDims);
-	virtual ~GInstanceTable();
+	~GInstanceTable() override;
 
 	/// Serialize this table
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GIncrementalLearner::trainSparse
-	virtual void trainSparse(GSparseMatrix& features, GMatrix& labels);
+	void trainSparse(GSparseMatrix& features, GMatrix& labels) override;
 
 	/// Clears the internal model
-	virtual void clear();
+	void clear() override;
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
-	virtual bool canImplicitlyHandleNominalFeatures() { return false; }
+	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
 	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	virtual void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel);
+	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
 
 	/// See the comment for GIncrementalLearner::trainIncremental
-	virtual void trainIncremental(const GVec& in, const GVec& out);
+	void trainIncremental(const GVec& in, const GVec& out) override;
 };
 
 
@@ -292,7 +292,7 @@ public:
 	/// Load from a DOM.
 	GSparseInstance(const GDomNode* pNode);
 
-	virtual ~GSparseInstance();
+	~GSparseInstance() override;
 
 	/// Returns the number of neighbors
 	size_t neighborCount() { return m_neighborCount; }
@@ -306,10 +306,10 @@ public:
 #endif
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Discard any training (but not any settings) so it can be trained again
-	virtual void clear();
+	void clear() override;
 
 	/// Sets the distance metric. Takes ownership of pMetric.
 	void setMetric(GSparseSimilarity* pMetric);
@@ -319,19 +319,19 @@ protected:
 	void prune(const GMatrix& holdOutFeatures, const GMatrix& holdOutLabels);
 
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// See the comment for GSupervisedLearner::canImplicitlyHandleNominalFeatures
-	virtual bool canImplicitlyHandleNominalFeatures() { return false; }
+	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
 	/// See the comment for GSupervisedLearner::canImplicitlyHandleNominalLabels
-	virtual bool canImplicitlyHandleNominalLabels() { return false; }
+	bool canImplicitlyHandleNominalLabels() override { return false; }
 };
 
 } // namespace GClasses

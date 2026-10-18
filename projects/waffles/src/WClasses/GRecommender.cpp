@@ -461,7 +461,7 @@ void GBaselineRecommender::test()
 
 
 GInstanceRecommender::GInstanceRecommender(size_t neighbors)
-: GCollaborativeFilter(), m_neighbors(neighbors), m_ownMetric(true), m_pData(NULL), m_pBaseline(NULL), m_significanceWeight(0)
+: GCollaborativeFilter(), m_neighbors(neighbors), m_ownMetric(true), m_pData(nullptr), m_pBaseline(nullptr), m_significanceWeight(0)
 {
 	m_pMetric = new GCosineSimilarity();
 }
@@ -683,7 +683,7 @@ void GInstanceRecommender::test()
 
 
 GSparseClusterRecommender::GSparseClusterRecommender(size_t clusters)
-: GCollaborativeFilter(), m_clusters(clusters), m_pPredictions(NULL), m_pClusterer(NULL), m_ownClusterer(false), m_users(0), m_items(0)
+: GCollaborativeFilter(), m_clusters(clusters), m_pPredictions(nullptr), m_pClusterer(nullptr), m_ownClusterer(false), m_users(0), m_items(0)
 {
 }
 
@@ -795,7 +795,7 @@ void GSparseClusterRecommender::test()
 
 
 GDenseClusterRecommender::GDenseClusterRecommender(size_t clusters)
-: GCollaborativeFilter(), m_clusters(clusters), m_pPredictions(NULL), m_pClusterer(NULL), m_ownClusterer(false), m_users(0), m_items(0)
+: GCollaborativeFilter(), m_clusters(clusters), m_pPredictions(nullptr), m_pClusterer(nullptr), m_ownClusterer(false), m_users(0), m_items(0)
 {
 }
 
@@ -910,7 +910,7 @@ void GDenseClusterRecommender::test()
 
 
 GMatrixFactorization::GMatrixFactorization(size_t intrinsicDims)
-: GCollaborativeFilter(), m_intrinsicDims(intrinsicDims), m_regularizer(0.01), m_pP(NULL), m_pQ(NULL), m_pPMask(NULL), m_pQMask(NULL), m_pPWeights(NULL), m_pQWeights(NULL), m_nonNeg(false), m_minIters(1), m_decayRate(0.97)
+: GCollaborativeFilter(), m_intrinsicDims(intrinsicDims), m_regularizer(0.01), m_pP(nullptr), m_pQ(nullptr), m_pPMask(nullptr), m_pQMask(nullptr), m_pPWeights(nullptr), m_pQWeights(nullptr), m_nonNeg(false), m_minIters(1), m_decayRate(0.97)
 {
 }
 
@@ -926,22 +926,22 @@ GMatrixFactorization::GMatrixFactorization(const GDomNode* pNode, GLearnerLoader
 	if(pPMask)
 		m_pPMask = new GMatrix(pPMask);
 	else
-		m_pPMask = NULL;
+		m_pPMask = nullptr;
 	GDomNode* pPWeights = pNode->getIfExists("pw");
 	if(pPWeights)
 		m_pPWeights = new GMatrix(pPWeights);
 	else
-		m_pPWeights = NULL;
+		m_pPWeights = nullptr;
 	GDomNode* pQMask = pNode->getIfExists("qm");
 	if(pQMask)
 		m_pQMask = new GMatrix(pQMask);
 	else
-		m_pQMask = NULL;
+		m_pQMask = nullptr;
 	GDomNode* pQWeights = pNode->getIfExists("qw");
 	if(pQWeights)
 		m_pQWeights = new GMatrix(pQWeights);
 	else
-		m_pQWeights = NULL;
+		m_pQWeights = nullptr;
 	if(m_pP->cols() != m_pQ->cols())
 		throw Ex("Mismatching matrix sizes");
 	m_intrinsicDims = m_pP->cols() - 1;
@@ -2081,7 +2081,7 @@ void GContentBasedFilter::train(GMatrix& data)
 	std::set<size_t> userSet;
 
 
-	if(m_itemAttrs == NULL)
+	if(m_itemAttrs == nullptr)
 		throw Ex("The items attributes has to be set");
 
 	//create a training set and learning algorithm for each user
@@ -2147,7 +2147,7 @@ void GContentBasedFilter::impute(GVec& vec, size_t dims)
 //virtual
 GDomNode* GContentBasedFilter::serialize(GDom* pDoc) const
 {
-	return NULL;
+	return nullptr;
 }
 
 void GContentBasedFilter::clear()
@@ -2176,7 +2176,7 @@ void GContentBasedFilter::setItemAttributes(GMatrix& itemAttrs)
 
 
 GContentBoostedCF::GContentBoostedCF(GArgReader copy)
-: GCollaborativeFilter(), m_ratingCounts(NULL), m_pseudoRatingSum(NULL)
+: GCollaborativeFilter(), m_ratingCounts(nullptr), m_pseudoRatingSum(nullptr)
 {
 	int orig_argc = copy.get_argc();
 	int orig_pos = copy.get_pos();

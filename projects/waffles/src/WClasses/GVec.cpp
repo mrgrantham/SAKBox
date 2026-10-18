@@ -43,7 +43,7 @@ GVec::GVec(size_t n)
 : m_size(n)
 {
 	if(n == 0)
-		m_data = NULL;
+		m_data = nullptr;
 	else
 		m_data = new double[n];
 }
@@ -52,7 +52,7 @@ GVec::GVec(int n)
 : m_size(n)
 {
 	if(n == 0)
-		m_data = NULL;
+		m_data = nullptr;
 	else
 		m_data = new double[n];
 }
@@ -77,7 +77,7 @@ GVec::GVec(double d)
 }
 
 GVec::GVec(GDomNode* pNode)
-: m_data(NULL), m_size(0)
+: m_data(nullptr), m_size(0)
 {
 	deserialize(pNode);
 }
@@ -113,7 +113,7 @@ void GVec::resize_implicit(size_t n)
 		throw Ex("Implicit resizing from non-empty vector is not allowed. Call resize to make it explicit.");
 	m_size = n;
 	if(n == 0)
-		m_data = NULL;
+		m_data = nullptr;
 	else
 		m_data = new double[n];
 }
@@ -126,7 +126,7 @@ void GVec::resizePreserve(size_t n)
 	double* oldData = m_data;
 	m_size = n;
 	if(n == 0)
-		m_data = NULL;
+		m_data = nullptr;
 	else
 		m_data = new double[n];
 	for(size_t i = 0; i < overlap; i++)
@@ -1031,13 +1031,13 @@ bool GRandomIndexIterator::next(size_t& outIndex)
 
 GCoordVectorIterator::GCoordVectorIterator(size_t dimCount, size_t* pRanges)
 {
-	m_pCoords = NULL;
+	m_pCoords = nullptr;
 	reset(dimCount, pRanges);
 }
 
 GCoordVectorIterator::GCoordVectorIterator(vector<size_t>& range)
 {
-	m_pCoords = NULL;
+	m_pCoords = nullptr;
 	reset(range);
 }
 
@@ -1070,8 +1070,8 @@ void GCoordVectorIterator::reset(size_t dimCount, size_t* pRanges)
 	}
 	else
 	{
-		m_pCoords = NULL;
-		m_pRanges = NULL;
+		m_pCoords = nullptr;
+		m_pRanges = nullptr;
 	}
 	reset();
 }
@@ -1089,8 +1089,8 @@ void GCoordVectorIterator::reset(vector<size_t>& range)
 	}
 	else
 	{
-		m_pCoords = NULL;
-		m_pRanges = NULL;
+		m_pCoords = nullptr;
+		m_pRanges = nullptr;
 	}
 	reset();
 }
@@ -1543,7 +1543,7 @@ void GTensor::parseArff(GTokenizer& tok)
 #ifdef WINDOWS
 					size_t column = (size_t)_strtoui64(szTok, (char**)NULL, 10);
 #else
-					size_t column = strtoull(szTok, (char**)NULL, 10);
+					size_t column = strtoull(szTok, (char**)nullptr, 10);
 #endif
 					if(column >= colCount)
 						throw Ex("Column index out of range at line ", to_str(tok.line()), ", col ", to_str(tok.col()));

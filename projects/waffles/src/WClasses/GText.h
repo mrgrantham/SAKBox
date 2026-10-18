@@ -58,7 +58,7 @@ public:
 	const char* m_szWord;
 
 	GWordStats()
-	: m_curDocFreq(1), m_maxWordFreq(1), m_docsContainingWord(1), m_lastDocContainingWord(0), m_szWord(NULL)
+	: m_curDocFreq(1), m_maxWordFreq(1), m_docsContainingWord(1), m_lastDocContainingWord(0), m_szWord(nullptr)
 	{
 	}
 };

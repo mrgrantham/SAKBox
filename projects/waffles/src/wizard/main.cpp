@@ -72,19 +72,19 @@ protected:
 public:
 	MySession(GDynamicPageSession* pDPSession);
 
-	virtual ~MySession()
+	~MySession() override
 	{
 		delete(m_pRootNode);
 		delete(m_pDefaultNode);
 	}
 
-	virtual void onDisown()
+	void onDisown() override
 	{
-		m_pDPSession = NULL;
+		m_pDPSession = nullptr;
 		delete(this);
 	}
 
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		throw Ex("This should never be called");
 	}
@@ -120,11 +120,11 @@ public:
 	{
 	}
 	
-	virtual ~Connection()
+	~Connection() override
 	{
 	}
 
-	virtual void handleRequest(GDynamicPageSession* pSession, std::ostream& response);
+	void handleRequest(GDynamicPageSession* pSession, std::ostream& response) override;
 
 protected:
 	void addScript(std::ostream& response);
@@ -141,14 +141,14 @@ public:
 	std::string m_basePath;
 
 	Server(int port, GRand* pRand);
-	virtual ~Server();
+	~Server() override;
 	UsageNode* globalUsageNode(const char* name, UsageNode* pDefaultNode);
 	virtual void onEverySixHours() {}
 	virtual void onStateChange() {}
 	virtual void onShutDown() {}
 	void pump();
 
-	virtual GDynamicPageConnection* makeConnection(SOCKET sock)
+	GDynamicPageConnection* makeConnection(SOCKET sock) override
 	{
 		return new Connection(sock, this);
 	}
@@ -580,15 +580,15 @@ MySession::MySession(GDynamicPageSession* pDPSession)
 {
 	m_page = 0;
 	m_pRootNode = makeMasterUsageTree();
-	m_pRootPage = NULL;
-	m_pGoodbyePage = NULL;
-	m_pCurrentPage = NULL;
+	m_pRootPage = nullptr;
+	m_pGoodbyePage = nullptr;
+	m_pCurrentPage = nullptr;
 	m_pDefaultNode = new UsageNode("", "");
 }
 
 void MySession::doNext(const char* szParams)
 {
-	Page* pNext = NULL;
+	Page* pNext = nullptr;
 
 	// Find the page ID
 	GHttpParamParser pp(szParams);
@@ -620,7 +620,7 @@ void MySession::doNext(const char* szParams)
 			m_pageStack.pop();
 		m_page = 1;
 		delete(m_pRootPage);
-		m_pRootPage = new Page((Server*)m_pDPSession->server(), this, NULL, m_pRootNode);
+		m_pRootPage = new Page((Server*)m_pDPSession->server(), this, nullptr, m_pRootNode);
 		m_pCurrentPage = m_pRootPage;
 		return;
 	}
@@ -699,7 +699,7 @@ void MySession::doNext(const char* szParams)
 		cout << "The command is:\n\n" << sCommand << "\n\n";
 		cout.flush();
 		delete(m_pGoodbyePage);
-		m_pGoodbyePage = new Page((Server*)m_pDPSession->server(), this, NULL, NULL);
+		m_pGoodbyePage = new Page((Server*)m_pDPSession->server(), this, nullptr, nullptr);
 		m_pGoodbyePage->setCommand(sCommand);
 		m_pCurrentPage = m_pGoodbyePage;
 	}
@@ -1003,7 +1003,7 @@ void LaunchBrowser(const char* szAddress)
 void do_wizard()
 {
 	int port = 8421;
-	size_t seed = (size_t)(getpid() * (unsigned int)time(NULL));
+	size_t seed = (size_t)(getpid() * (unsigned int)time(nullptr));
 	GRand prng(seed);
 	bool serverStarted = false;
 	try
@@ -1071,7 +1071,7 @@ protected:
 
 public:
 	CommandCompleter()
-	: m_done(false), m_pAlgs(NULL), m_pCF(NULL), m_pNF(NULL)
+	: m_done(false), m_pAlgs(nullptr), m_pCF(nullptr), m_pNF(nullptr)
 	{
 	}
 
@@ -1102,7 +1102,7 @@ public:
 				m_pNF = makeNeighborUsageTree();
 			return m_pNF;
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	static void completeFilename(const char* tok)
@@ -1321,7 +1321,7 @@ void complete_command(int nArgs, char* pArgs[])
 		if(*szApp == 'e') szApp++;
 		if(*szApp == 's') szApp++;
 		if(*szApp == '_') szApp++;
-		UsageNode* pNode = NULL;
+		UsageNode* pNode = nullptr;
 		if(doesMatch(szApp, "learn"))
 			pNode = makeLearnUsageTree();
 		else if(doesMatch(szApp, "transform"))

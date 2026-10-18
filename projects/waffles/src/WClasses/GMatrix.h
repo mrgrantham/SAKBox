@@ -162,43 +162,43 @@ public:
 
 	GUniformRelation(const GDomNode* pNode);
 
-	virtual RelationType type() const { return UNIFORM; }
+	RelationType type() const override { return UNIFORM; }
 
 	/// \brief Serializes this object
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// \brief Returns the number of attributes (columns)
-	virtual size_t size() const { return m_attrCount; }
+	size_t size() const override { return m_attrCount; }
 
 	/// \brief Returns the number of values in each nominal attribute
 	/// (or 0 if the attributes are continuous)
-	virtual size_t valueCount(size_t) const { return m_valueCount; }
+	size_t valueCount(size_t) const override { return m_valueCount; }
 
 	/// \brief See the comment for GRelation::areContinuous
-	virtual bool areContinuous(size_t first = 0, size_t count = INVALID_INDEX) const { return m_valueCount == 0; }
+	bool areContinuous(size_t first = 0, size_t count = INVALID_INDEX) const override { return m_valueCount == 0; }
 
 	/// \brief See the comment for GRelation::areNominal
-	virtual bool areNominal(size_t first = 0, size_t count = INVALID_INDEX) const { return m_valueCount != 0; }
+	bool areNominal(size_t first = 0, size_t count = INVALID_INDEX) const override { return m_valueCount != 0; }
 
 	/// \brief Returns a copy of this object
-	virtual GRelation* clone() const { return new GUniformRelation(m_attrCount, m_valueCount); }
+	GRelation* clone() const override { return new GUniformRelation(m_attrCount, m_valueCount); }
 
 	/// \brief Returns a copy of this object
-	virtual GRelation* cloneMinimal() const { return clone(); }
+	GRelation* cloneMinimal() const override { return clone(); }
 
 	/// \brief Returns a deep copy of the specified subset of this
 	/// relation
-	virtual GRelation* cloneSub(size_t, size_t count) const { return new GUniformRelation(count, m_valueCount); }
+	GRelation* cloneSub(size_t, size_t count) const override { return new GUniformRelation(count, m_valueCount); }
 
 	/// \brief Drop the specified attribute
-	virtual void deleteAttributes(size_t index, size_t count);
+	void deleteAttributes(size_t index, size_t count) override;
 
 	/// \brief Swap two attributes (since all attributes are identical, does nothing)
-	virtual void swapAttributes(size_t, size_t) {}
+	void swapAttributes(size_t, size_t) override {}
 
 	/// \brief Returns true iff this and that have the same number of
 	/// values for each attribute
-	virtual bool isCompatible(const GRelation& that) const;
+	bool isCompatible(const GRelation& that) const override;
 };
 
 
@@ -226,25 +226,25 @@ public:
 	/// \brief Makes a copy of the specified range of pCopyMe
 	GMixedRelation(const GRelation* pCopyMe, size_t firstAttr, size_t attrCount);
 
-	virtual ~GMixedRelation();
+	~GMixedRelation() override;
 
-	virtual RelationType type() const { return MIXED; }
+	RelationType type() const override { return MIXED; }
 
 	/// \brief Marshalls this object to a DOM, which can be saved to a
 	/// variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// \brief Makes a deep copy of this relation
-	virtual GRelation* clone() const;
+	GRelation* clone() const override;
 
 	/// \brief Returns a relation containing the same value counts as this object, but
 	/// not containing superfluous things, such as human-readable strings. (The returned
 	/// relation may be of a different type.)
-	virtual GRelation* cloneMinimal() const;
+	GRelation* cloneMinimal() const override;
 
 	/// \brief Makes a deep copy of the specified subset of this
 	/// relation
-	virtual GRelation* cloneSub(size_t start, size_t count) const;
+	GRelation* cloneSub(size_t start, size_t count) const override;
 
 	/// \brief Deletes all the attributes
 	virtual void flush();
@@ -270,14 +270,14 @@ public:
 	virtual void copyAttr(const GRelation* pThat, size_t nAttr);
 
 	/// \brief Returns the total number of attributes in this relation
-	virtual size_t size() const
+	size_t size() const override
 	{
 		return m_valueCounts.size();
 	}
 
 	/// \brief Returns the number of nominal values in the specified
 	/// attribute
-	virtual size_t valueCount(size_t nAttr) const
+	size_t valueCount(size_t nAttr) const override
 	{
 		return m_valueCounts[nAttr];
 	}
@@ -286,16 +286,16 @@ public:
 	virtual void setAttrValueCount(size_t nAttr, size_t nValues);
 
 	/// \brief Returns true iff all attributes in the specified range are continuous
-	virtual bool areContinuous(size_t first = 0, size_t count = INVALID_INDEX) const;
+	bool areContinuous(size_t first = 0, size_t count = INVALID_INDEX) const override;
 
 	/// \brief Returns true iff all attributes in the specified range are nominal
-	virtual bool areNominal(size_t first = 0, size_t count = INVALID_INDEX) const;
+	bool areNominal(size_t first = 0, size_t count = INVALID_INDEX) const override;
 
 	/// \brief Swaps two columns
-	virtual void swapAttributes(size_t nAttr1, size_t nAttr2);
+	void swapAttributes(size_t nAttr1, size_t nAttr2) override;
 
 	/// \brief Deletes an attribute.
-	virtual void deleteAttributes(size_t nAttr, size_t count);
+	void deleteAttributes(size_t nAttr, size_t count) override;
 };
 
 
@@ -326,45 +326,45 @@ public:
 	/// Deserializing constructor
 	GArffRelation(const GDomNode* pNode);
 
-	virtual ~GArffRelation();
+	~GArffRelation() override;
 
-	virtual RelationType type() const { return ARFF; }
+	RelationType type() const override { return ARFF; }
 
 	/// \brief Marshalls this object to a DOM, which can be saved to a
 	/// variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// \brief Returns a deep copy of this object
-	virtual GRelation* clone() const;
+	GRelation* clone() const override;
 
 	/// \brief Returns a relation containing the same value counts as this object, but
 	/// not containing superfluous things, such as human-readable strings. (The returned
 	/// relation will be of a different type.)
-	virtual GRelation* cloneMinimal() const;
+	GRelation* cloneMinimal() const override;
 
 	/// \brief Makes a deep copy of the specified subset of this relation
-	virtual GRelation* cloneSub(size_t start, size_t count) const;
+	GRelation* cloneSub(size_t start, size_t count) const override;
 
 	/// \brief Deletes all the attributes
-	virtual void flush();
+	void flush() override;
 
 	/// \brief Prints the specified attribute name to a stream
-	virtual void printAttrName(std::ostream& stream, size_t column) const;
+	void printAttrName(std::ostream& stream, size_t column) const override;
 
 	/// \brief Prints the specified value to a stream
-	virtual void printAttrValue(std::ostream& stream, size_t column, double value, const char* missing = "?") const;
+	void printAttrValue(std::ostream& stream, size_t column, double value, const char* missing = "?") const override;
 
 	/// \brief Returns true iff the attributes in both relations have
 	/// the same names, the same number of values, and the names of
 	/// those values all match. (Empty strings are considered to match
 	/// everything.)
-	virtual bool isCompatible(const GRelation& that) const;
+	bool isCompatible(const GRelation& that) const override;
 
 	/// \brief Adds a new attribute (column) to the relation
 	void addAttribute(const char* szName, size_t nValues, std::vector<const char*>* pValues);
 
 	/// \brief Adds a copy of the specified attribute to this relation
-	virtual void copyAttr(const GRelation* pThat, size_t nAttr);
+	void copyAttr(const GRelation* pThat, size_t nAttr) override;
 
 	/// \brief Returns the name of the relation
 	const char* name() const { return m_name.c_str(); }
@@ -387,7 +387,7 @@ public:
 	///
 	/// \return the name of the attribute with index \a nAttr as a
 	/// standard string object or "" if the atribute has no name
-	virtual std::string attrNameStr(std::size_t nAttr) const {
+	std::string attrNameStr(std::size_t nAttr) const override {
 		return attrName(nAttr); }
 
     /// \brief Sets the name of the specified attribute.
@@ -398,13 +398,13 @@ public:
 	int addAttrValue(size_t nAttr, const char* szValue);
 
 	/// \brief Sets the number of values for the specified attribute
-	virtual void setAttrValueCount(size_t nAttr, size_t nValues);
+	void setAttrValueCount(size_t nAttr, size_t nValues) override;
 
 	/// \brief Swaps two columns
-	virtual void swapAttributes(size_t nAttr1, size_t nAttr2);
+	void swapAttributes(size_t nAttr1, size_t nAttr2) override;
 
 	/// \brief Deletes an attribute
-	virtual void deleteAttributes(size_t nAttr, size_t count);
+	void deleteAttributes(size_t nAttr, size_t count) override;
 
 	/// \brief Returns the nominal index for the specified attribute
 	/// with the given value
@@ -863,7 +863,7 @@ public:
 	///
 	/// If pExtension is non-NULL, then it will also be shuffled such
 	/// that corresponding rows are preserved.
-	void shuffle(GRand& rand, GMatrix* pExtension = NULL);
+	void shuffle(GRand& rand, GMatrix* pExtension = nullptr);
 
 	/// \brief Shuffles the order of the rows. Also shuffles the rows in
 	/// "other" in the same way, such that corresponding rows are
@@ -905,21 +905,21 @@ public:
 	///
 	/// If pExtensionA is non-NULL, then it will also split pExtensionA
 	/// such that corresponding rows are preserved.
-	void splitByPivot(GMatrix* pGreaterOrEqual, size_t nAttribute, double dPivot, GMatrix* pExtensionA = NULL, GMatrix* pExtensionB = NULL);
+	void splitByPivot(GMatrix* pGreaterOrEqual, size_t nAttribute, double dPivot, GMatrix* pExtensionA = nullptr, GMatrix* pExtensionB = nullptr);
 
 	/// \brief Moves all rows with the specified value in the specified
 	/// attribute into pSingleClass
 	///
 	/// If pExtensionA is non-NULL, then it will also split pExtensionA
 	/// such that corresponding rows are preserved.
-	void splitCategoricalKeepIfNotEqual(GMatrix* pSingleClass, size_t nAttr, int nValue, GMatrix* pExtensionA = NULL, GMatrix* pExtensionB = NULL);
+	void splitCategoricalKeepIfNotEqual(GMatrix* pSingleClass, size_t nAttr, int nValue, GMatrix* pExtensionA = nullptr, GMatrix* pExtensionB = nullptr);
 
 	/// \brief Moves all rows with the specified value in the specified
 	/// attribute into pOtherValues
 	///
 	/// If pExtensionA is non-NULL, then it will also split pExtensionA
 	/// such that corresponding rows are preserved.
-	void splitCategoricalKeepIfEqual(GMatrix* pOtherValues, size_t nAttr, int nValue, GMatrix* pExtensionA = NULL, GMatrix* pExtensionB = NULL);
+	void splitCategoricalKeepIfEqual(GMatrix* pOtherValues, size_t nAttr, int nValue, GMatrix* pExtensionA = nullptr, GMatrix* pExtensionB = nullptr);
 
 	/// \brief Removes the last nOtherRows rows from this data set and
 	/// puts them in "other". (Order is preserved.)
@@ -944,7 +944,7 @@ public:
 	/// If pWeights is non-NULL, then it is assumed to be a vector of weights, one for each row in this matrix.
 	/// If there are no values in this column with any weight, then it will throw an exception if throwIfEmpty is true,
 	/// or else return UNKNOWN_REAL_VALUE.
-	double columnMean(size_t nAttribute, const GVec* pWeights = NULL, bool throwIfEmpty = true) const;
+	double columnMean(size_t nAttribute, const GVec* pWeights = nullptr, bool throwIfEmpty = true) const;
 
 	/// Returns the squared magnitude of the vector in the specified column.
 	double columnSquaredMagnitude(size_t col) const;
@@ -967,7 +967,7 @@ public:
 
 	/// \brief Computes the arithmetic means of all attributes
 	/// If pWeights is non-NULL, then it is assumed to be a vector of weights, one for each row in this matrix.
-	void centroid(GVec& outCentroid, const GVec* pWeights = NULL) const;
+	void centroid(GVec& outCentroid, const GVec* pWeights = nullptr) const;
 
 	/// \brief Normalizes the specified column
 	void normalizeColumn(size_t col, double dInMin, double dInMax, double dOutMin = 0.0, double dOutMax = 1.0);
@@ -1075,7 +1075,7 @@ public:
 	/// column of this and that. If the column is a nominal attribute,
 	/// then Hamming distance is used.
 	/// if pOutSAE is not NULL, the sum absolute error will be placed there.
-	double columnSumSquaredDifference(const GMatrix& that, size_t col, double* pOutSAE = NULL) const;
+	double columnSumSquaredDifference(const GMatrix& that, size_t col, double* pOutSAE = nullptr) const;
 
 	/// \brief Computes the squared distance between this and that.
 	///
@@ -1098,7 +1098,7 @@ public:
 	/// \brief Computes the covariance between two attributes.
 	/// If pWeights is NULL, each row is given a weight of 1.
 	/// If pWeights is non-NULL, then it is assumed to be a vector of weights, one for each row in this matrix.
-	double covariance(size_t nAttr1, double dMean1, size_t nAttr2, double dMean2, const double* pWeights = NULL) const;
+	double covariance(size_t nAttr1, double dMean1, size_t nAttr2, double dMean2, const double* pWeights = nullptr) const;
 
 	/// \brief Computes the covariance matrix of the data
 	GMatrix* covarianceMatrix() const;
@@ -1294,7 +1294,7 @@ protected:
 	GMatrix* m_pData;
 
 public:
-	GReleaseDataHolder(GMatrix* pData = NULL)
+	GReleaseDataHolder(GMatrix* pData = nullptr)
 	{
 		m_pData = pData;
 	}
@@ -1305,7 +1305,7 @@ public:
 			m_pData->releaseAllRows();
 	}
 
-	void reset(GMatrix* pData = NULL)
+	void reset(GMatrix* pData = nullptr)
 	{
 		if(m_pData && m_pData != pData)
 			m_pData->releaseAllRows();

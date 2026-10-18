@@ -44,7 +44,7 @@ protected:
 
 public:
 	GQLearner(const GRelation& relation, int actionDims, double* pInitialState, GRand* pRand, GAgentActionIterator* pActionIterator);
-	virtual ~GQLearner();
+	~GQLearner() override;
 
 	/// Sets the learning rate (often called "alpha"). If state is deterministic and actions
 	/// have deterministic consequences, then this should be 1. If there is any non-determinism,
@@ -66,7 +66,7 @@ public:
 	virtual void setQValue(const double* pState, const double* pAction, double qValue) = 0;
 
 	/// See GPolicyLearner::refinePolicyAndChooseNextAction
-	virtual void refinePolicyAndChooseNextAction(const double* pSenses, double* pOutActions);
+	void refinePolicyAndChooseNextAction(const double* pSenses, double* pOutActions) override;
 
 	/// This specifies a cap on how many actions to sample. (If actions are
 	/// continuous, you obviously don't want to try them all.)
@@ -119,16 +119,16 @@ public:
 	/// If softMaxThresh is 0, it always picks a random action. If softMaxThresh is 1, it
 	/// always picks the best action. For values in between, it does something in between.
 	GIncrementalLearnerQAgent(const GRelation& obsControlRelation, GIncrementalLearner* pQTable, int actionDims, double* pInitialState, GRand* pRand, GAgentActionIterator* pActionIterator, double softMaxThresh);
-	virtual ~GIncrementalLearnerQAgent();
+	~GIncrementalLearnerQAgent() override;
 
 	/// See the comment for GQLearner::GetQValue
-	virtual double getQValue(const double* pState, const double* pAction);
+	double getQValue(const double* pState, const double* pAction) override;
 	
 	/// See the comment for GQLearner::SetQValue
-	virtual void setQValue(const double* pState, const double* pAction, double qValue);
+	void setQValue(const double* pState, const double* pAction, double qValue) override;
 
 protected:
-	virtual void chooseAction(const double* pSenses, double* pOutActions);
+	void chooseAction(const double* pSenses, double* pOutActions) override;
 };
 
 

@@ -106,13 +106,13 @@ void GRunningCovariance::test()
 
 
 GGaussianProcess::GGaussianProcess()
-: GSupervisedLearner(), m_noiseVar(1.0), m_weightsPriorVar(1024.0), m_maxSamples(350), m_pLInv(NULL), m_pAlpha(NULL), m_pStoredFeatures(NULL), m_pBuf(NULL)
+: GSupervisedLearner(), m_noiseVar(1.0), m_weightsPriorVar(1024.0), m_maxSamples(350), m_pLInv(nullptr), m_pAlpha(nullptr), m_pStoredFeatures(nullptr), m_pBuf(nullptr)
 {
 	m_pKernel = new GKernelIdentity();
 }
 
 GGaussianProcess::GGaussianProcess(const GDomNode* pNode)
-: GSupervisedLearner(pNode), m_pBuf(NULL)
+: GSupervisedLearner(pNode), m_pBuf(nullptr)
 {
 	m_weightsPriorVar = pNode->getDouble("wv");
 	m_noiseVar = pNode->getDouble("nv");
@@ -160,13 +160,13 @@ GDomNode* GGaussianProcess::serialize(GDom* pDoc) const
 void GGaussianProcess::clear()
 {
 	delete(m_pLInv);
-	m_pLInv = NULL;
+	m_pLInv = nullptr;
 	delete(m_pAlpha);
-	m_pAlpha = NULL;
+	m_pAlpha = nullptr;
 	delete(m_pStoredFeatures);
-	m_pStoredFeatures = NULL;
+	m_pStoredFeatures = nullptr;
 	delete(m_pBuf);
-	m_pBuf = NULL;
+	m_pBuf = nullptr;
 }
 
 // virtual

@@ -76,7 +76,7 @@ size_t getAttrVal(const char* szString, size_t attrCount)
 #ifdef WIN32
 	size_t val = (size_t)_strtoui64(szString, (char**)NULL, 10);
 #else
-	size_t val = strtoull(szString, (char**)NULL, 10);
+	size_t val = strtoull(szString, (char**)nullptr, 10);
 #endif
 	if(fromRight)
 		val = attrCount - 1 - val;
@@ -206,7 +206,7 @@ void AddIndexAttribute(GArgReader& args)
 	GMatrix* pData = loadData(filename);
 	Holder<GMatrix> hData(pData);
 	GArffRelation* pIndexRelation = new GArffRelation();
-	pIndexRelation->addAttribute(name.c_str(), 0, NULL);
+	pIndexRelation->addAttribute(name.c_str(), 0, nullptr);
 	GMatrix indexes(pIndexRelation);
 	indexes.newRows(pData->rows());
 	for(size_t i = 0; i < pData->rows(); i++)
@@ -253,7 +253,7 @@ void addNoise(GArgReader& args)
 	double dev = args.pop_double();
 
 	// Parse the options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	int excludeLast = 0;
 	while(args.next_is_flag())
 	{
@@ -602,7 +602,7 @@ void dropRandomValues(GArgReader& args)
 	double portion = args.pop_double();
 
 	// Parse the options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-seed"))
@@ -902,14 +902,14 @@ public:
 		m_results.resize(attrs);
 	}
 
-	virtual ~FitDataCritic()
+	~FitDataCritic() override
 	{
 	}
 
-	virtual bool isStable() { return true; }
+	bool isStable() override { return true; }
 	virtual bool isConstrained() { return false; }
 
-	virtual void initVector(GVec& pVector)
+	void initVector(GVec& pVector) override
 	{
 		pVector.fill(0.0);
 		m_transform.toVector(pVector.data() + m_attrs);
@@ -927,7 +927,7 @@ public:
 		}
 	}
 
-	virtual double computeError(const GVec& pVector)
+	double computeError(const GVec& pVector) override
 	{
 		TransformData(pVector);
 		ComputeMeanSquaredError(m_pData1, &m_transformed, m_attrs, m_results);
@@ -1023,7 +1023,7 @@ void mergeHoriz(GArgReader& args)
 	GMatrix* pData1 = loadData(args.pop_string());
 	Holder<GMatrix> hData1(pData1);
 	GMatrix* pMerged = pData1;
-	Holder<GMatrix> hMerged(NULL);
+	Holder<GMatrix> hMerged(nullptr);
 	while(args.size() > 0)
 	{
 		GMatrix* pData2 = loadData(args.pop_string());
@@ -1142,7 +1142,7 @@ void neighbors(GArgReader& args)
 	size_t neighborCount = args.pop_uint();
 
 	// Find the neighbors
-	GKdTree neighborFinder(pData, NULL, true);
+	GKdTree neighborFinder(pData, nullptr, true);
 	double sumClosest = 0;
 	double sumAll = 0;
 	for(size_t i = 0; i < pData->rows(); i++)
@@ -1392,7 +1392,7 @@ void sampleRows(GArgReader& args)
 		arff = true;
 
 	// Parse Options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	while(args.size() > 0)
 	{
 		if(args.if_pop("-seed"))
@@ -1612,7 +1612,7 @@ void aggregateCols(GArgReader& args)
 	size_t c = args.pop_uint();
 	vector<string> files;
 	GFile::fileList(files);
-	GMatrix* pResults = NULL;
+	GMatrix* pResults = nullptr;
 	Holder<GMatrix> hResults;
 	size_t i = 0;
 	for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
@@ -1639,7 +1639,7 @@ void aggregateRows(GArgReader& args)
 	size_t r = args.pop_uint();
 	vector<string> files;
 	GFile::fileList(files);
-	GMatrix* pResults = NULL;
+	GMatrix* pResults = nullptr;
 	Holder<GMatrix> hResults;
 	for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 	{
@@ -1670,7 +1670,7 @@ void split(GArgReader& args)
 	const char* szFilename1 = args.pop_string();
 	const char* szFilename2 = args.pop_string();
 
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	bool shouldShuffle = false;
 	while(args.size() > 0){
 		if(args.if_pop("-shuffle")){
@@ -1800,7 +1800,7 @@ void fillMissingValues(GArgReader& args)
 	Holder<GMatrix> hData(pData);
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	bool random = false;
 	while(args.size() > 0)
 	{
@@ -2095,7 +2095,7 @@ void geodistance(GArgReader& args)
 	}
 
 	GArffRelation* pRel = new GArffRelation();
-	pRel->addAttribute("geodistance", 0, NULL);
+	pRel->addAttribute("geodistance", 0, nullptr);
 	GMatrix tmp(pRel);
 	tmp.newRows(pData->rows());
 
@@ -2130,7 +2130,7 @@ void Shuffle(GArgReader& args)
 	Holder<GMatrix> hData(pData);
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	while(args.size() > 0)
 	{
 		if(args.if_pop("-seed"))

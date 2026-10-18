@@ -32,7 +32,7 @@
 namespace GClasses {
 
 GLinearRegressor::GLinearRegressor()
-: GSupervisedLearner(), m_pBeta(NULL)
+: GSupervisedLearner(), m_pBeta(nullptr)
 {
 }
 
@@ -196,7 +196,7 @@ void GLinearRegressor::predict(const GVec& in, GVec& out)
 void GLinearRegressor::clear()
 {
 	delete(m_pBeta);
-	m_pBeta = NULL;
+	m_pBeta = nullptr;
 }
 
 void GLinearRegressor::autoTune(GMatrix& features, GMatrix& labels)
@@ -263,7 +263,7 @@ void GLinearRegressor::test()
 
 
 GLinearDistribution::GLinearDistribution()
-: GSupervisedLearner(), m_noiseDev(1.0), m_pAInv(NULL), m_pWBar(NULL)
+: GSupervisedLearner(), m_noiseDev(1.0), m_pAInv(nullptr), m_pWBar(nullptr)
 {
 }
 
@@ -304,9 +304,9 @@ GDomNode* GLinearDistribution::serialize(GDom* pDoc) const
 void GLinearDistribution::clear()
 {
 	delete(m_pAInv);
-	m_pAInv = NULL;
+	m_pAInv = nullptr;
 	delete(m_pWBar);
-	m_pWBar = NULL;
+	m_pWBar = nullptr;
 }
 
 // virtual

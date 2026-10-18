@@ -70,7 +70,7 @@ public:
 		}
 	}
 
-	virtual ~AmbientNoiseReducer()
+	~AmbientNoiseReducer() override
 	{
 		delete[] m_pNoise;
 	}
@@ -105,7 +105,7 @@ protected:
 		}
 	}
 
-	virtual void process(struct ComplexNumber* pBuf)
+	void process(struct ComplexNumber* pBuf) override
 	{
 		if(m_noiseBlocks < 2)
 			throw Ex("Not enough noise blocks to estimate a deviation");
@@ -142,13 +142,13 @@ public:
 		m_pBuf = new struct ComplexNumber[m_blockSize];
 	}
 
-	virtual ~PitchShifter()
+	~PitchShifter() override
 	{
 		delete(m_pBuf);
 	}
 
 protected:
-	virtual void process(struct ComplexNumber* pBuf)
+	void process(struct ComplexNumber* pBuf) override
 	{
 		struct ComplexNumber* pIn = pBuf;
 		struct ComplexNumber* pOut = m_pBuf;

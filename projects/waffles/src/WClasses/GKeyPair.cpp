@@ -28,9 +28,9 @@ namespace GClasses {
 
 GKeyPair::GKeyPair()
 {
-	m_pPrivateKey = NULL;
-	m_pPublicKey = NULL;
-	m_pN = NULL;
+	m_pPrivateKey = nullptr;
+	m_pPublicKey = nullptr;
+	m_pN = nullptr;
 }
 
 GKeyPair::GKeyPair(GDomNode* pNode)
@@ -41,7 +41,7 @@ GKeyPair::GKeyPair(GDomNode* pNode)
 	if(pPrivate)
 		m_pPrivateKey = new GBigInt(pPrivate);
 	else
-		m_pPrivateKey = NULL;
+		m_pPrivateKey = nullptr;
 }
 
 GKeyPair::~GKeyPair()

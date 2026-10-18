@@ -335,18 +335,18 @@ public:
 	/// The dest area can be out of the dest image. The alpha channel is ignored.
 	/// The pSourceRect must be within the bounds of the source image. If pSourceRect
 	/// is NULL, then the full source image is used.
-	void blit(int x, int y, GImage* pSource, GRect* pSourceRect = NULL);
+	void blit(int x, int y, GImage* pSource, GRect* pSourceRect = nullptr);
 
 	/// Blit an image into this image. The source rect must be within the source image.
 	/// The dest area can be out of the dest image. Also performs alpha blending.
-	void blitAlpha(int x, int y, GImage* pSource, GRect* pSourceRect = NULL);
+	void blitAlpha(int x, int y, GImage* pSource, GRect* pSourceRect = nullptr);
 
 	/// Stretches the specified portion of the source rect to fit the destination
 	/// rect and alpha-blits onto the this image
-	void blitAlphaStretch(GRect* pDestRect, GImage* pImage, GRect* pSourceRect = NULL);
+	void blitAlphaStretch(GRect* pDestRect, GImage* pImage, GRect* pSourceRect = nullptr);
 
 	/// Performs an interpolating stretch-blit, both to and from a sub-pixel-specified rect
-	void blitStretchInterpolate(GDoubleRect* pDestRect, GImage* pImage, GDoubleRect* pSourceRect = NULL);
+	void blitStretchInterpolate(GDoubleRect* pDestRect, GImage* pImage, GDoubleRect* pSourceRect = nullptr);
 
 	/// Munges the image. nStyle should be 0, 1, 2, or 3. Each value munges a different way.
 	/// fExtent should be between 0 and 1, where 0 doesn't change much and 1 totally munges it.

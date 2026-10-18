@@ -141,9 +141,9 @@ class GWidgetAtomic : public GWidget
 friend class GWidgetDialog;
 public:
 	GWidgetAtomic(GWidgetGroup* pParent, int x, int y, int w, int h);
-	virtual ~GWidgetAtomic();
+	~GWidgetAtomic() override;
 
-	virtual bool isAtomic() { return true; }
+	bool isAtomic() override { return true; }
 	virtual void onChar(char c);
 	virtual void onSpecialKey(int key);
 	virtual void onMouseMove(int dx, int dy);
@@ -173,9 +173,9 @@ protected:
 
 public:
 	GWidgetGroup(GWidgetGroup* pParent, int x, int y, int w, int h);
-	virtual ~GWidgetGroup();
+	~GWidgetGroup() override;
 
-	virtual bool isAtomic() { return false; }
+	bool isAtomic() override { return false; }
 	virtual GWidgetAtomic* findAtomicWidget(int x, int y);
 	virtual void onDestroyWidget(GWidget* pWidget);
 	int childWidgetCount();
@@ -348,9 +348,9 @@ protected:
 
 public:
 	GWidgetDialog(int w, int h, unsigned int cBackground);
-	virtual ~GWidgetDialog();
+	~GWidgetDialog() override;
 
-	virtual WidgetType type() { return Dialog; }
+	WidgetType type() override { return Dialog; }
 
 	/// Sets the background image
 	void setBackgroundImage(GImage* pImage);
@@ -370,7 +370,7 @@ public:
 	/// You should call this method when the mouse releases (un-clicks)
 	virtual void releaseButton(int button);
 
-	virtual void onDestroyWidget(GWidget* pWidget);
+	void onDestroyWidget(GWidget* pWidget) override;
 
 	/// You should call this method when the user presses a key
 	virtual void handleChar(char c);
@@ -382,7 +382,7 @@ public:
 	virtual bool handleMousePos(int x, int y);
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Updates everything that needs to be updated, and makes an image
 	/// of the dialog in its current state so you can blit it to the screen
@@ -419,12 +419,12 @@ protected:
 
 public:
 	GWidgetTextButton(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szText);
-	virtual ~GWidgetTextButton();
+	~GWidgetTextButton() override;
 
-	virtual WidgetType type() { return TextButton; }
+	WidgetType type() override { return TextButton; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// sets the button text
 	void setText(const char* szText);
@@ -436,9 +436,9 @@ public:
 	bool isPressed() { return m_pressed; }
 
 protected:
-	virtual void grab(int button, int x, int y);
-	virtual void release(int button);
-	virtual void onMouseMove(int dx, int dy);
+	void grab(int button, int x, int y) override;
+	void release(int button) override;
+	void onMouseMove(int dx, int dy) override;
 };
 
 
@@ -455,12 +455,12 @@ protected:
 
 public:
 	GWidgetTextTab(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szText, unsigned int cBackground = 0xff6600aa);
-	virtual ~GWidgetTextTab();
+	~GWidgetTextTab() override;
 
-	virtual WidgetType type() { return TextTab; }
+	WidgetType type() override { return TextTab; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// sets the tab text
 	void setText(const char* szText);
@@ -472,8 +472,8 @@ public:
 	void setSelected(bool selected);
 
 protected:
-	virtual void grab(int button, int x, int y);
-	virtual void release(int button);
+	void grab(int button, int x, int y) override;
+	void release(int button) override;
 };
 
 
@@ -491,20 +491,20 @@ protected:
 
 public:
 	GWidgetImageButton(GWidgetGroup* pParent, int x, int y, GImage* pImage);
-	virtual ~GWidgetImageButton();
+	~GWidgetImageButton() override;
 
-	virtual WidgetType type() { return TextButton; }
+	WidgetType type() override { return TextButton; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Returns true if the button is currently pressed
 	bool isPressed() { return m_pressed; }
 
 protected:
-	virtual void grab(int button, int x, int y);
-	virtual void release(int button);
-	virtual void onMouseMove(int dx, int dy);
+	void grab(int button, int x, int y) override;
+	void release(int button) override;
+	void onMouseMove(int dx, int dy) override;
 };
 
 
@@ -521,12 +521,12 @@ protected:
 
 public:
 	GWidgetAnimation(GWidgetGroup* pParent, int x, int y, GImage* pImage, int nFrames);
-	virtual ~GWidgetAnimation();
+	~GWidgetAnimation() override;
 
-	virtual WidgetType type() { return Animation; }
+	WidgetType type() override { return Animation; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Sets the current animation frame
 	void setFrame(int nFrame);
@@ -549,12 +549,12 @@ protected:
 
 public:
 	GWidgetTextLabel(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szText, unsigned int c = 0xffffffff, unsigned int background = 0x00000000, float fontSize = 1.0f);
-	virtual ~GWidgetTextLabel();
+	~GWidgetTextLabel() override;
 
-	virtual WidgetType type() { return TextLabel; }
+	WidgetType type() override { return TextLabel; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Returns the label text
 	const std::string& text() { return m_text; }
@@ -586,8 +586,8 @@ public:
 	void wrap();
 
 protected:
-	virtual void grab(int button, int x, int y);
-	virtual void release(int button);
+	void grab(int button, int x, int y) override;
+	void release(int button) override;
 };
 
 
@@ -619,14 +619,14 @@ protected:
 
 public:
 	GWidgetGroupBox(GWidgetGroup* pParent, int x, int y, int w, int h, unsigned int cLight = 0xffc0c0c0, unsigned int cShadow = 0xff404040);
-	virtual ~GWidgetGroupBox();
+	~GWidgetGroupBox() override;
 
-	virtual WidgetType type() { return GroupBox; }
+	WidgetType type() override { return GroupBox; }
 
-	virtual bool isClickable() { return false; }
+	bool isClickable() override { return false; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Sets the light color
 	void setLightColor(unsigned int c);
@@ -657,12 +657,12 @@ protected:
 
 public:
 	GWidgetVCRButton(GWidgetGroup* pParent, int x, int y, int w, int h, VCR_Type eType);
-	virtual ~GWidgetVCRButton();
+	~GWidgetVCRButton() override;
 
-	virtual WidgetType type() { return VCRButton; }
+	WidgetType type() override { return VCRButton; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Sets the button image
 	void setType(VCR_Type eType);
@@ -671,8 +671,8 @@ public:
 	bool isPressed() { return m_pressed; }
 
 protected:
-	virtual void grab(int button, int x, int y);
-	virtual void release(int button);
+	void grab(int button, int x, int y) override;
+	void release(int button) override;
 	void drawIcon(GImage* pCanvas, int nHorizOfs, int nVertOfs);
 };
 
@@ -690,12 +690,12 @@ protected:
 
 public:
 	GWidgetProgressBar(GWidgetGroup* pParent, int x, int y, int w, int h);
-	virtual ~GWidgetProgressBar();
+	~GWidgetProgressBar() override;
 
-	virtual WidgetType type() { return ProgressBar; }
+	WidgetType type() override { return ProgressBar; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Sets the current position of the progress bar (from 0 to 1)
 	void setProgress(float fProgress);
@@ -716,12 +716,12 @@ protected:
 
 public:
 	GWidgetCheckBox(GWidgetGroup* pParent, int x, int y, int w, int h);
-	virtual ~GWidgetCheckBox();
+	~GWidgetCheckBox() override;
 
-	virtual WidgetType type() { return CheckBox; }
+	WidgetType type() override { return CheckBox; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Sets whether or not the box has an "X" in it
 	void setChecked(bool checked);
@@ -730,8 +730,8 @@ public:
 	bool isChecked() { return m_checked; }
 
 protected:
-	virtual void grab(int button, int x, int y);
-	virtual void release(int button);
+	void grab(int button, int x, int y) override;
+	void release(int button) override;
 };
 
 
@@ -747,12 +747,12 @@ protected:
 
 public:
 	GWidgetBulletHole(GWidgetGroup* pParent, int x, int y, int w, int h);
-	virtual ~GWidgetBulletHole();
+	~GWidgetBulletHole() override;
 
-	virtual WidgetType type() { return BulletHole; }
+	WidgetType type() override { return BulletHole; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Puts a dot inside this bullet hole
 	void setChecked(bool checked);
@@ -761,8 +761,8 @@ public:
 	bool isChecked() { return m_checked; }
 
 protected:
-	virtual void grab(int button, int x, int y);
-	virtual void release(int button);
+	void grab(int button, int x, int y) override;
+	void release(int button) override;
 };
 
 
@@ -782,12 +782,12 @@ public:
 	/// vertically starting at (x,y) downward. If "vertical" is false, they are arranged
 	/// horizontally from (x,y) to the right.
 	GWidgetBulletGroup(GWidgetGroup* pParent, int x, int y, int w, int h, int count, int interval, bool vertical);
-	virtual ~GWidgetBulletGroup();
+	~GWidgetBulletGroup() override;
 
-	virtual WidgetType type() { return BulletGroup; }
+	WidgetType type() override { return BulletGroup; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Sets which bullet hole has a dot in it
 	void setSelection(int n);
@@ -796,8 +796,8 @@ public:
 	int selection() { return m_nSelection; }
 
 protected:
-	virtual void onCheckBulletHole(GWidgetBulletHole* pBullet);
-	virtual void tattle(GWidget* pChild);
+	void onCheckBulletHole(GWidgetBulletHole* pBullet) override;
+	void tattle(GWidget* pChild) override;
 };
 
 
@@ -821,20 +821,20 @@ protected:
 
 public:
 	GWidgetSliderTab(GWidgetGroup* pParent, int x, int y, int w, int h, bool vertical, Style eStyle);
-	virtual ~GWidgetSliderTab();
+	~GWidgetSliderTab() override;
 
-	virtual WidgetType type() { return SliderTab; }
+	WidgetType type() override { return SliderTab; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Changes the size of this widget
 	void setSize(int w, int h);
 
 protected:
-	virtual void onMouseMove(int dx, int dy);
-	virtual void grab(int button, int x, int y);
-	virtual void release(int button);
+	void onMouseMove(int dx, int dy) override;
+	void grab(int button, int x, int y) override;
+	void release(int button) override;
 };
 
 
@@ -857,9 +857,9 @@ protected:
 
 public:
 	GWidgetHorizScrollBar(GWidgetGroup* pParent, int x, int y, int w, int h, int nViewSize, int nModelSize);
-	virtual ~GWidgetHorizScrollBar();
+	~GWidgetHorizScrollBar() override;
 
-	virtual WidgetType type() { return HScrollBar; }
+	WidgetType type() override { return HScrollBar; }
 
 	/// Returns the current view size
 	int viewSize() { return m_nViewSize; }
@@ -884,12 +884,12 @@ public:
 	void setPos(int n);
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 protected:
-	virtual void onPushVCRButton(GWidgetVCRButton* pButton);
-	virtual void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy);
-	virtual void onClickTab(GWidgetSliderTab* pTab);
+	void onPushVCRButton(GWidgetVCRButton* pButton) override;
+	void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy) override;
+	void onClickTab(GWidgetSliderTab* pTab) override;
 	int buttonWidth();
 };
 
@@ -912,9 +912,9 @@ protected:
 
 public:
 	GWidgetVertScrollBar(GWidgetGroup* pParent, int x, int y, int w, int h, int nViewSize, int nModelSize);
-	virtual ~GWidgetVertScrollBar();
+	~GWidgetVertScrollBar() override;
 
-	virtual WidgetType type() { return VScrollBar; }
+	WidgetType type() override { return VScrollBar; }
 
 	/// Returns the current view size
 	int viewSize() { return m_nViewSize; }
@@ -939,12 +939,12 @@ public:
 	void setPos(int n);
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 protected:
-	virtual void onPushVCRButton(GWidgetVCRButton* pButton);
-	virtual void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy);
-	virtual void onClickTab(GWidgetSliderTab* pTab);
+	void onPushVCRButton(GWidgetVCRButton* pButton) override;
+	void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy) override;
+	void onClickTab(GWidgetSliderTab* pTab) override;
 	int buttonHeight();
 };
 
@@ -967,12 +967,12 @@ protected:
 
 public:
 	GWidgetTextBox(GWidgetGroup* pParent, int x, int y, int w, int h);
-	virtual ~GWidgetTextBox();
+	~GWidgetTextBox() override;
 
-	virtual WidgetType type() { return TextBox; }
+	WidgetType type() override { return TextBox; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 	/// Returns the current contents of this text box
 	const std::string& text() { return m_text; }
@@ -985,8 +985,8 @@ public:
 	/// Sets the cursor position and selection
 	void SetSelection(int anchorPos, int cursorPos);
 
-	virtual void onChar(char c);
-	virtual void onSpecialKey(int key);
+	void onChar(char c) override;
+	void onSpecialKey(int key) override;
 
 	/// Sets whether or not it should display a bunch of '#'s instead
 	/// of the current text
@@ -995,11 +995,11 @@ public:
 	void setColor(unsigned int c);
 
 protected:
-	virtual void grab(int button, int x, int y);
-	virtual void release(int button);
-	virtual void onGetFocus();
-	virtual void onLoseFocus();
-	virtual void onMouseMove(int dx, int dy);
+	void grab(int button, int x, int y) override;
+	void release(int button) override;
+	void onGetFocus() override;
+	void onLoseFocus() override;
+	void onMouseMove(int dx, int dy) override;
 };
 
 
@@ -1020,10 +1020,10 @@ protected:
 
 public:
 	GWidgetGrid(GWidgetGroup* pParent, int nColumns, int x, int y, int w, int h, unsigned int cBackground = 0xff000000);
-	virtual ~GWidgetGrid();
+	~GWidgetGrid() override;
 
-	virtual WidgetType type() { return Grid; }
-	virtual GWidgetAtomic* findAtomicWidget(int x, int y);
+	WidgetType type() override { return Grid; }
+	GWidgetAtomic* findAtomicWidget(int x, int y) override;
 	int rowHeight() { return m_nRowHeight; }
 	void setRowHeight(int n);
 	int headerHeight() { return m_nHeaderHeight; }
@@ -1067,13 +1067,13 @@ public:
 	void flushItems(bool deleteWidgets = true);
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
-	virtual void tattle(GWidget* pChild);
+	void tattle(GWidget* pChild) override;
 
 protected:
-	virtual void onVertScroll(GWidgetVertScrollBar* pScrollBar);
-	virtual void onHorizScroll(GWidgetHorizScrollBar* pScrollBar);
+	void onVertScroll(GWidgetVertScrollBar* pScrollBar) override;
+	void onHorizScroll(GWidgetHorizScrollBar* pScrollBar) override;
 };
 
 
@@ -1092,18 +1092,18 @@ protected:
 public:
 	/// szExtension should be NULL if you want to allow all extensions
 	GWidgetFileSystemBrowser(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szExtensions);
-	virtual ~GWidgetFileSystemBrowser();
+	~GWidgetFileSystemBrowser() override;
 
-	virtual WidgetType type() { return FileSystemBrowser; }
+	WidgetType type() override { return FileSystemBrowser; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
-	void setFileListDirty() { m_bFileListDirty = true; tattle(NULL); }
+	void setFileListDirty() { m_bFileListDirty = true; tattle(nullptr); }
 
 protected:
 	virtual void dirFoldersAndFiles(std::string* pOutDir, std::vector<std::string>* pOutFolders, std::vector<std::string>* pOutFiles);
-	virtual void onClickTextLabel(GWidgetTextLabel* pLabel);
+	void onClickTextLabel(GWidgetTextLabel* pLabel) override;
 	void reloadFileList();
 	void addFilename(bool bDir, const char* szFilename);
 };
@@ -1121,18 +1121,18 @@ protected:
 
 public:
 	GWidgetHorizSlider(GWidgetGroup* pParent, int x, int y, int w, int h);
-	virtual ~GWidgetHorizSlider();
+	~GWidgetHorizSlider() override;
 
-	virtual WidgetType type() { return HorizSlider; }
+	WidgetType type() override { return HorizSlider; }
 	float pos() { return m_fPos; }
 	void setPos(float f);
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 protected:
-	virtual void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy);
-	virtual void onClickTab(GWidgetSliderTab* pTab);
+	void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy) override;
+	void onClickTab(GWidgetSliderTab* pTab) override;
 };
 
 
@@ -1148,18 +1148,18 @@ protected:
 
 public:
 	GWidgetVertSlider(GWidgetGroup* pParent, int x, int y, int w, int h);
-	virtual ~GWidgetVertSlider();
+	~GWidgetVertSlider() override;
 
-	virtual WidgetType type() { return VertSlider; }
+	WidgetType type() override { return VertSlider; }
 	float pos() { return m_fPos; }
 	void setPos(float f);
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 
 protected:
-	virtual void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy);
-	virtual void onClickTab(GWidgetSliderTab* pTab);
+	void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy) override;
+	void onClickTab(GWidgetSliderTab* pTab) override;
 };
 
 
@@ -1178,12 +1178,12 @@ protected:
 
 public:
 	GWidgetCanvas(GWidgetGroup* pParent, int x, int y, int w, int h, GImage* pImage);
-	virtual ~GWidgetCanvas();
+	~GWidgetCanvas() override;
 
-	virtual WidgetType type() { return Canvas; }
+	WidgetType type() override { return Canvas; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 	void setDirty();
 
 	float zoom() { return m_fZoom; }
@@ -1201,9 +1201,9 @@ public:
 	void setSelectionMask(GImage* pMask);
 
 protected:
-	virtual void onMouseMove(int dx, int dy);
-	virtual void grab(int button, int x, int y);
-	virtual void release(int button);
+	void onMouseMove(int dx, int dy) override;
+	void grab(int button, int x, int y) override;
+	void release(int button) override;
 };
 
 
@@ -1216,12 +1216,12 @@ protected:
 
 public:
 	GWidgetWave(GWidgetGroup* pParent, int x, int y, int w, int h);
-	virtual ~GWidgetWave();
+	~GWidgetWave() override;
 
-	virtual WidgetType type() { return Wave; }
+	WidgetType type() override { return Wave; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	void draw(GImage* pCanvas, int x, int y) override;
 	void setDirty();
 
 	void setWave(GWave* pWave);
@@ -1230,9 +1230,9 @@ public:
 	void setRange(int pos, int width);
 
 protected:
-	virtual void onMouseMove(int dx, int dy);
-	virtual void grab(int button, int x, int y);
-	virtual void release(int button);
+	void onMouseMove(int dx, int dy) override;
+	void grab(int button, int x, int y) override;
+	void release(int button) override;
 };
 
 

@@ -40,14 +40,14 @@ protected:
 
 public:
 	GGridSearch(GTargetFunction* pCritic);
-	virtual ~GGridSearch();
+	~GGridSearch() override;
 
 	/// Each pass will complete after ((2^n)+1)^d iterations. The distance between
 	/// samples at that point will be 1/(2^n). After it completes n=30, it will begin repeating.
-	virtual double iterate();
+	double iterate() override;
 
 	/// Returns the best vector yet found
-	virtual const GVec& currentVector();
+	const GVec& currentVector() override;
 };
 
 
@@ -65,13 +65,13 @@ protected:
 
 public:
 	GRandomSearch(GTargetFunction* pCritic, GRand* pRand);
-	virtual ~GRandomSearch();
+	~GRandomSearch() override;
 
 	/// Try another random vector
-	virtual double iterate();
+	double iterate() override;
 
 	/// Returns the best vector yet found
-	virtual const GVec& currentVector();
+	const GVec& currentVector() override;
 };
 
 
@@ -91,13 +91,13 @@ protected:
 
 public:
 	GMinBinSearch(GTargetFunction* pCritic);
-	virtual ~GMinBinSearch();
+	~GMinBinSearch() override;
 
 	/// Try another random vector
-	virtual double iterate();
+	double iterate() override;
 
 	/// Returns the best vector yet found
-	virtual const GVec& currentVector() { return m_pCurrent; }
+	const GVec& currentVector() override { return m_pCurrent; }
 };
 
 
@@ -135,13 +135,13 @@ protected:
 
 public:
 	GProbeSearch(GTargetFunction* pCritic);
-	virtual ~GProbeSearch();
+	~GProbeSearch() override;
 
 	/// Do a little bit more work toward finding a good vector
-	virtual double iterate();
+	double iterate() override;
 
 	/// Returns the best vector yet found
-	virtual const GVec& currentVector() { return m_pBestYet; }
+	const GVec& currentVector() override { return m_pBestYet; }
 
 	/// Specify the number of times to divide the space before
 	/// satisfactory accuracy is obtained. Larger values will

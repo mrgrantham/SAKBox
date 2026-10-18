@@ -241,7 +241,7 @@ void GPriorityQueue::test()
 		buf[r] = buf[i - 1];
 		buf[i - 1] = t;
 	}
-	GPriorityQueue q(GPriorityQueueTestComparer, NULL);
+	GPriorityQueue q(GPriorityQueueTestComparer, nullptr);
 	for(i = 0; i < TEST_SIZE; i++)
 		q.insert(buf + i);
 	int* pInt;

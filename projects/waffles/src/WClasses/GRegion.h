@@ -93,7 +93,7 @@ protected:
 
 public:
 	G2DRegionGraph(int nWidth, int nHeight);
-	virtual ~G2DRegionGraph();
+	~G2DRegionGraph() override;
 
 	/// Toboggans the gradient magnitude image of the provided image to produce a
 	/// list of watershed regions
@@ -121,7 +121,7 @@ protected:
 
 public:
 	G3DRegionGraph(size_t frames, int nWidth, int nHeight);
-	virtual ~G3DRegionGraph();
+	~G3DRegionGraph() override;
 
 	/// Toboggans the gradient magnitude image of the provided image to produce a
 	/// list of watershed regions

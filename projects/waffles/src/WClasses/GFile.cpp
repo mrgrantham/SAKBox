@@ -686,17 +686,17 @@ unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned i
 	{
 		if(it->second >= minOccurrences)
 		{
-			fops.insert(make_pair(it->first, (unsigned char*)NULL));
+			fops.insert(make_pair(it->first, (unsigned char*)nullptr));
 			if(fops.size() >= 65535)
 				break;
 		}
 	}
 	if(fops.size() == 0)
-		return NULL;
+		return nullptr;
 
 	// Write the original size, key size, and piece size
 	if(len < sizeof(unsigned int) + sizeof(unsigned char) + sizeof(unsigned char))
-		return NULL;
+		return nullptr;
 	unsigned char* pOut = new unsigned char[len];
 	std::unique_ptr<unsigned char[]> hOut(pOut);
 	unsigned int pos = 0;
@@ -707,16 +707,16 @@ unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned i
 
 	// Write the number of entries in the key-piece table
 	if(pos + sizeof(unsigned short) > len)
-		return NULL;
+		return nullptr;
 	*(unsigned short*)(pOut + pos) = (unsigned short)fops.size();
 	pos += sizeof(unsigned short);
 
 	// Write the key-piece table
-	unsigned char* pPrevKey = NULL;
+	unsigned char* pPrevKey = nullptr;
 	for(map<unsigned char*,unsigned char*,CompressPieceComparer>::iterator it = fops.begin(); it != fops.end(); it++)
 	{
 		if(pos + keySize + pieceSize > len)
-			return NULL;
+			return nullptr;
 		unsigned char* pKey = pOut + pos;
 		unsigned char* pPiece = pKey + keySize;
 		pos += (keySize + pieceSize);
@@ -756,20 +756,20 @@ unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned i
 		if(it == fops.end())
 		{
 			if(pos >= len)
-				return NULL;
+				return nullptr;
 			pOut[pos++] = pData[offset];
 		}
 		else
 		{
 			if(pos + keySize > len)
-				return NULL;
+				return nullptr;
 			memcpy(pOut + pos, it->second, keySize);
 			pos += keySize;
 			offset += (pieceSize - 1);
 		}
 	}
 	if(pos >= len)
-		return NULL;
+		return nullptr;
 	*pOutNewLen = pos;
 	return hOut.release();
 }
@@ -832,7 +832,7 @@ unsigned char* GCompressor::compress(unsigned char* pIn, unsigned int len, unsig
 {
 	unsigned int origLen = len;
 	unsigned int keySize = GCompressor_chooseKeySize(pIn, len);
-	unsigned char* pOut = NULL;
+	unsigned char* pOut = nullptr;
 	unsigned int newLen = 0;
 	for(int i = 0; i < PIECE_SIZE_COUNT; i++)
 	{

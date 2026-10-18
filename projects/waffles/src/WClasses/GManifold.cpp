@@ -409,9 +409,9 @@ struct GManifoldSculptingStuff
 };
 
 GManifoldSculpting::GManifoldSculpting(size_t nNeighbors, size_t targetDims, GRand* pRand)
-: m_pRand(pRand), m_pNF(NULL)
+: m_pRand(pRand), m_pNF(nullptr)
 {
-	m_pMetaData = NULL;
+	m_pMetaData = nullptr;
 	m_nDimensions = 0;
 	m_nTargetDims = targetDims;
 	m_pRelationAfter = new GUniformRelation(m_nTargetDims, 0);
@@ -424,7 +424,7 @@ GManifoldSculpting::GManifoldSculpting(size_t nNeighbors, size_t targetDims, GRa
 	m_nPass = 0;
 	m_scale = 1.0;
 	m_dAveNeighborDist = 0;
-	m_pData = NULL;
+	m_pData = nullptr;
 	m_minNeighborDist = 0;
 	m_maxNeighborDist = 1e20;
 }
@@ -468,7 +468,7 @@ GMatrix* GManifoldSculpting::reduce(const GMatrix& in)
 	pDataOut->newRows(m_pData->rows());
 	pDataOut->copyCols(*m_pData, 0, m_nTargetDims);
 	delete(m_pData);
-	m_pData = NULL;
+	m_pData = nullptr;
 	return pDataOut;
 }
 
@@ -571,7 +571,7 @@ void GManifoldSculpting::calculateMetadata(const GMatrix* pData)
 		}
 		else
 		{
-			pNF = new GKdTree(pData, NULL, true);
+			pNF = new GKdTree(pData, nullptr, true);
 			hNF.reset(pNF);
 		}
 
@@ -912,7 +912,7 @@ double GManifoldSculpting::squishPass(size_t nSeedDataPoint)
 
 
 
-GIsomap::GIsomap(size_t neighborCount, size_t targetDims, GRand* pRand) : m_neighborCount(neighborCount), m_targetDims(targetDims), m_pNF(NULL), m_pRand(pRand), m_dropDisconnectedPoints(false)
+GIsomap::GIsomap(size_t neighborCount, size_t targetDims, GRand* pRand) : m_neighborCount(neighborCount), m_targetDims(targetDims), m_pNF(nullptr), m_pRand(pRand), m_dropDisconnectedPoints(false)
 {
 }
 
@@ -946,7 +946,7 @@ GMatrix* GIsomap::reduce(const GMatrix& in)
 	std::unique_ptr<GNeighborFinder> hNF;
 	if(!pNF)
 	{
-		pNF = new GKdTree(&in, NULL, true);
+		pNF = new GKdTree(&in, nullptr, true);
 		hNF.reset(pNF);
 	}
 
@@ -1055,9 +1055,9 @@ GLLEHelper::GLLEHelper(const GMatrix* pData, size_t nTargetDims, size_t nNeighbo
 	m_pInputData = pData;
 	m_nTargetDims = nTargetDims;
 	m_nNeighbors = nNeighbors;
-	m_pNeighbors = NULL;
-	m_pWeights = NULL;
-	m_pOutputData = NULL;
+	m_pNeighbors = nullptr;
+	m_pWeights = nullptr;
+	m_pOutputData = nullptr;
 }
 
 GLLEHelper::~GLLEHelper()
@@ -1070,7 +1070,7 @@ GLLEHelper::~GLLEHelper()
 GMatrix* GLLEHelper::releaseOutputData()
 {
 	GMatrix* pData = m_pOutputData;
-	m_pOutputData = NULL;
+	m_pOutputData = nullptr;
 	return pData;
 }
 
@@ -1220,7 +1220,7 @@ void GLLEHelper::computeEmbedding()
 }
 
 
-GLLE::GLLE(size_t neighborCount, size_t targetDims, GRand* pRand) : m_neighborCount(neighborCount), m_targetDims(targetDims), m_pNF(NULL), m_pRand(pRand)
+GLLE::GLLE(size_t neighborCount, size_t targetDims, GRand* pRand) : m_neighborCount(neighborCount), m_targetDims(targetDims), m_pNF(nullptr), m_pRand(pRand)
 {
 }
 
@@ -1254,7 +1254,7 @@ GMatrix* GLLE::reduce(const GMatrix& in)
 	std::unique_ptr<GNeighborFinder> hNF;
 	if(!pNF)
 	{
-		pNF = new GKdTree(&in, NULL, true);
+		pNF = new GKdTree(&in, nullptr, true);
 		hNF.reset(pNF);
 	}
 	return GLLEHelper::doLLE(pNF, m_targetDims, m_neighborCount, m_pRand);
@@ -1273,12 +1273,12 @@ GMatrix* GLLE::reduce(const GMatrix& in)
 
 
 GBreadthFirstUnfolding::GBreadthFirstUnfolding(size_t reps, size_t neighborCount, size_t targetDims)
-: m_reps(reps), m_neighborCount(neighborCount), m_targetDims(targetDims), m_pNF(NULL), m_useMds(true), m_rand(0)
+: m_reps(reps), m_neighborCount(neighborCount), m_targetDims(targetDims), m_pNF(nullptr), m_useMds(true), m_rand(0)
 {
 }
 
 GBreadthFirstUnfolding::GBreadthFirstUnfolding(GDomNode* pNode)
-: m_reps((size_t)pNode->getInt("reps")), m_neighborCount((size_t)pNode->getInt("neighbors")), m_targetDims((size_t)pNode->getInt("targetDims")), m_pNF(NULL), m_useMds(pNode->getBool("useMds")), m_rand(0)
+: m_reps((size_t)pNode->getInt("reps")), m_neighborCount((size_t)pNode->getInt("neighbors")), m_targetDims((size_t)pNode->getInt("targetDims")), m_pNF(nullptr), m_useMds(pNode->getBool("useMds")), m_rand(0)
 {
 }
 
@@ -1352,7 +1352,7 @@ GMatrix* GBreadthFirstUnfolding::reduce(const GMatrix& in)
 	std::unique_ptr<GNeighborFinder> hNF;
 	if(!pNF)
 	{
-		pNF = new GKdTree(&in, NULL, true);
+		pNF = new GKdTree(&in, nullptr, true);
 		hNF.reset(pNF);
 	}
 
@@ -1484,7 +1484,7 @@ void GBreadthFirstUnfolding::refineNeighborhood(GMatrix* pLocal, size_t rootInde
 
 GMatrix* GBreadthFirstUnfolding::reduceNeighborhood(const GMatrix* pIn, size_t index, GNeighborGraph* pNeighborGraph)
 {
-	GMatrix* pReducedNeighborhood = NULL;
+	GMatrix* pReducedNeighborhood = nullptr;
 	if(m_useMds)
 	{
 		// Build index tables
@@ -1755,7 +1755,7 @@ void GScalingUnfolder::restore_local_distances_pass(GMatrix& intrinsic, GNeighbo
 
 void GScalingUnfolder::unfold(GMatrix& intrinsic, GNeighborGraph& nf, size_t encoderTrainIters, GNeuralNetLearner* pEncoder, GNeuralNetLearner* pDecoder, const GMatrix* pVisible)
 {
-	GRandomIndexIterator* ii = pEncoder ? new GRandomIndexIterator(intrinsic.rows(), m_rand) : NULL;
+	GRandomIndexIterator* ii = pEncoder ? new GRandomIndexIterator(intrinsic.rows(), m_rand) : nullptr;
 	std::unique_ptr<GRandomIndexIterator> hII2(ii);
 	for(size_t pass = 0; pass < m_passes; pass++)
 	{
@@ -1789,7 +1789,7 @@ size_t GScalingUnfolder::unfold_iter(GMatrix& intrinsic, GRand& rand, size_t nei
 	while(true)
 	{
 		// Find neighbors
-		GKdTree kdtree(&intrinsic, NULL, false);
+		GKdTree kdtree(&intrinsic, nullptr, false);
 		GNeighborGraph ng(&kdtree, false, neighborCount);
 		if(!ng.isConnected())
 		{
@@ -1813,7 +1813,7 @@ size_t GScalingUnfolder::unfold_iter(GMatrix& intrinsic, GRand& rand, size_t nei
 GMatrix* GScalingUnfolder::reduce(const GMatrix& in)
 {
 	// Find neighbors
-	GKdTree kdtree(&in, NULL, false);
+	GKdTree kdtree(&in, nullptr, false);
 	GNeighborGraph nf(&kdtree, false, m_neighborCount);
 
 	// Make a copy of the data

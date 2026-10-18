@@ -34,7 +34,7 @@ namespace GClasses {
 
 GBigInt::GBigInt()
 {
-	m_pBits = NULL;
+	m_pBits = nullptr;
 	m_nUInts = 0;
 	m_bSign = true;
 }
@@ -98,7 +98,7 @@ void GBigInt::resize(unsigned int nBits)
 	if(nBits < 1)
 	{
 		delete [] m_pBits;
-		m_pBits = NULL;
+		m_pBits = nullptr;
 		m_nUInts = 0;
 		return;
 	}
@@ -179,7 +179,7 @@ unsigned int* GBigInt::toBufferGiveOwnership()
 	unsigned int* pBuffer = m_pBits;
 	m_bSign = true;
 	m_nUInts = 0;
-	m_pBits = NULL;
+	m_pBits = nullptr;
 	return pBuffer;
 }
 

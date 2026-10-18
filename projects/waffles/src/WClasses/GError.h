@@ -190,7 +190,7 @@ public:
 	Ex(s a, s b, s c, s d, s e, s f, s g, s h, s i) { setMessage(a + b + c + d + e + f + g + h + i); }
 	Ex(s a, s b, s c, s d, s e, s f, s g, s h, s i, s j) { setMessage(a + b + c + d + e + f + g + h + i + j); }
 
-	virtual ~Ex() throw()
+	~Ex() throw() override
 	{
 	}
 
@@ -198,7 +198,7 @@ public:
 	void setMessage(std::string message);
 
 	/// Returns the error message corresponding to this exception
-	virtual const char* what() const throw();
+	const char* what() const throw() override;
 };
 
 

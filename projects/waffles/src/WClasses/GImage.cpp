@@ -184,7 +184,7 @@ unsigned int gAHSV(int alpha, float hue, float saturation, float value)
 
 GImage::GImage()
 {
-	m_pPixels = NULL;
+	m_pPixels = nullptr;
 	m_width = 0;
 	m_height = 0;
 }
@@ -200,7 +200,7 @@ void GImage::setSize(unsigned int nWidth, unsigned int nHeight)
 		return;
 	delete[] m_pPixels;
 	if(nWidth == 0 || nHeight == 0)
-		m_pPixels = NULL;
+		m_pPixels = nullptr;
 	else
 	{
 		unsigned int nSize = nWidth * nHeight;

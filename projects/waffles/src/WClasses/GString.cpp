@@ -255,7 +255,7 @@ GStringChopper::GStringChopper(const char* szString, size_t nMinLength, size_t n
 	if(m_nLen > nMaxLength)
 		m_pBuf = new char[nMaxLength + 1];
 	else
-		m_pBuf = NULL;
+		m_pBuf = nullptr;
 }
 
 GStringChopper::~GStringChopper()
@@ -274,7 +274,7 @@ void GStringChopper::reset(const char* szString)
 const char* GStringChopper::next()
 {
 	if(m_nLen <= 0)
-		return NULL;
+		return nullptr;
 	if(m_nLen <= m_nMaxLen)
 	{
 		m_nLen = 0;

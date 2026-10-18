@@ -238,14 +238,14 @@ public:
 	///See the class comment for more information.
 	///
 	///\return the number of elements in the A set of this GAssignment
-	virtual std::size_t sizeA() const{ return bForA.size(); }
+	std::size_t sizeA() const override{ return bForA.size(); }
 
 	///\brief Return the number of elements in the B set of this GAssignment
 	///
 	///See the class comment for more information.
 	///
 	///\return the number of elements in the B set of this GAssignment
-	virtual std::size_t sizeB() const{ return aForB.size(); }
+	std::size_t sizeB() const override{ return aForB.size(); }
 
 	///\brief Return the number of the member of set B corresponding to
 	///       the \a memberOfA element in set A or -1 if there is no
@@ -257,7 +257,7 @@ public:
 	///\return the number of the member of set B corresponding to the \a
 	///        memberOfA element in set A or -1 if there is no
 	///        corresponding member
-	virtual int operator()(unsigned memberOfA) const{ 
+	int operator()(unsigned memberOfA) const override{ 
 		return bForA.at(memberOfA); }
 
 	///\brief Return the number of the member of set A corresponding to
@@ -270,7 +270,7 @@ public:
 	///\return the number of the member of set A corresponding to the \a
 	///        memberOfB element in set B or -1 if there is no
 	///        corresponding member.
-	virtual int inverse(unsigned memberOfB) const{ return aForB.at(memberOfB); }
+	int inverse(unsigned memberOfB) const override{ return aForB.at(memberOfB); }
 
 	///\brief Return true if *this and other represent the same
 	///       assignments among the same sized sets
@@ -327,7 +327,7 @@ public:
 	}
 
 	///\brief A do-nothing destructor needed since there may be subclasses
-	virtual ~GSimpleAssignment(){};
+	~GSimpleAssignment() override{};
 
 
 	///\brief Run unit tests for GSimpleAssignment - throws an exception

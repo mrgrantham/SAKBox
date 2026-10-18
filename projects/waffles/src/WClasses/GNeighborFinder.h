@@ -112,22 +112,22 @@ public:
 	/// Then, it finds all neighbors within a radius of the maximum of those two distances.
 	GNeighborGraph(bool own, GNeighborFinderGeneralizing* pNF);
 	
-	virtual ~GNeighborGraph();
+	~GNeighborGraph() override;
 
 	/// See the comment for GNeighborFinder::findNearest
-	virtual size_t findNearest(size_t k, size_t pointIndex) { m_focus = pointIndex; return m_neighs[pointIndex].size(); }
+	size_t findNearest(size_t k, size_t pointIndex) override { m_focus = pointIndex; return m_neighs[pointIndex].size(); }
 
 	/// See the comment for GNeighborFinder::findWithinRadius
-	virtual size_t findWithinRadius(double squaredRadius, size_t pointIndex) { m_focus = pointIndex; return m_neighs[pointIndex].size(); }
+	size_t findWithinRadius(double squaredRadius, size_t pointIndex) override { m_focus = pointIndex; return m_neighs[pointIndex].size(); }
 
 	/// See the comment for GNeighborFinder::neighbor
-	virtual size_t neighbor(size_t i) { GAssert(i < m_neighs[m_focus].size()); return m_neighs[m_focus][i]; }
+	size_t neighbor(size_t i) override { GAssert(i < m_neighs[m_focus].size()); return m_neighs[m_focus][i]; }
 
 	/// See the comment for GNeighborFinder::distance
-	virtual double distance(size_t i) { GAssert(i < m_dists[m_focus].size()); return m_dists[m_focus][i]; }
+	double distance(size_t i) override { GAssert(i < m_dists[m_focus].size()); return m_dists[m_focus][i]; }
 
 	/// See the comment for GNeighborFinder::isCached.
-	virtual bool isCached() { return true; }
+	bool isCached() override { return true; }
 
 	/// Returns a pointer to the neighbor finder that this wraps.
 	GNeighborFinder* wrappedNeighborFinder() { return m_pNF; }
@@ -179,12 +179,12 @@ public:
 	/// true, then the neighborFinder takes responsibility for
 	/// deleting the metric, otherwise it is the caller's
 	/// responsibility.
-	GNeighborFinderGeneralizing(const GMatrix* pData, GDistanceMetric* pMetric = NULL, bool ownMetric = false);
+	GNeighborFinderGeneralizing(const GMatrix* pData, GDistanceMetric* pMetric = nullptr, bool ownMetric = false);
 
-	virtual ~GNeighborFinderGeneralizing();
+	~GNeighborFinderGeneralizing() override;
 
 	/// Returns true. See the comment for GNeighborFinder::canGeneralize.
-	virtual bool canGeneralize() { return true; }
+	bool canGeneralize() override { return true; }
 
 	/// If you make major changes, you can call this to tell it to rebuild
 	/// any optimization structures.
@@ -203,10 +203,10 @@ public:
 	using GNeighborFinder::findWithinRadius;
 
 	/// See the comment for GNeighborFinder::neighbor
-	virtual size_t neighbor(size_t i) { return m_neighs[i]; }
+	size_t neighbor(size_t i) override { return m_neighs[i]; }
 
 	/// See the comment for GNeighborFinder::distance
-	virtual double distance(size_t i) { return m_dists[i]; }
+	double distance(size_t i) override { return m_dists[i]; }
 
 	/// Returns the metric
 	GDistanceMetric *metric() { return m_pMetric; }
@@ -225,23 +225,23 @@ protected:
 class GBruteForceNeighborFinder : public GNeighborFinderGeneralizing
 {
 public:
-	GBruteForceNeighborFinder(GMatrix* pData, GDistanceMetric* pMetric = NULL, bool ownMetric = false);
-	virtual ~GBruteForceNeighborFinder();
+	GBruteForceNeighborFinder(GMatrix* pData, GDistanceMetric* pMetric = nullptr, bool ownMetric = false);
+	~GBruteForceNeighborFinder() override;
 
 	/// This is a no-op method in this class.
-	virtual void reoptimize();
+	void reoptimize() override;
 
 	/// See the comment for GNeighborFinder::findNearest
-	virtual size_t findNearest(size_t k, size_t index);
+	size_t findNearest(size_t k, size_t index) override;
 
 	/// See the comment for GNeighborFinderGeneralizing::neighbors
-	virtual size_t findNearest(size_t k, const GVec& vector);
+	size_t findNearest(size_t k, const GVec& vector) override;
 
 	/// See the comment for GNeighborFinder::findWithinRadius
-	virtual size_t findWithinRadius(double squaredRadius, size_t index);
+	size_t findWithinRadius(double squaredRadius, size_t index) override;
 
 	/// See the comment for GNeighborFinderGeneralizing::findWithinRadius
-	virtual size_t findWithinRadius(double squaredRadius, const GVec& vector);
+	size_t findWithinRadius(double squaredRadius, const GVec& vector) override;
 
 protected:
 	size_t findNearest(size_t k, const GVec& vec, size_t exclude);
@@ -266,24 +266,24 @@ public:
 	/// pMetric is the similarity metric to use in finding neighbors. Higher similarity indicates closer neighbors.
 	/// ownMetric specifies whether this object should delete pMetric when it is deleted.
 	GSparseNeighborFinder(GSparseMatrix* pData, GMatrix* pBogusData, GSparseSimilarity* pMetric, bool ownMetric = false);
-	virtual ~GSparseNeighborFinder();
+	~GSparseNeighborFinder() override;
 
 	/// This is a no-op method in this class.
-	virtual void reoptimize();
+	void reoptimize() override;
 
 	/// See the comment for GNeighborFinder::findNearest
-	virtual size_t findNearest(size_t k, size_t index);
+	size_t findNearest(size_t k, size_t index) override;
 
 	/// See the comment for GNeighborFinderGeneralizing::findNearest
-	virtual size_t findNearest(size_t k, const GVec& vector);
+	size_t findNearest(size_t k, const GVec& vector) override;
 
 	/// See the comment for GNeighborFinder::findWithinRadius
 	/// Currently, this method just throws an exception because it is not yet implemented.
-	virtual size_t findWithinRadius(double squaredRadius, size_t index);
+	size_t findWithinRadius(double squaredRadius, size_t index) override;
 
 	/// See the comment for GNeighborFinderGeneralizing::findWithinRadius
 	/// Currently, this method just throws an exception because it is not yet implemented.
-	virtual size_t findWithinRadius(double squaredRadius, const GVec& vector);
+	size_t findWithinRadius(double squaredRadius, const GVec& vector) override;
 };
 
 
@@ -298,27 +298,27 @@ protected:
 	GKdNode* m_pRoot;
 
 public:
-	GKdTree(const GMatrix* pData, GDistanceMetric* pMetric = NULL, bool ownMetric = false);
-	virtual ~GKdTree();
+	GKdTree(const GMatrix* pData, GDistanceMetric* pMetric = nullptr, bool ownMetric = false);
+	~GKdTree() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Rebuilds the tree to improve subsequent performance. This should be called after
 	/// a significant number of point-vectors are added to or released from the internal set.
-	virtual void reoptimize();
+	void reoptimize() override;
 
 	/// See the comment for GNeighborFinder::findNearest
-	virtual size_t findNearest(size_t k, size_t index);
+	size_t findNearest(size_t k, size_t index) override;
 
 	/// See the comment for GNeighborFinderGeneralizing::neighbors
-	virtual size_t findNearest(size_t k, const GVec& vector);
+	size_t findNearest(size_t k, const GVec& vector) override;
 
 	/// See the comment for GNeighborFinder::findWithinRadius
-	size_t findWithinRadius(double squaredRadius, size_t index);
+	size_t findWithinRadius(double squaredRadius, size_t index) override;
 
 	/// See the comment for GNeighborFinderGeneralizing::findWithinRadius
-	size_t findWithinRadius(double squaredRadius, const GVec& vector);
+	size_t findWithinRadius(double squaredRadius, const GVec& vector) override;
 
 	/// Specify the max number of point-vectors to store in each leaf node.
 	void setMaxLeafSize(size_t n) { m_maxLeafSize = n; }
@@ -367,27 +367,27 @@ protected:
 	GBallNode* m_pRoot;
 
 public:
-	GBallTree(const GMatrix* pData, GDistanceMetric* pMetric = NULL, bool ownMetric = false);
-	virtual ~GBallTree();
+	GBallTree(const GMatrix* pData, GDistanceMetric* pMetric = nullptr, bool ownMetric = false);
+	~GBallTree() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Rebuilds the tree to improve subsequent performance. This should be called after
 	/// a significant number of point-vectors are added to or released from the internal set.
-	virtual void reoptimize();
+	void reoptimize() override;
 
 	/// See the comment for GNeighborFinder::findNearest
-	virtual size_t findNearest(size_t k, size_t index);
+	size_t findNearest(size_t k, size_t index) override;
 
 	/// See the comment for GNeighborFinderGeneralizing::neighbors
-	virtual size_t findNearest(size_t k, const GVec& vec);
+	size_t findNearest(size_t k, const GVec& vec) override;
 
 	/// See the comment for GNeighborFinder::findWithinRadius
-	virtual size_t findWithinRadius(double squaredRadius, size_t index);
+	size_t findWithinRadius(double squaredRadius, size_t index) override;
 
 	/// See the comment for GNeighborFinderGeneralizing::findWithinRadius
-	virtual size_t findWithinRadius(double squaredRadius, const GVec& vec);
+	size_t findWithinRadius(double squaredRadius, const GVec& vec) override;
 
 	/// Specify the max number of point-vectors to store in each leaf node.
 	void setMaxLeafSize(size_t n) { m_maxLeafSize = n; }

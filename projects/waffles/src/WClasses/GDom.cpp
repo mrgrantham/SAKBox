@@ -138,14 +138,14 @@ GDomNode* GDomNode::getIfExists(const char* szName) const
 		if(strcmp(szName, pField->m_pName) == 0)
 			return pField->m_pValue;
 	}
-	return NULL;
+	return nullptr;
 }
 
 size_t GDomNode::reverseFieldOrder() const
 {
 	GAssert(m_type == type_obj);
 	size_t count = 0;
-	GDomObjField* pNewHead = NULL;
+	GDomObjField* pNewHead = nullptr;
 	while(m_value.m_pLastField)
 	{
 		GDomObjField* pTemp = m_value.m_pLastField;
@@ -867,7 +867,7 @@ public:
 	m_whitespace("\t\n\r "), m_real("-.+0-9eE"), m_quot("\"") {}
 	GJsonTokenizer(const char* pFile, size_t len) : GTokenizer(pFile, len),
 	m_whitespace("\t\n\r "), m_real("-.+0-9eE"), m_quot("\"") {}
-	virtual ~GJsonTokenizer() {}
+	~GJsonTokenizer() override {}
 };
 
 class Bogus1
@@ -878,7 +878,7 @@ public:
 };
 
 GDom::GDom()
-: m_heap(2000), m_pRoot(NULL), m_line(0), m_len(0), m_pDoc(NULL)
+: m_heap(2000), m_pRoot(nullptr), m_line(0), m_len(0), m_pDoc(nullptr)
 {
 }
 
@@ -943,7 +943,7 @@ GDomNode* GDom::newDouble(double d)
 	else
 	{
 		throw Ex("Invalid value: ", to_str(d));
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -1133,7 +1133,7 @@ GDomNode* GDom::loadJsonNumber(GJsonTokenizer& tok)
 #ifdef WINDOWS
 		return newInt(_atoi64(szString));
 #else
-		return newInt(strtoll(szString, (char**)NULL, 10));
+		return newInt(strtoll(szString, (char**)nullptr, 10));
 #endif
 	}
 }
@@ -1167,12 +1167,12 @@ GDomNode* GDom::loadJsonValue(GJsonTokenizer& tok)
 	else if(c == '\0')
 	{
 		throw Ex("Unexpected end of file while parsing JSON file at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
-		return NULL;
+		return nullptr;
 	}
 	else
 	{
 		throw Ex("Unexpected token, \"", to_str(c), "\", while parsing JSON file at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
-		return NULL;
+		return nullptr;
 	}
 }
 

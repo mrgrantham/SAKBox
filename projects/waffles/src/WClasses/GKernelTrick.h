@@ -68,20 +68,20 @@ class GKernelIdentity : public GKernel
 public:
 	GKernelIdentity() : GKernel() {}
 	GKernelIdentity(GDomNode* pNode) : GKernel() {}
-	virtual ~GKernelIdentity() {}
+	~GKernelIdentity() override {}
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = GKernel::makeBaseNode(pDoc);
 		return pObj;
 	}
 
 	/// Returns the name of this kernel
-	virtual const char* name() const { return "identity"; }
+	const char* name() const override { return "identity"; }
 
 	/// Computes A*B
-	virtual double apply(const GVec& pA, const GVec& pB)
+	double apply(const GVec& pA, const GVec& pB) override
 	{
 		return pA.dotProductIgnoringUnknowns(pB);
 	}
@@ -93,20 +93,20 @@ class GKernelChiSquared : public GKernel
 public:
 	GKernelChiSquared() : GKernel() {}
 	GKernelChiSquared(GDomNode* pNode) : GKernel() {}
-	virtual ~GKernelChiSquared() {}
+	~GKernelChiSquared() override {}
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = makeBaseNode(pDoc);
 		return pObj;
 	}
 
 	/// Returns the name of this kernel
-	virtual const char* name() const { return "chisquared"; }
+	const char* name() const override { return "chisquared"; }
 
 	/// Computes the sum over each element of 2 * a * b / (a + b)
-	virtual double apply(const GVec& pA, const GVec& pB)
+	double apply(const GVec& pA, const GVec& pB) override
 	{
 		double d = 0.0;
 		for(size_t i = 0; i < pA.size(); i++)
@@ -128,10 +128,10 @@ protected:
 public:
 	GKernelPolynomial(double offset, unsigned int order) : GKernel(), m_offset(std::abs(offset)), m_order(order) {}
 	GKernelPolynomial(GDomNode* pNode) : GKernel(), m_offset(pNode->getDouble("offset")), m_order((unsigned int)pNode->getInt("order")) {}
-	virtual ~GKernelPolynomial() {}
+	~GKernelPolynomial() override {}
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "offset", m_offset);
@@ -140,10 +140,10 @@ public:
 	}
 
 	/// Returns the name of this kernel
-	virtual const char* name() const { return "polynomial"; }
+	const char* name() const override { return "polynomial"; }
 
 	/// Computes (A * B + offset)^order
-	virtual double apply(const GVec& pA, const GVec& pB)
+	double apply(const GVec& pA, const GVec& pB) override
 	{
 		return pow(pA.dotProductIgnoringUnknowns(pB) + m_offset, (int)m_order);
 	}
@@ -158,10 +158,10 @@ protected:
 public:
 	GKernelGaussianRBF(double variance) : GKernel(), m_variance(std::abs(variance)) {}
 	GKernelGaussianRBF(GDomNode* pNode) : GKernel(), m_variance(pNode->getDouble("var")) {}
-	virtual ~GKernelGaussianRBF() {}
+	~GKernelGaussianRBF() override {}
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "var", m_variance);
@@ -169,10 +169,10 @@ public:
 	}
 
 	/// Returns the name of this kernel
-	virtual const char* name() const { return "rbf"; }
+	const char* name() const override { return "rbf"; }
 
 	/// Computes e^(-0.5 * ||A - B||^2 / variance)
-	virtual double apply(const GVec& pA, const GVec& pB)
+	double apply(const GVec& pA, const GVec& pB) override
 	{
 		return exp(-0.5 * pA.estimateSquaredDistanceWithUnknowns(pB) / m_variance);
 	}
@@ -189,10 +189,10 @@ public:
 	/// Takes ownership of pK
 	GKernelTranslate(GKernel* pK, double value) : GKernel(), m_pK(pK), m_value(std::abs(value)) {}
 	GKernelTranslate(GDomNode* pNode) : GKernel(), m_pK(GKernel::deserialize(pNode->get("k"))), m_value(pNode->getDouble("v")) {}
-	virtual ~GKernelTranslate() { delete(m_pK); }
+	~GKernelTranslate() override { delete(m_pK); }
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k", m_pK->serialize(pDoc));
@@ -201,10 +201,10 @@ public:
 	}
 
 	/// Returns the name of this kernel
-	virtual const char* name() const { return "translate"; }
+	const char* name() const override { return "translate"; }
 
 	/// Computes K(A, B) + value
-	virtual double apply(const GVec& pA, const GVec& pB)
+	double apply(const GVec& pA, const GVec& pB) override
 	{
 		return m_pK->apply(pA, pB) + m_value;
 	}
@@ -221,10 +221,10 @@ public:
 	/// Takes ownership of pK
 	GKernelScale(GKernel* pK, double value) : GKernel(), m_pK(pK), m_value(std::abs(value)) {}
 	GKernelScale(GDomNode* pNode) : GKernel(), m_pK(GKernel::deserialize(pNode->get("k"))), m_value(pNode->getDouble("v")) {}
-	virtual ~GKernelScale() { delete(m_pK); }
+	~GKernelScale() override { delete(m_pK); }
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k", m_pK->serialize(pDoc));
@@ -233,10 +233,10 @@ public:
 	}
 
 	/// Returns the name of this kernel
-	virtual const char* name() const { return "scale"; }
+	const char* name() const override { return "scale"; }
 
 	/// Computes K(A, B) * value
-	virtual double apply(const GVec& pA, const GVec& pB)
+	double apply(const GVec& pA, const GVec& pB) override
 	{
 		return m_pK->apply(pA, pB) * m_value;
 	}
@@ -253,10 +253,10 @@ public:
 	/// Takes ownership of pK1 and pK2
 	GKernelAdd(GKernel* pK1, GKernel* pK2) : GKernel(), m_pK1(pK1), m_pK2(pK2) {}
 	GKernelAdd(GDomNode* pNode) : GKernel(), m_pK1(GKernel::deserialize(pNode->get("k1"))), m_pK2(GKernel::deserialize(pNode->get("k2"))) {}
-	virtual ~GKernelAdd() { delete(m_pK1); delete(m_pK2); }
+	~GKernelAdd() override { delete(m_pK1); delete(m_pK2); }
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k1", m_pK1->serialize(pDoc));
@@ -265,10 +265,10 @@ public:
 	}
 
 	/// Returns the name of this kernel
-	virtual const char* name() const { return "add"; }
+	const char* name() const override { return "add"; }
 
 	/// Computes K1(A, B) + K2(A, B)
-	virtual double apply(const GVec& pA, const GVec& pB)
+	double apply(const GVec& pA, const GVec& pB) override
 	{
 		return m_pK1->apply(pA, pB) + m_pK2->apply(pA, pB);
 	}
@@ -285,10 +285,10 @@ public:
 	/// Takes ownership of pK1 and pK2
 	GKernelMultiply(GKernel* pK1, GKernel* pK2) : GKernel(), m_pK1(pK1), m_pK2(pK2) {}
 	GKernelMultiply(GDomNode* pNode) : GKernel(), m_pK1(GKernel::deserialize(pNode->get("k1"))), m_pK2(GKernel::deserialize(pNode->get("k2"))) {}
-	virtual ~GKernelMultiply() { delete(m_pK1); delete(m_pK2); }
+	~GKernelMultiply() override { delete(m_pK1); delete(m_pK2); }
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k1", m_pK1->serialize(pDoc));
@@ -297,10 +297,10 @@ public:
 	}
 
 	/// Returns the name of this kernel
-	virtual const char* name() const { return "multiply"; }
+	const char* name() const override { return "multiply"; }
 
 	/// Computes K1(A, B) * K2(A, B)
-	virtual double apply(const GVec& pA, const GVec& pB)
+	double apply(const GVec& pA, const GVec& pB) override
 	{
 		return m_pK1->apply(pA, pB) * m_pK2->apply(pA, pB);
 	}
@@ -317,10 +317,10 @@ public:
 	/// Takes ownership of pK
 	GKernelPow(GKernel* pK, unsigned int value) : GKernel(), m_pK(pK), m_value(value) {}
 	GKernelPow(GDomNode* pNode) : GKernel(), m_pK(GKernel::deserialize(pNode->get("k"))), m_value(pNode->getDouble("v")) {}
-	virtual ~GKernelPow() { delete(m_pK); }
+	~GKernelPow() override { delete(m_pK); }
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k", m_pK->serialize(pDoc));
@@ -329,10 +329,10 @@ public:
 	}
 
 	/// Returns the name of this kernel
-	virtual const char* name() const { return "pow"; }
+	const char* name() const override { return "pow"; }
 
 	/// Computes K(A, B)^value
-	virtual double apply(const GVec& pA, const GVec& pB)
+	double apply(const GVec& pA, const GVec& pB) override
 	{
 		return pow(m_pK->apply(pA, pB), m_value);
 	}
@@ -348,10 +348,10 @@ public:
 	/// Takes ownership of pK
 	GKernelExp(GKernel* pK) : GKernel(), m_pK(pK) {}
 	GKernelExp(GDomNode* pNode) : GKernel(), m_pK(GKernel::deserialize(pNode->get("k"))) {}
-	virtual ~GKernelExp() { delete(m_pK); }
+	~GKernelExp() override { delete(m_pK); }
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k", m_pK->serialize(pDoc));
@@ -359,10 +359,10 @@ public:
 	}
 
 	/// Returns the name of this kernel
-	virtual const char* name() const { return "exp"; }
+	const char* name() const override { return "exp"; }
 
 	/// Computes e^K(A, B)
-	virtual double apply(const GVec& pA, const GVec& pB)
+	double apply(const GVec& pA, const GVec& pB) override
 	{
 		return exp(m_pK->apply(pA, pB));
 	}
@@ -378,10 +378,10 @@ public:
 	/// Takes ownership of pK
 	GKernelNormalize(GKernel* pK) : GKernel(), m_pK(pK) {}
 	GKernelNormalize(GDomNode* pNode) : GKernel(), m_pK(GKernel::deserialize(pNode->get("k"))) {}
-	virtual ~GKernelNormalize() { delete(m_pK); }
+	~GKernelNormalize() override { delete(m_pK); }
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		GDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k", m_pK->serialize(pDoc));
@@ -389,10 +389,10 @@ public:
 	}
 
 	/// Returns the name of this kernel
-	virtual const char* name() const { return "normalize"; }
+	const char* name() const override { return "normalize"; }
 
 	/// Computes K(A, B) / sqrt(K(A, A) * K(B, B))
-	virtual double apply(const GVec& pA, const GVec& pB)
+	double apply(const GVec& pA, const GVec& pB) override
 	{
 		return m_pK->apply(pA, pB) / sqrt(m_pK->apply(pA, pA) * m_pK->apply(pB, pB));
 	}

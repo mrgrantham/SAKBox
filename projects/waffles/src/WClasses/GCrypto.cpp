@@ -66,7 +66,7 @@ public:
 	Mangler()
 	: m_rand(0)
 	{
-		reset(NULL);
+		reset(nullptr);
 	}
 
 	void resetSeed()
@@ -85,7 +85,7 @@ public:
 	void purge()
 	{
 		resetSeed();
-		reset(NULL);
+		reset(nullptr);
 		wipe(m_pBuf, DIGEST_BYTES);
 	}
 
@@ -210,7 +210,7 @@ void GCrypto::doChunk(char* pData, size_t nDataSize)
 		{
 			// Compute encryption pad
 			m_blockPos = 0;
-			m_pMangler->reset(NULL);
+			m_pMangler->reset(nullptr);
 			m_pMangler->add(m_pBuf, 2 * DIGEST_BYTES);
 			memcpy(m_pBuf + 2 * DIGEST_BYTES, m_pMangler->getHash(), DIGEST_BYTES);
 

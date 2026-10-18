@@ -19,7 +19,7 @@ protected:
 
 public:
 	CarOnHillController();
-	virtual ~CarOnHillController();
+	~CarOnHillController() override;
 
 	void RunModal();
 };

@@ -91,7 +91,7 @@ typedef void (*TestFunc)();
 
 
 
-int sysExec(const char* szAppName, const char* szArgs, GPipe* pStdOut = NULL, GPipe* pStdErr = NULL, GPipe* pStdIn = NULL)
+int sysExec(const char* szAppName, const char* szArgs, GPipe* pStdOut = nullptr, GPipe* pStdErr = nullptr, GPipe* pStdIn = nullptr)
 {
 	string s = szAppName;
 //#ifdef _DEBUG
@@ -644,16 +644,16 @@ void test_document_classification()
 			if(sysExec("waffles_sparse", "docstosparsematrix class_ham class_auto class_spam", &pipeIgnoreMe) != 0)
 				throw Ex("exit status indicates failure");
 		}
-		TempFileMaker tempFileFeatures("features.sparse", NULL);
-		TempFileMaker tempFileLabels("labels.arff", NULL);
+		TempFileMaker tempFileFeatures("features.sparse", nullptr);
+		TempFileMaker tempFileLabels("labels.arff", nullptr);
 
 		// Shuffle the data
 		GPipe pipeStdOut;
 		if(sysExec("waffles_sparse", "shuffle features.sparse -seed 0 -labels labels.arff l2.arff", &pipeStdOut) != 0)
 			throw Ex("exit status indicates failure");
 		pipeStdOut.toFile("f2.sparse");
-		TempFileMaker tempF2("f2.sparse", NULL);
-		TempFileMaker tempL2("l2.arff", NULL);
+		TempFileMaker tempF2("f2.sparse", nullptr);
+		TempFileMaker tempL2("l2.arff", nullptr);
 
 		// Make a set of models
 		vector<string> models;
@@ -663,11 +663,11 @@ void test_document_classification()
 		//models.push_back("neuralnet");
 
 		// Do cross-validation
-		TempFileMaker tempFileTrainFeatures("train.sparse", NULL);
-		TempFileMaker tempFileTestFeatures("test.sparse", NULL);
-		TempFileMaker tempFileTrainLabels("train.arff", NULL);
-		TempFileMaker tempFileTestLabels("test.arff", NULL);
-		TempFileMaker tempFileModel("model.json", NULL);
+		TempFileMaker tempFileTrainFeatures("train.sparse", nullptr);
+		TempFileMaker tempFileTestFeatures("test.sparse", nullptr);
+		TempFileMaker tempFileTrainLabels("train.arff", nullptr);
+		TempFileMaker tempFileTestLabels("test.arff", nullptr);
+		TempFileMaker tempFileModel("model.json", nullptr);
 		char buf[256];
 		GMatrix results(18, models.size());
 		for(size_t i = 0; i < 18; i++)

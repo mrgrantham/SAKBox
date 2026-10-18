@@ -310,7 +310,7 @@ void GTransducer::transductiveConfusionMatrix(const GMatrix& trainFeatures, cons
 			stats[j]->fill(0.0);
 		}
 		else
-			stats[j] = NULL;
+			stats[j] = nullptr;
 	}
 	for(size_t i = 0; i < pPredictedLabels->rows(); i++)
 	{
@@ -401,7 +401,7 @@ double GTransducer::repValidate(const GMatrix& features, const GMatrix& labels, 
 // ---------------------------------------------------------------
 
 GSupervisedLearner::GSupervisedLearner()
-: GTransducer(), m_pRelFeatures(NULL), m_pRelLabels(NULL)
+: GTransducer(), m_pRelFeatures(nullptr), m_pRelLabels(nullptr)
 {
 }
 
@@ -481,7 +481,7 @@ void GSupervisedLearner::confusion(GMatrix& features, GMatrix& labels, std::vect
 			stats[j]->fill(0.0);
 		}
 		else
-			stats[j] = NULL;
+			stats[j] = nullptr;
 	}
 	GVec prediction(labelDims);
 	for(size_t i = 0; i < features.rows(); i++)
@@ -970,7 +970,7 @@ GIncrementalTransform* GLearnerLoader::loadIncrementalTransform(const GDomNode* 
 	}
 	if(m_throwIfClassNotFound)
 		throw Ex("Unrecognized class: ", szClass);
-	return NULL;
+	return nullptr;
 }
 
 // virtual
@@ -1048,7 +1048,7 @@ GSupervisedLearner* GLearnerLoader::loadLearner(const GDomNode* pNode)
 	}
 	if(m_throwIfClassNotFound)
 		throw Ex("Unrecognized class: ", szClass);
-	return NULL;
+	return nullptr;
 }
 
 // virtual
@@ -1068,20 +1068,20 @@ GCollaborativeFilter* GLearnerLoader::loadCollaborativeFilter(const GDomNode* pN
 	}
 	if(m_throwIfClassNotFound)
 		throw Ex("Unrecognized class: ", szClass);
-	return NULL;
+	return nullptr;
 }
 
 // ---------------------------------------------------------------
 
 GFilter::GFilter(GSupervisedLearner* pLearner, bool ownLearner)
-: GIncrementalLearner(), m_pLearner(pLearner), m_pIncrementalLearner(NULL), m_pOriginal(pLearner), m_ownLearner(ownLearner)
+: GIncrementalLearner(), m_pLearner(pLearner), m_pIncrementalLearner(nullptr), m_pOriginal(pLearner), m_ownLearner(ownLearner)
 {
 	if(pLearner->canTrainIncrementally())
 		m_pIncrementalLearner = (GIncrementalLearner*)pLearner;
 }
 
 GFilter::GFilter(const GDomNode* pNode, GLearnerLoader& ll)
-: GIncrementalLearner(pNode), m_pIncrementalLearner(NULL), m_ownLearner(true)
+: GIncrementalLearner(pNode), m_pIncrementalLearner(nullptr), m_ownLearner(true)
 {
 	m_pLearner = ll.loadLearner(pNode->get("learner"));
 	if(m_pLearner->canTrainIncrementally())
@@ -1130,15 +1130,15 @@ void GFilter::discardIntermediateFilters_helper(GSupervisedLearner* pOriginal)
 
 		// Nuke the intermediate filter, and wrap whatever it used to wrap
 		GSupervisedLearner* pTemp = pIntermediateFilter->m_pLearner;
-		pIntermediateFilter->m_pLearner = NULL;
-		pIntermediateFilter->m_pIncrementalLearner = NULL;
-		pIntermediateFilter->m_pOriginal = NULL;
+		pIntermediateFilter->m_pLearner = nullptr;
+		pIntermediateFilter->m_pIncrementalLearner = nullptr;
+		pIntermediateFilter->m_pOriginal = nullptr;
 		delete(m_pLearner);
 		m_pLearner = pTemp;
 		if(m_pLearner->canTrainIncrementally())
 			m_pIncrementalLearner = (GIncrementalLearner*)m_pLearner;
 		else
-			m_pIncrementalLearner = NULL;
+			m_pIncrementalLearner = nullptr;
 	}
 }
 
@@ -1559,7 +1559,7 @@ void GAutoFilter::resetFilters(const GMatrix& features, const GMatrix& labels)
 	if(m_pLearner->canTrainIncrementally())
 		m_pIncrementalLearner = (GIncrementalLearner*)m_pLearner;
 	else
-		m_pIncrementalLearner = NULL;
+		m_pIncrementalLearner = nullptr;
 }
 
 void GAutoFilter::resetFilters(const GRelation& features, const GRelation& labels)
@@ -1573,7 +1573,7 @@ void GAutoFilter::resetFilters(const GRelation& features, const GRelation& label
 	if(m_pLearner->canTrainIncrementally())
 		m_pIncrementalLearner = (GIncrementalLearner*)m_pLearner;
 	else
-		m_pIncrementalLearner = NULL;
+		m_pIncrementalLearner = nullptr;
 }
 
 // virtual

@@ -599,7 +599,7 @@ void GMath::test()
 
 	// Test Integrate
 	double dTarget = sin(M_PI / 2) - sin(-M_PI / 2);
-	double dComputed = GMath::integrate(ComputeCosine, -M_PI / 2, M_PI / 2, 500, NULL);
+	double dComputed = GMath::integrate(ComputeCosine, -M_PI / 2, M_PI / 2, 500, nullptr);
 	if(std::abs(dTarget - dComputed) > .00001)
 		throw Ex("wrong answer");
 

@@ -63,7 +63,7 @@ GWave::GWave()
 m_channels(0),
 m_sampleRate(0),
 m_bitsPerSample(0),
-m_pData(NULL)
+m_pData(nullptr)
 {
 }
 
@@ -306,7 +306,7 @@ void GFourierWaveProcessor::reduce(GWave& signal)
 				}
 
 				// Interpolate A, B, and C to produce the final B
-				interpolate(i == 1 ? NULL : m_pBufA, m_pBufB, i == n ? NULL : m_pBufC, m_blockSize / 2);
+				interpolate(i == 1 ? nullptr : m_pBufA, m_pBufB, i == n ? nullptr : m_pBufC, m_blockSize / 2);
 				decodeBlock(itSignalOut, chan);
 			}
 

@@ -413,7 +413,7 @@ protected:
 
 public:
 	GJaadDom() : GDom(), m_modCount(0) {}
-	virtual ~GJaadDom() {}
+	~GJaadDom() override {}
 
 	/// Gets the mod count
 	size_t modCount() { return m_modCount; }

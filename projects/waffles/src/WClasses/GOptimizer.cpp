@@ -588,7 +588,7 @@ public:
 
 
 
-GActionPath::GActionPath(GActionPathState* pState) : m_pLastAction(NULL), m_nPathLen(0)
+GActionPath::GActionPath(GActionPathState* pState) : m_pLastAction(nullptr), m_nPathLen(0)
 {
         m_pHeadState = pState;
 }

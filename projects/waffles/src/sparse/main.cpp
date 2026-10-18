@@ -210,7 +210,7 @@ GTransducer* InstantiateAlgorithm(GArgReader& args)
 			showInstantiateAlgorithmError(e.what(), args);
 		throw Ex("nevermind"); // this means "don't display another error message"
 	}
-	return NULL;
+	return nullptr;
 }
 
 void multiplyDense(GArgReader& args)
@@ -249,7 +249,7 @@ void multiplyDense(GArgReader& args)
 void train(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-seed"))
@@ -297,7 +297,7 @@ void train(GArgReader& args)
 void predict(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-seed"))
@@ -342,7 +342,7 @@ void predict(GArgReader& args)
 void test(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-seed"))
@@ -530,7 +530,7 @@ void docsToSparseMatrix(GArgReader& args)
 
 	// Make the sparse feature matrix and the label matrix
 	GSparseMatrix sparseFeatures(vocab.docCount(), vocab.wordCount());
-	GMatrix* pLabels = NULL;
+	GMatrix* pLabels = nullptr;
 	if(folders.size() > 1)
 	{
 		vector<size_t> classes;
@@ -594,7 +594,7 @@ void shuffle(GArgReader& args)
 	std::unique_ptr<GSparseMatrix> hData(pData);
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	string labelsIn;
 	string labelsOut;
 	while(args.size() > 0)
@@ -612,7 +612,7 @@ void shuffle(GArgReader& args)
 
 	// Shuffle and print
 	GRand prng(nSeed);
-	GMatrix* pLabels = NULL;
+	GMatrix* pLabels = nullptr;
 	std::unique_ptr<GMatrix> hLabels(nullptr);
 	if(labelsIn.length() > 0)
 	{

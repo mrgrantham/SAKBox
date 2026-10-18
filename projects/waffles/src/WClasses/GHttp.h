@@ -178,7 +178,7 @@ public:
 	/// General-purpose constructor
 	GHttpConnection(SOCKET sock);
 
-	virtual ~GHttpConnection();
+	~GHttpConnection() override;
 
 	/// Clear all the buffers in this object.
 	void reset();

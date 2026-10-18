@@ -48,8 +48,8 @@ public:
 
 	void isolate()
 	{
-		left = NULL;
-		right = NULL;
+		left = nullptr;
+		right = nullptr;
 		size = 1;
 	}
 
@@ -143,7 +143,7 @@ public:
 		if(index < lcount)
 			return left->get(index);
 		else if(index > lcount)
-			return right ? right->get(index - lcount - 1) : NULL;
+			return right ? right->get(index - lcount - 1) : nullptr;
 		else
 			return this;
 	}
@@ -222,7 +222,7 @@ private:
 
 public:
 	/// General-purpose constructor
-	GIndexedMultiSet() : root(NULL), spare(NULL)
+	GIndexedMultiSet() : root(nullptr), spare(nullptr)
 	{
 	}
 
@@ -250,7 +250,7 @@ public:
 			root = root->insert(spare);
 		else
 			root = spare;
-		spare = NULL;
+		spare = nullptr;
 	}
 
 	/// Drop the value at the specified index (in sorted order, beginning with 0).
@@ -324,9 +324,9 @@ public:
 
 	void isolate()
 	{
-		par = NULL;
-		left = NULL;
-		right = NULL;
+		par = nullptr;
+		left = nullptr;
+		right = nullptr;
 		size = 1;
 	}
 
@@ -455,7 +455,7 @@ public:
 		if(index < lcount)
 			return el[c].left->get(index, c);
 		else if(index > lcount)
-			return el[c].right ? el[c].right->get(index - lcount - 1, c) : NULL;
+			return el[c].right ? el[c].right->get(index - lcount - 1, c) : nullptr;
 		else
 			return this;
 	}
@@ -466,9 +466,9 @@ public:
 	GRelationalRow<T>* find(T r, size_t start, size_t* outIndex, size_t c, Comp& comp)
 	{
 		if(comp(r, row, c))
-			return el[c].left ? el[c].left->find(r, start, outIndex, c, comp) : NULL;
+			return el[c].left ? el[c].left->find(r, start, outIndex, c, comp) : nullptr;
 		else if(comp(row, r, c))
-			return el[c].right ? el[c].right->find(r, el[c].left ? start + el[c].left->el[c].size + 1 : start + 1, outIndex, c, comp) : NULL;
+			return el[c].right ? el[c].right->find(r, el[c].left ? start + el[c].left->el[c].size + 1 : start + 1, outIndex, c, comp) : nullptr;
 		else
 		{
 			if(outIndex)
@@ -511,11 +511,11 @@ public:
 		if(par)
 		{
 			if(par->el[c].left == this)
-				par->el[c].left = child ? child->balance(c) : NULL;
+				par->el[c].left = child ? child->balance(c) : nullptr;
 			else
 			{
 				GAssert(par->el[c].right == this);
-				par->el[c].right = child ? child->balance(c) : NULL;
+				par->el[c].right = child ? child->balance(c) : nullptr;
 			}
 			child = par;
 			par = child->el[c].par;
@@ -535,7 +535,7 @@ public:
 		if(child)
 			return child->balance(c);
 		else
-			return NULL;
+			return nullptr;
 	}
 
 	GRelationalRow<T>* next(size_t c)
@@ -558,7 +558,7 @@ public:
 				r = p;
 				p = r->el[c].par;
 			}
-			return NULL;
+			return nullptr;
 		}
 	}
 
@@ -582,7 +582,7 @@ public:
 				l = p;
 				p = l->el[c].par;
 			}
-			return NULL;
+			return nullptr;
 		}
 	}
 
@@ -611,11 +611,11 @@ protected:
 	GRelationalRow<T>* spare;
 
 public:
-	GRelationalTable(const Comp& c) : comp(c), spare(NULL)
+	GRelationalTable(const Comp& c) : comp(c), spare(nullptr)
 	{
 		roots = new GRelationalRow<T>*[c.cols()];
 		for(size_t i = 0; i < c.cols(); i++)
-			roots[i] = NULL;
+			roots[i] = nullptr;
 	}
 
 	~GRelationalTable()
@@ -650,7 +650,7 @@ public:
 			for(size_t i = 0; i < comp.cols(); i++)
 				roots[i] = spare;
 		}
-		spare = NULL;
+		spare = nullptr;
 	}
 
 	/// Returns the number of rows in this relational table.
@@ -671,22 +671,22 @@ public:
 	/// Returns a row where the element in column col matches the one in the provided row.
 	/// Returns NULL if no matches exist. If outIndex is non-NULL, it will be made to point
 	/// to the index of the returned row when sorted in column col.
-	GRelationalRow<T>* find(const T& row, size_t col, size_t* outIndex = NULL)
+	GRelationalRow<T>* find(const T& row, size_t col, size_t* outIndex = nullptr)
 	{
 		if(roots[col])
 			return roots[col]->find(row, 0, outIndex, col, comp);
 		else
-			return NULL;
+			return nullptr;
 	}
 
 	/// Returns the first occurrence of a row where the element in column col is equal or
 	/// greater than the one in the provided row. Returns NULL if no rows contain an element
 	/// in column col greater than the one in row. If outIndex is non-NULL, it will be made to point
 	/// to the index of the returned row when sorted in column col.
-	GRelationalRow<T>* firstEqualOrGreater(const T& row, size_t col, size_t* outIndex = NULL)
+	GRelationalRow<T>* firstEqualOrGreater(const T& row, size_t col, size_t* outIndex = nullptr)
 	{
 		if(!roots[col])
-			return NULL;
+			return nullptr;
 		GRelationalRow<T>* node = roots[col]->approximate(row, 0, outIndex, col, comp);
 		while(true)
 		{

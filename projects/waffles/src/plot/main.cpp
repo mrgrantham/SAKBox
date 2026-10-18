@@ -77,7 +77,7 @@ size_t getAttrVal(const char* szString, size_t attrCount)
 #ifdef WIN32
 	size_t val = (size_t)_strtoui64(szString, (char**)NULL, 10);
 #else
-	size_t val = strtoull(szString, (char**)NULL, 10);
+	size_t val = strtoull(szString, (char**)nullptr, 10);
 #endif
 	if(fromRight)
 		val = attrCount - 1 - val;
@@ -552,7 +552,7 @@ public:
 	GFunction* m_pFunc;
 
 	ScatterCol()
-	: m_pFP(NULL), m_pFunc(NULL)
+	: m_pFP(nullptr), m_pFunc(nullptr)
 	{
 	}
 
@@ -1782,11 +1782,11 @@ public:
 	{
 	}
 
-	virtual ~GraphConnection()
+	~GraphConnection() override
 	{
 	}
 
-	virtual void handleRequest(GDynamicPageSession* pSession, std::ostream& response);
+	void handleRequest(GDynamicPageSession* pSession, std::ostream& response) override;
 };
 
 class GraphServer : public GDynamicPageServer
@@ -1800,13 +1800,13 @@ public:
 	std::string m_basePath;
 
 	GraphServer(int port, GRand* pRand);
-	virtual ~GraphServer();
+	~GraphServer() override;
 	void pump();
 	virtual void onEverySixHours() {}
 	virtual void onStateChange() {}
 	virtual void onShutDown() {}
 
-	virtual GDynamicPageConnection* makeConnection(SOCKET sock)
+	GDynamicPageConnection* makeConnection(SOCKET sock) override
 	{
 		return new GraphConnection(sock, this);
 	}
@@ -1962,7 +1962,7 @@ void LaunchBrowser(const char* szAddress)
 void graph(GArgReader& args)
 {
 	int port = 8421;
-	size_t seed = (size_t)(getpid() * (unsigned int)time(NULL));
+	size_t seed = (size_t)(getpid() * (unsigned int)time(nullptr));
 	GRand prng(seed);
 	bool serverStarted = false;
 	try

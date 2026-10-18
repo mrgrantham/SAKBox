@@ -98,8 +98,8 @@ namespace GClasses {
     setWeights(std::vector<Node>& nodes,
 	       GDistanceMetric& weightDistance,
 	       const GMatrix* pIn) const{
-      assert(pRand != NULL);
-      assert(pIn != NULL);
+      assert(pRand != nullptr);
+      assert(pIn != nullptr);
       assert(pIn->rows() >= nodes.size());
 
       //Set the weight distance function's relation metadata
@@ -440,9 +440,9 @@ namespace GClasses {
       assert(finalNeighborhoodSize >= 0);
       assert(numIterations > 0);
       assert(maxSubIterationsBeforeChangingNeighborhood > 0);
-      assert(weightInitialization != NULL);
-      assert(windowFunc != NULL);
-      assert(reporter != NULL);
+      assert(weightInitialization != nullptr);
+      assert(windowFunc != nullptr);
+      assert(reporter != nullptr);
     }
 
     namespace{
@@ -509,7 +509,7 @@ namespace GClasses {
 
     //virtual
     void BatchTraining::train(GSelfOrganizingMap& map, const GMatrix* pIn){
-      assert(pIn != NULL);
+      assert(pIn != nullptr);
       //Report start
       m_reporter->start(pIn, m_numIterations,
 			m_maxSubIterationsBeforeChangingNeighborhood);
@@ -643,9 +643,9 @@ namespace GClasses {
       assert(m_initialRate >= 0);
       assert(m_finalRate >= 0);
       assert(m_numIterations > 0);
-      assert(m_weightInitialization != NULL);
-      assert(m_windowFunc != NULL);
-      assert(m_reporter != NULL);
+      assert(m_weightInitialization != nullptr);
+      assert(m_windowFunc != nullptr);
+      assert(m_reporter != nullptr);
     }
 
 
@@ -669,7 +669,7 @@ namespace GClasses {
 
     //virtual
     void TraditionalTraining::train(GSelfOrganizingMap& map, const GMatrix* pInput){
-      assert(pInput != NULL);
+      assert(pInput != nullptr);
       //Report start
       m_reporter->start(pInput, m_numIterations, 1);
 
@@ -959,7 +959,7 @@ std::size_t GSelfOrganizingMap::bestMatch(const GVec& in) const{
 std::vector<std::size_t> GSelfOrganizingMap::bestData
 (const GMatrix*data) const{
   typedef std::vector<SOM::Node>::const_iterator NIter;
-  if(data == NULL){
+  if(data == nullptr){
     throw Ex("Null data pointer passed to bestData.");
   }
   if(data->rows() == 0){
@@ -995,7 +995,7 @@ void GSelfOrganizingMap::regenerateSortedNeighbors() const{
   m_sortedNeighbors.reserve(m_nodes.size());
 
   const GDistanceMetric* metric = m_pNodeDistance;
-  assert(metric != NULL); //If can't maintain this assertion, allocate
+  assert(metric != nullptr); //If can't maintain this assertion, allocate
 			  //a temporary euclidean metric to use
 
   //curDists is a temporary vector to be filled in turn with each

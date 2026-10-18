@@ -389,7 +389,7 @@ void GMixedRelation::addAttr(size_t nValues)
 		oss << "attr_";
 		oss << size();
 		string s = oss.str();
-		((GArffRelation*)this)->addAttribute(s.c_str(), nValues, NULL);
+		((GArffRelation*)this)->addAttribute(s.c_str(), nValues, nullptr);
 	}
 	else
 		m_valueCounts.push_back(nValues);
@@ -469,7 +469,7 @@ public:
 	m_whitespace("\t\n\r "), m_spaces(" \t"), m_space(" "), m_valEnd(",}\n"), m_valEnder(" ,\t}\n"), m_valHardEnder(",}\t\n"), m_argEnd(" \t\n{\r"), m_newline("\n"), m_commaNewlineTab(",\n\t") {}
 	GArffTokenizer(const char* pFile, size_t len) : GTokenizer(pFile, len),
 	m_whitespace("\t\n\r "), m_spaces(" \t"), m_space(" "), m_valEnd(",}\n"), m_valEnder(" ,\t}\n"), m_valHardEnder(",}\t\n"), m_argEnd(" \t\n{\r"), m_newline("\n"), m_commaNewlineTab(",\n\t") {}
-	virtual ~GArffTokenizer() {}
+	~GArffTokenizer() override {}
 };
 
 GArffRelation::GArffRelation()
@@ -497,7 +497,7 @@ GArffRelation::GArffRelation(const GDomNode* pNode)
 			addAttribute(valName, valNames.size(), &valNames);
 		}
 		else
-			addAttribute(valName, (size_t)it.current()->getInt("vc"), NULL);
+			addAttribute(valName, (size_t)it.current()->getInt("vc"), nullptr);
 		it.advance();
 	}
 }
@@ -587,12 +587,12 @@ void GArffRelation::copyAttr(const GRelation* pThat, size_t nAttr)
 	{
 		size_t index = m_valueCounts.size();
 		GArffRelation* pOther = (GArffRelation*)pThat;
-		addAttribute(pOther->m_attrs[nAttr].m_name.c_str(), pOther->m_valueCounts[nAttr], NULL);
+		addAttribute(pOther->m_attrs[nAttr].m_name.c_str(), pOther->m_valueCounts[nAttr], nullptr);
 		for(size_t i = 0; i < pOther->m_attrs[nAttr].m_values.size(); i++)
 			m_attrs[index].m_values.push_back(pOther->m_attrs[nAttr].m_values[i]);
 	}
 	else
-		addAttribute(NULL, pThat->valueCount(nAttr), NULL);
+		addAttribute(nullptr, pThat->valueCount(nAttr), nullptr);
 }
 
 void GArffRelation::setName(const char* szName)
@@ -649,10 +649,10 @@ void GArffRelation::parseAttribute(GArffTokenizer& tok)
 			_stricmp(szType, "NUMERIC") == 0 ||
 			_stricmp(szType, "INTEGER") == 0)
 		{
-			addAttribute(dataname.c_str(), 0, NULL);
+			addAttribute(dataname.c_str(), 0, nullptr);
 		}
 		else if(_stricmp(szType, "STRING") == 0)
-			addAttribute(dataname.c_str(), (size_t)-1, NULL);
+			addAttribute(dataname.c_str(), (size_t)-1, nullptr);
 		else if(_stricmp(szType, "DATE") == 0)
 		{
 			dataname += ":";
@@ -665,7 +665,7 @@ void GArffRelation::parseAttribute(GArffTokenizer& tok)
 				dataname += c2;
 				tok.skip(1);
 			}
-			addAttribute(dataname.c_str(), (size_t)-2, NULL);
+			addAttribute(dataname.c_str(), (size_t)-2, nullptr);
 		}
 		else
 			throw Ex("Unsupported attribute type: (", szType, "), at line ", to_str(tok.line()));
@@ -935,7 +935,7 @@ GMatrix::GMatrix(vector<size_t>& attrValues)
 }
 
 GMatrix::GMatrix(const GMatrix& orig, size_t rowStart, size_t colStart, size_t rowCount, size_t colCount)
-: m_pRelation(NULL)
+: m_pRelation(nullptr)
 {
 	copy(orig, rowStart, colStart, rowCount, colCount);
 }
@@ -969,7 +969,7 @@ GMatrix::GMatrix(const GDomNode* pNode)
 GMatrix::~GMatrix()
 {
 	flush();
-	setRelation(NULL);
+	setRelation(nullptr);
 }
 
 bool GMatrix::operator==(const GMatrix& other) const{
@@ -1150,7 +1150,7 @@ void GMatrix::parseArff(GArffTokenizer& tok, size_t maxRows)
 #ifdef WINDOWS
 					size_t column = (size_t)_strtoui64(szTok, (char**)NULL, 10);
 #else
-					size_t column = strtoull(szTok, (char**)NULL, 10);
+					size_t column = strtoull(szTok, (char**)nullptr, 10);
 #endif
 					if(column >= colCount)
 						throw Ex("Column index out of range at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
@@ -3176,7 +3176,7 @@ void GMatrix::clipColumn(size_t column, double dMin, double dMax)
 double GMatrix::baselineValue(size_t nAttribute) const
 {
 	if(m_pRelation->valueCount(nAttribute) == 0)
-		return columnMean(nAttribute, NULL, false);
+		return columnMean(nAttribute, nullptr, false);
 	int j;
 	int val;
 	int nValues = (int)m_pRelation->valueCount(nAttribute);
@@ -5127,13 +5127,13 @@ void GCSVParser::parse(GMatrix& outMatrix, const char* pFile, size_t len)
 				attrName += rows[0].m_elements[attr];
 				if(quot)
 					attrName += "\"";
-				pRelation->addAttribute(attrName.c_str(), 0, NULL);
+				pRelation->addAttribute(attrName.c_str(), 0, nullptr);
 			}
 			else
 			{
 				string attrName = "attr";
 				attrName += to_str(attr);
-				pRelation->addAttribute(attrName.c_str(), 0, NULL);
+				pRelation->addAttribute(attrName.c_str(), 0, nullptr);
 			}
 
 			size_t i = 0;
@@ -5236,13 +5236,13 @@ void GCSVParser::parse(GMatrix& outMatrix, const char* pFile, size_t len)
 				attrName += rows[0].m_elements[attr];
 				if(quot)
 					attrName += "\"";
-				pRelation->addAttribute(attrName.c_str(), 0, NULL);
+				pRelation->addAttribute(attrName.c_str(), 0, nullptr);
 			}
 			else
 			{
 				string attrName = "attr";
 				attrName += to_str(attr);
-				pRelation->addAttribute(attrName.c_str(), 0, NULL);
+				pRelation->addAttribute(attrName.c_str(), 0, nullptr);
 			}
 			size_t i = 0;
 			for(size_t rowNum = m_columnNamesInFirstRow ? 1 : 0; rowNum < rows.size(); rowNum++)

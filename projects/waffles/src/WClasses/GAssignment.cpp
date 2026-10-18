@@ -1690,9 +1690,9 @@ void testLinearAssignmentSolvers(){
 	//Test behavior on an empty matrix
 	{
 		const unsigned r=0, c=0;
-		double* input = NULL;
+		double* input = nullptr;
 		const unsigned ns = 1;
-		int* solutions = NULL;
+		int* solutions = nullptr;
 		//Minimization
 		{
 			LinearAssignmentTestCase tc(r,c,input, ns, solutions, ShouldMinimize());
@@ -1797,9 +1797,9 @@ void testLASupportRoutines(){
 	//It should be, but I don't want to bother.
 	{
 		const unsigned r=0, c=0;
-		double* input = NULL;
+		double* input = nullptr;
 		const unsigned ns = 0;
-		int* solutions = NULL;
+		int* solutions = nullptr;
 		//Minimization
 		{
 			LinearAssignmentTestCase tc(r,c,input, ns, solutions, ShouldMinimize());

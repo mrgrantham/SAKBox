@@ -112,7 +112,7 @@ public:
 		addSingletons();
 	}
 
-	virtual ~GHtmlParser()
+	~GHtmlParser() override
 	{
 	}
 

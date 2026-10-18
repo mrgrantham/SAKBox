@@ -79,9 +79,9 @@ protected:
 
 public:
 	MessageBoxDialog(const char* szMessage);
-	virtual ~MessageBoxDialog();
+	~MessageBoxDialog() override;
 
-	virtual void onReleaseTextButton(GClasses::GWidgetTextButton* pButton);
+	void onReleaseTextButton(GClasses::GWidgetTextButton* pButton) override;
 };
 
 
@@ -94,10 +94,10 @@ public:
 	GClasses::GWidgetTextButton* m_pCancel;
 
 	GetStringDialog(const char* szMessage);
-	virtual ~GetStringDialog();
+	~GetStringDialog() override;
 
-	virtual void onTextBoxPressEnter(GClasses::GWidgetTextBox* pTextBox);
-	virtual void onReleaseTextButton(GClasses::GWidgetTextButton* pButton);
+	void onTextBoxPressEnter(GClasses::GWidgetTextBox* pTextBox) override;
+	void onReleaseTextButton(GClasses::GWidgetTextButton* pButton) override;
 };
 
 
@@ -110,10 +110,10 @@ protected:
 
 public:
 	GetOpenFilenameDialog(const char* szMessage, const char* szExt);
-	virtual ~GetOpenFilenameDialog();
+	~GetOpenFilenameDialog() override;
 
-	virtual void onSelectFilename(GClasses::GWidgetFileSystemBrowser* pBrowser, const char* szFilename);
-	virtual void onReleaseTextButton(GClasses::GWidgetTextButton* pButton);
+	void onSelectFilename(GClasses::GWidgetFileSystemBrowser* pBrowser, const char* szFilename) override;
+	void onReleaseTextButton(GClasses::GWidgetTextButton* pButton) override;
 	const char* filename();
 	char* releaseFilename();
 };
@@ -130,10 +130,10 @@ protected:
 
 public:
 	GetSaveFilenameDialog(const char* szMessage, const char* initialFilename, const char* szExt);
-	virtual ~GetSaveFilenameDialog();
+	~GetSaveFilenameDialog() override;
 
-	virtual void onSelectFilename(GClasses::GWidgetFileSystemBrowser* pBrowser, const char* szFilename);
-	virtual void onReleaseTextButton(GClasses::GWidgetTextButton* pButton);
+	void onSelectFilename(GClasses::GWidgetFileSystemBrowser* pBrowser, const char* szFilename) override;
+	void onReleaseTextButton(GClasses::GWidgetTextButton* pButton) override;
 	const char* filename();
 	char* releaseFilename();
 };

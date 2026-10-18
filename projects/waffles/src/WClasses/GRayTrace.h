@@ -154,11 +154,11 @@ public:
 
 	GRayTraceCamera(GDomNode* pNode);
 
-	virtual ~GRayTraceCamera()
+	~GRayTraceCamera() override
 	{
 	}
 
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 	void setMaxDepth(int val) { m_maxDepth = val; }
 	void setFocalDistance(G3DReal val) { m_focalDistance = val; }
 	void setLensDiameter(G3DReal val) { m_lensDiameter = val; }
@@ -250,7 +250,7 @@ public:
 	GImage* releaseImage()
 	{
 		GImage* pImage = m_pImage;
-		m_pImage = NULL;
+		m_pImage = nullptr;
 		return pImage;
 	}
 
@@ -343,11 +343,11 @@ public:
 	/// Specify the direction to the light, not the direction the light travels
 	GRayTraceDirectionalLight(G3DReal dx, G3DReal dy, G3DReal dz, G3DReal r, G3DReal g, G3DReal b, G3DReal jitter);
 	GRayTraceDirectionalLight(GDomNode* pNode);
-	virtual ~GRayTraceDirectionalLight();
+	~GRayTraceDirectionalLight() override;
 
-	virtual GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const;
-	virtual LightType lightType() const { return Directional; }
-	virtual void colorContribution(GRayTraceScene* pScene, GRayTraceRay* pRay, GRayTraceMaterial* pMaterial, bool bSpecular);
+	GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const override;
+	LightType lightType() const override { return Directional; }
+	void colorContribution(GRayTraceScene* pScene, GRayTraceRay* pRay, GRayTraceMaterial* pMaterial, bool bSpecular) override;
 };
 
 
@@ -362,12 +362,12 @@ protected:
 public:
 	GRayTracePointLight(G3DReal x, G3DReal y, G3DReal z, G3DReal r, G3DReal g, G3DReal b, G3DReal jitter);
 	GRayTracePointLight(GDomNode* pNode);
-	virtual ~GRayTracePointLight();
+	~GRayTracePointLight() override;
 
 	G3DVector* position() { return &m_position; }
-	virtual GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const;
-	virtual LightType lightType() const { return Point; }
-	virtual void colorContribution(GRayTraceScene* pScene, GRayTraceRay* pRay, GRayTraceMaterial* pMaterial, bool bSpecular);
+	GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const override;
+	LightType lightType() const override { return Point; }
+	void colorContribution(GRayTraceScene* pScene, GRayTraceRay* pRay, GRayTraceMaterial* pMaterial, bool bSpecular) override;
 };
 
 
@@ -381,11 +381,11 @@ protected:
 public:
 	GRayTraceAreaLight(GRayTraceObject* pObject, G3DReal r, G3DReal g, G3DReal b);
 	GRayTraceAreaLight(GDomNode* pNode, GRayTraceScene* pScene);
-	virtual ~GRayTraceAreaLight();
+	~GRayTraceAreaLight() override;
 
-	virtual GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const;
-	virtual LightType lightType() const { return Area; }
-	virtual void colorContribution(GRayTraceScene* pScene, GRayTraceRay* pRay, GRayTraceMaterial* pMaterial, bool bSpecular);
+	GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const override;
+	LightType lightType() const override { return Area; }
+	void colorContribution(GRayTraceScene* pScene, GRayTraceRay* pRay, GRayTraceMaterial* pMaterial, bool bSpecular) override;
 };
 
 
@@ -442,21 +442,21 @@ protected:
 public:
 	GRayTracePhysicalMaterial();
 	GRayTracePhysicalMaterial(GDomNode* pNode);
-	virtual ~GRayTracePhysicalMaterial();
+	~GRayTracePhysicalMaterial() override;
 
-	virtual GDomNode* serialize(GDom* pDoc) const;
-	virtual MaterialType materialType() const { return Physical; }
+	GDomNode* serialize(GDom* pDoc) const override;
+	MaterialType materialType() const override { return Physical; }
 
 	/// Ignores pRay and returns the color of the specified type. (pRay is
 	/// used by image-texture materials to determine which pixel applies.)
-	virtual GRayTraceColor* color(ColorType eType, GRayTraceRay* pRay);
+	GRayTraceColor* color(ColorType eType, GRayTraceRay* pRay) override;
 
-	virtual G3DReal indexOfRefraction() { return m_indexOfRefraction; }
-	virtual G3DReal specularExponent() { return m_specularExponent; }
-	virtual G3DReal glossiness() { return m_glossiness; }
-	virtual G3DReal cloudiness() { return m_cloudiness; }
-	virtual bool isSame(GRayTraceMaterial* pThat);
-	virtual GRayTraceMaterial* copy();
+	G3DReal indexOfRefraction() override { return m_indexOfRefraction; }
+	G3DReal specularExponent() override { return m_specularExponent; }
+	G3DReal glossiness() override { return m_glossiness; }
+	G3DReal cloudiness() override { return m_cloudiness; }
+	bool isSame(GRayTraceMaterial* pThat) override;
+	GRayTraceMaterial* copy() override;
 
 	void setColor(ColorType eType, G3DReal r, G3DReal g, G3DReal b);
 	void setColor(ColorType eType, GRayTraceColor* pCol);
@@ -477,17 +477,17 @@ protected:
 public:
 	GRayTraceImageTexture();
 	GRayTraceImageTexture(GDomNode* pNode);
-	virtual ~GRayTraceImageTexture();
+	~GRayTraceImageTexture() override;
 
-	virtual GDomNode* serialize(GDom* pDoc) const;
-	virtual MaterialType materialType() const { return Image; }
-	virtual GRayTraceColor* color(ColorType eType, GRayTraceRay* pRay);
-	virtual G3DReal indexOfRefraction() { return 1; }
-	virtual G3DReal specularExponent() { return 1; }
-	virtual G3DReal glossiness() { return 0; }
-	virtual G3DReal cloudiness() { return 0; }
-	virtual bool isSame(GRayTraceMaterial* pThat);
-	virtual GRayTraceMaterial* copy();
+	GDomNode* serialize(GDom* pDoc) const override;
+	MaterialType materialType() const override { return Image; }
+	GRayTraceColor* color(ColorType eType, GRayTraceRay* pRay) override;
+	G3DReal indexOfRefraction() override { return 1; }
+	G3DReal specularExponent() override { return 1; }
+	G3DReal glossiness() override { return 0; }
+	G3DReal cloudiness() override { return 0; }
+	bool isSame(GRayTraceMaterial* pThat) override;
+	GRayTraceMaterial* copy() override;
 
 	void setTextureImage(GImage* pImage, bool bDeleteImage);
 	GImage* textureImage() { return m_pTextureImage; }
@@ -540,14 +540,14 @@ public:
 		m_max.m_vals[2] = std::max(pLesser->m_max.m_vals[2], pGreater->m_max.m_vals[2]);
 	}
 
-	virtual ~GRayTraceBoundingBoxInterior()
+	~GRayTraceBoundingBoxInterior() override
 	{
 		delete(m_pLesser);
 		delete(m_pGreater);
 	}
 
-	virtual bool isLeaf() { return false; };
-	virtual GRayTraceObject* closestIntersection(G3DVector* pRayOrigin, G3DVector* pDirectionVector, G3DReal* pOutDistance);
+	bool isLeaf() override { return false; };
+	GRayTraceObject* closestIntersection(G3DVector* pRayOrigin, G3DVector* pDirectionVector, G3DReal* pOutDistance) override;
 };
 
 
@@ -560,10 +560,10 @@ protected:
 
 public:
 	GRayTraceBoundingBoxLeaf(std::vector<GRayTraceObject*>& objects);
-	virtual ~GRayTraceBoundingBoxLeaf();
+	~GRayTraceBoundingBoxLeaf() override;
 
-	virtual bool isLeaf() { return true; }
-	virtual GRayTraceObject* closestIntersection(G3DVector* pRayOrigin, G3DVector* pDirectionVector, G3DReal* pOutDistance);
+	bool isLeaf() override { return true; }
+	GRayTraceObject* closestIntersection(G3DVector* pRayOrigin, G3DVector* pDirectionVector, G3DReal* pOutDistance) override;
 };
 
 
@@ -667,19 +667,19 @@ public:
 
 	GRayTraceSphere(GDomNode* pNode, GRayTraceScene* pScene);
 
-	virtual ~GRayTraceSphere()
+	~GRayTraceSphere() override
 	{
 	}
 
-	virtual GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const;
-	virtual ObjectType type() const { return Sphere; }
-	virtual GRayTraceMaterial* material() { return m_pMaterial; }
-	virtual G3DReal rayDistance(G3DVector* pRayOrigin, G3DVector* pRayDirection);
-	virtual void normalVector(GRayTraceRay* pRay);
-	virtual bool isCulled() { return false; }
-	virtual void center(G3DVector* pOutPoint);
-	virtual void adjustBoundingBox(G3DVector* pMin, G3DVector* pMax);
-	virtual void drawWireFrame(GCamera* pCamera, GImage* pImage);
+	GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const override;
+	ObjectType type() const override { return Sphere; }
+	GRayTraceMaterial* material() override { return m_pMaterial; }
+	G3DReal rayDistance(G3DVector* pRayOrigin, G3DVector* pRayDirection) override;
+	void normalVector(GRayTraceRay* pRay) override;
+	bool isCulled() override { return false; }
+	void center(G3DVector* pOutPoint) override;
+	void adjustBoundingBox(G3DVector* pMin, G3DVector* pMax) override;
+	void drawWireFrame(GCamera* pCamera, GImage* pImage) override;
 	G3DVector* center() { return &m_center; }
 	G3DReal radius() { return m_radius; }
 };
@@ -703,19 +703,19 @@ public:
 
 	GRayTraceTriangle(GDomNode* pNode, GRayTraceScene* pScene);
 
-	virtual ~GRayTraceTriangle()
+	~GRayTraceTriangle() override
 	{
 	}
 
-	virtual GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const;
-	virtual ObjectType type() const { return Triangle; }
-	virtual G3DReal rayDistance(G3DVector* pRayOrigin, G3DVector* pRayDirection);
-	virtual void normalVector(GRayTraceRay* pRay);
-	virtual bool isCulled() { return m_pMesh->isCulled(); }
-	virtual GRayTraceMaterial* material() { return m_pMesh->material(); }
-	virtual void center(G3DVector* pOutPoint);
-	virtual void adjustBoundingBox(G3DVector* pMin, G3DVector* pMax);
-	virtual void drawWireFrame(GCamera* pCamera, GImage* pImage);
+	GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const override;
+	ObjectType type() const override { return Triangle; }
+	G3DReal rayDistance(G3DVector* pRayOrigin, G3DVector* pRayDirection) override;
+	void normalVector(GRayTraceRay* pRay) override;
+	bool isCulled() override { return m_pMesh->isCulled(); }
+	GRayTraceMaterial* material() override { return m_pMesh->material(); }
+	void center(G3DVector* pOutPoint) override;
+	void adjustBoundingBox(G3DVector* pMin, G3DVector* pMax) override;
+	void drawWireFrame(GCamera* pCamera, GImage* pImage) override;
 	G3DVector* vertex(int nVertex);
 };
 

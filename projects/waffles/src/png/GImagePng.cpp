@@ -34,10 +34,10 @@ public:
 	{
 		m_pData = pData;
 		m_nPos = 0;
-		m_pReadStruct = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+		m_pReadStruct = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
 		if(!m_pReadStruct)
 		{
-			m_pReadStruct = NULL;
+			m_pReadStruct = nullptr;
 			throw Ex("Failed to create read struct");
 			return;	
 		}
@@ -78,7 +78,7 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 	// Get the image data
 	int depth, color;
 	png_uint_32 width, height;
-	png_get_IHDR(reader.m_pReadStruct, reader.m_pInfoStruct, &width, &height, &depth, &color, NULL, NULL, NULL);
+	png_get_IHDR(reader.m_pReadStruct, reader.m_pInfoStruct, &width, &height, &depth, &color, nullptr, nullptr, nullptr);
 	GAssert(depth == 8); // unexpected depth
 	pImage->setSize(width, height);
 
@@ -159,7 +159,7 @@ public:
 
 	GPNGWriter()
 	{
-		m_pWriteStruct = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, error_handler, NULL);
+		m_pWriteStruct = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, error_handler, nullptr);
 		if(!m_pWriteStruct)
 			throw Ex("Failed to create write struct. Out of mem?");
 		m_pInfoStruct = png_create_info_struct(m_pWriteStruct);

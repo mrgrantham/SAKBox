@@ -246,19 +246,19 @@ public:
 	{
 	}
 
-	virtual ~OptimizerTargetFunc()
+	~OptimizerTargetFunc() override
 	{
 	}
 
-	virtual bool isStable() { return true; }
+	bool isStable() override { return true; }
 	virtual bool isConstrained() { return false; }
 
-	virtual void initVector(GVec& pVector)
+	void initVector(GVec& pVector) override
 	{
 		pVector.fill(0.1);
 	}
 
-	virtual double computeError(const GVec& pVector)
+	double computeError(const GVec& pVector) override
 	{
 		double sse = 0.0;
 		vector<double> params;

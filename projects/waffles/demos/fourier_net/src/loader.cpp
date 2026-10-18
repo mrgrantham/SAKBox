@@ -307,7 +307,7 @@ void Loader::loadToyData(GMatrix &trainFeat, GMatrix &trainLab, GMatrix &testFea
 	testFeat.resize(test_size, 1);
 	testLab.resize(test_size, dims);
 	
-	GRand r(time(NULL));
+	GRand r(time(nullptr));
 	size_t sines = 3;
 	size_t randsPerDim = 2 * sines + 2;
 	std::vector<double> rands(dims * randsPerDim);

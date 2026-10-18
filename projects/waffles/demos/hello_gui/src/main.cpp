@@ -41,7 +41,7 @@ protected:
 
 public:
 	HelloController();
-	virtual ~HelloController();
+	~HelloController() override;
 
 	HelloModel* model() { return m_pModel; }
 	void RunModal();
@@ -96,7 +96,7 @@ public:
 		m_pQuitButton = new GWidgetTextButton(this, 850, 300, 80, 24, "Quit");
 	}
 
-	virtual ~HelloDialog()
+	~HelloDialog() override
 	{
 		delete(m_pImage);
 	}
@@ -109,7 +109,7 @@ public:
 		m_pCanvas->setImage(m_pImage);
 	}
 
-	virtual void onReleaseTextButton(GWidgetTextButton* pButton)
+	void onReleaseTextButton(GWidgetTextButton* pButton) override
 	{
 		if(pButton == m_pQuitButton)
 			m_pController->quit();
@@ -133,33 +133,33 @@ public:
 		m_pDialog = new HelloDialog(pController, m_screenRect.w, m_screenRect.h);
 	}
 
-	virtual ~HelloView()
+	~HelloView() override
 	{
 		delete(m_pDialog);
 	}
 
-	virtual void onChar(char c)
+	void onChar(char c) override
 	{
 		m_pDialog->handleChar(c);
 	}
 
-	virtual void onMouseDown(int nButton, int x, int y)
+	void onMouseDown(int nButton, int x, int y) override
 	{
 		m_pDialog->pressButton(nButton, x - m_screenRect.x, y - m_screenRect.y);
 	}
 
-	virtual void onMouseUp(int nButton, int x, int y)
+	void onMouseUp(int nButton, int x, int y) override
 	{
 		m_pDialog->releaseButton(nButton);
 	}
 
-	virtual bool onMousePos(int x, int y)
+	bool onMousePos(int x, int y) override
 	{
 		return m_pDialog->handleMousePos(x - m_screenRect.x, y - m_screenRect.y);
 	}
 
 protected:
-	virtual void draw(int* pixels, int pitch)
+	void draw(int* pixels, int pitch) override
 	{
 		m_pDialog->update();
 
@@ -168,7 +168,7 @@ protected:
 		SDL_Rect windowRect{m_screenRect.x,m_screenRect.y,m_screenRect.w,m_screenRect.h};
 		SDL_RenderFillRect(sdlRenderer,&windowRect);
 		Uint32 format; // SDL_PixelFormatEnum
-		SDL_QueryTexture(sdlTexture,&format, NULL,NULL,NULL);
+		SDL_QueryTexture(sdlTexture,&format, nullptr,nullptr,nullptr);
 		// Draw the dialog
 		blitImage(pixels,pitch,format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
 	}

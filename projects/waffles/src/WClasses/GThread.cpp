@@ -63,7 +63,7 @@ THREAD_HANDLE GThread::spawnThread(unsigned int (*pFunc)(void*), void* pData)
 	return hThread;
 #else
 	pthread_t thread;
-	if(pthread_create(&thread, NULL, (void*(*)(void*))pFunc, pData) != 0)
+	if(pthread_create(&thread, nullptr, (void*(*)(void*))pFunc, pData) != 0)
 		throw Ex("Failed to create thread");
 	pthread_detach(thread);
 	return thread;
@@ -102,7 +102,7 @@ GSpinLock::GSpinLock()
 {
 	m_dwLocked = 0;
 #ifndef WINDOWS
-	pthread_mutex_init(&m_mutex, NULL);
+	pthread_mutex_init(&m_mutex, nullptr);
 #endif
 #ifdef _DEBUG
 	m_szWhoHoldsTheLock = "<Never Been Locked>";
@@ -297,7 +297,7 @@ void GWorkerThread::pump()
 
 
 GMasterThread::GMasterThread()
-: m_job(0), m_jobCount(0), m_pMasterLock(NULL)
+: m_job(0), m_jobCount(0), m_pMasterLock(nullptr)
 {
 }
 

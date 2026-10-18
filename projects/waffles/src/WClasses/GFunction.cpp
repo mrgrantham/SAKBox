@@ -77,16 +77,16 @@ public:
 	{
 	}
 
-	virtual ~GFunctionBuiltIn()
+	~GFunctionBuiltIn() override
 	{
 	}
 
-	virtual double eval(vector<double>& params, GFunctionParser& parser)
+	double eval(vector<double>& params, GFunctionParser& parser) override
 	{
 		return m_pFunc(params);
 	}
 
-	virtual void unlink(const char* szName) {}
+	void unlink(const char* szName) override {}
 
 	// The operators
 	static double plus(vector<double>& params) { return params[0] + params[1]; }
@@ -162,11 +162,11 @@ public:
 	{
 	}
 
-	GFunctionCall(string name) : GFunctionNode(), m_name(name), m_pFunction(NULL)
+	GFunctionCall(string name) : GFunctionNode(), m_name(name), m_pFunction(nullptr)
 	{
 	}
 
-	virtual ~GFunctionCall()
+	~GFunctionCall() override
 	{
 		for(vector<GFunctionNode*>::iterator it = m_children.begin(); it != m_children.end(); it++)
 			delete(*it);
@@ -178,7 +178,7 @@ public:
 		m_params.push_back(0.0);
 	}
 
-	virtual double eval(vector<double>& params, GFunctionParser& parser)
+	double eval(vector<double>& params, GFunctionParser& parser) override
 	{
 		for(size_t i = 0; i < m_children.size(); i++)
 			m_params[i] = m_children[i]->eval(params, parser); // "params" holds the parameters to the root function. They are used when a leaf turns out to be one of the variables of the root function.
@@ -202,12 +202,12 @@ public:
 		return m_pFunction->eval(m_params, parser);
 	}
 
-	virtual void unlink(const char* szName)
+	void unlink(const char* szName) override
 	{
 		for(vector<GFunctionNode*>::iterator it = m_children.begin(); it != m_children.end(); it++)
 			(*it)->unlink(szName);
 		if(m_name.compare(szName) == 0)
-			m_pFunction = NULL;
+			m_pFunction = nullptr;
 	}
 };
 
@@ -220,16 +220,16 @@ public:
 	{
 	}
 
-	virtual ~GFunctionVariable()
+	~GFunctionVariable() override
 	{
 	}
 
-	virtual double eval(vector<double>& params, GFunctionParser& parser)
+	double eval(vector<double>& params, GFunctionParser& parser) override
 	{
 		return params[m_index];
 	}
 
-	virtual void unlink(const char* szName) {}
+	void unlink(const char* szName) override {}
 };
 
 class GFunctionConstant : public GFunctionNode
@@ -241,16 +241,16 @@ public:
 	{
 	}
 
-	virtual ~GFunctionConstant()
+	~GFunctionConstant() override
 	{
 	}
 
-	virtual double eval(vector<double>& params, GFunctionParser& parser)
+	double eval(vector<double>& params, GFunctionParser& parser) override
 	{
 		return m_value;
 	}
 
-	virtual void unlink(const char* szName) {}
+	void unlink(const char* szName) override {}
 };
 
 // --------------------------------------------------------------
@@ -271,7 +271,7 @@ public:
 	token_type m_type;
 
 	GFunctionTokenizer(const char* szEquation)
-	: m_pEquation(szEquation), m_pNext(NULL), m_len(0), m_type(name)
+	: m_pEquation(szEquation), m_pNext(nullptr), m_len(0), m_type(name)
 	{
 	}
 
@@ -343,7 +343,7 @@ public:
 			m_pNext++;
 		if(*m_pNext == '\0')
 		{
-			m_pNext = NULL;
+			m_pNext = nullptr;
 			return false;
 		}
 		MeasureTokenLength();
@@ -450,7 +450,7 @@ GFunction* GFunctionParser::getFunctionNoThrow(const char* name)
 {
 	map<string, GFunction*>::iterator it = m_functions.find(name);
 	if(it == m_functions.end())
-		return NULL;
+		return nullptr;
 	return it->second;
 }
 
@@ -541,11 +541,11 @@ int GFunctionParser::findOperatorWithLowestPrecidence(vector<string>& tokens, in
 GFunctionNode* GFunctionParser::parseMathOperator(std::vector<std::string>& variables, vector<string>& tokens, int start, int count, int index, int depth)
 {
 	// We've got a math operator (^,*,/,+,-,%)
-	GFunctionNode* pLeft = NULL;
+	GFunctionNode* pLeft = nullptr;
 	if(index > start)
 		pLeft = parseFunctionBody(variables, tokens, start, index - start, depth);
 	std::unique_ptr<GFunctionNode> hLeft(pLeft);
-	GFunctionNode* pRight = NULL;
+	GFunctionNode* pRight = nullptr;
 	if(index < start + count - 1)
 		pRight = parseFunctionBody(variables, tokens, index + 1, start + count - index - 1, depth);
 	std::unique_ptr<GFunctionNode> hRight(pRight);
@@ -563,7 +563,7 @@ GFunctionNode* GFunctionParser::parseMathOperator(std::vector<std::string>& vari
 	if(!pRight)
 		throw Ex("Expected something after the operator: ", tokens[index].c_str());
 	char c = tokens[index][0];
-	GFunctionCall* pFunc = NULL;
+	GFunctionCall* pFunc = nullptr;
 	if(c == '^')
 		pFunc = new GFunctionCall(m_pExponent);
 	else if(c == '*')
@@ -713,7 +713,7 @@ void GFunctionParser::parseVariableNames(vector<string>& variables, vector<strin
 GFunctionNode* GFunctionParser::parseFunction(vector<string>& tokens, int start, int count)
 {
 	if(count == 0)
-		return NULL;
+		return nullptr;
 
 	// Find the '='
 	int equalPos;

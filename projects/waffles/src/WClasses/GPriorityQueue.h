@@ -35,7 +35,7 @@ public:
 	int m_maxIndex;
 	void* m_pPayload;
 
-	GPriorityQueueEntry(int minIndex = 0, int maxIndex = 0, void* pPayload = NULL)
+	GPriorityQueueEntry(int minIndex = 0, int maxIndex = 0, void* pPayload = nullptr)
 	: m_minIndex(minIndex), m_maxIndex(maxIndex), m_pPayload(pPayload)
 	{}
 

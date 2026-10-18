@@ -372,9 +372,9 @@ public:
 		setData(buf, size);
 	}
 
-	virtual ~GConstVecWrapper()
+	~GConstVecWrapper() override
 	{
-		m_data = NULL;
+		m_data = nullptr;
 		m_size = 0;
 	}
 
@@ -416,9 +416,9 @@ public:
 		setData(buf, size);
 	}
 
-	virtual ~GVecWrapper()
+	~GVecWrapper() override
 	{
-		m_data = NULL;
+		m_data = nullptr;
 		m_size = 0;
 	}
 
@@ -680,7 +680,7 @@ public:
 	/// Special constructor for initializing the dimensions from a Json node
 	GTensor(GDomNode* pNode);
 
-	virtual ~GTensor();
+	~GTensor() override;
 
 	/// Sets out to wrap the specified portion of this tensor
 	void get(GVecWrapper& out, size_t index);

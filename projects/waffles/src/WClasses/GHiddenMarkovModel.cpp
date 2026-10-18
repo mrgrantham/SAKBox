@@ -33,7 +33,7 @@ using namespace GClasses;
 using std::vector;
 
 GHiddenMarkovModel::GHiddenMarkovModel(int stateCount, int symbolCount)
-: m_stateCount(stateCount), m_symbolCount(symbolCount), m_pTrainingBuffer(NULL)
+: m_stateCount(stateCount), m_symbolCount(symbolCount), m_pTrainingBuffer(nullptr)
 {
 	int modelSize = m_stateCount + m_stateCount * m_stateCount + m_stateCount * m_symbolCount;
 	m_pInitialStateProbabilities = new double[modelSize];
@@ -339,7 +339,7 @@ double GHiddenMarkovModel::baumWelchEndPass()
 void GHiddenMarkovModel::baumWelchEndTraining()
 {
 	delete[] m_pTrainingBuffer;
-	m_pTrainingBuffer = NULL;
+	m_pTrainingBuffer = nullptr;
 }
 
 void GHiddenMarkovModel::baumWelch(vector<int*>& sequences, vector<int>& lengths, int maxPasses)

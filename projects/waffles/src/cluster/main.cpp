@@ -112,7 +112,7 @@ void fuzzykmeans(GArgReader& args)
 	int clusters = args.pop_uint();
 
 	// Parse Options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	double fuzzifier = 1.3;
 	size_t reps = 1;
 	while(args.size() > 0)
@@ -145,7 +145,7 @@ void kmeans(GArgReader& args)
 	int clusters = args.pop_uint();
 
 	// Parse Options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	size_t reps = 1;
 	while(args.size() > 0)
 	{

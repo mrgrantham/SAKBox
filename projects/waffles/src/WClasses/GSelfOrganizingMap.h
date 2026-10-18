@@ -121,11 +121,11 @@ class GDistanceMetric;
       inline double epsilon() const { return 1e-6; }
     public:
       ///see comment on NodeLocationInitialization::setLocations
-      virtual void setLocations(std::vector<double> outputAxesMax,
-				std::vector<Node>& nodes);
+      void setLocations(std::vector<double> outputAxesMax,
+				std::vector<Node>& nodes) override;
 
       ///Virtual destructor for good memory hygiene
-      virtual ~GridTopology(){}
+      ~GridTopology() override{}
     };
 
 
@@ -178,12 +178,12 @@ class GDistanceMetric;
       ///long time.
       ///
       ///see comment on NodeWeightInitialization::setWeights
-      virtual void setWeights(std::vector<Node>& nodes,
+      void setWeights(std::vector<Node>& nodes,
 			      GDistanceMetric& weightDistance,
-			      const GMatrix* pIn) const;
+			      const GMatrix* pIn) const override;
 
       ///Virtual destructor for good memory hygiene
-      virtual ~NodeWeightInitializationTrainingSetSample(){}
+      ~NodeWeightInitializationTrainingSetSample() override{}
     };
 
 
@@ -248,15 +248,15 @@ class GDistanceMetric;
 	 m_interval(interval), m_callsSinceLastReport(interval-1){}
 
       ///Call the sub-reporter's start
-      virtual void start(const GMatrix* trainingData,
-			 int maxIterations = -1, int maxSubIterations = -1){
+      void start(const GMatrix* trainingData,
+			 int maxIterations = -1, int maxSubIterations = -1) override{
 	m_subReporter->start(trainingData, maxIterations, maxSubIterations);
       };
 
       ///Call the newStatus of the subreporter the first time this is
       ///called, then wait interval-1 calls before calling it again.
-      virtual void newStatus(unsigned iteration, unsigned subIteration,
-			     const GSelfOrganizingMap& map){
+      void newStatus(unsigned iteration, unsigned subIteration,
+			     const GSelfOrganizingMap& map) override{
 	if(++m_callsSinceLastReport >= m_interval){
 	  m_callsSinceLastReport = 0;
 	  m_subReporter->newStatus(iteration,subIteration, map);
@@ -264,13 +264,13 @@ class GDistanceMetric;
       }
 
       ///Call the sub-reporter's stop
-      virtual void stop(unsigned iteration, unsigned subIteration,
-			const GSelfOrganizingMap& map){
+      void stop(unsigned iteration, unsigned subIteration,
+			const GSelfOrganizingMap& map) override{
 	  m_subReporter->stop(iteration,subIteration, map);
       };
 
       ///Destruct this reporter object
-      virtual ~IterationIntervalReporter(){};
+      ~IterationIntervalReporter() override{};
     };
 
 
@@ -290,21 +290,21 @@ class GDistanceMetric;
       virtual void add(Reporter*toAdd);
 
       ///Call start on each of the sub-reporters in turn
-      virtual void start(const GMatrix* trainingData,
-			 int maxIterations = -1, int maxSubIterations = -1);
+      void start(const GMatrix* trainingData,
+			 int maxIterations = -1, int maxSubIterations = -1) override;
 
       ///Call newStatus with these parameters on each of the
       ///sub-reporters in turn
-      virtual void newStatus(unsigned iteration, unsigned subIteration,
-			     const GSelfOrganizingMap& map);
+      void newStatus(unsigned iteration, unsigned subIteration,
+			     const GSelfOrganizingMap& map) override;
 
       ///Call stop with these parameters on each of the sub-reporters
       ///in turn
-      virtual void stop(unsigned iteration, unsigned subIteration,
-			const GSelfOrganizingMap& map);
+      void stop(unsigned iteration, unsigned subIteration,
+			const GSelfOrganizingMap& map) override;
 
       ///Delete all sub-reporters then dispose of self
-      virtual ~ReporterChain();
+      ~ReporterChain() override;
     };
 
 
@@ -364,20 +364,20 @@ class GDistanceMetric;
 	 m_showTrainingData(showTrainingData), m_trainingData(){}
 
       ///See comment on Reporter::start(GMatrix*,int,int)
-      virtual void start(const GMatrix* trainingData,
-			 int maxIterations = -1, int maxSubIterations = -1);
+      void start(const GMatrix* trainingData,
+			 int maxIterations = -1, int maxSubIterations = -1) override;
 
       ///Output the weight visualization to the next filename
-      virtual void newStatus(unsigned iteration, unsigned subIteration,
-			     const GSelfOrganizingMap& map);
+      void newStatus(unsigned iteration, unsigned subIteration,
+			     const GSelfOrganizingMap& map) override;
 
 
       ///Output the weight visualization for the final state
-      virtual void stop(unsigned iteration, unsigned subIteration,
-			const GSelfOrganizingMap& map);
+      void stop(unsigned iteration, unsigned subIteration,
+			const GSelfOrganizingMap& map) override;
 
       ///Virtual destructor for good memory hygiene
-      virtual ~SVG2DWeightReporter(){}
+      ~SVG2DWeightReporter() override{}
     };
 
     ///A reporter that does nothing
@@ -386,19 +386,19 @@ class GDistanceMetric;
       NoReporting(){}
 
       //Do nothing
-      virtual void start(const GMatrix* trainingData,
-			 int maxIterations = -1, int maxSubIterations = -1){}
+      void start(const GMatrix* trainingData,
+			 int maxIterations = -1, int maxSubIterations = -1) override{}
 
       //Do nothing
-      virtual void newStatus(unsigned /*iteration*/, unsigned /*subIteration*/,
-			     const GSelfOrganizingMap& /*map*/){};
+      void newStatus(unsigned /*iteration*/, unsigned /*subIteration*/,
+			     const GSelfOrganizingMap& /*map*/) override{};
 
       //Do nothing
-      virtual void stop(unsigned /*iteration*/, unsigned /*subIteration*/,
-			const GSelfOrganizingMap& /*map*/){}
+      void stop(unsigned /*iteration*/, unsigned /*subIteration*/,
+			const GSelfOrganizingMap& /*map*/) override{}
 
       ///Virtual destructor for good memory hygiene
-      virtual ~NoReporting(){}
+      ~NoReporting() override{}
     };
 
     ///Function that given a width, and a distance from the center of
@@ -431,16 +431,16 @@ class GDistanceMetric;
       ///otherwise
       ///
       ///See NeighborhoodWindowFunction::operator()
-      virtual double operator()(double width, double distance) const;
+      double operator()(double width, double distance) const override;
 
       ///The Gaussian is truncated to 0 after 5 standard deviations
       ///
       ///See NeighborhoodWindowFunction::minZeroDistance()
-      virtual double minZeroDistance(double width) const{
+      double minZeroDistance(double width) const override{
 	return truncationSigmas*width; }
 
       ///Virtual destructor for good memory hygiene
-      virtual ~GaussianWindowFunction(){}
+      ~GaussianWindowFunction() override{}
     };
 
     ///Uses a unit-height, zero-mean Uniform weighting with the width
@@ -450,17 +450,17 @@ class GDistanceMetric;
       ///Returns  if distance < width, 1, otherwise 0
       ///
       ///See NeighborhoodWindowFunction::operator()
-      virtual double operator()(double width, double distance) const{
+      double operator()(double width, double distance) const override{
 	return (distance < width? 1: 0); }
 
       ///The Uniform is truncated to 0 at a distance of width
       ///
       ///See NeighborhoodWindowFunction::minZeroDistance()
-      virtual double minZeroDistance(double width) const{
+      double minZeroDistance(double width) const override{
 	return width; }
 
       ///Virtual destructor for good memory hygiene
-      virtual ~UniformWindowFunction(){}
+      ~UniformWindowFunction() override{}
     };
 
     /// An algorithm for training self-organizing maps.  Before
@@ -507,11 +507,11 @@ class GDistanceMetric;
       DummyTrainingAlgorithm(){}
 
       /// Throw error
-      virtual void train(GSelfOrganizingMap& map, const GMatrix* pIn){
+      void train(GSelfOrganizingMap& map, const GMatrix* pIn) override{
 	throw Ex("Training of self-organizing maps loaded from files is currently unsupported");
       }
       ///Destructor to ensure good memory hygiene
-      virtual ~DummyTrainingAlgorithm(){}
+      ~DummyTrainingAlgorithm() override{}
     };
 
     ///Implements the batch training algorithm for self-organizing
@@ -573,9 +573,9 @@ class GDistanceMetric;
 		    Reporter* reporter);
 
       /// Train the map
-      virtual void train(GClasses::GSelfOrganizingMap& map, const GClasses::GMatrix* pIn);
+      void train(GClasses::GSelfOrganizingMap& map, const GClasses::GMatrix* pIn) override;
 
-      virtual ~BatchTraining();
+      ~BatchTraining() override;
     };
 
 
@@ -650,9 +650,9 @@ class GDistanceMetric;
 			  Reporter* reporter);
 
       /// Train the map
-      virtual void train(GSelfOrganizingMap& map, const GMatrix* pIn);
+      void train(GSelfOrganizingMap& map, const GMatrix* pIn) override;
 
-      virtual ~TraditionalTraining();
+      ~TraditionalTraining() override;
 
       /// Return a reference to the pseudo-random number generator used
       /// by this object.
@@ -781,13 +781,13 @@ public:
   /// a dom document
   GSelfOrganizingMap(const GDomNode* pNode);
 
-  virtual ~GSelfOrganizingMap();
+  ~GSelfOrganizingMap() override;
 
   /// Performs unit tests for this class. Throws an exception if there is a failure.
   static void test();
 
   /// Transforms pIn after training on it
-  virtual GMatrix* reduce(const GMatrix& in) override;
+  GMatrix* reduce(const GMatrix& in) override;
 
   /// Add this map to a dom document and return the pointer to the
   /// tree added.
@@ -797,18 +797,18 @@ public:
   /// GSelfOrganizingMap obtained from a dom file
   ///
   ///TODO: make all serialize's const
-  virtual GDomNode* serialize(GDom*) const override;
+  GDomNode* serialize(GDom*) const override;
 
   ///see comment on GIncrementalTransform::train(GMatrix&)
-  virtual GRelation* trainInner(const GMatrix& in) override {
-    if(m_pTrainer != NULL){
+  GRelation* trainInner(const GMatrix& in) override {
+    if(m_pTrainer != nullptr){
       m_pTrainer->train(*this, &in);
     }
     return new GUniformRelation(outputDimensions());
   }
 
   /// Throws an exception (because this transform cannot be trained without data)
-  virtual GRelation* trainInner(const GRelation& in) override {
+  GRelation* trainInner(const GRelation& in) override {
     throw Ex("This transform cannot be trained without data");
 	return before().clone();
   }
@@ -882,12 +882,12 @@ public:
   }
 
   /// Throws an exception (because this transform cannot be reversed).
-  virtual void untransform(const GVec& pIn, GVec& pOut) override {
+  void untransform(const GVec& pIn, GVec& pOut) override {
     throw Ex("This transformation cannot be reversed");
   }
 
   /// Throws an exception (because this transform cannot be reversed).
-  virtual void untransformToDistribution(const GVec& pIn, GPrediction* pOut) override {
+  void untransformToDistribution(const GVec& pIn, GPrediction* pOut) override {
     throw Ex("This transformation cannot be reversed");
   }
 };

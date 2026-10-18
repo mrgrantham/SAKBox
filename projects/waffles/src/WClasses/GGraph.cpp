@@ -50,7 +50,7 @@ public:
 
 
 	GGraphCutNode()
-		: m_pRoot(NULL), m_pParent(NULL), m_nSibling(INVALID_INDEX), m_nChild(INVALID_INDEX), m_pEdges(NULL)
+		: m_pRoot(nullptr), m_pParent(nullptr), m_nSibling(INVALID_INDEX), m_nChild(INVALID_INDEX), m_pEdges(nullptr)
 	{
 	}
 
@@ -108,7 +108,7 @@ public:
 		else
 		{
 			GAssert(false); // This edge isn't connected to that node
-			return NULL;
+			return nullptr;
 		}
 	}
 
@@ -136,8 +136,8 @@ GGraphCut::GGraphCut(size_t nNodes)
 	m_pHeap = new GHeap(1024);
 	m_nNodes = nNodes;
 	m_pNodes = new GGraphCutNode[nNodes];
-	m_pSource = NULL;
-	m_pSink = NULL;
+	m_pSource = nullptr;
+	m_pSink = nullptr;
 }
 
 GGraphCut::~GGraphCut()
@@ -201,8 +201,8 @@ void GGraphCut::recycleTree(size_t nChild, size_t nParent)
 	else
 		pParent->m_nChild = pChild->m_nSibling;
 	pChild->m_nSibling = INVALID_INDEX;
-	pChild->m_pParent = NULL;
-	pChild->m_pRoot = NULL;
+	pChild->m_pParent = nullptr;
+	pChild->m_pRoot = nullptr;
 	//GAssert(!pChild->IsAncestor(pParent)); // still linked
 
 /*
@@ -370,7 +370,7 @@ void GGraphCut::findAHome(size_t nNode)
 {
 	// Find a new root for this node
 	struct GGraphCutNode* pNode = &m_pNodes[nNode];
-	struct GGraphCutNode* pNewRoot = NULL;
+	struct GGraphCutNode* pNewRoot = nullptr;
 	struct GGraphCutNode* pOther;
 	struct GGraphCutEdge* pEdge;
 	struct GGraphCutEdge* pFollowEdge;
@@ -552,7 +552,7 @@ GFloydWarshall::~GFloydWarshall()
 
 GMatrix* GFloydWarshall::releaseCostMatrix()
 {
-	m_pCosts = NULL;
+	m_pCosts = nullptr;
 	return m_pCosts;
 }
 
@@ -807,7 +807,7 @@ void GDijkstra::test()
 
 
 GBrandesBetweennessCentrality::GBrandesBetweennessCentrality(size_t nodes)
-: m_nodeCount(nodes), m_pVertexBetweenness(NULL), m_pEdgeBetweenness(NULL)
+: m_nodeCount(nodes), m_pVertexBetweenness(nullptr), m_pEdgeBetweenness(nullptr)
 {
 	m_pNeighbors = new std::vector<size_t>[m_nodeCount];
 }
@@ -1149,11 +1149,11 @@ public:
 	{
 	}
 
-	virtual ~GTestAtomicCycleFinder()
+	~GTestAtomicCycleFinder() override
 	{
 	}
 
-	virtual bool onDetectAtomicCycle(std::vector<size_t>& cycle)
+	bool onDetectAtomicCycle(std::vector<size_t>& cycle) override
 	{
 		if(cycle.size() == 3 && !m_three)
 			m_three = true;

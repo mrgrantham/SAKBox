@@ -96,7 +96,7 @@ public:
 		m_defaultChild = (size_t)pNode->getInt("def");
 	}
 
-	virtual ~GDecisionTreeInteriorNode()
+	~GDecisionTreeInteriorNode() override
 	{
 		if(m_ppChildren)
 		{
@@ -106,7 +106,7 @@ public:
 		}
 	}
 
-	virtual GDomNode* serialize(GDom* pDoc, size_t outputCount)
+	GDomNode* serialize(GDom* pDoc, size_t outputCount) override
 	{
 		GDomNode* pNode = pDoc->newObj();
 		pNode->add(pDoc, "attr", m_nAttribute);
@@ -119,9 +119,9 @@ public:
 		return pNode;
 	}
 
-	virtual bool IsLeaf() { return false; }
+	bool IsLeaf() override { return false; }
 
-	virtual size_t GetBranchSize()
+	size_t GetBranchSize() override
 	{
 		size_t size = 1;
 		size_t i;
@@ -130,7 +130,7 @@ public:
 		return size;
 	}
 
-	virtual GDecisionTreeNode* DeepCopy(size_t nOutputCount, GDecisionTreeNode* pInterestingNode, GDecisionTreeNode** ppOutInterestingCopy)
+	GDecisionTreeNode* DeepCopy(size_t nOutputCount, GDecisionTreeNode* pInterestingNode, GDecisionTreeNode** ppOutInterestingCopy) override
 	{
 		GDecisionTreeInteriorNode* pNewNode = new GDecisionTreeInteriorNode(m_nAttribute, m_dPivot, m_nChildren, m_defaultChild);
 		for(size_t n = 0; n < m_nChildren; n++)
@@ -140,7 +140,7 @@ public:
 		return pNewNode;
 	}
 
-	virtual void print(GDecisionTree* pTree, ostream& stream, vector<char>& prefix, const char* parentValue)
+	void print(GDecisionTree* pTree, ostream& stream, vector<char>& prefix, const char* parentValue) override
 	{
 		for(size_t n = 0; n + 1 < prefix.size(); n++)
 			stream << prefix[n];
@@ -228,13 +228,13 @@ public:
 
 	// Recursive function that counts the number of times a particular
 	// value is found in a particular output in this branch of the tree
-	virtual void CountValues(size_t nOutput, size_t* pnCounts)
+	void CountValues(size_t nOutput, size_t* pnCounts) override
 	{
 		for(size_t n = 0; n < m_nChildren; n++)
 			m_ppChildren[n]->CountValues(nOutput, pnCounts);
 	}
 
-	virtual double FindSumOutputValue(size_t nOutput)
+	double FindSumOutputValue(size_t nOutput) override
 	{
 		double dSum = 0;
 		for(size_t n = 0; n < m_nChildren; n++)
@@ -270,12 +270,12 @@ public:
 		}
 	}
 
-	virtual ~GDecisionTreeLeafNode()
+	~GDecisionTreeLeafNode() override
 	{
 		delete[] m_pOutputValues;
 	}
 
-	virtual GDomNode* serialize(GDom* pDoc, size_t outputCount)
+	GDomNode* serialize(GDom* pDoc, size_t outputCount) override
 	{
 		GDomNode* pNode = pDoc->newObj();
 		pNode->add(pDoc, "size", m_nSampleSize);
@@ -286,14 +286,14 @@ public:
 		return pNode;
 	}
 
-	virtual bool IsLeaf() { return true; }
+	bool IsLeaf() override { return true; }
 
-	virtual size_t GetBranchSize()
+	size_t GetBranchSize() override
 	{
 		return 1;
 	}
 
-	virtual GDecisionTreeNode* DeepCopy(size_t nOutputCount, GDecisionTreeNode* pInterestingNode, GDecisionTreeNode** ppOutInterestingCopy)
+	GDecisionTreeNode* DeepCopy(size_t nOutputCount, GDecisionTreeNode* pInterestingNode, GDecisionTreeNode** ppOutInterestingCopy) override
 	{
 		double* pOutputValues = new double[nOutputCount];
 		memcpy(pOutputValues, m_pOutputValues, sizeof(double) * nOutputCount);
@@ -303,7 +303,7 @@ public:
 		return pNewNode;
 	}
 
-	virtual void print(GDecisionTree* pTree, ostream& stream, vector<char>& prefix, const char* parentValue)
+	void print(GDecisionTree* pTree, ostream& stream, vector<char>& prefix, const char* parentValue) override
 	{
 		for(size_t n = 0; n + 1 < prefix.size(); n++)
 			stream << prefix[n];
@@ -327,13 +327,13 @@ public:
 		stream << "\n";
 	}
 
-	virtual void CountValues(size_t nOutput, size_t* pnCounts)
+	void CountValues(size_t nOutput, size_t* pnCounts) override
 	{
 		int nVal = (int)m_pOutputValues[nOutput];
 		pnCounts[nVal] += m_nSampleSize;
 	}
 
-	virtual double FindSumOutputValue(size_t nOutput)
+	double FindSumOutputValue(size_t nOutput) override
 	{
 		return m_pOutputValues[nOutput] * m_nSampleSize;
 	}
@@ -355,7 +355,7 @@ GDecisionTreeNode* GDecisionTreeNode::deserialize(const GDomNode* pNode)
 GDecisionTree::GDecisionTree()
 : GSupervisedLearner(), m_leafThresh(1), m_maxLevels(0), m_binaryDivisions(false)
 {
-	m_pRoot = NULL;
+	m_pRoot = nullptr;
 	m_eAlg = GDecisionTree::MINIMIZE_ENTROPY;
 }
 
@@ -394,7 +394,7 @@ void GDecisionTree::useBinaryDivisions()
 {
 	m_binaryDivisions = true;
 	delete(m_pRoot);
-	m_pRoot = NULL;
+	m_pRoot = nullptr;
 }
 
 void GDecisionTree::print(ostream& stream, GArffRelation* pFeatureRel, GArffRelation* pLabelRel)
@@ -416,7 +416,7 @@ void GDecisionTree::print(ostream& stream, GArffRelation* pFeatureRel, GArffRela
 		m_pRelLabels = pLabelRel->clone();
 	}
 	vector<char> prefix;
-	m_pRoot->print(this, stream, prefix, NULL);
+	m_pRoot->print(this, stream, prefix, nullptr);
 }
 
 // virtual
@@ -851,7 +851,7 @@ GDecisionTreeNode* GDecisionTree::buildBranch(GMatrix& features, GMatrix& labels
 	}
 
 	// Make an interior node
-	double* pBaselineVec = NULL;
+	double* pBaselineVec = nullptr;
 	size_t emptySets = 0;
 	for(size_t i = 0; i < featureParts.size(); i++)
 	{
@@ -979,7 +979,7 @@ void GDecisionTree::predictDistribution(const GVec& in, GPrediction* out)
 void GDecisionTree::clear()
 {
 	delete(m_pRoot);
-	m_pRoot = NULL;
+	m_pRoot = nullptr;
 }
 
 // static
@@ -1036,8 +1036,8 @@ public:
 	{
 		m_pCenter.copy(center);
 		m_pNormal.copy(normal);
-		m_pLeft = NULL;
-		m_pRight = NULL;
+		m_pLeft = nullptr;
+		m_pRight = nullptr;
 	}
 
 	GMeanMarginsTreeInteriorNode(const GDomNode* pNode)
@@ -1051,13 +1051,13 @@ public:
 		m_pRight = GMeanMarginsTreeNode::deserialize(pNode->get("right"));
 	}
 
-	virtual ~GMeanMarginsTreeInteriorNode()
+	~GMeanMarginsTreeInteriorNode() override
 	{
 		delete(m_pLeft);
 		delete(m_pRight);
 	}
 
-	virtual GDomNode* serialize(GDom* pDoc, size_t nInputs, size_t nOutputs)
+	GDomNode* serialize(GDom* pDoc, size_t nInputs, size_t nOutputs) override
 	{
 		GDomNode* pNode = pDoc->newObj();
 		pNode->add(pDoc, "center", m_pCenter.serialize(pDoc));
@@ -1067,7 +1067,7 @@ public:
 		return pNode;
 	}
 
-	virtual bool IsLeaf()
+	bool IsLeaf() override
 	{
 		return false;
 	}
@@ -1116,16 +1116,16 @@ public:
 		m_pOutputs.deserialize(pNode);
 	}
 
-	virtual ~GMeanMarginsTreeLeafNode()
+	~GMeanMarginsTreeLeafNode() override
 	{
 	}
 
-	virtual GDomNode* serialize(GDom* pDoc, size_t nInputs, size_t nOutputs)
+	GDomNode* serialize(GDom* pDoc, size_t nInputs, size_t nOutputs) override
 	{
 		return m_pOutputs.serialize(pDoc);
 	}
 
-	virtual bool IsLeaf()
+	bool IsLeaf() override
 	{
 		return true;
 	}
@@ -1149,7 +1149,7 @@ GMeanMarginsTreeNode* GMeanMarginsTreeNode::deserialize(const GDomNode* pNode)
 // ---------------------------------------------------------------
 
 GMeanMarginsTree::GMeanMarginsTree()
-: GSupervisedLearner(), m_internalFeatureDims(0), m_internalLabelDims(0), m_pRoot(NULL)
+: GSupervisedLearner(), m_internalFeatureDims(0), m_internalLabelDims(0), m_pRoot(nullptr)
 {
 }
 
@@ -1333,7 +1333,7 @@ void GMeanMarginsTree::predict(const GVec& in, GVec& out)
 void GMeanMarginsTree::clear()
 {
 	delete(m_pRoot);
-	m_pRoot = NULL;
+	m_pRoot = nullptr;
 	m_internalFeatureDims = 0;
 	m_internalLabelDims = 0;
 }

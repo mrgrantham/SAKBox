@@ -42,7 +42,7 @@ size_t GRecommenderLib::getAttrVal(const char* szString, size_t attrCount)
 #ifdef WINDOWS
         size_t val = (size_t)_strtoui64(szString, (char**)NULL, 10);
 #else
-        size_t val = strtoull(szString, (char**)NULL, 10);
+        size_t val = strtoull(szString, (char**)nullptr, 10);
 #endif
         if(fromRight)
                 val = attrCount - 1 - val;
@@ -181,7 +181,7 @@ GSparseMatrix* GRecommenderLib::loadSparseData(const char* szFilename)
 		return new GSparseMatrix(doc.root());
 	}
 	throw Ex("Unsupported file format: ", szFilename + pd.extStart);
-	return NULL;
+	return nullptr;
 }
 
 GBaselineRecommender* GRecommenderLib::InstantiateBaselineRecommender(GArgReader& args)
@@ -526,13 +526,13 @@ GCollaborativeFilter* GRecommenderLib::InstantiateAlgorithm(GArgReader& args)
 		showInstantiateAlgorithmError(e.what(), args);
 		throw Ex("nevermind"); // this means "don't display another error message"
 	}
-	return NULL;
+	return nullptr;
 }
 
 void GRecommenderLib::crossValidate(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	size_t folds = 2;
 	while(args.next_is_flag())
 	{
@@ -569,7 +569,7 @@ void GRecommenderLib::crossValidate(GArgReader& args)
 void GRecommenderLib::precisionRecall(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	bool ideal = false;
 	while(args.next_is_flag())
 	{
@@ -604,7 +604,7 @@ void GRecommenderLib::precisionRecall(GArgReader& args)
 void GRecommenderLib::ROC(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	bool ideal = false;
 	while(args.next_is_flag())
 	{
@@ -642,7 +642,7 @@ void GRecommenderLib::ROC(GArgReader& args)
 void GRecommenderLib::transacc(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-seed"))
@@ -676,7 +676,7 @@ void GRecommenderLib::transacc(GArgReader& args)
 
 void GRecommenderLib::fillMissingValues(GArgReader& args)
 {
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	bool normalize = true;
 	while(args.next_is_flag())
 	{

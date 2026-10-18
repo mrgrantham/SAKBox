@@ -64,7 +64,7 @@ struct GRegionEdge
 		else
 		{
 			GAssert(false); // That region doesn't share this edge
-			return NULL;
+			return nullptr;
 		}
 	}
 };
@@ -91,7 +91,7 @@ size_t GRegionAjacencyGraph::addRegion()
 	pNewRegion->m_nSumRed = 0;
 	pNewRegion->m_nSumGreen = 0;
 	pNewRegion->m_nSumBlue = 0;
-	pNewRegion->m_pNeighbors = NULL;
+	pNewRegion->m_pNeighbors = nullptr;
 	m_regions.push_back(pNewRegion);
 	return nRegion;
 }

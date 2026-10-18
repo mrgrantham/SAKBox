@@ -37,7 +37,7 @@ namespace GClasses {
 	return (double)GetTickCount() * 1e-3;
 #else
 	struct timeval tp;
-	gettimeofday(&tp, NULL);
+	gettimeofday(&tp, nullptr);
 	return ((double)tp.tv_sec + (double)tp.tv_usec * 1e-6);
 
 // 	struct timespec ts;
@@ -48,7 +48,7 @@ namespace GClasses {
 
 /*static*/ const char* GTime::asciiTime(char* szBuf, int nSize, bool bGreenwichMeanTime)
 {
-	time_t t = time((time_t*)0);
+	time_t t = time((time_t*)nullptr);
 #ifdef WINDOWS
 	struct tm thetime;
 	if(bGreenwichMeanTime)
@@ -77,7 +77,7 @@ void GTime_printTwoDigits(std::ostream& os, unsigned int n)
 
 /*static*/ void GTime::appendTimeStampValue(std::string* pS, const char* sep1, const char* sep2, const char* sep3, bool bGreenwichMeanTime)
 {
-	time_t t = time((time_t*)0);
+	time_t t = time((time_t*)nullptr);
 #ifdef WINDOWS
 	struct tm thetime;
 	if(bGreenwichMeanTime)

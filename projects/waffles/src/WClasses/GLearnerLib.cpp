@@ -57,7 +57,7 @@ size_t GLearnerLib::getAttrVal(const char* szString, size_t attrCount)
 #ifdef WINDOWS
 	size_t val = (size_t)_strtoui64(szString, (char**)NULL, 10);
 #else
-	size_t val = strtoull(szString, (char**)NULL, 10);
+	size_t val = strtoull(szString, (char**)nullptr, 10);
 #endif
 	if(fromRight)
 		val = attrCount - 1 - val;
@@ -823,7 +823,7 @@ GTransducer* GLearnerLib::InstantiateAlgorithm(GArgReader& args, GMatrix* pFeatu
 	int argPos = args.get_pos();
 	if(args.size() < 1)
 		throw Ex("No algorithm specified.");
-	GTransducer* pAlg = NULL;
+	GTransducer* pAlg = nullptr;
 	try
 	{
 		if(args.if_pop("agglomerativetransducer"))
@@ -973,7 +973,7 @@ void GLearnerLib::autoTune(GArgReader& args)
 void GLearnerLib::Train(GArgReader& args)
 {
 	// Parse options
-	size_t seed = getpid() * (unsigned int)time(NULL);
+	size_t seed = getpid() * (unsigned int)time(nullptr);
 	bool embed = false;
 	while(args.next_is_flag())
 	{
@@ -1017,7 +1017,7 @@ void GLearnerLib::Train(GArgReader& args)
 void GLearnerLib::predict(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-seed"))
@@ -1062,7 +1062,7 @@ void GLearnerLib::predict(GArgReader& args)
 void GLearnerLib::predictDistribution(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-seed"))
@@ -1194,7 +1194,7 @@ void GLearnerLib::rightJustifiedString(const char* pIn, char* pOut, size_t outLe
 ///\param pRelation a pointer to the relation from which the
 ///                 variable_idx-'th variable is taken. Cannot be null
 std::string GLearnerLib::machineReadableConfusionHeader(std::size_t variable_idx, const GRelation* pRelation){
-  assert(pRelation != NULL);
+  assert(pRelation != nullptr);
   ostringstream out;
   out << "\"Variable Name\",\"Variable Index\"";
   std::size_t n = pRelation->valueCount(variable_idx);
@@ -1262,7 +1262,7 @@ std::string GLearnerLib::machineReadableConfusionData(std::size_t variable_idx, 
 ///                   and c was encountered.
 void GLearnerLib::printMachineReadableConfusionMatrices(const GRelation* pRelation, vector<GMatrix*>& matrixArray){
   for(size_t i = 0; i < matrixArray.size(); i++){
-    if(matrixArray[i] == NULL){
+    if(matrixArray[i] == nullptr){
       continue;
     }
     std::cout << machineReadableConfusionHeader(i, pRelation) << std::endl;
@@ -1278,7 +1278,7 @@ void GLearnerLib::printConfusionMatrices(const GRelation* pRelation, vector<GMat
 	ostringstream oss;
 	for(size_t i = 0; i < matrixArray.size(); i++)
 	{
-		if(matrixArray[i] == NULL)
+		if(matrixArray[i] == nullptr)
 			continue;
 		GMatrix& cm = *matrixArray[i];
 
@@ -1327,7 +1327,7 @@ void GLearnerLib::printConfusionMatrices(const GRelation* pRelation, vector<GMat
 void GLearnerLib::Test(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	bool confusion = false;
 	bool confusioncsv = false;
 	while(args.next_is_flag())
@@ -1387,7 +1387,7 @@ void GLearnerLib::Test(GArgReader& args)
 void GLearnerLib::Transduce(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-seed"))
@@ -1428,7 +1428,7 @@ void GLearnerLib::Transduce(GArgReader& args)
 void GLearnerLib::TransductiveAccuracy(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 //	bool confusion = false;
 //	bool confusioncsv = false;
 	while(args.next_is_flag())
@@ -1483,7 +1483,7 @@ void GLearnerLib::TransductiveAccuracy(GArgReader& args)
 void GLearnerLib::SplitTest(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	double trainRatio = 0.5;
 	size_t reps = 1;
 	string lastModelFile="";
@@ -1586,7 +1586,7 @@ void GLearnerLib::CrossValidateCallback(void* pSupLearner, size_t nRep, size_t n
 void GLearnerLib::CrossValidate(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	int reps = 5;
 	int folds = 2;
 	bool succinct = false;
@@ -1624,7 +1624,7 @@ void GLearnerLib::CrossValidate(GArgReader& args)
 	// Test
 	cout.precision(8);
 	double sae;
-	double sse = pSupLearner->repValidate(*pFeatures, *pLabels, reps, folds, &sae, succinct ? NULL : CrossValidateCallback, pSupLearner);
+	double sse = pSupLearner->repValidate(*pFeatures, *pLabels, reps, folds, &sae, succinct ? nullptr : CrossValidateCallback, pSupLearner);
 	if(succinct)
 		cout << to_str(sse / pFeatures->rows());
 	else
@@ -1657,7 +1657,7 @@ void GLearnerLib::vette(string& s)
 void GLearnerLib::PrecisionRecall(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	int reps = 5;
 	int samples = 100;
 	while(args.next_is_flag())
@@ -1696,7 +1696,7 @@ void GLearnerLib::PrecisionRecall(GArgReader& args)
 	GArffRelation* pRelation = new GArffRelation();
 	pRelation->setName("untitled");
 	GArffRelation* pRel = pRelation;
-	pRel->addAttribute("recall", 0, NULL);
+	pRel->addAttribute("recall", 0, nullptr);
 	for(size_t i = 0; i < pLabels->cols(); i++)
 	{
 		size_t valCount = std::max((size_t)1, pLabels->relation().valueCount(i));
@@ -1718,7 +1718,7 @@ void GLearnerLib::PrecisionRecall(GArgReader& args)
 				s += oss.str();
 			}
 			vette(s);
-			pRel->addAttribute(s.c_str(), 0, NULL);
+			pRel->addAttribute(s.c_str(), 0, nullptr);
 		}
 	}
 
@@ -1744,7 +1744,7 @@ void GLearnerLib::PrecisionRecall(GArgReader& args)
 void GLearnerLib::sterilize(GArgReader& args)
 {
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	size_t folds = 10;
 	double diffThresh = 0.1;
 	while(args.next_is_flag())
@@ -2027,24 +2027,24 @@ void GLearnerLib::metaData(GArgReader& args)
 
 	// Make the relation
 	GArffRelation* pRel = new GArffRelation();
-	pRel->addAttribute("log_rows", 0, NULL);
-	pRel->addAttribute("log_feature_dims", 0, NULL);
-	pRel->addAttribute("log_label_dims", 0, NULL);
-	pRel->addAttribute("log_feature_elements", 0, NULL);
-	pRel->addAttribute("log_sum_feature_vals", 0, NULL);
-	pRel->addAttribute("mean_feature_vals", 0, NULL);
-	pRel->addAttribute("feature_range_deviation", 0, NULL);
-	pRel->addAttribute("feature_portion_real", 0, NULL);
-	pRel->addAttribute("label_portion_real", 0, NULL);
-	pRel->addAttribute("feature_is_missing_values", 0, NULL);
-	pRel->addAttribute("label_entropy", 0, NULL);
-	pRel->addAttribute("label_skew", 0, NULL);
-	pRel->addAttribute("landmark_baseline", 0, NULL);
-	pRel->addAttribute("landmark_linear", 0, NULL);
-	pRel->addAttribute("landmark_decisiontree", 0, NULL);
-	pRel->addAttribute("landmark_shallowtree", 0, NULL);
-	pRel->addAttribute("landmark_meanmarginstree", 0, NULL);
-	pRel->addAttribute("landmark_naivebayes", 0, NULL);
+	pRel->addAttribute("log_rows", 0, nullptr);
+	pRel->addAttribute("log_feature_dims", 0, nullptr);
+	pRel->addAttribute("log_label_dims", 0, nullptr);
+	pRel->addAttribute("log_feature_elements", 0, nullptr);
+	pRel->addAttribute("log_sum_feature_vals", 0, nullptr);
+	pRel->addAttribute("mean_feature_vals", 0, nullptr);
+	pRel->addAttribute("feature_range_deviation", 0, nullptr);
+	pRel->addAttribute("feature_portion_real", 0, nullptr);
+	pRel->addAttribute("label_portion_real", 0, nullptr);
+	pRel->addAttribute("feature_is_missing_values", 0, nullptr);
+	pRel->addAttribute("label_entropy", 0, nullptr);
+	pRel->addAttribute("label_skew", 0, nullptr);
+	pRel->addAttribute("landmark_baseline", 0, nullptr);
+	pRel->addAttribute("landmark_linear", 0, nullptr);
+	pRel->addAttribute("landmark_decisiontree", 0, nullptr);
+	pRel->addAttribute("landmark_shallowtree", 0, nullptr);
+	pRel->addAttribute("landmark_meanmarginstree", 0, nullptr);
+	pRel->addAttribute("landmark_naivebayes", 0, nullptr);
 
 	// Make the meta-data
 	GMatrix meta(pRel);

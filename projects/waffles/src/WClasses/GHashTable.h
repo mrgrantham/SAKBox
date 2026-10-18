@@ -123,7 +123,7 @@ public:
 	{
 	}
 
-	virtual ~GHashTable()
+	~GHashTable() override
 	{
 	}
 
@@ -131,13 +131,13 @@ public:
 	static void test();
 
 	/// Computes a hash of the key
-	virtual size_t hash(const char* pKey, size_t nBucketCount)
+	size_t hash(const char* pKey, size_t nBucketCount) override
 	{
 		return (size_t)(((uintptr_t)pKey) % nBucketCount);
 	}
 
 	/// Returns true iff the two keys are equal
-	virtual bool areKeysEqual(const char* pKey1, const char* pKey2)
+	bool areKeysEqual(const char* pKey1, const char* pKey2) override
 	{
 		return pKey1 == pKey2;
 	}
@@ -180,12 +180,12 @@ public:
 		m_bCaseSensitive = bCaseSensitive;
 	}
 
-	virtual ~GConstStringHashTable()
+	~GConstStringHashTable() override
 	{
 	}
 
 	/// Computes a hash of the key
-	virtual size_t hash(const char* pKey, size_t nBucketCount)
+	size_t hash(const char* pKey, size_t nBucketCount) override
 	{
 		size_t n = 0;
 		if(m_bCaseSensitive)
@@ -208,7 +208,7 @@ public:
 	}
 
 	/// Returns true iff the two keys are equal
-	virtual bool areKeysEqual(const char* pKey1, const char* pKey2)
+	bool areKeysEqual(const char* pKey1, const char* pKey2) override
 	{
 		if(m_bCaseSensitive)
 			return(strcmp(pKey1, pKey2) == 0);
@@ -259,12 +259,12 @@ public:
 		m_bCaseSensitive = bCaseSensitive;
 	}
 
-	virtual ~GConstStringToIndexHashTable()
+	~GConstStringToIndexHashTable() override
 	{
 	}
 
 	/// Computes a hash of the key
-	virtual size_t hash(const char* pKey, size_t nBucketCount)
+	size_t hash(const char* pKey, size_t nBucketCount) override
 	{
 		size_t n = 0;
 		if(m_bCaseSensitive)
@@ -287,7 +287,7 @@ public:
 	}
 
 	/// Returns true iff the two keys are equal
-	virtual bool areKeysEqual(const char* pKey1, const char* pKey2)
+	bool areKeysEqual(const char* pKey1, const char* pKey2) override
 	{
 		if(m_bCaseSensitive)
 			return(strcmp(pKey1, pKey2) == 0);
@@ -308,7 +308,7 @@ public:
 	/// Gets the value for the specified key
 	bool get(const char* pKey, size_t* pValue)
 	{
-		void* tmp = NULL;
+		void* tmp = nullptr;
 		bool bRet = _Get(pKey, &tmp);
 		*pValue = (size_t)reinterpret_cast<uintptr_t>(tmp);
 		return bRet;
@@ -382,17 +382,17 @@ protected:
 
 public:
 	GNodeHashTable(bool bOwnNodes, size_t nInitialBucketCount);
-	virtual ~GNodeHashTable();
+	~GNodeHashTable() override;
 
 	/// Computes a hash of the key
-	virtual size_t hash(const char* pKey, size_t nBucketCount)
+	size_t hash(const char* pKey, size_t nBucketCount) override
 	{
 		HashTableNode* pRec = (HashTableNode*)pKey;
 		return pRec->hash(nBucketCount);
 	}
 
 	/// Returns true iff the two keys are equal
-	virtual bool areKeysEqual(const char* pKey1, const char* pKey2)
+	bool areKeysEqual(const char* pKey1, const char* pKey2) override
 	{
 		HashTableNode* pRec1 = (HashTableNode*)pKey1;
 		HashTableNode* pRec2 = (HashTableNode*)pKey2;
@@ -405,7 +405,7 @@ public:
 	/// Gets the value for the specified key
 	HashTableNode* get(HashTableNode* pLikeMe)
 	{
-		HashTableNode* pOut = NULL;
+		HashTableNode* pOut = nullptr;
 		_Get((const char*)pLikeMe, (void**)(void*)&pOut);
 		return pOut;
 	}

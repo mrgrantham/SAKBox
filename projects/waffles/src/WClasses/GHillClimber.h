@@ -44,13 +44,13 @@ protected:
 
 public:
 	GMomentumGreedySearch(GTargetFunction* pCritic);
-	virtual ~GMomentumGreedySearch();
+	~GMomentumGreedySearch() override;
 
 	/// Performs unit testing. Throws an exception if any test fails.
 	static void test();
 
 	/// Returns a pointer to the state vector
-	virtual const GVec& currentVector() { return m_pVector; }
+	const GVec& currentVector() override { return m_pVector; }
 
 	/// Set all the current step sizes to this value
 	void setAllStepSizes(double dStepSize);
@@ -58,7 +58,7 @@ public:
 	/// Returns the vector of step sizes
 	GVec& stepSizes();
 
-	virtual double iterate();
+	double iterate() override;
 
 	/// d should be a value between 0 and 1
 	void setChangeFactor(double d) { m_dChangeFactor = d; }
@@ -86,13 +86,13 @@ protected:
 
 public:
 	GHillClimber(GTargetFunction* pCritic);
-	virtual ~GHillClimber();
+	~GHillClimber() override;
 
 	/// Performs unit testing. Throws an exception if any test fails.
 	static void test();
 
 	/// Returns a pointer to the current vector
-	virtual const GVec& currentVector() { return m_pVector; }
+	const GVec& currentVector() override { return m_pVector; }
 
 	/// Returns the error for the current vector
 	double currentError() { return m_dError; }
@@ -103,7 +103,7 @@ public:
 	/// Returns the vector of step sizes
 	GVec& stepSizes();
 
-	virtual double iterate();
+	double iterate() override;
 
 	/// You can call this method to simulate one annealing jump with the
 	/// specified deviation in all dimensions.
@@ -135,17 +135,17 @@ protected:
 
 public:
 	GAnnealing(GTargetFunction* pTargetFunc, GRand* pRand);
-	virtual ~GAnnealing();
+	~GAnnealing() override;
 
 	/// Performs unit testing. Throws an exception if any test fails.
 	static void test();
 
 	/// Performs a little more optimization. (Call this in a loop until
 	/// acceptable results are found.)
-	virtual double iterate();
+	double iterate() override;
 
 	/// Returns the best vector yet found.
-	virtual const GVec& currentVector() { return m_pVector; }
+	const GVec& currentVector() override { return m_pVector; }
 
 	/// Specify the current deviation to use for annealing. (A random vector
 	/// from a Normal distribution with the specified deviation will be added to each
@@ -173,17 +173,17 @@ protected:
 
 public:
 	GRandomDirectionBinarySearch(GTargetFunction* pTargetFunc, GRand* pRand);
-	virtual ~GRandomDirectionBinarySearch();
+	~GRandomDirectionBinarySearch() override;
 
 	/// Performs unit testing. Throws an exception if any test fails.
 	static void test();
 
 	/// Performs a little more optimization. (Call this in a loop until
 	/// acceptable results are found.)
-	virtual double iterate();
+	double iterate() override;
 
 	/// Returns the best vector yet found.
-	virtual const GVec& currentVector() { return m_current; }
+	const GVec& currentVector() override { return m_current; }
 };
 
 
@@ -208,14 +208,14 @@ protected:
 
 public:
 	GEmpiricalGradientDescent(GTargetFunction* pCritic, GRand* pRand);
-	virtual ~GEmpiricalGradientDescent();
+	~GEmpiricalGradientDescent() override;
 
 	/// Returns the best vector yet found.
-	virtual const GVec& currentVector() { return m_pVector; }
+	const GVec& currentVector() override { return m_pVector; }
 
 	/// Performs a little more optimization. (Call this in a loop until
 	/// acceptable results are found.)
-	virtual double iterate();
+	double iterate() override;
 
 	/// Sets the learning rate
 	void setLearningRate(double d) { m_dLearningRate = d; }
@@ -248,14 +248,14 @@ protected:
 
 public:
 	GSampleClimber(GTargetFunction* pCritic, GRand* pRand);
-	virtual ~GSampleClimber();
+	~GSampleClimber() override;
 
 	/// Returns the best vector yet found
-	virtual const GVec& currentVector() { return m_pVector; }
+	const GVec& currentVector() override { return m_pVector; }
 	
 	/// Performs a little more optimization. (Call this in a loop until
 	/// acceptable results are found.)
-	virtual double iterate();
+	double iterate() override;
 
 	/// Sets the current step size
 	void setStepSize(double d) { m_dStepSize = d; }

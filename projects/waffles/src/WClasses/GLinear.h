@@ -44,7 +44,7 @@ public:
 	/// Load from a text-format
 	GLinearRegressor(const GDomNode* pNode);
 
-	virtual ~GLinearRegressor();
+	~GLinearRegressor() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -52,10 +52,10 @@ public:
 	/// Saves the model to a text file. (This doesn't save the short-term
 	/// memory used for incremental learning, so if you're doing "incremental"
 	/// learning, it will wake up with amnesia when you load it again.)
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::clear
-	virtual void clear();
+	void clear() override;
 
 	/// Returns the matrix that represents the linear transformation.
 	GMatrix* beta() { return m_pBeta; }
@@ -70,23 +70,23 @@ public:
 	void autoTune(GMatrix& features, GMatrix& labels);
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& pIn, GVec& pOut);
+	void predict(const GVec& pIn, GVec& pOut) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& pIn, GPrediction* pOut);
+	void predictDistribution(const GVec& pIn, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
-	virtual bool canImplicitlyHandleNominalFeatures() { return false; }
+	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
-	virtual bool canImplicitlyHandleNominalLabels() { return false; }
+	bool canImplicitlyHandleNominalLabels() override { return false; }
 
 	/// See the comment for GTransducer::canImplicitlyHandleMissingFeatures
-	virtual bool canImplicitlyHandleMissingFeatures() { return false; }
+	bool canImplicitlyHandleMissingFeatures() override { return false; }
 };
 
 
@@ -111,37 +111,37 @@ public:
 	GLinearDistribution(const GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GLinearDistribution();
+	~GLinearDistribution() override;
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::clear
-	virtual void clear();
+	void clear() override;
 
 	/// Specify the prior expected deviation of the noise (The default is 1.0.)
 	void setNoiseDeviation(double d) { m_noiseDev = d; }
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& pIn, GVec& pOut);
+	void predict(const GVec& pIn, GVec& pOut) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& pIn, GPrediction* pOut);
+	void predictDistribution(const GVec& pIn, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
-	virtual bool canImplicitlyHandleNominalFeatures() { return false; }
+	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
 	/// See the comment for GTransducer::canImplicitlyHandleMissingFeatures
-	virtual bool canImplicitlyHandleMissingFeatures() { return false; }
+	bool canImplicitlyHandleMissingFeatures() override { return false; }
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
-	virtual bool canImplicitlyHandleNominalLabels() { return false; }
+	bool canImplicitlyHandleNominalLabels() override { return false; }
 };
 
 

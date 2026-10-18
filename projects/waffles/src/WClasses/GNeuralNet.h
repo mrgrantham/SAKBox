@@ -255,12 +255,12 @@ public:
 	GBlockWeightless(size_t inputs, size_t outputs) : GBlock(inputs, outputs) {}
 	GBlockWeightless(const GBlockWeightless& that) : GBlock(that) {}
 	GBlockWeightless(const GDomNode* pNode) : GBlock(pNode) {}
-	virtual ~GBlockWeightless() {}
+	~GBlockWeightless() override {}
 
-	virtual size_t weightCount() const override { return 0; }
-	virtual void initWeights(GRand& rand) override {}
-	virtual void updateGradient() override {}
-	virtual void step(double learningRate, double momentum) override {}
+	size_t weightCount() const override { return 0; }
+	void initWeights(GRand& rand) override {}
+	void updateGradient() override {}
+	void step(double learningRate, double momentum) override {}
 };
 
 
@@ -272,14 +272,14 @@ public:
 	GBlockActivation(size_t size);
 	GBlockActivation(const GBlockActivation& that) : GBlockWeightless(that) {}
 	GBlockActivation(const GDomNode* pNode);
-	virtual ~GBlockActivation() {}
+	~GBlockActivation() override {}
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Computes the input that would produce the specified output.
 	/// (May throw an exception if this activation function is not invertible.)
@@ -313,13 +313,13 @@ public:
 	GBlockIdentity(size_t size) : GBlockActivation(size) {}
 	GBlockIdentity(const GBlockIdentity& that) : GBlockActivation(that) {}
 	GBlockIdentity(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockIdentity() {}
-	virtual BlockType type() const override { return block_identity; }
-	virtual std::string name() const override { return "GBlockIdentity"; }
-	virtual GBlockIdentity* clone() const override { return new GBlockIdentity(*this); }
-	virtual double eval(double x) const override { return x; }
-	virtual double derivative(double x, double f_x) const override { return 1.0; }
-	virtual double inverse(double y) const override { return y; }
+	~GBlockIdentity() override {}
+	BlockType type() const override { return block_identity; }
+	std::string name() const override { return "GBlockIdentity"; }
+	GBlockIdentity* clone() const override { return new GBlockIdentity(*this); }
+	double eval(double x) const override { return x; }
+	double derivative(double x, double f_x) const override { return 1.0; }
+	double inverse(double y) const override { return y; }
 };
 
 
@@ -351,13 +351,13 @@ public:
 	GBlockTanh(size_t size) : GBlockActivation(size) {}
 	GBlockTanh(const GBlockTanh& that) : GBlockActivation(that) {}
 	GBlockTanh(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockTanh() {}
-	virtual BlockType type() const override { return block_tanh; }
-	virtual std::string name() const override { return "GBlockTanh"; }
-	virtual GBlockTanh* clone() const override { return new GBlockTanh(*this); }
-	virtual double eval(double x) const override { return std::tanh(x); }
-	virtual double derivative(double x, double f_x) const override { return 1.0 - (f_x * f_x); }
-	virtual double inverse(double y) const override { return 0.5 * std::log(-(y + 1) / (y - 1)); }
+	~GBlockTanh() override {}
+	BlockType type() const override { return block_tanh; }
+	std::string name() const override { return "GBlockTanh"; }
+	GBlockTanh* clone() const override { return new GBlockTanh(*this); }
+	double eval(double x) const override { return std::tanh(x); }
+	double derivative(double x, double f_x) const override { return 1.0 - (f_x * f_x); }
+	double inverse(double y) const override { return 0.5 * std::log(-(y + 1) / (y - 1)); }
 };
 
 
@@ -382,13 +382,13 @@ public:
 	GBlockScaledTanh(size_t size) : GBlockActivation(size) {}
 	GBlockScaledTanh(const GBlockScaledTanh& that) : GBlockActivation(that) {}
 	GBlockScaledTanh(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockScaledTanh() {}
-	virtual BlockType type() const override { return block_scaledtanh; }
-	virtual std::string name() const override { return "GBlockScaledTanh"; }
-	virtual GBlockScaledTanh* clone() const override { return new GBlockScaledTanh(*this); }
-	virtual double eval(double x) const override { return std::tanh(x * SCALE_IN) * SCALE_OUT; }
-	virtual double derivative(double x, double f_x) const override { return SCALE_IN/SCALE_OUT*(SCALE_OUT-f_x)*(SCALE_OUT+f_x); }
-	virtual double inverse(double y) const override { return 0.5 / SCALE_IN * std::log(-(y / SCALE_OUT + 1) / (y / SCALE_OUT - 1)); }
+	~GBlockScaledTanh() override {}
+	BlockType type() const override { return block_scaledtanh; }
+	std::string name() const override { return "GBlockScaledTanh"; }
+	GBlockScaledTanh* clone() const override { return new GBlockScaledTanh(*this); }
+	double eval(double x) const override { return std::tanh(x * SCALE_IN) * SCALE_OUT; }
+	double derivative(double x, double f_x) const override { return SCALE_IN/SCALE_OUT*(SCALE_OUT-f_x)*(SCALE_OUT+f_x); }
+	double inverse(double y) const override { return 0.5 / SCALE_IN * std::log(-(y / SCALE_OUT + 1) / (y / SCALE_OUT - 1)); }
 };
 
 
@@ -404,11 +404,11 @@ public:
 	GBlockLogistic(size_t size) : GBlockActivation(size) {}
 	GBlockLogistic(const GBlockLogistic& that) : GBlockActivation(that) {}
 	GBlockLogistic(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockLogistic() {}
-	virtual BlockType type() const override { return block_logistic; }
-	virtual std::string name() const override { return "GBlockLogistic"; }
-	virtual GBlockLogistic* clone() const override { return new GBlockLogistic(*this); }
-	virtual double eval(double x) const override
+	~GBlockLogistic() override {}
+	BlockType type() const override { return block_logistic; }
+	std::string name() const override { return "GBlockLogistic"; }
+	GBlockLogistic* clone() const override { return new GBlockLogistic(*this); }
+	double eval(double x) const override
 	{
 		if(x >= 700.0) // Don't trigger a floating point exception
 			return 1.0;
@@ -416,8 +416,8 @@ public:
 			return 0.0;
 		else return 1.0 / (std::exp(-x) + 1.0);
 	}
-	virtual double derivative(double x, double f_x) const override { return f_x * (1.0 - f_x); }
-	virtual double inverse(double y) const override { return std::log(y / (1.0 - y)); }
+	double derivative(double x, double f_x) const override { return f_x * (1.0 - f_x); }
+	double inverse(double y) const override { return std::log(y / (1.0 - y)); }
 };
 
 
@@ -430,13 +430,13 @@ public:
 	GBlockEl(size_t size) : GBlockActivation(size) {}
 	GBlockEl(const GBlockEl& that) : GBlockActivation(that) {}
 	GBlockEl(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockEl() {}
-	virtual BlockType type() const override { return block_el; }
-	virtual std::string name() const override { return "GBlockEl"; }
-	virtual GBlockEl* clone() const override { return new GBlockEl(*this); }
-	virtual double eval(double x) const override { return x < 0 ? std::exp(x) - 1.0 : x; }
-	virtual double derivative(double x, double f_x) const override { return x < 0 ? std::exp(x) : 1.0; }
-	virtual double inverse(double y) const override { return y < 0 ? std::log(y + 1) : y; }
+	~GBlockEl() override {}
+	BlockType type() const override { return block_el; }
+	std::string name() const override { return "GBlockEl"; }
+	GBlockEl* clone() const override { return new GBlockEl(*this); }
+	double eval(double x) const override { return x < 0 ? std::exp(x) - 1.0 : x; }
+	double derivative(double x, double f_x) const override { return x < 0 ? std::exp(x) : 1.0; }
+	double inverse(double y) const override { return y < 0 ? std::log(y + 1) : y; }
 };
 
 
@@ -450,16 +450,16 @@ public:
 	GBlockElPos(size_t size) : GBlockActivation(size) {}
 	GBlockElPos(const GBlockElPos& that) : GBlockActivation(that) {}
 	GBlockElPos(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockElPos() {}
-	virtual BlockType type() const override { return block_elpos; }
-	virtual std::string name() const override { return "GBlockElPos"; }
-	virtual GBlockElPos* clone() const override { return new GBlockElPos(*this); }
-	virtual double eval(double x) const override { return x == UNKNOWN_REAL_VALUE ? UNKNOWN_REAL_VALUE : (x < 0 ? std::exp(x) : x + 1); }
-	virtual double derivative(double x, double f_x) const override { return x == UNKNOWN_REAL_VALUE ? 0.0 : (x < 0 ? std::exp(x) : 1.0); }
+	~GBlockElPos() override {}
+	BlockType type() const override { return block_elpos; }
+	std::string name() const override { return "GBlockElPos"; }
+	GBlockElPos* clone() const override { return new GBlockElPos(*this); }
+	double eval(double x) const override { return x == UNKNOWN_REAL_VALUE ? UNKNOWN_REAL_VALUE : (x < 0 ? std::exp(x) : x + 1); }
+	double derivative(double x, double f_x) const override { return x == UNKNOWN_REAL_VALUE ? 0.0 : (x < 0 ? std::exp(x) : 1.0); }
 	// SAKBox: was "y = UNKNOWN_REAL_VALUE ? ..." (an assignment, so always unknown),
 	// and inverted the wrong pieces; eval is exp(x) below 0 (values below 1) and
 	// x + 1 above.
-	virtual double inverse(double y) const override { return y == UNKNOWN_REAL_VALUE ? UNKNOWN_REAL_VALUE : (y < 1 ? std::log(y) : y - 1); }
+	double inverse(double y) const override { return y == UNKNOWN_REAL_VALUE ? UNKNOWN_REAL_VALUE : (y < 1 ? std::log(y) : y - 1); }
 };
 
 
@@ -478,13 +478,13 @@ public:
 	GBlockBentIdentity(size_t size) : GBlockActivation(size) {}
 	GBlockBentIdentity(const GBlockBentIdentity& that) : GBlockActivation(that) {}
 	GBlockBentIdentity(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockBentIdentity() {}
-	virtual BlockType type() const override { return block_bentidentity; }
-	virtual std::string name() const override { return "GBlockBentIdentity"; }
-	virtual GBlockBentIdentity* clone() const override { return new GBlockBentIdentity(*this); }
-	virtual double eval(double x) const override { return BEND_AMOUNT * (std::sqrt(x * x + BEND_SIZE * BEND_SIZE) - BEND_SIZE) + x; }
-	virtual double derivative(double x, double f_x) const override { return BEND_AMOUNT * x / std::sqrt(x * x + BEND_SIZE * BEND_SIZE) + 1.0; }
-	virtual double inverse(double y) const override { return (std::sqrt(2.0 * BEND_AMOUNT * BEND_AMOUNT * BEND_AMOUNT * BEND_SIZE * y + BEND_AMOUNT * BEND_AMOUNT * BEND_SIZE * BEND_SIZE + BEND_AMOUNT * BEND_AMOUNT * y * y) - BEND_AMOUNT * BEND_SIZE - y) / (BEND_AMOUNT * BEND_AMOUNT - 1.0); }
+	~GBlockBentIdentity() override {}
+	BlockType type() const override { return block_bentidentity; }
+	std::string name() const override { return "GBlockBentIdentity"; }
+	GBlockBentIdentity* clone() const override { return new GBlockBentIdentity(*this); }
+	double eval(double x) const override { return BEND_AMOUNT * (std::sqrt(x * x + BEND_SIZE * BEND_SIZE) - BEND_SIZE) + x; }
+	double derivative(double x, double f_x) const override { return BEND_AMOUNT * x / std::sqrt(x * x + BEND_SIZE * BEND_SIZE) + 1.0; }
+	double inverse(double y) const override { return (std::sqrt(2.0 * BEND_AMOUNT * BEND_AMOUNT * BEND_AMOUNT * BEND_SIZE * y + BEND_AMOUNT * BEND_AMOUNT * BEND_SIZE * BEND_SIZE + BEND_AMOUNT * BEND_AMOUNT * y * y) - BEND_AMOUNT * BEND_SIZE - y) / (BEND_AMOUNT * BEND_AMOUNT - 1.0); }
 };
 
 
@@ -497,13 +497,13 @@ public:
 	GBlockSigExp(size_t size) : GBlockActivation(size) {}
 	GBlockSigExp(const GBlockSigExp& that) : GBlockActivation(that) {}
 	GBlockSigExp(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockSigExp() {}
-	virtual BlockType type() const override { return block_sigexp; }
-	virtual std::string name() const override { return "GBlockSigExp"; }
-	virtual GBlockSigExp* clone() const override { return new GBlockSigExp(*this); }
-	virtual double eval(double x) const override { return (x <= 0.0 ? exp(x) - 1.0 : std::log(x + 1.0)); }
-	virtual double derivative(double x, double f_x) const override { return (x <= 0.0 ? std::exp(x) : 1.0 / (x + 1.0)); }
-	virtual double inverse(double y) const override { return (y > 0.0 ? exp(y) - 1.0 : std::log(y + 1.0)); }
+	~GBlockSigExp() override {}
+	BlockType type() const override { return block_sigexp; }
+	std::string name() const override { return "GBlockSigExp"; }
+	GBlockSigExp* clone() const override { return new GBlockSigExp(*this); }
+	double eval(double x) const override { return (x <= 0.0 ? exp(x) - 1.0 : std::log(x + 1.0)); }
+	double derivative(double x, double f_x) const override { return (x <= 0.0 ? std::exp(x) : 1.0 / (x + 1.0)); }
+	double inverse(double y) const override { return (y > 0.0 ? exp(y) - 1.0 : std::log(y + 1.0)); }
 };
 
 
@@ -519,12 +519,12 @@ public:
 	GBlockGaussian(size_t size) : GBlockActivation(size) {}
 	GBlockGaussian(const GBlockGaussian& that) : GBlockActivation(that) {}
 	GBlockGaussian(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockGaussian() {}
-	virtual BlockType type() const override { return block_gaussian; }
-	virtual std::string name() const override { return "GBlockGaussian"; }
-	virtual GBlockGaussian* clone() const override { return new GBlockGaussian(*this); }
-	virtual double eval(double x) const override { return std::exp(-(x * x)); }
-	virtual double derivative(double x, double f_x) const override { return -2.0 * x * f_x; }
+	~GBlockGaussian() override {}
+	BlockType type() const override { return block_gaussian; }
+	std::string name() const override { return "GBlockGaussian"; }
+	GBlockGaussian* clone() const override { return new GBlockGaussian(*this); }
+	double eval(double x) const override { return std::exp(-(x * x)); }
+	double derivative(double x, double f_x) const override { return -2.0 * x * f_x; }
 };
 
 
@@ -540,12 +540,12 @@ public:
 	GBlockSine(size_t size) : GBlockActivation(size) {}
 	GBlockSine(const GBlockSine& that) : GBlockActivation(that) {}
 	GBlockSine(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockSine() {}
-	virtual BlockType type() const override { return block_sine; }
-	virtual std::string name() const override { return "GBlockSine"; }
-	virtual GBlockSine* clone() const override { return new GBlockSine(*this); }
-	virtual double eval(double x) const override { return std::sin(x); }
-	virtual double derivative(double x, double f_x) const override { return std::cos(x); }
+	~GBlockSine() override {}
+	BlockType type() const override { return block_sine; }
+	std::string name() const override { return "GBlockSine"; }
+	GBlockSine* clone() const override { return new GBlockSine(*this); }
+	double eval(double x) const override { return std::sin(x); }
+	double derivative(double x, double f_x) const override { return std::cos(x); }
 };
 
 
@@ -562,12 +562,12 @@ public:
 	GBlockRectifier(size_t size) : GBlockActivation(size) {}
 	GBlockRectifier(const GBlockSine& that) : GBlockActivation(that) {}
 	GBlockRectifier(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockRectifier() {}
-	virtual BlockType type() const override { return block_rectifier; }
-	virtual std::string name() const override { return "GBlockRectifier"; }
-	virtual GBlockRectifier* clone() const override { return new GBlockRectifier(*this); }
-	virtual double eval(double x) const override { return std::max(0.0, x); }
-	virtual double derivative(double x, double f_x) const override { return (x >= 0.0 ? 1.0 : 0.0); }
+	~GBlockRectifier() override {}
+	BlockType type() const override { return block_rectifier; }
+	std::string name() const override { return "GBlockRectifier"; }
+	GBlockRectifier* clone() const override { return new GBlockRectifier(*this); }
+	double eval(double x) const override { return std::max(0.0, x); }
+	double derivative(double x, double f_x) const override { return (x >= 0.0 ? 1.0 : 0.0); }
 };
 
 
@@ -584,13 +584,13 @@ public:
 	GBlockLeakyRectifier(size_t size) : GBlockActivation(size) {}
 	GBlockLeakyRectifier(const GBlockLeakyRectifier& that) : GBlockActivation(that) {}
 	GBlockLeakyRectifier(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockLeakyRectifier() {}
-	virtual BlockType type() const override { return block_leakyrectifier; }
-	virtual std::string name() const override { return "GBlockLeakyRectifier"; }
-	virtual GBlockLeakyRectifier* clone() const override { return new GBlockLeakyRectifier(*this); }
-	virtual double eval(double x) const override { return x >= 0.0 ? x : 0.01 * x; }
-	virtual double derivative(double x, double f_x) const override { return x >= 0.0 ? 1.0 : 0.01; }
-	virtual double inverse(double y) const override { return (y > 0.0 ? y : 100.0 * y); }
+	~GBlockLeakyRectifier() override {}
+	BlockType type() const override { return block_leakyrectifier; }
+	std::string name() const override { return "GBlockLeakyRectifier"; }
+	GBlockLeakyRectifier* clone() const override { return new GBlockLeakyRectifier(*this); }
+	double eval(double x) const override { return x >= 0.0 ? x : 0.01 * x; }
+	double derivative(double x, double f_x) const override { return x >= 0.0 ? 1.0 : 0.01; }
+	double inverse(double y) const override { return (y > 0.0 ? y : 100.0 * y); }
 };
 
 
@@ -608,13 +608,13 @@ public:
 	GBlockSoftPlus(size_t size) : GBlockActivation(size) {}
 	GBlockSoftPlus(const GBlockSoftPlus& that) : GBlockActivation(that) {}
 	GBlockSoftPlus(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockSoftPlus() {}
-	virtual BlockType type() const override { return block_softplus; }
-	virtual std::string name() const override { return "GBlockSoftPlus"; }
-	virtual GBlockSoftPlus* clone() const override { return new GBlockSoftPlus(*this); }
-	virtual double eval(double x) const override { return x > 500 ? x : log(1.0 + exp(x)); }
-	virtual double derivative(double x, double f_x) const override { return 1.0 / (1.0 + exp(-x)); }
-	virtual double inverse(double y) const override { return log(exp(y) - 1.0); }
+	~GBlockSoftPlus() override {}
+	BlockType type() const override { return block_softplus; }
+	std::string name() const override { return "GBlockSoftPlus"; }
+	GBlockSoftPlus* clone() const override { return new GBlockSoftPlus(*this); }
+	double eval(double x) const override { return x > 500 ? x : log(1.0 + exp(x)); }
+	double derivative(double x, double f_x) const override { return 1.0 / (1.0 + exp(-x)); }
+	double inverse(double y) const override { return log(exp(y) - 1.0); }
 };
 
 
@@ -631,16 +631,16 @@ public:
 	GBlockSoftRoot(size_t size) : GBlockActivation(size) {}
 	GBlockSoftRoot(const GBlockSoftRoot& that) : GBlockActivation(that) {}
 	GBlockSoftRoot(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	virtual ~GBlockSoftRoot() {}
-	virtual BlockType type() const override { return block_softroot; }
-	virtual std::string name() const override { return "GBlockSoftRoot"; }
-	virtual GBlockSoftRoot* clone() const override { return new GBlockSoftRoot(*this); }
-	virtual double eval(double x) const override
+	~GBlockSoftRoot() override {}
+	BlockType type() const override { return block_softroot; }
+	std::string name() const override { return "GBlockSoftRoot"; }
+	GBlockSoftRoot* clone() const override { return new GBlockSoftRoot(*this); }
+	double eval(double x) const override
 	{
 		double d = std::sqrt(x * x + 1.0);
 		return std::sqrt(d + x) - std::sqrt(d - x);
 	}
-	virtual double derivative(double x, double f_x) const override
+	double derivative(double x, double f_x) const override
 	{
 		if(std::abs(x) > 1e7)
 			return 0.0;
@@ -648,7 +648,7 @@ public:
 		double t = x / d;
 		return (t + 1.0) / (2.0 * std::sqrt(d + x)) - (t - 1.0) / (2.0 * std::sqrt(d - x));
 	}
-	virtual double inverse(double y) const override { return 0.5 * y * std::sqrt(y * y + 4.0); }
+	double inverse(double y) const override { return 0.5 * y * std::sqrt(y * y + 4.0); }
 };
 
 
@@ -661,20 +661,20 @@ public:
 	GBlockSoftMax(size_t size) : GBlockWeightless(size, size) {}
 	GBlockSoftMax(const GBlockSoftMax& that) : GBlockWeightless(that) {}
 	GBlockSoftMax(const GDomNode* pNode) : GBlockWeightless(pNode) {}
-	virtual ~GBlockSoftMax() {}
-	virtual BlockType type() const override { return block_softmax; }
-	virtual std::string name() const override { return "GBlockSoftMax"; }
-	virtual GBlockSoftMax* clone() const override { return new GBlockSoftMax(*this); }
+	~GBlockSoftMax() override {}
+	BlockType type() const override { return block_softmax; }
+	std::string name() const override { return "GBlockSoftMax"; }
+	GBlockSoftMax* clone() const override { return new GBlockSoftMax(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Computes the blame with cross-entropy
-	virtual double computeBlame(const GVec& target) override;
+	double computeBlame(const GVec& target) override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 };
 
 
@@ -694,20 +694,20 @@ public:
 	GBlockSpectral(double min_wavelength, double max_wavelength, size_t units, bool linear_spacing = false);
 	GBlockSpectral(const GBlockSpectral& that) : GBlockWeightless(that) {}
 	GBlockSpectral(const GDomNode* pNode);
-	virtual ~GBlockSpectral() {}
-	virtual BlockType type() const override { return block_spectral; }
-	virtual std::string name() const override { return "GBlockSpectral"; }
-	virtual GBlockSpectral* clone() const override { return new GBlockSpectral(*this); }
+	~GBlockSpectral() override {}
+	BlockType type() const override { return block_spectral; }
+	std::string name() const override { return "GBlockSpectral"; }
+	GBlockSpectral* clone() const override { return new GBlockSpectral(*this); }
 
 	/// Marshall this block into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc) const override;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 };
 
 
@@ -721,17 +721,17 @@ public:
 	GBlockRepeater(size_t in, size_t out) : GBlockWeightless(in, out) { if(in > out) throw Ex("Expected more outputs than inputs"); }
 	GBlockRepeater(const GBlockRepeater& that) : GBlockWeightless(that) {}
 	GBlockRepeater(const GDomNode* pNode) : GBlockWeightless(pNode) {}
-	virtual ~GBlockRepeater() {}
-	virtual BlockType type() const override { return block_repeater; }
-	virtual std::string name() const override { return "GBlockRepeater"; }
-	virtual GBlockRepeater* clone() const override { return new GBlockRepeater(*this); }
+	~GBlockRepeater() override {}
+	BlockType type() const override { return block_repeater; }
+	std::string name() const override { return "GBlockRepeater"; }
+	GBlockRepeater* clone() const override { return new GBlockRepeater(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 };
 
 
@@ -750,17 +750,17 @@ public:
 	GBlockSpreader(size_t units, size_t spread);
 	GBlockSpreader(const GBlockSpreader& that);
 	GBlockSpreader(const GDomNode* pNode);
-	virtual ~GBlockSpreader() {}
-	virtual BlockType type() const override { return block_spreader; }
-	virtual std::string name() const override { return "GBlockSpreader"; }
-	virtual GBlockSpreader* clone() const override { return new GBlockSpreader(*this); }
+	~GBlockSpreader() override {}
+	BlockType type() const override { return block_spreader; }
+	std::string name() const override { return "GBlockSpreader"; }
+	GBlockSpreader* clone() const override { return new GBlockSpreader(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 };
 
 
@@ -781,39 +781,39 @@ public:
 	GBlockLinear(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockLinear() {}
+	~GBlockLinear() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_linear; }
+	BlockType type() const override { return block_linear; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockLinear"; }
+	std::string name() const override { return "GBlockLinear"; }
 
 	/// Returns a copy of this block
-	virtual GBlockLinear* clone() const override { return new GBlockLinear(*this); }
+	GBlockLinear* clone() const override { return new GBlockLinear(*this); }
 
 	/// Returns a string representation of this block
-	virtual std::string to_str(bool includeWeights = false, bool includeActivations = false) const override;
+	std::string to_str(bool includeWeights = false, bool includeActivations = false) const override;
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
 	/// (Assumes backProp has already been called.)
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Updates the gradient using only the sign of the input, ignoring the magnitude of the input.
-	virtual void updateGradientNormalized() override;
+	void updateGradientNormalized() override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 
 	/// Computes weights using Ordinary Least Squares
 	void ordinaryLeastSquares(const GMatrix& features, const GMatrix& labels, GVec& outWeights);
@@ -823,25 +823,25 @@ public:
 	void adjustInputRange(GVec& weights, size_t inputIndex, double oldMin, double oldMax, double newMin, double newMax);
 
 	/// Initializes weights to implement the identity function
-	virtual void init_identity(GVec& weights) override;
+	void init_identity(GVec& weights) override;
 
 	/// Puts a 1 in elements that correspond with bias weights and a 0 in all other elements.
-	virtual void biasMask(GVec& mask) override;
+	void biasMask(GVec& mask) override;
 
 	/// Returns the number of weights this layer would have if its input and output sizes were adjusted by the given values.
-	virtual size_t adjustedWeightCount(int inAdjustment, int outAdjustment) override;
+	size_t adjustedWeightCount(int inAdjustment, int outAdjustment) override;
 
 	/// Returns the index of the first input that this layer completely ignores, or INVALID_INDEX if there are none.
-	virtual size_t firstIgnoredInput(const GVec& weights) override;
+	size_t firstIgnoredInput(const GVec& weights) override;
 
 	/// Add newInputs units to the input and newOutput units to the output of this block.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	virtual void addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand) override;
+	void addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand) override;
 
 	/// If input is not INVALID_INDEX, then the specified input will be dropped.
 	/// If output is not INVALID_INDEX, then the specified output will be dropped.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	virtual void dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft) override;
+	void dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft) override;
 
 	/// Pass in two linear layers with their corresponding weights.
 	/// The weights will be combined into a single layer that performs the function of both layers.
@@ -873,33 +873,33 @@ public:
 	GBlockFanOut(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockFanOut() {}
+	~GBlockFanOut() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_fanout; }
+	BlockType type() const override { return block_fanout; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockFanOut"; }
+	std::string name() const override { return "GBlockFanOut"; }
 
 	/// Returns a copy of this block
-	virtual GBlockFanOut* clone() const override { return new GBlockFanOut(*this); }
+	GBlockFanOut* clone() const override { return new GBlockFanOut(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
 	/// (Assumes backProp has already been called.)
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 };
 
 
@@ -927,39 +927,39 @@ public:
 	GBlockRunningNormalizer(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockRunningNormalizer() {}
+	~GBlockRunningNormalizer() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_linear; }
+	BlockType type() const override { return block_linear; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockRunningNormalizer"; }
+	std::string name() const override { return "GBlockRunningNormalizer"; }
 
 	/// Returns a copy of this block
-	virtual GBlockRunningNormalizer* clone() const override { return new GBlockRunningNormalizer(*this); }
+	GBlockRunningNormalizer* clone() const override { return new GBlockRunningNormalizer(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
 	/// (Assumes backProp has already been called.)
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Updates the weights
-	virtual void step(double learningRate, double momentum) override;
+	void step(double learningRate, double momentum) override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Returns the number of gradient elements
-	virtual size_t gradCount() const override;
+	size_t gradCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 };
 
 
@@ -982,33 +982,33 @@ public:
 	GBlockWeightDigester(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockWeightDigester() {}
+	~GBlockWeightDigester() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_weight_digester; }
+	BlockType type() const override { return block_weight_digester; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockWeightDigester"; }
+	std::string name() const override { return "GBlockWeightDigester"; }
 
 	/// Returns a copy of this block
-	virtual GBlockWeightDigester* clone() const override { return new GBlockWeightDigester(*this); }
+	GBlockWeightDigester* clone() const override { return new GBlockWeightDigester(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
 	/// (Assumes backProp has already been called.)
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 };
 
 
@@ -1035,33 +1035,33 @@ public:
 	GBlockTemperedLinear(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockTemperedLinear() {}
+	~GBlockTemperedLinear() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_temperedlinear; }
+	BlockType type() const override { return block_temperedlinear; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockTemperedLinear"; }
+	std::string name() const override { return "GBlockTemperedLinear"; }
 
 	/// Returns a copy of this block
-	virtual GBlockTemperedLinear* clone() const override { return new GBlockTemperedLinear(*this); }
+	GBlockTemperedLinear* clone() const override { return new GBlockTemperedLinear(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
 	/// (Assumes backProp has already been called.)
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 };
 
 
@@ -1091,36 +1091,36 @@ public:
 	GBlockConv(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockConv() {}
+	~GBlockConv() override {}
 
 	/// Marshall this block into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc) const override;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_conv; }
+	BlockType type() const override { return block_conv; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockConv"; }
+	std::string name() const override { return "GBlockConv"; }
 
 	/// Returns a copy of this block
-	virtual GBlockConv* clone() const override { return new GBlockConv(*this); }
+	GBlockConv* clone() const override { return new GBlockConv(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
 	/// (Assumes backProp has already been called.)
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 
 	static void test();
 };
@@ -1148,23 +1148,23 @@ public:
 	GBlockMaxPooling2D(GDomNode* pNode);
 
 	/// Destructor
-	~GBlockMaxPooling2D();
+	~GBlockMaxPooling2D() override;
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_scalarsum; }
+	BlockType type() const override { return block_scalarsum; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockMaxPooling2D"; }
+	std::string name() const override { return "GBlockMaxPooling2D"; }
 
 	/// Returns a copy of this block
-	virtual GBlockMaxPooling2D* clone() const override { return new GBlockMaxPooling2D(*this); }
+	GBlockMaxPooling2D* clone() const override { return new GBlockMaxPooling2D(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 };
 
 
@@ -1185,23 +1185,23 @@ public:
 	GBlockScalarSum(GDomNode* pNode);
 
 	/// Destructor
-	~GBlockScalarSum();
+	~GBlockScalarSum() override;
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_scalarsum; }
+	BlockType type() const override { return block_scalarsum; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockScalarSum"; }
+	std::string name() const override { return "GBlockScalarSum"; }
 
 	/// Returns a copy of this block
-	virtual GBlockScalarSum* clone() const override { return new GBlockScalarSum(*this); }
+	GBlockScalarSum* clone() const override { return new GBlockScalarSum(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 };
 
 
@@ -1223,23 +1223,23 @@ public:
 	GBlockScalarProduct(GDomNode* pNode);
 
 	/// Destructor
-	~GBlockScalarProduct();
+	~GBlockScalarProduct() override;
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_scalarproduct; }
+	BlockType type() const override { return block_scalarproduct; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockScalarProduct"; }
+	std::string name() const override { return "GBlockScalarProduct"; }
 
 	/// Returns a copy of this block
-	virtual GBlockScalarProduct* clone() const override { return new GBlockScalarProduct(*this); }
+	GBlockScalarProduct* clone() const override { return new GBlockScalarProduct(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 };
 
 
@@ -1262,23 +1262,23 @@ public:
 	GBlockBiasProduct(GDomNode* pNode);
 
 	/// Destructor
-	~GBlockBiasProduct();
+	~GBlockBiasProduct() override;
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_biasproduct; }
+	BlockType type() const override { return block_biasproduct; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockBiasProduct"; }
+	std::string name() const override { return "GBlockBiasProduct"; }
 
 	/// Returns a copy of this block
-	virtual GBlockBiasProduct* clone() const override { return new GBlockBiasProduct(*this); }
+	GBlockBiasProduct* clone() const override { return new GBlockBiasProduct(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 };
 
 
@@ -1302,23 +1302,23 @@ public:
 	GBlockSwitch(GDomNode* pNode);
 
 	/// Destructor
-	~GBlockSwitch();
+	~GBlockSwitch() override;
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_switch; }
+	BlockType type() const override { return block_switch; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockSwitch"; }
+	std::string name() const override { return "GBlockSwitch"; }
 
 	/// Returns a copy of this block
-	virtual GBlockSwitch* clone() const override { return new GBlockSwitch(*this); }
+	GBlockSwitch* clone() const override { return new GBlockSwitch(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 };
 
 
@@ -1345,53 +1345,53 @@ public:
 	GBlockHinge(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockHinge() {}
+	~GBlockHinge() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_hinge; }
+	BlockType type() const override { return block_hinge; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockHinge"; }
+	std::string name() const override { return "GBlockHinge"; }
 
 	/// Returns a copy of this block
-	virtual GBlockHinge* clone() const override { return new GBlockHinge(*this); }
+	GBlockHinge* clone() const override { return new GBlockHinge(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Updates the weights
-	virtual void step(double learningRate, double momentum) override;
+	void step(double learningRate, double momentum) override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 
 	/// Initialize the weights to implement the identity function.
-	virtual void init_identity(GVec& weights) override;
+	void init_identity(GVec& weights) override;
 
 	/// Return true iff the weights for this block make it implement identity.
-	virtual bool is_identity(GVec& weights) override;
+	bool is_identity(GVec& weights) override;
 
 	/// Returns the number of weights this layer would have if its input and output sizes were adjusted by the given values.
-	virtual size_t adjustedWeightCount(int inAdjustment, int outAdjustment) override;
+	size_t adjustedWeightCount(int inAdjustment, int outAdjustment) override;
 
 	/// Add newInputs units to the input and newOutput units to the output of this block.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	virtual void addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand) override;
+	void addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand) override;
 
 	/// If input is not INVALID_INDEX, then the specified input will be dropped.
 	/// If output is not INVALID_INDEX, then the specified output will be dropped.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	virtual void dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft) override;
+	void dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft) override;
 };
 
 
@@ -1415,53 +1415,53 @@ public:
 	GBlockElbow(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockElbow() {}
+	~GBlockElbow() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_elbow; }
+	BlockType type() const override { return block_elbow; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockElbow"; }
+	std::string name() const override { return "GBlockElbow"; }
 
 	/// Returns a copy of this block
-	virtual GBlockElbow* clone() const override { return new GBlockElbow(*this); }
+	GBlockElbow* clone() const override { return new GBlockElbow(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Updates the weights
-	virtual void step(double learningRate, double momentum) override;
+	void step(double learningRate, double momentum) override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 
 	/// Initialize the weights to implement the identity function.
-	virtual void init_identity(GVec& weights) override;
+	void init_identity(GVec& weights) override;
 
 	/// Return true iff the weights for this block make it implement identity.
-	virtual bool is_identity(GVec& weights) override;
+	bool is_identity(GVec& weights) override;
 
 	/// Returns the number of weights this layer would have if its input and output sizes were adjusted by the given values.
-	virtual size_t adjustedWeightCount(int inAdjustment, int outAdjustment) override;
+	size_t adjustedWeightCount(int inAdjustment, int outAdjustment) override;
 
 	/// Add newInputs units to the input and newOutput units to the output of this block.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	virtual void addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand) override;
+	void addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand) override;
 
 	/// If input is not INVALID_INDEX, then the specified input will be dropped.
 	/// If output is not INVALID_INDEX, then the specified output will be dropped.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	virtual void dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft) override;
+	void dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft) override;
 };
 
 
@@ -1484,35 +1484,35 @@ public:
 	GBlockLeakyTanh(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockLeakyTanh() {}
+	~GBlockLeakyTanh() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_hinge; }
+	BlockType type() const override { return block_hinge; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockLeakyTanh"; }
+	std::string name() const override { return "GBlockLeakyTanh"; }
 
 	/// Returns a copy of this block
-	virtual GBlockLeakyTanh* clone() const override { return new GBlockLeakyTanh(*this); }
+	GBlockLeakyTanh* clone() const override { return new GBlockLeakyTanh(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Updates the weights
-	virtual void step(double learningRate, double momentum) override;
+	void step(double learningRate, double momentum) override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 };
 
 
@@ -1537,35 +1537,35 @@ public:
 	GBlockSoftExp(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockSoftExp() {}
+	~GBlockSoftExp() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_softexp; }
+	BlockType type() const override { return block_softexp; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockSoftExp"; }
+	std::string name() const override { return "GBlockSoftExp"; }
 
 	/// Marshall this block into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc) const override;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Returns a copy of this block
-	virtual GBlockSoftExp* clone() const override { return new GBlockSoftExp(*this); }
+	GBlockSoftExp* clone() const override { return new GBlockSoftExp(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 };
 
 
@@ -1596,32 +1596,32 @@ public:
 	GBlockPAL(GDomNode* pNode, GRand& rand);
 
 	/// Destructor
-	virtual ~GBlockPAL() {}
+	~GBlockPAL() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_pal; }
+	BlockType type() const override { return block_pal; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockPAL"; }
+	std::string name() const override { return "GBlockPAL"; }
 
 	/// Returns a copy of this block
-	virtual GBlockPAL* clone() const override { return new GBlockPAL(*this); }
+	GBlockPAL* clone() const override { return new GBlockPAL(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 };
 
 
@@ -1652,32 +1652,32 @@ public:
 	GBlockHypercube(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockHypercube() {}
+	~GBlockHypercube() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_hypercube; }
+	BlockType type() const override { return block_hypercube; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockHypercube"; }
+	std::string name() const override { return "GBlockHypercube"; }
 
 	/// Returns a copy of this block
-	virtual GBlockHypercube* clone() const override { return new GBlockHypercube(*this); }
+	GBlockHypercube* clone() const override { return new GBlockHypercube(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 };
 
 
@@ -1699,32 +1699,32 @@ public:
 	GBlockOptional(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockOptional() {}
+	~GBlockOptional() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_optional; }
+	BlockType type() const override { return block_optional; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockOptional"; }
+	std::string name() const override { return "GBlockOptional"; }
 
 	/// Returns a copy of this block
-	virtual GBlockOptional* clone() const override { return new GBlockOptional(*this); }
+	GBlockOptional* clone() const override { return new GBlockOptional(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 };
 
 
@@ -1752,38 +1752,38 @@ public:
 	GBlockCatIn(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockCatIn() {}
+	~GBlockCatIn() override {}
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_catin; }
+	BlockType type() const override { return block_catin; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockCatIn"; }
+	std::string name() const override { return "GBlockCatIn"; }
 
 	/// Returns a copy of this block
-	virtual GBlockCatIn* clone() const override { return new GBlockCatIn(*this); }
+	GBlockCatIn* clone() const override { return new GBlockCatIn(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Updates the weights
-	virtual void step(double learningRate, double momentum) override;
+	void step(double learningRate, double momentum) override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Returns the number of elements for the gradient vector.
-	virtual size_t gradCount() const override;
+	size_t gradCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 };
 
 
@@ -1800,21 +1800,21 @@ public:
 	GBlockCatOut(size_t categories, double margin = 0.3);
 	GBlockCatOut(const GBlockCatOut& that) : GBlockWeightless(that), m_margin(that.m_margin) {}
 	GBlockCatOut(const GDomNode* pNode);
-	virtual ~GBlockCatOut() {}
+	~GBlockCatOut() override {}
 
-	virtual BlockType type() const override { return block_catout; }
-	virtual std::string name() const override { return "GBlockCatOut"; }
-	virtual GBlockCatOut* clone() const override { return new GBlockCatOut(*this); }
+	BlockType type() const override { return block_catout; }
+	std::string name() const override { return "GBlockCatOut"; }
+	GBlockCatOut* clone() const override { return new GBlockCatOut(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Computes blame for this layer. (Assumes target is a one-dimensional index value casted as a double)
-	virtual double computeBlame(const GVec& target) override;
+	double computeBlame(const GVec& target) override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 };
 
 
@@ -1868,38 +1868,38 @@ public:
 	GBlockLSTM(GDomNode* pNode);
 
 	/// Destructor
-	virtual ~GBlockLSTM();
+	~GBlockLSTM() override;
 
 	/// Returns the type of this block
-	virtual BlockType type() const override { return block_lstm; }
+	BlockType type() const override { return block_lstm; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GBlockLSTM"; }
+	std::string name() const override { return "GBlockLSTM"; }
 
 	/// Returns a copy of this block
-	virtual GBlockLSTM* clone() const override { return new GBlockLSTM(*this); }
+	GBlockLSTM* clone() const override { return new GBlockLSTM(*this); }
 
 	/// Evaluate the input, set the output.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Advances through time
-	virtual void resetState() override;
+	void resetState() override;
 
 	/// Advances through time
-	virtual GBlock* advanceState(size_t unfoldedInstances) override;
+	GBlock* advanceState(size_t unfoldedInstances) override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Updates the gradient for updating the weights by gradient descent.
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 
 protected:
 	void stepInTime();
@@ -2076,19 +2076,19 @@ public:
 	GNeuralNet(GDomNode* pNode, GRand& rand);
 
 	/// Destructor
-	virtual ~GNeuralNet();
+	~GNeuralNet() override;
 
 	/// Deletes all the layers
 	void deleteAllLayers();
 
 	/// Returns the type of this layer
-	virtual BlockType type() const override { return block_neuralnet; }
+	BlockType type() const override { return block_neuralnet; }
 
 	/// Returns the name of this block
-	virtual std::string name() const override { return "GNeuralNet"; }
+	std::string name() const override { return "GNeuralNet"; }
 
 	/// Retuns a copy of this neural network
-	virtual GNeuralNet* clone() const override { return new GNeuralNet(*this); }
+	GNeuralNet* clone() const override { return new GNeuralNet(*this); }
 
 	/// Marshal this object into a dom node.
 	GDomNode* serialize(GDom* pDoc) const override;
@@ -2110,7 +2110,7 @@ public:
 	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h, GBlock* i, GBlock* j, GBlock* k) { add(a); add(b, c, d, e, f, g, h, i, j, k); }
 
 	/// Attaches this neural network to the relevant buffers for it to operate on.
-	virtual void bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInBlame, GVec* pWeights, GVec* pGradient) override;
+	void bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInBlame, GVec* pWeights, GVec* pGradient) override;
 
 	/// Concatenates a block to the last (output-most) layer in this neural network.
 	/// (inPos specifies the starting position of the inputs into this block.)
@@ -2157,31 +2157,31 @@ public:
 	const GLayer& outputLayer() const { return *m_layers[m_layers.size() - 1]; }
 
 	/// Returns a string representation of this object
-	virtual std::string to_str(bool includeWeights = false, bool includeActivations = false) const override;
+	std::string to_str(bool includeWeights = false, bool includeActivations = false) const override;
 
 	/// Same as to_str, but it lets the use specify a string to prepend to each line, and optionally includes the weights
 	std::string to_str(const std::string& line_prefix, bool includeWeights = false, bool includeActivations = false) const;
 
 	/// Returns the number of inputs this layer consumes
-	virtual size_t inputs() const override { return m_layers[0]->inputs(); }
+	size_t inputs() const override { return m_layers[0]->inputs(); }
 
 	/// Returns the number of outputs this layer produces
-	virtual size_t outputs() const override { return outputLayer().outputs(); }
+	size_t outputs() const override { return outputLayer().outputs(); }
 
 	/// Recounts the number of weights.
 	void recount();
 
 	/// Returns the number of weights.
-	virtual size_t weightCount() const override;
+	size_t weightCount() const override;
 
 	/// Returns the number of elements in the gradient.
-	virtual size_t gradCount() const override;
+	size_t gradCount() const override;
 
 	/// Copies all the layers from other.
 	void copyTopology(const GNeuralNet& other);
 
 	/// Initialize the weights. (This is called by init.)
-	virtual void initWeights(GRand& rand) override;
+	void initWeights(GRand& rand) override;
 
 	/// Allocates buffers needed for training, binds all the layers to these buffers,
 	/// and to each other, initializes the weights with small random values, and
@@ -2202,35 +2202,35 @@ public:
 	GVec& forwardProp(const GVec& input);
 
 	/// Computes blame on the output of this neural network.
-	virtual double computeBlame(const GVec& target) override;
+	double computeBlame(const GVec& target) override;
 
 	/// Resets the state in any recurrent connections
-	virtual void resetState() override;
+	void resetState() override;
 
 	/// Resets the state in any recurrent connections
-	virtual GBlock* advanceState(size_t unfoldedInstances) override;
+	GBlock* advanceState(size_t unfoldedInstances) override;
 
 	/// Backpropagates the error. If inputBlame is non-null, the blame for the inputs will also be computed.
 	void backpropagate(GVec* inputBlame = nullptr);
 
 	/// Updates the gradient vector
-	virtual void updateGradient() override;
+	void updateGradient() override;
 
 	/// Update the gradient using only the sign of the input, ignoring the magnitude of the input.
-	virtual void updateGradientNormalized() override;
+	void updateGradientNormalized() override;
 
 	/// Adds the gradient scaled by the learning rate to the weights
-	virtual void step(double learningRate, double momentum) override;
+	void step(double learningRate, double momentum) override;
 
 	/// Adds the gradient scaled by the learningRate to the weights and also jitters it.
-	virtual void step_jitter(double learningRate, double momentum, double jitter, GRand& rand) override;
+	void step_jitter(double learningRate, double momentum, double jitter, GRand& rand) override;
 
 	/// Returns a mathematical expression of this neural network.
 	/// (Currently only supports linear, tanh, and scalarProduct blocks in one-block layers.)
 	std::string toEquation();
 
 	/// Puts a 1 in elements that correspond with bias weights and a 0 in all other elements.
-	virtual void biasMask(GVec& mask) override;
+	void biasMask(GVec& mask) override;
 
 	/// Returns the index of the first weight associated with the specified layer.
 	size_t layerStart(size_t layer);
@@ -2241,10 +2241,10 @@ public:
 protected:
 
 	/// Internal method to forward propagate. Assumes the input and output have already been hooked up.
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
 	/// Internal method to backpropate error. Assumes inBlame and outBlame have already been hooked up.
-	virtual void backProp() override;
+	void backProp() override;
 
 	/// Like backProp, but it doesn't compute blame on the inputs.
 	void backPropFast();
@@ -2258,9 +2258,9 @@ protected:
 
 class GBlockResidual : public GNeuralNet
 {
-	virtual void forwardProp() override;
+	void forwardProp() override;
 
-	virtual void backProp() override;
+	void backProp() override;
 };
 
 
@@ -2280,7 +2280,7 @@ protected:
 public:
 	GNeuralNetLearner();
 	//GNeuralNetLearner(const GDomNode* pNode);
-	virtual ~GNeuralNetLearner();
+	~GNeuralNetLearner() override;
 
 	/// Returns a reference to the neural net that this class wraps
 	GNeuralNet& nn() { return m_nn; }
@@ -2288,45 +2288,45 @@ public:
 	/// Lazily creates an optimizer for the neural net that this class wraps, and returns a reference to it.
 	GNeuralNetOptimizer& optimizer();
 
-	virtual void trainIncremental(const GVec &in, const GVec &out) override;
-	virtual void trainSparse(GSparseMatrix &features, GMatrix &labels) override;
+	void trainIncremental(const GVec &in, const GVec &out) override;
+	void trainSparse(GSparseMatrix &features, GMatrix &labels) override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Saves the model to a text file.
-	virtual GDomNode* serialize(GDom* pDoc) const override;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::clear
-	virtual void clear() override;
+	void clear() override;
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out) override;
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut) override;
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
-	virtual bool canImplicitlyHandleNominalFeatures() override { return false; }
+	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
 	/// See the comment for GTransducer::supportedFeatureRange
-	virtual bool supportedFeatureRange(double* pOutMin, double* pOutMax) override;
+	bool supportedFeatureRange(double* pOutMin, double* pOutMax) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleMissingFeatures
-	virtual bool canImplicitlyHandleMissingFeatures() override { return false; }
+	bool canImplicitlyHandleMissingFeatures() override { return false; }
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
-	virtual bool canImplicitlyHandleNominalLabels() override { return false; }
+	bool canImplicitlyHandleNominalLabels() override { return false; }
 
 	/// See the comment for GTransducer::supportedFeatureRange
-	virtual bool supportedLabelRange(double* pOutMin, double* pOutMax) override;
+	bool supportedLabelRange(double* pOutMin, double* pOutMax) override;
 
 protected:
 	/// See the comment for GIncrementalLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	virtual void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
+	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
 };
 
 

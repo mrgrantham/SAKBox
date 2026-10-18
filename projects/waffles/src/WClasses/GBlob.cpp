@@ -25,7 +25,7 @@ using std::string;
 
 GBlobIncoming::GBlobIncoming()
 {
-	m_pBuffer = NULL;
+	m_pBuffer = nullptr;
 	m_nBufferSize = 0;
 	m_nBufferPos = 0;
 	m_bDeleteBuffer = false;
@@ -140,7 +140,7 @@ GBlobOutgoing::GBlobOutgoing(size_t nBufferSize, bool bOkToResizeBuffer)
 	if(nBufferSize > 0)
 		m_pBuffer = new unsigned char[nBufferSize];
 	else
-		m_pBuffer = NULL;
+		m_pBuffer = nullptr;
 	m_nBufferSize = nBufferSize;
 	m_nBufferPos = 0;
 	m_bOkToResizeBuffer = bOkToResizeBuffer;
@@ -255,7 +255,7 @@ void GBlobOutgoing::poke(size_t nIndex, const int n)
 
 
 GBlobQueue::GBlobQueue()
-: m_pBuffer(NULL), m_bufferAllocation(0), m_bufferBytes(0), m_pPos(NULL), m_bytesRemaining(0)
+: m_pBuffer(nullptr), m_bufferAllocation(0), m_bufferBytes(0), m_pPos(nullptr), m_bytesRemaining(0)
 {
 }
 
@@ -301,7 +301,7 @@ const char* GBlobQueue::dequeue(size_t len)
 			memcpy(m_pBuffer + m_bufferBytes, m_pPos, m_bytesRemaining);
 			m_bufferBytes += m_bytesRemaining;
 			m_bytesRemaining = 0;
-			return NULL;
+			return nullptr;
 		}
 	}
 	else
@@ -320,7 +320,7 @@ const char* GBlobQueue::dequeue(size_t len)
 			memcpy(m_pBuffer, m_pPos, m_bytesRemaining);
 			m_bufferBytes = m_bytesRemaining;
 			m_bytesRemaining = 0;
-			return NULL;
+			return nullptr;
 		}
 	}
 }

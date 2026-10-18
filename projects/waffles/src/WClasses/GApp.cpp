@@ -367,7 +367,7 @@ void GApp_ParseArgs(char* sz, char* argv[], int cap)
 			break;
 		sz += GApp_measureParamLen(sz);
 	}
-	argv[count] = NULL;
+	argv[count] = nullptr;
 }
 
 int GApp::systemCall(const char* szCommand, bool wait, bool show)
@@ -666,7 +666,7 @@ bool GApp::openUrlInBrowser(const char* szUrl)
 
 
 
-GSignalHandler* g_pSignalHandler = NULL;
+GSignalHandler* g_pSignalHandler = nullptr;
 #ifndef WINDOWS
 void GApp_onSigInt(int n)
 {
@@ -711,7 +711,7 @@ GSignalHandler::~GSignalHandler()
 	signal(SIGPIPE, m_prevSigPipe);
 	signal(SIGSEGV, m_prevSigSegV);
 #endif
-	g_pSignalHandler = NULL;
+	g_pSignalHandler = nullptr;
 }
 
 void GSignalHandler::onSignal(int sig)
@@ -919,7 +919,7 @@ bool GArgReader::next_is_uint()
 	return false;
 	}
 	const char* s = peek();
-	if (s == NULL || *s == '\0'){
+	if (s == nullptr || *s == '\0'){
 		return 0;
   	}
   	char * p;

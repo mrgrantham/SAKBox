@@ -78,7 +78,7 @@ public:
 	/// Deserializing constructor.
 	GEnsemble(const GDomNode* pNode, GLearnerLoader& ll);
 
-	virtual ~GEnsemble();
+	~GEnsemble() override;
 
 	/// Returns a reference to the models in the ensemble
 	std::vector<GWeightedModel*>& models() { return m_models; }
@@ -103,10 +103,10 @@ public:
 	void setWorkerThreads(size_t count) { m_workerThreads = count; }
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 protected:
 	/// Base classes should call this method to serialize the base object
@@ -117,7 +117,7 @@ protected:
 	virtual void clearBase();
 
 	/// Sets up the accumulator buffer (ballot box) then calls trainInnerInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// Implement this method to train the ensemble.
 	virtual void trainInnerInner(const GMatrix& features, const GMatrix& labels) = 0;
@@ -155,15 +155,15 @@ public:
 	/// Deserializing constructor.
 	GBag(const GDomNode* pNode, GLearnerLoader& ll);
 
-	virtual ~GBag();
+	~GBag() override;
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Calls clears on all of the learners, but does not delete them.
-	virtual void clear();
+	void clear() override;
 
 	/// Removes and deletes all the learners.
 	void flush();
@@ -181,7 +181,7 @@ public:
 
 protected:
 	/// See the comment for GEnsemble::trainInnerInner
-	virtual void trainInnerInner(const GMatrix& features, const GMatrix& labels);
+	void trainInnerInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// Assigns uniform weight to all models. (This method is deliberately
 	/// virtual so that you can overload it if you want non-uniform weighting.)
@@ -203,22 +203,22 @@ public:
 	/// Deserializing constructor.
 	GBayesianModelAveraging(const GDomNode* pNode, GLearnerLoader& ll) : GBag(pNode, ll) {}
 
-	virtual ~GBayesianModelAveraging() {}
+	~GBayesianModelAveraging() override {}
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const override;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 protected:
 	/// See the comment for GLearner::canImplicitlyHandleContinuousLabels
-	virtual bool canImplicitlyHandleContinuousLabels() override {
+	bool canImplicitlyHandleContinuousLabels() override {
 	  return false;
 	}
 
 	/// Determines the weights in the manner of Bayesian model averaging,
 	/// with the assumption of uniform priors.
-	virtual void determineWeights(const GMatrix& features, const GMatrix& labels) override;
+	void determineWeights(const GMatrix& features, const GMatrix& labels) override;
 };
 
 
@@ -236,12 +236,12 @@ public:
 	/// Deserializing constructor.
 	GBayesianModelCombination(const GDomNode* pNode, GLearnerLoader& ll);
 
-	virtual ~GBayesianModelCombination() {}
+	~GBayesianModelCombination() override {}
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const override;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Returns the number of samples from which to estimate the combination weights
 	size_t samples() { return m_samples; }
@@ -251,14 +251,14 @@ public:
 
 protected:
 	/// See the comment for GLearner::canImplicitlyHandleContinuousLabels
-	virtual bool canImplicitlyHandleContinuousLabels() override
+	bool canImplicitlyHandleContinuousLabels() override
 	{
 		return false;
 	}
 
 	/// Determines the weights in the manner of Bayesian model averaging,
 	/// with the assumption of uniform priors.
-	virtual void determineWeights(const GMatrix& features, const GMatrix& labels) override;
+	void determineWeights(const GMatrix& features, const GMatrix& labels) override;
 };
 
 
@@ -289,15 +289,15 @@ public:
 	/// Deserializing constructor
 	GResamplingAdaBoost(const GDomNode* pNode, GLearnerLoader& ll);
 
-	virtual ~GResamplingAdaBoost();
+	~GResamplingAdaBoost() override;
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Deletes all of the models in this ensemble, and calls clear on the base learner.
-	virtual void clear();
+	void clear() override;
 
 	/// Specify the size of the drawn set to train with (as a portion of the training
 	/// set). The default is 1.0.
@@ -308,10 +308,10 @@ public:
 
 protected:
 	/// See the comment for GLearner::canImplicitlyHandleContinuousLabels
-	virtual bool canImplicitlyHandleContinuousLabels() { return false; }
+	bool canImplicitlyHandleContinuousLabels() override { return false; }
 
 	/// See the comment for GEnsemble::trainInnerInner
-	virtual void trainInnerInner(const GMatrix& features, const GMatrix& labels);
+	void trainInnerInner(const GMatrix& features, const GMatrix& labels) override;
 };
 
 
@@ -339,16 +339,16 @@ public:
 	/// Deserializing constructor
 	GGradBoost(const GDomNode* pNode, GLearnerLoader& ll);
 
-	virtual ~GGradBoost();
+	~GGradBoost() override;
 
 	// todo: this method does not yet benefit from multiple threads
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Deletes all of the models in this ensemble, and calls clear on the base learner.
-	virtual void clear();
+	void clear() override;
 
 	/// Specify the portion of the training set to be used for training each model. The default is 1.0.
 	void setTrainSize(double d) { m_trainSize = d; }
@@ -358,10 +358,10 @@ public:
 
 protected:
 	/// See the comment for GLearner::canImplicitlyHandleContinuousLabels
-	virtual bool canImplicitlyHandleContinuousLabels() { return false; }
+	bool canImplicitlyHandleContinuousLabels() override { return false; }
 
 	/// See the comment for GEnsemble::trainInnerInner
-	virtual void trainInnerInner(const GMatrix& features, const GMatrix& labels);
+	void trainInnerInner(const GMatrix& features, const GMatrix& labels) override;
 };
 
 
@@ -381,15 +381,15 @@ public:
 	/// Deserializing constructor
 	GBucket(const GDomNode* pNode, GLearnerLoader& ll);
 
-	virtual ~GBucket();
+	~GBucket() override;
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::clear
-	virtual void clear();
+	void clear() override;
 
 	/// Removes and deletes all the learners
 	void flush();
@@ -404,14 +404,14 @@ public:
 	GSupervisedLearner* releaseBestModeler();
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 };
 
 

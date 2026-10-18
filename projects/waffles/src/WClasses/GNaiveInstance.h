@@ -57,13 +57,13 @@ public:
 
 	/// Deserializing constructor
 	GNaiveInstance(const GDomNode* pNode);
-	virtual ~GNaiveInstance();
+	~GNaiveInstance() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Specify the number of neighbors to use.
 	void setNeighbors(size_t k) { m_nNeighbors = k; }
@@ -72,38 +72,38 @@ public:
 	size_t neighbors() { return m_nNeighbors; }
 
 	/// See the comment for GIncrementalLearner::trainSparse.
-	virtual void trainSparse(GSparseMatrix& features, GMatrix& labels);
+	void trainSparse(GSparseMatrix& features, GMatrix& labels) override;
 
 	/// See the comment for GSupervisedLearner::clear.
-	virtual void clear();
+	void clear() override;
 
 	/// Uses cross-validation to find a set of parameters that works well with
 	/// the provided data.
 	void autoTune(GMatrix& features, GMatrix& labels);
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& in, GVec& out);
+	void predict(const GVec& in, GVec& out) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& in, GPrediction* pOut);
+	void predictDistribution(const GVec& in, GPrediction* pOut) override;
 
 	/// Incrementally train with a single instance
-	virtual void trainIncremental(const GVec& in, const GVec& out);
+	void trainIncremental(const GVec& in, const GVec& out) override;
 
 protected:
 	void evalInput(size_t nInputDim, double dInput);
 
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
-	virtual bool canImplicitlyHandleNominalFeatures() { return false; }
+	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
-	virtual bool canImplicitlyHandleNominalLabels() { return false; }
+	bool canImplicitlyHandleNominalLabels() override { return false; }
 
 	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	virtual void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel);
+	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
 };
 
 } // namespace GClasses

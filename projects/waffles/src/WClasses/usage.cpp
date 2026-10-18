@@ -105,7 +105,7 @@ UsageNode* UsageNode::choice(const char* name)
 		if(std::strcmp((*it)->tok(), name) == 0)
 			return *it;
 	}
-	return NULL;
+	return nullptr;
 }
 
 void UsageNode::sig(string* pS)

@@ -151,7 +151,7 @@ public:
 	/// Output: this will be set to the greatest common divisor of a,b.
 	///         (If pOutX and pOutY are not NULL, they will be values such
 	///          that "this" = ax + by.)
-	void euclid(GBigInt* pA1, GBigInt* pB1, GBigInt* pOutX = NULL, GBigInt* pOutY = NULL);
+	void euclid(GBigInt* pA1, GBigInt* pB1, GBigInt* pOutX = nullptr, GBigInt* pOutY = nullptr);
 
 	/// Input:  a, k>=0, n>=2
 	/// Output: this will be set to ((a raised to the power of k) modulus n)

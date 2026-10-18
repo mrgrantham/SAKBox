@@ -41,14 +41,14 @@ protected:
 public:
 	/// moreFitSurvivalRate is the probability that the more fit member (in a tournament selection) survives
 	GEvolutionaryOptimizer(GTargetFunction* pCritic, size_t population, GRand* pRand, double moreFitSurvivalRate);
-	virtual ~GEvolutionaryOptimizer();
+	~GEvolutionaryOptimizer() override;
 
 	/// Returns the best vector found in recent iterations.
-	virtual const GVec& currentVector();
+	const GVec& currentVector() override;
 
 	/// Do a little bit more optimization. (This method is typically called in a loop
 	/// until satisfactory results are obtained.)
-	virtual double iterate();
+	double iterate() override;
 
 protected:
 	/// Returns the index of the tournament loser (who should typically die and be replaced).

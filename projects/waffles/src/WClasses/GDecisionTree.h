@@ -60,13 +60,13 @@ public:
 	/// Loads from a DOM.
 	GDecisionTree(const GDomNode* pNode);
 
-	virtual ~GDecisionTree();
+	~GDecisionTree() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Specifies for this decision tree to use random divisions (instead of
 	/// divisions that reduce entropy). Random divisions make the algorithm
@@ -101,7 +101,7 @@ public:
 	void setMaxLevels(size_t n) { m_maxLevels = n; }
 
 	/// Frees the model
-	virtual void clear();
+	void clear() override;
 
 	/// Returns the number of nodes in this tree
 	size_t treeSize();
@@ -109,21 +109,21 @@ public:
 	/// Prints an ascii representation of the decision tree to the specified stream.
 	/// pRelation is an optional relation that can be supplied in order to provide
 	/// better meta-data to make the print-out richer.
-	void print(std::ostream& stream, GArffRelation* pFeatureRel = NULL, GArffRelation* pLabelRel = NULL);
+	void print(std::ostream& stream, GArffRelation* pFeatureRel = nullptr, GArffRelation* pLabelRel = nullptr);
 
 	/// Uses cross-validation to find a set of parameters that works well with
 	/// the provided data.
 	void autoTune(GMatrix& features, GMatrix& labels);
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& pIn, GVec& pOut);
+	void predict(const GVec& pIn, GVec& pOut) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& pIn, GPrediction* pOut);
+	void predictDistribution(const GVec& pIn, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// Finds the leaf node that corresponds with the specified feature vector
 	GDecisionTreeLeafNode* findLeaf(const GVec& pIn, size_t* pDepth);
@@ -171,21 +171,21 @@ public:
 	/// Load from a DOM.
 	GMeanMarginsTree(const GDomNode* pNode);
 
-	virtual ~GMeanMarginsTree();
+	~GMeanMarginsTree() override;
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& pIn, GVec& pOut);
+	void predict(const GVec& pIn, GVec& pOut) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& pIn, GPrediction* pOut);
+	void predictDistribution(const GVec& pIn, GPrediction* pOut) override;
 
 	/// See the comment for GSupervisedLearner::clear
-	virtual void clear();
+	void clear() override;
 
 	/// This model has no parameters to tune, so this method is a noop.
 	void autoTune(GMatrix& features, GMatrix& labels);
@@ -194,13 +194,13 @@ protected:
 	GMeanMarginsTreeNode* buildNode(GMatrix& features, GMatrix& labels, size_t* pBuf2);
 
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
-	virtual bool canImplicitlyHandleNominalFeatures() { return false; }
+	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
 	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
-	virtual bool canImplicitlyHandleNominalLabels() { return false; }
+	bool canImplicitlyHandleNominalLabels() override { return false; }
 };
 
 
@@ -213,30 +213,30 @@ protected:
 public:
 	GRandomForest(size_t trees, size_t samples = 1);
 	GRandomForest(const GDomNode* pNode, GLearnerLoader& ll);
-	virtual ~GRandomForest();
+	~GRandomForest() override;
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GSupervisedLearner::clear
-	virtual void clear();
+	void clear() override;
 
 	/// Prints an ascii representation of the random forest to the specified stream.
 	/// pRelation is an optional relation that can be supplied in order to provide
 	/// better meta-data to make the print-out richer.
-	void print(std::ostream& stream, GArffRelation* pFeatureRel = NULL, GArffRelation* pLabelRel = NULL);
+	void print(std::ostream& stream, GArffRelation* pFeatureRel = nullptr, GArffRelation* pLabelRel = nullptr);
 
 	/// See the comment for GSupervisedLearner::predict
-	virtual void predict(const GVec& pIn, GVec& pOut);
+	void predict(const GVec& pIn, GVec& pOut) override;
 
 	/// See the comment for GSupervisedLearner::predictDistribution
-	virtual void predictDistribution(const GVec& pIn, GPrediction* pOut);
+	void predictDistribution(const GVec& pIn, GPrediction* pOut) override;
 
 protected:
 	/// See the comment for GSupervisedLearner::trainInner
-	virtual void trainInner(const GMatrix& features, const GMatrix& labels);
+	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 };
 
 } // namespace GClasses

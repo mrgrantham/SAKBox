@@ -45,7 +45,7 @@ protected:
 	GVec m_scaleFactors;
 
 public:
-	GDistanceMetric() : m_pRelation(NULL), m_ownRelation(false) {}
+	GDistanceMetric() : m_pRelation(nullptr), m_ownRelation(false) {}
 	GDistanceMetric(GDomNode* pNode);
 	virtual ~GDistanceMetric();
 
@@ -103,19 +103,19 @@ protected:
 public:
 	GRowDistance();
 	GRowDistance(GDomNode* pNode);
-	virtual ~GRowDistance() {}
+	~GRowDistance() override {}
 
 	/// Returns the name of this class
-	virtual const char* name() const { return "GRowDistance"; }
+	const char* name() const override { return "GRowDistance"; }
 
 	/// See the comment for GDistanceMetric::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GDistanceMetric::init.
-	virtual void init(const GRelation* pRelation, bool own);
+	void init(const GRelation* pRelation, bool own) override;
 
 	/// Returns the distance between a and b
-	virtual double squaredDistance(const GVec& a, const GVec& b) const;
+	double squaredDistance(const GVec& a, const GVec& b) const override;
 
 	/// Specify the difference to use when one or more of the values is unknown.
 	/// (If your data contains unknown values, you may want to normalize the
@@ -139,19 +139,19 @@ protected:
 public:
 	GLNormDistance(double norm);
 	GLNormDistance(GDomNode* pNode);
-	virtual ~GLNormDistance() {}
+	~GLNormDistance() override {}
 
 	/// Returns the name of this class
-	virtual const char* name() const { return "GLNormDistance"; }
+	const char* name() const override { return "GLNormDistance"; }
 
 	/// See the comment for GDistanceMetric::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GDistanceMetric::init.
-	virtual void init(const GRelation* pRelation, bool own);
+	void init(const GRelation* pRelation, bool own) override;
 
 	/// Returns the distance (using the norm passed to the constructor) between pA and pB
-	virtual double squaredDistance(const GVec& a, const GVec& b) const;
+	double squaredDistance(const GVec& a, const GVec& b) const override;
 
 	/// Specify the difference to use when one or more of the values is unknown.
 	/// (If your data contains unknown values, you may want to normalize the
@@ -169,19 +169,19 @@ class GDenseCosineDistance : public GDistanceMetric
 public:
 	GDenseCosineDistance();
 	GDenseCosineDistance(GDomNode* pNode);
-	virtual ~GDenseCosineDistance() {}
+	~GDenseCosineDistance() override {}
 
 	/// Returns the name of this class
-	virtual const char* name() const { return "GDenseCosineDistance"; }
+	const char* name() const override { return "GDenseCosineDistance"; }
 
 	/// See the comment for GDistanceMetric::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GDistanceMetric::init.
-	virtual void init(const GRelation* pRelation, bool own);
+	void init(const GRelation* pRelation, bool own) override;
 
 	/// Returns the distance (using the norm passed to the constructor) between pA and pB
-	virtual double squaredDistance(const GVec& a, const GVec& b) const;
+	double squaredDistance(const GVec& a, const GVec& b) const override;
 };
 
 
@@ -197,19 +197,19 @@ protected:
 public:
 	GKernelDistance(GKernel* pKernel, bool own);
 	GKernelDistance(GDomNode* pNode);
-	virtual ~GKernelDistance();
+	~GKernelDistance() override;
 
 	/// Returns the name of this class
-	virtual const char* name() const { return "GKernelDistance"; }
+	const char* name() const override { return "GKernelDistance"; }
 
 	/// See the comment for GDistanceMetric::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// See the comment for GDistanceMetric::init.
-	virtual void init(const GRelation* pRelation, bool own);
+	void init(const GRelation* pRelation, bool own) override;
 
 	/// Returns the distance (using the norm passed to the constructor) between pA and pB
-	virtual double squaredDistance(const GVec& a, const GVec& b) const;
+	double squaredDistance(const GVec& a, const GVec& b) const override;
 };
 
 
@@ -255,19 +255,19 @@ class GCosineSimilarity : public GSparseSimilarity
 public:
 	GCosineSimilarity() : GSparseSimilarity() {}
 	GCosineSimilarity(GDomNode* pNode) : GSparseSimilarity() {}
-	virtual ~GCosineSimilarity() {}
+	~GCosineSimilarity() override {}
 
 	/// See the comment for GSparseSimilarity::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Computes the similarity between two sparse vectors
-	virtual double similarity(const std::map<size_t,double>& a, const std::map<size_t,double>& b);
+	double similarity(const std::map<size_t,double>& a, const std::map<size_t,double>& b) override;
 
 	/// Computes the similarity between a sparse and a dense vector
-	virtual double similarity(const std::map<size_t,double>& a, const GVec& b);
+	double similarity(const std::map<size_t,double>& a, const GVec& b) override;
 
 	/// Computes the similarity between two dense vectors
-	virtual double similarity(const GVec& a, const GVec& b);
+	double similarity(const GVec& a, const GVec& b) override;
 };
 
 
@@ -277,19 +277,19 @@ class GPearsonCorrelation : public GSparseSimilarity
 public:
 	GPearsonCorrelation() : GSparseSimilarity() {}
 	GPearsonCorrelation(GDomNode* pNode) : GSparseSimilarity() {}
-	virtual ~GPearsonCorrelation() {}
+	~GPearsonCorrelation() override {}
 
 	/// See the comment for GSparseSimilarity::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Computes the similarity between two sparse vectors
-	virtual double similarity(const std::map<size_t,double>& a, const std::map<size_t,double>& b);
+	double similarity(const std::map<size_t,double>& a, const std::map<size_t,double>& b) override;
 
 	/// Computes the similarity between a sparse and a dense vector
-	virtual double similarity(const std::map<size_t,double>& a, const GVec& b);
+	double similarity(const std::map<size_t,double>& a, const GVec& b) override;
 
 	/// Computes the similarity between two dense vectors
-	virtual double similarity(const GVec& a, const GVec& b);
+	double similarity(const GVec& a, const GVec& b) override;
 };
 
 
@@ -302,19 +302,19 @@ protected:
 public:
 	GEuclidSimilarity() : GSparseSimilarity() {}
 	GEuclidSimilarity(GDomNode* pNode) : GSparseSimilarity() {}
-	virtual ~GEuclidSimilarity() {}
+	~GEuclidSimilarity() override {}
 
 	/// See the comment for GSparseSimilarity::serialize
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Computes the similarity between two sparse vectors
-	virtual double similarity(const std::map<size_t,double>& a, const std::map<size_t,double>& b);
+	double similarity(const std::map<size_t,double>& a, const std::map<size_t,double>& b) override;
 
 	/// Computes the similarity between a sparse and a dense vector
-	virtual double similarity(const std::map<size_t,double>& a, const GVec& b);
+	double similarity(const std::map<size_t,double>& a, const GVec& b) override;
 
 	/// Computes the similarity between two dense vectors
-	virtual double similarity(const GVec& a, const GVec& b);
+	double similarity(const GVec& a, const GVec& b) override;
 };
 
 

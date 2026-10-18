@@ -139,7 +139,7 @@ public:
 
 	/// Shuffles the rows in this matrix. If pLabels is non-NULL, then it
 	/// will also be shuffled in a manner that preserves corresponding rows with this sparse matrix.
-	void shuffle(GRand* pRand, GMatrix* pLabels = NULL);
+	void shuffle(GRand* pRand, GMatrix* pLabels = nullptr);
 
 	/// Returns a sub-matrix of this matrix
 	GSparseMatrix* subMatrix(size_t row, size_t col, size_t height, size_t width);

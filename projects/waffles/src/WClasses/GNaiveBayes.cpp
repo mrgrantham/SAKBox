@@ -236,7 +236,7 @@ struct GNaiveBayesOutputAttr
 GNaiveBayes::GNaiveBayes()
 : GIncrementalLearner()
 {
-	m_pOutputs = NULL;
+	m_pOutputs = nullptr;
 	m_equivalentSampleSize = 0.5;
 	m_nSampleCount = 0;
 }
@@ -285,7 +285,7 @@ void GNaiveBayes::clear()
 			delete(m_pOutputs[n]);
 		delete[] m_pOutputs;
 	}
-	m_pOutputs = NULL;
+	m_pOutputs = nullptr;
 }
 
 // virtual

@@ -29,7 +29,7 @@ using namespace GClasses;
 GHashTableBase::GHashTableBase(size_t nInitialBucketCount)
 {
 	m_nBucketCount = 0;
-	m_pBuckets = NULL;
+	m_pBuckets = nullptr;
 	m_nCount = 0;
 	m_nModCount = 0;
 	_Resize(nInitialBucketCount);
@@ -77,20 +77,20 @@ void GHashTableBase::_Resize(size_t nNewSize)
 	m_nCount = 0;
 
 	// Init the new buckets
-	m_pBuckets[0].pPrev = NULL;
+	m_pBuckets[0].pPrev = nullptr;
 	m_pBuckets[0].pNext = &m_pBuckets[1];
-	m_pBuckets[0].pKey = NULL;
+	m_pBuckets[0].pKey = nullptr;
 	size_t n;
 	size_t nNewSizeMinusOne = nNewSize - 1;
 	for(n = 1; n < nNewSizeMinusOne; n++)
 	{
 		m_pBuckets[n].pPrev = &m_pBuckets[n - 1];
 		m_pBuckets[n].pNext = &m_pBuckets[n + 1];
-		m_pBuckets[n].pKey = NULL;
+		m_pBuckets[n].pKey = nullptr;
 	}
 	m_pBuckets[nNewSizeMinusOne].pPrev = &m_pBuckets[nNewSizeMinusOne - 1];
-	m_pBuckets[nNewSizeMinusOne].pNext = NULL;
-	m_pBuckets[nNewSizeMinusOne].pKey = NULL;
+	m_pBuckets[nNewSizeMinusOne].pNext = nullptr;
+	m_pBuckets[nNewSizeMinusOne].pKey = nullptr;
 	m_pFirstEmpty = &m_pBuckets[0];
 
 	// Copy the old data
@@ -130,15 +130,15 @@ void GHashTableBase::_Add(const char* pKey, const void* pValue)
 			// The bucket is being rented by someone else.  Boot them out to the next available empty spot.
 			struct HashBucket* pRenter = m_pFirstEmpty;
 			m_pFirstEmpty = pRenter->pNext;
-			m_pFirstEmpty->pPrev = NULL;
+			m_pFirstEmpty->pPrev = nullptr;
 			*pRenter = m_pBuckets[nPos];
 			pRenter->pPrev->pNext = pRenter;
 			if(pRenter->pNext)
 				pRenter->pNext->pPrev = pRenter;
 		
 			// Move in
-			m_pBuckets[nPos].pPrev = NULL;
-			m_pBuckets[nPos].pNext = NULL;
+			m_pBuckets[nPos].pPrev = nullptr;
+			m_pBuckets[nPos].pNext = nullptr;
 			m_pBuckets[nPos].pKey = pKey;
 			m_pBuckets[nPos].pValue = pValue;
 		}
@@ -147,7 +147,7 @@ void GHashTableBase::_Add(const char* pKey, const void* pValue)
 			// The bucket is already owned, so just rent the first available empty spot.
 			struct HashBucket* pNewBucket = m_pFirstEmpty;
 			m_pFirstEmpty = pNewBucket->pNext;
-			m_pFirstEmpty->pPrev = NULL;
+			m_pFirstEmpty->pPrev = nullptr;
 			pNewBucket->pKey = pKey;
 			pNewBucket->pValue = pValue;
 			pNewBucket->pNext = m_pBuckets[nPos].pNext;
@@ -169,8 +169,8 @@ void GHashTableBase::_Add(const char* pKey, const void* pValue)
 		}
 		if(m_pBuckets[nPos].pNext)
 			m_pBuckets[nPos].pNext->pPrev = m_pBuckets[nPos].pPrev;
-		m_pBuckets[nPos].pPrev = NULL;
-		m_pBuckets[nPos].pNext = NULL;
+		m_pBuckets[nPos].pPrev = nullptr;
+		m_pBuckets[nPos].pNext = nullptr;
 		m_pBuckets[nPos].pKey = pKey;
 		m_pBuckets[nPos].pValue = pValue;
 	}
@@ -215,9 +215,9 @@ void GHashTableBase::_Remove(const char* pKey)
 				pBucket->pPrev->pNext = pBucket->pNext;
 				if(pBucket->pNext)
 					pBucket->pNext->pPrev = pBucket->pPrev;
-				pBucket->pPrev = NULL;
+				pBucket->pPrev = nullptr;
 				pBucket->pNext = m_pFirstEmpty;
-				pBucket->pKey = NULL;
+				pBucket->pKey = nullptr;
 				m_pFirstEmpty->pPrev = pBucket;
 				m_pFirstEmpty = pBucket;
 			}
@@ -237,8 +237,8 @@ void GHashTableBase::_Remove(const char* pKey)
 
 					// Delete the former-renter's old bucket
 					pOldBucket->pNext = m_pFirstEmpty;
-					pOldBucket->pPrev = NULL;
-					pOldBucket->pKey = NULL;
+					pOldBucket->pPrev = nullptr;
+					pOldBucket->pKey = nullptr;
 					m_pFirstEmpty->pPrev = pOldBucket;
 					m_pFirstEmpty = pOldBucket;
 				}
@@ -246,7 +246,7 @@ void GHashTableBase::_Remove(const char* pKey)
 				{
 					// Just delete the landlord bucket
 					pBucket->pNext = m_pFirstEmpty;
-					pBucket->pKey = NULL;
+					pBucket->pKey = nullptr;
 					m_pFirstEmpty->pPrev = pBucket;
 					m_pFirstEmpty = pBucket;
 				}
@@ -287,7 +287,7 @@ void GHashTable::test()
 		ht.remove(&pNothing[n]);
 	if(!VerifyBucketCount(&ht))
 		throw Ex("failed");
-	void* pVal = NULL;
+	void* pVal = nullptr;
 	for(n = 0; n < nElements; n++)
 	{
 		if(n % 7 == 0)
@@ -322,13 +322,13 @@ const char* GHashTableEnumerator::next(void** ppValue)
 			return pKey;
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 void* GHashTableEnumerator::currentValue()
 {
 	if(m_nPos <= 0)
-		return NULL;
+		return nullptr;
 	return (void*)m_pHashTable->m_pBuckets[m_nPos - 1].pValue;
 }
 
@@ -358,7 +358,7 @@ GNodeHashTable::GNodeHashTable(bool bOwnNodes, size_t nInitialBucketCount)
 	if(bOwnNodes)
 		m_pNodes = new std::vector<HashTableNode*>();
 	else
-		m_pNodes = NULL;
+		m_pNodes = nullptr;
 }
 
 // virtual

@@ -41,7 +41,7 @@ public:
 		m_lastReward = UNKNOWN_REAL_VALUE;
 	}
 
-	virtual ~CarQAgent()
+	~CarQAgent() override
 	{
 		delete(m_pQTable);
 	}
@@ -61,7 +61,7 @@ public:
 		m_lastReward = d;
 	}
 
-	virtual double rewardFromLastAction()
+	double rewardFromLastAction() override
 	{
 		return m_lastReward;
 	}
@@ -257,7 +257,7 @@ public:
 		m_bPrevUpdate = true;
 	}
 
-	virtual ~CarOnHillDialog()
+	~CarOnHillDialog() override
 	{
 		delete(m_pImage);
 		delete(m_pModel);
@@ -293,27 +293,27 @@ public:
 		m_pDialog = new CarOnHillDialog(pController, m_screenRect.w, m_screenRect.h);
 	}
 
-	virtual ~CarOnHillView()
+	~CarOnHillView() override
 	{
 		delete(m_pDialog);
 	}
 
-	virtual void onChar(char c)
+	void onChar(char c) override
 	{
 		m_pDialog->handleChar(c);
 	}
 
-	virtual void onMouseDown(int nButton, int x, int y)
+	void onMouseDown(int nButton, int x, int y) override
 	{
 		m_pDialog->pressButton(nButton, x - m_screenRect.x, y - m_screenRect.y);
 	}
 
-	virtual void onMouseUp(int nButton, int x, int y)
+	void onMouseUp(int nButton, int x, int y) override
 	{
 		m_pDialog->releaseButton(nButton);
 	}
 
-	virtual bool onMousePos(int x, int y)
+	bool onMousePos(int x, int y) override
 	{
 		if(x > 250)
 			m_forw = true;
@@ -328,7 +328,7 @@ public:
 	}
 
 protected:
-	virtual void draw(int* pixels, int pitch)
+	void draw(int* pixels, int pitch) override
 	{
 		m_pDialog->Iterate(m_forw);
 
@@ -337,7 +337,7 @@ protected:
 		SDL_Rect windowRect{m_screenRect.x,m_screenRect.y,m_screenRect.w,m_screenRect.h};
 		SDL_RenderFillRect(sdlRenderer,&windowRect);
 		Uint32 format; // SDL_PixelFormatEnum
-		SDL_QueryTexture(sdlTexture,&format, NULL,NULL,NULL);
+		SDL_QueryTexture(sdlTexture,&format, nullptr,nullptr,nullptr);
 		// Draw the dialog
 		blitImage(pixels,pitch,format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
 	}

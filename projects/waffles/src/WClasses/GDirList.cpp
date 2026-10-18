@@ -59,12 +59,12 @@ GFolderSerializer::GFolderSerializer(const char* szPath, bool compress)
 	m_pPos = m_pBuf;
 	m_size = BUF_SIZE;
 	m_state = 0;
-	m_pInStream = NULL;
-	m_pCompressedBuf = NULL;
+	m_pInStream = nullptr;
+	m_pCompressedBuf = nullptr;
 	if(compress)
 		m_pUncompressedBuf = new char[COMPRESS_BUF_SIZE];
 	else
-		m_pUncompressedBuf = NULL;
+		m_pUncompressedBuf = nullptr;
 	m_compressedSize = 0;
 	m_uncompressedPos = 0;
 	m_compressedBufReady = false;
@@ -99,7 +99,7 @@ char* GFolderSerializer::nextPiece(size_t* pOutSize)
 		if(m_dirStack.size() > 0)
 			continueDir();
 		else
-			return NULL;
+			return nullptr;
 		break;
 	case 2: // continue reading file
 		continueFile();
@@ -203,7 +203,7 @@ char* GFolderSerializer::next(size_t* pOutSize)
 					return m_pBuf;
 				}
 				else
-					return NULL;
+					return nullptr;
 			}
 		}
 	}
@@ -333,10 +333,10 @@ GFolderDeserializer::GFolderDeserializer(std::string* pBaseName)
 : m_pBaseName(pBaseName)
 {
 	m_pBQ1 = new GBlobQueue();
-	m_pBQ2 = NULL;
+	m_pBQ2 = nullptr;
 	m_compressedBlockSize = 0;
 	m_state = 0;
-	m_pOutStream = NULL;
+	m_pOutStream = nullptr;
 	m_depth = 0;
 	if(m_pBaseName)
 		m_pBaseName->clear();
@@ -432,7 +432,7 @@ void GFolderDeserializer::pump1()
 				if(m_fileLen == 0)
 				{
 					delete(m_pOutStream);
-					m_pOutStream = NULL;
+					m_pOutStream = nullptr;
 					m_state = 1;
 				}
 				else

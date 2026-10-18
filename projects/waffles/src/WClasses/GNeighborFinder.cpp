@@ -663,13 +663,13 @@ public:
 		m_timeLeft = (size_t)std::min((double)0x7fffffff, ((double)size * size) / 36 + 6);
 	}
 
-	virtual ~GKdInteriorNode()
+	~GKdInteriorNode() override
 	{
 		delete(m_pLess);
 		delete(m_pGreaterOrEqual);
 	}
 
-	virtual bool IsLeaf() { return false; }
+	bool IsLeaf() override { return false; }
 
 	GKdNode* Rebuild(GKdTree* pTree)
 	{
@@ -680,7 +680,7 @@ public:
 		return pTree->buildTree(used, pIndexes);
 	}
 
-	virtual void Insert(GKdTree* pTree, size_t index, double* pRow)
+	void Insert(GKdTree* pTree, size_t index, double* pRow) override
 	{
 		m_timeLeft--;
 		if(pTree->isGreaterOrEqual(pRow, m_attr, m_pivot))
@@ -707,7 +707,7 @@ public:
 		}
 	}
 
-	virtual void Remove(GKdTree* pTree, size_t index, double* pRow)
+	void Remove(GKdTree* pTree, size_t index, double* pRow) override
 	{
 		m_timeLeft--;
 		if(pTree->isGreaterOrEqual(pRow, m_attr, m_pivot))
@@ -717,7 +717,7 @@ public:
 		m_size--;
 	}
 
-	virtual void Rename(GKdTree* pTree, size_t oldIndex, size_t newIndex, double* pRow)
+	void Rename(GKdTree* pTree, size_t oldIndex, size_t newIndex, double* pRow) override
 	{
 		if(pTree->isGreaterOrEqual(pRow, m_attr, m_pivot))
 			m_pGreaterOrEqual->Rename(pTree, oldIndex, newIndex, pRow);
@@ -735,7 +735,7 @@ public:
 		*pPivot = m_pivot;
 	}
 
-	size_t Gather(size_t* pOutIndexes)
+	size_t Gather(size_t* pOutIndexes) override
 	{
 		size_t n = m_pLess->Gather(pOutIndexes);
 		return m_pGreaterOrEqual->Gather(pOutIndexes + n) + n;
@@ -757,23 +757,23 @@ public:
 			m_indexes.push_back(pIndexes[i]);
 	}
 
-	virtual ~GKdLeafNode()
+	~GKdLeafNode() override
 	{
 	}
 
-	virtual bool IsLeaf() { return true; }
+	bool IsLeaf() override { return true; }
 
 	size_t GetSize()
 	{
 		return m_indexes.size();
 	}
 
-	virtual void Insert(GKdTree* pTree, size_t index, double* pRow)
+	void Insert(GKdTree* pTree, size_t index, double* pRow) override
 	{
 		m_indexes.push_back(index);
 	}
 
-	virtual void Remove(GKdTree* pTree, size_t index, double* pRow)
+	void Remove(GKdTree* pTree, size_t index, double* pRow) override
 	{
 		size_t count = m_indexes.size();
 		for(size_t i = 0; i < count; i++)
@@ -788,7 +788,7 @@ public:
 		GAssert(false); // failed to find index. Did the row change?
 	}
 
-	virtual void Rename(GKdTree* pTree, size_t oldIndex, size_t newIndex, double* pRow)
+	void Rename(GKdTree* pTree, size_t oldIndex, size_t newIndex, double* pRow) override
 	{
 		size_t count = m_indexes.size();
 		for(size_t i = 0; i < count; i++)
@@ -804,7 +804,7 @@ public:
 
 	vector<size_t>* GetIndexes() { return &m_indexes; }
 
-	size_t Gather(size_t* pOutIndexes)
+	size_t Gather(size_t* pOutIndexes) override
 	{
 		for(vector<size_t>::iterator i = m_indexes.begin(); i < m_indexes.end(); i++)
 		{
@@ -1150,7 +1150,7 @@ double GKdTree::medianDistanceToNeighbor(GMatrix& data, size_t n)
 		return 0.0; // 0 is the point itself
 
 	// Fill a vector with the distances to the n^th neighbor of each point
-	GKdTree kdtree(&data, NULL, false);
+	GKdTree kdtree(&data, nullptr, false);
 	vector<double> vals;
 	vals.reserve(data.rows());
 	for(size_t i = 0; i < data.rows(); i++)
@@ -1257,24 +1257,24 @@ public:
 	{
 	}
 
-	virtual ~GDontGoFarMetric()
+	~GDontGoFarMetric() override
 	{
 	}
 
-	virtual const char* name() const { return "GDontGoFarMetric"; }
+	const char* name() const override { return "GDontGoFarMetric"; }
 
-	virtual GDomNode* serialize(GDom* pDoc) const
+	GDomNode* serialize(GDom* pDoc) const override
 	{
 		throw Ex("not implemented");
-		return NULL;
+		return nullptr;
 	}
 
-	virtual void init(const GRelation* pRelation, bool own)
+	void init(const GRelation* pRelation, bool own) override
 	{
 		setRelation(pRelation, own);
 	}
 
-	virtual double squaredDistance(const GVec& pA, const GVec& pB) const
+	double squaredDistance(const GVec& pA, const GVec& pB) const override
 	{
 		double squaredDist = pA.squaredDistance(pB);
 		if(squaredDist > m_squaredMaxDist)
@@ -1444,19 +1444,19 @@ public:
 	GBallNode* m_pRight;
 
 	GBallInterior(size_t count, size_t* pIndexes, const GMatrix* pData, GDistanceMetric* pMetric)
-	: GBallNode(count, pIndexes, pData, pMetric), m_pLeft(NULL), m_pRight(NULL)
+	: GBallNode(count, pIndexes, pData, pMetric), m_pLeft(nullptr), m_pRight(nullptr)
 	{
 	}
 
-	virtual ~GBallInterior()
+	~GBallInterior() override
 	{
 		delete(m_pLeft);
 		delete(m_pRight);
 	}
 
-	virtual bool isLeaf() { return false; }
+	bool isLeaf() override { return false; }
 
-	virtual void insert(size_t index, GDistanceMetric* pMetric, const GVec& pVec)
+	void insert(size_t index, GDistanceMetric* pMetric, const GVec& pVec) override
 	{
 		enclose(pMetric, pVec);
 		if(m_pLeft->distance(pMetric, pVec) < m_pRight->distance(pMetric, pVec))
@@ -1465,7 +1465,7 @@ public:
 			m_pRight->insert(index, pMetric, pVec);
 	}
 
-	virtual bool drop(size_t index, GDistanceMetric* pMetric, const GVec& pVec)
+	bool drop(size_t index, GDistanceMetric* pMetric, const GVec& pVec) override
 	{
 		if(m_pLeft->distance(pMetric, pVec) <= 0.0)
 		{
@@ -1480,13 +1480,13 @@ public:
 		return false;
 	}
 
-	virtual void dropAll()
+	void dropAll() override
 	{
 		m_pLeft->dropAll();
 		m_pRight->dropAll();
 	}
 
-	virtual void print(std::ostream& stream, size_t depth, GDistanceMetric* pMetric, const GVec& pVec, const GMatrix* pData)
+	void print(std::ostream& stream, size_t depth, GDistanceMetric* pMetric, const GVec& pVec, const GMatrix* pData) override
 	{
 		m_pRight->print(stream, depth + 1, pMetric, pVec, pData);
 		for(size_t i = 0; i < depth; i++)
@@ -1510,19 +1510,19 @@ public:
 			m_indexes.push_back(pIndexes[i]);
 	}
 
-	virtual ~GBallLeaf()
+	~GBallLeaf() override
 	{
 	}
 
-	virtual bool isLeaf() { return true; }
+	bool isLeaf() override { return true; }
 
-	virtual void insert(size_t index, GDistanceMetric* pMetric, const GVec& pVec)
+	void insert(size_t index, GDistanceMetric* pMetric, const GVec& pVec) override
 	{
 		enclose(pMetric, pVec);
 		m_indexes.push_back(index);
 	}
 
-	virtual bool drop(size_t index, GDistanceMetric* pMetric, const GVec& pVec)
+	bool drop(size_t index, GDistanceMetric* pMetric, const GVec& pVec) override
 	{
 		for(size_t i = 0; i < m_indexes.size(); i++)
 		{
@@ -1536,12 +1536,12 @@ public:
 		return false;
 	}
 
-	virtual void dropAll()
+	void dropAll() override
 	{
 		m_indexes.clear();
 	}
 
-	virtual void print(std::ostream& stream, size_t depth, GDistanceMetric* pMetric, const GVec& pVec, const GMatrix* pData)
+	void print(std::ostream& stream, size_t depth, GDistanceMetric* pMetric, const GVec& pVec, const GMatrix* pData) override
 	{
 		for(size_t i = 0; i < depth; i++)
 			stream << "  ";
@@ -1561,7 +1561,7 @@ public:
 GBallTree::GBallTree(const GMatrix* pData, GDistanceMetric* pMetric, bool ownMetric)
 : GNeighborFinderGeneralizing(pData, pMetric, ownMetric),
 m_maxLeafSize(6),
-m_pRoot(NULL)
+m_pRoot(nullptr)
 {
 	reoptimize();
 }
@@ -1829,11 +1829,11 @@ public:
 	{
 	}
 
-	virtual ~GShortcutPrunerAtomicCycleDetector()
+	~GShortcutPrunerAtomicCycleDetector() override
 	{
 	}
 
-	virtual bool onDetectAtomicCycle(vector<size_t>& cycle)
+	bool onDetectAtomicCycle(vector<size_t>& cycle) override
 	{
 		if(cycle.size() >= (size_t)m_thresh)
 		{
@@ -2076,13 +2076,13 @@ public:
 	{
 	}
 
-	virtual ~GCycleCutAtomicCycleDetector()
+	~GCycleCutAtomicCycleDetector() override
 	{
 	}
 
 	bool gotOne() { return m_gotOne; }
 
-	virtual bool onDetectAtomicCycle(vector<size_t>& cycle)
+	bool onDetectAtomicCycle(vector<size_t>& cycle) override
 	{
 		if(cycle.size() >= (size_t)m_thresh)
 		{

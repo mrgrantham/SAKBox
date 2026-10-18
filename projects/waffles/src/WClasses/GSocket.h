@@ -196,11 +196,11 @@ public:
 	unsigned int m_bufSize;
 
 	GPackageConnection(SOCKET sock)
-	: GTCPConnection(sock), m_pCondemned(NULL), m_pBuf(NULL), m_headerBytes(0), m_payloadBytes(0), m_bufSize(0)
+	: GTCPConnection(sock), m_pCondemned(nullptr), m_pBuf(nullptr), m_headerBytes(0), m_payloadBytes(0), m_bufSize(0)
 	{
 	}
 
-	virtual ~GPackageConnection()
+	~GPackageConnection() override
 	{
 		delete[] m_pCondemned;
 		delete[] m_pBuf;
@@ -348,7 +348,7 @@ protected:
 
 public:
 	GDomClient() : GPackageClient() {}
-	virtual ~GDomClient() {}
+	~GDomClient() override {}
 
 	/// Send the specified DOM node.
 	void send(GDomNode* pNode);
@@ -366,7 +366,7 @@ protected:
 
 public:
 	GDomServer(unsigned int port) : GPackageServer(port) {}
-	virtual ~GDomServer() {}
+	~GDomServer() override {}
 
 	/// Send the specified DOM node.
 	void send(GDomNode* pNode, GPackageConnection* pConn);
