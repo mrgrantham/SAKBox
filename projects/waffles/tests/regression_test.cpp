@@ -9,8 +9,12 @@
 #include <WClasses/GMatrix.h>
 #include <WClasses/GRand.h>
 #include <WClasses/GSparseMatrix.h>
+#include <WClasses/GTokenizer.h>
+#include <WClasses/GVec.h>
 
+#include <cstring>
 #include <stdexcept>
+#include <string>
 
 using namespace GClasses;
 
@@ -100,4 +104,32 @@ TEST(KMeansSparseTest, RareElementsDontDragTheCentres) {
       EXPECT_EQ(kmeans.whichCluster(i), kmeans.whichCluster(4)) << "row " << i;
     EXPECT_NE(kmeans.whichCluster(0), kmeans.whichCluster(4));
   }
+}
+
+// GTensor's ARFF reader read each column's name and dropped it, so errors
+// gave only the column number. They now name the column too.
+namespace {
+std::string tensorArffError(const char *arff) {
+  GTensor t({1, 1});
+  GTokenizer tok(arff, strlen(arff));
+  try {
+    t.parseArff(tok);
+  } catch (const std::exception &e) {
+    return e.what();
+  }
+  return "";
+}
+} // namespace
+
+TEST(TensorArffTest, ErrorsNameTheColumn) {
+  EXPECT_NE(tensorArffError("@relation r\n@attribute height REAL\n"
+                            "@attribute colour {red,green}\n@data\n"
+                            "1.5,purple\n")
+                .find("for attribute colour (1)"),
+            std::string::npos);
+  EXPECT_NE(tensorArffError("@relation r\n@attribute height REAL\n"
+                            "@attribute colour {red,green}\n@data\n"
+                            "tall,red\n")
+                .find("for attribute height (0)"),
+            std::string::npos);
 }

@@ -1321,6 +1321,7 @@ inline bool isRealValue(const char* szValue)
 class GTensorAttr
 {
 public:
+	std::string m_name;
 	std::vector<std::string> m_values;
 
 	GDomNode* serialize(GDom* pDoc, size_t valCount) const;
@@ -1338,6 +1339,21 @@ public:
 			delete(m_attrs[i]);
 	}
 
+	// Adds a column named name, or attr_<index> if the name is empty (as GArffRelation does)
+	GTensorAttr* addAttr(const string& name)
+	{
+		GTensorAttr* pAttr = new GTensorAttr();
+		pAttr->m_name = name.length() > 0 ? name : "attr_" + to_str(m_attrs.size());
+		m_attrs.push_back(pAttr);
+		return pAttr;
+	}
+
+	// The column's name and number, for error messages
+	string describe(size_t nAttr) const
+	{
+		return m_attrs[nAttr]->m_name + " (" + to_str(nAttr) + ")";
+	}
+
 	void parseAttribute(GTokenizer& tok, GCharSet& cs_whitespace, GCharSet& cs_spaces, GCharSet& cs_argEnd, GCharSet& cs_valEnd, GCharSet& cs_newline)
 	{
 		tok.skipWhile(cs_spaces);
@@ -1347,15 +1363,14 @@ public:
 		if(c == '{')
 		{
 			tok.skip(1);
-			size_t index = m_attrs.size();
-			m_attrs.push_back(new GTensorAttr());
+			GTensorAttr* pAttr = addAttr(dataname);
 			while(true)
 			{
 				tok.readUntil_escaped_quoted(cs_valEnd);
 				char* szVal = tok.trim(cs_whitespace);
 				if(*szVal == '\0')
 					throw Ex("Empty value specified on line ", to_str(tok.line()));
-				m_attrs[index]->m_values.push_back(szVal);
+				pAttr->m_values.push_back(szVal);
 				char c2 = tok.peek();
 				if(c2 == ',')
 					tok.skip(1);
@@ -1375,7 +1390,7 @@ public:
 				_stricmp(szType, "NUMERIC") == 0 ||
 				_stricmp(szType, "INTEGER") == 0)
 			{
-				m_attrs.push_back(new GTensorAttr());
+				addAttr(dataname);
 			}
 			else
 				throw Ex("Unsupported attribute type: (", szType, "), at line ", to_str(tok.line()));
@@ -1438,7 +1453,7 @@ double GTensor_parseValue(GTensorMeta& relation, size_t col, const char* szVal, 
 		else
 		{
 			if(!isRealValue(szVal))
-				throw Ex("Expected a numeric value at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
+				throw Ex("Expected a numeric value for attribute ", relation.describe(col), " at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
 			return atof(szVal);
 		}
 	}
@@ -1451,7 +1466,7 @@ double GTensor_parseValue(GTensorMeta& relation, size_t col, const char* szVal, 
 		{
 			int nVal = relation.findEnumeratedValue(col, szVal);
 			if(nVal == UNKNOWN_DISCRETE_VALUE)
-				throw Ex("Unrecognized enumeration value '", szVal, "' for attribute ", to_str(col), " at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
+				throw Ex("Unrecognized enumeration value '", szVal, "' for attribute ", relation.describe(col), " at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
 			return (double)nVal;
 		}
 	}
