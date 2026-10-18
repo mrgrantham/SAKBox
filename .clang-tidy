@@ -13,6 +13,11 @@
 #   exception-escape                main() and destructors that may throw by design
 #   pointer-arithmetic-on-polymorphic-object  Cyclone's arrays of bodies
 #   enum-size, avoid-endl           micro-optimisations
+#   switch-missing-default-case, unhandled-code-paths  every demo's key switch
+#   float-loop-counter              exact steps (4.0f) and deliberate test sweeps
+#   random-generator-seed           fixed seeds keep tests and simulations repeatable
+#   implicit-widening-of-multiplication-result  small array indices
+#   performance-no-int-to-ptr       OpenGL's (void *) buffer offsets
 Checks: >
   -*,
   bugprone-*,
@@ -29,8 +34,14 @@ Checks: >
   -bugprone-macro-parentheses,
   -bugprone-exception-escape,
   -bugprone-pointer-arithmetic-on-polymorphic-object,
+  -bugprone-switch-missing-default-case,
+  -bugprone-unhandled-code-paths,
+  -bugprone-float-loop-counter,
+  -bugprone-random-generator-seed,
+  -bugprone-implicit-widening-of-multiplication-result,
   -performance-enum-size,
-  -performance-avoid-endl
+  -performance-avoid-endl,
+  -performance-no-int-to-ptr
 
 # Report problems in the repo's own headers (directly or through Bazel's
 # _virtual_includes), not third-party ones; Waffles isn't converted yet.

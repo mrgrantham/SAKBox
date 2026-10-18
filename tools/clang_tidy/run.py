@@ -33,6 +33,11 @@ DEFAULT_PATHS = [
     "projects/scratchpadd",
 ]
 
+# Upstream code kept as published, checked by its own project, not ours
+EXCLUDE = [
+    "projects/examples/png/src/pngtest.cpp",  # libpng's test program (C style)
+]
+
 # Where LLVM's tools are when they aren't on PATH (Homebrew keeps them off it)
 LLVM_DIRS = ["/opt/homebrew/opt/llvm/bin", "/usr/local/opt/llvm/bin", "/usr/lib/llvm/bin"]
 
@@ -65,7 +70,8 @@ def main():
     clang_tidy = find_tool("clang-tidy", "CLANG_TIDY")
     run_clang_tidy = find_tool("run-clang-tidy", "RUN_CLANG_TIDY")
     paths = [p.rstrip("/") for p in (args.paths or DEFAULT_PATHS)]
-    file_regex = "^(" + "|".join(re.escape(str(REPO / p)) + "/" for p in paths) + ")"
+    file_regex = ("^(?!" + "|".join(re.escape(str(REPO / e)) for e in EXCLUDE) + ")"
+                  "(" + "|".join(re.escape(str(REPO / p)) + "/" for p in paths) + ")")
 
     command = [run_clang_tidy, "-p", str(REPO), "-clang-tidy-binary", clang_tidy,
                "-quiet", "-j", str(args.j)]

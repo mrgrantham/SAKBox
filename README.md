@@ -81,7 +81,7 @@ python3 tools/clang_tidy/run.py --fix projects/cyclone   # apply clang-tidy's fi
 python3 tools/clang_tidy/run.py --checks='-*,modernize-use-nullptr' --fix   # one check only
 ```
 
-It prints each finding once (a header's findings aren't repeated per file that includes it), then a count per check, and exits 1 if there are any. It finds clang-tidy on your `PATH`, in Homebrew's LLVM, or at `$CLANG_TIDY`. Its findings are advice, not part of the build: review fixes before committing them, and rebuild and test afterwards.
+It skips Waffles (not converted yet) and `projects/examples/png/src/pngtest.cpp` (libpng's own test program, kept as published). It prints each finding once (a header's findings aren't repeated per file that includes it), then a count per check, and exits 1 if there are any. It finds clang-tidy on your `PATH`, in Homebrew's LLVM, or at `$CLANG_TIDY`. Its findings are advice, not part of the build: review fixes before committing them, and rebuild and test afterwards.
 
 ## Platform Notes
 
