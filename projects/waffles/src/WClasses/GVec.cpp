@@ -1533,6 +1533,8 @@ void GTensor::parseArff(GTokenizer& tok)
 	// Parse the data
 	std::queue<double> data_buf;
 	size_t colCount = meta.m_attrs.size();
+	if(colCount == 0)
+		throw Ex("Invalid ARFF file--it has no attributes");
 	while(true)
 	{
 		tok.skipWhile(cs_whitespace);

@@ -150,3 +150,11 @@ TEST(TensorArffTest, LoadsEveryValue) {
   for (size_t i = 0; i < 6; i++)
     EXPECT_EQ(t[i], i + 1.0) << "value " << i;
 }
+
+// With no @attribute lines, parseArff divided by the column count (0):
+// undefined behaviour, which gives an empty tensor on arm64 and SIGFPE on
+// x86. It's now an error.
+TEST(TensorArffTest, NoColumnsIsAnError) {
+  EXPECT_NE(tensorArffError("@relation r\n@data\n").find("no attributes"),
+            std::string::npos);
+}
