@@ -4,8 +4,9 @@ build --cxxopt='-std=c++26'
 build --per_file_copt='^projects/.*@-pedantic-errors'
 # The repo's own code is warning-free; keep it that way.
 build --per_file_copt='^projects/.*@-Werror'
-# Overriding functions must say `override` (Waffles isn't converted yet).
-build --per_file_copt='^projects/.*,-^projects/waffles/.*@-Wsuggest-override'
+# Overriding functions, destructors included, must say `override` (see the
+# README's Code conventions; Waffles isn't converted yet).
+build --per_file_copt='^projects/.*,-^projects/waffles/.*@-Wsuggest-override,-Wsuggest-destructor-override'
 build --cxxopt='-Wpedantic'
 build:clang --cxxopt='-Werror=inconsistent-missing-override'
 build:clang --cxxopt='-Werror=delete-abstract-non-virtual-dtor'

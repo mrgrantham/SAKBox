@@ -7,7 +7,7 @@ A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the 
 **Prerequisites**
 
 - [Bazelisk](https://github.com/bazelbuild/bazelisk) (recommended), which installs and runs the Bazel version pinned in `.bazelversion` (9.2.0). A plain Bazel 9 install also works.
-- A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`). The code under `projects/` also builds with `-pedantic-errors` (no compiler extensions), `-Werror` (no warnings) and `-Wsuggest-override` (overriding functions must say `override`; Waffles is exempt from this one for now).
+- A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`). The code under `projects/` also builds with `-pedantic-errors` (no compiler extensions), `-Werror` (no warnings) and `-Wsuggest-override` / `-Wsuggest-destructor-override` (overriding functions must say `override`; see [Code conventions](#code-conventions); Waffles is exempt from these for now).
 - On Linux, the system packages listed under [Linux](#linux).
 - Optional, for static analysis: clang-tidy, which Xcode doesn't include. On macOS, `brew install llvm` (Homebrew keeps it off your `PATH`, so your compiler stays Xcode's); on Linux, your distribution's `clang-tidy` package. See [Static analysis](#static-analysis).
 - For the 3DS example only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine (see [`tools/devkitpro`](tools/devkitpro/README.md)). Without Docker running, that one target fails with a message saying so.
@@ -68,6 +68,22 @@ python3 tools/compile_commands/refresh.py
 Re-run it after adding source files or changing BUILD deps, then restart clangd. The generated files are git-ignored.
 
 To format a package's C++ files with clang-format, run its `clang_format` target, e.g. `bazel run //projects/flexmath:clang_format`. Most packages have one: `bazel query 'attr(name, "^clang_format$", //...)'` lists them.
+
+## Code conventions
+
+**Virtual functions use exactly one of `virtual`, `override` or `final`** (as the C++ Core Guidelines, C.128, and Google's style guide recommend):
+
+| Write | When |
+| --- | --- |
+| `virtual` | Only where a virtual function is introduced, in the class that first declares it, including a base class's destructor: `virtual ~Base() = default;` |
+| `override` | On every function that overrides one, destructors included: `void draw() override;`, `~Derived() override;` |
+| `final` | Rarely, instead of `override`, to stop further overriding |
+
+Never `virtual void draw() override;`: an override is already virtual, and the extra `virtual` hides whether a function is new or overriding. `override` also makes the compiler check that the function really overrides something, so a mistyped signature is an error rather than a function that's silently never called.
+
+The build enforces it for `projects/` (except Waffles, for now): `-Wsuggest-override` and `-Wsuggest-destructor-override` make an unmarked override an error. clang-tidy's `modernize-use-override` also flags a redundant `virtual` (see [Static analysis](#static-analysis)).
+
+C++ files are formatted with clang-format in the repo's style (`.clang-format`); see [Editor Setup](#editor-setup).
 
 ## Static analysis
 
