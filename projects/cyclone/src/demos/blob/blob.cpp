@@ -70,7 +70,7 @@ unsigned Platform::addContact(cyclone::ParticleContact *contact,
         contact->contactNormal.z = 0;
         contact->restitution = restitution;
         contact->particle[0] = particles + i;
-        contact->particle[1] = 0;
+        contact->particle[1] = nullptr;
         contact->penetration = BLOB_RADIUS - toParticle.magnitude();
         used++;
         contact++;
@@ -85,7 +85,7 @@ unsigned Platform::addContact(cyclone::ParticleContact *contact,
         contact->contactNormal.z = 0;
         contact->restitution = restitution;
         contact->particle[0] = particles + i;
-        contact->particle[1] = 0;
+        contact->particle[1] = nullptr;
         contact->penetration = BLOB_RADIUS - toParticle.magnitude();
         used++;
         contact++;
@@ -105,7 +105,7 @@ unsigned Platform::addContact(cyclone::ParticleContact *contact,
         contact->contactNormal.z = 0;
         contact->restitution = restitution;
         contact->particle[0] = particles + i;
-        contact->particle[1] = 0;
+        contact->particle[1] = nullptr;
         contact->penetration = BLOB_RADIUS - real_sqrt(distanceToPlatform);
         used++;
         contact++;
@@ -223,7 +223,7 @@ class BlobDemo : public Application {
 public:
   /** Creates a new demo object. */
   BlobDemo();
-  virtual ~BlobDemo();
+  ~BlobDemo() override;
 
   /** Returns the window title for the demo. */
   const char *getTitle() override;

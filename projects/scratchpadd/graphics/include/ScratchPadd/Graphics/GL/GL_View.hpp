@@ -236,7 +236,7 @@ public:
   }
 
   void destroy() override { vertexIndexBuffer_->destroy(); }
-  virtual void reset() override {}
+  void reset() override {}
 };
 
 // This will set all the configuration info before generating

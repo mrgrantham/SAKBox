@@ -159,8 +159,8 @@ int main(int argc, char **argv) {
   const unsigned int windowHeight = 800;
 
   GLFWwindow *window =
-      glfwCreateWindow(windowWidth, windowHeight, "Test Window", NULL, NULL);
-  if (window == NULL) {
+      glfwCreateWindow(windowWidth, windowHeight, "Test Window", nullptr, nullptr);
+  if (window == nullptr) {
     spdlog::info("Failed to create window");
     glfwTerminate();
     return -1;
@@ -197,7 +197,7 @@ int main(int argc, char **argv) {
   // second argument aligns with location value specified in vertex shader
   // inputs This one is for aPos since second arguement is 0 so (location = 0)
   vertexArrayObject.linkAttributes(vertexBufferObject, 0, 3, GL_FLOAT,
-                                   11 * sizeof(float), (void *)0);
+                                   11 * sizeof(float), (void *)nullptr);
   // This one is for aColor since second arguement is 1 so (location = 1)
   vertexArrayObject.linkAttributes(vertexBufferObject, 1, 3, GL_FLOAT,
                                    11 * sizeof(float),
@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
 VertexBufferObject lightVBO(lightVertices, sizeof(lightVertices));
 ElementBufferObject lightEBO(lightIndices, sizeof(lightIndices));
 
-  lightVAO.linkAttributes(lightVBO,0,3,GL_FLOAT,3 * sizeof(float),(void*)0);
+  lightVAO.linkAttributes(lightVBO,0,3,GL_FLOAT,3 * sizeof(float),(void*)nullptr);
 
   lightVAO.unbind();
   lightVBO.unbind();
@@ -274,13 +274,13 @@ ElementBufferObject lightEBO(lightIndices, sizeof(lightIndices));
     brickTexture.bind();
     vertexArrayObject.bind();
     glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT,
-                   0);
+                   nullptr);
 
     lightShader.activate();
     camera.matrix(lightShader,"cameraMatrix");
     lightVAO.bind();
     glDrawElements(GL_TRIANGLES, sizeof(lightIndices) / sizeof(int), GL_UNSIGNED_INT,
-                   0);
+                   nullptr);
     glfwSwapBuffers(window);
 
     // Take care of all GLFW events

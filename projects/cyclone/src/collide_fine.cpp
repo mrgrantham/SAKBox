@@ -154,7 +154,7 @@ unsigned CollisionDetector::sphereAndTruePlane(const CollisionSphere &sphere,
   contact->contactNormal = normal;
   contact->penetration = penetration;
   contact->contactPoint = position - plane.direction * centreDistance;
-  contact->setBodyData(sphere.body, NULL, data->friction, data->restitution);
+  contact->setBodyData(sphere.body, nullptr, data->friction, data->restitution);
 
   data->addContacts(1);
   return 1;
@@ -182,7 +182,7 @@ unsigned CollisionDetector::sphereAndHalfSpace(const CollisionSphere &sphere,
   contact->penetration = -ballDistance;
   contact->contactPoint =
       position - plane.direction * (ballDistance + sphere.radius);
-  contact->setBodyData(sphere.body, NULL, data->friction, data->restitution);
+  contact->setBodyData(sphere.body, nullptr, data->friction, data->restitution);
 
   data->addContacts(1);
   return 1;
@@ -509,7 +509,7 @@ unsigned CollisionDetector::boxAndPoint(const CollisionBox &box,
   // Note that we don't know what rigid body the point
   // belongs to, so we just use NULL. Where this is called
   // this value can be left, or filled in.
-  contact->setBodyData(box.body, NULL, data->friction, data->restitution);
+  contact->setBodyData(box.body, nullptr, data->friction, data->restitution);
 
   data->addContacts(1);
   return 1;
@@ -623,7 +623,8 @@ unsigned CollisionDetector::boxAndHalfSpace(const CollisionBox &box,
       contact->penetration = plane.offset - vertexDistance;
 
       // Write the appropriate data
-      contact->setBodyData(box.body, NULL, data->friction, data->restitution);
+      contact->setBodyData(box.body, nullptr, data->friction,
+                           data->restitution);
 
       // Move onto the next contact
       contact++;

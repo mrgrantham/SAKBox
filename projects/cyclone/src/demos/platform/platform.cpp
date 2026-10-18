@@ -49,7 +49,7 @@ class PlatformDemo : public MassAggregateApplication {
 public:
   /** Creates a new demo object. */
   PlatformDemo();
-  virtual ~PlatformDemo();
+  ~PlatformDemo() override;
 
   /** Returns the window title for the demo. */
   const char *getTitle() override;
@@ -76,7 +76,7 @@ public:
 
 // Method definitions
 PlatformDemo::PlatformDemo()
-    : MassAggregateApplication(6), rods(0), massPos(0, 0, 0.5f) {
+    : MassAggregateApplication(6), rods(nullptr), massPos(0, 0, 0.5f) {
   // Create the masses and connections.
   particleArray[0].setPosition(0, 0, 1);
   particleArray[1].setPosition(0, 0, -1);

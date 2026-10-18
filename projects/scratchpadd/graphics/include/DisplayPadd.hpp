@@ -66,7 +66,7 @@ public:
     graphics_->tearDown();
   }
 
-  virtual ~DisplayPadd() { spdlog::info("Destroying: {}", name()); }
+  ~DisplayPadd() override { spdlog::info("Destroying: {}", name()); }
 
   // Draws one frame, then queues the next. The buffer swap waits for the
   // display's refresh (vsync), so this runs at the display's rate without a

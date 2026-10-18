@@ -54,7 +54,7 @@ class BridgeDemo : public MassAggregateApplication {
 public:
   /** Creates a new demo object. */
   BridgeDemo();
-  virtual ~BridgeDemo();
+  ~BridgeDemo() override;
 
   /** Returns the window title for the demo. */
   const char *getTitle() override;
@@ -84,8 +84,8 @@ public:
 
 // Method definitions
 BridgeDemo::BridgeDemo()
-    : MassAggregateApplication(12), supports(0), cables(0), rods(0),
-      massPos(0, 0, 0.5f) {
+    : MassAggregateApplication(12), supports(nullptr), cables(nullptr),
+      rods(nullptr), massPos(0, 0, 0.5f) {
   // Create the masses and connections.
   for (unsigned i = 0; i < 12; i++) {
     particleArray[i].setPosition(cyclone::real(i / 2) * 2.0f - 5.0f, 4,

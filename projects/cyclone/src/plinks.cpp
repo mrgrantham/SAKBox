@@ -94,7 +94,7 @@ unsigned ParticleCableConstraint::addContact(ParticleContact *contact,
 
   // Otherwise return the contact
   contact->particle[0] = particle;
-  contact->particle[1] = 0;
+  contact->particle[1] = nullptr;
 
   // Calculate the normal
   Vector3 normal = anchor - particle->getPosition();
@@ -119,7 +119,7 @@ unsigned ParticleRodConstraint::addContact(ParticleContact *contact,
 
   // Otherwise return the contact
   contact->particle[0] = particle;
-  contact->particle[1] = 0;
+  contact->particle[1] = nullptr;
 
   // Calculate the normal
   Vector3 normal = anchor - particle->getPosition();

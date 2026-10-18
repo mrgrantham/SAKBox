@@ -43,7 +43,7 @@ class SailboatDemo : public Application {
 public:
   /** Creates a new demo object. */
   SailboatDemo();
-  virtual ~SailboatDemo();
+  ~SailboatDemo() override;
 
   /** Returns the window title for the demo. */
   const char *getTitle() override;

@@ -48,7 +48,7 @@ class FlightSimDemo : public Application {
 public:
   /** Creates a new demo object. */
   FlightSimDemo();
-  virtual ~FlightSimDemo();
+  ~FlightSimDemo() override;
 
   /** Returns the window title for the demo. */
   const char *getTitle() override;

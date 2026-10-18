@@ -96,7 +96,7 @@ unsigned GroundContacts::addContact(cyclone::ParticleContact *contact,
     if (y < 0.0f) {
       contact->contactNormal = cyclone::Vector3::UP;
       contact->particle[0] = *p;
-      contact->particle[1] = NULL;
+      contact->particle[1] = nullptr;
       contact->penetration = -y;
       contact->restitution = 0.2f;
       contact++;

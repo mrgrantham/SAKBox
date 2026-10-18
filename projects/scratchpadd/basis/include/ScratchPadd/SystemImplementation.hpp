@@ -98,7 +98,7 @@ public:
     return workerNamesSet.size() == workerNamesVector.size();
   }
 
-  virtual void instantiate() override {
+  void instantiate() override {
     createLoggerIfNeeded("scratchpadd");
     ((std::get<std::unique_ptr<Workers>>(workers_) =
           std::make_unique<Workers>(this)),
@@ -120,7 +120,7 @@ public:
   // it down on this thread: every padd is stopped (background padds run
   // finishing() on their own threads), then finishing() runs for main-thread
   // padds, then cleanup() for every padd.
-  virtual void start() override {
+  void start() override {
     logger().info("Starting system");
     // Prepare all workers
     std::apply([](auto const &...worker) { (worker->prepareWrapper(), ...); },
@@ -142,7 +142,7 @@ public:
   // Asks start() to shut the system down and returns immediately; start()
   // returns once every padd has finished. Safe to call from any thread,
   // including from inside a padd.
-  virtual void stop() override {
+  void stop() override {
     stopRequested_ = true;
     mainThreadSignal_.notify(); // wakes the main-thread loop to shut down
   }
@@ -179,7 +179,7 @@ public:
     } while (pendingWorkCount);
   }
 
-  virtual bool isRunning() override { return on_; }
+  bool isRunning() override { return on_; }
 
   // on_ is changed while holding scratchPaddSystemMutex_ so waitForStop()
   // can't check it and then miss the notify.
@@ -214,13 +214,13 @@ public:
       sendWork(possibleReceiver, message);
     }
   }
-  virtual void send(ScratchPadd::Base *sender, Message message) override {
+  void send(ScratchPadd::Base *sender, Message message) override {
     logger().debug("sending from {}", sender->name());
     (sendIfUnmatched(sender, std::get<std::unique_ptr<Workers>>(workers_).get(),
                      message),
      ...);
   }
-  virtual void sendIncludeSender(ScratchPadd::Message message) override {
+  void sendIncludeSender(ScratchPadd::Message message) override {
     (sendWork(std::get<std::unique_ptr<Workers>>(workers_).get(), message),
      ...);
   }

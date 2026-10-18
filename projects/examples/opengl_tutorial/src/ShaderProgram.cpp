@@ -14,7 +14,7 @@ static std::string GetFileContents(const std::string &pathString) {
 }
 
 static void CompileAndVerifyShader(GLuint shader, const char *shaderSource) {
-  glShaderSource(shader, 1, &shaderSource, NULL);
+  glShaderSource(shader, 1, &shaderSource, nullptr);
   glCompileShader(shader);
   int status;
   glGetShaderiv(shader, GL_COMPILE_STATUS, &status);

@@ -12,7 +12,7 @@ public:
       std::cout << name() << " Text: " << text << "\n";
     });
   }
-  virtual ~AudioPadd() { spdlog::info("Destroying: {}", name()); }
+  ~AudioPadd() override { spdlog::info("Destroying: {}", name()); }
 
   std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>
   generateControls() override {

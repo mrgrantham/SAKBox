@@ -25,9 +25,9 @@ static bool qpcFlag;
 typedef unsigned long long LONGLONG;
 #else
 #define TIMING_WINDOWS 1
-        // assume windows
+// assume windows
 
-        // Import the high performance timer (c. 4ms).
+// Import the high performance timer (c. 4ms).
 #include <mmsystem.h>
 #include <windows.h>
 
@@ -38,7 +38,7 @@ static double qpcFrequency;
 unsigned systemTime() {
 #if TIMING_UNIX
   struct timeval tv;
-  gettimeofday(&tv, 0);
+  gettimeofday(&tv, nullptr);
 
   return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
@@ -67,7 +67,7 @@ unsigned long TimingData::getClock() {
 
 #if TIMING_UNIX
   struct timeval tv;
-  gettimeofday(&tv, 0);
+  gettimeofday(&tv, nullptr);
 
   return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 #else
@@ -92,7 +92,7 @@ void initTime() {
 }
 
 // Holds the global frame time that is passed around
-static TimingData *timingData = NULL;
+static TimingData *timingData = nullptr;
 
 // Retrieves the global frame info instance
 TimingData &TimingData::get() { return (TimingData &)*timingData; }
@@ -158,5 +158,5 @@ void TimingData::init() {
 
 void TimingData::deinit() {
   delete timingData;
-  timingData = NULL;
+  timingData = nullptr;
 }

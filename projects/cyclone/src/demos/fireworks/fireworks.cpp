@@ -104,7 +104,7 @@ struct FireworkRule {
   /** The set of payloads. */
   Payload *payloads;
 
-  FireworkRule() : payloadCount(0), payloads(NULL) {}
+  FireworkRule() : payloadCount(0), payloads(nullptr) {}
 
   void init(unsigned payloadCount) {
     FireworkRule::payloadCount = payloadCount;
@@ -112,7 +112,7 @@ struct FireworkRule {
   }
 
   ~FireworkRule() {
-    if (payloads != NULL)
+    if (payloads != nullptr)
       delete[] payloads;
   }
 
@@ -136,7 +136,7 @@ struct FireworkRule {
    * instance. The optional parent firework is used to base position
    * and velocity on.
    */
-  void create(Firework *firework, const Firework *parent = NULL) const {
+  void create(Firework *firework, const Firework *parent = nullptr) const {
     firework->type = type;
     firework->age = crandom.randomReal(minAge, maxAge);
 
@@ -190,7 +190,7 @@ class FireworksDemo : public Application {
   FireworkRule rules[ruleCount];
 
   /** Dispatches a firework from the origin. */
-  void create(unsigned type, const Firework *parent = NULL);
+  void create(unsigned type, const Firework *parent = nullptr);
 
   /** Dispatches the given number of fireworks from the given parent. */
   void create(unsigned type, unsigned number, const Firework *parent);
@@ -201,7 +201,7 @@ class FireworksDemo : public Application {
 public:
   /** Creates a new demo object. */
   FireworksDemo();
-  ~FireworksDemo();
+  ~FireworksDemo() override;
 
   /** Sets up the graphic rendering. */
   void initGraphics() override;
@@ -448,31 +448,31 @@ void FireworksDemo::display() {
 void FireworksDemo::key(unsigned char key) {
   switch (key) {
   case '1':
-    create(1, 1, NULL);
+    create(1, 1, nullptr);
     break;
   case '2':
-    create(2, 1, NULL);
+    create(2, 1, nullptr);
     break;
   case '3':
-    create(3, 1, NULL);
+    create(3, 1, nullptr);
     break;
   case '4':
-    create(4, 1, NULL);
+    create(4, 1, nullptr);
     break;
   case '5':
-    create(5, 1, NULL);
+    create(5, 1, nullptr);
     break;
   case '6':
-    create(6, 1, NULL);
+    create(6, 1, nullptr);
     break;
   case '7':
-    create(7, 1, NULL);
+    create(7, 1, nullptr);
     break;
   case '8':
-    create(8, 1, NULL);
+    create(8, 1, nullptr);
     break;
   case '9':
-    create(9, 1, NULL);
+    create(9, 1, nullptr);
     break;
   }
 }

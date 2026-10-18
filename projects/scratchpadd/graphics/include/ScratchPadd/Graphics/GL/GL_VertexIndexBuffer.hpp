@@ -31,7 +31,7 @@ public:
     glEnableVertexAttribArray(
         0); // enable location = 0 in vertex shader (position)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(Graphics::VertexPair), (void *)0);
+                          sizeof(Graphics::VertexPair), (void *)nullptr);
 
     glEnableVertexAttribArray(
         1); // enable location = 1 in vertex shader (aNormal)

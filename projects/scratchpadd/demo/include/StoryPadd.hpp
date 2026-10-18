@@ -28,7 +28,7 @@ public:
                  performanceTimer_.getAverageIntervalInSeconds(5));
   }
 
-  ~StoryPadd() { spdlog::info("Destroying: {}", name()); }
+  ~StoryPadd() override { spdlog::info("Destroying: {}", name()); }
 
   // Called when a control is edited in DisplayPadd's control panel.
   void controlChanged(const std::string &controlName) override {

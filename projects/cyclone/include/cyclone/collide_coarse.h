@@ -121,15 +121,15 @@ public:
    * Creates a new node in the hierarchy with the given parameters.
    */
   BVHNode(BVHNode *parent, const BoundingVolumeClass &volume,
-          RigidBody *body = NULL)
+          RigidBody *body = nullptr)
       : volume(volume), body(body), parent(parent) {
-    children[0] = children[1] = NULL;
+    children[0] = children[1] = nullptr;
   }
 
   /**
    * Checks if this node is at the bottom of the hierarchy.
    */
-  bool isLeaf() const { return (body != NULL); }
+  bool isLeaf() const { return (body != nullptr); }
 
   /**
    * Checks the potential contacts from this node downwards in
@@ -208,7 +208,7 @@ void BVHNode<BoundingVolumeClass>::insert(
     children[1] = new BVHNode<BoundingVolumeClass>(this, newVolume, newBody);
 
     // And we now loose the body (we're no longer a leaf)
-    this->body = NULL;
+    this->body = nullptr;
 
     // We need to recalculate our bounding volume
     recalculateBoundingVolume();
@@ -246,10 +246,10 @@ template <class BoundingVolumeClass> BVHNode<BoundingVolumeClass>::~BVHNode() {
 
     // Delete the sibling (we blank its parent and
     // children to avoid processing/deleting them)
-    sibling->parent = NULL;
-    sibling->body = NULL;
-    sibling->children[0] = NULL;
-    sibling->children[1] = NULL;
+    sibling->parent = nullptr;
+    sibling->body = nullptr;
+    sibling->children[0] = nullptr;
+    sibling->children[1] = nullptr;
     delete sibling;
 
     // Recalculate the parent's bounding volume
@@ -260,11 +260,11 @@ template <class BoundingVolumeClass> BVHNode<BoundingVolumeClass>::~BVHNode() {
   // parent data so we don't try to process their siblings
   // as they are deleted).
   if (children[0]) {
-    children[0]->parent = NULL;
+    children[0]->parent = nullptr;
     delete children[0];
   }
   if (children[1]) {
-    children[1]->parent = NULL;
+    children[1]->parent = nullptr;
     delete children[1];
   }
 }

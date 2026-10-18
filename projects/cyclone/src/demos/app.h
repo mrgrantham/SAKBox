@@ -196,7 +196,7 @@ protected:
 
 public:
   MassAggregateApplication(unsigned int particleCount);
-  virtual ~MassAggregateApplication();
+  ~MassAggregateApplication() override;
 
   /** Update the particle positions. */
   void update() override;
