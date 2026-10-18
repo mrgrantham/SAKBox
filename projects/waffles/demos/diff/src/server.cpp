@@ -32,7 +32,7 @@ using std::make_pair;
 
 
 Server::Server(int port, GRand* pRand)
-: GDynamicPageServer(port, pRand)
+: GDynamicPageServer(port, pRand, true) // SAKBox: browsed at myAddress(), the network name, so open to the network
 {
 }
 

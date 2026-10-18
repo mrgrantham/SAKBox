@@ -473,7 +473,7 @@ public:
 	CommandCenter(int port)
 	: m_blobOut(2048, true)
 	{
-		m_pSocket = new GPackageServer(port);
+		m_pSocket = new GPackageServer(port, true); // SAKBox: reached from other machines, so open to the network
 		m_pConn = NULL;
 		m_remoteDir = "<Not Connected>";
 		m_pFile = NULL;

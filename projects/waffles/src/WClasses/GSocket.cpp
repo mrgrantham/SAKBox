@@ -387,7 +387,8 @@ const char* GTCPConnection::getIPAddress()
 
 
 
-GTCPServer::GTCPServer(unsigned short port)
+GTCPServer::GTCPServer(unsigned short port, bool networkAccessible)
+: m_networkAccessible(networkAccessible)
 {
 	GSocket_init();
 	m_sock = socket(AF_INET, SOCK_STREAM, 0); // use SOCK_DGRAM for UDP
@@ -401,7 +402,8 @@ GTCPServer::GTCPServer(unsigned short port)
 	memset(&sHostAddrIn, '\0', sizeof(SOCKADDR_IN));
 	sHostAddrIn.sin_family = AF_INET;
 	sHostAddrIn.sin_port = htons(port);
-	sHostAddrIn.sin_addr.s_addr = htonl(INADDR_ANY);
+	// SAKBox: was always INADDR_ANY, so any device on the network could connect
+	sHostAddrIn.sin_addr.s_addr = htonl(networkAccessible ? INADDR_ANY : INADDR_LOOPBACK);
 	if(bind(m_sock, (struct sockaddr*)&sHostAddrIn, sizeof(SOCKADDR)) != 0)
 	{
 #ifdef WINDOWS
@@ -418,6 +420,27 @@ GTCPServer::GTCPServer(unsigned short port)
 #else
 		throw Ex("Failed to listen on the socket: ", strerror(errno));
 #endif
+}
+
+unsigned short GTCPServer::port() const
+{
+	sockaddr_in addr;
+	socklen_t len = sizeof(addr);
+	if(getsockname(m_sock, (sockaddr*)&addr, &len) != 0)
+		throw Ex("getsockname failed");
+	return ntohs(addr.sin_port);
+}
+
+std::string GTCPServer::boundAddress() const
+{
+	sockaddr_in addr;
+	socklen_t len = sizeof(addr);
+	if(getsockname(m_sock, (sockaddr*)&addr, &len) != 0)
+		throw Ex("getsockname failed");
+	char buf[INET_ADDRSTRLEN];
+	if(!inet_ntop(AF_INET, &addr.sin_addr, buf, sizeof(buf)))
+		throw Ex("inet_ntop failed");
+	return buf;
 }
 
 GTCPServer::~GTCPServer()
@@ -805,7 +828,7 @@ char* GPackageClient::receive(size_t* pLen)
 
 
 
-GPackageServer::GPackageServer(unsigned short port)
+GPackageServer::GPackageServer(unsigned short port, bool networkAccessible)
 : m_maxBufSize(8192), m_maxPackageSize(0x1000000)
 {
 	GSocket_init();
@@ -820,7 +843,8 @@ GPackageServer::GPackageServer(unsigned short port)
 	memset(&sHostAddrIn, '\0', sizeof(SOCKADDR_IN));
 	sHostAddrIn.sin_family = AF_INET;
 	sHostAddrIn.sin_port = htons(port);
-	sHostAddrIn.sin_addr.s_addr = htonl(INADDR_ANY);
+	// SAKBox: was always INADDR_ANY, so any device on the network could connect
+	sHostAddrIn.sin_addr.s_addr = htonl(networkAccessible ? INADDR_ANY : INADDR_LOOPBACK);
 	if(bind(m_sock, (struct sockaddr*)&sHostAddrIn, sizeof(SOCKADDR)) != 0)
 	{
 #ifdef WINDOWS

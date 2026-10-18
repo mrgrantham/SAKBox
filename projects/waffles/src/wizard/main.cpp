@@ -140,7 +140,7 @@ public:
 	bool m_keepGoing;
 	std::string m_basePath;
 
-	Server(int port, GRand* pRand);
+	Server(int port, GRand* pRand, bool networkAccessible);
 	~Server() override;
 	UsageNode* globalUsageNode(const char* name, UsageNode* pDefaultNode);
 	virtual void onEverySixHours() {}
@@ -720,7 +720,7 @@ void MySession::doNext(const char* szParams)
 
 
 
-Server::Server(int port, GRand* pRand) : GDynamicPageServer(port, pRand), m_port(port)
+Server::Server(int port, GRand* pRand, bool networkAccessible) : GDynamicPageServer(port, pRand, networkAccessible), m_port(port)
 {
 	m_keepGoing = true;
 	char buf[300];
@@ -998,8 +998,9 @@ void LaunchBrowser(const char* szAddress)
 	}
 }
 
-// Launch the web-based wizard tool
-void do_wizard()
+// Launch the web-based wizard tool. SAKBox: only this computer can connect
+// unless networkAccessible (waffles_wizard -network).
+void do_wizard(bool networkAccessible)
 {
 	int port = 8421;
 	size_t seed = (size_t)getpid() * (size_t)time(nullptr);
@@ -1007,8 +1008,13 @@ void do_wizard()
 	bool serverStarted = false;
 	try
 	{
-		Server server(port, &prng);
+		Server server(port, &prng, networkAccessible);
 		serverStarted = true;
+		if(networkAccessible)
+			cout << "Serving the wizard at http://localhost:" << port << " and to other devices on your network (-network): anyone on the network can connect.\n";
+		else
+			cout << "Serving the wizard at http://localhost:" << port << " for this computer only. To let other devices on your network connect, run: waffles_wizard -network\n";
+		cout.flush(); // (shown even when the output is piped)
 		string s = "http://localhost:";
 		s += to_str(port);
 		LaunchBrowser(s.c_str());
@@ -1364,7 +1370,9 @@ int main(int nArgs, char* pArgs[])
 	try
 	{
 		if(nArgs < 2)
-			do_wizard(); // do a web-based wizard utility
+			do_wizard(false); // do a web-based wizard utility
+		else if(nArgs == 2 && strcmp(pArgs[1], "-network") == 0)
+			do_wizard(true); // ... that other devices on the network can use too
 		else if(strcmp(pArgs[1], "make_bash_completion_file") == 0)
 			make_bash_completion_file(); // generate a script that is used to set up bash command-completion
 		else if(strcmp(pArgs[1], "complete") == 0)

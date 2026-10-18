@@ -14,12 +14,15 @@ It comes from [mikegashler/waffles](https://github.com/mikegashler/waffles). Thi
 | `:test` | Waffles' own test suite, including its command-line tool tests (the tools are its data deps). It fails if any test fails or, under `bazel test`, if the tools can't be run. |
 | `:app_test`, `:cluster_test`, `:matrix_test`, ... | SAKBox's tests, one per area of the library (see Tests below) |
 
+`waffles_wizard` and `waffles_plot graph` serve their pages to your browser at `http://localhost:8421`. Only this computer can connect, and they say so when they start. To let other devices on your network use them too, run `waffles_wizard -network` or `waffles_plot graph -network`; anyone on the network can then connect, as they warn. (In code, `GHttpServer`, `GDynamicPageServer`, `GTCPServer` and `GPackageServer` take a `networkAccessible` argument, false by default; the `community`, `diff`, `hello_web` and `security` demos, which are meant to be reached from other machines, pass true.)
+
 It builds with the rest of the repo as strict C++26 with `-Werror`. The other demos and the upstream Makefiles, CMake and Visual Studio files are kept but not used.
 
 ## What SAKBox has changed
 
 - **Layout:** the library folder `src/GClasses` is `src/WClasses`, and includes use `<WClasses/...>` rather than relative paths. Platform checks use `__APPLE__` instead of a `DARWIN` define.
 - **Modern C++:** `std::random_shuffle` (removed in C++17) became a Fisher-Yates shuffle with the learner's own seeded `GRand`, `sprintf` became `snprintf`, missing `override`s were added, an exception is caught by reference, and `GMasterThread`'s worker count is `std::atomic` rather than `volatile` (it is read without the lock).
+- **Security** (upstream): Waffles' web server, used by `waffles_wizard` and `waffles_plot graph`, accepted connections from the whole network, and one bad header could overflow its memory: `Content-Length: -1` gave a zero-byte buffer that the request body was written into, and over-long URLs, parameters, cookies and `If-Modified-Since` dates were copied into fixed buffers unchecked. It now listens on this computer only unless asked (above), reads `Content-Length` strictly (up to 64 MB), and hangs up on, and logs, any request that doesn't fit. The HTTP client reads a reply's `Content-Length` the same way, and arrays it allocated with `new[]` are freed with `delete[]`. Tested in `http_test`, over real sockets.
 - **Bug fixes** (all upstream bugs; those with a visible effect have a test, in SAKBox's tests or Waffles' own suite):
   - `GBlockElPos::inverse` assigned instead of comparing (`y = UNKNOWN_REAL_VALUE ? ...`), so it always returned "unknown", and it inverted the wrong pieces of the function.
   - `GBitTable` and `GMatrix` assignment destroyed the data when assigned to themselves.

@@ -102,7 +102,7 @@ void Connection::handleRequest(GDynamicPageSession* pSession, std::ostream& resp
 }
 
 
-Server::Server(int port, GRand* pRand) : GDynamicPageServer(port, pRand)
+Server::Server(int port, GRand* pRand) : GDynamicPageServer(port, pRand, true) // SAKBox: opens myAddress(), the network name, so open to the network
 {
 	char buf[300];
 	GTime::asciiTime(buf, 256, false);

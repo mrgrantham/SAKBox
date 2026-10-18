@@ -158,7 +158,9 @@ protected:
 	char m_passwordSalt[16];
 
 public:
-	GDynamicPageServer(int port, GRand* pRand);
+	/// SAKBox: only browsers on this computer can connect unless
+	/// networkAccessible is true (see GHttpServer).
+	GDynamicPageServer(int port, GRand* pRand, bool networkAccessible = false);
 	~GDynamicPageServer() override;
 
 	virtual GDynamicPageSessionExtension* deserializeSessionExtension(const GDomNode* pNode)

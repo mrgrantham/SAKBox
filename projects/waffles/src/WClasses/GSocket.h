@@ -115,10 +115,24 @@ class GTCPServer
 protected:
 	SOCKET m_sock; // used to listen for incoming connections
 	std::set<GTCPConnection*> m_socks; // used to communicate with each connected client
+	bool m_networkAccessible;
 
 public:
-	GTCPServer(unsigned short port);
+	/// Listens on port (0 for any free one). SAKBox: only programs on this
+	/// computer can connect (localhost), unless networkAccessible is true,
+	/// which accepts connections from any device on the network.
+	GTCPServer(unsigned short port, bool networkAccessible = false);
 	virtual ~GTCPServer();
+
+	/// The port it listens on
+	unsigned short port() const;
+
+	/// The address it listens on: "127.0.0.1" (this computer only) or
+	/// "0.0.0.0" (the network too)
+	std::string boundAddress() const;
+
+	/// Whether devices other than this computer can connect
+	bool networkAccessible() const { return m_networkAccessible; }
 
 	/// Send some data to the specified client. Throws an exception if the send fails for any reason (including
 	/// common reasons, such as if the client has closed the connection), so it is generally a good idea to send
@@ -282,7 +296,9 @@ protected:
 	unsigned int m_maxPackageSize;
 
 public:
-	GPackageServer(unsigned short port);
+	/// SAKBox: only programs on this computer can connect (localhost) unless
+	/// networkAccessible is true, as with GTCPServer.
+	GPackageServer(unsigned short port, bool networkAccessible = false);
 	virtual ~GPackageServer();
 
 	/// Send a package, which guarantees to arrive in the

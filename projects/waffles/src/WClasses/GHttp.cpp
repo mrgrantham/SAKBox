@@ -18,6 +18,7 @@
 
 #include "GFile.h"
 #include "GHttp.h"
+#include <charconv>
 #include "GSocket.h"
 #include "GString.h"
 #include "GError.h"
@@ -60,6 +61,22 @@ protected:
 
 // -------------------------------------------------------------------------------
 
+bool parseHttpContentLength(const char* szValue, size_t* pOut)
+{
+	const char* p = szValue;
+	while(*p == ' ' || *p == '\t')
+		p++;
+	const char* end = p + strlen(p);
+	while(end > p && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\r' || end[-1] == '\n'))
+		end--;
+	unsigned long long n = 0;
+	std::from_chars_result r = std::from_chars(p, end, n);
+	if(r.ec != std::errc() || r.ptr != end || n > MAX_HTTP_CONTENT_LENGTH)
+		return false;
+	*pOut = (size_t)n;
+	return true;
+}
+
 GHttpClient::GHttpClient()
 {
 	m_pReceiveBuf = new char[2048];
@@ -78,8 +95,8 @@ GHttpClient::~GHttpClient()
 {
 	delete[] m_pReceiveBuf;
 	delete(m_pSocket);
-	delete(m_pData);
-	delete(m_szRedirect);
+	delete[] m_pData;
+	delete[] m_szRedirect;
 }
 
 void GHttpClient::abort()
@@ -256,7 +273,7 @@ bool GHttpClient::sendGetRequest(const char* szUrl, bool headersOnly)
 	m_bChunked = false;
 	m_bPastHeader = false;
 	m_nHeaderPos = 0;
-	delete(m_pData);
+	delete[] m_pData;
 	m_pData = nullptr;
 	m_status = Downloading;
 	m_aborted = false;
@@ -287,7 +304,7 @@ void GHttpClient::processHeader(const unsigned char* szData, size_t nSize)
 				{
 					if(!sendGetRequest(m_szRedirect))
 						m_status = Error;
-					delete(m_szRedirect);
+					delete[] m_szRedirect;
 					m_szRedirect = nullptr;
 				}
 				else if(nSize > 0 && (m_bChunked || m_nContentSize > 0))
@@ -315,7 +332,16 @@ void GHttpClient::processHeader(const unsigned char* szData, size_t nSize)
 				char* szTmp = m_szHeaderBuf + 15;
 				while(*szTmp != '\n' && *szTmp <= ' ')
 					szTmp++;
-				m_nContentSize = atoi(szTmp);
+				// SAKBox: was atoi into a size_t, so "-1" became the largest size and
+				// the +1 for the terminator wrapped to a zero-byte buffer
+				if(!parseHttpContentLength(szTmp, &m_nContentSize))
+				{
+					m_nContentSize = 0;
+					m_status = Error;
+					if(m_pSocket)
+						m_pSocket->disconnect();
+					return;
+				}
 				if(m_nContentSize > 0)
 				{
 					m_pData = new unsigned char[m_nContentSize + 1];
@@ -332,7 +358,7 @@ void GHttpClient::processHeader(const unsigned char* szData, size_t nSize)
 				while(*szLoc > '\0' && *szLoc <= ' ')
 					szLoc++;
 				int nLen = (int)strlen(szLoc);
-				delete(m_szRedirect);
+				delete[] m_szRedirect;
 				m_szRedirect = new char[nLen + 1];
 				strcpy(m_szRedirect, szLoc);
 			}
@@ -388,7 +414,7 @@ void GHttpClient::onLoseConnection()
 		string s = m_chunkBuf.str();
 		m_chunkBuf.str("");
 		m_chunkBuf.clear();
-		delete(m_pData);
+		delete[] m_pData;
 		m_pData = new unsigned char[s.length() + 1];
 		memcpy(m_pData, s.c_str(), s.length());
 		m_pData[s.length()] = '\0';
@@ -449,7 +475,7 @@ void GHttpClient::processChunkBody(const unsigned char* szData, size_t nSize)
 			string s = m_chunkBuf.str();
 			m_chunkBuf.str("");
 			m_chunkBuf.clear();
-			delete(m_pData);
+			delete[] m_pData;
 			m_pData = new unsigned char[s.length() + 1];
 			memcpy(m_pData, s.c_str(), s.length());
 			m_pData[s.length()] = '\0';
@@ -481,7 +507,7 @@ void GHttpClient::gimmeWhatYouGot()
 		m_chunkBuf.clear();
 		if(s.length() > 64)
 		{
-			delete(m_pData);
+			delete[] m_pData;
 			m_pData = new unsigned char[s.length() + 1];
 			memcpy(m_pData, s.c_str(), s.length());
 			m_pData[s.length()] = '\0';
@@ -510,7 +536,7 @@ void GHttpClient::gimmeWhatYouGot()
 		m_chunkBuf.clear();
 		if(s.length() > 64)
 		{
-			delete(m_pData);
+			delete[] m_pData;
 			m_pData = new unsigned char[s.length() + 1];
 			memcpy(m_pData, s.c_str(), s.length());
 			m_pData[s.length()] = '\0';
@@ -766,7 +792,7 @@ protected:
 	GHttpServer* m_pServer;
 
 public:
-	GHttpServerSocket(unsigned short port, GHttpServer* pServer) : GTCPServer(port), m_pServer(pServer)
+	GHttpServerSocket(unsigned short port, GHttpServer* pServer, bool networkAccessible) : GTCPServer(port, networkAccessible), m_pServer(pServer)
 	{
 	}
 
@@ -781,10 +807,18 @@ protected:
 	}
 };
 
-GHttpServer::GHttpServer(int nPort)
+// SAKBox: a request that can't be handled safely (a header value too long
+// for its buffer, or a bad Content-Length); the server hangs up on it
+class GHttpBadRequest : public Ex
+{
+public:
+	using Ex::Ex;
+};
+
+GHttpServer::GHttpServer(int nPort, bool networkAccessible)
 {
 	m_pReceiveBuf = new char[2048];
-	m_pSocket = new GHttpServerSocket(nPort, this);
+	m_pSocket = new GHttpServerSocket(nPort, this, networkAccessible);
 	if(!m_pSocket)
 		throw Ex("failed to open port"); // SAKBox: was a bare string, which catch (std::exception&) misses
 }
@@ -828,7 +862,17 @@ bool GHttpServer::process()
 					if(c == '\n' || pConn->m_nPos >= MAX_HEADER_LEN - 1)
 					{
 						pConn->m_szLine[pConn->m_nPos] = '\0';
-						processHeaderLine(pConn, pConn->m_szLine);
+						try
+						{
+							processHeaderLine(pConn, pConn->m_szLine);
+						}
+						catch(const GHttpBadRequest& e)
+						{
+							std::cout << "Hung up on a bad HTTP request: " << e.what() << "\n";
+							m_pSocket->disconnect(pConn); // (deletes pConn)
+							nMessageSize = 0; // drop the rest of what it sent
+							break;
+						}
 						pConn->m_nPos = 0;
 						break;
 					}
@@ -846,6 +890,8 @@ void GHttpServer::beginRequest(GHttpConnection* pConn, int eType, const char* sz
 	char* szOut = pConn->m_szUrl;
 	while(*szIn > ' ' && *szIn != '?')
 	{
+		if(szOut - pConn->m_szUrl >= MAX_URL_LEN - 1)
+			throw GHttpBadRequest("URL longer than ", to_str(MAX_URL_LEN - 1)); // SAKBox: wasn't checked
 		*szOut = *szIn;
 		szIn++;
 		szOut++;
@@ -857,6 +903,8 @@ void GHttpServer::beginRequest(GHttpConnection* pConn, int eType, const char* sz
 		szOut = pConn->m_szParams;
 		while(*szIn > ' ')
 		{
+			if(szOut - pConn->m_szParams >= MAX_URL_LEN - 1)
+				throw GHttpBadRequest("URL parameters longer than ", to_str(MAX_URL_LEN - 1)); // SAKBox: wasn't checked
 			*szOut = *szIn;
 			szIn++;
 			szOut++;
@@ -872,7 +920,7 @@ void GHttpServer::onReceiveFullPostRequest(GHttpConnection* pConn)
 	pConn->m_modifiedTime = 0;
 	pConn->m_pContent = pConn->m_pPostBuffer;
 	pConn->doPost(m_stream);
-	delete(pConn->m_pPostBuffer);
+	delete[] pConn->m_pPostBuffer;
 	pConn->m_pPostBuffer = nullptr;
 	pConn->m_nPos = 0;
 	try
@@ -972,15 +1020,26 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 	else if(_strnicmp(szLine, "POST ", 5) == 0)
 		beginRequest(pConn, GHttpConnection::Post, szLine + 5);
 	else if(_strnicmp(szLine, "Content-Length: ", 16) == 0)
-		pConn->m_nContentLength = atoi(szLine + 16);
+	{
+		// SAKBox: was atoi into a size_t, so "-1" became the largest size and
+		// the +1 for the terminator wrapped to a zero-byte buffer
+		if(!parseHttpContentLength(szLine + 16, &pConn->m_nContentLength))
+			throw GHttpBadRequest("bad Content-Length (a number up to ", to_str(MAX_HTTP_CONTENT_LENGTH), " expected)");
+	}
 	else if(_strnicmp(szLine, "Cookie: ", 8) == 0)
+	{
+		if(strlen(szLine + 8) >= MAX_COOKIE_SIZE)
+			throw GHttpBadRequest("Cookie longer than ", to_str(MAX_COOKIE_SIZE - 1)); // SAKBox: wasn't checked
 		strcpy(pConn->m_szCookieIncoming, szLine + 8);
+	}
 	else if(_strnicmp(szLine, "If-Modified-Since: ", 19) == 0)
 	{
 		const char* szIn = szLine + 19;
 		char* szOut = pConn->m_szDate;
 		while(*szIn >= ' ')
 		{
+			if(szOut - pConn->m_szDate >= MAX_DATE_LEN - 1)
+				throw GHttpBadRequest("If-Modified-Since longer than ", to_str(MAX_DATE_LEN - 1)); // SAKBox: wasn't checked
 			*szOut = *szIn;
 			szIn++;
 			szOut++;

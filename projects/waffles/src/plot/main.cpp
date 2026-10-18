@@ -1799,7 +1799,7 @@ protected:
 public:
 	std::string m_basePath;
 
-	GraphServer(int port, GRand* pRand);
+	GraphServer(int port, GRand* pRand, bool networkAccessible);
 	~GraphServer() override;
 	void pump();
 	virtual void onEverySixHours() {}
@@ -1812,7 +1812,7 @@ public:
 	}
 };
 
-GraphServer::GraphServer(int port, GRand* pRand) : GDynamicPageServer(port, pRand), m_port(port)
+GraphServer::GraphServer(int port, GRand* pRand, bool networkAccessible) : GDynamicPageServer(port, pRand, networkAccessible), m_port(port)
 {
 	m_keepGoing = true;
 	char buf[300];
@@ -1959,16 +1959,30 @@ void LaunchBrowser(const char* szAddress)
 	}
 }
 
+// SAKBox: only this computer can connect unless -network is given
 void graph(GArgReader& args)
 {
+	bool networkAccessible = false;
+	while(args.size() > 0)
+	{
+		if(args.if_pop("-network"))
+			networkAccessible = true;
+		else
+			throw Ex("Invalid option: ", args.peek());
+	}
 	int port = 8421;
 	size_t seed = (size_t)getpid() * (size_t)time(nullptr);
 	GRand prng(seed);
 	bool serverStarted = false;
 	try
 	{
-		GraphServer server(port, &prng);
+		GraphServer server(port, &prng, networkAccessible);
 		serverStarted = true;
+		if(networkAccessible)
+			cout << "Serving the graph tool at http://localhost:" << port << " and to other devices on your network (-network): anyone on the network can connect.\n";
+		else
+			cout << "Serving the graph tool at http://localhost:" << port << " for this computer only. To let other devices on your network connect, run: waffles_plot graph -network\n";
+		cout.flush(); // (shown even when the output is piped)
 		string s = "http://localhost:";
 		s += to_str(port);
 		LaunchBrowser(s.c_str());

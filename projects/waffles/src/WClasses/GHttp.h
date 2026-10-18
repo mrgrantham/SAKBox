@@ -143,6 +143,16 @@ public:
 #define MAX_URL_LEN 2048
 #define MAX_COOKIE_SIZE 4096
 #define MAX_DATE_LEN 128
+
+/// SAKBox: the largest Content-Length accepted, by the server (a POST body)
+/// and the client (a reply): 64 MB
+#define MAX_HTTP_CONTENT_LENGTH ((size_t)64 * 1024 * 1024)
+
+/// SAKBox: reads a Content-Length header's value: a whole decimal number
+/// (spaces and the line end around it are allowed) of at most
+/// MAX_HTTP_CONTENT_LENGTH. Returns false for anything else, such as "-1",
+/// "12x" or a number too big.
+bool parseHttpContentLength(const char* szValue, size_t* pOut);
 #define MAX_MIME_LEN 64
 
 /// Each GHttpConnection represents an HTTP connection between a client and the server.
@@ -225,7 +235,10 @@ protected:
 	std::ostringstream m_stream;
 
 public:
-	GHttpServer(int nPort);
+	/// Listens on nPort (0 for any free one). SAKBox: only browsers on this
+	/// computer can connect (localhost), unless networkAccessible is true,
+	/// which lets any device on the network connect.
+	GHttpServer(int nPort, bool networkAccessible = false);
 	virtual ~GHttpServer();
 
 	/// You should call this method constantly inside the main loop.

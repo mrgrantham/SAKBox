@@ -36,7 +36,7 @@ using std::make_pair;
 
 
 Server::Server(int port, GRand* pRand)
-: GDynamicPageServer(port, pRand),
+: GDynamicPageServer(port, pRand, true), // SAKBox: a multi-user forum, so open to the network
 m_recommender(*pRand)
 {
 	m_keepGoing = true;

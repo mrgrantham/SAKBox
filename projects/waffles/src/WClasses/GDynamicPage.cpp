@@ -359,8 +359,8 @@ const char* GDynamicPageConnection::extensionToMimeType(const char* szFilename)
 
 // ------------------------------------------------------
 
-GDynamicPageServer::GDynamicPageServer(int port, GRand* pRand)
-: GHttpServer(port), m_pRand(pRand)
+GDynamicPageServer::GDynamicPageServer(int port, GRand* pRand, bool networkAccessible)
+: GHttpServer(port, networkAccessible), m_pRand(pRand)
 {
 	// Init captcha salt
 	int i;
