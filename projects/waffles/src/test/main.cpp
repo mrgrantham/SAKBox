@@ -18,6 +18,7 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
+#include <filesystem>
 #include <stdio.h>
 #include <stdlib.h>
 #include <exception>
@@ -1023,9 +1024,35 @@ public:
 	}
 };
 
+// SAKBox: under bazel test, put the command-line tools (built as
+// projects/waffles:transform etc., data deps of this test) on PATH as
+// waffles_transform etc., and work in the writable test temp folder, so the
+// command-line tests run instead of being skipped.
+static void useBazelTools()
+{
+	const char* srcDir = getenv("TEST_SRCDIR");
+	const char* tmpDir = getenv("TEST_TMPDIR");
+	if(!srcDir || !tmpDir)
+		return;
+	std::filesystem::path bin = std::filesystem::path(tmpDir) / "waffles_tools";
+	std::filesystem::create_directories(bin);
+	for(const char* tool : {"transform", "recommend", "sparse", "learn", "dimred"})
+	{
+		std::filesystem::path target = std::filesystem::path(srcDir) / "_main/projects/waffles" / tool;
+		std::filesystem::path link = bin / (std::string("waffles_") + tool);
+		std::error_code ignored;
+		std::filesystem::remove(link, ignored);
+		std::filesystem::create_symlink(std::filesystem::absolute(target), link);
+	}
+	const char* path = getenv("PATH");
+	setenv("PATH", (bin.string() + ":" + (path ? path : "/usr/bin:/bin")).c_str(), 1);
+	std::filesystem::current_path(tmpDir);
+}
+
 int main(int argc, char *argv[])
 {
 	GApp::enableFloatingPointExceptions();
+	useBazelTools();
 
 	if(argc < 2){
 	  std::cout <<

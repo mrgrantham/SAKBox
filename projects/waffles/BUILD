@@ -113,6 +113,8 @@ cc_binary(
 cc_test(
     name = "test",
     srcs = ["src/test/main.cpp"],
+    # The command-line tools its command-line tests run (see useBazelTools)
+    data = [":transform", ":recommend", ":sparse", ":learn", ":dimred"],
     deps = [
         ":WClasses",
         "@fmtlog",
