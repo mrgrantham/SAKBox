@@ -78,6 +78,7 @@ python3 tools/compile_commands/refresh.py          # once, and after BUILD chang
 python3 tools/clang_tidy/run.py                    # everything except Waffles
 python3 tools/clang_tidy/run.py projects/cyclone   # one project
 python3 tools/clang_tidy/run.py --fix projects/cyclone   # apply clang-tidy's fixes
+python3 tools/clang_tidy/run.py --checks='-*,modernize-use-nullptr' --fix   # one check only
 ```
 
 It prints each finding once (a header's findings aren't repeated per file that includes it), then a count per check, and exits 1 if there are any. It finds clang-tidy on your `PATH`, in Homebrew's LLVM, or at `$CLANG_TIDY`. Its findings are advice, not part of the build: review fixes before committing them, and rebuild and test afterwards.

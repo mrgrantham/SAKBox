@@ -5,6 +5,8 @@ Usage (from anywhere in the repo):
   python3 tools/clang_tidy/run.py                 # everything except Waffles
   python3 tools/clang_tidy/run.py projects/cyclone projects/flexmath
   python3 tools/clang_tidy/run.py --fix projects/cyclone   # apply fixes
+  python3 tools/clang_tidy/run.py --checks='-*,modernize-use-nullptr' --fix
+                                         # only some checks (and their fixes)
 
 Needs clang-tidy (not part of Xcode: `brew install llvm` on macOS) and a
 current compile_commands.json (`python3 tools/compile_commands/refresh.py`).
@@ -53,6 +55,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("paths", nargs="*", help="repo folders to check (default: all but Waffles)")
     parser.add_argument("--fix", action="store_true", help="apply clang-tidy's suggested fixes")
+    parser.add_argument("--checks", help="checks to run instead of .clang-tidy's (clang-tidy's -checks syntax)")
     parser.add_argument("-j", type=int, default=os.cpu_count(), help="parallel jobs")
     args = parser.parse_args()
 
@@ -67,7 +70,11 @@ def main():
     command = [run_clang_tidy, "-p", str(REPO), "-clang-tidy-binary", clang_tidy,
                "-quiet", "-j", str(args.j)]
     if args.fix:
-        command.append("-fix")
+        # run-clang-tidy applies the fixes with clang-apply-replacements
+        command += ["-fix", "-clang-apply-replacements-binary",
+                    find_tool("clang-apply-replacements", "CLANG_APPLY_REPLACEMENTS")]
+    if args.checks:
+        command.append("-checks=" + args.checks)
     command.append(file_regex)
     result = subprocess.run(command, cwd=REPO, capture_output=True, text=True)
 
@@ -91,8 +98,10 @@ def main():
     print(f"\n{len(findings)} findings" + (" (fixes applied where clang-tidy has one)" if args.fix else ""))
     for check, n in counts.most_common():
         print(f"{n:5}  {check}")
-    if result.returncode not in (0, 1) and not findings:
-        print(result.stderr, file=sys.stderr)
+    if not findings and result.returncode != 0:
+        # No findings but a failure: clang-tidy itself didn't run properly
+        print(result.stdout[-2000:] + result.stderr, file=sys.stderr)
+        sys.exit(f"clang-tidy failed (exit {result.returncode})")
     return 1 if findings else 0
 
 
