@@ -270,6 +270,7 @@ TEST(ThreadingTest, ConcurrentSendersLoseNothing) {
   constexpr int kSenders = 8, kJobs = 1000;
   std::vector<std::vector<int>> seen(kSenders); // written only on the padd's thread
   std::vector<std::thread> senders;
+  senders.reserve(kSenders);
   for (int sender = 0; sender < kSenders; ++sender) {
     senders.emplace_back([&, sender] {
       for (int job = 0; job < kJobs; ++job) {

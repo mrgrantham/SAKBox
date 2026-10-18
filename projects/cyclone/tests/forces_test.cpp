@@ -220,7 +220,7 @@ TEST(ParticleForceTest, BuoyancyRisesSmoothlyWithDepth) {
                  Case{-0.5, 0.75}, Case{-3.0, 1}}) {
     auto particle = particleAt(Vector3(0, c.y, 0));
     ParticleBuoyancy buoyancy(/*maxDepth=*/1, /*volume=*/1, /*waterHeight=*/0,
-                              /*density=*/1);
+                              /*liquidDensity=*/1);
     {
       SCOPED_TRACE(testing::Message() << "y " << c.y);
       expectNear(forceOn(*particle, buoyancy), Vector3(0, c.expectedUp, 0));

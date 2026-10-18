@@ -292,7 +292,7 @@ public:
     return snapshots_;
   }
   void change(const std::string &padd, const std::string &control,
-              ScratchPadd::ControlTypeVariant value) {
+              const ScratchPadd::ControlTypeVariant &value) {
     send(ControlChange{.paddName = padd, .controlName = control, .controlTypeValue = value});
   }
 
@@ -334,6 +334,7 @@ public:
 
 std::vector<std::string> snapshotNames(const std::vector<ControlSnapshot> &snapshots) {
   std::vector<std::string> names;
+  names.reserve(snapshots.size());
   for (const auto &snapshot : snapshots)
     names.push_back(snapshot.paddName);
   std::sort(names.begin(), names.end());

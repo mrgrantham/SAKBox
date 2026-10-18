@@ -144,7 +144,7 @@ public:
 
 class ScopedTimer : Timer {
 public:
-  ScopedTimer(const std::string timerName = "Default Scoped Timer")
+  ScopedTimer(const std::string &timerName = "Default Scoped Timer")
       : Timer(timerName) {
     start();
   }

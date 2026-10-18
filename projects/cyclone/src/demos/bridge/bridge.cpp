@@ -88,8 +88,11 @@ BridgeDemo::BridgeDemo()
       rods(nullptr), massPos(0, 0, 0.5f) {
   // Create the masses and connections.
   for (unsigned i = 0; i < 12; i++) {
-    particleArray[i].setPosition(cyclone::real(i / 2) * 2.0f - 5.0f, 4,
-                                 cyclone::real(i % 2) * 2.0f - 1.0f);
+    // Particles come in pairs across the deck: i / 2 is the pair, i % 2
+    // the side
+    const unsigned pair = i / 2, side = i % 2;
+    particleArray[i].setPosition(cyclone::real(pair) * 2.0f - 5.0f, 4,
+                                 cyclone::real(side) * 2.0f - 1.0f);
     particleArray[i].setVelocity(0, 0, 0);
     particleArray[i].setDamping(0.9f);
     particleArray[i].setAcceleration(cyclone::Vector3::GRAVITY);
@@ -109,12 +112,13 @@ BridgeDemo::BridgeDemo()
   supports = new cyclone::ParticleCableConstraint[SUPPORT_COUNT];
   for (unsigned i = 0; i < SUPPORT_COUNT; i++) {
     supports[i].particle = particleArray + i;
-    supports[i].anchor = cyclone::Vector3(cyclone::real(i / 2) * 2.2f - 5.5f, 6,
-                                          cyclone::real(i % 2) * 1.6f - 0.8f);
+    const unsigned pair = i / 2, side = i % 2;
+    supports[i].anchor = cyclone::Vector3(cyclone::real(pair) * 2.2f - 5.5f, 6,
+                                          cyclone::real(side) * 1.6f - 0.8f);
     if (i < 6)
-      supports[i].maxLength = cyclone::real(i / 2) * 0.5f + 3.0f;
+      supports[i].maxLength = cyclone::real(pair) * 0.5f + 3.0f;
     else
-      supports[i].maxLength = 5.5f - cyclone::real(i / 2) * 0.5f;
+      supports[i].maxLength = 5.5f - cyclone::real(pair) * 0.5f;
     supports[i].restitution = 0.5f;
     world.getContactGenerators().push_back(&supports[i]);
   }

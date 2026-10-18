@@ -112,6 +112,7 @@ TEST_F(StochasticRoundingTest, SeedingIsReproducible) {
     auto sequence = [](std::uint64_t seed) {
         seedStochasticRounding(seed);
         std::vector<double> results;
+        results.reserve(64);
         for (int i = 0; i < 64; ++i) {
             results.push_back(quantize(0.5, kStochasticWholeNumbers));
         }

@@ -243,6 +243,7 @@ namespace {
 std::vector<std::pair<int, int>>
 potentialPairs(const std::vector<Vector3> &positions) {
   std::vector<std::unique_ptr<RigidBody>> bodies;
+  bodies.reserve(positions.size());
   for (const Vector3 &p : positions)
     bodies.push_back(bodyAt(p));
   BVHNode<BoundingSphere> root(nullptr, BoundingSphere(positions[0], 1),

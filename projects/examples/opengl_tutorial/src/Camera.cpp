@@ -47,7 +47,7 @@ void Camera::inputs(GLFWwindow *window) {
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
     if (firstClick_) {
-      glfwSetCursorPos(window, (width_ / 2), (height_ / 2));
+      glfwSetCursorPos(window, width_ / 2.0, height_ / 2.0);
       firstClick_ = false;
     }
 
@@ -55,8 +55,8 @@ void Camera::inputs(GLFWwindow *window) {
     glfwGetCursorPos(window, &mouseX, &mouseY);
 
     // Normalize coords to center of screen
-    float rotationX = sensitivity_ * (float)(mouseY - (height_ / 2)) / height_;
-    float rotationY = sensitivity_ * (float)(mouseX - (width_ / 2)) / width_;
+    float rotationX = sensitivity_ * (float)(mouseY - height_ / 2.0) / height_;
+    float rotationY = sensitivity_ * (float)(mouseX - width_ / 2.0) / width_;
 
     glm::vec3 newOrientation =
         glm::rotate(orientation_, glm::radians(-rotationX),
@@ -68,7 +68,7 @@ void Camera::inputs(GLFWwindow *window) {
     }
 
     orientation_ = glm::rotate(orientation_, glm::radians(-rotationY), up_);
-    glfwSetCursorPos(window, (width_ / 2), (height_ / 2));
+    glfwSetCursorPos(window, width_ / 2.0, height_ / 2.0);
   } else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) ==
              GLFW_RELEASE) {
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);

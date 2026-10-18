@@ -13,9 +13,11 @@
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
 
+#include <charconv>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <thread>
 
 namespace {
@@ -52,7 +54,18 @@ SDL_Texture *createFrameTexture(SDL_Renderer *renderer, const cv::Mat &frame) {
 } // namespace
 
 int main(int argc, char **argv) {
-  const int cameraIndex = argc > 1 ? std::atoi(argv[1]) : 0;
+  // The camera to open: the first argument, or 0. Anything that isn't a
+  // whole number is an error (atoi would have turned it into 0).
+  int cameraIndex = 0;
+  if (argc > 1) {
+    const char *arg = argv[1];
+    const char *end = arg + std::strlen(arg);
+    auto [last, error] = std::from_chars(arg, end, cameraIndex);
+    if (error != std::errc() || last != end || cameraIndex < 0) {
+      fmt::println(stderr, "Usage: {} [camera number], e.g. 0", argv[0]);
+      return 1;
+    }
+  }
 
   cv::VideoCapture camera(cameraIndex);
   if (!camera.isOpened()) {

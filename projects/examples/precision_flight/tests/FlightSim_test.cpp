@@ -67,6 +67,7 @@ std::vector<std::string> autopilotEventsWithFrames(const std::vector<double> &fr
     elapsed += frame;
   }
   std::vector<std::string> lines;
+  lines.reserve(events.size());
   for (const FlightEvent &event : events) {
     lines.push_back(logLine(event));
   }
