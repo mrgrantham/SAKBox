@@ -42,11 +42,6 @@ void GOverrunSentinel::Check()
 }
 
 
-void verboten()
-{
-	throw Ex("Tried to copy a holder. (The method that facilitates this should have been private to catch this at compile time.)");
-}
-
 void FileHolder::reset(FILE* pFile)
 {
 	if(m_pFile && pFile != m_pFile)

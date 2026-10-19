@@ -3460,12 +3460,12 @@ void GLayer::biasMask(GVec& mask)
 
 
 GNeuralNet::GNeuralNet()
-: GBlock(0, 0), m_weightCount(0)
+: GBlock(0, 0), m_weightCount(0), m_gradCount(0)
 {
 }
 
 GNeuralNet::GNeuralNet(const GNeuralNet& that)
-: GBlock(that), m_weightCount(that.m_weightCount)
+: GBlock(that), m_weightCount(that.m_weightCount), m_gradCount(that.m_gradCount) // SAKBox: m_gradCount was left uninitialised
 {
 	for(size_t i = 0; i < that.m_layers.size(); i++)
 	{

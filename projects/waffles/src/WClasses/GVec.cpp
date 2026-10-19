@@ -71,11 +71,6 @@ GVec::GVec(const std::initializer_list<double>& list)
 	}
 }
 
-GVec::GVec(double d)
-{
-	throw Ex("Calling this method is an error");
-}
-
 GVec::GVec(GDomNode* pNode)
 : m_data(nullptr), m_size(0)
 {
@@ -85,14 +80,6 @@ GVec::GVec(GDomNode* pNode)
 GVec::~GVec()
 {
 	delete[] m_data;
-}
-
-GVec& GVec::operator=(const GVec& orig)
-{
-	resize_implicit(orig.m_size);
-	for(size_t i = 0; i < m_size; i++)
-		m_data[i] = orig.m_data[i];
-	return *this;
 }
 
 void GVec::resize(size_t n)
@@ -690,7 +677,7 @@ void GVec::test()
 	if(v1.squaredDistance(v2) != 50.0)
 		throw Ex("failed");
 	v2.fill(3.0);
-	v1 = v2;
+	v1.copy(v2);
 	if(v1.squaredMagnitude() != 18.0)
 		throw Ex("failed");
 	if(v1.data()[0] != 3.0 || v1.data()[1] != 3.0)

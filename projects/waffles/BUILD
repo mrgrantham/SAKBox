@@ -136,11 +136,13 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 ) for name in [
+    "3d_test",
     "app_test",
     "cluster_test",
     "dom_test",
     "error_test",
     "function_test",
+    "holders_test",
     "http_test",
     "image_test",
     "learner_test",

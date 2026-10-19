@@ -7,6 +7,8 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
+#include <utility>
 
 using namespace GClasses;
 
@@ -68,4 +70,41 @@ TEST(TensorArffTest, JunkAfterANumberIsAnError) {
   EXPECT_NE(tensorArffError("@relation r\n@attribute h REAL\n@data\n1.5abc\n")
                 .find("for attribute h (0)"),
             std::string::npos);
+}
+
+// GVec isn't copied implicitly (use copy, which says how much) or made
+// from a double (use fill): those are compile errors.
+static_assert(!std::is_copy_constructible_v<GVec>);
+static_assert(!std::is_copy_assignable_v<GVec>);
+static_assert(!std::is_constructible_v<GVec, double>);
+static_assert(std::is_constructible_v<GVec, size_t>);
+
+// Returning a GVec by value moves it: operator+ and the others used to rely
+// on the compiler skipping a copy, the copy constructor being one that threw.
+TEST(VecMoveTest, ReturnedByValueAndMoved) {
+  const GVec a({1.0, 2.0}), b({10.0, 20.0});
+  GVec sum = a + b;
+  ASSERT_EQ(sum.size(), 2u);
+  EXPECT_EQ(sum[1], 22.0);
+  const double *buffer = sum.data();
+  GVec moved(std::move(sum));
+  EXPECT_EQ(moved.data(), buffer); // taken over, not copied
+  EXPECT_EQ(moved[0], 11.0);
+  // (If sum kept the buffer as well, both would free it at the end of the
+  // test, and the test would crash.)
+  EXPECT_TRUE(std::is_nothrow_move_constructible_v<GVec>);
+}
+
+// A GVecWrapper copy wraps the same memory (it used to throw, through
+// GVec's copy constructor). Assigning one is a compile error: setData or
+// copy says which is meant.
+TEST(VecWrapperTest, CopyWrapsTheSameMemory) {
+  GVec v({1.0, 2.0, 3.0});
+  GVecWrapper w(v, 1, 2);
+  GVecWrapper copy(w);
+  EXPECT_EQ(copy.data(), v.data() + 1);
+  ASSERT_EQ(copy.size(), 2u);
+  copy[0] = 9.0;
+  EXPECT_EQ(v[1], 9.0);
+  static_assert(!std::is_copy_assignable_v<GVecWrapper>);
 }

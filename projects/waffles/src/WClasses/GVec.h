@@ -329,14 +329,26 @@ private:
 	/// Then resizes this vector to give it a size of n.
 	void resize_implicit(size_t n);
 
-	/// This method is deliberately private, so calling it will trigger a compiler error. Call "copy" instead.
-	GVec& operator=(const GVec& orig);
+public:
+	/// Not available: call "copy" instead
+	GVec& operator=(const GVec& orig) = delete;
 
-	/// This method is deliberately private, so calling it will trigger a compiler error. Call "fill" instead.
-	GVec(double d);
+	/// Not available: call "fill" instead
+	GVec(double d) = delete;
 
-	/// This method is deliberately private, so calling it will trigger a compiler error. Call "copy" instead.
-	GVec(const GVec& copyme) { throw Ex("This is not a copy constructor. Use the 'copy' method instead."); }
+	/// Not available: call "copy" instead
+	GVec(const GVec& copyme) = delete;
+
+	/// SAKBox: takes over that's values, leaving it empty, so a GVec can be
+	/// returned by value (operator+ and others). They used to need the copy
+	/// constructor, which threw, and only worked because the compiler
+	/// happened to skip the copy.
+	GVec(GVec&& that) noexcept
+	: m_data(that.m_data), m_size(that.m_size)
+	{
+		that.m_data = nullptr;
+		that.m_size = 0;
+	}
 
 public:
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
@@ -415,6 +427,19 @@ public:
 	{
 		setData(buf, size);
 	}
+
+	/// SAKBox: a copy wraps the same memory. (The implicit copy called
+	/// GVec's copy constructor, which threw, so copying a GLayer did.)
+	GVecWrapper(const GVecWrapper& that)
+	: GVec(0)
+	{
+		m_data = that.m_data;
+		m_size = that.m_size;
+	}
+
+	/// Not available: say which is meant, setData (wrap that memory) or
+	/// copy (copy its values)
+	GVecWrapper& operator=(const GVecWrapper& that) = delete;
 
 	~GVecWrapper() override
 	{

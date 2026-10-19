@@ -3,6 +3,10 @@
 #include <gtest/gtest.h>
 
 #include <WClasses/GNeuralNet.h>
+#include <WClasses/GRand.h>
+#include <WClasses/GVec.h>
+
+#include <memory>
 
 using namespace GClasses;
 
@@ -40,4 +44,48 @@ TEST(NeuralNetLearnerTest, LabelRangeIsTanhs) {
   EXPECT_FALSE(learner.supportedLabelRange(&lo, &hi));
   EXPECT_EQ(lo, -1.0);
   EXPECT_EQ(hi, 1.0);
+}
+
+// Copying a layer copied its output and outBlame GVecWrappers with GVec's
+// private copy constructor, reachable because GVecWrapper is a friend of
+// GVec, and that constructor throws. So GNeuralNet::clone and copyTopology
+// threw for any network. A wrapper copy now wraps the same memory.
+namespace {
+GNeuralNet *smallNet() {
+  auto *nn = new GNeuralNet();
+  nn->add(new GBlockLinear(3, 4));
+  nn->add(new GBlockTanh(4));
+  nn->add(new GBlockLinear(4, 2));
+  return nn;
+}
+} // namespace
+
+TEST(NeuralNetCopyTest, CloneAndCopyTopologyGiveTheSameOutputs) {
+  GRand rand(0);
+  std::unique_ptr<GNeuralNet> nn(smallNet());
+  nn->init(rand);
+  const GVec input({0.5, -1.0, 2.0});
+  GVec expected;
+  expected.copy(nn->forwardProp(input));
+
+  std::unique_ptr<GNeuralNet> clone(nn->clone());
+  GVec cloneWeights;
+  cloneWeights.copy(nn->weights);
+  clone->init(cloneWeights);
+  const GVec &cloned = clone->forwardProp(input);
+  ASSERT_EQ(cloned.size(), 2u);
+  EXPECT_EQ(cloned[0], expected[0]);
+  EXPECT_EQ(cloned[1], expected[1]);
+
+  GNeuralNet copy;
+  copy.copyTopology(*nn);
+  GVec copyWeights;
+  copyWeights.copy(nn->weights);
+  copy.init(copyWeights);
+  const GVec &copied = copy.forwardProp(input);
+  ASSERT_EQ(copied.size(), 2u);
+  EXPECT_EQ(copied[0], expected[0]);
+  EXPECT_EQ(copied[1], expected[1]);
+  // The original is unchanged by its copies
+  EXPECT_EQ(nn->forwardProp(input)[1], expected[1]);
 }

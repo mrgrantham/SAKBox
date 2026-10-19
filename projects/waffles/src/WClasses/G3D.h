@@ -45,17 +45,8 @@ public:
 	{
 	}
 
-	~G3DVector()
-	{
-	}
-
-	/// Copies the values from pThat
-	G3DVector(const G3DVector& that)
-	{
-		m_vals[0] = that[0];
-		m_vals[1] = that[1];
-		m_vals[2] = that[2];
-	}
+	// Copied as three numbers (trivially copyable)
+	G3DVector(const G3DVector& that) = default;
 
 	/// Initializes the values to <x,y,z>
 	G3DVector(G3DReal x, G3DReal y, G3DReal z)
@@ -65,13 +56,7 @@ public:
 		m_vals[2] = z;
 	}
 
-	G3DVector& operator=(const G3DVector& that)
-	{
-		m_vals[0] = that[0];
-		m_vals[1] = that[1];
-		m_vals[2] = that[2];
-		return *this;
-	}
+	G3DVector& operator=(const G3DVector& that) = default;
 
 	/// \brief Returns a reference to the specified element.
 	inline G3DReal& operator [](size_t index)

@@ -90,8 +90,6 @@ public:
 	GTempBufHelper var##t1(sizeof(double) * (size));\
 	GVecWrapper name((((sizeof(double) * (size)) <= MAX_STACK_TEMP_BUFFER) ? (double*)alloca(sizeof(double) * (size)) : (double*)var##t1.m_pBuf), size);
 
-void verboten();
-
 /// This class is very similar to the standard C++ class auto_ptr,
 /// except it throws an exception if you try to make a copy of it.
 /// This way, it will fail early if you use it in a manner that
@@ -114,28 +112,16 @@ public:
 		m_p = p;
 	}
 
-private:
-	/// Private copy constructor so that the attempts to copy a
-	/// holder are caught at compile time rather than at run time
-	Holder(const Holder& other)
-	{
-		verboten();
-	}
-public:
+	/// A holder can't be copied: both copies would delete the object
+	Holder(const Holder& other) = delete;
+	Holder& operator=(const Holder& other) = delete;
+
 	/// Deletes the object that is being held
 	~Holder()
 	{
 		delete(m_p);
 	}
-private:
-	/// Private operator= so that the attempts to copy a
-	/// holder are caught at compile time rather than at run time
-	const Holder& operator=(const Holder& other)
-	{
-		verboten();
-		return *this;
-	}
-public:
+
 	/// Deletes the object that is being held, and sets the holder
 	/// to hold p.  Will not delete the held pointer if the new
 	/// pointer is the same.
@@ -185,24 +171,16 @@ public:
 	{
 		m_p = p;
 	}
-private:	
-	ArrayHolder(const ArrayHolder& other)
-	{
-		verboten();
-	}
-public:	
+	/// An array holder can't be copied: both copies would delete the array
+	ArrayHolder(const ArrayHolder& other) = delete;
+	ArrayHolder& operator=(const ArrayHolder& other) = delete;
+
 	/// Deletes the array of objects being held
 	~ArrayHolder()
 	{
 		delete[] m_p;
 	}
-private:
-	const ArrayHolder& operator=(const ArrayHolder& other)
-	{
-		verboten();
-		return *this;
-	}
-public:
+
 	/// Deletes the array of objects being held and sets this holder to hold NULL
 	void reset(T* p = NULL)
 	{
