@@ -8,32 +8,32 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../GClasses/GApp.h"
-#include "../../GClasses/GBits.h"
-#include "../../GClasses/GError.h"
-#include "../../GClasses/GHeap.h"
-#include "../../GClasses/GImage.h"
-#include "../../GClasses/GRand.h"
-#include "../../GClasses/GFile.h"
-#include "../../GClasses/GFunction.h"
-#include "../../GClasses/GHistogram.h"
-#include "../../GClasses/GTransform.h"
-#include "../../GClasses/GVec.h"
-#include "../../GClasses/GSparseMatrix.h"
-#include "../../GClasses/GHashTable.h"
-#include "../../GClasses/GHillClimber.h"
-#include "../../GClasses/GHolders.h"
-#include "../../GClasses/GManifold.h"
-#include "../../GClasses/GMath.h"
-#include "../../GClasses/GMatrix.h"
-#include "../../GClasses/GNeuralNet.h"
-#include "../../GClasses/GPlot.h"
-#include "../../GClasses/GRayTrace.h"
-#include "../../GClasses/GRect.h"
-#include "../../GClasses/GString.h"
-#include "../../GClasses/GDom.h"
-#include "../../GClasses/usage.h"
-#include "../../GClasses/GString.h"
+#include "WClasses/GApp.h"
+#include "WClasses/GBits.h"
+#include "WClasses/GError.h"
+#include "WClasses/GHeap.h"
+#include "WClasses/GImage.h"
+#include "WClasses/GRand.h"
+#include "WClasses/GFile.h"
+#include "WClasses/GFunction.h"
+#include "WClasses/GHistogram.h"
+#include "WClasses/GTransform.h"
+#include "WClasses/GVec.h"
+#include "WClasses/GSparseMatrix.h"
+#include "WClasses/GHashTable.h"
+#include "WClasses/GHillClimber.h"
+#include "WClasses/GHolders.h"
+#include "WClasses/GManifold.h"
+#include "WClasses/GMath.h"
+#include "WClasses/GMatrix.h"
+#include "WClasses/GNeuralNet.h"
+#include "WClasses/GPlot.h"
+#include "WClasses/GRayTrace.h"
+#include "WClasses/GRect.h"
+#include "WClasses/GString.h"
+#include "WClasses/GDom.h"
+#include "WClasses/usage.h"
+#include "WClasses/GString.h"
 
 #include <time.h>
 #include <iostream>
@@ -44,8 +44,9 @@
 #endif
 #include <exception>
 #include <string>
-#include "GImagePng.h"
+#include "png/GImagePng.h"
 #include <memory>
+#include <set>
 
 using namespace GClasses;
 using std::cout;
@@ -131,7 +132,7 @@ void fishBowl(GArgReader& args)
 	int points = args.pop_uint();
 
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	double opening = 0.25;
 	while(args.next_is_flag())
 	{
@@ -168,7 +169,7 @@ void Noise(GArgReader& args)
 	int pats = args.pop_uint();
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	string dist = "gaussian";
 	double p1 = 0.0;
 	double p2 = 1.0;
@@ -182,21 +183,16 @@ void Noise(GArgReader& args)
 		else if(args.if_pop("-dist"))
 		{
 			dist = args.pop_string();
-			if(dist.compare("gaussian") == 0 || dist.compare("normal") == 0)
+			// SAKBox: was one branch per distribution, many of them the same
+			static const std::set<string> twoParams = {"gaussian", "normal", "uniform", "beta", "cauchy", "f", "gamma", "logistic", "lognormal"};
+			static const std::set<string> oneParam = {"chisquare", "exponential", "geometric", "poisson", "softimpulse", "student", "weibull"};
+			if(twoParams.count(dist))
 			{
 				p1 = args.pop_double();
 				p2 = args.pop_double();
 			}
-			else if(dist.compare("uniform") == 0)
-			{
+			else if(oneParam.count(dist))
 				p1 = args.pop_double();
-				p2 = args.pop_double();
-			}
-			else if(dist.compare("beta") == 0)
-			{
-				p1 = args.pop_double();
-				p2 = args.pop_double();
-			}
 			else if(dist.compare("binomial") == 0)
 			{
 				p1 = (double)args.pop_uint();
@@ -208,50 +204,11 @@ void Noise(GArgReader& args)
 				for(int i = 0; i < vals; i++)
 					probs.push_back(args.pop_double());
 			}
-			else if(dist.compare("cauchy") == 0)
-			{
-				p1 = args.pop_double();
-				p2 = args.pop_double();
-			}
-			else if(dist.compare("chisquare") == 0)
-				p1 = args.pop_double();
-			else if(dist.compare("exponential") == 0)
-				p1 = args.pop_double();
-			else if(dist.compare("f") == 0)
-			{
-				p1 = args.pop_double();
-				p2 = args.pop_double();
-			}
-			else if(dist.compare("gamma") == 0)
-			{
-				p1 = args.pop_double();
-				p2 = args.pop_double();
-			}
-			else if(dist.compare("geometric") == 0)
-				p1 = args.pop_double();
-			else if(dist.compare("logistic") == 0)
-			{
-				p1 = args.pop_double();
-				p2 = args.pop_double();
-			}
-			else if(dist.compare("lognormal") == 0)
-			{
-				p1 = args.pop_double();
-				p2 = args.pop_double();
-			}
-			else if(dist.compare("poisson") == 0)
-				p1 = args.pop_double();
-			else if(dist.compare("softimpulse") == 0)
-				p1 = args.pop_double();
 			else if(dist.compare("spherical") == 0)
 			{
 				dims = args.pop_uint();
 				p1 = args.pop_double();
 			}
-			else if(dist.compare("student") == 0)
-				p1 = args.pop_double();
-			else if(dist.compare("weibull") == 0)
-				p1 = args.pop_double();
 		}
 		else
 			throw Ex("Invalid option: ", args.peek());
@@ -366,7 +323,7 @@ void randomWalk(GArgReader& args)
 	// Parse args
 	size_t samples = args.pop_uint();
 	size_t dims = 2;
-	size_t seed = getpid() * (unsigned int)time(NULL);
+	size_t seed = getpid() * (unsigned int)time(nullptr);
 	vector<double> scale;
 	double start = 0.5;
 	double step = 0.1;
@@ -564,7 +521,7 @@ void SwissRoll(GArgReader& args)
 	int points = args.pop_uint();
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	bool cutOutStar = false;
 	bool reduced = false;
 	while(args.next_is_flag())
@@ -585,10 +542,10 @@ void SwissRoll(GArgReader& args)
 	double starSize = 1.5;
 	GRand prng(nSeed);
 	GArffRelation rel;
-	rel.addAttribute("x", 0, NULL);
-	rel.addAttribute("y", 0, NULL);
+	rel.addAttribute("x", 0, nullptr);
+	rel.addAttribute("y", 0, nullptr);
 	if(!reduced)
-		rel.addAttribute("z", 0, NULL);
+		rel.addAttribute("z", 0, nullptr);
 	GMatrix data(0, 3);
 	for(int n = 0; n < points; n++)
 	{
@@ -633,7 +590,7 @@ void SCurve(GArgReader& args)
 	int points = args.pop_uint();
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	bool reduced = false;
 	while(args.next_is_flag())
 	{
@@ -648,10 +605,10 @@ void SCurve(GArgReader& args)
 	// Generate the data
 	GRand prng(nSeed);
 	GArffRelation rel;
-	rel.addAttribute("x", 0, NULL);
-	rel.addAttribute("y", 0, NULL);
+	rel.addAttribute("x", 0, nullptr);
+	rel.addAttribute("y", 0, nullptr);
 	if(!reduced)
-		rel.addAttribute("z", 0, NULL);
+		rel.addAttribute("z", 0, nullptr);
 	GMatrix data(0, 3);
 	for(int n = 0; n < points; n++)
 	{
@@ -663,7 +620,7 @@ void SCurve(GArgReader& args)
 		if(reduced)
 		{
 			pVector[0] = pVector[2];
-			pVector[1] = (n > 0 ? GMath::integrate(LengthOfSineFunc, 0, t, n + 30, NULL) : 0);
+			pVector[1] = (n > 0 ? GMath::integrate(LengthOfSineFunc, 0, t, n + 30, nullptr) : 0);
 			pVector[2] = 0;
 		}
 	}
@@ -677,7 +634,7 @@ void EntwinedSpirals(GArgReader& args)
 	int points = args.pop_uint();
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	bool reduced = false;
 	while(args.next_is_flag())
 	{
@@ -692,11 +649,11 @@ void EntwinedSpirals(GArgReader& args)
 	// Generate the data
 	GRand prng(nSeed);
 	GArffRelation rel;
-	rel.addAttribute("x", 0, NULL);
+	rel.addAttribute("x", 0, nullptr);
 	if(!reduced)
 	{
-		rel.addAttribute("y", 0, NULL);
-		rel.addAttribute("z", 0, NULL);
+		rel.addAttribute("y", 0, nullptr);
+		rel.addAttribute("z", 0, nullptr);
 	}
 	GMatrix data(0, 3);
 
@@ -750,7 +707,7 @@ void ImageTranslatedOverNoise(GArgReader& args)
 	const char* szFilenameIn = args.pop_string();
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	bool reduced = false;
 	while(args.next_is_flag())
 	{
@@ -782,15 +739,15 @@ void ImageTranslatedOverNoise(GArgReader& args)
 	GArffRelation rel;
 	if(reduced)
 	{
-		rel.addAttribute("x", 0, NULL);
-		rel.addAttribute("y", 0, NULL);
+		rel.addAttribute("x", 0, nullptr);
+		rel.addAttribute("y", 0, nullptr);
 	}
 	else
 	{
 		for(int y = 0; y < (int)imageAll.height(); y++)
 		{
 			for(int x = 0; x < (int)imageAll.width(); x++)
-				rel.addAttribute("pix", 0, NULL);
+				rel.addAttribute("pix", 0, nullptr);
 		}
 	}
 
@@ -830,7 +787,7 @@ void SelfIntersectingRibbon(GArgReader& args)
 	unsigned int points = args.pop_uint();
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-seed"))
@@ -894,8 +851,8 @@ void WindowedImageData(GArgReader& args)
 	GArffRelation rel;
 	if(reduced)
 	{
-		rel.addAttribute("x", 0, NULL);
-		rel.addAttribute("y", 0, NULL);
+		rel.addAttribute("x", 0, nullptr);
+		rel.addAttribute("y", 0, nullptr);
 	}
 	else
 	{
@@ -903,9 +860,9 @@ void WindowedImageData(GArgReader& args)
 		{
 			for(int x = 0; x < (int)imageWindow.width(); x++)
 			{
-				rel.addAttribute("r", 0, NULL);
-				rel.addAttribute("g", 0, NULL);
-				rel.addAttribute("b", 0, NULL);
+				rel.addAttribute("r", 0, nullptr);
+				rel.addAttribute("g", 0, nullptr);
+				rel.addAttribute("b", 0, nullptr);
 			}
 		}
 	}
@@ -1146,7 +1103,7 @@ void cranePath(GArgReader& args)
 	Holder<GMatrix> hActions(pActions);
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	int wid = 64;
 	int hgt = 48;
 	int horizFrames = 25;
@@ -1263,7 +1220,7 @@ void threeCranePath(GArgReader& args)
 	Holder<GMatrix> hActions(pActions);
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	int wid = 64;
 	int hgt = 48;
 	int horizFrames = 25;
@@ -1408,7 +1365,7 @@ void randomSequence(GArgReader& args)
 	size_t len = args.pop_uint();
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	size_t start = 0;
 	while(args.next_is_flag())
 	{
@@ -1513,7 +1470,7 @@ void gridRandomWalk(GArgReader& args)
 		throw Ex("Expected at least two states");
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	int x = width / 2;
 	int y = height / 2;
 	string obsFile = "observations.arff";
@@ -1654,7 +1611,11 @@ void imagesToArff(GArgReader& args)
 	GMatrix m;
 	while(true)
 	{
-		sprintf(buf, format.c_str(), szPrefix, i, szSuffix);
+		// SAKBox: was sprintf, which overflowed buf for a long -pre or -suf,
+		// and passed the size_t i to %d
+		int len = snprintf(buf, sizeof(buf), format.c_str(), szPrefix, (int)i, szSuffix);
+		if(len < 0 || (size_t)len >= sizeof(buf))
+			throw Ex("File name too long: ", szPrefix, "...", szSuffix);
 		GImage image;
 		if(!GFile::doesFileExist(buf))
 			break;
@@ -1711,7 +1672,7 @@ void sceneRobotSimulationGrid(GArgReader& args)
 	loadPng(&scene, sceneFilename);
 	if(scene.height() > scene.width() * cameraHgt / cameraWid)
 		throw Ex("Expected a panoramic (wide) scene");
-	double maxWid = scene.height() * cameraWid / cameraHgt;
+	double maxWid = (double)scene.height() * cameraWid / cameraHgt; // SAKBox: was integer division, as the frames' width w isn't
 	double maxStrafeStride = (scene.width() - maxWid) / strafeLen;
 
 	GImage frame;
@@ -1749,7 +1710,7 @@ void sceneRobotSimulationPath(GArgReader& args)
 	unsigned int frames = args.pop_uint();
 
 	// Parse options
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	double transitionNoise = 0.0;
 	double observationNoise = 0.0;
 	int cameraWid = 64;
@@ -1792,7 +1753,7 @@ void sceneRobotSimulationPath(GArgReader& args)
 	loadPng(&scene, sceneFilename);
 	if(scene.height() > scene.width() * cameraHgt / cameraWid)
 		throw Ex("Expected a panoramic (wide) scene");
-	double maxWid = scene.height() * cameraWid / cameraHgt;
+	double maxWid = (double)scene.height() * cameraWid / cameraHgt; // SAKBox: was integer division, as the frames' width w isn't
 	double maxStrafeStride = (scene.width() - maxWid) / strafeLen;
 	GRand prng(seed);
 
@@ -1881,7 +1842,7 @@ void manifold(GArgReader& args)
 	size_t samples = args.pop_uint();
 
 	// Parse the params
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-seed"))
@@ -1904,7 +1865,7 @@ void manifold(GArgReader& args)
 	size_t equations = 0;
 	while(true)
 	{
-		sprintf(funcName, "y%d", (int)equations + 1);
+		snprintf(funcName, sizeof(funcName), "y%d", (int)equations + 1);
 		GFunction* pFunc = mfp.getFunctionNoThrow(funcName);
 		if(!pFunc)
 		{
@@ -1966,7 +1927,7 @@ void mapEquations(GArgReader& args)
 	size_t equations = 0;
 	while(true)
 	{
-		sprintf(funcName, "y%d", (int)equations + 1);
+		snprintf(funcName, sizeof(funcName), "y%d", (int)equations + 1);
 		GFunction* pFunc = mfp.getFunctionNoThrow(funcName);
 		if(!pFunc)
 		{
@@ -2147,7 +2108,7 @@ void MakeCorrelationLabel(const GArffRelation* pRelation, GMatrix* pData, GImage
 			image2.clear(0);
 			int xx = 0;
 			char szValue[64];
-			sprintf(szValue, "%.4lg", (i == 0 ? min : max));
+			snprintf(szValue, sizeof(szValue), "%.4lg", (i == 0 ? min : max));
 			int eatspace = pImage->width() - 16 - GImage::measureTextWidth(szValue, 1.0f);
 			xx += eatspace;
 			image2.text(szValue, xx, 0, 1.0f, 0xff400000);
@@ -2221,7 +2182,7 @@ void PlotCorrelations(GArgReader& args)
 	int wid = (int)(std::min(maxAttrs, pRel->size()) + 1) * (cellsize + bordersize);
 	imageBig.setSize(wid, wid);
 	imageBig.clear(bgCol);
-	GRand prng(getpid() * (unsigned int)time(NULL));
+	GRand prng(getpid() * (unsigned int)time(nullptr));
 	GImage imageCell;
 	GImage imageCell2;
 	imageCell.setSize(cellsize, cellsize);
@@ -2382,7 +2343,7 @@ void Plot3d(GImage* pImage, GMatrix* pData, unsigned int bgCol, float pointRadiu
 					point.set(pls.label(i), min.m_vals[1], min.m_vals[2]);
 					toImageCoords(pImage, &camera, &point, &coords);
 					pImage->dot((float)coords.m_vals[0], (float)coords.m_vals[1], 3.0, 0xff404040, bgCol);
-					sprintf(tmp, "%.5lg", pls.label(i));
+					snprintf(tmp, sizeof(tmp), "%.5lg", pls.label(i));
 					pImage->text(tmp, (int)coords.m_vals[0] + 4, (int)coords.m_vals[1] - 4, 1.0f, 0xff404040);
 				}
 			}
@@ -2394,7 +2355,7 @@ void Plot3d(GImage* pImage, GMatrix* pData, unsigned int bgCol, float pointRadiu
 					point.set(min.m_vals[0], pls.label(i), min.m_vals[2]);
 					toImageCoords(pImage, &camera, &point, &coords);
 					pImage->dot((float)coords.m_vals[0], (float)coords.m_vals[1], 3.0, 0xff404040, bgCol);
-					sprintf(tmp, "%.5lg", pls.label(i));
+					snprintf(tmp, sizeof(tmp), "%.5lg", pls.label(i));
 					pImage->text(tmp, (int)coords.m_vals[0] + 4, (int)coords.m_vals[1] - 4, 1.0f, 0xff404040);
 				}
 			}
@@ -2406,7 +2367,7 @@ void Plot3d(GImage* pImage, GMatrix* pData, unsigned int bgCol, float pointRadiu
 					point.set(min.m_vals[0], min.m_vals[1], pls.label(i));
 					toImageCoords(pImage, &camera, &point, &coords);
 					pImage->dot((float)coords.m_vals[0], (float)coords.m_vals[1], 3.0, 0xff404040, bgCol);
-					sprintf(tmp, "%.5lg", pls.label(i));
+					snprintf(tmp, sizeof(tmp), "%.5lg", pls.label(i));
 					pImage->text(tmp, (int)coords.m_vals[0] + 4, (int)coords.m_vals[1] - 4, 1.0f, 0xff404040);
 				}
 			}
@@ -2438,7 +2399,7 @@ void Plot3dMulti(GArgReader& args)
 	const GArffRelation* pRel = (const GArffRelation*)&pData->relation();
 
 	// Parse options
-	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
+	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	int horizPlots = 1;
 	int vertPlots = 1;
 	int wid = 1000;
@@ -2684,7 +2645,7 @@ void rayTraceManifoldModel(GArgReader& args)
 	size_t granularity = 50;
 	string filename = "plot.png";
 	double pointRadius = 0.02;
-	GMatrix* pPoints = NULL;
+	GMatrix* pPoints = nullptr;
 	Holder<GMatrix> hPoints;
 	while(args.next_is_flag())
 	{

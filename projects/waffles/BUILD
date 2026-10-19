@@ -61,6 +61,16 @@ cc_binary(
     ],
 )
 
+# waffles_generate: makes datasets (src/depends/ because it needs libpng)
+cc_binary(
+    name = "generate",
+    srcs = ["src/depends/generate/main.cpp"],
+    deps = [
+        ":WClasses",
+        ":png",
+    ],
+)
+
 cc_binary(
     name = "learn",
     srcs = ["src/learn/main.cpp"],
@@ -119,6 +129,18 @@ cc_test(
         "@fmtlog",
         "@gtest",
         "@spdlog",
+    ],
+)
+
+# The PNG library's test needs :png as well
+cc_test(
+    name = "GImagePng_test",
+    size = "small",
+    srcs = ["tests/GImagePng_test.cpp"],
+    deps = [
+        ":png",
+        ":WClasses",
+        "@gtest//:gtest_main",
     ],
 )
 

@@ -230,6 +230,7 @@ void savePng(GImage* pImage, FILE* pFile, bool bIncludeAlphaChannel)
 				*(pBytes++) = gRed(*pPix);
 				*(pBytes++) = gGreen(*pPix);
 				*(pBytes++) = gBlue(*pPix);
+				pPix++; // SAKBox: was missing, so every pixel was saved as the first one
 			}
 			png_write_row(writer.m_pWriteStruct, pRow);
 		}
