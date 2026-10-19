@@ -461,11 +461,19 @@ public:
 	/// has already been trained with a transform that has also already been trained.)
 	void initShellOnly(const GRelation& featureRel, const GRelation& labelRel);
 
-	/// Transform a feature vector to the form for presenting to the inner learner
-	virtual const GVec& prefilterFeatures(const GVec& in) = 0;
+	/// Transform a feature vector to the form for presenting to the inner
+	/// learner. The result is either in itself (when there is nothing to
+	/// transform) or a buffer in a filter, valid until the next call.
+	const GVec& prefilterFeatures(const GVec& in);
 
-	/// Transform a label vector to the form for presenting to the inner learner
-	virtual const GVec& prefilterLabels(const GVec& in) = 0;
+	/// Transform a label vector to the form for presenting to the inner
+	/// learner. The result is as for prefilterFeatures.
+	const GVec& prefilterLabels(const GVec& in);
+
+	/// Not for temporaries: the result can be the input itself, which would
+	/// be gone before the result was used.
+	const GVec& prefilterFeatures(GVec&& in) = delete;
+	const GVec& prefilterLabels(GVec&& in) = delete;
 
 	/// Transform a feature matrix to the form for presenting to the inner learner
 	GMatrix* prefilterFeatures(const GMatrix& in);
@@ -476,6 +484,16 @@ public:
 	/// Returns a pointer to the inner learner (could be another GFilter)
 	GSupervisedLearner* innerLearner() { return m_pLearner; }
 
+protected:
+	/// SAKBox: what each filter implements for prefilterFeatures and
+	/// prefilterLabels: the transformed vector, or nullptr when in is passed
+	/// on unchanged (GFilter then returns in itself). Filters don't return
+	/// their parameter, and don't declare prefilterFeatures or
+	/// prefilterLabels, which would hide the deleted overloads above.
+	virtual const GVec* transformedFeatures(const GVec& in) = 0;
+	virtual const GVec* transformedLabels(const GVec& in) = 0;
+
+public:
 	/// Returns a pointer to the base larner
 	GSupervisedLearner* baseLearner() { return m_pOriginal; }
 	/// Throws an exception
@@ -490,8 +508,6 @@ protected:
 	bool m_ownTransform;
 
 public:
-using GFilter::prefilterFeatures;
-using GFilter::prefilterLabels;
 	/// This takes ownership of pLearner and pTransform.
 	GFeatureFilter(GSupervisedLearner* pLearner, GIncrementalTransform* pTransform, bool ownLearner = true, bool ownTransform = true);
 
@@ -513,13 +529,10 @@ using GFilter::prefilterLabels;
 	/// See the comment for GIncrementalLearner::trainIncremental
 	void trainIncremental(const GVec& in, const GVec& out) override;
 
-	/// Transform a feature vector to the form for presenting to the inner learner
-	const GVec& prefilterFeatures(const GVec& in) override;
-
-	/// Transform a label vector to the form for presenting to the inner learner
-	const GVec& prefilterLabels(const GVec& in) override;
-
 protected:
+	const GVec* transformedFeatures(const GVec& in) override;
+	const GVec* transformedLabels(const GVec& in) override;
+
 	/// See the comment for GSupervisedLearner::trainInner
 	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
@@ -539,8 +552,6 @@ protected:
 	bool m_ownTransform;
 
 public:
-using GFilter::prefilterFeatures;
-using GFilter::prefilterLabels;
 	/// This takes ownership of pLearner and pTransform.
 	GLabelFilter(GSupervisedLearner* pLearner, GIncrementalTransform* pTransform, bool ownLearner = true, bool ownTransform = true);
 
@@ -562,13 +573,10 @@ using GFilter::prefilterLabels;
 	/// See the comment for GIncrementalLearner::trainIncremental
 	void trainIncremental(const GVec& in, const GVec& out) override;
 
-	/// Transform a feature vector to the form for presenting to the inner learner
-	const GVec& prefilterFeatures(const GVec& in) override;
-
-	/// Transform a label vector to the form for presenting to the inner learner
-	const GVec& prefilterLabels(const GVec& in) override;
-
 protected:
+	const GVec* transformedFeatures(const GVec& in) override;
+	const GVec* transformedLabels(const GVec& in) override;
+
 	/// See the comment for GSupervisedLearner::trainInner
 	void trainInner(const GMatrix& features, const GMatrix& labels) override;
 
@@ -588,9 +596,6 @@ protected:
 	std::vector<GMatrix*> m_prefilteredData;
 
 public:
-using GFilter::prefilterFeatures;
-using GFilter::prefilterLabels;
-
 	/// General-purpose constructor. If ownLearner is true, then this will delete pLearner when this object is deleted.
 	GAutoFilter(GSupervisedLearner* pLearner, bool ownLearner = true);
 
@@ -612,12 +617,11 @@ using GFilter::prefilterLabels;
 	/// See the comment for GIncrementalLearner::trainIncremental
 	void trainIncremental(const GVec& in, const GVec& out) override;
 
-	/// Transform a feature vector to the form for presenting to the inner learner
-	const GVec& prefilterFeatures(const GVec& in) override;
+protected:
+	const GVec* transformedFeatures(const GVec& in) override;
+	const GVec* transformedLabels(const GVec& in) override;
 
-	/// Transform a label vector to the form for presenting to the inner learner
-	const GVec& prefilterLabels(const GVec& in) override;
-
+public:
 	/// Prefilters multiple datasets and stores the results in the same order in a vector that can be retrieved by calling data().
 	void prefilterData(const GMatrix* pFeatures1, const GMatrix* pLabels1, const GMatrix* pFeatures2 = nullptr, const GMatrix* pLabels2 = nullptr, const GMatrix* pFeatures3 = nullptr, const GMatrix* pLabels3 = nullptr, const GMatrix* pFeatures4 = nullptr, const GMatrix* pLabels4 = nullptr);
 

@@ -1152,6 +1152,18 @@ GDomNode* GFilter::domNode(GDom* pDoc, const char* szClassName) const
 	return pNode;
 }
 
+const GVec& GFilter::prefilterFeatures(const GVec& in)
+{
+	const GVec* pOut = transformedFeatures(in);
+	return pOut ? *pOut : in;
+}
+
+const GVec& GFilter::prefilterLabels(const GVec& in)
+{
+	const GVec* pOut = transformedLabels(in);
+	return pOut ? *pOut : in;
+}
+
 GMatrix* GFilter::prefilterFeatures(const GMatrix& in)
 {
 	GSupervisedLearner* pInnerLearner = m_pLearner;
@@ -1259,22 +1271,22 @@ void GFeatureFilter::trainIncremental(const GVec& in, const GVec& out)
 }
 
 // virtual
-const GVec& GFeatureFilter::prefilterFeatures(const GVec& in)
+const GVec* GFeatureFilter::transformedFeatures(const GVec& in)
 {
 	m_pTransform->transform(in, m_pTransform->innerBuf());
 	if(m_pLearner->isFilter())
-		return ((GFilter*)m_pLearner)->prefilterFeatures(m_pTransform->innerBuf());
+		return &((GFilter*)m_pLearner)->prefilterFeatures(m_pTransform->innerBuf());
 	else
-		return m_pTransform->innerBuf();
+		return &m_pTransform->innerBuf();
 }
 
 // virtual
-const GVec& GFeatureFilter::prefilterLabels(const GVec& in)
+const GVec* GFeatureFilter::transformedLabels(const GVec& in)
 {
 	if(m_pLearner->isFilter())
-		return ((GFilter*)m_pLearner)->prefilterLabels(in);
+		return &((GFilter*)m_pLearner)->prefilterLabels(in);
 	else
-		return in;
+		return nullptr;
 }
 
 // ---------------------------------------------------------------
@@ -1356,22 +1368,22 @@ void GLabelFilter::trainIncremental(const GVec& in, const GVec& out)
 }
 
 // virtual
-const GVec& GLabelFilter::prefilterFeatures(const GVec& in)
+const GVec* GLabelFilter::transformedFeatures(const GVec& in)
 {
 	if(m_pLearner->isFilter())
-		return ((GFilter*)m_pLearner)->prefilterFeatures(in);
+		return &((GFilter*)m_pLearner)->prefilterFeatures(in);
 	else
-		return in;
+		return nullptr;
 }
 
 // virtual
-const GVec& GLabelFilter::prefilterLabels(const GVec& in)
+const GVec* GLabelFilter::transformedLabels(const GVec& in)
 {
 	m_pTransform->transform(in, m_pTransform->innerBuf());
 	if(m_pLearner->isFilter())
-		return ((GFilter*)m_pLearner)->prefilterLabels(m_pTransform->innerBuf());
+		return &((GFilter*)m_pLearner)->prefilterLabels(m_pTransform->innerBuf());
 	else
-		return m_pTransform->innerBuf();
+		return &m_pTransform->innerBuf();
 }
 
 // ---------------------------------------------------------------
@@ -1578,21 +1590,21 @@ void GAutoFilter::resetFilters(const GRelation& features, const GRelation& label
 }
 
 // virtual
-const GVec& GAutoFilter::prefilterFeatures(const GVec& in)
+const GVec* GAutoFilter::transformedFeatures(const GVec& in)
 {
 	if(m_pLearner->isFilter())
-		return ((GFilter*)m_pLearner)->prefilterFeatures(in);
+		return &((GFilter*)m_pLearner)->prefilterFeatures(in);
 	else
-		return in;
+		return nullptr;
 }
 
 // virtual
-const GVec& GAutoFilter::prefilterLabels(const GVec& in)
+const GVec* GAutoFilter::transformedLabels(const GVec& in)
 {
 	if(m_pLearner->isFilter())
-		return ((GFilter*)m_pLearner)->prefilterLabels(in);
+		return &((GFilter*)m_pLearner)->prefilterLabels(in);
 	else
-		return in;
+		return nullptr;
 }
 
 void GAutoFilter::prefilterData(const GMatrix* pFeatures1, const GMatrix* pLabels1, const GMatrix* pFeatures2, const GMatrix* pLabels2, const GMatrix* pFeatures3, const GMatrix* pLabels3, const GMatrix* pFeatures4, const GMatrix* pLabels4)

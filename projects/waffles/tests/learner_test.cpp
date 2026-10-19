@@ -4,6 +4,11 @@
 #include <WClasses/GError.h>
 #include <WClasses/GLearner.h>
 #include <WClasses/GMatrix.h>
+#include <WClasses/GTransform.h>
+#include <WClasses/GVec.h>
+
+#include <concepts>
+#include <memory>
 
 #include <vector>
 
@@ -153,4 +158,91 @@ TEST(AutoFilterTest, LearnerMustTakeSomeKindOfLabel) {
   NoLabelsAtAll rec;
   GAutoFilter af(&rec, false);
   EXPECT_THROW(af.train(features, labels), std::exception);
+}
+
+// A filter's prefilterFeatures and prefilterLabels return their input itself
+// when there is nothing to transform, so the result of passing a temporary
+// would refer to a destroyed vector. Passing one is a compile error, for
+// every filter: GFilter declares both functions (with the deleted overloads
+// for temporaries), and filters implement transformedFeatures and
+// transformedLabels instead.
+namespace {
+// A filter written later, implementing only what a filter implements (left
+// abstract: it is only checked, not made)
+struct NewFilter : GFilter {
+  using GFilter::GFilter;
+
+protected:
+  const GVec *transformedFeatures(const GVec &) override { return nullptr; }
+  const GVec *transformedLabels(const GVec &) override { return nullptr; }
+};
+
+template <class F>
+concept PrefiltersTemporaries = requires(F &f) {
+  f.prefilterFeatures(GVec(2));
+  f.prefilterLabels(GVec(2));
+};
+template <class F>
+concept PrefiltersVectors = requires(F &f, const GVec &v) {
+  { f.prefilterFeatures(v) } -> std::same_as<const GVec &>;
+  { f.prefilterLabels(v) } -> std::same_as<const GVec &>;
+};
+} // namespace
+static_assert(!PrefiltersTemporaries<GFilter>);
+static_assert(!PrefiltersTemporaries<GFeatureFilter>);
+static_assert(!PrefiltersTemporaries<GLabelFilter>);
+static_assert(!PrefiltersTemporaries<GAutoFilter>);
+static_assert(!PrefiltersTemporaries<NewFilter>);
+static_assert(PrefiltersVectors<NewFilter>);
+static_assert(PrefiltersVectors<GFeatureFilter>);
+static_assert(PrefiltersVectors<GLabelFilter>);
+static_assert(PrefiltersVectors<GAutoFilter>);
+
+// The pass-through cases return the input itself, not a copy
+TEST(FilterTest, PassThroughReturnsTheInput) {
+  GVec v({1.0, 2.0});
+  GFeatureFilter features(new GBaselineLearner(), new GNormalize());
+  EXPECT_EQ(&features.prefilterLabels(v), &v);
+  GLabelFilter labels(new GBaselineLearner(), new GNormalize());
+  EXPECT_EQ(&labels.prefilterFeatures(v), &v);
+  GAutoFilter autoFilter(new GBaselineLearner());
+  EXPECT_EQ(&autoFilter.prefilterFeatures(v), &v);
+  EXPECT_EQ(&autoFilter.prefilterLabels(v), &v);
+}
+
+// And the transforming cases: a feature filter normalizes the features, a
+// label filter the labels, and a filter inside another gets what the outer
+// one passes on (one transformed, the other passed through).
+TEST(FilterTest, TransformsAndPassesOnThroughNestedFilters) {
+  GMatrix features(4, 1), labels(4, 1);
+  for (size_t i = 0; i < 4; i++) {
+    features[i][0] = 10.0 * i;   // 0..30
+    labels[i][0] = 100.0 * (i + 1); // 100..400
+  }
+  auto *inner = new GLabelFilter(new GBaselineLearner(), new GNormalize());
+  GFeatureFilter outer(inner, new GNormalize());
+  outer.train(features, labels);
+
+  const GVec x({20.0}), y({300.0});
+  const GVec &fx = outer.prefilterFeatures(x); // normalized by outer only
+  EXPECT_NE(&fx, &x);
+  EXPECT_DOUBLE_EQ(fx[0], 2.0 / 3.0);
+  const GVec &fy = outer.prefilterLabels(y); // passed on to inner, normalized
+  EXPECT_NE(&fy, &y);
+  EXPECT_DOUBLE_EQ(fy[0], 2.0 / 3.0);
+  // The inner filter alone: labels transformed, features passed through
+  EXPECT_DOUBLE_EQ(inner->prefilterLabels(y)[0], 2.0 / 3.0);
+  EXPECT_EQ(&inner->prefilterFeatures(x), &x);
+
+  // A feature filter on its own (its inner learner isn't a filter)
+  GFeatureFilter single(new GBaselineLearner(), new GNormalize());
+  single.train(features, labels);
+  EXPECT_DOUBLE_EQ(single.prefilterFeatures(x)[0], 2.0 / 3.0);
+  EXPECT_EQ(&single.prefilterLabels(y), &y);
+
+  // Whole matrices, through the same functions
+  std::unique_ptr<GMatrix> pf(outer.prefilterFeatures(features));
+  EXPECT_DOUBLE_EQ((*pf)[3][0], 1.0);
+  std::unique_ptr<GMatrix> pl(outer.prefilterLabels(labels));
+  EXPECT_DOUBLE_EQ((*pl)[0][0], 0.0);
 }
