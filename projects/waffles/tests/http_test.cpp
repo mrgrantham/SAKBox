@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstring>
 #include <ostream>
+#include <regex>
 #include <string>
 #include <stdexcept>
 
@@ -186,8 +187,13 @@ TEST(HttpServerTest, ListensOnThisComputerOnlyUnlessAsked) {
 
 TEST(HttpServerTest, AnswersGoodRequests) {
   EchoServer server;
-  EXPECT_NE(send(server, "GET /hello HTTP/1.1\r\n\r\n").find("got /hello"),
-            std::string::npos);
+  const std::string reply = send(server, "GET /hello HTTP/1.1\r\n\r\n");
+  EXPECT_NE(reply.find("got /hello"), std::string::npos);
+  // An RFC 1123 date, as GTime::httpDate makes
+  EXPECT_TRUE(std::regex_search(
+      reply, std::regex("\r\nDate: (Mon|Tue|Wed|Thu|Fri|Sat|Sun), [0-9]{2} "
+                        "[A-Z][a-z]{2} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT\r\n")))
+      << reply;
   EXPECT_NE(send(server, "POST /form HTTP/1.1\r\nContent-Length: 5\r\n\r\nabcde")
                 .find("posted abcde"),
             std::string::npos);

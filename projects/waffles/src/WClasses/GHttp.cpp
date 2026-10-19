@@ -1055,52 +1055,6 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 	}
 }
 
-void AscTimeToGMT(const char* szIn, char* szOut)
-{
-	// Copy the day
-	while(*szIn > ' ')
-		*(szOut++) = *(szIn++);
-	*(szOut++) = ',';
-	*(szOut++) = ' ';
-	while(*szIn == ' ')
-		szIn++;
-
-	// Copy the day of the month
-	const char* pMonth = szIn;
-	while(*szIn > ' ')
-		szIn++;
-	while(*szIn == ' ')
-		szIn++;
-	while(*szIn > ' ')
-		*(szOut++) = *(szIn++);
-	*(szOut++) = ' ';
-	while(*szIn == ' ')
-		szIn++;
-	const char* pTime = szIn;
-
-	// Copy the month
-	while(*pMonth > ' ')
-		*(szOut++) = *(pMonth++);
-	*(szOut++) = ' ';
-
-	// Copy the year
-	while(*szIn > ' ')
-		szIn++;
-	while(*szIn == ' ')
-		szIn++;
-	while(*szIn > ' ')
-		*(szOut++) = *(szIn++);
-	*(szOut++) = ' ';
-
-	// Copy the time
-	while(*pTime > ' ')
-		*(szOut++) = *(pTime++);
-	*(szOut++) = ' ';
-
-	// Add "GMT"
-	strcpy(szOut, "GMT");
-}
-
 void GHttpServer::sendResponse(GHttpConnection* pConn)
 {
 	// Convert the payload to a string
@@ -1122,30 +1076,13 @@ void GHttpServer::sendResponse(GHttpConnection* pConn)
 
 	// Set the date header
 	{
-		os << "Date: ";
-		time_t t = time((time_t*)nullptr);
-#ifdef WINDOWS
-		struct tm thetime;
-		gmtime_s(&thetime, &t);
-		struct tm* pTime = &thetime;
-#else
-		struct tm* pTime = gmtime(&t);
-#endif
-		const char* szAscTime = asctime(pTime);
-		char szGMT[40];
-		AscTimeToGMT(szAscTime, szGMT);
-		os << szGMT << "\r\n";
+		os << "Date: " << GTime::httpDate(time((time_t*)nullptr)) << "\r\n";
 	}
 
 	// Set the last-modified header
 	if(pConn->m_modifiedTime != 0)
 	{
-		os << "Last-Modified: ";
-		struct tm* pTime = gmtime(&pConn->m_modifiedTime);
-		const char* szAscTime = asctime(pTime);
-		char szGMT[40];
-		AscTimeToGMT(szAscTime, szGMT);
-		os << szGMT << "\r\n";
+		os << "Last-Modified: " << GTime::httpDate(pConn->m_modifiedTime) << "\r\n";
 	}
 
 	// Set cookie

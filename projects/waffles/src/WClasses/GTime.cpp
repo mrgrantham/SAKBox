@@ -46,6 +46,37 @@ namespace GClasses {
 #endif
 }
 
+// Day and month names in English (as asctime and HTTP use, whatever the locale)
+static const char* const g_GTime_days[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+static const char* const g_GTime_months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+// SAKBox: t broken into parts, in GMT or local time, without gmtime and
+// localtime's buffer (shared by every thread)
+static struct tm GTime_parts(time_t t, bool bGreenwichMeanTime)
+{
+	struct tm parts;
+#ifdef WINDOWS
+	if(bGreenwichMeanTime)
+		gmtime_s(&parts, &t);
+	else
+		localtime_s(&parts, &t);
+#else
+	if(bGreenwichMeanTime)
+		gmtime_r(&t, &parts);
+	else
+		localtime_r(&t, &parts);
+#endif
+	return parts;
+}
+
+/*static*/ std::string GTime::httpDate(time_t t)
+{
+	const struct tm parts = GTime_parts(t, true);
+	char buf[40];
+	snprintf(buf, sizeof(buf), "%s, %02d %s %04d %02d:%02d:%02d GMT", g_GTime_days[parts.tm_wday], parts.tm_mday, g_GTime_months[parts.tm_mon], 1900 + parts.tm_year, parts.tm_hour, parts.tm_min, parts.tm_sec);
+	return buf;
+}
+
 /*static*/ const char* GTime::asciiTime(char* szBuf, int nSize, bool bGreenwichMeanTime)
 {
 	time_t t = time((time_t*)nullptr);
@@ -58,8 +89,12 @@ namespace GClasses {
 	asctime_s(szBuf, nSize, &thetime);
 	int len = (int)strlen(szBuf);
 #else
-	struct tm* pTime = bGreenwichMeanTime ? gmtime(&t) : localtime(&t);
-	int len = safe_strcpy(szBuf, asctime(pTime), nSize);
+	// SAKBox: asctime's format ("Thu Nov  5 07:08:09 2026"), without
+	// asctime, gmtime and localtime's shared buffers
+	const struct tm parts = GTime_parts(t, bGreenwichMeanTime);
+	char buf[64];
+	snprintf(buf, sizeof(buf), "%s %s %2d %02d:%02d:%02d %d", g_GTime_days[parts.tm_wday], g_GTime_months[parts.tm_mon], parts.tm_mday, parts.tm_hour, parts.tm_min, parts.tm_sec, 1900 + parts.tm_year);
+	int len = safe_strcpy(szBuf, buf, nSize);
 #endif
 
 	// Remove trailing whitespace (cuz asctime appends a '\n' at the end)
@@ -78,16 +113,8 @@ void GTime_printTwoDigits(std::ostream& os, unsigned int n)
 /*static*/ void GTime::appendTimeStampValue(std::string* pS, const char* sep1, const char* sep2, const char* sep3, bool bGreenwichMeanTime)
 {
 	time_t t = time((time_t*)nullptr);
-#ifdef WINDOWS
-	struct tm thetime;
-	if(bGreenwichMeanTime)
-		gmtime_s(&thetime, &t);
-	else
-		localtime_s(&thetime, &t);
-	struct tm* pTime = &thetime;
-#else
-	struct tm* pTime = bGreenwichMeanTime ? gmtime(&t) : localtime(&t);
-#endif
+	const struct tm parts = GTime_parts(t, bGreenwichMeanTime);
+	const struct tm* pTime = &parts;
 	std::ostringstream os;
 	unsigned int n = 1900 + pTime->tm_year;
 	os << n;

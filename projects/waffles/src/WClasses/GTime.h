@@ -20,6 +20,7 @@
 #ifndef __GTIME_H__
 #define __GTIME_H__
 
+#include <ctime>
 #include <string>
 #include "GTree.h"
 #include <vector>
@@ -37,6 +38,10 @@ public:
 
 	/// Returns a string representation of the current time
 	static const char* asciiTime(char* szBuf, int nSize, bool bGreenwichMeanTime = false);
+
+	/// Returns t as an HTTP date (RFC 1123, in GMT and English), such as
+	/// "Thu, 05 Nov 2026 07:08:09 GMT"
+	static std::string httpDate(time_t t);
 
 	/// Adds a string representation of the current time to pS in big Endian format. For example, if sep1="-",
 	/// sep2=" ", and sep3=":", and the time is one second before 2010, then it would append a string like
