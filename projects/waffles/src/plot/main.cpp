@@ -1510,7 +1510,8 @@ void PrintStats(GArgReader& args)
 		if(vals == 0) // continuous
 		{
 			cout << "Type: Continuous, ";
-			try
+			size_t missing = pData->countValue(i, UNKNOWN_REAL_VALUE);
+			if(missing < pData->rows()) // SAKBox: was a catch(...) that hid any error, not just "all values missing"
 			{
 				double d1, d2, d3;
 				d1 = pData->columnMean(i);
@@ -1519,11 +1520,7 @@ void PrintStats(GArgReader& args)
 				cout << "Mean:" << d1 << ", Dev:" << sqrt(d2) << ", Median:" << d3 << ", ";
 				cout << "Min:" << pData->columnMin(i) << ", Max:" << pData->columnMax(i) << ", ";
 			}
-			catch(...)
-			{
-				// If it gets to here, all values are probably missing
-			}
-			cout << "Missing:" << pData->countValue(i, UNKNOWN_REAL_VALUE) << "\n";
+			cout << "Missing:" << missing << "\n";
 		}
 		else if(vals < (size_t)-10)
 		{

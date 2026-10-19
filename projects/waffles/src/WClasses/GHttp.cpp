@@ -936,7 +936,7 @@ void GHttpServer::onReceiveFullPostRequest(GHttpConnection* pConn)
 	}
 	catch(std::exception&)
 	{
-		// failed to send response
+		std::cout << "Error: Failed to send POST response\n"; // SAKBox: was silent, unlike GET and HEAD
 	}
 }
 
