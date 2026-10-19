@@ -15,14 +15,14 @@ private:
 
 public:
   void prepare() override {
-    spdlog::info("Preparing: {}", name());
+    spdlog::info("Preparing: {}", paddName());
     graphics_ = GraphicsBuilder();
-    performanceTimer_.setTimerName(name());
+    performanceTimer_.setTimerName(paddName());
     performanceTimer_.start();
   }
   DisplayPadd(ScratchPadd::System *system) : Base(system) {
     receive<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
-      std::cout << name() << " Text: " << text << "\n";
+      std::cout << paddName() << " Text: " << text << "\n";
     });
     receive<ScratchPadd::MessageType::ControlSnapshot>(
         [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
@@ -60,13 +60,13 @@ public:
     push([this] { drawFrame(); }); // start drawing frames
   }
   void finishing() override {
-    spdlog::info("[{}] Avg Repeating Interval: {}", name(),
+    spdlog::info("[{}] Avg Repeating Interval: {}", paddName(),
                  performanceTimer_.getAverageIntervalString());
     performanceTimer_.markTimeAndPrint();
     graphics_->tearDown();
   }
 
-  ~DisplayPadd() override { spdlog::info("Destroying: {}", name()); }
+  ~DisplayPadd() override { spdlog::info("Destroying: {}", paddName()); }
 
   // Draws one frame, then queues the next. The buffer swap waits for the
   // display's refresh (vsync), so this runs at the display's rate without a

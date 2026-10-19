@@ -26,8 +26,8 @@ public:
   virtual ~MessageBase() = default;
   // The type of the contents, used to find a receiver's handler.
   virtual std::type_index type() const = 0;
-  // The contents' type name, for logging.
-  virtual std::string typeName() const = 0;
+  // The contents' type name, for logging. Worked out once per type.
+  virtual const std::string &typeName() const = 0;
 };
 
 // A message holding a T.
@@ -35,11 +35,17 @@ template <typename T> class MessageOf : public MessageBase {
 public:
   explicit MessageOf(T contents) : value(std::move(contents)) {}
   std::type_index type() const override { return typeid(T); }
-  std::string typeName() const override {
-    int status = 0;
-    char *demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
-    std::string name = status == 0 ? demangled : typeid(T).name();
-    std::free(demangled);
+  // (Base::send logs this for every message, so it's demangled once, not
+  // per call; the arguments of a debug log are built even when debug
+  // logging is off.)
+  const std::string &typeName() const override {
+    static const std::string name = [] {
+      int status = 0;
+      char *demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+      std::string readable = status == 0 ? demangled : typeid(T).name();
+      std::free(demangled);
+      return readable;
+    }();
     return name;
   }
 

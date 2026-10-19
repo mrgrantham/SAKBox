@@ -78,7 +78,7 @@ private:
     case GameCommand::Type::ToggleAutopilot:
       // Changed by the owner itself, so tell panels with a fresh snapshot
       updateControl(ScratchPadd::MessageType::ControlChange{
-          .paddName = name(),
+          .paddName = paddName(),
           .controlName = "Autopilot",
           .controlTypeValue =
               ScratchPadd::ControlType::Boolean(!control<ScratchPadd::ControlType::Boolean>("Autopilot").value)});

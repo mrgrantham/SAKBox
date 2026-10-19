@@ -80,6 +80,21 @@ public:
   std::atomic<int> pings_{0};
 };
 
+// A padd that counts how often its name() is called, and handles Ping.
+template <int Id> class NameCountingPadd : public ScratchPadd::Base {
+public:
+  NameCountingPadd(ScratchPadd::System *system) : Base(system) {
+    receive<Ping>([this](const Ping &) { ++pings_; });
+  }
+  std::string name() override {
+    ++nameCalls_;
+    return "NameCountingPadd" + std::to_string(Id);
+  }
+  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+  std::atomic<int> nameCalls_{0};
+  std::atomic<int> pings_{0};
+};
+
 template <typename... Padds> class RunningSystem {
 public:
   ScratchPadd::SystemImplementation<Padds...> system;
@@ -192,4 +207,40 @@ TEST(MessageTest, TestMakeMessageAndMessageAs) {
   ASSERT_NE(ScratchPadd::messageAs<Ping>(message), nullptr);
   EXPECT_EQ(ScratchPadd::messageAs<Ping>(message)->id, 4);
   EXPECT_EQ(ScratchPadd::messageAs<Shape>(message), nullptr);
+}
+
+// A padd's name() is read once, when the system starts it, and cached: the
+// system used to call it again for every message sent and delivered (for
+// debug logs, whose arguments are built even when debug logging is off),
+// and a name() built on __CLASS_NAME__ demangles its class name each call.
+TEST(MessageTest, NameIsReadOnceNotPerMessage) {
+  using A = NameCountingPadd<1>;
+  using B = NameCountingPadd<2>;
+  RunningSystem<A, B> running;
+  auto &a = running.padd<A>();
+  auto &b = running.padd<B>();
+  const int aCallsAtStart = a.nameCalls_, bCallsAtStart = b.nameCalls_;
+  EXPECT_EQ(aCallsAtStart, 1);
+  EXPECT_EQ(bCallsAtStart, 1);
+  EXPECT_EQ(a.paddName(), "NameCountingPadd1");
+
+  for (int i = 0; i < 50; i++) {
+    a.send(Ping{i});
+    b.send(Ping{i});
+  }
+  ASSERT_TRUE(running.settles());
+  EXPECT_EQ(a.pings_, 50);
+  EXPECT_EQ(b.pings_, 50);
+  EXPECT_EQ(a.nameCalls_, aCallsAtStart);
+  EXPECT_EQ(b.nameCalls_, bCallsAtStart);
+}
+
+// A message's type name is worked out once per type: Base::send logs it for
+// every message, and it used to be demangled each time.
+TEST(MessageTest, TypeNameIsWorkedOutOncePerType) {
+  const ScratchPadd::Message first = ScratchPadd::makeMessage(Ping{1});
+  const ScratchPadd::Message second = ScratchPadd::makeMessage(Ping{2});
+  EXPECT_EQ(first->typeName(), "(anonymous namespace)::Ping");
+  EXPECT_EQ(&first->typeName(), &second->typeName()); // the same string
+  EXPECT_EQ(ScratchPadd::makeMessage(Shape{})->typeName(), "(anonymous namespace)::Shape");
 }

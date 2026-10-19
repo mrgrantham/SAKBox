@@ -21,9 +21,9 @@ public:
   }
 
   void prepare() override {
-    PADDLOG_INFO("Preparing: {}", name());
+    PADDLOG_INFO("Preparing: {}", paddName());
     graphics_ = GraphicsBuilder();
-    performanceTimer_.setTimerName(name());
+    performanceTimer_.setTimerName(paddName());
     performanceTimer_.start();
   }
 
@@ -193,7 +193,7 @@ public:
   }
 
   void finishing() override {
-    PADDLOG_INFO("[{}] Avg Repeating Interval: {}", name(),
+    PADDLOG_INFO("[{}] Avg Repeating Interval: {}", paddName(),
                  performanceTimer_.getAverageIntervalString());
     performanceTimer_.markTimeAndPrint();
     graphics_->tearDown();

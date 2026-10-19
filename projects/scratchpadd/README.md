@@ -77,7 +77,7 @@ bazel run //projects/scratchpadd/demo
 
 ### Lifecycle
 
-`instantiate()` constructs the padds and then reads their configuration once: `name()`, `repeatInterval()`, `shouldUseMainThread()` and `generateControls()`. Changing what those return later has no effect.
+`instantiate()` constructs the padds and then reads their configuration once: `name()`, `repeatInterval()`, `shouldUseMainThread()` and `generateControls()`. Changing what those return later has no effect. In particular `name()` is called once: after that, use `paddName()`, which returns the cached name without calling it again (a `name()` built on `__CLASS_NAME__` demangles the class name on each call). In a padd's constructor, which runs before `instantiate()` reads the name, `paddName()` is still `"Unnamed Padd"`, so call `name()` there. The system itself uses `paddName()`, and a message's type name (`typeName()`, logged by `send()`) is worked out once per type, so sending a message doesn't call either.
 
 After that, each padd goes through these hooks. All except the constructor are optional overrides:
 
@@ -229,7 +229,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `basis:Examples_test` | The examples in this README |
 | `basis:Base_test` | Padd names, and a system starting and stopping |
 | `basis:Threading_test` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
-| `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message |
+| `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type |
 | `messages:Controls_test` | The control round trip: who replies to requests and changes, range clamping, rejected changes, `controlChanged()` and `control<C>()` |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
@@ -244,5 +244,4 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 ## Roadmap
 
 1. Let owners push control updates (and add or remove controls) so panels stay current.
-2. Use the cached `name_` everywhere instead of calling `name()` repeatedly. Padds built on `__CLASS_NAME__` demangle their class name on every call (it used to leak the demangled string each time too; that's fixed), and `name()` is called for every message sent.
-3. Implement audio.
+2. Implement audio.

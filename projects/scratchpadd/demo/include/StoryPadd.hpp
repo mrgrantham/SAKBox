@@ -10,31 +10,31 @@ class StoryPadd : public ScratchPadd::Base {
 public:
   std::string name() override { return __CLASS_NAME__; }
   void prepare() override {
-    spdlog::info("Preparing: {}", name());
-    performanceTimer_.setTimerName(name());
+    spdlog::info("Preparing: {}", paddName());
+    performanceTimer_.setTimerName(paddName());
     performanceTimer_.start();
   }
   StoryPadd(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());
     receive<ScratchPadd::MessageType::Text>([this](const ScratchPadd::MessageType::Text &text) {
-      std::cout << name() << " Text: " << text << "\n";
+      std::cout << paddName() << " Text: " << text << "\n";
     });
   }
 
   void repeat() override {
-    spdlog::info("Repeating: {}", name());
+    spdlog::info("Repeating: {}", paddName());
     performanceTimer_.markInterval();
-    spdlog::info("{} firing at {:.3f}s interval", name(),
+    spdlog::info("{} firing at {:.3f}s interval", paddName(),
                  performanceTimer_.getAverageIntervalInSeconds(5));
   }
 
-  ~StoryPadd() override { spdlog::info("Destroying: {}", name()); }
+  ~StoryPadd() override { spdlog::info("Destroying: {}", paddName()); }
 
   // Called when a control is edited in DisplayPadd's control panel.
   void controlChanged(const std::string &controlName) override {
     std::visit(
         [&](const auto &control) {
-          spdlog::info("{}: control {} is now {}", name(), controlName, control.value);
+          spdlog::info("{}: control {} is now {}", paddName(), controlName, control.value);
         },
         generateControlsSnapshot().controlMap.at(controlName));
   }

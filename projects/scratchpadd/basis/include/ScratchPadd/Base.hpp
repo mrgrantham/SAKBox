@@ -119,8 +119,14 @@ public:
   }
 
   // Every Padd needs to implement this so their name can be setup for use in
-  // the system
+  // the system. It's read once, when the system initializes the padd; use
+  // paddName() after that.
   virtual std::string name() = 0;
+
+  // The name name() gave when the padd was initialized (before that,
+  // "Unnamed Padd"). Doesn't call name() again, which for a padd built on
+  // __CLASS_NAME__ demangles its class name each time.
+  const std::string &paddName() const { return name_; }
 
   // Implementing this to true will execute the Padd work queue in whatever
   // thread the overall system was started in. Overriding this method to return

@@ -89,7 +89,7 @@ public:
     std::vector<std::string> workerNamesVector;
     std::apply(
         [&](auto const &...worker) {
-          (workerNamesVector.push_back(worker->name()), ...);
+          (workerNamesVector.push_back(worker->paddName()), ...);
         },
         workers_);
 
@@ -203,7 +203,7 @@ public:
     if (!receiver->handles(message->type())) {
       return;
     }
-    logger().debug("sendWork() to {}", receiver->name());
+    logger().debug("sendWork() to {}", receiver->paddName());
     receiver->push([receiver, message] { receiver->deliver(message); });
   }
 
@@ -215,7 +215,7 @@ public:
     }
   }
   void send(ScratchPadd::Base *sender, Message message) override {
-    logger().debug("sending from {}", sender->name());
+    logger().debug("sending from {}", sender->paddName());
     (sendIfUnmatched(sender, std::get<std::unique_ptr<Workers>>(workers_).get(),
                      message),
      ...);

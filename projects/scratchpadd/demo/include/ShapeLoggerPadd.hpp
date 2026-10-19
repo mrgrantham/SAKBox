@@ -9,7 +9,7 @@ class ShapeLoggerPadd : public ScratchPadd::Base {
 public:
   ShapeLoggerPadd(ScratchPadd::System *system) : Base(system) {
     receive<Demo::Triangle>([this](const Demo::Triangle &triangle) {
-      std::cout << name() << " Triangle: " << triangle << "\n";
+      std::cout << paddName() << " Triangle: " << triangle << "\n";
     });
   }
   std::string name() override { return __CLASS_NAME__; }

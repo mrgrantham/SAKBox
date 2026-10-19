@@ -44,8 +44,8 @@
 namespace ScratchPadd {
 // The readable name for a mangled type name. abi::__cxa_demangle returns
 // memory from malloc that the caller must free (the old macro leaked it on
-// every call, and name() runs on every message); falls back to the mangled
-// name if demangling fails.
+// every call); falls back to the mangled name if demangling fails. A padd's
+// name() using it is called once, when the system initializes the padd.
 inline std::string demangle(const char *mangled) {
   int status = 0;
   std::unique_ptr<char, void (*)(void *)> name(
