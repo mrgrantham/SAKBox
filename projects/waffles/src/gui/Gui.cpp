@@ -714,33 +714,14 @@ void OpenFile(const char* szFilename)
 	SetForegroundWindow(itw.First());
 	//ShellExecute(NULL, NULL, szFilename, NULL, NULL, SW_SHOW);
 #else
-#ifdef __APPLE__
-	// Mac
-	GTEMPBUF(char, pBuf, 32 + strlen(szFilename));
-	strcpy(pBuf, "open ");
-	strcat(pBuf, szFilename);
-	strcat(pBuf, " &");
-	system(pBuf);
-#else // __APPLE__
-	GTEMPBUF(char, pBuf, 32 + strlen(szFilename));
-
-	// Gnome
-	strcpy(pBuf, "gnome-open ");
-	strcat(pBuf, szFilename);
-	if(system(pBuf) != 0)
+	// SAKBox: through GApp::openFile, which passes the name as one argument
+	// (this built "open <name> &" for the shell, so a ; or $(...) in a file
+	// name ran commands)
+	if(!GApp::openFile(szFilename))
 	{
-		// KDE
-		//strcpy(pBuf, "kfmclient exec ");
-		strcpy(pBuf, "konqueror ");
-		strcat(pBuf, szFilename);
-		strcat(pBuf, " &");
-		if(system(pBuf) != 0)
-		{
-			cout << "Failed to open " << szFilename << ". Please open it manually.\n";
-			cout.flush();
-		}
+		cout << "Failed to open " << szFilename << ". Please open it manually.\n";
+		cout.flush();
 	}
-#endif // !DARWIN
 #endif // !WINDOWS
 }
 

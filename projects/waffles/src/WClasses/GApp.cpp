@@ -408,15 +408,120 @@ int GApp::systemCall(const char* szCommand, bool wait, bool show)
 	}
 	return ret;
 #else
-	string s = szCommand;
-	if(!wait)
-		s += " &";
-	int status = system(s.c_str());
-	if(status == -1)
-		throw Ex("Failed to execute command");
-	return WEXITSTATUS(status);
+	// SAKBox: run the program directly, as on Windows and in systemExecute.
+	// This went through the shell (system), so text in the command could
+	// run more commands.
+	int ret = systemExecute(szCommand, wait);
+	return wait ? ret : 0; // (systemExecute gives the process id when not waiting)
 #endif
 }
+
+#ifndef WINDOWS
+// Removes the quotes that group an argument, as a shell does: "a b" and
+// 'a b' become a b. (GApp_measureParamLen decides where arguments end.)
+void GApp_unquote(char* sz)
+{
+	char* pOut = sz;
+	char quote = '\0';
+	for(; *sz != '\0'; sz++)
+	{
+		if(quote == '\0' && (*sz == '"' || *sz == '\''))
+			quote = *sz;
+		else if(*sz == quote)
+			quote = '\0';
+		else
+			*pOut++ = *sz;
+	}
+	*pOut = '\0';
+}
+
+// Runs argv[0] with the arguments argv (ending with a null), without a
+// shell. See GApp::systemExecute.
+int GApp_execute(char* argv[], bool wait, GPipe* pStdOut, GPipe* pStdErr, GPipe* pStdIn)
+{
+	// Create a pipe for stdout
+	int stdOutPipe[2]; // Element 0 is the read end. Element 1 is the write end.
+	if(pStdOut)
+	{
+		if(pipe(stdOutPipe) == -1)
+			throw Ex("Error creating pipe for stdout. errno=", to_str(errno));
+	}
+
+	// Create a pipe for stderr
+	int stdErrPipe[2]; // Element 0 is the read end. Element 1 is the write end.
+	if(pStdErr)
+	{
+		if(pipe(stdErrPipe) == -1)
+			throw Ex("Error creating pipe for stderr. errno=", to_str(errno));
+	}
+
+	// Call it
+	pid_t pid = fork();
+	if(pid == 0) // if I am the forked process...
+	{
+		// Use the provided stdin
+		if(pStdIn)
+			dup2(pStdIn->get(), STDIN_FILENO);
+
+		// Redirect stdout into the pipe
+		if(pStdOut)
+		{
+			close(stdOutPipe[0]); // close the read end of the stdout pipe since we won't need it
+			dup2(stdOutPipe[1], STDOUT_FILENO); // redirect stdout into the write end of the pipe
+		}
+
+		// Redirect stderr into the pipe
+		if(pStdErr)
+		{
+			close(stdErrPipe[0]); // close the read end of the stderr pipe since we won't need it
+			dup2(stdErrPipe[1], STDERR_FILENO); // redirect stderr into the write end of the pipe
+		}
+
+		// Call the child process
+		execvp(argv[0], argv);
+
+		// execvp only returns if there is an error. Otherwise, it replaces the
+		// current process. SAKBox: exit with 127, as a shell does. (This threw,
+		// and the child then carried on as a second copy of the caller.)
+		_exit(127);
+	}
+	else if(pid > 0) // else if I am the calling process...
+	{
+		// Return the read end of the stdout pipe
+		if(pStdOut)
+		{
+			close(stdOutPipe[1]); // close the write end of the stdout pipe since we won't need it
+			pStdOut->set(stdOutPipe[0]);
+		}
+
+		// Return the read end of the stderr pipe
+		if(pStdErr)
+		{
+			close(stdErrPipe[1]); // close the write end of the stderr pipe since we won't need it
+			pStdErr->set(stdErrPipe[0]);
+		}
+
+		// Wait for the process to terminate
+		if(wait)
+		{
+			int status;
+			waitpid(pid, &status, 0);
+			if(WIFEXITED(status))
+			{
+				int ret = WEXITSTATUS(status);
+				return ret;
+			}
+			else if(WIFSIGNALED(status))
+				throw Ex("The process was interruped with signal ", to_str(WTERMSIG(status)));
+			else
+				throw Ex("The process stopped without exiting, and it cannot be restarted.");
+		}
+	}
+	else // else fork failed...
+		throw Ex("There was an error forking the process");
+	return pid;
+}
+#endif // !WINDOWS
 
 int GApp::systemExecute(const char* szCommand, bool wait, GPipe* pStdOut, GPipe* pStdErr, GPipe* pStdIn)
 {
@@ -524,85 +629,9 @@ int GApp::systemExecute(const char* szCommand, bool wait, GPipe* pStdOut, GPipe*
 	GTEMPBUF(char*, argv, argc + 1);
 	GApp_ParseArgs(szCopy, argv, 0x7fffffff);
 
-	// Create a pipe for stdout
-	int stdOutPipe[2]; // Element 0 is the read end. Element 1 is the write end.
-	if(pStdOut)
-	{
-		if(pipe(stdOutPipe) == -1)
-			throw Ex("Error creating pipe for stdout. errno=", to_str(errno));
-	}
-
-	// Create a pipe for stderr
-	int stdErrPipe[2]; // Element 0 is the read end. Element 1 is the write end.
-	if(pStdErr)
-	{
-		if(pipe(stdErrPipe) == -1)
-			throw Ex("Error creating pipe for stderr. errno=", to_str(errno));
-	}
-
-	// Call it
-	pid_t pid = fork();
-	if(pid == 0) // if I am the forked process...
-	{
-		// Use the provided stdin
-		if(pStdIn)
-			dup2(pStdIn->get(), STDIN_FILENO);
-
-		// Redirect stdout into the pipe
-		if(pStdOut)
-		{
-			close(stdOutPipe[0]); // close the read end of the stdout pipe since we won't need it
-			dup2(stdOutPipe[1], STDOUT_FILENO); // redirect stdout into the write end of the pipe
-		}
-
-		// Redirect stderr into the pipe
-		if(pStdErr)
-		{
-			close(stdErrPipe[0]); // close the read end of the stderr pipe since we won't need it
-			dup2(stdErrPipe[1], STDERR_FILENO); // redirect stderr into the write end of the pipe
-		}
-
-		// Call the child process
-		execvp(argv[0], argv);
-
-		// execvp only returns if there is an error. Otherwise, it replaces the current process.
-		throw Ex("Error calling execvp. errno=", to_str(errno));
-	}
-	else if(pid > 0) // else if I am the calling process...
-	{
-		// Return the read end of the stdout pipe
-		if(pStdOut)
-		{
-			close(stdOutPipe[1]); // close the write end of the stdout pipe since we won't need it
-			pStdOut->set(stdOutPipe[0]);
-		}
-
-		// Return the read end of the stderr pipe
-		if(pStdErr)
-		{
-			close(stdErrPipe[1]); // close the write end of the stderr pipe since we won't need it
-			pStdErr->set(stdErrPipe[0]);
-		}
-
-		// Wait for the process to terminate
-		if(wait)
-		{
-			int status;
-			waitpid(pid, &status, 0);
-			if(WIFEXITED(status))
-			{
-				int ret = WEXITSTATUS(status);
-				return ret;
-			}
-			else if(WIFSIGNALED(status))
-				throw Ex("The process was interruped with signal ", to_str(WSTOPSIG(status)));
-			else
-				throw Ex("The process stopped without exiting, and it cannot be restarted.");
-		}
-	}
-	else // else fork failed...
-		throw Ex("There was an error forking the process");
-	return pid;
+	for(int i = 0; i < argc; i++)
+		GApp_unquote(argv[i]);
+	return GApp_execute(argv, wait, pStdOut, pStdErr, pStdIn);
 #endif
 }
 
@@ -623,42 +652,41 @@ void GApp::enableFloatingPointExceptions()
 }
 
 // static
-bool GApp::openUrlInBrowser(const char* szUrl)
+bool GApp::openFile(const char* szPathOrUrl)
 {
 #ifdef WINDOWS
-	// Windows
-	int nRet = (int)ShellExecute(NULL, NULL, szUrl, NULL, NULL, SW_SHOW);
+	int nRet = (int)ShellExecute(NULL, NULL, szPathOrUrl, NULL, NULL, SW_SHOW);
 	return nRet > 32;
 #else
+	// SAKBox: the path or URL is passed as one argument, not through the shell.
+	// ("open " + url + " &" was run by the shell, so a ; or $(...) in a URL or
+	// file name ran commands.)
 #	ifdef __APPLE__
-	// Mac
-	GTEMPBUF(char, pBuf, 32 + strlen(szUrl));
-	strcpy(pBuf, "open ");
-	strcat(pBuf, szUrl);
-	strcat(pBuf, " &");
-	return system(pBuf) == 0;
-#	else // __APPLE__
-	GTEMPBUF(char, pBuf, 32 + strlen(szUrl));
-
-	strcpy(pBuf, "xdg-open ");
-	strcat(pBuf, szUrl);
-	if(system(pBuf) != 0)
+	const char* openers[] = { "open" };
+#	else
+	const char* openers[] = { "xdg-open", "gnome-open" }; // (xdg-open works on KDE too)
+#	endif
+	for(const char* szOpener : openers)
 	{
-		strcpy(pBuf, "gnome-open ");
-		strcat(pBuf, szUrl);
-		if(system(pBuf) != 0)
+		char* argv[] = { (char*)szOpener, (char*)szPathOrUrl, nullptr };
+		try
 		{
-			// KDE
-			//strcpy(pBuf, "kfmclient exec ");
-			strcpy(pBuf, "dolphin ");
-			strcat(pBuf, szUrl);
-			strcat(pBuf, " &");
-			return system(pBuf) == 0;
+			if(GApp_execute(argv, true, nullptr, nullptr, nullptr) == 0)
+				return true;
+		}
+		catch(const std::exception&)
+		{
+			continue; // it was killed by a signal: try the next one
 		}
 	}
-#	endif // !__APPLE__
-#endif // !WINDOWS
-	return true;
+	return false;
+#endif
+}
+
+// static
+bool GApp::openUrlInBrowser(const char* szUrl)
+{
+	return openFile(szUrl);
 }
 
 

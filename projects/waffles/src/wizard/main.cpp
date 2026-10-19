@@ -951,39 +951,6 @@ void getLocalStorageFolder(char* buf)
 }
 
 
-void OpenUrl(const char* szUrl)
-{
-#ifdef WIN32
-	// Windows
-	ShellExecute(NULL, NULL, szUrl, NULL, NULL, SW_SHOW);
-#else
-#ifdef __APPLE__
-	// Mac
-	GTEMPBUF(char, pBuf, 32 + strlen(szUrl));
-	strcpy(pBuf, "open ");
-	strcat(pBuf, szUrl);
-	strcat(pBuf, " &");
-	system(pBuf);
-#else // __APPLE__
-	GTEMPBUF(char, pBuf, 32 + strlen(szUrl));
-
-	// Gnome
-	strcpy(pBuf, "gnome-open ");
-	strcat(pBuf, szUrl);
-	if(system(pBuf) != 0)
-	{
-		// KDE
-		//strcpy(pBuf, "kfmclient exec ");
-		strcpy(pBuf, "konqueror ");
-		strcat(pBuf, szUrl);
-		strcat(pBuf, " &");
-		if(system(pBuf) != 0)
-			cout << "Failed to open " << szUrl << ". Please open it manually.\n";
-	}
-#endif // !__APPLE__
-#endif // !WIN32
-}
-
 void LaunchBrowser(const char* szAddress)
 {
 	size_t addrLen = strlen(szAddress);

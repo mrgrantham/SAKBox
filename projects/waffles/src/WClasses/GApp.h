@@ -108,7 +108,10 @@ public:
 	/// so you can't necessarily access everything the parent process
 	/// could access. Throws if there is an
 	/// error executing the command. Otherwise, returns the exit code
-	/// of the child process. "show" does nothing on Linux.
+	/// of the child process (0 if not waiting for it). "show" does nothing
+	/// on Linux. The program is run directly, not through a shell (SAKBox; as
+	/// on Windows): quotes group an argument, but pipes, redirection,
+	/// $VARIABLES, wildcards and ; are passed on as ordinary text.
 	static int systemCall(const char* szCommand, bool wait, bool show);
 
 	/// Executes the specified system command. (szCommand should contain
@@ -122,6 +125,9 @@ public:
 	/// the stdout output of the called process. Likewise with pStdErr.
 	/// If pStdIn is non-NULL, then it should point to the read end of
 	/// a pipe, and it will be used for stdin with the called process.
+	/// The program is run directly, not through a shell (see systemCall).
+	/// If it can't be run, its exit code is 127. If not waiting, returns
+	/// the process id.
 	static int systemExecute(const char* szCommand, bool wait, GPipe* pStdOut = nullptr, GPipe* pStdErr = nullptr, GPipe* pStdIn = nullptr);
 
 	/// If you're having trouble with bogus floating point values
@@ -133,6 +139,11 @@ public:
 	/// Opens the specified URL in the default web browser. Returns true
 	/// if successful, and false if not.
 	static bool openUrlInBrowser(const char* szUrl);
+
+	/// Opens a file or URL with the app the system uses for it (open on
+	/// macOS, xdg-open on Linux, ShellExecute on Windows). Returns false if
+	/// that failed. The path or URL is passed as it is, not through a shell.
+	static bool openFile(const char* szPathOrUrl);
 
 };
 
