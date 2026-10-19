@@ -28,6 +28,7 @@
 #include <math.h>
 #include <vector>
 #include <algorithm>
+#include <functional>
 #include <memory>
 
 using std::vector;
@@ -1068,15 +1069,6 @@ public:
 	size_t m_sse;
 };
 
-class GSIFStatsComparer
-{
-public:
-	bool operator() (const GSIFStats* a, const GSIFStats* b) const
-	{
-		return a->m_sse < b->m_sse;
-	}
-};
-
 GSubImageFinder2::GSubImageFinder2(GImage* pHaystack)
 : m_pHaystack(pHaystack)
 {
@@ -1106,7 +1098,6 @@ void GSubImageFinder2::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRe
 	}
 
 	// Measure pixel differences until we can narrow the candidate set down to just one
-	GSIFStatsComparer comparer;
 	size_t ranges[2];
 	ranges[0] = pNeedleRect->w;
 	ranges[1] = pNeedleRect->h;
@@ -1140,7 +1131,7 @@ void GSubImageFinder2::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRe
 
 		// Divide into the best and worst halves
 		vector<GSIFStats*>::iterator median = cands.begin() + (cands.size() / 2);
-		std::nth_element(cands.begin(), median, cands.end(), comparer);
+		std::ranges::nth_element(cands, median, std::ranges::less{}, &GSIFStats::m_sse);
 
 		// Ensure that the best half will survive for a while longer
 		for(vector<GSIFStats*>::iterator it = cands.begin(); it != median; it++)
@@ -1168,7 +1159,7 @@ void GSubImageFinder2::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRe
 	}
 
 	// Return the results
-	vector<GSIFStats*>::iterator itBest = std::min_element(cands.begin(), cands.end(), comparer);
+	vector<GSIFStats*>::iterator itBest = std::ranges::min_element(cands, std::ranges::less{}, &GSIFStats::m_sse);
 	*pOutX = (*itBest)->m_x;
 	*pOutY = (*itBest)->m_y;
 }

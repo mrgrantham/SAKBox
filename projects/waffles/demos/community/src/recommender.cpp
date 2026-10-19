@@ -26,6 +26,7 @@
 #include <map>
 #include <cmath>
 #include <algorithm>
+#include <functional>
 #include <utility>
 #include "server.h"
 
@@ -896,11 +897,6 @@ public:
 	{
 		return m_deviation * (m_agg + m_dis);
 	}
-
-	static bool comparer(const ItemStats* pA, const ItemStats* pB)
-	{
-		return pA->controversy() > pB->controversy();
-	}
 };
 
 class UpdateComparer
@@ -1146,7 +1142,7 @@ void Submit::pageStats(Server* pServer, GDynamicPageSession* pSession, ostream& 
 	items.reserve(rec.items().size());
 	for(size_t i = 0; i < rec.items().size(); i++)
 		items.push_back(new ItemStats(rec.item(i), i, pAccs, accountCount));
-	std::sort(items.begin(), items.end(), ItemStats::comparer);
+	std::ranges::sort(items, std::ranges::greater{}, &ItemStats::controversy); // most controversial first
 	response << "<table><tr><td><b><i><u>Statement</u></i></b></td><td><b><i><u>Lean Left</u></i></b></td><td><b><i><u>Uncertain</u></i></b></td><td><b><i><u>Lean Right</u></i></b></td><td><b><i><u>Controversy</u></i></b></td></tr>\n";
 	for(vector<ItemStats*>::iterator it = items.begin(); it != items.end(); it++)
 	{

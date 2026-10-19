@@ -36,6 +36,7 @@
 #include "GTokenizer.h"
 #include "GTime.h"
 #include <algorithm>
+#include <functional>
 #include <fstream>
 #include <sstream>
 #include <cmath>
@@ -3848,33 +3849,14 @@ double GMatrix::boundingSphere(GVec& center, size_t* pIndexes, size_t indexCount
 	return sradius;
 }
 
-class Row_Binary_Predicate_Functor
-{
-protected:
-	size_t m_dim;
-
-public:
-	Row_Binary_Predicate_Functor(size_t dim) : m_dim(dim)
-	{
-	}
-
-	bool operator() (const GVec* pA, const GVec* pB) const
-	{
-		return (*pA)[m_dim] < (*pB)[m_dim];
-	}
-};
-
 void GMatrix::sort(size_t dim)
 {
-	Row_Binary_Predicate_Functor comparer(dim);
-	std::sort(m_rows.begin(), m_rows.end(), comparer);
+	std::ranges::sort(m_rows, std::ranges::less{}, [dim](const GVec* pRow) { return (*pRow)[dim]; });
 }
 
 void GMatrix::sortPartial(size_t rowIndex, size_t colIndex)
 {
-	Row_Binary_Predicate_Functor comparer(colIndex);
-	vector<GVec*>::iterator targ = m_rows.begin() + rowIndex;
-	std::nth_element(m_rows.begin(), targ, m_rows.end(), comparer);
+	std::ranges::nth_element(m_rows, m_rows.begin() + rowIndex, std::ranges::less{}, [colIndex](const GVec* pRow) { return (*pRow)[colIndex]; });
 }
 
 void GMatrix::reverseRows()

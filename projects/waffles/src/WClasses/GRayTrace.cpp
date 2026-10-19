@@ -21,6 +21,7 @@
 #include "GHashTable.h"
 #include "GDom.h"
 #include <algorithm>
+#include <functional>
 #include <deque>
 #include "GImage.h"
 #include "GMath.h"
@@ -1396,24 +1397,15 @@ GRayTraceColor* GRayTraceImageTexture::color(ColorType eType, GRayTraceRay* pRay
 
 // -----------------------------------------------------------------------------
 
-class Ray_Trace_Object_Comparing_Functor
+// Sorts the objects by their centres along dimension dim
+static void GRayTrace_sortByCenter(vector<GRayTraceObject*>& objects, int dim)
 {
-protected:
-	int m_dim;
-
-public:
-	Ray_Trace_Object_Comparing_Functor(int dim) : m_dim(dim)
-	{
-	}
-
-	bool operator() (GRayTraceObject* pA, GRayTraceObject* pB) const
-	{
-		G3DVector a, b;
-		pA->center(&a);
-		pB->center(&b);
-		return (a.m_vals[m_dim] < b.m_vals[m_dim]);
-	}
-};
+	std::ranges::sort(objects, std::ranges::less{}, [dim](GRayTraceObject* pObject) {
+		G3DVector center;
+		pObject->center(&center);
+		return center.m_vals[dim];
+	});
+}
 
 //static
 GRayTraceBoundingBoxBase* GRayTraceBoundingBoxBase::BuildTree(vector<GRayTraceObject*>& objects)
@@ -1432,8 +1424,7 @@ GRayTraceBoundingBoxBase* GRayTraceBoundingBoxBase::BuildTree(vector<GRayTraceOb
 	G3DVector vFirst, vLast;
 	for(i = 0; i < 3; i++)
 	{
-		Ray_Trace_Object_Comparing_Functor comparer(i);
-		std::sort(objects.begin(), objects.end(), comparer);
+		GRayTrace_sortByCenter(objects, i);
 		pFirst = objects[0];
 		pLast = objects[objects.size() - 1];
 		pFirst->center(&vFirst);
@@ -1449,8 +1440,7 @@ GRayTraceBoundingBoxBase* GRayTraceBoundingBoxBase::BuildTree(vector<GRayTraceOb
 	// Split into two arrays
 	if(nBiggestDim != 2)
 	{
-		Ray_Trace_Object_Comparing_Functor comparer(nBiggestDim);
-		std::sort(objects.begin(), objects.end(), comparer);
+		GRayTrace_sortByCenter(objects, nBiggestDim);
 	}
 	int nSize = (int)objects.size();
 	int nLesserSize = nSize / 2;

@@ -4,9 +4,12 @@
 #include <gtest/gtest.h>
 
 #include <WClasses/G3D.h>
+#include <WClasses/GImage.h>
+#include <WClasses/GRand.h>
 #include <WClasses/GRayTrace.h>
 
 #include <cmath>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
@@ -200,4 +203,45 @@ TEST(LetterMakerTest, LetterWidths) {
     EXPECT_DOUBLE_EQ(width(c), 0.6) << c;
   for (char c : std::string("aAbBzZ09?"))
     EXPECT_DOUBLE_EQ(width(c), 0.5) << c; // everything else
+}
+
+// A scene with enough objects (spheres and a cylinder's triangles) to build
+// a bounding box tree several levels deep, many of them lined up so their
+// centres tie. The fingerprint was recorded from the code before the tree's
+// sorts moved to std::ranges.
+namespace {
+uint64_t fingerprint(GImage &image) {
+  uint64_t h = 1469598103934665603ull; // FNV-1a
+  const unsigned int *p = image.pixels();
+  for (size_t i = 0; i < (size_t)image.width() * image.height(); i++) {
+    h ^= p[i];
+    h *= 1099511628211ull;
+  }
+  return h;
+}
+} // namespace
+
+TEST(RayTraceRenderTest, BoundingBoxTreeSceneIsUnchanged) {
+  GRand rand(0);
+  GRayTraceScene scene(&rand);
+  scene.setAmbientLight(0.3, 0.3, 0.3);
+  scene.addLight(new GRayTraceDirectionalLight(-1.0, 2.0, 1.0, 0.5, 0.5, 0.5, 0.0));
+  scene.setBackgroundColor(1, 0.1, 0.1, 0.2);
+  GRayTraceCamera *camera = scene.camera();
+  camera->setViewAngle(1.0);
+  camera->setImageSize(64, 48);
+  camera->lookFromPoint()->set(0.0, 0.0, 12.0);
+  G3DVector direction(0.0, 0.0, -1.0);
+  camera->setDirection(&direction, 0.0);
+  scene.setRenderMode(GRayTraceScene::QUALITY_RAY_TRACE);
+  auto *material = new GRayTracePhysicalMaterial();
+  material->setColor(GRayTraceMaterial::Diffuse, 0.8, 0.4, 0.2);
+  scene.addMaterial(material);
+  for (int x = -3; x <= 3; x++) // a 7 x 4 grid: equal x and y centres
+    for (int y = -2; y <= 1; y++)
+      scene.addObject(new GRayTraceSphere(material, x * 1.2, y * 1.2, -(x + y) * 0.5, 0.5));
+  G3DVector bottom(-4, -3, 0), top(4, 3, -2);
+  scene.addMesh(GRayTraceTriMesh::makeCylinder(material, &bottom, &top, 0.3, 8, true));
+  scene.render();
+  EXPECT_EQ(fingerprint(*scene.image()), 1356674062122050204ull);
 }
