@@ -152,6 +152,7 @@ cc_test(
     "raytrace_test",
     "recommender_test",
     "region_test",
+    "sha2_test",
     "text_test",
     "time_test",
     "transform_test",

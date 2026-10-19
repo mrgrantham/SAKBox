@@ -268,7 +268,8 @@ void sha256_hash(const unsigned char data[], const unsigned long len, sha256_ctx
     while(rlen >= free)     /* tranfer whole blocks while possible  */
     {
         memcpy(p, sp, free);
-        if((ctx->count[0] += free) < free)
+        ctx->count[0] += free;
+        if(ctx->count[0] < free) /* the low word wrapped: carry */
             ++(ctx->count[1]);
         sp += free; rlen -= free; free = 64; 
         p = (unsigned char*)ctx->wdat;
@@ -280,7 +281,8 @@ void sha256_hash(const unsigned char data[], const unsigned long len, sha256_ctx
     }
 
     memcpy(p, sp, rlen);    /* transfer partial block               */
-    if((ctx->count[0] += rlen) < rlen)
+    ctx->count[0] += rlen;
+    if(ctx->count[0] < rlen) /* the low word wrapped: carry */
         ++(ctx->count[1]);
     p = (unsigned char*)ctx->wdat;
     rlen = (ctx->count[0] & 63);
@@ -491,7 +493,8 @@ void sha512_hash(const unsigned char data[], const unsigned long len, sha512_ctx
     while(rlen >= free)     /* tranfer whole blocks while possible  */
     {
         memcpy(p, sp, free);
-        if((ctx->count[0] += free) < free)
+        ctx->count[0] += free;
+        if(ctx->count[0] < free) /* the low word wrapped: carry */
             ++(ctx->count[1]);
         sp += free; rlen -= free; free = 128; 
         p = (unsigned char*)ctx->wdat;
@@ -503,7 +506,8 @@ void sha512_hash(const unsigned char data[], const unsigned long len, sha512_ctx
     }
 
     memcpy(p, sp, rlen);    /* transfer partial block               */
-    if((ctx->count[0] += rlen) < rlen)
+    ctx->count[0] += rlen;
+    if(ctx->count[0] < rlen) /* the low word wrapped: carry */
         ++(ctx->count[1]);
     p = (unsigned char*)ctx->wdat;
     rlen = (uint32_t)(ctx->count[0] & 127);
