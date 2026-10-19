@@ -1,6 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
-load("//tools/clang_format:clang_format.bzl", "clang_format")
 
 cc_library(
     name = "basis",
@@ -47,5 +46,3 @@ cc_test(
   deps = ["@gtest//:gtest_main",
   ":basis"],
 )
-
-clang_format(name = "basis")

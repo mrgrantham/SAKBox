@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/clang_format:clang_format.bzl", "clang_format")
 
 # The simulation: no graphics, input or ScratchPadd dependency
 cc_library(
@@ -70,5 +69,3 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
-
-clang_format(name = "precision_flight")

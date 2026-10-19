@@ -219,7 +219,7 @@ void finishing() override { graphics_->tearDown(); }
 ```bash
 bazel build //projects/scratchpadd/...
 bazel test //projects/scratchpadd/...
-bazel run //projects/scratchpadd/basis:clang_format   # format the basis package
+python3 tools/clang_format/format.py --all           # format the repo's C++ (see the top-level README)
 ```
 
 Each test file is named after what it tests, as `<Source>_test.cpp` (see the top-level README's [Code conventions](../../README.md#code-conventions)).

@@ -67,7 +67,16 @@ python3 tools/compile_commands/refresh.py
 
 Re-run it after adding source files or changing BUILD deps, then restart clangd. The generated files are git-ignored.
 
-To format a package's C++ files with clang-format, run its `clang_format` target, e.g. `bazel run //projects/flexmath:clang_format`. Most packages have one: `bazel query 'attr(name, "^clang_format$", //...)'` lists them.
+To format C++ files with clang-format in the repo's style (see [Code conventions](#code-conventions)), run from the repo root:
+
+``` bash
+python3 tools/clang_format/format.py              # the C/C++ files you've changed (staged or not, and new files)
+python3 tools/clang_format/format.py --all        # every C/C++ file under projects/
+python3 tools/clang_format/format.py FILE ...     # just these files
+python3 tools/clang_format/format.py --check      # list what needs formatting, change nothing (add --all for everything)
+```
+
+It leaves files in `.clang-format-ignore` alone. `clang-format -i FILE` does the same for one file. Editors that use clangd (VS Code, CLion, Neovim) read `.clang-format` too, so their Format Document or format-on-save gives the same result.
 
 ## Code conventions
 
@@ -83,7 +92,7 @@ Never `virtual void draw() override;`: an override is already virtual, and the e
 
 The build enforces it for everything under `projects/`: `-Wsuggest-override` and `-Wsuggest-destructor-override` make an unmarked override an error. clang-tidy's `modernize-use-override` also flags a redundant `virtual` (see [Static analysis](#static-analysis)).
 
-**C++ files are formatted with clang-format** in the repo's style (`.clang-format`): LLVM style with 100-column lines, which is how most of the code was already written. Upstream code kept as published (Waffles, libpng's `pngtest.cpp`, libctru's `read-controls` example) is listed in `.clang-format-ignore`, so clang-format leaves it alone, and keeps its own style. Where a layout matters more than the rule, such as a table aligned in columns by hand, put `// clang-format off` and `// clang-format on` around it, each alone on its line (clang-format doesn't recognise the marker with text after it), with the reason in a comment above. Format files with `clang-format -i FILE` or a package's `clang_format` target (see [Editor Setup](#editor-setup)); the pre-commit hook checks it (see [Checking each commit](#checking-each-commit)).
+**C++ files are formatted with clang-format** in the repo's style (`.clang-format`): LLVM style with 100-column lines, which is how most of the code was already written. Upstream code kept as published (Waffles, libpng's `pngtest.cpp`, libctru's `read-controls` example) is listed in `.clang-format-ignore`, so clang-format leaves it alone, and keeps its own style. Where a layout matters more than the rule, such as a table aligned in columns by hand, put `// clang-format off` and `// clang-format on` around it, each alone on its line (clang-format doesn't recognise the marker with text after it), with the reason in a comment above. Format files with `python3 tools/clang_format/format.py`, which formats the files you've changed (see [Editor Setup](#editor-setup) for its options); the pre-commit hook checks it (see [Checking each commit](#checking-each-commit)).
 
 **Test files are named `<Source>_test.cpp`**, after the file they test and spelled as it is: `FlexReal_test.cpp` tests `FlexReal.hpp`, `GMatrix_test.cpp` tests `GMatrix.h`, `core_test.cpp` tests Cyclone's `core.h`. A test of something that isn't one file (threading, the README's examples) is named after that: `Threading_test.cpp`, `Examples_test.cpp`. Its Bazel target has the same name (`:FlexReal_test`). This is the googletest and Bazel convention; it also sorts a test next to the code it tests. Libraries kept as published (libpng's `pngtest.cpp`, Waffles' own `src/test/`) keep their names.
 
@@ -109,7 +118,7 @@ A git pre-commit hook in `tools/git_hooks/` checks that the C++ files you commit
 git config core.hooksPath tools/git_hooks
 ```
 
-Then each `git commit` checks the staged C++ files under `projects/`: it stops the commit if any isn't formatted as clang-format would write it (listing them; `clang-format -i FILE` fixes one, and files in `.clang-format-ignore` pass), or if clang-tidy finds anything in them (in the projects the runner covers), listing the findings. Problems elsewhere don't block it. A staged header is checked through its project's source files, since clang-tidy only sees headers as part of a file that includes them. It takes about half a second for a source file and a few seconds for a header in a big project.
+Then each `git commit` checks the staged C++ files under `projects/`: it stops the commit if any isn't formatted as clang-format would write it (listing them; `python3 tools/clang_format/format.py` fixes them, and files in `.clang-format-ignore` pass), or if clang-tidy finds anything in them (in the projects the runner covers), listing the findings. Problems elsewhere don't block it. A staged header is checked through its project's source files, since clang-tidy only sees headers as part of a file that includes them. It takes about half a second for a source file and a few seconds for a header in a big project.
 
 - It checks the files as they are on disk, so stage everything you mean to commit.
 - `git commit --no-verify` skips it for one commit.
