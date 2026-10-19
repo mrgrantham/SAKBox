@@ -406,7 +406,7 @@ public:
 	HashTableNode* get(HashTableNode* pLikeMe)
 	{
 		HashTableNode* pOut = nullptr;
-		_Get((const char*)pLikeMe, (void**)(void*)&pOut);
+		_Get((const char*)pLikeMe, &pOut);
 		return pOut;
 	}
 };

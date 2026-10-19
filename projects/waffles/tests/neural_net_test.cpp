@@ -2,6 +2,7 @@
 // GNeuralNetLearner.
 #include <gtest/gtest.h>
 
+#include <WClasses/GDom.h>
 #include <WClasses/GNeuralNet.h>
 #include <WClasses/GRand.h>
 #include <WClasses/GVec.h>
@@ -88,4 +89,31 @@ TEST(NeuralNetCopyTest, CloneAndCopyTopologyGiveTheSameOutputs) {
   EXPECT_EQ(copied[1], expected[1]);
   // The original is unchanged by its copies
   EXPECT_EQ(nn->forwardProp(input)[1], expected[1]);
+}
+
+// A net saved to a DOM loads back with the same outputs, whether built from
+// the node or loaded into an existing net (which uses each layer's
+// GBlock::deserializeBlock to make its blocks).
+TEST(NeuralNetSerializeTest, LoadsBackWithTheSameOutputs) {
+  GRand rand(0);
+  std::unique_ptr<GNeuralNet> nn(smallNet());
+  nn->init(rand);
+  const GVec input({0.5, -1.0, 2.0});
+  GVec expected;
+  expected.copy(nn->forwardProp(input));
+
+  GDom doc;
+  GDomNode *pNode = nn->serialize(&doc);
+  GNeuralNet built(pNode, rand);
+  const GVec &fromBuilt = built.forwardProp(input);
+  ASSERT_EQ(fromBuilt.size(), 2u);
+  EXPECT_EQ(fromBuilt[0], expected[0]);
+  EXPECT_EQ(fromBuilt[1], expected[1]);
+
+  GNeuralNet loaded;
+  loaded.deserialize(pNode, rand);
+  const GVec &fromLoaded = loaded.forwardProp(input);
+  ASSERT_EQ(fromLoaded.size(), 2u);
+  EXPECT_EQ(fromLoaded[0], expected[0]);
+  EXPECT_EQ(fromLoaded[1], expected[1]);
 }

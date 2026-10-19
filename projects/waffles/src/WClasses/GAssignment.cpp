@@ -249,8 +249,11 @@ void GSimpleAssignment::test(){
 						"same-sized assignments with different contents as being equal.");
 
 	//Test operator<
-	TestEqual(false, a<a,"GSimpleAssignment::operator< erroneously reports "
-						"something as being less than itself");
+	// SAKBox: compared a with itself (a<a), which reads like a typo; an
+	// equal copy tests the same thing without looking like one
+	const GSimpleAssignment aCopy = a;
+	TestEqual(false, aCopy<a,"GSimpleAssignment::operator< erroneously reports "
+						"something as being less than an equal one");
 	TestEqual(true, y<a,"GSimpleAssignment::operator< erroneously reports "
 						"that {-1, -1, 1} is not less than {3,-1,1}.");
 	//Test operator < for assignments that differ only in the size of set A

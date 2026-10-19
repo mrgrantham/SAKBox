@@ -76,8 +76,7 @@ public:
 	GDecisionTreeInteriorNode(size_t nAttribute, double dPivot, size_t children, size_t defaultChild)
 	: GDecisionTreeNode(), m_nAttribute(nAttribute), m_dPivot(dPivot), m_nChildren(children), m_defaultChild(defaultChild)
 	{
-		m_ppChildren = new GDecisionTreeNode*[children];
-		memset(m_ppChildren, '\0', sizeof(GDecisionTreeNode*) * children);
+		m_ppChildren = new GDecisionTreeNode*[children](); // all nullptr
 	}
 
 	GDecisionTreeInteriorNode(const GDomNode* pNode) : GDecisionTreeNode()

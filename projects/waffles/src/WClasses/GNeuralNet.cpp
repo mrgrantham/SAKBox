@@ -82,7 +82,7 @@ GDomNode* GBlock::serialize(GDom* pDoc) const
 	return baseDomNode(pDoc);
 }
 
-GBlock* GBlock::deserialize(GDomNode* pNode, GRand& rand)
+GBlock* GBlock::deserializeBlock(GDomNode* pNode, GRand& rand)
 {
 	const char* type = pNode->getString("type");
 	if(strcmp(type, "GBlockLinear") == 0) return new GBlockLinear(pNode);
@@ -3188,7 +3188,7 @@ grad_count(0)
 	GDomListIterator it(pBlocks);
 	while(it.remaining() > 0)
 	{
-		GBlock* pBlock = GBlock::deserialize(it.current(), rand);
+		GBlock* pBlock = GBlock::deserializeBlock(it.current(), rand);
 		add(pBlock, pBlock->inPos());
 		it.advance();
 	}

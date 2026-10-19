@@ -139,8 +139,10 @@ public:
 	/// Marshall this block into a DOM.
 	virtual GDomNode* serialize(GDom* pDoc) const;
 
-	/// Unmarshalls the specified DOM node into a block object.
-	static GBlock* deserialize(GDomNode* pNode, GRand& rand);
+	/// Makes a new block of the type the DOM node names, from that node.
+	/// SAKBox: was deserialize, the name GNeuralNet uses for loading a net
+	/// in place, so the two meant different things under one name.
+	static GBlock* deserializeBlock(GDomNode* pNode, GRand& rand);
 
 	/// Returns a copy of this block
 	virtual GBlock* clone() const = 0;

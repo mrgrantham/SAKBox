@@ -108,3 +108,21 @@ TEST(VecWrapperTest, CopyWrapsTheSameMemory) {
   EXPECT_EQ(v[1], 9.0);
   static_assert(!std::is_copy_assignable_v<GVecWrapper>);
 }
+
+// A copied tensor wraps the same buffer and has the same shape, and doesn't
+// own the buffer (the original does).
+TEST(TensorTest, CopyWrapsTheSameBuffer) {
+  GTensor t({2, 3});
+  t.fill(1.5);
+  {
+    GTensor copy(t);
+    EXPECT_EQ(copy.data(), t.data());
+    EXPECT_EQ(copy.size(), 6u);
+    ASSERT_EQ(copy.shape.size(), 2u);
+    EXPECT_EQ(copy.shape[0], 2u);
+    EXPECT_EQ(copy.shape[1], 3u);
+    EXPECT_EQ(copy.pHolder, nullptr);
+    copy[4] = 9.0;
+  }
+  EXPECT_EQ(t[4], 9.0); // and the buffer outlives the copy
+}

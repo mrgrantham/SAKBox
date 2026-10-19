@@ -218,7 +218,7 @@ int GRand::poisson(double mu)
 				if(x > -0.5)
 					ck2=1.0;
 			} while (ck2<0.5);
-			n = (int)(x + 0.5);
+			n = (int)lround(x);
 			u2 = uniform();
 			y = 1 + exp(a - b * x);
 			ck1 = a - b * x + log(.1e-18 + u2/(y * y));

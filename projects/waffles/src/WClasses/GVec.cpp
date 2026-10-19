@@ -1269,7 +1269,7 @@ GTensor::GTensor(const std::initializer_list<size_t>& list, bool ownBuffer, GVec
 }
 
 GTensor::GTensor(const GTensor& copyMe)
-: GVecWrapper(copyMe.m_data, copyMe.m_size),
+: GVecWrapper(copyMe),
 shape(copyMe.shape), pHolder(nullptr)
 {
 }
