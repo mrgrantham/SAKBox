@@ -232,3 +232,34 @@ TEST(HttpUrlTest, PortMustBeValid) {
                           "http://example.com:80x/"})
     EXPECT_THROW(GHttp_urlPort(bad), std::exception) << bad;
 }
+
+// unescapeUrl turned any letter after '%' into a "digit" up to 35 and a
+// non-letter into 2 or 0, so "%G0" decoded to '\0' (cutting the value short)
+// and "%zz" to a made-up byte. Now only %XY with two hex digits is decoded;
+// any other '%' is kept as it is.
+namespace {
+std::string unescaped(const std::string &s) {
+  std::string out(s.size() + 1, '?');
+  GHttpServer::unescapeUrl(&out[0], s.c_str(), s.size());
+  return out.c_str();
+}
+} // namespace
+
+TEST(HttpUnescapeUrlTest, DecodesOnlyValidEscapes) {
+  EXPECT_EQ(unescaped("a%20b"), "a b");
+  EXPECT_EQ(unescaped("%41%62%7e"), "Ab~");
+  EXPECT_EQ(unescaped("a+b"), "a b");
+  EXPECT_EQ(unescaped("caf%C3%A9"), "caf\xC3\xA9");
+  const char *kept[][2] = {
+      {"100%", "100%"}, {"%4", "%4"},     {"%zz", "%zz"},
+      {"%G0x", "%G0x"}, {"%%41", "%A"},   {"50%+", "50% "},
+  };
+  for (auto &k : kept)
+    EXPECT_EQ(unescaped(k[0]), k[1]) << k[0];
+  // Only the first nInLen characters are read
+  std::string out(8, '?');
+  GHttpServer::unescapeUrl(&out[0], "ab%41cd", 2);
+  EXPECT_STREQ(out.c_str(), "ab");
+  GHttpServer::unescapeUrl(&out[0], "ab%41cd", 4);
+  EXPECT_STREQ(out.c_str(), "ab%4");
+}

@@ -1178,38 +1178,33 @@ void GHttpServer::sendNotModifiedResponse(GHttpConnection* pConn)
 	m_pSocket->send(s.c_str(), s.length(), pConn);
 }
 
+// The value of a hex digit, or -1 if c isn't one
+static int GHttp_hexDigit(char c)
+{
+	if(c >= '0' && c <= '9')
+		return c - '0';
+	if(c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	if(c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+	return -1;
+}
+
 /*static*/ void GHttpServer::unescapeUrl(char* szOut, const char* szIn, size_t nInLen)
 {
-	int c1, c2, n1, n2;
 	while(nInLen > 0 && *szIn != '\0')
 	{
-		if(*szIn == '%')
+		// SAKBox: decode %XY only when X and Y are hex digits, and keep any
+		// other '%' as it is. Any letter was taken as a digit up to 35 and
+		// anything else as 2 or 0, so "%G0" became '\0' (cutting the value
+		// short), and a '%' near the end was dropped.
+		const int hi = nInLen >= 3 && *szIn == '%' ? GHttp_hexDigit(szIn[1]) : -1;
+		const int lo = hi >= 0 ? GHttp_hexDigit(szIn[2]) : -1;
+		if(lo >= 0)
 		{
-			if(--nInLen == 0)
-				break;
-			szIn++;
-			n1 = *szIn;
-			if(--nInLen == 0)
-				break;
-			szIn++;
-			n2 = *szIn;
-			if(n1 >= '0' && n1 <= '9')
-				c1 = n1 - '0';
-			else if(n1 >= 'a' && n1 <= 'z')
-				c1 = n1 - 'a' + 10;
-			else if(n1 >= 'A' && n1 <= 'Z')
-				c1 = n1 - 'A' + 10;
-			else
-				c1 = 2;
-			if(n2 >= '0' && n2 <= '9')
-				c2 = n2 - '0';
-			else if(n2 >= 'a' && n2 <= 'z')
-				c2 = n2 - 'a' + 10;
-			else if(n2 >= 'A' && n2 <= 'Z')
-				c2 = n2 - 'A' + 10;
-			else
-				c2 = 0;
-			*szOut = 16 * c1 + c2;
+			*szOut = (char)(16 * hi + lo);
+			szIn += 2;
+			nInLen -= 2;
 		}
 		else if(*szIn == '+')
 			*szOut = ' ';

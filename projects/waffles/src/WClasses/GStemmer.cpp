@@ -178,7 +178,7 @@ static int doublec(struct stemmer * z, int j)
 
 static int cvc(struct stemmer * z, int i)
 {  if (i < 2 || !cons(z, i) || cons(z, i - 1) || !cons(z, i - 2)) return FALSE;
-   {  int ch = z->b[i];
+   {  const char ch = z->b[i];
       if (ch  == 'w' || ch == 'x' || ch == 'y') return FALSE;
    }
    return TRUE;
@@ -187,7 +187,7 @@ static int cvc(struct stemmer * z, int i)
 /* ends(z, s) is TRUE <=> 0,...k ends with the string s. */
 
 static int ends(struct stemmer * z, const char * s)
-{  int length = s[0];
+{  int length = (unsigned char)s[0]; /* the length prefix, as in "\04" "sses" */
    char * b = z->b;
    int k = z->k;
    if (s[length] != b[k]) return FALSE; /* tiny speed-up */
@@ -201,7 +201,7 @@ static int ends(struct stemmer * z, const char * s)
    k. */
 
 static void setto(struct stemmer * z, const char * s)
-{  int length = s[0];
+{  int length = (unsigned char)s[0]; /* the length prefix */
    int j = z->j;
    memmove(z->b + j + 1, s + 1, length);
    z->k = j+length;
@@ -249,7 +249,7 @@ static void step1ab(struct stemmer * z)
       if (ends(z, "\02" "iz")) setto(z, "\03" "ize"); else
       if (doublec(z, z->k))
       {  z->k--;
-         {  int ch = b[z->k];
+         {  const char ch = b[z->k];
             if (ch == 'l' || ch == 's' || ch == 'z') z->k++;
          }
       }
@@ -415,10 +415,13 @@ GStemmer::~GStemmer()
 
 const char* GStemmer::getStem(const char* szWord, size_t nLen)
 {
-	if(nLen > GSTEMMER_MAX_WORD_SIZE)
-		nLen = GSTEMMER_MAX_WORD_SIZE;
+	// SAKBox: leave room for the '\0' (a 64-letter word wrote it one past the
+	// end), and give tolower an unsigned char (a negative char, such as a
+	// UTF-8 byte, is undefined behaviour)
+	if(nLen > GSTEMMER_MAX_WORD_SIZE - 1)
+		nLen = GSTEMMER_MAX_WORD_SIZE - 1;
 	for(size_t n = 0; n < nLen; n++)
-		m_szBuf[n] = tolower(szWord[n]);
+		m_szBuf[n] = (char)tolower((unsigned char)szWord[n]);
 	int nStemLen = stem(m_pPorterStemmer, m_szBuf, (int)nLen - 1) + 1;
 	m_szBuf[nStemLen] = '\0';
 	return m_szBuf;

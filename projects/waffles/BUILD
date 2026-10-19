@@ -149,6 +149,7 @@ cc_test(
     "neural_net_test",
     "raytrace_test",
     "recommender_test",
+    "text_test",
     "time_test",
     "transform_test",
     "vec_test",

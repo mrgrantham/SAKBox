@@ -1280,7 +1280,7 @@ void GMatrix::load(const char* szFilename)
 	{
 		string ext(extPos+1);
 		for(size_t i = 0; i < ext.size(); ++i)
-			ext[i] = tolower(ext[i]);
+			ext[i] = (char)tolower((unsigned char)ext[i]); // SAKBox: a negative char is undefined behaviour in tolower
 		if(ext == "arff")
 			loadArff(szFilename);
 		else if(ext == "raw")
