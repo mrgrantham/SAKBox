@@ -153,6 +153,10 @@ public:
 /// MAX_HTTP_CONTENT_LENGTH. Returns false for anything else, such as "-1",
 /// "12x" or a number too big.
 bool parseHttpContentLength(const char* szValue, size_t* pOut);
+
+/// SAKBox: the port in a URL ("http://host:8080/page"), or 80 if it has none.
+/// Throws if the port isn't a number from 1 to 65535.
+int GHttp_urlPort(const char* szUrl);
 #define MAX_MIME_LEN 64
 
 /// Each GHttpConnection represents an HTTP connection between a client and the server.

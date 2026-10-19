@@ -380,7 +380,10 @@ int ReadNextPixMapInteger(FILE* pFile)
 			return -1;
 	}
 	pBuff[nPos] = '\0';
-	return atoi(pBuff);
+	int value;
+	if(!parseNumber(pBuff, &value)) // SAKBox: was atoi, so "2x" read as 2
+		return -1;
+	return value;
 }
 
 void GImage::loadPixMap(FILE* pFile, bool bTextData, bool bGrayScale)

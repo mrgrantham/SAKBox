@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 using namespace GClasses;
 
@@ -147,4 +148,37 @@ TEST(ArffStringColumnTest, WarnsWhenItLooksLikeFreeText) {
             std::string::npos)
       << warning;
   EXPECT_EQ(m.relation().valueCount(0), 40u); // loaded anyway
+}
+
+// ARFF numbers were checked only by their first character, so "1.5abc"
+// loaded as 1.5 and "1.8m" as 1.8.
+TEST(ArffNumberTest, JunkAfterANumberIsAnError) {
+  for (const char *bad : {"1.5abc", "1.8m", "1.2.3", "nan"}) {
+    const std::string arff = std::string("@relation r\n@attribute h real\n@data\n") + bad + "\n";
+    GMatrix m;
+    EXPECT_THROW(m.parseArff(arff.c_str(), arff.size()), std::exception) << bad;
+  }
+  const std::string ok = "@relation r\n@attribute h real\n@data\n1.5\n-.5\n2e3\n?\n";
+  GMatrix m;
+  m.parseArff(ok.c_str(), ok.size());
+  ASSERT_EQ(m.rows(), 4u);
+  EXPECT_EQ(m[0][0], 1.5);
+  EXPECT_EQ(m[1][0], -0.5);
+  EXPECT_EQ(m[2][0], 2000.0);
+  EXPECT_EQ(m[3][0], UNKNOWN_REAL_VALUE);
+}
+
+// GArffRelation::parseValue took a number for a category value it didn't
+// recognise as the value's position, without checking it was in range.
+TEST(ArffNumberTest, CategoryNumberMustBeInRange) {
+  GArffRelation rel;
+  std::vector<const char *> values = {"red", "green", "blue"};
+  rel.addAttribute("c", 3, &values);
+  EXPECT_EQ(rel.parseValue(0, "green"), 1.0);
+  EXPECT_EQ(rel.parseValue(0, "2"), 2.0);
+  EXPECT_THROW(rel.parseValue(0, "7"), std::exception);
+  EXPECT_THROW(rel.parseValue(0, "1x"), std::exception);
+  rel.addAttribute("n", 0, nullptr);
+  EXPECT_EQ(rel.parseValue(1, "2.5"), 2.5);
+  EXPECT_THROW(rel.parseValue(1, "2.5abc"), std::exception);
 }

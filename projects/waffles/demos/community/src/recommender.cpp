@@ -593,7 +593,8 @@ void Submit::pageSurvey(Server* pServer, GDynamicPageSession* pSession, ostream&
 					set<size_t>::iterator tmp = checks.find(itemId);
 					if(tmp != checks.end())
 					{
-						float score = (float)atof(it->second);
+						float score = 2.0f; // (out of range unless it parses)
+						parseNumber(it->second, &score);
 						if(score >= -1.0f && score <= 1.0f)
 						{
 							pUser->updateRating(itemId, score);
@@ -702,7 +703,8 @@ void Submit::pageRespond(Server* pServer, GDynamicPageSession* pSession, ostream
 			const char* val = it->second;
 			if(strncmp(key, "del_", 4) == 0)
 			{
-				size_t index = atoi(key + 4);
+				size_t index = INVALID_INDEX; // SAKBox: was atoi, so "del_abc" deleted item 0
+				parseNumber(key + 4, &index);
 				const std::vector<User*>& users = pServer->recommender().users();
 				if(index >= rec.items().size())
 					response << "[invalid item index]<br><br>\n";
@@ -720,7 +722,8 @@ void Submit::pageRespond(Server* pServer, GDynamicPageSession* pSession, ostream
 			}
 			else if(strncmp(key, "re_", 3) == 0)
 			{
-				size_t index = atoi(key + 3);
+				size_t index = INVALID_INDEX; // SAKBox: was atoi
+				parseNumber(key + 3, &index);
 				if(index >= rec.items().size())
 					response << "[invalid item index]<br><br>\n";
 				else
@@ -1107,8 +1110,13 @@ void Submit::pageStats(Server* pServer, GDynamicPageSession* pSession, ostream& 
 	const char* szItemId = params.find("item");
 	if(szItemId)
 	{
-		size_t itemId = atoi(szItemId);
-		makeItemBody(pSession, response, itemId, rec.item(itemId), pAccs, accountCount);
+		// SAKBox: the item wasn't checked to exist (rec.item only asserts), so
+		// ?item=999999 read past the end of the list
+		size_t itemId;
+		if(!parseNumber(szItemId, &itemId) || itemId >= rec.items().size())
+			response << "[No such item]<br><br>\n";
+		else
+			makeItemBody(pSession, response, itemId, rec.item(itemId), pAccs, accountCount);
 		return;
 	}
 	const char* szOtherUser = params.find("user");

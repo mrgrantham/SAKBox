@@ -418,7 +418,9 @@ void Forum::pageFeed(Server* pServer, GDynamicPageSession* pSession, ostream& re
 			{
 				if(strncmp(it->first, "ban_", 4) == 0)
 				{
-					size_t account_index = atoi(it->first + 4);
+					size_t account_index;
+					if(!parseNumber(it->first + 4, &account_index))
+						continue; // SAKBox: was atoi, so "ban_abc" banned account 0
 					Account* pUserAccount = pServer->get_account(account_index);
 					if(strcmp(it->second, "true") == 0 || strcmp(it->second, "on") == 0)
 					{

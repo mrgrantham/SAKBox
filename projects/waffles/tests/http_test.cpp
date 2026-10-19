@@ -14,6 +14,7 @@
 #include <cstring>
 #include <ostream>
 #include <string>
+#include <stdexcept>
 
 using namespace GClasses;
 
@@ -218,4 +219,16 @@ TEST(HttpServerTest, HangsUpOnRequestsThatDontFit) {
   // And it still serves the next good one
   EXPECT_NE(send(server, "GET /ok HTTP/1.1\r\n\r\n").find("got /ok"),
             std::string::npos);
+}
+
+// A URL's port was read with atoi: "abc" gave port 0, and 70000 was cut to
+// 16 bits, connecting to port 4464.
+TEST(HttpUrlTest, PortMustBeValid) {
+  EXPECT_EQ(GHttp_urlPort("http://example.com/page"), 80);
+  EXPECT_EQ(GHttp_urlPort("http://example.com:8080/page"), 8080);
+  EXPECT_EQ(GHttp_urlPort("http://example.com:65535/"), 65535);
+  for (const char *bad : {"http://example.com:abc/", "http://example.com:70000/",
+                          "http://example.com:0/", "http://example.com:/",
+                          "http://example.com:80x/"})
+    EXPECT_THROW(GHttp_urlPort(bad), std::exception) << bad;
 }

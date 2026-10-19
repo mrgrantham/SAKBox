@@ -593,8 +593,8 @@ void MySession::doNext(const char* szParams)
 	GHttpParamParser pp(szParams);
 	const char* szPageId = pp.find("pageid");
 	size_t pageId = INVALID_INDEX;
-	if(szPageId)
-		pageId = atoi(szPageId);
+	if(szPageId && !parseNumber(szPageId, &pageId))
+		pageId = INVALID_INDEX; // not a number: start over, as for an unexpected page
 
 	// Check if the back button was pressed
 	const char* szBtn = pp.find("btn");
@@ -1295,7 +1295,9 @@ void complete_command(int nArgs, char* pArgs[])
 	{
 		if(nArgs < 3)
 			throw Ex("Expected more args");
-		size_t cur = atoi(pArgs[2]);
+		size_t cur;
+		if(!parseNumber(pArgs[2], &cur))
+			throw Ex("Expected the index of the arg to complete, got ", pArgs[2]);
 		ArrayHolder<char*> hArgs;
 		if((int)cur >= nArgs - 3)
 		{

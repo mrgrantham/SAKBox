@@ -38,6 +38,10 @@
 #include <set>
 #include <map>
 #include <utility> //for pair
+#include <charconv>
+#include <cmath>
+#include <cstring>
+#include <type_traits>
 
 
 
@@ -72,6 +76,35 @@ class GMatrix; //Forward declare GMatrix so that I can declare a
 ///
 ///\see template<class T> to_str(const T& n)
 std::string to_str(const GMatrix& m);
+
+/// SAKBox: the strict counterpart of atoi and atof (which give 0 for "abc",
+/// 12 for "12x" and overflow silently). Reads all of [szFirst, szLast) as one
+/// number of type T, an integer or floating-point type: no spaces or '+',
+/// in T's range, and for floating-point types finite. The decimal point is
+/// always '.', whatever the locale. Returns false, leaving *pOut unchanged,
+/// if the text is anything else.
+template <typename T>
+bool parseNumber(const char* szFirst, const char* szLast, T* pOut)
+{
+	T value{};
+	std::from_chars_result r = std::from_chars(szFirst, szLast, value);
+	if(r.ec != std::errc() || r.ptr != szLast || szFirst == szLast)
+		return false;
+	if constexpr(std::is_floating_point_v<T>)
+	{
+		if(!std::isfinite(value))
+			return false;
+	}
+	*pOut = value;
+	return true;
+}
+
+/// SAKBox: parseNumber for all of a null-terminated string
+template <typename T>
+bool parseNumber(const char* szText, T* pOut)
+{
+	return parseNumber(szText, szText + strlen(szText), pOut);
+}
 
 
 //Forward declaration of the special container class templates

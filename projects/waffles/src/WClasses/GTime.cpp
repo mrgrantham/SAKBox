@@ -111,7 +111,9 @@ int GTime_parseIntVal(const char* buf, int min, int max, bool* pOk)
 		if(buf[i] < '0' || buf[i] > '9')
 			*pOk = false;
 	}
-	int val = atoi(buf);
+	int val = 0;
+	if(!parseNumber(buf, &val))
+		*pOk = false;
 	if(val < min || val > max)
 		*pOk = false;
 	return val;
@@ -133,7 +135,9 @@ double GTime_parseDoubleVal(const char* buf, double min, double max, bool* pOk)
 		if(!is_double_char(buf[i]))
 			*pOk = false;
 	}
-	double val = atof(buf);
+	double val = 0.0;
+	if(!parseNumber(buf, &val))
+		*pOk = false;
 	if(val < min || val > max)
 		*pOk = false;
 	return val;

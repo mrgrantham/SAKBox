@@ -62,3 +62,10 @@ TEST(TensorArffTest, NoColumnsIsAnError) {
   EXPECT_NE(tensorArffError("@relation r\n@data\n").find("no attributes"),
             std::string::npos);
 }
+
+// The same for GTensor's reader: "1.5abc" loaded as 1.5.
+TEST(TensorArffTest, JunkAfterANumberIsAnError) {
+  EXPECT_NE(tensorArffError("@relation r\n@attribute h REAL\n@data\n1.5abc\n")
+                .find("for attribute h (0)"),
+            std::string::npos);
+}

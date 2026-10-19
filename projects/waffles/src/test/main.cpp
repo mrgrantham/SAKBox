@@ -708,7 +708,10 @@ void test_document_classification()
 				char* pB = buf;
 				if(*pB == '[')
 					pB++;
-				double accuracy = atof(pB);
+				const char* pEnd = pB + strcspn(pB, "] \t\r\n");
+				double accuracy;
+				if(!parseNumber(pB, pEnd, &accuracy))
+					throw Ex("Expected an accuracy from waffles_sparse test, got: ", buf);
 				results[i][j] = accuracy;
 			}
 		}

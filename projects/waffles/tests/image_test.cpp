@@ -6,6 +6,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <cstdlib>
+#include <fstream>
+#include <stdexcept>
 
 using namespace GClasses;
 
@@ -34,4 +37,21 @@ TEST(ImageTextTest, RenderingIsUnchanged) {
   image.text(all.c_str(), 0, 40, 1.7f, 0xffff0000);
   image.text(all.c_str(), 0, 90, 2.3f, 0xff00ff00);
   EXPECT_EQ(fingerprint(image), 18229812759536327879ull);
+}
+
+// A PPM header's numbers were read with atoi, so a width of "2x" loaded as 2.
+TEST(ImagePixMapTest, HeaderNumbersMustBeWhole) {
+  const char *tmp = getenv("TEST_TMPDIR");
+  const std::string dir = tmp ? tmp : "/tmp";
+  auto write = [&](const std::string &name, const std::string &header) {
+    std::ofstream f(dir + "/" + name, std::ios::binary);
+    f << header << std::string(12, '\x7f'); // 2 x 2 pixels, 3 bytes each
+    return dir + "/" + name;
+  };
+  GImage ok;
+  ok.loadPpm(write("ok.ppm", "P6\n2 2\n255\n").c_str());
+  EXPECT_EQ(ok.width(), 2u);
+  EXPECT_EQ(ok.height(), 2u);
+  GImage bad;
+  EXPECT_THROW(bad.loadPpm(write("bad.ppm", "P6\n2x 2\n255\n").c_str()), std::exception);
 }

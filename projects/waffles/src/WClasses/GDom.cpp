@@ -1122,22 +1122,17 @@ GDomNode* GDom::loadJsonArray(GJsonTokenizer& tok)
 GDomNode* GDom::loadJsonNumber(GJsonTokenizer& tok)
 {
 	char* szString = tok.readWhile(tok.m_real);
-	bool hasPeriod = false;
-	for(char* szChar = szString; *szChar != '\0'; szChar++)
-	{
-		if(*szChar == '.')
-			hasPeriod = true;
-	}
-	if(hasPeriod)
-		return newDouble(atof(szString));
-	else
-	{
-#ifdef WINDOWS
-		return newInt(_atoi64(szString));
-#else
-		return newInt(strtoll(szString, (char**)nullptr, 10));
-#endif
-	}
+	// SAKBox: was a double only with a '.', so the integer reader stopped at an
+	// exponent's 'e' (1e5 read as 1), and malformed numbers were cut short.
+	// Now: an integer if all of it is one (and it fits a long long), else a
+	// double (1.5, 1e5, or a bigger integer), else an error.
+	long long n;
+	if(parseNumber(szString, &n))
+		return newInt(n);
+	double d;
+	if(!parseNumber(szString, &d))
+		throw Ex("Invalid JSON number: ", szString);
+	return newDouble(d);
 }
 
 GDomNode* GDom::loadJsonValue(GJsonTokenizer& tok)

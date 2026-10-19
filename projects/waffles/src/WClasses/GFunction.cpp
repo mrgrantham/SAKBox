@@ -665,9 +665,10 @@ GFunctionNode* GFunctionParser::parseFunctionBody(std::vector<std::string>& vari
 		else
 		{
 			// We've got a numeric constant
-			if(!GFunctionTokenizer::IsDigit(c) && c != '.')
+			double d;
+			if(!parseNumber(tokens[start].c_str(), &d)) // SAKBox: was atof (1e999 gave infinity)
 				throw Ex("Cannot parse symbol: ", tokens[start].c_str());
-			return new GFunctionConstant(atof(tokens[start].c_str()));
+			return new GFunctionConstant(d);
 		}
 	}
 	else

@@ -874,12 +874,10 @@ const char* GArgReader::pop_string()
 unsigned int GArgReader::pop_uint()
 {
 	const char* str = pop_string();
-	for(int i = 0; str[i] != '\0'; i++)
-	{
-		if(str[i] < '0' || str[i] > '9')
-			throw Ex("Expected an unsigned integer value for parameter ", to_str(m_argPos), ". (Got \"", str, "\".)");
-	}
-	return (unsigned int)atoi(str);
+	unsigned int n;
+	if(!parseNumber(str, &n)) // SAKBox: checked for digits only, so "" gave 0 and big numbers overflowed
+		throw Ex("Expected an unsigned integer value for parameter ", to_str(m_argPos), ". (Got \"", str, "\".)");
+	return n;
 }
 
 double GArgReader::pop_double()

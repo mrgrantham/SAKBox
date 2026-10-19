@@ -77,6 +77,21 @@ bool parseHttpContentLength(const char* szValue, size_t* pOut)
 	return true;
 }
 
+void GHttpClient_parseURL(const char* szUrl, int* pnHostIndex, int* pnPortIndex, int* pnPathIndex, int* pnParamsIndex);
+
+int GHttp_urlPort(const char* szUrl)
+{
+	int nHostIndex, nPortIndex, nPathIndex;
+	GHttpClient_parseURL(szUrl, &nHostIndex, &nPortIndex, &nPathIndex, nullptr);
+	if(nPathIndex <= nPortIndex)
+		return 80;
+	// SAKBox: was atoi, so "abc" gave port 0 and 70000 was cut to 16 bits
+	int port;
+	if(!parseNumber(szUrl + nPortIndex + 1, szUrl + nPathIndex, &port) || port < 1 || port > 65535) // the "+1" is for the ':'
+		throw Ex("Invalid port in URL: ", szUrl);
+	return port;
+}
+
 GHttpClient::GHttpClient()
 {
 	m_pReceiveBuf = new char[2048];
@@ -194,11 +209,7 @@ bool GHttpClient::sendGetRequest(const char* szUrl, bool headersOnly)
 	// Get the port
 	int nHostIndex, nPortIndex, nPathIndex;
 	GHttpClient_parseURL(szNewUrl, &nHostIndex, &nPortIndex, &nPathIndex, nullptr);
-	int nPort;
-	if(nPathIndex > nPortIndex)
-		nPort = atoi(&szNewUrl[nPortIndex + 1]); // the "+1" is for the ':'
-	else
-		nPort = 80;
+	int nPort = GHttp_urlPort(szNewUrl);
 
 	// Copy the host name
 	int nTempBufSize = nPortIndex - nHostIndex + 1;
@@ -670,11 +681,7 @@ bool GWebSocketClient::get(const char* szUrl)
 	// Get the port
 	int nHostIndex, nPortIndex, nPathIndex;
 	GHttpClient_parseURL(szNewUrl, &nHostIndex, &nPortIndex, &nPathIndex, nullptr);
-	int nPort;
-	if(nPathIndex > nPortIndex)
-		nPort = atoi(&szNewUrl[nPortIndex + 1]); // the "+1" is for the ':'
-	else
-		nPort = 80;
+	int nPort = GHttp_urlPort(szNewUrl);
 
 	// Copy the host name
 	int nTempBufSize = nPortIndex - nHostIndex + 1;

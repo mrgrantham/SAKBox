@@ -1306,17 +1306,6 @@ void GTensor::get(GVecWrapper& out, size_t index)
 	out.setData(*this, index * shape[0], len);
 }
 
-inline bool isRealValue(const char* szValue)
-{
-	if(*szValue == '-')
-		szValue++;
-	if(*szValue == '.')
-		szValue++;
-	if(*szValue >= '0' && *szValue <= '9')
-		return true;
-	return false;
-}
-
 
 class GTensorAttr
 {
@@ -1452,9 +1441,10 @@ double GTensor_parseValue(GTensorMeta& relation, size_t col, const char* szVal, 
 			return UNKNOWN_REAL_VALUE;
 		else
 		{
-			if(!isRealValue(szVal))
+			double d;
+			if(!parseNumber(szVal, &d)) // SAKBox: was isRealValue, which checked only the start ("1.5abc" read as 1.5)
 				throw Ex("Expected a numeric value for attribute ", relation.describe(col), " at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
-			return atof(szVal);
+			return d;
 		}
 	}
 	else if(vals < (size_t)-10) // Nominal

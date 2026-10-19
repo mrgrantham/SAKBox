@@ -853,12 +853,10 @@ double GArffRelation::parseValue(size_t attr, const char* val)
 			return UNKNOWN_REAL_VALUE;
 		else
 		{
-			if((*val >= '0' && *val <= '9') || *val == '-' || *val == '.')
-			{
-			}
-			else
-				throw Ex("Invalid real value, ", val, ". Expected it to start with one of {0-9,.,-}.");
-			return atof(val);
+			double d;
+			if(!parseNumber(val, &d)) // SAKBox: was checked by its first character only
+				throw Ex("Invalid real value, ", val, ". Expected a number.");
+			return d;
 		}
 	}
 	else
@@ -879,7 +877,11 @@ double GArffRelation::parseValue(size_t attr, const char* val)
 			if(v == INVALID_INDEX)
 			{
 				if(*val >= '0' && *val <= '9')
-					v = atoi(val);
+				{
+					// SAKBox: a value's position, which wasn't checked to be in range
+					if(!parseNumber(val, &v) || v >= values)
+						throw Ex("Invalid categorical value, ", val, ". Expected a value's name, or a number below ", to_str(values));
+				}
 				else
 				{
 					string sChoices;
@@ -1026,17 +1028,6 @@ void GMatrix::flush()
 	m_rows.clear();
 }
 
-inline bool IsRealValue(const char* szValue)
-{
-	if(*szValue == '-')
-		szValue++;
-	if(*szValue == '.')
-		szValue++;
-	if(*szValue >= '0' && *szValue <= '9')
-		return true;
-	return false;
-}
-
 // SAKBox: while an ARFF file loads, the texts seen so far in each string
 // column, in order, and each one's index (keyed without surrounding quotes)
 struct GArffStringValues
@@ -1063,9 +1054,10 @@ double GMatrix_parseValue(GArffRelation* pRelation, size_t col, const char* szVa
 			return UNKNOWN_REAL_VALUE;
 		else
 		{
-			if(!IsRealValue(szVal))
+			double d;
+			if(!parseNumber(szVal, &d)) // SAKBox: was IsRealValue, which checked only the start ("1.5abc" read as 1.5)
 				throw Ex("Expected a numeric value at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
-			return atof(szVal);
+			return d;
 		}
 	}
 	else if(vals < (size_t)-10) // Nominal
@@ -5305,8 +5297,8 @@ void GCSVParser::parse(GMatrix& outMatrix, const char* pFile, size_t len)
 						firstRealError = el;
 					realErrs++;
 				}
-				else
-					val = atof(el);
+				else if(!parseNumber(*el == '+' ? el + 1 : el, &val)) // (isValidFloat allows a leading '+')
+					throw Ex("Invalid real value: ", el);
 				outMatrix[i][attr] = val;
 				i++;
 			}
