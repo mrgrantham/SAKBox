@@ -26,7 +26,8 @@
 #include <deque>
 #include "GVec.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 struct GManifoldSculptingNeighbor;
 class GNeighborFinder;

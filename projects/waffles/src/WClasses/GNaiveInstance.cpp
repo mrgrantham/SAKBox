@@ -26,12 +26,13 @@
 using std::multimap;
 using std::make_pair;
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GNaiveInstanceAttr
 {
 protected:
-	multimap<double,const double*> m_instances;
+	multimap<double, const double*> m_instances;
 
 public:
 	GNaiveInstanceAttr() {}
@@ -60,12 +61,12 @@ public:
 	{
 	}
 
-	multimap<double,const double*>& instances() { return m_instances; }
+	multimap<double, const double*>& instances() { return m_instances; }
 
 	GDomNode* serialize(GDom* pDoc, size_t labelDims)
 	{
 		GDomNode* pList = pDoc->newList();
-		for(multimap<double,const double*>::iterator it = m_instances.begin(); it != m_instances.end(); it++)
+		for(multimap<double, const double*>::iterator it = m_instances.begin(); it != m_instances.end(); it++)
 		{
 			pList->add(pDoc, it->first);
 			for(size_t i = 0; i < labelDims; i++)
@@ -218,9 +219,9 @@ void GNaiveInstance::evalInput(size_t nInputDim, double dInput)
 
 	// Find the nodes on either side of dInput
 	GNaiveInstanceAttr* pAttr = m_pAttrs[nInputDim];
-	multimap<double,const double*>& instances = pAttr->instances();
-	multimap<double,const double*>::iterator itLeft = instances.lower_bound(dInput);
-	multimap<double,const double*>::iterator itRight = itLeft;
+	multimap<double, const double*>& instances = pAttr->instances();
+	multimap<double, const double*>::iterator itLeft = instances.lower_bound(dInput);
+	multimap<double, const double*>::iterator itRight = itLeft;
 	bool leftValid = true;
 	if(itLeft == instances.end())
 	{

@@ -30,17 +30,18 @@
 #include <time.h>
 #include <process.h>
 
-namespace GClasses {
+namespace GClasses
+{
 
 void GWindows::yield()
 {
-	 MSG   aMsg;
+	MSG aMsg;
 
-	 while(PeekMessage(&aMsg, NULL, WM_NULL, WM_NULL, PM_REMOVE))
-	 {
-			TranslateMessage(&aMsg);
-			DispatchMessage(&aMsg);
-	 }
+	while(PeekMessage(&aMsg, NULL, WM_NULL, WM_NULL, PM_REMOVE))
+	{
+		TranslateMessage(&aMsg);
+		DispatchMessage(&aMsg);
+	}
 }
 
 

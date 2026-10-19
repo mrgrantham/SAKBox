@@ -48,8 +48,8 @@
 #include <time.h>
 #include <iostream>
 #ifdef WINDOWS
-#	include <direct.h>
-#	include <process.h>
+#include <direct.h>
+#include <process.h>
 #endif
 #include <exception>
 #include <string>
@@ -750,7 +750,7 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 	cerr.flush();
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
 	GApp::enableFloatingPointExceptions();

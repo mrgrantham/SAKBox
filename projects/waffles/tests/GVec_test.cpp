@@ -61,8 +61,7 @@ TEST(TensorArffTest, LoadsEveryValue) {
 // undefined behaviour, which gives an empty tensor on arm64 and SIGFPE on
 // x86. It's now an error.
 TEST(TensorArffTest, NoColumnsIsAnError) {
-  EXPECT_NE(tensorArffError("@relation r\n@data\n").find("no attributes"),
-            std::string::npos);
+  EXPECT_NE(tensorArffError("@relation r\n@data\n").find("no attributes"), std::string::npos);
 }
 
 // The same for GTensor's reader: "1.5abc" loaded as 1.5.

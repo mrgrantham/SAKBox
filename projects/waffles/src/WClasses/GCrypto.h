@@ -22,7 +22,8 @@
 
 #include "GError.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GRand;
 class Mangler;

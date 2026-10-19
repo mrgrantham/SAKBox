@@ -22,7 +22,7 @@
 #include <WClasses/GError.h>
 #include "CarOnHill.h"
 #ifdef WINDOWS
-#	include <direct.h>
+#include <direct.h>
 #endif
 #include <exception>
 #include <iostream>
@@ -35,24 +35,26 @@ using std::cout;
 #include <filesystem>
 
 using recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
-void whereAmI() {
-    for (const auto& dirEntry : recursive_directory_iterator("."))
-        fmt::print("{}\n",dirEntry.path().string());
+void whereAmI()
+{
+	for(const auto& dirEntry : recursive_directory_iterator("."))
+		fmt::print("{}\n", dirEntry.path().string());
 }
 
 backward::SignalHandling sh;
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	whereAmI();
 	char szAppPath[300];
 	GApp::appPath(szAppPath, 300, true);
-// #ifdef WINDOWS
-// 	if(_chdir(szAppPath) != 0)
-// #else
-// 	if(chdir(szAppPath) != 0)
-// #endif
-	{}
+	// #ifdef WINDOWS
+	// 	if(_chdir(szAppPath) != 0)
+	// #else
+	// 	if(chdir(szAppPath) != 0)
+	// #endif
+	{
+	}
 
 	int nRet = 0;
 	try

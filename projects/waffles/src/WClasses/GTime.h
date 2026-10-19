@@ -25,7 +25,8 @@
 #include "GTree.h"
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// Provides some time-related functions
 class GTime

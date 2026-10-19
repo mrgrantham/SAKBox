@@ -23,7 +23,8 @@
 #include <string.h>
 #include <iostream>
 
-namespace GClasses {
+namespace GClasses
+{
 
 #define MAX_PIECE_MOVES 27
 
@@ -121,7 +122,7 @@ protected:
 	{
 		if(pos < 1)
 			return -1;
-		return pos -1;
+		return pos - 1;
 	}
 
 	bool checkMove(int* pOutMoves, int* pnMoves, int col, int row, bool bWhite);

@@ -22,7 +22,7 @@ using namespace GClasses;
 
 class RayTraceDialog : public GWidgetDialog
 {
-friend class RayTraceController;
+	friend class RayTraceController;
 protected:
 	RayTraceController* m_pController;
 	GWidgetFileSystemBrowser* m_pFileSystemBrowser;
@@ -73,7 +73,7 @@ RayTraceView::~RayTraceView()
 	delete(m_pDialog);
 }
 
-/*virtual*/ void RayTraceView::draw(SDL_Surface *pScreen)
+/*virtual*/ void RayTraceView::draw(SDL_Surface* pScreen)
 {
 	GImage* pCanvas = m_pDialog->image();
 	if(m_pImage)
@@ -143,7 +143,7 @@ void RayTraceController::OnSelectFile(const char* szFilename)
 	m_pScene->renderBegin();
 	m_pScene->drawWireFrame();
 	GImage* pImage = m_pScene->image();
-//m_pScene->RenderSinglePixel(pImage->GetWidth() / 2, pImage->GetHeight() / 2);
+	//m_pScene->RenderSinglePixel(pImage->GetWidth() / 2, pImage->GetHeight() / 2);
 	((RayTraceView*)m_pView)->SetImage(pImage);
 	m_bRendering = true;
 }

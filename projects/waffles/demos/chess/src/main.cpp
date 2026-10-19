@@ -27,7 +27,7 @@
 #include "gui/Gui.h"
 #include "GChess.h"
 #ifdef WINDOWS
-#	include <direct.h>
+#include <direct.h>
 #endif
 #include <math.h>
 #include <exception>
@@ -83,11 +83,12 @@ protected:
 
 public:
 
-using recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
-void whereAmI() {
-    for (const auto& dirEntry : recursive_directory_iterator("."))
-        fmt::print("{}\n",dirEntry.path().string());
-}
+	using recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
+	void whereAmI()
+	{
+		for(const auto& dirEntry : recursive_directory_iterator("."))
+			fmt::print("{}\n", dirEntry.path().string());
+	}
 	ChessDialog(ChessController* pController, int w, int h)
 	: GWidgetDialog(w, h, 0xff90d0f0)
 	{
@@ -163,8 +164,8 @@ void whereAmI() {
 	bool IsRepeatAggressiveMove(int xSrc, int ySrc, int xDest, int yDest)
 	{
 		if(xDest + 8 * yDest == m_lastMove[3] / 64 && // this move takes the same square as my move-before-last, and
-			(m_lastMove[2] & 63) == (m_lastMove[0] >> 6) && (m_lastMove[2] >> 6) == (m_lastMove[0] & 63) && // my opponent undid his last move, and
-			m_lastMove[1] == xDest + 8 * (yDest + 8 * (xSrc + 8 * ySrc))) // this undoes my last move
+		   (m_lastMove[2] & 63) == (m_lastMove[0] >> 6) && (m_lastMove[2] >> 6) == (m_lastMove[0] & 63) && // my opponent undid his last move, and
+		   m_lastMove[1] == xDest + 8 * (yDest + 8 * (xSrc + 8 * ySrc))) // this undoes my last move
 			return true;
 		return false;
 	}
@@ -358,7 +359,10 @@ void whereAmI() {
 				if(score > bestScore || !bGotOne)
 				{
 					bestScore = score;
-					*pxSrc = xSrc; *pySrc = ySrc; *pxDest = xDest; *pyDest = yDest;
+					*pxSrc = xSrc;
+					*pySrc = ySrc;
+					*pxDest = xDest;
+					*pyDest = yDest;
 					bGotOne = true;
 				}
 			}
@@ -367,7 +371,10 @@ void whereAmI() {
 				if(score < bestScore || !bGotOne)
 				{
 					bestScore = score;
-					*pxSrc = xSrc; *pySrc = ySrc; *pxDest = xDest; *pyDest = yDest;
+					*pxSrc = xSrc;
+					*pySrc = ySrc;
+					*pxDest = xDest;
+					*pyDest = yDest;
 					bGotOne = true;
 				}
 			}
@@ -473,14 +480,14 @@ protected:
 
 		// Clear the screen
 		// Clear the screen
-		SDL_SetRenderDrawColor(sdlRenderer,0,0,0,0);
-		SDL_Rect windowRect{m_screenRect.x,m_screenRect.y,m_screenRect.w,m_screenRect.h};
-		SDL_RenderFillRect(sdlRenderer,&windowRect);
+		SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, 0);
+		SDL_Rect windowRect{m_screenRect.x, m_screenRect.y, m_screenRect.w, m_screenRect.h};
+		SDL_RenderFillRect(sdlRenderer, &windowRect);
 		Uint32 format; // SDL_PixelFormatEnum
-		SDL_QueryTexture(sdlTexture,&format, nullptr,nullptr,nullptr);
+		SDL_QueryTexture(sdlTexture, &format, nullptr, nullptr, nullptr);
 
 		// Draw the dialog
-		blitImage(pixels,pitch,format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
+		blitImage(pixels, pitch, format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
 	}
 };
 
@@ -514,7 +521,7 @@ void ChessController::RunModal()
 	}
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	char szAppPath[300];
 	GApp::appPath(szAppPath, 300, true);
@@ -523,7 +530,8 @@ int main(int argc, char *argv[])
 #else
 	if(chdir(szAppPath) != 0)
 #endif
-	{}
+	{
+	}
 
 	int nRet = 0;
 	try

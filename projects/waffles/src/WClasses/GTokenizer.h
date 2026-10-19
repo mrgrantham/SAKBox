@@ -24,13 +24,14 @@
 #include <map>
 #include "GBitTable.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 
 /// This class represents a set of characters.
 class GCharSet
 {
-friend class GTokenizer;
+	friend class GTokenizer;
 protected:
 	GBitTable m_bt;
 

@@ -19,11 +19,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef WINDOWS
-#	include <windows.h>
-#	include <process.h>
-#	include <direct.h>
+#include <windows.h>
+#include <process.h>
+#include <direct.h>
 #else
-#	include <unistd.h>
+#include <unistd.h>
 #endif
 #include <WClasses/GDynamicPage.h>
 #include <WClasses/GApp.h>
@@ -54,13 +54,12 @@ public:
 	Connection(SOCKET sock, GDynamicPageServer* pServer) : GDynamicPageConnection(sock, pServer)
 	{
 	}
-	
+
 	virtual ~Connection()
 	{
 	}
 
 	virtual void handleRequest(GDynamicPageSession* pSession, std::ostream& response);
-
 };
 
 class Server : public GDynamicPageServer

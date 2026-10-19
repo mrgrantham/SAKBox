@@ -17,12 +17,12 @@ class ControllerBase;
 #include <SDL2/SDL.h>
 #include <unordered_map>
 
-inline Uint32* getPixMem32(int *pixels,int pitch, int x, int y)
+inline Uint32* getPixMem32(int* pixels, int pitch, int x, int y)
 {
 	return (Uint32*)((Uint8*)pixels + y * pitch + (x << 2));
 }
 
-inline Uint16* getPixMem16(int *pixels,int pitch, int x, int y)
+inline Uint16* getPixMem16(int* pixels, int pitch, int x, int y)
 {
 	return (Uint16*)pixels + y * pitch / 2 + x;
 }
@@ -34,9 +34,9 @@ protected:
 	static SDL_Window* window_;
 	SDL_Window* m_pScreen;
 	GClasses::GRect m_screenRect;
-	SDL_Renderer *sdlRenderer;
-	SDL_Surface *window_surface; // software render
-	SDL_Texture *sdlTexture; // hardware render
+	SDL_Renderer* sdlRenderer;
+	SDL_Surface* window_surface; // software render
+	SDL_Texture* sdlTexture; // hardware render
 public:
 	ViewBase();
 	virtual ~ViewBase();
@@ -52,11 +52,11 @@ public:
 	void captureScreen(GClasses::GImage* pImage);
 
 protected:
-	static void blitImage(int* pixels,int pitch,Uint32 format, int x, int y, GClasses::GImage* pImage);
-	static void stretchClipAndBlitImage(int* pixels,int pitch,Uint32 format, GClasses::GRect* pDestRect, GClasses::GRect* pClipRect, GClasses::GImage* pImage);
+	static void blitImage(int* pixels, int pitch, Uint32 format, int x, int y, GClasses::GImage* pImage);
+	static void stretchClipAndBlitImage(int* pixels, int pitch, Uint32 format, GClasses::GRect* pDestRect, GClasses::GRect* pClipRect, GClasses::GImage* pImage);
 
 	virtual void draw(int* pixels, int pitch) = 0;
-	void drawDot(int* pixels,int pitch,Uint32 format, int x, int y, unsigned int col, int nSize);
+	void drawDot(int* pixels, int pitch, Uint32 format, int x, int y, unsigned int col, int nSize);
 	SDL_Window* makeScreen(int x, int y);
 };
 
@@ -155,7 +155,7 @@ protected:
 		Repeating,
 	};
 
-	std::unordered_map<int,int> m_keyboard;
+	std::unordered_map<int, int> m_keyboard;
 	int m_mouse[4];
 	int m_mouseX;
 	int m_mouseY;

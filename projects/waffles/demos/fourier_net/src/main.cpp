@@ -59,7 +59,8 @@ using std::string;
 #define TIGHTNESS_GOOD 0.05
 #define TIGHTNESS_BAD 0.25
 
-namespace {
+namespace
+{
 
 // Where data is read from and pictures are written to
 string g_dataDir = "projects/waffles/demos/fourier_net/data"; // under bazel run
@@ -103,7 +104,8 @@ struct Linear
 	// included), for outputs [start, start + count)
 	void regularize(double l2, double l1, size_t start, size_t count)
 	{
-		auto shrink = [l2, l1](double& x) {
+		auto shrink = [l2, l1](double& x)
+		{
 			x *= 1.0 - l2;
 			x = x > l1 ? x - l1 : (x < -l1 ? x + l1 : 0.0);
 		};
@@ -230,7 +232,7 @@ void plot_it(const char* filename, GNeuralNet& nn, GMatrix& trainFeat, GMatrix& 
 void doit(size_t maxEpochs)
 {
 	cout << "\n\nThis demo is described at http://arxiv.org/abs/1405.2262\n\n";
-	
+
 	cout << "For efficiency reasons, this demo differs from the paper the following ways:\n";
 	cout << " * It uses one fewer layers.\n";
 	cout << " * It only uses L1 regularization during the last 20% of training.\n\n";
@@ -363,7 +365,8 @@ void doit(size_t maxEpochs)
 	GRandomIndexIterator ii(trainLab.rows(), rand);
 	double learningRate = 1e-8;
 	double lambda = 0.001;
-	auto trainEpoch = [&](double rate) {
+	auto trainEpoch = [&](double rate)
+	{
 		ii.reset();
 		size_t i;
 		while(ii.next(i))
@@ -434,7 +437,7 @@ void doit(size_t maxEpochs)
 			{
 				timeStart = timeNow;
 				double val = rmse(nn, testFeat, testLab);
-				cout << "rmse/dev=" << to_str(err / labDev) << "	eta=" << to_str(learningRate)  << "	val=" << to_str(val) << "\n";
+				cout << "rmse/dev=" << to_str(err / labDev) << "	eta=" << to_str(learningRate) << "	val=" << to_str(val) << "\n";
 				plot_it("progress.svg", nn, trainFeat, trainLab, testFeat, testLab);
 			}
 
@@ -451,7 +454,7 @@ void doit(size_t maxEpochs)
 // Runs until stopped unless --epochs is given. Reads train.arff and test.arff
 // from DIR, and writes fourier.svg and progress.svg to the directory
 // `bazel run` was started from (or the current directory).
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
 	GApp::enableFloatingPointExceptions();

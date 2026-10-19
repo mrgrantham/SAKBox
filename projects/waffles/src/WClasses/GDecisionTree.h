@@ -23,7 +23,8 @@
 #include "GLearner.h"
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GDecisionTreeNode;
 class GRegressionTreeNode;

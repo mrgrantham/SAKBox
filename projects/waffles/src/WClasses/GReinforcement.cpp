@@ -24,7 +24,8 @@
 #include "GHolders.h"
 #include <string.h>
 
-namespace GClasses {
+namespace GClasses
+{
 
 GQLearner::GQLearner(const GRelation& relation, int actionDims, double* pInitialState, GRand* pRand, GAgentActionIterator* pActionIterator)
 : GPolicyLearner(relation, actionDims), m_pRand(pRand), m_pActionIterator(pActionIterator)

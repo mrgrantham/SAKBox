@@ -27,7 +27,8 @@
 #include <vector>
 #include <cmath>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GRayTraceLight;
 class GRayTraceMaterial;
@@ -805,7 +806,6 @@ protected:
 	/// w is the width of the full circly. hh is the height of half the circle.
 	/// from and to specifies the arc segment in radians divided by PI.
 	void curve(G3DReal x, G3DReal y, G3DReal w, G3DReal hh, double fromRads, double toRads);
-
 };
 
 } // namespace GClasses

@@ -39,7 +39,8 @@ using std::ostream;
 using std::ostringstream;
 using std::vector;
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GDecisionTreeNode
 {
@@ -64,7 +65,7 @@ public:
 
 class GDecisionTreeInteriorNode : public GDecisionTreeNode
 {
-friend class GDecisionTree;
+	friend class GDecisionTree;
 protected:
 	size_t m_nAttribute;
 	double m_dPivot;
@@ -87,7 +88,7 @@ public:
 		GDomListIterator it(pChildren);
 		m_nChildren = it.remaining();
 		m_ppChildren = new GDecisionTreeNode*[m_nChildren];
-		for(size_t i = 0 ; it.current(); i++)
+		for(size_t i = 0; it.current(); i++)
 		{
 			m_ppChildren[i] = GDecisionTreeNode::deserialize(it.current());
 			it.advance();
@@ -435,7 +436,7 @@ void GDecisionTree::trainInner(const GMatrix& features, const GMatrix& labels)
 	GMatrix tmpLabels(m_pRelLabels->clone());
 	tmpLabels.copy(labels);
 
-	m_pRoot = buildBranch(tmpFeatures, tmpLabels, attrPool, 0/*depth*/, 4/*tolerance*/);
+	m_pRoot = buildBranch(tmpFeatures, tmpLabels, attrPool, 0 /*depth*/, 4 /*tolerance*/);
 }
 
 void GDecisionTree::autoTune(GMatrix& features, GMatrix& labels)
@@ -765,9 +766,8 @@ GDecisionTreeNode* GDecisionTree::buildBranch(GMatrix& features, GMatrix& labels
 	// Make a leaf if we're out of tolerance or the output is
 	// homogenous or there are no attributes left or we have
 	// reached the maximum number of levels in the tree
-	if(tolerance <= 0 || features.rows() <= m_leafThresh
-	   || attrPool.size() == 0 || labels.isHomogenous()
-	   || (nDepth+1 == m_maxLevels)){
+	if(tolerance <= 0 || features.rows() <= m_leafThresh || attrPool.size() == 0 || labels.isHomogenous() || (nDepth + 1 == m_maxLevels))
+	{
 		return new GDecisionTreeLeafNode(GDecisionTreeNode_labelVec(labels), labels.rows());
 	}
 
@@ -776,7 +776,8 @@ GDecisionTreeNode* GDecisionTree::buildBranch(GMatrix& features, GMatrix& labels
 	size_t bestIndex = pickDivision(features, labels, &pivot, attrPool, nDepth);
 
 	// Make a leaf if there are no good divisions
-	if(bestIndex >= attrPool.size()){
+	if(bestIndex >= attrPool.size())
+	{
 		return new GDecisionTreeLeafNode(GDecisionTreeNode_labelVec(labels), labels.rows());
 	}
 	size_t attr = attrPool[bestIndex];
@@ -876,9 +877,12 @@ GDecisionTreeNode* GDecisionTree::buildBranch(GMatrix& features, GMatrix& labels
 	GDecisionTreeInteriorNode* pNode = new GDecisionTreeInteriorNode(attr, pivot, featureParts.size() + 1, 0);
 	std::unique_ptr<GDecisionTreeInteriorNode> hNode(pNode);
 	size_t biggest = features.rows();
-	if(features.rows() > 0){
+	if(features.rows() > 0)
+	{
 		pNode->m_ppChildren[0] = buildBranch(features, labels, attrPool, nDepth + 1, tolerance);
-	}else{
+	}
+	else
+	{
 		pNode->m_ppChildren[0] = new GDecisionTreeLeafNode(GDecisionTreeNode_copyIfNotTheLast(emptySets--, hBaselineVec, labels.cols()), 0);
 	}
 	for(size_t i = 0; i < featureParts.size(); i++)
@@ -1002,7 +1006,8 @@ void GDecisionTree::test()
 
 // ----------------------------------------------------------------------
 
-namespace GClasses {
+namespace GClasses
+{
 class GMeanMarginsTreeNode
 {
 public:
@@ -1395,10 +1400,10 @@ void GRandomForest::print(std::ostream& stream, GArffRelation* pFeatureRel, GArf
 {
 	std::vector<GWeightedModel*>& models = m_pEnsemble->models();
 	size_t nModels = models.size();
-	for (size_t i = 0; i < nModels; i++)
+	for(size_t i = 0; i < nModels; i++)
 	{
-	    stream << "TREE " << i << ":" << std::endl;
-	    ((GDecisionTree*)models[i]->m_pModel)->print(stream, pFeatureRel, pLabelRel);
+		stream << "TREE " << i << ":" << std::endl;
+		((GDecisionTree*)models[i]->m_pModel)->print(stream, pFeatureRel, pLabelRel);
 	}
 }
 

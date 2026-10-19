@@ -30,7 +30,8 @@
 typedef int64_t __int64;
 #endif // not WINDOWS
 
-namespace GClasses {
+namespace GClasses
+{
 
 GBigInt::GBigInt()
 {
@@ -58,7 +59,7 @@ GBigInt::GBigInt(GDomNode* pNode)
 
 GBigInt::~GBigInt()
 {
-	delete [] m_pBits;
+	delete[] m_pBits;
 }
 
 GDomNode* GBigInt::serialize(GDom* pDoc) const
@@ -97,7 +98,7 @@ void GBigInt::resize(unsigned int nBits)
 {
 	if(nBits < 1)
 	{
-		delete [] m_pBits;
+		delete[] m_pBits;
 		m_pBits = nullptr;
 		m_nUInts = 0;
 		return;
@@ -117,9 +118,9 @@ void GBigInt::resize(unsigned int nBits)
 	unsigned int n;
 	for(n = 0; n < nTop; n++)
 		pNewBits[n] = m_pBits[n];
-	for( ; n < nNewUInts; n++)
+	for(; n < nNewUInts; n++)
 		pNewBits[n] = 0;
-	delete [] m_pBits;
+	delete[] m_pBits;
 	m_pBits = pNewBits;
 	m_nUInts = nNewUInts;
 }
@@ -150,7 +151,7 @@ void GBigInt::copy(GBigInt* pBigNumber)
 	unsigned int n;
 	for(n = 0; n < pBigNumber->m_nUInts; n++)
 		m_pBits[n] = pBigNumber->m_pBits[n];
-	for(;n < m_nUInts; n++)
+	for(; n < m_nUInts; n++)
 		m_pBits[n] = 0;
 	m_bSign = pBigNumber->m_bSign;
 }
@@ -566,7 +567,7 @@ void GBigInt::shiftRightUInts(unsigned int nUInts)
 	unsigned int n;
 	for(n = 0; n + nUInts < m_nUInts; n++)
 		m_pBits[n] = m_pBits[n + nUInts];
-	for(;n < m_nUInts; n++)
+	for(; n < m_nUInts; n++)
 		m_pBits[n] = 0;
 }
 
@@ -685,7 +686,7 @@ void GBigInt::setRandom(unsigned int nBits)
 
 // Input:  integers a, b
 // Output: [this,x,y] where "this" is the greatest common divisor of a,b and where g=xa+by (x or y can be negative)
-void GBigInt::euclid(GBigInt* pA1, GBigInt* pB1, GBigInt* pOutX/*=NULL*/, GBigInt* pOutY/*=NULL*/)
+void GBigInt::euclid(GBigInt* pA1, GBigInt* pB1, GBigInt* pOutX /*=NULL*/, GBigInt* pOutY /*=NULL*/)
 {
 	GBigInt q;
 	GBigInt r;

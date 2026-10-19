@@ -24,16 +24,16 @@
 #include "GApp.h"
 #include "GBitTable.h"
 #ifdef WINDOWS
-#	include <windows.h>
-#	include <shlobj.h> // to get users' application data dir
-#	include <sys/utime.h> // utime
-#	include <direct.h>
-#	include <io.h> // for "filelength" and "access"
-#	include <process.h>
+#include <windows.h>
+#include <shlobj.h> // to get users' application data dir
+#include <sys/utime.h> // utime
+#include <direct.h>
+#include <io.h> // for "filelength" and "access"
+#include <process.h>
 #else
-#	include <unistd.h>
-#	include <utime.h> // utime, which sets file times
-#	include <dirent.h>
+#include <unistd.h>
+#include <utime.h> // utime, which sets file times
+#include <dirent.h>
 #endif
 #include <stdio.h>
 #include <sys/types.h>
@@ -57,20 +57,20 @@ using std::make_pair;
 
 
 // static
-bool GFile::doesFileExist(const char *szFilename)
+bool GFile::doesFileExist(const char* szFilename)
 {
-	return(access(szFilename, 0) == 0);
+	return (access(szFilename, 0) == 0);
 }
 
 // static
-bool GFile::doesDirExist(const char *szDir)
+bool GFile::doesDirExist(const char* szDir)
 {
 	char szBuff[256];
 	char* pCurDir = getcwd(szBuff, 255);
 	int nVal = chdir(szDir);
 	if(chdir(pCurDir) != 0)
 		throw Ex("Failed to restore current dir");
-	return(nVal == 0);
+	return (nVal == 0);
 }
 
 // static
@@ -100,7 +100,7 @@ bool GFile::makeDir(const char* szPath)
 	safe_strcpy(szDir, szPath, 256);
 	bool bOK = false;
 	int n;
-	for(n = 0; ; n++)
+	for(n = 0;; n++)
 	{
 		if(szDir[n] == '/' || szDir[n] == '\\' || szDir[n] == '\0')
 		{
@@ -130,7 +130,7 @@ const char* GFile::clipPath(const char* szBuff)
 			n = i + 1;
 		i++;
 	}
-	return(szBuff + n);
+	return (szBuff + n);
 }
 
 // Find the last slash and set it to '\0'
@@ -144,8 +144,8 @@ char* GFile::clipFilename(char* szBuff)
 			n = i;
 		i++;
 	}
-   if(n > -1)
-      szBuff[n + 1] = '\0';
+	if(n > -1)
+		szBuff[n + 1] = '\0';
 	return szBuff;
 }
 
@@ -173,8 +173,7 @@ void GFile::fileList(std::vector<std::string>& list, const char* dir)
 		{
 			list.push_back(ent.cFileName);
 		}
-	}
-	while(FindNextFile(h, &ent) != 0);
+	} while(FindNextFile(h, &ent) != 0);
 	FindClose(h);
 #else
 	DIR* pDir = opendir(dir);
@@ -182,7 +181,7 @@ void GFile::fileList(std::vector<std::string>& list, const char* dir)
 		throw Ex("Failed to open dir: ", dir);
 	while(true)
 	{
-		struct dirent *pDirent = readdir(pDir);
+		struct dirent* pDirent = readdir(pDir);
 		if(!pDirent)
 			break;
 		if(pDirent->d_type == DT_UNKNOWN)
@@ -231,8 +230,7 @@ void GFile::folderList(std::vector<std::string>& list, const char* dir, bool exc
 			if(!excludeDots || (strcmp(ent.cFileName, ".") != 0 && strcmp(ent.cFileName, "..") != 0))
 				list.push_back(ent.cFileName);
 		}
-	}
-	while(FindNextFile(h, &ent) != 0);
+	} while(FindNextFile(h, &ent) != 0);
 	FindClose(h);
 #else
 	DIR* pDir = opendir(dir);
@@ -245,7 +243,7 @@ void GFile::folderList(std::vector<std::string>& list, const char* dir, bool exc
 	}
 	while(true)
 	{
-		struct dirent *pDirent = readdir(pDir);
+		struct dirent* pDirent = readdir(pDir);
 		if(!pDirent)
 			break;
 		if(pDirent->d_type == DT_UNKNOWN)
@@ -314,7 +312,7 @@ bool GFile::copyFile(const char* szSrcPath, const char* szDestPath)
 		return false;
 
 	// create the subdirectory
-	GTEMPBUF(char, szSubdirectoryString, (int)strlen(szDestPath)+ 1);
+	GTEMPBUF(char, szSubdirectoryString, (int)strlen(szDestPath) + 1);
 	strcpy(szSubdirectoryString, szDestPath);
 	clipFilename(szSubdirectoryString);
 	makeDir(szSubdirectoryString);
@@ -342,16 +340,12 @@ bool GFile::copyFile(const char* szSrcPath, const char* szDestPath)
 	return true;
 }
 
-bool GFile::localStorageDirectory(char *toHere)
+bool GFile::localStorageDirectory(char* toHere)
 {
 	toHere[0] = '\0';
 #ifdef WINDOWS
 	TCHAR szPath[MAX_PATH];
-	if(SUCCEEDED(SHGetFolderPath(NULL,
-				CSIDL_LOCAL_APPDATA,
-				NULL,
-				0,
-				szPath)))
+	if(SUCCEEDED(SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, szPath)))
 	{
 		strcpy(toHere, szPath);
 		return true;
@@ -359,11 +353,11 @@ bool GFile::localStorageDirectory(char *toHere)
 	else
 		return false;
 #else
-#	ifndef __linux__
+#ifndef __linux__
 	// __APPLE__
 	GApp::appPath(toHere, 360, true);
 	return true;
-#	else
+#else
 	char* szReturnValue;
 	szReturnValue = getenv("HOME");
 	if(!szReturnValue)
@@ -374,13 +368,14 @@ bool GFile::localStorageDirectory(char *toHere)
 	strcpy(toHere, szReturnValue);
 
 	return szReturnValue != NULL; // if we were successful this will have been set to something...
-#	endif
+#endif
 #endif
 }
 
 /*static*/ char* GFile::loadFile(const char* szFilename, size_t* pnSize)
-{	
-	if (!std::filesystem::exists(szFilename)) {
+{
+	if(!std::filesystem::exists(szFilename))
+	{
 		std::cout << "Current path is " << std::filesystem::current_path() << '\n'; // (1)
 		throw Ex("Error path does not exist, ", szFilename, ". ");
 	}
@@ -463,20 +458,19 @@ void GFile::condensePath(char* szPath)
 			{
 				int nDelSize = 2;
 				int i;
-				for(i = n + 1; ; i++)
+				for(i = n + 1;; i++)
 				{
 					szPath[i] = szPath[i + nDelSize];
 					if(szPath[i] == '\0')
 						break;
 				}
 				n--; // so we'll catch the current slash the next time around the loop -- handle it next time!
-
 			}
 			else if(nPrevPrevSlash >= 0 && strncmp(szPath + n, "/../", 4) == 0)
 			{
 				int nDelSize = n - nPrevPrevSlash + 3;
 				int i;
-				for(i = nPrevPrevSlash; ; i++)
+				for(i = nPrevPrevSlash;; i++)
 				{
 					szPath[i] = szPath[i + nDelSize];
 					if(szPath[i] == '\0')
@@ -494,7 +488,7 @@ void GFile::condensePath(char* szPath)
 time_t GFile::modifiedTime(const char* szFilename)
 {
 	struct stat buffer;
-	/*int status = */stat(szFilename, &buffer);
+	/*int status = */ stat(szFilename, &buffer);
 	// todo: check return value
 	return buffer.st_mtime; // number of seconds since 0000 UTC 1970... :-)
 }
@@ -503,7 +497,7 @@ time_t GFile::modifiedTime(const char* szFilename)
 void GFile::setModifiedTime(const char* szFilename, time_t t)
 {
 	struct stat bufferIn;
-	/*int status = */stat(szFilename, &bufferIn);
+	/*int status = */ stat(szFilename, &bufferIn);
 	struct utimbuf bufferOut;
 	bufferOut.actime = bufferIn.st_atime;
 	bufferOut.modtime = t;
@@ -528,9 +522,9 @@ void GFile::parsePath(const char* szPath, struct PathData* pData)
 	{
 		if(szPath[n] == '/'
 #ifdef WINDOWS
-			|| szPath[n] == '\\'
+		   || szPath[n] == '\\'
 #endif
-			)
+		)
 			lastSlash = n;
 		else if(szPath[n] == '.')
 			lastPeriod = n;
@@ -616,7 +610,7 @@ public:
 	{
 	}
 
-	bool operator() (const unsigned char* a, const unsigned char* b) const
+	bool operator()(const unsigned char* a, const unsigned char* b) const
 	{
 		for(unsigned int i = 0; i < m_size; i++)
 		{
@@ -638,9 +632,9 @@ unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned i
 	GAssert(pieceSize > keySize && pieceSize <= 255); // piece size must be more than key size and less than 256
 	GAssert(len <= ((unsigned int)1 << (keySize * 8 - 1))); // len too big for this keySize
 	CompressPieceComparer cpc1(pieceSize);
-	map<unsigned char*,unsigned char,CompressPieceComparer> pieces(cpc1); // map from offset to number of occurrences
+	map<unsigned char*, unsigned char, CompressPieceComparer> pieces(cpc1); // map from offset to number of occurrences
 	CompressPieceComparer cpc2(keySize);
-	set<unsigned char*,CompressPieceComparer> nonKeys(cpc2); // map from offset to number of occurrences
+	set<unsigned char*, CompressPieceComparer> nonKeys(cpc2); // map from offset to number of occurrences
 	unsigned int offset;
 	int timeout = 0;
 	for(offset = 0; offset + pieceSize <= len; offset++)
@@ -648,17 +642,17 @@ unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned i
 		if(timeout > 0)
 		{
 			timeout--;
-			set<unsigned char*,CompressPieceComparer>::iterator it2 = nonKeys.find(pData + offset);
+			set<unsigned char*, CompressPieceComparer>::iterator it2 = nonKeys.find(pData + offset);
 			if(it2 == nonKeys.end())
 				nonKeys.insert(pData + offset);
 		}
 		else
 		{
-			map<unsigned char*,unsigned char,CompressPieceComparer>::iterator it = pieces.find(pData + offset);
+			map<unsigned char*, unsigned char, CompressPieceComparer>::iterator it = pieces.find(pData + offset);
 			if(it == pieces.end())
 			{
 				pieces.insert(make_pair(pData + offset, (unsigned char)1));
-				set<unsigned char*,CompressPieceComparer>::iterator it2 = nonKeys.find(pData + offset);
+				set<unsigned char*, CompressPieceComparer>::iterator it2 = nonKeys.find(pData + offset);
 				if(it2 == nonKeys.end())
 					nonKeys.insert(pData + offset);
 			}
@@ -672,7 +666,7 @@ unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned i
 	}
 	for(; offset + keySize <= len; offset++)
 	{
-		set<unsigned char*,CompressPieceComparer>::iterator it2 = nonKeys.find(pData + offset);
+		set<unsigned char*, CompressPieceComparer>::iterator it2 = nonKeys.find(pData + offset);
 		if(it2 == nonKeys.end())
 			nonKeys.insert(pData + offset);
 	}
@@ -681,8 +675,8 @@ unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned i
 	unsigned char minOccurrences = (unsigned char)2;
 	while(minOccurrences < 255 && keySize + pieceSize >= minOccurrences * (pieceSize - keySize)) // while the cost is more than the savings
 		minOccurrences++;
-	map<unsigned char*,unsigned char*,CompressPieceComparer> fops(cpc1); // map from frequently occurring pieces to the corresponding key index
-	for(map<unsigned char*,unsigned char,CompressPieceComparer>::iterator it = pieces.begin(); it != pieces.end(); it++)
+	map<unsigned char*, unsigned char*, CompressPieceComparer> fops(cpc1); // map from frequently occurring pieces to the corresponding key index
+	for(map<unsigned char*, unsigned char, CompressPieceComparer>::iterator it = pieces.begin(); it != pieces.end(); it++)
 	{
 		if(it->second >= minOccurrences)
 		{
@@ -713,7 +707,7 @@ unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned i
 
 	// Write the key-piece table
 	unsigned char* pPrevKey = nullptr;
-	for(map<unsigned char*,unsigned char*,CompressPieceComparer>::iterator it = fops.begin(); it != fops.end(); it++)
+	for(map<unsigned char*, unsigned char*, CompressPieceComparer>::iterator it = fops.begin(); it != fops.end(); it++)
 	{
 		if(pos + keySize + pieceSize > len)
 			return nullptr;
@@ -748,7 +742,7 @@ unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned i
 	// Write the payload
 	for(offset = 0; offset < len; offset++)
 	{
-		map<unsigned char*,unsigned char*,CompressPieceComparer>::iterator it;
+		map<unsigned char*, unsigned char*, CompressPieceComparer>::iterator it;
 		if(offset + pieceSize <= len)
 			it = fops.find(pData + offset);
 		else
@@ -774,7 +768,7 @@ unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned i
 	return hOut.release();
 }
 
-const unsigned char g_pieceSizes[] = { 18, 12, 7, 6, 5, 4, 3, 2 };
+const unsigned char g_pieceSizes[] = {18, 12, 7, 6, 5, 4, 3, 2};
 #define PIECE_SIZE_COUNT 8
 
 unsigned int GCompressor_chooseKeySize(unsigned char* pIn, unsigned int len)
@@ -890,7 +884,7 @@ unsigned int uncompressWorker(unsigned char* pIn, unsigned int inLen, unsigned c
 
 	// Read the table
 	CompressPieceComparer cpc(keySize);
-	map<unsigned char*,unsigned char*,CompressPieceComparer> table(cpc);
+	map<unsigned char*, unsigned char*, CompressPieceComparer> table(cpc);
 	for(unsigned short i = 0; i < keyCount; i++)
 	{
 		if(inLen < keySize + pieceSize)
@@ -908,7 +902,7 @@ unsigned int uncompressWorker(unsigned char* pIn, unsigned int inLen, unsigned c
 	unsigned int newLen = 0;
 	while(inLen > 0)
 	{
-		map<unsigned char*,unsigned char*,CompressPieceComparer>::iterator it;
+		map<unsigned char*, unsigned char*, CompressPieceComparer>::iterator it;
 		if(inLen >= keySize)
 			it = table.find(pIn);
 		else

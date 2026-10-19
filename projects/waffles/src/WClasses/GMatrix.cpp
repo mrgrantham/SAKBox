@@ -51,7 +51,8 @@ using std::string;
 using std::ostream;
 using std::ostringstream;
 
-namespace GClasses {
+namespace GClasses
+{
 
 // static
 GUniformRelation g_emptyRelation(0, 0);
@@ -283,7 +284,7 @@ GMixedRelation::GMixedRelation(const GDomNode* pNode)
 	GDomNode* pValueCounts = pNode->get("vals");
 	GDomListIterator it(pValueCounts);
 	m_valueCounts.reserve(it.remaining());
-	for( ; it.current(); it.advance())
+	for(; it.current(); it.advance())
 		m_valueCounts.push_back((size_t)it.currentInt());
 }
 
@@ -467,9 +468,9 @@ public:
 	GCharSet m_whitespace, m_spaces, m_space, m_valEnd, m_valEnder, m_valHardEnder, m_argEnd, m_newline, m_commaNewlineTab;
 
 	GArffTokenizer(const char* szFilename) : GTokenizer(szFilename),
-	m_whitespace("\t\n\r "), m_spaces(" \t"), m_space(" "), m_valEnd(",}\n"), m_valEnder(" ,\t}\n"), m_valHardEnder(",}\t\n"), m_argEnd(" \t\n{\r"), m_newline("\n"), m_commaNewlineTab(",\n\t") {}
+	                                         m_whitespace("\t\n\r "), m_spaces(" \t"), m_space(" "), m_valEnd(",}\n"), m_valEnder(" ,\t}\n"), m_valHardEnder(",}\t\n"), m_argEnd(" \t\n{\r"), m_newline("\n"), m_commaNewlineTab(",\n\t") {}
 	GArffTokenizer(const char* pFile, size_t len) : GTokenizer(pFile, len),
-	m_whitespace("\t\n\r "), m_spaces(" \t"), m_space(" "), m_valEnd(",}\n"), m_valEnder(" ,\t}\n"), m_valHardEnder(",}\t\n"), m_argEnd(" \t\n{\r"), m_newline("\n"), m_commaNewlineTab(",\n\t") {}
+	                                                m_whitespace("\t\n\r "), m_spaces(" \t"), m_space(" "), m_valEnd(",}\n"), m_valEnder(" ,\t}\n"), m_valHardEnder(",}\t\n"), m_argEnd(" \t\n{\r"), m_newline("\n"), m_commaNewlineTab(",\n\t") {}
 	~GArffTokenizer() override {}
 };
 
@@ -645,10 +646,7 @@ void GArffRelation::parseAttribute(GArffTokenizer& tok)
 	else
 	{
 		const char* szType = tok.readUntil(tok.m_whitespace);
-		if(	_stricmp(szType, "CONTINUOUS") == 0 ||
-			_stricmp(szType, "REAL") == 0 ||
-			_stricmp(szType, "NUMERIC") == 0 ||
-			_stricmp(szType, "INTEGER") == 0)
+		if(_stricmp(szType, "CONTINUOUS") == 0 || _stricmp(szType, "REAL") == 0 || _stricmp(szType, "NUMERIC") == 0 || _stricmp(szType, "INTEGER") == 0)
 		{
 			addAttribute(dataname.c_str(), 0, nullptr);
 		}
@@ -737,7 +735,7 @@ bool GArffRelation::isCompatible(const GRelation& that) const
 			return true;
 		if(!GRelation::isCompatible(that))
 			return false;
-		for(size_t i = 0; i < size() ; i++)
+		for(size_t i = 0; i < size(); i++)
 		{
 			if(((GArffRelation*)this)->attrName(i)[0] != '\0' && ((GArffRelation*)&that)->attrName(i)[0] != '\0' && strcmp(((GArffRelation*)this)->attrName(i), ((GArffRelation*)&that)->attrName(i)) != 0)
 				return false;
@@ -749,9 +747,7 @@ bool GArffRelation::isCompatible(const GRelation& that) const
 				size_t named = std::min(attrThis.m_values.size(), attrThat.m_values.size());
 				for(size_t j = 0; j < named; j++)
 				{
-					if(	attrThis.m_values[j].length() != 0 &&
-						attrThat.m_values[j].length() != 0 &&
-						strcmp(attrThis.m_values[j].c_str(), attrThat.m_values[j].c_str()) != 0)
+					if(attrThis.m_values[j].length() != 0 && attrThat.m_values[j].length() != 0 && strcmp(attrThis.m_values[j].c_str(), attrThat.m_values[j].c_str()) != 0)
 						return false;
 				}
 			}
@@ -967,7 +963,7 @@ GMatrix::GMatrix(const GDomNode* pNode)
 		if(it2.remaining() != dims)
 			throw Ex("Row ", to_str(i), " has an unexpected number of values");
 		GVec& pat = newRow();
-		for(size_t j = 0 ; it2.current(); it2.advance())
+		for(size_t j = 0; it2.current(); it2.advance())
 			pat[j++] = it2.currentDouble();
 		i++;
 	}
@@ -979,13 +975,16 @@ GMatrix::~GMatrix()
 	setRelation(nullptr);
 }
 
-bool GMatrix::operator==(const GMatrix& other) const{
+bool GMatrix::operator==(const GMatrix& other) const
+{
 	//Check if relation is compatible
-	if(!relation().isCompatible(other.relation())){
+	if(!relation().isCompatible(other.relation()))
+	{
 		return false;
 	}
 	//Check if same size
-	if(!(rows()==other.rows() && cols() == other.cols())){
+	if(!(rows() == other.rows() && cols() == other.cols()))
+	{
 		return false;
 	}
 	//Check if have same entries
@@ -1250,7 +1249,7 @@ void GMatrix::parseArff(GArffTokenizer& tok, size_t maxRows)
 			pRelation->addAttrValue(i, text.c_str());
 		if(texts.size() >= 20 && texts.size() * 2 > rows())
 			std::cerr << "warning: string column '" << pRelation->attrName(i) << "' has " << texts.size()
-				<< " different values in " << rows() << " rows; loaded as a category, which a learner may treat as meaningless numbers\n";
+			          << " different values in " << rows() << " rows; loaded as a category, which a learner may treat as meaningless numbers\n";
 	}
 }
 
@@ -1266,20 +1265,20 @@ void GMatrix::loadRaw(const char* szFilename)
 	std::ifstream fin(szFilename, std::ios::in | std::ios::binary);
 	if(fin.fail())
 		throw Ex("Error while trying to open the file, ", szFilename, ". ", strerror(errno));
-	fin.read((char *) &r, sizeof(size_t));
-	fin.read((char *) &c, sizeof(size_t));
+	fin.read((char*)&r, sizeof(size_t));
+	fin.read((char*)&c, sizeof(size_t));
 	resize(r, c);
 	for(size_t i = 0; i < r; i++)
-		fin.read((char *) m_rows[i]->data(), sizeof(double) * c);
+		fin.read((char*)m_rows[i]->data(), sizeof(double) * c);
 	fin.close();
 }
 
 void GMatrix::load(const char* szFilename)
 {
-	const char *extPos = strrchr(szFilename, '.');
+	const char* extPos = strrchr(szFilename, '.');
 	if(extPos)
 	{
-		string ext(extPos+1);
+		string ext(extPos + 1);
 		for(size_t i = 0; i < ext.size(); ++i)
 			ext[i] = (char)tolower((unsigned char)ext[i]); // SAKBox: a negative char is undefined behaviour in tolower
 		if(ext == "arff")
@@ -1303,10 +1302,10 @@ void GMatrix::saveRaw(const char* szFilename)
 	std::ofstream fout(szFilename, std::ios::out | std::ios::binary);
 	size_t r = rows();
 	size_t c = cols();
-	fout.write((char *) &r, sizeof(size_t));
-	fout.write((char *) &c, sizeof(size_t));
+	fout.write((char*)&r, sizeof(size_t));
+	fout.write((char*)&c, sizeof(size_t));
 	for(size_t i = 0; i < r; i++)
-		fout.write((char *) m_rows[i]->data(), sizeof(double) * c);
+		fout.write((char*)m_rows[i]->data(), sizeof(double) * c);
 	fout.close();
 }
 
@@ -2316,7 +2315,7 @@ double GMatrix::determinant()
 	GTEMPBUF(size_t, Kp, 2 * n);
 	size_t* Lp = Kp + n;
 	size_t l, ko, lo;
-	double po,t0;
+	double po, t0;
 	bool nonSingular = true;
 	size_t k = 0;
 	while(nonSingular && k < n)
@@ -2460,7 +2459,7 @@ GMatrix* GMatrix::eigs(size_t nCount, GVec& eigenVals, GRand* pRand, bool mostSi
 	if(rows() != (size_t)dims)
 		throw Ex("expected a square matrix");
 
-/*
+	/*
 	// The principle components of the Cholesky (square-root) matrix are the same as
 	// the eigenvectors of this matrix.
 	GMatrix* pDeviation = cholesky();
@@ -3252,7 +3251,7 @@ bool GMatrix::isAttrHomogenous(size_t column) const
 				break;
 			}
 		}
-		for( ; i < rows(); i++)
+		for(; i < rows(); i++)
 		{
 			int t = (int)(*this)[i][column];
 			if(t != d && t != UNKNOWN_DISCRETE_VALUE)
@@ -3272,7 +3271,7 @@ bool GMatrix::isAttrHomogenous(size_t column) const
 				break;
 			}
 		}
-		for( ; i < rows(); i++)
+		for(; i < rows(); i++)
 		{
 			double t = (*this)[i][column];
 			if(t != d && t != UNKNOWN_REAL_VALUE)
@@ -3568,8 +3567,9 @@ void GMatrix::centerMeanAtOrigin()
 	GVec mean(dims);
 	centroid(mean);
 	//Skip non-continuous columns by setting their mean to 0
-	for(unsigned i = 0; i < dims; ++i){
-		if(relation().valueCount(i) != 0){ mean[i] = 0; }
+	for(unsigned i = 0; i < dims; ++i)
+	{
+		if(relation().valueCount(i) != 0) { mean[i] = 0; }
 	}
 	//Subtract the new mean from all rows
 	for(size_t i = 0; i < rows(); i++)
@@ -3699,7 +3699,7 @@ double GMatrix::linearCorrelationCoefficient(size_t attr1, double attr1Origin, s
 		d = (double)j / (j + 1);
 		sx += (x - mx) * (x - mx) * d;
 		sy += (y - my) * (y - my) * d;
-		sxy += (x - mx) * (y -  my) * d;
+		sxy += (x - mx) * (y - my) * d;
 		mx += (x - mx) / (j + 1);
 		my += (y - my) / (j + 1);
 		j++;
@@ -3840,7 +3840,6 @@ double GMatrix::boundingSphere(GVec& center, size_t* pIndexes, size_t indexCount
 
 				// Increase the radius slightly to prevent precision issues
 				sradius += 1e-9;
-
 			}
 		}
 		if(externals == 0)
@@ -3851,12 +3850,14 @@ double GMatrix::boundingSphere(GVec& center, size_t* pIndexes, size_t indexCount
 
 void GMatrix::sort(size_t dim)
 {
-	std::ranges::sort(m_rows, std::ranges::less{}, [dim](const GVec* pRow) { return (*pRow)[dim]; });
+	std::ranges::sort(m_rows, std::ranges::less{}, [dim](const GVec* pRow)
+	{ return (*pRow)[dim]; });
 }
 
 void GMatrix::sortPartial(size_t rowIndex, size_t colIndex)
 {
-	std::ranges::nth_element(m_rows, m_rows.begin() + rowIndex, std::ranges::less{}, [colIndex](const GVec* pRow) { return (*pRow)[colIndex]; });
+	std::ranges::nth_element(m_rows, m_rows.begin() + rowIndex, std::ranges::less{}, [colIndex](const GVec* pRow)
+	{ return (*pRow)[colIndex]; });
 }
 
 void GMatrix::reverseRows()
@@ -4118,7 +4119,7 @@ bool GMatrix::leastCorrelatedVector(GVec& out, const GMatrix* pThat, GRand* pRan
 	pD->subtract(this, true);
 	pD->principalComponentAboutOrigin(out, pRand);
 	return true;
-/*
+	/*
 	GMatrix* pE = GMatrix::multiply(*pD, *pD, true, false);
 	std::unique_ptr<GMatrix> hE(pE);
 	GMatrix* pF = pE->mostSignificantEigenVectors(1, pRand);
@@ -4160,9 +4161,11 @@ GSimpleAssignment GMatrix::bipartiteMatching(GMatrix& a, GMatrix& b, GDistanceMe
 	metric.init(&a.relation(), false);
 	//GSimpleAssignment result(a.rows(), b.rows());
 	GMatrix costs(a.rows(), b.rows());
-	for(unsigned i = 0; i < a.rows(); ++i){
-		for(unsigned j = 0; j < b.rows(); ++j){
-			costs[i][j] = metric(a[i],b[j]);
+	for(unsigned i = 0; i < a.rows(); ++i)
+	{
+		for(unsigned j = 0; j < b.rows(); ++j)
+		{
+			costs[i][j] = metric(a[i], b[j]);
 		}
 	}
 	return linearAssignment(costs);
@@ -4172,23 +4175,23 @@ GSimpleAssignment GMatrix::bipartiteMatching(GMatrix& a, GMatrix& b, GDistanceMe
 void GMatrix_testParsing()
 {
 	const char* file =
-	"\n"
-	"% This is a comment\n"
-	"\n"
-	"@RELATION rel\n"
-	"\n"
-	"@ATTRIBUTE 'attr 1' { 'y' , n } \n"
-	"@attribute attr_2 continuous\n"
-	"@Attribute attr3 REAL\n"
-	"\n"
-	"@data\n"
-	" 'y' , 3 , -1.5e-2 \n"
-	"n , 0.1, 1\n"
-	"\n"
-	" % Here is another comment\n"
-	"'y',,99 \n"
-	",,\n"
-	"?,?,?";
+	  "\n"
+	  "% This is a comment\n"
+	  "\n"
+	  "@RELATION rel\n"
+	  "\n"
+	  "@ATTRIBUTE 'attr 1' { 'y' , n } \n"
+	  "@attribute attr_2 continuous\n"
+	  "@Attribute attr3 REAL\n"
+	  "\n"
+	  "@data\n"
+	  " 'y' , 3 , -1.5e-2 \n"
+	  "n , 0.1, 1\n"
+	  "\n"
+	  " % Here is another comment\n"
+	  "'y',,99 \n"
+	  ",,\n"
+	  "?,?,?";
 	GMatrix m;
 	m.parseArff(file, strlen(file));
 	if(m.cols() != 3)
@@ -4215,21 +4218,35 @@ void GMatrix_testParsing()
 void GMatrix_testBipartiteMatching()
 {
 	GMatrix a(7, 2);
-	a[0][0] = 0; a[0][1] = 0;
-	a[1][0] = 2; a[1][1] = 1;
-	a[2][0] = 5; a[2][1] = 2;
-	a[3][0] = 3; a[3][1] = 5;
-	a[4][0] = 4; a[4][1] = 7;
-	a[5][0] = 1; a[5][1] = 4;
-	a[6][0] = 4; a[6][1] = 2;
+	a[0][0] = 0;
+	a[0][1] = 0;
+	a[1][0] = 2;
+	a[1][1] = 1;
+	a[2][0] = 5;
+	a[2][1] = 2;
+	a[3][0] = 3;
+	a[3][1] = 5;
+	a[4][0] = 4;
+	a[4][1] = 7;
+	a[5][0] = 1;
+	a[5][1] = 4;
+	a[6][0] = 4;
+	a[6][1] = 2;
 	GMatrix b(7, 2);
-	b[0][0] = 4; b[0][1] = 2;
-	b[1][0] = 2; b[1][1] = 1;
-	b[2][0] = 5.01; b[2][1] = 2;
-	b[3][0] = 6; b[3][1] = 2;
-	b[4][0] = 3.9; b[4][1] = 6.9;
-	b[5][0] = 3.1; b[5][1] = 5.1;
-	b[6][0] = 2.9; b[6][1] = 4.9;
+	b[0][0] = 4;
+	b[0][1] = 2;
+	b[1][0] = 2;
+	b[1][1] = 1;
+	b[2][0] = 5.01;
+	b[2][1] = 2;
+	b[3][0] = 6;
+	b[3][1] = 2;
+	b[4][0] = 3.9;
+	b[4][1] = 6.9;
+	b[5][0] = 3.1;
+	b[5][1] = 5.1;
+	b[6][0] = 2.9;
+	b[6][1] = 4.9;
 
 	GRowDistance metric;
 	GSimpleAssignment results = GMatrix::bipartiteMatching(a, b, metric);
@@ -4252,40 +4269,40 @@ void GMatrix_testBipartiteMatching()
 void GMatrix_testMultiply()
 {
 	GMatrix a(2, 2);
-	a[0][0] = 2; a[0][1] = 17;
-	a[1][0] = 7; a[1][1] = 19;
+	a[0][0] = 2;
+	a[0][1] = 17;
+	a[1][0] = 7;
+	a[1][1] = 19;
 	GMatrix b(2, 2);
-	b[0][0] = 11; b[0][1] = 3;
-	b[1][0] = 5; b[1][1] = 13;
+	b[0][0] = 11;
+	b[0][1] = 3;
+	b[1][0] = 5;
+	b[1][1] = 13;
 	GMatrix* pC;
 	pC = GMatrix::multiply(a, b, false, false);
 	if(pC->rows() != 2 || pC->cols() != 2)
 		throw Ex("wrong size");
-	if(pC->row(0)[0] != 107 || pC->row(0)[1] != 227 ||
-		pC->row(1)[0] != 172 || pC->row(1)[1] != 268)
+	if(pC->row(0)[0] != 107 || pC->row(0)[1] != 227 || pC->row(1)[0] != 172 || pC->row(1)[1] != 268)
 		throw Ex("wrong answer");
 	delete(pC);
 	GMatrix* pA = a.transpose();
 	pC = GMatrix::multiply(*pA, b, true, false);
 	if(pC->rows() != 2 || pC->cols() != 2)
 		throw Ex("wrong size");
-	if(pC->row(0)[0] != 107 || pC->row(0)[1] != 227 ||
-		pC->row(1)[0] != 172 || pC->row(1)[1] != 268)
+	if(pC->row(0)[0] != 107 || pC->row(0)[1] != 227 || pC->row(1)[0] != 172 || pC->row(1)[1] != 268)
 		throw Ex("wrong answer");
 	delete(pC);
 	GMatrix* pB = b.transpose();
 	pC = GMatrix::multiply(a, *pB, false, true);
 	if(pC->rows() != 2 || pC->cols() != 2)
 		throw Ex("wrong size");
-	if(pC->row(0)[0] != 107 || pC->row(0)[1] != 227 ||
-		pC->row(1)[0] != 172 || pC->row(1)[1] != 268)
+	if(pC->row(0)[0] != 107 || pC->row(0)[1] != 227 || pC->row(1)[0] != 172 || pC->row(1)[1] != 268)
 		throw Ex("wrong answer");
 	delete(pC);
 	pC = GMatrix::multiply(*pA, *pB, true, true);
 	if(pC->rows() != 2 || pC->cols() != 2)
 		throw Ex("wrong size");
-	if(pC->row(0)[0] != 107 || pC->row(0)[1] != 227 ||
-		pC->row(1)[0] != 172 || pC->row(1)[1] != 268)
+	if(pC->row(0)[0] != 107 || pC->row(0)[1] != 227 || pC->row(1)[0] != 172 || pC->row(1)[1] != 268)
 		throw Ex("wrong answer");
 	delete(pC);
 	delete(pA);
@@ -4295,9 +4312,15 @@ void GMatrix_testMultiply()
 void GMatrix_testCholesky()
 {
 	GMatrix m1(3, 3);
-	m1[0][0] = 3;	m1[0][1] = 0;	m1[0][2] = 0;
-	m1[1][0] = 1;	m1[1][1] = 4;	m1[1][2] = 0;
-	m1[2][0] = 2;	m1[2][1] = 2;	m1[2][2] = 7;
+	m1[0][0] = 3;
+	m1[0][1] = 0;
+	m1[0][2] = 0;
+	m1[1][0] = 1;
+	m1[1][1] = 4;
+	m1[1][2] = 0;
+	m1[2][0] = 2;
+	m1[2][1] = 2;
+	m1[2][2] = 7;
 	GMatrix* pM3 = GMatrix::multiply(m1, m1, false, true);
 	std::unique_ptr<GMatrix> hM3(pM3);
 	GMatrix* pM4 = pM3->cholesky();
@@ -4309,19 +4332,31 @@ void GMatrix_testCholesky()
 void GMatrix_testInvert()
 {
 	GMatrix i1(3, 3);
-	i1[0][0] = 2;	i1[0][1] = -1;	i1[0][2] = 0;
-	i1[1][0] = -1;	i1[1][1] = 2;	i1[1][2] = -1;
-	i1[2][0] = 0;	i1[2][1] = -1;	i1[2][2] = 2;
-//	i1.invert();
+	i1[0][0] = 2;
+	i1[0][1] = -1;
+	i1[0][2] = 0;
+	i1[1][0] = -1;
+	i1[1][1] = 2;
+	i1[1][2] = -1;
+	i1[2][0] = 0;
+	i1[2][1] = -1;
+	i1[2][2] = 2;
+	//	i1.invert();
 	GMatrix* pInv = i1.pseudoInverse();
 	std::unique_ptr<GMatrix> hInv(pInv);
 	GMatrix i2(3, 3);
-	i2[0][0] = .75;	i2[0][1] = .5;	i2[0][2] = .25;
-	i2[1][0] = .5;	i2[1][1] = 1;	i2[1][2] = .5;
-	i2[2][0] = .25;	i2[2][1] = .5;	i2[2][2] = .75;
+	i2[0][0] = .75;
+	i2[0][1] = .5;
+	i2[0][2] = .25;
+	i2[1][0] = .5;
+	i2[1][1] = 1;
+	i2[1][2] = .5;
+	i2[2][0] = .25;
+	i2[2][1] = .5;
+	i2[2][2] = .75;
 	if(pInv->sumSquaredDifference(i2, false) >= .0001)
 		throw Ex("Not good enough");
-//	i1.invert();
+	//	i1.invert();
 	GMatrix* pInvInv = pInv->pseudoInverse();
 	std::unique_ptr<GMatrix> hInvInv(pInvInv);
 	GMatrix* pI3 = GMatrix::multiply(*pInvInv, i2, false, false);
@@ -4335,11 +4370,23 @@ void GMatrix_testInvert()
 void GMatrix_testDeterminant()
 {
 	const double dettest[] =
-	{
-		1,2,3,4,
-		5,6,7,8,
-		2,6,4,8,
-		3,1,1,2,
+	  {
+	    1,
+	    2,
+	    3,
+	    4,
+	    5,
+	    6,
+	    7,
+	    8,
+	    2,
+	    6,
+	    4,
+	    8,
+	    3,
+	    1,
+	    1,
+	    2,
 	};
 	GMatrix d1(0, 4);
 	d1.fromVector(dettest, 4);
@@ -4347,9 +4394,11 @@ void GMatrix_testDeterminant()
 	if(std::abs(det - 72.0) >= .0001)
 		throw Ex("wrong");
 	const double dettest2[] =
-	{
-		3,2,
-		5,7,
+	  {
+	    3,
+	    2,
+	    5,
+	    7,
 	};
 	GMatrix d2(0, 2);
 	d2.fromVector(dettest2, 2);
@@ -4357,10 +4406,16 @@ void GMatrix_testDeterminant()
 	if(std::abs(det - 11.0) >= .0001)
 		throw Ex("wrong");
 	const double dettest3[] =
-	{
-		1,2,3,
-		4,5,6,
-		7,8,9,
+	  {
+	    1,
+	    2,
+	    3,
+	    4,
+	    5,
+	    6,
+	    7,
+	    8,
+	    9,
 	};
 	GMatrix d3(0, 3);
 	d3.fromVector(dettest3, 3);
@@ -4372,18 +4427,50 @@ void GMatrix_testDeterminant()
 void GMatrix_testReducedRowEchelonForm()
 {
 	const double reducedrowechelonformtest[] =
-	{
-		1,-1,1,0,2,
-		2,-2,0,2,2,
-		-1,1,2,-3,1,
-		-2,2,1,-3,-1,
+	  {
+	    1,
+	    -1,
+	    1,
+	    0,
+	    2,
+	    2,
+	    -2,
+	    0,
+	    2,
+	    2,
+	    -1,
+	    1,
+	    2,
+	    -3,
+	    1,
+	    -2,
+	    2,
+	    1,
+	    -3,
+	    -1,
 	};
 	const double reducedrowechelonformanswer[] =
-	{
-		1,-1,0,1,1,
-		0,0,1,-1,1,
-		0,0,0,0,0,
-		0,0,0,0,0,
+	  {
+	    1,
+	    -1,
+	    0,
+	    1,
+	    1,
+	    0,
+	    0,
+	    1,
+	    -1,
+	    1,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
+	    0,
 	};
 	GMatrix r1(0, 5);
 	r1.fromVector(reducedrowechelonformtest, 4);
@@ -4394,23 +4481,35 @@ void GMatrix_testReducedRowEchelonForm()
 	if(r1.sumSquaredDifference(r2) > .001)
 		throw Ex("wrong answer");
 	const double reducedrowechelonformtest2[] =
-	{
-		-2, -4, 4,
-		2, -8, 0,
-		8, 4, -12,
+	  {
+	    -2,
+	    -4,
+	    4,
+	    2,
+	    -8,
+	    0,
+	    8,
+	    4,
+	    -12,
 	};
 	const double reducedrowechelonformanswer2[] =
-	{
-		1, 0, -4.0/3,
-		0, 1, -1.0/3,
-		0, 0, 0,
+	  {
+	    1,
+	    0,
+	    -4.0 / 3,
+	    0,
+	    1,
+	    -1.0 / 3,
+	    0,
+	    0,
+	    0,
 	};
 	GMatrix r3(0, 3);
 	r3.fromVector(reducedrowechelonformtest2, 3);
 	if(r3.toReducedRowEchelonForm() != 2)
 		throw Ex("wrong answer");
 	GMatrix r4(0, 3);
- 	r4.fromVector(reducedrowechelonformanswer2, 3);
+	r4.fromVector(reducedrowechelonformanswer2, 3);
 	if(r4.sumSquaredDifference(r3) > .001)
 		throw Ex("wrong answer");
 }
@@ -4450,8 +4549,10 @@ void GMatrix_testPrincipalComponents(GRand& prng)
 
 	// Test most significant eigenvector computation
 	GMatrix e1(2, 2);
-	e1[0][0] = 1;	e1[0][1] = 1;
-	e1[1][0] = 1;	e1[1][1] = 4;
+	e1[0][0] = 1;
+	e1[0][1] = 1;
+	e1[1][0] = 1;
+	e1[1][1] = 4;
 	GVec ev2(2);
 	GMatrix* pE2 = e1.eigs(2, ev2, &prng, true);
 	std::unique_ptr<GMatrix> hE2(pE2);
@@ -4466,8 +4567,10 @@ void GMatrix_testPrincipalComponents(GRand& prng)
 
 	// Test least significant eigenvector computation and gaussian ellimination
 	GMatrix e3(2, 2);
-	e3[0][0] = 9;	e3[0][1] = 3;
-	e3[1][0] = 3;	e3[1][1] = 5;
+	e3[0][0] = 9;
+	e3[0][1] = 3;
+	e3[1][0] = 3;
+	e3[1][1] = 5;
 	GMatrix* pE4 = e3.eigs(2, ev2, &prng, true);
 	std::unique_ptr<GMatrix> hE4(pE4);
 	GMatrix* pE5 = e3.eigs(2, ev2, &prng, false);
@@ -4571,8 +4674,10 @@ void GMatrix_testSingularValueDecomposition()
 	double* pDiag;
 	GMatrix* pV;
 	GMatrix M(2, 2);
-	M[0][0] = 4.0; M[0][1] = 3.0;
-	M[1][0] = 0.0; M[1][1] = -5.0;
+	M[0][0] = 4.0;
+	M[0][1] = 3.0;
+	M[1][0] = 0.0;
+	M[1][1] = -5.0;
 	M.singularValueDecomposition(&pU, &pDiag, &pV);
 	std::unique_ptr<GMatrix> hU(pU);
 	std::unique_ptr<double[]> hDiag(pDiag);
@@ -4601,43 +4706,61 @@ void GMatrix_testPseudoInverse()
 {
 	{
 		GMatrix M(2, 2);
-		M[0][0] = 1.0; M[0][1] = 1.0;
-		M[1][0] = 2.0; M[1][1] = 2.0;
+		M[0][0] = 1.0;
+		M[0][1] = 1.0;
+		M[1][0] = 2.0;
+		M[1][1] = 2.0;
 		GMatrix* A = M.pseudoInverse();
 		std::unique_ptr<GMatrix> hA(A);
 		GMatrix B(2, 2);
-		B[0][0] = 0.1; B[0][1] = 0.2;
-		B[1][0] = 0.1; B[1][1] = 0.2;
+		B[0][0] = 0.1;
+		B[0][1] = 0.2;
+		B[1][0] = 0.1;
+		B[1][1] = 0.2;
 		if(A->sumSquaredDifference(B, false) > 1e-8)
 			throw Ex("failed");
 	}
 	{
 		GMatrix M(3, 2);
-		M[0][0] = 1.0; M[0][1] = 2.0;
-		M[1][0] = 3.0; M[1][1] = 4.0;
-		M[2][0] = 5.0; M[2][1] = 6.0;
+		M[0][0] = 1.0;
+		M[0][1] = 2.0;
+		M[1][0] = 3.0;
+		M[1][1] = 4.0;
+		M[2][0] = 5.0;
+		M[2][1] = 6.0;
 		GMatrix* A = M.pseudoInverse();
 		std::unique_ptr<GMatrix> hA(A);
 		if(A->rows() != 2 || A->cols() != 3)
 			throw Ex("wrong size");
 		GMatrix B(2, 3);
-		B[0][0] = -16.0/12.0; B[0][1] = -4.0/12.0; B[0][2] = 8.0/12.0;
-		B[1][0] = 13.0/12.0; B[1][1] = 4.0/12.0; B[1][2] = -5.0/12.0;
+		B[0][0] = -16.0 / 12.0;
+		B[0][1] = -4.0 / 12.0;
+		B[0][2] = 8.0 / 12.0;
+		B[1][0] = 13.0 / 12.0;
+		B[1][1] = 4.0 / 12.0;
+		B[1][2] = -5.0 / 12.0;
 		if(A->sumSquaredDifference(B, false) > 1e-8)
 			throw Ex("failed");
 	}
 	{
 		GMatrix M(2, 3);
-		M[0][0] = 1.0; M[0][1] = 3.0; M[0][2] = 5.0;
-		M[1][0] = 2.0; M[1][1] = 4.0; M[1][2] = 6.0;
+		M[0][0] = 1.0;
+		M[0][1] = 3.0;
+		M[0][2] = 5.0;
+		M[1][0] = 2.0;
+		M[1][1] = 4.0;
+		M[1][2] = 6.0;
 		GMatrix* A = M.pseudoInverse();
 		std::unique_ptr<GMatrix> hA(A);
 		if(A->rows() != 3 || A->cols() != 2)
 			throw Ex("wrong size");
 		GMatrix B(3, 2);
-		B[0][0] = -16.0/12.0; B[0][1] = 13.0/12.0;
-		B[1][0] = -4.0/12.0; B[1][1] = 4.0/12.0;
-		B[2][0] = 8.0/12.0; B[2][1] = -5.0/12.0;
+		B[0][0] = -16.0 / 12.0;
+		B[0][1] = 13.0 / 12.0;
+		B[1][0] = -4.0 / 12.0;
+		B[1][1] = 4.0 / 12.0;
+		B[2][0] = 8.0 / 12.0;
+		B[2][1] = -5.0 / 12.0;
 		if(A->sumSquaredDifference(B, false) > 1e-8)
 			throw Ex("failed");
 	}
@@ -4654,12 +4777,7 @@ void GMatrix_testKabsch(GRand& prng)
 	}
 	GMatrix rot(5, 5);
 	static const double rr[] = {
-		0.0, 1.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 1.0, 0.0,
-		0.0, 0.0, 0.8, 0.0, -0.6,
-		1.0, 0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.6, 0.0, 0.8
-	};
+	  0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.8, 0.0, -0.6, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.6, 0.0, 0.8};
 	rot.fromVector(rr, 5);
 	GMatrix* pB = GMatrix::multiply(a, rot, false, false);
 	std::unique_ptr<GMatrix> hB(pB);
@@ -4708,16 +4826,26 @@ void GMatrix_testWilcoxon()
 {
 	// These values were copied from the Wikipedia page about the Wilcoxon signed ranks test
 	GMatrix m(10, 2);
-	m[0][0] = 125; m[0][1] = 110;
-	m[1][0] = 115; m[1][1] = 122;
-	m[2][0] = 130; m[2][1] = 125;
-	m[3][0] = 140; m[3][1] = 120;
-	m[4][0] = 140; m[4][1] = 140;
-	m[5][0] = 115; m[5][1] = 124;
-	m[6][0] = 140; m[6][1] = 123;
-	m[7][0] = 125; m[7][1] = 137;
-	m[8][0] = 140; m[8][1] = 135;
-	m[9][0] = 135; m[9][1] = 145;
+	m[0][0] = 125;
+	m[0][1] = 110;
+	m[1][0] = 115;
+	m[1][1] = 122;
+	m[2][0] = 130;
+	m[2][1] = 125;
+	m[3][0] = 140;
+	m[3][1] = 120;
+	m[4][0] = 140;
+	m[4][1] = 140;
+	m[5][0] = 115;
+	m[5][1] = 124;
+	m[6][0] = 140;
+	m[6][1] = 123;
+	m[7][0] = 125;
+	m[7][1] = 137;
+	m[8][0] = 140;
+	m[8][1] = 135;
+	m[9][0] = 135;
+	m[9][1] = 145;
 	int n;
 	double min, plu;
 	m.wilcoxonSignedRanksTest(0, 1, 0.0, &n, &min, &plu);
@@ -4759,8 +4887,8 @@ void GMatrix_testBoundingSphere(GRand& rand)
 void GMatrix_testImport()
 {
 	const char* csv = "3.3, 1.2, 3.5, 0\n"
-		"2.1, 5.6, 3.6, 1\n"
-		"2.0, 0.4, 0.7, 0";
+	                  "2.1, 5.6, 3.6, 1\n"
+	                  "2.0, 0.4, 0.7, 0";
 	GCSVParser parser;
 	GMatrix m;
 	parser.parse(m, csv, strlen(csv));
@@ -4790,36 +4918,47 @@ void GMatrix::test()
 	GMatrix_testImport();
 }
 
-std::string to_str(const GMatrix& m){
-  std::stringstream out;
-  out.precision(14);
-  if(!m.relation().areContinuous()){
-    out << '[';
-    for(unsigned j = 0; j < m.cols(); ++j){
-      if(j != 0){ out << ", ";  }
-      if(m.relation().areContinuous(j,1)){
-	out << "continuous";
-      }else{
-	out << "discrete:" << m.relation().valueCount(j);
-      }
-    }
-    out << "]\n";
-  }else{
-    out << "Continuous matrix:\n";
-  }
-
-  out << '[';
-  for(unsigned i=0; i < m.rows(); ++i){
-    for(unsigned j=0; j < m.cols(); ++j){
-      if(j != 0){ out << ", ";  }
-      out << m[i][j];
-    }
-    if(i+1 < m.rows()){
-      out << "\n";
+std::string to_str(const GMatrix& m)
+{
+	std::stringstream out;
+	out.precision(14);
+	if(!m.relation().areContinuous())
+	{
+		out << '[';
+		for(unsigned j = 0; j < m.cols(); ++j)
+		{
+			if(j != 0) { out << ", "; }
+			if(m.relation().areContinuous(j, 1))
+			{
+				out << "continuous";
+			}
+			else
+			{
+				out << "discrete:" << m.relation().valueCount(j);
+			}
 		}
-  }
+		out << "]\n";
+	}
+	else
+	{
+		out << "Continuous matrix:\n";
+	}
+
+	out << '[';
+	for(unsigned i = 0; i < m.rows(); ++i)
+	{
+		for(unsigned j = 0; j < m.cols(); ++j)
+		{
+			if(j != 0) { out << ", "; }
+			out << m[i][j];
+		}
+		if(i + 1 < m.rows())
+		{
+			out << "\n";
+		}
+	}
 	out << "]\n";
-  return out.str();
+	return out.str();
 }
 
 
@@ -4850,13 +4989,12 @@ GDataColSplitter::~GDataColSplitter()
 
 GCSVParser::GCSVParser()
 : m_single_quotes(false),
-m_separator(','),
-m_columnNamesInFirstRow(false),
-m_tolerant(false),
-m_clearlyNumericalThreshold(10),
-m_maxVals(200)
+  m_separator(','),
+  m_columnNamesInFirstRow(false),
+  m_tolerant(false),
+  m_clearlyNumericalThreshold(10),
+  m_maxVals(200)
 {
-
 }
 
 GCSVParser::~GCSVParser()
@@ -4865,22 +5003,22 @@ GCSVParser::~GCSVParser()
 
 void GCSVParser::setTimeFormat(size_t attr, const char* szFormat)
 {
-	m_formats.insert(std::pair<size_t,string>(attr, szFormat));
+	m_formats.insert(std::pair<size_t, string>(attr, szFormat));
 }
 
 void GCSVParser::setNominalAttr(size_t attr)
 {
-	m_specifiedNominal.insert(std::pair<size_t,size_t>(attr, 0));
+	m_specifiedNominal.insert(std::pair<size_t, size_t>(attr, 0));
 }
 
 void GCSVParser::setRealAttr(size_t attr)
 {
-	m_specifiedReal.insert(std::pair<size_t,size_t>(attr, 0));
+	m_specifiedReal.insert(std::pair<size_t, size_t>(attr, 0));
 }
 
 void GCSVParser::setStripQuotes(size_t attr)
 {
-	m_stripQuotes.insert(std::pair<size_t,size_t>(attr, 0));
+	m_stripQuotes.insert(std::pair<size_t, size_t>(attr, 0));
 }
 
 
@@ -5454,9 +5592,9 @@ void GCSVParser::parse(GMatrix& outMatrix, const char* pFile, size_t len)
 
 GDataRowSplitter::GDataRowSplitter(const GMatrix& features, const GMatrix& labels, GRand& rand, size_t part1Rows)
 : m_f1(features.relation().cloneMinimal()),
-m_f2(features.relation().cloneMinimal()),
-m_l1(labels.relation().cloneMinimal()),
-m_l2(labels.relation().cloneMinimal())
+  m_f2(features.relation().cloneMinimal()),
+  m_l1(labels.relation().cloneMinimal()),
+  m_l2(labels.relation().cloneMinimal())
 {
 	if(features.rows() != labels.rows())
 		throw Ex("Expected features and labels to have the same number of rows");

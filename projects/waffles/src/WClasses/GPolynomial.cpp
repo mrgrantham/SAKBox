@@ -31,7 +31,8 @@
 
 using std::vector;
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// This is an internal helper-class used by GPolynomial
 class GPolynomialSingleLabel
@@ -700,7 +701,7 @@ void GPolynomial::test()
 {
 	GPolynomialSingleLabel::test();
 	GAutoFilter af(new GPolynomial());
-	af.basicTest(0.78, -1.0/*skip it*/);
+	af.basicTest(0.78, -1.0 /*skip it*/);
 }
 
 

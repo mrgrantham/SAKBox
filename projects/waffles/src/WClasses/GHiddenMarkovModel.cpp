@@ -85,7 +85,7 @@ double GHiddenMarkovModel::forwardAlgorithm(const int* pObservations, int len)
 double GHiddenMarkovModel::viterbi(int* pMostLikelyStates, const int* pObservations, int len)
 {
 	// Compute probabilities of initial observation
-	GTEMPBUF(int, backpointers, m_stateCount * (len - 1));
+	GTEMPBUF(int, backpointers, m_stateCount*(len - 1));
 	GVec cur(m_stateCount);
 	GVec prev(m_stateCount);
 	GVec* pCur = &cur;
@@ -144,16 +144,15 @@ void GHiddenMarkovModel::baumWelchBeginTraining(int maxLen)
 	// ensure that the buffers are allocated for alpha and beta
 	m_maxLen = maxLen;
 	delete[] m_pTrainingBuffer;
-	m_pTrainingBuffer = new double[
-			m_stateCount + // initial state probabilities accumulator
-			m_stateCount * m_stateCount + // transition probabilities accumulator
-			m_stateCount * m_symbolCount + // symbol probabilities accumulator
-			m_stateCount * maxLen + // beta
-			m_stateCount + // alpha cur
-			m_stateCount + // alpha prev
-			m_stateCount + // gamma
-			m_stateCount * m_stateCount // xi
-		];
+	m_pTrainingBuffer = new double[m_stateCount + // initial state probabilities accumulator
+	                               m_stateCount * m_stateCount + // transition probabilities accumulator
+	                               m_stateCount * m_symbolCount + // symbol probabilities accumulator
+	                               m_stateCount * maxLen + // beta
+	                               m_stateCount + // alpha cur
+	                               m_stateCount + // alpha prev
+	                               m_stateCount + // gamma
+	                               m_stateCount * m_stateCount // xi
+	];
 }
 
 void GHMM_setAll(double* pVector, double val, size_t size)
@@ -204,9 +203,7 @@ void GHiddenMarkovModel::backwardAlgorithm(const int* pObservations, int len)
 		{
 			double d = 0;
 			for(int k = 0; k < m_stateCount; k++)
-				d += 	m_pTransitionProbabilities[m_stateCount * j + k] *
-					m_pSymbolProbabilities[m_symbolCount * k + pObservations[i + 1]] *
-					pBeta[m_stateCount * (i + 1) + k];
+				d += m_pTransitionProbabilities[m_stateCount * j + k] * m_pSymbolProbabilities[m_symbolCount * k + pObservations[i + 1]] * pBeta[m_stateCount * (i + 1) + k];
 			pBeta[m_stateCount * i + j] = d;
 		}
 
@@ -274,10 +271,7 @@ void GHiddenMarkovModel::baumWelchAddSequence(const int* pObservations, int len)
 				for(int k = 0; k < m_stateCount; k++)
 				{
 					pXi[m_stateCount * j + k] =
-						pCur[j] *
-						m_pTransitionProbabilities[m_stateCount * j + k] *
-						m_pSymbolProbabilities[m_symbolCount * j + pObservations[i]] *
-						pBeta[m_stateCount * (i + 1) + k];
+					  pCur[j] * m_pTransitionProbabilities[m_stateCount * j + k] * m_pSymbolProbabilities[m_symbolCount * j + pObservations[i]] * pBeta[m_stateCount * (i + 1) + k];
 				}
 			}
 		}
@@ -286,7 +280,7 @@ void GHiddenMarkovModel::baumWelchAddSequence(const int* pObservations, int len)
 			GHMM_sumToOne(pXi, m_stateCount * m_stateCount);
 
 		// Accumulate probabilities
-		if(i ==  0)
+		if(i == 0)
 			GVec_add(pAccumInitProb, pGamma, m_stateCount);
 		if(i < len - 1)
 			GVec_add(pAccumTransProb, pXi, m_stateCount * m_stateCount);
@@ -378,15 +372,21 @@ void GHiddenMarkovModel::test()
 	pInitial[0] = 0.4;
 	pInitial[1] = 0.6;
 	double* pTrans = hmm.transitionProbabilities();
-	pTrans[0] = 0.4; pTrans[1] = 0.6;
-	pTrans[2] = 0.6; pTrans[3] = 0.4;
+	pTrans[0] = 0.4;
+	pTrans[1] = 0.6;
+	pTrans[2] = 0.6;
+	pTrans[3] = 0.4;
 	double* pSym = hmm.symbolProbabilities();
-	pSym[0] = 0.5; pSym[1] = 0.5;
-	pSym[2] = 0.3; pSym[3] = 0.7;
+	pSym[0] = 0.5;
+	pSym[1] = 0.5;
+	pSym[2] = 0.3;
+	pSym[3] = 0.7;
 
 	// Do Baum-Welch
 	int seq[3];
-	seq[0] = 1; seq[1] = 0; seq[2] = 1;
+	seq[0] = 1;
+	seq[1] = 0;
+	seq[2] = 1;
 	vector<int*> sequences;
 	sequences.push_back(seq);
 	vector<int> lengths;

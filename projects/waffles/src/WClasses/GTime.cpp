@@ -23,13 +23,14 @@
 #include <time.h>
 #include <cmath>
 #ifdef WINDOWS
-#	include <windows.h>
+#include <windows.h>
 #else
-#	include <sys/time.h>
+#include <sys/time.h>
 #endif
 #include <sstream>
 
-namespace GClasses {
+namespace GClasses
+{
 
 /*static*/ double GTime::seconds()
 {
@@ -47,8 +48,8 @@ namespace GClasses {
 }
 
 // Day and month names in English (as asctime and HTTP use, whatever the locale)
-static const char* const g_GTime_days[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-static const char* const g_GTime_months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+static const char* const g_GTime_days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+static const char* const g_GTime_months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 // SAKBox: t broken into parts, in GMT or local time, without gmtime and
 // localtime's buffer (shared by every thread)
@@ -195,7 +196,7 @@ double GTime_parseDoubleVal(const char* buf, double min, double max, bool* pOk)
 			if(szData[formatChars] == '\0')
 				return false;
 			buf[dataChars] = szData[formatChars];
-			
+
 			// If we're reading integer values, and we already have at least one digit, but the numbers run out before the formatting changes, let that be okay.
 			if(dataChars > 0 && is_double_char(szData[dataChars - 1]) && !is_double_char(szData[dataChars]))
 				dataChars--;
@@ -232,7 +233,7 @@ double GTime_parseDoubleVal(const char* buf, double min, double max, bool* pOk)
 				ts.tm_sec = (int)std::floor(d);
 				fractional_seconds = d - std::floor(d);
 			}
-				break;
+			break;
 			default:
 				for(size_t j = 0; j < formatChars; j++)
 				{

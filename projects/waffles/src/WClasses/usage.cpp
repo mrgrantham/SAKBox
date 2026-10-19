@@ -31,7 +31,10 @@ UsageNode::UsageNode(const char* templ, const char* descrip)
 {
 	const char* origTempl = templ;
 #ifdef DEBUG_HELPERS
-	p0 = NULL; p1 = NULL; p2 = NULL; p3 = NULL;
+	p0 = NULL;
+	p1 = NULL;
+	p2 = NULL;
+	p3 = NULL;
 #endif
 	string s;
 	while(true)
@@ -213,11 +216,9 @@ UsageNode* makeAlgorithmUsageTree()
 	{
 		UsageNode* pBoost = pRoot->add("boost <options> [algorithm]", "Uses ResamplingAdaBoost to create an ensemble that may be more accurate than a lone instance of the specified algorithm. (ResamplingAdaBoost is similar to AdaBoost, except that it uses resampling to approximate weighted instances in the training set. This difference enables it to work with algorithms that do not implicitly support weighted samples.)");
 		UsageNode* pOpts = pBoost->add("<options>");
-		pOpts->add
-		  ("-trainratio [value]=1.0", "When approximating the weighted training set by resampling, use a sample of size [value]*training_set_size");
-		pOpts->add
-		  ("-size [n]=30", "The number of base learners to use in "
-		   "the ensemble.");
+		pOpts->add("-trainratio [value]=1.0", "When approximating the weighted training set by resampling, use a sample of size [value]*training_set_size");
+		pOpts->add("-size [n]=30", "The number of base learners to use in "
+		                           "the ensemble.");
 	}
 	{
 		pRoot->add("cvdt [n]=50", "This is a bucket of two bagging ensembles: one with [n] entropy-reducing decision trees, and one with [n] meanmarginstrees. (This algorithm is specified in Gashler, Michael S. and Giraud-Carrier, Christophe and Martinez, Tony. Decision Tree Ensemble: Small Heterogeneous Is Better Than Large Homogeneous. In The Seventh International Conference on Machine Learning and Applications, Pages 900 - 905, ICMLA '08. 2008)");
@@ -227,11 +228,11 @@ UsageNode* makeAlgorithmUsageTree()
 		UsageNode* pOpts = pDT->add("<options>");
 		pOpts->add("-autotune", "Automatically determine a good set of parameters for this model with the current data.");
 		pOpts->add("-random [draws]=1", "Use random divisions (instead of divisions that reduce entropy). Random divisions make the algorithm train faster, and also increase model variance, so it is better suited for ensembles, "
-			"but random divisions also make the decision tree more vulnerable to problems with irrelevant features. [draws] is typically 1, but if you specify a larger value, it will pick the best out of the specified number of random draws.");
+		                                "but random divisions also make the decision tree more vulnerable to problems with irrelevant features. [draws] is typically 1, but if you specify a larger value, it will pick the best out of the specified number of random draws.");
 		pOpts->add("-binary", "Use binary divisions. For nominal attributes with more than 2 categorical values, one specific value will be separated from all others at each division.");
 		pOpts->add("-leafthresh [n]=1", "When building the tree, if the number of samples is <= this value, it will stop trying to divide the data and will create a leaf node. The default value is 1. For noisy data, larger values may be advantageous.");
 		pOpts->add("-maxlevels [n]=5", "When building the tree, if the depth (the length of the path from the root to the node currently being formed, including the root and the currently forming node) is [n], it will stop trying to divide the data and will create a "
-			"leaf node.  This means that there will be at most [n]-1 splits before a decision is made.  This crudely limits overfitting, and so can be helpful on small data sets.  It can also make the resulting trees easier to interpret.  If set to 0, then there is no maximum (which is the default).");
+		                               "leaf node.  This means that there will be at most [n]-1 splits before a decision is made.  This crudely limits overfitting, and so can be helpful on small data sets.  It can also make the resulting trees easier to interpret.  If set to 0, then there is no maximum (which is the default).");
 	}
 	{
 		UsageNode* pGP = pRoot->add("gaussianprocess <options>", "A Gaussian process model.");
@@ -250,11 +251,9 @@ UsageNode* makeAlgorithmUsageTree()
 	{
 		UsageNode* pGB = pRoot->add("gradboost <options> [algorithm]", "Uses GradBoost to create an ensemble that boosts the accuracy of an underlying model by computing residual models that add together to make a prediction.");
 		UsageNode* pOpts = pGB->add("<options>");
-		pOpts->add
-		  ("-trainratio [value]=1.0", "When approximating the weighted training set by resampling, use a sample of size [value]*training_set_size");
-		pOpts->add
-		  ("-size [n]=30", "The number of base learners to use in "
-		   "the ensemble.");
+		pOpts->add("-trainratio [value]=1.0", "When approximating the weighted training set by resampling, use a sample of size [value]*training_set_size");
+		pOpts->add("-size [n]=30", "The number of base learners to use in "
+		                           "the ensemble.");
 	}
 	{
 		UsageNode* pGCT = pRoot->add("graphcuttransducer <options>", "This is a model-free transduction algorithm. It uses a min-cut/max-flow graph-cut algorithm to separate each label from all of the others.");
@@ -281,7 +280,7 @@ UsageNode* makeAlgorithmUsageTree()
 	}
 	{
 		pRoot->add("meanmarginstree", "This is a very simple oblique (or linear combination) tree. (This algorithm is specified in Gashler, Michael S. and Giraud-Carrier, Christophe and Martinez, "
-			"Tony. Decision Tree Ensemble: Small Heterogeneous Is Better Than Large Homogeneous. In The Seventh International Conference on Machine Learning and Applications, Pages 900 - 905, ICMLA '08. 2008)");
+		                              "Tony. Decision Tree Ensemble: Small Heterogeneous Is Better Than Large Homogeneous. In The Seventh International Conference on Machine Learning and Applications, Pages 900 - 905, ICMLA '08. 2008)");
 	}
 	{
 		UsageNode* pNB = pRoot->add("naivebayes <options>", "The naive Bayes learning algorithm.");
@@ -318,7 +317,7 @@ UsageNode* makeAlgorithmUsageTree()
 		pAdd->add("softroot", "A softroot nonlinearity block");
 		pAdd->add("tanh", "A softroot nonlinearity block");
 		pOpts->add("-concat [inpos] [block]", "Concatenate a block to the last block in this neural net.");
-/*		pOpts->add("-learningrate [value]=0.1", "Specify a value for the learning rate. The default is 0.1");
+		/*		pOpts->add("-learningrate [value]=0.1", "Specify a value for the learning rate. The default is 0.1");
 		pOpts->add("-momentum [value]=0.0", "Specifies a value for the momentum. The default is 0.0");
 		pOpts->add("-windowepochs [value]=200", "Specifies the number of training epochs that are performed before the stopping criteria is tested again. Bigger values will result in a more stable stopping criteria. Smaller values will check the stopping criteria more frequently.");
 		pOpts->add("-minwindowimprovement [value]=0.002", "Specify the minimum improvement that must occur over the window of epochs for training to continue. [value] specifies the minimum decrease in error as a ratio. For example, if value is 0.02, then training will stop when the mean squared error does not decrease by two percent over the window of epochs. Smaller values will typically result in longer training times.");
@@ -478,7 +477,7 @@ UsageNode* makeCollaborativeFilterUsageTree()
 	UsageNode* pRoot = new UsageNode("[collab-filter]", "A collaborative-filtering recommendation algorithm.");
 	{
 		UsageNode* pBag = pRoot->add("bag <contents> end", "A bagging (bootstrap aggregating) ensemble. This is a way to combine the power of collaborative filtering algorithms through voting. \"end\" marks"
-			" the end of the ensemble contents. Each collaborative filtering algorithm instance is trained on a subset of the original data, where each expressed element is given a probability of 0.5 of occurring in the training set.");
+		                                                   " the end of the ensemble contents. Each collaborative filtering algorithm instance is trained on a subset of the original data, where each expressed element is given a probability of 0.5 of occurring in the training set.");
 		UsageNode* pContents = pBag->add("<contents>");
 		pContents->add("[instance_count] [collab-filter]", "Specify the number of instances of a collaborative filtering algorithm to add to the bagging ensemble.");
 	}
@@ -506,7 +505,7 @@ UsageNode* makeCollaborativeFilterUsageTree()
 	}
 	{
 		UsageNode* pMF = pRoot->add("matrix [intrinsic] <options>", "A matrix factorization collaborative-filtering algorithm. (Implemented according to the specification on page 631 in Takacs, G., Pilaszy, I., Nemeth, B., and Tikk, D. Scalable collaborative "
-										"filtering approaches for large recommender systems. The Journal of Machine Learning Research, 10:623-656, 2009. ISSN 1532-4435., except with the addition of learning-rate decay and a different stopping criteria.)");
+		                                                            "filtering approaches for large recommender systems. The Journal of Machine Learning Research, 10:623-656, 2009. ISSN 1532-4435., except with the addition of learning-rate decay and a different stopping criteria.)");
 		pMF->add("[intrinsic]=2", "The number of intrinsic (or latent) feature dims to use to represent each user's preferences.");
 		UsageNode* pOpts = pMF->add("<options>");
 		pOpts->add("-regularize [value]=0.01", "Specify a regularization value. Typically, this is a small value. Larger values will put more pressure on the system to use small values in the matrix factors.");
@@ -516,7 +515,7 @@ UsageNode* makeCollaborativeFilterUsageTree()
 	}
 	{
 		UsageNode* pNLPCA = pRoot->add("nlpca [intrinsic] <options>", "A non-linear PCA collaborative-filtering algorithm. This algorithm was published in Scholz, M. Kaplan, F. Guy, C. L. Kopka, J. Selbig, J., Non-linear PCA: a missing data approach, In Bioinformatics,"
-			" Vol. 21, Number 20, pp. 3887-3895, Oxford University Press, 2005. It uses a generalization of backpropagation to train a multi-layer perceptron to fit to the known ratings, and to predict unknown values.");
+		                                                              " Vol. 21, Number 20, pp. 3887-3895, Oxford University Press, 2005. It uses a generalization of backpropagation to train a multi-layer perceptron to fit to the known ratings, and to predict unknown values.");
 		pNLPCA->add("[intrinsic]=2", "The number of intrinsic (or latent) feature dims to use to represent each user's preferences.");
 		UsageNode* pOpts = pNLPCA->add("<options>");
 		pOpts->add("-addlayer [size]=8", "Add a hidden layer with \"size\" logisitic units to the network. You may use this option multiple times to add multiple layers. The first layer added is adjacent to the input features. The last layer added is adjacent to the output labels. If you don't add any hidden layers, the network is just a single layer of sigmoid units.");
@@ -524,14 +523,14 @@ UsageNode* makeCollaborativeFilterUsageTree()
 		pOpts->add("-momentum [value]=0.0", "Specifies a value for the momentum. The default is 0.0");
 		pOpts->add("-windowepochs [value]=10", "Specifies the number of training epochs that are performed before the stopping criteria is tested again. Bigger values will result in a more stable stopping criteria. Smaller values will check the stopping criteria more frequently.");
 		pOpts->add("-minwindowimprovement [value]=0.0001", "Specify the minimum improvement that must occur over the window of epochs for training to continue. [value] specifies the minimum decrease in error as a ratio. For example, if value is 0.02,"
-			" then training will stop when the mean squared error does not decrease by two percent over the window of epochs. Smaller values will typically result in longer training times.");
+		                                                   " then training will stop when the mean squared error does not decrease by two percent over the window of epochs. Smaller values will typically result in longer training times.");
 		pOpts->add("-dontsquashoutputs", "Don't squash the outputs values with the logistic function. Just report the net value at the output layer. This is often used for regression.");
 		pOpts->add("-noinputbias", "Do not use an input bias.");
 		pOpts->add("-nothreepass", "Use one-pass training instead of three-pass training.");
 		pOpts->add("-regularize [value]=0.0001", "Specify a regularization value. Typically, this is a small value. Larger values will put more pressure on the system to use small values in the matrix factors. Note that is only used if three-pass training is being used and there is at least on hidden layer.");
 		pOpts->add("-miniters [value]=1", "Specify a the minimum number of iterations to train the model before checking its validation error. This ensures that model does at least a certain amount of training before converging.");
 		pOpts->add("-decayrate [value]=0.97", "Specify a decay rate in the range of (0-1) for the learning rate parameter. Value closer to 1 will cause the rate the decay slower while rate closer to 0 cause the a faster decay.");
-/*		UsageNode* pAct = pOpts->add("-activation [func]", "Specify the activation function to use with all subsequently added layers. (For example, if you add this option after all of the -addlayer options, then the specified activation function will"
+		/*		UsageNode* pAct = pOpts->add("-activation [func]", "Specify the activation function to use with all subsequently added layers. (For example, if you add this option after all of the -addlayer options, then the specified activation function will"
 			" only apply to the output layer. If you add this option before all of the -addlayer options, then the specified activation function will be used in all layers. It is okay to use a different activation function with each layer, if you want.)");
 		{
 			pAct->add("logistic", "The logistic sigmoid function. (This is the default activation function.)");
@@ -552,16 +551,16 @@ UsageNode* makeCollaborativeFilterUsageTree()
 		pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		UsageNode* pOpts = pHybridNLPCA->add("<options>");
-                pOpts->add("-addlayer [size]=8", "Add a hidden layer with \"size\" logisitic units to the network. You may use this option multiple times to add multiple layers. The first layer added is adjacent to the input features. The last layer added is adjacent to the output labels. If you don't add any hidden layers, the network is just a single layer of sigmoid units.");
-                pOpts->add("-learningrate [value]=0.1", "Specify a value for the learning rate. The default is 0.1");
-                pOpts->add("-momentum [value]=0.0", "Specifies a value for the momentum. The default is 0.0");
-                pOpts->add("-windowepochs [value]=10", "Specifies the number of training epochs that are performed before the stopping criteria is tested again. Bigger values will result in a more stable stopping criteria. Smaller values will check the stopping criteria more frequently.");
-                pOpts->add("-minwindowimprovement [value]=0.0001", "Specify the minimum improvement that must occur over the window of epochs for training to continue. [value] specifies the minimum decrease in error as a ratio. For example, if value is 0.02,"
-                        " then training will stop when the mean squared error does not decrease by two percent over the window of epochs. Smaller values will typically result in longer training times.");
-                pOpts->add("-dontsquashoutputs", "Don't squash the outputs values with the logistic function. Just report the net value at the output layer. This is often used for regression.");
-                pOpts->add("-crossentropy", "Use cross-entropy instead of squared-error for the error signal.");
-                pOpts->add("-noinputbias", "Do not use an input bias.");
-                pOpts->add("-nothreepass", "Use one-pass training instead of three-pass training.");
+		pOpts->add("-addlayer [size]=8", "Add a hidden layer with \"size\" logisitic units to the network. You may use this option multiple times to add multiple layers. The first layer added is adjacent to the input features. The last layer added is adjacent to the output labels. If you don't add any hidden layers, the network is just a single layer of sigmoid units.");
+		pOpts->add("-learningrate [value]=0.1", "Specify a value for the learning rate. The default is 0.1");
+		pOpts->add("-momentum [value]=0.0", "Specifies a value for the momentum. The default is 0.0");
+		pOpts->add("-windowepochs [value]=10", "Specifies the number of training epochs that are performed before the stopping criteria is tested again. Bigger values will result in a more stable stopping criteria. Smaller values will check the stopping criteria more frequently.");
+		pOpts->add("-minwindowimprovement [value]=0.0001", "Specify the minimum improvement that must occur over the window of epochs for training to continue. [value] specifies the minimum decrease in error as a ratio. For example, if value is 0.02,"
+		                                                   " then training will stop when the mean squared error does not decrease by two percent over the window of epochs. Smaller values will typically result in longer training times.");
+		pOpts->add("-dontsquashoutputs", "Don't squash the outputs values with the logistic function. Just report the net value at the output layer. This is often used for regression.");
+		pOpts->add("-crossentropy", "Use cross-entropy instead of squared-error for the error signal.");
+		pOpts->add("-noinputbias", "Do not use an input bias.");
+		pOpts->add("-nothreepass", "Use one-pass training instead of three-pass training.");
 		pOpts->add("-regularize [value]=0.0001", "Specify a regularization value. Typically, this is a small value. Larger values will put more pressure on the system to use small weight values. Note that is only used if three-pass training is being used and there is at least on hidden layer.");
 		pOpts->add("-miniters [value]=1", "Specify a the minimum number of iterations to train the model before checking its validation error. This ensures that model does at least a certain amount of training before converging.");
 		pOpts->add("-decayrate [value]=0.97", "Specify a decay rate in the range of (0-1) for the learning rate parameter. Value closer to 1 will cause the rate the decay slower while rate closer to 0 cause the a faster decay.");
@@ -570,26 +569,25 @@ UsageNode* makeCollaborativeFilterUsageTree()
 		UsageNode* pCBFilter = pRoot->add("contentbased [item_dataset] <data_opts> [learning_algorithm] <learning_opts>", "A content-based filter. A content-based recommendation filter is build using the supervised learning algorithms provided in the Waffles toolkit.");
 		pCBFilter->add("[items_dataset] <data_opts>", "The dataset representing the item attributes. It is assumed that the item dataset matrix is in the form of item id followed by the attribute values for each item. It assumes that the item corresponds with the first column in the 3-col data.");
 		UsageNode* pDO = pCBFilter->add("<data_opts>");
-                pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
-                pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
-		 pCBFilter->add("[learning_algorithm] <learning_opts>", "See the usage statement for the desired learning algorithm using \"waffles_learn usage\".");
+		pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		pCBFilter->add("[learning_algorithm] <learning_opts>", "See the usage statement for the desired learning algorithm using \"waffles_learn usage\".");
 	}
 	{
 		UsageNode* pCBCF = pRoot->add("cbcf [item_dataset] <data_opts> [learning_algorithm] <learning_opts> -- [k] <inst_options>", "A content-boosted collaborative filter. This algorithm was published in P. Melville, R. Mooney, and R. Nagarajan,"
-			" Content-Boosted Collaborative Filtering for Improved Recommendations, in Proceedings of the 18th National Conference on Artificial Intelligence (AAAI-02), pp. 187-192, 2002. It uses a content-based filter to "
-			"fill in the sparse matrix before giving it to a collaborative filter. We followed the Author's implementation and used an instance-based collaborative filter. Note that this algorithm often takes a while to run.");
+		                                                                                                                            " Content-Boosted Collaborative Filtering for Improved Recommendations, in Proceedings of the 18th National Conference on Artificial Intelligence (AAAI-02), pp. 187-192, 2002. It uses a content-based filter to "
+		                                                                                                                            "fill in the sparse matrix before giving it to a collaborative filter. We followed the Author's implementation and used an instance-based collaborative filter. Note that this algorithm often takes a while to run.");
 		pCBCF->add("[items_dataset] <data_opts>", "The dataset representing the item attributes. It is assumed that the item dataset matrix is in the form of item id followed by the attribute values for each item. It assumes that the item corresponds with the first column in the 3-col data.");
-                UsageNode* pDO = pCBCF->add("<data_opts>");
-                pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
-                pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
-                pCBCF->add("[learning_algorithm] <learning_opts>", "See the usage statement for the desired learning algorithm using \"waffles_learn usage\".");
+		UsageNode* pDO = pCBCF->add("<data_opts>");
+		pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		pCBCF->add("[learning_algorithm] <learning_opts>", "See the usage statement for the desired learning algorithm using \"waffles_learn usage\".");
 		pCBCF->add("--", "Denotes the ending of the learning algorithm parameters and the parameters for the collaborative filter.");
 		pCBCF->add("[k]=256", "The number of neighbors to use.");
-                UsageNode* pOpts = pCBCF->add("<inst_options>");
-                pOpts->add("-pearson", "Use Pearson Correlation to compute the similarity between users. (The default is to use the cosine method.)");
-                pOpts->add("-regularize [value]=0.5", "Add [value] to the denominator in order to regularize the results. This ensures that recommendations will not be dominated when a small number of overlapping items occurs. Typically, [value] will be a small number, like 0.5 or 1.5.");
-                pOpts->add("-sigWeight [value]=0", "Scale the significane weighting of the items based on how many items two users have rated. The default value of 0 indicates the no significance weightig will be done. The significance is scaled as numItemsRatedByBotheUSers/sigWeight.");
-
+		UsageNode* pOpts = pCBCF->add("<inst_options>");
+		pOpts->add("-pearson", "Use Pearson Correlation to compute the similarity between users. (The default is to use the cosine method.)");
+		pOpts->add("-regularize [value]=0.5", "Add [value] to the denominator in order to regularize the results. This ensures that recommendations will not be dominated when a small number of overlapping items occurs. Typically, [value] will be a small number, like 0.5 or 1.5.");
+		pOpts->add("-sigWeight [value]=0", "Scale the significane weighting of the items based on how many items two users have rated. The default value of 0 indicates the no significance weightig will be done. The significance is scaled as numItemsRatedByBotheUSers/sigWeight.");
 	}
 	return pRoot;
 }
@@ -650,52 +648,44 @@ UsageNode* makeDimRedUsageTree()
 		SU->add("[neighbor-count]=12", "The number of neighbors to use.");
 		SU->add("[target_dims]=2", "The number of dimensions to reduce the data into.");
 	}
-	UsageNode* pSOM = pRoot->add
-	  ("som [dataset] [dimensions] <options>",
-	   "Give the output of a Kohonen self-organizing map with the given "
-           "dimensions trained on the input dataset.  Ex: \"som foo 10 11\" "
-	   "would train a 10x11 map on the input data and then give its "
-	   "2D output for each of the input points as a row in the output "
-	   "file.");
+	UsageNode* pSOM = pRoot->add("som [dataset] [dimensions] <options>", "Give the output of a Kohonen self-organizing map with the given "
+	                                                                     "dimensions trained on the input dataset.  Ex: \"som foo 10 11\" "
+	                                                                     "would train a 10x11 map on the input data and then give its "
+	                                                                     "2D output for each of the input points as a row in the output "
+	                                                                     "file.");
 	{
-	  pSOM->add("[dataset]","The filename of a .arff file to be "
-		    "transformed.");
-	  pSOM->add("[dimensions]","A list of integers, one for each "
-		    "dimension of the map being created, giving the number "
-		    "of nodes in that dimension.");
-	  UsageNode* pOpts = pSOM->add("<options>");
-	  {
-	    pOpts->add("-tofile [filename]",
-		       "Write the trained map to the given filename");
-	    pOpts->add("-fromfile [filename]",
-		       "Read a map from the file rather than training it");
-	    pOpts->add("-seed [integer]",
-		       "Seed the random number generator with integer to "
-		       "obtain reproducible results");
-	    pOpts->add("-neighborhood [gaussian|uniform]",
-		       "Use the specified neighborhood type to determine the "
-		       "influence of a node on its neighbors.");
-	    pOpts->add("-printMeshEvery [numIter] [baseFilename] [xDim] [yDim] <showTrain>", "Print a 2D-Mesh visualization every numIter training iteratons to an svg file generated from baseFilename. "
-		"The x dimension and y dimension will be chosen from the zero-indexed dimensions of the input using xDim and yDim.  If the option \"showTrain\" is present then the training data is displayed along with the mesh. "
-		"Ex. \"-printMeshEvery 2 foo 0 1 showTrain\" will write foo_01.svg foo_02.svg etc. every other iteration using the first two dimensions of the input and also display the training data in the svg image. "
-		"Note that including this option twice will create two different printing actions, allowing multiple dimension pairs to be visualized at once.");
-	    pOpts->add("-batchTrain [startWidth] [endWidth] [numEpochs] [numConverge]",
-		       "Trains the network using the batch training algorithm. "
-		       "Neighborhood decreases exponentially from startWidth "
-		       "to endWidth over numEpochs epochs.  Each epoch lasts "
-		       "at most numConverge passes through the dataset "
-		       "waiting for the network to converge.  Do not ignore "
-		       "numConverge=1.  There has been good performance with "
-		       "this on some datasets.  This is the default training "
-		       "algorithm.");
-	    pOpts->add("-stdTrain [startWidth] [endWidth] [startRate] [endRate] [numIter]",
-		       "Trains the network using the standard incremental "
-		       "training algorithm with the network width decreasing "
-		       "exponentially from startWidth to endWidth and the "
-		       "learning rate also decreasing exponentially from "
-		       "startRate to endRate, this will happen in exactly "
-		       "numIter data point presentations.");
-	  }
+		pSOM->add("[dataset]", "The filename of a .arff file to be "
+		                       "transformed.");
+		pSOM->add("[dimensions]", "A list of integers, one for each "
+		                          "dimension of the map being created, giving the number "
+		                          "of nodes in that dimension.");
+		UsageNode* pOpts = pSOM->add("<options>");
+		{
+			pOpts->add("-tofile [filename]", "Write the trained map to the given filename");
+			pOpts->add("-fromfile [filename]", "Read a map from the file rather than training it");
+			pOpts->add("-seed [integer]", "Seed the random number generator with integer to "
+			                              "obtain reproducible results");
+			pOpts->add("-neighborhood [gaussian|uniform]", "Use the specified neighborhood type to determine the "
+			                                               "influence of a node on its neighbors.");
+			pOpts->add("-printMeshEvery [numIter] [baseFilename] [xDim] [yDim] <showTrain>", "Print a 2D-Mesh visualization every numIter training iteratons to an svg file generated from baseFilename. "
+			                                                                                 "The x dimension and y dimension will be chosen from the zero-indexed dimensions of the input using xDim and yDim.  If the option \"showTrain\" is present then the training data is displayed along with the mesh. "
+			                                                                                 "Ex. \"-printMeshEvery 2 foo 0 1 showTrain\" will write foo_01.svg foo_02.svg etc. every other iteration using the first two dimensions of the input and also display the training data in the svg image. "
+			                                                                                 "Note that including this option twice will create two different printing actions, allowing multiple dimension pairs to be visualized at once.");
+			pOpts->add("-batchTrain [startWidth] [endWidth] [numEpochs] [numConverge]", "Trains the network using the batch training algorithm. "
+			                                                                            "Neighborhood decreases exponentially from startWidth "
+			                                                                            "to endWidth over numEpochs epochs.  Each epoch lasts "
+			                                                                            "at most numConverge passes through the dataset "
+			                                                                            "waiting for the network to converge.  Do not ignore "
+			                                                                            "numConverge=1.  There has been good performance with "
+			                                                                            "this on some datasets.  This is the default training "
+			                                                                            "algorithm.");
+			pOpts->add("-stdTrain [startWidth] [endWidth] [startRate] [endRate] [numIter]", "Trains the network using the standard incremental "
+			                                                                                "training algorithm with the network width decreasing "
+			                                                                                "exponentially from startWidth to endWidth and the "
+			                                                                                "learning rate also decreasing exponentially from "
+			                                                                                "startRate to endRate, this will happen in exactly "
+			                                                                                "numIter data point presentations.");
+		}
 	}
 	{
 		UsageNode* pSVD = pRoot->add("svd [matrix] <options>", "Compute the singular value decomposition of a matrix.");
@@ -769,7 +759,7 @@ UsageNode* makeGenerateUsageTree()
 		pOpts->add("-pointradius [radius]=40.0", "Set the size of the points. The default is 40.0.");
 		pOpts->add("-bgcolor [color]=ddeeff", "Set the background color. If not specified, the default is ffffff.");
 		pOpts->add("-cameradistance [dist]=3.5", "Set the distance between the camera and the mean of the data. This value is specified as a factor, which is multiplied by "
-						"the distance between the min and max corners of the data. If not specified, the default is 1.5. (If the camera is too close to the data, make this value bigger.)");
+		                                         "the distance between the min and max corners of the data. If not specified, the default is 1.5. (If the camera is too close to the data, make this value bigger.)");
 		pOpts->add("-cameradirection [dx] [dy] [dz]", "Specifies the direction from the camera to the mean of the data. (The camera always looks at the mean.) The default is 0.6 -0.3 -0.8.");
 		pOpts->add("-out [filename]=plot.png", "Specify the name of the output file. (The default is plot.png.) It should have the .png extension because other image formats are not yet supported.");
 		pOpts->add("-nolabels", "Don't put axis labels on the bounding box.");
@@ -859,13 +849,13 @@ UsageNode* makeGenerateUsageTree()
 		UsageNode* pOpts = pManifold->add("<options>");
 		pOpts->add("-seed [value]=0", "Specify a seed for the random number generator.");
 		pManifold->add("[equations]=\"y1(x1,x2)=x1;y2(x1,x2)=sqrt(x1*x2);h(x)=sqrt(1-x);y3(x1,x2)=x2*x2-h(x1)\"", "A set of equations that define the manifold. The equations that define the manifold must be named y1, y2, ..., but helper equations may be included. The "
-			"manifold-defining equations must all have the same number of parameters. The parameters will be drawn from a standard normal distribution (from 0 to 1). Usually it is a good idea to wrap the equations in quotes. Example: \"y1(x1,x2)=x1;y2(x1,x2)=sqrt(x1*x2);h(x)=sqrt(1-x);y3(x1,x2)=x2*x2-h(x1)\"");
+		                                                                                                          "manifold-defining equations must all have the same number of parameters. The parameters will be drawn from a standard normal distribution (from 0 to 1). Usually it is a good idea to wrap the equations in quotes. Example: \"y1(x1,x2)=x1;y2(x1,x2)=sqrt(x1*x2);h(x)=sqrt(1-x);y3(x1,x2)=x2*x2-h(x1)\"");
 	}
 	{
 		UsageNode* pMap = pRoot->add("map [in] [equations]", "Map a dataset using the specified equations.");
 		pMap->add("[in]=in.arff", "The input dataset.");
 		pMap->add("[equations]=\"y1(x1,x2)=x1;y2(x1,x2)=sqrt(x1*x2);h(x)=sqrt(1-x);y3(x1,x2)=x2*x2-h(x1)\"", "A set of equations that define the mapping. The number of input values should match the number of columns in the input data. The number of equations will determine the number of columns in the output data. The equations that define the manifold must be named y1, y2, ..., but helper equations may be included."
-			"Usually it is a good idea to wrap the equations in quotes. Example: \"y1(x1,x2)=x1;y2(x1,x2)=sqrt(x1*x2);h(x)=sqrt(1-x);y3(x1,x2)=x2*x2-h(x1)\"");
+		                                                                                                     "Usually it is a good idea to wrap the equations in quotes. Example: \"y1(x1,x2)=x1;y2(x1,x2)=sqrt(x1*x2);h(x)=sqrt(1-x);y3(x1,x2)=x2*x2-h(x1)\"");
 	}
 	{
 		UsageNode* pModel = pRoot->add("model [model-file] [dataset] [attr-x] [attr-y] <options>", "Plot the model space of a trained supervised learning algorithm.");
@@ -995,9 +985,9 @@ UsageNode* makeLearnUsageTree()
 		pAT->add("[dataset]=train.arff", "The filename of a dataset.");
 		UsageNode* pDO = pAT->add("<data_opts>");
 		pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a"
-			" range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  " range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of "
-			"columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  "columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		UsageNode* pAlgs = pAT->add("[algname]", "The name of the algorithm that you wish to automatically tune.");
 		pAlgs->add("agglomerativetransducer", "An agglomerative transducer");
 		pAlgs->add("decisiontree", "A decision tree");
@@ -1016,9 +1006,9 @@ UsageNode* makeLearnUsageTree()
 		pTrain->add("[dataset]=train.arff", "The filename of a dataset.");
 		UsageNode* pDO = pTrain->add("<data_opts>");
 		pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of"
-			" columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  " columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns. "
-			"A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  "A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 	}
 	{
 		UsageNode* pPredict = pRoot->add("predict <options> [model-file] [dataset] <data_opts>", "Predict labels for all of the patterns in [dataset]. Results are printed in the form of a \".arff\" file (containing only predicted labels) to stdout.");
@@ -1028,9 +1018,9 @@ UsageNode* makeLearnUsageTree()
 		pPredict->add("[dataset]=test.arff", "The filename of a dataset. (There should already be placeholder labels in this dataset. The placeholder labels will be replaced in the output by the labels that the model predicts.)");
 		UsageNode* pDO = pPredict->add("<data_opts>");
 		pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be "
-			"used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  "used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns. "
-			"A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  "A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 	}
 	{
 		UsageNode* pPOP = pRoot->add("predictdistribution <options> [model-file] [dataset] <data_opts>", "Predict a distribution for all of the patterns in [dataset]. Results are printed in the form of a \".arff\" file.");
@@ -1114,7 +1104,7 @@ UsageNode* makeLearnUsageTree()
 		pPR->add("[dataset]=data.arff", "The filename of a dataset.");
 		UsageNode* pDO = pPR->add("<data_opts>");
 		pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to"
-					" columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  " columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 	}
 	{
@@ -1126,10 +1116,10 @@ UsageNode* makeLearnUsageTree()
 		pSter->add("[dataset]=data.arff", "The filename of a dataset to sterilize.");
 		UsageNode* pDO = pSter->add("<data_opts>");
 		pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to"
-					" columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  " columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 	}
-/*	{
+	/*	{
 		UsageNode* pTR = pRoot->add("trainrecurrent <options> [method] [obs-data] [action-data] [context-dims] [algorithm] [algorithm]", "Train a recurrent model of a dynamical system with the specified training [method]. The training data is specified by [obs-data], which specifies the sequence of observations, and [action-data], which specifies the sequence of actions. "
 			"[context-dims] specifies the number of dimensions in the state-space of the system. The two algorithms specify the two functions of a model of a dynamical system. The first [algorithm] models the transition function. The second [algorithm] models the observation function.");
 		UsageNode* pOpts = pTR->add("<options>");
@@ -1154,7 +1144,7 @@ UsageNode* makeLearnUsageTree()
 		pOpt->add("[dataset]=data.arff", "The filename of a dataset.");
 		UsageNode* pDO = pOpt->add("<data_opts>");
 		pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to"
-					" columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  " columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		pOpt->add("[equation]=\"f(x1,x2,p1,p2,p3)=p1*x1+p2*x2+p3\"", "An equation to regress to fit the data. The equation must be named 'f'. It can call helper-equations, separated by semicolons, if needed. Example: \"f(x1,x2,p1,p2,p3)=s(p1*x1+p2*x2+p3);s(x)=1/(1+e^(-x))\"");
 	}
@@ -1232,13 +1222,13 @@ UsageNode* makePlotUsageTree()
 		pOpts->add("-aspect", "Adjust the range to preserve the aspect ratio. In other words, make sure that both axes visually have the same scale.");
 		pOpts->add("-thickness [size]=1", "Specify the thickness of the lines.");
 		pEquat->add("[equations]=\"f1(x)=sin(x)/x\"", "A set of equations separated by semicolons. Since '^' is a special character for many shells, it's usually a good idea to put your equations inside quotation marks. Here are some examples:\n      "
-		"\"f1(x)=3*x+2\"\n"
-		"\"f1(x)=(g(x)+1)/g(x); g(x)=sqrt(x)+pi\"\n"
-		"\"h(bob)=bob^2;f1(x)=3+bar(x,5)*h(x)-(x/foo);bar(a,b)=a*b-b;foo=3.2\"\n      "
-		"Only functions that begin with 'f' followed by a number will be plotted, starting with 'f1', and it will stop when the next number in ascending order is not defined. You may define any number of helper functions or constants with any name you like. Built in constants include: e, and pi. "
-		"Built in functions include: +, -, *, /, %, ^, abs, acos, acosh, asin, asinh, atan, atanh, ceil, cos, cosh, erf, floor, gamma, lgamma, log, max, min, normal, sin, sinh, sqrt, tan, and tanh."
-		" These generally have the same meaning as in C, except '^' means exponent, \"gamma\" is the gamma function, \"normal\" is the standard normal pdf, and max and min can support any number (>=1) of parameters. (Some of these functions may not not be available on Windows, but most of them are.) You can override any built in constants or "
-		"functions with your own variables or functions, so you don't need to worry too much about name collisions. Variables must begin with an alphabet character or an underscore. Multiplication is never implicit, so you must use a '*' character to multiply. Whitespace is ignored.");
+		                                              "\"f1(x)=3*x+2\"\n"
+		                                              "\"f1(x)=(g(x)+1)/g(x); g(x)=sqrt(x)+pi\"\n"
+		                                              "\"h(bob)=bob^2;f1(x)=3+bar(x,5)*h(x)-(x/foo);bar(a,b)=a*b-b;foo=3.2\"\n      "
+		                                              "Only functions that begin with 'f' followed by a number will be plotted, starting with 'f1', and it will stop when the next number in ascending order is not defined. You may define any number of helper functions or constants with any name you like. Built in constants include: e, and pi. "
+		                                              "Built in functions include: +, -, *, /, %, ^, abs, acos, acosh, asin, asinh, atan, atanh, ceil, cos, cosh, erf, floor, gamma, lgamma, log, max, min, normal, sin, sinh, sqrt, tan, and tanh."
+		                                              " These generally have the same meaning as in C, except '^' means exponent, \"gamma\" is the gamma function, \"normal\" is the standard normal pdf, and max and min can support any number (>=1) of parameters. (Some of these functions may not not be available on Windows, but most of them are.) You can override any built in constants or "
+		                                              "functions with your own variables or functions, so you don't need to worry too much about name collisions. Variables must begin with an alphabet character or an underscore. Multiplication is never implicit, so you must use a '*' character to multiply. Whitespace is ignored.");
 	}
 	{
 		pRoot->add("graph", "Opens an interactive graphing tool in the web browser");
@@ -1257,9 +1247,9 @@ UsageNode* makePlotUsageTree()
 		pPDT->add("<dataset>", "An optional filename of the arff file that was used to train the decision tree. The data in this file is ignored, but the meta-data will be used to make the printed model richer.");
 		UsageNode* pDO = pPDT->add("<data_opts>");
 		pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a "
-						"comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  "comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns. "
-						"A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  "A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 	}
 	{
 		UsageNode* pPDT = pRoot->add("printrandomforest [model-file] <dataset> <data_opts>", "Print a textual representation of random forest to stdout.");
@@ -1267,7 +1257,7 @@ UsageNode* makePlotUsageTree()
 		pPDT->add("<dataset>", "An optional filename of the arff file that was used to train the random forest. The data in this file is ignored, but the meta-data will be used to make the printed model richer.");
 		UsageNode* pDO = pPDT->add("<data_opts>");
 		pDO->add("-labels [attr_list]=0", "Specify which attributes to use as labels. (If not specified, the default is to use the last attribute for the label.) [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to "
-					"specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
+		                                  "specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 		pDO->add("-ignore [attr_list]=0", "Specify attributes to ignore. [attr_list] is a comma-separated list of zero-indexed columns. A hypen may be used to specify a range of columns.  A '*' preceding a value means to index from the right instead of the left. For example, \"0,2-5\" refers to columns 0, 2, 3, 4, and 5. \"*0\" refers to the last column. \"0-*1\" refers to all but the last column.");
 	}
 	{
@@ -1316,41 +1306,39 @@ UsageNode* makePlotUsageTree()
 		pOpts->add("-thickness=1.0", "Specify the thickness (in window units) of the lines to use to connect the points. (Use 0 if you want a scatter plot with no connecting lines.)");
 	}
 	pRoot->add("percentsame [dataset1] [dataset2]", "Given two "
-		   "data files, counts the number of identical values in the "
-		   "same place in each dataset.  Prints as a percent for "
-		   "each column.  The data files must have the same "
-		   "number and type of attributes as well as the same number "
-		   "of rows.");
+	                                                "data files, counts the number of identical values in the "
+	                                                "same place in each dataset.  Prints as a percent for "
+	                                                "each column.  The data files must have the same "
+	                                                "number and type of attributes as well as the same number "
+	                                                "of rows.");
 	{
-	UsageNode* pSemMap = pRoot->add
-	  ("semanticmap [model-file] [dataset] <options>",
-	   "Write a svg file representing a semantic map for the given "
-	   "self-organizing map processing the given dataset.  For each node "
-	   "n, a semantic map plots, at "
-	   "n's location in the map, one attribute (usually a class label) of "
-	   "the entry of the input data to which n responds most strongly.");
-	{
-	  pSemMap->add("[model-file]","The self-organizing map output "
-		       "from \"waffles_transform som\".");
-	  pSemMap->add("[dataset]","Data for the semantic map in .arff "
-		       "format.  Any attributes over the number needed for "
-		       "input to the self-organizing map are ignored in "
-		       "determining som node responses.");
-	  UsageNode* pOpts = pSemMap->add("<options>");
-	  {
-	    pOpts->add("-out [filename]", "Write the svg file to filename.  "
-		       "The default is \"semantic_map.svg\".");
-	    pOpts->add("-labels [column]","Use the attribute column for "
-		       "labeling.  Column is a zero-based index into the "
-		       "attributes.  The default is to use the last column.");
-	    pOpts->add("-variance","Label the nodes with the variance of the "
-		       "label column values for their winning dataset entries. "
-		       "If the label column is a variable being predicted, "
-		       "then its variance its related to the predictive power "
-		       "of that node.  Higher variance means lower predictive "
-		       "power.");
-	  }
-	}
+		UsageNode* pSemMap = pRoot->add("semanticmap [model-file] [dataset] <options>", "Write a svg file representing a semantic map for the given "
+		                                                                                "self-organizing map processing the given dataset.  For each node "
+		                                                                                "n, a semantic map plots, at "
+		                                                                                "n's location in the map, one attribute (usually a class label) of "
+		                                                                                "the entry of the input data to which n responds most strongly.");
+		{
+			pSemMap->add("[model-file]", "The self-organizing map output "
+			                             "from \"waffles_transform som\".");
+			pSemMap->add("[dataset]", "Data for the semantic map in .arff "
+			                          "format.  Any attributes over the number needed for "
+			                          "input to the self-organizing map are ignored in "
+			                          "determining som node responses.");
+			UsageNode* pOpts = pSemMap->add("<options>");
+			{
+				pOpts->add("-out [filename]", "Write the svg file to filename.  "
+				                              "The default is \"semantic_map.svg\".");
+				pOpts->add("-labels [column]", "Use the attribute column for "
+				                               "labeling.  Column is a zero-based index into the "
+				                               "attributes.  The default is to use the last column.");
+				pOpts->add("-variance", "Label the nodes with the variance of the "
+				                        "label column values for their winning dataset entries. "
+				                        "If the label column is a variable being predicted, "
+				                        "then its variance its related to the predictive power "
+				                        "of that node.  Higher variance means lower predictive "
+				                        "power.");
+			}
+		}
 		UsageNode* pStats = pRoot->add("stats [dataset] <options>", "Prints some basic stats about the dataset to stdout.");
 		pStats->add("[dataset]=data.arff", "The filename of a dataset.");
 		UsageNode* pOpts = pStats->add("<options>");
@@ -1440,7 +1428,7 @@ UsageNode* makeSparseUsageTree()
 	UsageNode* pRoot = new UsageNode("waffles_sparse [command]", "Sparse learning, document classification, information retrieval, etc.");
 	{
 		UsageNode* pDocsToSparse = pRoot->add("docstosparsematrix <options> [folder1] [folder2] ...", "Converts a set of documents to a sparse feature matrix, and a dense label matrix. [folder1] should contain all of the documents in class1. [folder2] should contain all the documents in class2, and so forth. The words are filtered against a common set of stop words. Also, words less than 4 letters are ignored. "
-			"Currently, only .txt documents are supported. Other file types are ignored. Each row in the sparse matrix represents one of the documents. Subdirectories are not followed. The feature vector is saved to a sparse matrix in compressed-column format. If more than one folder is specified, then a dense label matrix will also be generated. A mapping from row number to document filename is printed to stdout.");
+		                                                                                              "Currently, only .txt documents are supported. Other file types are ignored. Each row in the sparse matrix represents one of the documents. Subdirectories are not followed. The feature vector is saved to a sparse matrix in compressed-column format. If more than one folder is specified, then a dense label matrix will also be generated. A mapping from row number to document filename is printed to stdout.");
 		UsageNode* pOpts = pDocsToSparse->add("<options>");
 		pOpts->add("-nostem", "Specifies not to stem the words. (The default is to use the Porter stemming algorithm.)");
 		pOpts->add("-binary", "Just use the value 1 if the word occurs in a document, or a 0 if it does not occur. The default behavior is to compute the somewhat more meaningful value: a/b*log(c/d), where a=the number of times the word occurs in this document, b=the max number of times this word occurs in any document, c=total number of documents, and d=number of documents that contain this word.");
@@ -1734,7 +1722,7 @@ UsageNode* makeTransformUsageTree()
 	}
 	{
 		UsageNode* pNomToCat = pRoot->add("nominaltocat [dataset] <options>", "Convert all nominal attributes in the data to vectors of real values by representing them as a categorical distribution. Columns with only two nominal values are "
-											"converted to 0 or 1. If there are three or more possible values, a column is created for each value. The column corresponding to the value is set to 1, and the others are set to 0. (This is similar to Weka's NominalToBinaryFilter.)");
+		                                                                      "converted to 0 or 1. If there are three or more possible values, a column is created for each value. The column corresponding to the value is set to 1, and the others are set to 0. (This is similar to Weka's NominalToBinaryFilter.)");
 		pNomToCat->add("[dataset]=data.arff", "The filename of a dataset");
 		UsageNode* pOpts = pNomToCat->add("<options>");
 		pOpts->add("-maxvalues [cap]=8", "Specify the maximum number of nominal values for which to create new columns. If not specified, the default is 12.");
@@ -1760,11 +1748,11 @@ UsageNode* makeTransformUsageTree()
 	pRoot->add("pseudoinverse [dataset]=m.arff", "Compute the Moore-Penrose pseudo-inverse of the specified matrix of real values.");
 	pRoot->add("reducedrowechelonform [dataset]=m.arff", "Convert a matrix to reduced row echelon form. Results are printed to stdout.");
 	{
-		UsageNode* pRotate = pRoot->add("rotate [dataset] [col_x] [col_y] [angle_degrees]","Rotate angle degrees around the origin in in the col_x,col_y plane. Only affects the values in col_x and col_y.");
+		UsageNode* pRotate = pRoot->add("rotate [dataset] [col_x] [col_y] [angle_degrees]", "Rotate angle degrees around the origin in in the col_x,col_y plane. Only affects the values in col_x and col_y.");
 		pRotate->add("[dataset]=in.arff", "The filename of a dataset.");
 		pRotate->add("[col_x]=0", "The zero-based index of an attribute to serve as the x coordinate in the plane of rotation.  Rotation from x to y will be 90 degrees. col_x must be a real-valued attribute.");
 		pRotate->add("[col_y]=1", "The zero-based index of an attribute to serve as the y coordinate in the plane of rotation.  Rotation from y to x will be 270 degrees. col_y must be a real-valued attribute.");
-		pRotate->add("[angle_degrees]=90.0","The angle in degrees to rotate around the origin in the col_x,col_y plane.");
+		pRotate->add("[angle_degrees]=90.0", "The angle in degrees to rotate around the origin in the col_x,col_y plane.");
 	}
 	{
 		UsageNode* pRO = pRoot->add("reordercolumns [dataset] [column-list]", "Reorder the columns as specified in the column list.");
@@ -1823,7 +1811,7 @@ UsageNode* makeTransformUsageTree()
 		{
 			UsageNode* pOpts = pSplit->add("<options>");
 			pOpts->add("-seed [value]", "Specify a seed for the random number generator.");
-			pOpts->add("-shuffle","Shuffle the input data before splitting it.");
+			pOpts->add("-shuffle", "Shuffle the input data before splitting it.");
 		}
 		pSplit->add("[filename1]=out1.arff", "The filename for one half of the data.");
 		pSplit->add("[filename2]=out2.arff", "The filename for the other half of the data.");
@@ -1866,10 +1854,9 @@ UsageNode* makeTransformUsageTree()
 		pOpts->add("-delta", "Predict the delta of the state transition instead of the new state.");
 	}
 	{
-		UsageNode* pThresh = pRoot->add("threshold [dataset] [column] [threshold]",
-		   "Outputs a copy of dataset such that any value v in the "
-		   "given column becomes 0 if v <= threshold and 1 otherwise."
-		   "  Only works on continuous attributes.");
+		UsageNode* pThresh = pRoot->add("threshold [dataset] [column] [threshold]", "Outputs a copy of dataset such that any value v in the "
+		                                                                            "given column becomes 0 if v <= threshold and 1 otherwise."
+		                                                                            "  Only works on continuous attributes.");
 		pThresh->add("[dataset]=in.arff", "The filename of a dataset.");
 		pThresh->add("[column]=0", "The zero-indexed column number to threshold.");
 		pThresh->add("[threshold]=0.5", "The threshold value.");
@@ -1888,9 +1875,9 @@ UsageNode* makeTransformUsageTree()
 		pOpts->add("-last", "Preserve the last row with a unique value in [col]. (The default is to preserve the first row with a unique value in [col].)");
 	}
 	{
-		pRoot->add("zeromean [dataset]=m.arff","Subtracts the mean from all values "
-		   "of all continuous attributes, so that their means in the "
-		   "result are zero. Leaves nominal attributes untouched.");
+		pRoot->add("zeromean [dataset]=m.arff", "Subtracts the mean from all values "
+		                                        "of all continuous attributes, so that their means in the "
+		                                        "result are zero. Leaves nominal attributes untouched.");
 	}
 	{
 		pRoot->add("usage", "Print usage information.");

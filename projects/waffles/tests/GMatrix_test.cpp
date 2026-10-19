@@ -6,9 +6,9 @@
 
 #include <cstring>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <stdexcept>
 
 using namespace GClasses;
 
@@ -110,8 +110,8 @@ TEST(ArffStringColumnTest, LoadsAsACategory) {
   EXPECT_EQ(m.relation().valueCount(0), 4u); // alice, bob, carol, dave smith
   EXPECT_EQ(m[0][0], 0.0);
   EXPECT_EQ(m[1][0], 1.0);
-  EXPECT_EQ(m[2][0], 0.0);                   // alice again
-  EXPECT_EQ(m[6][0], 0.0);                   // 'alice' is alice
+  EXPECT_EQ(m[2][0], 0.0);                    // alice again
+  EXPECT_EQ(m[6][0], 0.0);                    // 'alice' is alice
   EXPECT_EQ(m[5][0], UNKNOWN_DISCRETE_VALUE); // ? is missing
   EXPECT_EQ(valueText(m, 1, 0), "bob");
   EXPECT_EQ(valueText(m, 4, 0), "\"dave smith\""); // kept as written
@@ -123,8 +123,7 @@ TEST(ArffStringColumnTest, SavedAsACategoryAndLoadsBackTheSame) {
                        "alice\nbob\n\"dave smith\"\nbob\n");
   std::ostringstream saved;
   m.print(saved);
-  EXPECT_NE(saved.str().find("{alice,bob,\"dave smith\"}"), std::string::npos)
-      << saved.str();
+  EXPECT_NE(saved.str().find("{alice,bob,\"dave smith\"}"), std::string::npos) << saved.str();
   GMatrix back = loadArff(saved.str());
   ASSERT_EQ(back.rows(), 4u);
   for (size_t i = 0; i < 4; i++)
@@ -144,8 +143,7 @@ TEST(ArffStringColumnTest, WarnsWhenItLooksLikeFreeText) {
   testing::internal::CaptureStderr();
   GMatrix m = loadArff(freeText);
   const std::string warning = testing::internal::GetCapturedStderr();
-  EXPECT_NE(warning.find("string column 's' has 40 different values in 40 rows"),
-            std::string::npos)
+  EXPECT_NE(warning.find("string column 's' has 40 different values in 40 rows"), std::string::npos)
       << warning;
   EXPECT_EQ(m.relation().valueCount(0), 40u); // loaded anyway
 }
@@ -211,10 +209,10 @@ TEST(MatrixSortTest, SortsByAColumn) {
   for (size_t i = 1; i < m.rows(); i++)
     ASSERT_LE(m[i - 1][0], m[i][0]) << "row " << i;
   EXPECT_EQ(ids(m), "0 10 80 40 50 20 60 30 70 90 33 83 73 93 63 53 13 23 43 3 "
-                     "86 76 96 16 56 6 46 26 36 66 99 39 69 29 49 89 79 9 19 59 "
-                     "42 92 2 72 32 12 52 22 82 62 95 75 25 65 35 15 85 55 5 45 "
-                     "88 78 58 48 38 28 8 98 68 18 31 21 41 1 91 71 11 81 61 51 "
-                     "4 54 84 64 24 74 44 94 34 14 57 77 7 87 17 47 67 27 37 97");
+                    "86 76 96 16 56 6 46 26 36 66 99 39 69 29 49 89 79 9 19 59 "
+                    "42 92 2 72 32 12 52 22 82 62 95 75 25 65 35 15 85 55 5 45 "
+                    "88 78 58 48 38 28 8 98 68 18 31 21 41 1 91 71 11 81 61 51 "
+                    "4 54 84 64 24 74 44 94 34 14 57 77 7 87 17 47 67 27 37 97");
 }
 
 TEST(MatrixSortTest, SortPartialPutsTheRightRowInPlace) {
@@ -224,8 +222,8 @@ TEST(MatrixSortTest, SortPartialPutsTheRightRowInPlace) {
   for (size_t i = 0; i < m.rows(); i++)
     EXPECT_TRUE(i < 50 ? m[i][0] <= 5.0 : m[i][0] >= 5.0) << "row " << i;
   EXPECT_EQ(ids(m), "0 90 80 70 60 50 40 30 20 10 96 93 86 13 83 76 16 73 3 66 "
-                     "63 56 53 23 46 43 26 6 36 33 99 9 32 29 92 89 12 82 2 39 "
-                     "79 72 42 69 19 62 59 22 52 49 5 51 48 47 54 7 21 57 58 24 "
-                     "4 61 45 8 64 55 44 67 68 25 18 71 41 17 74 75 15 77 78 27 "
-                     "38 81 37 14 84 85 28 87 88 35 1 91 34 11 94 95 65 97 98 31");
+                    "63 56 53 23 46 43 26 6 36 33 99 9 32 29 92 89 12 82 2 39 "
+                    "79 72 42 69 19 62 59 22 52 49 5 51 48 47 54 7 21 57 58 24 "
+                    "4 61 45 8 64 55 44 67 68 25 18 71 41 17 74 75 15 77 78 27 "
+                    "38 81 37 14 84 85 28 87 88 35 1 91 34 11 94 95 65 97 98 31");
 }

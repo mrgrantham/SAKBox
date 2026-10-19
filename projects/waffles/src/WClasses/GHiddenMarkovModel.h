@@ -22,7 +22,8 @@
 
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GHiddenMarkovModel
 {

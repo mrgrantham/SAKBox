@@ -18,11 +18,11 @@
 
 #include <stdio.h>
 #ifdef WINDOWS
-#	include <windows.h>
-#	include <process.h>
-#	include <direct.h>
+#include <windows.h>
+#include <process.h>
+#include <direct.h>
 #else
-#	include <unistd.h>
+#include <unistd.h>
 #endif
 #include <WClasses/GRand.h>
 #include <WClasses/GTime.h>

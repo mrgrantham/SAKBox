@@ -26,7 +26,7 @@ namespace GClasses
 {
 
 /// This is a helper class used by GIndexedMultiSet
-template <typename T>
+template<typename T>
 class GTreeNode
 {
 public:
@@ -213,7 +213,7 @@ public:
 /// A multiset class that can be queried by index.
 /// It is implemented using a balanced tree structure, so
 /// most operations take O(log(n)) time.
-template <typename T>
+template<typename T>
 class GIndexedMultiSet
 {
 private:
@@ -302,10 +302,10 @@ public:
 };
 
 
-template <typename T> class GRelationalRow;
+template<typename T> class GRelationalRow;
 
 
-template <typename T>
+template<typename T>
 class GRelationalElement
 {
 public:
@@ -329,11 +329,10 @@ public:
 		right = nullptr;
 		size = 1;
 	}
-
 };
 
 
-template <typename T>
+template<typename T>
 class GRelationalRow
 {
 public:
@@ -586,7 +585,7 @@ public:
 		}
 	}
 
-	template <typename Comp>
+	template<typename Comp>
 	void print(const Comp& comp, std::ostream& stream, size_t col, size_t columnCount, size_t depth)
 	{
 		if(el[col].left)
@@ -602,7 +601,7 @@ public:
 
 
 /// See GTree.cpp for an example of how to use this class.
-template <typename T, typename Comp>
+template<typename T, typename Comp>
 class GRelationalTable
 {
 protected:

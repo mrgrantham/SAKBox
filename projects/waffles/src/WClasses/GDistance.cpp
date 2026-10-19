@@ -27,7 +27,8 @@
 
 using std::map;
 
-namespace GClasses {
+namespace GClasses
+{
 
 GDistanceMetric::GDistanceMetric(GDomNode* pNode)
 : m_scaleFactors(pNode->get("scalars"))
@@ -94,7 +95,7 @@ void GDistanceMetric_exerciseMetric(GDistanceMetric& metric)
 	GUniformRelation rel(2);
 	metric.init(&rel, false);
 
-	// Measure distance	
+	// Measure distance
 	double sqDist = metric.squaredDistance(a, b);
 
 	// Roundtrip through serialization
@@ -112,10 +113,14 @@ void GDistanceMetric_exerciseMetric(GDistanceMetric& metric)
 // static
 void GDistanceMetric::test()
 {
-	GRowDistance d1; GDistanceMetric_exerciseMetric(d1);
-	GLNormDistance d2(1.4); GDistanceMetric_exerciseMetric(d2);
-	GDenseCosineDistance d3; GDistanceMetric_exerciseMetric(d3);
-	GKernelDistance d4(GKernel::kernelComplex1(), true); GDistanceMetric_exerciseMetric(d4);
+	GRowDistance d1;
+	GDistanceMetric_exerciseMetric(d1);
+	GLNormDistance d2(1.4);
+	GDistanceMetric_exerciseMetric(d2);
+	GDenseCosineDistance d3;
+	GDistanceMetric_exerciseMetric(d3);
+	GKernelDistance d4(GKernel::kernelComplex1(), true);
+	GDistanceMetric_exerciseMetric(d4);
 }
 
 // --------------------------------------------------------------------
@@ -275,7 +280,6 @@ double GDenseCosineDistance::squaredDistance(const GVec& a, const GVec& b) const
 		return 1.0 - sum_co_prod / denom;
 	else
 		return 1.0;
-
 }
 
 // --------------------------------------------------------------------
@@ -355,10 +359,10 @@ GDomNode* GCosineSimilarity::serialize(GDom* pDoc) const
 }
 
 // virtual
-double GCosineSimilarity::similarity(const map<size_t,double>& a, const map<size_t,double>& b)
+double GCosineSimilarity::similarity(const map<size_t, double>& a, const map<size_t, double>& b)
 {
-	map<size_t,double>::const_iterator itA = a.begin();
-	map<size_t,double>::const_iterator itB = b.begin();
+	map<size_t, double>::const_iterator itA = a.begin();
+	map<size_t, double>::const_iterator itB = b.begin();
 	if(itA == a.end())
 		return 0.0;
 	if(itB == b.end())
@@ -397,9 +401,9 @@ double GCosineSimilarity::similarity(const map<size_t,double>& a, const map<size
 }
 
 // virtual
-double GCosineSimilarity::similarity(const map<size_t,double>& a, const GVec& b)
+double GCosineSimilarity::similarity(const map<size_t, double>& a, const GVec& b)
 {
-	map<size_t,double>::const_iterator itA = a.begin();
+	map<size_t, double>::const_iterator itA = a.begin();
 	if(itA == a.end())
 		return 0.0;
 	double sum_sq_a = 0.0;
@@ -450,11 +454,11 @@ GDomNode* GPearsonCorrelation::serialize(GDom* pDoc) const
 }
 
 // virtual
-double GPearsonCorrelation::similarity(const map<size_t,double>& a, const map<size_t,double>& b)
+double GPearsonCorrelation::similarity(const map<size_t, double>& a, const map<size_t, double>& b)
 {
 	// Compute the mean of the overlapping portions
-	map<size_t,double>::const_iterator itA = a.begin();
-	map<size_t,double>::const_iterator itB = b.begin();
+	map<size_t, double>::const_iterator itA = a.begin();
+	map<size_t, double>::const_iterator itB = b.begin();
 	if(itA == a.end())
 		return 0.0;
 	if(itB == b.end())
@@ -525,10 +529,10 @@ double GPearsonCorrelation::similarity(const map<size_t,double>& a, const map<si
 }
 
 // virtual
-double GPearsonCorrelation::similarity(const map<size_t,double>& a, const GVec& b)
+double GPearsonCorrelation::similarity(const map<size_t, double>& a, const GVec& b)
 {
 	// Compute the mean of the overlapping portions
-	map<size_t,double>::const_iterator itA = a.begin();
+	map<size_t, double>::const_iterator itA = a.begin();
 	double mean_a = 0.0;
 	double mean_b = 0.0;
 	size_t count = 0;
@@ -605,10 +609,10 @@ GDomNode* GEuclidSimilarity::serialize(GDom* pDoc) const
 }
 
 // virtual
-double GEuclidSimilarity::similarity(const map<size_t,double>& a, const map<size_t,double>& b)
+double GEuclidSimilarity::similarity(const map<size_t, double>& a, const map<size_t, double>& b)
 {
-	map<size_t,double>::const_iterator itA = a.begin();
-	map<size_t,double>::const_iterator itB = b.begin();
+	map<size_t, double>::const_iterator itA = a.begin();
+	map<size_t, double>::const_iterator itB = b.begin();
 	if(itA == a.end())
 		return 0.0;
 	if(itB == b.end())
@@ -627,7 +631,7 @@ double GEuclidSimilarity::similarity(const map<size_t,double>& a, const map<size
 				break;
 		}
 		else
-		{	
+		{
 			double d = (itB->second - itA->second);
 			sum_sq += (d * d);
 			if(++itA == a.end())
@@ -643,9 +647,9 @@ double GEuclidSimilarity::similarity(const map<size_t,double>& a, const map<size
 }
 
 // virtual
-double GEuclidSimilarity::similarity(const map<size_t,double>& a, const GVec& b)
+double GEuclidSimilarity::similarity(const map<size_t, double>& a, const GVec& b)
 {
-	map<size_t,double>::const_iterator itA = a.begin();
+	map<size_t, double>::const_iterator itA = a.begin();
 	if(itA == a.end())
 		return 0.0;
 	double sum_sq = 0.0;

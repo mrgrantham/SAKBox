@@ -40,7 +40,8 @@
 
 using std::vector;
 
-namespace GClasses {
+namespace GClasses
+{
 
 GBlock::GBlock(size_t inputs, size_t outputs)
 : inputCount(inputs), outputCount(outputs), m_inPos(0)
@@ -264,7 +265,7 @@ void GBlock::step(double learningRate, double momentum)
 		gradient[i] *= momentum;
 	}
 
-/*
+	/*
 	// Nesterov's Accelerated Gradient could be implemented here
 	// (See "On the importance of initialization and momentum in deep learning" by Sutskever, Martens, Dahl, and Hinton.)
 	// (See https://jlmelville.github.io/mize/nesterov.html)
@@ -332,12 +333,14 @@ void GBlock::finiteDifferencingTest(double tolerance)
 				if(empirical_grad == 0)
 				{
 					if(std::abs(inBl[k]) <= 1e-8)
-					{}
+					{
+					}
 					else
 						throw Ex("Problem with backProp");
 				}
 				else if(std::abs((inBl[k] - empirical_grad) / empirical_grad) <= worst_required_tolerance)
-				{} // Done this way so that NANs will fail rather than succeed
+				{
+				} // Done this way so that NANs will fail rather than succeed
 				else
 				{
 #ifdef _DEBUG
@@ -367,12 +370,14 @@ void GBlock::finiteDifferencingTest(double tolerance)
 				if(empirical_grad == 0)
 				{
 					if(std::abs(gradient[k]) <= 1e-8)
-					{}
+					{
+					}
 					else
 						throw Ex("Problem with updateGradient");
 				}
 				else if(std::abs((gradient[k] - empirical_grad) / empirical_grad) <= worst_required_tolerance)
-				{} // Done this way so that NANs will fail rather than succeed
+				{
+				} // Done this way so that NANs will fail rather than succeed
 				else
 				{
 #ifdef _DEBUG
@@ -414,7 +419,8 @@ GBlockActivation::GBlockActivation(size_t size)
 
 GBlockActivation::GBlockActivation(const GDomNode* pNode)
 : GBlockWeightless(pNode)
-{}
+{
+}
 
 void GBlockActivation::forwardProp()
 {
@@ -505,9 +511,9 @@ GBlockSpectral::GBlockSpectral(double min_wavelength, double max_wavelength, siz
 
 GBlockSpectral::GBlockSpectral(const GDomNode* pNode)
 : GBlockWeightless(pNode),
-m_freq_start(pNode->getDouble("start")),
-m_freq_scale(pNode->getDouble("scale")),
-m_freq_shift(pNode->getDouble("shift"))
+  m_freq_start(pNode->getDouble("start")),
+  m_freq_scale(pNode->getDouble("scale")),
+  m_freq_shift(pNode->getDouble("shift"))
 {
 }
 
@@ -626,7 +632,8 @@ GBlockLinear::GBlockLinear(size_t inputs, size_t outputs)
 
 GBlockLinear::GBlockLinear(GDomNode* pNode)
 : GBlock(pNode)
-{}
+{
+}
 
 std::string GBlockLinear::to_str(bool includeWeights, bool includeActivations) const
 {
@@ -788,7 +795,7 @@ void GBlockLinear::ordinaryLeastSquares(const GMatrix& features, const GMatrix& 
 	Holder<GMatrix> hDenom(pDenom);
 
 	// Compute M and b
-	GMatrix* pM = GMatrix::multiply(numerator, *pDenom, false, true/*doesn't matter. it's symmetric about transposition*/);
+	GMatrix* pM = GMatrix::multiply(numerator, *pDenom, false, true /*doesn't matter. it's symmetric about transposition*/);
 	Holder<GMatrix> hM(pM);
 	GVec b(labels.cols());
 	pM->multiply(centroidFeat, b);
@@ -1015,7 +1022,8 @@ GBlockFanOut::GBlockFanOut(size_t inputs, size_t outputsPerInput)
 
 GBlockFanOut::GBlockFanOut(GDomNode* pNode)
 : GBlock(pNode)
-{}
+{
+}
 
 void GBlockFanOut::forwardProp()
 {
@@ -1110,7 +1118,8 @@ GBlockRunningNormalizer::GBlockRunningNormalizer(size_t units, double effective_
 
 GBlockRunningNormalizer::GBlockRunningNormalizer(GDomNode* pNode)
 : GBlock(pNode)
-{}
+{
+}
 
 void GBlockRunningNormalizer::forwardProp()
 {
@@ -1129,7 +1138,7 @@ void GBlockRunningNormalizer::forwardProp()
 
 void GBlockRunningNormalizer::backProp()
 {
-/*
+	/*
 	size_t pos = 0;
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1353,7 +1362,7 @@ GBlockTemperedLinear::GBlockTemperedLinear(const GBlockTemperedLinear& that)
 
 GBlockTemperedLinear::GBlockTemperedLinear(GDomNode* pNode)
 : GBlock(pNode), deviationCap(pNode->getDouble("dc")), forgetRate(pNode->getDouble("fr")),
-moment1(pNode->get("mom1")), moment2(pNode->get("mom2"))
+  moment1(pNode->get("mom1")), moment2(pNode->get("mom2"))
 {
 }
 
@@ -1443,10 +1452,10 @@ size_t GBlockConv_countElements(const std::initializer_list<size_t>& shape)
 
 GBlockConv::GBlockConv(const std::initializer_list<size_t>& inputShape, const std::initializer_list<size_t>& filterShape, const std::initializer_list<size_t>& outputShape)
 : GBlock(GBlockConv_countElements(inputShape), GBlockConv_countElements(outputShape)),
-filterSize(GBlockConv_countElements(filterShape)),
-tensorInput(inputShape, false),
-tensorFilter(filterShape, false),
-tensorOutput(outputShape, false)
+  filterSize(GBlockConv_countElements(filterShape)),
+  tensorInput(inputShape, false),
+  tensorFilter(filterShape, false),
+  tensorOutput(outputShape, false)
 {
 	// Iterate over all of the shape values
 	filterCount = 1;
@@ -1492,12 +1501,12 @@ tensorOutput(outputShape, false)
 
 GBlockConv::GBlockConv(const GBlockConv& that)
 : GBlock(that),
-filterSize(that.filterSize),
-tensorInput(that.tensorInput),
-tensorFilter(that.tensorFilter),
-tensorOutput(that.tensorOutput),
-filterCount(that.filterCount),
-outputsPerFilter(that.outputsPerFilter)
+  filterSize(that.filterSize),
+  tensorInput(that.tensorInput),
+  tensorFilter(that.tensorFilter),
+  tensorOutput(that.tensorOutput),
+  filterCount(that.filterCount),
+  outputsPerFilter(that.outputsPerFilter)
 {
 }
 
@@ -1511,11 +1520,11 @@ size_t GBlockConv_countTensorSize(const GIndexVec& shape)
 
 GBlockConv::GBlockConv(GDomNode* pNode)
 : GBlock(pNode),
-tensorInput(pNode->get("inputShape")),
-tensorFilter(pNode->get("filterShape")),
-tensorOutput(pNode->get("outputShape")),
-filterCount(pNode->getInt("filterCount")),
-outputsPerFilter(outputCount / filterCount)
+  tensorInput(pNode->get("inputShape")),
+  tensorFilter(pNode->get("filterShape")),
+  tensorOutput(pNode->get("outputShape")),
+  filterCount(pNode->getInt("filterCount")),
+  outputsPerFilter(outputCount / filterCount)
 {
 	filterSize = GBlockConv_countTensorSize(tensorFilter.shape) / filterCount;
 	if(filterCount * outputsPerFilter != outputCount)
@@ -1609,7 +1618,7 @@ void GBlockConv::test()
 	GVec expected({4, 4, 1, 6});
 	if(std::sqrt(pred.squaredDistance(expected)) > 1e-10)
 		throw Ex("wrong");
-/*
+	/*
 	// Test backprop
 	GVec y({4, 5, 3, 3});
 	nn.computeBlame(y);
@@ -1637,9 +1646,9 @@ void GBlockConv::test()
 
 GBlockMaxPooling2D::GBlockMaxPooling2D(size_t _width, size_t _height, size_t _channels)
 : GBlockWeightless(_width * _height * _channels, _width * _height / 4 * _channels),
-width(_width),
-height(_height),
-channels(_channels)
+  width(_width),
+  height(_height),
+  channels(_channels)
 {
 	if((width % 1) || (height % 1))
 		throw Ex("Expected an even width and height");
@@ -1668,9 +1677,8 @@ void GBlockMaxPooling2D::forwardProp()
 			for(size_t x = 0; x < width; x += 2)
 			{
 				output[pos++] = std::max(
-						std::max(input[vertStart + x], input[vertStart + 1 + x]),
-						std::max(input[vertStart + width + x], input[vertStart + width + 1 + x])
-					);
+				  std::max(input[vertStart + x], input[vertStart + 1 + x]),
+				  std::max(input[vertStart + width + x], input[vertStart + width + 1 + x]));
 			}
 			vertStart += (width + width);
 		}
@@ -1882,7 +1890,8 @@ GBlockHinge::GBlockHinge(size_t size)
 
 GBlockHinge::GBlockHinge(GDomNode* pNode)
 : GBlock(pNode)
-{}
+{
+}
 
 void GBlockHinge::forwardProp()
 {
@@ -2026,7 +2035,8 @@ GBlockElbow::GBlockElbow(size_t size)
 
 GBlockElbow::GBlockElbow(GDomNode* pNode)
 : GBlock(pNode)
-{}
+{
+}
 
 void GBlockElbow::forwardProp()
 {
@@ -2035,7 +2045,7 @@ void GBlockElbow::forwardProp()
 		double ax = weights[i] * input[i];
 		if(ax < 0)
 			output[i] = GBits::sign(weights[i]) * (std::exp(ax) - 1.0 - ax) + input[i];
-			//output[i] = (weights[i] == 0.0 ? input[i] : (std::exp(ax) - 1.0) / weights[i]);
+		//output[i] = (weights[i] == 0.0 ? input[i] : (std::exp(ax) - 1.0) / weights[i]);
 		else
 			output[i] = input[i];
 	}
@@ -2048,7 +2058,7 @@ void GBlockElbow::backProp()
 		double ax = weights[i] * input[i];
 		if(ax < 0)
 			inBlame[i] += outBlame[i] * (GBits::sign(weights[i]) * (weights[i] * (std::exp(ax) - 1.0)) + 1.0);
-			//inBlame[i] += outBlame[i] * std::exp(ax);
+		//inBlame[i] += outBlame[i] * std::exp(ax);
 		else
 			inBlame[i] += outBlame[i];
 	}
@@ -2061,7 +2071,7 @@ void GBlockElbow::updateGradient()
 		double ax = weights[i] * input[i];
 		if(ax < 0)
 			gradient[i] += outBlame[i] * (GBits::sign(weights[i]) * (std::exp(ax) - 1.0) * input[i]);
-			//gradient[i] += outBlame[i] * (weights[i] == 0.0 ? 0.5 * input[i] * input[i] + 1.0 : (weights[i] * weights[i] + (ax - 1.0) * std::exp(ax) + 1.0) / (weights[i] * weights[i]));
+		//gradient[i] += outBlame[i] * (weights[i] == 0.0 ? 0.5 * input[i] * input[i] + 1.0 : (weights[i] * weights[i] + (ax - 1.0) * std::exp(ax) + 1.0) / (weights[i] * weights[i]));
 		else
 			gradient[i] += outBlame[i] * input[i];
 	}
@@ -2155,7 +2165,8 @@ GBlockLeakyTanh::GBlockLeakyTanh(size_t size)
 
 GBlockLeakyTanh::GBlockLeakyTanh(GDomNode* pNode)
 : GBlock(pNode)
-{}
+{
+}
 
 void GBlockLeakyTanh::forwardProp()
 {
@@ -2218,7 +2229,8 @@ GBlockSoftExp::GBlockSoftExp(size_t size, double beta)
 
 GBlockSoftExp::GBlockSoftExp(GDomNode* pNode)
 : GBlock(pNode), m_beta(pNode->getDouble("beta"))
-{}
+{
+}
 
 GDomNode* GBlockSoftExp::serialize(GDom* pDoc) const
 {
@@ -2408,9 +2420,9 @@ void GBlockPAL::initWeights(GRand& rand)
 
 GBlockHypercube::GBlockHypercube(size_t dims, size_t vertexSizeIn, size_t vertexSizeOut)
 : GBlock((1 << dims) * vertexSizeIn, (1 << dims) * vertexSizeOut),
-	m_dims(dims),
-	m_vertexSizeIn(vertexSizeIn),
-	m_vertexSizeOut(vertexSizeOut)
+  m_dims(dims),
+  m_vertexSizeIn(vertexSizeIn),
+  m_vertexSizeOut(vertexSizeOut)
 {
 }
 
@@ -2797,47 +2809,47 @@ void GBlockCatOut::backProp()
 
 GBlockLSTM::GBlockLSTM(size_t inputs, size_t outputs)
 : GBlock(inputs, outputs), n(inputs + 2),
-f(outputs),
-t(outputs),
-o(outputs),
-c(outputs),
-h(outputs),
-blame_h(outputs),
-blame_c(outputs),
-pPrevInstance(this),
-pNextInstance(this),
-pSpare(nullptr)
+  f(outputs),
+  t(outputs),
+  o(outputs),
+  c(outputs),
+  h(outputs),
+  blame_h(outputs),
+  blame_c(outputs),
+  pPrevInstance(this),
+  pNextInstance(this),
+  pSpare(nullptr)
 {
 }
 
 GBlockLSTM::GBlockLSTM(const GBlockLSTM& that)
 : GBlock(that),
-n(that.inputCount + 2),
-f(that.outputCount),
-t(that.outputCount),
-o(that.outputCount),
-c(that.outputCount),
-h(that.outputCount),
-blame_h(that.outputCount),
-blame_c(that.outputCount),
-pPrevInstance(this),
-pNextInstance(this),
-pSpare(nullptr)
+  n(that.inputCount + 2),
+  f(that.outputCount),
+  t(that.outputCount),
+  o(that.outputCount),
+  c(that.outputCount),
+  h(that.outputCount),
+  blame_h(that.outputCount),
+  blame_c(that.outputCount),
+  pPrevInstance(this),
+  pNextInstance(this),
+  pSpare(nullptr)
 {
 }
 
 GBlockLSTM::GBlockLSTM(GDomNode* pNode)
 : GBlock(pNode), n(inputCount + 2),
-f(outputCount),
-t(outputCount),
-o(outputCount),
-c(outputCount),
-h(outputCount),
-blame_h(outputCount),
-blame_c(outputCount),
-pPrevInstance(this),
-pNextInstance(this),
-pSpare(nullptr)
+  f(outputCount),
+  t(outputCount),
+  o(outputCount),
+  c(outputCount),
+  h(outputCount),
+  blame_h(outputCount),
+  blame_c(outputCount),
+  pPrevInstance(this),
+  pNextInstance(this),
+  pSpare(nullptr)
 {
 }
 
@@ -3180,9 +3192,9 @@ GLayer::GLayer(const GLayer& that, GLayer* pPrevLayer)
 
 GLayer::GLayer(GDomNode* pNode, GRand& rand)
 : input_count(0),
-output_count(0),
-weight_count(0),
-grad_count(0)
+  output_count(0),
+  weight_count(0),
+  grad_count(0)
 {
 	GDomNode* pBlocks = pNode->get("blocks");
 	GDomListIterator it(pBlocks);
@@ -4185,8 +4197,8 @@ size_t GNeuralNet::layerStart(size_t layer)
 	size_t posWeights = 0;
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
-        if(i == layer)
-            return posWeights;
+		if(i == layer)
+			return posWeights;
 		GLayer& lay = *m_layers[i];
 		size_t wc = lay.weightCount();
 		posWeights += wc;
@@ -4513,7 +4525,7 @@ void GNeuralNet::test()
 	GNeuralNet_testConvolutional1();
 	GNeuralNet_testConvolutional3();
 	GNeuralNet_testSerializationRoundTrip();
-/*
+	/*
 	GNeuralNet_test_drop();
 	GNeuralNet_test_insert();
 	GNeuralNet_test_decrementWidthPositive();
@@ -4912,7 +4924,8 @@ void GBlockResidual::backProp()
 
 GNeuralNetLearner::GNeuralNetLearner()
 : GIncrementalLearner(), m_pOptimizer(nullptr)
-{}
+{
+}
 /*
 GNeuralNetLearner::GNeuralNetLearner(const GDomNode* pNode)
 : GIncrementalLearner(pNode),
@@ -4941,12 +4954,12 @@ GDomNode* GNeuralNetLearner::serialize(GDom* pDoc) const
 	return pNode;
 }
 
-void GNeuralNetLearner::trainIncremental(const GVec &in, const GVec &out)
+void GNeuralNetLearner::trainIncremental(const GVec& in, const GVec& out)
 {
 	throw Ex("GNeuralNetLearner::trainIncremental is not implemented (need to use GDifferentiableOptimizer).");
 }
 
-void GNeuralNetLearner::trainSparse(GSparseMatrix &features, GMatrix &labels)
+void GNeuralNetLearner::trainSparse(GSparseMatrix& features, GMatrix& labels)
 {
 	throw Ex("GNeuralNetLearner::trainSparse is not implemented (need to use GDifferentiableOptimizer).");
 }

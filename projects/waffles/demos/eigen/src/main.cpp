@@ -27,7 +27,7 @@ using namespace GClasses;
 using std::cout;
 using Eigen::MatrixXd;
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	GApp::enableFloatingPointExceptions();
 	if(argc > 1)
@@ -35,8 +35,10 @@ int main(int argc, char *argv[])
 
 	cout << "Making a Waffles matrix...\n";
 	GMatrix waf_m(2, 2);
-	waf_m[0][0] = 1.0; waf_m[0][1] = 2.0;
-	waf_m[1][0] = 3.0; waf_m[1][1] = 4.0;
+	waf_m[0][0] = 1.0;
+	waf_m[0][1] = 2.0;
+	waf_m[1][0] = 3.0;
+	waf_m[1][1] = 4.0;
 	waf_m.print(cout);
 
 	cout << "\n\nConverting to an Eigen matrix...\n";

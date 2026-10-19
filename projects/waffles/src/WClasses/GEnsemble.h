@@ -23,7 +23,8 @@
 #include <vector>
 #include <exception>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GRelation;
 class GRand;
@@ -212,8 +213,9 @@ public:
 
 protected:
 	/// See the comment for GLearner::canImplicitlyHandleContinuousLabels
-	bool canImplicitlyHandleContinuousLabels() override {
-	  return false;
+	bool canImplicitlyHandleContinuousLabels() override
+	{
+		return false;
 	}
 
 	/// Determines the weights in the manner of Bayesian model averaging,

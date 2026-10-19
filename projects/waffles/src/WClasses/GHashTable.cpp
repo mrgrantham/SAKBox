@@ -135,7 +135,7 @@ void GHashTableBase::_Add(const char* pKey, const void* pValue)
 			pRenter->pPrev->pNext = pRenter;
 			if(pRenter->pNext)
 				pRenter->pNext->pPrev = pRenter;
-		
+
 			// Move in
 			m_pBuckets[nPos].pPrev = nullptr;
 			m_pBuckets[nPos].pNext = nullptr;

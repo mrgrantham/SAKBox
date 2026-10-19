@@ -19,7 +19,8 @@
 #ifndef __GKEYPAIR_H__
 #define __GKEYPAIR_H__
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GBigInt;
 class GRandCrypto;

@@ -33,7 +33,8 @@
 
 using std::vector;
 
-namespace GClasses {
+namespace GClasses
+{
 
 
 struct GRegionEdge
@@ -154,7 +155,7 @@ void GRegionAjacencyGraph::ajacency(size_t nEdge, size_t* pRegion1, size_t* pReg
 // ------------------------------------------------------------------------------------------
 
 G2DRegionGraph::G2DRegionGraph(int nWidth, int nHeight)
- : GRegionAjacencyGraph()
+: GRegionAjacencyGraph()
 {
 	m_pRegionMask = new GImage();
 	m_pRegionMask->setSize(nWidth, nHeight);
@@ -402,7 +403,7 @@ void G2DRegionGraph::makeCoarserRegions(G2DRegionGraph* pFineRegions)
 // ------------------------------------------------------------------------------------------
 
 G3DRegionGraph::G3DRegionGraph(size_t frames, int nWidth, int nHeight)
- : GRegionAjacencyGraph()
+: GRegionAjacencyGraph()
 {
 	for(size_t i = 0; i < frames; i++)
 	{
@@ -448,9 +449,15 @@ void G3DRegionGraph_makeGradientMagnitudeVideo(const std::vector<GImage*>& in, s
 		{
 			for(int x = 0; x < (int)pImage->width(); x++)
 			{
-				int rx = 0;	int ry = 0;	int rz = 0;
-				int gx = 0; int gy = 0;	int gz = 0;
-				int bx = 0; int by = 0;	int bz = 0;
+				int rx = 0;
+				int ry = 0;
+				int rz = 0;
+				int gx = 0;
+				int gy = 0;
+				int gz = 0;
+				int bx = 0;
+				int by = 0;
+				int bz = 0;
 				int r, g, b;
 				for(int dz = -1; dz < 2; dz++)
 				{
@@ -733,22 +740,22 @@ bool GRegionBorderIterator::look()
 	{
 		case 0:
 			if(m_x < (int)m_pImage->width() - 1)
-				return(m_pImage->pixel(m_x + 1, m_y) == m_nRegion);
+				return (m_pImage->pixel(m_x + 1, m_y) == m_nRegion);
 			else
 				return false;
 		case 1:
 			if(m_y > 0)
-				return(m_pImage->pixel(m_x, m_y - 1) == m_nRegion);
+				return (m_pImage->pixel(m_x, m_y - 1) == m_nRegion);
 			else
 				return false;
 		case 2:
 			if(m_x > 0)
-				return(m_pImage->pixel(m_x - 1, m_y) == m_nRegion);
+				return (m_pImage->pixel(m_x - 1, m_y) == m_nRegion);
 			else
 				return false;
 		case 3:
 			if(m_y < (int)m_pImage->height() - 1)
-				return(m_pImage->pixel(m_x, m_y + 1) == m_nRegion);
+				return (m_pImage->pixel(m_x, m_y + 1) == m_nRegion);
 			else
 				return false;
 		default:
@@ -1003,7 +1010,7 @@ void GSubImageFinder::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRec
 			}
 		}
 	}
-/*
+	/*
 	// Save correlation image
 	GImage corr;
 	corr.setSize(m_nHaystackWidth, m_nHaystackHeight);

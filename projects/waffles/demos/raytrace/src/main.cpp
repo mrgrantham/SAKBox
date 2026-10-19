@@ -12,13 +12,13 @@
 #include <WClasses/GError.h>
 #include "RayTrace.h"
 #ifdef WINDOWS
-#	include <direct.h>
+#include <direct.h>
 #endif
 #include <exception>
 
 const char* g_szAppPath = NULL;
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef WINDOWS
 	if(_chdir("../../../bin/demos/rib") != 0)

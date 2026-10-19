@@ -71,8 +71,7 @@ TEST(KMeansSparseTest, EveryCentreFollowsItsRows) {
     bool same = true;
     for (size_t i = 0; i < 30; i++)
       for (size_t j = 0; j < 30; j++)
-        if ((group[i] == group[j]) !=
-            (kmeans.whichCluster(i) == kmeans.whichCluster(j)))
+        if ((group[i] == group[j]) != (kmeans.whichCluster(i) == kmeans.whichCluster(j)))
           same = false;
     found += same;
   }

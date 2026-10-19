@@ -22,7 +22,8 @@
 #include "GOptimizer.h"
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GRand;
 class GEvolutionaryOptimizerNode;

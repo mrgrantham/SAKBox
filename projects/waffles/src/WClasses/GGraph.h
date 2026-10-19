@@ -23,7 +23,8 @@
 #include <stdlib.h>
 #include <deque>
 
-namespace GClasses {
+namespace GClasses
+{
 
 struct GGraphCutNode;
 struct GGraphCutEdge;
@@ -39,7 +40,7 @@ class GRand;
 /// This implementation assumes that edges are undirected
 class GGraphCut
 {
-friend class GGraphEdgeIterator;
+	friend class GGraphEdgeIterator;
 protected:
 	std::deque<size_t> m_q;
 	GHeap* m_pHeap;

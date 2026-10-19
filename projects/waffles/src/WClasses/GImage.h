@@ -23,7 +23,8 @@
 #include <stddef.h>
 #include "GError.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GBezier;
 class GRect;
@@ -76,20 +77,15 @@ inline unsigned int MixColors(unsigned int a, unsigned int b, int nRatio)
 {
 	int n2 = 256 - nRatio;
 	return gARGB(
-		(gAlpha(a) * nRatio + gAlpha(b) * n2) >> 8,
-		(gRed(a) * nRatio + gRed(b) * n2) >> 8,
-		(gGreen(a) * nRatio + gGreen(b) * n2) >> 8,
-		(gBlue(a) * nRatio + gBlue(b) * n2) >> 8
-		);
+	  (gAlpha(a) * nRatio + gAlpha(b) * n2) >> 8,
+	  (gRed(a) * nRatio + gRed(b) * n2) >> 8,
+	  (gGreen(a) * nRatio + gGreen(b) * n2) >> 8,
+	  (gBlue(a) * nRatio + gBlue(b) * n2) >> 8);
 }
 
 inline unsigned int MultiplyBrightness(unsigned int c, float f)
 {
-	return gARGB(gAlpha(c),
-			ClipChan((int)(f * gRed(c))),
-			ClipChan((int)(f * gGreen(c))),
-			ClipChan((int)(f * gBlue(c)))
-		);
+	return gARGB(gAlpha(c), ClipChan((int)(f * gRed(c))), ClipChan((int)(f * gGreen(c))), ClipChan((int)(f * gBlue(c))));
 }
 
 // pOutHex must be a buffer of at least 7 bytes
@@ -411,25 +407,15 @@ public:
 	/// Determines whether the point (x, y) is inside the triangle
 	/// specified by (x0, y0), (x1, y1), (x2, y2). On any edge is considered
 	/// to be within the triangle
-	static bool isPointInsideTriangle(float x, float y,
-					float x0, float y0,
-					float x1, float y1,
-					float x2, float y2);
+	static bool isPointInsideTriangle(float x, float y, float x0, float y0, float x1, float y1, float x2, float y2);
 
 	/// Given the three vertices of a triangle, this computes the weights for
 	/// each vertex that linearly interpolates to the point (x, y)
-	static void triangleWeights(float* pW0, float* pW1, float* pW2,
-					float x, float y,
-					float x0, float y0,
-					float x1, float y1,
-					float x2, float y2);
+	static void triangleWeights(float* pW0, float* pW1, float* pW2, float x, float y, float x0, float y0, float x1, float y1, float x2, float y2);
 
 	/// Given three weights and three points, interpolate the point, and
 	/// interpolate the color at that point
-	unsigned int interpolateWithinTriangle(float w0, float w1, float w2,
-					float x0, float y0,
-					float x1, float y1,
-					float x2, float y2);
+	unsigned int interpolateWithinTriangle(float w0, float w1, float w2, float x0, float y0, float x1, float y1, float x2, float y2);
 
 	/// The value of each channel is centered around 128, multiplied by
 	/// fContrastScale, added to nBrightnessDelta, and clipped to [0-255].

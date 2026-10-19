@@ -29,7 +29,8 @@
 #include <vector>
 #include <map>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GSparseMatrix;
 class GSparseClusterer;
@@ -45,7 +46,8 @@ class GLearnerLoader;
 
 using std::multimap;
 
-struct ArrayWrapper { size_t values[2]; };
+struct ArrayWrapper
+{ size_t values[2]; };
 
 
 /// The base class for collaborative filtering recommender systems.
@@ -184,7 +186,7 @@ protected:
 	GSparseMatrix* m_pData;
 	GBaselineRecommender* m_pBaseline;
 	size_t m_significanceWeight;
-	std::map<size_t, std::multimap<double,ArrayWrapper> > m_user_depq;
+	std::map<size_t, std::multimap<double, ArrayWrapper> > m_user_depq;
 
 public:
 	GInstanceRecommender(size_t neighbors);
@@ -214,19 +216,19 @@ public:
 	/// Set the value for significance weighting. The default value is zero. If there
 	/// are fewer matching items between users than the specified values, the
 	/// similarity is scaled by numMathces/sigWeight
-	void setSigWeight(size_t sig){ m_significanceWeight = sig; }
+	void setSigWeight(size_t sig) { m_significanceWeight = sig; }
 
 	/// This is the same function as predict except that it returns the
 	/// the priority queue for the nearest neigbors. The values are further user
 	/// by the content-boosted cf prediction method to combine the content-based
 	/// and cf predictions.
-	multimap<double,ArrayWrapper> getNeighbors(size_t user, size_t item);
+	multimap<double, ArrayWrapper> getNeighbors(size_t user, size_t item);
 
 	/// This method clears the priority queue that keeps track of the neighbors for
 	/// a user. This will help speed up the search for each neighbor. It is used in
 	/// the content-boosted filter since it is a dense matrix and should not change
 	/// based on which item a rating is being asked for.
-	void clearUserDEPQ(){ m_user_depq.clear(); }
+	void clearUserDEPQ() { m_user_depq.clear(); }
 
 	/// Get the rating of an item for a user
 	double getRating(size_t user, size_t item); //{ return m_pData->get(user, item); }
@@ -391,10 +393,20 @@ public:
 	GMatrix* getQ() { return m_pQ; }
 
 	/// Returns the matrix of user preference vectors, and gives ownership to the caller.
-	GMatrix* dropP() { GMatrix* tmp = m_pP; m_pP = nullptr; return tmp; }
+	GMatrix* dropP()
+	{
+		GMatrix* tmp = m_pP;
+		m_pP = nullptr;
+		return tmp;
+	}
 
 	/// Returns the matrix of item weight vectors, and gives ownership to the caller.
-	GMatrix* dropQ() { GMatrix* tmp = m_pQ; m_pQ = nullptr; return tmp; }
+	GMatrix* dropQ()
+	{
+		GMatrix* tmp = m_pQ;
+		m_pQ = nullptr;
+		return tmp;
+	}
 
 	/// See the comment for GCollaborativeFilter::serialize
 	GDomNode* serialize(GDom* pDoc) const override;
@@ -610,7 +622,7 @@ protected:
 	std::map<size_t, size_t> m_itemMap;
 	std::map<size_t, size_t> m_userMap;
 	std::multimap<size_t, size_t> m_userRatings;
-        GMatrix* m_itemAttrs;
+	GMatrix* m_itemAttrs;
 	size_t m_items, m_users;
 	GArgReader m_args;
 	int m_init_pos;
@@ -641,11 +653,11 @@ public:
 	/// See the comment for GCollaborativeFilter::serialize
 	GDomNode* serialize(GDom* pDoc) const override;
 
-	std::map<size_t, size_t> getUserMap(){ return m_userMap; }
+	std::map<size_t, size_t> getUserMap() { return m_userMap; }
 
-	std::map<size_t, size_t> getItemMap(){ return m_itemMap; }
+	std::map<size_t, size_t> getItemMap() { return m_itemMap; }
 
-	std::multimap<size_t, size_t> getUserRatings(){ return m_userRatings; }
+	std::multimap<size_t, size_t> getUserRatings() { return m_userRatings; }
 };
 
 class GContentBoostedCF : public GCollaborativeFilter
@@ -672,7 +684,6 @@ public:
 
 	/// See the comment for GCollaborativeFilter::serialize
 	GDomNode* serialize(GDom* pDoc) const override { return nullptr; };
-
 };
 
 } // namespace GClasses

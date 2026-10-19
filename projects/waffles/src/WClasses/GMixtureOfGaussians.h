@@ -22,7 +22,8 @@
 
 #include "GDistribution.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GMatrix;
 

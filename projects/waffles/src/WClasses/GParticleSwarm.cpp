@@ -22,7 +22,8 @@
 #include "GRand.h"
 #include <cmath>
 
-namespace GClasses {
+namespace GClasses
+{
 
 GParticleSwarm::GParticleSwarm(GTargetFunction* pCritic, size_t nPopulation, double dMin, double dRange, GRand* pRand)
 : GOptimizer(pCritic), m_pPositions(nPopulation, pCritic->relation()->size()), m_pVelocities(nPopulation, pCritic->relation()->size()), m_pBests(nPopulation, pCritic->relation()->size()), m_pErrors(nPopulation), m_pRand(pRand)
@@ -98,13 +99,13 @@ void GParticleSwarm::reset()
 
 GBouncyBalls::GBouncyBalls(GTargetFunction* pCritic, size_t population, GRand& rand, double probTeleport)
 : GOptimizer(pCritic),
-m_positions(population, pCritic->relation()->size()),
-m_velocities(population, pCritic->relation()->size()),
-m_errors(population),
-m_bestIndex(0),
-m_ball(0),
-m_rand(rand),
-m_probTeleport(probTeleport)
+  m_positions(population, pCritic->relation()->size()),
+  m_velocities(population, pCritic->relation()->size()),
+  m_errors(population),
+  m_bestIndex(0),
+  m_ball(0),
+  m_rand(rand),
+  m_probTeleport(probTeleport)
 {
 	m_positions.fill(0.0);
 	for(size_t i = 0; i < population; i++)

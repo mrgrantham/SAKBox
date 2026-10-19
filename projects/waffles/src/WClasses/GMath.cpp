@@ -25,7 +25,8 @@
 #include <cmath>
 #include "GRand.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 /*static*/ double GMath::gamma(double x)
 {
@@ -35,33 +36,32 @@ namespace GClasses {
 	double r = 0;
 
 	static double g[] =
-	{
-        1.0,
-        0.5772156649015329,
-       -0.6558780715202538,
-       -0.420026350340952e-1,
-        0.1665386113822915,
-       -0.421977345555443e-1,
-       -0.9621971527877e-2,
-        0.7218943246663e-2,
-       -0.11651675918591e-2,
-       -0.2152416741149e-3,
-        0.1280502823882e-3,
-       -0.201348547807e-4,
-       -0.12504934821e-5,
-        0.1133027232e-5,
-       -0.2056338417e-6,
-        0.6116095e-8,
-        0.50020075e-8,
-       -0.11812746e-8,
-        0.1043427e-9,
-        0.77823e-11,
-       -0.36968e-11,
-        0.51e-12,
-       -0.206e-13,
-       -0.54e-14,
-        0.14e-14
-	};
+	  {
+	    1.0,
+	    0.5772156649015329,
+	    -0.6558780715202538,
+	    -0.420026350340952e-1,
+	    0.1665386113822915,
+	    -0.421977345555443e-1,
+	    -0.9621971527877e-2,
+	    0.7218943246663e-2,
+	    -0.11651675918591e-2,
+	    -0.2152416741149e-3,
+	    0.1280502823882e-3,
+	    -0.201348547807e-4,
+	    -0.12504934821e-5,
+	    0.1133027232e-5,
+	    -0.2056338417e-6,
+	    0.6116095e-8,
+	    0.50020075e-8,
+	    -0.11812746e-8,
+	    0.1043427e-9,
+	    0.77823e-11,
+	    -0.36968e-11,
+	    0.51e-12,
+	    -0.206e-13,
+	    -0.54e-14,
+	    0.14e-14};
 
 	if(x > 171.0)
 		return INFINITY;
@@ -70,7 +70,7 @@ namespace GClasses {
 		if(x > 0.0)
 		{
 			ga = 1.0; // use factorial
-			for (i = 2; i < x; i++)
+			for(i = 2; i < x; i++)
 				ga *= i;
 		}
 		else
@@ -83,20 +83,20 @@ namespace GClasses {
 			z = fabs(x);
 			m = (int)z;
 			r = 1.0;
-			for (k = 1; k <= m; k++)
+			for(k = 1; k <= m; k++)
 				r *= (z - k);
 			z -= m;
 		}
 		else
 			z = x;
 		gr = g[24];
-		for (k = 23; k >= 0; k--)
+		for(k = 23; k >= 0; k--)
 			gr = gr * z + g[k];
-		ga = 1.0 / (gr*z);
+		ga = 1.0 / (gr * z);
 		if(fabs(x) > 1.0)
 		{
 			ga *= r;
-			if (x < 0.0)
+			if(x < 0.0)
 				ga = -M_PI / (x * ga * sin(M_PI * x));
 		}
 	}
@@ -114,25 +114,24 @@ double GMath::logGamma(double x)
 	int n = 0;
 	int k;
 	static double a[] =
-	{
-		8.333333333333333e-02, // 1/12
-		-2.777777777777778e-03, // -1/360
-		7.936507936507937e-04, // 1/1260
-		-5.952380952380952e-04, // -1/1680
-		8.417508417508418e-04, // 1/1188
-		-1.917526917526918e-03, // -691/360360
-		6.410256410256410e-03, // 1/156
-		-2.955065359477124e-02,
-		1.796443723688307e-01,
-		-1.39243221690590
-	};
+	  {
+	    8.333333333333333e-02, // 1/12
+	    -2.777777777777778e-03, // -1/360
+	    7.936507936507937e-04, // 1/1260
+	    -5.952380952380952e-04, // -1/1680
+	    8.417508417508418e-04, // 1/1188
+	    -1.917526917526918e-03, // -691/360360
+	    6.410256410256410e-03, // 1/156
+	    -2.955065359477124e-02,
+	    1.796443723688307e-01,
+	    -1.39243221690590};
 
 	x0 = x;
-	if (x <= 0.0)
+	if(x <= 0.0)
 		return INFINITY;
-	else if ((x == 1.0) || (x == 2.0))
+	else if((x == 1.0) || (x == 2.0))
 		return 0.0;
-	else if (x <= 7.0)
+	else if(x <= 7.0)
 	{
 		n = (int)(7 - x);
 		x0 = x + n;
@@ -140,12 +139,12 @@ double GMath::logGamma(double x)
 	x2 = 1.0 / (x0 * x0);
 	xp = 2.0 * M_PI;
 	gl0 = a[9];
-	for (k = 8; k >= 0; k--)
+	for(k = 8; k >= 0; k--)
 		gl0 = gl0 * x2 + a[k];
 	gl = gl0 / x0 + 0.5 * log(xp) + (x0 - 0.5) * log(x0) - x0;
-	if (x <= 7.0)
+	if(x <= 7.0)
 	{
-		for (k = 1; k <= n; k++)
+		for(k = 1; k <= n; k++)
 		{
 			gl -= log(x0 - 1.0);
 			x0 -= 1.0;
@@ -159,6 +158,8 @@ double GMath::logGamma(double x)
 
 double GMath::logFactorial(int x)
 {
+	// (SAKBox) one value per line
+	// clang-format off
 	static const double logfact[29] =
 	{
 		0,
@@ -191,6 +192,7 @@ double GMath::logFactorial(int x)
 		67.88974313718154007801786065101624,
 		71.25703896716801466482138494029641,
 	};
+	// clang-format on
 
 	if(x < 1)
 		throw Ex("out of range");
@@ -316,7 +318,7 @@ double GMath::tTestAlphaValue(size_t v, double t)
 
 	double alpha = GMath::incompleteBeta(dv / (dv + t * t), dv / 2, 0.5, 200000);
 	alpha /= GMath::incompleteBeta(1, dv / 2, 0.5, 200000);
-/*
+	/*
 	// An alternate way to compute the same thing
 	double alpha = GMath::Integrate(GMatrix_PairedTTestHelper, -t, t, 200000, &dv);
 	alpha /= (sqrt(dv) * GMath::IncompleteBeta(1, 0.5, dv / 2, 200000));
@@ -373,7 +375,7 @@ double GMath::approximateInverseErf(double x)
 // static
 double GMath::productLog(double x)
 {
-/*
+	/*
 	if(x < -1.0 / M_E)
 		throw Ex("undefined");
 
@@ -407,40 +409,45 @@ double GMath::productLog(double x)
 		return w;
 */
 	double w;
-	if (x < 0.5) {
-		if (fabs(x) < 1e-10) return x; // exp(x)==1 for small x.
-		if (x <= -1.0/M_E) {
-			if (x == -1.0/M_E) return -1; // avoid div by zero
+	if(x < 0.5)
+	{
+		if(fabs(x) < 1e-10) return x; // exp(x)==1 for small x.
+		if(x <= -1.0 / M_E)
+		{
+			if(x == -1.0 / M_E) return -1; // avoid div by zero
 			throw Ex("undefined");
 			return -1; // no solution
 		}
-		double p = sqrt( 2.0 * ( M_E*x + 1.0 ) );
-         w=-1.0+p*(1.0+p*(-1/3.0 + p*11.0/72.0));
-	} else {
-	   //if (isnan(x)) return x.nan;
+		double p = sqrt(2.0 * (M_E * x + 1.0));
+		w = -1.0 + p * (1.0 + p * (-1 / 3.0 + p * 11.0 / 72.0));
+	}
+	else
+	{
+		//if (isnan(x)) return x.nan;
 		w = log(x);
-		if (x > 3)
+		if(x > 3)
 		{
-			w = w-log(w);
+			w = w - log(w);
 			//if (x==x.infinity) return x.infinity;
 		}
 	}
-	double e,t,w2=w;
-	
-	int kount=0;
-	do { // Halley iterations. Never requires more than 4 iterations.
+	double e, t, w2 = w;
+
+	int kount = 0;
+	do
+	{ // Halley iterations. Never requires more than 4 iterations.
 		w = w2;
 		e = exp(w);
-		t = w*e - x;
-		t /= e*(w+1.0) - 0.5*(w+2.0)*t / (w+1.0);
+		t = w * e - x;
+		t /= e * (w + 1.0) - 0.5 * (w + 2.0) * t / (w + 1.0);
 		w2 -= t;
 		kount++;
-		if (kount>20)
+		if(kount > 20)
 		{
 			//writefln(x);
 			return x;
 		}
-	} while (fabs(t)>=1e-10*(1.0+fabs(w2)));
+	} while(fabs(t) >= 1e-10 * (1.0 + fabs(w2)));
 	return w2;
 }
 
@@ -525,12 +532,39 @@ void GMath_testFuzzy()
 
 	// Test pure logic cases
 	const double in[] = {
-	//	x	y	and	or	xor	nand	nor	nxor
-		-1.0,	-1.0,	-1.0,	-1.0,	-1.0,	1.0,	1.0,	1.0,
-		-1.0,	1.0,	-1.0,	1.0,	1.0,	1.0,	-1.0,	-1.0,
-		1.0,	-1.0,	-1.0,	1.0,	1.0,	1.0,	-1.0,	-1.0,
-		1.0,	1.0, 	1.0,	1.0,	-1.0,	-1.0,	-1.0,	1.0
-	};
+	  //	x	y	and	or	xor	nand	nor	nxor
+	  -1.0,
+	  -1.0,
+	  -1.0,
+	  -1.0,
+	  -1.0,
+	  1.0,
+	  1.0,
+	  1.0,
+	  -1.0,
+	  1.0,
+	  -1.0,
+	  1.0,
+	  1.0,
+	  1.0,
+	  -1.0,
+	  -1.0,
+	  1.0,
+	  -1.0,
+	  -1.0,
+	  1.0,
+	  1.0,
+	  1.0,
+	  -1.0,
+	  -1.0,
+	  1.0,
+	  1.0,
+	  1.0,
+	  1.0,
+	  -1.0,
+	  -1.0,
+	  -1.0,
+	  1.0};
 
 	for(size_t i = 0; i < 4; i++)
 	{
@@ -565,7 +599,7 @@ void GMath_testFuzzy()
 		if(val < -1.0 || val > 1.0)
 			throw Ex("Out of range");
 	}
-/*
+	/*
 	// Test monotonicity
 	for(size_t i = 0; i < 10000; i++)
 	{

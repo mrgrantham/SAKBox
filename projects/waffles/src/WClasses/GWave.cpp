@@ -26,10 +26,11 @@
 #include "GFourier.h"
 
 #ifdef WINDOWS
-#	pragma pack(1)
+#pragma pack(1)
 #endif
 
-namespace GClasses {
+namespace GClasses
+{
 
 struct WaveHeader
 {
@@ -54,16 +55,16 @@ struct WaveHeader
 };
 
 #ifdef WINDOWS
-#	pragma pack()
+#pragma pack()
 #endif
 
 
 GWave::GWave()
 : m_sampleCount(0),
-m_channels(0),
-m_sampleRate(0),
-m_bitsPerSample(0),
-m_pData(nullptr)
+  m_channels(0),
+  m_sampleRate(0),
+  m_bitsPerSample(0),
+  m_pData(nullptr)
 {
 }
 
@@ -368,7 +369,8 @@ void GFourierWaveProcessor::interpolate(struct ComplexNumber* pPre, struct Compl
 		pPre += m_blockSize / 2;
 		for(size_t i = 0; i < m_blockSize / 2; i++)
 		{
-			double w = i < graftBegin ? 1.0 : i > graftEnd ? 0.0 : 0.5 * (cos((double)(i - graftBegin) * M_PI / graftSamples) + 1);
+			double w = i < graftBegin ? 1.0 : i > graftEnd ? 0.0
+			                                               : 0.5 * (cos((double)(i - graftBegin) * M_PI / graftSamples) + 1);
 			pOut->real = (1.0 - w) * pCur->real + w * pPre->real;
 			pOut++;
 			pPre++;
@@ -390,7 +392,8 @@ void GFourierWaveProcessor::interpolate(struct ComplexNumber* pPre, struct Compl
 	{
 		for(size_t i = m_blockSize / 2; i < m_blockSize; i++)
 		{
-			double w = i < graftBegin ? 1.0 : i > graftEnd ? 0.0 : 0.5 * (cos((double)(i - graftBegin) * M_PI / graftSamples) + 1);
+			double w = i < graftBegin ? 1.0 : i > graftEnd ? 0.0
+			                                               : 0.5 * (cos((double)(i - graftBegin) * M_PI / graftSamples) + 1);
 			pOut->real = (1.0 - w) * pPost->real + w * pCur->real;
 			pOut++;
 			pPost++;

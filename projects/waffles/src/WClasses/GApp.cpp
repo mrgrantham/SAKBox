@@ -23,25 +23,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef WINDOWS
-#	include <windows.h>
-#	include <direct.h>
-#	include <float.h>
+#include <windows.h>
+#include <direct.h>
+#include <float.h>
 #else
-#	define _GNU_SOURCE 1
-#	include <fenv.h>
-#	include <unistd.h>
-#	include <signal.h>
-#	include <sys/wait.h>
+#define _GNU_SOURCE 1
+#include <fenv.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 //#	include <termios.h>
 //#	include <fcntl.h>
-#	ifndef __linux__
-#   ifndef __APPLE__
-#   include <xmmintrin.h>
-#   endif
-#  ifndef __FreeBSD__
-#		include <mach-o/dyld.h>
-#  endif
-#	endif
+#ifndef __linux__
+#ifndef __APPLE__
+#include <xmmintrin.h>
+#endif
+#ifndef __FreeBSD__
+#include <mach-o/dyld.h>
+#endif
+#endif
 #endif
 #include "GHolders.h"
 #include "GFile.h"
@@ -228,9 +228,9 @@ void GPipe::toFile(const char* szFilename)
 
 	// Get off any mounted drives so that they can be unmounted without killing the daemon
 	// No, some daemons may use the current directory, so they should do this themselves if not.
-//	if(chdir("/") != 0)
-//	{
-//	}
+	//	if(chdir("/") != 0)
+	//	{
+	//	}
 
 	// Launch the daemon
 	pDaemonMain(pArg);
@@ -255,17 +255,17 @@ void GPipe::toFile(const char* szFilename)
 		return bytes;
 	}
 #else
-#	if defined(__linux__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__FreeBSD__)
 	std::ostringstream os;
 	os << "/proc/" << getpid() << "/exe";
 	string tmp = os.str();
 	int bytes = std::min((int)readlink(tmp.c_str(), pBuf, len), (int)len - 1);
-#	else
+#else
 	// __APPLE__
 	uint32_t l = len;
 	_NSGetExecutablePath(pBuf, &l); // todo: this returns the path to the symlink, not the actual app.
 	int bytes = strlen(pBuf);
-#	endif
+#endif
 	if(bytes >= 0)
 	{
 		pBuf[bytes] = '\0';
@@ -574,15 +574,15 @@ int GApp::systemExecute(const char* szCommand, bool wait, GPipe* pStdOut, GPipe*
 	PROCESS_INFORMATION piProcInfo;
 	ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 	if(!CreateProcess(NULL,
-		(LPSTR)szCommand, // the command line
-		NULL, // process security attributes
-		NULL, // primary thread security attributes
-		TRUE, // handles are inherited
-		0, // creation flags (create no window)
-		NULL, // NULL means use parent's environment
-		NULL, // NULL means use parent's current working directory
-		&siStartInfo, // STARTUPINFO pointer
-		&piProcInfo)) // receives PROCESS_INFORMATION
+	                  (LPSTR)szCommand, // the command line
+	                  NULL, // process security attributes
+	                  NULL, // primary thread security attributes
+	                  TRUE, // handles are inherited
+	                  0, // creation flags (create no window)
+	                  NULL, // NULL means use parent's environment
+	                  NULL, // NULL means use parent's current working directory
+	                  &siStartInfo, // STARTUPINFO pointer
+	                  &piProcInfo)) // receives PROCESS_INFORMATION
 	{
 		DWORD dwErr = GetLastError();
 		char buf[256];
@@ -604,10 +604,10 @@ int GApp::systemExecute(const char* szCommand, bool wait, GPipe* pStdOut, GPipe*
 		CloseHandle(hChildStderrWr);
 
 	// Wait for the child process
-	DWORD ret = 0;//piProcInfo.hProcess; // Todo: BUG: Fix this line
+	DWORD ret = 0; //piProcInfo.hProcess; // Todo: BUG: Fix this line
 	if(wait)
 	{
-		WaitForSingleObject(piProcInfo.hProcess, 10000/*INFINITE*/);
+		WaitForSingleObject(piProcInfo.hProcess, 10000 /*INFINITE*/);
 		if(!GetExitCodeProcess(piProcInfo.hProcess, &ret))
 		{
 			CloseHandle(piProcInfo.hProcess);
@@ -641,13 +641,13 @@ void GApp::enableFloatingPointExceptions()
 #ifdef WINDOWS
 	unsigned int cw = _control87(0, 0) & MCW_EM; // should we use _controlfp instead?
 	cw &= ~(_EM_INVALID | _EM_ZERODIVIDE | _EM_OVERFLOW);
-	_control87(cw,MCW_EM);
+	_control87(cw, MCW_EM);
 #else
-#	ifdef __APPLE__
+#ifdef __APPLE__
 	//_MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~_MM_MASK_INVALID);
-#	else
+#else
 	feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW);
-#	endif
+#endif
 #endif
 }
 
@@ -661,14 +661,14 @@ bool GApp::openFile(const char* szPathOrUrl)
 	// SAKBox: the path or URL is passed as one argument, not through the shell.
 	// ("open " + url + " &" was run by the shell, so a ; or $(...) in a URL or
 	// file name ran commands.)
-#	ifdef __APPLE__
-	const char* openers[] = { "open" };
-#	else
-	const char* openers[] = { "xdg-open", "gnome-open" }; // (xdg-open works on KDE too)
-#	endif
+#ifdef __APPLE__
+	const char* openers[] = {"open"};
+#else
+	const char* openers[] = {"xdg-open", "gnome-open"}; // (xdg-open works on KDE too)
+#endif
 	for(const char* szOpener : openers)
 	{
-		char* argv[] = { (char*)szOpener, (char*)szPathOrUrl, nullptr };
+		char* argv[] = {(char*)szOpener, (char*)szPathOrUrl, nullptr};
 		try
 		{
 			if(GApp_execute(argv, true, nullptr, nullptr, nullptr) == 0)
@@ -724,10 +724,14 @@ GSignalHandler::GSignalHandler()
 	g_pSignalHandler = this;
 	m_gotSignal = 0;
 #ifndef WINDOWS
-	m_prevSigInt = signal(SIGINT, GApp_onSigInt); if(m_prevSigInt == SIG_ERR) m_prevSigInt = SIG_DFL;
-	m_prevSigTerm = signal(SIGTERM, GApp_onSigTerm); if(m_prevSigTerm == SIG_ERR) m_prevSigInt = SIG_DFL;
-	m_prevSigPipe = signal(SIGPIPE, GApp_onSigPipe); if(m_prevSigPipe == SIG_ERR) m_prevSigInt = SIG_DFL;
-	m_prevSigSegV = signal(SIGSEGV, GApp_onSigSegV); if(m_prevSigSegV == SIG_ERR) m_prevSigInt = SIG_DFL;
+	m_prevSigInt = signal(SIGINT, GApp_onSigInt);
+	if(m_prevSigInt == SIG_ERR) m_prevSigInt = SIG_DFL;
+	m_prevSigTerm = signal(SIGTERM, GApp_onSigTerm);
+	if(m_prevSigTerm == SIG_ERR) m_prevSigInt = SIG_DFL;
+	m_prevSigPipe = signal(SIGPIPE, GApp_onSigPipe);
+	if(m_prevSigPipe == SIG_ERR) m_prevSigInt = SIG_DFL;
+	m_prevSigSegV = signal(SIGSEGV, GApp_onSigSegV);
+	if(m_prevSigSegV == SIG_ERR) m_prevSigInt = SIG_DFL;
 #endif
 }
 
@@ -806,7 +810,7 @@ char GPassiveConsole::getChar()
 			throw Ex("ReadConsoleInput failed");
 	}
 	char c;
-	if(ReadConsole(m_hStdin/*hConsoleInput*/, &c, 1, &n, NULL))
+	if(ReadConsole(m_hStdin /*hConsoleInput*/, &c, 1, &n, NULL))
 	{
 		GAssert(n > 0);
 		return c;
@@ -947,20 +951,21 @@ bool GArgReader::next_is_flag()
 
 bool GArgReader::next_is_uint()
 {
-	if(size() == 0){
-	return false;
+	if(size() == 0)
+	{
+		return false;
 	}
 	const char* s = peek();
-	if (s == nullptr || *s == '\0'){
+	if(s == nullptr || *s == '\0')
+	{
 		return false;
-  	}
-  	char * p;
-  	if(strtoul (s, &p, 10) == 0)
-  	{
-	  // no-op to circumvent a g++ warning
- 	}
-  	return *p == '\0';
-
+	}
+	char* p;
+	if(strtoul(s, &p, 10) == 0)
+	{
+		// no-op to circumvent a g++ warning
+	}
+	return *p == '\0';
 }
 
 void GArgReader::clear_args()

@@ -29,7 +29,7 @@
 #include <vector>
 #include <fstream>
 #ifdef WINDOWS
-#	include <direct.h>
+#include <direct.h>
 #endif
 #include "WClasses/GApp.h"
 #include "WClasses/GAssignment.h"
@@ -126,38 +126,48 @@ public:
 	}
 };
 
-namespace{
-  /// A convenience class for making sequences
-  ///
-  /// Example:
-  ///
-  /// \code
-  /// (Seq<int>()+3+1+4+1+5).asVector();
-  /// \endcode
-  ///
-  /// Will make a vector containing the elements 3,1,4,1, and 5
-  template<class T>
-  class Seq{
-    std::list<T> l;
-  public:
-    /// Create an empty sequence
-    Seq(){  }
+namespace
+{
+/// A convenience class for making sequences
+///
+/// Example:
+///
+/// \code
+/// (Seq<int>()+3+1+4+1+5).asVector();
+/// \endcode
+///
+/// Will make a vector containing the elements 3,1,4,1, and 5
+template<class T>
+class Seq
+{
+	std::list<T> l;
+public:
+	/// Create an empty sequence
+	Seq() {}
 
-    /// Add \a next to this sequence
-    /// \param next the item to add to the sequence
-    /// \return this sequence after the append
-    Seq<T>& operator+(T next){ l.push_back(next); return *this; }
+	/// Add \a next to this sequence
+	/// \param next the item to add to the sequence
+	/// \return this sequence after the append
+	Seq<T>& operator+(T next)
+	{
+		l.push_back(next);
+		return *this;
+	}
 
-    /// Return a vector that contains copies of the elements of this sequence
-    /// \return a vector that contains copies of the elements of this sequence
-    std::vector<T> asVector() const{
-      return std::vector<T>(l.begin(), l.end()); }
+	/// Return a vector that contains copies of the elements of this sequence
+	/// \return a vector that contains copies of the elements of this sequence
+	std::vector<T> asVector() const
+	{
+		return std::vector<T>(l.begin(), l.end());
+	}
 
-    /// Return a list that contains copies of the elements of this sequence
-    /// \return a list that contains copies of the elements of this sequence
-    std::list<T> asList() const{
-      return l; }
-  };
+	/// Return a list that contains copies of the elements of this sequence
+	/// \return a list that contains copies of the elements of this sequence
+	std::list<T> asList() const
+	{
+		return l;
+	}
+};
 
 
 }
@@ -167,31 +177,31 @@ namespace{
 ///"Correlation based feature selection for machine learning" in ARFF
 ///format. The nominal attributes have been replaced by integers
 ///representing my own ordinal interpretations of them.
-std::string golf_arff_dataset(){
-return
-  "@RELATION Golf\n"
-  "\n"
-  "@ATTRIBUTE Play real\n"
-  "@ATTRIBUTE Outlook real\n"
-  "@ATTRIBUTE Temperature real\n"
-  "@ATTRIBUTE Humidity real\n"
-  "@ATTRIBUTE Wind real\n"
-  "\n"
-  "@DATA\n"
-  "-1,1,1,1,-1\n"
-  "-1,1,1,1,1\n"
-  "1,-1,0,1,-1\n"
-  "1,-1,-1,-1,-1\n"
-  "1,0,-1,-1,1\n"
-  "-1,1,0,1,-1\n"
-  "1,1,-1,-1,-1\n"
-  "1,1,0,-1,1\n"
-  "1,0,0,1,1\n"
-  "1,0,1,-1,-1\n"
-  "1,0,1,1,-1\n"
-  "1,-1,0,-1,-1\n"
-  "-1,-1,0,1,1\n"
-  "-1,-1,-1,-1,1\n";
+std::string golf_arff_dataset()
+{
+	return "@RELATION Golf\n"
+	       "\n"
+	       "@ATTRIBUTE Play real\n"
+	       "@ATTRIBUTE Outlook real\n"
+	       "@ATTRIBUTE Temperature real\n"
+	       "@ATTRIBUTE Humidity real\n"
+	       "@ATTRIBUTE Wind real\n"
+	       "\n"
+	       "@DATA\n"
+	       "-1,1,1,1,-1\n"
+	       "-1,1,1,1,1\n"
+	       "1,-1,0,1,-1\n"
+	       "1,-1,-1,-1,-1\n"
+	       "1,0,-1,-1,1\n"
+	       "-1,1,0,1,-1\n"
+	       "1,1,-1,-1,-1\n"
+	       "1,1,0,-1,1\n"
+	       "1,0,0,1,1\n"
+	       "1,0,1,-1,-1\n"
+	       "1,0,1,1,-1\n"
+	       "1,-1,0,-1,-1\n"
+	       "-1,-1,0,1,1\n"
+	       "-1,-1,-1,-1,1\n";
 }
 
 ///Runs the command line waffles_dimred attributeselector and returns the
@@ -215,44 +225,46 @@ return
 ///
 ///\return the output printed to stdout and standard error
 ///
-std::string run_dimred_attributeselector(const std::string& dataset,
-					 const std::string& extension,
-					 std::vector<int> labels,
-					 std::vector<int> ignored,
-					 int& retval
-					 ){
-  using std::string;
-  //Make the temp file in.extenson containing the requested data
-  string tmpname = string("in")+extension;
-  TempFileMaker inFile(tmpname.c_str(), dataset.c_str());
+std::string run_dimred_attributeselector(const std::string& dataset, const std::string& extension, std::vector<int> labels, std::vector<int> ignored, int& retval)
+{
+	using std::string;
+	//Make the temp file in.extenson containing the requested data
+	string tmpname = string("in") + extension;
+	TempFileMaker inFile(tmpname.c_str(), dataset.c_str());
 
-  // Build the command line
-  string args;
-  args += " attributeselector ";
-  args += tmpname;
-  std::vector<int>::const_iterator it;
-  if(labels.size() > 0){
-    it = labels.begin();
-    args += " -labels "+ to_str(*it);
-    for(++it; it != labels.end(); ++it){
-      args += ','; args += to_str(*it);
-    }
-  }
-  if(ignored.size() > 0){
-    it = ignored.begin();
-    args += " -ignore "+ to_str(*it);
-    for(++it; it != ignored.end(); ++it){
-      args += ','; args += to_str(*it);
-    }
-  }
-  args += " -seed 0";
+	// Build the command line
+	string args;
+	args += " attributeselector ";
+	args += tmpname;
+	std::vector<int>::const_iterator it;
+	if(labels.size() > 0)
+	{
+		it = labels.begin();
+		args += " -labels " + to_str(*it);
+		for(++it; it != labels.end(); ++it)
+		{
+			args += ',';
+			args += to_str(*it);
+		}
+	}
+	if(ignored.size() > 0)
+	{
+		it = ignored.begin();
+		args += " -ignore " + to_str(*it);
+		for(++it; it != ignored.end(); ++it)
+		{
+			args += ',';
+			args += to_str(*it);
+		}
+	}
+	args += " -seed 0";
 
-  // Execute the command
-  GPipe pipeStdOut;
-  GPipe pipeStdErr;
-  retval = sysExec("waffles_dimred", args.c_str(), &pipeStdOut, &pipeStdErr);
+	// Execute the command
+	GPipe pipeStdOut;
+	GPipe pipeStdErr;
+	retval = sysExec("waffles_dimred", args.c_str(), &pipeStdOut, &pipeStdErr);
 
-  return pipeStdOut.read()+pipeStdErr.read();
+	return pipeStdOut.read() + pipeStdErr.read();
 }
 
 
@@ -274,199 +286,172 @@ std::string run_dimred_attributeselector(const std::string& dataset,
 ///
 ///\return the output printed to stdout and standard error
 ///
-std::string run_transform_keeponlycolumns(const std::string& dataset,
-					 const std::string& extension,
-					 std::vector<int> tokeep,
-					 int& retval
-					 ){
-  using std::string;
-  //Make the temp file in.extenson containing the requested data
-  string tmpname = string("in")+extension;
-  TempFileMaker inFile(tmpname.c_str(), dataset.c_str());
+std::string run_transform_keeponlycolumns(const std::string& dataset, const std::string& extension, std::vector<int> tokeep, int& retval)
+{
+	using std::string;
+	//Make the temp file in.extenson containing the requested data
+	string tmpname = string("in") + extension;
+	TempFileMaker inFile(tmpname.c_str(), dataset.c_str());
 
-  // Build the command line
-  string args;
-  args += " keeponlycolumns ";
-  args += tmpname;
-  std::vector<int>::const_iterator it;
-  if(tokeep.size() > 0){
-    it = tokeep.begin();
-    args += " "+ to_str(*it);
-    for(++it; it != tokeep.end(); ++it){
-      args += ','; args += to_str(*it);
-    }
-  }
+	// Build the command line
+	string args;
+	args += " keeponlycolumns ";
+	args += tmpname;
+	std::vector<int>::const_iterator it;
+	if(tokeep.size() > 0)
+	{
+		it = tokeep.begin();
+		args += " " + to_str(*it);
+		for(++it; it != tokeep.end(); ++it)
+		{
+			args += ',';
+			args += to_str(*it);
+		}
+	}
 
-  // Execute the command
-  GPipe pipeStdOut;
-  GPipe pipeStdErr;
-  retval = sysExec("waffles_transform", args.c_str(), &pipeStdOut, &pipeStdErr);
+	// Execute the command
+	GPipe pipeStdOut;
+	GPipe pipeStdErr;
+	retval = sysExec("waffles_transform", args.c_str(), &pipeStdOut, &pipeStdErr);
 
-  return pipeStdOut.read()+pipeStdErr.read();
+	return pipeStdOut.read() + pipeStdErr.read();
 }
 
 void test_transform_keeponly()
 {
-  int retval;
-  TestContains
-    ("Unexpected end of arguments",
-     run_transform_keeponlycolumns(golf_arff_dataset(),".arff",
-				   (Seq<int>()).asVector(),retval),
-     "Unexpected output from golf dataset with no columns listed");
-  TestEqual
-    (1, retval, "not having columns listed unexpectedly  "
-     "succeeded command execution");
+	int retval;
+	TestContains("Unexpected end of arguments", run_transform_keeponlycolumns(golf_arff_dataset(), ".arff", (Seq<int>()).asVector(), retval), "Unexpected output from golf dataset with no columns listed");
+	TestEqual(1, retval, "not having columns listed unexpectedly  "
+	                     "succeeded command execution");
 
-  TestContains
-    ("Invalid column index: 5",
-     run_transform_keeponlycolumns(golf_arff_dataset(),".arff",
-				   (Seq<int>()+5).asVector(),retval),
-     "Unexpected output from golf dataset when keeping only the non-existant "
-     "column number 5");
-  TestEqual
-    (1, retval, "keeping only column 5 unexpectedly  "
-     "succeeded command execution");
+	TestContains("Invalid column index: 5", run_transform_keeponlycolumns(golf_arff_dataset(), ".arff", (Seq<int>() + 5).asVector(), retval), "Unexpected output from golf dataset when keeping only the non-existant "
+	                                                                                                                                          "column number 5");
+	TestEqual(1, retval, "keeping only column 5 unexpectedly  "
+	                     "succeeded command execution");
 
-  TestEqual
-    (
-     "@RELATION Golf\n"
-     "\n"
-     "@ATTRIBUTE Outlook real\n"
-     "\n"
-     "@DATA\n"
-     "1\n"
-     "1\n"
-     "-1\n"
-     "-1\n"
-     "0\n"
-     "1\n"
-     "1\n"
-     "1\n"
-     "0\n"
-     "0\n"
-     "0\n"
-     "-1\n"
-     "-1\n"
-     "-1\n"
-     ,run_transform_keeponlycolumns(golf_arff_dataset(),".arff",
-				    (Seq<int>()+1).asVector(),retval),
-     "Unexpected output from golf dataset keep only column 1");
-  TestEqual
-    (0, retval, "Keep only column 1 "
-     "failed command execution");
+	TestEqual(
+	  "@RELATION Golf\n"
+	  "\n"
+	  "@ATTRIBUTE Outlook real\n"
+	  "\n"
+	  "@DATA\n"
+	  "1\n"
+	  "1\n"
+	  "-1\n"
+	  "-1\n"
+	  "0\n"
+	  "1\n"
+	  "1\n"
+	  "1\n"
+	  "0\n"
+	  "0\n"
+	  "0\n"
+	  "-1\n"
+	  "-1\n"
+	  "-1\n",
+	  run_transform_keeponlycolumns(golf_arff_dataset(), ".arff", (Seq<int>() + 1).asVector(), retval),
+	  "Unexpected output from golf dataset keep only column 1");
+	TestEqual(0, retval, "Keep only column 1 "
+	                     "failed command execution");
 
-  TestEqual
-    (
-     "@RELATION Golf\n"
-     "\n"
-     "@ATTRIBUTE Wind real\n"
-     "\n"
-     "@DATA\n"
-     "-1\n"
-     "1\n"
-     "-1\n"
-     "-1\n"
-     "1\n"
-     "-1\n"
-     "-1\n"
-     "1\n"
-     "1\n"
-     "-1\n"
-     "-1\n"
-     "-1\n"
-     "1\n"
-     "1\n"
-     ,run_transform_keeponlycolumns(golf_arff_dataset(),".arff",
-				    (Seq<int>()+4).asVector(),retval),
-     "Unexpected output from golf dataset keep only column 4");
-  TestEqual
-    (0, retval, "Keep only column 4 "
-     "failed command execution");
+	TestEqual(
+	  "@RELATION Golf\n"
+	  "\n"
+	  "@ATTRIBUTE Wind real\n"
+	  "\n"
+	  "@DATA\n"
+	  "-1\n"
+	  "1\n"
+	  "-1\n"
+	  "-1\n"
+	  "1\n"
+	  "-1\n"
+	  "-1\n"
+	  "1\n"
+	  "1\n"
+	  "-1\n"
+	  "-1\n"
+	  "-1\n"
+	  "1\n"
+	  "1\n",
+	  run_transform_keeponlycolumns(golf_arff_dataset(), ".arff", (Seq<int>() + 4).asVector(), retval),
+	  "Unexpected output from golf dataset keep only column 4");
+	TestEqual(0, retval, "Keep only column 4 "
+	                     "failed command execution");
 
-  TestEqual
-    (
-     "@RELATION Golf\n"
-     "\n"
-     "@ATTRIBUTE Play real\n"
-     "@ATTRIBUTE Wind real\n"
-     "\n"
-     "@DATA\n"
-     "-1,-1\n"
-     "-1,1\n"
-     "1,-1\n"
-     "1,-1\n"
-     "1,1\n"
-     "-1,-1\n"
-     "1,-1\n"
-     "1,1\n"
-     "1,1\n"
-     "1,-1\n"
-     "1,-1\n"
-     "1,-1\n"
-     "-1,1\n"
-     "-1,1\n"
-     ,run_transform_keeponlycolumns(golf_arff_dataset(),".arff",
-				    (Seq<int>()+0+4).asVector(),retval),
-     "Unexpected output from golf dataset keep only columns 0 and 4");
-  TestEqual
-    (0, retval, "Keep only columns 0 and 4 "
-     "failed command execution");
+	TestEqual(
+	  "@RELATION Golf\n"
+	  "\n"
+	  "@ATTRIBUTE Play real\n"
+	  "@ATTRIBUTE Wind real\n"
+	  "\n"
+	  "@DATA\n"
+	  "-1,-1\n"
+	  "-1,1\n"
+	  "1,-1\n"
+	  "1,-1\n"
+	  "1,1\n"
+	  "-1,-1\n"
+	  "1,-1\n"
+	  "1,1\n"
+	  "1,1\n"
+	  "1,-1\n"
+	  "1,-1\n"
+	  "1,-1\n"
+	  "-1,1\n"
+	  "-1,1\n",
+	  run_transform_keeponlycolumns(golf_arff_dataset(), ".arff", (Seq<int>() + 0 + 4).asVector(), retval),
+	  "Unexpected output from golf dataset keep only columns 0 and 4");
+	TestEqual(0, retval, "Keep only columns 0 and 4 "
+	                     "failed command execution");
 
-  TestEqual
-    (
-     "@RELATION Golf\n"
-     "\n"
-     "@ATTRIBUTE Play real\n"
-     "@ATTRIBUTE Outlook real\n"
-     "@ATTRIBUTE Temperature real\n"
-     "@ATTRIBUTE Humidity real\n"
-     "@ATTRIBUTE Wind real\n"
-     "\n"
-     "@DATA\n"
-     "-1,1,1,1,-1\n"
-     "-1,1,1,1,1\n"
-     "1,-1,0,1,-1\n"
-     "1,-1,-1,-1,-1\n"
-     "1,0,-1,-1,1\n"
-     "-1,1,0,1,-1\n"
-     "1,1,-1,-1,-1\n"
-     "1,1,0,-1,1\n"
-     "1,0,0,1,1\n"
-     "1,0,1,-1,-1\n"
-     "1,0,1,1,-1\n"
-     "1,-1,0,-1,-1\n"
-     "-1,-1,0,1,1\n"
-     "-1,-1,-1,-1,1\n"
-     ,run_transform_keeponlycolumns(golf_arff_dataset(),".arff",
-				    (Seq<int>()+0+1+2+3+4).asVector(),retval),
-     "Unexpected output from golf dataset keep all columns");
-  TestEqual
-    (0, retval, "Keep all columns "
-     "failed command execution");
-
+	TestEqual(
+	  "@RELATION Golf\n"
+	  "\n"
+	  "@ATTRIBUTE Play real\n"
+	  "@ATTRIBUTE Outlook real\n"
+	  "@ATTRIBUTE Temperature real\n"
+	  "@ATTRIBUTE Humidity real\n"
+	  "@ATTRIBUTE Wind real\n"
+	  "\n"
+	  "@DATA\n"
+	  "-1,1,1,1,-1\n"
+	  "-1,1,1,1,1\n"
+	  "1,-1,0,1,-1\n"
+	  "1,-1,-1,-1,-1\n"
+	  "1,0,-1,-1,1\n"
+	  "-1,1,0,1,-1\n"
+	  "1,1,-1,-1,-1\n"
+	  "1,1,0,-1,1\n"
+	  "1,0,0,1,1\n"
+	  "1,0,1,-1,-1\n"
+	  "1,0,1,1,-1\n"
+	  "1,-1,0,-1,-1\n"
+	  "-1,-1,0,1,1\n"
+	  "-1,-1,-1,-1,1\n",
+	  run_transform_keeponlycolumns(golf_arff_dataset(), ".arff", (Seq<int>() + 0 + 1 + 2 + 3 + 4).asVector(), retval),
+	  "Unexpected output from golf dataset keep all columns");
+	TestEqual(0, retval, "Keep all columns "
+	                     "failed command execution");
 }
 
 void test_transform_mergevert()
 {
 	// Make some input files
-	TempFileMaker tempFile1("a.arff",
-		"@RELATION test\n"
-		"@ATTRIBUTE a1 continuous\n"
-		"@ATTRIBUTE a2 { alice, bob }\n"
-		"@ATTRIBUTE a3 { true, false }\n"
-		"@DATA\n"
-		"1.2, alice, true\n"
-		"2.3, bob, false\n"
-		);
-	TempFileMaker tempFile2("b.arff",
-		"@RELATION test\n"
-		"@ATTRIBUTE a1 continuous\n"
-		"@ATTRIBUTE a2 { charlie, bob }\n"
-		"@ATTRIBUTE a3 { false, true }\n"
-		"@DATA\n"
-		"3.4, bob, true\n"
-		"4.5, charlie, false\n"
-		);
+	TempFileMaker tempFile1("a.arff", "@RELATION test\n"
+	                                  "@ATTRIBUTE a1 continuous\n"
+	                                  "@ATTRIBUTE a2 { alice, bob }\n"
+	                                  "@ATTRIBUTE a3 { true, false }\n"
+	                                  "@DATA\n"
+	                                  "1.2, alice, true\n"
+	                                  "2.3, bob, false\n");
+	TempFileMaker tempFile2("b.arff", "@RELATION test\n"
+	                                  "@ATTRIBUTE a1 continuous\n"
+	                                  "@ATTRIBUTE a2 { charlie, bob }\n"
+	                                  "@ATTRIBUTE a3 { false, true }\n"
+	                                  "@DATA\n"
+	                                  "3.4, bob, true\n"
+	                                  "4.5, charlie, false\n");
 
 	// Execute the command
 	GPipe pipeStdOut;
@@ -506,22 +491,20 @@ void test_transform_mergevert()
 void test_recommend_fillmissingvalues()
 {
 	// Make some input files
-	TempFileMaker tempFile1("a.arff",
-		"@RELATION test\n"
-		"@ATTRIBUTE a1 { a, b, c }\n"
-		"@ATTRIBUTE a2 continuous\n"
-		"@ATTRIBUTE a3 { d, e, f }\n"
-		"@ATTRIBUTE a4 { g, h, i }\n"
-		"@DATA\n"
-		"a, ?, f, i\n"
-		"?, 2, ?, i\n"
-		"b, ?, d, ?\n"
-		"?, 4, ?, ?\n"
-		"?, ?, e, g\n"
-		"?, ?, e, ?\n"
-		"a, ?, ?, h\n"
-		"\n"
-		);
+	TempFileMaker tempFile1("a.arff", "@RELATION test\n"
+	                                  "@ATTRIBUTE a1 { a, b, c }\n"
+	                                  "@ATTRIBUTE a2 continuous\n"
+	                                  "@ATTRIBUTE a3 { d, e, f }\n"
+	                                  "@ATTRIBUTE a4 { g, h, i }\n"
+	                                  "@DATA\n"
+	                                  "a, ?, f, i\n"
+	                                  "?, 2, ?, i\n"
+	                                  "b, ?, d, ?\n"
+	                                  "?, 4, ?, ?\n"
+	                                  "?, ?, e, g\n"
+	                                  "?, ?, e, ?\n"
+	                                  "a, ?, ?, h\n"
+	                                  "\n");
 
 	// Execute the command
 	GPipe pipeStdOut;
@@ -558,59 +541,55 @@ void test_recommend_fillmissingvalues()
 		throw Ex("failed");
 }
 
-void test_parsearff_quoting(){
-  const char* inputArff=
-    "@relation 'squares of numbers'\n"
-    "\n"
-    "@attribute 'the number' real\n"
-    "\n"
-    "@attribute 'the square of the number' real\n"
-    "\n"
-    "@attribute exact {'is exact', inexact,is\\\\\\ exact}\n"
-    "\n"
-    "@data\n"
-    "1,1,'is exact'\n"
-    "2,4,is\\ exact\n"
-    "1.414,2,inexact\n"
-    "3,9,\"is exact\"\n"
-    "4,16,\"is\\ exact\"\n"
-    ;
+void test_parsearff_quoting()
+{
+	const char* inputArff =
+	  "@relation 'squares of numbers'\n"
+	  "\n"
+	  "@attribute 'the number' real\n"
+	  "\n"
+	  "@attribute 'the square of the number' real\n"
+	  "\n"
+	  "@attribute exact {'is exact', inexact,is\\\\\\ exact}\n"
+	  "\n"
+	  "@data\n"
+	  "1,1,'is exact'\n"
+	  "2,4,is\\ exact\n"
+	  "1.414,2,inexact\n"
+	  "3,9,\"is exact\"\n"
+	  "4,16,\"is\\ exact\"\n";
 
-  GMatrix M;
-  M.parseArff(inputArff, strlen(inputArff));
-  double expected_data[5][3]={{1,1,0},{2,4,0},{1.414,2,1},{3,9,0},{4,16,2}};
-  const GArffRelation* pRel = (const GArffRelation*)&M.relation();
-  const GArffRelation& R = *pRel;
+	GMatrix M;
+	M.parseArff(inputArff, strlen(inputArff));
+	double expected_data[5][3] = {{1, 1, 0}, {2, 4, 0}, {1.414, 2, 1}, {3, 9, 0}, {4, 16, 2}};
+	const GArffRelation* pRel = (const GArffRelation*)&M.relation();
+	const GArffRelation& R = *pRel;
 
-  TestEqual(R.size(), (std::size_t)3, "Incorrect number of attributes");
-  for(unsigned row = 0; row < 5; ++row){
-    for(unsigned col = 0; col < 3; ++col){
-      std::stringstream errdescr;
-      errdescr << "Incorrect matrix entry [" << row << "][" << col << "]";
-      TestEqual(M[row][col], expected_data[row][col], errdescr.str());
-    }
-  }
-  TestEqual(true, R.areContinuous(0,2),
-	      "First or second attribute is not continuous");
-  TestEqual(true, R.areNominal(2,1), "Third attribute is not nominal");
+	TestEqual(R.size(), (std::size_t)3, "Incorrect number of attributes");
+	for(unsigned row = 0; row < 5; ++row)
+	{
+		for(unsigned col = 0; col < 3; ++col)
+		{
+			std::stringstream errdescr;
+			errdescr << "Incorrect matrix entry [" << row << "][" << col << "]";
+			TestEqual(M[row][col], expected_data[row][col], errdescr.str());
+		}
+	}
+	TestEqual(true, R.areContinuous(0, 2), "First or second attribute is not continuous");
+	TestEqual(true, R.areNominal(2, 1), "Third attribute is not nominal");
 
-   std::stringstream val0, val1, val2;
-   R.printAttrValue(val0, 2, 0);
-   R.printAttrValue(val1, 2, 1);
-   R.printAttrValue(val2, 2, 2);
-   TestEqual("'is exact'",val0.str(),
-	       "First value of third attribute incorrect name");
-   TestEqual("inexact",val1.str(),
-	       "Second value of third attribute incorrect name");
-   TestEqual("is\\ exact",val2.str(),
-	       "Third value of third attribute incorrect name");
+	std::stringstream val0, val1, val2;
+	R.printAttrValue(val0, 2, 0);
+	R.printAttrValue(val1, 2, 1);
+	R.printAttrValue(val2, 2, 2);
+	TestEqual("'is exact'", val0.str(), "First value of third attribute incorrect name");
+	TestEqual("inexact", val1.str(), "Second value of third attribute incorrect name");
+	TestEqual("is\\ exact", val2.str(), "Third value of third attribute incorrect name");
 
 
-  TestEqual("'the number'",R.attrName(0),"First attribute incorrect name");
-  TestEqual("'the square of the number'",R.attrName(1),
-	      "Second attribute incorrect name");
-  TestEqual("exact",R.attrName(2),"Third attribute incorrect name");
-
+	TestEqual("'the number'", R.attrName(0), "First attribute incorrect name");
+	TestEqual("'the square of the number'", R.attrName(1), "Second attribute incorrect name");
+	TestEqual("exact", R.attrName(2), "Third attribute incorrect name");
 }
 
 void test_document_classification()
@@ -752,13 +731,17 @@ public:
 	///they were the arguments to main.  If no substrings are given
 	///(that is, no arguments are passed), all tests are run, as if one
 	///argument of an empty string had been given.
-	GTestHarness(int argc, char**argv)
+	GTestHarness(int argc, char** argv)
 	{
 		//Make list of test names to match
- 		if(argc < 2){
+		if(argc < 2)
+		{
 			m_testNameSubstr.push_back("");
-		}else{
-			for(int i = 1; i < argc; ++i){
+		}
+		else
+		{
+			for(int i = 1; i < argc; ++i)
+			{
 				m_testNameSubstr.push_back(argv[i]);
 			}
 		}
@@ -786,7 +769,7 @@ public:
 		bool exists = false;
 		if(GFile::doesFileExist("perf.log"))
 			exists = true;
-		os.exceptions(std::ios::failbit|std::ios::badbit);
+		os.exceptions(std::ios::failbit | std::ios::badbit);
 		try
 		{
 			os.open("perf.log", std::ofstream::out | std::ofstream::app);
@@ -837,11 +820,14 @@ public:
 	///testname.  You can also think about it as returning true
 	///iff testname contains one of the strings passed on the
 	///command line as a pattern which the test names must match.
-	bool willRunTest(const std::string& testName) const{
+	bool willRunTest(const std::string& testName) const
+	{
 		std::list<std::string>::const_iterator pat;
 		const std::list<std::string>& pats = m_testNameSubstr;
-		for(pat = pats.begin(); pat != pats.end(); ++pat){
-			if(testName.find(*pat) != std::string::npos){
+		for(pat = pats.begin(); pat != pats.end(); ++pat)
+		{
+			if(testName.find(*pat) != std::string::npos)
+			{
 				return true;
 			}
 		}
@@ -852,7 +838,7 @@ public:
 	{
 		cout << szTestName;
 		size_t nSpaces = (size_t)70 - strlen(szTestName);
-		for( ; nSpaces > 0; nSpaces--)
+		for(; nSpaces > 0; nSpaces--)
 			cout << " ";
 		cout.flush();
 	}
@@ -871,7 +857,8 @@ public:
 			}
 			catch(const std::exception& e)
 			{
-				cout << "\n" << e.what() << "\n\n";
+				cout << "\n"
+				     << e.what() << "\n\n";
 			}
 			catch(...)
 			{
@@ -1004,22 +991,22 @@ public:
 			whyNot = e.what();
 		}
 
-// #ifdef WINDOWS
-// #else
-// #	ifdef __linux__
-// #	else
-// 		bool runCommandLineTests = false; // I don't have the test-harness for the command-line apps working on OSX yet
-// #	endif
-// #endif
+		// #ifdef WINDOWS
+		// #else
+		// #	ifdef __linux__
+		// #	else
+		// 		bool runCommandLineTests = false; // I don't have the test-harness for the command-line apps working on OSX yet
+		// #	endif
+		// #endif
 		if(runCommandLineTests)
 		{
 			// Command-line tests
 			runTest("waffles_transform mergevert", test_transform_mergevert);
 			runTest("waffles_recommend fillmissingvalues", test_recommend_fillmissingvalues);
-//#ifndef WINDOWS
+			//#ifndef WINDOWS
 			runTest("waffles_transform keeponlycolumns", test_transform_keeponly);
 			runTest("document classification", test_document_classification);
-//#endif
+			//#endif
 		}
 		else if(getenv("TEST_SRCDIR"))
 		{
@@ -1081,15 +1068,15 @@ static void useBazelTools()
 	std::filesystem::current_path(tmpDir);
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	GApp::enableFloatingPointExceptions();
 	useBazelTools();
 
-	if(argc < 2){
-	  std::cout <<
-	    "(Optionally, you can run specific tests by passing a string as an argument. "
-		"Only tests containing the string will be executed.)\n";
+	if(argc < 2)
+	{
+		std::cout << "(Optionally, you can run specific tests by passing a string as an argument. "
+		             "Only tests containing the string will be executed.)\n";
 	}
 
 	int nRet = 0;

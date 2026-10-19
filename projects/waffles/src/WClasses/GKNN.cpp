@@ -44,7 +44,8 @@ using std::priority_queue;
 using std::vector;
 
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GKnnScaleFactorCritic : public GTargetFunction
 {
@@ -638,12 +639,18 @@ void GKNN::predict(const GVec& in, GVec& out)
 // virtual
 void GKNN::clear()
 {
-	delete(m_pNeighborFinder); m_pNeighborFinder = nullptr;
-	delete(m_pFeatures); m_pFeatures = nullptr;
-	delete(m_pSparseFeatures); m_pSparseFeatures = nullptr;
-	delete(m_pLabels); m_pLabels = nullptr;
-	delete(m_pScaleFactorOptimizer); m_pScaleFactorOptimizer = nullptr;
-	delete(m_pCritic); m_pCritic = nullptr;
+	delete(m_pNeighborFinder);
+	m_pNeighborFinder = nullptr;
+	delete(m_pFeatures);
+	m_pFeatures = nullptr;
+	delete(m_pSparseFeatures);
+	m_pSparseFeatures = nullptr;
+	delete(m_pLabels);
+	m_pLabels = nullptr;
+	delete(m_pScaleFactorOptimizer);
+	m_pScaleFactorOptimizer = nullptr;
+	delete(m_pCritic);
+	m_pCritic = nullptr;
 	m_valueCounts.resize(0);
 }
 
@@ -982,12 +989,12 @@ void GSparseInstance::prune(const GMatrix& holdOutFeatures, const GMatrix& holdO
 {
 
 	// Make a list of all known elements
-	vector< std::pair<size_t,size_t> > elements;
+	vector< std::pair<size_t, size_t> > elements;
 	for(size_t i = 0; i < m_pInstanceFeatures->rows(); i++)
 	{
 		SparseVec::const_iterator endit = m_pInstanceFeatures->rowEnd(i);
 		for(SparseVec::const_iterator it = m_pInstanceFeatures->rowBegin(i); it != endit; it++)
-			elements.push_back( std::pair<size_t,size_t>(i, it->first) );
+			elements.push_back(std::pair<size_t, size_t>(i, it->first));
 	}
 
 	// Prune the stored instances
@@ -1004,9 +1011,9 @@ void GSparseInstance::prune(const GMatrix& holdOutFeatures, const GMatrix& holdO
 		// SAKBox: by index; an element is dropped by moving the last one into
 		// its place, which is examined next. (This did it-- on an iterator,
 		// which stepped before begin() when dropping the first element.)
-		for(size_t k = 0; k < elements.size(); )
+		for(size_t k = 0; k < elements.size();)
 		{
-			std::pair<size_t,size_t>* it = &elements[k];
+			std::pair<size_t, size_t>* it = &elements[k];
 			if(m_pSkipRows->bit(it->first))
 			{
 				// drop the element from the list
@@ -1086,7 +1093,7 @@ void GSparseInstance::predictDistribution(const GVec& in, GPrediction* out)
 class GSparseInstance_comparator
 {
 public:
-	bool operator()(const std::pair<double,size_t>& a, const std::pair<double,size_t>& b)
+	bool operator()(const std::pair<double, size_t>& a, const std::pair<double, size_t>& b)
 	{
 		return a.first > b.first;
 	}
@@ -1100,13 +1107,13 @@ void GSparseInstance::predict(const GVec& in, GVec& out)
 		setMetric(new GEuclidSimilarity());
 
 	// Find the k-nearest neighbors
-	priority_queue< std::pair<double,size_t>, std::vector<std::pair<double,size_t> >, GSparseInstance_comparator > neighbors;
+	priority_queue< std::pair<double, size_t>, std::vector<std::pair<double, size_t> >, GSparseInstance_comparator > neighbors;
 	for(size_t i = 0; i < m_pInstanceFeatures->rows(); i++)
 	{
 		if(!m_pSkipRows || !m_pSkipRows->bit(i))
 		{
 			double similarity = m_pMetric->similarity(m_pInstanceFeatures->row(i), in);
-			neighbors.push( std::pair<double,size_t>(similarity, i) );
+			neighbors.push(std::pair<double, size_t>(similarity, i));
 			if(neighbors.size() > m_neighborCount)
 				neighbors.pop();
 		}

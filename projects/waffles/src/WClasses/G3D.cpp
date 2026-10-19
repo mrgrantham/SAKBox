@@ -27,7 +27,8 @@
 
 using std::vector;
 
-namespace GClasses {
+namespace GClasses
+{
 
 GDomNode* G3DVector::serialize(GDom* pDoc) const
 {
@@ -394,7 +395,7 @@ void GBillboardWorld::drawSection(GImage* pImage, double* pDepthMap, GCamera& ca
 				*pDM = z;
 				*pPix = col;
 			}
-//			*pPix = 0xffffffff;
+			//			*pPix = 0xffffffff;
 			pDM++;
 			pPix++;
 		}

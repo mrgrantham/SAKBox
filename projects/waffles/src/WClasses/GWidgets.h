@@ -24,7 +24,8 @@
 #include <string>
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GWidgetAtomic;
 class GWidgetBulletGroup;
@@ -79,8 +80,8 @@ public:
 /// The base class of all GUI widgets
 class GWidget
 {
-friend class GWidgetGroup;
-friend class GWidgetGrid;
+	friend class GWidgetGroup;
+	friend class GWidgetGrid;
 public:
 	enum WidgetType
 	{
@@ -96,7 +97,7 @@ public:
 		GroupBox,
 		HorizSlider,
 		HScrollBar,
-//		ImageLabel,
+		//		ImageLabel,
 		PolarChart,
 		ProgressBar,
 		SliderTab,
@@ -138,7 +139,7 @@ public:
 /// The base class of all atomic widgets (widgets that are not composed of other widgets).
 class GWidgetAtomic : public GWidget
 {
-friend class GWidgetDialog;
+	friend class GWidgetDialog;
 public:
 	GWidgetAtomic(GWidgetGroup* pParent, int x, int y, int w, int h);
 	~GWidgetAtomic() override;
@@ -164,8 +165,8 @@ protected:
 /// The base class of all widgets that are composed of other widgets
 class GWidgetGroup : public GWidget
 {
-friend class GWidget;
-friend class GWidgetAtomic;
+	friend class GWidget;
+	friend class GWidgetAtomic;
 protected:
 	std::vector<GWidget*> m_widgets;
 	std::vector<GWidget*> m_dirtyChildren;
@@ -648,7 +649,7 @@ public:
 		ArrowRight, // Play
 		ArrowUp,
 		ArrowDown,
-		Square,  // Stop
+		Square, // Stop
 	};
 
 protected:
@@ -1099,7 +1100,11 @@ public:
 	/// Draws this widget on pCanvas at (x,y)
 	void draw(GImage* pCanvas, int x, int y) override;
 
-	void setFileListDirty() { m_bFileListDirty = true; tattle(nullptr); }
+	void setFileListDirty()
+	{
+		m_bFileListDirty = true;
+		tattle(nullptr);
+	}
 
 protected:
 	virtual void dirFoldersAndFiles(std::string* pOutDir, std::vector<std::string>* pOutFolders, std::vector<std::string>* pOutFiles);

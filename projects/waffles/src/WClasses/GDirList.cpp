@@ -23,16 +23,17 @@
 #include "GHolders.h"
 #include <string.h>
 #ifdef WINDOWS
-#	include <direct.h> // for "getcwd", "chdir", etc.
-#	include <io.h> // for "access"
+#include <direct.h> // for "getcwd", "chdir", etc.
+#include <io.h> // for "access"
 #else
-#	include <unistd.h>
+#include <unistd.h>
 #endif
 #include <memory>
 
 using std::string;
 
-namespace GClasses {
+namespace GClasses
+{
 
 GDirList::GDirList()
 {
@@ -89,25 +90,25 @@ char* GFolderSerializer::nextPiece(size_t* pOutSize)
 {
 	switch(m_state)
 	{
-	case 0: // uncompressed header
-		memcpy(m_pPos, "ugfs", 4);
-		m_pPos += 4;
-		m_size -= 4;
-		m_state = 4;
-		break;
-	case 1: // figure out what to do next
-		if(m_dirStack.size() > 0)
+		case 0: // uncompressed header
+			memcpy(m_pPos, "ugfs", 4);
+			m_pPos += 4;
+			m_size -= 4;
+			m_state = 4;
+			break;
+		case 1: // figure out what to do next
+			if(m_dirStack.size() > 0)
+				continueDir();
+			else
+				return nullptr;
+			break;
+		case 2: // continue reading file
+			continueFile();
+			break;
+		case 3: // continue reading dir
 			continueDir();
-		else
-			return nullptr;
-		break;
-	case 2: // continue reading file
-		continueFile();
-		break;
-	case 3: // continue reading dir
-		continueDir();
-		break;
-	case 4: // get started
+			break;
+		case 4: // get started
 		{
 			// Change to the directory with the file or folder
 			string sPath = m_szPath;
@@ -134,8 +135,8 @@ char* GFolderSerializer::nextPiece(size_t* pOutSize)
 				startFile(m_szPath + pd.fileStart);
 		}
 		break;
-	default:
-		throw Ex("Unexpected state");
+		default:
+			throw Ex("Unexpected state");
 	}
 	*pOutSize = (m_pPos - m_pBuf);
 	m_pPos = m_pBuf;
@@ -355,9 +356,10 @@ void GFolderDeserializer::pump1()
 	{
 		switch(m_state)
 		{
-		case 0: // the header
+			case 0: // the header
 			{
-				const char* pChunk = m_pBQ1->dequeue(4); if(!pChunk) return;
+				const char* pChunk = m_pBQ1->dequeue(4);
+				if(!pChunk) return;
 				if(memcmp(pChunk, "ugfs", 4) == 0)
 					m_state = 1;
 				else if(memcmp(pChunk, "cgfs", 4) == 0)
@@ -373,9 +375,10 @@ void GFolderDeserializer::pump1()
 					throw Ex("Unrecognized format");
 			}
 			break;
-		case 1: // the file type
+			case 1: // the file type
 			{
-				const char* pChunk = m_pBQ1->dequeue(1); if(!pChunk) return;
+				const char* pChunk = m_pBQ1->dequeue(1);
+				if(!pChunk) return;
 				if(*pChunk == 'f')
 					m_state = 2;
 				else if(*pChunk == 'd')
@@ -391,22 +394,24 @@ void GFolderDeserializer::pump1()
 					throw Ex("Unexpected value");
 			}
 			break;
-		case 2: // filename len
+			case 2: // filename len
 			{
-				const char* pChunk = m_pBQ1->dequeue(sizeof(unsigned int)); if(!pChunk) return;
+				const char* pChunk = m_pBQ1->dequeue(sizeof(unsigned int));
+				if(!pChunk) return;
 				m_nameLen = *(unsigned int*)pChunk;
 				m_state = 3;
 			}
 			break;
-		case 3: // filename
+			case 3: // filename
 			{
-				const char* pChunk = m_pBQ1->dequeue(m_nameLen); if(!pChunk) return;
+				const char* pChunk = m_pBQ1->dequeue(m_nameLen);
+				if(!pChunk) return;
 				string sFilename;
 				sFilename.assign(pChunk, m_nameLen);
 				if(m_pBaseName && m_pBaseName->length() == 0)
 					m_pBaseName->assign(sFilename);
 				GAssert(m_pOutStream == NULL);
-				if(m_depth == 0 && access(sFilename.c_str(), 0 ) == 0)
+				if(m_depth == 0 && access(sFilename.c_str(), 0) == 0)
 					throw Ex("There is already a file or folder named \"", sFilename.c_str(), "\"");
 				m_pOutStream = new std::ofstream();
 				m_pOutStream->exceptions(std::ios::badbit | std::ios::failbit);
@@ -414,14 +419,15 @@ void GFolderDeserializer::pump1()
 				m_state = 4;
 			}
 			break;
-		case 4: // file size
+			case 4: // file size
 			{
-				const char* pChunk = m_pBQ1->dequeue(sizeof(unsigned long long)); if(!pChunk) return;
+				const char* pChunk = m_pBQ1->dequeue(sizeof(unsigned long long));
+				if(!pChunk) return;
 				m_fileLen = *(unsigned long long*)pChunk;
 				m_state = 5;
 			}
 			break;
-		case 5: // file bytes
+			case 5: // file bytes
 			{
 				size_t writeAmount = std::min((size_t)m_fileLen, m_pBQ1->readyBytes());
 				const char* pChunk = m_pBQ1->dequeue(writeAmount);
@@ -439,16 +445,18 @@ void GFolderDeserializer::pump1()
 					return;
 			}
 			break;
-		case 6: // dirname len
+			case 6: // dirname len
 			{
-				const char* pChunk = m_pBQ1->dequeue(sizeof(unsigned int)); if(!pChunk) return;
+				const char* pChunk = m_pBQ1->dequeue(sizeof(unsigned int));
+				if(!pChunk) return;
 				m_nameLen = *(unsigned int*)pChunk;
 				m_state = 7;
 			}
 			break;
-		case 7: // dirname
+			case 7: // dirname
 			{
-				const char* pChunk = m_pBQ1->dequeue(m_nameLen); if(!pChunk) return;
+				const char* pChunk = m_pBQ1->dequeue(m_nameLen);
+				if(!pChunk) return;
 				string sDirname;
 				sDirname.assign(pChunk, m_nameLen);
 				if(m_pBaseName && m_pBaseName->length() == 0)
@@ -468,8 +476,8 @@ void GFolderDeserializer::pump1()
 				m_state = 1;
 			}
 			break;
-		default:
-			throw Ex("Unrecognized state");
+			default:
+				throw Ex("Unrecognized state");
 		}
 	}
 }
@@ -480,7 +488,8 @@ void GFolderDeserializer::pump2()
 	{
 		if(m_compressedBlockSize == 0)
 		{
-			const char* pChunk = m_pBQ2->dequeue(sizeof(unsigned int)); if(!pChunk) return;
+			const char* pChunk = m_pBQ2->dequeue(sizeof(unsigned int));
+			if(!pChunk) return;
 			unsigned int compressedBlockSize = *(unsigned int*)pChunk;
 			m_compressedBlockSize = (size_t)compressedBlockSize;
 			if(compressedBlockSize > COMPRESS_BUF_SIZE + 5)
@@ -488,7 +497,8 @@ void GFolderDeserializer::pump2()
 		}
 		else
 		{
-			const char* pChunk = m_pBQ2->dequeue(m_compressedBlockSize); if(!pChunk) return;
+			const char* pChunk = m_pBQ2->dequeue(m_compressedBlockSize);
+			if(!pChunk) return;
 			unsigned int uncompressedLen;
 			unsigned char* pUncompressed = GCompressor::uncompress((unsigned char*)pChunk, (unsigned int)m_compressedBlockSize, &uncompressedLen);
 			std::unique_ptr<unsigned char[]> hUncompressed(pUncompressed);

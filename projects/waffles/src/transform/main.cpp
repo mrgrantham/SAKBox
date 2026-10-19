@@ -49,8 +49,8 @@
 #include <set>
 #include <map>
 #ifdef WIN32
-#	include <direct.h>
-#	include <process.h>
+#include <direct.h>
+#include <process.h>
 #endif
 #include <exception>
 #include "WClasses/usage.h"
@@ -136,7 +136,7 @@ void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount
 					if(attrSet.find(val) != attrSet.end())
 						throw Ex("Column ", to_str(val), " is listed multiple times");
 					attrSet.insert(val);
-						list.push_back(val);
+					list.push_back(val);
 					if(val == end)
 						break;
 				}
@@ -547,10 +547,12 @@ void keepOnlyColumns(GArgReader& args)
 	//colsToKeep sorted from largest to smallest
 	vector<size_t> colsToDel;
 	colsToDel.reserve(attrCount - colsToKeep.size());
-	for(size_t i = attrCount-1; i < attrCount; --i){
-	  if(colsToKeep.find(i) == colsToKeep.end()){
-	    colsToDel.push_back(i);
-	  }
+	for(size_t i = attrCount - 1; i < attrCount; --i)
+	{
+		if(colsToKeep.find(i) == colsToKeep.end())
+		{
+			colsToDel.push_back(i);
+		}
 	}
 
 	//Delete the columns. Doing it in largest-to-smallest order
@@ -720,11 +722,11 @@ void enumerateValues(GArgReader& args)
 	else
 	{
 		size_t n = 0;
-		map<double,size_t> themap;
+		map<double, size_t> themap;
 		for(size_t i = 0; i < pData->rows(); i++)
 		{
 			GVec& pRow = pData->row(i);
-			map<double,size_t>::iterator it = themap.find(pRow[col]);
+			map<double, size_t>::iterator it = themap.find(pRow[col]);
 			if(it == themap.end())
 			{
 				themap[pRow[col]] = n;
@@ -1042,13 +1044,13 @@ void mergeVert(GArgReader& args)
 	Holder<GMatrix> hData1(pData1);
 	GMatrix* pData2 = loadData(args.pop_string());
 	Holder<GMatrix> hData2(pData2);
-	
+
 	bool ignoreMismatchingName = false;
 	if(args.if_pop("-f"))
 	{
 		ignoreMismatchingName = true;
 	}
-	
+
 	pData1->mergeVert(pData2, ignoreMismatchingName);
 	pData1->print(cout);
 }
@@ -1339,27 +1341,32 @@ void rotate(GArgReader& args)
 	Holder<GMatrix> hA(pA);
 	const GRelation* relation = &pA->relation();
 	unsigned colx = args.pop_uint();
-	if(colx >= pA->cols()){
-	  throw Ex("Rotation first column index (",to_str(colx),") "
-		     "should not be greater "
-		     "than the largest index, which is ", to_str(pA->cols()-1),
-		     ".");
+	if(colx >= pA->cols())
+	{
+		throw Ex("Rotation first column index (", to_str(colx), ") "
+		                                                        "should not be greater "
+		                                                        "than the largest index, which is ",
+		         to_str(pA->cols() - 1),
+		         ".");
 	}
-	if(!relation->areContinuous(colx,1)){
-	  throw Ex("Rotation first column index (",to_str(colx),") "
-		     "should be continuous and it is not.");
-
+	if(!relation->areContinuous(colx, 1))
+	{
+		throw Ex("Rotation first column index (", to_str(colx), ") "
+		                                                        "should be continuous and it is not.");
 	}
 	unsigned coly = args.pop_uint();
-	if(coly >= pA->cols()){
-	  throw Ex("Rotation second column index (",to_str(coly),") "
-		     "should not be greater "
-		     "than the largest index, which is ", to_str(pA->cols()-1),
-		     ".");
+	if(coly >= pA->cols())
+	{
+		throw Ex("Rotation second column index (", to_str(coly), ") "
+		                                                         "should not be greater "
+		                                                         "than the largest index, which is ",
+		         to_str(pA->cols() - 1),
+		         ".");
 	}
-	if(!relation->areContinuous(coly,1)){
-	  throw Ex("Rotation second column index (",to_str(coly),") "
-		     "should be continuous and it is not.");
+	if(!relation->areContinuous(coly, 1))
+	{
+		throw Ex("Rotation second column index (", to_str(coly), ") "
+		                                                         "should be continuous and it is not.");
 	}
 
 	double angle = args.pop_double();
@@ -1367,12 +1374,13 @@ void rotate(GArgReader& args)
 	angle = angle * M_PI / 180; //Convert from degrees to radians
 	double cosAngle = std::cos(angle);
 	double sinAngle = std::sin(angle);
-	for(std::size_t rowIdx = 0; rowIdx < pA->rows(); ++rowIdx){
+	for(std::size_t rowIdx = 0; rowIdx < pA->rows(); ++rowIdx)
+	{
 		GVec& row = (*pA)[rowIdx];
 		double x = row[colx];
 		double y = row[coly];
-		row[colx]=x*cosAngle-y*sinAngle;
-		row[coly]=x*sinAngle+y*cosAngle;
+		row[colx] = x * cosAngle - y * sinAngle;
+		row[coly] = x * sinAngle + y * cosAngle;
 	}
 	pA->print(cout);
 }
@@ -1404,7 +1412,7 @@ void sampleRows(GArgReader& args)
 
 	size_t size = 0;
 	std::ifstream s;
-	s.exceptions(std::ios::failbit|std::ios::badbit);
+	s.exceptions(std::ios::failbit | std::ios::badbit);
 	try
 	{
 		s.open(filename, std::ios::binary);
@@ -1453,7 +1461,7 @@ void sampleRowsRegularly(GArgReader& args)
 
 	size_t size = 0;
 	std::ifstream s;
-	s.exceptions(std::ios::failbit|std::ios::badbit);
+	s.exceptions(std::ios::failbit | std::ios::badbit);
 	try
 	{
 		s.open(filename, std::ios::binary);
@@ -1600,7 +1608,7 @@ void significance(GArgReader& args)
 		cout << "Two-tailed P-value (for non-directional comparisons--is A different than B?) computed with a normal approximation using W_min = " << p_min << "\n";
 		cout << "To show that something is \"better\" than something else, use the one-tailed P-value.\n";
 		cout << "Commonly, a P-value less that 0.05 is considered to be significant.\n";
-/*
+		/*
 			double p_sum = GMath::wilcoxonPValue(num, w_sum);
 			cout << "Directional (one-tailed) P-value computed with W_sum = " << p_sum << "\n";
 */
@@ -1672,18 +1680,24 @@ void split(GArgReader& args)
 
 	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
 	bool shouldShuffle = false;
-	while(args.size() > 0){
-		if(args.if_pop("-shuffle")){
+	while(args.size() > 0)
+	{
+		if(args.if_pop("-shuffle"))
+		{
 			shouldShuffle = true;
-		}else if(args.if_pop("-seed")){
+		}
+		else if(args.if_pop("-seed"))
+		{
 			nSeed = args.pop_uint();
-		}else
+		}
+		else
 			throw Ex("Invalid option: ", args.peek());
 	}
 
 	// Shuffle if necessary
 	GRand rng(nSeed);
-	if(shouldShuffle){
+	if(shouldShuffle)
+	{
 		pData->shuffle(rng);
 	}
 
@@ -2114,9 +2128,7 @@ void geodistance(GArgReader& args)
 		double psi2 = degLat2 * M_PI / 180.0;
 		double deltapsi = (degLat2 - degLat1) * M_PI / 180.0;
 		double deltalambda = (degLon2 - degLon1) * M_PI / 180.0;
-		double a = sin(deltapsi * 0.5) * sin(deltapsi * 0.5) +
-		        cos(psi1) * cos(psi2) *
-		        sin(deltalambda * 0.5) * sin(deltalambda * 0.5);
+		double a = sin(deltapsi * 0.5) * sin(deltapsi * 0.5) + cos(psi1) * cos(psi2) * sin(deltalambda * 0.5) * sin(deltalambda * 0.5);
 		double c = 2 * atan2(sqrt(a), sqrt(1.0 - a));
 		tmp[i][0] = radius * c;
 	}
@@ -2185,34 +2197,47 @@ void SwapAttributes(GArgReader& args)
 	pData->print(cout);
 }
 
-void threshold(GArgReader& args){
-  GMatrix* pData = loadData(args.pop_string());
-  Holder<GMatrix> hData(pData);
-  unsigned column=args.pop_uint();
-  if(column >= hData->cols()){
-    std::stringstream msg;
-    if(hData->cols() >= 1){
-      msg << "The column to threshold is too large.   It should be in "
-	  << "the range [0.." << (hData->cols()-1) << "].";
-    }else{
-      msg << "This data has no columns to threshold.";
-    }
-    throw Ex(msg.str());
-  }
-  if(hData->relation().valueCount(column) != 0){
-    throw Ex("Can only use threshold on continuous attributes.");
-  }
-  double value = args.pop_double();
+void threshold(GArgReader& args)
+{
+	GMatrix* pData = loadData(args.pop_string());
+	Holder<GMatrix> hData(pData);
+	unsigned column = args.pop_uint();
+	if(column >= hData->cols())
+	{
+		std::stringstream msg;
+		if(hData->cols() >= 1)
+		{
+			msg << "The column to threshold is too large.   It should be in "
+			    << "the range [0.." << (hData->cols() - 1) << "].";
+		}
+		else
+		{
+			msg << "This data has no columns to threshold.";
+		}
+		throw Ex(msg.str());
+	}
+	if(hData->relation().valueCount(column) != 0)
+	{
+		throw Ex("Can only use threshold on continuous attributes.");
+	}
+	double value = args.pop_double();
 
-  //Do the actual thresholding
-  for(size_t i = 0; i < hData->rows(); ++i){
-    double& v = hData->row(i)[column];
-    if(v <= value){ v = 0;
-    }else { v = 1; }
-  }
+	//Do the actual thresholding
+	for(size_t i = 0; i < hData->rows(); ++i)
+	{
+		double& v = hData->row(i)[column];
+		if(v <= value)
+		{
+			v = 0;
+		}
+		else
+		{
+			v = 1;
+		}
+	}
 
-  //Print the data
-  hData->print(cout);
+	//Print the data
+	hData->print(cout);
 }
 
 void Transpose(GArgReader& args)
@@ -2375,7 +2400,7 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 	cerr.flush();
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
 	GApp::enableFloatingPointExceptions();

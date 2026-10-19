@@ -31,9 +31,9 @@
 
 namespace GClasses
 {
-	class GRand;
-	class GDom;
-	class GDomNode;
+class GRand;
+class GDom;
+class GDomNode;
 }
 class UserRatings;
 class Item;
@@ -127,7 +127,7 @@ protected:
 	GVec input_buf;
 	GNeuralNet nn;
 	std::vector<User*> m_users;
-	std::map<std::string,User*> m_userMap;
+	std::map<std::string, User*> m_userMap;
 	std::vector<Item*> m_items;
 
 public:

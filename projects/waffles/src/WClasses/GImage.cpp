@@ -37,13 +37,14 @@
 #include <cmath>
 #include <memory>
 
-namespace GClasses {
+namespace GClasses
+{
 using std::vector;
 using std::string;
 
 
 #ifdef WINDOWS
-#	include <windows.h>
+#include <windows.h>
 #else
 typedef unsigned int DWORD;
 typedef long LONG;
@@ -51,6 +52,8 @@ typedef short WORD;
 
 
 #pragma pack(1)
+// (SAKBox) Windows' bitmap headers, aligned as Windows declares them
+// clang-format off
 typedef struct tagBITMAPINFOHEADER {
     DWORD  biSize;
     LONG   biWidth;
@@ -72,6 +75,7 @@ typedef struct tagBITMAPFILEHEADER {
   WORD    bfReserved2;
   DWORD   bfOffBits;
 } BITMAPFILEHEADER, *PBITMAPFILEHEADER;
+// clang-format on
 #pragma pack()
 
 #endif
@@ -87,13 +91,8 @@ const char* rgbToHex(char* pOutHex, unsigned int c)
 
 unsigned int hexToRgb(const char* szHex)
 {
-	if( szHex[0] == '\0' ||
-		szHex[1] == '\0' ||
-		szHex[2] == '\0' ||
-		szHex[3] == '\0' ||
-		szHex[4] == '\0' ||
-		szHex[5] == '\0')
-			throw Ex("A color value should consist of six hexadecimal digits");
+	if(szHex[0] == '\0' || szHex[1] == '\0' || szHex[2] == '\0' || szHex[3] == '\0' || szHex[4] == '\0' || szHex[5] == '\0')
+		throw Ex("A color value should consist of six hexadecimal digits");
 	unsigned char r = GBits::hexToByte(szHex[1], szHex[0]);
 	unsigned char g = GBits::hexToByte(szHex[3], szHex[2]);
 	unsigned char b = GBits::hexToByte(szHex[5], szHex[4]);
@@ -246,10 +245,9 @@ void GImage::setPixelTranslucent(int nX, int nY, unsigned int color, double dOpa
 {
 	unsigned int cOld = pixel(nX, nY);
 	unsigned int c = gRGB(
-			(int)((1 - dOpacity) * gRed(cOld) + dOpacity * gRed(color)),
-			(int)((1 - dOpacity) * gGreen(cOld) + dOpacity * gGreen(color)),
-			(int)((1 - dOpacity) * gBlue(cOld) + dOpacity * gBlue(color))
-		);
+	  (int)((1 - dOpacity) * gRed(cOld) + dOpacity * gRed(color)),
+	  (int)((1 - dOpacity) * gGreen(cOld) + dOpacity * gGreen(color)),
+	  (int)((1 - dOpacity) * gBlue(cOld) + dOpacity * gBlue(color)));
 	setPixel(nX, nY, c);
 }
 
@@ -284,10 +282,7 @@ unsigned int GImage::interpolatePixel(float dX, float dY)
 	float dR2 = dXDif * (float)gRed(c2) + (1 - dXDif) * (float)gRed(c1);
 	float dG2 = dXDif * (float)gGreen(c2) + (1 - dXDif) * (float)gGreen(c1);
 	float dB2 = dXDif * (float)gBlue(c2) + (1 - dXDif) * (float)gBlue(c1);
-	return gARGB((int)(dYDif * dA2 + (1 - dYDif) * dA1),
-				(int)(dYDif * dR2 + (1 - dYDif) * dR1),
-				(int)(dYDif * dG2 + (1 - dYDif) * dG1),
-				(int)(dYDif * dB2 + (1 - dYDif) * dB1));
+	return gARGB((int)(dYDif * dA2 + (1 - dYDif) * dA1), (int)(dYDif * dR2 + (1 - dYDif) * dR1), (int)(dYDif * dG2 + (1 - dYDif) * dG1), (int)(dYDif * dB2 + (1 - dYDif) * dB1));
 }
 
 void GImage::loadByExtension(const char* szFilename)
@@ -599,12 +594,7 @@ void GImage::equalizeColorSpread()
 			nGray = gGray(col) >> 8;
 			fFactor = ((float)pnHistData[nGray] / (float)nFactor) / nGray;
 
-			setPixel(x, y,
-				gRGB(
-				(char)std::min((int)((float)gRed(col) * fFactor), 255),
-				(char)std::min((int)((float)gGreen(col) * fFactor), 255),
-				(char)std::min((int)((float)gBlue(col) * fFactor), 255)
-					));
+			setPixel(x, y, gRGB((char)std::min((int)((float)gRed(col) * fFactor), 255), (char)std::min((int)((float)gGreen(col) * fFactor), 255), (char)std::min((int)((float)gBlue(col) * fFactor), 255)));
 		}
 	}
 }
@@ -692,12 +682,7 @@ void GImage::locallyEqualizeColorSpread(int nLocalSize, float fExtent)
 			fFactorInterpolated = (fInterp * fFactorBottom + (1 - fInterp) * fFactorTop) * fExtent + 1 - fExtent;
 
 			// Set the Pixel
-			setPixel(nX, nY,
-				gRGB(
-					ClipChan((int)((float)gRed(col) * fFactorInterpolated)),
-					ClipChan((int)((float)gGreen(col) * fFactorInterpolated)),
-					ClipChan((int)((float)gBlue(col) * fFactorInterpolated))
-					));
+			setPixel(nX, nY, gRGB(ClipChan((int)((float)gRed(col) * fFactorInterpolated)), ClipChan((int)((float)gGreen(col) * fFactorInterpolated)), ClipChan((int)((float)gBlue(col) * fFactorInterpolated))));
 		}
 	}
 }
@@ -897,11 +882,9 @@ void GImage::lineAntiAlias(int nX1, int nY1, int nX2, int nY2, unsigned int colo
 			{
 				d = (double)nOverflow / nXDif;
 				col = pixel(n, m);
-				setPixel(n, m,
-					gRGB((unsigned char)(d * gRed(col) + (1 - d) * gRed(color)), (unsigned char)(d * gGreen(col) + (1 - d) * gGreen(color)), (unsigned char)(d * gBlue(col) + (1 - d) * gBlue(color))));
+				setPixel(n, m, gRGB((unsigned char)(d * gRed(col) + (1 - d) * gRed(color)), (unsigned char)(d * gGreen(col) + (1 - d) * gGreen(color)), (unsigned char)(d * gBlue(col) + (1 - d) * gBlue(color))));
 				col = pixel(n, m + 1);
-				setPixel(n, m + 1,
-					gRGB((unsigned char)((1 - d) * gRed(col) + d * gRed(color)), (unsigned char)((1 - d) * gGreen(col) + d * gGreen(color)), (unsigned char)((1 - d) * gBlue(col) + d * gBlue(color))));
+				setPixel(n, m + 1, gRGB((unsigned char)((1 - d) * gRed(col) + d * gRed(color)), (unsigned char)((1 - d) * gGreen(col) + d * gGreen(color)), (unsigned char)((1 - d) * gBlue(col) + d * gBlue(color))));
 				nOverflow += nYDif;
 				if(nOverflow >= nXDif)
 				{
@@ -916,11 +899,9 @@ void GImage::lineAntiAlias(int nX1, int nY1, int nX2, int nY2, unsigned int colo
 			{
 				d = (double)nOverflow / nXDif;
 				col = pixel(n, m);
-				setPixel(n, m,
-					gRGB((unsigned char)(d * gRed(col) + (1 - d) * gRed(color)), (unsigned char)(d * gGreen(col) + (1 - d) * gGreen(color)), (unsigned char)(d * gBlue(col) + (1 - d) * gBlue(color))));
+				setPixel(n, m, gRGB((unsigned char)(d * gRed(col) + (1 - d) * gRed(color)), (unsigned char)(d * gGreen(col) + (1 - d) * gGreen(color)), (unsigned char)(d * gBlue(col) + (1 - d) * gBlue(color))));
 				col = pixel(n, m - 1);
-				setPixel(n, m - 1,
-					gRGB((unsigned char)((1 - d) * gRed(col) + d * gRed(color)), (unsigned char)((1 - d) * gGreen(col) + d * gGreen(color)), (unsigned char)((1 - d) * gBlue(col) + d * gBlue(color))));
+				setPixel(n, m - 1, gRGB((unsigned char)((1 - d) * gRed(col) + d * gRed(color)), (unsigned char)((1 - d) * gGreen(col) + d * gGreen(color)), (unsigned char)((1 - d) * gBlue(col) + d * gBlue(color))));
 				nOverflow += nYDif;
 				if(nOverflow >= nXDif)
 				{
@@ -949,11 +930,9 @@ void GImage::lineAntiAlias(int nX1, int nY1, int nX2, int nY2, unsigned int colo
 			{
 				d = (double)nOverflow / nYDif;
 				col = pixel(m, n);
-				setPixel(m, n,
-					gRGB((unsigned char)(d * gRed(col) + (1 - d) * gRed(color)), (unsigned char)(d * gGreen(col) + (1 - d) * gGreen(color)), (unsigned char)(d * gBlue(col) + (1 - d) * gBlue(color))));
+				setPixel(m, n, gRGB((unsigned char)(d * gRed(col) + (1 - d) * gRed(color)), (unsigned char)(d * gGreen(col) + (1 - d) * gGreen(color)), (unsigned char)(d * gBlue(col) + (1 - d) * gBlue(color))));
 				col = pixel(m + 1, n);
-				setPixel(m + 1, n,
-					gRGB((unsigned char)((1 - d) * gRed(col) + d * gRed(color)), (unsigned char)((1 - d) * gGreen(col) + d * gGreen(color)), (unsigned char)((1 - d) * gBlue(col) + d * gBlue(color))));
+				setPixel(m + 1, n, gRGB((unsigned char)((1 - d) * gRed(col) + d * gRed(color)), (unsigned char)((1 - d) * gGreen(col) + d * gGreen(color)), (unsigned char)((1 - d) * gBlue(col) + d * gBlue(color))));
 				nOverflow += nXDif;
 				if(nOverflow >= nYDif)
 				{
@@ -968,11 +947,9 @@ void GImage::lineAntiAlias(int nX1, int nY1, int nX2, int nY2, unsigned int colo
 			{
 				d = (double)nOverflow / nYDif;
 				col = pixel(m, n);
-				setPixel(m, n,
-					gRGB((unsigned char)(d * gRed(col) + (1 - d) * gRed(color)), (unsigned char)(d * gGreen(col) + (1 - d) * gGreen(color)), (unsigned char)(d * gBlue(col) + (1 - d) * gBlue(color))));
+				setPixel(m, n, gRGB((unsigned char)(d * gRed(col) + (1 - d) * gRed(color)), (unsigned char)(d * gGreen(col) + (1 - d) * gGreen(color)), (unsigned char)(d * gBlue(col) + (1 - d) * gBlue(color))));
 				col = pixel(m - 1, n);
-				setPixel(m - 1, n,
-					gRGB((unsigned char)((1 - d) * gRed(col) + d * gRed(color)), (unsigned char)((1 - d) * gGreen(col) + d * gGreen(color)), (unsigned char)((1 - d) * gBlue(col) + d * gBlue(color))));
+				setPixel(m - 1, n, gRGB((unsigned char)((1 - d) * gRed(col) + d * gRed(color)), (unsigned char)((1 - d) * gGreen(col) + d * gGreen(color)), (unsigned char)((1 - d) * gBlue(col) + d * gBlue(color))));
 				nOverflow += nXDif;
 				if(nOverflow >= nYDif)
 				{
@@ -1290,10 +1267,7 @@ void GImage::saveBmp(const char* szFilename)
 			int nG = gGreen(col);
 			int nB = gBlue(col);
 			if(
-				fwrite(&nB, 1, 1, pFile) != 1 ||
-				fwrite(&nG, 1, 1, pFile) != 1 ||
-				fwrite(&nR, 1, 1, pFile) != 1
-				)
+			  fwrite(&nB, 1, 1, pFile) != 1 || fwrite(&nG, 1, 1, pFile) != 1 || fwrite(&nR, 1, 1, pFile) != 1)
 				throw Ex("Error writing to file: ", szFilename);
 		}
 		int n = (x * 3) % 4;
@@ -1343,10 +1317,7 @@ void GImage::loadBmp(FILE* pFile)
 		for(x = 0; x < (int)m_width; x++)
 		{
 			if(
-				fread(&nB, 1, 1, pFile) != 1 ||
-				fread(&nG, 1, 1, pFile) != 1 ||
-				fread(&nR, 1, 1, pFile) != 1
-				)
+			  fread(&nB, 1, 1, pFile) != 1 || fread(&nG, 1, 1, pFile) != 1 || fread(&nR, 1, 1, pFile) != 1)
 				throw Ex("Error reading from file");
 			setPixel(x, y, gRGB(nR, nG, nB));
 		}
@@ -1778,11 +1749,7 @@ void GImage::addBorder(const GImage* pSourceImage, unsigned int cBackground, uns
 			if(c == cBackground)
 			{
 				if(
-						pSourceImage->pixel(x - 1, y) != cBackground ||
-						pSourceImage->pixel(x + 1, y) != cBackground ||
-						pSourceImage->pixel(x, y - 1) != cBackground ||
-						pSourceImage->pixel(x, y + 1) != cBackground
-					)
+				  pSourceImage->pixel(x - 1, y) != cBackground || pSourceImage->pixel(x + 1, y) != cBackground || pSourceImage->pixel(x, y - 1) != cBackground || pSourceImage->pixel(x, y + 1) != cBackground)
 					setPixel(x, y, cBorder);
 				else
 					setPixel(x, y, c);
@@ -1820,14 +1787,11 @@ void GImage::makeEdgesGlow(float fThresh, int nThickness, int nOpacity, unsigned
 			colTop = pixel(x, y - 1);
 			colBottom = pixel(x, y + 1);
 
-			dif = std::abs((int)gRed(col) - (int)gRed(colLeft)) + std::abs((int)gGreen(col) - (int)gGreen(colLeft)) + std::abs((int)gBlue(col) - (int)gBlue(colLeft)) +
-				std::abs((int)gRed(col) - (int)gRed(colRight)) + std::abs((int)gGreen(col) - (int)gGreen(colRight)) + std::abs((int)gBlue(col) - (int)gBlue(colRight)) +
-				std::abs((int)gRed(col) - (int)gRed(colTop)) + std::abs((int)gGreen(col) - (int)gGreen(colTop)) + std::abs((int)gBlue(col) - (int)gBlue(colTop)) +
-				std::abs((int)gRed(col) - (int)gRed(colBottom)) + std::abs((int)gGreen(col) - (int)gGreen(colBottom)) + std::abs((int)gBlue(col) - (int)gBlue(colBottom));
+			dif = std::abs((int)gRed(col) - (int)gRed(colLeft)) + std::abs((int)gGreen(col) - (int)gGreen(colLeft)) + std::abs((int)gBlue(col) - (int)gBlue(colLeft)) + std::abs((int)gRed(col) - (int)gRed(colRight)) + std::abs((int)gGreen(col) - (int)gGreen(colRight)) + std::abs((int)gBlue(col) - (int)gBlue(colRight)) + std::abs((int)gRed(col) - (int)gRed(colTop)) + std::abs((int)gGreen(col) - (int)gGreen(colTop)) + std::abs((int)gBlue(col) - (int)gBlue(colTop)) + std::abs((int)gRed(col) - (int)gRed(colBottom)) + std::abs((int)gGreen(col) - (int)gGreen(colBottom)) + std::abs((int)gBlue(col) - (int)gBlue(colBottom));
 			if((float)dif * gAlpha(col) > fThresh * 49152)
 				tmp.setPixel(x, y, nThickness + 1);
 
-/*
+			/*
 			dif = std::abs((int)gAlpha(col) - (int)gAlpha(colLeft)) +
 				std::abs((int)gAlpha(col) - (int)gAlpha(colRight)) +
 				std::abs((int)gAlpha(col) - (int)gAlpha(colTop)) +
@@ -1873,10 +1837,7 @@ void GImage::horizDifferenceize()
 		for(x = 1; x < (int)m_width; x++)
 		{
 			c2 = pixel(x, y);
-			setPixel(x, y, gRGB(
-				(256 + gRed(c2) - gRed(c1)) % 256,
-				(256 + gGreen(c2) - gGreen(c1)) % 256,
-				(256 + gBlue(c2) - gBlue(c1)) % 256));
+			setPixel(x, y, gRGB((256 + gRed(c2) - gRed(c1)) % 256, (256 + gGreen(c2) - gGreen(c1)) % 256, (256 + gBlue(c2) - gBlue(c1)) % 256));
 			c1 = c2;
 		}
 	}
@@ -1894,10 +1855,7 @@ void GImage::horizSummize()
 		for(x = 1; x < (int)m_width; x++)
 		{
 			c2 = pixel(x, y);
-			setPixel(x, y, gRGB(
-				(256 + gRed(c2) + gRed(c1)) % 256,
-				(256 + gGreen(c2) + gGreen(c1)) % 256,
-				(256 + gBlue(c2) + gBlue(c1)) % 256));
+			setPixel(x, y, gRGB((256 + gRed(c2) + gRed(c1)) % 256, (256 + gGreen(c2) + gGreen(c1)) % 256, (256 + gBlue(c2) + gBlue(c1)) % 256));
 			c1 = c2;
 		}
 	}
@@ -1967,6 +1925,8 @@ void GImage::dot(float x, float y, float radius, unsigned int fore, unsigned int
 }
 
 
+// (SAKBox) font data, laid out one glyph per row
+// clang-format off
 static const unsigned short g_fontPixelMap[] =
 {
 0,0,0,
@@ -2066,7 +2026,10 @@ static const unsigned short g_fontPixelMap[] =
 0,32,16,16,32,64,64,32,0,
 0,504,504,504,504,
 };
+// clang-format on
 
+// (SAKBox) font data, laid out one glyph per row
+// clang-format off
 static const unsigned char g_fontConnectMap[] =
 {
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -2166,7 +2129,10 @@ static const unsigned char g_fontConnectMap[] =
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,66,40,64,0,0,0,0,0,16,128,16,160,64,32,64,0,0,0,0,0,16,130,24,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,78,14,76,0,23,143,31,141,0,7,15,15,13,0,7,15,15,13,0,39,79,47,77,0,19,139,27,137,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
+// clang-format on
 
+// (SAKBox) font data, laid out one glyph per row
+// clang-format off
 static const unsigned short g_fontCharStart[97] =
 {
 0,
@@ -2267,6 +2233,7 @@ static const unsigned short g_fontCharStart[97] =
 645,
 650
 };
+// clang-format on
 
 #define IDEAL_MARGIN 0.1464466094067262378
 #define B_N 0x1
@@ -2409,11 +2376,11 @@ void GImage::textChar(char ch, int x, int y, int wid, int hgt, float size, unsig
 
 				// The pixel is inside the character if any of these hold
 				bool inside = (v && xt >= IDEAL_MARGIN)
-					|| (u && yt >= IDEAL_MARGIN)
-					|| d
-					|| (xt + yt >= 0.5f && xt >= IDEAL_MARGIN && yt >= IDEAL_MARGIN)
-					|| (e && xt + yt > 0.5f && xt > IDEAL_MARGIN && 0.5f - yt > IDEAL_MARGIN)
-					|| (f && xt + yt > 0.5f && 0.5f - xt > IDEAL_MARGIN && yt > IDEAL_MARGIN);
+				  || (u && yt >= IDEAL_MARGIN)
+				  || d
+				  || (xt + yt >= 0.5f && xt >= IDEAL_MARGIN && yt >= IDEAL_MARGIN)
+				  || (e && xt + yt > 0.5f && xt > IDEAL_MARGIN && 0.5f - yt > IDEAL_MARGIN)
+				  || (f && xt + yt > 0.5f && 0.5f - xt > IDEAL_MARGIN && yt > IDEAL_MARGIN);
 				if(inside)
 					*pPix = col;
 			}
@@ -2546,7 +2513,7 @@ void GImage::blit(int x, int y, GImage* pSource, GRect* pSourceRect)
 	int dst = y * m_width + x;
 	int src = sy * pSource->m_width + sx;
 	sw *= sizeof(unsigned int);
-	for( ; sh > 0; sh--)
+	for(; sh > 0; sh--)
 	{
 		memcpy(&m_pPixels[dst], &pSource->m_pPixels[src], sw);
 		dst += m_width;
@@ -2591,17 +2558,14 @@ void GImage::blitAlpha(int x, int y, GImage* pSource, GRect* pSourceRect)
 	int src = sy * pSource->m_width + sx;
 	int xx, a;
 	unsigned int pix, pixOld;
-	for( ; sh > 0; sh--)
+	for(; sh > 0; sh--)
 	{
 		for(xx = 0; xx < sw; xx++)
 		{
 			pix = pSource->m_pPixels[src + xx];
 			a = gAlpha(pix);
 			pixOld = m_pPixels[dst + xx];
-			m_pPixels[dst + xx] = gARGB(std::max(a, (int)gAlpha(pixOld)),
-							(a * gRed(pix) + (256 - a) * gRed(pixOld)) >> 8,
-							(a * gGreen(pix) + (256 - a) * gGreen(pixOld)) >> 8,
-							(a * gBlue(pix) + (256 - a) * gBlue(pixOld)) >> 8);
+			m_pPixels[dst + xx] = gARGB(std::max(a, (int)gAlpha(pixOld)), (a * gRed(pix) + (256 - a) * gRed(pixOld)) >> 8, (a * gGreen(pix) + (256 - a) * gGreen(pixOld)) >> 8, (a * gBlue(pix) + (256 - a) * gBlue(pixOld)) >> 8);
 		}
 		dst += m_width;
 		src += pSource->m_width;
@@ -2613,14 +2577,14 @@ void GImage::blitAlphaStretch(GRect* pDestRect, GImage* pSource, GRect* pSourceR
 	float fSourceX, fSourceY, fSourceDX, fSourceDY;
 	if(pSourceRect)
 	{
-		fSourceDX =  (float)(pSourceRect->w - 1) / (float)(pDestRect->w - 1);
+		fSourceDX = (float)(pSourceRect->w - 1) / (float)(pDestRect->w - 1);
 		fSourceDY = (float)(pSourceRect->h - 1) / (float)(pDestRect->h - 1);
 		fSourceX = (float)pSourceRect->x;
 		fSourceY = (float)pSourceRect->y;
 	}
 	else
 	{
-		fSourceDX =  (float)(pSource->width() - 1) / (float)(pDestRect->w - 1);
+		fSourceDX = (float)(pSource->width() - 1) / (float)(pDestRect->w - 1);
 		fSourceDY = (float)(pSource->height() - 1) / (float)(pDestRect->h - 1);
 		fSourceX = 0.0f;
 		fSourceY = 0.0f;
@@ -2660,10 +2624,7 @@ void GImage::blitAlphaStretch(GRect* pDestRect, GImage* pSource, GRect* pSourceR
 			colIn = pSource->pixel((int)fSX, (int)fSourceY);
 			a = gAlpha(colIn);
 			colOld = *pPix;
-			*pPix = gARGB(std::max(a, (int)gAlpha(colOld)),
-						(a * gRed(colIn) + (256 - a) * gRed(colOld)) >> 8,
-						(a * gGreen(colIn) + (256 - a) * gGreen(colOld)) >> 8,
-						(a * gBlue(colIn) + (256 - a) * gBlue(colOld)) >> 8);
+			*pPix = gARGB(std::max(a, (int)gAlpha(colOld)), (a * gRed(colIn) + (256 - a) * gRed(colOld)) >> 8, (a * gGreen(colIn) + (256 - a) * gGreen(colOld)) >> 8, (a * gBlue(colIn) + (256 - a) * gBlue(colOld)) >> 8);
 			pPix++;
 			fSX += fSourceDX;
 		}
@@ -2717,11 +2678,7 @@ void GImage::moveLight(double dRadians, float fAmount)
 			c1 = pixel(x, y);
 			c2 = interpolatePixel(x + dx, y + dy);
 			nDelta = (int)gGray(c1) - gGray(c2);
-			setPixel(x, y, gARGB(
-				gAlpha(c1),
-				ClipChan(gRed(c1) + (int)(nDelta * fAmount)),
-				ClipChan(gGreen(c1) + (int)(nDelta * fAmount)),
-				ClipChan(gBlue(c1) + (int)(nDelta * fAmount))));
+			setPixel(x, y, gARGB(gAlpha(c1), ClipChan(gRed(c1) + (int)(nDelta * fAmount)), ClipChan(gGreen(c1) + (int)(nDelta * fAmount)), ClipChan(gBlue(c1) + (int)(nDelta * fAmount))));
 		}
 	}
 }
@@ -2742,54 +2699,53 @@ GImage* GImage::munge(int nStyle, float fExtent)
 				for(x = 0; x < (int)m_width; x++)
 				{
 					col = pixelNearest(
-						(int)(x + fExtent * m_width * (prng.uniform() - .5)),
-						(int)(y + fExtent * m_height * (prng.uniform() - .5))
-						);
+					  (int)(x + fExtent * m_width * (prng.uniform() - .5)),
+					  (int)(y + fExtent * m_height * (prng.uniform() - .5)));
 					pMunged->setPixel(x, y, col);
 				}
 			}
 			break;
 
 		case 1: // shadow threshold (throw out all pixels below a certain percent of the total brighness)
+		{
+			fExtent = 1 - fExtent;
+			fExtent *= fExtent;
+			fExtent *= fExtent;
+			fExtent = 1 - fExtent;
+
+			// Create the histogram data
+			unsigned int pnHistData[257];
+			memset(pnHistData, '\0', sizeof(int) * 257);
+			unsigned int nSize = m_width * m_height;
+			unsigned int nPos;
+			unsigned int nGray;
+			for(nPos = 0; nPos < nSize; nPos++)
+				pnHistData[gGray(m_pPixels[nPos]) >> 8]++;
+
+			// Turn it into cumulative histogram data
+			int n;
+			for(n = 1; n < 256; n++)
+				pnHistData[n] += pnHistData[n - 1];
+
+			// Find the cut-off
+			unsigned int nCutOff = (unsigned int)(fExtent * pnHistData[255]);
+			for(n = 0; n < 256 && pnHistData[n] < nCutOff; n++)
 			{
-				fExtent = 1 - fExtent;
-				fExtent *= fExtent;
-				fExtent *= fExtent;
-				fExtent = 1 - fExtent;
+			}
 
-				// Create the histogram data
-				unsigned int pnHistData[257];
-				memset(pnHistData, '\0', sizeof(int) * 257);
-				unsigned int nSize = m_width * m_height;
-				unsigned int nPos;
-				unsigned int nGray;
-				for(nPos = 0; nPos < nSize; nPos++)
-					pnHistData[gGray(m_pPixels[nPos]) >> 8]++;
-
-				// Turn it into cumulative histogram data
-				int n;
-				for(n = 1; n < 256; n++)
-					pnHistData[n] += pnHistData[n - 1];
-
-				// Find the cut-off
-				unsigned int nCutOff = (unsigned int)(fExtent * pnHistData[255]);
-				for(n = 0; n < 256 && pnHistData[n] < nCutOff; n++)
+			// Copy all the data above the threshold
+			for(y = 0; y < (int)m_height; y++)
+			{
+				for(x = 0; x < (int)m_width; x++)
 				{
-				}
-
-				// Copy all the data above the threshold
-				for(y = 0; y < (int)m_height; y++)
-				{
-					for(x = 0; x < (int)m_width; x++)
-					{
-						col = pixel(x, y);
-						nGray = gGray(col) >> 8;
-						if(nGray > (unsigned int)n)
-							pMunged->setPixel(x, y, col);
-					}
+					col = pixel(x, y);
+					nGray = gGray(col) >> 8;
+					if(nGray > (unsigned int)n)
+						pMunged->setPixel(x, y, col);
 				}
 			}
-			break;
+		}
+		break;
 
 		case 2: // waves
 		{
@@ -2799,9 +2755,8 @@ GImage* GImage::munge(int nStyle, float fExtent)
 				for(x = 0; x < (int)m_width; x++)
 				{
 					col = pixelNearest(
-										(int)(x + fExtent * halfWidth * cos((double)x * 16 / m_width)),
-										(int)(y + fExtent * halfHeight * sin((double)y * 16 / m_height))
-									);
+					  (int)(x + fExtent * halfWidth * cos((double)x * 16 / m_width)),
+					  (int)(y + fExtent * halfHeight * sin((double)y * 16 / m_height)));
 					pMunged->setPixel(x, y, col);
 				}
 			}
@@ -2810,9 +2765,9 @@ GImage* GImage::munge(int nStyle, float fExtent)
 
 		case 3: // waved in or out of the middle
 		{
-				fExtent = 1 - fExtent;
-				fExtent *= fExtent;
-				fExtent = 1 - fExtent;
+			fExtent = 1 - fExtent;
+			fExtent *= fExtent;
+			fExtent = 1 - fExtent;
 			// SAKBox: the middle, signed. y - m_height / 2 was unsigned, so above
 			// or left of the middle it wrapped to about 4 billion.
 			const int midX = (int)m_width / 2, midY = (int)m_height / 2;
@@ -2823,9 +2778,8 @@ GImage* GImage::munge(int nStyle, float fExtent)
 					d = atan2((double)(y - midY), (double)(x - midX));
 					d = fExtent * cos(d * 5);
 					col = pixelNearest(
-										(int)((1 - d) * x + d * midX),
-										(int)((1 - d) * y + d * midY)
-									);
+					  (int)((1 - d) * x + d * midX),
+					  (int)((1 - d) * y + d * midY));
 					pMunged->setPixel(x, y, col);
 				}
 			}
@@ -2926,7 +2880,7 @@ void GImage::triangleFill(float x1, float y1, float x2, float y2, float x3, floa
 	bot = std::min((int)m_height - 1, (int)floor(y3 + 0.5f));
 	if(fx1 < fx2)
 	{
-		for( ; y <= bot; y++)
+		for(; y <= bot; y++)
 		{
 			x = std::max(0, (int)fx1);
 			xMax = std::min((int)m_width - 1, (int)fx2);
@@ -2941,7 +2895,7 @@ void GImage::triangleFill(float x1, float y1, float x2, float y2, float x3, floa
 	}
 	else
 	{
-		for( ; y <= bot; y++)
+		for(; y <= bot; y++)
 		{
 			x = std::max(0, (int)fx2);
 			xMax = std::min((int)m_width - 1, (int)fx1);
@@ -3422,10 +3376,7 @@ void GImage::setGlobalAlpha(int alpha)
 }
 
 // static
-bool GImage::isPointInsideTriangle(float x, float y,
-				float x0, float y0,
-				float x1, float y1,
-				float x2, float y2)
+bool GImage::isPointInsideTriangle(float x, float y, float x0, float y0, float x1, float y1, float x2, float y2)
 {
 	int s1 = GBits::sign((x1 - x0) * (y0 - y) - (x0 - x) * (y1 - y0));
 	if(s1 == 0)
@@ -3444,23 +3395,15 @@ bool GImage::isPointInsideTriangle(float x, float y,
 }
 
 // static
-void GImage::triangleWeights(float* pW0, float* pW1, float* pW2,
-				float x, float y,
-				float x0, float y0,
-				float x1, float y1,
-				float x2, float y2)
+void GImage::triangleWeights(float* pW0, float* pW1, float* pW2, float x, float y, float x0, float y0, float x1, float y1, float x2, float y2)
 {
-	float t = (float)1.0 / ((x0 * y1 + x1 * y2 + x2 * y0) -
-				(y0 * x1 + y1 * x2 + y2 * x0));
+	float t = (float)1.0 / ((x0 * y1 + x1 * y2 + x2 * y0) - (y0 * x1 + y1 * x2 + y2 * x0));
 	*pW0 = t * ((x1 * y2 - x2 * y1) + (y1 - y2) * x + (x2 - x1) * y);
 	*pW1 = t * ((x2 * y0 - x0 * y2) + (y2 - y0) * x + (x0 - x2) * y);
 	*pW2 = t * ((x0 * y1 - x1 * y0) + (y0 - y1) * x + (x1 - x0) * y);
 }
 
-unsigned int GImage::interpolateWithinTriangle(float w0, float w1, float w2,
-				float x0, float y0,
-				float x1, float y1,
-				float x2, float y2)
+unsigned int GImage::interpolateWithinTriangle(float w0, float w1, float w2, float x0, float y0, float x1, float y1, float x2, float y2)
 {
 	return interpolatePixel(w0 * x0 + w1 * x1 + w2 * x2, w0 * y0 + w1 * y1 + w2 * y2);
 }
@@ -3500,11 +3443,7 @@ void GImage::contrastAndBrightness(float fContrastScale, int nBrightnessDelta)
 		for(x = 0; x < (int)m_width; x++)
 		{
 			c = *pPix;
-			*pPix = gARGB(gAlpha(c),
-				ClipChan((int)(fContrastScale * gRed(c) + fCenter) + nBrightnessDelta),
-				ClipChan((int)(fContrastScale * gGreen(c) + fCenter) + nBrightnessDelta),
-				ClipChan((int)(fContrastScale * gBlue(c) + fCenter) + nBrightnessDelta)
-				);
+			*pPix = gARGB(gAlpha(c), ClipChan((int)(fContrastScale * gRed(c) + fCenter) + nBrightnessDelta), ClipChan((int)(fContrastScale * gGreen(c) + fCenter) + nBrightnessDelta), ClipChan((int)(fContrastScale * gBlue(c) + fCenter) + nBrightnessDelta));
 			pPix++;
 		}
 	}
@@ -3552,11 +3491,7 @@ void GImage::shade(float fStart, float fEnd, float fSteepness)
 				else
 				{
 					f = (float)GMath::softStep((fBrightness - fEnd) / (fStart - fEnd), fSteepness);
-					setPixel(x, y, gARGB(gAlpha(c),
-						ClipChan((int)(f * gRed(c))),
-						ClipChan((int)(f * gGreen(c))),
-						ClipChan((int)(f * gBlue(c)))
-						));
+					setPixel(x, y, gARGB(gAlpha(c), ClipChan((int)(f * gRed(c))), ClipChan((int)(f * gGreen(c))), ClipChan((int)(f * gBlue(c)))));
 				}
 			}
 		}

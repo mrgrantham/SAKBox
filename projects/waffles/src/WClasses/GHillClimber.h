@@ -24,7 +24,8 @@
 #include "GVec.h"
 #include "GRand.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 
 /// At each iteration this algorithm moves in only one
@@ -252,7 +253,7 @@ public:
 
 	/// Returns the best vector yet found
 	const GVec& currentVector() override { return m_pVector; }
-	
+
 	/// Performs a little more optimization. (Call this in a loop until
 	/// acceptable results are found.)
 	double iterate() override;

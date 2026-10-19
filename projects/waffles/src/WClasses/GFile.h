@@ -27,7 +27,8 @@
 #include <map>
 #include <fstream>
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// Helper struct to hold the results from GFile::ParsePath
 struct PathData
@@ -44,7 +45,7 @@ class GFile
 {
 public:
 	/// returns true if the file exists
-	static bool doesFileExist(const char *filename);
+	static bool doesFileExist(const char* filename);
 
 	/// returns true if the directory exists
 	static bool doesDirExist(const char* szDir);
@@ -66,7 +67,7 @@ public:
 	static char* clipFilename(char* szBuff);
 
 	/// returns a user's home directory for the various OS's
-	static bool localStorageDirectory(char *toHere);
+	static bool localStorageDirectory(char* toHere);
 
 	/// This copies a file.  It doesn't check to see if it is
 	/// overwriting--it just does the copying.  On success it
@@ -117,8 +118,8 @@ public:
 	static time_t modifiedTime(const char* szFilename);
 
 	/// Set the last modified time of a file
-	static void setModifiedTime(const char *filename, time_t t);
-/*
+	static void setModifiedTime(const char* filename, time_t t);
+	/*
 	/// This only writes one pass of random numbers over the file, so it may still be
 	/// possible for the file to be recovered with expensive hardware that takes
 	/// advantage of the fact that the hard disk write head may drift slightly while

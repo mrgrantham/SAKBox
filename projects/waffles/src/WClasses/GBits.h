@@ -22,7 +22,8 @@
 #include <stdlib.h>
 #include "GError.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 #define BITS_PER_BYTE 8
 #define BITS_PER_UINT (BITS_PER_BYTE * sizeof(unsigned int))
@@ -133,7 +134,7 @@ public:
 	}
 
 	/// Returns the sign (-1, 0, +1) of an integer, float, or double
-	template <typename T>
+	template<typename T>
 	static int sign(T val)
 	{
 		return (T(0) < val) - (val < T(0));
@@ -166,7 +167,7 @@ public:
 		else
 			v2 = msn - 'a' + 10;
 		GAssert(v1 >= 0 && v1 <= 15 && v2 >= 0 && v2 <= 15);
-		return(v1 | (v2 << 4));
+		return (v1 | (v2 << 4));
 	}
 
 	/// Converts a byte to two hex digits. The least significate digit

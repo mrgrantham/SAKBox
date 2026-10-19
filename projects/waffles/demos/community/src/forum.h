@@ -54,7 +54,6 @@ protected:
 	static bool purge_comments_from_banned_users(Server* pServer, GDomNode* pRootList);
 
 	static void format_comment_recursive(Server* pServer, Account* pAccount, GDomNode* pEntry, std::ostream& os, std::string& reply_id, std::string& my_id, bool allow_direct_reply, size_t depth);
-
 };
 
 #endif // FORUM

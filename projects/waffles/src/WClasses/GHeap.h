@@ -24,7 +24,8 @@
 #include <string.h>
 #include "GError.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 #define ALIGN_BYTES 1 // For byte-addressable machines
 //#define ALIGN_BYTES (sizeof(void*)) // For pointer-addressable machines

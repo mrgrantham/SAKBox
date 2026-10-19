@@ -26,8 +26,8 @@
 #include <time.h>
 #include <iostream>
 #ifdef WINDOWS
-#	include <direct.h>
-#	include <process.h>
+#include <direct.h>
+#include <process.h>
 #endif
 #include <exception>
 #include <string>
@@ -117,7 +117,7 @@ void GLearnerLib::parseAttributeList(vector<size_t>& list, GArgReader& args, siz
 					if(attrSet.find(val) != attrSet.end())
 						throw Ex("Column ", to_str(val), " is listed multiple times");
 					attrSet.insert(val);
-						list.push_back(val);
+					list.push_back(val);
 					if(val == end)
 						break;
 				}
@@ -143,12 +143,15 @@ void GLearnerLib::loadData(GArgReader& args, std::unique_ptr<GMatrix>& hFeatures
 	GMatrix data;
 	vector<size_t> abortedCols;
 	vector<size_t> ambiguousCols;
-	const char *input_type;
-	if (args.next_is_flag() && args.if_pop("-input_type")) {
+	const char* input_type;
+	if(args.next_is_flag() && args.if_pop("-input_type"))
+	{
 		input_type = args.pop_string();
-	} else { /* deduce it from extension (if any) */
+	}
+	else
+	{ /* deduce it from extension (if any) */
 		input_type = szFilename + pd.extStart;
-		if (*input_type != '.') /* no extension - assume ARFF */
+		if(*input_type != '.') /* no extension - assume ARFF */
 			input_type = "arff";
 		else
 			input_type++;
@@ -178,7 +181,8 @@ void GLearnerLib::loadData(GArgReader& args, std::unique_ptr<GMatrix>& hFeatures
 			cerr << to_str(i) << ") " << parser.report(i) << "\n";
 		if(requireMetadata && !data.relation().areContinuous())
 			throw Ex("A data format containing meta-data (such as ARFF) is necessary for this operation.");
-	} else
+	}
+	else
 		throw Ex("Unsupported file format: ", szFilename + pd.extStart);
 
 
@@ -467,16 +471,24 @@ GDecisionTree* GLearnerLib::InstantiateDecisionTree(GArgReader& args, GMatrix* p
 				throw Ex("Insufficient data to support automatic tuning");
 			pModel->autoTune(*pFeatures, *pLabels);
 		}
-		else if(args.if_pop("-binary")){
+		else if(args.if_pop("-binary"))
+		{
 			pModel->useBinaryDivisions();
 		}
-		else if(args.if_pop("-random")){
+		else if(args.if_pop("-random"))
+		{
 			pModel->useRandomDivisions(args.pop_uint());
-		}else if(args.if_pop("-leafthresh")){
+		}
+		else if(args.if_pop("-leafthresh"))
+		{
 			pModel->setLeafThresh(args.pop_uint());
-		}else if(args.if_pop("-maxlevels")){
+		}
+		else if(args.if_pop("-maxlevels"))
+		{
 			pModel->setMaxLevels(args.pop_uint());
-		}else{
+		}
+		else
+		{
 			throw Ex("Invalid option: ", args.peek());
 		}
 	}
@@ -488,13 +500,20 @@ GGaussianProcess* GLearnerLib::InstantiateGaussianProcess(GArgReader& args, GMat
 	GGaussianProcess* pModel = new GGaussianProcess();
 	while(args.next_is_flag())
 	{
-		if(args.if_pop("-noise")){
+		if(args.if_pop("-noise"))
+		{
 			pModel->setNoiseVariance(args.pop_double());
-		}else if(args.if_pop("-prior")){
+		}
+		else if(args.if_pop("-prior"))
+		{
 			pModel->setWeightsPriorVariance(args.pop_double());
-		}else if(args.if_pop("-maxsamples")){
+		}
+		else if(args.if_pop("-maxsamples"))
+		{
 			pModel->setMaxSamples(args.pop_uint());
-		}else if(args.if_pop("-kernel")){
+		}
+		else if(args.if_pop("-kernel"))
+		{
 			if(args.if_pop("identity"))
 				pModel->setKernel(new GKernelIdentity());
 			else if(args.if_pop("chisquared"))
@@ -504,7 +523,9 @@ GGaussianProcess* GLearnerLib::InstantiateGaussianProcess(GArgReader& args, GMat
 			else if(args.if_pop("polynomial"))
 				pModel->setKernel(new GKernelPolynomial(args.pop_double(), args.pop_uint()));
 			else throw Ex("Unrecognized kernel: ", args.pop_string());
-		}else{
+		}
+		else
+		{
 			throw Ex("Invalid option: ", args.peek());
 		}
 	}
@@ -717,7 +738,7 @@ GBlock* GLearnerLib::instantiateBlock(GArgReader& args)
 	const char* szBlockName = args.pop_string();
 	if(strcmp(szBlockName, "linear") == 0)
 		return new GBlockLinear(args.pop_uint(), args.pop_uint());
-/*	else if(strcmp(szBlockName, "bentidentity") == 0)
+	/*	else if(strcmp(szBlockName, "bentidentity") == 0)
 		return new GBlockBentIdentity();
 	else if(strcmp(szBlockName, "gaussian") == 0)
 		return new GBlockGaussian();
@@ -754,7 +775,7 @@ GNeuralNetLearner* GLearnerLib::InstantiateNeuralNet(GArgReader& args, GMatrix* 
 			size_t inPos = args.pop_uint();
 			pModel->nn().concat(instantiateBlock(args), inPos);
 		}
-/*		else if(args.if_pop("-learningrate"))
+		/*		else if(args.if_pop("-learningrate"))
 			pModel->setLearningRate(args.pop_double());
 		else if(args.if_pop("-momentum"))
 			pModel->setMomentum(args.pop_double());
@@ -1100,10 +1121,10 @@ void GLearnerLib::predictDistribution(GArgReader& args)
 	// Set ARFF header
 
 	// TODO: Not nice! Better have all GRelation type implement attrName().
-	GArffRelation *pModelRelLabels = (GArffRelation *) &pModeler->relLabels();
+	GArffRelation* pModelRelLabels = (GArffRelation*)&pModeler->relLabels();
 	const size_t modelRelLabelsSize = pModelRelLabels->size();
 
-	cout << "@RELATION" << " " <<  pModelRelLabels->name() << endl;
+	cout << "@RELATION" << " " << pModelRelLabels->name() << endl;
 	cout << endl;
 	for(size_t i = 0; i < modelRelLabelsSize; ++i)
 	{
@@ -1123,9 +1144,11 @@ void GLearnerLib::predictDistribution(GArgReader& args)
 		}
 	}
 
-	cout << "\n" << "@data" << "\n" << endl;
+	cout << "\n"
+	     << "@data" << "\n"
+	     << endl;
 
-        GPrediction* p = new GPrediction[modelRelLabelsSize];
+	GPrediction* p = new GPrediction[modelRelLabelsSize];
 	std::unique_ptr<GPrediction[]> hp(p);
 	for(size_t i = 0; i < pFeatures->rows(); ++i)
 	{
@@ -1193,23 +1216,26 @@ void GLearnerLib::rightJustifiedString(const char* pIn, char* pOut, size_t outLe
 ///
 ///\param pRelation a pointer to the relation from which the
 ///                 variable_idx-'th variable is taken. Cannot be null
-std::string GLearnerLib::machineReadableConfusionHeader(std::size_t variable_idx, const GRelation* pRelation){
-  assert(pRelation != nullptr);
-  ostringstream out;
-  out << "\"Variable Name\",\"Variable Index\"";
-  std::size_t n = pRelation->valueCount(variable_idx);
-  for(std::size_t r = 0; r < n; ++r){
-    std::ostringstream expected_name;
-    pRelation->printAttrValue(expected_name, variable_idx, (double)r);
-    std::string e = expected_name.str();
-    for(std::size_t c = 0; c < n; ++c){
-      std::ostringstream got_name;
-      pRelation->printAttrValue(got_name, variable_idx, (double)c);
-      std::string g = got_name.str();
-      out << ",\"Expected:" << e <<" Got:" << g << "\"";
-    }
-  }
-  return out.str();
+std::string GLearnerLib::machineReadableConfusionHeader(std::size_t variable_idx, const GRelation* pRelation)
+{
+	assert(pRelation != nullptr);
+	ostringstream out;
+	out << "\"Variable Name\",\"Variable Index\"";
+	std::size_t n = pRelation->valueCount(variable_idx);
+	for(std::size_t r = 0; r < n; ++r)
+	{
+		std::ostringstream expected_name;
+		pRelation->printAttrValue(expected_name, variable_idx, (double)r);
+		std::string e = expected_name.str();
+		for(std::size_t c = 0; c < n; ++c)
+		{
+			std::ostringstream got_name;
+			pRelation->printAttrValue(got_name, variable_idx, (double)c);
+			std::string g = got_name.str();
+			out << ",\"Expected:" << e << " Got:" << g << "\"";
+		}
+	}
+	return out.str();
 }
 
 //\brief Returns the data for the machine readable confusion matrix
@@ -1227,21 +1253,24 @@ std::string GLearnerLib::machineReadableConfusionHeader(std::size_t variable_idx
 ///\param pMatrix a pointer to the confusion matrix. (*pMatrix)[r][c]
 ///               is the number of times that r was expected and c was
 ///               received. Cannot be NULL.
-std::string GLearnerLib::machineReadableConfusionData(std::size_t variable_idx, const GRelation* pRelation, GMatrix const * const pMatrix){
-  ostringstream out;
-  {
-    ostringstream v_name;
-    pRelation->printAttrName(v_name, variable_idx);
-    out << v_name.str() << "," << variable_idx;
-  }
-  const GMatrix& m = *pMatrix;
-  std::size_t n = pRelation->valueCount(variable_idx);
-  for(std::size_t r = 0; r < n; ++r){
-    for(std::size_t c = 0; c < n; ++c){
-      out << "," << m[r][c];
-    }
-  }
-  return out.str();
+std::string GLearnerLib::machineReadableConfusionData(std::size_t variable_idx, const GRelation* pRelation, GMatrix const* const pMatrix)
+{
+	ostringstream out;
+	{
+		ostringstream v_name;
+		pRelation->printAttrName(v_name, variable_idx);
+		out << v_name.str() << "," << variable_idx;
+	}
+	const GMatrix& m = *pMatrix;
+	std::size_t n = pRelation->valueCount(variable_idx);
+	for(std::size_t r = 0; r < n; ++r)
+	{
+		for(std::size_t c = 0; c < n; ++c)
+		{
+			out << "," << m[r][c];
+		}
+	}
+	return out.str();
 }
 
 ///\brief Prints the confusion matrices as machine-readable csv-like lines.
@@ -1260,15 +1289,18 @@ std::string GLearnerLib::machineReadableConfusionData(std::size_t variable_idx, 
 ///                   pRelation. Row r, column c of matrixArray[i] is the
 ///                   number of times the value r of the attribute was expected
 ///                   and c was encountered.
-void GLearnerLib::printMachineReadableConfusionMatrices(const GRelation* pRelation, vector<GMatrix*>& matrixArray){
-  for(size_t i = 0; i < matrixArray.size(); i++){
-    if(matrixArray[i] == nullptr){
-      continue;
-    }
-    std::cout << machineReadableConfusionHeader(i, pRelation) << std::endl;
-    std::cout << machineReadableConfusionData(i, pRelation, matrixArray[i])
-	      << std::endl;
-  }
+void GLearnerLib::printMachineReadableConfusionMatrices(const GRelation* pRelation, vector<GMatrix*>& matrixArray)
+{
+	for(size_t i = 0; i < matrixArray.size(); i++)
+	{
+		if(matrixArray[i] == nullptr)
+		{
+			continue;
+		}
+		std::cout << machineReadableConfusionHeader(i, pRelation) << std::endl;
+		std::cout << machineReadableConfusionData(i, pRelation, matrixArray[i])
+		          << std::endl;
+	}
 }
 
 void GLearnerLib::printConfusionMatrices(const GRelation* pRelation, vector<GMatrix*>& matrixArray)
@@ -1374,11 +1406,13 @@ void GLearnerLib::Test(GArgReader& args)
 		pModeler->confusion(*pFeatures, *pLabels, confusionMatrices);
 
 		// Print the confusion matrix
-		if(confusion){
+		if(confusion)
+		{
 			printConfusionMatrices(&pLabels->relation(), confusionMatrices);
 		}
 
-		if(confusioncsv){
+		if(confusioncsv)
+		{
 			printMachineReadableConfusionMatrices(&pLabels->relation(), confusionMatrices);
 		}
 	}
@@ -1429,13 +1463,13 @@ void GLearnerLib::TransductiveAccuracy(GArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
-//	bool confusion = false;
-//	bool confusioncsv = false;
+	//	bool confusion = false;
+	//	bool confusioncsv = false;
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-seed"))
 			seed = args.pop_uint();
-/*		else if(args.if_pop("-confusion"))
+		/*		else if(args.if_pop("-confusion"))
 			confusion = true;
 		else if(args.if_pop("-confusioncsv"))
 			confusioncsv = true;*/
@@ -1469,7 +1503,7 @@ void GLearnerLib::TransductiveAccuracy(GArgReader& args)
 	else
 		cout << "Mean squared error: ";
 	cout << to_str(mse) << "\n";
-/*
+	/*
 	// Print the confusion matrix
 	if(confusion){
 		printConfusionMatrices(pLabels2->relation().get(), confusionMatrices);
@@ -1486,18 +1520,27 @@ void GLearnerLib::SplitTest(GArgReader& args)
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	double trainRatio = 0.5;
 	size_t reps = 1;
-	string lastModelFile="";
+	string lastModelFile = "";
 	while(args.next_is_flag())
 	{
-		if(args.if_pop("-seed")){
+		if(args.if_pop("-seed"))
+		{
 			seed = args.pop_uint();
-		}else if(args.if_pop("-trainratio")){
+		}
+		else if(args.if_pop("-trainratio"))
+		{
 			trainRatio = args.pop_double();
-		}else if(args.if_pop("-reps")){
+		}
+		else if(args.if_pop("-reps"))
+		{
 			reps = args.pop_uint();
-		}else if(args.if_pop("-writelastmodel")){
+		}
+		else if(args.if_pop("-writelastmodel"))
+		{
 			lastModelFile = args.pop_string();
-		}else{
+		}
+		else
+		{
 			throw Ex("Invalid splittest option: ", args.peek());
 		}
 	}
@@ -1519,10 +1562,11 @@ void GLearnerLib::SplitTest(GArgReader& args)
 	pSupLearner->rand().setSeed(seed);
 
 	// Ensure that can write if we are required to
-	if(!pSupLearner->canGeneralize() && lastModelFile != ""){
-	  throw Ex("The learner specified does not have an internal model "
-		     "and thus cannot be saved to a file.  Remove the "
-		     "-lastModelFile argument.");
+	if(!pSupLearner->canGeneralize() && lastModelFile != "")
+	{
+		throw Ex("The learner specified does not have an internal model "
+		         "and thus cannot be saved to a file.  Remove the "
+		         "-lastModelFile argument.");
 	}
 
 	// Do the reps
@@ -1550,15 +1594,16 @@ void GLearnerLib::SplitTest(GArgReader& args)
 			double mse = pSupLearner->trainAndTest(*pFeatures, *pLabels, testFeatures, testLabels) / testFeatures.rows();
 
 			// Write trained model file on last repetition
-			if(lastModelFile != "" && i+1 == reps){
+			if(lastModelFile != "" && i + 1 == reps)
+			{
 				GSupervisedLearner* pSup =
-				  dynamic_cast<GSupervisedLearner*>
-				  (pSupLearner);
+				  dynamic_cast<GSupervisedLearner*>(pSupLearner);
 				GDom doc;
 				GDomNode* pRoot = pSup->serialize(&doc);
 				doc.setRoot(pRoot);
 				std::ofstream out(lastModelFile.c_str());
-				if(out){
+				if(out)
+				{
 					doc.writeJson(out);
 				}
 			}
@@ -1580,7 +1625,7 @@ void GLearnerLib::SplitTest(GArgReader& args)
 
 void GLearnerLib::CrossValidateCallback(void* pSupLearner, size_t nRep, size_t nFold, double foldSSE, size_t rows)
 {
-	cout << "Rep: " << nRep << ", Fold: " << nFold <<", Mean squared error: " << to_str(foldSSE / rows) << "\n";
+	cout << "Rep: " << nRep << ", Fold: " << nFold << ", Mean squared error: " << to_str(foldSSE / rows) << "\n";
 }
 
 void GLearnerLib::CrossValidate(GArgReader& args)

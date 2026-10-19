@@ -57,7 +57,8 @@ using std::string;
 using std::map;
 using std::multimap;
 
-namespace GClasses {
+namespace GClasses
+{
 
 
 GNeighborGraph::GNeighborGraph(GNeighborFinder* pNF, bool own, size_t neighbors)
@@ -303,7 +304,7 @@ public:
 		return m_dists.size() >= m_neighbors ? m_dists[0] : 1e308;
 	}
 
-#	define TEST_NEIGHBOR_COUNT 33
+#define TEST_NEIGHBOR_COUNT 33
 	static void test()
 	{
 		vector<size_t> neighbors;
@@ -506,9 +507,9 @@ size_t GBruteForceNeighborFinder::findWithinRadius(double squaredRadius, size_t 
 
 GSparseNeighborFinder::GSparseNeighborFinder(GSparseMatrix* pData, GMatrix* pBogusData, GSparseSimilarity* pMetric, bool ownMetric)
 : GNeighborFinderGeneralizing(pBogusData, new GRowDistance(), true),
-m_pData(pData),
-m_pSparseMetric(pMetric),
-m_ownSparseMetric(ownMetric)
+  m_pData(pData),
+  m_pSparseMetric(pMetric),
+  m_ownSparseMetric(ownMetric)
 {
 }
 
@@ -528,16 +529,16 @@ size_t GSparseNeighborFinder::findNearest(size_t k, const GVec& vec)
 {
 	m_neighs.clear();
 	m_dists.clear();
-	multimap<double,size_t> priority_queue;
+	multimap<double, size_t> priority_queue;
 	for(size_t i = 0; i < m_pData->rows(); i++)
 	{
-		map<size_t,double>& row = m_pData->row(i);
+		map<size_t, double>& row = m_pData->row(i);
 		double similarity = m_pSparseMetric->similarity(row, vec);
-		priority_queue.insert(pair<double,size_t>(similarity, i));
+		priority_queue.insert(pair<double, size_t>(similarity, i));
 		if(priority_queue.size() > k)
 			priority_queue.erase(priority_queue.begin());
 	}
-	for(multimap<double,size_t>::iterator it = priority_queue.begin(); it != priority_queue.end(); it++)
+	for(multimap<double, size_t>::iterator it = priority_queue.begin(); it != priority_queue.end(); it++)
 	{
 		m_neighs.push_back(it->second);
 		m_dists.push_back(1.0 / (it->first + 1e-6));
@@ -548,21 +549,21 @@ size_t GSparseNeighborFinder::findNearest(size_t k, const GVec& vec)
 // virtual
 size_t GSparseNeighborFinder::findNearest(size_t k, size_t index)
 {
-	map<size_t,double>& vec = m_pData->row(index);
+	map<size_t, double>& vec = m_pData->row(index);
 	m_neighs.clear();
 	m_dists.clear();
-	multimap<double,size_t> priority_queue;
+	multimap<double, size_t> priority_queue;
 	for(size_t i = 0; i < m_pData->rows(); i++)
 	{
 		if(i == index)
 			continue;
-		map<size_t,double>& row = m_pData->row(i);
+		map<size_t, double>& row = m_pData->row(i);
 		double similarity = m_pSparseMetric->similarity(row, vec);
-		priority_queue.insert(pair<double,size_t>(similarity, i));
+		priority_queue.insert(pair<double, size_t>(similarity, i));
 		if(priority_queue.size() > k)
 			priority_queue.erase(priority_queue.begin());
 	}
-	for(multimap<double,size_t>::iterator it = priority_queue.begin(); it != priority_queue.end(); it++)
+	for(multimap<double, size_t>::iterator it = priority_queue.begin(); it != priority_queue.end(); it++)
 	{
 		m_neighs.push_back(it->second);
 		m_dists.push_back(1.0 / (it->first + 1e-6));
@@ -658,7 +659,7 @@ public:
 	size_t m_timeLeft;
 
 	GKdInteriorNode(size_t dims, GKdNode* pLess, GKdNode* pGreaterOrEqual, size_t size, size_t attr, double pivot)
-	 : GKdNode(dims), m_pLess(pLess), m_pGreaterOrEqual(pGreaterOrEqual), m_size(size), m_attr(attr), m_pivot(pivot)
+	: GKdNode(dims), m_pLess(pLess), m_pGreaterOrEqual(pGreaterOrEqual), m_size(size), m_attr(attr), m_pivot(pivot)
 	{
 		m_timeLeft = (size_t)std::min((double)0x7fffffff, ((double)size * size) / 36 + 6);
 	}
@@ -750,7 +751,7 @@ protected:
 
 public:
 	GKdLeafNode(size_t count, size_t* pIndexes, size_t dims, size_t maxLeafSize)
-	 : GKdNode(dims)
+	: GKdNode(dims)
 	{
 		m_indexes.reserve(std::max(count, maxLeafSize));
 		for(size_t i = 0; i < count; i++)
@@ -999,7 +1000,7 @@ GKdNode* GKdTree::buildTree(size_t count, size_t* pIndexes)
 class KdTree_Compare_Nodes_Functor
 {
 public:
-	bool operator() (GKdNode* pA, GKdNode* pB) const
+	bool operator()(GKdNode* pA, GKdNode* pB) const
 	{
 		double a = pA->GetMinDist();
 		double b = pB->GetMinDist();
@@ -1304,9 +1305,9 @@ void GKdTree_testThatItDoesntLookFar()
 	}
 }
 
-#	define TEST_DIMS 4
-#	define TEST_PATTERNS 1000
-#	define TEST_NEIGHBORS 24
+#define TEST_DIMS 4
+#define TEST_PATTERNS 1000
+#define TEST_NEIGHBORS 24
 
 // static
 void GKdTree::test()
@@ -1352,7 +1353,7 @@ void GKdTree::test()
 	}
 	GBruteForceNeighborFinder bf(&data);
 	GKdTree kd(&data);
-/*
+	/*
 	GAssert(TEST_DIMS == 2); // You must change TEST_DIMS to 2 if you're going to plot the tree
 	GImage image;
 	image.SetSize(1000, 1000);
@@ -1560,8 +1561,8 @@ public:
 
 GBallTree::GBallTree(const GMatrix* pData, GDistanceMetric* pMetric, bool ownMetric)
 : GNeighborFinderGeneralizing(pData, pMetric, ownMetric),
-m_maxLeafSize(6),
-m_pRoot(nullptr)
+  m_maxLeafSize(6),
+  m_pRoot(nullptr)
 {
 	reoptimize();
 }
@@ -2169,7 +2170,7 @@ size_t GCycleCut::cut()
 	}
 
 	// Restore superfluous cuts
-	for(vector<size_t>::iterator it = m_cuts.begin(); it != m_cuts.end(); )
+	for(vector<size_t>::iterator it = m_cuts.begin(); it != m_cuts.end();)
 	{
 		size_t point = *it;
 		it++;
@@ -2187,7 +2188,7 @@ size_t GCycleCut::cut()
 		else
 			m_pNeighborGraph->set(point, neigh, INVALID_INDEX);
 	}
-//cerr << "cuts: " << m_cutCount << "\n";
+	//cerr << "cuts: " << m_cutCount << "\n";
 
 	m_pNeighborGraph->dropInvalidNeighbors();
 	return m_cutCount;

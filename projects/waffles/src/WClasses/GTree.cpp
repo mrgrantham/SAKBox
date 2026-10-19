@@ -22,7 +22,8 @@
 
 using std::string;
 
-namespace GClasses {
+namespace GClasses
+{
 
 class MyRelationalObject
 {
@@ -38,7 +39,7 @@ class MyRelationalObjectComparer
 public:
 	size_t cols() const { return 3; }
 
-	bool operator ()(const MyRelationalObject* a, const MyRelationalObject* b, size_t col) const
+	bool operator()(const MyRelationalObject* a, const MyRelationalObject* b, size_t col) const
 	{
 		if(col == 0)
 			return a->m_n < b->m_n;
@@ -56,7 +57,7 @@ void GRelationalTable_test()
 	MyRelationalObject ob3(1, "abcdefghijklmnopqrstuvwxyz"); // 1*26=26
 	MyRelationalObject ob4(3, "sasquatch"); // 3*9=27
 	MyRelationalObjectComparer comp;
-	GRelationalTable<MyRelationalObject*,MyRelationalObjectComparer> table(comp);
+	GRelationalTable<MyRelationalObject*, MyRelationalObjectComparer> table(comp);
 	table.insert(&ob1);
 	table.insert(&ob2);
 	table.insert(&ob3);

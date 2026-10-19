@@ -34,7 +34,8 @@
 #include <cstring>
 #include <queue>
 
-namespace GClasses {
+namespace GClasses
+{
 
 using std::vector;
 using std::string;
@@ -234,7 +235,7 @@ double GVec::mean() const
 	{
 		m += (*this)[i];
 	}
-	if ( m_size > 0 ) // make sure there are elements.
+	if(m_size > 0) // make sure there are elements.
 		return m / m_size;
 	else
 		return 0.0;
@@ -706,28 +707,28 @@ void GVec::test()
 	// Test some other methods:
 	GVec v4(10);
 	GVec v5(10);
-	for(size_t i = 0; i < 10; i++ )
+	for(size_t i = 0; i < 10; i++)
 	{
 		v4[i] = (double)i;
 		v5[i] = (double)(20 - i);
 	}
 	double max = v4.max();
-	if ( max != 9 )
+	if(max != 9)
 		throw Ex("failed");
 	max = v5.max();
-	if ( max != 20 )
+	if(max != 20)
 		throw Ex("failed");
 	v4 += 2;
-	if ( v4[0] != 2 || v4[1] != 3 || v4[2] != 4 )
+	if(v4[0] != 2 || v4[1] != 3 || v4[2] != 4)
 		throw Ex("failed");
 	double mean = v4.mean();
-	if ( mean != 6.5 )
+	if(mean != 6.5)
 		throw Ex("failed");
 	GVec v6(2);
 	v6[0] = 10;
 	v6[1] = 10;
 	v6 /= 2;
-	if ( v6[0] != 5 || v6[1] != 5 )
+	if(v6[0] != 5 || v6[1] != 5)
 		throw Ex("failed");
 }
 
@@ -783,7 +784,7 @@ GIndexVec::GIndexVec(GDomNode* pNode)
 	{
 		(*this)[i] = it.currentInt();
 		it.advance();
-	}	
+	}
 }
 
 GIndexVec::~GIndexVec()
@@ -1142,7 +1143,7 @@ bool GCoordVectorIterator::advanceSampling()
 	{
 		m_pCoords[0] = 0;
 		size_t j = 1;
-		for( ; j < m_dims; j++)
+		for(; j < m_dims; j++)
 		{
 			m_pCoords[j] += ((size_t)1 << m_sampleShift);
 			m_sampleMask ^= ((size_t)1 << j);
@@ -1270,13 +1271,13 @@ GTensor::GTensor(const std::initializer_list<size_t>& list, bool ownBuffer, GVec
 
 GTensor::GTensor(const GTensor& copyMe)
 : GVecWrapper(copyMe),
-shape(copyMe.shape), pHolder(nullptr)
+  shape(copyMe.shape), pHolder(nullptr)
 {
 }
 
 GTensor::GTensor(GDomNode* pNode)
 : GVecWrapper(nullptr, 0),
-shape(pNode), pHolder(nullptr)
+  shape(pNode), pHolder(nullptr)
 {
 }
 
@@ -1361,10 +1362,7 @@ public:
 		else
 		{
 			const char* szType = tok.readUntil(cs_whitespace);
-			if(	_stricmp(szType, "CONTINUOUS") == 0 ||
-				_stricmp(szType, "REAL") == 0 ||
-				_stricmp(szType, "NUMERIC") == 0 ||
-				_stricmp(szType, "INTEGER") == 0)
+			if(_stricmp(szType, "CONTINUOUS") == 0 || _stricmp(szType, "REAL") == 0 || _stricmp(szType, "NUMERIC") == 0 || _stricmp(szType, "INTEGER") == 0)
 			{
 				addAttr(dataname);
 			}
@@ -1707,7 +1705,7 @@ void GTensor::test()
 {
 	{
 		// 1D test
-		GVec in({2,3,1,0,1});
+		GVec in({2, 3, 1, 0, 1});
 		GTensor tin({5}, false, &in);
 
 		GVec k({1, 0, 2});
@@ -1729,21 +1727,11 @@ void GTensor::test()
 	{
 		// 2D test
 		GVec in(
-			{
-				1, 2, 3,
-				4, 5, 6,
-				7, 8, 9
-			}
-		);
+		  {1, 2, 3, 4, 5, 6, 7, 8, 9});
 		GTensor tin({3, 3}, false, &in);
 
 		GVec k(
-			{
-				 1,  2,  1,
-				 0,  0,  0,
-				-1, -2, -1
-			}
-		);
+		  {1, 2, 1, 0, 0, 0, -1, -2, -1});
 		GTensor tk({3, 3}, false, &k);
 
 		GVec out(9);
@@ -1753,12 +1741,7 @@ void GTensor::test()
 		GTensor::convolve(tin, tk, tout, false, 1);
 
 		GVec expected(
-			{
-				-13, -20, -17,
-				-18, -24, -18,
-				 13,  20,  17
-			}
-		);
+		  {-13, -20, -17, -18, -24, -18, 13, 20, 17});
 		if(std::sqrt(out.squaredDistance(expected)) > 1e-10)
 			throw Ex("wrong");
 	}

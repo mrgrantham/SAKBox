@@ -25,7 +25,8 @@
 #include "GHeap.h"
 #include "GRand.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GRand;
 class GBNCategorical;
@@ -59,7 +60,11 @@ class GBNConstant : public GBNNode
 {
 public:
 	/// General-purpose constructor
-	GBNConstant(double val) : GBNNode() { m_observed = true; m_observedValue = val; }
+	GBNConstant(double val) : GBNNode()
+	{
+		m_observed = true;
+		m_observedValue = val;
+	}
 	~GBNConstant() override {}
 
 	/// Returns the constant value
@@ -185,7 +190,11 @@ public:
 
 	/// Set this node to an observed value. After calling this, subsequent calls to
 	/// sample will not change its value.
-	void setObserved(double value) { m_observed = true; m_observedValue = value; }
+	void setObserved(double value)
+	{
+		m_observed = true;
+		m_observedValue = value;
+	}
 
 	/// Set this node to an unobserved value. After calling this, subsequent calls to
 	/// sample will draw new values for this node.

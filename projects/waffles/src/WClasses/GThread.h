@@ -23,29 +23,30 @@
 #include "GError.h"
 #include <atomic>
 #ifndef WINDOWS
-#	include <pthread.h>
-#	include <unistd.h>
-#	include <sched.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <sched.h>
 #endif
 
-namespace GClasses {
+namespace GClasses
+{
 
 #ifdef WINDOWS
-#	define BAD_HANDLE (void*)1
-	typedef void* THREAD_HANDLE;
+#define BAD_HANDLE (void*)1
+typedef void* THREAD_HANDLE;
 #else
-#	ifdef __APPLE__
-#		define BAD_HANDLE (_opaque_pthread_t*)1
-		typedef _opaque_pthread_t* THREAD_HANDLE;
-#	else
-#   ifdef __FreeBSD__
-#		  define BAD_HANDLE (pthread_t)-1
-		  typedef pthread_t THREAD_HANDLE;
-#   else
-		  typedef unsigned long int THREAD_HANDLE;
-#		  define BAD_HANDLE (unsigned long int)-2
-#   endif
-#	endif
+#ifdef __APPLE__
+#define BAD_HANDLE (_opaque_pthread_t*)1
+typedef _opaque_pthread_t* THREAD_HANDLE;
+#else
+#ifdef __FreeBSD__
+#define BAD_HANDLE (pthread_t) - 1
+typedef pthread_t THREAD_HANDLE;
+#else
+typedef unsigned long int THREAD_HANDLE;
+#define BAD_HANDLE (unsigned long int)-2
+#endif
+#endif
 #endif
 
 /// A wrapper for PThreads on Linux and for some corresponding WIN32 api on Windows
@@ -89,8 +90,8 @@ protected:
 	const char* m_szWhoHoldsTheLock;
 #endif
 	volatile long m_dwLocked; /// maintaned on all platform as posix mutexes don't have a way to get current state.
-                                 /// when not Win32 be aware that this value is shadowing the real mutex, and cannot be
-                                 /// depended on especially in a MP enviroment.
+	/// when not Win32 be aware that this value is shadowing the real mutex, and cannot be
+	/// depended on especially in a MP enviroment.
 #ifndef WINDOWS
 	pthread_mutex_t m_mutex;
 #endif

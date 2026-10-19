@@ -25,6 +25,8 @@
 
 #ifdef WINDOWS
 #ifndef M_PI
+// (SAKBox) aligned in columns, as in <math.h>
+// clang-format off
 # define M_E            2.7182818284590452354   /* e */
 # define M_LOG2E        1.4426950408889634074   /* log_2 e = 1/(log_e 2)*/
 # define M_LOG10E       0.43429448190325182765  /* log_10 e = 1/(log_e 10)*/
@@ -38,11 +40,13 @@
 # define M_2_SQRTPI     1.12837916709551257390  /* 2/sqrt(pi) */
 # define M_SQRT2        1.41421356237309504880  /* sqrt(2) */
 # define M_SQRT1_2      0.70710678118654752440  /* 1/sqrt(2) = sqrt(1/2) */
+// clang-format on
 #endif
 #endif
 
 
-namespace GClasses {
+namespace GClasses
+{
 
 
 typedef double (*MathFunc)(void* pThis, double x);

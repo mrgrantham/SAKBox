@@ -47,8 +47,7 @@ TEST(NominalToCatTest, OneHotOnlyBetweenThreeValuesAndTheCap) {
 namespace {
 // Whether autoTrans rescales a single number column holding [lo, hi] for a
 // target range of [-1, 1], and if so where lo and hi end up
-bool rescales(double lo, double hi, double *pLoOut = nullptr,
-              double *pHiOut = nullptr) {
+bool rescales(double lo, double hi, double *pLoOut = nullptr, double *pHiOut = nullptr) {
   GMatrix data(2, 1);
   data[0][0] = lo;
   data[1][0] = hi;
@@ -73,7 +72,7 @@ TEST(AutoTransTest, RescalesWhenOutOfRangeOrUsingLittleOfIt) {
   EXPECT_TRUE(rescales(0.0, 5.0, &lo, &hi)); // past the top
   EXPECT_DOUBLE_EQ(lo, -1.0);
   EXPECT_DOUBLE_EQ(hi, 1.0);
-  EXPECT_TRUE(rescales(-3.0, 0.5)); // past the bottom
+  EXPECT_TRUE(rescales(-3.0, 0.5));          // past the bottom
   EXPECT_TRUE(rescales(0.0, 0.1, &lo, &hi)); // under a quarter of the range
   EXPECT_DOUBLE_EQ(lo, -1.0);
   EXPECT_DOUBLE_EQ(hi, 1.0);

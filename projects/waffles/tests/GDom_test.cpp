@@ -4,23 +4,21 @@
 #include <WClasses/GDom.h>
 
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <cstring>
-#include <stdexcept>
 
 using namespace GClasses;
 
 namespace {
 // The database after the commands, and whether one of them threw
-std::string jsonAfter(const std::vector<const char *> &cmds,
-                      bool *pThrew = nullptr) {
+std::string jsonAfter(const std::vector<const char *> &cmds, bool *pThrew = nullptr) {
   const char *tmp = getenv("TEST_TMPDIR");
-  std::filesystem::path dir =
-      std::filesystem::path(tmp ? tmp : "/tmp") / "jaad_test";
+  std::filesystem::path dir = std::filesystem::path(tmp ? tmp : "/tmp") / "jaad_test";
   std::filesystem::remove_all(dir);
   std::filesystem::create_directories(dir);
   {

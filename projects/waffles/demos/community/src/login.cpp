@@ -182,7 +182,7 @@ void Login::pageAccount(Server* pServer, GDynamicPageSession* pSession, ostream&
 			response << "</form>";
 			response << "<br><br>";
 		}
-/*
+		/*
 		// Button to nuke my account
 		response << "Warning: Don't push this button unless you really mean it! ";
 		response << "<form name=\"nukeself\" action=\"/account\" method=\"get\">\n";
@@ -230,7 +230,7 @@ void Login::pageAccount(Server* pServer, GDynamicPageSession* pSession, ostream&
 		}
 		response << "</table>\n";
 	}
-/*
+	/*
 	Account* pAccount = getAccount(pSession);
 	if(pSession->paramsLen() > 0)
 	{

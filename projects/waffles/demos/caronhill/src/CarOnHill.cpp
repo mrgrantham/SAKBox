@@ -9,7 +9,7 @@
 #include "CarOnHill.h"
 #ifdef WINDOWS
 #else
-#	include <unistd.h>
+#include <unistd.h>
 #endif
 #include <WClasses/GTime.h>
 #include <WClasses/GThread.h>
@@ -36,7 +36,7 @@ protected:
 
 public:
 	CarQAgent(const GRelation& obsControlRelation, double* pInitialState, GRand* prng, GAgentActionIterator* pActionIterator)
-	: GIncrementalLearnerQAgent(obsControlRelation, MakeQTable(), 1/*actionDims*/, pInitialState, prng, pActionIterator, 0.99/*softMaxThresh*/)
+	: GIncrementalLearnerQAgent(obsControlRelation, MakeQTable(), 1 /*actionDims*/, pInitialState, prng, pActionIterator, 0.99 /*softMaxThresh*/)
 	{
 		m_lastReward = UNKNOWN_REAL_VALUE;
 	}
@@ -333,13 +333,13 @@ protected:
 		m_pDialog->Iterate(m_forw);
 
 		// Clear the screen
-		SDL_SetRenderDrawColor(sdlRenderer,0,0,0,0);
-		SDL_Rect windowRect{m_screenRect.x,m_screenRect.y,m_screenRect.w,m_screenRect.h};
-		SDL_RenderFillRect(sdlRenderer,&windowRect);
+		SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, 0);
+		SDL_Rect windowRect{m_screenRect.x, m_screenRect.y, m_screenRect.w, m_screenRect.h};
+		SDL_RenderFillRect(sdlRenderer, &windowRect);
 		Uint32 format; // SDL_PixelFormatEnum
-		SDL_QueryTexture(sdlTexture,&format, nullptr,nullptr,nullptr);
+		SDL_QueryTexture(sdlTexture, &format, nullptr, nullptr, nullptr);
 		// Draw the dialog
-		blitImage(pixels,pitch,format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
+		blitImage(pixels, pitch, format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
 	}
 };
 
@@ -370,7 +370,8 @@ void CarOnHillController::RunModal()
 		{
 			m_pView->update();
 		}
-		else {
+		else
+		{
 			((CarOnHillView*)m_pView)->iterate();
 		}
 		timeOld = time;

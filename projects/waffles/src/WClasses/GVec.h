@@ -25,7 +25,8 @@
 #include <vector>
 #include "GError.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GRand;
 class GDom;
@@ -39,8 +40,8 @@ class GTokenizer;
 /// Represents a mathematical vector of doubles
 class GVec
 {
-friend class GVecWrapper;
-friend class GConstVecWrapper;
+	friend class GVecWrapper;
+	friend class GConstVecWrapper;
 protected:
 	double* m_data;
 	size_t m_size;
@@ -76,14 +77,14 @@ public:
 	void fill(const double val, size_t startPos = 0, size_t elements = (size_t)-1);
 
 	/// \brief Returns a reference to the specified element.
-	inline double& operator [](size_t index)
+	inline double& operator[](size_t index)
 	{
 		GAssert(index < m_size);
 		return m_data[index];
 	}
 
 	/// \brief Returns a const reference to the specified element
-	inline const double& operator [](size_t index) const
+	inline const double& operator[](size_t index) const
 	{
 		GAssert(index < m_size);
 		return m_data[index];
@@ -284,7 +285,11 @@ public:
 		bool operator==(const iterator& other) { return cur == other.cur; }
 		bool operator!=(const iterator& other) { return cur != other.cur; }
 		iterator operator+(size_t n) const { return iterator(cur + n); }
-		iterator& operator++() { ++cur; return *this; }
+		iterator& operator++()
+		{
+			++cur;
+			return *this;
+		}
 
 		// Prefix incrementer (commented out to discourage use)
 		/*iterator operator++(int)
@@ -302,14 +307,18 @@ public:
 	{
 	public:
 		const double* cur;
-		
+
 		const_iterator(const double* pData) : cur(pData) {}
 		const double& operator*() { return *cur; }
 		const double* operator->() { return cur; }
 		bool operator==(const const_iterator& other) { return cur == other.cur; }
 		bool operator!=(const const_iterator& other) { return cur != other.cur; }
 		const_iterator operator+(size_t n) const { return const_iterator(cur + n); }
-		const_iterator& operator++() { ++cur; return *this; }
+		const_iterator& operator++()
+		{
+			++cur;
+			return *this;
+		}
 
 		// Prefix incrementer (commented out to discourage use)
 		/*const_iterator operator++(int)
@@ -500,14 +509,14 @@ public:
 	void resize(size_t n);
 
 	/// \brief Returns a reference to the specified element.
-	inline size_t& operator [](size_t index)
+	inline size_t& operator[](size_t index)
 	{
 		GAssert(index < m_size);
 		return m_data[index];
 	}
 
 	/// \brief Returns a const reference to the specified element
-	inline const size_t& operator [](size_t index) const
+	inline const size_t& operator[](size_t index) const
 	{
 		GAssert(index < m_size);
 		return m_data[index];

@@ -50,8 +50,8 @@
 #include <map>
 #include <algorithm>
 #ifdef WIN32
-#	include <direct.h>
-#	include <process.h>
+#include <direct.h>
+#include <process.h>
 #endif
 #include <exception>
 #include "WClasses/usage.h"
@@ -138,7 +138,7 @@ void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount
 					if(attrSet.find(val) != attrSet.end())
 						throw Ex("Column ", to_str(val), " is listed multiple times");
 					attrSet.insert(val);
-						list.push_back(val);
+					list.push_back(val);
 					if(val == end)
 						break;
 				}
@@ -173,8 +173,7 @@ void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount
 ///\param originalIndices the vector in which to place the original
 ///indices.  originalIndices[i] is the index in the original data file
 ///of the attribute currently at index i.
-void loadDataWithSwitches(GMatrix& data, GArgReader& args, size_t& pLabelDims,
-			      std::vector<size_t>& originalIndices)
+void loadDataWithSwitches(GMatrix& data, GArgReader& args, size_t& pLabelDims, std::vector<size_t>& originalIndices)
 {
 	// Load the dataset by extension
 	const char* szFilename = args.pop_string();
@@ -204,8 +203,9 @@ void loadDataWithSwitches(GMatrix& data, GArgReader& args, size_t& pLabelDims,
 
 	//Make the initial list of original indices
 	originalIndices.resize(data.cols());
-	for(std::size_t i = 0; i < originalIndices.size(); ++i){
-	  originalIndices.at(i) = i;
+	for(std::size_t i = 0; i < originalIndices.size(); ++i)
+	{
+		originalIndices.at(i) = i;
 	}
 
 	// Parse params
@@ -226,7 +226,7 @@ void loadDataWithSwitches(GMatrix& data, GArgReader& args, size_t& pLabelDims,
 	for(size_t i = ignore.size() - 1; i < ignore.size(); i--)
 	{
 		data.deleteColumns(ignore[i], 1);
-		originalIndices.erase(originalIndices.begin()+ignore[i]);
+		originalIndices.erase(originalIndices.begin() + ignore[i]);
 		for(size_t j = 0; j < labels.size(); j++)
 		{
 			if(labels[j] >= ignore[i])
@@ -247,8 +247,7 @@ void loadDataWithSwitches(GMatrix& data, GArgReader& args, size_t& pLabelDims,
 		if(src != dst)
 		{
 			data.swapColumns(src, dst);
-			std::swap(originalIndices.at(src),
-				  originalIndices.at(dst));
+			std::swap(originalIndices.at(src), originalIndices.at(dst));
 			for(size_t j = i + 1; j < labels.size(); j++)
 			{
 				if(labels[j] == dst)
@@ -415,7 +414,7 @@ void attributeSelector(GArgReader& args)
 	cout << "\nAttribute rankings from most salient to least salient. (Attributes are zero-indexed.)\n";
 	const GArffRelation& rel = (GArffRelation&)data.relation();
 	for(size_t i = 0; i < as.ranks().size(); i++)
-	  cout << originalIndices.at(as.ranks()[i]) << " " << rel.attrName(as.ranks()[i]) << "\n";
+		cout << originalIndices.at(as.ranks()[i]) << " " << rel.attrName(as.ranks()[i]) << "\n";
 }
 
 void blendEmbeddings(GArgReader& args)
@@ -760,148 +759,168 @@ void scalingUnfolder(GArgReader& args)
 	pDataAfter->print(cout);
 }
 
-void selfOrganizingMap(GArgReader& args){
-  // Load the file
-  GMatrix* pData = loadData(args.pop_string());
-  Holder<GMatrix> hData(pData);
+void selfOrganizingMap(GArgReader& args)
+{
+	// Load the file
+	GMatrix* pData = loadData(args.pop_string());
+	Holder<GMatrix> hData(pData);
 
-  // Parse arguments
-  std::vector<double> netDims;
-  unsigned numNodes = 1;
-  while(args.next_is_uint()){
-    unsigned dim = args.pop_uint();
-    netDims.push_back(dim);
-    numNodes *= dim;
-  }
-  if(netDims.size() < 1){
-    throw Ex("No dimensions specified for self organizing map.  ",
-	       "A map must be at least 1 dimensional.");
-  }
+	// Parse arguments
+	std::vector<double> netDims;
+	unsigned numNodes = 1;
+	while(args.next_is_uint())
+	{
+		unsigned dim = args.pop_uint();
+		netDims.push_back(dim);
+		numNodes *= dim;
+	}
+	if(netDims.size() < 1)
+	{
+		throw Ex("No dimensions specified for self organizing map.  ", "A map must be at least 1 dimensional.");
+	}
 
-  GRand rand(getpid() * (unsigned int)time(nullptr));
-  Holder<SOM::ReporterChain> reporters(new SOM::ReporterChain);
-  Holder<SOM::TrainingAlgorithm> alg(nullptr);
-  Holder<GDistanceMetric> weightDist(new GRowDistance);
-  Holder<GDistanceMetric> nodeDist(new GRowDistance);
-  Holder<SOM::NodeLocationInitialization> topology(new SOM::GridTopology);
-  Holder<SOM::NodeWeightInitialization> weightInit
-    (new SOM::NodeWeightInitializationTrainingSetSample(rand));
-  Holder<SOM::NeighborhoodWindowFunction>
-    windowFunc(new SOM::GaussianWindowFunction());
+	GRand rand(getpid() * (unsigned int)time(nullptr));
+	Holder<SOM::ReporterChain> reporters(new SOM::ReporterChain);
+	Holder<SOM::TrainingAlgorithm> alg(nullptr);
+	Holder<GDistanceMetric> weightDist(new GRowDistance);
+	Holder<GDistanceMetric> nodeDist(new GRowDistance);
+	Holder<SOM::NodeLocationInitialization> topology(new SOM::GridTopology);
+	Holder<SOM::NodeWeightInitialization> weightInit(new SOM::NodeWeightInitializationTrainingSetSample(rand));
+	Holder<SOM::NeighborhoodWindowFunction>
+	  windowFunc(new SOM::GaussianWindowFunction());
 
-  //Loading and saving
-  string loadFrom = "";
-  string saveTo = "";
+	//Loading and saving
+	string loadFrom = "";
+	string saveTo = "";
 
-  //Parameters for different training algorithms
-  string algoName = "batch";
-  double startWidth = -1;//Start width - set later if still negative
-  double endWidth   = -1;//End width   - set later if still negative
-  double startRate = -1;//Start learning rate
-  double endRate   = -1;//End learning rate
-  unsigned numIter     = 100;//Total iterations
-  unsigned numConverge = 1;//#steps for batch to converge
+	//Parameters for different training algorithms
+	string algoName = "batch";
+	double startWidth = -1; //Start width - set later if still negative
+	double endWidth = -1; //End width   - set later if still negative
+	double startRate = -1; //Start learning rate
+	double endRate = -1; //End learning rate
+	unsigned numIter = 100; //Total iterations
+	unsigned numConverge = 1; //#steps for batch to converge
 
-  while(args.next_is_flag()){
-    if(args.if_pop("-tofile")){
-      saveTo = args.pop_string();
-    }else if(args.if_pop("-fromfile")){
-      loadFrom = args.pop_string();
-    }else if(args.if_pop("-seed")){
-      rand.setSeed(args.pop_uint());
-    }else if(args.if_pop("-neighborhood")){
-      string name = args.pop_string();
-      if(name == "gaussian"){
-	windowFunc.reset(new SOM::GaussianWindowFunction());
-      }else if(name == "uniform"){
-	windowFunc.reset(new SOM::UniformWindowFunction());
-      }else{
-	throw Ex("Only gaussian and uniform are acceptible ",
-		   "neighborhood types");
-      }
-    }else if(args.if_pop("-printMeshEvery")){
-      using namespace SOM;
-      unsigned interval = args.pop_uint();
-      string baseFilename = args.pop_string();
-      unsigned xDim = args.pop_uint();
-      unsigned yDim = args.pop_uint();
-      bool showTrain = false;
-      if(args.if_pop("showTrain") || args.if_pop("showtrain")){
-	showTrain = true;
-      }
-      shared_ptr<Reporter> weightReporter
-	(new SVG2DWeightReporter(baseFilename, xDim, yDim, showTrain));
-      Holder<IterationIntervalReporter> intervalReporter
-	(new IterationIntervalReporter(weightReporter, interval));
-      reporters->add(intervalReporter.release());
-    }else if(args.if_pop("-batchTrain")){
-      algoName = "batch";
-      startWidth = args.pop_double();
-      endWidth = args.pop_double();
-      numIter = args.pop_uint();
-      numConverge = args.pop_uint();
-    }else if(args.if_pop("-stdTrain")){
-      algoName = "standard";
-      startWidth = args.pop_double();
-      endWidth = args.pop_double();
-      startRate = args.pop_double();
-      endRate = args.pop_double();
-      numIter = args.pop_uint();
-    }else{
-      throw Ex("Invalid option: ", args.peek());
-    }
-  }
+	while(args.next_is_flag())
+	{
+		if(args.if_pop("-tofile"))
+		{
+			saveTo = args.pop_string();
+		}
+		else if(args.if_pop("-fromfile"))
+		{
+			loadFrom = args.pop_string();
+		}
+		else if(args.if_pop("-seed"))
+		{
+			rand.setSeed(args.pop_uint());
+		}
+		else if(args.if_pop("-neighborhood"))
+		{
+			string name = args.pop_string();
+			if(name == "gaussian")
+			{
+				windowFunc.reset(new SOM::GaussianWindowFunction());
+			}
+			else if(name == "uniform")
+			{
+				windowFunc.reset(new SOM::UniformWindowFunction());
+			}
+			else
+			{
+				throw Ex("Only gaussian and uniform are acceptible ", "neighborhood types");
+			}
+		}
+		else if(args.if_pop("-printMeshEvery"))
+		{
+			using namespace SOM;
+			unsigned interval = args.pop_uint();
+			string baseFilename = args.pop_string();
+			unsigned xDim = args.pop_uint();
+			unsigned yDim = args.pop_uint();
+			bool showTrain = false;
+			if(args.if_pop("showTrain") || args.if_pop("showtrain"))
+			{
+				showTrain = true;
+			}
+			shared_ptr<Reporter> weightReporter(new SVG2DWeightReporter(baseFilename, xDim, yDim, showTrain));
+			Holder<IterationIntervalReporter> intervalReporter(new IterationIntervalReporter(weightReporter, interval));
+			reporters->add(intervalReporter.release());
+		}
+		else if(args.if_pop("-batchTrain"))
+		{
+			algoName = "batch";
+			startWidth = args.pop_double();
+			endWidth = args.pop_double();
+			numIter = args.pop_uint();
+			numConverge = args.pop_uint();
+		}
+		else if(args.if_pop("-stdTrain"))
+		{
+			algoName = "standard";
+			startWidth = args.pop_double();
+			endWidth = args.pop_double();
+			startRate = args.pop_double();
+			endRate = args.pop_double();
+			numIter = args.pop_uint();
+		}
+		else
+		{
+			throw Ex("Invalid option: ", args.peek());
+		}
+	}
 
-  //Create the training algorithm
-  Holder<SOM::TrainingAlgorithm> algo;
-  if(algoName == "batch"){
-    double netRadius = *std::max_element(netDims.begin(), netDims.end());
-    if(startWidth < 0){ startWidth = 2*netRadius; }
-    if(endWidth < 0){ endWidth = 1; }
-    algo.reset( new SOM::BatchTraining
-      (startWidth, endWidth, numIter, numConverge,
-       weightInit.release(), windowFunc.release(),
-       reporters.release()));
-  }else if(algoName == "standard"){
-    algo.reset( new SOM::TraditionalTraining
-      (startWidth, endWidth, startRate, endRate, numIter,
-       weightInit.release(), windowFunc.release(),
-       reporters.release()));
-  }else{
-    throw Ex("Unknown type of training algorithm: \"",
-	       algoName, "\"");
-  }
+	//Create the training algorithm
+	Holder<SOM::TrainingAlgorithm> algo;
+	if(algoName == "batch")
+	{
+		double netRadius = *std::max_element(netDims.begin(), netDims.end());
+		if(startWidth < 0) { startWidth = 2 * netRadius; }
+		if(endWidth < 0) { endWidth = 1; }
+		algo.reset(new SOM::BatchTraining(startWidth, endWidth, numIter, numConverge, weightInit.release(), windowFunc.release(), reporters.release()));
+	}
+	else if(algoName == "standard")
+	{
+		algo.reset(new SOM::TraditionalTraining(startWidth, endWidth, startRate, endRate, numIter, weightInit.release(), windowFunc.release(), reporters.release()));
+	}
+	else
+	{
+		throw Ex("Unknown type of training algorithm: \"", algoName, "\"");
+	}
 
-  //Create the network & transform the data
-  Holder<GSelfOrganizingMap> som;
-  Holder<GMatrix> out;
+	//Create the network & transform the data
+	Holder<GSelfOrganizingMap> som;
+	Holder<GMatrix> out;
 
-  if(loadFrom == ""){
-    //Create map from arguments given
-    som.reset(new GSelfOrganizingMap
-      (netDims, numNodes, topology.release(), algo.release(),
-       weightDist.release(), nodeDist.release()));
-    //Train the network and transform the data in place
-    out.reset(som->reduce(*pData));
-  }else{
-    //Create map from file
-    GDom source;
-    source.loadJson(loadFrom.c_str());
-    som.reset(new GSelfOrganizingMap(source.root()));
-    //Transform using the loaded network
-    out.reset(som->transformBatch(*pData));
-  }
+	if(loadFrom == "")
+	{
+		//Create map from arguments given
+		som.reset(new GSelfOrganizingMap(netDims, numNodes, topology.release(), algo.release(), weightDist.release(), nodeDist.release()));
+		//Train the network and transform the data in place
+		out.reset(som->reduce(*pData));
+	}
+	else
+	{
+		//Create map from file
+		GDom source;
+		source.loadJson(loadFrom.c_str());
+		som.reset(new GSelfOrganizingMap(source.root()));
+		//Transform using the loaded network
+		out.reset(som->transformBatch(*pData));
+	}
 
-  //Save the trained network
-  if(saveTo != ""){
-    GDom serialized;
-    GDomNode* root = som->serialize(&serialized);
-    serialized.setRoot(root);
-    serialized.saveJson(saveTo.c_str());
-  }
+	//Save the trained network
+	if(saveTo != "")
+	{
+		GDom serialized;
+		GDomNode* root = som->serialize(&serialized);
+		serialized.setRoot(root);
+		serialized.saveJson(saveTo.c_str());
+	}
 
-  //Print the result
-  out->print(cout);
+	//Print the result
+	out->print(cout);
 }
 
 void singularValueDecomposition(GArgReader& args)
@@ -1176,7 +1195,7 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 	cerr.flush();
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
 	GApp::enableFloatingPointExceptions();

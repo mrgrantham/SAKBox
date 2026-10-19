@@ -3,7 +3,8 @@
 
 #define GSTEMMER_MAX_WORD_SIZE 64
 
-namespace GClasses {
+namespace GClasses
+{
 
 struct stemmer;
 

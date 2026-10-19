@@ -25,7 +25,8 @@
 #include <math.h>
 #include <cmath>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GRand;
 
@@ -253,7 +254,11 @@ public:
 	/// Takes ownership of pK1 and pK2
 	GKernelAdd(GKernel* pK1, GKernel* pK2) : GKernel(), m_pK1(pK1), m_pK2(pK2) {}
 	GKernelAdd(GDomNode* pNode) : GKernel(), m_pK1(GKernel::deserialize(pNode->get("k1"))), m_pK2(GKernel::deserialize(pNode->get("k2"))) {}
-	~GKernelAdd() override { delete(m_pK1); delete(m_pK2); }
+	~GKernelAdd() override
+	{
+		delete(m_pK1);
+		delete(m_pK2);
+	}
 
 	/// Marshalls this object into a DOM.
 	GDomNode* serialize(GDom* pDoc) override
@@ -285,7 +290,11 @@ public:
 	/// Takes ownership of pK1 and pK2
 	GKernelMultiply(GKernel* pK1, GKernel* pK2) : GKernel(), m_pK1(pK1), m_pK2(pK2) {}
 	GKernelMultiply(GDomNode* pNode) : GKernel(), m_pK1(GKernel::deserialize(pNode->get("k1"))), m_pK2(GKernel::deserialize(pNode->get("k2"))) {}
-	~GKernelMultiply() override { delete(m_pK1); delete(m_pK2); }
+	~GKernelMultiply() override
+	{
+		delete(m_pK1);
+		delete(m_pK2);
+	}
 
 	/// Marshalls this object into a DOM.
 	GDomNode* serialize(GDom* pDoc) override

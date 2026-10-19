@@ -26,7 +26,8 @@
 #include "GVec.h"
 #include "GError.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GDomNode;
 class GDom;
@@ -212,7 +213,7 @@ public:
 class GCategoricalSampler
 {
 protected:
-	std::map<double,size_t> m_map;
+	std::map<double, size_t> m_map;
 
 public:
 	/// categories specifies the number of categories.
@@ -249,7 +250,6 @@ public:
 
 	/// Run unit tests for this class.
 	static void test();
-
 };
 
 
@@ -417,7 +417,6 @@ public:
 		m_a = a;
 		m_b = b;
 	}
-
 };
 
 
@@ -589,7 +588,7 @@ public:
 	/// See the comment for GUnivariateDistribution::logLikelihood
 	double logLikelihood(double x) override
 	{
-		return -(m_shape+1.0) * log(x) - (m_scale / x);
+		return -(m_shape + 1.0) * log(x) - (m_scale / x);
 	}
 
 	/// See the comment for GUnivariateDistribution::likelihood

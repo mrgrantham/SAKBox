@@ -27,7 +27,8 @@
 #include "GMath.h"
 #include <cmath>
 
-namespace GClasses {
+namespace GClasses
+{
 
 using std::vector;
 
@@ -67,11 +68,7 @@ void GRayTraceColor::set(unsigned int c)
 
 unsigned int GRayTraceColor::color()
 {
-	return gARGB(	std::min(255, (int)(a * 255)),
-			std::min(255, (int)(r * 255)),
-			std::min(255, (int)(g * 255)),
-			std::min(255, (int)(b * 255))
-		);
+	return gARGB(std::min(255, (int)(a * 255)), std::min(255, (int)(r * 255)), std::min(255, (int)(g * 255)), std::min(255, (int)(b * 255)));
 }
 
 void GRayTraceColor::makeSliderColor(float f, GRayTraceColor* pDiffuseColor)
@@ -827,7 +824,7 @@ bool GRayTraceScene::renderLine()
 	unsigned int col = 0;
 	for(x = 0; x < nWidth; x++)
 	{
-//GAssert(x != 100 || m_nY != 143); // break
+		//GAssert(x != 100 || m_nY != 143); // break
 		switch(m_eMode)
 		{
 			case FAST_RAY_TRACE:
@@ -1107,7 +1104,7 @@ GDomNode* GRayTraceAreaLight::serialize(GDom* pDoc, const GRayTraceScene* pScene
 			v.set(1, 0, 0);
 			u.crossProduct(N, v);
 		}
-		else 
+		else
 		{
 			v.set(0, 1, 0);
 			u.crossProduct(N, v);
@@ -1310,11 +1307,7 @@ void GRayTracePhysicalMaterial::setColor(ColorType eType, G3DReal r, G3DReal g, 
 	if(eType == Emissive)
 		m_colors[eType].set(1, r, g, b);
 	else
-		m_colors[eType].set(1,
-				std::max((G3DReal)0, std::min((G3DReal)1, r)),
-				std::max((G3DReal)0, std::min((G3DReal)1, g)),
-				std::max((G3DReal)0, std::min((G3DReal)1, b))
-			);
+		m_colors[eType].set(1, std::max((G3DReal)0, std::min((G3DReal)1, r)), std::max((G3DReal)0, std::min((G3DReal)1, g)), std::max((G3DReal)0, std::min((G3DReal)1, b)));
 }
 
 
@@ -1400,7 +1393,8 @@ GRayTraceColor* GRayTraceImageTexture::color(ColorType eType, GRayTraceRay* pRay
 // Sorts the objects by their centres along dimension dim
 static void GRayTrace_sortByCenter(vector<GRayTraceObject*>& objects, int dim)
 {
-	std::ranges::sort(objects, std::ranges::less{}, [dim](GRayTraceObject* pObject) {
+	std::ranges::sort(objects, std::ranges::less{}, [dim](GRayTraceObject* pObject)
+	{
 		G3DVector center;
 		pObject->center(&center);
 		return center.m_vals[dim];
@@ -1479,14 +1473,12 @@ bool GRayTraceBoundingBoxBase::DoesRayHitBox(G3DVector* pRayOrigin, G3DVector* p
 		point.copy(*pDirectionVector);
 		point.multiply((m_min.m_vals[0] - pRayOrigin->m_vals[0]) / pDirectionVector->m_vals[0]);
 		point.add(*pRayOrigin);
-		if(point.m_vals[1] >= m_min.m_vals[1] && point.m_vals[2] >= m_min.m_vals[2] &&
-			point.m_vals[1] <= m_max.m_vals[1] && point.m_vals[2] <= m_max.m_vals[2])
+		if(point.m_vals[1] >= m_min.m_vals[1] && point.m_vals[2] >= m_min.m_vals[2] && point.m_vals[1] <= m_max.m_vals[1] && point.m_vals[2] <= m_max.m_vals[2])
 			return true;
 		point.copy(*pDirectionVector);
 		point.multiply((m_max.m_vals[0] - pRayOrigin->m_vals[0]) / pDirectionVector->m_vals[0]);
 		point.add(*pRayOrigin);
-		if(point.m_vals[1] >= m_min.m_vals[1] && point.m_vals[2] >= m_min.m_vals[2] &&
-			point.m_vals[1] <= m_max.m_vals[1] && point.m_vals[2] <= m_max.m_vals[2])
+		if(point.m_vals[1] >= m_min.m_vals[1] && point.m_vals[2] >= m_min.m_vals[2] && point.m_vals[1] <= m_max.m_vals[1] && point.m_vals[2] <= m_max.m_vals[2])
 			return true;
 	}
 	if(pDirectionVector->m_vals[1] != 0)
@@ -1494,14 +1486,12 @@ bool GRayTraceBoundingBoxBase::DoesRayHitBox(G3DVector* pRayOrigin, G3DVector* p
 		point.copy(*pDirectionVector);
 		point.multiply((m_min.m_vals[1] - pRayOrigin->m_vals[1]) / pDirectionVector->m_vals[1]);
 		point.add(*pRayOrigin);
-		if(point.m_vals[0] >= m_min.m_vals[0] && point.m_vals[2] >= m_min.m_vals[2] &&
-			point.m_vals[0] <= m_max.m_vals[0] && point.m_vals[2] <= m_max.m_vals[2])
+		if(point.m_vals[0] >= m_min.m_vals[0] && point.m_vals[2] >= m_min.m_vals[2] && point.m_vals[0] <= m_max.m_vals[0] && point.m_vals[2] <= m_max.m_vals[2])
 			return true;
 		point.copy(*pDirectionVector);
 		point.multiply((m_max.m_vals[1] - pRayOrigin->m_vals[1]) / pDirectionVector->m_vals[1]);
 		point.add(*pRayOrigin);
-		if(point.m_vals[0] >= m_min.m_vals[0] && point.m_vals[2] >= m_min.m_vals[2] &&
-			point.m_vals[0] <= m_max.m_vals[0] && point.m_vals[2] <= m_max.m_vals[2])
+		if(point.m_vals[0] >= m_min.m_vals[0] && point.m_vals[2] >= m_min.m_vals[2] && point.m_vals[0] <= m_max.m_vals[0] && point.m_vals[2] <= m_max.m_vals[2])
 			return true;
 	}
 	if(pDirectionVector->m_vals[2] != 0)
@@ -1509,14 +1499,12 @@ bool GRayTraceBoundingBoxBase::DoesRayHitBox(G3DVector* pRayOrigin, G3DVector* p
 		point.copy(*pDirectionVector);
 		point.multiply((m_min.m_vals[2] - pRayOrigin->m_vals[2]) / pDirectionVector->m_vals[2]);
 		point.add(*pRayOrigin);
-		if(point.m_vals[0] >= m_min.m_vals[0] && point.m_vals[1] >= m_min.m_vals[1] &&
-			point.m_vals[0] <= m_max.m_vals[0] && point.m_vals[1] <= m_max.m_vals[1])
+		if(point.m_vals[0] >= m_min.m_vals[0] && point.m_vals[1] >= m_min.m_vals[1] && point.m_vals[0] <= m_max.m_vals[0] && point.m_vals[1] <= m_max.m_vals[1])
 			return true;
 		point.copy(*pDirectionVector);
 		point.multiply((m_max.m_vals[2] - pRayOrigin->m_vals[2]) / pDirectionVector->m_vals[2]);
 		point.add(*pRayOrigin);
-		if(point.m_vals[0] >= m_min.m_vals[0] && point.m_vals[1] >= m_min.m_vals[1] &&
-			point.m_vals[0] <= m_max.m_vals[0] && point.m_vals[1] <= m_max.m_vals[1])
+		if(point.m_vals[0] >= m_min.m_vals[0] && point.m_vals[1] >= m_min.m_vals[1] && point.m_vals[0] <= m_max.m_vals[0] && point.m_vals[1] <= m_max.m_vals[1])
 			return true;
 	}
 	return false;
@@ -1898,10 +1886,9 @@ void GRayTraceTriMesh::computePhongNormals()
 		{
 			nTri = arrVertexTriangles[i].m_triangles[j];
 			triNorm.triangleNormal(
-					m_points[m_triangles[3 * nTri]],
-					m_points[m_triangles[3 * nTri + 1]],
-					m_points[m_triangles[3 * nTri + 2]]
-				);
+			  m_points[m_triangles[3 * nTri]],
+			  m_points[m_triangles[3 * nTri + 1]],
+			  m_points[m_triangles[3 * nTri + 2]]);
 			// todo: scale each component vector by the area of the triangle that contributes it?
 			m_pNormals[i].add(triNorm);
 		}
@@ -2033,7 +2020,7 @@ void GRayTraceTriMesh::normalVector(GRayTraceRay* pRay, size_t nIndex)
 		return;
 
 	// Find the two most significant dimensions
-	int i1,i2;
+	int i1, i2;
 	G3DReal xx, yy, zz;
 	xx = pRay->m_normalVector.m_vals[0] * pRay->m_normalVector.m_vals[0];
 	yy = pRay->m_normalVector.m_vals[1] * pRay->m_normalVector.m_vals[1];
@@ -2061,18 +2048,18 @@ void GRayTraceTriMesh::normalVector(GRayTraceRay* pRay, size_t nIndex)
 	G3DReal v2 = m_points[t2].m_vals[i2] - m_points[t0].m_vals[i2];
 	G3DReal u0 = pRay->m_collisionPoint.m_vals[i1] - m_points[t0].m_vals[i1];
 	G3DReal v0 = pRay->m_collisionPoint.m_vals[i2] - m_points[t0].m_vals[i2];
-	G3DReal beta  = (u0 * v2 - u2 * v0) / (u1 * v2 - v1 * u2);
+	G3DReal beta = (u0 * v2 - u2 * v0) / (u1 * v2 - v1 * u2);
 	G3DReal gamma = (v0 * u1 - u0 * v1) / (u1 * v2 - v1 * u2);
 	G3DReal alpha = (G3DReal)1.0 - (gamma + beta);
-/*
+	/*
 	GAssert(ABS(alpha * m_pPoints[t0].m_vals[0] + beta * m_points[t1].m_vals[0] + gamma * m_points[t2].m_vals[0] - pRay->m_collisionPoint.m_vals[0]) < .001, "value is wrong");
 	GAssert(ABS(alpha * m_pPoints[t0].m_vals[1] + beta * m_points[t1].m_vals[1] + gamma * m_points[t2].m_vals[1] - pRay->m_collisionPoint.m_vals[1]) < .001, "value is wrong");
 	GAssert(ABS(alpha * m_pPoints[t0].m_vals[2] + beta * m_points[t1].m_vals[2] + gamma * m_points[t2].m_vals[2] - pRay->m_collisionPoint.m_vals[2]) < .001, "value is wrong");
-*/	
+*/
 	// todo: If beta and gamma > 0 and beta + gamma <= 1,
 	// then the point of intersection is inside the triangle.
 	// This could be used as a more efficient inside-outside test for triangles.
- 
+
 	// Compute the Phong normal
 	if(m_pNormals)
 	{
@@ -2091,12 +2078,8 @@ void GRayTraceTriMesh::normalVector(GRayTraceRay* pRay, size_t nIndex)
 	// Compute texture coordinate
 	if(m_pTextureCoords)
 	{
-		G3DReal x = alpha * m_pTextureCoords[2 * t0] +
-				beta * m_pTextureCoords[2 * t1] +
-				gamma * m_pTextureCoords[2 * t2];
-		G3DReal y = alpha * m_pTextureCoords[2 * t0 + 1] +
-				beta * m_pTextureCoords[2 * t1 + 1] +
-				gamma * m_pTextureCoords[2 * t2 + 1];
+		G3DReal x = alpha * m_pTextureCoords[2 * t0] + beta * m_pTextureCoords[2 * t1] + gamma * m_pTextureCoords[2 * t2];
+		G3DReal y = alpha * m_pTextureCoords[2 * t0 + 1] + beta * m_pTextureCoords[2 * t1 + 1] + gamma * m_pTextureCoords[2 * t2 + 1];
 		pRay->SetTextureCoords(x, y);
 	}
 }
@@ -2232,7 +2215,7 @@ GRayTraceTriMesh* GRayTraceTriMesh::makeCylinder(GRayTraceMaterial* pMaterial, G
 		}
 	}
 	size_t nPrevVertexPos = nVertices;
-	for(dRads = 2 * M_PI - .000000001; dRads > 0; ) // the small constant is to ensure that rounding error doesn't cause an extra side to be added
+	for(dRads = 2 * M_PI - .000000001; dRads > 0;) // the small constant is to ensure that rounding error doesn't cause an extra side to be added
 	{
 		// Move forward
 		dRads -= dStep;
@@ -2321,21 +2304,8 @@ GDomNode* GRayTraceSphere::serialize(GDom* pDoc, const GRayTraceScene* pScene) c
 // virtual
 G3DReal GRayTraceSphere::rayDistance(G3DVector* pRayOrigin, G3DVector* pRayDirection)
 {
-	G3DReal b = (G3DReal)2 * (
-				pRayDirection->m_vals[0] * (pRayOrigin->m_vals[0] - m_center.m_vals[0]) +
-				pRayDirection->m_vals[1] * (pRayOrigin->m_vals[1] - m_center.m_vals[1]) +
-				pRayDirection->m_vals[2] * (pRayOrigin->m_vals[2] - m_center.m_vals[2])
-			);
-	G3DReal c = pRayOrigin->m_vals[0] * pRayOrigin->m_vals[0] -
-				(G3DReal)2 * pRayOrigin->m_vals[0] * m_center.m_vals[0] +
-				m_center.m_vals[0] * m_center.m_vals[0] +
-				pRayOrigin->m_vals[1] * pRayOrigin->m_vals[1] -
-				(G3DReal)2 * pRayOrigin->m_vals[1] * m_center.m_vals[1] +
-				m_center.m_vals[1] * m_center.m_vals[1] +
-				pRayOrigin->m_vals[2] * pRayOrigin->m_vals[2] -
-				(G3DReal)2 * pRayOrigin->m_vals[2] * m_center.m_vals[2] +
-				m_center.m_vals[2] * m_center.m_vals[2] -
-				m_radius * m_radius;
+	G3DReal b = (G3DReal)2 * (pRayDirection->m_vals[0] * (pRayOrigin->m_vals[0] - m_center.m_vals[0]) + pRayDirection->m_vals[1] * (pRayOrigin->m_vals[1] - m_center.m_vals[1]) + pRayDirection->m_vals[2] * (pRayOrigin->m_vals[2] - m_center.m_vals[2]));
+	G3DReal c = pRayOrigin->m_vals[0] * pRayOrigin->m_vals[0] - (G3DReal)2 * pRayOrigin->m_vals[0] * m_center.m_vals[0] + m_center.m_vals[0] * m_center.m_vals[0] + pRayOrigin->m_vals[1] * pRayOrigin->m_vals[1] - (G3DReal)2 * pRayOrigin->m_vals[1] * m_center.m_vals[1] + m_center.m_vals[1] * m_center.m_vals[1] + pRayOrigin->m_vals[2] * pRayOrigin->m_vals[2] - (G3DReal)2 * pRayOrigin->m_vals[2] * m_center.m_vals[2] + m_center.m_vals[2] * m_center.m_vals[2] - m_radius * m_radius;
 	G3DReal discriminant = b * b - (G3DReal)4 * c;
 	if(discriminant < 0)
 		return 0;
@@ -2494,7 +2464,7 @@ GRayTraceTriMesh* GTriMeshBuilder::mesh()
 	GRayTraceTriMesh* pMesh = new GRayTraceTriMesh(m_pMaterial);
 	for(size_t i = 0; i < m_points.size(); i++)
 		pMesh->addPoint(m_points[i]);
-	for(size_t i = 0; i < m_indexes.size(); )
+	for(size_t i = 0; i < m_indexes.size();)
 	{
 		size_t a = m_indexes[i++];
 		size_t b = m_indexes[i++];
@@ -2586,12 +2556,22 @@ double G3dLetterMaker::letterWidth(char c)
 		case ' ': w = m_spaceWidth; break;
 		case '"': w = m_lineWidth + m_lineWidth; break;
 		case '\'': w = m_lineWidth; break;
-		case '(': case ')': case ',': case 'i': w = 0.1; break;
+		case '(':
+		case ')':
+		case ',':
+		case 'i': w = 0.1; break;
 		case '.': w = 0.2; break;
-		case 'j': case 'l': w = 0.225; break;
+		case 'j':
+		case 'l': w = 0.225; break;
 		case 't': w = 0.3; break;
-		case '+': case '-': w = 0.4; break;
-		case '@': case 'M': case 'W': case 'm': case 'q': case 'w': w = 0.6; break;
+		case '+':
+		case '-': w = 0.4; break;
+		case '@':
+		case 'M':
+		case 'W':
+		case 'm':
+		case 'q':
+		case 'w': w = 0.6; break;
 	}
 	return w + m_lineWidth;
 }
@@ -2660,20 +2640,20 @@ GRayTraceTriMesh* G3dLetterMaker::makeLetter(char c)
 			hbar(0.0, 0.0, 0.5 + m_lineWidth);
 			break;
 		case '3':
-			{
+		{
 			double w = 0.5;
 			double h = (w + m_lineWidth) / (4 * (w + m_lineWidth) - 2 * m_lineWidth);
 			curve(0.5, 1.0 - h, w, h, 1.5, 3.0);
 			curve(0.5, h, w, h, 1.0, 2.5);
-			}
-			break;
+		}
+		break;
 		case '4':
 			vbar(0.375, 0.0, 0.375, 1.0);
 			vbar(0.375, 1.0, 0.0, 0.35);
 			hbar(0.0, 0.35 - m_lineWidth, 0.5 + m_lineWidth);
 			break;
 		case '5':
-			{
+		{
 			double w = 0.5;
 			double h = 0.30;
 			double hScale = 2.0 * h / (w + m_lineWidth);
@@ -2681,8 +2661,8 @@ GRayTraceTriMesh* G3dLetterMaker::makeLetter(char c)
 			vbar(0.0, h + h, 0.0, 1.0 - m_lineWidth);
 			hbar(0.0, h + h - m_lineWidth * hScale, 0.25 + 0.5 * m_lineWidth, hScale);
 			curve(0.5, h, 0.5, h, 1.0, 2.5);
-			}
-			break;
+		}
+		break;
 		case '6':
 			curve(0.5, 0.7, 0.5, 0.3, 0.25, 1.0);
 			vbar(0.0, 0.3, 0.0, 0.7);
@@ -2693,13 +2673,13 @@ GRayTraceTriMesh* G3dLetterMaker::makeLetter(char c)
 			vbar(0.15, 0.0, 0.5, 1.0 - m_lineWidth);
 			break;
 		case '8':
-			{
+		{
 			double w = 0.5;
 			double h = (w + m_lineWidth) / (4 * (w + m_lineWidth) - 2 * m_lineWidth);
 			curve(0.5, 1.0 - h, w, h, 0.0, 2.0);
 			curve(0.5, h, w, h, 0.0, 2.0);
-			}
-			break;
+		}
+		break;
 		case '9':
 			curve(0.5, 0.7, 0.5, 0.3, 0.0, 2.0);
 			vbar(0.5, 0.3, 0.5, 0.7);
@@ -2727,7 +2707,7 @@ GRayTraceTriMesh* G3dLetterMaker::makeLetter(char c)
 			vbar(0.5, 0.5, 0.0, 0.2);
 			break;
 		case '?':
-			{
+		{
 			curve(0.5, 0.75, 0.5, 0.25, 0.0, 1.0);
 			vbar(0.5, 0.65, 0.5, 0.75);
 			double h = (0.65 - 0.4) * (0.25 + m_lineWidth) / (0.25 * 2);
@@ -2735,8 +2715,8 @@ GRayTraceTriMesh* G3dLetterMaker::makeLetter(char c)
 			curve(0.5, 0.4, 0.25, h, 0.5, 1.0);
 			vbar(0.25, 0.3, 0.25, 0.4);
 			curve(0.275, m_lineWidth, 0.5 * m_lineWidth, 0.75 * m_lineWidth, 0.0, 2.0);
-			}
-			break;
+		}
+		break;
 		case '@':
 			curve(0.42, 0.5, 0.26, 0.16, 0.0, 2.0);
 			curve(0.6, 0.5, 0.6, 0.36, 0.0, 1.7);
@@ -2750,7 +2730,7 @@ GRayTraceTriMesh* G3dLetterMaker::makeLetter(char c)
 			hbar(0.08, 0.2, 0.32 + m_lineWidth);
 			break;
 		case 'B':
-			{
+		{
 			vbar(0.0, 0.0, 0.0, 1.0);
 			double w = 0.6;
 			double h = (w + m_lineWidth) / (4 * (w + m_lineWidth) - 2 * m_lineWidth);
@@ -2761,8 +2741,8 @@ GRayTraceTriMesh* G3dLetterMaker::makeLetter(char c)
 			hbar(m_lineWidth, 1.0 - m_lineWidth * hScale, bl, hScale);
 			hbar(m_lineWidth, 0.5 - 0.5 * m_lineWidth * hScale, bl, hScale);
 			hbar(m_lineWidth, 0.0, bl, hScale);
-			}
-			break;
+		}
+		break;
 		case 'C':
 			curve(0.5, 0.75, 0.5, 0.25, 0.0, 1.0);
 			vbar(0.0, 0.25, 0.0, 0.75);
@@ -2834,14 +2814,14 @@ GRayTraceTriMesh* G3dLetterMaker::makeLetter(char c)
 			vbar(0.5, 0.2, 0.5, 0.8);
 			break;
 		case 'P':
-			{
+		{
 			double h = (0.6 + m_lineWidth) / (4 * (0.6 + m_lineWidth) - 2 * m_lineWidth);
 			curve(0.5, 1.0 - h, 0.6, h, 1.5, 2.5);
 			vbar(0.0, 0.0, 0.0, 1.0);
 			hbar(m_lineWidth, 1.0 - 2 * h * m_lineWidth / (0.6 + m_lineWidth), 0.2, 2 * h / (0.6 + m_lineWidth));
 			hbar(m_lineWidth, 0.5 - h * m_lineWidth / (0.6 + m_lineWidth), 0.2, 2 * h / (0.6 + m_lineWidth));
-			}
-			break;
+		}
+		break;
 		case 'Q':
 			curve(0.5, 0.8, 0.5, 0.2, 0.0, 1.0);
 			curve(0.5, 0.2, 0.5, 0.2, 1.0, 2.0);
@@ -2850,15 +2830,15 @@ GRayTraceTriMesh* G3dLetterMaker::makeLetter(char c)
 			vbar(0.25, 0.5, 0.5, 0.0);
 			break;
 		case 'R':
-			{
+		{
 			double h = (0.6 + m_lineWidth) / (4 * (0.6 + m_lineWidth) - 2 * m_lineWidth);
 			curve(0.5, 1.0 - h, 0.6, h, 1.5, 2.5);
 			vbar(0.0, 0.0, 0.0, 1.0);
 			hbar(m_lineWidth, 1.0 - 2 * h * m_lineWidth / (0.6 + m_lineWidth), 0.2, 2 * h / (0.6 + m_lineWidth));
 			hbar(m_lineWidth, 0.5 - h * m_lineWidth / (0.6 + m_lineWidth), 0.2, 2 * h / (0.6 + m_lineWidth));
 			vbar(0.2, 0.5, 0.5, 0.0);
-			}
-			break;
+		}
+		break;
 		case 'S':
 			curve(0.5, 0.75, 0.5, 0.25, 0.0, 1.0);
 			curve(0.5, 0.75, 0.5, 0.25 + 0.5 * m_lineWidth, 1.0, 1.5);
@@ -3133,18 +3113,12 @@ void G3dLetterMaker::addQuad(G3DReal x1, G3DReal y1, G3DReal x2, G3DReal y2, G3D
 
 void G3dLetterMaker::vbar(G3DReal x1, G3DReal y1, G3DReal x2, G3DReal y2, G3DReal width)
 {
-	addQuad(x1, y1,
-		x1 + width * m_lineWidth, y1,
-		x2, y2,
-		x2 + width * m_lineWidth, y2);
+	addQuad(x1, y1, x1 + width * m_lineWidth, y1, x2, y2, x2 + width * m_lineWidth, y2);
 }
 
 void G3dLetterMaker::hbar(G3DReal x, G3DReal y, G3DReal w, G3DReal height)
 {
-	addQuad(x, y + m_lineWidth * height,
-		x + w, y + m_lineWidth * height,
-		x, y,
-		x + w, y);
+	addQuad(x, y + m_lineWidth * height, x + w, y + m_lineWidth * height, x, y, x + w, y);
 }
 
 void G3dLetterMaker::curve(G3DReal x, G3DReal y, G3DReal w, G3DReal hh, double from, double to)
@@ -3165,10 +3139,7 @@ void G3dLetterMaker::curve(G3DReal x, G3DReal y, G3DReal w, G3DReal hh, double f
 	{
 		double p = r;
 		r += step;
-		addQuad(cx + outerRadius * cos(p), cy + verticalScale * outerRadius * sin(p),
-			cx + outerRadius * cos(r), cy + verticalScale * outerRadius * sin(r),
-			cx + innerRadius * cos(p), cy + verticalScale * innerRadius * sin(p),
-			cx + innerRadius * cos(r), cy + verticalScale * innerRadius * sin(r));
+		addQuad(cx + outerRadius * cos(p), cy + verticalScale * outerRadius * sin(p), cx + outerRadius * cos(r), cy + verticalScale * outerRadius * sin(r), cx + innerRadius * cos(p), cy + verticalScale * innerRadius * sin(p), cx + innerRadius * cos(r), cy + verticalScale * innerRadius * sin(r));
 	}
 }
 

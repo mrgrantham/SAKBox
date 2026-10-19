@@ -99,6 +99,8 @@ void doit()
 	feat.newRows(12);
 	GMatrix lab(label_values);
 	lab.newRows(12);
+	// (SAKBox) a table, aligned in columns by hand
+	// clang-format off
 	//        diameter            crust        meatiness     presentation           taste               cost
 	feat[0][0] = 14.0;  feat[0][1] = 1;  feat[0][2] = 1;  feat[0][3] = 0;   lab[0][0] = 1;  lab[0][1] = 22.95;
 	feat[1][0] = 12.0;  feat[1][1] = 0;  feat[1][2] = 0;  feat[1][3] = 3;   lab[1][0] = 0;  lab[1][1] = 3.29;
@@ -112,12 +114,16 @@ void doit()
 	feat[9][0] = 14.0;  feat[9][1] = 2;  feat[9][2] = 0;  feat[9][3] = 3;   lab[9][0] = 0;  lab[9][1] = 12.99;
 	feat[10][0] = 16.0; feat[10][1] = 0; feat[10][2] = 1; feat[10][3] = 0;  lab[10][0] = 0; lab[10][1] = 12.20;
 	feat[11][0] = 14.0; feat[11][1] = 1; feat[11][2] = 1; feat[11][3] = 1;  lab[11][0] = 1; lab[11][1] = 15.01;
+	// clang-format on
 
 	// Make a test vector
 	GVec test_features(4);
 	GVec predicted_labels(2);
 	cout << "This demo trains and tests several supervised learning models using some contrived hard-coded training data to predict the tastiness and cost of a pizza.\n\n";
-	test_features[0] = 15.0; test_features[1] = 2; test_features[2] = 0; test_features[3] = 0;
+	test_features[0] = 15.0;
+	test_features[1] = 2;
+	test_features[2] = 0;
+	test_features[3] = 0;
 	cout << "Predicting labels for a 15 inch pizza with a Neapolitan-style crust, no meat, for dine-in.\n\n";
 
 	// Use several models to make predictions
@@ -138,7 +144,7 @@ void doit()
 	cout << "Random forest predicts the taste is " << (predicted_labels[0] == 0 ? "lousy" : "delicious") << ", and the cost is $" << predicted_labels[1] << ".\n";
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
 	GApp::enableFloatingPointExceptions();

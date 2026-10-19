@@ -29,7 +29,7 @@
 #include <stdarg.h>
 #include <math.h>
 #ifdef WINDOWS
-#	include <windows.h>
+#include <windows.h>
 #endif
 #include <string>
 #include <iostream>
@@ -51,10 +51,7 @@ ViewBase::ViewBase()
 		window_ = makeScreen(windowWidth, windowHeight);
 	m_pScreen = window_;
 	sdlRenderer = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
-	sdlTexture = SDL_CreateTexture(sdlRenderer,
-										SDL_PIXELFORMAT_BGRA8888,
-										SDL_TEXTUREACCESS_STREAMING,
-										windowWidth, windowHeight);
+	sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_BGRA8888, SDL_TEXTUREACCESS_STREAMING, windowWidth, windowHeight);
 	m_screenRect.x = 0;
 	m_screenRect.y = 0;
 	m_screenRect.w = windowWidth;
@@ -71,13 +68,9 @@ ViewBase::~ViewBase()
 
 SDL_Window* ViewBase::makeScreen(int x, int y)
 {
-SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-SDL_Window *sdlWindow = SDL_CreateWindow("Car On Hill",
-                             SDL_WINDOWPOS_UNDEFINED,
-                             SDL_WINDOWPOS_UNDEFINED,
-                             x, y,
-                             window_flags);
-if(!sdlWindow)
+	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+	SDL_Window* sdlWindow = SDL_CreateWindow("Car On Hill", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, x, y, window_flags);
+	if(!sdlWindow)
 	{
 		// SDL_GetError();
 		throw GClasses::Ex("failed to create SDL screen"); // SAKBox: was a bare string
@@ -88,13 +81,13 @@ if(!sdlWindow)
 void ViewBase::captureScreen(GImage* pImage)
 {
 	Uint32 format; // SDL_PixelFormatEnum
-	SDL_QueryTexture(sdlTexture,&format, nullptr,nullptr,nullptr);
+	SDL_QueryTexture(sdlTexture, &format, nullptr, nullptr, nullptr);
 	pImage->setSize(m_screenRect.w, m_screenRect.h);
 
-	int *pixels = nullptr;
+	int* pixels = nullptr;
 	int pitch = 0;
 	const SDL_Rect* SDL_LOCK_ENTIRE_TEXTURE = nullptr;
-	if ( SDL_LockTexture(sdlTexture,SDL_LOCK_ENTIRE_TEXTURE,(void **)&pixels,&pitch) < 0 )
+	if(SDL_LockTexture(sdlTexture, SDL_LOCK_ENTIRE_TEXTURE, (void**)&pixels, &pitch) < 0)
 	{
 		GAssert(false); // SDL_GetError(); // failed to lock the surface
 		return;
@@ -106,7 +99,7 @@ void ViewBase::captureScreen(GImage* pImage)
 		int y;
 		for(y = 0; y < m_screenRect.h; y++)
 		{
-			Uint32* pPix = getPixMem32(pixels,pitch, m_screenRect.x, m_screenRect.y + y);
+			Uint32* pPix = getPixMem32(pixels, pitch, m_screenRect.x, m_screenRect.y + y);
 			memcpy(&pRGB[y * pImage->width()], pPix, pImage->width() * sizeof(unsigned int));
 		}
 	}
@@ -117,7 +110,7 @@ void ViewBase::captureScreen(GImage* pImage)
 		Uint8 r, g, b;
 		for(y = 0; y < m_screenRect.h; y++)
 		{
-			Uint16* pPix = getPixMem16(pixels,pitch, m_screenRect.x, m_screenRect.y + y);
+			Uint16* pPix = getPixMem16(pixels, pitch, m_screenRect.x, m_screenRect.y + y);
 			for(x = 0; x < m_screenRect.w; x++)
 			{
 				SDL_GetRGB(*pPix, window_surface->format, &r, &g, &b);
@@ -129,10 +122,10 @@ void ViewBase::captureScreen(GImage* pImage)
 	}
 }
 
-/*static*/ void ViewBase::blitImage(int* pixels,int pitch, Uint32 format, int x, int y, GImage* pImage)
+/*static*/ void ViewBase::blitImage(int* pixels, int pitch, Uint32 format, int x, int y, GImage* pImage)
 {
 	if(SDL_BYTESPERPIXEL(format) == 4)
-	{		
+	{
 		// 32 bits per pixel
 		unsigned int* pRGB = pImage->pixels();
 		const int width = pImage->width();
@@ -141,7 +134,7 @@ void ViewBase::captureScreen(GImage* pImage)
 		Uint32* pPix;
 		for(yy = 0; yy < height; yy++)
 		{
-			pPix = getPixMem32(pixels,pitch, x, y);
+			pPix = getPixMem32(pixels, pitch, x, y);
 #ifdef __APPLE__
 			unsigned int* pRaw = &pRGB[yy * width];
 			for(size_t i = 0; i < width; i++)
@@ -177,9 +170,9 @@ void ViewBase::captureScreen(GImage* pImage)
 	}
 }
 
-/*static*/ void ViewBase::stretchClipAndBlitImage(int* pixels,int pitch, Uint32 format, GRect* pDestRect, GRect* pClipRect, GImage* pImage)
+/*static*/ void ViewBase::stretchClipAndBlitImage(int* pixels, int pitch, Uint32 format, GRect* pDestRect, GRect* pClipRect, GImage* pImage)
 {
-	float fSourceDX =  (float)(pImage->width() - 1) / (float)(pDestRect->w - 1);
+	float fSourceDX = (float)(pImage->width() - 1) / (float)(pDestRect->w - 1);
 	GAssert((int)((pDestRect->w - 1) * fSourceDX) < (int)pImage->width()); // Extends past source image width
 	float fSourceDY = (float)(pImage->height() - 1) / (float)(pDestRect->h - 1);
 	GAssert((int)((pDestRect->h - 1) * fSourceDY) < (int)pImage->height()); // Extends past source image height
@@ -216,7 +209,7 @@ void ViewBase::captureScreen(GImage* pImage)
 		for(y = yStart; y < yEnd; y++)
 		{
 			fSX = fSourceX;
-			pPix = getPixMem32(pixels,pitch, xStart, y);
+			pPix = getPixMem32(pixels, pitch, xStart, y);
 			for(x = xStart; x < xEnd; x++)
 			{
 				*pPix = pImage->pixel((int)fSX, (int)fSourceY);
@@ -235,7 +228,7 @@ void ViewBase::captureScreen(GImage* pImage)
 		for(y = yStart; y < yEnd; y++)
 		{
 			fSX = fSourceX;
-			pPix = getPixMem16(pixels,pitch, xStart, y);
+			pPix = getPixMem16(pixels, pitch, xStart, y);
 			for(x = xStart; x < xEnd; x++)
 			{
 				colIn = pImage->pixel((int)fSX, (int)fSourceY);
@@ -249,7 +242,7 @@ void ViewBase::captureScreen(GImage* pImage)
 	}
 }
 
-void ViewBase::drawDot(int *pixels,int pitch,Uint32 format, int x, int y, unsigned int col, int nSize)
+void ViewBase::drawDot(int* pixels, int pitch, Uint32 format, int x, int y, unsigned int col, int nSize)
 {
 	int nWhiteAmount;
 	int nColorAmount;
@@ -270,12 +263,11 @@ void ViewBase::drawDot(int *pixels,int pitch,Uint32 format, int x, int y, unsign
 					continue;
 				nWhiteAmount += nWhiteAmount;
 				nColorAmount = nDoubleSizeSquared - nWhiteAmount;
-				*getPixMem32(pixels,pitch, xx, yy) =	gARGB(
-						0xff,
-						(nColorAmount * gRed(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
-						(nColorAmount * gGreen(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
-						(nColorAmount * gBlue(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared
-					);
+				*getPixMem32(pixels, pitch, xx, yy) = gARGB(
+				  0xff,
+				  (nColorAmount * gRed(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
+				  (nColorAmount * gGreen(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
+				  (nColorAmount * gBlue(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared);
 			}
 		}
 	}
@@ -293,12 +285,8 @@ void ViewBase::drawDot(int *pixels,int pitch,Uint32 format, int x, int y, unsign
 				nWhiteAmount += nWhiteAmount;
 				nColorAmount = nDoubleSizeSquared - nWhiteAmount;
 				auto sdlFormat = SDL_AllocFormat(format);
-				*getPixMem16(pixels,pitch, xx, yy) =
-					(Uint16)SDL_MapRGB(sdlFormat,
-						(nColorAmount * gRed(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
-						(nColorAmount * gGreen(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
-						(nColorAmount * gBlue(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared
-					);
+				*getPixMem16(pixels, pitch, xx, yy) =
+				  (Uint16)SDL_MapRGB(sdlFormat, (nColorAmount * gRed(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared, (nColorAmount * gGreen(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared, (nColorAmount * gBlue(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared);
 			}
 		}
 	}
@@ -308,32 +296,32 @@ void ViewBase::update()
 {
 	// Lock the screen for direct access to the pixels
 	// SDL_Surface *pScreen = window_surface;
-	SDL_Texture *currentTexture = sdlTexture;
+	SDL_Texture* currentTexture = sdlTexture;
 	// if ( SDL_MUSTLOCK(pScreen) )
 	// {
-		int *pixels = nullptr;
-		int pitch = 0;
-		const SDL_Rect* SDL_LOCK_ENTIRE_TEXTURE = nullptr;
-		if ( SDL_LockTexture(currentTexture,SDL_LOCK_ENTIRE_TEXTURE,(void **)&pixels,&pitch) < 0 )
-		{
-			fmt::println("ERROR");
-			GAssert(false); // SDL_GetError(); // failed to lock the surface
-			return;
-		}
+	int* pixels = nullptr;
+	int pitch = 0;
+	const SDL_Rect* SDL_LOCK_ENTIRE_TEXTURE = nullptr;
+	if(SDL_LockTexture(currentTexture, SDL_LOCK_ENTIRE_TEXTURE, (void**)&pixels, &pitch) < 0)
+	{
+		fmt::println("ERROR");
+		GAssert(false); // SDL_GetError(); // failed to lock the surface
+		return;
+	}
 	// }
 
-	// fmt::println("start draw");	
+	// fmt::println("start draw");
 	// Draw the screen
-	draw(pixels,pitch);
-	// fmt::println("after draw");	
+	draw(pixels, pitch);
+	// fmt::println("after draw");
 
 	// Unlock the screen
 	// if ( SDL_MUSTLOCK(pScreen) )
-		SDL_UnlockTexture(currentTexture);
+	SDL_UnlockTexture(currentTexture);
 
 	SDL_RenderCopy(sdlRenderer, sdlTexture, nullptr, nullptr);
 	// Update the whole screen
-	 SDL_RenderPresent(sdlRenderer);
+	SDL_RenderPresent(sdlRenderer);
 }
 
 
@@ -382,7 +370,8 @@ bool ControllerBase::handleEvents(double dTimeDelta)
 	{
 		switch(event.type)
 		{
-			case SDL_KEYDOWN: {
+			case SDL_KEYDOWN:
+			{
 				m_keyboard[event.key.keysym.sym] = 1;
 				handleKeyPress(event.key.keysym.sym, (SDL_Keymod)event.key.keysym.mod);
 				bRet = true;
@@ -551,8 +540,8 @@ protected:
 		GImage* pDialogImage = m_pDialog->image();
 		m_pBackgroundImage->blit(m_x, m_y, pDialogImage, m_pDialog->rect());
 		Uint32 format; // SDL_PixelFormatEnum
-		SDL_QueryTexture(sdlTexture,&format, nullptr,nullptr,nullptr);
-		blitImage(pixels,pitch,format, m_nLeft, m_nTop, m_pBackgroundImage);
+		SDL_QueryTexture(sdlTexture, &format, nullptr, nullptr, nullptr);
+		blitImage(pixels, pitch, format, m_nLeft, m_nTop, m_pBackgroundImage);
 	}
 };
 
@@ -604,77 +593,81 @@ void RunPopup(GWidgetDialog* pDialog)
 // -----------------------------------------------------------------------------------------------
 #ifdef WINDOWS
 // Iterate the top-level windows. Encapsulates ::EnumWindows.
-class CWindowIterator {
+class CWindowIterator
+{
 protected:
-   HWND* m_hwnds;          // array of hwnds for this PID
-   DWORD m_nAlloc;         // size of array
-   DWORD m_count;          // number of HWNDs found
-   DWORD m_current;        // current HWND
-   static BOOL CALLBACK EnumProc(HWND hwnd, LPARAM lp);
-   // virtual enumerator
-   virtual BOOL OnEnumProc(HWND hwnd);
-   // override to filter different kinds of windows
-   virtual BOOL OnWindow(HWND hwnd) {return TRUE;}
+	HWND* m_hwnds; // array of hwnds for this PID
+	DWORD m_nAlloc; // size of array
+	DWORD m_count; // number of HWNDs found
+	DWORD m_current; // current HWND
+	static BOOL CALLBACK EnumProc(HWND hwnd, LPARAM lp);
+	// virtual enumerator
+	virtual BOOL OnEnumProc(HWND hwnd);
+	// override to filter different kinds of windows
+	virtual BOOL OnWindow(HWND hwnd) { return TRUE; }
 public:
-   CWindowIterator(DWORD nAlloc=1024);
-   ~CWindowIterator();
+	CWindowIterator(DWORD nAlloc = 1024);
+	~CWindowIterator();
 
-   DWORD GetCount() { return m_count; }
-   HWND First();
-   HWND Next() {
-      return m_hwnds && m_current < m_count ? m_hwnds[m_current++] : NULL;
-   }
+	DWORD GetCount() { return m_count; }
+	HWND First();
+	HWND Next()
+	{
+		return m_hwnds && m_current < m_count ? m_hwnds[m_current++] : NULL;
+	}
 };
 
 // Iterate the top-level windows in a process.
-class CMainWindowIterator : public CWindowIterator  {
+class CMainWindowIterator : public CWindowIterator
+{
 protected:
-   DWORD m_pid;                     // process id
-   virtual BOOL OnWindow(HWND hwnd);
+	DWORD m_pid; // process id
+	virtual BOOL OnWindow(HWND hwnd);
 public:
-   CMainWindowIterator(DWORD pid, DWORD nAlloc=1024);
-   ~CMainWindowIterator();
+	CMainWindowIterator(DWORD pid, DWORD nAlloc = 1024);
+	~CMainWindowIterator();
 };
 
 CWindowIterator::CWindowIterator(DWORD nAlloc)
 {
-   m_current = m_count = 0;
-   m_hwnds = new HWND [nAlloc];
-   m_nAlloc = nAlloc;
+	m_current = m_count = 0;
+	m_hwnds = new HWND[nAlloc];
+	m_nAlloc = nAlloc;
 }
 
 CWindowIterator::~CWindowIterator()
 {
-   delete [] m_hwnds;
+	delete[] m_hwnds;
 }
 
 HWND CWindowIterator::First()
 {
-   ::EnumWindows(EnumProc, (LPARAM)this);
-   m_current = 0;
-   return Next();
+	::EnumWindows(EnumProc, (LPARAM)this);
+	m_current = 0;
+	return Next();
 }
 
 // Static proc passes to virtual fn.
 BOOL CALLBACK CWindowIterator::EnumProc(HWND hwnd, LPARAM lp)
 {
-   return ((CWindowIterator*)lp)->OnEnumProc(hwnd);
+	return ((CWindowIterator*)lp)->OnEnumProc(hwnd);
 }
 
 // Virtual proc: add HWND to array if OnWindow says OK
 BOOL CWindowIterator::OnEnumProc(HWND hwnd)
 {
-   if (OnWindow(hwnd)) {
-      if (m_count < m_nAlloc)
-         m_hwnds[m_count++] = hwnd;
-   }
-   return TRUE; // keep looking
+	if(OnWindow(hwnd))
+	{
+		if(m_count < m_nAlloc)
+			m_hwnds[m_count++] = hwnd;
+	}
+	return TRUE; // keep looking
 }
 
 CMainWindowIterator::CMainWindowIterator(DWORD pid, DWORD nAlloc)
-   : CWindowIterator(nAlloc)
+: CWindowIterator(nAlloc)
 {
-   m_pid = pid;
+	m_pid = pid;
 }
 
 CMainWindowIterator::~CMainWindowIterator()
@@ -684,13 +677,14 @@ CMainWindowIterator::~CMainWindowIterator()
 // virtual override: is this window a main window of my process?
 BOOL CMainWindowIterator::OnWindow(HWND hwnd)
 {
-   if (GetWindowLong(hwnd,GWL_STYLE) & WS_VISIBLE) {
-      DWORD pidwin;
-      GetWindowThreadProcessId(hwnd, &pidwin);
-      if (pidwin==m_pid)
-         return TRUE;
-   }
-   return FALSE;
+	if(GetWindowLong(hwnd, GWL_STYLE) & WS_VISIBLE)
+	{
+		DWORD pidwin;
+		GetWindowThreadProcessId(hwnd, &pidwin);
+		if(pidwin == m_pid)
+			return TRUE;
+	}
+	return FALSE;
 }
 
 #endif // WINDOWS
@@ -702,7 +696,7 @@ void OpenFile(const char* szFilename)
 	SHELLEXECUTEINFO sei;
 	memset(&sei, '\0', sizeof(SHELLEXECUTEINFO));
 	sei.cbSize = sizeof(SHELLEXECUTEINFO);
-	sei.fMask = SEE_MASK_NOCLOSEPROCESS/* | SEE_MASK_NOZONECHECKS*/;
+	sei.fMask = SEE_MASK_NOCLOSEPROCESS /* | SEE_MASK_NOZONECHECKS*/;
 	sei.hwnd = NULL;
 	sei.lpVerb = NULL;
 	sei.lpFile = szFilename;
@@ -710,7 +704,7 @@ void OpenFile(const char* szFilename)
 	sei.lpDirectory = NULL;
 	sei.nShow = SW_SHOW;
 	ShellExecuteEx(&sei);
-	CMainWindowIterator itw((DWORD)sei.hProcess/*pid*/);
+	CMainWindowIterator itw((DWORD)sei.hProcess /*pid*/);
 	SetForegroundWindow(itw.First());
 	//ShellExecute(NULL, NULL, szFilename, NULL, NULL, SW_SHOW);
 #else

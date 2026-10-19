@@ -35,7 +35,8 @@ using std::map;
 
 typedef double (*MathFuncFunc)(vector<double>& params);
 
-namespace GClasses {
+namespace GClasses
+{
 class GFunctionNode
 {
 public:
@@ -68,7 +69,8 @@ double GFunction::call(std::vector<double>& params, GFunctionParser& parser)
 }
 
 
-namespace GClasses {
+namespace GClasses
+{
 class GFunctionBuiltIn : public GFunctionNode
 {
 public:
@@ -397,8 +399,8 @@ GFunctionParser::GFunctionParser()
 	addFunction("lgamma", new GFunctionBuiltIn(GFunctionBuiltIn::_lgamma), 1);
 	addFunction("log", new GFunctionBuiltIn(GFunctionBuiltIn::_log), 1);
 	addFunction("softexp", new GFunctionBuiltIn(GFunctionBuiltIn::_softexp), 2);
-	addFunction("max", new GFunctionBuiltIn(GFunctionBuiltIn::_max), -2/*at least 1 param*/);
-	addFunction("min", new GFunctionBuiltIn(GFunctionBuiltIn::_min), -2/*at least 1 param*/);
+	addFunction("max", new GFunctionBuiltIn(GFunctionBuiltIn::_max), -2 /*at least 1 param*/);
+	addFunction("min", new GFunctionBuiltIn(GFunctionBuiltIn::_min), -2 /*at least 1 param*/);
 	addFunction("normal", new GFunctionBuiltIn(GFunctionBuiltIn::_normal), 1);
 	addFunction("sign", new GFunctionBuiltIn(GFunctionBuiltIn::_sign), 1);
 	addFunction("sin", new GFunctionBuiltIn(GFunctionBuiltIn::_sin), 1);
@@ -489,12 +491,7 @@ int GFunctionParser::findOperatorWithLowestPrecidence(vector<string>& tokens, in
 			bool isOperand = GFunctionTokenizer::IsNameChar(c) || GFunctionTokenizer::IsDigit(c) || c == '.';
 			if(!isOperand) // names and numbers aren't operators
 			{
-				if(c == '-' && (i == 0 || (
-							!GFunctionTokenizer::IsDigit(tokens[start + i - 1][0]) &&
-							!GFunctionTokenizer::IsNameChar(tokens[start + i - 1][0]) &&
-							tokens[start + i - 1][0] != ')' &&
-							tokens[start + i - 1][0] != '.'
-						)))
+				if(c == '-' && (i == 0 || (!GFunctionTokenizer::IsDigit(tokens[start + i - 1][0]) && !GFunctionTokenizer::IsNameChar(tokens[start + i - 1][0]) && tokens[start + i - 1][0] != ')' && tokens[start + i - 1][0] != '.')))
 				{
 					if(priority >= 16)
 					{

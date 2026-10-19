@@ -31,7 +31,8 @@
 using std::string;
 using std::ostringstream;
 
-namespace GClasses {
+namespace GClasses
+{
 
 GPlotLabelSpacer::GPlotLabelSpacer(double min, double max, int maxLabels)
 {
@@ -193,9 +194,8 @@ void GPlotWindow::function(MathFunc pFunc, unsigned int col, void* pThis)
 	{
 		x = (double)i * m_window.w / m_w + m_window.x;
 		y = pFunc(pThis, x);
-		if(xPrev >= -1e200 && xPrev < 1e200 && yPrev >= -1e200 && yPrev < 1e200 &&
-			x >= -1e200 && x < 1e200 && y >= -1e200 && y < 1e200)
-		line(xPrev, yPrev, x, y, col);
+		if(xPrev >= -1e200 && xPrev < 1e200 && yPrev >= -1e200 && yPrev < 1e200 && x >= -1e200 && x < 1e200 && y >= -1e200 && y < 1e200)
+			line(xPrev, yPrev, x, y, col);
 		xPrev = x;
 		yPrev = y;
 	}
@@ -420,9 +420,8 @@ void GSVG::newChart(double xmin, double ymin, double xmax, double ymax, size_t h
 	m_ymax = ymax;
 	m_ss << "<defs><clipPath id=\"chart" << to_str(hPos) << "-" << to_str(vPos) << "\"><rect x=\"" << svg_to_str(xmin) << "\" y=\"" << svg_to_str(ymin) << "\" width=\"" << svg_to_str(xmax - xmin) << "\" height=\"" << svg_to_str(ymax - ymin) << "\" /></clipPath></defs>\n";
 	m_ss << "<g transform=\"translate(" << svg_to_str(chartWidth * hPos + margin) << " "
-		<< svg_to_str(chartHeight * (vPos + 1) - margin) << ") scale(" << svg_to_str((chartWidth - margin) / (xmax - xmin)) <<
-		" " << svg_to_str(-(chartHeight - margin) / (ymax - ymin)) << ") translate(" << svg_to_str(-xmin) << " " << svg_to_str(-ymin) << ")\""
-		<< ">\n";
+	     << svg_to_str(chartHeight * (vPos + 1) - margin) << ") scale(" << svg_to_str((chartWidth - margin) / (xmax - xmin)) << " " << svg_to_str(-(chartHeight - margin) / (ymax - ymin)) << ") translate(" << svg_to_str(-xmin) << " " << svg_to_str(-ymin) << ")\""
+	     << ">\n";
 }
 
 GSVG::~GSVG()

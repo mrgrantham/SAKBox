@@ -16,6 +16,8 @@
 */
 ///@file Test data designed to be #included in GSelfOrganizingMap.cpp in an anonymous namespace.
 
+// (SAKBox) test data, laid out in rows
+// clang-format off
 ///170 pairs of integers uniformly distributed in the 2D 0..99
 ///square generated from Random.org
 double uniformSquare[170][2]={
@@ -725,6 +727,7 @@ double twoCircles[500][2]= {
   {-346.295,-7.3041}
 };
 */
+// clang-format on
 
 
 

@@ -26,7 +26,8 @@
 #include <cuda_runtime.h>
 #include <curand.h>
 
-namespace GClasses {
+namespace GClasses
+{
 
 bool g_haveEngine = false;
 
@@ -141,8 +142,7 @@ void GCudaVector::copy(GCudaEngine& engine, const GCudaVector& that)
 void GCudaVector::add(GCudaEngine& engine, const GCudaVector& that, double thatScalar)
 {
 	GAssert(m_size == that.m_size);
-	if(cublasDaxpy((cublasHandle_t)engine.m_handle, m_size, &thatScalar,
-		that.d_vals, 1, d_vals, 1) != CUBLAS_STATUS_SUCCESS)
+	if(cublasDaxpy((cublasHandle_t)engine.m_handle, m_size, &thatScalar, that.d_vals, 1, d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDaxpy failed");
 }
 
@@ -167,9 +167,7 @@ void GCudaVector::fillNormal(GCudaEngine& engine, double mean, double dev)
 void GCudaVector::addOuterProduct(GCudaEngine& engine, const GCudaVector& upStreamInput, const GCudaVector& downStreamError, double learningRate)
 {
 	GAssert(m_size == upStreamInput.size() * downStreamError.size());
-	if(cublasDger((cublasHandle_t)engine.m_handle, downStreamError.size(), upStreamInput.size(), &learningRate,
-		downStreamError.d_vals, 1, upStreamInput.d_vals, 1,
-		d_vals, downStreamError.size()) != CUBLAS_STATUS_SUCCESS)
+	if(cublasDger((cublasHandle_t)engine.m_handle, downStreamError.size(), upStreamInput.size(), &learningRate, downStreamError.d_vals, 1, upStreamInput.d_vals, 1, d_vals, downStreamError.size()) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDger failed");
 }
 
@@ -245,16 +243,14 @@ void GCudaMatrix::scale(GCudaEngine& engine, double scalar)
 void GCudaMatrix::add(GCudaEngine& engine, GCudaMatrix& that, double thatScalar)
 {
 	GAssert(that.rows() == m_rows && that.cols() == m_cols);
-	if(cublasDaxpy((cublasHandle_t)engine.m_handle, m_rows * m_cols, &thatScalar,
-		that.d_vals, 1, d_vals, 1) != CUBLAS_STATUS_SUCCESS)
+	if(cublasDaxpy((cublasHandle_t)engine.m_handle, m_rows * m_cols, &thatScalar, that.d_vals, 1, d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDaxpy failed");
 }
 
 void GCudaMatrix::add(GCudaEngine& engine, GCudaVector& that, double thatScalar)
 {
 	GAssert(that.size() == m_rows * m_cols);
-	if(cublasDaxpy((cublasHandle_t)engine.m_handle, m_rows * m_cols, &thatScalar,
-		that.d_vals, 1, d_vals, 1) != CUBLAS_STATUS_SUCCESS)
+	if(cublasDaxpy((cublasHandle_t)engine.m_handle, m_rows * m_cols, &thatScalar, that.d_vals, 1, d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDaxpy failed");
 }
 
@@ -264,9 +260,7 @@ void GCudaMatrix::rowVectorTimesThis(GCudaEngine& engine, const GCudaVector& in,
 	out.resize(m_cols);
 	double alpha = 1.0f;
 	double beta = 0.0f;
-	if(cublasDgemv((cublasHandle_t)engine.m_handle, CUBLAS_OP_N,
-		m_cols, m_rows, &alpha, d_vals,
-		m_cols, in.d_vals, 1, &beta, out.d_vals, 1) != CUBLAS_STATUS_SUCCESS)
+	if(cublasDgemv((cublasHandle_t)engine.m_handle, CUBLAS_OP_N, m_cols, m_rows, &alpha, d_vals, m_cols, in.d_vals, 1, &beta, out.d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDgemv failed");
 }
 
@@ -276,9 +270,7 @@ void GCudaMatrix::thisTimesColumnVector(GCudaEngine& engine, const GCudaVector& 
 	out.resize(m_rows);
 	double alpha = 1.0f;
 	double beta = 0.0f;
-	if(cublasDgemv((cublasHandle_t)engine.m_handle, CUBLAS_OP_T,
-		m_cols, m_rows, &alpha, d_vals,
-		m_cols, in.d_vals, 1, &beta, out.d_vals, 1) != CUBLAS_STATUS_SUCCESS)
+	if(cublasDgemv((cublasHandle_t)engine.m_handle, CUBLAS_OP_T, m_cols, m_rows, &alpha, d_vals, m_cols, in.d_vals, 1, &beta, out.d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDgemv failed");
 }
 
@@ -288,9 +280,7 @@ void GCudaMatrix::feedIn(GCudaEngine& engine, const GCudaVector& in, GCudaVector
 	GAssert(out.m_size == m_cols);
 	double alpha = 1.0f;
 	double beta = 1.0f;
-	if(cublasDgemv((cublasHandle_t)engine.m_handle, CUBLAS_OP_N,
-		m_cols, in.m_size, &alpha, d_vals + inputStart * m_cols,
-		m_cols, in.d_vals, 1, &beta, out.d_vals, 1) != CUBLAS_STATUS_SUCCESS)
+	if(cublasDgemv((cublasHandle_t)engine.m_handle, CUBLAS_OP_N, m_cols, in.m_size, &alpha, d_vals + inputStart * m_cols, m_cols, in.d_vals, 1, &beta, out.d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDgemv failed");
 }
 
@@ -299,17 +289,13 @@ void GCudaMatrix::backPropError(GCudaEngine& engine, const GCudaVector& in, GCud
 	GAssert(in.m_size == m_cols);
 	double alpha = 1.0f;
 	double beta = 0.0f;
-	if(cublasDgemv((cublasHandle_t)engine.m_handle, CUBLAS_OP_T,
-		in.size(), m_rows, &alpha, d_vals,
-		m_cols, in.d_vals + inputStart, 1, &beta, out.d_vals, 1) != CUBLAS_STATUS_SUCCESS)
+	if(cublasDgemv((cublasHandle_t)engine.m_handle, CUBLAS_OP_T, in.size(), m_rows, &alpha, d_vals, m_cols, in.d_vals + inputStart, 1, &beta, out.d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDgemv failed");
 }
 
 void GCudaMatrix::addOuterProduct(GCudaEngine& engine, GCudaVector& upStreamInput, GCudaVector& downStreamError, double learningRate)
 {
-	if(cublasDger((cublasHandle_t)engine.m_handle, m_cols, upStreamInput.size(), &learningRate,
-		downStreamError.d_vals, 1, upStreamInput.d_vals, 1,
-		d_vals, m_cols) != CUBLAS_STATUS_SUCCESS)
+	if(cublasDger((cublasHandle_t)engine.m_handle, m_cols, upStreamInput.size(), &learningRate, downStreamError.d_vals, 1, upStreamInput.d_vals, 1, d_vals, m_cols) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDger failed");
 }
 
@@ -317,7 +303,7 @@ double GCudaMatrix::rowSumAbs(GCudaEngine& engine, size_t row)
 {
 	double res;
 	if(cublasDasum((cublasHandle_t)engine.m_handle, m_cols, d_vals + row * m_cols, 1, &res) != CUBLAS_STATUS_SUCCESS)
-		throw Ex("cublasDasum failed");	
+		throw Ex("cublasDasum failed");
 	return res;
 }
 

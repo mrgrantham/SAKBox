@@ -30,7 +30,7 @@
 #include <math.h>
 #include <fstream>
 #ifdef WINDOWS
-#include	<direct.h>
+#include <direct.h>
 #endif
 
 using namespace GClasses;
@@ -83,7 +83,7 @@ void doit()
 	// Load the data
 	GMatrix trainLab;
 	GMatrix testLab;
-	if (chdir("../bin") != 0)
+	if(chdir("../bin") != 0)
 	{
 	}
 	trainLab.loadArff("train.arff");
@@ -178,7 +178,7 @@ void doit()
 	}
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
 	GApp::enableFloatingPointExceptions();

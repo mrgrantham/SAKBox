@@ -54,8 +54,8 @@
 #include <time.h>
 #include <iostream>
 #ifdef WINDOWS
-#	include <direct.h>
-#	include <process.h>
+#include <direct.h>
+#include <process.h>
 #endif
 #include <exception>
 #include <string>
@@ -63,7 +63,8 @@
 #include <set>
 #include <memory>
 
-namespace GClasses{
+namespace GClasses
+{
 
 using std::cout;
 using std::cerr;
@@ -184,7 +185,7 @@ public:
 	///\param pMatrix a pointer to the confusion matrix. (*pMatrix)[r][c]
 	///               is the number of times that r was expected and c was
 	///               received. Cannot be NULL.
-        static std::string machineReadableConfusionData(std::size_t variable_idx, const GRelation* pRelation, GMatrix const * const pMatrix);
+	static std::string machineReadableConfusionData(std::size_t variable_idx, const GRelation* pRelation, GMatrix const* const pMatrix);
 
 	///\brief Prints the confusion matrices as machine-readable csv-like lines.
 	///

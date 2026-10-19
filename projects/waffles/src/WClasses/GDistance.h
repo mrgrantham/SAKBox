@@ -26,7 +26,8 @@
 #include <vector>
 #include "GKernelTrick.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GKernel;
 
@@ -232,10 +233,10 @@ public:
 	virtual GDomNode* serialize(GDom* pDoc) const = 0;
 
 	/// Computes the similarity between two sparse vectors
-	virtual double similarity(const std::map<size_t,double>& a, const std::map<size_t,double>& b) = 0;
+	virtual double similarity(const std::map<size_t, double>& a, const std::map<size_t, double>& b) = 0;
 
 	/// Computes the similarity between a sparse and a dense vector
-	virtual double similarity(const std::map<size_t,double>& a, const GVec& b) = 0;
+	virtual double similarity(const std::map<size_t, double>& a, const GVec& b) = 0;
 
 	/// Computes the similarity between two dense vectors
 	virtual double similarity(const GVec& a, const GVec& b) = 0;
@@ -261,10 +262,10 @@ public:
 	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Computes the similarity between two sparse vectors
-	double similarity(const std::map<size_t,double>& a, const std::map<size_t,double>& b) override;
+	double similarity(const std::map<size_t, double>& a, const std::map<size_t, double>& b) override;
 
 	/// Computes the similarity between a sparse and a dense vector
-	double similarity(const std::map<size_t,double>& a, const GVec& b) override;
+	double similarity(const std::map<size_t, double>& a, const GVec& b) override;
 
 	/// Computes the similarity between two dense vectors
 	double similarity(const GVec& a, const GVec& b) override;
@@ -283,10 +284,10 @@ public:
 	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Computes the similarity between two sparse vectors
-	double similarity(const std::map<size_t,double>& a, const std::map<size_t,double>& b) override;
+	double similarity(const std::map<size_t, double>& a, const std::map<size_t, double>& b) override;
 
 	/// Computes the similarity between a sparse and a dense vector
-	double similarity(const std::map<size_t,double>& a, const GVec& b) override;
+	double similarity(const std::map<size_t, double>& a, const GVec& b) override;
 
 	/// Computes the similarity between two dense vectors
 	double similarity(const GVec& a, const GVec& b) override;
@@ -308,10 +309,10 @@ public:
 	GDomNode* serialize(GDom* pDoc) const override;
 
 	/// Computes the similarity between two sparse vectors
-	double similarity(const std::map<size_t,double>& a, const std::map<size_t,double>& b) override;
+	double similarity(const std::map<size_t, double>& a, const std::map<size_t, double>& b) override;
 
 	/// Computes the similarity between a sparse and a dense vector
-	double similarity(const std::map<size_t,double>& a, const GVec& b) override;
+	double similarity(const std::map<size_t, double>& a, const GVec& b) override;
 
 	/// Computes the similarity between two dense vectors
 	double similarity(const GVec& a, const GVec& b) override;

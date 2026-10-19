@@ -36,7 +36,8 @@ using std::string;
 using std::ostream;
 using std::ostringstream;
 
-namespace GClasses{
+namespace GClasses
+{
 
 class GHttpClientSocket : public GTCPClient
 {
@@ -271,8 +272,8 @@ bool GHttpClient::sendGetRequest(const char* szUrl, bool headersOnly)
 		s += ':';
 		s += to_str(nPort);
 	}
-// todo: undo the next line
-//	s += "\r\nUser-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.7.12) Gecko/20051010 Firefox/1.0.7 (Ubuntu package 1.0.7)\r\nAccept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5\r\nAccept-Language: en-us,en;q=0.5\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7\r\nKeep-Alive: 300\r\nConnection: keep-alive\r\n\r\n";
+	// todo: undo the next line
+	//	s += "\r\nUser-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.7.12) Gecko/20051010 Firefox/1.0.7 (Ubuntu package 1.0.7)\r\nAccept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5\r\nAccept-Language: en-us,en;q=0.5\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7\r\nKeep-Alive: 300\r\nConnection: keep-alive\r\n\r\n";
 	s += "\r\nUser-Agent: ";
 	s += m_szClientName;
 	s += "\r\nKeep-Alive: 60\r\nConnection: keep-alive\r\n\r\n";
@@ -373,7 +374,7 @@ void GHttpClient::processHeader(const unsigned char* szData, size_t nSize)
 				m_szRedirect = new char[nLen + 1];
 				strcpy(m_szRedirect, szLoc);
 			}
-/*			else if(strnicmp(m_szHeaderBuf, "Last-Modified:", 14) == 0)
+			/*			else if(strnicmp(m_szHeaderBuf, "Last-Modified:", 14) == 0)
 			{
 				strcpy(caLastModifiedString, m_szHeaderBuf);
 			}*/
@@ -447,7 +448,7 @@ void GHttpClient::processChunkBody(const unsigned char* szData, size_t nSize)
 			{
 			}
 			int nHexStart = (int)n;
-			for( ; szData[n] >= '0' && szData[n] <= 'f' && n < nSize; n++)
+			for(; szData[n] >= '0' && szData[n] <= 'f' && n < nSize; n++)
 			{
 			}
 			if(n >= nSize)
@@ -473,7 +474,7 @@ void GHttpClient::processChunkBody(const unsigned char* szData, size_t nSize)
 				m_nContentSize += (nDig * nPow);
 				nPow *= 16;
 			}
-			for( ; szData[n] != '\n' && n < nSize; n++)
+			for(; szData[n] != '\n' && n < nSize; n++)
 			{
 			}
 			if(n < nSize && szData[n] == '\n')
@@ -568,7 +569,6 @@ unsigned char* GHttpClient::data(size_t* pnSize)
 		{
 			//GAssert(false); // todo: why are we giving it out early?
 		}
-
 	}
 
 	if(m_status != Done)
@@ -604,19 +604,19 @@ unsigned char* GHttpClient::get(const char* url, size_t* pOutSize, unsigned int 
 		switch(st)
 		{
 			case Downloading:
+			{
+				double time = GTime::seconds();
+				if(prog > prevProg)
 				{
-					double time = GTime::seconds();
-					if(prog > prevProg)
-					{
-						prevProg = prog;
-						startTime = time;
-					}
-					else if(time - startTime > timeoutSecs)
-						throw Ex("Timed out while waiting for any progress downloading ", url);
-					else
-						GThread::sleep(sleepMiliSecs);
+					prevProg = prog;
+					startTime = time;
 				}
-				break;
+				else if(time - startTime > timeoutSecs)
+					throw Ex("Timed out while waiting for any progress downloading ", url);
+				else
+					GThread::sleep(sleepMiliSecs);
+			}
+			break;
 			case Error:
 				throw Ex("Received error status while trying to get ", url);
 				break;
@@ -1192,11 +1192,7 @@ bool GHttpServer::parseFileParam(const char* pParams, size_t nParamsLen, const c
 	*pFilenameLen = nFilenameLen;
 
 	// Find the start of the file
-	while(pos < nParamsLen && (
-			pParams[pos] != '\r' ||
-			pParams[pos + 1] != '\n' ||
-			pParams[pos + 2] != '\r' ||
-			pParams[pos + 3] != '\n'))
+	while(pos < nParamsLen && (pParams[pos] != '\r' || pParams[pos + 1] != '\n' || pParams[pos + 2] != '\r' || pParams[pos + 3] != '\n'))
 		pos++;
 	if(pos >= nParamsLen)
 		return false;
@@ -1266,12 +1262,12 @@ GHttpParamParser::~GHttpParamParser()
 static bool isSafeParamChar(char c)
 {
 	return (c >= 'a' && c <= 'z') || (c >= '<' && c <= 'Z') || (c >= '(' && c <= ':')
-		|| (c >= '#' && c <= '%') || c == ' ' || c == '!';
+	  || (c >= '#' && c <= '%') || c == ' ' || c == '!';
 }
 
 void GHttpParamParser::scrubValue(char* value)
 {
-	for( ; *value != '\0'; value++)
+	for(; *value != '\0'; value++)
 	{
 		if(!isSafeParamChar(*value))
 			*value = '_';
@@ -1335,7 +1331,7 @@ bool GHttpMultipartParser::next(size_t* pNameStart, size_t* pNameLen, size_t* pV
 {
 	// Find the terminating sentinel
 	size_t start = m_pos;
-	for( ; m_pos < m_len && strncmp(m_pRawData, m_pRawData + m_pos, m_sentinelLen) != 0; m_pos++)
+	for(; m_pos < m_len && strncmp(m_pRawData, m_pRawData + m_pos, m_sentinelLen) != 0; m_pos++)
 	{
 		if(m_pRawData[m_pos + m_repeatLen] != m_pRawData[0])
 			m_pos += m_repeatLen;

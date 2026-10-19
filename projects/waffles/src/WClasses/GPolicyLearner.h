@@ -23,7 +23,8 @@
 #include "GMatrix.h"
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GRand;
 class GIncrementalLearner;
@@ -93,7 +94,7 @@ public:
 
 	/// Resets the iterator
 	void reset(const double* pState) override;
-	
+
 	/// Iterates to the next action. Returns false if there are no more.
 	bool nextAction(double* pOutAction) override;
 };

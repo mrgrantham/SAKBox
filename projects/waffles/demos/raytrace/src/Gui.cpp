@@ -29,7 +29,7 @@
 #include <stdarg.h>
 #include <math.h>
 #ifdef WINDOWS
-#	include <windows.h>
+#include <windows.h>
 #endif
 #include <string>
 #include <iostream>
@@ -60,11 +60,11 @@ ViewBase::~ViewBase()
 SDL_Surface* ViewBase::makeScreen(int x, int y)
 {
 	unsigned int flags =
-//		SDL_FULLSCREEN |
-//		SDL_HWSURFACE |
-		SDL_SWSURFACE |
-//		SDL_DOUBLEBUF |
-		SDL_ANYFORMAT;
+	  //		SDL_FULLSCREEN |
+	  //		SDL_HWSURFACE |
+	  SDL_SWSURFACE |
+	  //		SDL_DOUBLEBUF |
+	  SDL_ANYFORMAT;
 	SDL_Surface* pScreen = SDL_SetVideoMode(x, y, 32, flags);
 	if(!pScreen)
 	{
@@ -154,7 +154,7 @@ void ViewBase::captureScreen(GImage* pImage)
 
 /*static*/ void ViewBase::stretchClipAndBlitImage(SDL_Surface* pScreen, GRect* pDestRect, GRect* pClipRect, GImage* pImage)
 {
-	float fSourceDX =  (float)(pImage->width() - 1) / (float)(pDestRect->w - 1);
+	float fSourceDX = (float)(pImage->width() - 1) / (float)(pDestRect->w - 1);
 	GAssert((int)((pDestRect->w - 1) * fSourceDX) < (int)pImage->width()); // Extends past source image width
 	float fSourceDY = (float)(pImage->height() - 1) / (float)(pDestRect->h - 1);
 	GAssert((int)((pDestRect->h - 1) * fSourceDY) < (int)pImage->height()); // Extends past source image height
@@ -223,7 +223,7 @@ void ViewBase::captureScreen(GImage* pImage)
 	}
 }
 
-void ViewBase::drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int nSize)
+void ViewBase::drawDot(SDL_Surface* pScreen, int x, int y, unsigned int col, int nSize)
 {
 	int nWhiteAmount;
 	int nColorAmount;
@@ -244,12 +244,11 @@ void ViewBase::drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int
 					continue;
 				nWhiteAmount += nWhiteAmount;
 				nColorAmount = nDoubleSizeSquared - nWhiteAmount;
-				*getPixMem32(pScreen, xx, yy) =	gARGB(
-						0xff,
-						(nColorAmount * gRed(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
-						(nColorAmount * gGreen(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
-						(nColorAmount * gBlue(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared
-					);
+				*getPixMem32(pScreen, xx, yy) = gARGB(
+				  0xff,
+				  (nColorAmount * gRed(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
+				  (nColorAmount * gGreen(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
+				  (nColorAmount * gBlue(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared);
 			}
 		}
 	}
@@ -267,11 +266,7 @@ void ViewBase::drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int
 				nWhiteAmount += nWhiteAmount;
 				nColorAmount = nDoubleSizeSquared - nWhiteAmount;
 				*getPixMem16(pScreen, xx, yy) =
-					(Uint16)SDL_MapRGB(pScreen->format,
-						(nColorAmount * gRed(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
-						(nColorAmount * gGreen(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared,
-						(nColorAmount * gBlue(col)/* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared
-					);
+				  (Uint16)SDL_MapRGB(pScreen->format, (nColorAmount * gRed(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared, (nColorAmount * gGreen(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared, (nColorAmount * gBlue(col) /* + nWhiteAmount * 0xff*/) / nDoubleSizeSquared);
 			}
 		}
 	}
@@ -280,10 +275,10 @@ void ViewBase::drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int
 void ViewBase::update()
 {
 	// Lock the screen for direct access to the pixels
-	SDL_Surface *pScreen = m_pScreen;
-	if ( SDL_MUSTLOCK(pScreen) )
+	SDL_Surface* pScreen = m_pScreen;
+	if(SDL_MUSTLOCK(pScreen))
 	{
-		if ( SDL_LockSurface(pScreen) < 0 )
+		if(SDL_LockSurface(pScreen) < 0)
 		{
 			GAssert(false); // SDL_GetError(); // failed to lock the surface
 			return;
@@ -294,7 +289,7 @@ void ViewBase::update()
 	draw(pScreen);
 
 	// Unlock the screen
-	if ( SDL_MUSTLOCK(pScreen) )
+	if(SDL_MUSTLOCK(pScreen))
 		SDL_UnlockSurface(pScreen);
 
 	// Update the whole screen
@@ -516,7 +511,7 @@ public:
 	}
 
 protected:
-	virtual void draw(SDL_Surface *pScreen)
+	virtual void draw(SDL_Surface* pScreen)
 	{
 		GImage* pDialogImage = m_pDialog->image();
 		m_pBackgroundImage->blit(m_x, m_y, pDialogImage, m_pDialog->rect());
@@ -572,77 +567,81 @@ void RunPopup(GWidgetDialog* pDialog)
 // -----------------------------------------------------------------------------------------------
 #ifdef WINDOWS
 // Iterate the top-level windows. Encapsulates ::EnumWindows.
-class CWindowIterator {
+class CWindowIterator
+{
 protected:
-   HWND* m_hwnds;          // array of hwnds for this PID
-   DWORD m_nAlloc;         // size of array
-   DWORD m_count;          // number of HWNDs found
-   DWORD m_current;        // current HWND
-   static BOOL CALLBACK EnumProc(HWND hwnd, LPARAM lp);
-   // virtual enumerator
-   virtual BOOL OnEnumProc(HWND hwnd);
-   // override to filter different kinds of windows
-   virtual BOOL OnWindow(HWND hwnd) {return TRUE;}
+	HWND* m_hwnds; // array of hwnds for this PID
+	DWORD m_nAlloc; // size of array
+	DWORD m_count; // number of HWNDs found
+	DWORD m_current; // current HWND
+	static BOOL CALLBACK EnumProc(HWND hwnd, LPARAM lp);
+	// virtual enumerator
+	virtual BOOL OnEnumProc(HWND hwnd);
+	// override to filter different kinds of windows
+	virtual BOOL OnWindow(HWND hwnd) { return TRUE; }
 public:
-   CWindowIterator(DWORD nAlloc=1024);
-   ~CWindowIterator();
+	CWindowIterator(DWORD nAlloc = 1024);
+	~CWindowIterator();
 
-   DWORD GetCount() { return m_count; }
-   HWND First();
-   HWND Next() {
-      return m_hwnds && m_current < m_count ? m_hwnds[m_current++] : NULL;
-   }
+	DWORD GetCount() { return m_count; }
+	HWND First();
+	HWND Next()
+	{
+		return m_hwnds && m_current < m_count ? m_hwnds[m_current++] : NULL;
+	}
 };
 
 // Iterate the top-level windows in a process.
-class CMainWindowIterator : public CWindowIterator  {
+class CMainWindowIterator : public CWindowIterator
+{
 protected:
-   DWORD m_pid;                     // process id
-   virtual BOOL OnWindow(HWND hwnd);
+	DWORD m_pid; // process id
+	virtual BOOL OnWindow(HWND hwnd);
 public:
-   CMainWindowIterator(DWORD pid, DWORD nAlloc=1024);
-   ~CMainWindowIterator();
+	CMainWindowIterator(DWORD pid, DWORD nAlloc = 1024);
+	~CMainWindowIterator();
 };
 
 CWindowIterator::CWindowIterator(DWORD nAlloc)
 {
-   m_current = m_count = 0;
-   m_hwnds = new HWND [nAlloc];
-   m_nAlloc = nAlloc;
+	m_current = m_count = 0;
+	m_hwnds = new HWND[nAlloc];
+	m_nAlloc = nAlloc;
 }
 
 CWindowIterator::~CWindowIterator()
 {
-   delete [] m_hwnds;
+	delete[] m_hwnds;
 }
 
 HWND CWindowIterator::First()
 {
-   ::EnumWindows(EnumProc, (LPARAM)this);
-   m_current = 0;
-   return Next();
+	::EnumWindows(EnumProc, (LPARAM)this);
+	m_current = 0;
+	return Next();
 }
 
 // Static proc passes to virtual fn.
 BOOL CALLBACK CWindowIterator::EnumProc(HWND hwnd, LPARAM lp)
 {
-   return ((CWindowIterator*)lp)->OnEnumProc(hwnd);
+	return ((CWindowIterator*)lp)->OnEnumProc(hwnd);
 }
 
 // Virtual proc: add HWND to array if OnWindow says OK
 BOOL CWindowIterator::OnEnumProc(HWND hwnd)
 {
-   if (OnWindow(hwnd)) {
-      if (m_count < m_nAlloc)
-         m_hwnds[m_count++] = hwnd;
-   }
-   return TRUE; // keep looking
+	if(OnWindow(hwnd))
+	{
+		if(m_count < m_nAlloc)
+			m_hwnds[m_count++] = hwnd;
+	}
+	return TRUE; // keep looking
 }
 
 CMainWindowIterator::CMainWindowIterator(DWORD pid, DWORD nAlloc)
-   : CWindowIterator(nAlloc)
+: CWindowIterator(nAlloc)
 {
-   m_pid = pid;
+	m_pid = pid;
 }
 
 CMainWindowIterator::~CMainWindowIterator()
@@ -652,13 +651,14 @@ CMainWindowIterator::~CMainWindowIterator()
 // virtual override: is this window a main window of my process?
 BOOL CMainWindowIterator::OnWindow(HWND hwnd)
 {
-   if (GetWindowLong(hwnd,GWL_STYLE) & WS_VISIBLE) {
-      DWORD pidwin;
-      GetWindowThreadProcessId(hwnd, &pidwin);
-      if (pidwin==m_pid)
-         return TRUE;
-   }
-   return FALSE;
+	if(GetWindowLong(hwnd, GWL_STYLE) & WS_VISIBLE)
+	{
+		DWORD pidwin;
+		GetWindowThreadProcessId(hwnd, &pidwin);
+		if(pidwin == m_pid)
+			return TRUE;
+	}
+	return FALSE;
 }
 
 #endif // WINDOWS
@@ -670,7 +670,7 @@ void OpenFile(const char* szFilename)
 	SHELLEXECUTEINFO sei;
 	memset(&sei, '\0', sizeof(SHELLEXECUTEINFO));
 	sei.cbSize = sizeof(SHELLEXECUTEINFO);
-	sei.fMask = SEE_MASK_NOCLOSEPROCESS/* | SEE_MASK_NOZONECHECKS*/;
+	sei.fMask = SEE_MASK_NOCLOSEPROCESS /* | SEE_MASK_NOZONECHECKS*/;
 	sei.hwnd = NULL;
 	sei.lpVerb = NULL;
 	sei.lpFile = szFilename;
@@ -678,7 +678,7 @@ void OpenFile(const char* szFilename)
 	sei.lpDirectory = NULL;
 	sei.nShow = SW_SHOW;
 	ShellExecuteEx(&sei);
-	CMainWindowIterator itw((DWORD)sei.hProcess/*pid*/);
+	CMainWindowIterator itw((DWORD)sei.hProcess /*pid*/);
 	SetForegroundWindow(itw.First());
 	//ShellExecute(NULL, NULL, szFilename, NULL, NULL, SW_SHOW);
 #else

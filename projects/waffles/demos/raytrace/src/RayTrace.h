@@ -20,7 +20,7 @@ class RayTraceDialog;
 
 class RayTraceView : public ViewBase
 {
-friend class RayTraceController;
+	friend class RayTraceController;
 protected:
 	RayTraceDialog* m_pDialog;
 	GClasses::GImage* m_pImage;
@@ -36,7 +36,7 @@ public:
 	void SetImage(GClasses::GImage* pImage) { m_pImage = pImage; }
 
 protected:
-	virtual void draw(SDL_Surface *pScreen);
+	virtual void draw(SDL_Surface* pScreen);
 };
 
 

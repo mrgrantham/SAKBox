@@ -24,7 +24,8 @@
 #include "GDom.h"
 #include <time.h>
 
-namespace GClasses {
+namespace GClasses
+{
 
 GKeyPair::GKeyPair()
 {

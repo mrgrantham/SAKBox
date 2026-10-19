@@ -60,7 +60,7 @@ protected:
 
 public:
 	TestQAgent(const GRelation& relation, double* pInitialState, GRand* prng, GAgentActionIterator* pActionIterator, double softMaxThresh, double soberness, double reward, double penalty, bool warpRandom)
-	: GIncrementalLearnerQAgent(relation, MakeLearner(prng), 1/*actionDims*/, pInitialState, prng, pActionIterator, softMaxThresh)
+	: GIncrementalLearnerQAgent(relation, MakeLearner(prng), 1 /*actionDims*/, pInitialState, prng, pActionIterator, softMaxThresh)
 	{
 		m_lastReward = UNKNOWN_REAL_VALUE;
 		m_soberness = soberness;
@@ -131,7 +131,7 @@ public:
 		// Debug spew
 		//printf("<%lg,%lg,%lg>\n", pSenses[0], pSenses[1], pAction[0]);
 		//PrintQTable(this);
-/*
+		/*
 //################## todo: remove me
 if(m_curState[2] == 2)
 	return 10;
@@ -227,7 +227,7 @@ void PrintPolicy(TestQAgent* pAgent)
 	printf("\n\n\n\n");
 	double action;
 	int x, y;
-	for(y = WORLD_SIZE - 1; y >= 0 ; y--)
+	for(y = WORLD_SIZE - 1; y >= 0; y--)
 	{
 		state[1] = y;
 		for(x = 0; x < WORLD_SIZE; x++)
@@ -258,7 +258,7 @@ void PrintQTable(TestQAgent* pAgent)
 	printf("\n\n\n\n");
 	double q0, q1, q2, q3, action;
 	int x, y;
-	for(y = WORLD_SIZE - 1; y >= 0 ; y--)
+	for(y = WORLD_SIZE - 1; y >= 0; y--)
 	{
 		state[1] = y;
 		for(x = 0; x < WORLD_SIZE; x++)
@@ -312,10 +312,10 @@ void DoIt()
 	// penalty: the penalty for hitting a wall or a #.
 	// soft_max_thresh: 100 = always exploit. 0 = always explore.
 	// warpRandom: true = teleport to a random spot after hitting the goal. false = teleport to (0,0) after goal.
-	DoTest(&prng, 80/*rcoeff*/, .03/*alpha*/, .98/*gamma*/, 1/*reward*/, .5/*penalty*/, 98/*soft_max_thresh*/, false/*warpRandom*/);
+	DoTest(&prng, 80 /*rcoeff*/, .03 /*alpha*/, .98 /*gamma*/, 1 /*reward*/, .5 /*penalty*/, 98 /*soft_max_thresh*/, false /*warpRandom*/);
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	int nRet = 0;
 	try

@@ -25,8 +25,7 @@ TEST(SubImageFinderTest, FindsNeedlesInAFlatAndNoisyImage) {
   haystack.boxFill(70, 40, 40, 40, 0xffe0e0e0);
   for (int i = 0; i < 300; i++) // scattered noise
     haystack.setPixel((int)rand.next(128), (int)rand.next(96),
-                      gARGB(0xff, (int)rand.next(256), (int)rand.next(256),
-                            (int)rand.next(256)));
+                      gARGB(0xff, (int)rand.next(256), (int)rand.next(256), (int)rand.next(256)));
   GSubImageFinder2 finder(&haystack);
   const std::pair<int, int> places[] = {{5, 5}, {60, 35}, {90, 60}, {20, 70}};
   std::vector<std::pair<int, int>> found;

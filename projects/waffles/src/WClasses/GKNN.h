@@ -21,7 +21,8 @@
 
 #include "GLearner.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GNeighborFinderGeneralizing;
 class GRand;

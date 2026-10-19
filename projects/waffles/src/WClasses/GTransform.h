@@ -22,7 +22,8 @@
 
 #include "GLearner.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// This is the base class of algorithms that transform data without supervision
 class GTransform
@@ -199,7 +200,7 @@ public:
 
 	/// If pA or pB is nullptr, returns the other one, else chains them together.
 	static GIncrementalTransform* chain(GIncrementalTransform* pA, GIncrementalTransform* pB);
-	
+
 	/// See the comment for GIncrementalTransform::serialize
 	GDomNode* serialize(GDom* pDoc) const override;
 
@@ -316,7 +317,11 @@ public:
 	void transform(const GVec& in, GVec& out) override;
 
 	/// Sets the mean and deviation of the noise
-	void setMeanAndDeviation(double m, double d) { m_mean = m; m_deviation = d; }
+	void setMeanAndDeviation(double m, double d)
+	{
+		m_mean = m;
+		m_deviation = d;
+	}
 
 	/// Throws an exception (because this transform cannot be reversed).
 	void untransform(const GVec& in, GVec& out) override

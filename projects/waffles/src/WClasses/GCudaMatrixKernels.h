@@ -2,7 +2,8 @@
 #define GCUDAMATRIXKERNELS_H
 
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GCudaEngine;
 class GCudaVector;

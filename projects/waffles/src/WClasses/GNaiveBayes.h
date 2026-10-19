@@ -22,7 +22,8 @@
 
 #include "GLearner.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GXMLTag;
 struct GNaiveBayesOutputAttr;

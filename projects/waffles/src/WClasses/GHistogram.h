@@ -22,7 +22,8 @@
 
 #include "GMatrix.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// Gathers values and puts them in bins.
 class GHistogram

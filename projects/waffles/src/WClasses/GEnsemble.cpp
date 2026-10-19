@@ -328,12 +328,12 @@ protected:
 public:
 	GBagTrainWorker(GMasterThread& master, GBag* pBag, const GMatrix& features, const GMatrix& labels, double trainSize, size_t seed)
 	: GWorkerThread(master),
-	m_pBag(pBag),
-	m_features(features),
-	m_labels(labels),
-	m_drawnFeatures(features.relation().clone()),
-	m_drawnLabels(labels.relation().clone()),
-	m_rand(seed)
+	  m_pBag(pBag),
+	  m_features(features),
+	  m_labels(labels),
+	  m_drawnFeatures(features.relation().clone()),
+	  m_drawnLabels(labels.relation().clone()),
+	  m_rand(seed)
 	{
 		GAssert(m_features.rows() > 0);
 		m_drawSize = size_t(trainSize * features.rows());
@@ -365,7 +365,7 @@ public:
 // virtual
 void GBag::trainInnerInner(const GMatrix& features, const GMatrix& labels)
 {
-/*
+	/*
 	// Train all the models
 	size_t nLearnerCount = m_models.size();
 	size_t nDrawSize = size_t(m_trainSize * features.rows());
@@ -678,7 +678,7 @@ void GResamplingAdaBoost::trainInnerInner(const GMatrix& features, const GMatrix
 		}
 		pDistribution.sumToOne();
 	}
-	if (m_models.empty()) 
+	if(m_models.empty())
 	{
 		throw Ex("No valid models found for AdaBoost");
 	}

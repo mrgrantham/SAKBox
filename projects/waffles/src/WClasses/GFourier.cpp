@@ -31,7 +31,7 @@ using namespace GClasses;
 
 void ComplexNumber::interpolate(ComplexNumber& a, double w, ComplexNumber& b)
 {
-/*
+	/*
 	// The trigonometric way
 	double ta = atan2(a.imag, a.real);
 	double tb = atan2(b.imag, b.real);
@@ -60,7 +60,6 @@ void ComplexNumber::interpolate(ComplexNumber& a, double w, ComplexNumber& b)
 	double s = m > 1e-15 ? (w * mb + (1.0 - w) * ma) / m : 0.0;
 	real *= s;
 	imag *= s;
-
 }
 
 
@@ -352,11 +351,7 @@ void GFourier::fftArrayToImage(struct ComplexNumber* pArray, int width, int oneT
 	{
 		for(x = 0; x < nWid; x++)
 		{
-			pImage->setPixel(x, y, gARGB(0xff,
-						ClipChan((int)((pArray[width * y + x].real - min) * scale)),
-						ClipChan((int)((pArray[nGreenStart + width * y + x].real - min) * scale)),
-						ClipChan((int)((pArray[nBlueStart + width * y + x].real - min) * scale))
-					));
+			pImage->setPixel(x, y, gARGB(0xff, ClipChan((int)((pArray[width * y + x].real - min) * scale)), ClipChan((int)((pArray[nGreenStart + width * y + x].real - min) * scale)), ClipChan((int)((pArray[nBlueStart + width * y + x].real - min) * scale))));
 		}
 	}
 }
@@ -422,104 +417,104 @@ double* GWavelet::getBuf(size_t n)
 
 void GWavelet::transform(double* x, size_t n)
 {
-  if(n < 2)
-    throw Ex("out of range");
-  double a;
-  size_t i;
-  // Predict 1
-  a=-1.586134342;
-  for (i=1;i+2<n;i+=2)
-  {
-    x[i]+=a*(x[i-1]+x[i+1]);
-  }
-  x[n-1]+=2*a*x[n-2];
-  // Update 1
-  a=-0.05298011854;
-  for (i=2;i<n;i+=2)
-  {
-    x[i]+=a*(x[i-1]+x[i+1]);
-  }
-  x[0]+=2*a*x[1];
-  // Predict 2
-  a=0.8829110762;
-  for (i=1;i+2<n;i+=2)
-  {
-    x[i]+=a*(x[i-1]+x[i+1]);
-  }
-  x[n-1]+=2*a*x[n-2];
-  // Update 2
-  a=0.4435068522;
-  for (i=2;i<n;i+=2)
-  {
-    x[i]+=a*(x[i-1]+x[i+1]);
-  }
-  x[0]+=2*a*x[1];
-  // Scale
-  a=1/1.149604398;
-  for (i=0;i<n;i++)
-  {
-    if (i%2) x[i]*=a;
-    else x[i]/=a;
-  }
-  // Pack
-  double* tempbank = getBuf(n);
-  for (i=0;i<n;i++)
-  {
-    if (i%2==0) tempbank[i/2]=x[i];
-    else tempbank[n/2+i/2]=x[i];
-  }
-  for (i=0;i<n;i++) x[i]=tempbank[i];
+	if(n < 2)
+		throw Ex("out of range");
+	double a;
+	size_t i;
+	// Predict 1
+	a = -1.586134342;
+	for(i = 1; i + 2 < n; i += 2)
+	{
+		x[i] += a * (x[i - 1] + x[i + 1]);
+	}
+	x[n - 1] += 2 * a * x[n - 2];
+	// Update 1
+	a = -0.05298011854;
+	for(i = 2; i < n; i += 2)
+	{
+		x[i] += a * (x[i - 1] + x[i + 1]);
+	}
+	x[0] += 2 * a * x[1];
+	// Predict 2
+	a = 0.8829110762;
+	for(i = 1; i + 2 < n; i += 2)
+	{
+		x[i] += a * (x[i - 1] + x[i + 1]);
+	}
+	x[n - 1] += 2 * a * x[n - 2];
+	// Update 2
+	a = 0.4435068522;
+	for(i = 2; i < n; i += 2)
+	{
+		x[i] += a * (x[i - 1] + x[i + 1]);
+	}
+	x[0] += 2 * a * x[1];
+	// Scale
+	a = 1 / 1.149604398;
+	for(i = 0; i < n; i++)
+	{
+		if(i % 2) x[i] *= a;
+		else x[i] /= a;
+	}
+	// Pack
+	double* tempbank = getBuf(n);
+	for(i = 0; i < n; i++)
+	{
+		if(i % 2 == 0) tempbank[i / 2] = x[i];
+		else tempbank[n / 2 + i / 2] = x[i];
+	}
+	for(i = 0; i < n; i++) x[i] = tempbank[i];
 }
 
 void GWavelet::inverse(double* x, size_t n)
 {
-  if(n < 2)
-    throw Ex("out of range");
-  double a;
-  size_t i;
-  // Unpack
-  double* tempbank = getBuf(n);
-  for (i=0;i<n/2;i++)
-  {
-    tempbank[i*2]=x[i];
-    tempbank[i*2+1]=x[i+n/2];
-  }
-  for (i=0;i<n;i++) x[i]=tempbank[i];
-  // Undo scale
-  a=1.149604398;
-  for (i=0;i<n;i++)
-  {
-    if (i%2) x[i]*=a;
-    else x[i]/=a;
-  }
-  // Undo update 2
-  a=-0.4435068522;
-  for (i=2;i<n;i+=2)
-  {
-    x[i]+=a*(x[i-1]+x[i+1]);
-  }
-  x[0]+=2*a*x[1];
-  // Undo predict 2
-  a=-0.8829110762;
-  for (i=1;i+2<n;i+=2)
-  {
-    x[i]+=a*(x[i-1]+x[i+1]);
-  }
-  x[n-1]+=2*a*x[n-2];
-  // Undo update 1
-  a=0.05298011854;
-  for (i=2;i<n;i+=2)
-  {
-    x[i]+=a*(x[i-1]+x[i+1]);
-  }
-  x[0]+=2*a*x[1];
-  // Undo predict 1
-  a=1.586134342;
-  for (i=1;i+2<n;i+=2)
-  {
-    x[i]+=a*(x[i-1]+x[i+1]);
-  }
-  x[n-1]+=2*a*x[n-2];
+	if(n < 2)
+		throw Ex("out of range");
+	double a;
+	size_t i;
+	// Unpack
+	double* tempbank = getBuf(n);
+	for(i = 0; i < n / 2; i++)
+	{
+		tempbank[i * 2] = x[i];
+		tempbank[i * 2 + 1] = x[i + n / 2];
+	}
+	for(i = 0; i < n; i++) x[i] = tempbank[i];
+	// Undo scale
+	a = 1.149604398;
+	for(i = 0; i < n; i++)
+	{
+		if(i % 2) x[i] *= a;
+		else x[i] /= a;
+	}
+	// Undo update 2
+	a = -0.4435068522;
+	for(i = 2; i < n; i += 2)
+	{
+		x[i] += a * (x[i - 1] + x[i + 1]);
+	}
+	x[0] += 2 * a * x[1];
+	// Undo predict 2
+	a = -0.8829110762;
+	for(i = 1; i + 2 < n; i += 2)
+	{
+		x[i] += a * (x[i - 1] + x[i + 1]);
+	}
+	x[n - 1] += 2 * a * x[n - 2];
+	// Undo update 1
+	a = 0.05298011854;
+	for(i = 2; i < n; i += 2)
+	{
+		x[i] += a * (x[i - 1] + x[i + 1]);
+	}
+	x[0] += 2 * a * x[1];
+	// Undo predict 1
+	a = 1.586134342;
+	for(i = 1; i + 2 < n; i += 2)
+	{
+		x[i] += a * (x[i - 1] + x[i + 1]);
+	}
+	x[n - 1] += 2 * a * x[n - 2];
 }
 
 #include "GMatrix.h"

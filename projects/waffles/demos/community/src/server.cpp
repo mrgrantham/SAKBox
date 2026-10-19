@@ -37,7 +37,7 @@ using std::make_pair;
 
 Server::Server(int port, GRand* pRand)
 : GDynamicPageServer(port, pRand, true), // SAKBox: a multi-user forum, so open to the network
-m_recommender(*pRand)
+  m_recommender(*pRand)
 {
 	m_keepGoing = true;
 	char buf[300];
@@ -208,7 +208,7 @@ void Server::onShutDown()
 
 Account* Server::findAccount(const char* szUsername)
 {
-	map<string,size_t>::iterator it = m_username_to_index.find(szUsername);
+	map<string, size_t>::iterator it = m_username_to_index.find(szUsername);
 	if(it == m_username_to_index.end())
 		return nullptr;
 	size_t index = it->second;
@@ -218,7 +218,7 @@ Account* Server::findAccount(const char* szUsername)
 
 size_t Server::user_id(const char* szUsername)
 {
-	map<string,size_t>::iterator it = m_username_to_index.find(szUsername);
+	map<string, size_t>::iterator it = m_username_to_index.find(szUsername);
 	if(it == m_username_to_index.end())
 		throw Ex("No such user");
 	return it->second;
@@ -229,10 +229,7 @@ bool Server::isValidUsername(const char* szUsername)
 	// Make sure the username contains only alpha-numerics, hyphens, or underscores
 	for(size_t i = 0; szUsername[i] != '\0'; i++)
 	{
-		if((szUsername[i] >= 'a' && szUsername[i] <= 'z') ||
-			(szUsername[i] >= 'A' && szUsername[i] <= 'Z') ||
-			(szUsername[i] >= '0' && szUsername[i] <= '9') ||
-			(szUsername[i] == '-' || szUsername[i] == '_'))
+		if((szUsername[i] >= 'a' && szUsername[i] <= 'z') || (szUsername[i] >= 'A' && szUsername[i] <= 'Z') || (szUsername[i] >= '0' && szUsername[i] <= '9') || (szUsername[i] == '-' || szUsername[i] == '_'))
 		{
 		}
 		else
@@ -275,7 +272,7 @@ Account* Server::newAccount(const char* szUsername, const char* szPasswordHash)
 
 bool Server::onRenameAccount(const char* szOldName, const char* szNewName)
 {
-	map<string,size_t>::iterator it = m_username_to_index.find(szOldName);
+	map<string, size_t>::iterator it = m_username_to_index.find(szOldName);
 	if(it == m_username_to_index.end())
 		return false;
 	if(!isValidUsername(szNewName))
@@ -450,37 +447,18 @@ void Server::saveBannedAddresses()
 
 
 const char* g_auto_name_1[] =
-{
-	"amazing",	"awesome",	"blue",		"brave",	"calm",		"cheesy",	"confused",	"cool",		"crazy",	"delicate",
-	"diligent",	"dippy",	"exciting",	"fearless",	"flaming",	"fluffy",	"friendly",	"funny",	"gentle",	"glowing",
-	"golden",	"greasy",	"green",	"gritty",	"happy",	"jumpy",	"killer",	"laughing",	"liquid",	"lovely",
-	"lucky",	"malted",	"meaty",	"mellow",	"melted",	"moldy",	"peaceful",	"pickled",	"pious",	"purple",
-	"quiet",	"red",		"rubber",	"sappy",	"silent",	"silky",	"silver",	"sneaky",	"stellar",	"subtle",
-	"super",	"trippy",	"uber",		"valiant",	"vicious",	"wild",		"yellow",	"zippy"
-};
+  {
+    "amazing", "awesome", "blue", "brave", "calm", "cheesy", "confused", "cool", "crazy", "delicate", "diligent", "dippy", "exciting", "fearless", "flaming", "fluffy", "friendly", "funny", "gentle", "glowing", "golden", "greasy", "green", "gritty", "happy", "jumpy", "killer", "laughing", "liquid", "lovely", "lucky", "malted", "meaty", "mellow", "melted", "moldy", "peaceful", "pickled", "pious", "purple", "quiet", "red", "rubber", "sappy", "silent", "silky", "silver", "sneaky", "stellar", "subtle", "super", "trippy", "uber", "valiant", "vicious", "wild", "yellow", "zippy"};
 #define AUTO_NAME_1_COUNT (sizeof(g_auto_name_1) / sizeof(const char*))
 
 const char* g_auto_name_2[] =
-{
-	"alligator","ant",		"armadillo","bat",		"bear",		"bee",		"beaver",	"camel",	"cat",		"cheetah",
-	"chicken",	"cricket",	"deer",		"dinosaur",	"dog",		"dolphin",	"duck",		"eagle",	"elephant",	"fish",
-	"frog",		"giraffe",	"hamster",	"hawk",		"hornet",	"horse",	"iguana",	"jaguar",	"kangaroo",	"lion",
-	"lemur",	"leopard",	"llama",	"monkey",	"mouse",	"newt",		"ninja",	"ox",		"panda",	"panther",
-	"parrot",	"porcupine","possum",	"raptor",	"rat",		"salmon",	"shark",	"snake",	"spider",	"squid",
-	"tiger",	"toad",		"toucan",	"turtle",	"unicorn",	"walrus",	"warrior",	"wasp",		"wizard",	"yak",
-	"zebra"
-};
+  {
+    "alligator", "ant", "armadillo", "bat", "bear", "bee", "beaver", "camel", "cat", "cheetah", "chicken", "cricket", "deer", "dinosaur", "dog", "dolphin", "duck", "eagle", "elephant", "fish", "frog", "giraffe", "hamster", "hawk", "hornet", "horse", "iguana", "jaguar", "kangaroo", "lion", "lemur", "leopard", "llama", "monkey", "mouse", "newt", "ninja", "ox", "panda", "panther", "parrot", "porcupine", "possum", "raptor", "rat", "salmon", "shark", "snake", "spider", "squid", "tiger", "toad", "toucan", "turtle", "unicorn", "walrus", "warrior", "wasp", "wizard", "yak", "zebra"};
 #define AUTO_NAME_2_COUNT (sizeof(g_auto_name_2) / sizeof(const char*))
 
 const char* g_auto_name_3[] =
-{
-	"arms",		"beak",		"beard",	"belly",	"belt",		"brain",	"bray",		"breath",	"brow",		"burrito",
-	"button",	"cheeks",	"chin",		"claw",		"crown",	"dancer",	"dream",	"eater",	"elbow",	"eye",
-	"feather",	"finger",	"fist",		"foot",		"forehead",	"fur",		"grin",		"hair",		"hands",	"head",
-	"horn",		"jaw",		"knee",		"knuckle",	"legs",		"mouth",	"neck",		"nose",		"pants",	"party",
-	"paw",		"pelt",		"pizza",	"roar",		"scalp",	"shoe",		"shoulder",	"skin",		"smile",	"taco",
-	"tail",		"tamer",	"toe",		"tongue",	"tooth",	"wart",		"wing",		"zit"
-};
+  {
+    "arms", "beak", "beard", "belly", "belt", "brain", "bray", "breath", "brow", "burrito", "button", "cheeks", "chin", "claw", "crown", "dancer", "dream", "eater", "elbow", "eye", "feather", "finger", "fist", "foot", "forehead", "fur", "grin", "hair", "hands", "head", "horn", "jaw", "knee", "knuckle", "legs", "mouth", "neck", "nose", "pants", "party", "paw", "pelt", "pizza", "roar", "scalp", "shoe", "shoulder", "skin", "smile", "taco", "tail", "tamer", "toe", "tongue", "tooth", "wart", "wing", "zit"};
 #define AUTO_NAME_3_COUNT (sizeof(g_auto_name_3) / sizeof(const char*))
 
 
@@ -754,8 +732,16 @@ void Connection::handleTools(Server* pServer, GDynamicPageSession* pSession, ost
 	else if(check_url(szUrl, "/feed")) pageMaker = &Forum::pageFeed;
 	else if(check_url(szUrl, "/newaccount")) pageMaker = &Login::pageNewAccount;
 	else if(check_url(szUrl, "/tools.js")) pageMaker = &Login::pageTools;
-	else if(check_url(szUrl, "/users.svg")) { pageMaker = &Submit::plotUsers; headers = false; }
-	else if(check_url(szUrl, "/items.svg")) { pageMaker = &Submit::plotItems; headers = false; }
+	else if(check_url(szUrl, "/users.svg"))
+	{
+		pageMaker = &Submit::plotUsers;
+		headers = false;
+	}
+	else if(check_url(szUrl, "/items.svg"))
+	{
+		pageMaker = &Submit::plotItems;
+		headers = false;
+	}
 	else headers = false;
 
 	if(headers && !pSession)

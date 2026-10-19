@@ -176,7 +176,7 @@ GCategoricalSampler::GCategoricalSampler(size_t categories, const double* pDistr
 			continue;
 		}
 		sum += *pDistribution;
-		m_map.insert(std::pair<double,size_t>(sum, i));
+		m_map.insert(std::pair<double, size_t>(sum, i));
 	}
 	if(std::abs(sum - 1.0) > 1e-8)
 		throw Ex("The probabilities should sum to 1");
@@ -184,7 +184,7 @@ GCategoricalSampler::GCategoricalSampler(size_t categories, const double* pDistr
 
 size_t GCategoricalSampler::draw(double d)
 {
-	map<double,size_t>::iterator it = m_map.upper_bound(d);
+	map<double, size_t>::iterator it = m_map.upper_bound(d);
 	if(it == m_map.end())
 		return 0;
 	return it->second;
@@ -370,7 +370,7 @@ double GMultivariateNormalDistribution::likelihood(const GVec& x)
 {
 	m_vector1.copy(x);
 	m_vector1 -= m_mean;
-	m_pInverseCovariance->multiply(m_vector1/*in*/, m_vector2/*out*/, false);
+	m_pInverseCovariance->multiply(m_vector1 /*in*/, m_vector2 /*out*/, false);
 	return m_dScale * exp(-0.5 * m_vector1.dotProduct(m_vector2));
 }
 

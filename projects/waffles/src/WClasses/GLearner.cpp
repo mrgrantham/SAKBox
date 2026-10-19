@@ -44,7 +44,8 @@
 
 using std::vector;
 
-namespace GClasses {
+namespace GClasses
+{
 
 GPrediction::~GPrediction()
 {
@@ -461,8 +462,8 @@ void GSupervisedLearner::train(const GMatrix& features, const GMatrix& labels)
 	m_pRelFeatures = features.relation().cloneMinimal();
 	delete(m_pRelLabels);
 	m_pRelLabels = labels.relation().clone(); // not cloneMinimal() because
-                                                  // we need the columns's data
-                                                  // when doing 'predictdistribution'
+	// we need the columns's data
+	// when doing 'predictdistribution'
 	trainInner(features, labels);
 }
 
@@ -721,7 +722,7 @@ void GSupervisedLearner::precisionRecall(double* pOutPrecision, size_t nPrecisio
 // static
 void GSupervisedLearner::test()
 {
-/*	// Make a probabilistic training set
+	/*	// Make a probabilistic training set
 	GRand rand(0);
 	vector<size_t> vals1;
 	vals1.push_back(3);
@@ -808,8 +809,9 @@ void GSupervisedLearner_basicTestEngine(GSupervisedLearner* pLearner, GMatrix& f
 
 	// Test the accuracy
 	double resultsBefore = 1.0 - pLearner->sumSquaredError(testFeatures, testLabels) / testFeatures.rows();
-	if(printAccuracy){
-	  std::cerr << "AccBeforeSerial: " << resultsBefore;
+	if(printAccuracy)
+	{
+		std::cerr << "AccBeforeSerial: " << resultsBefore;
 	}
 	if(resultsBefore < minAccuracy)
 		throw Ex("accuracy has regressed. Expected at least ", to_str(minAccuracy), ". Only got ", to_str(resultsBefore), ". (Sometimes, harmless changes that affect random orderings can trigger small regressions, so don't panic yet.)");
@@ -829,8 +831,9 @@ void GSupervisedLearner_basicTestEngine(GSupervisedLearner* pLearner, GMatrix& f
 
 	// Test the accuracy again
 	double resultsAfter = 1.0 - pModel->sumSquaredError(testFeatures, testLabels) / testFeatures.rows();
-	if(printAccuracy){
-	  std::cerr << "  AccAfterSerial: " << resultsAfter << std::endl;
+	if(printAccuracy)
+	{
+		std::cerr << "  AccAfterSerial: " << resultsAfter << std::endl;
 	}
 	if(std::abs(resultsAfter - resultsBefore) > deviation)
 		throw Ex("serialization shouldn't influence accuracy this much");
@@ -866,7 +869,7 @@ void GSupervisedLearner_basicTest2(GSupervisedLearner* pLearner, double minAccur
 	vector<size_t> featureVals;
 	size_t cols = 10;
 	featureVals.reserve(cols);
-for(size_t i = 0; i < cols; i++)
+	for(size_t i = 0; i < cols; i++)
 		featureVals.push_back(3);
 	GMatrix features(featureVals);
 	vector<size_t> labelVals;
@@ -934,8 +937,7 @@ GIncrementalTransform* GLearnerLoader::loadIncrementalTransform(const GDomNode* 
 			{
 				if(strcmp(szClass, "GAttributeSelector") == 0)
 					return new GAttributeSelector(pNode);
-				else
-				if(strcmp(szClass, "GDataAugmenter") == 0)
+				else if(strcmp(szClass, "GDataAugmenter") == 0)
 					return new GDataAugmenter(pNode, *this);
 				else if(strcmp(szClass, "GDiscretize") == 0)
 					return new GDiscretize(pNode);
@@ -944,8 +946,7 @@ GIncrementalTransform* GLearnerLoader::loadIncrementalTransform(const GDomNode* 
 			{
 				if(strcmp(szClass, "GImputeMissingVals") == 0)
 					return new GImputeMissingVals(pNode, *this);
-				else
-				if(strcmp(szClass, "GIncrementalTransformChainer") == 0)
+				else if(strcmp(szClass, "GIncrementalTransformChainer") == 0)
 					return new GIncrementalTransformChainer(pNode, *this);
 			}
 		}
@@ -1032,8 +1033,8 @@ GSupervisedLearner* GLearnerLoader::loadLearner(const GDomNode* pNode)
 						return new GNaiveBayes(pNode);
 					else if(strcmp(szClass, "GNaiveInstance") == 0)
 						return new GNaiveInstance(pNode);
-//					else if(strcmp(szClass, "GNeuralNetLearner") == 0)
-//						return new GNeuralNetLearner(pNode);
+					//					else if(strcmp(szClass, "GNeuralNetLearner") == 0)
+					//						return new GNeuralNetLearner(pNode);
 				}
 				else
 				{
@@ -1066,8 +1067,8 @@ GCollaborativeFilter* GLearnerLoader::loadCollaborativeFilter(const GDomNode* pN
 			return new GBaselineRecommender(pNode, *this);
 		else if(strcmp(szClass, "GMatrixFactorization") == 0)
 			return new GMatrixFactorization(pNode, *this);
-//		else if(strcmp(szClass, "GNeuralRecommender") == 0)
-//			return new GNonlinearPCA(pNode, *this);
+		//		else if(strcmp(szClass, "GNeuralRecommender") == 0)
+		//			return new GNonlinearPCA(pNode, *this);
 	}
 	if(m_throwIfClassNotFound)
 		throw Ex("Unrecognized class: ", szClass);

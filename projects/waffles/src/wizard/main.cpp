@@ -20,11 +20,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef WINDOWS
-#	include <windows.h>
-#	include <process.h>
-#	include <direct.h>
+#include <windows.h>
+#include <process.h>
+#include <direct.h>
 #else
-#	include <unistd.h>
+#include <unistd.h>
 #endif
 #include "WClasses/GDynamicPage.h"
 #include "WClasses/GApp.h"
@@ -119,7 +119,7 @@ public:
 	Connection(SOCKET sock, GDynamicPageServer* pServer) : GDynamicPageConnection(sock, pServer)
 	{
 	}
-	
+
 	~Connection() override
 	{
 	}
@@ -235,8 +235,7 @@ public:
 		{
 			if(*szVal == '.')
 				periods++;
-			else if(((*szVal >= 'a' && *szVal <= 'z') || (*szVal >= 'A' && *szVal <= 'Z'))
-				&& *szVal != 'e' && *szVal != 'E') // a letter, but not a number's exponent (SAKBox: upper case checked 'e', so 1.5E3 looked like a filename)
+			else if(((*szVal >= 'a' && *szVal <= 'z') || (*szVal >= 'A' && *szVal <= 'Z')) && *szVal != 'e' && *szVal != 'E') // a letter, but not a number's exponent (SAKBox: upper case checked 'e', so 1.5E3 looked like a filename)
 				alphas++;
 			szVal++;
 		}
@@ -695,7 +694,8 @@ void MySession::doNext(const char* szParams)
 		ostringstream stream;
 		m_pRootPage->makeCommand(stream);
 		string sCommand = stream.str();
-		cout << "The command is:\n\n" << sCommand << "\n\n";
+		cout << "The command is:\n\n"
+		     << sCommand << "\n\n";
 		cout.flush();
 		delete(m_pGoodbyePage);
 		m_pGoodbyePage = new Page((Server*)m_pDPSession->server(), this, nullptr, nullptr);
@@ -925,7 +925,7 @@ void Server::pump()
 			dLastActivity = GTime::seconds();
 		else
 		{
-			if(GTime::seconds() - dLastActivity > 900)	// 15 minutes
+			if(GTime::seconds() - dLastActivity > 900) // 15 minutes
 			{
 				cout << "Shutting down due to inactivity for 15 minutes.\n";
 				m_keepGoing = false;
@@ -1017,7 +1017,7 @@ void make_bash_completion_file()
 		cout << "_" << pNode->tok() << "()\n{\n";
 		cout << "	COMPREPLY=( $(waffles_wizard complete ${COMP_CWORD} ${COMP_WORDS[@]}) )\n";
 		cout << "}\ncomplete -F _" << pNode->tok() << " " << pNode->tok() << "\n\n";
-//		cout << "complete -F _" << pNode->tok() << " " << pNode->tok() << "dbg\n\n";
+		//		cout << "complete -F _" << pNode->tok() << " " << pNode->tok() << "dbg\n\n";
 	}
 }
 

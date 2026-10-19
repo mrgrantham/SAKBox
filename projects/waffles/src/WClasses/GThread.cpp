@@ -21,14 +21,15 @@
 #include "GError.h"
 #include <time.h>
 #ifdef WINDOWS
-#	include <windows.h>
+#include <windows.h>
 #else
-#	include <pthread.h>
+#include <pthread.h>
 #endif
 
 using std::vector;
 
-namespace GClasses {
+namespace GClasses
+{
 
 // static
 void GThread::sleep(unsigned int nMiliseconds)
@@ -42,7 +43,7 @@ void GThread::sleep(unsigned int nMiliseconds)
 	}
 	SleepEx(nMiliseconds, 1);
 #else
-	nMiliseconds ? usleep(nMiliseconds*1024) : sched_yield();		// it is an error to sleep for more than 1,000,000
+	nMiliseconds ? usleep(nMiliseconds * 1024) : sched_yield(); // it is an error to sleep for more than 1,000,000
 #endif
 }
 
@@ -50,20 +51,19 @@ THREAD_HANDLE GThread::spawnThread(unsigned int (*pFunc)(void*), void* pData)
 {
 #ifdef WINDOWS
 	unsigned int nID;
-	THREAD_HANDLE hThread = (void*)CreateThread/*_beginthreadex*/(
-							NULL,
-							0,
-							(LPTHREAD_START_ROUTINE)pFunc,
-							pData,
-							0,
-							(unsigned long*)&nID
-							);
+	THREAD_HANDLE hThread = (void*)CreateThread /*_beginthreadex*/ (
+	  NULL,
+	  0,
+	  (LPTHREAD_START_ROUTINE)pFunc,
+	  pData,
+	  0,
+	  (unsigned long*)&nID);
 	if(hThread == BAD_HANDLE)
 		throw Ex("Failed to create thread");
 	return hThread;
 #else
 	pthread_t thread;
-	if(pthread_create(&thread, nullptr, (void*(*)(void*))pFunc, pData) != 0)
+	if(pthread_create(&thread, nullptr, (void* (*)(void*))pFunc, pData) != 0)
 		throw Ex("Failed to create thread");
 	pthread_detach(thread);
 	return thread;

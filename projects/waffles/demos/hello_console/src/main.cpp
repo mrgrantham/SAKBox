@@ -24,7 +24,7 @@
 using namespace GClasses;
 using std::cout;
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	GApp::enableFloatingPointExceptions();
 	if(argc > 1)

@@ -31,90 +31,90 @@ using std::set;
 
 size_t GRecommenderLib::getAttrVal(const char* szString, size_t attrCount)
 {
-        bool fromRight = false;
-        if(*szString == '*')
-        {
-                fromRight = true;
-                szString++;
-        }
-        if(*szString < '0' || *szString > '9')
-                throw Ex("Expected a digit while parsing attribute list");
+	bool fromRight = false;
+	if(*szString == '*')
+	{
+		fromRight = true;
+		szString++;
+	}
+	if(*szString < '0' || *szString > '9')
+		throw Ex("Expected a digit while parsing attribute list");
 #ifdef WINDOWS
-        size_t val = (size_t)_strtoui64(szString, (char**)NULL, 10);
+	size_t val = (size_t)_strtoui64(szString, (char**)NULL, 10);
 #else
-        size_t val = strtoull(szString, (char**)nullptr, 10);
+	size_t val = strtoull(szString, (char**)nullptr, 10);
 #endif
-        if(fromRight)
-                val = attrCount - 1 - val;
-        return val;
+	if(fromRight)
+		val = attrCount - 1 - val;
+	return val;
 }
 
 void GRecommenderLib::parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount)
 {
-        const char* szList = args.pop_string();
-        set<size_t> attrSet;
-        while(true)
-        {
-                // Skip whitespace
-                while(*szList <= ' ' && *szList != '\0')
-                        szList++;
+	const char* szList = args.pop_string();
+	set<size_t> attrSet;
+	while(true)
+	{
+		// Skip whitespace
+		while(*szList <= ' ' && *szList != '\0')
+			szList++;
 
-                // Find the next ',' or the end of string, and
-                int i;
-                int j = -1;
-                for(i = 0; szList[i] != '\0' && szList[i] != ','; i++)
-                {
-                        if(j < 0 && szList[i] == '-')
-                                j = i;
-                }
-                if(j >= 0)
-                {
-                        while(szList[j + 1] <= ' ' && szList[j + 1] != '\0')
-                                j++;
-                }
+		// Find the next ',' or the end of string, and
+		int i;
+		int j = -1;
+		for(i = 0; szList[i] != '\0' && szList[i] != ','; i++)
+		{
+			if(j < 0 && szList[i] == '-')
+				j = i;
+		}
+		if(j >= 0)
+		{
+			while(szList[j + 1] <= ' ' && szList[j + 1] != '\0')
+				j++;
+		}
 
-                // Add the attributes to the list
-                if(i > 0) // If there is more...
-                {
-                        if(j < 0) // If there is no "-" character in the next value...
-                        {
-                                size_t val = getAttrVal(szList, attrCount);
-                                if(val >= attrCount)
-                                        throw Ex("Invalid column index: ", to_str(val), ". Valid values are from 0 to ", to_str(attrCount - 1), ". (Columns are zero-indexed.)");
-                                if(attrSet.find(val) != attrSet.end())
-                                        throw Ex("Columns ", to_str(val), " is listed multiple times");
-                                attrSet.insert(val);
-                                list.push_back(val);
-                        }
-                        else
-                        {
-                                size_t beg = getAttrVal(szList, attrCount);
-                                if(beg >= attrCount)
-                                        throw Ex("Invalid column index: ", to_str(beg), ". Valid values are from 0 to ", to_str(attrCount - 1), ". (Columns are zero-indexed.)");
-                                size_t end = getAttrVal(szList + j + 1, attrCount);
-                                if(end >= attrCount)
-                                        throw Ex("Invalid column index: ", to_str(end), ". Valid values are from 0 to ", to_str(attrCount - 1), ". (Columns are zero-indexed.)");
-                                int step = 1;
-                                if(end < beg)
-                                        step = -1;
-                                for(size_t val = beg; true; val += step)
-                                {
-                                        if(attrSet.find(val) != attrSet.end())
-                                                throw Ex("Column ", to_str(val), " is listed multiple times");
-                                        attrSet.insert(val);
-                                                list.push_back(val);
-                                        if(val == end)
-                                                break;
-                                }
-                        }
-                }
+		// Add the attributes to the list
+		if(i > 0) // If there is more...
+		{
+			if(j < 0) // If there is no "-" character in the next value...
+			{
+				size_t val = getAttrVal(szList, attrCount);
+				if(val >= attrCount)
+					throw Ex("Invalid column index: ", to_str(val), ". Valid values are from 0 to ", to_str(attrCount - 1), ". (Columns are zero-indexed.)");
+				if(attrSet.find(val) != attrSet.end())
+					throw Ex("Columns ", to_str(val), " is listed multiple times");
+				attrSet.insert(val);
+				list.push_back(val);
+			}
+			else
+			{
+				size_t beg = getAttrVal(szList, attrCount);
+				if(beg >= attrCount)
+					throw Ex("Invalid column index: ", to_str(beg), ". Valid values are from 0 to ", to_str(attrCount - 1), ". (Columns are zero-indexed.)");
+				size_t end = getAttrVal(szList + j + 1, attrCount);
+				if(end >= attrCount)
+					throw Ex("Invalid column index: ", to_str(end), ". Valid values are from 0 to ", to_str(attrCount - 1), ". (Columns are zero-indexed.)");
+				int step = 1;
+				if(end < beg)
+					step = -1;
+				for(size_t val = beg; true; val += step)
+				{
+					if(attrSet.find(val) != attrSet.end())
+						throw Ex("Column ", to_str(val), " is listed multiple times");
+					attrSet.insert(val);
+					list.push_back(val);
+					if(val == end)
+						break;
+				}
+			}
+		}
 
-                // Advance
-                szList += i;
-                if(*szList == '\0')
-                        break;
-                szList++;
-        }
+		// Advance
+		szList += i;
+		if(*szList == '\0')
+			break;
+		szList++;
+	}
 }
 
 void GRecommenderLib::loadData(GMatrix& data, const char* szFilename)
@@ -222,7 +222,7 @@ GInstanceRecommender* GRecommenderLib::InstantiateInstanceRecommender(GArgReader
 			pearson = true;
 		else if(args.if_pop("-regularize"))
 			regularizer = args.pop_double();
-		else if (args.if_pop("-sigWeight"))
+		else if(args.if_pop("-sigWeight"))
 			sig = args.pop_uint();
 		else
 			throw Ex("Invalid option: ", args.peek());
@@ -509,10 +509,10 @@ GCollaborativeFilter* GRecommenderLib::InstantiateAlgorithm(GArgReader& args)
 			return InstantiateSparseClusterRecommender(args);
 		else if(args.if_pop("matrix"))
 			return InstantiateMatrixFactorization(args);
-//		else if(args.if_pop("nlpca"))
-//			return InstantiateNonlinearPCA(args);
-//		else if(args.if_pop("hybridnlpca"))
-//			return InstantiateHybridNonlinearPCA(args);
+		//		else if(args.if_pop("nlpca"))
+		//			return InstantiateNonlinearPCA(args);
+		//		else if(args.if_pop("hybridnlpca"))
+		//			return InstantiateHybridNonlinearPCA(args);
 		else if(args.if_pop("contentbased"))
 			return InstantiateContentBasedFilter(args);
 		else if(args.if_pop("cbcf"))

@@ -24,7 +24,8 @@
 
 using std::vector;
 
-namespace GClasses {
+namespace GClasses
+{
 
 GGridSearch::GGridSearch(GTargetFunction* pCritic)
 : GOptimizer(pCritic), m_pCandidate(pCritic->relation()->size()), m_pBestVector(pCritic->relation()->size())

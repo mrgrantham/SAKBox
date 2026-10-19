@@ -24,7 +24,8 @@
 
 #include <memory>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GDom;
 class GDomNode;

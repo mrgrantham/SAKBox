@@ -72,7 +72,10 @@ int GChessBoard::heuristic()
 				case GChessBoard::Bishop: value = 36; break;
 				case GChessBoard::Queen: value = 88; break;
 				case GChessBoard::King: value = 500; break;
-				default: GAssert(false); value = 0; break;
+				default:
+					GAssert(false);
+					value = 0;
+					break;
 			}
 			if(white)
 				score += value;
@@ -146,16 +149,16 @@ int GChessBoard::moves(int* pOutMoves, int col, int row)
 			}
 			break;
 		case Bishop:
-			for(i = inc(col), j=inc(row); true; i = inc(i), j = inc(j))
+			for(i = inc(col), j = inc(row); true; i = inc(i), j = inc(j))
 				if(checkMove(pOutMoves, &nMoves, i, j, bWhite))
 					break;
-			for(i = dec(col), j=inc(row); true; i = dec(i), j = inc(j))
+			for(i = dec(col), j = inc(row); true; i = dec(i), j = inc(j))
 				if(checkMove(pOutMoves, &nMoves, i, j, bWhite))
 					break;
-			for(i = inc(col), j=dec(row); true; i = inc(i), j = dec(j))
+			for(i = inc(col), j = dec(row); true; i = inc(i), j = dec(j))
 				if(checkMove(pOutMoves, &nMoves, i, j, bWhite))
 					break;
-			for(i = dec(col), j=dec(row); true; i = dec(i), j = dec(j))
+			for(i = dec(col), j = dec(row); true; i = dec(i), j = dec(j))
 				if(checkMove(pOutMoves, &nMoves, i, j, bWhite))
 					break;
 			break;
@@ -196,16 +199,16 @@ int GChessBoard::moves(int* pOutMoves, int col, int row)
 			for(j = dec(row); true; j = dec(j))
 				if(checkMove(pOutMoves, &nMoves, col, j, bWhite))
 					break;
-			for(i = inc(col), j=inc(row); true; i = inc(i), j = inc(j))
+			for(i = inc(col), j = inc(row); true; i = inc(i), j = inc(j))
 				if(checkMove(pOutMoves, &nMoves, i, j, bWhite))
 					break;
-			for(i = dec(col), j=inc(row); true; i = dec(i), j = inc(j))
+			for(i = dec(col), j = inc(row); true; i = dec(i), j = inc(j))
 				if(checkMove(pOutMoves, &nMoves, i, j, bWhite))
 					break;
-			for(i = inc(col), j=dec(row); true; i = inc(i), j = dec(j))
+			for(i = inc(col), j = dec(row); true; i = inc(i), j = dec(j))
 				if(checkMove(pOutMoves, &nMoves, i, j, bWhite))
 					break;
-			for(i = dec(col), j=dec(row); true; i = dec(i), j = dec(j))
+			for(i = dec(col), j = dec(row); true; i = dec(i), j = dec(j))
 				if(checkMove(pOutMoves, &nMoves, i, j, bWhite))
 					break;
 			break;

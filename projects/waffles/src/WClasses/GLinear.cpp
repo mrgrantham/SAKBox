@@ -29,7 +29,8 @@
 #include <math.h>
 #include <memory>
 
-namespace GClasses {
+namespace GClasses
+{
 
 GLinearRegressor::GLinearRegressor()
 : GSupervisedLearner(), m_pBeta(nullptr)
@@ -253,7 +254,7 @@ void GLinearRegressor::test()
 {
 	GRand prng(0);
 	GLinearRegressor_linear_test(prng);
-	GAutoFilter af(new GLinearRegressor ());
+	GAutoFilter af(new GLinearRegressor());
 	af.basicTest(0.76, 0.93);
 }
 
@@ -432,15 +433,15 @@ void simplx(GMatrix& a, int m, int n, int m1, int m2, int* icase, int* izrov, in
 	GTEMPBUF(int, l3, m + 2);
 	double bmax, q1, EPS = 1e-6; // EPS is the absolute precision, which should be adjusted to the scale of your variables.
 	nl1 = n;
-	for(k = 1; k<=n; k++)
+	for(k = 1; k <= n; k++)
 	{
-		l1[k] = k;     //Initialize index list of columns admissible for exchange.
-		izrov[k] = k;  //Initially make all variables right-hand.
+		l1[k] = k; //Initialize index list of columns admissible for exchange.
+		izrov[k] = k; //Initially make all variables right-hand.
 	}
 	nl2 = m;
 	for(i = 1; i <= m; i++)
 	{
-		if (a[i + 1][1] < 0.0)
+		if(a[i + 1][1] < 0.0)
 		{
 			printf(" Bad input tableau in simplx, Constants bi must be nonnegative.\n");
 			return;
@@ -469,40 +470,40 @@ void simplx(GMatrix& a, int m, int n, int m1, int m2, int* icase, int* izrov, in
 		a[m + 2][k] = -q1;
 	}
 e10:
-	simp1(a,m+1,l1,nl1,0,&kp,&bmax);    //Find max. coeff. of auxiliary objective fn
+	simp1(a, m + 1, l1, nl1, 0, &kp, &bmax); //Find max. coeff. of auxiliary objective fn
 	if(bmax <= EPS && a[m + 2][1] < -EPS)
 	{
-		*icase=-1;    //Auxiliary objective function is still negative and cant be improved,
-		return;       //hence no feasible solution exists.
+		*icase = -1; //Auxiliary objective function is still negative and cant be improved,
+		return; //hence no feasible solution exists.
 	}
-	else if (bmax <= EPS && a[m + 2][1] <= EPS)
+	else if(bmax <= EPS && a[m + 2][1] <= EPS)
 	{
 		//Auxiliary objective function is zero and cant be improved; we have a feasible starting vector.
 		//Clean out the artificial variables corresponding to any remaining equality constraints by
 		//goto 1s and then move on to phase two by goto 30.
 		m12 = m1 + m2 + 1;
 		if(m12 <= m)
-			for (ip=m12; ip<=m; ip++)
-				if(iposv[ip] == ip+n)
-				{   //Found an artificial variable for an equalityconstraint.
-					simp1(a,ip,l1,nl1,1,&kp,&bmax);
+			for(ip = m12; ip <= m; ip++)
+				if(iposv[ip] == ip + n)
+				{ //Found an artificial variable for an equalityconstraint.
+					simp1(a, ip, l1, nl1, 1, &kp, &bmax);
 					if(bmax > EPS)
 						goto e1; //Exchange with column corresponding to maximum
 				} //pivot element in row.
-		ir=0;
-		m12=m12-1;
-		if (m1+1 > m12) goto e30;
-		for (i=m1+1; i<=m1+m2; i++)     //Change sign of row for any m2 constraints
-		if(l3[i-m1] == 1)             //still present from the initial basis.
-		for (k=1; k<=n+1; k++)
-			a[i + 1][k] *= -1.0;
-		goto e30;                       //Go to phase two.
+		ir = 0;
+		m12 = m12 - 1;
+		if(m1 + 1 > m12) goto e30;
+		for(i = m1 + 1; i <= m1 + m2; i++) //Change sign of row for any m2 constraints
+			if(l3[i - m1] == 1) //still present from the initial basis.
+				for(k = 1; k <= n + 1; k++)
+					a[i + 1][k] *= -1.0;
+		goto e30; //Go to phase two.
 	}
-	simp2(a,m,n,l2,nl2,&ip,kp,&q1); //Locate a pivot element (phase one).
+	simp2(a, m, n, l2, nl2, &ip, kp, &q1); //Locate a pivot element (phase one).
 
 	if(ip == 0)
-	{                         //Maximum of auxiliary objective function is
-		*icase=-1;                          //unbounded, so no feasible solution exists
+	{ //Maximum of auxiliary objective function is
+		*icase = -1; //unbounded, so no feasible solution exists
 		return;
 	}
 e1:
@@ -510,69 +511,69 @@ e1:
 	//Exchange a left- and a right-hand variable (phase one), then update lists.
 	if(iposv[ip] >= n + m1 + m2 + 1)
 	{ //Exchanged out an artificial variable for an equality constraint. Make sure it stays out by removing it from the l1 list.
-		for (k=1; k<=nl1; k++)
+		for(k = 1; k <= nl1; k++)
 			if(l1[k] == kp)
 				break;
 		nl1 = nl1 - 1;
 		for(is = k; is <= nl1; is++)
-			l1[is] = l1[is+1];
+			l1[is] = l1[is + 1];
 	}
 	else
 	{
-		if(iposv[ip] < n+m1+1) goto e20;
-		kh=iposv[ip]-m1-n;
-		if(l3[kh] == 0) goto e20;  //Exchanged out an m2 type constraint.
-		l3[kh]=0;                  //If it's the first time, correct the pivot column
-					//or the minus sign and the implicit
-					//artificial variable.
+		if(iposv[ip] < n + m1 + 1) goto e20;
+		kh = iposv[ip] - m1 - n;
+		if(l3[kh] == 0) goto e20; //Exchanged out an m2 type constraint.
+		l3[kh] = 0; //If it's the first time, correct the pivot column
+		//or the minus sign and the implicit
+		//artificial variable.
 	}
 	a[m + 2][kp + 1] += 1.0;
-	for (i=1; i<=m+2; i++)
+	for(i = 1; i <= m + 2; i++)
 		a[i][kp + 1] *= -1.0;
 e20:
-	is=izrov[kp];             //Update lists of left- and right-hand variables.
-	izrov[kp]=iposv[ip];
-	iposv[ip]=is;
-	if (ir != 0) goto e10;       //if still in phase one, go back to 10.
+	is = izrov[kp]; //Update lists of left- and right-hand variables.
+	izrov[kp] = iposv[ip];
+	iposv[ip] = is;
+	if(ir != 0) goto e10; //if still in phase one, go back to 10.
 
 	//End of phase one code for finding an initial feasible solution. Now, in phase two, optimize it.
 e30:
-	simp1(a,0,l1,nl1,0,&kp,&bmax); //Test the z-row for doneness.
+	simp1(a, 0, l1, nl1, 0, &kp, &bmax); //Test the z-row for doneness.
 	if(bmax <= EPS)
-	{          //Done. Solution found. Return with the good news.
-		*icase=0;
+	{ //Done. Solution found. Return with the good news.
+		*icase = 0;
 		return;
 	}
-	simp2(a,m,n,l2,nl2,&ip,kp,&q1);   //Locate a pivot element (phase two).
+	simp2(a, m, n, l2, nl2, &ip, kp, &q1); //Locate a pivot element (phase two).
 	if(ip == 0)
-	{             //Objective function is unbounded. Report and return.
-		*icase=1;
+	{ //Objective function is unbounded. Report and return.
+		*icase = 1;
 		return;
 	}
-	simp3(a,m,n,ip,kp);       //Exchange a left- and a right-hand variable (phase two),
-	goto e20;                 //update lists of left- and right-hand variables and
-}                           //return for another iteration.
+	simp3(a, m, n, ip, kp); //Exchange a left- and a right-hand variable (phase two),
+	goto e20; //update lists of left- and right-hand variables and
+} //return for another iteration.
 
 
 void simp1(GMatrix& a, int mm, int* ll, int nll, int iabf, int* kp, double* bmax)
 {
-//Determines the maximum of those elements whose index is contained in the supplied list
-//ll, either with or without taking the absolute value, as flagged by iabf.
+	//Determines the maximum of those elements whose index is contained in the supplied list
+	//ll, either with or without taking the absolute value, as flagged by iabf.
 	int k;
 	double test;
-	*kp=ll[1];
-	*bmax=a[mm + 1][*kp + 1];
-	if (nll < 2) return;
-	for (k=2; k<=nll; k++)
+	*kp = ll[1];
+	*bmax = a[mm + 1][*kp + 1];
+	if(nll < 2) return;
+	for(k = 2; k <= nll; k++)
 	{
 		if(iabf == 0)
-			test=a[mm + 1][ll[k]+1]-(*bmax);
+			test = a[mm + 1][ll[k] + 1] - (*bmax);
 		else
-			test=fabs(a[mm + 1][ll[k] + 1]) - fabs(*bmax);
+			test = fabs(a[mm + 1][ll[k] + 1]) - fabs(*bmax);
 		if(test > 0.0)
 		{
-			*bmax=a[mm + 1][ll[k]+1];
-			*kp=ll[k];
+			*bmax = a[mm + 1][ll[k] + 1];
+			*kp = ll[k];
 		}
 	}
 	return;
@@ -580,47 +581,47 @@ void simp1(GMatrix& a, int mm, int* ll, int nll, int iabf, int* kp, double* bmax
 
 void simp2(GMatrix& a, int m, int n, int* l2, int nl2, int* ip, int kp, double* q1)
 {
-	double EPS=1e-6;
+	double EPS = 1e-6;
 	//Locate a pivot element, taking degeneracy into account.
-	int i,ii,k;
+	int i, ii, k;
 	double q;
 	double q0 = 0.0;
 	double qp = 0.0;
-	*ip=0;
+	*ip = 0;
 	if(nl2 < 1)
 		return;
-	for (i=1; i<=nl2; i++)
-		if (a[i+1][kp+1] < -EPS)
+	for(i = 1; i <= nl2; i++)
+		if(a[i + 1][kp + 1] < -EPS)
 			goto e2;
-	return;  //No possible pivots. Return with message.
+	return; //No possible pivots. Return with message.
 e2:
 	*q1 = -a[l2[i] + 1][1] / a[l2[i] + 1][kp + 1];
-	*ip=l2[i];
-	if (i+1 > nl2)
+	*ip = l2[i];
+	if(i + 1 > nl2)
 		return;
-	for (i=i+1; i<=nl2; i++)
+	for(i = i + 1; i <= nl2; i++)
 	{
-		ii=l2[i];
-		if(a[ii+1][kp+1] < -EPS)
+		ii = l2[i];
+		if(a[ii + 1][kp + 1] < -EPS)
 		{
-			q=-a[ii+1][1]/a[ii+1][kp+1];
-			if (q <  *q1)
+			q = -a[ii + 1][1] / a[ii + 1][kp + 1];
+			if(q < *q1)
 			{
-				*ip=ii;
-				*q1=q;
+				*ip = ii;
+				*q1 = q;
 			}
-			else if (q == *q1)
-			{  //We have a degeneracy.
-				for (k=1; k<=n; k++)
+			else if(q == *q1)
+			{ //We have a degeneracy.
+				for(k = 1; k <= n; k++)
 				{
-					qp=-a[*ip+1][k+1]/a[*ip+1][kp+1];
-					q0=-a[ii+1][k+1]/a[ii+1][kp+1];
-					if (q0 != qp)
+					qp = -a[*ip + 1][k + 1] / a[*ip + 1][kp + 1];
+					q0 = -a[ii + 1][k + 1] / a[ii + 1][kp + 1];
+					if(q0 != qp)
 						goto e6;
 				}
-e6:
-				if (q0 < qp)
-					*ip=ii;
+			e6:
+				if(q0 < qp)
+					*ip = ii;
 			}
 		}
 	}
@@ -629,21 +630,21 @@ e6:
 
 void simp3(GMatrix& a, int i1, int k1, int ip, int kp)
 {
-	int ii,kk;
+	int ii, kk;
 	double piv;
-	piv=1.0/a[ip+1][kp+1];
-	if (i1 >= 0)
+	piv = 1.0 / a[ip + 1][kp + 1];
+	if(i1 >= 0)
 		for(ii = 1; ii <= i1 + 1; ii++)
-			if (ii-1 != ip)
+			if(ii - 1 != ip)
 			{
-				a[ii][kp+1] *= piv;
-				for (kk=1; kk<=k1+1; kk++)
-					if (kk-1 != kp)
-						a[ii][kk] -= a[ip+1][kk]*a[ii][kp+1];
+				a[ii][kp + 1] *= piv;
+				for(kk = 1; kk <= k1 + 1; kk++)
+					if(kk - 1 != kp)
+						a[ii][kk] -= a[ip + 1][kk] * a[ii][kp + 1];
 			}
-	for (kk=1; kk<=k1+1; kk++)
-		if(kk-1 !=  kp) a[ip+1][kk] = -a[ip+1][kk]*piv;
-			a[ip+1][kp+1]=piv;
+	for(kk = 1; kk <= k1 + 1; kk++)
+		if(kk - 1 != kp) a[ip + 1][kk] = -a[ip + 1][kk] * piv;
+	a[ip + 1][kp + 1] = piv;
 	return;
 }
 
@@ -697,12 +698,32 @@ bool GLinearProgramming::simplexMethod(GMatrix* pA, const double* pB, int leCons
 void GLinearProgramming::test()
 {
 	GMatrix a(4, 4);
-	a[0][0] = 1.0; a[0][1] = 0.0; a[0][2] = 2.0; a[0][3] = 0.0;
-	a[1][0] = 0.0; a[1][1] = 2.0; a[1][2] = 0.0; a[1][3] = -7.0;
-	a[2][0] = 0.0; a[2][1] = 1.0; a[2][2] = -1.0; a[2][3] = 2.0;
-	a[3][0] = 1.0; a[3][1] = 1.0; a[3][2] = 1.0; a[3][3] = 1.0;
-	double b[4]; b[0] = 740.0; b[1] = 0.0; b[2] = 0.5; b[3] = 9.0;
-	double c[4]; c[0] = 1.0; c[1] = 1.0; c[2] = 3.0; c[3] = -0.5;
+	a[0][0] = 1.0;
+	a[0][1] = 0.0;
+	a[0][2] = 2.0;
+	a[0][3] = 0.0;
+	a[1][0] = 0.0;
+	a[1][1] = 2.0;
+	a[1][2] = 0.0;
+	a[1][3] = -7.0;
+	a[2][0] = 0.0;
+	a[2][1] = 1.0;
+	a[2][2] = -1.0;
+	a[2][3] = 2.0;
+	a[3][0] = 1.0;
+	a[3][1] = 1.0;
+	a[3][2] = 1.0;
+	a[3][3] = 1.0;
+	double b[4];
+	b[0] = 740.0;
+	b[1] = 0.0;
+	b[2] = 0.5;
+	b[3] = 9.0;
+	double c[4];
+	c[0] = 1.0;
+	c[1] = 1.0;
+	c[2] = 3.0;
+	c[3] = -0.5;
 	double x[4];
 	if(!GLinearProgramming::simplexMethod(&a, b, 2, 1, c, x))
 		throw Ex("failed to find a solution");

@@ -82,7 +82,7 @@ public:
 	Connection(SOCKET sock, GDynamicPageServer* pServer) : GDynamicPageConnection(sock, pServer)
 	{
 	}
-	
+
 	virtual ~Connection()
 	{
 	}

@@ -29,7 +29,8 @@
 #include "GVec.h"
 
 
-namespace GClasses {
+namespace GClasses
+{
 
 #define UNKNOWN_REAL_VALUE -1e308
 
@@ -123,7 +124,7 @@ public:
 	///
 	/// \return the name of the attribute with index \a nAttr as a
 	/// standard string object or "" if the atribute has no name
-	virtual std::string attrNameStr(std::size_t nAttr) const{ return ""; }
+	virtual std::string attrNameStr(std::size_t nAttr) const { return ""; }
 
 	/// \brief Returns true iff this and that have the same number of
 	/// values for each attribute
@@ -141,7 +142,6 @@ public:
 	/// \brief Performs unit tests for this class. Throws an exception
 	/// if there is a failure.
 	static void test();
-
 };
 
 
@@ -314,7 +314,7 @@ public:
 /// attribute, and names for each supported nominal value.
 class GArffRelation : public GMixedRelation
 {
-friend class GMatrix;
+	friend class GMatrix;
 protected:
 	std::string m_name;
 	std::vector<GArffAttribute> m_attrs;
@@ -387,11 +387,13 @@ public:
 	///
 	/// \return the name of the attribute with index \a nAttr as a
 	/// standard string object or "" if the atribute has no name
-	std::string attrNameStr(std::size_t nAttr) const override {
-		return attrName(nAttr); }
+	std::string attrNameStr(std::size_t nAttr) const override
+	{
+		return attrName(nAttr);
+	}
 
-    /// \brief Sets the name of the specified attribute.
-    void setAttrName(size_t attr, const char* szNewName);
+	/// \brief Sets the name of the specified attribute.
+	void setAttrName(size_t attr, const char* szNewName);
 
 	/// \brief Adds a new possible value to a nominal attribute. Returns
 	/// the numerical form of the new value.
@@ -798,10 +800,10 @@ public:
 	inline const GVec& back(size_t reverse_index = 0) const { return *m_rows[m_rows.size() - 1 - reverse_index]; }
 
 	/// \brief Returns a reference to the specified row
-	inline GVec& operator [](size_t index) { return *m_rows[index]; }
+	inline GVec& operator[](size_t index) { return *m_rows[index]; }
 
 	/// \brief Returns a const reference to the specified row
-	inline const GVec& operator [](size_t index) const { return *m_rows[index]; }
+	inline const GVec& operator[](size_t index) const { return *m_rows[index]; }
 
 	/// \brief Fills all elements in the specified range of columns with the specified value.
 	/// If no column ranges are specified, the default is to set all of them.
@@ -1156,11 +1158,11 @@ public:
 	/// defines one of the orthonormal basis vectors of this hyperplane)
 	///
 	/// This computes (A^T)Ap, where A is this matrix, and p is pPoint.
-//	void project(double* pDest, const double* pPoint) const;
+	//	void project(double* pDest, const double* pPoint) const;
 
 	/// \brief Projects pPoint onto this hyperplane (where each row
 	/// defines one of the orthonormal basis vectors of this hyperplane)
-//	void project(double* pDest, const double* pPoint, const double* pOrigin) const;
+	//	void project(double* pDest, const double* pPoint, const double* pOrigin) const;
 
 	/// \brief Performs a bipartite matching between the rows of \a a
 	/// and \a b using the Linear Assignment Problem (LAP) optimizer
@@ -1407,7 +1409,7 @@ public:
 
 	/// \brief Removes all the rows in this ragged matrix.
 	void flush();
-	
+
 	/// \brief Returns the number of rows in this matrix.
 	size_t rows() const { return m_rows.size(); }
 
@@ -1418,10 +1420,10 @@ public:
 	size_t maxCols() const { return m_maxCols; }
 
 	/// \brief Returns a reference to the specified row
-	inline GVec& operator [](size_t index) { return *m_rows[index]; }
+	inline GVec& operator[](size_t index) { return *m_rows[index]; }
 
 	/// \brief Returns a const reference to the specified row
-	inline const GVec& operator [](size_t index) const { return *m_rows[index]; }
+	inline const GVec& operator[](size_t index) const { return *m_rows[index]; }
 
 	/// \brief Adds a new row with the specified size to this ragged matrix.
 	GVec& newRow(size_t size);

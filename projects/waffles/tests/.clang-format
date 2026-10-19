@@ -1,0 +1,4 @@
+# SAKBox's tests of Waffles use the repo-wide style (as the top-level
+# .clang-format), not Waffles' own (../.clang-format).
+BasedOnStyle: LLVM
+ColumnLimit: 100

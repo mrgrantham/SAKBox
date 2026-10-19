@@ -22,7 +22,8 @@
 #include <sys/types.h>
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GImage;
 class GHeap;
@@ -61,7 +62,7 @@ public:
 	/// Returns the number of regions so far
 	size_t regionCount();
 
-    /// Get a region
+	/// Get a region
 	struct GRegion& region(size_t i) { return *m_regions[i]; }
 
 	/// Returns the average pixel color in the specified region

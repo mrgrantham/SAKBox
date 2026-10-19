@@ -23,7 +23,8 @@
 #include "GMatrix.h"
 #include "GLearner.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GKernel;
 

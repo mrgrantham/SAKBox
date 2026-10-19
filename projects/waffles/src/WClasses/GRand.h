@@ -82,7 +82,8 @@
 #include <stdint.h>
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 
 /// This is a 64-bit pseudo-random number generator.
@@ -268,8 +269,9 @@ public:
 	/// \param max the supremum of the interval on which the samples
 	/// returned are distributed.  max will not be generated unless max
 	/// == min or unless the interval is otherwise pathological
-	virtual double uniform(double min, double max){
-		return uniform()*(max-min)+min;
+	virtual double uniform(double min, double max)
+	{
+		return uniform() * (max - min) + min;
 	}
 
 	/// Returns a random value from a Weibull distribution with lambda=1.
@@ -334,17 +336,17 @@ public:
 /// http://www.math.hiroshima-u.ac.jp/~m-mat/MT/emt.html
 /// email: m-mat @ math.sci.hiroshima-u.ac.jp (remove spaces)
 ///
-class GRandMersenneTwister:public GRand
+class GRandMersenneTwister : public GRand
 {
-using GRand::next;
+	using GRand::next;
 private:
 	///Number of elements in the state-vector array
-	const static uint64_t NN=312;
+	const static uint64_t NN = 312;
 
-	const static uint64_t MM=156;
-	const static uint64_t MATRIX_A=0xB5026F5AA96619E9ULL;
-	const static uint64_t UM=0xFFFFFFFF80000000ULL; /* Most significant 33 bits */
-	const static uint64_t LM=0x7FFFFFFFULL; /* Least significant 31 bits */
+	const static uint64_t MM = 156;
+	const static uint64_t MATRIX_A = 0xB5026F5AA96619E9ULL;
+	const static uint64_t UM = 0xFFFFFFFF80000000ULL; /* Most significant 33 bits */
+	const static uint64_t LM = 0x7FFFFFFFULL; /* Least significant 31 bits */
 
 	/// The array for the state vector
 	uint64_t mt[NN];
@@ -363,8 +365,7 @@ private:
 	/* key_length is its length */
 	//
 	// Only used in the test code right now
-	void init_by_array64(uint64_t init_key[],
-											 uint64_t key_length);
+	void init_by_array64(uint64_t init_key[], uint64_t key_length);
 
 	/// generates a random number on [0, 2^64-1]-interval
 	uint64_t genrand64_int64(void);
@@ -377,14 +378,15 @@ public:
 	///
 	/// \param seed the seed to use for generating numbers from the
 	///        random number generator
-	GRandMersenneTwister(uint64_t seed):GRand(seed){
-		mag01[0]=0ULL;
-		mag01[1]=MATRIX_A;
+	GRandMersenneTwister(uint64_t seed) : GRand(seed)
+	{
+		mag01[0] = 0ULL;
+		mag01[1] = MATRIX_A;
 		init_genrand64(seed);
 	}
 
 	/// Destructor
-	~GRandMersenneTwister() override{}
+	~GRandMersenneTwister() override {}
 
 	/// Sets the seed
 	///
@@ -393,7 +395,8 @@ public:
 	///
 	/// \param seed the seed to use for generating numbers from the
 	///        random number generator
-	void setSeed(uint64_t seed) override{
+	void setSeed(uint64_t seed) override
+	{
 		GRand::setSeed(seed);
 		init_genrand64(seed);
 	}
@@ -401,7 +404,8 @@ public:
 	///\brief Returns an unsigned pseudo-random 64-bit value
 	///
 	///\return an unsigned pseudo-random 64-bit value
-	uint64_t next() override	{
+	uint64_t next() override
+	{
 		return genrand64_int64();
 	}
 
@@ -414,8 +418,9 @@ public:
 	///
 	///\return a random number uniformly distributed on the [0,1)
 	///interval.  This interval includes 0, but does not include 1.
-	double uniform() override{
-		return (next() >> 11) * (1.0/9007199254740992.0);
+	double uniform() override
+	{
+		return (next() >> 11) * (1.0 / 9007199254740992.0);
 	}
 
 	/// Returns a pseudo-random double from \a min (inclusive)
@@ -427,8 +432,9 @@ public:
 	/// \param max the supremum of the interval on which the samples
 	/// returned are distributed.  max will not be generated unless max
 	/// == min or unless the interval is otherwise pathological
-	double uniform(double min, double max) override{
-		return uniform()*(max-min)+min;
+	double uniform(double min, double max) override
+	{
+		return uniform() * (max - min) + min;
 	}
 
 	/// Performs unit tests for this class. Throws an exception if there

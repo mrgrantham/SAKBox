@@ -43,8 +43,7 @@ struct RangeRecorder : GSupervisedLearner {
 
 // Trains an auto-filtered RangeRecorder on one feature column holding
 // [fLo, fHi] and one label column holding [lLo, lHi]
-void trainThroughAutoFilter(RangeRecorder *pRec, double fLo, double fHi,
-                            double lLo, double lHi) {
+void trainThroughAutoFilter(RangeRecorder *pRec, double fLo, double fHi, double lLo, double lHi) {
   GAutoFilter af(pRec, false);
   GMatrix features(2, 1), labels(2, 1);
   features[0][0] = fLo;
@@ -110,8 +109,8 @@ struct NeedsTwoToThree : RangeRecorder {
 TEST(AutoFilterTest, RangeTakesInOneHotValues) {
   for (bool nominalFeature : {false, true}) {
     for (bool nominalLabel : {false, true}) {
-      SCOPED_TRACE(testing::Message() << "nominal feature " << nominalFeature
-                                      << ", nominal label " << nominalLabel);
+      SCOPED_TRACE(testing::Message()
+                   << "nominal feature " << nominalFeature << ", nominal label " << nominalLabel);
       std::vector<size_t> f = {0}, l = {0};
       if (nominalFeature)
         f.push_back(3);
@@ -216,7 +215,7 @@ TEST(FilterTest, PassThroughReturnsTheInput) {
 TEST(FilterTest, TransformsAndPassesOnThroughNestedFilters) {
   GMatrix features(4, 1), labels(4, 1);
   for (size_t i = 0; i < 4; i++) {
-    features[i][0] = 10.0 * i;   // 0..30
+    features[i][0] = 10.0 * i;      // 0..30
     labels[i][0] = 100.0 * (i + 1); // 100..400
   }
   auto *inner = new GLabelFilter(new GBaselineLearner(), new GNormalize());

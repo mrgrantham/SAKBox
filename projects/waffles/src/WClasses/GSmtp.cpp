@@ -7,7 +7,8 @@
 
 using std::string;
 
-namespace GClasses {
+namespace GClasses
+{
 
 GSmtp::GSmtp(const char* szTo, const char* szFrom, const char* szSubject, const char* szMessage, const char* szSMPTServer)
 {
@@ -82,13 +83,13 @@ void GSmtp::receive(const char* pBuff, size_t nLen)
 void GSmtp::receiveLine(const char* szLine)
 {
 	char szBuff[1024];
-	if (m_eState == SS_Init && szLine[0] == '2')
+	if(m_eState == SS_Init && szLine[0] == '2')
 	{
 		strcpy(szBuff, "HELO there\r\n");
 		m_pSocket->send(szBuff, strlen(szBuff));
-        	m_eState = SS_Mail;
+		m_eState = SS_Mail;
 	}
-	else if (m_eState == SS_Mail && szLine[0] == '2')
+	else if(m_eState == SS_Mail && szLine[0] == '2')
 	{
 		strcpy(szBuff, "MAIL FROM:");
 		m_pSocket->send(szBuff, strlen(szBuff));
@@ -96,9 +97,9 @@ void GSmtp::receiveLine(const char* szLine)
 		m_pSocket->send(szBuff, strlen(szBuff));
 		strcpy(szBuff, "\r\n");
 		m_pSocket->send(szBuff, strlen(szBuff));
-        	m_eState = SS_Rcpt;
+		m_eState = SS_Rcpt;
 	}
-	else if (m_eState == SS_Rcpt && szLine[0] == '2')
+	else if(m_eState == SS_Rcpt && szLine[0] == '2')
 	{
 		strcpy(szBuff, "RCPT TO:");
 		m_pSocket->send(szBuff, strlen(szBuff));
@@ -108,13 +109,13 @@ void GSmtp::receiveLine(const char* szLine)
 		m_pSocket->send(szBuff, strlen(szBuff));
 		m_eState = SS_Data;
 	}
-	else if (m_eState == SS_Data && szLine[0] == '2')
+	else if(m_eState == SS_Data && szLine[0] == '2')
 	{
 		strcpy(szBuff, "DATA\r\n");
 		m_pSocket->send(szBuff, strlen(szBuff));
 		m_eState = SS_Body;
 	}
-	else if (m_eState == SS_Body && szLine[0] == '3')
+	else if(m_eState == SS_Body && szLine[0] == '3')
 	{
 		strcpy(szBuff, "From: ");
 		m_pSocket->send(szBuff, strlen(szBuff));
@@ -135,7 +136,7 @@ void GSmtp::receiveLine(const char* szLine)
 		m_pSocket->send(szBuff, strlen(szBuff));
 		m_eState = SS_Quit;
 	}
-	else if (m_eState == SS_Quit && szLine[0] == '2')
+	else if(m_eState == SS_Quit && szLine[0] == '2')
 	{
 		strcpy(szBuff, "QUIT\r\n");
 		m_pSocket->send(szBuff, strlen(szBuff));

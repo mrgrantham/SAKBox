@@ -73,8 +73,12 @@ void test_matrix_vector_multiply(GCudaEngine& e)
 	v1[0] = 1.0;
 	v1[1] = 2.0;
 	GMatrix m(2, 3);
-	m[0][0] = 1.0; m[0][1] = 2.0; m[0][2] = 3.0;
-	m[1][0] = 4.0; m[1][1] = 5.0; m[1][2] = 6.0;
+	m[0][0] = 1.0;
+	m[0][1] = 2.0;
+	m[0][2] = 3.0;
+	m[1][0] = 4.0;
+	m[1][1] = 5.0;
+	m[1][2] = 6.0;
 
 	GCudaVector cv1;
 	cv1.upload(v1);
@@ -96,7 +100,9 @@ void test_matrix_vector_multiply(GCudaEngine& e)
 void test_tanh(GCudaEngine& e)
 {
 	GVec v2(3);
-	v2[0] = 1.0; v2[1] = 2.0; v2[2] = 3.0;
+	v2[0] = 1.0;
+	v2[1] = 2.0;
+	v2[2] = 3.0;
 	GCudaVector cv2;
 	cv2.upload(v2);
 	cv2.activateTanh(e);
@@ -196,7 +202,7 @@ void test_GCudaLayer(GCudaEngine& e)
 {
 	GUniformRelation rel(3);
 	size_t width = 1000;
-//	size_t epochs = 2000;
+	//	size_t epochs = 2000;
 
 	GRand rand(0);
 	GMatrix feat(100, 3);
@@ -333,7 +339,7 @@ void doit()
 	//test_convolutional(e);
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
 	GApp::enableFloatingPointExceptions();

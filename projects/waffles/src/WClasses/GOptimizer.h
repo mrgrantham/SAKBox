@@ -26,7 +26,8 @@
 #include "GCudaMatrix.h"
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GActionPath;
 class GAction;
@@ -65,7 +66,7 @@ public:
 	virtual void init() = 0;
 
 	/// Evaluate feat and lab, and update the model's gradient.
-	virtual void computeGradient(const GVec &feat, const GVec &lab) = 0;
+	virtual void computeGradient(const GVec& feat, const GVec& lab) = 0;
 
 	/// Step the model's parameters in the direction of the calculated gradient scaled by learningRate.
 	virtual void descendGradient(double learningRate) = 0;
@@ -81,45 +82,45 @@ public:
 	void resetState();
 
 	/// Update and apply the gradient for a single training sample (on-line).
-	virtual void optimizeIncremental(const GVec &feat, const GVec &lab);
+	virtual void optimizeIncremental(const GVec& feat, const GVec& lab);
 
 	void optimizeEpoch();
-	
+
 	/// Update and apply the gradient for a single batch in order.
-	virtual void optimizeBatch(const GMatrix &features, const GMatrix &labels, size_t start, size_t batchSize);
-	void optimizeBatch(const GMatrix &features, const GMatrix &labels, size_t start);
-	
+	virtual void optimizeBatch(const GMatrix& features, const GMatrix& labels, size_t start, size_t batchSize);
+	void optimizeBatch(const GMatrix& features, const GMatrix& labels, size_t start);
+
 	/// Update and apply the gradient for a single batch in randomized order.
-	virtual void optimizeBatch(const GMatrix &features, const GMatrix &labels, GRandomIndexIterator &ii, size_t batchSize);
-	void optimizeBatch(const GMatrix &features, const GMatrix &labels, GRandomIndexIterator &ii);
-	
+	virtual void optimizeBatch(const GMatrix& features, const GMatrix& labels, GRandomIndexIterator& ii, size_t batchSize);
+	void optimizeBatch(const GMatrix& features, const GMatrix& labels, GRandomIndexIterator& ii);
+
 	// convenience training methods
-	
-	void optimize(const GMatrix &features, const GMatrix &labels);
-	void optimizeWithValidation(const GMatrix &features, const GMatrix &labels, const GMatrix &validationFeat, const GMatrix &validationLab);
-	void optimizeWithValidation(const GMatrix &features, const GMatrix &labels, double validationPortion = 0.35);
-	
+
+	void optimize(const GMatrix& features, const GMatrix& labels);
+	void optimizeWithValidation(const GMatrix& features, const GMatrix& labels, const GMatrix& validationFeat, const GMatrix& validationLab);
+	void optimizeWithValidation(const GMatrix& features, const GMatrix& labels, double validationPortion = 0.35);
+
 	// getters/setters
 #ifdef GCUDA
 	void useGPU(bool b) { m_useGPU = b; }
 #endif
 
 	GNeuralNet& model() { return m_model; }
-	
+
 	GRand& rand() { return m_rand; }
-	
+
 	void setBatchSize(size_t b) { m_batchSize = b; }
 	size_t batchSize() const { return m_batchSize; }
-	
+
 	void setBatchesPerEpoch(size_t b) { m_batchesPerEpoch = b; }
 	size_t batchesPerEpoch() const { return m_batchesPerEpoch; }
-	
+
 	void setEpochs(size_t e) { m_epochs = e; }
 	size_t epochs() const { return m_epochs; }
-	
+
 	void setWindowSize(size_t w) { m_windowSize = w; }
 	size_t windowSize() const { return m_windowSize; }
-	
+
 	void setImprovementThresh(double m) { m_minImprovement = m; }
 	double improvementThresh() const { return m_minImprovement; }
 
@@ -133,13 +134,13 @@ class GSGDOptimizer : public GNeuralNetOptimizer
 {
 public:
 	GSGDOptimizer(GNeuralNet& model, GRand& rand, const GMatrix* pTrainingFeatures = nullptr, const GMatrix* pTrainingLabels = nullptr);
-	
+
 	/// Prepare for optimization (i.e. allocate buffers).
 	void init() override;
-	
+
 	/// Evaluate feat and lab, and update the model's gradient.
-	void computeGradient(const GVec &feat, const GVec &lab) override;
-	
+	void computeGradient(const GVec& feat, const GVec& lab) override;
+
 	/// Step the model's parameters in the direction of the calculated gradient scaled by learningRate.
 	void descendGradient(double learningRate) override;
 
@@ -167,16 +168,16 @@ class GAdamOptimizer : public GNeuralNetOptimizer
 {
 public:
 	GAdamOptimizer(GNeuralNet& model, GRand& rand, const GMatrix* pTrainingFeatures = nullptr, const GMatrix* pTrainingLabels = nullptr);
-	
+
 	/// Prepare for optimization (i.e. allocate buffers).
 	void init() override;
-	
+
 	/// Evaluate feat and lab, and update the model's gradient.
-	void computeGradient(const GVec &feat, const GVec &lab) override;
-	
+	void computeGradient(const GVec& feat, const GVec& lab) override;
+
 	/// Step the model's parameters in the direction of the calculated gradient scaled by learningRate.
 	void descendGradient(double learningRate) override;
-	
+
 #ifdef GCUDA
 	virtual void computeGradientCuda(const GCudaVector& feat, const GCudaVector& lab);
 	virtual void descendGradientCuda(double learningRate);
@@ -201,16 +202,16 @@ class GRMSPropOptimizer : public GNeuralNetOptimizer
 {
 public:
 	GRMSPropOptimizer(GNeuralNet& model, GRand& rand, const GMatrix* pTrainingFeatures = nullptr, const GMatrix* pTrainingLabels = nullptr);
-	
+
 	/// Prepare for optimization (i.e. allocate buffers).
 	void init() override;
-	
+
 	/// Evaluate feat and lab, and update the model's gradient.
-	void computeGradient(const GVec &feat, const GVec &lab) override;
-	
+	void computeGradient(const GVec& feat, const GVec& lab) override;
+
 	/// Step the model's parameters in the direction of the calculated gradient scaled by learningRate.
 	void descendGradient(double learningRate) override;
-	
+
 #ifdef GCUDA
 	virtual void computeGradientCuda(const GCudaVector& feat, const GCudaVector& lab);
 	virtual void descendGradientCuda(double learningRate);
@@ -308,7 +309,6 @@ public:
 
 	/// This is a helper method used by the unit tests of several model learners
 	void basicTest(double minAccuracy, double warnRange = 0.001);
-
 };
 
 
@@ -351,7 +351,7 @@ public:
 
 class GActionPathState
 {
-friend class GActionPath;
+	friend class GActionPath;
 public:
 	GActionPathState() {}
 	virtual ~GActionPathState() {}

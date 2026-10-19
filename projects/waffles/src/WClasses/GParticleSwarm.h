@@ -22,7 +22,8 @@
 #include "GOptimizer.h"
 #include "GMatrix.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GRand;
 

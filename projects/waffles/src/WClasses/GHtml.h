@@ -26,7 +26,8 @@
 #include <map>
 #include <ostream>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GConstStringHashTable;
 struct GHtmlTagHandlerStruct;

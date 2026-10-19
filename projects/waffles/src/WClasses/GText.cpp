@@ -22,7 +22,8 @@
 #include "GStemmer.h"
 #include <math.h>
 
-namespace GClasses {
+namespace GClasses
+{
 
 using std::vector;
 
@@ -64,6 +65,8 @@ bool GWordIterator::next(const char** ppWord, size_t* pLen)
 
 
 
+// (SAKBox) one row per first letter
+// clang-format off
 const char* g_szStopWords[] = 
 {
 	"a","about","all","also","although","an","and","any","are","as","at",
@@ -86,6 +89,7 @@ const char* g_szStopWords[] =
 	"was","we","what","when","where","who","will","with",
 	"you",
 };
+// clang-format on
 
 GVocabulary::GVocabulary(bool stemWords)
 : m_minWordSize(4), m_vocabSize(0)

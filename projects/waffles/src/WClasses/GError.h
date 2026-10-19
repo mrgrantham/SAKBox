@@ -23,11 +23,11 @@
 
 #ifdef WINDOWS
 // Throw out the min and max macros supplied by Microsoft that collide with std::min and std::max
-#	define NOMINMAX
-#	undef min
-#	undef max
-#	include <BaseTsd.h>
-#	include <algorithm>
+#define NOMINMAX
+#undef min
+#undef max
+#include <BaseTsd.h>
+#include <algorithm>
 #endif
 #include <string>
 #include <sstream>
@@ -45,7 +45,8 @@
 
 
 
-namespace GClasses {
+namespace GClasses
+{
 
 
 
@@ -62,7 +63,7 @@ std::string to_str(const T& n)
 }
 
 class GMatrix; //Forward declare GMatrix so that I can declare a
-               //to_str override for it
+//to_str override for it
 
 ///\brief Allow GMatrix objects to easily be converted into a string
 ///for debugging
@@ -83,7 +84,7 @@ std::string to_str(const GMatrix& m);
 /// in T's range, and for floating-point types finite. The decimal point is
 /// always '.', whatever the locale. Returns false, leaving *pOut unchanged,
 /// if the text is anything else.
-template <typename T>
+template<typename T>
 bool parseNumber(const char* szFirst, const char* szLast, T* pOut)
 {
 	T value{};
@@ -100,7 +101,7 @@ bool parseNumber(const char* szFirst, const char* szLast, T* pOut)
 }
 
 /// SAKBox: parseNumber for all of a null-terminated string
-template <typename T>
+template<typename T>
 bool parseNumber(const char* szText, T* pOut)
 {
 	return parseNumber(szText, szText + strlen(szText), pOut);
@@ -131,8 +132,9 @@ std::string to_str(const std::vector<bool>& vv);
 ///\brief Convert a pair to a string (should allow converting nested
 ///stl containers like pair<list<vector...>, multiset<foo> > to strings)
 template<typename T, typename U>
-std::string to_str(const std::pair<T,U>& v){
-  return std::string("<")+to_str(v.first)+","+to_str(v.second)+">";
+std::string to_str(const std::pair<T, U>& v)
+{
+	return std::string("<") + to_str(v.first) + "," + to_str(v.second) + ">";
 }
 
 ///\brief Convert an stl container-like object to a string
@@ -142,12 +144,15 @@ std::string to_str(T begin, T end, const std::string& spec = "")
 	std::ostringstream os;
 	os.precision(14);
 	os << "[" << spec;
-	if(spec != ""){
-	  os << ":";
+	if(spec != "")
+	{
+		os << ":";
 	}
-	while(begin != end){
-	  os << to_str(*begin); ++begin;
-	  if(begin != end){ os << ","; }
+	while(begin != end)
+	{
+		os << to_str(*begin);
+		++begin;
+		if(begin != end) { os << ","; }
 	}
 	os << "]";
 	return os.str();
@@ -156,50 +161,57 @@ std::string to_str(T begin, T end, const std::string& spec = "")
 ///\brief Convert a vector to a string (should allow converting nested
 ///stl containers like vector<list ...> to strings)
 template<typename T>
-std::string to_str(const std::vector<T>& v){
-  return to_str(v.begin(), v.end(),"vector");
+std::string to_str(const std::vector<T>& v)
+{
+	return to_str(v.begin(), v.end(), "vector");
 }
 
 ///\brief Convert a list to a string (should allow converting nested
 ///stl containers like vector<list ...> to strings)
 template<typename T>
-std::string to_str(const std::list<T>& v){
-  return to_str(v.begin(), v.end(),"list");
+std::string to_str(const std::list<T>& v)
+{
+	return to_str(v.begin(), v.end(), "list");
 }
 
 ///\brief Convert a set to a string (should allow converting nested
 ///stl containers like set<vector..> to string)
 template<typename T>
-std::string to_str(const std::set<T>& v){
-  return to_str(v.begin(), v.end(),"set");
+std::string to_str(const std::set<T>& v)
+{
+	return to_str(v.begin(), v.end(), "set");
 }
 
 ///\brief Convert a deque to a string (should allow converting nested
 ///stl containers like deque<list ...> to strings)
 template<typename T>
-std::string to_str(const std::deque<T>& v){
-  return to_str(v.begin(), v.end(),"deque");
+std::string to_str(const std::deque<T>& v)
+{
+	return to_str(v.begin(), v.end(), "deque");
 }
 
 ///\brief Convert a multiset to a string (should allow converting nested
 ///stl containers like multiset<list ...> to strings)
 template<typename T>
-std::string to_str(const std::multiset<T>& v){
-  return to_str(v.begin(), v.end(),"multiset");
+std::string to_str(const std::multiset<T>& v)
+{
+	return to_str(v.begin(), v.end(), "multiset");
 }
 
 ///\brief Convert a multimap to a string (should allow converting nested
 ///stl containers like multimap<list< ...> , vector< ... > > to strings)
 template<typename Key, typename T>
-std::string to_str(const std::multimap<Key, T>& v){
-  return to_str(v.begin(), v.end(),"multimap");
+std::string to_str(const std::multimap<Key, T>& v)
+{
+	return to_str(v.begin(), v.end(), "multimap");
 }
 
 ///\brief Convert a map to a string (should allow converting nested
 ///stl containers like map<list< ...> , vector< ... > > to strings)
 template<typename Key, typename T>
-std::string to_str(const std::map<Key, T>& v){
-  return to_str(v.begin(), v.end(),"map");
+std::string to_str(const std::map<Key, T>& v)
+{
+	return to_str(v.begin(), v.end(), "map");
 }
 
 
@@ -242,15 +254,15 @@ void GAssertFailed(const char* filename, int line);
 void GAssertFailed(const char* filename, int line, const char* message);
 
 #ifdef _DEBUG
-#define GASSERT_HELPER1(x)\
-	{\
-		if(!(x))\
-			GAssertFailed(__FILE__, __LINE__);\
+#define GASSERT_HELPER1(x)                     \
+	{                                          \
+		if(!(x))                               \
+			GAssertFailed(__FILE__, __LINE__); \
 	}
-#define GASSERT_HELPER2(x, msg)\
-	{\
-		if(!(x))\
-			GAssertFailed(__FILE__, __LINE__, msg);\
+#define GASSERT_HELPER2(x, msg)                     \
+	{                                               \
+		if(!(x))                                    \
+			GAssertFailed(__FILE__, __LINE__, msg); \
 	}
 #else // _DEBUG
 #define GASSERT_HELPER1(x) ((void)0)
@@ -258,20 +270,19 @@ void GAssertFailed(const char* filename, int line, const char* message);
 #endif // else _DEBUG
 
 #define COUNT_GASSERT_ARGS_IMPL2(_1, _2, count, ...) \
-   count
+	count
 #define COUNT_GASSERT_ARGS_IMPL(args) \
-   COUNT_GASSERT_ARGS_IMPL2 args
+	COUNT_GASSERT_ARGS_IMPL2 args
 #define COUNT_GASSERT_ARGS(...) \
-   COUNT_GASSERT_ARGS_IMPL((__VA_ARGS__, 2, 1, 0))
- /* Pick the right helper macro to invoke. */
+	COUNT_GASSERT_ARGS_IMPL((__VA_ARGS__, 2, 1, 0))
+/* Pick the right helper macro to invoke. */
 #define GASSERT_CHOOSE_HELPER2(count) GASSERT_HELPER##count
 #define GASSERT_CHOOSE_HELPER1(count) GASSERT_CHOOSE_HELPER2(count)
 #define GASSERT_CHOOSE_HELPER(count) GASSERT_CHOOSE_HELPER1(count)
- /* The actual macro. */
+/* The actual macro. */
 #define GASSERT_GLUE(x, y) x y
 #define GAssert(...) \
-   GASSERT_GLUE(GASSERT_CHOOSE_HELPER(COUNT_GASSERT_ARGS(__VA_ARGS__)), \
-               (__VA_ARGS__))
+	GASSERT_GLUE(GASSERT_CHOOSE_HELPER(COUNT_GASSERT_ARGS(__VA_ARGS__)), (__VA_ARGS__))
 
 
 
@@ -332,14 +343,14 @@ template<class T1, class T2>
 void TestEqual(const T1& expected, const T2& got, const std::string& test_descr)
 {
 	using std::endl;
-	if(!(expected == got)){
+	if(!(expected == got))
+	{
 		std::cerr
-			<< endl
-			<< "Test for equality failed: " << test_descr << endl
-			<< endl
-			<< "Expected: " << GClasses::to_str(expected) << endl
-			<< "Got     : " << GClasses::to_str(got) << endl
-			;
+		  << endl
+		  << "Test for equality failed: " << test_descr << endl
+		  << endl
+		  << "Expected: " << GClasses::to_str(expected) << endl
+		  << "Got     : " << GClasses::to_str(got) << endl;
 		throw Ex("Test for equality failed: ", test_descr);
 	}
 }
@@ -376,8 +387,7 @@ void TestEqual(char* expected, char* got, const std::string& desc);
 ///                  easily find the failing test in the code and
 ///                  understand why it was written and have some help
 ///                  in diagnosing the bug.
-void TestContains(const std::string& expectedSubstring, const std::string& got,
-                  const std::string& desc);
+void TestContains(const std::string& expectedSubstring, const std::string& got, const std::string& desc);
 
 } // namespace GClasses
 

@@ -23,7 +23,8 @@
 #include <stack>
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GBlobQueue;
 

@@ -94,7 +94,8 @@
 #include <unistd.h>
 #endif
 
-namespace GClasses {
+namespace GClasses
+{
 
 using std::vector;
 
@@ -193,7 +194,8 @@ int GRand::poisson(double mu)
 	if(mu < 30)
 	{
 		mu = exp(-mu);
-		do {
+		do
+		{
 			p *= uniform();
 			n++;
 		} while(p >= mu);
@@ -202,7 +204,7 @@ int GRand::poisson(double mu)
 	else
 	{
 		double u1, u2, x, y;
-		double c = 0.767-3.36 / mu;
+		double c = 0.767 - 3.36 / mu;
 		double b = M_PI / sqrt(3.0 * mu);
 		double a = b * mu;
 		if(c <= 0)
@@ -210,18 +212,20 @@ int GRand::poisson(double mu)
 		double k = log(c) - mu - log(b);
 		double ck1 = 0.0;
 		double ck2;
-		do {
-			ck2=0.;
-			do {
+		do
+		{
+			ck2 = 0.;
+			do
+			{
 				u1 = uniform();
 				x = (a - log(0.1e-18 + (1.0 - u1) / u1)) / b;
 				if(x > -0.5)
-					ck2=1.0;
-			} while (ck2<0.5);
+					ck2 = 1.0;
+			} while(ck2 < 0.5);
 			n = (int)lround(x);
 			u2 = uniform();
 			y = 1 + exp(a - b * x);
-			ck1 = a - b * x + log(.1e-18 + u2/(y * y));
+			ck1 = a - b * x + log(.1e-18 + u2 / (y * y));
 #ifdef WINDOWS
 			ck2 = k + n * log(.1e-18 + mu) - GMath::logGamma(n + 1.0);
 #else
@@ -229,7 +233,7 @@ int GRand::poisson(double mu)
 #endif
 			if(ck1 <= ck2)
 				ck1 = 1.0;
-		} while (ck1 < 0.5);
+		} while(ck1 < 0.5);
 		return n;
 	}
 }
@@ -245,7 +249,8 @@ double GRand::gamma(double alpha)
 	{
 		double aa = (alpha + M_E) / M_E;
 		double r1, r2;
-		do {
+		do
+		{
 			r1 = uniform();
 			r2 = uniform();
 			if(r1 > 1.0 / aa)
@@ -264,14 +269,16 @@ double GRand::gamma(double alpha)
 	}
 	else
 	{
-		double c1 = alpha-1;
+		double c1 = alpha - 1;
 		double c2 = (alpha - 1.0 / (6.0 * alpha)) / c1;
 		double c3 = 2.0 / c1;
 		double c4 = c3 + 2.0;
 		double c5 = 1.0 / sqrt(alpha);
 		double r1, r2;
-		do {
-			do {
+		do
+		{
+			do
+			{
 				r1 = uniform();
 				r2 = uniform();
 				if(alpha > 2.5)
@@ -425,7 +432,7 @@ void GRand_testSpeed()
 {
 	// Compare speed with rand(). (Be sure to build optimized, or else the results aren't very meaningful.)
 	int i;
-	double t1,t2,t3;
+	double t1, t2, t3;
 	t1 = GTime::seconds();
 	for(i = 0; i < 100000000; i++)
 		rand();
@@ -462,7 +469,7 @@ void GRand_testRange()
 
 void GRand_test_determinism()
 {
-	static unsigned int expected[] = { 1917992778u, 1993289697u, 632158740u, 2429171905u, 22912061u, 2753716493u, 316743267u, 3124664097u, 382509932u, 191925157u, 2298038407u, 246378453u, 1806533664u, 2162141831u, 2260504017u, 3155449906u };
+	static unsigned int expected[] = {1917992778u, 1993289697u, 632158740u, 2429171905u, 22912061u, 2753716493u, 316743267u, 3124664097u, 382509932u, 191925157u, 2298038407u, 246378453u, 1806533664u, 2162141831u, 2260504017u, 3155449906u};
 	GRand rand(12345678);
 	for(size_t i = 0; i < 16; i++)
 	{
@@ -505,8 +512,8 @@ void GRand::test()
 void GRandMersenneTwister::init_genrand64(uint64_t seed)
 {
 	mt[0] = seed;
-	for (mti=1; mti<NN; mti++)
-		mt[mti] =  (6364136223846793005ULL * (mt[mti-1] ^ (mt[mti-1] >> 62)) + mti);
+	for(mti = 1; mti < NN; mti++)
+		mt[mti] = (6364136223846793005ULL * (mt[mti - 1] ^ (mt[mti - 1] >> 62)) + mti);
 }
 
 /* generates a random number on [0, 2^64-1]-interval */
@@ -515,18 +522,21 @@ uint64_t GRandMersenneTwister::genrand64_int64(void)
 	unsigned int i;
 	uint64_t x;
 
-	if (mti >= NN) { /* generate NN words at one time */
+	if(mti >= NN)
+	{ /* generate NN words at one time */
 
-		for (i=0;i<NN-MM;i++) {
-			x = (mt[i]&UM)|(mt[i+1]&LM);
-			mt[i] = mt[i+MM] ^ (x>>1) ^ mag01[(int)(x&1ULL)];
+		for(i = 0; i < NN - MM; i++)
+		{
+			x = (mt[i] & UM) | (mt[i + 1] & LM);
+			mt[i] = mt[i + MM] ^ (x >> 1) ^ mag01[(int)(x & 1ULL)];
 		}
-		for (;i<NN-1;i++) {
-			x = (mt[i]&UM)|(mt[i+1]&LM);
-			mt[i] = mt[i+(MM-NN)] ^ (x>>1) ^ mag01[(int)(x&1ULL)];
+		for(; i < NN - 1; i++)
+		{
+			x = (mt[i] & UM) | (mt[i + 1] & LM);
+			mt[i] = mt[i + (MM - NN)] ^ (x >> 1) ^ mag01[(int)(x & 1ULL)];
 		}
-		x = (mt[NN-1]&UM)|(mt[0]&LM);
-		mt[NN-1] = mt[MM-1] ^ (x>>1) ^ mag01[(int)(x&1ULL)];
+		x = (mt[NN - 1] & UM) | (mt[0] & LM);
+		mt[NN - 1] = mt[MM - 1] ^ (x >> 1) ^ mag01[(int)(x & 1ULL)];
 
 		mti = 0;
 	}
@@ -541,25 +551,36 @@ uint64_t GRandMersenneTwister::genrand64_int64(void)
 	return x;
 }
 
-void GRandMersenneTwister::init_by_array64(uint64_t init_key[],
-																					 uint64_t key_length)
+void GRandMersenneTwister::init_by_array64(uint64_t init_key[], uint64_t key_length)
 {
 	uint64_t i, j, k;
 	init_genrand64(19650218ULL);
-	i=1; j=0;
-	k = (NN>key_length ? NN : key_length);
-	for (; k; k--) {
-		mt[i] = (mt[i] ^ ((mt[i-1] ^ (mt[i-1] >> 62)) * 3935559000370003845ULL))
-			+ init_key[j] + j; /* non linear */
-		i++; j++;
-		if (i>=NN) { mt[0] = mt[NN-1]; i=1; }
-		if (j>=key_length) j=0;
-	}
-	for (k=NN-1; k; k--) {
-		mt[i] = (mt[i] ^ ((mt[i-1] ^ (mt[i-1] >> 62)) * 2862933555777941757ULL))
-			- i; /* non linear */
+	i = 1;
+	j = 0;
+	k = (NN > key_length ? NN : key_length);
+	for(; k; k--)
+	{
+		mt[i] = (mt[i] ^ ((mt[i - 1] ^ (mt[i - 1] >> 62)) * 3935559000370003845ULL))
+		  + init_key[j] + j; /* non linear */
 		i++;
-		if (i>=NN) { mt[0] = mt[NN-1]; i=1; }
+		j++;
+		if(i >= NN)
+		{
+			mt[0] = mt[NN - 1];
+			i = 1;
+		}
+		if(j >= key_length) j = 0;
+	}
+	for(k = NN - 1; k; k--)
+	{
+		mt[i] = (mt[i] ^ ((mt[i - 1] ^ (mt[i - 1] >> 62)) * 2862933555777941757ULL))
+		  - i; /* non linear */
+		i++;
+		if(i >= NN)
+		{
+			mt[0] = mt[NN - 1];
+			i = 1;
+		}
 	}
 
 	mt[0] = 1ULL << 63; /* MSB is 1; assuring non-zero initial array */
@@ -567,10 +588,13 @@ void GRandMersenneTwister::init_by_array64(uint64_t init_key[],
 
 
 
-namespace{
+namespace
+{
 	///The expected values produced by the integer portion of the test
 	///code included with the original mersenne twister code.  There are
 	///1000 values in this array.
+	// (SAKBox) reference values, laid out as published
+	// clang-format off
 	const uint64_t uint64MTTestValues[1000]={
 		7266447313870364031ull,  4946485549665804864ull,  16945909448695747420ull,
 		16394063075524226720ull, 4873882236456199058ull,  14877448043947020171ull,
@@ -907,12 +931,15 @@ namespace{
 		13004818533162292132ull, 9831652587047067687ull,  7619315254749630976ull,
 		994412663058993407ull
  };
+	// clang-format on
 
 	///The expected values produced by the floating point portion of the
 	///test code included with the original mersenne twister code.
 	///There are 1000 values in this array.  They are strings because
 	///the original test code prints them and truncates themull, so to use
 	///their outputull, I need to convert the generated reals to strings
+	// (SAKBox) reference values, laid out as published
+	// clang-format off
 	const char* realMTTestValues[1000]={
 		"0.35252031", "0.51052342", "0.79771733", "0.39300273", "0.27216673",
 		"0.72151068", "0.43144703", "0.38522290", "0.20270676", "0.58227313",
@@ -1115,34 +1142,36 @@ namespace{
 		"0.47863741", "0.68796498", "0.31526949", "0.41180883", "0.23022147",
 		"0.82342139", "0.83003381", "0.53571829", "0.41081533", "0.48600142"
 	};
+	// clang-format on
 
 }
 
 void GRandMersenneTwister::test()
 {
 	std::string s("");
-	uint64_t init[4]={0x12345ULL, 0x23456ULL, 0x34567ULL, 0x45678ULL};
-	uint64_t length=4;
+	uint64_t init[4] = {0x12345ULL, 0x23456ULL, 0x34567ULL, 0x45678ULL};
+	uint64_t length = 4;
 	GRandMersenneTwister tw(1);
 	tw.init_by_array64(init, length);
-	for(int i = 0; i < 1000; ++i){
-		TestEqual(uint64MTTestValues[i], tw.next(), s+
-							"Mersenne Twister "
-							"pseudo random integer value did not match the expected value at "
-							"uint64MTTestValues["+to_str(i)+"]");
+	for(int i = 0; i < 1000; ++i)
+	{
+		TestEqual(uint64MTTestValues[i], tw.next(), s + "Mersenne Twister "
+		                                                "pseudo random integer value did not match the expected value at "
+		                                                "uint64MTTestValues["
+		            + to_str(i) + "]");
 	}
-	for(int i = 0; i < 1000; ++i){
+	for(int i = 0; i < 1000; ++i)
+	{
 		std::stringstream val;
 		val.width(10);
 		val.precision(8);
 		val.setf(std::ios::fixed);
 		val << tw.uniform();
-		TestEqual(realMTTestValues[i], val.str(), s+
-							"Mersenne Twister "
-							"pseudo random real value did not match the expected value at "
-							"real64MTTestValues["+to_str(i)+"]");
+		TestEqual(realMTTestValues[i], val.str(), s + "Mersenne Twister "
+		                                              "pseudo random real value did not match the expected value at "
+		                                              "real64MTTestValues["
+		            + to_str(i) + "]");
 	}
-
 }
 
 

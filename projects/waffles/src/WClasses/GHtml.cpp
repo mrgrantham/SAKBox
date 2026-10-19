@@ -24,14 +24,15 @@
 
 using std::string;
 
-namespace GClasses {
+namespace GClasses
+{
 
 struct InsensitiveCompare
 {
-    bool operator() (const std::string& a, const std::string& b) const
-    {
-        return _stricmp(a.c_str(), b.c_str()) < 0;
-    }
+	bool operator()(const std::string& a, const std::string& b) const
+	{
+		return _stricmp(a.c_str(), b.c_str()) < 0;
+	}
 };
 
 
@@ -87,27 +88,26 @@ public:
 		self_closing.insert("colgroup");*/
 		special.insert("script");
 		special.insert("style");
-
 	}
 
 	GHtmlParser(const char* szFilename) : GTokenizer(szFilename),
-		m_tagStart("<"),
-		m_tagEnd(">"),
-		m_endTagName("> \t\r\n/"),
-		m_endAttrName(">= \t\r\n/"),
-		m_hyphen("-"),
-		m_whitespace(" \t\r\n")
+	                                      m_tagStart("<"),
+	                                      m_tagEnd(">"),
+	                                      m_endTagName("> \t\r\n/"),
+	                                      m_endAttrName(">= \t\r\n/"),
+	                                      m_hyphen("-"),
+	                                      m_whitespace(" \t\r\n")
 	{
 		addSingletons();
 	}
 
 	GHtmlParser(const char* pFile, size_t len) : GTokenizer(pFile, len),
-		m_tagStart("<"),
-		m_tagEnd(">"),
-		m_endTagName("> \t\r\n"),
-		m_endAttrName(">= \t\r\n"),
-		m_hyphen("-"),
-		m_whitespace(" \t\r\n")
+	                                             m_tagStart("<"),
+	                                             m_tagEnd(">"),
+	                                             m_endTagName("> \t\r\n"),
+	                                             m_endAttrName(">= \t\r\n"),
+	                                             m_hyphen("-"),
+	                                             m_whitespace(" \t\r\n")
 	{
 		addSingletons();
 	}
@@ -392,8 +392,7 @@ void GHtmlElement::writeTextOnly(std::ostream& stream) const
 		if(!singleton)
 		{
 			const char* szName = name.c_str();
-			if(_stricmp(szName, "style") != 0 &&
-			_stricmp(szName, "script") != 0)
+			if(_stricmp(szName, "style") != 0 && _stricmp(szName, "script") != 0)
 			{
 				for(size_t i = 0; i < children.size(); i++)
 					children[i]->writeTextOnly(stream);
@@ -509,32 +508,32 @@ GHtmlElement* GHtmlDoc::getBody()
 void GHtmlDoc::test()
 {
 	const char* raw =
-	"<!doctype html>\n"
-	"<html>\n"
-	"<head>\n"
-	"  <meta http-equiv=\"Content-Type\" content=\"text/html;charset=UTF-8\">\n"
-	"  <title>Some Title</title>\n"
-	"  <style>\n"
-	"  body {\n"
-	"    background-color: #e0d8d0;\n"
-	"    background-image:url('back.png');\n"
-	"  }\n"
-	"  </style>\n"
-	"</head>\n"
-	"<body>\n"
-	"<a href=\"http://somesite.com/index.html\"><img src=\"pic.png\" id=\"mypic\"></a>\n"
-	"<div id=\"mydiv\">Div contents</div>\n"
-	"\n"
-	"<br><br>\n"
-	"<table bgcolor=#f0e8e0 cellpadding=40 width=800 align=center><tr><td>\n"
-	"<br>\n"
-	"<!-- Here comes the title -->\n"
-	"<h1>My <b>elegant</b> title</h1>\n"
-	"<p>Bla bla blah!\n"
-	"</p>\n"
-	"	   <br><br>\n"
-	"<iframe width=\"720\" height=\"405\" src=\"https://www.youtube.com/embed/KzGjEkp772s?start=25\" frameborder=\"0\" allow=\"accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>\n"
-	"</td></tr></table></body></html>\n";
+	  "<!doctype html>\n"
+	  "<html>\n"
+	  "<head>\n"
+	  "  <meta http-equiv=\"Content-Type\" content=\"text/html;charset=UTF-8\">\n"
+	  "  <title>Some Title</title>\n"
+	  "  <style>\n"
+	  "  body {\n"
+	  "    background-color: #e0d8d0;\n"
+	  "    background-image:url('back.png');\n"
+	  "  }\n"
+	  "  </style>\n"
+	  "</head>\n"
+	  "<body>\n"
+	  "<a href=\"http://somesite.com/index.html\"><img src=\"pic.png\" id=\"mypic\"></a>\n"
+	  "<div id=\"mydiv\">Div contents</div>\n"
+	  "\n"
+	  "<br><br>\n"
+	  "<table bgcolor=#f0e8e0 cellpadding=40 width=800 align=center><tr><td>\n"
+	  "<br>\n"
+	  "<!-- Here comes the title -->\n"
+	  "<h1>My <b>elegant</b> title</h1>\n"
+	  "<p>Bla bla blah!\n"
+	  "</p>\n"
+	  "	   <br><br>\n"
+	  "<iframe width=\"720\" height=\"405\" src=\"https://www.youtube.com/embed/KzGjEkp772s?start=25\" frameborder=\"0\" allow=\"accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>\n"
+	  "</td></tr></table></body></html>\n";
 	GHtmlDoc doc(raw, strlen(raw));
 	std::ostringstream os;
 	doc.document()->write(os);
@@ -549,32 +548,32 @@ void GHtmlDoc::test()
 			++i;
 		else
 		{
-            std::cout << "\n";
-            size_t pre = std::min(i, (size_t)20);
-            for(size_t j = 0; j < pre; j++)
-                std::cout << " ";
-            std::cout << "v\n";
-            for(size_t j = 0; j < 40; j++)
-            {
-                if(raw[i - pre + j] >= ' ')
-                    std::cout << raw[i - pre + j];
-                else
-                    std::cout << '.';
-            }
-            std::cout << "\n";
-            for(size_t j = 0; j < 40; j++)
-            {
-                if(rt[i - pre + j] >= ' ')
-                    std::cout << rt[i - pre + j];
-                else
-                    std::cout << '.';
-            }
-            std::cout << "\n";
-            for(size_t j = 0; j < pre; j++)
-                std::cout << " ";
-            std::cout << "^\n";
-            throw Ex("strings differ");
-        }
+			std::cout << "\n";
+			size_t pre = std::min(i, (size_t)20);
+			for(size_t j = 0; j < pre; j++)
+				std::cout << " ";
+			std::cout << "v\n";
+			for(size_t j = 0; j < 40; j++)
+			{
+				if(raw[i - pre + j] >= ' ')
+					std::cout << raw[i - pre + j];
+				else
+					std::cout << '.';
+			}
+			std::cout << "\n";
+			for(size_t j = 0; j < 40; j++)
+			{
+				if(rt[i - pre + j] >= ' ')
+					std::cout << rt[i - pre + j];
+				else
+					std::cout << '.';
+			}
+			std::cout << "\n";
+			for(size_t j = 0; j < pre; j++)
+				std::cout << " ";
+			std::cout << "^\n";
+			throw Ex("strings differ");
+		}
 	}
 }
 

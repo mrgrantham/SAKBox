@@ -27,7 +27,8 @@
 #include <cmath>
 #include <memory>
 
-namespace GClasses {
+namespace GClasses
+{
 
 GRunningCovariance::GRunningCovariance(size_t dims) : m_counts(dims, dims), m_sums(dims + 1, dims)
 {

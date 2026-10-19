@@ -27,7 +27,8 @@
 
 using std::priority_queue;
 
-namespace GClasses {
+namespace GClasses
+{
 
 GPriorityQueue::GPriorityQueue(PointerComparer pCompareFunc, void* pThis)
 : m_pCompareFunc(pCompareFunc), m_pThis(pThis)
@@ -158,11 +159,11 @@ void GPriorityQueue::maxHeapBubbleDown(int index)
 		if(childIndex >= last)
 			break;
 		if(
-			m_pCompareFunc(
-					m_pThis,
-					m_entries[m_entries[childIndex].m_minIndex].m_pPayload,
-					m_entries[m_entries[childIndex + 1].m_minIndex].m_pPayload
-				) > 0)
+		  m_pCompareFunc(
+		    m_pThis,
+		    m_entries[m_entries[childIndex].m_minIndex].m_pPayload,
+		    m_entries[m_entries[childIndex + 1].m_minIndex].m_pPayload)
+		  > 0)
 		{
 			maxHeapSwap(index, childIndex);
 			index = childIndex;

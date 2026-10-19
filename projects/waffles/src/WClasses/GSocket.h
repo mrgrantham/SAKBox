@@ -23,25 +23,26 @@
 #include "GDom.h"
 
 #ifndef WINDOWS
-#	define SOCKET int
-#	define INVALID_SOCKET -1
+#define SOCKET int
+#define INVALID_SOCKET -1
 #endif
 
 #ifdef WINDOWS
-#	ifndef IPPROTO_IP
-#		include <winsock2.h>
-#	endif // IPPROTO_IP
+#ifndef IPPROTO_IP
+#include <winsock2.h>
+#endif // IPPROTO_IP
 #else
-#	include <sys/types.h>
-#	include <sys/socket.h>
-#	include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #endif
 #include <vector>
 #include <set>
 #include <queue>
 #include <string.h>
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// This class is an abstraction of a TCP client socket connection
 class GTCPClient
@@ -242,7 +243,7 @@ protected:
 	unsigned int m_maxPackageSize;
 
 public:
-    GPackageClient();
+	GPackageClient();
 	virtual ~GPackageClient();
 
 	/// Send a package, which guarantees to arrive in the
@@ -260,7 +261,11 @@ public:
 	/// an exception will be thrown. If a package bigger than 'a' is sent,
 	/// then the buffer will be grown to that size, but it will be made small
 	/// again the next time a package is received.
-	void setMaxBufferSizes(size_t a, size_t b) { m_maxBufSize = (unsigned int)a; m_maxPackageSize = (unsigned int)b; }
+	void setMaxBufferSizes(size_t a, size_t b)
+	{
+		m_maxBufSize = (unsigned int)a;
+		m_maxPackageSize = (unsigned int)b;
+	}
 
 	/// Connect to a server. Throws an exception if it fails to connect within the
 	/// specified timout period.
@@ -280,7 +285,6 @@ protected:
 
 	/// This is called when the connection is first known to have disconnected.
 	virtual void onDisconnect() {}
-
 };
 
 
@@ -325,7 +329,11 @@ public:
 	/// an exception will be thrown. If a package bigger than 'a' is sent,
 	/// then the buffer will be grown to that size, but it will be made small
 	/// again the next time a package is received.
-	void setMaxBufferSizes(size_t a, size_t b) { m_maxBufSize = (unsigned int)a; m_maxPackageSize = (unsigned int)b; }
+	void setMaxBufferSizes(size_t a, size_t b)
+	{
+		m_maxBufSize = (unsigned int)a;
+		m_maxPackageSize = (unsigned int)b;
+	}
 
 	/// Receives any pending messages into an internal buffer (to unblock the
 	/// client, in case its send buffer is full.)
@@ -389,7 +397,6 @@ public:
 
 	/// Receive the next available DOM node, or NULL if none are ready.
 	const GDomNode* receive(GPackageConnection** pOutConn);
-
 };
 
 } // namespace GClasses

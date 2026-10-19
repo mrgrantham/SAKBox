@@ -23,18 +23,19 @@
 #include <stdio.h>
 #include <string>
 #ifdef WINDOWS
-#	include <malloc.h>
-#	pragma warning(disable: 4996)
+#include <malloc.h>
+#pragma warning(disable : 4996)
 #else
-# ifdef __FreeBSD__
-#  include <stdlib.h>
-# else
-#  include <alloca.h>
-# endif
+#ifdef __FreeBSD__
+#include <stdlib.h>
+#else
+#include <alloca.h>
+#endif
 #endif
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// The threshold over which a temporary buffer will be placed on the heap instead of the stack.
 #define MAX_STACK_TEMP_BUFFER 1024
@@ -71,23 +72,23 @@ public:
 /// A macro for allocating a temporary buffer. If the buffer is small, it will use alloca to put it on
 /// the stack. If the buffer is big, it will allocate it on the heap and use a holder to ensure that it
 /// is properly deleted.
-#	define GTEMPBUF(typ, var, cnt)\
-	GTempBufHelper var##__(sizeof(typ) * (cnt) + 1);\
-	typ* var = (((sizeof(typ) * (cnt)) <= MAX_STACK_TEMP_BUFFER) ? (typ*)alloca(sizeof(typ) * (cnt) + 1) : (typ*)var##__.m_pBuf);\
+#define GTEMPBUF(typ, var, cnt)                                                                                                   \
+	GTempBufHelper var##__(sizeof(typ) * (cnt) + 1);                                                                              \
+	typ* var = (((sizeof(typ) * (cnt)) <= MAX_STACK_TEMP_BUFFER) ? (typ*)alloca(sizeof(typ) * (cnt) + 1) : (typ*)var##__.m_pBuf); \
 	GTempBufSentinel var##_sentinel(&var[cnt]);
 #else
 
 /// A macro for allocating a temporary buffer. If the buffer is small, it will use alloca to put it on
 /// the stack. If the buffer is big, it will allocate it on the heap and use a holder to ensure that it
 /// is properly deleted.
-#	define GTEMPBUF(typ, var, cnt)\
-	GTempBufHelper var##__(sizeof(typ) * (cnt));\
+#define GTEMPBUF(typ, var, cnt)                  \
+	GTempBufHelper var##__(sizeof(typ) * (cnt)); \
 	typ* var = (((sizeof(typ) * (cnt)) <= MAX_STACK_TEMP_BUFFER) ? (typ*)alloca(sizeof(typ) * (cnt)) : (typ*)var##__.m_pBuf);
 #endif
 
 /// A macro for allocating a temporary GVec. If the size is small, it will use alloca to put its contents on the stack.
-#	define GQUICKVEC(name, size)\
-	GTempBufHelper var##t1(sizeof(double) * (size));\
+#define GQUICKVEC(name, size)                        \
+	GTempBufHelper var##t1(sizeof(double) * (size)); \
 	GVecWrapper name((((sizeof(double) * (size)) <= MAX_STACK_TEMP_BUFFER) ? (double*)alloca(sizeof(double) * (size)) : (double*)var##t1.m_pBuf), size);
 
 /// This class is very similar to the standard C++ class auto_ptr,
@@ -99,7 +100,7 @@ public:
 /// when it reverts back to the original buffer. But if you make a
 /// vector of these, it will fail quickly, thus alerting you to the
 /// issue.)
-template <class T>
+template<class T>
 class Holder
 {
 private:
@@ -160,7 +161,7 @@ public:
 };
 
 /// Just like Holder, except for arrays
-template <class T>
+template<class T>
 class ArrayHolder
 {
 private:
@@ -254,7 +255,7 @@ public:
 };
 
 /// Deletes all of the pointers in a vector when this object goes out of scope.
-template <class T>
+template<class T>
 class VectorOfPointersHolder
 {
 protected:

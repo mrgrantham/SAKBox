@@ -59,7 +59,7 @@ public:
 	: m_x(100), m_y(250), m_rand(0)
 	{
 	}
-	
+
 	~HelloModel()
 	{
 	}
@@ -164,13 +164,13 @@ protected:
 		m_pDialog->update();
 
 		// Clear the screen
-		SDL_SetRenderDrawColor(sdlRenderer,0,0,0,0);
-		SDL_Rect windowRect{m_screenRect.x,m_screenRect.y,m_screenRect.w,m_screenRect.h};
-		SDL_RenderFillRect(sdlRenderer,&windowRect);
+		SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, 0);
+		SDL_Rect windowRect{m_screenRect.x, m_screenRect.y, m_screenRect.w, m_screenRect.h};
+		SDL_RenderFillRect(sdlRenderer, &windowRect);
 		Uint32 format; // SDL_PixelFormatEnum
-		SDL_QueryTexture(sdlTexture,&format, nullptr,nullptr,nullptr);
+		SDL_QueryTexture(sdlTexture, &format, nullptr, nullptr, nullptr);
 		// Draw the dialog
-		blitImage(pixels,pitch,format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
+		blitImage(pixels, pitch, format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
 	}
 };
 
@@ -211,7 +211,7 @@ void HelloController::RunModal()
 
 
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	int nRet = 0;
 	try

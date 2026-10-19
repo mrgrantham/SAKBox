@@ -26,7 +26,8 @@
 #include <string.h>
 #include "GSocket.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GHttpClientSocket;
 class GWebSocketClientSocket;
@@ -120,7 +121,6 @@ protected:
 	void processBody(const unsigned char* szData, size_t nSize);
 	void processChunkBody(const unsigned char* szData, size_t nSize);
 	void gimmeWhatYouGot();
-
 };
 
 class GWebSocketClient

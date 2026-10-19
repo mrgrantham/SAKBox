@@ -43,7 +43,7 @@
 #include <iostream>
 
 #ifdef WINDOWS
-#	include <direct.h>
+#include <direct.h>
 #endif
 
 using namespace GClasses;
@@ -148,7 +148,7 @@ public:
 		// Launch the worker thread
 		m_workerMode = 1; // hybernate
 		m_workerWorking = true;
-		/*HANDLE threadHandle = */GThread::spawnThread(launchworkerThread, this);
+		/*HANDLE threadHandle = */ GThread::spawnThread(launchworkerThread, this);
 
 		addModels();
 	}
@@ -258,7 +258,7 @@ public:
 			delete(m_pNNForTraining);
 			m_pNNForTraining = pNN;
 			pNN->beginIncrementalLearning(featureRel, labelRel);
-/*			for(size_t i = 0; i < pNN->layerCount(); i++)
+			/*			for(size_t i = 0; i < pNN->layerCount(); i++)
 				pNN->getLayer(i)->setActivationFunction(new GActivationSoftPlus());
 			pNN->setLearningRate(0.005);*/
 			delete(m_pNNCopyForVisualizing);
@@ -546,12 +546,12 @@ public:
 	}
 
 protected:
-	virtual void draw(SDL_Surface *pScreen)
+	virtual void draw(SDL_Surface* pScreen)
 	{
 		m_pDialog->Iterate();
 
 		// Clear the screen
-		SDL_FillRect(pScreen, NULL/*&r*/, 0x000000);
+		SDL_FillRect(pScreen, NULL /*&r*/, 0x000000);
 
 		// Draw the dialog
 		blitImage(pScreen, m_screenRect.x, m_screenRect.y, m_pDialog->image());
@@ -592,7 +592,7 @@ void InterpolateController::RunModal()
 
 
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef WINDOWS
 	if(_chdir("../bin") != 0)

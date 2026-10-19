@@ -25,7 +25,8 @@
 #include <string>
 #include <map>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GFunctionNode;
 class GFunctionCall;

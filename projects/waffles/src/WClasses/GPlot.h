@@ -24,7 +24,8 @@
 #include <vector>
 #include <string>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GImage;
 class GRand;
@@ -232,7 +233,7 @@ public:
 
 	/// Write to an SVG file
 	void save(const char* szFilename);
-    
+
 	/// Label the horizontal axis. If maxLabels is 0, then no grid-lines will be drawn. If maxLabels is -1, then
 	/// Logarithmic grid-lines will be drawn. If pLabels is non-NULL, then its values will be used to label
 	/// the grid-lines instead of the continuous values.

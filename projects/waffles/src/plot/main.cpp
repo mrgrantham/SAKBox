@@ -47,8 +47,8 @@
 #include <time.h>
 #include <iostream>
 #ifdef WIN32
-#	include <direct.h>
-#	include <process.h>
+#include <direct.h>
+#include <process.h>
 #endif
 #include <string>
 #include <vector>
@@ -137,7 +137,7 @@ void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount
 					if(attrSet.find(val) != attrSet.end())
 						throw Ex("Column ", to_str(val), " is listed multiple times");
 					attrSet.insert(val);
-						list.push_back(val);
+					list.push_back(val);
 					if(val == end)
 						break;
 				}
@@ -1002,7 +1002,7 @@ void PlotScatter(GArgReader& args)
 			width = args.pop_uint();
 			height = args.pop_uint();
 		}
-/*		else if(args.if_pop("-horizattr"))
+		/*		else if(args.if_pop("-horizattr"))
 		{
 			horizAttr = args.pop_uint();
 			findGridPattern(pData, horizAttr, horizBlock, horizCycle);
@@ -1118,7 +1118,7 @@ void PlotScatter(GArgReader& args)
 
 			// Draw the colors
 			svg.clip();
-/*			if(horizCharts > 1 || vertCharts > 1)
+			/*			if(horizCharts > 1 || vertCharts > 1)
 			{
 				GMatrix temp(pData->relation().clone());
 				GReleaseDataHolder hTemp(&temp);
@@ -1138,159 +1138,193 @@ void PlotScatter(GArgReader& args)
 	svg.print(cout);
 }
 
-void semanticMap(GArgReader& args){
-  string somFile = args.pop_string();
-  string dataFile = args.pop_string();
+void semanticMap(GArgReader& args)
+{
+	string somFile = args.pop_string();
+	string dataFile = args.pop_string();
 
-  // Load the data
-  std::unique_ptr<GMatrix> hData(loadData(dataFile.c_str()));
-  if(hData->rows() < 1){
-    throw Ex("The dataset is empty.  Cannot make a semantic map from "
-	       "an empty dataset.");
-  }
-  if(hData->cols() < 1){
-    throw Ex("The dataset has no attributes.  Cannot make a semantic map "
-	       "without attributes.");
-  }
-  // Load the self organizing map
-  GDom doc;
-  doc.loadJson(somFile.c_str());
-  GSelfOrganizingMap som(doc.root());
-  // Parse the options
-  string outFilename="semantic_map.svg";
-  unsigned labelCol = (unsigned int)hData->cols()-1;
-  //Set to true to use the variance in the label column among rows
-  //where a given node is the winner as the label.  Lower variance
-  //means a better approximation.
-  bool useVarianceAsLabel = false;
-  while(args.next_is_flag()){
-    if(args.if_pop("-out")){
-      outFilename = args.pop_string();
-    }else if(args.if_pop("-labels")){
-      labelCol = args.pop_uint();
-    }else if(args.if_pop("-variance")){
-      useVarianceAsLabel = true;
-    }else{
-      throw Ex("Invalid option: ", args.peek());
-    }
-  }
-  if(labelCol >= hData->cols()){
-    throw Ex("Label column index is too large");
-  }
-  if(som.outputDimensions() > 2){
-    throw Ex("Semantic map can only plot one or two dimensional "
-	       "self-organizing maps.");
-  }
-  if(som.inputDimensions() > hData->cols()){
-    throw Ex("The input dataset does not have enough attributes for input "
-	       "to the semantic map");
-  }
-
-  //Write the svg output file
-  std::ofstream out(outFilename.c_str());
-  if(!out){
-    throw Ex("Could not open the file named \"",outFilename,"\"");
-  }
-  //First, write the header
-  vector<double> axes = som.outputAxes();
-  double maxDim = *(max_element(axes.begin(), axes.end()));
-  double scale = ((100*maxDim) > 800)?100:800/maxDim;
-  const double shift = scale/2;
-  double ax0 = axes[0];
-  double ax1 = (axes.size() == 1)?1:axes[1];
-  out << "<?xml version=\"1.0\" standalone=\"no\"?>\n"
-      << "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n"
-      << "\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n"
-      << "<svg viewbox=\"0 0 "
-      << ax0*scale+shift << " " << ax1*scale+shift
-      << "\" preserveAspectRatio=\"xMinYMin\"\n"
-      << "     width=\""<< ax0*scale+shift << "px\" height=\""
-      << ax1*scale+shift << "px\"\n"
-      << "     xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">\n"
-      << "<desc>Semantic map of the self-organizing map stored in \n"
-      << "      \"" << somFile << "\"\n"
-      << "      using data from \"" << dataFile << "\"\n"
-      << "      Original filename: \"" << outFilename << "\"\n";
-  if(som.outputDimensions() == 2){
-    out << "      Plotting output dimensions " << 0 << " and "
-	<< 1 << " as (x,y) coordinates.\n";
-  }else{
-    assert(som.outputDimensions() == 1);
-    out << "      Plotting output dimension " << 0 << "as x coordinate.\n";
-  };
-  out << "</desc>\n";
-
-  std::vector<double> labels; labels.reserve(som.nodes().size());
-  if(useVarianceAsLabel){
-    //winlist[i] holds the pointers to the rows of the dataset where
-    //nodes()[i] is the winner
-    std::vector<std::list<const GVec*> > winLists(som.nodes().size());
-    for(size_t row = 0; row < hData->rows(); ++row){
-      const GVec& rowVec = hData->row(row);
-      size_t bestNode = som.bestMatch(rowVec);
-      winLists.at(bestNode).push_back(&rowVec);
-    }
-    //Calculate the variance of the labelCol column for each node
-    std::vector<std::list<const GVec*> >::const_iterator list;
-    for(list=winLists.begin(); list != winLists.end(); ++list){
-      if(list->size() == 0){
-	//No elements in the list, no variance
-	labels.push_back(0);
-      }else{
-	//Copy the appropriate column into a 1-column matrix
-	GMatrix m(0,1);
-	std::list<const GVec*>::const_iterator l;
-	for(l = list->begin(); l != list->end(); ++l){
-	  m.newRow();
-	  double& val = (m.row(m.rows()-1))[0];
-	  val = (*(*l))[labelCol];
+	// Load the data
+	std::unique_ptr<GMatrix> hData(loadData(dataFile.c_str()));
+	if(hData->rows() < 1)
+	{
+		throw Ex("The dataset is empty.  Cannot make a semantic map from "
+		         "an empty dataset.");
 	}
-	//Use the matrix to calculate the variance
-	labels.push_back(m.columnVariance(0, m.columnMean(0)));
-      }
-    }
-  }else{
-    //Find the best data indices using only the first inputDimensions of
-    //the input data
-    GMatrix* pLessColumns = new GMatrix(*hData.get());
-    std::unique_ptr<GMatrix> lessColumns(pLessColumns);
-    while(lessColumns->cols() > som.inputDimensions()){
-      lessColumns->deleteColumns(lessColumns->cols()-1, 1);
-    }
-    vector<size_t> bestData = som.bestData(lessColumns.get());
+	if(hData->cols() < 1)
+	{
+		throw Ex("The dataset has no attributes.  Cannot make a semantic map "
+		         "without attributes.");
+	}
+	// Load the self organizing map
+	GDom doc;
+	doc.loadJson(somFile.c_str());
+	GSelfOrganizingMap som(doc.root());
+	// Parse the options
+	string outFilename = "semantic_map.svg";
+	unsigned labelCol = (unsigned int)hData->cols() - 1;
+	//Set to true to use the variance in the label column among rows
+	//where a given node is the winner as the label.  Lower variance
+	//means a better approximation.
+	bool useVarianceAsLabel = false;
+	while(args.next_is_flag())
+	{
+		if(args.if_pop("-out"))
+		{
+			outFilename = args.pop_string();
+		}
+		else if(args.if_pop("-labels"))
+		{
+			labelCol = args.pop_uint();
+		}
+		else if(args.if_pop("-variance"))
+		{
+			useVarianceAsLabel = true;
+		}
+		else
+		{
+			throw Ex("Invalid option: ", args.peek());
+		}
+	}
+	if(labelCol >= hData->cols())
+	{
+		throw Ex("Label column index is too large");
+	}
+	if(som.outputDimensions() > 2)
+	{
+		throw Ex("Semantic map can only plot one or two dimensional "
+		         "self-organizing maps.");
+	}
+	if(som.inputDimensions() > hData->cols())
+	{
+		throw Ex("The input dataset does not have enough attributes for input "
+		         "to the semantic map");
+	}
 
-    std::vector<double> labelColumn(hData->rows());
-    hData->col(labelCol, &(labelColumn.at(0)));
-    for(size_t node = 0; node < som.nodes().size(); ++node){
-      labels.push_back(labelColumn.at(bestData.at(node)));
-    }
-  }
-  //Calculate min and max for color coding
-  double minLabel = *std::min_element(labels.begin(), labels.end());
-  double maxLabel = *std::max_element(labels.begin(), labels.end());
-  double labelRange = maxLabel-minLabel;
-  if(labelRange == 0){ labelRange = 1; }
+	//Write the svg output file
+	std::ofstream out(outFilename.c_str());
+	if(!out)
+	{
+		throw Ex("Could not open the file named \"", outFilename, "\"");
+	}
+	//First, write the header
+	vector<double> axes = som.outputAxes();
+	double maxDim = *(max_element(axes.begin(), axes.end()));
+	double scale = ((100 * maxDim) > 800) ? 100 : 800 / maxDim;
+	const double shift = scale / 2;
+	double ax0 = axes[0];
+	double ax1 = (axes.size() == 1) ? 1 : axes[1];
+	out << "<?xml version=\"1.0\" standalone=\"no\"?>\n"
+	    << "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n"
+	    << "\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n"
+	    << "<svg viewbox=\"0 0 "
+	    << ax0 * scale + shift << " " << ax1 * scale + shift
+	    << "\" preserveAspectRatio=\"xMinYMin\"\n"
+	    << "     width=\"" << ax0 * scale + shift << "px\" height=\""
+	    << ax1 * scale + shift << "px\"\n"
+	    << "     xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">\n"
+	    << "<desc>Semantic map of the self-organizing map stored in \n"
+	    << "      \"" << somFile << "\"\n"
+	    << "      using data from \"" << dataFile << "\"\n"
+	    << "      Original filename: \"" << outFilename << "\"\n";
+	if(som.outputDimensions() == 2)
+	{
+		out << "      Plotting output dimensions " << 0 << " and "
+		    << 1 << " as (x,y) coordinates.\n";
+	}
+	else
+	{
+		assert(som.outputDimensions() == 1);
+		out << "      Plotting output dimension " << 0 << "as x coordinate.\n";
+	};
+	out << "</desc>\n";
 
-  //Write the actual map
-  for(size_t node = 0; node < som.nodes().size(); ++node){
-    vector<double> loc = som.nodes()[node].outputLocation;
-    double label = labels.at(node);
-    unsigned red = (unsigned int)std::floor(0.5+(255*(label-minLabel)/(labelRange)));
-    unsigned blue = (unsigned int)std::floor(0.5+255-(255*(label-minLabel)/(labelRange)));
-    if(som.outputDimensions() == 2){
-      out << "<text x=\"" << (shift+scale*loc[0]) << "\" y=\"" << (shift+scale*loc[1]) << "\" ";
-    }else{
-      assert(som.outputDimensions() == 1);
-      out << "<text x=\"" << (shift+scale*loc[0]) << "\" y=\"" << (maxDim*scale/2) << "\" ";
-    }
-    out << "fill=\"rgb(" << red << ",0," << blue << ")\">";
-    out << label << "</text>\n";
-  }
+	std::vector<double> labels;
+	labels.reserve(som.nodes().size());
+	if(useVarianceAsLabel)
+	{
+		//winlist[i] holds the pointers to the rows of the dataset where
+		//nodes()[i] is the winner
+		std::vector<std::list<const GVec*> > winLists(som.nodes().size());
+		for(size_t row = 0; row < hData->rows(); ++row)
+		{
+			const GVec& rowVec = hData->row(row);
+			size_t bestNode = som.bestMatch(rowVec);
+			winLists.at(bestNode).push_back(&rowVec);
+		}
+		//Calculate the variance of the labelCol column for each node
+		std::vector<std::list<const GVec*> >::const_iterator list;
+		for(list = winLists.begin(); list != winLists.end(); ++list)
+		{
+			if(list->size() == 0)
+			{
+				//No elements in the list, no variance
+				labels.push_back(0);
+			}
+			else
+			{
+				//Copy the appropriate column into a 1-column matrix
+				GMatrix m(0, 1);
+				std::list<const GVec*>::const_iterator l;
+				for(l = list->begin(); l != list->end(); ++l)
+				{
+					m.newRow();
+					double& val = (m.row(m.rows() - 1))[0];
+					val = (*(*l))[labelCol];
+				}
+				//Use the matrix to calculate the variance
+				labels.push_back(m.columnVariance(0, m.columnMean(0)));
+			}
+		}
+	}
+	else
+	{
+		//Find the best data indices using only the first inputDimensions of
+		//the input data
+		GMatrix* pLessColumns = new GMatrix(*hData.get());
+		std::unique_ptr<GMatrix> lessColumns(pLessColumns);
+		while(lessColumns->cols() > som.inputDimensions())
+		{
+			lessColumns->deleteColumns(lessColumns->cols() - 1, 1);
+		}
+		vector<size_t> bestData = som.bestData(lessColumns.get());
 
-  //Close the svg
-  out << "</svg>\n";
+		std::vector<double> labelColumn(hData->rows());
+		hData->col(labelCol, &(labelColumn.at(0)));
+		for(size_t node = 0; node < som.nodes().size(); ++node)
+		{
+			labels.push_back(labelColumn.at(bestData.at(node)));
+		}
+	}
+	//Calculate min and max for color coding
+	double minLabel = *std::min_element(labels.begin(), labels.end());
+	double maxLabel = *std::max_element(labels.begin(), labels.end());
+	double labelRange = maxLabel - minLabel;
+	if(labelRange == 0) { labelRange = 1; }
 
-  cout << "Output written to \"" << outFilename << "\"\n" ;
+	//Write the actual map
+	for(size_t node = 0; node < som.nodes().size(); ++node)
+	{
+		vector<double> loc = som.nodes()[node].outputLocation;
+		double label = labels.at(node);
+		unsigned red = (unsigned int)std::floor(0.5 + (255 * (label - minLabel) / (labelRange)));
+		unsigned blue = (unsigned int)std::floor(0.5 + 255 - (255 * (label - minLabel) / (labelRange)));
+		if(som.outputDimensions() == 2)
+		{
+			out << "<text x=\"" << (shift + scale * loc[0]) << "\" y=\"" << (shift + scale * loc[1]) << "\" ";
+		}
+		else
+		{
+			assert(som.outputDimensions() == 1);
+			out << "<text x=\"" << (shift + scale * loc[0]) << "\" y=\"" << (maxDim * scale / 2) << "\" ";
+		}
+		out << "fill=\"rgb(" << red << ",0," << blue << ")\">";
+		out << label << "</text>\n";
+	}
+
+	//Close the svg
+	out << "</svg>\n";
+
+	cout << "Output written to \"" << outFilename << "\"\n";
 }
 
 void makeHistogram(GArgReader& args)
@@ -1339,7 +1373,7 @@ void makeHistogram(GArgReader& args)
 	{
 		bool use_density_estimation = false;
 		if(pData->rows() < 10000)
-		 	use_density_estimation = true;
+			use_density_estimation = true;
 
 		if(use_density_estimation)
 		{
@@ -1538,8 +1572,8 @@ void PrintStats(GArgReader& args)
 				{
 					size_t occurrences = pData->countValue(i, (double)j);
 					cout << "     "
-							 << ((double)occurrences * 100.0 / (double)pData->rows())
-							 << "% (" << occurrences << ") ";
+					     << ((double)occurrences * 100.0 / (double)pData->rows())
+					     << "% (" << occurrences << ") ";
 					pRel->printAttrValue(cout, i, (double)j);
 					cout << "\n";
 				}
@@ -1576,7 +1610,8 @@ void PrintStats(GArgReader& args)
 	}
 }
 
-void calcError(GArgReader& args){
+void calcError(GArgReader& args)
+{
 	GMatrix loader;
 	loader.loadArff(args.pop_string());
 
@@ -1588,7 +1623,8 @@ void calcError(GArgReader& args){
 
 	int metric = SSE;
 
-	if(args.if_pop("-m")){
+	if(args.if_pop("-m"))
+	{
 		if(args.if_pop("SSE"))
 			metric = SSE;
 		else if(args.if_pop("MAPE"))
@@ -1599,7 +1635,8 @@ void calcError(GArgReader& args){
 			throw Ex("Invalid metric.");
 	}
 
-	while(args.size() > 0){
+	while(args.size() > 0)
+	{
 		GVec& row = output.newRow();
 		row[0] = 0.0;
 
@@ -1611,16 +1648,20 @@ void calcError(GArgReader& args){
 
 		size_t dropped = 0;
 
-		for(size_t i = 0; i < loader.rows(); i++){
-			if(loader[i][col1] == UNKNOWN_REAL_VALUE){
+		for(size_t i = 0; i < loader.rows(); i++)
+		{
+			if(loader[i][col1] == UNKNOWN_REAL_VALUE)
+			{
 				dropped++;
 				continue;
 			}
 
-			if(metric == SSE || metric == RMSE){
+			if(metric == SSE || metric == RMSE)
+			{
 				row[0] += (loader[i][col1] - loader[i][col2]) * (loader[i][col1] - loader[i][col2]);
 			}
-			else if(metric == MAPE){
+			else if(metric == MAPE)
+			{
 				row[0] += fabs((loader[i][col1] - loader[i][col2]) / loader[i][col1]);
 			}
 		}
@@ -1640,68 +1681,83 @@ void calcError(GArgReader& args){
 	output.print(std::cout);
 }
 
-void percentSame(GArgReader& args){
-  std::unique_ptr<GMatrix> hData1(loadData(args.pop_string()));
-  std::unique_ptr<GMatrix> hData2(loadData(args.pop_string()));
-  const size_t cols = hData1->cols();
-  const size_t rows = hData1->rows();
-  if(hData1->cols() != hData2->cols()){
-    throw Ex("The two files have different numbers of attributes.  Cannot "
-	       "compare entries when the number of columns is different");
-  }
-  if(hData1->rows() != hData2->rows()){
-    throw Ex("The two files have different numbers of tuples.  Cannot "
-	       "compare entries when the number of rows is different");
-  }
-  if(rows == 0){
-    throw Ex("The files have no rows.  Cannot calculate the percentage of "
-	       "identical values for empty files.");
-  }
-  for(size_t i = 0; i < cols; ++i){
-    if(hData1->relation().valueCount(i) !=
-       hData2->relation().valueCount(i)){
-      size_t v1 = hData1->relation().valueCount(i);
-      size_t v2 = hData2->relation().valueCount(i);
-      std::stringstream msg;
-      msg << "The two files have different attribute types at "
-	  << "attribute index " << i << ".  The first file has ";
-      if(v1 == 0){
-	msg << "a continuous attribute.  ";
-      }else{
-	msg << "a nominal attribute with " << v1 << " values.  ";
-      }
+void percentSame(GArgReader& args)
+{
+	std::unique_ptr<GMatrix> hData1(loadData(args.pop_string()));
+	std::unique_ptr<GMatrix> hData2(loadData(args.pop_string()));
+	const size_t cols = hData1->cols();
+	const size_t rows = hData1->rows();
+	if(hData1->cols() != hData2->cols())
+	{
+		throw Ex("The two files have different numbers of attributes.  Cannot "
+		         "compare entries when the number of columns is different");
+	}
+	if(hData1->rows() != hData2->rows())
+	{
+		throw Ex("The two files have different numbers of tuples.  Cannot "
+		         "compare entries when the number of rows is different");
+	}
+	if(rows == 0)
+	{
+		throw Ex("The files have no rows.  Cannot calculate the percentage of "
+		         "identical values for empty files.");
+	}
+	for(size_t i = 0; i < cols; ++i)
+	{
+		if(hData1->relation().valueCount(i) != hData2->relation().valueCount(i))
+		{
+			size_t v1 = hData1->relation().valueCount(i);
+			size_t v2 = hData2->relation().valueCount(i);
+			std::stringstream msg;
+			msg << "The two files have different attribute types at "
+			    << "attribute index " << i << ".  The first file has ";
+			if(v1 == 0)
+			{
+				msg << "a continuous attribute.  ";
+			}
+			else
+			{
+				msg << "a nominal attribute with " << v1 << " values.  ";
+			}
 
-      msg << "The second file has ";
-      if(v2 == 0){
-	msg << "a continuous attribute.";
-      }else{
-	msg << "a nominal attribute with " << v2 << " values.";
-      }
-      throw Ex(msg.str());
-    }
-  }
-  //Count the same values
-  vector<size_t> numSame(cols, 0);
-  for(size_t row = 0; row < rows; ++row){
-    const GVec& r1 = hData1->row(row);
-    const GVec& r2 = hData2->row(row);
-    for(size_t col = 0; col < cols; ++col){
-      if(r1[col] == r2[col]){ ++numSame[col]; }
-    }
-  }
+			msg << "The second file has ";
+			if(v2 == 0)
+			{
+				msg << "a continuous attribute.";
+			}
+			else
+			{
+				msg << "a nominal attribute with " << v2 << " values.";
+			}
+			throw Ex(msg.str());
+		}
+	}
+	//Count the same values
+	vector<size_t> numSame(cols, 0);
+	for(size_t row = 0; row < rows; ++row)
+	{
+		const GVec& r1 = hData1->row(row);
+		const GVec& r2 = hData2->row(row);
+		for(size_t col = 0; col < cols; ++col)
+		{
+			if(r1[col] == r2[col]) { ++numSame[col]; }
+		}
+	}
 
-  //Convert to percents
-  vector<double> pctSame;
-  pctSame.resize(numSame.size());
-  for(size_t col = 0; col < cols; ++col){
-    pctSame[col] = 100.0 * (double)numSame[col] / rows;
-  }
+	//Convert to percents
+	vector<double> pctSame;
+	pctSame.resize(numSame.size());
+	for(size_t col = 0; col < cols; ++col)
+	{
+		pctSame[col] = 100.0 * (double)numSame[col] / rows;
+	}
 
-  //Print
-  for(size_t col = 0; col < cols; ++col){
-    cout << pctSame[col] << " %  ";
-  }
-  cout << std::endl;
+	//Print
+	for(size_t col = 0; col < cols; ++col)
+	{
+		cout << pctSame[col] << " %  ";
+	}
+	cout << std::endl;
 }
 
 void printDecisionTree(GArgReader& args)
@@ -1912,7 +1968,7 @@ void GraphConnection::handleRequest(GDynamicPageSession* pDPSession, std::ostrea
 	{
 		response << "\n";
 		response << "var range = document.getElementById(\"ta\").setSelectionRange(" << cursorpos << ", " << cursorpos << ");\n";
-/*		response << "alert(\"adid it\");\n";
+		/*		response << "alert(\"adid it\");\n";
 		response << "range.move('character', " << cursorpos << ");\n";
 		response << "alert(\"bdid it\");\n";
 		response << "range.select();\n";
@@ -1939,7 +1995,6 @@ void GraphConnection::handleRequest(GDynamicPageSession* pDPSession, std::ostrea
 	response << "	}\n";
 	response << "}\n";
 	response << "</script>\n";
-
 }
 
 void LaunchBrowser(const char* szAddress)
@@ -2047,7 +2102,7 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 	cerr.flush();
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
 	GApp::enableFloatingPointExceptions();

@@ -23,7 +23,8 @@
 #include "GRand.h"
 #include "GVec.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// This performs a brute-force grid search with uniform sampling over the
 /// unit hypercube with increasing granularity. (Your target function should scale

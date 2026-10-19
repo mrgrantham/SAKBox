@@ -69,7 +69,7 @@ User* User::fromDom(GDomNode* pNode, GRand& rand)
 			pUser->m_personality[i] = std::max(-1.0, std::min(1.0, it.currentDouble()));
 			it.advance();
 		}
-		for( ; i < USER_PROFILE_SIZE; i++)
+		for(; i < USER_PROFILE_SIZE; i++)
 			pUser->m_personality[i] = 0.02 * rand.normal();
 	}
 
@@ -222,7 +222,7 @@ Item::Item(GDomNode* pNode, GRand* pRand)
 		m_weights[i] = it.currentDouble();
 		it.advance();
 	}
-	for( ; i < ITEM_PROFILE_SIZE; i++)
+	for(; i < ITEM_PROFILE_SIZE; i++)
 		m_weights[i] = LEARNING_RATE * pRand->normal();
 }
 
@@ -266,7 +266,6 @@ public:
 	virtual ~Sample()
 	{
 	}
-
 };
 
 
@@ -334,7 +333,7 @@ void NeuralRecommender::deserialize(const GDomNode* pNode)
 	GDomNode* pItems = pNode->get("items");
 	GDomListIterator it(pItems);
 	m_items.reserve(it.remaining());
-	for( ; it.current(); it.advance())
+	for(; it.current(); it.advance())
 		m_items.push_back(new Item(it.current(), &rand));
 
 	// Load the model
@@ -422,7 +421,7 @@ double NeuralRecommender::predictRating(User& user, Item& item)
 
 User* NeuralRecommender::findUser(const char* szUsername)
 {
-	map<string,User*>::iterator it = m_userMap.find(szUsername);
+	map<string, User*>::iterator it = m_userMap.find(szUsername);
 	if(it == m_userMap.end())
 		return nullptr;
 	User* pUser = it->second;
@@ -443,7 +442,7 @@ User* NeuralRecommender::findOrMakeUser(const char* szUsername)
 void NeuralRecommender::addUser(User* pUser)
 {
 	m_users.push_back(pUser);
-	m_userMap.insert(std::pair<string,User*>(pUser->username(),pUser));
+	m_userMap.insert(std::pair<string, User*>(pUser->username(), pUser));
 }
 
 void NeuralRecommender::addItem(const char* szLeft, const char* szRight, const char* szUsername)
@@ -671,7 +670,7 @@ void Submit::pageSurvey(Server* pServer, GDynamicPageSession* pSession, ostream&
 	response << "&nbsp;&nbsp;&nbsp;&nbsp;";
 	response << "<a href=\"/b/stats\">Vizualize</a>\n";
 
-/*
+	/*
 	response << "Stats:<br>\n";
 	response << "Total Number of users: " << pServer->accounts().size() << "<br>\n";
 	response << "Number of items in this topic: " << pCurrentTopic->size() << "<br>\n";
@@ -906,7 +905,7 @@ public:
 	{
 	}
 
-	bool operator() (const pair<size_t,float>& a, const pair<size_t,float>& b) const
+	bool operator()(const pair<size_t, float>& a, const pair<size_t, float>& b) const
 	{
 		return a.second > b.second;
 	}
@@ -955,7 +954,8 @@ void Submit::makeTree(Server* pServer, GBitTable& bt, User** pUsers, size_t accC
 
 		// Recurse
 		prefix.push_back(' ');
-		if(type >= 0) prefix.push_back(' '); else prefix.push_back('|');
+		if(type >= 0) prefix.push_back(' ');
+		else prefix.push_back('|');
 		prefix.push_back(' ');
 		prefix.push_back(' ');
 		makeTree(pServer, bt, pUsers, firstHalfSize, response, prefix, 1);
@@ -963,7 +963,10 @@ void Submit::makeTree(Server* pServer, GBitTable& bt, User** pUsers, size_t accC
 		for(vector<char>::iterator it = prefix.begin(); it != prefix.end(); it++)
 			response << *it;
 		response << "/ (" << rec.item(best).left() << ")\n";
-		prefix.pop_back(); prefix.pop_back(); prefix.pop_back(); prefix.pop_back();
+		prefix.pop_back();
+		prefix.pop_back();
+		prefix.pop_back();
+		prefix.pop_back();
 		for(vector<char>::iterator it = prefix.begin(); it != prefix.end(); it++)
 			response << *it;
 		if(type == 0)
@@ -971,7 +974,8 @@ void Submit::makeTree(Server* pServer, GBitTable& bt, User** pUsers, size_t accC
 		else
 			response << " +-(\n";
 		prefix.push_back(' ');
-		if(type <= 0) prefix.push_back(' '); else prefix.push_back('|');
+		if(type <= 0) prefix.push_back(' ');
+		else prefix.push_back('|');
 		prefix.push_back(' ');
 		prefix.push_back(' ');
 		for(vector<char>::iterator it = prefix.begin(); it != prefix.end(); it++)
@@ -979,7 +983,10 @@ void Submit::makeTree(Server* pServer, GBitTable& bt, User** pUsers, size_t accC
 		response << "\\ (" << rec.item(best).right() << ")\n";
 
 		makeTree(pServer, bt, pUsers + firstHalfSize, accCount - firstHalfSize, response, prefix, -1);
-		prefix.pop_back(); prefix.pop_back(); prefix.pop_back(); prefix.pop_back();
+		prefix.pop_back();
+		prefix.pop_back();
+		prefix.pop_back();
+		prefix.pop_back();
 
 		bt.unset(best);
 	}
@@ -1008,12 +1015,12 @@ string to_string(double d, int decimal_places)
 
 void Submit::makeItemBody(GDynamicPageSession* pSession, ostream& response, size_t itemId, Item& item, User** pUsers, size_t accCount)
 {
-	std::multimap<double,User*> mm;
+	std::multimap<double, User*> mm;
 	while(accCount > 0)
 	{
 		float rating;
 		if((*pUsers)->getRating(itemId, &rating))
-			mm.insert(std::pair<double,User*>(rating,*pUsers));
+			mm.insert(std::pair<double, User*>(rating, *pUsers));
 		accCount--;
 		pUsers++;
 	}
@@ -1022,7 +1029,7 @@ void Submit::makeItemBody(GDynamicPageSession* pSession, ostream& response, size
 	response << "<h3>" << item.left() << "</h3>\n";
 	response << "<table>\n";
 	size_t hh = 0;
-	for(std::multimap<double,User*>::iterator it = mm.begin(); it != mm.end(); it++)
+	for(std::multimap<double, User*>::iterator it = mm.begin(); it != mm.end(); it++)
 	{
 		if(hh == 0 && it->first > -0.3333) // When they cross into being uncertain
 		{
@@ -1052,7 +1059,7 @@ void Submit::makeItemBody(GDynamicPageSession* pSession, ostream& response, size
 
 void Submit::makeUserBody(GDynamicPageSession* pSession, ostream& response, User* pA, User* pB, NeuralRecommender& rec)
 {
-	std::multimap<float,size_t> m;
+	std::multimap<float, size_t> m;
 	float rA = 0.0f;
 	float rB = 0.0f;
 	for(size_t i = 0; i < rec.items().size(); i++)
@@ -1060,7 +1067,7 @@ void Submit::makeUserBody(GDynamicPageSession* pSession, ostream& response, User
 		if(pA->getRating(i, &rA))
 		{
 			if(pB->getRating(i, &rB))
-				m.insert(std::pair<float,size_t>(-std::abs(rB - rA), i));
+				m.insert(std::pair<float, size_t>(-std::abs(rB - rA), i));
 		}
 	}
 	if(m.size() == 0)
@@ -1069,7 +1076,7 @@ void Submit::makeUserBody(GDynamicPageSession* pSession, ostream& response, User
 		return;
 	}
 	response << "<table><tr><td><u>" << pA->username() << "</u></td><td><u>" << pB->username() << "</u></td><td><u>product</u></td><td><u>Left</u></td><td><u>Right</u></td></tr>\n";
-	for(std::multimap<float,size_t>::iterator it = m.begin(); it != m.end(); it++)
+	for(std::multimap<float, size_t>::iterator it = m.begin(); it != m.end(); it++)
 	{
 		pA->getRating(it->second, &rA);
 		pB->getRating(it->second, &rB);

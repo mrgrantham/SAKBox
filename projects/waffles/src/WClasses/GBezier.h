@@ -24,7 +24,8 @@
 #include "GMath.h"
 #include "G3D.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 struct GBezierPoint;
 
@@ -80,7 +81,6 @@ public:
 
 protected:
 	struct GBezierPoint* deCasteljau(double t, bool bTail);
-
 };
 
 
@@ -106,16 +106,16 @@ public:
 
 	/// Returns the number of control points
 	int controlPointCount() { return m_nControlPoints; }
-	
+
 	/// Returns a control point and the associated weight
 	void controlPoint(G3DVector* pOutPoint, double* pOutWeight, int n);
-	
+
 	/// Set a control point location and its weight
 	void setControlPoint(int n, G3DVector* pPoint, double weight);
-	
+
 	double knotInterval(int n);
 	void setKnotInterval(int n, double dInterval);
-	
+
 	/// Create a Bezier curve that exactly fits a portion of this curve.
 	/// todo: what are acceptable values for nInterval?
 	GBezier* bezier(int nInterval);

@@ -21,7 +21,8 @@
 
 #include <sstream>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GTCPClient;
 

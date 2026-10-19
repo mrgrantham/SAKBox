@@ -31,8 +31,8 @@
 #include "sha2.h"
 #include "GRand.h"
 #ifndef WINDOWS
-#	include <unistd.h>
-#	include <arpa/inet.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 #endif
 #include <stdlib.h>
 #include <algorithm>
@@ -128,8 +128,8 @@ size_t GDynamicPageSession::paramsLen()
 
 void GDynamicPageSession::addAjaxCookie(GDom& docOut, GDomNode* pOutNode)
 {
-  std::ostringstream os;
-  os << "GDPSI=";
+	std::ostringstream os;
+	os << "GDPSI=";
 	os << m_id;
 	pOutNode->add(&docOut, "cookie", os.str().c_str());
 }
@@ -331,11 +331,15 @@ void GDynamicPageConnection::sendFileSafe(const char* szJailPath, const char* sz
 }
 
 const char* g_pExtensionToMimeTypeHackTable[] =
-{
-	".png", "image/png",
-	".js", "text/javascript",
-	".jpg", "image/jpeg",
-	".gif", "image/gif",
+  {
+    ".png",
+    "image/png",
+    ".js",
+    "text/javascript",
+    ".jpg",
+    "image/jpeg",
+    ".gif",
+    "image/gif",
 };
 
 // static
@@ -369,10 +373,7 @@ GDynamicPageServer::GDynamicPageServer(int port, GRand* pRand, bool networkAcces
 		do
 		{
 			m_daemonSalt[i] = ' ' + (char)m_pRand->next(95);
-		} while(m_daemonSalt[i] == '"' ||
-			m_daemonSalt[i] == '&' ||
-			m_daemonSalt[i] == '<' ||
-			m_daemonSalt[i] == '>');
+		} while(m_daemonSalt[i] == '"' || m_daemonSalt[i] == '&' || m_daemonSalt[i] == '<' || m_daemonSalt[i] == '>');
 	}
 	m_daemonSalt[i] = '\0';
 	computePasswordSalt();

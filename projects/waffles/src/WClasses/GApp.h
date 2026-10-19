@@ -24,25 +24,26 @@
 #include <stddef.h>
 #include "GError.h"
 #ifdef WINDOWS
-#	include <windows.h>
-#	ifndef ssize_t
-		typedef SSIZE_T ssize_t;
-#	endif
+#include <windows.h>
+#ifndef ssize_t
+typedef SSIZE_T ssize_t;
+#endif
 #else
-#	include <unistd.h>
-#	include <termios.h>
+#include <unistd.h>
+#include <termios.h>
 #endif
 
 #ifdef WINDOWS
-#	define INVALID_HANDLE (HANDLE)-1
+#define INVALID_HANDLE (HANDLE) - 1
 #else
-#	ifndef HANDLE
-#		define HANDLE int
-#		define INVALID_HANDLE -1
-#	endif
+#ifndef HANDLE
+#define HANDLE int
+#define INVALID_HANDLE -1
+#endif
 #endif
 
-namespace GClasses {
+namespace GClasses
+{
 
 typedef void (*DaemonMainFunc)(void* pArg);
 
@@ -144,7 +145,6 @@ public:
 	/// macOS, xdg-open on Linux, ShellExecute on Windows). Returns false if
 	/// that failed. The path or URL is passed as it is, not through a shell.
 	static bool openFile(const char* szPathOrUrl);
-
 };
 
 typedef void (*sighandler_t)(int);
@@ -184,7 +184,7 @@ public:
 /// non-blocking. The destructor puts all those things back the way they were.
 class GPassiveConsole
 {
-#	ifdef WINDOWS
+#ifdef WINDOWS
 protected:
 	DWORD m_oldMode;
 	HANDLE m_hStdin;
@@ -193,7 +193,7 @@ public:
 	GPassiveConsole(bool echo);
 	~GPassiveConsole();
 	char getChar();
-#	else
+#else
 protected:
 	struct termios m_old;
 	int m_stdin;
@@ -206,7 +206,7 @@ public:
 	/// Returns the char of the next key that was pressed. (This method
 	/// does not block.) If no keys have been pressed, it returns the zero char.
 	char getChar();
-#	endif
+#endif
 };
 
 

@@ -20,7 +20,8 @@
 #ifndef __GBIGINT_H__
 #define __GBIGINT_H__
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GKeyPair;
 class GDomNode;
@@ -36,7 +37,7 @@ protected:
 	{
 		BITS_PER_INT = sizeof(unsigned int) * 8,
 	};
-	
+
 	unsigned int m_nUInts;
 	unsigned int* m_pBits;
 	bool m_bSign;
@@ -61,7 +62,7 @@ public:
 	/// Returns the value of the nth bit where 0 represents the least significant bit (little endian)
 	bool getBit(unsigned int n)
 	{
-		return((n >= m_nUInts * BITS_PER_INT) ? false : ((m_pBits[n / BITS_PER_INT] & (1 << (n % BITS_PER_INT))) ? true : false));
+		return ((n >= m_nUInts * BITS_PER_INT) ? false : ((m_pBits[n / BITS_PER_INT] & (1 << (n % BITS_PER_INT))) ? true : false));
 	}
 
 	/// Sets the value of the nth bit where 0 represents the least significant bit (little endian)
@@ -92,7 +93,7 @@ public:
 
 	/// Produces a big endian hexadecimal representation of this number
 	bool toHex(char* szBuff, int nBufferSize);
-	
+
 	/// Extract a value from a big endian hexadecimal string
 	bool fromHex(const char* szHexValue);
 
@@ -101,7 +102,7 @@ public:
 
 	/// Serializes the number. little-Endian (first bit in buffer will be LSB)
 	bool toBuffer(unsigned int* pBuffer, int nBufferSize);
-	
+
 	/// Deserializes the number. little-Endian (first bit in buffer will be LSB)
 	void fromBuffer(const unsigned int* pBuffer, int nBufferSize);
 

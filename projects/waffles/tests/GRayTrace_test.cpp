@@ -46,23 +46,19 @@ bool consistentlyOriented(GRayTraceTriMesh &mesh) {
 
 // Whether triangle i's normal (right-hand rule) points away from `inside`.
 bool facesAwayFrom(GRayTraceTriMesh &mesh, size_t i, const double inside[3]) {
-  const G3DReal *p0 = mesh.vertex(i, 0)->m_vals,
-                *p1 = mesh.vertex(i, 1)->m_vals,
+  const G3DReal *p0 = mesh.vertex(i, 0)->m_vals, *p1 = mesh.vertex(i, 1)->m_vals,
                 *p2 = mesh.vertex(i, 2)->m_vals;
   const double e1[3] = {p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]};
   const double e2[3] = {p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]};
-  const double normal[3] = {e1[1] * e2[2] - e1[2] * e2[1],
-                            e1[2] * e2[0] - e1[0] * e2[2],
+  const double normal[3] = {e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2],
                             e1[0] * e2[1] - e1[1] * e2[0]};
-  const double out[3] = {p0[0] - inside[0], p0[1] - inside[1],
-                         p0[2] - inside[2]};
+  const double out[3] = {p0[0] - inside[0], p0[1] - inside[1], p0[2] - inside[2]};
   return normal[0] * out[0] + normal[1] * out[1] + normal[2] * out[2] > 0;
 }
 
 // A unit cube from (x, 0, 0): two triangles per face, all facing outward
 // except the local triangle numbers in `reversed`.
-void addCube(GRayTraceTriMesh &mesh, double x,
-             const std::set<size_t> &reversed = {}) {
+void addCube(GRayTraceTriMesh &mesh, double x, const std::set<size_t> &reversed = {}) {
   const size_t base = mesh.pointCount();
   for (int i = 0; i < 8; i++) // point i's coordinates are its bits
     mesh.addPoint(G3DVector(x + (i & 1), (i >> 1) & 1, (i >> 2) & 1));
@@ -148,13 +144,11 @@ TEST(MeshOrientationTest, MoebiusStripIsReported) {
     const double angle = 2 * M_PI * i / n, twist = M_PI * i / n;
     for (double w : {-0.3, 0.3}) {
       const double r = 1 + w * std::cos(twist);
-      mesh.addPoint(G3DVector(r * std::cos(angle), r * std::sin(angle),
-                              w * std::sin(twist)));
+      mesh.addPoint(G3DVector(r * std::cos(angle), r * std::sin(angle), w * std::sin(twist)));
     }
   }
   for (size_t i = 0; i < n; i++) {
-    size_t a = 2 * i, b = 2 * i + 1, c = 2 * ((i + 1) % n),
-           d = 2 * ((i + 1) % n) + 1;
+    size_t a = 2 * i, b = 2 * i + 1, c = 2 * ((i + 1) % n), d = 2 * ((i + 1) % n) + 1;
     if (i == n - 1)
       std::swap(c, d); // the half twist joins the ends the other way round
     mesh.addTriangle(a, b, d);
@@ -169,8 +163,8 @@ TEST(MeshOrientationTest, GeneratedCylinderIsConsistent) {
     SCOPED_TRACE(testing::Message() << "end caps " << caps);
     G3DVector bottom(0, 0, 0), top(0, 0, 2);
     GRayTracePhysicalMaterial material; // makeCylinder needs one
-    std::unique_ptr<GRayTraceTriMesh> mesh(GRayTraceTriMesh::makeCylinder(
-        &material, &bottom, &top, 1.0, 12, caps));
+    std::unique_ptr<GRayTraceTriMesh> mesh(
+        GRayTraceTriMesh::makeCylinder(&material, &bottom, &top, 1.0, 12, caps));
     EXPECT_TRUE(consistentlyOriented(*mesh));
     // A cylinder is convex, so every triangle should face away from its
     // middle

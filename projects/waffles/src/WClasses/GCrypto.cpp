@@ -29,7 +29,8 @@
 
 using std::cout;
 
-namespace GClasses {
+namespace GClasses
+{
 
 #define DIGEST_BYTES 1024
 
@@ -61,7 +62,7 @@ protected:
 	unsigned char* m_pPos;
 	unsigned char* m_pTaint;
 	size_t m_remaining;
-	
+
 public:
 	Mangler()
 	: m_rand(0)

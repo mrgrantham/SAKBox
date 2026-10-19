@@ -131,9 +131,9 @@ void GAgglomerativeClusterer::cluster(const GMatrix* pData)
 	}
 
 	// Sort all the neighbors by their distances
-	vector< std::pair<double,size_t> > distNeighs;
+	vector< std::pair<double, size_t> > distNeighs;
 	distNeighs.resize(pData->rows() * neighbors);
-	vector< std::pair<double,size_t> >::iterator it = distNeighs.begin();
+	vector< std::pair<double, size_t> >::iterator it = distNeighs.begin();
 	for(size_t i = 0; i < pData->rows(); i++)
 	{
 		size_t nc = pNF->findNearest(neighbors, i);
@@ -158,7 +158,7 @@ void GAgglomerativeClusterer::cluster(const GMatrix* pData)
 		return; // nothing to do
 
 	// Merge until we have the desired number of clusters
-	for(vector< std::pair<double,size_t> >::iterator dn = distNeighs.begin(); dn != it; dn++)
+	for(vector< std::pair<double, size_t> >::iterator dn = distNeighs.begin(); dn != it; dn++)
 	{
 		// Get the next two closest points
 		size_t a = dn->second / neighbors;
@@ -267,7 +267,7 @@ void GAgglomerativeClusterer::test()
 			throw Ex("Wrong cluster");
 	}
 
-/*  // Uncomment this to make a spiffy visualization of the entwined spirals
+	/*  // Uncomment this to make a spiffy visualization of the entwined spirals
 
 	// Draw the classifications
 	GImage image;
@@ -385,9 +385,9 @@ std::unique_ptr<GMatrix> GAgglomerativeTransducer::transduceInner(const GMatrix&
 	}
 
 	// Sort all the neighbors by their distances
-	vector< std::pair<double,size_t> > distNeighs;
+	vector< std::pair<double, size_t> > distNeighs;
 	distNeighs.resize(featuresAll.rows() * neighbors);
-	vector< std::pair<double,size_t> >::iterator it = distNeighs.begin();
+	vector< std::pair<double, size_t> >::iterator it = distNeighs.begin();
 	for(size_t i = 0; i < featuresAll.rows(); i++)
 	{
 		size_t nc = pNF->findNearest(neighbors, i);
@@ -413,7 +413,7 @@ std::unique_ptr<GMatrix> GAgglomerativeTransducer::transduceInner(const GMatrix&
 		size_t missingLabels = features2.rows();
 
 		// Merge until we have the desired number of clusters
-		for(vector< std::pair<double,size_t> >::iterator dn = distNeighs.begin(); dn != it; dn++)
+		for(vector< std::pair<double, size_t> >::iterator dn = distNeighs.begin(); dn != it; dn++)
 		{
 			// Get the next two closest points
 			size_t a = dn->second / neighbors;
@@ -994,7 +994,7 @@ void GKMedoidsSparse::cluster(GSparseMatrix* pData)
 // virtual
 size_t GKMedoidsSparse::whichCluster(size_t nVector)
 {
-	std::map<size_t,double>& vec = m_pData->row(nVector);
+	std::map<size_t, double>& vec = m_pData->row(nVector);
 	size_t clust = 0;
 	m_d = m_pMetric->similarity(vec, m_pData->row(m_pMedoids[0]));
 	for(size_t i = 1; i < m_clusterCount; i++)
@@ -1077,7 +1077,7 @@ void GKMeansSparse::cluster(GSparseMatrix* pData)
 			size_t oldClust = *pClust;
 			*pClust = 0;
 			double maxSimilarity = -1e300;
-			map<size_t,double>& sparseRow = pData->row(i);
+			map<size_t, double>& sparseRow = pData->row(i);
 			for(size_t j = 0; j < m_nClusters; j++)
 			{
 				double sim = m_pMetric->similarity(sparseRow, means.row(j));

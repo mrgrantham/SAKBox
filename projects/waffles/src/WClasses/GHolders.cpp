@@ -20,7 +20,8 @@
 #include "GHolders.h"
 #include "GError.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 #ifdef _DEBUG
 GTempBufSentinel::GTempBufSentinel(void* pBuf)

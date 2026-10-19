@@ -33,7 +33,7 @@ using namespace GClasses;
 class Server : public GDynamicPageServer
 {
 protected:
-	std::map<std::string,size_t> m_username_to_index; // Mapping from username to account index
+	std::map<std::string, size_t> m_username_to_index; // Mapping from username to account index
 	std::vector<Account*> m_accounts;
 	std::set<std::string> m_banned_addresses;
 	NeuralRecommender m_recommender; // The recommender system
@@ -57,7 +57,11 @@ public:
 	bool isUsernameTaken(const char* szUsername);
 	Account* findAccount(const char* szUsername);
 	size_t account_count() { return m_accounts.size(); }
-	Account* get_account(size_t index) { if(index >= m_accounts.size()) throw Ex("Account index out of range"); return m_accounts[index]; }
+	Account* get_account(size_t index)
+	{
+		if(index >= m_accounts.size()) throw Ex("Account index out of range");
+		return m_accounts[index];
+	}
 	size_t user_id(const char* szUsername);
 	bool isValidUsername(const char* szUsername);
 	Account* newAccount(const char* szUsername, const char* szPasswordHash);
@@ -86,7 +90,6 @@ public:
 	bool isBanned(Connection* pConnection, Account* pAccount);
 	void loadBannedAddresses();
 	void saveBannedAddresses();
-
 };
 
 

@@ -1,0 +1,42 @@
+# Waffles keeps its own style (tabs, braces on their own lines, if( with no
+# space, no line limit), not the repo's LLVM style, so formatting it changed
+# as little as possible. Chosen to match how most of Waffles was written.
+# SAKBox's own tests in tests/ use the repo style (tests/.clang-format).
+BasedOnStyle: LLVM
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+ContinuationIndentWidth: 2
+BreakBeforeBraces: Allman
+ColumnLimit: 0
+AccessModifierOffset: -4
+NamespaceIndentation: Inner
+SortIncludes: Never
+ReflowComments: false
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortLoopsOnASingleLine: true
+PointerAlignment: Left
+SpaceBeforeParens: Never
+IndentCaseLabels: true
+AlignAfterOpenBracket: AlwaysBreak
+AlignOperands: DontAlign
+AlignTrailingComments: false
+MaxEmptyLinesToKeep: 100
+ConstructorInitializerIndentWidth: 0
+AllowShortBlocksOnASingleLine: Always
+AllowShortCaseLabelsOnASingleLine: true
+Cpp11BracedListStyle: true
+FixNamespaceComments: false
+SpaceAfterTemplateKeyword: false
+BreakTemplateDeclarations: No
+SortUsingDeclarations: Never
+BreakBeforeBinaryOperators: NonAssignment
+IndentExternBlock: NoIndent
+EmptyLineBeforeAccessModifier: Leave
+EmptyLineAfterAccessModifier: Leave
+SpacesInAngles: Leave
+BinPackArguments: false
+KeepEmptyLinesAtEOF: true
+LambdaBodyIndentation: OuterScope
+BreakInheritanceList: AfterColon

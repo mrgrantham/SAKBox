@@ -23,7 +23,8 @@
 #include <cstddef>
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 typedef int (*PointerComparer)(void* pThis, void* pA, void* pB);
 
@@ -37,11 +38,13 @@ public:
 
 	GPriorityQueueEntry(int minIndex = 0, int maxIndex = 0, void* pPayload = nullptr)
 	: m_minIndex(minIndex), m_maxIndex(maxIndex), m_pPayload(pPayload)
-	{}
+	{
+	}
 
 	GPriorityQueueEntry(const GPriorityQueueEntry& other)
 	: m_minIndex(other.m_minIndex), m_maxIndex(other.m_maxIndex), m_pPayload(other.m_pPayload)
-	{}
+	{
+	}
 
 	~GPriorityQueueEntry() {}
 };
@@ -99,7 +102,7 @@ protected:
 
 
 /// Implements a simple priority queue of objects sorted by a double-precision value
-template <typename T>
+template<typename T>
 class GSimplePriorityQueue
 {
 protected:

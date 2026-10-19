@@ -23,7 +23,8 @@
 #include <stdlib.h>
 #include <string>
 
-namespace GClasses {
+namespace GClasses
+{
 
 
 ///\brief Run unit tests for the to_str functions.  Throws an
@@ -52,7 +53,7 @@ std::string& rtrim(std::string& str, const std::string& chars = "\t\n\v\f\r ");
 /// Removes leading and trailing whitespace (or any other set of characters) from a string
 std::string& trim(std::string& str, const std::string& chars = "\t\n\v\f\r ");
 
-bool ends_with(std::string const &fullString, std::string const &ending);
+bool ends_with(std::string const& fullString, std::string const& ending);
 
 /// This class chops a big string at word breaks so you can display it intelligently
 /// on multiple lines

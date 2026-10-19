@@ -26,7 +26,8 @@
 #include "GDom.h"
 #include <cmath>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GContextLayer;
 class GContextNeuralNet;
@@ -389,7 +390,7 @@ public:
 	std::string name() const override { return "GBlockScaledTanh"; }
 	GBlockScaledTanh* clone() const override { return new GBlockScaledTanh(*this); }
 	double eval(double x) const override { return std::tanh(x * SCALE_IN) * SCALE_OUT; }
-	double derivative(double x, double f_x) const override { return SCALE_IN/SCALE_OUT*(SCALE_OUT-f_x)*(SCALE_OUT+f_x); }
+	double derivative(double x, double f_x) const override { return SCALE_IN / SCALE_OUT * (SCALE_OUT - f_x) * (SCALE_OUT + f_x); }
 	double inverse(double y) const override { return 0.5 / SCALE_IN * std::log(-(y / SCALE_OUT + 1) / (y / SCALE_OUT - 1)); }
 };
 
@@ -720,7 +721,10 @@ public:
 class GBlockRepeater : public GBlockWeightless
 {
 public:
-	GBlockRepeater(size_t in, size_t out) : GBlockWeightless(in, out) { if(in > out) throw Ex("Expected more outputs than inputs"); }
+	GBlockRepeater(size_t in, size_t out) : GBlockWeightless(in, out)
+	{
+		if(in > out) throw Ex("Expected more outputs than inputs");
+	}
 	GBlockRepeater(const GBlockRepeater& that) : GBlockWeightless(that) {}
 	GBlockRepeater(const GDomNode* pNode) : GBlockWeightless(pNode) {}
 	~GBlockRepeater() override {}
@@ -2061,7 +2065,7 @@ public:
 /// The user must add at least one GBlock to each GLayer.
 class GNeuralNet : public GBlock
 {
-friend class GNeuralNetOptimizer;
+	friend class GNeuralNetOptimizer;
 protected:
 	size_t m_weightCount;
 	size_t m_gradCount;
@@ -2100,16 +2104,56 @@ public:
 
 	/// Adds a block as a new layer to this neural network.
 	GBlock* add(GBlock* pBlock);
-	void add(GBlock* a, GBlock* b) { add(a); add(b); }
-	void add(GBlock* a, GBlock* b, GBlock* c) { add(a); add(b, c); }
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d) { add(a); add(b, c, d); }
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e) { add(a); add(b, c, d, e); }
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f) { add(a); add(b, c, d, e, f); }
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g) { add(a); add(b, c, d, e, f, g); }
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h) { add(a); add(b, c, d, e, f, g, h); }
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h, GBlock* i) { add(a); add(b, c, d, e, f, g, h, i); }
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h, GBlock* i, GBlock* j) { add(a); add(b, c, d, e, f, g, h, i, j); }
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h, GBlock* i, GBlock* j, GBlock* k) { add(a); add(b, c, d, e, f, g, h, i, j, k); }
+	void add(GBlock* a, GBlock* b)
+	{
+		add(a);
+		add(b);
+	}
+	void add(GBlock* a, GBlock* b, GBlock* c)
+	{
+		add(a);
+		add(b, c);
+	}
+	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d)
+	{
+		add(a);
+		add(b, c, d);
+	}
+	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e)
+	{
+		add(a);
+		add(b, c, d, e);
+	}
+	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f)
+	{
+		add(a);
+		add(b, c, d, e, f);
+	}
+	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g)
+	{
+		add(a);
+		add(b, c, d, e, f, g);
+	}
+	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h)
+	{
+		add(a);
+		add(b, c, d, e, f, g, h);
+	}
+	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h, GBlock* i)
+	{
+		add(a);
+		add(b, c, d, e, f, g, h, i);
+	}
+	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h, GBlock* i, GBlock* j)
+	{
+		add(a);
+		add(b, c, d, e, f, g, h, i, j);
+	}
+	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h, GBlock* i, GBlock* j, GBlock* k)
+	{
+		add(a);
+		add(b, c, d, e, f, g, h, i, j, k);
+	}
 
 	/// Attaches this neural network to the relevant buffers for it to operate on.
 	void bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInBlame, GVec* pWeights, GVec* pGradient) override;
@@ -2117,7 +2161,7 @@ public:
 	/// Concatenates a block to the last (output-most) layer in this neural network.
 	/// (inPos specifies the starting position of the inputs into this block.)
 	GBlock* concat(GBlock* pBlock, size_t inPos);
-/*
+	/*
 	/// Inserts a block into a new layer at the specified position.
 	/// Requires the current weights and returns a new weight vector (which may be the
 	/// same vector if pBlock has no weights). New weights will be initialized to identity for a linear layer.
@@ -2290,8 +2334,8 @@ public:
 	/// Lazily creates an optimizer for the neural net that this class wraps, and returns a reference to it.
 	GNeuralNetOptimizer& optimizer();
 
-	void trainIncremental(const GVec &in, const GVec &out) override;
-	void trainSparse(GSparseMatrix &features, GMatrix &labels) override;
+	void trainIncremental(const GVec& in, const GVec& out) override;
+	void trainSparse(GSparseMatrix& features, GMatrix& labels) override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();

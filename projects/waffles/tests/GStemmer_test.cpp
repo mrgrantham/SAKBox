@@ -18,12 +18,11 @@ std::string stemOf(GStemmer &stemmer, const std::string &word) {
 TEST(StemmerTest, DocumentedExamples) {
   GStemmer stemmer;
   const char *pairs[][2] = {
-      {"cats", "cat"},       {"dogs", "dog"},         {"fries", "fri"},
-      {"fishes", "fish"},    {"pies", "pi"},          {"lovingly", "lovingli"},
-      {"candy", "candi"},    {"babies", "babi"},      {"bus", "bu"},
-      {"busses", "buss"},    {"women", "women"},      {"hasty", "hasti"},
-      {"hastily", "hastili"}, {"fly", "fly"},         {"kisses", "kiss"},
-      {"goes", "goe"},       {"brought", "brought"},
+      {"cats", "cat"},        {"dogs", "dog"},          {"fries", "fri"},   {"fishes", "fish"},
+      {"pies", "pi"},         {"lovingly", "lovingli"}, {"candy", "candi"}, {"babies", "babi"},
+      {"bus", "bu"},          {"busses", "buss"},       {"women", "women"}, {"hasty", "hasti"},
+      {"hastily", "hastili"}, {"fly", "fly"},           {"kisses", "kiss"}, {"goes", "goe"},
+      {"brought", "brought"},
   };
   for (auto &p : pairs)
     EXPECT_EQ(stemOf(stemmer, p[0]), p[1]) << p[0];

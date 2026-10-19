@@ -33,7 +33,8 @@
 
 using std::cout;
 
-namespace GClasses {
+namespace GClasses
+{
 
 GSparseMatrix::GSparseMatrix(size_t rowCount, size_t colCount, double def_Value)
 : m_cols(colCount), m_defaultValue(def_Value)
@@ -843,7 +844,7 @@ void GSparseMatrix::resize(size_t rows, size_t cols)
 {
 	clear();
 	m_cols = cols;
-	m_rows.resize(rows);	
+	m_rows.resize(rows);
 }
 
 bool GSparseMatrix_testHelper(GSparseMatrix& sm)

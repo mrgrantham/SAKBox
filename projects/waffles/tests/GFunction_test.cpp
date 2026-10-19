@@ -3,8 +3,8 @@
 
 #include <WClasses/GFunction.h>
 
-#include <vector>
 #include <stdexcept>
+#include <vector>
 
 using namespace GClasses;
 

@@ -12,14 +12,14 @@
 #include <WClasses/GError.h>
 #include "Paint.h"
 #ifdef WINDOWS
-#	include <direct.h>
+#include <direct.h>
 #endif
 #include <exception>
 #include <iostream>
 
 using std::cerr;
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef WINDOWS
 	if(_chdir("../../../bin/demos/images") != 0)

@@ -23,12 +23,13 @@
 #include <stdio.h>
 #include "GError.h"
 #ifndef WINDOWS
-#	include <stdint.h>
+#include <stdint.h>
 #endif
 #include <vector>
 #include <string.h>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GQueue;
 class HashTableNode;
@@ -37,7 +38,7 @@ struct HashBucket;
 /// The base class of hash tables
 class GHashTableBase
 {
-friend class GHashTableEnumerator;
+	friend class GHashTableEnumerator;
 protected:
 	struct HashBucket* m_pBuckets;
 	struct HashBucket* m_pFirstEmpty;
@@ -119,7 +120,7 @@ class GHashTable : public GHashTableBase
 {
 public:
 	GHashTable(size_t nInitialBucketCount)
-		: GHashTableBase(nInitialBucketCount)
+	: GHashTableBase(nInitialBucketCount)
 	{
 	}
 
@@ -175,7 +176,7 @@ protected:
 
 public:
 	GConstStringHashTable(size_t nInitialBucketCount, bool bCaseSensitive)
-		: GHashTableBase(nInitialBucketCount)
+	: GHashTableBase(nInitialBucketCount)
 	{
 		m_bCaseSensitive = bCaseSensitive;
 	}
@@ -211,9 +212,9 @@ public:
 	bool areKeysEqual(const char* pKey1, const char* pKey2) override
 	{
 		if(m_bCaseSensitive)
-			return(strcmp(pKey1, pKey2) == 0);
+			return (strcmp(pKey1, pKey2) == 0);
 		else
-			return(_stricmp(pKey1, pKey2) == 0);
+			return (_stricmp(pKey1, pKey2) == 0);
 	}
 
 	/// Adds a key and value pair to the hash table.  The key should be a constant
@@ -226,7 +227,7 @@ public:
 	}
 
 	/// Gets the value for the specified key
-        template<class T>
+	template<class T>
 	bool get(const char* pKey, T** ppOutValue)
 	{
 		return _Get(pKey, ppOutValue);
@@ -254,7 +255,7 @@ protected:
 
 public:
 	GConstStringToIndexHashTable(size_t nInitialBucketCount, bool bCaseSensitive)
-		: GHashTableBase(nInitialBucketCount)
+	: GHashTableBase(nInitialBucketCount)
 	{
 		m_bCaseSensitive = bCaseSensitive;
 	}
@@ -290,9 +291,9 @@ public:
 	bool areKeysEqual(const char* pKey1, const char* pKey2) override
 	{
 		if(m_bCaseSensitive)
-			return(strcmp(pKey1, pKey2) == 0);
+			return (strcmp(pKey1, pKey2) == 0);
 		else
-			return(_stricmp(pKey1, pKey2) == 0);
+			return (_stricmp(pKey1, pKey2) == 0);
 	}
 
 	/// Adds a key and value pair to the hash table.  The key should be a constant

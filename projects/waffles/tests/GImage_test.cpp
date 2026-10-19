@@ -3,14 +3,14 @@
 
 #include <WClasses/GImage.h>
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <string>
 #include <cstdlib>
 #include <fstream>
-#include <stdexcept>
 #include <memory>
-#include <cmath>
+#include <stdexcept>
+#include <string>
 
 using namespace GClasses;
 

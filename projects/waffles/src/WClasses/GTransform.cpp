@@ -36,7 +36,8 @@
 #include <cmath>
 #include <memory>
 
-namespace GClasses {
+namespace GClasses
+{
 
 using std::string;
 using std::vector;
@@ -168,13 +169,33 @@ void GIncrementalTransform::test()
 	valCounts.push_back(0);
 	GMatrix m(valCounts);
 	m.newRows(2);
-	m[0][0] = 2.4; m[0][1] = 0; m[0][2] = 0; m[0][3] = 2; m[0][4] = 8.2;
-	m[1][0] = 0.0; m[1][1] = 0; m[1][2] = 1; m[1][3] = 0; m[1][4] = 2.2;
+	m[0][0] = 2.4;
+	m[0][1] = 0;
+	m[0][2] = 0;
+	m[0][3] = 2;
+	m[0][4] = 8.2;
+	m[1][0] = 0.0;
+	m[1][1] = 0;
+	m[1][2] = 1;
+	m[1][3] = 0;
+	m[1][4] = 2.2;
 
 	// Make an expected output matrix
 	GMatrix e(2, 7);
-	e[0][0] = 1; e[0][1] = 0; e[0][2] = 0; e[0][3] = 0; e[0][4] = 0; e[0][5] = 1; e[0][6] = 1;
-	e[1][0] = 0; e[1][1] = 0; e[1][2] = 1; e[1][3] = 1; e[1][4] = 0; e[1][5] = 0; e[1][6] = 0;
+	e[0][0] = 1;
+	e[0][1] = 0;
+	e[0][2] = 0;
+	e[0][3] = 0;
+	e[0][4] = 0;
+	e[0][5] = 1;
+	e[0][6] = 1;
+	e[1][0] = 0;
+	e[1][1] = 0;
+	e[1][2] = 1;
+	e[1][3] = 1;
+	e[1][4] = 0;
+	e[1][5] = 0;
+	e[1][6] = 0;
 
 	// Transform the input matrix and check it
 	GIncrementalTransformChainer trans(new GNormalize(), new GNominalToCat());
@@ -331,7 +352,7 @@ GIncrementalTransform* GDataPreprocessor::autoTrans(const GMatrix& data, bool al
 			throw Ex("Either nominal or continuous values must be allowed");
 		pTrans = GIncrementalTransformChainer::chain(new GDiscretize(), pTrans);
 	}
-	
+
 	// Train
 	if(pTrans)
 		pTrans->train(data);
@@ -526,7 +547,7 @@ void GPCA::transform(const GVec& in, GVec& out)
 void GPCA::untransform(const GVec& in, GVec& out)
 {
 	throw Ex("Sorry, not implemented yet");
-/* todo: need invert the basis matrix
+	/* todo: need invert the basis matrix
 	out.copy(m_pBasisVectors->row(0));
 	for(size_t i = 0; i < m_targetDims; i++)
 		out.addScaled(in[i], m_pBasisVectors->row(1 + i));
@@ -725,7 +746,7 @@ GAttributeSelector::GAttributeSelector(const GDomNode* pNode)
 	GDomNode* pRanksNode = pNode->get("ranks");
 	GDomListIterator it(pRanksNode);
 	m_ranks.reserve(it.remaining());
-	for( ; it.current(); it.advance())
+	for(; it.current(); it.advance())
 		m_ranks.push_back((size_t)it.currentInt());
 	if(m_ranks.size() + (size_t)m_labelDims != (size_t)before().size())
 		throw Ex("invalid attribute selector");
@@ -784,7 +805,7 @@ GRelation* GAttributeSelector::trainInner(const GMatrix& data)
 	std::unique_ptr<GMatrix> hLabels(pLabels);
 	vector<size_t> indexMap;
 	indexMap.reserve(curDims);
-for(size_t i = 0; i < curDims; i++)
+	for(size_t i = 0; i < curDims; i++)
 		indexMap.push_back(i);
 
 	// Produce a ranked attributed ordering by deselecting the weakest attribute each time
@@ -872,7 +893,7 @@ void GAttributeSelector::test()
 	{
 		GVec& vec = data.newRow();
 		vec.fillUniform(prng);
-		vec[20] = 0.2 * vec[3] * vec[3] * - 7.0 * vec[3] * vec[13] + vec[17];
+		vec[20] = 0.2 * vec[3] * vec[3] * -7.0 * vec[3] * vec[13] + vec[17];
 	}
 	GAttributeSelector as(1, 3);
 	as.train(data);

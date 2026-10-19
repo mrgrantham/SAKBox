@@ -193,7 +193,7 @@ void amplify(GArgReader& args)
 	GWaveIterator it(w);
 	size_t samples = it.remaining() * w.channels();
 	size_t clipped = 0;
-	for( ; it.remaining() > 0; it.advance())
+	for(; it.remaining() > 0; it.advance())
 	{
 		double* pSample = it.current();
 		for(unsigned short c = 0; c < w.channels(); c++)
@@ -275,7 +275,7 @@ void makeSine(GArgReader& args)
 	size_t samples = (size_t)(sampleRate * seconds);
 	GWave w;
 	unsigned char* pData = new unsigned char[samples * bitsPerSample];
-	w.setData(pData, bitsPerSample, (int)samples, 1/*channels*/, sampleRate);
+	w.setData(pData, bitsPerSample, (int)samples, 1 /*channels*/, sampleRate);
 	GWaveIterator it(w);
 	size_t i = 0;
 	size_t total = it.remaining();
@@ -315,7 +315,7 @@ void mix(GArgReader& args)
 	GWaveIterator it2(*pW2);
 	size_t samples = it1.remaining() * pW1->channels();
 	size_t clipped = 0;
-	for( ; it1.remaining() > 0; it1.advance())
+	for(; it1.remaining() > 0; it1.advance())
 	{
 		double* pSamp1 = it1.current();
 		if(it2.remaining() > 0)
@@ -598,7 +598,7 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 	cerr.flush();
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
 	GApp::enableFloatingPointExceptions();

@@ -22,7 +22,8 @@
 
 #include "GLearner.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GNaiveInstanceAttr;
 class GHeap;

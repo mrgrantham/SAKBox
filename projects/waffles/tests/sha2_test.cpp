@@ -44,15 +44,17 @@ TEST(Sha2Test, StandardDigests) {
   const std::string millionAs(1000000, 'a');
   EXPECT_EQ(sha(256, ""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
   EXPECT_EQ(sha(256, "abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
-  EXPECT_EQ(sha(256, millionAs), "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
+  EXPECT_EQ(sha(256, millionAs),
+            "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
   EXPECT_EQ(sha(384, "abc"), "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed"
                              "8086072ba1e7cc2358baeca134c825a7");
   EXPECT_EQ(sha(384, millionAs), "9d0e1809716474cb086e834e310a4a1ced149e9c00f248527972cec5704c2a5b"
                                  "07b8b3dc38ecc4ebae97ddd87f3d8985");
   EXPECT_EQ(sha(512, "abc"), "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a"
                              "2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f");
-  EXPECT_EQ(sha(512, millionAs), "e718483d0ce769644e2e42c7bc15b4638e1f98b13b2044285632a803afa973eb"
-                                 "de0ff244877ea60a4cb0432ce577c31beb009c5c2c49aa2e4eadb217ad8cc09b");
+  EXPECT_EQ(sha(512, millionAs),
+            "e718483d0ce769644e2e42c7bc15b4638e1f98b13b2044285632a803afa973eb"
+            "de0ff244877ea60a4cb0432ce577c31beb009c5c2c49aa2e4eadb217ad8cc09b");
 }
 
 // The byte count is two words; when the low word wraps, one is carried into

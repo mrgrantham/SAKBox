@@ -24,7 +24,8 @@
 #include "GError.h"
 #include <string>
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// This class is for deserializing blobs. It takes care of
 /// Endianness issues and protects against buffer overruns.

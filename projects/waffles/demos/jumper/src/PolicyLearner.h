@@ -3,9 +3,9 @@
 
 namespace GClasses
 {
-	class GRand;
-	class GNeuralNet;
-	class GVec;
+class GRand;
+class GNeuralNet;
+class GVec;
 }
 
 void Train();

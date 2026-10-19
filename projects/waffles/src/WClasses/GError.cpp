@@ -30,7 +30,7 @@
 #include <sstream>
 #include <utility>
 #ifndef WINDOWS
-#	include <execinfo.h>
+#include <execinfo.h>
 #endif
 #include "GString.h"
 
@@ -38,7 +38,8 @@ using std::exception;
 using std::string;
 using std::cerr;
 
-namespace GClasses {
+namespace GClasses
+{
 
 bool g_exceptionExpected = false;
 
@@ -89,29 +90,32 @@ GExpectException::~GExpectException()
 
 
 
-void TestEqual(char const*expected, char const*got, const std::string& desc){
-  TestEqual(std::string(expected), std::string(got), desc);
+void TestEqual(char const* expected, char const* got, const std::string& desc)
+{
+	TestEqual(std::string(expected), std::string(got), desc);
 }
 
-void TestEqual(char const* expected, char* got, const std::string& desc){
-  TestEqual(std::string(expected), std::string(got), desc);
+void TestEqual(char const* expected, char* got, const std::string& desc)
+{
+	TestEqual(std::string(expected), std::string(got), desc);
 }
 
-void TestEqual(char* expected, char* got, const std::string& desc){
-  TestEqual(std::string(expected), std::string(got), desc);
+void TestEqual(char* expected, char* got, const std::string& desc)
+{
+	TestEqual(std::string(expected), std::string(got), desc);
 }
 
-void TestContains(const std::string& expectedSubstring, const std::string& got,
-                  const std::string& descr){
+void TestContains(const std::string& expectedSubstring, const std::string& got, const std::string& descr)
+{
 	using std::endl;
-	if(got.find(expectedSubstring) == std::string::npos){
+	if(got.find(expectedSubstring) == std::string::npos)
+	{
 		std::cerr
-			<< endl
-			<< "Substring match failed: " << descr << endl
-			<< endl
-			<< "Expected substring: " << expectedSubstring << endl
-			<< "Got               : " << got << endl
-			;
+		  << endl
+		  << "Substring match failed: " << descr << endl
+		  << endl
+		  << "Expected substring: " << expectedSubstring << endl
+		  << "Got               : " << got << endl;
 		throw Ex("Substring match test failed: ", descr);
 	}
 }

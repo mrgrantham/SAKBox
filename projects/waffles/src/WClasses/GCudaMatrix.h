@@ -24,7 +24,8 @@
 #include <cstddef>
 #include "WClasses/GVec.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GMatrix;
 class GCudaMatrix;
@@ -115,7 +116,6 @@ public:
 
 	/// Adds the scaled outer product of two vectors to this vector.
 	void addOuterProduct(GCudaEngine& engine, const GCudaVector& upStreamInput, const GCudaVector& downStreamError, double learningRate);
-
 };
 
 
@@ -154,10 +154,10 @@ public:
 	void download(GMatrix& m) const;
 
 	/// Returns a pointer to the specified row
-	inline GCudaVector operator [](size_t index) { return GCudaVector(*this, index, m_cols); }
+	inline GCudaVector operator[](size_t index) { return GCudaVector(*this, index, m_cols); }
 
 	/// Returns a const pointer to the specified row
-	inline const GCudaVector operator [](size_t index) const { return GCudaVector(*(GCudaMatrix*)this, index, m_cols); }
+	inline const GCudaVector operator[](size_t index) const { return GCudaVector(*(GCudaMatrix*)this, index, m_cols); }
 
 	/// Adds that multipled by thatScalar to this.
 	void add(GCudaEngine& engine, GCudaMatrix& that, double thatScalar);

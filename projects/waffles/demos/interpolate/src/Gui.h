@@ -27,12 +27,12 @@ class ControllerBase;
 #include <SDL/SDL.h>
 
 
-inline Uint32* getPixMem32(SDL_Surface *surface, int x, int y)
+inline Uint32* getPixMem32(SDL_Surface* surface, int x, int y)
 {
 	return (Uint32*)((Uint8*)surface->pixels + y * surface->pitch + (x << 2));
 }
 
-inline Uint16* getPixMem16(SDL_Surface *pScreen, int x, int y)
+inline Uint16* getPixMem16(SDL_Surface* pScreen, int x, int y)
 {
 	return (Uint16*)pScreen->pixels + y * pScreen->pitch / 2 + x;
 }
@@ -64,7 +64,7 @@ protected:
 	static void stretchClipAndBlitImage(SDL_Surface* pScreen, GClasses::GRect* pDestRect, GClasses::GRect* pClipRect, GClasses::GImage* pImage);
 
 	virtual void draw(SDL_Surface* pScreen) = 0;
-	void drawDot(SDL_Surface *pScreen, int x, int y, unsigned int col, int nSize);
+	void drawDot(SDL_Surface* pScreen, int x, int y, unsigned int col, int nSize);
 	SDL_Surface* makeScreen(int x, int y);
 };
 

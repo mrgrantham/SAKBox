@@ -29,18 +29,18 @@
 #include <iostream>
 #include <queue>
 #ifdef WINDOWS
-#	include "GWindows.h"
-#	include <Ws2tcpip.h>
+#include "GWindows.h"
+#include <Ws2tcpip.h>
 #else
-#	include <time.h>
-#	include <string.h>
-#	include <sys/socket.h>
-#	include <arpa/inet.h>
-#	include <netdb.h>
-#	include <stdlib.h>
-#	include <sys/ioctl.h>
-#	include <errno.h>
-#	define SOCKET_ERROR -1
+#include <time.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
+#include <errno.h>
+#define SOCKET_ERROR -1
 #endif
 
 using std::cerr;
@@ -53,18 +53,16 @@ typedef struct sockaddr SOCKADDR;
 typedef struct sockaddr_in SOCKADDR_IN;
 #endif
 
-namespace GClasses {
+namespace GClasses
+{
 
 
 #ifdef WINDOWS
 string winstrerror(int err)
 {
 	char buf[1024];
-	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS |
-		FORMAT_MESSAGE_MAX_WIDTH_MASK, NULL, err,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPSTR)buf, 1024, NULL);
-    return string(buf);
+	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK, NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)buf, 1024, NULL);
+	return string(buf);
 }
 #endif
 
@@ -119,7 +117,7 @@ size_t GSocket_bytesReady(SOCKET s)
 
 void GSocket_closeSocket(SOCKET s)
 {
-	shutdown(s, 2/*SHUT_RDWR*/);
+	shutdown(s, 2 /*SHUT_RDWR*/);
 #ifdef WINDOWS
 	closesocket(s);
 #else
@@ -193,11 +191,10 @@ void GSocket_init()
 		throw Ex("Failed to find a usable WinSock DLL");
 
 	// Confirm that the WinSock DLL supports at least 2.2.
-	if ( LOBYTE( wsaData.wVersion ) != 1 ||
-			HIBYTE( wsaData.wVersion ) != 1 )
+	if(LOBYTE(wsaData.wVersion) != 1 || HIBYTE(wsaData.wVersion) != 1)
 	{
-		int n1 = LOBYTE( wsaData.wVersion );
-		int n2 = HIBYTE( wsaData.wVersion );
+		int n1 = LOBYTE(wsaData.wVersion);
+		int n2 = HIBYTE(wsaData.wVersion);
 		WSACleanup();
 		throw Ex("Found a Winsock DLL, but it only supports an older version. It needs to support version 2.2");
 	}
@@ -1036,7 +1033,7 @@ void GPackageServer_serial_test()
 				char* pB = buf;
 				for(size_t i = 0; i < len; i++)
 					*(pB++) = (char)randData.next();
-//cout << "Client " << to_str(turn) << " sent seed=" << to_str(seed) << ", len=" << len << ", data=" << to_str((int)buf[0]) << to_str((int)buf[1]) << to_str((int)buf[2]) << "\n"; cout.flush();
+				//cout << "Client " << to_str(turn) << " sent seed=" << to_str(seed) << ", len=" << len << ", data=" << to_str((int)buf[0]) << to_str((int)buf[1]) << to_str((int)buf[2]) << "\n"; cout.flush();
 				clients[turn].send(buf, len);
 				sends++;
 			}
@@ -1061,7 +1058,7 @@ void GPackageServer_serial_test()
 				q[turn].pop();
 				randData.setSeed(seed);
 				char* pB = pPackage;
-//cout << "Client " << to_str(turn) << " received seed=" << to_str(seed) << ", len=" << len << ", data=" << to_str((int)pB[0]) << to_str((int)pB[1]) << to_str((int)pB[2]) << "\n"; cout.flush();
+				//cout << "Client " << to_str(turn) << " received seed=" << to_str(seed) << ", len=" << len << ", data=" << to_str((int)pB[0]) << to_str((int)pB[1]) << to_str((int)pB[2]) << "\n"; cout.flush();
 				for(size_t i = 0; i < len; i++)
 				{
 					if(*(pB++) != (char)randData.next())
@@ -1079,7 +1076,7 @@ void GPackageServer_serial_test()
 			char* pPackage = server.receive(&len, &pConn);
 			if(pPackage)
 			{
-//cout << "Server bounced " << to_str((int)pPackage[0]) << to_str((int)pPackage[1]) << to_str((int)pPackage[2]) << "\n"; cout.flush();
+				//cout << "Server bounced " << to_str((int)pPackage[0]) << to_str((int)pPackage[1]) << to_str((int)pPackage[2]) << "\n"; cout.flush();
 				server.send(pPackage, len, pConn);
 				bounces++;
 			}

@@ -8,9 +8,9 @@
 
 #include "Paint.h"
 #ifdef WINDOWS
-#	include <windows.h>
+#include <windows.h>
 #else
-#	include <unistd.h>
+#include <unistd.h>
 #endif
 #include <WClasses/GBitTable.h>
 #include <WClasses/GTime.h>
@@ -223,7 +223,7 @@ public:
 			m_pRegions = pNewRegionList;
 		}
 
-/*
+		/*
 GImage colorRegion;
 colorRegion.CopyImage(m_pRegions->GetRegionMask());
 colorRegion.ColorizeRegionMap();
@@ -248,7 +248,7 @@ colorRegion.SavePNGFile("/home/mike/regions.png");
 		unsigned int nRegion;
 		for(y = 0; y < (int)m_pSelection->height(); y++)
 		{
-			for(x = 0;  x < (int)m_pSelection->width(); x++)
+			for(x = 0; x < (int)m_pSelection->width(); x++)
 			{
 				nRegion = pRegionMask->pixel(x, y);
 				if(pGC->isSource(nRegion))
@@ -360,7 +360,7 @@ colorRegion.SavePNGFile("/home/mike/regions.png");
 
 class PaintDialog : public GWidgetDialog
 {
-friend class PaintController;
+	friend class PaintController;
 protected:
 	GImage* m_pImage;
 	GImage* m_pSelection;
@@ -420,7 +420,7 @@ public:
 	{
 		// This is just a cosmetic thing so that the edges of an old
 		// larger image don't clutter up the edges around the new smaller image
-//		m_pCanvas->GetOutImage()->Clear(PAINT_AREA_BACKGROUND_COLOR);
+		//		m_pCanvas->GetOutImage()->Clear(PAINT_AREA_BACKGROUND_COLOR);
 		m_pHorizScrollBar->setModelSize((int)(m_pCanvas->zoom() * m_pImage->width()));
 		m_pVertScrollBar->setModelSize((int)(m_pCanvas->zoom() * m_pImage->height()));
 	}
@@ -490,7 +490,7 @@ protected:
 
 public:
 	TabDialog(PaintController* pController, int w)
-	 : GWidgetDialog(w, TOOL_AREA_SIZE, PAINT_AREA_BACKGROUND_COLOR)
+	: GWidgetDialog(w, TOOL_AREA_SIZE, PAINT_AREA_BACKGROUND_COLOR)
 	{
 		m_pController = pController;
 	}
@@ -510,7 +510,7 @@ protected:
 
 public:
 	TabOpen(PaintController* pController, int w)
-	 : TabDialog(pController, w)
+	: TabDialog(pController, w)
 	{
 		m_pOpen = new GWidgetTextButton(this, 10, 10, 100, 20, "Open");
 		m_pSave = new GWidgetTextButton(this, 10, 40, 100, 20, "Save");
@@ -573,7 +573,7 @@ protected:
 
 public:
 	TabTools(PaintController* pController, int w)
-	 : TabDialog(pController, w)
+	: TabDialog(pController, w)
 	{
 		m_pZoomInButton = new GWidgetTextButton(this, 5, 30, 80, 20, "Zoom In");
 		m_pZoomOutButton = new GWidgetTextButton(this, 5, 54, 80, 20, "Zoom Out");
@@ -687,7 +687,7 @@ public:
 			GImage tmp;
 			tmp.addBorder(pImage, 0xffffffff, 0xff000000);
 			tmp.swapData(pImage);
-//pImage->SavePNGFile("foo.png");
+			//pImage->SavePNGFile("foo.png");
 		}
 		else if(pButton == m_pCutButton)
 		{
@@ -964,7 +964,7 @@ public:
 
 class PaintView : public ViewBase
 {
-friend class PaintController;
+	friend class PaintController;
 protected:
 	GWidgetDialog** m_pTabDialogs;
 	int m_nSelectedTab;
@@ -990,7 +990,7 @@ public:
 	void SetCurrentTool(PaintTool* pTool);
 
 protected:
-	virtual void draw(SDL_Surface *pScreen);
+	virtual void draw(SDL_Surface* pScreen);
 };
 
 PaintView::PaintView(PaintController* pController, GImage* pImage, GImage* pSelection)
@@ -1013,7 +1013,7 @@ PaintView::~PaintView()
 	delete(m_pMainDialog);
 }
 
-/*virtual*/ void PaintView::draw(SDL_Surface *pScreen)
+/*virtual*/ void PaintView::draw(SDL_Surface* pScreen)
 {
 	// Draw the tool tab
 	GImage* pImage = m_pTabDialogs[m_nSelectedTab]->image();

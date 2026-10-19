@@ -24,7 +24,8 @@
 #include "GError.h"
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 typedef double G3DReal;
 class G3DMatrix;
@@ -59,14 +60,14 @@ public:
 	G3DVector& operator=(const G3DVector& that) = default;
 
 	/// \brief Returns a reference to the specified element.
-	inline G3DReal& operator [](size_t index)
+	inline G3DReal& operator[](size_t index)
 	{
 		GAssert(index < 3);
 		return m_vals[index];
 	}
 
 	/// \brief Returns a const reference to the specified element
-	inline const G3DReal& operator [](size_t index) const
+	inline const G3DReal& operator[](size_t index) const
 	{
 		GAssert(index < 3);
 		return m_vals[index];
@@ -120,9 +121,7 @@ public:
 	/// returns the squared distance between this and pThat
 	inline G3DReal squaredDist(const G3DVector& that) const
 	{
-		return (that[0] - m_vals[0]) * (that[0] - m_vals[0]) +
-			(that[1] - m_vals[1]) * (that[1] - m_vals[1]) +
-			(that[2] - m_vals[2]) * (that[2] - m_vals[2]);
+		return (that[0] - m_vals[0]) * (that[0] - m_vals[0]) + (that[1] - m_vals[1]) * (that[1] - m_vals[1]) + (that[2] - m_vals[2]) * (that[2] - m_vals[2]);
 	}
 
 	/// returns the squared magnitude of this vector
@@ -176,9 +175,7 @@ public:
 	/// returns the dot product of this and that
 	inline G3DReal dotProduct(const G3DVector& that) const
 	{
-		return m_vals[0] * that[0] +
-			m_vals[1] * that[1] +
-			m_vals[2] * that[2];
+		return m_vals[0] * that[0] + m_vals[1] * that[1] + m_vals[2] * that[2];
 	}
 
 	/// this = pA x pB
@@ -274,9 +271,7 @@ public:
 	/// Computes the dot-product of pVec with the specified column of this matrix
 	inline double dotColumn(const G3DVector* pVec, int column) const
 	{
-		return pVec->m_vals[0] * m_rows[0].m_vals[column] +
-				pVec->m_vals[1] * m_rows[1].m_vals[column] +
-				pVec->m_vals[2] * m_rows[2].m_vals[column];
+		return pVec->m_vals[0] * m_rows[0].m_vals[column] + pVec->m_vals[1] * m_rows[1].m_vals[column] + pVec->m_vals[2] * m_rows[2].m_vals[column];
 	}
 
 	/// this = pA x pB
@@ -321,12 +316,12 @@ public:
 	/// width and height specify the size of the image that this camera will produce
 	GCamera(int width, int height)
 	: m_lookFromPoint(0, 0, 10),
-	m_viewSideVector(1, 0, 0),
-	m_viewUpVector(0, 1, 0),
-	m_lookDirection(0, 0, -1),
-	m_halfViewHeight(1.0),
-	m_nWidth(width),
-	m_nHeight(height)
+	  m_viewSideVector(1, 0, 0),
+	  m_viewUpVector(0, 1, 0),
+	  m_lookDirection(0, 0, -1),
+	  m_halfViewHeight(1.0),
+	  m_nWidth(width),
+	  m_nHeight(height)
 	{
 	}
 
@@ -341,7 +336,11 @@ public:
 	virtual GDomNode* serialize(GDom* pDoc) const;
 
 	/// Specifies the size of the 2-D image this camera will produce
-	void setImageSize(int width, int height) { m_nWidth = width; m_nHeight = height; }
+	void setImageSize(int width, int height)
+	{
+		m_nWidth = width;
+		m_nHeight = height;
+	}
 
 	/// Returns the width of the 2-D image this camera will produce
 	inline int imageWidth() { return m_nWidth; }

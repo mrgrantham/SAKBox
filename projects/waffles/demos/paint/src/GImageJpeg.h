@@ -4,10 +4,11 @@
 #include <WClasses/GImage.h>
 #include <stdlib.h>
 
-namespace GClasses {
+namespace GClasses
+{
 
 void loadJpeg(GImage* pImage, const char* filename);
-void saveJpeg(GImage* pImage, const char* filename);  //DOEST WORK. LEE WORK ON IT LATER
+void saveJpeg(GImage* pImage, const char* filename); //DOEST WORK. LEE WORK ON IT LATER
 
 }
 

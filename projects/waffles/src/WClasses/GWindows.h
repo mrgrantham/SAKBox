@@ -20,7 +20,8 @@
 #ifndef __GWINDOWS_H__
 #define __GWINDOWS_H__
 
-namespace GClasses {
+namespace GClasses
+{
 
 #ifdef WINDOWS
 
@@ -45,22 +46,22 @@ public:
 	/// This displays a little dialog to get an integer from the user.
 	/// The GInput parameter must already be initialized and have keyboard
 	/// enabled.
-//	static int GetInt(GWindow* pWindow, GInput* pInput, char* szMsg);
+	//	static int GetInt(GWindow* pWindow, GInput* pInput, char* szMsg);
 
 	/// This destroys a file completely so it can't be recovered
-//	static bool shredFile(const char* szFilename);
+	//	static bool shredFile(const char* szFilename);
 
 	/// This first checks to see if a directory exists and
 	/// makes it if it doesn't.  This is better than most
 	/// directory making commands because it will make as
 	/// many nested directories as necessary without complaining.
-//	static void MakeDir(const char* szPath);
+	//	static void MakeDir(const char* szPath);
 
 	/// This sets the value *addr to true and returns whatever value
 	/// it was before it was set to true.  It both tests and sets
 	/// atomically so this function can beused to write syncronization
 	/// primitives.
-//	static bool TestAndSet(bool* addr);
+	//	static bool TestAndSet(bool* addr);
 };
 
 #endif // WINDOWS

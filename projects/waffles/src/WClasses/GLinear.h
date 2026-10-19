@@ -22,7 +22,8 @@
 #include "GLearner.h"
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GPCA;
 

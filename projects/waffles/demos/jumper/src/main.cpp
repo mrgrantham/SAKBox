@@ -15,7 +15,7 @@ using namespace GClasses;
 using std::cerr;
 using std::cout;
 
-void DoIt(int argc,char* argv[])
+void DoIt(int argc, char* argv[])
 {
 	if(argc < 2)
 	{
@@ -39,7 +39,7 @@ void DoIt(int argc,char* argv[])
 		cout << "press ctrl-c to stop. Then, run\n\n";
 
 		cout << "	jumper [policy_file]\n\n";
-		
+
 		cout << "to see it jump with one of the policies. The longer you let\n";
 		cout << "it train, the better they should get. You might want to\n";
 		cout << "open another shell, so you can let this one train while you\n";
@@ -76,7 +76,7 @@ void DoIt(int argc,char* argv[])
 	}
 }
 
-int main(int argc,char* argv[])
+int main(int argc, char* argv[])
 {
 	int ret = 0;
 	try

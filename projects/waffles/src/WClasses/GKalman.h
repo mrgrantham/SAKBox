@@ -22,7 +22,8 @@
 #include <cstring>
 #include "GVec.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GMatrix;
 

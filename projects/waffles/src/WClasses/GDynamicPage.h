@@ -25,7 +25,8 @@
 #include <string>
 #include <map>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GConstStringHashTable;
 class GDynamicPageServer;
@@ -109,7 +110,6 @@ public:
 	// Add a 'cookie' field to pOutNode with this session's cookie.
 	// (This is needed because some browsers block cookies in AJAX requests.)
 	void addAjaxCookie(GDom& docOut, GDomNode* pOutNode);
-
 };
 
 

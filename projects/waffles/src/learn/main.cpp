@@ -22,7 +22,7 @@
 
 using namespace GClasses;
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
 	GApp::enableFloatingPointExceptions();
@@ -59,10 +59,10 @@ int main(int argc, char *argv[])
 				GLearnerLib::CrossValidate(args);
 			else if(args.if_pop("precisionrecall"))
 				GLearnerLib::PrecisionRecall(args);
- 			else if(args.if_pop("sterilize"))
- 				GLearnerLib::sterilize(args);
-//			else if(args.if_pop("trainrecurrent"))
-//				GLearnerLib::trainRecurrent(args);
+			else if(args.if_pop("sterilize"))
+				GLearnerLib::sterilize(args);
+			//			else if(args.if_pop("trainrecurrent"))
+			//				GLearnerLib::trainRecurrent(args);
 			else if(args.if_pop("regress"))
 				GLearnerLib::regress(args);
 			else if(args.if_pop("metadata"))

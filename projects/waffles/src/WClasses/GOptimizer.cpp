@@ -24,7 +24,8 @@
 #include <string.h>
 #include <math.h>
 
-namespace GClasses {
+namespace GClasses
+{
 
 using std::vector;
 
@@ -115,7 +116,7 @@ void GNeuralNetOptimizer::optimizeEpoch()
 #endif // GCUDA
 }
 
-void GNeuralNetOptimizer::optimizeBatch(const GMatrix &features, const GMatrix &labels, size_t start, size_t batchSize)
+void GNeuralNetOptimizer::optimizeBatch(const GMatrix& features, const GMatrix& labels, size_t start, size_t batchSize)
 {
 	GAssert(features.cols() == m_model.layer(0).inputs() && labels.cols() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
 	for(size_t i = 0; i < batchSize; ++i)
@@ -123,12 +124,12 @@ void GNeuralNetOptimizer::optimizeBatch(const GMatrix &features, const GMatrix &
 	descendGradient(m_learningRate / batchSize);
 }
 
-void GNeuralNetOptimizer::optimizeBatch(const GMatrix &features, const GMatrix &labels, size_t start)
+void GNeuralNetOptimizer::optimizeBatch(const GMatrix& features, const GMatrix& labels, size_t start)
 {
 	optimizeBatch(features, labels, start, m_batchSize);
 }
 
-void GNeuralNetOptimizer::optimizeBatch(const GMatrix &features, const GMatrix &labels, GRandomIndexIterator &ii, size_t batchSize)
+void GNeuralNetOptimizer::optimizeBatch(const GMatrix& features, const GMatrix& labels, GRandomIndexIterator& ii, size_t batchSize)
 {
 	GAssert(features.cols() == m_model.layer(0).inputs() && labels.cols() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
 	size_t j;
@@ -140,12 +141,12 @@ void GNeuralNetOptimizer::optimizeBatch(const GMatrix &features, const GMatrix &
 	descendGradient(m_learningRate / batchSize);
 }
 
-void GNeuralNetOptimizer::optimizeBatch(const GMatrix &features, const GMatrix &labels, GRandomIndexIterator &ii)
+void GNeuralNetOptimizer::optimizeBatch(const GMatrix& features, const GMatrix& labels, GRandomIndexIterator& ii)
 {
 	optimizeBatch(features, labels, ii, m_batchSize);
 }
 
-void GNeuralNetOptimizer::optimize(const GMatrix &features, const GMatrix &labels)
+void GNeuralNetOptimizer::optimize(const GMatrix& features, const GMatrix& labels)
 {
 	GAssert(features.cols() == m_model.layer(0).inputs() && labels.cols() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
 
@@ -159,7 +160,7 @@ void GNeuralNetOptimizer::optimize(const GMatrix &features, const GMatrix &label
 			optimizeBatch(features, labels, ii, m_batchSize);
 }
 
-void GNeuralNetOptimizer::optimizeWithValidation(const GMatrix &features, const GMatrix &labels, const GMatrix &validationFeat, const GMatrix &validationLab)
+void GNeuralNetOptimizer::optimizeWithValidation(const GMatrix& features, const GMatrix& labels, const GMatrix& validationFeat, const GMatrix& validationLab)
 {
 	size_t batchesPerEpoch = m_batchesPerEpoch;
 	if(m_batchesPerEpoch > features.rows())
@@ -191,7 +192,7 @@ void GNeuralNetOptimizer::optimizeWithValidation(const GMatrix &features, const 
 	}
 }
 
-void GNeuralNetOptimizer::optimizeWithValidation(const GMatrix &features, const GMatrix &labels, double validationPortion)
+void GNeuralNetOptimizer::optimizeWithValidation(const GMatrix& features, const GMatrix& labels, double validationPortion)
 {
 	size_t validationRows = (size_t)(validationPortion * features.rows());
 	size_t trainRows = features.rows() - validationRows;
@@ -368,7 +369,7 @@ void GRMSPropOptimizer::descendGradient(double learningRate)
 		m_meanSquare[i] += (1.0 - m_gamma) * m_gradient[i] * m_gradient[i];
 		m_gradient[i] /= sqrt(m_meanSquare[i]) + m_epsilon;
 	}
-	m_model.step( learningRate, 0.0);
+	m_model.step(learningRate, 0.0);
 }
 
 #ifdef GCUDA
@@ -544,37 +545,37 @@ double GParallelOptimizers::searchUntil(size_t nBurnInIterations, size_t nIterat
 class GAction
 {
 protected:
-        int m_nAction;
-        GAction* m_pPrev;
-        unsigned int m_nRefs;
+	int m_nAction;
+	GAction* m_pPrev;
+	unsigned int m_nRefs;
 
-        ~GAction()
-        {
-                if(m_pPrev)
-                        m_pPrev->Release(); // todo: this could overflow the stack with recursion
-        }
+	~GAction()
+	{
+		if(m_pPrev)
+			m_pPrev->Release(); // todo: this could overflow the stack with recursion
+	}
 public:
-        GAction(int nAction, GAction* pPrev)
-         : m_nAction(nAction), m_nRefs(0)
-        {
-                m_pPrev = pPrev;
-                if(pPrev)
-                        pPrev->AddRef();
-        }
+	GAction(int nAction, GAction* pPrev)
+	: m_nAction(nAction), m_nRefs(0)
+	{
+		m_pPrev = pPrev;
+		if(pPrev)
+			pPrev->AddRef();
+	}
 
-        void AddRef()
-        {
-                m_nRefs++;
-        }
+	void AddRef()
+	{
+		m_nRefs++;
+	}
 
-        void Release()
-        {
-                if(--m_nRefs == 0)
-                        delete(this);
-        }
+	void Release()
+	{
+		if(--m_nRefs == 0)
+			delete(this);
+	}
 
-        GAction* GetPrev() { return m_pPrev; }
-        int GetAction() { return m_nAction; }
+	GAction* GetPrev() { return m_pPrev; }
+	int GetAction() { return m_nAction; }
 };
 
 
@@ -590,58 +591,58 @@ public:
 
 GActionPath::GActionPath(GActionPathState* pState) : m_pLastAction(nullptr), m_nPathLen(0)
 {
-        m_pHeadState = pState;
+	m_pHeadState = pState;
 }
 
 GActionPath::~GActionPath()
 {
-        if(m_pLastAction)
-                m_pLastAction->Release();
-        delete(m_pHeadState);
+	if(m_pLastAction)
+		m_pLastAction->Release();
+	delete(m_pHeadState);
 }
 
 void GActionPath::doAction(size_t nAction)
 {
-        GAction* pPrevAction = m_pLastAction;
-        m_pLastAction = new GAction((int)nAction, pPrevAction);
-        m_pLastAction->AddRef(); // referenced by m_pLastAction
-        if(pPrevAction)
-                pPrevAction->Release(); // no longer referenced by m_pLastAction
-        m_nPathLen++;
-        m_pHeadState->performAction(nAction);
+	GAction* pPrevAction = m_pLastAction;
+	m_pLastAction = new GAction((int)nAction, pPrevAction);
+	m_pLastAction->AddRef(); // referenced by m_pLastAction
+	if(pPrevAction)
+		pPrevAction->Release(); // no longer referenced by m_pLastAction
+	m_nPathLen++;
+	m_pHeadState->performAction(nAction);
 }
 
 GActionPath* GActionPath::fork()
 {
-        GActionPath* pNewPath = new GActionPath(m_pHeadState->copy());
-        pNewPath->m_nPathLen = m_nPathLen;
-        pNewPath->m_pLastAction = m_pLastAction;
-        if(m_pLastAction)
-                m_pLastAction->AddRef();
-        return pNewPath;
+	GActionPath* pNewPath = new GActionPath(m_pHeadState->copy());
+	pNewPath->m_nPathLen = m_nPathLen;
+	pNewPath->m_pLastAction = m_pLastAction;
+	if(m_pLastAction)
+		m_pLastAction->AddRef();
+	return pNewPath;
 }
 
 void GActionPath::path(size_t nCount, size_t* pOutBuf)
 {
-        while(nCount > m_nPathLen)
-                pOutBuf[--nCount] = -1;
-        size_t i = m_nPathLen;
-        GAction* pAction = m_pLastAction;
-        while(i > nCount)
-        {
-                i--;
-                pAction = pAction->GetPrev();
-        }
-        while(i > 0)
-        {
-                pOutBuf[--i] = pAction->GetAction();
-                pAction = pAction->GetPrev();
-        }
+	while(nCount > m_nPathLen)
+		pOutBuf[--nCount] = -1;
+	size_t i = m_nPathLen;
+	GAction* pAction = m_pLastAction;
+	while(i > nCount)
+	{
+		i--;
+		pAction = pAction->GetPrev();
+	}
+	while(i > 0)
+	{
+		pOutBuf[--i] = pAction->GetAction();
+		pAction = pAction->GetPrev();
+	}
 }
 
 double GActionPath::critique()
 {
-        return m_pHeadState->critiquePath(m_nPathLen, m_pLastAction);
+	return m_pHeadState->critiquePath(m_nPathLen, m_pLastAction);
 }
 
 } // namespace GClasses

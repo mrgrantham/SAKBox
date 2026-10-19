@@ -24,7 +24,8 @@
 #include <vector>
 #include <iostream>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GMatrix;
 class GRand;
@@ -32,7 +33,7 @@ class GDomNode;
 class GDom;
 class GVec;
 
-typedef std::map<size_t,double> SparseVec;
+typedef std::map<size_t, double> SparseVec;
 
 /// This class stores a row-compressed sparse matrix. That is,
 /// each row consists of a map from a column-index to a value.
@@ -167,7 +168,7 @@ public:
 	void deleteLastRow();
 
 	/// Modifies this matrix such that it now has dimensions 'rows' x 'cols'.
-    void resize(size_t rows, size_t cols);
+	void resize(size_t rows, size_t cols);
 
 protected:
 	void singularValueDecompositionHelper(GSparseMatrix** ppU, double** ppDiag, GSparseMatrix** ppV, bool throwIfNoConverge, size_t maxIters);

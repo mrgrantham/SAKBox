@@ -62,9 +62,9 @@ protected:
 // This is a "seed" jumping policy that I made by hand. It's not very good,
 // but we'll use an evolutionary algorithm to refine it.
 //                        spine    lhip    lknee   rhip    rknee   lshldr   lelbow   rshldr   relbow    lankle  rankle
-const double g_squat[] = { 0.4,    -0.4,    0.4,   -0.4,    0.4,     0.4,     0.4,     0.4,     0.4,    -0.4,    -0.4 };
-const double g_jump[] =  { -0.4,    0.4,   -0.4,    0.4,   -0.4,    -0.4,    -0.4,    -0.4,    -0.4,     0.4,     0.4 };
-const double g_tuck[] =  { 0.4,    -0.4,    0.4,   -0.4,    0.4,    -0.4,    -0.4,    -0.4,    -0.4,     0.4,     0.4 };
+const double g_squat[] = {0.4, -0.4, 0.4, -0.4, 0.4, 0.4, 0.4, 0.4, 0.4, -0.4, -0.4};
+const double g_jump[] = {-0.4, 0.4, -0.4, 0.4, -0.4, -0.4, -0.4, -0.4, -0.4, 0.4, 0.4};
+const double g_tuck[] = {0.4, -0.4, 0.4, -0.4, 0.4, -0.4, -0.4, -0.4, -0.4, 0.4, 0.4};
 
 void manualPolicy(const GVec& pIn, GVec& pOut)
 {
@@ -113,7 +113,7 @@ void Train()
 	PolicyCritic critic(&nn, &prng, hintVec);
 	//GAssert(critic.Critique(hintVec) < -0.5, "bad critique");
 	//printf("HintVec Score: %lg\n", critic.Critique(hintVec));
-	GEvolutionaryOptimizer search(&critic, 15/*population*/, &prng, .93/*moreFitSurvivalProbability*/);
+	GEvolutionaryOptimizer search(&critic, 15 /*population*/, &prng, .93 /*moreFitSurvivalProbability*/);
 
 	printf("Evolving better policies...\n");
 	char szBuf[64];

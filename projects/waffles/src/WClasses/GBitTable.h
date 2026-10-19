@@ -22,7 +22,8 @@
 
 #include "GError.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// Represents a table of bits.
 class GBitTable
@@ -34,7 +35,7 @@ protected:
 public:
 	/// All bits are initialized to false
 	GBitTable(size_t bitCount);
-	
+
 	///Copy Constructor
 	GBitTable(const GBitTable& o);
 

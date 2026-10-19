@@ -7,11 +7,11 @@
 // -------------------------------------------------------------
 
 #ifdef WINDOWS
-#	include "png.h"
-#	include "zlib.h"
+#include "png.h"
+#include "zlib.h"
 #else
-#	include <png.h>
-#	include <zlib.h>
+#include <png.h>
+#include <zlib.h>
 #endif
 #include <WClasses/GError.h>
 #include <WClasses/GImage.h>
@@ -19,7 +19,8 @@
 #include <WClasses/GFile.h>
 #include <WClasses/GBits.h>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GPNGReader
 {
@@ -39,7 +40,7 @@ public:
 		{
 			m_pReadStruct = nullptr;
 			throw Ex("Failed to create read struct");
-			return;	
+			return;
 		}
 		m_pInfoStruct = png_create_info_struct(m_pReadStruct);
 		m_pEndInfoStruct = png_create_info_struct(m_pReadStruct);
@@ -69,7 +70,7 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 	// Check for the PNG signature
 	if(nDataSize < 8 || png_sig_cmp((png_bytep)pData, 0, 8) != 0)
 		throw Ex("not a png file");
-	
+
 	// Read all PNG data up until the image data chunk.
 	GPNGReader reader(pData);
 	png_set_read_fn(reader.m_pReadStruct, (png_voidp)&reader, (png_rw_ptr)readFunc);
@@ -84,7 +85,7 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 
 	// Set gamma correction
 	double dGamma;
-	if (png_get_gAMA(reader.m_pReadStruct, reader.m_pInfoStruct, &dGamma))
+	if(png_get_gAMA(reader.m_pReadStruct, reader.m_pInfoStruct, &dGamma))
 		png_set_gamma(reader.m_pReadStruct, 2.2, dGamma);
 	else
 		png_set_gamma(reader.m_pReadStruct, 2.2, 1.0 / 2.2); // 1.0 = viewing gamma, 2.2 = screen gamma
@@ -113,7 +114,7 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 	// Copy to the GImage
 	unsigned long nPixels = width * height;
 	unsigned int* pRGBQuads = pImage->pixels();
-	unsigned char *pBytes = pRawData;
+	unsigned char* pBytes = pRawData;
 	if(channels > 3)
 	{
 		GAssert(channels == 4); // unexpected number of channels
@@ -136,7 +137,7 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 	else
 	{
 		throw Ex("Sorry, loading ", to_str(channels), "-channel pngs not supported");
-/*		GAssert(channels == 1); // unexpected number of channels
+		/*		GAssert(channels == 1); // unexpected number of channels
 		for(i = 0; i < nPixels; i++)
 		{
 			*pRGBQuads = gARGB(0xff, pBytes[0], pBytes[0], pBytes[0]);
@@ -193,10 +194,7 @@ void savePng(GImage* pImage, FILE* pFile, bool bIncludeAlphaChannel)
 	// Write image stats and settings
 	unsigned long width = pImage->width();
 	unsigned long height = pImage->height();
-	png_set_IHDR(writer.m_pWriteStruct, writer.m_pInfoStruct,
-		width, height, 8,
-		bIncludeAlphaChannel ? PNG_COLOR_TYPE_RGB_ALPHA : PNG_COLOR_TYPE_RGB,
-		PNG_INTERLACE_NONE,	PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+	png_set_IHDR(writer.m_pWriteStruct, writer.m_pInfoStruct, width, height, 8, bIncludeAlphaChannel ? PNG_COLOR_TYPE_RGB_ALPHA : PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 	png_write_info(writer.m_pWriteStruct, writer.m_pInfoStruct);
 	png_set_packing(writer.m_pWriteStruct);
 

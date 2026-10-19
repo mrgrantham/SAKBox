@@ -62,7 +62,8 @@ TEST(SystemCallTest, RunsOneProgramNotAShellCommand) {
   const std::string marker = tmpDir() + "/system_call_marker";
   unlink(marker.c_str());
   // (true is run with the rest as its arguments, which it ignores)
-  const std::string command = "/usr/bin/true ; /usr/bin/touch " + marker + " && /usr/bin/touch " + marker;
+  const std::string command =
+      "/usr/bin/true ; /usr/bin/touch " + marker + " && /usr/bin/touch " + marker;
   EXPECT_EQ(GApp::systemCall(command.c_str(), true, false), 0);
   EXPECT_FALSE(exists(marker));
   EXPECT_EQ(GApp::systemCall("/bin/sh -c 'exit 3'", true, false), 3);
@@ -109,7 +110,8 @@ struct FakeOpener {
   FakeOpener() {
     mkdir(dir.c_str(), 0755);
     const std::string script = dir + "/" + kOpener;
-    std::ofstream(script) << "#!/bin/sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done >> '" << log << "'\n";
+    std::ofstream(script) << "#!/bin/sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done >> '"
+                          << log << "'\n";
     chmod(script.c_str(), 0755);
     unlink(log.c_str());
     setenv("PATH", dir.c_str(), 1);

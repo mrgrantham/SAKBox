@@ -32,7 +32,8 @@
 #include <deque>
 #include <math.h>
 
-namespace GClasses {
+namespace GClasses
+{
 
 using std::deque;
 

@@ -19,7 +19,8 @@
 #ifndef GIMAGEPNG_H
 #define GIMAGEPNG_H
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GImage;
 

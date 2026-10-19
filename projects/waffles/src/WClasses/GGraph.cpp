@@ -38,7 +38,8 @@ using namespace GClasses;
 using std::vector;
 using std::deque;
 
-namespace GClasses {
+namespace GClasses
+{
 struct GGraphCutNode
 {
 public:
@@ -50,7 +51,7 @@ public:
 
 
 	GGraphCutNode()
-		: m_pRoot(nullptr), m_pParent(nullptr), m_nSibling(INVALID_INDEX), m_nChild(INVALID_INDEX), m_pEdges(nullptr)
+	: m_pRoot(nullptr), m_pParent(nullptr), m_nSibling(INVALID_INDEX), m_nChild(INVALID_INDEX), m_pEdges(nullptr)
 	{
 	}
 
@@ -205,7 +206,7 @@ void GGraphCut::recycleTree(size_t nChild, size_t nParent)
 	pChild->m_pRoot = nullptr;
 	//GAssert(!pChild->IsAncestor(pParent)); // still linked
 
-/*
+	/*
 	// Attempt to find another suitable parent for the tree
 	struct GGraphCutEdge* pCandEdge;
 	struct GGraphCutNode* pCandidate;
@@ -430,7 +431,7 @@ bool GGraphCut::isSource(size_t nNode)
 	struct GGraphCutNode* pNode = &m_pNodes[nNode];
 	if(!pNode->GetRoot())
 		findAHome(nNode);
-	return(pNode->GetRoot() == m_pSource);
+	return (pNode->GetRoot() == m_pSource);
 }
 
 bool GGraphCut::doesBorderTheCut(size_t nNode)
@@ -965,13 +966,20 @@ void GBrandesBetweennessCentrality::test()
 	//  |  >2--3<  |
 	//  1_/      \_4
 	GBrandesBetweennessCentrality graph(6);
-	graph.addDirectedEdge(0, 1); graph.addDirectedEdge(1, 0);
-	graph.addDirectedEdge(1, 2); graph.addDirectedEdge(2, 1);
-	graph.addDirectedEdge(0, 2); graph.addDirectedEdge(2, 0);
-	graph.addDirectedEdge(2, 3); graph.addDirectedEdge(3, 2);
-	graph.addDirectedEdge(3, 4); graph.addDirectedEdge(4, 3);
-	graph.addDirectedEdge(4, 5); graph.addDirectedEdge(5, 4);
-	graph.addDirectedEdge(3, 5); graph.addDirectedEdge(5, 3);
+	graph.addDirectedEdge(0, 1);
+	graph.addDirectedEdge(1, 0);
+	graph.addDirectedEdge(1, 2);
+	graph.addDirectedEdge(2, 1);
+	graph.addDirectedEdge(0, 2);
+	graph.addDirectedEdge(2, 0);
+	graph.addDirectedEdge(2, 3);
+	graph.addDirectedEdge(3, 2);
+	graph.addDirectedEdge(3, 4);
+	graph.addDirectedEdge(4, 3);
+	graph.addDirectedEdge(4, 5);
+	graph.addDirectedEdge(5, 4);
+	graph.addDirectedEdge(3, 5);
+	graph.addDirectedEdge(5, 3);
 	graph.compute();
 	if(std::abs(graph.edgeBetweennessByNeighbor(0, 0) - 1) > 1e-5)
 		throw Ex("failed");

@@ -24,7 +24,8 @@
 #include <vector>
 #include <map>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GMatrix;
 class GRelation;
@@ -111,20 +112,36 @@ public:
 	/// First, it computes the distance between each point and its previous and next points.
 	/// Then, it finds all neighbors within a radius of the maximum of those two distances.
 	GNeighborGraph(bool own, GNeighborFinderGeneralizing* pNF);
-	
+
 	~GNeighborGraph() override;
 
 	/// See the comment for GNeighborFinder::findNearest
-	size_t findNearest(size_t k, size_t pointIndex) override { m_focus = pointIndex; return m_neighs[pointIndex].size(); }
+	size_t findNearest(size_t k, size_t pointIndex) override
+	{
+		m_focus = pointIndex;
+		return m_neighs[pointIndex].size();
+	}
 
 	/// See the comment for GNeighborFinder::findWithinRadius
-	size_t findWithinRadius(double squaredRadius, size_t pointIndex) override { m_focus = pointIndex; return m_neighs[pointIndex].size(); }
+	size_t findWithinRadius(double squaredRadius, size_t pointIndex) override
+	{
+		m_focus = pointIndex;
+		return m_neighs[pointIndex].size();
+	}
 
 	/// See the comment for GNeighborFinder::neighbor
-	size_t neighbor(size_t i) override { GAssert(i < m_neighs[m_focus].size()); return m_neighs[m_focus][i]; }
+	size_t neighbor(size_t i) override
+	{
+		GAssert(i < m_neighs[m_focus].size());
+		return m_neighs[m_focus][i];
+	}
 
 	/// See the comment for GNeighborFinder::distance
-	double distance(size_t i) override { GAssert(i < m_dists[m_focus].size()); return m_dists[m_focus][i]; }
+	double distance(size_t i) override
+	{
+		GAssert(i < m_dists[m_focus].size());
+		return m_dists[m_focus][i];
+	}
 
 	/// See the comment for GNeighborFinder::isCached.
 	bool isCached() override { return true; }
@@ -209,7 +226,7 @@ public:
 	double distance(size_t i) override { return m_dists[i]; }
 
 	/// Returns the metric
-	GDistanceMetric *metric() { return m_pMetric; }
+	GDistanceMetric* metric() { return m_pMetric; }
 
 	/// Uses Quick Sort to sort the neighbors from least to most distant.
 	void sortNeighbors(size_t start = 0, size_t end = INVALID_INDEX);

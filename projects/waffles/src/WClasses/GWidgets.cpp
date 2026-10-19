@@ -21,9 +21,9 @@
 #include "GImage.h"
 #include "GDirList.h"
 #ifdef WINDOWS
-#	include <direct.h>
+#include <direct.h>
 #else
-#	include <unistd.h>
+#include <unistd.h>
 #endif
 #include "GFile.h"
 #include "GHeap.h"
@@ -34,7 +34,8 @@
 #include <algorithm>
 #include <sstream>
 
-namespace GClasses {
+namespace GClasses
+{
 
 using std::string;
 using std::vector;
@@ -146,10 +147,7 @@ void GWidgetCommon::drawClipped(GImage* pCanvas, int x, int y, GWidget* pWidget,
 {
 	// See if we can do it without clipping
 	GRect* pWidgetRect = pWidget->rect();
-	if(	x >= pClipRect->x &&
-		y >= pClipRect->y &&
-		x + pWidgetRect->w <= pClipRect->x + pClipRect->w &&
-		y + pWidgetRect->h <= pClipRect->y + pClipRect->h)
+	if(x >= pClipRect->x && y >= pClipRect->y && x + pWidgetRect->w <= pClipRect->x + pClipRect->w && y + pWidgetRect->h <= pClipRect->y + pClipRect->h)
 	{
 		pWidget->draw(pCanvas, x, y);
 		return;
@@ -197,7 +195,7 @@ void GWidget::setPos(int x, int y)
 // ----------------------------------------------------------------------
 
 GWidgetAtomic::GWidgetAtomic(GWidgetGroup* pParent, int x, int y, int w, int h)
- : GWidget(pParent, x, y, w, h)
+: GWidget(pParent, x, y, w, h)
 {
 	GAssert(pParent); // atomic widgets require a parent
 }
@@ -345,7 +343,7 @@ void GWidgetGroup::setClean()
 // ----------------------------------------------------------------------
 
 GWidgetDialog::GWidgetDialog(int w, int h, unsigned int cBackground)
- : GWidgetGroup(nullptr, 0, 0, w, h)
+: GWidgetGroup(nullptr, 0, 0, w, h)
 {
 	m_cBackground = cBackground;
 	m_image.setSize(w, h);
@@ -948,46 +946,26 @@ void GWidgetVCRButton::drawIcon(GImage* pCanvas, int nHorizOfs, int nVertOfs)
 	if(m_eType == ArrowRight)
 	{
 		for(n = 0; n < nArrowSize; n++)
-			pCanvas->lineNoChecks(nHorizOfs + hh - nArrowSize / 2 + n,
-							nVertOfs + hh - nArrowSize + n + 1,
-							nHorizOfs + hh - nArrowSize / 2 + n,
-							nVertOfs + hh + nArrowSize - n - 1,
-							0);
+			pCanvas->lineNoChecks(nHorizOfs + hh - nArrowSize / 2 + n, nVertOfs + hh - nArrowSize + n + 1, nHorizOfs + hh - nArrowSize / 2 + n, nVertOfs + hh + nArrowSize - n - 1, 0);
 	}
 	else if(m_eType == ArrowLeft)
 	{
 		for(n = 0; n < nArrowSize; n++)
-			pCanvas->lineNoChecks(nHorizOfs + hh + nArrowSize / 2 - n,
-							nVertOfs + hh - nArrowSize + n + 1,
-							nHorizOfs + hh + nArrowSize / 2 - n,
-							nVertOfs + hh + nArrowSize - n - 1,
-							0xff000000);
+			pCanvas->lineNoChecks(nHorizOfs + hh + nArrowSize / 2 - n, nVertOfs + hh - nArrowSize + n + 1, nHorizOfs + hh + nArrowSize / 2 - n, nVertOfs + hh + nArrowSize - n - 1, 0xff000000);
 	}
 	if(m_eType == ArrowDown)
 	{
 		for(n = 0; n < nArrowSize; n++)
-			pCanvas->lineNoChecks(nHorizOfs + hh - nArrowSize + n + 1,
-							nVertOfs + hh - nArrowSize / 2 + n,
-							nHorizOfs + hh + nArrowSize - n - 1,
-							nVertOfs + hh - nArrowSize / 2 + n,
-							0xff000000);
+			pCanvas->lineNoChecks(nHorizOfs + hh - nArrowSize + n + 1, nVertOfs + hh - nArrowSize / 2 + n, nHorizOfs + hh + nArrowSize - n - 1, nVertOfs + hh - nArrowSize / 2 + n, 0xff000000);
 	}
 	else if(m_eType == ArrowUp)
 	{
 		for(n = 0; n < nArrowSize; n++)
-			pCanvas->lineNoChecks(nHorizOfs + hh - nArrowSize + n + 1,
-							nVertOfs + hh + nArrowSize / 2 - n,
-							nHorizOfs + hh + nArrowSize - n - 1,
-							nVertOfs + hh + nArrowSize / 2 - n,
-							0xff000000);
+			pCanvas->lineNoChecks(nHorizOfs + hh - nArrowSize + n + 1, nVertOfs + hh + nArrowSize / 2 - n, nHorizOfs + hh + nArrowSize - n - 1, nVertOfs + hh + nArrowSize / 2 - n, 0xff000000);
 	}
 	else if(m_eType == Square)
 	{
-		pCanvas->box(nHorizOfs + hh - nArrowSize,
-						nVertOfs + hh - nArrowSize,
-						nArrowSize * 2,
-						nArrowSize * 2,
-						0xff000000);
+		pCanvas->box(nHorizOfs + hh - nArrowSize, nVertOfs + hh - nArrowSize, nArrowSize * 2, nArrowSize * 2, 0xff000000);
 	}
 }
 
@@ -1170,7 +1148,7 @@ void GWidgetBulletHole::setChecked(bool checked)
 // ----------------------------------------------------------------------
 
 GWidgetBulletGroup::GWidgetBulletGroup(GWidgetGroup* pParent, int x, int y, int w, int h, int count, int interval, bool vertical)
- : GWidgetGroup(pParent, x, y, (vertical ? w : (count - 1) * interval + w), (vertical ? (count - 1) * interval + h : h))
+: GWidgetGroup(pParent, x, y, (vertical ? w : (count - 1) * interval + w), (vertical ? (count - 1) * interval + h : h))
 {
 	m_nSelection = -1;
 	int i;
@@ -2214,7 +2192,7 @@ void GWidgetGrid::flushItems(bool deleteWidgets)
 // ----------------------------------------------------------------------
 
 GWidgetFileSystemBrowser::GWidgetFileSystemBrowser(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szExtensions)
- : GWidgetGroup(pParent, x, y, w, h)
+: GWidgetGroup(pParent, x, y, w, h)
 {
 	int nPathHeight = 12;
 	m_pPath = new GWidgetTextLabel(this, 0, 0, w, nPathHeight, "", 0xff8888ff);
@@ -2225,7 +2203,7 @@ GWidgetFileSystemBrowser::GWidgetFileSystemBrowser(GWidgetGroup* pParent, int x,
 	m_pFiles->setColumnWidth(0, 100);
 	m_pFiles->setColumnWidth(1, 100);
 	m_pFiles->setColumnWidth(2, 100);
-/*
+	/*
 	GWidgetTextButton* pButton;
 	pButton = new GWidgetTextButton(m_pFiles, 0, 0, 300, 20, "");
 	m_pFiles->SetColumnHeader(0, pButton);
@@ -2294,13 +2272,13 @@ void GWidgetFileSystemBrowser::dirFoldersAndFiles(string* pOutDir, vector<string
 	// Get the folders
 	if(pOutDir->length() >
 #ifdef WINDOWS
-							4)
+	   4)
 #else
-							2)
+	   2)
 #endif
 		pOutFolders->push_back("..");
 	GFile::folderList(*pOutFolders);
-	
+
 	// Get the files
 	{
 		vector<string> files;
@@ -2671,7 +2649,7 @@ void GWidgetCanvas::draw(GImage* pCanvas, int xx, int yy)
 		return;
 
 	// Blit the source image onto the destination canvas
-// todo: why not just use the GImage::Blit method?
+	// todo: why not just use the GImage::Blit method?
 	int x, y, xIn, yIn;
 	int widIn = m_pImageIn->width();
 	int hgtIn = m_pImageIn->height();
@@ -2925,7 +2903,7 @@ void GWidgetWave::draw(GImage* pCanvas, int xx, int yy)
 				x = (i - m_pos) * m_rect.w / m_width;
 				if(x >= m_rect.w)
 					break;
-				val = pData[i] * 256;// + 32768;
+				val = pData[i] * 256; // + 32768;
 				y = val * m_rect.h / 65536;
 				if(xprev >= 0)
 					pCanvas->lineNoChecks(xx + xprev, yy + yprev, xx + x, yy + y, 0xff0080c0);

@@ -29,7 +29,8 @@
 #include <cassert>
 #include <algorithm>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GMatrix;
 class GDom;
@@ -44,7 +45,7 @@ class GDomNode;
 /// - M(a) is a single element of B or is undefined
 /// - M(b) is a single element of A or is undefined
 /// - M(a) == b if and only if M(b) == a
-/// 
+///
 /// More specifically, an assignment is a graph-theoretic matching on
 /// a bipartite graph.
 ///
@@ -54,12 +55,13 @@ class GDomNode;
 /// elements in each set.  The members of A are then denoted as
 /// 0..sizeA()-1 and the members of B as the integers 0..sizeB()-1
 ///
-/// operator()(int) gives the mapping from A->B (as in 
+/// operator()(int) gives the mapping from A->B (as in
 /// \code if(assignment(1)==-1){do_something();} \endcode )
 ///
-/// inverse(int) gives the mapping from B->A (as in 
+/// inverse(int) gives the mapping from B->A (as in
 /// \code if(assignment.inverse(1)==-1){do_something();} \endcode )
-class GAssignment{
+class GAssignment
+{
 public:
 	///\brief Return the number of elements in the A set of this GAssignment
 	///
@@ -100,7 +102,7 @@ public:
 	virtual int inverse(unsigned memberOfB) const = 0;
 
 	///\brief A do-nothing destructor needed since there will be subclasses
-	virtual ~GAssignment(){};
+	virtual ~GAssignment() {};
 };
 
 ///\brief A simple concrete implementation of the GAssignment protocol
@@ -110,7 +112,8 @@ public:
 ///\see linearAssignment(GMatrix, ShouldMaximize, const double)
 ///\see linearAssignmentBruteForce(GMatrix, ShouldMinimize)
 ///\see linearAssignmentBruteForce(GMatrix, ShouldMaximize)
-class GSimpleAssignment:public GAssignment{
+class GSimpleAssignment : public GAssignment
+{
 protected:
 	///\brief aForB[i] has the member of A assigned to a given member of
 	///B (or -1 when no member)
@@ -128,9 +131,9 @@ public:
 	///
 	///\param bSize the number of elements in set B (the second set in
 	///             the assignment)
-	GSimpleAssignment(std::size_t aSize, std::size_t bSize):aForB(bSize, -1), 
-																													bForA(aSize, -1){}
-	
+	GSimpleAssignment(std::size_t aSize, std::size_t bSize) : aForB(bSize, -1),
+	                                                          bForA(aSize, -1) {}
+
 	///\brief Create an assignment between two sets of the given sizes
 	///that assigns everything according to the array \a bForA
 	///
@@ -150,8 +153,10 @@ public:
 	///\see GSimpleAssignment(std::size_t, std::size_t)
 	///\see bForA(const std::vector<int>&)
 	GSimpleAssignment(std::size_t bSize, const std::vector<int>& bfA)
-		:aForB(bSize, -1), bForA(bfA){
-		for(std::size_t i = 0; i < bForA.size(); ++i){
+	: aForB(bSize, -1), bForA(bfA)
+	{
+		for(std::size_t i = 0; i < bForA.size(); ++i)
+		{
 			int match = bForA.at(i);
 			if(match >= 0) { aForB.at(match) = (int)i; }
 		}
@@ -169,7 +174,8 @@ public:
 	///
 	///\param memberOfB the number for the member of set B that will get
 	///                 assigned to \a memberOfA
-	virtual void assign(unsigned memberOfA, unsigned memberOfB){
+	virtual void assign(unsigned memberOfA, unsigned memberOfB)
+	{
 		//Erase any old assignments
 		unassignA(memberOfA);
 		unassignB(memberOfB);
@@ -193,11 +199,13 @@ public:
 	///\param bForA bForA[i] gives the assignment for element i in set
 	///             A.  It is the index of the corresponding element of
 	///             set B or -1 if there is no corresponding element.
-	virtual void setBForA(const std::vector<int>& bfA){
+	virtual void setBForA(const std::vector<int>& bfA)
+	{
 		assert(bfA.size() == this->bForA.size());
-		this->bForA = bfA; 
+		this->bForA = bfA;
 		std::fill(aForB.begin(), aForB.end(), -1);
-		for(std::size_t i = 0; i < bfA.size(); ++i){
+		for(std::size_t i = 0; i < bfA.size(); ++i)
+		{
 			int match = bfA.at(i);
 			if(match >= 0) { aForB.at(match) = (int)i; }
 		}
@@ -209,9 +217,11 @@ public:
 	///
 	///\param memberOfA The number for the member of set A which should
 	///       be unassigned
-	virtual void unassignA(unsigned memberOfA){
+	virtual void unassignA(unsigned memberOfA)
+	{
 		int curBForA = (*this)(memberOfA);
-		if(curBForA != -1){
+		if(curBForA != -1)
+		{
 			aForB[curBForA] = -1;
 			bForA[memberOfA] = -1;
 		}
@@ -224,9 +234,11 @@ public:
 	///
 	///\param memberOfB The number for the member of set B which should
 	///       be unassigned
-	virtual void unassignB(unsigned memberOfB){
+	virtual void unassignB(unsigned memberOfB)
+	{
 		int curAForB = inverse(memberOfB);
-		if(curAForB != -1){
+		if(curAForB != -1)
+		{
 			bForA[curAForB] = -1;
 			aForB[memberOfB] = -1;
 		}
@@ -238,14 +250,14 @@ public:
 	///See the class comment for more information.
 	///
 	///\return the number of elements in the A set of this GAssignment
-	std::size_t sizeA() const override{ return bForA.size(); }
+	std::size_t sizeA() const override { return bForA.size(); }
 
 	///\brief Return the number of elements in the B set of this GAssignment
 	///
 	///See the class comment for more information.
 	///
 	///\return the number of elements in the B set of this GAssignment
-	std::size_t sizeB() const override{ return aForB.size(); }
+	std::size_t sizeB() const override { return aForB.size(); }
 
 	///\brief Return the number of the member of set B corresponding to
 	///       the \a memberOfA element in set A or -1 if there is no
@@ -257,8 +269,10 @@ public:
 	///\return the number of the member of set B corresponding to the \a
 	///        memberOfA element in set A or -1 if there is no
 	///        corresponding member
-	int operator()(unsigned memberOfA) const override{ 
-		return bForA.at(memberOfA); }
+	int operator()(unsigned memberOfA) const override
+	{
+		return bForA.at(memberOfA);
+	}
 
 	///\brief Return the number of the member of set A corresponding to
 	///       the \a memberOfB element in set B or -1 if there is no
@@ -270,7 +284,7 @@ public:
 	///\return the number of the member of set A corresponding to the \a
 	///        memberOfB element in set B or -1 if there is no
 	///        corresponding member.
-	int inverse(unsigned memberOfB) const override{ return aForB.at(memberOfB); }
+	int inverse(unsigned memberOfB) const override { return aForB.at(memberOfB); }
 
 	///\brief Return true if *this and other represent the same
 	///       assignments among the same sized sets
@@ -288,13 +302,11 @@ public:
 	///
 	///\return true if the assignments are the same, false otherwise.
 	///        See main description for details.
-	virtual bool operator==(const GSimpleAssignment& other) const{
-		return 
-			sizeA() == other.sizeA() && sizeB() == other.sizeB()
-			&&
-			std::equal(aForB.begin(),aForB.end(),other.aForB.begin()) 
-			&&
-			std::equal(bForA.begin(),bForA.end(),other.bForA.begin());
+	virtual bool operator==(const GSimpleAssignment& other) const
+	{
+		return sizeA() == other.sizeA() && sizeB() == other.sizeB()
+		  && std::equal(aForB.begin(), aForB.end(), other.aForB.begin())
+		  && std::equal(bForA.begin(), bForA.end(), other.bForA.begin());
 	}
 
 	///\brief Return true iff *this, expressed as the input to setBForA
@@ -304,15 +316,19 @@ public:
 	///
 	///\return true iff *this, expressed as the input to setBForA with
 	///sizeB prepended is lexiographically less than other
-	virtual bool operator<(const GSimpleAssignment& other) const{
-		if(sizeB() < other.sizeB()){ 
+	virtual bool operator<(const GSimpleAssignment& other) const
+	{
+		if(sizeB() < other.sizeB())
+		{
 			return true;
-		}else if(other.sizeB() < sizeB()){
+		}
+		else if(other.sizeB() < sizeB())
+		{
 			return false;
-		}else{ //sizeB() == other.sizeB()
-			return std::lexicographical_compare
-				(bForA.begin(), bForA.end(),
-				 other.bForA.begin(), other.bForA.end());
+		}
+		else
+		{ //sizeB() == other.sizeB()
+			return std::lexicographical_compare(bForA.begin(), bForA.end(), other.bForA.begin(), other.bForA.end());
 		}
 	}
 
@@ -320,14 +336,15 @@ public:
 	///
 	///If A element i was assigned to B element j before the swap, A
 	///element j will be asigned to B element i after the swap.
-	virtual void swapAAndB(){
+	virtual void swapAAndB()
+	{
 		std::vector<int> tmp = aForB;
 		aForB = bForA;
 		bForA = std::move(tmp);
 	}
 
 	///\brief A do-nothing destructor needed since there may be subclasses
-	~GSimpleAssignment() override{};
+	~GSimpleAssignment() override {};
 
 
 	///\brief Run unit tests for GSimpleAssignment - throws an exception
@@ -367,11 +384,15 @@ std::ostream& operator<<(std::ostream& out, const GSimpleAssignment& gsa);
 
 ///\brief Tag class to indicate that the linearAssignment routine
 ///should maximize the cost of the assignment
-class ShouldMaximize{};
+class ShouldMaximize
+{
+};
 
 ///\brief Tag class to indicate that the linearAssignment routine
 ///should minimize the cost of the assignment
-class ShouldMinimize{};
+class ShouldMinimize
+{
+};
 
 ///\brief Return a GSimpleAssignment that minimizes the cost of the assignment
 ///
@@ -400,9 +421,7 @@ class ShouldMinimize{};
 ///\see linearAssignment(GMatrix, ShouldMaximize, const double)
 ///
 ///\see LAPVJRCT
-GSimpleAssignment linearAssignment(GMatrix costs,	
-																	 ShouldMinimize sm=ShouldMinimize(), 
-																	 const double epsilon = 1e-8);
+GSimpleAssignment linearAssignment(GMatrix costs, ShouldMinimize sm = ShouldMinimize(), const double epsilon = 1e-8);
 
 
 ///\brief Return a GSimpleAssignment that maximizes the benefit of the
@@ -433,9 +452,7 @@ GSimpleAssignment linearAssignment(GMatrix costs,
 ///\see linearAssignment(GMatrix, ShouldMinimize, const double)
 ///
 ///\see LAPVJRCT
-GSimpleAssignment linearAssignment(GMatrix benefits,	
-																	 ShouldMaximize sm, 
-																	 const double epsilon = 1e-8);
+GSimpleAssignment linearAssignment(GMatrix benefits, ShouldMaximize sm, const double epsilon = 1e-8);
 
 ///\brief Solve a linear assignment minimization problem by the VERY SLOW brute
 ///force method
@@ -456,8 +473,8 @@ GSimpleAssignment linearAssignment(GMatrix benefits,
 ///
 ///\param sm A tag class to distinguish this from the code which
 ///          maximizes the benefits.  Just pass ShouldMinimize
-std::vector<GSimpleAssignment> 
-linearAssignmentBruteForce(GMatrix costs, ShouldMinimize sm=ShouldMinimize());
+std::vector<GSimpleAssignment>
+linearAssignmentBruteForce(GMatrix costs, ShouldMinimize sm = ShouldMinimize());
 
 
 ///\brief Solve a linear assignment maximization problem by the VERY SLOW brute
@@ -479,7 +496,7 @@ linearAssignmentBruteForce(GMatrix costs, ShouldMinimize sm=ShouldMinimize());
 ///
 ///\param sm A tag class to distinguish this from the code which
 ///          maximizes the benefits.  Just pass ShouldMaximize
-std::vector<GSimpleAssignment> 
+std::vector<GSimpleAssignment>
 linearAssignmentBruteForce(GMatrix benefits, ShouldMaximize sm);
 
 
@@ -505,7 +522,7 @@ linearAssignmentBruteForce(GMatrix benefits, ShouldMaximize sm);
 ///
 ///maximize ( sum rowPotential[row] ) + ( sum colPotential[column] )
 ///
-///subject to: 
+///subject to:
 ///
 ///cost[i][j]-rowPotential[i]-colPotential[j] >= 0 for all i,j
 ///
@@ -545,17 +562,13 @@ linearAssignmentBruteForce(GMatrix benefits, ShouldMaximize sm);
 ///\param epsilon Threshold to use in floating point comparisons.  If
 ///               two values differ by epsilon, they are considered to
 ///               be equal
-void LAPVJRCT(GMatrix cost, std::vector<int>& rowAssign, 
-							std::vector<int>& colAssign, 
-							std::vector<double>& rowPotential, 
-							std::vector<double>& colPotential, double& totalCost,
-							const double epsilon=1e-8);
+void LAPVJRCT(GMatrix cost, std::vector<int>& rowAssign, std::vector<int>& colAssign, std::vector<double>& rowPotential, std::vector<double>& colPotential, double& totalCost, const double epsilon = 1e-8);
 
 
 ///\brief Runs unit tests on the linear assignment code and supporting
 ///       code.  Throws an exception if it detects an error.
 void testLinearAssignment();
 
-	
+
 }
 #endif //  __GASSIGNMENT_H__

@@ -33,7 +33,8 @@
 #include "GString.h"
 
 
-namespace GClasses {
+namespace GClasses
+{
 
 using std::vector;
 using std::deque;
@@ -485,70 +486,72 @@ void GDomNode::writeJsonPretty(std::ostream& stream, size_t indents) const
 			reverseFieldOrder();
 			for(GDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
 			{
-				newLineAndIndent(stream, indents + 1); writeJSONString(stream, pField->m_pName);
+				newLineAndIndent(stream, indents + 1);
+				writeJSONString(stream, pField->m_pName);
 				stream << ":";
 				pField->m_pValue->writeJsonPretty(stream, indents + 1);
 				if(pField->m_pPrev)
 					stream << ",";
 			}
 			reverseFieldOrder();
-			newLineAndIndent(stream, indents); stream << "}";
+			newLineAndIndent(stream, indents);
+			stream << "}";
 			break;
 		case type_list:
+		{
+			// Check whether all items in the list are atomic
+			bool allAtomic = true;
+			if(m_value.m_pArrayList)
 			{
-				// Check whether all items in the list are atomic
-				bool allAtomic = true;
-				if(m_value.m_pArrayList)
+				if(m_value.m_pArrayList->m_size >= 1024)
+					allAtomic = false;
+				for(size_t i = 0; i < m_value.m_pArrayList->m_size && allAtomic; i++)
 				{
-					if(m_value.m_pArrayList->m_size >= 1024)
+					GDomNode* pNode = m_value.m_pArrayList->m_items[i];
+					if(pNode->type() == GDomNode::type_obj || pNode->type() == GDomNode::type_list)
 						allAtomic = false;
-					for(size_t i = 0; i < m_value.m_pArrayList->m_size && allAtomic; i++)
-					{
-						GDomNode* pNode = m_value.m_pArrayList->m_items[i];
-						if(pNode->type() == GDomNode::type_obj || pNode->type() == GDomNode::type_list)
-							allAtomic = false;
-					}
-				}
-
-				// Print the items
-				if(allAtomic)
-				{
-					// All items are atomic, so let's put them all on one line
-					stream << "[";
-					if(m_value.m_pArrayList)
-					{
-						for(size_t i = 0; i < m_value.m_pArrayList->m_size; i++)
-						{
-							if(i > 0)
-							{
-								stream << ",";
-								if(i % 100 == 0)
-									newLineAndIndent(stream, indents);
-							}
-							GDomNode* pNode = m_value.m_pArrayList->m_items[i];
-							pNode->writeJson(stream);
-						}
-					}
-					stream << "]";
-				}
-				else
-				{
-					// Some items are non-atomic, so let's spread across multiple lines
-					newLineAndIndent(stream, indents);
-					stream << "[";
-					for(size_t i = 0; i < m_value.m_pArrayList->m_size; i++)
-					{
-						GDomNode* pNode = m_value.m_pArrayList->m_items[i];
-						newLineAndIndent(stream, indents + 1);
-						pNode->writeJsonPretty(stream, indents + 1);
-						if(i + 1 < m_value.m_pArrayList->m_size)
-							stream << ",";
-					}
-					newLineAndIndent(stream, indents);
-					stream << "]";
 				}
 			}
-			break;
+
+			// Print the items
+			if(allAtomic)
+			{
+				// All items are atomic, so let's put them all on one line
+				stream << "[";
+				if(m_value.m_pArrayList)
+				{
+					for(size_t i = 0; i < m_value.m_pArrayList->m_size; i++)
+					{
+						if(i > 0)
+						{
+							stream << ",";
+							if(i % 100 == 0)
+								newLineAndIndent(stream, indents);
+						}
+						GDomNode* pNode = m_value.m_pArrayList->m_items[i];
+						pNode->writeJson(stream);
+					}
+				}
+				stream << "]";
+			}
+			else
+			{
+				// Some items are non-atomic, so let's spread across multiple lines
+				newLineAndIndent(stream, indents);
+				stream << "[";
+				for(size_t i = 0; i < m_value.m_pArrayList->m_size; i++)
+				{
+					GDomNode* pNode = m_value.m_pArrayList->m_items[i];
+					newLineAndIndent(stream, indents + 1);
+					pNode->writeJsonPretty(stream, indents + 1);
+					if(i + 1 < m_value.m_pArrayList->m_size)
+						stream << ",";
+				}
+				newLineAndIndent(stream, indents);
+				stream << "]";
+			}
+		}
+		break;
 		case type_bool:
 			stream << (m_value.m_bool ? "true" : "false");
 			break;
@@ -657,11 +660,7 @@ size_t GDomNode::writeJsonCpp(std::ostream& stream, size_t col) const
 
 bool isXmlInlineType(int type)
 {
-	if(type == GDomNode::type_string ||
-		type == GDomNode::type_int ||
-		type == GDomNode::type_double ||
-		type == GDomNode::type_bool ||
-		type == GDomNode::type_null)
+	if(type == GDomNode::type_string || type == GDomNode::type_int || type == GDomNode::type_double || type == GDomNode::type_bool || type == GDomNode::type_null)
 		return true;
 	else
 		return false;
@@ -696,7 +695,7 @@ void GDomNode::writeXml(std::ostream& stream, const char* szLabel) const
 	switch(m_type)
 	{
 		case type_obj:
-			{
+		{
 			stream << "<" << szLabel;
 			reverseFieldOrder();
 			size_t nonInlinedChildren = 0;
@@ -724,7 +723,7 @@ void GDomNode::writeXml(std::ostream& stream, const char* szLabel) const
 				stream << "</" << szLabel << ">";
 			}
 			reverseFieldOrder();
-			}
+		}
 			return;
 		case type_list:
 			stream << "<" << szLabel << ">";
@@ -866,9 +865,9 @@ public:
 	GCharSet m_whitespace, m_real, m_quot;
 
 	GJsonTokenizer(const char* szFilename) : GTokenizer(szFilename),
-	m_whitespace("\t\n\r "), m_real("-.+0-9eE"), m_quot("\"") {}
+	                                         m_whitespace("\t\n\r "), m_real("-.+0-9eE"), m_quot("\"") {}
 	GJsonTokenizer(const char* pFile, size_t len) : GTokenizer(pFile, len),
-	m_whitespace("\t\n\r "), m_real("-.+0-9eE"), m_quot("\"") {}
+	                                                m_whitespace("\t\n\r "), m_real("-.+0-9eE"), m_quot("\"") {}
 	~GJsonTokenizer() override {}
 };
 
@@ -973,30 +972,30 @@ GDomNode* GDom::clone(GDomNode* pNode)
 	switch(pNode->type())
 	{
 		case GDomNode::type_obj:
+		{
+			GDomNode* pClone = newObj();
+			for(GDomObjField* pField = pNode->m_value.m_pLastField; pField; pField = pField->m_pPrev)
 			{
-				GDomNode* pClone = newObj();
-				for(GDomObjField* pField = pNode->m_value.m_pLastField; pField; pField = pField->m_pPrev)
-				{
-					GDomObjField* pFieldClone = newField();
-					pFieldClone->m_pPrev = pClone->m_value.m_pLastField;
-					pClone->m_value.m_pLastField = pFieldClone;
-					pFieldClone->m_pName = m_heap.add(pField->m_pName);
-					pFieldClone->m_pValue = clone(pField->m_pValue);
-				}
-				return pClone;
+				GDomObjField* pFieldClone = newField();
+				pFieldClone->m_pPrev = pClone->m_value.m_pLastField;
+				pClone->m_value.m_pLastField = pFieldClone;
+				pFieldClone->m_pName = m_heap.add(pField->m_pName);
+				pFieldClone->m_pValue = clone(pField->m_pValue);
 			}
+			return pClone;
+		}
 		case GDomNode::type_list:
-			{
-				GDomNode* pClone = newList();
-				for(size_t i = 0; i < pNode->size(); i++)
-					pClone->add(this, clone(pNode->get(i)));
-				return pClone;
-			}
+		{
+			GDomNode* pClone = newList();
+			for(size_t i = 0; i < pNode->size(); i++)
+				pClone->add(this, clone(pNode->get(i)));
+			return pClone;
+		}
 		case GDomNode::type_bool: return newBool(pNode->asBool());
 		case GDomNode::type_int: return newInt(pNode->asInt());
 		case GDomNode::type_double: return newDouble(pNode->asDouble());
 		case GDomNode::type_string: return newString(pNode->asString());
-		case GDomNode::type_null: return newNull();;
+		case GDomNode::type_null: return newNull(); ;
 		default: throw Ex("Unexpected type");
 	}
 }
@@ -1269,34 +1268,34 @@ std::string to_str(const GDom& doc)
 void GDom::test()
 {
 	const char* szTestFile =
-		"{\n"
-		"	\"name\":\"Bob\\nis\\\\cool\",\n"
-		"	\"pet\":{\n"
-		"		\"hair\":\"thick\",\n"
-		"		\"age\":12\n"
-		"	},\n"
-		"	\"acquantances\":[\n"
-		"		{\n"
-		"			\"name\":\"Bill\",\n"
-		"			\"age\":31\n"
-		"		},\n"
-		"		{\n"
-		"			\"name\":\"Sally\",\n"
-		"			\"age\":24\n"
-		"		},\n"
-		"		{\n"
-		"			\"name\":\"George\",\n"
-		"			\"age\":18\n"
-		"		}\n"
-		"	],\n"
-		"	\"names\":[\n"
-		"		\"Bob\",\n"
-		"		\"Doe\"\n"
-		"	],\n"
-		"	\"male\"  :  true , \n"
-		"	\"height\": 5.8,\n"
-		"	\"temp\":98.6\n"
-		"}\n";
+	  "{\n"
+	  "	\"name\":\"Bob\\nis\\\\cool\",\n"
+	  "	\"pet\":{\n"
+	  "		\"hair\":\"thick\",\n"
+	  "		\"age\":12\n"
+	  "	},\n"
+	  "	\"acquantances\":[\n"
+	  "		{\n"
+	  "			\"name\":\"Bill\",\n"
+	  "			\"age\":31\n"
+	  "		},\n"
+	  "		{\n"
+	  "			\"name\":\"Sally\",\n"
+	  "			\"age\":24\n"
+	  "		},\n"
+	  "		{\n"
+	  "			\"name\":\"George\",\n"
+	  "			\"age\":18\n"
+	  "		}\n"
+	  "	],\n"
+	  "	\"names\":[\n"
+	  "		\"Bob\",\n"
+	  "		\"Doe\"\n"
+	  "	],\n"
+	  "	\"male\"  :  true , \n"
+	  "	\"height\": 5.8,\n"
+	  "	\"temp\":98.6\n"
+	  "}\n";
 	GDom doc;
 	doc.parseJson(szTestFile, strlen(szTestFile));
 }

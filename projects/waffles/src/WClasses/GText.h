@@ -23,7 +23,8 @@
 #include <cstddef>
 #include <vector>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GConstStringHashTable;
 class GConstStringToIndexHashTable;

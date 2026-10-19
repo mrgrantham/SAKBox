@@ -28,16 +28,17 @@
 #include <fstream>
 #include <errno.h>
 #ifdef WINDOWS
-	#include <io.h>
+#include <io.h>
 #else
-	#include <unistd.h>
+#include <unistd.h>
 #endif
 
 using std::string;
 using std::map;
 using std::string;
 
-namespace GClasses {
+namespace GClasses
+{
 
 
 GCharSet::GCharSet(const char* szChars)
@@ -319,8 +320,7 @@ char* GTokenizer::readUntil_escaped_quoted(const GCharSet& delimiters, char esca
 			bufferChar(c2);
 		}
 		if(peek() != '"')
-			throw Ex("Expected matching double-quotes on line ",
-								 to_str(m_line), ", col ", to_str(col()));
+			throw Ex("Expected matching double-quotes on line ", to_str(m_line), ", col ", to_str(col()));
 		bufferChar('"');
 		skip(1);
 		while(!delimiters.find(peek()))
@@ -340,8 +340,7 @@ char* GTokenizer::readUntil_escaped_quoted(const GCharSet& delimiters, char esca
 			bufferChar(c2);
 		}
 		if(peek() != '\'')
-			throw Ex("Expected a matching single-quote on line ", to_str(m_line),
-								 ", col ", to_str(col()));
+			throw Ex("Expected a matching single-quote on line ", to_str(m_line), ", col ", to_str(col()));
 		bufferChar('\'');
 		skip(1);
 		while(!delimiters.find(peek()))
@@ -358,9 +357,11 @@ char* GTokenizer::readUntil_escaped_quoted(const GCharSet& delimiters, char esca
 			if(c2 == '\n')
 			{
 				throw Ex("Error: '", to_str(escapeChar), "' character used as "
-									 "last character on a line to attempt to extend string over "
-									 "two lines on line" , to_str(m_line), ", col ",
-									 to_str(col()) );
+				                                         "last character on a line to attempt to extend string over "
+				                                         "two lines on line",
+				         to_str(m_line),
+				         ", col ",
+				         to_str(col()));
 			}
 			c2 = get();
 			bufferChar(c2);
@@ -368,10 +369,13 @@ char* GTokenizer::readUntil_escaped_quoted(const GCharSet& delimiters, char esca
 		}
 		else
 		{
-			if(c2 == '\n' || delimiters.find(c2)){ break; }
+			if(c2 == '\n' || delimiters.find(c2)) { break; }
 			c2 = get();
-			if(c2 == escapeChar)	{	inEscapeMode = true;	}
-			else { bufferChar(c2);	}
+			if(c2 == escapeChar) { inEscapeMode = true; }
+			else
+			{
+				bufferChar(c2);
+			}
 		}
 	}
 

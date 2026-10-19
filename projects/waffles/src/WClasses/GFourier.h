@@ -21,7 +21,8 @@
 
 #include "GError.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GImage;
 
@@ -95,7 +96,6 @@ public:
 
 protected:
 	double* getBuf(size_t n);
-
 };
 
 } // namespace GClasses

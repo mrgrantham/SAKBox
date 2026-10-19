@@ -1,7 +1,8 @@
 #ifndef __GSDL_H__
 #define __GSDL_H__
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// A collection of routines that are useful when interfacing with SDL
 class GSDL

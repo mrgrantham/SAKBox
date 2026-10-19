@@ -194,7 +194,7 @@ void GMixtureOfGaussians::test()
 	}
 
 	// Approxiimate the data with a mixture of Gaussians
-	GMixtureOfGaussians mog(KERNEL_COUNT, &data, 0/*attr*/, .2/*min variance*/, &prng);
+	GMixtureOfGaussians mog(KERNEL_COUNT, &data, 0 /*attr*/, .2 /*min variance*/, &prng);
 	for(i = 0; i < 300; i++)
 		mog.iterate();
 
@@ -206,9 +206,7 @@ void GMixtureOfGaussians::test()
 		size_t j;
 		for(j = 0; j < KERNEL_COUNT; j++)
 		{
-			if(	std::abs(mean - params[2 * j]) < TOLERANCE &&
-				std::abs(sqrt(var) - params[2 * j + 1]) < TOLERANCE &&
-				std::abs(weight - cat.likelihood((double)j)) < TOLERANCE)
+			if(std::abs(mean - params[2 * j]) < TOLERANCE && std::abs(sqrt(var) - params[2 * j + 1]) < TOLERANCE && std::abs(weight - cat.likelihood((double)j)) < TOLERANCE)
 				break;
 		}
 		if(j >= KERNEL_COUNT)

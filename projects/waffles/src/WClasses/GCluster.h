@@ -24,7 +24,8 @@
 #include "GLearner.h"
 #include <deque>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GDistanceMetric;
 class GSparseSimilarity;

@@ -26,7 +26,8 @@
 
 using namespace GClasses;
 
-namespace GClasses {
+namespace GClasses
+{
 struct GBezierPoint
 {
 	G3DVector point;
@@ -99,15 +100,15 @@ void GBezier::point(double t, G3DVector* pOutPoint)
 	pOutPoint->m_vals[0] = m_pPoints[n].point.m_vals[0] * fw;
 	pOutPoint->m_vals[1] = m_pPoints[n].point.m_vals[1] * fw;
 	pOutPoint->m_vals[2] = m_pPoints[n].point.m_vals[2] * fw;
-	double u = t / (1.0 - t); // t/(1-t) in "monomialization trick" 
+	double u = t / (1.0 - t); // t/(1-t) in "monomialization trick"
 	double bc = 1.0; // binomial coefficient
 	[[maybe_unused]] double den = 1.0; // denominator in P(t)/(1-t)^n
 	double aux; // auxiliary variable - efficiency
 
 	int i;
-	for (i = n - 1; i >= 0; i--)
+	for(i = n - 1; i >= 0; i--)
 	{
-		bc = (bc * (i + 1)) / (n - i); // new binomial coefficient 
+		bc = (bc * (i + 1)) / (n - i); // new binomial coefficient
 		aux = bc * m_pPoints[i].weight;
 		pOutPoint->m_vals[0] = pOutPoint->m_vals[0] * u + m_pPoints[i].point.m_vals[0] * aux;
 		pOutPoint->m_vals[1] = pOutPoint->m_vals[1] * u + m_pPoints[i].point.m_vals[1] * aux;
@@ -284,7 +285,7 @@ double DoPolarEquation(int n, double* pPolarCoords, int nPolarCoords)
 		if(pos >= n)
 			break;
 		pPermutations[pos]++;
-		for( ; pos > 0; pos--)
+		for(; pos > 0; pos--)
 			pPermutations[pos - 1] = pPermutations[pos] + 1;
 	}
 	return dSum / nPermutations;
@@ -408,7 +409,8 @@ void GBezier::test()
 
 // ---------------------------------------------------------------------------------------------------
 
-namespace GClasses {
+namespace GClasses
+{
 struct GNurbsPoint
 {
 	G3DVector point;
@@ -624,7 +626,7 @@ void GNurbs::insertKnotPeriodic(int nInterval, double dRatio)
 		pNewPoints[n].weight = a.weight;
 		pNewPoints[n].knotInterval = dNewKnotInterval;
 	}
-	for( ; n < m_nControlPoints + 1; n++)
+	for(; n < m_nControlPoints + 1; n++)
 		pNewPoints[n] = m_pPoints[WrapAround(nStart + n, m_nControlPoints)];
 	delete[] m_pPoints;
 	m_pPoints = pNewPoints;

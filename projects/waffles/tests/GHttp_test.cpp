@@ -16,8 +16,8 @@
 #include <ostream>
 #include <regex>
 #include <sstream>
-#include <string>
 #include <stdexcept>
+#include <string>
 
 using namespace GClasses;
 
@@ -51,8 +51,7 @@ struct ClientInState : GHttpClient {
   }
   Status outcome() const { return m_status; }
 };
-GHttpClient::Status statusAfterLosingConnection(bool chunked,
-                                                size_t contentSize) {
+GHttpClient::Status statusAfterLosingConnection(bool chunked, size_t contentSize) {
   ClientInState client(chunked, contentSize);
   client.onLoseConnection();
   return client.outcome();
@@ -72,9 +71,7 @@ TEST(HttpClientTest, LosingTheConnectionMidBodyIsAnError) {
 // buffer that the body was then written into.
 namespace {
 struct ClientReadingHeaders : GHttpClient {
-  void header(const char *line) {
-    processHeader((const unsigned char *)line, strlen(line));
-  }
+  void header(const char *line) { processHeader((const unsigned char *)line, strlen(line)); }
   Status outcome() const { return m_status; }
   size_t contentSize() const { return m_nContentSize; }
   bool hasBuffer() const { return m_pData != nullptr; }
@@ -114,11 +111,9 @@ TEST(HttpContentLengthTest, OnlyAWholeNumberWithinTheLimit) {
   EXPECT_TRUE(parseHttpContentLength(" 42\r", &n)); // spaces and the line end
   EXPECT_EQ(n, 42u);
   EXPECT_TRUE(parseHttpContentLength(std::to_string(MAX_HTTP_CONTENT_LENGTH).c_str(), &n));
-  for (const char *bad : {"", "-1", "+5", "abc", "12x", "1.5", "1 2",
-                          "99999999999999999999"})
+  for (const char *bad : {"", "-1", "+5", "abc", "12x", "1.5", "1 2", "99999999999999999999"})
     EXPECT_FALSE(parseHttpContentLength(bad, &n)) << "\"" << bad << "\"";
-  EXPECT_FALSE(parseHttpContentLength(
-      std::to_string(MAX_HTTP_CONTENT_LENGTH + 1).c_str(), &n));
+  EXPECT_FALSE(parseHttpContentLength(std::to_string(MAX_HTTP_CONTENT_LENGTH + 1).c_str(), &n));
 }
 
 // A server answering every GET with "got <url>" and every POST with
@@ -200,9 +195,9 @@ TEST(HttpServerTest, AnswersGoodRequests) {
       reply, std::regex("\r\nDate: (Mon|Tue|Wed|Thu|Fri|Sat|Sun), [0-9]{2} "
                         "[A-Z][a-z]{2} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT\r\n")))
       << reply;
-  EXPECT_NE(send(server, "POST /form HTTP/1.1\r\nContent-Length: 5\r\n\r\nabcde")
-                .find("posted abcde"),
-            std::string::npos);
+  EXPECT_NE(
+      send(server, "POST /form HTTP/1.1\r\nContent-Length: 5\r\n\r\nabcde").find("posted abcde"),
+      std::string::npos);
 }
 
 // Header values were copied into fixed buffers without checking their
@@ -210,10 +205,10 @@ TEST(HttpServerTest, AnswersGoodRequests) {
 // zero-byte buffer the body was written into). Each request below
 // overflowed a buffer, or would have; now the server hangs up on it.
 TEST(HttpServerTest, HangsUpOnRequestsThatDontFit) {
-  const std::string longUrl(3000, 'a');                 // URL buffer: 2048
+  const std::string longUrl(3000, 'a');                         // URL buffer: 2048
   const std::string longParams = "x=" + std::string(3000, 'b'); // params: 2048
-  const std::string longCookie(5000, 'c');              // cookie buffer: 4096
-  const std::string longDate(500, 'd');                 // date buffer: 128
+  const std::string longCookie(5000, 'c');                      // cookie buffer: 4096
+  const std::string longDate(500, 'd');                         // date buffer: 128
   const std::string requests[] = {
       "POST / HTTP/1.1\r\nContent-Length: -1\r\n\r\n" + std::string(100, 'x'),
       "POST / HTTP/1.1\r\nContent-Length: 99999999999\r\n\r\nx",
@@ -229,8 +224,7 @@ TEST(HttpServerTest, HangsUpOnRequestsThatDontFit) {
     EXPECT_EQ(send(server, request), "(closed)");
   }
   // And it still serves the next good one
-  EXPECT_NE(send(server, "GET /ok HTTP/1.1\r\n\r\n").find("got /ok"),
-            std::string::npos);
+  EXPECT_NE(send(server, "GET /ok HTTP/1.1\r\n\r\n").find("got /ok"), std::string::npos);
 }
 
 // A client that hangs up before its reply is sent: writing to its socket
@@ -272,9 +266,9 @@ TEST(HttpUrlTest, PortMustBeValid) {
   EXPECT_EQ(GHttp_urlPort("http://example.com/page"), 80);
   EXPECT_EQ(GHttp_urlPort("http://example.com:8080/page"), 8080);
   EXPECT_EQ(GHttp_urlPort("http://example.com:65535/"), 65535);
-  for (const char *bad : {"http://example.com:abc/", "http://example.com:70000/",
-                          "http://example.com:0/", "http://example.com:/",
-                          "http://example.com:80x/"})
+  for (const char *bad :
+       {"http://example.com:abc/", "http://example.com:70000/", "http://example.com:0/",
+        "http://example.com:/", "http://example.com:80x/"})
     EXPECT_THROW(GHttp_urlPort(bad), std::exception) << bad;
 }
 
@@ -296,8 +290,8 @@ TEST(HttpUnescapeUrlTest, DecodesOnlyValidEscapes) {
   EXPECT_EQ(unescaped("a+b"), "a b");
   EXPECT_EQ(unescaped("caf%C3%A9"), "caf\xC3\xA9");
   const char *kept[][2] = {
-      {"100%", "100%"}, {"%4", "%4"},     {"%zz", "%zz"},
-      {"%G0x", "%G0x"}, {"%%41", "%A"},   {"50%+", "50% "},
+      {"100%", "100%"}, {"%4", "%4"},   {"%zz", "%zz"},
+      {"%G0x", "%G0x"}, {"%%41", "%A"}, {"50%+", "50% "},
   };
   for (auto &k : kept)
     EXPECT_EQ(unescaped(k[0]), k[1]) << k[0];

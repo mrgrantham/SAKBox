@@ -45,7 +45,8 @@
 #include <queue>
 #include <memory>
 
-namespace GClasses {
+namespace GClasses
+{
 
 using std::string;
 using std::cout;
@@ -129,10 +130,10 @@ void GManifold::computeNeighborWeights(const GMatrix* pData, size_t point, size_
 	}
 
 	// Compute the weights the direct way (fails for non-invertible matrices)
-// 	for(size_t i = 0; i < pSquare->rows(); i++)
-// 		pOutWeights[i] = 1;
-// 	if(!pSquare->gaussianElimination(pOutWeights))
-// 		throw Ex("Failed to find a solution in computeNeighborWeights");
+	// 	for(size_t i = 0; i < pSquare->rows(); i++)
+	// 		pOutWeights[i] = 1;
+	// 	if(!pSquare->gaussianElimination(pOutWeights))
+	// 		throw Ex("Failed to find a solution in computeNeighborWeights");
 
 	// Compute the weights the SVD way
 	GMatrix* pInv = pSquare->pseudoInverse();
@@ -328,7 +329,7 @@ GMatrix* GManifold::multiDimensionalScaling(GMatrix* pDistances, size_t targetDi
 	if(n < (size_t)targetDims)
 	{
 		throw Ex("targetDims cannot be larger than the number of rows or columns in the distance matrix");
-/*
+		/*
 		for(size_t i = n; i < targetDims; i++)
 			pEigenVals[i] = 0.0;
 		GMatrix* pEigs2 = new GMatrix(targetDims);
@@ -454,7 +455,7 @@ GMatrix* GManifoldSculpting::reduce(const GMatrix& in)
 	double dBestError = 1e308;
 	for(size_t nItersSinceImprovement = 0; nItersSinceImprovement < 50; nItersSinceImprovement++)
 	{
-//PlotData(4.0f);
+		//PlotData(4.0f);
 		double dError = squishPass((size_t)m_pRand->next(m_pData->rows()));
 		if(dError < dBestError)
 		{
@@ -898,7 +899,7 @@ double GManifoldSculpting::squishPass(size_t nSeedDataPoint)
 		m_dLearningRate *= .87;
 	else
 		m_dLearningRate /= .91;
-//	cout << "[Learning Rate: " << m_dLearningRate << "]\n";
+	//	cout << "[Learning Rate: " << m_dLearningRate << "]\n";
 
 	if(m_nPass % 20 == 0)
 		moveMeanToOrigin();
@@ -1169,7 +1170,7 @@ void GLLEHelper::computeEmbedding()
 			pRow[j] = pV->get(rowIn, j);
 	}
 #else
-/*
+	/*
 	// The brute-force way (slow and not very precise)
 	GMatrix* pTmp = m_pWeights->clone();
 	std::unique_ptr<GMatrix> hTmp(pTmp);
@@ -1341,7 +1342,7 @@ void GVec_normalize(double* pVector, size_t nSize)
 	if(dMag <= 0)
 		pVector[0] = 1.0;
 	else
-		GVec_multiply(pVector, 1.0  / sqrt(dMag), nSize);
+		GVec_multiply(pVector, 1.0 / sqrt(dMag), nSize);
 }
 
 // virtual
@@ -1428,7 +1429,7 @@ void GBreadthFirstUnfolding::refineNeighborhood(GMatrix* pLocal, size_t rootInde
 		// Make a map to the indexes of point i's neighbors
 		size_t indexI = indexes[i];
 		nc = pNeighborGraph->findNearest(m_neighborCount, indexI);
-		map<size_t,size_t> indexMap;
+		map<size_t, size_t> indexMap;
 		for(size_t j = 0; j < nc; j++)
 		{
 			indexMap.insert(make_pair(pNeighborGraph->neighbor(j), j));
@@ -1436,7 +1437,7 @@ void GBreadthFirstUnfolding::refineNeighborhood(GMatrix* pLocal, size_t rootInde
 		for(size_t j = 0; j < pLocal->rows(); j++)
 		{
 			size_t indexJ = indexes[j];
-			map<size_t,size_t>::iterator it = indexMap.find(indexJ);
+			map<size_t, size_t>::iterator it = indexMap.find(indexJ);
 			if(it != indexMap.end())
 				*pTablePos = sqrt(pNeighborGraph->distance(it->second));
 			else
@@ -1490,8 +1491,8 @@ GMatrix* GBreadthFirstUnfolding::reduceNeighborhood(const GMatrix* pIn, size_t i
 		// Build index tables
 		GTEMPBUF(size_t, indexes, m_neighborCount + 1);
 		size_t localSize = 0;
-		map<size_t,size_t> revIndexes;
-		map<size_t,size_t>::iterator it;
+		map<size_t, size_t> revIndexes;
+		map<size_t, size_t>::iterator it;
 		revIndexes.insert(make_pair(index, localSize));
 		indexes[localSize++] = index;
 		size_t nc = pNeighborGraph->findNearest(m_neighborCount, index);
@@ -1660,17 +1661,17 @@ GMatrix* GBreadthFirstUnfolding::unfold(const GMatrix* pIn, GNeighborGraph* pNei
 
 GScalingUnfolder::GScalingUnfolder()
 : m_neighborCount(14),
-m_targetDims(2),
-m_passes(50),
-m_refines_per_scale(100),
-m_scaleRate(0.9),
-m_rand(0)
+  m_targetDims(2),
+  m_passes(50),
+  m_refines_per_scale(100),
+  m_scaleRate(0.9),
+  m_rand(0)
 {
 }
 
 GScalingUnfolder::GScalingUnfolder(GDomNode* pNode)
 : GTransform(pNode),
-m_rand(0)
+  m_rand(0)
 {
 	throw Ex("Sorry, this method is not implemented yet");
 }
@@ -1678,7 +1679,6 @@ m_rand(0)
 // virtual
 GScalingUnfolder::~GScalingUnfolder()
 {
-
 }
 
 void GScalingUnfolder_adjustPoints(double* pA, double* pB, size_t dims, double curSqDist, double tarSqDist, GRand& rand)
@@ -1750,7 +1750,6 @@ void GScalingUnfolder::restore_local_distances_pass(GMatrix& intrinsic, GNeighbo
 		double dCur = aa.squaredDistance(bb);
 		GScalingUnfolder_adjustPoints(aa.data(), bb.data(), dims, dCur, dTarget, rand);
 	}
-
 }
 
 void GScalingUnfolder::unfold(GMatrix& intrinsic, GNeighborGraph& nf, size_t encoderTrainIters, GNeuralNetLearner* pEncoder, GNeuralNetLearner* pDecoder, const GMatrix* pVisible)

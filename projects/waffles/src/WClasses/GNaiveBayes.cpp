@@ -31,7 +31,8 @@
 #include <cmath>
 #include <memory>
 
-namespace GClasses {
+namespace GClasses
+{
 
 struct GNaiveBayesInputAttr
 {
@@ -151,13 +152,7 @@ struct GNaiveBayesOutputValue
 		// The probability of inputs given this output
 		for(size_t n = 0; n < m_featureDims; n++)
 		{
-			dLogProb += log(std::max(1e-300,
-					(
-						(double)m_pInputs[n]->eval((int)pInputVector[n]) +
-						(equivalentSampleSize / m_pInputs[n]->m_nValues)
-					) /
-					(equivalentSampleSize + m_nCount)
-				));
+			dLogProb += log(std::max(1e-300, ((double)m_pInputs[n]->eval((int)pInputVector[n]) + (equivalentSampleSize / m_pInputs[n]->m_nValues)) / (equivalentSampleSize + m_nCount)));
 		}
 		return dLogProb;
 	}
@@ -396,23 +391,23 @@ void GNaiveBayes_CheckResults(double yprior, double ycond, double nprior, double
 void GNaiveBayes_testMath()
 {
 	const char* trainFile =
-	"@RELATION test\n"
-	"@ATTRIBUTE a {t,f}\n"
-	"@ATTRIBUTE b {r,g,b}\n"
-	"@ATTRIBUTE c {y,n}\n"
-	"@DATA\n"
-	"t,r,y\n"
-	"f,r,n\n"
-	"t,g,y\n"
-	"f,g,y\n"
-	"f,g,n\n"
-	"t,r,n\n"
-	"t,r,y\n"
-	"t,b,y\n"
-	"f,r,y\n"
-	"f,g,n\n"
-	"f,b,y\n"
-	"t,r,n\n";
+	  "@RELATION test\n"
+	  "@ATTRIBUTE a {t,f}\n"
+	  "@ATTRIBUTE b {r,g,b}\n"
+	  "@ATTRIBUTE c {y,n}\n"
+	  "@DATA\n"
+	  "t,r,y\n"
+	  "f,r,n\n"
+	  "t,g,y\n"
+	  "f,g,y\n"
+	  "f,g,n\n"
+	  "t,r,n\n"
+	  "t,r,y\n"
+	  "t,b,y\n"
+	  "f,r,y\n"
+	  "f,g,n\n"
+	  "f,b,y\n"
+	  "t,r,n\n";
 	GMatrix train;
 	train.parseArff(trainFile, strlen(trainFile));
 	GMatrix* pFeatures = new GMatrix(train, 0, 0, train.rows(), 2);
@@ -424,24 +419,30 @@ void GNaiveBayes_testMath()
 	nb.train(*pFeatures, *pLabels);
 	GPrediction out;
 	GVec pat(2);
-	pat[0] = 0; pat[1] = 0;
+	pat[0] = 0;
+	pat[1] = 0;
 	nb.predictDistribution(pat, &out);
-	GNaiveBayes_CheckResults(7.0/12.0, 4.0/7.0*3.0/7.0, 5.0/12.0, 2.0/5.0*3.0/5.0, &out);
-	pat[0] = 0; pat[1] = 1;
+	GNaiveBayes_CheckResults(7.0 / 12.0, 4.0 / 7.0 * 3.0 / 7.0, 5.0 / 12.0, 2.0 / 5.0 * 3.0 / 5.0, &out);
+	pat[0] = 0;
+	pat[1] = 1;
 	nb.predictDistribution(pat, &out);
-	GNaiveBayes_CheckResults(7.0/12.0, 4.0/7.0*2.0/7.0, 5.0/12.0, 2.0/5.0*2.0/5.0, &out);
-	pat[0] = 0; pat[1] = 2;
+	GNaiveBayes_CheckResults(7.0 / 12.0, 4.0 / 7.0 * 2.0 / 7.0, 5.0 / 12.0, 2.0 / 5.0 * 2.0 / 5.0, &out);
+	pat[0] = 0;
+	pat[1] = 2;
 	nb.predictDistribution(pat, &out);
-	GNaiveBayes_CheckResults(7.0/12.0, 4.0/7.0*2.0/7.0, 5.0/12.0, 2.0/5.0*0.0/5.0, &out);
-	pat[0] = 1; pat[1] = 0;
+	GNaiveBayes_CheckResults(7.0 / 12.0, 4.0 / 7.0 * 2.0 / 7.0, 5.0 / 12.0, 2.0 / 5.0 * 0.0 / 5.0, &out);
+	pat[0] = 1;
+	pat[1] = 0;
 	nb.predictDistribution(pat, &out);
-	GNaiveBayes_CheckResults(7.0/12.0, 3.0/7.0*3.0/7.0, 5.0/12.0, 3.0/5.0*3.0/5.0, &out);
-	pat[0] = 1; pat[1] = 1;
+	GNaiveBayes_CheckResults(7.0 / 12.0, 3.0 / 7.0 * 3.0 / 7.0, 5.0 / 12.0, 3.0 / 5.0 * 3.0 / 5.0, &out);
+	pat[0] = 1;
+	pat[1] = 1;
 	nb.predictDistribution(pat, &out);
-	GNaiveBayes_CheckResults(7.0/12.0, 3.0/7.0*2.0/7.0, 5.0/12.0, 3.0/5.0*2.0/5.0, &out);
-	pat[0] = 1; pat[1] = 2;
+	GNaiveBayes_CheckResults(7.0 / 12.0, 3.0 / 7.0 * 2.0 / 7.0, 5.0 / 12.0, 3.0 / 5.0 * 2.0 / 5.0, &out);
+	pat[0] = 1;
+	pat[1] = 2;
 	nb.predictDistribution(pat, &out);
-	GNaiveBayes_CheckResults(7.0/12.0, 3.0/7.0*2.0/7.0, 5.0/12.0, 3.0/5.0*0.0/5.0, &out);
+	GNaiveBayes_CheckResults(7.0 / 12.0, 3.0 / 7.0 * 2.0 / 7.0, 5.0 / 12.0, 3.0 / 5.0 * 0.0 / 5.0, &out);
 }
 
 // static

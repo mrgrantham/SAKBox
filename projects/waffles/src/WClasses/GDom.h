@@ -25,7 +25,8 @@
 #include "GString.h"
 #include <iostream>
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GDomNode;
 class GDom;
@@ -36,7 +37,7 @@ class GJsonTokenizer;
 
 #ifdef WINDOWS
 //	ensure compact packing
-#	pragma pack(1)
+#pragma pack(1)
 #endif
 
 ///\brief Converts a GDomNode to a string
@@ -51,7 +52,7 @@ std::string to_str(const GDom& doc);
 /// This class iterates over the items in a list node
 class GDomListIterator
 {
-friend class GDomNode;
+	friend class GDomNode;
 protected:
 	const GDomNode* m_pList;
 	size_t m_index;
@@ -88,8 +89,8 @@ public:
 /// Represents a single node in a DOM
 class GDomNode
 {
-friend class GDom;
-friend class GDomListIterator;
+	friend class GDom;
+	friend class GDomListIterator;
 public:
 	enum nodetype
 	{
@@ -303,7 +304,7 @@ protected:
 };
 #ifdef WINDOWS
 //	reset packing to the default
-#	pragma pack()
+#pragma pack()
 #endif
 
 
@@ -314,7 +315,7 @@ protected:
 /// may be added.
 class GDom
 {
-friend class GDomNode;
+	friend class GDomNode;
 protected:
 	GHeap m_heap;
 	GDomNode* m_pRoot;
@@ -361,7 +362,11 @@ public:
 	GDomNode* root() { return m_pRoot; }
 
 	/// Sets the root document node. (Returns the same node that you pass in.)
-	const GDomNode* setRoot(const GDomNode* pNode) { m_pRoot = (GDomNode*)pNode; return pNode; }
+	const GDomNode* setRoot(const GDomNode* pNode)
+	{
+		m_pRoot = (GDomNode*)pNode;
+		return pNode;
+	}
 
 	/// Makes a new object node
 	GDomNode* newObj();

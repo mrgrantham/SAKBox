@@ -25,7 +25,7 @@
 class Server;
 namespace GClasses
 {
-	class GDynamicPageSession;
+class GDynamicPageSession;
 }
 using namespace GClasses;
 

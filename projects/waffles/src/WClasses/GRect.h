@@ -22,7 +22,8 @@
 
 #include "GError.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 /// Represents a rectangular region with integers
 class GRect

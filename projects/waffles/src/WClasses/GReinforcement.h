@@ -22,7 +22,8 @@
 #include "GPolicyLearner.h"
 #include "GLearner.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GRand;
 class GKNN;
@@ -123,7 +124,7 @@ public:
 
 	/// See the comment for GQLearner::GetQValue
 	double getQValue(const double* pState, const double* pAction) override;
-	
+
 	/// See the comment for GQLearner::SetQValue
 	void setQValue(const double* pState, const double* pAction, double qValue) override;
 
