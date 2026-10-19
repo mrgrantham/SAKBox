@@ -13,9 +13,9 @@ cc_library(
 
 
 cc_test(
-  name = "Test_Controls",
+  name = "Controls_test",
   size = "small",
-  srcs = ["tests/Test_Controls.cpp"],
+  srcs = ["tests/Controls_test.cpp"],
   deps = ["@gtest//:gtest_main",
   "//projects/scratchpadd/basis:basis",
   "//projects/data_dep_retriever",
@@ -23,9 +23,9 @@ cc_test(
 )
 
 cc_test(
-  name = "Test_Messages",
+  name = "Messages_test",
   size = "small",
-  srcs = ["tests/Test_Messages.cpp"],
+  srcs = ["tests/Messages_test.cpp"],
   deps = ["@gtest//:gtest_main",
   "//projects/scratchpadd/basis:basis",
   ":messages",

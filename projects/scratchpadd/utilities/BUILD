@@ -13,9 +13,9 @@ cc_library(
 )
 
 cc_test(
-    name = "Test_EventTimer",
+    name = "EventTimer_test",
     size = "small",
-    srcs = ["tests/Test_EventTimer.cpp"],
+    srcs = ["tests/EventTimer_test.cpp"],
     deps = [
         ":utilities",
         "@gtest//:gtest_main",

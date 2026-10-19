@@ -63,7 +63,7 @@ int main() {
 }
 ```
 
-Every padd must implement `name()` (unique within the system) and `generateControls()`, and have a constructor that takes a `ScratchPadd::System *`. These examples are compiled and run by `basis/tests/Test_Examples.cpp`.
+Every padd must implement `name()` (unique within the system) and `generateControls()`, and have a constructor that takes a `ScratchPadd::System *`. These examples are compiled and run by `basis/tests/Examples_test.cpp`.
 
 To see a bigger system, run the demo: a window with a shader view, the Dear ImGui demo, and a control panel for `StoryPadd`'s controls (edits are logged), plus a demo-defined `Triangle` message logged by another padd. Close the window to quit.
 
@@ -157,7 +157,7 @@ Behind the panel are three messages; `Base` handles the owner's side automatical
 2. **Edit.** When the user edits a widget, the panel sends a `ControlChange` carrying the owner's name (copied from the snapshot), the control's name and the new value. There's no direct addressing, so every padd receives it, and only the padd it names acts on it.
 3. **Apply and confirm.** The owner enforces its own rules: numbers are clamped to the control's range, strings must be one of the allowed values, and the type must match; only the value is taken, so a change can't alter a range. If the change is valid it's stored and `controlChanged()` is called. Either way the owner replies with a fresh snapshot, so the panel shows the value the owner actually holds (a clamped number snaps back, for example).
 
-The panel only ever holds copies from snapshots, and each owner changes its own values on its own thread, so no locking is needed. `messages/tests/Test_Controls.cpp` covers the round trip, range enforcement, rejection and who replies.
+The panel only ever holds copies from snapshots, and each owner changes its own values on its own thread, so no locking is needed. `messages/tests/Controls_test.cpp` covers the round trip, range enforcement, rejection and who replies.
 
 ### Logging and Timing
 
@@ -222,14 +222,16 @@ bazel test //projects/scratchpadd/...
 bazel run //projects/scratchpadd/basis:clang_format   # format the basis package
 ```
 
+Each test file is named after what it tests, as `<Source>_test.cpp` (see the top-level README's [Code conventions](../../README.md#code-conventions)).
+
 | Test | Covers |
 | --- | --- |
-| `basis:Test_Examples` | The examples in this README |
-| `basis:Test_Base` | Padd names, and a system starting and stopping |
-| `basis:Test_Threading` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
-| `messages:Test_Messages` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message |
-| `messages:Test_Controls` | The control round trip: who replies to requests and changes, range clamping, rejected changes, `controlChanged()` and `control<C>()` |
-| `utilities:Test_EventTimer` | Repeating and one-shot timers, stopping |
+| `basis:Examples_test` | The examples in this README |
+| `basis:Base_test` | Padd names, and a system starting and stopping |
+| `basis:Threading_test` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
+| `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message |
+| `messages:Controls_test` | The control round trip: who replies to requests and changes, range clamping, rejected changes, `controlChanged()` and `control<C>()` |
+| `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
 

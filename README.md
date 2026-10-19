@@ -85,6 +85,8 @@ The build enforces it for everything under `projects/`: `-Wsuggest-override` and
 
 C++ files are formatted with clang-format in the repo's style (`.clang-format`); see [Editor Setup](#editor-setup).
 
+**Test files are named `<Source>_test.cpp`**, after the file they test and spelled as it is: `FlexReal_test.cpp` tests `FlexReal.hpp`, `GMatrix_test.cpp` tests `GMatrix.h`, `core_test.cpp` tests Cyclone's `core.h`. A test of something that isn't one file (threading, the README's examples) is named after that: `Threading_test.cpp`, `Examples_test.cpp`. Its Bazel target has the same name (`:FlexReal_test`). This is the googletest and Bazel convention; it also sorts a test next to the code it tests. Libraries kept as published (libpng's `pngtest.cpp`, Waffles' own `src/test/`) keep their names.
+
 ## Static analysis
 
 [clang-tidy](https://clang.llvm.org/extra/clang-tidy/) checks the code for likely bugs, avoidable slowness and outdated C++, using the checks chosen (with the reasons for leaving some out) in [`.clang-tidy`](.clang-tidy):

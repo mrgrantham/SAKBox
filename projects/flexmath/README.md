@@ -235,14 +235,16 @@ bazel build //projects/flexmath
 bazel test  //projects/flexmath/...
 ```
 
+Each test file is named after what it tests, as `<Source>_test.cpp` (see the top-level README's [Code conventions](../../README.md#code-conventions)).
+
 | Test | Covers |
 |---|---|
-| `test_FlexPoint` | Fixed-point arithmetic, rounding, overflow modes, and agreement between the integer and `double` snapping paths over thousands of random cases |
-| `test_FlexReal` | Per-operation snapping, nested scopes, `quantize()` properties (snapping twice = once, order preserved) |
-| `test_Rounding` | Stochastic rounding: on-grid values unchanged, results are neighbouring grid values, unbiased on average, small increments accumulate, seeding, overflow |
-| `test_FlexGroup` | Overrides (stacking, release order, moves), policies, `activate()`, the controller, and the two Precision Flight mechanics as library properties |
-| `test_FlexVector`, `test_FlexMatrix` | Element-wise operations, products, quantization, dimension checks |
-| `test_Examples` | Every code example in this README |
+| `FlexPoint_test` | Fixed-point arithmetic, rounding, overflow modes, and agreement between the integer and `double` snapping paths over thousands of random cases |
+| `FlexReal_test` | Per-operation snapping, nested scopes, `quantize()` properties (snapping twice = once, order preserved) |
+| `Rounding_test` | Stochastic rounding: on-grid values unchanged, results are neighbouring grid values, unbiased on average, small increments accumulate, seeding, overflow |
+| `FlexGroup_test` | Overrides (stacking, release order, moves), policies, `activate()`, the controller, and the two Precision Flight mechanics as library properties |
+| `FlexVector_test`, `FlexMatrix_test` | Element-wise operations, products, quantization, dimension checks |
+| `Examples_test` | Every code example in this README |
 
 ## Design notes
 

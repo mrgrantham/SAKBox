@@ -124,7 +124,7 @@ cc_test(
 )
 
 # SAKBox's tests of Waffles (alongside upstream's suite, :test above), one
-# file per area of the library, named after its header: tests/matrix_test.cpp
+# file per area of the library, named after its header: tests/GMatrix_test.cpp
 # for GMatrix.h and so on. A test's comment says why it exists, such as the
 # bug it caught.
 [cc_test(
@@ -136,29 +136,29 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 ) for name in [
-    "3d_test",
-    "app_test",
-    "cluster_test",
-    "dom_test",
-    "error_test",
-    "function_test",
-    "hash_table_test",
-    "holders_test",
-    "http_test",
-    "image_test",
-    "learner_test",
-    "math_test",
-    "matrix_test",
-    "neural_net_test",
-    "raytrace_test",
-    "recommender_test",
-    "rand_test",
-    "region_test",
+    "G3D_test",
+    "GApp_test",
+    "GCluster_test",
+    "GDom_test",
+    "GError_test",
+    "GFunction_test",
+    "GHashTable_test",
+    "GHolders_test",
+    "GHttp_test",
+    "GImage_test",
+    "GLearner_test",
+    "GMath_test",
+    "GMatrix_test",
+    "GNeuralNet_test",
+    "GRand_test",
+    "GRayTrace_test",
+    "GRecommender_test",
+    "GRegion_test",
+    "GStemmer_test",
+    "GTime_test",
+    "GTransform_test",
+    "GVec_test",
     "sha2_test",
-    "text_test",
-    "time_test",
-    "transform_test",
-    "vec_test",
 ]]
 
 clang_format(name = "waffles")

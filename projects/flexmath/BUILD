@@ -26,8 +26,8 @@ cc_library(
 
 # The examples from README.md and the header comments
 cc_test(
-    name = "test_Examples",
-    srcs = ["tests/test_Examples.cpp"],
+    name = "Examples_test",
+    srcs = ["tests/Examples_test.cpp"],
     deps = [
         ":flexmath",
         "@catch2//:catch2_main",
@@ -35,8 +35,8 @@ cc_test(
 )
 
 cc_test(
-    name = "test_FlexGroup",
-    srcs = ["tests/test_FlexGroup.cpp"],
+    name = "FlexGroup_test",
+    srcs = ["tests/FlexGroup_test.cpp"],
     deps = [
         ":flexmath",
         "@catch2//:catch2_main",
@@ -44,8 +44,8 @@ cc_test(
 )
 
 cc_test(
-    name = "test_FlexMatrix",
-    srcs = ["tests/test_FlexMatrix.cpp"],
+    name = "FlexMatrix_test",
+    srcs = ["tests/FlexMatrix_test.cpp"],
     deps = [
         ":flexmath",
         "@catch2//:catch2_main",
@@ -53,8 +53,8 @@ cc_test(
 )
 
 cc_test(
-    name = "test_FlexPoint",
-    srcs = ["tests/test_FlexPoint.cpp"],
+    name = "FlexPoint_test",
+    srcs = ["tests/FlexPoint_test.cpp"],
     deps = [
         ":flexmath",
         "@gtest",
@@ -62,8 +62,8 @@ cc_test(
 )
 
 cc_test(
-    name = "test_FlexReal",
-    srcs = ["tests/test_FlexReal.cpp"],
+    name = "FlexReal_test",
+    srcs = ["tests/FlexReal_test.cpp"],
     deps = [
         ":flexmath",
         "@gtest//:gtest_main",
@@ -71,8 +71,8 @@ cc_test(
 )
 
 cc_test(
-    name = "test_Rounding",
-    srcs = ["tests/test_Rounding.cpp"],
+    name = "Rounding_test",
+    srcs = ["tests/Rounding_test.cpp"],
     deps = [
         ":flexmath",
         "@gtest//:gtest_main",
@@ -80,8 +80,8 @@ cc_test(
 )
 
 cc_test(
-    name = "test_FlexVector",
-    srcs = ["tests/test_FlexVector.cpp"],
+    name = "FlexVector_test",
+    srcs = ["tests/FlexVector_test.cpp"],
     deps = [
         ":flexmath",
         "@catch2//:catch2_main",

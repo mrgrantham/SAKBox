@@ -23,27 +23,27 @@ cc_library(
 
 
 cc_test(
-  name = "Test_Base",
+  name = "Base_test",
   size = "small",
-  srcs = ["tests/Test_Base.cpp"],
+  srcs = ["tests/Base_test.cpp"],
   deps = ["@gtest//:gtest_main",
   ":basis"],
 )
 
 
 cc_test(
-  name = "Test_Examples",
+  name = "Examples_test",
   size = "small",
-  srcs = ["tests/Test_Examples.cpp"],
+  srcs = ["tests/Examples_test.cpp"],
   deps = ["@gtest//:gtest_main",
   ":basis"],
 )
 
 
 cc_test(
-  name = "Test_Threading",
+  name = "Threading_test",
   size = "small",
-  srcs = ["tests/Test_Threading.cpp"],
+  srcs = ["tests/Threading_test.cpp"],
   deps = ["@gtest//:gtest_main",
   ":basis"],
 )
