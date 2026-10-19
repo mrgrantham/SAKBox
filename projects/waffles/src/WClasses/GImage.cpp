@@ -2792,37 +2792,45 @@ GImage* GImage::munge(int nStyle, float fExtent)
 			break;
 
 		case 2: // waves
+		{
+			const int halfWidth = (int)m_width / 2, halfHeight = (int)m_height / 2; // the waves' amplitude at full extent
 			for(y = 0; y < (int)m_height; y++)
 			{
 				for(x = 0; x < (int)m_width; x++)
 				{
 					col = pixelNearest(
-										(int)(x + fExtent * (m_width / 2) * cos((double)x * 16 / m_width)),
-										(int)(y + fExtent * (m_height / 2) * sin((double)y * 16 / m_height))
+										(int)(x + fExtent * halfWidth * cos((double)x * 16 / m_width)),
+										(int)(y + fExtent * halfHeight * sin((double)y * 16 / m_height))
 									);
 					pMunged->setPixel(x, y, col);
 				}
 			}
 			break;
+		}
 
 		case 3: // waved in or out of the middle
+		{
 				fExtent = 1 - fExtent;
 				fExtent *= fExtent;
 				fExtent = 1 - fExtent;
+			// SAKBox: the middle, signed. y - m_height / 2 was unsigned, so above
+			// or left of the middle it wrapped to about 4 billion.
+			const int midX = (int)m_width / 2, midY = (int)m_height / 2;
 			for(y = 0; y < (int)m_height; y++)
 			{
 				for(x = 0; x < (int)m_width; x++)
 				{
-					d = atan2((double)(y - m_height / 2), (double)(x - m_width / 2));
+					d = atan2((double)(y - midY), (double)(x - midX));
 					d = fExtent * cos(d * 5);
 					col = pixelNearest(
-										(int)((1 - d) * x + d * (m_width / 2)),
-										(int)((1 - d) * y + d * (m_height / 2))
+										(int)((1 - d) * x + d * midX),
+										(int)((1 - d) * y + d * midY)
 									);
 					pMunged->setPixel(x, y, col);
 				}
 			}
 			break;
+		}
 	}
 	return pMunged;
 }

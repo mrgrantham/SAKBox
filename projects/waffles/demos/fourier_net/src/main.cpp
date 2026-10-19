@@ -179,10 +179,11 @@ FourierFit fourierFit(const GMatrix& series, double period)
 		f[i].imag = 0.0;
 	}
 	GFourier::fft(n, f.data(), true);
-	for(size_t i = 0; i < n / 2; i++)
+	const size_t halfN = n / 2; // exact: n is a power of 2 (checked above)
+	for(size_t i = 0; i < halfN; i++)
 	{
-		fit.outWeight[2 * i] = f[1 + i].real / (n / 2);
-		fit.outWeight[2 * i + 1] = f[1 + i].imag / (n / 2);
+		fit.outWeight[2 * i] = f[1 + i].real / (double)halfN;
+		fit.outWeight[2 * i + 1] = f[1 + i].imag / (double)halfN;
 	}
 	fit.outBias = f[0].real / n;
 	// The FFT doubles up the values in the last complex element

@@ -253,7 +253,9 @@ void GCamera::project(const G3DVector* pPoint, G3DVector* pOut)
 		v *= d;
 	}
 
-	pOut->set(m_nWidth / 2 + u, m_nHeight / 2 + v, forw);
+	// The whole-pixel centre, as computeRayDirection subtracts it
+	const int midX = m_nWidth / 2, midY = m_nHeight / 2;
+	pOut->set(midX + u, midY + v, forw);
 }
 
 
