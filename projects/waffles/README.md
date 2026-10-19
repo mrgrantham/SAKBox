@@ -16,6 +16,8 @@ It comes from [mikegashler/waffles](https://github.com/mikegashler/waffles). Thi
 
 `waffles_wizard` and `waffles_plot graph` serve their pages to your browser at `http://localhost:8421`. Only this computer can connect, and they say so when they start. To let other devices on your network use them too, run `waffles_wizard -network` or `waffles_plot graph -network`; anyone on the network can then connect, as they warn. (In code, `GHttpServer`, `GDynamicPageServer`, `GTCPServer` and `GPackageServer` take a `networkAccessible` argument, false by default; the `community`, `diff`, `hello_web` and `security` demos, which are meant to be reached from other machines, pass true.)
 
+ARFF `string` columns load as categories: each distinct text (compared exactly, ignoring surrounding quotes) is one value, so a column of names or labels is usable by any learner. Waffles stores values as numbers and has nowhere to keep text, and upstream loaded these columns as zeros, discarding the text. A column where most values differ (at least 20, in more than half the rows) is likely free text, which a learner would see as arbitrary numbers, so loading it prints a warning. Saving writes the column as a category (`{alice,bob,...}`), not `string`.
+
 It builds with the rest of the repo as strict C++26 with `-Werror`. The other demos and the upstream Makefiles, CMake and Visual Studio files are kept but not used.
 
 ## What SAKBox has changed
@@ -32,6 +34,8 @@ It builds with the rest of the repo as strict C++26 with `-Werror`. The other de
   - `GDenseClusterRecommender` clustered uninitialised memory for unrated items; they're now marked unknown.
   - `GSparseInstance` couldn't be reloaded once saved (missing from `GLearnerLoader`, and its loading constructor left a pointer uninitialised), mismatched rows and labels when pruning, and stepped an iterator before `begin()`.
   - `GTensor::parseArff` loaded only half of a file's values and divided by zero for a file with no attributes; its errors now name the column.
+  - `GJsonAsADatabase`'s `=` crashed on a missing field with more path after it (`.a.b = 1`), replaced the whole database for a missing last field (`.a = 1`), named fields with the space before `=` (`"a "`), and mis-indexed one past a list's end; `GDomNode::set` crashed on a new, empty list.
+  - `GAutoFilter` asked itself, not the learner, whether nominal values needed handling, so six of its rules never ran (one also checked labels where it meant features). No change for Waffles' own learners.
   - `GRayTraceTriMesh::makeCylinder` built its triangles facing inward. Upstream's dead mesh-orientation code is revived as `orientTriangles`.
   - Smaller fixes clang-tidy found: wrong `throw`s, `GHttp`'s port, `memcpy` of a non-trivial type, and how the `plot` and `wizard` tools seed their generators.
 - **Tests:** the suite used to pass whatever failed (failures were printed, not reported) and skipped the command-line tool tests under Bazel; both are fixed. Three test functions that were never run (`GDenseClusterRecommender`, `GFunctionParser`, `GSparseInstance`) now are, with real limits instead of placeholders. `GWavelet::test` stays out: it reads a file on its author's machine.
@@ -53,6 +57,7 @@ Two kinds:
 
 1. Make `GRand` a standard C++ random bit generator: add `result_type`, `min()`, `max()` and `operator()` (forwarding to `next()`), so `<random>` engine adaptors and algorithms that take a generator can use a Waffles `GRand` directly. Keep Waffles' own shuffle and distributions wherever exact results matter: the standard leaves `std::shuffle`'s and the `<random>` distributions' algorithms to each library, so the same seed gives different results on different platforms.
 2. Only if something needs it: a `GRand` subclass backed by a `<random>` engine (for example `std::mt19937_64`, whose output the standard fixes, so it repeats on every platform). `GRand`'s methods are already virtual, so it only needs `next()` and `setSeed()`. Learners hold their `GRand m_rand` by value, so using it inside a learner would also mean holding the generator by pointer.
+3. A strict mode for ARFF `string` columns: an option to refuse to load them, for when nothing should be loaded that Waffles can't represent as written, instead of converting them to categories.
 
 ## Upstream's README
 

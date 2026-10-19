@@ -41,7 +41,9 @@
 #include <cmath>
 #include <set>
 #include <errno.h>
+#include <map>
 #include <memory>
+#include <iostream>
 
 using std::vector;
 using std::string;
@@ -1035,7 +1037,23 @@ inline bool IsRealValue(const char* szValue)
 	return false;
 }
 
-double GMatrix_parseValue(GArffRelation* pRelation, size_t col, const char* szVal, GTokenizer& tok)
+// SAKBox: while an ARFF file loads, the texts seen so far in each string
+// column, in order, and each one's index (keyed without surrounding quotes)
+struct GArffStringValues
+{
+	std::vector<std::string> m_texts; // as first written, quotes and all
+	std::map<std::string, size_t> m_index;
+};
+
+static std::string GArffStringValues_key(const char* szVal)
+{
+	size_t len = strlen(szVal);
+	if(len >= 2 && (szVal[0] == '\'' || szVal[0] == '"') && szVal[len - 1] == szVal[0])
+		return std::string(szVal + 1, len - 2);
+	return szVal;
+}
+
+double GMatrix_parseValue(GArffRelation* pRelation, size_t col, const char* szVal, GTokenizer& tok, std::map<size_t, GArffStringValues>* pStrings = nullptr)
 {
 	size_t vals = pRelation->valueCount(col);
 	if(vals == 0) // Continuous
@@ -1064,7 +1082,23 @@ double GMatrix_parseValue(GArffRelation* pRelation, size_t col, const char* szVa
 		}
 	}
 	else if(vals == (size_t)-1) // String
-		return 0.0;
+	{
+		// SAKBox: was 0.0, losing the text. Each distinct text is now a value of
+		// a category (the column becomes one once the file is loaded).
+		if(!pStrings)
+			throw Ex("String values aren't supported here");
+		if(*szVal == '\0' || (*szVal == '?' && szVal[1] == '\0'))
+			return UNKNOWN_DISCRETE_VALUE;
+		GArffStringValues& strings = (*pStrings)[col];
+		std::string key = GArffStringValues_key(szVal);
+		std::map<std::string, size_t>::iterator it = strings.m_index.find(key);
+		if(it != strings.m_index.end())
+			return (double)it->second;
+		size_t index = strings.m_texts.size();
+		strings.m_texts.push_back(szVal);
+		strings.m_index[key] = index;
+		return (double)index;
+	}
 	else if(vals == (size_t)-2) // Date
 	{
 		const char* szFormat = pRelation->attrName(col);
@@ -1123,6 +1157,7 @@ void GMatrix::parseArff(GArffTokenizer& tok, size_t maxRows)
 	flush();
 	setRelation(pRelation);
 	size_t colCount = pRelation->size();
+	std::map<size_t, GArffStringValues> strings; // SAKBox: see GMatrix_parseValue
 	while(true)
 	{
 		if(rows() >= maxRows)
@@ -1158,7 +1193,7 @@ void GMatrix::parseArff(GArffTokenizer& tok, size_t maxRows)
 						throw Ex("Column index out of range at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
 					tok.skipWhile(tok.m_spaces);
 					const char* szVal = tok.readUntil_escaped_quoted(tok.m_valEnder);
-					r[column] = GMatrix_parseValue(pRelation, column, szVal, tok);
+					r[column] = GMatrix_parseValue(pRelation, column, szVal, tok, &strings);
 					tok.skipUntil(tok.m_valHardEnder);
 					c2 = tok.peek();
 					if(c2 == ',' || c2 == '\t')
@@ -1186,7 +1221,7 @@ void GMatrix::parseArff(GArffTokenizer& tok, size_t maxRows)
 					throw Ex("Too many values on line ", to_str(tok.line()), ", col ", to_str(tok.col()));
 				tok.readUntil_escaped_quoted(tok.m_commaNewlineTab);
 				const char* szVal = tok.trim(tok.m_whitespace);
-				r[column] = GMatrix_parseValue(pRelation, column, szVal, tok);
+				r[column] = GMatrix_parseValue(pRelation, column, szVal, tok, &strings);
 				column++;
 				char c2 = tok.peek();
 				while(c2 == '\t' || c2 == ' ')
@@ -1209,10 +1244,20 @@ void GMatrix::parseArff(GArffTokenizer& tok, size_t maxRows)
 				throw Ex("Not enough values on line ", to_str(tok.line()), ", col ", to_str(tok.col()));
 		}
 	}
+	// SAKBox: a string column becomes a category of the texts it held (it used
+	// to become a number column of zeros). Most values being different
+	// suggests free text, which a learner would take as arbitrary numbers.
 	for(size_t i = 0; i < colCount; i++)
 	{
-		if(pRelation->valueCount(i) == INVALID_INDEX)
-			pRelation->setAttrValueCount(i, 0);
+		if(pRelation->valueCount(i) != INVALID_INDEX)
+			continue;
+		pRelation->setAttrValueCount(i, 0);
+		const std::vector<std::string>& texts = strings[i].m_texts;
+		for(const std::string& text : texts)
+			pRelation->addAttrValue(i, text.c_str());
+		if(texts.size() >= 20 && texts.size() * 2 > rows())
+			std::cerr << "warning: string column '" << pRelation->attrName(i) << "' has " << texts.size()
+				<< " different values in " << rows() << " rows; loaded as a category, which a learner may treat as meaningless numbers\n";
 	}
 }
 
