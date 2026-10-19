@@ -261,7 +261,8 @@ static void sha256_compile(sha256_ctx ctx[1])
 #if defined(FAST_COPY)
 
 void sha256_hash(const unsigned char data[], const unsigned long len, sha256_ctx ctx[1])
-{   uint32_t            free = 64 - (uint32_t)(ctx->count[0] & 63), rlen = len, j;
+{   uint32_t            free = 64 - (uint32_t)(ctx->count[0] & 63), j;
+    unsigned long       rlen = len; /* SAKBox: rlen was a uint32_t, which cut len to its low 32 bits */
     const unsigned char *sp = data;
     unsigned char       *p = ((unsigned char*)ctx->wdat) + (ctx->count[0] & 63);
 
@@ -293,7 +294,8 @@ void sha256_hash(const unsigned char data[], const unsigned long len, sha256_ctx
 #elif defined(WORD_COPY)    /* alternative implementations          */
 
 void sha256_hash(const unsigned char data[], unsigned long len, sha256_ctx ctx[1])
-{   uint32_t i = 0, *ptr, cnt, val, j;
+{   unsigned long i = 0; /* SAKBox: was a uint32_t, which wrapped before reaching a len of 4 GiB or more */
+    uint32_t *ptr, cnt, val, j;
 
     ptr = ctx->wdat + ((ctx->count[0] >> 2) & 15);
     cnt = (ctx->count[0] << 3) & 24;
@@ -317,7 +319,8 @@ void sha256_hash(const unsigned char data[], unsigned long len, sha256_ctx ctx[1
 #else
 
 void sha256_hash(const unsigned char data[], unsigned long len, sha256_ctx ctx[1])
-{   uint32_t i = 0, cnt = ctx->count[0], j;
+{   unsigned long i = 0; /* SAKBox: was a uint32_t, which wrapped before reaching a len of 4 GiB or more */
+    uint32_t cnt = ctx->count[0], j;
 
     while(i < len)
     {   /* assemble values in big-endian format */
@@ -486,7 +489,8 @@ static void sha512_compile(sha512_ctx ctx[1])
 #if defined(FAST_COPY)
 
 void sha512_hash(const unsigned char data[], const unsigned long len, sha512_ctx ctx[1])
-{   uint32_t            free = 128 - (uint32_t)(ctx->count[0] & 127), rlen = len, j;
+{   uint32_t            free = 128 - (uint32_t)(ctx->count[0] & 127), j;
+    unsigned long       rlen = len; /* SAKBox: rlen was a uint32_t, which cut len to its low 32 bits */
     const unsigned char *sp = data;
     unsigned char       *p = ((unsigned char*)ctx->wdat) + (ctx->count[0] & 127);
 
@@ -518,7 +522,8 @@ void sha512_hash(const unsigned char data[], const unsigned long len, sha512_ctx
 #elif defined(WORD_COPY)    /* alternative implementations          */
 
 void sha512_hash(const unsigned char data[], unsigned long len, sha512_ctx ctx[1])
-{   uint32_t    i = 0, cnt, j;
+{   unsigned long i = 0; /* SAKBox: was a uint32_t, which wrapped before reaching a len of 4 GiB or more */
+    uint32_t    cnt, j;
     uint64_t    *ptr, val;
 
     ptr = ctx->wdat + ((ctx->count[0] >> 3) & 15);
@@ -543,7 +548,8 @@ void sha512_hash(const unsigned char data[], unsigned long len, sha512_ctx ctx[1
 #else
 
 void sha512_hash(const unsigned char data[], unsigned long len, sha512_ctx ctx[1])
-{   uint32_t i = 0, cnt = ctx->count[0], j;
+{   unsigned long i = 0; /* SAKBox: was a uint32_t, which wrapped before reaching a len of 4 GiB or more */
+    uint32_t cnt = ctx->count[0], j;
 
     while(i < len)
     {   /* assemble values in big-endian format */
@@ -594,7 +600,7 @@ static void sha_end(unsigned char hval[], sha512_ctx ctx[1], const unsigned int 
 	/* byte	order on little endian machines but this is corrected later	*/
 	/* since they are only picked up as 32-bit word values.				*/
 
-    ctx->wdat[14] = (ctx->count[1] << 3) | (ctx->count[0] >> 29);
+    ctx->wdat[14] = (ctx->count[1] << 3) | (ctx->count[0] >> 61); /* SAKBox: was >> 29, as for SHA-256's 32-bit words, so 512 MiB or more hashed wrong */
     ctx->wdat[15] = ctx->count[0] << 3;
 
     sha512_compile(ctx);
