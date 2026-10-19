@@ -9,7 +9,7 @@ A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the 
 - [Bazelisk](https://github.com/bazelbuild/bazelisk) (recommended), which installs and runs the Bazel version pinned in `.bazelversion` (9.2.0). A plain Bazel 9 install also works.
 - A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`). The code under `projects/` also builds with `-pedantic-errors` (no compiler extensions), `-Werror` (no warnings) and `-Wsuggest-override` / `-Wsuggest-destructor-override` (overriding functions must say `override`; see [Code conventions](#code-conventions)).
 - On Linux, the system packages listed under [Linux](#linux).
-- Optional, for static analysis: clang-tidy, which Xcode doesn't include. On macOS, `brew install llvm` (Homebrew keeps it off your `PATH`, so your compiler stays Xcode's); on Linux, your distribution's `clang-tidy` package. See [Static analysis](#static-analysis), which also covers the optional pre-commit hook that runs it on each commit (`git config core.hooksPath tools/git_hooks`).
+- Optional, for static analysis and formatting: clang-tidy and clang-format (18 or later, for `.clang-format-ignore`), which Xcode doesn't include. On macOS, `brew install llvm clang-format` (Homebrew keeps LLVM off your `PATH`, so your compiler stays Xcode's); on Linux, your distribution's `clang-tidy` and `clang-format` packages. See [Static analysis](#static-analysis), which also covers the optional pre-commit hook that checks both on each commit (`git config core.hooksPath tools/git_hooks`).
 - For the 3DS example only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine (see [`tools/devkitpro`](tools/devkitpro/README.md)). Without Docker running, that one target fails with a message saying so.
 
 All other dependencies are declared in `MODULE.bazel` and downloaded by Bazel on the first build.
@@ -83,7 +83,7 @@ Never `virtual void draw() override;`: an override is already virtual, and the e
 
 The build enforces it for everything under `projects/`: `-Wsuggest-override` and `-Wsuggest-destructor-override` make an unmarked override an error. clang-tidy's `modernize-use-override` also flags a redundant `virtual` (see [Static analysis](#static-analysis)).
 
-C++ files are formatted with clang-format in the repo's style (`.clang-format`); see [Editor Setup](#editor-setup).
+**C++ files are formatted with clang-format** in the repo's style (`.clang-format`): LLVM style with 100-column lines, which is how most of the code was already written. Upstream code kept as published (Waffles, libpng's `pngtest.cpp`, libctru's `read-controls` example) is listed in `.clang-format-ignore`, so clang-format leaves it alone, and keeps its own style. Where a layout matters more than the rule, such as a table aligned in columns by hand, put `// clang-format off` and `// clang-format on` around it, each alone on its line (clang-format doesn't recognise the marker with text after it), with the reason in a comment above. Format files with `clang-format -i FILE` or a package's `clang_format` target (see [Editor Setup](#editor-setup)); the pre-commit hook checks it (see [Checking each commit](#checking-each-commit)).
 
 **Test files are named `<Source>_test.cpp`**, after the file they test and spelled as it is: `FlexReal_test.cpp` tests `FlexReal.hpp`, `GMatrix_test.cpp` tests `GMatrix.h`, `core_test.cpp` tests Cyclone's `core.h`. A test of something that isn't one file (threading, the README's examples) is named after that: `Threading_test.cpp`, `Examples_test.cpp`. Its Bazel target has the same name (`:FlexReal_test`). This is the googletest and Bazel convention; it also sorts a test next to the code it tests. Libraries kept as published (libpng's `pngtest.cpp`, Waffles' own `src/test/`) keep their names.
 
@@ -103,17 +103,17 @@ It skips `projects/examples/png/src/pngtest.cpp` (libpng's own test program, kep
 
 ### Checking each commit
 
-A git pre-commit hook in `tools/git_hooks/` runs clang-tidy on the C++ files you commit. Turn it on once per clone:
+A git pre-commit hook in `tools/git_hooks/` checks that the C++ files you commit are formatted, then runs clang-tidy on them. Turn it on once per clone:
 
 ``` bash
 git config core.hooksPath tools/git_hooks
 ```
 
-Then each `git commit` checks the staged C++ files (in the projects the runner covers) and stops the commit if clang-tidy finds anything in them, listing the findings. Problems elsewhere don't block it. A staged header is checked through its project's source files, since clang-tidy only sees headers as part of a file that includes them. It takes about half a second for a source file and a few seconds for a header in a big project.
+Then each `git commit` checks the staged C++ files under `projects/`: it stops the commit if any isn't formatted as clang-format would write it (listing them; `clang-format -i FILE` fixes one, and files in `.clang-format-ignore` pass), or if clang-tidy finds anything in them (in the projects the runner covers), listing the findings. Problems elsewhere don't block it. A staged header is checked through its project's source files, since clang-tidy only sees headers as part of a file that includes them. It takes about half a second for a source file and a few seconds for a header in a big project.
 
 - It checks the files as they are on disk, so stage everything you mean to commit.
 - `git commit --no-verify` skips it for one commit.
-- Without clang-tidy installed or a `compile_commands.json`, or with a stale build (headers missing), it says so and lets the commit through. A new source file isn't in `compile_commands.json` until you rerun `tools/compile_commands/refresh.py`; the hook tells you when it skips one.
+- Without clang-format installed, it skips the formatting check and says so. Without clang-tidy installed or a `compile_commands.json`, or with a stale build (headers missing), it says so and lets the commit through. A new source file isn't in `compile_commands.json` until you rerun `tools/compile_commands/refresh.py`; the hook tells you when it skips one.
 
 ## Platform Notes
 

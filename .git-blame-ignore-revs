@@ -3,3 +3,6 @@
 
 # cyclone: convert to LF and clang-format (format only)
 e5875d0223ca6aa7ceb8246dfe52710cecccdf77
+
+# repo: clang-format at 100 columns (format only)
+d45c04d62cbed2a31fc408e13544462705a61cd9
