@@ -12,8 +12,10 @@
 #include <chrono>
 #include <cstddef>
 #include <cstring>
+#include <iostream>
 #include <ostream>
 #include <regex>
+#include <sstream>
 #include <string>
 #include <stdexcept>
 
@@ -124,7 +126,11 @@ TEST(HttpContentLengthTest, OnlyAWholeNumberWithinTheLimit) {
 namespace {
 struct EchoConnection : GHttpConnection {
   explicit EchoConnection(SOCKET s) : GHttpConnection(s) {}
-  void doGet(std::ostream &response) override { response << "got " << m_szUrl; }
+  void doGet(std::ostream &response) override {
+    response << "got " << m_szUrl;
+    if (strcmp(m_szUrl, "/big") == 0)
+      response << std::string(1 << 20, 'x'); // more than one send can take
+  }
   void doPost(std::ostream &response) override {
     response << "posted " << std::string(m_pContent, m_nContentLength);
   }
@@ -225,6 +231,39 @@ TEST(HttpServerTest, HangsUpOnRequestsThatDontFit) {
   // And it still serves the next good one
   EXPECT_NE(send(server, "GET /ok HTTP/1.1\r\n\r\n").find("got /ok"),
             std::string::npos);
+}
+
+// A client that hangs up before its reply is sent: writing to its socket
+// raised SIGPIPE, which ends the process, so one client could stop the
+// server. Now the send fails with an error, the server drops that
+// connection, says why (the reason used to be lost: the error was rethrown
+// as a plain std::exception) and carries on.
+TEST(HttpServerTest, SurvivesAClientThatHangsUp) {
+  EchoServer server;
+  int sock = ::socket(AF_INET, SOCK_STREAM, 0);
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(server.socket()->port());
+  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  ASSERT_EQ(connect(sock, (sockaddr *)&addr, sizeof(addr)), 0);
+  const std::string request = "GET /big HTTP/1.1\r\n\r\n";
+  ::send(sock, request.data(), request.size(), 0);
+  usleep(50000);
+  linger reset{1, 0}; // close with a reset, at once
+  setsockopt(sock, SOL_SOCKET, SO_LINGER, &reset, sizeof(reset));
+  close(sock);
+  usleep(50000);
+
+  std::ostringstream log;
+  std::streambuf *old = std::cout.rdbuf(log.rdbuf());
+  for (int i = 0; i < 20; i++) {
+    server.process();
+    usleep(5000);
+  }
+  std::cout.rdbuf(old);
+  EXPECT_NE(log.str().find("Failed to send GET response: Error sending"), std::string::npos)
+      << log.str();
+  EXPECT_NE(send(server, "GET /ok HTTP/1.1\r\n\r\n").find("got /ok"), std::string::npos);
 }
 
 // A URL's port was read with atoi: "abc" gave port 0, and 70000 was cut to

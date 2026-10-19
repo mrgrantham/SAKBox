@@ -934,9 +934,9 @@ void GHttpServer::onReceiveFullPostRequest(GHttpConnection* pConn)
 	{
 		sendResponse(pConn);
 	}
-	catch(std::exception&)
+	catch(std::exception& e)
 	{
-		std::cout << "Error: Failed to send POST response\n"; // SAKBox: was silent, unlike GET and HEAD
+		std::cout << "Error: Failed to send POST response: " << e.what() << "\n"; // SAKBox: was silent, unlike GET and HEAD
 	}
 }
 
@@ -978,9 +978,9 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 				{
 					sendResponse(pConn);
 				}
-				catch(std::exception&)
+				catch(std::exception& e)
 				{
-					std::cout << "Error: Failed to send GET response\n";
+					std::cout << "Error: Failed to send GET response: " << e.what() << "\n";
 				}
 			}
 			else
@@ -989,9 +989,9 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 				{
 					sendNotModifiedResponse(pConn);
 				}
-				catch(std::exception&)
+				catch(std::exception& e)
 				{
-					std::cout << "Error: Failed to send not modified response\n";
+					std::cout << "Error: Failed to send not modified response: " << e.what() << "\n";
 				}
 			}
 		}
@@ -1003,9 +1003,9 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 			{
 				sendResponse(pConn);
 			}
-			catch(std::exception&)
+			catch(std::exception& e)
 			{
-				std::cout << "Error: Failed to HEAD response\n";
+				std::cout << "Error: Failed to send HEAD response: " << e.what() << "\n";
 			}
 		}
 		else if(pConn->m_eRequestType == GHttpConnection::Post)

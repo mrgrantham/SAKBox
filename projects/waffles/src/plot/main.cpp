@@ -1987,10 +1987,10 @@ void graph(GArgReader& args)
 		// Pump incoming HTTP requests (this is the main loop)
 		server.pump();
 	}
-	catch(std::exception& e)
+	catch(std::exception&)
 	{
 		if(serverStarted)
-			throw e;
+			throw; // SAKBox: was "throw e", which lost the message
 		else
 		{
 			cout << "Failed to launch the server. Typically, this means there is already another instance running on port " << port << ", so I am just going to open the browser and then exit.\n";

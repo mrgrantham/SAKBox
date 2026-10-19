@@ -150,7 +150,17 @@ size_t GSocket_send(SOCKET s, const char* buf, size_t len)
 {
 	if(s == INVALID_SOCKET)
 		throw Ex("Tried to send over a socket that was not connected");
-	ssize_t bytesSent = ::send(s, buf, (int)len, 0);
+	// SAKBox: writing to a connection the other side has closed raised
+	// SIGPIPE, which ends the process; now it's an error, thrown below
+	int flags = 0;
+#ifdef MSG_NOSIGNAL
+	flags |= MSG_NOSIGNAL;
+#endif
+#ifdef SO_NOSIGPIPE
+	int on = 1;
+	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
+#endif
+	ssize_t bytesSent = ::send(s, buf, (int)len, flags);
 	if(bytesSent < 0)
 	{
 #ifdef WINDOWS
@@ -331,10 +341,10 @@ void GTCPClient::send(const char* buf, size_t len)
 				GThread::sleep(0);
 		}
 	}
-	catch(const std::exception& e)
+	catch(const std::exception&)
 	{
 		disconnect();
-		throw e;
+		throw; // SAKBox: was "throw e", which rethrew a plain std::exception without the message
 	}
 }
 
@@ -540,10 +550,10 @@ void GTCPServer::send(const char* buf, size_t len, GTCPConnection* pConn)
 				GThread::sleep(0);
 		}
 	}
-	catch(const std::exception& e)
+	catch(const std::exception&)
 	{
 		disconnect(pConn);
-		throw e;
+		throw; // SAKBox: was "throw e", which rethrew a plain std::exception without the message
 	}
 }
 
@@ -797,10 +807,10 @@ void GPackageClient::send(const char* buf, size_t len)
 				pump();
 		}
 	}
-	catch(const std::exception& e)
+	catch(const std::exception&)
 	{
 		disconnect();
-		throw e;
+		throw; // SAKBox: was "throw e", which rethrew a plain std::exception without the message
 	}
 }
 
