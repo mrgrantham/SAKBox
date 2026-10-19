@@ -19,8 +19,7 @@ BoundingSphere::BoundingSphere(const Vector3 &centre, real radius) {
   BoundingSphere::radius = radius;
 }
 
-BoundingSphere::BoundingSphere(const BoundingSphere &one,
-                               const BoundingSphere &two) {
+BoundingSphere::BoundingSphere(const BoundingSphere &one, const BoundingSphere &two) {
   Vector3 centreOffset = two.centre - one.centre;
   real distance = centreOffset.squareMagnitude();
   real radiusDiff = two.radius - one.radius;

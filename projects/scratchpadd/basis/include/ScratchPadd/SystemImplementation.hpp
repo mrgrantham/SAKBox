@@ -16,8 +16,7 @@ namespace ScratchPadd {
 // NOTE: When using new clang upgrade to use
 // std::enable_shared_from_this<System<Workers...>> instead of passing the
 // sender as a raw pointer
-template <typename... Workers>
-class SystemImplementation : public System, public Logger {
+template <typename... Workers> class SystemImplementation : public System, public Logger {
 
 private:
   std::tuple<std::unique_ptr<Workers>...> workers_;
@@ -38,8 +37,7 @@ private:
   void runMainThreadPadds() {
     const auto stopping = [this] { return stopRequested_.load(); };
     const bool anyMainThreadPadds = std::apply(
-        [](auto const &...worker) { return (worker->usesMainThread() || ...); },
-        workers_);
+        [](auto const &...worker) { return (worker->usesMainThread() || ...); }, workers_);
     if (!anyMainThreadPadds) {
       while (!stopping()) {
         mainThreadSignal_.waitForChange(mainThreadSignal_.generation(), stopping);
@@ -47,16 +45,12 @@ private:
       return;
     }
 
-    std::apply(
-        [](auto const &...worker) { (worker->startingIfMainThread(), ...); },
-        workers_);
+    std::apply([](auto const &...worker) { (worker->startingIfMainThread(), ...); }, workers_);
     while (!stopping()) {
       // Read before draining, so work pushed meanwhile (often by these same
       // padds) means the wait below returns at once.
       const std::uint64_t seen = mainThreadSignal_.generation();
-      std::apply(
-          [](auto const &...worker) { (worker->runIfMainThread(), ...); },
-          workers_);
+      std::apply([](auto const &...worker) { (worker->runIfMainThread(), ...); }, workers_);
       mainThreadSignal_.waitForChange(seen, stopping);
     }
   }
@@ -69,18 +63,13 @@ private:
     // Ends each padd's repeat timer and work loop. A background padd runs
     // finishing() on its own thread before stop() joins it.
     std::apply([](auto const &...worker) { (worker->stop(), ...); }, workers_);
-    std::apply(
-        [](auto const &...worker) { (worker->finishingIfMainThread(), ...); },
-        workers_);
-    std::apply([](auto const &...worker) { (worker->cleanupWrapper(), ...); },
-               workers_);
+    std::apply([](auto const &...worker) { (worker->finishingIfMainThread(), ...); }, workers_);
+    std::apply([](auto const &...worker) { (worker->cleanupWrapper(), ...); }, workers_);
     notifyStopped();
   }
 
 public:
-  const std::tuple<std::unique_ptr<Workers>...> &getWorkers() const {
-    return workers_;
-  }
+  const std::tuple<std::unique_ptr<Workers>...> &getWorkers() const { return workers_; }
 
   // Check that all workers are implemented with unique strings used for their
   // names, as these are used to send messages to specific padds or avoid
@@ -88,30 +77,22 @@ public:
   bool workerNamesUnique() {
     std::vector<std::string> workerNamesVector;
     std::apply(
-        [&](auto const &...worker) {
-          (workerNamesVector.push_back(worker->paddName()), ...);
-        },
+        [&](auto const &...worker) { (workerNamesVector.push_back(worker->paddName()), ...); },
         workers_);
 
-    std::set<std::string> workerNamesSet(workerNamesVector.begin(),
-                                         workerNamesVector.end());
+    std::set<std::string> workerNamesSet(workerNamesVector.begin(), workerNamesVector.end());
     return workerNamesSet.size() == workerNamesVector.size();
   }
 
   void instantiate() override {
     createLoggerIfNeeded("scratchpadd");
-    ((std::get<std::unique_ptr<Workers>>(workers_) =
-          std::make_unique<Workers>(this)),
-     ...);
-    std::apply([](auto const &...worker) { (worker->initialize(), ...); },
-               workers_);
+    ((std::get<std::unique_ptr<Workers>>(workers_) = std::make_unique<Workers>(this)), ...);
+    std::apply([](auto const &...worker) { (worker->initialize(), ...); }, workers_);
     assert(workerNamesUnique());
     // Main-thread padds share one loop, so they share its wake-up signal.
     std::apply(
         [this](auto const &...worker) {
-          ((worker->usesMainThread() ? worker->useWakeSignal(mainThreadSignal_)
-                                     : void()),
-           ...);
+          ((worker->usesMainThread() ? worker->useWakeSignal(mainThreadSignal_) : void()), ...);
         },
         workers_);
   }
@@ -123,13 +104,10 @@ public:
   void start() override {
     logger().info("Starting system");
     // Prepare all workers
-    std::apply([](auto const &...worker) { (worker->prepareWrapper(), ...); },
-               workers_);
+    std::apply([](auto const &...worker) { (worker->prepareWrapper(), ...); }, workers_);
 
     // Start workers on independant threads
-    std::apply(
-        [](auto const &...worker) { (worker->runIfIndependentThread(), ...); },
-        workers_);
+    std::apply([](auto const &...worker) { (worker->runIfIndependentThread(), ...); }, workers_);
 
     // Only report started once every padd thread exists, so a stop() from
     // another thread after waitForStart() sees them all.
@@ -160,8 +138,7 @@ public:
       std::unique_lock<std::mutex> lk(scratchPaddSystemMutex_);
       scratchPaddSystemConditionVariable_.wait(lk, [this] { return on_.load(); });
     }
-    std::apply([](auto const &...worker) { (worker->waitForStart(), ...); },
-               workers_);
+    std::apply([](auto const &...worker) { (worker->waitForStart(), ...); }, workers_);
   }
 
   // For testing only. We assume that the work will settle
@@ -171,10 +148,7 @@ public:
     int pendingWorkCount = 0;
     do {
       pendingWorkCount = std::apply(
-          [](auto const &...worker) {
-            return (worker->pendingWorkCount() + ...);
-          },
-          workers_);
+          [](auto const &...worker) { return (worker->pendingWorkCount() + ...); }, workers_);
       // logger().info("pendingWorkCount: {}",pendingWorkCount);
     } while (pendingWorkCount);
   }
@@ -208,21 +182,17 @@ public:
   }
 
   // Send to receiver if they are not the same as the sender
-  void sendIfUnmatched(ScratchPadd::Base *sender, Base *possibleReceiver,
-                       const Message &message) {
+  void sendIfUnmatched(ScratchPadd::Base *sender, Base *possibleReceiver, const Message &message) {
     if (sender != possibleReceiver) {
       sendWork(possibleReceiver, message);
     }
   }
   void send(ScratchPadd::Base *sender, Message message) override {
     logger().debug("sending from {}", sender->paddName());
-    (sendIfUnmatched(sender, std::get<std::unique_ptr<Workers>>(workers_).get(),
-                     message),
-     ...);
+    (sendIfUnmatched(sender, std::get<std::unique_ptr<Workers>>(workers_).get(), message), ...);
   }
   void sendIncludeSender(ScratchPadd::Message message) override {
-    (sendWork(std::get<std::unique_ptr<Workers>>(workers_).get(), message),
-     ...);
+    (sendWork(std::get<std::unique_ptr<Workers>>(workers_).get(), message), ...);
   }
 };
 

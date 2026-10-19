@@ -16,8 +16,7 @@ namespace {
 
 constexpr double kTolerance = 1e-9;
 
-void expectNear(const Vector3 &actual, const Vector3 &expected,
-                double tolerance = kTolerance) {
+void expectNear(const Vector3 &actual, const Vector3 &expected, double tolerance = kTolerance) {
   EXPECT_NEAR(actual.x, expected.x, tolerance);
   EXPECT_NEAR(actual.y, expected.y, tolerance);
   EXPECT_NEAR(actual.z, expected.z, tolerance);
@@ -89,8 +88,7 @@ TEST(RigidForceTest, GravityIsMassTimesG) {
 // with 10 N; at 2 it does nothing.
 TEST(RigidForceTest, SpringPullsWhenStretchedAndPushesWhenSquashed) {
   auto anchor = bodyAt(Vector3(0, 0, 0));
-  for (auto [x, expected] :
-       {std::pair{3.0, -10.0}, std::pair{1.0, 10.0}, std::pair{2.0, 0.0}}) {
+  for (auto [x, expected] : {std::pair{3.0, -10.0}, std::pair{1.0, 10.0}, std::pair{2.0, 0.0}}) {
     auto body = bodyAt(Vector3(x, 0, 0));
     Spring spring(Vector3(), anchor.get(), Vector3(), 10, 2);
     expectNear(forceOn(*body, spring), Vector3(expected, 0, 0));
@@ -104,8 +102,8 @@ TEST(RigidForceTest, BuoyancyRisesSmoothlyWithDepth) {
   struct Case {
     double y, expectedUp;
   };
-  for (Case c : {Case{1.5, 0}, Case{1.0, 0}, Case{0.5, 500}, Case{0.0, 1000},
-                 Case{-0.5, 1500}, Case{-1.0, 2000}, Case{-3.0, 2000}}) {
+  for (Case c : {Case{1.5, 0}, Case{1.0, 0}, Case{0.5, 500}, Case{0.0, 1000}, Case{-0.5, 1500},
+                 Case{-1.0, 2000}, Case{-3.0, 2000}}) {
     auto body = bodyAt(Vector3(0, c.y, 0));
     Buoyancy buoyancy(Vector3(), /*maxDepth=*/1, /*volume=*/2,
                       /*waterHeight=*/0);
@@ -167,8 +165,7 @@ TEST(ParticleForceTest, DragOpposesMotion) {
 }
 
 TEST(ParticleForceTest, SpringsPullWhenStretchedAndPushWhenSquashed) {
-  for (auto [x, expected] :
-       {std::pair{3.0, -10.0}, std::pair{1.0, 10.0}, std::pair{2.0, 0.0}}) {
+  for (auto [x, expected] : {std::pair{3.0, -10.0}, std::pair{1.0, 10.0}, std::pair{2.0, 0.0}}) {
     auto other = particleAt(Vector3(0, 0, 0));
     auto particle = particleAt(Vector3(x, 0, 0));
     ParticleSpring spring(other.get(), 10, 2);
@@ -216,8 +213,7 @@ TEST(ParticleForceTest, BuoyancyRisesSmoothlyWithDepth) {
   struct Case {
     double y, expectedUp;
   };
-  for (Case c : {Case{1.5, 0}, Case{0.5, 0.25}, Case{0.0, 0.5},
-                 Case{-0.5, 0.75}, Case{-3.0, 1}}) {
+  for (Case c : {Case{1.5, 0}, Case{0.5, 0.25}, Case{0.0, 0.5}, Case{-0.5, 0.75}, Case{-3.0, 1}}) {
     auto particle = particleAt(Vector3(0, c.y, 0));
     ParticleBuoyancy buoyancy(/*maxDepth=*/1, /*volume=*/1, /*waterHeight=*/0,
                               /*liquidDensity=*/1);

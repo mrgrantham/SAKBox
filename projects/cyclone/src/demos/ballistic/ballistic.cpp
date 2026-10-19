@@ -143,7 +143,7 @@ void BallisticDemo::fire() {
     break;
 
   case FIREBALL:
-    shot->particle.setMass(1.0f); // 1.0kg - mostly blast damage
+    shot->particle.setMass(1.0f);                     // 1.0kg - mostly blast damage
     shot->particle.setVelocity(0.0f, 0.0f, 10.0f);    // 5m/s
     shot->particle.setAcceleration(0.0f, 0.6f, 0.0f); // Floats up
     shot->particle.setDamping(0.9f);
@@ -152,8 +152,8 @@ void BallisticDemo::fire() {
   case LASER:
     // Note that this is the kind of laser bolt seen in films,
     // not a realistic laser beam!
-    shot->particle.setMass(0.1f);                   // 0.1kg - almost no weight
-    shot->particle.setVelocity(0.0f, 0.0f, 100.0f); // 100m/s
+    shot->particle.setMass(0.1f);                     // 0.1kg - almost no weight
+    shot->particle.setVelocity(0.0f, 0.0f, 100.0f);   // 100m/s
     shot->particle.setAcceleration(0.0f, 0.0f, 0.0f); // No gravity
     shot->particle.setDamping(0.99f);
     break;

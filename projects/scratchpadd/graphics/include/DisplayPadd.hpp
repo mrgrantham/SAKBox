@@ -30,8 +30,7 @@ public:
         });
   }
 
-  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>
-  generateControls() override {
+  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant> generateControls() override {
     return {};
   }
 
@@ -73,11 +72,9 @@ public:
   // timer and without spinning.
   void drawFrame() {
     performanceTimer_.markInterval();
-    PADDLOG_INTERVAL(spdlog::level::info, 1000ms,
-                     "DisplayPadd drawing at {:.3f}s interval",
+    PADDLOG_INTERVAL(spdlog::level::info, 1000ms, "DisplayPadd drawing at {:.3f}s interval",
                      performanceTimer_.getAverageIntervalInSeconds(5));
-    PADDLOG_INTERVAL(spdlog::level::info, 1000ms,
-                     "DisplayPadd drawing at {:.3f} fps",
+    PADDLOG_INTERVAL(spdlog::level::info, 1000ms, "DisplayPadd drawing at {:.3f} fps",
                      1.0 / performanceTimer_.getAverageIntervalInSeconds(5));
 
     if (!graphics_->draw()) {

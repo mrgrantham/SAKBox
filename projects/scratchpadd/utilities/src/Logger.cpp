@@ -15,9 +15,7 @@ std::shared_ptr<spdlog::logger> ScratchPadd::Logger::GetGlobalLogger() {
   return gThreadLogger;
 }
 
-std::shared_ptr<spdlog::logger> ScratchPadd::Logger::GetThreadLogger() {
-  return tThreadLogger;
-}
+std::shared_ptr<spdlog::logger> ScratchPadd::Logger::GetThreadLogger() { return tThreadLogger; }
 
 std::shared_ptr<spdlog::logger> ScratchPadd::Logger::GetActiveLogger() {
   if (tThreadLogger) {

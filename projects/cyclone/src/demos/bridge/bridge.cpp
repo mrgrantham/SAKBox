@@ -84,8 +84,8 @@ public:
 
 // Method definitions
 BridgeDemo::BridgeDemo()
-    : MassAggregateApplication(12), supports(nullptr), cables(nullptr),
-      rods(nullptr), massPos(0, 0, 0.5f) {
+    : MassAggregateApplication(12), supports(nullptr), cables(nullptr), rods(nullptr),
+      massPos(0, 0, 0.5f) {
   // Create the masses and connections.
   for (unsigned i = 0; i < 12; i++) {
     // Particles come in pairs across the deck: i / 2 is the pair, i % 2
@@ -113,8 +113,8 @@ BridgeDemo::BridgeDemo()
   for (unsigned i = 0; i < SUPPORT_COUNT; i++) {
     supports[i].particle = particleArray + i;
     const unsigned pair = i / 2, side = i % 2;
-    supports[i].anchor = cyclone::Vector3(cyclone::real(pair) * 2.2f - 5.5f, 6,
-                                          cyclone::real(side) * 1.6f - 0.8f);
+    supports[i].anchor =
+        cyclone::Vector3(cyclone::real(pair) * 2.2f - 5.5f, 6, cyclone::real(side) * 1.6f - 0.8f);
     if (i < 6)
       supports[i].maxLength = cyclone::real(pair) * 0.5f + 3.0f;
     else
@@ -175,28 +175,21 @@ void BridgeDemo::updateAdditionalMass() {
   massDisplayPos.clear();
 
   // Add the proportion to the correct masses
-  particleArray[x * 2 + z].setMass(BASE_MASS +
-                                   EXTRA_MASS * (1 - xp) * (1 - zp));
-  massDisplayPos.addScaledVector(particleArray[x * 2 + z].getPosition(),
-                                 (1 - xp) * (1 - zp));
+  particleArray[x * 2 + z].setMass(BASE_MASS + EXTRA_MASS * (1 - xp) * (1 - zp));
+  massDisplayPos.addScaledVector(particleArray[x * 2 + z].getPosition(), (1 - xp) * (1 - zp));
 
   if (xp > 0) {
-    particleArray[x * 2 + z + 2].setMass(BASE_MASS +
-                                         EXTRA_MASS * xp * (1 - zp));
-    massDisplayPos.addScaledVector(particleArray[x * 2 + z + 2].getPosition(),
-                                   xp * (1 - zp));
+    particleArray[x * 2 + z + 2].setMass(BASE_MASS + EXTRA_MASS * xp * (1 - zp));
+    massDisplayPos.addScaledVector(particleArray[x * 2 + z + 2].getPosition(), xp * (1 - zp));
 
     if (zp > 0) {
       particleArray[x * 2 + z + 3].setMass(BASE_MASS + EXTRA_MASS * xp * zp);
-      massDisplayPos.addScaledVector(particleArray[x * 2 + z + 3].getPosition(),
-                                     xp * zp);
+      massDisplayPos.addScaledVector(particleArray[x * 2 + z + 3].getPosition(), xp * zp);
     }
   }
   if (zp > 0) {
-    particleArray[x * 2 + z + 1].setMass(BASE_MASS +
-                                         EXTRA_MASS * (1 - xp) * zp);
-    massDisplayPos.addScaledVector(particleArray[x * 2 + z + 1].getPosition(),
-                                   (1 - xp) * zp);
+    particleArray[x * 2 + z + 1].setMass(BASE_MASS + EXTRA_MASS * (1 - xp) * zp);
+    massDisplayPos.addScaledVector(particleArray[x * 2 + z + 1].getPosition(), (1 - xp) * zp);
   }
 }
 

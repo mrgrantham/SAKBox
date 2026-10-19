@@ -122,15 +122,13 @@ void ParticleContact::resolveInterpenetration(real duration) {
   }
 }
 
-ParticleContactResolver::ParticleContactResolver(unsigned iterations)
-    : iterations(iterations) {}
+ParticleContactResolver::ParticleContactResolver(unsigned iterations) : iterations(iterations) {}
 
 void ParticleContactResolver::setIterations(unsigned iterations) {
   ParticleContactResolver::iterations = iterations;
 }
 
-void ParticleContactResolver::resolveContacts(ParticleContact *contactArray,
-                                              unsigned numContacts,
+void ParticleContactResolver::resolveContacts(ParticleContact *contactArray, unsigned numContacts,
                                               real duration) {
   unsigned i;
 
@@ -159,18 +157,14 @@ void ParticleContactResolver::resolveContacts(ParticleContact *contactArray,
     for (i = 0; i < numContacts; i++) {
       if (contactArray[i].particle[0] == contactArray[maxIndex].particle[0]) {
         contactArray[i].penetration -= move[0] * contactArray[i].contactNormal;
-      } else if (contactArray[i].particle[0] ==
-                 contactArray[maxIndex].particle[1]) {
+      } else if (contactArray[i].particle[0] == contactArray[maxIndex].particle[1]) {
         contactArray[i].penetration -= move[1] * contactArray[i].contactNormal;
       }
       if (contactArray[i].particle[1]) {
         if (contactArray[i].particle[1] == contactArray[maxIndex].particle[0]) {
-          contactArray[i].penetration +=
-              move[0] * contactArray[i].contactNormal;
-        } else if (contactArray[i].particle[1] ==
-                   contactArray[maxIndex].particle[1]) {
-          contactArray[i].penetration +=
-              move[1] * contactArray[i].contactNormal;
+          contactArray[i].penetration += move[0] * contactArray[i].contactNormal;
+        } else if (contactArray[i].particle[1] == contactArray[maxIndex].particle[1]) {
+          contactArray[i].penetration += move[1] * contactArray[i].contactNormal;
         }
       }
     }

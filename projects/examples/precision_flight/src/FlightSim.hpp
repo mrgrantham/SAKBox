@@ -16,8 +16,8 @@ namespace PrecisionFlight {
 // The precision lab: everything a player or a control panel can tune.
 struct FlightSettings {
   int flightBase = 1, hullBase = 2, renderBase = 9; // fractional bits per group
-  int focusFlightBits = 5;                           // Flight while FOCUS lasts
-  int phaseHullBits = -1, phaseRenderBits = 3;       // Hull and Render while PHASE lasts
+  int focusFlightBits = 5;                          // Flight while FOCUS lasts
+  int phaseHullBits = -1, phaseRenderBits = 3;      // Hull and Render while PHASE lasts
   float focusSeconds = 7.0f, phaseSeconds = 4.0f;
   Flex::Math::Rounding rounding = Flex::Math::Rounding::TowardZero;
   bool quantizeVelocity = false; // lossy velocity: small drag steps vanish

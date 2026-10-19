@@ -85,8 +85,8 @@ int main(int argc, char **argv) {
                  cameraIndex);
     return 1;
   }
-  fmt::println("Camera {}: {}x{}. M toggles mirroring, Q or Escape quits.", cameraIndex,
-               frame.cols, frame.rows);
+  fmt::println("Camera {}: {}x{}. M toggles mirroring, Q or Escape quits.", cameraIndex, frame.cols,
+               frame.rows);
 
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
     fmt::println(stderr, "Failed to initialize SDL: {}", SDL_GetError());

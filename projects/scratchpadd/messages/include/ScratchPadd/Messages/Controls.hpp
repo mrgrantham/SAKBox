@@ -13,7 +13,7 @@
 
 namespace ScratchPadd {
 struct BaseControlType {
-  virtual void generateControlValueType(){};
+  virtual void generateControlValueType() {};
 };
 
 namespace ControlType {
@@ -21,16 +21,14 @@ struct Double : public BaseControlType {
   double value{0.0};
   std::optional<std::pair<double, double>> enforcableRange;
 
-  Double(double initialValue = 0.0,
-         std::optional<std::pair<double, double>> range = std::nullopt)
+  Double(double initialValue = 0.0, std::optional<std::pair<double, double>> range = std::nullopt)
       : value(initialValue), enforcableRange(std::move(range)) {}
 };
 
 struct Integer : public BaseControlType {
   int32_t value;
   std::optional<std::pair<int32_t, int32_t>> enforcableRange;
-  Integer(int32_t initialValue = 0,
-          std::optional<std::pair<int32_t, int32_t>> range = std::nullopt)
+  Integer(int32_t initialValue = 0, std::optional<std::pair<int32_t, int32_t>> range = std::nullopt)
       : value(initialValue), enforcableRange(std::move(range)) {}
 };
 
@@ -43,14 +41,13 @@ struct String : public BaseControlType {
   std::string value;
   std::optional<std::vector<std::string>> enforcableRange;
   std::optional<std::function<void(std::string)>> handler;
-  String(std::string initialValue,
-         std::optional<std::vector<std::string>> range = std::nullopt)
+  String(std::string initialValue, std::optional<std::vector<std::string>> range = std::nullopt)
       : value(std::move(initialValue)), enforcableRange(std::move(range)) {}
 };
 
 } // namespace ControlType
-#define ControlTypes                                                           \
-  ScratchPadd::ControlType::Double, ScratchPadd::ControlType::Integer,         \
+#define ControlTypes                                                                               \
+  ScratchPadd::ControlType::Double, ScratchPadd::ControlType::Integer,                             \
       ScratchPadd::ControlType::Boolean, ScratchPadd::ControlType::String
 using ControlTypeVariant = std::variant<ControlTypes>;
 using ControlValueMap = std::unordered_map<std::string, ControlTypeVariant>;

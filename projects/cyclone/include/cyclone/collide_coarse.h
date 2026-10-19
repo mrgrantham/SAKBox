@@ -66,9 +66,7 @@ public:
    * to calculate how to recurse into the bounding volume tree.
    * For a bounding sphere it is a simple calculation.
    */
-  real getSize() const {
-    return ((real)1.333333) * R_PI * radius * radius * radius;
-  }
+  real getSize() const { return ((real)1.333333) * R_PI * radius * radius * radius; }
 };
 
 /**
@@ -120,8 +118,7 @@ public:
   /**
    * Creates a new node in the hierarchy with the given parameters.
    */
-  BVHNode(BVHNode *parent, const BoundingVolumeClass &volume,
-          RigidBody *body = nullptr)
+  BVHNode(BVHNode *parent, const BoundingVolumeClass &volume, RigidBody *body = nullptr)
       : volume(volume), body(body), parent(parent) {
     children[0] = children[1] = nullptr;
   }
@@ -137,8 +134,7 @@ public:
    * given limit). Returns the number of potential contacts it
    * found.
    */
-  unsigned getPotentialContacts(PotentialContact *contacts,
-                                unsigned limit) const;
+  unsigned getPotentialContacts(PotentialContact *contacts, unsigned limit) const;
 
   /**
    * Inserts the given rigid body, with the given bounding volume,
@@ -174,8 +170,7 @@ protected:
    * found.
    */
   unsigned getPotentialContactsWith(const BVHNode<BoundingVolumeClass> *other,
-                                    PotentialContact *contacts,
-                                    unsigned limit) const;
+                                    PotentialContact *contacts, unsigned limit) const;
 
   /**
    * For non-leaf nodes, this method recalculates the bounding volume
@@ -189,15 +184,14 @@ protected:
 // imports this header.
 
 template <class BoundingVolumeClass>
-bool BVHNode<BoundingVolumeClass>::overlaps(
-    const BVHNode<BoundingVolumeClass> *other) const {
+bool BVHNode<BoundingVolumeClass>::overlaps(const BVHNode<BoundingVolumeClass> *other) const {
   // SAKBox: volume is held by value (this didn't compile once instantiated)
   return volume.overlaps(&other->volume);
 }
 
 template <class BoundingVolumeClass>
-void BVHNode<BoundingVolumeClass>::insert(
-    RigidBody *newBody, const BoundingVolumeClass &newVolume) {
+void BVHNode<BoundingVolumeClass>::insert(RigidBody *newBody,
+                                          const BoundingVolumeClass &newVolume) {
   // If we are a leaf, then the only option is to spawn two
   // new children and place the new body in one.
   if (isLeaf()) {
@@ -218,8 +212,7 @@ void BVHNode<BoundingVolumeClass>::insert(
   // the inserted body. We give it to whoever would grow the
   // least to incorporate it.
   else {
-    if (children[0]->volume.getGrowth(newVolume) <
-        children[1]->volume.getGrowth(newVolume)) {
+    if (children[0]->volume.getGrowth(newVolume) < children[1]->volume.getGrowth(newVolume)) {
       children[0]->insert(newBody, newVolume);
     } else {
       children[1]->insert(newBody, newVolume);
@@ -283,9 +276,8 @@ void BVHNode<BoundingVolumeClass>::recalculateBoundingVolume(bool recurse) {
 }
 
 template <class BoundingVolumeClass>
-unsigned
-BVHNode<BoundingVolumeClass>::getPotentialContacts(PotentialContact *contacts,
-                                                   unsigned limit) const {
+unsigned BVHNode<BoundingVolumeClass>::getPotentialContacts(PotentialContact *contacts,
+                                                            unsigned limit) const {
   // Early out if we don't have the room for contacts, or
   // if we're a leaf node.
   if (isLeaf() || limit == 0)
@@ -298,15 +290,13 @@ BVHNode<BoundingVolumeClass>::getPotentialContacts(PotentialContact *contacts,
   if (count < limit)
     count += children[1]->getPotentialContacts(contacts + count, limit - count);
   if (count < limit)
-    count += children[0]->getPotentialContactsWith(
-        children[1], contacts + count, limit - count);
+    count += children[0]->getPotentialContactsWith(children[1], contacts + count, limit - count);
   return count;
 }
 
 template <class BoundingVolumeClass>
 unsigned BVHNode<BoundingVolumeClass>::getPotentialContactsWith(
-    const BVHNode<BoundingVolumeClass> *other, PotentialContact *contacts,
-    unsigned limit) const {
+    const BVHNode<BoundingVolumeClass> *other, PotentialContact *contacts, unsigned limit) const {
   // Early out if we don't overlap or if we have no room
   // to report contacts
   if (!overlaps(other) || limit == 0)
@@ -322,28 +312,23 @@ unsigned BVHNode<BoundingVolumeClass>::getPotentialContactsWith(
   // Determine which node to descend into. If either is
   // a leaf, then we descend the other. If both are branches,
   // then we use the one with the largest size.
-  if (other->isLeaf() ||
-      (!isLeaf() && volume.getSize() >= other->volume.getSize())) {
+  if (other->isLeaf() || (!isLeaf() && volume.getSize() >= other->volume.getSize())) {
     // Recurse into ourself
-    unsigned count =
-        children[0]->getPotentialContactsWith(other, contacts, limit);
+    unsigned count = children[0]->getPotentialContactsWith(other, contacts, limit);
 
     // Check we have enough slots to do the other side too
     if (limit > count) {
-      return count + children[1]->getPotentialContactsWith(
-                         other, contacts + count, limit - count);
+      return count + children[1]->getPotentialContactsWith(other, contacts + count, limit - count);
     } else {
       return count;
     }
   } else {
     // Recurse into the other node
-    unsigned count =
-        getPotentialContactsWith(other->children[0], contacts, limit);
+    unsigned count = getPotentialContactsWith(other->children[0], contacts, limit);
 
     // Check we have enough slots to do the other side too
     if (limit > count) {
-      return count + getPotentialContactsWith(other->children[1],
-                                              contacts + count, limit - count);
+      return count + getPotentialContactsWith(other->children[1], contacts + count, limit - count);
     } else {
       return count;
     }

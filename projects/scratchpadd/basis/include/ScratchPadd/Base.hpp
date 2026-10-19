@@ -1,19 +1,19 @@
 #pragma once
 
+#include <ScratchPadd/EventTimer.hpp>
 #include <algorithm>
 #include <atomic>
-#include <cstdint>
 #include <cassert>
-#include <functional>
-#include <typeindex>
-#include <unordered_map>
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
-#include <mutex>
+#include <cstdint>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <thread>
-#include <ScratchPadd/EventTimer.hpp>
+#include <typeindex>
+#include <unordered_map>
 
 #include <ScratchPadd/Helper.hpp>
 #include <ScratchPadd/Logger.hpp>
@@ -87,8 +87,7 @@ public:
   // variables and create a snapshot which is just all the same info but has a
   // copy by value of the control values at that point in time
   ScratchPadd::MessageType::ControlSnapshot generateControlsSnapshot() {
-    return ScratchPadd::MessageType::ControlSnapshot{.paddName = name_,
-                                                     .controlMap = controlMap_};
+    return ScratchPadd::MessageType::ControlSnapshot{.paddName = name_, .controlMap = controlMap_};
   }
 
   // This padd's control `name`, as control type C (e.g.
@@ -112,8 +111,7 @@ public:
   void waitForWorkCompletion() {
     std::unique_lock<std::mutex> lk(workCompletionMutex_);
     workCompletionConditionVariable_.wait_for(lk, 3000ms, [this] {
-      logger().info("waitForWorkCompletion in {}: {} jobs left", name_,
-                    pendingWork_.load());
+      logger().info("waitForWorkCompletion in {}: {} jobs left", name_, pendingWork_.load());
       return pendingWork_ == 0;
     });
   }
@@ -136,9 +134,7 @@ public:
   // Overriding this to return a std::chrono::duration interval will setup
   // the padd to call the repeat() virtual method repeatedly on the interval
   // provided
-  virtual std::optional<std::chrono::duration<double>> repeatInterval() {
-    return std::nullopt;
-  }
+  virtual std::optional<std::chrono::duration<double>> repeatInterval() { return std::nullopt; }
 
   // Overriding this method sets up a series of data structures that can be
   // broadcast to another Padd that is setup to expose them to a user in some
@@ -225,10 +221,9 @@ public:
   }
 
   virtual void repeat() {
-    logger().info(
-        "Base::repeat() called. Padd set a repeat interval of {}ms with "
-        "no method override",
-        repeatInterval_ ? repeatInterval_->count() : 0);
+    logger().info("Base::repeat() called. Padd set a repeat interval of {}ms with "
+                  "no method override",
+                  repeatInterval_ ? repeatInterval_->count() : 0);
   }
 
   void runIfIndependentThread() {
@@ -300,11 +295,9 @@ public:
   // and processed immediately.
   void startRepeater() {
     if (repeatInterval_) {
-      logger().info("repeat() interval set to {}ms for {}",
-                    repeatInterval_.value().count(), name_);
-      repeatingTimer_.startRepeatingEvent(
-          [this] { push([this] { repeat(); }); },
-          repeatInterval_.value());
+      logger().info("repeat() interval set to {}ms for {}", repeatInterval_.value().count(), name_);
+      repeatingTimer_.startRepeatingEvent([this] { push([this] { repeat(); }); },
+                                          repeatInterval_.value());
     } else {
       logger().info("No repeat() interval set for: {}", name_);
     }
@@ -326,10 +319,10 @@ public:
   // system only queues a message for padds that have a handler for its type.
   template <typename T, typename Handler> void receive(Handler handler) {
     assert(!on_ && "register message handlers before the padd starts");
-    handlers_[std::type_index(typeid(T))] =
-        [handler = std::move(handler)](const MessageBase &message) {
-          handler(static_cast<const MessageOf<T> &>(message).value);
-        };
+    handlers_[std::type_index(typeid(T))] = [handler =
+                                                 std::move(handler)](const MessageBase &message) {
+      handler(static_cast<const MessageOf<T> &>(message).value);
+    };
   }
 
   // Whether this padd has a handler for messages of `type`.

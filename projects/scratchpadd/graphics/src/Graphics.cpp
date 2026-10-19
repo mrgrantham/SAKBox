@@ -8,8 +8,7 @@
 
 static_assert(std::is_same_v<int32_t, int>, "ImGui's integer widgets take int*");
 
-void Graphics::ControlView::setControls(
-    const ScratchPadd::MessageType::ControlSnapshot &controls) {
+void Graphics::ControlView::setControls(const ScratchPadd::MessageType::ControlSnapshot &controls) {
   controls_ = controls;
   orderedControlVector_.clear();
   for (const auto &[name, value] : controls_.controlMap) {
@@ -69,9 +68,8 @@ void Graphics::ControlView::buildControls() {
         control);
 
     if (edited && onChange_) {
-      onChange_(ScratchPadd::MessageType::ControlChange{.paddName = controls_.paddName,
-                                                        .controlName = controlName,
-                                                        .controlTypeValue = control});
+      onChange_(ScratchPadd::MessageType::ControlChange{
+          .paddName = controls_.paddName, .controlName = controlName, .controlTypeValue = control});
     }
   }
 }

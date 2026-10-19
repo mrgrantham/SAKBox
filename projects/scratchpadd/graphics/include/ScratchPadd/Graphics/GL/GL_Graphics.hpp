@@ -53,8 +53,7 @@ public:
     glewExperimental = GL_TRUE;
     GLenum status = glewInit();
     if (status != GLEW_OK) {
-      std::string glewError =
-          reinterpret_cast<const char *>(glewGetErrorString(status));
+      std::string glewError = reinterpret_cast<const char *>(glewGetErrorString(status));
       spdlog::error("Errors: {}\n", glewError);
     }
     // can only get a printable version string for OpenGL
@@ -63,8 +62,7 @@ public:
     const GLubyte *renderer = glGetString(GL_RENDERER); // get renderer string
     spdlog::info("GL RENDERER: {}", (char *)renderer);
     spdlog::info("GL VERSION: {}", version);
-    std::string glewVersion =
-        reinterpret_cast<const char *>(glewGetString(GLEW_VERSION));
+    std::string glewVersion = reinterpret_cast<const char *>(glewGetString(GLEW_VERSION));
     spdlog::info("Status: Using GLEW {}\n", glewVersion);
   }
 
@@ -92,8 +90,7 @@ public:
       int display_w, display_h;
       glfwGetFramebufferSize(window, &display_w, &display_h);
       glViewport(0, 0, display_w, display_h);
-      glClearColor(appBackground.x * appBackground.w,
-                   appBackground.y * appBackground.w,
+      glClearColor(appBackground.x * appBackground.w, appBackground.y * appBackground.w,
                    appBackground.z * appBackground.w, appBackground.w);
       glClear(GL_COLOR_BUFFER_BIT);
       checkOpenGLErrors("before glDrawArrays");
@@ -122,6 +119,4 @@ public:
   }
 };
 
-inline std::unique_ptr<Graphics> GraphicsBuilder() {
-  return std::make_unique<GL_Graphics>();
-}
+inline std::unique_ptr<Graphics> GraphicsBuilder() { return std::make_unique<GL_Graphics>(); }

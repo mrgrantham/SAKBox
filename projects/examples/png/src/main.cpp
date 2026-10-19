@@ -11,9 +11,8 @@ int main(int argc, char **argv) {
   if (!is_png)
     return;
 
-  png_structp png_ptr =
-      png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp)user_error_ptr,
-                             user_error_fn, user_warning_fn);
+  png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp)user_error_ptr,
+                                               user_error_fn, user_warning_fn);
   if (!png_ptr)
     return;
 

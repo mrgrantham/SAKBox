@@ -61,7 +61,7 @@ private:
   WorldSnapshot world_;
 
   // Visual state
-  glm::vec2 smoothed_{0.0f}; // drawn ship position, eased toward the observed one
+  glm::vec2 smoothed_{0.0f};               // drawn ship position, eased toward the observed one
   std::unordered_map<int, Flash> flashes_; // by obstacle id
   std::deque<OnScreenMessage> messages_;
   bool showHitbox_ = true;

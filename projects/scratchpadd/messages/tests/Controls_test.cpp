@@ -1,6 +1,6 @@
+#include <DataDepRetriever/DataDependencies.hpp>
 #include <ScratchPadd/Base.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
-#include <DataDepRetriever/DataDependencies.hpp>
 
 #include <gtest/gtest.h>
 
@@ -12,73 +12,59 @@
 #include <thread>
 #include <vector>
 
-static auto logger = spdlog::stdout_color_mt("test");    
+static auto logger = spdlog::stdout_color_mt("test");
 
 class ControlGeneratorPadd : public ScratchPadd::Base {
 public:
-      ControlGeneratorPadd(ScratchPadd::System *system) : Base(system) {
+  ControlGeneratorPadd(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());
-}
-std::string name() override {
-  return __CLASS_NAME__;
-}
-bool shouldUseMainThread() override { return true; }
+  }
+  std::string name() override { return __CLASS_NAME__; }
+  bool shouldUseMainThread() override { return true; }
 
-ScratchPadd::ControlValueMap  generateControls() override {
-    logger().info("Generating controls for {}",name());
+  ScratchPadd::ControlValueMap generateControls() override {
+    logger().info("Generating controls for {}", name());
     return {
         {"aDouble",
-         ScratchPadd::ControlType::Double(
-             20.0, std::make_optional(std::make_pair(0.0, 200.0)))},
+         ScratchPadd::ControlType::Double(20.0, std::make_optional(std::make_pair(0.0, 200.0)))},
         {"aString", ScratchPadd::ControlType::String(
-                        "DefaultString",
-                        std::make_optional(std::vector<std::string>(
-                            {"DefaultString", "AnotherString", "YetAnother"})))},
-        {"aBool",
-         ScratchPadd::ControlType::Boolean(
-             true)},
-        {"anInt",
-         ScratchPadd::ControlType::Integer(
-             5, std::make_optional(std::make_pair(2, 9))
-             )},
-             };
+                        "DefaultString", std::make_optional(std::vector<std::string>(
+                                             {"DefaultString", "AnotherString", "YetAnother"})))},
+        {"aBool", ScratchPadd::ControlType::Boolean(true)},
+        {"anInt", ScratchPadd::ControlType::Integer(5, std::make_optional(std::make_pair(2, 9)))},
+    };
   }
-
 };
 
 class ControlExposurePadd : public ScratchPadd::Base {
 
-  private:
-
+private:
   std::unordered_map<std::string, ScratchPadd::ControlValueMap> paddControls_;
-    public:
 
-  std::unordered_map<std::string, ScratchPadd::ControlValueMap>& getAllPaddControlMaps() {
+public:
+  std::unordered_map<std::string, ScratchPadd::ControlValueMap> &getAllPaddControlMaps() {
     return paddControls_;
-   }
+  }
 
-std::string name() override {
-  return __CLASS_NAME__;
-}
-          ControlExposurePadd(ScratchPadd::System *system) : Base(system) {
+  std::string name() override { return __CLASS_NAME__; }
+  ControlExposurePadd(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());
     receive<ScratchPadd::MessageType::ControlSnapshot>(
         [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
           setupControlView(snapshot);
         });
   }
-    bool shouldUseMainThread() override { return true; }
+  bool shouldUseMainThread() override { return true; }
 
-    void starting() override {
-        send(ScratchPadd::MessageType::ControlRequest{});
-    }
+  void starting() override { send(ScratchPadd::MessageType::ControlRequest{}); }
 
   void setupControlView(const ScratchPadd::MessageType::ControlSnapshot &controlSnapshot) {
     logger().info("Setting up control view from type {}", TypeName(controlSnapshot));
     if (paddControls_.contains(controlSnapshot.paddName)) {
       logger().info("Control map already added. Updating...");
     }
-    logger().info("Adding control for {} with size {}",controlSnapshot.paddName,controlSnapshot.controlMap.size());
+    logger().info("Adding control for {} with size {}", controlSnapshot.paddName,
+                  controlSnapshot.controlMap.size());
     paddControls_[controlSnapshot.paddName] = controlSnapshot.controlMap;
   }
 
@@ -88,144 +74,142 @@ std::string name() override {
   }
 };
 
-
 // On startup ControlExposurePadd sends a ControlRequest; ControlGeneratorPadd
 // answers with a ControlSnapshot holding all four of its controls.
 TEST(ControlsTest, TestControlRequest) {
 
-    using namespace std::chrono_literals;
+  using namespace std::chrono_literals;
 
-    auto *spsystem =
-    dynamic_cast<ScratchPadd::SystemImplementation<ControlGeneratorPadd, ControlExposurePadd>*>(ScratchPadd::SystemBuilder<ControlGeneratorPadd, ControlExposurePadd>());
+  auto *spsystem =
+      dynamic_cast<ScratchPadd::SystemImplementation<ControlGeneratorPadd, ControlExposurePadd> *>(
+          ScratchPadd::SystemBuilder<ControlGeneratorPadd, ControlExposurePadd>());
 
-    // ScratchPadd::Data::ConfigureDependencies(argv[0]);
-    SCOPED_METHOD_TIMER();
-    // signal(SIGINT, signal_handler);
-    logger->info("Welcome to SCRATCHPADD!");
-    spsystem->instantiate();
+  // ScratchPadd::Data::ConfigureDependencies(argv[0]);
+  SCOPED_METHOD_TIMER();
+  // signal(SIGINT, signal_handler);
+  logger->info("Welcome to SCRATCHPADD!");
+  spsystem->instantiate();
 
-    auto systemThread = std::thread(
-      [&]{
-        spsystem->start();
-      }
-    );
-    spsystem->waitForStart();
+  auto systemThread = std::thread([&] { spsystem->start(); });
+  spsystem->waitForStart();
 
-    logger->info("Getting workers");
-    auto &workers = spsystem->getWorkers();
-    
-    auto &controlGenPadd = std::get<std::unique_ptr<ControlGeneratorPadd>>(workers);
-    auto &controlExpPadd = std::get<std::unique_ptr<ControlExposurePadd>>(workers);
+  logger->info("Getting workers");
+  auto &workers = spsystem->getWorkers();
 
-    // Startup Expectation: 
-    // ControlExposurePadd sends a ControlRequest to ControlGeneratorPadd
-    // ControlGeneratorPadd send a ControlSnapshot to ControlExposurePadd
+  auto &controlGenPadd = std::get<std::unique_ptr<ControlGeneratorPadd>>(workers);
+  auto &controlExpPadd = std::get<std::unique_ptr<ControlExposurePadd>>(workers);
 
-    spsystem->waitForWorkCompletion();
-    
-    auto &allPaddControlMaps = controlExpPadd->getAllPaddControlMaps();
-    EXPECT_EQ(allPaddControlMaps.size(), 1);
-    for (auto &[key, value]: allPaddControlMaps) {
-      logger->info("Padd controls key: {}",key);
-    }
-    EXPECT_TRUE(allPaddControlMaps.contains(controlGenPadd->name()));
-    auto &genPaddControls = allPaddControlMaps[controlGenPadd->name()];
-    EXPECT_EQ(genPaddControls.size(),4);
+  // Startup Expectation:
+  // ControlExposurePadd sends a ControlRequest to ControlGeneratorPadd
+  // ControlGeneratorPadd send a ControlSnapshot to ControlExposurePadd
 
-    spsystem->stop();
-    systemThread.join();
+  spsystem->waitForWorkCompletion();
+
+  auto &allPaddControlMaps = controlExpPadd->getAllPaddControlMaps();
+  EXPECT_EQ(allPaddControlMaps.size(), 1);
+  for (auto &[key, value] : allPaddControlMaps) {
+    logger->info("Padd controls key: {}", key);
+  }
+  EXPECT_TRUE(allPaddControlMaps.contains(controlGenPadd->name()));
+  auto &genPaddControls = allPaddControlMaps[controlGenPadd->name()];
+  EXPECT_EQ(genPaddControls.size(), 4);
+
+  spsystem->stop();
+  systemThread.join();
 }
 
 // A ControlChange sent to ControlGeneratorPadd updates its value, and the
 // snapshot it sends back brings ControlExposurePadd's copy into sync.
 TEST(ControlsTest, TestControlChange) {
-    using namespace std::chrono_literals;
+  using namespace std::chrono_literals;
 
-    auto *spsystem =
-    dynamic_cast<ScratchPadd::SystemImplementation<ControlGeneratorPadd, ControlExposurePadd>*>(ScratchPadd::SystemBuilder<ControlGeneratorPadd, ControlExposurePadd>());
+  auto *spsystem =
+      dynamic_cast<ScratchPadd::SystemImplementation<ControlGeneratorPadd, ControlExposurePadd> *>(
+          ScratchPadd::SystemBuilder<ControlGeneratorPadd, ControlExposurePadd>());
 
-    // ScratchPadd::Data::ConfigureDependencies(argv[0]);
-    SCOPED_METHOD_TIMER();
-    // signal(SIGINT, signal_handler);
-    logger->info("Welcome to SCRATCHPADD!");
-    spsystem->instantiate();
+  // ScratchPadd::Data::ConfigureDependencies(argv[0]);
+  SCOPED_METHOD_TIMER();
+  // signal(SIGINT, signal_handler);
+  logger->info("Welcome to SCRATCHPADD!");
+  spsystem->instantiate();
 
-    auto systemThread = std::thread(
-      [&]{
-        spsystem->start();
-      }
-    );
-    spsystem->waitForStart(); // Waits untill all workers are about to enter there work loop
+  auto systemThread = std::thread([&] { spsystem->start(); });
+  spsystem->waitForStart(); // Waits untill all workers are about to enter there work loop
 
-    logger->info("Getting workers");
-    auto &workers = spsystem->getWorkers();
-    
-    auto &controlGenPadd = std::get<std::unique_ptr<ControlGeneratorPadd>>(workers);
-    auto &controlExpPadd = std::get<std::unique_ptr<ControlExposurePadd>>(workers);
+  logger->info("Getting workers");
+  auto &workers = spsystem->getWorkers();
 
-    // Startup Expectation: 
-    // ControlExposurePadd sends a ControlRequest to ControlGeneratorPadd
-    // ControlGeneratorPadd send a ControlSnapshot to ControlExposurePadd
+  auto &controlGenPadd = std::get<std::unique_ptr<ControlGeneratorPadd>>(workers);
+  auto &controlExpPadd = std::get<std::unique_ptr<ControlExposurePadd>>(workers);
 
-    controlGenPadd->waitForWorkCompletion();
-    controlExpPadd->waitForWorkCompletion();
+  // Startup Expectation:
+  // ControlExposurePadd sends a ControlRequest to ControlGeneratorPadd
+  // ControlGeneratorPadd send a ControlSnapshot to ControlExposurePadd
 
+  controlGenPadd->waitForWorkCompletion();
+  controlExpPadd->waitForWorkCompletion();
 
-    // Modification Expectation:
-    // ControlExposurePadd send a ControlChange to ControlGeneratorPadd
-    // ControlGeneratorPadd send a ControlSnapshot to ControlExposurePadd
+  // Modification Expectation:
+  // ControlExposurePadd send a ControlChange to ControlGeneratorPadd
+  // ControlGeneratorPadd send a ControlSnapshot to ControlExposurePadd
 
+  // Check value before change
+  auto &allPaddControlMapsBeforeChange = controlExpPadd->getAllPaddControlMaps();
+  EXPECT_EQ(allPaddControlMapsBeforeChange.size(), 1);
+  EXPECT_TRUE(allPaddControlMapsBeforeChange.contains(controlGenPadd->name()));
+  auto &genPaddControls = allPaddControlMapsBeforeChange[controlGenPadd->name()];
+  EXPECT_EQ(genPaddControls.size(), 4);
+  std::string controlName = "aDouble";
+  EXPECT_TRUE(genPaddControls.contains(controlName));
+  ScratchPadd::ControlTypeVariant &controlTypeValue = genPaddControls[controlName];
+  EXPECT_TRUE(std::holds_alternative<ScratchPadd::ControlType::Double>(controlTypeValue));
 
-    // Check value before change
-    auto &allPaddControlMapsBeforeChange = controlExpPadd->getAllPaddControlMaps();
-    EXPECT_EQ(allPaddControlMapsBeforeChange.size(), 1);
-    EXPECT_TRUE(allPaddControlMapsBeforeChange.contains(controlGenPadd->name()));
-    auto &genPaddControls = allPaddControlMapsBeforeChange[controlGenPadd->name()];
-    EXPECT_EQ(genPaddControls.size(),4);
-    std::string controlName = "aDouble";
-    EXPECT_TRUE(genPaddControls.contains(controlName));
-    ScratchPadd::ControlTypeVariant &controlTypeValue = genPaddControls[controlName];
-    EXPECT_TRUE(std::holds_alternative<ScratchPadd::ControlType::Double>(controlTypeValue));
+  // confirm original value set in ControlsGeneratorPadd generateControls() method
+  EXPECT_DOUBLE_EQ(std::get<ScratchPadd::ControlType::Double>(controlTypeValue).value, 20.0);
 
+  // update the value
+  const double updatedValue = 40.1;
+  auto updatedControlTypeValue = std::get<ScratchPadd::ControlType::Double>(
+      controlTypeValue); // make a copy. value held in ControlExposurePadd will be unchanged until
+                         // the update is round tripped back from ControlGeneratorPadd
+  updatedControlTypeValue.value = updatedValue;
+  // Send a control change back to the generator
+  controlExpPadd->send(
+      ScratchPadd::MessageType::ControlChange{.paddName = controlGenPadd->name(),
+                                              .controlName = controlName,
+                                              .controlTypeValue = updatedControlTypeValue});
 
-    // confirm original value set in ControlsGeneratorPadd generateControls() method
-    EXPECT_DOUBLE_EQ(std::get<ScratchPadd::ControlType::Double>(controlTypeValue).value,20.0);
+  controlGenPadd->waitForWorkCompletion();
+  controlExpPadd->waitForWorkCompletion();
 
-    // update the value
-    const double updatedValue = 40.1;
-    auto updatedControlTypeValue = std::get<ScratchPadd::ControlType::Double>(controlTypeValue); // make a copy. value held in ControlExposurePadd will be unchanged until the update is round tripped back from ControlGeneratorPadd
-    updatedControlTypeValue.value = updatedValue;
-    // Send a control change back to the generator
-    controlExpPadd->send(ScratchPadd::MessageType::ControlChange{.paddName = controlGenPadd->name() ,.controlName = controlName,.controlTypeValue = updatedControlTypeValue});
+  // Check that the ControlsGeneratorPadd controls map has been updated with the new value
 
+  auto genPaddControlsAfterChange = controlGenPadd->generateControlsSnapshot().controlMap;
+  EXPECT_EQ(genPaddControlsAfterChange.size(), 4);
+  EXPECT_TRUE(genPaddControlsAfterChange.contains(controlName));
+  EXPECT_TRUE(std::holds_alternative<ScratchPadd::ControlType::Double>(
+      genPaddControlsAfterChange[controlName]));
 
-    controlGenPadd->waitForWorkCompletion();
-    controlExpPadd->waitForWorkCompletion();
+  EXPECT_DOUBLE_EQ(
+      std::get<ScratchPadd::ControlType::Double>(genPaddControlsAfterChange[controlName]).value,
+      updatedValue);
 
-    // Check that the ControlsGeneratorPadd controls map has been updated with the new value
+  // Check that that update has been published back to the ControlExposurePadd
+  // This is to ensure that the two controls are in sync.
 
-    auto genPaddControlsAfterChange = controlGenPadd->generateControlsSnapshot().controlMap;
-    EXPECT_EQ(genPaddControlsAfterChange.size(),4);
-    EXPECT_TRUE(genPaddControlsAfterChange.contains(controlName));
-    EXPECT_TRUE(std::holds_alternative<ScratchPadd::ControlType::Double>(genPaddControlsAfterChange[controlName]));
+  auto &allPaddControlMapsAfterChange = controlExpPadd->getAllPaddControlMaps();
 
-    EXPECT_DOUBLE_EQ(std::get<ScratchPadd::ControlType::Double>(genPaddControlsAfterChange[controlName]).value,updatedValue);
+  EXPECT_TRUE(allPaddControlMapsAfterChange.contains(controlGenPadd->name()));
+  auto &controlMap = allPaddControlMapsAfterChange[controlGenPadd->name()];
 
-    // Check that that update has been published back to the ControlExposurePadd
-    // This is to ensure that the two controls are in sync.
+  EXPECT_TRUE(controlMap.contains(controlName));
+  EXPECT_TRUE(std::holds_alternative<ScratchPadd::ControlType::Double>(controlMap[controlName]));
 
-    auto &allPaddControlMapsAfterChange = controlExpPadd->getAllPaddControlMaps();
+  EXPECT_DOUBLE_EQ(std::get<ScratchPadd::ControlType::Double>(controlMap[controlName]).value,
+                   updatedValue);
 
-    EXPECT_TRUE(allPaddControlMapsAfterChange.contains(controlGenPadd->name()));
-    auto &controlMap = allPaddControlMapsAfterChange[controlGenPadd->name()];
-
-    EXPECT_TRUE(controlMap.contains(controlName));
-    EXPECT_TRUE(std::holds_alternative<ScratchPadd::ControlType::Double>(controlMap[controlName]));
-
-    EXPECT_DOUBLE_EQ(std::get<ScratchPadd::ControlType::Double>(controlMap[controlName]).value,updatedValue);
-
-    spsystem->stop();
-    systemThread.join();
+  spsystem->stop();
+  systemThread.join();
 }
 
 namespace {
@@ -419,10 +403,10 @@ TEST(ControlsTest, ChangeCannotAlterRange) {
 TEST(ControlsTest, InvalidChangesAreRejected) {
   RunningSystem<PanelPadd, OwnerA> running;
   auto &panel = running.padd<PanelPadd>();
-  panel.change("Owner1", "mode", Controls::String("impossible"));      // not allowed
-  panel.change("Owner1", "speed", Controls::Boolean(false));           // wrong type
-  panel.change("Owner1", "missing", Controls::Boolean(false));         // unknown control
-  panel.change("Owner1", "speed", Controls::Double(std::nan("")));     // not a number
+  panel.change("Owner1", "mode", Controls::String("impossible"));  // not allowed
+  panel.change("Owner1", "speed", Controls::Boolean(false));       // wrong type
+  panel.change("Owner1", "missing", Controls::Boolean(false));     // unknown control
+  panel.change("Owner1", "speed", Controls::Double(std::nan(""))); // not a number
   ASSERT_TRUE(running.settles());
 
   auto &owner = running.padd<OwnerA>();

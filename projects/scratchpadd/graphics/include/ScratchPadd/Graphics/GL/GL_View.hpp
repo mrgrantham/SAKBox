@@ -10,10 +10,10 @@
 const std::string VEXTEX_SHADER_EXTENSION = "vert";
 const std::string FRAGMENT_SHADER_EXTENSION = "frag";
 
-inline std::string GetShaderPath(
-    const std::string &name, const std::string &extension,
-    const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
-                                 "ScratchPadd/Graphics/GL/Shaders/") {
+inline std::string
+GetShaderPath(const std::string &name, const std::string &extension,
+              const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
+                                           "ScratchPadd/Graphics/GL/Shaders/") {
 
   // #if defined(__APPLE__)
 
@@ -61,8 +61,7 @@ inline std::string GetShaderPath(
   std::string workspace = "_main";
 
   std::string relativePath = workspace + dirPath + name + "." + extension;
-  auto shaderPathString =
-      DataDepRetriever::GetFullDependencyPath(relativePath);
+  auto shaderPathString = DataDepRetriever::GetFullDependencyPath(relativePath);
   // #endif
   if (!shaderPathString) {
     spdlog::error("Shader file not found at : {}", relativePath);
@@ -71,17 +70,17 @@ inline std::string GetShaderPath(
   return shaderPathString.value();
 }
 
-inline std::string GetVertexShaderPath(
-    const std::string &name,
-    const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
-                                 "ScratchPadd/Graphics/GL/Shaders/") {
+inline std::string
+GetVertexShaderPath(const std::string &name,
+                    const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
+                                                 "ScratchPadd/Graphics/GL/Shaders/") {
   return GetShaderPath(name, VEXTEX_SHADER_EXTENSION, dirPath);
 }
 
-inline std::string GetFragmentShaderPath(
-    const std::string &name,
-    const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
-                                 "ScratchPadd/Graphics/GL/Shaders/") {
+inline std::string
+GetFragmentShaderPath(const std::string &name,
+                      const std::string &dirPath = "/projects/scratchpadd/graphics/include/"
+                                                   "ScratchPadd/Graphics/GL/Shaders/") {
   return GetShaderPath(name, FRAGMENT_SHADER_EXTENSION, dirPath);
 }
 
@@ -115,17 +114,14 @@ public:
     name_ = name;
     frameBuffer_->create(800, 600);
     vertexIndexBuffer_->create(SampleItems::vertices, SampleItems::indices);
-    shader_.generate(GetVertexShaderPath("example"),
-                     GetFragmentShaderPath("example"));
+    shader_.generate(GetVertexShaderPath("example"), GetFragmentShaderPath("example"));
   }
 
   void setBackgroundColor(ImVec4 &backgroundColor) override {
     frameBuffer_->setBackgroundColor(backgroundColor);
   }
 
-  ImVec4 *getBackgroundColor() override {
-    return frameBuffer_->getBackgroundColor();
-  }
+  ImVec4 *getBackgroundColor() override { return frameBuffer_->getBackgroundColor(); }
 
   float getSecondsSinceStart() {
     auto now = std::chrono::system_clock::now();
@@ -191,16 +187,13 @@ public:
     // spdlog::info("content region min adjusted adjusted.x: {} adjusted.y: {}",
     // adjusted.x, adjusted.y);
 
-    float buttonState =
-        glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+    float buttonState = glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
 
     float yRatio = vMax.y / viewportPanelSize.y;
 
-    float contentAdjustedY =
-        (viewportPanelSize.y - (cursorPosY - adjusted.y)) * yRatio;
+    float contentAdjustedY = (viewportPanelSize.y - (cursorPosY - adjusted.y)) * yRatio;
 
-    ImVec4 iMouse(static_cast<float>(cursorPosX - adjusted.x), contentAdjustedY,
-                  buttonState, 0.0f);
+    ImVec4 iMouse(static_cast<float>(cursorPosX - adjusted.x), contentAdjustedY, buttonState, 0.0f);
     // spdlog::info("iMouse x: {} y: {} z: {} w: {}", iMouse.x,
     // iMouse.y,iMouse.z,iMouse.w); spdlog::info("ViewPort Panel Size x: {} y:
     // {}", viewportPanelSize.x, viewportPanelSize.y);
@@ -227,8 +220,7 @@ public:
     // add rendered texture to ImGUI scene window
     uint64_t textureID = frameBuffer_->get();
     ImGui::Image(reinterpret_cast<void *>(textureID),
-                 ImVec2{viewportPanelSize.x, viewportPanelSize.y}, ImVec2{0, 1},
-                 ImVec2{1, 0});
+                 ImVec2{viewportPanelSize.x, viewportPanelSize.y}, ImVec2{0, 1}, ImVec2{1, 0});
 
     ImGui::End();
     ImGui::PopStyleVar();
@@ -302,8 +294,7 @@ public:
     // SampleItems::Circle circle(0.0, 0.0, 0.8, 100);
     // view->vertexIndexBuffer_->create(circle.vertices(), circle.indices());
     view->vertexIndexBuffer_->create(vertices_, indices_);
-    view->shader_.generate(std::move(vertexShaderPath_),
-                           std::move(fragmentShaderPath_));
+    view->shader_.generate(std::move(vertexShaderPath_), std::move(fragmentShaderPath_));
     view->pos_.x = posX_;
     view->pos_.y = posY_;
     view->size_.x = viewWidth_;

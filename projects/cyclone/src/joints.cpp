@@ -40,8 +40,8 @@ unsigned Joint::addContact(Contact *contact, unsigned limit) const {
   return 0;
 }
 
-void Joint::set(RigidBody *a, const Vector3 &a_pos, RigidBody *b,
-                const Vector3 &b_pos, real error) {
+void Joint::set(RigidBody *a, const Vector3 &a_pos, RigidBody *b, const Vector3 &b_pos,
+                real error) {
   body[0] = a;
   body[1] = b;
 

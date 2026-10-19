@@ -1,10 +1,10 @@
+#include "backward/backward.hpp"
 #include <spdlog/spdlog.h>
 #include <stdlib.h>
-#include "backward/backward.hpp"
 
+#include <DataDepRetriever/DataDependencies.hpp>
 #include <ScratchPadd/Graphics/Graphics.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
-#include <DataDepRetriever/DataDependencies.hpp>
 
 using namespace std::chrono_literals;
 
@@ -32,45 +32,40 @@ public:
     graphics_->setupWindow(1600, 1000);
     PADDLOG_INFO("setup windows");
 
-    const std::string shaderFolder =
-        "/projects/examples/shader_playground/shaders/";
+    const std::string shaderFolder = "/projects/examples/shader_playground/shaders/";
 
     SampleItems::Circle circle(0.0, 0.0, 0.8, 100);
-    auto view1 =
-        GetGL_ViewBuilder()
-            .setName("Blob")
-            .setFrameBuffer(800, 600)
-            .setSize(300, 300)
-            .setPosition(20, 40)
-            .setFragmentShaderPath(GetFragmentShaderPath("blob", shaderFolder))
-            .setVertexShaderPath(GetVertexShaderPath("play2", shaderFolder))
-            .setGeometry(circle.vertices(), circle.indices())
-            .build();
+    auto view1 = GetGL_ViewBuilder()
+                     .setName("Blob")
+                     .setFrameBuffer(800, 600)
+                     .setSize(300, 300)
+                     .setPosition(20, 40)
+                     .setFragmentShaderPath(GetFragmentShaderPath("blob", shaderFolder))
+                     .setVertexShaderPath(GetVertexShaderPath("play2", shaderFolder))
+                     .setGeometry(circle.vertices(), circle.indices())
+                     .build();
     graphics_->addView(std::move(view1));
 
-    auto view2 =
-        GetGL_ViewBuilder()
-            .setName("GL Example View 2")
-            .setFrameBuffer(300, 300)
-            .setSize(300, 300)
-            .setPosition(20, 350)
-            .setFragmentShaderPath(GetFragmentShaderPath("play", shaderFolder))
-            .setVertexShaderPath(GetVertexShaderPath("play", shaderFolder))
-            .setGeometry(SampleItems::vertices, SampleItems::indices)
-            .build();
+    auto view2 = GetGL_ViewBuilder()
+                     .setName("GL Example View 2")
+                     .setFrameBuffer(300, 300)
+                     .setSize(300, 300)
+                     .setPosition(20, 350)
+                     .setFragmentShaderPath(GetFragmentShaderPath("play", shaderFolder))
+                     .setVertexShaderPath(GetVertexShaderPath("play", shaderFolder))
+                     .setGeometry(SampleItems::vertices, SampleItems::indices)
+                     .build();
     graphics_->addView(std::move(view2));
 
-    auto view3 =
-        GetGL_ViewBuilder()
-            .setName("GL Example View 3")
-            .setFrameBuffer(800, 600)
-            .setSize(300, 300)
-            .setPosition(400, 40)
-            .setFragmentShaderPath(GetFragmentShaderPath("play3", shaderFolder))
-            .setVertexShaderPath(GetVertexShaderPath("play3", shaderFolder))
-            .setGeometry(SampleItems::Square::vertices,
-                         SampleItems::Square::indices)
-            .build();
+    auto view3 = GetGL_ViewBuilder()
+                     .setName("GL Example View 3")
+                     .setFrameBuffer(800, 600)
+                     .setSize(300, 300)
+                     .setPosition(400, 40)
+                     .setFragmentShaderPath(GetFragmentShaderPath("play3", shaderFolder))
+                     .setVertexShaderPath(GetVertexShaderPath("play3", shaderFolder))
+                     .setGeometry(SampleItems::Square::vertices, SampleItems::Square::indices)
+                     .build();
     graphics_->addView(std::move(view3));
 
     auto viewGradient =
@@ -81,22 +76,19 @@ public:
             .setPosition(800, 40)
             .setFragmentShaderPath(GetFragmentShaderPath("gradient", shaderFolder))
             .setVertexShaderPath(GetVertexShaderPath("gradient", shaderFolder))
-            .setGeometry(SampleItems::Square::vertices,
-                         SampleItems::Square::indices)
+            .setGeometry(SampleItems::Square::vertices, SampleItems::Square::indices)
             .build();
     graphics_->addView(std::move(viewGradient));
 
-    auto viewDisk =
-        GetGL_ViewBuilder()
-            .setName("Disk")
-            .setFrameBuffer(300, 300)
-            .setSize(300, 300)
-            .setPosition(1200, 40)
-            .setFragmentShaderPath(GetFragmentShaderPath("disk", shaderFolder))
-            .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
-            .setGeometry(SampleItems::Square::vertices,
-                         SampleItems::Square::indices)
-            .build();
+    auto viewDisk = GetGL_ViewBuilder()
+                        .setName("Disk")
+                        .setFrameBuffer(300, 300)
+                        .setSize(300, 300)
+                        .setPosition(1200, 40)
+                        .setFragmentShaderPath(GetFragmentShaderPath("disk", shaderFolder))
+                        .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
+                        .setGeometry(SampleItems::Square::vertices, SampleItems::Square::indices)
+                        .build();
     graphics_->addView(std::move(viewDisk));
 
     auto viewParallelagramDisk =
@@ -111,17 +103,15 @@ public:
             .build();
     graphics_->addView(std::move(viewParallelagramDisk));
 
-    auto viewCoolS =
-        GetGL_ViewBuilder()
-            .setName("Cool S")
-            .setFrameBuffer(300, 300)
-            .setSize(300, 300)
-            .setPosition(800, 350)
-            .setFragmentShaderPath(GetFragmentShaderPath("cools", shaderFolder))
-            .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
-            .setGeometry(SampleItems::Square::vertices,
-                         SampleItems::Square::indices)
-            .build();
+    auto viewCoolS = GetGL_ViewBuilder()
+                         .setName("Cool S")
+                         .setFrameBuffer(300, 300)
+                         .setSize(300, 300)
+                         .setPosition(800, 350)
+                         .setFragmentShaderPath(GetFragmentShaderPath("cools", shaderFolder))
+                         .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
+                         .setGeometry(SampleItems::Square::vertices, SampleItems::Square::indices)
+                         .build();
     graphics_->addView(std::move(viewCoolS));
 
     auto viewCyberFuji2020 =
@@ -132,8 +122,7 @@ public:
             .setPosition(1200, 350)
             .setFragmentShaderPath(GetFragmentShaderPath("cyberfuji2020", shaderFolder))
             .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
-            .setGeometry(SampleItems::Square::vertices,
-                         SampleItems::Square::indices)
+            .setGeometry(SampleItems::Square::vertices, SampleItems::Square::indices)
             .build();
     graphics_->addView(std::move(viewCyberFuji2020));
 
@@ -145,8 +134,7 @@ public:
             .setPosition(20, 670)
             .setFragmentShaderPath(GetFragmentShaderPath("shadingartcodingintro", shaderFolder))
             .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
-            .setGeometry(SampleItems::Square::vertices,
-                         SampleItems::Square::indices)
+            .setGeometry(SampleItems::Square::vertices, SampleItems::Square::indices)
             .build();
     graphics_->addView(std::move(viewShadingArtCodeIntro));
 
@@ -158,12 +146,11 @@ public:
             .setPosition(400, 670)
             .setFragmentShaderPath(GetFragmentShaderPath("fractalland", shaderFolder))
             .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
-            .setGeometry(SampleItems::Square::vertices,
-                         SampleItems::Square::indices)
+            .setGeometry(SampleItems::Square::vertices, SampleItems::Square::indices)
             .build();
     graphics_->addView(std::move(viewFractalLand));
 
-      auto viewMandalaFlowers =
+    auto viewMandalaFlowers =
         GetGL_ViewBuilder()
             .setName("Mandala Flowers")
             .setFrameBuffer(300, 300)
@@ -171,22 +158,19 @@ public:
             .setPosition(800, 670)
             .setFragmentShaderPath(GetFragmentShaderPath("mandalaflowers", shaderFolder))
             .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
-            .setGeometry(SampleItems::Square::vertices,
-                         SampleItems::Square::indices)
+            .setGeometry(SampleItems::Square::vertices, SampleItems::Square::indices)
             .build();
     graphics_->addView(std::move(viewMandalaFlowers));
 
-          auto viewFlame =
-        GetGL_ViewBuilder()
-            .setName("Flame")
-            .setFrameBuffer(300, 300)
-            .setSize(300, 300)
-            .setPosition(1200, 670)
-            .setFragmentShaderPath(GetFragmentShaderPath("flame", shaderFolder))
-            .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
-            .setGeometry(SampleItems::Square::vertices,
-                         SampleItems::Square::indices)
-            .build();
+    auto viewFlame = GetGL_ViewBuilder()
+                         .setName("Flame")
+                         .setFrameBuffer(300, 300)
+                         .setSize(300, 300)
+                         .setPosition(1200, 670)
+                         .setFragmentShaderPath(GetFragmentShaderPath("flame", shaderFolder))
+                         .setVertexShaderPath(GetVertexShaderPath("default", shaderFolder))
+                         .setGeometry(SampleItems::Square::vertices, SampleItems::Square::indices)
+                         .build();
     graphics_->addView(std::move(viewFlame));
 
     push([this] { drawFrame(); }); // start drawing frames
@@ -201,22 +185,18 @@ public:
 
   std::string name() override { return __CLASS_NAME__; }
 
-  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>
-  generateControls() override {
+  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant> generateControls() override {
     return {};
   }
-
 
   // Draws one frame, then queues the next. The buffer swap waits for the
   // display's refresh (vsync), so this runs at the display's rate without a
   // timer and without spinning.
   void drawFrame() {
     performanceTimer_.markInterval();
-    PADDLOG_INTERVAL(spdlog::level::info, 1000ms,
-                     "DisplayPadd drawing at {:.3f}s interval",
+    PADDLOG_INTERVAL(spdlog::level::info, 1000ms, "DisplayPadd drawing at {:.3f}s interval",
                      performanceTimer_.getAverageIntervalInSeconds(5));
-    PADDLOG_INTERVAL(spdlog::level::info, 1000ms,
-                     "DisplayPadd drawing at {:.3f} fps",
+    PADDLOG_INTERVAL(spdlog::level::info, 1000ms, "DisplayPadd drawing at {:.3f} fps",
                      1.0 / performanceTimer_.getAverageIntervalInSeconds(5));
 
     if (!graphics_->draw()) {

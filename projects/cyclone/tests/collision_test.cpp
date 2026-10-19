@@ -17,8 +17,7 @@ namespace {
 
 constexpr double kTolerance = 1e-9;
 
-void expectNear(const Vector3 &actual, const Vector3 &expected,
-                double tolerance = kTolerance) {
+void expectNear(const Vector3 &actual, const Vector3 &expected, double tolerance = kTolerance) {
   EXPECT_NEAR(actual.x, expected.x, tolerance);
   EXPECT_NEAR(actual.y, expected.y, tolerance);
   EXPECT_NEAR(actual.z, expected.z, tolerance);
@@ -86,8 +85,7 @@ struct Contacts {
 TEST(BoxCollisionTest, BoxRestingOnGroundTouchesAtFourCorners) {
   auto body = bodyAt(Vector3(0, 0.9, 0));
   Contacts c;
-  ASSERT_EQ(CollisionDetector::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)),
-                                               ground(), &c.data),
+  ASSERT_EQ(CollisionDetector::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)), ground(), &c.data),
             4u);
   EXPECT_EQ(c.data.contactCount, 4u);
   for (unsigned i = 0; i < 4; ++i) {
@@ -106,8 +104,7 @@ TEST(BoxCollisionTest, BoxRestingOnGroundTouchesAtFourCorners) {
 TEST(BoxCollisionTest, BoxAboveGroundDoesntTouch) {
   auto body = bodyAt(Vector3(0, 1.5, 0));
   Contacts c;
-  EXPECT_EQ(CollisionDetector::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)),
-                                               ground(), &c.data),
+  EXPECT_EQ(CollisionDetector::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)), ground(), &c.data),
             0u);
   EXPECT_EQ(c.data.contactCount, 0u);
 }
@@ -120,8 +117,7 @@ TEST(BoxCollisionTest, BoxOnItsEdgeTouchesAtTwoCorners) {
   body->setOrientation(cos, 0, 0, s); // 45 degrees about z
   body->calculateDerivedData();
   Contacts c;
-  EXPECT_EQ(CollisionDetector::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)),
-                                               ground(), &c.data),
+  EXPECT_EQ(CollisionDetector::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)), ground(), &c.data),
             2u);
   EXPECT_EQ(c.data.contactCount, 2u);
 }
@@ -131,8 +127,7 @@ TEST(BoxCollisionTest, BoxOnItsEdgeTouchesAtTwoCorners) {
 TEST(BoxCollisionTest, FullContactArrayStillRecordsContacts) {
   auto body = bodyAt(Vector3(0, 0.9, 0));
   Contacts c(2);
-  EXPECT_EQ(CollisionDetector::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)),
-                                               ground(), &c.data),
+  EXPECT_EQ(CollisionDetector::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)), ground(), &c.data),
             2u);
   EXPECT_EQ(c.data.contactCount, 2u);
   EXPECT_FALSE(c.data.hasMoreContacts());
@@ -147,8 +142,7 @@ TEST(BoxCollisionTest, OverlappingBoxesMakeOneContact) {
   auto two = bodyAt(Vector3(1.5, 0.2, 0.1));
   Contacts c;
   ASSERT_EQ(CollisionDetector::boxAndBox(boxOn(*one, Vector3(1, 1, 1)),
-                                         boxOn(*two, Vector3(1, 1, 1)),
-                                         &c.data),
+                                         boxOn(*two, Vector3(1, 1, 1)), &c.data),
             1u);
   const Contact &contact = c.array[0];
   EXPECT_NEAR(contact.penetration, 0.5, kTolerance);
@@ -162,8 +156,7 @@ TEST(BoxCollisionTest, SeparateBoxesDontTouch) {
   auto two = bodyAt(Vector3(2.5, 0, 0));
   Contacts c;
   EXPECT_EQ(CollisionDetector::boxAndBox(boxOn(*one, Vector3(1, 1, 1)),
-                                         boxOn(*two, Vector3(1, 1, 1)),
-                                         &c.data),
+                                         boxOn(*two, Vector3(1, 1, 1)), &c.data),
             0u);
 }
 
@@ -173,8 +166,8 @@ TEST(BoxCollisionTest, SphereAgainstBoxFace) {
   auto boxBody = bodyAt(Vector3(0, 0, 0));
   auto ball = bodyAt(Vector3(0, 1.5, 0));
   Contacts c;
-  ASSERT_EQ(CollisionDetector::boxAndSphere(boxOn(*boxBody, Vector3(1, 1, 1)),
-                                            sphereOn(*ball, 1), &c.data),
+  ASSERT_EQ(CollisionDetector::boxAndSphere(boxOn(*boxBody, Vector3(1, 1, 1)), sphereOn(*ball, 1),
+                                            &c.data),
             1u);
   const Contact &contact = c.array[0];
   EXPECT_NEAR(contact.penetration, 0.5, kTolerance);
@@ -184,11 +177,10 @@ TEST(BoxCollisionTest, SphereAgainstBoxFace) {
 
 TEST(BoxCollisionTest, SphereClearOfBoxDoesntTouch) {
   auto boxBody = bodyAt(Vector3(0, 0, 0));
-  auto ball =
-      bodyAt(Vector3(2.0, 2.0, 0)); // beyond the corner by more than its radius
+  auto ball = bodyAt(Vector3(2.0, 2.0, 0)); // beyond the corner by more than its radius
   Contacts c;
-  EXPECT_EQ(CollisionDetector::boxAndSphere(boxOn(*boxBody, Vector3(1, 1, 1)),
-                                            sphereOn(*ball, 1), &c.data),
+  EXPECT_EQ(CollisionDetector::boxAndSphere(boxOn(*boxBody, Vector3(1, 1, 1)), sphereOn(*ball, 1),
+                                            &c.data),
             0u);
 }
 
@@ -200,34 +192,27 @@ TEST(IntersectionTest, QuickTestsAgreeWithContactGeneration) {
     auto body = bodyAt(Vector3(0, y, 0));
     Contacts c;
     const bool touching =
-        CollisionDetector::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)),
-                                           ground(), &c.data) > 0;
-    EXPECT_EQ(IntersectionTests::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)),
-                                                 ground()),
+        CollisionDetector::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)), ground(), &c.data) > 0;
+    EXPECT_EQ(IntersectionTests::boxAndHalfSpace(boxOn(*body, Vector3(1, 1, 1)), ground()),
               touching)
         << "y " << y;
     Contacts s;
-    const bool sphereTouching = CollisionDetector::sphereAndHalfSpace(
-                                    sphereOn(*body, 1), ground(), &s.data) > 0;
-    EXPECT_EQ(
-        IntersectionTests::sphereAndHalfSpace(sphereOn(*body, 1), ground()),
-        sphereTouching)
+    const bool sphereTouching =
+        CollisionDetector::sphereAndHalfSpace(sphereOn(*body, 1), ground(), &s.data) > 0;
+    EXPECT_EQ(IntersectionTests::sphereAndHalfSpace(sphereOn(*body, 1), ground()), sphereTouching)
         << "y " << y;
   }
   for (double x : {1.0, 1.9, 2.1, 3.0}) {
     auto one = bodyAt(Vector3(0, 0, 0));
     auto two = bodyAt(Vector3(x, 0, 0));
     Contacts c;
-    const bool touching = CollisionDetector::boxAndBox(
-                              boxOn(*one, Vector3(1, 1, 1)),
-                              boxOn(*two, Vector3(1, 1, 1)), &c.data) > 0;
-    EXPECT_EQ(IntersectionTests::boxAndBox(boxOn(*one, Vector3(1, 1, 1)),
-                                           boxOn(*two, Vector3(1, 1, 1))),
-              touching)
+    const bool touching = CollisionDetector::boxAndBox(boxOn(*one, Vector3(1, 1, 1)),
+                                                       boxOn(*two, Vector3(1, 1, 1)), &c.data) > 0;
+    EXPECT_EQ(
+        IntersectionTests::boxAndBox(boxOn(*one, Vector3(1, 1, 1)), boxOn(*two, Vector3(1, 1, 1))),
+        touching)
         << "x " << x;
-    EXPECT_EQ(IntersectionTests::sphereAndSphere(sphereOn(*one, 1),
-                                                 sphereOn(*two, 1)),
-              x < 2.0)
+    EXPECT_EQ(IntersectionTests::sphereAndSphere(sphereOn(*one, 1), sphereOn(*two, 1)), x < 2.0)
         << "x " << x;
   }
 }
@@ -240,24 +225,21 @@ namespace {
 // Builds a tree over bodies at `positions` (each in a unit bounding sphere),
 // inserted in order, and returns the pairs it reports as possibly touching,
 // as sorted index pairs.
-std::vector<std::pair<int, int>>
-potentialPairs(const std::vector<Vector3> &positions) {
+std::vector<std::pair<int, int>> potentialPairs(const std::vector<Vector3> &positions) {
   std::vector<std::unique_ptr<RigidBody>> bodies;
   bodies.reserve(positions.size());
   for (const Vector3 &p : positions)
     bodies.push_back(bodyAt(p));
-  BVHNode<BoundingSphere> root(nullptr, BoundingSphere(positions[0], 1),
-                               bodies[0].get());
+  BVHNode<BoundingSphere> root(nullptr, BoundingSphere(positions[0], 1), bodies[0].get());
   for (size_t i = 1; i < bodies.size(); ++i)
     root.insert(bodies[i].get(), BoundingSphere(positions[i], 1));
 
   PotentialContact contacts[32];
   const unsigned found = root.getPotentialContacts(contacts, 32);
   auto indexOf = [&](RigidBody *b) {
-    return static_cast<int>(
-        std::find_if(bodies.begin(), bodies.end(),
-                     [&](const auto &owned) { return owned.get() == b; }) -
-        bodies.begin());
+    return static_cast<int>(std::find_if(bodies.begin(), bodies.end(),
+                                         [&](const auto &owned) { return owned.get() == b; }) -
+                            bodies.begin());
   };
   std::vector<std::pair<int, int>> pairs;
   for (unsigned i = 0; i < found; ++i) {
@@ -288,7 +270,7 @@ TEST(BoundingVolumeTest, TreeFindsNearbyPairsInAnyOrder) {
 }
 
 TEST(BoundingVolumeTest, TreeReportsNothingForSpreadOutBodies) {
-  EXPECT_TRUE(potentialPairs({Vector3(0, 0, 0), Vector3(10, 0, 0),
-                              Vector3(0, 10, 0), Vector3(0, 0, 10)})
-                  .empty());
+  EXPECT_TRUE(
+      potentialPairs({Vector3(0, 0, 0), Vector3(10, 0, 0), Vector3(0, 10, 0), Vector3(0, 0, 10)})
+          .empty());
 }

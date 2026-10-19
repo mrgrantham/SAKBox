@@ -3,7 +3,6 @@
 
 #include <GL/glew.h>
 
-
 // Handles generating the shader program from the provided vertex and fragment
 // shaders
 

@@ -67,9 +67,7 @@ real Particle::getMass() const {
   }
 }
 
-void Particle::setInverseMass(const real inverseMass) {
-  Particle::inverseMass = inverseMass;
-}
+void Particle::setInverseMass(const real inverseMass) { Particle::inverseMass = inverseMass; }
 
 real Particle::getInverseMass() const { return inverseMass; }
 
@@ -79,9 +77,7 @@ void Particle::setDamping(const real damping) { Particle::damping = damping; }
 
 real Particle::getDamping() const { return damping; }
 
-void Particle::setPosition(const Vector3 &position) {
-  Particle::position = position;
-}
+void Particle::setPosition(const Vector3 &position) { Particle::position = position; }
 
 void Particle::setPosition(const real x, const real y, const real z) {
   position.x = x;
@@ -89,15 +85,11 @@ void Particle::setPosition(const real x, const real y, const real z) {
   position.z = z;
 }
 
-void Particle::getPosition(Vector3 *position) const {
-  *position = Particle::position;
-}
+void Particle::getPosition(Vector3 *position) const { *position = Particle::position; }
 
 Vector3 Particle::getPosition() const { return position; }
 
-void Particle::setVelocity(const Vector3 &velocity) {
-  Particle::velocity = velocity;
-}
+void Particle::setVelocity(const Vector3 &velocity) { Particle::velocity = velocity; }
 
 void Particle::setVelocity(const real x, const real y, const real z) {
   velocity.x = x;
@@ -105,9 +97,7 @@ void Particle::setVelocity(const real x, const real y, const real z) {
   velocity.z = z;
 }
 
-void Particle::getVelocity(Vector3 *velocity) const {
-  *velocity = Particle::velocity;
-}
+void Particle::getVelocity(Vector3 *velocity) const { *velocity = Particle::velocity; }
 
 Vector3 Particle::getVelocity() const { return velocity; }
 

@@ -14,8 +14,7 @@ public:
   }
   ~AudioPadd() override { spdlog::info("Destroying: {}", paddName()); }
 
-  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant>
-  generateControls() override {
+  std::unordered_map<std::string, ScratchPadd::ControlTypeVariant> generateControls() override {
     return {};
   }
 };

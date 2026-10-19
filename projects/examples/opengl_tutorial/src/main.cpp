@@ -19,15 +19,13 @@
 #include <VertexArrayObject.h>
 #include <VertexBufferObject.h>
 
-static std::string GetFilePath(const std::string &name,
-                               const std::string &extension,
+static std::string GetFilePath(const std::string &name, const std::string &extension,
                                const std::string &projectPath) {
 
   std::string workspace = "_main/"; // main repository runfiles directory under Bzlmod
   std::string project = "projects/examples/opengl_tutorial/";
 
-  std::string relativePath =
-      workspace + project + projectPath + name + "." + extension;
+  std::string relativePath = workspace + project + projectPath + name + "." + extension;
   auto shaderPathString = DataDepRetriever::GetFullDependencyPath(relativePath);
   // #endif
   if (!shaderPathString) {
@@ -43,10 +41,8 @@ int main(int argc, char **argv) {
   // when GetFullDependencyPath is called if this is not called first
   DataDepRetriever::ConfigureDependencies(argv[0]);
 
-  std::string fragmentShaderFilePath =
-      GetFilePath("shader", "frag", "resources/shaders/");
-  std::string vertexShaderFilePath =
-      GetFilePath("shader", "vert", "resources/shaders/");
+  std::string fragmentShaderFilePath = GetFilePath("shader", "frag", "resources/shaders/");
+  std::string vertexShaderFilePath = GetFilePath("shader", "vert", "resources/shaders/");
 
   glfwInit();
 
@@ -96,6 +92,8 @@ int main(int argc, char **argv) {
   // };
 
   // Pyramid. Each face has its own vertices so it can carry its own normal.
+  // The vertex tables are aligned in columns by hand.
+  // clang-format off
   GLfloat vertices[] = {
       //  COORDINATES      //     COLORS        // TEX COORDS //   NORMALS   //
       -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,   0.0f, -1.0f,  0.0f, // Bottom
@@ -154,12 +152,12 @@ int main(int argc, char **argv) {
     4,5,6,
     4,6,7,
   };
+  // clang-format on
 
   const unsigned int windowWidth = 800;
   const unsigned int windowHeight = 800;
 
-  GLFWwindow *window =
-      glfwCreateWindow(windowWidth, windowHeight, "Test Window", nullptr, nullptr);
+  GLFWwindow *window = glfwCreateWindow(windowWidth, windowHeight, "Test Window", nullptr, nullptr);
   if (window == nullptr) {
     spdlog::info("Failed to create window");
     glfwTerminate();
@@ -170,8 +168,7 @@ int main(int argc, char **argv) {
 
   GLenum status = glewInit();
   if (status != GLEW_OK) {
-    std::string glewError =
-        reinterpret_cast<const char *>(glewGetErrorString(status));
+    std::string glewError = reinterpret_cast<const char *>(glewGetErrorString(status));
     spdlog::error("Errors: {}\n", glewError);
   }
   // can only get a printable version string for OpenGL
@@ -180,8 +177,7 @@ int main(int argc, char **argv) {
   const GLubyte *renderer = glGetString(GL_RENDERER); // get renderer string
   spdlog::info("GL RENDERER: {}", (char *)renderer);
   spdlog::info("GL VERSION: {}", version);
-  std::string glewVersion =
-      reinterpret_cast<const char *>(glewGetString(GLEW_VERSION));
+  std::string glewVersion = reinterpret_cast<const char *>(glewGetString(GLEW_VERSION));
   spdlog::info("Status: Using GLEW {}\n", glewVersion);
 
   glViewport(0, 0, windowWidth, windowHeight);
@@ -196,62 +192,61 @@ int main(int argc, char **argv) {
 
   // second argument aligns with location value specified in vertex shader
   // inputs This one is for aPos since second arguement is 0 so (location = 0)
-  vertexArrayObject.linkAttributes(vertexBufferObject, 0, 3, GL_FLOAT,
-                                   11 * sizeof(float), (void *)nullptr);
+  vertexArrayObject.linkAttributes(vertexBufferObject, 0, 3, GL_FLOAT, 11 * sizeof(float),
+                                   (void *)nullptr);
   // This one is for aColor since second arguement is 1 so (location = 1)
-  vertexArrayObject.linkAttributes(vertexBufferObject, 1, 3, GL_FLOAT,
-                                   11 * sizeof(float),
+  vertexArrayObject.linkAttributes(vertexBufferObject, 1, 3, GL_FLOAT, 11 * sizeof(float),
                                    (void *)(3 * sizeof(float)));
-  vertexArrayObject.linkAttributes(vertexBufferObject, 2, 2, GL_FLOAT,
-                                   11 * sizeof(float),
+  vertexArrayObject.linkAttributes(vertexBufferObject, 2, 2, GL_FLOAT, 11 * sizeof(float),
                                    (void *)(6 * sizeof(float)));
-  vertexArrayObject.linkAttributes(vertexBufferObject, 3, 3, GL_FLOAT,
-                                   11 * sizeof(float),
+  vertexArrayObject.linkAttributes(vertexBufferObject, 3, 3, GL_FLOAT, 11 * sizeof(float),
                                    (void *)(8 * sizeof(float)));
   vertexArrayObject.unbind();
   vertexBufferObject.unbind();
   elementBufferObject.unbind();
 
-
   // Light handling
 
-  ShaderProgram lightShader(GetFilePath("lighting", "vert", "resources/shaders/"),GetFilePath("lighting", "frag", "resources/shaders/"));
+  ShaderProgram lightShader(GetFilePath("lighting", "vert", "resources/shaders/"),
+                            GetFilePath("lighting", "frag", "resources/shaders/"));
 
- VertexArrayObject lightVAO;
- lightVAO.bind();
-VertexBufferObject lightVBO(lightVertices, sizeof(lightVertices));
-ElementBufferObject lightEBO(lightIndices, sizeof(lightIndices));
+  VertexArrayObject lightVAO;
+  lightVAO.bind();
+  VertexBufferObject lightVBO(lightVertices, sizeof(lightVertices));
+  ElementBufferObject lightEBO(lightIndices, sizeof(lightIndices));
 
-  lightVAO.linkAttributes(lightVBO,0,3,GL_FLOAT,3 * sizeof(float),(void*)nullptr);
+  lightVAO.linkAttributes(lightVBO, 0, 3, GL_FLOAT, 3 * sizeof(float), (void *)nullptr);
 
   lightVAO.unbind();
   lightVBO.unbind();
   lightEBO.unbind();
 
-  glm::vec4 lightColor(1.0f,0.5f,0.0f,1.0f);
-  glm::vec3 lightPosition(0.5f,0.5f,0.5f);
+  glm::vec4 lightColor(1.0f, 0.5f, 0.0f, 1.0f);
+  glm::vec3 lightPosition(0.5f, 0.5f, 0.5f);
   glm::mat4 lightModel(1.0f);
   lightModel = glm::translate(lightModel, lightPosition);
 
-  glm::vec3 pyramidPosition(0.0f,0.0f,0.0f);
+  glm::vec3 pyramidPosition(0.0f, 0.0f, 0.0f);
   glm::mat4 pyramidModel(1.0f);
   pyramidModel = glm::translate(pyramidModel, pyramidPosition);
 
   lightShader.activate();
-  glUniformMatrix4fv(glGetUniformLocation(lightShader.ID(),"model"),1, GL_FALSE,glm::value_ptr(lightModel));
-  glUniform4f(glGetUniformLocation(lightShader.ID(),"lightColor"),lightColor.x,lightColor.y,lightColor.z,lightColor.w);
+  glUniformMatrix4fv(glGetUniformLocation(lightShader.ID(), "model"), 1, GL_FALSE,
+                     glm::value_ptr(lightModel));
+  glUniform4f(glGetUniformLocation(lightShader.ID(), "lightColor"), lightColor.x, lightColor.y,
+              lightColor.z, lightColor.w);
   shaderProgram.activate();
-  glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID(),"model"),1, GL_FALSE,glm::value_ptr(pyramidModel));
-  glUniform4f(glGetUniformLocation(shaderProgram.ID(),"lightColor"),lightColor.x,lightColor.y,lightColor.z,lightColor.w);
-  glUniform3f(glGetUniformLocation(shaderProgram.ID(),"lightPosition"),lightPosition.x,lightPosition.y,lightPosition.z);
-
+  glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID(), "model"), 1, GL_FALSE,
+                     glm::value_ptr(pyramidModel));
+  glUniform4f(glGetUniformLocation(shaderProgram.ID(), "lightColor"), lightColor.x, lightColor.y,
+              lightColor.z, lightColor.w);
+  glUniform3f(glGetUniformLocation(shaderProgram.ID(), "lightPosition"), lightPosition.x,
+              lightPosition.y, lightPosition.z);
 
   // Texture handling
 
-  std::string popCatImagePath =
-      GetFilePath("brick", "png", "resources/textures/");
-  Texture brickTexture(popCatImagePath, GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA,
-                        GL_UNSIGNED_BYTE);
+  std::string popCatImagePath = GetFilePath("brick", "png", "resources/textures/");
+  Texture brickTexture(popCatImagePath, GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
 
   brickTexture.textureUnit(shaderProgram, "tex0", 0);
 
@@ -273,14 +268,12 @@ ElementBufferObject lightEBO(lightIndices, sizeof(lightIndices));
 
     brickTexture.bind();
     vertexArrayObject.bind();
-    glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT,
-                   nullptr);
+    glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, nullptr);
 
     lightShader.activate();
-    camera.matrix(lightShader,"cameraMatrix");
+    camera.matrix(lightShader, "cameraMatrix");
     lightVAO.bind();
-    glDrawElements(GL_TRIANGLES, sizeof(lightIndices) / sizeof(int), GL_UNSIGNED_INT,
-                   nullptr);
+    glDrawElements(GL_TRIANGLES, sizeof(lightIndices) / sizeof(int), GL_UNSIGNED_INT, nullptr);
     glfwSwapBuffers(window);
 
     // Take care of all GLFW events

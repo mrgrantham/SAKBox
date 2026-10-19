@@ -168,14 +168,17 @@ TEST(FlightPaddsTest, AutopilotRunMatchesOriginalGame) {
 TEST(FlightPaddsTest, ControlChangeAppliesToSimulation) {
   RunningSystem<FlightSimPadd, DriverPadd> running;
   auto &driver = running.padd<DriverPadd>();
-  driver.send(ControlChange{.paddName = "FlightSim", .controlName = "Flight bits",
+  driver.send(ControlChange{.paddName = "FlightSim",
+                            .controlName = "Flight bits",
                             .controlTypeValue = Controls::Integer(6)});
-  driver.send(ControlChange{.paddName = "FlightSim", .controlName = "Rounding",
+  driver.send(ControlChange{.paddName = "FlightSim",
+                            .controlName = "Rounding",
                             .controlTypeValue = Controls::String("stochastic")});
   ASSERT_TRUE(driver.run(2));
 
   EXPECT_EQ(driver.last().groups[0].fracBits, 6);
-  EXPECT_EQ(running.padd<FlightSimPadd>().sim().settings.rounding, Flex::Math::Rounding::Stochastic);
+  EXPECT_EQ(running.padd<FlightSimPadd>().sim().settings.rounding,
+            Flex::Math::Rounding::Stochastic);
 }
 
 // The T key's command flips the Autopilot control, and FlightSimPadd sends a

@@ -49,10 +49,8 @@ public:
   constexpr FlexPoint() {}
 
   // From an integer, exactly. `value` must be within +-2^31.
-  template <typename Integer,
-            std::enable_if_t<std::is_integral<Integer>::value, bool> = true>
-  constexpr FlexPoint(Integer value)
-      : valueFixed_(static_cast<FlexPointPrecision>(value) * kOne) {}
+  template <typename Integer, std::enable_if_t<std::is_integral<Integer>::value, bool> = true>
+  constexpr FlexPoint(Integer value) : valueFixed_(static_cast<FlexPointPrecision>(value) * kOne) {}
 
   // From floating point, rounded to the nearest multiple of 2^-32.
   // `value` must be finite and within +-2^31.
@@ -76,8 +74,12 @@ public:
   // The raw fixed-point representation: the value times 2^32.
   constexpr FlexPointPrecision valueFixed() const { return valueFixed_; }
 
-  constexpr FlexPoint operator+(const FlexPoint &b) const { return fromFixed(valueFixed_ + b.valueFixed_); }
-  constexpr FlexPoint operator-(const FlexPoint &b) const { return fromFixed(valueFixed_ - b.valueFixed_); }
+  constexpr FlexPoint operator+(const FlexPoint &b) const {
+    return fromFixed(valueFixed_ + b.valueFixed_);
+  }
+  constexpr FlexPoint operator-(const FlexPoint &b) const {
+    return fromFixed(valueFixed_ - b.valueFixed_);
+  }
   constexpr FlexPoint operator-() const { return fromFixed(-valueFixed_); }
 
   // Rounds toward negative infinity in the last place (see class comment).

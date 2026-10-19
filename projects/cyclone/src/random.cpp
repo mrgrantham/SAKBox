@@ -39,13 +39,9 @@ void Random::seed(unsigned s) {
   p2 = 10;
 }
 
-unsigned Random::rotl(unsigned n, unsigned r) {
-  return (n << r) | (n >> (32 - r));
-}
+unsigned Random::rotl(unsigned n, unsigned r) { return (n << r) | (n >> (32 - r)); }
 
-unsigned Random::rotr(unsigned n, unsigned r) {
-  return (n >> r) | (n << (32 - r));
-}
+unsigned Random::rotr(unsigned n, unsigned r) { return (n >> r) | (n << (32 - r)); }
 
 unsigned Random::randomBits() {
   unsigned result;
@@ -105,17 +101,13 @@ real Random::randomReal() {
 }
 #endif
 
-real Random::randomReal(real min, real max) {
-  return randomReal() * (max - min) + min;
-}
+real Random::randomReal(real min, real max) { return randomReal() * (max - min) + min; }
 
 real Random::randomReal(real scale) { return randomReal() * scale; }
 
 unsigned Random::randomInt(unsigned max) { return randomBits() % max; }
 
-real Random::randomBinomial(real scale) {
-  return (randomReal() - randomReal()) * scale;
-}
+real Random::randomBinomial(real scale) { return (randomReal() - randomReal()) * scale; }
 
 Quaternion Random::randomQuaternion() {
   Quaternion q(randomReal(), randomReal(), randomReal(), randomReal());
@@ -124,8 +116,7 @@ Quaternion Random::randomQuaternion() {
 }
 
 Vector3 Random::randomVector(real scale) {
-  return Vector3(randomBinomial(scale), randomBinomial(scale),
-                 randomBinomial(scale));
+  return Vector3(randomBinomial(scale), randomBinomial(scale), randomBinomial(scale));
 }
 
 Vector3 Random::randomXZVector(real scale) {
@@ -133,11 +124,9 @@ Vector3 Random::randomXZVector(real scale) {
 }
 
 Vector3 Random::randomVector(const Vector3 &scale) {
-  return Vector3(randomBinomial(scale.x), randomBinomial(scale.y),
-                 randomBinomial(scale.z));
+  return Vector3(randomBinomial(scale.x), randomBinomial(scale.y), randomBinomial(scale.z));
 }
 
 Vector3 Random::randomVector(const Vector3 &min, const Vector3 &max) {
-  return Vector3(randomReal(min.x, max.x), randomReal(min.y, max.y),
-                 randomReal(min.z, max.z));
+  return Vector3(randomReal(min.x, max.x), randomReal(min.y, max.y), randomReal(min.z, max.z));
 }

@@ -15,7 +15,9 @@ namespace {
 struct Rect {
   float x0, y0, x1, y1;
   bool overlaps(const Rect &o) const { return x0 < o.x1 && o.x0 < x1 && y0 < o.y1 && o.y0 < y1; }
-  bool contains(const Rect &o) const { return o.x0 >= x0 && o.x1 <= x1 && o.y0 >= y0 && o.y1 <= y1; }
+  bool contains(const Rect &o) const {
+    return o.x0 >= x0 && o.x1 <= x1 && o.y0 >= y0 && o.y1 <= y1;
+  }
 };
 
 } // namespace
@@ -38,7 +40,9 @@ void FlightSim::reset() {
 }
 
 void FlightSim::updateGroups() {
-  auto bits = [&](int fracBits) { return Precision{.fracBits = fracBits, .rounding = settings.rounding}; };
+  auto bits = [&](int fracBits) {
+    return Precision{.fracBits = fracBits, .rounding = settings.rounding};
+  };
   flight_.setBase(bits(settings.flightBase));
   hull_.setBase(bits(settings.hullBase));
   render_.setBase(bits(settings.renderBase));
@@ -175,7 +179,8 @@ void FlightSim::checkCollisions(std::vector<FlightEvent> &events) {
         const int points = gold ? 300 : 100;
         score_ += points;
         gold ? ++goldGates_ : ++gates_;
-        events.push_back(GatePassed{.obstacleId = o.id, .gold = gold, .points = points, .distance = -z_});
+        events.push_back(
+            GatePassed{.obstacleId = o.id, .gold = gold, .points = points, .distance = -z_});
       } else if (frame.overlaps(ship)) {
         crash(o, 20.0f, false, events);
       }
@@ -210,7 +215,8 @@ void FlightSim::autopilotInput(float &inputX, float &inputY) const {
   inputY = steer(next->cy - static_cast<float>(y_.value()), static_cast<float>(vy_.value()));
 }
 
-void FlightSim::advance(double seconds, float inputX, float inputY, std::vector<FlightEvent> &events) {
+void FlightSim::advance(double seconds, float inputX, float inputY,
+                        std::vector<FlightEvent> &events) {
   accumulator_ += seconds;
   while (accumulator_ >= kStepSeconds) {
     step(inputX, inputY, events);

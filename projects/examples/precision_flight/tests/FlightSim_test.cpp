@@ -49,14 +49,16 @@ std::string autopilotLog(FlightSim &sim) {
   }
   const WorldSnapshot s = sim.snapshot();
   char end[128];
-  std::snprintf(end, sizeof(end), "END score=%d shield=%.1f gates=%d gold=%d phased=%d over=%d z=%.3f\n",
-                s.score, s.shield, s.gates, s.goldGates, s.phasedWalls, s.over ? 1 : 0, s.z);
+  std::snprintf(end, sizeof(end),
+                "END score=%d shield=%.1f gates=%d gold=%d phased=%d over=%d z=%.3f\n", s.score,
+                s.shield, s.gates, s.goldGates, s.phasedWalls, s.over ? 1 : 0, s.z);
   return log + end;
 }
 
 // Events from flying `seconds` on autopilot with the given frame lengths
 // (cycled), as the display would send them.
-std::vector<std::string> autopilotEventsWithFrames(const std::vector<double> &frames, double seconds) {
+std::vector<std::string> autopilotEventsWithFrames(const std::vector<double> &frames,
+                                                   double seconds) {
   FlightSim sim;
   sim.settings.autopilot = true;
   std::vector<FlightEvent> events;

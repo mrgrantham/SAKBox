@@ -90,8 +90,7 @@ static void playScriptedInput(const ScriptedInput &scripted) {
     for (char key : scripted.input)
       typed(nullptr, static_cast<unsigned char>(key));
   }
-  std::printf("scripted input at %.2f s: %s\n", scripted.atSeconds,
-              scripted.input.c_str());
+  std::printf("scripted input at %.2f s: %s\n", scripted.atSeconds, scripted.input.c_str());
   std::fflush(stdout);
 }
 
@@ -127,8 +126,7 @@ int main(int argc, char **argv) {
       app->startRunning();
     } else if (std::strcmp(argv[i], "--keys") == 0 && i + 1 < argc) {
       if (!parseScriptedInput(argv[++i])) {
-        std::fprintf(stderr, "--keys wants \"SECONDS:INPUT,...\", got %s\n",
-                     argv[i]);
+        std::fprintf(stderr, "--keys wants \"SECONDS:INPUT,...\", got %s\n", argv[i]);
         return 1;
       }
     }
@@ -136,8 +134,7 @@ int main(int argc, char **argv) {
 
   // The default context: legacy OpenGL, which the demos draw with
   glfwWindowHint(GLFW_DEPTH_BITS, 24);
-  GLFWwindow *window =
-      glfwCreateWindow(640, 320, app->getTitle(), nullptr, nullptr);
+  GLFWwindow *window = glfwCreateWindow(640, 320, app->getTitle(), nullptr, nullptr);
   if (!window) {
     std::fprintf(stderr, "Couldn't create a window\n");
     glfwTerminate();

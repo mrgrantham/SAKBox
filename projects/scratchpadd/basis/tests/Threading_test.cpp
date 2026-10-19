@@ -5,10 +5,10 @@
 
 #include <chrono>
 #include <future>
-#include <mutex>
-#include <vector>
 #include <memory>
+#include <mutex>
 #include <thread>
+#include <vector>
 
 using namespace std::chrono_literals;
 
@@ -28,8 +28,7 @@ public:
     auto promise = std::make_shared<std::promise<std::thread::id>>();
     auto future = promise->get_future();
     push([promise] { promise->set_value(std::this_thread::get_id()); });
-    EXPECT_EQ(future.wait_for(2s), std::future_status::ready)
-        << name() << " never ran its work";
+    EXPECT_EQ(future.wait_for(2s), std::future_status::ready) << name() << " never ran its work";
     return future.valid() ? future.get() : std::thread::id{};
   }
 };
@@ -159,8 +158,7 @@ struct HookLog {
 };
 HookLog hookLog;
 
-template <bool UseMainThread, int Id>
-class RecordingPadd : public ThreadPadd<UseMainThread, Id> {
+template <bool UseMainThread, int Id> class RecordingPadd : public ThreadPadd<UseMainThread, Id> {
 public:
   using ThreadPadd<UseMainThread, Id>::ThreadPadd;
   void finishing() override { hookLog.add("finishing", this->name()); }

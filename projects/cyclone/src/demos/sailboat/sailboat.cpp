@@ -74,8 +74,8 @@ SailboatDemo::SailboatDemo()
 
       buoyancy(cyclone::Vector3(0.0f, 0.5f, 0.0f), 1.0f, 3.0f, 1.6f),
 
-      sail(cyclone::Matrix3(0, 0, 0, 0, 0, 0, 0, 0, -1.0f),
-           cyclone::Vector3(2.0f, 0, 0), &windspeed),
+      sail(cyclone::Matrix3(0, 0, 0, 0, 0, 0, 0, 0, -1.0f), cyclone::Vector3(2.0f, 0, 0),
+           &windspeed),
 
       windspeed(0, 0, 0),
 
@@ -144,8 +144,7 @@ void SailboatDemo::display() {
   cyclone::Vector3 pos = sailboat.getPosition();
   cyclone::Vector3 offset(4.0f, 0, 0);
   offset = sailboat.getTransform().transformDirection(offset);
-  gluLookAt(pos.x + offset.x, pos.y + 5.0f, pos.z + offset.z, pos.x, pos.y,
-            pos.z, 0.0, 1.0, 0.0);
+  gluLookAt(pos.x + offset.x, pos.y + 5.0f, pos.z + offset.z, pos.x, pos.y, pos.z, 0.0, 1.0, 0.0);
 
   glColor3f(0.6f, 0.6f, 0.6f);
   int bx = int(pos.x);
@@ -173,8 +172,7 @@ void SailboatDemo::display() {
   glPopMatrix();
 
   char buffer[256];
-  snprintf(buffer, sizeof(buffer), "Speed %.1f",
-           sailboat.getVelocity().magnitude());
+  snprintf(buffer, sizeof(buffer), "Speed %.1f", sailboat.getVelocity().magnitude());
   glColor3f(0, 0, 0);
   renderText(10.0f, 24.0f, buffer);
 

@@ -8,8 +8,7 @@
 namespace ScratchPadd {
 
 // Can be used to determine how much time was spent in a particular method
-#define SCOPED_METHOD_TIMER()                                                  \
-  ScratchPadd::ScopedTimer scopedTimer(__PRETTY_FUNCTION__)
+#define SCOPED_METHOD_TIMER() ScratchPadd::ScopedTimer scopedTimer(__PRETTY_FUNCTION__)
 
 class Timer {
 private:
@@ -19,8 +18,7 @@ private:
   std::vector<std::chrono::duration<double>> intervals_;
 
 public:
-  Timer(const std::string &timerName = "DefaultTimer")
-      : timerName_(timerName) {}
+  Timer(const std::string &timerName = "DefaultTimer") : timerName_(timerName) {}
 
   void setTimerName(const std::string &name) { timerName_ = name; }
 
@@ -40,8 +38,7 @@ public:
     return std::chrono::duration<double>(endTime_ - startTime_).count();
   }
   double getIntervalInSeconds() {
-    return std::chrono::duration<double>(
-               std::chrono::high_resolution_clock::now() - endTime_)
+    return std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - endTime_)
         .count();
   }
 
@@ -66,20 +63,18 @@ public:
   void markAndPrintInterval() {
     markInterval();
     auto &interval = intervals_.back();
-    spdlog::info("Timer [{}] Interval {}", timerName_,
-                 formatIntervalToString(interval));
+    spdlog::info("Timer [{}] Interval {}", timerName_, formatIntervalToString(interval));
   }
 
   void printAverageInterval() {
     auto interval_avg = getAverageInterval();
-    spdlog::info("Timer [{}] Size {} Interval Avg {}", timerName_,
-                 intervals_.size(), formatIntervalToString(interval_avg));
+    spdlog::info("Timer [{}] Size {} Interval Avg {}", timerName_, intervals_.size(),
+                 formatIntervalToString(interval_avg));
   }
 
   std::chrono::duration<double> getAverageInterval(int samples = 0) {
-    int intervalSampleCount = (samples < intervals_.size() && samples != 0)
-                                  ? samples
-                                  : intervals_.size();
+    int intervalSampleCount =
+        (samples < intervals_.size() && samples != 0) ? samples : intervals_.size();
     std::vector<std::chrono::duration<double>> intervalSamples(
         intervals_.end() - intervalSampleCount, intervals_.end());
     std::chrono::duration<double> interval_sum(std::chrono::milliseconds(0));
@@ -93,50 +88,39 @@ public:
     return getAverageInterval(samples).count();
   }
 
-  auto getAverageIntervalString() {
-    return formatIntervalToString(getAverageInterval());
-  }
+  auto getAverageIntervalString() { return formatIntervalToString(getAverageInterval()); }
 
   void printCurrentDuration() {
-    spdlog::info("Timer [{}] Current Duration = {}", timerName_,
-                 getCurrentDurationString());
+    spdlog::info("Timer [{}] Current Duration = {}", timerName_, getCurrentDurationString());
   }
 
   void printDuration() {
     spdlog::info("Timer [{}] Duration = {}", timerName_, getDurationString());
   }
 
-  std::string getDurationString() {
-    return getIntervalString(endTime_, startTime_);
-  }
+  std::string getDurationString() { return getIntervalString(endTime_, startTime_); }
 
   std::string getCurrentDurationString() {
-    return getIntervalString(std::chrono::high_resolution_clock::now(),
-                             startTime_);
+    return getIntervalString(std::chrono::high_resolution_clock::now(), startTime_);
   }
 
-  template <typename Interval>
-  std::string formatIntervalToString(Interval interval) {
+  template <typename Interval> std::string formatIntervalToString(Interval interval) {
     // auto timedDays = duration_cast<std::chrono::days>(interval);
     // interval -= timedDays;
     auto timedHours = std::chrono::duration_cast<std::chrono::hours>(interval);
     interval -= timedHours;
-    auto timedMinutes =
-        std::chrono::duration_cast<std::chrono::minutes>(interval);
+    auto timedMinutes = std::chrono::duration_cast<std::chrono::minutes>(interval);
     interval -= timedMinutes;
-    auto timedSeconds =
-        std::chrono::duration_cast<std::chrono::seconds>(interval);
+    auto timedSeconds = std::chrono::duration_cast<std::chrono::seconds>(interval);
     interval -= timedSeconds;
-    auto timedMilliseconds =
-        std::chrono::duration_cast<std::chrono::milliseconds>(interval);
+    auto timedMilliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(interval);
     // return fmt::format("{}h {}m {}s
     // {}ms",timedHours.count(),timedMinutes.count(),timedSeconds.count(),timedMilliseconds.count());
-    return fmt::format("{}m {}s {}ms", timedMinutes.count(),
-                       timedSeconds.count(), timedMilliseconds.count());
+    return fmt::format("{}m {}s {}ms", timedMinutes.count(), timedSeconds.count(),
+                       timedMilliseconds.count());
   }
 
-  template <typename Duration>
-  std::string getIntervalString(Duration endTime, Duration startTime) {
+  template <typename Duration> std::string getIntervalString(Duration endTime, Duration startTime) {
     auto timerDuration = endTime - startTime;
     return formatIntervalToString(timerDuration);
   }
@@ -144,10 +128,7 @@ public:
 
 class ScopedTimer : Timer {
 public:
-  ScopedTimer(const std::string &timerName = "Default Scoped Timer")
-      : Timer(timerName) {
-    start();
-  }
+  ScopedTimer(const std::string &timerName = "Default Scoped Timer") : Timer(timerName) { start(); }
 
   ~ScopedTimer() { markTimeAndPrint(); }
 };

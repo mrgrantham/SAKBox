@@ -11,10 +11,8 @@ using Flex::Math::Precision;
 using Flex::Math::Rounding;
 using Flex::Math::ScopedActivePrecision;
 
-static_assert(std::is_same_v<real, FlexReal>,
-              "cyclone_flex must build with FlexReal");
-static_assert(std::is_trivially_copyable_v<FlexReal>,
-              "FlexReal must stay usable in unions");
+static_assert(std::is_same_v<real, FlexReal>, "cyclone_flex must build with FlexReal");
+static_assert(std::is_trivially_copyable_v<FlexReal>, "FlexReal must stay usable in unions");
 
 namespace {
 
@@ -22,11 +20,9 @@ namespace {
 class ScopedPrecision : public ScopedActivePrecision {
 public:
   ScopedPrecision(int bits, bool roundToNearest)
-      : ScopedPrecision(bits, roundToNearest ? Rounding::Nearest
-                                             : Rounding::TowardZero) {}
+      : ScopedPrecision(bits, roundToNearest ? Rounding::Nearest : Rounding::TowardZero) {}
   ScopedPrecision(int bits, Rounding rounding)
-      : ScopedActivePrecision(
-            Precision{.fracBits = bits, .rounding = rounding}) {}
+      : ScopedActivePrecision(Precision{.fracBits = bits, .rounding = rounding}) {}
 };
 
 // Speed after `frames` 16 ms frames of drag alone, as in the flight sim.

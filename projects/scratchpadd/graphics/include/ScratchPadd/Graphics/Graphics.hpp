@@ -36,8 +36,7 @@ public:
   // them.
   class ControlView : public View {
   public:
-    using ChangeHandler =
-        std::function<void(const ScratchPadd::MessageType::ControlChange &)>;
+    using ChangeHandler = std::function<void(const ScratchPadd::MessageType::ControlChange &)>;
 
   protected:
     ScratchPadd::MessageType::ControlSnapshot controls_;
@@ -50,7 +49,7 @@ public:
     void buildControls();
 
   public:
-    void setBackgroundColor(ImVec4 &backgroundColor) override{};
+    void setBackgroundColor(ImVec4 &backgroundColor) override {};
     ImVec4 *getBackgroundColor() override { return {}; };
     // Shows `controls`, replacing whatever was shown before.
     void setControls(const ScratchPadd::MessageType::ControlSnapshot &controls);
@@ -80,9 +79,7 @@ public:
   public:
     virtual std::pair<int32_t, int32_t> getSize() = 0;
     ImVec4 *getBackgroundColor() { return &backgroundColor_; }
-    void setBackgroundColor(ImVec4 &backgroundColor) {
-      backgroundColor_ = backgroundColor;
-    }
+    void setBackgroundColor(ImVec4 &backgroundColor) { backgroundColor_ = backgroundColor; }
     virtual void create(int32_t width, int32_t height) = 0;
     virtual void destroy() = 0;
     virtual uint32_t get() = 0;
@@ -113,9 +110,7 @@ public:
 
   public:
     void setWindow(GLFWwindow *window) override {}
-    void setBackgroundColor(ImVec4 &backgroundColor) override {
-      appBackground_ = backgroundColor;
-    };
+    void setBackgroundColor(ImVec4 &backgroundColor) override { appBackground_ = backgroundColor; };
     ImVec4 *getBackgroundColor() override { return &appBackground_; };
     void draw() override {
       // 1. Show the big demo window (Most of the sample code is in
@@ -140,12 +135,10 @@ public:
                                             // open/close state
         ImGui::Checkbox("Another Window", &show_another_window);
 
-        ImGui::SliderFloat(
-            "float", &f, 0.0f,
-            1.0f); // Edit 1 float using a slider from 0.0f to 1.0f
-        ImGui::ColorEdit3(
-            "app background color",
-            (float *)&appBackground_); // Edit 3 floats representing a color
+        ImGui::SliderFloat("float", &f, 0.0f,
+                           1.0f); // Edit 1 float using a slider from 0.0f to 1.0f
+        ImGui::ColorEdit3("app background color",
+                          (float *)&appBackground_); // Edit 3 floats representing a color
         // ImGui::ColorEdit3(
         //     "gl window color",
         //     (float *)viewBackgroundColor); // Edit 3 floats representing a
@@ -154,26 +147,23 @@ public:
         //     "gl shape color",
         //     (float *)viewShapeColor); // Edit 3 floats representing a color
 
-        if (ImGui::Button(
-                "Button")) // Buttons return true when clicked (most widgets
-                           // return true when edited/activated)
+        if (ImGui::Button("Button")) // Buttons return true when clicked (most widgets
+                                     // return true when edited/activated)
           counter++;
         ImGui::SameLine();
         ImGui::Text("counter = %d", counter);
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-                    1000.0f / ImGui::GetIO().Framerate,
-                    ImGui::GetIO().Framerate);
+                    1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         ImGui::End();
       }
 
       // 3. Show another simple window.
       if (show_another_window) {
-        ImGui::Begin(
-            "Another Window",
-            &show_another_window); // Pass a pointer to our bool variable (the
-                                   // window will have a closing button that
-                                   // will clear the bool when clicked)
+        ImGui::Begin("Another Window",
+                     &show_another_window); // Pass a pointer to our bool variable (the
+                                            // window will have a closing button that
+                                            // will clear the bool when clicked)
         ImGui::Text("Hello from another window!");
         if (ImGui::Button("Close Me"))
           show_another_window = false;
@@ -191,7 +181,7 @@ public:
   virtual void addView(std::unique_ptr<Graphics::View> view) = 0;
   virtual bool draw() = 0;
   virtual void tearDown() = 0;
-  virtual ~Graphics(){};
+  virtual ~Graphics() {};
 };
 
 #if defined(SCRATCHPADD_GL)

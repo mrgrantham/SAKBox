@@ -51,10 +51,10 @@ typedef Flex::Math::FlexReal real;
 #define real_epsilon DBL_EPSILON
 #define R_PI 3.14159265358979
 #elif 0
-    /**
-     * Defines we're in single precision mode, for any code
-     * that needs to be conditionally compiled.
-     */
+/**
+ * Defines we're in single precision mode, for any code
+ * that needs to be conditionally compiled.
+ */
 #define SINGLE_PRECISION
 
 /**
@@ -64,28 +64,28 @@ typedef Flex::Math::FlexReal real;
  */
 typedef float real;
 
-    /** Defines the highest value for the real number. */
+/** Defines the highest value for the real number. */
 #define REAL_MAX FLT_MAX
 
-    /** Defines the precision of the square root operator. */
+/** Defines the precision of the square root operator. */
 #define real_sqrt sqrtf
-    /** Defines the precision of the absolute magnitude operator. */
+/** Defines the precision of the absolute magnitude operator. */
 #define real_abs fabsf
-    /** Defines the precision of the sine operator. */
+/** Defines the precision of the sine operator. */
 #define real_sin sinf
 
-    /** Defines the precision of the cosine operator. */
+/** Defines the precision of the cosine operator. */
 #define real_cos cosf
 
-    /** Defines the precision of the exponent operator. */
+/** Defines the precision of the exponent operator. */
 #define real_exp expf
-    /** Defines the precision of the power operator. */
+/** Defines the precision of the power operator. */
 #define real_pow powf
 
-    /** Defines the precision of the floating point modulo operator. */
+/** Defines the precision of the floating point modulo operator. */
 #define real_fmod fmodf
 
-    /** Defines the number e on which 1+e == 1 **/
+/** Defines the number e on which 1+e == 1 **/
 #define real_epsilon FLT_EPSILON
 
 #define R_PI 3.14159f
@@ -114,13 +114,12 @@ typedef double real;
  */
 #if defined(CYCLONE_FLEX_REAL)
 typedef double real_duration;
-#define CYCLONE_FULL_PRECISION_SCOPE                                           \
-  Flex::Math::ScopedActivePrecision cyclone_full_precision_scope(              \
-      Flex::Math::kFullPrecision)
+#define CYCLONE_FULL_PRECISION_SCOPE                                                               \
+  Flex::Math::ScopedActivePrecision cyclone_full_precision_scope(Flex::Math::kFullPrecision)
 #else
 typedef real real_duration;
-#define CYCLONE_FULL_PRECISION_SCOPE                                           \
-  do {                                                                         \
+#define CYCLONE_FULL_PRECISION_SCOPE                                                               \
+  do {                                                                                             \
   } while (0)
 #endif
 } // namespace cyclone

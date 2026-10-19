@@ -2,10 +2,8 @@
 
 auto makeGreeting() -> std::string {
   std::array greetingArray{"hello", "hi", "how are ya", "greetings"};
-  std::mt19937 rng(
-      time(nullptr)); // seed the random number generator with the current time
-  std::uniform_int_distribution<int> dist(
-      0, 3); // initialize a uniform distribution over [0, 3]
+  std::mt19937 rng(time(nullptr)); // seed the random number generator with the current time
+  std::uniform_int_distribution<int> dist(0, 3); // initialize a uniform distribution over [0, 3]
 
   // generate a random index using the uniform distribution and the random
   // number generator

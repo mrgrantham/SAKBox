@@ -223,8 +223,7 @@ public:
 };
 
 // Method definitions
-BigBallisticDemo::BigBallisticDemo()
-    : RigidBodyApplication(), currentShotType(LASER) {
+BigBallisticDemo::BigBallisticDemo() : RigidBodyApplication(), currentShotType(LASER) {
   pauseSimulation = false;
   reset();
 }
@@ -255,9 +254,7 @@ void BigBallisticDemo::reset() {
   }
 }
 
-const char *BigBallisticDemo::getTitle() {
-  return "Cyclone > Big Ballistic Demo";
-}
+const char *BigBallisticDemo::getTitle() { return "Cyclone > Big Ballistic Demo"; }
 
 void BigBallisticDemo::fire() {
   // Find the first available round.

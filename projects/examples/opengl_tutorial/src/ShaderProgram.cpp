@@ -29,8 +29,7 @@ static void CompileAndVerifyShader(GLuint shader, const char *shaderSource) {
   }
 }
 
-ShaderProgram::ShaderProgram(const std::string &vertexFile,
-                             const std::string &fragmentFile) {
+ShaderProgram::ShaderProgram(const std::string &vertexFile, const std::string &fragmentFile) {
   std::string fragmentShaderSourceString = GetFileContents(fragmentFile);
   std::string vertexShaderSourceString = GetFileContents(vertexFile);
 

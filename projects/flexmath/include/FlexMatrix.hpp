@@ -37,8 +37,9 @@ public:
 
   FlexMatrix operator+(const FlexMatrix &b) const; // element-wise
   FlexMatrix operator-(const FlexMatrix &b) const; // element-wise
-  FlexMatrix operator*(const FlexMatrix &b) const; // matrix product, O(rows * columns * b.columns())
-  FlexMatrix operator*(const FlexPoint &b) const;  // every element times `b`
+  FlexMatrix
+  operator*(const FlexMatrix &b) const;           // matrix product, O(rows * columns * b.columns())
+  FlexMatrix operator*(const FlexPoint &b) const; // every element times `b`
 
   FlexMatrix &operator+=(const FlexMatrix &b);
   FlexMatrix &operator-=(const FlexMatrix &b);

@@ -16,8 +16,7 @@
 using namespace cyclone;
 
 World::World(unsigned maxContacts, unsigned iterations)
-    : firstBody(nullptr), resolver(iterations), firstContactGen(nullptr),
-      maxContacts(maxContacts) {
+    : firstBody(nullptr), resolver(iterations), firstContactGen(nullptr), maxContacts(maxContacts) {
   contacts = new Contact[maxContacts];
   calculateIterations = (iterations == 0);
 }

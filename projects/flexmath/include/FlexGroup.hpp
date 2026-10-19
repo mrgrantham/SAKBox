@@ -89,7 +89,8 @@ private:
 // synchronise access yourself.
 class FlexGroup {
 public:
-  explicit FlexGroup(std::string name, Precision base = kFullPrecision, Policy policy = Policy::View)
+  explicit FlexGroup(std::string name, Precision base = kFullPrecision,
+                     Policy policy = Policy::View)
       : name_(std::move(name)), base_(base), policy_(policy) {}
 
   // Overrides point at their group, so a group stays where it was created.
@@ -106,7 +107,9 @@ public:
   void setPolicy(Policy policy) { policy_ = policy; }
 
   // The precision in effect: the most recent live override, else the base.
-  const Precision &precision() const { return overrides_.empty() ? base_ : overrides_.back().second; }
+  const Precision &precision() const {
+    return overrides_.empty() ? base_ : overrides_.back().second;
+  }
 
   // Applies `precision` until the returned handle is released or destroyed.
   [[nodiscard]] FlexOverride push(const Precision &precision);
@@ -123,7 +126,9 @@ public:
   // Lossy and PerOperation policies; unchanged under View.
   //   position = flight.commit(position + velocity * dt);
   double commit(double value) const { return policy_ == Policy::View ? value : view(value); }
-  FlexPoint commit(const FlexPoint &value) const { return policy_ == Policy::View ? value : view(value); }
+  FlexPoint commit(const FlexPoint &value) const {
+    return policy_ == Policy::View ? value : view(value);
+  }
 
   // Makes FlexReal arithmetic on this thread snap to this group's current
   // precision until the returned object goes out of scope:
@@ -133,7 +138,9 @@ public:
   //   }
   // The precision is captured when activate() is called; later changes to
   // the group do not affect an activation already in progress.
-  [[nodiscard]] ScopedActivePrecision activate() const { return ScopedActivePrecision(precision()); }
+  [[nodiscard]] ScopedActivePrecision activate() const {
+    return ScopedActivePrecision(precision());
+  }
 
 private:
   friend class FlexOverride;

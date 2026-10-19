@@ -75,8 +75,7 @@ public:
 };
 
 // Method definitions
-PlatformDemo::PlatformDemo()
-    : MassAggregateApplication(6), rods(nullptr), massPos(0, 0, 0.5f) {
+PlatformDemo::PlatformDemo() : MassAggregateApplication(6), rods(nullptr), massPos(0, 0, 0.5f) {
   // Create the masses and connections.
   particleArray[0].setPosition(0, 0, 1);
   particleArray[1].setPosition(0, 0, -1);
@@ -179,13 +178,11 @@ void PlatformDemo::updateAdditionalMass() {
 
   // Add the proportion to the correct masses
   particleArray[2].setMass(BASE_MASS + EXTRA_MASS * (1 - xp) * (1 - zp));
-  massDisplayPos.addScaledVector(particleArray[2].getPosition(),
-                                 (1 - xp) * (1 - zp));
+  massDisplayPos.addScaledVector(particleArray[2].getPosition(), (1 - xp) * (1 - zp));
 
   if (xp > 0) {
     particleArray[4].setMass(BASE_MASS + EXTRA_MASS * xp * (1 - zp));
-    massDisplayPos.addScaledVector(particleArray[4].getPosition(),
-                                   xp * (1 - zp));
+    massDisplayPos.addScaledVector(particleArray[4].getPosition(), xp * (1 - zp));
 
     if (zp > 0) {
       particleArray[5].setMass(BASE_MASS + EXTRA_MASS * xp * zp);
@@ -194,8 +191,7 @@ void PlatformDemo::updateAdditionalMass() {
   }
   if (zp > 0) {
     particleArray[3].setMass(BASE_MASS + EXTRA_MASS * (1 - xp) * zp);
-    massDisplayPos.addScaledVector(particleArray[3].getPosition(),
-                                   (1 - xp) * zp);
+    massDisplayPos.addScaledVector(particleArray[3].getPosition(), (1 - xp) * zp);
   }
 }
 

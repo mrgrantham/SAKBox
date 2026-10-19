@@ -35,7 +35,9 @@ public:
   ScratchPadd::ControlValueMap generateControls() override {
     namespace Controls = ScratchPadd::ControlType;
     const FlightSettings &s = sim_.settings;
-    auto bits = [](int value, int lowest) { return Controls::Integer(value, std::make_pair(lowest, 12)); };
+    auto bits = [](int value, int lowest) {
+      return Controls::Integer(value, std::make_pair(lowest, 12));
+    };
     return {
         {"Flight bits", bits(s.flightBase, -2)},
         {"Hull bits", bits(s.hullBase, -2)},
@@ -44,7 +46,7 @@ public:
         {"PHASE hull bits", bits(s.phaseHullBits, -2)},
         {"PHASE render bits", bits(s.phaseRenderBits, 1)},
         {"Rounding", Controls::String("truncate", std::vector<std::string>{"truncate", "nearest",
-                                                                          "stochastic"})},
+                                                                           "stochastic"})},
         {"Lossy velocity", Controls::Boolean(s.quantizeVelocity)},
         {"Lossy position", Controls::Boolean(s.lossyPosition)},
         {"Autopilot", Controls::Boolean(s.autopilot)},
@@ -80,8 +82,8 @@ private:
       updateControl(ScratchPadd::MessageType::ControlChange{
           .paddName = paddName(),
           .controlName = "Autopilot",
-          .controlTypeValue =
-              ScratchPadd::ControlType::Boolean(!control<ScratchPadd::ControlType::Boolean>("Autopilot").value)});
+          .controlTypeValue = ScratchPadd::ControlType::Boolean(
+              !control<ScratchPadd::ControlType::Boolean>("Autopilot").value)});
       applyControls();
       send(generateControlsSnapshot());
       break;

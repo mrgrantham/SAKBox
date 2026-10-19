@@ -103,8 +103,7 @@ public:
    * Sets the data that doesn't normally depend on the position
    * of the contact (i.e. the bodies, and their material properties).
    */
-  void setBodyData(RigidBody *one, RigidBody *two, real friction,
-                   real restitution);
+  void setBodyData(RigidBody *one, RigidBody *two, real friction, real restitution);
 
 protected:
   /**
@@ -179,22 +178,20 @@ protected:
    * Applies an impulse to the given body, returning the
    * change in velocities.
    */
-  void applyImpulse(const Vector3 &impulse, RigidBody *body,
-                    Vector3 *velocityChange, Vector3 *rotationChange);
+  void applyImpulse(const Vector3 &impulse, RigidBody *body, Vector3 *velocityChange,
+                    Vector3 *rotationChange);
 
   /**
    * Performs an inertia-weighted impulse based resolution of this
    * contact alone.
    */
-  void applyVelocityChange(Vector3 velocityChange[2],
-                           Vector3 rotationChange[2]);
+  void applyVelocityChange(Vector3 velocityChange[2], Vector3 rotationChange[2]);
 
   /**
    * Performs an inertia weighted penetration resolution of this
    * contact alone.
    */
-  void applyPositionChange(Vector3 linearChange[2], Vector3 angularChange[2],
-                           real penetration);
+  void applyPositionChange(Vector3 linearChange[2], Vector3 angularChange[2], real penetration);
 
   /**
    * Calculates the impulse needed to resolve this contact,
@@ -321,15 +318,14 @@ public:
    * for each kind of resolution, and optional epsilon values.
    */
   ContactResolver(unsigned velocityIterations, unsigned positionIterations,
-                  real velocityEpsilon = (real)0.01,
-                  real positionEpsilon = (real)0.01);
+                  real velocityEpsilon = (real)0.01, real positionEpsilon = (real)0.01);
 
   /**
    * Returns true if the resolver has valid settings and is ready to go.
    */
   bool isValid() {
-    return (velocityIterations > 0) && (positionIterations > 0) &&
-           (positionEpsilon >= 0.0f) && (positionEpsilon >= 0.0f);
+    return (velocityIterations > 0) && (positionIterations > 0) && (positionEpsilon >= 0.0f) &&
+           (positionEpsilon >= 0.0f);
   }
 
   /**
@@ -373,8 +369,7 @@ public:
    * @param duration The duration of the previous integration step.
    * This is used to compensate for forces applied.
    */
-  void resolveContacts(Contact *contactArray, unsigned numContacts,
-                       real duration);
+  void resolveContacts(Contact *contactArray, unsigned numContacts, real duration);
 
 protected:
   /**
@@ -382,15 +377,13 @@ protected:
    * internal data is configured correctly and the correct set of bodies
    * is made alive.
    */
-  void prepareContacts(Contact *contactArray, unsigned numContacts,
-                       real duration);
+  void prepareContacts(Contact *contactArray, unsigned numContacts, real duration);
 
   /**
    * Resolves the velocity issues with the given array of constraints,
    * using the given number of iterations.
    */
-  void adjustVelocities(Contact *contactArray, unsigned numContacts,
-                        real duration);
+  void adjustVelocities(Contact *contactArray, unsigned numContacts, real duration);
 
   /**
    * Resolves the positional issues with the given array of constraints,

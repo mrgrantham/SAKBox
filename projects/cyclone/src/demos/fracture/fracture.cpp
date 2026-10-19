@@ -58,10 +58,8 @@ public:
   }
 
   /** Sets the block to a specific location. */
-  void setState(const cyclone::Vector3 &position,
-                const cyclone::Quaternion &orientation,
-                const cyclone::Vector3 &extents,
-                const cyclone::Vector3 &velocity) {
+  void setState(const cyclone::Vector3 &position, const cyclone::Quaternion &orientation,
+                const cyclone::Vector3 &extents, const cyclone::Vector3 &velocity) {
     body->setPosition(position);
     body->setOrientation(orientation);
     body->setVelocity(velocity);
@@ -106,10 +104,9 @@ public:
       // And calculate the inertia tensor from the mass and size
       mass *= 0.333f;
       cyclone::Matrix3 tensor;
-      tensor.setInertiaTensorCoeffs(
-          mass * halfSize.y * halfSize.y + halfSize.z * halfSize.z,
-          mass * halfSize.y * halfSize.x + halfSize.z * halfSize.z,
-          mass * halfSize.y * halfSize.x + halfSize.z * halfSize.y);
+      tensor.setInertiaTensorCoeffs(mass * halfSize.y * halfSize.y + halfSize.z * halfSize.z,
+                                    mass * halfSize.y * halfSize.x + halfSize.z * halfSize.z,
+                                    mass * halfSize.y * halfSize.x + halfSize.z * halfSize.y);
       body->setInertiaTensor(tensor);
     }
   }
@@ -121,8 +118,7 @@ public:
    * original block is always deleted, this effectively reuses its storage.
    * The algorithm is structured to allow this reuse.
    */
-  void divideBlock(const cyclone::Contact &contact, Block *target,
-                   Block *blocks) {
+  void divideBlock(const cyclone::Contact &contact, Block *target, Block *blocks) {
     // Find out if we're block one or two in the contact structure, and
     // therefore what the contact normal is.
     cyclone::Vector3 normal = contact.contactNormal;
@@ -160,8 +156,7 @@ public:
     target->exists = false;
 
     // Work out the inverse density of the old block
-    cyclone::real invDensity =
-        halfSize.magnitude() * 8 * body->getInverseMass();
+    cyclone::real invDensity = halfSize.magnitude() * 8 * body->getInverseMass();
 
     // Now split the block into eight.
     for (unsigned i = 0; i < 8; i++) {
@@ -381,8 +376,7 @@ void FractureDemo::reset() {
   // Set up the ball
   ball.body->setPosition(0, 5.0f, 20.0f);
   ball.body->setOrientation(1, 0, 0, 0);
-  ball.body->setVelocity(random.randomBinomial(4.0f),
-                         random.randomReal(1.0f, 6.0f), -20.0f);
+  ball.body->setVelocity(random.randomBinomial(4.0f), random.randomReal(1.0f, 6.0f), -20.0f);
   ball.body->setRotation(0, 0, 0);
   ball.body->calculateDerivedData();
   ball.body->setAwake(true);
@@ -399,8 +393,7 @@ void FractureDemo::update() {
 
   // Handle fractures.
   if (hit) {
-    blocks[0].divideBlock(cData.contactArray[fracture_contact], blocks,
-                          blocks + 1);
+    blocks[0].divideBlock(cData.contactArray[fracture_contact], blocks, blocks + 1);
     ball_active = false;
   }
 }

@@ -80,9 +80,8 @@ class Spring : public ForceGenerator {
 
 public:
   /** Creates a new spring with the given parameters. */
-  Spring(const Vector3 &localConnectionPt, RigidBody *other,
-         const Vector3 &otherConnectionPt, real springConstant,
-         real restLength);
+  Spring(const Vector3 &localConnectionPt, RigidBody *other, const Vector3 &otherConnectionPt,
+         real springConstant, real restLength);
 
   /** Applies the spring force to the given rigid body. */
   void updateForce(RigidBody *body, real duration) override;
@@ -245,8 +244,7 @@ public:
    * Creates a new aerodynamic force generator with the
    * given properties.
    */
-  Aero(const Matrix3 &tensor, const Vector3 &position,
-       const Vector3 *windspeed);
+  Aero(const Matrix3 &tensor, const Vector3 &position, const Vector3 *windspeed);
 
   /**
    * Applies the force to the given rigid body.
@@ -259,8 +257,7 @@ protected:
    * the given rigid body. This is exactly the same as for updateForce
    * only it takes an explicit tensor.
    */
-  void updateForceFromTensor(RigidBody *body, real duration,
-                             const Matrix3 &tensor);
+  void updateForceFromTensor(RigidBody *body, real duration, const Matrix3 &tensor);
 };
 
 /**
@@ -304,8 +301,8 @@ public:
    * Creates a new aerodynamic control surface with the given
    * properties.
    */
-  AeroControl(const Matrix3 &base, const Matrix3 &min, const Matrix3 &max,
-              const Vector3 &position, const Vector3 *windspeed);
+  AeroControl(const Matrix3 &base, const Matrix3 &min, const Matrix3 &max, const Vector3 &position,
+              const Vector3 *windspeed);
 
   /**
    * Sets the control position of this control. This * should
@@ -337,8 +334,7 @@ public:
   /**
    * Creates a new aerodynamic surface with the given properties.
    */
-  AngledAero(const Matrix3 &tensor, const Vector3 &position,
-             const Vector3 *windspeed);
+  AngledAero(const Matrix3 &tensor, const Vector3 &position, const Vector3 *windspeed);
 
   /**
    * Sets the relative orientation of the aerodynamic surface,

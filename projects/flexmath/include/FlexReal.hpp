@@ -88,7 +88,7 @@ private:
 template <typename T> using FlexArithmetic = std::enable_if_t<std::is_arithmetic_v<T>, int>;
 
 #define FLEXMATH_REAL_OPERATOR(op)                                                                 \
-  inline FlexReal operator op(FlexReal a, FlexReal b) { return FlexReal(a.value() op b.value()); }  \
+  inline FlexReal operator op(FlexReal a, FlexReal b) { return FlexReal(a.value() op b.value()); } \
   template <typename T, FlexArithmetic<T> = 0> inline FlexReal operator op(FlexReal a, T b) {      \
     return FlexReal(a.value() op static_cast<double>(b));                                          \
   }                                                                                                \
@@ -124,7 +124,11 @@ inline FlexReal flex_abs(FlexReal x) { return FlexReal(std::fabs(x.value())); }
 inline FlexReal flex_sin(FlexReal x) { return FlexReal(std::sin(x.value())); }
 inline FlexReal flex_cos(FlexReal x) { return FlexReal(std::cos(x.value())); }
 inline FlexReal flex_exp(FlexReal x) { return FlexReal(std::exp(x.value())); }
-inline FlexReal flex_pow(FlexReal x, FlexReal y) { return FlexReal(std::pow(x.value(), y.value())); }
-inline FlexReal flex_fmod(FlexReal x, FlexReal y) { return FlexReal(std::fmod(x.value(), y.value())); }
+inline FlexReal flex_pow(FlexReal x, FlexReal y) {
+  return FlexReal(std::pow(x.value(), y.value()));
+}
+inline FlexReal flex_fmod(FlexReal x, FlexReal y) {
+  return FlexReal(std::fmod(x.value(), y.value()));
+}
 
 } // namespace Flex::Math

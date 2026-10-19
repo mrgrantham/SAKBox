@@ -20,23 +20,18 @@ public:
     glBindVertexArray(vertexArrayObject_);
 
     glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject_);
-    glBufferData(GL_ARRAY_BUFFER,
-                 vertices.size() * sizeof(Graphics::VertexPair),
-                 vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Graphics::VertexPair), vertices.data(),
+                 GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject_);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(uint32_t),
-                 indices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(uint32_t), indices.data(),
+                 GL_STATIC_DRAW);
 
-    glEnableVertexAttribArray(
-        0); // enable location = 0 in vertex shader (position)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(Graphics::VertexPair), (void *)nullptr);
+    glEnableVertexAttribArray(0); // enable location = 0 in vertex shader (position)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Graphics::VertexPair), (void *)nullptr);
 
-    glEnableVertexAttribArray(
-        1); // enable location = 1 in vertex shader (aNormal)
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(Graphics::VertexPair),
+    glEnableVertexAttribArray(1); // enable location = 1 in vertex shader (aNormal)
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Graphics::VertexPair),
                           (void *)offsetof(Graphics::VertexPair, normal));
 
     glBindVertexArray(0);

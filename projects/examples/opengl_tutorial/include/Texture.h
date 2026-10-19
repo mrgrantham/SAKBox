@@ -10,11 +10,10 @@ private:
   GLenum type_;
 
 public:
-  Texture(const std::string &image, GLenum textureType, GLenum slot,
-          GLenum format, GLenum pixelType);
+  Texture(const std::string &image, GLenum textureType, GLenum slot, GLenum format,
+          GLenum pixelType);
 
-  void textureUnit(ShaderProgram &shaderProgram, const char *uniform,
-                   GLuint unit);
+  void textureUnit(ShaderProgram &shaderProgram, const char *uniform, GLuint unit);
   void bind();
   void unbind();
   void destroy();

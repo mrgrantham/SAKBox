@@ -57,8 +57,7 @@ public:
   /**
    * Configures the joint in one go.
    */
-  void set(RigidBody *a, const Vector3 &a_pos, RigidBody *b,
-           const Vector3 &b_pos, real error);
+  void set(RigidBody *a, const Vector3 &a_pos, RigidBody *b, const Vector3 &b_pos, real error);
 
   /**
    * Generates the contacts required to restore the joint if it

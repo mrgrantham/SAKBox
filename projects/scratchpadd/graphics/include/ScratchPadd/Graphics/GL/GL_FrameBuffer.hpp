@@ -9,9 +9,7 @@ private:
   int32_t width_ = 0;
 
 public:
-  std::pair<int32_t, int32_t> getSize() override {
-    return std::make_pair(width_, height_);
-  }
+  std::pair<int32_t, int32_t> getSize() override { return std::make_pair(width_, height_); }
   void create(int32_t width, int32_t height) override {
     width_ = width;
     height_ = height;
@@ -29,8 +27,7 @@ public:
     glBindTexture(GL_TEXTURE_2D, textureID_);
     checkOpenGLErrors("glBindTexture");
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width_, height_, 0, GL_RGBA,
-                 GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width_, height_, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     checkOpenGLErrors("glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width_, height_, "
                       "0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr)");
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -38,8 +35,7 @@ public:
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                           textureID_, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureID_, 0);
 
     glGenTextures(1, &depthID_);
     checkOpenGLErrors("glGenTextures(1, &depthID_)");
@@ -57,8 +53,7 @@ public:
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
-                           GL_TEXTURE_2D, depthID_, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depthID_, 0);
     checkOpenGLErrors("glFramebufferTexture2D");
 
     // Draw into the one colour attachment. (This passed textureID_ as the
@@ -92,8 +87,7 @@ public:
     checkOpenGLErrors("glBindFramebuffer(GL_FRAMEBUFFER, frameBufferObject_)");
     glViewport(0, 0, width_, height_);
     checkOpenGLErrors("glViewport");
-    glClearColor(backgroundColor_.x * backgroundColor_.w,
-                 backgroundColor_.y * backgroundColor_.w,
+    glClearColor(backgroundColor_.x * backgroundColor_.w, backgroundColor_.y * backgroundColor_.w,
                  backgroundColor_.z * backgroundColor_.w, backgroundColor_.w);
 
     checkOpenGLErrors("glClearColor");

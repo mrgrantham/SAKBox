@@ -1,0 +1,5 @@
+# Code kept as published upstream, which clang-format leaves alone (clang-format
+# 18+ reads this file; the paths are relative to the repo root).
+projects/waffles/**
+projects/examples/png/src/pngtest.cpp
+projects/examples/read-controls/source/main.c

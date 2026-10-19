@@ -17,8 +17,7 @@ struct Outcome {
 };
 
 // Runs a freshly reset ragdoll for `seconds` with fixed steps of `dt`.
-Outcome simulate(double dt, unsigned seed, bool push = true,
-                 double seconds = 4.0) {
+Outcome simulate(double dt, unsigned seed, bool push = true, double seconds = 4.0) {
   static constexpr unsigned kMaxContacts = 256;
   auto contacts = std::make_unique<cyclone::Contact[]>(kMaxContacts);
   cyclone::CollisionData cData;
@@ -43,14 +42,12 @@ Outcome simulate(double dt, unsigned seed, bool push = true,
     resolver.resolveContacts(cData.contactArray, cData.contactCount, dt);
     for (const ragdoll::Bone &bone : model->bones) {
       const cyclone::Vector3 v = bone.body->getVelocity();
-      outcome.fastestSideways =
-          std::max<double>(outcome.fastestSideways, std::hypot(v.x, v.z));
+      outcome.fastestSideways = std::max<double>(outcome.fastestSideways, std::hypot(v.x, v.z));
     }
   }
   for (const ragdoll::Bone &bone : model->bones) {
     outcome.centre += bone.body->getPosition() * (1.0 / ragdoll::kBones);
-    outcome.fastest =
-        std::max<double>(outcome.fastest, bone.body->getVelocity().magnitude());
+    outcome.fastest = std::max<double>(outcome.fastest, bone.body->getVelocity().magnitude());
   }
   return outcome;
 }
@@ -75,8 +72,7 @@ TEST(RagdollTest, PushKnocksItOverAtAnyFrameRate) {
     for (double dt : {1.0 / 60, 0.05}) {
       const Outcome o = simulate(dt, seed);
       EXPECT_LT(o.fastestSideways, 8.0) << "seed " << seed << " dt " << dt;
-      EXPECT_LT(std::hypot(o.centre.x, o.centre.z), 10.0)
-          << "seed " << seed << " dt " << dt;
+      EXPECT_LT(std::hypot(o.centre.x, o.centre.z), 10.0) << "seed " << seed << " dt " << dt;
       EXPECT_LT(o.centre.y, 1.2) << "seed " << seed << " dt " << dt;
       EXPECT_LT(o.fastest, 1.0) << "seed " << seed << " dt " << dt;
     }

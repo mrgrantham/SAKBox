@@ -27,9 +27,8 @@ FlexPoint FlexPoint::quantized(const Precision &precision) const {
       const FlexPointPrecision below = raw & ~(unit - 1);
       const FlexPointPrecision remainder = raw - below;
       raw = below;
-      if (remainder != 0 &&
-          static_cast<FlexPointPrecision>(detail::nextStochasticRoundingBits() >> (64 - drop)) <
-              remainder) {
+      if (remainder != 0 && static_cast<FlexPointPrecision>(detail::nextStochasticRoundingBits() >>
+                                                            (64 - drop)) < remainder) {
         raw += unit;
       }
     } else {

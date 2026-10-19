@@ -210,8 +210,7 @@ public:
 
 // SAKBox: the keys every RigidBodyApplication handles, for the demos'
 // overlays (see Application::getDescription)
-#define RIGID_BODY_KEYS                                                        \
-  "P: run/pause   Space: one frame   R: reset   C: contacts   Drag: camera"
+#define RIGID_BODY_KEYS "P: run/pause   Space: one frame   R: reset   C: contacts   Drag: camera"
 
 /**
  * This application adds additional functionality used in many of the

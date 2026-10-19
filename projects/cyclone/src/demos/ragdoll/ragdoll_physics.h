@@ -35,8 +35,7 @@ public:
   }
 
   /** Sets the bone to a specific location. */
-  void setState(const cyclone::Vector3 &position,
-                const cyclone::Vector3 &extents) {
+  void setState(const cyclone::Vector3 &position, const cyclone::Vector3 &extents) {
     body->setPosition(position);
     body->setOrientation(cyclone::Quaternion());
     body->setVelocity(cyclone::Vector3());
@@ -86,11 +85,11 @@ public:
                   cyclone::Vector3(0, -0.96f, 0), 0.15f);
 
     // Stomach to Waist
-    joints[4].set(bones[4].body, cyclone::Vector3(0.054f, 0.50f, 0),
-                  bones[5].body, cyclone::Vector3(-0.043f, -0.45f, 0), 0.15f);
+    joints[4].set(bones[4].body, cyclone::Vector3(0.054f, 0.50f, 0), bones[5].body,
+                  cyclone::Vector3(-0.043f, -0.45f, 0), 0.15f);
 
-    joints[5].set(bones[5].body, cyclone::Vector3(-0.043f, 0.411f, 0),
-                  bones[6].body, cyclone::Vector3(0, -0.411f, 0), 0.15f);
+    joints[5].set(bones[5].body, cyclone::Vector3(-0.043f, 0.411f, 0), bones[6].body,
+                  cyclone::Vector3(0, -0.411f, 0), 0.15f);
 
     joints[6].set(bones[6].body, cyclone::Vector3(0, 0.521f, 0), bones[7].body,
                   cyclone::Vector3(0, -0.752f, 0), 0.15f);
@@ -104,12 +103,12 @@ public:
                   cyclone::Vector3(0, -0.458f, 0.5f), 0.105f);
 
     // Right shoulder
-    joints[9].set(bones[6].body, cyclone::Vector3(0, 0.367f, -0.8f),
-                  bones[8].body, cyclone::Vector3(0, 0.888f, 0.32f), 0.15f);
+    joints[9].set(bones[6].body, cyclone::Vector3(0, 0.367f, -0.8f), bones[8].body,
+                  cyclone::Vector3(0, 0.888f, 0.32f), 0.15f);
 
     // Left shoulder
-    joints[10].set(bones[6].body, cyclone::Vector3(0, 0.367f, 0.8f),
-                   bones[10].body, cyclone::Vector3(0, 0.888f, -0.32f), 0.15f);
+    joints[10].set(bones[6].body, cyclone::Vector3(0, 0.367f, 0.8f), bones[10].body,
+                   cyclone::Vector3(0, 0.888f, -0.32f), 0.15f);
   }
 
   // Stands the ragdoll up and gives it a random push so it falls over.
@@ -118,39 +117,27 @@ public:
   // 65 m/s). The push is now a change in velocity, the same at any frame
   // rate: a sideways shove plus a twist of the chest.
   void reset(cyclone::Random &random) {
-    bones[0].setState(cyclone::Vector3(0, 0.993, -0.5),
-                      cyclone::Vector3(0.301, 1.0, 0.234));
-    bones[1].setState(cyclone::Vector3(0, 3.159, -0.56),
-                      cyclone::Vector3(0.301, 1.0, 0.234));
-    bones[2].setState(cyclone::Vector3(0, 0.993, 0.5),
-                      cyclone::Vector3(0.301, 1.0, 0.234));
-    bones[3].setState(cyclone::Vector3(0, 3.15, 0.56),
-                      cyclone::Vector3(0.301, 1.0, 0.234));
+    bones[0].setState(cyclone::Vector3(0, 0.993, -0.5), cyclone::Vector3(0.301, 1.0, 0.234));
+    bones[1].setState(cyclone::Vector3(0, 3.159, -0.56), cyclone::Vector3(0.301, 1.0, 0.234));
+    bones[2].setState(cyclone::Vector3(0, 0.993, 0.5), cyclone::Vector3(0.301, 1.0, 0.234));
+    bones[3].setState(cyclone::Vector3(0, 3.15, 0.56), cyclone::Vector3(0.301, 1.0, 0.234));
     bones[4].setState(cyclone::Vector3(-0.054, 4.683, 0.013),
                       cyclone::Vector3(0.415, 0.392, 0.690));
-    bones[5].setState(cyclone::Vector3(0.043, 5.603, 0.013),
-                      cyclone::Vector3(0.301, 0.367, 0.693));
-    bones[6].setState(cyclone::Vector3(0, 6.485, 0.013),
-                      cyclone::Vector3(0.435, 0.367, 0.786));
-    bones[7].setState(cyclone::Vector3(0, 7.759, 0.013),
-                      cyclone::Vector3(0.45, 0.598, 0.421));
-    bones[8].setState(cyclone::Vector3(0, 5.946, -1.066),
-                      cyclone::Vector3(0.267, 0.888, 0.207));
-    bones[9].setState(cyclone::Vector3(0, 4.024, -1.066),
-                      cyclone::Vector3(0.267, 0.888, 0.207));
-    bones[10].setState(cyclone::Vector3(0, 5.946, 1.066),
-                       cyclone::Vector3(0.267, 0.888, 0.207));
-    bones[11].setState(cyclone::Vector3(0, 4.024, 1.066),
-                       cyclone::Vector3(0.267, 0.888, 0.207));
+    bones[5].setState(cyclone::Vector3(0.043, 5.603, 0.013), cyclone::Vector3(0.301, 0.367, 0.693));
+    bones[6].setState(cyclone::Vector3(0, 6.485, 0.013), cyclone::Vector3(0.435, 0.367, 0.786));
+    bones[7].setState(cyclone::Vector3(0, 7.759, 0.013), cyclone::Vector3(0.45, 0.598, 0.421));
+    bones[8].setState(cyclone::Vector3(0, 5.946, -1.066), cyclone::Vector3(0.267, 0.888, 0.207));
+    bones[9].setState(cyclone::Vector3(0, 4.024, -1.066), cyclone::Vector3(0.267, 0.888, 0.207));
+    bones[10].setState(cyclone::Vector3(0, 5.946, 1.066), cyclone::Vector3(0.267, 0.888, 0.207));
+    bones[11].setState(cyclone::Vector3(0, 4.024, 1.066), cyclone::Vector3(0.267, 0.888, 0.207));
 
     const cyclone::real shove = -random.randomReal(1.5, 3.0); // m/s along x
     for (Bone &bone : bones) {
       bone.body->addVelocity(cyclone::Vector3(shove, 0, 0));
     }
-    bones[6].body->addVelocity(
-        cyclone::Vector3(0, 0, random.randomBinomial(1.5)));
-    bones[6].body->addRotation(cyclone::Vector3(random.randomBinomial(2.0),
-                                                random.randomBinomial(2.0), 0));
+    bones[6].body->addVelocity(cyclone::Vector3(0, 0, random.randomBinomial(1.5)));
+    bones[6].body->addRotation(
+        cyclone::Vector3(random.randomBinomial(2.0), random.randomBinomial(2.0), 0));
   }
 
   // Moves every bone forward by `duration` seconds.
@@ -193,8 +180,7 @@ public:
 
         cyclone::CollisionSphere otherSphere = other->getCollisionSphere();
 
-        cyclone::CollisionDetector::sphereAndSphere(boneSphere, otherSphere,
-                                                    &cData);
+        cyclone::CollisionDetector::sphereAndSphere(boneSphere, otherSphere, &cData);
       }
     }
 

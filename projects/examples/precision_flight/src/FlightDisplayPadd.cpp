@@ -250,10 +250,10 @@ struct Renderer {
   }
 };
 
-
 void drawGate(Renderer &r, const Obstacle &o, glm::vec3 color) {
   const float t = kGateBar, d = 2.0f * kWallHalfZ;
-  float left = o.cx - o.w / 2, right = o.cx + o.w / 2, bottom = o.cy - o.h / 2, top = o.cy + o.h / 2;
+  float left = o.cx - o.w / 2, right = o.cx + o.w / 2, bottom = o.cy - o.h / 2,
+        top = o.cy + o.h / 2;
   r.drawBox({left - t / 2, o.cy, o.z}, {t, o.h + 2 * t, d}, color);
   r.drawBox({right + t / 2, o.cy, o.z}, {t, o.h + 2 * t, d}, color);
   r.drawBox({o.cx, top + t / 2, o.z}, {o.w, t, d}, color);
@@ -292,7 +292,9 @@ FlightDisplayPadd::FlightDisplayPadd(ScratchPadd::System *system)
       controlPanels_(std::make_unique<ControlPanels>()) {
   receive<WorldSnapshot>([this](const WorldSnapshot &world) { drawFrame(world); });
   receive<ScratchPadd::MessageType::ControlSnapshot>(
-      [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot) { showControls(snapshot); });
+      [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
+        showControls(snapshot);
+      });
   receive<GatePassed>([this](const GatePassed &e) { showEvent(e); });
   receive<Crashed>([this](const Crashed &e) { showEvent(e); });
   receive<PowerupCollected>([this](const PowerupCollected &e) { showEvent(e); });
@@ -376,9 +378,11 @@ void FlightDisplayPadd::showEvent(const FlightEvent &event) {
           return {e.gold ? IM_COL32(255, 210, 60, 255) : IM_COL32(120, 255, 140, 255), e.obstacleId,
                   Flash{0.5f, glm::vec3(1.0f)}};
         } else if constexpr (std::is_same_v<E, Crashed>) {
-          return {IM_COL32(255, 90, 70, 255), e.obstacleId, Flash{0.6f, glm::vec3(1.0f, 0.2f, 0.1f)}};
+          return {IM_COL32(255, 90, 70, 255), e.obstacleId,
+                  Flash{0.6f, glm::vec3(1.0f, 0.2f, 0.1f)}};
         } else if constexpr (std::is_same_v<E, PowerupCollected>) {
-          return {e.kind == Kind::FocusPickup ? IM_COL32(80, 230, 255, 255) : IM_COL32(255, 80, 230, 255)};
+          return {e.kind == Kind::FocusPickup ? IM_COL32(80, 230, 255, 255)
+                                              : IM_COL32(255, 80, 230, 255)};
         } else if constexpr (std::is_same_v<E, WallPhased>) {
           return {IM_COL32(255, 80, 230, 255)};
         } else {
@@ -404,7 +408,8 @@ void FlightDisplayPadd::showControls(const ScratchPadd::MessageType::ControlSnap
   }
   auto view = ControlViewBuilder();
   view->setControls(snapshot);
-  view->setOnChange([this](const ScratchPadd::MessageType::ControlChange &change) { send(change); });
+  view->setOnChange(
+      [this](const ScratchPadd::MessageType::ControlChange &change) { send(change); });
   view->setInitialPlacement(ImVec2(1, 0)); // top-right, clear of the HUD at top-left
   views[snapshot.paddName] = std::move(view);
 }
@@ -498,12 +503,15 @@ void FlightDisplayPadd::drawFrame(const WorldSnapshot &world) {
 
   // Steering for the next frame (the simulation ignores it on autopilot)
   auto key = [&](int a, int b) {
-    return !typing && (glfwGetKey(window_, a) == GLFW_PRESS || glfwGetKey(window_, b) == GLFW_PRESS);
+    return !typing &&
+           (glfwGetKey(window_, a) == GLFW_PRESS || glfwGetKey(window_, b) == GLFW_PRESS);
   };
   FrameInput next;
   next.seconds = frame;
-  next.inputX = (key(GLFW_KEY_D, GLFW_KEY_RIGHT) ? 1.0f : 0.0f) - (key(GLFW_KEY_A, GLFW_KEY_LEFT) ? 1.0f : 0.0f);
-  next.inputY = (key(GLFW_KEY_W, GLFW_KEY_UP) ? 1.0f : 0.0f) - (key(GLFW_KEY_S, GLFW_KEY_DOWN) ? 1.0f : 0.0f);
+  next.inputX = (key(GLFW_KEY_D, GLFW_KEY_RIGHT) ? 1.0f : 0.0f) -
+                (key(GLFW_KEY_A, GLFW_KEY_LEFT) ? 1.0f : 0.0f);
+  next.inputY =
+      (key(GLFW_KEY_W, GLFW_KEY_UP) ? 1.0f : 0.0f) - (key(GLFW_KEY_S, GLFW_KEY_DOWN) ? 1.0f : 0.0f);
   send(next);
 }
 
@@ -519,7 +527,8 @@ void FlightDisplayPadd::drawWorld(int width, int height, float time) {
   glm::vec3 eye(smoothed_.x * 0.55f, smoothed_.y * 0.45f + 2.0f, z + 7.5f);
   glm::vec3 target(smoothed_.x * 0.8f, smoothed_.y * 0.7f + 0.6f, z - 14.0f);
   glm::mat4 view = glm::lookAt(eye, target, glm::vec3(0, 1, 0));
-  glm::mat4 proj = glm::perspective(glm::radians(60.0f), width / std::max(1.0f, float(height)), 0.1f, 400.0f);
+  glm::mat4 proj =
+      glm::perspective(glm::radians(60.0f), width / std::max(1.0f, float(height)), 0.1f, 400.0f);
   glm::mat4 viewProj = proj * view;
   glUniformMatrix4fv(r.viewProj, 1, GL_FALSE, glm::value_ptr(viewProj));
 
@@ -545,7 +554,8 @@ void FlightDisplayPadd::drawWorld(int width, int height, float time) {
       glm::mat4 m = glm::translate(glm::mat4(1.0f), {o.cx, o.cy, o.z});
       m = glm::rotate(m, time * 2.0f, glm::vec3(0, 1, 0));
       m = glm::scale(m, glm::vec3(0.6f, 0.8f, 0.6f));
-      glm::vec3 c = o.kind == Kind::FocusPickup ? glm::vec3(0.3f, 0.9f, 1.0f) : glm::vec3(1.0f, 0.3f, 0.9f);
+      glm::vec3 c =
+          o.kind == Kind::FocusPickup ? glm::vec3(0.3f, 0.9f, 1.0f) : glm::vec3(1.0f, 0.3f, 0.9f);
       r.draw(r.octahedron, m, c);
       break;
     }
@@ -559,16 +569,18 @@ void FlightDisplayPadd::drawWorld(int width, int height, float time) {
   glm::mat4 ship = glm::translate(glm::mat4(1.0f), {smoothed_.x, smoothed_.y, z});
   ship = glm::rotate(ship, std::clamp(-g.vx * 0.06f, -0.7f, 0.7f), {0, 0, 1});
   ship = glm::rotate(ship, std::clamp(g.vy * 0.03f, -0.4f, 0.4f), {1, 0, 0});
-  r.draw(r.ship, ship, g.phase.active() ? glm::vec3(0.85f, 0.55f, 0.95f) : glm::vec3(0.75f, 0.8f, 0.9f));
-  r.draw(r.cube, glm::scale(glm::translate(ship, {0.0f, 0.05f, 0.7f}), glm::vec3(0.35f, 0.18f, 0.1f)),
+  r.draw(r.ship, ship,
+         g.phase.active() ? glm::vec3(0.85f, 0.55f, 0.95f) : glm::vec3(0.75f, 0.8f, 0.9f));
+  r.draw(r.cube,
+         glm::scale(glm::translate(ship, {0.0f, 0.05f, 0.7f}), glm::vec3(0.35f, 0.18f, 0.1f)),
          {1.0f, 0.55f + 0.2f * std::sin(time * 30.0f), 0.1f}, false);
 
   // Physics hitbox at the exact observed position, without render snapping
   if (showHitbox_) {
     r.setSnap(64);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    r.drawBox({g.observed.x, g.observed.y, g.observedZ}, {2 * kShipHalfX, 2 * kShipHalfY, 2 * kShipHalfZ},
-              {1.0f, 1.0f, 0.3f}, false);
+    r.drawBox({g.observed.x, g.observed.y, g.observedZ},
+              {2 * kShipHalfX, 2 * kShipHalfY, 2 * kShipHalfZ}, {1.0f, 1.0f, 0.3f}, false);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     r.setSnap(g.renderBits);
   }
@@ -608,7 +620,8 @@ void FlightDisplayPadd::drawHud() {
     char text[32];
     std::snprintf(text, sizeof(text), "%s %.1fs", name, e.remaining);
     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, color);
-    ImGui::ProgressBar(e.active() ? e.remaining / e.duration : 0.0f, ImVec2(260, 0), e.active() ? text : name);
+    ImGui::ProgressBar(e.active() ? e.remaining / e.duration : 0.0f, ImVec2(260, 0),
+                       e.active() ? text : name);
     ImGui::PopStyleColor();
   };
   effectBar("FOCUS", g.focus, ImVec4(0.3f, 0.9f, 1.0f, 1.0f));
@@ -647,8 +660,10 @@ void FlightDisplayPadd::drawHud() {
     }
     const float fontSize = 30.0f;
     ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, m.text.c_str());
-    ImU32 color = (m.color & ~IM_COL32_A_MASK) | (static_cast<ImU32>(alpha * 255) << IM_COL32_A_SHIFT);
-    draw->AddText(ImGui::GetFont(), fontSize, ImVec2((size.x - textSize.x) / 2, y), color, m.text.c_str());
+    ImU32 color =
+        (m.color & ~IM_COL32_A_MASK) | (static_cast<ImU32>(alpha * 255) << IM_COL32_A_SHIFT);
+    draw->AddText(ImGui::GetFont(), fontSize, ImVec2((size.x - textSize.x) / 2, y), color,
+                  m.text.c_str());
     y += fontSize + 6.0f;
   }
   if (g.paused && !g.over) {

@@ -69,8 +69,8 @@ public:
   }
 
   /** Sets the box to a specific location. */
-  void setState(cyclone::Vector3 position, cyclone::Quaternion orientation,
-                cyclone::real radius, cyclone::Vector3 velocity) {
+  void setState(cyclone::Vector3 position, cyclone::Quaternion orientation, cyclone::real radius,
+                cyclone::Vector3 velocity) {
     body->setPosition(position);
     body->setOrientation(orientation);
     body->setVelocity(velocity);
@@ -149,10 +149,8 @@ public:
   }
 
   /** Sets the box to a specific location. */
-  void setState(const cyclone::Vector3 &position,
-                const cyclone::Quaternion &orientation,
-                const cyclone::Vector3 &extents,
-                const cyclone::Vector3 &velocity) {
+  void setState(const cyclone::Vector3 &position, const cyclone::Quaternion &orientation,
+                const cyclone::Vector3 &extents, const cyclone::Vector3 &velocity) {
     body->setPosition(position);
     body->setOrientation(orientation);
     body->setVelocity(velocity);
@@ -255,8 +253,7 @@ public:
 };
 
 // Method definitions
-ExplosionDemo::ExplosionDemo()
-    : RigidBodyApplication(), editMode(false), upMode(false) {
+ExplosionDemo::ExplosionDemo() : RigidBodyApplication(), editMode(false), upMode(false) {
   // Reset the position of the boxes
   reset();
 }
@@ -273,12 +270,11 @@ void ExplosionDemo::fire() {
 void ExplosionDemo::reset() {
   Box *box = boxData;
 
-  box++->setState(cyclone::Vector3(0, 3, 0), cyclone::Quaternion(),
-                  cyclone::Vector3(4, 1, 1), cyclone::Vector3(0, 1, 0));
+  box++->setState(cyclone::Vector3(0, 3, 0), cyclone::Quaternion(), cyclone::Vector3(4, 1, 1),
+                  cyclone::Vector3(0, 1, 0));
 
   if (boxes > 1) {
-    box++->setState(cyclone::Vector3(0, 4.75, 2),
-                    cyclone::Quaternion(1.0, 0.1, 0.05, 0.01),
+    box++->setState(cyclone::Vector3(0, 4.75, 2), cyclone::Quaternion(1.0, 0.1, 0.05, 0.01),
                     cyclone::Vector3(1, 1, 4), cyclone::Vector3(0, 1, 0));
   }
 
@@ -473,9 +469,8 @@ void ExplosionDemo::display() {
 
 void ExplosionDemo::mouseDrag(int x, int y) {
   if (editMode) {
-    boxData[0].body->setPosition(
-        boxData[0].body->getPosition() +
-        cyclone::Vector3((x - last_x) * 0.125f, 0, (y - last_y) * 0.125f));
+    boxData[0].body->setPosition(boxData[0].body->getPosition() +
+                                 cyclone::Vector3((x - last_x) * 0.125f, 0, (y - last_y) * 0.125f));
     boxData[0].body->calculateDerivedData();
   } else if (upMode) {
     boxData[0].body->setPosition(boxData[0].body->getPosition() +

@@ -133,7 +133,8 @@ inline std::string describe(const FlightEvent &event) {
       return text;
     }
     std::string operator()(const PowerupCollected &e) const {
-      return e.kind == Kind::FocusPickup ? "FOCUS  flight precision up" : "PHASE  hull precision down";
+      return e.kind == Kind::FocusPickup ? "FOCUS  flight precision up"
+                                         : "PHASE  hull precision down";
     }
     std::string operator()(const WallPhased &) const { return "PHASED  +150"; }
     std::string operator()(const GameOver &) const { return "GAME OVER - press R"; }

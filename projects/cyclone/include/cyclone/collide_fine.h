@@ -65,9 +65,7 @@ public:
    * This is a convenience function to allow access to the
    * axis vectors in the transform for this primitive.
    */
-  Vector3 getAxis(unsigned index) const {
-    return transform.getAxisVector(index);
-  }
+  Vector3 getAxis(unsigned index) const { return transform.getAxisVector(index); }
 
   /**
    * Returns the resultant transform of the primitive, calculated from
@@ -135,11 +133,9 @@ public:
  */
 class IntersectionTests {
 public:
-  static bool sphereAndHalfSpace(const CollisionSphere &sphere,
-                                 const CollisionPlane &plane);
+  static bool sphereAndHalfSpace(const CollisionSphere &sphere, const CollisionPlane &plane);
 
-  static bool sphereAndSphere(const CollisionSphere &one,
-                              const CollisionSphere &two);
+  static bool sphereAndSphere(const CollisionSphere &one, const CollisionSphere &two);
 
   static bool boxAndBox(const CollisionBox &one, const CollisionBox &two);
 
@@ -155,8 +151,7 @@ public:
    * offset of the limiting plane from the origin, along the given
    * direction.
    */
-  static bool boxAndHalfSpace(const CollisionBox &box,
-                              const CollisionPlane &plane);
+  static bool boxAndHalfSpace(const CollisionBox &box, const CollisionPlane &plane);
 };
 
 /**
@@ -232,16 +227,13 @@ struct CollisionData {
  */
 class CollisionDetector {
 public:
-  static unsigned sphereAndHalfSpace(const CollisionSphere &sphere,
-                                     const CollisionPlane &plane,
+  static unsigned sphereAndHalfSpace(const CollisionSphere &sphere, const CollisionPlane &plane,
                                      CollisionData *data);
 
-  static unsigned sphereAndTruePlane(const CollisionSphere &sphere,
-                                     const CollisionPlane &plane,
+  static unsigned sphereAndTruePlane(const CollisionSphere &sphere, const CollisionPlane &plane,
                                      CollisionData *data);
 
-  static unsigned sphereAndSphere(const CollisionSphere &one,
-                                  const CollisionSphere &two,
+  static unsigned sphereAndSphere(const CollisionSphere &one, const CollisionSphere &two,
                                   CollisionData *data);
 
   /**
@@ -249,18 +241,14 @@ public:
    * a half-space (i.e. the normal of the plane
    * points out of the half-space).
    */
-  static unsigned boxAndHalfSpace(const CollisionBox &box,
-                                  const CollisionPlane &plane,
+  static unsigned boxAndHalfSpace(const CollisionBox &box, const CollisionPlane &plane,
                                   CollisionData *data);
 
-  static unsigned boxAndBox(const CollisionBox &one, const CollisionBox &two,
-                            CollisionData *data);
+  static unsigned boxAndBox(const CollisionBox &one, const CollisionBox &two, CollisionData *data);
 
-  static unsigned boxAndPoint(const CollisionBox &box, const Vector3 &point,
-                              CollisionData *data);
+  static unsigned boxAndPoint(const CollisionBox &box, const Vector3 &point, CollisionData *data);
 
-  static unsigned boxAndSphere(const CollisionBox &box,
-                               const CollisionSphere &sphere,
+  static unsigned boxAndSphere(const CollisionBox &box, const CollisionSphere &sphere,
                                CollisionData *data);
 };
 

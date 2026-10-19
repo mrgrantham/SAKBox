@@ -92,9 +92,7 @@ RagdollDemo::RagdollDemo() : RigidBodyApplication() { reset(); }
 
 const char *RagdollDemo::getTitle() { return "Cyclone > Ragdoll Demo"; }
 
-void RagdollDemo::generateContacts() {
-  model.generateContacts(cData, maxContacts);
-}
+void RagdollDemo::generateContacts() { model.generateContacts(cData, maxContacts); }
 
 void RagdollDemo::reset() {
   model.reset(random);
@@ -103,9 +101,7 @@ void RagdollDemo::reset() {
   cData.contactCount = 0;
 }
 
-void RagdollDemo::updateObjects(cyclone::real duration) {
-  model.integrate(duration);
-}
+void RagdollDemo::updateObjects(cyclone::real duration) { model.integrate(duration); }
 
 void RagdollDemo::initGraphics() {
   GLfloat lightAmbient[] = {0.8f, 0.8f, 0.8f, 1.0f};
@@ -147,10 +143,8 @@ void RagdollDemo::display() {
   glBegin(GL_LINES);
   for (const cyclone::Joint &jointRef : model.joints) {
     const cyclone::Joint *joint = &jointRef;
-    cyclone::Vector3 a_pos =
-        joint->body[0]->getPointInWorldSpace(joint->position[0]);
-    cyclone::Vector3 b_pos =
-        joint->body[1]->getPointInWorldSpace(joint->position[1]);
+    cyclone::Vector3 a_pos = joint->body[0]->getPointInWorldSpace(joint->position[0]);
+    cyclone::Vector3 b_pos = joint->body[1]->getPointInWorldSpace(joint->position[1]);
     cyclone::real length = (b_pos - a_pos).magnitude();
 
     if (length > joint->error)

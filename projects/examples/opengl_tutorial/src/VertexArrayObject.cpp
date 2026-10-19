@@ -3,9 +3,8 @@
 
 VertexArrayObject::VertexArrayObject() { glGenVertexArrays(1, &ID_); }
 
-void VertexArrayObject::linkAttributes(VertexBufferObject &vertexBufferObject,
-                                       GLuint layout, GLuint componentCount,
-                                       GLenum type, GLsizeiptr stride,
+void VertexArrayObject::linkAttributes(VertexBufferObject &vertexBufferObject, GLuint layout,
+                                       GLuint componentCount, GLenum type, GLsizeiptr stride,
                                        void *offset) {
   vertexBufferObject.bind();
   glVertexAttribPointer(layout, componentCount, type, GL_FALSE, stride, offset);

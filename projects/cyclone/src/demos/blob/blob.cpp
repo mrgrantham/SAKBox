@@ -44,12 +44,10 @@ public:
    */
   cyclone::Particle *particles;
 
-  unsigned addContact(cyclone::ParticleContact *contact,
-                      unsigned limit) const override;
+  unsigned addContact(cyclone::ParticleContact *contact, unsigned limit) const override;
 };
 
-unsigned Platform::addContact(cyclone::ParticleContact *contact,
-                              unsigned limit) const {
+unsigned Platform::addContact(cyclone::ParticleContact *contact, unsigned limit) const {
   const static cyclone::real restitution = 0.0f;
 
   unsigned used = 0;
@@ -93,15 +91,12 @@ unsigned Platform::addContact(cyclone::ParticleContact *contact,
     } else {
       // the blob is nearest to the middle.
       cyclone::real distanceToPlatform =
-          toParticle.squareMagnitude() -
-          projected * projected / platformSqLength;
+          toParticle.squareMagnitude() - projected * projected / platformSqLength;
       if (distanceToPlatform < BLOB_RADIUS * BLOB_RADIUS) {
         // We have a collision
-        cyclone::Vector3 closestPoint =
-            start + lineDirection * (projected / platformSqLength);
+        cyclone::Vector3 closestPoint = start + lineDirection * (projected / platformSqLength);
 
-        contact->contactNormal =
-            (particles[i].getPosition() - closestPoint).unit();
+        contact->contactNormal = (particles[i].getPosition() - closestPoint).unit();
         contact->contactNormal.z = 0;
         contact->restitution = restitution;
         contact->particle[0] = particles + i;
@@ -158,12 +153,10 @@ public:
    */
   cyclone::real maxDistance;
 
-  void updateForce(cyclone::Particle *particle,
-                   cyclone::real duration) override;
+  void updateForce(cyclone::Particle *particle, cyclone::real duration) override;
 };
 
-void BlobForceGenerator::updateForce(cyclone::Particle *particle,
-                                     cyclone::real duration) {
+void BlobForceGenerator::updateForce(cyclone::Particle *particle, cyclone::real duration) {
   unsigned joinCount = 0;
   for (unsigned i = 0; i < BLOB_COUNT; i++) {
     // Don't attract yourself
@@ -171,21 +164,18 @@ void BlobForceGenerator::updateForce(cyclone::Particle *particle,
       continue;
 
     // Work out the separation distance
-    cyclone::Vector3 separation =
-        particles[i].getPosition() - particle->getPosition();
+    cyclone::Vector3 separation = particles[i].getPosition() - particle->getPosition();
     separation.z = 0.0f;
     cyclone::real distance = separation.magnitude();
 
     if (distance < minNaturalDistance) {
       // Use a repulsion force.
       distance = 1.0f - distance / minNaturalDistance;
-      particle->addForce(separation.unit() * (1.0f - distance) * maxReplusion *
-                         -1.0f);
+      particle->addForce(separation.unit() * (1.0f - distance) * maxReplusion * -1.0f);
       joinCount++;
     } else if (distance > maxNaturalDistance && distance < maxDistance) {
       // Use an attraction force.
-      distance =
-          (distance - maxNaturalDistance) / (maxDistance - maxNaturalDistance);
+      distance = (distance - maxNaturalDistance) / (maxDistance - maxNaturalDistance);
       particle->addForce(separation.unit() * distance * maxAttraction);
       joinCount++;
     }
@@ -256,8 +246,7 @@ public:
 };
 
 // Method definitions
-BlobDemo::BlobDemo()
-    : world(PLATFORM_COUNT + BLOB_COUNT, PLATFORM_COUNT), xAxis(0), yAxis(0) {
+BlobDemo::BlobDemo() : world(PLATFORM_COUNT + BLOB_COUNT, PLATFORM_COUNT), xAxis(0), yAxis(0) {
   // Create the blob storage
   blobs = new cyclone::Particle[BLOB_COUNT];
   cyclone::Random r;
@@ -275,15 +264,13 @@ BlobDemo::BlobDemo()
   // Create the platforms
   platforms = new Platform[PLATFORM_COUNT];
   for (unsigned i = 0; i < PLATFORM_COUNT; i++) {
-    platforms[i].start =
-        cyclone::Vector3(cyclone::real(i % 2) * 10.0f - 5.0f,
-                         cyclone::real(i) * 4.0f + ((i % 2) ? 0.0f : 2.0f), 0);
+    platforms[i].start = cyclone::Vector3(cyclone::real(i % 2) * 10.0f - 5.0f,
+                                          cyclone::real(i) * 4.0f + ((i % 2) ? 0.0f : 2.0f), 0);
     platforms[i].start.x += r.randomBinomial(2.0f);
     platforms[i].start.y += r.randomBinomial(2.0f);
 
-    platforms[i].end =
-        cyclone::Vector3(cyclone::real(i % 2) * 10.0f + 5.0f,
-                         cyclone::real(i) * 4.0f + ((i % 2) ? 2.0f : 0.0f), 0);
+    platforms[i].end = cyclone::Vector3(cyclone::real(i % 2) * 10.0f + 5.0f,
+                                        cyclone::real(i) * 4.0f + ((i % 2) ? 2.0f : 0.0f), 0);
     platforms[i].end.x += r.randomBinomial(2.0f);
     platforms[i].end.y += r.randomBinomial(2.0f);
 
@@ -299,8 +286,7 @@ BlobDemo::BlobDemo()
   cyclone::Vector3 delta = p->end - p->start;
   for (unsigned i = 0; i < BLOB_COUNT; i++) {
     unsigned me = (i + BLOB_COUNT / 2) % BLOB_COUNT;
-    blobs[i].setPosition(p->start +
-                         delta * (cyclone::real(me) * 0.8f * fraction + 0.1f) +
+    blobs[i].setPosition(p->start + delta * (cyclone::real(me) * 0.8f * fraction + 0.1f) +
                          cyclone::Vector3(0, 1.0f + r.randomReal(), 0));
 
     blobs[i].setVelocity(0, 0, 0);
@@ -321,8 +307,7 @@ void BlobDemo::reset() {
   cyclone::Vector3 delta = p->end - p->start;
   for (unsigned i = 0; i < BLOB_COUNT; i++) {
     unsigned me = (i + BLOB_COUNT / 2) % BLOB_COUNT;
-    blobs[i].setPosition(p->start +
-                         delta * (cyclone::real(me) * 0.8f * fraction + 0.1f) +
+    blobs[i].setPosition(p->start + delta * (cyclone::real(me) * 0.8f * fraction + 0.1f) +
                          cyclone::Vector3(0, 1.0f + r.randomReal(), 0));
     blobs[i].setVelocity(0, 0, 0);
     blobs[i].clearAccumulator();

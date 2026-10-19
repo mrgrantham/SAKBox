@@ -95,11 +95,11 @@ FlightSimDemo::FlightSimDemo()
 
       rudder(cyclone::Matrix3(0, 0, 0, 0, 0, 0, 0, 0, 0),
              cyclone::Matrix3(0, 0, 0, 0, 0, 0, 0.01f, 0, 0),
-             cyclone::Matrix3(0, 0, 0, 0, 0, 0, -0.01f, 0, 0),
-             cyclone::Vector3(2.0f, 0.5f, 0), &windspeed),
+             cyclone::Matrix3(0, 0, 0, 0, 0, 0, -0.01f, 0, 0), cyclone::Vector3(2.0f, 0.5f, 0),
+             &windspeed),
 
-      tail(cyclone::Matrix3(0, 0, 0, -1, -0.5f, 0, 0, 0, -0.1f),
-           cyclone::Vector3(2.0f, 0, 0), &windspeed),
+      tail(cyclone::Matrix3(0, 0, 0, -1, -0.5f, 0, 0, 0, -0.1f), cyclone::Vector3(2.0f, 0, 0),
+           &windspeed),
 
       windspeed(0, 0, 0),
 
@@ -188,8 +188,7 @@ void FlightSimDemo::display() {
   cyclone::Vector3 pos = aircraft.getPosition();
   cyclone::Vector3 offset(4.0f + aircraft.getVelocity().magnitude(), 0, 0);
   offset = aircraft.getTransform().transformDirection(offset);
-  gluLookAt(pos.x + offset.x, pos.y + 5.0f, pos.z + offset.z, pos.x, pos.y,
-            pos.z, 0.0, 1.0, 0.0);
+  gluLookAt(pos.x + offset.x, pos.y + 5.0f, pos.z + offset.z, pos.x, pos.y, pos.z, 0.0, 1.0, 0.0);
 
   glColor3f(0.6f, 0.6f, 0.6f);
   int bx = int(pos.x);
@@ -225,16 +224,13 @@ void FlightSimDemo::display() {
   glPopMatrix();
 
   char buffer[256];
-  snprintf(buffer, sizeof(buffer), "Altitude: %.1f | Speed %.1f",
-           (double)aircraft.getPosition().y,
+  snprintf(buffer, sizeof(buffer), "Altitude: %.1f | Speed %.1f", (double)aircraft.getPosition().y,
            (double)aircraft.getVelocity().magnitude());
   glColor3f(0, 0, 0);
   renderText(10.0f, 24.0f, buffer);
 
-  snprintf(buffer, sizeof(buffer),
-           "Left Wing: %.1f | Right Wing: %.1f | Rudder %.1f",
-           (double)left_wing_control, (double)right_wing_control,
-           (double)rudder_control);
+  snprintf(buffer, sizeof(buffer), "Left Wing: %.1f | Right Wing: %.1f | Rudder %.1f",
+           (double)left_wing_control, (double)right_wing_control, (double)rudder_control);
   renderText(10.0f, 10.0f, buffer);
 
 #if defined(CYCLONE_FLEX_REAL)
@@ -242,13 +238,12 @@ void FlightSimDemo::display() {
   if (precision.fracBits >= 52)
     snprintf(buffer, sizeof(buffer), "Precision: full | [ ] change");
   else
-    snprintf(
-        buffer, sizeof(buffer),
-        "Precision: %d bits (step %g, %s) | [ ] change, N rounding, F full",
-        precision.fracBits, precision.step(),
-        precision.rounding == Flex::Math::Rounding::Nearest      ? "nearest"
-        : precision.rounding == Flex::Math::Rounding::Stochastic ? "stochastic"
-                                                                 : "truncate");
+    snprintf(buffer, sizeof(buffer),
+             "Precision: %d bits (step %g, %s) | [ ] change, N rounding, F full",
+             precision.fracBits, precision.step(),
+             precision.rounding == Flex::Math::Rounding::Nearest      ? "nearest"
+             : precision.rounding == Flex::Math::Rounding::Stochastic ? "stochastic"
+                                                                      : "truncate");
   renderText(10.0f, 38.0f, buffer);
 #endif
 }
@@ -356,11 +351,9 @@ void FlightSimDemo::key(unsigned char key) {
   case 'N': {
     // stochastic -> truncate -> nearest -> stochastic
     Flex::Math::Rounding &rounding = Flex::Math::activePrecision().rounding;
-    rounding = rounding == Flex::Math::Rounding::Stochastic
-                   ? Flex::Math::Rounding::TowardZero
-               : rounding == Flex::Math::Rounding::TowardZero
-                   ? Flex::Math::Rounding::Nearest
-                   : Flex::Math::Rounding::Stochastic;
+    rounding = rounding == Flex::Math::Rounding::Stochastic   ? Flex::Math::Rounding::TowardZero
+               : rounding == Flex::Math::Rounding::TowardZero ? Flex::Math::Rounding::Nearest
+                                                              : Flex::Math::Rounding::Stochastic;
   } break;
 
   case 'f':

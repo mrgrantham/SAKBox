@@ -215,9 +215,7 @@ public:
   /**
    * Returns the value of the given vector added to this.
    */
-  Vector3 operator+(const Vector3 &v) const {
-    return Vector3(x + v.x, y + v.y, z + v.z);
-  }
+  Vector3 operator+(const Vector3 &v) const { return Vector3(x + v.x, y + v.y, z + v.z); }
 
   /** Subtracts the given vector from this. */
   void operator-=(const Vector3 &v) {
@@ -229,9 +227,7 @@ public:
   /**
    * Returns the value of the given vector subtracted from this.
    */
-  Vector3 operator-(const Vector3 &v) const {
-    return Vector3(x - v.x, y - v.y, z - v.z);
-  }
+  Vector3 operator-(const Vector3 &v) const { return Vector3(x - v.x, y - v.y, z - v.z); }
 
   /** Multiplies this vector by the given scalar. */
   void operator*=(const real value) {
@@ -241,9 +237,7 @@ public:
   }
 
   /** Returns a copy of this vector scaled the given value. */
-  Vector3 operator*(const real value) const {
-    return Vector3(x * value, y * value, z * value);
-  }
+  Vector3 operator*(const real value) const { return Vector3(x * value, y * value, z * value); }
 
   /**
    * Calculates and returns a component-wise product of this
@@ -299,9 +293,7 @@ public:
    * Calculates and returns the scalar product of this vector
    * with the given vector.
    */
-  real operator*(const Vector3 &vector) const {
-    return x * vector.x + y * vector.y + z * vector.z;
-  }
+  real operator*(const Vector3 &vector) const { return x * vector.x + y * vector.y + z * vector.z; }
 
   /**
    * Adds the given vector to this, scaled by the given amount.
@@ -358,9 +350,7 @@ public:
    * @note This does not behave like a single-value comparison:
    * !(a < b) does not imply (b >= a).
    */
-  bool operator<(const Vector3 &other) const {
-    return x < other.x && y < other.y && z < other.z;
-  }
+  bool operator<(const Vector3 &other) const { return x < other.x && y < other.y && z < other.z; }
 
   /**
    * Checks if this vector is component-by-component less than
@@ -369,9 +359,7 @@ public:
    * @note This does not behave like a single-value comparison:
    * !(a < b) does not imply (b >= a).
    */
-  bool operator>(const Vector3 &other) const {
-    return x > other.x && y > other.y && z > other.z;
-  }
+  bool operator>(const Vector3 &other) const { return x > other.x && y > other.y && z > other.z; }
 
   /**
    * Checks if this vector is component-by-component less than
@@ -482,8 +470,7 @@ public:
    *
    * @see normalise
    */
-  Quaternion(const real r, const real i, const real j, const real k)
-      : r(r), i(i), j(j), k(k) {}
+  Quaternion(const real r, const real i, const real j, const real k) : r(r), i(i), j(j), k(k) {}
 
   /**
    * Normalises the quaternion to unit length, making it a valid
@@ -513,14 +500,10 @@ public:
    */
   void operator*=(const Quaternion &multiplier) {
     Quaternion q = *this;
-    r = q.r * multiplier.r - q.i * multiplier.i - q.j * multiplier.j -
-        q.k * multiplier.k;
-    i = q.r * multiplier.i + q.i * multiplier.r + q.j * multiplier.k -
-        q.k * multiplier.j;
-    j = q.r * multiplier.j + q.j * multiplier.r + q.k * multiplier.i -
-        q.i * multiplier.k;
-    k = q.r * multiplier.k + q.k * multiplier.r + q.i * multiplier.j -
-        q.j * multiplier.i;
+    r = q.r * multiplier.r - q.i * multiplier.i - q.j * multiplier.j - q.k * multiplier.k;
+    i = q.r * multiplier.i + q.i * multiplier.r + q.j * multiplier.k - q.k * multiplier.j;
+    j = q.r * multiplier.j + q.j * multiplier.r + q.k * multiplier.i - q.i * multiplier.k;
+    k = q.r * multiplier.k + q.k * multiplier.r + q.i * multiplier.j - q.j * multiplier.i;
   }
 
   /**
@@ -565,8 +548,7 @@ public:
    * Creates an identity matrix.
    */
   Matrix4() {
-    data[1] = data[2] = data[3] = data[4] = data[6] = data[7] = data[8] =
-        data[9] = data[11] = 0;
+    data[1] = data[2] = data[3] = data[4] = data[6] = data[7] = data[8] = data[9] = data[11] = 0;
     data[0] = data[5] = data[10] = 1;
   }
 
@@ -585,33 +567,24 @@ public:
    */
   Matrix4 operator*(const Matrix4 &o) const {
     Matrix4 result;
-    result.data[0] =
-        (o.data[0] * data[0]) + (o.data[4] * data[1]) + (o.data[8] * data[2]);
-    result.data[4] =
-        (o.data[0] * data[4]) + (o.data[4] * data[5]) + (o.data[8] * data[6]);
-    result.data[8] =
-        (o.data[0] * data[8]) + (o.data[4] * data[9]) + (o.data[8] * data[10]);
+    result.data[0] = (o.data[0] * data[0]) + (o.data[4] * data[1]) + (o.data[8] * data[2]);
+    result.data[4] = (o.data[0] * data[4]) + (o.data[4] * data[5]) + (o.data[8] * data[6]);
+    result.data[8] = (o.data[0] * data[8]) + (o.data[4] * data[9]) + (o.data[8] * data[10]);
 
-    result.data[1] =
-        (o.data[1] * data[0]) + (o.data[5] * data[1]) + (o.data[9] * data[2]);
-    result.data[5] =
-        (o.data[1] * data[4]) + (o.data[5] * data[5]) + (o.data[9] * data[6]);
-    result.data[9] =
-        (o.data[1] * data[8]) + (o.data[5] * data[9]) + (o.data[9] * data[10]);
+    result.data[1] = (o.data[1] * data[0]) + (o.data[5] * data[1]) + (o.data[9] * data[2]);
+    result.data[5] = (o.data[1] * data[4]) + (o.data[5] * data[5]) + (o.data[9] * data[6]);
+    result.data[9] = (o.data[1] * data[8]) + (o.data[5] * data[9]) + (o.data[9] * data[10]);
 
-    result.data[2] =
-        (o.data[2] * data[0]) + (o.data[6] * data[1]) + (o.data[10] * data[2]);
-    result.data[6] =
-        (o.data[2] * data[4]) + (o.data[6] * data[5]) + (o.data[10] * data[6]);
-    result.data[10] =
-        (o.data[2] * data[8]) + (o.data[6] * data[9]) + (o.data[10] * data[10]);
+    result.data[2] = (o.data[2] * data[0]) + (o.data[6] * data[1]) + (o.data[10] * data[2]);
+    result.data[6] = (o.data[2] * data[4]) + (o.data[6] * data[5]) + (o.data[10] * data[6]);
+    result.data[10] = (o.data[2] * data[8]) + (o.data[6] * data[9]) + (o.data[10] * data[10]);
 
-    result.data[3] = (o.data[3] * data[0]) + (o.data[7] * data[1]) +
-                     (o.data[11] * data[2]) + data[3];
-    result.data[7] = (o.data[3] * data[4]) + (o.data[7] * data[5]) +
-                     (o.data[11] * data[6]) + data[7];
-    result.data[11] = (o.data[3] * data[8]) + (o.data[7] * data[9]) +
-                      (o.data[11] * data[10]) + data[11];
+    result.data[3] =
+        (o.data[3] * data[0]) + (o.data[7] * data[1]) + (o.data[11] * data[2]) + data[3];
+    result.data[7] =
+        (o.data[3] * data[4]) + (o.data[7] * data[5]) + (o.data[11] * data[6]) + data[7];
+    result.data[11] =
+        (o.data[3] * data[8]) + (o.data[7] * data[9]) + (o.data[11] * data[10]) + data[11];
 
     return result;
   }
@@ -622,13 +595,11 @@ public:
    * @param vector The vector to transform.
    */
   Vector3 operator*(const Vector3 &vector) const {
-    return Vector3(
-        vector.x * data[0] + vector.y * data[1] + vector.z * data[2] + data[3],
+    return Vector3(vector.x * data[0] + vector.y * data[1] + vector.z * data[2] + data[3],
 
-        vector.x * data[4] + vector.y * data[5] + vector.z * data[6] + data[7],
+                   vector.x * data[4] + vector.y * data[5] + vector.z * data[6] + data[7],
 
-        vector.x * data[8] + vector.y * data[9] + vector.z * data[10] +
-            data[11]);
+                   vector.x * data[8] + vector.y * data[9] + vector.z * data[10] + data[11]);
   }
 
   /**
@@ -675,8 +646,7 @@ public:
 
                    vector.x * data[4] + vector.y * data[5] + vector.z * data[6],
 
-                   vector.x * data[8] + vector.y * data[9] +
-                       vector.z * data[10]);
+                   vector.x * data[8] + vector.y * data[9] + vector.z * data[10]);
   }
 
   /**
@@ -700,8 +670,7 @@ public:
 
                    vector.x * data[1] + vector.y * data[5] + vector.z * data[9],
 
-                   vector.x * data[2] + vector.y * data[6] +
-                       vector.z * data[10]);
+                   vector.x * data[2] + vector.y * data[6] + vector.z * data[10]);
   }
 
   /**
@@ -737,9 +706,7 @@ public:
    *
    * @return The vector.
    */
-  Vector3 getAxisVector(int i) const {
-    return Vector3(data[i], data[i + 4], data[i + 8]);
-  }
+  Vector3 getAxisVector(int i) const { return Vector3(data[i], data[i + 4], data[i + 8]); }
 
   /**
    * Sets this matrix to be the rotation matrix corresponding to
@@ -813,24 +780,21 @@ public:
    * Creates a new matrix.
    */
   Matrix3() {
-    data[0] = data[1] = data[2] = data[3] = data[4] = data[5] = data[6] =
-        data[7] = data[8] = 0;
+    data[0] = data[1] = data[2] = data[3] = data[4] = data[5] = data[6] = data[7] = data[8] = 0;
   }
 
   /**
    * Creates a new matrix with the given three vectors making
    * up its columns.
    */
-  Matrix3(const Vector3 &compOne, const Vector3 &compTwo,
-          const Vector3 &compThree) {
+  Matrix3(const Vector3 &compOne, const Vector3 &compTwo, const Vector3 &compThree) {
     setComponents(compOne, compTwo, compThree);
   }
 
   /**
    * Creates a new matrix with explicit coefficients.
    */
-  Matrix3(real c0, real c1, real c2, real c3, real c4, real c5, real c6,
-          real c7, real c8) {
+  Matrix3(real c0, real c1, real c2, real c3, real c4, real c5, real c6, real c7, real c8) {
     data[0] = c0;
     data[1] = c1;
     data[2] = c2;
@@ -851,8 +815,7 @@ public:
   /**
    * Sets the value of the matrix from inertia tensor values.
    */
-  void setInertiaTensorCoeffs(real ix, real iy, real iz, real ixy = 0,
-                              real ixz = 0, real iyz = 0) {
+  void setInertiaTensorCoeffs(real ix, real iy, real iz, real ixy = 0, real ixz = 0, real iyz = 0) {
     data[0] = ix;
     data[1] = data[3] = -ixy;
     data[2] = data[6] = -ixz;
@@ -893,8 +856,7 @@ public:
    * Sets the matrix values from the given three vector components.
    * These are arranged as the three columns of the vector.
    */
-  void setComponents(const Vector3 &compOne, const Vector3 &compTwo,
-                     const Vector3 &compThree) {
+  void setComponents(const Vector3 &compOne, const Vector3 &compTwo, const Vector3 &compThree) {
     data[0] = compOne.x;
     data[1] = compTwo.x;
     data[2] = compThree.x;
@@ -914,8 +876,7 @@ public:
   Vector3 operator*(const Vector3 &vector) const {
     return Vector3(vector.x * data[0] + vector.y * data[1] + vector.z * data[2],
                    vector.x * data[3] + vector.y * data[4] + vector.z * data[5],
-                   vector.x * data[6] + vector.y * data[7] +
-                       vector.z * data[8]);
+                   vector.x * data[6] + vector.y * data[7] + vector.z * data[8]);
   }
 
   /**
@@ -933,8 +894,7 @@ public:
   Vector3 transformTranspose(const Vector3 &vector) const {
     return Vector3(vector.x * data[0] + vector.y * data[3] + vector.z * data[6],
                    vector.x * data[1] + vector.y * data[4] + vector.z * data[7],
-                   vector.x * data[2] + vector.y * data[5] +
-                       vector.z * data[8]);
+                   vector.x * data[2] + vector.y * data[5] + vector.z * data[8]);
   }
 
   /**
@@ -953,9 +913,7 @@ public:
    *
    * @return The vector.
    */
-  Vector3 getAxisVector(int i) const {
-    return Vector3(data[i], data[i + 3], data[i + 6]);
-  }
+  Vector3 getAxisVector(int i) const { return Vector3(data[i], data[i + 3], data[i + 6]); }
 
   /**
    * Sets the matrix to be the inverse of the given matrix.
@@ -971,8 +929,8 @@ public:
     real t14 = m.data[2] * m.data[6];
 
     // Calculate the determinant
-    real t16 = (t4 * m.data[8] - t6 * m.data[7] - t8 * m.data[8] +
-                t10 * m.data[7] + t12 * m.data[5] - t14 * m.data[4]);
+    real t16 = (t4 * m.data[8] - t6 * m.data[7] - t8 * m.data[8] + t10 * m.data[7] +
+                t12 * m.data[5] - t14 * m.data[4]);
 
     // Make sure the determinant is non-zero.
     if (t16 == (real)0.0f)
@@ -1031,18 +989,17 @@ public:
    * other matrix.
    */
   Matrix3 operator*(const Matrix3 &o) const {
-    return Matrix3(
-        data[0] * o.data[0] + data[1] * o.data[3] + data[2] * o.data[6],
-        data[0] * o.data[1] + data[1] * o.data[4] + data[2] * o.data[7],
-        data[0] * o.data[2] + data[1] * o.data[5] + data[2] * o.data[8],
+    return Matrix3(data[0] * o.data[0] + data[1] * o.data[3] + data[2] * o.data[6],
+                   data[0] * o.data[1] + data[1] * o.data[4] + data[2] * o.data[7],
+                   data[0] * o.data[2] + data[1] * o.data[5] + data[2] * o.data[8],
 
-        data[3] * o.data[0] + data[4] * o.data[3] + data[5] * o.data[6],
-        data[3] * o.data[1] + data[4] * o.data[4] + data[5] * o.data[7],
-        data[3] * o.data[2] + data[4] * o.data[5] + data[5] * o.data[8],
+                   data[3] * o.data[0] + data[4] * o.data[3] + data[5] * o.data[6],
+                   data[3] * o.data[1] + data[4] * o.data[4] + data[5] * o.data[7],
+                   data[3] * o.data[2] + data[4] * o.data[5] + data[5] * o.data[8],
 
-        data[6] * o.data[0] + data[7] * o.data[3] + data[8] * o.data[6],
-        data[6] * o.data[1] + data[7] * o.data[4] + data[8] * o.data[7],
-        data[6] * o.data[2] + data[7] * o.data[5] + data[8] * o.data[8]);
+                   data[6] * o.data[0] + data[7] * o.data[3] + data[8] * o.data[6],
+                   data[6] * o.data[1] + data[7] * o.data[4] + data[8] * o.data[7],
+                   data[6] * o.data[2] + data[7] * o.data[5] + data[8] * o.data[8]);
   }
 
   /**
@@ -1127,8 +1084,7 @@ public:
   /**
    * Interpolates a couple of matrices.
    */
-  static Matrix3 linearInterpolate(const Matrix3 &a, const Matrix3 &b,
-                                   real prop);
+  static Matrix3 linearInterpolate(const Matrix3 &a, const Matrix3 &b, real prop);
 };
 
 } // namespace cyclone

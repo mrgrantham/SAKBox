@@ -16,8 +16,7 @@ namespace {
 
 class Ticker : public ScratchPadd::Base {
 public:
-  Ticker(ScratchPadd::System *system) : Base(system) {
-  }
+  Ticker(ScratchPadd::System *system) : Base(system) {}
   std::string name() override { return "Ticker"; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 

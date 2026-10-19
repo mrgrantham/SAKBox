@@ -136,7 +136,8 @@ inline double quantize(double value, const Precision &precision) {
   }
   const double limit = std::ldexp(1.0, precision.intBits);
   if (precision.overflow == Overflow::Saturate) {
-    const double highest = precision.fracBits < 52 ? limit - precision.step() : std::nextafter(limit, 0.0);
+    const double highest =
+        precision.fracBits < 52 ? limit - precision.step() : std::nextafter(limit, 0.0);
     return value < -limit ? -limit : (value > highest ? highest : value);
   }
   const double span = 2.0 * limit;

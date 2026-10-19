@@ -211,8 +211,7 @@ class ParticleBuoyancy : public ParticleForceGenerator {
 
 public:
   /** Creates a new buoyancy force with the given parameters. */
-  ParticleBuoyancy(real maxDepth, real volume, real waterHeight,
-                   real liquidDensity = 1000.0f);
+  ParticleBuoyancy(real maxDepth, real volume, real waterHeight, real liquidDensity = 1000.0f);
 
   /** Applies the buoyancy force to the given particle. */
   void updateForce(Particle *particle, real duration) override;

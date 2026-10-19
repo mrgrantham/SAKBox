@@ -120,8 +120,7 @@ struct FireworkRule {
    * Set all the rule parameters in one go.
    */
   void setParameters(unsigned type, cyclone::real minAge, cyclone::real maxAge,
-                     const cyclone::Vector3 &minVelocity,
-                     const cyclone::Vector3 &maxVelocity,
+                     const cyclone::Vector3 &minVelocity, const cyclone::Vector3 &maxVelocity,
                      cyclone::real damping) {
     FireworkRule::type = type;
     FireworkRule::minAge = minAge;
@@ -232,8 +231,7 @@ public:
 // Method definitions
 FireworksDemo::FireworksDemo() : nextFirework(0) {
   // Make all shots unused
-  for (Firework *firework = fireworks; firework < fireworks + maxFireworks;
-       firework++) {
+  for (Firework *firework = fireworks; firework < fireworks + maxFireworks; firework++) {
     firework->type = 0;
   }
 
@@ -345,8 +343,7 @@ void FireworksDemo::create(unsigned type, const Firework *parent) {
   nextFirework = (nextFirework + 1) % maxFireworks;
 }
 
-void FireworksDemo::create(unsigned type, unsigned number,
-                           const Firework *parent) {
+void FireworksDemo::create(unsigned type, unsigned number, const Firework *parent) {
   for (unsigned i = 0; i < number; i++) {
     create(type, parent);
   }
@@ -358,8 +355,7 @@ void FireworksDemo::update() {
   if (duration <= 0.0f)
     return;
 
-  for (Firework *firework = fireworks; firework < fireworks + maxFireworks;
-       firework++) {
+  for (Firework *firework = fireworks; firework < fireworks + maxFireworks; firework++) {
     // Check if we need to process this firework.
     if (firework->type > 0) {
       // Does it need removing?
@@ -395,8 +391,7 @@ void FireworksDemo::display() {
 
   // Render each firework in turn
   glBegin(GL_QUADS);
-  for (Firework *firework = fireworks; firework < fireworks + maxFireworks;
-       firework++) {
+  for (Firework *firework = fireworks; firework < fireworks + maxFireworks; firework++) {
     // Check if we need to process this firework.
     if (firework->type > 0) {
       switch (firework->type) {

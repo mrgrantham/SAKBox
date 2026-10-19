@@ -55,8 +55,7 @@ public:
    * virtual) in the parent class, but is replicated here for
    * documentation purposes.
    */
-  unsigned addContact(ParticleContact *contact,
-                      unsigned limit) const override = 0;
+  unsigned addContact(ParticleContact *contact, unsigned limit) const override = 0;
 };
 
 /**
@@ -137,8 +136,7 @@ public:
    * virtual) in the parent class, but is replicated here for
    * documentation purposes.
    */
-  unsigned addContact(ParticleContact *contact,
-                      unsigned limit) const override = 0;
+  unsigned addContact(ParticleContact *contact, unsigned limit) const override = 0;
 };
 
 /**

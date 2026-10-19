@@ -34,8 +34,8 @@ unsigned ParticleWorld::generateContacts() {
   unsigned limit = maxContacts;
   ParticleContact *nextContact = contacts;
 
-  for (ContactGenerators::iterator g = contactGenerators.begin();
-       g != contactGenerators.end(); g++) {
+  for (ContactGenerators::iterator g = contactGenerators.begin(); g != contactGenerators.end();
+       g++) {
     unsigned used = (*g)->addContact(nextContact, limit);
     limit -= used;
     nextContact += used;
@@ -87,11 +87,10 @@ void GroundContacts::init(cyclone::ParticleWorld::Particles *particles) {
   GroundContacts::particles = particles;
 }
 
-unsigned GroundContacts::addContact(cyclone::ParticleContact *contact,
-                                    unsigned limit) const {
+unsigned GroundContacts::addContact(cyclone::ParticleContact *contact, unsigned limit) const {
   unsigned count = 0;
-  for (cyclone::ParticleWorld::Particles::iterator p = particles->begin();
-       p != particles->end(); p++) {
+  for (cyclone::ParticleWorld::Particles::iterator p = particles->begin(); p != particles->end();
+       p++) {
     cyclone::real y = (*p)->getPosition().y;
     if (y < 0.0f) {
       contact->contactNormal = cyclone::Vector3::UP;

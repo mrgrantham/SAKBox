@@ -161,8 +161,7 @@ public:
    * @param duration The duration of the previous integration step.
    * This is used to compensate for forces applied.
    */
-  void resolveContacts(ParticleContact *contactArray, unsigned numContacts,
-                       real duration);
+  void resolveContacts(ParticleContact *contactArray, unsigned numContacts, real duration);
 };
 
 /**
@@ -179,8 +178,7 @@ public:
    * to. The method returns the number of contacts that have
    * been written.
    */
-  virtual unsigned addContact(ParticleContact *contact,
-                              unsigned limit) const = 0;
+  virtual unsigned addContact(ParticleContact *contact, unsigned limit) const = 0;
 };
 
 } // namespace cyclone

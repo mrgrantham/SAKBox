@@ -78,8 +78,8 @@ void Application::renderOverlay() {
   const char *description = getDescription();
   if (!description)
     return;
-  std::string text = showOverlay ? std::string(description) + "\n\nH: hide"
-                                 : std::string("H: what is this demo?");
+  std::string text =
+      showOverlay ? std::string(description) + "\n\nH: hide" : std::string("H: what is this demo?");
 
   // The panel's size in points, from stb_easy_font's measurements, with a
   // margin; it sits 8 points in from the top-left corner.
@@ -143,8 +143,8 @@ void Application::renderText(float x, float y, const char *text) {
   // down, so flip it, and scale points to pixels.
   // stb_easy_font needs about 270 bytes of vertices per character
   std::vector<char> quads(std::strlen(text) * 300 + 64);
-  int count = stb_easy_font_print(0, 0, const_cast<char *>(text), nullptr,
-                                  quads.data(), (int)quads.size());
+  int count =
+      stb_easy_font_print(0, 0, const_cast<char *>(text), nullptr, quads.data(), (int)quads.size());
   glTranslatef(x * pixelScale, (y + 8.0f) * pixelScale, 0);
   glScalef(pixelScale, -pixelScale, 1);
   glEnableClientState(GL_VERTEX_ARRAY);
@@ -172,9 +172,7 @@ MassAggregateApplication::MassAggregateApplication(unsigned int particleCount)
   world.getContactGenerators().push_back(&groundContactGenerator);
 }
 
-MassAggregateApplication::~MassAggregateApplication() {
-  delete[] particleArray;
-}
+MassAggregateApplication::~MassAggregateApplication() { delete[] particleArray; }
 
 void MassAggregateApplication::initGraphics() {
   // Call the superclass
@@ -190,8 +188,8 @@ void MassAggregateApplication::display() {
   glColor3f(0, 0, 0);
 
   cyclone::ParticleWorld::Particles &particles = world.getParticles();
-  for (cyclone::ParticleWorld::Particles::iterator p = particles.begin();
-       p != particles.end(); p++) {
+  for (cyclone::ParticleWorld::Particles::iterator p = particles.begin(); p != particles.end();
+       p++) {
     cyclone::Particle *particle = *p;
     const cyclone::Vector3 &pos = particle->getPosition();
     glPushMatrix();
@@ -219,8 +217,7 @@ void MassAggregateApplication::update() {
 RigidBodyApplication::RigidBodyApplication()
     : resolver(maxContacts * 8), theta(0.0f), phi(15.0f),
 
-      renderDebugInfo(false), pauseSimulation(true),
-      autoPauseSimulation(false) {
+      renderDebugInfo(false), pauseSimulation(true), autoPauseSimulation(false) {
   cData.contactArray = contacts;
 }
 

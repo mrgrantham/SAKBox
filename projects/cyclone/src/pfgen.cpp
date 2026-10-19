@@ -21,8 +21,7 @@ void ParticleForceRegistry::updateForces(real duration) {
   }
 }
 
-void ParticleForceRegistry::add(Particle *particle,
-                                ParticleForceGenerator *fg) {
+void ParticleForceRegistry::add(Particle *particle, ParticleForceGenerator *fg) {
   ParticleForceRegistry::ParticleForceRegistration registration;
   registration.particle = particle;
   registration.fg = fg;
@@ -76,10 +75,8 @@ void ParticleSpring::updateForce(Particle *particle, real duration) {
   particle->addForce(force);
 }
 
-ParticleBuoyancy::ParticleBuoyancy(real maxDepth, real volume, real waterHeight,
-                                   real liquidDensity)
-    : maxDepth(maxDepth), volume(volume), waterHeight(waterHeight),
-      liquidDensity(liquidDensity) {}
+ParticleBuoyancy::ParticleBuoyancy(real maxDepth, real volume, real waterHeight, real liquidDensity)
+    : maxDepth(maxDepth), volume(volume), waterHeight(waterHeight), liquidDensity(liquidDensity) {}
 
 void ParticleBuoyancy::updateForce(Particle *particle, real duration) {
   // Calculate the submersion depth
@@ -100,8 +97,7 @@ void ParticleBuoyancy::updateForce(Particle *particle, real duration) {
   // Otherwise we are partly submerged
   // SAKBox: (depth - maxDepth - waterHeight) was negative throughout, so a
   // partly submerged particle was pushed down.
-  force.y = liquidDensity * volume * (waterHeight + maxDepth - depth) /
-            (2 * maxDepth);
+  force.y = liquidDensity * volume * (waterHeight + maxDepth - depth) / (2 * maxDepth);
   particle->addForce(force);
 }
 
@@ -147,12 +143,10 @@ void ParticleFakeSpring::updateForce(Particle *particle, real duration) {
   real gamma = 0.5f * real_sqrt(4 * springConstant - damping * damping);
   if (gamma == 0.0f)
     return;
-  Vector3 c = position * (damping / (2.0f * gamma)) +
-              particle->getVelocity() * (1.0f / gamma);
+  Vector3 c = position * (damping / (2.0f * gamma)) + particle->getVelocity() * (1.0f / gamma);
 
   // Calculate the target position
-  Vector3 target =
-      position * real_cos(gamma * duration) + c * real_sin(gamma * duration);
+  Vector3 target = position * real_cos(gamma * duration) + c * real_sin(gamma * duration);
   target *= real_exp(-0.5f * duration * damping);
 
   // Calculate the resulting acceleration and therefore the force
@@ -163,12 +157,10 @@ void ParticleFakeSpring::updateForce(Particle *particle, real duration) {
 
 ParticleAnchoredSpring::ParticleAnchoredSpring() {}
 
-ParticleAnchoredSpring::ParticleAnchoredSpring(Vector3 *anchor, real sc,
-                                               real rl)
+ParticleAnchoredSpring::ParticleAnchoredSpring(Vector3 *anchor, real sc, real rl)
     : anchor(anchor), springConstant(sc), restLength(rl) {}
 
-void ParticleAnchoredSpring::init(Vector3 *anchor, real springConstant,
-                                  real restLength) {
+void ParticleAnchoredSpring::init(Vector3 *anchor, real springConstant, real restLength) {
   ParticleAnchoredSpring::anchor = anchor;
   ParticleAnchoredSpring::springConstant = springConstant;
   ParticleAnchoredSpring::restLength = restLength;

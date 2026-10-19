@@ -24,8 +24,7 @@ class EventTimer {
   // full duration elapsed.
   template <typename Duration> bool sleepUnlessStopped(Duration duration) {
     std::unique_lock<std::mutex> lk(mutex_);
-    return !stop_condition_variable_.wait_for(
-        lk, duration, [this] { return should_stop_.load(); });
+    return !stop_condition_variable_.wait_for(lk, duration, [this] { return should_stop_.load(); });
   }
 
   template <typename Body> void startThread(Body body) {
@@ -46,8 +45,7 @@ public:
   ~EventTimer() { stop(); }
 
   template <typename Event, typename Duration>
-  void startRepeatingEvent(const Event &event,
-                           Duration interval_between_events) {
+  void startRepeatingEvent(const Event &event, Duration interval_between_events) {
     startThread([=, this] {
       while (sleepUnlessStopped(interval_between_events)) {
         event();
@@ -55,8 +53,7 @@ public:
     });
   }
 
-  template <typename Event>
-  void startTimedEvent(const Event &event, int delay_until_event) {
+  template <typename Event> void startTimedEvent(const Event &event, int delay_until_event) {
     startThread([=, this] {
       if (sleepUnlessStopped(std::chrono::milliseconds(delay_until_event))) {
         event();

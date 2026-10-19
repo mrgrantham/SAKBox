@@ -41,8 +41,7 @@ private:
       auto message = std::make_unique<char[]>(status_length);
       glGetShaderInfoLog(id, status_length, &status_length, message.get());
       spdlog::error("FAILED TO COMPILE {} SHADER WITH ERROR:\n{}",
-                    (type == GL_VERTEX_SHADER) ? "VERTEX" : "FRAGMENT",
-                    message.get());
+                    (type == GL_VERTEX_SHADER) ? "VERTEX" : "FRAGMENT", message.get());
       glDeleteShader(id);
       return 0;
     } else {
@@ -52,17 +51,15 @@ private:
   }
 
 public:
-  void generate(const std::string &&vertexShaderFile,
-                const std::string &&fragmentShaderFile) {
+  void generate(const std::string &&vertexShaderFile, const std::string &&fragmentShaderFile) {
     spdlog::info("vertexShaderFile: {}", vertexShaderFile);
     spdlog::info("fragmentShaderFile: {}", fragmentShaderFile);
 
     std::filesystem::path vertexShaderFilePath(vertexShaderFile);
     spdlog::info("Vertex Shader Path: {}", vertexShaderFilePath.string());
     std::ifstream vertexShaderInputStream(vertexShaderFilePath);
-    const std::string vertexShaderString(
-        (std::istreambuf_iterator<char>(vertexShaderInputStream)),
-        std::istreambuf_iterator<char>());
+    const std::string vertexShaderString((std::istreambuf_iterator<char>(vertexShaderInputStream)),
+                                         std::istreambuf_iterator<char>());
     spdlog::info("Vertex Shader: \n{}", vertexShaderString);
 
     std::filesystem::path fragmentShaderFilePath(fragmentShaderFile);
@@ -75,10 +72,9 @@ public:
     spdlog::info("Fragment Shader: \n{}", fragmentShaderString);
 
     programID_ = glCreateProgram();
-    unsigned int v_shader =
-        compileShader(GL_VERTEX_SHADER, vertexShaderFile, vertexShaderString);
-    unsigned int f_shader = compileShader(
-        GL_FRAGMENT_SHADER, fragmentShaderFile, fragmentShaderString);
+    unsigned int v_shader = compileShader(GL_VERTEX_SHADER, vertexShaderFile, vertexShaderString);
+    unsigned int f_shader =
+        compileShader(GL_FRAGMENT_SHADER, fragmentShaderFile, fragmentShaderString);
     glAttachShader(programID_, v_shader);
     glAttachShader(programID_, f_shader);
     glLinkProgram(programID_);
@@ -88,8 +84,7 @@ public:
       int status_length = 0;
       glGetProgramiv(programID_, GL_INFO_LOG_LENGTH, &status_length);
       auto message = std::make_unique<char[]>(status_length);
-      glGetProgramInfoLog(programID_, status_length, &status_length,
-                          message.get());
+      glGetProgramInfoLog(programID_, status_length, &status_length, message.get());
       spdlog::error("Error in glLinkProgram: {}", message.get());
     }
     glValidateProgram(programID_);

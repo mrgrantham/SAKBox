@@ -28,8 +28,8 @@ void ForceRegistry::add(RigidBody *body, ForceGenerator *fg) {
   registrations.push_back(registration);
 }
 
-Buoyancy::Buoyancy(const Vector3 &cOfB, real maxDepth, real volume,
-                   real waterHeight, real liquidDensity /* = 1000.0f */) {
+Buoyancy::Buoyancy(const Vector3 &cOfB, real maxDepth, real volume, real waterHeight,
+                   real liquidDensity /* = 1000.0f */) {
   centreOfBuoyancy = cOfB;
   Buoyancy::liquidDensity = liquidDensity;
   Buoyancy::maxDepth = maxDepth;
@@ -58,8 +58,7 @@ void Buoyancy::updateForce(RigidBody *body, real duration) {
   // SAKBox: the submerged fraction runs from 0 at the top of the band to 1
   // at the bottom; this was (depth - maxDepth - waterHeight) / 2 * maxDepth,
   // negative throughout (a partly submerged body was pushed down).
-  force.y = liquidDensity * volume * (waterHeight + maxDepth - depth) /
-            (2 * maxDepth);
+  force.y = liquidDensity * volume * (waterHeight + maxDepth - depth) / (2 * maxDepth);
   body->addForceAtBodyPoint(force, centreOfBuoyancy);
 }
 
@@ -74,11 +73,9 @@ void Gravity::updateForce(RigidBody *body, real duration) {
   body->addForce(gravity * body->getMass());
 }
 
-Spring::Spring(const Vector3 &localConnectionPt, RigidBody *other,
-               const Vector3 &otherConnectionPt, real springConstant,
-               real restLength)
-    : connectionPoint(localConnectionPt),
-      otherConnectionPoint(otherConnectionPt), other(other),
+Spring::Spring(const Vector3 &localConnectionPt, RigidBody *other, const Vector3 &otherConnectionPt,
+               real springConstant, real restLength)
+    : connectionPoint(localConnectionPt), otherConnectionPoint(otherConnectionPt), other(other),
       springConstant(springConstant), restLength(restLength) {}
 
 void Spring::updateForce(RigidBody *body, real duration) {
@@ -100,8 +97,7 @@ void Spring::updateForce(RigidBody *body, real duration) {
   body->addForceAtPoint(force, lws);
 }
 
-Aero::Aero(const Matrix3 &tensor, const Vector3 &position,
-           const Vector3 *windspeed) {
+Aero::Aero(const Matrix3 &tensor, const Vector3 &position, const Vector3 *windspeed) {
   Aero::tensor = tensor;
   Aero::position = position;
   Aero::windspeed = windspeed;
@@ -111,8 +107,7 @@ void Aero::updateForce(RigidBody *body, real duration) {
   Aero::updateForceFromTensor(body, duration, tensor);
 }
 
-void Aero::updateForceFromTensor(RigidBody *body, real duration,
-                                 const Matrix3 &tensor) {
+void Aero::updateForceFromTensor(RigidBody *body, real duration, const Matrix3 &tensor) {
   // Calculate total velocity (windspeed and body's velocity).
   Vector3 velocity = body->getVelocity();
   velocity += *windspeed;
@@ -128,9 +123,8 @@ void Aero::updateForceFromTensor(RigidBody *body, real duration,
   body->addForceAtBodyPoint(force, position);
 }
 
-AeroControl::AeroControl(const Matrix3 &base, const Matrix3 &min,
-                         const Matrix3 &max, const Vector3 &position,
-                         const Vector3 *windspeed)
+AeroControl::AeroControl(const Matrix3 &base, const Matrix3 &min, const Matrix3 &max,
+                         const Vector3 &position, const Vector3 *windspeed)
     : Aero(base, position, windspeed) {
   AeroControl::minTensor = min;
   AeroControl::maxTensor = max;
