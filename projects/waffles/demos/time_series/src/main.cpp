@@ -21,23 +21,30 @@
 #include <WClasses/GApp.h>
 #include <WClasses/GError.h>
 #include <WClasses/GMatrix.h>
-#include <WClasses/GFourier.h>
 #include <WClasses/GNeuralNet.h>
-#include <WClasses/GActivation.h>
-#include <WClasses/GPlot.h>
+#include <WClasses/GOptimizer.h>
+#include <WClasses/GRand.h>
 #include <WClasses/GVec.h>
-#include <WClasses/GHillClimber.h>
+#include "series_networks/LinearWeights.h"
+#include "series_networks/SeriesPlot.h"
 #include <math.h>
-#include <fstream>
-#ifdef WINDOWS
-#include <direct.h>
-#endif
+#include <cstdlib>
+#include <cstring>
+#include <string>
+
+// SAKBox: ported from the 2015 neural network API (GLayerClassic,
+// GLayerMixed, GActivation*), which upstream removed without updating this
+// demo, to the current block API, as fourier_net was: the mixed hidden layer
+// is one GBlockLinear holding all its units' weights, followed by sine,
+// softplus and identity blocks side by side. Progress is drawn to
+// progress.svg where it is run (it used to open Firefox on it).
 
 using namespace GClasses;
 using std::cerr;
 using std::cout;
 using std::string;
 
+#define SINE_NODES 64
 #define SOFTPLUS_NODES 2
 #define IDENTITY_NODES 4
 #define SOFTPLUS_SHIFT 5
@@ -46,48 +53,27 @@ using std::string;
 #define REGULARIZATION_TERM 0.01
 #define LEARNING_RATE 1e-3
 
-void plot_it(const char* filename, GNeuralNet& nn, GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+namespace
 {
-	GSVG svg(1000, 500);
-	double xmin = trainFeat[0][0];
-	double xmax = testFeat[testFeat.rows() - 1][0];
-	svg.newChart(xmin, std::min(trainLab.columnMin(0), testLab.columnMin(0)), xmax, std::max(trainLab.columnMax(0), testLab.columnMax(0)));
-	svg.horizMarks(20);
-	svg.vertMarks(20);
-	double prevx = xmin;
-	double prevy = 0.0;
-	double step = (xmax - xmin) / 500.0;
-	GVec x(1);
-	GVec y(1);
-	for(x[0] = prevx; x[0] < xmax; x[0] += step)
-	{
-		nn.predict(x, y);
-		if(prevx != x[0])
-			svg.line(prevx, prevy, x[0], y[0], 0.3);
-		prevx = x[0];
-		prevy = y[0];
-	}
-	for(size_t i = 0; i < trainLab.rows(); i++)
-		svg.dot(trainFeat[i][0], trainLab[i][0], 0.4, 0xff000080);
-	for(size_t i = 0; i < testLab.rows(); i++)
-		svg.dot(testFeat[i][0], testLab[i][0], 0.4, 0xff800000);
 
-	std::ofstream ofs;
-	ofs.open(filename);
-	svg.print(ofs);
+// Where data is read from (under bazel run) and the picture is written to
+string g_dataDir = "projects/waffles/demos/time_series/bin";
+string g_outDir = ".";
+
+double rmse(GNeuralNet& nn, const GMatrix& features, const GMatrix& labels)
+{
+	return sqrt(nn.measureLoss(features, labels) / labels.rows());
 }
 
+} // namespace
 
-void doit()
+void doit(size_t epochs)
 {
 	// Load the data
 	GMatrix trainLab;
 	GMatrix testLab;
-	if(chdir("../bin") != 0)
-	{
-	}
-	trainLab.loadArff("train.arff");
-	testLab.loadArff("test.arff");
+	trainLab.loadArff((g_dataDir + "/train.arff").c_str());
+	testLab.loadArff((g_dataDir + "/test.arff").c_str());
 	double dataMin = trainLab.columnMin(0);
 	double dataMax = trainLab.columnMax(0);
 	trainLab.normalizeColumn(0, dataMin, dataMax, -5.0, 5.0);
@@ -99,60 +85,52 @@ void doit()
 	for(size_t i = 0; i < testLab.rows(); i++)
 		testFeat[i][0] = (double)(i + trainLab.rows()) / trainLab.rows() - 0.5;
 
-	// Make a neural network
+	// Make a neural network: a hidden layer of sine, softplus and identity
+	// units, and an identity output
+	const size_t sn = SINE_NODES, sp = SOFTPLUS_NODES, id = IDENTITY_NODES;
 	GNeuralNet nn;
-	GUniformRelation relOne(1);
-	nn.beginIncrementalLearning(relOne, relOne);
+	nn.add(new GBlockLinear(1, sn + sp + id));
+	nn.add(new GBlockSine(sn));
+	nn.concat(new GBlockSoftPlus(sp), sn);
+	nn.concat(new GBlockIdentity(id), sn + sp);
+	nn.add(new GBlockLinear(sn + sp + id, trainLab.cols()));
+	GRand rand(0);
+	GSGDOptimizer optimizer(nn, rand); // allocates nn's weights
+	optimizer.setLearningRate(LEARNING_RATE);
+	LinearWeights hidden{nn.layer(0).block(0)};
+	LinearWeights output{nn.layer(2).block(0)};
 
 	// Initialize the weights of the sine units to match the frequencies used by the Fourier transform.
-	GLayerClassic* pSine2 = new GLayerClassic(1, 64, new GActivationSin());
-	GMatrix& wSin = pSine2->weights();
-	GVec& bSin = pSine2->bias();
-	for(size_t i = 0; i < pSine2->outputs() / 2; i++)
+	for(size_t i = 0; i < sn / 2; i++)
 	{
-		wSin[0][2 * i] = 2.0 * M_PI * (i + 1);
-		bSin[2 * i] = 0.5 * M_PI;
-		wSin[0][2 * i + 1] = 2.0 * M_PI * (i + 1);
-		bSin[2 * i + 1] = M_PI;
+		hidden.w(0, 2 * i) = 2.0 * M_PI * (i + 1);
+		hidden.bias(2 * i) = 0.5 * M_PI;
+		hidden.w(0, 2 * i + 1) = 2.0 * M_PI * (i + 1);
+		hidden.bias(2 * i + 1) = M_PI;
 	}
-
-	// Make the hidden layer
-	GLayerMixed* pMix2 = new GLayerMixed();
-	pSine2->resize(1, pSine2->outputs(), &nn.rand(), PERTURBATION);
-	pMix2->addComponent(pSine2);
-	GLayerClassic* pSoftPlus2 = new GLayerClassic(1, SOFTPLUS_NODES, new GActivationSoftPlus());
-	pMix2->addComponent(pSoftPlus2);
-	GLayerClassic* pIdentity2 = new GLayerClassic(1, IDENTITY_NODES, new GActivationIdentity());
-	pMix2->addComponent(pIdentity2);
-	nn.addLayer(pMix2);
-
-	// Make the output layer
-	GLayerClassic* pIdentity3 = new GLayerClassic(FLEXIBLE_SIZE, trainLab.cols(), new GActivationIdentity());
-	pIdentity3->resize(pMix2->outputs(), pIdentity3->outputs(), &nn.rand(), PERTURBATION);
-	nn.addLayer(pIdentity3);
 
 	// Initialize all the non-periodic nodes to approximate the identity function, then perturb a little bit
-	pSoftPlus2->setWeightsToIdentity();
-	for(size_t i = 0; i < SOFTPLUS_NODES; i++)
+	hidden.setIdentity(sn, sp);
+	for(size_t i = 0; i < sp; i++)
 	{
-		pSoftPlus2->bias()[i] += SOFTPLUS_SHIFT;
-		pIdentity3->renormalizeInput(pSine2->outputs() + i, 0.0, 1.0, SOFTPLUS_SHIFT, SOFTPLUS_SHIFT + 1.0);
+		hidden.bias(sn + i) += SOFTPLUS_SHIFT;
+		output.renormalizeInput(sn + i, 0.0, 1.0, SOFTPLUS_SHIFT, SOFTPLUS_SHIFT + 1.0);
 	}
-	pIdentity2->setWeightsToIdentity();
-	pSoftPlus2->perturbWeights(nn.rand(), PERTURBATION);
-	pIdentity2->perturbWeights(nn.rand(), PERTURBATION);
+	hidden.setIdentity(sn + sp, id);
+	hidden.perturb(rand, PERTURBATION, sn, sp);
+	hidden.perturb(rand, PERTURBATION, sn + sp, id);
 
 	// Randomly initialize the weights on the output layer
-	pIdentity3->weights().setAll(0.0);
-	pIdentity3->perturbWeights(nn.rand(), PERTURBATION);
+	for(size_t i = 0; i < output.block.weights.size(); i++)
+		output.block.weights[i] = 0.0;
+	output.perturb(rand, PERTURBATION, 0, output.outputs());
 
-	// Open Firefox to view the progress
-	GApp::systemCall("firefox ./view.html#progress.svg", false, true);
+	const string progress = g_outDir + "/progress.svg";
+	cout << "Progress is drawn to " << progress << " (open it in a browser and reload).\n";
 
 	// Do some training
-	GRandomIndexIterator ii(trainLab.rows(), nn.rand());
-	nn.setLearningRate(LEARNING_RATE);
-	for(size_t epoch = 0; epoch < TRAINING_EPOCHS; epoch++)
+	GRandomIndexIterator ii(trainLab.rows(), rand);
+	for(size_t epoch = 0; epoch < epochs; epoch++)
 	{
 		// Visit each sample in random order
 		ii.reset();
@@ -160,24 +138,24 @@ void doit()
 		while(ii.next(i))
 		{
 			// Regularize
-			pIdentity3->scaleWeights(1.0 - nn.learningRate() * REGULARIZATION_TERM, true);
-			pIdentity3->diminishWeights(nn.learningRate() * REGULARIZATION_TERM, true);
+			output.regularize(LEARNING_RATE * REGULARIZATION_TERM, LEARNING_RATE * REGULARIZATION_TERM, 0, output.outputs());
 
 			// Train
-			nn.trainIncremental(trainFeat[i], trainLab[i]); // One iteration of stochastic gradient descent
+			optimizer.optimizeIncremental(trainFeat[i], trainLab[i]); // One iteration of stochastic gradient descent
 		}
 
 		// Report progress
-		double rmse = sqrt(nn.sumSquaredError(trainFeat, trainLab) / trainLab.rows());
-		if(epoch % (TRAINING_EPOCHS / 100) == 0)
+		if(epoch % std::max<size_t>(epochs / 100, 1) == 0 || epoch + 1 == epochs)
 		{
-			double val = sqrt(nn.sumSquaredError(testFeat, testLab) / testLab.rows());
-			cout << "prog=" << to_str((double)epoch * 100.0 / TRAINING_EPOCHS) << "%	rmse=" << to_str(rmse) << "	val=" << to_str(val) << "\n";
-			plot_it("progress.svg", nn, trainFeat, trainLab, testFeat, testLab);
+			cout << "prog=" << to_str((double)(epoch + 1) * 100.0 / epochs) << "%	rmse=" << to_str(rmse(nn, trainFeat, trainLab)) << "	val=" << to_str(rmse(nn, testFeat, testLab)) << "\n";
+			plotSeries(progress, nn, trainFeat, trainLab, testFeat, testLab);
 		}
 	}
 }
 
+// Usage: time_series [--epochs N] [--data DIR]
+// Trains for 50,000 epochs unless --epochs is given. Reads train.arff and
+// test.arff from DIR, and draws progress.svg where it is run.
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
@@ -186,7 +164,19 @@ int main(int argc, char* argv[])
 	int nRet = 0;
 	try
 	{
-		doit();
+		size_t epochs = TRAINING_EPOCHS;
+		for(int i = 1; i < argc; i++)
+		{
+			if(strcmp(argv[i], "--epochs") == 0 && i + 1 < argc)
+				epochs = (size_t)strtoul(argv[++i], nullptr, 10);
+			else if(strcmp(argv[i], "--data") == 0 && i + 1 < argc)
+				g_dataDir = argv[++i];
+			else
+				throw Ex("Usage: time_series [--epochs N] [--data DIR]");
+		}
+		if(const char* dir = getenv("BUILD_WORKING_DIRECTORY"))
+			g_outDir = dir;
+		doit(epochs);
 	}
 	catch(const std::exception& e)
 	{

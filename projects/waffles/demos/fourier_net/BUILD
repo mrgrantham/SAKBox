@@ -10,6 +10,8 @@ cc_binary(
     linkopts = ["-pthread"],
     deps = [
         "//projects/waffles:WClasses",
+        "//projects/waffles/demos/series_networks:LinearWeights",
+        "//projects/waffles/demos/series_networks:SeriesPlot",
         "@fmt",
     ],
 )

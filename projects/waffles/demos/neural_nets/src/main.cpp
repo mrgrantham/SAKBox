@@ -24,7 +24,6 @@
 #include <WClasses/GError.h>
 #include <WClasses/GDecisionTree.h>
 #include <WClasses/GNeuralNet.h>
-#include <WClasses/GActivation.h>
 #include <WClasses/GKNN.h>
 #include <WClasses/GNaiveBayes.h>
 #include <WClasses/GEnsemble.h>
@@ -35,142 +34,108 @@ using std::cout;
 using std::vector;
 using std::endl;
 
-void do_fullyconnected(GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
+// SAKBox: ported from the old layer API (GLayerClassic and friends, removed
+// upstream) to blocks. A classic layer is a GBlockLinear followed by its
+// activation (tanh unless another was given), and layer sizes are explicit:
+// 784 pixels in, and 10 outputs, one per digit, which GAutoFilter makes of
+// the nominal label. GNeuralNetLearner::train uses its own SGD optimizer, so
+// the old learning rate (0.01) and momentum (0.1) became its defaults (0.05
+// and none). The R-Prop and dropout examples, already switched off below,
+// used training methods that no longer exist and are gone.
+const size_t kPixels = 28 * 28;
+const size_t kDigits = 10;
+
+void predictWith(GNeuralNetLearner* pNN, GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
 {
-	GNeuralNet* pNN = new GNeuralNet();
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 100));
-	pNN->addLayer(new GLayerClassic(100, 40));
-	pNN->addLayer(new GLayerClassic(40, FLEXIBLE_SIZE));
-	pNN->setLearningRate(0.01);
-	pNN->setMomentum(0.1);
 	GAutoFilter af(pNN);
 	af.train(features, labels);
 	af.predict(test_features, predicted_labels);
+}
+
+void do_fullyconnected(GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
+{
+	GNeuralNetLearner* pNN = new GNeuralNetLearner();
+	pNN->nn().add(new GBlockLinear(kPixels, 100), new GBlockTanh(100));
+	pNN->nn().add(new GBlockLinear(100, 40), new GBlockTanh(40));
+	pNN->nn().add(new GBlockLinear(40, kDigits), new GBlockTanh(kDigits));
+	predictWith(pNN, features, labels, test_features, predicted_labels);
 }
 
 void do_convolutional(GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
 {
-	GNeuralNet* pNN = new GNeuralNet();
-	pNN->addLayer(new GLayerConvolutional2D(28, 28, 1, 8, 4, new GActivationBentIdentity()));
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 80, new GActivationRectifiedLinear()));
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 40, new GActivationBentIdentity()));
-	pNN->setLearningRate(0.01);
-	pNN->setMomentum(0.1);
-	GAutoFilter af(pNN);
-	af.train(features, labels);
-	af.predict(test_features, predicted_labels);
+	// 8 filters of 5x5 (the old layer's were 4x4), each giving a 28x28 map
+	const size_t maps = 28 * 28 * 8;
+	GNeuralNetLearner* pNN = new GNeuralNetLearner();
+	pNN->nn().add(new GBlockConv({28, 28}, {5, 5, 8}, {28, 28, 8}), new GBlockBentIdentity(maps));
+	pNN->nn().add(new GBlockLinear(maps, 80), new GBlockRectifier(80));
+	pNN->nn().add(new GBlockLinear(80, kDigits), new GBlockBentIdentity(kDigits));
+	predictWith(pNN, features, labels, test_features, predicted_labels);
 }
 
 void do_autoencoder(GMatrix& features, GMatrix& labels, GVec& test_features, size_t& countMissedPixels)
 {
-	GNeuralNet* pNN = new GNeuralNet();
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 100));
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 40));
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 20));
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 40));
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 100));
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE));
+	const size_t sizes[] = {kPixels, 100, 40, 20, 40, 100, kPixels};
+	GNeuralNetLearner nn;
+	for(size_t i = 0; i + 1 < std::size(sizes); i++)
+		nn.nn().add(new GBlockLinear(sizes[i], sizes[i + 1]), new GBlockTanh(sizes[i + 1]));
 
-	pNN->setLearningRate(0.01);
-	pNN->setMomentum(0.1);
-	GAutoFilter af(pNN);
-	GRandomIndexIterator iter(features.rows(), pNN->rand());
+	// SAKBox: trained on pixels scaled to 0..1 (tanh can't output 255, so
+	// nearly every pixel used to count as missed)
+	GMatrix scaled(features);
+	scaled.multiply(1.0 / 255.0);
+	GUniformRelation pixels(kPixels);
+	nn.beginIncrementalLearning(pixels, pixels);
+	GNeuralNetOptimizer& optimizer = nn.optimizer();
+	GRandomIndexIterator iter(scaled.rows(), nn.rand());
 	size_t index;
-	pNN->beginIncrementalLearning(features.relation(), features.relation());
 	for(size_t epoch = 0; epoch < 600; epoch++)
 	{
 		iter.reset();
 		while(iter.next(index))
-		{
-			pNN->trainIncremental(features[index], features[index]);
-		}
+			optimizer.optimizeIncremental(scaled[index], scaled[index]);
 	}
 
+	GVec scaledTest;
+	scaledTest.copy(test_features);
+	scaledTest *= 1.0 / 255.0;
 	GVec predicted_feature(test_features.size());
-	pNN->predict(test_features, predicted_feature);
+	nn.predict(scaledTest, predicted_feature);
 
 	countMissedPixels = 0;
 	for(size_t i = 0; i < test_features.size(); i++)
 	{
-		if(!((test_features[i] - predicted_feature[i]) < 20 && (test_features[i] - predicted_feature[i]) > -20))
+		double miss = test_features[i] - predicted_feature[i] * 255.0;
+		if(!(miss < 20 && miss > -20))
 			countMissedPixels++;
 	}
 }
 
 void do_bendactivation(GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
 {
-	GNeuralNet* pNN = new GNeuralNet();
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 100, new GActivationBentIdentity()));
-	pNN->addLayer(new GLayerClassic(100, 40, new GActivationBentIdentity()));
-	pNN->addLayer(new GLayerClassic(40, FLEXIBLE_SIZE, new GActivationBentIdentity()));
-	pNN->setLearningRate(0.01);
-	pNN->setMomentum(0.1);
-	GAutoFilter af(pNN);
-	af.train(features, labels);
-	af.predict(test_features, predicted_labels);
-}
-
-void do_rprop(GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
-{
-	GNeuralNet* pNN = new GNeuralNet();
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 100));
-	pNN->addLayer(new GLayerClassic(100, 40));
-	pNN->addLayer(new GLayerClassic(40, FLEXIBLE_SIZE));
-	pNN->setLearningRate(0.01);
-	GAutoFilter af(pNN);
-
-	pNN->beginIncrementalLearning(features.relation(), labels.relation());
-	for(size_t epoch = 0; epoch < 100; epoch++)
-	{
-		pNN->trainIncrementalAdaptive(features, labels);
-	}
-
-	pNN->predict(test_features, predicted_labels);
-}
-
-void do_dropout(GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
-{
-	double dropOutRate = 0.2;
-	GNeuralNet* pNN = new GNeuralNet();
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 100));
-	pNN->addLayer(new GLayerClassic(100, 40));
-	pNN->addLayer(new GLayerClassic(40, FLEXIBLE_SIZE));
-	pNN->setLearningRate(0.01);
-	GAutoFilter af(pNN);
-
-	GRandomIndexIterator iter(features.rows(), pNN->rand());
-	size_t index;
-	pNN->beginIncrementalLearning(features.relation(), labels.relation());
-	for(size_t epoch = 0; epoch < 100; epoch++)
-	{
-		iter.reset();
-		while(iter.next(index))
-		{
-			pNN->trainIncrementalWithDropout(features[index], labels[index], dropOutRate);
-			pNN->scaleWeights(1.0 - dropOutRate, false, 1);
-		}
-	}
-
-	pNN->predict(test_features, predicted_labels);
+	GNeuralNetLearner* pNN = new GNeuralNetLearner();
+	pNN->nn().add(new GBlockLinear(kPixels, 100), new GBlockBentIdentity(100));
+	pNN->nn().add(new GBlockLinear(100, 40), new GBlockBentIdentity(40));
+	pNN->nn().add(new GBlockLinear(40, kDigits), new GBlockBentIdentity(kDigits));
+	predictWith(pNN, features, labels, test_features, predicted_labels);
 }
 
 void doit()
 {
 	GMatrix train;
-	train.loadArff("../mnist_train.arff");
+	train.loadArff("projects/waffles/demos/neural_nets/mnist_train.arff"); // SAKBox: where `bazel run` puts it
 	GDataColSplitter sTrain(train, 1);
 
 	GMatrix& features = sTrain.features();
 	GMatrix& labels = sTrain.labels();
 
 	GMatrix test;
-	test.loadArff("../mnist_test.arff");
+	test.loadArff("projects/waffles/demos/neural_nets/mnist_test.arff");
 
 	// Make a test vector
 	GVec test_features(784), predicted_feature(784);
 	GVec predicted_labels(1), correctLabel(1);
-	test_features.put(0, test[0], 0, test.cols() - 1);
-	correctLabel.put(0, test[0], test.cols() - 1, 1);
+	test_features.copy(0, test[0], 0, test.cols() - 1);
+	correctLabel.copy(0, test[0], test.cols() - 1, 1);
 
 	cout << "This demo trains and tests several different neural network architectures using an extremely small subset of the MNIST hand-written digits dataset. Each feature example is a grey-scale picture of a hand-written digit, like the number 4 etc." << endl;
 
@@ -191,16 +156,6 @@ void doit()
 	cout << "Waffles also supports convolution, which excels at visual tasks. This example is a very "
 	     << "simple convolutional network with one layer of convolutional neurons." << endl;
 	cout << "It predicted a: " << predicted_labels[0] << " where " << correctLabel[0] << " was correct." << endl;
-
-	// R-Prop
-	// 	do_rprop(features, labels, test_features, predicted_labels);
-	// 	cout << "You can also use other training methods instead of classic gradient descent, for example R-Prop." << endl;
-	// 	cout << "R-Prop predicted a: " << predicted_labels[0] << " where " << correctLabel[0] << " was correct." << endl;
-
-	// train with dropout
-	// 	do_dropout(features,labels, test_features, predicted_labels);
-	// 	cout << "Another training method is to train with drop out, which removes neurons during training. This should help the model to not over-fit the data." << endl;
-	// 	cout << "It predicted a: " << predicted_labels[0] << " where " << correctLabel[0] << " was correct." << endl;
 
 	size_t countMissedPixels = 0;
 	do_autoencoder(features, labels, test_features, countMissedPixels);

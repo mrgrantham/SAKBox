@@ -24,6 +24,8 @@
 #include <WClasses/GFourier.h>
 #include <WClasses/GNeuralNet.h>
 #include <WClasses/GOptimizer.h>
+#include "series_networks/LinearWeights.h"
+#include "series_networks/SeriesPlot.h"
 #include <WClasses/GPlot.h>
 #include <WClasses/GBits.h>
 #include <WClasses/GVec.h>
@@ -67,69 +69,6 @@ string g_dataDir = "projects/waffles/demos/fourier_net/data"; // under bazel run
 string g_outDir = ".";
 
 string outPath(const char* name) { return g_outDir + "/" + name; }
-
-// One fully connected linear block's weights: biases first, then one row of
-// output weights per input (GBlockLinear's layout).
-struct Linear
-{
-	GBlock& block;
-	double& bias(size_t out) { return block.weights[out]; }
-	double& w(size_t in, size_t out) { return block.weights[block.outputs() * (1 + in) + out]; }
-	size_t inputs() const { return block.inputs(); }
-	size_t outputs() const { return block.outputs(); }
-
-	// The old GLayerClassic::setWeightsToIdentity, for outputs [start, start + count)
-	void setIdentity(size_t start, size_t count)
-	{
-		for(size_t o = start; o < start + count; o++)
-		{
-			bias(o) = 0.0;
-			for(size_t i = 0; i < inputs(); i++)
-				w(i, o) = (i == o - start ? 1.0 : 0.0);
-		}
-	}
-
-	// GLayerClassic::perturbWeights, for outputs [start, start + count)
-	void perturb(GRand& rand, double deviation, size_t start, size_t count)
-	{
-		for(size_t o = start; o < start + count; o++)
-		{
-			bias(o) += deviation * rand.normal();
-			for(size_t i = 0; i < inputs(); i++)
-				w(i, o) += deviation * rand.normal();
-		}
-	}
-
-	// GLayerClassic::scaleWeights then diminishWeights (L2 then L1, biases
-	// included), for outputs [start, start + count)
-	void regularize(double l2, double l1, size_t start, size_t count)
-	{
-		auto shrink = [l2, l1](double& x)
-		{
-			x *= 1.0 - l2;
-			x = x > l1 ? x - l1 : (x < -l1 ? x + l1 : 0.0);
-		};
-		for(size_t o = start; o < start + count; o++)
-		{
-			shrink(bias(o));
-			for(size_t i = 0; i < inputs(); i++)
-				shrink(w(i, o));
-		}
-	}
-
-	// GLayerClassic::renormalizeInput: input `in` used to range over
-	// [oldMin, oldMax] and now ranges over [newMin, newMax]
-	void renormalizeInput(size_t in, double oldMin, double oldMax, double newMin, double newMax)
-	{
-		double f = (oldMax - oldMin) / (newMax - newMin);
-		double g = oldMin - newMin * f;
-		for(size_t o = 0; o < outputs(); o++)
-		{
-			bias(o) += w(in, o) * g;
-			w(in, o) *= f;
-		}
-	}
-};
 
 // The deviation GLayerClassic::resize gave new weights: `deviation` scaled by
 // the RMS of the weights kept, and shrunk when the new area is the larger.
@@ -199,36 +138,6 @@ double rmse(GNeuralNet& nn, const GMatrix& features, const GMatrix& labels)
 	return sqrt(nn.measureLoss(features, labels) / labels.rows());
 }
 
-void plot_it(const char* filename, GNeuralNet& nn, GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
-{
-	GSVG svg(1000, 500);
-	double xmin = trainFeat[0][0];
-	double xmax = testFeat[testFeat.rows() - 1][0];
-	svg.newChart(xmin, std::min(trainLab.columnMin(0), testLab.columnMin(0)), xmax, std::max(trainLab.columnMax(0), testLab.columnMax(0)));
-	svg.horizMarks(20);
-	svg.vertMarks(20);
-	double prevx = xmin;
-	double prevy = 0.0;
-	double step = (xmax - xmin) / 500.0;
-	GVec x(1);
-	for(x[0] = prevx; x[0] < xmax; x[0] += step)
-	{
-		double y = nn.forwardProp(x)[0];
-		if(prevx != x[0])
-			svg.line(prevx, prevy, x[0], y, 0.3);
-		prevx = x[0];
-		prevy = y;
-	}
-	for(size_t i = 0; i < trainLab.rows(); i++)
-		svg.dot(trainFeat[i][0], trainLab[i][0], 0.4, 0xff000080);
-	for(size_t i = 0; i < testLab.rows(); i++)
-		svg.dot(testFeat[i][0], testLab[i][0], 0.4, 0xff800000);
-
-	std::ofstream ofs;
-	ofs.open(outPath(filename));
-	svg.print(ofs);
-}
-
 void doit(size_t maxEpochs)
 {
 	cout << "\n\nThis demo is described at http://arxiv.org/abs/1405.2262\n\n";
@@ -273,9 +182,9 @@ void doit(size_t maxEpochs)
 	nn.add(new GBlockLinear(n + sp + id, 1));
 	GRand rand(0);
 	GSGDOptimizer optimizer(nn, rand); // allocates nn's weights
-	Linear layer1{nn.layer(0).block(0)};
-	Linear layer2{nn.layer(2).block(0)};
-	Linear layer3{nn.layer(4).block(0)};
+	LinearWeights layer1{nn.layer(0).block(0)};
+	LinearWeights layer2{nn.layer(2).block(0)};
+	LinearWeights layer3{nn.layer(4).block(0)};
 
 	// Use the Fourier transform to initialize the sine units and the output.
 	// First as a plain Fourier network, x -> sine units -> output, to check
@@ -288,8 +197,8 @@ void doit(size_t maxEpochs)
 		plain.add(new GBlockLinear(n, 1));
 		GRand plainRand(0);
 		plain.init(plainRand);
-		Linear a{plain.layer(0).block(0)};
-		Linear b{plain.layer(2).block(0)};
+		LinearWeights a{plain.layer(0).block(0)};
+		LinearWeights b{plain.layer(2).block(0)};
 		for(size_t j = 0; j < n; j++)
 		{
 			a.w(0, j) = fit.freq[j];
@@ -297,7 +206,7 @@ void doit(size_t maxEpochs)
 			b.w(j, 0) = fit.outWeight[j];
 		}
 		b.bias(0) = fit.outBias;
-		plot_it("fourier.svg", plain, trainFeat, trainLab, testFeat, testLab);
+		plotSeries(outPath("fourier.svg"), plain, trainFeat, trainLab, testFeat, testLab);
 
 		// Test that it fits to the training data
 		double fourier_rmse = rmse(plain, trainFeat, trainLab);
@@ -438,14 +347,14 @@ void doit(size_t maxEpochs)
 				timeStart = timeNow;
 				double val = rmse(nn, testFeat, testLab);
 				cout << "rmse/dev=" << to_str(err / labDev) << "	eta=" << to_str(learningRate) << "	val=" << to_str(val) << "\n";
-				plot_it("progress.svg", nn, trainFeat, trainLab, testFeat, testLab);
+				plotSeries(outPath("progress.svg"), nn, trainFeat, trainLab, testFeat, testLab);
 			}
 
 			if(err / labDev <= TIGHTNESS_GOOD)
 				break;
 		}
 	}
-	plot_it("progress.svg", nn, trainFeat, trainLab, testFeat, testLab);
+	plotSeries(outPath("progress.svg"), nn, trainFeat, trainLab, testFeat, testLab);
 }
 
 } // namespace

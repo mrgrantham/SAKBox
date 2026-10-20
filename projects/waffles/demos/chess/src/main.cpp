@@ -33,7 +33,6 @@
 #include <exception>
 #include <iostream>
 #include "png/GImagePng.h"
-#include <filesystem>
 #include <fmt/core.h>
 using namespace GClasses;
 using std::cerr;
@@ -83,12 +82,6 @@ protected:
 
 public:
 
-	using recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
-	void whereAmI()
-	{
-		for(const auto& dirEntry : recursive_directory_iterator("."))
-			fmt::print("{}\n", dirEntry.path().string());
-	}
 	ChessDialog(ChessController* pController, int w, int h)
 	: GWidgetDialog(w, h, 0xff90d0f0)
 	{
@@ -114,7 +107,6 @@ public:
 		m_pLightStrategy->setSelection(0);
 
 		m_pPieces = new GImage();
-		whereAmI();
 		loadPng(m_pPieces, "chess.runfiles/_main/projects/waffles/demos/chess/data/pieces.png");
 		m_pPieces->replaceColor(0xff00ff00, 0x00000000); // Change opaque green to translucent black
 		m_pMoveIterators = new GChessMoveIterator[MAX_DEPTH_EVER];
