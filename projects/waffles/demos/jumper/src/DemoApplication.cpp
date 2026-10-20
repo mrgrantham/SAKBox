@@ -44,10 +44,8 @@ btCollisionShape* gShapePtr[maxNumObjects];//1 rigidbody has 1 shape (no re-use 
 extern int gNumClampedCcdMotions;
 
 #ifdef SHOW_NUM_DEEP_PENETRATIONS 
-extern int gNumDeepPenetrationChecks;
 
 extern int gNumSplitImpulseRecoveries;
-extern int gNumGjkChecks;
 extern int gNumAlignedAllocs;
 extern int gNumAlignedFree;
 extern int gTotalBytesAlignedAllocs;
@@ -58,9 +56,9 @@ extern int gTotalBytesAlignedAllocs;
 DemoApplication::DemoApplication()
 //see btIDebugDraw.h for modes
 :
-m_dynamicsWorld(0),
-m_pickConstraint(0),
-m_shootBoxShape(0),
+m_dynamicsWorld(nullptr),
+m_pickConstraint(nullptr),
+m_shootBoxShape(nullptr),
 m_cameraDistance(15.0),
 m_debugMode(0),
 m_ele(20.f),
@@ -252,7 +250,9 @@ void DemoApplication::updateCamera() {
 		} else 
 		{
 //			glFrustum (-1.0, 1.0, -aspect, aspect, 1.0, 10000.0);
-			glFrustum (-aspect * m_frustumZNear, aspect * m_frustumZNear, -m_frustumZNear, m_frustumZNear, m_frustumZNear, m_frustumZFar);
+			// SAKBox: a window taller than it's wide widens the view vertically, as above
+			// (this repeated the wide window's frustum, so a tall window was stretched)
+			glFrustum (-m_frustumZNear, m_frustumZNear, -aspect * m_frustumZNear, aspect * m_frustumZNear, m_frustumZNear, m_frustumZFar);
 		}
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
@@ -338,14 +338,7 @@ void DemoApplication::keyboardCallback(unsigned char key, int x, int y)
 
 	switch (key) 
 	{
-	case 'q' : 
-#ifdef BT_USE_FREEGLUT
-		//return from glutMainLoop(), detect memory leaks etc.
-		glutLeaveMainLoop();
-#else
-		exit(0);
-#endif
-		break;
+	case 'q' : requestQuit(); break;
 
 	case 'l' : stepLeft(); break;
 	case 'r' : stepRight(); break;
@@ -580,7 +573,7 @@ int gPickingConstraintId = 0;
 btVector3 gOldPickingPos;
 btVector3 gHitPos(-1,-1,-1);
 float gOldPickingDist  = 0.f;
-btRigidBody* pickedBody = 0;//for deactivation state
+btRigidBody* pickedBody = nullptr;//for deactivation state
 
 
 btVector3	DemoApplication::getRayTo(int x,int y)
@@ -706,44 +699,8 @@ void DemoApplication::mouseFunc(int button, int state, int x, int y)
 			break;
 		};
 	case 1:
-		{
-
-
-			if (state==0)
-			{
-
-#if 0
-				//apply an impulse
-				if (m_dynamicsWorld)
-				{
-					btCollisionWorld::ClosestRayResultCallback rayCallback(m_cameraPosition,rayTo);
-					m_dynamicsWorld->rayTest(m_cameraPosition,rayTo,rayCallback);
-					if (rayCallback.hasHit())
-					{
-
-						btRigidBody* body = btRigidBody::upcast(rayCallback.m_collisionObject);
-						if (body)
-						{
-							body->setActivationState(ACTIVE_TAG);
-							btVector3 impulse = rayTo;
-							impulse.normalize();
-							float impulseStrength = 10.f;
-							impulse *= impulseStrength;
-							btVector3 relPos = rayCallback.m_hitPointWorld - body->getCenterOfMassPosition();
-							body->applyImpulse(impulse,relPos);
-						}
-					}
-				}
-#endif
-
-
-
-			} else
-			{
-
-			}
-			break;	
-		}
+		// (the middle button applied an impulse, switched off upstream with #if 0)
+		break;
 	case 0:
 		{
 			if (state==0)
@@ -770,7 +727,9 @@ void DemoApplication::mouseFunc(int button, int state, int x, int y)
 					{
 
 
-						btRigidBody* body = btRigidBody::upcast(rayCallback.m_collisionObject);
+						// SAKBox: a ray hit is const in Bullet 3, but picking moves the body; Bullet 3's
+						// own demos cast it back the same way
+						btRigidBody* body = const_cast<btRigidBody*>(btRigidBody::upcast(rayCallback.m_collisionObject));
 						if (body)
 						{
 							//other exclusions?
@@ -857,10 +816,10 @@ void DemoApplication::mouseFunc(int button, int state, int x, int y)
 					m_dynamicsWorld->removeConstraint(m_pickConstraint);
 					delete m_pickConstraint;
 					//printf("removed constraint %i",gPickingConstraintId);
-					m_pickConstraint = 0;
+					m_pickConstraint = nullptr;
 					pickedBody->forceActivationState(ACTIVE_TAG);
 					pickedBody->setDeactivationTime( 0.f );
-					pickedBody = 0;
+					pickedBody = nullptr;
 				}
 
 
@@ -1330,11 +1289,7 @@ void DemoApplication::renderme()
 
 void	DemoApplication::clientResetScene()
 {
-#ifdef SHOW_NUM_DEEP_PENETRATIONS
-	gNumDeepPenetrationChecks = 0;
-	gNumGjkChecks = 0;
-#endif //SHOW_NUM_DEEP_PENETRATIONS
-
+	// SAKBox: gNumDeepPenetrationChecks and gNumGjkChecks were reset here; Bullet 3 doesn't have them
 	gNumClampedCcdMotions = 0;
 	int numObjects = 0;
 	int i;

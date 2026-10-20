@@ -17,7 +17,7 @@ subject to the following restrictions:
 #define DEMO_APPLICATION_H
 
 
-#include "GlutStuff.h"
+#include "DemoOpenGL.h"
 #include "GL_ShapeDrawer.h"
 
 #include <stdlib.h>
@@ -246,6 +246,16 @@ public:
 	{
 		m_idle = idle;
 	}
+
+	// SAKBox: q asks the window's loop to stop (it called exit(0), or
+	// freeglut's glutLeaveMainLoop)
+	void requestQuit() { m_quitRequested = true; }
+	bool quitRequested() const { return m_quitRequested; }
+
+private:
+	bool m_quitRequested = false;
+
+public:
 
 	virtual void onReset() {}
 };

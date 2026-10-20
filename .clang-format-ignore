@@ -4,7 +4,6 @@ projects/examples/png/src/pngtest.cpp
 projects/examples/read-controls/source/main.c
 
 # Third-party code bundled inside Waffles
-projects/waffles/demos/bullet-2.77/**
 projects/waffles/src/depends/security/dinput.h
 projects/waffles/src/depends/security/md4.*
 projects/waffles/src/WClasses/sha2.cpp
@@ -16,5 +15,3 @@ projects/waffles/demos/jumper/src/DemoApplication.*
 projects/waffles/demos/jumper/src/GL_ShapeDrawer.*
 projects/waffles/demos/jumper/src/GLDebugDrawer.*
 projects/waffles/demos/jumper/src/GLDebugFont.*
-projects/waffles/demos/jumper/src/GlutDemoApplication.*
-projects/waffles/demos/jumper/src/GlutStuff.*

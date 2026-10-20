@@ -1,7 +1,7 @@
 
 #include "GLDebugDrawer.h"
 #include "GLDebugFont.h"
-#include "GlutStuff.h"
+#include "DemoOpenGL.h"
 
 
 
@@ -126,9 +126,7 @@ void	GLDebugDrawer::drawContactPoint(const btVector3& pointOnB,const btVector3& 
 
 		
 		glRasterPos3f(from.x(),  from.y(),  from.z());
-		char buf[12];
-		sprintf(buf," %d",lifeTime);
-		//BMF_DrawString(BMF_GetFont(BMF_kHelvetica10),buf);
+		//BMF_DrawString(BMF_GetFont(BMF_kHelvetica10)," <lifeTime>");
 
 
 	}

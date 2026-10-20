@@ -2,7 +2,6 @@
 #include <WClasses/GError.h>
 #include <WClasses/GOptimizer.h>
 #include <WClasses/GNeuralNet.h>
-#include <WClasses/GActivation.h>
 #include <WClasses/GRand.h>
 #include <WClasses/GDom.h>
 #include <WClasses/GFile.h>
@@ -12,48 +11,65 @@
 #include "Body.h"
 #include "DemoApplication.h"
 #include "btBulletDynamicsCommon.h"
+#include <algorithm>
+#include <cstdio>
+
+// SAKBox: ported from the 2015 network API (GNeuralNet as a learner,
+// GLayerClassic, GActivationBend) to blocks: a policy is a GNeuralNetLearner
+// of GBlockLinear and GBlockBentIdentity (the old "bend" function, the same
+// formula), and the evolutionary search works on the network's weight vector.
 
 using namespace GClasses;
 
+std::unique_ptr<GNeuralNetLearner> MakePolicy()
+{
+	auto pPolicy = std::make_unique<GNeuralNetLearner>();
+	pPolicy->nn().add(new GBlockLinear(FEATURE_DIMS, 8), new GBlockBentIdentity(8));
+	pPolicy->nn().add(new GBlockLinear(8, LABEL_DIMS), new GBlockBentIdentity(LABEL_DIMS));
+	GUniformRelation features(FEATURE_DIMS);
+	GUniformRelation labels(LABEL_DIMS);
+	pPolicy->beginIncrementalLearning(features, labels); // (allocates the weights)
+	return pPolicy;
+}
+
+double JumpHeight(GNeuralNetLearner* pPolicy)
+{
+	RagdollDemo simulation;
+	simulation.SetPolicy(pPolicy);
+	float height = 0;
+	for(int i = 0; i < 240; i++)
+	{
+		simulation.advanceTime(1.0f / 60);
+		height = std::max(height, simulation.getRagDoll(0)->getLowestPoint());
+	}
+	return height;
+}
+
+// Scores a vector of weights for the policy by how high it makes the robot jump
 class PolicyCritic : public GTargetFunction
 {
 protected:
-	GNeuralNet* m_pNN;
-	GRand* m_pRand;
-	const double* m_pInitialVec;
+	GNeuralNetLearner& m_policy;
+	const GVec& m_initialWeights;
 
 public:
-	PolicyCritic(GNeuralNet* pNN, GRand* pRand, const double* pInitialVec)
-	: GTargetFunction(pNN->countWeights()), m_pNN(pNN), m_pRand(pRand), m_pInitialVec(pInitialVec)
+	PolicyCritic(GNeuralNetLearner& policy, const GVec& initialWeights)
+	: GTargetFunction(policy.nn().weightCount()), m_policy(policy), m_initialWeights(initialWeights)
 	{
 	}
 
-	virtual ~PolicyCritic()
+	void initVector(GVec& vector) override
 	{
+		vector.copy(m_initialWeights);
 	}
 
-	virtual void initVector(double* pVector)
-	{
-		GVec::copy(pVector, m_pInitialVec, m_pRelation->size());
-	}
-
-	virtual bool isStable() { return false; }
-	virtual bool isConstrained() { return false; }
+	bool isStable() override { return false; }
 
 protected:
-	virtual double computeError(const double* pVector)
+	double computeError(const GVec& vector) override
 	{
-		RagdollDemo simulation;
-		m_pNN->setWeights(pVector);
-		simulation.SetPolicy(m_pNN);
-		float height = 0;
-		int i;
-		for(i = 0; i < 240; i++)
-		{
-			simulation.advanceTime(1.0f / 60);
-			height = std::max(height, simulation.getRagDoll(0)->getLowestPoint());
-		}
-		return -(double)height;
+		m_policy.nn().weights.copy(vector);
+		return -JumpHeight(&m_policy);
 	}
 };
 
@@ -71,11 +87,11 @@ void manualPolicy(const GVec& pIn, GVec& pOut)
 	GAssert(sizeof(g_squat) == LABEL_DIMS * sizeof(double));
 	double time = pIn[0];
 	if(time < 0.2)
-		pOut.set(g_squat, LABEL_DIMS);
+		pOut.copy(g_squat, LABEL_DIMS);
 	else if(time < 0.6)
-		pOut.set(g_jump, LABEL_DIMS);
+		pOut.copy(g_jump, LABEL_DIMS);
 	else
-		pOut.set(g_tuck, LABEL_DIMS);
+		pOut.copy(g_tuck, LABEL_DIMS);
 }
 
 void GenerateSeedTrainingSet(GMatrix* pFeatures, GMatrix* pLabels, GRand* pRand)
@@ -92,68 +108,57 @@ void GenerateSeedTrainingSet(GMatrix* pFeatures, GMatrix* pLabels, GRand* pRand)
 	}
 }
 
-void Train()
+void Train(size_t generations, size_t saveEvery)
 {
 	printf("Learning the seed policy...\n");
+	GRand prng(0);
 	GMatrix features(0, FEATURE_DIMS);
 	GMatrix labels(0, LABEL_DIMS);
-	GNeuralNet nn;
-	GRand& prng = nn.rand();
 	GenerateSeedTrainingSet(&features, &labels, &prng);
-	nn.addLayer(new GLayerClassic(FLEXIBLE_SIZE, 8, new GActivationBend()));
-	nn.addLayer(new GLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE, new GActivationBend()));
-	nn.setLearningRate(0.01);
-	nn.train(features, labels);
-	int weightCount = nn.countWeights();
-	double hintVec[weightCount];
-	//	GTEMPBUF(double, hintVec, weightCount);
-	nn.weights(hintVec);
+	std::unique_ptr<GNeuralNetLearner> pPolicy = MakePolicy();
+	GNeuralNetOptimizer& optimizer = pPolicy->optimizer();
+	optimizer.setLearningRate(0.01);
+	optimizer.optimizeWithValidation(features, labels);
+	GVec hintVec;
+	hintVec.copy(pPolicy->nn().weights);
 
 	printf("Initializing a population for the evolutionary search...\n");
-	PolicyCritic critic(&nn, &prng, hintVec);
-	//GAssert(critic.Critique(hintVec) < -0.5, "bad critique");
-	//printf("HintVec Score: %lg\n", critic.Critique(hintVec));
+	PolicyCritic critic(*pPolicy, hintVec);
 	GEvolutionaryOptimizer search(&critic, 15 /*population*/, &prng, .93 /*moreFitSurvivalProbability*/);
 
 	printf("Evolving better policies...\n");
 	char szBuf[64];
 	char szTime[64];
-	double err;
-	for(int i = 0; i <= 25000; i++)
+	for(size_t i = 0; i <= generations; i++)
 	{
-		err = search.iterate();
-		if(i % 250 == 0)
+		double err = search.iterate();
+		if(i % saveEvery == 0)
 		{
-			GDom doc;
-			nn.setWeights(search.currentVector());
-			doc.setRoot(nn.serialize(&doc));
-			sprintf(szBuf, "policy%d.json", i);
+			pPolicy->nn().weights.copy(search.currentVector());
+			snprintf(szBuf, sizeof(szBuf), "policy%zu.json", i);
 			printf("Saving %s (height=%lg) at %s\n", szBuf, -err, GTime::asciiTime(szTime, 64, false));
-			doc.saveJson(szBuf);
+			fflush(stdout);
+			SavePolicy(*pPolicy, szBuf);
 		}
 	}
 }
 
-GNeuralNet* LoadPolicy(const char* szFilename, GRand* pRand)
+void SavePolicy(GNeuralNetLearner& policy, const char* szFilename)
+{
+	GDom doc;
+	doc.setRoot(policy.nn().serialize(&doc));
+	doc.saveJson(szFilename);
+}
+
+std::unique_ptr<GNeuralNetLearner> LoadPolicy(const char* szFilename)
 {
 	GDom doc;
 	doc.loadJson(szFilename);
-	GLearnerLoader ll;
-	return new GNeuralNet(doc.root());
+	GRand rand(0);
+	GNeuralNet saved(doc.root(), rand);
+	std::unique_ptr<GNeuralNetLearner> pPolicy = MakePolicy();
+	if(saved.weightCount() != pPolicy->nn().weightCount() || saved.inputs() != FEATURE_DIMS || saved.outputs() != LABEL_DIMS)
+		throw Ex(szFilename, " isn't a jumper policy (a ", to_str(FEATURE_DIMS), "-input, ", to_str(LABEL_DIMS), "-output network)");
+	pPolicy->nn().weights.copy(saved.weights);
+	return pPolicy;
 }
-
-GNeuralNet* TrainPolicy()
-{
-	GRand* pRand = new GRand(1);
-	GMatrix features(0, FEATURE_DIMS);
-	GMatrix labels(0, LABEL_DIMS);
-	GenerateSeedTrainingSet(&features, &labels, pRand);
-	GNeuralNet* pNN = new GNeuralNet();
-	//pNN->SetMinImprovement(0.01);
-	//pNN->SetIterationsPerValidationCheck(600);
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 8, new GActivationBend()));
-	pNN->addLayer(new GLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE, new GActivationBend()));
-	pNN->train(features, labels);
-	return pNN;
-}
-

@@ -19,7 +19,7 @@ Written by: Marten Svanfeldt
 #ifndef RAGDOLLDEMO_H
 #define RAGDOLLDEMO_H
 
-#include "GlutDemoApplication.h"
+#include "SdlDemoApplication.h"
 #include "LinearMath/btAlignedObjectArray.h"
 
 
@@ -125,7 +125,7 @@ protected:
 
 
 
-class RagdollDemo : public GlutDemoApplication
+class RagdollDemo : public SdlDemoApplication
 {
 	btAlignedObjectArray<class RagDoll*> m_ragdolls;
 
@@ -146,19 +146,19 @@ class RagdollDemo : public GlutDemoApplication
 
 public:
 	RagdollDemo()
-	: GlutDemoApplication(), m_pPolicy(NULL)
+	: SdlDemoApplication(), m_pPolicy(nullptr)
 	{
 		//myinit();
 		initPhysics();
 		m_time = 0;
 	}
 
-	virtual ~RagdollDemo()
+	~RagdollDemo() override
 	{
 		exitPhysics();
 	}
 
-	virtual void onReset()
+	void onReset() override
 	{
 		m_time = 0;
 	}
@@ -172,16 +172,16 @@ public:
 
 	void advanceTime(float fTimeDelta);
 
-	virtual void clientMoveAndDisplay();
+	void clientMoveAndDisplay() override;
 
-	virtual void displayCallback();
+	void displayCallback() override;
 
-	virtual void keyboardCallback(unsigned char key, int x, int y);
+	void keyboardCallback(unsigned char key, int x, int y) override;
 
 	RagDoll* getRagDoll(int i);
 
 protected:
-	void initPhysics();
+	void initPhysics() override;
 
 	void exitPhysics();
 };

@@ -22,7 +22,7 @@ In March 2008, Mike Gashler made some alterations:
 
 
 #include "btBulletDynamicsCommon.h"
-#include "GlutStuff.h"
+#include "DemoOpenGL.h"
 #include "GL_ShapeDrawer.h"
 
 #include "LinearMath/btIDebugDraw.h"
@@ -306,7 +306,7 @@ RagDoll::~RagDoll ()
 	for ( i = 0; i < JOINT_COUNT; ++i)
 	{
 		m_ownerWorld->removeConstraint(m_joints[i]);
-		delete m_joints[i]; m_joints[i] = 0;
+		delete m_joints[i]; m_joints[i] = nullptr;
 	}
 
 	// Remove all bodies and shapes
@@ -316,8 +316,8 @@ RagDoll::~RagDoll ()
 	
 		delete m_bodies[i]->getMotionState();
 
-		delete m_bodies[i]; m_bodies[i] = 0;
-		delete m_shapes[i]; m_shapes[i] = 0;
+		delete m_bodies[i]; m_bodies[i] = nullptr;
+		delete m_shapes[i]; m_shapes[i] = nullptr;
 	}
 }
 
@@ -495,8 +495,6 @@ void RagdollDemo::advanceTime(float fTimeDelta)
 	}
 }
 
-extern void APIENTRY glutSwapBuffers(void);
-
 
 // This method is called when in display mode
 void RagdollDemo::clientMoveAndDisplay()
@@ -505,16 +503,12 @@ void RagdollDemo::clientMoveAndDisplay()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 #endif
 
-	//simple dynamics world doesn't handle fixed-time-stepping
-	float ms = getDeltaTimeMicroseconds();
-
-	float minFPS = 1000000.f/60.f;
-	if (ms > minFPS)
-		ms = minFPS;
-
+	// SAKBox: one step of 1/60 s per frame (the display is synced at 60 Hz), as
+	// training simulates, so a policy jumps as it did when it was scored. (It
+	// stepped by the time since the last frame, so it jumped differently each time.)
 	if (m_dynamicsWorld)
 	{
-		float fTimeDelta = ms / 1000000.f;
+		float fTimeDelta = 1.0f / 60;
 		m_ragdolls[0]->DoAction(m_pPolicy, m_time);
 		m_dynamicsWorld->stepSimulation(fTimeDelta);
 		m_time += fTimeDelta;
@@ -528,7 +522,7 @@ void RagdollDemo::clientMoveAndDisplay()
 
 	glFlush();
 
-	glutSwapBuffers();
+	swapBuffers();
 #endif
 }
 
@@ -540,7 +534,7 @@ void RagdollDemo::displayCallback()
 	renderme();
 
 	glFlush();
-	glutSwapBuffers();
+	swapBuffers();
 #endif
 }
 

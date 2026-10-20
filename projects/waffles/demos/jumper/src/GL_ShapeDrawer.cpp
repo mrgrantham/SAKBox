@@ -20,7 +20,7 @@ subject to the following restrictions:
 
 
 
-#include "GlutStuff.h"
+#include "DemoOpenGL.h"
 #include "GL_ShapeDrawer.h"
 #include "BulletCollision/CollisionShapes/btPolyhedralConvexShape.h"
 #include "BulletCollision/CollisionShapes/btTriangleMeshShape.h"
@@ -211,7 +211,7 @@ public:
 	{
 	}
 
-	virtual void processTriangle(btVector3* triangle,int partId, int triangleIndex)
+	void processTriangle(btVector3* triangle,int partId, int triangleIndex) override
 	{
 
 		(void)triangleIndex;
@@ -252,7 +252,7 @@ public:
 class TriangleGlDrawcallback : public btInternalTriangleIndexCallback
 {
 public:
-	virtual void internalProcessTriangleIndex(btVector3* triangle,int partId,int  triangleIndex)
+	void internalProcessTriangleIndex(btVector3* triangle,int partId,int  triangleIndex) override
 	{
 		(void)triangleIndex;
 		(void)partId;
@@ -561,7 +561,6 @@ void GL_ShapeDrawer::drawOpenGL(btScalar* m, const btCollisionShape* shape, cons
 
 		glColor3f(color.x(),color.y(), color.z());		
 
-		bool useWireframeFallback = true;
 
 		if (!(debugMode & btIDebugDraw::DBG_DrawWireframe))
 		{
@@ -578,7 +577,6 @@ void GL_ShapeDrawer::drawOpenGL(btScalar* m, const btCollisionShape* shape, cons
 					const btSphereShape* sphereShape = static_cast<const btSphereShape*>(shape);
 					float radius = sphereShape->getMargin();//radius doesn't include the margin, so draw with margin
 					drawSphere(radius,10,10);
-					useWireframeFallback = false;
 					break;
 				}
 
@@ -629,7 +627,6 @@ void GL_ShapeDrawer::drawOpenGL(btScalar* m, const btCollisionShape* shape, cons
 					glEnd();
 #endif
 
-					useWireframeFallback = false;
 					break;
 				}
 
@@ -659,8 +656,15 @@ void GL_ShapeDrawer::drawOpenGL(btScalar* m, const btCollisionShape* shape, cons
 					};
 
 					glTranslatef(0.0, 0.0, -0.5*height);
-					glutSolidCone(radius,height,10,10);
-					useWireframeFallback = false;
+					{
+						// SAKBox: glutSolidCone, with GLU: the base at z = 0 and the tip at z = height
+						GLUquadric* quad = gluNewQuadric();
+						gluQuadricOrientation(quad, GLU_INSIDE);
+						gluDisk(quad, 0, radius, 10, 1);
+						gluQuadricOrientation(quad, GLU_OUTSIDE);
+						gluCylinder(quad, radius, 0, height, 10, 10);
+						gluDeleteQuadric(quad);
+					}
 					break;
 
 				}
@@ -824,14 +828,7 @@ void GL_ShapeDrawer::drawOpenGL(btScalar* m, const btCollisionShape* shape, cons
 
 				glColor3f(1.f, 1.f, 1.f);
 				int i;
-				for (i=0;i<polyshape->getNumVertices();i++)
-				{
-					btVector3 vtx;
-					polyshape->getVertex(i,vtx);
-					char buf[12];
-					sprintf(buf," %d",i);
-					//btDrawString(BMF_GetFont(BMF_kHelvetica10),buf);
-				}
+				// (each vertex's number was formatted here for a label it no longer draws)
 
 				for (i=0;i<polyshape->getNumPlanes();i++)
 				{

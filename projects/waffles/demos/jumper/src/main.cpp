@@ -1,5 +1,4 @@
 #include "Body.h"
-#include "GlutStuff.h"
 #include <WClasses/GError.h>
 #include <WClasses/GMatrix.h>
 #include <WClasses/GKNN.h>
@@ -10,6 +9,7 @@
 #include <WClasses/GHolders.h>
 #include "PolicyLearner.h"
 #include <iostream>
+#include <memory>
 
 using namespace GClasses;
 using std::cerr;
@@ -30,6 +30,9 @@ void DoIt(int argc, char* argv[])
 		cout << "	jumper				see this info\n";
 		cout << "	jumper train			generate policies\n";
 		cout << "	jumper [policy_file]		see it jump\n";
+		cout << "	jumper manual			see the hand-made seed policy jump\n";
+		cout << "	jumper height [policy_file]	print how high it jumps (the seed\n";
+		cout << "					policy's if no file is given)\n";
 		return;
 	}
 	else if(_stricmp(argv[1], "train") == 0)
@@ -51,9 +54,15 @@ void DoIt(int argc, char* argv[])
 	}
 	else if(_stricmp(argv[1], "manual") == 0)
 	{
-		GRand prng(0);
 		RagdollDemo demoApp;
-		glutmain(argc, argv, 800, 600, "Demo of a robot that learns to jump", &demoApp);
+		demoApp.run(800, 600, "Demo of a robot that learns to jump");
+	}
+	else if(_stricmp(argv[1], "height") == 0)
+	{
+		std::unique_ptr<GNeuralNetLearner> pPolicy;
+		if(argc > 2)
+			pPolicy = LoadPolicy(argv[2]);
+		cout << JumpHeight(pPolicy.get()) << "\n";
 	}
 	else
 	{
@@ -65,13 +74,11 @@ void DoIt(int argc, char* argv[])
 		cout << "jumper without a GUI, so if you want to see it, you'll have\n";
 		cout << "to rebuild without the NOGUI switch.\n";
 #else
-		cout << "Press space-bar to see it jump again. (Note that very small differences in when your computer decides to schedule various threads can affect the frame rate, which can affect the physics simulator, which can affect how the robot jumps, so you may want to try several times)\n";
-		GRand prng(0);
+		cout << "Press space-bar to see it jump again, and q to quit.\n";
+		std::unique_ptr<GNeuralNetLearner> pPolicy = LoadPolicy(argv[1]);
 		RagdollDemo demoApp;
-		GNeuralNet* pNN = LoadPolicy(argv[1], &prng);
-		Holder<GNeuralNet> hNN(pNN);
-		demoApp.SetPolicy(pNN);
-		glutmain(argc, argv, 800, 600, "Demo of a robot that learns to jump", &demoApp);
+		demoApp.SetPolicy(pPolicy.get());
+		demoApp.run(800, 600, "Demo of a robot that learns to jump");
 #endif
 	}
 }

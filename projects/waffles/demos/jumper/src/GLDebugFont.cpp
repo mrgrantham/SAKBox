@@ -16,34 +16,7 @@ subject to the following restrictions:
 #include "GLDebugFont.h"
 
 
-#ifdef _WIN32//for glut.h
-#include <windows.h>
-#endif
-
-//think different
-#if defined(__APPLE__) && !defined (VMDMESA)
-#include <TargetConditionals.h>
-#if (defined (TARGET_OS_IPHONE) && TARGET_OS_IPHONE) || (defined (TARGET_IPHONE_SIMULATOR) && TARGET_IPHONE_SIMULATOR)
-#import <OpenGLES/ES1/gl.h>
-#define glOrtho glOrthof
-#else
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#include <GLUT/glut.h>
-#endif
-#else
-
-
-
-#ifdef _WINDOWS
-#include <windows.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
-#else
-#include <GL/gl.h>
-#include <GL/glut.h>
-#endif
-#endif
+#include "DemoOpenGL.h" // SAKBox: was the GLUT includes for each platform
 
 #include <stdio.h>
 #include <string.h> //for memset
@@ -163,8 +136,9 @@ void	GLDebugDrawStringInternal(int x,int y,const char* string, const btVector3& 
 			char ch = string[i]-32;
 			if (ch>=0)
 			{
-				cx=float(ch%16) * btScalar(1./16.f);
-				cy=float(ch/16) * btScalar(1./16.f);
+				int column = ch % 16, row = ch / 16; // (the font is a 16x16 grid of characters)
+				cx=float(column) * btScalar(1./16.f);
+				cy=float(row) * btScalar(1./16.f);
 
 				uv_texcoords[0] = cx;			uv_texcoords[1] = btScalar(1-cy-1./16.f);
 				uv_texcoords[2] = btScalar(cx+1./16.f);	uv_texcoords[3] = btScalar(1-cy-1./16.f);
