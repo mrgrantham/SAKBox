@@ -9,3 +9,6 @@ d45c04d62cbed2a31fc408e13544462705a61cd9
 
 # waffles: clang-format in its own style (format only)
 26556d2270172258b5ab0bf5f58cb8a8c361038f
+
+# waffles: format src/depends (format only)
+2384dfbe53faaba87c16a3d2781f148a0760d138
