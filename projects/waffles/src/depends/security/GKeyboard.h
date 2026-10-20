@@ -11,14 +11,15 @@
 
 #ifndef __APPLE__
 #ifdef WIN32
-#	define DIRECTINPUT_VERSION 0x0700
-#	include <dinput.h>
+#define DIRECTINPUT_VERSION 0x0700
+#include <dinput.h>
 #else // WIN32
-#	include <X11/Xlib.h>
-#	define MAX_KEY_CODE_LEN 32
+#include <X11/Xlib.h>
+#define MAX_KEY_CODE_LEN 32
 #endif // !WIN32
 
-namespace GClasses {
+namespace GClasses
+{
 
 typedef void (*LogKeyCallBack)(void* pThis, char c);
 

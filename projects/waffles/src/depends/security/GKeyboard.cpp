@@ -17,6 +17,8 @@
 using namespace GClasses;
 
 // This table converts keyboard scan codes to ASCII (no shift)
+// (SAKBox) a grid of scan codes, ten to a row
+// clang-format off
 static unsigned char SCAN_CODES_NO_SHIFT[] =
 {
 // +	0		1		2		3		4		5		6		7		8		9
@@ -31,7 +33,10 @@ static unsigned char SCAN_CODES_NO_SHIFT[] =
 /*70*/	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,
 /*80*/	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,
 };
+// clang-format on
 
+// (SAKBox) a grid of scan codes, ten to a row
+// clang-format off
 static unsigned char SCAN_CODES_WITH_SHIFT[] =
 {
 // +	0		1		2		3		4		5		6		7		8		9
@@ -46,6 +51,7 @@ static unsigned char SCAN_CODES_WITH_SHIFT[] =
 /*70*/	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,
 /*80*/	0,		0,		0,		0,		0,		0,		0,		0,		0,		0,
 };
+// clang-format on
 
 // Left Shift = 42
 // Right Shift = 54
@@ -218,7 +224,7 @@ void GKeyboard::GetKeyCode(XEvent* pEvent)
 		return;
 	}
 	KeySym ks;
-	int nLen = XLookupString((XKeyEvent*)pEvent, m_szKeyCode, MAX_KEY_CODE_LEN, &ks,NULL);
+	int nLen = XLookupString((XKeyEvent*)pEvent, m_szKeyCode, MAX_KEY_CODE_LEN, &ks, NULL);
 	m_szKeyCode[nLen] = '\0';
 	if(nLen == 0)
 	{
@@ -237,12 +243,12 @@ void GKeyboard::Watch()
 	if(!m_pDisplay)
 		throw Ex("failed to open display");
 	SelectAllChildWindows(DefaultRootWindow(m_pDisplay),
-			KeyPressMask | // receive KeyPress, KeyRelease, ButtonPress, and ButtonRelease events
-			SubstructureNotifyMask // receive CreateNotify events
-//			OwnerGrabButtonMask // which window buttons were pressed in
-		);
+	                      KeyPressMask | // receive KeyPress, KeyRelease, ButtonPress, and ButtonRelease events
+	                        SubstructureNotifyMask // receive CreateNotify events
+	                      //			OwnerGrabButtonMask // which window buttons were pressed in
+	);
 
-/*
+	/*
 	// Values used for getting button press events
 	Atom property = XInternAtom(m_pDisplay, "WM_NAME", False), type;
 	int form;
@@ -265,7 +271,7 @@ void GKeyboard::Watch()
 				//m_pLogKeyFunc(m_pParam, m_szKeyCode[0]);
 			}
 		}
-/*		else if(event.type == ButtonPress)
+		/*		else if(event.type == ButtonPress)
 		{
 			// note: probably need to "grab" the button first
 			// param 2 might need to be event.xbutton.window, event.xbutton.root, or event.xbutton.subwindow
@@ -278,10 +284,10 @@ void GKeyboard::Watch()
 		}*/
 		else if(event.type == CreateNotify)
 		{
-			SelectAllChildWindows(event.xcreatewindow.parent/*window*/,
-						KeyPressMask | // receive KeyPress, KeyRelease, ButtonPress, and ButtonRelease events
-						SubstructureNotifyMask // receive CreateNotify events
-					);
+			SelectAllChildWindows(event.xcreatewindow.parent /*window*/,
+			                      KeyPressMask | // receive KeyPress, KeyRelease, ButtonPress, and ButtonRelease events
+			                        SubstructureNotifyMask // receive CreateNotify events
+			);
 		}
 		else
 		{

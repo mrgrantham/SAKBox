@@ -22,7 +22,8 @@
 #include <cstddef>
 #include "../../GClasses/GVec.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GMatrix;
 
@@ -88,7 +89,7 @@ public:
 
 	/// Multiplies each element in this vector by (1.0-(a*a)), where a is the corresponding element in activation.
 	void deactivateTanh(GCudaEngine& engine, const GCudaVector& activation);
-/*
+	/*
 	/// Applies the bend function element-wise to this vector.
 	void activateBend(GCudaEngine& engine);
 

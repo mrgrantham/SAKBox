@@ -29,14 +29,14 @@
 #include <string>
 #include <set>
 #ifdef WINDOWS
-#	include <direct.h>
-#	include <process.h>
-#	include <io.h> // for "filelength"
-#	include "../../GClasses/GWindows.h"
-#	include <stdlib.h>
-#	include <TCHAR.h>
+#include <direct.h>
+#include <process.h>
+#include <io.h> // for "filelength"
+#include "../../GClasses/GWindows.h"
+#include <stdlib.h>
+#include <TCHAR.h>
 #else
-#	include "md4.h" // for md4 hash
+#include "md4.h" // for md4 hash
 #endif
 #include <exception>
 #include <fstream>
@@ -61,7 +61,7 @@ using std::ofstream;
 #define MY_PORT 1234
 #define KILO 1024
 #define KBYTES 8192
-#define MESSAGESIZE KILO * KBYTES
+#define MESSAGESIZE KILO* KBYTES
 #define SMALL_MESSAGE_SIZE 8
 
 
@@ -156,7 +156,7 @@ void overwriteFileWithGarbage(const char* szFilename)
 	{
 		for(int i = 0; i < 4096; i++)
 			buf[i] = rand() % 256;
-        int n = std::min(4096, nFileSize);
+		int n = std::min(4096, nFileSize);
 		fwrite(buf, 1, n, pFile);
 		nFileSize -= n;
 	}
@@ -170,16 +170,16 @@ bool shredFile(const char* szFilename)
 	overwriteFileWithGarbage(szFilename);
 	return DeleteFile(szFilename) ? true : false;
 #else
-#	ifdef __APPLE__
+#ifdef __APPLE__
 	overwriteFileWithGarbage(szFilename);
-    return (remove(szFilename) == 0);
-#	else
+	return (remove(szFilename) == 0);
+#else
 	GTEMPBUF(char, szTmp, strlen(szFilename) + 32);
 	strcpy(szTmp, "shred -fun1 ");
 	strcat(szTmp, szFilename);
 	bool bOK = (system(szTmp) == 0);
 	return bOK;
-#	endif
+#endif
 #endif
 }
 
@@ -232,7 +232,7 @@ bool shredFolder(const char* szPath)
 
 void shred(const char* szPath)
 {
-	if(access(szPath, 0 ) != 0)
+	if(access(szPath, 0) != 0)
 		throw Ex("The file or folder ", szPath, " does not seem to exist");
 	struct stat status;
 	stat(szPath, &status);
@@ -513,7 +513,7 @@ int doBandwidthServer(GArgReader& args)
 			cout << "Waiting for another client to connect...\n";
 		}
 
-                // Let Windows have a chance to pump messages through
+		// Let Windows have a chance to pump messages through
 #ifdef WINDOWS
 		GWindows::yield();
 		Sleep(0);
@@ -531,7 +531,7 @@ void nthash(const char* password, unsigned char* hash)
 #else
 	unsigned short buf[128];
 	unsigned int len = 0;
-	for(unsigned short* pBuf = buf ; *password != '\0'; password++)
+	for(unsigned short* pBuf = buf; *password != '\0'; password++)
 	{
 		*pBuf = htons((unsigned int)*password << 8);
 		pBuf++;
@@ -588,7 +588,7 @@ void dictionaryAttackNTPassword(unsigned char* hash, vector<vector<string>* >& d
 			if(stopOnCollision)
 				return;
 		}
-//cout << buf << "\n";
+		//cout << buf << "\n";
 
 		// Increment the indexes
 		for(size_t i = 0; true; i++)
@@ -612,16 +612,16 @@ void dictionaryAttackNTPassword(unsigned char* hash, vector<vector<string>* >& d
 }
 
 const char* g_trigrams = // 320 common trigrams
-"theandingionentforatiterhastioateersresthaheresttiscomproeresthallmenncendeintoftyouedtonsourcon"
-"areveressthireastatinhatistectortearineagehistedontstoithntesintororeliniveitewitnotnthtraomeica"
-"perartcatctisteofticeoutothideillethiesoneserstrecoerauseuresanevedinratonacesediitierirannality"
-"ounrinameactighesestiaventshesturastntasitderfthlesmanpriantnewreeostbleporghtindancchaeasparove"
-"romtesrecsonertlanaincalcanormworsofendheainalicshoberhanmattathinnesprentiardcouredrenticeineme"
-"ricustfrorthinceataseleandiinstanssininminailrchompellervplapleealtalencasstthlleelemoreantemsea"
-"rmaalsrieemaalindaackhenialordanaundarcgramesorichethoeofntoommposabllatndslisdiseencarngtireead"
-"etoeneinfmernfohavattheckinesavieotedthdatliternsioonoesimarchitenuniimenatdeshoutotanytriretfin"
-"rittimdenscoanshelnstrepesospeducntrrtimbeunttteusitivneroushemensaledayngstreralnitoraroungewil"
-"ileopefrewasinihartoflasmontonorsveneliuctshiaboooksedownaniditeviangaryondracappisisenissorktel";
+  "theandingionentforatiterhastioateersresthaheresttiscomproeresthallmenncendeintoftyouedtonsourcon"
+  "areveressthireastatinhatistectortearineagehistedontstoithntesintororeliniveitewitnotnthtraomeica"
+  "perartcatctisteofticeoutothideillethiesoneserstrecoerauseuresanevedinratonacesediitierirannality"
+  "ounrinameactighesestiaventshesturastntasitderfthlesmanpriantnewreeostbleporghtindancchaeasparove"
+  "romtesrecsonertlanaincalcanormworsofendheainalicshoberhanmattathinnesprentiardcouredrenticeineme"
+  "ricustfrorthinceataseleandiinstanssininminailrchompellervplapleealtalencasstthlleelemoreantemsea"
+  "rmaalsrieemaalindaackhenialordanaundarcgramesorichethoeofntoommposabllatndslisdiseencarngtireead"
+  "etoeneinfmernfohavattheckinesavieotedthdatliternsioonoesimarchitenuniimenatdeshoutotanytriretfin"
+  "rittimdenscoanshelnstrepesospeducntrrtimbeunttteusitivneroushemensaledayngstreralnitoraroungewil"
+  "ileopefrewasinihartoflasmontonorsveneliuctshiaboooksedownaniditeviangaryondracappisisenissorktel";
 
 void bruteForceNTPassword(size_t passwordLen, unsigned char* hash, const char* charSet, size_t part, bool onePartOnly, bool stopOnCollision, bool showProgress, const char* szInclude)
 {
@@ -905,7 +905,7 @@ void dictAttackNTPassword(GArgReader& args)
 
 void permuteAttack(GArgReader& args)
 {
-/*	const char* szHashHex = args.pop_string();
+	/*	const char* szHashHex = args.pop_string();
 	if(strlen(szHashHex) != 32)
 		throw Ex("Expected the hash to consist of 32 hexadecimal digits");
 	unsigned char hash[16];
@@ -940,7 +940,7 @@ void dump(GArgReader& args)
 
 	size_t fileSize;
 	std::ifstream ifs;
-	ifs.exceptions(std::ios::failbit|std::ios::badbit);
+	ifs.exceptions(std::ios::failbit | std::ios::badbit);
 	try
 	{
 		ifs.open(szFilename, std::ios::binary);
@@ -988,7 +988,7 @@ void encryptPath(const char* pathName, char* passphrase, const char* targetName,
 	GFolderSerializer fs(pathName, compress);
 	GCrypto crypto(passphrase, strlen(passphrase));
 	std::ofstream ofs;
-	ofs.exceptions(std::ios::failbit|std::ios::badbit);
+	ofs.exceptions(std::ios::failbit | std::ios::badbit);
 	ofs.open(targetName, std::ios::binary);
 
 	// Write the salt
@@ -1034,7 +1034,7 @@ void decryptFile(const char* source, char* passphrase, char* outSalt, std::strin
 {
 	// Open the file and measure its length
 	std::ifstream ifs;
-	ifs.exceptions(std::ios::failbit|std::ios::badbit);
+	ifs.exceptions(std::ios::failbit | std::ios::badbit);
 	ifs.open(source, std::ios::binary);
 	ifs.seekg(0, std::ios::end);
 	size_t len = (size_t)ifs.tellg();
@@ -1105,10 +1105,11 @@ void feast(GArgReader& args)
 	{
 		vector<string> files;
 		GFile::fileList(files);
-		for(size_t i = 0; i < files.size(); i++) {
+		for(size_t i = 0; i < files.size(); i++)
+		{
 			PathData pd;
 			GFile::parsePath(files[i].c_str(), &pd);
-			if(strcmp(files[i].c_str()+ pd.extStart, ".encrypted") == 0)
+			if(strcmp(files[i].c_str() + pd.extStart, ".encrypted") == 0)
 				def = files[i];
 		}
 	}
@@ -1152,7 +1153,7 @@ void find(GArgReader& args)
 
 	size_t fileSize;
 	std::ifstream ifs;
-	ifs.exceptions(std::ios::failbit|std::ios::badbit);
+	ifs.exceptions(std::ios::failbit | std::ios::badbit);
 	try
 	{
 		ifs.open(szFilename, std::ios::binary);
@@ -1386,9 +1387,9 @@ int doSatellite(GArgReader& args)
 		else
 			throw Ex("Invalid option: ", args.peek());
 	}
-        Satellite sat;
-        sat.Go(szAddr, port, connectInterval, timeoutSecs);
-        return 0;
+	Satellite sat;
+	sat.Go(szAddr, port, connectInterval, timeoutSecs);
+	return 0;
 }
 /*
 int doLogin(GArgReader& args)
@@ -1505,78 +1506,82 @@ void encrypt(GArgReader& args)
 
 #ifdef WINDOWS
 // Iterate the top-level windows. Encapsulates ::EnumWindows.
-class CWindowIterator {
+class CWindowIterator
+{
 protected:
-   HWND* m_hwnds;          // array of hwnds for this PID
-   DWORD m_nAlloc;         // size of array
-   DWORD m_count;          // number of HWNDs found
-   DWORD m_current;        // current HWND
-   static BOOL CALLBACK EnumProc(HWND hwnd, LPARAM lp);
-   // virtual enumerator
-   virtual BOOL OnEnumProc(HWND hwnd);
-   // override to filter different kinds of windows
-   virtual BOOL OnWindow(HWND hwnd) {return TRUE;}
+	HWND* m_hwnds; // array of hwnds for this PID
+	DWORD m_nAlloc; // size of array
+	DWORD m_count; // number of HWNDs found
+	DWORD m_current; // current HWND
+	static BOOL CALLBACK EnumProc(HWND hwnd, LPARAM lp);
+	// virtual enumerator
+	virtual BOOL OnEnumProc(HWND hwnd);
+	// override to filter different kinds of windows
+	virtual BOOL OnWindow(HWND hwnd) { return TRUE; }
 public:
-   CWindowIterator(DWORD nAlloc=1024);
-   ~CWindowIterator();
+	CWindowIterator(DWORD nAlloc = 1024);
+	~CWindowIterator();
 
-   DWORD GetCount() { return m_count; }
-   HWND First();
-   HWND Next() {
-      return m_hwnds && m_current < m_count ? m_hwnds[m_current++] : NULL;
-   }
+	DWORD GetCount() { return m_count; }
+	HWND First();
+	HWND Next()
+	{
+		return m_hwnds && m_current < m_count ? m_hwnds[m_current++] : NULL;
+	}
 };
 
 // Iterate the top-level windows in a process.
-class CMainWindowIterator : public CWindowIterator  {
+class CMainWindowIterator : public CWindowIterator
+{
 protected:
-   DWORD m_pid;                     // process id
-   virtual BOOL OnWindow(HWND hwnd);
+	DWORD m_pid; // process id
+	virtual BOOL OnWindow(HWND hwnd);
 public:
-   CMainWindowIterator(DWORD pid, DWORD nAlloc=1024);
-   ~CMainWindowIterator();
+	CMainWindowIterator(DWORD pid, DWORD nAlloc = 1024);
+	~CMainWindowIterator();
 };
 
 CWindowIterator::CWindowIterator(DWORD nAlloc)
 {
-   GAssert(nAlloc > 0);
-   m_current = m_count = 0;
-   m_hwnds = new HWND [nAlloc];
-   m_nAlloc = nAlloc;
+	GAssert(nAlloc > 0);
+	m_current = m_count = 0;
+	m_hwnds = new HWND[nAlloc];
+	m_nAlloc = nAlloc;
 }
 
 CWindowIterator::~CWindowIterator()
 {
-   delete [] m_hwnds;
+	delete[] m_hwnds;
 }
 
 HWND CWindowIterator::First()
 {
-   ::EnumWindows(EnumProc, (LPARAM)this);
-   m_current = 0;
-   return Next();
+	::EnumWindows(EnumProc, (LPARAM)this);
+	m_current = 0;
+	return Next();
 }
 
 // Static proc passes to virtual fn.
 BOOL CALLBACK CWindowIterator::EnumProc(HWND hwnd, LPARAM lp)
 {
-   return ((CWindowIterator*)lp)->OnEnumProc(hwnd);
+	return ((CWindowIterator*)lp)->OnEnumProc(hwnd);
 }
 
 // Virtual proc: add HWND to array if OnWindow says OK
 BOOL CWindowIterator::OnEnumProc(HWND hwnd)
 {
-   if (OnWindow(hwnd)) {
-      if (m_count < m_nAlloc)
-         m_hwnds[m_count++] = hwnd;
-   }
-   return TRUE; // keep looking
+	if(OnWindow(hwnd))
+	{
+		if(m_count < m_nAlloc)
+			m_hwnds[m_count++] = hwnd;
+	}
+	return TRUE; // keep looking
 }
 
 CMainWindowIterator::CMainWindowIterator(DWORD pid, DWORD nAlloc)
-   : CWindowIterator(nAlloc)
+: CWindowIterator(nAlloc)
 {
-   m_pid = pid;
+	m_pid = pid;
 }
 
 CMainWindowIterator::~CMainWindowIterator()
@@ -1586,13 +1591,14 @@ CMainWindowIterator::~CMainWindowIterator()
 // virtual override: is this window a main window of my process?
 BOOL CMainWindowIterator::OnWindow(HWND hwnd)
 {
-   if (GetWindowLong(hwnd,GWL_STYLE) & WS_VISIBLE) {
-      DWORD pidwin;
-      GetWindowThreadProcessId(hwnd, &pidwin);
-      if (pidwin==m_pid)
-         return TRUE;
-   }
-   return FALSE;
+	if(GetWindowLong(hwnd, GWL_STYLE) & WS_VISIBLE)
+	{
+		DWORD pidwin;
+		GetWindowThreadProcessId(hwnd, &pidwin);
+		if(pidwin == m_pid)
+			return TRUE;
+	}
+	return FALSE;
 }
 #endif // WINDOWS
 
@@ -1602,7 +1608,7 @@ void OpenFile(const char* szFilename)
 	SHELLEXECUTEINFO sei;
 	memset(&sei, '\0', sizeof(SHELLEXECUTEINFO));
 	sei.cbSize = sizeof(SHELLEXECUTEINFO);
-	sei.fMask = SEE_MASK_NOCLOSEPROCESS/* | SEE_MASK_NOZONECHECKS*/;
+	sei.fMask = SEE_MASK_NOCLOSEPROCESS /* | SEE_MASK_NOZONECHECKS*/;
 	sei.hwnd = NULL;
 	sei.lpVerb = NULL;
 	sei.lpFile = szFilename;
@@ -1610,7 +1616,7 @@ void OpenFile(const char* szFilename)
 	sei.lpDirectory = NULL;
 	sei.nShow = SW_SHOW;
 	ShellExecuteEx(&sei);
-	CMainWindowIterator itw((DWORD)sei.hProcess/*pid*/);
+	CMainWindowIterator itw((DWORD)sei.hProcess /*pid*/);
 	SetForegroundWindow(itw.First());
 	//ShellExecute(NULL, NULL, szFilename, NULL, NULL, SW_SHOW);
 #else
@@ -1822,7 +1828,7 @@ void showError(GArgReader& args, const char* szMessage)
 		cerr << "\nFor more specific usage information, enter as much of the command as you know.\n";
 	}
 	cerr << "\nTo see full usage information, run:\n	waffles_security usage\n\n";
-//	cerr << "For a graphical tool that will help you to build a command, run:\n	waffles_wizard\n";
+	//	cerr << "For a graphical tool that will help you to build a command, run:\n	waffles_wizard\n";
 	cerr.flush();
 }
 
@@ -1856,9 +1862,9 @@ void doit(GArgReader& args)
 }
 
 #ifdef WINDOWS
-#	ifndef _DEBUG
-#		define USE_WINMAIN
-#	endif
+#ifndef _DEBUG
+#define USE_WINMAIN
+#endif
 #endif
 
 
@@ -1910,7 +1916,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 }
 
 #else
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
 	GApp::enableFloatingPointExceptions();

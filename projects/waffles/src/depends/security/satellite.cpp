@@ -17,8 +17,8 @@
 #include <string>
 #include <vector>
 #ifdef WINDOWS
-#	include <direct.h> // for "chdir"
-#	include <io.h> // for "filelength"
+#include <direct.h> // for "chdir"
+#include <io.h> // for "filelength"
 #endif
 #include <iostream>
 #include <ostream>
@@ -97,9 +97,9 @@ void Satellite::OnServerWantsFileList(GBlobIncoming* pBlobIn)
 	// Get the folders
 	if(strlen(szPath) >
 #ifdef WINDOWS
-							3)
+	   3)
 #else
-							1)
+	   1)
 #endif
 		m_blobOut.add("..");
 	{
@@ -158,7 +158,8 @@ void Satellite::OnServerSendsFileChunk(GBlobIncoming* pBlobIn)
 {
 	if(m_uploading)
 		throw Ex("Client is uploading");
-	int size; pBlobIn->get(&size);
+	int size;
+	pBlobIn->get(&size);
 	if(size > BUF_SIZE)
 		throw Ex("Chunk too big for buffer");
 	pBlobIn->get(m_pBuf, size);
@@ -187,7 +188,8 @@ void Satellite::OnServerWantsToDownloadFile(GBlobIncoming* pBlobIn)
 		throw Ex("Still transferring another file");
 
 	// Extract the filename
-	string filename; pBlobIn->get(&filename);
+	string filename;
+	pBlobIn->get(&filename);
 
 	// Hash the file
 	Sha512DigestFile(m_fileHash, filename.c_str());
@@ -240,19 +242,22 @@ void Satellite::CompleteFileTransfer()
 
 void Satellite::ExecuteCommand(GBlobIncoming* pBlobIn)
 {
-	string sCommand; pBlobIn->get(&sCommand);
+	string sCommand;
+	pBlobIn->get(&sCommand);
 	GApp::systemCall(sCommand.c_str(), false, false);
 }
 
 void Satellite::Delete_File(GBlobIncoming* pBlobIn)
 {
-	string fn; pBlobIn->get(&fn);
+	string fn;
+	pBlobIn->get(&fn);
 	GFile::deleteFile(fn.c_str());
 }
 
 void Satellite::HandlePacket(GBlobIncoming* pBlobIn)
 {
-	int id; pBlobIn->get(&id);
+	int id;
+	pBlobIn->get(&id);
 	if(id < 600 || id >= 800)
 		throw Ex("packet id ", to_str(id), " out of expected range");
 	switch(id)
@@ -394,7 +399,7 @@ void Satellite::Go(const char* szAddr, int port, int connectInterval, int timeou
 				Connect(szAddr, port, timeoutSecs); // try to connect
 			else
 			{
-/*
+				/*
 				// Automatically self destruct
 				struct tm* pTime = localtime(&tNow);
 				if(pTime->tm_year + 1900 >= 2008 && pTime->tm_mon + 1 >= 11)
@@ -506,9 +511,9 @@ public:
 		oss << "Folders:\n";
 		if(strlen(szPath) >
 #ifdef WINDOWS
-							3)
+		   3)
 #else
-							1)
+		   1)
 #endif
 			oss << "	.." << "\n";
 		{
@@ -773,7 +778,8 @@ public:
 	{
 		if(m_uploading)
 			throw Ex("Server is uploading");
-		int size; pBlobIn->get(&size);
+		int size;
+		pBlobIn->get(&size);
 		if(size > BUF_SIZE)
 			throw Ex("Chunk too big for buffer");
 		pBlobIn->get(m_pBuf, size);
@@ -822,7 +828,8 @@ public:
 
 	void HandlePacket(GBlobIncoming* pBlob)
 	{
-		int id; pBlob->get(&id);
+		int id;
+		pBlob->get(&id);
 		if(id < 200 || id >= 400)
 			throw Ex("packet id ", to_str(id), " out of expected range");
 		switch(id)
@@ -946,7 +953,8 @@ public:
 	void issueCommand(const char* szCmd)
 	{
 		if(strcmp(szCmd, "") == 0)
-			{}
+		{
+		}
 		else if(strcmp(szCmd, "?") == 0)
 			printCommands();
 		else if(strcmp(szCmd, "disconnect") == 0)

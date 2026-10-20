@@ -21,7 +21,8 @@
 #include "../../GClasses/GNeuralNet.h"
 #include "../../GClasses/GVec.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 GCudaLayer::GCudaLayer(GCudaEngine& engine)
 : GNeuralNetLayer(), m_engine(engine)
@@ -106,7 +107,7 @@ void GLayerClassicCuda::resetWeights(GRand& rand)
 	}
 	m_weights.upload(mTmp);
 	GVec vTmp(outputCount);
-        vTmp.fillNormal(rand, mag);
+	vTmp.fillNormal(rand, mag);
 	m_bias.upload(vTmp);
 	m_delta.scale(m_engine, 0.0);
 	m_biasDelta.scale(m_engine, 0.0);
@@ -249,7 +250,7 @@ void GLayerClassicCuda::updateDeltas(const GVec& upStreamActivation, double mome
 		m_engine.sync();
 	}
 	m_delta.addOuterProduct(m_engine, m_incoming, m_error, 1.0);
- 	m_biasDelta.add(m_engine, m_error, 1.0);
+	m_biasDelta.add(m_engine, m_error, 1.0);
 	m_engine.sync();
 }
 
@@ -385,16 +386,16 @@ void GLayerClassicCuda::download(GLayerClassic& dest) const
 
 GLayerConvolutional2DCuda::GLayerConvolutional2DCuda(GCudaEngine& engine, size_t inputCols, size_t inputRows, size_t inputChannels, size_t kernelRows, size_t kernelCols, size_t kernelCount, size_t stride, size_t padding)
 : GCudaLayer(engine),
-m_inputRows(inputRows),
-m_inputCols(inputCols),
-m_inputChannels(inputChannels),
-m_kernelRows(kernelRows),
-m_kernelCols(kernelCols),
-m_kernelCount(kernelCount),
-m_stride(stride),
-m_padding(padding),
-m_outputRows((inputRows - kernelRows + 2 * padding) / stride + 1),
-m_outputCols((inputCols - kernelCols + 2 * padding) / stride + 1)
+  m_inputRows(inputRows),
+  m_inputCols(inputCols),
+  m_inputChannels(inputChannels),
+  m_kernelRows(kernelRows),
+  m_kernelCols(kernelCols),
+  m_kernelCount(kernelCount),
+  m_stride(stride),
+  m_padding(padding),
+  m_outputRows((inputRows - kernelRows + 2 * padding) / stride + 1),
+  m_outputCols((inputCols - kernelCols + 2 * padding) / stride + 1)
 {
 	m_bias.resize(kernelCount);
 	m_biasDelta.resize(kernelCount);
@@ -406,18 +407,18 @@ m_outputCols((inputCols - kernelCols + 2 * padding) / stride + 1)
 	m_error.resize(n);
 }
 
-GLayerConvolutional2DCuda::GLayerConvolutional2DCuda(GCudaEngine& engine, const GLayerConvolutional2DCuda &upstream, size_t kernelRows, size_t kernelCols, size_t kernelCount, size_t stride, size_t padding)
+GLayerConvolutional2DCuda::GLayerConvolutional2DCuda(GCudaEngine& engine, const GLayerConvolutional2DCuda& upstream, size_t kernelRows, size_t kernelCols, size_t kernelCount, size_t stride, size_t padding)
 : GCudaLayer(engine),
-m_inputRows(upstream.outputRows()),
-m_inputCols(upstream.outputCols()),
-m_inputChannels(upstream.outputChannels()),
-m_kernelRows(kernelRows),
-m_kernelCols(kernelCols),
-m_kernelCount(kernelCount),
-m_stride(stride),
-m_padding(padding),
-m_outputRows((m_inputRows - kernelRows + 2 * padding) / stride + 1),
-m_outputCols((m_inputCols - kernelCols + 2 * padding) / stride + 1)
+  m_inputRows(upstream.outputRows()),
+  m_inputCols(upstream.outputCols()),
+  m_inputChannels(upstream.outputChannels()),
+  m_kernelRows(kernelRows),
+  m_kernelCols(kernelCols),
+  m_kernelCount(kernelCount),
+  m_stride(stride),
+  m_padding(padding),
+  m_outputRows((m_inputRows - kernelRows + 2 * padding) / stride + 1),
+  m_outputCols((m_inputCols - kernelCols + 2 * padding) / stride + 1)
 {
 	m_bias.resize(kernelCount);
 	m_biasDelta.resize(kernelCount);
@@ -433,7 +434,7 @@ GLayerConvolutional2DCuda::~GLayerConvolutional2DCuda()
 {
 }
 
-GDomNode *GLayerConvolutional2DCuda::serialize(GDom *pDoc)
+GDomNode* GLayerConvolutional2DCuda::serialize(GDom* pDoc)
 {
 	GLayerConvolutional2D tmp(m_inputCols, m_inputRows, m_inputChannels, m_kernelRows, m_kernelCols, m_kernelCount, m_stride, m_padding);
 	download(tmp);
@@ -453,29 +454,29 @@ void GLayerConvolutional2DCuda::resize(size_t inputSize, size_t outputSize)
 		throw Ex("GLayerConvolutional2DCuda cannot be resized");
 }
 
-void GLayerConvolutional2DCuda::resizeInputs(GNeuralNetLayer *pUpStreamLayer)
+void GLayerConvolutional2DCuda::resizeInputs(GNeuralNetLayer* pUpStreamLayer)
 {
 	throw Ex("Sorry, this method is not yet implemented.");
 }
 
-void GLayerConvolutional2DCuda::dropOut(GRand &rand, double probOfDrop)
+void GLayerConvolutional2DCuda::dropOut(GRand& rand, double probOfDrop)
 {
 	throw Ex("dropOut not implemented");
 }
 
-void GLayerConvolutional2DCuda::dropConnect(GRand &rand, double probOfDrop)
+void GLayerConvolutional2DCuda::dropConnect(GRand& rand, double probOfDrop)
 {
 	throw Ex("dropConnect not implemented");
 }
 
-void GLayerConvolutional2DCuda::computeError(const GVec &target)
+void GLayerConvolutional2DCuda::computeError(const GVec& target)
 {
 	m_error.upload(target);
 	m_error.add(m_engine, m_activation, -1.0);
 	m_engine.sync();
 }
 
-void GLayerConvolutional2DCuda::feedForward(const GVec &in)
+void GLayerConvolutional2DCuda::feedForward(const GVec& in)
 {
 	m_incoming.upload(in);
 	Conv2D_feedForward(m_engine, m_activation, m_net, m_incoming, m_kernels, m_bias, m_kernelCount, m_kernelRows, m_kernelCols, m_outputRows, m_outputCols, m_inputRows, m_inputCols, m_inputChannels, m_padding, m_stride);
@@ -489,7 +490,7 @@ void GLayerConvolutional2DCuda::feedForward(GNeuralNetLayer* pUpStreamLayer)
 		Conv2D_feedForward(m_engine, m_activation, m_net, ((GCudaLayer*)pUpStreamLayer)->deviceActivation(), m_kernels, m_bias, m_kernelCount, m_kernelRows, m_kernelCols, m_outputRows, m_outputCols, m_inputRows, m_inputCols, m_inputChannels, m_padding, m_stride);
 	}
 	else
-		feedForward(pUpStreamLayer->activation());	
+		feedForward(pUpStreamLayer->activation());
 }
 
 void GLayerConvolutional2DCuda::deactivateError()
@@ -497,7 +498,7 @@ void GLayerConvolutional2DCuda::deactivateError()
 	Conv2D_deactivate(m_engine, m_error, m_net, m_activation, outputs());
 }
 
-void GLayerConvolutional2DCuda::backPropError(GNeuralNetLayer *pUpStreamLayer)
+void GLayerConvolutional2DCuda::backPropError(GNeuralNetLayer* pUpStreamLayer)
 {
 	if(pUpStreamLayer->usesGPU())
 	{
@@ -514,7 +515,7 @@ void GLayerConvolutional2DCuda::backPropError(GNeuralNetLayer *pUpStreamLayer)
 	}
 }
 
-void GLayerConvolutional2DCuda::updateDeltas(const GVec &upStreamActivation, double momentum)
+void GLayerConvolutional2DCuda::updateDeltas(const GVec& upStreamActivation, double momentum)
 {
 	// Ignore upStreamActivation and assume that the input was already uploaded into m_incoming when feedForward was called
 	Conv2D_updateDeltas(m_engine, m_delta, m_biasDelta, m_incoming, m_error, momentum, m_kernelCount, m_kernelRows, m_kernelCols, m_outputRows, m_outputCols, m_inputChannels, m_inputRows, m_inputCols, m_padding, m_stride);
@@ -555,35 +556,35 @@ size_t GLayerConvolutional2DCuda::countWeights()
 	return m_inputChannels * m_kernelRows * m_kernelCols + m_kernelCount;
 }
 
-size_t GLayerConvolutional2DCuda::weightsToVector(double *pOutVector)
+size_t GLayerConvolutional2DCuda::weightsToVector(double* pOutVector)
 {
 	throw Ex("weightsToVector not implemented");
 }
 
-size_t GLayerConvolutional2DCuda::vectorToWeights(const double *pVector)
+size_t GLayerConvolutional2DCuda::vectorToWeights(const double* pVector)
 {
 	throw Ex("vectorToWeights not implemented");
 }
 
-void GLayerConvolutional2DCuda::copyWeights(const GNeuralNetLayer *pSource)
+void GLayerConvolutional2DCuda::copyWeights(const GNeuralNetLayer* pSource)
 {
 	throw Ex("copyWeights not implemented");
 }
 
-void GLayerConvolutional2DCuda::resetWeights(GRand &rand)
+void GLayerConvolutional2DCuda::resetWeights(GRand& rand)
 {
 	double mag = std::max(0.03, 1.0 / (m_outputRows * m_outputCols));
 	m_kernels.fillNormal(m_engine, 0.0, mag);
-//	m_bias.randomNormal(m_engine, 0.0, mag);
+	//	m_bias.randomNormal(m_engine, 0.0, mag);
 	m_bias.fill(m_engine, 0.0);
 	m_delta.fill(m_engine, 0.0);
 	m_biasDelta.fill(m_engine, 0.0);
 }
 
-void GLayerConvolutional2DCuda::perturbWeights(GRand &rand, double deviation, size_t start, size_t count)
+void GLayerConvolutional2DCuda::perturbWeights(GRand& rand, double deviation, size_t start, size_t count)
 {
 	throw Ex("perturbWeights not implemented");
-/*	GAssert(start + count < m_kernelCount);
+	/*	GAssert(start + count < m_kernelCount);
 	size_t n = std::min(m_kernelCount - start, count);
 	for(size_t j = start; j < n; j++)
 		GVec::perturb(m_kernels[j].data(), deviation, m_kernels.cols(), rand);

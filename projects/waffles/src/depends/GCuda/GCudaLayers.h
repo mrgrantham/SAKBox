@@ -22,7 +22,8 @@
 #include "GCudaMatrix.h"
 #include "../../GClasses/GNeuralNet.h"
 
-namespace GClasses {
+namespace GClasses
+{
 
 class GCudaLayer : public GNeuralNetLayer
 {
@@ -64,7 +65,7 @@ protected:
 public:
 	/// General-purpose constructor. Takes ownership of pActivationFunction.
 	GLayerClassicCuda(GCudaEngine& engine, size_t inputs, size_t outputs);
-	
+
 	// Unmarshaling constructor
 	GLayerClassicCuda(GDomNode* pNode, GCudaEngine& engine);
 
@@ -202,7 +203,6 @@ protected:
 	void feedIn(GNeuralNetLayer* pUpStreamLayer);
 
 	void activate();
-
 };
 
 
@@ -248,38 +248,38 @@ public:
 	GLayerConvolutional2DCuda(GDomNode* pNode, GCudaEngine& engine);
 	virtual ~GLayerConvolutional2DCuda();
 
-	virtual const char *type() { return "conv2dcuda"; }
-	virtual GDomNode *serialize(GDom *pDoc);
+	virtual const char* type() { return "conv2dcuda"; }
+	virtual GDomNode* serialize(GDom* pDoc);
 	virtual std::string to_str();
 	virtual size_t inputs() const { return m_inputRows * m_inputCols * m_inputChannels; }
 	virtual size_t outputs() const { return m_outputRows * m_outputCols * m_kernelCount; }
 	virtual void resize(size_t inputs, size_t outputs);
-	virtual void resizeInputs(GNeuralNetLayer *pUpStreamLayer);
+	virtual void resizeInputs(GNeuralNetLayer* pUpStreamLayer);
 
 	/// Uploads pIn to the GPU, then feeds it through this layer
-	virtual void feedForward(const GVec &in);
+	virtual void feedForward(const GVec& in);
 
 	/// Feeds the activation from the upstream layer through this layer.
 	/// (If the upstream layer is a GPU-optimized layer, then it will be faster because
 	/// the data can stay on the GPU.)
 	virtual void feedForward(GNeuralNetLayer* pUpStreamLayer);
 
-	virtual void dropOut(GRand &rand, double probOfDrop);
-	virtual void dropConnect(GRand &rand, double probOfDrop);
-	virtual void computeError(const GVec &target);
+	virtual void dropOut(GRand& rand, double probOfDrop);
+	virtual void dropConnect(GRand& rand, double probOfDrop);
+	virtual void computeError(const GVec& target);
 	virtual void deactivateError();
-	virtual void backPropError(GNeuralNetLayer *pUpStreamLayer);
-	virtual void updateDeltas(const GVec &upStreamActivation, double momentum);
+	virtual void backPropError(GNeuralNetLayer* pUpStreamLayer);
+	virtual void updateDeltas(const GVec& upStreamActivation, double momentum);
 	virtual void updateDeltas(GNeuralNetLayer* pUpStreamLayer, double momentum);
 	virtual void applyDeltas(double learningRate);
 	virtual void scaleWeights(double factor, bool scaleBiases);
 	virtual void diminishWeights(double amount, bool regularizeBiases);
 	virtual size_t countWeights();
-	virtual size_t weightsToVector(double *pOutVector);
-	virtual size_t vectorToWeights(const double *pVector);
-	virtual void copyWeights(const GNeuralNetLayer *pSource);
-	virtual void resetWeights(GRand &rand);
-	virtual void perturbWeights(GRand &rand, double deviation, size_t start = 0, size_t count = INVALID_INDEX);
+	virtual size_t weightsToVector(double* pOutVector);
+	virtual size_t vectorToWeights(const double* pVector);
+	virtual void copyWeights(const GNeuralNetLayer* pSource);
+	virtual void resetWeights(GRand& rand);
+	virtual void perturbWeights(GRand& rand, double deviation, size_t start = 0, size_t count = INVALID_INDEX);
 	virtual void maxNorm(double min, double max);
 	virtual void regularizeActivationFunction(double lambda);
 	virtual GVec& activation();

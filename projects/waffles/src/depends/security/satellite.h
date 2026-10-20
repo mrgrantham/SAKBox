@@ -14,8 +14,9 @@
 #define MAX_PACKET_SIZE 16384
 #define BUF_SIZE 4096
 
-namespace GClasses {
-	class GPackageClient;
+namespace GClasses
+{
+class GPackageClient;
 }
 
 class Satellite

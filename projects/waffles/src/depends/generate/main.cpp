@@ -39,8 +39,8 @@
 #include <iostream>
 #include <sstream>
 #ifdef WIN32
-#	include <direct.h>
-#	include <process.h>
+#include <direct.h>
+#include <process.h>
 #endif
 #include <exception>
 #include <string>
@@ -110,20 +110,29 @@ void cube(GArgReader& args)
 	GMatrix data(0, 3);
 	for(int y = 0; y < side; y++)
 	{
-		double b = ((double)y/* + 0.5*/) / side;
+		double b = ((double)y /* + 0.5*/) / side;
 		for(int x = 0; x < side; x++)
 		{
-			double a = ((double)x/* + 0.5*/) / side;
+			double a = ((double)x /* + 0.5*/) / side;
+			// (SAKBox) aligned in columns by hand
+			// clang-format off
 			GVec& r0 = data.newRow(); r0[0] = 0.0;     r0[1] = 1.0 - a; r0[2] = b;
 			GVec& r1 = data.newRow(); r1[0] = 1.0;     r1[1] = a;       r1[2] = 1.0 - b;
 			GVec& r2 = data.newRow(); r2[0] = b;       r2[1] = 0.0;     r2[2] = 1.0 - a;
 			GVec& r3 = data.newRow(); r3[0] = 1.0 - b; r3[1] = 1.0;     r3[2] = a;
 			GVec& r4 = data.newRow(); r4[0] = 1.0 - a; r4[1] = b;       r4[2] = 0.0;
 			GVec& r5 = data.newRow(); r5[0] = a;       r5[1] = 1.0 - b; r5[2] = 1.0;
+			// clang-format on
 		}
 	}
-	GVec& rp = data.newRow(); rp[0] = 0.0; rp[1] = 0.0; rp[2] = 0.0;
-	GVec& ru = data.newRow(); ru[0] = 1.0; ru[1] = 1.0; ru[2] = 1.0;
+	GVec& rp = data.newRow();
+	rp[0] = 0.0;
+	rp[1] = 0.0;
+	rp[2] = 0.0;
+	GVec& ru = data.newRow();
+	ru[0] = 1.0;
+	ru[1] = 1.0;
+	ru[2] = 1.0;
 	data.print(cout);
 }
 
@@ -923,7 +932,7 @@ void addCraneToScene(GRayTraceScene& scene, double craneYaw, double ballHeight, 
 	//craneBottom.set(0, 0, 0);
 	craneBottom.set(x - craneLength * cos(cranePitch) * sin(craneYaw), y - craneLength * sin(cranePitch), z - craneLength * cos(cranePitch) * (-cos(craneYaw)));
 	craneTop.set(x + craneLength * cos(cranePitch) * sin(craneYaw), y + craneLength * sin(cranePitch), z + craneLength * cos(cranePitch) * (-cos(craneYaw)));
-	GRayTraceTriMesh* pCrane = GRayTraceTriMesh::makeCylinder(pCraneMaterial, &craneBottom, &craneTop, craneRadius, 12, false/*end caps*/);
+	GRayTraceTriMesh* pCrane = GRayTraceTriMesh::makeCylinder(pCraneMaterial, &craneBottom, &craneTop, craneRadius, 12, false /*end caps*/);
 	pCrane->computePhongNormals();
 	scene.addMesh(pCrane);
 
@@ -934,7 +943,7 @@ void addCraneToScene(GRayTraceScene& scene, double craneYaw, double ballHeight, 
 	G3DVector ballCenter;
 	ballCenter.copy(craneTop);
 	ballCenter.m_vals[1] = y + ballHeight;
-	GRayTraceTriMesh* pCable = GRayTraceTriMesh::makeCylinder(pCableMaterial, &ballCenter, &craneTop, cableRadius, 12, false/*end caps*/);
+	GRayTraceTriMesh* pCable = GRayTraceTriMesh::makeCylinder(pCableMaterial, &ballCenter, &craneTop, cableRadius, 12, false /*end caps*/);
 	pCable->computePhongNormals();
 	scene.addMesh(pCable);
 
@@ -956,10 +965,10 @@ GImage* makeCraneImage(double craneYaw, double ballHeight, int wid, int hgt, dou
 	GRand prng(0);
 	GRayTraceScene scene(&prng);
 	scene.setAmbientLight(0.3, 0.3, 0.3);
-	scene.addLight(new GRayTraceDirectionalLight(-1.0, 2.0, 1.0, 0.1/*r*/, 0.2/*g*/, 0.3/*b*/, 0.0/*jitter*/));
-	scene.addLight(new GRayTraceDirectionalLight(1.0, 0.0, 0.3, 0.10/*r*/, 0.15/*g*/, 0.05/*b*/, 0.0/*jitter*/));
-	scene.addLight(new GRayTraceDirectionalLight(0.0, 0.0, 1.0, 0.15/*r*/, 0.05/*g*/, 0.10/*b*/, 0.0/*jitter*/));
-	scene.setBackgroundColor(1/*a*/, 1.0/*r*/, 1.0/*g*/, 1.0/*b*/);
+	scene.addLight(new GRayTraceDirectionalLight(-1.0, 2.0, 1.0, 0.1 /*r*/, 0.2 /*g*/, 0.3 /*b*/, 0.0 /*jitter*/));
+	scene.addLight(new GRayTraceDirectionalLight(1.0, 0.0, 0.3, 0.10 /*r*/, 0.15 /*g*/, 0.05 /*b*/, 0.0 /*jitter*/));
+	scene.addLight(new GRayTraceDirectionalLight(0.0, 0.0, 1.0, 0.15 /*r*/, 0.05 /*g*/, 0.10 /*b*/, 0.0 /*jitter*/));
+	scene.setBackgroundColor(1 /*a*/, 1.0 /*r*/, 1.0 /*g*/, 1.0 /*b*/);
 	GRayTraceCamera* pCamera = scene.camera();
 	pCamera->setViewAngle(1.0);
 	pCamera->setImageSize(wid, hgt);
@@ -989,14 +998,14 @@ GImage* makeThreeCraneImage(double* craneYaw, double* ballHeight, int wid, int h
 	GRand prng(0);
 	GRayTraceScene scene(&prng);
 	scene.setAmbientLight(0.3, 0.3, 0.3);
-	scene.addLight(new GRayTraceDirectionalLight(-1.0, 2.0, 1.0, 0.1/*r*/, 0.2/*g*/, 0.3/*b*/, 0.0/*jitter*/));
-	scene.addLight(new GRayTraceDirectionalLight(1.0, 0.0, 0.3, 0.10/*r*/, 0.15/*g*/, 0.05/*b*/, 0.0/*jitter*/));
-	scene.addLight(new GRayTraceDirectionalLight(0.0, 0.0, 1.0, 0.15/*r*/, 0.05/*g*/, 0.10/*b*/, 0.0/*jitter*/));
-	scene.setBackgroundColor(1/*a*/, 1.0/*r*/, 1.0/*g*/, 1.0/*b*/);
+	scene.addLight(new GRayTraceDirectionalLight(-1.0, 2.0, 1.0, 0.1 /*r*/, 0.2 /*g*/, 0.3 /*b*/, 0.0 /*jitter*/));
+	scene.addLight(new GRayTraceDirectionalLight(1.0, 0.0, 0.3, 0.10 /*r*/, 0.15 /*g*/, 0.05 /*b*/, 0.0 /*jitter*/));
+	scene.addLight(new GRayTraceDirectionalLight(0.0, 0.0, 1.0, 0.15 /*r*/, 0.05 /*g*/, 0.10 /*b*/, 0.0 /*jitter*/));
+	scene.setBackgroundColor(1 /*a*/, 1.0 /*r*/, 1.0 /*g*/, 1.0 /*b*/);
 	GRayTraceCamera* pCamera = scene.camera();
 	pCamera->setViewAngle(1.0);
 	pCamera->setImageSize(wid, hgt);
-	pCamera->lookFromPoint()->set(0.0, 0.7/*0.84*/, 4.2);
+	pCamera->lookFromPoint()->set(0.0, 0.7 /*0.84*/, 4.2);
 	G3DVector cameraDirection(0.0, 0.0, -1.0);
 	pCamera->setDirection(&cameraDirection, 0.0);
 	//scene.setRenderMode(GRayTraceScene::FAST_RAY_TRACE);
@@ -1196,10 +1205,22 @@ void cranePath(GArgReader& args)
 		double deltay = 0;
 		switch(a)
 		{
-			case 0: deltax = -1.0; deltay = 0.0; break;
-			case 1: deltax = 1.0; deltay = 0.0; break;
-			case 2: deltax = 0.0; deltay = -1.0; break;
-			case 3: deltax = 0.0; deltay = 1.0; break;
+			case 0:
+				deltax = -1.0;
+				deltay = 0.0;
+				break;
+			case 1:
+				deltax = 1.0;
+				deltay = 0.0;
+				break;
+			case 2:
+				deltax = 0.0;
+				deltay = -1.0;
+				break;
+			case 3:
+				deltax = 0.0;
+				deltay = 1.0;
+				break;
 		}
 		deltax += prng.normal() * transitionNoiseDev;
 		deltay += prng.normal() * transitionNoiseDev;
@@ -1264,8 +1285,14 @@ void threeCranePath(GArgReader& args)
 	GMatrix stateData(0, 4);
 	double dx = (0.75 - (-0.75)) / (horizFrames - 1);
 	double dy = (1.25 - 0.0) / (vertFrames - 1);
-	double posx[3]; posx[0] = 0.0; posx[1] = 0.0; posx[2] = 0.0;
-	double posy[3]; posy[0] = 1.25 / 2.0; posy[1] = 1.25 / 2.0; posy[2] = 1.25 / 2.0;
+	double posx[3];
+	posx[0] = 0.0;
+	posx[1] = 0.0;
+	posx[2] = 0.0;
+	double posy[3];
+	posy[0] = 1.25 / 2.0;
+	posy[1] = 1.25 / 2.0;
+	posy[2] = 1.25 / 2.0;
 	for(size_t i = 0; i < pActions->rows(); i++)
 	{
 		double ballHeight[3];
@@ -1312,10 +1339,22 @@ void threeCranePath(GArgReader& args)
 		double deltay = 0;
 		switch(a)
 		{
-			case 0: deltax = -1.0; deltay = 0.0; break;
-			case 1: deltax = 1.0; deltay = 0.0; break;
-			case 2: deltax = 0.0; deltay = -1.0; break;
-			case 3: deltax = 0.0; deltay = 1.0; break;
+			case 0:
+				deltax = -1.0;
+				deltay = 0.0;
+				break;
+			case 1:
+				deltax = 1.0;
+				deltay = 0.0;
+				break;
+			case 2:
+				deltax = 0.0;
+				deltay = -1.0;
+				break;
+			case 3:
+				deltax = 0.0;
+				deltay = 1.0;
+				break;
 		}
 		deltax += prng.normal() * transitionNoiseDev;
 		deltay += prng.normal() * transitionNoiseDev;
@@ -1327,10 +1366,22 @@ void threeCranePath(GArgReader& args)
 		a = (int)prng.next(4);
 		switch(a)
 		{
-			case 0: deltax = -1.0; deltay = 0.0; break;
-			case 1: deltax = 1.0; deltay = 0.0; break;
-			case 2: deltax = 0.0; deltay = -1.0; break;
-			case 3: deltax = 0.0; deltay = 1.0; break;
+			case 0:
+				deltax = -1.0;
+				deltay = 0.0;
+				break;
+			case 1:
+				deltax = 1.0;
+				deltay = 0.0;
+				break;
+			case 2:
+				deltax = 0.0;
+				deltay = -1.0;
+				break;
+			case 3:
+				deltax = 0.0;
+				deltay = 1.0;
+				break;
 		}
 		deltax += prng.normal() * transitionNoiseDev;
 		deltay += prng.normal() * transitionNoiseDev;
@@ -1342,10 +1393,22 @@ void threeCranePath(GArgReader& args)
 		a = (int)pActions->row(i)[1];
 		switch(a)
 		{
-			case 0: deltax = -1.0; deltay = 0.0; break;
-			case 1: deltax = 1.0; deltay = 0.0; break;
-			case 2: deltax = 0.0; deltay = -1.0; break;
-			case 3: deltax = 0.0; deltay = 1.0; break;
+			case 0:
+				deltax = -1.0;
+				deltay = 0.0;
+				break;
+			case 1:
+				deltax = 1.0;
+				deltay = 0.0;
+				break;
+			case 2:
+				deltax = 0.0;
+				deltay = -1.0;
+				break;
+			case 3:
+				deltax = 0.0;
+				deltay = 1.0;
+				break;
 		}
 		deltax += prng.normal() * transitionNoiseDev;
 		deltay += prng.normal() * transitionNoiseDev;
@@ -1760,7 +1823,7 @@ void sceneRobotSimulationPath(GArgReader& args)
 	GImage frame;
 	frame.setSize(cameraWid, cameraHgt);
 	double x = strafeLen / 2.0;
-	double y = 0.0;//zoomLen / 2.0;
+	double y = 0.0; //zoomLen / 2.0;
 	GMatrix state(0, 2);
 	GMatrix act(new GUniformRelation(1, 4));
 	GMatrix obs(0, cameraWid * cameraHgt * 3);
@@ -1785,7 +1848,7 @@ void sceneRobotSimulationPath(GArgReader& args)
 
 		// Convert to an observation vector
 		GVec& pVec2 = obs.newRow();
-        size_t pos = 0;
+		size_t pos = 0;
 		unsigned int* pix = frame.pixels();
 		for(unsigned int yyy = 0; yyy < frame.height(); yyy++)
 		{
@@ -2230,7 +2293,7 @@ public:
 	}
 
 	// returns false if pA is closer than pB
-	bool operator() (const GVec* AA, const GVec* BB) const
+	bool operator()(const GVec* AA, const GVec* BB) const
 	{
 		const GVec& pA = *AA;
 		const GVec& pB = *BB;
@@ -2457,7 +2520,7 @@ void Plot3dMulti(GArgReader& args)
 	// Check values
 	if(pRel->size() != 3)
 		throw Ex("Sorry, only data with 3 dims is currently supported");
-	if(!pRel->areContinuous(0,3))
+	if(!pRel->areContinuous(0, 3))
 		throw Ex("Sorry, only continuous attributes are currently supported");
 
 	// Make plots
@@ -2636,7 +2699,7 @@ void rayTraceManifoldModel(GArgReader& args)
 	double amax = 1.0;
 	double bmin = 0.0;
 	double bmax = 1.0;
-/*	double xmin = 0.0;
+	/*	double xmin = 0.0;
 	double xmax = 1.0;
 	double ymin = 0.0;
 	double ymax = 1.0;
@@ -2663,7 +2726,7 @@ void rayTraceManifoldModel(GArgReader& args)
 			bmin = args.pop_double();
 			bmax = args.pop_double();
 		}
-/*		else if(args.if_pop("-range"))
+		/*		else if(args.if_pop("-range"))
 		{
 			xmin = args.pop_double();
 			xmax = args.pop_double();
@@ -2695,14 +2758,20 @@ void rayTraceManifoldModel(GArgReader& args)
 	scene.setBackgroundColor(1.0, 0.0, 0.0, 0.0);
 	scene.setAmbientLight(0.9, 0.9, 0.9);
 	scene.addLight(new GRayTraceDirectionalLight(0.1, 0.2, 0.3, // direction
-							0.8, 0.8, 1.0, // color
-							0.0)); // jitter
+	                                             0.8,
+	                                             0.8,
+	                                             1.0, // color
+	                                             0.0)); // jitter
 	scene.addLight(new GRayTraceDirectionalLight(-0.1, -0.2, 0.3, // direction
-							0.8, 1.0, 0.8, // color
-							0.0)); // jitter
+	                                             0.8,
+	                                             1.0,
+	                                             0.8, // color
+	                                             0.0)); // jitter
 	scene.addLight(new GRayTraceDirectionalLight(-0.1, 0.9, -0.1, // direction
-							0.3, 0.2, 0.2, // color
-							0.0)); // jitter
+	                                             0.3,
+	                                             0.2,
+	                                             0.2, // color
+	                                             0.0)); // jitter
 	GRayTraceCamera* pCamera = scene.camera();
 	pCamera->setImageSize(width, height);
 	pCamera->setViewAngle(M_PI / 3);
@@ -2711,7 +2780,7 @@ void rayTraceManifoldModel(GArgReader& args)
 
 
 	G3DVector cameraDirection(-.35, -0.15, -0.5);
-//	G3DVector cameraDirection(0.1, -0.25, -0.85);
+	//	G3DVector cameraDirection(0.1, -0.25, -0.85);
 	G3DReal dist = 2.0;
 	G3DVector* pCameraPos = pCamera->lookFromPoint();
 	pCameraPos->copy(cameraDirection);
@@ -2743,7 +2812,7 @@ void rayTraceManifoldModel(GArgReader& args)
 	GVec pred(3);
 	for(in[1] = bmin; in[1] + bstep <= bmax; in[1] += bstep)
 	{
-		for(in[0] = amin; in[0] + astep <= amax; )
+		for(in[0] = amin; in[0] + astep <= amax;)
 		{
 			// Predict the 4 corners
 			G3DVector v1, v2, v3, v4;
@@ -2774,7 +2843,7 @@ void rayTraceManifoldModel(GArgReader& args)
 		}
 	}
 
-//	scene.addObject(new GRayTraceSphere(pMat2, .5,.5,.5, 0.02)); // xyzr
+	//	scene.addObject(new GRayTraceSphere(pMat2, .5,.5,.5, 0.02)); // xyzr
 
 	// Ray-trace the scene
 	scene.render();
@@ -2858,14 +2927,14 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 	cerr.flush();
 }
 
-void mackeyGlass(GArgReader &args)
+void mackeyGlass(GArgReader& args)
 {
-	double initX	= 0.5;
-	double beta		= 0.25;
-	double gamma	= 0.1;
-	double n		= 10.0;
-	size_t tao		= 17;
-	size_t count	= 100;
+	double initX = 0.5;
+	double beta = 0.25;
+	double gamma = 0.1;
+	double n = 10.0;
+	size_t tao = 17;
+	size_t count = 100;
 
 	if(args.next_is_uint())
 	{
@@ -2930,15 +2999,15 @@ void mackeyGlass(GArgReader &args)
 	m.print(cout);
 }
 
-void lorenz63(GArgReader &args)
+void lorenz63(GArgReader& args)
 {
 	double x = 1.0, y = 1.0, z = 1.0;
-	double sigma	= 10.0;
-	double beta		= 8.0 / 3.0;
-	double rho		= 28.0;
-	double dt		= 0.01;
+	double sigma = 10.0;
+	double beta = 8.0 / 3.0;
+	double rho = 28.0;
+	double dt = 0.01;
 
-	size_t count	= 100;
+	size_t count = 100;
 
 	if(args.next_is_uint())
 	{
@@ -2989,16 +3058,16 @@ void lorenz63(GArgReader &args)
 
 	for(size_t i = 1; i < count; i++)
 	{
-		GVec &row	= m[i - 1];
-		m[i][0]		= row[0] + dt * (sigma * (row[1] - row[0]));
-		m[i][1]		= row[1] + dt * (row[0] * (rho - row[2]) - row[1]);
-		m[i][2]		= row[2] + dt * (row[0] * row[1] - beta * row[2]);
+		GVec& row = m[i - 1];
+		m[i][0] = row[0] + dt * (sigma * (row[1] - row[0]));
+		m[i][1] = row[1] + dt * (row[0] * (rho - row[2]) - row[1]);
+		m[i][2] = row[2] + dt * (row[0] * row[1] - beta * row[2]);
 	}
 
 	m.print(cout);
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	PathData pd;
 	GFile::parsePath(argv[0], &pd);

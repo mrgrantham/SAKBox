@@ -5,7 +5,8 @@ projects/examples/read-controls/source/main.c
 
 # Third-party code bundled inside Waffles
 projects/waffles/demos/bullet-2.77/**
-projects/waffles/src/depends/**
+projects/waffles/src/depends/security/dinput.h
+projects/waffles/src/depends/security/md4.*
 projects/waffles/src/WClasses/sha2.cpp
 projects/waffles/src/WClasses/sha2.h
 projects/waffles/src/WClasses/uitypes.h
