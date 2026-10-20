@@ -1,14 +1,16 @@
 #ifndef __GSTEMMER_H__
 #define __GSTEMMER_H__
 
-#define GSTEMMER_MAX_WORD_SIZE 64
+#include <cstddef>
+#include <string>
+
+struct sb_stemmer;
 
 namespace GClasses
 {
 
-struct stemmer;
-
-/// This class just wraps the Porter Stemmer.
+/// This class just wraps the Porter Stemmer (Snowball's "porter", from the
+/// repo's libstemmer: the algorithm as published).
 /// It finds the stems of words.  Examples:
 /// "cats"->"cat"
 /// "dogs"->"dog"
@@ -35,16 +37,19 @@ struct stemmer;
 class GStemmer
 {
 protected:
-	struct stemmer* m_pPorterStemmer;
-	char m_szBuf[GSTEMMER_MAX_WORD_SIZE];
+	sb_stemmer* m_pStemmer;
+	std::string m_word;
+	std::string m_stem;
 
 public:
 	GStemmer();
 	~GStemmer();
+	GStemmer(const GStemmer&) = delete;
+	GStemmer& operator=(const GStemmer&) = delete;
 
-	/// Pass in a word (you don't need to lowercase or null-terminate it) and this
-	/// will return its stem. The buffer it returns is only valid until the next time
-	/// you call GetStem.
+	/// Pass in a word, as UTF-8 (you don't need to lowercase or null-terminate
+	/// it), and this will return its stem. The buffer it returns is only valid
+	/// until the next time you call getStem.
 	const char* getStem(const char* szWord, size_t nLen);
 };
 

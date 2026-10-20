@@ -15,6 +15,7 @@ bazel_dep(name = "apple_support", version = "2.10.1", repo_name = "build_bazel_a
 bazel_dep(name = "fmt", version = "11.2.0.bcr.1")
 bazel_dep(name = "googletest", version = "1.18.0.bcr.1", repo_name = "gtest")
 bazel_dep(name = "catch2", version = "3.15.1")
+bazel_dep(name = "libstemmer", version = "2.2.0")
 bazel_dep(name = "boost.program_options", version = "1.90.0.bcr.1")
 bazel_dep(name = "boost.filesystem", version = "1.90.0.bcr.1")
 

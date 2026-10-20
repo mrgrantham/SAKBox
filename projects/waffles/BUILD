@@ -10,6 +10,7 @@ cc_library(
     ]),
     visibility = ["//visibility:public"],
     strip_include_prefix = "src",
+    deps = ["@libstemmer"], # GStemmer
 )
 
 cc_library(
