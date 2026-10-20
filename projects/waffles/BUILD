@@ -14,7 +14,7 @@ cc_library(
 )
 
 cc_library(
-    name = "gui",
+    name = "Gui",
     srcs = glob(["src/gui/*.cpp",
     ]),
     hdrs = glob([
@@ -26,7 +26,7 @@ cc_library(
 )
 
 cc_library(
-    name = "png",
+    name = "GImagePng",
     srcs = glob(["src/png/*.cpp",
     ]),
     hdrs = glob([
@@ -62,13 +62,13 @@ cc_binary(
     ],
 )
 
-# waffles_generate: makes datasets (src/depends/ because it needs libpng)
+# waffles_generate: makes datasets (src/depends/ because it needs libpng, through :GImagePng)
 cc_binary(
     name = "generate",
     srcs = ["src/depends/generate/main.cpp"],
     deps = [
         ":WClasses",
-        ":png",
+        ":GImagePng",
     ],
 )
 
@@ -133,13 +133,13 @@ cc_test(
     ],
 )
 
-# The PNG library's test needs :png as well
+# The PNG library's test needs :GImagePng as well
 cc_test(
     name = "GImagePng_test",
     size = "small",
     srcs = ["tests/GImagePng_test.cpp"],
     deps = [
-        ":png",
+        ":GImagePng",
         ":WClasses",
         "@gtest//:gtest_main",
     ],

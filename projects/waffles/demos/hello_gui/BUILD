@@ -7,6 +7,6 @@ cc_binary(
     linkopts = ["-pthread"],
     deps = [
         "//projects/waffles:WClasses",
-        "//projects/waffles:gui",
+        "//projects/waffles:Gui",
     ],
 )

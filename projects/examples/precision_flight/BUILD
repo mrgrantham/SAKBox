@@ -2,7 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 # The simulation: no graphics, input or ScratchPadd dependency
 cc_library(
-    name = "flight_sim",
+    name = "FlightSim",
     srcs = ["src/FlightSim.cpp"],
     hdrs = [
         "src/FlightMessages.hpp",
@@ -24,7 +24,7 @@ cc_library(
     ],
     strip_include_prefix = "src",
     deps = [
-        ":flight_sim",
+        ":FlightSim",
         "//projects/scratchpadd/basis",
     ],
 )
@@ -54,7 +54,7 @@ cc_test(
     srcs = ["tests/FlightSim_test.cpp"],
     data = glob(["tests/data/*.txt"]),
     deps = [
-        ":flight_sim",
+        ":FlightSim",
         "@gtest//:gtest_main",
     ],
 )

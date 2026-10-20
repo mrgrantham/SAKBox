@@ -3,7 +3,7 @@ load("@build_bazel_rules_apple//apple:macos.bzl", "macos_application")
 
 # generic extra padd
 cc_library(
-    name = "story",
+    name = "demo_padds",
     hdrs = ["include/DemoMessages.hpp", "include/ShapeLoggerPadd.hpp", "include/StoryPadd.hpp"],
     visibility = ["//visibility:public"],
     strip_include_prefix = "include/",
@@ -21,7 +21,7 @@ cc_binary(
         "//projects/scratchpadd/graphics:graphics",
         "//projects/scratchpadd/audio:audio",
         "//projects/scratchpadd/messages:messages",
-        ":story",
+        ":demo_padds",
     ],
 )
 

@@ -1,7 +1,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
 cc_library(
-    name = "hellolib",
+    name = "hello",
     srcs = ["src/hello.cpp"],
     hdrs = ["include/hello.hpp"],
     strip_include_prefix = "include/",
@@ -11,7 +11,7 @@ cc_binary(
     name = "greet",
     srcs = ["src/hello_main.cpp"],
     deps = [
-        ":hellolib",
+        ":hello",
         "@fmt",
     ],
 )

@@ -8,8 +8,8 @@ cc_binary(
     linkopts = ["-pthread"],
     deps = [
         "//projects/waffles:WClasses",
-        "//projects/waffles:gui",
-        "//projects/waffles:png",
+        "//projects/waffles:Gui",
+        "//projects/waffles:GImagePng",
         "@fmt",
         "@backward",
     ],
