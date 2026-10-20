@@ -80,8 +80,14 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 	int depth, color;
 	png_uint_32 width, height;
 	png_get_IHDR(reader.m_pReadStruct, reader.m_pInfoStruct, &width, &height, &depth, &color, nullptr, nullptr, nullptr);
-	GAssert(depth == 8); // unexpected depth
 	pImage->setSize(width, height);
+
+	// SAKBox: expand every kind of PNG to 8-bit RGB or RGBA. These came after
+	// png_read_update_info, where libpng ignores them, and were commented
+	// out, so greyscale, palette and 16-bit PNGs couldn't be loaded.
+	png_set_expand(reader.m_pReadStruct); // palettes, low bit depths, tRNS transparency
+	png_set_gray_to_rgb(reader.m_pReadStruct);
+	png_set_scale_16(reader.m_pReadStruct);
 
 	// Set gamma correction
 	double dGamma;
@@ -93,9 +99,7 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 	// Update the 'info' struct with the gamma information
 	png_read_update_info(reader.m_pReadStruct, reader.m_pInfoStruct);
 
-	// Tell it to expand palettes to full channels
-	// png_set_expand(reader.m_pReadStruct);
-	// png_set_gray_to_rgb(reader.m_pReadStruct);
+	GAssert(png_get_bit_depth(reader.m_pReadStruct, reader.m_pInfoStruct) == 8);
 
 	// Allocate the row pointers
 	unsigned long rowbytes = png_get_rowbytes(reader.m_pReadStruct, reader.m_pInfoStruct);
