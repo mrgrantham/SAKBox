@@ -922,7 +922,7 @@ protected:
 };
 
 PaintView::PaintView(PaintController* pController, GImage* pImage, GImage* pSelection)
-: ViewBase()
+: ViewBase("Paint")
 {
 	m_pTabDialogs = new GWidgetDialog*[PAINT_TAB_COUNT];
 	m_pTabDialogs[0] = new TabOpen(pController, m_screenRect.w);

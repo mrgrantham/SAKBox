@@ -31,14 +31,21 @@ inline Uint16* getPixMem16(int* pixels, int pitch, int x, int y)
 class ViewBase
 {
 protected:
+	// SAKBox: every view (a popup too) draws to the one window, through one
+	// renderer and texture (SDL allows a window one renderer). The last view
+	// to go destroys them.
 	static SDL_Window* window_;
+	static SDL_Renderer* s_pRenderer;
+	static SDL_Texture* s_pTexture;
+	static int s_viewCount;
 	SDL_Window* m_pScreen;
 	GClasses::GRect m_screenRect;
 	SDL_Renderer* sdlRenderer;
 	SDL_Surface* window_surface; // software render
 	SDL_Texture* sdlTexture; // hardware render
 public:
-	ViewBase();
+	/// szTitle names the window. The first view makes it; a later one renames it.
+	explicit ViewBase(const char* szTitle);
 	virtual ~ViewBase();
 
 	void update();
@@ -57,7 +64,7 @@ protected:
 
 	virtual void draw(int* pixels, int pitch) = 0;
 	void drawDot(int* pixels, int pitch, Uint32 format, int x, int y, unsigned int col, int nSize);
-	SDL_Window* makeScreen(int x, int y);
+	SDL_Window* makeScreen(int x, int y, const char* szTitle);
 };
 
 // when *pKeepRunning is false, the popup will close

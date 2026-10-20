@@ -441,7 +441,7 @@ protected:
 
 public:
 	ChessView(ChessController* pController)
-	: ViewBase()
+	: ViewBase("Chess")
 	{
 		m_pDialog = new ChessDialog(pController, m_screenRect.w, m_screenRect.h);
 	}

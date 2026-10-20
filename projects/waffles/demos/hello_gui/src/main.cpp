@@ -128,7 +128,7 @@ protected:
 
 public:
 	HelloView(HelloController* pController)
-	: ViewBase()
+	: ViewBase("Hello GUI")
 	{
 		m_pDialog = new HelloDialog(pController, m_screenRect.w, m_screenRect.h);
 	}

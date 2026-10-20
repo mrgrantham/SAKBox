@@ -288,7 +288,7 @@ protected:
 
 public:
 	CarOnHillView(CarOnHillController* pController)
-	: ViewBase()
+	: ViewBase("Car On Hill")
 	{
 		m_pDialog = new CarOnHillDialog(pController, m_screenRect.w, m_screenRect.h);
 	}

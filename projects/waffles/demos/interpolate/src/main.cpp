@@ -518,7 +518,7 @@ protected:
 
 public:
 	InterpolateView(InterpolateController* pController)
-	: ViewBase()
+	: ViewBase("Interpolate")
 	{
 		m_pDialog = new InterpolateDialog(pController, m_screenRect.w, m_screenRect.h);
 	}

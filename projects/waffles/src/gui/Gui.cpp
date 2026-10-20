@@ -31,6 +31,7 @@
 #ifdef WINDOWS
 #include <windows.h>
 #endif
+#include <bit>
 #include <string>
 #include <iostream>
 #include <fmt/core.h>
@@ -42,16 +43,26 @@ using std::string;
 
 #ifndef NOGUI
 SDL_Window* ViewBase::window_ = nullptr;
+SDL_Renderer* ViewBase::s_pRenderer = nullptr;
+SDL_Texture* ViewBase::s_pTexture = nullptr;
+int ViewBase::s_viewCount = 0;
 
-ViewBase::ViewBase()
+ViewBase::ViewBase(const char* szTitle)
 {
 	const int windowWidth = 1010;
 	const int windowHeight = 690;
 	if(!window_)
-		window_ = makeScreen(windowWidth, windowHeight);
+	{
+		window_ = makeScreen(windowWidth, windowHeight, szTitle);
+		s_pRenderer = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
+		s_pTexture = SDL_CreateTexture(s_pRenderer, SDL_PIXELFORMAT_BGRA8888, SDL_TEXTUREACCESS_STREAMING, windowWidth, windowHeight);
+	}
+	else
+		SDL_SetWindowTitle(window_, szTitle);
+	s_viewCount++;
 	m_pScreen = window_;
-	sdlRenderer = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
-	sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_BGRA8888, SDL_TEXTUREACCESS_STREAMING, windowWidth, windowHeight);
+	sdlRenderer = s_pRenderer;
+	sdlTexture = s_pTexture;
 	m_screenRect.x = 0;
 	m_screenRect.y = 0;
 	m_screenRect.w = windowWidth;
@@ -60,22 +71,42 @@ ViewBase::ViewBase()
 
 ViewBase::~ViewBase()
 {
-	SDL_DestroyTexture(sdlTexture);
-	SDL_DestroyRenderer(sdlRenderer);
 	m_pScreen = nullptr;
+	if(--s_viewCount > 0)
+		return;
+	SDL_DestroyTexture(s_pTexture);
+	SDL_DestroyRenderer(s_pRenderer);
 	SDL_DestroyWindow(window_);
+	s_pTexture = nullptr;
+	s_pRenderer = nullptr;
+	window_ = nullptr;
 }
 
-SDL_Window* ViewBase::makeScreen(int x, int y)
+SDL_Window* ViewBase::makeScreen(int x, int y, const char* szTitle)
 {
 	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-	SDL_Window* sdlWindow = SDL_CreateWindow("Car On Hill", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, x, y, window_flags);
+	SDL_Window* sdlWindow = SDL_CreateWindow(szTitle, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, x, y, window_flags);
 	if(!sdlWindow)
 	{
 		// SDL_GetError();
 		throw GClasses::Ex("failed to create SDL screen"); // SAKBox: was a bare string
 	}
 	return sdlWindow;
+}
+
+// SAKBox: the texture is SDL_PIXELFORMAT_BGRA8888 (0xBBGGRRAA) and GImage is
+// 0xAARRGGBB, so a pixel converts either way by reversing its bytes. (On
+// Apple, blitImage did this with ntohl; elsewhere it copied the pixels
+// unconverted, using an undeclared w, and captureScreen didn't convert, so
+// a popup's background had its colour channels shuffled.)
+static Uint32 textureFromArgb(unsigned int argb)
+{
+	return std::byteswap(argb);
+}
+
+static unsigned int argbFromTexture(Uint32 bgra)
+{
+	return std::byteswap(bgra);
 }
 
 void ViewBase::captureScreen(GImage* pImage)
@@ -100,7 +131,9 @@ void ViewBase::captureScreen(GImage* pImage)
 		for(y = 0; y < m_screenRect.h; y++)
 		{
 			Uint32* pPix = getPixMem32(pixels, pitch, m_screenRect.x, m_screenRect.y + y);
-			memcpy(&pRGB[y * pImage->width()], pPix, pImage->width() * sizeof(unsigned int));
+			unsigned int* pRow = &pRGB[y * pImage->width()];
+			for(size_t i = 0; i < pImage->width(); i++)
+				*(pRow++) = argbFromTexture(*(pPix++));
 		}
 	}
 	else
@@ -120,6 +153,7 @@ void ViewBase::captureScreen(GImage* pImage)
 			}
 		}
 	}
+	SDL_UnlockTexture(sdlTexture); // SAKBox: was left locked
 }
 
 /*static*/ void ViewBase::blitImage(int* pixels, int pitch, Uint32 format, int x, int y, GImage* pImage)
@@ -135,13 +169,9 @@ void ViewBase::captureScreen(GImage* pImage)
 		for(yy = 0; yy < height; yy++)
 		{
 			pPix = getPixMem32(pixels, pitch, x, y);
-#ifdef __APPLE__
 			unsigned int* pRaw = &pRGB[yy * width];
 			for(size_t i = 0; i < width; i++)
-				*(pPix++) = ntohl(*(pRaw++));
-#else
-			memcpy(pPix, &pRGB[yy * w], w * sizeof(unsigned int));
-#endif
+				*(pPix++) = textureFromArgb(*(pRaw++));
 			y++;
 		}
 	}
@@ -489,7 +519,7 @@ protected:
 
 public:
 	PopupView(GWidgetDialog* pDialog)
-	: ViewBase()
+	: ViewBase(SDL_GetWindowTitle(window_)) // a popup keeps the window's title
 	{
 		m_nLeft = 0;
 		m_nTop = 0;
