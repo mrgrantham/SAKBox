@@ -7,6 +7,9 @@ build --per_file_copt='^projects/.*@-Werror'
 # Overriding functions, destructors included, must say `override` (see the
 # README's Code conventions).
 build --per_file_copt='^projects/.*@-Wsuggest-override,-Wsuggest-destructor-override'
+# External libraries' headers are included as system headers (-isystem), so
+# these checks apply to the repo's code and not to what it includes from them.
+build --features=external_include_paths
 build --cxxopt='-Wpedantic'
 build:clang --cxxopt='-Werror=inconsistent-missing-override'
 build:clang --cxxopt='-Werror=delete-abstract-non-virtual-dtor'

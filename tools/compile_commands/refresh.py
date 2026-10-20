@@ -13,12 +13,18 @@ them into the format clangd reads:
   `external` symlink so paths into external repos (fmt, glm, ...) resolve too.
 - Bazel's compiler wrapper is replaced with plain clang/clang++, and on macOS
   the Xcode placeholders (__BAZEL_XCODE_SDKROOT__, ...) are filled in.
+- An external repo's top folder goes back to -iquote. .bazelrc's
+  external_include_paths makes it -isystem, so <...> includes search it too;
+  that's harmless in Bazel's sandbox, which holds only declared files, but
+  here the whole repo is visible, and a stray file there shadows a standard
+  header (Bullet's `version` file is found for <version>).
 
 Re-run it after adding source files or changing BUILD deps. The generated
 files (compile_commands.json, external, .cache/) are git-ignored.
 """
 import json
 import os
+import re
 import platform
 import subprocess
 import sys
@@ -52,6 +58,10 @@ def source_file(arguments):
     return None
 
 
+# An external repo's top folder, as Bazel names it on the command line
+REPO_ROOT = re.compile(r"(bazel-out/[^/]+/bin/)?external/[^/]+")
+
+
 def to_clangd_command(arguments, placeholders):
     """Rewrites one aquery command for clangd, or returns None to skip it."""
     if "-fsyntax-only" in arguments:  # header-parsing check, not a compile
@@ -61,9 +71,12 @@ def to_clangd_command(arguments, placeholders):
         return None
     compiler = "clang" if file.endswith((".c", ".m")) else "clang++"
     fixed = [compiler]
-    for arg in arguments[1:]:
+    rest = arguments[1:]
+    for i, arg in enumerate(rest):
         for placeholder, value in placeholders.items():
             arg = arg.replace(placeholder, value)
+        if arg == "-isystem" and i + 1 < len(rest) and REPO_ROOT.fullmatch(rest[i + 1]):
+            arg = "-iquote"  # (see the module docstring)
         fixed.append(arg)
     return {"directory": str(ROOT), "file": file, "arguments": fixed}
 
