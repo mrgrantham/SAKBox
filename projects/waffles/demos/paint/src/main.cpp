@@ -21,10 +21,13 @@ using std::cerr;
 
 int main(int argc, char* argv[])
 {
+	// SAKBox: open and save files where it was run from (`bazel run` starts
+	// programs in their runfiles and says where it was run in this variable)
+	const char* szWhereRun = getenv("BUILD_WORKING_DIRECTORY");
 #ifdef WINDOWS
-	if(_chdir("../../../bin/demos/images") != 0)
+	if(szWhereRun && _chdir(szWhereRun) != 0)
 #else
-	if(chdir("../../../bin/demos/images") != 0)
+	if(szWhereRun && chdir(szWhereRun) != 0)
 #endif
 	{
 	}

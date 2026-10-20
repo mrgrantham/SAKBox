@@ -18,7 +18,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <WClasses/GActivation.h>
 #include <WClasses/GApp.h>
 #include <WClasses/GCluster.h>
 #include <WClasses/GDecisionTree.h>
@@ -37,8 +36,8 @@
 #include <WClasses/GVec.h>
 #include <WClasses/GWidgets.h>
 #include <WClasses/GThread.h>
-#include "Gui.h"
-#include "GImagePng.h"
+#include "gui/Gui.h"
+#include "png/GImagePng.h"
 #include <exception>
 #include <iostream>
 
@@ -56,7 +55,7 @@ protected:
 
 public:
 	InterpolateController();
-	virtual ~InterpolateController();
+	~InterpolateController() override;
 
 	void RunModal();
 };
@@ -113,9 +112,9 @@ public:
 		m_pModels->setRowHeight(36);
 		m_pModels->setColumnWidth(0, 30);
 		m_pModels->setColumnWidth(1, 242);
-		m_pTrainedModel = NULL;
-		m_pNNForTraining = NULL;
-		m_pNNCopyForVisualizing = NULL;
+		m_pTrainedModel = nullptr;
+		m_pNNForTraining = nullptr;
+		m_pNNCopyForVisualizing = nullptr;
 
 		// Make the training data
 		m_pTrainingFeatures = new GMatrix(m_pImageSmall->width() * m_pImageSmall->height(), 2);
@@ -153,7 +152,7 @@ public:
 		addModels();
 	}
 
-	virtual ~InterpolateDialog()
+	~InterpolateDialog() override
 	{
 		m_workerMode = 0; // tell the worker thread to exit
 		while(m_workerWorking)
@@ -169,7 +168,7 @@ public:
 		delete(m_pCvi);
 	}
 
-	virtual void onCheckBulletHole(GWidgetBulletHole* pBullet)
+	void onCheckBulletHole(GWidgetBulletHole* pBullet) override
 	{
 		int selectedIndex = -1;
 		int n = m_pModels->rowCount();
@@ -263,7 +262,10 @@ public:
 			pNN->setLearningRate(0.005);*/
 			delete(m_pNNCopyForVisualizing);
 			m_pNNCopyForVisualizing = new GNeuralNetLearner();
-			m_pNNCopyForVisualizing->nn().copyStructure(&pNN->nn(), *m_pRand);
+			// SAKBox: copyStructure is now copyTopology, which clones the layers
+			// still bound to pNN's weights; init gives the copy its own
+			m_pNNCopyForVisualizing->nn().copyTopology(pNN->nn());
+			m_pNNCopyForVisualizing->nn().init(*m_pRand);
 		}
 		m_workerMode = 3; // train
 	}
@@ -452,7 +454,8 @@ public:
 			{
 				GSpinLockHolder hLock(&m_weightsLock, "updating display");
 				GNeuralNetLearner* pNN = (GNeuralNetLearner*)m_pNNForTraining;
-				m_pNNCopyForVisualizing->optimizer().weights().copy(pNN->optimizer().weights());
+				// SAKBox: the weights are now kept by the network, not its optimizer
+				m_pNNCopyForVisualizing->nn().weights.copy(pNN->nn().weights);
 			}
 			m_workerMode = 3; // train
 
@@ -520,41 +523,43 @@ public:
 		m_pDialog = new InterpolateDialog(pController, m_screenRect.w, m_screenRect.h);
 	}
 
-	virtual ~InterpolateView()
+	~InterpolateView() override
 	{
 		delete(m_pDialog);
 	}
 
-	virtual void onChar(char c)
+	void onChar(char c) override
 	{
 		m_pDialog->handleChar(c);
 	}
 
-	virtual void onMouseDown(int nButton, int x, int y)
+	void onMouseDown(int nButton, int x, int y) override
 	{
 		m_pDialog->pressButton(nButton, x - m_screenRect.x, y - m_screenRect.y);
 	}
 
-	virtual void onMouseUp(int nButton, int x, int y)
+	void onMouseUp(int nButton, int x, int y) override
 	{
 		m_pDialog->releaseButton(nButton);
 	}
 
-	virtual bool onMousePos(int x, int y)
+	bool onMousePos(int x, int y) override
 	{
 		return m_pDialog->handleMousePos(x - m_screenRect.x, y - m_screenRect.y);
 	}
 
 protected:
-	virtual void draw(SDL_Surface* pScreen)
+	void draw(int* pixels, int pitch) override
 	{
 		m_pDialog->Iterate();
 
 		// Clear the screen
-		SDL_FillRect(pScreen, NULL /*&r*/, 0x000000);
+		memset(pixels, 0, (size_t)pitch * m_screenRect.h);
 
 		// Draw the dialog
-		blitImage(pScreen, m_screenRect.x, m_screenRect.y, m_pDialog->image());
+		Uint32 format; // SDL_PixelFormatEnum
+		SDL_QueryTexture(sdlTexture, &format, nullptr, nullptr, nullptr);
+		blitImage(pixels, pitch, format, m_screenRect.x, m_screenRect.y, m_pDialog->image());
 	}
 };
 
@@ -594,10 +599,12 @@ void InterpolateController::RunModal()
 
 int main(int argc, char* argv[])
 {
+	// SAKBox: input.png is in the demo's bin folder, which `bazel run` puts in
+	// its runfiles under this path
 #ifdef WINDOWS
-	if(_chdir("../bin") != 0)
+	if(_chdir("projects/waffles/demos/interpolate/bin") != 0)
 #else
-	if(chdir("../bin") != 0)
+	if(chdir("projects/waffles/demos/interpolate/bin") != 0)
 #endif
 	{
 	}

@@ -91,6 +91,32 @@ TEST(NeuralNetCopyTest, CloneAndCopyTopologyGiveTheSameOutputs) {
   EXPECT_EQ(nn->forwardProp(input)[1], expected[1]);
 }
 
+// The interpolate demo shows a network as it trains: it copies the topology
+// once, inits the copy so it has weights of its own (copyTopology's layers are
+// still bound to the original's), then copies the weights across each frame.
+TEST(NeuralNetCopyTest, CopiedTopologyHasItsOwnWeightsAfterInit) {
+  GRand rand(0);
+  std::unique_ptr<GNeuralNet> nn(smallNet());
+  nn->init(rand);
+  const GVec input({0.5, -1.0, 2.0});
+
+  GNeuralNet copy;
+  copy.copyTopology(*nn);
+  copy.init(rand);
+  ASSERT_NE(copy.weights.data(), nn->weights.data());
+
+  copy.weights.copy(nn->weights);
+  GVec expected;
+  expected.copy(nn->forwardProp(input));
+  EXPECT_EQ(copy.forwardProp(input)[0], expected[0]);
+  EXPECT_EQ(copy.forwardProp(input)[1], expected[1]);
+
+  // Training the original (here, changing its weights) leaves the copy as it was
+  nn->weights.fill(0.0);
+  EXPECT_EQ(copy.forwardProp(input)[0], expected[0]);
+  EXPECT_NE(nn->forwardProp(input)[0], expected[0]);
+}
+
 // A net saved to a DOM loads back with the same outputs, whether built from
 // the node or loaded into an existing net (which uses each layer's
 // GBlock::deserializeBlock to make its blocks).

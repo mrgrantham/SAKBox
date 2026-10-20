@@ -29,7 +29,7 @@
 #include <math.h>
 #include <vector>
 #include <iostream>
-#include "GImagePng.h"
+#include "png/GImagePng.h"
 #include "GImageJpeg.h"
 
 using namespace GClasses;
@@ -73,16 +73,16 @@ protected:
 
 public:
 	PaintToolPen(GImage* pImage) : PaintTool(pImage) {}
-	virtual ~PaintToolPen() {}
+	~PaintToolPen() override {}
 
-	virtual void onMouseDown(int nButton, int x, int y)
+	void onMouseDown(int nButton, int x, int y) override
 	{
 		m_prevX = x;
 		m_prevY = y;
 		m_pImage->setPixelIfInRange(x, y, 0xffff0000);
 	}
 
-	virtual void onMouseMove(int x, int y, bool bPressed)
+	void onMouseMove(int x, int y, bool bPressed) override
 	{
 		if(bPressed && (x != m_prevX || y != m_prevY))
 		{
@@ -99,9 +99,9 @@ protected:
 
 public:
 	PaintToolBorder(GImage* pImage) : PaintTool(pImage) {}
-	virtual ~PaintToolBorder() {}
+	~PaintToolBorder() override {}
 
-	virtual void onMouseDown(int nButton, int x, int y)
+	void onMouseDown(int nButton, int x, int y) override
 	{
 		GImage tmp;
 		tmp.setSize(m_pImage->width(), m_pImage->height());
@@ -122,16 +122,16 @@ protected:
 
 public:
 	PaintToolStretch(GImage* pImage) : PaintTool(pImage) {}
-	virtual ~PaintToolStretch() {}
+	~PaintToolStretch() override {}
 
-	virtual void onMouseDown(int nButton, int x, int y)
+	void onMouseDown(int nButton, int x, int y) override
 	{
 		m_imageDown.copy(m_pImage);
 		m_downX = x;
 		m_downY = y;
 	}
 
-	virtual void onMouseMove(int x, int y, bool bPressed)
+	void onMouseMove(int x, int y, bool bPressed) override
 	{
 		if(bPressed && (x != m_prevX || y != m_prevY))
 		{
@@ -150,9 +150,9 @@ protected:
 
 public:
 	PaintToolBezier(GImage* pImage) : PaintTool(pImage), m_points(32) {}
-	virtual ~PaintToolBezier() {}
+	~PaintToolBezier() override {}
 
-	virtual void onMouseDown(int nButton, int x, int y)
+	void onMouseDown(int nButton, int x, int y) override
 	{
 		if(nButton == 1)
 		{
@@ -196,20 +196,20 @@ protected:
 public:
 	PaintToolSmartSelect(GImage* pImage, GImage* pSelection) : PaintTool(pImage)
 	{
-		m_pRegions = NULL;
+		m_pRegions = nullptr;
 		m_pSelection = pSelection;
-		m_pForeground = NULL;
-		m_pBackground = NULL;
+		m_pForeground = nullptr;
+		m_pBackground = nullptr;
 	}
 
-	virtual ~PaintToolSmartSelect()
+	~PaintToolSmartSelect() override
 	{
 		delete(m_pRegions);
 		delete(m_pForeground);
 		delete(m_pBackground);
 	}
 
-	virtual void onSelect()
+	void onSelect() override
 	{
 		delete(m_pRegions);
 		m_pRegions = new G2DRegionGraph(m_pImage->width(), m_pImage->height());
@@ -235,7 +235,7 @@ colorRegion.SavePNGFile("/home/mike/regions.png");
 		m_pBackground = new GBitTable(m_pRegions->regionCount());
 	}
 
-	virtual void onMouseDown(int nButton, int x, int y)
+	void onMouseDown(int nButton, int x, int y) override
 	{
 		m_nCurrentButton = nButton;
 		onMouseMove(x, y, true);
@@ -303,7 +303,7 @@ colorRegion.SavePNGFile("/home/mike/regions.png");
 		}
 	}
 
-	virtual void onMouseUp(int nButton, int x, int y)
+	void onMouseUp(int nButton, int x, int y) override
 	{
 		// Make a graph of the regions
 		int nRegionCount = m_pRegions->regionCount();
@@ -314,31 +314,25 @@ colorRegion.SavePNGFile("/home/mike/regions.png");
 		SetEdgeRegionsAsBackground(&gc, 30); // (where edges refers to the borders of the frame)
 
 		// Connect foreground to the source and background to the sink
-		int nForeCount = 0;
-		int nBackCount = 0;
 		int i;
 		for(i = 0; i < nRegionCount; i++)
 		{
 			if(m_pForeground->bit(i))
 			{
 				gc.addEdge(i, nRegionCount, (float)1e30);
-				nForeCount++;
 			}
 			else if(m_pBackground->bit(i))
 			{
 				gc.addEdge(i, nRegionCount + 1, (float)1e30);
-				nBackCount++;
 			}
 		}
-		//if(nForeCount <= 0 || nBackCount <= 0)
-		//	return;
 
 		// Cut the graph and select the foreground
 		gc.cut(nRegionCount, nRegionCount + 1);
 		SelectSourceRegions(&gc);
 	}
 
-	virtual void onMouseMove(int x, int y, bool bPressed)
+	void onMouseMove(int x, int y, bool bPressed) override
 	{
 		if(!bPressed)
 			return;
@@ -375,7 +369,7 @@ public:
 	PaintDialog(PaintController* pController, int w, int h, GImage* pImage, GImage* pSelection)
 	: GWidgetDialog(w, h, PAINT_AREA_BACKGROUND_COLOR)
 	{
-		m_pCurrentTool = NULL;
+		m_pCurrentTool = nullptr;
 		m_pImage = pImage;
 		m_pSelection = pSelection;
 		m_pController = pController;
@@ -390,12 +384,12 @@ public:
 		m_pVertScrollBar = new GWidgetVertScrollBar(this, w - 16, 0, 16, h, h - 36, pImage->height());
 	}
 
-	virtual ~PaintDialog()
+	~PaintDialog() override
 	{
 		delete[] m_pTabs;
 	}
 
-	virtual void onSelectTextTab(GWidgetTextTab* pTab)
+	void onSelectTextTab(GWidgetTextTab* pTab) override
 	{
 		pTab->setSelected(true);
 		int i;
@@ -430,31 +424,31 @@ public:
 		m_pCanvas->setDirty();
 	}
 
-	virtual void onHorizScroll(GWidgetHorizScrollBar* pScrollBar)
+	void onHorizScroll(GWidgetHorizScrollBar* pScrollBar) override
 	{
 		m_pCanvas->setHorizScroll(pScrollBar->pos());
 		RedrawCanvas();
 	}
 
-	virtual void onVertScroll(GWidgetVertScrollBar* pScrollBar)
+	void onVertScroll(GWidgetVertScrollBar* pScrollBar) override
 	{
 		m_pCanvas->setVertScroll(pScrollBar->pos());
 		RedrawCanvas();
 	}
 
-	virtual void onCanvasMouseDown(GWidgetCanvas* pCanvas, int nButton, int x, int y)
+	void onCanvasMouseDown(GWidgetCanvas* pCanvas, int nButton, int x, int y) override
 	{
 		m_pCurrentTool->onMouseDown(nButton, x, y);
 		RedrawCanvas();
 	}
 
-	virtual void onCanvasMouseUp(GWidgetCanvas* pCanvas, int nButton, int x, int y)
+	void onCanvasMouseUp(GWidgetCanvas* pCanvas, int nButton, int x, int y) override
 	{
 		m_pCurrentTool->onMouseUp(nButton, x, y);
 		RedrawCanvas();
 	}
 
-	virtual void onCanvasMouseMove(GWidgetCanvas* pCanvas, int x, int y, bool bPressed)
+	void onCanvasMouseMove(GWidgetCanvas* pCanvas, int x, int y, bool bPressed) override
 	{
 		if(x < (int)m_pImage->width() && y < (int)m_pImage->height())
 			m_pCurrentTool->onMouseMove(x, y, bPressed);
@@ -495,7 +489,7 @@ public:
 		m_pController = pController;
 	}
 
-	virtual ~TabDialog()
+	~TabDialog() override
 	{
 	}
 };
@@ -516,11 +510,11 @@ public:
 		m_pSave = new GWidgetTextButton(this, 10, 40, 100, 20, "Save");
 	}
 
-	virtual ~TabOpen()
+	~TabOpen() override
 	{
 	}
 
-	virtual void onReleaseTextButton(GWidgetTextButton* pButton)
+	void onReleaseTextButton(GWidgetTextButton* pButton) override
 	{
 		if(pButton == m_pOpen)
 			m_pController->OpenFile();
@@ -618,7 +612,7 @@ public:
 		m_pTB2->setText("2");
 	}
 
-	virtual ~TabTools()
+	~TabTools() override
 	{
 		delete(m_pToolPen);
 		delete(m_pToolStretch);
@@ -626,7 +620,7 @@ public:
 		delete(m_pToolBezier);
 	}
 
-	virtual void onReleaseTextButton(GWidgetTextButton* pButton)
+	void onReleaseTextButton(GWidgetTextButton* pButton) override
 	{
 		GImage* pImage = m_pController->GetCanvas();
 		if(pButton == m_pZoomInButton)
@@ -659,8 +653,12 @@ public:
 			pImage->invert();
 		else if(pButton == m_pEqualizeHistogram)
 		{
-			float fEqualizeAmount = (float)atof(m_pTB1->text().c_str());
-			pImage->locallyEqualizeColorSpread(std::max(pImage->width(), pImage->height()) * 2, fEqualizeAmount);
+			// SAKBox: do nothing until the box holds a number (atof read "abc" as 0)
+			const char* szAmount = m_pTB1->text().c_str();
+			char* pEnd;
+			float fEqualizeAmount = strtof(szAmount, &pEnd);
+			if(pEnd != szAmount)
+				pImage->locallyEqualizeColorSpread(std::max(pImage->width(), pImage->height()) * 2, fEqualizeAmount);
 		}
 		else if(pButton == m_pShowSelButton)
 		{
@@ -860,78 +858,8 @@ public:
 	}
 
 
-	void EvalRS(GImage* pImage, const char* szMaster, const char* szCand, int x, int y, unsigned int col)
-	{
-		// Load the master
-		char szLine[256];
-		FILE* pFile = fopen(szMaster, "r");
-		if(!pFile)
-			throw Ex("Failed to open file");
-		if(!fgets(szLine, 256, pFile)) throw Ex("expected more");
-		int nLenMaster = atoi(szLine);
-		double* pMaster = new double[nLenMaster];
-		Holder<double> hMaster(pMaster);
-		if(!fgets(szLine, 256, pFile)) throw Ex("expected more");
-		int nStartMaster = atoi(szLine);
-		if(!fgets(szLine, 256, pFile)) throw Ex("expected more");
-		int i;
-		for(i = 0; i < nLenMaster; i++)
-		{
-			if(!fgets(szLine, 256, pFile)) throw Ex("expected more");
-			pMaster[i] = atof(szLine);
-			if(!fgets(szLine, 256, pFile)) throw Ex("expected more");
-		}
-		fclose(pFile);
 
-		// Load the candidate
-		pFile = fopen(szCand, "r");
-		if(!pFile)
-			throw Ex("Failed to open file");
-		if(!fgets(szLine, 256, pFile)) throw Ex("expected more");
-		int nLenCand = atoi(szLine);
-		double* pCand1 = new double[nLenCand];
-		double* pCand2 = new double[nLenCand];
-		Holder<double> hCand1(pCand1);
-		Holder<double> hCand2(pCand2);
-		if(!fgets(szLine, 256, pFile)) throw Ex("expected more");
-		int nStartCand1 = atoi(szLine);
-		if(!fgets(szLine, 256, pFile)) throw Ex("expected more");
-		int nStartCand2 = atoi(szLine);
-		for(i = 0; i < nLenCand; i++)
-		{
-			if(!fgets(szLine, 256, pFile)) throw Ex("expected more");
-			pCand1[i] = atof(szLine);
-			if(!fgets(szLine, 256, pFile)) throw Ex("expected more");
-			pCand2[i] = atof(szLine);
-		}
-		fclose(pFile);
-
-		// Measure the error
-		double dError1 = 0;
-		double dError2 = 0;
-		double d;
-		int j;
-		for(i = 0; i < nLenMaster; i++)
-		{
-			j = i * nLenCand / nLenMaster;
-			int indexMaster = (i + nStartMaster) % nLenMaster;
-			int indexCand1 = (j + nStartCand1) % nLenCand;
-			d = pMaster[indexMaster] - pCand1[indexCand1];
-			d *= d;
-			dError1 += d;
-
-			int indexCand2 = (j + nStartCand2) % nLenCand;
-			d = pMaster[indexMaster] - pCand2[indexCand2];
-			d *= d;
-			dError2 += d;
-		}
-		double dFinal = std::min(dError1, dError2) / nLenMaster;
-		sprintf(szLine, "%f", dFinal);
-		pImage->text(szLine, x, y, 3.0f, col);
-	}
-
-
-	virtual void onSelectTextTab(GWidgetTextTab* pTab)
+	void onSelectTextTab(GWidgetTextTab* pTab) override
 	{
 		// Select the new tab
 		m_pCurrentToolTab->setSelected(false);
@@ -973,13 +901,13 @@ protected:
 
 public:
 	PaintView(PaintController* pController, GImage* pImage, GImage* pSelection);
-	virtual ~PaintView();
+	~PaintView() override;
 
 	void onSelectTab(int i);
-	virtual void onChar(char c);
-	virtual void onMouseDown(int nButton, int x, int y);
-	virtual void onMouseUp(int nButton, int x, int y);
-	virtual bool onMousePos(int x, int y);
+	void onChar(char c) override;
+	void onMouseDown(int nButton, int x, int y) override;
+	void onMouseUp(int nButton, int x, int y) override;
+	bool onMousePos(int x, int y) override;
 	void SetImage(GImage* pImage) { m_pImage = pImage; }
 	void OnLoadImage();
 	void CleanCanvas();
@@ -990,7 +918,7 @@ public:
 	void SetCurrentTool(PaintTool* pTool);
 
 protected:
-	virtual void draw(SDL_Surface* pScreen);
+	void draw(int* pixels, int pitch) override;
 };
 
 PaintView::PaintView(PaintController* pController, GImage* pImage, GImage* pSelection)
@@ -1001,7 +929,7 @@ PaintView::PaintView(PaintController* pController, GImage* pImage, GImage* pSele
 	m_pTabDialogs[1] = new TabTools(pController, m_screenRect.w);
 	m_nSelectedTab = 0;
 	m_pMainDialog = new PaintDialog(pController, m_screenRect.w, m_screenRect.h - TOOL_AREA_SIZE, pImage, pSelection);
-	m_pImage = NULL;
+	m_pImage = nullptr;
 }
 
 PaintView::~PaintView()
@@ -1013,15 +941,18 @@ PaintView::~PaintView()
 	delete(m_pMainDialog);
 }
 
-/*virtual*/ void PaintView::draw(SDL_Surface* pScreen)
+/*virtual*/ void PaintView::draw(int* pixels, int pitch)
 {
+	Uint32 format; // SDL_PixelFormatEnum
+	SDL_QueryTexture(sdlTexture, &format, nullptr, nullptr, nullptr);
+
 	// Draw the tool tab
 	GImage* pImage = m_pTabDialogs[m_nSelectedTab]->image();
-	blitImage(pScreen, m_screenRect.x, m_screenRect.y, pImage);
+	blitImage(pixels, pitch, format, m_screenRect.x, m_screenRect.y, pImage);
 
 	// Draw the canvas dialog
 	pImage = m_pMainDialog->image();
-	blitImage(pScreen, m_screenRect.x, m_screenRect.y + TOOL_AREA_SIZE, pImage);
+	blitImage(pixels, pitch, format, m_screenRect.x, m_screenRect.y + TOOL_AREA_SIZE, pImage);
 }
 
 void PaintView::onSelectTab(int i)
@@ -1132,9 +1063,7 @@ void PaintController::OpenFile()
 	GFile::parsePath(szFilename, &pd);
 	if(_stricmp(szFilename + pd.extStart, ".png") == 0)
 		loadPng(m_pImage, szFilename);
-	else if(_stricmp(szFilename + pd.extStart, ".jpg") == 0)
-		loadJpeg(m_pImage, szFilename);
-	else if(_stricmp(szFilename + pd.extStart, ".jpeg") == 0)
+	else if(_stricmp(szFilename + pd.extStart, ".jpg") == 0 || _stricmp(szFilename + pd.extStart, ".jpeg") == 0)
 		loadJpeg(m_pImage, szFilename);
 	else
 		m_pImage->loadByExtension(szFilename);

@@ -9,7 +9,7 @@
 #ifndef __PAINT_H__
 #define __PAINT_H__
 
-#include "Gui.h"
+#include "gui/Gui.h"
 #include <WClasses/GImage.h>
 
 class PaintTool;
@@ -23,7 +23,7 @@ protected:
 
 public:
 	PaintController();
-	virtual ~PaintController();
+	~PaintController() override;
 
 	GClasses::GImage* GetCanvas() { return m_pImage; }
 	GClasses::GImage* GetSelectionMask() { return m_pSelection; }
