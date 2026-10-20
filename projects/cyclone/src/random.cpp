@@ -10,6 +10,8 @@
  * software licence.
  */
 
+#include <bit>
+#include <cstdint>
 #include <cstdlib>
 #include <ctime>
 #include <cyclone/random.h>
@@ -59,45 +61,27 @@ unsigned Random::randomBits() {
   return result;
 }
 
+// SAKBox: the bits are reinterpreted with std::bit_cast, not by writing one
+// member of a union and reading another (undefined behaviour in C++). The
+// results are the same.
 #ifdef SINGLE_PRECISION
 real Random::randomReal() {
   // Get the random number
   unsigned bits = randomBits();
 
-  // Set up a reinterpret structure for manipulation
-  union {
-    real value;
-    unsigned word;
-  } convert;
-
-  // Now assign the bits to the word. This works by fixing the ieee
-  // sign and exponent bits (so that the size of the result is 1-2)
-  // and using the bits to create the fraction part of the float.
-  convert.word = (bits >> 9) | 0x3f800000;
-
-  // And return the value
-  return convert.value - 1.0f;
+  // Fix the ieee sign and exponent bits (so that the size of the result
+  // is 1-2) and use the bits to create the fraction part of the float.
+  return std::bit_cast<float>((bits >> 9) | 0x3f800000u) - 1.0f;
 }
 #else
 real Random::randomReal() {
   // Get the random number
   unsigned bits = randomBits();
 
-  // Set up a reinterpret structure for manipulation
-  union {
-    real value;
-    unsigned words[2];
-  } convert;
-
-  // Now assign the bits to the words. This works by fixing the ieee
-  // sign and exponent bits (so that the size of the result is 1-2)
-  // and using the bits to create the fraction part of the float. Note
-  // that bits are used more than once in this process.
-  convert.words[0] = bits << 20;                // Fill in the top 16 bits
-  convert.words[1] = (bits >> 12) | 0x3FF00000; // And the bottom 20
-
-  // And return the value
-  return convert.value - 1.0;
+  // Fix the ieee sign and exponent bits (so that the size of the result
+  // is 1-2) and use the bits, shifted to the top of the 52-bit fraction,
+  // to create the fraction part of the double.
+  return std::bit_cast<double>(0x3FF0000000000000ull | (std::uint64_t{bits} << 20)) - 1.0;
 }
 #endif
 
@@ -109,10 +93,13 @@ unsigned Random::randomInt(unsigned max) { return randomBits() % max; }
 
 real Random::randomBinomial(real scale) { return (randomReal() - randomReal()) * scale; }
 
+// SAKBox: uniformly distributed over all orientations (Shoemake's method).
+// Upstream normalised four components drawn from [0, 1), so every one was
+// positive: only rotations of up to 180 degrees about axes in one octant.
 Quaternion Random::randomQuaternion() {
-  Quaternion q(randomReal(), randomReal(), randomReal(), randomReal());
-  q.normalise();
-  return q;
+  real u1 = randomReal(), u2 = randomReal() * 2 * R_PI, u3 = randomReal() * 2 * R_PI;
+  real a = real_sqrt(1 - u1), b = real_sqrt(u1);
+  return Quaternion(a * real_sin(u2), a * real_cos(u2), b * real_sin(u3), b * real_cos(u3));
 }
 
 Vector3 Random::randomVector(real scale) {

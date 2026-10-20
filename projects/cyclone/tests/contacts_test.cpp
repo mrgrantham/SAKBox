@@ -1,12 +1,16 @@
 // Cyclone's contact handling: the rigid-body resolver (bounce and push
-// apart), joints, and the particle links and world.
+// apart), joints, the particle links, constraints and world, and the
+// rigid-body world (boxes landing and stacking).
 #include <gtest/gtest.h>
 
 #include <cyclone/cyclone.h>
 #include <cyclone/plinks.h>
+#include <cyclone/world.h>
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
+#include <vector>
 
 using namespace cyclone;
 
@@ -197,6 +201,44 @@ TEST(ParticleLinkTest, RodHoldsItsLengthBothWays) {
 }
 
 // ---------------------------------------------------------------------------
+// Particle constraints: a cable or rod from a particle to a fixed point
+
+// A 2 m cable to the origin: slack at 1 m, taut and pulled back to 2 m at 3 m.
+TEST(ParticleConstraintTest, CableOnlyPullsWhenTaut) {
+  auto particle = particleAt(Vector3(1, 0, 0));
+  ParticleCableConstraint cable;
+  cable.particle = particle.get();
+  cable.anchor = Vector3(0, 0, 0);
+  cable.maxLength = 2;
+  cable.restitution = 0;
+  ParticleContact contact;
+  EXPECT_EQ(cable.addContact(&contact, 1), 0u);
+
+  particle->setPosition(3, 0, 0);
+  ASSERT_EQ(cable.addContact(&contact, 1), 1u);
+  EXPECT_NEAR(contact.penetration, 1.0, kTolerance);
+  ParticleContactResolver(10).resolveContacts(&contact, 1, 1.0 / 60);
+  EXPECT_NEAR(particle->getPosition().magnitude(), 2.0, 1e-6);
+}
+
+// A 2 m rod to the origin holds its length whether stretched or squashed.
+TEST(ParticleConstraintTest, RodHoldsItsLengthBothWays) {
+  for (double start : {3.0, 1.0}) {
+    SCOPED_TRACE(testing::Message() << "starting " << start << " m out");
+    auto particle = particleAt(Vector3(0, start, 0));
+    ParticleRodConstraint rod;
+    rod.particle = particle.get();
+    rod.anchor = Vector3(0, 0, 0);
+    rod.length = 2;
+    ParticleContact contact;
+    ASSERT_EQ(rod.addContact(&contact, 1), 1u);
+    EXPECT_NEAR(contact.penetration, 1.0, kTolerance);
+    ParticleContactResolver(10).resolveContacts(&contact, 1, 1.0 / 60);
+    EXPECT_NEAR(particle->getPosition().magnitude(), 2.0, 1e-6);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The particle world
 
 // A particle dropped from 5 m under gravity lands on the ground and stays
@@ -232,4 +274,189 @@ TEST(ParticleWorldTest, DroppedParticleLandsAndRests) {
     EXPECT_GT(lowestLastSecond, -9.81 * dt * dt - 1e-9);
     EXPECT_GT(lowest, -0.6); // never sinks far in, even at 20 fps
   }
+}
+
+// Forces registered with the world are applied each step: a particle under
+// a registered gravity generator falls like one with gravity built in.
+TEST(ParticleWorldTest, RegisteredForcesAreApplied) {
+  ParticleWorld world(10);
+  auto registered = particleAt(Vector3(0, 100, 0));
+  auto builtIn = particleAt(Vector3(0, 100, 0));
+  builtIn->setAcceleration(Vector3::GRAVITY);
+  ParticleGravity gravity(Vector3::GRAVITY);
+  world.getParticles() = {registered.get(), builtIn.get()};
+  world.getForceRegistry().add(registered.get(), &gravity);
+  for (int i = 0; i < 60; ++i) {
+    world.startFrame();
+    world.runPhysics(1.0 / 60);
+  }
+  EXPECT_LT(registered->getPosition().y, 96.0); // fell about g/2
+  EXPECT_NEAR(registered->getPosition().y, builtIn->getPosition().y, kTolerance);
+}
+
+// A pendulum: a particle on a 1 m rod from a fixed point, let go level with
+// it. The rod holds its length throughout, the swing reaches the other side,
+// and a full swing takes as long as a pendulum's: 7.416 sqrt(L / g) for a
+// 90 degree amplitude (4 K(sin 45) sqrt(L / g)), timed between the first and
+// third passes through the bottom.
+TEST(ParticleWorldTest, PendulumKeepsItsLengthAndPeriod) {
+  ParticleWorld world(10);
+  auto bob = particleAt(Vector3(1, 0, 0));
+  bob->setAcceleration(Vector3::GRAVITY);
+  ParticleRodConstraint rod;
+  rod.particle = bob.get();
+  rod.anchor = Vector3(0, 0, 0);
+  rod.length = 1;
+  world.getParticles().push_back(bob.get());
+  world.getContactGenerators().push_back(&rod);
+
+  const double dt = 1.0 / 600;
+  double longest = 1, shortest = 1, farthestLeft = 1, previousX = 1;
+  std::vector<double> bottoms;
+  for (int i = 1; i <= 3 * 600 && bottoms.size() < 3; ++i) {
+    world.startFrame();
+    world.runPhysics(dt);
+    const double length = bob->getPosition().magnitude();
+    longest = std::max(longest, length);
+    shortest = std::min(shortest, length);
+    const double x = bob->getPosition().x;
+    farthestLeft = std::min(farthestLeft, x);
+    if ((previousX > 0) != (x > 0))
+      bottoms.push_back(i * dt);
+    previousX = x;
+  }
+  EXPECT_NEAR(longest, 1.0, 1e-6);
+  EXPECT_NEAR(shortest, 1.0, 1e-6);
+  EXPECT_LT(farthestLeft, -0.95);
+  ASSERT_EQ(bottoms.size(), 3u);
+  const double period = 7.4163 * std::sqrt(1 / 9.81);
+  EXPECT_NEAR(bottoms[2] - bottoms[0], period, 0.01 * period);
+}
+
+// ---------------------------------------------------------------------------
+// The rigid-body world
+
+namespace {
+
+// Contacts for a world of boxes: each against the ground (y = 0) and every
+// pair against each other
+class BoxContacts : public ContactGenerator {
+public:
+  std::vector<CollisionBox> boxes;
+
+  unsigned addContact(Contact *contact, unsigned limit) const override {
+    CollisionData data;
+    data.contactArray = contact;
+    data.friction = 0.9;
+    data.restitution = 0.1;
+    data.tolerance = 0.1;
+    data.reset(limit);
+    CollisionPlane ground;
+    ground.direction = Vector3(0, 1, 0);
+    ground.offset = 0;
+    for (size_t i = 0; i < boxes.size() && data.hasMoreContacts(); ++i) {
+      CollisionDetector::boxAndHalfSpace(boxes[i], ground, &data);
+      for (size_t j = i + 1; j < boxes.size() && data.hasMoreContacts(); ++j)
+        CollisionDetector::boxAndBox(boxes[i], boxes[j], &data);
+    }
+    return data.contactCount;
+  }
+};
+
+// Unit cubes (mass 1) at the given heights, falling under a gravity
+// generator registered with the world
+struct BoxWorld {
+  World world{256};
+  Gravity gravity{Vector3::GRAVITY};
+  std::vector<std::unique_ptr<RigidBody>> bodies;
+  BoxContacts contacts;
+
+  explicit BoxWorld(const std::vector<Vector3> &positions) {
+    for (const Vector3 &position : positions) {
+      bodies.push_back(bodyAt(position));
+      RigidBody &body = *bodies.back();
+      Matrix3 inertia;
+      inertia.setBlockInertiaTensor(Vector3(0.5, 0.5, 0.5), 1);
+      body.setInertiaTensor(inertia);
+      body.setDamping(0.95, 0.8);
+      body.calculateDerivedData();
+      world.getBodies().push_back(&body);
+      world.getForceRegistry().add(&body, &gravity);
+      CollisionBox box;
+      box.body = &body;
+      box.halfSize = Vector3(0.5, 0.5, 0.5);
+      contacts.boxes.push_back(box);
+    }
+    world.getContactGenerators().push_back(&contacts);
+  }
+
+  // Runs the world for `seconds`, returning the most any box tipped
+  double run(double seconds);
+};
+
+// How far a body's up axis has tipped from vertical, in degrees
+double tiltDegrees(const RigidBody &body) {
+  const Vector3 up = body.getTransform().transformDirection(Vector3(0, 1, 0));
+  return std::acos(std::clamp<double>(up.y, -1, 1)) * 180 / R_PI;
+}
+
+double BoxWorld::run(double seconds) {
+  double mostTilted = 0;
+  for (int i = 0; i < static_cast<int>(seconds * 60); ++i) {
+    world.startFrame();
+    for (CollisionBox &box : contacts.boxes)
+      box.calculateInternals();
+    world.runPhysics(1.0 / 60);
+    for (const auto &body : bodies)
+      mostTilted = std::max(mostTilted, tiltDegrees(*body));
+  }
+  return mostTilted;
+}
+
+} // namespace
+
+// A box dropped from 3 m lands flat on the ground and comes to rest.
+TEST(WorldTest, DroppedBoxComesToRest) {
+  BoxWorld scene({Vector3(0, 3, 0)});
+  EXPECT_LT(scene.run(5), 1.0);
+  const RigidBody &box = *scene.bodies[0];
+  EXPECT_NEAR(box.getPosition().y, 0.5, 0.02);
+  EXPECT_NEAR(box.getVelocity().magnitude(), 0, 0.05);
+}
+
+// Two boxes stacked on the ground stay stacked for 10 s: neither drifts
+// sideways or tips, and the top one sinks into the bottom one by no more
+// than a few centimetres. (Taller stacks topple: see the README's known
+// limitations.)
+TEST(WorldTest, StackOfTwoBoxesStands) {
+  BoxWorld scene({Vector3(0, 0.5, 0), Vector3(0, 1.5, 0)});
+  EXPECT_LT(scene.run(10), 3.0);
+  for (size_t i = 0; i < scene.bodies.size(); ++i) {
+    SCOPED_TRACE(testing::Message() << "box " << i);
+    const RigidBody &box = *scene.bodies[i];
+    EXPECT_NEAR(box.getPosition().x, 0, 0.05);
+    EXPECT_NEAR(box.getPosition().z, 0, 0.05);
+    EXPECT_NEAR(box.getPosition().y, 0.5 + i, 0.03);
+  }
+}
+
+// The world's contact array is shared by its generators in turn: once it's
+// full, the rest aren't asked, and generateContacts reports what fitted.
+TEST(WorldTest, ContactsStopWhenTheArrayIsFull) {
+  struct Fixed : ContactGenerator {
+    unsigned count;
+    mutable unsigned calls = 0, lastLimit = 0;
+    explicit Fixed(unsigned count) : count(count) {}
+    unsigned addContact(Contact *, unsigned limit) const override {
+      ++calls;
+      lastLimit = limit;
+      return std::min(count, limit);
+    }
+  };
+  Fixed first(3), second(5), third(1);
+  World world(6);
+  world.getContactGenerators() = {&first, &second, &third};
+  EXPECT_EQ(world.generateContacts(), 6u);
+  EXPECT_EQ(second.lastLimit, 3u);
+  EXPECT_EQ(third.calls, 0u);
 }

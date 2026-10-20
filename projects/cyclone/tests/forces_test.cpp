@@ -1,4 +1,5 @@
-// Cyclone's force generators, checked against the formulas they implement.
+// Cyclone's force generators, checked against the formulas they implement,
+// and the registries that apply them.
 // Each test applies one force and reads it back: from a rigid body's
 // acceleration over the step (mass 1), or from a particle's velocity change
 // (mass 1, one 1 s step, no damping).
@@ -7,6 +8,7 @@
 #include <cyclone/cyclone.h>
 #include <cyclone/pfgen.h>
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 
@@ -148,6 +150,155 @@ TEST(RigidForceTest, SailboatFloats) {
 }
 
 // ---------------------------------------------------------------------------
+// Aerodynamics: force = tensor x the body's velocity through the air, both in
+// body coordinates.
+
+namespace {
+const Vector3 kStill(0, 0, 0);
+
+// A body rotated `degrees` about `axis`
+std::unique_ptr<RigidBody> bodyFacing(const Vector3 &axis, double degrees) {
+  auto body = bodyAt(Vector3());
+  const double half = degrees * R_PI / 360;
+  Vector3 unit = axis.unit();
+  body->setOrientation(Quaternion(std::cos(half), unit.x * std::sin(half), unit.y * std::sin(half),
+                                  unit.z * std::sin(half)));
+  body->calculateDerivedData();
+  return body;
+}
+} // namespace
+
+// Drag the same in every direction (tensor -2 I) opposes the motion, however
+// the body is turned.
+TEST(AeroTest, DragOpposesTheMotionWhicheverWayTheBodyFaces) {
+  Matrix3 drag;
+  drag.setDiagonal(-2, -2, -2);
+  Aero aero(drag, Vector3(), &kStill);
+  for (double degrees : {0.0, 30.0, 90.0, 180.0}) {
+    SCOPED_TRACE(testing::Message() << "turned " << degrees << " degrees");
+    auto body = bodyFacing(Vector3(1, 1, 0), degrees);
+    body->setVelocity(3, 0, 0);
+    expectNear(forceOn(*body, aero), Vector3(-6, 0, 0));
+  }
+}
+
+// A still body in a 5 m/s wind is pushed downwind. (Upstream added the wind
+// to the body's velocity, pushing it into the wind.)
+TEST(AeroTest, WindPushesAStillBodyDownwind) {
+  Matrix3 drag;
+  drag.setDiagonal(-2, -2, -2);
+  const Vector3 wind(5, 0, 0);
+  Aero aero(drag, Vector3(), &wind);
+  auto body = bodyAt(Vector3());
+  expectNear(forceOn(*body, aero), Vector3(10, 0, 0));
+
+  // Moving with the wind, there's no airflow and no force
+  body->setVelocity(5, 0, 0);
+  expectNear(forceOn(*body, aero), Vector3(0, 0, 0));
+}
+
+// A wing whose lift (body y) is its forward speed (body x): rolled 90
+// degrees about its forward axis, the lift points sideways.
+TEST(AeroTest, LiftTurnsWithTheBody) {
+  const Matrix3 wing(0, 0, 0, 1, 0, 0, 0, 0, 0);
+  Aero aero(wing, Vector3(), &kStill);
+  auto level = bodyFacing(Vector3(1, 0, 0), 0);
+  level->setVelocity(2, 0, 0);
+  expectNear(forceOn(*level, aero), Vector3(0, 2, 0));
+
+  auto rolled = bodyFacing(Vector3(1, 0, 0), 90);
+  rolled->setVelocity(2, 0, 0);
+  expectNear(forceOn(*rolled, aero), Vector3(0, 0, 2));
+}
+
+// The surface 1 m out along x: its 2 N of lift also turns the body, with
+// torque r x F = (1, 0, 0) x (0, 2, 0) about z (inertia 1, one 0.01 s step).
+TEST(AeroTest, ASurfaceOffTheCentreTurnsTheBody) {
+  const Matrix3 wing(0, 0, 0, 1, 0, 0, 0, 0, 0);
+  Aero aero(wing, Vector3(1, 0, 0), &kStill);
+  auto body = bodyAt(Vector3());
+  body->setVelocity(2, 0, 0);
+  expectNear(forceOn(*body, aero), Vector3(0, 2, 0));
+  expectNear(body->getRotation(), Vector3(0, 0, 2 * 0.01));
+}
+
+// A control surface's tensor runs from its minimum (control -1) through its
+// base (0) to its maximum (+1), linearly in between and held at the ends.
+TEST(AeroControlTest, ControlBlendsBetweenItsTensors) {
+  Matrix3 base, min, max;
+  base.setDiagonal(-2, 0, 0);
+  min.setDiagonal(-1, 0, 0);
+  max.setDiagonal(-4, 0, 0);
+  AeroControl surface(base, min, max, Vector3(), &kStill);
+  struct Case {
+    double control, expectedForce;
+  };
+  for (Case c : {Case{-2, -1}, Case{-1, -1}, Case{-0.5, -1.5}, Case{0, -2}, Case{0.5, -3},
+                 Case{1, -4}, Case{2, -4}}) {
+    SCOPED_TRACE(testing::Message() << "control " << c.control);
+    surface.setControl(c.control);
+    auto body = bodyAt(Vector3());
+    body->setVelocity(1, 0, 0);
+    expectNear(forceOn(*body, surface), Vector3(c.expectedForce, 0, 0));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The force registries
+
+// Each registered pair applies its force; remove takes out just that pair
+// (and ignores a pair that isn't registered); clear takes out all of them.
+TEST(ForceRegistryTest, RemoveAndClear) {
+  auto body = bodyAt(Vector3(0, 0, 0)), anchor = bodyAt(Vector3(-3, 0, 0));
+  Gravity gravity(Vector3(0, -10, 0));
+  Spring spring(Vector3(), anchor.get(), Vector3(), 10, 2); // 1 m stretched
+  ForceRegistry registry;
+  registry.add(body.get(), &gravity);
+  registry.add(body.get(), &spring);
+  auto forceNow = [&] {
+    body->clearAccumulators();
+    registry.updateForces(0.01);
+    body->integrate(0.01);
+    body->setPosition(0, 0, 0);
+    body->setVelocity(0, 0, 0);
+    body->calculateDerivedData();
+    Vector3 acceleration;
+    body->getLastFrameAcceleration(&acceleration);
+    return acceleration;
+  };
+  expectNear(forceNow(), Vector3(-10, -10, 0));
+  registry.remove(anchor.get(), &spring); // not registered
+  expectNear(forceNow(), Vector3(-10, -10, 0));
+  registry.remove(body.get(), &spring);
+  expectNear(forceNow(), Vector3(0, -10, 0));
+  registry.clear();
+  expectNear(forceNow(), Vector3(0, 0, 0));
+}
+
+TEST(ForceRegistryTest, ParticleRemoveAndClear) {
+  auto particle = particleAt(Vector3()), other = particleAt(Vector3());
+  ParticleGravity gravity(Vector3(0, -10, 0));
+  ParticleDrag drag(1, 0);
+  ParticleForceRegistry registry;
+  registry.add(particle.get(), &gravity);
+  registry.add(particle.get(), &drag);
+  auto forceNow = [&] {
+    particle->setVelocity(1, 0, 0);
+    particle->clearAccumulator();
+    registry.updateForces(1);
+    particle->integrate(1);
+    return particle->getVelocity() - Vector3(1, 0, 0);
+  };
+  expectNear(forceNow(), Vector3(-1, -10, 0));
+  registry.remove(other.get(), &drag); // not registered
+  expectNear(forceNow(), Vector3(-1, -10, 0));
+  registry.remove(particle.get(), &drag);
+  expectNear(forceNow(), Vector3(0, -10, 0));
+  registry.clear();
+  expectNear(forceNow(), Vector3(0, 0, 0));
+}
+
+// ---------------------------------------------------------------------------
 // Particles
 
 TEST(ParticleForceTest, GravityIsMassTimesG) {
@@ -222,4 +373,33 @@ TEST(ParticleForceTest, BuoyancyRisesSmoothlyWithDepth) {
       expectNear(forceOn(*particle, buoyancy), Vector3(0, c.expectedUp, 0));
     }
   }
+}
+
+// A fake spring (stiffness 4, damping 2) pulls a particle 1 m out back onto
+// its anchor, settling there. (A real spring would be within 1e-4 m in 5 s;
+// this one lags, as Particle::integrate moves with the old velocity, and
+// takes about 15.)
+TEST(ParticleForceTest, FakeSpringSettlesOnItsAnchor) {
+  Vector3 anchor(0, 0, 0);
+  ParticleFakeSpring spring(&anchor, 4, 2);
+  auto particle = particleAt(Vector3(1, 0, 0));
+  double closest = 1;
+  for (int i = 0; i < 60 * 20; ++i) {
+    particle->clearAccumulator();
+    spring.updateForce(particle.get(), 1.0 / 60);
+    particle->integrate(1.0 / 60);
+    closest = std::min(closest, particle->getPosition().x);
+  }
+  EXPECT_LT(closest, 0.0); // it swung through the anchor
+  EXPECT_NEAR(particle->getPosition().x, 0, 1e-3);
+  EXPECT_NEAR(particle->getVelocity().x, 0, 1e-3);
+}
+
+// Too much damping to oscillate (damping^2 > 4 x stiffness) is outside what
+// the fake spring models: no force, rather than NaN.
+TEST(ParticleForceTest, OverdampedFakeSpringGivesNoForce) {
+  Vector3 anchor(0, 0, 0);
+  ParticleFakeSpring spring(&anchor, 1, 3);
+  auto particle = particleAt(Vector3(1, 0, 0));
+  expectNear(forceOn(*particle, spring), Vector3(0, 0, 0));
 }

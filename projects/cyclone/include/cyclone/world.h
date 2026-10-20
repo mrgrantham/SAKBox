@@ -21,6 +21,9 @@
 
 #include "body.h"
 #include "contacts.h"
+#include "fgen.h"
+
+#include <vector>
 
 namespace cyclone {
 /**
@@ -29,7 +32,20 @@ namespace cyclone {
  * update them all.
  */
 class World {
-  // ... other World data as before ...
+  // SAKBox: bodies and contact generators are held in vectors the caller
+  // fills, and force generators in a registry, as in ParticleWorld. Upstream
+  // kept them in private linked lists with no way to add to them, and left the
+  // force registry commented out, so a World could never simulate anything.
+public:
+  typedef std::vector<RigidBody *> RigidBodies;
+  typedef std::vector<ContactGenerator *> ContactGenerators;
+
+protected:
+  /**
+   * Holds the rigid bodies being simulated.
+   */
+  RigidBodies bodies;
+
   /**
    * True if the world should calculate the number of iterations
    * to give the contact resolver at each frame.
@@ -37,17 +53,9 @@ class World {
   bool calculateIterations;
 
   /**
-   * Holds a single rigid body in a linked list of bodies.
+   * Holds the force generators for the bodies in this world.
    */
-  struct BodyRegistration {
-    RigidBody *body;
-    BodyRegistration *next;
-  };
-
-  /**
-   * Holds the head of the list of registered bodies.
-   */
-  BodyRegistration *firstBody;
+  ForceRegistry registry;
 
   /**
    * Holds the resolver for sets of contacts.
@@ -55,29 +63,15 @@ class World {
   ContactResolver resolver;
 
   /**
-   * Holds one contact generators in a linked list.
+   * Holds the contact generators.
    */
-  struct ContactGenRegistration {
-    ContactGenerator *gen;
-    ContactGenRegistration *next;
-  };
-
-  /**
-   * Holds the head of the list of contact generators.
-   */
-  ContactGenRegistration *firstContactGen;
+  ContactGenerators contactGenerators;
 
   /**
    * Holds an array of contacts, for filling by the contact
    * generators.
    */
-  Contact *contacts;
-
-  /**
-   * Holds the maximum number of contacts allowed (i.e. the size
-   * of the contacts array).
-   */
-  unsigned maxContacts;
+  std::vector<Contact> contacts;
 
 public:
   /**
@@ -88,7 +82,6 @@ public:
    * number of detected contacts will be used for each frame.
    */
   World(unsigned maxContacts, unsigned iterations = 0);
-  ~World();
 
   /**
    * Calls each of the registered contact generators to report
@@ -97,7 +90,8 @@ public:
   unsigned generateContacts();
 
   /**
-   * Processes all the physics for the world.
+   * Processes all the physics for the world: applies the force
+   * generators, integrates the bodies and resolves their contacts.
    */
   void runPhysics(real_duration duration);
 
@@ -108,8 +102,29 @@ public:
    * and torques for this frame added.
    */
   void startFrame();
+
+  /**
+   * Returns the bodies in the world, to add or remove them.
+   */
+  RigidBodies &getBodies();
+
+  /**
+   * Returns the contact generators, to add or remove them.
+   */
+  ContactGenerators &getContactGenerators();
+
+  /**
+   * Returns the force registry, to add force generators.
+   */
+  ForceRegistry &getForceRegistry();
+
+  /**
+   * Returns the contacts found in the last call to
+   * generateContacts (or runPhysics).
+   */
+  const Contact *getContacts() const;
 };
 
 } // namespace cyclone
 
-#endif // CYCLONE_PWORLD_H
+#endif // CYCLONE_WORLD_H

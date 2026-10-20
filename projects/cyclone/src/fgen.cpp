@@ -28,6 +28,15 @@ void ForceRegistry::add(RigidBody *body, ForceGenerator *fg) {
   registrations.push_back(registration);
 }
 
+// SAKBox: remove and clear were declared but never written.
+void ForceRegistry::remove(RigidBody *body, ForceGenerator *fg) {
+  std::erase_if(registrations, [&](const ForceRegistration &registration) {
+    return registration.body == body && registration.fg == fg;
+  });
+}
+
+void ForceRegistry::clear() { registrations.clear(); }
+
 Buoyancy::Buoyancy(const Vector3 &cOfB, real maxDepth, real volume, real waterHeight,
                    real liquidDensity /* = 1000.0f */) {
   centreOfBuoyancy = cOfB;
@@ -108,9 +117,11 @@ void Aero::updateForce(RigidBody *body, real duration) {
 }
 
 void Aero::updateForceFromTensor(RigidBody *body, real duration, const Matrix3 &tensor) {
-  // Calculate total velocity (windspeed and body's velocity).
+  // Calculate the velocity of the body through the air.
+  // SAKBox: the wind is subtracted; upstream added it, so the air seemed to
+  // flow the wrong way and a still body was pushed into the wind.
   Vector3 velocity = body->getVelocity();
-  velocity += *windspeed;
+  velocity -= *windspeed;
 
   // Calculate the velocity in body coordinates
   Vector3 bodyVel = body->getTransform().transformInverseDirection(velocity);

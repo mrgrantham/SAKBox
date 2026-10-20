@@ -228,3 +228,13 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "random_test",
+    size = "small",
+    srcs = ["tests/random_test.cpp"],
+    deps = [
+        ":cyclone",
+        "@gtest//:gtest_main",
+    ],
+)

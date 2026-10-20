@@ -1,5 +1,5 @@
 /*
- * Implementation file for random number generation.
+ * Implementation file for the rigid body world.
  *
  * Part of the Cyclone physics system.
  *
@@ -10,72 +10,63 @@
  * software licence.
  */
 
-#include <cstdlib>
 #include <cyclone/world.h>
 
 using namespace cyclone;
 
 World::World(unsigned maxContacts, unsigned iterations)
-    : firstBody(nullptr), resolver(iterations), firstContactGen(nullptr), maxContacts(maxContacts) {
-  contacts = new Contact[maxContacts];
-  calculateIterations = (iterations == 0);
-}
-
-World::~World() { delete[] contacts; }
+    : calculateIterations(iterations == 0), resolver(iterations), contacts(maxContacts) {}
 
 void World::startFrame() {
-  BodyRegistration *reg = firstBody;
-  while (reg) {
+  for (RigidBody *body : bodies) {
     // Remove all forces from the accumulator
-    reg->body->clearAccumulators();
-    reg->body->calculateDerivedData();
-
-    // Get the next registration
-    reg = reg->next;
+    body->clearAccumulators();
+    body->calculateDerivedData();
   }
 }
 
 unsigned World::generateContacts() {
-  unsigned limit = maxContacts;
-  Contact *nextContact = contacts;
+  unsigned limit = static_cast<unsigned>(contacts.size());
+  Contact *nextContact = contacts.data();
 
-  ContactGenRegistration *reg = firstContactGen;
-  while (reg) {
-    unsigned used = reg->gen->addContact(nextContact, limit);
-    limit -= used;
-    nextContact += used;
-
+  for (ContactGenerator *generator : contactGenerators) {
     // We've run out of contacts to fill. This means we're missing
     // contacts.
-    if (limit <= 0)
+    if (limit == 0)
       break;
 
-    reg = reg->next;
+    unsigned used = generator->addContact(nextContact, limit);
+    limit -= used;
+    nextContact += used;
   }
 
   // Return the number of contacts used.
-  return maxContacts - limit;
+  return static_cast<unsigned>(contacts.size()) - limit;
 }
 
 void World::runPhysics(real_duration duration) {
   // First apply the force generators
-  // registry.updateForces(duration);
+  registry.updateForces(duration);
 
   // Then integrate the objects
-  BodyRegistration *reg = firstBody;
-  while (reg) {
-    // Remove all forces from the accumulator
-    reg->body->integrate(duration);
-
-    // Get the next registration
-    reg = reg->next;
-  }
+  for (RigidBody *body : bodies)
+    body->integrate(duration);
 
   // Generate contacts
   unsigned usedContacts = generateContacts();
 
   // And process them
-  if (calculateIterations)
-    resolver.setIterations(usedContacts * 4);
-  resolver.resolveContacts(contacts, usedContacts, duration);
+  if (usedContacts) {
+    if (calculateIterations)
+      resolver.setIterations(usedContacts * 4);
+    resolver.resolveContacts(contacts.data(), usedContacts, duration);
+  }
 }
+
+World::RigidBodies &World::getBodies() { return bodies; }
+
+World::ContactGenerators &World::getContactGenerators() { return contactGenerators; }
+
+ForceRegistry &World::getForceRegistry() { return registry; }
+
+const Contact *World::getContacts() const { return contacts.data(); }

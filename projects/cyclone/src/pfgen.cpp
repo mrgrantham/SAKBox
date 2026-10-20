@@ -28,6 +28,15 @@ void ParticleForceRegistry::add(Particle *particle, ParticleForceGenerator *fg) 
   registrations.push_back(registration);
 }
 
+// SAKBox: remove and clear were declared but never written.
+void ParticleForceRegistry::remove(Particle *particle, ParticleForceGenerator *fg) {
+  std::erase_if(registrations, [&](const ParticleForceRegistration &registration) {
+    return registration.particle == particle && registration.fg == fg;
+  });
+}
+
+void ParticleForceRegistry::clear() { registrations.clear(); }
+
 ParticleGravity::ParticleGravity(const Vector3 &gravity) : gravity(gravity) {}
 
 void ParticleGravity::updateForce(Particle *particle, real duration) {
@@ -140,9 +149,12 @@ void ParticleFakeSpring::updateForce(Particle *particle, real duration) {
   position -= *anchor;
 
   // Calculate the constants and check they are in bounds.
-  real gamma = 0.5f * real_sqrt(4 * springConstant - damping * damping);
-  if (gamma == 0.0f)
+  // SAKBox: the formula only covers springs that oscillate (damping^2 <
+  // 4 x stiffness). Over-damped, the square root's argument is negative and
+  // the force was NaN; checking gamma == 0 only caught the critical case.
+  if (4 * springConstant <= damping * damping)
     return;
+  real gamma = 0.5f * real_sqrt(4 * springConstant - damping * damping);
   Vector3 c = position * (damping / (2.0f * gamma)) + particle->getVelocity() * (1.0f / gamma);
 
   // Calculate the target position
