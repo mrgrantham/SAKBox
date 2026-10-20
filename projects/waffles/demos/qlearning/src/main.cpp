@@ -34,7 +34,7 @@
 using namespace GClasses;
 using std::cerr;
 
-const char* g_szAppPath = NULL;
+const char* g_szAppPath = nullptr;
 
 #define WORLD_SIZE 8
 
@@ -72,7 +72,7 @@ public:
 		m_journeyCount = 0;
 	}
 
-	virtual ~TestQAgent()
+	~TestQAgent() override
 	{
 		delete(m_pLearner);
 	}
@@ -87,7 +87,7 @@ public:
 		return m_pLearner;
 	}
 
-	virtual double rewardFromLastAction()
+	double rewardFromLastAction() override
 	{
 		return m_lastReward;
 	}

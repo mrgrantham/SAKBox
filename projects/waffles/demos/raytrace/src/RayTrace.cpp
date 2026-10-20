@@ -39,20 +39,20 @@ public:
 		new GWidgetTextLabel(this, 26, 405, 70, 12, "High Quality", 0xff002200);
 	}
 
-	virtual ~RayTraceDialog()
+	~RayTraceDialog() override
 	{
 	}
 
-	virtual void onReleaseTextButton(GWidgetTextButton* pButton)
+	void onReleaseTextButton(GWidgetTextButton* pButton) override
 	{
 	}
 
-	virtual void onSelectFilename(GWidgetFileSystemBrowser* pBrowser, const char* szFilename)
+	void onSelectFilename(GWidgetFileSystemBrowser* pBrowser, const char* szFilename) override
 	{
 		m_pController->OnSelectFile(szFilename);
 	}
 
-	virtual void onChangeCheckBox(GWidgetCheckBox* pCheckBox)
+	void onChangeCheckBox(GWidgetCheckBox* pCheckBox) override
 	{
 		m_pController->SetHighQuality(pCheckBox->isChecked());
 	}
@@ -62,10 +62,10 @@ public:
 // ----------------------------------------------------------------------------
 
 RayTraceView::RayTraceView(RayTraceController* pController)
-: ViewBase()
+: ViewBase("Ray Trace")
 {
 	m_pDialog = new RayTraceDialog(pController, m_screenRect.w, m_screenRect.h);
-	m_pImage = NULL;
+	m_pImage = nullptr;
 }
 
 RayTraceView::~RayTraceView()
@@ -73,7 +73,7 @@ RayTraceView::~RayTraceView()
 	delete(m_pDialog);
 }
 
-/*virtual*/ void RayTraceView::draw(SDL_Surface* pScreen)
+/*virtual*/ void RayTraceView::draw(int* pixels, int pitch)
 {
 	GImage* pCanvas = m_pDialog->image();
 	if(m_pImage)
@@ -81,7 +81,9 @@ RayTraceView::~RayTraceView()
 		GRect r(0, 0, m_pImage->width(), m_pImage->height());
 		pCanvas->blit(0, 0, m_pImage, &r);
 	}
-	blitImage(pScreen, m_screenRect.x, m_screenRect.y, pCanvas);
+	Uint32 format; // SDL_PixelFormatEnum
+	SDL_QueryTexture(sdlTexture, &format, nullptr, nullptr, nullptr);
+	blitImage(pixels, pitch, format, m_screenRect.x, m_screenRect.y, pCanvas);
 }
 
 void RayTraceView::onChar(char c)
@@ -112,7 +114,7 @@ RayTraceController::RayTraceController()
 {
 	m_pView = new RayTraceView(this);
 	m_bRendering = false;
-	m_pScene = NULL;
+	m_pScene = nullptr;
 }
 
 RayTraceController::~RayTraceController()

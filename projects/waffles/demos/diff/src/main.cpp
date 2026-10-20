@@ -62,7 +62,7 @@ void LaunchBrowser(const char* szAddress, GRand* pRand)
 void doit(const char* szFile1, const char* szFile2)
 {
 	int port = 8985;
-	size_t seed = getpid() * (size_t)time(NULL);
+	size_t seed = getpid() * (size_t)time(nullptr);
 	GRand prng(seed);
 	Server* pServer = new Server(port, &prng);
 	Holder<Server> hServer(pServer);
@@ -74,19 +74,7 @@ void doit(const char* szFile1, const char* szFile2)
 	LaunchBrowser(s.c_str(), &prng);
 
 	// Handle requests from the browser
-	double starttime = GTime::seconds();
-	while(true)
-	{
-		if(!pServer->process())
-		{
-			if(GTime::seconds() - starttime > 8.0)
-			{
-				cout << "Whelp, the browser should probably have it all by now, so I'm exiting...\n";
-				break;
-			}
-			GThread::sleep(100);
-		}
-	}
+	pServer->serveRequests();
 	cout << "Goodbye.\n";
 }
 

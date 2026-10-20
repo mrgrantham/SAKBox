@@ -31,7 +31,7 @@ using std::vector;
 using std::cout;
 
 
-string scrub_filename(const string filename)
+string scrub_filename(const string& filename)
 {
 	string copy = filename;
 	for(size_t i = 0; i < copy.length(); i++)
@@ -64,7 +64,7 @@ public:
 		string copy = scrub_filename(filename);
 
 		// Split off the folder
-		size_t lastSlashPos = copy.find_last_of("/");
+		size_t lastSlashPos = copy.find_last_of('/');
 		size_t nameStart;
 		if(lastSlashPos == string::npos)
 		{
@@ -81,7 +81,7 @@ public:
 		string fn = copy.substr(nameStart);
 
 		// Split off the extension
-		size_t lastDotPos = fn.find_last_of(".");
+		size_t lastDotPos = fn.find_last_of('.');
 		if(lastDotPos == string::npos)
 		{
 			name = fn;
@@ -99,7 +99,7 @@ public:
 
 string goUpOneDirectory(string& dir)
 {
-	size_t lastSlash = dir.find_last_of("/");
+	size_t lastSlash = dir.find_last_of('/');
 	if(lastSlash == string::npos)
 		return dir;
 	else

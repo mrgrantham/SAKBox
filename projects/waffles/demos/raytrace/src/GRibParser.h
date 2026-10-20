@@ -18,7 +18,6 @@ class RibData
 {
 private:
 	int type;
-	int file_line;
 	const char* dataPtr;
 	std::vector< RibData > childVector;
 	std::vector< const char* > valArray;
@@ -36,10 +35,8 @@ public:
 	RibData(); // By default, this will be an node array.
 	RibData(int type);
 	RibData(const char* data, bool quoted = false);
-	RibData(const RibData& other); // Copy constructor
-
-	// Assignment operator.
-	RibData& operator=(const RibData& other);
+	RibData(const RibData& other) = default;
+	RibData& operator=(const RibData& other) = default;
 
 	// Array access operators.  Only works for node arrays
 	RibData& operator[](int index);
@@ -140,12 +137,12 @@ public:
 	static GClasses::GRayTraceScene* LoadScene(const char* szFilename, GClasses::GRand* pRand);
 
 	bool createScene(FILE* F);
-	bool createScene(std::string filename);
+	bool createScene(const std::string& filename);
 
 	GClasses::GRayTraceScene* releaseScene()
 	{
 		GClasses::GRayTraceScene* pScene = m_pScene;
-		m_pScene = NULL;
+		m_pScene = nullptr;
 		return pScene;
 	}
 

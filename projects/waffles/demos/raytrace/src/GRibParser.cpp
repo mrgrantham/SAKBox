@@ -21,7 +21,7 @@ using std::list;
 //#define PARSER_DEBUG
 
 RibParser::RibParser(GRand* pRand)
-: m_pScene(NULL), image_width(256), image_height(256), fov(35), focal_distance(0), lens_diameter(0), baseDir(""), in_object_definition(false), m_pRand(pRand)
+: m_pScene(nullptr), image_width(256), image_height(256), fov(35), focal_distance(0), lens_diameter(0), baseDir(""), in_object_definition(false), m_pRand(pRand)
 {
 	// Add the root state block.
 	state.push_back(StateBlock());
@@ -39,13 +39,13 @@ RibParser::~RibParser()
 {
 	RibParser parser(pRand);
 	if(!parser.createScene(szFilename))
-		return NULL;
+		return nullptr;
 	return parser.releaseScene();
 }
 
 // This is just a convenience function, taking a filename instead of a stream.
 // See the other overloaded method for actual behavior
-bool RibParser::createScene(string filename)
+bool RibParser::createScene(const string& filename)
 {
 	FILE* F = fopen(filename.c_str(), "r");
 	if(!F) return false;
@@ -54,7 +54,6 @@ bool RibParser::createScene(string filename)
 	// TODO: test for bugs
 	{
 		string delims = "\\/";
-		string blank = "";
 #ifdef WINDOWS
 		char mydelim = '\\';
 		char otherdelim = '/';
@@ -106,7 +105,6 @@ bool RibParser::createScene(FILE* F)
 int RibParser::readLines(FILE* F, vector< int >& lines, vector< int >& line_nums)
 {
 	char* line_buff;
-	string temp;
 	int length;
 	int length_guess; // Oddly enough, length_guess != length.  It filters out '\r' because it's in ascii mode..
 	int num_file_lines = 0;
@@ -264,7 +262,7 @@ void RibParser::buildData(char* big_str, int begin, int line_num, RibData& line)
 	// Find first non-whitespace
 	for(i = 0; i < length; i++)
 	{
-		if(str[i] != ' ' || str[i] != '\t')
+		if(str[i] != ' ' && str[i] != '\t') // SAKBox: was ||, always true, so no whitespace was skipped
 			break;
 	}
 #ifdef PARSER_DEBUG
@@ -1026,7 +1024,7 @@ bool RibParser::handleSphere(const RibData& data)
 
 		if(pMaterial)
 		{
-			GRayTraceColor* pEmissive = pMaterial->color(GRayTraceMaterial::Emissive, NULL);
+			GRayTraceColor* pEmissive = pMaterial->color(GRayTraceMaterial::Emissive, nullptr);
 			if(!pEmissive->isBlack())
 			{
 				GRayTraceAreaLight* pAreaLight = new GRayTraceAreaLight(pSphere, pEmissive->r, pEmissive->g, pEmissive->b);
@@ -1061,9 +1059,9 @@ bool RibParser::handlePointsGeneralPolygons(const RibData& data)
 	uint ntexcoords = 0;
 	vector< uint > nvertices;
 	vector< vector< uint > > vertex_indices;
-	double* points = NULL;
-	double* normals = NULL;
-	double* texcoords = NULL;
+	double* points = nullptr;
+	double* normals = nullptr;
+	double* texcoords = nullptr;
 	bool homogeneous;
 
 	uint ipt;
@@ -1201,7 +1199,7 @@ bool RibParser::handlePointsGeneralPolygons(const RibData& data)
 	//              In the sample files for the class, none of them are homogeneous, so this is only really for loading other files.
 	//
 	GRayTraceMaterial* material = getMaterial();
-	GRayTraceTriMesh* mesh = new GRayTraceTriMesh(material, npoints, npolys, nnormals, ntexcoords);
+	GRayTraceTriMesh* mesh = new GRayTraceTriMesh(material); // SAKBox: meshes now grow as points and triangles are added
 
 	// Points
 	G3DVector v;
@@ -1210,7 +1208,7 @@ bool RibParser::handlePointsGeneralPolygons(const RibData& data)
 		v.m_vals[0] = points[ipt * 4];
 		v.m_vals[1] = points[ipt * 4 + 1];
 		v.m_vals[2] = points[ipt * 4 + 2];
-		mesh->setPoint(ipt, &v);
+		mesh->addPoint(v);
 	}
 
 	// Normals
@@ -1230,14 +1228,14 @@ bool RibParser::handlePointsGeneralPolygons(const RibData& data)
 	for(ipoly = 0; ipoly < npolys; ipoly++)
 	{
 		vector< uint >& idx = vertex_indices[ipoly];
-		mesh->setTriangle(ipoly, idx[0], idx[1], idx[2]);
+		mesh->addTriangle(idx[0], idx[1], idx[2]);
 	}
 
 	// Add to the scene
 	m_pScene->addMesh(mesh);
 	if(material)
 	{
-		GRayTraceColor* pEmissive = material->color(GRayTraceMaterial::Emissive, NULL);
+		GRayTraceColor* pEmissive = material->color(GRayTraceMaterial::Emissive, nullptr);
 		if(!pEmissive->isBlack())
 		{
 			for(ipoly = 0; ipoly < npolys; ipoly++)
@@ -1251,11 +1249,11 @@ bool RibParser::handlePointsGeneralPolygons(const RibData& data)
 	}
 
 	// Clean up the allocated memory.
-	if(points != NULL)
+	if(points != nullptr)
 		delete[] points;
-	if(normals != NULL)
+	if(normals != nullptr)
 		delete[] normals;
-	if(texcoords != NULL)
+	if(texcoords != nullptr)
 		delete[] texcoords;
 
 	return true;
@@ -1330,7 +1328,7 @@ void RibParser::popState(int block_type)
 		bool ray_tracing_camera = false, path_tracing_camera = false;
 
 		// Will be made the default camera in the scene.
-		GRayTraceCamera* camera = NULL;
+		GRayTraceCamera* camera = nullptr;
 
 		// Camera parameters: Samples per pixel, ray recursion depth, and tone mapping constant
 		int ray_depth;
@@ -1422,7 +1420,7 @@ void RibParser::setMaterial(GRayTraceMaterial* material)
 
 GRayTraceMaterial* RibParser::getMaterial()
 {
-	if(state.back().material == NULL)
+	if(state.back().material == nullptr)
 	{
 		// If there is no current material, make and return the default material.
 #ifdef PARSER_DEBUG
@@ -1511,8 +1509,9 @@ RibData& RibParser::getAttribute(const string& attr_class, const string& attr_na
 		--i;
 	} while(i >= 0);
 
-	success = false;
-	return *((RibData*)NULL);
+	// SAKBox: was a reference to null. (The attributes asked for all have defaults,
+	// set in the first StateBlock, so this means a new read without one.)
+	throw Ex("The scene doesn't set the attribute ", attr_class, " ", attr_name);
 }
 
 void RibParser::setAttribute(const string& attr_class, const string& attr_name, const RibData& data)
@@ -1622,7 +1621,7 @@ bool RibParser::matrixInvert(double dest[16], const double matrix[16])
 	for(int i = 0; i < 4; i++)
 	{
 		val = aug_matrix[i * 8 + i];
-		if(val == 0.0) return 0; // too hard or non-invertible.
+		if(val == 0.0) return false; // too hard or non-invertible.
 		matrixScaleAugRow(aug_matrix, i, 1.0 / val);
 		aug_matrix[i * 8 + i] = 1.0; // Make sure it's exactly 1, like it should be.
 		for(uint j = i + 1; j < 4; j++)
@@ -1659,32 +1658,15 @@ bool RibParser::matrixInvert(double dest[16], const double matrix[16])
 ////////////////////
 
 // By default, this will be an array.
-RibData::RibData() : type(NODE_ARRAY), file_line(-1)
+RibData::RibData() : type(NODE_ARRAY)
 {
 }
 
-RibData::RibData(int typ) : type(typ), file_line(-1)
+RibData::RibData(int typ) : type(typ)
 {
 }
 
-RibData::RibData(const RibData& other)
-: type(other.type), file_line(other.file_line), dataPtr(other.dataPtr), childVector(other.childVector), valArray(other.valArray)
-{
-	// Note that we don't create the pointers vector, because most of the time it's not used.
-	// If you're going to use it, make sure the lengths match first.
-	// Or, you could always call recreatePointers();
-}
 
-RibData& RibData::operator=(const RibData& other)
-{
-	type = other.type;
-	file_line = other.file_line;
-	dataPtr = other.dataPtr;
-	childVector = other.childVector;
-	valArray = other.valArray;
-	//recreatePointers();
-	return *this;
-}
 
 RibData::RibData(const char* data, bool quoted)
 : dataPtr(data)
@@ -1839,13 +1821,32 @@ const RibData& RibData::operator[](int index) const
 	return childVector[index];
 }
 
+// SAKBox: a number in a scene that isn't one is an error (atof and atoi read it as 0)
+static double sceneDouble(const char* szText)
+{
+	char* pEnd;
+	double d = strtod(szText, &pEnd);
+	if(pEnd == szText)
+		throw Ex("Expected a number in the scene, got \"", szText, "\"");
+	return d;
+}
+
+static int sceneInt(const char* szText)
+{
+	char* pEnd;
+	long n = strtol(szText, &pEnd, 10);
+	if(pEnd == szText)
+		throw Ex("Expected a whole number in the scene, got \"", szText, "\"");
+	return (int)n;
+}
+
 double RibData::doubleVal(int index) const
 {
 #ifdef PARSER_DEBUG
 	if(type != LEAF_ARRAY)
 		fprintf(stderr, "Trying to get a double val from a non-leafarray\n");
 #endif
-	return atof(valArray[index]);
+	return sceneDouble(valArray[index]);
 }
 
 int RibData::intVal(int index) const
@@ -1854,7 +1855,7 @@ int RibData::intVal(int index) const
 	if(type != LEAF_ARRAY)
 		fprintf(stderr, "Trying to get an int val from a non-leafarray\n");
 #endif
-	return atoi(valArray[index]);
+	return sceneInt(valArray[index]);
 }
 
 const char* RibData::stringVal(int index) const
@@ -1903,7 +1904,7 @@ double RibData::asDouble() const
 	if(type == NODE_ARRAY || type == LEAF_ARRAY)
 		fprintf(stderr, "Trying to get a double from an array\n");
 #endif
-	return atof(dataPtr);
+	return sceneDouble(dataPtr);
 }
 
 int RibData::asInt() const
@@ -1912,7 +1913,7 @@ int RibData::asInt() const
 	if(type == NODE_ARRAY || type == LEAF_ARRAY)
 		fprintf(stderr, "Trying to get an int from an array\n");
 #endif
-	return atoi(dataPtr);
+	return sceneInt(dataPtr);
 }
 
 bool RibData::hasOptionalArg(const string& arg_name) const
@@ -2002,7 +2003,7 @@ StateBlock::StateBlock() : type(ROOTBLOCK)
 	RibParser::matrixMakeIdentity(transform);
 	color[0] = color[1] = color[2] = 0.5; // Dull gray
 	emissive_color[0] = emissive_color[1] = emissive_color[2] = 0.0; // Not a light
-	material = NULL;
+	material = nullptr;
 	// Set up the default attribute values.
 	RibData default_renderType(RibData::LEAF_ARRAY);
 	RibData default_rayDepth(RibData::LEAF_ARRAY);
@@ -2038,7 +2039,8 @@ RibData& StateBlock::getAttribute(const string& attr_class, const string& attr_n
 	if(it == attributes.end())
 	{
 		success = false;
-		return (*(RibData*)(NULL));
+		static RibData none; // SAKBox: was a reference to null; callers check success
+		return none;
 	}
 	success = true;
 	return it->second;

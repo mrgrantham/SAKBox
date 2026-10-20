@@ -20,6 +20,7 @@
 #define SERVER
 
 #include <map>
+#include <iostream>
 #include <string>
 #include <WClasses/GFile.h>
 #include <WClasses/GDynamicPage.h>
@@ -34,13 +35,23 @@ class Server : public GDynamicPageServer
 protected:
 	GFileCache m_fileCache;
 
+	/// Stops once the browser has had the page for a while
+	void onIdle(double secondsSinceLastRequest) override
+	{
+		if(secondsSinceLastRequest > 8.0)
+		{
+			std::cout << "Whelp, the browser should probably have it all by now, so I'm exiting...\n";
+			stopServing();
+		}
+	}
+
 public:
 	std::string m_basePath;
 
 	Server(int port, GRand* pRand);
-	virtual ~Server();
-	virtual GDynamicPageSessionExtension* deserializeSessionExtension(const GDomNode* pNode);
-	virtual GDynamicPageConnection* makeConnection(SOCKET sock);
+	~Server() override;
+	GDynamicPageSessionExtension* deserializeSessionExtension(const GDomNode* pNode) override;
+	GDynamicPageConnection* makeConnection(SOCKET sock) override;
 };
 
 
@@ -59,18 +70,18 @@ public:
 	{
 	}
 
-	virtual ~Terminal()
+	~Terminal() override
 	{
 	}
 
-	virtual GDomNode* serialize(GDom* pDoc)
+	GDomNode* serialize(GDom* pDoc) override
 	{
 		return nullptr;
 	}
 
 	/// Called when the sessions are destroyed, or a new GDynamicPageSessionExtension is
 	/// explicitly associated with this cookie.
-	virtual void onDisown()
+	void onDisown() override
 	{
 	}
 };
@@ -83,11 +94,11 @@ public:
 	{
 	}
 
-	virtual ~Connection()
+	~Connection() override
 	{
 	}
 
-	virtual void handleRequest(GDynamicPageSession* pSession, std::ostream& response);
+	void handleRequest(GDynamicPageSession* pSession, std::ostream& response) override;
 };
 
 

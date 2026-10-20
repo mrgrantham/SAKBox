@@ -34,7 +34,6 @@
 #include <WClasses/GTime.h>
 #include <WClasses/GRand.h>
 #include <WClasses/GHashTable.h>
-#include <WClasses/sha1.h>
 #include <wchar.h>
 #include <string>
 #include <exception>
@@ -55,11 +54,11 @@ public:
 	{
 	}
 
-	virtual ~Connection()
+	~Connection() override
 	{
 	}
 
-	virtual void handleRequest(GDynamicPageSession* pSession, std::ostream& response);
+	void handleRequest(GDynamicPageSession* pSession, std::ostream& response) override;
 };
 
 class Server : public GDynamicPageServer
@@ -68,12 +67,12 @@ public:
 	std::string m_basePath;
 
 	Server(int port, GRand* pRand);
-	virtual ~Server() {}
+	~Server() override {}
 	virtual void onEverySixHours() {}
 	virtual void onStateChange() {}
 	virtual void onShutDown() {}
 
-	virtual GDynamicPageConnection* makeConnection(SOCKET sock)
+	GDynamicPageConnection* makeConnection(SOCKET sock) override
 	{
 		return new Connection(sock, this);
 	}
@@ -94,7 +93,7 @@ void Connection::handleRequest(GDynamicPageSession* pSession, std::ostream& resp
 		response << "	Hello Web! <img src=\"smiley.png\"><br>\n";
 		response << "</body></html>\n";
 	}
-	else if(strcmp(m_szUrl, "/smiley.png") == 0)
+	else if(strcmp(m_szUrl, "/smiley.png") == 0 || strcmp(m_szUrl, "/style.css") == 0) // SAKBox: the page's style sheet was a 404
 		sendFileSafe(((Server*)m_pServer)->m_basePath.c_str(), m_szUrl + 1, response);
 	else
 		response << "<h1>404 - Not found!</h1>";
@@ -106,10 +105,7 @@ Server::Server(int port, GRand* pRand) : GDynamicPageServer(port, pRand, true) /
 	char buf[300];
 	GTime::asciiTime(buf, 256, false);
 	cout << "Server starting at: " << buf << "\n";
-	GApp::appPath(buf, 256, true);
-	strcat(buf, "web/");
-	GFile::condensePath(buf);
-	m_basePath = buf;
+	m_basePath = "projects/waffles/demos/hello_web/bin/web/"; // SAKBox: where `bazel run` puts it (was next to the program)
 }
 
 void getLocalStorageFolder(char* buf)
@@ -138,14 +134,14 @@ void LaunchBrowser(const char* szAddress)
 void doit(void* pArg)
 {
 	int port = 8989;
-	unsigned int seed = getpid() * (unsigned int)time(NULL);
+	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	GRand prng(seed);
 	Server server(port, &prng);
 	LaunchBrowser(server.myAddress());
 	// Pump incoming HTTP requests (this is the main loop)
 	cout << "Server is up\n";
 	cout.flush();
-	server.go();
+	server.serveRequests(); // SAKBox: was go(), which GDynamicPageServer no longer has
 	cout << "Goodbye.\n";
 }
 
@@ -166,7 +162,7 @@ int main(int nArgs, char* pArgs[])
 	int nRet = 1;
 	try
 	{
-		doit(NULL);
+		doit(nullptr);
 		//doItAsDaemon();
 	}
 	catch(std::exception& e)

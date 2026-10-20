@@ -16,21 +16,16 @@
 #endif
 #include <exception>
 
-const char* g_szAppPath = NULL;
+const char* g_szAppPath = nullptr;
 
 int main(int argc, char* argv[])
 {
+	// SAKBox: the scenes are in the demo's bin folder, which `bazel run` puts
+	// in its runfiles under this path
 #ifdef WINDOWS
-	if(_chdir("../../../bin/demos/rib") != 0)
+	if(_chdir("projects/waffles/demos/raytrace/bin") != 0)
 #else
-	if(chdir("../../../bin/demos/rib") != 0)
-#endif
-	{
-	}
-#ifdef WINDOWS
-	if(_chdir("rib") != 0)
-#else
-	if(chdir("rib") != 0)
+	if(chdir("projects/waffles/demos/raytrace/bin") != 0)
 #endif
 	{
 	}

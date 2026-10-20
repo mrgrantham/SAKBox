@@ -9,7 +9,7 @@
 #ifndef __RAYTRACE_H__
 #define __RAYTRACE_H__
 
-#include "Gui.h"
+#include "gui/Gui.h"
 #include <WClasses/GRand.h>
 #include <WClasses/GImage.h>
 #include <WClasses/GRayTrace.h>
@@ -27,16 +27,16 @@ protected:
 
 public:
 	RayTraceView(RayTraceController* pController);
-	virtual ~RayTraceView();
+	~RayTraceView() override;
 
-	virtual void onChar(char c);
-	virtual void onMouseDown(int nButton, int x, int y);
-	virtual void onMouseUp(int nButton, int x, int y);
-	virtual bool onMousePos(int x, int y);
+	void onChar(char c) override;
+	void onMouseDown(int nButton, int x, int y) override;
+	void onMouseUp(int nButton, int x, int y) override;
+	bool onMousePos(int x, int y) override;
 	void SetImage(GClasses::GImage* pImage) { m_pImage = pImage; }
 
 protected:
-	virtual void draw(SDL_Surface* pScreen);
+	void draw(int* pixels, int pitch) override;
 };
 
 
@@ -57,7 +57,7 @@ protected:
 
 public:
 	RayTraceController();
-	virtual ~RayTraceController();
+	~RayTraceController() override;
 
 	void RunModal();
 	void OnSelectFile(const char* szFilename);
