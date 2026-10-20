@@ -1845,7 +1845,6 @@ public:
 class GraphServer : public GDynamicPageServer
 {
 protected:
-	bool m_keepGoing;
 	vector<UsageNode*> m_globals;
 	int m_port;
 
@@ -1854,10 +1853,13 @@ public:
 
 	GraphServer(int port, GRand* pRand, bool networkAccessible);
 	~GraphServer() override;
-	void pump();
 	virtual void onEverySixHours() {}
 	virtual void onStateChange() {}
-	virtual void onShutDown() {}
+
+protected:
+	void onIdle(double secondsSinceLastRequest) override;
+
+public:
 
 	GDynamicPageConnection* makeConnection(SOCKET sock) override
 	{
@@ -1867,7 +1869,6 @@ public:
 
 GraphServer::GraphServer(int port, GRand* pRand, bool networkAccessible) : GDynamicPageServer(port, pRand, networkAccessible), m_port(port)
 {
-	m_keepGoing = true;
 	char buf[300];
 	GApp::appPath(buf, 256, true);
 	strcat(buf, "web/");
@@ -1880,26 +1881,13 @@ GraphServer::~GraphServer()
 {
 }
 
-void GraphServer::pump()
+void GraphServer::onIdle(double secondsSinceLastRequest)
 {
-	double dLastActivity = GTime::seconds();
-	GSignalHandler sh;
-	while(m_keepGoing && sh.check() == 0)
+	if(secondsSinceLastRequest > 1800) // 30 minutes
 	{
-		if(process())
-			dLastActivity = GTime::seconds();
-		else
-		{
-			if(GTime::seconds() - dLastActivity > 1800) // 30 minutes
-			{
-				cout << "Shutting down due to inactivity for 30 minutes.\n";
-				m_keepGoing = false;
-			}
-			else
-				GThread::sleep(100);
-		}
+		cout << "Shutting down due to inactivity for 30 minutes.\n";
+		stopServing();
 	}
-	onShutDown();
 }
 
 // virtual
@@ -2039,8 +2027,7 @@ void graph(GArgReader& args)
 		s += to_str(port);
 		LaunchBrowser(s.c_str());
 
-		// Pump incoming HTTP requests (this is the main loop)
-		server.pump();
+		server.serveRequests();
 	}
 	catch(std::exception&)
 	{

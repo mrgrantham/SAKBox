@@ -37,9 +37,8 @@ using std::make_pair;
 
 Server::Server(int port, GRand* pRand)
 : GDynamicPageServer(port, pRand, true), // SAKBox: a multi-user forum, so open to the network
-  m_recommender(*pRand)
+  m_recommender(*pRand), m_lastMaintenance(GTime::seconds())
 {
-	m_keepGoing = true;
 	char buf[300];
 	GApp::appPath(buf, 256, true);
 	size_t len = strlen(buf);
@@ -364,6 +363,15 @@ void Server::log(const char* message)
 	GTime::appendTimeStampValue(&sDate, "-", " ", ":", true);
 	cout << sDate << ": " << message << "\n";
 	cout.flush();
+}
+
+void Server::onIdle(double secondsSinceLastRequest)
+{
+	if(GTime::seconds() - m_lastMaintenance > 14400) // 4 hours
+	{
+		do_maintenance();
+		m_lastMaintenance = GTime::seconds();
+	}
 }
 
 void Server::do_maintenance()

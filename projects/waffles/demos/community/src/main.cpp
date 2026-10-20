@@ -111,30 +111,7 @@ void doit(void* pArg)
 
 		//LaunchBrowser(pServer->myAddress(), &prng);
 
-		// Process web requests
-		double dLastMaintenance = GTime::seconds();
-		GSignalHandler sh;
-		while(pServer->m_keepGoing)
-		{
-			int sig = sh.check();
-			if(sig != 0)
-			{
-				cout << "Received signal " << to_str(sig) << "(" << sh.to_str(sig) << ").\n";
-				cout.flush();
-				if(sig != 13) // Don't break for SIGPIPE. That just means the other end of the connection hung up, which happens all the time.
-					break;
-			}
-			if(!pServer->process())
-			{
-				if(GTime::seconds() - dLastMaintenance > 14400) // 4 hours
-				{
-					pServer->do_maintenance();
-					dLastMaintenance = GTime::seconds();
-				}
-				else
-					GThread::sleep(100);
-			}
-		}
+		pServer->serveRequests();
 		pServer->onShutDown();
 	}
 	cout << "Goodbye.\n";

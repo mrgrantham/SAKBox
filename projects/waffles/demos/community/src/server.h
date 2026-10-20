@@ -39,9 +39,12 @@ protected:
 	NeuralRecommender m_recommender; // The recommender system
 	GFileCache m_fileCache;
 	GJsonAsADatabase* m_pJaad;
+	double m_lastMaintenance; // (GTime::seconds)
+
+	/// Does maintenance every four hours, between requests
+	void onIdle(double secondsSinceLastRequest) override;
 
 public:
-	bool m_keepGoing;
 	std::string m_basePath;
 	std::string m_toolsPath;
 

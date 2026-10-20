@@ -137,7 +137,6 @@ protected:
 	int m_port;
 
 public:
-	bool m_keepGoing;
 	std::string m_basePath;
 
 	Server(int port, GRand* pRand, bool networkAccessible);
@@ -145,8 +144,11 @@ public:
 	UsageNode* globalUsageNode(const char* name, UsageNode* pDefaultNode);
 	virtual void onEverySixHours() {}
 	virtual void onStateChange() {}
-	virtual void onShutDown() {}
-	void pump();
+
+protected:
+	void onIdle(double secondsSinceLastRequest) override;
+
+public:
 
 	GDynamicPageConnection* makeConnection(SOCKET sock) override
 	{
@@ -722,7 +724,6 @@ void MySession::doNext(const char* szParams)
 
 Server::Server(int port, GRand* pRand, bool networkAccessible) : GDynamicPageServer(port, pRand, networkAccessible), m_port(port)
 {
-	m_keepGoing = true;
 	char buf[300];
 	GApp::appPath(buf, 256, true);
 	strcat(buf, "web/");
@@ -906,7 +907,7 @@ void Connection::handleRequest(GDynamicPageSession* pDPSession, std::ostream& re
 	else if(strncmp(m_szUrl, "/shutdown", 9) == 0)
 	{
 		response << "<html><head></head><body onLoad=\"var closure=function() { window.top.opener = null; window.open('','_parent',''); window.close()}; setTimeout(closure,500)\"><h3>Goodbye!</h3></body></html>\n";
-		((Server*)m_pServer)->m_keepGoing = false;
+		m_pServer->stopServing();
 	}
 	else
 	{
@@ -915,26 +916,13 @@ void Connection::handleRequest(GDynamicPageSession* pDPSession, std::ostream& re
 	}
 }
 
-void Server::pump()
+void Server::onIdle(double secondsSinceLastRequest)
 {
-	double dLastActivity = GTime::seconds();
-	GSignalHandler sh;
-	while(m_keepGoing && sh.check() == 0)
+	if(secondsSinceLastRequest > 900) // 15 minutes
 	{
-		if(process())
-			dLastActivity = GTime::seconds();
-		else
-		{
-			if(GTime::seconds() - dLastActivity > 900) // 15 minutes
-			{
-				cout << "Shutting down due to inactivity for 15 minutes.\n";
-				m_keepGoing = false;
-			}
-			else
-				GThread::sleep(100);
-		}
+		cout << "Shutting down due to inactivity for 15 minutes.\n";
+		stopServing();
 	}
-	onShutDown();
 }
 
 
@@ -986,8 +974,7 @@ void do_wizard(bool networkAccessible)
 		s += to_str(port);
 		LaunchBrowser(s.c_str());
 
-		// Pump incoming HTTP requests (this is the main loop)
-		server.pump();
+		server.serveRequests();
 	}
 	catch(std::exception&)
 	{

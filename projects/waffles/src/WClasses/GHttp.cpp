@@ -26,6 +26,9 @@
 #include "GTime.h"
 #include "GThread.h" // Sleep
 #include "GHeap.h"
+#include "GApp.h" // GSignalHandler
+#include <csignal>
+#include <iostream>
 #include <time.h>
 #include <string>
 #include <sstream>
@@ -834,6 +837,33 @@ GHttpServer::~GHttpServer()
 {
 	delete[] m_pReceiveBuf;
 	delete(m_pSocket);
+}
+
+void GHttpServer::serveRequests()
+{
+	GSignalHandler signals;
+	double lastRequest = GTime::seconds();
+	while(m_keepServing)
+	{
+		int sig = signals.check();
+#ifndef WINDOWS
+		if(sig == SIGPIPE)
+			sig = 0; // a client hung up, which is normal
+#endif
+		if(sig != 0)
+		{
+			std::cout << "Stopping: received " << GSignalHandler::to_str(sig) << "\n";
+			break;
+		}
+		if(process())
+			lastRequest = GTime::seconds();
+		else
+		{
+			onIdle(GTime::seconds() - lastRequest);
+			if(m_keepServing)
+				GThread::sleep(100);
+		}
+	}
 }
 
 bool GHttpServer::process()

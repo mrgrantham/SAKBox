@@ -20,6 +20,7 @@
 #define __GHTTP_H__
 
 #include <time.h>
+#include <atomic>
 #include <vector>
 #include <sstream>
 #include <map>
@@ -237,6 +238,12 @@ protected:
 	char* m_pReceiveBuf;
 	GHttpServerSocket* m_pSocket;
 	std::ostringstream m_stream;
+	std::atomic<bool> m_keepServing{true};
+
+	/// SAKBox: called by serveRequests whenever there's no request to handle,
+	/// with the time since the last request (or since serving began). A server
+	/// that shuts down after a while, or does maintenance, overrides it.
+	virtual void onIdle(double secondsSinceLastRequest) {}
 
 public:
 	/// Listens on nPort (0 for any free one). SAKBox: only browsers on this
@@ -249,6 +256,16 @@ public:
 	/// It returns true if it did anything, and false if it didn't, so
 	/// if it returns false you may want to sleep for a little while.
 	bool process();
+
+	/// SAKBox: handles requests until stopServing is called or the program is
+	/// asked to stop (SIGINT or SIGTERM; SIGPIPE, a client hanging up, doesn't
+	/// stop it). When there's no request it calls onIdle, then sleeps for a
+	/// tenth of a second. (Each Waffles server used to run this loop itself.)
+	void serveRequests();
+
+	/// Makes serveRequests return, after the request it's handling, if any.
+	/// It can be called from a request handler, onIdle or another thread.
+	void stopServing() { m_keepServing = false; }
 
 	/// Unescapes a URL. (i.e. replace "%20" with " ", etc.). szOut should point
 	/// to a buffer at least as big as szIn (including the null terminator). This

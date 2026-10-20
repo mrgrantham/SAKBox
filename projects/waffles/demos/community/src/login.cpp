@@ -97,7 +97,7 @@ void Login::pageAdmin(Server* pServer, GDynamicPageSession* pSession, ostream& r
 		else if(strcmp(szAction, "shutdown") == 0)
 		{
 			pServer->log("Shutting down server as directed by admin");
-			pServer->m_keepGoing = false;
+			pServer->stopServing();
 		}
 		else
 		{

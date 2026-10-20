@@ -9,15 +9,20 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <cstddef>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <ostream>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
+#include <vector>
 
 using namespace GClasses;
 
@@ -258,6 +263,109 @@ TEST(HttpServerTest, SurvivesAClientThatHangsUp) {
   EXPECT_NE(log.str().find("Failed to send GET response: Error sending"), std::string::npos)
       << log.str();
   EXPECT_NE(send(server, "GET /ok HTTP/1.1\r\n\r\n").find("got /ok"), std::string::npos);
+}
+
+// serveRequests is the loop every Waffles server ran by hand: handle
+// requests until told to stop, calling onIdle between them.
+namespace {
+struct IdleEchoServer : EchoServer {
+  std::atomic<int> idleCalls{0};
+  std::atomic<double> lastIdle{-1};
+  std::vector<double> idleTimes; // (read after serveRequests returns)
+  std::function<void(IdleEchoServer &)> whenIdle = [](IdleEchoServer &) {};
+  void onIdle(double secondsSinceLastRequest) override {
+    idleCalls++;
+    lastIdle = secondsSinceLastRequest;
+    idleTimes.push_back(secondsSinceLastRequest);
+    whenIdle(*this);
+  }
+};
+
+// Sends a request to a server that's serving on another thread
+std::string fetch(GHttpServer &server, const std::string &url) {
+  int sock = ::socket(AF_INET, SOCK_STREAM, 0);
+  timeval timeout{5, 0};
+  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(server.socket()->port());
+  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  if (connect(sock, (sockaddr *)&addr, sizeof(addr)) != 0) {
+    close(sock);
+    return "(couldn't connect)";
+  }
+  const std::string request = "GET " + url + " HTTP/1.1\r\n\r\n";
+  ::send(sock, request.data(), request.size(), 0);
+  std::string reply;
+  char buf[4096];
+  while (reply.find("got ") == std::string::npos) {
+    ssize_t n = recv(sock, buf, sizeof(buf), 0);
+    if (n <= 0)
+      break;
+    reply.append(buf, n);
+  }
+  close(sock);
+  return reply;
+}
+
+void waitFor(const std::function<bool()> &condition) {
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  while (!condition() && std::chrono::steady_clock::now() < deadline)
+    usleep(1000);
+}
+} // namespace
+
+TEST(HttpServeRequestsTest, AnswersUntilStopServing) {
+  IdleEchoServer server;
+  std::thread serving([&] { server.serveRequests(); });
+  EXPECT_NE(fetch(server, "/one").find("got /one"), std::string::npos);
+  EXPECT_NE(fetch(server, "/two").find("got /two"), std::string::npos);
+  const auto asked = std::chrono::steady_clock::now();
+  server.stopServing();
+  serving.join();
+  EXPECT_LT(std::chrono::steady_clock::now() - asked, std::chrono::seconds(1));
+}
+
+// onIdle is told how long it's been since the last request, so a server can
+// shut down when no one is using it (as plot and the wizard do).
+TEST(HttpServeRequestsTest, OnIdleCountsFromTheLastRequest) {
+  IdleEchoServer server;
+  std::thread serving([&] { server.serveRequests(); });
+  waitFor([&] { return server.lastIdle > 0.25; });
+  EXPECT_GT(server.lastIdle, 0.25);
+  EXPECT_NE(fetch(server, "/hello").find("got /hello"), std::string::npos);
+  const int callsBefore = server.idleCalls;
+  waitFor([&] { return server.idleCalls > callsBefore + 1; });
+  EXPECT_LT(server.lastIdle, 0.25); // counting again from the request
+  server.stopServing();
+  serving.join();
+}
+
+// A server that stops itself from onIdle
+TEST(HttpServeRequestsTest, OnIdleCanStopServing) {
+  IdleEchoServer server;
+  server.whenIdle = [](IdleEchoServer &s) {
+    if (s.idleCalls == 3)
+      s.stopServing();
+  };
+  server.serveRequests();
+  EXPECT_EQ(server.idleCalls, 3);
+  EXPECT_LT(server.idleTimes[0], server.idleTimes[2]); // (it sleeps between calls)
+}
+
+// Ctrl-C or kill stop it; SIGPIPE, which means a client hung up, doesn't.
+TEST(HttpServeRequestsTest, StopsOnSigtermButNotSigpipe) {
+  IdleEchoServer server;
+  server.whenIdle = [](IdleEchoServer &s) {
+    if (s.idleCalls == 2)
+      raise(SIGPIPE);
+    if (s.idleCalls == 4)
+      raise(SIGTERM);
+    if (s.idleCalls == 10)
+      s.stopServing(); // (in case the signal doesn't stop it)
+  };
+  server.serveRequests();
+  EXPECT_EQ(server.idleCalls, 4);
 }
 
 // A URL's port was read with atoi: "abc" gave port 0, and 70000 was cut to

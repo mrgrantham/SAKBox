@@ -727,11 +727,11 @@ GSignalHandler::GSignalHandler()
 	m_prevSigInt = signal(SIGINT, GApp_onSigInt);
 	if(m_prevSigInt == SIG_ERR) m_prevSigInt = SIG_DFL;
 	m_prevSigTerm = signal(SIGTERM, GApp_onSigTerm);
-	if(m_prevSigTerm == SIG_ERR) m_prevSigInt = SIG_DFL;
+	if(m_prevSigTerm == SIG_ERR) m_prevSigTerm = SIG_DFL; // SAKBox: these three reset m_prevSigInt
 	m_prevSigPipe = signal(SIGPIPE, GApp_onSigPipe);
-	if(m_prevSigPipe == SIG_ERR) m_prevSigInt = SIG_DFL;
+	if(m_prevSigPipe == SIG_ERR) m_prevSigPipe = SIG_DFL;
 	m_prevSigSegV = signal(SIGSEGV, GApp_onSigSegV);
-	if(m_prevSigSegV == SIG_ERR) m_prevSigInt = SIG_DFL;
+	if(m_prevSigSegV == SIG_ERR) m_prevSigSegV = SIG_DFL;
 #endif
 }
 
