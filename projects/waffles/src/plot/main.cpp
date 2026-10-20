@@ -1853,8 +1853,6 @@ public:
 
 	GraphServer(int port, GRand* pRand, bool networkAccessible);
 	~GraphServer() override;
-	virtual void onEverySixHours() {}
-	virtual void onStateChange() {}
 
 protected:
 	void onIdle(double secondsSinceLastRequest) override;

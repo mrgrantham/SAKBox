@@ -112,7 +112,6 @@ void doit(void* pArg)
 		//LaunchBrowser(pServer->myAddress(), &prng);
 
 		pServer->serveRequests();
-		pServer->onShutDown();
 	}
 	cout << "Goodbye.\n";
 }

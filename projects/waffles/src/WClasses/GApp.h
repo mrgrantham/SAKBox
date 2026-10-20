@@ -149,7 +149,7 @@ public:
 
 typedef void (*sighandler_t)(int);
 
-/// Temporarily handles certain signals. (When this object is destroyed, it puts all the signal
+/// Temporarily handles SIGINT, SIGTERM and SIGPIPE. (When this object is destroyed, it puts their
 /// handlers back the way they were.) Periodically call "check" to see if a signal has occurred.
 class GSignalHandler
 {
@@ -158,7 +158,6 @@ public:
 	sighandler_t m_prevSigInt;
 	sighandler_t m_prevSigTerm;
 	sighandler_t m_prevSigPipe;
-	sighandler_t m_prevSigSegV;
 #endif
 	int m_gotSignal;
 

@@ -195,16 +195,6 @@ void Server::doSomeRecommenderTraining()
 	}
 }
 
-// virtual
-void Server::onStateChange()
-{
-}
-
-// virtual
-void Server::onShutDown()
-{
-}
-
 Account* Server::findAccount(const char* szUsername)
 {
 	map<string, size_t>::iterator it = m_username_to_index.find(szUsername);

@@ -193,7 +193,6 @@ public:
 	void deserialize(const GDomNode* pNode);
 
 protected:
-	void doMaintenance();
 	void computePasswordSalt();
 };
 

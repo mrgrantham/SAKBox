@@ -142,8 +142,6 @@ public:
 	Server(int port, GRand* pRand, bool networkAccessible);
 	~Server() override;
 	UsageNode* globalUsageNode(const char* name, UsageNode* pDefaultNode);
-	virtual void onEverySixHours() {}
-	virtual void onStateChange() {}
 
 protected:
 	void onIdle(double secondsSinceLastRequest) override;

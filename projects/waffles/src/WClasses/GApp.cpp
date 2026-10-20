@@ -711,10 +711,6 @@ void GApp_onSigPipe(int n)
 	g_pSignalHandler->onSignal(SIGPIPE);
 }
 
-void GApp_onSigSegV(int n)
-{
-	g_pSignalHandler->onSignal(SIGSEGV);
-}
 #endif
 
 GSignalHandler::GSignalHandler()
@@ -730,8 +726,9 @@ GSignalHandler::GSignalHandler()
 	if(m_prevSigTerm == SIG_ERR) m_prevSigTerm = SIG_DFL; // SAKBox: these three reset m_prevSigInt
 	m_prevSigPipe = signal(SIGPIPE, GApp_onSigPipe);
 	if(m_prevSigPipe == SIG_ERR) m_prevSigPipe = SIG_DFL;
-	m_prevSigSegV = signal(SIGSEGV, GApp_onSigSegV);
-	if(m_prevSigSegV == SIG_ERR) m_prevSigSegV = SIG_DFL;
+	// SAKBox: SIGSEGV is no longer caught. Returning from its handler after a
+	// real segfault re-runs the faulting instruction, which faults again, so a
+	// crashing program spun at full CPU instead of ending.
 #endif
 }
 
@@ -741,7 +738,6 @@ GSignalHandler::~GSignalHandler()
 	signal(SIGINT, m_prevSigInt);
 	signal(SIGTERM, m_prevSigTerm);
 	signal(SIGPIPE, m_prevSigPipe);
-	signal(SIGSEGV, m_prevSigSegV);
 #endif
 	g_pSignalHandler = nullptr;
 }

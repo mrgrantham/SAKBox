@@ -68,9 +68,6 @@ public:
 
 	Server(int port, GRand* pRand);
 	~Server() override {}
-	virtual void onEverySixHours() {}
-	virtual void onStateChange() {}
-	virtual void onShutDown() {}
 
 	GDynamicPageConnection* makeConnection(SOCKET sock) override
 	{

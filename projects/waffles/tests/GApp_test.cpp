@@ -3,6 +3,7 @@
 
 #include <WClasses/GApp.h>
 
+#include <csignal>
 #include <cstdlib>
 #include <fstream>
 #include <iterator>
@@ -145,3 +146,29 @@ TEST(OpenTest, FileNameWithSpacesAndSemicolons) {
   EXPECT_EQ(opener.opened(), name + "\n");
 }
 #endif // !WINDOWS
+
+// GSignalHandler turns SIGINT and SIGTERM into values check() returns, so a
+// server can stop cleanly between requests.
+TEST(SignalHandlerTest, ReportsSigintAndSigterm) {
+  GSignalHandler handler;
+  EXPECT_EQ(handler.check(), 0);
+  raise(SIGTERM);
+  EXPECT_EQ(handler.check(), SIGTERM);
+  EXPECT_EQ(handler.check(), 0); // (reading it clears it)
+  raise(SIGINT);
+  EXPECT_EQ(handler.check(), SIGINT);
+}
+
+// It used to catch SIGSEGV too. A handler that returns from a real segfault
+// sends the program back to the faulting instruction, which faults again, so
+// a server that crashed spun at full CPU instead of ending (and leaving a
+// crash report). Now a segfault ends the program as usual.
+TEST(SignalHandlerDeathTest, SegfaultStillEndsTheProgram) {
+  EXPECT_EXIT(
+      {
+        GSignalHandler handler;
+        raise(SIGSEGV);
+        std::exit(0);
+      },
+      testing::KilledBySignal(SIGSEGV), "");
+}

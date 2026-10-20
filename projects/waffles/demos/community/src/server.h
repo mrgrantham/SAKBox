@@ -54,8 +54,6 @@ public:
 	GJsonAsADatabase& jaad() { return *m_pJaad; }
 	void saveState();
 	void doSomeRecommenderTraining();
-	virtual void onStateChange();
-	virtual void onShutDown();
 	std::vector<Account*>& accounts() { return m_accounts; }
 	bool isUsernameTaken(const char* szUsername);
 	Account* findAccount(const char* szUsername);
