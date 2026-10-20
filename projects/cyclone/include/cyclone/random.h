@@ -78,7 +78,9 @@ public:
   real randomReal(real min, real max);
 
   /**
-   * Returns a random integer less than the given value.
+   * Returns a random integer less than the given value, which must be
+   * positive. (Lower results are very slightly more likely when the limit
+   * doesn't divide 2^32: for a limit of a million, 0.02% more likely.)
    */
   unsigned randomInt(unsigned max);
 

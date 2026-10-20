@@ -20,6 +20,8 @@
 
 #include "body.h"
 #include "pfgen.h"
+#include "random.h"
+#include <unordered_map>
 #include <vector>
 
 namespace cyclone {
@@ -92,6 +94,32 @@ public:
  * This force generator is intended to represent a single
  * explosion effect for multiple rigid bodies. The force generator
  * can also act as a particle force generator.
+ *
+ * SAKBox: upstream declared this (from the book, section 17.2.3) but never
+ * wrote it. The three stages follow the book:
+ *
+ * - Implosion: for implosionDuration, objects between implosionMinRadius
+ *   and implosionMaxRadius are pulled towards the detonation with
+ *   implosionForce.
+ * - Concussion: a shock wave, shockwaveThickness thick, travels out at
+ *   shockwaveSpeed for concussionDuration. It pushes objects outwards with
+ *   the peak force inside it, falling linearly to nothing one thickness
+ *   either side. The peak is peakConcussionForce for a still object, less
+ *   for one already moving outwards (nothing at the wave's speed) and more
+ *   for one moving inwards, and fades to nothing over concussionDuration.
+ *   Rigid bodies are pushed at a point off their centre so they spin.
+ * - Convection: for convectionDuration, objects in a cylinder
+ *   chimneyRadius wide and chimneyHeight tall above the detonation are
+ *   pushed along the line from the detonation (up, and out a little, which
+ *   makes the mushroom shape), with peakConvectionForce at the chimney's
+ *   axis, falling linearly to nothing at its edge.
+ *
+ * Two of the book's formulas are corrected: as printed, the force ahead of
+ * the shock wave and the chimney's force both rise towards the outside,
+ * though the text and figure 17.7 describe them falling off.
+ *
+ * Time is moved on with advanceTime(), once per simulation step, not by
+ * updateForce, which is called once per object.
  */
 class Explosion : public ForceGenerator, public ParticleForceGenerator {
   /**
@@ -99,6 +127,19 @@ class Explosion : public ForceGenerator, public ParticleForceGenerator {
    * for time-sensitive effects.
    */
   real timePassed;
+
+  /**
+   * Picks each rigid body's off-centre point for the concussion wave.
+   */
+  Random random;
+
+  /**
+   * The point (in body coordinates) at which the concussion wave pushes
+   * each rigid body, picked the first time the wave reaches it and kept
+   * after, so the body turns until that point lines up with the push and
+   * then stops, rather than spinning faster and faster.
+   */
+  std::unordered_map<const RigidBody *, Vector3> concussionPoints;
 
 public:
   // Properties of the explosion, these are public because
@@ -109,8 +150,6 @@ public:
    * The location of the detonation of the weapon.
    */
   Vector3 detonation;
-
-  // ... Other Explosion code as before ...
 
   /**
    * The radius up to which objects implode in the first stage
@@ -171,9 +210,15 @@ public:
   real concussionDuration;
 
   /**
+   * How far from a rigid body's centre the concussion wave pushes it,
+   * at most, so that it spins as it is thrown. Zero pushes every body
+   * through its centre.
+   */
+  real concussionOffset;
+
+  /**
    * This is the peak force for stationary objects in
-   * the centre of the convection chimney. Force calculations
-   * for this value are the same as for peakConcussionForce.
+   * the centre of the convection chimney.
    */
   real peakConvectionForce;
 
@@ -197,9 +242,30 @@ public:
 
 public:
   /**
-   * Creates a new explosion with sensible default values.
+   * Creates a new explosion with sensible default values, at the origin,
+   * for objects of about a metre and a few kilograms.
    */
   Explosion();
+
+  /**
+   * Moves the explosion on by the given time. Call it once per
+   * simulation step.
+   */
+  void advanceTime(real_duration duration);
+
+  /** Returns how long the explosion has been going. */
+  real getTimePassed() const;
+
+  /**
+   * Starts the explosion again from detonation.
+   */
+  void restart();
+
+  /**
+   * Returns true while any stage of the explosion is still applying
+   * forces.
+   */
+  bool isActive() const;
 
   /**
    * Calculates and applies the force that the explosion
@@ -211,7 +277,17 @@ public:
    * Calculates and applies the force that the explosion has
    * on the given particle.
    */
-  void updateForce(Particle *particle, real duration) override = 0;
+  void updateForce(Particle *particle, real duration) override;
+
+private:
+  /** The implosion's pull on an object at the given position. */
+  Vector3 implosionAt(const Vector3 &position) const;
+
+  /** The shock wave's push on an object at the given position and velocity. */
+  Vector3 concussionAt(const Vector3 &position, const Vector3 &velocity) const;
+
+  /** The convection chimney's push on an object at the given position. */
+  Vector3 convectionAt(const Vector3 &position) const;
 };
 
 /**

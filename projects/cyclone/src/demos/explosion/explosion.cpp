@@ -5,10 +5,11 @@
  * into a heap. generateContacts() checks every pair (box-box, box-ball,
  * ball-ball) and each against the ground, and the shared resolver handles
  * the contacts. Resting bodies fall asleep (drawn blue; a box overlapping
- * another box is green) and W wakes them. The explosion itself was never
- * finished upstream: fire(), which would push the first ball, is not
- * called. Edit and up modes move the first box with the mouse, for setting
- * up collisions.
+ * another box is green) and W wakes them. X sets off a cyclone::Explosion
+ * at the centre of the ground (SAKBox: upstream never finished it): an
+ * implosion, a shock wave (drawn as a red ring while it travels) and a
+ * convection chimney. Edit and up modes move the first box with the mouse,
+ * for setting up collisions.
  *
  * Part of the Cyclone physics system.
  *
@@ -208,8 +209,12 @@ class ExplosionDemo : public RigidBodyApplication {
   /** Holds the ball data. */
   Ball ballData[balls];
 
-  /** Detonates the explosion. */
-  void fire();
+  /** The explosion X sets off, and whether it is still going */
+  cyclone::Explosion explosion;
+  bool exploding = false;
+
+  /** Sets off the explosion at the centre of the ground. */
+  void detonate();
 
   /** Resets the position of all the boxes and primes the explosion. */
   void reset() override;
@@ -236,7 +241,8 @@ public:
            "between\n"
            "every pair and the ground, contact resolution, and bodies sleeping "
            "once\n"
-           "they settle. (Cyclone's explosion itself was never finished.)\n"
+           "they settle. X: an explosion pulls them in, a shock wave (red) throws\n"
+           "them out spinning, and a chimney of hot air lifts what's above it.\n"
            "E: drag moves the first box along the ground   T: drag moves it "
            "up/down\n"
            "W: wake all bodies\n" RIGID_BODY_KEYS;
@@ -253,18 +259,26 @@ public:
 };
 
 // Method definitions
+
+const char *ExplosionDemo::getTitle() { return "Cyclone > Explosion Demo"; }
+
 ExplosionDemo::ExplosionDemo() : RigidBodyApplication(), editMode(false), upMode(false) {
+  // The bodies weigh up to about 30 kg, heavier than the defaults suit
+  explosion.implosionForce = 300;
+  explosion.peakConcussionForce = 2500;
+  explosion.shockwaveSpeed = 10;
+  explosion.concussionOffset = 0.5;
+  explosion.peakConvectionForce = 200;
+  explosion.chimneyRadius = 3;
+
   // Reset the position of the boxes
   reset();
 }
 
-const char *ExplosionDemo::getTitle() { return "Cyclone > Explosion Demo"; }
-
-void ExplosionDemo::fire() {
-  cyclone::Vector3 pos = ballData[0].body->getPosition();
-  pos.normalise();
-
-  ballData[0].body->addForce(pos * -1000.0f);
+void ExplosionDemo::detonate() {
+  explosion.detonation = cyclone::Vector3(0, 0, 0);
+  explosion.restart();
+  exploding = true;
 }
 
 void ExplosionDemo::reset() {
@@ -290,6 +304,7 @@ void ExplosionDemo::reset() {
 
   // Reset the contacts
   cData.contactCount = 0;
+  exploding = false;
 }
 
 void ExplosionDemo::generateContacts() {
@@ -352,6 +367,16 @@ void ExplosionDemo::generateContacts() {
 }
 
 void ExplosionDemo::updateObjects(cyclone::real duration) {
+  // The explosion's forces (they wake the bodies they reach)
+  if (exploding) {
+    for (Box *box = boxData; box < boxData + boxes; box++)
+      explosion.updateForce(box->body, duration);
+    for (Ball *ball = ballData; ball < ballData + balls; ball++)
+      explosion.updateForce(ball->body, duration);
+    explosion.advanceTime(duration);
+    exploding = explosion.isActive();
+  }
+
   // Update the physics of each box in turn
   for (Box *box = boxData; box < boxData + boxes; box++) {
     // Run the physics
@@ -434,6 +459,20 @@ void ExplosionDemo::display() {
   glVertex3f(0, 0, 20);
   glEnd();
 
+  // The shock wave, while it travels
+  if (exploding && explosion.getTimePassed() < explosion.concussionDuration) {
+    const float back = (float)(explosion.shockwaveSpeed * explosion.getTimePassed());
+    glColor3f(0.9f, 0.2f, 0.1f);
+    for (float radius : {back, back + (float)explosion.shockwaveThickness}) {
+      glBegin(GL_LINE_LOOP);
+      for (unsigned j = 0; j < 64; j++) {
+        float theta = 3.1415926f * j / 32.0f;
+        glVertex3f(radius * cosf(theta), 0.01f, radius * sinf(theta));
+      }
+      glEnd();
+    }
+  }
+
   // Render each shadow in turn
   glEnable(GL_BLEND);
   glColor4f(0, 0, 0, 0.1f);
@@ -497,6 +536,11 @@ void ExplosionDemo::key(unsigned char key) {
   case 'T':
     upMode = !upMode;
     editMode = false;
+    return;
+
+  case 'x':
+  case 'X':
+    detonate();
     return;
 
   case 'w':

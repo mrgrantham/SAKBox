@@ -162,4 +162,107 @@ void AeroControl::updateForce(RigidBody *body, real duration) {
   Aero::updateForceFromTensor(body, duration, tensor);
 }
 
-void Explosion::updateForce(RigidBody *body, real duration) {}
+// SAKBox: Explosion, from the book's description (see fgen.h).
+Explosion::Explosion()
+    : timePassed(0), random(1), detonation(0, 0, 0), implosionMaxRadius(4), implosionMinRadius(1),
+      implosionDuration(0.1), implosionForce(20), shockwaveSpeed(15), shockwaveThickness(1),
+      peakConcussionForce(300), concussionDuration(1), concussionOffset(0.3),
+      peakConvectionForce(5), chimneyRadius(2), chimneyHeight(10), convectionDuration(4) {}
+
+void Explosion::advanceTime(real_duration duration) { timePassed += duration; }
+
+real Explosion::getTimePassed() const { return timePassed; }
+
+void Explosion::restart() {
+  timePassed = 0;
+  concussionPoints.clear();
+}
+
+bool Explosion::isActive() const {
+  return timePassed < implosionDuration || timePassed < concussionDuration ||
+         timePassed < convectionDuration;
+}
+
+Vector3 Explosion::implosionAt(const Vector3 &position) const {
+  if (timePassed >= implosionDuration)
+    return Vector3();
+  Vector3 inwards = detonation - position;
+  real distance = inwards.magnitude();
+  if (distance < implosionMinRadius || distance > implosionMaxRadius)
+    return Vector3();
+  return inwards * (implosionForce / distance);
+}
+
+Vector3 Explosion::concussionAt(const Vector3 &position, const Vector3 &velocity) const {
+  if (timePassed >= concussionDuration || shockwaveSpeed <= 0 || shockwaveThickness <= 0)
+    return Vector3();
+  Vector3 outwards = position - detonation;
+  real distance = outwards.magnitude();
+  if (distance == 0)
+    return Vector3();
+  outwards *= 1 / distance;
+
+  // The wave's back edge is at back, its front at back + thickness, and its
+  // force falls off over one thickness either side. (The book's formula has
+  // the force ahead of the wave rising to the peak at the outer edge.)
+  const real back = shockwaveSpeed * timePassed, thickness = shockwaveThickness;
+  real share;
+  if (distance < back - thickness || distance >= back + 2 * thickness)
+    return Vector3();
+  else if (distance < back)
+    share = 1 - (back - distance) / thickness;
+  else if (distance < back + thickness)
+    share = 1;
+  else
+    share = 1 - (distance - back - thickness) / thickness;
+
+  // Moving air: less push for an object already moving outwards, none for
+  // one keeping up with the wave, more for one moving inwards
+  real peak = peakConcussionForce * (1 - (velocity * outwards) / shockwaveSpeed);
+  if (peak <= 0)
+    return Vector3();
+  real fade = 1 - timePassed / concussionDuration;
+  return outwards * (peak * share * fade);
+}
+
+Vector3 Explosion::convectionAt(const Vector3 &position) const {
+  if (timePassed >= convectionDuration || chimneyRadius <= 0)
+    return Vector3();
+  Vector3 outwards = position - detonation;
+  real across = real_sqrt(outwards.x * outwards.x + outwards.z * outwards.z);
+  if (outwards.y < 0 || outwards.y >= chimneyHeight || across >= chimneyRadius)
+    return Vector3();
+  if (outwards.squareMagnitude() == 0)
+    outwards = Vector3(0, 1, 0);
+  outwards.normalise();
+
+  // Strongest up the middle of the chimney, nothing at its wall. (The
+  // book's formula has it the other way round, contradicting its own
+  // description of peakConvectionForce.)
+  return outwards * (peakConvectionForce * (1 - across / chimneyRadius));
+}
+
+void Explosion::updateForce(RigidBody *body, real duration) {
+  if (!body->hasFiniteMass())
+    return;
+  const Vector3 position = body->getPosition();
+  body->addForce(implosionAt(position) + convectionAt(position));
+
+  // The concussion pushes off-centre, at the same point of the body each
+  // frame, so the body turns as it's thrown
+  Vector3 push = concussionAt(position, body->getVelocity());
+  if (push.squareMagnitude() == 0)
+    return;
+  auto point = concussionPoints.find(body);
+  if (point == concussionPoints.end())
+    point = concussionPoints.emplace(body, random.randomVector(concussionOffset)).first;
+  body->addForceAtBodyPoint(push, point->second);
+}
+
+void Explosion::updateForce(Particle *particle, real duration) {
+  if (!particle->hasFiniteMass())
+    return;
+  const Vector3 position = particle->getPosition();
+  particle->addForce(implosionAt(position) + concussionAt(position, particle->getVelocity()) +
+                     convectionAt(position));
+}

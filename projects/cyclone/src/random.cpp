@@ -11,6 +11,7 @@
  */
 
 #include <bit>
+#include <cassert>
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
@@ -89,7 +90,11 @@ real Random::randomReal(real min, real max) { return randomReal() * (max - min) 
 
 real Random::randomReal(real scale) { return randomReal() * scale; }
 
-unsigned Random::randomInt(unsigned max) { return randomBits() % max; }
+unsigned Random::randomInt(unsigned max) {
+  // SAKBox: there's no integer below 0 to return (it divided by zero)
+  assert(max > 0);
+  return randomBits() % max;
+}
 
 real Random::randomBinomial(real scale) { return (randomReal() - randomReal()) * scale; }
 

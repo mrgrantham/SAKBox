@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <vector>
 
 using namespace cyclone;
 
@@ -240,6 +241,172 @@ TEST(AeroControlTest, ControlBlendsBetweenItsTensors) {
     auto body = bodyAt(Vector3());
     body->setVelocity(1, 0, 0);
     expectNear(forceOn(*body, surface), Vector3(c.expectedForce, 0, 0));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Explosions: an implosion, a shock wave and a convection chimney (the
+// book's section 17.2.3). Each test turns off the stages it isn't about.
+
+namespace {
+
+// An explosion at the origin with only the given stages
+Explosion explosionWith(bool implosion, bool concussion, bool convection) {
+  Explosion explosion;
+  if (!implosion)
+    explosion.implosionForce = 0;
+  if (!concussion)
+    explosion.peakConcussionForce = 0;
+  if (!convection)
+    explosion.peakConvectionForce = 0;
+  return explosion;
+}
+
+// The explosion's force on a still particle (mass 1) at `position`
+Vector3 explosionForceAt(Explosion &explosion, const Vector3 &position,
+                         const Vector3 &velocity = Vector3()) {
+  auto particle = particleAt(position);
+  particle->setVelocity(velocity);
+  return forceOn(*particle, explosion);
+}
+
+} // namespace
+
+// The implosion pulls objects between its two radii (1 and 4 m) towards
+// the detonation with implosionForce, for implosionDuration (0.1 s).
+TEST(ExplosionTest, ImplosionPullsInObjectsBetweenItsRadii) {
+  Explosion explosion = explosionWith(true, false, false);
+  expectNear(explosionForceAt(explosion, Vector3(2, 0, 0)), Vector3(-20, 0, 0));
+  expectNear(explosionForceAt(explosion, Vector3(0, 3, 0)), Vector3(0, -20, 0));
+  expectNear(explosionForceAt(explosion, Vector3(0.5, 0, 0)), Vector3()); // too close
+  expectNear(explosionForceAt(explosion, Vector3(5, 0, 0)), Vector3());   // too far
+  explosion.advanceTime(0.1);
+  expectNear(explosionForceAt(explosion, Vector3(2, 0, 0)), Vector3()); // over
+}
+
+// Half a second in, a 10 m/s wave 1 m thick spans 5-6 m. Inside it a still
+// object gets the full push outwards; it falls off linearly over 1 m either
+// side.
+TEST(ExplosionTest, ShockWavePushesHardestInsideTheWave) {
+  Explosion explosion = explosionWith(false, true, false);
+  explosion.shockwaveSpeed = 10;
+  explosion.peakConcussionForce = 100;
+  explosion.concussionDuration = 1e9; // (no fading)
+  explosion.advanceTime(0.5);
+  struct Case {
+    double distance, expected;
+  };
+  for (Case c : {Case{3.9, 0}, Case{4.2, 20}, Case{4.5, 50}, Case{5.0, 100}, Case{5.5, 100},
+                 Case{6.2, 80}, Case{6.5, 50}, Case{7.1, 0}}) {
+    SCOPED_TRACE(testing::Message() << c.distance << " m out");
+    expectNear(explosionForceAt(explosion, Vector3(c.distance, 0, 0)), Vector3(c.expected, 0, 0),
+               1e-6);
+    expectNear(explosionForceAt(explosion, Vector3(0, 0, -c.distance)), Vector3(0, 0, -c.expected),
+               1e-6);
+  }
+}
+
+// The wave is moving air: an object already moving outwards gets less push
+// (none if it keeps up with the wave), one moving inwards gets more.
+TEST(ExplosionTest, ShockWavePushesLessOnObjectsMovingWithIt) {
+  Explosion explosion = explosionWith(false, true, false);
+  explosion.shockwaveSpeed = 10;
+  explosion.peakConcussionForce = 100;
+  explosion.concussionDuration = 1e9;
+  explosion.advanceTime(0.5);
+  const Vector3 inTheWave(5.5, 0, 0);
+  expectNear(explosionForceAt(explosion, inTheWave, Vector3(5, 0, 0)), Vector3(50, 0, 0), 1e-6);
+  expectNear(explosionForceAt(explosion, inTheWave, Vector3(10, 0, 0)), Vector3(), 1e-6);
+  expectNear(explosionForceAt(explosion, inTheWave, Vector3(20, 0, 0)), Vector3(), 1e-6);
+  expectNear(explosionForceAt(explosion, inTheWave, Vector3(-5, 0, 0)), Vector3(150, 0, 0), 1e-6);
+  // Moving across the wave makes no difference
+  expectNear(explosionForceAt(explosion, inTheWave, Vector3(0, 7, 0)), Vector3(100, 0, 0), 1e-6);
+}
+
+// The wave weakens as it goes, to nothing at concussionDuration.
+TEST(ExplosionTest, ShockWaveFadesOverItsDuration) {
+  Explosion explosion = explosionWith(false, true, false);
+  explosion.shockwaveSpeed = 10;
+  explosion.peakConcussionForce = 100;
+  explosion.concussionDuration = 2;
+  explosion.advanceTime(0.5); // a quarter of the way
+  expectNear(explosionForceAt(explosion, Vector3(5.5, 0, 0)), Vector3(75, 0, 0), 1e-6);
+  explosion.advanceTime(1.5);
+  expectNear(explosionForceAt(explosion, Vector3(20.5, 0, 0)), Vector3(), 1e-6);
+}
+
+// The chimney (2 m across, 10 m tall) pushes up its middle with
+// peakConvectionForce, along the line from the detonation off the middle
+// (the mushroom shape), less towards its wall, and nothing outside it.
+TEST(ExplosionTest, ChimneyLiftsObjectsAboveTheBlast) {
+  Explosion explosion = explosionWith(false, false, true);
+  expectNear(explosionForceAt(explosion, Vector3(0, 5, 0)), Vector3(0, 5, 0));
+  // Halfway to the wall, 1 m up: half the force, at 45 degrees
+  const Vector3 halfway = explosionForceAt(explosion, Vector3(1, 1, 0));
+  expectNear(halfway, Vector3(1, 1, 0) * (2.5 / std::sqrt(2.0)));
+  expectNear(explosionForceAt(explosion, Vector3(2.5, 1, 0)), Vector3()); // outside
+  expectNear(explosionForceAt(explosion, Vector3(0, 11, 0)), Vector3());  // above
+  expectNear(explosionForceAt(explosion, Vector3(0, -1, 0)), Vector3());  // below
+  explosion.advanceTime(4);
+  expectNear(explosionForceAt(explosion, Vector3(0, 5, 0)), Vector3()); // over
+  EXPECT_FALSE(explosion.isActive());
+  explosion.restart();
+  EXPECT_TRUE(explosion.isActive());
+  expectNear(explosionForceAt(explosion, Vector3(0, 5, 0)), Vector3(0, 5, 0));
+}
+
+// The wave pushes a rigid body off its centre, so it spins as well as
+// flying outwards, at the same point of the body each time. With no offset
+// it only flies.
+TEST(ExplosionTest, ShockWaveSpinsRigidBodies) {
+  Explosion explosion = explosionWith(false, true, false);
+  auto body = bodyAt(Vector3(1.5, 0, 0)); // in the wave at the start
+  const Vector3 push = forceOn(*body, explosion);
+  EXPECT_GT(push.x, 0);
+  const Vector3 spin = body->getRotation();
+  EXPECT_GT(spin.magnitude(), 0);
+
+  // Again from rest: the same push and the same spin
+  body->setPosition(1.5, 0, 0);
+  body->setVelocity(0, 0, 0);
+  body->setRotation(Vector3());
+  body->setOrientation(1, 0, 0, 0);
+  body->calculateDerivedData();
+  expectNear(forceOn(*body, explosion), push);
+  expectNear(body->getRotation(), spin);
+
+  explosion.concussionOffset = 0;
+  auto other = bodyAt(Vector3(1.5, 0, 0));
+  expectNear(forceOn(*other, explosion), push);
+  expectNear(other->getRotation(), Vector3());
+}
+
+// The whole explosion on a ring of particles 3 m out on the ground: pulled
+// in a little, then thrown outwards by the wave, none faster than it.
+TEST(ExplosionTest, ThrowsARingOfObjectsOutwards) {
+  Explosion explosion;
+  std::vector<std::unique_ptr<Particle>> ring;
+  for (int i = 0; i < 8; ++i) {
+    const double angle = i * R_PI / 4;
+    ring.push_back(particleAt(Vector3(3 * std::cos(angle), 0, 3 * std::sin(angle))));
+  }
+  bool pulledIn = false;
+  for (int step = 0; step < 60; ++step) {
+    for (auto &particle : ring) {
+      particle->clearAccumulator();
+      explosion.updateForce(particle.get(), 1.0 / 60);
+      particle->integrate(1.0 / 60);
+    }
+    explosion.advanceTime(1.0 / 60);
+    pulledIn = pulledIn || ring[0]->getVelocity().x < 0;
+  }
+  EXPECT_TRUE(pulledIn);
+  for (auto &particle : ring) {
+    const Vector3 outwards = particle->getPosition().unit();
+    const double speed = particle->getVelocity() * outwards;
+    EXPECT_GT(speed, 1.0);
+    EXPECT_LT(speed, explosion.shockwaveSpeed);
+    EXPECT_NEAR((particle->getVelocity() - outwards * speed).magnitude(), 0, 1e-6);
   }
 }
 

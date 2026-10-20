@@ -830,10 +830,14 @@ public:
    * system with the given axis half-sizes and mass.
    */
   void setBlockInertiaTensor(const Vector3 &halfSizes, real mass) {
+    // SAKBox: a third, from the book's 1/12 m (dy^2 + dz^2) with the full
+    // sizes d twice the half-sizes; upstream's 0.3 made boxes 10% easier
+    // to turn than they should be.
     Vector3 squares = halfSizes.componentProduct(halfSizes);
-    setInertiaTensorCoeffs(0.3f * mass * (squares.y + squares.z),
-                           0.3f * mass * (squares.x + squares.z),
-                           0.3f * mass * (squares.x + squares.y));
+    const real third = (real)1 / 3;
+    setInertiaTensorCoeffs(third * mass * (squares.y + squares.z),
+                           third * mass * (squares.x + squares.z),
+                           third * mass * (squares.x + squares.y));
   }
 
   /**

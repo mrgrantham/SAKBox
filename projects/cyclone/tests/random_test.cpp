@@ -52,6 +52,15 @@ TEST(RandomTest, IntegersCoverEveryValueBelowTheLimit) {
   EXPECT_EQ(seen.size(), 7u);
 }
 
+#ifndef NDEBUG
+// There's no integer below 0: asking for one is a mistake, caught in debug
+// builds (it used to divide by zero).
+TEST(RandomTest, IntegerBelowZeroIsAnError) {
+  Random random(2);
+  EXPECT_DEATH(random.randomInt(0), "max > 0");
+}
+#endif
+
 // randomBinomial(s) is the difference of two reals: in (-s, s), centred on 0.
 TEST(RandomTest, BinomialIsCentredOnZero) {
   Random random(3);

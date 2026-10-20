@@ -163,6 +163,19 @@ TEST(Matrix3Test, InverseAndTranspose) {
   expectNear((m * m.inverse()).transform(v), v);
 }
 
+// A solid 2 x 4 x 6 box of mass 12 (half-sizes 1, 2, 3): m (b^2 + c^2) / 12
+// about each axis, from its full sizes. (Upstream used 0.3 where a third
+// belongs, 10% too little.)
+TEST(Matrix3Test, BlockInertiaTensorOfASolidBox) {
+  Matrix3 inertia;
+  inertia.setBlockInertiaTensor(Vector3(1, 2, 3), 12);
+  EXPECT_NEAR(inertia.data[0], 12.0 * (16 + 36) / 12, 1e-12);
+  EXPECT_NEAR(inertia.data[4], 12.0 * (4 + 36) / 12, 1e-12);
+  EXPECT_NEAR(inertia.data[8], 12.0 * (4 + 16) / 12, 1e-12);
+  for (int offDiagonal : {1, 2, 3, 5, 6, 7})
+    EXPECT_EQ(inertia.data[offDiagonal], 0.0);
+}
+
 TEST(Matrix4Test, TransformRoundTrips) {
   Matrix4 m;
   m.setOrientationAndPos(rotation(0.9, Vector3(0, 0.6, 0.8)), Vector3(5, -1, 2));
