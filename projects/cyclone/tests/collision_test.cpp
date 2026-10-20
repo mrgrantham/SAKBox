@@ -7,7 +7,9 @@
 #include <cyclone/cyclone.h>
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -158,6 +160,157 @@ TEST(BoxCollisionTest, SeparateBoxesDontTouch) {
   EXPECT_EQ(CollisionDetector::boxAndBox(boxOn(*one, Vector3(1, 1, 1)),
                                          boxOn(*two, Vector3(1, 1, 1)), &c.data),
             0u);
+}
+
+// ---------------------------------------------------------------------------
+// The box contact cache: contacts between two boxes kept from frame to frame
+
+namespace {
+
+// A 2 m cube resting on another, sunk 0.01 m into it, and the cache between
+// them. tiltTowards() rocks the top cube 1 degree so one bottom corner dips
+// lowest, as it does when a resting box rocks; frame() collides them.
+struct CubeOnCube {
+  std::unique_ptr<RigidBody> bottomBody = bodyAt(Vector3(0, 0, 0));
+  std::unique_ptr<RigidBody> topBody = bodyAt(Vector3(0, 1.99, 0));
+  CollisionBox bottom = boxOn(*bottomBody, Vector3(1, 1, 1));
+  CollisionBox top = boxOn(*topBody, Vector3(1, 1, 1));
+  BoxContactCache cache;
+  Contacts c;
+
+  void place(const Vector3 &position, const Quaternion &orientation = Quaternion()) {
+    topBody->setPosition(position);
+    topBody->setOrientation(orientation);
+    topBody->calculateDerivedData();
+    top.calculateInternals();
+  }
+
+  // Tips the top cube so its bottom corner at (x, -1, z) (x, z = +-1) dips
+  void tiltTowards(double x, double z) {
+    const double half = 0.5 * R_PI / 180, s = std::sin(half) / std::sqrt(2.0);
+    place(Vector3(0, 1.99, 0), Quaternion(std::cos(half), z * s, 0, -x * s));
+  }
+
+  unsigned frame() {
+    c.data.reset(16);
+    return cache.boxAndBox(bottom, top, &c.data);
+  }
+};
+
+} // namespace
+
+// Resting level, the plain detector finds one contact, at one corner. As
+// the top cube rocks each of its corners down in turn, the cache gathers a
+// contact at each, so level again it is held at all four, each as deep as
+// the cubes overlap, pushing the bottom cube down.
+TEST(BoxContactCacheTest, GathersAContactAtEachCornerAsABoxRocks) {
+  CubeOnCube cubes;
+  {
+    Contacts c;
+    EXPECT_EQ(CollisionDetector::boxAndBox(cubes.bottom, cubes.top, &c.data), 1u);
+  }
+  unsigned expected = 1;
+  for (auto [x, z] :
+       {std::pair{1.0, 1.0}, std::pair{-1.0, 1.0}, std::pair{-1.0, -1.0}, std::pair{1.0, -1.0}}) {
+    SCOPED_TRACE(testing::Message() << "dipping corner " << x << ", " << z);
+    cubes.tiltTowards(x, z);
+    EXPECT_EQ(cubes.frame(), expected++);
+  }
+  cubes.place(Vector3(0, 1.99, 0));
+  ASSERT_EQ(cubes.frame(), 4u);
+  std::set<std::pair<int, int>> corners;
+  for (unsigned i = 0; i < 4; ++i) {
+    const Contact &contact = cubes.c.array[i];
+    EXPECT_NEAR(contact.penetration, 0.01, 1e-9);
+    expectNear(contact.contactNormal, Vector3(0, -1, 0));
+    EXPECT_NEAR(contact.contactPoint.y, 0.99, 1e-9);
+    corners.insert({contact.contactPoint.x > 0, contact.contactPoint.z > 0});
+  }
+  EXPECT_EQ(corners.size(), 4u);
+}
+
+// Lifted more than the tolerance (0.1 m) clear, the kept contacts are
+// dropped: none now, and only the deepest one when the cube comes back.
+TEST(BoxContactCacheTest, DropsContactsOnceTheBoxesMoveApart) {
+  CubeOnCube cubes;
+  for (auto [x, z] : {std::pair{1.0, 1.0}, std::pair{-1.0, -1.0}}) {
+    cubes.tiltTowards(x, z);
+    cubes.frame();
+  }
+  cubes.place(Vector3(0, 1.99 + 0.05, 0)); // within the tolerance: kept
+  EXPECT_EQ(cubes.frame(), 2u);
+  cubes.place(Vector3(0, 2.2, 0));
+  EXPECT_EQ(cubes.frame(), 0u);
+  cubes.place(Vector3(0, 1.99, 0));
+  EXPECT_EQ(cubes.frame(), 1u);
+}
+
+// Slid half off the bottom cube, the top cube's corners beyond its edge are
+// dropped; those still over it stay.
+TEST(BoxContactCacheTest, DropsCornersThatSlideOffTheFace) {
+  CubeOnCube cubes;
+  for (auto [x, z] :
+       {std::pair{1.0, 1.0}, std::pair{-1.0, 1.0}, std::pair{-1.0, -1.0}, std::pair{1.0, -1.0}}) {
+    cubes.tiltTowards(x, z);
+    cubes.frame();
+  }
+  cubes.place(Vector3(1.5, 1.99, 0));
+  const unsigned found = cubes.frame();
+  EXPECT_GE(found, 2u);
+  for (unsigned i = 0; i < found; ++i)
+    EXPECT_LE(cubes.c.array[i].contactPoint.x, 1.0 + 1e-9);
+}
+
+TEST(BoxContactCacheTest, ForgetAndClear) {
+  CubeOnCube cubes;
+  for (auto [x, z] : {std::pair{1.0, 1.0}, std::pair{-1.0, -1.0}}) {
+    cubes.tiltTowards(x, z);
+    cubes.frame();
+  }
+  cubes.place(Vector3(0, 1.99, 0));
+  EXPECT_EQ(cubes.frame(), 2u);
+  cubes.cache.forget(cubes.top);
+  EXPECT_EQ(cubes.frame(), 1u);
+  cubes.tiltTowards(-1, 1);
+  cubes.frame();
+  cubes.cache.clear();
+  cubes.place(Vector3(0, 1.99, 0));
+  EXPECT_EQ(cubes.frame(), 1u);
+}
+
+// Two cubes meeting edge to edge (one turned 45 degrees about z, the other
+// about x, so their edges cross): the cache reports the plain detector's
+// edge contact, keeps it, and drops it once they part.
+TEST(BoxContactCacheTest, KeepsEdgeContactsToo) {
+  const double half = R_PI / 8, root2 = std::sqrt(2.0);
+  auto lowerBody = bodyAt(Vector3(0, 0, 0));
+  lowerBody->setOrientation(Quaternion(std::cos(half), 0, 0, std::sin(half)));
+  lowerBody->calculateDerivedData();
+  auto upperBody = bodyAt(Vector3(0, 2 * root2 - 0.05, 0));
+  upperBody->setOrientation(Quaternion(std::cos(half), std::sin(half), 0, 0));
+  upperBody->calculateDerivedData();
+  CollisionBox lower = boxOn(*lowerBody, Vector3(1, 1, 1));
+  CollisionBox upper = boxOn(*upperBody, Vector3(1, 1, 1));
+
+  Contacts plain;
+  BoxContactFeature touching;
+  ASSERT_EQ(CollisionDetector::boxAndBox(lower, upper, &plain.data, &touching), 1u);
+  EXPECT_EQ(touching.kind, BoxContactFeature::EdgeOnEdge);
+  EXPECT_NEAR(plain.array[0].penetration, 0.05, 1e-9);
+
+  BoxContactCache cache;
+  for (int frame = 0; frame < 2; ++frame) {
+    Contacts c;
+    ASSERT_EQ(cache.boxAndBox(lower, upper, &c.data), 1u);
+    EXPECT_NEAR(c.array[0].penetration, 0.05, 1e-9);
+    expectNear(c.array[0].contactPoint, plain.array[0].contactPoint);
+  }
+
+  upperBody->setPosition(0, 2 * root2 + 0.2, 0);
+  upperBody->calculateDerivedData();
+  upper.calculateInternals();
+  Contacts apart;
+  EXPECT_EQ(cache.boxAndBox(lower, upper, &apart.data), 0u);
 }
 
 // A sphere of radius 1 whose centre is 1.5 from a unit box's face: it sinks

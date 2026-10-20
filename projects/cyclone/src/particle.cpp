@@ -37,9 +37,6 @@ void Particle::integrate(real_duration timeStep) {
     drag = real_pow(damping, duration);
   }
 
-  // Update linear position.
-  position.addScaledVector(velocity, duration);
-
   // Work out the acceleration from the force
   Vector3 resultingAcc = acceleration;
   resultingAcc.addScaledVector(forceAccum, inverseMass);
@@ -49,6 +46,13 @@ void Particle::integrate(real_duration timeStep) {
 
   // Impose drag.
   velocity *= drag;
+
+  // Update linear position.
+  // SAKBox: with the new velocity, as RigidBody::integrate does (upstream
+  // moved the particle first, with the old one). A force then shows in the
+  // position a step sooner, which ParticleFakeSpring's force relies on:
+  // moving first, its stiff springs grew without limit.
+  position.addScaledVector(velocity, duration);
 
   // Clear the forces.
   clearAccumulator();

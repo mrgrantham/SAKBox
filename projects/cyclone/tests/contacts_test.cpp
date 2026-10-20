@@ -267,11 +267,12 @@ TEST(ParticleWorldTest, DroppedParticleLandsAndRests) {
         lowestLastSecond = std::min(lowestLastSecond, y);
       }
     }
-    // Resting: within a frame's worth of gravity (g dt^2) of the ground for
-    // the whole last second. (The ground contact only fires below y = 0, so
-    // the velocity alternates between 0 and g dt from frame to frame.)
-    EXPECT_LT(highestLastSecond, 0.01);
-    EXPECT_GT(lowestLastSecond, -9.81 * dt * dt - 1e-9);
+    // Resting still on the ground for the whole last second. (Before
+    // particles updated their velocity before moving, the velocity
+    // alternated between 0 and g dt from frame to frame, so the particle
+    // jittered by g dt^2.)
+    EXPECT_NEAR(highestLastSecond, 0, 1e-9);
+    EXPECT_NEAR(lowestLastSecond, 0, 1e-9);
     EXPECT_GT(lowest, -0.6); // never sinks far in, even at 20 fps
   }
 }
@@ -339,10 +340,11 @@ TEST(ParticleWorldTest, PendulumKeepsItsLengthAndPeriod) {
 namespace {
 
 // Contacts for a world of boxes: each against the ground (y = 0) and every
-// pair against each other
+// pair against each other, the pairs' contacts kept from frame to frame
 class BoxContacts : public ContactGenerator {
 public:
   std::vector<CollisionBox> boxes;
+  mutable BoxContactCache cache;
 
   unsigned addContact(Contact *contact, unsigned limit) const override {
     CollisionData data;
@@ -357,7 +359,7 @@ public:
     for (size_t i = 0; i < boxes.size() && data.hasMoreContacts(); ++i) {
       CollisionDetector::boxAndHalfSpace(boxes[i], ground, &data);
       for (size_t j = i + 1; j < boxes.size() && data.hasMoreContacts(); ++j)
-        CollisionDetector::boxAndBox(boxes[i], boxes[j], &data);
+        cache.boxAndBox(boxes[i], boxes[j], &data);
     }
     return data.contactCount;
   }
@@ -424,19 +426,27 @@ TEST(WorldTest, DroppedBoxComesToRest) {
   EXPECT_NEAR(box.getVelocity().magnitude(), 0, 0.05);
 }
 
-// Two boxes stacked on the ground stay stacked for 10 s: neither drifts
-// sideways or tips, and the top one sinks into the bottom one by no more
-// than a few centimetres. (Taller stacks topple: see the README's known
-// limitations.)
-TEST(WorldTest, StackOfTwoBoxesStands) {
-  BoxWorld scene({Vector3(0, 0.5, 0), Vector3(0, 1.5, 0)});
-  EXPECT_LT(scene.run(10), 3.0);
-  for (size_t i = 0; i < scene.bodies.size(); ++i) {
-    SCOPED_TRACE(testing::Message() << "box " << i);
-    const RigidBody &box = *scene.bodies[i];
-    EXPECT_NEAR(box.getPosition().x, 0, 0.05);
-    EXPECT_NEAR(box.getPosition().z, 0, 0.05);
-    EXPECT_NEAR(box.getPosition().y, 0.5 + i, 0.03);
+// Stacks of two and three boxes stay stacked for 30 s: none drifts more
+// than a few centimetres sideways, sinks into the one below or tips. (With
+// only the deepest contact between each pair of boxes, a box resting on
+// another was held up at one corner: three boxes rocked from the start and
+// the top one fell off after 3.5 s. Taller stacks still creep and fall: see
+// the README's known limitations.)
+TEST(WorldTest, StacksOfBoxesStand) {
+  for (int height : {2, 3}) {
+    SCOPED_TRACE(testing::Message() << height << " boxes");
+    std::vector<Vector3> positions(height);
+    for (int i = 0; i < height; ++i)
+      positions[i] = Vector3(0, 0.5 + i, 0);
+    BoxWorld scene(positions);
+    EXPECT_LT(scene.run(30), 2.0);
+    for (size_t i = 0; i < scene.bodies.size(); ++i) {
+      SCOPED_TRACE(testing::Message() << "box " << i);
+      const RigidBody &box = *scene.bodies[i];
+      EXPECT_NEAR(box.getPosition().x, 0, 0.05);
+      EXPECT_NEAR(box.getPosition().z, 0, 0.05);
+      EXPECT_NEAR(box.getPosition().y, 0.5 + i, 0.03);
+    }
   }
 }
 

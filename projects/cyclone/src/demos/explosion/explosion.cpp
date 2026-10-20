@@ -201,6 +201,9 @@ class ExplosionDemo : public RigidBodyApplication {
   /** Holds the box data. */
   Box boxData[boxes];
 
+  /** The contacts between boxes, kept from frame to frame */
+  cyclone::BoxContactCache boxContacts;
+
   /**
    * Holds the number of balls in the simulation.
    */
@@ -304,6 +307,7 @@ void ExplosionDemo::reset() {
 
   // Reset the contacts
   cData.contactCount = 0;
+  boxContacts.clear();
   exploding = false;
 }
 
@@ -336,7 +340,7 @@ void ExplosionDemo::generateContacts() {
     for (Box *other = box + 1; other < boxData + boxes; other++) {
       if (!cData.hasMoreContacts())
         return;
-      cyclone::CollisionDetector::boxAndBox(*box, *other, &cData);
+      boxContacts.boxAndBox(*box, *other, &cData);
 
       if (cyclone::IntersectionTests::boxAndBox(*box, *other)) {
         box->isOverlapping = other->isOverlapping = true;

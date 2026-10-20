@@ -542,24 +542,53 @@ TEST(ParticleForceTest, BuoyancyRisesSmoothlyWithDepth) {
   }
 }
 
+namespace {
+// Runs a particle on a fake spring for `steps` steps of 1/60 s, returning
+// how far it ever got from the anchor
+double runFakeSpring(Particle &particle, ParticleFakeSpring &spring, int steps) {
+  double farthest = 0;
+  for (int i = 0; i < steps; ++i) {
+    particle.clearAccumulator();
+    spring.updateForce(&particle, 1.0 / 60);
+    particle.integrate(1.0 / 60);
+    farthest = std::max(farthest, particle.getPosition().magnitude());
+  }
+  return farthest;
+}
+} // namespace
+
 // A fake spring (stiffness 4, damping 2) pulls a particle 1 m out back onto
-// its anchor, settling there. (A real spring would be within 1e-4 m in 5 s;
-// this one lags, as Particle::integrate moves with the old velocity, and
-// takes about 15.)
+// its anchor, swinging through it and settling. Each step puts the particle
+// where the real spring would be but leaves its velocity a little off (the
+// book's "velocity mismatch"), so it rings for about 15 s where a real
+// spring would settle in 5.
 TEST(ParticleForceTest, FakeSpringSettlesOnItsAnchor) {
   Vector3 anchor(0, 0, 0);
   ParticleFakeSpring spring(&anchor, 4, 2);
   auto particle = particleAt(Vector3(1, 0, 0));
   double closest = 1;
-  for (int i = 0; i < 60 * 20; ++i) {
-    particle->clearAccumulator();
-    spring.updateForce(particle.get(), 1.0 / 60);
-    particle->integrate(1.0 / 60);
+  for (int i = 0; i < 60 * 15; ++i) {
+    runFakeSpring(*particle, spring, 1);
     closest = std::min(closest, particle->getPosition().x);
   }
   EXPECT_LT(closest, 0.0); // it swung through the anchor
   EXPECT_NEAR(particle->getPosition().x, 0, 1e-3);
   EXPECT_NEAR(particle->getVelocity().x, 0, 1e-3);
+}
+
+// What the fake spring is for: springs far too stiff for an ordinary one at
+// 60 steps a second hold the particle, without damping, never letting it
+// past its starting distance. (Before particles updated their velocity
+// before moving, stiffness 400 already grew without limit.)
+TEST(ParticleForceTest, StiffFakeSpringsStayStable) {
+  for (double stiffness : {400.0, 1e4, 1e6}) {
+    SCOPED_TRACE(testing::Message() << "stiffness " << stiffness);
+    Vector3 anchor(0, 0, 0);
+    ParticleFakeSpring spring(&anchor, stiffness, 0);
+    auto particle = particleAt(Vector3(1, 0, 0));
+    EXPECT_LE(runFakeSpring(*particle, spring, 60 * 10), 1.0 + 1e-9);
+    EXPECT_LT(particle->getPosition().magnitude(), 0.1);
+  }
 }
 
 // Too much damping to oscillate (damping^2 > 4 x stiffness) is outside what

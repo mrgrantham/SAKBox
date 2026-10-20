@@ -234,6 +234,9 @@ class FractureDemo : public RigidBodyApplication {
   /** Holds the bodies. */
   Block blocks[MAX_BLOCKS];
 
+  /** The contacts between blocks, kept from frame to frame */
+  cyclone::BoxContactCache blockContacts;
+
   /** Holds the projectile. */
   cyclone::CollisionSphere ball;
 
@@ -334,7 +337,7 @@ void FractureDemo::generateContacts() {
 
       if (!cData.hasMoreContacts())
         return;
-      cyclone::CollisionDetector::boxAndBox(*block, *other, &cData);
+      blockContacts.boxAndBox(*block, *other, &cData);
     }
   }
 
@@ -386,6 +389,7 @@ void FractureDemo::reset() {
 
   // Reset the contacts
   cData.contactCount = 0;
+  blockContacts.clear();
 }
 
 void FractureDemo::update() {
@@ -394,6 +398,7 @@ void FractureDemo::update() {
   // Handle fractures.
   if (hit) {
     blocks[0].divideBlock(cData.contactArray[fracture_contact], blocks, blocks + 1);
+    blockContacts.clear(); // the blocks are new pieces
     ball_active = false;
   }
 }

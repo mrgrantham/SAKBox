@@ -76,10 +76,10 @@ TEST(FlexRealTest, RoundsToNearestWhenAsked) {
 
 TEST(FlexRealTest, EngineMatchesAnalyticAtFullPrecision) {
   ScopedPrecision full(52, false);
-  // Cyclone moves position with the old velocity, then updates velocity:
-  // y = -g * dt^2 * (0 + 1 + ... + 63)
+  // Cyclone updates velocity, then moves position with the new velocity:
+  // y = -g * dt^2 * (1 + 2 + ... + 64)
   cyclone::Particle p = simulate(0.0, 1.0, 10.0);
-  EXPECT_NEAR(p.getPosition().y, -10.0 * (63.0 * 64.0 / 2.0) / 4096.0, 1e-9);
+  EXPECT_NEAR(p.getPosition().y, -10.0 * (64.0 * 65.0 / 2.0) / 4096.0, 1e-9);
 }
 
 TEST(FlexRealTest, LowPrecisionChangesTheTrajectory) {

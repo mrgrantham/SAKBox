@@ -268,7 +268,8 @@ TEST(ParticleTest, IntegrationMatchesClosedForm) {
     p.integrate(dt);
   }
   expectNear(p.getVelocity(), Vector3(1, -10 * n * dt, 0));
-  expectNear(p.getPosition(), Vector3(n * dt, -10 * dt * dt * n * (n - 1) / 2, 0));
+  // Each step moves with the velocity it ends with (semi-implicit Euler)
+  expectNear(p.getPosition(), Vector3(n * dt, -10 * dt * dt * n * (n + 1) / 2, 0));
 }
 
 // ---------------------------------------------------------------------------

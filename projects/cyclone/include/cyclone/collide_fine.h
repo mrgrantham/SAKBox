@@ -27,11 +27,16 @@
 
 #include "contacts.h"
 
+#include <map>
+#include <utility>
+#include <vector>
+
 namespace cyclone {
 
 // Forward declarations of primitive friends
 class IntersectionTests;
 class CollisionDetector;
+struct BoxContactFeature;
 
 /**
  * Represents a primitive to detect collisions against.
@@ -246,10 +251,78 @@ public:
 
   static unsigned boxAndBox(const CollisionBox &one, const CollisionBox &two, CollisionData *data);
 
+  /**
+   * SAKBox: as boxAndBox, also reporting which parts of the boxes the
+   * contact is between (left unchanged if there's no contact). Used by
+   * BoxContactCache.
+   */
+  static unsigned boxAndBox(const CollisionBox &one, const CollisionBox &two, CollisionData *data,
+                            BoxContactFeature *touching);
+
   static unsigned boxAndPoint(const CollisionBox &box, const Vector3 &point, CollisionData *data);
 
   static unsigned boxAndSphere(const CollisionBox &box, const CollisionSphere &sphere,
                                CollisionData *data);
+};
+
+/**
+ * SAKBox: which parts of two boxes a contact is between: a vertex of one
+ * box on a face of the other, or an edge of each. Unlike the contact
+ * itself, this stays the same while the boxes move a little, so it can be
+ * kept from frame to frame (see BoxContactCache).
+ *
+ * Corners are numbered by bits: 1 for +x, 2 for +y, 4 for +z (clear for
+ * the negative side). A face is its axis and the side of the box it's on
+ * (that axis's bit of `corner`); an edge is its axis and which of the four
+ * edges along it (the other two axes' bits).
+ */
+struct BoxContactFeature {
+  enum Kind : unsigned char { VertexOfTwoOnFaceOfOne, VertexOfOneOnFaceOfTwo, EdgeOnEdge };
+  Kind kind = EdgeOnEdge;
+  unsigned char oneAxis = 0, oneCorner = 0;
+  unsigned char twoAxis = 0, twoCorner = 0;
+
+  bool operator==(const BoxContactFeature &) const = default;
+};
+
+/**
+ * SAKBox: contacts between pairs of boxes, kept from frame to frame, as the
+ * book describes (section 13.3.5). CollisionDetector::boxAndBox finds one
+ * contact, at the deepest point, so a box resting on another is held up at
+ * a single corner and rocks. Here each frame's deepest contact is added to
+ * those found for the same pair in earlier frames, and all of them are
+ * recalculated for where the boxes are now, so within a few frames a
+ * resting box has a contact at each of its corners on the face below. A
+ * kept contact is dropped once its two parts have moved more than the
+ * collision data's tolerance apart, or a vertex has slid off its face, or
+ * two edges no longer cross.
+ *
+ * Keep one cache for a whole scene and call boxAndBox in place of
+ * CollisionDetector::boxAndBox, with each pair in the same order every
+ * frame. Call forget() when a box is removed, clear() when the scene
+ * resets.
+ */
+class BoxContactCache {
+public:
+  /** At most this many contacts are kept for one pair of boxes. */
+  static constexpr unsigned maxContactsPerPair = 8;
+
+  /**
+   * Adds the contacts between the two boxes to the collision data: the
+   * deepest one now and those kept from earlier frames. Returns how many
+   * were added.
+   */
+  unsigned boxAndBox(const CollisionBox &one, const CollisionBox &two, CollisionData *data);
+
+  /** Forgets the contacts kept for every pair including this box. */
+  void forget(const CollisionBox &box);
+
+  /** Forgets every contact kept. */
+  void clear();
+
+private:
+  std::map<std::pair<const CollisionBox *, const CollisionBox *>, std::vector<BoxContactFeature>>
+      pairs;
 };
 
 } // namespace cyclone

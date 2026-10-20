@@ -334,6 +334,21 @@ static inline Vector3 contactPoint(const Vector3 &pOne, const Vector3 &dOne, rea
 
 unsigned CollisionDetector::boxAndBox(const CollisionBox &one, const CollisionBox &two,
                                       CollisionData *data) {
+  return boxAndBox(one, two, data, nullptr);
+}
+
+// The corner bits (see BoxContactFeature) of the corner of `box` furthest
+// along `direction`
+static unsigned char cornerBits(const CollisionBox &box, const Vector3 &direction) {
+  unsigned char bits = 0;
+  for (unsigned i = 0; i < 3; i++)
+    if (box.getAxis(i) * direction >= 0)
+      bits |= (unsigned char)(1 << i);
+  return bits;
+}
+
+unsigned CollisionDetector::boxAndBox(const CollisionBox &one, const CollisionBox &two,
+                                      CollisionData *data, BoxContactFeature *touching) {
   // if (!IntersectionTests::boxAndBox(one, two)) return 0;
 
   // Find the vector between the two centres
@@ -378,6 +393,15 @@ unsigned CollisionDetector::boxAndBox(const CollisionBox &one, const CollisionBo
   if (best < 3) {
     // We've got a vertex of box two on a face of box one.
     fillPointFaceBoxBox(one, two, toCentre, data, best, pen);
+    if (touching) {
+      // The face of box one towards box two; the vertex of box two furthest
+      // along the contact normal (as fillPointFaceBoxBox picks it)
+      touching->kind = BoxContactFeature::VertexOfTwoOnFaceOfOne;
+      touching->oneAxis = (unsigned char)best;
+      touching->oneCorner = (unsigned char)((one.getAxis(best) * toCentre > 0) << best);
+      touching->twoAxis = 0;
+      touching->twoCorner = cornerBits(two, data->contacts->contactNormal);
+    }
     data->addContacts(1);
     return 1;
   } else if (best < 6) {
@@ -386,6 +410,13 @@ unsigned CollisionDetector::boxAndBox(const CollisionBox &one, const CollisionBo
     // one and two (and therefore also the vector between their
     // centres).
     fillPointFaceBoxBox(two, one, toCentre * -1.0f, data, best - 3, pen);
+    if (touching) {
+      touching->kind = BoxContactFeature::VertexOfOneOnFaceOfTwo;
+      touching->twoAxis = (unsigned char)(best - 3);
+      touching->twoCorner = (unsigned char)((two.getAxis(best - 3) * toCentre < 0) << (best - 3));
+      touching->oneAxis = 0;
+      touching->oneCorner = cornerBits(one, data->contacts->contactNormal);
+    }
     data->addContacts(1);
     return 1;
   } else {
@@ -440,12 +471,164 @@ unsigned CollisionDetector::boxAndBox(const CollisionBox &one, const CollisionBo
     contact->contactNormal = axis;
     contact->contactPoint = vertex;
     contact->setBodyData(one.body, two.body, data->friction, data->restitution);
+    if (touching) {
+      // The edges chosen above, with their own axis's bit cleared
+      touching->kind = BoxContactFeature::EdgeOnEdge;
+      touching->oneAxis = (unsigned char)oneAxisIndex;
+      touching->oneCorner = (unsigned char)(cornerBits(one, axis * -1) & ~(1u << oneAxisIndex));
+      touching->twoAxis = (unsigned char)twoAxisIndex;
+      touching->twoCorner = (unsigned char)(cornerBits(two, axis) & ~(1u << twoAxisIndex));
+    }
     data->addContacts(1);
     return 1;
   }
   return 0;
 }
 #undef CHECK_OVERLAP
+
+// SAKBox: BoxContactCache (see collide_fine.h)
+
+// The point of `box`, in its own coordinates, at the given corner bits: a
+// vertex, or with the coordinate along `alongAxis` (if below 3) at 0, the
+// middle of an edge
+static Vector3 cornerPoint(const CollisionBox &box, unsigned char corner, unsigned alongAxis = 3) {
+  Vector3 point;
+  for (unsigned i = 0; i < 3; i++)
+    point[i] = i == alongAxis ? (real)0 : (corner & (1 << i) ? box.halfSize[i] : -box.halfSize[i]);
+  return point;
+}
+
+// Works out a kept contact for where the boxes are now, writing it to
+// `contact`. Returns false if its parts are no longer touching: more than
+// the tolerance apart, a vertex off its face, or edges that don't cross.
+static bool fillKeptContact(const CollisionBox &one, const CollisionBox &two,
+                            const BoxContactFeature &feature, const CollisionData &data,
+                            Contact *contact) {
+  const real tolerance = data.tolerance;
+
+  if (feature.kind != BoxContactFeature::EdgeOnEdge) {
+    // A vertex on a face: as fillPointFaceBoxBox, with the normal out of
+    // the face's box, and the depth that of this vertex
+    const bool faceOnOne = feature.kind == BoxContactFeature::VertexOfTwoOnFaceOfOne;
+    const CollisionBox &face = faceOnOne ? one : two;
+    const CollisionBox &vertexBox = faceOnOne ? two : one;
+    const unsigned axis = faceOnOne ? feature.oneAxis : feature.twoAxis;
+    const unsigned char side = faceOnOne ? feature.oneCorner : feature.twoCorner;
+    const unsigned char corner = faceOnOne ? feature.twoCorner : feature.oneCorner;
+
+    const Vector3 vertex = vertexBox.getTransform() * cornerPoint(vertexBox, corner);
+    const Vector3 relative = face.getTransform().transformInverse(vertex);
+    const real outwards = (side & (1 << axis)) ? 1 : -1;
+    const real depth = face.halfSize[axis] - outwards * relative[axis];
+    if (depth < -tolerance || depth > 2 * face.halfSize[axis])
+      return false;
+    for (unsigned i = 0; i < 3; i++)
+      if (i != axis && real_abs(relative[i]) > face.halfSize[i] + tolerance)
+        return false;
+
+    contact->contactNormal = face.getAxis(axis) * -outwards;
+    contact->penetration = depth;
+    contact->contactPoint = vertex;
+    contact->setBodyData(face.body, vertexBox.body, data.friction, data.restitution);
+    return true;
+  }
+
+  // An edge on an edge: the normal across both, pointing from box two to
+  // box one as in boxAndBox
+  const Vector3 oneAxis = one.getAxis(feature.oneAxis), twoAxis = two.getAxis(feature.twoAxis);
+  Vector3 normal = oneAxis % twoAxis;
+  if (normal.squareMagnitude() < 0.0001)
+    return false; // the edges have turned parallel
+  normal.normalise();
+  if (normal * (two.getAxis(3) - one.getAxis(3)) > 0)
+    normal = normal * -1.0f;
+
+  // The closest points of the two edges (as contactPoint() finds them; the
+  // axes are unit vectors)
+  const Vector3 middleOne =
+      one.getTransform() * cornerPoint(one, feature.oneCorner, feature.oneAxis);
+  const Vector3 middleTwo =
+      two.getTransform() * cornerPoint(two, feature.twoCorner, feature.twoAxis);
+  const Vector3 apart = middleOne - middleTwo;
+  const real alongOne = oneAxis * apart, alongTwo = twoAxis * apart, cosine = oneAxis * twoAxis;
+  const real denominator = 1 - cosine * cosine;
+  const real mua = (cosine * alongTwo - alongOne) / denominator;
+  const real mub = (alongTwo - cosine * alongOne) / denominator;
+  if (real_abs(mua) > one.halfSize[feature.oneAxis] + tolerance ||
+      real_abs(mub) > two.halfSize[feature.twoAxis] + tolerance)
+    return false; // the edges no longer cross
+  const Vector3 nearOne = middleOne + oneAxis * mua, nearTwo = middleTwo + twoAxis * mub;
+
+  // Box two's edge has gone this far into box one
+  const real depth = (nearTwo - nearOne) * normal;
+  if (depth < -tolerance)
+    return false;
+
+  contact->contactNormal = normal;
+  contact->penetration = depth;
+  contact->contactPoint = nearOne * 0.5 + nearTwo * 0.5;
+  contact->setBodyData(one.body, two.body, data.friction, data.restitution);
+  return true;
+}
+
+unsigned BoxContactCache::boxAndBox(const CollisionBox &one, const CollisionBox &two,
+                                    CollisionData *data) {
+  if (!data->hasMoreContacts())
+    return 0;
+  const auto key = std::make_pair(&one, &two);
+  std::vector<BoxContactFeature> &kept = pairs[key];
+
+  // The deepest contact now. Where corners tie for deepest, boxAndBox may
+  // pick one that isn't over the other box's face (a box resting half off
+  // another), so it's only used, and kept, if it is.
+  Contact found;
+  CollisionData scratch = *data;
+  scratch.contactArray = &found;
+  scratch.reset(1);
+  BoxContactFeature deepest;
+  bool deepestIsNew = CollisionDetector::boxAndBox(one, two, &scratch, &deepest) > 0;
+  if (deepestIsNew && deepest.kind != BoxContactFeature::EdgeOnEdge)
+    deepestIsNew = fillKeptContact(one, two, deepest, *data, &found);
+  unsigned added = 0;
+  if (deepestIsNew) {
+    *data->contacts = found;
+    data->addContacts(1);
+    added = 1;
+  }
+
+  // And those kept from earlier frames, for where the boxes are now
+  for (auto feature = kept.begin(); feature != kept.end();) {
+    if (deepestIsNew && *feature == deepest) {
+      deepestIsNew = false; // already written, above
+      ++feature;
+    } else if (!data->hasMoreContacts()) {
+      ++feature; // no room this frame; keep it for the next
+    } else if (fillKeptContact(one, two, *feature, *data, data->contacts)) {
+      data->addContacts(1);
+      added++;
+      ++feature;
+    } else {
+      feature = kept.erase(feature);
+    }
+  }
+
+  if (deepestIsNew) {
+    if (kept.size() >= maxContactsPerPair)
+      kept.erase(kept.begin());
+    kept.push_back(deepest);
+  }
+  if (kept.empty())
+    pairs.erase(key);
+  return added;
+}
+
+void BoxContactCache::forget(const CollisionBox &box) {
+  std::erase_if(pairs, [&](const auto &pair) {
+    return pair.first.first == &box || pair.first.second == &box;
+  });
+}
+
+void BoxContactCache::clear() { pairs.clear(); }
 
 unsigned CollisionDetector::boxAndPoint(const CollisionBox &box, const Vector3 &point,
                                         CollisionData *data) {
