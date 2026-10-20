@@ -119,9 +119,8 @@ public:
  *
  * SAKBox: it only handles springs that oscillate (damping^2 < 4 x
  * stiffness) and gives no force otherwise. Its force aims the particle at
- * the exact spring motion a frame ahead, assuming velocity is updated before
- * position; Particle::integrate moves with the old velocity first, so the
- * aim lags and stiff springs grow unstable (see the README).
+ * the exact spring motion a frame ahead, which relies on Particle::integrate
+ * updating velocity before position (it does), so stiff springs stay stable.
  */
 class ParticleFakeSpring : public ParticleForceGenerator {
   /** The location of the anchored end of the spring. */
