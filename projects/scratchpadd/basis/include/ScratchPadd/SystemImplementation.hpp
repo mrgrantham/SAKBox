@@ -16,6 +16,7 @@
 #include <tuple>
 #include <typeindex>
 #include <unordered_map>
+#include <vector>
 
 namespace ScratchPadd {
 
@@ -39,6 +40,26 @@ private:
   // by instantiate() and never changed after, so any thread may read them.
   std::unordered_map<std::type_index, Base *> paddsByType_;
   std::map<std::string, Base *, std::less<>> paddsByName_;
+  // The types of broadcasts no padd handled (see unhandledMessageTypes()).
+  // Touched only when a broadcast reaches nobody, from any sender's thread.
+  std::mutex unhandledMutex_;
+  std::set<std::type_index> unhandledTypes_;
+  std::vector<std::string> unhandledTypeNames_;
+
+  // A broadcast reached no padd: warn, the first time for its type. Only
+  // once, because some broadcasts are routinely unheard (a padd's control
+  // snapshots when no panel is open, say).
+  void noteUnhandled(Base *sender, const MessageBase &message) {
+    std::lock_guard<std::mutex> lk(unhandledMutex_);
+    if (!unhandledTypes_.insert(message.type()).second) {
+      return;
+    }
+    unhandledTypeNames_.push_back(message.typeName());
+    logger().warn("No padd handles {} (sent by {}), so it was dropped. Such messages are dropped "
+                  "without a further warning.",
+                  message.typeName(),
+                  sender ? sender->paddName() : std::string("outside any padd"));
+  }
 
   // The main-thread padds share this loop: each pass runs every one's queued
   // work in list order, then sleeps until work is pushed to any of them (their
@@ -191,24 +212,45 @@ public:
   }
   // Queues `message` (from `sender`) for `receiver` if it has a handler for
   // the message's type; padds that don't handle it never see it.
-  void sendWork(Base *sender, Base *receiver, const Message &message) {
-    if (receiver->enqueue(message, PaddAddress(sender))) {
-      logger().debug("sendWork() to {}", receiver->paddName());
+  // Returns whether it was queued.
+  bool sendWork(Base *sender, Base *receiver, const Message &message) {
+    if (!receiver->enqueue(message, PaddAddress(sender))) {
+      return false;
     }
+    logger().debug("sendWork() to {}", receiver->paddName());
+    return true;
   }
 
   // Send to receiver if they are not the same as the sender
-  void sendIfUnmatched(Base *sender, Base *possibleReceiver, const Message &message) {
-    if (sender != possibleReceiver) {
-      sendWork(sender, possibleReceiver, message);
-    }
+  bool sendIfUnmatched(Base *sender, Base *possibleReceiver, const Message &message) {
+    return sender != possibleReceiver && sendWork(sender, possibleReceiver, message);
   }
   void send(Base *sender, Message message) override {
     logger().debug("sending from {}", sender->paddName());
-    (sendIfUnmatched(sender, std::get<std::unique_ptr<Workers>>(workers_).get(), message), ...);
+    // How many padds it was queued for (every padd is offered it)
+    const int receivers =
+        (static_cast<int>(
+             sendIfUnmatched(sender, std::get<std::unique_ptr<Workers>>(workers_).get(), message)) +
+         ...);
+    if (receivers == 0) {
+      noteUnhandled(sender, *message);
+    }
   }
   void sendIncludeSender(Base *sender, Message message) override {
-    (sendWork(sender, std::get<std::unique_ptr<Workers>>(workers_).get(), message), ...);
+    const int receivers =
+        (static_cast<int>(
+             sendWork(sender, std::get<std::unique_ptr<Workers>>(workers_).get(), message)) +
+         ...);
+    if (receivers == 0) {
+      noteUnhandled(sender, *message);
+    }
+  }
+
+  // The types of the broadcasts no padd has handled so far, in the order
+  // first seen. Each is logged as a warning once, the first time.
+  std::vector<std::string> unhandledMessageTypes() {
+    std::lock_guard<std::mutex> lk(unhandledMutex_);
+    return unhandledTypeNames_;
   }
 
   PaddAddress paddOfType(std::type_index type) override {

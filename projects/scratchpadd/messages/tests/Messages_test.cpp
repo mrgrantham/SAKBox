@@ -639,3 +639,21 @@ TEST(SendToTest, ConcurrentSendersLoseNothing) {
     EXPECT_EQ(received.at(sender->paddName()), inOrder) << sender->paddName();
   }
 }
+
+// A broadcast no padd handles is noted (and warned about) once per type,
+// rather than dropped silently. A message only its sender handles counts:
+// send() goes to every other padd.
+TEST(UnhandledTest, BroadcastsNobodyHandlesAreNotedOncePerType) {
+  RunningSystem<Sender, PingOnlyPadd> running;
+  auto &sender = running.padd<Sender>();
+  sendAs(sender, Unhandled{1});
+  sendAs(sender, Unhandled{2});                                    // same type: no second note
+  sendAs(sender, Ping{3});                                         // PingOnlyPadd handles it
+  sendAs(sender, Shape{});                                         // only the sender handles Shape
+  ScratchPadd::PaddTestAccess::sendIncludeSender(sender, Shape{}); // the sender gets this one
+  ASSERT_TRUE(running.settles());
+  EXPECT_EQ(running.system.unhandledMessageTypes(),
+            (std::vector<std::string>{"(anonymous namespace)::Unhandled",
+                                      "(anonymous namespace)::Shape"}));
+  EXPECT_EQ(running.padd<PingOnlyPadd>().pings_, 1);
+}

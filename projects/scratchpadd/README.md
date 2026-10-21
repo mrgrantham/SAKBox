@@ -117,7 +117,7 @@ receive<GatePassed>([this](const GatePassed &event) { logger().info("gate {}", e
 send(GatePassed{3});
 ```
 
-- `send(contents)` delivers to every *other* padd that has a handler for the type; `sendIncludeSender(contents)` includes the sender. Padds without a handler never see the message, not even in their queue.
+- `send(contents)` delivers to every *other* padd that has a handler for the type; `sendIncludeSender(contents)` includes the sender. Padds without a handler never see the message, not even in their queue. A broadcast that no padd handles is logged as a warning the first time for its type (later ones of that type are dropped without one, since some broadcasts, such as a padd's control snapshots with no panel open, are routinely unheard); `SystemImplementation::unhandledMessageTypes()` lists those types.
 - Register handlers in the constructor or `prepare()`, or change them while the padd runs (see below).
 - A message is created once and shared by every receiver, so handlers get it as a `const` reference.
 - To send one prepared message several times, wrap it once with `makeMessage(contents)` and pass the resulting `ScratchPadd::Message`. `messageAs<T>(message)` unwraps it, or returns null if it holds another type.
@@ -294,13 +294,13 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `basis:Examples_test` | The examples in this README |
 | `basis:Base_test` | Padd names, and a system starting and stopping |
 | `basis:Threading_test` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
-| `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes); `sendTo` (only the named padd, by class and by name, to itself, in order, refused for a missing padd, an empty address or an unhandled type, and four padds sending to one at once from their own threads losing nothing, each in order and with the right sender); the sender (a reply to it, and no sender for a message from outside); and, when it compiles, that code outside a padd can't call into one |
+| `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes); `sendTo` (only the named padd, by class and by name, to itself, in order, refused for a missing padd, an empty address or an unhandled type, and four padds sending to one at once from their own threads losing nothing, each in order and with the right sender); the sender (a reply to it, and no sender for a message from outside); broadcasts nobody handles noted once per type; and, when it compiles, that code outside a padd can't call into one |
 | `messages:Controls_test` | The control round trip: requests answered to the panel that asked (all padds, or one sent the request), changes sent straight to their owner and every panel told, unknown padds refused, range clamping, rejected changes, `controlChanged()` and `control<C>()`, and a running padd's controls refused from another thread; and an owner's own changes: `setControl()` (by the same rules, telling panels), `addControl()`, `removeControl()` (the last removal empties the panel), and a padd without controls adding one |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
 
-- **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled; a message nobody handles is silently dropped.
+- **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled, since handlers are registered while the program runs (and can change). A broadcast nobody handles is dropped, with a warning the first time for its type; a direct send to a padd without a handler is refused, with an error.
 - Audio is a stub.
 
 ## Roadmap
