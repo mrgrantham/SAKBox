@@ -1,9 +1,13 @@
 // WSparseClusterRecommender.
 #include <gtest/gtest.h>
 
+#include <WClasses/WDom.h>
+#include <WClasses/WLearner.h>
 #include <WClasses/WMatrix.h>
 #include <WClasses/WRand.h>
 #include <WClasses/WRecommender.h>
+
+#include <new>
 
 using namespace WClasses;
 
@@ -30,4 +34,31 @@ TEST(SparseClusterRecommenderTest, PredictsFromTheUsersGroup) {
   rec.train(ratings);
   EXPECT_GT(rec.predict(0, 0), 4.0); // group A: likes item 0
   EXPECT_LT(rec.predict(1, 0), 2.0); // group B: dislikes it
+}
+
+// A baseline recommender predicts each item's mean rating, and a saved one
+// loads back predicting the same (it used to forget how many items it had,
+// and predicted 0).
+TEST(BaselineRecommenderTest, LoadsBackPredictingTheSame) {
+  WMatrix ratings(0, 3);
+  for (size_t user = 0; user < 3; user++)
+    for (size_t item = 0; item < 3; item++) {
+      WVec &row = ratings.newRow();
+      row[0] = (double)user;
+      row[1] = (double)item;
+      row[2] = (double)(user + 2 * item);
+    }
+  WBaselineRecommender baseline;
+  baseline.train(ratings);
+  WDom doc;
+  WLearnerLoader loader;
+  // Loaded into zeroed memory, so a count left uninitialised reads as 0
+  // every time rather than whatever was there before
+  alignas(WBaselineRecommender) unsigned char memory[sizeof(WBaselineRecommender)] = {};
+  auto *loaded = new (memory) WBaselineRecommender(baseline.serialize(&doc), loader);
+  for (size_t item = 0; item < 3; item++) {
+    EXPECT_EQ(baseline.predict(0, item), 1.0 + 2 * item) << item; // mean of users 0-2
+    EXPECT_EQ(loaded->predict(0, item), baseline.predict(0, item)) << item;
+  }
+  loaded->~WBaselineRecommender();
 }

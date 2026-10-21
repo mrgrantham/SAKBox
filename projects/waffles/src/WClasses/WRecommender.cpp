@@ -375,6 +375,9 @@ WBaselineRecommender::WBaselineRecommender(const WDomNode* pNode, WLearnerLoader
 : WCollaborativeFilter(pNode, ll)
 {
 	m_ratings.deserialize(pNode->get("ratings"));
+	// SAKBox: the item count wasn't restored, so a loaded recommender read
+	// an uninitialised count and predicted 0 for every item
+	m_items = m_ratings.size();
 }
 
 // virtual
