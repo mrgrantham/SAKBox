@@ -1,17 +1,8 @@
-# Commits that only reformat code. `git blame` skips them with:
-#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# Commits git blame should look past: mechanical changes that touch many
+# lines without changing what they do. GitHub reads this file itself; for
+# a local checkout, run once: git config blame.ignoreRevsFile .git-blame-ignore-revs
 
-# cyclone: convert to LF and clang-format (format only)
-e5875d0223ca6aa7ceb8246dfe52710cecccdf77
-
-# repo: clang-format at 100 columns (format only)
-d45c04d62cbed2a31fc408e13544462705a61cd9
-
-# waffles: clang-format in its own style (format only)
-26556d2270172258b5ab0bf5f58cb8a8c361038f
-
-# waffles: format src/depends (format only)
-2384dfbe53faaba87c16a3d2781f148a0760d138
-
-# waffles: store text files with LF line endings (line endings only)
-2175103d8a66f0b1c217d862ba2e7a98a2f0cfda
+# Waffles: rename the G prefix to W
+26252121c7a71836835a14236a43c03fd9249722
+# Waffles: use the W names in its documentation
+a15eb4bb7d46dfa358b7677afd507067fe732140

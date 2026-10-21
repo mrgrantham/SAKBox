@@ -130,6 +130,16 @@ Then each `git commit` checks the staged C++ files under `projects/`: it stops t
 - `git commit --no-verify` skips it for one commit.
 - Without clang-format installed, it skips the formatting check and says so. Without clang-tidy installed or a `compile_commands.json`, or with a stale build (headers missing), it says so and lets the commit through. A new source file isn't in `compile_commands.json` until you rerun `tools/compile_commands/refresh.py`; the hook tells you when it skips one.
 
+### git blame past mechanical changes
+
+`.git-blame-ignore-revs` lists commits that change many lines without changing what they do, such as renaming Waffles' `G` prefix to `W`, so `git blame` shows who last really changed each line. GitHub reads it itself; for a local checkout, turn it on once per clone:
+
+``` bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+Add a commit to it when it's a rename or reformatting of that kind (its full hash, with its title as a comment above), in a commit of its own after it.
+
 ## Platform Notes
 
 Development and testing happen on **macOS** (Apple Silicon, Xcode).
