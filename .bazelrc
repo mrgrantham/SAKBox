@@ -4,20 +4,26 @@ build --cxxopt='-std=c++26'
 build --per_file_copt='^projects/.*@-pedantic-errors'
 # The repo's own code is warning-free; keep it that way.
 build --per_file_copt='^projects/.*@-Werror'
-# Overriding functions, destructors included, must say `override` (see the
-# README's Code conventions).
-build --per_file_copt='^projects/.*@-Wsuggest-override,-Wsuggest-destructor-override'
-# Doc comments must match the code they describe: a @param naming a
-# parameter that doesn't exist, a @return on a void function, and so on
-# (see the README's Code conventions). It doesn't require comments.
-build --per_file_copt='^projects/.*@-Wdocumentation'
+# Overriding functions must say `override` (see the README's Code
+# conventions).
+build --per_file_copt='^projects/.*@-Wsuggest-override'
 # External libraries' headers are included as system headers (-isystem), so
 # these checks apply to the repo's code and not to what it includes from them.
 build --features=external_include_paths
 build --cxxopt='-Wpedantic'
-build:clang --cxxopt='-Werror=inconsistent-missing-override'
-build:clang --cxxopt='-Werror=delete-abstract-non-virtual-dtor'
 build --cxxopt='-Werror=return-type'
+
+# Checks only Clang has; GCC rejects them as unknown options. macOS always
+# builds with Clang, so it turns them on itself; on Linux, add
+# --config=clang when building with Clang (see the README's Requirements).
+common --enable_platform_specific_config
+build:macos --config=clang
+# Destructors too must say `override`.
+build:clang --per_file_copt='^projects/.*@-Wsuggest-destructor-override'
+# Doc comments must match the code they describe: a @param naming a
+# parameter that doesn't exist, a @return on a void function, and so on
+# (see the README's Code conventions). It doesn't require comments.
+build:clang --per_file_copt='^projects/.*@-Wdocumentation'
 # build --cxxopt='-Werror'
 
 # this is to address the following error
