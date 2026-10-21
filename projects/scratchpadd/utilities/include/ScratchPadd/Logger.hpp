@@ -1,14 +1,8 @@
 #pragma once
 
-#include <cassert>
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-
-#pragma clang diagnostic ignored "-Wambiguous-reversed-operator"
 #include "spdlog/sinks/stdout_color_sinks.h"
+#include <cassert>
 #include <spdlog/spdlog.h>
-
-#pragma clang diagnostic pop
 
 namespace ScratchPadd {
 

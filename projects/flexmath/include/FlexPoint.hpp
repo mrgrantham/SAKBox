@@ -43,6 +43,11 @@ class FlexPoint {
 public:
   // The underlying integer type: the value multiplied by 2^32.
   typedef int64_t FlexPointPrecision;
+  // Twice as wide, for the intermediate results of *, / and wrap-around
+  // overflow. __int128 is a GCC and Clang extension (MSVC has none; see the
+  // README's Portability); __extension__ marks the use as deliberate, so
+  // -pedantic-errors allows it.
+  __extension__ typedef __int128 FlexPointWide;
   static constexpr int kFractionalBits = 32;
 
   // Zero.
@@ -85,7 +90,7 @@ public:
   // Rounds toward negative infinity in the last place (see class comment).
   constexpr FlexPoint operator*(const FlexPoint &b) const {
     return fromFixed(static_cast<FlexPointPrecision>(
-        (static_cast<__int128>(valueFixed_) * b.valueFixed_) >> kFractionalBits));
+        (static_cast<FlexPointWide>(valueFixed_) * b.valueFixed_) >> kFractionalBits));
   }
 
   // Truncates toward zero in the last place. `b` must not be zero.

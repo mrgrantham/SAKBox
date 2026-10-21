@@ -31,7 +31,7 @@ private:
 
   std::vector<uint32_t> computeIndices() const {
     std::vector<uint32_t> indices;
-    for (int i = 1; i < vertices_.size(); i++) {
+    for (uint32_t i = 1; i < vertices_.size(); i++) {
       indices.push_back(i);
       if (i + 1 >= vertices_.size()) {
         indices.push_back(1); // wrap around to first outter vertex
@@ -58,7 +58,7 @@ private:
 
     // Calculate and print the coordinates of each vertex
     std::cout << "Vertices of the " << sides_ << "-sided shape:" << std::endl;
-    for (size_t i = 0; i < sides_; ++i) {
+    for (int i = 0; i < sides_; ++i) {
       double x = radius_ * cos(angle * i);
       double y = radius_ * sin(angle * i);
       Graphics::VertexPair vertex;

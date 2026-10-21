@@ -15,7 +15,7 @@ build --cxxopt='-Werror=return-type'
 
 # Checks only Clang has; GCC rejects them as unknown options. macOS always
 # builds with Clang, so it turns them on itself; on Linux, add
-# --config=clang when building with Clang (see the README's Requirements).
+# --config=clang when building with Clang (see the README's Getting Started).
 common --enable_platform_specific_config
 build:macos --config=clang
 # Destructors too must say `override`.

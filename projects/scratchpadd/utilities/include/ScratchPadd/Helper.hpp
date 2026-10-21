@@ -24,20 +24,22 @@
 //   return classMethod.substr(classNameStartIndex, classNameLength);
 // }
 
-// #define __CLASS_NAME__ ([] { \
-//     const char* name = __PRETTY_FUNCTION__; \
-//     size_t start = 0; \
-//     size_t end = 0; \
-//     for (size_t i = 0; name[i]; i++) { \
-//         if (name[i] == ':' && name[i + 1] != ':') { \
-//             start = i + 1; \
-//         } else if (name[i] == '(') { \
-//             end = i; \
-//             break; \
-//         } \
-//     } \
-//     return std::string(name + start, end - start); \
-// }())
+/*
+#define __CLASS_NAME__ ([] { \
+    const char* name = __PRETTY_FUNCTION__; \
+    size_t start = 0; \
+    size_t end = 0; \
+    for (size_t i = 0; name[i]; i++) { \
+        if (name[i] == ':' && name[i + 1] != ':') { \
+            start = i + 1; \
+        } else if (name[i] == '(') { \
+            end = i; \
+            break; \
+        } \
+    } \
+    return std::string(name + start, end - start); \
+}())
+*/
 
 // #define __CLASS_NAME__ className(__PRETTY_FUNCTION__)
 

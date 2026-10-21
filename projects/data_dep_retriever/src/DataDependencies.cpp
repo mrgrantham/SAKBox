@@ -1,8 +1,6 @@
 #include <DataDepRetriever/DataDependencies.hpp>
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #include <spdlog/spdlog.h>
 
-#pragma clang diagnostic ignored "-Wambiguous-reversed-operator"
 #include <filesystem>
 
 #include "tools/cpp/runfiles/runfiles.h"

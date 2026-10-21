@@ -170,7 +170,7 @@ void ViewBase::captureScreen(GImage* pImage)
 		{
 			pPix = getPixMem32(pixels, pitch, x, y);
 			unsigned int* pRaw = &pRGB[yy * width];
-			for(size_t i = 0; i < width; i++)
+			for(int i = 0; i < width; i++)
 				*(pPix++) = textureFromArgb(*(pRaw++));
 			y++;
 		}

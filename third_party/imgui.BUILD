@@ -1,4 +1,12 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+# OpenGL as each platform links it: macOS frameworks, Linux's libGL
+OPENGL_LINKOPTS = select({
+    "@platforms//os:macos": ["-framework OpenGL", "-framework CoreFoundation"],
+    "@platforms//os:linux": ["-lGL"],
+    "//conditions:default": [],
+})
+
 cc_library(
     name = "imgui",
     srcs = glob(["*.cpp"]),
@@ -22,7 +30,7 @@ cc_library(
     visibility = ["//visibility:public"],
     strip_include_prefix = "/backends",
     deps = [":imgui",],
-    linkopts = ["-framework OpenGL", "-framework CoreFoundation"],
+    linkopts = OPENGL_LINKOPTS,
 )
 
 
@@ -41,7 +49,7 @@ cc_binary(
     srcs = ["examples/example_sdl3_opengl3/main.cpp"],
     deps = ["@sdl3",
     ":imgui_backend_opengl3",":imgui_backend_sdl3"],
-    linkopts = ["-framework OpenGL", "-framework CoreFoundation"],
+    linkopts = OPENGL_LINKOPTS,
 )
 
 cc_binary(
@@ -49,7 +57,7 @@ cc_binary(
     srcs = ["backends/imgui_impl_opengl3.cpp","examples/example_glfw_opengl3/main.cpp"],
     deps = ["@glfw",
     ":imgui_backend_opengl3",":imgui_backend_glfw"],
-    linkopts = ["-framework OpenGL", "-framework CoreFoundation"],
+    linkopts = OPENGL_LINKOPTS,
 )
 
 

@@ -15,5 +15,7 @@ cmake(
     # working_directory = "build/cmake",
     visibility = ["//visibility:public"],
     out_static_libs = ["libyaml-cpp.a"],
-    cache_entries = {"YAML_CPP_BUILD_TESTS":"OFF"},
+    # Only the library is used. Its command-line tools (util/) also failed to
+    # link on Linux with GCC, as C without the C++ standard library.
+    cache_entries = {"YAML_CPP_BUILD_TESTS": "OFF", "YAML_CPP_BUILD_TOOLS": "OFF"},
 )

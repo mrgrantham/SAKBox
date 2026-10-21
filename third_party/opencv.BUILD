@@ -28,6 +28,9 @@ cmake(
     cache_entries = {
         "BUILD_LIST": ",".join(_MODULES),
         "OPENCV_EXTRA_FLAGS": "-DOPENCV_DISABLE_EIGEN_TENSOR_SUPPORT=1",
+        # OpenCV defaults to C++11, but Eigen 5 needs C++14 (std::conditional_t
+        # and friends); GCC's standard library hides them in C++11 mode.
+        "CMAKE_CXX_STANDARD": "17",
         # Bundled zlib links statically; @zlib's libz.1.dylib isn't in runfiles.
         "BUILD_ZLIB": "ON",
         # Only the C++ libraries are used. The binding generators also fail to
@@ -44,5 +47,13 @@ cmake(
         # Give the libraries unversioned names (libopencv_core.dylib/.so, not
         # libopencv_core.412.dylib/.so.412) to match out_shared_libs.
         "CMAKE_PLATFORM_NO_VERSIONED_SONAME": "ON",
-    },
+    } | select({
+        # Bazel's Linux toolchain gives CMake gcc, not g++, as the C++
+        # compiler, and gcc doesn't link the C++ standard library itself.
+        "@platforms//os:linux": {
+            "CMAKE_SHARED_LINKER_FLAGS": "-lstdc++",
+            "CMAKE_EXE_LINKER_FLAGS": "-lstdc++",
+        },
+        "//conditions:default": {},
+    }),
 )

@@ -303,7 +303,10 @@ void RigidBody::getOrientation(real matrix[9]) const {
 }
 
 void RigidBody::getTransform(Matrix4 *transform) const {
-  memcpy(transform, &transformMatrix.data, sizeof(Matrix4));
+  // SAKBox: assigned rather than copied byte by byte (memcpy): Matrix4 has
+  // constructors, so isn't a plain block of bytes to the compiler, and in
+  // the flex build its entries are FlexReal objects
+  *transform = transformMatrix;
 }
 
 void RigidBody::getTransform(real matrix[16]) const {

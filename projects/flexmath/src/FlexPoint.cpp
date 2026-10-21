@@ -4,7 +4,7 @@ namespace Flex::Math {
 
 FlexPoint FlexPoint::operator/(const FlexPoint &b) const {
   return fromFixed(static_cast<FlexPointPrecision>(
-      (static_cast<__int128>(valueFixed_) << kFractionalBits) / b.valueFixed_));
+      (static_cast<FlexPointWide>(valueFixed_) << kFractionalBits) / b.valueFixed_));
 }
 
 FlexPoint FlexPoint::quantized(const Precision &precision) const {
@@ -46,8 +46,8 @@ FlexPoint FlexPoint::quantized(const Precision &precision) const {
     return fromFixed(raw < -limit ? -limit : (raw > highest ? highest : raw));
   }
   // 2 * limit can reach 2^63, so wrap in 128 bits
-  const __int128 span = static_cast<__int128>(limit) * 2;
-  __int128 wrapped = (static_cast<__int128>(raw) + limit) % span;
+  const FlexPointWide span = static_cast<FlexPointWide>(limit) * 2;
+  FlexPointWide wrapped = (static_cast<FlexPointWide>(raw) + limit) % span;
   if (wrapped < 0) {
     wrapped += span;
   }

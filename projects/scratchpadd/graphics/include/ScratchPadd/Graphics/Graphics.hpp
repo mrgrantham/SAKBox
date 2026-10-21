@@ -2,15 +2,12 @@
 #include "imgui.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <functional>
-#include <optional>
-#include <string>
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#include <spdlog/spdlog.h>
-#pragma clang diagnostic pop
 #include <ScratchPadd/Graphics/Colors.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
+#include <functional>
+#include <optional>
+#include <spdlog/spdlog.h>
+#include <string>
 struct GLFWwindow; // declared as a struct by GLFW
 class Graphics {
 public:

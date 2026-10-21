@@ -20,6 +20,7 @@ It was built for a Star Fox-style flying game in which collected powerups change
 - [Determinism](#determinism)
 - [Using flexmath with Cyclone](#using-flexmath-with-cyclone)
 - [Building and testing](#building-and-testing)
+- [Portability](#portability)
 - [Design notes](#design-notes)
 - [Roadmap](#roadmap)
 
@@ -246,7 +247,27 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `FlexVector_test`, `FlexMatrix_test` | Element-wise operations, products, quantization, dimension checks |
 | `Examples_test` | Every code example in this README |
 
-## Design notes
+## Portability
+
+`FlexPoint` needs integers wider than its 64 bits in three places, and uses `__int128` for them, through the alias `FlexPoint::FlexPointWide`:
+
+| Where | Why 64 bits aren't enough |
+|---|---|
+| `operator*` (`FlexPoint.hpp`) | The product of two 32.32 values is 128 bits wide before it is shifted back down by 32 |
+| `operator/` (`FlexPoint.cpp`) | The dividend is shifted up by 32 first, to keep the fraction |
+| `quantized()` with `Overflow::Wrap` (`FlexPoint.cpp`) | The span the value wraps within, 2 x limit, can reach 2^63, one more than an `int64_t` holds |
+
+`__int128` isn't standard C++ but an extension that GCC and Clang provide on 64-bit targets. The alias is declared with `__extension__` so that the build's `-pedantic-errors` allows it (GCC rejects it otherwise; Clang doesn't mind). GCC and Clang on macOS and Linux are covered.
+
+**Windows, when it's added:** MSVC has no 128-bit integer type, so these three places need another route there:
+
+- **Simplest: build with clang-cl** (Clang with MSVC's command line), which provides `__int128` on 64-bit Windows, so nothing changes.
+- **With MSVC itself:** replace each use with a helper function, kept in one header, that uses `__int128` where the compiler has it and MSVC's intrinsics where it doesn't:
+  - Multiply: `_mul128` gives the full signed 128-bit product as two 64-bit halves (x64 only; on ARM64, `__mulh` gives the high half), then shift the pair down by 32.
+  - Divide: `_div128` divides a 128-bit value by a 64-bit one (Visual Studio 2019 and later, x64 only). Unlike the GCC version, which keeps the low 64 bits of an oversized quotient, it raises a hardware exception when the quotient doesn't fit in 64 bits, so dividing by a very small value would need a check first.
+  - Wrap: no 128-bit type is needed. The span fits in an unsigned 64-bit integer (`uint64_t`), so the wrap can be done in unsigned arithmetic.
+- Test the helpers against the `__int128` results: `FlexPoint_test` already compares the integer path with `double` over thousands of random cases.
+
 
 flexmath's original design (February 2023) had each `FlexPoint` register itself with its `FlexGroup` through a singleton `FlexController`, so a group could find and update its values when precision changed. The concepts — groups of values sharing a precision knob, and a central controller — are unchanged. The mechanism changed: values now *read* their group's precision when used, instead of groups *pushing* changes to registered values. That removes per-value registration, which was costly for the temporaries that arithmetic creates. It also makes a precision change instant, and lets each group choose whether detail lost at low precision is kept (`View`) or discarded (`Lossy`).
 

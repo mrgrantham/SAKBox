@@ -72,8 +72,8 @@ public:
                  formatIntervalToString(interval_avg));
   }
 
-  std::chrono::duration<double> getAverageInterval(int samples = 0) {
-    int intervalSampleCount =
+  std::chrono::duration<double> getAverageInterval(size_t samples = 0) {
+    size_t intervalSampleCount =
         (samples < intervals_.size() && samples != 0) ? samples : intervals_.size();
     std::vector<std::chrono::duration<double>> intervalSamples(
         intervals_.end() - intervalSampleCount, intervals_.end());
@@ -84,7 +84,7 @@ public:
     return interval_sum / (double)intervalSamples.size();
   }
 
-  double getAverageIntervalInSeconds(int samples = 0) {
+  double getAverageIntervalInSeconds(size_t samples = 0) {
     return getAverageInterval(samples).count();
   }
 

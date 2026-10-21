@@ -136,7 +136,13 @@ Development and testing happen on **macOS** (Apple Silicon, Xcode).
 
 ### Linux
 
-Not tested recently, but the build is meant to work. Bazelisk provides Bazel for x86-64 and ARM64 (including 64-bit Raspberry Pi OS). The windowing and OpenGL examples need the X11 and Mesa development packages:
+Tested on 2026-10-20 with GCC 14.4 on Debian (ARM64), in the official `gcc:14` Docker image. Everything builds except the camera example, whose OpenCV build doesn't finish yet (its bundled image libraries fail to link to zlib), and the 3DS example, which needs Docker. 45 of the 49 tests pass. The other four are Waffles tests:
+
+- `GMatrix_test` and `GRayTrace_test` compare against results recorded on macOS that depend on how the standard library's sort orders equal keys, which GCC's library does differently.
+- The jumper demo's `PolicyLearner_test` compares a Bullet simulation against a value recorded on macOS. The simulation is chaotic, so tiny floating-point differences between compilers change the result.
+- `waffles:test` stops with a floating-point exception in `GFuzzyKMeans`. Waffles turns floating-point exceptions on with `feenableexcept`, which macOS doesn't have, so this only shows up on Linux.
+
+Clang builds on Linux haven't been tried; add `--config=clang` for them (see the prerequisites in [Getting Started](#getting-started)). Bazelisk provides Bazel for x86-64 and ARM64 (including 64-bit Raspberry Pi OS). The windowing and OpenGL examples need the X11 and Mesa development packages:
 
 ``` bash
 sudo apt install libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
@@ -147,4 +153,4 @@ sudo apt install libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
 
 ### Windows
 
-Not supported yet. Most libraries build there in principle, but nothing has been tested, and the OpenCV build (used by the camera example) only handles macOS and Linux library names so far.
+Not supported yet. Most libraries build there in principle, but nothing has been tested, and the OpenCV build (used by the camera example) only handles macOS and Linux library names so far. flexmath uses `__int128`, which MSVC lacks; [its README](projects/flexmath/README.md#portability) says what to change.
