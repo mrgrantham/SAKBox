@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <cyclone/contacts.h>
+#include <cyclone/joints.h>
 #include <memory.h>
 #include <utility>
 
@@ -483,20 +484,41 @@ void ContactResolver::setEpsilon(real velocityEpsilon, real positionEpsilon) {
 }
 
 void ContactResolver::resolveContacts(Contact *contacts, unsigned numContacts, real duration) {
+  resolveContacts(contacts, numContacts, duration, {});
+}
+
+void ContactResolver::resolveContacts(Contact *contacts, unsigned numContacts, real duration,
+                                      std::span<Joint *const> joints) {
+  if (!isValid())
+    return;
+
+  if (method == Method::sequentialImpulses) {
+    if (numContacts == 0 && joints.empty())
+      return;
+    prepareContacts(contacts, numContacts, duration);
+    resolveTogether(contacts, numContacts, duration, joints);
+    sleepInGroups(contacts, numContacts, joints);
+    return;
+  }
+
+  // SAKBox: the book's resolver takes each joint as the contact it makes
+  if (!joints.empty()) {
+    contactsWithJoints.assign(contacts, contacts + numContacts);
+    for (Joint *joint : joints) {
+      Contact contact;
+      if (joint->addContact(&contact, 1))
+        contactsWithJoints.push_back(contact);
+    }
+    contacts = contactsWithJoints.data();
+    numContacts = (unsigned)contactsWithJoints.size();
+  }
+
   // Make sure we have something to do.
   if (numContacts == 0)
-    return;
-  if (!isValid())
     return;
 
   // Prepare the contacts for processing
   prepareContacts(contacts, numContacts, duration);
-
-  if (method == Method::sequentialImpulses) {
-    resolveTogether(contacts, numContacts, duration);
-    sleepInGroups(contacts, numContacts);
-    return;
-  }
 
   // Resolve the interpenetration problems with the contacts.
   adjustPositions(contacts, numContacts, duration);
@@ -621,7 +643,8 @@ void ContactResolver::adjustPositions(Contact *c, unsigned numContacts, real dur
   }
 }
 
-void ContactResolver::sleepInGroups(Contact *contacts, unsigned numContacts) {
+void ContactResolver::sleepInGroups(Contact *contacts, unsigned numContacts,
+                                    std::span<Joint *const> joints) {
   // Join the movable bodies each contact touches, union-find style: each
   // body points towards the body that names its group
   groupParent.clear();
@@ -639,11 +662,19 @@ void ContactResolver::sleepInGroups(Contact *contacts, unsigned numContacts) {
     for (RigidBody *body : contacts[i].body)
       if (body && body->hasFiniteMass())
         groupParent.try_emplace(body, body);
-  for (unsigned i = 0; i < numContacts; i++) {
-    RigidBody *one = contacts[i].body[0], *two = contacts[i].body[1];
+  // SAKBox: bodies joined by a joint are in the same group too
+  for (const Joint *joint : joints)
+    for (RigidBody *body : joint->body)
+      if (body && body->hasFiniteMass())
+        groupParent.try_emplace(body, body);
+  auto join = [&](RigidBody *one, RigidBody *two) {
     if (one && two && one->hasFiniteMass() && two->hasFiniteMass())
       groupParent[groupOf(one)] = groupOf(two);
-  }
+  };
+  for (unsigned i = 0; i < numContacts; i++)
+    join(contacts[i].body[0], contacts[i].body[1]);
+  for (const Joint *joint : joints)
+    join(joint->body[0], joint->body[1]);
 
   // Tally each group: its size, and whether every body in it has settled
   groups.clear();
@@ -716,6 +747,19 @@ void moveBy(RigidBody *body, const Vector3 &linear, const Vector3 &angular, real
   orientation.addScaledVector(angular, duration);
   body->setOrientation(orientation);
 }
+
+// Where the point at `local` on `body` is now, from its position and
+// orientation (its transform matrix is only brought up to date by
+// calculateDerivedData, which the resolver leaves to the next step:
+// updating it mid-step made awake stacks creep)
+Vector3 pointNow(const RigidBody *body, const Vector3 &local) {
+  Quaternion orientation;
+  body->getOrientation(&orientation);
+  orientation.normalise();
+  Matrix4 transform;
+  transform.setOrientationAndPos(orientation, body->getPosition());
+  return transform.transform(local);
+}
 } // namespace
 
 Vector3 ContactResolver::takeKeptImpulse(const Contact &contact) {
@@ -738,7 +782,8 @@ Vector3 ContactResolver::takeKeptImpulse(const Contact &contact) {
   return nearest->impulse;
 }
 
-void ContactResolver::resolveTogether(Contact *contacts, unsigned numContacts, real duration) {
+void ContactResolver::resolveTogether(Contact *contacts, unsigned numContacts, real duration,
+                                      std::span<Joint *const> joints) {
   // Wake a sleeping body touched by an awake one where the contact needs
   // resolving, as the book's resolver does, until no more wake: a body
   // that's woken can wake the next, so a knock carries through a stack.
@@ -753,6 +798,13 @@ void ContactResolver::resolveTogether(Contact *contacts, unsigned numContacts, r
         woke = true;
       }
     }
+    // A joint always wakes the body at its other end
+    for (Joint *joint : joints)
+      if (joint->body[0]->getAwake() != joint->body[1]->getAwake()) {
+        joint->body[0]->setAwake();
+        joint->body[1]->setAwake();
+        woke = true;
+      }
   }
 
   velocityIterationsUsed = 0;
@@ -808,6 +860,9 @@ void ContactResolver::resolveTogether(Contact *contacts, unsigned numContacts, r
     limitFriction(solverContact.tangentImpulse, contact.friction * solverContact.normalImpulse);
     solverContacts.push_back(solverContact);
   }
+
+  // The joints, before the contacts' warm start changes any velocities
+  setUpJoints(joints, duration);
   for (const SolverContact &solverContact : solverContacts) {
     const Vector3 *offset = solverContact.contact->relativeContactPosition;
     const Vector3 impulse = solverContact.impulse();
@@ -846,9 +901,15 @@ void ContactResolver::resolveTogether(Contact *contacts, unsigned numContacts, r
       solverContact.targetNormalVelocity = gap > 0 ? -gap / duration : (real)0;
     }
   }
+  settleJoints(duration);
   sweepVelocities(&SolverContact::targetNormalVelocity, settleSweeps);
 
   removeOverlap(duration);
+
+  // Keep the joints' impulses to start the next step from
+  for (const SolverJoint &solverJoint : solverJoints)
+    if (solverJoint.cable)
+      solverJoint.joint->impulse = solverJoint.direction * -solverJoint.cableImpulse;
 
   // Keep this step's impulses to start the next step from
   lastImpulses.clear();
@@ -923,6 +984,7 @@ void ContactResolver::sweepVelocities(real SolverContact::*target, unsigned swee
       apply(solverContact.normal * (normalImpulse - solverContact.normalImpulse));
       solverContact.normalImpulse = normalImpulse;
     }
+    sweepJoints();
   }
 }
 
@@ -938,9 +1000,12 @@ void ContactResolver::removeOverlap(real duration) {
       if (body)
         separatingVelocities.try_emplace(body);
     solverContact.targetSeparatingSpeed =
-        std::max(overlapNow(solverContact, duration) - positionEpsilon, (real)0) *
-        overlapCorrection / duration;
+        std::min(std::max(overlapNow(solverContact, duration) - positionEpsilon, (real)0) *
+                     overlapCorrection,
+                 maxCorrection) /
+        duration;
   }
+  setJointPositionTargets(duration);
 
   for (positionIterationsUsed = 0; positionIterationsUsed < positionSweeps;
        positionIterationsUsed++) {
@@ -969,8 +1034,223 @@ void ContactResolver::removeOverlap(real duration) {
         }
       solverContact.positionImpulse = positionImpulse;
     }
+    sweepJointPositions();
   }
 
   for (auto &[body, motion] : separatingVelocities)
     moveBy(body, motion.linear, motion.angular, duration);
+}
+
+// SAKBox: joints when resolving contacts together
+
+namespace {
+// How much the velocity of the point at `offset` from the centre of `body`
+// changes for a unit impulse there, in each direction: 1/mass, less
+// [offset]x I^-1 [offset]x for the turning (zero for no body)
+Matrix3 pointResponse(const RigidBody *body, const Vector3 &offset) {
+  Matrix3 response(0, 0, 0, 0, 0, 0, 0, 0, 0);
+  if (!body)
+    return response;
+  response.setDiagonal(body->getInverseMass(), body->getInverseMass(), body->getInverseMass());
+  Matrix3 cross;
+  cross.setSkewSymmetric(offset);
+  Matrix3 turning = cross * body->getInverseInertiaTensorWorld() * cross;
+  turning *= -1;
+  response += turning;
+  return response;
+}
+
+// The velocity of the joint's anchor `end` (0 or 1), moving with the
+// body's current velocities (zero for no body)
+Vector3 anchorVelocity(const RigidBody *body, const Vector3 &offset) {
+  return body ? pointVelocity(offset, body->getVelocity(), body->getRotation()) : Vector3();
+}
+
+// Applies `impulse` to anchor two and the opposite to anchor one, changing
+// the velocities each end of `motion` gives (the bodies' own, or the
+// position sweeps')
+template <typename ApplyTo>
+void applyAcrossJoint(RigidBody *const movable[2], const Vector3 offset[2], const Vector3 &impulse,
+                      ApplyTo applyTo) {
+  for (int end = 0; end < 2; end++)
+    if (movable[end]) {
+      Vector3 linear, angular;
+      addImpulse(movable[end], offset[end], end == 1 ? impulse : impulse * -1, linear, angular);
+      applyTo(movable[end], linear, angular);
+    }
+}
+
+void changeVelocity(RigidBody *body, const Vector3 &linear, const Vector3 &angular) {
+  body->addVelocity(linear);
+  body->addRotation(angular);
+}
+} // namespace
+
+void ContactResolver::setUpJoints(std::span<Joint *const> joints, real duration) {
+  solverJoints.clear();
+  for (Joint *joint : joints) {
+    SolverJoint solverJoint{.joint = joint,
+                            .movable = {movableBody(joint->body[0]), movableBody(joint->body[1])}};
+    if (!solverJoint.movable[0] && !solverJoint.movable[1])
+      continue;
+    for (RigidBody *body : solverJoint.movable)
+      if (body)
+        startVelocities.try_emplace(body, Motion{body->getVelocity(), body->getRotation()});
+
+    Vector3 anchor[2];
+    for (int end = 0; end < 2; end++) {
+      anchor[end] = joint->body[end]->getPointInWorldSpace(joint->position[end]);
+      solverJoint.offset[end] = anchor[end] - joint->body[end]->getPosition();
+    }
+    const Vector3 relativeVelocity = anchorVelocity(solverJoint.movable[1], solverJoint.offset[1]) -
+                                     anchorVelocity(solverJoint.movable[0], solverJoint.offset[0]);
+    solverJoint.separation = anchor[1] - anchor[0];
+    solverJoint.startRelativeVelocity = relativeVelocity;
+    solverJoint.cable = joint->error > 0;
+
+    Vector3 warmStart;
+    if (solverJoint.cable) {
+      // Along the line between the anchors. Anchors on top of each other
+      // can't be stretched this step, so there's nothing to do.
+      solverJoint.length = solverJoint.separation.magnitude();
+      if (solverJoint.length < (real)1e-9) {
+        joint->impulse = Vector3();
+        continue;
+      }
+      solverJoint.direction = solverJoint.separation * ((real)1 / solverJoint.length);
+      solverJoint.response =
+          responseAlong(solverJoint.movable[0], solverJoint.offset[0], solverJoint.direction) +
+          responseAlong(solverJoint.movable[1], solverJoint.offset[1], solverJoint.direction);
+      solverJoint.startSpeed = relativeVelocity * solverJoint.direction;
+      // As for a contact: the anchors may move apart up to the slack this
+      // step (from where they were before integrate()), but no further
+      const real lengthAtStart = solverJoint.length - solverJoint.startSpeed * duration;
+      solverJoint.allowedSpeed = std::max((joint->error - lengthAtStart) / duration, (real)0);
+      solverJoint.cableImpulse = std::max(-(joint->impulse * solverJoint.direction), (real)0);
+      warmStart = solverJoint.direction * -solverJoint.cableImpulse;
+    } else {
+      Matrix3 response = pointResponse(solverJoint.movable[0], solverJoint.offset[0]);
+      response += pointResponse(solverJoint.movable[1], solverJoint.offset[1]);
+      solverJoint.effectiveMass = response.inverse();
+      warmStart = joint->impulse;
+    }
+    applyAcrossJoint(solverJoint.movable, solverJoint.offset, warmStart, changeVelocity);
+    solverJoints.push_back(solverJoint);
+  }
+}
+
+void ContactResolver::sweepJoints() {
+  for (SolverJoint &solverJoint : solverJoints) {
+    if (solverJoint.cable) {
+      // Pull, never push, until the anchors separate no faster than allowed
+      const Vector3 relativeVelocityNow =
+          anchorVelocity(solverJoint.movable[1], solverJoint.offset[1]) -
+          anchorVelocity(solverJoint.movable[0], solverJoint.offset[0]);
+      const real speed = relativeVelocityNow * solverJoint.direction;
+      const real impulse = std::max(solverJoint.cableImpulse +
+                                        (speed - solverJoint.allowedSpeed) / solverJoint.response,
+                                    (real)0);
+      applyAcrossJoint(solverJoint.movable, solverJoint.offset,
+                       solverJoint.direction * -(impulse - solverJoint.cableImpulse),
+                       changeVelocity);
+      solverJoint.cableImpulse = impulse;
+    } else {
+      // Stop the anchors moving apart in any direction, pushing or pulling
+      const Vector3 relativeVelocityNow =
+          anchorVelocity(solverJoint.movable[1], solverJoint.offset[1]) -
+          anchorVelocity(solverJoint.movable[0], solverJoint.offset[0]);
+      const Vector3 impulse = solverJoint.effectiveMass.transform(relativeVelocityNow * -1);
+      applyAcrossJoint(solverJoint.movable, solverJoint.offset, impulse, changeVelocity);
+      solverJoint.joint->impulse += impulse;
+    }
+  }
+}
+
+void ContactResolver::settleJoints(real duration) {
+  // As the settle sweeps do for contacts: a cable the move has pulled taut
+  // ends the step no longer stretching
+  for (SolverJoint &solverJoint : solverJoints) {
+    if (!solverJoint.cable)
+      continue;
+    const Vector3 relativeVelocity = anchorVelocity(solverJoint.movable[1], solverJoint.offset[1]) -
+                                     anchorVelocity(solverJoint.movable[0], solverJoint.offset[0]);
+    const real lengthNow =
+        solverJoint.length +
+        (relativeVelocity * solverJoint.direction - solverJoint.startSpeed) * duration;
+    solverJoint.allowedSpeed = std::max((solverJoint.joint->error - lengthNow) / duration, (real)0);
+  }
+}
+
+void ContactResolver::setJointPositionTargets(real duration) {
+  // How far apart the anchors are now the bodies have moved, measured
+  // where they are (as Box2D's position step does: a spinning body's
+  // anchor moves on an arc, which the velocities alone would miss), and how
+  // much of that to undo this step: all of it (up to maxCorrection), back
+  // together for a ball and socket, back within the slack for a cable
+  for (SolverJoint &solverJoint : solverJoints) {
+    for (RigidBody *body : solverJoint.movable)
+      if (body)
+        separatingVelocities.try_emplace(body);
+    solverJoint.positionImpulse = Vector3();
+    solverJoint.positionImpulseAlong = 0;
+    const Joint &joint = *solverJoint.joint;
+    Vector3 anchor[2];
+    for (int end = 0; end < 2; end++) {
+      anchor[end] = pointNow(joint.body[end], joint.position[end]);
+      solverJoint.offset[end] = anchor[end] - joint.body[end]->getPosition();
+    }
+    const Vector3 separationNow = anchor[1] - anchor[0];
+    if (solverJoint.cable) {
+      const real length = separationNow.magnitude();
+      solverJoint.targetSpeed = 0;
+      if (length < (real)1e-9)
+        continue;
+      solverJoint.direction = separationNow * ((real)1 / length);
+      solverJoint.response =
+          responseAlong(solverJoint.movable[0], solverJoint.offset[0], solverJoint.direction) +
+          responseAlong(solverJoint.movable[1], solverJoint.offset[1], solverJoint.direction);
+      solverJoint.targetSpeed =
+          -std::clamp(length - joint.error, (real)0, maxCorrection) / duration;
+    } else {
+      Matrix3 response = pointResponse(solverJoint.movable[0], solverJoint.offset[0]);
+      response += pointResponse(solverJoint.movable[1], solverJoint.offset[1]);
+      solverJoint.effectiveMass = response.inverse();
+      Vector3 correction = separationNow;
+      if (correction.magnitude() > maxCorrection)
+        correction = correction * (maxCorrection / correction.magnitude());
+      solverJoint.targetVelocity = correction * ((real)-1 / duration);
+    }
+  }
+}
+
+void ContactResolver::sweepJointPositions() {
+  auto moveVelocity = [this](RigidBody *body, const Vector3 &linear, const Vector3 &angular) {
+    Motion &motion = separatingVelocities[body];
+    motion.linear += linear;
+    motion.angular += angular;
+  };
+  for (SolverJoint &solverJoint : solverJoints) {
+    Vector3 relativeVelocity;
+    for (int end = 0; end < 2; end++)
+      if (RigidBody *body = solverJoint.movable[end]) {
+        const Motion &motion = separatingVelocities[body];
+        const Vector3 velocity =
+            pointVelocity(solverJoint.offset[end], motion.linear, motion.angular);
+        relativeVelocity += end == 1 ? velocity : velocity * -1;
+      }
+    if (solverJoint.cable) {
+      const real speed = relativeVelocity * solverJoint.direction;
+      const real impulse = std::max(solverJoint.positionImpulseAlong +
+                                        (speed - solverJoint.targetSpeed) / solverJoint.response,
+                                    (real)0);
+      applyAcrossJoint(solverJoint.movable, solverJoint.offset,
+                       solverJoint.direction * -(impulse - solverJoint.positionImpulseAlong),
+                       moveVelocity);
+      solverJoint.positionImpulseAlong = impulse;
+    } else {
+      const Vector3 impulse =
+          solverJoint.effectiveMass.transform(solverJoint.targetVelocity - relativeVelocity);
+      applyAcrossJoint(solverJoint.movable, solverJoint.offset, impulse, moveVelocity);
+    }
+  }
 }

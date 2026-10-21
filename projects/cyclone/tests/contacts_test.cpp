@@ -766,3 +766,162 @@ TEST(ResolveTogetherTest, BounceKeepsRestitutionTimesSpeed) {
   ASSERT_LT(landing, -5);
   EXPECT_NEAR(leaving, 0.5 * (-landing - 9.81 / 60), 1e-3);
 }
+
+// ---------------------------------------------------------------------------
+// Joints as constraints, when resolving contacts together
+
+namespace {
+
+// A body fixed in place (infinite mass), to hang joints from
+std::unique_ptr<RigidBody> fixedAt(const Vector3 &position) {
+  auto body = bodyAt(position);
+  body->setInverseMass(0);
+  body->setInverseInertiaTensor(Matrix3(0, 0, 0, 0, 0, 0, 0, 0, 0));
+  body->calculateDerivedData();
+  return body;
+}
+
+// How far apart a joint's two anchor points are. (The resolver moves
+// bodies without updating their transforms, which the next step's
+// calculateDerivedData does, so update them first.)
+double anchorGap(const Joint &joint) {
+  joint.body[0]->calculateDerivedData();
+  joint.body[1]->calculateDerivedData();
+  return (joint.body[1]->getPointInWorldSpace(joint.position[1]) -
+          joint.body[0]->getPointInWorldSpace(joint.position[0]))
+      .magnitude();
+}
+
+// Bodies hanging from a fixed pivot at the origin by a chain of joints, in
+// a World with no contacts at all: link i is a 1 kg body 1 m further along
+// x, joined to the one before at the point halfway between them. Gravity
+// pulls them down from level.
+struct Chain {
+  World world{16};
+  std::unique_ptr<RigidBody> pivot = fixedAt(Vector3());
+  std::vector<std::unique_ptr<RigidBody>> links;
+  std::vector<Joint> joints;
+
+  Chain(int count, double slack) {
+    world.getResolver().setMethod(together);
+    joints.resize(count);
+    for (int i = 0; i < count; ++i) {
+      links.push_back(bodyAt(Vector3(i + 1.0, 0, 0)));
+      RigidBody &link = *links.back();
+      Matrix3 inertia;
+      inertia.setDiagonal(0.01, 0.01, 0.01); // almost a point mass
+      link.setInertiaTensor(inertia);
+      link.setAcceleration(Vector3::GRAVITY);
+      link.calculateDerivedData();
+      world.getBodies().push_back(&link);
+      RigidBody &previous = i == 0 ? *pivot : *links[i - 1];
+      joints[i].set(&previous, Vector3(i == 0 ? 0.0 : 0.5, 0, 0), &link, Vector3(-0.5, 0, 0),
+                    slack);
+      if (i == 0)
+        joints[i].position[1] = Vector3(-1, 0, 0); // the first hangs right from the pivot
+      world.getJoints().push_back(&joints[i]);
+    }
+  }
+
+  // Runs for `seconds` in steps of `step`, returning the widest any joint
+  // opened
+  double run(double seconds, double step = 1.0 / 60) {
+    double widest = 0;
+    for (int i = 0; i < static_cast<int>(std::lround(seconds / step)); ++i) {
+      world.startFrame();
+      world.runPhysics(step);
+      for (const Joint &joint : joints)
+        widest = std::max(widest, anchorGap(joint));
+    }
+    return widest;
+  }
+};
+
+} // namespace
+
+// A ball-and-socket joint (no slack) holds a pendulum to its pivot: the
+// anchors stay together and the bob swings down through the bottom. Each
+// step takes out the speed that would carry the bob off its circle, which
+// also takes a little of its swing (numerical damping, as in any
+// velocity-level solver; Box2D v3 takes smaller sub-steps against it), so
+// it reaches the bottom about 6% slower than a real pendulum at 60 steps a
+// second, and closer to it with smaller steps.
+TEST(JointConstraintTest, PendulumHoldsToItsPivot) {
+  // Falling 1 m: v = sqrt(2 g h / (1 + I / m L^2)), I being the bob's own
+  // inertia (0.01)
+  const double ideal = std::sqrt(2 * 9.81 / 1.01);
+  double shortfall[2];
+  for (int stepsPerSecond : {60, 240}) {
+    SCOPED_TRACE(testing::Message() << stepsPerSecond << " steps a second");
+    Chain pendulum(1, 0);
+    RigidBody &bob = *pendulum.links[0];
+    double widest = 0, fastest = 0, lowest = 0;
+    for (int step = 0; step < 2 * stepsPerSecond; ++step) {
+      widest = std::max(widest, pendulum.run(1.0 / stepsPerSecond, 1.0 / stepsPerSecond));
+      fastest = std::max<double>(fastest, bob.getVelocity().magnitude());
+      lowest = std::min<double>(lowest, bob.getPosition().y);
+    }
+    EXPECT_LT(widest, 0.002);
+    EXPECT_NEAR(lowest, -1.0, 0.01);
+    shortfall[stepsPerSecond == 60 ? 0 : 1] = 1 - fastest / ideal;
+  }
+  EXPECT_LT(shortfall[0], 0.07);
+  EXPECT_LT(shortfall[1], shortfall[0] / 2);
+}
+
+// A chain of five links stays joined as it swings down and whips about.
+TEST(JointConstraintTest, ChainStaysJoined) {
+  Chain chain(5, 0);
+  EXPECT_LT(chain.run(3), 0.01);
+}
+
+// A joint with slack is a cable: the bob falls freely until the anchors are
+// the slack apart, and then the cable holds it there.
+TEST(JointConstraintTest, CableIsFreeUntilTaut) {
+  World world(4);
+  world.getResolver().setMethod(together);
+  auto pivot = fixedAt(Vector3());
+  auto bob = bodyAt(Vector3(0, -0.5, 0));
+  bob->setAcceleration(Vector3::GRAVITY);
+  world.getBodies().push_back(bob.get());
+  Joint cable;
+  cable.set(pivot.get(), Vector3(), bob.get(), Vector3(), 2.0);
+  world.getJoints().push_back(&cable);
+
+  // Falling the first 1.5 m takes about 0.55 s: still falling freely at
+  // 0.5 s, held from 1 s on
+  for (int step = 0; step < 30; ++step) {
+    world.startFrame();
+    world.runPhysics(1.0 / 60);
+  }
+  EXPECT_NEAR(bob->getVelocity().y, -9.81 * 0.5, 0.05);
+  double longest = 0;
+  for (int step = 0; step < 90; ++step) {
+    world.startFrame();
+    world.runPhysics(1.0 / 60);
+    longest = std::max(longest, anchorGap(cable));
+  }
+  EXPECT_LT(longest, 2.0 + 0.01);
+  EXPECT_NEAR(bob->getPosition().y, -2.0, 0.01);
+  EXPECT_NEAR(bob->getVelocity().magnitude(), 0, 0.01);
+}
+
+// Given joints, the book's resolver resolves the contacts they make, as if
+// they had been added as contacts.
+TEST(JointConstraintTest, BooksResolverTakesJointsAsContacts) {
+  auto viaJoints = bodyAt(Vector3(2, 0, 0)), viaContacts = bodyAt(Vector3(2, 0, 0));
+  auto pivotA = fixedAt(Vector3()), pivotB = fixedAt(Vector3());
+  Joint jointA, jointB;
+  jointA.set(pivotA.get(), Vector3(), viaJoints.get(), Vector3(), 0.5);
+  jointB.set(pivotB.get(), Vector3(), viaContacts.get(), Vector3(), 0.5);
+
+  ContactResolver resolver(10);
+  Joint *joints[] = {&jointA};
+  resolver.resolveContacts(nullptr, 0, 1.0 / 60, joints);
+  Contact contact;
+  ASSERT_EQ(jointB.addContact(&contact, 1), 1u);
+  ContactResolver(10).resolveContacts(&contact, 1, 1.0 / 60);
+  EXPECT_NEAR(viaJoints->getPosition().x, viaContacts->getPosition().x, kTolerance);
+  EXPECT_NEAR(viaJoints->getPosition().y, viaContacts->getPosition().y, kTolerance);
+  EXPECT_LT(viaJoints->getPosition().x, 2.0); // pulled back towards the pivot
+}

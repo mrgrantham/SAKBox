@@ -22,6 +22,7 @@
 #include "body.h"
 #include "contacts.h"
 #include "fgen.h"
+#include "joints.h"
 
 #include <vector>
 
@@ -39,6 +40,7 @@ class World {
 public:
   typedef std::vector<RigidBody *> RigidBodies;
   typedef std::vector<ContactGenerator *> ContactGenerators;
+  typedef std::vector<Joint *> Joints;
 
 protected:
   /**
@@ -66,6 +68,12 @@ protected:
    * Holds the contact generators.
    */
   ContactGenerators contactGenerators;
+
+  /**
+   * SAKBox: holds the joints, which the resolver is given with the contacts
+   * (see ContactResolver::resolveContacts).
+   */
+  Joints joints;
 
   /**
    * Holds an array of contacts, for filling by the contact
@@ -112,6 +120,14 @@ public:
    * Returns the contact generators, to add or remove them.
    */
   ContactGenerators &getContactGenerators();
+
+  /**
+   * SAKBox: returns the joints, to add or remove them. A joint can also be
+   * added as a contact generator, as the book does; with contacts resolved
+   * together, adding it here holds it between its two anchor points rather
+   * than at the contact between them. Don't add a joint both ways.
+   */
+  Joints &getJoints() { return joints; }
 
   /**
    * Returns the force registry, to add force generators.

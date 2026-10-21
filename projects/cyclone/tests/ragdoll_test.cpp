@@ -1,5 +1,6 @@
 // The ragdoll demo's physics, run without a window, stepped the way the
-// demo framework steps it (integrate, generate contacts, resolve).
+// demo framework steps it (integrate, generate contacts, resolve), with
+// each of the contact resolver's methods.
 #include <gtest/gtest.h>
 
 #include <ragdoll_physics.h>
@@ -10,19 +11,24 @@
 
 namespace {
 
+using Method = cyclone::ContactResolver::Method;
+
 struct Outcome {
   cyclone::Vector3 centre;    // mean bone position
-  double fastest = 0;         // fastest bone speed, m/s
+  double fastest = 0;         // fastest bone speed at the end, m/s
   double fastestSideways = 0; // fastest horizontal bone speed at any point
+  double restingSpeed = 0;    // the fastest bone's speed, averaged over the last second
+  double meanStretch = 0;     // how far joints are beyond their slack, on average
 };
 
 // Runs a freshly reset ragdoll for `seconds` with fixed steps of `dt`.
-Outcome simulate(double dt, unsigned seed, bool push = true, double seconds = 4.0) {
+Outcome simulate(Method method, double dt, unsigned seed, bool push = true, double seconds = 4.0) {
   static constexpr unsigned kMaxContacts = 256;
   auto contacts = std::make_unique<cyclone::Contact[]>(kMaxContacts);
   cyclone::CollisionData cData;
   cData.contactArray = contacts.get();
   cyclone::ContactResolver resolver(kMaxContacts * 8);
+  resolver.setMethod(method);
 
   auto model = std::make_unique<ragdoll::Ragdoll>();
   cyclone::Random random(seed);
@@ -36,15 +42,28 @@ Outcome simulate(double dt, unsigned seed, bool push = true, double seconds = 4.
 
   Outcome outcome;
   const int steps = static_cast<int>(seconds / dt);
+  const int lastSecond = static_cast<int>(1.0 / dt);
+  double stretchTotal = 0;
   for (int i = 0; i < steps; ++i) {
     model->integrate(dt);
     model->generateContacts(cData, kMaxContacts);
-    resolver.resolveContacts(cData.contactArray, cData.contactCount, dt);
+    resolver.resolveContacts(cData.contactArray, cData.contactCount, dt, model->jointList());
+    double fastestNow = 0;
     for (const ragdoll::Bone &bone : model->bones) {
       const cyclone::Vector3 v = bone.body->getVelocity();
       outcome.fastestSideways = std::max<double>(outcome.fastestSideways, std::hypot(v.x, v.z));
+      fastestNow = std::max<double>(fastestNow, v.magnitude());
+    }
+    if (i >= steps - lastSecond)
+      outcome.restingSpeed += fastestNow / lastSecond;
+    for (const cyclone::Joint &joint : model->joints) {
+      const double length = (joint.body[1]->getPointInWorldSpace(joint.position[1]) -
+                             joint.body[0]->getPointInWorldSpace(joint.position[0]))
+                                .magnitude();
+      stretchTotal += std::max(0.0, length - joint.error);
     }
   }
+  outcome.meanStretch = stretchTotal / (steps * ragdoll::kJoints);
   for (const ragdoll::Bone &bone : model->bones) {
     outcome.centre += bone.body->getPosition() * (1.0 / ragdoll::kBones);
     outcome.fastest = std::max<double>(outcome.fastest, bone.body->getVelocity().magnitude());
@@ -55,12 +74,22 @@ Outcome simulate(double dt, unsigned seed, bool push = true, double seconds = 4.
 } // namespace
 
 // Without a push the ragdoll collapses where it stands and comes to rest.
+// With the book's resolver it's down within 4 s, but never quite still: it
+// keeps jittering at a few cm/s. Resolved together, friction holds it up a
+// little longer (it's still finishing its fall at 4 s), and then it's
+// still.
 TEST(RagdollTest, CollapsesInPlaceWithoutAPush) {
   for (double dt : {1.0 / 60, 0.05}) {
-    const Outcome o = simulate(dt, 1, /*push=*/false);
-    EXPECT_LT(std::hypot(o.centre.x, o.centre.z), 1.0) << "dt " << dt;
-    EXPECT_LT(o.centre.y, 1.0) << "dt " << dt; // lying down
-    EXPECT_LT(o.fastest, 0.5) << "dt " << dt;  // at rest
+    SCOPED_TRACE(testing::Message() << "dt " << dt);
+    const Outcome book = simulate(Method::oneContactAtATime, dt, 1, /*push=*/false);
+    EXPECT_LT(std::hypot(book.centre.x, book.centre.z), 1.0);
+    EXPECT_LT(book.centre.y, 1.0); // lying down
+    EXPECT_LT(book.fastest, 0.5);  // at rest, near enough
+
+    const Outcome together = simulate(Method::sequentialImpulses, dt, 1, /*push=*/false, 10.0);
+    EXPECT_LT(std::hypot(together.centre.x, together.centre.z), 1.0);
+    EXPECT_LT(together.centre.y, 1.0);
+    EXPECT_LT(together.restingSpeed, 0.2);
   }
 }
 
@@ -68,13 +97,40 @@ TEST(RagdollTest, CollapsesInPlaceWithoutAPush) {
 // be a force applied for one frame: 0.05 s frames launched the ragdoll at
 // 65 m/s and it was still flying 200 m away after 4 s.)
 TEST(RagdollTest, PushKnocksItOverAtAnyFrameRate) {
-  for (unsigned seed : {1u, 2u, 3u, 4u, 5u}) {
-    for (double dt : {1.0 / 60, 0.05}) {
-      const Outcome o = simulate(dt, seed);
-      EXPECT_LT(o.fastestSideways, 8.0) << "seed " << seed << " dt " << dt;
-      EXPECT_LT(std::hypot(o.centre.x, o.centre.z), 10.0) << "seed " << seed << " dt " << dt;
-      EXPECT_LT(o.centre.y, 1.2) << "seed " << seed << " dt " << dt;
-      EXPECT_LT(o.fastest, 1.0) << "seed " << seed << " dt " << dt;
+  for (Method method : {Method::oneContactAtATime, Method::sequentialImpulses}) {
+    for (unsigned seed : {1u, 2u, 3u, 4u, 5u}) {
+      for (double dt : {1.0 / 60, 0.05}) {
+        SCOPED_TRACE(testing::Message()
+                     << "method " << (int)method << " seed " << seed << " dt " << dt);
+        const Outcome o = simulate(method, dt, seed);
+        EXPECT_LT(o.fastestSideways, 8.0);
+        EXPECT_LT(std::hypot(o.centre.x, o.centre.z), 10.0);
+        EXPECT_LT(o.centre.y, 1.2);
+        EXPECT_LT(o.fastest, 1.0);
+      }
     }
+  }
+}
+
+// Resolving contacts together, with the joints as constraints between their
+// anchor points, a knocked-over ragdoll comes to rest more fully than with
+// the book's resolver: over 20 pushes, the fastest bone's speed in the
+// tenth second averages about 2 cm/s at 60 steps a second and 3 cm/s at
+// 20, against about 3 and 9 cm/s. Its joints stretch beyond their slack by
+// 1 mm (1 cm at 20 steps a second) on average.
+TEST(RagdollTest, ComesToRestWhenResolvedTogether) {
+  for (double dt : {1.0 / 60, 0.05}) {
+    SCOPED_TRACE(testing::Message() << "dt " << dt);
+    double together = 0, book = 0, togetherStretch = 0;
+    for (unsigned seed = 1; seed <= 20; ++seed) {
+      const Outcome t = simulate(Method::sequentialImpulses, dt, seed, true, 10.0);
+      EXPECT_LT(t.restingSpeed, 0.2) << "seed " << seed;
+      together += t.restingSpeed / 20;
+      togetherStretch += t.meanStretch / 20;
+      book += simulate(Method::oneContactAtATime, dt, seed, true, 10.0).restingSpeed / 20;
+    }
+    EXPECT_LT(together, 0.04);
+    EXPECT_GT(book, 1.5 * together);
+    EXPECT_LT(togetherStretch, 0.015); // m
   }
 }

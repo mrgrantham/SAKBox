@@ -1,9 +1,11 @@
 // The ragdoll's physics: twelve box bones held together by eleven joints,
-// colliding with the ground and (as spheres) with each other. Shared by the
+// colliding with the ground and (as spheres) with each other. The joints go
+// to the contact resolver with the contacts (see jointList()). Shared by the
 // ragdoll demo, which adds rendering, and by tests/ragdoll_test.cpp.
 #pragma once
 
 #include <cyclone/cyclone.h>
+#include <span>
 
 namespace ragdoll {
 
@@ -67,6 +69,9 @@ public:
   Bone bones[kBones];
   cyclone::Joint joints[kJoints];
 
+  // The joints, as the contact resolver takes them
+  std::span<cyclone::Joint *const> jointList() { return jointPointers; }
+
   Ragdoll() {
     // Right Knee
     joints[0].set(bones[0].body, cyclone::Vector3(0, 1.07f, 0), bones[1].body,
@@ -109,6 +114,9 @@ public:
     // Left shoulder
     joints[10].set(bones[6].body, cyclone::Vector3(0, 0.367f, 0.8f), bones[10].body,
                    cyclone::Vector3(0, 0.888f, -0.32f), 0.15f);
+
+    for (unsigned i = 0; i < kJoints; i++)
+      jointPointers[i] = &joints[i];
   }
 
   // Stands the ragdoll up and gives it a random push so it falls over.
@@ -117,6 +125,8 @@ public:
   // 65 m/s). The push is now a change in velocity, the same at any frame
   // rate: a sideways shove plus a twist of the chest.
   void reset(cyclone::Random &random) {
+    for (cyclone::Joint &joint : joints)
+      joint.impulse = cyclone::Vector3(); // a fresh start for warm starting
     bones[0].setState(cyclone::Vector3(0, 0.993, -0.5), cyclone::Vector3(0.301, 1.0, 0.234));
     bones[1].setState(cyclone::Vector3(0, 3.159, -0.56), cyclone::Vector3(0.301, 1.0, 0.234));
     bones[2].setState(cyclone::Vector3(0, 0.993, 0.5), cyclone::Vector3(0.301, 1.0, 0.234));
@@ -148,8 +158,10 @@ public:
     }
   }
 
-  // Writes this step's contacts (ground, bone-on-bone and joint
-  // corrections) into `cData`, which holds room for `maxContacts`.
+  // Writes this step's contacts (ground and bone-on-bone) into `cData`,
+  // which holds room for `maxContacts`. SAKBox: the joints are given to the
+  // resolver separately (jointList()); they used to add their contacts
+  // here, which the book's resolver still does with them.
   void generateContacts(cyclone::CollisionData &cData, unsigned maxContacts) {
     // Create the ground plane data
     cyclone::CollisionPlane plane;
@@ -183,15 +195,10 @@ public:
         cyclone::CollisionDetector::sphereAndSphere(boneSphere, otherSphere, &cData);
       }
     }
-
-    // Check for joint violation
-    for (cyclone::Joint *joint = joints; joint < joints + kJoints; joint++) {
-      if (!cData.hasMoreContacts())
-        return;
-      unsigned added = joint->addContact(cData.contacts, cData.contactsLeft);
-      cData.addContacts(added);
-    }
   }
+
+private:
+  cyclone::Joint *jointPointers[kJoints];
 };
 
 } // namespace ragdoll

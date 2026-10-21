@@ -28,6 +28,7 @@
 
 #include "body.h"
 #include <map>
+#include <span>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -39,6 +40,7 @@ namespace cyclone {
  * documentation.
  */
 class ContactResolver;
+class Joint;
 
 /**
  * A contact represents two bodies in contact. Resolving a
@@ -372,16 +374,25 @@ protected:
 
   /**
    * SAKBox: the share of the overlap beyond positionEpsilon that each step
-   * removes, for Method::sequentialImpulses. Taking it all at once makes
-   * bodies jitter as overlap comes and goes.
+   * removes, for Method::sequentialImpulses: Box2D's b2_baumgarte and
+   * Bullet's split-impulse m_erp2. Joints are put back together in full
+   * (limited by maxCorrection), as Box2D's are.
    */
-  static inline const real overlapCorrection = (real)0.8;
+  static inline const real overlapCorrection = (real)0.2;
 
   /**
    * SAKBox: the most a contact point may have moved on its body since the
    * last step and still be taken for the same contact when warm starting.
    */
   static inline const real warmStartMatchDistance = (real)0.05;
+
+  /**
+   * SAKBox: the most the position sweeps move bodies apart, or joints
+   * together, in one step (Box2D's b2_maxLinearCorrection), so a deep
+   * overlap or a badly stretched joint is fixed over a few steps rather
+   * than with a jump.
+   */
+  static inline const real maxCorrection = (real)0.2;
 
   /**
    * SAKBox: one contact as Method::sequentialImpulses works on it.
@@ -416,6 +427,51 @@ protected:
     }
   };
   std::vector<SolverContact> solverContacts;
+
+  /**
+   * SAKBox: one joint as Method::sequentialImpulses works on it. With no
+   * slack it holds its two anchor points together in every direction (a
+   * ball and socket); with slack, it only pulls, along the line between
+   * them, once they are as far apart as the slack (a cable).
+   */
+  struct SolverJoint {
+    Joint *joint;
+    // As for SolverContact: the bodies that move in response, and each
+    // anchor's offset from its body's centre
+    RigidBody *movable[2];
+    Vector3 offset[2];
+    bool cable;
+
+    // Anchor two's position less anchor one's, and its velocity relative to
+    // anchor one when integrate() moved the bodies
+    Vector3 separation, startRelativeVelocity;
+
+    // A ball and socket: the inverse of how much the anchors' relative
+    // velocity changes for a unit impulse (the effective mass, a 3x3
+    // matrix since the anchors may move in any direction)
+    Matrix3 effectiveMass;
+
+    // A cable: the direction from anchor one to anchor two, how much their
+    // separating speed along it changes for a unit impulse, the distance
+    // between them now, their separating speed when integrate() moved the
+    // bodies, and the separating speed the sweeps allow (closing is always
+    // allowed)
+    Vector3 direction;
+    real response;
+    real length, startSpeed;
+    real allowedSpeed;
+    real cableImpulse = 0;
+
+    // The position sweeps' running totals and targets
+    Vector3 positionImpulse;
+    real positionImpulseAlong = 0;
+    Vector3 targetVelocity;
+    real targetSpeed = 0;
+  };
+  std::vector<SolverJoint> solverJoints;
+
+  /** SAKBox: scratch space for the book's resolver to add joints' contacts. */
+  std::vector<Contact> contactsWithJoints;
 
   /** SAKBox: a body's linear and angular velocity. */
   struct Motion {
@@ -526,6 +582,17 @@ public:
    */
   void resolveContacts(Contact *contactArray, unsigned numContacts, real duration);
 
+  /**
+   * SAKBox: resolves the contacts and holds the joints together. Resolving
+   * contacts together (Method::sequentialImpulses), each joint is a
+   * constraint of its own between its two anchor points (see
+   * resolveTogether); with the book's resolver, each joint adds the contact
+   * Joint::addContact makes, as if it were a contact generator. Don't also
+   * pass a joint's contact in `contactArray`.
+   */
+  void resolveContacts(Contact *contactArray, unsigned numContacts, real duration,
+                       std::span<Joint *const> joints);
+
 protected:
   /**
    * Sets up contacts ready for processing. This makes sure their
@@ -555,7 +622,7 @@ protected:
    * the next integrate() leaves those to this method. Waking is unchanged: a body
    * is woken through a contact with an awake body that needs resolving.
    */
-  void sleepInGroups(Contact *contacts, unsigned numContacts);
+  void sleepInGroups(Contact *contacts, unsigned numContacts, std::span<Joint *const> joints = {});
 
   /**
    * SAKBox: resolves the contacts by Method::sequentialImpulses: wakes
@@ -563,7 +630,24 @@ protected:
    * it, sweeps the velocities, moves the bodies by the change in velocity,
    * removes overlap, and keeps this step's impulses for the next.
    */
-  void resolveTogether(Contact *contacts, unsigned numContacts, real duration);
+  void resolveTogether(Contact *contacts, unsigned numContacts, real duration,
+                       std::span<Joint *const> joints);
+
+  /** SAKBox: sets up and warm starts each joint for resolveTogether. */
+  void setUpJoints(std::span<Joint *const> joints, real duration);
+
+  /** SAKBox: one velocity sweep over the joints. */
+  void sweepJoints();
+
+  /**
+   * SAKBox: the cable speeds the settle sweeps allow, once the bodies have
+   * moved.
+   */
+  void settleJoints(real duration);
+
+  /** SAKBox: the joints' part of removeOverlap: targets, then one sweep. */
+  void setJointPositionTargets(real duration);
+  void sweepJointPositions();
 
   /**
    * SAKBox: the velocity sweeps of resolveTogether, `sweeps` times, aiming

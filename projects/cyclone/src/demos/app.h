@@ -12,6 +12,7 @@
 #include <cstdlib>
 
 #include <cyclone/cyclone.h>
+#include <span>
 
 /**
  * An application is the base class for all demonstration progams.
@@ -256,6 +257,12 @@ protected:
 
   /** Processes the objects in the simulation forward in time. */
   virtual void updateObjects(cyclone::real duration) = 0;
+
+  /**
+   * SAKBox: the joints to hold together with the contacts (see
+   * cyclone::ContactResolver::resolveContacts). None by default.
+   */
+  virtual std::span<cyclone::Joint *const> getJoints() { return {}; }
 
   /**
    * SAKBox: writes which contact resolver is in use in the bottom right

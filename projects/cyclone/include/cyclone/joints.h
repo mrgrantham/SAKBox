@@ -31,6 +31,10 @@ namespace cyclone {
  * position joint: each object has a location (given in
  * body-coordinates) that will be kept at the same point in the
  * simulation.
+ *
+ * SAKBox: when contacts are resolved together, an `error` of zero holds
+ * the two points together exactly (a ball-and-socket joint), and above
+ * zero lets them move up to `error` apart, as if joined by a cable.
  */
 class Joint : public ContactGenerator {
 public:
@@ -55,13 +59,24 @@ public:
   real error;
 
   /**
+   * SAKBox: the impulse the joint applied last step when contacts are
+   * resolved together (ContactResolver::Method::sequentialImpulses), which
+   * starts the next step (warm starting): on body two, in world
+   * coordinates; body one gets the opposite. Set it to zero after moving
+   * the bodies by hand.
+   */
+  Vector3 impulse;
+
+  /**
    * Configures the joint in one go.
    */
   void set(RigidBody *a, const Vector3 &a_pos, RigidBody *b, const Vector3 &b_pos, real error);
 
   /**
    * Generates the contacts required to restore the joint if it
-   * has been violated.
+   * has been violated. (SAKBox: for the book's resolver. Resolving contacts
+   * together takes the joints themselves; see
+   * ContactResolver::resolveContacts.)
    */
   unsigned addContact(Contact *contact, unsigned limit) const override;
 };

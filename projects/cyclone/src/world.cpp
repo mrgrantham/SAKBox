@@ -55,11 +55,11 @@ void World::runPhysics(real_duration duration) {
   // Generate contacts
   unsigned usedContacts = generateContacts();
 
-  // And process them
-  if (usedContacts) {
+  // And process them, with the joints (SAKBox)
+  if (usedContacts || !joints.empty()) {
     if (calculateIterations)
-      resolver.setIterations(usedContacts * 4);
-    resolver.resolveContacts(contacts.data(), usedContacts, duration);
+      resolver.setIterations((usedContacts + (unsigned)joints.size()) * 4);
+    resolver.resolveContacts(contacts.data(), usedContacts, duration, joints);
   }
 }
 

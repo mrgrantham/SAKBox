@@ -2,10 +2,12 @@
  * Ragdoll: rigid bones held together by joints.
  *
  * Twelve boxes are the bones (head, chest, arms, legs) and eleven Joints
- * link them at the shoulders, elbows, hips, knees and neck. A joint
- * produces a contact whenever its two attachment points drift apart, so
- * the contact resolver holds the body together just as it keeps boxes out
- * of the ground. The physics lives in ragdoll_physics.h, shared with
+ * link them at the shoulders, elbows, hips, knees and neck. Each joint
+ * lets its two attachment points drift a little apart, like a short cable;
+ * the contact resolver holds the body together along with keeping the
+ * bones out of the ground (SAKBox: as a contact at each stretched joint
+ * with the book's resolver, as a constraint between the two points when
+ * resolving contacts together). The physics lives in ragdoll_physics.h, shared with
  * ragdoll_test; reset() stands the ragdoll up and gives it a small shove,
  * and it collapses.
  *
@@ -75,16 +77,17 @@ public:
 
   /** SAKBox: the overlay explaining the demo (H hides it). */
   const char *getDescription() override {
-    return "A ragdoll: 12 rigid boxes for bones, linked by 11 joints. Each "
-           "joint\n"
-           "makes a contact when its ends drift apart, so the contact resolver "
-           "holds\n"
-           "the body together. It starts with a small shove and "
+    return "A ragdoll: 12 rigid boxes for bones, linked by 11 joints that let\n"
+           "their ends drift a little apart, like short cables. The contact\n"
+           "resolver holds the body together. It starts with a small shove and\n"
            "collapses.\n" RIGID_BODY_KEYS;
   }
 
   /** Display the particle positions. */
   void display() override;
+
+  /** SAKBox: the joints, for the resolver. */
+  std::span<cyclone::Joint *const> getJoints() override { return model.jointList(); }
 };
 
 // Method definitions

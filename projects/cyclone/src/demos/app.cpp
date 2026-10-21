@@ -245,7 +245,7 @@ void RigidBodyApplication::update() {
   generateContacts();
 
   // Resolve detected contacts
-  resolver.resolveContacts(cData.contactArray, cData.contactCount, duration);
+  resolver.resolveContacts(cData.contactArray, cData.contactCount, duration, getJoints());
 
   Application::update();
 }
