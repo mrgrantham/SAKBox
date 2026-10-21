@@ -90,10 +90,20 @@ public:
   bool shouldUseMainThread() override { return true; }
 
   // Shows `snapshot` in that padd's control panel, creating the panel the
-  // first time. Edits in the panel are sent back to the padd as
-  // ControlChanges; its reply arrives here as the next snapshot.
+  // first time, and removing it when the padd has no controls left (it
+  // removed its last one). Edits in the panel are sent back to the padd as
+  // ControlChanges; its reply arrives here as the next snapshot. Snapshots
+  // are handled on this padd's thread, which also draws, so a panel never
+  // changes mid-frame.
   void showControls(const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
     auto existing = controlViews_.find(snapshot.paddName);
+    if (snapshot.controlMap.empty()) {
+      if (existing != controlViews_.end()) {
+        graphics_->removeView(existing->second);
+        controlViews_.erase(existing);
+      }
+      return;
+    }
     if (existing != controlViews_.end()) {
       existing->second->setControls(snapshot);
       return;

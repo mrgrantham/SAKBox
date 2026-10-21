@@ -8,6 +8,8 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <algorithm>
+
 class GL_Graphics : public Graphics {
   ImVec4 appBackground = ScratchPadd::Color::Black;
 
@@ -69,6 +71,16 @@ public:
   void addView(std::unique_ptr<Graphics::View> view) override {
     view->setWindow(window);
     views_.push_back(std::move(view));
+  }
+
+  void removeView(const Graphics::View *view) override {
+    auto found =
+        std::ranges::find_if(views_, [view](const auto &held) { return held.get() == view; });
+    if (found == views_.end()) {
+      return;
+    }
+    (*found)->destroy();
+    views_.erase(found);
   }
 
   bool draw() override {

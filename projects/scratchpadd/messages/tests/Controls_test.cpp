@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <mutex>
@@ -440,4 +441,120 @@ TEST(ControlsTest, ControlAccessor) {
   EXPECT_EQ(owner.control<Controls::Integer>("count").value, 5);
   EXPECT_THROW(owner.control<Controls::Boolean>("count"), std::bad_variant_access);
   EXPECT_THROW(owner.control<Controls::Integer>("missing"), std::out_of_range);
+}
+
+// An owner can change its own controls while it runs (setControl,
+// addControl, removeControl, on its own thread), and each change sends a
+// snapshot, so panels stay current.
+namespace {
+// Runs `work` on `padd`'s own thread and waits for the system to settle
+template <typename Padd, typename... Padds>
+void onPaddThread(RunningSystem<Padds...> &running, const std::function<void(Padd &)> &work) {
+  Padd &padd = running.template padd<Padd>();
+  padd.push([&padd, work] { work(padd); });
+  ASSERT_TRUE(running.settles());
+}
+
+bool hasControl(const ControlSnapshot &snapshot, const std::string &name) {
+  return snapshot.controlMap.contains(name);
+}
+} // namespace
+
+// setControl applies the value, tells panels, and doesn't call
+// controlChanged() (which is for edits from a panel)
+TEST(ControlUpdateTest, SetControlTellsPanels) {
+  RunningSystem<PanelPadd, OwnerA> running;
+  std::atomic<bool> applied = false;
+  onPaddThread<OwnerA>(
+      running, [&](OwnerA &owner) { applied = owner.setControl("speed", Controls::Double(4.0)); });
+  EXPECT_TRUE(applied);
+  const auto snapshots = running.padd<PanelPadd>().snapshots();
+  ASSERT_EQ(snapshots.size(), 1u);
+  EXPECT_DOUBLE_EQ(speedIn(snapshots[0]), 4.0);
+  EXPECT_TRUE(running.padd<OwnerA>().changed().empty());
+}
+
+// setControl follows the same rules as a panel's edit: clamped to the
+// range, and refused (with nothing sent) for the wrong type or an unknown
+// name
+TEST(ControlUpdateTest, SetControlFollowsTheRules) {
+  RunningSystem<PanelPadd, OwnerA> running;
+  std::atomic<bool> clamped = false, wrongType = true, unknown = true;
+  onPaddThread<OwnerA>(running, [&](OwnerA &owner) {
+    clamped = owner.setControl("speed", Controls::Double(50.0));
+    wrongType = owner.setControl("speed", Controls::Integer(3));
+    unknown = owner.setControl("missing", Controls::Double(1.0));
+  });
+  EXPECT_TRUE(clamped);
+  EXPECT_FALSE(wrongType);
+  EXPECT_FALSE(unknown);
+  const auto snapshots = running.padd<PanelPadd>().snapshots();
+  ASSERT_EQ(snapshots.size(), 1u); // only the valid change sent one
+  EXPECT_DOUBLE_EQ(speedIn(snapshots[0]), 10.0);
+}
+
+// addControl adds a control, or replaces one (range and all), and panels
+// see it
+TEST(ControlUpdateTest, AddControlShowsUp) {
+  RunningSystem<PanelPadd, OwnerA> running;
+  onPaddThread<OwnerA>(running, [](OwnerA &owner) {
+    owner.addControl("volume", Controls::Integer(3, std::make_pair(0, 11)));
+    owner.addControl("speed", Controls::Double(20.0, std::make_pair(0.0, 100.0)));
+  });
+  auto &owner = running.padd<OwnerA>();
+  EXPECT_EQ(owner.control<Controls::Integer>("volume").value, 3);
+  const auto snapshots = running.padd<PanelPadd>().snapshots();
+  ASSERT_EQ(snapshots.size(), 2u);
+  EXPECT_TRUE(hasControl(snapshots[0], "volume"));
+  EXPECT_DOUBLE_EQ(speedIn(snapshots[1]), 20.0);
+
+  // The replacement's wider range is the one that applies now
+  running.padd<PanelPadd>().change("Owner1", "speed", Controls::Double(80.0));
+  ASSERT_TRUE(running.settles());
+  EXPECT_DOUBLE_EQ(owner.control<Controls::Double>("speed").value, 80.0);
+}
+
+// removeControl removes a control; removing the last one sends an empty
+// snapshot, which takes the padd's panel away. Unknown names change nothing.
+TEST(ControlUpdateTest, RemoveControlUpdatesPanels) {
+  RunningSystem<PanelPadd, OwnerA> running;
+  std::atomic<bool> removedSpeed = false, removedMissing = true;
+  onPaddThread<OwnerA>(running, [&](OwnerA &owner) {
+    removedSpeed = owner.removeControl("speed");
+    removedMissing = owner.removeControl("missing");
+  });
+  EXPECT_TRUE(removedSpeed);
+  EXPECT_FALSE(removedMissing);
+  auto snapshots = running.padd<PanelPadd>().snapshots();
+  ASSERT_EQ(snapshots.size(), 1u);
+  EXPECT_FALSE(hasControl(snapshots[0], "speed"));
+  EXPECT_TRUE(hasControl(snapshots[0], "count"));
+
+  onPaddThread<OwnerA>(running, [](OwnerA &owner) {
+    for (const char *name : {"free", "count", "enabled", "mode", "label"})
+      owner.removeControl(name);
+  });
+  snapshots = running.padd<PanelPadd>().snapshots();
+  ASSERT_EQ(snapshots.size(), 6u);
+  EXPECT_TRUE(snapshots.back().controlMap.empty());
+
+  // With no controls left, it no longer answers requests
+  running.padd<PanelPadd>().send(ControlRequest{});
+  ASSERT_TRUE(running.settles());
+  EXPECT_EQ(running.padd<PanelPadd>().snapshots().size(), 6u);
+}
+
+// A padd that started without controls gets a panel when it adds one
+TEST(ControlUpdateTest, PaddWithoutControlsCanAddOne) {
+  RunningSystem<PanelPadd, NoControlsPadd> running;
+  running.padd<PanelPadd>().send(ControlRequest{});
+  ASSERT_TRUE(running.settles());
+  EXPECT_TRUE(running.padd<PanelPadd>().snapshots().empty());
+
+  onPaddThread<NoControlsPadd>(
+      running, [](NoControlsPadd &padd) { padd.addControl("on", Controls::Boolean(true)); });
+  const auto snapshots = running.padd<PanelPadd>().snapshots();
+  ASSERT_EQ(snapshots.size(), 1u);
+  EXPECT_EQ(snapshots[0].paddName, "NoControls");
+  EXPECT_TRUE(hasControl(snapshots[0], "on"));
 }

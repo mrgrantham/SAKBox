@@ -136,10 +136,10 @@ public:
   // provided
   virtual std::optional<std::chrono::duration<double>> repeatInterval() { return std::nullopt; }
 
-  // Overriding this method sets up a series of data structures that can be
-  // broadcast to another Padd that is setup to expose them to a user in some
-  // way. The values can then be updated here and used to impact logic in the
-  // Padd in some as yet unspecified way.
+  // The controls this padd starts with: values a control panel (such as
+  // DisplayPadd's) shows and lets the user edit. Read once, by initialize();
+  // to change them while the padd runs, use setControl(), addControl() and
+  // removeControl(). Return {} for none.
   virtual ScratchPadd::ControlValueMap generateControls() = 0;
 
   // on_ is changed while holding scratchPaddMutex_ so a thread in
@@ -424,6 +424,41 @@ public:
             },
         },
         control->second);
+  }
+
+  // Changes this padd makes to its own controls while it runs. Call them on
+  // the padd's own thread, like control<C>(). Each sends a fresh snapshot,
+  // so control panels show the change straight away. None calls
+  // controlChanged(), which reports edits made from a panel.
+
+  // Sets control `name` to the value in `value`, under the same rules as an
+  // edit from a panel (clamped to its range, an allowed string, the same
+  // type; only the value is taken). Returns false, changing nothing and
+  // sending nothing, if it isn't allowed.
+  bool setControl(const std::string &name, ControlTypeVariant value) {
+    if (!updateControl(MessageType::ControlChange{
+            .paddName = name_, .controlName = name, .controlTypeValue = std::move(value)})) {
+      return false;
+    }
+    send(generateControlsSnapshot());
+    return true;
+  }
+
+  // Adds control `name`, or replaces the one with that name (its range
+  // too), and gives it a panel if it's this padd's first.
+  void addControl(const std::string &name, ControlTypeVariant control) {
+    controlMap_.insert_or_assign(name, std::move(control));
+    send(generateControlsSnapshot());
+  }
+
+  // Removes control `name`. Removing the last one sends an empty snapshot,
+  // which takes this padd's panel away. Returns false if there was none.
+  bool removeControl(const std::string &name) {
+    if (controlMap_.erase(name) == 0) {
+      return false;
+    }
+    send(generateControlsSnapshot());
+    return true;
   }
 };
 

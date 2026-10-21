@@ -65,7 +65,7 @@ int main() {
 
 Every padd must implement `name()` (unique within the system) and `generateControls()`, and have a constructor that takes a `ScratchPadd::System *`. These examples are compiled and run by `basis/tests/Examples_test.cpp`.
 
-To see a bigger system, run the demo: a window with a shader view, the Dear ImGui demo, and a control panel for `StoryPadd`'s controls (edits are logged), plus a demo-defined `Triangle` message logged by another padd. Close the window to quit.
+To see a bigger system, run the demo: a window with a shader view, the Dear ImGui demo, and a control panel for `StoryPadd`'s controls (edits are logged; `chapter` counts up by itself, and ticking `showExtra` adds an `extra` control), plus a demo-defined `Triangle` message logged by another padd. Close the window to quit.
 
 ```bash
 bazel run //projects/scratchpadd/demo
@@ -149,6 +149,22 @@ void controlChanged(const std::string &name) override {
 }
 ```
 
+`generateControls()` gives the controls a padd starts with. To change them while it runs, call these on the padd's own thread:
+
+| Call | Does |
+| --- | --- |
+| `setControl(name, value)` | Sets a control's value, by the same rules as an edit from a panel (clamped to its range, an allowed string, the same type). Returns `false`, changing nothing, if the value isn't allowed or there's no such control. |
+| `addControl(name, control)` | Adds a control, or replaces the one with that name, range and all. A padd that had none gets a panel. |
+| `removeControl(name)` | Removes a control. Returns `false` if there was none. Removing the last one removes the padd's panel. |
+
+```cpp
+void repeat() override {
+  setControl("chapter", ScratchPadd::ControlType::Integer(++chapter_)); // panels show it now
+}
+```
+
+Each sends a fresh `ControlSnapshot`, so panels show the change straight away. None calls `controlChanged()`, which reports edits made from a panel; the padd already knows about its own changes. The demo's `StoryPadd` uses all three.
+
 **The control panel.** `DisplayPadd` shows every padd's controls in its window, one ImGui panel per padd: sliders for ranged numbers, input boxes for unranged ones, checkboxes, and a combo box or text field for strings. A padd gets a panel just by returning controls from `generateControls()`.
 
 Behind the panel are three messages; `Base` handles the owner's side automatically:
@@ -157,7 +173,7 @@ Behind the panel are three messages; `Base` handles the owner's side automatical
 2. **Edit.** When the user edits a widget, the panel sends a `ControlChange` carrying the owner's name (copied from the snapshot), the control's name and the new value. There's no direct addressing, so every padd receives it, and only the padd it names acts on it.
 3. **Apply and confirm.** The owner enforces its own rules: numbers are clamped to the control's range, strings must be one of the allowed values, and the type must match; only the value is taken, so a change can't alter a range. If the change is valid it's stored and `controlChanged()` is called. Either way the owner replies with a fresh snapshot, so the panel shows the value the owner actually holds (a clamped number snaps back, for example).
 
-The panel only ever holds copies from snapshots, and each owner changes its own values on its own thread, so no locking is needed. `messages/tests/Controls_test.cpp` covers the round trip, range enforcement, rejection and who replies.
+The panel only ever holds copies from snapshots, and each owner changes its own values on its own thread, so no locking is needed. A snapshot with no controls (sent when a padd removes its last one) removes that padd's panel; `DisplayPadd` takes it away with `Graphics::removeView`. `messages/tests/Controls_test.cpp` covers the round trip, range enforcement, rejection and who replies.
 
 ### Logging and Timing
 
@@ -201,6 +217,7 @@ void finishing() override { graphics_->tearDown(); }
 - Each `GL_View` renders a shader into a framebuffer shown in its own ImGui window. Shaders get Shadertoy-style uniforms: `iTime`, `iResolution`, `iMouse`, plus `uniform_color`.
 - Shader files are Bazel data dependencies. Call `DataDepRetriever::ConfigureDependencies(argv[0])` at the start of `main()` so `GetFragmentShaderPath()` can find them, and pass a directory (relative to the repo root) for shaders outside this package, as `shader_playground` does.
 - `Graphics::ImguiView` shows the Dear ImGui demo window.
+- `Graphics::addView` adds a view and `Graphics::removeView` destroys and removes one; call them on the thread that draws, between frames (as `DisplayPadd`'s message handlers are).
 - The backend is chosen at compile time. Only OpenGL (`SCRATCHPADD_GL`, set by the `graphics` target) exists so far.
 
 ## Packages
@@ -230,7 +247,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `basis:Base_test` | Padd names, and a system starting and stopping |
 | `basis:Threading_test` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
 | `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type |
-| `messages:Controls_test` | The control round trip: who replies to requests and changes, range clamping, rejected changes, `controlChanged()` and `control<C>()` |
+| `messages:Controls_test` | The control round trip: who replies to requests and changes, range clamping, rejected changes, `controlChanged()` and `control<C>()`; and an owner's own changes: `setControl()` (by the same rules, telling panels), `addControl()`, `removeControl()` (the last removal empties the panel), and a padd without controls adding one |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
@@ -238,10 +255,8 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 - **Handlers are fixed once a padd starts.** A padd can't start or stop listening for a type while running.
 - **No direct addressing.** A message goes to every padd that handles its type; to target one padd, put its name in the message (as `ControlChange` does).
 - **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled; a message nobody handles is silently dropped.
-- **Controls are fixed at startup.** `generateControls()` is read once, so a padd can't add or remove controls later. If an owner changes a value itself (by calling `updateControl()`), panels aren't told until the next edit or `ControlRequest`.
 - Audio is a stub.
 
 ## Roadmap
 
-1. Let owners push control updates (and add or remove controls) so panels stay current.
-2. Implement audio.
+1. Implement audio.
