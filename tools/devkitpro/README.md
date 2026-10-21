@@ -5,7 +5,7 @@ Builds Nintendo 3DS homebrew with [devkitPro](https://devkitpro.org)'s toolchain
 | File | What it is |
 | --- | --- |
 | `defs.bzl` | `DEVKITARM_IMAGE` (the pinned image) and the `devkitpro_3ds_app` rule |
-| `build_3ds.py` | Runs devkitPro's `make` inside the image. Sources go in and the built files come out as tar streams on stdin/stdout, so no folders are shared with the container and nothing it writes ends up owned by root. Python, so it runs the same on every host. |
+| `build_3ds.py` | Runs devkitPro's `make` inside the image. Sources (each with the path the rule chose for it) go in and the built files come out as tar streams on stdin/stdout, so no folders are shared with the container and nothing it writes ends up owned by root. Python, so it runs the same on every host. |
 
 The pinned image is `devkitpro/devkitarm:20260610`: devkitARM r68 (GCC 16.1), libctru 2.7.0, citro2d 1.7.0, citro3d 1.7.1, 3dstools 1.3.1 and the `3ds-*` libraries (zlib, curl, freetype, box2d, ...). It is built for both arm64 (Apple Silicon, runs natively) and amd64.
 
@@ -37,6 +37,23 @@ devkitpro_3ds_app(
 ```
 
 `srcs` must include a devkitPro 3DS `Makefile` (the standard template from devkitPro's 3ds examples) with the sources at the paths it expects. The rule builds `my-app.3dsx` (the app), `my-app.smdh` (its title and icon) and `my-app.elf` (with debug symbols) in `bazel-bin`. `app_name` sets a different output name.
+
+`extra_srcs` brings in sources from other packages or external repositories, each label mapped to the folder its files go in. Files keep their paths within their own package, under that folder, and the `Makefile` lists the folders like any other (`SOURCES`, `INCLUDES`). For example, the [ScratchPadd audio self-test](../../projects/scratchpadd/audio/3ds/selftest/BUILD) builds the audio core and miniaudio from where they live:
+
+```
+devkitpro_3ds_app(
+    name = "scratchpadd-audio-selftest",
+    srcs = ["Makefile"] + glob(["source/**"]),
+    extra_srcs = {
+        "//projects/scratchpadd/audio:audio_core_sources": "scratchpadd_audio",  # core/src/..., core/include/...
+        "@miniaudio//:sources": "third_party/miniaudio",                          # miniaudio.c, miniaudio.h
+    },
+)
+```
+
+Every app is tagged `devkitpro`, so a build that can't run Docker can leave them all out with `--build_tag_filters=-devkitpro` (as [`tools/linux_check`](../linux_check/README.md) does).
+
+Only source files can be staged (not files other rules generate), and a C++ library built this way must suit devkitPro's 3DS `Makefile`, which compiles with `-fno-rtti -fno-exceptions`.
 
 See [`projects/examples/read-controls`](../../projects/examples/read-controls/README.md) for an example, including how to run the result in an emulator.
 

@@ -33,6 +33,16 @@ http_archive(
     urls = ["https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz"],
 )
 
+# Audio output and decoding (WAV, FLAC, MP3) for ScratchPadd's audio
+# (//projects/scratchpadd/audio). Public domain or MIT-0.
+http_archive(
+    name = "miniaudio",
+    build_file = "//third_party:miniaudio.BUILD",
+    sha256 = "b900edcffe979816e2560a0580b9b1216d674b4f17fbadeca8f777a7f8ab0274",
+    strip_prefix = "miniaudio-0.11.25",
+    url = "https://github.com/mackron/miniaudio/archive/refs/tags/0.11.25.tar.gz",
+)
+
 http_archive(
     name = "spdlog",
     build_file = "//third_party:spdlog.BUILD",

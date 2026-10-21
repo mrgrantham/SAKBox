@@ -8,6 +8,7 @@ cc_library(
     visibility = ["//visibility:public"],
     strip_include_prefix = "include/",
     deps = [
+        "//projects/scratchpadd/audio:audio_messages",
         "//projects/scratchpadd/basis",
     ],
 )

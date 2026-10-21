@@ -23,7 +23,7 @@ python3 tools/linux_check/check.py gcc //projects/waffles/...  # just these targ
 python3 tools/linux_check/check.py gcc --log                 # the last run's full output
 ```
 
-With no targets it builds and tests everything except the 3DS example (`//projects/examples/read-controls`), which needs Docker itself, and that isn't available inside the container. It prints Bazel's summary: whether the build completed, how many tests ran and passed, every test that didn't pass, Bazel's `ERROR:` lines and the compilers' errors. It exits with Bazel's exit code.
+With no targets it builds and tests everything except the 3DS apps, which need Docker themselves, and that isn't available inside the container. `devkitpro_3ds_app` tags them `devkitpro`, and the check passes `--build_tag_filters=-devkitpro`, so new 3DS apps are left out too. It prints Bazel's summary: whether the build completed, how many tests ran and passed, every test that didn't pass, Bazel's `ERROR:` lines and the compilers' errors. It exits with Bazel's exit code.
 
 - **Your checkout is safe.** It's mounted read-only and copied inside the container, so the Linux build can't change your Bazel output links (`bazel-bin` and so on) or the lockfile.
 - **Later runs are quick.** Each compiler keeps Bazel's downloads and cache in its own Docker volume (`sakbox-linux-gcc-cache`, `sakbox-linux-clang-cache`). The first run downloads everything and builds from scratch, which takes a while. `docker volume rm` on a volume starts that compiler afresh.

@@ -159,10 +159,11 @@ receive<Ping>([this](const Ping &ping, PaddAddress from) { sendTo(from, Pong{pin
 - Every send records its sender, broadcasts included. A message sent from outside any padd (`System::sendIncludeSender(nullptr, ...)`) has an empty `from`.
 - One-argument handlers (`[](const Ping &ping) {...}`) are unchanged; `receive` works out which kind it was given when it compiles.
 - The sender travels with each delivery, not inside the message, since one message (from `makeMessage`) can be sent more than once, by different padds.
+- `reply(from, contents)` answers only if the sender handles the answer's type, and otherwise sends nothing, without an error. A padd that answers whoever asks uses it, so askers that don't care about the answer needn't handle it. (`sendTo` logs an error for a padd that doesn't handle the type, since a direct send is meant to arrive.) `AudioPadd` answers this way.
 
 **Padds only talk through messages.** A padd's state belongs to its own thread, so other code may not call into a padd; it sends the padd a message. This is enforced, not just a convention:
 
-- *At compile time.* What a padd does is protected in `Base`: `receive`, `send`, `sendTo`, `push`, and its controls (`control`, `setControl`, `addControl`, `removeControl`, `updateControl`). C++ only lets a class use protected members of objects of its own class, so one padd can't call another's even through a pointer to it. Running a padd (`run`, `stop`, `deliver`, `initialize`...) is private to `Base` and the system. What stays public only reads a padd or waits for it: `paddName()`, `isRunning()`, `pendingWorkCount()`, `workLoopPasses()`, `waitForStart()`, `waitForStop()`, `waitForWorkCompletion()`.
+- *At compile time.* What a padd does is protected in `Base`: `receive`, `send`, `sendTo`, `reply`, `push`, and its controls (`control`, `setControl`, `addControl`, `removeControl`, `updateControl`). C++ only lets a class use protected members of objects of its own class, so one padd can't call another's even through a pointer to it. Running a padd (`run`, `stop`, `deliver`, `initialize`...) is private to `Base` and the system. What stays public only reads a padd or waits for it: `paddName()`, `isRunning()`, `pendingWorkCount()`, `workLoopPasses()`, `waitForStart()`, `waitForStop()`, `waitForWorkCompletion()`.
 - *Addresses can't be opened.* A `PaddAddress` can be copied, compared, sent to and named, but has no way to get at the padd behind it. The system hands out padds only as addresses.
 - *At run time.* The control methods check they're on the padd's own thread (while it runs: from `starting()` to `finishing()`), and throw `std::logic_error` naming the padd and method if not. Call `assertOnPaddThread("method")` at the top of your own padd methods that touch its state.
 - *What it can't stop.* C++ can't stop a deliberate workaround (a pointer kept in a global, a cast), and public methods you add to your own padd class are yours to guard: keep them private, or check the thread.
@@ -268,6 +269,50 @@ void finishing() override { graphics_->tearDown(); }
 - `Graphics::addView` adds a view and `Graphics::removeView` destroys and removes one; call them on the thread that draws, between frames (as `DisplayPadd`'s message handlers are).
 - The backend is chosen at compile time. Only OpenGL (`SCRATCHPADD_GL`, set by the `graphics` target) exists so far.
 
+## Audio
+
+`AudioPadd` plays sounds and music for the other padds, which ask it with messages. It runs on macOS, Linux and Windows through the system's sound device, and its engine (the audio core) also builds for the Nintendo 3DS.
+
+```cpp
+#include <ScratchPadd/Audio/Messages.hpp> // from //projects/scratchpadd/audio:audio_messages
+using namespace ScratchPadd::Audio;
+
+// In prepare(): find AudioPadd once (an empty address if the system has none)
+audio_ = addressOf("AudioPadd");
+
+// Load a file, or samples made in code, once
+sendTo(audio_, LoadSound{.name = "door", .path = "sounds/door.wav"});
+// Then play it, as often as wanted
+sendTo(audio_, PlaySound{.name = "door", .settings = {.volume = 0.8f, .pan = -0.3f}});
+sendTo(audio_, PlayMusic{.path = "music/theme.mp3", .settings = {.loop = true}});
+```
+
+| Message | Does | Answer |
+| --- | --- | --- |
+| `LoadSound{name, path}` | Loads a WAV, FLAC or MP3 file as a named sound, replacing any of that name | `SoundLoaded{name, ok, error}` |
+| `LoadSoundSamples{name, samples, rate, channels}` | Loads samples made in code (a `shared_ptr` to interleaved floats, so sending copies nothing) | `SoundLoaded` |
+| `UnloadSound{name}` | Unloads a sound; its voices stop at once | |
+| `PlaySound{name, settings}` | Plays a loaded sound | `Playing{name, voice, ok, error}`, then `VoiceFinished{name, voice}` when it ends |
+| `PlayMusic{path, settings}` | Streams a music file, decoded as it plays | `Playing`, then `VoiceFinished` |
+| `StopVoice{voice}`, `SetVoice{voice, settings}` | Fades one voice out, or changes how it plays | |
+| `StopMusic{}`, `StopAll{}` | Fades out all music, or everything | |
+
+- `settings` (`VoiceSettings`): `volume` (1 is as recorded), `pan` (a balance: -1 is left only, 0 both sides as recorded, 1 right only), `pitch` (playback speed: 2 is an octave up and half as long), and `loop`.
+- Answers go back to the padd that asked, with `reply()`: handle `Playing`, `VoiceFinished` or `SoundLoaded` to hear them, or don't. They come in the order things were asked. The demo's `StoryPadd` plays a chime made in code each time its chapter advances, without listening for answers.
+- Controls: `master`, `sounds` and `music` volume (0 to 1), and `mute`. Sounds and music are mixed in two groups, each with its own volume under the master volume.
+- Padds that only send these messages depend on `:audio_messages`, not the engine. AudioPadd itself is in `:audio`.
+- Sound files are found from the working directory, like any other file. Loading decodes the whole file (and converts it to the output's rate) on AudioPadd's thread, so load sounds before they're needed. Music is decoded half a second ahead as it plays, so it can be long.
+
+**How it works.** The engine (`audio/core`) is two halves joined by two wait-free queues:
+
+- The *mixer* runs on the sound device's thread and only mixes: it never locks, allocates, frees memory or waits, since a late buffer is heard as a click. It reads commands (play, stop, set, volumes) from one queue and reports voices that ended on the other.
+- The *engine* runs on AudioPadd's thread and does the slow work: decoding and resampling files when they're loaded (with [miniaudio](https://miniaud.io)), decoding music ahead into a ring buffer, and freeing memory once the mixer says it's done with it. AudioPadd calls its `update()` every 20 ms.
+- Sounds are resampled once, when loaded, so mixing is a copy, or a linear interpolation for a pitched voice. Volume and pan changes, and stops, ramp over one block (up to 1024 frames) rather than jump, so they don't click.
+- `Output` is where the mix goes: `DeviceOutput` plays through miniaudio's device (Core Audio, PulseAudio/ALSA/JACK, WASAPI; with no sound device it falls back to miniaudio's silent null device, so the engine still runs), and `OfflineOutput` mixes only when asked, which the tests use to check exact samples. Tests swap AudioPadd's output with `AudioPadd::outputFactory()`.
+- The core is plain C++ with no other ScratchPadd dependency, and doesn't throw or need RTTI, so it builds for the 3DS. On a 3DS, [`audio/3ds/selftest`](audio/3ds/selftest/BUILD) runs the core's checks on the console's own CPU and times a mix: 16 pitched voices take 90 ms per second of audio in the Azahar emulator. It shows the results on the top screen and writes them to `scratchpadd-audio-selftest.txt` on the SD card. Build it with `bazel build //projects/scratchpadd/audio/3ds/selftest:scratchpadd-audio-selftest` (needs Docker; see [`tools/devkitpro`](../../tools/devkitpro/README.md)) and run the `.3dsx` as the [read-controls example](../examples/read-controls/README.md) describes.
+
+miniaudio (public domain or MIT-0) is downloaded by Bazel; nothing needs installing. On Linux it finds PulseAudio or ALSA when the program runs, so no development packages are needed to build.
+
 ## Packages
 
 | Bazel target | Contents |
@@ -276,7 +321,7 @@ void finishing() override { graphics_->tearDown(); }
 | `//projects/scratchpadd/messages` | The message wrapper (`Message`, `makeMessage`), `Text`, and the control types |
 | `//projects/scratchpadd/utilities` | Logging, `Timer`, `EventTimer` and helpers like `VariantHandler` |
 | `//projects/scratchpadd/graphics` | GLFW/ImGui/OpenGL window and views |
-| `//projects/scratchpadd/audio` | Placeholder; `AudioPadd` only logs the messages it receives |
+| `//projects/scratchpadd/audio` | `:audio` (`AudioPadd`), `:audio_messages` (what padds send it), `:audio_core` (the engine, also built for the 3DS), `:audio_device` (playback through the sound device) |
 | `//projects/scratchpadd/demo` | The demo app |
 
 ## Building and Testing
@@ -294,15 +339,19 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `basis:Examples_test` | The examples in this README |
 | `basis:Base_test` | Padd names, and a system starting and stopping |
 | `basis:Threading_test` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
-| `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes); `sendTo` (only the named padd, by class and by name, to itself, in order, refused for a missing padd, an empty address or an unhandled type, and four padds sending to one at once from their own threads losing nothing, each in order and with the right sender); the sender (a reply to it, and no sender for a message from outside); broadcasts nobody handles noted once per type; and, when it compiles, that code outside a padd can't call into one |
+| `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes); `sendTo` (only the named padd, by class and by name, to itself, in order, refused for a missing padd, an empty address or an unhandled type, and four padds sending to one at once from their own threads losing nothing, each in order and with the right sender); the sender (a reply to it, `reply()` reaching only senders that handle the answer, and no sender for a message from outside); broadcasts nobody handles noted once per type; and, when it compiles, that code outside a padd can't call into one |
 | `messages:Controls_test` | The control round trip: requests answered to the panel that asked (all padds, or one sent the request), changes sent straight to their owner and every panel told, unknown padds refused, range clamping, rejected changes, `controlChanged()` and `control<C>()`, and a running padd's controls refused from another thread; and an owner's own changes: `setControl()` (by the same rules, telling panels), `addControl()`, `removeControl()` (the last removal empties the panel), and a padd without controls adding one |
+| `audio:AudioCore_test` | The audio core, through `OfflineOutput`: the queues (including two threads at once), exact samples, voices adding up, volumes, balance, pitch, loops, stops and volume changes ramping, finished voices reported once, unloading a sound while it plays, the voice limit, files resampled from another rate and channel count, missing files, music streamed frame for frame and looping without a gap, music running dry counted, mixing allocating nothing, and how long a second of 32 voices takes to mix |
+| `audio:AudioPadd_test` | AudioPadd in a running system: answers to loading and playing, `VoiceFinished` to the padd that played, failures answered with why, padds that don't listen for answers, the volume controls and mute, stopping one voice, music or everything, and four padds asking at once while the audio thread mixes |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
 
 - **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled, since handlers are registered while the program runs (and can change). A broadcast nobody handles is dropped, with a warning the first time for its type; a direct send to a padd without a handler is refused, with an error.
-- Audio is a stub.
+- **Audio:** no MIDI or SoundFonts yet, no sound on the 3DS yet (the core runs there, mixing offline), and sounds are held fully decoded in memory (fine for effects; stream long pieces with `PlayMusic`).
 
 ## Roadmap
 
-1. Implement audio.
+1. Audio: MIDI files and SoundFonts (TinySoundFont), with a built-in instrument.
+2. Audio on the 3DS, through its DSP (`ndsp`).
+3. MIDI input from controllers (RtMidi), on desktops.

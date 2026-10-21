@@ -12,9 +12,9 @@ Usage:
   python3 tools/linux_check/check.py gcc|clang [TARGET ...]
   python3 tools/linux_check/check.py gcc|clang --log
 
-With no targets it builds and tests everything except the 3DS example, which
-needs Docker itself (not available inside the container). Exits with Bazel's
-exit code.
+It leaves out the 3DS apps (tagged devkitpro), which need Docker themselves,
+and that isn't available inside the container. With no targets it builds
+and tests everything else. Exits with Bazel's exit code.
 """
 
 import pathlib
@@ -25,7 +25,9 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 COMPILERS = ("gcc", "clang")
-DEFAULT_TARGETS = ["//...", "-//projects/examples/read-controls/..."]
+DEFAULT_TARGETS = ["//..."]
+# The 3DS apps build in devkitPro's Docker image, which can't run in here
+SKIP_3DS_APPS = ["--build_tag_filters=-devkitpro", "--test_tag_filters=-devkitpro"]
 LOG = "/root/.cache/last-run.log"
 
 # Run inside the container: copy the checkout, build and test, keep the log,
@@ -72,7 +74,7 @@ def main(argv):
         return built.returncode
 
     # Clang-only checks are in the clang config (see .bazelrc)
-    flags = ["--config=clang"] if compiler == "clang" else []
+    flags = (["--config=clang"] if compiler == "clang" else []) + SKIP_3DS_APPS
     targets = rest or DEFAULT_TARGETS
     print(f"Building and testing with {compiler}: {' '.join(targets)}", flush=True)
     return subprocess.run([docker, "run", "--rm", "-v", f"{REPO}:/repo:ro", "-v", f"{volume}:/root/.cache",

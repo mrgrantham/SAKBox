@@ -7,7 +7,8 @@ shared with the container. That works the same with Docker on Linux, Colima
 or Docker Desktop on macOS, and Docker Desktop on Windows, and it never
 leaves files owned by the container's user.
 
-Usage: build_3ds.py IMAGE NAME OUT_DIR PACKAGE SRC...
+Usage: build_3ds.py IMAGE NAME OUT_DIR [SRC PATH]...
+(each source file, then the path it goes at in the app's folder)
 """
 
 import io
@@ -32,14 +33,13 @@ def find_docker():
     return None
 
 
-def stage_sources(package, srcs):
-    """A tar archive of `srcs` at their paths within `package`."""
+def stage_sources(files):
+    """A tar archive of each (source, path) in `files`, at its path."""
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w", format=tarfile.USTAR_FORMAT) as tar:
-        for src in srcs:
-            rel = pathlib.PurePosixPath(pathlib.Path(src).as_posix()).relative_to(package)
+        for src, path in files:
             data = pathlib.Path(src).read_bytes()
-            info = tarfile.TarInfo(str(rel))
+            info = tarfile.TarInfo(path)
             info.size = len(data)
             info.mode = 0o644
             tar.addfile(info, io.BytesIO(data))
@@ -47,9 +47,10 @@ def stage_sources(package, srcs):
 
 
 def main(argv):
-    if len(argv) < 5:
+    if len(argv) < 5 or len(argv) % 2 == 0:
         sys.exit(__doc__)
-    image, name, out_dir, package, *srcs = argv
+    image, name, out_dir, *pairs = argv
+    files = list(zip(pairs[0::2], pairs[1::2]))
 
     # Docker reads its configuration (including Colima's context) from HOME,
     # which Bazel doesn't pass to actions.
@@ -72,7 +73,7 @@ def main(argv):
     ])
     result = subprocess.run(
         [docker, "run", "-i", "--rm", image, "sh", "-c", script],
-        input=stage_sources(package, srcs),
+        input=stage_sources(files),
         stdout=subprocess.PIPE,
         env=env,
     )

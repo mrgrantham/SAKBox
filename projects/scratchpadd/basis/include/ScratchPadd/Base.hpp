@@ -166,7 +166,7 @@ protected:
   virtual void repeat() {
     logger().info("Base::repeat() called. Padd set a repeat interval of {}ms with "
                   "no method override",
-                  repeatInterval_ ? repeatInterval_->count() : 0);
+                  repeatIntervalMilliseconds());
   }
 
   // --- Messages ---
@@ -248,6 +248,14 @@ protected:
   // Sends `contents` to the one padd `to` names.
   template <typename T> bool sendTo(PaddAddress to, T contents) {
     return sendTo(to, makeMessage(std::move(contents)));
+  }
+
+  // Answers `to` (usually a handler's `from`) with `contents`, if `to` is a
+  // padd that handles T. Unlike sendTo(), a padd that doesn't listen for the
+  // answer isn't an error: whether to hear it is up to the asker. Returns
+  // whether it was sent.
+  template <typename T> bool reply(PaddAddress to, T contents) {
+    return to && to.padd_->enqueue(makeMessage(std::move(contents)), address());
   }
 
   // Sends `contents` to the padd of class Padd (each class appears once in a
@@ -430,6 +438,11 @@ private:
   std::condition_variable scratchPaddConditionVariable_;
   std::unordered_map<std::string, ControlTypeVariant> controlMap_;
   std::optional<std::chrono::duration<double>> repeatInterval_{std::nullopt};
+  // The repeat interval in milliseconds, for logs (0 if none)
+  double repeatIntervalMilliseconds() const {
+    return repeatInterval_ ? std::chrono::duration<double, std::milli>(*repeatInterval_).count()
+                           : 0.0;
+  }
   std::string name_{"Unnamed Padd"};
   bool shouldUseMainThread_{false};
   std::mutex scratchPaddMutex_;
@@ -563,7 +576,7 @@ private:
   // and processed immediately.
   void startRepeater() {
     if (repeatInterval_) {
-      logger().info("repeat() interval set to {}ms for {}", repeatInterval_.value().count(), name_);
+      logger().info("repeat() interval set to {}ms for {}", repeatIntervalMilliseconds(), name_);
       repeatingTimer_.startRepeatingEvent([this] { push([this] { repeat(); }); },
                                           repeatInterval_.value());
     } else {

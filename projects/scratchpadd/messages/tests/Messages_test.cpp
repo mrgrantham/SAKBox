@@ -527,6 +527,45 @@ TEST(SenderTest, HandlersCanReplyToTheSender) {
   EXPECT_EQ(asker.pongSenders(), std::vector<std::string>{"Replier"});
 }
 
+namespace {
+// Answers each Ping with reply(), keeping whether each answer was sent
+class PoliteReplierPadd : public ScratchPadd::Base {
+public:
+  PoliteReplierPadd(ScratchPadd::System *system) : Base(system) {
+    receive<Ping>([this](const Ping &ping, ScratchPadd::PaddAddress from) {
+      std::lock_guard<std::mutex> lk(mutex_);
+      sent_.push_back(reply(from, Pong{ping.id}));
+    });
+  }
+  std::string name() override { return "PoliteReplier"; }
+  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+  std::vector<bool> sent() {
+    std::lock_guard<std::mutex> lk(mutex_);
+    return sent_;
+  }
+
+private:
+  std::mutex mutex_;
+  std::vector<bool> sent_;
+};
+} // namespace
+
+// reply() answers a sender that listens for the answer, and quietly sends
+// nothing to one that doesn't (an asker that doesn't handle Pong) or to no
+// padd at all
+TEST(SenderTest, ReplyOnlyReachesSendersThatListen) {
+  RunningSystem<AskerPadd, PoliteReplierPadd, Sender> running;
+  sendAs(running.padd<AskerPadd>(), Ping{1});
+  ASSERT_TRUE(running.settles());
+  Access::sendTo(running.padd<Sender>(),
+                 Access::addressOf<PoliteReplierPadd>(running.padd<Sender>()), Ping{2});
+  ASSERT_TRUE(running.settles());
+  running.system.sendIncludeSender(nullptr, ScratchPadd::makeMessage(Ping{3}));
+  ASSERT_TRUE(running.settles());
+  EXPECT_EQ(running.padd<AskerPadd>().pongs(), std::vector<int>{1});
+  EXPECT_EQ(running.padd<PoliteReplierPadd>().sent(), (std::vector<bool>{true, false, false}));
+}
+
 // A message from outside any padd (the system's own sendIncludeSender with
 // no sender) arrives with an empty sender.
 TEST(SenderTest, MessagesFromOutsideHaveNoSender) {
@@ -545,6 +584,8 @@ namespace {
 template <typename P> constexpr bool canSend = requires(P &p) { p.send(Ping{}); };
 template <typename P>
 constexpr bool canSendTo = requires(P &p) { p.sendTo(ScratchPadd::PaddAddress(), Ping{}); };
+template <typename P>
+constexpr bool canReply = requires(P &p) { p.reply(ScratchPadd::PaddAddress(), Ping{}); };
 template <typename P> constexpr bool canPush = requires(P &p) { p.push([] {}); };
 template <typename P>
 constexpr bool canDeliver =
@@ -565,7 +606,8 @@ template <typename A> constexpr bool canOpenAddress = requires(A &a) { a.padd_; 
 TEST(EnforcementTest, OutsideCodeCantReachIntoAPadd) {
   using Padd = RecordingPadd<1>;
   static_assert(canReadName<Padd>, "public state can be read (so the checks below can pass)");
-  static_assert(!canSend<Padd> && !canSendTo<Padd>, "only a padd sends its own messages");
+  static_assert(!canSend<Padd> && !canSendTo<Padd> && !canReply<Padd>,
+                "only a padd sends its own messages");
   static_assert(!canPush<Padd>, "only a padd queues its own work");
   static_assert(!canDeliver<Padd> && !canStop<Padd>, "only the system runs a padd");
   static_assert(!canSetControl<Padd> && !canReadControl<Padd>, "a padd's controls are its own");
