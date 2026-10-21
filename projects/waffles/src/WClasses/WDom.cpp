@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <ctype.h>
+#include <charconv>
+#include <string_view>
 #include "WDom.h"
 #include "WFile.h"
 #include "WHolders.h"
@@ -344,6 +346,22 @@ void WDomNode::del(size_t index)
 	m_value.m_pArrayList->m_size--;
 }
 
+// SAKBox: writes a double as the shortest text that reads back as exactly
+// the same value (std::to_chars), keeping a decimal point on whole numbers
+// so they load as doubles again rather than integers. The JSON writers used
+// std::fixed's 6 decimal places (and the XML writers 6 significant digits),
+// so a saved model lost precision and values under 0.0000005 became 0.
+// Documents hold only finite doubles (WDom::newDouble refuses others).
+static void writeDouble(std::ostream& stream, double d)
+{
+	char buf[32];
+	const std::to_chars_result result = std::to_chars(buf, buf + sizeof(buf), d);
+	const std::string_view text(buf, result.ptr - buf);
+	stream << text;
+	if(text.find_first_of(".e") == std::string_view::npos)
+		stream << ".0";
+}
+
 void writeJSONString(std::ostream& stream, const char* szString)
 {
 	stream << '"';
@@ -424,8 +442,6 @@ void WDomNode::saveJson(const char* filename) const
 
 void WDomNode::writeJson(std::ostream& stream) const
 {
-	std::ios_base::fmtflags oldflags = stream.flags();
-	stream << std::fixed;
 	switch(m_type)
 	{
 		case type_obj:
@@ -463,7 +479,7 @@ void WDomNode::writeJson(std::ostream& stream) const
 			stream << m_value.m_int;
 			break;
 		case type_double:
-			stream << m_value.m_double;
+			writeDouble(stream, m_value.m_double);
 			break;
 		case type_string:
 			writeJSONString(stream, m_value.m_string);
@@ -474,7 +490,6 @@ void WDomNode::writeJson(std::ostream& stream) const
 		default:
 			throw Ex("Unrecognized node type");
 	}
-	stream.flags(oldflags);
 }
 
 void newLineAndIndent(std::ostream& stream, size_t indents)
@@ -486,8 +501,6 @@ void newLineAndIndent(std::ostream& stream, size_t indents)
 
 void WDomNode::writeJsonPretty(std::ostream& stream, size_t indents) const
 {
-	std::ios_base::fmtflags oldflags = stream.flags();
-	stream << std::fixed;
 	switch(m_type)
 	{
 		case type_obj:
@@ -568,7 +581,7 @@ void WDomNode::writeJsonPretty(std::ostream& stream, size_t indents) const
 			stream << m_value.m_int;
 			break;
 		case type_double:
-			stream << m_value.m_double;
+			writeDouble(stream, m_value.m_double);
 			break;
 		case type_string:
 			writeJSONString(stream, m_value.m_string);
@@ -579,13 +592,10 @@ void WDomNode::writeJsonPretty(std::ostream& stream, size_t indents) const
 		default:
 			throw Ex("Unrecognized node type");
 	}
-	stream.flags(oldflags);
 }
 
 size_t WDomNode::writeJsonCpp(std::ostream& stream, size_t col) const
 {
-	std::ios_base::fmtflags oldflags = stream.flags();
-	stream << std::fixed;
 	switch(m_type)
 	{
 		case type_obj:
@@ -645,7 +655,7 @@ size_t WDomNode::writeJsonCpp(std::ostream& stream, size_t col) const
 			col += 4; // just a guess
 			break;
 		case type_double:
-			stream << m_value.m_double;
+			writeDouble(stream, m_value.m_double);
 			col += 8; // just a guess
 			break;
 		case type_string:
@@ -663,7 +673,6 @@ size_t WDomNode::writeJsonCpp(std::ostream& stream, size_t col) const
 		stream << "\"\n\"";
 		col = 0;
 	}
-	stream.flags(oldflags);
 	return col;
 }
 
@@ -686,7 +695,7 @@ void WDomNode::writeXmlInlineValue(std::ostream& stream)
 			stream << m_value.m_int;
 			break;
 		case type_double:
-			stream << m_value.m_double;
+			writeDouble(stream, m_value.m_double);
 			break;
 		case type_bool:
 			stream << (m_value.m_bool ? "true" : "false");
@@ -758,7 +767,7 @@ void WDomNode::writeXml(std::ostream& stream, const char* szLabel) const
 			break;
 		case type_double:
 			stream << "<" << szLabel << ">";
-			stream << m_value.m_double;
+			writeDouble(stream, m_value.m_double);
 			stream << "</" << szLabel << ">";
 			break;
 		case type_string:

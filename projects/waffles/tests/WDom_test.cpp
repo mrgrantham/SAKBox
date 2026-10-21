@@ -11,6 +11,7 @@
 #include <WClasses/WRecommender.h>
 #include <WClasses/WTransform.h>
 
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -20,6 +21,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace WClasses;
@@ -106,29 +108,90 @@ TEST(JsonNumberTest, ExponentsAndInvalidNumbers) {
   }
 }
 
+// Numbers saved as JSON text read back exactly. They used to be written
+// with 6 decimal places, so 0.1234567891 came back as 0.123457 and 1e-9
+// as 0.
+namespace {
+const std::vector<double> awkward = {0.1,     1.0 / 3, 1e-9, 1e300, -0.0, 123456.789,
+                                     -2.5e-7, 5e-324,  1.0,  -42.0, 2e20, 0.0};
+
+// `value` written by `write` into a document's text, parsed back into `doc`
+WDomNode *throughText(double value, WDom &doc, bool pretty) {
+  WDom saved;
+  saved.setRoot(saved.newObj());
+  saved.root()->add(&saved, "v", value);
+  std::ostringstream text;
+  if (pretty)
+    saved.writeJsonPretty(text);
+  else
+    saved.writeJson(text);
+  doc.parseJson(text.str().c_str(), text.str().size());
+  return doc.root()->get("v");
+}
+} // namespace
+
+TEST(JsonNumberTest, DoublesReadBackExactly) {
+  for (bool pretty : {false, true})
+    for (double value : awkward) {
+      WDom doc;
+      const WDomNode *node = throughText(value, doc, pretty);
+      EXPECT_EQ(node->type(), WDomNode::type_double) << value; // even whole numbers
+      EXPECT_EQ(node->asDouble(), value) << value << (pretty ? " (pretty)" : "");
+      EXPECT_EQ(std::signbit(node->asDouble()), std::signbit(value)) << value;
+    }
+}
+
+// The shortest text that reads back exactly, with a decimal point kept on
+// whole numbers
+TEST(JsonNumberTest, DoublesAreWrittenShort) {
+  const std::vector<std::pair<double, std::string>> cases = {
+      {0.1, "0.1"}, {1.0, "1.0"}, {-42.0, "-42.0"}, {1e-9, "1e-09"}, {2e20, "2e+20"}};
+  for (const auto &[value, text] : cases) {
+    WDom doc;
+    doc.setRoot(doc.newDouble(value));
+    std::ostringstream out;
+    doc.writeJson(out);
+    EXPECT_EQ(out.str(), text);
+  }
+}
+
+// A trained network saved as JSON text predicts exactly what it did
+TEST(JsonNumberTest, SavedNeuralNetPredictsTheSame) {
+  WRand rand(0);
+  WNeuralNet nn;
+  nn.add(new WBlockLinear(2, 3));
+  nn.add(new WBlockTanh(3));
+  nn.add(new WBlockLinear(3, 1));
+  nn.init(rand);
+  WDom saved;
+  std::ostringstream text;
+  nn.serialize(&saved)->writeJson(text);
+  WDom doc;
+  doc.parseJson(text.str().c_str(), text.str().size());
+  WNeuralNet loaded(doc.root(), rand);
+  const WVec input({0.5, -1.0});
+  WVec expected;
+  expected.copy(nn.forwardProp(input));
+  EXPECT_EQ(loaded.forwardProp(input)[0], expected[0]);
+}
+
 // Waffles' classes were renamed from G... to W..., and files saved before
 // then name them the old way ("class": "GDecisionTree"). Each loader still
 // loads them: these save an object, rewrite its class names as an old file
 // has them, and load that.
 namespace {
-// `node` saved as JSON text and parsed back into `doc`, with its class
-// names as a file saved before the rename has them if `oldNames`
-WDomNode *reloaded(const WDomNode *node, WDom &doc, bool oldNames = true) {
+// `node` as a file saved before the rename has it: saved as JSON text, its
+// class names rewritten the old way, and parsed back into `doc`
+WDomNode *savedWithOldNames(const WDomNode *node, WDom &doc) {
   std::ostringstream json;
   node->writeJson(json);
-  std::string text = json.str();
-  if (oldNames) {
-    text = std::regex_replace(text, std::regex(R"re("(class|type)":"W([A-Z0-9]))re"),
-                              R"re("$1":"G$2)re");
-    EXPECT_NE(text, json.str()) << "no class names were rewritten";
-    EXPECT_EQ(text.find(R"("class":"W)"), std::string::npos) << text;
-  }
-  doc.parseJson(text.c_str(), text.size());
+  const std::string old = std::regex_replace(
+      json.str(), std::regex(R"re("(class|type)":"W([A-Z0-9]))re"), R"re("$1":"G$2)re");
+  EXPECT_NE(old, json.str()) << "no class names were rewritten";
+  EXPECT_EQ(old.find(R"("class":"W)"), std::string::npos) << old;
+  doc.parseJson(old.c_str(), old.size());
   return doc.root();
 }
-
-// For the other tests
-WDomNode *savedWithOldNames(const WDomNode *node, WDom &doc) { return reloaded(node, doc); }
 } // namespace
 
 TEST(OldClassNameTest, IsReadAsTheNewName) {
@@ -142,9 +205,7 @@ TEST(OldClassNameTest, IsReadAsTheNewName) {
   EXPECT_EQ(doc.root()->getClassName("e"), "rbf");
 }
 
-// A random forest, which saves the class names of its trees too. Its
-// predictions are compared with the same file loaded under the new names,
-// since saving as JSON text keeps only six decimal places.
+// A random forest, which saves the class names of its trees too
 TEST(OldClassNameTest, LearnerLoads) {
   WMatrix features(0, 1), labels(0, 1);
   for (int i = 0; i < 20; i++) {
@@ -154,16 +215,15 @@ TEST(OldClassNameTest, LearnerLoads) {
   WRandomForest forest(3);
   forest.rand().setSeed(0);
   forest.train(features, labels);
-  WDom saved, asNew, asOld;
+  WDom saved, old;
   WLearnerLoader loader;
-  const WDomNode *node = forest.serialize(&saved);
-  std::unique_ptr<WSupervisedLearner> loadedNew(loader.loadLearner(reloaded(node, asNew, false)));
-  std::unique_ptr<WSupervisedLearner> loadedOld(loader.loadLearner(reloaded(node, asOld)));
-  ASSERT_NE(loadedOld, nullptr);
+  std::unique_ptr<WSupervisedLearner> loaded(
+      loader.loadLearner(savedWithOldNames(forest.serialize(&saved), old)));
+  ASSERT_NE(loaded, nullptr);
   WVec expected(1), got(1);
   for (double x : {2.0, 15.0}) {
-    loadedNew->predict(WVec({x}), expected);
-    loadedOld->predict(WVec({x}), got);
+    forest.predict(WVec({x}), expected);
+    loaded->predict(WVec({x}), got);
     EXPECT_EQ(got[0], expected[0]) << x;
   }
 }
@@ -231,22 +291,19 @@ TEST(OldClassNameTest, SparseSimilarityLoads) {
                    similarity.similarity(WVec({1.0, 0.0}), WVec({1.0, 1.0})));
 }
 
-// A neural network's blocks give their class as "type". Compared with the
-// same file loaded under the new names, as saving keeps six decimal places.
+// A neural network's blocks give their class as "type"
 TEST(OldClassNameTest, NeuralNetBlocksLoad) {
   WRand rand(0);
   WNeuralNet nn;
   nn.add(new WBlockLinear(2, 3));
   nn.add(new WBlockTanh(3));
   nn.init(rand);
-  WDom saved, asNew, asOld;
-  const WDomNode *node = nn.serialize(&saved);
-  WNeuralNet loadedNew(reloaded(node, asNew, false), rand);
-  WNeuralNet loadedOld(reloaded(node, asOld), rand);
+  WDom saved, old;
+  WNeuralNet loaded(savedWithOldNames(nn.serialize(&saved), old), rand);
   const WVec input({0.5, -1.0});
   WVec expected;
-  expected.copy(loadedNew.forwardProp(input));
-  const WVec &got = loadedOld.forwardProp(input);
+  expected.copy(nn.forwardProp(input));
+  const WVec &got = loaded.forwardProp(input);
   ASSERT_EQ(got.size(), expected.size());
   for (size_t i = 0; i < got.size(); i++)
     EXPECT_EQ(got[i], expected[i]) << i;
