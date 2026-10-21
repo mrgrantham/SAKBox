@@ -35,7 +35,7 @@
 //#	include <termios.h>
 //#	include <fcntl.h>
 #ifndef __linux__
-#ifndef __APPLE__
+#if !defined(__APPLE__) || defined(__x86_64__)
 #include <xmmintrin.h>
 #endif
 #ifndef __FreeBSD__
@@ -644,7 +644,19 @@ void GApp::enableFloatingPointExceptions()
 	_control87(cw, MCW_EM);
 #else
 #ifdef __APPLE__
-	//_MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~_MM_MASK_INVALID);
+	// SAKBox: macOS has no feenableexcept (a glibc extension), so this did
+	// nothing there. Apple silicon enables traps with bits in its FPCR
+	// register, which <fenv.h> exposes; Intel Macs unmask them in the SSE
+	// control register. On Apple silicon a trapped error stops the program
+	// with SIGILL rather than SIGFPE.
+#if defined(__arm64__)
+	fenv_t env;
+	fegetenv(&env);
+	env.__fpcr |= __fpcr_trap_invalid | __fpcr_trap_divbyzero | __fpcr_trap_overflow;
+	fesetenv(&env);
+#else
+	_MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~(_MM_MASK_INVALID | _MM_MASK_DIV_ZERO | _MM_MASK_OVERFLOW));
+#endif
 #else
 	feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW);
 #endif

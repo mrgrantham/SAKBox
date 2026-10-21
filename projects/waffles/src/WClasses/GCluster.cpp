@@ -682,8 +682,9 @@ void GFuzzyKMeans::init(const GMatrix* pData)
 			{
 				// SAKBox: compared value by value, not by squared distance
 				// being 0: the distance of an unknown value (-1e308) from a
-				// known one overflows, which is a floating-point exception
-				// where Waffles enables them (feenableexcept, on Linux)
+				// known one overflows, which stops the program where Waffles
+				// enables floating-point exceptions
+				// (GApp::enableFloatingPointExceptions)
 				const GVec& a = m_pCentroids->row(i);
 				const GVec& b = m_pCentroids->row(k);
 				if(std::equal(a.data(), a.data() + a.size(), b.data()))

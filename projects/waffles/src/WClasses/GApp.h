@@ -132,9 +132,13 @@ public:
 	static int systemExecute(const char* szCommand, bool wait, GPipe* pStdOut = nullptr, GPipe* pStdErr = nullptr, GPipe* pStdIn = nullptr);
 
 	/// If you're having trouble with bogus floating point values
-	/// (like NAN or INF), this method will cause an exception to
-	/// be thrown when overflow, divide-by-zero, or a NAN condition
-	/// occurs.
+	/// (like NAN or INF), this method makes overflow, divide-by-zero
+	/// and invalid operations (those giving NAN) stop the program
+	/// with a signal where they happen, instead of carrying on with
+	/// INF or NAN: SIGFPE on Linux and Intel Macs, SIGILL on Apple
+	/// silicon, a structured exception on Windows. SAKBox: it
+	/// raises a signal, not a C++ exception, so it can't be caught,
+	/// and it did nothing on macOS before.
 	static void enableFloatingPointExceptions();
 
 	/// Opens the specified URL in the default web browser. Returns true
