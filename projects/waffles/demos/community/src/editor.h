@@ -68,7 +68,7 @@ protected:
 	/// Returns the folder where user pages are stored
 	static std::string userFolder(Server* pServer, Account* pAccount);
 
-	/// Writes text into an HTML <pre> tag, escaping '&', '<', and '>' characters.
+	/// Writes text into an HTML \<pre\> tag, escaping '&', '<', and '>' characters.
 	static void writeHtmlPre(std::ostream& stream, char* file, size_t len);
 
 	/// Saves a file into its historical record

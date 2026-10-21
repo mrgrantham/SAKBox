@@ -18,12 +18,12 @@ namespace GClasses
 
 
 /**
- * read_jpeg_file Reads from a jpeg file on disk specified by filename and saves into the 
- * raw_image buffer in an uncompressed format.
- * 
- * \returns positive integer if successful, -1 otherwise
- * \param *filename char string specifying the file name to read from
+ * Reads the jpeg file named filename into pImage, uncompressed.
  *
+ * \param pImage the image to read into; it is resized to fit
+ * \param filename the name of the file to read from
+ *
+ * Throws Ex if the file can't be opened.
  */
 
 
@@ -110,13 +110,13 @@ void loadJpeg(GImage* pImage, const char* filename)
 
 
 /**
- * write_jpeg_file Writes the raw image data stored in the raw_image buffer
- * to a jpeg image with default compression and smoothing options in the file
- * specified by *filename.
+ * Writes pImage to the file named filename as a jpeg, with libjpeg's
+ * default compression and smoothing options.
  *
- * \returns positive integer if successful, -1 otherwise
- * \param *filename char string specifying the file name to save to
+ * \param pImage the image to write
+ * \param filename the name of the file to save to
  *
+ * Throws Ex if the file can't be opened.
  */
 
 // LEE IMPLEMENT THIS LATER

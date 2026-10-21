@@ -146,9 +146,9 @@ public:
 	///\param bSize the number of elements in set B (the second set in
 	///             the assignment)
 	///
-	///\param bForA bForA[i] gives the assignment for element i in set
-	///             A.  It is the index of the corresponding element of
-	///             set B or -1 if there is no corresponding element.
+	///\param bfA bfA[i] gives the assignment for element i in set
+	///           A.  It is the index of the corresponding element of
+	///           set B or -1 if there is no corresponding element.
 	///
 	///\see GSimpleAssignment(std::size_t, std::size_t)
 	///\see bForA(const std::vector<int>&)
@@ -196,9 +196,9 @@ public:
 	///the sets referred to by this assignment.  That is, -1 <= bForA[i]
 	///and bForA[i] < sizeB() and bForA.size() == sizeA()
 	///
-	///\param bForA bForA[i] gives the assignment for element i in set
-	///             A.  It is the index of the corresponding element of
-	///             set B or -1 if there is no corresponding element.
+	///\param bfA bfA[i] gives the assignment for element i in set
+	///           A.  It is the index of the corresponding element of
+	///           set B or -1 if there is no corresponding element.
 	virtual void setBForA(const std::vector<int>& bfA)
 	{
 		assert(bfA.size() == this->bForA.size());

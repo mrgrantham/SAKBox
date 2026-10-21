@@ -198,7 +198,7 @@ public:
 	}
 
 	/// Computes the plane equation (ax + by + cz + d = 0) of the
-	/// specified triangle. this = <a, b, c> and *pOutD = d.
+	/// specified triangle. this = (a, b, c) and *pOutD = d.
 	void planeEquation(const G3DVector& point1, const G3DVector& point2, const G3DVector& point3, G3DReal* pOutD)
 	{
 		triangleNormal(point1, point2, point3);

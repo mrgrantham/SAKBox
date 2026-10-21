@@ -383,10 +383,10 @@ void TestEqual(char* expected, char* got, const std::string& desc);
 ///
 ///\param got      The value actually produced by the code
 ///
-///\param test_descr A short test description to allow a human to
-///                  easily find the failing test in the code and
-///                  understand why it was written and have some help
-///                  in diagnosing the bug.
+///\param desc A short test description to allow a human to
+///            easily find the failing test in the code and
+///            understand why it was written and have some help
+///            in diagnosing the bug.
 void TestContains(const std::string& expectedSubstring, const std::string& got, const std::string& desc);
 
 } // namespace GClasses

@@ -147,8 +147,9 @@ public:
    * @param numContacts The number of contacts in the array to
    * resolve.
    *
-   * @param numIterations The number of iterations through the
-   * resolution algorithm. This should be at least the number of
+   * The number of iterations through the resolution algorithm is
+   * set with setIterations (SAKBox: it was once a parameter here,
+   * and the comment still named it). It should be at least the number of
    * contacts (otherwise some constraints will not be resolved -
    * although sometimes this is not noticable). If the
    * iterations are not needed they will not be used, so adding

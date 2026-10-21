@@ -37,7 +37,7 @@ public:
 
 protected:
 
-	/// Writes text into an HTML <pre> tag, escaping '&', '<', and '>' characters.
+	/// Writes text into an HTML \<pre\> tag, escaping '&', '<', and '>' characters.
 	static void writeHtmlPre(std::ostream& stream, char* file, size_t len);
 };
 

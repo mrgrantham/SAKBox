@@ -1338,8 +1338,8 @@ namespace
 		///												 double const*, const std::size_t, int const*,
 		///                        shouldMinimize);
 		///
-		///\param input the input matrix in row-major form.  If m is the
-		///             input matrix then m[i][j]=input[cols*i+j]
+		///\param inp the input matrix in row-major form.  If m is the
+		///           input matrix then m[i][j]=inp[cols*i+j]
 		///
 		///\param numSolutions the number of correct solutions to
 		///                           the linear assignment problem
@@ -1371,8 +1371,8 @@ namespace
 		///\param cols the number of columns in the input matrix (also the
 		///            size of set B for the final solution)
 		///
-		///\param input the input matrix in row-major form.  If m is the
-		///             input matrix then m[i][j]=input[cols*i+j]
+		///\param inp the input matrix in row-major form.  If m is the
+		///           input matrix then m[i][j]=inp[cols*i+j]
 		///
 		///\param numSolutions the number of correct solutions to
 		///                           the linear assignment problem
