@@ -7,6 +7,11 @@ build --per_file_copt='^projects/.*@-Werror'
 # Overriding functions must say `override` (see the README's Code
 # conventions).
 build --per_file_copt='^projects/.*@-Wsuggest-override'
+# A class with virtual functions must have a virtual destructor (or a
+# protected one), so deleting or destroying it through a base can't skip the
+# derived part. Clang only reported it on Linux, where GCC's standard library
+# destroys std::variant members a way that shows it.
+build --per_file_copt='^projects/.*@-Wnon-virtual-dtor'
 # External libraries' headers are included as system headers (-isystem), so
 # these checks apply to the repo's code and not to what it includes from them.
 build --features=external_include_paths

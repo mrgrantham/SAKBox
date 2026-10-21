@@ -427,6 +427,12 @@ protected:
 class ContactGenerator {
 public:
   /**
+   * SAKBox: a virtual destructor, so a contact generator deleted through this
+   * interface is destroyed in full.
+   */
+  virtual ~ContactGenerator() = default;
+
+  /**
    * Fills the given contact structure with the generated
    * contact. The contact pointer should point to the first
    * available contact in a contact array, where limit is the

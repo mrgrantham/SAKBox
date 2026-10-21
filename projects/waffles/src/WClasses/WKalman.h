@@ -40,7 +40,8 @@ protected:
 
 public:
 	WExtendedKalmanFilter(int stateDims, int obsDims, int controlDims);
-	~WExtendedKalmanFilter();
+	// SAKBox: virtual, as the class has virtual functions
+	virtual ~WExtendedKalmanFilter();
 
 	/// Use this to get and/or set the estimated state
 	WVec& state() { return m_x; }

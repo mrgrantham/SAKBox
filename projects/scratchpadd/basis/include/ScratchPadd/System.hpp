@@ -6,6 +6,8 @@ class Base;
 class System {
 public:
   System() {}
+  // Virtual, so a system deleted through this interface is destroyed in full
+  virtual ~System() = default;
   virtual void instantiate() = 0;
   virtual void start() = 0;
   virtual void stop() = 0;

@@ -1,0 +1,21 @@
+# Builds the repo with Clang 18, as a Linux user with Clang would (see
+# README.md). It uses GCC 14's standard library (libstdc++), as Clang on
+# Ubuntu does by default.
+FROM ubuntu:24.04
+
+# Clang, GCC 14's standard library, the packages the README's Linux notes
+# list for the windowing and OpenGL examples, Python for the repo's tools,
+# and git and curl for Bazel's downloads (several libraries come from git)
+RUN apt-get update -qq \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq clang-18 libstdc++-14-dev g++-14 \
+      libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
+      libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev python3 git curl ca-certificates >/dev/null \
+ && rm -rf /var/lib/apt/lists/*
+
+# Bazelisk, which runs the Bazel version pinned in .bazelversion
+RUN curl -fsSL -o /usr/local/bin/bazel \
+      https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-$(dpkg --print-architecture) \
+ && chmod +x /usr/local/bin/bazel
+
+# Bazel's toolchain uses the compiler CC names
+ENV CC=clang-18 CXX=clang++-18

@@ -12,12 +12,11 @@
 // advertised by each padd.
 
 namespace ScratchPadd {
-struct BaseControlType {
-  virtual void generateControlValueType() {};
-};
-
+// The control types are plain values, held in a ControlTypeVariant. (They
+// used to share a base class with one empty virtual function, which nothing
+// called; Clang warns when such a class is destroyed through the variant.)
 namespace ControlType {
-struct Double : public BaseControlType {
+struct Double {
   double value{0.0};
   std::optional<std::pair<double, double>> enforcableRange;
 
@@ -25,19 +24,19 @@ struct Double : public BaseControlType {
       : value(initialValue), enforcableRange(std::move(range)) {}
 };
 
-struct Integer : public BaseControlType {
+struct Integer {
   int32_t value;
   std::optional<std::pair<int32_t, int32_t>> enforcableRange;
   Integer(int32_t initialValue = 0, std::optional<std::pair<int32_t, int32_t>> range = std::nullopt)
       : value(initialValue), enforcableRange(std::move(range)) {}
 };
 
-struct Boolean : public BaseControlType {
+struct Boolean {
   bool value;
   Boolean(bool initialValue = false) : value(initialValue) {}
 };
 
-struct String : public BaseControlType {
+struct String {
   std::string value;
   std::optional<std::vector<std::string>> enforcableRange;
   std::optional<std::function<void(std::string)>> handler;

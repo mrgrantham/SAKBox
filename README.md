@@ -7,10 +7,11 @@ A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the 
 **Prerequisites**
 
 - [Bazelisk](https://github.com/bazelbuild/bazelisk) (recommended), which installs and runs the Bazel version pinned in `.bazelversion` (9.2.0). A plain Bazel 9 install also works.
-- A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`). The code under `projects/` also builds with `-pedantic-errors` (no compiler extensions), `-Werror` (no warnings) and `-Wsuggest-override` (overriding functions must say `override`); with Clang, also `-Wsuggest-destructor-override` (destructors too) and `-Wdocumentation` (doc comments must match the code). See [Code conventions](#code-conventions). GCC doesn't have the Clang-only checks and rejects them as unknown options, so `.bazelrc` keeps them in a `clang` config: macOS turns it on itself (it always builds with Clang), and on Linux you add `--config=clang` when building with Clang, for example `bazel build --config=clang //...`. These apply to the repo's own code only: external libraries' headers are included as system headers (`--features=external_include_paths`), so their warnings don't count against it.
+- A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`). The code under `projects/` also builds with `-pedantic-errors` (no compiler extensions), `-Werror` (no warnings), `-Wsuggest-override` (overriding functions must say `override`) and `-Wnon-virtual-dtor` (a class with virtual functions has a virtual destructor); with Clang, also `-Wsuggest-destructor-override` (destructors too) and `-Wdocumentation` (doc comments must match the code). See [Code conventions](#code-conventions). GCC doesn't have the Clang-only checks and rejects them as unknown options, so `.bazelrc` keeps them in a `clang` config: macOS turns it on itself (it always builds with Clang), and on Linux you add `--config=clang` when building with Clang, for example `bazel build --config=clang //...`. These apply to the repo's own code only: external libraries' headers are included as system headers (`--features=external_include_paths`), so their warnings don't count against it.
 - On Linux, the system packages listed under [Linux](#linux).
 - Optional, for static analysis and formatting: clang-tidy and clang-format (18 or later, for `.clang-format-ignore`), which Xcode doesn't include. On macOS, `brew install llvm clang-format` (Homebrew keeps LLVM off your `PATH`, so your compiler stays Xcode's); on Linux, your distribution's `clang-tidy` and `clang-format` packages. See [Static analysis](#static-analysis), which also covers the optional pre-commit hook that checks both on each commit (`git config core.hooksPath tools/git_hooks`).
 - For the 3DS example only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine (see [`tools/devkitpro`](tools/devkitpro/README.md)). Without Docker running, that one target fails with a message saying so.
+- Optional, to check a change on Linux from a Mac: Docker, which [`tools/linux_check`](tools/linux_check/README.md) uses to build and test the repo with GCC or Clang in a Linux container (see [Linux](#linux)).
 
 All other dependencies are declared in `MODULE.bazel` and downloaded by Bazel on the first build.
 
@@ -92,6 +93,8 @@ Never `virtual void draw() override;`: an override is already virtual, and the e
 
 The build enforces it for everything under `projects/`: `-Wsuggest-override` makes an unmarked override an error, and with Clang `-Wsuggest-destructor-override` does the same for destructors. clang-tidy's `modernize-use-override` also flags a redundant `virtual` (see [Static analysis](#static-analysis)).
 
+**A class with virtual functions has a virtual destructor** (or a protected one, if it's never deleted through the base), as the C++ Core Guidelines (C.35) recommend: otherwise deleting a derived object through a base pointer, or destroying it where only the base is known, skips the derived part. The build's `-Wnon-virtual-dtor` makes a missing one an error under `projects/`, at the class itself. Clang has another check, applied where such an object is destroyed rather than where the class is declared, which only fired on Linux, where GCC's standard library destroys `std::variant` members that way; this one reports it everywhere.
+
 **Doc comments must match the code they describe.** With Clang, the build's `-Wdocumentation` makes it an error (GCC has no such check), under `projects/`, for a Doxygen-style comment (`/** */` or `///`) to name a parameter the function doesn't have, to give a `@return` for a function returning `void`, or to contain broken HTML (write `\<pre\>` for a literal tag). It checks only the comments that exist: it doesn't require one on every function or every parameter, so a sentence saying what a function does and why is enough. When you rename or remove a parameter, update its `@param` too.
 
 **C++ files are formatted with clang-format** in the repo's style (`.clang-format`): LLVM style with 100-column lines, which is how most of the code was already written. Waffles keeps its own style (tabs, braces on their own lines), set in `projects/waffles/.clang-format`; clang-format uses the nearest `.clang-format` above a file, so SAKBox's Waffles tests, which have their own in `projects/waffles/tests/`, use the repo style. Third-party code kept as published (libpng's `pngtest.cpp`, libctru's `read-controls` example, and the libraries bundled inside Waffles) is listed in `.clang-format-ignore`, so clang-format leaves it alone. Where a layout matters more than the rule, such as a table aligned in columns by hand, put `// clang-format off` and `// clang-format on` around it, each alone on its line (clang-format doesn't recognise the marker with text after it), with the reason in a comment above. Format files with `python3 tools/clang_format/format.py`, which formats the files you've changed (see [Editor Setup](#editor-setup) for its options); the pre-commit hook checks it (see [Checking each commit](#checking-each-commit)).
@@ -146,23 +149,17 @@ Development and testing happen on **macOS** (Apple Silicon, Xcode).
 
 ### Linux
 
-Tested on 2026-10-20 with GCC 14.4 on Debian (ARM64), in the official `gcc:14` Docker image: everything builds and all the tests pass, except the 3DS example, which needs Docker (not available inside that container). Results that are exact on one platform can differ slightly on another; see [Floating-point results across platforms](#floating-point-results-across-platforms).
+Tested on 2026-10-21 with GCC 14 and with Clang 18 (`--config=clang`, on GCC 14's standard library, as Ubuntu sets it up), each on ARM64 in Docker: everything builds and all the tests pass, except the 3DS example, which needs Docker itself (not available inside the container). Results that are exact on one platform can differ slightly on another; see [Floating-point results across platforms](#floating-point-results-across-platforms).
 
-To repeat the check from macOS, with Docker running (`colima start`; give it 8 GB, `colima start --memory 8`, or Bazel runs out of memory):
+To repeat the check from macOS (or anywhere with Docker), use [`tools/linux_check`](tools/linux_check/README.md):
 
 ``` bash
-docker run --rm -v "$PWD":/repo:ro -v sakbox-gcc-cache:/root/.cache gcc:14 bash -c '
-  apt-get update -qq && apt-get install -y -qq libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
-    libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev python3 >/dev/null
-  curl -fsSL -o /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-$(dpkg --print-architecture)
-  chmod +x /usr/local/bin/bazel
-  mkdir /src && cd /repo && tar --exclude="./bazel-*" -cf - . | (cd /src && tar xf -) && cd /src
-  bazel test --keep_going //... -- -//projects/examples/read-controls/...'
+python3 tools/linux_check/check.py gcc     # or clang
 ```
 
-The checkout is mounted read-only and copied inside, so the Linux build can't touch your Bazel output links or lockfile; the `sakbox-gcc-cache` volume keeps Bazel's downloads and cache between runs.
+It builds and tests the repo inside a Linux container and prints Bazel's summary. Give Docker enough memory (Colima: `colima start --memory 8`) or Bazel runs out.
 
-Clang builds on Linux haven't been tried; add `--config=clang` for them (see the prerequisites in [Getting Started](#getting-started)). Bazelisk provides Bazel for x86-64 and ARM64 (including 64-bit Raspberry Pi OS). The windowing and OpenGL examples need the X11 and Mesa development packages:
+Building with Clang on Linux yourself, add `--config=clang` (`bazel build --config=clang //...`) for the Clang-only checks (see the prerequisites in [Getting Started](#getting-started)); with GCC, nothing extra is needed. Bazelisk provides Bazel for x86-64 and ARM64 (including 64-bit Raspberry Pi OS). The windowing and OpenGL examples need the X11 and Mesa development packages:
 
 ``` bash
 sudo apt install libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \

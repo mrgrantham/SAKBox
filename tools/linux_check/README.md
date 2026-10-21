@@ -1,0 +1,32 @@
+# Linux check
+
+Builds and tests the repo on Linux, in a Docker container, with GCC or Clang, so a change can be checked on Linux from a Mac. It's how the top-level README's [Linux](../../README.md#linux) notes were tested.
+
+| File | What it is |
+| --- | --- |
+| `check.py` | Builds the image, runs the build and tests in it, and prints Bazel's summary |
+| `Dockerfile.gcc` | GCC 14 (the official `gcc:14` image) |
+| `Dockerfile.clang` | Clang 18 on Ubuntu 24.04, with GCC 14's standard library (libstdc++), as Clang on Ubuntu uses by default |
+
+Both images add the X11 and Mesa packages the README's Linux notes list, Python, and [Bazelisk](https://github.com/bazelbuild/bazelisk) 1.25.0, which runs the Bazel version in `.bazelversion`.
+
+## Setup
+
+Docker, with enough memory for Bazel: on macOS, `brew install colima docker`, then `colima start --memory 8` (Colima's default of 2 GB isn't enough; Bazel's server is killed partway through). Colima keeps the setting for later starts.
+
+## Using it
+
+``` bash
+python3 tools/linux_check/check.py gcc                       # build and test everything with GCC
+python3 tools/linux_check/check.py clang                     # ... with Clang (adds --config=clang)
+python3 tools/linux_check/check.py gcc //projects/waffles/...  # just these targets
+python3 tools/linux_check/check.py gcc --log                 # the last run's full output
+```
+
+With no targets it builds and tests everything except the 3DS example (`//projects/examples/read-controls`), which needs Docker itself, and that isn't available inside the container. It prints Bazel's summary: whether the build completed, how many tests ran and passed, every test that didn't pass, Bazel's `ERROR:` lines and the compilers' errors. It exits with Bazel's exit code.
+
+- **Your checkout is safe.** It's mounted read-only and copied inside the container, so the Linux build can't change your Bazel output links (`bazel-bin` and so on) or the lockfile.
+- **Later runs are quick.** Each compiler keeps Bazel's downloads and cache in its own Docker volume (`sakbox-linux-gcc-cache`, `sakbox-linux-clang-cache`). The first run downloads everything and builds from scratch, which takes a while. `docker volume rm` on a volume starts that compiler afresh.
+- **The images** are built from the Dockerfiles on each run, which is instant once Docker has them cached. They're tagged `sakbox-linux-gcc` and `sakbox-linux-clang`.
+
+The containers run on whatever architecture Docker does: ARM64 on Apple silicon (tested), x86-64 on an Intel machine (not tried).

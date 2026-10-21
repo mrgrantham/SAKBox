@@ -31,6 +31,12 @@ namespace cyclone {
 class ParticleForceGenerator {
 public:
   /**
+   * SAKBox: a virtual destructor, so a force generator deleted through this
+   * interface is destroyed in full.
+   */
+  virtual ~ParticleForceGenerator() = default;
+
+  /**
    * Overload this in implementations of the interface to calculate
    * and update the force applied to the given particle.
    */
