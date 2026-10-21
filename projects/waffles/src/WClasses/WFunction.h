@@ -25,14 +25,14 @@
 #include <string>
 #include <map>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GFunctionNode;
-class GFunctionCall;
-class GFunctionBuiltIn;
-class GFunctionStub;
-class GFunctionParser;
+class WFunctionNode;
+class WFunctionCall;
+class WFunctionBuiltIn;
+class WFunctionStub;
+class WFunctionParser;
 
 struct strCmp
 {
@@ -40,36 +40,36 @@ struct strCmp
 };
 
 /// This class represents a math function. (It might be used, for example, in a plotting tool.)
-class GFunction
+class WFunction
 {
 public:
-	GFunctionNode* m_pRoot;
+	WFunctionNode* m_pRoot;
 	int m_expectedParams; // an "int" because negative values are used to indicate variable numbers of parameters, such as in a "max" function.
 
-	/// This constructor is used internally by GFunctionParser. Typically you
-	/// will call GFunctionParser::GetFunction to obtain a pointer to one of these.
-	GFunction(GFunctionNode* pRoot, int expectedParams);
-	~GFunction();
+	/// This constructor is used internally by WFunctionParser. Typically you
+	/// will call WFunctionParser::GetFunction to obtain a pointer to one of these.
+	WFunction(WFunctionNode* pRoot, int expectedParams);
+	~WFunction();
 
 	/// Calls the function and returns the results. (This does not check
 	/// that the right number of parameters are passed in, so be sure that
 	/// the number of parameters matches m_expectedParams before you call
 	/// this method.)
-	double call(std::vector<double>& params, GFunctionParser& parser);
+	double call(std::vector<double>& params, WFunctionParser& parser);
 };
 
 /// This class parses math equations. (This is useful, for example, for plotting tools.)
-class GFunctionParser
+class WFunctionParser
 {
 protected:
-	std::map<std::string, GFunction*> m_functions;
-	GFunctionBuiltIn* m_pNegate;
-	GFunctionBuiltIn* m_pPlus;
-	GFunctionBuiltIn* m_pMinus;
-	GFunctionBuiltIn* m_pTimes;
-	GFunctionBuiltIn* m_pDivide;
-	GFunctionBuiltIn* m_pModulus;
-	GFunctionBuiltIn* m_pExponent;
+	std::map<std::string, WFunction*> m_functions;
+	WFunctionBuiltIn* m_pNegate;
+	WFunctionBuiltIn* m_pPlus;
+	WFunctionBuiltIn* m_pMinus;
+	WFunctionBuiltIn* m_pTimes;
+	WFunctionBuiltIn* m_pDivide;
+	WFunctionBuiltIn* m_pModulus;
+	WFunctionBuiltIn* m_pExponent;
 
 public:
 	/// szEquations is a set of equations separated by semicolons. For example,
@@ -93,8 +93,8 @@ public:
 	/// Whitespace is ignored. If it can't parse something, it will throw an exception.
 	/// Linking is done lazily, so it won't complain about undefined identifiers
 	/// until you try to call the function.
-	GFunctionParser();
-	virtual ~GFunctionParser();
+	WFunctionParser();
+	virtual ~WFunctionParser();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -109,23 +109,23 @@ public:
 
 	/// Returns a pointer to the specified function. (Don't include any
 	/// parentheses in the function name.) Throws if it is not found.
-	GFunction* getFunction(const char* name);
+	WFunction* getFunction(const char* name);
 
 	/// Returns a pointer to the specified function. (Don't include any
 	/// parentheses in the function name.) Returns NULL if it is not found.
-	GFunction* getFunctionNoThrow(const char* name);
+	WFunction* getFunctionNoThrow(const char* name);
 
 protected:
-	GFunctionNode* parseMathOperator(std::vector<std::string>& variables, std::vector<std::string>& tokens, int start, int count, int index, int depth);
-	void parseCommaSeparatedChildren(std::vector<std::string>& variables, GFunctionCall* pFunc, std::vector<std::string>& tokens, int start, int count, int depth);
-	GFunctionNode* parseFunctionBody(std::vector<std::string>& variables, std::vector<std::string>& tokens, int start, int count, int depth);
-	GFunctionNode* parseFunction(std::vector<std::string>& tokens, int start, int count);
+	WFunctionNode* parseMathOperator(std::vector<std::string>& variables, std::vector<std::string>& tokens, int start, int count, int index, int depth);
+	void parseCommaSeparatedChildren(std::vector<std::string>& variables, WFunctionCall* pFunc, std::vector<std::string>& tokens, int start, int count, int depth);
+	WFunctionNode* parseFunctionBody(std::vector<std::string>& variables, std::vector<std::string>& tokens, int start, int count, int depth);
+	WFunctionNode* parseFunction(std::vector<std::string>& tokens, int start, int count);
 	void parseVariableNames(std::vector<std::string>& variables, std::vector<std::string>& tokens, int start, int count);
 	void parseFunctionList(std::vector<std::string>& tokens);
 	int findOperatorWithLowestPrecidence(std::vector<std::string>& tokens, int start, int count);
-	void addFunction(const char* name, GFunctionNode* pRoot, int expectedParams);
+	void addFunction(const char* name, WFunctionNode* pRoot, int expectedParams);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GFUNCTION_H__

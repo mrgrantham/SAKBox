@@ -21,15 +21,15 @@
 #ifndef __GDISTANCE_H__
 #define __GDISTANCE_H__
 
-#include "GMatrix.h"
+#include "WMatrix.h"
 #include <map>
 #include <vector>
-#include "GKernelTrick.h"
+#include "WKernelTrick.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GKernel;
+class WKernel;
 
 
 /// This class enables you to define a distance (or dissimilarity) metric between two vectors.
@@ -38,17 +38,17 @@ class GKernel;
 /// this concept may simply ignore any scale factors.
 /// Typically, classes that use this should be able to assume that the triangle
 /// inequality will hold, but do not necessarily enforce the parallelogram law.
-class GDistanceMetric
+class WDistanceMetric
 {
 protected:
-	const GRelation* m_pRelation;
+	const WRelation* m_pRelation;
 	bool m_ownRelation;
-	GVec m_scaleFactors;
+	WVec m_scaleFactors;
 
 public:
-	GDistanceMetric() : m_pRelation(nullptr), m_ownRelation(false) {}
-	GDistanceMetric(GDomNode* pNode);
-	virtual ~GDistanceMetric();
+	WDistanceMetric() : m_pRelation(nullptr), m_ownRelation(false) {}
+	WDistanceMetric(WDomNode* pNode);
+	virtual ~WDistanceMetric();
 
 	static void test();
 
@@ -56,37 +56,37 @@ public:
 	virtual const char* name() const = 0;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const = 0;
+	virtual WDomNode* serialize(WDom* pDoc) const = 0;
 
 	/// This must be called before squaredDistance can be called. Takes ownership of pRelation iff own is true.
-	virtual void init(const GRelation* pRelation, bool own) = 0;
+	virtual void init(const WRelation* pRelation, bool own) = 0;
 
 	/// Computes the squared distance (or squared dissimilarity) between the two specified vectors
-	virtual double squaredDistance(const GVec& a, const GVec& b) const = 0;
+	virtual double squaredDistance(const WVec& a, const WVec& b) const = 0;
 
 	/// Return squaredDistance(pA, pB).  Allows dissimilarity metrics to
 	/// be used as function objects.  Do not override.  Override
-	/// squaredDistance(pA,pB) instead.  See GDistanceMetric::squaredDistance(const GVec&, const GVec&)
-	inline double operator()(const GVec& a, const GVec& b) const
+	/// squaredDistance(pA,pB) instead.  See WDistanceMetric::squaredDistance(const WVec&, const WVec&)
+	inline double operator()(const WVec& a, const WVec& b) const
 	{
 		return squaredDistance(a, b);
 	}
 
 	/// Returns the relation that specifies the meaning of the vector elements
-	const GRelation* relation() const { return m_pRelation; }
+	const WRelation* relation() const { return m_pRelation; }
 
 	/// Deserializes a distance metric
-	static GDistanceMetric* deserialize(GDomNode* pNode);
+	static WDistanceMetric* deserialize(WDomNode* pNode);
 
 	/// Returns a reference to the vector of attribute scalars.
-	virtual GVec& scaleFactors() { return m_scaleFactors; }
+	virtual WVec& scaleFactors() { return m_scaleFactors; }
 
 protected:
-	GDomNode* baseDomNode(GDom* pDoc) const;
+	WDomNode* baseDomNode(WDom* pDoc) const;
 
 	/// Sets the relation to use with this metric. Takes ownership
 	/// of the relation iff own is true.
-	void setRelation(const GRelation* pRelation, bool own);
+	void setRelation(const WRelation* pRelation, bool own);
 };
 
 
@@ -96,27 +96,27 @@ protected:
 /// particular, for each attribute, it calculates pA[i]-pB[i], squares
 /// it and takes the square root of that sum.  For nominal attributes
 /// pA[i]-pB[i] is 0 if they are the same and 1 if they are different.
-class GRowDistance : public GDistanceMetric
+class WRowDistance : public WDistanceMetric
 {
 protected:
 	double m_diffWithUnknown;
 
 public:
-	GRowDistance();
-	GRowDistance(GDomNode* pNode);
-	~GRowDistance() override {}
+	WRowDistance();
+	WRowDistance(WDomNode* pNode);
+	~WRowDistance() override {}
 
 	/// Returns the name of this class
-	const char* name() const override { return "GRowDistance"; }
+	const char* name() const override { return "WRowDistance"; }
 
-	/// See the comment for GDistanceMetric::serialize
-	GDomNode* serialize(GDom* pDoc) const override;
+	/// See the comment for WDistanceMetric::serialize
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GDistanceMetric::init.
-	void init(const GRelation* pRelation, bool own) override;
+	/// See the comment for WDistanceMetric::init.
+	void init(const WRelation* pRelation, bool own) override;
 
 	/// Returns the distance between a and b
-	double squaredDistance(const GVec& a, const GVec& b) const override;
+	double squaredDistance(const WVec& a, const WVec& b) const override;
 
 	/// Specify the difference to use when one or more of the values is unknown.
 	/// (If your data contains unknown values, you may want to normalize the
@@ -131,28 +131,28 @@ public:
 /// Interpolates between manhattan distance (norm=1), Euclidean
 /// distance (norm=2), and Chebyshev distance (norm=infinity). For
 /// nominal attributes, Hamming distance is used.
-class GLNormDistance : public GDistanceMetric
+class WLNormDistance : public WDistanceMetric
 {
 protected:
 	double m_norm;
 	double m_diffWithUnknown;
 
 public:
-	GLNormDistance(double norm);
-	GLNormDistance(GDomNode* pNode);
-	~GLNormDistance() override {}
+	WLNormDistance(double norm);
+	WLNormDistance(WDomNode* pNode);
+	~WLNormDistance() override {}
 
 	/// Returns the name of this class
-	const char* name() const override { return "GLNormDistance"; }
+	const char* name() const override { return "WLNormDistance"; }
 
-	/// See the comment for GDistanceMetric::serialize
-	GDomNode* serialize(GDom* pDoc) const override;
+	/// See the comment for WDistanceMetric::serialize
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GDistanceMetric::init.
-	void init(const GRelation* pRelation, bool own) override;
+	/// See the comment for WDistanceMetric::init.
+	void init(const WRelation* pRelation, bool own) override;
 
 	/// Returns the distance (using the norm passed to the constructor) between pA and pB
-	double squaredDistance(const GVec& a, const GVec& b) const override;
+	double squaredDistance(const WVec& a, const WVec& b) const override;
 
 	/// Specify the difference to use when one or more of the values is unknown.
 	/// (If your data contains unknown values, you may want to normalize the
@@ -165,160 +165,160 @@ public:
 
 
 /// Returns 1 minus the cosine of the angle between the two vectors with the origin.
-class GDenseCosineDistance : public GDistanceMetric
+class WDenseCosineDistance : public WDistanceMetric
 {
 public:
-	GDenseCosineDistance();
-	GDenseCosineDistance(GDomNode* pNode);
-	~GDenseCosineDistance() override {}
+	WDenseCosineDistance();
+	WDenseCosineDistance(WDomNode* pNode);
+	~WDenseCosineDistance() override {}
 
 	/// Returns the name of this class
-	const char* name() const override { return "GDenseCosineDistance"; }
+	const char* name() const override { return "WDenseCosineDistance"; }
 
-	/// See the comment for GDistanceMetric::serialize
-	GDomNode* serialize(GDom* pDoc) const override;
+	/// See the comment for WDistanceMetric::serialize
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GDistanceMetric::init.
-	void init(const GRelation* pRelation, bool own) override;
+	/// See the comment for WDistanceMetric::init.
+	void init(const WRelation* pRelation, bool own) override;
 
 	/// Returns the distance (using the norm passed to the constructor) between pA and pB
-	double squaredDistance(const GVec& a, const GVec& b) const override;
+	double squaredDistance(const WVec& a, const WVec& b) const override;
 };
 
 
 
 
 /// Returns 1 minus the cosine of the angle between the two vectors with the origin.
-class GKernelDistance : public GDistanceMetric
+class WKernelDistance : public WDistanceMetric
 {
 protected:
-	GKernel* m_pKernel;
+	WKernel* m_pKernel;
 	bool m_ownKernel;
 
 public:
-	GKernelDistance(GKernel* pKernel, bool own);
-	GKernelDistance(GDomNode* pNode);
-	~GKernelDistance() override;
+	WKernelDistance(WKernel* pKernel, bool own);
+	WKernelDistance(WDomNode* pNode);
+	~WKernelDistance() override;
 
 	/// Returns the name of this class
-	const char* name() const override { return "GKernelDistance"; }
+	const char* name() const override { return "WKernelDistance"; }
 
-	/// See the comment for GDistanceMetric::serialize
-	GDomNode* serialize(GDom* pDoc) const override;
+	/// See the comment for WDistanceMetric::serialize
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GDistanceMetric::init.
-	void init(const GRelation* pRelation, bool own) override;
+	/// See the comment for WDistanceMetric::init.
+	void init(const WRelation* pRelation, bool own) override;
 
 	/// Returns the distance (using the norm passed to the constructor) between pA and pB
-	double squaredDistance(const GVec& a, const GVec& b) const override;
+	double squaredDistance(const WVec& a, const WVec& b) const override;
 };
 
 
 
 
 /// The base class for similarity metrics that operate on sparse vectors.
-class GSparseSimilarity
+class WSparseSimilarity
 {
 protected:
 	double m_regularizer;
 
 public:
-	GSparseSimilarity() : m_regularizer(0.0) {}
-	virtual ~GSparseSimilarity() {}
+	WSparseSimilarity() : m_regularizer(0.0) {}
+	virtual ~WSparseSimilarity() {}
 
 	/// Set a regularizing term to add to the denominator
 	void setRegularizer(double d) { m_regularizer = d; }
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const = 0;
+	virtual WDomNode* serialize(WDom* pDoc) const = 0;
 
 	/// Computes the similarity between two sparse vectors
 	virtual double similarity(const std::map<size_t, double>& a, const std::map<size_t, double>& b) = 0;
 
 	/// Computes the similarity between a sparse and a dense vector
-	virtual double similarity(const std::map<size_t, double>& a, const GVec& b) = 0;
+	virtual double similarity(const std::map<size_t, double>& a, const WVec& b) = 0;
 
 	/// Computes the similarity between two dense vectors
-	virtual double similarity(const GVec& a, const GVec& b) = 0;
+	virtual double similarity(const WVec& a, const WVec& b) = 0;
 
 	/// Load from a DOM.
-	static GSparseSimilarity* deserialize(GDomNode* pNode);
+	static WSparseSimilarity* deserialize(WDomNode* pNode);
 
 protected:
 	/// A helper method used internally
-	GDomNode* baseDomNode(GDom* pDoc, const char* szClassName) const;
+	WDomNode* baseDomNode(WDom* pDoc, const char* szClassName) const;
 };
 
 
 /// This is a similarity metric that computes the cosine of the angle bewtween two sparse vectors
-class GCosineSimilarity : public GSparseSimilarity
+class WCosineSimilarity : public WSparseSimilarity
 {
 public:
-	GCosineSimilarity() : GSparseSimilarity() {}
-	GCosineSimilarity(GDomNode* pNode) : GSparseSimilarity() {}
-	~GCosineSimilarity() override {}
+	WCosineSimilarity() : WSparseSimilarity() {}
+	WCosineSimilarity(WDomNode* pNode) : WSparseSimilarity() {}
+	~WCosineSimilarity() override {}
 
-	/// See the comment for GSparseSimilarity::serialize
-	GDomNode* serialize(GDom* pDoc) const override;
+	/// See the comment for WSparseSimilarity::serialize
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// Computes the similarity between two sparse vectors
 	double similarity(const std::map<size_t, double>& a, const std::map<size_t, double>& b) override;
 
 	/// Computes the similarity between a sparse and a dense vector
-	double similarity(const std::map<size_t, double>& a, const GVec& b) override;
+	double similarity(const std::map<size_t, double>& a, const WVec& b) override;
 
 	/// Computes the similarity between two dense vectors
-	double similarity(const GVec& a, const GVec& b) override;
+	double similarity(const WVec& a, const WVec& b) override;
 };
 
 
 /// This is a similarity metric that computes the Pearson correlation between two sparse vectors
-class GPearsonCorrelation : public GSparseSimilarity
+class WPearsonCorrelation : public WSparseSimilarity
 {
 public:
-	GPearsonCorrelation() : GSparseSimilarity() {}
-	GPearsonCorrelation(GDomNode* pNode) : GSparseSimilarity() {}
-	~GPearsonCorrelation() override {}
+	WPearsonCorrelation() : WSparseSimilarity() {}
+	WPearsonCorrelation(WDomNode* pNode) : WSparseSimilarity() {}
+	~WPearsonCorrelation() override {}
 
-	/// See the comment for GSparseSimilarity::serialize
-	GDomNode* serialize(GDom* pDoc) const override;
+	/// See the comment for WSparseSimilarity::serialize
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// Computes the similarity between two sparse vectors
 	double similarity(const std::map<size_t, double>& a, const std::map<size_t, double>& b) override;
 
 	/// Computes the similarity between a sparse and a dense vector
-	double similarity(const std::map<size_t, double>& a, const GVec& b) override;
+	double similarity(const std::map<size_t, double>& a, const WVec& b) override;
 
 	/// Computes the similarity between two dense vectors
-	double similarity(const GVec& a, const GVec& b) override;
+	double similarity(const WVec& a, const WVec& b) override;
 };
 
 
 /// This computes the reciprocal of Euclidean distance, where all missing values are simply ignored.
-class GEuclidSimilarity : public GSparseSimilarity
+class WEuclidSimilarity : public WSparseSimilarity
 {
 protected:
 	double m_squaredMissingPenalty;
 
 public:
-	GEuclidSimilarity() : GSparseSimilarity() {}
-	GEuclidSimilarity(GDomNode* pNode) : GSparseSimilarity() {}
-	~GEuclidSimilarity() override {}
+	WEuclidSimilarity() : WSparseSimilarity() {}
+	WEuclidSimilarity(WDomNode* pNode) : WSparseSimilarity() {}
+	~WEuclidSimilarity() override {}
 
-	/// See the comment for GSparseSimilarity::serialize
-	GDomNode* serialize(GDom* pDoc) const override;
+	/// See the comment for WSparseSimilarity::serialize
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// Computes the similarity between two sparse vectors
 	double similarity(const std::map<size_t, double>& a, const std::map<size_t, double>& b) override;
 
 	/// Computes the similarity between a sparse and a dense vector
-	double similarity(const std::map<size_t, double>& a, const GVec& b) override;
+	double similarity(const std::map<size_t, double>& a, const WVec& b) override;
 
 	/// Computes the similarity between two dense vectors
-	double similarity(const GVec& a, const GVec& b) override;
+	double similarity(const WVec& a, const WVec& b) override;
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GDISTANCE_H__

@@ -19,22 +19,22 @@
 #ifndef __GKNN_H__
 #define __GKNN_H__
 
-#include "GLearner.h"
+#include "WLearner.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GNeighborFinderGeneralizing;
-class GRand;
-class GKnnScaleFactorCritic;
-class GOptimizer;
-class GRowDistanceScaled;
-class GSparseSimilarity;
-class GBitTable;
+class WNeighborFinderGeneralizing;
+class WRand;
+class WKnnScaleFactorCritic;
+class WOptimizer;
+class WRowDistanceScaled;
+class WSparseSimilarity;
+class WBitTable;
 
 
 /// The k-Nearest Neighbor learning algorithm
-class GKNN : public GIncrementalLearner
+class WKNN : public WIncrementalLearner
 {
 public:
 	enum InterpolationMethod
@@ -53,39 +53,39 @@ public:
 
 protected:
 	// Settings
-	GMatrix* m_pFeatures;
-	GSparseMatrix* m_pSparseFeatures;
-	GMatrix* m_pLabels;
+	WMatrix* m_pFeatures;
+	WSparseMatrix* m_pSparseFeatures;
+	WMatrix* m_pLabels;
 	size_t m_nNeighbors;
 	InterpolationMethod m_eInterpolationMethod;
 	TrainMethod m_eTrainMethod;
 	double m_trainParam;
-	GSupervisedLearner* m_pLearner;
+	WSupervisedLearner* m_pLearner;
 	bool m_bOwnLearner;
 
 	// Scale Factor Optimization
 	bool m_normalizeScaleFactors;
 	bool m_optimizeScaleFactors;
-	GDistanceMetric* m_pDistanceMetric;
-	GSparseSimilarity* m_pSparseMetric;
+	WDistanceMetric* m_pDistanceMetric;
+	WSparseSimilarity* m_pSparseMetric;
 	bool m_ownMetric;
-	GKnnScaleFactorCritic* m_pCritic;
-	GOptimizer* m_pScaleFactorOptimizer;
+	WKnnScaleFactorCritic* m_pCritic;
+	WOptimizer* m_pScaleFactorOptimizer;
 
 	// Working Buffers
-	GVec m_valueCounts;
+	WVec m_valueCounts;
 
 	// Neighbor Finding
-	GNeighborFinderGeneralizing* m_pNeighborFinder;
+	WNeighborFinderGeneralizing* m_pNeighborFinder;
 
 public:
 	/// General-purpose constructor
-	GKNN();
+	WKNN();
 
 	/// Load from a DOM.
-	GKNN(const GDomNode* pNode);
+	WKNN(const WDomNode* pNode);
 
-	~GKNN() override;
+	~WKNN() override;
 
 	/// Returns the number of neighbors
 	size_t neighborCount() { return m_nNeighbors; }
@@ -97,27 +97,27 @@ public:
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& in, GVec& out) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& in, WVec& out) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& in, WPrediction* pOut) override;
 
-	/// See the comment for GIncrementalLearner::trainSparse
-	void trainSparse(GSparseMatrix& features, GMatrix& labels) override;
+	/// See the comment for WIncrementalLearner::trainSparse
+	void trainSparse(WSparseMatrix& features, WMatrix& labels) override;
 
 	/// Discard any training (but not any settings) so it can be trained again
 	void clear() override;
 
 	/// Sets the distance metric to use for finding neighbors. If own is true, then
 	/// this object will delete pMetric when it is done with it.
-	void setMetric(GDistanceMetric* pMetric, bool own);
+	void setMetric(WDistanceMetric* pMetric, bool own);
 
 	/// Sets the sparse similarity metric to use for finding neighbors. If own is true, then
 	/// this object will delete pMetric when it is done with it.
-	void setMetric(GSparseSimilarity* pMetric, bool own);
+	void setMetric(WSparseSimilarity* pMetric, bool own);
 
 	/// Sets the technique for interpolation. (If you want to use the "Learner" method,
 	/// you should call SetInterpolationLearner instead of this method.)
@@ -125,13 +125,13 @@ public:
 
 	/// Sets the interpolation method to "Learner" and sets the learner to use. If
 	/// bTakeOwnership is true, it will delete the learner when this object is deleted.
-	void setInterpolationLearner(GSupervisedLearner* pLearner, bool bTakeOwnership);
+	void setInterpolationLearner(WSupervisedLearner* pLearner, bool bTakeOwnership);
 
 	/// Adds a copy of pVector to the internal set.
-	size_t addVector(const GVec& in, const GVec& out);
+	size_t addVector(const WVec& in, const WVec& out);
 
 	/// Returns the dissimilarity metric
-	GDistanceMetric* metric() { return m_pDistanceMetric; }
+	WDistanceMetric* metric() { return m_pDistanceMetric; }
 
 	/// Specify whether to normalize the scaling of each attribute. (The default is to normalize.)
 	void setNormalizeScaleFactors(bool b);
@@ -141,17 +141,17 @@ public:
 	void setOptimizeScaleFactors(bool b);
 
 	/// Returns the internal feature set
-	GMatrix* features() { return m_pFeatures; }
+	WMatrix* features() { return m_pFeatures; }
 
 	/// Returns the internal set of sparse features
-	GSparseMatrix* sparseFeatures() { return m_pSparseFeatures; }
+	WSparseMatrix* sparseFeatures() { return m_pSparseFeatures; }
 
 	/// Returns the internal label set
-	GMatrix* labels() { return m_pLabels; }
+	WMatrix* labels() { return m_pLabels; }
 
 	/// Uses cross-validation to find a set of parameters that works well with
 	/// the provided data.
-	void autoTune(GMatrix& features, GMatrix& labels);
+	void autoTune(WMatrix& features, WMatrix& labels);
 
 	/// Specify to train by drawing 'n' random patterns from the training set.
 	void drawRandom(size_t n)
@@ -161,11 +161,11 @@ public:
 	}
 
 protected:
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
-	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
+	/// See the comment for WIncrementalLearner::beginIncrementalLearningInner
+	void beginIncrementalLearningInner(const WRelation& featureRel, const WRelation& labelRel) override;
 
 	/// Adds a vector to the internal set. Also, if the (k+1)th nearest
 	/// neighbor of that vector is less than "elbow room" from it, then
@@ -176,36 +176,36 @@ protected:
 	/// Also, If you make this decision based on a closer neighbor, then big
 	/// holes may form in the model if points are sampled in a poor order.)
 	/// Call SetElbowRoom to specify the elbow room distance.
-	void trainIncremental(const GVec& in, const GVec& out) override;
+	void trainIncremental(const WVec& in, const WVec& out) override;
 
 	/// Finds the nearest neighbors of pVector. Returns the number of neighbors found.
-	size_t findNeighbors(const GVec& vector);
+	size_t findNeighbors(const WVec& vector);
 
 	/// Interpolate with each neighbor having equal vote
-	void interpolateMean(size_t nc, const GVec& in, GPrediction* pOut, GVec* pOut2);
+	void interpolateMean(size_t nc, const WVec& in, WPrediction* pOut, WVec* pOut2);
 
 	/// Interpolate with each neighbor having a linear vote. (Actually it's linear with
 	/// respect to the squared distance instead of the distance, because this is faster
 	/// to compute.)
-	void interpolateLinear(size_t nc, const GVec& in, GPrediction* pOut, GVec* pOut2);
+	void interpolateLinear(size_t nc, const WVec& in, WPrediction* pOut, WVec* pOut2);
 
 	/// Interpolates with the provided supervised learning algorithm
-	void interpolateLearner(size_t nc, const GVec& in, GPrediction* pOut, GVec* pOut2);
+	void interpolateLearner(size_t nc, const WVec& in, WPrediction* pOut, WVec* pOut2);
 
-	/// See the comment for GTransducer::canImplicitlyHandleMissingFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleMissingFeatures
 	bool canImplicitlyHandleMissingFeatures() override { return false; }
 };
 
 
 /// An instance-based transduction algorithm
-class GNeighborTransducer : public GTransducer
+class WNeighborTransducer : public WTransducer
 {
 protected:
 	size_t m_friendCount;
 
 public:
 	/// General-purpose constructor
-	GNeighborTransducer();
+	WNeighborTransducer();
 
 	/// Returns the number of neighbors.
 	size_t neighbors() { return m_friendCount; }
@@ -215,22 +215,22 @@ public:
 
 	/// Uses cross-validation to find a set of parameters that works well with
 	/// the provided data.
-	void autoTune(GMatrix& features, GMatrix& labels);
+	void autoTune(WMatrix& features, WMatrix& labels);
 
 protected:
-	/// See the comment for GTransducer::transduce
-	std::unique_ptr<GMatrix> transduceInner(const GMatrix& features1, const GMatrix& labels1, const GMatrix& features2) override;
+	/// See the comment for WTransducer::transduce
+	std::unique_ptr<WMatrix> transduceInner(const WMatrix& features1, const WMatrix& labels1, const WMatrix& features2) override;
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleNominalFeatures
 	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleContinuousLabels
+	/// See the comment for WTransducer::canImplicitlyHandleContinuousLabels
 	bool canImplicitlyHandleContinuousLabels() override { return false; }
 };
 
 
 /// This represents a grid of values. It might be useful as a Q-table with Q-learning.
-class GInstanceTable : public GIncrementalLearner
+class WInstanceTable : public WIncrementalLearner
 {
 protected:
 	size_t m_dims;
@@ -242,58 +242,58 @@ protected:
 public:
 	/// dims specifies the number of feature dimensions.
 	/// pDims specifies the number of discrete zero-based values for each feature dim.
-	GInstanceTable(size_t dims, size_t* pDims);
-	~GInstanceTable() override;
+	WInstanceTable(size_t dims, size_t* pDims);
+	~WInstanceTable() override;
 
 	/// Serialize this table
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalLearner::trainSparse
-	void trainSparse(GSparseMatrix& features, GMatrix& labels) override;
+	/// See the comment for WIncrementalLearner::trainSparse
+	void trainSparse(WSparseMatrix& features, WMatrix& labels) override;
 
 	/// Clears the internal model
 	void clear() override;
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& in, GVec& out) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& in, WVec& out) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& in, WPrediction* pOut) override;
 
 protected:
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleNominalFeatures
 	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
-	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
+	/// See the comment for WIncrementalLearner::beginIncrementalLearningInner
+	void beginIncrementalLearningInner(const WRelation& featureRel, const WRelation& labelRel) override;
 
-	/// See the comment for GIncrementalLearner::trainIncremental
-	void trainIncremental(const GVec& in, const GVec& out) override;
+	/// See the comment for WIncrementalLearner::trainIncremental
+	void trainIncremental(const WVec& in, const WVec& out) override;
 };
 
 
 /// An experimental instance-based learner that prunes attribute-values (or predicates) instead of entire instances.
 /// This may be viewed as a form of rule-learning that beings with instance-based learning and then prunes.
-class GSparseInstance : public GSupervisedLearner
+class WSparseInstance : public WSupervisedLearner
 {
 protected:
 	size_t m_neighborCount;
-	GSparseMatrix* m_pInstanceFeatures;
-	GMatrix* m_pInstanceLabels;
-	GSparseSimilarity* m_pMetric;
-	GBitTable* m_pSkipRows;
+	WSparseMatrix* m_pInstanceFeatures;
+	WMatrix* m_pInstanceLabels;
+	WSparseSimilarity* m_pMetric;
+	WBitTable* m_pSkipRows;
 
 public:
 	/// General-purpose constructor
-	GSparseInstance();
+	WSparseInstance();
 
 	/// Load from a DOM.
-	GSparseInstance(const GDomNode* pNode);
+	WSparseInstance(const WDomNode* pNode);
 
-	~GSparseInstance() override;
+	~WSparseInstance() override;
 
 	/// Returns the number of neighbors
 	size_t neighborCount() { return m_neighborCount; }
@@ -307,34 +307,34 @@ public:
 #endif
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// Discard any training (but not any settings) so it can be trained again
 	void clear() override;
 
 	/// Sets the distance metric. Takes ownership of pMetric.
-	void setMetric(GSparseSimilarity* pMetric);
+	void setMetric(WSparseSimilarity* pMetric);
 
 protected:
 	/// Throw out elements and/or entire instances one at-a-time until no improvements can be found
-	void prune(const GMatrix& holdOutFeatures, const GMatrix& holdOutLabels);
+	void prune(const WMatrix& holdOutFeatures, const WMatrix& holdOutLabels);
 
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& in, GVec& out) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& in, WVec& out) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& in, WPrediction* pOut) override;
 
-	/// See the comment for GSupervisedLearner::canImplicitlyHandleNominalFeatures
+	/// See the comment for WSupervisedLearner::canImplicitlyHandleNominalFeatures
 	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
-	/// See the comment for GSupervisedLearner::canImplicitlyHandleNominalLabels
+	/// See the comment for WSupervisedLearner::canImplicitlyHandleNominalLabels
 	bool canImplicitlyHandleNominalLabels() override { return false; }
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GKNN_H__

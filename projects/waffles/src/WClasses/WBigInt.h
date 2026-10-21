@@ -20,17 +20,17 @@
 #ifndef __GBIGINT_H__
 #define __GBIGINT_H__
 
-namespace GClasses
+namespace WClasses
 {
 
-class GKeyPair;
-class GDomNode;
-class GDom;
+class WKeyPair;
+class WDomNode;
+class WDom;
 
 /// Represents an integer of arbitrary size, and provides basic
 /// arithmetic functionality. Also contains functionality for
 /// implementing RSA symmetric-key cryptography.
-class GBigInt
+class WBigInt
 {
 protected:
 	enum
@@ -43,12 +43,12 @@ protected:
 	bool m_bSign;
 
 public:
-	GBigInt();
-	GBigInt(GDomNode* pNode);
-	virtual ~GBigInt();
+	WBigInt();
+	WBigInt(WDomNode* pNode);
+	virtual ~WBigInt();
 
 	/// Marshal this object into a DOM that can be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const;
+	WDomNode* serialize(WDom* pDoc) const;
 
 	/// Returns true if the number is positive and false if it is negative
 	bool getSign() { return m_bSign; }
@@ -86,10 +86,10 @@ public:
 	/// Returns -1 if this is less than pBigNumber
 	/// Returns 0 if this is equal to pBigNumber
 	/// Returns 1 if this is greater than pBigNumber
-	int compareTo(GBigInt* pBigNumber);
+	int compareTo(WBigInt* pBigNumber);
 
 	/// Copies the value of pBigNumber into this object
-	void copy(GBigInt* pBigNumber);
+	void copy(WBigInt* pBigNumber);
 
 	/// Produces a big endian hexadecimal representation of this number
 	bool toHex(char* szBuff, int nBufferSize);
@@ -119,19 +119,19 @@ public:
 	void decrement();
 
 	/// Add another big number to this one
-	void add(GBigInt* pBigNumber);
+	void add(WBigInt* pBigNumber);
 
 	/// Subtract another big number from this one
-	void subtract(GBigInt* pBigNumber);
+	void subtract(WBigInt* pBigNumber);
 
 	/// Set this value to the product of another big number and an unsigned integer
-	void multiply(GBigInt* pBigNumber, unsigned int nUInt);
+	void multiply(WBigInt* pBigNumber, unsigned int nUInt);
 
 	/// Set this value to the product of two big numbers
-	void multiply(GBigInt* pFirst, GBigInt* pSecond);
+	void multiply(WBigInt* pFirst, WBigInt* pSecond);
 
 	/// Set this value to the ratio of two big numbers and return the remainder
-	void divide(GBigInt* pInNominator, GBigInt* pInDenominator, GBigInt* pOutRemainder);
+	void divide(WBigInt* pInNominator, WBigInt* pInDenominator, WBigInt* pOutRemainder);
 
 	/// Shift left (multiply by 2)
 	void shiftLeft(unsigned int nBits);
@@ -140,28 +140,28 @@ public:
 	void shiftRight(unsigned int nBits);
 
 	/// bitwise or
-	void Or(GBigInt* pBigNumber);
+	void Or(WBigInt* pBigNumber);
 
 	/// bitwise and
-	void And(GBigInt* pBigNumber);
+	void And(WBigInt* pBigNumber);
 
 	/// bitwise xor
-	void Xor(GBigInt* pBigNumber);
+	void Xor(WBigInt* pBigNumber);
 
 	/// Input:  integers a, b
 	/// Output: this will be set to the greatest common divisor of a,b.
 	///         (If pOutX and pOutY are not NULL, they will be values such
 	///          that "this" = ax + by.)
-	void euclid(GBigInt* pA1, GBigInt* pB1, GBigInt* pOutX = nullptr, GBigInt* pOutY = nullptr);
+	void euclid(WBigInt* pA1, WBigInt* pB1, WBigInt* pOutX = nullptr, WBigInt* pOutY = nullptr);
 
 	/// Input:  a, k>=0, n>=2
 	/// Output: this will be set to ((a raised to the power of k) modulus n)
-	void powerMod(GBigInt* pA, GBigInt* pK, GBigInt* pN);
+	void powerMod(WBigInt* pA, WBigInt* pK, WBigInt* pN);
 
 	/// Input:  "this" must be >= 3, and 2 <= a < "this"
 	/// Output: "true" if this is either prime or a strong pseudoprime to base a,
 	///         "false" otherwise
-	bool millerRabin(GBigInt* pA);
+	bool millerRabin(WBigInt* pA);
 
 	/// Output: true = pretty darn sure (like 99.999%) it's prime
 	///         false = definately (100%) not prime
@@ -172,12 +172,12 @@ public:
 	/// Output: It will return a key that has no common factors with pProd.  It starts
 	///         with the random data you provide and increments it until it fits this
 	///         criteria.
-	void selectPublicKey(const unsigned int* pRandomData, int nRandomDataUInts, GBigInt* pProd);
+	void selectPublicKey(const unsigned int* pRandomData, int nRandomDataUInts, WBigInt* pProd);
 
 	/// Input:  pProd is the product of (p - 1) * (q - 1) where p and q are prime
 	///         pPublicKey is a number that has no common factors with pProd
 	/// Output: this will become a private key to go with the public key
-	void calculatePrivateKey(GBigInt* pPublicKey, GBigInt* pProd);
+	void calculatePrivateKey(WBigInt* pPublicKey, WBigInt* pProd);
 
 	/// DO NOT use for crypto--This is NOT a cryptographic random number generator
 	void setRandom(unsigned int nBits);
@@ -190,6 +190,6 @@ protected:
 	void shiftRightUInts(unsigned int nBits);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GBIGINT_H__

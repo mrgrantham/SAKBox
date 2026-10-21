@@ -1,13 +1,13 @@
 // Ex, Waffles' exception.
 #include <gtest/gtest.h>
 
-#include <WClasses/GError.h>
+#include <WClasses/WError.h>
 
-using namespace GClasses;
+using namespace WClasses;
 
 TEST(ExTest, MessageIsThePartsJoined) {
   EXPECT_STREQ(Ex("a", "b", "c").what(), "abc");
-  GExpectException expected; // the other branch of Ex::setMessage
+  WExpectException expected; // the other branch of Ex::setMessage
   EXPECT_STREQ(Ex("d", "e").what(), "de");
 }
 

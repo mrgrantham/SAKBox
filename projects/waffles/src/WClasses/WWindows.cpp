@@ -19,9 +19,9 @@
 
 #ifdef WINDOWS
 
-#include "GWindows.h"
-#include "GString.h"
-#include "GError.h"
+#include "WWindows.h"
+#include "WString.h"
+#include "WError.h"
 #include <windows.h>
 #include <direct.h>
 #include <stdio.h>
@@ -30,10 +30,10 @@
 #include <time.h>
 #include <process.h>
 
-namespace GClasses
+namespace WClasses
 {
 
-void GWindows::yield()
+void WWindows::yield()
 {
 	MSG aMsg;
 
@@ -45,6 +45,6 @@ void GWindows::yield()
 }
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // WINDOWS

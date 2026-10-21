@@ -20,40 +20,40 @@
 #ifndef FORUM
 #define FORUM
 
-#include <WClasses/GDynamicPage.h>
+#include <WClasses/WDynamicPage.h>
 #include <iostream>
 
 class Server;
 class Account;
 
-using namespace GClasses;
+using namespace WClasses;
 
 // Provides tools for making web forums or comment sections
 class Forum
 {
 public:
 	/// Adds a forum to another web page
-	static void pageForumWrapper(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageForumWrapper(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// A page for an admin to monitor recent comments
-	static void pageFeed(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageFeed(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Returns all of the comments (so you can inject them into a web page by setting .innerHTML)
-	static void ajaxGetForumHtml(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut);
+	static void ajaxGetForumHtml(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut);
 
 	/// Adds a comment to a forum
-	static void ajaxAddComment(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut);
+	static void ajaxAddComment(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut);
 
 	/// Deletes a comment from a forum
-	static void ajaxDelComment(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut);
+	static void ajaxDelComment(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut);
 
 	/// Finds all comment files, and calls purge_comments_from_banned_users
 	static void scrub_all_comment_files(Server* pServer);
 
 protected:
-	static bool purge_comments_from_banned_users(Server* pServer, GDomNode* pRootList);
+	static bool purge_comments_from_banned_users(Server* pServer, WDomNode* pRootList);
 
-	static void format_comment_recursive(Server* pServer, Account* pAccount, GDomNode* pEntry, std::ostream& os, std::string& reply_id, std::string& my_id, bool allow_direct_reply, size_t depth);
+	static void format_comment_recursive(Server* pServer, Account* pAccount, WDomNode* pEntry, std::ostream& os, std::string& reply_id, std::string& my_id, bool allow_direct_reply, size_t depth);
 };
 
 #endif // FORUM

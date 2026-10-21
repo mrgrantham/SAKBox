@@ -21,75 +21,75 @@
 #define __G3D_H__
 
 #include <math.h>
-#include "GError.h"
+#include "WError.h"
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
-typedef double G3DReal;
-class G3DMatrix;
-class GDomNode;
-class GDom;
-class GRand;
-class GImage;
-class GBBAugmented;
+typedef double W3DReal;
+class W3DMatrix;
+class WDomNode;
+class WDom;
+class WRand;
+class WImage;
+class WBBAugmented;
 
 
 /// Represents a 3D vector
-class G3DVector
+class W3DVector
 {
 public:
-	G3DReal m_vals[3];
+	W3DReal m_vals[3];
 
-	G3DVector()
+	W3DVector()
 	{
 	}
 
 	// Copied as three numbers (trivially copyable)
-	G3DVector(const G3DVector& that) = default;
+	W3DVector(const W3DVector& that) = default;
 
 	/// Initializes the values to <x,y,z>
-	G3DVector(G3DReal x, G3DReal y, G3DReal z)
+	W3DVector(W3DReal x, W3DReal y, W3DReal z)
 	{
 		m_vals[0] = x;
 		m_vals[1] = y;
 		m_vals[2] = z;
 	}
 
-	G3DVector& operator=(const G3DVector& that) = default;
+	W3DVector& operator=(const W3DVector& that) = default;
 
 	/// \brief Returns a reference to the specified element.
-	inline G3DReal& operator[](size_t index)
+	inline W3DReal& operator[](size_t index)
 	{
-		GAssert(index < 3);
+		WAssert(index < 3);
 		return m_vals[index];
 	}
 
 	/// \brief Returns a const reference to the specified element
-	inline const G3DReal& operator[](size_t index) const
+	inline const W3DReal& operator[](size_t index) const
 	{
-		GAssert(index < 3);
+		WAssert(index < 3);
 		return m_vals[index];
 	}
 
 	/// Returns the vector as an array of reals
-	G3DReal* vals() { return m_vals; }
+	W3DReal* vals() { return m_vals; }
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const;
+	WDomNode* serialize(WDom* pDoc) const;
 
 	/// Load this object from a DOM.
-	void deserialize(GDomNode* pNode);
+	void deserialize(WDomNode* pNode);
 
 	/// Returns true iff all three elements are equal.
-	bool isEqual(const G3DVector& that) const
+	bool isEqual(const W3DVector& that) const
 	{
 		return m_vals[0] == that.m_vals[0] && m_vals[1] == that.m_vals[1] && m_vals[2] == that.m_vals[2];
 	}
 
 	/// Makes a copy of pThat
-	void copy(const G3DVector& that)
+	void copy(const W3DVector& that)
 	{
 		m_vals[0] = that[0];
 		m_vals[1] = that[1];
@@ -97,7 +97,7 @@ public:
 	}
 
 	/// Sets the values of this vector
-	void set(G3DReal x, G3DReal y, G3DReal z)
+	void set(W3DReal x, W3DReal y, W3DReal z)
 	{
 		m_vals[0] = x;
 		m_vals[1] = y;
@@ -107,7 +107,7 @@ public:
 	/// Normalizes this vector
 	inline void normalize()
 	{
-		G3DReal mag = (G3DReal)sqrt(squaredMag());
+		W3DReal mag = (W3DReal)sqrt(squaredMag());
 		if(mag == 0)
 			throw Ex("Can't normalize a vector with zero magnitude");
 		m_vals[0] /= mag;
@@ -116,10 +116,10 @@ public:
 	}
 
 	/// Picks a random vector from a spherical distribution
-	void makeRandom(GRand* pRand);
+	void makeRandom(WRand* pRand);
 
 	/// returns the squared distance between this and pThat
-	inline G3DReal squaredDist(const G3DVector& that) const
+	inline W3DReal squaredDist(const W3DVector& that) const
 	{
 		return (that[0] - m_vals[0]) * (that[0] - m_vals[0]) + (that[1] - m_vals[1]) * (that[1] - m_vals[1]) + (that[2] - m_vals[2]) * (that[2] - m_vals[2]);
 	}
@@ -131,7 +131,7 @@ public:
 	}
 
 	/// adds that to this
-	inline void add(const G3DVector& that)
+	inline void add(const W3DVector& that)
 	{
 		m_vals[0] += that[0];
 		m_vals[1] += that[1];
@@ -139,14 +139,14 @@ public:
 	}
 
 	/// adds mag * that to this
-	inline void add(G3DReal mag, const G3DVector& that)
+	inline void add(W3DReal mag, const W3DVector& that)
 	{
 		m_vals[0] += mag * that[0];
 		m_vals[1] += mag * that[1];
 		m_vals[2] += mag * that[2];
 	}
 
-	inline void add(G3DReal dx, G3DReal dy, G3DReal dz)
+	inline void add(W3DReal dx, W3DReal dy, W3DReal dz)
 	{
 		m_vals[0] += dx;
 		m_vals[1] += dy;
@@ -154,7 +154,7 @@ public:
 	}
 
 	/// subtracts pThat from this
-	inline void subtract(const G3DVector& that)
+	inline void subtract(const W3DVector& that)
 	{
 		m_vals[0] -= that[0];
 		m_vals[1] -= that[1];
@@ -162,7 +162,7 @@ public:
 	}
 
 	/// multiplies this by mag
-	inline void multiply(G3DReal mag)
+	inline void multiply(W3DReal mag)
 	{
 		m_vals[0] *= mag;
 		m_vals[1] *= mag;
@@ -170,16 +170,16 @@ public:
 	}
 
 	/// this = pMatrix * pVector
-	void multiply(G3DMatrix* pMatrix, G3DVector* pVector);
+	void multiply(W3DMatrix* pMatrix, W3DVector* pVector);
 
 	/// returns the dot product of this and that
-	inline G3DReal dotProduct(const G3DVector& that) const
+	inline W3DReal dotProduct(const W3DVector& that) const
 	{
 		return m_vals[0] * that[0] + m_vals[1] * that[1] + m_vals[2] * that[2];
 	}
 
 	/// this = pA x pB
-	inline void crossProduct(G3DVector& a, G3DVector& b)
+	inline void crossProduct(W3DVector& a, W3DVector& b)
 	{
 		m_vals[0] = a[1] * b[2] - a[2] * b[1];
 		m_vals[1] = a[2] * b[0] - a[0] * b[2];
@@ -187,11 +187,11 @@ public:
 	}
 
 	/// Sets this to the normal vector of the triangle specified by three points
-	inline void triangleNormal(const G3DVector& point1, const G3DVector& point2, const G3DVector& point3)
+	inline void triangleNormal(const W3DVector& point1, const W3DVector& point2, const W3DVector& point3)
 	{
-		G3DVector a(point2);
+		W3DVector a(point2);
 		a.subtract(point1);
-		G3DVector b(point3);
+		W3DVector b(point3);
 		b.subtract(point1);
 		crossProduct(a, b);
 		normalize();
@@ -199,7 +199,7 @@ public:
 
 	/// Computes the plane equation (ax + by + cz + d = 0) of the
 	/// specified triangle. this = (a, b, c) and *pOutD = d.
-	void planeEquation(const G3DVector& point1, const G3DVector& point2, const G3DVector& point3, G3DReal* pOutD)
+	void planeEquation(const W3DVector& point1, const W3DVector& point2, const W3DVector& point3, W3DReal* pOutD)
 	{
 		triangleNormal(point1, point2, point3);
 		*pOutD = -(this->dotProduct(point1));
@@ -207,34 +207,34 @@ public:
 
 	/// Sets this to the reflection of pRay on a surface with
 	/// normal vector pNormal.
-	void reflectionVector(const G3DVector& ray, const G3DVector& normal);
+	void reflectionVector(const W3DVector& ray, const W3DVector& normal);
 
 	/// *pYaw and *pPitch are in radians
-	void yawAndPitch(G3DReal* pYaw, G3DReal* pPitch) const;
+	void yawAndPitch(W3DReal* pYaw, W3DReal* pPitch) const;
 
 	/// dYaw and dPitch are in radians
-	inline void fromYawAndPitch(G3DReal dYaw, G3DReal dPitch)
+	inline void fromYawAndPitch(W3DReal dYaw, W3DReal dPitch)
 	{
-		m_vals[1] = (G3DReal)sin(dPitch);
-		double dTmp = (G3DReal)cos(dPitch);
-		m_vals[0] = (G3DReal)(dTmp * sin(dYaw));
-		m_vals[2] = (G3DReal)(dTmp * cos(dYaw));
+		m_vals[1] = (W3DReal)sin(dPitch);
+		double dTmp = (W3DReal)cos(dPitch);
+		m_vals[0] = (W3DReal)(dTmp * sin(dYaw));
+		m_vals[2] = (W3DReal)(dTmp * cos(dYaw));
 	}
 };
 
 
 
 /// Represents a 3x3 matrix
-class G3DMatrix
+class W3DMatrix
 {
 public:
-	G3DVector m_rows[3];
+	W3DVector m_rows[3];
 
 	/// serializes this matrix
-	GDomNode* serialize(GDom* pDoc) const;
+	WDomNode* serialize(WDom* pDoc) const;
 
 	/// deserializes this matrix
-	void deserialize(GDomNode* pNode);
+	void deserialize(WDomNode* pNode);
 
 	/// sets this to the identity matrix
 	inline void setToIdentity()
@@ -245,7 +245,7 @@ public:
 	}
 
 	/// copies pThat
-	inline void copy(G3DMatrix* pThat)
+	inline void copy(W3DMatrix* pThat)
 	{
 		m_rows[0].copy(pThat->m_rows[0]);
 		m_rows[1].copy(pThat->m_rows[1]);
@@ -261,7 +261,7 @@ public:
 	}
 
 	/// pVecOut = this x pVecIn
-	inline void multiply(const G3DVector* pVecIn, G3DVector* pVecOut)
+	inline void multiply(const W3DVector* pVecIn, W3DVector* pVecOut)
 	{
 		pVecOut->m_vals[0] = m_rows[0].dotProduct(*pVecIn);
 		pVecOut->m_vals[1] = m_rows[1].dotProduct(*pVecIn);
@@ -269,13 +269,13 @@ public:
 	}
 
 	/// Computes the dot-product of pVec with the specified column of this matrix
-	inline double dotColumn(const G3DVector* pVec, int column) const
+	inline double dotColumn(const W3DVector* pVec, int column) const
 	{
 		return pVec->m_vals[0] * m_rows[0].m_vals[column] + pVec->m_vals[1] * m_rows[1].m_vals[column] + pVec->m_vals[2] * m_rows[2].m_vals[column];
 	}
 
 	/// this = pA x pB
-	inline void multiply(const G3DMatrix* pA, const G3DMatrix* pB)
+	inline void multiply(const W3DMatrix* pA, const W3DMatrix* pB)
 	{
 		m_rows[0].m_vals[0] = pB->dotColumn(&pA->m_rows[0], 0);
 		m_rows[0].m_vals[1] = pB->dotColumn(&pA->m_rows[0], 1);
@@ -289,7 +289,7 @@ public:
 	}
 
 	/// Creates a matrix comprised of a random set of orthonormal basis vectors
-	void makeRandom(GRand* pRand);
+	void makeRandom(WRand* pRand);
 
 	/// Creates a matrix for rotating about the specified axis
 	void makeAxisRotationMatrix(int axis, double radians);
@@ -302,19 +302,19 @@ public:
 /// coordinates. The 3D space is based on a right-handed coordinate
 /// system. (So if x goes to the right and y goes up, then z comes
 /// out of the screen toward you.)
-class GCamera
+class WCamera
 {
 protected:
-	G3DVector m_lookFromPoint;
-	G3DVector m_viewSideVector; // to the right
-	G3DVector m_viewUpVector;
-	G3DVector m_lookDirection;
-	G3DReal m_halfViewHeight; // tan(viewAngle / 2)
+	W3DVector m_lookFromPoint;
+	W3DVector m_viewSideVector; // to the right
+	W3DVector m_viewUpVector;
+	W3DVector m_lookDirection;
+	W3DReal m_halfViewHeight; // tan(viewAngle / 2)
 	int m_nWidth, m_nHeight;
 
 public:
 	/// width and height specify the size of the image that this camera will produce
-	GCamera(int width, int height)
+	WCamera(int width, int height)
 	: m_lookFromPoint(0, 0, 10),
 	  m_viewSideVector(1, 0, 0),
 	  m_viewUpVector(0, 1, 0),
@@ -326,14 +326,14 @@ public:
 	}
 
 	/// deserializing constructor
-	GCamera(GDomNode* pNode);
+	WCamera(WDomNode* pNode);
 
-	virtual ~GCamera()
+	virtual ~WCamera()
 	{
 	}
 
 	/// serializes this object
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	virtual WDomNode* serialize(WDom* pDoc) const;
 
 	/// Specifies the size of the 2-D image this camera will produce
 	void setImageSize(int width, int height)
@@ -350,31 +350,31 @@ public:
 
 	/// Returns a reference to the location of this camera. (You can set the
 	/// values in the vector this returns to move the camera.)
-	G3DVector* lookFromPoint() { return &m_lookFromPoint; }
+	W3DVector* lookFromPoint() { return &m_lookFromPoint; }
 
 	/// Specifies the direction that the camera faces, and the roll in radians.
 	/// (If rollRads is zero, then the horizon of the XZ-plane would appear as a horizontal
 	/// line with positive Y above and negative Y below.)
-	void setDirection(G3DVector* pDirection, G3DReal rollRads);
+	void setDirection(W3DVector* pDirection, W3DReal rollRads);
 
 	/// If pUpVector is not orthogonal to pDirection, it will be changed
 	/// to the nearest vector that is orthogonal to pDirection.
-	void setDirection(G3DVector* pDirection, G3DVector* pUpVector);
+	void setDirection(W3DVector* pDirection, W3DVector* pUpVector);
 
 	/// Returns the direction in which this camera is facing
-	const G3DVector* lookDirection() { return &m_lookDirection; }
+	const W3DVector* lookDirection() { return &m_lookDirection; }
 
 	/// Returns the up vector with respect to this camera
-	const G3DVector* viewUpVector() { return &m_viewUpVector; }
+	const W3DVector* viewUpVector() { return &m_viewUpVector; }
 
 	/// Returns the right side vector with respect to this camera
-	const G3DVector* viewSideVector() { return &m_viewSideVector; }
+	const W3DVector* viewSideVector() { return &m_viewSideVector; }
 
 	/// This is the vertical view angle in radians
-	void setViewAngle(G3DReal val);
+	void setViewAngle(W3DReal val);
 
 	/// Returns tan(viewAngle / 2)
-	G3DReal halfViewHeight() { return m_halfViewHeight; }
+	W3DReal halfViewHeight() { return m_halfViewHeight; }
 
 	/// Projects the 3D point onto the canvas. The x and y position
 	/// in the output vector specify the location where the point
@@ -382,21 +382,21 @@ public:
 	/// right with 0 at the left side, positive y goes up with 0 at
 	/// the bottom). The z position specifies the distance from the camera.
 	/// If the z position is <= 0, then x and y are set to 0.
-	void project(const G3DVector* pPoint, G3DVector* pOut);
+	void project(const W3DVector* pPoint, W3DVector* pOut);
 
 	/// Computes the direction that a ray must travel from lookFromPoint()
 	/// for the specified pixel coordinates (relative to the bottom-left corner
 	/// of the view image). Note that the ray is not normalized.
-	void computeRayDirection(int x, int y, G3DVector* pOutRay);
+	void computeRayDirection(int x, int y, W3DVector* pOutRay);
 };
 
-/// This is a billboard (a 2-D image in a 3-D world) for use with GBillboardWorld.
+/// This is a billboard (a 2-D image in a 3-D world) for use with WBillboardWorld.
 /// You can set m_repeatX and/or m_repeatY to make the image repeat across the billboard.
-class GBillboard
+class WBillboard
 {
 public:
 	/// The image associated with this billboard
-	GImage* m_pImage;
+	WImage* m_pImage;
 
 	/// The number of times the image repeats horizontally on the billboard
 	int m_repeatX;
@@ -405,18 +405,18 @@ public:
 	int m_repeatY;
 
 	/// The origin corner of the billboard (where the bottom-left corner of the image is displayed)
-	G3DVector m_origin;
+	W3DVector m_origin;
 
 	/// The horizontal vector of the billboard. The magnitude of this vector specifies
 	/// the width of the billboard.
-	G3DVector m_x;
+	W3DVector m_x;
 
 	/// The vertical vector of the billboard. The magnitude of this vector specifies
 	/// the height of the billboard.
-	G3DVector m_y;
+	W3DVector m_y;
 
 	/// Does not take ownership of pImage.
-	GBillboard(GImage* pImage);
+	WBillboard(WImage* pImage);
 
 	/// Ensures that m_y is orthogonal to m_x, and adjusts the magnitude of m_y to restore
 	/// the aspect ratio of the billboard image
@@ -424,57 +424,57 @@ public:
 };
 
 /// This class represents a world of billboards, and provides a rendering engine.
-class GBillboardWorld
+class WBillboardWorld
 {
 protected:
-	std::vector<GBillboard*> m_billboards;
+	std::vector<WBillboard*> m_billboards;
 
 public:
-	GBillboardWorld();
-	~GBillboardWorld();
+	WBillboardWorld();
+	~WBillboardWorld();
 
 	/// Takes ownership of pBB
-	void addBillboard(GBillboard* pBB);
+	void addBillboard(WBillboard* pBB);
 
 	/// Draws all the billboards onto pImage from the perspective of the camera, and
 	/// sets the values in pDepthMap to indicate the distance to each pixel.
 	/// (pDepthMap should be a buffer with the same number of elements as pixels in pImage.)
 	/// The pixels in pDepthMap correspond with the image left-to-right, bottom-to-top.
-	void draw(GImage* pImage, double* pDepthMap, GCamera& camera);
+	void draw(WImage* pImage, double* pDepthMap, WCamera& camera);
 
 protected:
-	void drawSection(GImage* pImage, double* pDepthMap, GCamera& camera, GBBAugmented& bb, G3DVector* pBotLeft, G3DVector* pBotRight, G3DVector* pTopRight, G3DVector* pTopLeft);
+	void drawSection(WImage* pImage, double* pDepthMap, WCamera& camera, WBBAugmented& bb, W3DVector* pBotLeft, W3DVector* pBotRight, W3DVector* pTopRight, W3DVector* pTopLeft);
 };
 
 /*
 /// This is for making a 3D scene ala QTVR
-class GBoxScene
+class WBoxScene
 {
 protected:
-	GImage m_image;
+	WImage m_image;
 	float* m_pDepthMap;
 
 public:
-	GBoxScene(int nWidth)
+	WBoxScene(int nWidth)
 	{
 		m_image.setSize(nWidth, 6 * nWidth);
 		m_pDepthMap = new float[nWidth * 6 * nWidth];
 	}
 
-	~GBoxScene()
+	~WBoxScene()
 	{
 		delete[] m_pDepthMap;
 	}
 
-	GImage* GetImage() { return &m_image; }
+	WImage* GetImage() { return &m_image; }
 	float* GetDepthMap() { return m_pDepthMap; }
 
-	void RayToPoint(float* pnOutX, float* pnOutY, G3DVector* pRay)
+	void RayToPoint(float* pnOutX, float* pnOutY, W3DVector* pRay)
 	{
 		int nFrame, u, v;
-		G3DReal xx = pRay->m_vals[0] * pRay->m_vals[0];
-		G3DReal yy = pRay->m_vals[1] * pRay->m_vals[1];
-		G3DReal zz = pRay->m_vals[2] * pRay->m_vals[2];
+		W3DReal xx = pRay->m_vals[0] * pRay->m_vals[0];
+		W3DReal yy = pRay->m_vals[1] * pRay->m_vals[1];
+		W3DReal zz = pRay->m_vals[2] * pRay->m_vals[2];
 		if(xx >= yy && xx >= zz)
 		{
 			nFrame = 0;
@@ -503,7 +503,7 @@ public:
 	}
 
 	/// The ray this returns is NOT normalized
-	void PointToRay(G3DVector* pRay, int x, int y)
+	void PointToRay(W3DVector* pRay, int x, int y)
 	{
 		int nFrame = y / m_image.width();
 		y = y % m_image.width();
@@ -524,6 +524,6 @@ public:
 };
 */
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __G3D_H__

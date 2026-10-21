@@ -25,32 +25,32 @@
 #else
 #include <unistd.h>
 #endif
-#include <WClasses/GDynamicPage.h>
-#include <WClasses/GApp.h>
-#include <WClasses/GDom.h>
-#include <WClasses/GString.h>
-#include <WClasses/GHolders.h>
-#include <WClasses/GFile.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GHashTable.h>
+#include <WClasses/WDynamicPage.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WDom.h>
+#include <WClasses/WString.h>
+#include <WClasses/WHolders.h>
+#include <WClasses/WFile.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WHashTable.h>
 #include <wchar.h>
 #include <string>
 #include <exception>
 #include <iostream>
 #include <sstream>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 using std::string;
 using std::ostream;
 
 
-class Connection : public GDynamicPageConnection
+class Connection : public WDynamicPageConnection
 {
 public:
-	Connection(SOCKET sock, GDynamicPageServer* pServer) : GDynamicPageConnection(sock, pServer)
+	Connection(SOCKET sock, WDynamicPageServer* pServer) : WDynamicPageConnection(sock, pServer)
 	{
 	}
 
@@ -58,18 +58,18 @@ public:
 	{
 	}
 
-	void handleRequest(GDynamicPageSession* pSession, std::ostream& response) override;
+	void handleRequest(WDynamicPageSession* pSession, std::ostream& response) override;
 };
 
-class Server : public GDynamicPageServer
+class Server : public WDynamicPageServer
 {
 public:
 	std::string m_basePath;
 
-	Server(int port, GRand* pRand);
+	Server(int port, WRand* pRand);
 	~Server() override {}
 
-	GDynamicPageConnection* makeConnection(SOCKET sock) override
+	WDynamicPageConnection* makeConnection(SOCKET sock) override
 	{
 		return new Connection(sock, this);
 	}
@@ -77,7 +77,7 @@ public:
 
 
 // virtual
-void Connection::handleRequest(GDynamicPageSession* pSession, std::ostream& response)
+void Connection::handleRequest(WDynamicPageSession* pSession, std::ostream& response)
 {
 	if(strcmp(m_szUrl, "/favicon.ico") == 0)
 		return;
@@ -97,31 +97,31 @@ void Connection::handleRequest(GDynamicPageSession* pSession, std::ostream& resp
 }
 
 
-Server::Server(int port, GRand* pRand) : GDynamicPageServer(port, pRand, true) // SAKBox: opens myAddress(), the network name, so open to the network
+Server::Server(int port, WRand* pRand) : WDynamicPageServer(port, pRand, true) // SAKBox: opens myAddress(), the network name, so open to the network
 {
 	char buf[300];
-	GTime::asciiTime(buf, 256, false);
+	WTime::asciiTime(buf, 256, false);
 	cout << "Server starting at: " << buf << "\n";
 	m_basePath = "projects/waffles/demos/hello_web/bin/web/"; // SAKBox: where `bazel run` puts it (was next to the program)
 }
 
 void getLocalStorageFolder(char* buf)
 {
-	if(!GFile::localStorageDirectory(buf))
+	if(!WFile::localStorageDirectory(buf))
 		throw Ex("Failed to find local storage folder");
 	strcat(buf, "/.hello/");
-	GFile::makeDir(buf);
-	if(!GFile::doesDirExist(buf))
+	WFile::makeDir(buf);
+	if(!WFile::doesDirExist(buf))
 		throw Ex("Failed to create folder in storage area");
 }
 
 void LaunchBrowser(const char* szAddress)
 {
 	int addrLen = strlen(szAddress);
-	GTEMPBUF(char, szUrl, addrLen + 20);
+	WTEMPBUF(char, szUrl, addrLen + 20);
 	strcpy(szUrl, szAddress);
 	strcpy(szUrl + addrLen, "/hello");
-	if(!GApp::openUrlInBrowser(szUrl))
+	if(!WApp::openUrlInBrowser(szUrl))
 	{
 		cout << "Failed to open the URL: " << szUrl << "\nPlease open this URL manually.\n";
 		cout.flush();
@@ -132,13 +132,13 @@ void doit(void* pArg)
 {
 	int port = 8989;
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
-	GRand prng(seed);
+	WRand prng(seed);
 	Server server(port, &prng);
 	LaunchBrowser(server.myAddress());
 	// Pump incoming HTTP requests (this is the main loop)
 	cout << "Server is up\n";
 	cout.flush();
-	server.serveRequests(); // SAKBox: was go(), which GDynamicPageServer no longer has
+	server.serveRequests(); // SAKBox: was go(), which WDynamicPageServer no longer has
 	cout << "Goodbye.\n";
 }
 
@@ -150,7 +150,7 @@ void doItAsDaemon()
 	s1 += "stdout.log";
 	string s2 = path;
 	s2 += "stderr.log";
-	GApp::launchDaemon(doit, path, s1.c_str(), s2.c_str());
+	WApp::launchDaemon(doit, path, s1.c_str(), s2.c_str());
 	cout << "Daemon running.\n	stdout >> " << s1.c_str() << "\n	stderr >> " << s2.c_str() << "\n";
 }
 

@@ -17,43 +17,43 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GPriorityQueue.h"
-#include "GError.h"
-#include "GHolders.h"
-#include "GRand.h"
+#include "WPriorityQueue.h"
+#include "WError.h"
+#include "WHolders.h"
+#include "WRand.h"
 #include <functional>
 #include <queue>
 #include <memory>
 
 using std::priority_queue;
 
-namespace GClasses
+namespace WClasses
 {
 
-GPriorityQueue::GPriorityQueue(PointerComparer pCompareFunc, void* pThis)
+WPriorityQueue::WPriorityQueue(PointerComparer pCompareFunc, void* pThis)
 : m_pCompareFunc(pCompareFunc), m_pThis(pThis)
 {
-	GPriorityQueueEntry tmp;
+	WPriorityQueueEntry tmp;
 	m_entries.push_back(tmp);
 }
 
-GPriorityQueue::~GPriorityQueue()
+WPriorityQueue::~WPriorityQueue()
 {
 }
 
-int GPriorityQueue::size()
+int WPriorityQueue::size()
 {
 	return (int)m_entries.size() - 1;
 }
 
-void GPriorityQueue::minHeapSwap(int a, int b)
+void WPriorityQueue::minHeapSwap(int a, int b)
 {
-	GPriorityQueueEntry* pA = &m_entries[a];
-	GPriorityQueueEntry* pB = &m_entries[b];
+	WPriorityQueueEntry* pA = &m_entries[a];
+	WPriorityQueueEntry* pB = &m_entries[b];
 
 	// swap the min indexes
-	GPriorityQueueEntry* pAOther = &m_entries[pA->m_maxIndex];
-	GPriorityQueueEntry* pBOther = &m_entries[pB->m_maxIndex];
+	WPriorityQueueEntry* pAOther = &m_entries[pA->m_maxIndex];
+	WPriorityQueueEntry* pBOther = &m_entries[pB->m_maxIndex];
 	pAOther->m_minIndex = b;
 	pBOther->m_minIndex = a;
 
@@ -68,14 +68,14 @@ void GPriorityQueue::minHeapSwap(int a, int b)
 	pB->m_pPayload = pTmp;
 }
 
-void GPriorityQueue::maxHeapSwap(int a, int b)
+void WPriorityQueue::maxHeapSwap(int a, int b)
 {
-	GPriorityQueueEntry* pA = &m_entries[a];
-	GPriorityQueueEntry* pB = &m_entries[b];
+	WPriorityQueueEntry* pA = &m_entries[a];
+	WPriorityQueueEntry* pB = &m_entries[b];
 
 	// swap the max indexes
-	GPriorityQueueEntry* pAOther = &m_entries[pA->m_minIndex];
-	GPriorityQueueEntry* pBOther = &m_entries[pB->m_minIndex];
+	WPriorityQueueEntry* pAOther = &m_entries[pA->m_minIndex];
+	WPriorityQueueEntry* pBOther = &m_entries[pB->m_minIndex];
 	pAOther->m_maxIndex = b;
 	pBOther->m_maxIndex = a;
 
@@ -85,11 +85,11 @@ void GPriorityQueue::maxHeapSwap(int a, int b)
 	pB->m_minIndex = t;
 }
 
-void GPriorityQueue::minHeapBubbleUp(int index)
+void WPriorityQueue::minHeapBubbleUp(int index)
 {
 	int parIndex;
-	GPriorityQueueEntry* pPar;
-	GPriorityQueueEntry* pChild = &m_entries[index];
+	WPriorityQueueEntry* pPar;
+	WPriorityQueueEntry* pChild = &m_entries[index];
 	while(index > 1)
 	{
 		parIndex = index / 2;
@@ -102,11 +102,11 @@ void GPriorityQueue::minHeapBubbleUp(int index)
 	}
 }
 
-void GPriorityQueue::maxHeapBubbleUp(int index)
+void WPriorityQueue::maxHeapBubbleUp(int index)
 {
 	int parIndex;
-	GPriorityQueueEntry* pPar;
-	GPriorityQueueEntry* pChild = &m_entries[index];
+	WPriorityQueueEntry* pPar;
+	WPriorityQueueEntry* pChild = &m_entries[index];
 	void* pChildValue;
 	void* pParValue;
 	while(index > 1)
@@ -123,7 +123,7 @@ void GPriorityQueue::maxHeapBubbleUp(int index)
 	}
 }
 
-void GPriorityQueue::minHeapBubbleDown(int index)
+void WPriorityQueue::minHeapBubbleDown(int index)
 {
 	int last = (int)m_entries.size() - 1;
 	int childIndex;
@@ -149,7 +149,7 @@ void GPriorityQueue::minHeapBubbleDown(int index)
 	minHeapBubbleUp(index);
 }
 
-void GPriorityQueue::maxHeapBubbleDown(int index)
+void WPriorityQueue::maxHeapBubbleDown(int index)
 {
 	int last = (int)m_entries.size() - 1;
 	int childIndex;
@@ -180,26 +180,26 @@ void GPriorityQueue::maxHeapBubbleDown(int index)
 	maxHeapBubbleUp(index);
 }
 
-void GPriorityQueue::insert(void* pObj)
+void WPriorityQueue::insert(void* pObj)
 {
 	int index = (int)m_entries.size();
-	GPriorityQueueEntry entry(index, index, pObj);
+	WPriorityQueueEntry entry(index, index, pObj);
 	m_entries.push_back(entry);
 	minHeapBubbleUp(index);
 	maxHeapBubbleUp(index);
 }
 
-void* GPriorityQueue::minimum()
+void* WPriorityQueue::minimum()
 {
 	return m_entries[1].m_pPayload;
 }
 
-void* GPriorityQueue::maximum()
+void* WPriorityQueue::maximum()
 {
 	return m_entries[m_entries[1].m_minIndex].m_pPayload;
 }
 
-void GPriorityQueue::removeMin()
+void WPriorityQueue::removeMin()
 {
 	int maxIndex = m_entries[1].m_maxIndex;
 	minHeapBubbleDown(1);
@@ -207,7 +207,7 @@ void GPriorityQueue::removeMin()
 	m_entries.pop_back();
 }
 
-void GPriorityQueue::removeMax()
+void WPriorityQueue::removeMax()
 {
 	int minIndex = m_entries[1].m_minIndex;
 	maxHeapBubbleDown(1);
@@ -215,7 +215,7 @@ void GPriorityQueue::removeMax()
 	m_entries.pop_back();
 }
 
-int GPriorityQueueTestComparer(void* pThis, void* pA, void* pB)
+int WPriorityQueueTestComparer(void* pThis, void* pA, void* pB)
 {
 	int a = *(int*)pA;
 	int b = *(int*)pB;
@@ -227,14 +227,14 @@ int GPriorityQueueTestComparer(void* pThis, void* pA, void* pB)
 }
 
 #define TEST_SIZE 4096
-void GPriorityQueue::test()
+void WPriorityQueue::test()
 {
 	int* buf = new int[TEST_SIZE];
 	std::unique_ptr<int[]> hBuf(buf);
 	int i, t, r;
 	for(i = 0; i < TEST_SIZE; i++)
 		buf[i] = i;
-	GRand prng(0);
+	WRand prng(0);
 	for(i = TEST_SIZE; i > 2; i--)
 	{
 		r = (int)prng.next(i);
@@ -242,7 +242,7 @@ void GPriorityQueue::test()
 		buf[r] = buf[i - 1];
 		buf[i - 1] = t;
 	}
-	GPriorityQueue q(GPriorityQueueTestComparer, nullptr);
+	WPriorityQueue q(WPriorityQueueTestComparer, nullptr);
 	for(i = 0; i < TEST_SIZE; i++)
 		q.insert(buf + i);
 	int* pInt;
@@ -268,11 +268,11 @@ void GPriorityQueue::test()
 
 
 #define TEST_PQ_SIZE 8192
-void GSimplePriorityQueue_test()
+void WSimplePriorityQueue_test()
 {
-	GRand r(0);
+	WRand r(0);
 	priority_queue<double> stdq;
-	GSimplePriorityQueue<double*> q;
+	WSimplePriorityQueue<double*> q;
 	double stoof[7];
 	for(size_t i = 0; i < 2 * TEST_PQ_SIZE; i++)
 	{
@@ -319,5 +319,5 @@ void GSimplePriorityQueue_test()
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 

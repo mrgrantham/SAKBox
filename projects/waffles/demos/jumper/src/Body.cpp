@@ -29,15 +29,15 @@ In March 2008, Mike Gashler made some alterations:
 
 #include "GLDebugDrawer.h"
 #include "Body.h"
-#include <WClasses/GError.h>
-#include <WClasses/GLearner.h>
-#include <WClasses/GBits.h>
-#include <WClasses/GThread.h>
-#include <WClasses/GVec.h>
+#include <WClasses/WError.h>
+#include <WClasses/WLearner.h>
+#include <WClasses/WBits.h>
+#include <WClasses/WThread.h>
+#include <WClasses/WVec.h>
 #include "PolicyLearner.h"
 #include <iostream>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 
 #ifndef M_PI
@@ -375,21 +375,21 @@ btScalar RagDoll::getFaceDownness()
 	return m_bodies[BODYPART_SPINE]->getWorldTransform().getBasis().tdotz(v);
 }
 
-void RagDoll::makeFeatureVector(GVec& pFeatures, double time)
+void RagDoll::makeFeatureVector(WVec& pFeatures, double time)
 {
-	GAssert(LABEL_DIMS == JOINT_COUNT - 1); // We control all of the joints except for the neck
-	GAssert(FEATURE_DIMS == 3); // Unexpected value
+	WAssert(LABEL_DIMS == JOINT_COUNT - 1); // We control all of the joints except for the neck
+	WAssert(FEATURE_DIMS == 3); // Unexpected value
 	pFeatures[0] = time;
 	pFeatures[1] = getFaceDownness();
 	pFeatures[2] = getUprightness();
 	//cout << "time=" << pPat[0] << ", facedownness=" << pPat[1] << ", uprightness=" << pPat[2] << "\n";
 }
 
-void RagDoll::DoAction(GSupervisedLearner* pPolicy, double time)
+void RagDoll::DoAction(WSupervisedLearner* pPolicy, double time)
 {
 	// Make a feature vector
-	GVec pat(FEATURE_DIMS);
-	GVec lab(LABEL_DIMS);
+	WVec pat(FEATURE_DIMS);
+	WVec lab(LABEL_DIMS);
 	makeFeatureVector(pat, time);
 
 	// Decide how to move the joints
@@ -397,8 +397,8 @@ void RagDoll::DoAction(GSupervisedLearner* pPolicy, double time)
 	if(pPolicy)
 	{
 		// Use the policy
-		GAssert(pPolicy->relFeatures().size() == FEATURE_DIMS);
-		GAssert(pPolicy->relLabels().size() == LABEL_DIMS);
+		WAssert(pPolicy->relFeatures().size() == FEATURE_DIMS);
+		WAssert(pPolicy->relLabels().size() == LABEL_DIMS);
 		pPolicy->predict(pat, lab);
 	}
 	else
@@ -411,7 +411,7 @@ void RagDoll::DoAction(GSupervisedLearner* pPolicy, double time)
 	btScalar velocity, impulse;
 	for(i = 0; i < JOINT_COUNT - 1; i++)
 	{
-		velocity = 8.0 * GBits::sign(lab[i]);
+		velocity = 8.0 * WBits::sign(lab[i]);
 		if(lab[i] < 0)
 			impulse = std::min(m_negativeStrength[i], -lab[i]);
 		else
@@ -484,7 +484,7 @@ void RagdollDemo::spawnRagdoll(const btVector3& startOffset)
 void RagdollDemo::advanceTime(float fTimeDelta)
 {
 	//if(m_time > 1)
-	//	GThread::sleep(200); // slow-motion
+	//	WThread::sleep(200); // slow-motion
 	//printf("Time: %g, Lowest point: %g, Uprightness: %g, FaceDownness: %g\n", m_time, getRagDoll(0)->getLowestPoint(), getRagDoll(0)->getUprightness(), getRagDoll(0)->getFaceDownness());
 	//getRagDoll(0)->PrintJoints();
 	if (m_dynamicsWorld)

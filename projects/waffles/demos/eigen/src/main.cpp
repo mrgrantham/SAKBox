@@ -18,23 +18,23 @@
 
 #include <exception>
 #include <iostream>
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
-#include <WClasses/GMatrix.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
+#include <WClasses/WMatrix.h>
 #include <eigen3/Eigen/Dense>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using Eigen::MatrixXd;
 
 int main(int argc, char* argv[])
 {
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 	if(argc > 1)
 		throw Ex("No args were expected");
 
 	cout << "Making a Waffles matrix...\n";
-	GMatrix waf_m(2, 2);
+	WMatrix waf_m(2, 2);
 	waf_m[0][0] = 1.0;
 	waf_m[0][1] = 2.0;
 	waf_m[1][0] = 3.0;
@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
 	cout << eig_m << "\n";
 
 	cout << "\n\nConverting back to a Waffles matrix...\n";
-	GMatrix waf_2(2, 2);
+	WMatrix waf_2(2, 2);
 	for(size_t j = 0; j < 2; j++)
 	{
 		for(size_t i = 0; i < 2; i++)

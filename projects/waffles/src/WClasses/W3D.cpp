@@ -17,43 +17,43 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "G3D.h"
-#include "GRand.h"
-#include "GDom.h"
-#include "GMath.h"
-#include "GImage.h"
-#include "GVec.h"
+#include "W3D.h"
+#include "WRand.h"
+#include "WDom.h"
+#include "WMath.h"
+#include "WImage.h"
+#include "WVec.h"
 #include <cmath>
 
 using std::vector;
 
-namespace GClasses
+namespace WClasses
 {
 
-GDomNode* G3DVector::serialize(GDom* pDoc) const
+WDomNode* W3DVector::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "x", m_vals[0]);
 	pNode->add(pDoc, "y", m_vals[1]);
 	pNode->add(pDoc, "z", m_vals[2]);
 	return pNode;
 }
 
-void G3DVector::deserialize(GDomNode* pNode)
+void W3DVector::deserialize(WDomNode* pNode)
 {
 	m_vals[0] = pNode->getDouble("x");
 	m_vals[1] = pNode->getDouble("y");
 	m_vals[2] = pNode->getDouble("z");
 }
 
-void G3DVector::reflectionVector(const G3DVector& ray, const G3DVector& normal)
+void W3DVector::reflectionVector(const W3DVector& ray, const W3DVector& normal)
 {
 	copy(normal);
 	multiply(normal.dotProduct(ray) * -2);
 	add(ray);
 }
 
-void G3DVector::makeRandom(GRand* pRand)
+void W3DVector::makeRandom(WRand* pRand)
 {
 	m_vals[0] = pRand->normal();
 	m_vals[1] = pRand->normal();
@@ -61,35 +61,35 @@ void G3DVector::makeRandom(GRand* pRand)
 	normalize();
 }
 
-void G3DVector::multiply(G3DMatrix* pMatrix, G3DVector* pVector)
+void W3DVector::multiply(W3DMatrix* pMatrix, W3DVector* pVector)
 {
 	m_vals[0] = pMatrix->m_rows[0].dotProduct(*pVector);
 	m_vals[1] = pMatrix->m_rows[1].dotProduct(*pVector);
 	m_vals[2] = pMatrix->m_rows[2].dotProduct(*pVector);
 }
 
-void G3DVector::yawAndPitch(G3DReal* pYaw, G3DReal* pPitch) const
+void W3DVector::yawAndPitch(W3DReal* pYaw, W3DReal* pPitch) const
 {
-	*pPitch = (G3DReal)atan2(m_vals[1], sqrt(m_vals[0] * m_vals[0] + m_vals[2] * m_vals[2]));
-	*pYaw = (G3DReal)atan2(m_vals[0], m_vals[2]);
+	*pPitch = (W3DReal)atan2(m_vals[1], sqrt(m_vals[0] * m_vals[0] + m_vals[2] * m_vals[2]));
+	*pYaw = (W3DReal)atan2(m_vals[0], m_vals[2]);
 	if((*pYaw) < (-M_PI / 2))
-		(*pYaw) += (G3DReal)(M_PI * 2);
+		(*pYaw) += (W3DReal)(M_PI * 2);
 }
 
 // -----------------------------------------
 
-GDomNode* G3DMatrix::serialize(GDom* pDoc) const
+WDomNode* W3DMatrix::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newList();
+	WDomNode* pNode = pDoc->newList();
 	for(int r = 0; r < 3; r++)
 		for(int c = 0; c < 3; c++)
 			pNode->add(pDoc, m_rows[r].m_vals[c]);
 	return pNode;
 }
 
-void G3DMatrix::deserialize(GDomNode* pNode)
+void W3DMatrix::deserialize(WDomNode* pNode)
 {
-	GDomListIterator it(pNode);
+	WDomListIterator it(pNode);
 	for(int r = 0; r < 3; r++)
 	{
 		for(int c = 0; c < 3; c++)
@@ -100,7 +100,7 @@ void G3DMatrix::deserialize(GDomNode* pNode)
 	}
 }
 
-void G3DMatrix::makeRandom(GRand* pRand)
+void W3DMatrix::makeRandom(WRand* pRand)
 {
 	m_rows[0].makeRandom(pRand);
 	m_rows[1].makeRandom(pRand);
@@ -110,7 +110,7 @@ void G3DMatrix::makeRandom(GRand* pRand)
 	m_rows[1].normalize();
 }
 
-void G3DMatrix::makeAxisRotationMatrix(int axis, double radians)
+void W3DMatrix::makeAxisRotationMatrix(int axis, double radians)
 {
 	double c = cos(radians);
 	double s = sin(radians);
@@ -136,7 +136,7 @@ void G3DMatrix::makeAxisRotationMatrix(int axis, double radians)
 
 // -----------------------------------------
 
-GCamera::GCamera(GDomNode* pNode)
+WCamera::WCamera(WDomNode* pNode)
 {
 	m_lookFromPoint.deserialize(pNode->get("from"));
 	m_lookDirection.deserialize(pNode->get("dir"));
@@ -148,9 +148,9 @@ GCamera::GCamera(GDomNode* pNode)
 }
 
 // virtual
-GDomNode* GCamera::serialize(GDom* pDoc) const
+WDomNode* WCamera::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "from", m_lookFromPoint.serialize(pDoc));
 	pNode->add(pDoc, "dir", m_lookDirection.serialize(pDoc));
 	pNode->add(pDoc, "up", m_viewUpVector.serialize(pDoc));
@@ -160,7 +160,7 @@ GDomNode* GCamera::serialize(GDom* pDoc) const
 	return pNode;
 }
 
-void GCamera::setDirection(G3DVector* pDirection, G3DReal rollRads)
+void WCamera::setDirection(W3DVector* pDirection, W3DReal rollRads)
 {
 	m_lookDirection = *pDirection;
 	m_lookDirection.normalize();
@@ -186,7 +186,7 @@ void GCamera::setDirection(G3DVector* pDirection, G3DReal rollRads)
 	}
 }
 
-void GCamera::setDirection(G3DVector* pDirection, G3DVector* pUpVector)
+void WCamera::setDirection(W3DVector* pDirection, W3DVector* pUpVector)
 {
 	m_lookDirection = *pDirection;
 	m_viewUpVector = *pUpVector;
@@ -204,38 +204,38 @@ void GCamera::setDirection(G3DVector* pDirection, G3DVector* pUpVector)
 	m_viewSideVector.normalize();
 }
 
-void GCamera::setViewAngle(G3DReal val)
+void WCamera::setViewAngle(W3DReal val)
 {
 	m_halfViewHeight = tan(val / 2);
 }
 
-void GCamera::computeRayDirection(int x, int y, G3DVector* pOutRay)
+void WCamera::computeRayDirection(int x, int y, W3DVector* pOutRay)
 {
 	x -= m_nWidth / 2;
 	y -= m_nHeight / 2;
-	G3DReal hgt = m_halfViewHeight * 2;
-	G3DReal wid = hgt * m_nWidth / m_nHeight;
-	G3DReal u = x * wid / (G3DReal)m_nWidth;
-	G3DReal v = y * hgt / (G3DReal)m_nHeight;
+	W3DReal hgt = m_halfViewHeight * 2;
+	W3DReal wid = hgt * m_nWidth / m_nHeight;
+	W3DReal u = x * wid / (W3DReal)m_nWidth;
+	W3DReal v = y * hgt / (W3DReal)m_nHeight;
 	pOutRay->copy(m_lookDirection);
 	pOutRay->add(u, m_viewSideVector);
 	pOutRay->add(v, m_viewUpVector);
 }
 
-void GCamera::project(const G3DVector* pPoint, G3DVector* pOut)
+void WCamera::project(const W3DVector* pPoint, W3DVector* pOut)
 {
-	G3DVector t(*pPoint);
+	W3DVector t(*pPoint);
 	t.subtract(m_lookFromPoint);
-	G3DReal forw = t.dotProduct(m_lookDirection);
+	W3DReal forw = t.dotProduct(m_lookDirection);
 	if(forw <= 0.0)
 	{
 		pOut->set(0.0, 0.0, forw);
 		return;
 	}
-	G3DReal hgt = m_halfViewHeight * 2;
-	G3DReal wid = hgt * m_nWidth / m_nHeight;
-	G3DReal u = t.dotProduct(m_viewSideVector) * (G3DReal)m_nWidth / (forw * wid);
-	G3DReal v = t.dotProduct(m_viewUpVector) * (G3DReal)m_nHeight / (forw * hgt);
+	W3DReal hgt = m_halfViewHeight * 2;
+	W3DReal wid = hgt * m_nWidth / m_nHeight;
+	W3DReal u = t.dotProduct(m_viewSideVector) * (W3DReal)m_nWidth / (forw * wid);
+	W3DReal v = t.dotProduct(m_viewUpVector) * (W3DReal)m_nHeight / (forw * hgt);
 
 	// Ensure that the x and y values are sufficiently small that they
 	// can be cast to 32-bit ints, but don't mess up the ratios between
@@ -243,13 +243,13 @@ void GCamera::project(const G3DVector* pPoint, G3DVector* pOut)
 	// for image coordinates.)
 	if(std::abs(u) > 1e9)
 	{
-		G3DReal d = 1e9 / std::abs(u);
+		W3DReal d = 1e9 / std::abs(u);
 		u *= d;
 		v *= d;
 	}
 	if(std::abs(v) > 1e9)
 	{
-		G3DReal d = 1e9 / std::abs(v);
+		W3DReal d = 1e9 / std::abs(v);
 		u *= d;
 		v *= d;
 	}
@@ -269,12 +269,12 @@ void GCamera::project(const G3DVector* pPoint, G3DVector* pOut)
 
 
 
-GBillboard::GBillboard(GImage* pImage)
+WBillboard::WBillboard(WImage* pImage)
 : m_pImage(pImage), m_repeatX(1), m_repeatY(1)
 {
 }
 
-void GBillboard::adjustHeightToRestoreAspect()
+void WBillboard::adjustHeightToRestoreAspect()
 {
 	// Subtract out any component of y that correlates with x
 	m_y.add(-m_y.dotProduct(m_x) / m_x.squaredMag(), m_x);
@@ -283,18 +283,18 @@ void GBillboard::adjustHeightToRestoreAspect()
 	m_y.multiply(sqrt(m_x.squaredMag()) * m_pImage->height() * m_repeatY / (m_pImage->width() * m_repeatX * sqrt(m_y.squaredMag())));
 }
 
-class GBBAugmented
+class WBBAugmented
 {
 public:
-	GBillboard& m_bb;
-	G3DVector m_b, m_c, m_d, m_face;
-	G3DVector* m_pCorners[4];
+	WBillboard& m_bb;
+	W3DVector m_b, m_c, m_d, m_face;
+	W3DVector* m_pCorners[4];
 	double m_squaredMagX;
 	double m_squaredMagY;
 	int m_pixelsX;
 	int m_pixelsY;
 
-	GBBAugmented(GBillboard& bb)
+	WBBAugmented(WBillboard& bb)
 	: m_bb(bb), m_b(bb.m_origin), m_d(bb.m_origin), m_squaredMagX(bb.m_x.squaredMag()), m_squaredMagY(bb.m_y.squaredMag())
 	{
 		m_b.add(bb.m_x);
@@ -315,10 +315,10 @@ public:
 		m_pixelsY = bb.m_pImage->height() * bb.m_repeatY;
 	}
 
-	unsigned int getPixel(GCamera& camera, int x, int y, double* pZ)
+	unsigned int getPixel(WCamera& camera, int x, int y, double* pZ)
 	{
 		// Compute the ray vector
-		G3DVector ray;
+		W3DVector ray;
 		camera.computeRayDirection(x, y, &ray);
 
 		// Compute the intersection with the billboard plane
@@ -328,7 +328,7 @@ public:
 			*pZ = -1e200;
 			return 0; // ray runs parallel to the plane
 		}
-		G3DVector t(*m_pCorners[0]);
+		W3DVector t(*m_pCorners[0]);
 		t.subtract(*camera.lookFromPoint());
 		double d = m_face.dotProduct(t) / denom;
 		*pZ = d;
@@ -351,20 +351,20 @@ public:
 
 
 
-GBillboardWorld::GBillboardWorld()
+WBillboardWorld::WBillboardWorld()
 {
 }
 
-GBillboardWorld::~GBillboardWorld()
+WBillboardWorld::~WBillboardWorld()
 {
 }
 
-void GBillboardWorld::addBillboard(GBillboard* pBB)
+void WBillboardWorld::addBillboard(WBillboard* pBB)
 {
 	m_billboards.push_back(pBB);
 }
 
-void GBillboardWorld::drawSection(GImage* pImage, double* pDepthMap, GCamera& camera, GBBAugmented& bb, G3DVector* pBotLeft, G3DVector* pBotRight, G3DVector* pTopRight, G3DVector* pTopLeft)
+void WBillboardWorld::drawSection(WImage* pImage, double* pDepthMap, WCamera& camera, WBBAugmented& bb, W3DVector* pBotLeft, W3DVector* pBotRight, W3DVector* pTopRight, W3DVector* pTopLeft)
 {
 	double a, b, z;
 	int yBegin = std::max(0, (int)floor(std::max(pBotLeft->m_vals[1], pBotRight->m_vals[1])));
@@ -406,16 +406,16 @@ void GBillboardWorld::drawSection(GImage* pImage, double* pDepthMap, GCamera& ca
 // on a 2-D surface. For a billboard-engine, though, all we need are rectangles.
 #define VERTEX_COUNT 4
 
-void GBillboardWorld::draw(GImage* pImage, double* pDepthMap, GCamera& camera)
+void WBillboardWorld::draw(WImage* pImage, double* pDepthMap, WCamera& camera)
 {
-	G3DVector coords[VERTEX_COUNT + 1];
+	W3DVector coords[VERTEX_COUNT + 1];
 	int coordMap[VERTEX_COUNT + 1];
 	for(size_t i = 0; i < pImage->width() * pImage->height(); i++)
 		pDepthMap[i] = 1e200;
-	for(vector<GBillboard*>::iterator it = m_billboards.begin(); it != m_billboards.end(); it++)
+	for(vector<WBillboard*>::iterator it = m_billboards.begin(); it != m_billboards.end(); it++)
 	{
 		// Project each of the corners onto the view
-		GBBAugmented bb(**it);
+		WBBAugmented bb(**it);
 		int gap = -1;
 		int coordCount = 0;
 		for(int i = 0; i < VERTEX_COUNT; i++)
@@ -437,8 +437,8 @@ void GBillboardWorld::draw(GImage* pImage, double* pDepthMap, GCamera& camera)
 				continue; // Nothing to draw
 
 			// Fudge the vertex that follows the chain of valid vertices
-			G3DVector tmp;
-			G3DVector tmp2;
+			W3DVector tmp;
+			W3DVector tmp2;
 			int indexValid = coordMap[(gap + coordCount - 1) % coordCount]; // The corner just before the gap
 			int indexFudge = (indexValid + 1) % VERTEX_COUNT; // The first corner that was behind the camera
 			tmp.copy(*bb.m_pCorners[indexValid]);
@@ -488,4 +488,4 @@ void GBillboardWorld::draw(GImage* pImage, double* pDepthMap, GCamera& camera)
 	}
 }
 
-} // namespace GClasses
+} // namespace WClasses

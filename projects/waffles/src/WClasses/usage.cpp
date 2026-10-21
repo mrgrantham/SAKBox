@@ -19,11 +19,11 @@
 */
 
 #include "usage.h"
-#include "GError.h"
-#include "GString.h"
+#include "WError.h"
+#include "WString.h"
 #include <cstring>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::string;
 using std::vector;
 
@@ -140,7 +140,7 @@ void UsageNode::print(std::ostream& stream, int depth, int tabSize, int maxWidth
 	// Print the description
 	if(descriptions)
 	{
-		GStringChopper sc(m_description.c_str(), 10, maxWidth - depth * tabSize, true);
+		WStringChopper sc(m_description.c_str(), 10, maxWidth - depth * tabSize, true);
 		while(true)
 		{
 			const char* szLine = sc.next();

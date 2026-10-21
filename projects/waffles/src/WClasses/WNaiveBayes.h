@@ -20,39 +20,39 @@
 #ifndef __GNAIVEBAYES_H__
 #define __GNAIVEBAYES_H__
 
-#include "GLearner.h"
+#include "WLearner.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GXMLTag;
-struct GNaiveBayesOutputAttr;
+class WXMLTag;
+struct WNaiveBayesOutputAttr;
 
 /// A naive Bayes classifier
-class GNaiveBayes : public GIncrementalLearner
+class WNaiveBayes : public WIncrementalLearner
 {
 protected:
 	size_t m_nSampleCount;
-	GNaiveBayesOutputAttr** m_pOutputs;
+	WNaiveBayesOutputAttr** m_pOutputs;
 	double m_equivalentSampleSize;
 
 public:
-	GNaiveBayes();
+	WNaiveBayes();
 
 	/// Load from a DOM.
-	GNaiveBayes(const GDomNode* pNode);
+	WNaiveBayes(const WDomNode* pNode);
 
-	~GNaiveBayes() override;
+	~WNaiveBayes() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalLearner::trainSparse
+	/// See the comment for WIncrementalLearner::trainSparse
 	/// This method assumes that the values in pData are all binary values (0 or 1).
-	void trainSparse(GSparseMatrix& features, GMatrix& labels) override;
+	void trainSparse(WSparseMatrix& features, WMatrix& labels) override;
 
 	/// To ensure that unsampled values don't dominate the joint
 	/// distribution by multiplying by a zero, each value is given
@@ -64,36 +64,36 @@ public:
 	/// possible value that is added by default to prevent zeros.)
 	double equivalentSampleSize() { return m_equivalentSampleSize; }
 
-	/// See the comment for GSupervisedLearner::clear
+	/// See the comment for WSupervisedLearner::clear
 	void clear() override;
 
 	/// Uses cross-validation to find a set of parameters that works well with
 	/// the provided data.
-	void autoTune(GMatrix& features, GMatrix& labels);
+	void autoTune(WMatrix& features, WMatrix& labels);
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& in, GVec& out) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& in, WVec& out) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& in, WPrediction* pOut) override;
 
 	/// Adds a single training sample to the collection
-	void trainIncremental(const GVec& in, const GVec& out) override;
+	void trainIncremental(const WVec& in, const WVec& out) override;
 
 protected:
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
-	/// See the comment for GTransducer::canImplicitlyHandleContinuousFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleContinuousFeatures
 	bool canImplicitlyHandleContinuousFeatures() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleContinuousLabels
+	/// See the comment for WTransducer::canImplicitlyHandleContinuousLabels
 	bool canImplicitlyHandleContinuousLabels() override { return false; }
 
-	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
+	/// See the comment for WIncrementalLearner::beginIncrementalLearningInner
+	void beginIncrementalLearningInner(const WRelation& featureRel, const WRelation& labelRel) override;
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GNAIVEBAYES_H__

@@ -19,16 +19,16 @@
 #ifndef __GPLOT_H__
 #define __GPLOT_H__
 
-#include "GRect.h"
-#include "GMath.h"
+#include "WRect.h"
+#include "WMath.h"
 #include <vector>
 #include <string>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GImage;
-class GRand;
+class WImage;
+class WRand;
 
 
 /// If you need to place grid lines or labels at regular intervals
@@ -36,7 +36,7 @@ class GRand;
 /// this class will help you pick where to place the labels so that
 /// there are a reasonable number of them, and they all land on nice label
 /// values.
-class GPlotLabelSpacer
+class WPlotLabelSpacer
 {
 protected:
 	double m_spacing;
@@ -47,7 +47,7 @@ public:
 	/// maxLabels specifies the maximum number of labels that it can ever
 	/// decide to use. (It should be just smaller than the number of labels
 	/// that would make the graph look too crowded.)
-	GPlotLabelSpacer(double min, double max, int maxLabels);
+	WPlotLabelSpacer(double min, double max, int maxLabels);
 
 	/// Returns the number of labels that have been picked. It will be a value
 	/// smaller than maxLabels.
@@ -58,11 +58,11 @@ public:
 };
 
 
-/// Similar to GPlotLabelSpacer, except for logarithmic grids. To plot in
+/// Similar to WPlotLabelSpacer, except for logarithmic grids. To plot in
 /// logarithmic space, set your plot window to have a range from log_e(min)
 /// to log_e(max). When you actually plot things, plot them at log_e(x), where
 /// x is the position of the thing you want to plot.
-class GPlotLabelSpacerLogarithmic
+class WPlotLabelSpacerLogarithmic
 {
 protected:
 	double m_max;
@@ -71,7 +71,7 @@ protected:
 public:
 	/// Pass in the log (base e) of your min and max values. (We make you
 	/// pass them in logarithmic form, so you can't use a negative min value.)
-	GPlotLabelSpacerLogarithmic(double log_e_min, double log_e_max);
+	WPlotLabelSpacerLogarithmic(double log_e_min, double log_e_max);
 
 	/// Returns true and sets *pos to the position of the next label.
 	/// (You should actually plot it at log_e(*pos) in your plot window.)
@@ -83,17 +83,17 @@ public:
 
 
 /// This class makes it easy to plot points and functions on 2D cartesian coordinates.
-class GPlotWindow
+class WPlotWindow
 {
 protected:
-	GImage* m_pImage;
-	GDoubleRect m_window;
+	WImage* m_pImage;
+	WDoubleRect m_window;
 	int m_w, m_h;
 
 public:
 	/// pImage is the image onto which you wish to plot
-	GPlotWindow(GImage* pImage, double xmin, double ymin, double xmax, double ymax);
-	~GPlotWindow();
+	WPlotWindow(WImage* pImage, double xmin, double ymin, double xmax, double ymax);
+	~WPlotWindow();
 
 	/// Convert from window (Euclidean space) coordinates to view (image) coordinates
 	inline void windowToView(double x, double y, float* pX, float* pY)
@@ -123,10 +123,10 @@ public:
 	double pixelHeight() const { return m_window.h / m_h; }
 
 	/// Returns the image that was passed in to the constructor
-	GImage* image() { return m_pImage; }
+	WImage* image() { return m_pImage; }
 
 	/// Returns the rect of the Euclidean space that this image represents
-	GDoubleRect* window() { return &m_window; }
+	WDoubleRect* window() { return &m_window; }
 
 	/// Plots a single pixel. (Note that for most applications, PlotDot is a better choice because it
 	/// draws a larger dot centered at the sub-pixel location that you specify.)
@@ -162,18 +162,18 @@ public:
 	/// If maxHorizAxisLabels is 0, no labels will be drawn for the horizontal axis.
 	/// If maxHorizAxisLabels is -1, a logarithmic scale will be used for the horizontal axis.
 	/// Same with maxVertAxisLabels.
-	GImage* labelAxes(int maxHorizAxisLabels, int maxVertAxisLabels, int precision, float size, unsigned int color, double angle);
+	WImage* labelAxes(int maxHorizAxisLabels, int maxVertAxisLabels, int precision, float size, unsigned int color, double angle);
 
 protected:
-	static void stringLabel(GImage* pImage, const char* szText, int x, int y, float size, unsigned int color, double angle);
-	static void numericLabel(GImage* pImage, double value, int x, int y, int precision, float size, unsigned int color, double angle);
+	static void stringLabel(WImage* pImage, const char* szText, int x, int y, float size, unsigned int color, double angle);
+	static void numericLabel(WImage* pImage, double value, int x, int y, int precision, float size, unsigned int color, double angle);
 };
 
 
 
 
 /// This class simplifies plotting data to an SVG file
-class GSVG
+class WSVG
 {
 public:
 	enum Anchor
@@ -195,8 +195,8 @@ public:
 	/// are 1, so this is just a single chart, but you may specify larger values to produce a grid of charts.
 	/// width and height specify the width and height of the entire grid of charts. An equal portion of
 	/// the width and height is given to each chart in the grid.
-	GSVG(size_t width, size_t height, size_t hWindows = 1, size_t vWindows = 1);
-	~GSVG();
+	WSVG(size_t width, size_t height, size_t hWindows = 1, size_t vWindows = 1);
+	~WSVG();
 
 	/// Start a new chart. This method must be called before any drawing operations are performed.
 	/// xmin, ymin, xmax, and ymax specify the coordinates in the chart to begin drawing.
@@ -260,6 +260,6 @@ protected:
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GPLOT_H__

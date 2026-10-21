@@ -18,28 +18,28 @@
 
 #include <exception>
 #include <iostream>
-#define GCUDA
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
-#include <WClasses/GVec.h>
-#include <WClasses/GMatrix.h>
-#include <WClasses/GNeuralNet.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GCudaMatrix.h>
+#define WCUDA
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
+#include <WClasses/WVec.h>
+#include <WClasses/WMatrix.h>
+#include <WClasses/WNeuralNet.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WCudaMatrix.h>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 using std::cout;
 
-void test_upload_download(GCudaEngine& e)
+void test_upload_download(WCudaEngine& e)
 {
-	GVec v0(3);
+	WVec v0(3);
 	v0[0] = 0.1234;
 	v0[1] = 0.2345;
 	v0[2] = 0.3456;
-	GCudaVector cv0;
+	WCudaVector cv0;
 	cv0.upload(v0);
-	GVec v1;
+	WVec v1;
 	cv0.download(v1);
 	for(size_t i = 0; i < 3; i++)
 	{
@@ -48,17 +48,17 @@ void test_upload_download(GCudaEngine& e)
 	}
 }
 
-void test_copy(GCudaEngine& e)
+void test_copy(WCudaEngine& e)
 {
-	GVec v0(3);
+	WVec v0(3);
 	v0[0] = 0.1234;
 	v0[1] = 0.2345;
 	v0[2] = 0.3456;
-	GCudaVector cv0;
+	WCudaVector cv0;
 	cv0.upload(v0);
-	GCudaVector cv1;
+	WCudaVector cv1;
 	cv1.copy(e, cv0);
-	GVec v1;
+	WVec v1;
 	cv1.download(v1);
 	for(size_t i = 0; i < 3; i++)
 	{
@@ -67,12 +67,12 @@ void test_copy(GCudaEngine& e)
 	}
 }
 
-void test_matrix_vector_multiply(GCudaEngine& e)
+void test_matrix_vector_multiply(WCudaEngine& e)
 {
-	GVec v1(2);
+	WVec v1(2);
 	v1[0] = 1.0;
 	v1[1] = 2.0;
-	GMatrix m(2, 3);
+	WMatrix m(2, 3);
 	m[0][0] = 1.0;
 	m[0][1] = 2.0;
 	m[0][2] = 3.0;
@@ -80,14 +80,14 @@ void test_matrix_vector_multiply(GCudaEngine& e)
 	m[1][1] = 5.0;
 	m[1][2] = 6.0;
 
-	GCudaVector cv1;
+	WCudaVector cv1;
 	cv1.upload(v1);
-	GCudaMatrix cm;
+	WCudaMatrix cm;
 	cm.upload(m);
-	GCudaVector cv2;
+	WCudaVector cv2;
 	cm.rowVectorTimesThis(e, cv1, cv2);
 
-	GVec v2(3);
+	WVec v2(3);
 	cv2.download(v2);
 	if(std::abs(v2[0] - 9) > 1e-12)
 		throw Ex("failed");
@@ -97,13 +97,13 @@ void test_matrix_vector_multiply(GCudaEngine& e)
 		throw Ex("failed");
 }
 
-void test_tanh(GCudaEngine& e)
+void test_tanh(WCudaEngine& e)
 {
-	GVec v2(3);
+	WVec v2(3);
 	v2[0] = 1.0;
 	v2[1] = 2.0;
 	v2[2] = 3.0;
-	GCudaVector cv2;
+	WCudaVector cv2;
 	cv2.upload(v2);
 	cv2.activateTanh(e);
 	cv2.download(v2);
@@ -115,18 +115,18 @@ void test_tanh(GCudaEngine& e)
 		throw Ex("failed");
 }
 
-double train(GCudaEngine& e, GNeuralNet& nn, GMatrix& feat, GMatrix& lab, GRand& rand)
+double train(WCudaEngine& e, WNeuralNet& nn, WMatrix& feat, WMatrix& lab, WRand& rand)
 {
 	nn.init(feat.cols(), lab.cols(), rand);
-	GContextNeuralNet* pCtx = nn.newContext(rand);
-	GVec gradient(nn.weightCount());
+	WContextNeuralNet* pCtx = nn.newContext(rand);
+	WVec gradient(nn.weightCount());
 	gradient.fill(0.0);
 	double learningRate = 0.03;
 	double momentum = 0.0;
-	double timeBef = GTime::seconds();
+	double timeBef = WTime::seconds();
 	for(size_t i = 0; i < feat.rows(); i++)
 	{
-		GVec& pred = pCtx->forwardProp(feat[i]);
+		WVec& pred = pCtx->forwardProp(feat[i]);
 		pCtx->blame().copy(lab[i]);
 		pCtx->blame() -= pred;
 		pCtx->backProp();
@@ -134,63 +134,63 @@ double train(GCudaEngine& e, GNeuralNet& nn, GMatrix& feat, GMatrix& lab, GRand&
 		pCtx->updateGradient(feat[i], gradient);
 		nn.step(learningRate, gradient);
 	}
-	double timeAft = GTime::seconds();
+	double timeAft = WTime::seconds();
 	return timeAft - timeBef;
 }
 
-double train_gpu(GCudaEngine& e, GNeuralNet& nn, GMatrix& feat, GMatrix& lab, GRand& rand)
+double train_gpu(WCudaEngine& e, WNeuralNet& nn, WMatrix& feat, WMatrix& lab, WRand& rand)
 {
 	nn.init(feat.cols(), lab.cols(), rand);
 	nn.uploadCuda();
-	GContextNeuralNet* pCtx = nn.newContext(rand, e);
-	GCudaMatrix featGPU;
+	WContextNeuralNet* pCtx = nn.newContext(rand, e);
+	WCudaMatrix featGPU;
 	featGPU.upload(feat);
-	GCudaMatrix labGPU;
+	WCudaMatrix labGPU;
 	labGPU.upload(lab);
 
-	GCudaVector gradient(nn.weightCount());
+	WCudaVector gradient(nn.weightCount());
 	gradient.fill(e, 0.0);
 	double learningRate = 0.03;
 	double momentum = 0.0;
-	double timeBef = GTime::seconds();
+	double timeBef = WTime::seconds();
 	for(size_t i = 0; i < feat.rows(); i++)
 	{
-		GCudaVector& pred = pCtx->forwardPropCuda(featGPU[i]);
+		WCudaVector& pred = pCtx->forwardPropCuda(featGPU[i]);
 		pCtx->blameCuda().copy(e, labGPU[i]);
 		pCtx->blameCuda().add(e, pred, -1.0);
-		GCudaVector f(featGPU[i]);
+		WCudaVector f(featGPU[i]);
 		pCtx->backPropCuda();
 		gradient.scale(e, momentum);
 		pCtx->updateGradientCuda(f, gradient);
 		nn.stepCuda(*pCtx, learningRate, gradient);
 	}
-	double timeAft = GTime::seconds();
+	double timeAft = WTime::seconds();
 	nn.downloadCuda();
 	return timeAft - timeBef;
 }
 
-void test_GBlockLinear(GCudaEngine& e)
+void test_GBlockLinear(WCudaEngine& e)
 {
-	GRand rand(0);
-	GNeuralNet nn;
-	GBlockLinear* bl = new GBlockLinear(2, 3);
+	WRand rand(0);
+	WNeuralNet nn;
+	WBlockLinear* bl = new WBlockLinear(2, 3);
 	nn.add(bl);
 	nn.init(3, 2, rand);
-	GContextNeuralNet* pCtx = nn.newContext(rand, e);
-	GVec v0(3);
+	WContextNeuralNet* pCtx = nn.newContext(rand, e);
+	WVec v0(3);
 	v0[0] = 0.1234;
 	v0[1] = 0.2345;
 	v0[2] = 0.3456;
-	GVec v1(2);
+	WVec v1(2);
 	bl->forwardProp(*pCtx, v0, v1);
 
-	GCudaVector cv0;
+	WCudaVector cv0;
 	cv0.upload(v0);
-	GCudaVector cv1;
+	WCudaVector cv1;
 	cv1.resize(2);
 	bl->uploadCuda();
 	bl->forwardPropCuda(*pCtx, cv0, cv1);
-	GVec v2;
+	WVec v2;
 	cv1.download(v2);
 	if(std::abs(v1[0] - v2[0]) > 1e-10)
 		throw Ex("failed");
@@ -198,32 +198,32 @@ void test_GBlockLinear(GCudaEngine& e)
 		throw Ex("failed");
 }
 
-void test_GCudaLayer(GCudaEngine& e)
+void test_GCudaLayer(WCudaEngine& e)
 {
-	GUniformRelation rel(3);
+	WUniformRelation rel(3);
 	size_t width = 1000;
 	//	size_t epochs = 2000;
 
-	GRand rand(0);
-	GMatrix feat(100, 3);
+	WRand rand(0);
+	WMatrix feat(100, 3);
 	for(size_t i = 0; i < feat.rows(); i++)
 		feat[i].fillNormal(rand, 0.3);
 
-	GMatrix lab(100, 2);
+	WMatrix lab(100, 2);
 	for(size_t i = 0; i < lab.rows(); i++)
 	{
-		GVec& f = feat[i];
-		GVec& l = lab[i];
+		WVec& f = feat[i];
+		WVec& l = lab[i];
 		l[0] = (f[0] + f[1]) * f[2];
 		l[1] = (f[1] + f[2]) * f[0];
 	}
 
-	GNeuralNet nn;
-	nn.add(new GBlockLinear(width), new GBlockTanh());
-	nn.add(new GBlockLinear(width), new GBlockTanh());
-	nn.add(new GBlockLinear(width), new GBlockTanh());
-	nn.add(new GBlockLinear(width), new GBlockTanh());
-	nn.add(new GBlockLinear(3), new GBlockTanh());
+	WNeuralNet nn;
+	nn.add(new WBlockLinear(width), new WBlockTanh());
+	nn.add(new WBlockLinear(width), new WBlockTanh());
+	nn.add(new WBlockLinear(width), new WBlockTanh());
+	nn.add(new WBlockLinear(width), new WBlockTanh());
+	nn.add(new WBlockLinear(3), new WBlockTanh());
 
 	for(int i = 0; i < 4; i++)
 	{
@@ -236,44 +236,44 @@ void test_GCudaLayer(GCudaEngine& e)
 }
 
 /*
-void test_convolutional(GCudaEngine& e)
+void test_convolutional(WCudaEngine& e)
 {
 	cout << "Testing convolutional...\n";
 	size_t epochs = 1000;
 
 	// Make some random training data
-	GRand r(0);
-	GMatrix feat(10, 9);
+	WRand r(0);
+	WMatrix feat(10, 9);
 	feat.fillNormal(r, 0.1);
-	GMatrix lab(10, 1);
+	WMatrix lab(10, 1);
 	lab.fillNormal(r, 0.1);
 
 	// Make a regular CNN
-	GNeuralNet nn1;
-	nn1.addLayer(new GLayerConvolutional2D(3, 3, 1, 2, 2, 1));
-	nn1.addLayer(new GLayerClassic(4, 1));
+	WNeuralNet nn1;
+	nn1.addLayer(new WLayerConvolutional2D(3, 3, 1, 2, 2, 1));
+	nn1.addLayer(new WLayerClassic(4, 1));
 	nn1.beginIncrementalLearning(feat, lab);
 
 	// Make a parallel CNN
-	GNeuralNet nn2;
-	nn2.addLayer(new GLayerConvolutional2DCuda(e, 3, 3, 1, 2, 2, 1));
-	nn2.addLayer(new GLayerClassicCuda(e, 4, 1));
+	WNeuralNet nn2;
+	nn2.addLayer(new WLayerConvolutional2DCuda(e, 3, 3, 1, 2, 2, 1));
+	nn2.addLayer(new WLayerClassicCuda(e, 4, 1));
 	nn2.beginIncrementalLearning(feat, lab);
 
 	// Make another parallel CNN
-	GNeuralNet nn3;
-	nn3.addLayer(new GLayerConvolutional2DCuda(e, 3, 3, 1, 2, 2, 1));
-	nn3.addLayer(new GLayerClassicCuda(e, 4, 1));
+	WNeuralNet nn3;
+	nn3.addLayer(new WLayerConvolutional2DCuda(e, 3, 3, 1, 2, 2, 1));
+	nn3.addLayer(new WLayerClassicCuda(e, 4, 1));
 	nn3.beginIncrementalLearning(feat, lab);
 
 	cout << "Copying (so they will have identical weights)...\n";
-	((GLayerConvolutional2DCuda*)&nn2.layer(0))->upload(*(GLayerConvolutional2D*)&nn1.layer(0));
-	((GLayerClassicCuda*)&nn2.layer(1))->upload(*(GLayerClassic*)&nn1.layer(1));
-	((GLayerConvolutional2DCuda*)&nn3.layer(0))->upload(*(GLayerConvolutional2D*)&nn1.layer(0));
-	((GLayerClassicCuda*)&nn3.layer(1))->upload(*(GLayerClassic*)&nn1.layer(1));
+	((WLayerConvolutional2DCuda*)&nn2.layer(0))->upload(*(WLayerConvolutional2D*)&nn1.layer(0));
+	((WLayerClassicCuda*)&nn2.layer(1))->upload(*(WLayerClassic*)&nn1.layer(1));
+	((WLayerConvolutional2DCuda*)&nn3.layer(0))->upload(*(WLayerConvolutional2D*)&nn1.layer(0));
+	((WLayerClassicCuda*)&nn3.layer(1))->upload(*(WLayerClassic*)&nn1.layer(1));
 
 	cout << "Testing to make sure they make identical predictions (before training)...\n";
-	GVec pred(1);
+	WVec pred(1);
 	//cout << "  Input: [" << to_str(feat) << "]\n";
 	nn1.predict(feat[0], pred);
 	cout << "Classic: [" << to_str(pred) << "]\n";
@@ -284,32 +284,32 @@ void test_convolutional(GCudaEngine& e)
 
 
 	cout << "Training the classic network...\n";
-	double timeBef1 = GTime::seconds();
+	double timeBef1 = WTime::seconds();
 	for(size_t i = 0; i < epochs; i++)
 	{
 		nn1.trainIncremental(feat[i % 10], lab[i % 10]);
 	}
-	double timeAft1 = GTime::seconds();
+	double timeAft1 = WTime::seconds();
 
 
 	cout << "Training the first parallel network...\n";
 	r.setSeed(0);
-	double timeBef2 = GTime::seconds();
+	double timeBef2 = WTime::seconds();
 	for(size_t i = 0; i < epochs; i++)
 	{
 		nn2.trainIncremental(feat[i % 10], lab[i % 10]);
 	}
-	double timeAft2 = GTime::seconds();
+	double timeAft2 = WTime::seconds();
 
 	cout << "Training the second parallel network without synchronization...\n";
 	e.setHogWild(true);
 	r.setSeed(0);
-	double timeBef3 = GTime::seconds();
+	double timeBef3 = WTime::seconds();
 	for(size_t i = 0; i < epochs; i++)
 	{
 		nn3.trainIncremental(feat[i % 10], lab[i % 10]);
 	}
-	double timeAft3 = GTime::seconds();
+	double timeAft3 = WTime::seconds();
 
 	cout << "Classic training time: " << to_str(timeAft1 - timeBef1) << " seconds\n";
 	cout << "  Cuda1 training time: " << to_str(timeAft2 - timeBef2) << " seconds\n";
@@ -329,7 +329,7 @@ void test_convolutional(GCudaEngine& e)
 */
 void doit()
 {
-	GCudaEngine e;
+	WCudaEngine e;
 	test_upload_download(e);
 	test_copy(e);
 	test_matrix_vector_multiply(e);
@@ -342,7 +342,7 @@ void doit()
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int nRet = 0;
 	try

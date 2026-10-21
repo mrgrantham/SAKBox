@@ -22,18 +22,18 @@
 
 #include <istream>
 #include <map>
-#include "GBitTable.h"
+#include "WBitTable.h"
 
-namespace GClasses
+namespace WClasses
 {
 
 
 /// This class represents a set of characters.
-class GCharSet
+class WCharSet
 {
-	friend class GTokenizer;
+	friend class WTokenizer;
 protected:
-	GBitTable m_bt;
+	WBitTable m_bt;
 
 public:
 	/// szChars is an un-ordered set of characters (with no separator between
@@ -46,27 +46,27 @@ public:
 	/// a character in the set, since that character indicates the end of the
 	/// string, but that is okay since '\0' should not occur in text files
 	/// anyway, and this class is designed for parsing text files.)
-	GCharSet(const char* szChars);
+	WCharSet(const char* szChars);
 
 	/// Returns true iff c is in the character set
 	bool find(char c) const;
 
 	/// Returns true iff other is the same as this character set
-	bool equals(const GCharSet& other) const;
+	bool equals(const WCharSet& other) const;
 };
 
 
 
-#define GTOKENIZER_MAX_LOOKAHEAD 8
+#define WTOKENIZER_MAX_LOOKAHEAD 8
 
 /// This is a simple tokenizer that reads a file, one token at-a-time.
 /// Example usage:
 ///
-/// GCharSet whitespace("\t\n\r ");
-/// GCharSet alphanum("a-zA-Z0-9");
-/// GCharSet float("-.,0-9e");
-/// GCharSet commanewline(",\n");
-/// GTokenizer tok(filename);
+/// WCharSet whitespace("\t\n\r ");
+/// WCharSet alphanum("a-zA-Z0-9");
+/// WCharSet float("-.,0-9e");
+/// WCharSet commanewline(",\n");
+/// WTokenizer tok(filename);
 /// while(true)
 /// {
 /// 	tok.skip(whitespace);
@@ -75,10 +75,10 @@ public:
 /// 	char* mystr = tok.readWhile(alphanum);
 /// 	tok.skip(commanewline);
 /// }
-class GTokenizer
+class WTokenizer
 {
 protected:
-	char m_q[GTOKENIZER_MAX_LOOKAHEAD]; // a look-ahead character queue for the stream
+	char m_q[WTOKENIZER_MAX_LOOKAHEAD]; // a look-ahead character queue for the stream
 	size_t m_qPos; // the current head of the queue (it is a revolving queue)
 	size_t m_qCount; // the number of characters in the queue
 	char* m_pBufStart; // a buffer where the most-recently read token is stored
@@ -91,14 +91,14 @@ protected:
 
 public:
 	/// Opens the specified filename.
-	/// charSets is a class that inherits from GCharSetHolder
-	GTokenizer(const char* szFilename);
+	/// charSets is a class that inherits from WCharSetHolder
+	WTokenizer(const char* szFilename);
 
 	/// Uses the provided buffer of data. (If len is 0, then it
 	/// will read until a null-terminator is found.)
-	GTokenizer(const char* pFile, size_t len);
+	WTokenizer(const char* pFile, size_t len);
 
-	virtual ~GTokenizer();
+	virtual ~WTokenizer();
 
 	/// Returns whether there is more data to be read
 	bool has_more();
@@ -110,9 +110,9 @@ public:
 	/// occur in a text file.)
 	char peek();
 
-	/// Peek up to GTOKENIZER_MAX_LOOKAHEAD characters ahead. If n=0, returns the next character to be read.
+	/// Peek up to WTOKENIZER_MAX_LOOKAHEAD characters ahead. If n=0, returns the next character to be read.
 	/// If n=1, retuns the second character ahead to be read, and so on.
-	/// If n>=GTOKENIZER_MAX_LOOKAHEAD, throws an exception.
+	/// If n>=WTOKENIZER_MAX_LOOKAHEAD, throws an exception.
 	char peek(size_t n);
 
 	/// Appends a string to the current token (without modifying the file), and returns
@@ -124,19 +124,19 @@ public:
 	/// minLen characters are read.
 	/// The token returned by this method will have been copied into an
 	/// internal buffer, null-terminated, and a pointer to that buffer is returned.
-	char* readUntil(const GCharSet& delimeters, size_t minLen = 1, size_t maxLen = (size_t)-1);
+	char* readUntil(const WCharSet& delimeters, size_t minLen = 1, size_t maxLen = (size_t)-1);
 
 	/// Reads until the next character would be one of the specified delimeters,
 	/// and is not preceded by escapeChar.
 	/// The token returned by this method will have been copied into an
 	/// internal buffer, null-terminated, and a pointer to that buffer is returned.
-	char* readUntil_escaped(char escapeChar, const GCharSet& delimeters);
+	char* readUntil_escaped(char escapeChar, const WCharSet& delimeters);
 
 	/// Reads while the character is one of the specified characters. Throws an
 	/// exception if fewer than minLen characters are read.
 	/// The token returned by this method will have been copied into an
 	/// internal buffer, null-terminated, and a pointer to that buffer is returned.
-	char* readWhile(const GCharSet& set, size_t minLen = 1);
+	char* readWhile(const WCharSet& set, size_t minLen = 1);
 
 	/// \brief Returns the next token defined by the given delimiters unless escaped or quoted with " or '.
 	///
@@ -173,17 +173,17 @@ public:
 	///
 	///\return a pointer to an internal character buffer containing the
 	///        null-terminated token
-	char* readUntil_escaped_quoted(const GCharSet& delimiters, char escapeChar = '\\');
+	char* readUntil_escaped_quoted(const WCharSet& delimiters, char escapeChar = '\\');
 
 	/// Reads past any characters specified in the list of delimeters.
 	/// If szDelimeters is NULL, then any characters <= ' ' are considered
 	/// to be delimeters. (This method is similar to nextWhile, except that
 	/// it does not buffer the characters it reads.)
-	void skipWhile(const GCharSet& delimeters);
+	void skipWhile(const WCharSet& delimeters);
 
 	/// Skip until the next character is one of the delimeters.
 	/// (This method is the same as readUntil, except that it does not buffer what it reads.)
-	void skipUntil(const GCharSet& delimeters);
+	void skipUntil(const WCharSet& delimeters);
 
 	/// Advances past the next 'n' characters. (Stops if the end-of-file is reached.)
 	void skip(size_t n);
@@ -197,11 +197,11 @@ public:
 	/// trimmed off of both the beginning and end of the token. For example, this method could
 	/// be used to convert "  tok  " to "tok".
 	/// (Calling this method will not change the value returned by tokenLength.)
-	char* trim(const GCharSet& set);
+	char* trim(const WCharSet& set);
 
 	/// Returns the previously-returned token, except with any characters not in the specified set removed.
 	/// (Calling this method will not change the value returned by tokenLength.)
-	char* filter(const GCharSet& set);
+	char* filter(const WCharSet& set);
 
 	/// Returns the current position in this stream
 	size_t pos();
@@ -232,6 +232,6 @@ protected:
 	char* nullTerminate();
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GTOKENIZER_H__

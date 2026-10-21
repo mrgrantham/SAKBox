@@ -23,24 +23,24 @@
 #include <stddef.h>
 #include <math.h>
 #include <map>
-#include "GVec.h"
-#include "GError.h"
+#include "WVec.h"
+#include "WError.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GDomNode;
-class GDom;
-class GRand;
-class GMatrix;
+class WDomNode;
+class WDom;
+class WRand;
+class WMatrix;
 
 
-class GDistribution
+class WDistribution
 {
 };
 
 /// This is the base class for univariate distributions.
-class GUnivariateDistribution : public GDistribution
+class WUnivariateDistribution : public WDistribution
 {
 public:
 	enum Type
@@ -55,8 +55,8 @@ public:
 		softImpulse,
 	};
 
-	GUnivariateDistribution() {}
-	virtual ~GUnivariateDistribution() {}
+	WUnivariateDistribution() {}
+	virtual ~WUnivariateDistribution() {}
 
 	/// Returns the type of distribution
 	virtual Type type() const = 0;
@@ -80,28 +80,28 @@ public:
 
 /// This is a distribution that specifies a probability for each
 /// value in a set of nominal values.
-class GCategoricalDistribution : public GUnivariateDistribution
+class WCategoricalDistribution : public WUnivariateDistribution
 {
 protected:
 	size_t m_nValueCount;
 	size_t m_nMode;
-	GVec m_pValues;
+	WVec m_pValues;
 
 public:
-	GCategoricalDistribution() : GUnivariateDistribution()
+	WCategoricalDistribution() : WUnivariateDistribution()
 	{
 		m_nValueCount = 0;
 	}
 
-	~GCategoricalDistribution() override
+	~WCategoricalDistribution() override
 	{
 	}
 
 	/// Load values from a text format
-	void deserialize(GDomNode* pNode);
+	void deserialize(WDomNode* pNode);
 
 	/// Save values to a text format
-	GDomNode* serialize(GDom* pDoc) const;
+	WDomNode* serialize(WDom* pDoc) const;
 
 	/// Returns categorical
 	Type type() const override
@@ -126,10 +126,10 @@ public:
 		return (double)m_nMode;
 	}
 
-	/// See the comment for GUnivariateDistribution::logLikelihood
+	/// See the comment for WUnivariateDistribution::logLikelihood
 	double logLikelihood(double x) override;
 
-	/// See the comment for GUnivariateDistribution::likelihood
+	/// See the comment for WUnivariateDistribution::likelihood
 	double likelihood(double x) override
 	{
 		size_t index = (size_t)x;
@@ -147,7 +147,7 @@ public:
 	/// Resizes the vector of probabilities if it
 	/// does not have nValueCount elements, and returns
 	/// that vector
-	GVec& values(size_t nValueCount)
+	WVec& values(size_t nValueCount)
 	{
 		if(m_nValueCount != nValueCount)
 		{
@@ -210,7 +210,7 @@ public:
 
 /// This class is for efficiently drawing random values from
 /// a categorical distribution with a large number of categories.
-class GCategoricalSampler
+class WCategoricalSampler
 {
 protected:
 	std::map<double, size_t> m_map;
@@ -219,8 +219,8 @@ public:
 	/// categories specifies the number of categories.
 	/// pDistribution should specify a probability value for each
 	/// category. They should sum to 1.
-	GCategoricalSampler(size_t categories, const double* pDistribution);
-	~GCategoricalSampler() {}
+	WCategoricalSampler(size_t categories, const double* pDistribution);
+	~WCategoricalSampler() {}
 
 	/// d should be a random uniform value from 0 to 1. The corresponding zero-based
 	/// category index is returned. This method will take log(categories) time.
@@ -228,24 +228,24 @@ public:
 };
 
 
-class GCategoricalSamplerBatch
+class WCategoricalSamplerBatch
 {
 protected:
 	size_t m_categories;
-	const GVec& m_distribution;
-	GRandomIndexIterator m_ii;
+	const WVec& m_distribution;
+	WRandomIndexIterator m_ii;
 
 public:
 	/// categories specifies the number of categories.
 	/// distribution should specify a probability value for each category. They should sum to 1.
 	/// pDistribution is expected to remain valid for the duration of this object.
-	GCategoricalSamplerBatch(size_t categories, const GVec& distribution, GRand& rand);
-	~GCategoricalSamplerBatch();
+	WCategoricalSamplerBatch(size_t categories, const WVec& distribution, WRand& rand);
+	~WCategoricalSamplerBatch();
 
 	/// This will draw a batch of samples from the categorical distribution.
 	/// This method is implemented efficiently, such that it will draw them in O(samples + categories) time.
 	/// (This is significantly faster than O(samples * log(categories)) time, which is what you get if
-	/// you use GCategoricalSampler.)
+	/// you use WCategoricalSampler.)
 	void draw(size_t samples, size_t* pOutBatch);
 
 	/// Run unit tests for this class.
@@ -254,19 +254,19 @@ public:
 
 
 /// This is the Normal (a.k.a. Gaussian) distribution
-class GNormalDistribution : public GUnivariateDistribution
+class WNormalDistribution : public WUnivariateDistribution
 {
 protected:
 	double m_mean, m_variance;
 	double m_height;
 
 public:
-	GNormalDistribution() : GUnivariateDistribution()
+	WNormalDistribution() : WUnivariateDistribution()
 	{
 		m_height = 0;
 	}
 
-	~GNormalDistribution() override
+	~WNormalDistribution() override
 	{
 	}
 
@@ -293,13 +293,13 @@ public:
 		return mean();
 	}
 
-	/// See the comment for GUnivariateDistribution::logLikelihood
+	/// See the comment for WUnivariateDistribution::logLikelihood
 	double logLikelihood(double x) override
 	{
 		return -0.5 * (log(m_variance) + (x - m_mean) * (x - m_mean) / m_variance);
 	}
 
-	/// See the comment for GUnivariateDistribution::likelihood
+	/// See the comment for WUnivariateDistribution::likelihood
 	double likelihood(double x) override
 	{
 		if(m_height == 0)
@@ -311,7 +311,7 @@ public:
 	/// Sets the mean and variance of this distribution
 	void setMeanAndVariance(double newmean, double newvariance)
 	{
-		GAssert(newmean > -1e308 && newvariance > -1e-5);
+		WAssert(newmean > -1e308 && newvariance > -1e-5);
 		m_mean = newmean;
 		m_variance = newvariance;
 		m_height = 0;
@@ -338,7 +338,7 @@ public:
 	}
 
 	/// Multiplies this by another Normal distribution
-	void multiply(GNormalDistribution* pOther)
+	void multiply(WNormalDistribution* pOther)
 	{
 		double b = m_variance / (m_variance + pOther->m_variance);
 		double newMean = m_mean * (1.0 - b) + pOther->m_mean * b;
@@ -353,17 +353,17 @@ protected:
 
 
 /// This is a continuous uniform distribution.
-class GUniformDistribution : public GUnivariateDistribution
+class WUniformDistribution : public WUnivariateDistribution
 {
 protected:
 	double m_a, m_b;
 
 public:
-	GUniformDistribution() : GUnivariateDistribution()
+	WUniformDistribution() : WUnivariateDistribution()
 	{
 	}
 
-	~GUniformDistribution() override
+	~WUniformDistribution() override
 	{
 	}
 
@@ -393,13 +393,13 @@ public:
 		return mean();
 	}
 
-	/// See the comment for GUnivariateDistribution::logLikelihood
+	/// See the comment for WUnivariateDistribution::logLikelihood
 	double logLikelihood(double x) override
 	{
 		return log(likelihood(x));
 	}
 
-	/// See the comment for GUnivariateDistribution::likelihood
+	/// See the comment for WUnivariateDistribution::likelihood
 	double likelihood(double x) override
 	{
 		return 1.0 / (m_a - m_b);
@@ -421,17 +421,17 @@ public:
 
 
 /// The Poisson distribution
-class GPoissonDistribution : public GUnivariateDistribution
+class WPoissonDistribution : public WUnivariateDistribution
 {
 protected:
 	double m_rate;
 
 public:
-	GPoissonDistribution() : GUnivariateDistribution()
+	WPoissonDistribution() : WUnivariateDistribution()
 	{
 	}
 
-	~GPoissonDistribution() override
+	~WPoissonDistribution() override
 	{
 	}
 
@@ -459,10 +459,10 @@ public:
 		return mean();
 	}
 
-	/// See the comment for GUnivariateDistribution::logLikelihood
+	/// See the comment for WUnivariateDistribution::logLikelihood
 	double logLikelihood(double x) override;
 
-	/// See the comment for GUnivariateDistribution::likelihood
+	/// See the comment for WUnivariateDistribution::likelihood
 	double likelihood(double x) override;
 
 	/// Sets the parameters of this distribution
@@ -486,17 +486,17 @@ public:
 
 
 /// The Gamma distribution
-class GGammaDistribution : public GUnivariateDistribution
+class WGammaDistribution : public WUnivariateDistribution
 {
 protected:
 	double m_shape, m_scale;
 
 public:
-	GGammaDistribution() : GUnivariateDistribution()
+	WGammaDistribution() : WUnivariateDistribution()
 	{
 	}
 
-	~GGammaDistribution() override
+	~WGammaDistribution() override
 	{
 	}
 
@@ -526,10 +526,10 @@ public:
 			return 0;
 	}
 
-	/// See the comment for GUnivariateDistribution::logLikelihood
+	/// See the comment for WUnivariateDistribution::logLikelihood
 	double logLikelihood(double x) override;
 
-	/// See the comment for GUnivariateDistribution::likelihood
+	/// See the comment for WUnivariateDistribution::likelihood
 	double likelihood(double x) override;
 
 	/// Sets the parameters of this distribution
@@ -548,17 +548,17 @@ public:
 
 
 /// The inverse Gamma distribution
-class GInverseGammaDistribution : public GUnivariateDistribution
+class WInverseGammaDistribution : public WUnivariateDistribution
 {
 protected:
 	double m_shape, m_scale;
 
 public:
-	GInverseGammaDistribution() : GUnivariateDistribution()
+	WInverseGammaDistribution() : WUnivariateDistribution()
 	{
 	}
 
-	~GInverseGammaDistribution() override
+	~WInverseGammaDistribution() override
 	{
 	}
 
@@ -585,13 +585,13 @@ public:
 		return m_scale / (m_shape + 1);
 	}
 
-	/// See the comment for GUnivariateDistribution::logLikelihood
+	/// See the comment for WUnivariateDistribution::logLikelihood
 	double logLikelihood(double x) override
 	{
 		return -(m_shape + 1.0) * log(x) - (m_scale / x);
 	}
 
-	/// See the comment for GUnivariateDistribution::likelihood
+	/// See the comment for WUnivariateDistribution::likelihood
 	double likelihood(double x) override;
 
 	/// Sets the parameters of this distribution
@@ -610,17 +610,17 @@ public:
 
 
 /// The Beta distribution
-class GBetaDistribution : public GUnivariateDistribution
+class WBetaDistribution : public WUnivariateDistribution
 {
 protected:
 	double m_alpha, m_beta;
 
 public:
-	GBetaDistribution() : GUnivariateDistribution()
+	WBetaDistribution() : WUnivariateDistribution()
 	{
 	}
 
-	~GBetaDistribution() override
+	~WBetaDistribution() override
 	{
 	}
 
@@ -652,10 +652,10 @@ public:
 			return 0;
 	}
 
-	/// See the comment for GUnivariateDistribution::logLikelihood
+	/// See the comment for WUnivariateDistribution::logLikelihood
 	double logLikelihood(double x) override;
 
-	/// See the comment for GUnivariateDistribution::likelihood
+	/// See the comment for WUnivariateDistribution::likelihood
 	double likelihood(double x) override;
 
 	/// Sets the parameters of this distribution
@@ -674,17 +674,17 @@ public:
 
 
 
-class GSoftImpulseDistribution : public GUnivariateDistribution
+class WSoftImpulseDistribution : public WUnivariateDistribution
 {
 protected:
 	double m_steepness;
 
 public:
-	GSoftImpulseDistribution() : GUnivariateDistribution()
+	WSoftImpulseDistribution() : WUnivariateDistribution()
 	{
 	}
 
-	~GSoftImpulseDistribution() override
+	~WSoftImpulseDistribution() override
 	{
 	}
 
@@ -711,10 +711,10 @@ public:
 		return 0.5;
 	}
 
-	/// See the comment for GUnivariateDistribution::logLikelihood
+	/// See the comment for WUnivariateDistribution::logLikelihood
 	double likelihood(double x) override;
 
-	/// See the comment for GUnivariateDistribution::likelihood
+	/// See the comment for WUnivariateDistribution::likelihood
 	double logLikelihood(double x) override;
 
 	/// Sets the parameter of this distribution
@@ -736,34 +736,34 @@ public:
 
 /// A multivariate Normal distribution. It can compute the likelihood of
 /// a specified vector, and can also generate random vectors from the distribution.
-class GMultivariateNormalDistribution : public GDistribution
+class WMultivariateNormalDistribution : public WDistribution
 {
 protected:
 	size_t m_nDims;
 	double m_dScale;
-	GVec m_mean;
-	GVec m_vector1;
-	GVec m_vector2;
-	GMatrix* m_pInverseCovariance;
-	GMatrix* m_pCholesky;
+	WVec m_mean;
+	WVec m_vector1;
+	WVec m_vector2;
+	WMatrix* m_pInverseCovariance;
+	WMatrix* m_pCholesky;
 
 public:
-	GMultivariateNormalDistribution(const GVec& mean, GMatrix* pCovariance);
-	GMultivariateNormalDistribution(GMatrix* pData, size_t nDims);
-	~GMultivariateNormalDistribution();
+	WMultivariateNormalDistribution(const WVec& mean, WMatrix* pCovariance);
+	WMultivariateNormalDistribution(WMatrix* pData, size_t nDims);
+	~WMultivariateNormalDistribution();
 
 	/// Compute the likelihood of the specified vector (which is assumed
 	/// to be the same size as the number of columns or rows in the covariance
 	/// matrix).
-	double likelihood(const GVec& x);
+	double likelihood(const WVec& x);
 
 	/// Generates a random vector from this multivariate Normal distribution.
-	void randomVector(GRand* pRand, GVec& out);
+	void randomVector(WRand* pRand, WVec& out);
 
 protected:
-	void precompute(GMatrix* pCovariance);
+	void precompute(WMatrix* pCovariance);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GDISTRIBUTION_H__

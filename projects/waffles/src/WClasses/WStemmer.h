@@ -6,7 +6,7 @@
 
 struct sb_stemmer;
 
-namespace GClasses
+namespace WClasses
 {
 
 /// This class just wraps the Porter Stemmer (Snowball's "porter", from the
@@ -34,7 +34,7 @@ namespace GClasses
 /// that have the same etymological roots. Even then it still
 /// isn't perfect (notice it got "bus" wrong), but it should
 /// still improve analysis somewhat in many cases.
-class GStemmer
+class WStemmer
 {
 protected:
 	sb_stemmer* m_pStemmer;
@@ -42,10 +42,10 @@ protected:
 	std::string m_stem;
 
 public:
-	GStemmer();
-	~GStemmer();
-	GStemmer(const GStemmer&) = delete;
-	GStemmer& operator=(const GStemmer&) = delete;
+	WStemmer();
+	~WStemmer();
+	WStemmer(const WStemmer&) = delete;
+	WStemmer& operator=(const WStemmer&) = delete;
 
 	/// Pass in a word, as UTF-8 (you don't need to lowercase or null-terminate
 	/// it), and this will return its stem. The buffer it returns is only valid
@@ -53,6 +53,6 @@ public:
 	const char* getStem(const char* szWord, size_t nLen);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GSTEMMER_H__

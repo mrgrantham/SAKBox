@@ -1,16 +1,16 @@
-#include "GSmtp.h"
-#include "GError.h"
-#include "GSocket.h"
-#include "GThread.h"
+#include "WSmtp.h"
+#include "WError.h"
+#include "WSocket.h"
+#include "WThread.h"
 #include <time.h>
 #include <string>
 
 using std::string;
 
-namespace GClasses
+namespace WClasses
 {
 
-GSmtp::GSmtp(const char* szTo, const char* szFrom, const char* szSubject, const char* szMessage, const char* szSMPTServer)
+WSmtp::WSmtp(const char* szTo, const char* szFrom, const char* szSubject, const char* szMessage, const char* szSMPTServer)
 {
 	m_pSocket = nullptr;
 	m_szFrom = szFrom;
@@ -21,14 +21,14 @@ GSmtp::GSmtp(const char* szTo, const char* szFrom, const char* szSubject, const 
 	m_eState = SS_Init;
 }
 
-GSmtp::~GSmtp()
+WSmtp::~WSmtp()
 {
 	delete(m_pSocket);
 }
 
-void GSmtp::send()
+void WSmtp::send()
 {
-	m_pSocket = new GTCPClient();
+	m_pSocket = new WTCPClient();
 	m_pSocket->connect(m_szSMPTServer, 25);
 	time_t tStart, t;
 	time(&tStart);
@@ -42,20 +42,20 @@ void GSmtp::send()
 		if(len > 0)
 			receive(buf, len);
 		else
-			GThread::sleep(100);
+			WThread::sleep(100);
 		if(m_eState == SS_Close)
 			break;
 	}
 }
 
-/*static*/ void GSmtp::sendEmail(const char* szTo, const char* szFrom, const char* szSubject, const char* szMessage, const char* szSMPTServer)
+/*static*/ void WSmtp::sendEmail(const char* szTo, const char* szFrom, const char* szSubject, const char* szMessage, const char* szSMPTServer)
 {
-	GSmtp* pSmtp = new GSmtp(szTo, szFrom, szSubject, szMessage, szSMPTServer);
+	WSmtp* pSmtp = new WSmtp(szTo, szFrom, szSubject, szMessage, szSMPTServer);
 	pSmtp->send();
 }
 
 // SMTP is a line-based protocol, so receive until we have a full line
-void GSmtp::receive(const char* pBuff, size_t nLen)
+void WSmtp::receive(const char* pBuff, size_t nLen)
 {
 	int i = -1;
 	for(size_t n = 0; n < nLen; n++)
@@ -80,7 +80,7 @@ void GSmtp::receive(const char* pBuff, size_t nLen)
 	}
 }
 
-void GSmtp::receiveLine(const char* szLine)
+void WSmtp::receiveLine(const char* szLine)
 {
 	char szBuff[1024];
 	if(m_eState == SS_Init && szLine[0] == '2')
@@ -146,5 +146,5 @@ void GSmtp::receiveLine(const char* szLine)
 		throw Ex("Something is broken. The SMTP server said: ", szLine);
 }
 
-} // namespace GClasses
+} // namespace WClasses
 

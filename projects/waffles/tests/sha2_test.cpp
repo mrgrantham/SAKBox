@@ -1,4 +1,4 @@
-// sha2.h: Brian Gladman's SHA-256/384/512, which GCrypto and GDynamicPage
+// sha2.h: Brian Gladman's SHA-256/384/512, which WCrypto and WDynamicPage
 // use. Expected digests are the standard ones (as shasum gives).
 #include <gtest/gtest.h>
 

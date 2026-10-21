@@ -19,33 +19,33 @@
 #ifndef __GEVOLUTIONARY_H__
 #define __GEVOLUTIONARY_H__
 
-#include "GOptimizer.h"
+#include "WOptimizer.h"
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GRand;
-class GEvolutionaryOptimizerNode;
-class GDiscreteEvolutionaryOptimizerNode;
+class WRand;
+class WEvolutionaryOptimizerNode;
+class WDiscreteEvolutionaryOptimizerNode;
 
 /// Uses an evolutionary process to optimize a vector.
-class GEvolutionaryOptimizer : public GOptimizer
+class WEvolutionaryOptimizer : public WOptimizer
 {
 protected:
 	double m_tournamentProbability;
-	GRand* m_pRand;
-	std::vector<GEvolutionaryOptimizerNode*> m_population;
+	WRand* m_pRand;
+	std::vector<WEvolutionaryOptimizerNode*> m_population;
 	double m_bestErr;
 	size_t m_bestIndex;
 
 public:
 	/// moreFitSurvivalRate is the probability that the more fit member (in a tournament selection) survives
-	GEvolutionaryOptimizer(GTargetFunction* pCritic, size_t population, GRand* pRand, double moreFitSurvivalRate);
-	~GEvolutionaryOptimizer() override;
+	WEvolutionaryOptimizer(WTargetFunction* pCritic, size_t population, WRand* pRand, double moreFitSurvivalRate);
+	~WEvolutionaryOptimizer() override;
 
 	/// Returns the best vector found in recent iterations.
-	const GVec& currentVector() override;
+	const WVec& currentVector() override;
 
 	/// Do a little bit more optimization. (This method is typically called in a loop
 	/// until satisfactory results are obtained.)
@@ -55,12 +55,12 @@ protected:
 	/// Returns the index of the tournament loser (who should typically die and be replaced).
 	size_t doTournament();
 
-	void recomputeError(size_t index, GEvolutionaryOptimizerNode* pNode, const GVec& vec);
+	void recomputeError(size_t index, WEvolutionaryOptimizerNode* pNode, const WVec& vec);
 
-	GEvolutionaryOptimizerNode* node(size_t index);
+	WEvolutionaryOptimizerNode* node(size_t index);
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GEVOLUTIONARY_H__

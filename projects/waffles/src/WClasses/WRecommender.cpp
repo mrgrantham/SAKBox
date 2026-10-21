@@ -17,25 +17,25 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GRecommender.h"
-#include "GRecommenderLib.h"
-#include "GSparseMatrix.h"
-#include "GCluster.h"
-#include "GMatrix.h"
-#include "GHeap.h"
-#include "GRand.h"
-#include "GNeuralNet.h"
-#include "GDistance.h"
+#include "WRecommender.h"
+#include "WRecommenderLib.h"
+#include "WSparseMatrix.h"
+#include "WCluster.h"
+#include "WMatrix.h"
+#include "WHeap.h"
+#include "WRand.h"
+#include "WNeuralNet.h"
+#include "WDistance.h"
 #include <math.h>
 #include <map>
 #include <vector>
 #include <cmath>
-#include "GDom.h"
-#include "GTime.h"
-#include "GHolders.h"
-#include "GApp.h"
-#include "GLearner.h"
-#include "GLearnerLib.h"
+#include "WDom.h"
+#include "WTime.h"
+#include "WHolders.h"
+#include "WApp.h"
+#include "WLearner.h"
+#include "WLearnerLib.h"
 #include "usage.h"
 #include <memory>
 
@@ -45,10 +45,10 @@ using std::pair;
 using std::set;
 using std::vector;
 
-namespace GClasses
+namespace WClasses
 {
 
-void GCollaborativeFilter_dims(GMatrix& data, size_t* pOutUsers, size_t* pOutItems)
+void WCollaborativeFilter_dims(WMatrix& data, size_t* pOutUsers, size_t* pOutItems)
 {
 	double m = data.columnMin(0);
 	double r = data.columnMax(0);
@@ -66,33 +66,33 @@ void GCollaborativeFilter_dims(GMatrix& data, size_t* pOutUsers, size_t* pOutIte
 		throw Ex("col 1 (item) indexes out of range");
 }
 
-GCollaborativeFilter::GCollaborativeFilter()
+WCollaborativeFilter::WCollaborativeFilter()
 : m_rand(0)
 {
 }
 
-GCollaborativeFilter::GCollaborativeFilter(const GDomNode* pNode, GLearnerLoader& ll)
+WCollaborativeFilter::WCollaborativeFilter(const WDomNode* pNode, WLearnerLoader& ll)
 : m_rand(0)
 {
 }
 
-void GCollaborativeFilter::trainDenseMatrix(const GMatrix& data, const GMatrix* pLabels)
+void WCollaborativeFilter::trainDenseMatrix(const WMatrix& data, const WMatrix* pLabels)
 {
 	if(!data.relation().areContinuous())
-		throw Ex("GCollaborativeFilter::trainDenseMatrix only supports continuous attributes.");
+		throw Ex("WCollaborativeFilter::trainDenseMatrix only supports continuous attributes.");
 
 	// Convert to 3-column form
-	GMatrix* pMatrix = new GMatrix(0, 3);
-	std::unique_ptr<GMatrix> hMatrix(pMatrix);
+	WMatrix* pMatrix = new WMatrix(0, 3);
+	std::unique_ptr<WMatrix> hMatrix(pMatrix);
 	size_t dims = data.cols();
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		const GVec& row = data.row(i);
+		const WVec& row = data.row(i);
 		for(size_t j = 0; j < dims; j++)
 		{
 			if(row[j] != UNKNOWN_REAL_VALUE)
 			{
-				GVec& vec = pMatrix->newRow();
+				WVec& vec = pMatrix->newRow();
 				vec[0] = (double)i;
 				vec[1] = (double)j;
 				vec[2] = row[j];
@@ -105,12 +105,12 @@ void GCollaborativeFilter::trainDenseMatrix(const GMatrix& data, const GMatrix* 
 		size_t labelDims = pLabels->cols();
 		for(size_t i = 0; i < pLabels->rows(); i++)
 		{
-			const GVec& row = pLabels->row(i);
+			const WVec& row = pLabels->row(i);
 			for(size_t j = 0; j < labelDims; j++)
 			{
 				if(row[j] != UNKNOWN_REAL_VALUE)
 				{
-					GVec& vec = pMatrix->newRow();
+					WVec& vec = pMatrix->newRow();
 					vec[0] = (double)i;
 					vec[1] = (double)(dims + j);
 					vec[2] = row[j];
@@ -123,14 +123,14 @@ void GCollaborativeFilter::trainDenseMatrix(const GMatrix& data, const GMatrix* 
 	train(*pMatrix);
 }
 
-GDomNode* GCollaborativeFilter::baseDomNode(GDom* pDoc, const char* szClassName) const
+WDomNode* WCollaborativeFilter::baseDomNode(WDom* pDoc, const char* szClassName) const
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "class", szClassName);
 	return pNode;
 }
 
-double GCollaborativeFilter::crossValidate(GMatrix& data, size_t folds, double* pOutMAE)
+double WCollaborativeFilter::crossValidate(WMatrix& data, size_t folds, double* pOutMAE)
 {
 	// Randomly assign each rating to one of the folds
 	size_t ratings = data.rows();
@@ -145,10 +145,10 @@ double GCollaborativeFilter::crossValidate(GMatrix& data, size_t folds, double* 
 	for(size_t i = 0; i < folds; i++)
 	{
 		// Split the data
-		GMatrix dataTrain(data.relation().clone());
-		GReleaseDataHolder hDataTrain(&dataTrain);
-		GMatrix dataTest(data.relation().clone());
-		GReleaseDataHolder hDataTest(&dataTest);
+		WMatrix dataTrain(data.relation().clone());
+		WReleaseDataHolder hDataTrain(&dataTrain);
+		WMatrix dataTest(data.relation().clone());
+		WReleaseDataHolder hDataTest(&dataTest);
 		size_t* pF = pFolds;
 		for(size_t j = 0; j < data.rows(); j++)
 		{
@@ -169,7 +169,7 @@ double GCollaborativeFilter::crossValidate(GMatrix& data, size_t folds, double* 
 	return ssse / folds;
 }
 
-double GCollaborativeFilter::trainAndTest(GMatrix& dataTrain, GMatrix& dataTest, double* pOutMAE)
+double WCollaborativeFilter::trainAndTest(WMatrix& dataTrain, WMatrix& dataTest, double* pOutMAE)
 {
 	train(dataTrain);
 	double sse = 0.0;
@@ -177,7 +177,7 @@ double GCollaborativeFilter::trainAndTest(GMatrix& dataTrain, GMatrix& dataTest,
 	[[maybe_unused]] size_t hits = 0;
 	for(size_t j = 0; j < dataTest.rows(); j++)
 	{
-		GVec& vec = dataTest[j];
+		WVec& vec = dataTest[j];
 		double prediction = predict(size_t(vec[0]), size_t(vec[1]));
 		if(prediction < -1e100 || prediction > 1e100)
 		{
@@ -204,7 +204,7 @@ public:
 	}
 };
 
-GMatrix* GCollaborativeFilter::precisionRecall(GMatrix& data, bool ideal)
+WMatrix* WCollaborativeFilter::precisionRecall(WMatrix& data, bool ideal)
 {
 	// Divide into two equal-size folds
 	size_t ratings = data.rows();
@@ -231,10 +231,10 @@ GMatrix* GCollaborativeFilter::precisionRecall(GMatrix& data, bool ideal)
 	tarPred.reserve(halfRatings);
 
 	// Split the data
-	GMatrix dataTrain(data.relation().clone());
-	GReleaseDataHolder hDataTrain(&dataTrain);
-	GMatrix dataTest(data.relation().clone());
-	GReleaseDataHolder hDataTest(&dataTest);
+	WMatrix dataTrain(data.relation().clone());
+	WReleaseDataHolder hDataTrain(&dataTrain);
+	WMatrix dataTest(data.relation().clone());
+	WReleaseDataHolder hDataTest(&dataTest);
 	size_t* pF = pFolds;
 	for(size_t j = 0; j < data.rows(); j++)
 	{
@@ -250,7 +250,7 @@ GMatrix* GCollaborativeFilter::precisionRecall(GMatrix& data, bool ideal)
 		// Simulate perfect predictions
 		for(size_t i = 0; i < dataTest.rows(); i++)
 		{
-			GVec& vec = dataTest[i];
+			WVec& vec = dataTest[i];
 			tarPred.push_back(std::make_pair(vec[2], vec[2]));
 		}
 	}
@@ -262,9 +262,9 @@ GMatrix* GCollaborativeFilter::precisionRecall(GMatrix& data, bool ideal)
 		// Predict the ratings in the test data
 		for(size_t i = 0; i < dataTest.rows(); i++)
 		{
-			GVec& vec = dataTest[i];
+			WVec& vec = dataTest[i];
 			double prediction = predict(size_t(vec[0]), size_t(vec[1]));
-			GAssert(prediction != UNKNOWN_REAL_VALUE);
+			WAssert(prediction != UNKNOWN_REAL_VALUE);
 			tarPred.push_back(std::make_pair(vec[2], prediction));
 		}
 	}
@@ -281,7 +281,7 @@ GMatrix* GCollaborativeFilter::precisionRecall(GMatrix& data, bool ideal)
 	}
 	double retrievedRelevant = 0.0;
 	double retrievedIrrelevant = 0.0;
-	GMatrix* pResults = new GMatrix(0, 3);
+	WMatrix* pResults = new WMatrix(0, 3);
 	for(vector<std::pair<double, double> >::iterator it = tarPred.begin(); it != tarPred.end(); it++)
 	{
 		retrievedRelevant += it->first;
@@ -289,7 +289,7 @@ GMatrix* GCollaborativeFilter::precisionRecall(GMatrix& data, bool ideal)
 		double precision = retrievedRelevant / (retrievedRelevant + retrievedIrrelevant);
 		double recall = retrievedRelevant / totalRelevant; // recall is the same as the truePositiveRate
 		double falsePositiveRate = retrievedIrrelevant / totalIrrelevant;
-		GVec& row = pResults->newRow();
+		WVec& row = pResults->newRow();
 		row[0] = recall;
 		row[1] = precision;
 		row[2] = falsePositiveRate;
@@ -298,7 +298,7 @@ GMatrix* GCollaborativeFilter::precisionRecall(GMatrix& data, bool ideal)
 }
 
 // static
-double GCollaborativeFilter::areaUnderCurve(GMatrix& data)
+double WCollaborativeFilter::areaUnderCurve(WMatrix& data)
 {
 	double a = 0.0;
 	double b = 0.0;
@@ -306,7 +306,7 @@ double GCollaborativeFilter::areaUnderCurve(GMatrix& data)
 	double prevY = 0.0;
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		GVec& row = data[i];
+		WVec& row = data[i];
 		a += (row[2] - prevX) * row[0];
 		b += (row[2] - prevX) * prevY;
 		prevX = row[2];
@@ -317,7 +317,7 @@ double GCollaborativeFilter::areaUnderCurve(GMatrix& data)
 	return 0.5 * (a + b);
 }
 
-void GCF_basicTest_makeData(GMatrix& m, GRand& rand)
+void WCF_basicTest_makeData(WMatrix& m, WRand& rand)
 {
 	// Generate perfectly linear ratings based on random preferences
 	// with both item and user bias
@@ -327,34 +327,34 @@ void GCF_basicTest_makeData(GMatrix& m, GRand& rand)
 		double b = rand.normal();
 		double c = rand.uniform();
 		double userBias = rand.normal();
-		GVec& vec1 = m.newRow();
+		WVec& vec1 = m.newRow();
 		vec1[0] = (double)i; // user
 		vec1[1] = 0; // item
 		vec1[2] = a + 0.0 + 0.2 * c + userBias; // rating
-		GVec& vec2 = m.newRow();
+		WVec& vec2 = m.newRow();
 		vec2[0] = (double)i; // user
 		vec2[1] = 1; // item
 		vec2[2] = 0.2 * a + 0.2 * b + c * c + 0.2 + userBias; // rating
-		GVec& vec3 = m.newRow();
+		WVec& vec3 = m.newRow();
 		vec3[0] = (double)i; // user
 		vec3[1] = 2; // item
 		vec3[2] = 0.6 * a + 0.1 * b + 0.2 * c * c * c - 0.3 + userBias; // rating
-		GVec& vec4 = m.newRow();
+		WVec& vec4 = m.newRow();
 		vec4[0] = (double)i; // user
 		vec4[1] = 3; // item
 		vec4[2] = 0.5 * a + 0.5 * b - 0.5 * c + 0.0 + userBias; // rating
-		GVec& vec5 = m.newRow();
+		WVec& vec5 = m.newRow();
 		vec5[0] = (double)i; // user
 		vec5[1] = 4; // item
 		vec5[2] = -0.2 * a + 0.4 * b - 0.3 * sin(c) + 0.1 + userBias; // rating
 	}
 }
 
-void GCollaborativeFilter::basicTest(double maxMSE)
+void WCollaborativeFilter::basicTest(double maxMSE)
 {
-	GRand rnd(0);
-	GMatrix m(0, 3);
-	GCF_basicTest_makeData(m, rnd);
+	WRand rnd(0);
+	WMatrix m(0, 3);
+	WCF_basicTest_makeData(m, rnd);
 	double mse = crossValidate(m, 2);
 	if(mse > maxMSE)
 		throw Ex("Failed. Expected MSE=", to_str(maxMSE), ". Actual MSE=", to_str(mse), ".");
@@ -366,24 +366,24 @@ void GCollaborativeFilter::basicTest(double maxMSE)
 
 
 
-GBaselineRecommender::GBaselineRecommender()
-: GCollaborativeFilter(), m_items(0)
+WBaselineRecommender::WBaselineRecommender()
+: WCollaborativeFilter(), m_items(0)
 {
 }
 
-GBaselineRecommender::GBaselineRecommender(const GDomNode* pNode, GLearnerLoader& ll)
-: GCollaborativeFilter(pNode, ll)
+WBaselineRecommender::WBaselineRecommender(const WDomNode* pNode, WLearnerLoader& ll)
+: WCollaborativeFilter(pNode, ll)
 {
 	m_ratings.deserialize(pNode->get("ratings"));
 }
 
 // virtual
-GBaselineRecommender::~GBaselineRecommender()
+WBaselineRecommender::~WBaselineRecommender()
 {
 }
 
 // virtual
-void GBaselineRecommender::train(GMatrix& data)
+void WBaselineRecommender::train(WMatrix& data)
 {
 	// Determine the sizes
 	if(data.cols() != 3)
@@ -399,7 +399,7 @@ void GBaselineRecommender::train(GMatrix& data)
 	size_t* pCounts = new size_t[m_items];
 	std::unique_ptr<size_t[]> hCounts(pCounts);
 	size_t* pC = pCounts;
-	GVec& rr = m_ratings;
+	WVec& rr = m_ratings;
 	for(size_t i = 0; i < m_items; i++)
 	{
 		pC[i] = 0;
@@ -407,7 +407,7 @@ void GBaselineRecommender::train(GMatrix& data)
 	}
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		GVec& vec = data[i];
+		WVec& vec = data[i];
 		size_t c = size_t(vec[1]);
 		rr[c] *= ((double)pCounts[c] / (pCounts[c] + 1));
 		rr[c] += (vec[2] / (pCounts[c] + 1));
@@ -416,7 +416,7 @@ void GBaselineRecommender::train(GMatrix& data)
 }
 
 // virtual
-double GBaselineRecommender::predict(size_t user, size_t item)
+double WBaselineRecommender::predict(size_t user, size_t item)
 {
 	if(item >= m_items)
 		return 0.0;
@@ -424,7 +424,7 @@ double GBaselineRecommender::predict(size_t user, size_t item)
 }
 
 // virtual
-void GBaselineRecommender::impute(GVec& vec, size_t dims)
+void WBaselineRecommender::impute(WVec& vec, size_t dims)
 {
 	size_t n = std::min(dims, m_items);
 	size_t i;
@@ -441,17 +441,17 @@ void GBaselineRecommender::impute(GVec& vec, size_t dims)
 }
 
 // virtual
-GDomNode* GBaselineRecommender::serialize(GDom* pDoc) const
+WDomNode* WBaselineRecommender::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GBaselineRecommender");
+	WDomNode* pNode = baseDomNode(pDoc, "WBaselineRecommender");
 	pNode->add(pDoc, "ratings", m_ratings.serialize(pDoc));
 	return pNode;
 }
 
 // static
-void GBaselineRecommender::test()
+void WBaselineRecommender::test()
 {
-	GBaselineRecommender rec;
+	WBaselineRecommender rec;
 	rec.basicTest(1.16);
 }
 
@@ -461,25 +461,25 @@ void GBaselineRecommender::test()
 
 
 
-GInstanceRecommender::GInstanceRecommender(size_t neighbors)
-: GCollaborativeFilter(), m_neighbors(neighbors), m_ownMetric(true), m_pData(nullptr), m_pBaseline(nullptr), m_significanceWeight(0)
+WInstanceRecommender::WInstanceRecommender(size_t neighbors)
+: WCollaborativeFilter(), m_neighbors(neighbors), m_ownMetric(true), m_pData(nullptr), m_pBaseline(nullptr), m_significanceWeight(0)
 {
-	m_pMetric = new GCosineSimilarity();
+	m_pMetric = new WCosineSimilarity();
 }
 
-GInstanceRecommender::GInstanceRecommender(const GDomNode* pNode, GLearnerLoader& ll)
-: GCollaborativeFilter(pNode, ll)
+WInstanceRecommender::WInstanceRecommender(const WDomNode* pNode, WLearnerLoader& ll)
+: WCollaborativeFilter(pNode, ll)
 {
 	m_neighbors = (size_t)pNode->getInt("neighbors");
-	m_pMetric = GSparseSimilarity::deserialize(pNode->get("metric"));
+	m_pMetric = WSparseSimilarity::deserialize(pNode->get("metric"));
 	m_ownMetric = true;
-	m_pData = new GSparseMatrix(pNode->get("data"));
-	m_pBaseline = new GBaselineRecommender(pNode->get("bl"), ll);
+	m_pData = new WSparseMatrix(pNode->get("data"));
+	m_pBaseline = new WBaselineRecommender(pNode->get("bl"), ll);
 	m_significanceWeight = (size_t)pNode->getInt("sigWeight");
 }
 
 // virtual
-GInstanceRecommender::~GInstanceRecommender()
+WInstanceRecommender::~WInstanceRecommender()
 {
 	delete(m_pData);
 	if(m_ownMetric)
@@ -487,7 +487,7 @@ GInstanceRecommender::~GInstanceRecommender()
 	delete(m_pBaseline);
 }
 
-void GInstanceRecommender::setMetric(GSparseSimilarity* pMetric, bool own)
+void WInstanceRecommender::setMetric(WSparseSimilarity* pMetric, bool own)
 {
 	if(m_ownMetric)
 		delete(m_pMetric);
@@ -496,30 +496,30 @@ void GInstanceRecommender::setMetric(GSparseSimilarity* pMetric, bool own)
 }
 
 // virtual
-void GInstanceRecommender::train(GMatrix& data)
+void WInstanceRecommender::train(WMatrix& data)
 {
 	if(data.cols() != 3)
 		throw Ex("Expected 3 cols");
 
 	// Compute the baseline recommendations
 	delete(m_pBaseline);
-	m_pBaseline = new GBaselineRecommender();
+	m_pBaseline = new WBaselineRecommender();
 	m_pBaseline->train(data);
 
 	// Store the data
 	size_t users, items;
-	GCollaborativeFilter_dims(data, &users, &items);
+	WCollaborativeFilter_dims(data, &users, &items);
 	delete(m_pData);
-	m_pData = new GSparseMatrix(users, items, UNKNOWN_REAL_VALUE);
+	m_pData = new WSparseMatrix(users, items, UNKNOWN_REAL_VALUE);
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		GVec& vec = data[i];
+		WVec& vec = data[i];
 		m_pData->set(size_t(vec[0]), size_t(vec[1]), vec[2]);
 	}
 }
 
 // virtual
-double GInstanceRecommender::predict(size_t user, size_t item)
+double WInstanceRecommender::predict(size_t user, size_t item)
 {
 	if(!m_pData)
 		throw Ex("This model has not been trained");
@@ -538,7 +538,7 @@ double GInstanceRecommender::predict(size_t user, size_t item)
 			continue;
 
 		// Compute the similarity
-		size_t count = GSparseVec::count_matching_elements(m_pData->row(user), m_pData->row(neigh));
+		size_t count = WSparseVec::count_matching_elements(m_pData->row(user), m_pData->row(neigh));
 		double similarity = m_pMetric->similarity(m_pData->row(user), m_pData->row(neigh));
 
 		if(count < m_significanceWeight)
@@ -566,7 +566,7 @@ double GInstanceRecommender::predict(size_t user, size_t item)
 		return m_pBaseline->predict(user, item);
 }
 
-multimap<double, ArrayWrapper> GInstanceRecommender::getNeighbors(size_t user, size_t item)
+multimap<double, ArrayWrapper> WInstanceRecommender::getNeighbors(size_t user, size_t item)
 {
 	if(!m_pData)
 		throw Ex("This model has not been trained");
@@ -587,7 +587,7 @@ multimap<double, ArrayWrapper> GInstanceRecommender::getNeighbors(size_t user, s
 				continue;
 
 			// Compute the similarity
-			size_t count = GSparseVec::count_matching_elements(m_pData->row(user), m_pData->row(neigh));
+			size_t count = WSparseVec::count_matching_elements(m_pData->row(user), m_pData->row(neigh));
 			double similarity = m_pMetric->similarity(m_pData->row(user), m_pData->row(neigh));
 
 			if(count < m_significanceWeight)
@@ -606,7 +606,7 @@ multimap<double, ArrayWrapper> GInstanceRecommender::getNeighbors(size_t user, s
 }
 
 // virtual
-void GInstanceRecommender::impute(GVec& vec, size_t dims)
+void WInstanceRecommender::impute(WVec& vec, size_t dims)
 {
 	if(!m_pData)
 		throw Ex("This model has not been trained");
@@ -656,9 +656,9 @@ void GInstanceRecommender::impute(GVec& vec, size_t dims)
 }
 
 // virtual
-GDomNode* GInstanceRecommender::serialize(GDom* pDoc) const
+WDomNode* WInstanceRecommender::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GInstanceRecommender");
+	WDomNode* pNode = baseDomNode(pDoc, "WInstanceRecommender");
 	pNode->add(pDoc, "neighbors", m_neighbors);
 	pNode->add(pDoc, "metric", m_pMetric->serialize(pDoc));
 	pNode->add(pDoc, "data", m_pData->serialize(pDoc));
@@ -667,15 +667,15 @@ GDomNode* GInstanceRecommender::serialize(GDom* pDoc) const
 	return pNode;
 }
 
-double GInstanceRecommender::getRating(size_t user, size_t item)
+double WInstanceRecommender::getRating(size_t user, size_t item)
 {
 	return m_pData->get(user, item);
 }
 
 // static
-void GInstanceRecommender::test()
+void WInstanceRecommender::test()
 {
-	GInstanceRecommender rec(8);
+	WInstanceRecommender rec(8);
 	rec.basicTest(0.63);
 }
 
@@ -683,20 +683,20 @@ void GInstanceRecommender::test()
 
 
 
-GSparseClusterRecommender::GSparseClusterRecommender(size_t clusters)
-: GCollaborativeFilter(), m_clusters(clusters), m_pPredictions(nullptr), m_pClusterer(nullptr), m_ownClusterer(false), m_users(0), m_items(0)
+WSparseClusterRecommender::WSparseClusterRecommender(size_t clusters)
+: WCollaborativeFilter(), m_clusters(clusters), m_pPredictions(nullptr), m_pClusterer(nullptr), m_ownClusterer(false), m_users(0), m_items(0)
 {
 }
 
 // virtual
-GSparseClusterRecommender::~GSparseClusterRecommender()
+WSparseClusterRecommender::~WSparseClusterRecommender()
 {
 	if(m_ownClusterer)
 		delete(m_pClusterer);
 	delete(m_pPredictions);
 }
 
-void GSparseClusterRecommender::setClusterer(GSparseClusterer* pClusterer, bool own)
+void WSparseClusterRecommender::setClusterer(WSparseClusterer* pClusterer, bool own)
 {
 	if(pClusterer->clusterCount() != m_clusters)
 		throw Ex("Mismatching number of clusters");
@@ -707,33 +707,33 @@ void GSparseClusterRecommender::setClusterer(GSparseClusterer* pClusterer, bool 
 }
 
 // virtual
-void GSparseClusterRecommender::train(GMatrix& data)
+void WSparseClusterRecommender::train(WMatrix& data)
 {
 	if(data.cols() != 3)
 		throw Ex("Expected 3 cols");
 
 	// Convert the data to a sparse matrix
 	size_t users, items;
-	GCollaborativeFilter_dims(data, &users, &items);
+	WCollaborativeFilter_dims(data, &users, &items);
 	m_users = users;
 	m_items = items;
-	GSparseMatrix sm(users, items, UNKNOWN_REAL_VALUE);
+	WSparseMatrix sm(users, items, UNKNOWN_REAL_VALUE);
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		GVec& vec = data.row(i);
+		WVec& vec = data.row(i);
 		sm.set(size_t(vec[0]), size_t(vec[1]), vec[2]);
 	}
 
 	// Make sure we have a clusterer
 	if(!m_pClusterer)
-		setClusterer(new GKMeansSparse(m_clusters, &m_rand), true);
+		setClusterer(new WKMeansSparse(m_clusters, &m_rand), true);
 
 	// Cluster the data
 	m_pClusterer->cluster(&sm);
 
 	// Gather the mean predictions in each cluster
 	delete(m_pPredictions);
-	m_pPredictions = new GMatrix(m_clusters, sm.cols());
+	m_pPredictions = new WMatrix(m_clusters, sm.cols());
 	m_pPredictions->fill(0.0);
 	size_t* pCounts = new size_t[sm.cols() * m_clusters];
 	std::unique_ptr<size_t[]> hCounts(pCounts);
@@ -741,9 +741,9 @@ void GSparseClusterRecommender::train(GMatrix& data)
 	for(size_t i = 0; i < sm.rows(); i++)
 	{
 		size_t clust = m_pClusterer->whichCluster(i);
-		GVec& row = m_pPredictions->row(clust);
+		WVec& row = m_pPredictions->row(clust);
 		size_t* pRowCounts = pCounts + (sm.cols() * clust);
-		for(GSparseMatrix::Iter it = sm.rowBegin(i); it != sm.rowEnd(i); it++)
+		for(WSparseMatrix::Iter it = sm.rowBegin(i); it != sm.rowEnd(i); it++)
 		{
 			row[it->first] *= ((double)pRowCounts[it->first] / (pRowCounts[it->first] + 1));
 			row[it->first] += (it->second / (pRowCounts[it->first] + 1));
@@ -753,34 +753,34 @@ void GSparseClusterRecommender::train(GMatrix& data)
 }
 
 // virtual
-double GSparseClusterRecommender::predict(size_t user, size_t item)
+double WSparseClusterRecommender::predict(size_t user, size_t item)
 {
 	size_t clust = m_pClusterer->whichCluster(user);
-	GVec& row = m_pPredictions->row(clust);
+	WVec& row = m_pPredictions->row(clust);
 	return row[item];
 }
 
 // virtual
-void GSparseClusterRecommender::impute(GVec& vec, size_t dims)
+void WSparseClusterRecommender::impute(WVec& vec, size_t dims)
 {
-	throw Ex("Sorry, GSparseClusterRecommender::impute is not yet implemented");
+	throw Ex("Sorry, WSparseClusterRecommender::impute is not yet implemented");
 	// todo: Find the closest centroid, and use it to impute all values
 }
 
 // virtual
-GDomNode* GSparseClusterRecommender::serialize(GDom* pDoc) const
+WDomNode* WSparseClusterRecommender::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GSparseClusterRecommender");
+	WDomNode* pNode = baseDomNode(pDoc, "WSparseClusterRecommender");
 	throw Ex("Sorry, this method has not been implemented yet");
 	return pNode;
 }
 
 // static
-void GSparseClusterRecommender::test()
+void WSparseClusterRecommender::test()
 {
-	GSparseClusterRecommender rec(6);
-	// SAKBox: was 1.31, which passed with GKMeansSparse broken (MSE 1.256,
-	// worse than GBaselineRecommender's 1.152); fixed, it's 0.882
+	WSparseClusterRecommender rec(6);
+	// SAKBox: was 1.31, which passed with WKMeansSparse broken (MSE 1.256,
+	// worse than WBaselineRecommender's 1.152); fixed, it's 0.882
 	rec.basicTest(0.95);
 }
 
@@ -797,20 +797,20 @@ void GSparseClusterRecommender::test()
 
 
 
-GDenseClusterRecommender::GDenseClusterRecommender(size_t clusters)
-: GCollaborativeFilter(), m_clusters(clusters), m_pPredictions(nullptr), m_pClusterer(nullptr), m_ownClusterer(false), m_users(0), m_items(0)
+WDenseClusterRecommender::WDenseClusterRecommender(size_t clusters)
+: WCollaborativeFilter(), m_clusters(clusters), m_pPredictions(nullptr), m_pClusterer(nullptr), m_ownClusterer(false), m_users(0), m_items(0)
 {
 }
 
 // virtual
-GDenseClusterRecommender::~GDenseClusterRecommender()
+WDenseClusterRecommender::~WDenseClusterRecommender()
 {
 	if(m_ownClusterer)
 		delete(m_pClusterer);
 	delete(m_pPredictions);
 }
 
-void GDenseClusterRecommender::setClusterer(GClusterer* pClusterer, bool own)
+void WDenseClusterRecommender::setClusterer(WClusterer* pClusterer, bool own)
 {
 	if(pClusterer->clusterCount() != m_clusters)
 		throw Ex("Mismatching number of clusters");
@@ -820,36 +820,36 @@ void GDenseClusterRecommender::setClusterer(GClusterer* pClusterer, bool own)
 	m_ownClusterer = own;
 }
 
-void GDenseClusterRecommender::setFuzzifier(double d)
+void WDenseClusterRecommender::setFuzzifier(double d)
 {
 	if(!m_pClusterer)
-		setClusterer(new GFuzzyKMeans(m_clusters, &m_rand), true);
-	((GFuzzyKMeans*)m_pClusterer)->setFuzzifier(d);
+		setClusterer(new WFuzzyKMeans(m_clusters, &m_rand), true);
+	((WFuzzyKMeans*)m_pClusterer)->setFuzzifier(d);
 }
 
 // virtual
-void GDenseClusterRecommender::train(GMatrix& data)
+void WDenseClusterRecommender::train(WMatrix& data)
 {
 	if(data.cols() != 3)
 		throw Ex("Expected 3 cols");
 
 	if(!m_pClusterer)
-		setClusterer(new GFuzzyKMeans(m_clusters, &m_rand), true);
+		setClusterer(new WFuzzyKMeans(m_clusters, &m_rand), true);
 
 	// Cluster the data
 	size_t users, items;
-	GCollaborativeFilter_dims(data, &users, &items);
+	WCollaborativeFilter_dims(data, &users, &items);
 	m_users = users;
 	m_items = items;
 	{
-		// SAKBox: GMatrix doesn't clear new rows, so the ratings a user hadn't
+		// SAKBox: WMatrix doesn't clear new rows, so the ratings a user hadn't
 		// given were whatever was in memory; mark them unknown instead (the
 		// fuzzy k-means and its distance skip unknown values)
-		GMatrix dense(users, items);
+		WMatrix dense(users, items);
 		dense.fill(UNKNOWN_REAL_VALUE);
 		for(size_t i = 0; i < data.rows(); i++)
 		{
-			GVec& vec = data.row(i);
+			WVec& vec = data.row(i);
 			dense[size_t(vec[0])][size_t(vec[1])] = vec[2];
 		}
 		m_pClusterer->cluster(&dense);
@@ -857,18 +857,18 @@ void GDenseClusterRecommender::train(GMatrix& data)
 
 	// Gather the mean predictions in each cluster
 	delete(m_pPredictions);
-	m_pPredictions = new GMatrix(m_clusters, items);
+	m_pPredictions = new WMatrix(m_clusters, items);
 	m_pPredictions->fill(0.0);
 	size_t* pCounts = new size_t[items * m_clusters];
 	std::unique_ptr<size_t[]> hCounts(pCounts);
 	memset(pCounts, '\0', sizeof(size_t) * items * m_clusters);
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		GVec& vec = data.row(i);
+		WVec& vec = data.row(i);
 		size_t user = size_t(vec[0]);
 		size_t item = size_t(vec[1]);
 		size_t clust = m_pClusterer->whichCluster(user);
-		GVec& row = m_pPredictions->row(clust);
+		WVec& row = m_pPredictions->row(clust);
 		size_t* pRowCounts = pCounts + (items * clust);
 		row[item] *= ((double)pRowCounts[item] / (pRowCounts[item] + 1));
 		row[item] += (vec[2] / (pRowCounts[item] + 1));
@@ -877,34 +877,34 @@ void GDenseClusterRecommender::train(GMatrix& data)
 }
 
 // virtual
-double GDenseClusterRecommender::predict(size_t user, size_t item)
+double WDenseClusterRecommender::predict(size_t user, size_t item)
 {
 	if(user >= m_users || item >= m_items)
 		return 0.0;
 	size_t clust = m_pClusterer->whichCluster(user);
-	GVec& row = m_pPredictions->row(clust);
+	WVec& row = m_pPredictions->row(clust);
 	return row[item];
 }
 
 // virtual
-void GDenseClusterRecommender::impute(GVec& vec, size_t dims)
+void WDenseClusterRecommender::impute(WVec& vec, size_t dims)
 {
-	throw Ex("Sorry, GDenseClusterRecommender::impute is not yet implemented");
+	throw Ex("Sorry, WDenseClusterRecommender::impute is not yet implemented");
 	// todo: Find the closest centroid, and use it to impute all values
 }
 
 // virtual
-GDomNode* GDenseClusterRecommender::serialize(GDom* pDoc) const
+WDomNode* WDenseClusterRecommender::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GDenseClusterRecommender");
+	WDomNode* pNode = baseDomNode(pDoc, "WDenseClusterRecommender");
 	throw Ex("Sorry, this method has not been implemented yet");
 	return pNode;
 }
 
 // static
-void GDenseClusterRecommender::test()
+void WDenseClusterRecommender::test()
 {
-	GDenseClusterRecommender rec(6);
+	WDenseClusterRecommender rec(6);
 	// SAKBox: was 0.0, a placeholder (and this test wasn't run); measured 0.338
 	rec.basicTest(0.40);
 }
@@ -917,37 +917,37 @@ void GDenseClusterRecommender::test()
 
 
 
-GMatrixFactorization::GMatrixFactorization(size_t intrinsicDims)
-: GCollaborativeFilter(), m_intrinsicDims(intrinsicDims), m_regularizer(0.01), m_pP(nullptr), m_pQ(nullptr), m_pPMask(nullptr), m_pQMask(nullptr), m_pPWeights(nullptr), m_pQWeights(nullptr), m_nonNeg(false), m_minIters(1), m_decayRate(0.97)
+WMatrixFactorization::WMatrixFactorization(size_t intrinsicDims)
+: WCollaborativeFilter(), m_intrinsicDims(intrinsicDims), m_regularizer(0.01), m_pP(nullptr), m_pQ(nullptr), m_pPMask(nullptr), m_pQMask(nullptr), m_pPWeights(nullptr), m_pQWeights(nullptr), m_nonNeg(false), m_minIters(1), m_decayRate(0.97)
 {
 }
 
-GMatrixFactorization::GMatrixFactorization(const GDomNode* pNode, GLearnerLoader& ll)
-: GCollaborativeFilter(pNode, ll)
+WMatrixFactorization::WMatrixFactorization(const WDomNode* pNode, WLearnerLoader& ll)
+: WCollaborativeFilter(pNode, ll)
 {
 	m_regularizer = pNode->getDouble("reg");
 	m_minIters = (size_t)pNode->getInt("mi");
 	m_decayRate = pNode->getDouble("dr");
-	m_pP = new GMatrix(pNode->get("p"));
-	m_pQ = new GMatrix(pNode->get("q"));
-	GDomNode* pPMask = pNode->getIfExists("pm");
+	m_pP = new WMatrix(pNode->get("p"));
+	m_pQ = new WMatrix(pNode->get("q"));
+	WDomNode* pPMask = pNode->getIfExists("pm");
 	if(pPMask)
-		m_pPMask = new GMatrix(pPMask);
+		m_pPMask = new WMatrix(pPMask);
 	else
 		m_pPMask = nullptr;
-	GDomNode* pPWeights = pNode->getIfExists("pw");
+	WDomNode* pPWeights = pNode->getIfExists("pw");
 	if(pPWeights)
-		m_pPWeights = new GMatrix(pPWeights);
+		m_pPWeights = new WMatrix(pPWeights);
 	else
 		m_pPWeights = nullptr;
-	GDomNode* pQMask = pNode->getIfExists("qm");
+	WDomNode* pQMask = pNode->getIfExists("qm");
 	if(pQMask)
-		m_pQMask = new GMatrix(pQMask);
+		m_pQMask = new WMatrix(pQMask);
 	else
 		m_pQMask = nullptr;
-	GDomNode* pQWeights = pNode->getIfExists("qw");
+	WDomNode* pQWeights = pNode->getIfExists("qw");
 	if(pQWeights)
-		m_pQWeights = new GMatrix(pQWeights);
+		m_pQWeights = new WMatrix(pQWeights);
 	else
 		m_pQWeights = nullptr;
 	if(m_pP->cols() != m_pQ->cols())
@@ -956,7 +956,7 @@ GMatrixFactorization::GMatrixFactorization(const GDomNode* pNode, GLearnerLoader
 }
 
 // virtual
-GMatrixFactorization::~GMatrixFactorization()
+WMatrixFactorization::~WMatrixFactorization()
 {
 	delete(m_pQ);
 	delete(m_pP);
@@ -967,9 +967,9 @@ GMatrixFactorization::~GMatrixFactorization()
 }
 
 // virtual
-GDomNode* GMatrixFactorization::serialize(GDom* pDoc) const
+WDomNode* WMatrixFactorization::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GMatrixFactorization");
+	WDomNode* pNode = baseDomNode(pDoc, "WMatrixFactorization");
 	pNode->add(pDoc, "reg", m_regularizer);
 	pNode->add(pDoc, "mi", m_minIters);
 	pNode->add(pDoc, "dr", m_decayRate);
@@ -988,14 +988,14 @@ GDomNode* GMatrixFactorization::serialize(GDom* pDoc) const
 	return pNode;
 }
 
-void GMatrixFactorization::clampUserElement(size_t user, size_t attr, double val)
+void WMatrixFactorization::clampUserElement(size_t user, size_t attr, double val)
 {
 	if(attr >= m_intrinsicDims)
 		throw Ex("out of range");
 	if(!m_pPMask)
 	{
-		m_pPMask = new GMatrix(0, m_intrinsicDims);
-		m_pPWeights = new GMatrix(2, m_intrinsicDims);
+		m_pPMask = new WMatrix(0, m_intrinsicDims);
+		m_pPWeights = new WMatrix(2, m_intrinsicDims);
 		m_pPWeights->fill(0.0);
 	}
 	while(m_pPMask->rows() <= user)
@@ -1003,14 +1003,14 @@ void GMatrixFactorization::clampUserElement(size_t user, size_t attr, double val
 	m_pPMask->row(user)[attr] = val;
 }
 
-void GMatrixFactorization::clampItemElement(size_t item, size_t attr, double val)
+void WMatrixFactorization::clampItemElement(size_t item, size_t attr, double val)
 {
 	if(attr >= m_intrinsicDims)
 		throw Ex("out of range");
 	if(!m_pQMask)
 	{
-		m_pQMask = new GMatrix(0, m_intrinsicDims);
-		m_pQWeights = new GMatrix(2, m_intrinsicDims);
+		m_pQMask = new WMatrix(0, m_intrinsicDims);
+		m_pQWeights = new WMatrix(2, m_intrinsicDims);
 		m_pQWeights->fill(0.0);
 	}
 	while(m_pQMask->rows() <= item)
@@ -1018,12 +1018,12 @@ void GMatrixFactorization::clampItemElement(size_t item, size_t attr, double val
 	m_pQMask->row(item)[attr] = val;
 }
 
-void GMatrixFactorization::clampUsers(const GMatrix& data, size_t offset)
+void WMatrixFactorization::clampUsers(const WMatrix& data, size_t offset)
 {
 	size_t vals = data.cols() - 1;
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		const GVec& row = data[i];
+		const WVec& row = data[i];
 		size_t index = (size_t)row[0];
 		offset--;
 		for(size_t j = 1; j <= vals; j++)
@@ -1031,12 +1031,12 @@ void GMatrixFactorization::clampUsers(const GMatrix& data, size_t offset)
 	}
 }
 
-void GMatrixFactorization::clampItems(const GMatrix& data, size_t offset)
+void WMatrixFactorization::clampItems(const WMatrix& data, size_t offset)
 {
 	size_t vals = data.cols() - 1;
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		const GVec& row = data[i];
+		const WVec& row = data[i];
 		size_t index = (size_t)row[0];
 		offset--;
 		for(size_t j = 1; j <= vals; j++)
@@ -1044,14 +1044,14 @@ void GMatrixFactorization::clampItems(const GMatrix& data, size_t offset)
 	}
 }
 
-double GMatrixFactorization::validate(GMatrix& data)
+double WMatrixFactorization::validate(WMatrix& data)
 {
 	double sse = 0;
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		GVec& vec = data[i];
-		GVec& pref = m_pP->row(size_t(vec[0]));
-		GVec& weights = m_pQ->row(size_t(vec[1]));
+		WVec& vec = data[i];
+		WVec& pref = m_pP->row(size_t(vec[0]));
+		WVec& weights = m_pQ->row(size_t(vec[1]));
 		double pred = weights[0] + pref[0];
 		for(size_t j = 1; j <= m_intrinsicDims; j++)
 			pred += pref[j] * weights[j];
@@ -1061,12 +1061,12 @@ double GMatrixFactorization::validate(GMatrix& data)
 	return sse;
 }
 
-void GMatrixFactorization::clampP(size_t i)
+void WMatrixFactorization::clampP(size_t i)
 {
-	GVec& p = m_pP->row(i);
-	GVec& mask = m_pPMask->row(i);
-	GVec& bias = m_pPWeights->row(0);
-	GVec& weights = m_pPWeights->row(1);
+	WVec& p = m_pP->row(i);
+	WVec& mask = m_pPMask->row(i);
+	WVec& bias = m_pPWeights->row(0);
+	WVec& weights = m_pPWeights->row(1);
 	for(size_t j = 0; j < m_intrinsicDims; j++)
 	{
 		if(mask[j] != UNKNOWN_REAL_VALUE)
@@ -1074,12 +1074,12 @@ void GMatrixFactorization::clampP(size_t i)
 	}
 }
 
-void GMatrixFactorization::clampQ(size_t i)
+void WMatrixFactorization::clampQ(size_t i)
 {
-	GVec& q = m_pQ->row(i);
-	GVec& mask = m_pQMask->row(i);
-	GVec& bias = m_pQWeights->row(0);
-	GVec& weights = m_pQWeights->row(1);
+	WVec& q = m_pQ->row(i);
+	WVec& mask = m_pQMask->row(i);
+	WVec& bias = m_pQWeights->row(0);
+	WVec& weights = m_pQWeights->row(1);
 	for(size_t j = 0; j < m_intrinsicDims; j++)
 	{
 		if(mask[j] != UNKNOWN_REAL_VALUE)
@@ -1087,7 +1087,7 @@ void GMatrixFactorization::clampQ(size_t i)
 	}
 }
 
-void GMatrixFactorization_absValues(double* pVec, size_t dims)
+void WMatrixFactorization_absValues(double* pVec, size_t dims)
 {
 	while(true)
 	{
@@ -1098,47 +1098,47 @@ void GMatrixFactorization_absValues(double* pVec, size_t dims)
 }
 
 // virtual
-void GMatrixFactorization::train(GMatrix& data)
+void WMatrixFactorization::train(WMatrix& data)
 {
 	size_t users, items;
-	GCollaborativeFilter_dims(data, &users, &items);
+	WCollaborativeFilter_dims(data, &users, &items);
 
 	// Initialize P and Q with small random values
 	delete(m_pP);
 	size_t colsP = 1 + m_intrinsicDims;
-	m_pP = new GMatrix(users, colsP);
+	m_pP = new WMatrix(users, colsP);
 	for(size_t i = 0; i < m_pP->rows(); i++)
 	{
-		GVec& vec = m_pP->row(i);
+		WVec& vec = m_pP->row(i);
 		vec.fillNormal(m_rand, 0.02);
 		if(m_nonNeg)
-			GMatrixFactorization_absValues(m_pP->row(i).data() + 1, m_intrinsicDims);
+			WMatrixFactorization_absValues(m_pP->row(i).data() + 1, m_intrinsicDims);
 	}
 	delete(m_pQ);
-	m_pQ = new GMatrix(items, 1 + m_intrinsicDims);
+	m_pQ = new WMatrix(items, 1 + m_intrinsicDims);
 	for(size_t i = 0; i < m_pQ->rows(); i++)
 	{
-		GVec& vec = m_pQ->row(i);
+		WVec& vec = m_pQ->row(i);
 		vec.fillNormal(m_rand, 0.02);
 		if(m_nonNeg)
-			GMatrixFactorization_absValues(m_pQ->row(i).data() + 1, m_intrinsicDims);
+			WMatrixFactorization_absValues(m_pQ->row(i).data() + 1, m_intrinsicDims);
 	}
 
 	// Make a shallow copy of the data (so we can shuffle it)
-	GMatrix dataCopy(data.relation().clone());
-	GReleaseDataHolder hDataCopy(&dataCopy);
+	WMatrix dataCopy(data.relation().clone());
+	WReleaseDataHolder hDataCopy(&dataCopy);
 	for(size_t i = 0; i < data.rows(); i++)
 		dataCopy.takeRow(&data[i]);
 
 	// Train
 	double prevErr = 1e10;
 	double learningRate = 0.01;
-	GVec pT(m_intrinsicDims + 1);
+	WVec pT(m_intrinsicDims + 1);
 	[[maybe_unused]] size_t epochs = 0;
 	while(learningRate >= 0.001)
 	{
-		GMatrix backupP(*m_pP);
-		GMatrix backupQ(*m_pQ);
+		WMatrix backupP(*m_pP);
+		WMatrix backupQ(*m_pQ);
 		for(size_t iter = 0; iter < m_minIters; iter++)
 		{
 			// Shuffle the ratings
@@ -1147,7 +1147,7 @@ void GMatrixFactorization::train(GMatrix& data)
 			// Do an epoch of training
 			for(size_t j = 0; j < dataCopy.rows(); j++)
 			{
-				GVec& vec = dataCopy[j];
+				WVec& vec = dataCopy[j];
 				size_t user = (size_t)vec[0];
 				size_t item = (size_t)vec[1];
 				if(m_pPMask && user < m_pPMask->rows())
@@ -1156,8 +1156,8 @@ void GMatrixFactorization::train(GMatrix& data)
 					clampQ(item);
 
 				// Compute the error for this rating
-				GVec& p = m_pP->row(user);
-				GVec& q = m_pQ->row(item);
+				WVec& p = m_pP->row(user);
+				WVec& q = m_pQ->row(item);
 				double pred = q[0] + p[0];
 				for(size_t i = 1; i <= m_intrinsicDims; i++)
 					pred += p[i] * q[i];
@@ -1175,9 +1175,9 @@ void GMatrixFactorization::train(GMatrix& data)
 				if(m_pQMask && item < m_pQMask->rows())
 				{
 					// Update the bias and weights for clamped values
-					GVec& mask = m_pQMask->row(item);
-					GVec& bb = m_pQWeights->row(0);
-					GVec& w = m_pQWeights->row(1);
+					WVec& mask = m_pQMask->row(item);
+					WVec& bb = m_pQWeights->row(0);
+					WVec& w = m_pQWeights->row(1);
 					for(size_t i = 0; i < m_intrinsicDims; i++)
 					{
 						if(mask[i] != UNKNOWN_REAL_VALUE)
@@ -1199,9 +1199,9 @@ void GMatrixFactorization::train(GMatrix& data)
 				if(m_pPMask && user < m_pPMask->rows())
 				{
 					// Update the bias and weights for clamped values
-					GVec& mask = m_pPMask->row(user);
-					GVec& bb = m_pPWeights->row(0);
-					GVec& w = m_pPWeights->row(1);
+					WVec& mask = m_pPMask->row(user);
+					WVec& bb = m_pPWeights->row(0);
+					WVec& w = m_pPWeights->row(1);
 					for(size_t i = 0; i < m_intrinsicDims; i++)
 					{
 						if(mask[i] != UNKNOWN_REAL_VALUE)
@@ -1234,27 +1234,27 @@ void GMatrixFactorization::train(GMatrix& data)
 }
 
 // virtual
-double GMatrixFactorization::predict(size_t user, size_t item)
+double WMatrixFactorization::predict(size_t user, size_t item)
 {
 	if(!m_pP)
 		throw Ex("Not trained yet");
 	if(user >= m_pP->rows() || item >= m_pQ->rows())
 		return 0.0;
-	GVec& q = m_pQ->row(item);
-	GVec& p = m_pP->row(user);
+	WVec& q = m_pQ->row(item);
+	WVec& p = m_pP->row(user);
 	double pred = p[0] + q[0];
 	for(size_t i = 1; i <= m_intrinsicDims; i++)
 		pred += p[i] * q[i];
 	return pred;
 }
 
-void GMatrixFactorization_vectorToRatings(const GVec& vec, size_t dims, GMatrix& data)
+void WMatrixFactorization_vectorToRatings(const WVec& vec, size_t dims, WMatrix& data)
 {
 	for(size_t i = 0; i < dims; i++)
 	{
 		if(vec[i] != UNKNOWN_REAL_VALUE)
 		{
-			GVec& row = data.newRow();
+			WVec& row = data.newRow();
 			row[0] = 0.0;
 			row[1] = (double)i;
 			row[2] = vec[i];
@@ -1263,17 +1263,17 @@ void GMatrixFactorization_vectorToRatings(const GVec& vec, size_t dims, GMatrix&
 }
 
 // virtual
-void GMatrixFactorization::impute(GVec& vec, size_t dims)
+void WMatrixFactorization::impute(WVec& vec, size_t dims)
 {
 	if(!m_pP)
 		throw Ex("Not trained yet");
 
 	// Convert the vector to a set of ratings
-	GMatrix data(0, 3);
-	GMatrixFactorization_vectorToRatings(vec, std::min(dims, m_pQ->rows()), data);
+	WMatrix data(0, 3);
+	WMatrixFactorization_vectorToRatings(vec, std::min(dims, m_pQ->rows()), data);
 
 	// Initialize a preference vector
-	GVec pP(1 + m_intrinsicDims);
+	WVec pP(1 + m_intrinsicDims);
 	pP.fillNormal(m_rand, 0.02);
 
 	// Refine the preference vector
@@ -1288,8 +1288,8 @@ void GMatrixFactorization::impute(GVec& vec, size_t dims)
 		for(size_t i = 0; i < data.rows(); i++)
 		{
 			// Compute the error for this rating
-			GVec& v = data[i];
-			GVec& q = m_pQ->row(size_t(v[1]));
+			WVec& v = data[i];
+			WVec& q = m_pQ->row(size_t(v[1]));
 			double pred = pP[0] + q[0];
 			for(size_t j = 1; j <= m_intrinsicDims; j++)
 				pred += pP[j] * q[j];
@@ -1319,7 +1319,7 @@ void GMatrixFactorization::impute(GVec& vec, size_t dims)
 	{
 		if(vec[i] == UNKNOWN_REAL_VALUE)
 		{
-			GVec& q = m_pQ->row(i);
+			WVec& q = m_pQ->row(i);
 			double pred = pP[0] + q[0];
 			for(size_t j = 1; j <= m_intrinsicDims; j++)
 				pred += pP[j] * q[j];
@@ -1334,9 +1334,9 @@ void GMatrixFactorization::impute(GVec& vec, size_t dims)
 }
 
 // static
-void GMatrixFactorization::test()
+void WMatrixFactorization::test()
 {
-	GMatrixFactorization rec(3);
+	WMatrixFactorization rec(3);
 	rec.setRegularizer(0.002);
 	rec.basicTest(0.17);
 }
@@ -1347,39 +1347,39 @@ void GMatrixFactorization::test()
 
 
 /*
-GHybridNonlinearPCA::GHybridNonlinearPCA(size_t intrinsicDims)
-: GNonlinearPCA(intrinsicDims), m_itemAttrs(NULL), m_itemMax(NULL), m_itemMin(NULL), m_itemMap(NULL), m_numNeighbors(100), m_pRatingCount(NULL)
+WHybridNonlinearPCA::WHybridNonlinearPCA(size_t intrinsicDims)
+: WNonlinearPCA(intrinsicDims), m_itemAttrs(NULL), m_itemMax(NULL), m_itemMin(NULL), m_itemMap(NULL), m_numNeighbors(100), m_pRatingCount(NULL)
 {
 	m_neighbors = NULL;
 }
 
 // virtual
-GHybridNonlinearPCA::~GHybridNonlinearPCA()
+WHybridNonlinearPCA::~WHybridNonlinearPCA()
 {
 }
 
-void GHybridNonlinearPCA::train(GMatrix& data)
+void WHybridNonlinearPCA::train(WMatrix& data)
 {
 	size_t usrs, items;
-	GCollaborativeFilter_dims(data, &items, &usrs);
+	WCollaborativeFilter_dims(data, &items, &usrs);
 	m_items = items;
 
 	// Copy and normalize the ratings
-	GMatrix* pClone = new GMatrix();
+	WMatrix* pClone = new WMatrix();
 	pClone->copy(&data);
-	std::unique_ptr<GMatrix> hClone(pClone);
+	std::unique_ptr<WMatrix> hClone(pClone);
 	delete[] m_pMins;
 	m_pMins = new double[items];
 	delete[] m_pMaxs;
 	m_pMaxs = new double[items];
 	delete[] m_pRatingCount;
 	m_pRatingCount = new size_t[usrs];
-	GVec::setAll(m_pMins, 1e200, items);
-	GVec::setAll(m_pMaxs, -1e200, items);
-	GIndexVec::setAll(m_pRatingCount, 0, usrs);
+	WVec::setAll(m_pMins, 1e200, items);
+	WVec::setAll(m_pMaxs, -1e200, items);
+	WIndexVec::setAll(m_pRatingCount, 0, usrs);
 	for(size_t i = 0; i < pClone->rows(); i++)
 	{
-		GVec& vec = pClone->row(i);
+		WVec& vec = pClone->row(i);
 		m_pMins[size_t(vec[0])] = std::min(m_pMins[size_t(vec[0])], vec[2]);
 		m_pMaxs[size_t(vec[0])] = std::max(m_pMaxs[size_t(vec[0])], vec[2]);
 	}
@@ -1392,7 +1392,7 @@ void GHybridNonlinearPCA::train(GMatrix& data)
 	}
 	for(size_t i = 0; i < pClone->rows(); i++)
 	{
-		GVec&  vec = pClone->row(i);
+		WVec&  vec = pClone->row(i);
 		vec[2] = (vec[2] - m_pMins[size_t(vec[0])]) / (m_pMaxs[size_t(vec[0])] - m_pMins[size_t(vec[0])]);
 		m_itemSet.insert((size_t)vec[1]);
 		m_pRatingCount[(size_t)vec[1]]++;
@@ -1400,12 +1400,12 @@ void GHybridNonlinearPCA::train(GMatrix& data)
 
 	// Prep the model for incremental training
 	size_t numAttr = m_itemAttrs->cols() - 1;
-	GUniformRelation featureRel(m_intrinsicDims + numAttr);
-	GUniformRelation labelRel(items);
+	WUniformRelation featureRel(m_intrinsicDims + numAttr);
+	WUniformRelation labelRel(items);
 	m_pModel->setUseInputBias(m_useInputBias);
 	m_pModel->beginIncrementalLearning(featureRel, labelRel);
-	GNeuralNet nn;
-	nn.addLayer(new GLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE));
+	WNeuralNet nn;
+	nn.addLayer(new WLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE));
 	nn.setUseInputBias(m_useInputBias);
 	nn.beginIncrementalLearning(featureRel, labelRel);
 	double* pPrefGradient = new double[m_intrinsicDims + numAttr];
@@ -1419,20 +1419,20 @@ void GHybridNonlinearPCA::train(GMatrix& data)
 		startPass = 2;
 	for(int pass = startPass; pass < 3; pass++)
 	{
-		GNeuralNet* pNN = (pass == 0 ? &nn : m_pModel);
+		WNeuralNet* pNN = (pass == 0 ? &nn : m_pModel);
 		if(pass == startPass) //-1)
 		{
 			delete(m_pUsers);
-			m_pUsers = new GMatrix(usrs, m_intrinsicDims + numAttr);
+			m_pUsers = new WMatrix(usrs, m_intrinsicDims + numAttr);
 			delete[] m_itemMap;
 			m_itemMap = new size_t[m_itemAttrs->rows()];
-			GIndexVec::setAll(m_itemMap, 0, m_itemAttrs->rows());
+			WIndexVec::setAll(m_itemMap, 0, m_itemAttrs->rows());
 			size_t count = 0;
 			double* itemVec = m_itemAttrs->row(count);
 			for(size_t i = 0; i < usrs; i++)
 			{
 				double* vec = m_pUsers->row(i);
-				GVec::setAll(vec, 0, m_intrinsicDims + numAttr);
+				WVec::setAll(vec, 0, m_intrinsicDims + numAttr);
 				for(size_t j = 0; j < m_intrinsicDims; j++)
 					*(vec++) = 0.01 * m_rand.normal();
 				if(*itemVec == i)
@@ -1453,9 +1453,9 @@ void GHybridNonlinearPCA::train(GMatrix& data)
 		double prevErr = 1e10;
 		for(double learningRate = rateBegin; learningRate > rateEnd; )
 		{
-			GNeuralNet backupNet;
+			WNeuralNet backupNet;
 			backupNet.copyStructure(pNN);
-			GMatrix backupUsers(m_pUsers->rows(), m_intrinsicDims);
+			WMatrix backupUsers(m_pUsers->rows(), m_intrinsicDims);
 			backupUsers.copyBlock(*m_pUsers, 0, 0, INVALID_INDEX, m_intrinsicDims, 0, 0, false);
 			for(size_t j = 0; j < m_minIters; j++)
 			{
@@ -1484,8 +1484,8 @@ void GHybridNonlinearPCA::train(GMatrix& data)
 					{
 						// Update inputs
 						if(pass == 0)
-							GVec::multiply(pPrefs, 1.0 - (learningRate * m_regularizer), m_intrinsicDims);
-						GVec::addScaled(pPrefs, -learningRate, pPrefGradient, m_intrinsicDims);
+							WVec::multiply(pPrefs, 1.0 - (learningRate * m_regularizer), m_intrinsicDims);
+						WVec::addScaled(pPrefs, -learningRate, pPrefGradient, m_intrinsicDims);
 					}
 				}
 			}
@@ -1505,11 +1505,11 @@ void GHybridNonlinearPCA::train(GMatrix& data)
 		}
 	}
 	//Insert neighbors here after 0 out all of their indexes
-	m_neighbors = new GKdTree(m_itemAttrs, m_numNeighbors);
+	m_neighbors = new WKdTree(m_itemAttrs, m_numNeighbors);
 }
 
 // virtual
-double GHybridNonlinearPCA::predict(size_t item, size_t user)
+double WHybridNonlinearPCA::predict(size_t item, size_t user)
 {
 	//The user and item are reversed (the item is the user and user is the item)
 	//If the user is new
@@ -1522,14 +1522,14 @@ double GHybridNonlinearPCA::predict(size_t item, size_t user)
 	{
 		//find closest instances
 		double* vec = m_pUsers->row(user);
-		GTEMPBUF(double, features, m_pUsers->cols() - m_intrinsicDims + 1);
+		WTEMPBUF(double, features, m_pUsers->cols() - m_intrinsicDims + 1);
 		features[0] = 0;
 		for(size_t i = m_intrinsicDims; i < m_pUsers->cols(); i++)
 		{
 			features[i-m_intrinsicDims+1] = vec[i] / 0.01;
 		}
-		GTEMPBUF(size_t, neighbors, m_numNeighbors);
-		GTEMPBUF(double, distances, m_numNeighbors);
+		WTEMPBUF(size_t, neighbors, m_numNeighbors);
+		WTEMPBUF(double, distances, m_numNeighbors);
 		m_neighbors->neighbors(neighbors, distances, features);
 
 		//sort the neighbors based on distance
@@ -1539,7 +1539,7 @@ double GHybridNonlinearPCA::predict(size_t item, size_t user)
 //		double denom = 0;
 
 		size_t counts [11];
-		GIndexVec::setAll(counts, 0, 11);
+		WIndexVec::setAll(counts, 0, 11);
 		size_t i = 0;
 		while(distances[i] == 0 && i < m_numNeighbors)
 		{
@@ -1570,7 +1570,7 @@ double GHybridNonlinearPCA::predict(size_t item, size_t user)
 	return (m_pMaxs[item] - m_pMins[item]) * m_pModel->forwardPropSingleOutput(m_pUsers->row(user), item) + m_pMins[item];
 }
 
-double GHybridNonlinearPCA::validate(GNeuralNet* pNN, GMatrix& data)
+double WHybridNonlinearPCA::validate(WNeuralNet* pNN, WMatrix& data)
 {
 	double sse = 0;
 	for(size_t i = 0; i < data.rows(); i++)
@@ -1584,17 +1584,17 @@ double GHybridNonlinearPCA::validate(GNeuralNet* pNN, GMatrix& data)
 	return sse / data.rows();
 }
 
-void GHybridNonlinearPCA::setItemAttributes(GMatrix& itemAttrs)
+void WHybridNonlinearPCA::setItemAttributes(WMatrix& itemAttrs)
 {
 	delete(m_itemAttrs);
-	m_itemAttrs = new GMatrix();
+	m_itemAttrs = new WMatrix();
 	m_itemAttrs->copy(&itemAttrs);
 	delete(m_itemMax);
 	m_itemMax = new double[m_itemAttrs->cols()-1];
 	delete(m_itemMin);
 	m_itemMin = new double[m_itemAttrs->cols()-1];
-	GVec::setAll(m_itemMin, 1e200, m_itemAttrs->cols() - 1);
-	GVec::setAll(m_itemMax, -1e200, m_itemAttrs->cols() - 1);
+	WVec::setAll(m_itemMin, 1e200, m_itemAttrs->cols() - 1);
+	WVec::setAll(m_itemMax, -1e200, m_itemAttrs->cols() - 1);
 
 	//Normalize the item attributes
 	for(size_t i = 1; i < m_itemAttrs->cols(); i++)
@@ -1615,47 +1615,47 @@ void GHybridNonlinearPCA::setItemAttributes(GMatrix& itemAttrs)
 
 
 /*
-GNonlinearPCA::GNonlinearPCA(size_t intrinsicDims)
-: GCollaborativeFilter(), m_intrinsicDims(intrinsicDims), m_items(0), m_pMins(NULL), m_pMaxs(NULL), m_useInputBias(true), m_useThreePass(true), m_minIters(1), m_decayRate(0.97), m_regularizer(0.0001)
+WNonlinearPCA::WNonlinearPCA(size_t intrinsicDims)
+: WCollaborativeFilter(), m_intrinsicDims(intrinsicDims), m_items(0), m_pMins(NULL), m_pMaxs(NULL), m_useInputBias(true), m_useThreePass(true), m_minIters(1), m_decayRate(0.97), m_regularizer(0.0001)
 {
-	m_pModel = new GNeuralNet();
+	m_pModel = new WNeuralNet();
 	m_pUserMask = NULL;
 	m_pItemMask = NULL;
 	m_pUsers = NULL;
 }
 
-GNonlinearPCA::GNonlinearPCA(const GDomNode* pNode, GLearnerLoader& ll)
-: GCollaborativeFilter(pNode, ll)
+WNonlinearPCA::WNonlinearPCA(const WDomNode* pNode, WLearnerLoader& ll)
+: WCollaborativeFilter(pNode, ll)
 {
 	m_useInputBias = pNode->getBool("uib");
-	m_pUsers = new GMatrix(pNode->get("users"));
-	m_pModel = new GNeuralNet(pNode->get("model"), ll);
-	GDomNode* pUserMask = pNode->getIfExists("usermask");
+	m_pUsers = new WMatrix(pNode->get("users"));
+	m_pModel = new WNeuralNet(pNode->get("model"), ll);
+	WDomNode* pUserMask = pNode->getIfExists("usermask");
 	if(pUserMask)
-		m_pUserMask = new GMatrix(pUserMask);
+		m_pUserMask = new WMatrix(pUserMask);
 	else
 		m_pUserMask = NULL;
-	GDomNode* pItemMask = pNode->getIfExists("itemmask");
+	WDomNode* pItemMask = pNode->getIfExists("itemmask");
 	if(pItemMask)
-		m_pItemMask = new GMatrix(pItemMask);
+		m_pItemMask = new WMatrix(pItemMask);
 	else
 		m_pItemMask = NULL;
 	m_items = m_pModel->outputLayer().outputs();
 	m_pMins = new double[m_items];
-	GDomListIterator it1(pNode->get("mins"));
+	WDomListIterator it1(pNode->get("mins"));
 	if(it1.remaining() != m_items)
 		throw Ex("invalid number of elements");
-	GVec::deserialize(m_pMins, it1);
+	WVec::deserialize(m_pMins, it1);
 	m_pMaxs = new double[m_items];
-	GDomListIterator it2(pNode->get("maxs"));
+	WDomListIterator it2(pNode->get("maxs"));
 	if(it2.remaining() != m_items)
 		throw Ex("invalid number of elements");
-	GVec::deserialize(m_pMaxs, it2);
+	WVec::deserialize(m_pMaxs, it2);
 	m_intrinsicDims = m_pModel->layer(0).inputs();
 }
 
 // virtual
-GNonlinearPCA::~GNonlinearPCA()
+WNonlinearPCA::~WNonlinearPCA()
 {
 	delete[] m_pMins;
 	delete[] m_pMaxs;
@@ -1666,9 +1666,9 @@ GNonlinearPCA::~GNonlinearPCA()
 }
 
 // virtual
-GDomNode* GNonlinearPCA::serialize(GDom* pDoc) const
+WDomNode* WNonlinearPCA::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GNonlinearPCA");
+	WDomNode* pNode = baseDomNode(pDoc, "WNonlinearPCA");
 	pNode->add(pDoc, "uib", pDoc->newBool(m_useInputBias));
 	pNode->add(pDoc, "users", m_pUsers->serialize(pDoc));
 	pNode->add(pDoc, "model", m_pModel->serialize(pDoc));
@@ -1677,18 +1677,18 @@ GDomNode* GNonlinearPCA::serialize(GDom* pDoc) const
 	if(m_pItemMask)
 		pNode->add(pDoc, "itemmask", m_pItemMask->serialize(pDoc));
 	size_t itemCount = m_pModel->outputLayer().outputs();
-	pNode->add(pDoc, "mins", GVec::serialize(pDoc, m_pMins, itemCount));
-	pNode->add(pDoc, "maxs", GVec::serialize(pDoc, m_pMaxs, itemCount));
+	pNode->add(pDoc, "mins", WVec::serialize(pDoc, m_pMins, itemCount));
+	pNode->add(pDoc, "maxs", WVec::serialize(pDoc, m_pMaxs, itemCount));
 	return pNode;
 }
 
-double GNonlinearPCA::validate(GNeuralNet* pNN, GMatrix& data)
+double WNonlinearPCA::validate(WNeuralNet* pNN, WMatrix& data)
 {
 	double sse = 0;
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		GVec& vec = data[i];
-		GVec& prefs = m_pUsers->row(size_t(vec[0]));
+		WVec& vec = data[i];
+		WVec& prefs = m_pUsers->row(size_t(vec[0]));
 		double predictedRating = pNN->forwardPropSingleOutput(prefs, size_t(vec[1]));
 		double d = vec[2] - predictedRating;
 		sse += (d * d);
@@ -1696,36 +1696,36 @@ double GNonlinearPCA::validate(GNeuralNet* pNN, GMatrix& data)
 	return sse / data.rows();
 }
 
-void GNonlinearPCA::clampUserElement(size_t user, size_t attr, double val)
+void WNonlinearPCA::clampUserElement(size_t user, size_t attr, double val)
 {
 val *= 0.01;
 	if(attr >= m_intrinsicDims - (m_useInputBias ? 1 : 0))
 		throw Ex("out of range");
 	if(!m_pUserMask)
-		m_pUserMask = new GMatrix(0, m_intrinsicDims - (m_useInputBias ? 1 : 0));
+		m_pUserMask = new WMatrix(0, m_intrinsicDims - (m_useInputBias ? 1 : 0));
 	while(m_pUserMask->rows() <= user)
-		GVec::setAll(m_pUserMask->newRow(), UNKNOWN_REAL_VALUE, m_intrinsicDims - (m_useInputBias ? 1 : 0));
+		WVec::setAll(m_pUserMask->newRow(), UNKNOWN_REAL_VALUE, m_intrinsicDims - (m_useInputBias ? 1 : 0));
 	m_pUserMask->row(user)[attr] = val;
 }
 
-void GNonlinearPCA::clampItemElement(size_t item, size_t attr, double val)
+void WNonlinearPCA::clampItemElement(size_t item, size_t attr, double val)
 {
 val *= 0.01;
 	if(attr >= m_pModel->outputLayer().inputs())
 		throw Ex("out of range");
 	if(!m_pItemMask)
-		m_pItemMask = new GMatrix(0, m_pModel->outputLayer().inputs());
+		m_pItemMask = new WMatrix(0, m_pModel->outputLayer().inputs());
 	while(m_pItemMask->rows() <= item)
-		GVec::setAll(m_pItemMask->newRow(), UNKNOWN_REAL_VALUE, m_pModel->outputLayer().inputs());
+		WVec::setAll(m_pItemMask->newRow(), UNKNOWN_REAL_VALUE, m_pModel->outputLayer().inputs());
 	m_pItemMask->row(item)[attr] = val;
 }
 
-void GNonlinearPCA::clampUsers(const GMatrix& data, size_t offset)
+void WNonlinearPCA::clampUsers(const WMatrix& data, size_t offset)
 {
 	size_t vals = data.cols() - 1;
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		const GVec& row = data[i];
+		const WVec& row = data[i];
 		size_t index = (size_t)*row;
 		row++;
 		for(size_t j = 0; j < vals; j++)
@@ -1733,12 +1733,12 @@ void GNonlinearPCA::clampUsers(const GMatrix& data, size_t offset)
 	}
 }
 
-void GNonlinearPCA::clampItems(const GMatrix& data, size_t offset)
+void WNonlinearPCA::clampItems(const WMatrix& data, size_t offset)
 {
 	size_t vals = data.cols() - 1;
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		const GVec& row = data[i];
+		const WVec& row = data[i];
 		size_t index = (size_t)*row;
 		row++;
 		for(size_t j = 0; j < vals; j++)
@@ -1746,10 +1746,10 @@ void GNonlinearPCA::clampItems(const GMatrix& data, size_t offset)
 	}
 }
 
-void GNonlinearPCA::clampUsersInternal(size_t i)
+void WNonlinearPCA::clampUsersInternal(size_t i)
 {
-	GVec& profile = m_pUsers->row(i) + (m_useInputBias ? 1 : 0);
-	const GVec& mask = m_pUserMask->row(i);
+	WVec& profile = m_pUsers->row(i) + (m_useInputBias ? 1 : 0);
+	const WVec& mask = m_pUserMask->row(i);
 	for(size_t k = (m_useInputBias ? 1 : 0); k < m_intrinsicDims; k++)
 	{
 		if(*mask != UNKNOWN_REAL_VALUE)
@@ -1759,10 +1759,10 @@ void GNonlinearPCA::clampUsersInternal(size_t i)
 	}
 }
 
-void GNonlinearPCA::clampItemsInternal(size_t i)
+void WNonlinearPCA::clampItemsInternal(size_t i)
 {
-	GMatrix& itemWeights = ((GLayerClassic*)&m_pModel->outputLayer())->weights();
-	const GVec& mask = m_pItemMask->row(i);
+	WMatrix& itemWeights = ((WLayerClassic*)&m_pModel->outputLayer())->weights();
+	const WVec& mask = m_pItemMask->row(i);
 	size_t dims = m_pModel->outputLayer().inputs();
 	for(size_t k = 0; k < dims; k++)
 	{
@@ -1774,25 +1774,25 @@ void GNonlinearPCA::clampItemsInternal(size_t i)
 
 
 // virtual
-void GNonlinearPCA::train(GMatrix& data)
+void WNonlinearPCA::train(WMatrix& data)
 {
 	size_t usrs, items;
-	GCollaborativeFilter_dims(data, &usrs, &items);
+	WCollaborativeFilter_dims(data, &usrs, &items);
 	m_items = items;
 
 	// Copy and normalize the ratings
-	GMatrix* pClone = new GMatrix();
+	WMatrix* pClone = new WMatrix();
 	pClone->copy(&data);
-	std::unique_ptr<GMatrix> hClone(pClone);
+	std::unique_ptr<WMatrix> hClone(pClone);
 	delete[] m_pMins;
 	m_pMins = new double[items];
 	delete[] m_pMaxs;
 	m_pMaxs = new double[items];
-	GVec::setAll(m_pMins, 1e200, items);
-	GVec::setAll(m_pMaxs, -1e200, items);
+	WVec::setAll(m_pMins, 1e200, items);
+	WVec::setAll(m_pMaxs, -1e200, items);
 	for(size_t i = 0; i < pClone->rows(); i++)
 	{
-		GVec& vec = pClone->row(i);
+		WVec& vec = pClone->row(i);
 		m_pMins[size_t(vec[1])] = std::min(m_pMins[size_t(vec[1])], vec[2]);
 		m_pMaxs[size_t(vec[1])] = std::max(m_pMaxs[size_t(vec[1])], vec[2]);
 	}
@@ -1805,20 +1805,20 @@ void GNonlinearPCA::train(GMatrix& data)
 	}
 	for(size_t i = 0; i < pClone->rows(); i++)
 	{
-		GVec&  vec = pClone->row(i);
+		WVec&  vec = pClone->row(i);
 		vec[2] = (vec[2] - m_pMins[size_t(vec[1])]) / (m_pMaxs[size_t(vec[1])] - m_pMins[size_t(vec[1])]);
 	}
 
 	// Prep the model for incremental training
-	GUniformRelation featureRel(m_intrinsicDims);
-	GUniformRelation labelRel(items);
+	WUniformRelation featureRel(m_intrinsicDims);
+	WUniformRelation labelRel(items);
 	m_pModel->setUseInputBias(m_useInputBias);
 	m_pModel->beginIncrementalLearning(featureRel, labelRel);
-	GNeuralNet nn;
-	nn.addLayer(new GLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE));
+	WNeuralNet nn;
+	nn.addLayer(new WLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE));
 	nn.setUseInputBias(m_useInputBias);
 	nn.beginIncrementalLearning(featureRel, labelRel);
-	GVec& prefGradient = new double[m_intrinsicDims];
+	WVec& prefGradient = new double[m_intrinsicDims];
 	std::unique_ptr<double[]> hPrefGradient(prefGradient);
 
 	// Train
@@ -1829,15 +1829,15 @@ void GNonlinearPCA::train(GMatrix& data)
 		startPass = 2;
 	for(size_t pass = startPass; pass < 3; pass++)
 	{
-		GNeuralNet* pNN = (pass == 0 ? &nn : m_pModel);
+		WNeuralNet* pNN = (pass == 0 ? &nn : m_pModel);
 		if(pass == startPass)
 		{
 			// Initialize the user matrix
 			delete(m_pUsers);
-			m_pUsers = new GMatrix(usrs, m_intrinsicDims);
+			m_pUsers = new WMatrix(usrs, m_intrinsicDims);
 			for(size_t i = 0; i < usrs; i++)
 			{
-				GVec& vec = m_pUsers->row(i);
+				WVec& vec = m_pUsers->row(i);
 				for(size_t j = 0; j < m_intrinsicDims; j++)
 					*(vec++) = 0.01 * m_rand.normal();
 				if(m_pUserMask && i < m_pUserMask->rows())
@@ -1854,9 +1854,9 @@ void GNonlinearPCA::train(GMatrix& data)
 		double prevErr = 1e10;
 		for(double learningRate = rateBegin; learningRate > rateEnd; )
 		{
-			GNeuralNet backupNet;
+			WNeuralNet backupNet;
 			backupNet.copyStructure(pNN);
-			GMatrix backupUsers(*m_pUsers);
+			WMatrix backupUsers(*m_pUsers);
 			for(size_t j = 0; j < m_minIters; j++)
 			{
 				// Shuffle the ratings
@@ -1867,10 +1867,10 @@ void GNonlinearPCA::train(GMatrix& data)
 				for(size_t i = 0; i < pClone->rows(); i++)
 				{
 					// Forward-prop
-					GVec& vec = pClone->row(i);
+					WVec& vec = pClone->row(i);
 					size_t user = size_t(vec[0]);
 					size_t item = size_t(vec[1]);
-					GVec& prefs = m_pUsers->row(user);
+					WVec& prefs = m_pUsers->row(user);
 					pNN->forwardPropSingleOutput(prefs, item);
 
 					// Update weights
@@ -1886,8 +1886,8 @@ void GNonlinearPCA::train(GMatrix& data)
 					{
 						// Update inputs
 						if(pass == 0)
-							GVec::multiply(prefs, 1.0 - (learningRate * m_regularizer), m_intrinsicDims);
-						GVec::addScaled(prefs, -learningRate, prefGradient, m_intrinsicDims);
+							WVec::multiply(prefs, 1.0 - (learningRate * m_regularizer), m_intrinsicDims);
+						WVec::addScaled(prefs, -learningRate, prefGradient, m_intrinsicDims);
 						if(m_pUserMask && user < m_pUserMask->rows())
 							clampUsersInternal(user);
 					}
@@ -1911,7 +1911,7 @@ void GNonlinearPCA::train(GMatrix& data)
 }
 
 // virtual
-double GNonlinearPCA::predict(size_t user, size_t item)
+double WNonlinearPCA::predict(size_t user, size_t item)
 {
 	if(user >= m_pUsers->rows() || item >= m_items)
 		return 0.0;
@@ -1920,17 +1920,17 @@ double GNonlinearPCA::predict(size_t user, size_t item)
 }
 
 // virtual
-void GNonlinearPCA::impute(GVec& vec, size_t dims)
+void WNonlinearPCA::impute(WVec& vec, size_t dims)
 {
-	throw Ex("Sorry, GNonlinearPCA::impute is not implemented yet");
+	throw Ex("Sorry, WNonlinearPCA::impute is not implemented yet");
 }
 
 // static
-void GNonlinearPCA::test()
+void WNonlinearPCA::test()
 {
-	GNonlinearPCA rec(3);
-	rec.model()->addLayer(new GLayerClassic(FLEXIBLE_SIZE, 3));
-	rec.model()->addLayer(new GLayerClassic(3, FLEXIBLE_SIZE));
+	WNonlinearPCA rec(3);
+	rec.model()->addLayer(new WLayerClassic(FLEXIBLE_SIZE, 3));
+	rec.model()->addLayer(new WLayerClassic(3, FLEXIBLE_SIZE));
 	rec.basicTest(0.18);
 }
 */
@@ -1949,45 +1949,45 @@ void GNonlinearPCA::test()
 
 
 
-GBagOfRecommenders::GBagOfRecommenders()
-: GCollaborativeFilter(), m_itemCount(0)
+WBagOfRecommenders::WBagOfRecommenders()
+: WCollaborativeFilter(), m_itemCount(0)
 {
 }
 
-GBagOfRecommenders::GBagOfRecommenders(const GDomNode* pNode, GLearnerLoader& ll)
-: GCollaborativeFilter(pNode, ll)
+WBagOfRecommenders::WBagOfRecommenders(const WDomNode* pNode, WLearnerLoader& ll)
+: WCollaborativeFilter(pNode, ll)
 {
 	m_itemCount = (size_t)pNode->getInt("ic");
-	for(GDomListIterator it(pNode->get("filters")); it.current(); it.advance())
+	for(WDomListIterator it(pNode->get("filters")); it.current(); it.advance())
 		m_filters.push_back(ll.loadCollaborativeFilter(it.current()));
 }
 
-GBagOfRecommenders::~GBagOfRecommenders()
+WBagOfRecommenders::~WBagOfRecommenders()
 {
 	clear();
 }
 
-void GBagOfRecommenders::clear()
+void WBagOfRecommenders::clear()
 {
-	for(vector<GCollaborativeFilter*>::iterator it = m_filters.begin(); it != m_filters.end(); it++)
+	for(vector<WCollaborativeFilter*>::iterator it = m_filters.begin(); it != m_filters.end(); it++)
 		delete(*it);
 	m_filters.clear();
 }
 
-void GBagOfRecommenders::addRecommender(GCollaborativeFilter* pRecommender)
+void WBagOfRecommenders::addRecommender(WCollaborativeFilter* pRecommender)
 {
 	pRecommender->rand().setSeed(m_rand.next()); // Ensure that each recommender has a different seed
 	m_filters.push_back(pRecommender);
 }
 
 // virtual
-void GBagOfRecommenders::train(GMatrix& data)
+void WBagOfRecommenders::train(WMatrix& data)
 {
-	for(vector<GCollaborativeFilter*>::iterator it = m_filters.begin(); it != m_filters.end(); it++)
+	for(vector<WCollaborativeFilter*>::iterator it = m_filters.begin(); it != m_filters.end(); it++)
 	{
 		// Make a matrix that randomly samples about half of the elements in pData
-		GMatrix tmp(data.relation().clone());
-		GReleaseDataHolder hTmp(&tmp);
+		WMatrix tmp(data.relation().clone());
+		WReleaseDataHolder hTmp(&tmp);
 		for(size_t i = 0; i < data.rows(); i++)
 		{
 			if(m_rand.next(2) == 0)
@@ -2000,30 +2000,30 @@ void GBagOfRecommenders::train(GMatrix& data)
 }
 
 // virtual
-double GBagOfRecommenders::predict(size_t user, size_t item)
+double WBagOfRecommenders::predict(size_t user, size_t item)
 {
 	double sum = 0.0;
-	for(vector<GCollaborativeFilter*>::iterator it = m_filters.begin(); it != m_filters.end(); it++)
+	for(vector<WCollaborativeFilter*>::iterator it = m_filters.begin(); it != m_filters.end(); it++)
 		sum += (*it)->predict(user, item);
 	return sum / m_filters.size();
 }
 
 // virtual
-void GBagOfRecommenders::impute(GVec& vec, size_t dims)
+void WBagOfRecommenders::impute(WVec& vec, size_t dims)
 {
 	throw Ex("Sorry, not implemented yet");
 	/*
 	size_t n = std::min(m_itemCount, dims);
-	GTEMPBUF(double, pBuf1, n);
-	GTEMPBUF(double, pBuf2, n);
-	GVec::setAll(pBuf2, 0.0, n);
+	WTEMPBUF(double, pBuf1, n);
+	WTEMPBUF(double, pBuf2, n);
+	WVec::setAll(pBuf2, 0.0, n);
 	double count = 0.0;
-	for(vector<GCollaborativeFilter*>::iterator it = m_filters.begin(); it != m_filters.end(); it++)
+	for(vector<WCollaborativeFilter*>::iterator it = m_filters.begin(); it != m_filters.end(); it++)
 	{
-		GVec::copy(pBuf1, vec, n);
+		WVec::copy(pBuf1, vec, n);
 		(*it)->impute(pBuf1, dims);
-		GVec::multiply(pBuf2, count / (count + 1), n);
-		GVec::addScaled(pBuf2, 1.0 / (count + 1), pBuf1, n);
+		WVec::multiply(pBuf2, count / (count + 1), n);
+		WVec::addScaled(pBuf2, 1.0 / (count + 1), pBuf1, n);
 		count++;
 	}
 	size_t i;
@@ -2043,24 +2043,24 @@ void GBagOfRecommenders::impute(GVec& vec, size_t dims)
 }
 
 // virtual
-GDomNode* GBagOfRecommenders::serialize(GDom* pDoc) const
+WDomNode* WBagOfRecommenders::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GBagOfRecommenders");
+	WDomNode* pNode = baseDomNode(pDoc, "WBagOfRecommenders");
 	pNode->add(pDoc, "ic", m_itemCount);
-	GDomNode* pFilters = pNode->add(pDoc, "filters", pDoc->newList());
-	for(vector<GCollaborativeFilter*>::const_iterator it = m_filters.begin(); it != m_filters.end(); it++)
+	WDomNode* pFilters = pNode->add(pDoc, "filters", pDoc->newList());
+	for(vector<WCollaborativeFilter*>::const_iterator it = m_filters.begin(); it != m_filters.end(); it++)
 		pFilters->add(pDoc, (*it)->serialize(pDoc));
 	return pNode;
 }
 
 // static
-void GBagOfRecommenders::test()
+void WBagOfRecommenders::test()
 {
-	GBagOfRecommenders rec;
-	rec.addRecommender(new GBaselineRecommender());
-	rec.addRecommender(new GMatrixFactorization(3));
-	//	GNonlinearPCA* nlpca = new GNonlinearPCA(3);
-	//	nlpca->model()->addLayer(new GLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE));
+	WBagOfRecommenders rec;
+	rec.addRecommender(new WBaselineRecommender());
+	rec.addRecommender(new WMatrixFactorization(3));
+	//	WNonlinearPCA* nlpca = new WNonlinearPCA(3);
+	//	nlpca->model()->addLayer(new WLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE));
 	//	rec.addRecommender(nlpca);
 	rec.basicTest(0.69);
 }
@@ -2071,21 +2071,21 @@ void GBagOfRecommenders::test()
 
 
 //virtual
-GContentBasedFilter::~GContentBasedFilter()
+WContentBasedFilter::~WContentBasedFilter()
 {
 	delete(m_itemAttrs);
 	clear();
 }
 
 //virtual
-void GContentBasedFilter::train(GMatrix& data)
+void WContentBasedFilter::train(WMatrix& data)
 {
 	clear();
 	m_userMap.clear();
 	m_userRatings.clear();
 
 	size_t users, items;
-	GCollaborativeFilter_dims(data, &users, &items);
+	WCollaborativeFilter_dims(data, &users, &items);
 	m_items = items;
 	m_users = users;
 	std::set<size_t> userSet;
@@ -2097,7 +2097,7 @@ void GContentBasedFilter::train(GMatrix& data)
 	//create a training set and learning algorithm for each user
 	for(size_t i = 0; i < data.rows(); i++)
 	{
-		GVec& vec = data.row(i);
+		WVec& vec = data.row(i);
 		m_userRatings.insert(std::make_pair((size_t)vec[0], (size_t)vec[1]));
 		userSet.insert((size_t)vec[0]);
 	}
@@ -2110,19 +2110,19 @@ void GContentBasedFilter::train(GMatrix& data)
 		ratedItems = m_userRatings.equal_range(*it);
 
 		//create the training data for the user
-		GMatrix* trainingData = new GMatrix(m_itemAttrs->relation().clone());
-		GRelation* relation = data.relation().cloneSub(data.cols() - 1, 1);
-		GMatrix* labels = new GMatrix(relation);
+		WMatrix* trainingData = new WMatrix(m_itemAttrs->relation().clone());
+		WRelation* relation = data.relation().cloneSub(data.cols() - 1, 1);
+		WMatrix* labels = new WMatrix(relation);
 		for(multimap<size_t, size_t>::iterator ratings = ratedItems.first; ratings != ratedItems.second; ++ratings)
 		{
 			trainingData->newRow().copy(m_itemAttrs->row(m_itemMap[(*ratings).second]));
 
-			GVec& temp = labels->newRow();
+			WVec& temp = labels->newRow();
 			temp[0] = data[(*ratings).second][2];
 		}
 
 		//train a learning algorithm for each user
-		GSupervisedLearner* pLearn = (GSupervisedLearner*)GLearnerLib::InstantiateAlgorithm(m_args, trainingData, labels);
+		WSupervisedLearner* pLearn = (WSupervisedLearner*)WLearnerLib::InstantiateAlgorithm(m_args, trainingData, labels);
 		if(m_args.size() > 0)
 			throw Ex("Superfluous argument: ", m_args.peek());
 		pLearn->train(*trainingData, *labels);
@@ -2132,17 +2132,17 @@ void GContentBasedFilter::train(GMatrix& data)
 }
 
 //virtual
-double GContentBasedFilter::predict(size_t user, size_t item)
+double WContentBasedFilter::predict(size_t user, size_t item)
 {
 	if(user >= m_users || item >= m_items)
 		return 0.0;
-	GVec pOut(1);
+	WVec pOut(1);
 	m_learners[m_userMap[user]]->predict(m_itemAttrs->row(m_itemMap[item]), pOut);
 	return pOut[0];
 }
 
 //virtual
-void GContentBasedFilter::impute(GVec& vec, size_t dims)
+void WContentBasedFilter::impute(WVec& vec, size_t dims)
 {
 	/*
 	for(size_t i = 0; i < dims; i++)
@@ -2155,25 +2155,25 @@ void GContentBasedFilter::impute(GVec& vec, size_t dims)
 }
 
 //virtual
-GDomNode* GContentBasedFilter::serialize(GDom* pDoc) const
+WDomNode* WContentBasedFilter::serialize(WDom* pDoc) const
 {
 	return nullptr;
 }
 
-void GContentBasedFilter::clear()
+void WContentBasedFilter::clear()
 {
-	//		for(vector<GSupervisedLearner*>::iterator it = m_learners.begin(); it != m_learners.end(); it++)
+	//		for(vector<WSupervisedLearner*>::iterator it = m_learners.begin(); it != m_learners.end(); it++)
 	//				delete(*it);
 	m_learners.clear();
 }
 
-void GContentBasedFilter::setItemAttributes(GMatrix& itemAttrs)
+void WContentBasedFilter::setItemAttributes(WMatrix& itemAttrs)
 {
 	delete(m_itemAttrs);
-	m_itemAttrs = new GMatrix(itemAttrs);
+	m_itemAttrs = new WMatrix(itemAttrs);
 	for(size_t i = 0; i < m_itemAttrs->rows(); i++)
 	{
-		GVec& vec = m_itemAttrs->row(i);
+		WVec& vec = m_itemAttrs->row(i);
 		m_itemMap[(size_t)vec[0]] = i;
 	}
 	m_itemAttrs->swapColumns(0, m_itemAttrs->cols() - 1);
@@ -2185,8 +2185,8 @@ void GContentBasedFilter::setItemAttributes(GMatrix& itemAttrs)
 
 
 
-GContentBoostedCF::GContentBoostedCF(GArgReader copy)
-: GCollaborativeFilter(), m_ratingCounts(nullptr), m_pseudoRatingSum(nullptr)
+WContentBoostedCF::WContentBoostedCF(WArgReader copy)
+: WCollaborativeFilter(), m_ratingCounts(nullptr), m_pseudoRatingSum(nullptr)
 {
 	int orig_argc = copy.get_argc();
 	int orig_pos = copy.get_pos();
@@ -2196,13 +2196,13 @@ GContentBoostedCF::GContentBoostedCF(GArgReader copy)
 	int dashLoc = copy.get_pos() - 1;
 	copy.set_argc(dashLoc);
 	copy.set_pos(orig_pos);
-	m_cbf = GRecommenderLib::InstantiateContentBasedFilter(copy);
+	m_cbf = WRecommenderLib::InstantiateContentBasedFilter(copy);
 	copy.set_pos(dashLoc + 1);
 	copy.set_argc(orig_argc);
-	m_cf = GRecommenderLib::InstantiateInstanceRecommender(copy);
+	m_cf = WRecommenderLib::InstantiateInstanceRecommender(copy);
 }
 
-GContentBoostedCF::~GContentBoostedCF()
+WContentBoostedCF::~WContentBoostedCF()
 {
 	delete(m_cbf);
 	delete(m_cf);
@@ -2210,11 +2210,11 @@ GContentBoostedCF::~GContentBoostedCF()
 	delete[] m_pseudoRatingSum;
 }
 
-void GContentBoostedCF::train(GMatrix& data)
+void WContentBoostedCF::train(WMatrix& data)
 {
 	//make a copy of the training data
-	GMatrix* pClone = new GMatrix(data);
-	std::unique_ptr<GMatrix> hClone(pClone);
+	WMatrix* pClone = new WMatrix(data);
+	std::unique_ptr<WMatrix> hClone(pClone);
 	m_cbf->train(*pClone);
 
 	//Create the psuedo user-ratings vector for every user
@@ -2224,15 +2224,15 @@ void GContentBoostedCF::train(GMatrix& data)
 	delete[] m_ratingCounts;
 	delete[] m_pseudoRatingSum;
 	m_ratingCounts = new size_t[m_userMap.size()];
-	GIndexVec::setAll(m_ratingCounts, 0, m_userMap.size());
+	WIndexVec::setAll(m_ratingCounts, 0, m_userMap.size());
 
 	m_pseudoRatingSum = new double[m_userMap.size()];
-	GVecWrapper vw(m_pseudoRatingSum, m_userMap.size());
+	WVecWrapper vw(m_pseudoRatingSum, m_userMap.size());
 	vw.fill(0.0);
 
 	for(size_t i = 0; i < pClone->rows(); i++)
 	{
-		GVec& vec = pClone->row(i);
+		WVec& vec = pClone->row(i);
 		m_pseudoRatingSum[m_userMap[(size_t)vec[0]]] += vec[2];
 	}
 
@@ -2257,11 +2257,11 @@ void GContentBoostedCF::train(GMatrix& data)
 			if(!isRated)
 			{
 				//make prediction
-				GVec& rat = pClone->newRow();
+				WVec& rat = pClone->newRow();
 				rat[0] = (double)user->first;
 				rat[1] = (double)item->first;
 				rat[2] = m_cbf->predict(user->first, item->first);
-				GAssert(rat[2] != UNKNOWN_REAL_VALUE);
+				WAssert(rat[2] != UNKNOWN_REAL_VALUE);
 				m_pseudoRatingSum[m_userMap[user->first]] += rat[2];
 			}
 		}
@@ -2272,7 +2272,7 @@ void GContentBoostedCF::train(GMatrix& data)
 	m_cf->clearUserDEPQ();
 }
 
-double GContentBoostedCF::predict(size_t user, size_t item)
+double WContentBoostedCF::predict(size_t user, size_t item)
 {
 	double max = 2;
 	multimap<double, ArrayWrapper> neighbors = m_cf->getNeighbors(user, item);
@@ -2298,7 +2298,7 @@ double GContentBoostedCF::predict(size_t user, size_t item)
 	return weighted_sum / sum_weight;
 }
 
-void GContentBoostedCF::impute(GVec& vec, size_t dims)
+void WContentBoostedCF::impute(WVec& vec, size_t dims)
 {
 	std::cerr << "Not yet implemented\n";
 }
@@ -2306,4 +2306,4 @@ void GContentBoostedCF::impute(GVec& vec, size_t dims)
 
 
 
-} // namespace GClasses
+} // namespace WClasses

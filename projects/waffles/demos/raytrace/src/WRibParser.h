@@ -8,8 +8,8 @@
 #include <cmath>
 #include <limits>
 #include <stdio.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GRayTrace.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WRayTrace.h>
 
 class RibParser;
 
@@ -83,7 +83,7 @@ private:
 	double transform[16];
 	double color[3];
 	double emissive_color[3];
-	GClasses::GRayTraceMaterial* material;
+	WClasses::WRayTraceMaterial* material;
 
 public:
 	// These are types of blocks.  They're mostly the same.
@@ -114,7 +114,7 @@ class RibParser
 {
 private:
 	std::vector< StateBlock > state; // The state is stack-based, and a vector works well.
-	GClasses::GRayTraceScene* m_pScene;
+	WClasses::WRayTraceScene* m_pScene;
 	int image_width, image_height;
 	int pixel_samples;
 	double fov;
@@ -128,20 +128,20 @@ private:
 	int curr_object;
 	bool in_object_definition;
 	std::vector< RibData > object_definitions;
-	GClasses::GRand* m_pRand;
+	WClasses::WRand* m_pRand;
 
 public:
-	RibParser(GClasses::GRand* pRand);
+	RibParser(WClasses::WRand* pRand);
 	~RibParser();
 
-	static GClasses::GRayTraceScene* LoadScene(const char* szFilename, GClasses::GRand* pRand);
+	static WClasses::WRayTraceScene* LoadScene(const char* szFilename, WClasses::WRand* pRand);
 
 	bool createScene(FILE* F);
 	bool createScene(const std::string& filename);
 
-	GClasses::GRayTraceScene* releaseScene()
+	WClasses::WRayTraceScene* releaseScene()
 	{
-		GClasses::GRayTraceScene* pScene = m_pScene;
+		WClasses::WRayTraceScene* pScene = m_pScene;
 		m_pScene = nullptr;
 		return pScene;
 	}
@@ -195,8 +195,8 @@ private:
 
 	// These functions allow you to query the current state.
 	// They abstract some of the details of the stack away
-	void setMaterial(GClasses::GRayTraceMaterial* material);
-	GClasses::GRayTraceMaterial* getMaterial();
+	void setMaterial(WClasses::WRayTraceMaterial* material);
+	WClasses::WRayTraceMaterial* getMaterial();
 	void setColor(const double* color);
 	void getColor(double* color);
 

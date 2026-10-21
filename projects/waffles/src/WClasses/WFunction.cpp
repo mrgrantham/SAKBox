@@ -17,74 +17,74 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GFunction.h"
+#include "WFunction.h"
 #include <math.h>
-#include "GError.h"
-#include "GHolders.h"
-#include "GMath.h"
+#include "WError.h"
+#include "WHolders.h"
+#include "WMath.h"
 #include <stdlib.h>
 #include <cmath>
 #include <string>
 #include <memory>
 #include <utility>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::vector;
 using std::string;
 using std::map;
 
 typedef double (*MathFuncFunc)(vector<double>& params);
 
-namespace GClasses
+namespace WClasses
 {
-class GFunctionNode
+class WFunctionNode
 {
 public:
-	GFunctionNode()
+	WFunctionNode()
 	{
 	}
 
-	virtual ~GFunctionNode()
+	virtual ~WFunctionNode()
 	{
 	}
 
-	virtual double eval(vector<double>& params, GFunctionParser& parser) = 0;
+	virtual double eval(vector<double>& params, WFunctionParser& parser) = 0;
 	virtual void unlink(const char* szName) = 0;
 };
 }
 
 
-GFunction::GFunction(GFunctionNode* pRoot, int expectedParams) : m_pRoot(pRoot), m_expectedParams(expectedParams)
+WFunction::WFunction(WFunctionNode* pRoot, int expectedParams) : m_pRoot(pRoot), m_expectedParams(expectedParams)
 {
 }
 
-GFunction::~GFunction()
+WFunction::~WFunction()
 {
 	delete(m_pRoot);
 }
 
-double GFunction::call(std::vector<double>& params, GFunctionParser& parser)
+double WFunction::call(std::vector<double>& params, WFunctionParser& parser)
 {
 	return m_pRoot->eval(params, parser);
 }
 
 
-namespace GClasses
+namespace WClasses
 {
-class GFunctionBuiltIn : public GFunctionNode
+class WFunctionBuiltIn : public WFunctionNode
 {
 public:
 	MathFuncFunc m_pFunc;
 
-	GFunctionBuiltIn(MathFuncFunc pFunc) : GFunctionNode(), m_pFunc(pFunc)
+	WFunctionBuiltIn(MathFuncFunc pFunc) : WFunctionNode(), m_pFunc(pFunc)
 	{
 	}
 
-	~GFunctionBuiltIn() override
+	~WFunctionBuiltIn() override
 	{
 	}
 
-	double eval(vector<double>& params, GFunctionParser& parser) override
+	double eval(vector<double>& params, WFunctionParser& parser) override
 	{
 		return m_pFunc(params);
 	}
@@ -121,12 +121,12 @@ public:
 	static double _erf(vector<double>& params) { return erf(params[0]); }
 #endif
 	static double _floor(vector<double>& params) { return floor(params[0]); }
-	static double _gamma(vector<double>& params) { return GMath::gamma(params[0]); }
+	static double _gamma(vector<double>& params) { return WMath::gamma(params[0]); }
 	static double _ifzero(vector<double>& params) { return (std::abs(params[0]) < 1e-12) ? params[1] : params[2]; }
 	static double _ifnegative(vector<double>& params) { return (params[0] < 0) ? params[1] : params[2]; }
-	static double _lgamma(vector<double>& params) { return GMath::logGamma(params[0]); }
+	static double _lgamma(vector<double>& params) { return WMath::logGamma(params[0]); }
 	static double _log(vector<double>& params) { return log(params[0]); }
-	static double _softexp(vector<double>& params) { return GMath::softExponential(params[0], params[1]); }
+	static double _softexp(vector<double>& params) { return WMath::softExponential(params[0], params[1]); }
 	static double _max(vector<double>& params)
 	{
 		vector<double>::iterator it = params.begin();
@@ -152,42 +152,42 @@ public:
 	static double _tanh(vector<double>& params) { return tanh(params[0]); }
 };
 
-class GFunctionCall : public GFunctionNode
+class WFunctionCall : public WFunctionNode
 {
 private:
 	string m_name;
-	GFunctionNode* m_pFunction;
-	vector<GFunctionNode*> m_children;
+	WFunctionNode* m_pFunction;
+	vector<WFunctionNode*> m_children;
 	vector<double> m_params; // a buffer to hold the result from evaluating each parameter expression, then used to call this function
 
 public:
-	GFunctionCall(GFunctionNode* pFunction) : GFunctionNode(), m_pFunction(pFunction)
+	WFunctionCall(WFunctionNode* pFunction) : WFunctionNode(), m_pFunction(pFunction)
 	{
 	}
 
-	GFunctionCall(string name) : GFunctionNode(), m_name(std::move(name)), m_pFunction(nullptr)
+	WFunctionCall(string name) : WFunctionNode(), m_name(std::move(name)), m_pFunction(nullptr)
 	{
 	}
 
-	~GFunctionCall() override
+	~WFunctionCall() override
 	{
-		for(vector<GFunctionNode*>::iterator it = m_children.begin(); it != m_children.end(); it++)
+		for(vector<WFunctionNode*>::iterator it = m_children.begin(); it != m_children.end(); it++)
 			delete(*it);
 	}
 
-	void AddChild(GFunctionNode* pChild)
+	void AddChild(WFunctionNode* pChild)
 	{
 		m_children.push_back(pChild);
 		m_params.push_back(0.0);
 	}
 
-	double eval(vector<double>& params, GFunctionParser& parser) override
+	double eval(vector<double>& params, WFunctionParser& parser) override
 	{
 		for(size_t i = 0; i < m_children.size(); i++)
 			m_params[i] = m_children[i]->eval(params, parser); // "params" holds the parameters to the root function. They are used when a leaf turns out to be one of the variables of the root function.
 		if(!m_pFunction)
 		{
-			GFunction* pFunc = parser.getFunction(m_name.c_str());
+			WFunction* pFunc = parser.getFunction(m_name.c_str());
 			if(pFunc->m_expectedParams >= 0)
 			{
 				// An exact number of parameters is expected
@@ -207,27 +207,27 @@ public:
 
 	void unlink(const char* szName) override
 	{
-		for(vector<GFunctionNode*>::iterator it = m_children.begin(); it != m_children.end(); it++)
+		for(vector<WFunctionNode*>::iterator it = m_children.begin(); it != m_children.end(); it++)
 			(*it)->unlink(szName);
 		if(m_name.compare(szName) == 0)
 			m_pFunction = nullptr;
 	}
 };
 
-class GFunctionVariable : public GFunctionNode
+class WFunctionVariable : public WFunctionNode
 {
 public:
 	int m_index;
 
-	GFunctionVariable(int index) : GFunctionNode(), m_index(index)
+	WFunctionVariable(int index) : WFunctionNode(), m_index(index)
 	{
 	}
 
-	~GFunctionVariable() override
+	~WFunctionVariable() override
 	{
 	}
 
-	double eval(vector<double>& params, GFunctionParser& parser) override
+	double eval(vector<double>& params, WFunctionParser& parser) override
 	{
 		return params[m_index];
 	}
@@ -235,20 +235,20 @@ public:
 	void unlink(const char* szName) override {}
 };
 
-class GFunctionConstant : public GFunctionNode
+class WFunctionConstant : public WFunctionNode
 {
 public:
 	double m_value;
 
-	GFunctionConstant(double value) : GFunctionNode(), m_value(value)
+	WFunctionConstant(double value) : WFunctionNode(), m_value(value)
 	{
 	}
 
-	~GFunctionConstant() override
+	~WFunctionConstant() override
 	{
 	}
 
-	double eval(vector<double>& params, GFunctionParser& parser) override
+	double eval(vector<double>& params, WFunctionParser& parser) override
 	{
 		return m_value;
 	}
@@ -258,7 +258,7 @@ public:
 
 // --------------------------------------------------------------
 
-class GFunctionTokenizer
+class WFunctionTokenizer
 {
 public:
 	enum token_type
@@ -273,7 +273,7 @@ public:
 	int m_len;
 	token_type m_type;
 
-	GFunctionTokenizer(const char* szEquation)
+	WFunctionTokenizer(const char* szEquation)
 	: m_pEquation(szEquation), m_pNext(nullptr), m_len(0), m_type(name)
 	{
 	}
@@ -357,62 +357,62 @@ public:
 
 // --------------------------------------------------------------
 
-GFunctionParser::GFunctionParser()
+WFunctionParser::WFunctionParser()
 {
 	// Operators
-	m_pNegate = new GFunctionBuiltIn(GFunctionBuiltIn::negate);
-	m_pPlus = new GFunctionBuiltIn(GFunctionBuiltIn::plus);
-	m_pMinus = new GFunctionBuiltIn(GFunctionBuiltIn::minus);
-	m_pTimes = new GFunctionBuiltIn(GFunctionBuiltIn::times);
-	m_pDivide = new GFunctionBuiltIn(GFunctionBuiltIn::divide);
-	m_pModulus = new GFunctionBuiltIn(GFunctionBuiltIn::modulus);
-	m_pExponent = new GFunctionBuiltIn(GFunctionBuiltIn::exponent);
+	m_pNegate = new WFunctionBuiltIn(WFunctionBuiltIn::negate);
+	m_pPlus = new WFunctionBuiltIn(WFunctionBuiltIn::plus);
+	m_pMinus = new WFunctionBuiltIn(WFunctionBuiltIn::minus);
+	m_pTimes = new WFunctionBuiltIn(WFunctionBuiltIn::times);
+	m_pDivide = new WFunctionBuiltIn(WFunctionBuiltIn::divide);
+	m_pModulus = new WFunctionBuiltIn(WFunctionBuiltIn::modulus);
+	m_pExponent = new WFunctionBuiltIn(WFunctionBuiltIn::exponent);
 
 	// Built-in constants (just a function with no parameters)
-	addFunction("e", new GFunctionConstant(M_E), 0);
-	addFunction("pi", new GFunctionConstant(M_PI), 0);
+	addFunction("e", new WFunctionConstant(M_E), 0);
+	addFunction("pi", new WFunctionConstant(M_PI), 0);
 
 	// Built-in functions
-	addFunction("abs", new GFunctionBuiltIn(GFunctionBuiltIn::_abs), 1);
-	addFunction("acos", new GFunctionBuiltIn(GFunctionBuiltIn::_acos), 1);
+	addFunction("abs", new WFunctionBuiltIn(WFunctionBuiltIn::_abs), 1);
+	addFunction("acos", new WFunctionBuiltIn(WFunctionBuiltIn::_acos), 1);
 #ifndef WINDOWS
-	addFunction("acosh", new GFunctionBuiltIn(GFunctionBuiltIn::_acosh), 1);
+	addFunction("acosh", new WFunctionBuiltIn(WFunctionBuiltIn::_acosh), 1);
 #endif
-	addFunction("asin", new GFunctionBuiltIn(GFunctionBuiltIn::_asin), 1);
+	addFunction("asin", new WFunctionBuiltIn(WFunctionBuiltIn::_asin), 1);
 #ifndef WINDOWS
-	addFunction("asinh", new GFunctionBuiltIn(GFunctionBuiltIn::_asinh), 1);
+	addFunction("asinh", new WFunctionBuiltIn(WFunctionBuiltIn::_asinh), 1);
 #endif
-	addFunction("atan", new GFunctionBuiltIn(GFunctionBuiltIn::_atan), 1);
+	addFunction("atan", new WFunctionBuiltIn(WFunctionBuiltIn::_atan), 1);
 #ifndef WINDOWS
-	addFunction("atanh", new GFunctionBuiltIn(GFunctionBuiltIn::_atanh), 1);
+	addFunction("atanh", new WFunctionBuiltIn(WFunctionBuiltIn::_atanh), 1);
 #endif
-	addFunction("ceil", new GFunctionBuiltIn(GFunctionBuiltIn::_ceil), 1);
-	addFunction("cos", new GFunctionBuiltIn(GFunctionBuiltIn::_cos), 1);
-	addFunction("cosh", new GFunctionBuiltIn(GFunctionBuiltIn::_cosh), 1);
+	addFunction("ceil", new WFunctionBuiltIn(WFunctionBuiltIn::_ceil), 1);
+	addFunction("cos", new WFunctionBuiltIn(WFunctionBuiltIn::_cos), 1);
+	addFunction("cosh", new WFunctionBuiltIn(WFunctionBuiltIn::_cosh), 1);
 #ifndef WINDOWS
-	addFunction("erf", new GFunctionBuiltIn(GFunctionBuiltIn::_erf), 1);
+	addFunction("erf", new WFunctionBuiltIn(WFunctionBuiltIn::_erf), 1);
 #endif
-	addFunction("floor", new GFunctionBuiltIn(GFunctionBuiltIn::_floor), 1);
-	addFunction("ifzero", new GFunctionBuiltIn(GFunctionBuiltIn::_ifzero), 3);
-	addFunction("ifnegative", new GFunctionBuiltIn(GFunctionBuiltIn::_ifnegative), 3);
-	addFunction("gamma", new GFunctionBuiltIn(GFunctionBuiltIn::_gamma), 1);
-	addFunction("lgamma", new GFunctionBuiltIn(GFunctionBuiltIn::_lgamma), 1);
-	addFunction("log", new GFunctionBuiltIn(GFunctionBuiltIn::_log), 1);
-	addFunction("softexp", new GFunctionBuiltIn(GFunctionBuiltIn::_softexp), 2);
-	addFunction("max", new GFunctionBuiltIn(GFunctionBuiltIn::_max), -2 /*at least 1 param*/);
-	addFunction("min", new GFunctionBuiltIn(GFunctionBuiltIn::_min), -2 /*at least 1 param*/);
-	addFunction("normal", new GFunctionBuiltIn(GFunctionBuiltIn::_normal), 1);
-	addFunction("sign", new GFunctionBuiltIn(GFunctionBuiltIn::_sign), 1);
-	addFunction("sin", new GFunctionBuiltIn(GFunctionBuiltIn::_sin), 1);
-	addFunction("sinh", new GFunctionBuiltIn(GFunctionBuiltIn::_sinh), 1);
-	addFunction("sqrt", new GFunctionBuiltIn(GFunctionBuiltIn::_sqrt), 1);
-	addFunction("tan", new GFunctionBuiltIn(GFunctionBuiltIn::_tan), 1);
-	addFunction("tanh", new GFunctionBuiltIn(GFunctionBuiltIn::_tanh), 1);
+	addFunction("floor", new WFunctionBuiltIn(WFunctionBuiltIn::_floor), 1);
+	addFunction("ifzero", new WFunctionBuiltIn(WFunctionBuiltIn::_ifzero), 3);
+	addFunction("ifnegative", new WFunctionBuiltIn(WFunctionBuiltIn::_ifnegative), 3);
+	addFunction("gamma", new WFunctionBuiltIn(WFunctionBuiltIn::_gamma), 1);
+	addFunction("lgamma", new WFunctionBuiltIn(WFunctionBuiltIn::_lgamma), 1);
+	addFunction("log", new WFunctionBuiltIn(WFunctionBuiltIn::_log), 1);
+	addFunction("softexp", new WFunctionBuiltIn(WFunctionBuiltIn::_softexp), 2);
+	addFunction("max", new WFunctionBuiltIn(WFunctionBuiltIn::_max), -2 /*at least 1 param*/);
+	addFunction("min", new WFunctionBuiltIn(WFunctionBuiltIn::_min), -2 /*at least 1 param*/);
+	addFunction("normal", new WFunctionBuiltIn(WFunctionBuiltIn::_normal), 1);
+	addFunction("sign", new WFunctionBuiltIn(WFunctionBuiltIn::_sign), 1);
+	addFunction("sin", new WFunctionBuiltIn(WFunctionBuiltIn::_sin), 1);
+	addFunction("sinh", new WFunctionBuiltIn(WFunctionBuiltIn::_sinh), 1);
+	addFunction("sqrt", new WFunctionBuiltIn(WFunctionBuiltIn::_sqrt), 1);
+	addFunction("tan", new WFunctionBuiltIn(WFunctionBuiltIn::_tan), 1);
+	addFunction("tanh", new WFunctionBuiltIn(WFunctionBuiltIn::_tanh), 1);
 }
 
-GFunctionParser::~GFunctionParser()
+WFunctionParser::~WFunctionParser()
 {
-	for(map<string, GFunction*>::iterator it = m_functions.begin(); it != m_functions.end(); it++)
+	for(map<string, WFunction*>::iterator it = m_functions.begin(); it != m_functions.end(); it++)
 		delete(it->second);
 	delete(m_pNegate);
 	delete(m_pPlus);
@@ -423,10 +423,10 @@ GFunctionParser::~GFunctionParser()
 	delete(m_pExponent);
 }
 
-void GFunctionParser::add(const char* szEquations)
+void WFunctionParser::add(const char* szEquations)
 {
 	vector<string> tokens;
-	GFunctionTokenizer tokenizer(szEquations);
+	WFunctionTokenizer tokenizer(szEquations);
 	while(tokenizer.Next())
 	{
 		size_t len = tokens.size();
@@ -436,36 +436,36 @@ void GFunctionParser::add(const char* szEquations)
 	parseFunctionList(tokens);
 }
 
-void GFunctionParser::addFunction(const char* name, GFunctionNode* pRoot, int expectedParams)
+void WFunctionParser::addFunction(const char* name, WFunctionNode* pRoot, int expectedParams)
 {
-	GFunction* pFunc = m_functions[name];
+	WFunction* pFunc = m_functions[name];
 	if(pFunc)
 	{
 		onOverride(name);
-		for(map<string, GFunction*>::iterator it = m_functions.begin(); it != m_functions.end(); it++)
+		for(map<string, WFunction*>::iterator it = m_functions.begin(); it != m_functions.end(); it++)
 			it->second->m_pRoot->unlink(name);
 		delete(pFunc);
 	}
-	m_functions[name] = new GFunction(pRoot, expectedParams);
+	m_functions[name] = new WFunction(pRoot, expectedParams);
 }
 
-GFunction* GFunctionParser::getFunctionNoThrow(const char* name)
+WFunction* WFunctionParser::getFunctionNoThrow(const char* name)
 {
-	map<string, GFunction*>::iterator it = m_functions.find(name);
+	map<string, WFunction*>::iterator it = m_functions.find(name);
 	if(it == m_functions.end())
 		return nullptr;
 	return it->second;
 }
 
-GFunction* GFunctionParser::getFunction(const char* name)
+WFunction* WFunctionParser::getFunction(const char* name)
 {
-	GFunction* pFunc = getFunctionNoThrow(name);
+	WFunction* pFunc = getFunctionNoThrow(name);
 	if(!pFunc)
 		throw Ex("No identifier named \"", name, "\" is currently defined");
 	return pFunc;
 }
 
-int GFunctionParser::findOperatorWithLowestPrecidence(vector<string>& tokens, int start, int count)
+int WFunctionParser::findOperatorWithLowestPrecidence(vector<string>& tokens, int start, int count)
 {
 	int priority = 100;
 	int token = -1;
@@ -488,10 +488,10 @@ int GFunctionParser::findOperatorWithLowestPrecidence(vector<string>& tokens, in
 			// times/divide/modulus	8
 			// plus/minus		4
 			char c = tok[0];
-			bool isOperand = GFunctionTokenizer::IsNameChar(c) || GFunctionTokenizer::IsDigit(c) || c == '.';
+			bool isOperand = WFunctionTokenizer::IsNameChar(c) || WFunctionTokenizer::IsDigit(c) || c == '.';
 			if(!isOperand) // names and numbers aren't operators
 			{
-				if(c == '-' && (i == 0 || (!GFunctionTokenizer::IsDigit(tokens[start + i - 1][0]) && !GFunctionTokenizer::IsNameChar(tokens[start + i - 1][0]) && tokens[start + i - 1][0] != ')' && tokens[start + i - 1][0] != '.')))
+				if(c == '-' && (i == 0 || (!WFunctionTokenizer::IsDigit(tokens[start + i - 1][0]) && !WFunctionTokenizer::IsNameChar(tokens[start + i - 1][0]) && tokens[start + i - 1][0] != ')' && tokens[start + i - 1][0] != '.')))
 				{
 					if(priority >= 16)
 					{
@@ -531,22 +531,22 @@ int GFunctionParser::findOperatorWithLowestPrecidence(vector<string>& tokens, in
 	return token;
 }
 
-GFunctionNode* GFunctionParser::parseMathOperator(std::vector<std::string>& variables, vector<string>& tokens, int start, int count, int index, int depth)
+WFunctionNode* WFunctionParser::parseMathOperator(std::vector<std::string>& variables, vector<string>& tokens, int start, int count, int index, int depth)
 {
 	// We've got a math operator (^,*,/,+,-,%)
-	GFunctionNode* pLeft = nullptr;
+	WFunctionNode* pLeft = nullptr;
 	if(index > start)
 		pLeft = parseFunctionBody(variables, tokens, start, index - start, depth);
-	std::unique_ptr<GFunctionNode> hLeft(pLeft);
-	GFunctionNode* pRight = nullptr;
+	std::unique_ptr<WFunctionNode> hLeft(pLeft);
+	WFunctionNode* pRight = nullptr;
 	if(index < start + count - 1)
 		pRight = parseFunctionBody(variables, tokens, index + 1, start + count - index - 1, depth);
-	std::unique_ptr<GFunctionNode> hRight(pRight);
+	std::unique_ptr<WFunctionNode> hRight(pRight);
 	if(!pLeft)
 	{
 		if(pRight && tokens[index].compare("-") == 0)
 		{
-			GFunctionCall* pFunc = new GFunctionCall(m_pNegate);
+			WFunctionCall* pFunc = new WFunctionCall(m_pNegate);
 			pFunc->AddChild(hRight.release());
 			return pFunc;
 		}
@@ -556,19 +556,19 @@ GFunctionNode* GFunctionParser::parseMathOperator(std::vector<std::string>& vari
 	if(!pRight)
 		throw Ex("Expected something after the operator: ", tokens[index].c_str());
 	char c = tokens[index][0];
-	GFunctionCall* pFunc = nullptr;
+	WFunctionCall* pFunc = nullptr;
 	if(c == '^')
-		pFunc = new GFunctionCall(m_pExponent);
+		pFunc = new WFunctionCall(m_pExponent);
 	else if(c == '*')
-		pFunc = new GFunctionCall(m_pTimes);
+		pFunc = new WFunctionCall(m_pTimes);
 	else if(c == '/')
-		pFunc = new GFunctionCall(m_pDivide);
+		pFunc = new WFunctionCall(m_pDivide);
 	else if(c == '%')
-		pFunc = new GFunctionCall(m_pModulus);
+		pFunc = new WFunctionCall(m_pModulus);
 	else if(c == '+')
-		pFunc = new GFunctionCall(m_pPlus);
+		pFunc = new WFunctionCall(m_pPlus);
 	else if(c == '-')
-		pFunc = new GFunctionCall(m_pMinus);
+		pFunc = new WFunctionCall(m_pMinus);
 	else
 		throw Ex("Unrecognized operator: ", to_str(c));
 	pFunc->AddChild(hLeft.release());
@@ -577,7 +577,7 @@ GFunctionNode* GFunctionParser::parseMathOperator(std::vector<std::string>& vari
 }
 
 
-void GFunctionParser::parseCommaSeparatedChildren(std::vector<std::string>& variables, GFunctionCall* pFunc, vector<string>& tokens, int start, int count, int depth)
+void WFunctionParser::parseCommaSeparatedChildren(std::vector<std::string>& variables, WFunctionCall* pFunc, vector<string>& tokens, int start, int count, int depth)
 {
 	int childBegin = start;
 	int nests = 0;
@@ -604,7 +604,7 @@ void GFunctionParser::parseCommaSeparatedChildren(std::vector<std::string>& vari
 	pFunc->AddChild(parseFunctionBody(variables, tokens, childBegin, start + count - childBegin, depth));
 }
 
-std::string GFunctionParser_joinTokens(std::vector<std::string>& tokens, int start)
+std::string WFunctionParser_joinTokens(std::vector<std::string>& tokens, int start)
 {
 	string s;
 	for(int i = 0; i < start; i++)
@@ -612,13 +612,13 @@ std::string GFunctionParser_joinTokens(std::vector<std::string>& tokens, int sta
 	return s;
 }
 
-GFunctionNode* GFunctionParser::parseFunctionBody(std::vector<std::string>& variables, vector<string>& tokens, int start, int count, int depth)
+WFunctionNode* WFunctionParser::parseFunctionBody(std::vector<std::string>& variables, vector<string>& tokens, int start, int count, int depth)
 {
 	// Protect against maliciously designed formulas
 	if(depth > 10000)
 		throw Ex("Pathologically deep nesting");
 	if(count <= 0)
-		throw Ex("Empty expression following ", GFunctionParser_joinTokens(tokens, start));
+		throw Ex("Empty expression following ", WFunctionParser_joinTokens(tokens, start));
 
 	// Handle enclosing parens
 	if(tokens[start].compare("(") == 0 && tokens[start + count - 1].compare(")") == 0)
@@ -644,7 +644,7 @@ GFunctionNode* GFunctionParser::parseFunctionBody(std::vector<std::string>& vari
 	if(count == 1)
 	{
 		char c = tokens[start][0];
-		if(GFunctionTokenizer::IsNameChar(c))
+		if(WFunctionTokenizer::IsNameChar(c))
 		{
 			// See if it's a variable
 			for(size_t i = 0; i < variables.size(); i++)
@@ -652,12 +652,12 @@ GFunctionNode* GFunctionParser::parseFunctionBody(std::vector<std::string>& vari
 				if(variables[i].compare(tokens[start]) == 0)
 				{
 					// We've got a variable
-					return new GFunctionVariable((int)i);
+					return new WFunctionVariable((int)i);
 				}
 			}
 
 			// It must be a constant (parameterless function), so make a stub
-			return new GFunctionCall(tokens[start].c_str());
+			return new WFunctionCall(tokens[start].c_str());
 		}
 		else
 		{
@@ -665,7 +665,7 @@ GFunctionNode* GFunctionParser::parseFunctionBody(std::vector<std::string>& vari
 			double d;
 			if(!parseNumber(tokens[start].c_str(), &d)) // SAKBox: was atof (1e999 gave infinity)
 				throw Ex("Cannot parse symbol: ", tokens[start].c_str());
-			return new GFunctionConstant(d);
+			return new WFunctionConstant(d);
 		}
 	}
 	else
@@ -683,20 +683,20 @@ GFunctionNode* GFunctionParser::parseFunctionBody(std::vector<std::string>& vari
 					s += tokens[start + i];
 				throw Ex("Cannot parse this portion of the expression: ", s.c_str());
 			}
-			GFunctionCall* pFunc = new GFunctionCall(tokens[start].c_str());
-			std::unique_ptr<GFunctionCall> hFunc(pFunc);
+			WFunctionCall* pFunc = new WFunctionCall(tokens[start].c_str());
+			std::unique_ptr<WFunctionCall> hFunc(pFunc);
 			parseCommaSeparatedChildren(variables, pFunc, tokens, start + 2, count - 3, depth + 1);
 			return hFunc.release();
 		}
 	}
 }
 
-void GFunctionParser::parseVariableNames(vector<string>& variables, vector<string>& tokens, int start, int count)
+void WFunctionParser::parseVariableNames(vector<string>& variables, vector<string>& tokens, int start, int count)
 {
 	for(int i = 0; i < count; i += 2)
 	{
 		char c = tokens[start + i][0];
-		if(!GFunctionTokenizer::IsNameChar(c))
+		if(!WFunctionTokenizer::IsNameChar(c))
 			throw Ex("Expected a variable name to start with a letter or '_'");
 		variables.push_back(tokens[start + i]);
 		if(i + 1 < count && tokens[start + i + 1].compare(",") != 0)
@@ -704,7 +704,7 @@ void GFunctionParser::parseVariableNames(vector<string>& variables, vector<strin
 	}
 }
 
-GFunctionNode* GFunctionParser::parseFunction(vector<string>& tokens, int start, int count)
+WFunctionNode* WFunctionParser::parseFunction(vector<string>& tokens, int start, int count)
 {
 	if(count == 0)
 		return nullptr;
@@ -734,15 +734,15 @@ GFunctionNode* GFunctionParser::parseFunction(vector<string>& tokens, int start,
 	}
 
 	// Parse the body
-	GFunctionNode* pRoot = parseFunctionBody(variables, tokens, start + equalPos + 1, count - (equalPos + 1), 0);
+	WFunctionNode* pRoot = parseFunctionBody(variables, tokens, start + equalPos + 1, count - (equalPos + 1), 0);
 	addFunction(szFunctionName, pRoot, (int)variables.size());
 	return pRoot;
 }
 
-void GFunctionParser::parseFunctionList(vector<string>& tokens)
+void WFunctionParser::parseFunctionList(vector<string>& tokens)
 {
 	// Parse all the functions
-	vector<GFunctionNode*> functions;
+	vector<WFunctionNode*> functions;
 	int start = 0;
 	for(int i = 0; i < (int)tokens.size(); i++)
 	{
@@ -757,26 +757,26 @@ void GFunctionParser::parseFunctionList(vector<string>& tokens)
 
 
 // static
-void GFunctionParser::test()
+void WFunctionParser::test()
 {
 	{
-		GFunctionParser mfp;
+		WFunctionParser mfp;
 		mfp.add("f(x)=1/(1+e^-x)");
-		GFunction* pFunc = mfp.getFunction("f");
+		WFunction* pFunc = mfp.getFunction("f");
 		if(pFunc->m_expectedParams != 1)
 			throw Ex("Wrong number of expected parameters");
 		double x = 1.23456789;
 		vector<double> params;
 		params.push_back(x);
 		double y = pFunc->call(params, mfp);
-		if(std::abs(y - GMath::logistic(x)) > 1e-12)
+		if(std::abs(y - WMath::logistic(x)) > 1e-12)
 			throw Ex("Wrong answer");
 	}
 
 	{
-		GFunctionParser mfp;
+		WFunctionParser mfp;
 		mfp.add("h(bob)=bob^2;somefunc(x)=3+blah(x,5)*h(x)-(x/foo);blah(a,b)=a*b-b;foo=3.2");
-		GFunction* pFunc = mfp.getFunction("somefunc");
+		WFunction* pFunc = mfp.getFunction("somefunc");
 		if(pFunc->m_expectedParams != 1)
 			throw Ex("Wrong number of expected parameters");
 		double x = 1.1;

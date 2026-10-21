@@ -17,47 +17,47 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GCluster.h"
-#include "GNeighborFinder.h"
-#include "GDistance.h"
-#include "GBitTable.h"
-#include "GHeap.h"
-#include "GMath.h"
-#include "GVec.h"
+#include "WCluster.h"
+#include "WNeighborFinder.h"
+#include "WDistance.h"
+#include "WBitTable.h"
+#include "WHeap.h"
+#include "WMath.h"
+#include "WVec.h"
 #include <math.h>
 #include <stdlib.h>
-#include "GHillClimber.h"
-#include "GBitTable.h"
-#include "GSparseMatrix.h"
-#include "GKNN.h"
-#include "GHolders.h"
-#include "GTime.h"
-#include "GGraph.h"
-#include "GDom.h"
+#include "WHillClimber.h"
+#include "WBitTable.h"
+#include "WSparseMatrix.h"
+#include "WKNN.h"
+#include "WHolders.h"
+#include "WTime.h"
+#include "WGraph.h"
+#include "WDom.h"
 #include <algorithm>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <vector>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::vector;
 using std::map;
 
-GClusterer::GClusterer(size_t nClusterCount)
-: GTransform(), m_clusterCount(nClusterCount), m_pMetric(nullptr), m_ownMetric(false)
+WClusterer::WClusterer(size_t nClusterCount)
+: WTransform(), m_clusterCount(nClusterCount), m_pMetric(nullptr), m_ownMetric(false)
 {
 }
 
 // virtual
-GClusterer::~GClusterer()
+WClusterer::~WClusterer()
 {
 	if(m_ownMetric)
 		delete(m_pMetric);
 }
 
-void GClusterer::setMetric(GDistanceMetric* pMetric, bool own)
+void WClusterer::setMetric(WDistanceMetric* pMetric, bool own)
 {
 	if(m_ownMetric)
 		delete(m_pMetric);
@@ -70,7 +70,7 @@ void GClusterer::setMetric(GDistanceMetric* pMetric, bool own)
 
 
 
-GSparseClusterer::GSparseClusterer(size_t clusters)
+WSparseClusterer::WSparseClusterer(size_t clusters)
 : m_clusterCount(clusters)
 {
 	m_pMetric = nullptr;
@@ -78,13 +78,13 @@ GSparseClusterer::GSparseClusterer(size_t clusters)
 }
 
 // virtual
-GSparseClusterer::~GSparseClusterer()
+WSparseClusterer::~WSparseClusterer()
 {
 	if(m_ownMetric)
 		delete(m_pMetric);
 }
 
-void GSparseClusterer::setMetric(GSparseSimilarity* pMetric, bool own)
+void WSparseClusterer::setMetric(WSparseSimilarity* pMetric, bool own)
 {
 	if(m_ownMetric)
 		delete(m_pMetric);
@@ -96,32 +96,32 @@ void GSparseClusterer::setMetric(GSparseSimilarity* pMetric, bool own)
 
 
 
-GAgglomerativeClusterer::GAgglomerativeClusterer(size_t clusters)
-: GClusterer(clusters), m_pClusters(nullptr)
+WAgglomerativeClusterer::WAgglomerativeClusterer(size_t clusters)
+: WClusterer(clusters), m_pClusters(nullptr)
 {
 }
 
-GAgglomerativeClusterer::~GAgglomerativeClusterer()
+WAgglomerativeClusterer::~WAgglomerativeClusterer()
 {
 	delete[] m_pClusters;
 }
 
 // virtual
-void GAgglomerativeClusterer::cluster(const GMatrix* pData)
+void WAgglomerativeClusterer::cluster(const WMatrix* pData)
 {
 	// Init the metric
 	if(!m_pMetric)
-		setMetric(new GRowDistance(), true);
+		setMetric(new WRowDistance(), true);
 	m_pMetric->init(&pData->relation(), false);
 
 	// Find enough neighbors to form a connected graph
-	GNeighborGraph* pNF = nullptr;
-	std::unique_ptr<GNeighborGraph> hNF;
+	WNeighborGraph* pNF = nullptr;
+	std::unique_ptr<WNeighborGraph> hNF;
 	size_t neighbors = 6;
 	while(true)
 	{
-		GKdTree* pKdTree = new GKdTree(pData, m_pMetric, false);
-		pNF = new GNeighborGraph(pKdTree, true, neighbors);
+		WKdTree* pKdTree = new WKdTree(pData, m_pMetric, false);
+		pNF = new WNeighborGraph(pKdTree, true, neighbors);
 		hNF.reset(pNF);
 		if(pNF->isConnected())
 			break;
@@ -149,10 +149,10 @@ void GAgglomerativeClusterer::cluster(const GMatrix* pData)
 	// Assign each row to its own cluster
 	delete[] m_pClusters;
 	m_pClusters = new size_t[pData->rows()]; // specifies which cluster each row belongs to
-	GIndexVec::makeIndexVec(m_pClusters, pData->rows());
+	WIndexVec::makeIndexVec(m_pClusters, pData->rows());
 	size_t* pSiblings = new size_t[pData->rows()]; // a cyclical linked list of each row in the cluster
 	std::unique_ptr<size_t[]> hSiblings(pSiblings);
-	GIndexVec::makeIndexVec(pSiblings, pData->rows()); // init such that each row is in a cluster of 1
+	WIndexVec::makeIndexVec(pSiblings, pData->rows()); // init such that each row is in a cluster of 1
 	size_t currentClusterCount = pData->rows();
 	if(currentClusterCount <= m_clusterCount)
 		return; // nothing to do
@@ -164,7 +164,7 @@ void GAgglomerativeClusterer::cluster(const GMatrix* pData)
 		size_t a = dn->second / neighbors;
 		pNF->findNearest(neighbors, a);
 		size_t b = pNF->neighbor(dn->second % neighbors);
-		GAssert(a != b && a < pData->rows() && b < pData->rows());
+		WAssert(a != b && a < pData->rows() && b < pData->rows());
 		size_t clustA = m_pClusters[a];
 		size_t clustB = m_pClusters[b];
 
@@ -206,7 +206,7 @@ void GAgglomerativeClusterer::cluster(const GMatrix* pData)
 }
 
 // virtual
-size_t GAgglomerativeClusterer::whichCluster(size_t nVector)
+size_t WAgglomerativeClusterer::whichCluster(size_t nVector)
 {
 	return m_pClusters[nVector];
 }
@@ -215,14 +215,14 @@ size_t GAgglomerativeClusterer::whichCluster(size_t nVector)
 #define SPIRAL_POINTS 250
 #define SPIRAL_HEIGHT 3
 
-#include "GImage.h"
-//#include "G3D.h"
+#include "WImage.h"
+//#include "W3D.h"
 
 // static
-void GAgglomerativeClusterer::test()
+void WAgglomerativeClusterer::test()
 {
 	// Make a 3D data set with 3 entwined spirals
-	GMatrix data(0, 3);
+	WMatrix data(0, 3);
 	data.reserve(3 * SPIRAL_POINTS);
 	double dThirdCircle = M_PI * 2 / 3;
 	double rads;
@@ -230,24 +230,24 @@ void GAgglomerativeClusterer::test()
 	{
 		rads = (double)i * 2 * M_PI / SPIRAL_POINTS;
 
-		GVec& vector1 = data.newRow();
+		WVec& vector1 = data.newRow();
 		vector1[0] = cos(rads);
 		vector1[2] = sin(rads);
 		vector1[1] = (double)i * SPIRAL_HEIGHT / SPIRAL_POINTS;
 
-		GVec& vector2 = data.newRow();
+		WVec& vector2 = data.newRow();
 		vector2[0] = cos(rads + dThirdCircle);
 		vector2[2] = sin(rads + dThirdCircle);
 		vector2[1] = (double)i * SPIRAL_HEIGHT / SPIRAL_POINTS;
 
-		GVec& vector3 = data.newRow();
+		WVec& vector3 = data.newRow();
 		vector3[0] = cos(rads + dThirdCircle + dThirdCircle);
 		vector3[2] = sin(rads + dThirdCircle + dThirdCircle);
 		vector3[1] = (double)i * SPIRAL_HEIGHT / SPIRAL_POINTS;
 	}
 
 	// Cluster the points
-	GAgglomerativeClusterer clust(3);
+	WAgglomerativeClusterer clust(3);
 	clust.cluster(&data);
 
 	// Test for correctness
@@ -270,18 +270,18 @@ void GAgglomerativeClusterer::test()
 	/*  // Uncomment this to make a spiffy visualization of the entwined spirals
 
 	// Draw the classifications
-	GImage image;
+	WImage image;
 	image.SetSize(600, 600);
 	image.Clear(0xff000000);
-	GCamera camera;
+	WCamera camera;
 	camera.SetViewAngle(PI / 2);
 	camera.GetLookFromPoint()->Set(2, 1.5, 3);
 	camera.GetLookDirection()->Set(-2, 0, -3);
 	camera.ComputeSideVector();
 	camera.SetImageSize(600, 600);
 	double* pVec;
-	G3DVector point;
-	GColor col = 0;
+	W3DVector point;
+	WColor col = 0;
 	for(i = 0; i < SPIRAL_POINTS; i++)
 	{
 		pVec = data.row(i);
@@ -296,7 +296,7 @@ void GAgglomerativeClusterer::test()
 	}
 
 	// Draw the bounding box
-	G3DVector point2;
+	W3DVector point2;
 	size_t x, y, z;
 	for(z = 0; z < 2; z++)
 	{
@@ -331,16 +331,16 @@ void GAgglomerativeClusterer::test()
 
 // -----------------------------------------------------------------------------------------
 
-GAgglomerativeTransducer::GAgglomerativeTransducer()
-: GTransducer(), m_pMetric(nullptr), m_ownMetric(false)
+WAgglomerativeTransducer::WAgglomerativeTransducer()
+: WTransducer(), m_pMetric(nullptr), m_ownMetric(false)
 {
 }
 
-GAgglomerativeTransducer::~GAgglomerativeTransducer()
+WAgglomerativeTransducer::~WAgglomerativeTransducer()
 {
 }
 
-void GAgglomerativeTransducer::setMetric(GDistanceMetric* pMetric, bool own)
+void WAgglomerativeTransducer::setMetric(WDistanceMetric* pMetric, bool own)
 {
 	if(m_ownMetric)
 		delete(m_pMetric);
@@ -348,32 +348,32 @@ void GAgglomerativeTransducer::setMetric(GDistanceMetric* pMetric, bool own)
 	m_ownMetric = own;
 }
 
-void GAgglomerativeTransducer::autoTune(GMatrix& features, GMatrix& labels)
+void WAgglomerativeTransducer::autoTune(WMatrix& features, WMatrix& labels)
 {
 	// This model has no parameters to tune
 }
 
 // virtual
-std::unique_ptr<GMatrix> GAgglomerativeTransducer::transduceInner(const GMatrix& features1, const GMatrix& labels1, const GMatrix& features2)
+std::unique_ptr<WMatrix> WAgglomerativeTransducer::transduceInner(const WMatrix& features1, const WMatrix& labels1, const WMatrix& features2)
 {
 	// Init the metric
 	if(!m_pMetric)
-		setMetric(new GRowDistance(), true);
+		setMetric(new WRowDistance(), true);
 	m_pMetric->init(&features1.relation(), false);
 
 	// Make a dataset with all featuers
-	GMatrix featuresAll(features1.relation().clone());
+	WMatrix featuresAll(features1.relation().clone());
 	featuresAll.newRows(features1.rows() + features2.rows());
 	featuresAll.copyBlock(features1, 0, 0, features1.rows(), features1.cols(), 0, 0, false);
 	featuresAll.copyBlock(features2, 0, 0, features2.rows(), features2.cols(), features1.rows(), 0, false);
 
 	// Find enough neighbors to form a connected graph
-	GNeighborGraph* pNF = nullptr;
+	WNeighborGraph* pNF = nullptr;
 	size_t neighbors = 6;
 	while(true)
 	{
-		GKdTree* pKdTree = new GKdTree(&featuresAll, m_pMetric, false);
-		pNF = new GNeighborGraph(pKdTree, true, neighbors);
+		WKdTree* pKdTree = new WKdTree(&featuresAll, m_pMetric, false);
+		pNF = new WNeighborGraph(pKdTree, true, neighbors);
 		if(pNF->isConnected())
 			break;
 		if(neighbors + 1 >= featuresAll.rows())
@@ -401,7 +401,7 @@ std::unique_ptr<GMatrix> GAgglomerativeTransducer::transduceInner(const GMatrix&
 	std::sort(distNeighs.begin(), it);
 
 	// Transduce
-	auto pOut = std::unique_ptr<GMatrix>(new GMatrix(labels1.relation().clone()));
+	auto pOut = std::unique_ptr<WMatrix>(new WMatrix(labels1.relation().clone()));
 	pOut->newRows(features2.rows());
 	pOut->fill(-1);
 	size_t* pSiblings = new size_t[featuresAll.rows()]; // a cyclical linked list of each row in the cluster
@@ -409,7 +409,7 @@ std::unique_ptr<GMatrix> GAgglomerativeTransducer::transduceInner(const GMatrix&
 	for(size_t lab = 0; lab < labels1.cols(); lab++)
 	{
 		// Assign each row to its own cluster
-		GIndexVec::makeIndexVec(pSiblings, featuresAll.rows()); // init such that each row is in a cluster of 1
+		WIndexVec::makeIndexVec(pSiblings, featuresAll.rows()); // init such that each row is in a cluster of 1
 		size_t missingLabels = features2.rows();
 
 		// Merge until we have the desired number of clusters
@@ -419,7 +419,7 @@ std::unique_ptr<GMatrix> GAgglomerativeTransducer::transduceInner(const GMatrix&
 			size_t a = dn->second / neighbors;
 			pNF->findNearest(neighbors, a);
 			size_t b = pNF->neighbor(dn->second % neighbors);
-			GAssert(a != b && a < featuresAll.rows() && b < featuresAll.rows());
+			WAssert(a != b && a < featuresAll.rows() && b < featuresAll.rows());
 			int labelA = (a < features1.rows() ? (int)labels1[a][lab] : (int)pOut->row(a - features1.rows())[lab]);
 			int labelB = (b < features1.rows() ? (int)labels1[b][lab] : (int)pOut->row(b - features1.rows())[lab]);
 
@@ -435,8 +435,8 @@ std::unique_ptr<GMatrix> GAgglomerativeTransducer::transduceInner(const GMatrix&
 			{
 				for(size_t i = pSiblings[b]; true; i = pSiblings[i]) // Label every row in cluster b
 				{
-					GAssert(i >= features1.rows());
-					GAssert(pOut->row(i - features1.rows())[lab] == (double)-1);
+					WAssert(i >= features1.rows());
+					WAssert(pOut->row(i - features1.rows())[lab] == (double)-1);
 					pOut->row(i - features1.rows())[lab] = labelA;
 					missingLabels--;
 					if(i == b)
@@ -454,28 +454,28 @@ std::unique_ptr<GMatrix> GAgglomerativeTransducer::transduceInner(const GMatrix&
 
 // -----------------------------------------------------------------------------------------
 
-GKMeans::GKMeans(size_t clusters, GRand* pRand)
-: GClusterer(clusters), m_pCentroids(nullptr), m_pClusters(nullptr), m_reps(1), m_pRand(pRand)
+WKMeans::WKMeans(size_t clusters, WRand* pRand)
+: WClusterer(clusters), m_pCentroids(nullptr), m_pClusters(nullptr), m_reps(1), m_pRand(pRand)
 {
 }
 
-GKMeans::~GKMeans()
+WKMeans::~WKMeans()
 {
 	delete(m_pCentroids);
 	delete[] m_pClusters;
 }
 
-void GKMeans::init(const GMatrix* pData)
+void WKMeans::init(const WMatrix* pData)
 {
 	if(!m_pMetric)
-		setMetric(new GRowDistance(), true);
+		setMetric(new WRowDistance(), true);
 	m_pMetric->init(&pData->relation(), false);
 	if(pData->rows() < (size_t)m_clusterCount)
 		throw Ex("Fewer data point than clusters");
 
 	// Initialize the centroids with random rows. (Note that it is okay if two centroids happen to be initialized with the same row here, because the assignClusters method randomly picks among the best centroids in the event of a tie.)
 	delete(m_pCentroids);
-	m_pCentroids = new GMatrix(pData->relation().clone());
+	m_pCentroids = new WMatrix(pData->relation().clone());
 	m_pCentroids->newRows(m_clusterCount);
 	for(size_t i = 0; i < m_clusterCount; i++)
 	{
@@ -488,7 +488,7 @@ void GKMeans::init(const GMatrix* pData)
 	m_pClusters = new size_t[pData->rows()];
 }
 
-double GKMeans::assignClusters(const GMatrix* pData)
+double WKMeans::assignClusters(const WMatrix* pData)
 {
 	// Assign each row to a cluster
 	double sse = 0.0;
@@ -520,11 +520,11 @@ double GKMeans::assignClusters(const GMatrix* pData)
 	return sse;
 }
 
-void GKMeans::recomputeCentroids(const GMatrix* pData)
+void WKMeans::recomputeCentroids(const WMatrix* pData)
 {
 	for(size_t i = 0; i < m_clusterCount; i++)
 	{
-		GVec& centroid = m_pCentroids->row(i);
+		WVec& centroid = m_pCentroids->row(i);
 		size_t unknownCount = 0;
 		for(size_t j = 0; j < pData->cols(); j++)
 		{
@@ -567,7 +567,7 @@ void GKMeans::recomputeCentroids(const GMatrix* pData)
 							pFreq[v]++;
 					}
 				}
-				size_t index = GIndexVec::indexOfMax(pFreq, vals);
+				size_t index = WIndexVec::indexOfMax(pFreq, vals);
 				if(pFreq[index] == 0)
 				{
 					centroid[j] = UNKNOWN_DISCRETE_VALUE;
@@ -579,7 +579,7 @@ void GKMeans::recomputeCentroids(const GMatrix* pData)
 		}
 		if(unknownCount > 0)
 		{
-			const GVec& row = pData->row((size_t)m_pRand->next(pData->rows()));
+			const WVec& row = pData->row((size_t)m_pRand->next(pData->rows()));
 			for(size_t j = 0; j < pData->cols(); j++)
 			{
 				size_t vals = pData->relation().valueCount(j);
@@ -599,7 +599,7 @@ void GKMeans::recomputeCentroids(const GMatrix* pData)
 }
 
 // virtual
-void GKMeans::cluster(const GMatrix* pData)
+void WKMeans::cluster(const WMatrix* pData)
 {
 	size_t* pBest = nullptr;
 	double bestErr = 1e308;
@@ -632,7 +632,7 @@ void GKMeans::cluster(const GMatrix* pData)
 }
 
 // virtual
-size_t GKMeans::whichCluster(size_t index)
+size_t WKMeans::whichCluster(size_t index)
 {
 	return m_pClusters[index];
 }
@@ -640,28 +640,28 @@ size_t GKMeans::whichCluster(size_t index)
 
 // -----------------------------------------------------------------------------------------
 
-GFuzzyKMeans::GFuzzyKMeans(size_t clusters, GRand* pRand)
-: GClusterer(clusters), m_pCentroids(nullptr), m_pWeights(nullptr), m_fuzzifier(1.3), m_reps(1), m_pRand(pRand)
+WFuzzyKMeans::WFuzzyKMeans(size_t clusters, WRand* pRand)
+: WClusterer(clusters), m_pCentroids(nullptr), m_pWeights(nullptr), m_fuzzifier(1.3), m_reps(1), m_pRand(pRand)
 {
 }
 
-GFuzzyKMeans::~GFuzzyKMeans()
+WFuzzyKMeans::~WFuzzyKMeans()
 {
 	delete(m_pCentroids);
 	delete(m_pWeights);
 }
 
-void GFuzzyKMeans::init(const GMatrix* pData)
+void WFuzzyKMeans::init(const WMatrix* pData)
 {
 	if(!m_pMetric)
-		setMetric(new GRowDistance(), true);
+		setMetric(new WRowDistance(), true);
 	m_pMetric->init(&pData->relation(), false);
 	if(pData->rows() < (size_t)m_clusterCount)
 		throw Ex("Fewer data point than clusters");
 
 	// Initialize the centroids
 	delete(m_pCentroids);
-	m_pCentroids = new GMatrix(pData->relation().clone());
+	m_pCentroids = new WMatrix(pData->relation().clone());
 	m_pCentroids->newRows(m_clusterCount);
 	for(size_t j = 0; j < 10; j++) // Try up to ten times to find a unique set of initial centroids
 	{
@@ -684,9 +684,9 @@ void GFuzzyKMeans::init(const GMatrix* pData)
 				// being 0: the distance of an unknown value (-1e308) from a
 				// known one overflows, which stops the program where Waffles
 				// enables floating-point exceptions
-				// (GApp::enableFloatingPointExceptions)
-				const GVec& a = m_pCentroids->row(i);
-				const GVec& b = m_pCentroids->row(k);
+				// (WApp::enableFloatingPointExceptions)
+				const WVec& a = m_pCentroids->row(i);
+				const WVec& b = m_pCentroids->row(k);
 				if(std::equal(a.data(), a.data() + a.size(), b.data()))
 				{
 					unique = false;
@@ -700,15 +700,15 @@ void GFuzzyKMeans::init(const GMatrix* pData)
 
 	// Initialize the weights
 	delete(m_pWeights);
-	m_pWeights = new GMatrix(pData->rows(), m_clusterCount);
+	m_pWeights = new WMatrix(pData->rows(), m_clusterCount);
 }
 
-double GFuzzyKMeans::recomputeWeights(const GMatrix* pData)
+double WFuzzyKMeans::recomputeWeights(const WMatrix* pData)
 {
 	double sumError = 0.0;
 	for(size_t i = 0; i < pData->rows(); i++)
 	{
-		GVec& weights = m_pWeights->row(i);
+		WVec& weights = m_pWeights->row(i);
 		for(size_t j = 0; j < m_clusterCount; j++)
 		{
 			double e = -2.0 / (m_fuzzifier - 1.0);
@@ -722,11 +722,11 @@ double GFuzzyKMeans::recomputeWeights(const GMatrix* pData)
 	return sumError;
 }
 
-void GFuzzyKMeans::recomputeCentroids(const GMatrix* pData)
+void WFuzzyKMeans::recomputeCentroids(const WMatrix* pData)
 {
 	for(size_t i = 0; i < m_clusterCount; i++)
 	{
-		GVec& centroid = m_pCentroids->row(i);
+		WVec& centroid = m_pCentroids->row(i);
 		size_t unknownCount = 0;
 		for(size_t j = 0; j < pData->cols(); j++)
 		{
@@ -755,7 +755,7 @@ void GFuzzyKMeans::recomputeCentroids(const GMatrix* pData)
 			}
 			else
 			{
-				GVec pFreq(vals);
+				WVec pFreq(vals);
 				pFreq.fill(0.0);
 				for(size_t k = 0; k < pData->rows(); k++)
 				{
@@ -775,7 +775,7 @@ void GFuzzyKMeans::recomputeCentroids(const GMatrix* pData)
 		}
 		if(unknownCount > 0)
 		{
-			const GVec& row = pData->row((size_t)m_pRand->next(pData->rows()));
+			const WVec& row = pData->row((size_t)m_pRand->next(pData->rows()));
 			for(size_t j = 0; j < pData->cols(); j++)
 			{
 				size_t vals = pData->relation().valueCount(j);
@@ -795,9 +795,9 @@ void GFuzzyKMeans::recomputeCentroids(const GMatrix* pData)
 }
 
 // virtual
-void GFuzzyKMeans::cluster(const GMatrix* pData)
+void WFuzzyKMeans::cluster(const WMatrix* pData)
 {
-	GMatrix* pBest = nullptr;
+	WMatrix* pBest = nullptr;
 	double bestErr = 1e308;
 	for(size_t i = 0; i < m_reps; i++)
 	{
@@ -827,7 +827,7 @@ void GFuzzyKMeans::cluster(const GMatrix* pData)
 }
 
 // virtual
-size_t GFuzzyKMeans::whichCluster(size_t index)
+size_t WFuzzyKMeans::whichCluster(size_t index)
 {
 	return m_pWeights->row(index).indexOfMax();
 }
@@ -835,19 +835,19 @@ size_t GFuzzyKMeans::whichCluster(size_t index)
 
 // -----------------------------------------------------------------------------------------
 
-GKMedoids::GKMedoids(size_t clusters)
-: GClusterer(clusters), m_pData(nullptr)
+WKMedoids::WKMedoids(size_t clusters)
+: WClusterer(clusters), m_pData(nullptr)
 {
 	m_pMedoids = new size_t[clusters];
 }
 
 // virtual
-GKMedoids::~GKMedoids()
+WKMedoids::~WKMedoids()
 {
 	delete[] m_pMedoids;
 }
 
-double GKMedoids::curErr(const GMatrix* pData)
+double WKMedoids::curErr(const WMatrix* pData)
 {
 	double err = 0;
 	for(size_t i = 0; i < pData->rows(); i++)
@@ -859,11 +859,11 @@ double GKMedoids::curErr(const GMatrix* pData)
 }
 
 // virtual
-void GKMedoids::cluster(const GMatrix* pData)
+void WKMedoids::cluster(const WMatrix* pData)
 {
 	m_pData = pData;
 	if(!m_pMetric)
-		setMetric(new GRowDistance(), true);
+		setMetric(new WRowDistance(), true);
 	m_pMetric->init(&pData->relation(), false);
 	if(pData->rows() < (size_t)m_clusterCount)
 		throw Ex("Fewer data point than clusters");
@@ -907,9 +907,9 @@ void GKMedoids::cluster(const GMatrix* pData)
 }
 
 // virtual
-size_t GKMedoids::whichCluster(size_t nVector)
+size_t WKMedoids::whichCluster(size_t nVector)
 {
-	const GVec& vec = m_pData->row(nVector);
+	const WVec& vec = m_pData->row(nVector);
 	size_t clust = 0;
 	m_d = m_pMetric->squaredDistance(vec, m_pData->row(m_pMedoids[0]));
 	for(size_t i = 1; i < m_clusterCount; i++)
@@ -927,20 +927,20 @@ size_t GKMedoids::whichCluster(size_t nVector)
 
 // -----------------------------------------------------------------------------------------
 
-GKMedoidsSparse::GKMedoidsSparse(size_t clusters)
-: GSparseClusterer(clusters)
+WKMedoidsSparse::WKMedoidsSparse(size_t clusters)
+: WSparseClusterer(clusters)
 {
 	m_pMedoids = new size_t[clusters];
 	m_pData = nullptr;
 }
 
 // virtual
-GKMedoidsSparse::~GKMedoidsSparse()
+WKMedoidsSparse::~WKMedoidsSparse()
 {
 	delete[] m_pMedoids;
 }
 
-double GKMedoidsSparse::curGoodness()
+double WKMedoidsSparse::curGoodness()
 {
 	double goodness = 0;
 	for(size_t i = 0; i < m_pData->rows(); i++)
@@ -952,11 +952,11 @@ double GKMedoidsSparse::curGoodness()
 }
 
 // virtual
-void GKMedoidsSparse::cluster(GSparseMatrix* pData)
+void WKMedoidsSparse::cluster(WSparseMatrix* pData)
 {
 	m_pData = pData;
 	if(!m_pMetric)
-		setMetric(new GCosineSimilarity(), true);
+		setMetric(new WCosineSimilarity(), true);
 	if(pData->rows() < (size_t)m_clusterCount)
 		throw Ex("Fewer data point than clusters");
 	for(size_t i = 0; i < m_clusterCount; i++)
@@ -999,7 +999,7 @@ void GKMedoidsSparse::cluster(GSparseMatrix* pData)
 }
 
 // virtual
-size_t GKMedoidsSparse::whichCluster(size_t nVector)
+size_t WKMedoidsSparse::whichCluster(size_t nVector)
 {
 	std::map<size_t, double>& vec = m_pData->row(nVector);
 	size_t clust = 0;
@@ -1019,29 +1019,29 @@ size_t GKMedoidsSparse::whichCluster(size_t nVector)
 
 // -----------------------------------------------------------------------------------------
 
-GKMeansSparse::GKMeansSparse(size_t nClusters, GRand* pRand)
-: GSparseClusterer(nClusters)
+WKMeansSparse::WKMeansSparse(size_t nClusters, WRand* pRand)
+: WSparseClusterer(nClusters)
 {
 	m_pRand = pRand;
 	m_nClusters = nClusters;
 	m_pClusters = nullptr;
 }
 
-GKMeansSparse::~GKMeansSparse()
+WKMeansSparse::~WKMeansSparse()
 {
 	delete[] m_pClusters;
 }
 
 // virtual
-void GKMeansSparse::cluster(GSparseMatrix* pData)
+void WKMeansSparse::cluster(WSparseMatrix* pData)
 {
 	if(!m_pMetric)
-		setMetric(new GCosineSimilarity(), true);
+		setMetric(new WCosineSimilarity(), true);
 
 	// Pick the seeds (by randomly picking a known value for each element independently)
 	size_t* pCounts = new size_t[pData->cols()];
 	std::unique_ptr<size_t[]> hCounts(pCounts);
-	GMatrix means(0, pData->cols());
+	WMatrix means(0, pData->cols());
 	means.newRows(m_nClusters);
 	{
 		for(size_t i = 0; i < m_nClusters; i++)
@@ -1049,10 +1049,10 @@ void GKMeansSparse::cluster(GSparseMatrix* pData)
 			size_t* pC = pCounts;
 			for(size_t j = 0; j < pData->cols(); j++)
 				*(pC++) = 0;
-			GVec& mean = means.row(i);
+			WVec& mean = means.row(i);
 			for(size_t k = 0; k < pData->rows(); k++)
 			{
-				GSparseMatrix::Iter it;
+				WSparseMatrix::Iter it;
 				for(it = pData->rowBegin(k); it != pData->rowEnd(k); it++)
 				{
 					if(m_pRand->next(pCounts[it->first] + 1) == 0)
@@ -1143,7 +1143,7 @@ void GKMeansSparse::cluster(GSparseMatrix* pData)
 		for(size_t j = 0; j < m_nClusters; j++)
 		{
 			memset(pCounts, '\0', sizeof(size_t) * pData->cols());
-			GVec& mean = means.row(j);
+			WVec& mean = means.row(j);
 			for(size_t i = 0; i < pData->rows(); i++)
 			{
 				// SAKBox: was a pointer into m_pClusters that only moved on for
@@ -1154,7 +1154,7 @@ void GKMeansSparse::cluster(GSparseMatrix* pData)
 					continue;
 
 				// Update only the mean of the elements that this row specifies
-				GSparseMatrix::Iter it;
+				WSparseMatrix::Iter it;
 				for(it = pData->rowBegin(i); it != pData->rowEnd(i); it++)
 				{
 					// SAKBox: real division; with integers count / (count + 1)
@@ -1169,7 +1169,7 @@ void GKMeansSparse::cluster(GSparseMatrix* pData)
 }
 
 // virtual
-size_t GKMeansSparse::whichCluster(size_t nVector)
+size_t WKMeansSparse::whichCluster(size_t nVector)
 {
 	return m_pClusters[nVector];
 }
@@ -1187,7 +1187,7 @@ void BlurVector(size_t nDims, double* pInput, double* pOutput, double dAmount)
 		dSumWeight = 0;
 		for(j = 0; j < nDims; j++)
 		{
-			dWeight = GMath::gaussian((double)(j - i) / dAmount);
+			dWeight = WMath::gaussian((double)(j - i) / dAmount);
 			dSumWeight += dWeight;
 			pOutput[i] += dWeight * pInput[j];
 		}
@@ -1203,7 +1203,7 @@ void MakeHistogramWithGaussianParzenWindow(size_t nElements, double* pInput, dou
 	{
 		pOutput[i] = 0;
 		for(j = 0; j < nElements; j++)
-			pOutput[i] += GMath::gaussian((pOutput[j] - pOutput[i]) / dBlurAmount);
+			pOutput[i] += WMath::gaussian((pOutput[j] - pOutput[i]) / dBlurAmount);
 	}
 }
 
@@ -1229,22 +1229,22 @@ size_t CountLocalMaximums(size_t nElements, double* pData)
 
 // -----------------------------------------------------------------------------------------
 
-GGraphCutTransducer::GGraphCutTransducer()
-: GTransducer(), m_neighborCount(12)
+WGraphCutTransducer::WGraphCutTransducer()
+: WTransducer(), m_neighborCount(12)
 {
 }
 
 // virtual
-GGraphCutTransducer::~GGraphCutTransducer()
+WGraphCutTransducer::~WGraphCutTransducer()
 {
 }
 
-void GGraphCutTransducer::setNeighbors(size_t k)
+void WGraphCutTransducer::setNeighbors(size_t k)
 {
 	m_neighborCount = k;
 }
 
-void GGraphCutTransducer::autoTune(GMatrix& features, GMatrix& labels)
+void WGraphCutTransducer::autoTune(WMatrix& features, WMatrix& labels)
 {
 	// Find the best value for k
 	size_t cap = size_t(floor(sqrt(double(features.rows()))));
@@ -1268,24 +1268,24 @@ void GGraphCutTransducer::autoTune(GMatrix& features, GMatrix& labels)
 }
 
 // virtual
-std::unique_ptr<GMatrix> GGraphCutTransducer::transduceInner(const GMatrix& features1, const GMatrix& labels1, const GMatrix& features2)
+std::unique_ptr<WMatrix> WGraphCutTransducer::transduceInner(const WMatrix& features1, const WMatrix& labels1, const WMatrix& features2)
 {
 	// Use k-NN to compute a distance metric with good scale factors for prediction
-	GKNN knn;
+	WKNN knn;
 	knn.setNeighborCount(m_neighborCount);
 	//knn.setOptimizeScaleFactors(true);
 	knn.train(features1, labels1);
-	GDistanceMetric* pMetric = knn.metric();
+	WDistanceMetric* pMetric = knn.metric();
 
 	// Merge the features into one dataset and build a kd-tree
-	GMatrix both(features1.relation().clone());
+	WMatrix both(features1.relation().clone());
 	both.newRows(features1.rows() + features2.rows());
 	both.copyBlock(features1, 0, 0, features1.rows(), features1.cols(), 0, 0, false);
 	both.copyBlock(features2, 0, 0, features2.rows(), features2.cols(), features1.rows(), 0, false);
-	GKdTree neighborFinder(&both, pMetric, false);
+	WKdTree neighborFinder(&both, pMetric, false);
 
 	// Transduce
-	auto pOut = std::unique_ptr<GMatrix>(new GMatrix(labels1.relation().clone()));
+	auto pOut = std::unique_ptr<WMatrix>(new WMatrix(labels1.relation().clone()));
 	pOut->newRows(features2.rows());
 	pOut->fill(0);
 	for(size_t lab = 0; lab < labels1.cols(); lab++)
@@ -1295,7 +1295,7 @@ std::unique_ptr<GMatrix> GGraphCutTransducer::transduceInner(const GMatrix& feat
 		for(int val = 1; val < valueCount; val++)
 		{
 			// Add neighborhood edges
-			GGraphCut gc(features1.rows() + features2.rows() + 2);
+			WGraphCut gc(features1.rows() + features2.rows() + 2);
 			for(size_t i = 0; i < both.rows(); i++)
 			{
 				size_t nc = neighborFinder.findNearest(m_neighborCount, i);

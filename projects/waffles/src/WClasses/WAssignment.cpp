@@ -18,18 +18,18 @@
 */
 
 ///\file
-///\brief Defines those things declared in GAssignment.h
+///\brief Defines those things declared in WAssignment.h
 
-#include "GMatrix.h"
-#include "GAssignment.h"
+#include "WMatrix.h"
+#include "WAssignment.h"
 #include <limits>
 #include <cmath> //For abs, isfinite, isinf
 
-namespace GClasses
+namespace WClasses
 {
 
 
-std::ostream& operator<<(std::ostream& out, const GSimpleAssignment& gsa)
+std::ostream& operator<<(std::ostream& out, const WSimpleAssignment& gsa)
 {
 	bool printedAPair = false;
 	out << '[';
@@ -46,11 +46,11 @@ std::ostream& operator<<(std::ostream& out, const GSimpleAssignment& gsa)
 	return out << ']';
 }
 
-double cost(const GSimpleAssignment& assign, const GMatrix& costs)
+double cost(const WSimpleAssignment& assign, const WMatrix& costs)
 {
 	if(costs.rows() < assign.sizeA() || costs.cols() < assign.sizeB())
 	{
-		throw Ex("cost(const GSimpleAssignment&, const GMatrix&):"
+		throw Ex("cost(const WSimpleAssignment&, const WMatrix&):"
 		         "The cost matrix must have at least as many rows as "
 		         "the assignment set A has members and its number of columns "
 		         "must be at least the size of the assignment set B.");
@@ -69,22 +69,22 @@ double cost(const GSimpleAssignment& assign, const GMatrix& costs)
 
 
 //static
-void GSimpleAssignment::test()
+void WSimpleAssignment::test()
 {
 	using std::stringstream;
 	using std::string;
 	const std::size_t as = 3, bs = 4;
-	GSimpleAssignment a(as, bs);
+	WSimpleAssignment a(as, bs);
 
 	//Test size operator
-	TestEqual(as, a.sizeA(), "Size of set A not correctly reported in GSimpleAssignment");
-	TestEqual(bs, a.sizeB(), "Size of set B not correctly reported in GSimpleAssignment");
+	TestEqual(as, a.sizeA(), "Size of set A not correctly reported in WSimpleAssignment");
+	TestEqual(bs, a.sizeB(), "Size of set B not correctly reported in WSimpleAssignment");
 
 	//Test printing an empty assignment
 	{
 		stringstream s;
 		s << a;
-		TestEqual("[]", s.str(), "operator<< Incorrectly prints empty GSimpleAssignment.");
+		TestEqual("[]", s.str(), "operator<< Incorrectly prints empty WSimpleAssignment.");
 	}
 
 	//Test assignment and operator() and inverse
@@ -93,13 +93,13 @@ void GSimpleAssignment::test()
 		int exp[as] = {1, -1, -1};
 		for(unsigned i = 0; i < as; ++i)
 		{
-			TestEqual(exp[i], a(i), string("GSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(exp[i], a(i), string("WSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                      "after assigning 0->1");
 		}
 		int expInv[bs] = {-1, 0, -1, -1};
 		for(unsigned i = 0; i < bs; ++i)
 		{
-			TestEqual(expInv[i], a.inverse(i), string("GSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(expInv[i], a.inverse(i), string("WSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                              "after assigning 0->1");
 		}
 	}
@@ -108,7 +108,7 @@ void GSimpleAssignment::test()
 	{
 		stringstream s;
 		s << a;
-		TestEqual("[{0,1}]", s.str(), "operator<< Incorrectly prints GSimpleAssignment with 0->1");
+		TestEqual("[{0,1}]", s.str(), "operator<< Incorrectly prints WSimpleAssignment with 0->1");
 	}
 
 	//Test reassignment and operator() and inverse
@@ -117,13 +117,13 @@ void GSimpleAssignment::test()
 		int exp[as] = {3, -1, -1};
 		for(unsigned i = 0; i < as; ++i)
 		{
-			TestEqual(exp[i], a(i), string("GSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(exp[i], a(i), string("WSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                      "after reassigning 0->3");
 		}
 		int expInv[bs] = {-1, -1, -1, 0};
 		for(unsigned i = 0; i < bs; ++i)
 		{
-			TestEqual(expInv[i], a.inverse(i), string("GSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(expInv[i], a.inverse(i), string("WSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                              "after reassigning 0->3");
 		}
 	}
@@ -134,13 +134,13 @@ void GSimpleAssignment::test()
 		int exp[as] = {3, 1, -1};
 		for(unsigned i = 0; i < as; ++i)
 		{
-			TestEqual(exp[i], a(i), string("GSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(exp[i], a(i), string("WSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                      "after making a second assignment of 1->1");
 		}
 		int expInv[bs] = {-1, 1, -1, 0};
 		for(unsigned i = 0; i < bs; ++i)
 		{
-			TestEqual(expInv[i], a.inverse(i), string("GSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(expInv[i], a.inverse(i), string("WSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                              "after making a second assignment of 1->1");
 		}
 	}
@@ -151,13 +151,13 @@ void GSimpleAssignment::test()
 		int exp[as] = {3, -1, 1};
 		for(unsigned i = 0; i < as; ++i)
 		{
-			TestEqual(exp[i], a(i), string("GSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(exp[i], a(i), string("WSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                      "after reassigning the B set item");
 		}
 		int expInv[bs] = {-1, 2, -1, 0};
 		for(unsigned i = 0; i < bs; ++i)
 		{
-			TestEqual(expInv[i], a.inverse(i), string("GSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(expInv[i], a.inverse(i), string("WSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                              "after reassigning the B set item");
 		}
 	}
@@ -166,7 +166,7 @@ void GSimpleAssignment::test()
 	{
 		stringstream s;
 		s << a;
-		TestEqual("[{0,3},{2,1}]", s.str(), "operator<< Incorrectly prints GSimpleAssignment with 0->3, 2->1");
+		TestEqual("[{0,3},{2,1}]", s.str(), "operator<< Incorrectly prints WSimpleAssignment with 0->3, 2->1");
 	}
 
 	//Test swapping the two sets
@@ -175,13 +175,13 @@ void GSimpleAssignment::test()
 		int exp[bs] = {-1, 2, -1, 0};
 		for(unsigned i = 0; i < bs; ++i)
 		{
-			TestEqual(exp[i], a(i), string("GSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(exp[i], a(i), string("WSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                      "after swapping the A and B sets");
 		}
 		int expInv[as] = {3, -1, 1};
 		for(unsigned i = 0; i < as; ++i)
 		{
-			TestEqual(expInv[i], a.inverse(i), string("GSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(expInv[i], a.inverse(i), string("WSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                              "after swapping the A and B sets");
 		}
 	}
@@ -192,30 +192,30 @@ void GSimpleAssignment::test()
 		int exp[as] = {3, -1, 1};
 		for(unsigned i = 0; i < as; ++i)
 		{
-			TestEqual(exp[i], a(i), string("GSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(exp[i], a(i), string("WSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                      "after swapping the A and B sets a second time.");
 		}
 		int expInv[bs] = {-1, 2, -1, 0};
 		for(unsigned i = 0; i < bs; ++i)
 		{
-			TestEqual(expInv[i], a.inverse(i), string("GSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(expInv[i], a.inverse(i), string("WSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                              "after swapping the A and B sets a second time.");
 		}
 	}
 
 	//Test copy constructor
-	GSimpleAssignment y(a);
+	WSimpleAssignment y(a);
 	{
 		int exp[as] = {3, -1, 1};
 		for(unsigned i = 0; i < as; ++i)
 		{
-			TestEqual(exp[i], y(i), string("GSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(exp[i], y(i), string("WSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                      "after swapping the A and B sets a second time.");
 		}
 		int expInv[bs] = {-1, 2, -1, 0};
 		for(unsigned i = 0; i < bs; ++i)
 		{
-			TestEqual(expInv[i], y.inverse(i), string("GSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(expInv[i], y.inverse(i), string("WSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                              "after swapping the A and B sets a second time.");
 		}
 	}
@@ -225,7 +225,7 @@ void GSimpleAssignment::test()
 	                        "as different");
 
 	//Test operator== for different sized but identical assignments
-	GSimpleAssignment z(4, 4);
+	WSimpleAssignment z(4, 4);
 	z.assign(0, 3);
 	z.assign(2, 1);
 	TestEqual(false, a == z, "Operator== reports two assignments "
@@ -238,13 +238,13 @@ void GSimpleAssignment::test()
 		int exp[as] = {-1, -1, 1};
 		for(unsigned i = 0; i < as; ++i)
 		{
-			TestEqual(exp[i], y(i), string("GSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(exp[i], y(i), string("WSimpleAssignment::operator()(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                      "after an unassignment");
 		}
 		int expInv[bs] = {-1, 2, -1, -1};
 		for(unsigned i = 0; i < bs; ++i)
 		{
-			TestEqual(expInv[i], y.inverse(i), string("GSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
+			TestEqual(expInv[i], y.inverse(i), string("WSimpleAssignment::inverse(") + to_str(i) + ") " + "reports the wrong value "
 			                                                                                              "after an unassignment");
 		}
 	}
@@ -253,33 +253,33 @@ void GSimpleAssignment::test()
 	{
 		stringstream s;
 		s << y;
-		TestEqual("[{2,1}]", s.str(), "operator<< Incorrectly prints GSimpleAssignment with 2->1, "
+		TestEqual("[{2,1}]", s.str(), "operator<< Incorrectly prints WSimpleAssignment with 2->1, "
 		                              "that is, with element 0 of set A unassigned");
 	}
 
 	//Test operator== for two same-sized assignments that have different
 	//contents
-	TestEqual(false, a == y, "GSimpleAssignment::operator== erroneously reports "
+	TestEqual(false, a == y, "WSimpleAssignment::operator== erroneously reports "
 	                         "same-sized assignments with different contents as being equal.");
 
 	//Test operator<
 	// SAKBox: compared a with itself (a<a), which reads like a typo; an
 	// equal copy tests the same thing without looking like one
-	const GSimpleAssignment aCopy = a;
-	TestEqual(false, aCopy < a, "GSimpleAssignment::operator< erroneously reports "
+	const WSimpleAssignment aCopy = a;
+	TestEqual(false, aCopy < a, "WSimpleAssignment::operator< erroneously reports "
 	                            "something as being less than an equal one");
-	TestEqual(true, y < a, "GSimpleAssignment::operator< erroneously reports "
+	TestEqual(true, y < a, "WSimpleAssignment::operator< erroneously reports "
 	                       "that {-1, -1, 1} is not less than {3,-1,1}.");
 	//Test operator < for assignments that differ only in the size of set A
-	TestEqual(false, z < a, "GSimpleAssignment::operator< erroneously reports "
+	TestEqual(false, z < a, "WSimpleAssignment::operator< erroneously reports "
 	                        "that {3,-1,1,-1} is less than {3,-1,1}.");
 	//Test operator < for assignments that differ only in the size of set B
-	GSimpleAssignment w(3, 5);
+	WSimpleAssignment w(3, 5);
 	w.assign(0, 3);
 	w.assign(2, 1);
-	TestEqual(false, w < a, "GSimpleAssignment::operator< erroneously reports "
+	TestEqual(false, w < a, "WSimpleAssignment::operator< erroneously reports "
 	                        "that a set with sizeB == 5 is less than one with sizeB == 3");
-	TestEqual(true, a < w, "GSimpleAssignment::operator< erroneously reports "
+	TestEqual(true, a < w, "WSimpleAssignment::operator< erroneously reports "
 	                       "that a set with sizeB == 3 is not less than one with sizeB == 5");
 
 
@@ -288,7 +288,7 @@ void GSimpleAssignment::test()
 		const unsigned r = 4, c = 3;
 		double input[r * c] = {
 		  1, 0, 2, 9, 7, 7, 2, 1, 5, 5, 9, 6};
-		GMatrix costm(r, c);
+		WMatrix costm(r, c);
 		costm.fromVector(input, r);
 		const unsigned ns = 3;
 		int solutions[r * ns] = {
@@ -300,7 +300,7 @@ void GSimpleAssignment::test()
 		  s2v(solutions + r, solutions + 2 * r),
 		  s3v(solutions + 2 * r, solutions + 3 * r),
 		  bs1v(badSolution, badSolution + r);
-		GSimpleAssignment s1(c, s1v), s2(c, s2v), s3(c, s3v), bs1(c, bs1v);
+		WSimpleAssignment s1(c, s1v), s2(c, s2v), s3(c, s3v), bs1(c, bs1v);
 
 
 		TestEqual(8, cost(s1, costm), to_str("Cost of assignment s1:" + to_str(s1) + "on the cost matrix:\n" + to_str(costm) + "\n" + "is incorrect."));
@@ -318,11 +318,11 @@ void GSimpleAssignment::test()
 ///
 ///Usage:
 ///\code
-/// extern GCLasses::LAPVJRCT_augmentation_section_was_used;
+/// extern WCLasses::LAPVJRCT_augmentation_section_was_used;
 /// //...now in a routine
-/// GCLasses::LAPVJRCT_augmentation_section_was_used = false;
-/// GCLasses::LAPVJRCT(c,x,y,u,v,totalCost,epsilon)
-/// if( GCLasses::LAPVJRCT_augmentation_section_was_used ){
+/// WCLasses::LAPVJRCT_augmentation_section_was_used = false;
+/// WCLasses::LAPVJRCT(c,x,y,u,v,totalCost,epsilon)
+/// if( WCLasses::LAPVJRCT_augmentation_section_was_used ){
 ///   // do stuff
 /// }
 ///\endcode
@@ -350,7 +350,7 @@ bool LAPVJRCT_h_eq_min_true_called;
 bool LAPVJRCT_h_eq_min_false_called;
 
 
-void LAPVJRCT(GMatrix c, std::vector<int>& x, std::vector<int>& y, std::vector<double>& u, std::vector<double>& v, double& totalCost, const double epsilon)
+void LAPVJRCT(WMatrix c, std::vector<int>& x, std::vector<int>& y, std::vector<double>& u, std::vector<double>& v, double& totalCost, const double epsilon)
 {
 	//Infinity
 	const double inf = std::numeric_limits<double>::infinity();
@@ -751,7 +751,7 @@ namespace
 	///
 	///\param b the constant term in the a*x+b transformation applied to
 	///         the matrix entries.
-	void linearTransformMatrixEntries(GMatrix& m, const double a, const double b)
+	void linearTransformMatrixEntries(WMatrix& m, const double a, const double b)
 	{
 		for(unsigned i = 0; i < m.rows(); ++i)
 		{
@@ -790,7 +790,7 @@ namespace
 	///                              this will be true.  If the matrix
 	///                              was empty or had no finite value as
 	///                              the minimum, this will be false
-	void minFiniteValue(GMatrix& m, double& min, bool& matrixHadFiniteMinimum)
+	void minFiniteValue(WMatrix& m, double& min, bool& matrixHadFiniteMinimum)
 	{
 		const double inf = std::numeric_limits<double>::infinity();
 
@@ -829,7 +829,7 @@ namespace
 	///                              this will be true.  If the matrix
 	///                              was empty or had no finite value as
 	///                              the maximum, this will be false
-	void maxFiniteValue(GMatrix& m, double& max, bool& matrixHadFiniteMaximum)
+	void maxFiniteValue(WMatrix& m, double& max, bool& matrixHadFiniteMaximum)
 	{
 		const double inf = std::numeric_limits<double>::infinity();
 
@@ -864,7 +864,7 @@ namespace
 	///\param success true if the matrix could be standardized, false if
 	///               it could not.  Success is not a return value to
 	///               ensure that the caller notices it.
-	void standardizeMaxLinAssignProb(GMatrix& benefits, bool& success)
+	void standardizeMaxLinAssignProb(WMatrix& benefits, bool& success)
 	{
 
 		success = false;
@@ -998,13 +998,13 @@ namespace
 	}
 } //Anonymous Namespace
 
-GSimpleAssignment linearAssignment(GMatrix benefits, ShouldMaximize /*Not used*/, const double epsilon)
+WSimpleAssignment linearAssignment(WMatrix benefits, ShouldMaximize /*Not used*/, const double epsilon)
 {
 
 	bool success;
 	standardizeMaxLinAssignProb(benefits, success);
 
-	GSimpleAssignment result(benefits.rows(), benefits.cols());
+	WSimpleAssignment result(benefits.rows(), benefits.cols());
 	if(!success)
 	{
 		//No assignment is possible if the matrix could not be standardized
@@ -1012,7 +1012,7 @@ GSimpleAssignment linearAssignment(GMatrix benefits, ShouldMaximize /*Not used*/
 	}
 
 	bool hadToTranspose = false;
-	GMatrix* costs = &benefits;
+	WMatrix* costs = &benefits;
 	if(benefits.rows() > benefits.cols())
 	{
 		hadToTranspose = true;
@@ -1039,7 +1039,7 @@ GSimpleAssignment linearAssignment(GMatrix benefits, ShouldMaximize /*Not used*/
 	return result;
 }
 
-GSimpleAssignment linearAssignment(GMatrix costs, ShouldMinimize /*Not used*/, const double epsilon)
+WSimpleAssignment linearAssignment(WMatrix costs, ShouldMinimize /*Not used*/, const double epsilon)
 {
 
 	//Convert the cost matrix to one with non-negative entries but an
@@ -1048,7 +1048,7 @@ GSimpleAssignment linearAssignment(GMatrix costs, ShouldMinimize /*Not used*/, c
 	bool matrixHasFiniteMinimum;
 	minFiniteValue(costs, min, matrixHasFiniteMinimum);
 
-	GSimpleAssignment result(costs.rows(), costs.cols());
+	WSimpleAssignment result(costs.rows(), costs.cols());
 	if(!matrixHasFiniteMinimum)
 	{
 		//The matrix cannot be standardized when the matrix has no
@@ -1065,7 +1065,7 @@ GSimpleAssignment linearAssignment(GMatrix costs, ShouldMinimize /*Not used*/, c
 
 	//Transpose if necessary so fewer rows than columns
 	bool hadToTranspose = false;
-	GMatrix* cstd = &costs; //standardized costs
+	WMatrix* cstd = &costs; //standardized costs
 	if(costs.rows() > costs.cols())
 	{
 		hadToTranspose = true;
@@ -1094,8 +1094,8 @@ GSimpleAssignment linearAssignment(GMatrix costs, ShouldMinimize /*Not used*/, c
 	return result;
 }
 
-std::vector<GSimpleAssignment>
-linearAssignmentBruteForce(GMatrix costs, ShouldMinimize /*not used*/)
+std::vector<WSimpleAssignment>
+linearAssignmentBruteForce(WMatrix costs, ShouldMinimize /*not used*/)
 {
 	const double inf = std::numeric_limits<double>::infinity();
 
@@ -1103,12 +1103,12 @@ linearAssignmentBruteForce(GMatrix costs, ShouldMinimize /*not used*/)
 	double minCost = inf;
 
 	//All assignments found that have cost == minCost
-	std::vector<GSimpleAssignment> result;
+	std::vector<WSimpleAssignment> result;
 
 	//Only empty assignment possible for an empty matrix
 	if(costs.rows() == 0)
 	{
-		result.push_back(GSimpleAssignment(costs.rows(), costs.cols()));
+		result.push_back(WSimpleAssignment(costs.rows(), costs.cols()));
 		return result;
 	}
 
@@ -1117,7 +1117,7 @@ linearAssignmentBruteForce(GMatrix costs, ShouldMinimize /*not used*/)
 	if(costs.rows() > costs.cols())
 	{
 		hadToTranspose = true;
-		GMatrix* tmp = costs.transpose();
+		WMatrix* tmp = costs.transpose();
 		costs = *tmp;
 		delete tmp;
 	}
@@ -1143,7 +1143,7 @@ linearAssignmentBruteForce(GMatrix costs, ShouldMinimize /*not used*/)
 	//solutions
 	if(minCost < inf)
 	{
-		result.push_back(GSimpleAssignment(costs.cols(), cur));
+		result.push_back(WSimpleAssignment(costs.cols(), cur));
 	}
 
 	//Go through all permutations and add to the list any that have a
@@ -1165,7 +1165,7 @@ linearAssignmentBruteForce(GMatrix costs, ShouldMinimize /*not used*/)
 
 		if(curCost == minCost && minCost < inf)
 		{
-			result.push_back(GSimpleAssignment(costs.cols(), cur));
+			result.push_back(WSimpleAssignment(costs.cols(), cur));
 		}
 	}
 
@@ -1181,8 +1181,8 @@ linearAssignmentBruteForce(GMatrix costs, ShouldMinimize /*not used*/)
 }
 
 
-std::vector<GSimpleAssignment>
-linearAssignmentBruteForce(GMatrix benefits, ShouldMaximize /*not used*/)
+std::vector<WSimpleAssignment>
+linearAssignmentBruteForce(WMatrix benefits, ShouldMaximize /*not used*/)
 {
 	const double inf = std::numeric_limits<double>::infinity();
 
@@ -1190,12 +1190,12 @@ linearAssignmentBruteForce(GMatrix benefits, ShouldMaximize /*not used*/)
 	double maxBenefit = -inf;
 
 	//All assignments found that have benefit == maxBenefit
-	std::vector<GSimpleAssignment> result;
+	std::vector<WSimpleAssignment> result;
 
 	//Only empty assignment possible for an empty matrix
 	if(benefits.rows() == 0)
 	{
-		result.push_back(GSimpleAssignment(benefits.rows(), benefits.cols()));
+		result.push_back(WSimpleAssignment(benefits.rows(), benefits.cols()));
 		return result;
 	}
 
@@ -1204,7 +1204,7 @@ linearAssignmentBruteForce(GMatrix benefits, ShouldMaximize /*not used*/)
 	if(benefits.rows() > benefits.cols())
 	{
 		hadToTranspose = true;
-		GMatrix* tmp = benefits.transpose();
+		WMatrix* tmp = benefits.transpose();
 		benefits = *tmp;
 		delete tmp;
 	}
@@ -1230,7 +1230,7 @@ linearAssignmentBruteForce(GMatrix benefits, ShouldMaximize /*not used*/)
 	//solutions
 	if(maxBenefit > -inf)
 	{
-		result.push_back(GSimpleAssignment(benefits.cols(), cur));
+		result.push_back(WSimpleAssignment(benefits.cols(), cur));
 	}
 
 	//Go through all permutations and add to the list any that have a
@@ -1252,7 +1252,7 @@ linearAssignmentBruteForce(GMatrix benefits, ShouldMaximize /*not used*/)
 
 		if(curBenefit == maxBenefit && maxBenefit > -inf)
 		{
-			result.push_back(GSimpleAssignment(benefits.cols(), cur));
+			result.push_back(WSimpleAssignment(benefits.cols(), cur));
 		}
 	}
 
@@ -1317,14 +1317,14 @@ namespace
 	class LinearAssignmentTestCase
 	{
 		///The input matrix for the test case
-		GMatrix input;
+		WMatrix input;
 
 		///True if the problem is a minimization problem, false if it is a
 		///maximization problem
 		bool isMinimization;
 
 		///The set of all correct assignments for the problem
-		std::set<GSimpleAssignment> solutionSet;
+		std::set<WSimpleAssignment> solutionSet;
 
 		///\brief Finish initializing a partially initialized test case
 		///
@@ -1359,7 +1359,7 @@ namespace
 			{
 				int const* start = correct + curSol * rows;
 				std::vector<int> tmp(start, start + rows);
-				solutionSet.insert(GSimpleAssignment(cols, tmp));
+				solutionSet.insert(WSimpleAssignment(cols, tmp));
 			}
 		}
 	public:
@@ -1401,7 +1401,7 @@ namespace
 		///assignment problem solver, throws an exception if there is an error
 		void testBruteForce()
 		{
-			std::vector<GSimpleAssignment> actual;
+			std::vector<WSimpleAssignment> actual;
 			if(isMinimization)
 			{
 				actual = linearAssignmentBruteForce(input);
@@ -1410,7 +1410,7 @@ namespace
 			{
 				actual = linearAssignmentBruteForce(input, ShouldMaximize());
 			}
-			std::set<GSimpleAssignment> actualSet(actual.begin(), actual.end());
+			std::set<WSimpleAssignment> actualSet(actual.begin(), actual.end());
 			if(actualSet.size() == solutionSet.size() && std::equal(actualSet.begin(), actualSet.end(), solutionSet.begin()))
 			{
 				//No error
@@ -1429,7 +1429,7 @@ namespace
 		///a matrix much too big for the brute-force algorithm
 		void testStandard()
 		{
-			GSimpleAssignment actual(input.rows(), input.cols());
+			WSimpleAssignment actual(input.rows(), input.cols());
 			if(isMinimization)
 			{
 				actual = linearAssignment(input);
@@ -1439,7 +1439,7 @@ namespace
 				actual = linearAssignment(input, ShouldMaximize());
 			}
 
-			std::set<GSimpleAssignment>::const_iterator location =
+			std::set<WSimpleAssignment>::const_iterator location =
 			  solutionSet.find(actual);
 			if(location == solutionSet.end())
 			{
@@ -1746,7 +1746,7 @@ void testLinearAssignmentSolvers()
 		bool didntThrow;           \
 		try                        \
 		{                          \
-			GExpectException ee;   \
+			WExpectException ee;   \
 			code;                  \
 			didntThrow = true;     \
 		}                          \
@@ -1771,12 +1771,12 @@ void testLAPVJRCTThrows()
 	std::vector<double> colPotential;
 	double totalCost;
 	{
-		GMatrix m(4, 3);
+		WMatrix m(4, 3);
 		SHOULD_THROW(LAPVJRCT(m, rowAssign, colAssign, rowPotential, colPotential, totalCost), "LAPVJRCT didn't throw when passed a wrong-sized cost matrix");
 	}
 
 	{
-		GMatrix m(1, 1);
+		WMatrix m(1, 1);
 		m[0][0] = -10;
 		SHOULD_THROW(LAPVJRCT(m, rowAssign, colAssign, rowPotential, colPotential, totalCost), "LAPVJRCT didn't throw when passed negative cost matrix");
 	}
@@ -1799,9 +1799,9 @@ void testLASupportRoutines()
 		double expected[r * c] = {
 		  13, 11, 15, 29, 25, 25, 15, 13, 21, 21, 29, 23};
 
-		GMatrix m(r, c);
+		WMatrix m(r, c);
 		m.fromVector(input, r);
-		GMatrix e(r, c);
+		WMatrix e(r, c);
 		e.fromVector(expected, r);
 		linearTransformMatrixEntries(m, 2, 11);
 
@@ -1810,7 +1810,7 @@ void testLASupportRoutines()
 		double expectedZ[r * c] = {
 		  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
 
-		GMatrix ez(r, c);
+		WMatrix ez(r, c);
 		ez.fromVector(expectedZ, r);
 		linearTransformMatrixEntries(m, 0, 3);
 		TestEqual(ez, m, "linearTransformMatrixEntries doesn't work when a==0");
@@ -1854,5 +1854,5 @@ void testLinearAssignment()
 
 
 
-} //Namespace GClasses
+} //Namespace WClasses
 

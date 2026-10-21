@@ -22,7 +22,7 @@
 #define __GAPP_H__
 
 #include <stddef.h>
-#include "GError.h"
+#include "WError.h"
 #ifdef WINDOWS
 #include <windows.h>
 #ifndef ssize_t
@@ -42,24 +42,24 @@ typedef SSIZE_T ssize_t;
 #endif
 #endif
 
-namespace GClasses
+namespace WClasses
 {
 
 typedef void (*DaemonMainFunc)(void* pArg);
 
 
 /// This class wraps the handle of a pipe. It closes the pipe when it is destroyed.
-/// This class is useful in conjunction with GApp::systemExecute for reading from,
+/// This class is useful in conjunction with WApp::systemExecute for reading from,
 /// or writing to, the standard i/o streams of a child process.
-class GPipe
+class WPipe
 {
 protected:
 	HANDLE m_handle;
 
 public:
 	/// Construct an empty pipe holder
-	GPipe();
-	~GPipe();
+	WPipe();
+	~WPipe();
 
 	/// Set the handle of the pipe
 	void set(HANDLE h);
@@ -85,7 +85,7 @@ public:
 
 
 /// Contains some generally useful functions for launching applications
-class GApp
+class WApp
 {
 public:
 	/// Launches a daemon process that calls pDaemonMain, and then exits.
@@ -129,7 +129,7 @@ public:
 	/// The program is run directly, not through a shell (see systemCall).
 	/// If it can't be run, its exit code is 127. If not waiting, returns
 	/// the process id.
-	static int systemExecute(const char* szCommand, bool wait, GPipe* pStdOut = nullptr, GPipe* pStdErr = nullptr, GPipe* pStdIn = nullptr);
+	static int systemExecute(const char* szCommand, bool wait, WPipe* pStdOut = nullptr, WPipe* pStdErr = nullptr, WPipe* pStdIn = nullptr);
 
 	/// If you're having trouble with bogus floating point values
 	/// (like NAN or INF), this method makes overflow, divide-by-zero
@@ -155,7 +155,7 @@ typedef void (*sighandler_t)(int);
 
 /// Temporarily handles SIGINT, SIGTERM and SIGPIPE. (When this object is destroyed, it puts their
 /// handlers back the way they were.) Periodically call "check" to see if a signal has occurred.
-class GSignalHandler
+class WSignalHandler
 {
 public:
 #ifndef WINDOWS
@@ -165,8 +165,8 @@ public:
 #endif
 	int m_gotSignal;
 
-	GSignalHandler();
-	~GSignalHandler();
+	WSignalHandler();
+	~WSignalHandler();
 
 	/// Call this periodically. Returns 0 if no signal has occurred. Otherwise, returns the number of the signal.
 	int check();
@@ -185,7 +185,7 @@ public:
 /// passes characters to the stream immediately (instead of when Enter is
 /// pressed), and so that it doesn't echo the keys (if desired), and it makes stdin
 /// non-blocking. The destructor puts all those things back the way they were.
-class GPassiveConsole
+class WPassiveConsole
 {
 #ifdef WINDOWS
 protected:
@@ -193,8 +193,8 @@ protected:
 	HANDLE m_hStdin;
 	INPUT_RECORD m_inputRecord;
 public:
-	GPassiveConsole(bool echo);
-	~GPassiveConsole();
+	WPassiveConsole(bool echo);
+	~WPassiveConsole();
 	char getChar();
 #else
 protected:
@@ -203,8 +203,8 @@ protected:
 	int m_oldStreamFlags;
 public:
 	/// If echo is true, then keys pressed will be echoed to the screen.
-	GPassiveConsole(bool echo);
-	~GPassiveConsole();
+	WPassiveConsole(bool echo);
+	~WPassiveConsole();
 
 	/// Returns the char of the next key that was pressed. (This method
 	/// does not block.) If no keys have been pressed, it returns the zero char.
@@ -217,7 +217,7 @@ public:
 
 /// Parses command-line args and provides methods
 /// to conveniently process them.
-class GArgReader
+class WArgReader
 {
 	int m_argc;
 	char** m_argv;
@@ -225,10 +225,10 @@ class GArgReader
 
 public:
 	/// Pass the args that are passed in to main
-	GArgReader(int argc, char* argv[]);
+	WArgReader(int argc, char* argv[]);
 
 	/// copy constructor
-	GArgReader(GArgReader& other);
+	WArgReader(WArgReader& other);
 
 	/// Returns the value of argc
 	int get_argc() { return m_argc; }
@@ -278,6 +278,6 @@ public:
 	void clear_args();
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GAPP_H__

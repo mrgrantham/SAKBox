@@ -1,17 +1,17 @@
 #include "SeriesPlot.h"
 
-#include <WClasses/GPlot.h>
-#include <WClasses/GVec.h>
+#include <WClasses/WPlot.h>
+#include <WClasses/WVec.h>
 
 #include <algorithm>
 #include <fstream>
 
-namespace GClasses
+namespace WClasses
 {
 
-void plotSeries(const std::string& path, GNeuralNet& nn, GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void plotSeries(const std::string& path, WNeuralNet& nn, WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
-	GSVG svg(1000, 500);
+	WSVG svg(1000, 500);
 	double xmin = trainFeat[0][0];
 	double xmax = testFeat[testFeat.rows() - 1][0];
 	svg.newChart(xmin, std::min(trainLab.columnMin(0), testLab.columnMin(0)), xmax, std::max(trainLab.columnMax(0), testLab.columnMax(0)));
@@ -20,7 +20,7 @@ void plotSeries(const std::string& path, GNeuralNet& nn, GMatrix& trainFeat, GMa
 	double prevx = xmin;
 	double prevy = 0.0;
 	double step = (xmax - xmin) / 500.0;
-	GVec x(1);
+	WVec x(1);
 	for(x[0] = prevx; x[0] < xmax; x[0] += step)
 	{
 		double y = nn.forwardProp(x)[0];
@@ -39,4 +39,4 @@ void plotSeries(const std::string& path, GNeuralNet& nn, GMatrix& trainFeat, GMa
 	svg.print(ofs);
 }
 
-} // namespace GClasses
+} // namespace WClasses

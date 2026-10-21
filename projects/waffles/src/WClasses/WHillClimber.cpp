@@ -17,18 +17,18 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GHillClimber.h"
+#include "WHillClimber.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "GImage.h"
-#include "GBitTable.h"
+#include "WImage.h"
+#include "WBitTable.h"
 #include <cmath>
 
-using namespace GClasses;
+using namespace WClasses;
 
-GMomentumGreedySearch::GMomentumGreedySearch(GTargetFunction* pCritic)
-: GOptimizer(pCritic), m_pStepSizes(pCritic->relation()->size()), m_pVector(pCritic->relation()->size())
+WMomentumGreedySearch::WMomentumGreedySearch(WTargetFunction* pCritic)
+: WOptimizer(pCritic), m_pStepSizes(pCritic->relation()->size()), m_pVector(pCritic->relation()->size())
 {
 	if(!pCritic->relation()->areContinuous(0, pCritic->relation()->size()))
 		throw Ex("Discrete attributes are not supported");
@@ -38,11 +38,11 @@ GMomentumGreedySearch::GMomentumGreedySearch(GTargetFunction* pCritic)
 	reset();
 }
 
-/*virtual*/ GMomentumGreedySearch::~GMomentumGreedySearch()
+/*virtual*/ WMomentumGreedySearch::~WMomentumGreedySearch()
 {
 }
 
-void GMomentumGreedySearch::reset()
+void WMomentumGreedySearch::reset()
 {
 	setAllStepSizes(0.1);
 	m_pCritic->initVector(m_pVector);
@@ -52,17 +52,17 @@ void GMomentumGreedySearch::reset()
 		m_dError = 1e308;
 }
 
-void GMomentumGreedySearch::setAllStepSizes(double dStepSize)
+void WMomentumGreedySearch::setAllStepSizes(double dStepSize)
 {
 	m_pStepSizes.fill(dStepSize);
 }
 
-GVec& GMomentumGreedySearch::stepSizes()
+WVec& WMomentumGreedySearch::stepSizes()
 {
 	return m_pStepSizes;
 }
 
-double GMomentumGreedySearch::iterateOneDim()
+double WMomentumGreedySearch::iterateOneDim()
 {
 	m_pVector[m_nCurrentDim] += m_pStepSizes[m_nCurrentDim];
 	double dError = m_pCritic->computeError(m_pVector);
@@ -88,7 +88,7 @@ double GMomentumGreedySearch::iterateOneDim()
 	return m_dError;
 }
 
-/*virtual*/ double GMomentumGreedySearch::iterate()
+/*virtual*/ double WMomentumGreedySearch::iterate()
 {
 	for(size_t i = 1; i < m_nDimensions; i++)
 		iterateOneDim();
@@ -96,18 +96,18 @@ double GMomentumGreedySearch::iterateOneDim()
 }
 
 // static
-void GMomentumGreedySearch::test()
+void WMomentumGreedySearch::test()
 {
-	GOptimizerBasicTestTargetFunction target;
-	GMomentumGreedySearch opt(&target);
+	WOptimizerBasicTestTargetFunction target;
+	WMomentumGreedySearch opt(&target);
 	opt.basicTest(1e-32);
 }
 
 // --------------------------------------------------------------------------------
 
 
-GHillClimber::GHillClimber(GTargetFunction* pCritic)
-: GOptimizer(pCritic), m_dim(0), m_pStepSizes(pCritic->relation()->size()), m_pVector(pCritic->relation()->size())
+WHillClimber::WHillClimber(WTargetFunction* pCritic)
+: WOptimizer(pCritic), m_dim(0), m_pStepSizes(pCritic->relation()->size()), m_pVector(pCritic->relation()->size())
 {
 	if(!pCritic->relation()->areContinuous(0, pCritic->relation()->size()))
 		throw Ex("Discrete attributes are not supported");
@@ -116,11 +116,11 @@ GHillClimber::GHillClimber(GTargetFunction* pCritic)
 	reset();
 }
 
-/*virtual*/ GHillClimber::~GHillClimber()
+/*virtual*/ WHillClimber::~WHillClimber()
 {
 }
 
-void GHillClimber::reset()
+void WHillClimber::reset()
 {
 	setStepSizes(0.1);
 	m_pCritic->initVector(m_pVector);
@@ -130,17 +130,17 @@ void GHillClimber::reset()
 		m_dError = 1e308;
 }
 
-void GHillClimber::setStepSizes(double size)
+void WHillClimber::setStepSizes(double size)
 {
 	m_pStepSizes.fill(size);
 }
 
-GVec& GHillClimber::stepSizes()
+WVec& WHillClimber::stepSizes()
 {
 	return m_pStepSizes;
 }
 
-/*virtual*/ double GHillClimber::iterate()
+/*virtual*/ double WHillClimber::iterate()
 {
 	double decel = m_pStepSizes[m_dim] * m_dChangeFactor;
 	if(std::abs(decel) < 1e-16)
@@ -221,7 +221,7 @@ GVec& GHillClimber::stepSizes()
 	return m_dError;
 }
 
-double GHillClimber::anneal(double dev, GRand* pRand)
+double WHillClimber::anneal(double dev, WRand* pRand)
 {
 	if(!m_pCritic->isStable())
 		m_dError = m_pCritic->computeError(m_pVector); // Current spot
@@ -238,10 +238,10 @@ double GHillClimber::anneal(double dev, GRand* pRand)
 }
 
 // static
-void GHillClimber::test()
+void WHillClimber::test()
 {
-	GOptimizerBasicTestTargetFunction target;
-	GHillClimber opt(&target);
+	WOptimizerBasicTestTargetFunction target;
+	WHillClimber opt(&target);
 	opt.basicTest(1.39e-17);
 }
 
@@ -249,8 +249,8 @@ void GHillClimber::test()
 // --------------------------------------------------------------------------------
 
 
-GAnnealing::GAnnealing(GTargetFunction* pTargetFunc, GRand* pRand)
-: GOptimizer(pTargetFunc), m_initialDeviation(1.0), m_pVector(pTargetFunc->relation()->size()), m_pCandidate(pTargetFunc->relation()->size()), m_pRand(pRand)
+WAnnealing::WAnnealing(WTargetFunction* pTargetFunc, WRand* pRand)
+: WOptimizer(pTargetFunc), m_initialDeviation(1.0), m_pVector(pTargetFunc->relation()->size()), m_pCandidate(pTargetFunc->relation()->size()), m_pRand(pRand)
 {
 	if(!pTargetFunc->relation()->areContinuous(0, pTargetFunc->relation()->size()))
 		throw Ex("Discrete attributes are not supported");
@@ -258,11 +258,11 @@ GAnnealing::GAnnealing(GTargetFunction* pTargetFunc, GRand* pRand)
 	reset();
 }
 
-/*virtual*/ GAnnealing::~GAnnealing()
+/*virtual*/ WAnnealing::~WAnnealing()
 {
 }
 
-void GAnnealing::reset()
+void WAnnealing::reset()
 {
 	m_deviation = m_initialDeviation;
 	m_pCritic->initVector(m_pVector);
@@ -270,7 +270,7 @@ void GAnnealing::reset()
 		m_dError = m_pCritic->computeError(m_pVector);
 }
 
-/*virtual*/ double GAnnealing::iterate()
+/*virtual*/ double WAnnealing::iterate()
 {
 	for(size_t j = 0; j < 5; j++)
 	{
@@ -293,19 +293,19 @@ void GAnnealing::reset()
 }
 
 // static
-void GAnnealing::test()
+void WAnnealing::test()
 {
-	GRand rand(0);
-	GOptimizerBasicTestTargetFunction target;
-	GAnnealing opt(&target, &rand);
+	WRand rand(0);
+	WOptimizerBasicTestTargetFunction target;
+	WAnnealing opt(&target, &rand);
 	opt.basicTest(0.00017);
 }
 
 // --------------------------------------------------------------------------------
 
 
-GRandomDirectionBinarySearch::GRandomDirectionBinarySearch(GTargetFunction* pTargetFunc, GRand* pRand)
-: GOptimizer(pTargetFunc), m_stepSize(1e-6), m_pRand(pRand)
+WRandomDirectionBinarySearch::WRandomDirectionBinarySearch(WTargetFunction* pTargetFunc, WRand* pRand)
+: WOptimizer(pTargetFunc), m_stepSize(1e-6), m_pRand(pRand)
 {
 	if(!pTargetFunc->relation()->areContinuous(0, pTargetFunc->relation()->size()))
 		throw Ex("Discrete attributes are not supported");
@@ -317,12 +317,12 @@ GRandomDirectionBinarySearch::GRandomDirectionBinarySearch(GTargetFunction* pTar
 }
 
 // virtual
-GRandomDirectionBinarySearch::~GRandomDirectionBinarySearch()
+WRandomDirectionBinarySearch::~WRandomDirectionBinarySearch()
 {
 }
 
 // virtual
-double GRandomDirectionBinarySearch::iterate()
+double WRandomDirectionBinarySearch::iterate()
 {
 	m_direction.fillSphericalShell(*m_pRand);
 	double sum = 0.0;
@@ -360,11 +360,11 @@ double GRandomDirectionBinarySearch::iterate()
 }
 
 // static
-void GRandomDirectionBinarySearch::test()
+void WRandomDirectionBinarySearch::test()
 {
-	GRand rand(0);
-	GOptimizerBasicTestTargetFunction target;
-	GRandomDirectionBinarySearch opt(&target, &rand);
+	WRand rand(0);
+	WOptimizerBasicTestTargetFunction target;
+	WRandomDirectionBinarySearch opt(&target, &rand);
 	opt.basicTest(1.92e-05);
 }
 
@@ -372,8 +372,8 @@ void GRandomDirectionBinarySearch::test()
 
 // --------------------------------------------------------------------------------
 
-GEmpiricalGradientDescent::GEmpiricalGradientDescent(GTargetFunction* pCritic, GRand* pRand)
-: GOptimizer(pCritic), m_pVector(pCritic->relation()->size()), m_pGradient(pCritic->relation()->size()), m_pDelta(pCritic->relation()->size())
+WEmpiricalGradientDescent::WEmpiricalGradientDescent(WTargetFunction* pCritic, WRand* pRand)
+: WOptimizer(pCritic), m_pVector(pCritic->relation()->size()), m_pGradient(pCritic->relation()->size()), m_pDelta(pCritic->relation()->size())
 {
 	if(!pCritic->relation()->areContinuous(0, pCritic->relation()->size()))
 		throw Ex("Discrete attributes are not supported");
@@ -385,17 +385,17 @@ GEmpiricalGradientDescent::GEmpiricalGradientDescent(GTargetFunction* pCritic, G
 	reset();
 }
 
-/*virtual*/ GEmpiricalGradientDescent::~GEmpiricalGradientDescent()
+/*virtual*/ WEmpiricalGradientDescent::~WEmpiricalGradientDescent()
 {
 }
 
-void GEmpiricalGradientDescent::reset()
+void WEmpiricalGradientDescent::reset()
 {
 	m_pCritic->initVector(m_pVector);
 	m_pDelta.fill(0.0);
 }
 
-/*virtual*/ double GEmpiricalGradientDescent::iterate()
+/*virtual*/ double WEmpiricalGradientDescent::iterate()
 {
 	// Feel the gradient in each dimension using one random pattern
 	double dCurrentError = m_pCritic->computeError(m_pVector);
@@ -413,8 +413,8 @@ void GEmpiricalGradientDescent::reset()
 
 // --------------------------------------------------------------------------------
 
-GSampleClimber::GSampleClimber(GTargetFunction* pCritic, GRand* pRand)
-: GOptimizer(pCritic), m_pRand(pRand), m_pVector(pCritic->relation()->size()), m_pDir(pCritic->relation()->size()), m_pCand(pCritic->relation()->size()), m_pGradient(pCritic->relation()->size())
+WSampleClimber::WSampleClimber(WTargetFunction* pCritic, WRand* pRand)
+: WOptimizer(pCritic), m_pRand(pRand), m_pVector(pCritic->relation()->size()), m_pDir(pCritic->relation()->size()), m_pCand(pCritic->relation()->size()), m_pGradient(pCritic->relation()->size())
 {
 	if(!pCritic->relation()->areContinuous(0, pCritic->relation()->size()))
 		throw Ex("Discrete attributes are not supported");
@@ -425,11 +425,11 @@ GSampleClimber::GSampleClimber(GTargetFunction* pCritic, GRand* pRand)
 }
 
 // virtual
-GSampleClimber::~GSampleClimber()
+WSampleClimber::~WSampleClimber()
 {
 }
 
-void GSampleClimber::reset()
+void WSampleClimber::reset()
 {
 	m_dStepSize = .1;
 	m_pCritic->initVector(m_pVector);
@@ -437,7 +437,7 @@ void GSampleClimber::reset()
 }
 
 // virtual
-double GSampleClimber::iterate()
+double WSampleClimber::iterate()
 {
 	// Improve our moving gradient estimate with a new sample
 	m_pDir.fillSphericalShell(*m_pRand);

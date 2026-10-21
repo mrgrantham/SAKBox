@@ -17,17 +17,17 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GHistogram.h"
-#include "GError.h"
+#include "WHistogram.h"
+#include "WError.h"
 #include <math.h>
 #include <fstream>
 #include <errno.h>
 #include <string.h>
-#include "GVec.h"
+#include "WVec.h"
 
-using namespace GClasses;
+using namespace WClasses;
 
-GHistogram::GHistogram(double xMin, double xMax, size_t bins)
+WHistogram::WHistogram(double xMin, double xMax, size_t bins)
 {
 	m_min = xMin;
 	m_max = xMax;
@@ -38,7 +38,7 @@ GHistogram::GHistogram(double xMin, double xMax, size_t bins)
 	m_sum = 0.0;
 }
 
-GHistogram::GHistogram(GMatrix& data, size_t col, double xMin, double xMax, size_t maxBuckets)
+WHistogram::WHistogram(WMatrix& data, size_t col, double xMin, double xMax, size_t maxBuckets)
 {
 	double dataMin = data.columnMin(col);
 	double dataRange = data.columnMax(col) - dataMin;
@@ -63,12 +63,12 @@ GHistogram::GHistogram(GMatrix& data, size_t col, double xMin, double xMax, size
 		addSample(data[i][col], 1.0);
 }
 
-GHistogram::~GHistogram()
+WHistogram::~WHistogram()
 {
 	delete[] m_bins;
 }
 
-void GHistogram::addSample(double x, double weight)
+void WHistogram::addSample(double x, double weight)
 {
 	size_t bin = (size_t)floor((x - m_min) * m_binCount / (m_max - m_min));
 	if(bin < m_binCount)
@@ -76,17 +76,17 @@ void GHistogram::addSample(double x, double weight)
 	m_sum += weight;
 }
 
-size_t GHistogram::binCount()
+size_t WHistogram::binCount()
 {
 	return m_binCount;
 }
 
-double GHistogram::binToX(size_t n)
+double WHistogram::binToX(size_t n)
 {
 	return ((double)n + 0.5) * (m_max - m_min) / m_binCount + m_min;
 }
 
-size_t GHistogram::xToBin(double x)
+size_t WHistogram::xToBin(double x)
 {
 	size_t bin = (size_t)floor((x - m_min) * m_binCount / (m_max - m_min));
 	if(bin < m_binCount)
@@ -95,19 +95,19 @@ size_t GHistogram::xToBin(double x)
 		return INVALID_INDEX;
 }
 
-double GHistogram::binLikelihood(size_t n)
+double WHistogram::binLikelihood(size_t n)
 {
 	if(m_max - m_min == 0.0 || m_sum == 0.0)
 		return 1.0 / m_binCount;
 	return m_bins[n] * m_binCount / ((m_max - m_min) * m_sum);
 }
 
-double GHistogram::binProbability(size_t n)
+double WHistogram::binProbability(size_t n)
 {
 	return m_bins[n] / m_sum;
 }
 
-size_t GHistogram::modeBin()
+size_t WHistogram::modeBin()
 {
 	size_t mode = 0;
 	double modeSum = m_bins[0];
@@ -122,7 +122,7 @@ size_t GHistogram::modeBin()
 	return mode;
 }
 
-void GHistogram::toFile(const char* filename)
+void WHistogram::toFile(const char* filename)
 {
 	std::ofstream os;
 	os.exceptions(std::ios::badbit | std::ios::failbit);
@@ -139,7 +139,7 @@ void GHistogram::toFile(const char* filename)
 		os << binToX(i) << " " << binLikelihood(i) << "\n";
 }
 
-double GHistogram::computeRange()
+double WHistogram::computeRange()
 {
 	double min = binLikelihood(0);
 	double max = min;

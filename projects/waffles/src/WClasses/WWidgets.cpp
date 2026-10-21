@@ -16,39 +16,39 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GHolders.h"
-#include "GWidgets.h"
-#include "GImage.h"
-#include "GDirList.h"
+#include "WHolders.h"
+#include "WWidgets.h"
+#include "WImage.h"
+#include "WDirList.h"
 #ifdef WINDOWS
 #include <direct.h>
 #else
 #include <unistd.h>
 #endif
-#include "GFile.h"
-#include "GHeap.h"
+#include "WFile.h"
+#include "WHeap.h"
 #include <math.h>
-#include "GTime.h"
-#include "GBits.h"
-#include "GWave.h"
+#include "WTime.h"
+#include "WBits.h"
+#include "WWave.h"
 #include <algorithm>
 #include <sstream>
 
-namespace GClasses
+namespace WClasses
 {
 
 using std::string;
 using std::vector;
 
-GWidgetCommon::GWidgetCommon()
+WWidgetCommon::WWidgetCommon()
 {
 }
 
-GWidgetCommon::~GWidgetCommon()
+WWidgetCommon::~WWidgetCommon()
 {
 }
 
-void GWidgetCommon::drawButtonText(GImage* pImage, int x, int y, int w, int h, const char* text, bool pressed)
+void WWidgetCommon::drawButtonText(WImage* pImage, int x, int y, int w, int h, const char* text, bool pressed)
 {
 	float fontSize = std::max(1.0f, (float)h / 24);
 	int wid = pImage->measureTextWidth(text, fontSize);
@@ -61,7 +61,7 @@ void GWidgetCommon::drawButtonText(GImage* pImage, int x, int y, int w, int h, c
 	pImage->text(text, xx, yy, fontSize, pressed ? 0xffffffff : 0xff000000, x + w - xx, y + h - yy);
 }
 
-void GWidgetCommon::drawLabelText(GImage* pImage, int x, int y, int w, int h, const char* text, float fontSize, bool alignLeft, unsigned int col)
+void WWidgetCommon::drawLabelText(WImage* pImage, int x, int y, int w, int h, const char* text, float fontSize, bool alignLeft, unsigned int col)
 {
 	int xx;
 	if(alignLeft)
@@ -79,7 +79,7 @@ void GWidgetCommon::drawLabelText(GImage* pImage, int x, int y, int w, int h, co
 	pImage->text(text, xx, yy, fontSize, col, x + w - xx, y + h - yy);
 }
 
-void GWidgetCommon::drawHorizCurvedOutSurface(GImage* pImage, int x, int y, int w, int h, unsigned int col)
+void WWidgetCommon::drawHorizCurvedOutSurface(WImage* pImage, int x, int y, int w, int h, unsigned int col)
 {
 	if(w <= 0 || h <= 0)
 		return;
@@ -94,7 +94,7 @@ void GWidgetCommon::drawHorizCurvedOutSurface(GImage* pImage, int x, int y, int 
 	}
 }
 
-void GWidgetCommon::drawHorizCurvedInSurface(GImage* pImage, int x, int y, int w, int h, unsigned int col)
+void WWidgetCommon::drawHorizCurvedInSurface(WImage* pImage, int x, int y, int w, int h, unsigned int col)
 {
 	if(w <= 0 || h <= 0)
 		return;
@@ -108,7 +108,7 @@ void GWidgetCommon::drawHorizCurvedInSurface(GImage* pImage, int x, int y, int w
 	}
 }
 
-void GWidgetCommon::drawVertCurvedOutSurface(GImage* pImage, int x, int y, int w, int h, unsigned int col)
+void WWidgetCommon::drawVertCurvedOutSurface(WImage* pImage, int x, int y, int w, int h, unsigned int col)
 {
 	float fac = (float)1.1 / h;
 	int yStart = 0;
@@ -126,7 +126,7 @@ void GWidgetCommon::drawVertCurvedOutSurface(GImage* pImage, int x, int y, int w
 	}
 }
 
-void GWidgetCommon::drawVertCurvedInSurface(GImage* pImage, int x, int y, int w, int h, unsigned int col)
+void WWidgetCommon::drawVertCurvedInSurface(WImage* pImage, int x, int y, int w, int h, unsigned int col)
 {
 	int n;
 	for(n = 0; n < h; n++)
@@ -138,15 +138,15 @@ void GWidgetCommon::drawVertCurvedInSurface(GImage* pImage, int x, int y, int w,
 	}
 }
 
-void GWidgetCommon::drawCursor(GImage* pImage, int x, int y, int w, int h)
+void WWidgetCommon::drawCursor(WImage* pImage, int x, int y, int w, int h)
 {
 	pImage->box(x, y, x + w, y + h, 0xffffffff);
 }
 
-void GWidgetCommon::drawClipped(GImage* pCanvas, int x, int y, GWidget* pWidget, GRect* pClipRect)
+void WWidgetCommon::drawClipped(WImage* pCanvas, int x, int y, WWidget* pWidget, WRect* pClipRect)
 {
 	// See if we can do it without clipping
-	GRect* pWidgetRect = pWidget->rect();
+	WRect* pWidgetRect = pWidget->rect();
 	if(x >= pClipRect->x && y >= pClipRect->y && x + pWidgetRect->w <= pClipRect->x + pClipRect->w && y + pWidgetRect->h <= pClipRect->y + pClipRect->h)
 	{
 		pWidget->draw(pCanvas, x, y);
@@ -159,7 +159,7 @@ void GWidgetCommon::drawClipped(GImage* pCanvas, int x, int y, GWidget* pWidget,
 
 	int xx = std::max(x, pClipRect->x);
 	int yy = std::max(y, pClipRect->y);
-	GRect r(xx - x, yy - y, std::min(x + pWidgetRect->w, pClipRect->x + pClipRect->w) - xx, std::min(y + pWidgetRect->h, pClipRect->y + pClipRect->h) - yy);
+	WRect r(xx - x, yy - y, std::min(x + pWidgetRect->w, pClipRect->x + pClipRect->w) - xx, std::min(y + pWidgetRect->h, pClipRect->y + pClipRect->h) - yy);
 	m_bufferImage.boxFill(r.x, r.y, r.w, r.h, 0);
 	pWidget->draw(&m_bufferImage, 0, 0);
 	pCanvas->blitAlpha(xx, yy, &m_bufferImage, &r);
@@ -167,7 +167,7 @@ void GWidgetCommon::drawClipped(GImage* pCanvas, int x, int y, GWidget* pWidget,
 
 // ----------------------------------------------------------------------
 
-GWidget::GWidget(GWidgetGroup* pParent, int x, int y, int w, int h)
+WWidget::WWidget(WWidgetGroup* pParent, int x, int y, int w, int h)
 {
 	m_pParent = pParent;
 	m_common = pParent ? pParent->m_common : nullptr;
@@ -178,14 +178,14 @@ GWidget::GWidget(GWidgetGroup* pParent, int x, int y, int w, int h)
 		m_nID = -1;
 }
 
-/*virtual*/ GWidget::~GWidget()
+/*virtual*/ WWidget::~WWidget()
 {
-	//GAssert(m_pParent || type() == Dialog); // Unexpected root widget
+	//WAssert(m_pParent || type() == Dialog); // Unexpected root widget
 	if(m_pParent)
 		m_pParent->onDestroyWidget(this);
 }
 
-void GWidget::setPos(int x, int y)
+void WWidget::setPos(int x, int y)
 {
 	m_rect.x = x;
 	m_rect.y = y;
@@ -194,53 +194,53 @@ void GWidget::setPos(int x, int y)
 
 // ----------------------------------------------------------------------
 
-GWidgetAtomic::GWidgetAtomic(GWidgetGroup* pParent, int x, int y, int w, int h)
-: GWidget(pParent, x, y, w, h)
+WWidgetAtomic::WWidgetAtomic(WWidgetGroup* pParent, int x, int y, int w, int h)
+: WWidget(pParent, x, y, w, h)
 {
-	GAssert(pParent); // atomic widgets require a parent
+	WAssert(pParent); // atomic widgets require a parent
 }
 
-/*virtual*/ GWidgetAtomic::~GWidgetAtomic()
+/*virtual*/ WWidgetAtomic::~WWidgetAtomic()
 {
 }
 
-/*virtual*/ void GWidgetAtomic::onChar(char c)
+/*virtual*/ void WWidgetAtomic::onChar(char c)
 {
 	if(m_pParent)
 		m_pParent->onChar(c);
 }
 
-/*virtual*/ void GWidgetAtomic::onSpecialKey(int key)
+/*virtual*/ void WWidgetAtomic::onSpecialKey(int key)
 {
 	if(m_pParent)
 		m_pParent->onSpecialKey(key);
 }
 
-/*virtual*/ void GWidgetAtomic::onMouseMove(int dx, int dy)
+/*virtual*/ void WWidgetAtomic::onMouseMove(int dx, int dy)
 {
 }
 
 // ----------------------------------------------------------------------
 
-GWidgetGroup::GWidgetGroup(GWidgetGroup* pParent, int x, int y, int w, int h)
-: GWidget(pParent, x, y, w, h)
+WWidgetGroup::WWidgetGroup(WWidgetGroup* pParent, int x, int y, int w, int h)
+: WWidget(pParent, x, y, w, h)
 {
 	m_dirtyBits.push_back(0);
 }
 
-/*virtual*/ GWidgetGroup::~GWidgetGroup()
+/*virtual*/ WWidgetGroup::~WWidgetGroup()
 {
 	while(m_widgets.size() > 0)
 		delete(m_widgets[0]);
 }
 
-bool GWidgetGroup::getDirtyBit(int nBit)
+bool WWidgetGroup::getDirtyBit(int nBit)
 {
 	unsigned int n = m_dirtyBits[nBit / 32];
 	return (((1 << (nBit % 32)) & n) != 0);
 }
 
-void GWidgetGroup::setDirtyBit(int nBit, bool bValue)
+void WWidgetGroup::setDirtyBit(int nBit, bool bValue)
 {
 	int index = nBit / 32;
 	int offset = nBit % 32;
@@ -252,11 +252,11 @@ void GWidgetGroup::setDirtyBit(int nBit, bool bValue)
 	m_dirtyBits[index] = n;
 }
 
-void GWidgetGroup::tattle(GWidget* pChild)
+void WWidgetGroup::tattle(WWidget* pChild)
 {
 	if(pChild)
 	{
-		GAssert(childWidget(pChild->m_nID) == pChild); // that's not my child
+		WAssert(childWidget(pChild->m_nID) == pChild); // that's not my child
 		if(getDirtyBit(pChild->m_nID))
 			return; // we already know this child is dirty
 		m_dirtyChildren.push_back(pChild);
@@ -268,7 +268,7 @@ void GWidgetGroup::tattle(GWidget* pChild)
 		m_pParent->tattle(this);
 }
 
-void GWidgetGroup::addWidget(GWidget* pWidget)
+void WWidgetGroup::addWidget(WWidget* pWidget)
 {
 	pWidget->m_nID = (int)m_widgets.size();
 	m_widgets.push_back(pWidget);
@@ -279,11 +279,11 @@ void GWidgetGroup::addWidget(GWidget* pWidget)
 }
 
 // todo: use a divide-and-conquer technique to improve performance
-/*virtual*/ GWidgetAtomic* GWidgetGroup::findAtomicWidget(int x, int y)
+/*virtual*/ WWidgetAtomic* WWidgetGroup::findAtomicWidget(int x, int y)
 {
 	int n;
 	int nCount = (int)m_widgets.size();
-	GWidget* pWidget;
+	WWidget* pWidget;
 	for(n = 0; n < nCount; n++)
 	{
 		pWidget = m_widgets[n];
@@ -291,37 +291,37 @@ void GWidgetGroup::addWidget(GWidget* pWidget)
 		{
 			if(pWidget->isAtomic())
 			{
-				if(((GWidgetAtomic*)pWidget)->isClickable())
-					return (GWidgetAtomic*)pWidget;
+				if(((WWidgetAtomic*)pWidget)->isClickable())
+					return (WWidgetAtomic*)pWidget;
 			}
 			else
 			{
-				GRect* pRect = pWidget->rect();
-				return ((GWidgetGroup*)pWidget)->findAtomicWidget(x - pRect->x, y - pRect->y);
+				WRect* pRect = pWidget->rect();
+				return ((WWidgetGroup*)pWidget)->findAtomicWidget(x - pRect->x, y - pRect->y);
 			}
 		}
 	}
 	return nullptr;
 }
 
-int GWidgetGroup::childWidgetCount()
+int WWidgetGroup::childWidgetCount()
 {
 	return (int)m_widgets.size();
 }
 
-GWidget* GWidgetGroup::childWidget(int n)
+WWidget* WWidgetGroup::childWidget(int n)
 {
 	return m_widgets[n];
 }
 
-/*virtual*/ void GWidgetGroup::onDestroyWidget(GWidget* pWidget)
+/*virtual*/ void WWidgetGroup::onDestroyWidget(WWidget* pWidget)
 {
 	if(pWidget->m_nID >= 0)
 	{
 		// Remove the widget from my list
-		GAssert(childWidget(pWidget->m_nID) == pWidget); // bad id
+		WAssert(childWidget(pWidget->m_nID) == pWidget); // bad id
 		int nLast = (int)m_widgets.size() - 1;
-		GWidget* pLast = m_widgets[nLast];
+		WWidget* pLast = m_widgets[nLast];
 		pLast->m_nID = pWidget->m_nID;
 		m_widgets[pWidget->m_nID] = pLast;
 		m_widgets.pop_back();
@@ -332,7 +332,7 @@ GWidget* GWidgetGroup::childWidget(int n)
 		m_pParent->onDestroyWidget(pWidget);
 }
 
-void GWidgetGroup::setClean()
+void WWidgetGroup::setClean()
 {
 	m_dirtyChildren.clear();
 	int nCount = (int)m_dirtyBits.size();
@@ -342,13 +342,13 @@ void GWidgetGroup::setClean()
 
 // ----------------------------------------------------------------------
 
-GWidgetDialog::GWidgetDialog(int w, int h, unsigned int cBackground)
-: GWidgetGroup(nullptr, 0, 0, w, h)
+WWidgetDialog::WWidgetDialog(int w, int h, unsigned int cBackground)
+: WWidgetGroup(nullptr, 0, 0, w, h)
 {
 	m_cBackground = cBackground;
 	m_image.setSize(w, h);
 	m_image.clear(cBackground);
-	m_common = new GWidgetCommon();
+	m_common = new WWidgetCommon();
 	m_pGrabbedWidget = nullptr;
 	m_pFocusWidget = nullptr;
 	m_prevMouseX = 0;
@@ -356,22 +356,22 @@ GWidgetDialog::GWidgetDialog(int w, int h, unsigned int cBackground)
 	m_bRunning = true;
 }
 
-/*virtual*/ GWidgetDialog::~GWidgetDialog()
+/*virtual*/ WWidgetDialog::~WWidgetDialog()
 {
 	releaseButton(1);
 	delete(m_common);
 }
 
-void GWidgetDialog::setBackgroundImage(GImage* pImage)
+void WWidgetDialog::setBackgroundImage(WImage* pImage)
 {
-	GRect r(0, 0, std::min((unsigned int)m_rect.w, pImage->width()), std::min((unsigned int)m_rect.h, pImage->height()));
+	WRect r(0, 0, std::min((unsigned int)m_rect.w, pImage->width()), std::min((unsigned int)m_rect.h, pImage->height()));
 	m_image.blit(0, 0, pImage, &r);
 }
 
 // virtual
-void GWidgetDialog::draw(GImage* pCanvas, int x, int y)
+void WWidgetDialog::draw(WImage* pCanvas, int x, int y)
 {
-	vector<GWidget*>* pDirtyChildren = &m_dirtyChildren;
+	vector<WWidget*>* pDirtyChildren = &m_dirtyChildren;
 	if(getDirtyBit((int)m_widgets.size()))
 	{
 		setDirtyBit((int)m_widgets.size(), false);
@@ -379,19 +379,19 @@ void GWidgetDialog::draw(GImage* pCanvas, int x, int y)
 		//m_image.Clear(m_cBackground);
 	}
 	int nCount = (int)pDirtyChildren->size();
-	GRect* pRect;
-	GWidget* pChild;
+	WRect* pRect;
+	WWidget* pChild;
 	for(int n = 0; n < nCount; n++)
 	{
 		pChild = (*pDirtyChildren)[n];
 		pRect = pChild->rect();
-		GAssert(x + pRect->x >= 0 && y + pRect->y >= 0 && x + pRect->x + pRect->w <= (int)pCanvas->width() && y + pRect->y + pRect->h <= (int)pCanvas->height()); // out of range
+		WAssert(x + pRect->x >= 0 && y + pRect->y >= 0 && x + pRect->x + pRect->w <= (int)pCanvas->width() && y + pRect->y + pRect->h <= (int)pCanvas->height()); // out of range
 		pChild->draw(pCanvas, x + pRect->x, y + pRect->y);
 	}
 	setClean();
 }
 
-void GWidgetDialog::setFocusWidget(GWidgetAtomic* pWidget)
+void WWidgetDialog::setFocusWidget(WWidgetAtomic* pWidget)
 {
 	if(m_pFocusWidget != pWidget)
 	{
@@ -403,15 +403,15 @@ void GWidgetDialog::setFocusWidget(GWidgetAtomic* pWidget)
 	}
 }
 
-void GWidgetDialog::grabWidget(GWidgetAtomic* pWidget, int button, int mouseX, int mouseY)
+void WWidgetDialog::grabWidget(WWidgetAtomic* pWidget, int button, int mouseX, int mouseY)
 {
 	releaseButton(button);
 	m_pGrabbedWidget = pWidget;
 	setFocusWidget(pWidget);
 	if(pWidget)
 	{
-		GWidget* pTmp;
-		GRect* pRect;
+		WWidget* pTmp;
+		WRect* pRect;
 		for(pTmp = pWidget; pTmp; pTmp = pTmp->parent())
 		{
 			pRect = pTmp->rect();
@@ -423,30 +423,30 @@ void GWidgetDialog::grabWidget(GWidgetAtomic* pWidget, int button, int mouseX, i
 }
 
 // virtual
-void GWidgetDialog::pressButton(int button, int x, int y)
+void WWidgetDialog::pressButton(int button, int x, int y)
 {
-	GWidgetAtomic* pPressWidget = findAtomicWidget(x, y);
+	WWidgetAtomic* pPressWidget = findAtomicWidget(x, y);
 	grabWidget(pPressWidget, button, x, y);
 }
 
 // virtual
-void GWidgetDialog::releaseButton(int button)
+void WWidgetDialog::releaseButton(int button)
 {
 	if(!m_pGrabbedWidget)
 		return;
 
 	// Use a local var in case the handler destroys this dialog
-	GWidgetAtomic* pGrabbedWidget = m_pGrabbedWidget;
+	WWidgetAtomic* pGrabbedWidget = m_pGrabbedWidget;
 	m_pGrabbedWidget = nullptr;
 	pGrabbedWidget->release(button);
 }
 
 // virtual
-void GWidgetDialog::onDestroyWidget(GWidget* pWidget)
+void WWidgetDialog::onDestroyWidget(WWidget* pWidget)
 {
 	if(pWidget->parent() == this)
 	{
-		GRect* pRect = pWidget->rect();
+		WRect* pRect = pWidget->rect();
 		m_image.boxFill(pRect->x, pRect->y, pRect->w, pRect->h, m_cBackground);
 		m_dirtyChildren.clear();
 		tattle(nullptr);
@@ -455,11 +455,11 @@ void GWidgetDialog::onDestroyWidget(GWidget* pWidget)
 		m_pGrabbedWidget = nullptr;
 	if(pWidget == m_pFocusWidget)
 		m_pFocusWidget = nullptr;
-	GWidgetGroup::onDestroyWidget(pWidget);
+	WWidgetGroup::onDestroyWidget(pWidget);
 }
 
 // virtual
-void GWidgetDialog::handleChar(char c)
+void WWidgetDialog::handleChar(char c)
 {
 	if(!m_pFocusWidget)
 		return;
@@ -467,7 +467,7 @@ void GWidgetDialog::handleChar(char c)
 }
 
 // virtual
-void GWidgetDialog::handleSpecialKey(int key)
+void WWidgetDialog::handleSpecialKey(int key)
 {
 	if(!m_pFocusWidget)
 		return;
@@ -475,7 +475,7 @@ void GWidgetDialog::handleSpecialKey(int key)
 }
 
 // virtual
-bool GWidgetDialog::handleMousePos(int x, int y)
+bool WWidgetDialog::handleMousePos(int x, int y)
 {
 	x -= m_prevMouseX;
 	y -= m_prevMouseY;
@@ -489,7 +489,7 @@ bool GWidgetDialog::handleMousePos(int x, int y)
 	return true;
 }
 
-GImage* GWidgetDialog::image()
+WImage* WWidgetDialog::image()
 {
 	draw(&m_image, 0, 0);
 	return &m_image;
@@ -497,8 +497,8 @@ GImage* GWidgetDialog::image()
 
 // ----------------------------------------------------------------------
 
-GWidgetTextButton::GWidgetTextButton(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szText)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetTextButton::WWidgetTextButton(WWidgetGroup* pParent, int x, int y, int w, int h, const char* szText)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_text = szText;
 	m_pressed = false;
@@ -506,11 +506,11 @@ GWidgetTextButton::GWidgetTextButton(GWidgetGroup* pParent, int x, int y, int w,
 	m_color = 0xff0000ff;
 }
 
-/*virtual*/ GWidgetTextButton::~GWidgetTextButton()
+/*virtual*/ WWidgetTextButton::~WWidgetTextButton()
 {
 }
 
-/*virtual*/ void GWidgetTextButton::grab(int button, int x, int y)
+/*virtual*/ void WWidgetTextButton::grab(int button, int x, int y)
 {
 	m_pressed = true;
 	m_holding = true;
@@ -520,7 +520,7 @@ GWidgetTextButton::GWidgetTextButton(GWidgetGroup* pParent, int x, int y, int w,
 	m_pParent->onPushTextButton(this);
 }
 
-/*virtual*/ void GWidgetTextButton::release(int button)
+/*virtual*/ void WWidgetTextButton::release(int button)
 {
 	if(m_pressed)
 	{
@@ -532,7 +532,7 @@ GWidgetTextButton::GWidgetTextButton(GWidgetGroup* pParent, int x, int y, int w,
 }
 
 // virtual
-void GWidgetTextButton::draw(GImage* pCanvas, int x, int y)
+void WWidgetTextButton::draw(WImage* pCanvas, int x, int y)
 {
 	int w = m_rect.w;
 	int h = m_rect.h;
@@ -552,19 +552,19 @@ void GWidgetTextButton::draw(GImage* pCanvas, int x, int y)
 	}
 }
 
-void GWidgetTextButton::setText(const char* szText)
+void WWidgetTextButton::setText(const char* szText)
 {
 	m_text = szText;
 	m_pParent->tattle(this);
 }
 
-void GWidgetTextButton::setColor(unsigned int c)
+void WWidgetTextButton::setColor(unsigned int c)
 {
 	m_color = c;
 	m_pParent->tattle(this);
 }
 
-/*virtual*/ void GWidgetTextButton::onMouseMove(int dx, int dy)
+/*virtual*/ void WWidgetTextButton::onMouseMove(int dx, int dy)
 {
 	if(!m_holding)
 		return;
@@ -591,29 +591,29 @@ void GWidgetTextButton::setColor(unsigned int c)
 
 // ----------------------------------------------------------------------
 
-GWidgetTextTab::GWidgetTextTab(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szText, unsigned int cBackground)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetTextTab::WWidgetTextTab(WWidgetGroup* pParent, int x, int y, int w, int h, const char* szText, unsigned int cBackground)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_text = szText;
 	m_cBackground = cBackground;
 	m_selected = false;
 }
 
-/*virtual*/ GWidgetTextTab::~GWidgetTextTab()
+/*virtual*/ WWidgetTextTab::~WWidgetTextTab()
 {
 }
 
-/*virtual*/ void GWidgetTextTab::grab(int button, int x, int y)
+/*virtual*/ void WWidgetTextTab::grab(int button, int x, int y)
 {
 	m_pParent->onSelectTextTab(this);
 }
 
-/*virtual*/ void GWidgetTextTab::release(int button)
+/*virtual*/ void WWidgetTextTab::release(int button)
 {
 }
 
 // virtual
-void GWidgetTextTab::draw(GImage* pCanvas, int x, int y)
+void WWidgetTextTab::draw(WImage* pCanvas, int x, int y)
 {
 	// Draw the non-pressed image
 	int w = m_rect.w;
@@ -634,13 +634,13 @@ void GWidgetTextTab::draw(GImage* pCanvas, int x, int y)
 	}
 }
 
-void GWidgetTextTab::setText(const char* szText)
+void WWidgetTextTab::setText(const char* szText)
 {
 	m_text = szText;
 	m_pParent->tattle(this);
 }
 
-void GWidgetTextTab::setSelected(bool selected)
+void WWidgetTextTab::setSelected(bool selected)
 {
 	m_selected = selected;
 	m_pParent->tattle(this);
@@ -648,19 +648,19 @@ void GWidgetTextTab::setSelected(bool selected)
 
 // ----------------------------------------------------------------------
 
-GWidgetImageButton::GWidgetImageButton(GWidgetGroup* pParent, int x, int y, GImage* pImage)
-: GWidgetAtomic(pParent, x, y, pImage->width() / 2, pImage->height())
+WWidgetImageButton::WWidgetImageButton(WWidgetGroup* pParent, int x, int y, WImage* pImage)
+: WWidgetAtomic(pParent, x, y, pImage->width() / 2, pImage->height())
 {
 	m_image.copy(pImage);
 	m_pressed = false;
 	m_holding = false;
 }
 
-/*virtual*/ GWidgetImageButton::~GWidgetImageButton()
+/*virtual*/ WWidgetImageButton::~WWidgetImageButton()
 {
 }
 
-/*virtual*/ void GWidgetImageButton::grab(int button, int x, int y)
+/*virtual*/ void WWidgetImageButton::grab(int button, int x, int y)
 {
 	m_pressed = true;
 	m_holding = true;
@@ -669,7 +669,7 @@ GWidgetImageButton::GWidgetImageButton(GWidgetGroup* pParent, int x, int y, GIma
 	m_pressedY = y;
 }
 
-/*virtual*/ void GWidgetImageButton::release(int button)
+/*virtual*/ void WWidgetImageButton::release(int button)
 {
 	m_holding = false;
 	if(m_pressed)
@@ -680,7 +680,7 @@ GWidgetImageButton::GWidgetImageButton(GWidgetGroup* pParent, int x, int y, GIma
 	}
 }
 
-/*virtual*/ void GWidgetImageButton::onMouseMove(int dx, int dy)
+/*virtual*/ void WWidgetImageButton::onMouseMove(int dx, int dy)
 {
 	if(!m_holding)
 		return;
@@ -705,34 +705,34 @@ GWidgetImageButton::GWidgetImageButton(GWidgetGroup* pParent, int x, int y, GIma
 }
 
 // virtual
-void GWidgetImageButton::draw(GImage* pCanvas, int x, int y)
+void WWidgetImageButton::draw(WImage* pCanvas, int x, int y)
 {
-	GRect r((m_pressed ? m_rect.w : 0), 0, m_rect.w, m_rect.h);
+	WRect r((m_pressed ? m_rect.w : 0), 0, m_rect.w, m_rect.h);
 	pCanvas->blitAlpha(x, y, &m_image, &r);
 }
 
 // ----------------------------------------------------------------------
 
-GWidgetAnimation::GWidgetAnimation(GWidgetGroup* pParent, int x, int y, GImage* pImage, int nFrames)
-: GWidgetAtomic(pParent, x, y, pImage->width(), pImage->height() / nFrames)
+WWidgetAnimation::WWidgetAnimation(WWidgetGroup* pParent, int x, int y, WImage* pImage, int nFrames)
+: WWidgetAtomic(pParent, x, y, pImage->width(), pImage->height() / nFrames)
 {
 	m_image.copy(pImage);
 	m_nFrames = nFrames;
 	m_nFrame = 0;
 }
 
-/*virtual*/ GWidgetAnimation::~GWidgetAnimation()
+/*virtual*/ WWidgetAnimation::~WWidgetAnimation()
 {
 }
 
 // virtual
-void GWidgetAnimation::draw(GImage* pCanvas, int x, int y)
+void WWidgetAnimation::draw(WImage* pCanvas, int x, int y)
 {
-	GRect r(0, m_nFrame * m_rect.h, m_rect.w, m_rect.h);
+	WRect r(0, m_nFrame * m_rect.h, m_rect.w, m_rect.h);
 	pCanvas->blitAlpha(x, y, &m_image, &r);
 }
 
-void GWidgetAnimation::setFrame(int nFrame)
+void WWidgetAnimation::setFrame(int nFrame)
 {
 	m_nFrame = nFrame;
 	m_pParent->tattle(this);
@@ -740,8 +740,8 @@ void GWidgetAnimation::setFrame(int nFrame)
 
 // ----------------------------------------------------------------------
 
-GWidgetTextLabel::GWidgetTextLabel(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szText, unsigned int c, unsigned int back, float fontSize)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetTextLabel::WWidgetTextLabel(WWidgetGroup* pParent, int x, int y, int w, int h, const char* szText, unsigned int c, unsigned int back, float fontSize)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_text = szText;
 	m_alignLeft = true;
@@ -751,11 +751,11 @@ GWidgetTextLabel::GWidgetTextLabel(GWidgetGroup* pParent, int x, int y, int w, i
 	m_bGrabbed = false;
 }
 
-/*virtual*/ GWidgetTextLabel::~GWidgetTextLabel()
+/*virtual*/ WWidgetTextLabel::~WWidgetTextLabel()
 {
 }
 
-/*virtual*/ void GWidgetTextLabel::grab(int button, int x, int y)
+/*virtual*/ void WWidgetTextLabel::grab(int button, int x, int y)
 {
 	m_pParent->tattle(this);
 	m_bGrabbed = true;
@@ -763,14 +763,14 @@ GWidgetTextLabel::GWidgetTextLabel(GWidgetGroup* pParent, int x, int y, int w, i
 		m_pParent->onClickTextLabel(this);
 }
 
-/*virtual*/ void GWidgetTextLabel::release(int button)
+/*virtual*/ void WWidgetTextLabel::release(int button)
 {
 	m_bGrabbed = false;
 	m_pParent->tattle(this);
 }
 
 // virtual
-void GWidgetTextLabel::draw(GImage* pCanvas, int x, int y)
+void WWidgetTextLabel::draw(WImage* pCanvas, int x, int y)
 {
 	if(m_bGrabbed)
 		pCanvas->boxFill(x, y, m_rect.w, m_rect.h, 0xffffff00);
@@ -796,31 +796,31 @@ void GWidgetTextLabel::draw(GImage* pCanvas, int x, int y)
 	}
 }
 
-void GWidgetTextLabel::setText(const char* szText)
+void WWidgetTextLabel::setText(const char* szText)
 {
 	m_text = szText;
 	m_pParent->tattle(this);
 }
 
-void GWidgetTextLabel::setForegroundColor(unsigned int c)
+void WWidgetTextLabel::setForegroundColor(unsigned int c)
 {
 	m_cForeground = c;
 	m_pParent->tattle(this);
 }
 
-void GWidgetTextLabel::setBackgroundColor(unsigned int c)
+void WWidgetTextLabel::setBackgroundColor(unsigned int c)
 {
 	m_cBackground = c;
 	m_pParent->tattle(this);
 }
 
-void GWidgetTextLabel::setAlignLeft(bool bAlignLeft)
+void WWidgetTextLabel::setAlignLeft(bool bAlignLeft)
 {
 	m_alignLeft = bAlignLeft;
 	m_pParent->tattle(this);
 }
 
-void GWidgetTextLabel::wrap()
+void WWidgetTextLabel::wrap()
 {
 	size_t start = 0;
 	while(true)
@@ -833,7 +833,7 @@ void GWidgetTextLabel::wrap()
 			char c = m_text[pos];
 			if(c == ' ')
 				lastSpace = pos;
-			wid += GImage::measureCharWidth(c, m_fontSize);
+			wid += WImage::measureCharWidth(c, m_fontSize);
 			pos++;
 		}
 		if(wid <= m_rect.w)
@@ -855,8 +855,8 @@ void GWidgetTextLabel::wrap()
 
 // ----------------------------------------------------------------------
 /*
-GWidgetImageLabel::GWidgetImageLabel(GWidgetGroup* pParent, int x, int y, const char* szHexPngFile)
-: GWidgetAtomic(pParent, x, y, 0, 0)
+WWidgetImageLabel::WWidgetImageLabel(WWidgetGroup* pParent, int x, int y, const char* szHexPngFile)
+: WWidgetAtomic(pParent, x, y, 0, 0)
 {
 	m_image.loadPngFromHex(szHexPngFile);
 	rect()->w = m_image.width();
@@ -864,32 +864,32 @@ GWidgetImageLabel::GWidgetImageLabel(GWidgetGroup* pParent, int x, int y, const 
 }
 
 // virtual
-GWidgetImageLabel::~GWidgetImageLabel()
+WWidgetImageLabel::~WWidgetImageLabel()
 {
 }
 
 // virtual
-void GWidgetImageLabel::draw(GImage* pCanvas, int x, int y)
+void WWidgetImageLabel::draw(WImage* pCanvas, int x, int y)
 {
-	GRect r(0, 0, m_rect.w, m_rect.h);
+	WRect r(0, 0, m_rect.w, m_rect.h);
 	pCanvas->blitAlpha(x, y, &m_image, &r);
 }
 */
 // ----------------------------------------------------------------------
 
-GWidgetGroupBox::GWidgetGroupBox(GWidgetGroup* pParent, int x, int y, int w, int h, unsigned int cLight, unsigned int cShadow)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetGroupBox::WWidgetGroupBox(WWidgetGroup* pParent, int x, int y, int w, int h, unsigned int cLight, unsigned int cShadow)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_cLight = cLight;
 	m_cShadow = cShadow;
 }
 
-/*virtual*/ GWidgetGroupBox::~GWidgetGroupBox()
+/*virtual*/ WWidgetGroupBox::~WWidgetGroupBox()
 {
 }
 
 // virtual
-void GWidgetGroupBox::draw(GImage* pCanvas, int x, int y)
+void WWidgetGroupBox::draw(WImage* pCanvas, int x, int y)
 {
 	pCanvas->box(x, y, x + m_rect.w - 2, y + m_rect.h - 2, m_cShadow);
 	pCanvas->box(x + 1, y + 1, x + m_rect.w - 1, y + m_rect.h - 1, m_cLight);
@@ -897,13 +897,13 @@ void GWidgetGroupBox::draw(GImage* pCanvas, int x, int y)
 	pCanvas->setPixel(x, y + m_rect.h - 1, m_cShadow);
 }
 
-void GWidgetGroupBox::setLightColor(unsigned int c)
+void WWidgetGroupBox::setLightColor(unsigned int c)
 {
 	m_cLight = c;
 	m_pParent->tattle(this);
 }
 
-void GWidgetGroupBox::setShadowColor(unsigned int c)
+void WWidgetGroupBox::setShadowColor(unsigned int c)
 {
 	m_cShadow = c;
 	m_pParent->tattle(this);
@@ -911,31 +911,31 @@ void GWidgetGroupBox::setShadowColor(unsigned int c)
 
 // ----------------------------------------------------------------------
 
-GWidgetVCRButton::GWidgetVCRButton(GWidgetGroup* pParent, int x, int y, int w, int h, VCR_Type eType)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetVCRButton::WWidgetVCRButton(WWidgetGroup* pParent, int x, int y, int w, int h, VCR_Type eType)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_eType = eType;
 	m_pressed = false;
 }
 
-/*virtual*/ GWidgetVCRButton::~GWidgetVCRButton()
+/*virtual*/ WWidgetVCRButton::~WWidgetVCRButton()
 {
 }
 
-/*virtual*/ void GWidgetVCRButton::grab(int button, int x, int y)
+/*virtual*/ void WWidgetVCRButton::grab(int button, int x, int y)
 {
 	m_pressed = true;
 	m_pParent->tattle(this);
 	m_pParent->onPushVCRButton(this);
 }
 
-/*virtual*/ void GWidgetVCRButton::release(int button)
+/*virtual*/ void WWidgetVCRButton::release(int button)
 {
 	m_pressed = false;
 	m_pParent->tattle(this);
 }
 
-void GWidgetVCRButton::drawIcon(GImage* pCanvas, int nHorizOfs, int nVertOfs)
+void WWidgetVCRButton::drawIcon(WImage* pCanvas, int nHorizOfs, int nVertOfs)
 {
 	int nMinSize = m_rect.w;
 	if(nMinSize > m_rect.h)
@@ -970,7 +970,7 @@ void GWidgetVCRButton::drawIcon(GImage* pCanvas, int nHorizOfs, int nVertOfs)
 }
 
 // virtual
-void GWidgetVCRButton::draw(GImage* pCanvas, int x, int y)
+void WWidgetVCRButton::draw(WImage* pCanvas, int x, int y)
 {
 	int w = m_rect.w;
 	int h = m_rect.h;
@@ -990,7 +990,7 @@ void GWidgetVCRButton::draw(GImage* pCanvas, int x, int y)
 	}
 }
 
-void GWidgetVCRButton::setType(VCR_Type eType)
+void WWidgetVCRButton::setType(VCR_Type eType)
 {
 	m_eType = eType;
 	m_pParent->tattle(this);
@@ -998,18 +998,18 @@ void GWidgetVCRButton::setType(VCR_Type eType)
 
 // ----------------------------------------------------------------------
 
-GWidgetProgressBar::GWidgetProgressBar(GWidgetGroup* pParent, int x, int y, int w, int h)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetProgressBar::WWidgetProgressBar(WWidgetGroup* pParent, int x, int y, int w, int h)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_fProgress = 0;
 }
 
-/*virtual*/ GWidgetProgressBar::~GWidgetProgressBar()
+/*virtual*/ WWidgetProgressBar::~WWidgetProgressBar()
 {
 }
 
 // virtual
-void GWidgetProgressBar::draw(GImage* pCanvas, int x, int y)
+void WWidgetProgressBar::draw(WImage* pCanvas, int x, int y)
 {
 	int w = m_rect.w;
 	int h = m_rect.h;
@@ -1047,7 +1047,7 @@ void GWidgetProgressBar::draw(GImage* pCanvas, int x, int y)
 	pCanvas->box(x, y, x + w - 1, y + h - 1, gRGB(64, 64, 64));
 }
 
-void GWidgetProgressBar::setProgress(float fProgress)
+void WWidgetProgressBar::setProgress(float fProgress)
 {
 	m_fProgress = fProgress;
 	m_pParent->tattle(this);
@@ -1055,28 +1055,28 @@ void GWidgetProgressBar::setProgress(float fProgress)
 
 // ----------------------------------------------------------------------
 
-GWidgetCheckBox::GWidgetCheckBox(GWidgetGroup* pParent, int x, int y, int w, int h)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetCheckBox::WWidgetCheckBox(WWidgetGroup* pParent, int x, int y, int w, int h)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_checked = false;
 }
 
-/*virtual*/ GWidgetCheckBox::~GWidgetCheckBox()
+/*virtual*/ WWidgetCheckBox::~WWidgetCheckBox()
 {
 }
 
-/*virtual*/ void GWidgetCheckBox::grab(int button, int x, int y)
+/*virtual*/ void WWidgetCheckBox::grab(int button, int x, int y)
 {
 	// todo: gray the box?
 }
 
-/*virtual*/ void GWidgetCheckBox::release(int button)
+/*virtual*/ void WWidgetCheckBox::release(int button)
 {
 	setChecked(!m_checked);
 }
 
 // virtual
-void GWidgetCheckBox::draw(GImage* pCanvas, int x, int y)
+void WWidgetCheckBox::draw(WImage* pCanvas, int x, int y)
 {
 	int w = m_rect.w;
 	int h = m_rect.h;
@@ -1095,7 +1095,7 @@ void GWidgetCheckBox::draw(GImage* pCanvas, int x, int y)
 	}
 }
 
-void GWidgetCheckBox::setChecked(bool checked)
+void WWidgetCheckBox::setChecked(bool checked)
 {
 	m_checked = checked;
 	m_pParent->onChangeCheckBox(this);
@@ -1104,29 +1104,29 @@ void GWidgetCheckBox::setChecked(bool checked)
 
 // ----------------------------------------------------------------------
 
-GWidgetBulletHole::GWidgetBulletHole(GWidgetGroup* pParent, int x, int y, int w, int h)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetBulletHole::WWidgetBulletHole(WWidgetGroup* pParent, int x, int y, int w, int h)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_checked = false;
 }
 
-/*virtual*/ GWidgetBulletHole::~GWidgetBulletHole()
+/*virtual*/ WWidgetBulletHole::~WWidgetBulletHole()
 {
 }
 
-/*virtual*/ void GWidgetBulletHole::grab(int button, int x, int y)
+/*virtual*/ void WWidgetBulletHole::grab(int button, int x, int y)
 {
 	m_checked = true;
 	m_pParent->tattle(this);
 	m_pParent->onCheckBulletHole(this);
 }
 
-/*virtual*/ void GWidgetBulletHole::release(int button)
+/*virtual*/ void WWidgetBulletHole::release(int button)
 {
 }
 
 // virtual
-void GWidgetBulletHole::draw(GImage* pCanvas, int x, int y)
+void WWidgetBulletHole::draw(WImage* pCanvas, int x, int y)
 {
 	int hw = m_rect.w / 2;
 	int hh = m_rect.h / 2;
@@ -1137,7 +1137,7 @@ void GWidgetBulletHole::draw(GImage* pCanvas, int x, int y)
 		pCanvas->circleFill(x + hw, y + hh, (r >= 4 ? r - 3 : r), 0xff000000);
 }
 
-void GWidgetBulletHole::setChecked(bool checked)
+void WWidgetBulletHole::setChecked(bool checked)
 {
 	m_checked = checked;
 	m_pParent->tattle(this);
@@ -1147,8 +1147,8 @@ void GWidgetBulletHole::setChecked(bool checked)
 
 // ----------------------------------------------------------------------
 
-GWidgetBulletGroup::GWidgetBulletGroup(GWidgetGroup* pParent, int x, int y, int w, int h, int count, int interval, bool vertical)
-: GWidgetGroup(pParent, x, y, (vertical ? w : (count - 1) * interval + w), (vertical ? (count - 1) * interval + h : h))
+WWidgetBulletGroup::WWidgetBulletGroup(WWidgetGroup* pParent, int x, int y, int w, int h, int count, int interval, bool vertical)
+: WWidgetGroup(pParent, x, y, (vertical ? w : (count - 1) * interval + w), (vertical ? (count - 1) * interval + h : h))
 {
 	m_nSelection = -1;
 	int i;
@@ -1156,7 +1156,7 @@ GWidgetBulletGroup::GWidgetBulletGroup(GWidgetGroup* pParent, int x, int y, int 
 	int yy = 0;
 	for(i = 0; i < count; i++)
 	{
-		new GWidgetBulletHole(this, xx, yy, w, h);
+		new WWidgetBulletHole(this, xx, yy, w, h);
 		if(vertical)
 			yy += interval;
 		else
@@ -1164,22 +1164,22 @@ GWidgetBulletGroup::GWidgetBulletGroup(GWidgetGroup* pParent, int x, int y, int 
 	}
 	if(count > 0)
 	{
-		GWidgetBulletHole* pFirst = (GWidgetBulletHole*)childWidget(0);
+		WWidgetBulletHole* pFirst = (WWidgetBulletHole*)childWidget(0);
 		pFirst->setChecked(true);
 	}
 }
 
 // virtual
-GWidgetBulletGroup::~GWidgetBulletGroup()
+WWidgetBulletGroup::~WWidgetBulletGroup()
 {
 }
 
 // virtual
-void GWidgetBulletGroup::draw(GImage* pCanvas, int x, int y)
+void WWidgetBulletGroup::draw(WImage* pCanvas, int x, int y)
 {
 	int nCount = (int)m_widgets.size();
-	GWidget* pChild;
-	GRect* pRect;
+	WWidget* pChild;
+	WRect* pRect;
 	for(int n = 0; n < nCount; n++)
 	{
 		pChild = childWidget(n);
@@ -1190,63 +1190,63 @@ void GWidgetBulletGroup::draw(GImage* pCanvas, int x, int y)
 }
 
 // virtual
-void GWidgetBulletGroup::onCheckBulletHole(GWidgetBulletHole* pBullet)
+void WWidgetBulletGroup::onCheckBulletHole(WWidgetBulletHole* pBullet)
 {
 	m_nSelection = -1;
 	int nCount = (int)m_widgets.size();
-	GWidgetBulletHole* pChild;
+	WWidgetBulletHole* pChild;
 	for(int n = 0; n < nCount; n++)
 	{
-		pChild = (GWidgetBulletHole*)childWidget(n);
+		pChild = (WWidgetBulletHole*)childWidget(n);
 		if(pChild == pBullet)
 			m_nSelection = n;
 		else
 			pChild->setChecked(false);
 	}
-	GAssert(m_nSelection >= 0 || nCount == 0); // not one of my bullet holes
+	WAssert(m_nSelection >= 0 || nCount == 0); // not one of my bullet holes
 	m_pParent->tattle(this);
 }
 
 // virtual
-void GWidgetBulletGroup::tattle(GWidget* pChild)
+void WWidgetBulletGroup::tattle(WWidget* pChild)
 {
 }
 
-void GWidgetBulletGroup::setSelection(int n)
+void WWidgetBulletGroup::setSelection(int n)
 {
-	GWidgetBulletHole* pChild = (GWidgetBulletHole*)childWidget(n);
+	WWidgetBulletHole* pChild = (WWidgetBulletHole*)childWidget(n);
 	pChild->setChecked(true);
 }
 
 // ----------------------------------------------------------------------
 
-GWidgetSliderTab::GWidgetSliderTab(GWidgetGroup* pParent, int x, int y, int w, int h, bool vertical, Style eStyle)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetSliderTab::WWidgetSliderTab(WWidgetGroup* pParent, int x, int y, int w, int h, bool vertical, Style eStyle)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_vertical = vertical;
 	m_eStyle = eStyle;
 }
 
-/*virtual*/ GWidgetSliderTab::~GWidgetSliderTab()
+/*virtual*/ WWidgetSliderTab::~WWidgetSliderTab()
 {
 }
 
-/*virtual*/ void GWidgetSliderTab::grab(int button, int x, int y)
+/*virtual*/ void WWidgetSliderTab::grab(int button, int x, int y)
 {
 	m_pParent->onClickTab(this);
 }
 
-/*virtual*/ void GWidgetSliderTab::release(int button)
+/*virtual*/ void WWidgetSliderTab::release(int button)
 {
 }
 
-/*virtual*/ void GWidgetSliderTab::onMouseMove(int dx, int dy)
+/*virtual*/ void WWidgetSliderTab::onMouseMove(int dx, int dy)
 {
 	m_pParent->onSlideTab(this, dx, dy);
 }
 
 // virtual
-void GWidgetSliderTab::draw(GImage* pCanvas, int x, int y)
+void WWidgetSliderTab::draw(WImage* pCanvas, int x, int y)
 {
 	int i, j;
 	if(m_rect.w <= 0 || m_rect.h <= 0)
@@ -1276,7 +1276,7 @@ void GWidgetSliderTab::draw(GImage* pCanvas, int x, int y)
 				m_common->drawHorizCurvedInSurface(pCanvas, x + m_rect.w / 4, y, m_rect.w / 2, m_rect.h);
 				break;
 			default:
-				GAssert(false); // Unexpected case
+				WAssert(false); // Unexpected case
 		}
 	}
 	else
@@ -1304,12 +1304,12 @@ void GWidgetSliderTab::draw(GImage* pCanvas, int x, int y)
 				m_common->drawVertCurvedInSurface(pCanvas, x, y + m_rect.h / 4, m_rect.w, m_rect.h / 2);
 				break;
 			default:
-				GAssert(false); // Unexpected case
+				WAssert(false); // Unexpected case
 		}
 	}
 }
 
-void GWidgetSliderTab::setSize(int w, int h)
+void WWidgetSliderTab::setSize(int w, int h)
 {
 	m_rect.w = w;
 	m_rect.h = h;
@@ -1318,25 +1318,25 @@ void GWidgetSliderTab::setSize(int w, int h)
 
 // ----------------------------------------------------------------------
 
-GWidgetHorizScrollBar::GWidgetHorizScrollBar(GWidgetGroup* pParent, int x, int y, int w, int h, int nViewSize, int nModelSize)
-: GWidgetGroup(pParent, x, y, w, h)
+WWidgetHorizScrollBar::WWidgetHorizScrollBar(WWidgetGroup* pParent, int x, int y, int w, int h, int nViewSize, int nModelSize)
+: WWidgetGroup(pParent, x, y, w, h)
 {
 	m_nViewSize = nViewSize;
 	m_nModelSize = nModelSize;
 	m_nPos = 0;
 	int wid = buttonWidth();
-	m_pLeftButton = new GWidgetVCRButton(this, 0, 0, wid, h, GWidgetVCRButton::ArrowLeft);
-	m_pRightButton = new GWidgetVCRButton(this, m_rect.w - wid, 0, wid, h, GWidgetVCRButton::ArrowRight);
-	m_pLeftTab = new GWidgetSliderTab(this, 0, 0, w, 0, false, GWidgetSliderTab::ScrollBarArea);
-	m_pTab = new GWidgetSliderTab(this, 0, 0, w, 0, false, GWidgetSliderTab::ScrollBarTab);
-	m_pRightTab = new GWidgetSliderTab(this, 0, 0, w, 0, false, GWidgetSliderTab::ScrollBarArea);
+	m_pLeftButton = new WWidgetVCRButton(this, 0, 0, wid, h, WWidgetVCRButton::ArrowLeft);
+	m_pRightButton = new WWidgetVCRButton(this, m_rect.w - wid, 0, wid, h, WWidgetVCRButton::ArrowRight);
+	m_pLeftTab = new WWidgetSliderTab(this, 0, 0, w, 0, false, WWidgetSliderTab::ScrollBarArea);
+	m_pTab = new WWidgetSliderTab(this, 0, 0, w, 0, false, WWidgetSliderTab::ScrollBarTab);
+	m_pRightTab = new WWidgetSliderTab(this, 0, 0, w, 0, false, WWidgetSliderTab::ScrollBarArea);
 }
 
-/*virtual*/ GWidgetHorizScrollBar::~GWidgetHorizScrollBar()
+/*virtual*/ WWidgetHorizScrollBar::~WWidgetHorizScrollBar()
 {
 }
 
-int GWidgetHorizScrollBar::buttonWidth()
+int WWidgetHorizScrollBar::buttonWidth()
 {
 	if((m_rect.w >> 2) < m_rect.h)
 		return (m_rect.w >> 2);
@@ -1345,7 +1345,7 @@ int GWidgetHorizScrollBar::buttonWidth()
 }
 
 // virtual
-void GWidgetHorizScrollBar::draw(GImage* pCanvas, int x, int y)
+void WWidgetHorizScrollBar::draw(WImage* pCanvas, int x, int y)
 {
 	// Calculations
 	if(m_nModelSize < m_nViewSize)
@@ -1373,7 +1373,7 @@ void GWidgetHorizScrollBar::draw(GImage* pCanvas, int x, int y)
 	m_pTab->setSize(nTabSize, m_rect.h);
 	m_pRightTab->setPos(nTabPos + nTabSize, 0);
 	m_pRightTab->setSize(nSlideAreaSize + nButtonSize - (nTabPos + nTabSize), m_rect.h);
-	GRect* pRect;
+	WRect* pRect;
 	pRect = m_pLeftTab->rect();
 	m_pLeftTab->draw(pCanvas, x + pRect->x, y + pRect->y);
 	pRect = m_pTab->rect();
@@ -1389,7 +1389,7 @@ void GWidgetHorizScrollBar::draw(GImage* pCanvas, int x, int y)
 	setClean();
 }
 
-/*virtual*/ void GWidgetHorizScrollBar::onPushVCRButton(GWidgetVCRButton* pButton)
+/*virtual*/ void WWidgetHorizScrollBar::onPushVCRButton(WWidgetVCRButton* pButton)
 {
 	if(pButton == m_pLeftButton)
 	{
@@ -1399,7 +1399,7 @@ void GWidgetHorizScrollBar::draw(GImage* pCanvas, int x, int y)
 	}
 	else
 	{
-		GAssert(pButton == m_pRightButton); // unexpected button
+		WAssert(pButton == m_pRightButton); // unexpected button
 		m_nPos += m_nViewSize / 5;
 		if(m_nPos > m_nModelSize - m_nViewSize)
 			m_nPos = m_nModelSize - m_nViewSize;
@@ -1408,7 +1408,7 @@ void GWidgetHorizScrollBar::draw(GImage* pCanvas, int x, int y)
 	m_pParent->onHorizScroll(this);
 }
 
-/*virtual*/ void GWidgetHorizScrollBar::onClickTab(GWidgetSliderTab* pTab)
+/*virtual*/ void WWidgetHorizScrollBar::onClickTab(WWidgetSliderTab* pTab)
 {
 	if(pTab == m_pLeftTab)
 	{
@@ -1428,14 +1428,14 @@ void GWidgetHorizScrollBar::draw(GImage* pCanvas, int x, int y)
 	}
 }
 
-/*virtual*/ void GWidgetHorizScrollBar::onSlideTab(GWidgetSliderTab* pTab, int dx, int dy)
+/*virtual*/ void WWidgetHorizScrollBar::onSlideTab(WWidgetSliderTab* pTab, int dx, int dy)
 {
 	if(pTab != m_pTab)
 		return;
 	int wid = m_rect.w - 2 * buttonWidth();
 	int nDelta = dx * m_nModelSize / wid;
 	if(dx != 0 && nDelta == 0)
-		nDelta = GBits::sign(dx);
+		nDelta = WBits::sign(dx);
 	m_nPos += nDelta;
 	if(m_nPos < 0)
 		m_nPos = 0;
@@ -1445,19 +1445,19 @@ void GWidgetHorizScrollBar::draw(GImage* pCanvas, int x, int y)
 	m_pParent->onHorizScroll(this);
 }
 
-void GWidgetHorizScrollBar::setViewSize(int n)
+void WWidgetHorizScrollBar::setViewSize(int n)
 {
 	m_nViewSize = n;
 	m_pParent->tattle(this);
 }
 
-void GWidgetHorizScrollBar::setModelSize(int n)
+void WWidgetHorizScrollBar::setModelSize(int n)
 {
 	m_nModelSize = n;
 	m_pParent->tattle(this);
 }
 
-void GWidgetHorizScrollBar::setPos(int n)
+void WWidgetHorizScrollBar::setPos(int n)
 {
 	m_nPos = n;
 	m_pParent->tattle(this);
@@ -1466,25 +1466,25 @@ void GWidgetHorizScrollBar::setPos(int n)
 
 // ----------------------------------------------------------------------
 
-GWidgetVertScrollBar::GWidgetVertScrollBar(GWidgetGroup* pParent, int x, int y, int w, int h, int nViewSize, int nModelSize)
-: GWidgetGroup(pParent, x, y, w, h)
+WWidgetVertScrollBar::WWidgetVertScrollBar(WWidgetGroup* pParent, int x, int y, int w, int h, int nViewSize, int nModelSize)
+: WWidgetGroup(pParent, x, y, w, h)
 {
 	m_nViewSize = nViewSize;
 	m_nModelSize = nModelSize;
 	m_nPos = 0;
 	int hgt = buttonHeight();
-	m_pUpButton = new GWidgetVCRButton(this, 0, 0, w, hgt, GWidgetVCRButton::ArrowUp);
-	m_pDownButton = new GWidgetVCRButton(this, 0, m_rect.h - hgt, w, hgt, GWidgetVCRButton::ArrowDown);
-	m_pAboveTab = new GWidgetSliderTab(this, 0, 0, w, 0, true, GWidgetSliderTab::ScrollBarArea);
-	m_pTab = new GWidgetSliderTab(this, 0, 0, w, 0, true, GWidgetSliderTab::ScrollBarTab);
-	m_pBelowTab = new GWidgetSliderTab(this, 0, 0, w, 0, true, GWidgetSliderTab::ScrollBarArea);
+	m_pUpButton = new WWidgetVCRButton(this, 0, 0, w, hgt, WWidgetVCRButton::ArrowUp);
+	m_pDownButton = new WWidgetVCRButton(this, 0, m_rect.h - hgt, w, hgt, WWidgetVCRButton::ArrowDown);
+	m_pAboveTab = new WWidgetSliderTab(this, 0, 0, w, 0, true, WWidgetSliderTab::ScrollBarArea);
+	m_pTab = new WWidgetSliderTab(this, 0, 0, w, 0, true, WWidgetSliderTab::ScrollBarTab);
+	m_pBelowTab = new WWidgetSliderTab(this, 0, 0, w, 0, true, WWidgetSliderTab::ScrollBarArea);
 }
 
-/*virtual*/ GWidgetVertScrollBar::~GWidgetVertScrollBar()
+/*virtual*/ WWidgetVertScrollBar::~WWidgetVertScrollBar()
 {
 }
 
-int GWidgetVertScrollBar::buttonHeight()
+int WWidgetVertScrollBar::buttonHeight()
 {
 	if((m_rect.h >> 2) < m_rect.w)
 		return (m_rect.h >> 2);
@@ -1493,7 +1493,7 @@ int GWidgetVertScrollBar::buttonHeight()
 }
 
 // virtual
-void GWidgetVertScrollBar::draw(GImage* pCanvas, int x, int y)
+void WWidgetVertScrollBar::draw(WImage* pCanvas, int x, int y)
 {
 	// Calculations
 	if(m_nModelSize < m_nViewSize)
@@ -1521,7 +1521,7 @@ void GWidgetVertScrollBar::draw(GImage* pCanvas, int x, int y)
 	m_pTab->setSize(m_rect.w, nTabSize);
 	m_pBelowTab->setPos(0, nTabPos + nTabSize);
 	m_pBelowTab->setSize(m_rect.w, nSlideAreaSize + nButtonSize - (nTabPos + nTabSize));
-	GRect* pRect;
+	WRect* pRect;
 	pRect = m_pAboveTab->rect();
 	m_pAboveTab->draw(pCanvas, x + pRect->x, y + pRect->y);
 	pRect = m_pTab->rect();
@@ -1537,7 +1537,7 @@ void GWidgetVertScrollBar::draw(GImage* pCanvas, int x, int y)
 	setClean();
 }
 
-/*virtual*/ void GWidgetVertScrollBar::onPushVCRButton(GWidgetVCRButton* pButton)
+/*virtual*/ void WWidgetVertScrollBar::onPushVCRButton(WWidgetVCRButton* pButton)
 {
 	if(pButton == m_pUpButton)
 	{
@@ -1547,7 +1547,7 @@ void GWidgetVertScrollBar::draw(GImage* pCanvas, int x, int y)
 	}
 	else
 	{
-		GAssert(pButton == m_pDownButton); // unexpected button
+		WAssert(pButton == m_pDownButton); // unexpected button
 		m_nPos += m_nViewSize / 5;
 		if(m_nPos > m_nModelSize - m_nViewSize)
 			m_nPos = m_nModelSize - m_nViewSize;
@@ -1556,7 +1556,7 @@ void GWidgetVertScrollBar::draw(GImage* pCanvas, int x, int y)
 	m_pParent->onVertScroll(this);
 }
 
-/*virtual*/ void GWidgetVertScrollBar::onClickTab(GWidgetSliderTab* pTab)
+/*virtual*/ void WWidgetVertScrollBar::onClickTab(WWidgetSliderTab* pTab)
 {
 	if(pTab == m_pAboveTab)
 	{
@@ -1576,14 +1576,14 @@ void GWidgetVertScrollBar::draw(GImage* pCanvas, int x, int y)
 	}
 }
 
-/*virtual*/ void GWidgetVertScrollBar::onSlideTab(GWidgetSliderTab* pTab, int dx, int dy)
+/*virtual*/ void WWidgetVertScrollBar::onSlideTab(WWidgetSliderTab* pTab, int dx, int dy)
 {
 	if(pTab != m_pTab)
 		return;
 	int hgt = m_rect.h - 2 * buttonHeight();
 	int nDelta = dy * m_nModelSize / hgt;
 	if(dy != 0 && nDelta == 0)
-		nDelta = GBits::sign(dy);
+		nDelta = WBits::sign(dy);
 	m_nPos += nDelta;
 	if(m_nPos < 0)
 		m_nPos = 0;
@@ -1593,19 +1593,19 @@ void GWidgetVertScrollBar::draw(GImage* pCanvas, int x, int y)
 	m_pParent->onVertScroll(this);
 }
 
-void GWidgetVertScrollBar::setViewSize(int n)
+void WWidgetVertScrollBar::setViewSize(int n)
 {
 	m_nViewSize = n;
 	m_pParent->tattle(this);
 }
 
-void GWidgetVertScrollBar::setModelSize(int n)
+void WWidgetVertScrollBar::setModelSize(int n)
 {
 	m_nModelSize = n;
 	m_pParent->tattle(this);
 }
 
-void GWidgetVertScrollBar::setPos(int n)
+void WWidgetVertScrollBar::setPos(int n)
 {
 	m_nPos = n;
 	m_pParent->tattle(this);
@@ -1614,8 +1614,8 @@ void GWidgetVertScrollBar::setPos(int n)
 
 // ----------------------------------------------------------------------
 
-GWidgetTextBox::GWidgetTextBox(GWidgetGroup* pParent, int x, int y, int w, int h)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetTextBox::WWidgetTextBox(WWidgetGroup* pParent, int x, int y, int w, int h)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_bGotFocus = false;
 	m_bPassword = false;
@@ -1625,11 +1625,11 @@ GWidgetTextBox::GWidgetTextBox(GWidgetGroup* pParent, int x, int y, int w, int h
 	m_cBackground = 0xff0000ff;
 }
 
-/*virtual*/ GWidgetTextBox::~GWidgetTextBox()
+/*virtual*/ WWidgetTextBox::~WWidgetTextBox()
 {
 }
 
-void GWidgetTextBox::setText(const char* szText)
+void WWidgetTextBox::setText(const char* szText)
 {
 	m_text = szText;
 	m_nAnchorPos = (int)m_text.length();
@@ -1638,14 +1638,14 @@ void GWidgetTextBox::setText(const char* szText)
 	m_pParent->onTextBoxTextChanged(this);
 }
 
-void GWidgetTextBox::setText(int nValue)
+void WWidgetTextBox::setText(int nValue)
 {
 	std::ostringstream os;
 	os << nValue;
 	m_text = os.str();
 }
 
-void GWidgetTextBox::setText(double dValue)
+void WWidgetTextBox::setText(double dValue)
 {
 	std::ostringstream os;
 	os.precision(14);
@@ -1654,7 +1654,7 @@ void GWidgetTextBox::setText(double dValue)
 }
 
 // virtual
-void GWidgetTextBox::draw(GImage* pCanvas, int x, int y)
+void WWidgetTextBox::draw(WImage* pCanvas, int x, int y)
 {
 	// Draw the background area
 	int w = m_rect.w;
@@ -1664,7 +1664,7 @@ void GWidgetTextBox::draw(GImage* pCanvas, int x, int y)
 
 	// Draw the text
 	int nTempBufLen = (int)m_text.length() + 1;
-	GTEMPBUF(char, szText, nTempBufLen);
+	WTEMPBUF(char, szText, nTempBufLen);
 	strcpy(szText, m_text.c_str());
 	float fontSize = (float)(h - 4) / 12;
 	int xx = x + 1;
@@ -1698,7 +1698,7 @@ void GWidgetTextBox::draw(GImage* pCanvas, int x, int y)
 	{
 		szText[nSelStart] = '\0';
 		int nSelStartPos = pCanvas->measureTextWidth(szText, fontSize);
-		GRect r;
+		WRect r;
 		r.x = x + nSelStartPos;
 		r.y = yy;
 		r.w = nSelEndPos - nSelStartPos;
@@ -1707,13 +1707,13 @@ void GWidgetTextBox::draw(GImage* pCanvas, int x, int y)
 	}
 }
 
-void GWidgetTextBox::setColor(unsigned int c)
+void WWidgetTextBox::setColor(unsigned int c)
 {
 	m_cBackground = c;
 	m_pParent->tattle(this);
 }
 
-/*virtual*/ void GWidgetTextBox::onChar(char c)
+/*virtual*/ void WWidgetTextBox::onChar(char c)
 {
 	if(c == '\b')
 	{
@@ -1778,7 +1778,7 @@ void GWidgetTextBox::setColor(unsigned int c)
 	m_pParent->onTextBoxTextChanged(this);
 }
 
-/*virtual*/ void GWidgetTextBox::onSpecialKey(int key)
+/*virtual*/ void WWidgetTextBox::onSpecialKey(int key)
 {
 	switch(key)
 	{
@@ -1808,7 +1808,7 @@ void GWidgetTextBox::setColor(unsigned int c)
 	m_pParent->tattle(this);
 }
 
-void GWidgetTextBox::SetSelection(int anchorPos, int cursorPos)
+void WWidgetTextBox::SetSelection(int anchorPos, int cursorPos)
 {
 	if(anchorPos > cursorPos)
 		std::swap(anchorPos, cursorPos);
@@ -1816,20 +1816,20 @@ void GWidgetTextBox::SetSelection(int anchorPos, int cursorPos)
 	m_nCursorPos = std::max(0, std::min((int)m_text.length(), cursorPos));
 }
 
-/*virtual*/ void GWidgetTextBox::grab(int button, int x, int y)
+/*virtual*/ void WWidgetTextBox::grab(int button, int x, int y)
 {
 	m_nMouseDelta = 0;
 	float fontSize = (float)(m_rect.h - 4) / 12;
-	m_nAnchorPos = GImage::countTextChars(x - 1 + 3, m_text.c_str(), fontSize);
+	m_nAnchorPos = WImage::countTextChars(x - 1 + 3, m_text.c_str(), fontSize);
 	m_nCursorPos = m_nAnchorPos;
 	m_pParent->tattle(this);
 }
 
-/*virtual*/ void GWidgetTextBox::release(int button)
+/*virtual*/ void WWidgetTextBox::release(int button)
 {
 }
 
-/*virtual*/ void GWidgetTextBox::onMouseMove(int dx, int dy)
+/*virtual*/ void WWidgetTextBox::onMouseMove(int dx, int dy)
 {
 	m_nMouseDelta += dx;
 	int nNewCursorPos = m_nAnchorPos + m_nMouseDelta / 6;
@@ -1844,13 +1844,13 @@ void GWidgetTextBox::SetSelection(int anchorPos, int cursorPos)
 	}
 }
 
-/*virtual*/ void GWidgetTextBox::onGetFocus()
+/*virtual*/ void WWidgetTextBox::onGetFocus()
 {
 	m_bGotFocus = true;
 	m_pParent->tattle(this);
 }
 
-/*virtual*/ void GWidgetTextBox::onLoseFocus()
+/*virtual*/ void WWidgetTextBox::onLoseFocus()
 {
 	m_bGotFocus = false;
 	m_pParent->tattle(this);
@@ -1858,8 +1858,8 @@ void GWidgetTextBox::SetSelection(int anchorPos, int cursorPos)
 
 // ----------------------------------------------------------------------
 
-GWidgetGrid::GWidgetGrid(GWidgetGroup* pParent, int nColumns, int x, int y, int w, int h, unsigned int cBackground)
-: GWidgetGroup(pParent, x, y, w, h)
+WWidgetGrid::WWidgetGrid(WWidgetGroup* pParent, int nColumns, int x, int y, int w, int h, unsigned int cBackground)
+: WWidgetGroup(pParent, x, y, w, h)
 {
 	m_cBackground = cBackground;
 	m_nColumns = 0;
@@ -1870,12 +1870,12 @@ GWidgetGrid::GWidgetGrid(GWidgetGroup* pParent, int nColumns, int x, int y, int 
 	int nScrollBarSize = 16;
 	m_pVertScrollBar = nullptr;
 	m_pHorizScrollBar = nullptr;
-	m_pVertScrollBar = new GWidgetVertScrollBar(this, w - nScrollBarSize, 0, nScrollBarSize, h, h - m_nHeaderHeight - nScrollBarSize, h);
-	m_pHorizScrollBar = new GWidgetHorizScrollBar(this, 0, h - nScrollBarSize, w - nScrollBarSize, nScrollBarSize, w - nScrollBarSize, 80 * nColumns);
+	m_pVertScrollBar = new WWidgetVertScrollBar(this, w - nScrollBarSize, 0, nScrollBarSize, h, h - m_nHeaderHeight - nScrollBarSize, h);
+	m_pHorizScrollBar = new WWidgetHorizScrollBar(this, 0, h - nScrollBarSize, w - nScrollBarSize, nScrollBarSize, w - nScrollBarSize, 80 * nColumns);
 	setColumnCount(nColumns);
 }
 
-/*virtual*/ GWidgetGrid::~GWidgetGrid()
+/*virtual*/ WWidgetGrid::~WWidgetGrid()
 {
 	delete[] m_pColumnHeaders;
 	delete[] m_nColumnWidths;
@@ -1883,39 +1883,39 @@ GWidgetGrid::GWidgetGrid(GWidgetGroup* pParent, int nColumns, int x, int y, int 
 		delete[] m_rows[i];
 }
 
-int GWidgetGrid::rowCount()
+int WWidgetGrid::rowCount()
 {
 	return (int)m_rows.size();
 }
 
-void GWidgetGrid::setRowHeight(int n)
+void WWidgetGrid::setRowHeight(int n)
 {
 	m_nRowHeight = n;
 	m_pParent->tattle(this);
 }
 
-void GWidgetGrid::setHeaderHeight(int n)
+void WWidgetGrid::setHeaderHeight(int n)
 {
 	m_nHeaderHeight = n;
 	m_pVertScrollBar->setViewSize(m_rect.h - 16 - n);
 	m_pParent->tattle(this);
 }
 
-void GWidgetGrid::setHScrollPos(int n)
+void WWidgetGrid::setHScrollPos(int n)
 {
 	m_pHorizScrollBar->setPos(n);
 	m_pParent->tattle(this);
 }
 
-void GWidgetGrid::setVScrollPos(int n)
+void WWidgetGrid::setVScrollPos(int n)
 {
 	m_pVertScrollBar->setPos(n);
 	m_pParent->tattle(this);
 }
 
-void GWidgetGrid::addBlankRow()
+void WWidgetGrid::addBlankRow()
 {
-	GWidget** pNewRow = new GWidget*[m_nColumns];
+	WWidget** pNewRow = new WWidget*[m_nColumns];
 	int n;
 	for(n = 0; n < m_nColumns; n++)
 		pNewRow[n] = nullptr;
@@ -1923,14 +1923,14 @@ void GWidgetGrid::addBlankRow()
 	m_pParent->tattle(this);
 }
 
-GWidget* GWidgetGrid::widget(int col, int row)
+WWidget* WWidgetGrid::widget(int col, int row)
 {
-	GAssert(col >= 0 && col < m_nColumns); // out of range
-	GWidget** pRow = m_rows[row];
+	WAssert(col >= 0 && col < m_nColumns); // out of range
+	WWidget** pRow = m_rows[row];
 	return pRow[col];
 }
 
-void GWidgetGrid::setWidget(int col, int row, GWidget* pWidget)
+void WWidgetGrid::setWidget(int col, int row, WWidget* pWidget)
 {
 	if(pWidget->m_pParent == nullptr)
 	{
@@ -1943,7 +1943,7 @@ void GWidgetGrid::setWidget(int col, int row, GWidget* pWidget)
 		throw Ex("out of range");
 	while(row >= (int)m_rows.size())
 		addBlankRow();
-	GWidget** pRow = m_rows[row];
+	WWidget** pRow = m_rows[row];
 	pRow[col] = pWidget;
 	int nColPos = 0;
 	int n;
@@ -1953,12 +1953,12 @@ void GWidgetGrid::setWidget(int col, int row, GWidget* pWidget)
 	m_pParent->tattle(this);
 }
 
-void GWidgetGrid::setColumnCount(int n)
+void WWidgetGrid::setColumnCount(int n)
 {
 	// Replace the column headers
 	int nScrollBarSize = 16;
 	int nDefaultColumnWidth = std::max((m_rect.w - nScrollBarSize) / n, 50);
-	GWidget** pNewColumnHeaders = new GWidget*[n];
+	WWidget** pNewColumnHeaders = new WWidget*[n];
 	int* pNewColumnWidths = new int[n];
 	int i;
 	for(i = 0; i < n && i < m_nColumns; i++)
@@ -1979,8 +1979,8 @@ void GWidgetGrid::setColumnCount(int n)
 	// Replace the rows
 	for(size_t j = 0; j < m_rows.size(); j++)
 	{
-		GWidget** pOldRow = m_rows[j];
-		GWidget** pNewRow = new GWidget*[n];
+		WWidget** pOldRow = m_rows[j];
+		WWidget** pNewRow = new WWidget*[n];
 		for(i = 0; i < n && i < m_nColumns; i++)
 			pNewRow[i] = pOldRow[i];
 		for(; i < n; i++)
@@ -1994,15 +1994,15 @@ void GWidgetGrid::setColumnCount(int n)
 	m_pParent->tattle(this);
 }
 
-GWidget* GWidgetGrid::columnHeader(int col)
+WWidget* WWidgetGrid::columnHeader(int col)
 {
-	GAssert(col >= 0 && col < m_nColumns); // out of range
+	WAssert(col >= 0 && col < m_nColumns); // out of range
 	return m_pColumnHeaders[col];
 }
 
-void GWidgetGrid::setColumnHeader(int col, GWidget* pWidget)
+void WWidgetGrid::setColumnHeader(int col, WWidget* pWidget)
 {
-	GAssert(col >= 0 && col < m_nColumns); // out of range
+	WAssert(col >= 0 && col < m_nColumns); // out of range
 	// todo: do we need to do anything with the widget that used to be here?
 	m_pColumnHeaders[col] = pWidget;
 	int nColPos = 0;
@@ -2013,43 +2013,43 @@ void GWidgetGrid::setColumnHeader(int col, GWidget* pWidget)
 	tattle(pWidget);
 }
 
-int GWidgetGrid::columnWidth(int col)
+int WWidgetGrid::columnWidth(int col)
 {
-	GAssert(col >= 0 && col < m_nColumns); // out of range
+	WAssert(col >= 0 && col < m_nColumns); // out of range
 	return m_nColumnWidths[col];
 }
 
-void GWidgetGrid::setColumnWidth(int col, int nWidth)
+void WWidgetGrid::setColumnWidth(int col, int nWidth)
 {
-	GAssert(col >= 0 && col < m_nColumns); // out of range
+	WAssert(col >= 0 && col < m_nColumns); // out of range
 	m_nColumnWidths[col] = nWidth;
 	m_pParent->tattle(this);
 }
 
 // virtual
-void GWidgetGrid::tattle(GWidget* pChild)
+void WWidgetGrid::tattle(WWidget* pChild)
 {
-	// Swallow tattling from scroll bars since GWidgetGrid::Draw
+	// Swallow tattling from scroll bars since WWidgetGrid::Draw
 	// triggers them to change
 	if(pChild == m_pVertScrollBar || pChild == m_pHorizScrollBar)
 		return;
-	GWidgetGroup::tattle(pChild);
+	WWidgetGroup::tattle(pChild);
 }
 
 // virtual
-void GWidgetGrid::draw(GImage* pCanvas, int x, int y)
+void WWidgetGrid::draw(WImage* pCanvas, int x, int y)
 {
 	// Clear
 	int w = m_rect.w - 16;
 	int h = m_rect.h - 16;
 	pCanvas->boxFill(x, y, w, h, m_cBackground);
-	GRect rClipHeader(x, y, w, h);
-	GRect rClipBody(x, y + m_nHeaderHeight, w, h - m_nHeaderHeight);
+	WRect rClipHeader(x, y, w, h);
+	WRect rClipBody(x, y + m_nHeaderHeight, w, h - m_nHeaderHeight);
 
 	// Draw columns
 	int nColumnPos, nColumnWidth, nVertPos;
-	GWidget* pWidget;
-	GRect r;
+	WWidget* pWidget;
+	WRect r;
 	int nHScrollPos = m_pHorizScrollBar->pos();
 	int nVScrollPos = m_pVertScrollBar->pos();
 	int col, row;
@@ -2092,12 +2092,12 @@ void GWidgetGrid::draw(GImage* pCanvas, int x, int y)
 	setClean();
 }
 
-void GWidgetGrid::flushItems(bool deleteWidgets)
+void WWidgetGrid::flushItems(bool deleteWidgets)
 {
 	bool bCol;
 	for(size_t n = 0; n < m_widgets.size(); n++)
 	{
-		GWidget* pWidget = m_widgets[n];
+		WWidget* pWidget = m_widgets[n];
 		if(pWidget == m_pVertScrollBar)
 			continue;
 		if(pWidget == m_pHorizScrollBar)
@@ -2130,19 +2130,19 @@ void GWidgetGrid::flushItems(bool deleteWidgets)
 	m_pParent->tattle(this);
 }
 
-/*virtual*/ void GWidgetGrid::onVertScroll(GWidgetVertScrollBar* pScrollBar)
+/*virtual*/ void WWidgetGrid::onVertScroll(WWidgetVertScrollBar* pScrollBar)
 {
 	m_pParent->tattle(this);
 }
 
-/*virtual*/ void GWidgetGrid::onHorizScroll(GWidgetHorizScrollBar* pScrollBar)
+/*virtual*/ void WWidgetGrid::onHorizScroll(WWidgetHorizScrollBar* pScrollBar)
 {
 	m_pParent->tattle(this);
 }
 
-/*virtual*/ GWidgetAtomic* GWidgetGrid::findAtomicWidget(int x, int y)
+/*virtual*/ WWidgetAtomic* WWidgetGrid::findAtomicWidget(int x, int y)
 {
-	GRect* pRect = m_pVertScrollBar->rect();
+	WRect* pRect = m_pVertScrollBar->rect();
 	if(x >= pRect->x)
 		return m_pVertScrollBar->findAtomicWidget(x - pRect->x, y - pRect->y);
 	pRect = m_pHorizScrollBar->rect();
@@ -2151,7 +2151,7 @@ void GWidgetGrid::flushItems(bool deleteWidgets)
 	int xOrig = x;
 	int yOrig = y;
 	x += m_pHorizScrollBar->pos();
-	GWidget** pRow;
+	WWidget** pRow;
 	if(y < m_nHeaderHeight)
 		pRow = m_pColumnHeaders;
 	else
@@ -2164,7 +2164,7 @@ void GWidgetGrid::flushItems(bool deleteWidgets)
 		else
 			return nullptr;
 	}
-	GWidget* pWidget = nullptr;
+	WWidget* pWidget = nullptr;
 	int nColLeft = 0;
 	int n;
 	for(n = 0; n < m_nColumns; n++)
@@ -2179,11 +2179,11 @@ void GWidgetGrid::flushItems(bool deleteWidgets)
 	if(pWidget)
 	{
 		if(pWidget->isAtomic())
-			return (GWidgetAtomic*)pWidget;
+			return (WWidgetAtomic*)pWidget;
 		else
 		{
-			GRect* pRectangle = pWidget->rect();
-			return ((GWidgetGroup*)pWidget)->findAtomicWidget(xOrig - pRectangle->x, yOrig - pRectangle->y);
+			WRect* pRectangle = pWidget->rect();
+			return ((WWidgetGroup*)pWidget)->findAtomicWidget(xOrig - pRectangle->x, yOrig - pRectangle->y);
 		}
 	}
 	return nullptr;
@@ -2191,25 +2191,25 @@ void GWidgetGrid::flushItems(bool deleteWidgets)
 
 // ----------------------------------------------------------------------
 
-GWidgetFileSystemBrowser::GWidgetFileSystemBrowser(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szExtensions)
-: GWidgetGroup(pParent, x, y, w, h)
+WWidgetFileSystemBrowser::WWidgetFileSystemBrowser(WWidgetGroup* pParent, int x, int y, int w, int h, const char* szExtensions)
+: WWidgetGroup(pParent, x, y, w, h)
 {
 	int nPathHeight = 12;
-	m_pPath = new GWidgetTextLabel(this, 0, 0, w, nPathHeight, "", 0xff8888ff);
+	m_pPath = new WWidgetTextLabel(this, 0, 0, w, nPathHeight, "", 0xff8888ff);
 	m_pPath->setBackgroundColor(0xff000000);
-	m_pFiles = new GWidgetGrid(this, 3, 0, nPathHeight, w, h - nPathHeight);
+	m_pFiles = new WWidgetGrid(this, 3, 0, nPathHeight, w, h - nPathHeight);
 
 	// Column Headers
 	m_pFiles->setColumnWidth(0, 100);
 	m_pFiles->setColumnWidth(1, 100);
 	m_pFiles->setColumnWidth(2, 100);
 	/*
-	GWidgetTextButton* pButton;
-	pButton = new GWidgetTextButton(m_pFiles, 0, 0, 300, 20, "");
+	WWidgetTextButton* pButton;
+	pButton = new WWidgetTextButton(m_pFiles, 0, 0, 300, 20, "");
 	m_pFiles->SetColumnHeader(0, pButton);
-	pButton = new GWidgetTextButton(m_pFiles, 0, 0, 50, 20, "");
+	pButton = new WWidgetTextButton(m_pFiles, 0, 0, 50, 20, "");
 	m_pFiles->SetColumnHeader(1, pButton);
-	pButton = new GWidgetTextButton(m_pFiles, 0, 0, 50, 20, "");
+	pButton = new WWidgetTextButton(m_pFiles, 0, 0, 50, 20, "");
 	m_pFiles->SetColumnHeader(2, pButton);
 */
 	// Extension
@@ -2227,7 +2227,7 @@ GWidgetFileSystemBrowser::GWidgetFileSystemBrowser(GWidgetGroup* pParent, int x,
 	m_bFileListDirty = true;
 }
 
-/*virtual*/ GWidgetFileSystemBrowser::~GWidgetFileSystemBrowser()
+/*virtual*/ WWidgetFileSystemBrowser::~WWidgetFileSystemBrowser()
 {
 	delete[] m_szExtensions;
 }
@@ -2252,7 +2252,7 @@ bool CheckExtensionList(const char* szExt, const char* szList)
 	return false;
 }
 
-bool GSortByCaseInsensitiveStringComparer(const string& a, const string& b)
+bool WSortByCaseInsensitiveStringComparer(const string& a, const string& b)
 {
 	return _stricmp(a.c_str(), b.c_str()) < 0;
 }
@@ -2260,7 +2260,7 @@ bool GSortByCaseInsensitiveStringComparer(const string& a, const string& b)
 #define MIN_FILES_BROWSER_COL_WIDTH 150
 
 // virtual
-void GWidgetFileSystemBrowser::dirFoldersAndFiles(string* pOutDir, vector<string>* pOutFolders, vector<string>* pOutFiles)
+void WWidgetFileSystemBrowser::dirFoldersAndFiles(string* pOutDir, vector<string>* pOutFolders, vector<string>* pOutFiles)
 {
 	// Get the path
 	char szPath[300];
@@ -2277,20 +2277,20 @@ void GWidgetFileSystemBrowser::dirFoldersAndFiles(string* pOutDir, vector<string
 	   2)
 #endif
 		pOutFolders->push_back("..");
-	GFile::folderList(*pOutFolders);
+	WFile::folderList(*pOutFolders);
 
 	// Get the files
 	{
 		vector<string> files;
-		GFile::fileList(files);
+		WFile::fileList(files);
 		for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 		{
 			const char* szFilename = it->c_str();
 			if(m_szExtensions)
 			{
 				PathData pd;
-				GFile::parsePath(szFilename, &pd);
-				GAssert(pd.extStart >= 0); // out of range
+				WFile::parsePath(szFilename, &pd);
+				WAssert(pd.extStart >= 0); // out of range
 				if(!CheckExtensionList(&szFilename[pd.extStart], m_szExtensions))
 					continue;
 			}
@@ -2299,7 +2299,7 @@ void GWidgetFileSystemBrowser::dirFoldersAndFiles(string* pOutDir, vector<string
 	}
 }
 
-void GWidgetFileSystemBrowser::reloadFileList()
+void WWidgetFileSystemBrowser::reloadFileList()
 {
 	m_bFileListDirty = false;
 	int nScrollBarSize = 16;
@@ -2308,8 +2308,8 @@ void GWidgetFileSystemBrowser::reloadFileList()
 	vector<string> files;
 	dirFoldersAndFiles(&m_path, &folders, &files);
 	m_pPath->setText(m_path.c_str());
-	std::sort(folders.begin(), folders.end(), GSortByCaseInsensitiveStringComparer);
-	std::sort(files.begin(), files.end(), GSortByCaseInsensitiveStringComparer);
+	std::sort(folders.begin(), folders.end(), WSortByCaseInsensitiveStringComparer);
+	std::sort(files.begin(), files.end(), WSortByCaseInsensitiveStringComparer);
 
 	// Make the columns
 	int totalSize = (int)folders.size() + (int)files.size();
@@ -2353,19 +2353,19 @@ void GWidgetFileSystemBrowser::reloadFileList()
 				else
 					col = 0xffffffff;
 			}
-			GWidgetTextLabel* pLabel = new GWidgetTextLabel(m_pFiles, 0, 0, colwid, m_pFiles->rowHeight(), szFilename, col, 0xff003000);
+			WWidgetTextLabel* pLabel = new WWidgetTextLabel(m_pFiles, 0, 0, colwid, m_pFiles->rowHeight(), szFilename, col, 0xff003000);
 			m_pFiles->setWidget(c, r, pLabel);
 			i++;
 		}
 	}
 }
 
-/*virtual*/ void GWidgetFileSystemBrowser::onClickTextLabel(GWidgetTextLabel* pLabel)
+/*virtual*/ void WWidgetFileSystemBrowser::onClickTextLabel(WWidgetTextLabel* pLabel)
 {
 	int nPathLen = (int)m_path.length();
 	const string& text = pLabel->text();
 	int nTempBufLen = nPathLen + (int)text.length() + 1;
-	GTEMPBUF(char, szFilename, nTempBufLen);
+	WTEMPBUF(char, szFilename, nTempBufLen);
 	strcpy(szFilename, m_path.c_str());
 	strcpy(szFilename + nPathLen, text.c_str());
 	if(chdir(szFilename) == 0)
@@ -2382,11 +2382,11 @@ void GWidgetFileSystemBrowser::reloadFileList()
 }
 
 // virtual
-void GWidgetFileSystemBrowser::draw(GImage* pCanvas, int x, int y)
+void WWidgetFileSystemBrowser::draw(WImage* pCanvas, int x, int y)
 {
 	if(m_bFileListDirty)
 		reloadFileList();
-	vector<GWidget*>* pDirtyChildren = &m_dirtyChildren;
+	vector<WWidget*>* pDirtyChildren = &m_dirtyChildren;
 	if(getDirtyBit((int)m_widgets.size()))
 	{
 		setDirtyBit((int)m_widgets.size(), false);
@@ -2395,8 +2395,8 @@ void GWidgetFileSystemBrowser::draw(GImage* pCanvas, int x, int y)
 	}
 	int n;
 	int nCount = (int)pDirtyChildren->size();
-	GWidget* pWidget;
-	GRect* pRect;
+	WWidget* pWidget;
+	WRect* pRect;
 	for(n = 0; n < nCount; n++)
 	{
 		pWidget = (*pDirtyChildren)[n];
@@ -2412,21 +2412,21 @@ void GWidgetFileSystemBrowser::draw(GImage* pCanvas, int x, int y)
 
 // ----------------------------------------------------------------------
 
-GWidgetHorizSlider::GWidgetHorizSlider(GWidgetGroup* pParent, int x, int y, int w, int h)
-: GWidgetGroup(pParent, x, y, w, h)
+WWidgetHorizSlider::WWidgetHorizSlider(WWidgetGroup* pParent, int x, int y, int w, int h)
+: WWidgetGroup(pParent, x, y, w, h)
 {
 	m_dirty = true;
 	m_fPos = .5;
-	m_pLeftTab = new GWidgetSliderTab(this, 0, 0, 0, h, false, GWidgetSliderTab::SliderArea);
-	m_pTab = new GWidgetSliderTab(this, 0, 0, 0, h, false, GWidgetSliderTab::SliderNub);
-	m_pRightTab = new GWidgetSliderTab(this, 0, 0, 0, h, false, GWidgetSliderTab::SliderArea);
+	m_pLeftTab = new WWidgetSliderTab(this, 0, 0, 0, h, false, WWidgetSliderTab::SliderArea);
+	m_pTab = new WWidgetSliderTab(this, 0, 0, 0, h, false, WWidgetSliderTab::SliderNub);
+	m_pRightTab = new WWidgetSliderTab(this, 0, 0, 0, h, false, WWidgetSliderTab::SliderArea);
 }
 
-/*virtual*/ GWidgetHorizSlider::~GWidgetHorizSlider()
+/*virtual*/ WWidgetHorizSlider::~WWidgetHorizSlider()
 {
 }
 
-void GWidgetHorizSlider::setPos(float f)
+void WWidgetHorizSlider::setPos(float f)
 {
 	m_fPos = f;
 	m_dirty = true;
@@ -2435,12 +2435,12 @@ void GWidgetHorizSlider::setPos(float f)
 }
 
 // virtual
-void GWidgetHorizSlider::draw(GImage* pCanvas, int x, int y)
+void WWidgetHorizSlider::draw(WImage* pCanvas, int x, int y)
 {
 	// Calculations
 	int wid = m_rect.w;
 	int hgt = m_rect.h;
-	GAssert(wid > hgt); // disproportioned horizontal slider
+	WAssert(wid > hgt); // disproportioned horizontal slider
 	int nTabSize = hgt / 2;
 	if(m_fPos < 0)
 		m_fPos = 0;
@@ -2458,7 +2458,7 @@ void GWidgetHorizSlider::draw(GImage* pCanvas, int x, int y)
 
 	// Draw everything
 	pCanvas->boxFill(x, y, m_rect.w, m_rect.h, 0x00000000);
-	GRect* pRect;
+	WRect* pRect;
 	pRect = m_pLeftTab->rect();
 	m_pLeftTab->draw(pCanvas, x + pRect->x, y + pRect->y);
 	pRect = m_pTab->rect();
@@ -2469,7 +2469,7 @@ void GWidgetHorizSlider::draw(GImage* pCanvas, int x, int y)
 }
 
 // virtual
-void GWidgetHorizSlider::onClickTab(GWidgetSliderTab* pTab)
+void WWidgetHorizSlider::onClickTab(WWidgetSliderTab* pTab)
 {
 	if(pTab == m_pRightTab)
 	{
@@ -2491,7 +2491,7 @@ void GWidgetHorizSlider::onClickTab(GWidgetSliderTab* pTab)
 	}
 }
 
-/*virtual*/ void GWidgetHorizSlider::onSlideTab(GWidgetSliderTab* pTab, int dx, int dy)
+/*virtual*/ void WWidgetHorizSlider::onSlideTab(WWidgetSliderTab* pTab, int dx, int dy)
 {
 	if(pTab != m_pTab)
 		return;
@@ -2510,21 +2510,21 @@ void GWidgetHorizSlider::onClickTab(GWidgetSliderTab* pTab)
 
 // ----------------------------------------------------------------------
 
-GWidgetVertSlider::GWidgetVertSlider(GWidgetGroup* pParent, int x, int y, int w, int h)
-: GWidgetGroup(pParent, x, y, w, h)
+WWidgetVertSlider::WWidgetVertSlider(WWidgetGroup* pParent, int x, int y, int w, int h)
+: WWidgetGroup(pParent, x, y, w, h)
 {
 	m_dirty = true;
 	m_fPos = .5;
-	m_pAboveTab = new GWidgetSliderTab(this, 0, 0, w, 0, true, GWidgetSliderTab::SliderArea);
-	m_pTab = new GWidgetSliderTab(this, 0, 0, w, 0, true, GWidgetSliderTab::SliderNub);
-	m_pBelowTab = new GWidgetSliderTab(this, 0, 0, w, 0, true, GWidgetSliderTab::SliderArea);
+	m_pAboveTab = new WWidgetSliderTab(this, 0, 0, w, 0, true, WWidgetSliderTab::SliderArea);
+	m_pTab = new WWidgetSliderTab(this, 0, 0, w, 0, true, WWidgetSliderTab::SliderNub);
+	m_pBelowTab = new WWidgetSliderTab(this, 0, 0, w, 0, true, WWidgetSliderTab::SliderArea);
 }
 
-/*virtual*/ GWidgetVertSlider::~GWidgetVertSlider()
+/*virtual*/ WWidgetVertSlider::~WWidgetVertSlider()
 {
 }
 
-void GWidgetVertSlider::setPos(float f)
+void WWidgetVertSlider::setPos(float f)
 {
 	m_fPos = f;
 	m_dirty = true;
@@ -2533,12 +2533,12 @@ void GWidgetVertSlider::setPos(float f)
 }
 
 // virtual
-void GWidgetVertSlider::draw(GImage* pCanvas, int x, int y)
+void WWidgetVertSlider::draw(WImage* pCanvas, int x, int y)
 {
 	// Calculations
 	int wid = m_rect.w;
 	int hgt = m_rect.h;
-	GAssert(hgt > wid); // disproportioned vertical slider
+	WAssert(hgt > wid); // disproportioned vertical slider
 	int nTabSize = wid / 2;
 	if(m_fPos < 0)
 		m_fPos = 0;
@@ -2556,7 +2556,7 @@ void GWidgetVertSlider::draw(GImage* pCanvas, int x, int y)
 
 	// Draw everything
 	pCanvas->boxFill(x, y, m_rect.w, m_rect.h, 0x00000000);
-	GRect* pRect;
+	WRect* pRect;
 	pRect = m_pAboveTab->rect();
 	m_pAboveTab->draw(pCanvas, x + pRect->x, y + pRect->y);
 	pRect = m_pTab->rect();
@@ -2567,7 +2567,7 @@ void GWidgetVertSlider::draw(GImage* pCanvas, int x, int y)
 }
 
 // virtual
-void GWidgetVertSlider::onClickTab(GWidgetSliderTab* pTab)
+void WWidgetVertSlider::onClickTab(WWidgetSliderTab* pTab)
 {
 	if(pTab == m_pBelowTab)
 	{
@@ -2589,7 +2589,7 @@ void GWidgetVertSlider::onClickTab(GWidgetSliderTab* pTab)
 	}
 }
 
-/*virtual*/ void GWidgetVertSlider::onSlideTab(GWidgetSliderTab* pTab, int dx, int dy)
+/*virtual*/ void WWidgetVertSlider::onSlideTab(WWidgetSliderTab* pTab, int dx, int dy)
 {
 	if(pTab != m_pTab)
 		return;
@@ -2608,8 +2608,8 @@ void GWidgetVertSlider::onClickTab(GWidgetSliderTab* pTab)
 
 // ----------------------------------------------------------------------
 
-GWidgetCanvas::GWidgetCanvas(GWidgetGroup* pParent, int x, int y, int w, int h, GImage* pImage)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetCanvas::WWidgetCanvas(WWidgetGroup* pParent, int x, int y, int w, int h, WImage* pImage)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_fZoom = 1;
 	m_nHScroll = 0;
@@ -2621,35 +2621,35 @@ GWidgetCanvas::GWidgetCanvas(GWidgetGroup* pParent, int x, int y, int w, int h, 
 	m_nMouseY = 0;
 }
 
-/*virtual*/ GWidgetCanvas::~GWidgetCanvas()
+/*virtual*/ WWidgetCanvas::~WWidgetCanvas()
 {
 }
 
-void GWidgetCanvas::setDirty()
+void WWidgetCanvas::setDirty()
 {
 	m_pParent->tattle(this);
 }
 
-void GWidgetCanvas::setImage(GImage* pImage)
+void WWidgetCanvas::setImage(WImage* pImage)
 {
 	m_pImageIn = pImage;
 	m_pParent->tattle(this);
 }
 
-void GWidgetCanvas::setSelectionMask(GImage* pMask)
+void WWidgetCanvas::setSelectionMask(WImage* pMask)
 {
 	m_pSelectionMask = pMask;
 	m_pParent->tattle(this);
 }
 
 // virtual
-void GWidgetCanvas::draw(GImage* pCanvas, int xx, int yy)
+void WWidgetCanvas::draw(WImage* pCanvas, int xx, int yy)
 {
 	if(!m_pImageIn)
 		return;
 
 	// Blit the source image onto the destination canvas
-	// todo: why not just use the GImage::Blit method?
+	// todo: why not just use the WImage::Blit method?
 	int x, y, xIn, yIn;
 	int widIn = m_pImageIn->width();
 	int hgtIn = m_pImageIn->height();
@@ -2668,7 +2668,7 @@ void GWidgetCanvas::draw(GImage* pCanvas, int xx, int yy)
 	}
 	if(m_pSelectionMask)
 	{
-		double dTime = GTime::seconds() * 32; // 32 is the speed at which the diagonal bars move
+		double dTime = WTime::seconds() * 32; // 32 is the speed at which the diagonal bars move
 		int nTime = (int)(dTime / 65536);
 		nTime = (int)(dTime - (double)65536 * nTime);
 		unsigned int c;
@@ -2690,7 +2690,7 @@ void GWidgetCanvas::draw(GImage* pCanvas, int xx, int yy)
 	}
 }
 
-/*virtual*/ void GWidgetCanvas::grab(int button, int x, int y)
+/*virtual*/ void WWidgetCanvas::grab(int button, int x, int y)
 {
 	m_nMouseX = x;
 	m_nMouseY = y;
@@ -2698,20 +2698,20 @@ void GWidgetCanvas::draw(GImage* pCanvas, int xx, int yy)
 	m_pParent->onCanvasMouseDown(this, button, (int)((x + m_nHScroll) / m_fZoom), (int)((y + m_nVScroll) / m_fZoom));
 }
 
-/*virtual*/ void GWidgetCanvas::release(int button)
+/*virtual*/ void WWidgetCanvas::release(int button)
 {
 	m_pressed = false;
 	m_pParent->onCanvasMouseUp(this, button, (int)((m_nMouseX + m_nHScroll) / m_fZoom), (int)((m_nMouseY + m_nVScroll) / m_fZoom));
 }
 
-/*virtual*/ void GWidgetCanvas::onMouseMove(int dx, int dy)
+/*virtual*/ void WWidgetCanvas::onMouseMove(int dx, int dy)
 {
 	m_nMouseX += dx;
 	m_nMouseY += dy;
 	m_pParent->onCanvasMouseMove(this, (int)((m_nMouseX + m_nHScroll) / m_fZoom), (int)((m_nMouseY + m_nVScroll) / m_fZoom), m_pressed);
 }
 
-void GWidgetCanvas::setZoom(float f)
+void WWidgetCanvas::setZoom(float f)
 {
 	m_fZoom = f;
 	if(m_pImageIn)
@@ -2724,29 +2724,29 @@ void GWidgetCanvas::setZoom(float f)
 	m_pParent->tattle(this);
 }
 
-void GWidgetCanvas::zoomToFit()
+void WWidgetCanvas::zoomToFit()
 {
 	setZoom(std::min((float)m_rect.w / m_pImageIn->width(), (float)m_rect.h / m_pImageIn->height()));
 }
 
-void GWidgetCanvas::setHorizScroll(int x)
+void WWidgetCanvas::setHorizScroll(int x)
 {
-	GAssert(x >= 0 && x < (int)(m_pImageIn->width() * m_fZoom)); // out of range
+	WAssert(x >= 0 && x < (int)(m_pImageIn->width() * m_fZoom)); // out of range
 	m_nHScroll = x;
 	m_pParent->tattle(this);
 }
 
-void GWidgetCanvas::setVertScroll(int y)
+void WWidgetCanvas::setVertScroll(int y)
 {
-	GAssert(y >= 0 && y < (int)(m_pImageIn->height() * m_fZoom)); // out of range
+	WAssert(y >= 0 && y < (int)(m_pImageIn->height() * m_fZoom)); // out of range
 	m_nVScroll = y;
 	m_pParent->tattle(this);
 }
 
 // ----------------------------------------------------------------------
 
-GWidgetWave::GWidgetWave(GWidgetGroup* pParent, int x, int y, int w, int h)
-: GWidgetAtomic(pParent, x, y, w, h)
+WWidgetWave::WWidgetWave(WWidgetGroup* pParent, int x, int y, int w, int h)
+: WWidgetAtomic(pParent, x, y, w, h)
 {
 	m_pWave = nullptr;
 	m_pos = 0;
@@ -2755,22 +2755,22 @@ GWidgetWave::GWidgetWave(GWidgetGroup* pParent, int x, int y, int w, int h)
 	m_selectionWidth = 0;
 }
 
-/*virtual*/ GWidgetWave::~GWidgetWave()
+/*virtual*/ WWidgetWave::~WWidgetWave()
 {
 }
 
-void GWidgetWave::setDirty()
+void WWidgetWave::setDirty()
 {
 	m_pParent->tattle(this);
 }
 
-void GWidgetWave::setWave(GWave* pWave)
+void WWidgetWave::setWave(WWave* pWave)
 {
 	m_pWave = pWave;
 	m_pParent->tattle(this);
 }
 
-void GWidgetWave::setRange(int position, int wid)
+void WWidgetWave::setRange(int position, int wid)
 {
 	m_pos = position;
 	m_width = wid;
@@ -2778,7 +2778,7 @@ void GWidgetWave::setRange(int position, int wid)
 }
 
 // virtual
-void GWidgetWave::draw(GImage* pCanvas, int xx, int yy)
+void WWidgetWave::draw(WImage* pCanvas, int xx, int yy)
 {
 	pCanvas->boxFill(xx, yy, m_rect.w, m_rect.h, 0xff000000);
 	if(!m_pWave)
@@ -2833,7 +2833,7 @@ void GWidgetWave::draw(GImage* pCanvas, int xx, int yy)
 				max *= m_rect.h;
 				min /= 65536;
 				max /= 65536;
-				GAssert(max < m_rect.h && min < m_rect.h); // math error
+				WAssert(max < m_rect.h && min < m_rect.h); // math error
 				pCanvas->lineNoChecks(xx + i, yy + min, xx + i, yy + max, 0xff0080c0);
 			}
 		}
@@ -2885,7 +2885,7 @@ void GWidgetWave::draw(GImage* pCanvas, int xx, int yy)
 				max *= m_rect.h;
 				min /= 65536;
 				max /= 65536;
-				GAssert(max < m_rect.h && min < m_rect.h); // math error
+				WAssert(max < m_rect.h && min < m_rect.h); // math error
 				pCanvas->lineNoChecks(xx + i, yy + min, xx + i, yy + max, 0xff0080c0);
 			}
 		}
@@ -2939,26 +2939,26 @@ void GWidgetWave::draw(GImage* pCanvas, int xx, int yy)
 				max *= m_rect.h;
 				min /= 65536;
 				max /= 65536;
-				GAssert(max < m_rect.h && min < m_rect.h); // math error
+				WAssert(max < m_rect.h && min < m_rect.h); // math error
 				pCanvas->lineNoChecks(xx + i, yy + min, xx + i, yy + max, 0xff0080c0);
 			}
 		}
 	}
 	else
-		throw Ex("Sorry, GWidgetWave doesn't support ", to_str(m_pWave->bitsPerSample()), " bit samples. It only supports 16 and 32 bit samples");
+		throw Ex("Sorry, WWidgetWave doesn't support ", to_str(m_pWave->bitsPerSample()), " bit samples. It only supports 16 and 32 bit samples");
 }
 
-/*virtual*/ void GWidgetWave::grab(int button, int x, int y)
+/*virtual*/ void WWidgetWave::grab(int button, int x, int y)
 {
 }
 
-/*virtual*/ void GWidgetWave::release(int button)
+/*virtual*/ void WWidgetWave::release(int button)
 {
 }
 
-/*virtual*/ void GWidgetWave::onMouseMove(int dx, int dy)
+/*virtual*/ void WWidgetWave::onMouseMove(int dx, int dy)
 {
 }
 
-} // namespace GClasses
+} // namespace WClasses
 

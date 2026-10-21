@@ -24,15 +24,15 @@
 #else
 #include <unistd.h>
 #endif
-#include <WClasses/GRand.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GApp.h>
-#include <WClasses/GHolders.h>
-#include <WClasses/GThread.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WHolders.h>
+#include <WClasses/WThread.h>
 #include "server.h"
 
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 using std::vector;
@@ -49,11 +49,11 @@ class Account;
 class ViewStats;
 
 
-void LaunchBrowser(const char* szAddress, GRand* pRand)
+void LaunchBrowser(const char* szAddress, WRand* pRand)
 {
 	string s = szAddress;
 	s += "/b/survey";
-	if(!GApp::openUrlInBrowser(s.c_str()))
+	if(!WApp::openUrlInBrowser(s.c_str()))
 	{
 		cout << "Failed to open the URL: " << s.c_str() << "\nPlease open this URL manually.\n";
 		cout.flush();
@@ -85,15 +85,15 @@ void doit(void* pArg)
 	{
 		int port = 8988;
 		size_t seed = getpid() * (size_t)time(nullptr);
-		GRand prng(seed);
+		WRand prng(seed);
 		char statePath[300];
 		Server::getLocalStorageFolder(statePath);
 		strcat(statePath, "state.json");
 		Server* pServer = new Server(port, &prng);
 		Holder<Server> hServer(pServer);
-		if(GFile::doesFileExist(statePath))
+		if(WFile::doesFileExist(statePath))
 		{
-			GDom doc;
+			WDom doc;
 			cout << "Loading state...\n";
 			cout.flush();
 			doc.loadJson(statePath);
@@ -105,7 +105,7 @@ void doit(void* pArg)
 			cout << "No saved state. Made a new server\n";
 
 		char buf[300];
-		GTime::asciiTime(buf, 256, false);
+		WTime::asciiTime(buf, 256, false);
 		cout << "Server started at: " << buf << "\n";
 		cout.flush();
 
@@ -127,7 +127,7 @@ void doItAsDaemon()
 	if(chdir(path) != 0)
 		throw Ex("Failed to change dir to ", path);
 	cout << "Launching daemon...\n";
-	GApp::launchDaemon(doit, path, s1.c_str(), s2.c_str());
+	WApp::launchDaemon(doit, path, s1.c_str(), s2.c_str());
 	if(!getcwd(path, 300))
 	{
 	}

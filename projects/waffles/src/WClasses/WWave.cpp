@@ -17,19 +17,19 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GWave.h"
-#include "GError.h"
-#include "GMath.h"
+#include "WWave.h"
+#include "WError.h"
+#include "WMath.h"
 #include <fstream>
 #include <errno.h>
 #include "math.h"
-#include "GFourier.h"
+#include "WFourier.h"
 
 #ifdef WINDOWS
 #pragma pack(1)
 #endif
 
-namespace GClasses
+namespace WClasses
 {
 
 struct WaveHeader
@@ -59,7 +59,7 @@ struct WaveHeader
 #endif
 
 
-GWave::GWave()
+WWave::WWave()
 : m_sampleCount(0),
   m_channels(0),
   m_sampleRate(0),
@@ -68,12 +68,12 @@ GWave::GWave()
 {
 }
 
-GWave::~GWave()
+WWave::~WWave()
 {
 	delete[] m_pData;
 }
 
-void GWave::setData(unsigned char* pData, int bps, int sample_Count, int chans, int sample_Rate)
+void WWave::setData(unsigned char* pData, int bps, int sample_Count, int chans, int sample_Rate)
 {
 	delete[] m_pData;
 	m_pData = pData;
@@ -83,7 +83,7 @@ void GWave::setData(unsigned char* pData, int bps, int sample_Count, int chans, 
 	m_sampleRate = sample_Rate;
 }
 
-void GWave::load(const char* szFilename)
+void WWave::load(const char* szFilename)
 {
 	// Read in the wave header
 	std::ifstream s;
@@ -111,7 +111,7 @@ void GWave::load(const char* szFilename)
 	s.read((char*)m_pData, size);
 }
 
-void GWave::save(const char* szFilename)
+void WWave::save(const char* szFilename)
 {
 	// Write the wave header
 	int size = m_sampleCount * m_channels * m_bitsPerSample / 8;
@@ -160,7 +160,7 @@ void GWave::save(const char* szFilename)
 
 
 
-GWaveIterator::GWaveIterator(GWave& wave)
+WWaveIterator::WWaveIterator(WWave& wave)
 : m_wave(wave)
 {
 	m_pPos = wave.data();
@@ -168,17 +168,17 @@ GWaveIterator::GWaveIterator(GWave& wave)
 	m_pSamples = new double[wave.channels()];
 }
 
-GWaveIterator::~GWaveIterator()
+WWaveIterator::~WWaveIterator()
 {
 	delete[] m_pSamples;
 }
 
-size_t GWaveIterator::remaining()
+size_t WWaveIterator::remaining()
 {
 	return m_remaining;
 }
 
-bool GWaveIterator::advance(size_t steps)
+bool WWaveIterator::advance(size_t steps)
 {
 	if(m_remaining < steps)
 		return false;
@@ -187,14 +187,14 @@ bool GWaveIterator::advance(size_t steps)
 	return true;
 }
 
-void GWaveIterator::copy(GWaveIterator& other)
+void WWaveIterator::copy(WWaveIterator& other)
 {
-	GAssert(m_wave.data() == other.m_wave.data());
+	WAssert(m_wave.data() == other.m_wave.data());
 	m_pPos = other.m_pPos;
 	m_remaining = other.m_remaining;
 }
 
-double* GWaveIterator::current()
+double* WWaveIterator::current()
 {
 	unsigned char* pX = m_pPos;
 	double* pY = m_pSamples;
@@ -212,7 +212,7 @@ double* GWaveIterator::current()
 	return m_pSamples;
 }
 
-void GWaveIterator::set(double* pSamples)
+void WWaveIterator::set(double* pSamples)
 {
 	unsigned char* pX = m_pPos;
 	double* pY = pSamples;
@@ -235,7 +235,7 @@ void GWaveIterator::set(double* pSamples)
 
 
 
-GFourierWaveProcessor::GFourierWaveProcessor(size_t blockSize)
+WFourierWaveProcessor::WFourierWaveProcessor(size_t blockSize)
 : m_blockSize(blockSize)
 {
 	m_pBufA = new struct ComplexNumber[m_blockSize];
@@ -247,7 +247,7 @@ GFourierWaveProcessor::GFourierWaveProcessor(size_t blockSize)
 }
 
 // virtual
-GFourierWaveProcessor::~GFourierWaveProcessor()
+WFourierWaveProcessor::~WFourierWaveProcessor()
 {
 	delete[] m_pBufA;
 	delete[] m_pBufB;
@@ -257,7 +257,7 @@ GFourierWaveProcessor::~GFourierWaveProcessor()
 	delete[] m_pBufFinal;
 }
 
-void GFourierWaveProcessor::reduce(GWave& signal)
+void WFourierWaveProcessor::reduce(WWave& signal)
 {
 	for(unsigned short chan = 0; chan < signal.channels(); chan++)
 	{
@@ -269,8 +269,8 @@ void GFourierWaveProcessor::reduce(GWave& signal)
 		//  2                       A    B    C    D    E
 		//  3                                 A    B    C    D    E
 		//  4                                           A    B    C    D    E
-		GWaveIterator itSignalIn(signal);
-		GWaveIterator itSignalOut(signal);
+		WWaveIterator itSignalIn(signal);
+		WWaveIterator itSignalOut(signal);
 		size_t n = itSignalIn.remaining() / m_blockSize;
 		if((m_blockSize * n) < itSignalIn.remaining())
 			n++;
@@ -290,8 +290,8 @@ void GFourierWaveProcessor::reduce(GWave& signal)
 
 				// Blocks C and D are fully-encoded, so we can bring them to the Fourier domain now
 				if(i != 0)
-					GFourier::fft(m_blockSize, m_pBufC, true);
-				GFourier::fft(m_blockSize, m_pBufD, true);
+					WFourier::fft(m_blockSize, m_pBufC, true);
+				WFourier::fft(m_blockSize, m_pBufD, true);
 			}
 
 			// Process the blocks that are ready-to-go
@@ -299,11 +299,11 @@ void GFourierWaveProcessor::reduce(GWave& signal)
 			{
 				// Denoise blocks B and C
 				process(m_pBufB);
-				GFourier::fft(m_blockSize, m_pBufB, false);
+				WFourier::fft(m_blockSize, m_pBufB, false);
 				if(i != n)
 				{
 					process(m_pBufC);
-					GFourier::fft(m_blockSize, m_pBufC, false);
+					WFourier::fft(m_blockSize, m_pBufC, false);
 				}
 
 				// Interpolate A, B, and C to produce the final B
@@ -320,11 +320,11 @@ void GFourierWaveProcessor::reduce(GWave& signal)
 			m_pBufB = m_pBufD;
 			m_pBufD = pTemp;
 		}
-		GAssert(itSignalOut.remaining() == 0);
+		WAssert(itSignalOut.remaining() == 0);
 	}
 }
 
-void GFourierWaveProcessor::encodeBlock(GWaveIterator& it, struct ComplexNumber* pBuf, unsigned short chan)
+void WFourierWaveProcessor::encodeBlock(WWaveIterator& it, struct ComplexNumber* pBuf, unsigned short chan)
 {
 	struct ComplexNumber* pCN = pBuf;
 	for(size_t i = 0; i < m_blockSize; i++)
@@ -341,7 +341,7 @@ void GFourierWaveProcessor::encodeBlock(GWaveIterator& it, struct ComplexNumber*
 	}
 }
 
-void GFourierWaveProcessor::decodeBlock(GWaveIterator& it, unsigned short chan)
+void WFourierWaveProcessor::decodeBlock(WWaveIterator& it, unsigned short chan)
 {
 	struct ComplexNumber* pCN = m_pBufFinal;
 	for(size_t i = 0; i < m_blockSize; i++)
@@ -359,7 +359,7 @@ void GFourierWaveProcessor::decodeBlock(GWaveIterator& it, unsigned short chan)
 	}
 }
 
-void GFourierWaveProcessor::interpolate(struct ComplexNumber* pPre, struct ComplexNumber* pCur, struct ComplexNumber* pPost, size_t graftSamples)
+void WFourierWaveProcessor::interpolate(struct ComplexNumber* pPre, struct ComplexNumber* pCur, struct ComplexNumber* pPost, size_t graftSamples)
 {
 	size_t graftBegin = (m_blockSize / 2 - graftSamples) / 2;
 	size_t graftEnd = (m_blockSize / 2 + graftSamples) / 2;
@@ -412,5 +412,5 @@ void GFourierWaveProcessor::interpolate(struct ComplexNumber* pPre, struct Compl
 }
 
 
-} // namespace GClasses
+} // namespace WClasses
 

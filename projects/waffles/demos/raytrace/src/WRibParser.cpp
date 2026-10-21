@@ -1,8 +1,8 @@
 //#pragma warning( disable : 4786 )
 //#include <fstream.h>
-#include "GRibParser.h"
-#include <WClasses/GRayTrace.h>
-#include <WClasses/GImage.h>
+#include "WRibParser.h"
+#include <WClasses/WRayTrace.h>
+#include <WClasses/WImage.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,7 +11,7 @@
 typedef unsigned int uint;
 #endif
 
-using namespace GClasses;
+using namespace WClasses;
 using std::vector;
 using std::map;
 using std::string;
@@ -20,7 +20,7 @@ using std::list;
 // Hopefully you'll never need this.
 //#define PARSER_DEBUG
 
-RibParser::RibParser(GRand* pRand)
+RibParser::RibParser(WRand* pRand)
 : m_pScene(nullptr), image_width(256), image_height(256), fov(35), focal_distance(0), lens_diameter(0), baseDir(""), in_object_definition(false), m_pRand(pRand)
 {
 	// Add the root state block.
@@ -35,7 +35,7 @@ RibParser::~RibParser()
 	delete(m_pScene);
 }
 
-/*static*/ GRayTraceScene* RibParser::LoadScene(const char* szFilename, GRand* pRand)
+/*static*/ WRayTraceScene* RibParser::LoadScene(const char* szFilename, WRand* pRand)
 {
 	RibParser parser(pRand);
 	if(!parser.createScene(szFilename))
@@ -80,7 +80,7 @@ bool RibParser::createScene(FILE* F)
 {
 	// If we're recursing, then m_pScene has already been allocated
 	if(!m_pScene)
-		m_pScene = new GRayTraceScene(m_pRand);
+		m_pScene = new WRayTraceScene(m_pRand);
 
 	bool success = true; // Let's be optimistic
 
@@ -846,14 +846,14 @@ bool RibParser::handleSurface(const RibData& data)
 		}
 
 		// Make the material
-		GRayTraceMaterial* pMat;
+		WRayTraceMaterial* pMat;
 
 		// It should be noted that this way of doing textures isn't really RIB friendly.
 		// But it's easier than parsing Pixar's .tex format.
 		if(data.hasOptionalArg("texturefile"))
 		{
-			GRayTraceImageTexture* pMaterial = new GRayTraceImageTexture();
-			GImage* pTextureImage = new GImage();
+			WRayTraceImageTexture* pMaterial = new WRayTraceImageTexture();
+			WImage* pTextureImage = new WImage();
 			const RibData& filename_data = data.findOptionalArg("texturefile");
 			string filename = baseDir + filename_data.stringVal(0);
 			pTextureImage->loadByExtension(const_cast< char* >(filename.c_str()));
@@ -862,13 +862,13 @@ bool RibParser::handleSurface(const RibData& data)
 		}
 		else
 		{
-			GRayTracePhysicalMaterial* pMaterial = new GRayTracePhysicalMaterial();
-			pMaterial->setColor(GRayTraceMaterial::Diffuse, cd[0], cd[1], cd[2]);
-			pMaterial->setColor(GRayTraceMaterial::Specular, cs[0], cs[1], cs[2]);
-			pMaterial->setColor(GRayTraceMaterial::Reflective, cr[0], cr[1], cr[2]);
-			pMaterial->setColor(GRayTraceMaterial::Transmissive, ct[0], ct[1], ct[2]);
-			pMaterial->setColor(GRayTraceMaterial::Ambient, ca[0], ca[1], ca[2]);
-			pMaterial->setColor(GRayTraceMaterial::Emissive, ce[0], ce[1], ce[2]);
+			WRayTracePhysicalMaterial* pMaterial = new WRayTracePhysicalMaterial();
+			pMaterial->setColor(WRayTraceMaterial::Diffuse, cd[0], cd[1], cd[2]);
+			pMaterial->setColor(WRayTraceMaterial::Specular, cs[0], cs[1], cs[2]);
+			pMaterial->setColor(WRayTraceMaterial::Reflective, cr[0], cr[1], cr[2]);
+			pMaterial->setColor(WRayTraceMaterial::Transmissive, ct[0], ct[1], ct[2]);
+			pMaterial->setColor(WRayTraceMaterial::Ambient, ca[0], ca[1], ca[2]);
+			pMaterial->setColor(WRayTraceMaterial::Emissive, ce[0], ce[1], ce[2]);
 			pMaterial->setIndexOfRefraction(ior);
 			pMaterial->setSpecularExponent(phong);
 			pMaterial->setGlossiness(glossiness);
@@ -985,11 +985,11 @@ bool RibParser::handleLight(const RibData& data)
 			m_pScene->setAmbientLight(color[0], color[1], color[2]);
 		if(is_directional)
 		{
-			m_pScene->addLight(new GRayTraceDirectionalLight(direction[0], direction[1], direction[2], color[0], color[1], color[2], jitter));
+			m_pScene->addLight(new WRayTraceDirectionalLight(direction[0], direction[1], direction[2], color[0], color[1], color[2], jitter));
 		}
 		if(is_point)
 		{
-			m_pScene->addLight(new GRayTracePointLight(location[0], location[1], location[2], color[0], color[1], color[2], jitter));
+			m_pScene->addLight(new WRayTracePointLight(location[0], location[1], location[2], color[0], color[1], color[2], jitter));
 		}
 		return true;
 	}
@@ -1018,16 +1018,16 @@ bool RibParser::handleSphere(const RibData& data)
 		matrixMultiplyPoint(point, curr_transform, point);
 
 		// Create the sphere
-		GRayTraceMaterial* pMaterial = getMaterial();
-		GRayTraceSphere* pSphere = new GRayTraceSphere(pMaterial, point[0], point[1], point[2], radius);
+		WRayTraceMaterial* pMaterial = getMaterial();
+		WRayTraceSphere* pSphere = new WRayTraceSphere(pMaterial, point[0], point[1], point[2], radius);
 		m_pScene->addObject(pSphere);
 
 		if(pMaterial)
 		{
-			GRayTraceColor* pEmissive = pMaterial->color(GRayTraceMaterial::Emissive, nullptr);
+			WRayTraceColor* pEmissive = pMaterial->color(WRayTraceMaterial::Emissive, nullptr);
 			if(!pEmissive->isBlack())
 			{
-				GRayTraceAreaLight* pAreaLight = new GRayTraceAreaLight(pSphere, pEmissive->r, pEmissive->g, pEmissive->b);
+				WRayTraceAreaLight* pAreaLight = new WRayTraceAreaLight(pSphere, pEmissive->r, pEmissive->g, pEmissive->b);
 				m_pScene->addLight(pAreaLight);
 			}
 		}
@@ -1198,11 +1198,11 @@ bool RibParser::handlePointsGeneralPolygons(const RibData& data)
 	//              You might be able to get some speed out of not dividing out w, especially for large meshes.
 	//              In the sample files for the class, none of them are homogeneous, so this is only really for loading other files.
 	//
-	GRayTraceMaterial* material = getMaterial();
-	GRayTraceTriMesh* mesh = new GRayTraceTriMesh(material); // SAKBox: meshes now grow as points and triangles are added
+	WRayTraceMaterial* material = getMaterial();
+	WRayTraceTriMesh* mesh = new WRayTraceTriMesh(material); // SAKBox: meshes now grow as points and triangles are added
 
 	// Points
-	G3DVector v;
+	W3DVector v;
 	for(ipt = 0; ipt < npoints; ipt++)
 	{
 		v.m_vals[0] = points[ipt * 4];
@@ -1235,14 +1235,14 @@ bool RibParser::handlePointsGeneralPolygons(const RibData& data)
 	m_pScene->addMesh(mesh);
 	if(material)
 	{
-		GRayTraceColor* pEmissive = material->color(GRayTraceMaterial::Emissive, nullptr);
+		WRayTraceColor* pEmissive = material->color(WRayTraceMaterial::Emissive, nullptr);
 		if(!pEmissive->isBlack())
 		{
 			for(ipoly = 0; ipoly < npolys; ipoly++)
 			{
-				GRayTraceTriangle* pTriangle = new GRayTraceTriangle(mesh, ipoly);
+				WRayTraceTriangle* pTriangle = new WRayTraceTriangle(mesh, ipoly);
 				m_pScene->addObject(pTriangle); // This is a duplicate object of the one the mesh added
-				GRayTraceAreaLight* pAreaLight = new GRayTraceAreaLight(pTriangle, pEmissive->r, pEmissive->g, pEmissive->b);
+				WRayTraceAreaLight* pAreaLight = new WRayTraceAreaLight(pTriangle, pEmissive->r, pEmissive->g, pEmissive->b);
 				m_pScene->addLight(pAreaLight);
 			}
 		}
@@ -1291,8 +1291,8 @@ bool RibParser::handleAreaLightSource(const RibData& data)
 		//       You'll need to replace this with your own material class.
 
 		// Make a copy of the current material, replace the emissive color, and set
-		GRayTracePhysicalMaterial* new_material = new GRayTracePhysicalMaterial();
-		new_material->setColor(GRayTraceMaterial::Emissive, emissive_color[0], emissive_color[1], emissive_color[2]);
+		WRayTracePhysicalMaterial* new_material = new WRayTracePhysicalMaterial();
+		new_material->setColor(WRayTraceMaterial::Emissive, emissive_color[0], emissive_color[1], emissive_color[2]);
 		// Add the material to the scene, so it'll be deleted properly
 		m_pScene->addMaterial(new_material);
 		// Set the current material on the parser state
@@ -1328,7 +1328,7 @@ void RibParser::popState(int block_type)
 		bool ray_tracing_camera = false, path_tracing_camera = false;
 
 		// Will be made the default camera in the scene.
-		GRayTraceCamera* camera = nullptr;
+		WRayTraceCamera* camera = nullptr;
 
 		// Camera parameters: Samples per pixel, ray recursion depth, and tone mapping constant
 		int ray_depth;
@@ -1380,8 +1380,8 @@ void RibParser::popState(int block_type)
 		else if(path_tracing_camera)
 		{
 			// Get the tone mapping constant from the attributes.
-			G3DReal tone_mapping_constant = getAttribute("cs655Setting", "toneMappingConstant").doubleVal(0);
-			m_pScene->setToneMappingConstant((G3DReal)tone_mapping_constant);
+			W3DReal tone_mapping_constant = getAttribute("cs655Setting", "toneMappingConstant").doubleVal(0);
+			m_pScene->setToneMappingConstant((W3DReal)tone_mapping_constant);
 		}
 
 		//		camera->setRaysPerPixel( pixel_samples );
@@ -1389,8 +1389,8 @@ void RibParser::popState(int block_type)
 		camera->setFocalDistance(focal_distance);
 		camera->setLensDiameter(lens_diameter);
 		camera->lookFromPoint()->set(from[0], from[1], from[2]);
-		G3DVector vecUp(up[0], up[1], up[2]);
-		G3DVector vecForward(to[0] - from[0], to[1] - from[1], to[2] - from[2]);
+		W3DVector vecUp(up[0], up[1], up[2]);
+		W3DVector vecForward(to[0] - from[0], to[1] - from[1], to[2] - from[2]);
 		camera->setDirection(&vecForward, &vecUp);
 		camera->setViewAngle(fov);
 		camera->setImageSize(image_width, image_height);
@@ -1406,7 +1406,7 @@ void RibParser::popState(int block_type)
 }
 
 
-void RibParser::setMaterial(GRayTraceMaterial* material)
+void RibParser::setMaterial(WRayTraceMaterial* material)
 {
 	int i = state.size() - 1;
 	state[i].material = material;
@@ -1418,7 +1418,7 @@ void RibParser::setMaterial(GRayTraceMaterial* material)
 	}
 }
 
-GRayTraceMaterial* RibParser::getMaterial()
+WRayTraceMaterial* RibParser::getMaterial()
 {
 	if(state.back().material == nullptr)
 	{
@@ -1426,7 +1426,7 @@ GRayTraceMaterial* RibParser::getMaterial()
 #ifdef PARSER_DEBUG
 		fprintf(stderr, "Material requested, but no material currently defined.  Returning default material.\n");
 #endif
-		GRayTracePhysicalMaterial* material = new GRayTracePhysicalMaterial();
+		WRayTracePhysicalMaterial* material = new WRayTracePhysicalMaterial();
 		m_pScene->addMaterial(material);
 		setMaterial(material);
 		return material;

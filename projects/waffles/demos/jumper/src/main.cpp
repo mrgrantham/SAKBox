@@ -1,17 +1,17 @@
 #include "Body.h"
-#include <WClasses/GError.h>
-#include <WClasses/GMatrix.h>
-#include <WClasses/GKNN.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GNeuralNet.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GImage.h>
-#include <WClasses/GHolders.h>
+#include <WClasses/WError.h>
+#include <WClasses/WMatrix.h>
+#include <WClasses/WKNN.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WNeuralNet.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WImage.h>
+#include <WClasses/WHolders.h>
 #include "PolicyLearner.h"
 #include <iostream>
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 using std::cout;
 
@@ -59,7 +59,7 @@ void DoIt(int argc, char* argv[])
 	}
 	else if(_stricmp(argv[1], "height") == 0)
 	{
-		std::unique_ptr<GNeuralNetLearner> pPolicy;
+		std::unique_ptr<WNeuralNetLearner> pPolicy;
 		if(argc > 2)
 			pPolicy = LoadPolicy(argv[2]);
 		cout << JumpHeight(pPolicy.get()) << "\n";
@@ -75,7 +75,7 @@ void DoIt(int argc, char* argv[])
 		cout << "to rebuild without the NOGUI switch.\n";
 #else
 		cout << "Press space-bar to see it jump again, and q to quit.\n";
-		std::unique_ptr<GNeuralNetLearner> pPolicy = LoadPolicy(argv[1]);
+		std::unique_ptr<WNeuralNetLearner> pPolicy = LoadPolicy(argv[1]);
 		RagdollDemo demoApp;
 		demoApp.SetPolicy(pPolicy.get());
 		demoApp.run(800, 600, "Demo of a robot that learns to jump");

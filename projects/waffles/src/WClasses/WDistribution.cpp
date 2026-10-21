@@ -17,22 +17,22 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GDistribution.h"
-#include "GDom.h"
-#include "GVec.h"
-#include "GRand.h"
-#include "GMath.h"
-#include "GMatrix.h"
-#include "GHolders.h"
+#include "WDistribution.h"
+#include "WDom.h"
+#include "WVec.h"
+#include "WRand.h"
+#include "WMath.h"
+#include "WMatrix.h"
+#include "WHolders.h"
 #include <cmath>
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::map;
 
-void GCategoricalDistribution::deserialize(GDomNode* pNode)
+void WCategoricalDistribution::deserialize(WDomNode* pNode)
 {
-	GDomListIterator it(pNode);
+	WDomListIterator it(pNode);
 	m_nValueCount = it.remaining();
 	m_pValues.resize(m_nValueCount);
 	m_nMode = 0;
@@ -45,28 +45,28 @@ void GCategoricalDistribution::deserialize(GDomNode* pNode)
 	}
 }
 
-GDomNode* GCategoricalDistribution::serialize(GDom* pDoc) const
+WDomNode* WCategoricalDistribution::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newList();
+	WDomNode* pNode = pDoc->newList();
 	for(size_t i = 0; i < m_nValueCount; i++)
 		pNode->add(pDoc, m_pValues[i]);
 	return pNode;
 }
 
 // virtual
-bool GCategoricalDistribution::isSupported(double x) const
+bool WCategoricalDistribution::isSupported(double x) const
 {
 	size_t nIndex = (size_t)floor(x + 0.5);
 	return (nIndex < m_nValueCount);
 }
 
 // virtual
-double GCategoricalDistribution::logLikelihood(double x)
+double WCategoricalDistribution::logLikelihood(double x)
 {
 	return log(likelihood(x));
 }
 
-void GCategoricalDistribution::normalize()
+void WCategoricalDistribution::normalize()
 {
 	m_nMode = 0;
 	if(m_pValues[0] < 0)
@@ -76,7 +76,7 @@ void GCategoricalDistribution::normalize()
 	{
 		if(m_pValues[i] < 0)
 		{
-			//GAssert(m_pValues[i] >= -1e-9); // Expected a non-negative value
+			//WAssert(m_pValues[i] >= -1e-9); // Expected a non-negative value
 			m_pValues[i] = 0;
 		}
 		else if(m_pValues[i] > m_pValues[m_nMode])
@@ -92,7 +92,7 @@ void GCategoricalDistribution::normalize()
 		setToUniform(m_nValueCount);
 }
 
-void GCategoricalDistribution::normalizeFromLogSpace()
+void WCategoricalDistribution::normalizeFromLogSpace()
 {
 	// Adjust the average value to about 1, and then convert from log space
 	double sum = 0;
@@ -111,14 +111,14 @@ void GCategoricalDistribution::normalizeFromLogSpace()
 	normalize();
 }
 
-void GCategoricalDistribution::setValues(size_t nValueCount, const double* pValues)
+void WCategoricalDistribution::setValues(size_t nValueCount, const double* pValues)
 {
 	values(nValueCount); // Make sure the right amount of space is allocated
 	m_pValues.copy(pValues, nValueCount);
 	normalize();
 }
 
-void GCategoricalDistribution::setValuesInferLast(size_t nValueCount, const double* pValues)
+void WCategoricalDistribution::setValuesInferLast(size_t nValueCount, const double* pValues)
 {
 	values(nValueCount + 1); // Make sure the right amount of space is allocated
 	double* pV = m_pValues.data();
@@ -132,9 +132,9 @@ void GCategoricalDistribution::setValuesInferLast(size_t nValueCount, const doub
 	normalize();
 }
 
-void GCategoricalDistribution::setSpike(size_t nValueCount, size_t nValue, size_t nDepth)
+void WCategoricalDistribution::setSpike(size_t nValueCount, size_t nValue, size_t nDepth)
 {
-	GAssert(nDepth > 0); // nDepth should be at least 1
+	WAssert(nDepth > 0); // nDepth should be at least 1
 	values(nValueCount); // Make sure the right amount of space is allocated
 	if(nValue >= nValueCount)
 	{
@@ -153,7 +153,7 @@ void GCategoricalDistribution::setSpike(size_t nValueCount, size_t nValue, size_
 	normalize();
 }
 
-double GCategoricalDistribution::entropy()
+double WCategoricalDistribution::entropy()
 {
 	double dEntropy = 0;
 	for(size_t i = 0; i < m_nValueCount; i++)
@@ -164,7 +164,7 @@ double GCategoricalDistribution::entropy()
 
 
 
-GCategoricalSampler::GCategoricalSampler(size_t categories, const double* pDistribution)
+WCategoricalSampler::WCategoricalSampler(size_t categories, const double* pDistribution)
 {
 	double sum = 0.0;
 	for(size_t i = 0; i < categories; i++)
@@ -182,7 +182,7 @@ GCategoricalSampler::GCategoricalSampler(size_t categories, const double* pDistr
 		throw Ex("The probabilities should sum to 1");
 }
 
-size_t GCategoricalSampler::draw(double d)
+size_t WCategoricalSampler::draw(double d)
 {
 	map<double, size_t>::iterator it = m_map.upper_bound(d);
 	if(it == m_map.end())
@@ -194,16 +194,16 @@ size_t GCategoricalSampler::draw(double d)
 
 
 
-GCategoricalSamplerBatch::GCategoricalSamplerBatch(size_t categories, const GVec& distribution, GRand& rand)
+WCategoricalSamplerBatch::WCategoricalSamplerBatch(size_t categories, const WVec& distribution, WRand& rand)
 : m_categories(categories), m_distribution(distribution), m_ii(m_categories, rand)
 {
 }
 
-GCategoricalSamplerBatch::~GCategoricalSamplerBatch()
+WCategoricalSamplerBatch::~WCategoricalSamplerBatch()
 {
 }
 
-void GCategoricalSamplerBatch::draw(size_t samples, size_t* pOutBatch)
+void WCategoricalSamplerBatch::draw(size_t samples, size_t* pOutBatch)
 {
 	double probRemaining = 1.0;
 	m_ii.reset();
@@ -214,7 +214,7 @@ void GCategoricalSamplerBatch::draw(size_t samples, size_t* pOutBatch)
 	{
 		double prob = m_distribution[index];
 		size_t k = m_ii.rand().binomial_approx(n, prob / probRemaining);
-		GAssert(k <= n);
+		WAssert(k <= n);
 		for(size_t j = 0; j < k; j++)
 		{
 			*pOut = index;
@@ -223,21 +223,21 @@ void GCategoricalSamplerBatch::draw(size_t samples, size_t* pOutBatch)
 		n -= k;
 		probRemaining -= prob;
 	}
-	GAssert(n == 0);
-	GAssert(std::abs(probRemaining) < 1e-6);
-	GIndexVec::shuffle(pOutBatch, samples, &m_ii.rand());
+	WAssert(n == 0);
+	WAssert(std::abs(probRemaining) < 1e-6);
+	WIndexVec::shuffle(pOutBatch, samples, &m_ii.rand());
 }
 
 #define SAMPLES 10000
 // static
-void GCategoricalSamplerBatch::test()
+void WCategoricalSamplerBatch::test()
 {
-	GVec probs(3);
+	WVec probs(3);
 	probs[0] = 0.2;
 	probs[1] = 0.5;
 	probs[2] = 0.3;
-	GRand rand(0);
-	GCategoricalSamplerBatch csb(3, probs, rand);
+	WRand rand(0);
+	WCategoricalSamplerBatch csb(3, probs, rand);
 	size_t* pResults = new size_t[SAMPLES];
 	std::unique_ptr<size_t[]> hResults(pResults);
 	csb.draw(SAMPLES, pResults);
@@ -263,19 +263,19 @@ void GCategoricalSamplerBatch::test()
 
 
 
-void GNormalDistribution::precompute()
+void WNormalDistribution::precompute()
 {
 	m_height = 1.0 / sqrt(2.0 * M_PI * m_variance);
 }
 
 // virtual
-double GPoissonDistribution::logLikelihood(double x)
+double WPoissonDistribution::logLikelihood(double x)
 {
-	return -m_rate + x * log(m_rate) - GMath::logFactorial((int)floor(x + .5));
+	return -m_rate + x * log(m_rate) - WMath::logFactorial((int)floor(x + .5));
 }
 
 // virtual
-double GPoissonDistribution::likelihood(double x)
+double WPoissonDistribution::likelihood(double x)
 {
 	int k = (int)floor(x);
 	double d = exp(-m_rate) * pow(m_rate, k);
@@ -285,37 +285,37 @@ double GPoissonDistribution::likelihood(double x)
 }
 
 // virtual
-double GGammaDistribution::logLikelihood(double x)
+double WGammaDistribution::logLikelihood(double x)
 {
-	return (m_shape - 1) * log(x) - (x / m_scale) - m_shape * log(m_scale) - GMath::logGamma(m_shape);
+	return (m_shape - 1) * log(x) - (x / m_scale) - m_shape * log(m_scale) - WMath::logGamma(m_shape);
 }
 
 // virtual
-double GGammaDistribution::likelihood(double x)
-{
-	return exp(logLikelihood(x));
-}
-
-// virtual
-double GInverseGammaDistribution::likelihood(double x)
+double WGammaDistribution::likelihood(double x)
 {
 	return exp(logLikelihood(x));
 }
 
 // virtual
-double GBetaDistribution::logLikelihood(double x)
-{
-	return (m_alpha - 1) * log(x) + (m_beta - 1) * log(1.0 - x) + GMath::logGamma(m_alpha + m_beta) - GMath::logGamma(m_alpha) - GMath::logGamma(m_beta);
-}
-
-// virtual
-double GBetaDistribution::likelihood(double x)
+double WInverseGammaDistribution::likelihood(double x)
 {
 	return exp(logLikelihood(x));
 }
 
 // virtual
-double GSoftImpulseDistribution::likelihood(double x)
+double WBetaDistribution::logLikelihood(double x)
+{
+	return (m_alpha - 1) * log(x) + (m_beta - 1) * log(1.0 - x) + WMath::logGamma(m_alpha + m_beta) - WMath::logGamma(m_alpha) - WMath::logGamma(m_beta);
+}
+
+// virtual
+double WBetaDistribution::likelihood(double x)
+{
+	return exp(logLikelihood(x));
+}
+
+// virtual
+double WSoftImpulseDistribution::likelihood(double x)
 {
 	double t = (1.0 / x - 1.0);
 	double u = pow(t, m_steepness - 1.0);
@@ -324,21 +324,21 @@ double GSoftImpulseDistribution::likelihood(double x)
 }
 
 // virtual
-double GSoftImpulseDistribution::logLikelihood(double x)
+double WSoftImpulseDistribution::logLikelihood(double x)
 {
 	return log(likelihood(x));
 }
 
-double GSoftImpulseDistribution::cdf(double x) const
+double WSoftImpulseDistribution::cdf(double x) const
 {
-	return GMath::softStep(x, m_steepness);
+	return WMath::softStep(x, m_steepness);
 }
 
 
-GMultivariateNormalDistribution::GMultivariateNormalDistribution(const GVec& mean, GMatrix* pCovariance)
-: GDistribution()
+WMultivariateNormalDistribution::WMultivariateNormalDistribution(const WVec& mean, WMatrix* pCovariance)
+: WDistribution()
 {
-	GAssert(pCovariance->rows() == (size_t)pCovariance->cols()); // pCovariance should be a square matrix
+	WAssert(pCovariance->rows() == (size_t)pCovariance->cols()); // pCovariance should be a square matrix
 	m_nDims = pCovariance->rows();
 	m_mean.resize(m_nDims);
 	m_vector1.resize(m_nDims);
@@ -347,7 +347,7 @@ GMultivariateNormalDistribution::GMultivariateNormalDistribution(const GVec& mea
 	precompute(pCovariance);
 }
 
-GMultivariateNormalDistribution::GMultivariateNormalDistribution(GMatrix* pData, size_t nDims)
+WMultivariateNormalDistribution::WMultivariateNormalDistribution(WMatrix* pData, size_t nDims)
 {
 	m_nDims = nDims;
 	m_mean.resize(m_nDims);
@@ -355,18 +355,18 @@ GMultivariateNormalDistribution::GMultivariateNormalDistribution(GMatrix* pData,
 	m_vector2.resize(m_nDims);
 	for(size_t i = 0; i < nDims; i++)
 		m_mean[i] = pData->columnMean(i);
-	GMatrix* pCov = pData->covarianceMatrix();
-	std::unique_ptr<GMatrix> hCov(pCov);
+	WMatrix* pCov = pData->covarianceMatrix();
+	std::unique_ptr<WMatrix> hCov(pCov);
 	precompute(pCov);
 }
 
-GMultivariateNormalDistribution::~GMultivariateNormalDistribution()
+WMultivariateNormalDistribution::~WMultivariateNormalDistribution()
 {
 	delete(m_pInverseCovariance);
 	delete(m_pCholesky);
 }
 
-double GMultivariateNormalDistribution::likelihood(const GVec& x)
+double WMultivariateNormalDistribution::likelihood(const WVec& x)
 {
 	m_vector1.copy(x);
 	m_vector1 -= m_mean;
@@ -374,7 +374,7 @@ double GMultivariateNormalDistribution::likelihood(const GVec& x)
 	return m_dScale * exp(-0.5 * m_vector1.dotProduct(m_vector2));
 }
 
-void GMultivariateNormalDistribution::randomVector(GRand* pRand, GVec& out)
+void WMultivariateNormalDistribution::randomVector(WRand* pRand, WVec& out)
 {
 	for(size_t i = 0; i < m_nDims; i++)
 		m_vector1[i] = pRand->normal();
@@ -382,7 +382,7 @@ void GMultivariateNormalDistribution::randomVector(GRand* pRand, GVec& out)
 	out += m_mean;
 }
 
-void GMultivariateNormalDistribution::precompute(GMatrix* pCovariance)
+void WMultivariateNormalDistribution::precompute(WMatrix* pCovariance)
 {
 	m_dScale = 1.0 / sqrt(pow(2.0 * M_PI, (double)m_nDims) * pCovariance->determinant());
 

@@ -12,27 +12,27 @@
 #else
 #include <unistd.h>
 #endif
-#include <WClasses/GBitTable.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GError.h>
-#include <WClasses/GFile.h>
-#include <WClasses/GImage.h>
-#include <WClasses/GBits.h>
-#include <WClasses/GThread.h>
-#include <WClasses/GHolders.h>
-#include <WClasses/GRegion.h>
-#include <WClasses/GGraph.h>
-#include <WClasses/GKNN.h>
-#include <WClasses/GBezier.h>
-#include <WClasses/GMatrix.h>
-#include <WClasses/GCluster.h>
+#include <WClasses/WBitTable.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WError.h>
+#include <WClasses/WFile.h>
+#include <WClasses/WImage.h>
+#include <WClasses/WBits.h>
+#include <WClasses/WThread.h>
+#include <WClasses/WHolders.h>
+#include <WClasses/WRegion.h>
+#include <WClasses/WGraph.h>
+#include <WClasses/WKNN.h>
+#include <WClasses/WBezier.h>
+#include <WClasses/WMatrix.h>
+#include <WClasses/WCluster.h>
 #include <math.h>
 #include <vector>
 #include <iostream>
-#include "png/GImagePng.h"
-#include "GImageJpeg.h"
+#include "png/WImagePng.h"
+#include "WImageJpeg.h"
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 using std::vector;
 
@@ -48,10 +48,10 @@ using std::vector;
 class PaintTool
 {
 protected:
-	GImage* m_pImage;
+	WImage* m_pImage;
 
 public:
-	PaintTool(GImage* pImage)
+	PaintTool(WImage* pImage)
 	{
 		m_pImage = pImage;
 	}
@@ -72,7 +72,7 @@ protected:
 	int m_prevX, m_prevY;
 
 public:
-	PaintToolPen(GImage* pImage) : PaintTool(pImage) {}
+	PaintToolPen(WImage* pImage) : PaintTool(pImage) {}
 	~PaintToolPen() override {}
 
 	void onMouseDown(int nButton, int x, int y) override
@@ -98,16 +98,16 @@ class PaintToolBorder : public PaintTool
 protected:
 
 public:
-	PaintToolBorder(GImage* pImage) : PaintTool(pImage) {}
+	PaintToolBorder(WImage* pImage) : PaintTool(pImage) {}
 	~PaintToolBorder() override {}
 
 	void onMouseDown(int nButton, int x, int y) override
 	{
-		GImage tmp;
+		WImage tmp;
 		tmp.setSize(m_pImage->width(), m_pImage->height());
 		tmp.clear(0xff000000);
 		int xx, yy, dd;
-		GRegionBorderIterator itt(m_pImage, x, y);
+		WRegionBorderIterator itt(m_pImage, x, y);
 		while(itt.next(&xx, &yy, &dd))
 			tmp.setPixel(xx, yy, 0xffffffff);
 		m_pImage->swapData(&tmp);
@@ -117,11 +117,11 @@ public:
 class PaintToolStretch : public PaintTool
 {
 protected:
-	GImage m_imageDown;
+	WImage m_imageDown;
 	int m_downX, m_downY, m_prevX, m_prevY;
 
 public:
-	PaintToolStretch(GImage* pImage) : PaintTool(pImage) {}
+	PaintToolStretch(WImage* pImage) : PaintTool(pImage) {}
 	~PaintToolStretch() override {}
 
 	void onMouseDown(int nButton, int x, int y) override
@@ -149,7 +149,7 @@ protected:
 	vector<int> m_points;
 
 public:
-	PaintToolBezier(GImage* pImage) : PaintTool(pImage), m_points(32) {}
+	PaintToolBezier(WImage* pImage) : PaintTool(pImage), m_points(32) {}
 	~PaintToolBezier() override {}
 
 	void onMouseDown(int nButton, int x, int y) override
@@ -162,9 +162,9 @@ public:
 		}
 		else
 		{
-			// Construct the GBezier object
-			G3DVector point;
-			GBezier bez(m_points.size() / 2);
+			// Construct the WBezier object
+			W3DVector point;
+			WBezier bez(m_points.size() / 2);
 			for(size_t i = 0; i < m_points.size(); i += 2)
 			{
 				point.m_vals[0] = m_points[i];
@@ -187,14 +187,14 @@ public:
 class PaintToolSmartSelect : public PaintTool
 {
 protected:
-	G2DRegionGraph* m_pRegions;
-	GImage* m_pSelection;
-	GBitTable* m_pForeground;
-	GBitTable* m_pBackground;
+	W2DRegionGraph* m_pRegions;
+	WImage* m_pSelection;
+	WBitTable* m_pForeground;
+	WBitTable* m_pBackground;
 	int m_nCurrentButton;
 
 public:
-	PaintToolSmartSelect(GImage* pImage, GImage* pSelection) : PaintTool(pImage)
+	PaintToolSmartSelect(WImage* pImage, WImage* pSelection) : PaintTool(pImage)
 	{
 		m_pRegions = nullptr;
 		m_pSelection = pSelection;
@@ -212,27 +212,27 @@ public:
 	void onSelect() override
 	{
 		delete(m_pRegions);
-		m_pRegions = new G2DRegionGraph(m_pImage->width(), m_pImage->height());
+		m_pRegions = new W2DRegionGraph(m_pImage->width(), m_pImage->height());
 		m_pRegions->makeWatershedRegions(m_pImage);
 
 		while(m_pRegions->regionCount() > 32000)
 		{
-			G2DRegionGraph* pNewRegionList = new G2DRegionGraph(m_pImage->width(), m_pImage->height());
+			W2DRegionGraph* pNewRegionList = new W2DRegionGraph(m_pImage->width(), m_pImage->height());
 			pNewRegionList->makeCoarserRegions(m_pRegions);
 			delete(m_pRegions);
 			m_pRegions = pNewRegionList;
 		}
 
 		/*
-GImage colorRegion;
+WImage colorRegion;
 colorRegion.CopyImage(m_pRegions->GetRegionMask());
 colorRegion.ColorizeRegionMap();
 colorRegion.SavePNGFile("/home/mike/regions.png");
 */
 		delete(m_pForeground);
 		delete(m_pBackground);
-		m_pForeground = new GBitTable(m_pRegions->regionCount());
-		m_pBackground = new GBitTable(m_pRegions->regionCount());
+		m_pForeground = new WBitTable(m_pRegions->regionCount());
+		m_pBackground = new WBitTable(m_pRegions->regionCount());
 	}
 
 	void onMouseDown(int nButton, int x, int y) override
@@ -241,10 +241,10 @@ colorRegion.SavePNGFile("/home/mike/regions.png");
 		onMouseMove(x, y, true);
 	}
 
-	void SelectSourceRegions(GGraphCut* pGC)
+	void SelectSourceRegions(WGraphCut* pGC)
 	{
 		int x, y;
-		GImage* pRegionMask = m_pRegions->regionMask();
+		WImage* pRegionMask = m_pRegions->regionMask();
 		unsigned int nRegion;
 		for(y = 0; y < (int)m_pSelection->height(); y++)
 		{
@@ -259,14 +259,14 @@ colorRegion.SavePNGFile("/home/mike/regions.png");
 		}
 	}
 
-	void SetEdgeRegionsAsBackground(GGraphCut* pGC, float fCapacity)
+	void SetEdgeRegionsAsBackground(WGraphCut* pGC, float fCapacity)
 	{
 		unsigned int nRegion[6];
 		int i;
 		for(i = 0; i < 6; i++)
 			nRegion[i] = (unsigned int)-1;
 		int nRegionCount = m_pRegions->regionCount();
-		GImage* pRegionMask = m_pRegions->regionMask();
+		WImage* pRegionMask = m_pRegions->regionMask();
 		for(i = 0; i < (int)pRegionMask->width(); i++)
 		{
 			nRegion[0] = pRegionMask->pixel(i, 0);
@@ -307,7 +307,7 @@ colorRegion.SavePNGFile("/home/mike/regions.png");
 	{
 		// Make a graph of the regions
 		int nRegionCount = m_pRegions->regionCount();
-		GGraphCut gc(nRegionCount + 2);
+		WGraphCut gc(nRegionCount + 2);
 		gc.getEdgesFromRegionList(m_pRegions); // (where edges refers to graph edges between vertices)
 
 		// Connect frame border regions to background
@@ -352,36 +352,36 @@ colorRegion.SavePNGFile("/home/mike/regions.png");
 
 // ----------------------------------------------------------------------------
 
-class PaintDialog : public GWidgetDialog
+class PaintDialog : public WWidgetDialog
 {
 	friend class PaintController;
 protected:
-	GImage* m_pImage;
-	GImage* m_pSelection;
+	WImage* m_pImage;
+	WImage* m_pSelection;
 	PaintController* m_pController;
-	GWidgetTextTab** m_pTabs;
-	GWidgetCanvas* m_pCanvas;
-	GWidgetHorizScrollBar* m_pHorizScrollBar;
-	GWidgetVertScrollBar* m_pVertScrollBar;
+	WWidgetTextTab** m_pTabs;
+	WWidgetCanvas* m_pCanvas;
+	WWidgetHorizScrollBar* m_pHorizScrollBar;
+	WWidgetVertScrollBar* m_pVertScrollBar;
 	PaintTool* m_pCurrentTool;
 
 public:
-	PaintDialog(PaintController* pController, int w, int h, GImage* pImage, GImage* pSelection)
-	: GWidgetDialog(w, h, PAINT_AREA_BACKGROUND_COLOR)
+	PaintDialog(PaintController* pController, int w, int h, WImage* pImage, WImage* pSelection)
+	: WWidgetDialog(w, h, PAINT_AREA_BACKGROUND_COLOR)
 	{
 		m_pCurrentTool = nullptr;
 		m_pImage = pImage;
 		m_pSelection = pSelection;
 		m_pController = pController;
-		m_pTabs = new GWidgetTextTab*[PAINT_TAB_COUNT];
-		m_pTabs[0] = new GWidgetTextTab(this, 0, 0, 50, 20, "File", 0xff008800);
-		m_pTabs[1] = new GWidgetTextTab(this, 50, 0, 50, 20, "Tools", 0xff008800);
+		m_pTabs = new WWidgetTextTab*[PAINT_TAB_COUNT];
+		m_pTabs[0] = new WWidgetTextTab(this, 0, 0, 50, 20, "File", 0xff008800);
+		m_pTabs[1] = new WWidgetTextTab(this, 50, 0, 50, 20, "Tools", 0xff008800);
 		m_pTabs[0]->setSelected(true);
 
-		m_pCanvas = new GWidgetCanvas(this, 0, 20, w - 16, h - 36, pImage);
+		m_pCanvas = new WWidgetCanvas(this, 0, 20, w - 16, h - 36, pImage);
 		m_pCanvas->setSelectionMask(m_pSelection);
-		m_pHorizScrollBar = new GWidgetHorizScrollBar(this, 0, h - 16, w - 16, 16, w - 16, pImage->width());
-		m_pVertScrollBar = new GWidgetVertScrollBar(this, w - 16, 0, 16, h, h - 36, pImage->height());
+		m_pHorizScrollBar = new WWidgetHorizScrollBar(this, 0, h - 16, w - 16, 16, w - 16, pImage->width());
+		m_pVertScrollBar = new WWidgetVertScrollBar(this, w - 16, 0, 16, h, h - 36, pImage->height());
 	}
 
 	~PaintDialog() override
@@ -389,7 +389,7 @@ public:
 		delete[] m_pTabs;
 	}
 
-	void onSelectTextTab(GWidgetTextTab* pTab) override
+	void onSelectTextTab(WWidgetTextTab* pTab) override
 	{
 		pTab->setSelected(true);
 		int i;
@@ -424,31 +424,31 @@ public:
 		m_pCanvas->setDirty();
 	}
 
-	void onHorizScroll(GWidgetHorizScrollBar* pScrollBar) override
+	void onHorizScroll(WWidgetHorizScrollBar* pScrollBar) override
 	{
 		m_pCanvas->setHorizScroll(pScrollBar->pos());
 		RedrawCanvas();
 	}
 
-	void onVertScroll(GWidgetVertScrollBar* pScrollBar) override
+	void onVertScroll(WWidgetVertScrollBar* pScrollBar) override
 	{
 		m_pCanvas->setVertScroll(pScrollBar->pos());
 		RedrawCanvas();
 	}
 
-	void onCanvasMouseDown(GWidgetCanvas* pCanvas, int nButton, int x, int y) override
+	void onCanvasMouseDown(WWidgetCanvas* pCanvas, int nButton, int x, int y) override
 	{
 		m_pCurrentTool->onMouseDown(nButton, x, y);
 		RedrawCanvas();
 	}
 
-	void onCanvasMouseUp(GWidgetCanvas* pCanvas, int nButton, int x, int y) override
+	void onCanvasMouseUp(WWidgetCanvas* pCanvas, int nButton, int x, int y) override
 	{
 		m_pCurrentTool->onMouseUp(nButton, x, y);
 		RedrawCanvas();
 	}
 
-	void onCanvasMouseMove(GWidgetCanvas* pCanvas, int x, int y, bool bPressed) override
+	void onCanvasMouseMove(WWidgetCanvas* pCanvas, int x, int y, bool bPressed) override
 	{
 		if(x < (int)m_pImage->width() && y < (int)m_pImage->height())
 			m_pCurrentTool->onMouseMove(x, y, bPressed);
@@ -477,14 +477,14 @@ public:
 
 // ----------------------------------------------------------------------------
 
-class TabDialog : public GWidgetDialog
+class TabDialog : public WWidgetDialog
 {
 protected:
 	PaintController* m_pController;
 
 public:
 	TabDialog(PaintController* pController, int w)
-	: GWidgetDialog(w, TOOL_AREA_SIZE, PAINT_AREA_BACKGROUND_COLOR)
+	: WWidgetDialog(w, TOOL_AREA_SIZE, PAINT_AREA_BACKGROUND_COLOR)
 	{
 		m_pController = pController;
 	}
@@ -499,22 +499,22 @@ public:
 class TabOpen : public TabDialog
 {
 protected:
-	GWidgetTextButton* m_pOpen;
-	GWidgetTextButton* m_pSave;
+	WWidgetTextButton* m_pOpen;
+	WWidgetTextButton* m_pSave;
 
 public:
 	TabOpen(PaintController* pController, int w)
 	: TabDialog(pController, w)
 	{
-		m_pOpen = new GWidgetTextButton(this, 10, 10, 100, 20, "Open");
-		m_pSave = new GWidgetTextButton(this, 10, 40, 100, 20, "Save");
+		m_pOpen = new WWidgetTextButton(this, 10, 10, 100, 20, "Open");
+		m_pSave = new WWidgetTextButton(this, 10, 40, 100, 20, "Save");
 	}
 
 	~TabOpen() override
 	{
 	}
 
-	void onReleaseTextButton(GWidgetTextButton* pButton) override
+	void onReleaseTextButton(WWidgetTextButton* pButton) override
 	{
 		if(pButton == m_pOpen)
 			m_pController->OpenFile();
@@ -529,86 +529,86 @@ public:
 class TabTools : public TabDialog
 {
 protected:
-	GWidgetTextTab* m_pCurrentToolTab;
-	GWidgetTextButton* m_pZoomInButton;
-	GWidgetTextButton* m_pZoomOutButton;
-	GWidgetTextButton* m_pHighPassButton;
-	GWidgetTextButton* m_pMedianFilter;
-	GWidgetTextButton* m_pThreshold;
-	GWidgetTextButton* m_pDialateButton;
-	GWidgetTextButton* m_pErodeButton;
-	GWidgetTextButton* m_pOpenButton;
-	GWidgetTextButton* m_pCloseButton;
-	GWidgetTextButton* m_pInvertButton;
-	GWidgetTextButton* m_pEqualizeHistogram;
-	GWidgetTextButton* m_pShowSelButton;
-	GWidgetTextButton* m_pBlurButton;
-	GWidgetTextButton* m_pGlowButton;
-	GWidgetTextButton* m_pCutButton;
-	GWidgetTextButton* m_pGrayToAlphaButton;
+	WWidgetTextTab* m_pCurrentToolTab;
+	WWidgetTextButton* m_pZoomInButton;
+	WWidgetTextButton* m_pZoomOutButton;
+	WWidgetTextButton* m_pHighPassButton;
+	WWidgetTextButton* m_pMedianFilter;
+	WWidgetTextButton* m_pThreshold;
+	WWidgetTextButton* m_pDialateButton;
+	WWidgetTextButton* m_pErodeButton;
+	WWidgetTextButton* m_pOpenButton;
+	WWidgetTextButton* m_pCloseButton;
+	WWidgetTextButton* m_pInvertButton;
+	WWidgetTextButton* m_pEqualizeHistogram;
+	WWidgetTextButton* m_pShowSelButton;
+	WWidgetTextButton* m_pBlurButton;
+	WWidgetTextButton* m_pGlowButton;
+	WWidgetTextButton* m_pCutButton;
+	WWidgetTextButton* m_pGrayToAlphaButton;
 
-	GWidgetTextTab* m_pTabPen;
+	WWidgetTextTab* m_pTabPen;
 	PaintToolPen* m_pToolPen;
 
-	GWidgetTextTab* m_pTabStretch;
+	WWidgetTextTab* m_pTabStretch;
 	PaintToolStretch* m_pToolStretch;
 
-	GWidgetTextTab* m_pTabSmartSelect;
+	WWidgetTextTab* m_pTabSmartSelect;
 	PaintToolSmartSelect* m_pToolSmartSelect;
 
-	GWidgetTextTab* m_pTabBezier;
+	WWidgetTextTab* m_pTabBezier;
 	PaintToolBezier* m_pToolBezier;
 
-	GWidgetTextTab* m_pTabBorder;
+	WWidgetTextTab* m_pTabBorder;
 	PaintToolBorder* m_pToolBorder;
 
-	GWidgetTextBox* m_pTB1;
-	GWidgetTextBox* m_pTB2;
+	WWidgetTextBox* m_pTB1;
+	WWidgetTextBox* m_pTB2;
 
 public:
 	TabTools(PaintController* pController, int w)
 	: TabDialog(pController, w)
 	{
-		m_pZoomInButton = new GWidgetTextButton(this, 5, 30, 80, 20, "Zoom In");
-		m_pZoomOutButton = new GWidgetTextButton(this, 5, 54, 80, 20, "Zoom Out");
-		m_pHighPassButton = new GWidgetTextButton(this, 5, 78, 80, 20, "High Pass");
-		m_pMedianFilter = new GWidgetTextButton(this, 5, 102, 80, 20, "Med. Filter");
-		m_pThreshold = new GWidgetTextButton(this, 5, 126, 80, 20, "Auto Thresh");
-		m_pDialateButton = new GWidgetTextButton(this, 90, 30, 80, 20, "Dialate");
-		m_pErodeButton = new GWidgetTextButton(this, 90, 54, 80, 20, "Erode");
-		m_pOpenButton = new GWidgetTextButton(this, 90, 78, 80, 20, "Morph Open");
-		m_pCloseButton = new GWidgetTextButton(this, 90, 102, 80, 20, "Morph Close");
-		m_pInvertButton = new GWidgetTextButton(this, 175, 30, 80, 20, "Invert");
-		m_pEqualizeHistogram = new GWidgetTextButton(this, 175, 54, 80, 20, "Eq. Hist");
-		m_pShowSelButton = new GWidgetTextButton(this, 175, 102, 80, 20, "Show Sel.");
-		m_pBlurButton = new GWidgetTextButton(this, 260, 30, 80, 20, "Blur");
-		m_pGlowButton = new GWidgetTextButton(this, 260, 54, 80, 20, "Add Border");
-		m_pCutButton = new GWidgetTextButton(this, 260, 78, 80, 20, "Cut Sel.");
-		m_pGrayToAlphaButton = new GWidgetTextButton(this, 260, 102, 80, 20, "GrayToAlpha");
+		m_pZoomInButton = new WWidgetTextButton(this, 5, 30, 80, 20, "Zoom In");
+		m_pZoomOutButton = new WWidgetTextButton(this, 5, 54, 80, 20, "Zoom Out");
+		m_pHighPassButton = new WWidgetTextButton(this, 5, 78, 80, 20, "High Pass");
+		m_pMedianFilter = new WWidgetTextButton(this, 5, 102, 80, 20, "Med. Filter");
+		m_pThreshold = new WWidgetTextButton(this, 5, 126, 80, 20, "Auto Thresh");
+		m_pDialateButton = new WWidgetTextButton(this, 90, 30, 80, 20, "Dialate");
+		m_pErodeButton = new WWidgetTextButton(this, 90, 54, 80, 20, "Erode");
+		m_pOpenButton = new WWidgetTextButton(this, 90, 78, 80, 20, "Morph Open");
+		m_pCloseButton = new WWidgetTextButton(this, 90, 102, 80, 20, "Morph Close");
+		m_pInvertButton = new WWidgetTextButton(this, 175, 30, 80, 20, "Invert");
+		m_pEqualizeHistogram = new WWidgetTextButton(this, 175, 54, 80, 20, "Eq. Hist");
+		m_pShowSelButton = new WWidgetTextButton(this, 175, 102, 80, 20, "Show Sel.");
+		m_pBlurButton = new WWidgetTextButton(this, 260, 30, 80, 20, "Blur");
+		m_pGlowButton = new WWidgetTextButton(this, 260, 54, 80, 20, "Add Border");
+		m_pCutButton = new WWidgetTextButton(this, 260, 78, 80, 20, "Cut Sel.");
+		m_pGrayToAlphaButton = new WWidgetTextButton(this, 260, 102, 80, 20, "GrayToAlpha");
 
-		m_pTabPen = new GWidgetTextTab(this, 5, 5, 50, 20, "Pen");
+		m_pTabPen = new WWidgetTextTab(this, 5, 5, 50, 20, "Pen");
 		m_pToolPen = new PaintToolPen(pController->GetCanvas());
 		m_pCurrentToolTab = m_pTabPen;
 		m_pCurrentToolTab->setSelected(true);
 
-		m_pTabStretch = new GWidgetTextTab(this, 55, 5, 50, 20, "Stretch");
+		m_pTabStretch = new WWidgetTextTab(this, 55, 5, 50, 20, "Stretch");
 		m_pToolStretch = new PaintToolStretch(pController->GetCanvas());
 
-		m_pTabSmartSelect = new GWidgetTextTab(this, 105, 5, 100, 20, "Smart Select");
+		m_pTabSmartSelect = new WWidgetTextTab(this, 105, 5, 100, 20, "Smart Select");
 		m_pToolSmartSelect = new PaintToolSmartSelect(pController->GetCanvas(), pController->GetSelectionMask());
 
-		m_pTabBorder = new GWidgetTextTab(this, 205, 5, 50, 20, "Border");
+		m_pTabBorder = new WWidgetTextTab(this, 205, 5, 50, 20, "Border");
 		m_pToolBorder = new PaintToolBorder(pController->GetCanvas());
 
-		m_pTabBezier = new GWidgetTextTab(this, 255, 5, 50, 20, "Bezier");
+		m_pTabBezier = new WWidgetTextTab(this, 255, 5, 50, 20, "Bezier");
 		m_pToolBezier = new PaintToolBezier(pController->GetCanvas());
 
-		new GWidgetTextLabel(this, 500, 34, 150, 16, "Eq. Hist. Amount");
-		m_pTB1 = new GWidgetTextBox(this, 500, 50, 50, 20);
+		new WWidgetTextLabel(this, 500, 34, 150, 16, "Eq. Hist. Amount");
+		m_pTB1 = new WWidgetTextBox(this, 500, 50, 50, 20);
 		m_pTB1->setText(".5");
 
-		new GWidgetTextLabel(this, 500, 84, 150, 16, "Open Amount");
-		m_pTB2 = new GWidgetTextBox(this, 500, 100, 50, 20);
+		new WWidgetTextLabel(this, 500, 84, 150, 16, "Open Amount");
+		m_pTB2 = new WWidgetTextBox(this, 500, 100, 50, 20);
 		m_pTB2->setText("2");
 	}
 
@@ -620,9 +620,9 @@ public:
 		delete(m_pToolBezier);
 	}
 
-	void onReleaseTextButton(GWidgetTextButton* pButton) override
+	void onReleaseTextButton(WWidgetTextButton* pButton) override
 	{
-		GImage* pImage = m_pController->GetCanvas();
+		WImage* pImage = m_pController->GetCanvas();
 		if(pButton == m_pZoomInButton)
 			m_pController->ZoomIn();
 		else if(pButton == m_pZoomOutButton)
@@ -635,13 +635,13 @@ public:
 			pImage->threshold(128 * 256);
 		else if(pButton == m_pDialateButton)
 		{
-			GImage se;
+			WImage se;
 			se.gaussianKernel(3, (float)1);
 			pImage->dialate(&se);
 		}
 		else if(pButton == m_pErodeButton)
 		{
-			GImage se;
+			WImage se;
 			se.gaussianKernel(3, (float)1);
 			pImage->erode(&se);
 		}
@@ -662,7 +662,7 @@ public:
 		}
 		else if(pButton == m_pShowSelButton)
 		{
-			GImage* pSelection = m_pController->GetSelectionMask();
+			WImage* pSelection = m_pController->GetSelectionMask();
 			int x, y, c;
 			for(y = 0; y < (int)pImage->height(); y++)
 			{
@@ -682,14 +682,14 @@ public:
 		}
 		else if(pButton == m_pGlowButton)
 		{
-			GImage tmp;
+			WImage tmp;
 			tmp.addBorder(pImage, 0xffffffff, 0xff000000);
 			tmp.swapData(pImage);
 			//pImage->SavePNGFile("foo.png");
 		}
 		else if(pButton == m_pCutButton)
 		{
-			GImage* pSelection = m_pController->GetSelectionMask();
+			WImage* pSelection = m_pController->GetSelectionMask();
 			int x, y, c;
 			for(y = 0; y < (int)pImage->height(); y++)
 			{
@@ -716,7 +716,7 @@ public:
 			}
 		}
 		else
-			GAssert(false); // unrecognized button
+			WAssert(false); // unrecognized button
 
 		// Redraw the canvas
 		m_pController->RedrawCanvas();
@@ -724,7 +724,7 @@ public:
 
 	void SaveVector(double* pVector, const char* szFilename)
 	{
-		GImage img;
+		WImage img;
 		img.setSize(2 * OCR_HALF_VEC_SIZE, 2 * OCR_HALF_VEC_SIZE);
 		img.clear(0xffffffff);
 		int x, y;
@@ -738,7 +738,7 @@ public:
 
 	double EvaluateOCRVector(double* pVector)
 	{
-		GAssert((OCR_HALF_VEC_SIZE & 1) == 0); // OCR_HALF_VEC_SIZE should be a multiple of 2
+		WAssert((OCR_HALF_VEC_SIZE & 1) == 0); // OCR_HALF_VEC_SIZE should be a multiple of 2
 		double a = 0;
 		double b = 0;
 		double c = 0;
@@ -756,7 +756,7 @@ public:
 
 	void RotateOCRVector(double* pVector)
 	{
-		GTEMPBUF(double, pTemp, 2 * OCR_HALF_VEC_SIZE);
+		WTEMPBUF(double, pTemp, 2 * OCR_HALF_VEC_SIZE);
 		memcpy(pTemp, pVector, sizeof(double) * 2 * OCR_HALF_VEC_SIZE);
 		int i;
 		for(i = 0; i < OCR_HALF_VEC_SIZE; i++)
@@ -766,7 +766,7 @@ public:
 		}
 	}
 
-	void MakeOCRVector(double* pOutVector, GImage* pImage, int nRegion)
+	void MakeOCRVector(double* pOutVector, WImage* pImage, int nRegion)
 	{
 		// Find the bounds
 		int l = pImage->width() - 1;
@@ -815,7 +815,7 @@ public:
 					nTot++;
 				}
 			}
-			GAssert(nCount > 0); // something's wrong
+			WAssert(nCount > 0); // something's wrong
 			pOutVector[n] = (double)nCount /** h*/ / (nTot /** w*/);
 
 			// Horizontal profile
@@ -834,7 +834,7 @@ public:
 					nTot++;
 				}
 			}
-			GAssert(nCount > 0); // something's wrong
+			WAssert(nCount > 0); // something's wrong
 			pOutVector[OCR_HALF_VEC_SIZE + n] = (double)nCount /** w*/ / (nTot /** h*/);
 		}
 
@@ -852,14 +852,14 @@ public:
 			}
 			RotateOCRVector(pOutVector);
 		}
-		GAssert(nBest >= 0); // something's wrong
+		WAssert(nBest >= 0); // something's wrong
 		for(i = 0; i < nBest; i++)
 			RotateOCRVector(pOutVector);
 	}
 
 
 
-	void onSelectTextTab(GWidgetTextTab* pTab) override
+	void onSelectTextTab(WWidgetTextTab* pTab) override
 	{
 		// Select the new tab
 		m_pCurrentToolTab->setSelected(false);
@@ -878,7 +878,7 @@ public:
 		else if(pTab == m_pTabBezier)
 			m_pController->SetCurrentTool(m_pToolBezier);
 		else
-			GAssert(false); // unknown tool
+			WAssert(false); // unknown tool
 	}
 
 	void SelectDefaultTool()
@@ -894,13 +894,13 @@ class PaintView : public ViewBase
 {
 	friend class PaintController;
 protected:
-	GWidgetDialog** m_pTabDialogs;
+	WWidgetDialog** m_pTabDialogs;
 	int m_nSelectedTab;
 	PaintDialog* m_pMainDialog;
-	GImage* m_pImage;
+	WImage* m_pImage;
 
 public:
-	PaintView(PaintController* pController, GImage* pImage, GImage* pSelection);
+	PaintView(PaintController* pController, WImage* pImage, WImage* pSelection);
 	~PaintView() override;
 
 	void onSelectTab(int i);
@@ -908,7 +908,7 @@ public:
 	void onMouseDown(int nButton, int x, int y) override;
 	void onMouseUp(int nButton, int x, int y) override;
 	bool onMousePos(int x, int y) override;
-	void SetImage(GImage* pImage) { m_pImage = pImage; }
+	void SetImage(WImage* pImage) { m_pImage = pImage; }
 	void OnLoadImage();
 	void CleanCanvas();
 	void RedrawCanvas();
@@ -921,10 +921,10 @@ protected:
 	void draw(int* pixels, int pitch) override;
 };
 
-PaintView::PaintView(PaintController* pController, GImage* pImage, GImage* pSelection)
+PaintView::PaintView(PaintController* pController, WImage* pImage, WImage* pSelection)
 : ViewBase("Paint")
 {
-	m_pTabDialogs = new GWidgetDialog*[PAINT_TAB_COUNT];
+	m_pTabDialogs = new WWidgetDialog*[PAINT_TAB_COUNT];
 	m_pTabDialogs[0] = new TabOpen(pController, m_screenRect.w);
 	m_pTabDialogs[1] = new TabTools(pController, m_screenRect.w);
 	m_nSelectedTab = 0;
@@ -947,7 +947,7 @@ PaintView::~PaintView()
 	SDL_QueryTexture(sdlTexture, &format, nullptr, nullptr, nullptr);
 
 	// Draw the tool tab
-	GImage* pImage = m_pTabDialogs[m_nSelectedTab]->image();
+	WImage* pImage = m_pTabDialogs[m_nSelectedTab]->image();
 	blitImage(pixels, pitch, format, m_screenRect.x, m_screenRect.y, pImage);
 
 	// Draw the canvas dialog
@@ -1029,10 +1029,10 @@ void PaintView::SetCurrentTool(PaintTool* pTool)
 PaintController::PaintController()
 : ControllerBase()
 {
-	m_pImage = new GImage();
+	m_pImage = new WImage();
 	m_pImage->setSize(300, 300);
 	m_pImage->clear(0xffffffff);
-	m_pSelection = new GImage();
+	m_pSelection = new WImage();
 	m_pSelection->setSize(300, 300);
 	m_pSelection->clear(0);
 	m_pView = new PaintView(this, m_pImage, m_pSelection);
@@ -1060,7 +1060,7 @@ void PaintController::OpenFile()
 	if(!szFilename)
 		return;
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	if(_stricmp(szFilename + pd.extStart, ".png") == 0)
 		loadPng(m_pImage, szFilename);
 	else if(_stricmp(szFilename + pd.extStart, ".jpg") == 0 || _stricmp(szFilename + pd.extStart, ".jpeg") == 0)
@@ -1083,7 +1083,7 @@ void PaintController::SaveFile()
 	try
 	{
 		PathData pd;
-		GFile::parsePath(szFilename, &pd);
+		WFile::parsePath(szFilename, &pd);
 		if(_stricmp(szFilename + pd.extStart, ".png") == 0)
 			savePng(m_pImage, szFilename);
 		else
@@ -1115,12 +1115,12 @@ void PaintController::OnSelectTab(int i)
 
 void PaintController::RunModal()
 {
-	double timeOld = GTime::seconds();
+	double timeOld = WTime::seconds();
 	double time;
 	m_pView->update();
 	while(m_bKeepRunning)
 	{
-		time = GTime::seconds();
+		time = WTime::seconds();
 		if(handleEvents(time - timeOld)) // HandleEvents returns true if it thinks the view needs to be updated
 		{
 			m_pView->update();
@@ -1129,7 +1129,7 @@ void PaintController::RunModal()
 		{
 			RedrawCanvas();
 			m_pView->update();
-			GThread::sleep(20);
+			WThread::sleep(20);
 		}
 		timeOld = time;
 	}

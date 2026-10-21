@@ -16,73 +16,73 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GKernelTrick.h"
-#include "GHillClimber.h"
-#include "GDistribution.h"
-#include "GMath.h"
+#include "WKernelTrick.h"
+#include "WHillClimber.h"
+#include "WDistribution.h"
+#include "WMath.h"
 
-using namespace GClasses;
+using namespace WClasses;
 
-GDomNode* GKernel::makeBaseNode(GDom* pDoc) const
+WDomNode* WKernel::makeBaseNode(WDom* pDoc) const
 {
-	GDomNode* pObj = pDoc->newObj();
+	WDomNode* pObj = pDoc->newObj();
 	pObj->add(pDoc, "name", name());
 	return pObj;
 }
 
 // static
-GKernel* GKernel::deserialize(GDomNode* pNode)
+WKernel* WKernel::deserialize(WDomNode* pNode)
 {
 	const char* szName = pNode->getString("name");
 	if(strcmp(szName, "identity") == 0)
-		return new GKernelIdentity(pNode);
+		return new WKernelIdentity(pNode);
 	else if(strcmp(szName, "chisquared") == 0)
-		return new GKernelChiSquared(pNode);
+		return new WKernelChiSquared(pNode);
 	else if(strcmp(szName, "polynomial") == 0)
-		return new GKernelPolynomial(pNode);
+		return new WKernelPolynomial(pNode);
 	else if(strcmp(szName, "rbf") == 0)
-		return new GKernelGaussianRBF(pNode);
+		return new WKernelGaussianRBF(pNode);
 	else if(strcmp(szName, "translate") == 0)
-		return new GKernelTranslate(pNode);
+		return new WKernelTranslate(pNode);
 	else if(strcmp(szName, "scale") == 0)
-		return new GKernelScale(pNode);
+		return new WKernelScale(pNode);
 	else if(strcmp(szName, "add") == 0)
-		return new GKernelAdd(pNode);
+		return new WKernelAdd(pNode);
 	else if(strcmp(szName, "multiply") == 0)
-		return new GKernelMultiply(pNode);
+		return new WKernelMultiply(pNode);
 	else if(strcmp(szName, "pow") == 0)
-		return new GKernelPow(pNode);
+		return new WKernelPow(pNode);
 	else if(strcmp(szName, "exp") == 0)
-		return new GKernelExp(pNode);
+		return new WKernelExp(pNode);
 	else if(strcmp(szName, "normalize") == 0)
-		return new GKernelNormalize(pNode);
+		return new WKernelNormalize(pNode);
 	else
 		throw Ex("Unrecognized activation function: ", szName);
 	return nullptr;
 }
 
-GKernel* GKernel::kernelComplex1()
+WKernel* WKernel::kernelComplex1()
 {
-	//return new GKernelIdentity();
-	//return new GKernelPolynomial(1, 7);
+	//return new WKernelIdentity();
+	//return new WKernelPolynomial(1, 7);
 
-	GKernel* pK1 = new GKernelPolynomial(0, 3);
-	GKernel* pK2 = new GKernelPolynomial(1, 7);
-	GKernel* pK3 = new GKernelAdd(pK1, pK2);
-	GKernel* pK4 = new GKernelNormalize(pK3);
+	WKernel* pK1 = new WKernelPolynomial(0, 3);
+	WKernel* pK2 = new WKernelPolynomial(1, 7);
+	WKernel* pK3 = new WKernelAdd(pK1, pK2);
+	WKernel* pK4 = new WKernelNormalize(pK3);
 
-	GKernel* pK5 = new GKernelGaussianRBF(0.01);
-	GKernel* pK6 = new GKernelGaussianRBF(0.1);
-	GKernel* pK7 = new GKernelAdd(pK5, pK6);
-	GKernel* pK8 = new GKernelNormalize(pK7);
+	WKernel* pK5 = new WKernelGaussianRBF(0.01);
+	WKernel* pK6 = new WKernelGaussianRBF(0.1);
+	WKernel* pK7 = new WKernelAdd(pK5, pK6);
+	WKernel* pK8 = new WKernelNormalize(pK7);
 
-	GKernel* pK9 = new GKernelGaussianRBF(1.0);
-	GKernel* pK10 = new GKernelGaussianRBF(10.0);
-	GKernel* pK11 = new GKernelMultiply(pK9, pK10);
-	GKernel* pK12 = new GKernelNormalize(pK11);
+	WKernel* pK9 = new WKernelGaussianRBF(1.0);
+	WKernel* pK10 = new WKernelGaussianRBF(10.0);
+	WKernel* pK11 = new WKernelMultiply(pK9, pK10);
+	WKernel* pK12 = new WKernelNormalize(pK11);
 
-	GKernel* pK13 = new GKernelAdd(pK8, pK12);
-	GKernel* pK14 = new GKernelAdd(pK4, pK13);
+	WKernel* pK13 = new WKernelAdd(pK8, pK12);
+	WKernel* pK14 = new WKernelAdd(pK4, pK13);
 	return pK14;
 }
 

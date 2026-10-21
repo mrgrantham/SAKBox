@@ -19,7 +19,7 @@
 
 #include <limits>
 #include <cassert>
-namespace GClasses
+namespace WClasses
 {
 
 ///Template used for reversing numBits of type T.  You shouldn't
@@ -30,13 +30,13 @@ namespace GClasses
 ///by
 ///Pete Becker, Author of "The Standard C++ Library Extensions: a Tutorial and
 ///Reference"
-template<class T, unsigned numBits> struct GBitReverser_imp
+template<class T, unsigned numBits> struct WBitReverser_imp
 {
 	static inline T reverse(T val, T mask)
 	{
 		mask >>= (numBits / 2);
-		return GBitReverser_imp<T, numBits / 2>::reverse((val >> (numBits / 2)) & mask, mask)
-		  | (GBitReverser_imp<T, numBits / 2>::reverse(val & mask, mask) << (numBits / 2));
+		return WBitReverser_imp<T, numBits / 2>::reverse((val >> (numBits / 2)) & mask, mask)
+		  | (WBitReverser_imp<T, numBits / 2>::reverse(val & mask, mask) << (numBits / 2));
 	}
 };
 
@@ -48,7 +48,7 @@ template<class T, unsigned numBits> struct GBitReverser_imp
 ///by
 ///Pete Becker, Author of "The Standard C++ Library Extensions: a Tutorial and
 ///Reference"
-template<class T> struct GBitReverser_imp<T, 1>
+template<class T> struct WBitReverser_imp<T, 1>
 {
 	static inline T reverse(T val, T)
 	{
@@ -74,9 +74,9 @@ T reverseBits(T value)
 	assert(std::numeric_limits<T>::radix == 2); //Is binary
 	const int bits = std::numeric_limits<T>::digits;
 	const T max = std::numeric_limits<T>::max();
-	return GBitReverser_imp<T, bits>::reverse(value, max);
+	return WBitReverser_imp<T, bits>::reverse(value, max);
 }
 
 void reverseBitsTest();
 
-} //Namespace GClasses
+} //Namespace WClasses

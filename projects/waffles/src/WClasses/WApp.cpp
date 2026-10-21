@@ -18,8 +18,8 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GApp.h"
-#include "GError.h"
+#include "WApp.h"
+#include "WError.h"
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef WINDOWS
@@ -43,8 +43,8 @@
 #endif
 #endif
 #endif
-#include "GHolders.h"
-#include "GFile.h"
+#include "WHolders.h"
+#include "WFile.h"
 #include <errno.h>
 #include <iostream>
 #include <string>
@@ -52,16 +52,16 @@
 #include <sstream>
 #include <fstream>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::string;
 
-GPipe::GPipe()
+WPipe::WPipe()
 : m_handle(INVALID_HANDLE)
 {
 }
 
-GPipe::~GPipe()
+WPipe::~WPipe()
 {
 	if(m_handle != INVALID_HANDLE)
 	{
@@ -73,7 +73,7 @@ GPipe::~GPipe()
 	}
 }
 
-void GPipe::set(HANDLE h)
+void WPipe::set(HANDLE h)
 {
 	if(m_handle != INVALID_HANDLE)
 	{
@@ -95,7 +95,7 @@ void GPipe::set(HANDLE h)
 	}
 }
 
-ssize_t GPipe::read(char* buf, size_t bufSize)
+ssize_t WPipe::read(char* buf, size_t bufSize)
 {
 #ifdef WINDOWS
 	DWORD dwRead;
@@ -106,7 +106,7 @@ ssize_t GPipe::read(char* buf, size_t bufSize)
 #endif
 }
 
-std::string GPipe::read(size_t maxSize)
+std::string WPipe::read(size_t maxSize)
 {
 	const unsigned bufsize = 256;
 	char buf[bufsize];
@@ -123,7 +123,7 @@ std::string GPipe::read(size_t maxSize)
 	return out.str();
 }
 
-void GPipe::write(const char* buf, size_t bufSize)
+void WPipe::write(const char* buf, size_t bufSize)
 {
 #ifdef WINDOWS
 	if(!WriteFile(m_handle, buf, (DWORD)bufSize, NULL, NULL))
@@ -134,7 +134,7 @@ void GPipe::write(const char* buf, size_t bufSize)
 #endif
 }
 
-void GPipe::toFile(const char* szFilename)
+void WPipe::toFile(const char* szFilename)
 {
 	std::ofstream s;
 	s.exceptions(std::ios::badbit | std::ios::failbit);
@@ -161,7 +161,7 @@ void GPipe::toFile(const char* szFilename)
 
 
 
-/*static*/ void GApp::launchDaemon(DaemonMainFunc pDaemonMain, void* pArg, const char* stdoutFilename, const char* stderrFilename)
+/*static*/ void WApp::launchDaemon(DaemonMainFunc pDaemonMain, void* pArg, const char* stdoutFilename, const char* stderrFilename)
 {
 #ifdef WINDOWS
 	// This method isn't implemented on Windows yet, so we'll just
@@ -173,7 +173,7 @@ void GPipe::toFile(const char* szFilename)
 	// Fork the first time
 	int firstPid = fork();
 	if(firstPid < 0)
-		throw Ex("Error forking off the child process in GApp::LaunchDaemon");
+		throw Ex("Error forking off the child process in WApp::LaunchDaemon");
 	if(firstPid) // If I am the parent process...
 	{
 		int status;
@@ -239,7 +239,7 @@ void GPipe::toFile(const char* szFilename)
 #endif
 }
 
-/*static*/ int GApp::appPath(char* pBuf, size_t len, bool clipFilename)
+/*static*/ int WApp::appPath(char* pBuf, size_t len, bool clipFilename)
 {
 #ifdef WINDOWS
 	int bytes = GetModuleFileName(NULL, pBuf, (unsigned int)len);
@@ -279,7 +279,7 @@ void GPipe::toFile(const char* szFilename)
 #endif
 }
 
-int GApp_measureParamLen(const char* sz)
+int WApp_measureParamLen(const char* sz)
 {
 	int len = 0;
 	while(true)
@@ -324,7 +324,7 @@ int GApp_measureParamLen(const char* sz)
 	return len;
 }
 
-int GApp_measureWhitespaceLen(const char* sz)
+int WApp_measureWhitespaceLen(const char* sz)
 {
 	int len = 0;
 	while(*sz <= ' ' && *sz != '\0')
@@ -335,21 +335,21 @@ int GApp_measureWhitespaceLen(const char* sz)
 	return len;
 }
 
-int GApp_CountArgs(const char* sz)
+int WApp_CountArgs(const char* sz)
 {
 	int count = 0;
 	while(true)
 	{
-		sz += GApp_measureWhitespaceLen(sz);
+		sz += WApp_measureWhitespaceLen(sz);
 		if(*sz == '\0')
 			break;
 		count++;
-		sz += GApp_measureParamLen(sz);
+		sz += WApp_measureParamLen(sz);
 	}
 	return count;
 }
 
-void GApp_ParseArgs(char* sz, char* argv[], int cap)
+void WApp_ParseArgs(char* sz, char* argv[], int cap)
 {
 	int count = 0;
 	while(true)
@@ -359,28 +359,28 @@ void GApp_ParseArgs(char* sz, char* argv[], int cap)
 			*sz = '\0';
 			sz++;
 		}
-		sz += GApp_measureWhitespaceLen(sz);
+		sz += WApp_measureWhitespaceLen(sz);
 		if(*sz == '\0')
 			break;
 		argv[count++] = sz;
 		if(count >= cap)
 			break;
-		sz += GApp_measureParamLen(sz);
+		sz += WApp_measureParamLen(sz);
 	}
 	argv[count] = nullptr;
 }
 
-int GApp::systemCall(const char* szCommand, bool wait, bool show)
+int WApp::systemCall(const char* szCommand, bool wait, bool show)
 {
 #ifdef WINDOWS
 	// Parse the args
-	GTEMPBUF(char, szCopy, (int)strlen(szCommand) + 1);
+	WTEMPBUF(char, szCopy, (int)strlen(szCommand) + 1);
 	strcpy(szCopy, szCommand);
-	int argc = GApp_CountArgs(szCopy);
+	int argc = WApp_CountArgs(szCopy);
 	if(argc == 0)
 		return 0;
 	char* argv[3];
-	GApp_ParseArgs(szCopy, argv, 2);
+	WApp_ParseArgs(szCopy, argv, 2);
 
 	// Call it
 	SHELLEXECUTEINFO sei;
@@ -418,8 +418,8 @@ int GApp::systemCall(const char* szCommand, bool wait, bool show)
 
 #ifndef WINDOWS
 // Removes the quotes that group an argument, as a shell does: "a b" and
-// 'a b' become a b. (GApp_measureParamLen decides where arguments end.)
-void GApp_unquote(char* sz)
+// 'a b' become a b. (WApp_measureParamLen decides where arguments end.)
+void WApp_unquote(char* sz)
 {
 	char* pOut = sz;
 	char quote = '\0';
@@ -436,8 +436,8 @@ void GApp_unquote(char* sz)
 }
 
 // Runs argv[0] with the arguments argv (ending with a null), without a
-// shell. See GApp::systemExecute.
-int GApp_execute(char* argv[], bool wait, GPipe* pStdOut, GPipe* pStdErr, GPipe* pStdIn)
+// shell. See WApp::systemExecute.
+int WApp_execute(char* argv[], bool wait, WPipe* pStdOut, WPipe* pStdErr, WPipe* pStdIn)
 {
 	// Create a pipe for stdout
 	int stdOutPipe[2]; // Element 0 is the read end. Element 1 is the write end.
@@ -523,7 +523,7 @@ int GApp_execute(char* argv[], bool wait, GPipe* pStdOut, GPipe* pStdErr, GPipe*
 }
 #endif // !WINDOWS
 
-int GApp::systemExecute(const char* szCommand, bool wait, GPipe* pStdOut, GPipe* pStdErr, GPipe* pStdIn)
+int WApp::systemExecute(const char* szCommand, bool wait, WPipe* pStdOut, WPipe* pStdErr, WPipe* pStdIn)
 {
 #ifdef WINDOWS
 	// Initialize a STARTUPINFO structure
@@ -589,7 +589,7 @@ int GApp::systemExecute(const char* szCommand, bool wait, GPipe* pStdOut, GPipe*
 		if(FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, dwErr, 0, buf, 256, NULL) == 0)
 		{
 			DWORD dwErrErr = GetLastError();
-			GAssert(false);
+			WAssert(false);
 			buf[0] = '\0';
 		}
 		char buf2[256];
@@ -621,22 +621,22 @@ int GApp::systemExecute(const char* szCommand, bool wait, GPipe* pStdOut, GPipe*
 	return ret;
 #else
 	// Parse the args
-	GTEMPBUF(char, szCopy, strlen(szCommand) + 1);
+	WTEMPBUF(char, szCopy, strlen(szCommand) + 1);
 	strcpy(szCopy, szCommand);
-	int argc = GApp_CountArgs(szCopy);
+	int argc = WApp_CountArgs(szCopy);
 	if(argc == 0)
 		return 0;
-	GTEMPBUF(char*, argv, argc + 1);
-	GApp_ParseArgs(szCopy, argv, 0x7fffffff);
+	WTEMPBUF(char*, argv, argc + 1);
+	WApp_ParseArgs(szCopy, argv, 0x7fffffff);
 
 	for(int i = 0; i < argc; i++)
-		GApp_unquote(argv[i]);
-	return GApp_execute(argv, wait, pStdOut, pStdErr, pStdIn);
+		WApp_unquote(argv[i]);
+	return WApp_execute(argv, wait, pStdOut, pStdErr, pStdIn);
 #endif
 }
 
 // static
-void GApp::enableFloatingPointExceptions()
+void WApp::enableFloatingPointExceptions()
 {
 #ifdef WINDOWS
 	unsigned int cw = _control87(0, 0) & MCW_EM; // should we use _controlfp instead?
@@ -664,7 +664,7 @@ void GApp::enableFloatingPointExceptions()
 }
 
 // static
-bool GApp::openFile(const char* szPathOrUrl)
+bool WApp::openFile(const char* szPathOrUrl)
 {
 #ifdef WINDOWS
 	int nRet = (int)ShellExecute(NULL, NULL, szPathOrUrl, NULL, NULL, SW_SHOW);
@@ -683,7 +683,7 @@ bool GApp::openFile(const char* szPathOrUrl)
 		char* argv[] = {(char*)szOpener, (char*)szPathOrUrl, nullptr};
 		try
 		{
-			if(GApp_execute(argv, true, nullptr, nullptr, nullptr) == 0)
+			if(WApp_execute(argv, true, nullptr, nullptr, nullptr) == 0)
 				return true;
 		}
 		catch(const std::exception&)
@@ -696,7 +696,7 @@ bool GApp::openFile(const char* szPathOrUrl)
 }
 
 // static
-bool GApp::openUrlInBrowser(const char* szUrl)
+bool WApp::openUrlInBrowser(const char* szUrl)
 {
 	return openFile(szUrl);
 }
@@ -706,37 +706,37 @@ bool GApp::openUrlInBrowser(const char* szUrl)
 
 
 
-GSignalHandler* g_pSignalHandler = nullptr;
+WSignalHandler* g_pSignalHandler = nullptr;
 #ifndef WINDOWS
-void GApp_onSigInt(int n)
+void WApp_onSigInt(int n)
 {
 	g_pSignalHandler->onSignal(SIGINT);
 }
 
-void GApp_onSigTerm(int n)
+void WApp_onSigTerm(int n)
 {
 	g_pSignalHandler->onSignal(SIGTERM);
 }
 
-void GApp_onSigPipe(int n)
+void WApp_onSigPipe(int n)
 {
 	g_pSignalHandler->onSignal(SIGPIPE);
 }
 
 #endif
 
-GSignalHandler::GSignalHandler()
+WSignalHandler::WSignalHandler()
 {
 	if(g_pSignalHandler)
-		throw Ex("GSignalHandler is not reentrant, so it cannot be nested");
+		throw Ex("WSignalHandler is not reentrant, so it cannot be nested");
 	g_pSignalHandler = this;
 	m_gotSignal = 0;
 #ifndef WINDOWS
-	m_prevSigInt = signal(SIGINT, GApp_onSigInt);
+	m_prevSigInt = signal(SIGINT, WApp_onSigInt);
 	if(m_prevSigInt == SIG_ERR) m_prevSigInt = SIG_DFL;
-	m_prevSigTerm = signal(SIGTERM, GApp_onSigTerm);
+	m_prevSigTerm = signal(SIGTERM, WApp_onSigTerm);
 	if(m_prevSigTerm == SIG_ERR) m_prevSigTerm = SIG_DFL; // SAKBox: these three reset m_prevSigInt
-	m_prevSigPipe = signal(SIGPIPE, GApp_onSigPipe);
+	m_prevSigPipe = signal(SIGPIPE, WApp_onSigPipe);
 	if(m_prevSigPipe == SIG_ERR) m_prevSigPipe = SIG_DFL;
 	// SAKBox: SIGSEGV is no longer caught. Returning from its handler after a
 	// real segfault re-runs the faulting instruction, which faults again, so a
@@ -744,7 +744,7 @@ GSignalHandler::GSignalHandler()
 #endif
 }
 
-GSignalHandler::~GSignalHandler()
+WSignalHandler::~WSignalHandler()
 {
 #ifndef WINDOWS
 	signal(SIGINT, m_prevSigInt);
@@ -754,12 +754,12 @@ GSignalHandler::~GSignalHandler()
 	g_pSignalHandler = nullptr;
 }
 
-void GSignalHandler::onSignal(int sig)
+void WSignalHandler::onSignal(int sig)
 {
 	g_pSignalHandler->m_gotSignal = sig;
 }
 
-int GSignalHandler::check()
+int WSignalHandler::check()
 {
 	int oldSignal = m_gotSignal;
 	m_gotSignal = 0;
@@ -767,7 +767,7 @@ int GSignalHandler::check()
 }
 
 /*static*/
-const char* GSignalHandler::to_str(int sig)
+const char* WSignalHandler::to_str(int sig)
 {
 	switch(sig)
 	{
@@ -788,7 +788,7 @@ const char* GSignalHandler::to_str(int sig)
 
 
 #ifdef WINDOWS
-GPassiveConsole::GPassiveConsole(bool echo)
+WPassiveConsole::WPassiveConsole(bool echo)
 {
 	m_hStdin = GetStdHandle(STD_INPUT_HANDLE);
 	GetConsoleMode(m_hStdin, &m_oldMode);
@@ -798,12 +798,12 @@ GPassiveConsole::GPassiveConsole(bool echo)
 	SetConsoleMode(m_hStdin, newMode);
 }
 
-GPassiveConsole::~GPassiveConsole()
+WPassiveConsole::~WPassiveConsole()
 {
 	SetConsoleMode(m_hStdin, m_oldMode);
 }
 
-char GPassiveConsole::getChar()
+char WPassiveConsole::getChar()
 {
 	DWORD n;
 	while(true)
@@ -820,7 +820,7 @@ char GPassiveConsole::getChar()
 	char c;
 	if(ReadConsole(m_hStdin /*hConsoleInput*/, &c, 1, &n, NULL))
 	{
-		GAssert(n > 0);
+		WAssert(n > 0);
 		return c;
 	}
 	else
@@ -830,7 +830,7 @@ char GPassiveConsole::getChar()
 	}
 }
 #else
-GPassiveConsole::GPassiveConsole(bool echo)
+WPassiveConsole::WPassiveConsole(bool echo)
 {
 	if(tcgetattr(0, &m_old) < 0)
 		throw Ex("Error getting terminal settings");
@@ -849,7 +849,7 @@ GPassiveConsole::GPassiveConsole(bool echo)
 		throw Ex("Error setting stdin to non-blocking");
 }
 
-GPassiveConsole::~GPassiveConsole()
+WPassiveConsole::~WPassiveConsole()
 {
 	if(tcsetattr(0, TCSANOW, &m_old) < 0)
 	{
@@ -863,7 +863,7 @@ GPassiveConsole::~GPassiveConsole()
 	}
 }
 
-char GPassiveConsole::getChar()
+char WPassiveConsole::getChar()
 {
 	char c;
 	if(read(m_stdin, &c, 1) > 0)
@@ -879,39 +879,39 @@ char GPassiveConsole::getChar()
 
 
 
-GArgReader::GArgReader(int argc, char* argv[])
+WArgReader::WArgReader(int argc, char* argv[])
 : m_argc(argc), m_argv(argv), m_argPos(0)
 {
 }
 
-GArgReader::GArgReader(GArgReader& other)
+WArgReader::WArgReader(WArgReader& other)
 : m_argc(other.m_argc), m_argv(other.m_argv), m_argPos(other.m_argPos)
 {
 }
 
-int GArgReader::get_pos()
+int WArgReader::get_pos()
 {
 	return m_argPos;
 }
 
-void GArgReader::set_pos(int n)
+void WArgReader::set_pos(int n)
 {
 	m_argPos = n;
 }
 
-const char* GArgReader::peek()
+const char* WArgReader::peek()
 {
 	return m_argv[m_argPos];
 }
 
-const char* GArgReader::pop_string()
+const char* WArgReader::pop_string()
 {
 	if(m_argPos >= m_argc)
 		throw Ex("Unexpected end of arguments");
 	return m_argv[m_argPos++];
 }
 
-unsigned int GArgReader::pop_uint()
+unsigned int WArgReader::pop_uint()
 {
 	const char* str = pop_string();
 	unsigned int n;
@@ -920,7 +920,7 @@ unsigned int GArgReader::pop_uint()
 	return n;
 }
 
-double GArgReader::pop_double()
+double WArgReader::pop_double()
 {
 	// SAKBox: reject anything that isn't a number (atof turned "abc" into 0),
 	// as pop_uint does
@@ -932,7 +932,7 @@ double GArgReader::pop_double()
 	return value;
 }
 
-bool GArgReader::if_pop(const char* flagName)
+bool WArgReader::if_pop(const char* flagName)
 {
 	if(m_argPos >= m_argc)
 		return false;
@@ -945,19 +945,19 @@ bool GArgReader::if_pop(const char* flagName)
 		return false;
 }
 
-int GArgReader::size()
+int WArgReader::size()
 {
 	return m_argc - m_argPos;
 }
 
-bool GArgReader::next_is_flag()
+bool WArgReader::next_is_flag()
 {
 	if(size() == 0)
 		return false;
 	return (peek()[0] == '-');
 }
 
-bool GArgReader::next_is_uint()
+bool WArgReader::next_is_uint()
 {
 	if(size() == 0)
 	{
@@ -976,7 +976,7 @@ bool GArgReader::next_is_uint()
 	return *p == '\0';
 }
 
-void GArgReader::clear_args()
+void WArgReader::clear_args()
 {
 	m_argPos = m_argc;
 }

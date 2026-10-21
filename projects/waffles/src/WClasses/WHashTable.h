@@ -21,24 +21,24 @@
 #define __GHASHTABLE_H__
 
 #include <stdio.h>
-#include "GError.h"
+#include "WError.h"
 #ifndef WINDOWS
 #include <stdint.h>
 #endif
 #include <vector>
 #include <string.h>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GQueue;
+class WQueue;
 class HashTableNode;
 struct HashBucket;
 
 /// The base class of hash tables
-class GHashTableBase
+class WHashTableBase
 {
-	friend class GHashTableEnumerator;
+	friend class WHashTableEnumerator;
 protected:
 	struct HashBucket* m_pBuckets;
 	struct HashBucket* m_pFirstEmpty;
@@ -46,10 +46,10 @@ protected:
 	size_t m_nCount;
 	size_t m_nModCount;
 
-	GHashTableBase(size_t nInitialBucketCount);
+	WHashTableBase(size_t nInitialBucketCount);
 
 public:
-	virtual ~GHashTableBase();
+	virtual ~WHashTableBase();
 
 	/// Returns the number of items in this hash table
 	size_t size() { return m_nCount; }
@@ -86,15 +86,15 @@ protected:
 #define UNCOMMON_INT 0x80000000
 
 /// This class iterates over the values in a hash table
-class GHashTableEnumerator
+class WHashTableEnumerator
 {
 protected:
-	GHashTableBase* m_pHashTable;
+	WHashTableBase* m_pHashTable;
 	size_t m_nPos;
 	size_t m_nModCount;
 
 public:
-	GHashTableEnumerator(GHashTableBase* pHashTable)
+	WHashTableEnumerator(WHashTableBase* pHashTable)
 	{
 		m_pHashTable = pHashTable;
 		m_nModCount = m_pHashTable->revisionNumber();
@@ -116,15 +116,15 @@ public:
 
 /// Implements a typical hash table. (It doesn't take ownership
 /// of the objects you add, so you must still delete them yourself.)
-class GHashTable : public GHashTableBase
+class WHashTable : public WHashTableBase
 {
 public:
-	GHashTable(size_t nInitialBucketCount)
-	: GHashTableBase(nInitialBucketCount)
+	WHashTable(size_t nInitialBucketCount)
+	: WHashTableBase(nInitialBucketCount)
 	{
 	}
 
-	~GHashTable() override
+	~WHashTable() override
 	{
 	}
 
@@ -168,20 +168,20 @@ public:
 
 /// Hash table based on keys of constant strings (or at least strings
 /// that won't change during the lifetime of the hash table).  It's a
-/// good idea to use a GHeap in connection with this class.
-class GConstStringHashTable : public GHashTableBase
+/// good idea to use a WHeap in connection with this class.
+class WConstStringHashTable : public WHashTableBase
 {
 protected:
 	bool m_bCaseSensitive;
 
 public:
-	GConstStringHashTable(size_t nInitialBucketCount, bool bCaseSensitive)
-	: GHashTableBase(nInitialBucketCount)
+	WConstStringHashTable(size_t nInitialBucketCount, bool bCaseSensitive)
+	: WHashTableBase(nInitialBucketCount)
 	{
 		m_bCaseSensitive = bCaseSensitive;
 	}
 
-	~GConstStringHashTable() override
+	~WConstStringHashTable() override
 	{
 	}
 
@@ -219,7 +219,7 @@ public:
 
 	/// Adds a key and value pair to the hash table.  The key should be a constant
 	/// string (or at least a string that won't change over the lifetime of the
-	/// hash table).  The GHeap class provides a good place to store such a
+	/// hash table).  The WHeap class provides a good place to store such a
 	/// string.
 	void add(const char* pKey, const void* pValue)
 	{
@@ -247,20 +247,20 @@ public:
 
 /// Hash table based on keys of constant strings (or at least strings
 /// that won't change during the lifetime of the hash table).  It's a
-/// good idea to use a GHeap in connection with this class.
-class GConstStringToIndexHashTable : public GHashTableBase
+/// good idea to use a WHeap in connection with this class.
+class WConstStringToIndexHashTable : public WHashTableBase
 {
 protected:
 	bool m_bCaseSensitive;
 
 public:
-	GConstStringToIndexHashTable(size_t nInitialBucketCount, bool bCaseSensitive)
-	: GHashTableBase(nInitialBucketCount)
+	WConstStringToIndexHashTable(size_t nInitialBucketCount, bool bCaseSensitive)
+	: WHashTableBase(nInitialBucketCount)
 	{
 		m_bCaseSensitive = bCaseSensitive;
 	}
 
-	~GConstStringToIndexHashTable() override
+	~WConstStringToIndexHashTable() override
 	{
 	}
 
@@ -298,7 +298,7 @@ public:
 
 	/// Adds a key and value pair to the hash table.  The key should be a constant
 	/// string (or at least a string that won't change over the lifetime of the
-	/// hash table).  The GHeap class provides a good place to store such a
+	/// hash table).  The WHeap class provides a good place to store such a
 	/// string.
 	void add(const char* pKey, size_t nValue)
 	{
@@ -325,7 +325,7 @@ public:
 	}
 };
 
-/// This is an internal structure used by GHashTable
+/// This is an internal structure used by WHashTable
 struct HashBucket
 {
 	HashBucket* pPrev;
@@ -335,11 +335,11 @@ struct HashBucket
 };
 
 template<class T>
-bool GHashTableBase::_Get(const char* pKey, T** pOutValue)
+bool WHashTableBase::_Get(const char* pKey, T** pOutValue)
 {
-	GAssert(pKey != NULL);
+	WAssert(pKey != NULL);
 	size_t nPos = hash(pKey, m_nBucketCount);
-	GAssert(nPos < m_nBucketCount); // Out of range
+	WAssert(nPos < m_nBucketCount); // Out of range
 	if(!m_pBuckets[nPos].pKey || m_pBuckets[nPos].pPrev)
 		return false;
 	struct HashBucket* pBucket;
@@ -357,7 +357,7 @@ bool GHashTableBase::_Get(const char* pKey, T** pOutValue)
 
 
 
-/// Objects used with GNodeHashTable should inherit from this class. They
+/// Objects used with WNodeHashTable should inherit from this class. They
 /// must implement two methods (to hash and compare the nodes).
 class HashTableNode
 {
@@ -376,14 +376,14 @@ public:
 
 /// This is a hash table that uses any object which inherits from
 /// HashTableNode as the key
-class GNodeHashTable : public GHashTableBase
+class WNodeHashTable : public WHashTableBase
 {
 protected:
 	std::vector<HashTableNode*>* m_pNodes;
 
 public:
-	GNodeHashTable(bool bOwnNodes, size_t nInitialBucketCount);
-	~GNodeHashTable() override;
+	WNodeHashTable(bool bOwnNodes, size_t nInitialBucketCount);
+	~WNodeHashTable() override;
 
 	/// Computes a hash of the key
 	size_t hash(const char* pKey, size_t nBucketCount) override
@@ -414,6 +414,6 @@ public:
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GHASHTABLE_H__

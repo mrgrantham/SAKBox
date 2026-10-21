@@ -16,74 +16,74 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GLinear.h"
-#include "GDom.h"
-#include "GTransform.h"
-#include "GDistribution.h"
-#include "GRand.h"
-#include "GVec.h"
-#include "GOptimizer.h"
-#include "GHillClimber.h"
-#include "GHolders.h"
+#include "WLinear.h"
+#include "WDom.h"
+#include "WTransform.h"
+#include "WDistribution.h"
+#include "WRand.h"
+#include "WVec.h"
+#include "WOptimizer.h"
+#include "WHillClimber.h"
+#include "WHolders.h"
 #include <cmath>
 #include <math.h>
 #include <memory>
 
-namespace GClasses
+namespace WClasses
 {
 
-GLinearRegressor::GLinearRegressor()
-: GSupervisedLearner(), m_pBeta(nullptr)
+WLinearRegressor::WLinearRegressor()
+: WSupervisedLearner(), m_pBeta(nullptr)
 {
 }
 
-GLinearRegressor::GLinearRegressor(const GDomNode* pNode)
-: GSupervisedLearner(pNode)
+WLinearRegressor::WLinearRegressor(const WDomNode* pNode)
+: WSupervisedLearner(pNode)
 {
-	m_pBeta = new GMatrix(pNode->get("beta"));
+	m_pBeta = new WMatrix(pNode->get("beta"));
 	m_epsilon.deserialize(pNode->get("epsilon"));
 }
 
 // virtual
-GLinearRegressor::~GLinearRegressor()
+WLinearRegressor::~WLinearRegressor()
 {
 	clear();
 }
 
 // virtual
-GDomNode* GLinearRegressor::serialize(GDom* pDoc) const
+WDomNode* WLinearRegressor::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GLinearRegressor");
+	WDomNode* pNode = baseDomNode(pDoc, "WLinearRegressor");
 	pNode->add(pDoc, "beta", m_pBeta->serialize(pDoc));
 	pNode->add(pDoc, "epsilon", m_epsilon.serialize(pDoc));
 	return pNode;
 }
 /*
-class GLinearRegressorTargetFunction : public GTargetFunction
+class WLinearRegressorTargetFunction : public WTargetFunction
 {
 protected:
-	GLinearRegressor* m_pLR;
-	GMatrix& m_feat;
-	GMatrix& m_lab;
+	WLinearRegressor* m_pLR;
+	WMatrix& m_feat;
+	WMatrix& m_lab;
 
 public:
-	GLinearRegressorTargetFunction(size_t dims, GLinearRegressor* pLR, GMatrix& feat, GMatrix& lab) : GTargetFunction(dims), m_pLR(pLR), m_feat(feat), m_lab(lab)
+	WLinearRegressorTargetFunction(size_t dims, WLinearRegressor* pLR, WMatrix& feat, WMatrix& lab) : WTargetFunction(dims), m_pLR(pLR), m_feat(feat), m_lab(lab)
 	{
 	}
 
-	virtual ~GLinearRegressorTargetFunction() {}
+	virtual ~WLinearRegressorTargetFunction() {}
 
 	virtual bool isStable() { return true; }
 	virtual bool isConstrained() { return false; }
 
 	virtual void initVector(double* pVector)
 	{
-		GVec::setAll(pVector, 0.0, relation()->size());
+		WVec::setAll(pVector, 0.0, relation()->size());
 	}
 
 	virtual double computeError(const double* pVector)
 	{
-		GVec::copy(m_pLR->m_epsilon, pVector, m_pLR->m_pBeta->rows());
+		WVec::copy(m_pLR->m_epsilon, pVector, m_pLR->m_pBeta->rows());
 		pVector += m_pLR->m_pBeta->rows();
 		m_pLR->m_pBeta->fromVector(pVector, m_pLR->m_pBeta->rows());
 		double sse = m_pLR->sumSquaredErrorInternal(m_feat, m_lab);
@@ -91,33 +91,33 @@ public:
 	}
 };
 
-void GLinearRegressor::refine(GMatrix& features, GMatrix& labels, double learningRate, size_t epochs, double learningRateDecayFactor)
+void WLinearRegressor::refine(WMatrix& features, WMatrix& labels, double learningRate, size_t epochs, double learningRateDecayFactor)
 {
-	GLinearRegressorTargetFunction tf(m_pBeta->rows() * (m_pBeta->cols() + 1), this, features, labels);
-	GMomentumGreedySearch hc(&tf);
+	WLinearRegressorTargetFunction tf(m_pBeta->rows() * (m_pBeta->cols() + 1), this, features, labels);
+	WMomentumGreedySearch hc(&tf);
 	hc.searchUntil(100, 100, 0.0001);
 	double* pVector = hc.currentVector();
-	GVec::copy(m_epsilon, pVector, m_pBeta->rows());
+	WVec::copy(m_epsilon, pVector, m_pBeta->rows());
 	pVector += m_pBeta->rows();
 	m_pBeta->fromVector(pVector, m_pBeta->rows());
 }
 */
 
-void GLinearRegressor::refine(const GMatrix& features, const GMatrix& labels, double learningRate, size_t epochs, double learningRateDecayFactor)
+void WLinearRegressor::refine(const WMatrix& features, const WMatrix& labels, double learningRate, size_t epochs, double learningRateDecayFactor)
 {
 	size_t fDims = features.cols();
 	size_t lDims = labels.cols();
 	size_t* pIndexes = new size_t[features.rows()];
 	std::unique_ptr<size_t[]> hIndexes(pIndexes);
-	GIndexVec::makeIndexVec(pIndexes, features.rows());
+	WIndexVec::makeIndexVec(pIndexes, features.rows());
 	for(size_t i = 0; i < epochs; i++)
 	{
-		GIndexVec::shuffle(pIndexes, features.rows(), &m_rand);
+		WIndexVec::shuffle(pIndexes, features.rows(), &m_rand);
 		size_t* pIndex = pIndexes;
 		for(size_t j = 0; j < features.rows(); j++)
 		{
-			const GVec& feat = features[*pIndex];
-			const GVec& lab = labels[*pIndex];
+			const WVec& feat = features[*pIndex];
+			const WVec& lab = labels[*pIndex];
 			for(size_t k = 0; k < lDims; k++)
 			{
 				double err = lab[k] - (feat.dotProduct(m_pBeta->row(k)) + m_epsilon[k]);
@@ -131,7 +131,7 @@ void GLinearRegressor::refine(const GMatrix& features, const GMatrix& labels, do
 				mag += err * err;
 				if(mag > 1.0)
 					lr /= mag;
-				GVec& w = m_pBeta->row(k);
+				WVec& w = m_pBeta->row(k);
 				for(size_t l = 0; l < fDims; l++)
 					w[l] += feat[l] * lr * err;
 				m_epsilon[k] += learningRate * err;
@@ -143,23 +143,23 @@ void GLinearRegressor::refine(const GMatrix& features, const GMatrix& labels, do
 }
 
 // virtual
-void GLinearRegressor::trainInner(const GMatrix& features, const GMatrix& labels)
+void WLinearRegressor::trainInner(const WMatrix& features, const WMatrix& labels)
 {
 	if(!features.relation().areContinuous())
-		throw Ex("GLinearRegressor only supports continuous features. Perhaps you should wrap it in a GAutoFilter.");
+		throw Ex("WLinearRegressor only supports continuous features. Perhaps you should wrap it in a WAutoFilter.");
 	if(!labels.relation().areContinuous())
-		throw Ex("GLinearRegressor only supports continuous labels. Perhaps you should wrap it in a GAutoFilter.");
+		throw Ex("WLinearRegressor only supports continuous labels. Perhaps you should wrap it in a WAutoFilter.");
 
 	// Use a fast, but not-very-numerically-stable technique to compute an initial approximation for beta and epsilon
 	clear();
-	GMatrix* pAll = GMatrix::mergeHoriz(&features, &labels);
-	std::unique_ptr<GMatrix> hAll(pAll);
-	GPCA pca(features.cols());
+	WMatrix* pAll = WMatrix::mergeHoriz(&features, &labels);
+	std::unique_ptr<WMatrix> hAll(pAll);
+	WPCA pca(features.cols());
 	pca.train(*pAll);
 	size_t inputs = features.cols();
 	size_t outputs = labels.cols();
-	GMatrix f(inputs, inputs);
-	GMatrix l(inputs, outputs);
+	WMatrix f(inputs, inputs);
+	WMatrix l(inputs, outputs);
 	for(size_t i = 0; i < inputs; i++)
 	{
 		memcpy(f[i].data(), pca.components()->row(1 + i).data(), sizeof(double) * inputs);
@@ -168,9 +168,9 @@ void GLinearRegressor::trainInner(const GMatrix& features, const GMatrix& labels
 			f[i] *= 1.0 / sqmag;
 		l[i].copy(pca.components()->row(1 + i).data() + inputs, outputs);
 	}
-	m_pBeta = GMatrix::multiply(l, f, true, false);
+	m_pBeta = WMatrix::multiply(l, f, true, false);
 	m_epsilon.resize(outputs);
-	GConstVecWrapper vw(pca.centroid().data(), m_pBeta->cols());
+	WConstVecWrapper vw(pca.centroid().data(), m_pBeta->cols());
 	m_pBeta->multiply(vw, m_epsilon, false);
 	m_epsilon *= -1.0;
 	for(size_t i = 0; i < outputs; i++)
@@ -181,44 +181,44 @@ void GLinearRegressor::trainInner(const GMatrix& features, const GMatrix& labels
 }
 
 // virtual
-void GLinearRegressor::predictDistribution(const GVec& in, GPrediction* pOut)
+void WLinearRegressor::predictDistribution(const WVec& in, WPrediction* pOut)
 {
 	throw Ex("Sorry, this model cannot predict a distribution.");
 }
 
 // virtual
-void GLinearRegressor::predict(const GVec& in, GVec& out)
+void WLinearRegressor::predict(const WVec& in, WVec& out)
 {
 	m_pBeta->multiply(in, out, false);
 	out += m_epsilon;
 }
 
 // virtual
-void GLinearRegressor::clear()
+void WLinearRegressor::clear()
 {
 	delete(m_pBeta);
 	m_pBeta = nullptr;
 }
 
-void GLinearRegressor::autoTune(GMatrix& features, GMatrix& labels)
+void WLinearRegressor::autoTune(WMatrix& features, WMatrix& labels)
 {
 	// This model has no parameters to tune
 }
 
-void GLinearRegressor_linear_test(GRand& prng)
+void WLinearRegressor_linear_test(WRand& prng)
 {
 	// Train
-	GMatrix features1(0, 3);
-	GMatrix labels1(0, 1);
+	WMatrix features1(0, 3);
+	WMatrix labels1(0, 1);
 	for(size_t i = 0; i < 1000; i++)
 	{
-		GVec& vec = features1.newRow();
+		WVec& vec = features1.newRow();
 		vec[0] = prng.uniform();
 		vec[1] = prng.uniform(); // irrelevant attribute
 		vec[2] = prng.uniform();
 		labels1.newRow()[0] = 0.3 * vec[0] + 2.0 * vec[2] + 5.0;
 	}
-	GLinearRegressor lr;
+	WLinearRegressor lr;
 	lr.train(features1, labels1);
 
 	// Check some values
@@ -234,11 +234,11 @@ void GLinearRegressor_linear_test(GRand& prng)
 		throw Ex("failed");
 
 	// Test
-	GMatrix features2(0, 3);
-	GMatrix labels2(0, 1);
+	WMatrix features2(0, 3);
+	WMatrix labels2(0, 1);
 	for(size_t i = 0; i < 1000; i++)
 	{
-		GVec& vec = features2.newRow();
+		WVec& vec = features2.newRow();
 		vec[0] = prng.uniform();
 		vec[1] = prng.uniform(); // irrelevant attribute
 		vec[2] = prng.uniform();
@@ -250,11 +250,11 @@ void GLinearRegressor_linear_test(GRand& prng)
 }
 
 // static
-void GLinearRegressor::test()
+void WLinearRegressor::test()
 {
-	GRand prng(0);
-	GLinearRegressor_linear_test(prng);
-	GAutoFilter af(new GLinearRegressor());
+	WRand prng(0);
+	WLinearRegressor_linear_test(prng);
+	WAutoFilter af(new WLinearRegressor());
 	af.basicTest(0.76, 0.93);
 }
 
@@ -263,38 +263,38 @@ void GLinearRegressor::test()
 
 
 
-GLinearDistribution::GLinearDistribution()
-: GSupervisedLearner(), m_noiseDev(1.0), m_pAInv(nullptr), m_pWBar(nullptr)
+WLinearDistribution::WLinearDistribution()
+: WSupervisedLearner(), m_noiseDev(1.0), m_pAInv(nullptr), m_pWBar(nullptr)
 {
 }
 
-GLinearDistribution::GLinearDistribution(const GDomNode* pNode)
-: GSupervisedLearner(pNode)
+WLinearDistribution::WLinearDistribution(const WDomNode* pNode)
+: WSupervisedLearner(pNode)
 {
 	m_noiseDev = pNode->getDouble("nd");
-	m_pWBar = new GMatrix(pNode->get("w"));
-	m_pAInv = new GMatrix(pNode->get("a"));
+	m_pWBar = new WMatrix(pNode->get("w"));
+	m_pAInv = new WMatrix(pNode->get("a"));
 	m_buf.resize(m_pAInv->rows());
 }
 
 // virtual
-GLinearDistribution::~GLinearDistribution()
+WLinearDistribution::~WLinearDistribution()
 {
 	clear();
 }
 
 // static
-void GLinearDistribution::test()
+void WLinearDistribution::test()
 {
-	GRand prng(0);
-	GAutoFilter af(new GLinearDistribution());
+	WRand prng(0);
+	WAutoFilter af(new WLinearDistribution());
 	af.basicTest(0.69, 0.95);
 }
 
 // virtual
-GDomNode* GLinearDistribution::serialize(GDom* pDoc) const
+WDomNode* WLinearDistribution::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GLinearDistribution");
+	WDomNode* pNode = baseDomNode(pDoc, "WLinearDistribution");
 	pNode->add(pDoc, "nd", m_noiseDev);
 	pNode->add(pDoc, "w", m_pWBar->serialize(pDoc));
 	pNode->add(pDoc, "a", m_pAInv->serialize(pDoc));
@@ -302,7 +302,7 @@ GDomNode* GLinearDistribution::serialize(GDom* pDoc) const
 }
 
 // virtual
-void GLinearDistribution::clear()
+void WLinearDistribution::clear()
 {
 	delete(m_pAInv);
 	m_pAInv = nullptr;
@@ -311,21 +311,21 @@ void GLinearDistribution::clear()
 }
 
 // virtual
-void GLinearDistribution::trainInner(const GMatrix& features, const GMatrix& labels)
+void WLinearDistribution::trainInner(const WMatrix& features, const WMatrix& labels)
 {
 	if(!features.relation().areContinuous())
-		throw Ex("GLinearDistribution only supports continuous features. Perhaps you should wrap it in a GAutoFilter.");
+		throw Ex("WLinearDistribution only supports continuous features. Perhaps you should wrap it in a WAutoFilter.");
 	if(!labels.relation().areContinuous())
-		throw Ex("GLinearDistribution only supports continuous labels. Perhaps you should wrap it in a GAutoFilter.");
+		throw Ex("WLinearDistribution only supports continuous labels. Perhaps you should wrap it in a WAutoFilter.");
 
 	// Init A with the inverse of the weights prior covariance matrix
 	size_t dims = features.cols();
-	GMatrix a(dims, dims);
+	WMatrix a(dims, dims);
 	a.fill(0.0);
 
 	// Init XY
 	size_t labelDims = labels.cols();
-	GMatrix xy(dims, labelDims);
+	WMatrix xy(dims, labelDims);
 	xy.fill(0.0);
 
 	// Train on each instance
@@ -333,19 +333,19 @@ void GLinearDistribution::trainInner(const GMatrix& features, const GMatrix& lab
 	for(size_t i = 0; i < features.rows(); i++)
 	{
 		// Update A
-		const GVec& feat = features[i];
+		const WVec& feat = features[i];
 		for(size_t j = 0; j < dims; j++)
 		{
-			GVec& el = a[j];
+			WVec& el = a[j];
 			for(size_t k = 0; k < dims; k++)
 				el[k] += feat[j] * feat[k];
 		}
 
 		// Update XY
-		const GVec& lab = labels[i];
+		const WVec& lab = labels[i];
 		for(size_t j = 0; j < dims; j++)
 		{
-			GVec& el = xy[j];
+			WVec& el = xy[j];
 			for(size_t k = 0; k < labelDims; k++)
 				el[k] += feat[j] * lab[k];
 		}
@@ -356,28 +356,28 @@ void GLinearDistribution::trainInner(const GMatrix& features, const GMatrix& lab
 	// Compute final matrices
 	clear();
 	m_pAInv = a.pseudoInverse();
-	GAssert(m_pAInv->cols() == dims);
-	GAssert(m_pAInv->rows() == dims);
-	m_pWBar = GMatrix::multiply(xy, *m_pAInv, true, true);
-	GAssert(m_pWBar->cols() == dims);
-	GAssert(m_pWBar->rows() == labelDims);
+	WAssert(m_pAInv->cols() == dims);
+	WAssert(m_pAInv->rows() == dims);
+	m_pWBar = WMatrix::multiply(xy, *m_pAInv, true, true);
+	WAssert(m_pWBar->cols() == dims);
+	WAssert(m_pWBar->rows() == labelDims);
 	m_buf.resize(dims);
 }
 
 // virtual
-void GLinearDistribution::predict(const GVec& in, GVec& out)
+void WLinearDistribution::predict(const WVec& in, WVec& out)
 {
 	m_pWBar->multiply(in, out);
 }
 
 // virtual
-void GLinearDistribution::predictDistribution(const GVec& in, GPrediction* out)
+void WLinearDistribution::predictDistribution(const WVec& in, WPrediction* out)
 {
 	m_pAInv->multiply(in, m_buf);
 	double v = in.dotProduct(m_buf);
 	for(size_t i = 0; i < m_pWBar->rows(); i++)
 	{
-		GNormalDistribution* pNorm = (*out).makeNormal();
+		WNormalDistribution* pNorm = (*out).makeNormal();
 		double m = m_pWBar->row(i).dotProduct(in);
 		pNorm->setMeanAndVariance(m, v);
 		out++;
@@ -420,17 +420,17 @@ I very much appreciate your excellent work,
 -Mike Gashler
 */
 
-void simp1(GMatrix& a, int mm, int* ll, int nll, int iabf, int* kp, double* bmax);
-void simp2(GMatrix& a, int m, int n, int* l2, int nl2, int* ip, int kp, double* q1);
-void simp3(GMatrix& a, int i1, int k1, int ip, int kp);
+void simp1(WMatrix& a, int mm, int* ll, int nll, int iabf, int* kp, double* bmax);
+void simp2(WMatrix& a, int m, int n, int* l2, int nl2, int* ip, int kp, double* q1);
+void simp3(WMatrix& a, int i1, int k1, int ip, int kp);
 
-void simplx(GMatrix& a, int m, int n, int m1, int m2, int* icase, int* izrov, int* iposv)
+void simplx(WMatrix& a, int m, int n, int m1, int m2, int* icase, int* izrov, int* iposv)
 {
 	int m3 = m - (m1 + m2);
 	int i, ip, ir, is, k, kh, kp, m12, nl1, nl2;
-	GTEMPBUF(int, l1, n + 2);
-	GTEMPBUF(int, l2, m + 2);
-	GTEMPBUF(int, l3, m + 2);
+	WTEMPBUF(int, l1, n + 2);
+	WTEMPBUF(int, l2, m + 2);
+	WTEMPBUF(int, l3, m + 2);
 	double bmax, q1, EPS = 1e-6; // EPS is the absolute precision, which should be adjusted to the scale of your variables.
 	nl1 = n;
 	for(k = 1; k <= n; k++)
@@ -555,7 +555,7 @@ e30:
 } //return for another iteration.
 
 
-void simp1(GMatrix& a, int mm, int* ll, int nll, int iabf, int* kp, double* bmax)
+void simp1(WMatrix& a, int mm, int* ll, int nll, int iabf, int* kp, double* bmax)
 {
 	//Determines the maximum of those elements whose index is contained in the supplied list
 	//ll, either with or without taking the absolute value, as flagged by iabf.
@@ -579,7 +579,7 @@ void simp1(GMatrix& a, int mm, int* ll, int nll, int iabf, int* kp, double* bmax
 	return;
 }
 
-void simp2(GMatrix& a, int m, int n, int* l2, int nl2, int* ip, int kp, double* q1)
+void simp2(WMatrix& a, int m, int n, int* l2, int nl2, int* ip, int kp, double* q1)
 {
 	double EPS = 1e-6;
 	//Locate a pivot element, taking degeneracy into account.
@@ -628,7 +628,7 @@ e2:
 	return;
 }
 
-void simp3(GMatrix& a, int i1, int k1, int ip, int kp)
+void simp3(WMatrix& a, int i1, int k1, int ip, int kp)
 {
 	int ii, kk;
 	double piv;
@@ -656,33 +656,33 @@ void simp3(GMatrix& a, int i1, int k1, int ip, int kp)
 
 
 // static
-bool GLinearProgramming::simplexMethod(GMatrix* pA, const double* pB, int leConstraints, int geConstraints, const double* pC, double* pOutX)
+bool WLinearProgramming::simplexMethod(WMatrix* pA, const double* pB, int leConstraints, int geConstraints, const double* pC, double* pOutX)
 {
 	// Set up the matrix in the expected form
 	if((size_t)leConstraints + (size_t)geConstraints > pA->rows())
 		throw Ex("The number of constraints must be >= leConstraints + geConstraints");
-	GMatrix aa(pA->rows() + 3, pA->cols() + 2);
+	WMatrix aa(pA->rows() + 3, pA->cols() + 2);
 	aa.fill(0.0);
 	aa[1][1] = 0.0;
 	memcpy(aa.row(1).data() + 2, pC, sizeof(double) * pA->cols());
 	for(size_t i = 1; i <= pA->rows(); i++)
 	{
 		aa.row(i + 1).copy(2, pA->row(i - 1));
-		GVecWrapper vw(aa.row(i + 1).data() + 2, pA->cols());
+		WVecWrapper vw(aa.row(i + 1).data() + 2, pA->cols());
 		vw *= -1.0;
 		aa[i + 1][1] = pB[i - 1];
 	}
 
 	// Solve it
 	int icase;
-	GTEMPBUF(int, iposv, aa.rows());
-	GTEMPBUF(int, izrov, aa.cols());
+	WTEMPBUF(int, iposv, aa.rows());
+	WTEMPBUF(int, izrov, aa.cols());
 	simplx(aa, (int)pA->rows(), (int)pA->cols(), leConstraints, geConstraints, &icase, izrov, iposv);
 
 	// Extract the results
 	if(icase)
 		return false; // No solution. (icase gives an error code)
-	GVecWrapper vw(pOutX, pA->cols());
+	WVecWrapper vw(pOutX, pA->cols());
 	vw.fill(0.0);
 	for(size_t i = 1; i <= pA->rows(); i++)
 	{
@@ -695,9 +695,9 @@ bool GLinearProgramming::simplexMethod(GMatrix* pA, const double* pB, int leCons
 
 
 // static
-void GLinearProgramming::test()
+void WLinearProgramming::test()
 {
-	GMatrix a(4, 4);
+	WMatrix a(4, 4);
 	a[0][0] = 1.0;
 	a[0][1] = 0.0;
 	a[0][2] = 2.0;
@@ -725,7 +725,7 @@ void GLinearProgramming::test()
 	c[2] = 3.0;
 	c[3] = -0.5;
 	double x[4];
-	if(!GLinearProgramming::simplexMethod(&a, b, 2, 1, c, x))
+	if(!WLinearProgramming::simplexMethod(&a, b, 2, 1, c, x))
 		throw Ex("failed to find a solution");
 	if(std::abs(0.0 - x[0]) > 1e-6)
 		throw Ex("failed");
@@ -740,4 +740,4 @@ void GLinearProgramming::test()
 
 
 
-} // namespace GClasses
+} // namespace WClasses

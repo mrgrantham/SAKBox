@@ -20,15 +20,15 @@
 #define __GCUDAMATRIX_H__
 
 #include <cstddef>
-#include "../../GClasses/GVec.h"
+#include "../../WClasses/WVec.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GMatrix;
+class WMatrix;
 
 /// Provides handles and values necessary to perform some GPU operations.
-class GCudaEngine
+class WCudaEngine
 {
 public:
 	void* m_handle; // This should really be a cublasHandle_t, but I would rather not include <cublas_v2.h> in this file, and C++ does not provide a mechanism to forward-declare typedefs.
@@ -36,8 +36,8 @@ public:
 	void* m_prng; // This should be a curandGenerator_t.
 	bool m_hogWild;
 
-	GCudaEngine();
-	~GCudaEngine();
+	WCudaEngine();
+	~WCudaEngine();
 
 	/// Synchronizes the GPU with the CPU. That is, block until all of the GPU processors complete
 	/// the most-recent operation.
@@ -53,17 +53,17 @@ public:
 /// Represents a vector on the GPU. The methods in this class perform
 /// operations asynchronously on the GPU. That is, they return immediately
 /// and begin processing in parallel on the GPU. Before you can rely on
-/// any results, you must call GCudaEngine::sync(), which blocks until
+/// any results, you must call WCudaEngine::sync(), which blocks until
 /// all of the GPU processors are ready again.
-class GCudaVector
+class WCudaVector
 {
 public:
 	size_t m_size;
 	double* d_vals;
 
 	/// Makes a vector of size 0.
-	GCudaVector();
-	~GCudaVector();
+	WCudaVector();
+	~WCudaVector();
 
 	/// Resizes this vector.
 	void resize(size_t size);
@@ -72,42 +72,42 @@ public:
 	size_t size() const { return m_size; }
 
 	/// Fills the vector with the specified value
-	void fill(GCudaEngine& engine, double val);
+	void fill(WCudaEngine& engine, double val);
 
 	/// Copies a vector from the host (CPU memory) to the device (GPU memory).
 	/// Resizes this vector if necessary.
-	void upload(const GVec& hostVector);
+	void upload(const WVec& hostVector);
 
 	/// Copies a vector from the device (GPU memory) to the host (CPU memory).
-	void download(GVec& hostVector) const;
+	void download(WVec& hostVector) const;
 
 	/// Copies that into this. (Resizes this vector if necessary.)
-	void copy(GCudaEngine& engine, const GCudaVector& that);
+	void copy(WCudaEngine& engine, const WCudaVector& that);
 
 	/// Applies the tanh function element-wise to this vector.
-	void activateTanh(GCudaEngine& engine);
+	void activateTanh(WCudaEngine& engine);
 
 	/// Multiplies each element in this vector by (1.0-(a*a)), where a is the corresponding element in activation.
-	void deactivateTanh(GCudaEngine& engine, const GCudaVector& activation);
+	void deactivateTanh(WCudaEngine& engine, const WCudaVector& activation);
 	/*
 	/// Applies the bend function element-wise to this vector.
-	void activateBend(GCudaEngine& engine);
+	void activateBend(WCudaEngine& engine);
 
 	/// Multiplies each element in this vector by the derivative of the bend function.
-	void deactivateBend(GCudaEngine& engine, const GCudaVector& activation);
+	void deactivateBend(WCudaEngine& engine, const WCudaVector& activation);
 */
 	/// Adds thatScalar * that vector to this vector.
 	/// For example, if thatScalar is -1, then this method will subtract that vector from this vector.
-	void add(GCudaEngine& engine, GCudaVector& that, double thatScalar = 1.0);
+	void add(WCudaEngine& engine, WCudaVector& that, double thatScalar = 1.0);
 
 	/// Multiplies this vector by scalar
-	void scale(GCudaEngine& engine, double scalar);
+	void scale(WCudaEngine& engine, double scalar);
 
 	/// Fills this vector with random values from a standard uniform distribution.
-	void randomUniform(GCudaEngine& engine);
+	void randomUniform(WCudaEngine& engine);
 
 	/// Fills this vector with random values from a Normal distribution.
-	void randomNormal(GCudaEngine& engine, double mean, double dev);
+	void randomNormal(WCudaEngine& engine, double mean, double dev);
 };
 
 
@@ -115,9 +115,9 @@ public:
 /// Represents a matrix on the GPU. The methods in this class perform
 /// operations asynchronously on the GPU. That is, they return immediately
 /// and begin processing in parallel on the GPU. Before you can rely on
-/// any results, you must call GCudaEngine::sync(), which blocks until
+/// any results, you must call WCudaEngine::sync(), which blocks until
 /// all of the GPU processors are ready again.
-class GCudaMatrix
+class WCudaMatrix
 {
 public:
 	size_t m_rows;
@@ -125,8 +125,8 @@ public:
 	double* d_vals;
 
 	/// Makes a 0x0 matrix.
-	GCudaMatrix();
-	~GCudaMatrix();
+	WCudaMatrix();
+	~WCudaMatrix();
 
 	/// Returns the number of rows in this matrix
 	size_t rows() const { return m_rows; }
@@ -139,64 +139,64 @@ public:
 
 	/// Copies m from the host (CPU memory) to the device (GPU memory).
 	/// Resizes this matrix if necessary.
-	void upload(const GMatrix& m);
+	void upload(const WMatrix& m);
 
 	/// Copies from this device (GPU memory) into m on the host (CPU memory).
 	/// Resizes m if necessary.
-	void download(GMatrix& m) const;
+	void download(WMatrix& m) const;
 
 	/// Adds that multipled by thatScalar to this.
-	void add(GCudaEngine& engine, GCudaMatrix& that, double thatScalar);
+	void add(WCudaEngine& engine, WCudaMatrix& that, double thatScalar);
 
 	/// Copies the contents of that matrix into this matrix. Resizes if necessary.
-	void copy(GCudaEngine& engine, GCudaMatrix& that);
+	void copy(WCudaEngine& engine, WCudaMatrix& that);
 
 	/// Multiplies this matrix by scalar
-	void scale(GCudaEngine& engine, double scalar);
+	void scale(WCudaEngine& engine, double scalar);
 
 	/// Vector-matrix multiply
-	void rowVectorTimesThis(GCudaEngine& engine, const GCudaVector& in, GCudaVector& out);
+	void rowVectorTimesThis(WCudaEngine& engine, const WCudaVector& in, WCudaVector& out);
 
 	/// Matrix-vector multiply
-	void thisTimesColumnVector(GCudaEngine& engine, const GCudaVector& in, GCudaVector& out);
+	void thisTimesColumnVector(WCudaEngine& engine, const WCudaVector& in, WCudaVector& out);
 
 	/// Multiplies a row-vector, in, times the sub-matrix from (inputStart,0) to (inputStart + in.size(), cols()),
 	/// and adds the result to whatever is in out.
-	void feedIn(GCudaEngine& engine, const GCudaVector& in, GCudaVector& out, size_t inputStart);
+	void feedIn(WCudaEngine& engine, const WCudaVector& in, WCudaVector& out, size_t inputStart);
 
 	/// Multiplies the sub-matrix from (0,inputStart) to (rows(), inputStart + in.size()) times a column vector, in.
 	/// Puts the results in out.
-	void backPropError(GCudaEngine& engine, const GCudaVector& in, GCudaVector& out, size_t inputStart);
+	void backPropError(WCudaEngine& engine, const WCudaVector& in, WCudaVector& out, size_t inputStart);
 
 	/// Adds the outer product of upStreamInput and downStreamError, multiplied by learningRate, to this matrix.
-	void addOuterProduct(GCudaEngine& engine, GCudaVector& upStreamInput, GCudaVector& downStreamError, double learningRate);
+	void addOuterProduct(WCudaEngine& engine, WCudaVector& upStreamInput, WCudaVector& downStreamError, double learningRate);
 
 	/// Returns the sum of absolute values of elements in the specified row.
-	double rowSumAbs(GCudaEngine& engine, size_t row);
+	double rowSumAbs(WCudaEngine& engine, size_t row);
 
 	/// Returns the sum of squared values of elements in the specified row.
-	double rowSumSquare(GCudaEngine& engine, size_t row);
+	double rowSumSquare(WCudaEngine& engine, size_t row);
 
 	/// Returns the sum of absolute values of elements in the specified column.
-	double colSumAbs(GCudaEngine& engine, size_t col);
+	double colSumAbs(WCudaEngine& engine, size_t col);
 
 	/// Returns the sum of squared values of elements in the specified column.
-	double colSumSquare(GCudaEngine& engine, size_t col);
+	double colSumSquare(WCudaEngine& engine, size_t col);
 
 	/// Scales the values in the specified row.
-	void scaleRow(GCudaEngine& engine, size_t row, double scalar);
+	void scaleRow(WCudaEngine& engine, size_t row, double scalar);
 
 	/// Scales the values in the specified column.
-	void scaleCol(GCudaEngine& engine, size_t col, double scalar);
+	void scaleCol(WCudaEngine& engine, size_t col, double scalar);
 
 	/// Fills the matrix with the specified value
-	void fill(GCudaEngine& engine, double val);
+	void fill(WCudaEngine& engine, double val);
 
 	/// Fills this matrix with random values from a Normal distribution.
-	void fillNormal(GCudaEngine& engine, double mean, double dev);
+	void fillNormal(WCudaEngine& engine, double mean, double dev);
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GCUDAMATRIX_H__

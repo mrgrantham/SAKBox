@@ -4,10 +4,10 @@
 
 #include "PolicyLearner.h"
 
-#include <WClasses/GDom.h>
-#include <WClasses/GError.h>
-#include <WClasses/GNeuralNet.h>
-#include <WClasses/GRand.h>
+#include <WClasses/WDom.h>
+#include <WClasses/WError.h>
+#include <WClasses/WNeuralNet.h>
+#include <WClasses/WRand.h>
 
 #include <cstdlib>
 #include <filesystem>
@@ -16,7 +16,7 @@
 #include <string>
 #include <unistd.h>
 
-using namespace GClasses;
+using namespace WClasses;
 
 namespace {
 std::string tempPath(const std::string &name) {
@@ -39,7 +39,7 @@ TEST(PolicyLearnerTest, SimulationIsRepeatable) {
 }
 
 TEST(PolicyLearnerTest, PolicyMapsThreeFeaturesToElevenJoints) {
-  std::unique_ptr<GNeuralNetLearner> policy = MakePolicy();
+  std::unique_ptr<WNeuralNetLearner> policy = MakePolicy();
   EXPECT_EQ(policy->nn().inputs(), size_t(FEATURE_DIMS));
   EXPECT_EQ(policy->nn().outputs(), size_t(LABEL_DIMS));
   EXPECT_EQ(policy->relFeatures().size(), size_t(FEATURE_DIMS));
@@ -48,22 +48,22 @@ TEST(PolicyLearnerTest, PolicyMapsThreeFeaturesToElevenJoints) {
 
 // A saved policy loads back with the same weights, so it jumps exactly as high
 TEST(PolicyLearnerTest, SavedPolicyJumpsTheSameWhenLoaded) {
-  std::unique_ptr<GNeuralNetLearner> policy = MakePolicy();
-  GRand rand(7);
+  std::unique_ptr<WNeuralNetLearner> policy = MakePolicy();
+  WRand rand(7);
   for (size_t i = 0; i < policy->nn().weights.size(); i++)
     policy->nn().weights[i] = rand.normal() * 0.5;
   const std::string path = tempPath("policy.json");
   SavePolicy(*policy, path.c_str());
-  std::unique_ptr<GNeuralNetLearner> loaded = LoadPolicy(path.c_str());
+  std::unique_ptr<WNeuralNetLearner> loaded = LoadPolicy(path.c_str());
   EXPECT_EQ(JumpHeight(loaded.get()), JumpHeight(policy.get()));
 }
 
 TEST(PolicyLearnerTest, LoadingAnotherNetworkIsAnError) {
-  GNeuralNet other;
-  other.add(new GBlockLinear(2, 4));
-  GRand rand(0);
+  WNeuralNet other;
+  other.add(new WBlockLinear(2, 4));
+  WRand rand(0);
   other.init(rand);
-  GDom doc;
+  WDom doc;
   doc.setRoot(other.serialize(&doc));
   const std::string path = tempPath("other.json");
   doc.saveJson(path.c_str());
@@ -88,7 +88,7 @@ TEST(PolicyLearnerTest, TrainingSavesPoliciesThatLoad) {
   testing::internal::GetCapturedStdout();
   double heights[3];
   for (int i = 0; i < 3; i++) {
-    std::unique_ptr<GNeuralNetLearner> policy =
+    std::unique_ptr<WNeuralNetLearner> policy =
         LoadPolicy(("policy" + std::to_string(i * 2) + ".json").c_str());
     heights[i] = JumpHeight(policy.get());
     EXPECT_GT(heights[i], 0.0);

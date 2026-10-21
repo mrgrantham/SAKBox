@@ -19,57 +19,57 @@
 #ifndef __GCUDALAYERS_H__
 #define __GCUDALAYERS_H__
 
-#include "GCudaMatrix.h"
-#include "../../GClasses/GNeuralNet.h"
+#include "WCudaMatrix.h"
+#include "../../WClasses/WNeuralNet.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GCudaLayer : public GNeuralNetLayer
+class WCudaLayer : public WNeuralNetLayer
 {
 protected:
-	GCudaEngine& m_engine;
+	WCudaEngine& m_engine;
 
 public:
 	/// Standard constructor
-	GCudaLayer(GCudaEngine& engine);
+	WCudaLayer(WCudaEngine& engine);
 
 	/// Throws an exception.
-	GCudaLayer(GDomNode* pNode, GCudaEngine& engine);
-	virtual ~GCudaLayer();
+	WCudaLayer(WDomNode* pNode, WCudaEngine& engine);
+	virtual ~WCudaLayer();
 
 	/// Returns true
 	virtual bool usesGPU() { return true; }
 
 	/// Return the activation vector on device memory
-	virtual GCudaVector& deviceActivation() = 0;
+	virtual WCudaVector& deviceActivation() = 0;
 
 	/// Return the error vector on device memory
-	virtual GCudaVector& deviceError() = 0;
+	virtual WCudaVector& deviceError() = 0;
 };
 
 
 
-class GLayerClassicCuda : public GCudaLayer
+class WLayerClassicCuda : public WCudaLayer
 {
 protected:
-	GCudaMatrix m_weights; // Each row is an upstream neuron. Each column is a downstream neuron.
-	GCudaMatrix m_delta;
-	GCudaVector m_bias;
-	GCudaVector m_biasDelta;
-	GCudaVector m_activation;
-	GCudaVector m_incoming;
-	GCudaVector m_error;
-	GVec m_outgoing;
+	WCudaMatrix m_weights; // Each row is an upstream neuron. Each column is a downstream neuron.
+	WCudaMatrix m_delta;
+	WCudaVector m_bias;
+	WCudaVector m_biasDelta;
+	WCudaVector m_activation;
+	WCudaVector m_incoming;
+	WCudaVector m_error;
+	WVec m_outgoing;
 
 public:
 	/// General-purpose constructor. Takes ownership of pActivationFunction.
-	GLayerClassicCuda(GCudaEngine& engine, size_t inputs, size_t outputs);
+	WLayerClassicCuda(WCudaEngine& engine, size_t inputs, size_t outputs);
 
 	// Unmarshaling constructor
-	GLayerClassicCuda(GDomNode* pNode, GCudaEngine& engine);
+	WLayerClassicCuda(WDomNode* pNode, WCudaEngine& engine);
 
-	virtual ~GLayerClassicCuda();
+	virtual ~WLayerClassicCuda();
 
 	/// Returns the type of this layer
 	virtual const char* type() { return "classiccuda"; }
@@ -77,8 +77,8 @@ public:
 	/// Converts to a classic layer and serializes.
 	/// (The serialized form will not remember that it was trained with CUDA,
 	/// so it can be loaded on machines without a GPU. If you want to resume training
-	/// on a GPU, you will need to call "upload" to get back to a GLayerClassicCuda.)
-	GDomNode* serialize(GDom* pDoc);
+	/// on a GPU, you will need to call "upload" to get back to a WLayerClassicCuda.)
+	WDomNode* serialize(WDom* pDoc);
 
 	virtual std::string to_str();
 
@@ -92,32 +92,32 @@ public:
 	virtual void resize(size_t inputs, size_t outputs);
 
 	/// Returns the activation vector in device memory.
-	virtual GCudaVector& deviceActivation() { return m_activation; }
+	virtual WCudaVector& deviceActivation() { return m_activation; }
 
 	/// Downloads the activation vector from device memory to host memory, and returns a pointer to the host memory copy.
-	virtual GVec& activation();
+	virtual WVec& activation();
 
 	/// Returns the error vector in device memory.
-	virtual GCudaVector& deviceError() { return m_error; }
+	virtual WCudaVector& deviceError() { return m_error; }
 
 	/// Returns a buffer used to store error terms for each unit in this layer.
-	virtual GVec& error();
+	virtual WVec& error();
 
 	/// Uploads pIn to the GPU, then feeds it through this layer
-	virtual void feedForward(const GVec& in);
+	virtual void feedForward(const WVec& in);
 
 	/// Feeds the activation from the upstream layer through this layer.
 	/// (If the upstream layer is a GPU-optimized layer, then it will be faster because
 	/// the data can stay on the GPU.)
-	virtual void feedForward(GNeuralNetLayer* pUpStreamLayer);
+	virtual void feedForward(WNeuralNetLayer* pUpStreamLayer);
 
 	/// Throws an exception because it is not implemented for this layer type yet.
-	virtual void dropOut(GRand& rand, double probOfDrop);
+	virtual void dropOut(WRand& rand, double probOfDrop);
 
 	/// Computes the error terms associated with the output of this layer, given a target vector.
 	/// (Note that this is the error of the output, not the error of the weights. To obtain the
 	/// error term for the weights, deactivateError must be called.)
-	virtual void computeError(const GVec& target);
+	virtual void computeError(const WVec& target);
 
 	/// Multiplies each element in the error vector by the derivative of the activation function.
 	/// This results in the error having meaning with respect to the weights, instead of the output.
@@ -126,27 +126,27 @@ public:
 	/// Backpropagates the error from this layer into the upstream error vector.
 	/// (Assumes that the error in this layer has already been deactivated.
 	/// The error this computes is with respect to the output of the upstream layer.)
-	virtual void backPropError(GNeuralNetLayer* pUpStreamLayer);
+	virtual void backPropError(WNeuralNetLayer* pUpStreamLayer);
 
 	/// Updates the weights that feed into this layer (not including the bias) by gradient descent.
 	/// (Assumes the error has already been computed and deactivated.)
 	/// Note that this method does not sync with the GPU. It assumes that you will yet call
 	/// updateBias, which does sync with the GPU.
-	virtual void updateDeltas(const GVec& upStreamActivation, double momentum);
+	virtual void updateDeltas(const WVec& upStreamActivation, double momentum);
 
 	/// Refines the weights by gradient descent.
-	virtual void updateDeltas(GNeuralNetLayer* pUpStreamLayer, double momentum);
+	virtual void updateDeltas(WNeuralNetLayer* pUpStreamLayer, double momentum);
 
 	/// Adds the deltas to the weights.
 	virtual void applyDeltas(double learningRate);
 
 	/// This is a special weight update method for use with drop-connect. It updates the weights, and restores
 	/// the weights that were previously dropped by a call to dropConnect.
-	virtual void updateWeightsAndRestoreDroppedOnes(const GVec& upStreamActivation, size_t inputStart, size_t inputCount, double learningRate, double momentum);
+	virtual void updateWeightsAndRestoreDroppedOnes(const WVec& upStreamActivation, size_t inputStart, size_t inputCount, double learningRate, double momentum);
 
 	/// This is a special weight update method for use with drop-connect. It updates the weights, and restores
 	/// the weights that were previously dropped by a call to dropConnect.
-	virtual void updateWeightsAndRestoreDroppedOnes(GNeuralNetLayer* pUpStreamLayer, size_t inputStart, double learningRate, double momentum);
+	virtual void updateWeightsAndRestoreDroppedOnes(WNeuralNetLayer* pUpStreamLayer, size_t inputStart, double learningRate, double momentum);
 
 	/// Updates the bias of this layer by gradient descent. (Assumes the error has already been
 	/// computed and deactivated.) This method also syncs with the GPU, so it should be
@@ -169,16 +169,16 @@ public:
 	virtual size_t vectorToWeights(const double* vector);
 
 	/// Copy the weights from pSource to this layer. (Assumes pSource is the same type of layer.)
-	virtual void copyWeights(const GNeuralNetLayer* pSource);
+	virtual void copyWeights(const WNeuralNetLayer* pSource);
 
 	/// Initialize the weights with small random values.
-	virtual void resetWeights(GRand& rand);
+	virtual void resetWeights(WRand& rand);
 
 	/// Perturbs the weights that feed into the specifed units with Gaussian noise.
 	/// start specifies the first unit whose incoming weights are perturbed.
 	/// count specifies the maximum number of units whose incoming weights are perturbed.
 	/// The default values for these parameters apply the perturbation to all units.
-	virtual void perturbWeights(GRand& rand, double deviation, size_t start = 0, size_t count = INVALID_INDEX);
+	virtual void perturbWeights(WRand& rand, double deviation, size_t start = 0, size_t count = INVALID_INDEX);
 
 	/// Scales weights if necessary such that the manitude of the weights (not including the bias) feeding into each unit are <= max.
 	virtual void maxNorm(double min, double max);
@@ -189,24 +189,24 @@ public:
 	/// Throws an exception
 	virtual void regularizeActivationFunction(double lambda);
 
-	/// Copies the weights and bias vector from GLayerClassic layer into this layer.
-	void upload(const GLayerClassic& source);
+	/// Copies the weights and bias vector from WLayerClassic layer into this layer.
+	void upload(const WLayerClassic& source);
 
-	/// Copies the weights and bias vector from this layer into a GLayerClassic layer.
-	void download(GLayerClassic& dest) const;
+	/// Copies the weights and bias vector from this layer into a WLayerClassic layer.
+	void download(WLayerClassic& dest) const;
 
 protected:
 	void copyBiasToNet();
 
-	void feedIn(const GVec& in);
+	void feedIn(const WVec& in);
 
-	void feedIn(GNeuralNetLayer* pUpStreamLayer);
+	void feedIn(WNeuralNetLayer* pUpStreamLayer);
 
 	void activate();
 };
 
 
-class GLayerConvolutional2DCuda : public GCudaLayer
+class WLayerConvolutional2DCuda : public WCudaLayer
 {
 protected:
 	// primary properties
@@ -224,14 +224,14 @@ protected:
 	size_t m_outputCols;
 
 	// parameters
-	GCudaVector m_incoming;
-	GCudaVector m_bias, m_biasDelta;
-	GCudaMatrix m_kernels;
-	GCudaMatrix m_delta;
-	GCudaVector m_net;
-	GCudaVector m_activation;
-	GCudaVector m_error;
-	GVec m_outgoing;
+	WCudaVector m_incoming;
+	WCudaVector m_bias, m_biasDelta;
+	WCudaMatrix m_kernels;
+	WCudaMatrix m_delta;
+	WCudaVector m_net;
+	WCudaVector m_activation;
+	WCudaVector m_error;
+	WVec m_outgoing;
 
 public:
 	/// General-purpose constructor.
@@ -240,58 +240,58 @@ public:
 	/// The values should be presented as inputChannels 2d images (i.e. a 64x48x1 image for red, a 64x48 image for blue, and a 64x48 image for green) in row major order.
 	/// kernelCount determines the number of output channels.
 	/// kernelRows, kernelCols, stride, and padding determine the size of the output.
-	GLayerConvolutional2DCuda(GCudaEngine& engine, size_t inputCols, size_t inputRows, size_t inputChannels, size_t kernelRows, size_t kernelCols, size_t kernelCount, size_t stride = 1, size_t padding = 0);
+	WLayerConvolutional2DCuda(WCudaEngine& engine, size_t inputCols, size_t inputRows, size_t inputChannels, size_t kernelRows, size_t kernelCols, size_t kernelCount, size_t stride = 1, size_t padding = 0);
 
 	/// Constructor that uses the upstream convolutional layer to determine input dimensions
-	GLayerConvolutional2DCuda(GCudaEngine& engine, const GLayerConvolutional2DCuda& upstream, size_t kernelRows, size_t kernelCols, size_t kernelCount, size_t stride = 1, size_t padding = 0);
+	WLayerConvolutional2DCuda(WCudaEngine& engine, const WLayerConvolutional2DCuda& upstream, size_t kernelRows, size_t kernelCols, size_t kernelCount, size_t stride = 1, size_t padding = 0);
 
-	GLayerConvolutional2DCuda(GDomNode* pNode, GCudaEngine& engine);
-	virtual ~GLayerConvolutional2DCuda();
+	WLayerConvolutional2DCuda(WDomNode* pNode, WCudaEngine& engine);
+	virtual ~WLayerConvolutional2DCuda();
 
 	virtual const char* type() { return "conv2dcuda"; }
-	virtual GDomNode* serialize(GDom* pDoc);
+	virtual WDomNode* serialize(WDom* pDoc);
 	virtual std::string to_str();
 	virtual size_t inputs() const { return m_inputRows * m_inputCols * m_inputChannels; }
 	virtual size_t outputs() const { return m_outputRows * m_outputCols * m_kernelCount; }
 	virtual void resize(size_t inputs, size_t outputs);
-	virtual void resizeInputs(GNeuralNetLayer* pUpStreamLayer);
+	virtual void resizeInputs(WNeuralNetLayer* pUpStreamLayer);
 
 	/// Uploads pIn to the GPU, then feeds it through this layer
-	virtual void feedForward(const GVec& in);
+	virtual void feedForward(const WVec& in);
 
 	/// Feeds the activation from the upstream layer through this layer.
 	/// (If the upstream layer is a GPU-optimized layer, then it will be faster because
 	/// the data can stay on the GPU.)
-	virtual void feedForward(GNeuralNetLayer* pUpStreamLayer);
+	virtual void feedForward(WNeuralNetLayer* pUpStreamLayer);
 
-	virtual void dropOut(GRand& rand, double probOfDrop);
-	virtual void dropConnect(GRand& rand, double probOfDrop);
-	virtual void computeError(const GVec& target);
+	virtual void dropOut(WRand& rand, double probOfDrop);
+	virtual void dropConnect(WRand& rand, double probOfDrop);
+	virtual void computeError(const WVec& target);
 	virtual void deactivateError();
-	virtual void backPropError(GNeuralNetLayer* pUpStreamLayer);
-	virtual void updateDeltas(const GVec& upStreamActivation, double momentum);
-	virtual void updateDeltas(GNeuralNetLayer* pUpStreamLayer, double momentum);
+	virtual void backPropError(WNeuralNetLayer* pUpStreamLayer);
+	virtual void updateDeltas(const WVec& upStreamActivation, double momentum);
+	virtual void updateDeltas(WNeuralNetLayer* pUpStreamLayer, double momentum);
 	virtual void applyDeltas(double learningRate);
 	virtual void scaleWeights(double factor, bool scaleBiases);
 	virtual void diminishWeights(double amount, bool regularizeBiases);
 	virtual size_t countWeights();
 	virtual size_t weightsToVector(double* pOutVector);
 	virtual size_t vectorToWeights(const double* pVector);
-	virtual void copyWeights(const GNeuralNetLayer* pSource);
-	virtual void resetWeights(GRand& rand);
-	virtual void perturbWeights(GRand& rand, double deviation, size_t start = 0, size_t count = INVALID_INDEX);
+	virtual void copyWeights(const WNeuralNetLayer* pSource);
+	virtual void resetWeights(WRand& rand);
+	virtual void perturbWeights(WRand& rand, double deviation, size_t start = 0, size_t count = INVALID_INDEX);
 	virtual void maxNorm(double min, double max);
 	virtual void regularizeActivationFunction(double lambda);
-	virtual GVec& activation();
-	virtual GVec& error();
-	virtual GCudaVector& deviceActivation() { return m_activation; }
-	virtual GCudaVector& deviceError() { return m_error; }
+	virtual WVec& activation();
+	virtual WVec& error();
+	virtual WCudaVector& deviceActivation() { return m_activation; }
+	virtual WCudaVector& deviceError() { return m_error; }
 
-	/// Copies the kernels and biases from a GLayerConvolutional2D layer into this layer.
-	void upload(const GLayerConvolutional2D& source);
+	/// Copies the kernels and biases from a WLayerConvolutional2D layer into this layer.
+	void upload(const WLayerConvolutional2D& source);
 
-	/// Copies the weights and bias vector from this layer into a GLayerConvolutional2D layer.
-	void download(GLayerConvolutional2D& dest) const;
+	/// Copies the weights and bias vector from this layer into a WLayerConvolutional2D layer.
+	void download(WLayerConvolutional2D& dest) const;
 
 	size_t kernelRows() const { return m_kernelRows; }
 	size_t kernelCols() const { return m_kernelCols; }
@@ -301,6 +301,6 @@ public:
 	size_t outputChannels() const { return m_kernelCount; }
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GCUDALAYERS_H__

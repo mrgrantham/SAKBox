@@ -1,9 +1,9 @@
-// GHashTable.h's hash tables.
+// WHashTable.h's hash tables.
 #include <gtest/gtest.h>
 
-#include <WClasses/GHashTable.h>
+#include <WClasses/WHashTable.h>
 
-using namespace GClasses;
+using namespace WClasses;
 
 namespace {
 struct KeyNode : HashTableNode {
@@ -17,7 +17,7 @@ struct KeyNode : HashTableNode {
 // get finds the stored node equal to the one given (and wrote it out
 // through a void** cast of a HashTableNode**, which is now a typed lookup).
 TEST(NodeHashTableTest, GetReturnsTheStoredEqualNode) {
-  GNodeHashTable table(true, 16);
+  WNodeHashTable table(true, 16);
   KeyNode *seven = new KeyNode(7), *twentyThree = new KeyNode(23); // (both in bucket 7)
   table.add(seven);
   table.add(twentyThree);

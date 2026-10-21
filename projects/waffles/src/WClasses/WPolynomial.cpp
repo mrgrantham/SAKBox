@@ -17,46 +17,46 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GError.h"
-#include "GPolynomial.h"
-#include "GMatrix.h"
-#include "GVec.h"
+#include "WError.h"
+#include "WPolynomial.h"
+#include "WMatrix.h"
+#include "WVec.h"
 #include <math.h>
 #include <stdlib.h>
-#include "GDistribution.h"
-#include "GMath.h"
-#include "GHillClimber.h"
-#include "GDom.h"
-#include "GHolders.h"
+#include "WDistribution.h"
+#include "WMath.h"
+#include "WHillClimber.h"
+#include "WDom.h"
+#include "WHolders.h"
 
 using std::vector;
 
-namespace GClasses
+namespace WClasses
 {
 
-/// This is an internal helper-class used by GPolynomial
-class GPolynomialSingleLabel
+/// This is an internal helper-class used by WPolynomial
+class WPolynomialSingleLabel
 {
 protected:
 	size_t m_featureDims;
 	size_t m_nControlPoints;
 	size_t m_nCoefficients;
-	GVec m_pCoefficients;
+	WVec m_pCoefficients;
 
 public:
 	/// It will have the same number of control points in every dimension
-	GPolynomialSingleLabel(size_t nControlPoints);
+	WPolynomialSingleLabel(size_t nControlPoints);
 
 	/// Load from a DOM.
-	GPolynomialSingleLabel(const GDomNode* pNode);
+	WPolynomialSingleLabel(const WDomNode* pNode);
 
-	virtual ~GPolynomialSingleLabel();
+	virtual ~WPolynomialSingleLabel();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const;
+	WDomNode* serialize(WDom* pDoc) const;
 
 	/// Specify the number of input and output features
 	void init(size_t featureDims);
@@ -78,7 +78,7 @@ public:
 	double coefficient(size_t* pCoords);
 
 	/// Returns the full array of coefficients
-	GVec& coefficientArray() { return m_pCoefficients; }
+	WVec& coefficientArray() { return m_pCoefficients; }
 
 	/// Sets the coefficient at the specified coordinates. pCoords should
 	/// be an array of size m_nDimensions, and each value should be from 0 to m_nControlPoints - 1
@@ -86,13 +86,13 @@ public:
 
 	/// Copies pOther into this polynomial. Both polynomials must have the
 	/// same dimensionality, and this polynomial must have >=
-	void copy(GPolynomialSingleLabel* pOther);
+	void copy(WPolynomialSingleLabel* pOther);
 
-	/// See the comment for GSupervisedLearner::clear
+	/// See the comment for WSupervisedLearner::clear
 	void clear();
 
 	/// Sets all the coefficients. pVector must be of size GetCoefficientCount()
-	void setCoefficients(const GVec& pVector);
+	void setCoefficients(const WVec& pVector);
 
 	/// Converts to a multi-dimensional Bezier curve
 	void toBezierCoefficients();
@@ -112,9 +112,9 @@ public:
 	/// polynomial before integrating.
 	void integrate();
 
-	void train(const GMatrix& features, const GMatrix& labels);
+	void train(const WMatrix& features, const WMatrix& labels);
 
-	double predict(const GVec& pIn);
+	double predict(const WVec& pIn);
 
 protected:
 	/// This converts from control-point-lattice coordinates to an array index.
@@ -124,7 +124,7 @@ protected:
 };
 
 
-class GPolynomialLatticeIterator
+class WPolynomialLatticeIterator
 {
 protected:
 	size_t* m_pCoords;
@@ -133,7 +133,7 @@ protected:
 	size_t m_nSkipDimension;
 
 public:
-	GPolynomialLatticeIterator(size_t* pCoords, size_t nDimensions, size_t nControlPoints, size_t nSkipDimension)
+	WPolynomialLatticeIterator(size_t* pCoords, size_t nDimensions, size_t nControlPoints, size_t nSkipDimension)
 	{
 		m_pCoords = pCoords;
 		m_nDimensions = nDimensions;
@@ -147,7 +147,7 @@ public:
 		}
 	}
 
-	~GPolynomialLatticeIterator()
+	~WPolynomialLatticeIterator()
 	{
 	}
 
@@ -176,13 +176,13 @@ public:
 
 // ---------------------------------------------------------------------------
 
-GPolynomialSingleLabel::GPolynomialSingleLabel(size_t controlPoints)
+WPolynomialSingleLabel::WPolynomialSingleLabel(size_t controlPoints)
 : m_featureDims(0), m_nControlPoints(controlPoints), m_nCoefficients(0)
 {
-	GAssert(controlPoints > 0);
+	WAssert(controlPoints > 0);
 }
 
-GPolynomialSingleLabel::GPolynomialSingleLabel(const GDomNode* pNode)
+WPolynomialSingleLabel::WPolynomialSingleLabel(const WDomNode* pNode)
 : m_pCoefficients(pNode->get("coefficients"))
 {
 	m_nControlPoints = (int)pNode->getInt("controlPoints");
@@ -196,64 +196,64 @@ GPolynomialSingleLabel::GPolynomialSingleLabel(const GDomNode* pNode)
 	}
 }
 
-GPolynomialSingleLabel::~GPolynomialSingleLabel()
+WPolynomialSingleLabel::~WPolynomialSingleLabel()
 {
 	clear();
 }
 
 // virtual
-GDomNode* GPolynomialSingleLabel::serialize(GDom* pDoc) const
+WDomNode* WPolynomialSingleLabel::serialize(WDom* pDoc) const
 {
 	if(m_featureDims == 0)
 		throw Ex("train has not been called");
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "featureDims", m_featureDims);
 	pNode->add(pDoc, "controlPoints", m_nControlPoints);
 	pNode->add(pDoc, "coefficients", m_pCoefficients.serialize(pDoc));
 	return pNode;
 }
 
-size_t GPolynomialSingleLabel::calcIndex(size_t* pCoords)
+size_t WPolynomialSingleLabel::calcIndex(size_t* pCoords)
 {
 	size_t nIndex = 0;
 	for(size_t n = m_featureDims - 1; n < m_featureDims; n--)
 	{
 		nIndex *= m_nControlPoints;
-		GAssert(pCoords[n] >= 0 && pCoords[n] < m_nControlPoints); // out of range
+		WAssert(pCoords[n] >= 0 && pCoords[n] < m_nControlPoints); // out of range
 		nIndex += pCoords[n];
 	}
 	return nIndex;
 }
 
-double GPolynomialSingleLabel::coefficient(size_t* pCoords)
+double WPolynomialSingleLabel::coefficient(size_t* pCoords)
 {
 	if(m_featureDims == 0)
 		throw Ex("init has not been called");
 	return m_pCoefficients[calcIndex(pCoords)];
 }
 
-void GPolynomialSingleLabel::setCoefficient(size_t* pCoords, double dVal)
+void WPolynomialSingleLabel::setCoefficient(size_t* pCoords, double dVal)
 {
 	if(m_featureDims == 0)
 		throw Ex("init has not been called");
 	m_pCoefficients[calcIndex(pCoords)] = dVal;
 }
 
-class GPolynomialRegressCritic : public GTargetFunction
+class WPolynomialRegressCritic : public WTargetFunction
 {
 protected:
-	GPolynomialSingleLabel* m_pPolynomial;
-	const GMatrix& m_features;
-	const GMatrix& m_labels;
+	WPolynomialSingleLabel* m_pPolynomial;
+	const WMatrix& m_features;
+	const WMatrix& m_labels;
 
 public:
-	GPolynomialRegressCritic(GPolynomialSingleLabel* pPolynomial, const GMatrix& features, const GMatrix& labels)
-	: GTargetFunction(pPolynomial->coefficientCount()), m_features(features), m_labels(labels)
+	WPolynomialRegressCritic(WPolynomialSingleLabel* pPolynomial, const WMatrix& features, const WMatrix& labels)
+	: WTargetFunction(pPolynomial->coefficientCount()), m_features(features), m_labels(labels)
 	{
 		m_pPolynomial = pPolynomial;
 	}
 
-	~GPolynomialRegressCritic() override
+	~WPolynomialRegressCritic() override
 	{
 	}
 
@@ -261,12 +261,12 @@ public:
 	virtual bool isConstrained() { return false; }
 
 protected:
-	void initVector(GVec& pVector) override
+	void initVector(WVec& pVector) override
 	{
 		pVector.fill(0.0);
 	}
 
-	double computeError(const GVec& pVector) override
+	double computeError(const WVec& pVector) override
 	{
 		m_pPolynomial->setCoefficients(pVector);
 		m_pPolynomial->fromBezierCoefficients();
@@ -274,7 +274,7 @@ protected:
 		double dSumSquaredError = 0;
 		for(size_t i = 0; i < m_features.rows(); i++)
 		{
-			const GVec& pVec = m_features[i];
+			const WVec& pVec = m_features[i];
 			double prediction = m_pPolynomial->predict(pVec);
 			d = m_labels[i][0] - prediction;
 			dSumSquaredError += (d * d);
@@ -283,19 +283,19 @@ protected:
 	}
 };
 
-void GPolynomialSingleLabel::setCoefficients(const GVec& pVector)
+void WPolynomialSingleLabel::setCoefficients(const WVec& pVector)
 {
 	if(m_featureDims == 0)
 		throw Ex("init has not been called");
 	m_pCoefficients.copy(pVector);
 }
 
-void GPolynomialSingleLabel::clear()
+void WPolynomialSingleLabel::clear()
 {
 	m_pCoefficients.resize(0);
 }
 
-void GPolynomialSingleLabel::init(size_t feature_dims)
+void WPolynomialSingleLabel::init(size_t feature_dims)
 {
 	m_featureDims = feature_dims;
 	m_nCoefficients = 1;
@@ -309,26 +309,26 @@ void GPolynomialSingleLabel::init(size_t feature_dims)
 	m_pCoefficients.fill(0.0);
 }
 
-void GPolynomialSingleLabel::train(const GMatrix& features, const GMatrix& labels)
+void WPolynomialSingleLabel::train(const WMatrix& features, const WMatrix& labels)
 {
-	GAssert(labels.cols() == 1);
+	WAssert(labels.cols() == 1);
 	init(features.cols());
-	GPolynomialRegressCritic critic(this, features, labels);
-	//GStochasticGreedySearch search(&critic);
-	GMomentumGreedySearch search(&critic);
+	WPolynomialRegressCritic critic(this, features, labels);
+	//WStochasticGreedySearch search(&critic);
+	WMomentumGreedySearch search(&critic);
 	search.searchUntil(100, 30, .01);
 	setCoefficients(search.currentVector());
 	fromBezierCoefficients();
 }
 
-// (Warning: this method relies on the order in which GPolynomialLatticeIterator
+// (Warning: this method relies on the order in which WPolynomialLatticeIterator
 // visits coefficients in the lattice)
-double GPolynomialSingleLabel::predict(const GVec& pIn)
+double WPolynomialSingleLabel::predict(const WVec& pIn)
 {
 	if(m_featureDims == 0)
 		throw Ex("init has not been called");
-	GTEMPBUF(size_t, pCoords, m_featureDims);
-	GPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, INVALID_INDEX);
+	WTEMPBUF(size_t, pCoords, m_featureDims);
+	WPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, INVALID_INDEX);
 	double dSum = 0;
 	double dVar;
 	for(size_t nCoeff = m_nCoefficients - 1; nCoeff < m_nCoefficients; nCoeff--)
@@ -346,23 +346,23 @@ double GPolynomialSingleLabel::predict(const GVec& pIn)
 	return dSum;
 }
 
-void GPolynomialSingleLabel::toBezierCoefficients()
+void WPolynomialSingleLabel::toBezierCoefficients()
 {
 	if(m_featureDims == 0)
 		throw Ex("init has not been called");
 	// Make Pascal's triangle
-	GTEMPBUF(size_t, pCoords, m_featureDims);
-	GTEMPBUF(size_t, pPascalsTriangle, m_nControlPoints);
+	WTEMPBUF(size_t, pCoords, m_featureDims);
+	WTEMPBUF(size_t, pPascalsTriangle, m_nControlPoints);
 
 	// In each dimensional direction...
-	GMath::pascalsTriangle(pPascalsTriangle, m_nControlPoints - 1);
+	WMath::pascalsTriangle(pPascalsTriangle, m_nControlPoints - 1);
 	for(size_t n = 0; n < m_featureDims; n++)
 	{
 		// Across that dimension...
 		for(size_t j = 0; j < m_nControlPoints; j++)
 		{
 			// Iterate over the entire lattice of coefficients (except in dimension n)
-			GPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
+			WPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
 			while(true)
 			{
 				// Divide by the corresponding row of Pascal's triangle
@@ -385,7 +385,7 @@ void GPolynomialSingleLabel::toBezierCoefficients()
 			for(size_t j = i; j < m_nControlPoints; j++)
 			{
 				// Iterate over the entire lattice of coefficients (except in dimension n)
-				GPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
+				WPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
 				while(true)
 				{
 					// Subtract the neighbor of lesser-significance from this coefficient
@@ -401,13 +401,13 @@ void GPolynomialSingleLabel::toBezierCoefficients()
 	}
 }
 
-void GPolynomialSingleLabel::fromBezierCoefficients()
+void WPolynomialSingleLabel::fromBezierCoefficients()
 {
 	if(m_featureDims == 0)
 		throw Ex("init has not been called");
 	// Forward difference the coefficients
-	GTEMPBUF(size_t, pCoords, m_featureDims);
-	GTEMPBUF(size_t, pPascalsTriangle, m_nControlPoints);
+	WTEMPBUF(size_t, pCoords, m_featureDims);
+	WTEMPBUF(size_t, pPascalsTriangle, m_nControlPoints);
 	double d;
 	for(size_t i = 1; i < m_nControlPoints; i++)
 	{
@@ -418,7 +418,7 @@ void GPolynomialSingleLabel::fromBezierCoefficients()
 			for(size_t j = m_nControlPoints - 1; j >= i; j--)
 			{
 				// Iterate over the entire lattice of coefficients (except in dimension n)
-				GPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
+				WPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
 				while(true)
 				{
 					// Subtract the neighbor of lesser-significance from this coefficient
@@ -434,14 +434,14 @@ void GPolynomialSingleLabel::fromBezierCoefficients()
 	}
 
 	// In each dimensional direction...
-	GMath::pascalsTriangle(pPascalsTriangle, m_nControlPoints - 1);
+	WMath::pascalsTriangle(pPascalsTriangle, m_nControlPoints - 1);
 	for(size_t n = 0; n < m_featureDims; n++)
 	{
 		// Across that dimension...
 		for(size_t j = 0; j < m_nControlPoints; j++)
 		{
 			// Iterate over the entire lattice of coefficients (except in dimension n)
-			GPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
+			WPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
 			while(true)
 			{
 				// Multiply by the corresponding row of Pascal's triangle
@@ -454,16 +454,16 @@ void GPolynomialSingleLabel::fromBezierCoefficients()
 	}
 }
 
-void GPolynomialSingleLabel::differentiate()
+void WPolynomialSingleLabel::differentiate()
 {
 	if(m_featureDims == 0)
 		throw Ex("init has not been called");
-	GTEMPBUF(size_t, pCoords, m_featureDims);
+	WTEMPBUF(size_t, pCoords, m_featureDims);
 	double d;
 	for(size_t n = 0; n < m_featureDims; n++)
 	{
 		// Iterate over the entire lattice of coefficients (except in dimension n)
-		GPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
+		WPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
 		while(true)
 		{
 			// Differentiate with respect to the n'th dimension
@@ -482,16 +482,16 @@ void GPolynomialSingleLabel::differentiate()
 	}
 }
 
-void GPolynomialSingleLabel::integrate()
+void WPolynomialSingleLabel::integrate()
 {
 	if(m_featureDims == 0)
 		throw Ex("init has not been called");
-	GTEMPBUF(size_t, pCoords, m_featureDims);
+	WTEMPBUF(size_t, pCoords, m_featureDims);
 	double d;
 	for(size_t n = 0; n < m_featureDims; n++)
 	{
 		// Iterate over the entire lattice of coefficients (except in dimension n)
-		GPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
+		WPolynomialLatticeIterator iter(pCoords, m_featureDims, m_nControlPoints, n);
 		while(true)
 		{
 			// Integrate in the n'th dimension
@@ -503,7 +503,7 @@ void GPolynomialSingleLabel::integrate()
 				d = m_pCoefficients[calcIndex(pCoords)];
 				pCoords[n] = j;
 				size_t index = calcIndex(pCoords);
-				GAssert(j < m_nControlPoints - 1 || m_pCoefficients[index] == 0); // There's a non-zero value in a highest-order coefficient. This polynomial, therefore, isn't big enough to hold the integral
+				WAssert(j < m_nControlPoints - 1 || m_pCoefficients[index] == 0); // There's a non-zero value in a highest-order coefficient. This polynomial, therefore, isn't big enough to hold the integral
 				m_pCoefficients[index] = d / j;
 			}
 			if(!iter.Advance())
@@ -512,15 +512,15 @@ void GPolynomialSingleLabel::integrate()
 	}
 }
 
-void GPolynomialSingleLabel::copy(GPolynomialSingleLabel* pOther)
+void WPolynomialSingleLabel::copy(WPolynomialSingleLabel* pOther)
 {
 	m_featureDims = pOther->m_featureDims;
 	if(controlPointCount() >= pOther->controlPointCount())
 		throw Ex("this polynomial must have at least as many control points as pOther");
 	if(controlPointCount() > pOther->controlPointCount())
 		m_pCoefficients.fill(0.0);
-	GTEMPBUF(size_t, pCoords, m_featureDims);
-	GPolynomialLatticeIterator iter(pCoords, m_featureDims, pOther->m_nControlPoints, INVALID_INDEX);
+	WTEMPBUF(size_t, pCoords, m_featureDims);
+	WPolynomialLatticeIterator iter(pCoords, m_featureDims, pOther->m_nControlPoints, INVALID_INDEX);
 	while(true)
 	{
 		m_pCoefficients[calcIndex(pCoords)] = pOther->m_pCoefficients[pOther->calcIndex(pCoords)];
@@ -530,12 +530,12 @@ void GPolynomialSingleLabel::copy(GPolynomialSingleLabel* pOther)
 }
 
 // static
-void GPolynomialSingleLabel::test()
+void WPolynomialSingleLabel::test()
 {
 	// This test involves a two-dimensional polynomial with three controll points in each dimension.
 	// In other words, there is a 3x3 lattice of control points, so there are 9 total control points.
 	// In this case, we arbitrarily use {1,2,3,4,5,6,7,8,9} for the coefficients.
-	GPolynomialSingleLabel gp(3);
+	WPolynomialSingleLabel gp(3);
 	gp.init(2);
 	size_t degrees[2];
 	degrees[0] = 0;
@@ -565,7 +565,7 @@ void GPolynomialSingleLabel::test()
 	degrees[0] = 2;
 	degrees[1] = 2;
 	gp.setCoefficient(degrees, 9);
-	GVec vars(2);
+	WVec vars(2);
 	vars[0] = 7;
 	vars[1] = 11;
 	double prediction = gp.predict(vars);
@@ -594,67 +594,67 @@ void GPolynomialSingleLabel::test()
 
 
 
-GPolynomial::GPolynomial()
-: GSupervisedLearner(), m_controlPoints(3)
+WPolynomial::WPolynomial()
+: WSupervisedLearner(), m_controlPoints(3)
 {
 }
 
-GPolynomial::GPolynomial(const GDomNode* pNode)
-: GSupervisedLearner(pNode)
+WPolynomial::WPolynomial(const WDomNode* pNode)
+: WSupervisedLearner(pNode)
 {
 	m_controlPoints = (size_t)pNode->getInt("controlPoints");
-	GDomNode* pPolys = pNode->get("polys");
-	for(GDomListIterator it(pPolys); it.current(); it.advance())
-		m_polys.push_back(new GPolynomialSingleLabel(it.current()));
+	WDomNode* pPolys = pNode->get("polys");
+	for(WDomListIterator it(pPolys); it.current(); it.advance())
+		m_polys.push_back(new WPolynomialSingleLabel(it.current()));
 }
 
 // virtual
-GPolynomial::~GPolynomial()
+WPolynomial::~WPolynomial()
 {
 	clear();
 }
 
 // virtual
-GDomNode* GPolynomial::serialize(GDom* pDoc) const
+WDomNode* WPolynomial::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GPolynomial");
+	WDomNode* pNode = baseDomNode(pDoc, "WPolynomial");
 	pNode->add(pDoc, "controlPoints", m_controlPoints);
-	GDomNode* pPolys = pNode->add(pDoc, "polys", pDoc->newList());
+	WDomNode* pPolys = pNode->add(pDoc, "polys", pDoc->newList());
 	for(size_t i = 0; i < m_polys.size(); i++)
 		pPolys->add(pDoc, m_polys[i]->serialize(pDoc));
 	return pNode;
 }
 
-void GPolynomial::setControlPoints(size_t n)
+void WPolynomial::setControlPoints(size_t n)
 {
 	m_controlPoints = n;
 }
 
-size_t GPolynomial::controlPoints()
+size_t WPolynomial::controlPoints()
 {
 	return m_controlPoints;
 }
 
 // virtual
-void GPolynomial::clear()
+void WPolynomial::clear()
 {
-	for(vector<GPolynomialSingleLabel*>::iterator it = m_polys.begin(); it != m_polys.end(); it++)
+	for(vector<WPolynomialSingleLabel*>::iterator it = m_polys.begin(); it != m_polys.end(); it++)
 		delete(*it);
 	m_polys.clear();
 }
 
 // virtual
-void GPolynomial::trainInner(const GMatrix& features, const GMatrix& labels)
+void WPolynomial::trainInner(const WMatrix& features, const WMatrix& labels)
 {
 	if(!features.relation().areContinuous())
-		throw Ex("GPolynomial only supports continuous features. Perhaps you should wrap it in a GAutoFilter.");
+		throw Ex("WPolynomial only supports continuous features. Perhaps you should wrap it in a WAutoFilter.");
 	if(!labels.relation().areContinuous())
-		throw Ex("GPolynomial only supports continuous labels. Perhaps you should wrap it in a GAutoFilter.");
-	GMatrix labelCol(labels.rows(), 1);
+		throw Ex("WPolynomial only supports continuous labels. Perhaps you should wrap it in a WAutoFilter.");
+	WMatrix labelCol(labels.rows(), 1);
 	clear();
 	for(size_t i = 0; i < labels.cols(); i++)
 	{
-		GPolynomialSingleLabel* pPSL = new GPolynomialSingleLabel(m_controlPoints);
+		WPolynomialSingleLabel* pPSL = new WPolynomialSingleLabel(m_controlPoints);
 		m_polys.push_back(pPSL);
 		labelCol.copyCols(labels, i, 1);
 		pPSL->train(features, labelCol);
@@ -662,19 +662,19 @@ void GPolynomial::trainInner(const GMatrix& features, const GMatrix& labels)
 }
 
 // virtual
-void GPolynomial::predict(const GVec& pIn, GVec& pOut)
+void WPolynomial::predict(const WVec& pIn, WVec& pOut)
 {
 	for(size_t i = 0; i < m_polys.size(); i++)
 		pOut[i] = m_polys[i]->predict(pIn);
 }
 
 // virtual
-void GPolynomial::predictDistribution(const GVec& pIn, GPrediction* pOut)
+void WPolynomial::predictDistribution(const WVec& pIn, WPrediction* pOut)
 {
 	throw Ex("Sorry, this model cannot predict a distribution");
 }
 
-void GPolynomial::autoTune(GMatrix& features, GMatrix& labels)
+void WPolynomial::autoTune(WMatrix& features, WMatrix& labels)
 {
 	// Find the best value for controlPoints
 	size_t bestCP = 3;
@@ -697,13 +697,13 @@ void GPolynomial::autoTune(GMatrix& features, GMatrix& labels)
 }
 
 // static
-void GPolynomial::test()
+void WPolynomial::test()
 {
-	GPolynomialSingleLabel::test();
-	GAutoFilter af(new GPolynomial());
+	WPolynomialSingleLabel::test();
+	WAutoFilter af(new WPolynomial());
 	af.basicTest(0.78, -1.0 /*skip it*/);
 }
 
 
-} // namespace GClasses
+} // namespace WClasses
 

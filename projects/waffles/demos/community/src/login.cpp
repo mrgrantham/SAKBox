@@ -25,7 +25,7 @@ using std::cout;
 using std::string;
 
 
-void Login::pageAdmin(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Login::pageAdmin(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	// Check access privileges
 	Account* pAccount = getAccount(pSession);
@@ -39,7 +39,7 @@ void Login::pageAdmin(Server* pServer, GDynamicPageSession* pSession, ostream& r
 	std::vector<Account*>& accounts = pServer->accounts();
 	if(pSession->paramsLen() > 0)
 	{
-		GHttpParamParser params(pSession->params());
+		WHttpParamParser params(pSession->params());
 		const char* szAction = params.find("action");
 		if(strcmp(szAction, "adjust_permissions") == 0)
 		{
@@ -54,7 +54,7 @@ void Login::pageAdmin(Server* pServer, GDynamicPageSession* pSession, ostream& r
 				pUserAccount->makeBanned(false);
 			}
 			auto map = params.map();
-			for(std::map<const char*, const char*, GClasses::strComp>::iterator it = map.begin(); it != map.end(); it++)
+			for(std::map<const char*, const char*, WClasses::strComp>::iterator it = map.begin(); it != map.end(); it++)
 			{
 				if(strncmp(it->first, "admin_", 6) == 0)
 				{
@@ -145,7 +145,7 @@ void Login::pageAdmin(Server* pServer, GDynamicPageSession* pSession, ostream& r
 	response << "</form><br><br>\n\n";
 }
 
-void Login::pageAccount(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Login::pageAccount(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	Terminal* pTerminal = getTerminal(pSession);
 	Account* pAccount = pTerminal->currentAccount();
@@ -274,12 +274,12 @@ void Login::pageAccount(Server* pServer, GDynamicPageSession* pSession, ostream&
 */
 }
 
-void Login::pageNewAccount(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Login::pageNewAccount(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	const char* szUsername = "";
 	const char* szPassword = "";
 	const char* szPWAgain = "";
-	GHttpParamParser params(pSession->params());
+	WHttpParamParser params(pSession->params());
 	if(pSession->paramsLen() > 0)
 	{
 		// Get the action
@@ -345,7 +345,7 @@ void Login::pageNewAccount(Server* pServer, GDynamicPageSession* pSession, ostre
 	response << "</tr></td></table></center>\n";
 }
 
-void Login::pageTools(Server* pServer, GDynamicPageSession* pSession, std::ostream& response)
+void Login::pageTools(Server* pServer, WDynamicPageSession* pSession, std::ostream& response)
 {
 	Terminal* pTerminal = getTerminal(pSession);
 	Account* pAccount = pTerminal->currentAccount();

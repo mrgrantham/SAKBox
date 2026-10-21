@@ -17,10 +17,10 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GCrypto.h"
-#include "GError.h"
-#include "GHolders.h"
-#include "GRand.h"
+#include "WCrypto.h"
+#include "WError.h"
+#include "WHolders.h"
+#include "WRand.h"
 #include "sha2.h"
 #include <algorithm>
 #include <iostream>
@@ -29,7 +29,7 @@
 
 using std::cout;
 
-namespace GClasses
+namespace WClasses
 {
 
 #define DIGEST_BYTES 1024
@@ -56,7 +56,7 @@ void Taint_buffer(unsigned char* pDest, const unsigned char* pSource, size_t nBy
 class Mangler
 {
 protected:
-	GRand m_rand;
+	WRand m_rand;
 	unsigned char m_pHash[DIGEST_BYTES];
 	unsigned char m_pBuf[DIGEST_BYTES];
 	unsigned char* m_pPos;
@@ -144,7 +144,7 @@ protected:
 		for(size_t j = 0; j < 3; j++)
 		{
 			// Taint the bytes
-			GAssert(DIGEST_BYTES >= 32);
+			WAssert(DIGEST_BYTES >= 32);
 			if(m_pTaint)
 				Taint_buffer(m_pBuf, m_pTaint + (m_rand.next() % (DIGEST_BYTES - 32)), 32, j);
 
@@ -178,7 +178,7 @@ protected:
 
 
 
-GCrypto::GCrypto(const char* pPassphrase, size_t nPassphraseSize)
+WCrypto::WCrypto(const char* pPassphrase, size_t nPassphraseSize)
 : m_blockPos(DIGEST_BYTES)
 {
 	m_pMangler = new Mangler();
@@ -195,7 +195,7 @@ GCrypto::GCrypto(const char* pPassphrase, size_t nPassphraseSize)
 	}
 }
 
-GCrypto::~GCrypto()
+WCrypto::~WCrypto()
 {
 	m_pMangler->purge();
 	m_pMangler->wipe(m_pBuf, 3 * DIGEST_BYTES);
@@ -203,7 +203,7 @@ GCrypto::~GCrypto()
 	delete(m_pMangler);
 }
 
-void GCrypto::doChunk(char* pData, size_t nDataSize)
+void WCrypto::doChunk(char* pData, size_t nDataSize)
 {
 	while(nDataSize > 0)
 	{
@@ -231,32 +231,32 @@ void GCrypto::doChunk(char* pData, size_t nDataSize)
 }
 
 // static
-void GCrypto::test()
+void WCrypto::test()
 {
 	size_t testLen = DIGEST_BYTES * 5 / 2;
 	char* pA = new char[3 * testLen];
 	std::unique_ptr<char[]> hA(pA);
 	char* pB = pA + testLen;
 	char* pC = pB + testLen;
-	GRand r(1234);
+	WRand r(1234);
 	for(size_t i = 0; i < testLen; i++)
 		pA[i] = (unsigned char)r.next();
 	memcpy(pB, pA, testLen);
 	{
-		GCrypto c("password", 8);
+		WCrypto c("password", 8);
 		c.doChunk(pB, testLen);
 		if(memcmp(pA, pB, testLen) == 0)
 			throw Ex("Didn't do anything");
 	}
 	memcpy(pC, pB, testLen);
 	{
-		GCrypto c("passworx", 8);
+		WCrypto c("passworx", 8);
 		c.doChunk(pB, testLen);
 		if(memcmp(pA, pB, testLen) == 0)
 			throw Ex("This should have failed");
 	}
 	{
-		GCrypto c("password", 8);
+		WCrypto c("password", 8);
 		c.doChunk(pC, testLen);
 		if(memcmp(pA, pC, testLen) != 0)
 			throw Ex("This should have worked");

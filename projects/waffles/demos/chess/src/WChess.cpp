@@ -16,13 +16,13 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GChess.h"
-#include <WClasses/GError.h>
+#include "WChess.h"
+#include <WClasses/WError.h>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::ostream;
 
-void GChessBoard::resetBoard()
+void WChessBoard::resetBoard()
 {
 	int i, j;
 	setPiece(0, 0, Rook, true);
@@ -52,12 +52,12 @@ void GChessBoard::resetBoard()
 	setPiece(7, 7, Rook, false);
 }
 
-int GChessBoard::heuristic()
+int WChessBoard::heuristic()
 {
 	bool white;
 	int score = 0;
 	int x, y, value;
-	GChessBoard::Piece p;
+	WChessBoard::Piece p;
 	for(y = 0; y < 8; y++)
 	{
 		for(x = 0; x < 8; x++)
@@ -65,15 +65,15 @@ int GChessBoard::heuristic()
 			p = piece(x, y, &white);
 			switch(p)
 			{
-				case GChessBoard::None: value = 0; break;
-				case GChessBoard::Pawn: value = 10; break;
-				case GChessBoard::Rook: value = 63; break;
-				case GChessBoard::Knight: value = 31; break;
-				case GChessBoard::Bishop: value = 36; break;
-				case GChessBoard::Queen: value = 88; break;
-				case GChessBoard::King: value = 500; break;
+				case WChessBoard::None: value = 0; break;
+				case WChessBoard::Pawn: value = 10; break;
+				case WChessBoard::Rook: value = 63; break;
+				case WChessBoard::Knight: value = 31; break;
+				case WChessBoard::Bishop: value = 36; break;
+				case WChessBoard::Queen: value = 88; break;
+				case WChessBoard::King: value = 500; break;
 				default:
-					GAssert(false);
+					WAssert(false);
 					value = 0;
 					break;
 			}
@@ -86,7 +86,7 @@ int GChessBoard::heuristic()
 	return score;
 }
 
-bool GChessBoard::checkMove(int* pOutMoves, int* pnMoves, int col, int row, bool bWhite)
+bool WChessBoard::checkMove(int* pOutMoves, int* pnMoves, int col, int row, bool bWhite)
 {
 	if(col < 0 || row < 0)
 		return true;
@@ -101,7 +101,7 @@ bool GChessBoard::checkMove(int* pOutMoves, int* pnMoves, int col, int row, bool
 	return (p > 0);
 }
 
-bool GChessBoard::checkPawnMove(int* pOutMoves, int* pnMoves, int col, int row, bool bDiagonal, bool bWhite)
+bool WChessBoard::checkPawnMove(int* pOutMoves, int* pnMoves, int col, int row, bool bDiagonal, bool bWhite)
 {
 	if(col < 0 || row < 0)
 		return true;
@@ -124,7 +124,7 @@ bool GChessBoard::checkPawnMove(int* pOutMoves, int* pnMoves, int col, int row, 
 	return (p > 0);
 }
 
-int GChessBoard::moves(int* pOutMoves, int col, int row)
+int WChessBoard::moves(int* pOutMoves, int col, int row)
 {
 	bool bWhite;
 	Piece p = piece(col, row, &bWhite);
@@ -228,7 +228,7 @@ int GChessBoard::moves(int* pOutMoves, int col, int row)
 	return nMoves;
 }
 
-bool GChessBoard::isValidMove(int xSrc, int ySrc, int xDest, int yDest)
+bool WChessBoard::isValidMove(int xSrc, int ySrc, int xDest, int yDest)
 {
 	int mvs[2 * MAX_PIECE_MOVES];
 	int moveCount = moves(mvs, xSrc, ySrc);
@@ -241,7 +241,7 @@ bool GChessBoard::isValidMove(int xSrc, int ySrc, int xDest, int yDest)
 	return false;
 }
 
-void GChessBoard::printBoard(ostream& stream)
+void WChessBoard::printBoard(ostream& stream)
 {
 	int i, j;
 	bool white;
@@ -283,19 +283,19 @@ void GChessBoard::printBoard(ostream& stream)
 	stream << "  A  B  C  D  E  F  G  H\n";
 }
 
-bool GChessBoard::move(int xSrc, int ySrc, int xDest, int yDest)
+bool WChessBoard::move(int xSrc, int ySrc, int xDest, int yDest)
 {
-	GAssert(xSrc >= 0 && xSrc < 8 && ySrc >= 0 && ySrc < 8);
-	GAssert(xDest >= 0 && xDest < 8 && yDest >= 0 && yDest < 8);
+	WAssert(xSrc >= 0 && xSrc < 8 && ySrc >= 0 && ySrc < 8);
+	WAssert(xDest >= 0 && xDest < 8 && yDest >= 0 && yDest < 8);
 	bool white, targetWhite;
-	GChessBoard::Piece target = piece(xDest, yDest, &targetWhite);
-	GChessBoard::Piece p = piece(xSrc, ySrc, &white);
-	GAssert(p != None);
-	GAssert(target == None || white != targetWhite); // can't take your own piece
-	if(p == GChessBoard::Pawn && (yDest == 0 || yDest == 7))
-		p = GChessBoard::Queen; // a pawn that crosses the board becomes a queen
+	WChessBoard::Piece target = piece(xDest, yDest, &targetWhite);
+	WChessBoard::Piece p = piece(xSrc, ySrc, &white);
+	WAssert(p != None);
+	WAssert(target == None || white != targetWhite); // can't take your own piece
+	if(p == WChessBoard::Pawn && (yDest == 0 || yDest == 7))
+		p = WChessBoard::Queen; // a pawn that crosses the board becomes a queen
 	setPiece(xDest, yDest, p, white);
-	setPiece(xSrc, ySrc, GChessBoard::None, true);
+	setPiece(xSrc, ySrc, WChessBoard::None, true);
 	if(target == King)
 	{
 		// If you take the opponent's king, remove all of the opponent's pieces. This
@@ -317,17 +317,17 @@ bool GChessBoard::move(int xSrc, int ySrc, int xDest, int yDest)
 
 // --------------------------------------------------------------------
 
-GChessMoveIterator::GChessMoveIterator()
+WChessMoveIterator::WChessMoveIterator()
 {
 	m_pBoard = nullptr;
 	m_white = true;
 }
 
-GChessMoveIterator::~GChessMoveIterator()
+WChessMoveIterator::~WChessMoveIterator()
 {
 }
 
-void GChessMoveIterator::reset(GChessBoard* pBoard, bool white)
+void WChessMoveIterator::reset(WChessBoard* pBoard, bool white)
 {
 	m_pBoard = pBoard;
 	m_white = white;
@@ -336,7 +336,7 @@ void GChessMoveIterator::reset(GChessBoard* pBoard, bool white)
 	m_moveCount = 0;
 }
 
-bool GChessMoveIterator::nextMove(int* xSrc, int* ySrc, int* xDest, int* yDest)
+bool WChessMoveIterator::nextMove(int* xSrc, int* ySrc, int* xDest, int* yDest)
 {
 	if(m_n >= 64)
 		return false;
@@ -350,8 +350,8 @@ bool GChessMoveIterator::nextMove(int* xSrc, int* ySrc, int* xDest, int* yDest)
 			*ySrc = m_n / 8;
 			*xDest = m_moves[2 * m_move];
 			*yDest = m_moves[2 * m_move + 1];
-			GAssert(*xSrc >= 0 && *xSrc < 8 && *ySrc >= 0 && *ySrc < 8); // out of range
-			GAssert(*xDest >= 0 && *xDest < 8 && *yDest >= 0 && *yDest < 8); // out of range
+			WAssert(*xSrc >= 0 && *xSrc < 8 && *ySrc >= 0 && *ySrc < 8); // out of range
+			WAssert(*xDest >= 0 && *xDest < 8 && *yDest >= 0 && *yDest < 8); // out of range
 			m_move++;
 			return true;
 		}
@@ -361,7 +361,7 @@ bool GChessMoveIterator::nextMove(int* xSrc, int* ySrc, int* xDest, int* yDest)
 				return false;
 			x = m_n % 8;
 			y = m_n / 8;
-			if(m_pBoard->piece(x, y, &white) != GChessBoard::None && white == m_white)
+			if(m_pBoard->piece(x, y, &white) != WChessBoard::None && white == m_white)
 			{
 				m_move = 0;
 				m_moveCount = m_pBoard->moves(m_moves, x, y);

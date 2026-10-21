@@ -16,15 +16,15 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GRegion.h"
-#include "GImage.h"
-#include "GHeap.h"
-//#include "GVideo.h"
-#include "GFourier.h"
-#include "GBits.h"
-#include "GRect.h"
-#include "GVec.h"
-#include "GHolders.h"
+#include "WRegion.h"
+#include "WImage.h"
+#include "WHeap.h"
+//#include "WVideo.h"
+#include "WFourier.h"
+#include "WBits.h"
+#include "WRect.h"
+#include "WVec.h"
+#include "WHolders.h"
 #include <math.h>
 #include <vector>
 #include <algorithm>
@@ -33,16 +33,16 @@
 
 using std::vector;
 
-namespace GClasses
+namespace WClasses
 {
 
 
-struct GRegionEdge
+struct WRegionEdge
 {
 	size_t m_nRegion1;
 	size_t m_nRegion2;
-	GRegionEdge* m_pNext1;
-	GRegionEdge* m_pNext2;
+	WRegionEdge* m_pNext1;
+	WRegionEdge* m_pNext2;
 
 	size_t GetOther(size_t n)
 	{
@@ -52,12 +52,12 @@ struct GRegionEdge
 			return m_nRegion1;
 		else
 		{
-			GAssert(false); // That region doesn't share this edge
+			WAssert(false); // That region doesn't share this edge
 			return INVALID_INDEX;
 		}
 	}
 
-	struct GRegionEdge* GetNext(size_t nRegion)
+	struct WRegionEdge* GetNext(size_t nRegion)
 	{
 		if(nRegion == m_nRegion1)
 			return m_pNext1;
@@ -65,7 +65,7 @@ struct GRegionEdge
 			return m_pNext2;
 		else
 		{
-			GAssert(false); // That region doesn't share this edge
+			WAssert(false); // That region doesn't share this edge
 			return nullptr;
 		}
 	}
@@ -75,20 +75,20 @@ struct GRegionEdge
 
 
 
-GRegionAjacencyGraph::GRegionAjacencyGraph()
+WRegionAjacencyGraph::WRegionAjacencyGraph()
 {
-	m_pHeap = new GHeap(2048);
+	m_pHeap = new WHeap(2048);
 }
 
-GRegionAjacencyGraph::~GRegionAjacencyGraph()
+WRegionAjacencyGraph::~WRegionAjacencyGraph()
 {
 	delete(m_pHeap);
 }
 
-size_t GRegionAjacencyGraph::addRegion()
+size_t WRegionAjacencyGraph::addRegion()
 {
 	size_t nRegion = m_regions.size();
-	struct GRegion* pNewRegion = (struct GRegion*)m_pHeap->allocate(sizeof(struct GRegion));
+	struct WRegion* pNewRegion = (struct WRegion*)m_pHeap->allocate(sizeof(struct WRegion));
 	pNewRegion->m_nPixels = 0;
 	pNewRegion->m_nSumRed = 0;
 	pNewRegion->m_nSumGreen = 0;
@@ -98,24 +98,24 @@ size_t GRegionAjacencyGraph::addRegion()
 	return nRegion;
 }
 
-size_t GRegionAjacencyGraph::regionCount()
+size_t WRegionAjacencyGraph::regionCount()
 {
 	return m_regions.size();
 }
 
-void GRegionAjacencyGraph::averageColor(size_t nRegion, float* pRed, float* pGreen, float* pBlue)
+void WRegionAjacencyGraph::averageColor(size_t nRegion, float* pRed, float* pGreen, float* pBlue)
 {
-	struct GRegion* pRegion = m_regions[nRegion];
+	struct WRegion* pRegion = m_regions[nRegion];
 	*pRed = (float)pRegion->m_nSumRed / pRegion->m_nPixels;
 	*pGreen = (float)pRegion->m_nSumGreen / pRegion->m_nPixels;
 	*pBlue = (float)pRegion->m_nSumBlue / pRegion->m_nPixels;
 }
 
-bool GRegionAjacencyGraph::areNeighbors(size_t nRegion1, size_t nRegion2)
+bool WRegionAjacencyGraph::areNeighbors(size_t nRegion1, size_t nRegion2)
 {
-	GAssert(nRegion1 != nRegion2); // same region
-	struct GRegion* pRegion1 = m_regions[nRegion1];
-	struct GRegionEdge* pEdge;
+	WAssert(nRegion1 != nRegion2); // same region
+	struct WRegion* pRegion1 = m_regions[nRegion1];
+	struct WRegionEdge* pEdge;
 	for(pEdge = pRegion1->m_pNeighbors; pEdge; pEdge = pEdge->GetNext(nRegion1))
 	{
 		if(pEdge->GetOther(nRegion1) == nRegion2)
@@ -124,13 +124,13 @@ bool GRegionAjacencyGraph::areNeighbors(size_t nRegion1, size_t nRegion2)
 	return false;
 }
 
-void GRegionAjacencyGraph::makeNeighbors(size_t nRegion1, size_t nRegion2)
+void WRegionAjacencyGraph::makeNeighbors(size_t nRegion1, size_t nRegion2)
 {
 	if(areNeighbors(nRegion1, nRegion2))
 		return;
-	struct GRegion* pRegion1 = m_regions[nRegion1];
-	struct GRegion* pRegion2 = m_regions[nRegion2];
-	struct GRegionEdge* pNewEdge = (struct GRegionEdge*)m_pHeap->allocate(sizeof(struct GRegionEdge));
+	struct WRegion* pRegion1 = m_regions[nRegion1];
+	struct WRegion* pRegion2 = m_regions[nRegion2];
+	struct WRegionEdge* pNewEdge = (struct WRegionEdge*)m_pHeap->allocate(sizeof(struct WRegionEdge));
 	pNewEdge->m_nRegion1 = nRegion1;
 	pNewEdge->m_nRegion2 = nRegion2;
 	pNewEdge->m_pNext1 = pRegion1->m_pNeighbors;
@@ -140,39 +140,39 @@ void GRegionAjacencyGraph::makeNeighbors(size_t nRegion1, size_t nRegion2)
 	m_neighbors.push_back(pNewEdge);
 }
 
-size_t GRegionAjacencyGraph::ajacencyCount()
+size_t WRegionAjacencyGraph::ajacencyCount()
 {
 	return m_neighbors.size();
 }
 
-void GRegionAjacencyGraph::ajacency(size_t nEdge, size_t* pRegion1, size_t* pRegion2)
+void WRegionAjacencyGraph::ajacency(size_t nEdge, size_t* pRegion1, size_t* pRegion2)
 {
-	struct GRegionEdge* pEdge = m_neighbors[nEdge];
+	struct WRegionEdge* pEdge = m_neighbors[nEdge];
 	*pRegion1 = pEdge->m_nRegion1;
 	*pRegion2 = pEdge->m_nRegion2;
 }
 
 // ------------------------------------------------------------------------------------------
 
-G2DRegionGraph::G2DRegionGraph(int nWidth, int nHeight)
-: GRegionAjacencyGraph()
+W2DRegionGraph::W2DRegionGraph(int nWidth, int nHeight)
+: WRegionAjacencyGraph()
 {
-	m_pRegionMask = new GImage();
+	m_pRegionMask = new WImage();
 	m_pRegionMask->setSize(nWidth, nHeight);
 	m_pRegionMask->clear(0xffffffff);
 }
 
-G2DRegionGraph::~G2DRegionGraph()
+W2DRegionGraph::~W2DRegionGraph()
 {
 	delete(m_pRegionMask);
 }
 
-void G2DRegionGraph::setMaskPixel(int x, int y, unsigned int c, size_t nRegion)
+void W2DRegionGraph::setMaskPixel(int x, int y, unsigned int c, size_t nRegion)
 {
-	GAssert(x >= 0 && x < (int)m_pRegionMask->width() && y >= 0 && y < (int)m_pRegionMask->height()); // out of range
-	GAssert(m_pRegionMask->pixel(x, y) == 0xffffffff); // This pixel is already set
+	WAssert(x >= 0 && x < (int)m_pRegionMask->width() && y >= 0 && y < (int)m_pRegionMask->height()); // out of range
+	WAssert(m_pRegionMask->pixel(x, y) == 0xffffffff); // This pixel is already set
 	m_pRegionMask->setPixel(x, y, (unsigned int)nRegion);
-	struct GRegion* pRegion = m_regions[nRegion];
+	struct WRegion* pRegion = m_regions[nRegion];
 	pRegion->m_nSumRed += gRed(c);
 	pRegion->m_nSumGreen += gGreen(c);
 	pRegion->m_nSumBlue += gBlue(c);
@@ -185,7 +185,7 @@ int MaxChan(unsigned int c)
 	return c;
 }
 
-void PickTobogganDirection(GImage* pGradMagImage, int u, int v, int* pdu, int* pdv)
+void PickTobogganDirection(WImage* pGradMagImage, int u, int v, int* pdu, int* pdv)
 {
 	int cand;
 	int grad = MaxChan(pGradMagImage->pixel(u, v));
@@ -235,11 +235,11 @@ void PickTobogganDirection(GImage* pGradMagImage, int u, int v, int* pdu, int* p
 	*pdv = dv;
 }
 
-void G2DRegionGraph::makeWatershedRegions(const GImage* pImage)
+void W2DRegionGraph::makeWatershedRegions(const WImage* pImage)
 {
-	GImage gradMag;
+	WImage gradMag;
 	gradMag.gradientMagnitudeImage(pImage);
-	GImage* pMask = regionMask();
+	WImage* pMask = regionMask();
 	int x, y, u, v, du, dv;
 	size_t region, other;
 	for(y = 0; y < (int)pImage->height(); y++)
@@ -289,7 +289,7 @@ void G2DRegionGraph::makeWatershedRegions(const GImage* pImage)
 	}
 }
 
-double MeasureRegionDifference(struct GRegion* pA, struct GRegion* pB)
+double MeasureRegionDifference(struct WRegion* pA, struct WRegion* pB)
 {
 	double dSum = 0;
 	double d;
@@ -302,25 +302,25 @@ double MeasureRegionDifference(struct GRegion* pA, struct GRegion* pB)
 	return dSum;
 }
 
-void G2DRegionGraph::makeCoarserRegions(G2DRegionGraph* pFineRegions)
+void W2DRegionGraph::makeCoarserRegions(W2DRegionGraph* pFineRegions)
 {
 	// Find every region's closest neighbor
-	GImage* pFineRegionMask = pFineRegions->regionMask();
-	GImage* pCoarseRegionMask = regionMask();
-	GAssert(pCoarseRegionMask->width() == pFineRegionMask->width() && pCoarseRegionMask->height() == pFineRegionMask->height()); // size mismatch
+	WImage* pFineRegionMask = pFineRegions->regionMask();
+	WImage* pCoarseRegionMask = regionMask();
+	WAssert(pCoarseRegionMask->width() == pFineRegionMask->width() && pCoarseRegionMask->height() == pFineRegionMask->height()); // size mismatch
 	int* pBestNeighborMap = new int[pFineRegions->regionCount()];
 	std::unique_ptr<int[]> hBestNeighborMap(pBestNeighborMap);
 	for(size_t i = 0; i < pFineRegions->regionCount(); i++)
 	{
-		struct GRegion* pRegion = pFineRegions->m_regions[i];
-		struct GRegionEdge* pEdge;
+		struct WRegion* pRegion = pFineRegions->m_regions[i];
+		struct WRegionEdge* pEdge;
 		double d;
 		double dBestDiff = 1e200;
 		int nBestNeighbor = -1;
 		for(pEdge = pRegion->m_pNeighbors; pEdge; pEdge = pEdge->GetNext(i))
 		{
 			size_t j = pEdge->GetOther(i);
-			struct GRegion* pOtherRegion = pFineRegions->m_regions[j];
+			struct WRegion* pOtherRegion = pFineRegions->m_regions[j];
 			d = MeasureRegionDifference(pRegion, pOtherRegion);
 			if(d < dBestDiff)
 			{
@@ -328,7 +328,7 @@ void G2DRegionGraph::makeCoarserRegions(G2DRegionGraph* pFineRegions)
 				nBestNeighbor = (int)j;
 			}
 		}
-		GAssert(nBestNeighbor != -1 || pFineRegions->regionCount() == 1); // failed to find a neighbor
+		WAssert(nBestNeighbor != -1 || pFineRegions->regionCount() == 1); // failed to find a neighbor
 		pBestNeighborMap[i] = nBestNeighbor;
 	}
 
@@ -361,14 +361,14 @@ void G2DRegionGraph::makeCoarserRegions(G2DRegionGraph* pFineRegions)
 	// Make the new regions
 	for(size_t i = 0; i < pFineRegions->regionCount(); i++)
 	{
-		struct GRegion* pRegion = pFineRegions->m_regions[i];
+		struct WRegion* pRegion = pFineRegions->m_regions[i];
 		size_t j = pNewRegionMap[i];
 		if(regionCount() <= j)
 		{
-			GAssert(regionCount() == j); // how'd it get two behind?
+			WAssert(regionCount() == j); // how'd it get two behind?
 			addRegion();
 		}
-		struct GRegion* pCoarseRegion = m_regions[j];
+		struct WRegion* pCoarseRegion = m_regions[j];
 		pCoarseRegion->m_nSumRed += pRegion->m_nSumRed;
 		pCoarseRegion->m_nSumGreen += pRegion->m_nSumGreen;
 		pCoarseRegion->m_nSumBlue += pRegion->m_nSumBlue;
@@ -376,9 +376,9 @@ void G2DRegionGraph::makeCoarserRegions(G2DRegionGraph* pFineRegions)
 	}
 	for(size_t i = 0; i < pFineRegions->regionCount(); i++)
 	{
-		struct GRegion* pRegion = pFineRegions->m_regions[i];
+		struct WRegion* pRegion = pFineRegions->m_regions[i];
 		size_t j = pNewRegionMap[i];
-		struct GRegionEdge* pEdge;
+		struct WRegionEdge* pEdge;
 		for(pEdge = pRegion->m_pNeighbors; pEdge; pEdge = pEdge->GetNext(i))
 		{
 			size_t k = pNewRegionMap[pEdge->GetOther(i)];
@@ -402,49 +402,49 @@ void G2DRegionGraph::makeCoarserRegions(G2DRegionGraph* pFineRegions)
 
 // ------------------------------------------------------------------------------------------
 
-G3DRegionGraph::G3DRegionGraph(size_t frames, int nWidth, int nHeight)
-: GRegionAjacencyGraph()
+W3DRegionGraph::W3DRegionGraph(size_t frames, int nWidth, int nHeight)
+: WRegionAjacencyGraph()
 {
 	for(size_t i = 0; i < frames; i++)
 	{
-		GImage* pImage = new GImage();
+		WImage* pImage = new WImage();
 		m_regionMask.push_back(pImage);
 		pImage->setSize(nWidth, nHeight);
 		pImage->clear(0xffffffff);
 	}
 }
 
-G3DRegionGraph::~G3DRegionGraph()
+W3DRegionGraph::~W3DRegionGraph()
 {
 	for(size_t i = 0; i < m_regionMask.size(); i++)
 		delete(m_regionMask[i]);
 }
 
-void G3DRegionGraph::setMaskPixel(size_t frame, int x, int y, unsigned int c, size_t nRegion)
+void W3DRegionGraph::setMaskPixel(size_t frame, int x, int y, unsigned int c, size_t nRegion)
 {
-	GImage* pImage = m_regionMask[frame];
-	GAssert(x >= 0 && x < (int)pImage->width() && y >= 0 && y < (int)pImage->height()); // out of range
-	GAssert(pImage->pixel(x, y) == 0xffffffff); // This pixel is already set
+	WImage* pImage = m_regionMask[frame];
+	WAssert(x >= 0 && x < (int)pImage->width() && y >= 0 && y < (int)pImage->height()); // out of range
+	WAssert(pImage->pixel(x, y) == 0xffffffff); // This pixel is already set
 	pImage->setPixel(x, y, (unsigned int)nRegion);
-	struct GRegion* pRegion = m_regions[nRegion];
+	struct WRegion* pRegion = m_regions[nRegion];
 	pRegion->m_nSumRed += gRed(c);
 	pRegion->m_nSumGreen += gGreen(c);
 	pRegion->m_nSumBlue += gBlue(c);
 	pRegion->m_nPixels++;
 }
 
-void G3DRegionGraph_makeGradientMagnitudeVideo(const std::vector<GImage*>& in, std::vector<GImage*>& out)
+void W3DRegionGraph_makeGradientMagnitudeVideo(const std::vector<WImage*>& in, std::vector<WImage*>& out)
 {
 	while(out.size() < in.size())
 	{
-		GImage* pImage = new GImage();
+		WImage* pImage = new WImage();
 		out.push_back(pImage);
 		pImage->setSize(in[0]->width(), in[0]->height());
 	}
 	for(int z = 0; z < (int)in.size(); z++)
 	{
-		GImage* pImage = in[z];
-		GImage* pOutImage = out[z];
+		WImage* pImage = in[z];
+		WImage* pOutImage = out[z];
 		for(int y = 0; y < (int)pImage->height(); y++)
 		{
 			for(int x = 0; x < (int)pImage->width(); x++)
@@ -462,7 +462,7 @@ void G3DRegionGraph_makeGradientMagnitudeVideo(const std::vector<GImage*>& in, s
 				for(int dz = -1; dz < 2; dz++)
 				{
 					int zz = std::max(0, (int)std::min((int)in.size() - 1, z + dz));
-					GImage* pImg = in[zz];
+					WImage* pImg = in[zz];
 					for(int dy = -1; dy < 2; dy++)
 					{
 						int yy = std::max(0, std::min((int)pImg->height() - 1, y + dy));
@@ -497,7 +497,7 @@ void G3DRegionGraph_makeGradientMagnitudeVideo(const std::vector<GImage*>& in, s
 	}
 }
 
-void G3DRegionGraph_PickTobogganDirection(GImage* pGradMagImage, int u, int v, int* pdu, int* pdv)
+void W3DRegionGraph_PickTobogganDirection(WImage* pGradMagImage, int u, int v, int* pdu, int* pdv)
 {
 	unsigned int cand;
 	unsigned int grad = pGradMagImage->pixel(u, v);
@@ -547,11 +547,11 @@ void G3DRegionGraph_PickTobogganDirection(GImage* pGradMagImage, int u, int v, i
 	*pdv = dv;
 }
 /*
-void G3DRegionGraph::makeWatershedRegions(const std::vector<GImage*>& frames)
+void W3DRegionGraph::makeWatershedRegions(const std::vector<WImage*>& frames)
 {
-	std::vector<GImage*> gradMag;
-	G3DRegionGraph_makeGradientMagnitudeVideo(frames, gradMag);
-	GImage* pMask = regionMask();
+	std::vector<WImage*> gradMag;
+	W3DRegionGraph_makeGradientMagnitudeVideo(frames, gradMag);
+	WImage* pMask = regionMask();
 	int x, y, u, v, du, dv;
 	size_t region, other;
 	for(y = 0; y < (int)pImage->height(); y++)
@@ -565,7 +565,7 @@ void G3DRegionGraph::makeWatershedRegions(const std::vector<GImage*>& frames)
 				region = pMask->pixel(u, v);
 				if(region != 0xffffffff)
 					break;
-				G3DRegionGraph_PickTobogganDirection(&gradMag, u, v, &du, &dv);
+				W3DRegionGraph_PickTobogganDirection(&gradMag, u, v, &du, &dv);
 				u += du;
 				v += dv;
 			} while(du != 0 || dv != 0);
@@ -581,7 +581,7 @@ void G3DRegionGraph::makeWatershedRegions(const std::vector<GImage*>& frames)
 				if(pMask->pixel(u, v) != 0xffffffff)
 					break;
 				setMaskPixel(u, v, pImage->pixel(u, v), region);
-				G3DRegionGraph_PickTobogganDirection(&gradMag, u, v, &du, &dv);
+				W3DRegionGraph_PickTobogganDirection(&gradMag, u, v, &du, &dv);
 				u += du;
 				v += dv;
 			} while(du != 0 || dv != 0);
@@ -601,7 +601,7 @@ void G3DRegionGraph::makeWatershedRegions(const std::vector<GImage*>& frames)
 	}
 }
 
-double MeasureRegionDifference(struct GRegion* pA, struct GRegion* pB)
+double MeasureRegionDifference(struct WRegion* pA, struct WRegion* pB)
 {
 	double dSum = 0;
 	double d;
@@ -614,25 +614,25 @@ double MeasureRegionDifference(struct GRegion* pA, struct GRegion* pB)
 	return dSum;
 }
 
-void G3DRegionGraph::makeCoarserRegions(G2DRegionGraph* pFineRegions)
+void W3DRegionGraph::makeCoarserRegions(W2DRegionGraph* pFineRegions)
 {
 	// Find every region's closest neighbor
-	GImage* pFineRegionMask = pFineRegions->regionMask();
-	GImage* pCoarseRegionMask = regionMask();
-	GAssert(pCoarseRegionMask->width() == pFineRegionMask->width() && pCoarseRegionMask->height() == pFineRegionMask->height()); // size mismatch
+	WImage* pFineRegionMask = pFineRegions->regionMask();
+	WImage* pCoarseRegionMask = regionMask();
+	WAssert(pCoarseRegionMask->width() == pFineRegionMask->width() && pCoarseRegionMask->height() == pFineRegionMask->height()); // size mismatch
 	int* pBestNeighborMap = new int[pFineRegions->regionCount()];
 	std::unique_ptr<int[]> hBestNeighborMap(pBestNeighborMap);
 	for(size_t i = 0; i < pFineRegions->regionCount(); i++)
 	{
-		struct GRegion* pRegion = pFineRegions->m_regions[i];
-		struct GRegionEdge* pEdge;
+		struct WRegion* pRegion = pFineRegions->m_regions[i];
+		struct WRegionEdge* pEdge;
 		double d;
 		double dBestDiff = 1e200;
 		int nBestNeighbor = -1;
 		for(pEdge = pRegion->m_pNeighbors; pEdge; pEdge = pEdge->GetNext(i))
 		{
 			size_t j = pEdge->GetOther(i);
-			struct GRegion* pOtherRegion = pFineRegions->m_regions[j];
+			struct WRegion* pOtherRegion = pFineRegions->m_regions[j];
 			d = MeasureRegionDifference(pRegion, pOtherRegion);
 			if(d < dBestDiff)
 			{
@@ -640,7 +640,7 @@ void G3DRegionGraph::makeCoarserRegions(G2DRegionGraph* pFineRegions)
 				nBestNeighbor = (int)j;
 			}
 		}
-		GAssert(nBestNeighbor != -1 || pFineRegions->regionCount() == 1); // failed to find a neighbor
+		WAssert(nBestNeighbor != -1 || pFineRegions->regionCount() == 1); // failed to find a neighbor
 		pBestNeighborMap[i] = nBestNeighbor;
 	}
 
@@ -673,14 +673,14 @@ void G3DRegionGraph::makeCoarserRegions(G2DRegionGraph* pFineRegions)
 	// Make the new regions
 	for(size_t i = 0; i < pFineRegions->regionCount(); i++)
 	{
-		struct GRegion* pRegion = pFineRegions->m_regions[i];
+		struct WRegion* pRegion = pFineRegions->m_regions[i];
 		size_t j = pNewRegionMap[i];
 		if(regionCount() <= j)
 		{
-			GAssert(regionCount() == j); // how'd it get two behind?
+			WAssert(regionCount() == j); // how'd it get two behind?
 			addRegion();
 		}
-		struct GRegion* pCoarseRegion = m_regions[j];
+		struct WRegion* pCoarseRegion = m_regions[j];
 		pCoarseRegion->m_nSumRed += pRegion->m_nSumRed;
 		pCoarseRegion->m_nSumGreen += pRegion->m_nSumGreen;
 		pCoarseRegion->m_nSumBlue += pRegion->m_nSumBlue;
@@ -688,9 +688,9 @@ void G3DRegionGraph::makeCoarserRegions(G2DRegionGraph* pFineRegions)
 	}
 	for(size_t i = 0; i < pFineRegions->regionCount(); i++)
 	{
-		struct GRegion* pRegion = pFineRegions->m_regions[i];
+		struct WRegion* pRegion = pFineRegions->m_regions[i];
 		size_t j = pNewRegionMap[i];
-		struct GRegionEdge* pEdge;
+		struct WRegionEdge* pEdge;
 		for(pEdge = pRegion->m_pNeighbors; pEdge; pEdge = pEdge->GetNext(i))
 		{
 			size_t k = pNewRegionMap[pEdge->GetOther(i)];
@@ -716,7 +716,7 @@ void G3DRegionGraph::makeCoarserRegions(G2DRegionGraph* pFineRegions)
 
 #define START_DIRECTION 1
 
-GRegionBorderIterator::GRegionBorderIterator(GImage* pImage, int nSampleX, int nSampleY)
+WRegionBorderIterator::WRegionBorderIterator(WImage* pImage, int nSampleX, int nSampleY)
 {
 	m_pImage = pImage;
 	m_nRegion = pImage->pixel(nSampleX, nSampleY);
@@ -730,11 +730,11 @@ GRegionBorderIterator::GRegionBorderIterator(GImage* pImage, int nSampleX, int n
 	m_bOddPass = false;
 }
 
-GRegionBorderIterator::~GRegionBorderIterator()
+WRegionBorderIterator::~WRegionBorderIterator()
 {
 }
 
-bool GRegionBorderIterator::look()
+bool WRegionBorderIterator::look()
 {
 	switch(m_direction)
 	{
@@ -759,12 +759,12 @@ bool GRegionBorderIterator::look()
 			else
 				return false;
 		default:
-			GAssert(false); // unexpected direction
+			WAssert(false); // unexpected direction
 	}
 	return false;
 }
 
-void GRegionBorderIterator::leap()
+void WRegionBorderIterator::leap()
 {
 	switch(m_direction)
 	{
@@ -781,11 +781,11 @@ void GRegionBorderIterator::leap()
 			m_y++;
 			break;
 		default:
-			GAssert(false); // unexpected direction
+			WAssert(false); // unexpected direction
 	}
 }
 
-bool GRegionBorderIterator::next(int* pX, int* pY, int* pDirection)
+bool WRegionBorderIterator::next(int* pX, int* pY, int* pDirection)
 {
 	*pX = m_x;
 	*pY = m_y;
@@ -811,7 +811,7 @@ bool GRegionBorderIterator::next(int* pX, int* pY, int* pDirection)
 
 // ------------------------------------------------------------------------------------------
 
-GRegionAreaIterator::GRegionAreaIterator(GImage* pImage, int nSampleX, int nSampleY)
+WRegionAreaIterator::WRegionAreaIterator(WImage* pImage, int nSampleX, int nSampleY)
 {
 	m_pImage = pImage;
 	m_nRegion = pImage->pixel(nSampleX, nSampleY);
@@ -821,7 +821,7 @@ GRegionAreaIterator::GRegionAreaIterator(GImage* pImage, int nSampleX, int nSamp
 	m_top = pImage->height() - 1;
 	m_right = 0;
 	m_bottom = 0;
-	GRegionBorderIterator itBorder(pImage, nSampleX, nSampleY);
+	WRegionBorderIterator itBorder(pImage, nSampleX, nSampleY);
 	int x, y, d;
 	while(itBorder.next(&x, &y, &d))
 	{
@@ -838,11 +838,11 @@ GRegionAreaIterator::GRegionAreaIterator(GImage* pImage, int nSampleX, int nSamp
 	m_y = m_top;
 }
 
-GRegionAreaIterator::~GRegionAreaIterator()
+WRegionAreaIterator::~WRegionAreaIterator()
 {
 }
 
-bool GRegionAreaIterator::next(int* pX, int* pY)
+bool WRegionAreaIterator::next(int* pX, int* pY)
 {
 	while(m_y <= m_bottom && m_pImage->pixel(m_x, m_y) != m_nRegion)
 	{
@@ -866,10 +866,10 @@ bool GRegionAreaIterator::next(int* pX, int* pY)
 
 // ------------------------------------------------------------------------------------------
 
-GSubImageFinder::GSubImageFinder(GImage* pHaystack)
+WSubImageFinder::WSubImageFinder(WImage* pHaystack)
 {
-	m_nHaystackWidth = GBits::boundingPowerOfTwo(pHaystack->width());
-	m_nHaystackHeight = GBits::boundingPowerOfTwo(pHaystack->height());
+	m_nHaystackWidth = WBits::boundingPowerOfTwo(pHaystack->width());
+	m_nHaystackHeight = WBits::boundingPowerOfTwo(pHaystack->height());
 	m_nHaystackX = (m_nHaystackWidth - pHaystack->width()) / 2;
 	m_nHaystackY = (m_nHaystackHeight - pHaystack->height()) / 2;
 	int nSize = m_nHaystackWidth * m_nHaystackHeight;
@@ -913,20 +913,20 @@ GSubImageFinder::GSubImageFinder(GImage* pHaystack)
 			pos++;
 		}
 	}
-	GFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pHaystackRed, true);
-	GFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pHaystackGreen, true);
-	GFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pHaystackBlue, true);
+	WFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pHaystackRed, true);
+	WFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pHaystackGreen, true);
+	WFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pHaystackBlue, true);
 }
 
-GSubImageFinder::~GSubImageFinder()
+WSubImageFinder::~WSubImageFinder()
 {
 	delete[] m_pHaystackRed;
 }
 
-void GSubImageFinder::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRect* pNeedleRect, GRect* pHaystackRect)
+void WSubImageFinder::findSubImage(int* pOutX, int* pOutY, WImage* pNeedle, WRect* pNeedleRect, WRect* pHaystackRect)
 {
 	// Copy into the array of complex numbers
-	GAssert(GBits::isPowerOfTwo(pNeedleRect->w) && GBits::isPowerOfTwo(pNeedleRect->h)); // Expected a power of 2
+	WAssert(WBits::isPowerOfTwo(pNeedleRect->w) && WBits::isPowerOfTwo(pNeedleRect->h)); // Expected a power of 2
 	int x, y;
 	int pos = 0;
 	unsigned int c;
@@ -946,9 +946,9 @@ void GSubImageFinder::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRec
 	}
 
 	// Convert to the Fourier domain
-	GFourier::fft2d(pNeedleRect->w, pNeedleRect->h, m_pNeedleRed, true);
-	GFourier::fft2d(pNeedleRect->w, pNeedleRect->h, m_pNeedleGreen, true);
-	GFourier::fft2d(pNeedleRect->w, pNeedleRect->h, m_pNeedleBlue, true);
+	WFourier::fft2d(pNeedleRect->w, pNeedleRect->h, m_pNeedleRed, true);
+	WFourier::fft2d(pNeedleRect->w, pNeedleRect->h, m_pNeedleGreen, true);
+	WFourier::fft2d(pNeedleRect->w, pNeedleRect->h, m_pNeedleBlue, true);
 
 	// Multiply m_pHaystack with the complex conjugate of m_pNeedle
 	double r, i, mag;
@@ -980,9 +980,9 @@ void GSubImageFinder::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRec
 	}
 
 	// Convert to the Spatial domain
-	GFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pCorRed, false);
-	GFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pCorGreen, false);
-	GFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pCorBlue, false);
+	WFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pCorRed, false);
+	WFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pCorGreen, false);
+	WFourier::fft2d(m_nHaystackWidth, m_nHaystackHeight, m_pCorBlue, false);
 
 	// Find the max
 	*pOutX = 0;
@@ -1012,7 +1012,7 @@ void GSubImageFinder::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRec
 	}
 	/*
 	// Save correlation image
-	GImage corr;
+	WImage corr;
 	corr.setSize(m_nHaystackWidth, m_nHaystackHeight);
 	pos = 0;
 	for(y = 0; y < m_nHaystackHeight; y++)
@@ -1029,10 +1029,10 @@ void GSubImageFinder::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRec
 }
 
 // static
-void GSubImageFinder::test()
+void WSubImageFinder::test()
 {
 	// Make some random image
-	GImage foo;
+	WImage foo;
 	foo.setSize(256, 256);
 	foo.clear(0xff000000);
 	foo.boxFill(13, 8, 12, 17, 0xff808030);
@@ -1040,16 +1040,16 @@ void GSubImageFinder::test()
 	foo.boxFill(20, 20, 220, 220, 0xffffffee);
 
 	// Make the finder
-	GSubImageFinder finder(&foo);
+	WSubImageFinder finder(&foo);
 
 	// Make a sub-image
-	GRect r2(0, 0, 256, 256);
-	GRect r;
+	WRect r2(0, 0, 256, 256);
+	WRect r;
 	r.x = 13;
 	r.y = 17;
 	r.w = 32;
 	r.h = 32;
-	GImage bar;
+	WImage bar;
 	bar.setSize(32, 32);
 	bar.blit(0, 0, &foo, &r);
 
@@ -1067,7 +1067,7 @@ void GSubImageFinder::test()
 
 
 
-class GSIFStats
+class WSIFStats
 {
 public:
 	unsigned int m_x;
@@ -1076,26 +1076,26 @@ public:
 	size_t m_sse;
 };
 
-GSubImageFinder2::GSubImageFinder2(GImage* pHaystack)
+WSubImageFinder2::WSubImageFinder2(WImage* pHaystack)
 : m_pHaystack(pHaystack)
 {
 }
 
-GSubImageFinder2::~GSubImageFinder2()
+WSubImageFinder2::~WSubImageFinder2()
 {
 }
 
-void GSubImageFinder2::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRect* pNeedleRect)
+void WSubImageFinder2::findSubImage(int* pOutX, int* pOutY, WImage* pNeedle, WRect* pNeedleRect)
 {
 	// Fill a vector of candidate offsets with every possible offset
-	vector<GSIFStats*> cands;
+	vector<WSIFStats*> cands;
 	cands.reserve((m_pHaystack->height() - pNeedleRect->h) * (m_pHaystack->width() - pNeedleRect->w));
-	VectorOfPointersHolder<GSIFStats> hCands(cands);
+	VectorOfPointersHolder<WSIFStats> hCands(cands);
 	for(unsigned int y = 0; y + pNeedleRect->h <= m_pHaystack->height(); y++)
 	{
 		for(unsigned int x = 0; x + pNeedleRect->w <= m_pHaystack->width(); x++)
 		{
-			GSIFStats* pStats = new GSIFStats();
+			WSIFStats* pStats = new WSIFStats();
 			cands.push_back(pStats);
 			pStats->m_x = x;
 			pStats->m_y = y;
@@ -1108,17 +1108,17 @@ void GSubImageFinder2::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRe
 	size_t ranges[2];
 	ranges[0] = pNeedleRect->w;
 	ranges[1] = pNeedleRect->h;
-	GCoordVectorIterator cvi(2, ranges); // This chooses which pixel to try next
+	WCoordVectorIterator cvi(2, ranges); // This chooses which pixel to try next
 	for(unsigned int iters = 0; true; iters++)
 	{
 		// Do another pixel (penalize each candidate for any difference in that pixel)
 		size_t best = INVALID_INDEX;
 		size_t* pCoords = cvi.current();
-		GAssert(pCoords[0] < (size_t)pNeedleRect->w && pCoords[1] < (size_t)pNeedleRect->h);
+		WAssert(pCoords[0] < (size_t)pNeedleRect->w && pCoords[1] < (size_t)pNeedleRect->h);
 		unsigned int n = pNeedle->pixel((int)pCoords[0], (int)pCoords[1]);
-		for(vector<GSIFStats*>::iterator it = cands.begin(); it != cands.end(); it++)
+		for(vector<WSIFStats*>::iterator it = cands.begin(); it != cands.end(); it++)
 		{
-			GSIFStats* pStats = *it;
+			WSIFStats* pStats = *it;
 			size_t* pCoords2 = cvi.current();
 			unsigned int h = m_pHaystack->pixel((int)pStats->m_x + (int)pCoords2[0], (int)pStats->m_y + (int)pCoords2[1]);
 			int dif;
@@ -1137,13 +1137,13 @@ void GSubImageFinder2::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRe
 		}
 
 		// Divide into the best and worst halves
-		vector<GSIFStats*>::iterator median = cands.begin() + (cands.size() / 2);
-		std::ranges::nth_element(cands, median, std::ranges::less{}, &GSIFStats::m_sse);
+		vector<WSIFStats*>::iterator median = cands.begin() + (cands.size() / 2);
+		std::ranges::nth_element(cands, median, std::ranges::less{}, &WSIFStats::m_sse);
 
 		// Ensure that the best half will survive for a while longer
-		for(vector<GSIFStats*>::iterator it = cands.begin(); it != median; it++)
+		for(vector<WSIFStats*>::iterator it = cands.begin(); it != median; it++)
 		{
-			GSIFStats* pStats = *it;
+			WSIFStats* pStats = *it;
 			pStats->m_lastPassIter = iters;
 		}
 
@@ -1166,16 +1166,16 @@ void GSubImageFinder2::findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRe
 	}
 
 	// Return the results
-	vector<GSIFStats*>::iterator itBest = std::ranges::min_element(cands, std::ranges::less{}, &GSIFStats::m_sse);
+	vector<WSIFStats*>::iterator itBest = std::ranges::min_element(cands, std::ranges::less{}, &WSIFStats::m_sse);
 	*pOutX = (*itBest)->m_x;
 	*pOutY = (*itBest)->m_y;
 }
 
 // static
-void GSubImageFinder2::test()
+void WSubImageFinder2::test()
 {
 	// Make some random image
-	GImage foo;
+	WImage foo;
 	foo.setSize(256, 256);
 	foo.clear(0xff000000);
 	foo.boxFill(13, 8, 12, 17, 0xff808030);
@@ -1183,16 +1183,16 @@ void GSubImageFinder2::test()
 	foo.boxFill(20, 20, 220, 220, 0xffffffee);
 
 	// Make the finder
-	GSubImageFinder2 finder(&foo);
+	WSubImageFinder2 finder(&foo);
 
 	// Make a sub-image
-	GRect r2(0, 0, 256, 256);
-	GRect r;
+	WRect r2(0, 0, 256, 256);
+	WRect r;
 	r.x = 13;
 	r.y = 17;
 	r.w = 32;
 	r.h = 32;
-	GImage bar;
+	WImage bar;
 	bar.setSize(32, 32);
 	bar.blit(0, 0, &foo, &r);
 
@@ -1207,4 +1207,4 @@ void GSubImageFinder2::test()
 
 
 
-} // namespace GClasses
+} // namespace WClasses

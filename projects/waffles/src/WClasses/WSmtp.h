@@ -21,13 +21,13 @@
 
 #include <sstream>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GTCPClient;
+class WTCPClient;
 
 /// For sending email to an SMTP server
-class GSmtp
+class WSmtp
 {
 protected:
 	enum SmtpState
@@ -47,12 +47,12 @@ protected:
 	const char* m_szSubject;
 	const char* m_szMessage;
 	const char* m_szSMPTServer;
-	GTCPClient* m_pSocket;
+	WTCPClient* m_pSocket;
 	std::ostringstream m_receiveBuffer;
 
-	GSmtp(const char* szTo, const char* szFrom, const char* szSubject, const char* szMessage, const char* szSMPTServer);
+	WSmtp(const char* szTo, const char* szFrom, const char* szSubject, const char* szMessage, const char* szSMPTServer);
 public:
-	virtual ~GSmtp();
+	virtual ~WSmtp();
 
 	static void sendEmail(const char* szTo, const char* szFrom, const char* szSubject, const char* szMessage, const char* szSMPTServer);
 
@@ -64,6 +64,6 @@ protected:
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GSMTP_H__

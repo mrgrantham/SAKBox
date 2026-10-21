@@ -20,16 +20,16 @@
 #ifndef __GWINDOWS_H__
 #define __GWINDOWS_H__
 
-namespace GClasses
+namespace WClasses
 {
 
 #ifdef WINDOWS
 
-class GWindow;
-class GInput;
+class WWindow;
+class WInput;
 
 /// This class is for Windows-only functions
-class GWindows
+class WWindows
 {
 public:
 	/// This allows Windows to unload its message stack.  It is a
@@ -44,9 +44,9 @@ public:
 	//static int GetSaveFilename(HWND hWnd, char *message, char *mask, char *bufr);
 
 	/// This displays a little dialog to get an integer from the user.
-	/// The GInput parameter must already be initialized and have keyboard
+	/// The WInput parameter must already be initialized and have keyboard
 	/// enabled.
-	//	static int GetInt(GWindow* pWindow, GInput* pInput, char* szMsg);
+	//	static int GetInt(WWindow* pWindow, WInput* pInput, char* szMsg);
 
 	/// This destroys a file completely so it can't be recovered
 	//	static bool shredFile(const char* szFilename);
@@ -67,6 +67,6 @@ public:
 #endif // WINDOWS
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GWINDOWS_H__

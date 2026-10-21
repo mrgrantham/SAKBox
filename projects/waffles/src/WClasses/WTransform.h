@@ -20,25 +20,25 @@
 #ifndef __GTRANSFORM_H__
 #define __GTRANSFORM_H__
 
-#include "GLearner.h"
+#include "WLearner.h"
 
-namespace GClasses
+namespace WClasses
 {
 
 /// This is the base class of algorithms that transform data without supervision
-class GTransform
+class WTransform
 {
 public:
-	GTransform();
-	GTransform(const GDomNode* pNode);
-	virtual ~GTransform();
+	WTransform();
+	WTransform(const WDomNode* pNode);
+	virtual ~WTransform();
 
 	/// Applies the transformation to pIn and returns the results.
-	virtual GMatrix* reduce(const GMatrix& in) = 0;
+	virtual WMatrix* reduce(const WMatrix& in) = 0;
 
 protected:
 	/// Child classes should use this in their implementation of serialize
-	virtual GDomNode* baseDomNode(GDom* pDoc, const char* szClassName) const;
+	virtual WDomNode* baseDomNode(WDom* pDoc, const char* szClassName) const;
 };
 
 
@@ -46,27 +46,27 @@ protected:
 
 /// This is the base class of algorithms that can transform data
 /// one row at a time without supervision.
-class GIncrementalTransform : public GTransform
+class WIncrementalTransform : public WTransform
 {
 private:
-	GRelation* m_pRelationBefore;
-	GRelation* m_pRelationAfter;
-	GVec m_innerBuf;
+	WRelation* m_pRelationBefore;
+	WRelation* m_pRelationAfter;
+	WVec m_innerBuf;
 
 public:
-	GIncrementalTransform() : GTransform(), m_pRelationBefore(nullptr), m_pRelationAfter(nullptr) {}
-	GIncrementalTransform(const GDomNode* pNode);
-	~GIncrementalTransform() override;
+	WIncrementalTransform() : WTransform(), m_pRelationBefore(nullptr), m_pRelationAfter(nullptr) {}
+	WIncrementalTransform(const WDomNode* pNode);
+	~WIncrementalTransform() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const = 0;
+	virtual WDomNode* serialize(WDom* pDoc) const = 0;
 
 	/// Trains the transform on the data in pData. (This method may be a no-op
 	/// for transformations that always behave in the same manner.)
-	void train(const GMatrix& data);
+	void train(const WMatrix& data);
 
 	/// "Trains" the transform without any data.
 	///
@@ -74,66 +74,66 @@ public:
 	/// when it is used with an incremental learner.
 	/// Transforms that cannot be trained without available
 	/// data may throw an exception in this method.
-	void train(const GRelation& pRelation);
+	void train(const WRelation& pRelation);
 
 	/// Sets the before relation. Takes ownership of pRel.
-	void setBefore(GRelation* pRel);
+	void setBefore(WRelation* pRel);
 
 	/// Sets the after relation. Takes ownership of pRel.
-	void setAfter(GRelation* pRel);
+	void setAfter(WRelation* pRel);
 
 	/// Returns a relation object describing the data before it is
 	/// transformed
 	///
 	/// train must be called before this method is used
-	const GRelation& before() const { return *m_pRelationBefore; }
+	const WRelation& before() const { return *m_pRelationBefore; }
 
 	/// Returns a relation object describing the data after it is
 	/// transformed
 	///
 	/// train must be called before this method is used
-	const GRelation& after() const { return *m_pRelationAfter; }
+	const WRelation& after() const { return *m_pRelationAfter; }
 
 	/// pIn is the source row. pOut is a buffer that will hold the
 	/// transformed row.  train must be called before this method
 	/// is used
-	virtual void transform(const GVec& in, GVec& out) = 0;
+	virtual void transform(const WVec& in, WVec& out) = 0;
 
 	/// This calls train, then calls transformBatch, and returns the result.
-	GMatrix* reduce(const GMatrix& in) override;
+	WMatrix* reduce(const WMatrix& in) override;
 
 	/// This assumes that train has already been called, and
 	/// transforms all the rows in in returning the resulting
 	/// matrix.  The caller is responsible for deleting the new
 	/// matrix.
-	virtual GMatrix* transformBatch(const GMatrix& in);
+	virtual WMatrix* transformBatch(const WMatrix& in);
 
 	/// Returns a buffer of sufficient size to store an inner
 	/// (transformed) vector. The caller should not to delete
 	/// the buffer. The same buffer will be returned each time.
-	GVec& innerBuf();
+	WVec& innerBuf();
 
 	/// pIn is a previously transformed row, and pOut is a buffer that will hold the untransformed row.
 	/// train must be called before this method is used.
 	/// This method may throw an exception if this transformation cannot be undone or approximately undone.
-	virtual void untransform(const GVec& in, GVec& out) = 0;
+	virtual void untransform(const WVec& in, WVec& out) = 0;
 
 	/// Similar to untransform, except it produces a distribution instead of just a vector.
 	/// This method may not be implemented in all classes, so it may throw an exception.
-	virtual void untransformToDistribution(const GVec& in, GPrediction* pOut) = 0;
+	virtual void untransformToDistribution(const WVec& in, WPrediction* pOut) = 0;
 
 	/// This assumes train was previously called, and untransforms all the rows in pIn and returns the results.
-	virtual std::unique_ptr<GMatrix> untransformBatch(const GMatrix& in);
+	virtual std::unique_ptr<WMatrix> untransformBatch(const WMatrix& in);
 
 protected:
 	/// Child classes should use this in their implementation of serialize
-	GDomNode* baseDomNode(GDom* pDoc, const char* szClassName) const override;
+	WDomNode* baseDomNode(WDom* pDoc, const char* szClassName) const override;
 
 	/// This method implements the functionality called by train.
 	/// The data passed in may be used to guide training.
 	/// This method returns a smart-pointer to a relation the represents
 	/// the form that the data will take after it is transformed.
-	virtual GRelation* trainInner(const GMatrix& data) = 0;
+	virtual WRelation* trainInner(const WMatrix& data) = 0;
 
 	/// This method implements the functionality called by train.
 	/// This method is called to initialize the transform
@@ -144,7 +144,7 @@ protected:
 	/// data will have.
 	/// This method returns a smart-pointer to a relation the represents
 	/// the form that the data will take after it is transformed.
-	virtual GRelation* trainInner(const GRelation& relation) = 0;
+	virtual WRelation* trainInner(const WRelation& relation) = 0;
 };
 
 
@@ -156,69 +156,69 @@ protected:
 /// Additional datasets can be added with the "add" method.
 /// These will be processed by the same transform.
 /// The processed data can be retrieved with the "get" method, with an index corresponding to the order of the data.
-class GDataPreprocessor
+class WDataPreprocessor
 {
 protected:
-	GIncrementalTransform* m_pTransform;
-	std::vector<GMatrix*> m_processedData;
+	WIncrementalTransform* m_pTransform;
+	std::vector<WMatrix*> m_processedData;
 
 public:
 	/// Generates a transform and preprocesses the specified portion of source to meet the specified data requirements.
-	GDataPreprocessor(const GMatrix& source, size_t rowStart = 0, size_t colStart = 0, size_t rowCount = (size_t)-1, size_t colCount = (size_t)-1, bool allowMissing = false, bool allowNominal = false, bool allowContinuous = true, double minVal = -1.0, double maxVal = 1.0);
+	WDataPreprocessor(const WMatrix& source, size_t rowStart = 0, size_t colStart = 0, size_t rowCount = (size_t)-1, size_t colCount = (size_t)-1, bool allowMissing = false, bool allowNominal = false, bool allowContinuous = true, double minVal = -1.0, double maxVal = 1.0);
 
 	/// Adds another dataset, and transforms it with the same transform used to preprocess the original data.
-	void add(const GMatrix& source, size_t rowStart = 0, size_t colStart = 0, size_t rowCount = (size_t)-1, size_t colCount = (size_t)-1);
+	void add(const WMatrix& source, size_t rowStart = 0, size_t colStart = 0, size_t rowCount = (size_t)-1, size_t colCount = (size_t)-1);
 
 	/// Returns the preprocessed version of the data.
 	/// index specifies which dataset, such that get(0) returns the preprocessed form of the original
 	/// data passed to the constructor, get(1) returns the preprocessed form of the first dataset added
 	/// by a call to "add", get(2) is the preprocessed form of the second dataset added, and so forth.
-	GMatrix& get(size_t index) { return *m_processedData[index]; }
+	WMatrix& get(size_t index) { return *m_processedData[index]; }
 
 	/// Automatically prepares and trains a minimal transform for the provided data to prep it to meet specified requirements.
 	/// Returns nullptr if no transformation is needed.
-	static GIncrementalTransform* autoTrans(const GMatrix& data, bool allowMissing = false, bool allowNominal = false, bool allowContinuous = true, double minVal = -1.0, double maxVal = 1.0);
+	static WIncrementalTransform* autoTrans(const WMatrix& data, bool allowMissing = false, bool allowNominal = false, bool allowContinuous = true, double minVal = -1.0, double maxVal = 1.0);
 };
 
 
 
 
 /// This wraps two two-way-incremental-transforms to form a single combination transform
-class GIncrementalTransformChainer : public GIncrementalTransform
+class WIncrementalTransformChainer : public WIncrementalTransform
 {
 protected:
-	GIncrementalTransform* m_pFirst;
-	GIncrementalTransform* m_pSecond;
+	WIncrementalTransform* m_pFirst;
+	WIncrementalTransform* m_pSecond;
 
 public:
 	/// General-purpose constructor
-	GIncrementalTransformChainer(GIncrementalTransform* pFirst, GIncrementalTransform* pSecond);
+	WIncrementalTransformChainer(WIncrementalTransform* pFirst, WIncrementalTransform* pSecond);
 
 	/// Deserializing constructor
-	GIncrementalTransformChainer(const GDomNode* pNode, GLearnerLoader& ll);
-	~GIncrementalTransformChainer() override;
+	WIncrementalTransformChainer(const WDomNode* pNode, WLearnerLoader& ll);
+	~WIncrementalTransformChainer() override;
 
 	/// If pA or pB is nullptr, returns the other one, else chains them together.
-	static GIncrementalTransform* chain(GIncrementalTransform* pA, GIncrementalTransform* pB);
+	static WIncrementalTransform* chain(WIncrementalTransform* pA, WIncrementalTransform* pB);
 
-	/// See the comment for GIncrementalTransform::serialize
-	GDomNode* serialize(GDom* pDoc) const override;
+	/// See the comment for WIncrementalTransform::serialize
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalTransform::train
-	void transform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::train
+	void transform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransform
-	void untransform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::untransform
+	void untransform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransformToDistribution
-	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WIncrementalTransform::untransformToDistribution
+	void untransformToDistribution(const WVec& in, WPrediction* pOut) override;
 
 protected:
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GMatrix& data) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WMatrix& data) override;
 
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GRelation& relation) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WRelation& relation) override;
 };
 
 
@@ -229,25 +229,25 @@ protected:
 /// Principal Component Analysis. (Computes the principal components about
 /// the mean of the data when you call train. The transformed (reduced-dimensional)
 /// data will have a mean about the origin.)
-class GPCA : public GIncrementalTransform
+class WPCA : public WIncrementalTransform
 {
 protected:
 	size_t m_targetDims;
-	GMatrix* m_pBasisVectors;
-	GVec m_eigVals;
+	WMatrix* m_pBasisVectors;
+	WVec m_eigVals;
 	bool m_aboutOrigin;
-	GRand m_rand;
+	WRand m_rand;
 
 public:
-	GPCA(size_t targetDims);
+	WPCA(size_t targetDims);
 
 	/// Load from a DOM.
-	GPCA(const GDomNode* pNode);
+	WPCA(const WDomNode* pNode);
 
-	~GPCA() override;
+	~WPCA() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// Specify to compute the eigenvalues during training. This
 	/// method must be called before train is called.
@@ -258,63 +258,63 @@ public:
 	void aboutOrigin() { m_aboutOrigin = true; }
 
 	/// Returns the eigenvalues. Returns NULL if computeEigVals was not called.
-	GVec& eigVals() { return m_eigVals; }
+	WVec& eigVals() { return m_eigVals; }
 
 	/// Returns the number of principal components that it will find.
 	size_t targetDims() { return m_targetDims; }
 
 	/// Returns the centroid about which the principal components were calculated.
-	GVec& centroid() { return m_pBasisVectors->row(0); }
+	WVec& centroid() { return m_pBasisVectors->row(0); }
 
 	/// Returns a dataset where the first row is the centroid, and the remaining
 	/// rows are the principal component vectors in order of decreasing eigenvalue.
-	GMatrix* components() { return m_pBasisVectors; }
+	WMatrix* components() { return m_pBasisVectors; }
 
-	/// See the comment for GIncrementalTransform::transform.
+	/// See the comment for WIncrementalTransform::transform.
 	/// Projects the specified point into fewer dimensions.
-	void transform(const GVec& in, GVec& out) override;
+	void transform(const WVec& in, WVec& out) override;
 
 	/// Computes a (lossy) high-dimensional point that corresponds with the
 	/// specified low-dimensional coordinates.
-	void untransform(const GVec& in, GVec& out) override;
+	void untransform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransformToDistribution
-	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WIncrementalTransform::untransformToDistribution
+	void untransformToDistribution(const WVec& in, WPrediction* pOut) override;
 
 	/// Returns a reference to the pseudo-random number generator used by this object.
-	GRand& rand() { return m_rand; }
+	WRand& rand() { return m_rand; }
 
 protected:
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GMatrix& data) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WMatrix& data) override;
 
 	/// Throws an exception (because this transform cannot be trained without data)
-	GRelation* trainInner(const GRelation& relation) override;
+	WRelation* trainInner(const WRelation& relation) override;
 };
 
 
 
 
 /// Just generates Gaussian noise
-class GNoiseGenerator : public GIncrementalTransform
+class WNoiseGenerator : public WIncrementalTransform
 {
 protected:
-	GRand m_rand;
+	WRand m_rand;
 	double m_mean, m_deviation;
 
 public:
-	GNoiseGenerator();
+	WNoiseGenerator();
 
 	/// Load from a DOM.
-	GNoiseGenerator(const GDomNode* pNode);
+	WNoiseGenerator(const WDomNode* pNode);
 
-	~GNoiseGenerator() override;
+	~WNoiseGenerator() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalTransform::transform
-	void transform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::transform
+	void transform(const WVec& in, WVec& out) override;
 
 	/// Sets the mean and deviation of the noise
 	void setMeanAndDeviation(double m, double d)
@@ -324,101 +324,101 @@ public:
 	}
 
 	/// Throws an exception (because this transform cannot be reversed).
-	void untransform(const GVec& in, GVec& out) override
+	void untransform(const WVec& in, WVec& out) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 	/// Throws an exception (because this transform cannot be undone).
-	void untransformToDistribution(const GVec& in, GPrediction* pOut) override
+	void untransformToDistribution(const WVec& in, WPrediction* pOut) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 	/// Returns a reference to the rand object used to generate noise.
-	GRand& rand() { return m_rand; }
+	WRand& rand() { return m_rand; }
 
 protected:
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GMatrix& data) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WMatrix& data) override;
 
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GRelation& relation) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WRelation& relation) override;
 };
 
 
 
 /// Generates data by computing the product of each pair of
 /// attributes. This is useful for augmenting data.
-class GPairProduct : public GIncrementalTransform
+class WPairProduct : public WIncrementalTransform
 {
 protected:
 	size_t m_maxDims;
 
 public:
-	GPairProduct(size_t nMaxDims);
+	WPairProduct(size_t nMaxDims);
 
 	/// Load from a DOM.
-	GPairProduct(const GDomNode* pNode);
+	WPairProduct(const WDomNode* pNode);
 
-	~GPairProduct() override;
+	~WPairProduct() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalTransform::transform
-	void transform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::transform
+	void transform(const WVec& in, WVec& out) override;
 
 	/// Throws an exception (because this transform cannot be reversed).
-	void untransform(const GVec& in, GVec& out) override
+	void untransform(const WVec& in, WVec& out) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 	/// Throws an exception (because this transform cannot be undone).
-	void untransformToDistribution(const GVec& in, GPrediction* pOut) override
+	void untransformToDistribution(const WVec& in, WPrediction* pOut) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 protected:
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GMatrix& data) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WMatrix& data) override;
 
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GRelation& relation) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WRelation& relation) override;
 };
 
 
 /// This class augments data. That is, it transforms the data according to
 /// some provided transformation, and attaches the transformed data as new
 /// attributes to the existing data.
-class GDataAugmenter : public GIncrementalTransform
+class WDataAugmenter : public WIncrementalTransform
 {
 protected:
-	GIncrementalTransform* m_pTransform;
+	WIncrementalTransform* m_pTransform;
 
 public:
 	/// Generic constructor. pTransform specifies any data transformation. The transformed
 	/// data will be attached to the existing data in order to augment it.
 	/// This method takes ownership of pTransform.
-	GDataAugmenter(GIncrementalTransform* pTransform);
+	WDataAugmenter(WIncrementalTransform* pTransform);
 
 	/// Load from a DOM
-	GDataAugmenter(const GDomNode* pNode, GLearnerLoader& ll);
+	WDataAugmenter(const WDomNode* pNode, WLearnerLoader& ll);
 
-	~GDataAugmenter() override;
+	~WDataAugmenter() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalTransform::transform
-	void transform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::transform
+	void transform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransform
-	void untransform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::untransform
+	void untransform(const WVec& in, WVec& out) override;
 
 	/// Throws an exception
-	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
+	void untransformToDistribution(const WVec& in, WPrediction* pOut) override;
 
 protected:
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GMatrix& data) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WMatrix& data) override;
 
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GRelation& relation) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WRelation& relation) override;
 };
 
 
@@ -426,7 +426,7 @@ protected:
 /// The train method of this class produces a ranked ordering of the feature attributes by training
 /// a single-layer neural network, and deselecting the weakest attribute until all attributes have been
 /// deselected. The transform method uses only the highest-ranked attributes.
-class GAttributeSelector : public GIncrementalTransform
+class WAttributeSelector : public WIncrementalTransform
 {
 protected:
 	size_t m_labelDims;
@@ -435,48 +435,48 @@ protected:
 	size_t m_seed;
 
 public:
-	GAttributeSelector(size_t labelDims, size_t targetFeatures) : GIncrementalTransform(), m_labelDims(labelDims), m_targetFeatures(targetFeatures), m_seed(1234567)
+	WAttributeSelector(size_t labelDims, size_t targetFeatures) : WIncrementalTransform(), m_labelDims(labelDims), m_targetFeatures(targetFeatures), m_seed(1234567)
 	{
 	}
 
-	GAttributeSelector(const GDomNode* pNode);
+	WAttributeSelector(const WDomNode* pNode);
 
-	~GAttributeSelector() override
+	~WAttributeSelector() override
 	{
 	}
 
 	static void test();
 
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalTransform::transform
-	void transform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::transform
+	void transform(const WVec& in, WVec& out) override;
 
 	/// Specifies the number of features to select. (This method must be called
 	/// after train.)
-	GRelation* setTargetFeatures(size_t n);
+	WRelation* setTargetFeatures(size_t n);
 
 	/// Returns a list of attributes in ranked-order. Most important attributes are first. Weakest attributes are last.
 	/// (The results are undefined until after train is called.)
 	std::vector<size_t>& ranks() { return m_ranks; }
 
 	/// Throws an exception (because this transform cannot be reversed).
-	void untransform(const GVec& in, GVec& out) override
+	void untransform(const WVec& in, WVec& out) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 	/// Throws an exception (because this transform cannot be reversed).
-	void untransformToDistribution(const GVec& in, GPrediction* pOut) override
+	void untransformToDistribution(const WVec& in, WPrediction* pOut) override
 	{ throw Ex("This transformation cannot be reversed"); }
 
 	/// Sets a random seed to use with this attribute selector
 	void setSeed(size_t seed) { m_seed = seed; }
 
 protected:
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GMatrix& data) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WMatrix& data) override;
 
 	/// Throws an exception (because this transform cannot be trained without data)
-	GRelation* trainInner(const GRelation& relation) override;
+	WRelation* trainInner(const WRelation& relation) override;
 };
 
 
@@ -486,33 +486,33 @@ protected:
 /// as the vector 0 0 1 0. When predictions are converted back to nominal values, the mode of the
 /// categorical distribution is used as the predicted value. (This is similar to Weka's
 /// NominalToBinaryFilter.)
-class GNominalToCat : public GIncrementalTransform
+class WNominalToCat : public WIncrementalTransform
 {
 protected:
 	size_t m_valueCap;
-	GRand* m_pRand;
+	WRand* m_pRand;
 	std::vector<size_t> m_ranks;
 	bool m_preserveUnknowns;
 	double m_lo, m_hi;
 public:
-	GNominalToCat(size_t valueCap = 12, double lo = 0.0, double hi = 1.0);
+	WNominalToCat(size_t valueCap = 12, double lo = 0.0, double hi = 1.0);
 
 	/// Load from a DOM.
-	GNominalToCat(const GDomNode* pNode);
+	WNominalToCat(const WDomNode* pNode);
 
-	~GNominalToCat() override;
+	~WNominalToCat() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalTransform::transform
-	void transform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::transform
+	void transform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransform
-	void untransform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::untransform
+	void untransform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransformToDistribution
-	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WIncrementalTransform::untransformToDistribution
+	void untransformToDistribution(const WVec& in, WPrediction* pOut) override;
 
 	/// Makes a mapping from the post-transform attribute indexes to the pre-transform attribute indexes
 	void reverseAttrMap(std::vector<size_t>& rmap);
@@ -527,190 +527,190 @@ protected:
 	/// stay a single column.)
 	bool oneHot(size_t nValues) const { return nValues >= 3 && nValues < m_valueCap; }
 
-	GRelation* init();
+	WRelation* init();
 
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GMatrix& data) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WMatrix& data) override;
 
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GRelation& relation) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WRelation& relation) override;
 };
 
 
 
 /// This transform scales and shifts continuous values
 /// to make them fall within a specified range.
-class GNormalize : public GIncrementalTransform
+class WNormalize : public WIncrementalTransform
 {
 protected:
 	double m_min, m_max;
-	GVec m_mins;
-	GVec m_ranges;
+	WVec m_mins;
+	WVec m_ranges;
 
 public:
 	/// min and max specify the target range. (The input domain is determined
 	/// automatically when train is called.)
-	GNormalize(double min = 0.0, double max = 1.0);
+	WNormalize(double min = 0.0, double max = 1.0);
 
 	/// Load from a DOM.
-	GNormalize(const GDomNode* pNode);
+	WNormalize(const WDomNode* pNode);
 
-	~GNormalize() override;
+	~WNormalize() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalTransform::transform
-	void transform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::transform
+	void transform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransform
-	void untransform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::untransform
+	void untransform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransformToDistribution
-	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WIncrementalTransform::untransformToDistribution
+	void untransformToDistribution(const WVec& in, WPrediction* pOut) override;
 
 	/// Specify the input min and range values for each attribute
-	void setMinsAndRanges(const GRelation& pRel, const GVec& mins, const GVec& ranges);
+	void setMinsAndRanges(const WRelation& pRel, const WVec& mins, const WVec& ranges);
 
 protected:
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GMatrix& data) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WMatrix& data) override;
 
 	/// Throws an exception (because this transform cannot be trained without data)
-	GRelation* trainInner(const GRelation& relation) override;
+	WRelation* trainInner(const WRelation& relation) override;
 };
 
 
 
 /// This transform uses buckets to convert continuous data into discrete data.
-/// It is common to use GFilter to combine this with your favorite modeler
+/// It is common to use WFilter to combine this with your favorite modeler
 /// (which only supports discrete values) to create a modeler that can also support
 /// continuous values as well.
-class GDiscretize : public GIncrementalTransform
+class WDiscretize : public WIncrementalTransform
 {
 protected:
 	size_t m_bucketsIn, m_bucketsOut;
-	GVec m_mins;
-	GVec m_ranges;
+	WVec m_mins;
+	WVec m_ranges;
 
 public:
 	/// if buckets is less than 0, then it will use the floor of the square root of the number of rows in the data
-	GDiscretize(size_t buckets = INVALID_INDEX);
+	WDiscretize(size_t buckets = INVALID_INDEX);
 
 	/// Load from a DOM.
-	GDiscretize(const GDomNode* pNode);
+	WDiscretize(const WDomNode* pNode);
 
-	~GDiscretize() override;
+	~WDiscretize() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalTransform::transform
-	void transform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::transform
+	void transform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransform
-	void untransform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::untransform
+	void untransform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransformToDistribution
-	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WIncrementalTransform::untransformToDistribution
+	void untransformToDistribution(const WVec& in, WPrediction* pOut) override;
 
 protected:
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GMatrix& data) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WMatrix& data) override;
 
 	/// Throws an exception (because this transform cannot be trained without data)
-	GRelation* trainInner(const GRelation& relation) override;
+	WRelation* trainInner(const WRelation& relation) override;
 };
 
 
 
-class GImputeMissingVals : public GIncrementalTransform
+class WImputeMissingVals : public WIncrementalTransform
 {
 protected:
-	GCollaborativeFilter* m_pCF;
-	GNominalToCat* m_pNTC;
-	const GMatrix* m_pLabels;
-	GMatrix* m_pBatch;
+	WCollaborativeFilter* m_pCF;
+	WNominalToCat* m_pNTC;
+	const WMatrix* m_pLabels;
+	WMatrix* m_pBatch;
 
 public:
 	/// General-purpose constructor
-	GImputeMissingVals();
+	WImputeMissingVals();
 
 	/// Deserializing constructor
-	GImputeMissingVals(const GDomNode* pNode, GLearnerLoader& ll);
+	WImputeMissingVals(const WDomNode* pNode, WLearnerLoader& ll);
 
-	~GImputeMissingVals() override;
+	~WImputeMissingVals() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalTransform::transform
-	void transform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::transform
+	void transform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransform
-	void untransform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::untransform
+	void untransform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransformToDistribution
-	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WIncrementalTransform::untransformToDistribution
+	void untransformToDistribution(const WVec& in, WPrediction* pOut) override;
 
 	/// Sets the collaborative filter used to impute missing values. Takes
 	/// ownership of pCF. If no collaborative filter is set, the default is to use
 	/// matrix factorization with some typical parameters.
-	void setCollaborativeFilter(GCollaborativeFilter* pCF);
+	void setCollaborativeFilter(WCollaborativeFilter* pCF);
 
 	/// Specify a label matrix that should be appended with the training data.
 	/// This object will not delete pLabels. It is expected that pLabels will remain
 	/// valid at least until after train is next called.
-	void setLabels(const GMatrix* pLabels);
+	void setLabels(const WMatrix* pLabels);
 
 	/// Unlike most other transforms, this one assumes that the matrix passed
 	/// to this method is the same that was used to train it. (This assumption
 	/// is necessary in order to utilize the additional label information that
 	/// may be available at training time, which can be important for imputation.)
-	GMatrix* transformBatch(const GMatrix& in) override;
+	WMatrix* transformBatch(const WMatrix& in) override;
 
 protected:
-	/// See the comment for GIncrementalTransform::train
-	GRelation* trainInner(const GMatrix& data) override;
+	/// See the comment for WIncrementalTransform::train
+	WRelation* trainInner(const WMatrix& data) override;
 
 	/// Throws an exception (because this transform cannot be trained without data)
-	GRelation* trainInner(const GRelation& relation) override;
+	WRelation* trainInner(const WRelation& relation) override;
 };
 
 
 /// This transform converts continuous values into logarithmic space.
-class GLogify : public GIncrementalTransform
+class WLogify : public WIncrementalTransform
 {
 public:
 	/// General purpose constructor
-	GLogify();
+	WLogify();
 
 	/// Load from a DOM.
-	GLogify(const GDomNode* pNode);
+	WLogify(const WDomNode* pNode);
 
-	~GLogify() override;
+	~WLogify() override;
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GIncrementalTransform::transform
-	void transform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::transform
+	void transform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransform
-	void untransform(const GVec& in, GVec& out) override;
+	/// See the comment for WIncrementalTransform::untransform
+	void untransform(const WVec& in, WVec& out) override;
 
-	/// See the comment for GIncrementalTransform::untransformToDistribution
-	void untransformToDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WIncrementalTransform::untransformToDistribution
+	void untransformToDistribution(const WVec& in, WPrediction* pOut) override;
 
 protected:
-	/// See the comment for GIncrementalTransform::trainInner
-	GRelation* trainInner(const GMatrix& data) override;
+	/// See the comment for WIncrementalTransform::trainInner
+	WRelation* trainInner(const WMatrix& data) override;
 
-	/// See the comment for GIncrementalTransform::trainInner
-	GRelation* trainInner(const GRelation& relation) override;
+	/// See the comment for WIncrementalTransform::trainInner
+	WRelation* trainInner(const WRelation& relation) override;
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GTRANSFORM_H__
 

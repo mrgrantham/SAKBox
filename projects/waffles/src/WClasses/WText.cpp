@@ -16,27 +16,27 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GText.h"
-#include "GHashTable.h"
-#include "GHeap.h"
-#include "GStemmer.h"
+#include "WText.h"
+#include "WHashTable.h"
+#include "WHeap.h"
+#include "WStemmer.h"
 #include <math.h>
 
-namespace GClasses
+namespace WClasses
 {
 
 using std::vector;
 
-GWordIterator::GWordIterator(const char* text, size_t len)
+WWordIterator::WWordIterator(const char* text, size_t len)
 : m_pText(text), m_len(len)
 {
 }
 
-GWordIterator::~GWordIterator()
+WWordIterator::~WWordIterator()
 {
 }
 
-bool GWordIterator_isWordChar(char c)
+bool WWordIterator_isWordChar(char c)
 {
 	if(c >= 'a' && c <= 'z')
 		return true;
@@ -45,15 +45,15 @@ bool GWordIterator_isWordChar(char c)
 	return false;
 }
 
-bool GWordIterator::next(const char** ppWord, size_t* pLen)
+bool WWordIterator::next(const char** ppWord, size_t* pLen)
 {
-	while(m_len > 0 && !GWordIterator_isWordChar(*m_pText))
+	while(m_len > 0 && !WWordIterator_isWordChar(*m_pText))
 	{
 		m_pText++;
 		m_len--;
 	}
 	*ppWord = m_pText;
-	while(m_len > 0 && GWordIterator_isWordChar(*m_pText))
+	while(m_len > 0 && WWordIterator_isWordChar(*m_pText))
 	{
 		m_pText++;
 		m_len--;
@@ -91,21 +91,21 @@ const char* g_szStopWords[] =
 };
 // clang-format on
 
-GVocabulary::GVocabulary(bool stemWords)
+WVocabulary::WVocabulary(bool stemWords)
 : m_minWordSize(4), m_vocabSize(0)
 {
 	if(stemWords)
-		m_pStemmer = new GStemmer();
+		m_pStemmer = new WStemmer();
 	else
 		m_pStemmer = nullptr;
-	m_pStopWords = new GConstStringHashTable(113, false);
-	m_pVocabulary = new GConstStringToIndexHashTable(3571, false);
-	m_pHeap = new GHeap(1024);
+	m_pStopWords = new WConstStringHashTable(113, false);
+	m_pVocabulary = new WConstStringToIndexHashTable(3571, false);
+	m_pHeap = new WHeap(1024);
 	m_docNumber = 0;
 	m_pWordStats = nullptr;
 }
 
-GVocabulary::~GVocabulary()
+WVocabulary::~WVocabulary()
 {
 	delete(m_pStemmer);
 	delete(m_pStopWords);
@@ -114,7 +114,7 @@ GVocabulary::~GVocabulary()
 	delete(m_pWordStats);
 }
 
-void GVocabulary::addStopWord(const char* szWord)
+void WVocabulary::addStopWord(const char* szWord)
 {
 	const char* pWord = szWord;
 	if(m_pStemmer)
@@ -122,13 +122,13 @@ void GVocabulary::addStopWord(const char* szWord)
 	m_pStopWords->add(m_pHeap->add(pWord), nullptr);
 }
 
-void GVocabulary::addTypicalStopWords()
+void WVocabulary::addTypicalStopWords()
 {
 	for(size_t i = 0; i < (sizeof(g_szStopWords) / sizeof(const char*)); i++)
 		m_pStopWords->add(g_szStopWords[i], nullptr);
 }
 
-void GVocabulary::addWord(const char* szWord, size_t nLen)
+void WVocabulary::addWord(const char* szWord, size_t nLen)
 {
 	if(nLen < m_minWordSize)
 		return;
@@ -157,8 +157,8 @@ void GVocabulary::addWord(const char* szWord, size_t nLen)
 		// Track word stats
 		if(m_pWordStats)
 		{
-			GAssert(nIndex < m_pWordStats->size());
-			GWordStats& wordStats = (*m_pWordStats)[nIndex];
+			WAssert(nIndex < m_pWordStats->size());
+			WWordStats& wordStats = (*m_pWordStats)[nIndex];
 			if(wordStats.m_lastDocContainingWord != m_docNumber)
 			{
 				wordStats.m_lastDocContainingWord = m_docNumber;
@@ -180,22 +180,22 @@ void GVocabulary::addWord(const char* szWord, size_t nLen)
 	if(m_pWordStats)
 	{
 		m_pWordStats->resize(m_vocabSize);
-		GWordStats& wordStats = (*m_pWordStats)[nIndex];
+		WWordStats& wordStats = (*m_pWordStats)[nIndex];
 		wordStats.m_lastDocContainingWord = m_docNumber;
 		wordStats.m_szWord = pStoredWord;
 	}
 }
 
-GWordStats& GVocabulary::stats(size_t word)
+WWordStats& WVocabulary::stats(size_t word)
 {
 	if(!m_pWordStats)
 		throw Ex("You didn't call newDoc before adding vocabulary words, so stats weren't tracked");
 	return (*m_pWordStats)[word];
 }
 
-void GVocabulary::addWordsFromTextBlock(const char* text, size_t len)
+void WVocabulary::addWordsFromTextBlock(const char* text, size_t len)
 {
-	GWordIterator it(text, len);
+	WWordIterator it(text, len);
 	const char* pWord;
 	size_t wordLen;
 	while(true)
@@ -206,7 +206,7 @@ void GVocabulary::addWordsFromTextBlock(const char* text, size_t len)
 	}
 }
 
-size_t GVocabulary::wordIndex(const char* szWord, size_t len)
+size_t WVocabulary::wordIndex(const char* szWord, size_t len)
 {
 	// Find the stem
 	const char* szStem;
@@ -227,29 +227,29 @@ size_t GVocabulary::wordIndex(const char* szWord, size_t len)
 	return val;
 }
 
-void GVocabulary::newDoc()
+void WVocabulary::newDoc()
 {
 	if(!m_pWordStats)
 	{
 		if(m_vocabSize > 0)
 			throw Ex("If you call newDoc, then you must call it before the first word is added");
-		m_pWordStats = new vector<GWordStats>();
+		m_pWordStats = new vector<WWordStats>();
 		m_docNumber = 0;
 		return;
 	}
 	m_docNumber++;
 }
 
-const char* GVocabulary::word(size_t index)
+const char* WVocabulary::word(size_t index)
 {
 	if(!m_pWordStats)
 		throw Ex("You didn't call newDoc before adding vocabulary words, so the indexes weren't tracked");
 	return (*m_pWordStats)[index].m_szWord;
 }
 
-double GVocabulary::weight(size_t word)
+double WVocabulary::weight(size_t word)
 {
-	GWordStats& ws = stats(word);
+	WWordStats& ws = stats(word);
 	return log((double)docCount() / ws.m_docsContainingWord) / ws.m_maxWordFreq;
 }
 
@@ -262,23 +262,23 @@ double GVocabulary::weight(size_t word)
 
 
 
-GDiffer::GDiffer()
+WDiffer::WDiffer()
 {
 }
 
-GDiffer::~GDiffer()
+WDiffer::~WDiffer()
 {
 	for(size_t i = 0; i < m_chunks.size(); i++)
 		delete(m_chunks[i]);
 }
 
-void GDiffer::simplify(size_t min_match_size)
+void WDiffer::simplify(size_t min_match_size)
 {
-	std::vector<GDiffChunk*> old_chunks;
+	std::vector<WDiffChunk*> old_chunks;
 	old_chunks.swap(m_chunks);
 	for(size_t i = 0; i < old_chunks.size(); i++)
 	{
-		GDiffChunk* pChunk = old_chunks[i];
+		WDiffChunk* pChunk = old_chunks[i];
 		if(pChunk->left != INVALID_INDEX && pChunk->right != INVALID_INDEX && pChunk->len < min_match_size) // If it is a match that is too small
 		{
 			addChunk(pChunk->left, INVALID_INDEX, pChunk->len);
@@ -291,7 +291,7 @@ void GDiffer::simplify(size_t min_match_size)
 }
 
 /*static*/
-void GDiffer::first_matching_segment(const char* file1, size_t len1, size_t pos1, const char* file2, size_t len2, size_t pos2, size_t* match1, size_t* match2, size_t* matchLen)
+void WDiffer::first_matching_segment(const char* file1, size_t len1, size_t pos1, const char* file2, size_t len2, size_t pos2, size_t* match1, size_t* match2, size_t* matchLen)
 {
 	*matchLen = 0;
 	if(pos1 >= len1 || pos2 >= len2)
@@ -350,7 +350,7 @@ void GDiffer::first_matching_segment(const char* file1, size_t len1, size_t pos1
 }
 
 /*static*/
-void GDiffer::biggest_matching_segment_one_way(const char* file1, size_t len1, size_t pos1, size_t spot, const char* file2, size_t len2, size_t pos2, size_t* match1, size_t* match2, size_t* matchLen)
+void WDiffer::biggest_matching_segment_one_way(const char* file1, size_t len1, size_t pos1, size_t spot, const char* file2, size_t len2, size_t pos2, size_t* match1, size_t* match2, size_t* matchLen)
 {
 	*matchLen = 0;
 	char c = file1[spot];
@@ -375,7 +375,7 @@ void GDiffer::biggest_matching_segment_one_way(const char* file1, size_t len1, s
 }
 
 /*static*/
-void GDiffer::biggest_matching_segment(const char* file1, size_t len1, size_t pos1, const char* file2, size_t len2, size_t pos2, size_t* match1, size_t* match2, size_t* matchLen)
+void WDiffer::biggest_matching_segment(const char* file1, size_t len1, size_t pos1, const char* file2, size_t len2, size_t pos2, size_t* match1, size_t* match2, size_t* matchLen)
 {
 	//std::cout << "BMS(" << to_str(pos1) << " - " << to_str(len1) << ")(" << to_str(pos2) << " - " << to_str(len2) << ")";
 	*matchLen = 0;
@@ -407,20 +407,20 @@ void GDiffer::biggest_matching_segment(const char* file1, size_t len1, size_t po
 	//std::cout << " -> (" << to_str(*match1) << ", " << to_str(*match2) << ", " << to_str(*matchLen) << ")\n";
 }
 
-void GDiffer::addChunk(size_t left, size_t right, size_t len)
+void WDiffer::addChunk(size_t left, size_t right, size_t len)
 {
 	//std::cout << "Adding chunk (" << (left == INVALID_INDEX ? "--" : to_str(left)) << ", " << (right == INVALID_INDEX ? "--" : to_str(right)) << ", " << to_str(len) << ")\n";
 
 	// See if we can just extend the previous chunk
 	if(m_chunks.size() > 0)
 	{
-		GDiffChunk* pPrev = m_chunks[m_chunks.size() - 1];
+		WDiffChunk* pPrev = m_chunks[m_chunks.size() - 1];
 		if(left != INVALID_INDEX && right != INVALID_INDEX) // match
 		{
 			if(pPrev->left != INVALID_INDEX && pPrev->right != INVALID_INDEX) // prev match
 			{
-				GAssert(pPrev->left + pPrev->len == left);
-				GAssert(pPrev->right + pPrev->len == right);
+				WAssert(pPrev->left + pPrev->len == left);
+				WAssert(pPrev->right + pPrev->len == right);
 				pPrev->len += len;
 				return;
 			}
@@ -429,7 +429,7 @@ void GDiffer::addChunk(size_t left, size_t right, size_t len)
 		{
 			if(pPrev->left != INVALID_INDEX && pPrev->right == INVALID_INDEX) // prev left only
 			{
-				GAssert(pPrev->left + pPrev->len == left);
+				WAssert(pPrev->left + pPrev->len == left);
 				pPrev->len += len;
 				return;
 			}
@@ -440,7 +440,7 @@ void GDiffer::addChunk(size_t left, size_t right, size_t len)
 					pPrev = m_chunks[m_chunks.size() - 2];
 					if(pPrev->left != INVALID_INDEX && pPrev->right == INVALID_INDEX) // prev-prev left only
 					{
-						GAssert(pPrev->left + pPrev->len == left);
+						WAssert(pPrev->left + pPrev->len == left);
 						pPrev->len += len;
 						return;
 					}
@@ -449,10 +449,10 @@ void GDiffer::addChunk(size_t left, size_t right, size_t len)
 		}
 		else
 		{
-			GAssert(right != INVALID_INDEX); // right only
+			WAssert(right != INVALID_INDEX); // right only
 			if(pPrev->right != INVALID_INDEX && pPrev->left == INVALID_INDEX) // prev right only
 			{
-				GAssert(pPrev->right + pPrev->len == right);
+				WAssert(pPrev->right + pPrev->len == right);
 				pPrev->len += len;
 				return;
 			}
@@ -463,7 +463,7 @@ void GDiffer::addChunk(size_t left, size_t right, size_t len)
 					pPrev = m_chunks[m_chunks.size() - 2];
 					if(pPrev->right != INVALID_INDEX && pPrev->left == INVALID_INDEX) // prev-prev right only
 					{
-						GAssert(pPrev->right + pPrev->len == right);
+						WAssert(pPrev->right + pPrev->len == right);
 						pPrev->len += len;
 						return;
 					}
@@ -473,14 +473,14 @@ void GDiffer::addChunk(size_t left, size_t right, size_t len)
 	}
 
 	// Make a new chunk
-	GDiffChunk* pChunk = new GDiffChunk();
+	WDiffChunk* pChunk = new WDiffChunk();
 	pChunk->left = left;
 	pChunk->right = right;
 	pChunk->len = len;
 	m_chunks.push_back(pChunk);
 }
 
-void GDiffer::compare(const char* file1, size_t len1, size_t pos1, const char* file2, size_t len2, size_t pos2)
+void WDiffer::compare(const char* file1, size_t len1, size_t pos1, const char* file2, size_t len2, size_t pos2)
 {
 	// Do head matching
 	size_t headMatchLen = 0;
@@ -497,7 +497,7 @@ void GDiffer::compare(const char* file1, size_t len1, size_t pos1, const char* f
 	size_t tailMatchLen = 0;
 	while(pos1 + tailMatchLen < len1 && pos2 + tailMatchLen < len2 && file1[len1 - 1 - tailMatchLen] == file2[len2 - 1 - tailMatchLen])
 		tailMatchLen++;
-	GAssert(tailMatchLen || (tailMatchLen < len1 && tailMatchLen < len2));
+	WAssert(tailMatchLen || (tailMatchLen < len1 && tailMatchLen < len2));
 	len1 -= tailMatchLen;
 	len2 -= tailMatchLen;
 
@@ -568,5 +568,5 @@ void GDiffer::compare(const char* file1, size_t len1, size_t pos1, const char* f
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 

@@ -1,29 +1,29 @@
 #ifndef LOADER_H
 #define LOADER_H
 
-#include <WClasses/GMatrix.h>
-using namespace GClasses;
+#include <WClasses/WMatrix.h>
+using namespace WClasses;
 
 class Loader
 {
 public:
-	static void loadStockData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadPrecipitationData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadTemperatureData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadLaborData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadLaborData2(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadMackeyGlassData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadSunSpotData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadToyData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadToyData2(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
+	static void loadStockData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadPrecipitationData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadTemperatureData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadLaborData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadLaborData2(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadMackeyGlassData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadSunSpotData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadToyData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadToyData2(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
 
-	static void loadTest01(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadTest02(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadTest04(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
+	static void loadTest01(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadTest02(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadTest04(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
 
-	static void loadNASDAQ(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadAirPassengerData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
-	static void loadOzoneData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab);
+	static void loadNASDAQ(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadAirPassengerData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
+	static void loadOzoneData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab);
 };
 
 #endif

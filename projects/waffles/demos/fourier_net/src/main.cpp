@@ -18,19 +18,19 @@
 
 #include <exception>
 #include <iostream>
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
-#include <WClasses/GMatrix.h>
-#include <WClasses/GFourier.h>
-#include <WClasses/GNeuralNet.h>
-#include <WClasses/GOptimizer.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
+#include <WClasses/WMatrix.h>
+#include <WClasses/WFourier.h>
+#include <WClasses/WNeuralNet.h>
+#include <WClasses/WOptimizer.h>
 #include "series_networks/LinearWeights.h"
 #include "series_networks/SeriesPlot.h"
-#include <WClasses/GPlot.h>
-#include <WClasses/GBits.h>
-#include <WClasses/GVec.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GRand.h>
+#include <WClasses/WPlot.h>
+#include <WClasses/WBits.h>
+#include <WClasses/WVec.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WRand.h>
 #include <math.h>
 #include <cstdlib>
 #include <cstring>
@@ -39,17 +39,17 @@
 #include <string>
 #include <vector>
 
-// SAKBox: ported from the 2015 neural network API (GLayerClassic,
-// GLayerMixed, GActivation*, GNeuralNet::fourier), which upstream removed in
+// SAKBox: ported from the 2015 neural network API (WLayerClassic,
+// WLayerMixed, WActivation*, WNeuralNet::fourier), which upstream removed in
 // 2016-2019 without updating this demo, to the current block API:
-//  - a GLayerMixed of classic layers becomes a GBlockLinear holding all of
+//  - a WLayerMixed of classic layers becomes a WBlockLinear holding all of
 //    their weights, followed by a layer of activation blocks side by side;
-//  - GNeuralNet::fourier is reimplemented below from upstream's last version
+//  - WNeuralNet::fourier is reimplemented below from upstream's last version
 //    of it (2017, before it was deleted in 9628b7f);
 //  - the network's weights live in one vector, so the two learners at
 //    different learning rates become one network trained from a backup.
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 using std::cout;
 using std::string;
@@ -70,7 +70,7 @@ string g_outDir = ".";
 
 string outPath(const char* name) { return g_outDir + "/" + name; }
 
-// The deviation GLayerClassic::resize gave new weights: `deviation` scaled by
+// The deviation WLayerClassic::resize gave new weights: `deviation` scaled by
 // the RMS of the weights kept, and shrunk when the new area is the larger.
 double resizeDeviation(const std::vector<double>& kept, size_t newArea, double deviation)
 {
@@ -89,7 +89,7 @@ double resizeDeviation(const std::vector<double>& kept, size_t newArea, double d
 // A Fourier network for `series` (one column, rows a power of 2) whose rows
 // span `period` units of time: sine units at the FFT's frequencies, combined
 // by the FFT's coefficients. Returns, per sine unit, its frequency and phase,
-// and the output's weights and bias. (Upstream's GNeuralNet::fourier, 2017,
+// and the output's weights and bias. (Upstream's WNeuralNet::fourier, 2017,
 // for a single column.)
 struct FourierFit
 {
@@ -97,10 +97,10 @@ struct FourierFit
 	double outBias = 0.0;
 };
 
-FourierFit fourierFit(const GMatrix& series, double period)
+FourierFit fourierFit(const WMatrix& series, double period)
 {
 	size_t n = series.rows();
-	if(!GBits::isPowerOfTwo((unsigned int)n))
+	if(!WBits::isPowerOfTwo((unsigned int)n))
 		throw Ex("The training series must have a power-of-2 number of rows");
 	FourierFit fit;
 	fit.freq.resize(n);
@@ -119,7 +119,7 @@ FourierFit fourierFit(const GMatrix& series, double period)
 		f[i].real = series[i][0];
 		f[i].imag = 0.0;
 	}
-	GFourier::fft(n, f.data(), true);
+	WFourier::fft(n, f.data(), true);
 	const size_t halfN = n / 2; // exact: n is a power of 2 (checked above)
 	for(size_t i = 0; i < halfN; i++)
 	{
@@ -133,7 +133,7 @@ FourierFit fourierFit(const GMatrix& series, double period)
 	return fit;
 }
 
-double rmse(GNeuralNet& nn, const GMatrix& features, const GMatrix& labels)
+double rmse(WNeuralNet& nn, const WMatrix& features, const WMatrix& labels)
 {
 	return sqrt(nn.measureLoss(features, labels) / labels.rows());
 }
@@ -147,22 +147,22 @@ void doit(size_t maxEpochs)
 	cout << " * It only uses L1 regularization during the last 20% of training.\n\n";
 
 	// Load the data
-	GMatrix trainLab;
-	GMatrix testLab;
+	WMatrix trainLab;
+	WMatrix testLab;
 	trainLab.loadArff((g_dataDir + "/train.arff").c_str());
 	testLab.loadArff((g_dataDir + "/test.arff").c_str());
 
-	GMatrix trainFeat(trainLab.rows(), 1);
+	WMatrix trainFeat(trainLab.rows(), 1);
 	for(size_t i = 0; i < trainLab.rows(); i++)
 		trainFeat[i][0] = (double)i / trainLab.rows();
-	GMatrix testFeat(testLab.rows(), 1);
+	WMatrix testFeat(testLab.rows(), 1);
 	for(size_t i = 0; i < testLab.rows(); i++)
 		testFeat[i][0] = (double)(i + trainLab.rows()) / trainLab.rows();
 
 	// The Fourier transform needs a power-of-2 number of rows: pad the
 	// training series with copies of its first row and stretch the period to
 	// match, as fourier() did.
-	GMatrix padded(trainLab);
+	WMatrix padded(trainLab);
 	while(padded.rows() & (padded.rows() - 1))
 		padded.newRow().copy(padded.row(0));
 	const size_t n = padded.rows();
@@ -171,17 +171,17 @@ void doit(size_t maxEpochs)
 	// The network. Layer 1: softplus and identity units; layer 2: the Fourier
 	// sine units plus more softplus and identity units; layer 3: identity.
 	const size_t sp = SOFTPLUS_NODES, id = IDENTITY_NODES;
-	GNeuralNet nn;
-	nn.add(new GBlockLinear(1, sp + id));
-	nn.add(new GBlockSoftPlus(sp));
-	nn.concat(new GBlockIdentity(id), sp);
-	nn.add(new GBlockLinear(sp + id, n + sp + id));
-	nn.add(new GBlockSine(n));
-	nn.concat(new GBlockSoftPlus(sp), n);
-	nn.concat(new GBlockIdentity(id), n + sp);
-	nn.add(new GBlockLinear(n + sp + id, 1));
-	GRand rand(0);
-	GSGDOptimizer optimizer(nn, rand); // allocates nn's weights
+	WNeuralNet nn;
+	nn.add(new WBlockLinear(1, sp + id));
+	nn.add(new WBlockSoftPlus(sp));
+	nn.concat(new WBlockIdentity(id), sp);
+	nn.add(new WBlockLinear(sp + id, n + sp + id));
+	nn.add(new WBlockSine(n));
+	nn.concat(new WBlockSoftPlus(sp), n);
+	nn.concat(new WBlockIdentity(id), n + sp);
+	nn.add(new WBlockLinear(n + sp + id, 1));
+	WRand rand(0);
+	WSGDOptimizer optimizer(nn, rand); // allocates nn's weights
 	LinearWeights layer1{nn.layer(0).block(0)};
 	LinearWeights layer2{nn.layer(2).block(0)};
 	LinearWeights layer3{nn.layer(4).block(0)};
@@ -191,11 +191,11 @@ void doit(size_t maxEpochs)
 	// that it fits the training data.
 	FourierFit fit = fourierFit(padded, period);
 	{
-		GNeuralNet plain;
-		plain.add(new GBlockLinear(1, n));
-		plain.add(new GBlockSine(n));
-		plain.add(new GBlockLinear(n, 1));
-		GRand plainRand(0);
+		WNeuralNet plain;
+		plain.add(new WBlockLinear(1, n));
+		plain.add(new WBlockSine(n));
+		plain.add(new WBlockLinear(n, 1));
+		WRand plainRand(0);
 		plain.init(plainRand);
 		LinearWeights a{plain.layer(0).block(0)};
 		LinearWeights b{plain.layer(2).block(0)};
@@ -217,7 +217,7 @@ void doit(size_t maxEpochs)
 	// Put the sine units in layer 2 (reading layer 1's first output, which
 	// carries x) and the Fourier output weights in layer 3. Weights from the
 	// inputs they didn't have before get small random values, as
-	// GLayerClassic::resize gave them.
+	// WLayerClassic::resize gave them.
 	double sineDev = resizeDeviation(fit.freq, (sp + id - 1) * n, PERTURBATION);
 	for(size_t j = 0; j < n; j++)
 	{
@@ -269,9 +269,9 @@ void doit(size_t maxEpochs)
 	// Do some training. nn's weights are one vector; each round trains it
 	// at a higher and a lower learning rate from the same start and keeps
 	// whichever did better (the old demo kept two networks for this).
-	GVec& weights = nn.weights;
-	GVec backup(weights.size()), higher(weights.size());
-	GRandomIndexIterator ii(trainLab.rows(), rand);
+	WVec& weights = nn.weights;
+	WVec backup(weights.size()), higher(weights.size());
+	WRandomIndexIterator ii(trainLab.rows(), rand);
 	double learningRate = 1e-8;
 	double lambda = 0.001;
 	auto trainEpoch = [&](double rate)
@@ -341,7 +341,7 @@ void doit(size_t maxEpochs)
 			}
 
 			// Report progress
-			double timeNow = GTime::seconds();
+			double timeNow = WTime::seconds();
 			if(timeNow - timeStart >= 0.5)
 			{
 				timeStart = timeNow;
@@ -366,7 +366,7 @@ void doit(size_t maxEpochs)
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int nRet = 0;
 	try

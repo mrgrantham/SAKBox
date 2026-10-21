@@ -20,28 +20,28 @@
 #include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
-#include "WClasses/GApp.h"
-#include "WClasses/GBits.h"
-#include "WClasses/GCluster.h"
-#include "WClasses/GDistance.h"
-#include "WClasses/GError.h"
-#include "WClasses/GMatrix.h"
-#include "WClasses/GImage.h"
-#include "WClasses/GRand.h"
-#include "WClasses/GFile.h"
-#include "WClasses/GTransform.h"
-#include "WClasses/GVec.h"
-#include "WClasses/GHashTable.h"
-#include "WClasses/GHillClimber.h"
-#include "WClasses/GManifold.h"
-#include "WClasses/GNeighborFinder.h"
-#include "WClasses/GNeuralNet.h"
-#include "WClasses/GHeap.h"
-#include "WClasses/GRect.h"
-#include "WClasses/GSparseMatrix.h"
-#include "WClasses/GMath.h"
-#include "WClasses/GDom.h"
-#include "WClasses/GSelfOrganizingMap.h"
+#include "WClasses/WApp.h"
+#include "WClasses/WBits.h"
+#include "WClasses/WCluster.h"
+#include "WClasses/WDistance.h"
+#include "WClasses/WError.h"
+#include "WClasses/WMatrix.h"
+#include "WClasses/WImage.h"
+#include "WClasses/WRand.h"
+#include "WClasses/WFile.h"
+#include "WClasses/WTransform.h"
+#include "WClasses/WVec.h"
+#include "WClasses/WHashTable.h"
+#include "WClasses/WHillClimber.h"
+#include "WClasses/WManifold.h"
+#include "WClasses/WNeighborFinder.h"
+#include "WClasses/WNeuralNet.h"
+#include "WClasses/WHeap.h"
+#include "WClasses/WRect.h"
+#include "WClasses/WSparseMatrix.h"
+#include "WClasses/WMath.h"
+#include "WClasses/WDom.h"
+#include "WClasses/WSelfOrganizingMap.h"
 #include <time.h>
 #include <iostream>
 #include <string>
@@ -56,7 +56,7 @@
 #include <exception>
 #include "WClasses/usage.h"
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 using std::vector;
@@ -85,7 +85,7 @@ size_t getAttrVal(const char* szString, size_t attrCount)
 	return val;
 }
 
-void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount)
+void parseAttributeList(vector<size_t>& list, WArgReader& args, size_t attrCount)
 {
 	const char* szList = args.pop_string();
 	set<size_t> attrSet;
@@ -158,7 +158,7 @@ void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount
 ///
 ///The returned matrix is allocated by new and it is the caller's
 ///responsibility to deallocate it. The suggested manner is to use a
-///Holder<GMatrix*>
+///Holder<WMatrix*>
 ///
 ///In the returned matrix, all of the attributes designated as labels
 ///have been moved to the end and ignored attributes have been
@@ -173,17 +173,17 @@ void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount
 ///\param originalIndices the vector in which to place the original
 ///indices.  originalIndices[i] is the index in the original data file
 ///of the attribute currently at index i.
-void loadDataWithSwitches(GMatrix& data, GArgReader& args, size_t& pLabelDims, std::vector<size_t>& originalIndices)
+void loadDataWithSwitches(WMatrix& data, WArgReader& args, size_t& pLabelDims, std::vector<size_t>& originalIndices)
 {
 	// Load the dataset by extension
 	const char* szFilename = args.pop_string();
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	if(_stricmp(szFilename + pd.extStart, ".arff") == 0)
 		data.loadArff(szFilename);
 	else if(_stricmp(szFilename + pd.extStart, ".csv") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.parse(data, szFilename);
 		cerr << "\nParsing Report:\n";
 		for(size_t i = 0; i < data.cols(); i++)
@@ -191,7 +191,7 @@ void loadDataWithSwitches(GMatrix& data, GArgReader& args, size_t& pLabelDims, s
 	}
 	else if(_stricmp(szFilename + pd.extStart, ".dat") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.setSeparator('\0');
 		parser.parse(data, szFilename);
 		cerr << "\nParsing Report:\n";
@@ -260,19 +260,19 @@ void loadDataWithSwitches(GMatrix& data, GArgReader& args, size_t& pLabelDims, s
 	}
 }
 
-GMatrix* loadData(const char* szFilename)
+WMatrix* loadData(const char* szFilename)
 {
 	// Load the dataset by extension
-	GMatrix* pM = new GMatrix();
-	Holder<GMatrix> hM(pM);
-	GMatrix& m = *pM;
+	WMatrix* pM = new WMatrix();
+	Holder<WMatrix> hM(pM);
+	WMatrix& m = *pM;
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	if(_stricmp(szFilename + pd.extStart, ".arff") == 0)
 		m.loadArff(szFilename);
 	else if(_stricmp(szFilename + pd.extStart, ".csv") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.parse(m, szFilename);
 		cerr << "\nParsing Report:\n";
 		for(size_t i = 0; i < m.cols(); i++)
@@ -280,7 +280,7 @@ GMatrix* loadData(const char* szFilename)
 	}
 	else if(_stricmp(szFilename + pd.extStart, ".dat") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.setSeparator('\0');
 		parser.parse(m, szFilename);
 		cerr << "\nParsing Report:\n";
@@ -293,7 +293,7 @@ GMatrix* loadData(const char* szFilename)
 	return hM.release();
 }
 
-void showInstantiateNeighborFinderError(const char* szMessage, GArgReader& args)
+void showInstantiateNeighborFinderError(const char* szMessage, WArgReader& args)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -324,11 +324,11 @@ void showInstantiateNeighborFinderError(const char* szMessage, GArgReader& args)
 	cerr.flush();
 }
 
-GNeighborFinder* instantiateNeighborFinder(GMatrix* pData, size_t neighborCount, GRand* pRand, GArgReader& args)
+WNeighborFinder* instantiateNeighborFinder(WMatrix* pData, size_t neighborCount, WRand* pRand, WArgReader& args)
 {
 	// Get the algorithm name
 	int argPos = args.get_pos();
-	GNeighborFinder* pNF = nullptr;
+	WNeighborFinder* pNF = nullptr;
 	const char* alg = args.pop_string();
 
 	try
@@ -346,11 +346,11 @@ GNeighborFinder* instantiateNeighborFinder(GMatrix* pData, size_t neighborCount,
 		// Parse required algorithms
 		if(_stricmp(alg, "bruteforce") == 0)
 		{
-			pNF = new GBruteForceNeighborFinder(pData, nullptr, true);
+			pNF = new WBruteForceNeighborFinder(pData, nullptr, true);
 		}
 		else if(_stricmp(alg, "kdtree") == 0)
 		{
-			pNF = new GKdTree(pData, nullptr, true);
+			pNF = new WKdTree(pData, nullptr, true);
 		}
 		else
 			throw Ex("Unrecognized neighbor finding algorithm: ", alg);
@@ -358,7 +358,7 @@ GNeighborFinder* instantiateNeighborFinder(GMatrix* pData, size_t neighborCount,
 		// Apply CycleCut
 		if(cutCycleLen > 0)
 		{
-			GNeighborGraph* pNF2 = new GNeighborGraph(pNF, true, neighborCount);
+			WNeighborGraph* pNF2 = new WNeighborGraph(pNF, true, neighborCount);
 			pNF2->cutShortcuts(cutCycleLen);
 			pNF = pNF2;
 		}
@@ -373,12 +373,12 @@ GNeighborFinder* instantiateNeighborFinder(GMatrix* pData, size_t neighborCount,
 	return pNF;
 }
 
-void attributeSelector(GArgReader& args)
+void attributeSelector(WArgReader& args)
 {
 	// Load the data
 	size_t labelDims;
 	std::vector<size_t> originalIndices;
-	GMatrix data;
+	WMatrix data;
 	loadDataWithSwitches(data, args, labelDims, originalIndices);
 
 	// Parse the options
@@ -399,38 +399,38 @@ void attributeSelector(GArgReader& args)
 	}
 
 	// Do the attribute selection
-	GAttributeSelector as(labelDims, targetFeatures);
+	WAttributeSelector as(labelDims, targetFeatures);
 	as.setSeed(seed);
 	if(outFilename.length() > 0)
 	{
 		as.train(data);
-		GMatrix* pDataOut = as.transformBatch(data);
-		Holder<GMatrix> hDataOut(pDataOut);
+		WMatrix* pDataOut = as.transformBatch(data);
+		Holder<WMatrix> hDataOut(pDataOut);
 		cout << "Reduced data saved to " << outFilename.c_str() << ".\n";
 		pDataOut->saveArff(outFilename.c_str());
 	}
 	else
 		as.train(data);
 	cout << "\nAttribute rankings from most salient to least salient. (Attributes are zero-indexed.)\n";
-	const GArffRelation& rel = (GArffRelation&)data.relation();
+	const WArffRelation& rel = (WArffRelation&)data.relation();
 	for(size_t i = 0; i < as.ranks().size(); i++)
 		cout << originalIndices.at(as.ranks()[i]) << " " << rel.attrName(as.ranks()[i]) << "\n";
 }
 
-void blendEmbeddings(GArgReader& args)
+void blendEmbeddings(WArgReader& args)
 {
 	// Load the files and params
-	GMatrix* pDataOrig = loadData(args.pop_string());
-	Holder<GMatrix> hDataOrig(pDataOrig);
+	WMatrix* pDataOrig = loadData(args.pop_string());
+	Holder<WMatrix> hDataOrig(pDataOrig);
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
-	GRand prng(seed);
+	WRand prng(seed);
 	size_t neighborCount = args.pop_uint();
-	GNeighborFinder* pNF = instantiateNeighborFinder(pDataOrig, neighborCount, &prng, args);
-	Holder<GNeighborFinder> hNF(pNF);
-	GMatrix* pDataA = loadData(args.pop_string());
-	Holder<GMatrix> hDataA(pDataA);
-	GMatrix* pDataB = loadData(args.pop_string());
-	Holder<GMatrix> hDataB(pDataB);
+	WNeighborFinder* pNF = instantiateNeighborFinder(pDataOrig, neighborCount, &prng, args);
+	Holder<WNeighborFinder> hNF(pNF);
+	WMatrix* pDataA = loadData(args.pop_string());
+	Holder<WMatrix> hDataA(pDataA);
+	WMatrix* pDataB = loadData(args.pop_string());
+	Holder<WMatrix> hDataB(pDataB);
 	if(pDataA->rows() != pDataOrig->rows() || pDataB->rows() != pDataOrig->rows())
 		throw Ex("mismatching number of rows");
 	if(pDataA->cols() != pDataB->cols())
@@ -448,7 +448,7 @@ void blendEmbeddings(GArgReader& args)
 	// Get a neighbor table
 	if(!pNF->isCached())
 	{
-		GNeighborGraph* pNF2 = new GNeighborGraph(hNF.release(), true, neighborCount);
+		WNeighborGraph* pNF2 = new WNeighborGraph(hNF.release(), true, neighborCount);
 		hNF.reset(pNF2);
 		pNF = pNF2;
 	}
@@ -457,28 +457,28 @@ void blendEmbeddings(GArgReader& args)
 	size_t startPoint = (size_t)prng.next(pDataA->rows());
 	double* pRatios = new double[pDataA->rows()];
 	ArrayHolder<double> hRatios(pRatios);
-	GVecWrapper vw(pRatios, pDataA->rows());
+	WVecWrapper vw(pRatios, pDataA->rows());
 	vw.fill(0.5);
-	GMatrix* pDataC = GManifold::blendEmbeddings(pDataA, pRatios, pDataB, neighborCount, (GNeighborGraph*)pNF, startPoint);
-	Holder<GMatrix> hDataC(pDataC);
+	WMatrix* pDataC = WManifold::blendEmbeddings(pDataA, pRatios, pDataB, neighborCount, (WNeighborGraph*)pNF, startPoint);
+	Holder<WMatrix> hDataC(pDataC);
 	pDataC->print(cout);
 }
 
-void breadthFirstUnfolding(GArgReader& args)
+void breadthFirstUnfolding(WArgReader& args)
 {
 	// Load the file and params
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t nSeed = getpid() * (unsigned int)time(nullptr);
-	GRand prng(nSeed);
+	WRand prng(nSeed);
 	size_t neighborCount = args.pop_uint();
-	GNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
-	Holder<GNeighborFinder> hNF(pNF);
+	WNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
+	Holder<WNeighborFinder> hNF(pNF);
 	int targetDims = args.pop_uint();
 
 	// Parse Options
 	size_t reps = 1;
-	Holder<GMatrix> hControlData(nullptr);
+	Holder<WMatrix> hControlData(nullptr);
 	while(args.size() > 0)
 	{
 		if(args.if_pop("-seed"))
@@ -490,24 +490,24 @@ void breadthFirstUnfolding(GArgReader& args)
 	}
 
 	// Transform the data
-	GBreadthFirstUnfolding transform(reps, neighborCount, targetDims);
+	WBreadthFirstUnfolding transform(reps, neighborCount, targetDims);
 	transform.rand().setSeed(nSeed);
 	transform.setNeighborFinder(pNF);
-	GMatrix* pDataAfter = transform.reduce(*pData);
-	Holder<GMatrix> hDataAfter(pDataAfter);
+	WMatrix* pDataAfter = transform.reduce(*pData);
+	Holder<WMatrix> hDataAfter(pDataAfter);
 	pDataAfter->print(cout);
 }
 
-void isomap(GArgReader& args)
+void isomap(WArgReader& args)
 {
 	// Load the file and params
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
-	GRand prng(nSeed);
+	WRand prng(nSeed);
 	size_t neighborCount = args.pop_uint();
-	GNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
-	Holder<GNeighborFinder> hNF(pNF);
+	WNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
+	Holder<WNeighborFinder> hNF(pNF);
 	int targetDims = args.pop_uint();
 
 	// Parse Options
@@ -523,25 +523,25 @@ void isomap(GArgReader& args)
 	}
 
 	// Transform the data
-	GIsomap transform(neighborCount, targetDims, &prng);
+	WIsomap transform(neighborCount, targetDims, &prng);
 	transform.setNeighborFinder(pNF);
 	if(tolerant)
 		transform.dropDisconnectedPoints();
-	GMatrix* pDataAfter = transform.reduce(*pData);
-	Holder<GMatrix> hDataAfter(pDataAfter);
+	WMatrix* pDataAfter = transform.reduce(*pData);
+	Holder<WMatrix> hDataAfter(pDataAfter);
 	pDataAfter->print(cout);
 }
 
-void lle(GArgReader& args)
+void lle(WArgReader& args)
 {
 	// Load the file and params
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
-	GRand prng(nSeed);
+	WRand prng(nSeed);
 	size_t neighborCount = args.pop_uint();
-	GNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
-	Holder<GNeighborFinder> hNF(pNF);
+	WNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
+	Holder<WNeighborFinder> hNF(pNF);
 	int targetDims = args.pop_uint();
 
 	// Parse Options
@@ -554,23 +554,23 @@ void lle(GArgReader& args)
 	}
 
 	// Transform the data
-	GLLE transform(neighborCount, targetDims, &prng);
+	WLLE transform(neighborCount, targetDims, &prng);
 	transform.setNeighborFinder(pNF);
-	GMatrix* pDataAfter = transform.reduce(*pData);
-	Holder<GMatrix> hDataAfter(pDataAfter);
+	WMatrix* pDataAfter = transform.reduce(*pData);
+	Holder<WMatrix> hDataAfter(pDataAfter);
 	pDataAfter->print(cout);
 }
 
-void ManifoldSculpting(GArgReader& args)
+void ManifoldSculpting(WArgReader& args)
 {
 	// Load the file and params
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
-	GRand prng(nSeed);
+	WRand prng(nSeed);
 	size_t neighborCount = args.pop_uint();
-	GNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
-	Holder<GNeighborFinder> hNF(pNF);
+	WNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
+	Holder<WNeighborFinder> hNF(pNF);
 	size_t targetDims = args.pop_uint();
 
 	// Parse Options
@@ -589,8 +589,8 @@ void ManifoldSculpting(GArgReader& args)
 	}
 
 	// Load the hint data
-	GMatrix* pDataHint = nullptr;
-	Holder<GMatrix> hDataHint(nullptr);
+	WMatrix* pDataHint = nullptr;
+	Holder<WMatrix> hDataHint(nullptr);
 	if(szPreprocessedData)
 	{
 		pDataHint = loadData(szPreprocessedData);
@@ -602,20 +602,20 @@ void ManifoldSculpting(GArgReader& args)
 	}
 
 	// Transform the data
-	GManifoldSculpting transform(neighborCount, targetDims, &prng);
+	WManifoldSculpting transform(neighborCount, targetDims, &prng);
 	transform.setSquishingRate(scaleRate);
 	if(pDataHint)
 		transform.setPreprocessedData(hDataHint.release());
-	transform.setNeighborFinder((GNeighborFinderGeneralizing*)pNF);
-	GMatrix* pDataAfter = transform.reduce(*pData);
-	Holder<GMatrix> hDataAfter(pDataAfter);
+	transform.setNeighborFinder((WNeighborFinderGeneralizing*)pNF);
+	WMatrix* pDataAfter = transform.reduce(*pData);
+	Holder<WMatrix> hDataAfter(pDataAfter);
 	pDataAfter->print(cout);
 }
 
-void multiDimensionalScaling(GArgReader& args)
+void multiDimensionalScaling(WArgReader& args)
 {
-	GRand prng(0);
-	GMatrix* pDistances = loadData(args.pop_string());
+	WRand prng(0);
+	WMatrix* pDistances = loadData(args.pop_string());
 	int targetDims = args.pop_uint();
 
 	// Parse Options
@@ -628,16 +628,16 @@ void multiDimensionalScaling(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GMatrix* pResults = GManifold::multiDimensionalScaling(pDistances, targetDims, &prng, useSquaredDistances);
-	Holder<GMatrix> hResults(pResults);
+	WMatrix* pResults = WManifold::multiDimensionalScaling(pDistances, targetDims, &prng, useSquaredDistances);
+	Holder<WMatrix> hResults(pResults);
 	pResults->print(cout);
 }
 
-void principalComponentAnalysis(GArgReader& args)
+void principalComponentAnalysis(WArgReader& args)
 {
 	// Load the file
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	int nTargetDims = args.pop_uint();
 
 	// Parse options
@@ -669,36 +669,36 @@ void principalComponentAnalysis(GArgReader& args)
 	}
 
 	// Transform the data
-	GPCA* pTransform = nullptr;
+	WPCA* pTransform = nullptr;
 	if(modelIn.length() > 0)
 	{
-		GDom doc;
+		WDom doc;
 		doc.loadJson(modelIn.c_str());
-		pTransform = new GPCA(doc.root());
+		pTransform = new WPCA(doc.root());
 	}
 	else
 	{
-		pTransform = new GPCA(nTargetDims);
+		pTransform = new WPCA(nTargetDims);
 		if(aboutOrigin)
 			pTransform->aboutOrigin();
 		if(eigenvalues.length() > 0)
 			pTransform->computeEigVals();
 		pTransform->train(*pData);
 	}
-	Holder<GPCA> hTransform(pTransform);
+	Holder<WPCA> hTransform(pTransform);
 	pTransform->rand().setSeed(seed);
 
-	GMatrix* pDataAfter = pTransform->transformBatch(*pData);
-	Holder<GMatrix> hDataAfter(pDataAfter);
+	WMatrix* pDataAfter = pTransform->transformBatch(*pData);
+	Holder<WMatrix> hDataAfter(pDataAfter);
 
 	// Save the eigenvalues
 	if(eigenvalues.length() > 0)
 	{
-		GArffRelation* pRelation = new GArffRelation();
+		WArffRelation* pRelation = new WArffRelation();
 		pRelation->addAttribute("eigenvalues", 0, nullptr);
-		GMatrix dataEigenvalues(pRelation);
+		WMatrix dataEigenvalues(pRelation);
 		dataEigenvalues.newRows(nTargetDims);
-		GVec& pEigVals = pTransform->eigVals();
+		WVec& pEigVals = pTransform->eigVals();
 		for(int i = 0; i < nTargetDims; i++)
 			dataEigenvalues[i][0] = pEigVals[i];
 		dataEigenvalues.saveArff(eigenvalues.c_str());
@@ -711,7 +711,7 @@ void principalComponentAnalysis(GArgReader& args)
 	// Do the round-trip
 	if(roundTrip.size() > 0)
 	{
-		GMatrix roundTripped(pData->rows(), pData->cols());
+		WMatrix roundTripped(pData->rows(), pData->cols());
 		for(size_t i = 0; i < pData->rows(); i++)
 			pTransform->untransform(pDataAfter->row(i), roundTripped.row(i));
 		roundTripped.saveArff(roundTrip.c_str());
@@ -719,7 +719,7 @@ void principalComponentAnalysis(GArgReader& args)
 
 	if(modelOut.length() > 0)
 	{
-		GDom doc;
+		WDom doc;
 		doc.setRoot(pTransform->serialize(&doc));
 		doc.saveJson(modelOut.c_str());
 	}
@@ -727,16 +727,16 @@ void principalComponentAnalysis(GArgReader& args)
 	pDataAfter->print(cout);
 }
 
-void scalingUnfolder(GArgReader& args)
+void scalingUnfolder(WArgReader& args)
 {
 	// Load the file and params
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t nSeed = getpid() * (unsigned int)time(nullptr);
-	GRand prng(nSeed);
+	WRand prng(nSeed);
 	size_t neighborCount = args.pop_uint();
-	GNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
-	Holder<GNeighborFinder> hNF(pNF);
+	WNeighborFinder* pNF = instantiateNeighborFinder(pData, neighborCount, &prng, args);
+	Holder<WNeighborFinder> hNF(pNF);
 	int targetDims = args.pop_uint();
 
 	// Parse Options
@@ -749,21 +749,21 @@ void scalingUnfolder(GArgReader& args)
 	}
 
 	// Transform the data
-	GScalingUnfolder transform;
+	WScalingUnfolder transform;
 	transform.rand().setSeed(nSeed);
 	transform.setNeighborCount(neighborCount);
 	transform.setTargetDims(targetDims);
 	//transform.setNeighborFinder(pNF);
-	GMatrix* pDataAfter = transform.reduce(*pData);
-	Holder<GMatrix> hDataAfter(pDataAfter);
+	WMatrix* pDataAfter = transform.reduce(*pData);
+	Holder<WMatrix> hDataAfter(pDataAfter);
 	pDataAfter->print(cout);
 }
 
-void selfOrganizingMap(GArgReader& args)
+void selfOrganizingMap(WArgReader& args)
 {
 	// Load the file
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 
 	// Parse arguments
 	std::vector<double> netDims;
@@ -779,11 +779,11 @@ void selfOrganizingMap(GArgReader& args)
 		throw Ex("No dimensions specified for self organizing map.  ", "A map must be at least 1 dimensional.");
 	}
 
-	GRand rand(getpid() * (unsigned int)time(nullptr));
+	WRand rand(getpid() * (unsigned int)time(nullptr));
 	Holder<SOM::ReporterChain> reporters(new SOM::ReporterChain);
 	Holder<SOM::TrainingAlgorithm> alg(nullptr);
-	Holder<GDistanceMetric> weightDist(new GRowDistance);
-	Holder<GDistanceMetric> nodeDist(new GRowDistance);
+	Holder<WDistanceMetric> weightDist(new WRowDistance);
+	Holder<WDistanceMetric> nodeDist(new WRowDistance);
 	Holder<SOM::NodeLocationInitialization> topology(new SOM::GridTopology);
 	Holder<SOM::NodeWeightInitialization> weightInit(new SOM::NodeWeightInitializationTrainingSetSample(rand));
 	Holder<SOM::NeighborhoodWindowFunction>
@@ -890,22 +890,22 @@ void selfOrganizingMap(GArgReader& args)
 	}
 
 	//Create the network & transform the data
-	Holder<GSelfOrganizingMap> som;
-	Holder<GMatrix> out;
+	Holder<WSelfOrganizingMap> som;
+	Holder<WMatrix> out;
 
 	if(loadFrom == "")
 	{
 		//Create map from arguments given
-		som.reset(new GSelfOrganizingMap(netDims, numNodes, topology.release(), algo.release(), weightDist.release(), nodeDist.release()));
+		som.reset(new WSelfOrganizingMap(netDims, numNodes, topology.release(), algo.release(), weightDist.release(), nodeDist.release()));
 		//Train the network and transform the data in place
 		out.reset(som->reduce(*pData));
 	}
 	else
 	{
 		//Create map from file
-		GDom source;
+		WDom source;
 		source.loadJson(loadFrom.c_str());
-		som.reset(new GSelfOrganizingMap(source.root()));
+		som.reset(new WSelfOrganizingMap(source.root()));
 		//Transform using the loaded network
 		out.reset(som->transformBatch(*pData));
 	}
@@ -913,8 +913,8 @@ void selfOrganizingMap(GArgReader& args)
 	//Save the trained network
 	if(saveTo != "")
 	{
-		GDom serialized;
-		GDomNode* root = som->serialize(&serialized);
+		WDom serialized;
+		WDomNode* root = som->serialize(&serialized);
 		serialized.setRoot(root);
 		serialized.saveJson(saveTo.c_str());
 	}
@@ -923,11 +923,11 @@ void selfOrganizingMap(GArgReader& args)
 	out->print(cout);
 }
 
-void singularValueDecomposition(GArgReader& args)
+void singularValueDecomposition(WArgReader& args)
 {
 	// Load
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 
 	// Parse options
 	string ufilename = "u.arff";
@@ -948,18 +948,18 @@ void singularValueDecomposition(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GMatrix* pU;
+	WMatrix* pU;
 	double* pDiag;
-	GMatrix* pV;
+	WMatrix* pV;
 	pData->singularValueDecomposition(&pU, &pDiag, &pV, false, maxIters);
-	Holder<GMatrix> hU(pU);
+	Holder<WMatrix> hU(pU);
 	ArrayHolder<double> hDiag(pDiag);
-	Holder<GMatrix> hV(pV);
+	Holder<WMatrix> hV(pV);
 	pU->saveArff(ufilename.c_str());
 	pV->saveArff(vfilename.c_str());
 	if(sigmafilename.length() > 0)
 	{
-		GMatrix sigma(pU->rows(), pV->rows());
+		WMatrix sigma(pU->rows(), pV->rows());
 		sigma.fill(0.0);
 		size_t m = std::min(sigma.rows(), (size_t)sigma.cols());
 		for(size_t i = 0; i < m; i++)
@@ -968,24 +968,24 @@ void singularValueDecomposition(GArgReader& args)
 	}
 	else
 	{
-		GVecWrapper diag(pDiag, std::min(pU->rows(), pV->rows()));
+		WVecWrapper diag(pDiag, std::min(pU->rows(), pV->rows()));
 		diag.print(cout);
 		cout << "\n";
 	}
 }
 /*
-void unsupervisedBackProp(GArgReader& args)
+void unsupervisedBackProp(WArgReader& args)
 {
 	// Load the file and params
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	int targetDims = args.pop_uint();
 
 	// Parse Options
 	unsigned int nSeed = getpid() * (unsigned int)time(NULL);
-	GRand prng(nSeed);
-	GUnsupervisedBackProp* pUBP = new GUnsupervisedBackProp(targetDims, &prng);
-	Holder<GUnsupervisedBackProp> hUBP(pUBP);
+	WRand prng(nSeed);
+	WUnsupervisedBackProp* pUBP = new WUnsupervisedBackProp(targetDims, &prng);
+	Holder<WUnsupervisedBackProp> hUBP(pUBP);
 	vector<size_t> paramRanges;
 	string sModelOut;
 	string sProgress;
@@ -995,7 +995,7 @@ void unsupervisedBackProp(GArgReader& args)
 		if(args.if_pop("-seed"))
 			prng.setSeed(args.pop_uint());
 		else if(args.if_pop("-addlayer"))
-			pUBP->neuralNet()->addLayer(new GLayerClassic(FLEXIBLE_SIZE, args.pop_uint()));
+			pUBP->neuralNet()->addLayer(new WLayerClassic(FLEXIBLE_SIZE, args.pop_uint()));
 		else if(args.if_pop("-params"))
 		{
 			if(pUBP->jitterer())
@@ -1006,16 +1006,16 @@ void unsupervisedBackProp(GArgReader& args)
 		}
 		else if(args.if_pop("-modelin"))
 		{
-			GDom doc;
+			WDom doc;
 			doc.loadJson(args.pop_string());
-			pUBP = new GUnsupervisedBackProp(doc.root());
+			pUBP = new WUnsupervisedBackProp(doc.root());
 			hUBP.reset(pUBP);
 		}
 		else if(args.if_pop("-modelout"))
 			sModelOut = args.pop_string();
 		else if(args.if_pop("-intrinsicin"))
 		{
-			GMatrix* pInt = new GMatrix();
+			WMatrix* pInt = new WMatrix();
 			pInt->loadArff(args.pop_string());
 			pUBP->setIntrinsic(pInt);
 		}
@@ -1027,7 +1027,7 @@ void unsupervisedBackProp(GArgReader& args)
 			double rot = args.pop_double();
 			double trans = args.pop_double();
 			double zoom = args.pop_double();
-			GImageJitterer* pJitterer = new GImageJitterer(paramRanges[0], paramRanges[1], channels, rot, trans, zoom);
+			WImageJitterer* pJitterer = new WImageJitterer(paramRanges[0], paramRanges[1], channels, rot, trans, zoom);
 			pUBP->setJitterer(pJitterer);
 		}
 		else if(args.if_pop("-noinputbias"))
@@ -1044,17 +1044,17 @@ void unsupervisedBackProp(GArgReader& args)
 	}
 	pUBP->setParams(paramRanges);
 	pUBP->setUseInputBias(inputBias);
-	pUBP->neuralNet()->addLayer(new GLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE));
+	pUBP->neuralNet()->addLayer(new WLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE));
 
 	// Transform the data
-	GMatrix* pDataAfter = pUBP->reduce(*pData);
-	Holder<GMatrix> hDataAfter(pDataAfter);
+	WMatrix* pDataAfter = pUBP->reduce(*pData);
+	Holder<WMatrix> hDataAfter(pDataAfter);
 	pDataAfter->print(cout);
 
 	// Save the model (if requested)
 	if(sModelOut.length() > 0)
 	{
-		GDom doc;
+		WDom doc;
 		doc.setRoot(pUBP->serialize(&doc));
 		doc.saveJson(sModelOut.c_str());
 	}
@@ -1063,11 +1063,11 @@ void unsupervisedBackProp(GArgReader& args)
 }
 */
 /*
-void autoencoder(GArgReader& args)
+void autoencoder(WArgReader& args)
 {
 	// Load the file
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	int targetDims = args.pop_uint();
 
 	// Parse options
@@ -1100,25 +1100,25 @@ void autoencoder(GArgReader& args)
 
 
 	// Make the encoder
-	GNeuralNet encoder;
-	encoder.addLayer(new GLayerClassic(FLEXIBLE_SIZE, std::max(pData->cols() / 2, targetDims * 2), new GActivationHinge()));
-	encoder.addLayer(new GLayerClassic(FLEXIBLE_SIZE, targetDims * 2, new GActivationHinge()));
-	encoder.addLayer(new GLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE, new GActivationHinge()));
+	WNeuralNet encoder;
+	encoder.addLayer(new WLayerClassic(FLEXIBLE_SIZE, std::max(pData->cols() / 2, targetDims * 2), new WActivationHinge()));
+	encoder.addLayer(new WLayerClassic(FLEXIBLE_SIZE, targetDims * 2, new WActivationHinge()));
+	encoder.addLayer(new WLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE, new WActivationHinge()));
 	encoder.setLearningRate(0.01);
-	GUniformRelation relObs(pData->cols());
-	GUniformRelation relInt(targetDims);
+	WUniformRelation relObs(pData->cols());
+	WUniformRelation relInt(targetDims);
 	encoder.beginIncrementalLearning(relObs, relInt);
 
 	// Make the decoder
-	GNeuralNet decoder;
-	decoder.addLayer(new GLayerClassic(FLEXIBLE_SIZE, targetDims * 2, new GActivationHinge()));
-	decoder.addLayer(new GLayerClassic(FLEXIBLE_SIZE, std::max(pData->cols() / 2, targetDims * 2), new GActivationHinge()));
-	decoder.addLayer(new GLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE, new GActivationHinge()));
+	WNeuralNet decoder;
+	decoder.addLayer(new WLayerClassic(FLEXIBLE_SIZE, targetDims * 2, new WActivationHinge()));
+	decoder.addLayer(new WLayerClassic(FLEXIBLE_SIZE, std::max(pData->cols() / 2, targetDims * 2), new WActivationHinge()));
+	decoder.addLayer(new WLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE, new WActivationHinge()));
 	decoder.setLearningRate(0.01);
 	encoder.beginIncrementalLearning(relInt, relObs);
 
 	// Train
-	GRandomIndexIterator ii(pData->rows(), encoder.rand());
+	WRandomIndexIterator ii(pData->rows(), encoder.rand());
 	double prevRmse = 1e200;
 	while(true)
 	{
@@ -1156,7 +1156,7 @@ void ShowUsage(const char* appName)
 	cout.flush();
 }
 
-void showError(GArgReader& args, const char* szAppName, const char* szMessage)
+void showError(WArgReader& args, const char* szAppName, const char* szMessage)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -1198,13 +1198,13 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int ret = 0;
 	PathData pd;
-	GFile::parsePath(argv[0], &pd);
+	WFile::parsePath(argv[0], &pd);
 	const char* appName = argv[0] + pd.fileStart;
-	GArgReader args(argc, argv);
+	WArgReader args(argc, argv);
 	args.pop_string(); // advance past the app name
 	try
 	{

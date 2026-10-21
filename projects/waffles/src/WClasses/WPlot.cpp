@@ -16,13 +16,13 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GPlot.h"
+#include "WPlot.h"
 #include <stdlib.h>
-#include "GError.h"
-#include "GVec.h"
-#include "GImage.h"
-#include "GRand.h"
-#include "GMath.h"
+#include "WError.h"
+#include "WVec.h"
+#include "WImage.h"
+#include "WRand.h"
+#include "WMath.h"
 #include <string>
 #include <sstream>
 #include <cmath>
@@ -31,10 +31,10 @@
 using std::string;
 using std::ostringstream;
 
-namespace GClasses
+namespace WClasses
 {
 
-GPlotLabelSpacer::GPlotLabelSpacer(double min, double max, int maxLabels)
+WPlotLabelSpacer::WPlotLabelSpacer(double min, double max, int maxLabels)
 {
 	if(maxLabels == 0)
 	{
@@ -68,12 +68,12 @@ GPlotLabelSpacer::GPlotLabelSpacer(double min, double max, int maxLabels)
 	}
 }
 
-int GPlotLabelSpacer::count()
+int WPlotLabelSpacer::count()
 {
 	return m_count;
 }
 
-double GPlotLabelSpacer::label(int index)
+double WPlotLabelSpacer::label(int index)
 {
 	return (m_start + index) * m_spacing;
 }
@@ -85,7 +85,7 @@ double GPlotLabelSpacer::label(int index)
 
 
 
-GPlotLabelSpacerLogarithmic::GPlotLabelSpacerLogarithmic(double log_e_min, double log_e_max)
+WPlotLabelSpacerLogarithmic::WPlotLabelSpacerLogarithmic(double log_e_min, double log_e_max)
 {
 	double min = exp(log_e_min);
 	m_max = exp(std::min(500.0, log_e_max));
@@ -105,7 +105,7 @@ GPlotLabelSpacerLogarithmic::GPlotLabelSpacerLogarithmic(double log_e_min, doubl
 	}
 }
 
-bool GPlotLabelSpacerLogarithmic::next(double* pos, bool* primary)
+bool WPlotLabelSpacerLogarithmic::next(double* pos, bool* primary)
 {
 	double p = pow((double)10, m_n);
 	*pos = p * m_i;
@@ -129,7 +129,7 @@ bool GPlotLabelSpacerLogarithmic::next(double* pos, bool* primary)
 
 
 
-GPlotWindow::GPlotWindow(GImage* pImage, double xmin, double ymin, double xmax, double ymax)
+WPlotWindow::WPlotWindow(WImage* pImage, double xmin, double ymin, double xmax, double ymax)
 {
 	if(xmin > -1e300 && xmax < 1e300 && ymin > -1e300 && ymax < 1e300)
 	{
@@ -150,25 +150,25 @@ GPlotWindow::GPlotWindow(GImage* pImage, double xmin, double ymin, double xmax, 
 	m_h = pImage->height();
 }
 
-GPlotWindow::~GPlotWindow()
+WPlotWindow::~WPlotWindow()
 {
 }
 
-void GPlotWindow::point(double x, double y, unsigned int col)
+void WPlotWindow::point(double x, double y, unsigned int col)
 {
 	int x1, y1;
 	windowToView(x, y, &x1, &y1);
 	m_pImage->setPixelIfInRange(x1, y1, col);
 }
 
-void GPlotWindow::dot(double x, double y, float radius, unsigned int colFore, unsigned int colBack)
+void WPlotWindow::dot(double x, double y, float radius, unsigned int colFore, unsigned int colBack)
 {
 	float x1, y1;
 	windowToView(x, y, &x1, &y1);
 	m_pImage->dot(x1, y1, radius, colFore, colBack);
 }
 
-void GPlotWindow::line(double x1, double y1, double x2, double y2, unsigned int col)
+void WPlotWindow::line(double x1, double y1, double x2, double y2, unsigned int col)
 {
 	int xx1, yy1, xx2, yy2;
 	windowToView(x1, y1, &xx1, &yy1);
@@ -176,7 +176,7 @@ void GPlotWindow::line(double x1, double y1, double x2, double y2, unsigned int 
 	m_pImage->line(xx1, yy1, xx2, yy2, col);
 }
 
-void GPlotWindow::fatLine(double x1, double y1, double x2, double y2, float thickness, unsigned int col)
+void WPlotWindow::fatLine(double x1, double y1, double x2, double y2, float thickness, unsigned int col)
 {
 	float xx1, yy1, xx2, yy2;
 	windowToView(x1, y1, &xx1, &yy1);
@@ -184,7 +184,7 @@ void GPlotWindow::fatLine(double x1, double y1, double x2, double y2, float thic
 	m_pImage->fatLine(xx1, yy1, xx2, yy2, thickness, col);
 }
 
-void GPlotWindow::function(MathFunc pFunc, unsigned int col, void* pThis)
+void WPlotWindow::function(MathFunc pFunc, unsigned int col, void* pThis)
 {
 	double x, y, xPrev, yPrev;
 	xPrev = m_window.x;
@@ -201,14 +201,14 @@ void GPlotWindow::function(MathFunc pFunc, unsigned int col, void* pThis)
 	}
 }
 
-void GPlotWindow::label(double x, double y, const char* szLabel, float size, unsigned int col)
+void WPlotWindow::label(double x, double y, const char* szLabel, float size, unsigned int col)
 {
 	int x1, y1;
 	windowToView(x, y, &x1, &y1);
 	m_pImage->text(szLabel, x1, y1, size, col, 1000, 1000);
 }
 
-void GPlotWindow::arrow(double x1, double y1, double x2, double y2, unsigned int col, int headSize)
+void WPlotWindow::arrow(double x1, double y1, double x2, double y2, unsigned int col, int headSize)
 {
 	int xx1, yy1, xx2, yy2;
 	windowToView(x1, y1, &xx1, &yy1);
@@ -217,27 +217,27 @@ void GPlotWindow::arrow(double x1, double y1, double x2, double y2, unsigned int
 }
 
 // static
-void GPlotWindow::stringLabel(GImage* pImage, const char* szText, int x, int y, float size, unsigned int color, double angle)
+void WPlotWindow::stringLabel(WImage* pImage, const char* szText, int x, int y, float size, unsigned int color, double angle)
 {
 	// Draw the label such that it ends at the center of the temp image
-	int width = GImage::measureTextWidth(szText, size);
+	int width = WImage::measureTextWidth(szText, size);
 	int nSize = (int)(std::max((float)width, size * 12) * 2.3);
-	GImage tmp;
+	WImage tmp;
 	tmp.setSize(nSize, nSize);
 	tmp.clear(0x0);
 	tmp.text(szText, nSize / 2 - width, (int)((nSize - size * 12) / 2), size, color, 1000, 1000);
 
 	// Rotate the label around the center
-	GImage tmp2;
+	WImage tmp2;
 	tmp2.rotate(&tmp, nSize / 2, nSize / 2, angle);
 
 	// Blit such that the label ends at the specified point
-	GRect r(0, 0, nSize, nSize);
+	WRect r(0, 0, nSize, nSize);
 	pImage->blitAlpha(x - nSize / 2, y - nSize / 2, &tmp2, &r);
 }
 
 // static
-void GPlotWindow::numericLabel(GImage* pImage, double value, int x, int y, int precision, float size, unsigned int color, double angle)
+void WPlotWindow::numericLabel(WImage* pImage, double value, int x, int y, int precision, float size, unsigned int color, double angle)
 {
 	std::ostringstream os;
 	os.precision(precision);
@@ -246,11 +246,11 @@ void GPlotWindow::numericLabel(GImage* pImage, double value, int x, int y, int p
 	stringLabel(pImage, s.c_str(), x, y, size, color, angle);
 }
 
-void GPlotWindow::gridLines(int maxHorizAxisLabels, int maxVertAxisLabels, unsigned int col)
+void WPlotWindow::gridLines(int maxHorizAxisLabels, int maxVertAxisLabels, unsigned int col)
 {
 	if(maxHorizAxisLabels > 0)
 	{
-		GPlotLabelSpacer spacer(m_window.x, m_window.x + m_window.w, maxHorizAxisLabels);
+		WPlotLabelSpacer spacer(m_window.x, m_window.x + m_window.w, maxHorizAxisLabels);
 		for(int i = 0; i < spacer.count(); i++)
 		{
 			double pos = spacer.label(i);
@@ -259,7 +259,7 @@ void GPlotWindow::gridLines(int maxHorizAxisLabels, int maxVertAxisLabels, unsig
 	}
 	else if(maxHorizAxisLabels == -1)
 	{
-		GPlotLabelSpacerLogarithmic spacer(m_window.x, m_window.x + m_window.w);
+		WPlotLabelSpacerLogarithmic spacer(m_window.x, m_window.x + m_window.w);
 		while(true)
 		{
 			double pos;
@@ -272,7 +272,7 @@ void GPlotWindow::gridLines(int maxHorizAxisLabels, int maxVertAxisLabels, unsig
 	}
 	if(maxVertAxisLabels > 0)
 	{
-		GPlotLabelSpacer spacer(m_window.y, m_window.y + m_window.h, maxVertAxisLabels);
+		WPlotLabelSpacer spacer(m_window.y, m_window.y + m_window.h, maxVertAxisLabels);
 		for(int i = 0; i < spacer.count(); i++)
 		{
 			double pos = spacer.label(i);
@@ -281,7 +281,7 @@ void GPlotWindow::gridLines(int maxHorizAxisLabels, int maxVertAxisLabels, unsig
 	}
 	else if(maxVertAxisLabels == -1)
 	{
-		GPlotLabelSpacerLogarithmic spacer(m_window.y, m_window.y + m_window.h);
+		WPlotLabelSpacerLogarithmic spacer(m_window.y, m_window.y + m_window.h);
 		while(true)
 		{
 			double pos;
@@ -294,19 +294,19 @@ void GPlotWindow::gridLines(int maxHorizAxisLabels, int maxVertAxisLabels, unsig
 	}
 }
 
-GImage* GPlotWindow::labelAxes(int maxHorizAxisLabels, int maxVertAxisLabels, int precision, float size, unsigned int color, double angle)
+WImage* WPlotWindow::labelAxes(int maxHorizAxisLabels, int maxVertAxisLabels, int precision, float size, unsigned int color, double angle)
 {
 	int spacing = 10;
 	int horizMargin = 200;
 	int vertMargin = 200;
-	GImage* pOutImage = new GImage();
+	WImage* pOutImage = new WImage();
 	pOutImage->setSize(m_pImage->width() + horizMargin, m_pImage->height() + vertMargin);
 	pOutImage->clear(0xffffffff);
-	GRect r(0, 0, m_pImage->width(), m_pImage->height());
+	WRect r(0, 0, m_pImage->width(), m_pImage->height());
 	pOutImage->blit(horizMargin, 0, m_pImage, &r);
 	if(maxHorizAxisLabels > 0)
 	{
-		GPlotLabelSpacer spacer(m_window.x, m_window.x + m_window.w, maxHorizAxisLabels);
+		WPlotLabelSpacer spacer(m_window.x, m_window.x + m_window.w, maxHorizAxisLabels);
 		for(int i = 0; i < spacer.count(); i++)
 		{
 			double pos = spacer.label(i);
@@ -317,7 +317,7 @@ GImage* GPlotWindow::labelAxes(int maxHorizAxisLabels, int maxVertAxisLabels, in
 	}
 	else if(maxHorizAxisLabels == -1)
 	{
-		GPlotLabelSpacerLogarithmic spacer(m_window.x, m_window.x + m_window.w);
+		WPlotLabelSpacerLogarithmic spacer(m_window.x, m_window.x + m_window.w);
 		while(true)
 		{
 			double pos;
@@ -335,7 +335,7 @@ GImage* GPlotWindow::labelAxes(int maxHorizAxisLabels, int maxVertAxisLabels, in
 	}
 	if(maxVertAxisLabels > 0)
 	{
-		GPlotLabelSpacer spacer(m_window.y, m_window.y + m_window.h, maxVertAxisLabels);
+		WPlotLabelSpacer spacer(m_window.y, m_window.y + m_window.h, maxVertAxisLabels);
 		for(int i = 0; i < spacer.count(); i++)
 		{
 			double pos = spacer.label(i);
@@ -346,7 +346,7 @@ GImage* GPlotWindow::labelAxes(int maxHorizAxisLabels, int maxVertAxisLabels, in
 	}
 	else if(maxVertAxisLabels == -1)
 	{
-		GPlotLabelSpacerLogarithmic spacer(m_window.y, m_window.y + m_window.h);
+		WPlotLabelSpacerLogarithmic spacer(m_window.y, m_window.y + m_window.h);
 		while(true)
 		{
 			double pos;
@@ -380,14 +380,14 @@ std::string svg_to_str(double d)
 #define BOGUS_XMIN -1e308
 const char* g_hexChars = "0123456789abcdef";
 
-GSVG::GSVG(size_t width, size_t height, size_t hWindows, size_t vWindows)
+WSVG::WSVG(size_t width, size_t height, size_t hWindows, size_t vWindows)
 : m_width(width), m_height(height), m_hWindows(hWindows), m_vWindows(vWindows), m_xmin(BOGUS_XMIN), m_clipping(false)
 {
 	m_ss << "<?xml version=\"1.0\"?><svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"";
 	m_ss << to_str(width) << "\" height=\"" << to_str(height) << "\">\n";
 }
 
-void GSVG::closeTags()
+void WSVG::closeTags()
 {
 	// Close the current clipping group
 	if(m_clipping)
@@ -402,7 +402,7 @@ void GSVG::closeTags()
 	m_ss << "\n\n";
 }
 
-void GSVG::newChart(double xmin, double ymin, double xmax, double ymax, size_t hPos, size_t vPos, double margin)
+void WSVG::newChart(double xmin, double ymin, double xmax, double ymax, size_t hPos, size_t vPos, double margin)
 {
 	closeTags();
 	m_hPos = hPos;
@@ -424,37 +424,37 @@ void GSVG::newChart(double xmin, double ymin, double xmax, double ymax, size_t h
 	     << ">\n";
 }
 
-GSVG::~GSVG()
+WSVG::~WSVG()
 {
 }
 
-void GSVG::clip()
+void WSVG::clip()
 {
 	m_ss << "\n<!-- Clipped region -->\n";
 	m_ss << "<g clip-path=\"url(#chart" << to_str(m_hPos) << "-" << to_str(m_vPos) << ")\">\n";
 	m_clipping = true;
 }
 
-void GSVG::color(unsigned int c)
+void WSVG::color(unsigned int c)
 {
 	m_ss << '#' << g_hexChars[(c >> 20) & 0xf] << g_hexChars[(c >> 16) & 0xf];
 	m_ss << g_hexChars[(c >> 12) & 0xf] << g_hexChars[(c >> 8) & 0xf];
 	m_ss << g_hexChars[(c >> 4) & 0xf] << g_hexChars[c & 0xf];
 }
 
-void GSVG::add_raw(const char* string)
+void WSVG::add_raw(const char* string)
 {
 	m_ss << string;
 }
 
-void GSVG::dot(double x, double y, double r, unsigned int col)
+void WSVG::dot(double x, double y, double r, unsigned int col)
 {
 	m_ss << "<ellipse cx=\"" << svg_to_str(x) << "\" cy=\"" << svg_to_str(y) << "\" rx=\"" << svg_to_str(r * 4 * m_hunit) << "\" ry=\"" << svg_to_str(r * 4 * m_vunit) << "\" fill=\"";
 	color(col);
 	m_ss << "\" />\n";
 }
 
-void GSVG::line(double x1, double y1, double x2, double y2, double thickness, unsigned int col)
+void WSVG::line(double x1, double y1, double x2, double y2, double thickness, unsigned int col)
 {
 	m_ss << "<line x1=\"" << svg_to_str(x1) << "\" y1=\"" << svg_to_str(y1) << "\" x2=\"" << svg_to_str(x2) << "\" y2=\"" << svg_to_str(y2) << "\" style=\"stroke:";
 	color(col);
@@ -463,14 +463,14 @@ void GSVG::line(double x1, double y1, double x2, double y2, double thickness, un
 	m_ss << ";stroke-width:" << svg_to_str(w) << "\"/>\n";
 }
 
-void GSVG::rect(double x, double y, double w, double h, unsigned int col)
+void WSVG::rect(double x, double y, double w, double h, unsigned int col)
 {
 	m_ss << "<rect x=\"" << svg_to_str(x) << "\" y=\"" << svg_to_str(y) << "\" width=\"" << svg_to_str(w) << "\" height=\"" << svg_to_str(h) << "\" style=\"fill:";
 	color(col);
 	m_ss << "\"/>\n";
 }
 
-void GSVG::arc(double cx, double cy, double r, double astart, double aend, double thickness, unsigned int col)
+void WSVG::arc(double cx, double cy, double r, double astart, double aend, double thickness, unsigned int col)
 {
 	bool bigarc = false;
 	if(aend > astart)
@@ -494,7 +494,7 @@ void GSVG::arc(double cx, double cy, double r, double astart, double aend, doubl
 	m_ss << "\" fill=\"none\" stroke-width=\"" << svg_to_str(thickness) << "\" />";
 }
 
-void GSVG::text(double x, double y, const char* szText, double size, Anchor eAnchor, unsigned int col, double angle, bool serifs)
+void WSVG::text(double x, double y, const char* szText, double size, Anchor eAnchor, unsigned int col, double angle, bool serifs)
 {
 	double xx = x / (m_hunit * size);
 	double yy = -y / (m_vunit * size);
@@ -514,7 +514,7 @@ void GSVG::text(double x, double y, const char* szText, double size, Anchor eAnc
 	m_ss << ">" << szText << "</text>\n";
 }
 
-void GSVG::print(std::ostream& stream)
+void WSVG::print(std::ostream& stream)
 {
 	closeTags();
 
@@ -525,7 +525,7 @@ void GSVG::print(std::ostream& stream)
 	stream << m_ss.str();
 }
 
-void GSVG::save(const char* szFilename)
+void WSVG::save(const char* szFilename)
 {
 	std::ofstream os;
 	os.exceptions(std::ios::badbit | std::ios::failbit);
@@ -540,22 +540,22 @@ void GSVG::save(const char* szFilename)
 	print(os);
 }
 
-double GSVG::horizLabelPos()
+double WSVG::horizLabelPos()
 {
 	return m_ymin - m_vunit * ((m_margin / 2));
 }
 
-double GSVG::vertLabelPos()
+double WSVG::vertLabelPos()
 {
 	return m_xmin - m_hunit * ((m_margin / 2));
 }
 
-void GSVG::horizMarks(int maxLabels, bool notext, std::vector<std::string>* pLabels)
+void WSVG::horizMarks(int maxLabels, bool notext, std::vector<std::string>* pLabels)
 {
 	m_ss << "\n<!-- Horiz labels -->\n";
 	if(maxLabels >= 0)
 	{
-		GPlotLabelSpacer spacer(m_xmin, m_xmax, maxLabels);
+		WPlotLabelSpacer spacer(m_xmin, m_xmax, maxLabels);
 		int count = spacer.count();
 		for(int i = 0; i < count; i++)
 		{
@@ -575,7 +575,7 @@ void GSVG::horizMarks(int maxLabels, bool notext, std::vector<std::string>* pLab
 	}
 	else
 	{
-		GPlotLabelSpacerLogarithmic spacer(m_xmin, m_xmax);
+		WPlotLabelSpacerLogarithmic spacer(m_xmin, m_xmax);
 		double x;
 		bool primary;
 		while(true)
@@ -590,12 +590,12 @@ void GSVG::horizMarks(int maxLabels, bool notext, std::vector<std::string>* pLab
 	m_ss << "\n";
 }
 
-void GSVG::vertMarks(int maxLabels, bool notext, std::vector<std::string>* pLabels)
+void WSVG::vertMarks(int maxLabels, bool notext, std::vector<std::string>* pLabels)
 {
 	m_ss << "\n<!-- Vert labels -->\n";
 	if(maxLabels >= 0)
 	{
-		GPlotLabelSpacer spacer(m_ymin, m_ymax, maxLabels);
+		WPlotLabelSpacer spacer(m_ymin, m_ymax, maxLabels);
 		int count = spacer.count();
 		for(int i = 0; i < count; i++)
 		{
@@ -615,7 +615,7 @@ void GSVG::vertMarks(int maxLabels, bool notext, std::vector<std::string>* pLabe
 	}
 	else
 	{
-		GPlotLabelSpacerLogarithmic spacer(m_xmin, m_xmax);
+		WPlotLabelSpacerLogarithmic spacer(m_xmin, m_xmax);
 		double y;
 		bool primary;
 		while(true)
@@ -630,5 +630,5 @@ void GSVG::vertMarks(int maxLabels, bool notext, std::vector<std::string>* pLabe
 	m_ss << "\n";
 }
 
-} // namespace GClasses
+} // namespace WClasses
 

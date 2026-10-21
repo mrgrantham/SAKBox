@@ -18,23 +18,23 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GWidgets.h>
-#include <WClasses/GThread.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WWidgets.h>
+#include <WClasses/WThread.h>
 #include "gui/Gui.h"
-#include "GChess.h"
+#include "WChess.h"
 #ifdef WINDOWS
 #include <direct.h>
 #endif
 #include <math.h>
 #include <exception>
 #include <iostream>
-#include "png/GImagePng.h"
+#include "png/WImagePng.h"
 #include <fmt/core.h>
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 
 class ChessController : public ControllerBase
@@ -51,22 +51,22 @@ public:
 
 #define MAX_DEPTH_EVER 32
 
-class ChessDialog : public GWidgetDialog
+class ChessDialog : public WWidgetDialog
 {
 protected:
-	GChessBoard m_board;
+	WChessBoard m_board;
 	ChessController* m_pController;
-	GWidgetCanvas* m_pCanvas;
-	GImage* m_pImage;
-	GImage* m_pPieces;
-	GRand* m_prng;
+	WWidgetCanvas* m_pCanvas;
+	WImage* m_pImage;
+	WImage* m_pPieces;
+	WRand* m_prng;
 	int m_moves;
 	int m_maxDepth;
-	GChessMoveIterator* m_pMoveIterators;
+	WChessMoveIterator* m_pMoveIterators;
 	bool m_whitesTurn;
-	GWidgetBulletGroup* m_pLightStrategy;
-	GWidgetBulletGroup* m_pDarkStrategy;
-	GChessBoard::Piece m_pieceInHand;
+	WWidgetBulletGroup* m_pLightStrategy;
+	WWidgetBulletGroup* m_pDarkStrategy;
+	WChessBoard::Piece m_pieceInHand;
 	int m_pieceInHandX;
 	int m_pieceInHandY;
 	bool m_pieceInHandWhite;
@@ -83,35 +83,35 @@ protected:
 public:
 
 	ChessDialog(ChessController* pController, int w, int h)
-	: GWidgetDialog(w, h, 0xff90d0f0)
+	: WWidgetDialog(w, h, 0xff90d0f0)
 	{
 		m_pController = pController;
-		m_prng = new GRand(0);
-		m_pImage = new GImage();
+		m_prng = new WRand(0);
+		m_pImage = new WImage();
 		m_pImage->setSize(560, 560);
 		m_pImage->clear(0xff000000);
-		m_pCanvas = new GWidgetCanvas(this, 10, 30, m_pImage->width(), m_pImage->height(), m_pImage);
+		m_pCanvas = new WWidgetCanvas(this, 10, 30, m_pImage->width(), m_pImage->height(), m_pImage);
 
-		m_pDarkStrategy = new GWidgetBulletGroup(this, 620, 68, 14, 14, 4, 30, true);
-		new GWidgetTextLabel(this, 640, 490, 150, 20, "Human", 0xff306000);
-		new GWidgetTextLabel(this, 640, 520, 150, 20, "Random", 0xff306000);
-		new GWidgetTextLabel(this, 640, 550, 250, 20, "Alpha Beta Pruning (look ahead 3 moves)", 0xff306000);
-		new GWidgetTextLabel(this, 640, 580, 250, 20, "Alpha Beta Pruning (look ahead 6 moves)", 0xff306000);
+		m_pDarkStrategy = new WWidgetBulletGroup(this, 620, 68, 14, 14, 4, 30, true);
+		new WWidgetTextLabel(this, 640, 490, 150, 20, "Human", 0xff306000);
+		new WWidgetTextLabel(this, 640, 520, 150, 20, "Random", 0xff306000);
+		new WWidgetTextLabel(this, 640, 550, 250, 20, "Alpha Beta Pruning (look ahead 3 moves)", 0xff306000);
+		new WWidgetTextLabel(this, 640, 580, 250, 20, "Alpha Beta Pruning (look ahead 6 moves)", 0xff306000);
 		m_pDarkStrategy->setSelection(0);
 
-		m_pLightStrategy = new GWidgetBulletGroup(this, 620, 488, 14, 14, 4, 30, true);
-		new GWidgetTextLabel(this, 640, 70, 150, 20, "Human", 0xff306000);
-		new GWidgetTextLabel(this, 640, 100, 150, 20, "Random", 0xff306000);
-		new GWidgetTextLabel(this, 640, 130, 250, 20, "Alpha Beta Pruning (look ahead 3 moves)", 0xff306000);
-		new GWidgetTextLabel(this, 640, 160, 250, 20, "Alpha Beta Pruning (look ahead 6 moves)", 0xff306000);
+		m_pLightStrategy = new WWidgetBulletGroup(this, 620, 488, 14, 14, 4, 30, true);
+		new WWidgetTextLabel(this, 640, 70, 150, 20, "Human", 0xff306000);
+		new WWidgetTextLabel(this, 640, 100, 150, 20, "Random", 0xff306000);
+		new WWidgetTextLabel(this, 640, 130, 250, 20, "Alpha Beta Pruning (look ahead 3 moves)", 0xff306000);
+		new WWidgetTextLabel(this, 640, 160, 250, 20, "Alpha Beta Pruning (look ahead 6 moves)", 0xff306000);
 		m_pLightStrategy->setSelection(0);
 
-		m_pPieces = new GImage();
+		m_pPieces = new WImage();
 		loadPng(m_pPieces, "chess.runfiles/_main/projects/waffles/demos/chess/data/pieces.png");
 		m_pPieces->replaceColor(0xff00ff00, 0x00000000); // Change opaque green to translucent black
-		m_pMoveIterators = new GChessMoveIterator[MAX_DEPTH_EVER];
+		m_pMoveIterators = new WChessMoveIterator[MAX_DEPTH_EVER];
 		m_maxDepth = 6;
-		m_pieceInHand = GChessBoard::None;
+		m_pieceInHand = WChessBoard::None;
 		m_pieceInHandWhite = true;
 		m_lastMove[0] = -1;
 		m_lastMove[1] = -1;
@@ -166,7 +166,7 @@ public:
 	{
 		int x, y;
 		bool white;
-		GChessBoard::Piece piece;
+		WChessBoard::Piece piece;
 		for(y = 0; y < 8; y++)
 		{
 			for(x = 0; x < 8; x++)
@@ -175,7 +175,7 @@ public:
 				piece = m_board.piece(x, y, &white);
 				if(piece)
 				{
-					GRect r(white ? 50 : 0, 50 * (piece - 1), 50, 50);
+					WRect r(white ? 50 : 0, 50 * (piece - 1), 50, 50);
 					m_pImage->blitAlpha(70 * x + 10, 500 - 70 * y, m_pPieces, &r);
 				}
 			}
@@ -191,12 +191,12 @@ public:
 			yDest = (yDest - xDest) / 8;
 			m_pImage->arrow(70 * xSrc + 35, 525 - 70 * ySrc, 70 * xDest + 35, 525 - 70 * yDest, 0xff90b0d8, 10);
 		}
-		if(m_pieceInHand != GChessBoard::None)
+		if(m_pieceInHand != WChessBoard::None)
 		{
 			m_pController->mousePos(&x, &y);
 			x -= m_pCanvas->rect()->x;
 			y -= m_pCanvas->rect()->y;
-			GRect r(m_pieceInHandWhite ? 50 : 0, 50 * (m_pieceInHand - 1), 50, 50);
+			WRect r(m_pieceInHandWhite ? 50 : 0, 50 * (m_pieceInHand - 1), 50, 50);
 			m_pImage->blitAlpha(x - 25, y - 25, m_pPieces, &r);
 		}
 		int i;
@@ -237,7 +237,7 @@ public:
 
 	void DoMouseDown(int x, int y)
 	{
-		if(m_pieceInHand != GChessBoard::None)
+		if(m_pieceInHand != WChessBoard::None)
 			DoMouseUp(x, y);
 		x -= m_pCanvas->rect()->x;
 		y -= m_pCanvas->rect()->y;
@@ -249,13 +249,13 @@ public:
 			m_pieceInHandX = x;
 			m_pieceInHandY = y;
 			m_pieceInHand = m_board.piece(x, y, &m_pieceInHandWhite);
-			if(m_pieceInHand != GChessBoard::None)
+			if(m_pieceInHand != WChessBoard::None)
 			{
 				m_hintMoveCount = m_board.moves(m_hintMoves, x, y);
 				if(m_pieceInHandWhite != m_whitesTurn)
-					m_pieceInHand = GChessBoard::None;
+					m_pieceInHand = WChessBoard::None;
 				else
-					m_board.setPiece(x, y, GChessBoard::None, true);
+					m_board.setPiece(x, y, WChessBoard::None, true);
 			}
 		}
 	}
@@ -267,11 +267,11 @@ public:
 		x /= 70;
 		y /= 70;
 		y = 7 - y;
-		if(m_pieceInHand != GChessBoard::None)
+		if(m_pieceInHand != WChessBoard::None)
 			m_board.setPiece(m_pieceInHandX, m_pieceInHandY, m_pieceInHand, m_pieceInHandWhite);
 		if(x >= 0 && x < 8 && y >= 0 && y < 8 && m_pieceInHandWhite == m_whitesTurn && m_board.isValidMove(m_pieceInHandX, m_pieceInHandY, x, y) && !IsRepeatAggressiveMove(m_pieceInHandX, m_pieceInHandY, x, y))
 			DoMove(m_pieceInHandX, m_pieceInHandY, x, y);
-		m_pieceInHand = GChessBoard::None;
+		m_pieceInHand = WChessBoard::None;
 		m_hintMoveCount = 0;
 	}
 
@@ -301,7 +301,7 @@ public:
 			PassTurn();
 	}
 
-	int ComputeConservativePayoff(bool white, GChessBoard board, int xSrc, int ySrc, int xDest, int yDest, int cutoff, int depth)
+	int ComputeConservativePayoff(bool white, WChessBoard board, int xSrc, int ySrc, int xDest, int yDest, int cutoff, int depth)
 	{
 		board.move(xSrc, ySrc, xDest, yDest);
 		if(depth >= m_maxDepth || depth >= MAX_DEPTH_EVER)
@@ -400,7 +400,7 @@ public:
 			case 1: DoRandomMove(); break;
 			case 2: DoAlphaBetaPruningMove(3); break;
 			case 3: DoAlphaBetaPruningMove(6); break;
-			default: GAssert(false); break;
+			default: WAssert(false); break;
 		}
 	}
 
@@ -411,12 +411,12 @@ public:
 		m_pCanvas->setImage(m_pImage);
 	}
 
-	void onReleaseTextButton(GWidgetTextButton* pButton) override
+	void onReleaseTextButton(WWidgetTextButton* pButton) override
 	{
-		GAssert(false); // unknown button
+		WAssert(false); // unknown button
 	}
 
-	int EvaluateBoard(GChessBoard* pBoard)
+	int EvaluateBoard(WChessBoard* pBoard)
 	{
 		m_boardEvals++;
 		return pBoard->heuristic();
@@ -500,15 +500,15 @@ ChessController::~ChessController()
 
 void ChessController::RunModal()
 {
-	double timeOld = GTime::seconds();
+	double timeOld = WTime::seconds();
 	double time;
 	m_pView->update();
 	while(m_bKeepRunning)
 	{
-		time = GTime::seconds();
+		time = WTime::seconds();
 		handleEvents(time - timeOld);
 		m_pView->update();
-		GThread::sleep(150); // slow things down a bit
+		WThread::sleep(150); // slow things down a bit
 		timeOld = time;
 	}
 }
@@ -516,7 +516,7 @@ void ChessController::RunModal()
 int main(int argc, char* argv[])
 {
 	char szAppPath[300];
-	GApp::appPath(szAppPath, 300, true);
+	WApp::appPath(szAppPath, 300, true);
 #ifdef WINDOWS
 	if(_chdir(szAppPath) != 0)
 #else

@@ -19,11 +19,11 @@
 #ifndef __GSTABSEARCH_H__
 #define __GSTABSEARCH_H__
 
-#include "GOptimizer.h"
-#include "GRand.h"
-#include "GVec.h"
+#include "WOptimizer.h"
+#include "WRand.h"
+#include "WVec.h"
 
-namespace GClasses
+namespace WClasses
 {
 
 /// This performs a brute-force grid search with uniform sampling over the
@@ -31,24 +31,24 @@ namespace GClasses
 /// the candidate vectors as necessary to cover the desired space.) This grid-search
 /// increases the granularity after each pass, and carefully avoids sampling anywhere
 /// that it has sampled before.
-class GGridSearch : public GOptimizer
+class WGridSearch : public WOptimizer
 {
 protected:
-	GVec m_pCandidate;
-	GVec m_pBestVector;
+	WVec m_pCandidate;
+	WVec m_pBestVector;
 	double m_bestError;
-	GCoordVectorIterator* m_pCvi;
+	WCoordVectorIterator* m_pCvi;
 
 public:
-	GGridSearch(GTargetFunction* pCritic);
-	~GGridSearch() override;
+	WGridSearch(WTargetFunction* pCritic);
+	~WGridSearch() override;
 
 	/// Each pass will complete after ((2^n)+1)^d iterations. The distance between
 	/// samples at that point will be 1/(2^n). After it completes n=30, it will begin repeating.
 	double iterate() override;
 
 	/// Returns the best vector yet found
-	const GVec& currentVector() override;
+	const WVec& currentVector() override;
 };
 
 
@@ -56,23 +56,23 @@ public:
 /// At each iteration, this tries a random vector from the unit
 /// hypercube. (Your target function should scale
 /// the candidate vectors as necessary to cover the desired space.)
-class GRandomSearch : public GOptimizer
+class WRandomSearch : public WOptimizer
 {
 protected:
-	GRand* m_pRand;
-	GVec m_pCandidate;
-	GVec m_pBestVector;
+	WRand* m_pRand;
+	WVec m_pCandidate;
+	WVec m_pBestVector;
 	double m_bestError;
 
 public:
-	GRandomSearch(GTargetFunction* pCritic, GRand* pRand);
-	~GRandomSearch() override;
+	WRandomSearch(WTargetFunction* pCritic, WRand* pRand);
+	~WRandomSearch() override;
 
 	/// Try another random vector
 	double iterate() override;
 
 	/// Returns the best vector yet found
-	const GVec& currentVector() override;
+	const WVec& currentVector() override;
 };
 
 
@@ -82,23 +82,23 @@ public:
 /// It only searches approximately within the unit cube (although it may stray a little
 /// outside of it). It is the target function's responsibility
 /// to map this into an appropriate space.
-class GMinBinSearch : public GOptimizer
+class WMinBinSearch : public WOptimizer
 {
 protected:
 	size_t m_curDim;
 	double m_stepSize;
-	GVec m_pCurrent;
+	WVec m_pCurrent;
 	double m_curErr;
 
 public:
-	GMinBinSearch(GTargetFunction* pCritic);
-	~GMinBinSearch() override;
+	WMinBinSearch(WTargetFunction* pCritic);
+	~WMinBinSearch() override;
 
 	/// Try another random vector
 	double iterate() override;
 
 	/// Returns the best vector yet found
-	const GVec& currentVector() override { return m_pCurrent; }
+	const WVec& currentVector() override { return m_pCurrent; }
 };
 
 
@@ -117,16 +117,16 @@ public:
 /// algorithm tends to quickly find good solutions, especially if the
 /// target function is somewhat smooth. In high-dimensional space, the
 /// number of iterations to find a good solution seems to grow exponentially.
-class GProbeSearch : public GOptimizer
+class WProbeSearch : public WOptimizer
 {
 protected:
-	GRand m_rand;
+	WRand m_rand;
 	size_t m_nDimensions;
 	unsigned int m_nMask[4];
-	GVec m_pMins;
-	GVec m_pMaxs;
-	GVec m_pVector;
-	GVec m_pBestYet;
+	WVec m_pMins;
+	WVec m_pMaxs;
+	WVec m_pVector;
+	WVec m_pBestYet;
 	double m_bestError;
 	size_t m_nStabDepth;
 	size_t m_nCurrentDim;
@@ -135,14 +135,14 @@ protected:
 	size_t m_samples;
 
 public:
-	GProbeSearch(GTargetFunction* pCritic);
-	~GProbeSearch() override;
+	WProbeSearch(WTargetFunction* pCritic);
+	~WProbeSearch() override;
 
 	/// Do a little bit more work toward finding a good vector
 	double iterate() override;
 
 	/// Returns the best vector yet found
-	const GVec& currentVector() override { return m_pBestYet; }
+	const WVec& currentVector() override { return m_pBestYet; }
 
 	/// Specify the number of times to divide the space before
 	/// satisfactory accuracy is obtained. Larger values will
@@ -167,6 +167,6 @@ protected:
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GSTABSEARCH_H__

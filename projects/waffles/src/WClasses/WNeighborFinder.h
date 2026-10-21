@@ -20,45 +20,45 @@
 #ifndef __GNEIGHBORFINDER_H__
 #define __GNEIGHBORFINDER_H__
 
-#include "GMatrix.h"
+#include "WMatrix.h"
 #include <vector>
 #include <map>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GMatrix;
-class GRelation;
-class GRand;
-class GKdNode;
-class GBallNode;
-class GBitTable;
-class GDistanceMetric;
-class GSupervisedLearner;
-class GRandomIndexIterator;
-class GSparseMatrix;
-class GSparseSimilarity;
-class GNeighborFinderGeneralizing;
+class WMatrix;
+class WRelation;
+class WRand;
+class WKdNode;
+class WBallNode;
+class WBitTable;
+class WDistanceMetric;
+class WSupervisedLearner;
+class WRandomIndexIterator;
+class WSparseMatrix;
+class WSparseSimilarity;
+class WNeighborFinderGeneralizing;
 
 
 /// Finds the k-nearest neighbors of any vector in a dataset.
-class GNeighborFinder
+class WNeighborFinder
 {
 protected:
-	const GMatrix* m_pData;
+	const WMatrix* m_pData;
 
 public:
-	GNeighborFinder(const GMatrix* pData)
+	WNeighborFinder(const WMatrix* pData)
 	: m_pData(pData)
 	{
 	}
 
-	virtual ~GNeighborFinder()
+	virtual ~WNeighborFinder()
 	{
 	}
 
 	/// Returns the data passed to the constructor of this object
-	const GMatrix* data() { return m_pData; }
+	const WMatrix* data() { return m_pData; }
 
 	/// Returns true if this neighbor finder can operate on points that
 	/// are not in the dataset passed to the constructor
@@ -91,72 +91,72 @@ public:
 
 /// This wraps a neighbor finding algorithm. It caches the queries for neighbors
 /// for the purpose of improving runtime performance.
-class GNeighborGraph : public GNeighborFinder
+class WNeighborGraph : public WNeighborFinder
 {
 protected:
-	GNeighborFinder* m_pNF;
+	WNeighborFinder* m_pNF;
 	bool m_own;
 	size_t m_focus;
 	std::vector<std::vector<size_t> > m_neighs;
 	std::vector<std::vector<double> > m_dists;
 
 public:
-	/// Makes a GNeighborGraph that has precomputed the k-nearest neighbors of each point in a dataset.
+	/// Makes a WNeighborGraph that has precomputed the k-nearest neighbors of each point in a dataset.
 	/// If own is true, then this will take ownership of pNF
-	GNeighborGraph(GNeighborFinder* pNF, bool own, size_t neighbors);
+	WNeighborGraph(WNeighborFinder* pNF, bool own, size_t neighbors);
 
-	/// Makes a GNeighborGraph that has precomputed the neighbors of each point in a dataset within a specified radius.
-	GNeighborGraph(double squaredRadius, GNeighborFinder* pNF, bool own);
+	/// Makes a WNeighborGraph that has precomputed the neighbors of each point in a dataset within a specified radius.
+	WNeighborGraph(double squaredRadius, WNeighborFinder* pNF, bool own);
 
-	/// Makes a GNeighborGraph assuming the data represents a sequence of observations.
+	/// Makes a WNeighborGraph assuming the data represents a sequence of observations.
 	/// First, it computes the distance between each point and its previous and next points.
 	/// Then, it finds all neighbors within a radius of the maximum of those two distances.
-	GNeighborGraph(bool own, GNeighborFinderGeneralizing* pNF);
+	WNeighborGraph(bool own, WNeighborFinderGeneralizing* pNF);
 
-	~GNeighborGraph() override;
+	~WNeighborGraph() override;
 
-	/// See the comment for GNeighborFinder::findNearest
+	/// See the comment for WNeighborFinder::findNearest
 	size_t findNearest(size_t k, size_t pointIndex) override
 	{
 		m_focus = pointIndex;
 		return m_neighs[pointIndex].size();
 	}
 
-	/// See the comment for GNeighborFinder::findWithinRadius
+	/// See the comment for WNeighborFinder::findWithinRadius
 	size_t findWithinRadius(double squaredRadius, size_t pointIndex) override
 	{
 		m_focus = pointIndex;
 		return m_neighs[pointIndex].size();
 	}
 
-	/// See the comment for GNeighborFinder::neighbor
+	/// See the comment for WNeighborFinder::neighbor
 	size_t neighbor(size_t i) override
 	{
-		GAssert(i < m_neighs[m_focus].size());
+		WAssert(i < m_neighs[m_focus].size());
 		return m_neighs[m_focus][i];
 	}
 
-	/// See the comment for GNeighborFinder::distance
+	/// See the comment for WNeighborFinder::distance
 	double distance(size_t i) override
 	{
-		GAssert(i < m_dists[m_focus].size());
+		WAssert(i < m_dists[m_focus].size());
 		return m_dists[m_focus][i];
 	}
 
-	/// See the comment for GNeighborFinder::isCached.
+	/// See the comment for WNeighborFinder::isCached.
 	bool isCached() override { return true; }
 
 	/// Returns a pointer to the neighbor finder that this wraps.
-	GNeighborFinder* wrappedNeighborFinder() { return m_pNF; }
+	WNeighborFinder* wrappedNeighborFinder() { return m_pNF; }
 
 	/// Uses CycleCut to remove shortcut connections. (Assumes fillCache has already been called.)
 	size_t cutShortcuts(size_t cycleLen);
 
 	/// recomputes all neighbor distances using the specified metric.
-	void recomputeDistances(GDistanceMetric* pMetric);
+	void recomputeDistances(WDistanceMetric* pMetric);
 
 	/// Uses pNewData for subsequent calls to recomputeDistances.
-	void swapInData(const GMatrix* pNewData);
+	void swapInData(const WMatrix* pNewData);
 
 	/// Returns true iff the neighbors form a connected graph when each neighbor
 	/// is evaluated as a bi-directional edge. (Assumes that fillCache has already been called.)
@@ -182,10 +182,10 @@ protected:
 
 /// Finds the k-nearest neighbors (in a dataset) of an arbitrary vector (which may or may not
 /// be in the dataset).
-class GNeighborFinderGeneralizing : public GNeighborFinder
+class WNeighborFinderGeneralizing : public WNeighborFinder
 {
 protected:
-	GDistanceMetric* m_pMetric;
+	WDistanceMetric* m_pMetric;
 	bool m_ownMetric;
 	std::vector<size_t> m_neighs;
 	std::vector<double> m_dists;
@@ -196,11 +196,11 @@ public:
 	/// true, then the neighborFinder takes responsibility for
 	/// deleting the metric, otherwise it is the caller's
 	/// responsibility.
-	GNeighborFinderGeneralizing(const GMatrix* pData, GDistanceMetric* pMetric = nullptr, bool ownMetric = false);
+	WNeighborFinderGeneralizing(const WMatrix* pData, WDistanceMetric* pMetric = nullptr, bool ownMetric = false);
 
-	~GNeighborFinderGeneralizing() override;
+	~WNeighborFinderGeneralizing() override;
 
-	/// Returns true. See the comment for GNeighborFinder::canGeneralize.
+	/// Returns true. See the comment for WNeighborFinder::canGeneralize.
 	bool canGeneralize() override { return true; }
 
 	/// If you make major changes, you can call this to tell it to rebuild
@@ -210,23 +210,23 @@ public:
 	/// Finds the nearest neighbors of the specified vector.
 	/// Returns the number of neighbors found.
 	/// Call "neighbor" or "distance" to obtain the neighbors and distances that were found.
-	virtual size_t findNearest(size_t k, const GVec& vector) = 0;
-	using GNeighborFinder::findNearest;
+	virtual size_t findNearest(size_t k, const WVec& vector) = 0;
+	using WNeighborFinder::findNearest;
 
 	/// Finds all neighbors of the specified vector within a specified radius.
 	/// Returns the number of neighbors found.
 	/// Call "neighbor" or "distance" to obtain the neighbors and distances that were found.
-	virtual size_t findWithinRadius(double squaredRadius, const GVec& vector) = 0;
-	using GNeighborFinder::findWithinRadius;
+	virtual size_t findWithinRadius(double squaredRadius, const WVec& vector) = 0;
+	using WNeighborFinder::findWithinRadius;
 
-	/// See the comment for GNeighborFinder::neighbor
+	/// See the comment for WNeighborFinder::neighbor
 	size_t neighbor(size_t i) override { return m_neighs[i]; }
 
-	/// See the comment for GNeighborFinder::distance
+	/// See the comment for WNeighborFinder::distance
 	double distance(size_t i) override { return m_dists[i]; }
 
 	/// Returns the metric
-	GDistanceMetric* metric() { return m_pMetric; }
+	WDistanceMetric* metric() { return m_pMetric; }
 
 	/// Uses Quick Sort to sort the neighbors from least to most distant.
 	void sortNeighbors(size_t start = 0, size_t end = INVALID_INDEX);
@@ -239,41 +239,41 @@ protected:
 
 /// Finds neighbors by measuring the distance to all points. This one should work properly even if
 /// the distance metric does not support the triangle inequality.
-class GBruteForceNeighborFinder : public GNeighborFinderGeneralizing
+class WBruteForceNeighborFinder : public WNeighborFinderGeneralizing
 {
 public:
-	GBruteForceNeighborFinder(GMatrix* pData, GDistanceMetric* pMetric = nullptr, bool ownMetric = false);
-	~GBruteForceNeighborFinder() override;
+	WBruteForceNeighborFinder(WMatrix* pData, WDistanceMetric* pMetric = nullptr, bool ownMetric = false);
+	~WBruteForceNeighborFinder() override;
 
 	/// This is a no-op method in this class.
 	void reoptimize() override;
 
-	/// See the comment for GNeighborFinder::findNearest
+	/// See the comment for WNeighborFinder::findNearest
 	size_t findNearest(size_t k, size_t index) override;
 
-	/// See the comment for GNeighborFinderGeneralizing::neighbors
-	size_t findNearest(size_t k, const GVec& vector) override;
+	/// See the comment for WNeighborFinderGeneralizing::neighbors
+	size_t findNearest(size_t k, const WVec& vector) override;
 
-	/// See the comment for GNeighborFinder::findWithinRadius
+	/// See the comment for WNeighborFinder::findWithinRadius
 	size_t findWithinRadius(double squaredRadius, size_t index) override;
 
-	/// See the comment for GNeighborFinderGeneralizing::findWithinRadius
-	size_t findWithinRadius(double squaredRadius, const GVec& vector) override;
+	/// See the comment for WNeighborFinderGeneralizing::findWithinRadius
+	size_t findWithinRadius(double squaredRadius, const WVec& vector) override;
 
 protected:
-	size_t findNearest(size_t k, const GVec& vec, size_t exclude);
-	size_t findWithinRadius(double squaredRadius, const GVec& vec, size_t exclude);
+	size_t findNearest(size_t k, const WVec& vec, size_t exclude);
+	size_t findWithinRadius(double squaredRadius, const WVec& vec, size_t exclude);
 };
 
 
 
 
 /// Finds neighbors by measuring the distance to all points using a sparse distance metric.
-class GSparseNeighborFinder : public GNeighborFinderGeneralizing
+class WSparseNeighborFinder : public WNeighborFinderGeneralizing
 {
 protected:
-	GSparseMatrix* m_pData;
-	GSparseSimilarity* m_pSparseMetric;
+	WSparseMatrix* m_pData;
+	WSparseSimilarity* m_pSparseMetric;
 	bool m_ownSparseMetric;
 
 public:
@@ -282,41 +282,41 @@ public:
 	/// neighborCount is the number of neighbors that you want to find.
 	/// pMetric is the similarity metric to use in finding neighbors. Higher similarity indicates closer neighbors.
 	/// ownMetric specifies whether this object should delete pMetric when it is deleted.
-	GSparseNeighborFinder(GSparseMatrix* pData, GMatrix* pBogusData, GSparseSimilarity* pMetric, bool ownMetric = false);
-	~GSparseNeighborFinder() override;
+	WSparseNeighborFinder(WSparseMatrix* pData, WMatrix* pBogusData, WSparseSimilarity* pMetric, bool ownMetric = false);
+	~WSparseNeighborFinder() override;
 
 	/// This is a no-op method in this class.
 	void reoptimize() override;
 
-	/// See the comment for GNeighborFinder::findNearest
+	/// See the comment for WNeighborFinder::findNearest
 	size_t findNearest(size_t k, size_t index) override;
 
-	/// See the comment for GNeighborFinderGeneralizing::findNearest
-	size_t findNearest(size_t k, const GVec& vector) override;
+	/// See the comment for WNeighborFinderGeneralizing::findNearest
+	size_t findNearest(size_t k, const WVec& vector) override;
 
-	/// See the comment for GNeighborFinder::findWithinRadius
+	/// See the comment for WNeighborFinder::findWithinRadius
 	/// Currently, this method just throws an exception because it is not yet implemented.
 	size_t findWithinRadius(double squaredRadius, size_t index) override;
 
-	/// See the comment for GNeighborFinderGeneralizing::findWithinRadius
+	/// See the comment for WNeighborFinderGeneralizing::findWithinRadius
 	/// Currently, this method just throws an exception because it is not yet implemented.
-	size_t findWithinRadius(double squaredRadius, const GVec& vector) override;
+	size_t findWithinRadius(double squaredRadius, const WVec& vector) override;
 };
 
 
 
 
 /// An efficient algorithm for finding neighbors.
-class GKdTree : public GNeighborFinderGeneralizing
+class WKdTree : public WNeighborFinderGeneralizing
 {
 protected:
 	size_t m_maxLeafSize;
 	size_t m_size;
-	GKdNode* m_pRoot;
+	WKdNode* m_pRoot;
 
 public:
-	GKdTree(const GMatrix* pData, GDistanceMetric* pMetric = nullptr, bool ownMetric = false);
-	~GKdTree() override;
+	WKdTree(const WMatrix* pData, WDistanceMetric* pMetric = nullptr, bool ownMetric = false);
+	~WKdTree() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -325,39 +325,39 @@ public:
 	/// a significant number of point-vectors are added to or released from the internal set.
 	void reoptimize() override;
 
-	/// See the comment for GNeighborFinder::findNearest
+	/// See the comment for WNeighborFinder::findNearest
 	size_t findNearest(size_t k, size_t index) override;
 
-	/// See the comment for GNeighborFinderGeneralizing::neighbors
-	size_t findNearest(size_t k, const GVec& vector) override;
+	/// See the comment for WNeighborFinderGeneralizing::neighbors
+	size_t findNearest(size_t k, const WVec& vector) override;
 
-	/// See the comment for GNeighborFinder::findWithinRadius
+	/// See the comment for WNeighborFinder::findWithinRadius
 	size_t findWithinRadius(double squaredRadius, size_t index) override;
 
-	/// See the comment for GNeighborFinderGeneralizing::findWithinRadius
-	size_t findWithinRadius(double squaredRadius, const GVec& vector) override;
+	/// See the comment for WNeighborFinderGeneralizing::findWithinRadius
+	size_t findWithinRadius(double squaredRadius, const WVec& vector) override;
 
 	/// Specify the max number of point-vectors to store in each leaf node.
 	void setMaxLeafSize(size_t n) { m_maxLeafSize = n; }
 
 	/// Returns the root node of the kd-tree.
-	GKdNode* root() { return m_pRoot; }
+	WKdNode* root() { return m_pRoot; }
 
 	/// Build the tree
-	GKdNode* buildTree(size_t count, size_t* pIndexes);
+	WKdNode* buildTree(size_t count, size_t* pIndexes);
 
 	/// Returns true iff the specified point-vector is on the >= side of the specified pivot
 	bool isGreaterOrEqual(const double* pPat, size_t attr, double pivot);
 
 	/// Computes the median distance to the n^th closest neighbor of each row in data
-	static double medianDistanceToNeighbor(GMatrix& data, size_t n);
+	static double medianDistanceToNeighbor(WMatrix& data, size_t n);
 
 protected:
 	/// This is a helper method that finds the nearest neighbors
-	size_t findNearest(size_t k, const GVec& vec, size_t nExclude);
+	size_t findNearest(size_t k, const WVec& vec, size_t nExclude);
 
 	/// This is a helper method that finds neighbors within a radius
-	size_t findWithinRadius(double squaredRadius, const GVec& vec, size_t nExclude);
+	size_t findWithinRadius(double squaredRadius, const WVec& vec, size_t nExclude);
 
 	/// Computes a good pivot for the specified attribute, and the goodness of splitting on
 	/// that attribute. For continuous attributes, the pivot is the (not scaled) mean and the goodness is
@@ -375,17 +375,17 @@ protected:
 
 
 
-/// An efficient algorithm for finding neighbors. Empirically, this class seems to be a little bit slower than GKdTree.
-class GBallTree : public GNeighborFinderGeneralizing
+/// An efficient algorithm for finding neighbors. Empirically, this class seems to be a little bit slower than WKdTree.
+class WBallTree : public WNeighborFinderGeneralizing
 {
 protected:
 	size_t m_maxLeafSize;
 	size_t m_size;
-	GBallNode* m_pRoot;
+	WBallNode* m_pRoot;
 
 public:
-	GBallTree(const GMatrix* pData, GDistanceMetric* pMetric = nullptr, bool ownMetric = false);
-	~GBallTree() override;
+	WBallTree(const WMatrix* pData, WDistanceMetric* pMetric = nullptr, bool ownMetric = false);
+	~WBallTree() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -394,17 +394,17 @@ public:
 	/// a significant number of point-vectors are added to or released from the internal set.
 	void reoptimize() override;
 
-	/// See the comment for GNeighborFinder::findNearest
+	/// See the comment for WNeighborFinder::findNearest
 	size_t findNearest(size_t k, size_t index) override;
 
-	/// See the comment for GNeighborFinderGeneralizing::neighbors
-	size_t findNearest(size_t k, const GVec& vec) override;
+	/// See the comment for WNeighborFinderGeneralizing::neighbors
+	size_t findNearest(size_t k, const WVec& vec) override;
 
-	/// See the comment for GNeighborFinder::findWithinRadius
+	/// See the comment for WNeighborFinder::findWithinRadius
 	size_t findWithinRadius(double squaredRadius, size_t index) override;
 
-	/// See the comment for GNeighborFinderGeneralizing::findWithinRadius
-	size_t findWithinRadius(double squaredRadius, const GVec& vec) override;
+	/// See the comment for WNeighborFinderGeneralizing::findWithinRadius
+	size_t findWithinRadius(double squaredRadius, const WVec& vec) override;
 
 	/// Specify the max number of point-vectors to store in each leaf node.
 	void setMaxLeafSize(size_t n) { m_maxLeafSize = n; }
@@ -428,13 +428,13 @@ public:
 
 protected:
 	/// Build the tree
-	GBallNode* buildTree(size_t count, size_t* pIndexes);
+	WBallNode* buildTree(size_t count, size_t* pIndexes);
 
 	/// This is a helper method that finds the nearest neighbors
-	size_t findNearest(size_t k, const GVec& vec, size_t nExclude);
+	size_t findNearest(size_t k, const WVec& vec, size_t nExclude);
 
 	/// This is a helper method that finds the neighbors within a specified radius
-	size_t findWithinRadius(double squaredRadius, const GVec& vec, size_t nExclude);
+	size_t findWithinRadius(double squaredRadius, const WVec& vec, size_t nExclude);
 };
 
 
@@ -442,7 +442,7 @@ protected:
 
 
 /// This uses "betweeenness centrality" to find the shortcuts in a table of neighbors and replaces them with INVALID_INDEX.
-class GShortcutPruner
+class WShortcutPruner
 {
 protected:
 	size_t* m_pNeighborhoods;
@@ -455,8 +455,8 @@ protected:
 public:
 	/// pNeighborMap is expected to be an array of size n*k, where n is the
 	/// number of points, and k is the number of neighbors.
-	GShortcutPruner(size_t* pNeighborhoods, size_t n, size_t k);
-	~GShortcutPruner();
+	WShortcutPruner(size_t* pNeighborhoods, size_t n, size_t k);
+	~WShortcutPruner();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -489,11 +489,11 @@ protected:
 
 
 /// This finds the shortcuts in a table of neighbors and replaces them with INVALID_INDEX.
-class GCycleCut
+class WCycleCut
 {
 protected:
-	GNeighborGraph* m_pNeighborGraph;
-	const GMatrix* m_pPoints;
+	WNeighborGraph* m_pNeighborGraph;
+	const WMatrix* m_pPoints;
 	std::map<std::pair<size_t, size_t>, double> m_capacities;
 	std::vector<size_t> m_cuts;
 	size_t m_k;
@@ -504,8 +504,8 @@ protected:
 public:
 	/// pNeighborMap is expected to be an array of size n*k, where n is the
 	/// number pPoints->rows(), and k is the number of neighbors.
-	GCycleCut(GNeighborGraph* pNeighborGraph, const GMatrix* pPoints, size_t k);
-	~GCycleCut();
+	WCycleCut(WNeighborGraph* pNeighborGraph, const WMatrix* pPoints, size_t k);
+	~WCycleCut();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -528,6 +528,6 @@ protected:
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GNEIGHBORFINDER_H__

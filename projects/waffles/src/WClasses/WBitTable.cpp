@@ -17,30 +17,30 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GBitTable.h"
-#include "GError.h"
+#include "WBitTable.h"
+#include "WError.h"
 #include <string.h> // (for memset)
-#include "GRand.h"
+#include "WRand.h"
 
-using namespace GClasses;
+using namespace WClasses;
 
 #define BLOCK_BITS (sizeof(size_t) * 8)
 
 
-GBitTable::GBitTable(size_t bitCount)
+WBitTable::WBitTable(size_t bitCount)
 : m_size((bitCount + BLOCK_BITS - 1) / BLOCK_BITS),
   m_pBits(new size_t[m_size])
 {
 	memset(m_pBits, '\0', sizeof(size_t) * m_size);
 }
 
-GBitTable::GBitTable(const GBitTable& o)
+WBitTable::WBitTable(const WBitTable& o)
 : m_size(o.m_size), m_pBits(new size_t[m_size])
 {
 	memcpy(m_pBits, o.m_pBits, sizeof(size_t) * m_size);
 }
 
-GBitTable& GBitTable::operator=(const GBitTable& o)
+WBitTable& WBitTable::operator=(const WBitTable& o)
 {
 	// SAKBox: t = t freed the bits and then copied from the freed memory
 	if(this == &o)
@@ -53,51 +53,51 @@ GBitTable& GBitTable::operator=(const GBitTable& o)
 }
 
 
-GBitTable::~GBitTable()
+WBitTable::~WBitTable()
 {
 	delete[] m_pBits;
 }
 
-void GBitTable::clearAll()
+void WBitTable::clearAll()
 {
 	memset(m_pBits, '\0', sizeof(size_t) * m_size);
 }
 
-void GBitTable::setAll()
+void WBitTable::setAll()
 {
 	memset(m_pBits, 255, sizeof(size_t) * m_size);
 }
 
-bool GBitTable::bit(size_t index) const
+bool WBitTable::bit(size_t index) const
 {
-	GAssert(index < m_size * BLOCK_BITS); // out of range
+	WAssert(index < m_size * BLOCK_BITS); // out of range
 	size_t n = m_pBits[index / BLOCK_BITS];
 	size_t m = index & (BLOCK_BITS - 1);
 	return ((n & ((size_t)1 << m)) ? true : false);
 }
 
-void GBitTable::set(size_t index)
+void WBitTable::set(size_t index)
 {
-	GAssert(index < m_size * BLOCK_BITS); // out of range
+	WAssert(index < m_size * BLOCK_BITS); // out of range
 	size_t m = index & (BLOCK_BITS - 1);
 	m_pBits[index / BLOCK_BITS] |= ((size_t)1 << m);
 }
 
-void GBitTable::unset(size_t index)
+void WBitTable::unset(size_t index)
 {
-	GAssert(index < m_size * BLOCK_BITS); // out of range
+	WAssert(index < m_size * BLOCK_BITS); // out of range
 	size_t m = index & (BLOCK_BITS - 1);
 	m_pBits[index / BLOCK_BITS] &= (~((size_t)1 << m));
 }
 
-void GBitTable::toggle(size_t index)
+void WBitTable::toggle(size_t index)
 {
-	GAssert(index < m_size * BLOCK_BITS); // out of range
+	WAssert(index < m_size * BLOCK_BITS); // out of range
 	size_t m = index & (BLOCK_BITS - 1);
 	m_pBits[index / BLOCK_BITS] ^= ((size_t)1 << m);
 }
 
-bool GBitTable::equals(const GBitTable& that) const
+bool WBitTable::equals(const WBitTable& that) const
 {
 	if(this->m_size != that.m_size)
 		return false;
@@ -109,7 +109,7 @@ bool GBitTable::equals(const GBitTable& that) const
 	return true;
 }
 
-bool GBitTable::areAllSet(size_t count)
+bool WBitTable::areAllSet(size_t count)
 {
 	size_t head = count / BLOCK_BITS;
 	size_t tail = count % BLOCK_BITS;
@@ -127,7 +127,7 @@ bool GBitTable::areAllSet(size_t count)
 	return true;
 }
 
-bool GBitTable::areAllClear(size_t count)
+bool WBitTable::areAllClear(size_t count)
 {
 	size_t head = count / BLOCK_BITS;
 	size_t tail = count % BLOCK_BITS;
@@ -147,13 +147,13 @@ bool GBitTable::areAllClear(size_t count)
 
 #define TEST_SIZE 2080
 // static
-void GBitTable::test()
+void WBitTable::test()
 {
-	GRand prng(0);
+	WRand prng(0);
 	bool arr[TEST_SIZE];
 	for(size_t i = 0; i < TEST_SIZE; i++)
 		arr[i] = false;
-	GBitTable bt(TEST_SIZE);
+	WBitTable bt(TEST_SIZE);
 	for(size_t i = 0; i < TEST_SIZE; i++)
 	{
 		size_t n = (size_t)prng.next(TEST_SIZE);
@@ -173,7 +173,7 @@ void GBitTable::test()
 			throw Ex("failed");
 	}
 
-	GBitTable bt2(81);
+	WBitTable bt2(81);
 	if(!bt2.areAllClear(81))
 		throw Ex("failed");
 	bt2.set(80);

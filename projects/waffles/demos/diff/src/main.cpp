@@ -24,15 +24,15 @@
 #else
 #include <unistd.h>
 #endif
-#include <WClasses/GRand.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GApp.h>
-#include <WClasses/GHolders.h>
-#include <WClasses/GThread.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WHolders.h>
+#include <WClasses/WThread.h>
 #include "server.h"
 
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 using std::vector;
@@ -49,10 +49,10 @@ class Account;
 class ViewStats;
 
 
-void LaunchBrowser(const char* szAddress, GRand* pRand)
+void LaunchBrowser(const char* szAddress, WRand* pRand)
 {
 	cout << "Opening URL: " << szAddress << "\n";
-	if(!GApp::openUrlInBrowser(szAddress))
+	if(!WApp::openUrlInBrowser(szAddress))
 	{
 		cout << "Failed to open the URL: " << szAddress << "\nPlease open this URL manually.\n";
 		cout.flush();
@@ -63,7 +63,7 @@ void doit(const char* szFile1, const char* szFile2)
 {
 	int port = 8985;
 	size_t seed = getpid() * (size_t)time(nullptr);
-	GRand prng(seed);
+	WRand prng(seed);
 	Server* pServer = new Server(port, &prng);
 	Holder<Server> hServer(pServer);
 	string s = pServer->myAddress();

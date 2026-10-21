@@ -20,12 +20,12 @@
 #ifndef __CRYPTO_H__
 #define __CRYPTO_H__
 
-#include "GError.h"
+#include "WError.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GRand;
+class WRand;
 class Mangler;
 
 /// This is a symmetric-key block-cypher. It utilizes a 2048-byte
@@ -36,7 +36,7 @@ class Mangler;
 /// risk. Many encryption algorithms eventually turn out to be insecure,
 /// and to my knowledge, this algorithm has not yet been extensively
 /// scrutinized.
-class GCrypto
+class WCrypto
 {
 private:
 	Mangler* m_pMangler;
@@ -44,8 +44,8 @@ private:
 	size_t m_blockPos;
 
 public:
-	GCrypto(const char* pPassphrase, size_t nPassphraseSize);
-	~GCrypto();
+	WCrypto(const char* pPassphrase, size_t nPassphraseSize);
+	~WCrypto();
 
 	void doChunk(char* pData, size_t nDataSize);
 

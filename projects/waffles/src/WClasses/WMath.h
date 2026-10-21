@@ -45,14 +45,14 @@
 #endif
 
 
-namespace GClasses
+namespace WClasses
 {
 
 
 typedef double (*MathFunc)(void* pThis, double x);
 
 /// Provides some useful math functions
-class GMath
+class WMath
 {
 public:
 	/// Returns sign(x) * sqrt(ABS(x))
@@ -237,6 +237,6 @@ public:
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GMATH_H__

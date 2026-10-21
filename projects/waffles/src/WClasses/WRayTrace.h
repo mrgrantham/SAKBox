@@ -21,39 +21,39 @@
 
 #include <stddef.h>
 #include <math.h>
-#include "G3D.h"
-#include "GRand.h"
+#include "W3D.h"
+#include "WRand.h"
 #include <deque>
 #include <vector>
 #include <cmath>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GRayTraceLight;
-class GRayTraceMaterial;
-class GRayTraceObject;
-class GRayTraceRay;
-class GRayTraceScene;
-class GRayTraceTriMesh;
-class GRayTraceBoundingBoxBase;
-class GNodeHashTable;
-class GImage;
+class WRayTraceLight;
+class WRayTraceMaterial;
+class WRayTraceObject;
+class WRayTraceRay;
+class WRayTraceScene;
+class WRayTraceTriMesh;
+class WRayTraceBoundingBoxBase;
+class WNodeHashTable;
+class WImage;
 
-/// This class represents a color. It's more precise than GColor, but takes up more
+/// This class represents a color. It's more precise than WColor, but takes up more
 /// memory. Note that the ray tracer ignores the alpha channel because the material
 /// specifies a unique transmission color.
-class GRayTraceColor
+class WRayTraceColor
 {
 public:
-	G3DReal a, r, g, b;
+	W3DReal a, r, g, b;
 
-	GRayTraceColor()
+	WRayTraceColor()
 	: a(1), r(0), g(0), b(0)
 	{
 	}
 
-	GRayTraceColor(GRayTraceColor* pThat)
+	WRayTraceColor(WRayTraceColor* pThat)
 	{
 		a = pThat->a;
 		r = pThat->r;
@@ -61,18 +61,18 @@ public:
 		b = pThat->b;
 	}
 
-	GRayTraceColor(unsigned int c);
+	WRayTraceColor(unsigned int c);
 
-	GRayTraceColor(G3DReal alpha, G3DReal red, G3DReal green, G3DReal blue)
+	WRayTraceColor(W3DReal alpha, W3DReal red, W3DReal green, W3DReal blue)
 	{
 		set(alpha, red, green, blue);
 	}
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const;
+	WDomNode* serialize(WDom* pDoc) const;
 
 	/// Load this object from a DOM.
-	void deserialize(GDomNode* pNode);
+	void deserialize(WDomNode* pNode);
 
 	bool isBlack()
 	{
@@ -82,7 +82,7 @@ public:
 			return false;
 	}
 
-	void set(G3DReal alpha, G3DReal red, G3DReal green, G3DReal blue)
+	void set(W3DReal alpha, W3DReal red, W3DReal green, W3DReal blue)
 	{
 		a = alpha;
 		r = red;
@@ -92,7 +92,7 @@ public:
 
 	void set(unsigned int c);
 
-	void copy(GRayTraceColor* pThat)
+	void copy(WRayTraceColor* pThat)
 	{
 		a = pThat->a;
 		r = pThat->r;
@@ -100,7 +100,7 @@ public:
 		b = pThat->b;
 	}
 
-	void add(GRayTraceColor* pThat)
+	void add(WRayTraceColor* pThat)
 	{
 		a = std::max(a, pThat->a);
 		r += pThat->r;
@@ -110,19 +110,19 @@ public:
 
 	void clip()
 	{
-		r = std::min((G3DReal)1, r);
-		g = std::min((G3DReal)1, g);
-		b = std::min((G3DReal)1, b);
+		r = std::min((W3DReal)1, r);
+		g = std::min((W3DReal)1, g);
+		b = std::min((W3DReal)1, b);
 	}
 
-	void multiply(G3DReal mag)
+	void multiply(W3DReal mag)
 	{
 		r *= mag;
 		g *= mag;
 		b *= mag;
 	}
 
-	void multiply(GRayTraceColor* pThat)
+	void multiply(WRayTraceColor* pThat)
 	{
 		a *= pThat->a;
 		r *= pThat->r;
@@ -132,47 +132,47 @@ public:
 
 	unsigned int color();
 
-	void makeSliderColor(float f, GRayTraceColor* pDiffuseColor);
+	void makeSliderColor(float f, WRayTraceColor* pDiffuseColor);
 };
 
 
 
 
 /// Represents the camera for a ray tracing scene
-class GRayTraceCamera : public GCamera
+class WRayTraceCamera : public WCamera
 {
 protected:
-	G3DReal m_focalDistance;
-	G3DReal m_lensDiameter;
+	W3DReal m_focalDistance;
+	W3DReal m_lensDiameter;
 	int m_maxDepth; // max number of ray bounces
 
 public:
-	GRayTraceCamera(int width, int height) : GCamera(width, height)
+	WRayTraceCamera(int width, int height) : WCamera(width, height)
 	{
 		m_focalDistance = 0;
 		m_lensDiameter = 0;
 		m_maxDepth = 4;
 	}
 
-	GRayTraceCamera(GDomNode* pNode);
+	WRayTraceCamera(WDomNode* pNode);
 
-	~GRayTraceCamera() override
+	~WRayTraceCamera() override
 	{
 	}
 
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 	void setMaxDepth(int val) { m_maxDepth = val; }
-	void setFocalDistance(G3DReal val) { m_focalDistance = val; }
-	void setLensDiameter(G3DReal val) { m_lensDiameter = val; }
+	void setFocalDistance(W3DReal val) { m_focalDistance = val; }
+	void setLensDiameter(W3DReal val) { m_lensDiameter = val; }
 	inline int maxDepth() { return m_maxDepth; }
-	inline G3DReal focalDistance() { return m_focalDistance; }
-	inline G3DReal lensDiameter() { return m_lensDiameter; }
+	inline W3DReal focalDistance() { return m_focalDistance; }
+	inline W3DReal lensDiameter() { return m_lensDiameter; }
 };
 
 
 
 /// Represents a scene that you can ray-trace
-class GRayTraceScene
+class WRayTraceScene
 {
 public:
 	enum RenderMode
@@ -183,33 +183,33 @@ public:
 	};
 
 protected:
-	GRayTraceColor m_backgroundColor;
-	GRayTraceColor m_ambientLight;
-	std::vector<GRayTraceMaterial*> m_materials;
-	std::vector<GRayTraceTriMesh*> m_meshes; // meshes reference a material
-	std::vector<GRayTraceObject*> m_objects; // triangles reference a mesh, spheres reference a material
-	std::vector<GRayTraceLight*> m_lights; // area lights reference an object
-	GRayTraceCamera* m_pCamera;
-	GRayTraceBoundingBoxBase* m_pBoundingBoxTree;
-	G3DReal m_toneMappingConstant;
+	WRayTraceColor m_backgroundColor;
+	WRayTraceColor m_ambientLight;
+	std::vector<WRayTraceMaterial*> m_materials;
+	std::vector<WRayTraceTriMesh*> m_meshes; // meshes reference a material
+	std::vector<WRayTraceObject*> m_objects; // triangles reference a mesh, spheres reference a material
+	std::vector<WRayTraceLight*> m_lights; // area lights reference an object
+	WRayTraceCamera* m_pCamera;
+	WRayTraceBoundingBoxBase* m_pBoundingBoxTree;
+	W3DReal m_toneMappingConstant;
 
 	/// Rendering values
 	RenderMode m_eMode;
-	GImage* m_pImage;
-	G3DReal* m_pDistanceMap;
+	WImage* m_pImage;
+	W3DReal* m_pDistanceMap;
 	int m_nY;
-	G3DVector m_pixSide;
-	G3DVector m_pixDX;
-	G3DVector m_pixDY;
-	GRand* m_pRand;
+	W3DVector m_pixSide;
+	W3DVector m_pixDX;
+	W3DVector m_pixDY;
+	WRand* m_pRand;
 
 public:
-	GRayTraceScene(GRand* pRand);
-	GRayTraceScene(GDomNode* pNode, GRand* pRand);
-	~GRayTraceScene();
+	WRayTraceScene(WRand* pRand);
+	WRayTraceScene(WDomNode* pNode, WRand* pRand);
+	~WRayTraceScene();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const;
+	WDomNode* serialize(WDom* pDoc) const;
 
 	/// Deletes all the materials and objects. (Leaves the lights
 	/// and camera as they are.)
@@ -217,7 +217,7 @@ public:
 
 	/// Swap all matrials, meshes and objects with the other scene. (Leaves
 	/// the camera and lights as they are.)
-	void swapObjects(GRayTraceScene* pOther);
+	void swapObjects(WRayTraceScene* pOther);
 
 	/// Specify whether to emphasize quality or speed
 	void setRenderMode(RenderMode eMode) { m_eMode = eMode; }
@@ -247,64 +247,64 @@ public:
 
 	/// Returns the rendered image (or partially rendered image). Returns NULL if Render()
 	/// or RenderBegin() has not been called yet.
-	GImage* image() { return m_pImage; }
+	WImage* image() { return m_pImage; }
 
-	GImage* releaseImage()
+	WImage* releaseImage()
 	{
-		GImage* pImage = m_pImage;
+		WImage* pImage = m_pImage;
 		m_pImage = nullptr;
 		return pImage;
 	}
 
-	void setBackgroundColor(G3DReal a, G3DReal r, G3DReal g, G3DReal b)
+	void setBackgroundColor(W3DReal a, W3DReal r, W3DReal g, W3DReal b)
 	{
 		m_backgroundColor.set(a, r, g, b);
 	}
 
-	void setAmbientLight(G3DReal r, G3DReal g, G3DReal b)
+	void setAmbientLight(W3DReal r, W3DReal g, W3DReal b)
 	{
 		m_ambientLight.set(1, r, g, b);
 	}
 
-	GRayTraceColor* ambientLight() { return &m_ambientLight; }
+	WRayTraceColor* ambientLight() { return &m_ambientLight; }
 
-	GRayTraceCamera* camera()
+	WRayTraceCamera* camera()
 	{
 		return m_pCamera;
 	}
 
-	GRand* rand() { return m_pRand; }
+	WRand* rand() { return m_pRand; }
 	void activateDistanceMap();
-	G3DReal* distanceMap() { return m_pDistanceMap; }
-	void addMaterial(GRayTraceMaterial* pMaterial);
-	void addMesh(GRayTraceTriMesh* pMesh);
-	void addObject(GRayTraceObject* pObject);
-	void addLight(GRayTraceLight* pLight);
+	W3DReal* distanceMap() { return m_pDistanceMap; }
+	void addMaterial(WRayTraceMaterial* pMaterial);
+	void addMesh(WRayTraceTriMesh* pMesh);
+	void addObject(WRayTraceObject* pObject);
+	void addLight(WRayTraceLight* pLight);
 	size_t materialCount();
 	size_t meshCount();
 	size_t objectCount();
 	size_t lightCount();
-	GRayTraceMaterial* material(size_t n);
-	GRayTraceTriMesh* mesh(size_t n);
-	GRayTraceObject* object(size_t n);
-	GRayTraceLight* light(size_t n);
-	std::vector<GRayTraceMaterial*>& materials() { return m_materials; }
-	GRayTraceColor* backgroundColor() { return &m_backgroundColor; }
-	GRayTraceBoundingBoxBase* boundingBoxTree() { return m_pBoundingBoxTree; }
-	void setToneMappingConstant(G3DReal c) { m_toneMappingConstant = c; }
-	size_t materialIndex(GRayTraceMaterial* pMaterial) const;
-	size_t meshIndex(GRayTraceTriMesh* pMesh) const;
-	size_t objectIndex(GRayTraceObject* pObj) const;
+	WRayTraceMaterial* material(size_t n);
+	WRayTraceTriMesh* mesh(size_t n);
+	WRayTraceObject* object(size_t n);
+	WRayTraceLight* light(size_t n);
+	std::vector<WRayTraceMaterial*>& materials() { return m_materials; }
+	WRayTraceColor* backgroundColor() { return &m_backgroundColor; }
+	WRayTraceBoundingBoxBase* boundingBoxTree() { return m_pBoundingBoxTree; }
+	void setToneMappingConstant(W3DReal c) { m_toneMappingConstant = c; }
+	size_t materialIndex(WRayTraceMaterial* pMaterial) const;
+	size_t meshIndex(WRayTraceTriMesh* pMesh) const;
+	size_t objectIndex(WRayTraceObject* pObj) const;
 
-	unsigned int renderPixel(GRayTraceRay* pRay, G3DVector* pScreenPoint, G3DReal* pDistance);
-	unsigned int renderPixelAntiAliassed(GRayTraceRay* pRay, G3DVector* pScreenPoint, G3DReal* pDistance);
-	unsigned int renderPixelPathTrace(GRayTraceRay* pRay, G3DVector* pScreenPoint);
+	unsigned int renderPixel(WRayTraceRay* pRay, W3DVector* pScreenPoint, W3DReal* pDistance);
+	unsigned int renderPixelAntiAliassed(WRayTraceRay* pRay, W3DVector* pScreenPoint, W3DReal* pDistance);
+	unsigned int renderPixelPathTrace(WRayTraceRay* pRay, W3DVector* pScreenPoint);
 };
 
 
 
 /// Represents a source of light in a ray-tracing scene
-class GRayTraceLight
+class WRayTraceLight
 {
 public:
 	enum LightType
@@ -315,84 +315,84 @@ public:
 	};
 
 protected:
-	GRayTraceColor m_color;
+	WRayTraceColor m_color;
 
 public:
-	GRayTraceLight(G3DReal r, G3DReal g, G3DReal b);
-	GRayTraceLight(GDomNode* pNode);
-	virtual ~GRayTraceLight();
+	WRayTraceLight(W3DReal r, W3DReal g, W3DReal b);
+	WRayTraceLight(WDomNode* pNode);
+	virtual ~WRayTraceLight();
 
-	static GRayTraceLight* deserialize(GDomNode* pNode, GRayTraceScene* pScene);
-	virtual GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const = 0;
+	static WRayTraceLight* deserialize(WDomNode* pNode, WRayTraceScene* pScene);
+	virtual WDomNode* serialize(WDom* pDoc, const WRayTraceScene* pScene) const = 0;
 	virtual LightType lightType() const = 0;
-	virtual void colorContribution(GRayTraceScene* pScene, GRayTraceRay* pRay, GRayTraceMaterial* pMaterial, bool bSpecular) = 0;
+	virtual void colorContribution(WRayTraceScene* pScene, WRayTraceRay* pRay, WRayTraceMaterial* pMaterial, bool bSpecular) = 0;
 
 protected:
-	GDomNode* baseDomNode(GDom* pDoc) const;
+	WDomNode* baseDomNode(WDom* pDoc) const;
 };
 
 
 
 
 /// Represents directional light in a ray-tracing scene
-class GRayTraceDirectionalLight : public GRayTraceLight
+class WRayTraceDirectionalLight : public WRayTraceLight
 {
 protected:
-	G3DVector m_direction;
-	G3DReal m_jitter;
+	W3DVector m_direction;
+	W3DReal m_jitter;
 
 public:
 	/// Specify the direction to the light, not the direction the light travels
-	GRayTraceDirectionalLight(G3DReal dx, G3DReal dy, G3DReal dz, G3DReal r, G3DReal g, G3DReal b, G3DReal jitter);
-	GRayTraceDirectionalLight(GDomNode* pNode);
-	~GRayTraceDirectionalLight() override;
+	WRayTraceDirectionalLight(W3DReal dx, W3DReal dy, W3DReal dz, W3DReal r, W3DReal g, W3DReal b, W3DReal jitter);
+	WRayTraceDirectionalLight(WDomNode* pNode);
+	~WRayTraceDirectionalLight() override;
 
-	GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const override;
+	WDomNode* serialize(WDom* pDoc, const WRayTraceScene* pScene) const override;
 	LightType lightType() const override { return Directional; }
-	void colorContribution(GRayTraceScene* pScene, GRayTraceRay* pRay, GRayTraceMaterial* pMaterial, bool bSpecular) override;
+	void colorContribution(WRayTraceScene* pScene, WRayTraceRay* pRay, WRayTraceMaterial* pMaterial, bool bSpecular) override;
 };
 
 
 
 /// Represents a point light in a ray-tracing scene
-class GRayTracePointLight : public GRayTraceLight
+class WRayTracePointLight : public WRayTraceLight
 {
 protected:
-	G3DVector m_position;
-	G3DReal m_jitter;
+	W3DVector m_position;
+	W3DReal m_jitter;
 
 public:
-	GRayTracePointLight(G3DReal x, G3DReal y, G3DReal z, G3DReal r, G3DReal g, G3DReal b, G3DReal jitter);
-	GRayTracePointLight(GDomNode* pNode);
-	~GRayTracePointLight() override;
+	WRayTracePointLight(W3DReal x, W3DReal y, W3DReal z, W3DReal r, W3DReal g, W3DReal b, W3DReal jitter);
+	WRayTracePointLight(WDomNode* pNode);
+	~WRayTracePointLight() override;
 
-	G3DVector* position() { return &m_position; }
-	GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const override;
+	W3DVector* position() { return &m_position; }
+	WDomNode* serialize(WDom* pDoc, const WRayTraceScene* pScene) const override;
 	LightType lightType() const override { return Point; }
-	void colorContribution(GRayTraceScene* pScene, GRayTraceRay* pRay, GRayTraceMaterial* pMaterial, bool bSpecular) override;
+	void colorContribution(WRayTraceScene* pScene, WRayTraceRay* pRay, WRayTraceMaterial* pMaterial, bool bSpecular) override;
 };
 
 
 
 /// Represents a light source with area
-class GRayTraceAreaLight : public GRayTraceLight
+class WRayTraceAreaLight : public WRayTraceLight
 {
 protected:
-	GRayTraceObject* m_pObject;
+	WRayTraceObject* m_pObject;
 
 public:
-	GRayTraceAreaLight(GRayTraceObject* pObject, G3DReal r, G3DReal g, G3DReal b);
-	GRayTraceAreaLight(GDomNode* pNode, GRayTraceScene* pScene);
-	~GRayTraceAreaLight() override;
+	WRayTraceAreaLight(WRayTraceObject* pObject, W3DReal r, W3DReal g, W3DReal b);
+	WRayTraceAreaLight(WDomNode* pNode, WRayTraceScene* pScene);
+	~WRayTraceAreaLight() override;
 
-	GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const override;
+	WDomNode* serialize(WDom* pDoc, const WRayTraceScene* pScene) const override;
 	LightType lightType() const override { return Area; }
-	void colorContribution(GRayTraceScene* pScene, GRayTraceRay* pRay, GRayTraceMaterial* pMaterial, bool bSpecular) override;
+	void colorContribution(WRayTraceScene* pScene, WRayTraceRay* pRay, WRayTraceMaterial* pMaterial, bool bSpecular) override;
 };
 
 
 
-class GRayTraceMaterial
+class WRayTraceMaterial
 {
 public:
 	enum MaterialType
@@ -412,87 +412,87 @@ public:
 		Color_Type_Count,
 	};
 
-	GRayTraceMaterial();
-	virtual ~GRayTraceMaterial();
+	WRayTraceMaterial();
+	virtual ~WRayTraceMaterial();
 
-	static GRayTraceMaterial* deserialize(GDomNode* pNode);
+	static WRayTraceMaterial* deserialize(WDomNode* pNode);
 
-	virtual GDomNode* serialize(GDom* pDoc) const = 0;
+	virtual WDomNode* serialize(WDom* pDoc) const = 0;
 	virtual MaterialType materialType() const = 0;
-	virtual GRayTraceColor* color(ColorType eType, GRayTraceRay* pRay) = 0;
-	virtual G3DReal indexOfRefraction() = 0;
-	virtual G3DReal specularExponent() = 0;
-	virtual G3DReal glossiness() = 0; // how much to jitter reflected rays
-	virtual G3DReal cloudiness() = 0; // how much to jitter transmitted rays
-	virtual bool isSame(GRayTraceMaterial* pThat) = 0;
-	virtual GRayTraceMaterial* copy() = 0;
+	virtual WRayTraceColor* color(ColorType eType, WRayTraceRay* pRay) = 0;
+	virtual W3DReal indexOfRefraction() = 0;
+	virtual W3DReal specularExponent() = 0;
+	virtual W3DReal glossiness() = 0; // how much to jitter reflected rays
+	virtual W3DReal cloudiness() = 0; // how much to jitter transmitted rays
+	virtual bool isSame(WRayTraceMaterial* pThat) = 0;
+	virtual WRayTraceMaterial* copy() = 0;
 
-	void computeColor(GRayTraceScene* pScene, GRayTraceRay* pRay, bool bAmbient, bool bSpecular);
+	void computeColor(WRayTraceScene* pScene, WRayTraceRay* pRay, bool bAmbient, bool bSpecular);
 };
 
 
 /// Represents the material of which an object is made in a ray-tracing scene
-class GRayTracePhysicalMaterial : public GRayTraceMaterial
+class WRayTracePhysicalMaterial : public WRayTraceMaterial
 {
 protected:
-	GRayTraceColor m_colors[Color_Type_Count];
-	G3DReal m_indexOfRefraction;
-	G3DReal m_specularExponent;
-	G3DReal m_glossiness;
-	G3DReal m_cloudiness;
+	WRayTraceColor m_colors[Color_Type_Count];
+	W3DReal m_indexOfRefraction;
+	W3DReal m_specularExponent;
+	W3DReal m_glossiness;
+	W3DReal m_cloudiness;
 
 public:
-	GRayTracePhysicalMaterial();
-	GRayTracePhysicalMaterial(GDomNode* pNode);
-	~GRayTracePhysicalMaterial() override;
+	WRayTracePhysicalMaterial();
+	WRayTracePhysicalMaterial(WDomNode* pNode);
+	~WRayTracePhysicalMaterial() override;
 
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 	MaterialType materialType() const override { return Physical; }
 
 	/// Ignores pRay and returns the color of the specified type. (pRay is
 	/// used by image-texture materials to determine which pixel applies.)
-	GRayTraceColor* color(ColorType eType, GRayTraceRay* pRay) override;
+	WRayTraceColor* color(ColorType eType, WRayTraceRay* pRay) override;
 
-	G3DReal indexOfRefraction() override { return m_indexOfRefraction; }
-	G3DReal specularExponent() override { return m_specularExponent; }
-	G3DReal glossiness() override { return m_glossiness; }
-	G3DReal cloudiness() override { return m_cloudiness; }
-	bool isSame(GRayTraceMaterial* pThat) override;
-	GRayTraceMaterial* copy() override;
+	W3DReal indexOfRefraction() override { return m_indexOfRefraction; }
+	W3DReal specularExponent() override { return m_specularExponent; }
+	W3DReal glossiness() override { return m_glossiness; }
+	W3DReal cloudiness() override { return m_cloudiness; }
+	bool isSame(WRayTraceMaterial* pThat) override;
+	WRayTraceMaterial* copy() override;
 
-	void setColor(ColorType eType, G3DReal r, G3DReal g, G3DReal b);
-	void setColor(ColorType eType, GRayTraceColor* pCol);
-	void setIndexOfRefraction(G3DReal val) { m_indexOfRefraction = val; }
-	void setSpecularExponent(G3DReal val) { m_specularExponent = val; }
-	void setGlossiness(G3DReal val) { m_glossiness = val; }
-	void setCloudiness(G3DReal val) { m_cloudiness = val; }
+	void setColor(ColorType eType, W3DReal r, W3DReal g, W3DReal b);
+	void setColor(ColorType eType, WRayTraceColor* pCol);
+	void setIndexOfRefraction(W3DReal val) { m_indexOfRefraction = val; }
+	void setSpecularExponent(W3DReal val) { m_specularExponent = val; }
+	void setGlossiness(W3DReal val) { m_glossiness = val; }
+	void setCloudiness(W3DReal val) { m_cloudiness = val; }
 };
 
 
-class GRayTraceImageTexture : public GRayTraceMaterial
+class WRayTraceImageTexture : public WRayTraceMaterial
 {
 protected:
-	GImage* m_pTextureImage;
+	WImage* m_pTextureImage;
 	bool m_bDeleteTextureImage;
-	GRayTraceColor m_col;
+	WRayTraceColor m_col;
 
 public:
-	GRayTraceImageTexture();
-	GRayTraceImageTexture(GDomNode* pNode);
-	~GRayTraceImageTexture() override;
+	WRayTraceImageTexture();
+	WRayTraceImageTexture(WDomNode* pNode);
+	~WRayTraceImageTexture() override;
 
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 	MaterialType materialType() const override { return Image; }
-	GRayTraceColor* color(ColorType eType, GRayTraceRay* pRay) override;
-	G3DReal indexOfRefraction() override { return 1; }
-	G3DReal specularExponent() override { return 1; }
-	G3DReal glossiness() override { return 0; }
-	G3DReal cloudiness() override { return 0; }
-	bool isSame(GRayTraceMaterial* pThat) override;
-	GRayTraceMaterial* copy() override;
+	WRayTraceColor* color(ColorType eType, WRayTraceRay* pRay) override;
+	W3DReal indexOfRefraction() override { return 1; }
+	W3DReal specularExponent() override { return 1; }
+	W3DReal glossiness() override { return 0; }
+	W3DReal cloudiness() override { return 0; }
+	bool isSame(WRayTraceMaterial* pThat) override;
+	WRayTraceMaterial* copy() override;
 
-	void setTextureImage(GImage* pImage, bool bDeleteImage);
-	GImage* textureImage() { return m_pTextureImage; }
+	void setTextureImage(WImage* pImage, bool bDeleteImage);
+	WImage* textureImage() { return m_pTextureImage; }
 };
 
 
@@ -501,36 +501,36 @@ public:
 #define MAX_OBJECTS_PER_BOUNDING_BOX 5
 
 /// A class used for making ray-tracing faster
-class GRayTraceBoundingBoxBase
+class WRayTraceBoundingBoxBase
 {
 public:
-	G3DVector m_min;
-	G3DVector m_max;
+	W3DVector m_min;
+	W3DVector m_max;
 
 public:
-	GRayTraceBoundingBoxBase() {}
-	virtual ~GRayTraceBoundingBoxBase() {}
+	WRayTraceBoundingBoxBase() {}
+	virtual ~WRayTraceBoundingBoxBase() {}
 
-	static GRayTraceBoundingBoxBase* makeBoundingBoxTree(GRayTraceScene* pScene);
+	static WRayTraceBoundingBoxBase* makeBoundingBoxTree(WRayTraceScene* pScene);
 	virtual bool isLeaf() = 0;
-	virtual GRayTraceObject* closestIntersection(G3DVector* pRayOrigin, G3DVector* pDirectionVector, G3DReal* pOutDistance) = 0;
+	virtual WRayTraceObject* closestIntersection(W3DVector* pRayOrigin, W3DVector* pDirectionVector, W3DReal* pOutDistance) = 0;
 
 protected:
-	static GRayTraceBoundingBoxBase* BuildTree(std::vector<GRayTraceObject*>& objects);
-	bool DoesRayHitBox(G3DVector* pRayOrigin, G3DVector* pDirectionVector);
+	static WRayTraceBoundingBoxBase* BuildTree(std::vector<WRayTraceObject*>& objects);
+	bool DoesRayHitBox(W3DVector* pRayOrigin, W3DVector* pDirectionVector);
 };
 
 
 /// A class used for making ray-tracing faster
-class GRayTraceBoundingBoxInterior : public GRayTraceBoundingBoxBase
+class WRayTraceBoundingBoxInterior : public WRayTraceBoundingBoxBase
 {
 protected:
-	GRayTraceBoundingBoxBase* m_pLesser;
-	GRayTraceBoundingBoxBase* m_pGreater;
+	WRayTraceBoundingBoxBase* m_pLesser;
+	WRayTraceBoundingBoxBase* m_pGreater;
 
 public:
-	GRayTraceBoundingBoxInterior(GRayTraceBoundingBoxBase* pLesser, GRayTraceBoundingBoxBase* pGreater)
-	: GRayTraceBoundingBoxBase()
+	WRayTraceBoundingBoxInterior(WRayTraceBoundingBoxBase* pLesser, WRayTraceBoundingBoxBase* pGreater)
+	: WRayTraceBoundingBoxBase()
 	{
 		m_pLesser = pLesser;
 		m_pGreater = pGreater;
@@ -542,74 +542,74 @@ public:
 		m_max.m_vals[2] = std::max(pLesser->m_max.m_vals[2], pGreater->m_max.m_vals[2]);
 	}
 
-	~GRayTraceBoundingBoxInterior() override
+	~WRayTraceBoundingBoxInterior() override
 	{
 		delete(m_pLesser);
 		delete(m_pGreater);
 	}
 
 	bool isLeaf() override { return false; };
-	GRayTraceObject* closestIntersection(G3DVector* pRayOrigin, G3DVector* pDirectionVector, G3DReal* pOutDistance) override;
+	WRayTraceObject* closestIntersection(W3DVector* pRayOrigin, W3DVector* pDirectionVector, W3DReal* pOutDistance) override;
 };
 
 
 /// A class used for making ray-tracing faster
-class GRayTraceBoundingBoxLeaf : public GRayTraceBoundingBoxBase
+class WRayTraceBoundingBoxLeaf : public WRayTraceBoundingBoxBase
 {
 protected:
 	int m_nObjectCount;
-	GRayTraceObject** m_pObjects;
+	WRayTraceObject** m_pObjects;
 
 public:
-	GRayTraceBoundingBoxLeaf(std::vector<GRayTraceObject*>& objects);
-	~GRayTraceBoundingBoxLeaf() override;
+	WRayTraceBoundingBoxLeaf(std::vector<WRayTraceObject*>& objects);
+	~WRayTraceBoundingBoxLeaf() override;
 
 	bool isLeaf() override { return true; }
-	GRayTraceObject* closestIntersection(G3DVector* pRayOrigin, G3DVector* pDirectionVector, G3DReal* pOutDistance) override;
+	WRayTraceObject* closestIntersection(W3DVector* pRayOrigin, W3DVector* pDirectionVector, W3DReal* pOutDistance) override;
 };
 
 
 
 /// Represents a triangle mesh in a ray-tracing scene
-class GRayTraceTriMesh
+class WRayTraceTriMesh
 {
 protected:
-	GRayTraceMaterial* m_pMaterial;
-	std::vector<G3DVector> m_points;
+	WRayTraceMaterial* m_pMaterial;
+	std::vector<W3DVector> m_points;
 	std::vector<size_t> m_triangles;
-	G3DVector* m_pNormals;
-	G3DReal* m_pTextureCoords;
+	W3DVector* m_pNormals;
+	W3DReal* m_pTextureCoords;
 	bool m_bCulling;
 
 public:
-	GRayTraceTriMesh(GRayTraceMaterial* pMaterial);
-	GRayTraceTriMesh(GDomNode* pNode, GRayTraceScene* pScene);
-	~GRayTraceTriMesh();
+	WRayTraceTriMesh(WRayTraceMaterial* pMaterial);
+	WRayTraceTriMesh(WDomNode* pNode, WRayTraceScene* pScene);
+	~WRayTraceTriMesh();
 
-	GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const;
+	WDomNode* serialize(WDom* pDoc, const WRayTraceScene* pScene) const;
 
-	static GRayTraceTriMesh* makeCylinder(GRayTraceMaterial* pMaterial, G3DVector* pCenter1, G3DVector* pCenter2, G3DReal radius, size_t nSides, bool bEndCaps);
+	static WRayTraceTriMesh* makeCylinder(WRayTraceMaterial* pMaterial, W3DVector* pCenter1, W3DVector* pCenter2, W3DReal radius, size_t nSides, bool bEndCaps);
 
 	/// The vertices must go around the surface. Don't cut across corners.
-	static GRayTraceTriMesh* makeQuadSurface(GRayTraceMaterial* pMaterial, G3DVector* p1, G3DVector* p2, G3DVector* p3, G3DVector* p4);
+	static WRayTraceTriMesh* makeQuadSurface(WRayTraceMaterial* pMaterial, W3DVector* p1, W3DVector* p2, W3DVector* p3, W3DVector* p4);
 
-	static GRayTraceTriMesh* makeSingleTriangle(GRayTraceMaterial* pMaterial, G3DVector* p1, G3DVector* p2, G3DVector* p3);
+	static WRayTraceTriMesh* makeSingleTriangle(WRayTraceMaterial* pMaterial, W3DVector* p1, W3DVector* p2, W3DVector* p3);
 
-	G3DReal rayDistanceToTriangle(size_t nTriangle, G3DVector* pRayOrigin, G3DVector* pRayDirection);
-	void normalVector(GRayTraceRay* pRay, size_t nIndex);
+	W3DReal rayDistanceToTriangle(size_t nTriangle, W3DVector* pRayOrigin, W3DVector* pRayDirection);
+	void normalVector(WRayTraceRay* pRay, size_t nIndex);
 	bool isCulled() { return m_bCulling || m_pNormals; }
 	void activateCulling() { m_bCulling = true; }
-	void addPoint(const G3DVector& point);
+	void addPoint(const W3DVector& point);
 	void addTriangle(size_t v1, size_t v2, size_t v3);
-	void setNormal(size_t nIndex, G3DVector* pNormal);
-	void setTextureCoord(size_t nIndex, G3DReal x, G3DReal y);
-	void center(G3DVector* pOutPoint, size_t nIndex);
+	void setNormal(size_t nIndex, W3DVector* pNormal);
+	void setTextureCoord(size_t nIndex, W3DReal x, W3DReal y);
+	void center(W3DVector* pOutPoint, size_t nIndex);
 	size_t pointCount() { return m_points.size(); }
 	size_t triangleCount() { return m_triangles.size() / 3; }
 	void triangle(size_t index, size_t* v1, size_t* v2, size_t* v3);
-	GRayTraceMaterial* material() { return m_pMaterial; }
-	void adjustBoundingBox(size_t nIndex, G3DVector* pMin, G3DVector* pMax);
-	G3DVector* vertex(size_t nIndex, size_t nVertex);
+	WRayTraceMaterial* material() { return m_pMaterial; }
+	void adjustBoundingBox(size_t nIndex, W3DVector* pMin, W3DVector* pMax);
+	W3DVector* vertex(size_t nIndex, size_t nVertex);
 
 	/// Automatically compute phong normals at the vertices to make the object appear smooth
 	void computePhongNormals();
@@ -629,16 +629,16 @@ protected:
 	/// Sets the facing (+1 same, -1 flipped) of triangle i's unvisited
 	/// neighbors from its own and queues them; false if a visited neighbor
 	/// disagrees. Part of orientTriangles.
-	bool computeTriangleNeighborSides(std::deque<size_t>& queue, GNodeHashTable& edges, std::vector<int>& faces, size_t i);
+	bool computeTriangleNeighborSides(std::deque<size_t>& queue, WNodeHashTable& edges, std::vector<int>& faces, size_t i);
 
-	bool isPointWithinPlanarPolygon(G3DVector* pPoint, G3DVector** ppVertices, size_t nVertices);
+	bool isPointWithinPlanarPolygon(W3DVector* pPoint, W3DVector** ppVertices, size_t nVertices);
 };
 
 
 
 
 /// An object in a ray-tracing scene
-class GRayTraceObject
+class WRayTraceObject
 {
 public:
 	enum ObjectType
@@ -647,59 +647,59 @@ public:
 		Triangle,
 	};
 
-	GRayTraceObject()
+	WRayTraceObject()
 	{
 	}
 
-	virtual ~GRayTraceObject()
+	virtual ~WRayTraceObject()
 	{
 	}
 
-	static GRayTraceObject* deserialize(GDomNode* pNode, GRayTraceScene* pScene);
-	virtual GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const = 0;
+	static WRayTraceObject* deserialize(WDomNode* pNode, WRayTraceScene* pScene);
+	virtual WDomNode* serialize(WDom* pDoc, const WRayTraceScene* pScene) const = 0;
 	virtual ObjectType type() const = 0;
-	virtual GRayTraceMaterial* material() = 0;
-	virtual G3DReal rayDistance(G3DVector* pRayOrigin, G3DVector* pRayDirection) = 0;
-	virtual void normalVector(GRayTraceRay* pRay) = 0;
+	virtual WRayTraceMaterial* material() = 0;
+	virtual W3DReal rayDistance(W3DVector* pRayOrigin, W3DVector* pRayDirection) = 0;
+	virtual void normalVector(WRayTraceRay* pRay) = 0;
 	virtual bool isCulled() = 0;
-	virtual void center(G3DVector* pOutPoint) = 0;
-	virtual void adjustBoundingBox(G3DVector* pMin, G3DVector* pMax) = 0;
-	virtual void drawWireFrame(GCamera* pCamera, GImage* pImage) = 0;
+	virtual void center(W3DVector* pOutPoint) = 0;
+	virtual void adjustBoundingBox(W3DVector* pMin, W3DVector* pMax) = 0;
+	virtual void drawWireFrame(WCamera* pCamera, WImage* pImage) = 0;
 };
 
 
 
 /// A sphere in a ray-tracing scene
-class GRayTraceSphere : public GRayTraceObject
+class WRayTraceSphere : public WRayTraceObject
 {
 protected:
-	GRayTraceMaterial* m_pMaterial;
-	G3DVector m_center;
-	G3DReal m_radius;
+	WRayTraceMaterial* m_pMaterial;
+	W3DVector m_center;
+	W3DReal m_radius;
 
 public:
-	GRayTraceSphere(GRayTraceMaterial* pMaterial, G3DReal x, G3DReal y, G3DReal z, G3DReal rad)
-	: GRayTraceObject(), m_pMaterial(pMaterial), m_center(x, y, z), m_radius(rad)
+	WRayTraceSphere(WRayTraceMaterial* pMaterial, W3DReal x, W3DReal y, W3DReal z, W3DReal rad)
+	: WRayTraceObject(), m_pMaterial(pMaterial), m_center(x, y, z), m_radius(rad)
 	{
 	}
 
-	GRayTraceSphere(GDomNode* pNode, GRayTraceScene* pScene);
+	WRayTraceSphere(WDomNode* pNode, WRayTraceScene* pScene);
 
-	~GRayTraceSphere() override
+	~WRayTraceSphere() override
 	{
 	}
 
-	GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const override;
+	WDomNode* serialize(WDom* pDoc, const WRayTraceScene* pScene) const override;
 	ObjectType type() const override { return Sphere; }
-	GRayTraceMaterial* material() override { return m_pMaterial; }
-	G3DReal rayDistance(G3DVector* pRayOrigin, G3DVector* pRayDirection) override;
-	void normalVector(GRayTraceRay* pRay) override;
+	WRayTraceMaterial* material() override { return m_pMaterial; }
+	W3DReal rayDistance(W3DVector* pRayOrigin, W3DVector* pRayDirection) override;
+	void normalVector(WRayTraceRay* pRay) override;
 	bool isCulled() override { return false; }
-	void center(G3DVector* pOutPoint) override;
-	void adjustBoundingBox(G3DVector* pMin, G3DVector* pMax) override;
-	void drawWireFrame(GCamera* pCamera, GImage* pImage) override;
-	G3DVector* center() { return &m_center; }
-	G3DReal radius() { return m_radius; }
+	void center(W3DVector* pOutPoint) override;
+	void adjustBoundingBox(W3DVector* pMin, W3DVector* pMax) override;
+	void drawWireFrame(WCamera* pCamera, WImage* pImage) override;
+	W3DVector* center() { return &m_center; }
+	W3DReal radius() { return m_radius; }
 };
 
 
@@ -707,107 +707,107 @@ public:
 
 
 /// A single triangle in a ray-tracing scene
-class GRayTraceTriangle : public GRayTraceObject
+class WRayTraceTriangle : public WRayTraceObject
 {
 protected:
-	GRayTraceTriMesh* m_pMesh;
+	WRayTraceTriMesh* m_pMesh;
 	size_t m_nIndex;
 
 public:
-	GRayTraceTriangle(GRayTraceTriMesh* pMesh, size_t nIndex)
-	: GRayTraceObject(), m_pMesh(pMesh), m_nIndex(nIndex)
+	WRayTraceTriangle(WRayTraceTriMesh* pMesh, size_t nIndex)
+	: WRayTraceObject(), m_pMesh(pMesh), m_nIndex(nIndex)
 	{
 	}
 
-	GRayTraceTriangle(GDomNode* pNode, GRayTraceScene* pScene);
+	WRayTraceTriangle(WDomNode* pNode, WRayTraceScene* pScene);
 
-	~GRayTraceTriangle() override
+	~WRayTraceTriangle() override
 	{
 	}
 
-	GDomNode* serialize(GDom* pDoc, const GRayTraceScene* pScene) const override;
+	WDomNode* serialize(WDom* pDoc, const WRayTraceScene* pScene) const override;
 	ObjectType type() const override { return Triangle; }
-	G3DReal rayDistance(G3DVector* pRayOrigin, G3DVector* pRayDirection) override;
-	void normalVector(GRayTraceRay* pRay) override;
+	W3DReal rayDistance(W3DVector* pRayOrigin, W3DVector* pRayDirection) override;
+	void normalVector(WRayTraceRay* pRay) override;
 	bool isCulled() override { return m_pMesh->isCulled(); }
-	GRayTraceMaterial* material() override { return m_pMesh->material(); }
-	void center(G3DVector* pOutPoint) override;
-	void adjustBoundingBox(G3DVector* pMin, G3DVector* pMax) override;
-	void drawWireFrame(GCamera* pCamera, GImage* pImage) override;
-	G3DVector* vertex(int nVertex);
+	WRayTraceMaterial* material() override { return m_pMesh->material(); }
+	void center(W3DVector* pOutPoint) override;
+	void adjustBoundingBox(W3DVector* pMin, W3DVector* pMax) override;
+	void drawWireFrame(WCamera* pCamera, WImage* pImage) override;
+	W3DVector* vertex(int nVertex);
 };
 
 
 
-class GTriMeshBuilder
+class WTriMeshBuilder
 {
 protected:
-	GRayTraceMaterial* m_pMaterial;
-	std::vector<G3DVector> m_points;
+	WRayTraceMaterial* m_pMaterial;
+	std::vector<W3DVector> m_points;
 	std::vector<size_t> m_indexes;
-	G3DReal m_lineWidth;
+	W3DReal m_lineWidth;
 
 public:
-	GTriMeshBuilder(GRayTraceMaterial* pMaterial);
-	~GTriMeshBuilder();
+	WTriMeshBuilder(WRayTraceMaterial* pMaterial);
+	~WTriMeshBuilder();
 
 	/// Add a triangle to the mesh
-	void add(const G3DVector& a, const G3DVector& b, const G3DVector& c);
+	void add(const W3DVector& a, const W3DVector& b, const W3DVector& c);
 
 	/// Return the mesh (and clear the internal queues)
-	GRayTraceTriMesh* mesh();
+	WRayTraceTriMesh* mesh();
 
 protected:
 	/// Adds a point to the internal set if it is not already there.
 	/// Returns its index.
-	size_t addPoint(const G3DVector& v);
+	size_t addPoint(const W3DVector& v);
 };
 
 
 
 
-class G3dLetterMaker
+class W3dLetterMaker
 {
 protected:
-	GTriMeshBuilder m_builder;
-	G3DVector m_pos;
-	G3DMatrix m_basis;
-	G3DReal m_lineWidth;
+	WTriMeshBuilder m_builder;
+	W3DVector m_pos;
+	W3DMatrix m_basis;
+	W3DReal m_lineWidth;
 	size_t m_circleSegments;
 	double m_spaceWidth;
 
 public:
-	G3dLetterMaker(GRayTraceMaterial* pMaterial);
-	~G3dLetterMaker();
+	W3dLetterMaker(WRayTraceMaterial* pMaterial);
+	~W3dLetterMaker();
 
-	GRayTraceTriMesh* makeLetter(char c);
-	GRayTraceTriMesh* specialChar(const char* szName);
-	void writeString(GRayTraceScene* pScene, const char* szString);
-	void setLineWidth(G3DReal lw) { m_lineWidth = lw; }
-	void move(G3DReal dx, G3DReal dy = 0.0, G3DReal dz = 0.0);
-	void move(G3DVector& vec);
-	void scale(G3DReal width, G3DReal height, G3DReal depth);
-	void rotate(G3DReal yaw, G3DReal pitch, G3DReal roll);
+	WRayTraceTriMesh* makeLetter(char c);
+	WRayTraceTriMesh* specialChar(const char* szName);
+	void writeString(WRayTraceScene* pScene, const char* szString);
+	void setLineWidth(W3DReal lw) { m_lineWidth = lw; }
+	void move(W3DReal dx, W3DReal dy = 0.0, W3DReal dz = 0.0);
+	void move(W3DVector& vec);
+	void scale(W3DReal width, W3DReal height, W3DReal depth);
+	void rotate(W3DReal yaw, W3DReal pitch, W3DReal roll);
 	double letterWidth(char c);
 	double measureWidth(const char* szPhrase);
-	G3DVector& pos() { return m_pos; }
+	W3DVector& pos() { return m_pos; }
 
 protected:
-	void addQuad(G3DReal x1, G3DReal y1, G3DReal x2, G3DReal y2, G3DReal x3, G3DReal y3, G3DReal x4, G3DReal y4);
-	void set(G3DVector* pBack, G3DVector* pFront, G3DReal x, G3DReal y);
+	void addQuad(W3DReal x1, W3DReal y1, W3DReal x2, W3DReal y2, W3DReal x3, W3DReal y3, W3DReal x4, W3DReal y4);
+	void set(W3DVector* pBack, W3DVector* pFront, W3DReal x, W3DReal y);
 
 	/// Adds a vertical or slanted line
-	void vbar(G3DReal x1, G3DReal y1, G3DReal x2, G3DReal y2, G3DReal width = 1.0);
+	void vbar(W3DReal x1, W3DReal y1, W3DReal x2, W3DReal y2, W3DReal width = 1.0);
 
 	/// Adds a horizontal line
-	void hbar(G3DReal x, G3DReal y, G3DReal w, G3DReal height = 1.0);
+	void hbar(W3DReal x, W3DReal y, W3DReal w, W3DReal height = 1.0);
 
 	/// Adds a curve. x and y specify the position where 0 radians does (or would) occur.
 	/// w is the width of the full circly. hh is the height of half the circle.
 	/// from and to specifies the arc segment in radians divided by PI.
-	void curve(G3DReal x, G3DReal y, G3DReal w, G3DReal hh, double fromRads, double toRads);
+	void curve(W3DReal x, W3DReal y, W3DReal w, W3DReal hh, double fromRads, double toRads);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GRAYTRACE_H__

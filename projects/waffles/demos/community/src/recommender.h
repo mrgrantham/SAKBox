@@ -20,26 +20,26 @@
 #define RECOMMENDER
 
 
-#include <WClasses/GBitTable.h>
-#include <WClasses/GDynamicPage.h>
-#include <WClasses/GVec.h>
-#include <WClasses/GNeuralNet.h>
+#include <WClasses/WBitTable.h>
+#include <WClasses/WDynamicPage.h>
+#include <WClasses/WVec.h>
+#include <WClasses/WNeuralNet.h>
 #include <string>
 #include <vector>
 #include <map>
 
 
-namespace GClasses
+namespace WClasses
 {
-class GRand;
-class GDom;
-class GDomNode;
+class WRand;
+class WDom;
+class WDomNode;
 }
 class UserRatings;
 class Item;
 class Account;
 class Server;
-using namespace GClasses;
+using namespace WClasses;
 
 
 #define USER_PROFILE_SIZE 6
@@ -57,20 +57,20 @@ class User
 {
 protected:
 	std::string m_username;
-	GVec m_personality; // This vector represents the user with respect to our model. That is, given the user's personality vector, our model should be able to predict the ratings of this user with some accuracy.
+	WVec m_personality; // This vector represents the user with respect to our model. That is, given the user's personality vector, our model should be able to predict the ratings of this user with some accuracy.
 
 public:
 	std::map<size_t, float> m_map; // Map from item id to rating
 	std::vector<std::pair<size_t, float> > m_vec; // List of item id and rating pairs
 
-	User(std::string username, GRand& rand);
+	User(std::string username, WRand& rand);
 	~User();
 
-	GVec& personality() { return m_personality; }
+	WVec& personality() { return m_personality; }
 
-	static User* fromDom(GDomNode* pNode, GRand& rand);
+	static User* fromDom(WDomNode* pNode, WRand& rand);
 
-	GDomNode* toDom(GDom* pDoc);
+	WDomNode* toDom(WDom* pDoc);
 
 	const char* username() { return m_username.c_str(); }
 	bool getRating(size_t itemId, float* pOutRating);
@@ -89,19 +89,19 @@ protected:
 	std::string m_right;
 	std::string m_submitter;
 	time_t m_date; // the date this item was submitted
-	GVec m_weights; // used to predict the rating from a user's personality vector
+	WVec m_weights; // used to predict the rating from a user's personality vector
 
 public:
-	Item(const char* szLeft, const char* szRight, const char* szSubmitter, time_t date, GRand* pRand);
-	Item(GDomNode* pNode, GRand* pRand);
+	Item(const char* szLeft, const char* szRight, const char* szSubmitter, time_t date, WRand* pRand);
+	Item(WDomNode* pNode, WRand* pRand);
 
 	const char* left() { return m_left.c_str(); }
 	void setLeft(const char* str) { m_left = str; }
 	const char* right() { return m_right.c_str(); }
 	void setRight(const char* str) { m_right = str; }
-	GVec& weights() { return m_weights; }
+	WVec& weights() { return m_weights; }
 
-	GDomNode* toDom(GDom* pDoc);
+	WDomNode* toDom(WDom* pDoc);
 };
 
 
@@ -111,8 +111,8 @@ public:
 class Topic
 {
 public:
-	GDomNode* toDom(GDom* pDoc);
-	static Topic* fromDom(GDomNode* pNode, GRand* pRand);
+	WDomNode* toDom(WDom* pDoc);
+	static Topic* fromDom(WDomNode* pNode, WRand* pRand);
 };
 
 
@@ -123,20 +123,20 @@ public:
 class NeuralRecommender
 {
 protected:
-	GRand& rand;
-	GVec input_buf;
-	GNeuralNet nn;
+	WRand& rand;
+	WVec input_buf;
+	WNeuralNet nn;
 	std::vector<User*> m_users;
 	std::map<std::string, User*> m_userMap;
 	std::vector<Item*> m_items;
 
 public:
-	NeuralRecommender(GRand& _rand);
+	NeuralRecommender(WRand& _rand);
 	virtual ~NeuralRecommender();
 
 	void flush();
-	GDomNode* serialize(GDom* pDoc);
-	void deserialize(const GDomNode* pNode);
+	WDomNode* serialize(WDom* pDoc);
+	void deserialize(const WDomNode* pNode);
 	void refine(size_t iters);
 	void refineUserOnly(User* pUser, size_t iters);
 	double predictRating(User& user, Item& item);
@@ -148,7 +148,7 @@ public:
 	// Takes ownership of pUser
 	void addUser(User* pUser);
 
-	void addItem(const char* szLeft, const char* szRight, const char* szUsername, time_t date, GRand* pRand);
+	void addItem(const char* szLeft, const char* szRight, const char* szUsername, time_t date, WRand* pRand);
 	void addItem(const char* szLeft, const char* szRight, const char* szUsername);
 	Item& item(size_t id);
 	void deleteItemAndSwapInLast(size_t itemId);
@@ -163,36 +163,36 @@ class Submit
 public:
 
 	/// Display the FAQ page
-	static void pageFaq(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageFaq(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Generates a page of slider bars for users to take a survey
-	static void pageSurvey(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageSurvey(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Generates a page that lets users submit new survey questions
-	static void pageNewSurveyItem(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageNewSurveyItem(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Generates a page for submitting responses
-	static void pageRespond(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageRespond(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Generates a page that summarizes survey responses
-	static void pageStats(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageStats(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Generates an SVG plot of users
-	static void plotUsers(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void plotUsers(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Generates an SVG plot of items
-	static void plotItems(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void plotItems(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// A page that lets users update their survey responses
-	static void pageUpdateResponses(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageUpdateResponses(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 protected:
 	static void makeSliderScript(std::ostream& response);
 	static void makeUrlSlider(Server* pServer, Account* pAccount, size_t itemId, std::ostream& response);
 	static size_t divideAccounts(Server* pServer, User** pUsers, size_t accCount, size_t itm);
-	static void makeTree(Server* pServer, GBitTable& bt, User** pUsers, size_t accCount, std::ostream& response, std::vector<char>& prefix, int type);
-	static void makeItemBody(GDynamicPageSession* pSession, std::ostream& response, size_t itemId, Item& item, User** pUsers, size_t accCount);
-	static void makeUserBody(GDynamicPageSession* pSession, std::ostream& response, User* pA, User* pB, NeuralRecommender& rec);
+	static void makeTree(Server* pServer, WBitTable& bt, User** pUsers, size_t accCount, std::ostream& response, std::vector<char>& prefix, int type);
+	static void makeItemBody(WDynamicPageSession* pSession, std::ostream& response, size_t itemId, Item& item, User** pUsers, size_t accCount);
+	static void makeUserBody(WDynamicPageSession* pSession, std::ostream& response, User* pA, User* pB, NeuralRecommender& rec);
 };
 
 

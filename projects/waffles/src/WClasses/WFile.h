@@ -27,10 +27,10 @@
 #include <map>
 #include <fstream>
 
-namespace GClasses
+namespace WClasses
 {
 
-/// Helper struct to hold the results from GFile::ParsePath
+/// Helper struct to hold the results from WFile::ParsePath
 struct PathData
 {
 	int dirStart;
@@ -41,7 +41,7 @@ struct PathData
 
 
 /// Contains some useful routines for manipulating files
-class GFile
+class WFile
 {
 public:
 	/// returns true if the file exists
@@ -142,7 +142,7 @@ public:
 
 
 // A simple memory-cache for files that can be loaded as strings.
-class GFileCache
+class WFileCache
 {
 public:
 	std::map<std::string, std::string> m_filename_to_page;
@@ -155,7 +155,7 @@ public:
 
 
 /// This implements a simple compression/decompression algorithm
-class GCompressor
+class WCompressor
 {
 public:
 	/// Compress pIn. You are responsible to delete[] pOut. The new length is guaranteed to be at
@@ -171,6 +171,6 @@ public:
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GFILE_H__

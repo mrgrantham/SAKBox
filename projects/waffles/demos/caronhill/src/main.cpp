@@ -18,8 +18,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
 #include "CarOnHill.h"
 #ifdef WINDOWS
 #include <direct.h>
@@ -28,7 +28,7 @@
 #include <iostream>
 #include "fmt/core.h"
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 using std::cout;
 
@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
 {
 	whereAmI();
 	char szAppPath[300];
-	GApp::appPath(szAppPath, 300, true);
+	WApp::appPath(szAppPath, 300, true);
 	// #ifdef WINDOWS
 	// 	if(_chdir(szAppPath) != 0)
 	// #else

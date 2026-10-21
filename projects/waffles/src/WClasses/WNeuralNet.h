@@ -19,20 +19,20 @@
 #ifndef __GNEURALNET_H__
 #define __GNEURALNET_H__
 
-#include "GLearner.h"
-#include "GOptimizer.h"
-#include "GVec.h"
+#include "WLearner.h"
+#include "WOptimizer.h"
+#include "WVec.h"
 #include <vector>
-#include "GDom.h"
+#include "WDom.h"
 #include <cmath>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GContextLayer;
-class GContextNeuralNet;
-class GContextRecurrent;
-class GLayer;
+class WContextLayer;
+class WContextNeuralNet;
+class WContextRecurrent;
+class WLayer;
 
 
 
@@ -44,7 +44,7 @@ class GLayer;
 
 
 /// Represents a block of network units (artificial neurons) in a neural network.
-class GBlock
+class WBlock
 {
 protected:
 	size_t inputCount;
@@ -52,16 +52,16 @@ protected:
 	size_t m_inPos;
 
 public:
-	GVec outputBuf;
-	GVec outBlameBuf;
-	GVec weightsBuf;
-	GVec gradientBuf;
-	GConstVecWrapper input;
-	GVecWrapper output;
-	GVecWrapper outBlame;
-	GVecWrapper inBlame;
-	GVecWrapper weights;
-	GVecWrapper gradient;
+	WVec outputBuf;
+	WVec outBlameBuf;
+	WVec weightsBuf;
+	WVec gradientBuf;
+	WConstVecWrapper input;
+	WVecWrapper output;
+	WVecWrapper outBlame;
+	WVecWrapper inBlame;
+	WVecWrapper weights;
+	WVecWrapper gradient;
 
 	enum BlockType
 	{
@@ -120,10 +120,10 @@ public:
 		// block_gru,
 	};
 
-	GBlock(size_t inputs, size_t outputs);
-	GBlock(const GBlock& that);
-	GBlock(const GDomNode* pNode);
-	virtual ~GBlock();
+	WBlock(size_t inputs, size_t outputs);
+	WBlock(const WBlock& that);
+	WBlock(const WDomNode* pNode);
+	virtual ~WBlock();
 
 	/// Returns the type of this block
 	virtual BlockType type() const = 0;
@@ -138,20 +138,20 @@ public:
 	virtual bool isRecurrent() const { return false; }
 
 	/// Marshall this block into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc) const;
+	virtual WDomNode* serialize(WDom* pDoc) const;
 
 	/// Makes a new block of the type the DOM node names, from that node.
-	/// SAKBox: was deserialize, the name GNeuralNet uses for loading a net
+	/// SAKBox: was deserialize, the name WNeuralNet uses for loading a net
 	/// in place, so the two meant different things under one name.
-	static GBlock* deserializeBlock(GDomNode* pNode, GRand& rand);
+	static WBlock* deserializeBlock(WDomNode* pNode, WRand& rand);
 
 	/// Returns a copy of this block
-	virtual GBlock* clone() const = 0;
+	virtual WBlock* clone() const = 0;
 
 	/// Attaches this block to the buffers it will operate on.
 	/// If any of pOutput, pOutBlame, pWeights, or pGradient are nullptr, it allocates its own buffers for these.
 	/// If pInput or pInBlame are nullptr, it just leaves them unbound.
-	virtual void bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInBlame, GVec* pWeights, GVec* pGradient);
+	virtual void bind(const WVec* pInput, WVec* pOutput, WVec* pOutBlame, WVec* pInBlame, WVec* pWeights, WVec* pGradient);
 
 	/// Returns the offset in the previous layer's output where values are fed as input to this block.
 	size_t inPos() const { return m_inPos; }
@@ -171,13 +171,13 @@ public:
 	/// Computes the blame on the output of this block.
 	/// Returns the SSE. Some blocks, such as SoftMax, may override it for comparable behavior.
 	/// (Assumes forwardProp has already been called.)
-	virtual double computeBlame(const GVec& target);
+	virtual double computeBlame(const WVec& target);
 
 	/// Resets the state in any recurrent connections.
 	virtual void resetState() {}
 
 	/// Resets the state in any recurrent connections.
-	virtual GBlock* advanceState(size_t unfoldedInstances) { return this; }
+	virtual WBlock* advanceState(size_t unfoldedInstances) { return this; }
 
 	/// Evaluate outBlame, update inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
@@ -197,7 +197,7 @@ public:
 	virtual void step(double learningRate, double momentum);
 
 	/// Same as step, but also adds random noise proportional by jitter to the gradient magnitude to the step.
-	virtual void step_jitter(double learningRate, double momentum, double jitter, GRand& rand);
+	virtual void step_jitter(double learningRate, double momentum, double jitter, WRand& rand);
 
 	/// Returns the number of double-precision elements necessary to serialize the weights of this block into a vector.
 	virtual size_t weightCount() const = 0;
@@ -209,14 +209,14 @@ public:
 	}
 
 	/// Initialize the weights, usually with small random values.
-	virtual void initWeights(GRand& rand) = 0;
+	virtual void initWeights(WRand& rand) = 0;
 
 	/// Blocks that support this method will initialize the weights in a manner that causes the
 	/// block to implement the identity function. For all other blocks with weights, this will throw an exception.
-	virtual void init_identity(GVec& weights);
+	virtual void init_identity(WVec& weights);
 
 	/// Return true iff the weights for this block make it implement identity.
-	virtual bool is_identity(GVec& weights);
+	virtual bool is_identity(WVec& weights);
 
 	/// Returns the number of weights this layer would have if its input and output sizes were adjusted by the given values.
 	/// Throws an exception for blocks that do not implement this method.
@@ -224,25 +224,25 @@ public:
 
 	/// Add newInputs units to the input and newOutput units to the output of this block.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	virtual void addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand);
+	virtual void addUnits(size_t newInputs, size_t newOutputs, const WVec& weightsBef, WVec& weightsAft, WRand& rand);
 
 	/// If input is not INVALID_INDEX, then the specified input will be dropped.
 	/// If output is not INVALID_INDEX, then the specified output will be dropped.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	virtual void dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft);
+	virtual void dropUnit(size_t input, size_t output, const WVec& weightsBef, WVec& weightsAft);
 
 	/// Puts a 1 in elements that correspond with bias weights and a 0 in all other elements.
-	virtual void biasMask(GVec& mask);
+	virtual void biasMask(WVec& mask);
 
 	/// Returns the index of the first input that this layer completely ignores, or INVALID_INDEX if there are none.
-	virtual size_t firstIgnoredInput(const GVec& weights);
+	virtual size_t firstIgnoredInput(const WVec& weights);
 
 	/// Uses central differencing to test that backProp and updateGradient are implemented correctly.
 	/// Throws an exception if a problem is found.
 	void finiteDifferencingTest(double tolerance = 0.0005);
 
 protected:
-	GDomNode* baseDomNode(GDom* pDoc) const;
+	WDomNode* baseDomNode(WDom* pDoc) const;
 
 	/// Exercises some basic functionality that all blocks have in common
 	void basicTest();
@@ -252,16 +252,16 @@ protected:
 
 
 /// The base class of blocks that have no weights
-class GBlockWeightless : public GBlock
+class WBlockWeightless : public WBlock
 {
 public:
-	GBlockWeightless(size_t inputs, size_t outputs) : GBlock(inputs, outputs) {}
-	GBlockWeightless(const GBlockWeightless& that) : GBlock(that) {}
-	GBlockWeightless(const GDomNode* pNode) : GBlock(pNode) {}
-	~GBlockWeightless() override {}
+	WBlockWeightless(size_t inputs, size_t outputs) : WBlock(inputs, outputs) {}
+	WBlockWeightless(const WBlockWeightless& that) : WBlock(that) {}
+	WBlockWeightless(const WDomNode* pNode) : WBlock(pNode) {}
+	~WBlockWeightless() override {}
 
 	size_t weightCount() const override { return 0; }
-	void initWeights(GRand& rand) override {}
+	void initWeights(WRand& rand) override {}
 	void updateGradient() override {}
 	void step(double learningRate, double momentum) override {}
 };
@@ -269,13 +269,13 @@ public:
 
 
 /// The base class of blocks that apply an activation function, such as tanh, in an element-wise manner.
-class GBlockActivation : public GBlockWeightless
+class WBlockActivation : public WBlockWeightless
 {
 public:
-	GBlockActivation(size_t size);
-	GBlockActivation(const GBlockActivation& that) : GBlockWeightless(that) {}
-	GBlockActivation(const GDomNode* pNode);
-	~GBlockActivation() override {}
+	WBlockActivation(size_t size);
+	WBlockActivation(const WBlockActivation& that) : WBlockWeightless(that) {}
+	WBlockActivation(const WDomNode* pNode);
+	~WBlockActivation() override {}
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -286,7 +286,7 @@ public:
 
 	/// Computes the input that would produce the specified output.
 	/// (May throw an exception if this activation function is not invertible.)
-	void inverseProp(const GVec& output, GVec& input);
+	void inverseProp(const WVec& output, WVec& input);
 
 	/// Evaluates the activation function
 	virtual double eval(double x) const = 0;
@@ -310,16 +310,16 @@ public:
 /// | --------- | -------
 /// | \f[ f(x) = x \f]   | ![](Activation_identity.png)
 ///
-class GBlockIdentity : public GBlockActivation
+class WBlockIdentity : public WBlockActivation
 {
 public:
-	GBlockIdentity(size_t size) : GBlockActivation(size) {}
-	GBlockIdentity(const GBlockIdentity& that) : GBlockActivation(that) {}
-	GBlockIdentity(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockIdentity() override {}
+	WBlockIdentity(size_t size) : WBlockActivation(size) {}
+	WBlockIdentity(const WBlockIdentity& that) : WBlockActivation(that) {}
+	WBlockIdentity(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockIdentity() override {}
 	BlockType type() const override { return block_identity; }
-	std::string name() const override { return "GBlockIdentity"; }
-	GBlockIdentity* clone() const override { return new GBlockIdentity(*this); }
+	std::string name() const override { return "WBlockIdentity"; }
+	WBlockIdentity* clone() const override { return new WBlockIdentity(*this); }
 	double eval(double x) const override { return x; }
 	double derivative(double x, double f_x) const override { return 1.0; }
 	double inverse(double y) const override { return y; }
@@ -348,16 +348,16 @@ public:
 // 		double b = 1.0 / a;
 // 		double d = 2.0 / (a + b); // sech(x)
 // 		return d * d;
-class GBlockTanh : public GBlockActivation
+class WBlockTanh : public WBlockActivation
 {
 public:
-	GBlockTanh(size_t size) : GBlockActivation(size) {}
-	GBlockTanh(const GBlockTanh& that) : GBlockActivation(that) {}
-	GBlockTanh(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockTanh() override {}
+	WBlockTanh(size_t size) : WBlockActivation(size) {}
+	WBlockTanh(const WBlockTanh& that) : WBlockActivation(that) {}
+	WBlockTanh(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockTanh() override {}
 	BlockType type() const override { return block_tanh; }
-	std::string name() const override { return "GBlockTanh"; }
-	GBlockTanh* clone() const override { return new GBlockTanh(*this); }
+	std::string name() const override { return "WBlockTanh"; }
+	WBlockTanh* clone() const override { return new WBlockTanh(*this); }
 	double eval(double x) const override { return std::tanh(x); }
 	double derivative(double x, double f_x) const override { return 1.0 - (f_x * f_x); }
 	double inverse(double y) const override { return 0.5 * std::log(-(y + 1) / (y - 1)); }
@@ -377,18 +377,18 @@ public:
 /// - scale_in=0.5, scale_out=2.27: If the input is a uniform normal variable, the output will have zero mean and unit variance.
 /// - scale_in=1, scale_out=1.48: Same property, but with a smaller linear regime in input space.
 ///
-class GBlockScaledTanh : public GBlockActivation
+class WBlockScaledTanh : public WBlockActivation
 {
 	const double SCALE_IN = 0.66666667;
 	const double SCALE_OUT = 1.7159;
 public:
-	GBlockScaledTanh(size_t size) : GBlockActivation(size) {}
-	GBlockScaledTanh(const GBlockScaledTanh& that) : GBlockActivation(that) {}
-	GBlockScaledTanh(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockScaledTanh() override {}
+	WBlockScaledTanh(size_t size) : WBlockActivation(size) {}
+	WBlockScaledTanh(const WBlockScaledTanh& that) : WBlockActivation(that) {}
+	WBlockScaledTanh(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockScaledTanh() override {}
 	BlockType type() const override { return block_scaledtanh; }
-	std::string name() const override { return "GBlockScaledTanh"; }
-	GBlockScaledTanh* clone() const override { return new GBlockScaledTanh(*this); }
+	std::string name() const override { return "WBlockScaledTanh"; }
+	WBlockScaledTanh* clone() const override { return new WBlockScaledTanh(*this); }
 	double eval(double x) const override { return std::tanh(x * SCALE_IN) * SCALE_OUT; }
 	double derivative(double x, double f_x) const override { return SCALE_IN / SCALE_OUT * (SCALE_OUT - f_x) * (SCALE_OUT + f_x); }
 	double inverse(double y) const override { return 0.5 / SCALE_IN * std::log(-(y / SCALE_OUT + 1) / (y / SCALE_OUT - 1)); }
@@ -401,16 +401,16 @@ public:
 /// | --------- | -------
 /// | \f[ f(x) = \frac{1}{1 + e^{-x}} \f]   | ![](Activation_logistic.png)
 ///
-class GBlockLogistic : public GBlockActivation
+class WBlockLogistic : public WBlockActivation
 {
 public:
-	GBlockLogistic(size_t size) : GBlockActivation(size) {}
-	GBlockLogistic(const GBlockLogistic& that) : GBlockActivation(that) {}
-	GBlockLogistic(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockLogistic() override {}
+	WBlockLogistic(size_t size) : WBlockActivation(size) {}
+	WBlockLogistic(const WBlockLogistic& that) : WBlockActivation(that) {}
+	WBlockLogistic(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockLogistic() override {}
 	BlockType type() const override { return block_logistic; }
-	std::string name() const override { return "GBlockLogistic"; }
-	GBlockLogistic* clone() const override { return new GBlockLogistic(*this); }
+	std::string name() const override { return "WBlockLogistic"; }
+	WBlockLogistic* clone() const override { return new WBlockLogistic(*this); }
 	double eval(double x) const override
 	{
 		if(x >= 700.0) // Don't trigger a floating point exception
@@ -427,16 +427,16 @@ public:
 
 
 /// An exponential-linear unit
-class GBlockEl : public GBlockActivation
+class WBlockEl : public WBlockActivation
 {
 public:
-	GBlockEl(size_t size) : GBlockActivation(size) {}
-	GBlockEl(const GBlockEl& that) : GBlockActivation(that) {}
-	GBlockEl(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockEl() override {}
+	WBlockEl(size_t size) : WBlockActivation(size) {}
+	WBlockEl(const WBlockEl& that) : WBlockActivation(that) {}
+	WBlockEl(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockEl() override {}
 	BlockType type() const override { return block_el; }
-	std::string name() const override { return "GBlockEl"; }
-	GBlockEl* clone() const override { return new GBlockEl(*this); }
+	std::string name() const override { return "WBlockEl"; }
+	WBlockEl* clone() const override { return new WBlockEl(*this); }
 	double eval(double x) const override { return x < 0 ? std::exp(x) - 1.0 : x; }
 	double derivative(double x, double f_x) const override { return x < 0 ? std::exp(x) : 1.0; }
 	double inverse(double y) const override { return y < 0 ? std::log(y + 1) : y; }
@@ -447,16 +447,16 @@ public:
 
 /// An exponential-linear unit.
 /// As a special case, this block passes UNKNOWN_REAL_VALUE straight through.
-class GBlockElPos : public GBlockActivation
+class WBlockElPos : public WBlockActivation
 {
 public:
-	GBlockElPos(size_t size) : GBlockActivation(size) {}
-	GBlockElPos(const GBlockElPos& that) : GBlockActivation(that) {}
-	GBlockElPos(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockElPos() override {}
+	WBlockElPos(size_t size) : WBlockActivation(size) {}
+	WBlockElPos(const WBlockElPos& that) : WBlockActivation(that) {}
+	WBlockElPos(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockElPos() override {}
 	BlockType type() const override { return block_elpos; }
-	std::string name() const override { return "GBlockElPos"; }
-	GBlockElPos* clone() const override { return new GBlockElPos(*this); }
+	std::string name() const override { return "WBlockElPos"; }
+	WBlockElPos* clone() const override { return new WBlockElPos(*this); }
 	double eval(double x) const override { return x == UNKNOWN_REAL_VALUE ? UNKNOWN_REAL_VALUE : (x < 0 ? std::exp(x) : x + 1); }
 	double derivative(double x, double f_x) const override { return x == UNKNOWN_REAL_VALUE ? 0.0 : (x < 0 ? std::exp(x) : 1.0); }
 	// SAKBox: was "y = UNKNOWN_REAL_VALUE ? ..." (an assignment, so always unknown),
@@ -475,16 +475,16 @@ public:
 /// | --------- | -------
 /// | \f[ f(x) = \frac{\sqrt{x^2+0.01}-0.1}{2}+x \f]   | ![](Activation_bent_identity.png)
 ///
-class GBlockBentIdentity : public GBlockActivation
+class WBlockBentIdentity : public WBlockActivation
 {
 public:
-	GBlockBentIdentity(size_t size) : GBlockActivation(size) {}
-	GBlockBentIdentity(const GBlockBentIdentity& that) : GBlockActivation(that) {}
-	GBlockBentIdentity(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockBentIdentity() override {}
+	WBlockBentIdentity(size_t size) : WBlockActivation(size) {}
+	WBlockBentIdentity(const WBlockBentIdentity& that) : WBlockActivation(that) {}
+	WBlockBentIdentity(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockBentIdentity() override {}
 	BlockType type() const override { return block_bentidentity; }
-	std::string name() const override { return "GBlockBentIdentity"; }
-	GBlockBentIdentity* clone() const override { return new GBlockBentIdentity(*this); }
+	std::string name() const override { return "WBlockBentIdentity"; }
+	WBlockBentIdentity* clone() const override { return new WBlockBentIdentity(*this); }
 	double eval(double x) const override { return BEND_AMOUNT * (std::sqrt(x * x + BEND_SIZE * BEND_SIZE) - BEND_SIZE) + x; }
 	double derivative(double x, double f_x) const override { return BEND_AMOUNT * x / std::sqrt(x * x + BEND_SIZE * BEND_SIZE) + 1.0; }
 	double inverse(double y) const override { return (std::sqrt(2.0 * BEND_AMOUNT * BEND_AMOUNT * BEND_AMOUNT * BEND_SIZE * y + BEND_AMOUNT * BEND_AMOUNT * BEND_SIZE * BEND_SIZE + BEND_AMOUNT * BEND_AMOUNT * y * y) - BEND_AMOUNT * BEND_SIZE - y) / (BEND_AMOUNT * BEND_AMOUNT - 1.0); }
@@ -494,16 +494,16 @@ public:
 
 /// An element-wise nonlinearity block
 /// This activation function forms a sigmoid shape by splicing exponential and logarithmic functions together.
-class GBlockSigExp : public GBlockActivation
+class WBlockSigExp : public WBlockActivation
 {
 public:
-	GBlockSigExp(size_t size) : GBlockActivation(size) {}
-	GBlockSigExp(const GBlockSigExp& that) : GBlockActivation(that) {}
-	GBlockSigExp(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockSigExp() override {}
+	WBlockSigExp(size_t size) : WBlockActivation(size) {}
+	WBlockSigExp(const WBlockSigExp& that) : WBlockActivation(that) {}
+	WBlockSigExp(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockSigExp() override {}
 	BlockType type() const override { return block_sigexp; }
-	std::string name() const override { return "GBlockSigExp"; }
-	GBlockSigExp* clone() const override { return new GBlockSigExp(*this); }
+	std::string name() const override { return "WBlockSigExp"; }
+	WBlockSigExp* clone() const override { return new WBlockSigExp(*this); }
 	double eval(double x) const override { return (x <= 0.0 ? exp(x) - 1.0 : std::log(x + 1.0)); }
 	double derivative(double x, double f_x) const override { return (x <= 0.0 ? std::exp(x) : 1.0 / (x + 1.0)); }
 	double inverse(double y) const override { return (y > 0.0 ? exp(y) - 1.0 : std::log(y + 1.0)); }
@@ -516,16 +516,16 @@ public:
 /// | --------- | -------
 /// | \f[ f(x) = e^{-x^2} \f]   | ![](Activation_gaussian.png)
 ///
-class GBlockGaussian : public GBlockActivation
+class WBlockGaussian : public WBlockActivation
 {
 public:
-	GBlockGaussian(size_t size) : GBlockActivation(size) {}
-	GBlockGaussian(const GBlockGaussian& that) : GBlockActivation(that) {}
-	GBlockGaussian(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockGaussian() override {}
+	WBlockGaussian(size_t size) : WBlockActivation(size) {}
+	WBlockGaussian(const WBlockGaussian& that) : WBlockActivation(that) {}
+	WBlockGaussian(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockGaussian() override {}
 	BlockType type() const override { return block_gaussian; }
-	std::string name() const override { return "GBlockGaussian"; }
-	GBlockGaussian* clone() const override { return new GBlockGaussian(*this); }
+	std::string name() const override { return "WBlockGaussian"; }
+	WBlockGaussian* clone() const override { return new WBlockGaussian(*this); }
 	double eval(double x) const override { return std::exp(-(x * x)); }
 	double derivative(double x, double f_x) const override { return -2.0 * x * f_x; }
 };
@@ -537,16 +537,16 @@ public:
 /// | --------- | -------
 /// | \f[ f(x) = \sin(x) \f]   | ![](Activation_sinusoid.png)
 ///
-class GBlockSine : public GBlockActivation
+class WBlockSine : public WBlockActivation
 {
 public:
-	GBlockSine(size_t size) : GBlockActivation(size) {}
-	GBlockSine(const GBlockSine& that) : GBlockActivation(that) {}
-	GBlockSine(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockSine() override {}
+	WBlockSine(size_t size) : WBlockActivation(size) {}
+	WBlockSine(const WBlockSine& that) : WBlockActivation(that) {}
+	WBlockSine(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockSine() override {}
 	BlockType type() const override { return block_sine; }
-	std::string name() const override { return "GBlockSine"; }
-	GBlockSine* clone() const override { return new GBlockSine(*this); }
+	std::string name() const override { return "WBlockSine"; }
+	WBlockSine* clone() const override { return new WBlockSine(*this); }
 	double eval(double x) const override { return std::sin(x); }
 	double derivative(double x, double f_x) const override { return std::cos(x); }
 };
@@ -559,16 +559,16 @@ public:
 /// | --------- | -------
 /// | \f[ f(x) = \left \{ \begin{array}{rcl} 0 & \mbox{for} & x < 0 \\ x & \mbox{for} & x \ge 0\end{array} \right. \f]   | ![](Activation_rectified_linear.png)
 ///
-class GBlockRectifier : public GBlockActivation
+class WBlockRectifier : public WBlockActivation
 {
 public:
-	GBlockRectifier(size_t size) : GBlockActivation(size) {}
-	GBlockRectifier(const GBlockSine& that) : GBlockActivation(that) {}
-	GBlockRectifier(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockRectifier() override {}
+	WBlockRectifier(size_t size) : WBlockActivation(size) {}
+	WBlockRectifier(const WBlockSine& that) : WBlockActivation(that) {}
+	WBlockRectifier(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockRectifier() override {}
 	BlockType type() const override { return block_rectifier; }
-	std::string name() const override { return "GBlockRectifier"; }
-	GBlockRectifier* clone() const override { return new GBlockRectifier(*this); }
+	std::string name() const override { return "WBlockRectifier"; }
+	WBlockRectifier* clone() const override { return new WBlockRectifier(*this); }
 	double eval(double x) const override { return std::max(0.0, x); }
 	double derivative(double x, double f_x) const override { return (x >= 0.0 ? 1.0 : 0.0); }
 };
@@ -581,16 +581,16 @@ public:
 /// | --------- | -------
 /// | \f[ f(x) = \left \{ \begin{array}{rcl} 0.01x & \mbox{for} & x < 0\\ x & \mbox{for} & x \ge 0\end{array} \right. \f]   | ![](Activation_prelu.png)
 ///
-class GBlockLeakyRectifier : public GBlockActivation
+class WBlockLeakyRectifier : public WBlockActivation
 {
 public:
-	GBlockLeakyRectifier(size_t size) : GBlockActivation(size) {}
-	GBlockLeakyRectifier(const GBlockLeakyRectifier& that) : GBlockActivation(that) {}
-	GBlockLeakyRectifier(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockLeakyRectifier() override {}
+	WBlockLeakyRectifier(size_t size) : WBlockActivation(size) {}
+	WBlockLeakyRectifier(const WBlockLeakyRectifier& that) : WBlockActivation(that) {}
+	WBlockLeakyRectifier(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockLeakyRectifier() override {}
 	BlockType type() const override { return block_leakyrectifier; }
-	std::string name() const override { return "GBlockLeakyRectifier"; }
-	GBlockLeakyRectifier* clone() const override { return new GBlockLeakyRectifier(*this); }
+	std::string name() const override { return "WBlockLeakyRectifier"; }
+	WBlockLeakyRectifier* clone() const override { return new WBlockLeakyRectifier(*this); }
 	double eval(double x) const override { return x >= 0.0 ? x : 0.01 * x; }
 	double derivative(double x, double f_x) const override { return x >= 0.0 ? 1.0 : 0.01; }
 	double inverse(double y) const override { return (y > 0.0 ? y : 100.0 * y); }
@@ -605,16 +605,16 @@ public:
 /// | \f[ f(x)=\ln(1+e^x) \f]   | ![](Activation_softplus.png)
 ///
 // (Note: A similar, but less well-known function is the integral of the logistic function. I think it is slightly faster to compute.)
-class GBlockSoftPlus : public GBlockActivation
+class WBlockSoftPlus : public WBlockActivation
 {
 public:
-	GBlockSoftPlus(size_t size) : GBlockActivation(size) {}
-	GBlockSoftPlus(const GBlockSoftPlus& that) : GBlockActivation(that) {}
-	GBlockSoftPlus(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockSoftPlus() override {}
+	WBlockSoftPlus(size_t size) : WBlockActivation(size) {}
+	WBlockSoftPlus(const WBlockSoftPlus& that) : WBlockActivation(that) {}
+	WBlockSoftPlus(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockSoftPlus() override {}
 	BlockType type() const override { return block_softplus; }
-	std::string name() const override { return "GBlockSoftPlus"; }
-	GBlockSoftPlus* clone() const override { return new GBlockSoftPlus(*this); }
+	std::string name() const override { return "WBlockSoftPlus"; }
+	WBlockSoftPlus* clone() const override { return new WBlockSoftPlus(*this); }
 	double eval(double x) const override { return x > 500 ? x : log(1.0 + exp(x)); }
 	double derivative(double x, double f_x) const override { return 1.0 / (1.0 + exp(-x)); }
 	double inverse(double y) const override { return log(exp(y) - 1.0); }
@@ -628,16 +628,16 @@ public:
 /// that spans the continuous values. At very negative values,
 /// it is shaped like y=-sqrt(-2x). Near zero, it is shaped
 /// like y=x. At very positive values, it is shaped like y=sqrt(2x).
-class GBlockSoftRoot : public GBlockActivation
+class WBlockSoftRoot : public WBlockActivation
 {
 public:
-	GBlockSoftRoot(size_t size) : GBlockActivation(size) {}
-	GBlockSoftRoot(const GBlockSoftRoot& that) : GBlockActivation(that) {}
-	GBlockSoftRoot(const GDomNode* pNode) : GBlockActivation(pNode) {}
-	~GBlockSoftRoot() override {}
+	WBlockSoftRoot(size_t size) : WBlockActivation(size) {}
+	WBlockSoftRoot(const WBlockSoftRoot& that) : WBlockActivation(that) {}
+	WBlockSoftRoot(const WDomNode* pNode) : WBlockActivation(pNode) {}
+	~WBlockSoftRoot() override {}
 	BlockType type() const override { return block_softroot; }
-	std::string name() const override { return "GBlockSoftRoot"; }
-	GBlockSoftRoot* clone() const override { return new GBlockSoftRoot(*this); }
+	std::string name() const override { return "WBlockSoftRoot"; }
+	WBlockSoftRoot* clone() const override { return new WBlockSoftRoot(*this); }
 	double eval(double x) const override
 	{
 		double d = std::sqrt(x * x + 1.0);
@@ -658,22 +658,22 @@ public:
 
 
 /// A softmax block.
-class GBlockSoftMax : public GBlockWeightless
+class WBlockSoftMax : public WBlockWeightless
 {
 public:
-	GBlockSoftMax(size_t size) : GBlockWeightless(size, size) {}
-	GBlockSoftMax(const GBlockSoftMax& that) : GBlockWeightless(that) {}
-	GBlockSoftMax(const GDomNode* pNode) : GBlockWeightless(pNode) {}
-	~GBlockSoftMax() override {}
+	WBlockSoftMax(size_t size) : WBlockWeightless(size, size) {}
+	WBlockSoftMax(const WBlockSoftMax& that) : WBlockWeightless(that) {}
+	WBlockSoftMax(const WDomNode* pNode) : WBlockWeightless(pNode) {}
+	~WBlockSoftMax() override {}
 	BlockType type() const override { return block_softmax; }
-	std::string name() const override { return "GBlockSoftMax"; }
-	GBlockSoftMax* clone() const override { return new GBlockSoftMax(*this); }
+	std::string name() const override { return "WBlockSoftMax"; }
+	WBlockSoftMax* clone() const override { return new WBlockSoftMax(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
 
 	/// Computes the blame with cross-entropy
-	double computeBlame(const GVec& target) override;
+	double computeBlame(const WVec& target) override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
@@ -686,7 +686,7 @@ public:
 
 /// A block of sinusoid units arranged with exponentially growing wavelengths
 /// Assumes there is exactly 1 input.
-class GBlockSpectral : public GBlockWeightless
+class WBlockSpectral : public WBlockWeightless
 {
 protected:
 	double m_freq_start;
@@ -694,16 +694,16 @@ protected:
 	double m_freq_shift;
 
 public:
-	GBlockSpectral(double min_wavelength, double max_wavelength, size_t units, bool linear_spacing = false);
-	GBlockSpectral(const GBlockSpectral& that) : GBlockWeightless(that) {}
-	GBlockSpectral(const GDomNode* pNode);
-	~GBlockSpectral() override {}
+	WBlockSpectral(double min_wavelength, double max_wavelength, size_t units, bool linear_spacing = false);
+	WBlockSpectral(const WBlockSpectral& that) : WBlockWeightless(that) {}
+	WBlockSpectral(const WDomNode* pNode);
+	~WBlockSpectral() override {}
 	BlockType type() const override { return block_spectral; }
-	std::string name() const override { return "GBlockSpectral"; }
-	GBlockSpectral* clone() const override { return new GBlockSpectral(*this); }
+	std::string name() const override { return "WBlockSpectral"; }
+	WBlockSpectral* clone() const override { return new WBlockSpectral(*this); }
 
 	/// Marshall this block into a DOM.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -718,19 +718,19 @@ public:
 
 
 /// Expands a layer by repeating it as needed to acheive the desired number of units.
-class GBlockRepeater : public GBlockWeightless
+class WBlockRepeater : public WBlockWeightless
 {
 public:
-	GBlockRepeater(size_t in, size_t out) : GBlockWeightless(in, out)
+	WBlockRepeater(size_t in, size_t out) : WBlockWeightless(in, out)
 	{
 		if(in > out) throw Ex("Expected more outputs than inputs");
 	}
-	GBlockRepeater(const GBlockRepeater& that) : GBlockWeightless(that) {}
-	GBlockRepeater(const GDomNode* pNode) : GBlockWeightless(pNode) {}
-	~GBlockRepeater() override {}
+	WBlockRepeater(const WBlockRepeater& that) : WBlockWeightless(that) {}
+	WBlockRepeater(const WDomNode* pNode) : WBlockWeightless(pNode) {}
+	~WBlockRepeater() override {}
 	BlockType type() const override { return block_repeater; }
-	std::string name() const override { return "GBlockRepeater"; }
-	GBlockRepeater* clone() const override { return new GBlockRepeater(*this); }
+	std::string name() const override { return "WBlockRepeater"; }
+	WBlockRepeater* clone() const override { return new WBlockRepeater(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -745,21 +745,21 @@ public:
 
 
 /// Fans out and shuffles in the values to break spatial locality.
-class GBlockSpreader : public GBlockWeightless
+class WBlockSpreader : public WBlockWeightless
 {
 protected:
 	size_t m_spread;
-	GIndexVec m_forw;
-	GIndexVec m_back;
+	WIndexVec m_forw;
+	WIndexVec m_back;
 
 public:
-	GBlockSpreader(size_t units, size_t spread);
-	GBlockSpreader(const GBlockSpreader& that);
-	GBlockSpreader(const GDomNode* pNode);
-	~GBlockSpreader() override {}
+	WBlockSpreader(size_t units, size_t spread);
+	WBlockSpreader(const WBlockSpreader& that);
+	WBlockSpreader(const WDomNode* pNode);
+	~WBlockSpreader() override {}
 	BlockType type() const override { return block_spreader; }
-	std::string name() const override { return "GBlockSpreader"; }
-	GBlockSpreader* clone() const override { return new GBlockSpreader(*this); }
+	std::string name() const override { return "WBlockSpreader"; }
+	WBlockSpreader* clone() const override { return new WBlockSpreader(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -773,30 +773,30 @@ public:
 
 
 
-/// Standard fully-connected block of weights. Often followed by a GBlockActivation.
-class GBlockLinear : public GBlock
+/// Standard fully-connected block of weights. Often followed by a WBlockActivation.
+class WBlockLinear : public WBlock
 {
 public:
 	/// General-purpose constructor
-	GBlockLinear(size_t inputs, size_t outputs);
+	WBlockLinear(size_t inputs, size_t outputs);
 
 	/// Copy constructor
-	GBlockLinear(const GBlockLinear& that) : GBlock(that) {}
+	WBlockLinear(const WBlockLinear& that) : WBlock(that) {}
 
 	/// Unmarshalling constructor
-	GBlockLinear(GDomNode* pNode);
+	WBlockLinear(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockLinear() override {}
+	~WBlockLinear() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_linear; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockLinear"; }
+	std::string name() const override { return "WBlockLinear"; }
 
 	/// Returns a copy of this block
-	GBlockLinear* clone() const override { return new GBlockLinear(*this); }
+	WBlockLinear* clone() const override { return new WBlockLinear(*this); }
 
 	/// Returns a string representation of this block
 	std::string to_str(bool includeWeights = false, bool includeActivations = false) const override;
@@ -819,45 +819,45 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 
 	/// Computes weights using Ordinary Least Squares
-	void ordinaryLeastSquares(const GMatrix& features, const GMatrix& labels, GVec& outWeights);
+	void ordinaryLeastSquares(const WMatrix& features, const WMatrix& labels, WVec& outWeights);
 
 	/// Adjusts the bias and weights to compensate for an adjustment in the input range
 	/// Warning: the gradient is still scaled by the input values, so this is NOT equivalent for training.
-	void adjustInputRange(GVec& weights, size_t inputIndex, double oldMin, double oldMax, double newMin, double newMax);
+	void adjustInputRange(WVec& weights, size_t inputIndex, double oldMin, double oldMax, double newMin, double newMax);
 
 	/// Initializes weights to implement the identity function
-	void init_identity(GVec& weights) override;
+	void init_identity(WVec& weights) override;
 
 	/// Puts a 1 in elements that correspond with bias weights and a 0 in all other elements.
-	void biasMask(GVec& mask) override;
+	void biasMask(WVec& mask) override;
 
 	/// Returns the number of weights this layer would have if its input and output sizes were adjusted by the given values.
 	size_t adjustedWeightCount(int inAdjustment, int outAdjustment) override;
 
 	/// Returns the index of the first input that this layer completely ignores, or INVALID_INDEX if there are none.
-	size_t firstIgnoredInput(const GVec& weights) override;
+	size_t firstIgnoredInput(const WVec& weights) override;
 
 	/// Add newInputs units to the input and newOutput units to the output of this block.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	void addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand) override;
+	void addUnits(size_t newInputs, size_t newOutputs, const WVec& weightsBef, WVec& weightsAft, WRand& rand) override;
 
 	/// If input is not INVALID_INDEX, then the specified input will be dropped.
 	/// If output is not INVALID_INDEX, then the specified output will be dropped.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	void dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft) override;
+	void dropUnit(size_t input, size_t output, const WVec& weightsBef, WVec& weightsAft) override;
 
 	/// Pass in two linear layers with their corresponding weights.
 	/// The weights will be combined into a single layer that performs the function of both layers.
 	/// If targetA is true, the fused weights will be placed in a. Otherwise they will be placed in b.
 	/// The non-target layer must have the same number of inputs and outputs
 	/// (to ensure that it doesn't change the weights size).
-	static void fuseLayers(GBlockLinear& aa, GVec& a, GBlockLinear& bb, GVec& b, bool targetA);
+	static void fuseLayers(WBlockLinear& aa, WVec& a, WBlockLinear& bb, WVec& b, bool targetA);
 
 	/// An experimental regularizer that promotes anti-symmetric weights and layers that mirror each other.
-	void regularize_square(double lambda, const GVec* pWeightsNext);
+	void regularize_square(double lambda, const WVec* pWeightsNext);
 };
 
 
@@ -866,29 +866,29 @@ public:
 
 /// For each input, produces n outputs, where each output is a linear function of one input.
 /// As a special case, inputs with a value of UNKNOWN_REAL_VALUE are replicated in the output.
-class GBlockFanOut : public GBlock
+class WBlockFanOut : public WBlock
 {
 public:
 	/// General-purpose constructor
-	GBlockFanOut(size_t inputs, size_t outputs);
+	WBlockFanOut(size_t inputs, size_t outputs);
 
 	/// Copy constructor
-	GBlockFanOut(const GBlockFanOut& that) : GBlock(that) {}
+	WBlockFanOut(const WBlockFanOut& that) : WBlock(that) {}
 
 	/// Unmarshalling constructor
-	GBlockFanOut(GDomNode* pNode);
+	WBlockFanOut(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockFanOut() override {}
+	~WBlockFanOut() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_fanout; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockFanOut"; }
+	std::string name() const override { return "WBlockFanOut"; }
 
 	/// Returns a copy of this block
-	GBlockFanOut* clone() const override { return new GBlockFanOut(*this); }
+	WBlockFanOut* clone() const override { return new WBlockFanOut(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -905,7 +905,7 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 };
 
 
@@ -914,7 +914,7 @@ public:
 
 /// This is a running version of batch normalization. That is, it uses running means and running variances
 /// instead of batch means and batch variances to normalize inputs.
-class GBlockRunningNormalizer : public GBlock
+class WBlockRunningNormalizer : public WBlock
 {
 protected:
 	double batch_size;
@@ -924,25 +924,25 @@ protected:
 
 public:
 	/// General-purpose constructor
-	GBlockRunningNormalizer(size_t units, double effective_batch_size);
+	WBlockRunningNormalizer(size_t units, double effective_batch_size);
 
 	/// Copy constructor
-	GBlockRunningNormalizer(const GBlockRunningNormalizer& that) : GBlock(that) {}
+	WBlockRunningNormalizer(const WBlockRunningNormalizer& that) : WBlock(that) {}
 
 	/// Unmarshalling constructor
-	GBlockRunningNormalizer(GDomNode* pNode);
+	WBlockRunningNormalizer(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockRunningNormalizer() override {}
+	~WBlockRunningNormalizer() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_linear; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockRunningNormalizer"; }
+	std::string name() const override { return "WBlockRunningNormalizer"; }
 
 	/// Returns a copy of this block
-	GBlockRunningNormalizer* clone() const override { return new GBlockRunningNormalizer(*this); }
+	WBlockRunningNormalizer* clone() const override { return new WBlockRunningNormalizer(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -965,39 +965,39 @@ public:
 	size_t gradCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 };
 
 
 
 
 
-class GBlockWeightDigester : public GBlock
+class WBlockWeightDigester : public WBlock
 {
 protected:
-	GBlock* m_pDigestMyWeights;
+	WBlock* m_pDigestMyWeights;
 
 public:
 	/// General-purpose constructor
-	GBlockWeightDigester(GBlock* pDigestMyWeights, size_t extraInputs, size_t outputs);
+	WBlockWeightDigester(WBlock* pDigestMyWeights, size_t extraInputs, size_t outputs);
 
 	/// Copy constructor
-	GBlockWeightDigester(const GBlockWeightDigester& that) : GBlock(that) {}
+	WBlockWeightDigester(const WBlockWeightDigester& that) : WBlock(that) {}
 
 	/// Unmarshalling constructor
-	GBlockWeightDigester(GDomNode* pNode);
+	WBlockWeightDigester(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockWeightDigester() override {}
+	~WBlockWeightDigester() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_weight_digester; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockWeightDigester"; }
+	std::string name() const override { return "WBlockWeightDigester"; }
 
 	/// Returns a copy of this block
-	GBlockWeightDigester* clone() const override { return new GBlockWeightDigester(*this); }
+	WBlockWeightDigester* clone() const override { return new WBlockWeightDigester(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1014,7 +1014,7 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 };
 
 
@@ -1022,35 +1022,35 @@ public:
 
 
 /// A linear layer with protections against saturation.
-class GBlockTemperedLinear : public GBlock
+class WBlockTemperedLinear : public WBlock
 {
 protected:
 	double deviationCap;
 	double forgetRate;
-	GVec moment1;
-	GVec moment2;
+	WVec moment1;
+	WVec moment2;
 
 public:
 	/// General-purpose constructor
-	GBlockTemperedLinear(size_t inputs, size_t outputs, double deviation_cap = 3.0, double forget_rate = 0.001);
+	WBlockTemperedLinear(size_t inputs, size_t outputs, double deviation_cap = 3.0, double forget_rate = 0.001);
 
 	/// Copy constructor
-	GBlockTemperedLinear(const GBlockTemperedLinear& that);
+	WBlockTemperedLinear(const WBlockTemperedLinear& that);
 
 	/// Unmarshalling constructor
-	GBlockTemperedLinear(GDomNode* pNode);
+	WBlockTemperedLinear(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockTemperedLinear() override {}
+	~WBlockTemperedLinear() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_temperedlinear; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockTemperedLinear"; }
+	std::string name() const override { return "WBlockTemperedLinear"; }
 
 	/// Returns a copy of this block
-	GBlockTemperedLinear* clone() const override { return new GBlockTemperedLinear(*this); }
+	WBlockTemperedLinear* clone() const override { return new WBlockTemperedLinear(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1067,7 +1067,7 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 };
 
 
@@ -1075,41 +1075,41 @@ public:
 
 
 /// A convolutional layer.
-class GBlockConv : public GBlock
+class WBlockConv : public WBlock
 {
 protected:
 	size_t filterSize;
-	GTensor tensorInput;
-	GTensor tensorFilter;
-	GTensor tensorOutput;
+	WTensor tensorInput;
+	WTensor tensorFilter;
+	WTensor tensorOutput;
 	size_t filterCount;
 	size_t outputsPerFilter;
 
 public:
 	/// General-purpose constructor. Example:
-	///  nn.add(new GBlockConv( {28, 28}, {5, 5, 8}, {28, 28, 8} ));
-	GBlockConv(const std::initializer_list<size_t>& inputDims, const std::initializer_list<size_t>& filterDims, const std::initializer_list<size_t>& outputDims);
+	///  nn.add(new WBlockConv( {28, 28}, {5, 5, 8}, {28, 28, 8} ));
+	WBlockConv(const std::initializer_list<size_t>& inputDims, const std::initializer_list<size_t>& filterDims, const std::initializer_list<size_t>& outputDims);
 
 	/// Copy constructor
-	GBlockConv(const GBlockConv& that);
+	WBlockConv(const WBlockConv& that);
 
 	/// Unmarshalling constructor
-	GBlockConv(GDomNode* pNode);
+	WBlockConv(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockConv() override {}
+	~WBlockConv() override {}
 
 	/// Marshall this block into a DOM.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_conv; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockConv"; }
+	std::string name() const override { return "WBlockConv"; }
 
 	/// Returns a copy of this block
-	GBlockConv* clone() const override { return new GBlockConv(*this); }
+	WBlockConv* clone() const override { return new WBlockConv(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1126,7 +1126,7 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 
 	static void test();
 };
@@ -1137,7 +1137,7 @@ public:
 
 /// Treats the input as two concatenated vectors.
 /// Adds each corresponding pair of values together to produce the output.
-class GBlockMaxPooling2D : public GBlockWeightless
+class WBlockMaxPooling2D : public WBlockWeightless
 {
 protected:
 	size_t width, height, channels;
@@ -1145,25 +1145,25 @@ protected:
 public:
 	/// General-purpose constructor.
 	/// width is the width of the input. height is the height of the input. channels is the number of channels in the input.
-	GBlockMaxPooling2D(size_t width, size_t height, size_t channels);
+	WBlockMaxPooling2D(size_t width, size_t height, size_t channels);
 
 	/// Copy constructor
-	GBlockMaxPooling2D(const GBlockMaxPooling2D& that) : GBlockWeightless(that) {}
+	WBlockMaxPooling2D(const WBlockMaxPooling2D& that) : WBlockWeightless(that) {}
 
 	/// Deserializing constructor
-	GBlockMaxPooling2D(GDomNode* pNode);
+	WBlockMaxPooling2D(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockMaxPooling2D() override;
+	~WBlockMaxPooling2D() override;
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_scalarsum; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockMaxPooling2D"; }
+	std::string name() const override { return "WBlockMaxPooling2D"; }
 
 	/// Returns a copy of this block
-	GBlockMaxPooling2D* clone() const override { return new GBlockMaxPooling2D(*this); }
+	WBlockMaxPooling2D* clone() const override { return new WBlockMaxPooling2D(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1178,29 +1178,29 @@ public:
 
 /// Treats the input as two concatenated vectors.
 /// Adds each corresponding pair of values together to produce the output.
-class GBlockScalarSum : public GBlockWeightless
+class WBlockScalarSum : public WBlockWeightless
 {
 public:
 	/// General-purpose constructor.
-	GBlockScalarSum(size_t outputs);
+	WBlockScalarSum(size_t outputs);
 
 	/// Copy constructor
-	GBlockScalarSum(const GBlockScalarSum& that) : GBlockWeightless(that) {}
+	WBlockScalarSum(const WBlockScalarSum& that) : WBlockWeightless(that) {}
 
 	/// Deserializing constructor
-	GBlockScalarSum(GDomNode* pNode);
+	WBlockScalarSum(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockScalarSum() override;
+	~WBlockScalarSum() override;
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_scalarsum; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockScalarSum"; }
+	std::string name() const override { return "WBlockScalarSum"; }
 
 	/// Returns a copy of this block
-	GBlockScalarSum* clone() const override { return new GBlockScalarSum(*this); }
+	WBlockScalarSum* clone() const override { return new WBlockScalarSum(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1216,29 +1216,29 @@ public:
 
 /// Treats the input as two concatenated vectors.
 /// Multiplies each corresponding pair of values together to produce the output.
-class GBlockScalarProduct : public GBlockWeightless
+class WBlockScalarProduct : public WBlockWeightless
 {
 public:
 	/// General-purpose constructor.
-	GBlockScalarProduct(size_t outputs);
+	WBlockScalarProduct(size_t outputs);
 
 	/// Copy constructor
-	GBlockScalarProduct(const GBlockScalarProduct& that) : GBlockWeightless(that) {}
+	WBlockScalarProduct(const WBlockScalarProduct& that) : WBlockWeightless(that) {}
 
 	/// Deserializing constructor
-	GBlockScalarProduct(GDomNode* pNode);
+	WBlockScalarProduct(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockScalarProduct() override;
+	~WBlockScalarProduct() override;
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_scalarproduct; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockScalarProduct"; }
+	std::string name() const override { return "WBlockScalarProduct"; }
 
 	/// Returns a copy of this block
-	GBlockScalarProduct* clone() const override { return new GBlockScalarProduct(*this); }
+	WBlockScalarProduct* clone() const override { return new WBlockScalarProduct(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1253,31 +1253,31 @@ public:
 
 
 
-/// Like GBlockScalarProduct, except it adds the first two elements instead of multiplying them.
+/// Like WBlockScalarProduct, except it adds the first two elements instead of multiplying them.
 /// (This is intended to be used as a substitute for matrix factorization.)
-class GBlockBiasProduct : public GBlockWeightless
+class WBlockBiasProduct : public WBlockWeightless
 {
 public:
 	/// General-purpose constructor.
-	GBlockBiasProduct(size_t outputs);
+	WBlockBiasProduct(size_t outputs);
 
 	/// Copy constructor
-	GBlockBiasProduct(const GBlockBiasProduct& that) : GBlockWeightless(that) {}
+	WBlockBiasProduct(const WBlockBiasProduct& that) : WBlockWeightless(that) {}
 
 	/// Deserializing constructor
-	GBlockBiasProduct(GDomNode* pNode);
+	WBlockBiasProduct(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockBiasProduct() override;
+	~WBlockBiasProduct() override;
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_biasproduct; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockBiasProduct"; }
+	std::string name() const override { return "WBlockBiasProduct"; }
 
 	/// Returns a copy of this block
-	GBlockBiasProduct* clone() const override { return new GBlockBiasProduct(*this); }
+	WBlockBiasProduct* clone() const override { return new WBlockBiasProduct(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1295,29 +1295,29 @@ public:
 /// Treats the input as three concatenated vectors: a, b, and c.
 /// (The values in 'a' typically fall in the range [0,1].)
 /// The output is computed element-wise as a*b + (1-a)*c.
-class GBlockSwitch : public GBlockWeightless
+class WBlockSwitch : public WBlockWeightless
 {
 public:
 	/// General-purpose constructor.
-	GBlockSwitch(size_t outputs);
+	WBlockSwitch(size_t outputs);
 
 	/// Copy constructor
-	GBlockSwitch(const GBlockScalarProduct& that) : GBlockWeightless(that) {}
+	WBlockSwitch(const WBlockScalarProduct& that) : WBlockWeightless(that) {}
 
 	/// Deserializing constructor
-	GBlockSwitch(GDomNode* pNode);
+	WBlockSwitch(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockSwitch() override;
+	~WBlockSwitch() override;
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_switch; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockSwitch"; }
+	std::string name() const override { return "WBlockSwitch"; }
 
 	/// Returns a copy of this block
-	GBlockSwitch* clone() const override { return new GBlockSwitch(*this); }
+	WBlockSwitch* clone() const override { return new WBlockSwitch(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1338,29 +1338,29 @@ public:
 /// When alpha is 0, this activation function implements identity.
 /// When alpha is positive, it bends upward. When alpha is negative, it bends downward.
 /// Beta specifies approximately how big the bending curve is. When beta is 0, it bends on a point.
-class GBlockHinge : public GBlock
+class WBlockHinge : public WBlock
 {
 public:
 	/// General-purpose constructor
 	/// Size specifies the number of units in this layer.
-	GBlockHinge(size_t size);
+	WBlockHinge(size_t size);
 
 	/// Copy constructor
-	GBlockHinge(const GBlockHinge& that) : GBlock(that) {}
+	WBlockHinge(const WBlockHinge& that) : WBlock(that) {}
 
-	GBlockHinge(GDomNode* pNode);
+	WBlockHinge(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockHinge() override {}
+	~WBlockHinge() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_hinge; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockHinge"; }
+	std::string name() const override { return "WBlockHinge"; }
 
 	/// Returns a copy of this block
-	GBlockHinge* clone() const override { return new GBlockHinge(*this); }
+	WBlockHinge* clone() const override { return new WBlockHinge(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1379,25 +1379,25 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 
 	/// Initialize the weights to implement the identity function.
-	void init_identity(GVec& weights) override;
+	void init_identity(WVec& weights) override;
 
 	/// Return true iff the weights for this block make it implement identity.
-	bool is_identity(GVec& weights) override;
+	bool is_identity(WVec& weights) override;
 
 	/// Returns the number of weights this layer would have if its input and output sizes were adjusted by the given values.
 	size_t adjustedWeightCount(int inAdjustment, int outAdjustment) override;
 
 	/// Add newInputs units to the input and newOutput units to the output of this block.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	void addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand) override;
+	void addUnits(size_t newInputs, size_t newOutputs, const WVec& weightsBef, WVec& weightsAft, WRand& rand) override;
 
 	/// If input is not INVALID_INDEX, then the specified input will be dropped.
 	/// If output is not INVALID_INDEX, then the specified output will be dropped.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	void dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft) override;
+	void dropUnit(size_t input, size_t output, const WVec& weightsBef, WVec& weightsAft) override;
 };
 
 
@@ -1408,29 +1408,29 @@ public:
 /// When alpha is 0, this activation function implements identity.
 /// When alpha is 1, it implements eponential-linear.
 /// When alpha is -1, it implements the anty-symmetric exponetial-linear.
-class GBlockElbow : public GBlock
+class WBlockElbow : public WBlock
 {
 public:
 	/// General-purpose constructor
 	/// Size specifies the number of units in this layer.
-	GBlockElbow(size_t size);
+	WBlockElbow(size_t size);
 
 	/// Copy constructor
-	GBlockElbow(const GBlockElbow& that) : GBlock(that) {}
+	WBlockElbow(const WBlockElbow& that) : WBlock(that) {}
 
-	GBlockElbow(GDomNode* pNode);
+	WBlockElbow(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockElbow() override {}
+	~WBlockElbow() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_elbow; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockElbow"; }
+	std::string name() const override { return "WBlockElbow"; }
 
 	/// Returns a copy of this block
-	GBlockElbow* clone() const override { return new GBlockElbow(*this); }
+	WBlockElbow* clone() const override { return new WBlockElbow(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1449,25 +1449,25 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 
 	/// Initialize the weights to implement the identity function.
-	void init_identity(GVec& weights) override;
+	void init_identity(WVec& weights) override;
 
 	/// Return true iff the weights for this block make it implement identity.
-	bool is_identity(GVec& weights) override;
+	bool is_identity(WVec& weights) override;
 
 	/// Returns the number of weights this layer would have if its input and output sizes were adjusted by the given values.
 	size_t adjustedWeightCount(int inAdjustment, int outAdjustment) override;
 
 	/// Add newInputs units to the input and newOutput units to the output of this block.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	void addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand) override;
+	void addUnits(size_t newInputs, size_t newOutputs, const WVec& weightsBef, WVec& weightsAft, WRand& rand) override;
 
 	/// If input is not INVALID_INDEX, then the specified input will be dropped.
 	/// If output is not INVALID_INDEX, then the specified output will be dropped.
 	/// The weights in weightsAft will be set to reflect the adjustments.
-	void dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft) override;
+	void dropUnit(size_t input, size_t output, const WVec& weightsBef, WVec& weightsAft) override;
 };
 
 
@@ -1477,29 +1477,29 @@ public:
 /// A parameterized activation function (a.k.a. adaptive transfer function).
 /// When alpha=0, it is the identity function.
 /// As alpha approaches infinity, it approaches tanh.
-class GBlockLeakyTanh : public GBlock
+class WBlockLeakyTanh : public WBlock
 {
 public:
 	/// General-purpose constructor
 	/// Size specifies the number of units in this layer.
-	GBlockLeakyTanh(size_t size);
+	WBlockLeakyTanh(size_t size);
 
 	/// Copy constructor
-	GBlockLeakyTanh(const GBlockLeakyTanh& that) : GBlock(that) {}
+	WBlockLeakyTanh(const WBlockLeakyTanh& that) : WBlock(that) {}
 
-	GBlockLeakyTanh(GDomNode* pNode);
+	WBlockLeakyTanh(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockLeakyTanh() override {}
+	~WBlockLeakyTanh() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_hinge; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockLeakyTanh"; }
+	std::string name() const override { return "WBlockLeakyTanh"; }
 
 	/// Returns a copy of this block
-	GBlockLeakyTanh* clone() const override { return new GBlockLeakyTanh(*this); }
+	WBlockLeakyTanh* clone() const override { return new WBlockLeakyTanh(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1518,7 +1518,7 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 };
 
 
@@ -1526,7 +1526,7 @@ public:
 
 
 /// A parameterized activation function (a.k.a. adaptive transfer function).
-class GBlockSoftExp : public GBlock
+class WBlockSoftExp : public WBlock
 {
 protected:
 	double m_beta;
@@ -1535,27 +1535,27 @@ public:
 	/// General-purpose constructor
 	/// When beta is 0, this activation function always approximates identity near the origin, but approximates e^x-1 when alpha is 1.
 	/// When beta is 1, this activation function approximates e^x when alpha is 1.
-	GBlockSoftExp(size_t size, double beta = 0.0);
+	WBlockSoftExp(size_t size, double beta = 0.0);
 
 	/// Copy constructor
-	GBlockSoftExp(const GBlockSoftExp& that) : GBlock(that), m_beta(that.m_beta) {}
+	WBlockSoftExp(const WBlockSoftExp& that) : WBlock(that), m_beta(that.m_beta) {}
 
-	GBlockSoftExp(GDomNode* pNode);
+	WBlockSoftExp(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockSoftExp() override {}
+	~WBlockSoftExp() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_softexp; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockSoftExp"; }
+	std::string name() const override { return "WBlockSoftExp"; }
 
 	/// Marshall this block into a DOM.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// Returns a copy of this block
-	GBlockSoftExp* clone() const override { return new GBlockSoftExp(*this); }
+	WBlockSoftExp* clone() const override { return new WBlockSoftExp(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1571,7 +1571,7 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 };
 
 
@@ -1586,32 +1586,32 @@ public:
 
 /// A Probabilistically Activating Linear block.
 /// This is an experimental block type.
-class GBlockPAL : public GBlock
+class WBlockPAL : public WBlock
 {
 protected:
-	GVec m_probs; // stores the probability for activating of each unit
-	GRand m_rand;
+	WVec m_probs; // stores the probability for activating of each unit
+	WRand m_rand;
 
 public:
 	/// General-purpose constructor
-	GBlockPAL(size_t inputs, size_t outputs, GRand& rand);
+	WBlockPAL(size_t inputs, size_t outputs, WRand& rand);
 
 	/// Copy constructor
-	GBlockPAL(const GBlockPAL& that) : GBlock(that), m_probs(that.m_probs.size()), m_rand(that.m_rand) {}
+	WBlockPAL(const WBlockPAL& that) : WBlock(that), m_probs(that.m_probs.size()), m_rand(that.m_rand) {}
 
-	GBlockPAL(GDomNode* pNode, GRand& rand);
+	WBlockPAL(WDomNode* pNode, WRand& rand);
 
 	/// Destructor
-	~GBlockPAL() override {}
+	~WBlockPAL() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_pal; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockPAL"; }
+	std::string name() const override { return "WBlockPAL"; }
 
 	/// Returns a copy of this block
-	GBlockPAL* clone() const override { return new GBlockPAL(*this); }
+	WBlockPAL* clone() const override { return new WBlockPAL(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1627,7 +1627,7 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 };
 
 
@@ -1640,7 +1640,7 @@ public:
 /// Number of inputs: 2^dims * vertexSizeIn.
 /// Number of outputs: 2^dims * vertexSizeOut.
 /// Each vertex is fully connected to all the vertices indicated by the edges of a hypercube.
-class GBlockHypercube : public GBlock
+class WBlockHypercube : public WBlock
 {
 protected:
 	size_t m_dims;
@@ -1649,25 +1649,25 @@ protected:
 
 public:
 	/// General-purpose constructor
-	GBlockHypercube(size_t dims, size_t vertexSizeIn, size_t vertexSizeOut);
+	WBlockHypercube(size_t dims, size_t vertexSizeIn, size_t vertexSizeOut);
 
 	/// Copy constructor
-	GBlockHypercube(const GBlockHypercube& that) : GBlock(that) {}
+	WBlockHypercube(const WBlockHypercube& that) : WBlock(that) {}
 
 	/// Unmarshalling constructor
-	GBlockHypercube(GDomNode* pNode);
+	WBlockHypercube(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockHypercube() override {}
+	~WBlockHypercube() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_hypercube; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockHypercube"; }
+	std::string name() const override { return "WBlockHypercube"; }
 
 	/// Returns a copy of this block
-	GBlockHypercube* clone() const override { return new GBlockHypercube(*this); }
+	WBlockHypercube* clone() const override { return new WBlockHypercube(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1683,7 +1683,7 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 };
 
 
@@ -1692,29 +1692,29 @@ public:
 
 
 
-class GBlockOptional : public GBlock
+class WBlockOptional : public WBlock
 {
 public:
 	/// General-purpose constructor
-	GBlockOptional(size_t inputs, size_t outputs);
+	WBlockOptional(size_t inputs, size_t outputs);
 
 	/// Copy constructor
-	GBlockOptional(const GBlockOptional& that) : GBlock(that) {}
+	WBlockOptional(const WBlockOptional& that) : WBlock(that) {}
 
 	/// Unmarshalling constructor
-	GBlockOptional(GDomNode* pNode);
+	WBlockOptional(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockOptional() override {}
+	~WBlockOptional() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_optional; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockOptional"; }
+	std::string name() const override { return "WBlockOptional"; }
 
 	/// Returns a copy of this block
-	GBlockOptional* clone() const override { return new GBlockOptional(*this); }
+	WBlockOptional* clone() const override { return new WBlockOptional(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1730,7 +1730,7 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 };
 
 
@@ -1742,32 +1742,32 @@ public:
 /// It learns the best encoding for each input value using each of its units.
 /// It dynamically adjusts to accomodate input values not previously seen.
 /// It does not backpropagate any error, so it is only suitable for inputs.
-class GBlockCatIn : public GBlock
+class WBlockCatIn : public WBlock
 {
 protected:
 	size_t m_valueCount;
 
 public:
 	/// General-purpose constructor
-	GBlockCatIn(size_t valueCount, size_t units);
+	WBlockCatIn(size_t valueCount, size_t units);
 
 	/// Copy constructor
-	GBlockCatIn(const GBlockCatIn& that) : GBlock(that) {}
+	WBlockCatIn(const WBlockCatIn& that) : WBlock(that) {}
 
 	/// Unmarshalling constructor
-	GBlockCatIn(GDomNode* pNode);
+	WBlockCatIn(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockCatIn() override {}
+	~WBlockCatIn() override {}
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_catin; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockCatIn"; }
+	std::string name() const override { return "WBlockCatIn"; }
 
 	/// Returns a copy of this block
-	GBlockCatIn* clone() const override { return new GBlockCatIn(*this); }
+	WBlockCatIn* clone() const override { return new WBlockCatIn(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1789,7 +1789,7 @@ public:
 	size_t gradCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 };
 
 
@@ -1797,26 +1797,26 @@ public:
 
 /// A special block that uses a one-hot encoding to predict categorical outputs.
 /// It trains to predict the most probably category by at least a specified margin.
-class GBlockCatOut : public GBlockWeightless
+class WBlockCatOut : public WBlockWeightless
 {
 protected:
 	double m_margin;
 
 public:
-	GBlockCatOut(size_t categories, double margin = 0.3);
-	GBlockCatOut(const GBlockCatOut& that) : GBlockWeightless(that), m_margin(that.m_margin) {}
-	GBlockCatOut(const GDomNode* pNode);
-	~GBlockCatOut() override {}
+	WBlockCatOut(size_t categories, double margin = 0.3);
+	WBlockCatOut(const WBlockCatOut& that) : WBlockWeightless(that), m_margin(that.m_margin) {}
+	WBlockCatOut(const WDomNode* pNode);
+	~WBlockCatOut() override {}
 
 	BlockType type() const override { return block_catout; }
-	std::string name() const override { return "GBlockCatOut"; }
-	GBlockCatOut* clone() const override { return new GBlockCatOut(*this); }
+	std::string name() const override { return "WBlockCatOut"; }
+	WBlockCatOut* clone() const override { return new WBlockCatOut(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
 
 	/// Computes blame for this layer. (Assumes target is a one-dimensional index value casted as a double)
-	double computeBlame(const GVec& target) override;
+	double computeBlame(const WVec& target) override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
@@ -1848,42 +1848,42 @@ public:
 //         x_t (input)
 //
 /// A Long-short-term-memory block
-class GBlockLSTM : public GBlock
+class WBlockLSTM : public WBlock
 {
 protected:
-	GVec n; // net input consisting of x, h, and c
-	GVec f; // controls what stays in memory
-	GVec t; // computed value that may (or may not) be written to memory
-	GVec o; // controls when to output the memory
-	GVec c; // incoming memory values
-	GVec h; // incoming previous output
-	GVec blame_h; // blame on the output of h
-	GVec blame_c; // blame on the output of c
-	GBlockLSTM* pPrevInstance; // backward around the ring
-	GBlockLSTM* pNextInstance; // forward around the ring
-	GBlockLSTM* pSpare; // chain (not ring) of unused instances
+	WVec n; // net input consisting of x, h, and c
+	WVec f; // controls what stays in memory
+	WVec t; // computed value that may (or may not) be written to memory
+	WVec o; // controls when to output the memory
+	WVec c; // incoming memory values
+	WVec h; // incoming previous output
+	WVec blame_h; // blame on the output of h
+	WVec blame_c; // blame on the output of c
+	WBlockLSTM* pPrevInstance; // backward around the ring
+	WBlockLSTM* pNextInstance; // forward around the ring
+	WBlockLSTM* pSpare; // chain (not ring) of unused instances
 
 public:
 	/// General-purpose constructor
-	GBlockLSTM(size_t inputs, size_t outputs);
+	WBlockLSTM(size_t inputs, size_t outputs);
 
 	/// Copy constructor
-	GBlockLSTM(const GBlockLSTM& that);
+	WBlockLSTM(const WBlockLSTM& that);
 
 	/// Unmarshalling constructor
-	GBlockLSTM(GDomNode* pNode);
+	WBlockLSTM(WDomNode* pNode);
 
 	/// Destructor
-	~GBlockLSTM() override;
+	~WBlockLSTM() override;
 
 	/// Returns the type of this block
 	BlockType type() const override { return block_lstm; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GBlockLSTM"; }
+	std::string name() const override { return "WBlockLSTM"; }
 
 	/// Returns a copy of this block
-	GBlockLSTM* clone() const override { return new GBlockLSTM(*this); }
+	WBlockLSTM* clone() const override { return new WBlockLSTM(*this); }
 
 	/// Evaluate the input, set the output.
 	void forwardProp() override;
@@ -1892,7 +1892,7 @@ public:
 	void resetState() override;
 
 	/// Advances through time
-	GBlock* advanceState(size_t unfoldedInstances) override;
+	WBlock* advanceState(size_t unfoldedInstances) override;
 
 	/// Evaluates outBlame, and adds to inBlame.
 	/// (Note that it "adds to" the inBlame because multiple blocks may fork from a common source.)
@@ -1905,13 +1905,13 @@ public:
 	size_t weightCount() const override;
 
 	/// Initialize the weights with small random values.
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 
 protected:
 	void stepInTime();
-	void forwardProp_instance(const GVec& weights);
-	void backProp_instance(const GVec& weights, bool current);
-	void updateGradient_instance(GVec& weights, GVec& gradient);
+	void forwardProp_instance(const WVec& weights);
+	void backProp_instance(const WVec& weights, bool current);
+	void updateGradient_instance(WVec& weights, WVec& gradient);
 };
 
 
@@ -1940,43 +1940,43 @@ protected:
 //
 //
 
-/// GNeuralNet contains GLayers stacked upon each other.
-/// GLayer contains GBlocks concatenated beside each other. (GNeuralNet is a type of GBlock.)
-/// Each GBlock is an array of differentiable network units (artificial neurons).
-/// The user must add at least one GBlock to each GLayer.
-class GLayer
+/// WNeuralNet contains WLayers stacked upon each other.
+/// WLayer contains WBlocks concatenated beside each other. (WNeuralNet is a type of WBlock.)
+/// Each WBlock is an array of differentiable network units (artificial neurons).
+/// The user must add at least one WBlock to each WLayer.
+class WLayer
 {
 protected:
 	size_t input_count;
 	size_t output_count;
 	size_t weight_count;
 	size_t grad_count;
-	std::vector<GBlock*> m_blocks;
+	std::vector<WBlock*> m_blocks;
 
 public:
-	GVec outputBuf;
-	GVec outBlameBuf;
-	GVecWrapper output;
-	GVecWrapper outBlame;
+	WVec outputBuf;
+	WVec outBlameBuf;
+	WVecWrapper output;
+	WVecWrapper outBlame;
 
-	GLayer();
-	GLayer(const GLayer& that, GLayer* pPrevLayer);
-	GLayer(GDomNode* pNode, GRand& rand);
-	virtual ~GLayer();
+	WLayer();
+	WLayer(const WLayer& that, WLayer* pPrevLayer);
+	WLayer(WDomNode* pNode, WRand& rand);
+	virtual ~WLayer();
 
 	/// Marshal this object into a dom node.
-	GDomNode* serialize(GDom* pDoc) const;
+	WDomNode* serialize(WDom* pDoc) const;
 
 	/// Returns the number of blocks in this layer.
 	size_t blockCount() const { return m_blocks.size(); }
 
 	/// Returns a reference to the specified block.
-	GBlock& block(size_t i) { return *m_blocks[i]; }
-	const GBlock& block(size_t i) const { return *m_blocks[i]; }
+	WBlock& block(size_t i) { return *m_blocks[i]; }
+	const WBlock& block(size_t i) const { return *m_blocks[i]; }
 
 	/// Adds a block of network units (artificial neurons) to this layer.
 	/// inPos specifies the index of the first output from the previous layer that will feed into this block of units.
-	void add(GBlock* pBlock, size_t inPos);
+	void add(WBlock* pBlock, size_t inPos);
 
 	/// Recounts the number of inputs, outputs, and weights in this layer.
 	void recount();
@@ -1988,16 +1988,16 @@ public:
 	size_t outputs() const;
 
 	/// Allocates output and outBlame buffers and binds each block to the appropriate parts of all these buffers.
-	void bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInBlame, GVec& _weights, GVec& _gradient);
+	void bind(const WVec* pInput, WVec* pOutput, WVec* pOutBlame, WVec* pInBlame, WVec& _weights, WVec& _gradient);
 
 	/// Binds to the specified input buffer
-	void bindInput(const GVec& _input);
+	void bindInput(const WVec& _input);
 
 	/// Binds to the speicified inBlame buffer
-	void bindInBlame(GVec& _inBlame);
+	void bindInBlame(WVec& _inBlame);
 
 	/// Resets the weights in all of the blocks in this layer
-	void initWeights(GRand& rand);
+	void initWeights(WRand& rand);
 
 	/// Returns the total number of weights in this layer
 	size_t weightCount() const;
@@ -2009,7 +2009,7 @@ public:
 	void forwardProp();
 
 	/// Computes the out blame for all of the blocks in this layer
-	double computeBlame(const GVec& target);
+	double computeBlame(const WVec& target);
 
 	/// Resets the state in any recurrent connections
 	void resetState();
@@ -2031,10 +2031,10 @@ public:
 	void step(double learningRate, double momentum);
 
 	/// Adds the gradient scaled by the learningRate to the weights and also jitters it.
-	void step_jitter(double learningRate, double momentum, double jitter, GRand& rand);
+	void step_jitter(double learningRate, double momentum, double jitter, WRand& rand);
 
 	/// Puts a 1 in elements that correspond with bias weights and a 0 in all other elements.
-	void biasMask(GVec& mask);
+	void biasMask(WVec& mask);
 };
 
 
@@ -2058,31 +2058,31 @@ public:
 //
 //
 
-/// GNeuralNet contains GLayers stacked upon each other.
-/// GLayer contains GBlocks concatenated beside each other.
-/// (GNeuralNet is a type of GBlock, so you can nest.)
-/// Each GBlock is an array of differentiable network units (artificial neurons).
-/// The user must add at least one GBlock to each GLayer.
-class GNeuralNet : public GBlock
+/// WNeuralNet contains WLayers stacked upon each other.
+/// WLayer contains WBlocks concatenated beside each other.
+/// (WNeuralNet is a type of WBlock, so you can nest.)
+/// Each WBlock is an array of differentiable network units (artificial neurons).
+/// The user must add at least one WBlock to each WLayer.
+class WNeuralNet : public WBlock
 {
-	friend class GNeuralNetOptimizer;
+	friend class WNeuralNetOptimizer;
 protected:
 	size_t m_weightCount;
 	size_t m_gradCount;
-	std::vector<GLayer*> m_layers;
+	std::vector<WLayer*> m_layers;
 
 public:
 	/// General-purpose constructor
-	GNeuralNet();
+	WNeuralNet();
 
 	/// Copy constructor
-	GNeuralNet(const GNeuralNet& that);
+	WNeuralNet(const WNeuralNet& that);
 
 	/// Deserializing constructor
-	GNeuralNet(GDomNode* pNode, GRand& rand);
+	WNeuralNet(WDomNode* pNode, WRand& rand);
 
 	/// Destructor
-	~GNeuralNet() override;
+	~WNeuralNet() override;
 
 	/// Deletes all the layers
 	void deleteAllLayers();
@@ -2091,83 +2091,83 @@ public:
 	BlockType type() const override { return block_neuralnet; }
 
 	/// Returns the name of this block
-	std::string name() const override { return "GNeuralNet"; }
+	std::string name() const override { return "WNeuralNet"; }
 
 	/// Retuns a copy of this neural network
-	GNeuralNet* clone() const override { return new GNeuralNet(*this); }
+	WNeuralNet* clone() const override { return new WNeuralNet(*this); }
 
 	/// Marshal this object into a dom node.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// Unmarshalls this object in place from a dom node.
-	void deserialize(GDomNode* pNode, GRand& rand);
+	void deserialize(WDomNode* pNode, WRand& rand);
 
 	/// Adds a block as a new layer to this neural network.
-	GBlock* add(GBlock* pBlock);
-	void add(GBlock* a, GBlock* b)
+	WBlock* add(WBlock* pBlock);
+	void add(WBlock* a, WBlock* b)
 	{
 		add(a);
 		add(b);
 	}
-	void add(GBlock* a, GBlock* b, GBlock* c)
+	void add(WBlock* a, WBlock* b, WBlock* c)
 	{
 		add(a);
 		add(b, c);
 	}
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d)
+	void add(WBlock* a, WBlock* b, WBlock* c, WBlock* d)
 	{
 		add(a);
 		add(b, c, d);
 	}
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e)
+	void add(WBlock* a, WBlock* b, WBlock* c, WBlock* d, WBlock* e)
 	{
 		add(a);
 		add(b, c, d, e);
 	}
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f)
+	void add(WBlock* a, WBlock* b, WBlock* c, WBlock* d, WBlock* e, WBlock* f)
 	{
 		add(a);
 		add(b, c, d, e, f);
 	}
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g)
+	void add(WBlock* a, WBlock* b, WBlock* c, WBlock* d, WBlock* e, WBlock* f, WBlock* g)
 	{
 		add(a);
 		add(b, c, d, e, f, g);
 	}
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h)
+	void add(WBlock* a, WBlock* b, WBlock* c, WBlock* d, WBlock* e, WBlock* f, WBlock* g, WBlock* h)
 	{
 		add(a);
 		add(b, c, d, e, f, g, h);
 	}
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h, GBlock* i)
+	void add(WBlock* a, WBlock* b, WBlock* c, WBlock* d, WBlock* e, WBlock* f, WBlock* g, WBlock* h, WBlock* i)
 	{
 		add(a);
 		add(b, c, d, e, f, g, h, i);
 	}
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h, GBlock* i, GBlock* j)
+	void add(WBlock* a, WBlock* b, WBlock* c, WBlock* d, WBlock* e, WBlock* f, WBlock* g, WBlock* h, WBlock* i, WBlock* j)
 	{
 		add(a);
 		add(b, c, d, e, f, g, h, i, j);
 	}
-	void add(GBlock* a, GBlock* b, GBlock* c, GBlock* d, GBlock* e, GBlock* f, GBlock* g, GBlock* h, GBlock* i, GBlock* j, GBlock* k)
+	void add(WBlock* a, WBlock* b, WBlock* c, WBlock* d, WBlock* e, WBlock* f, WBlock* g, WBlock* h, WBlock* i, WBlock* j, WBlock* k)
 	{
 		add(a);
 		add(b, c, d, e, f, g, h, i, j, k);
 	}
 
 	/// Attaches this neural network to the relevant buffers for it to operate on.
-	void bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInBlame, GVec* pWeights, GVec* pGradient) override;
+	void bind(const WVec* pInput, WVec* pOutput, WVec* pOutBlame, WVec* pInBlame, WVec* pWeights, WVec* pGradient) override;
 
 	/// Concatenates a block to the last (output-most) layer in this neural network.
 	/// (inPos specifies the starting position of the inputs into this block.)
-	GBlock* concat(GBlock* pBlock, size_t inPos);
+	WBlock* concat(WBlock* pBlock, size_t inPos);
 	/*
 	/// Inserts a block into a new layer at the specified position.
 	/// Requires the current weights and returns a new weight vector (which may be the
 	/// same vector if pBlock has no weights). New weights will be initialized to identity for a linear layer.
 	/// The caller is still responsible to delete pOldWeights (if it is not equal to the returned value)
 	/// and initialize a new gradient vector.
-	GVec* insert(size_t position, GBlock* pBlock, GVec* pOldWeights, GRand& rand);
+	WVec* insert(size_t position, WBlock* pBlock, WVec* pOldWeights, WRand& rand);
 
 	/// Drops a layer from this neural network. The layer must have the same number of inputs and outputs,
 	/// and it cannot be the output layer.
@@ -2175,17 +2175,17 @@ public:
 	/// same vector if pBlock has no weights).
 	/// The caller is still responsible to delete pOldWeights (if it is not equal to the returned value)
 	/// and initialize a new gradient vector.
-	GVec* drop(size_t layer, GVec* pOldWeights);
+	WVec* drop(size_t layer, WVec* pOldWeights);
 
 	/// Adds a unit to each hidden layer.
 	/// startLayer and layerCount specify which layers will be adjusted.
 	/// Assumes all specified layers have the same size.
-	GVec* increaseWidth(size_t newUnitsPerLayer, GVec* pWeights, size_t startLayer, size_t layerCount, GRand& rand);
+	WVec* increaseWidth(size_t newUnitsPerLayer, WVec* pWeights, size_t startLayer, size_t layerCount, WRand& rand);
 
 	/// If each linear layer ignores at least one unit that feeds into it,
 	/// then this removes an ignored unit from every layer to make the whole network
 	/// thinner by one unit. If this condition is not met, then it returns nullptr.
-	GVec* decrementWidth(GVec* pWeights, size_t startLayer, size_t layerCount);
+	WVec* decrementWidth(WVec* pWeights, size_t startLayer, size_t layerCount);
 */
 	/// An experimental regularization method that promotes anti-symmetry and mirroring in square linear layers
 	void regularize_square(double lambda);
@@ -2195,12 +2195,12 @@ public:
 	size_t layerCount() const { return m_layers.size(); }
 
 	/// Returns the specified layer.
-	GLayer& layer(size_t i) { return *m_layers[i]; }
-	const GLayer& layer(size_t i) const { return *m_layers[i]; }
+	WLayer& layer(size_t i) { return *m_layers[i]; }
+	const WLayer& layer(size_t i) const { return *m_layers[i]; }
 
 	/// Returns a reference to the last layer.
-	GLayer& outputLayer() { return *m_layers[m_layers.size() - 1]; }
-	const GLayer& outputLayer() const { return *m_layers[m_layers.size() - 1]; }
+	WLayer& outputLayer() { return *m_layers[m_layers.size() - 1]; }
+	const WLayer& outputLayer() const { return *m_layers[m_layers.size() - 1]; }
 
 	/// Returns a string representation of this object
 	std::string to_str(bool includeWeights = false, bool includeActivations = false) const override;
@@ -2224,40 +2224,40 @@ public:
 	size_t gradCount() const override;
 
 	/// Copies all the layers from other.
-	void copyTopology(const GNeuralNet& other);
+	void copyTopology(const WNeuralNet& other);
 
 	/// Initialize the weights. (This is called by init.)
-	void initWeights(GRand& rand) override;
+	void initWeights(WRand& rand) override;
 
 	/// Allocates buffers needed for training, binds all the layers to these buffers,
 	/// and to each other, initializes the weights with small random values, and
 	/// initializes the gradient vector with zeros.
-	void init(GRand& rand, GNeuralNet* pBase = nullptr);
+	void init(WRand& rand, WNeuralNet* pBase = nullptr);
 
 	/// Initializes with pre-trained weights
-	void init(GVec& weights);
+	void init(WVec& weights);
 
 	/// Measures the loss with respect to some data. Returns sum-squared error.
 	/// if pOutSAE is not nullptr, then sum-absolute error will be storead where it points.
 	/// As a special case, if labels have exactly one categorical column, then it will be assumed
 	/// that the maximum output unit of this neural network represents a categorical prediction,
 	/// and sum hamming loss will be returned.
-	double measureLoss(const GMatrix& features, const GMatrix& labels, double* pOutSAE = nullptr);
+	double measureLoss(const WMatrix& features, const WMatrix& labels, double* pOutSAE = nullptr);
 
 	/// Evaluates the input vector. Returns an output vector.
-	GVec& forwardProp(const GVec& input);
+	WVec& forwardProp(const WVec& input);
 
 	/// Computes blame on the output of this neural network.
-	double computeBlame(const GVec& target) override;
+	double computeBlame(const WVec& target) override;
 
 	/// Resets the state in any recurrent connections
 	void resetState() override;
 
 	/// Resets the state in any recurrent connections
-	GBlock* advanceState(size_t unfoldedInstances) override;
+	WBlock* advanceState(size_t unfoldedInstances) override;
 
 	/// Backpropagates the error. If inputBlame is non-null, the blame for the inputs will also be computed.
-	void backpropagate(GVec* inputBlame = nullptr);
+	void backpropagate(WVec* inputBlame = nullptr);
 
 	/// Updates the gradient vector
 	void updateGradient() override;
@@ -2269,14 +2269,14 @@ public:
 	void step(double learningRate, double momentum) override;
 
 	/// Adds the gradient scaled by the learningRate to the weights and also jitters it.
-	void step_jitter(double learningRate, double momentum, double jitter, GRand& rand) override;
+	void step_jitter(double learningRate, double momentum, double jitter, WRand& rand) override;
 
 	/// Returns a mathematical expression of this neural network.
 	/// (Currently only supports linear, tanh, and scalarProduct blocks in one-block layers.)
 	std::string toEquation();
 
 	/// Puts a 1 in elements that correspond with bias weights and a 0 in all other elements.
-	void biasMask(GVec& mask) override;
+	void biasMask(WVec& mask) override;
 
 	/// Returns the index of the first weight associated with the specified layer.
 	size_t layerStart(size_t layer);
@@ -2302,7 +2302,7 @@ protected:
 
 
 
-class GBlockResidual : public GNeuralNet
+class WBlockResidual : public WNeuralNet
 {
 	void forwardProp() override;
 
@@ -2316,95 +2316,95 @@ class GBlockResidual : public GNeuralNet
 
 
 
-/// A thin wrapper around a GNeuralNet that implements the GIncrementalLearner interface.
-class GNeuralNetLearner : public GIncrementalLearner
+/// A thin wrapper around a WNeuralNet that implements the WIncrementalLearner interface.
+class WNeuralNetLearner : public WIncrementalLearner
 {
 protected:
-	GNeuralNet m_nn;
-	GNeuralNetOptimizer* m_pOptimizer;
+	WNeuralNet m_nn;
+	WNeuralNetOptimizer* m_pOptimizer;
 
 public:
-	GNeuralNetLearner();
-	//GNeuralNetLearner(const GDomNode* pNode);
-	~GNeuralNetLearner() override;
+	WNeuralNetLearner();
+	//WNeuralNetLearner(const WDomNode* pNode);
+	~WNeuralNetLearner() override;
 
 	/// Returns a reference to the neural net that this class wraps
-	GNeuralNet& nn() { return m_nn; }
+	WNeuralNet& nn() { return m_nn; }
 
 	/// Lazily creates an optimizer for the neural net that this class wraps, and returns a reference to it.
-	GNeuralNetOptimizer& optimizer();
+	WNeuralNetOptimizer& optimizer();
 
-	void trainIncremental(const GVec& in, const GVec& out) override;
-	void trainSparse(GSparseMatrix& features, GMatrix& labels) override;
+	void trainIncremental(const WVec& in, const WVec& out) override;
+	void trainSparse(WSparseMatrix& features, WMatrix& labels) override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Saves the model to a text file.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GSupervisedLearner::clear
+	/// See the comment for WSupervisedLearner::clear
 	void clear() override;
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& in, GVec& out) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& in, WVec& out) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& in, WPrediction* pOut) override;
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleNominalFeatures
 	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
-	/// See the comment for GTransducer::supportedFeatureRange
+	/// See the comment for WTransducer::supportedFeatureRange
 	bool supportedFeatureRange(double* pOutMin, double* pOutMax) override;
 
-	/// See the comment for GTransducer::canImplicitlyHandleMissingFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleMissingFeatures
 	bool canImplicitlyHandleMissingFeatures() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
+	/// See the comment for WTransducer::canImplicitlyHandleNominalLabels
 	bool canImplicitlyHandleNominalLabels() override { return false; }
 
-	/// See the comment for GTransducer::supportedFeatureRange
+	/// See the comment for WTransducer::supportedFeatureRange
 	bool supportedLabelRange(double* pOutMin, double* pOutMax) override;
 
 protected:
-	/// See the comment for GIncrementalLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WIncrementalLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
-	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
+	/// See the comment for WIncrementalLearner::beginIncrementalLearningInner
+	void beginIncrementalLearningInner(const WRelation& featureRel, const WRelation& labelRel) override;
 };
 
 
 
 /*
 /// A class that facilitates training a neural network with an arbitrary optimization algorithm
-class GNeuralNetTargetFunction : public GTargetFunction
+class WNeuralNetTargetFunction : public WTargetFunction
 {
 protected:
-	GNeuralNet& m_nn;
-	const GMatrix& m_features;
-	const GMatrix& m_labels;
-	GRand& m_rand;
+	WNeuralNet& m_nn;
+	const WMatrix& m_features;
+	const WMatrix& m_labels;
+	WRand& m_rand;
 
 public:
 	/// features and labels should be pre-filtered to contain only continuous values for the neural network.
-	GNeuralNetTargetFunction(GNeuralNet& nn, const GMatrix& features, const GMatrix& labels, GRand& rand)
-	: GTargetFunction(nn.weightCount()), m_nn(nn), m_features(features), m_labels(labels), m_rand(rand)
+	WNeuralNetTargetFunction(WNeuralNet& nn, const WMatrix& features, const WMatrix& labels, WRand& rand)
+	: WTargetFunction(nn.weightCount()), m_nn(nn), m_features(features), m_labels(labels), m_rand(rand)
 	{
 	}
 
-	virtual ~GNeuralNetTargetFunction() {}
+	virtual ~WNeuralNetTargetFunction() {}
 
 	/// Copies the neural network weights into the vector.
-	virtual void initVector(GVec& vector)
+	virtual void initVector(WVec& vector)
 	{
-		GRand rand(0);
+		WRand rand(0);
 		vector.copy(m_nn.weights);
 	}
 
 	/// Copies the vector into the neural network and measures sum-squared error.
-	virtual double computeError(const GVec& vec)
+	virtual double computeError(const WVec& vec)
 	{
 		return m_nn.measureLoss(vec, m_features, m_labels);
 	}
@@ -2413,6 +2413,6 @@ public:
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GNEURALNET_H__

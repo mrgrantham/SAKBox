@@ -16,34 +16,34 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GError.h"
-#include "GEvolutionary.h"
-#include "GBits.h"
-#include "GRand.h"
-#include "GVec.h"
+#include "WError.h"
+#include "WEvolutionary.h"
+#include "WBits.h"
+#include "WRand.h"
+#include "WVec.h"
 #include <math.h>
 
-using namespace GClasses;
+using namespace WClasses;
 
-namespace GClasses
+namespace WClasses
 {
-class GEvolutionaryOptimizerNode
+class WEvolutionaryOptimizerNode
 {
 protected:
-	GVec m_pVector;
+	WVec m_pVector;
 	double m_error;
 
 public:
-	GEvolutionaryOptimizerNode(size_t dims)
+	WEvolutionaryOptimizerNode(size_t dims)
 	{
 		m_pVector.resize(dims);
 	}
 
-	virtual ~GEvolutionaryOptimizerNode()
+	virtual ~WEvolutionaryOptimizerNode()
 	{
 	}
 
-	GVec& GetVector()
+	WVec& GetVector()
 	{
 		return m_pVector;
 	}
@@ -60,10 +60,10 @@ public:
 };
 }
 
-GEvolutionaryOptimizer::GEvolutionaryOptimizer(GTargetFunction* pCritic, size_t nPopulation, GRand* pRand, double moreFitSurvivalRate)
-: GOptimizer(pCritic), m_pRand(pRand)
+WEvolutionaryOptimizer::WEvolutionaryOptimizer(WTargetFunction* pCritic, size_t nPopulation, WRand* pRand, double moreFitSurvivalRate)
+: WOptimizer(pCritic), m_pRand(pRand)
 {
-	GAssert(nPopulation >= 2); // can't have a tournament without two members of the population
+	WAssert(nPopulation >= 2); // can't have a tournament without two members of the population
 
 	// Compute the probability that we need to do a tournament, such that it works out
 	// to be equivalent to always performing the tournament and picking the winner with
@@ -73,8 +73,8 @@ GEvolutionaryOptimizer::GEvolutionaryOptimizer(GTargetFunction* pCritic, size_t 
 	size_t dims = pCritic->relation()->size();
 	for(size_t i = 0; i < nPopulation; i++)
 	{
-		GEvolutionaryOptimizerNode* pNode = new GEvolutionaryOptimizerNode(dims);
-		GVec& pVec = pNode->GetVector();
+		WEvolutionaryOptimizerNode* pNode = new WEvolutionaryOptimizerNode(dims);
+		WVec& pVec = pNode->GetVector();
 		m_pCritic->initVector(pVec);
 		if(m_pCritic->isStable())
 		{
@@ -89,18 +89,18 @@ GEvolutionaryOptimizer::GEvolutionaryOptimizer(GTargetFunction* pCritic, size_t 
 }
 
 // virtual
-GEvolutionaryOptimizer::~GEvolutionaryOptimizer()
+WEvolutionaryOptimizer::~WEvolutionaryOptimizer()
 {
 	for(size_t i = 0; i < m_population.size(); i++)
 		delete(node(i));
 }
 
-GEvolutionaryOptimizerNode* GEvolutionaryOptimizer::node(size_t index)
+WEvolutionaryOptimizerNode* WEvolutionaryOptimizer::node(size_t index)
 {
 	return m_population[index];
 }
 
-size_t GEvolutionaryOptimizer::doTournament()
+size_t WEvolutionaryOptimizer::doTournament()
 {
 	size_t popSize = m_population.size();
 	size_t a = (size_t)m_pRand->next(popSize);
@@ -109,8 +109,8 @@ size_t GEvolutionaryOptimizer::doTournament()
 	size_t b = (size_t)m_pRand->next(popSize - 1);
 	if(b >= a)
 		b++;
-	GEvolutionaryOptimizerNode* pA = node(a);
-	GEvolutionaryOptimizerNode* pB = node(b);
+	WEvolutionaryOptimizerNode* pA = node(a);
+	WEvolutionaryOptimizerNode* pB = node(b);
 	if(!m_pCritic->isStable())
 	{
 		if(m_pRand->next(popSize) == 0)
@@ -124,7 +124,7 @@ size_t GEvolutionaryOptimizer::doTournament()
 		return b;
 }
 
-void GEvolutionaryOptimizer::recomputeError(size_t index, GEvolutionaryOptimizerNode* pNode, const GVec& pVec)
+void WEvolutionaryOptimizer::recomputeError(size_t index, WEvolutionaryOptimizerNode* pNode, const WVec& pVec)
 {
 	double err = m_pCritic->computeError(pVec);
 	pNode->SetError(err);
@@ -136,19 +136,19 @@ void GEvolutionaryOptimizer::recomputeError(size_t index, GEvolutionaryOptimizer
 }
 
 // virtual
-double GEvolutionaryOptimizer::iterate()
+double WEvolutionaryOptimizer::iterate()
 {
 	size_t dims = m_pCritic->relation()->size();
 	size_t target = doTournament();
-	GEvolutionaryOptimizerNode* pNode = node(target);
+	WEvolutionaryOptimizerNode* pNode = node(target);
 	size_t popSize = m_population.size();
-	GVec& pVec = pNode->GetVector();
+	WVec& pVec = pNode->GetVector();
 	size_t technique = (size_t)m_pRand->next(8);
 	switch(technique)
 	{
 		case 0: // clone and mutate in all dimensions
 		{
-			GEvolutionaryOptimizerNode* pParent = node((size_t)m_pRand->next(popSize));
+			WEvolutionaryOptimizerNode* pParent = node((size_t)m_pRand->next(popSize));
 			pVec.copy(pParent->GetVector());
 			double dev = exp(m_pRand->uniform() * 16.0 - 8.0);
 			for(size_t i = 0; i < dims; i++)
@@ -166,16 +166,16 @@ double GEvolutionaryOptimizer::iterate()
 		break;
 		case 1: // random mix
 		{
-			GVec& pPar1 = (node((size_t)m_pRand->next(popSize)))->GetVector();
-			GVec& pPar2 = (node((size_t)m_pRand->next(popSize)))->GetVector();
+			WVec& pPar1 = (node((size_t)m_pRand->next(popSize)))->GetVector();
+			WVec& pPar2 = (node((size_t)m_pRand->next(popSize)))->GetVector();
 			for(size_t i = 0; i < dims; i++)
 				pVec[i] = (m_pRand->next(2) == 0 ? pPar1[i] : pPar2[i]);
 		}
 		break;
 		case 2: // single-point cross-over
 		{
-			GVec& pPar1 = (node((size_t)m_pRand->next(popSize)))->GetVector();
-			GVec& pPar2 = (node((size_t)m_pRand->next(popSize)))->GetVector();
+			WVec& pPar1 = (node((size_t)m_pRand->next(popSize)))->GetVector();
+			WVec& pPar2 = (node((size_t)m_pRand->next(popSize)))->GetVector();
 			size_t pivot = (size_t)m_pRand->next(dims);
 			size_t i;
 			for(i = 0; i < pivot; i++)
@@ -186,8 +186,8 @@ double GEvolutionaryOptimizer::iterate()
 		break;
 		case 3: // interpolate
 		{
-			GVec& pPar1 = (node((size_t)m_pRand->next(popSize)))->GetVector();
-			GVec& pPar2 = (node((size_t)m_pRand->next(popSize)))->GetVector();
+			WVec& pPar1 = (node((size_t)m_pRand->next(popSize)))->GetVector();
+			WVec& pPar2 = (node((size_t)m_pRand->next(popSize)))->GetVector();
 			double t = m_pRand->uniform() * 3; // values > 1 will catapult beyond the parent
 			for(size_t i = 0; i < dims; i++)
 			{
@@ -206,7 +206,7 @@ double GEvolutionaryOptimizer::iterate()
 		break;
 		default: // clone and mutate in one dimension
 		{
-			GEvolutionaryOptimizerNode* pParent = node((size_t)m_pRand->next(popSize));
+			WEvolutionaryOptimizerNode* pParent = node((size_t)m_pRand->next(popSize));
 			pVec.copy(pParent->GetVector());
 			size_t mutateDim = (size_t)m_pRand->next(dims);
 			size_t vals = m_pCritic->relation()->valueCount(mutateDim);
@@ -223,7 +223,7 @@ double GEvolutionaryOptimizer::iterate()
 }
 
 // virtual
-const GVec& GEvolutionaryOptimizer::currentVector()
+const WVec& WEvolutionaryOptimizer::currentVector()
 {
 	return (node(m_bestIndex))->GetVector();
 }

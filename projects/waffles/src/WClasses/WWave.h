@@ -20,15 +20,15 @@
 #ifndef __GWAVE_H__
 #define __GWAVE_H__
 
-#include "GError.h"
+#include "WError.h"
 
-namespace GClasses
+namespace WClasses
 {
 
 struct ComplexNumber;
 
 /// Currently only supports PCM wave format
-class GWave
+class WWave
 {
 protected:
 	unsigned int m_size;
@@ -39,8 +39,8 @@ protected:
 	unsigned char* m_pData;
 
 public:
-	GWave();
-	~GWave();
+	WWave();
+	~WWave();
 
 	/// Loads from a file in WAV format
 	void load(const char* szFilename);
@@ -76,17 +76,17 @@ public:
 /// This class iterates over the samples in a WAVE file.
 /// Regardless of the bits-per-sample, this iterator
 /// will convert all samples to doubles with a range from -1 to 1.
-class GWaveIterator
+class WWaveIterator
 {
 protected:
-	GWave& m_wave;
+	WWave& m_wave;
 	size_t m_remaining;
 	double* m_pSamples;
 	unsigned char* m_pPos;
 
 public:
-	GWaveIterator(GWave& wave);
-	~GWaveIterator();
+	WWaveIterator(WWave& wave);
+	~WWaveIterator();
 
 	/// Returns the number of samples remaining
 	size_t remaining();
@@ -108,7 +108,7 @@ public:
 	/// Copies the position of another wave iterator that is iterating
 	/// on the same wave. (Behavior is undefined if the other iterator
 	/// is iterating on a different wave.)
-	void copy(GWaveIterator& other);
+	void copy(WWaveIterator& other);
 };
 
 
@@ -116,7 +116,7 @@ public:
 /// divides the wave file up into overlapping blocks, converts them into Fourier space,
 /// calls the abstract "process" method with each block, converts back from Fourier space,
 /// and then interpolates to create the wave output.
-class GFourierWaveProcessor
+class WFourierWaveProcessor
 {
 protected:
 	size_t m_blockSize;
@@ -129,11 +129,11 @@ protected:
 
 public:
 	/// blockSize must be a power of 2.
-	GFourierWaveProcessor(size_t blockSize);
-	virtual ~GFourierWaveProcessor();
+	WFourierWaveProcessor(size_t blockSize);
+	virtual ~WFourierWaveProcessor();
 
 	/// Transforms signal
-	void reduce(GWave& signal);
+	void reduce(WWave& signal);
 
 protected:
 	/// pBuf represents a block of m_blockSize complex numbers in Fourier space.
@@ -141,16 +141,16 @@ protected:
 	virtual void process(struct ComplexNumber* pBuf) = 0;
 
 	/// Convert the specified channel from an iterator to an array of complex numbers (in temporal space).
-	void encodeBlock(GWaveIterator& it, struct ComplexNumber* pBuf, unsigned short chan);
+	void encodeBlock(WWaveIterator& it, struct ComplexNumber* pBuf, unsigned short chan);
 
 	/// Convert an array of complex numbers (in temporal space) to the specified channel of a wave file.
-	void decodeBlock(GWaveIterator& it, unsigned short chan);
+	void decodeBlock(WWaveIterator& it, unsigned short chan);
 
 	/// Given 3 overlapping blocks (in temporal space), interpolate to create a final block of values.
 	void interpolate(struct ComplexNumber* pPre, struct ComplexNumber* pCur, struct ComplexNumber* pPost, size_t graftSamples);
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GWAVE_H__

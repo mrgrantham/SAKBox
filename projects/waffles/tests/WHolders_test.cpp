@@ -1,11 +1,11 @@
-// GHolders: Holder and ArrayHolder.
+// WHolders: Holder and ArrayHolder.
 #include <gtest/gtest.h>
 
-#include <WClasses/GHolders.h>
+#include <WClasses/WHolders.h>
 
 #include <type_traits>
 
-using namespace GClasses;
+using namespace WClasses;
 
 // A holder deletes what it holds, so copying one would delete it twice.
 // Copying is refused at compile time.

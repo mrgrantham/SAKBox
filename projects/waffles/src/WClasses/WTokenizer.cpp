@@ -17,12 +17,12 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GTokenizer.h"
-#include "GError.h"
-#include "GHolders.h"
-#include "GFile.h"
-#include "GString.h"
-#include "GBitTable.h"
+#include "WTokenizer.h"
+#include "WError.h"
+#include "WHolders.h"
+#include "WFile.h"
+#include "WString.h"
+#include "WBitTable.h"
 #include <stdio.h>
 #include <string.h>
 #include <fstream>
@@ -37,11 +37,11 @@ using std::string;
 using std::map;
 using std::string;
 
-namespace GClasses
+namespace WClasses
 {
 
 
-GCharSet::GCharSet(const char* szChars)
+WCharSet::WCharSet(const char* szChars)
 : m_bt(256)
 {
 	char c = '\0';
@@ -68,19 +68,19 @@ GCharSet::GCharSet(const char* szChars)
 	}
 }
 
-bool GCharSet::find(char c) const
+bool WCharSet::find(char c) const
 {
 	return m_bt.bit((unsigned char)c);
 }
 
-bool GCharSet::equals(const GCharSet& other) const
+bool WCharSet::equals(const WCharSet& other) const
 {
 	return m_bt.equals(other.m_bt);
 }
 
 
 
-GTokenizer::GTokenizer(const char* szFilename)
+WTokenizer::WTokenizer(const char* szFilename)
 {
 	std::ifstream* pStream = new std::ifstream();
 	m_pStream = pStream;
@@ -105,7 +105,7 @@ GTokenizer::GTokenizer(const char* szFilename)
 	m_line = 1;
 }
 
-GTokenizer::GTokenizer(const char* pFile, size_t len)
+WTokenizer::WTokenizer(const char* pFile, size_t len)
 {
 	if(len > 0)
 	{
@@ -125,13 +125,13 @@ GTokenizer::GTokenizer(const char* pFile, size_t len)
 	m_line = 1;
 }
 
-GTokenizer::~GTokenizer()
+WTokenizer::~WTokenizer()
 {
 	delete[] m_pBufStart;
 	delete(m_pStream);
 }
 
-bool GTokenizer::has_more()
+bool WTokenizer::has_more()
 {
 	if(m_qCount == 0)
 	{
@@ -144,7 +144,7 @@ bool GTokenizer::has_more()
 	return true;
 }
 
-char GTokenizer::peek()
+char WTokenizer::peek()
 {
 	if(m_qCount == 0)
 	{
@@ -157,22 +157,22 @@ char GTokenizer::peek()
 	return m_q[m_qPos];
 }
 
-char GTokenizer::peek(size_t n)
+char WTokenizer::peek(size_t n)
 {
-	if(n >= GTOKENIZER_MAX_LOOKAHEAD)
+	if(n >= WTOKENIZER_MAX_LOOKAHEAD)
 		throw Ex("out of range");
 	while(m_qCount <= n)
 	{
 		int c = m_pStream->get();
 		if(c == EOF)
 			return '\0';
-		m_q[(m_qPos + m_qCount) % GTOKENIZER_MAX_LOOKAHEAD] = (char)c;
+		m_q[(m_qPos + m_qCount) % WTOKENIZER_MAX_LOOKAHEAD] = (char)c;
 		m_qCount++;
 	}
-	return m_q[(m_qPos + n) % GTOKENIZER_MAX_LOOKAHEAD];
+	return m_q[(m_qPos + n) % WTOKENIZER_MAX_LOOKAHEAD];
 }
 
-char GTokenizer::get()
+char WTokenizer::get()
 {
 	if(m_qCount == 0)
 	{
@@ -183,7 +183,7 @@ char GTokenizer::get()
 		m_qCount = 1;
 	}
 	char c = m_q[m_qPos];
-	if(++m_qPos >= GTOKENIZER_MAX_LOOKAHEAD)
+	if(++m_qPos >= WTOKENIZER_MAX_LOOKAHEAD)
 		m_qPos = 0;
 	m_qCount--;
 	m_pos++;
@@ -195,7 +195,7 @@ char GTokenizer::get()
 	return c;
 }
 
-void GTokenizer::growBuf()
+void WTokenizer::growBuf()
 {
 	size_t len = m_pBufEnd - m_pBufStart;
 	char* pNewBuf = new char[len * 2];
@@ -206,7 +206,7 @@ void GTokenizer::growBuf()
 	m_pBufStart = pNewBuf;
 }
 
-void GTokenizer::bufferChar(char c)
+void WTokenizer::bufferChar(char c)
 {
 	if(m_pBufPos == m_pBufEnd)
 		growBuf();
@@ -214,7 +214,7 @@ void GTokenizer::bufferChar(char c)
 	m_pBufPos++;
 }
 
-char* GTokenizer::nullTerminate()
+char* WTokenizer::nullTerminate()
 {
 	if(m_pBufPos == m_pBufEnd)
 		growBuf();
@@ -222,7 +222,7 @@ char* GTokenizer::nullTerminate()
 	return m_pBufStart;
 }
 
-char* GTokenizer::appendToToken(const char* string)
+char* WTokenizer::appendToToken(const char* string)
 {
 	while(*string != '\0')
 	{
@@ -232,7 +232,7 @@ char* GTokenizer::appendToToken(const char* string)
 	return nullTerminate();
 }
 
-char* GTokenizer::readUntil(const GCharSet& delimeters, size_t minLen, size_t maxLen)
+char* WTokenizer::readUntil(const WCharSet& delimeters, size_t minLen, size_t maxLen)
 {
 	m_pBufPos = m_pBufStart;
 	while(has_more() && maxLen > 0)
@@ -249,7 +249,7 @@ char* GTokenizer::readUntil(const GCharSet& delimeters, size_t minLen, size_t ma
 	return nullTerminate();
 }
 
-char* GTokenizer::readUntil_escaped(char escapeChar, const GCharSet& delimeters)
+char* WTokenizer::readUntil_escaped(char escapeChar, const WCharSet& delimeters)
 {
 	m_pBufPos = m_pBufStart;
 	char cCur = '\0';
@@ -265,7 +265,7 @@ char* GTokenizer::readUntil_escaped(char escapeChar, const GCharSet& delimeters)
 	return nullTerminate();
 }
 
-char* GTokenizer::readWhile(const GCharSet& set, size_t minLen)
+char* WTokenizer::readWhile(const WCharSet& set, size_t minLen)
 {
 	m_pBufPos = m_pBufStart;
 	while(has_more())
@@ -281,7 +281,7 @@ char* GTokenizer::readWhile(const GCharSet& set, size_t minLen)
 	return nullTerminate();
 }
 
-void GTokenizer::skipWhile(const GCharSet& delimeters)
+void WTokenizer::skipWhile(const WCharSet& delimeters)
 {
 	while(has_more())
 	{
@@ -292,7 +292,7 @@ void GTokenizer::skipWhile(const GCharSet& delimeters)
 	}
 }
 
-void GTokenizer::skipUntil(const GCharSet& delimeters)
+void WTokenizer::skipUntil(const WCharSet& delimeters)
 {
 	while(has_more())
 	{
@@ -303,7 +303,7 @@ void GTokenizer::skipUntil(const GCharSet& delimeters)
 	}
 }
 
-char* GTokenizer::readUntil_escaped_quoted(const GCharSet& delimiters, char escapeChar)
+char* WTokenizer::readUntil_escaped_quoted(const WCharSet& delimiters, char escapeChar)
 {
 	m_pBufPos = m_pBufStart;
 	char c = peek();
@@ -382,7 +382,7 @@ char* GTokenizer::readUntil_escaped_quoted(const GCharSet& delimiters, char esca
 	return nullTerminate();
 }
 
-void GTokenizer::skip(size_t n)
+void WTokenizer::skip(size_t n)
 {
 	while(n > 0 && has_more())
 	{
@@ -391,12 +391,12 @@ void GTokenizer::skip(size_t n)
 	}
 }
 
-size_t GTokenizer::line()
+size_t WTokenizer::line()
 {
 	return m_line;
 }
 
-void GTokenizer::skipExact(const char* szString)
+void WTokenizer::skipExact(const char* szString)
 {
 	while(*szString != '\0' && has_more())
 	{
@@ -409,12 +409,12 @@ void GTokenizer::skipExact(const char* szString)
 		throw Ex("Expected \", szString, \". Reached end-of-file instead.");
 }
 
-size_t GTokenizer::tokenLength()
+size_t WTokenizer::tokenLength()
 {
 	return m_pBufPos - m_pBufStart;
 }
 
-char* GTokenizer::trim(const GCharSet& set)
+char* WTokenizer::trim(const WCharSet& set)
 {
 	char* pStart = m_pBufStart;
 	while(pStart < m_pBufPos && set.find(*pStart))
@@ -424,7 +424,7 @@ char* GTokenizer::trim(const GCharSet& set)
 	return pStart;
 }
 
-char* GTokenizer::filter(const GCharSet& set)
+char* WTokenizer::filter(const WCharSet& set)
 {
 	size_t end = m_pBufPos - m_pBufStart;
 	for(size_t i = 0; i < end; i++)
@@ -441,9 +441,9 @@ char* GTokenizer::filter(const GCharSet& set)
 	return m_pBufStart;
 }
 
-size_t GTokenizer::col()
+size_t WTokenizer::col()
 {
 	return m_pos - m_lineStart;
 }
 
-} // namespace GClasses
+} // namespace WClasses

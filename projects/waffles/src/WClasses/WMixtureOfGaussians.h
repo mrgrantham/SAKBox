@@ -20,17 +20,17 @@
 #ifndef __GMIXTUREOFGAUSSIANS_H__
 #define __GMIXTUREOFGAUSSIANS_H__
 
-#include "GDistribution.h"
+#include "WDistribution.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GMatrix;
+class WMatrix;
 
 
 /// This class uses Expectency Maximization to find the mixture of Gaussians that best approximates
 /// the data in a specified real attribute of a data set.
-class GMixtureOfGaussians
+class WMixtureOfGaussians
 {
 protected:
 	int m_nKernelCount;
@@ -38,19 +38,19 @@ protected:
 	double* m_pArrMeanVarWeight;
 	double* m_pCatLikelihoods;
 	double* m_pTemp;
-	GMatrix* m_pData;
-	GNormalDistribution m_dist;
+	WMatrix* m_pData;
+	WNormalDistribution m_dist;
 	double m_dMinVariance;
 
 public:
-	GMixtureOfGaussians(int nKernelCount, GMatrix* pData, int nAttribute, double minVariance, GRand* pRand);
-	virtual ~GMixtureOfGaussians();
+	WMixtureOfGaussians(int nKernelCount, WMatrix* pData, int nAttribute, double minVariance, WRand* pRand);
+	virtual ~WMixtureOfGaussians();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// This tries to fit the data from several random starting points, and returns the best model it finds
-	static GMixtureOfGaussians* stochasticHammer(int nMinKernelCount, int nMaxKernelCount, int nItters, int nTrials, GMatrix* pData, int nAttribute, double minVariance, GRand* pRand);
+	static WMixtureOfGaussians* stochasticHammer(int nMinKernelCount, int nMaxKernelCount, int nItters, int nTrials, WMatrix* pData, int nAttribute, double minVariance, WRand* pRand);
 
 	/// Returns the log likelihood of the current parameters
 	double iterate();
@@ -63,6 +63,6 @@ protected:
 	double likelihoodOfEachCategoryGivenThisFeature(double x);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GMIXTUREOFGAUSSIANS_H__

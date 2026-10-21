@@ -20,20 +20,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include "GDom.h"
-#include "GFile.h"
-#include "GHolders.h"
+#include "WDom.h"
+#include "WFile.h"
+#include "WHolders.h"
 #include <vector>
 #include <deque>
 #include <sstream>
 #include <fstream>
 #include <map>
 #include <errno.h>
-#include "GTokenizer.h"
-#include "GString.h"
+#include "WTokenizer.h"
+#include "WString.h"
 
 
-namespace GClasses
+namespace WClasses
 {
 
 using std::vector;
@@ -42,26 +42,26 @@ using std::map;
 using std::string;
 
 
-class GDomObjField
+class WDomObjField
 {
 public:
 	const char* m_pName;
-	GDomNode* m_pValue;
-	GDomObjField* m_pPrev;
+	WDomNode* m_pValue;
+	WDomObjField* m_pPrev;
 };
 
-/// An element in a GDom list
-class GDomListItem
+/// An element in a WDom list
+class WDomListItem
 {
 public:
 	/// Pointer to the value contained in this list item
-	GDomNode* m_pValue;
+	WDomNode* m_pValue;
 
 	/// Pointer to the previous node in the list
-	GDomListItem* m_pPrev;
+	WDomListItem* m_pPrev;
 };
 
-class GDomArrayList
+class WDomArrayList
 {
 public:
 	/// Total number of elements in this list
@@ -69,24 +69,24 @@ public:
 	size_t m_capacity;
 
 	/// The items in the list
-	GDomNode* m_items[2]; // 2 is a bogus value
+	WDomNode* m_items[2]; // 2 is a bogus value
 };
 
 
 
-GDomListIterator::GDomListIterator(const GDomNode* pNode)
+WDomListIterator::WDomListIterator(const WDomNode* pNode)
 {
-	if(pNode->m_type != GDomNode::type_list)
+	if(pNode->m_type != WDomNode::type_list)
 		throw Ex(to_str_brief(*pNode), " is not a list type");
 	m_pList = pNode;
 	m_index = 0;
 }
 
-GDomListIterator::~GDomListIterator()
+WDomListIterator::~WDomListIterator()
 {
 }
 
-GDomNode* GDomListIterator::current()
+WDomNode* WDomListIterator::current()
 {
 	if(!m_pList->m_value.m_pArrayList)
 		return nullptr;
@@ -96,32 +96,32 @@ GDomNode* GDomListIterator::current()
 		return nullptr;
 }
 
-bool GDomListIterator::currentBool()
+bool WDomListIterator::currentBool()
 {
 	return current()->asBool();
 }
 
-long long GDomListIterator::currentInt()
+long long WDomListIterator::currentInt()
 {
 	return current()->asInt();
 }
 
-double GDomListIterator::currentDouble()
+double WDomListIterator::currentDouble()
 {
 	return current()->asDouble();
 }
 
-const char* GDomListIterator::currentString()
+const char* WDomListIterator::currentString()
 {
 	return current()->asString();
 }
 
-void GDomListIterator::advance()
+void WDomListIterator::advance()
 {
 	m_index++;
 }
 
-size_t GDomListIterator::remaining()
+size_t WDomListIterator::remaining()
 {
 	if(!m_pList->m_value.m_pArrayList)
 		return 0;
@@ -129,11 +129,11 @@ size_t GDomListIterator::remaining()
 }
 
 
-GDomNode* GDomNode::getIfExists(const char* szName) const
+WDomNode* WDomNode::getIfExists(const char* szName) const
 {
 	if(m_type != type_obj)
 		throw Ex(to_str_brief(*this), " is not an obj");
-	GDomObjField* pField;
+	WDomObjField* pField;
 	for(pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
 	{
 		if(strcmp(szName, pField->m_pName) == 0)
@@ -142,43 +142,43 @@ GDomNode* GDomNode::getIfExists(const char* szName) const
 	return nullptr;
 }
 
-size_t GDomNode::reverseFieldOrder() const
+size_t WDomNode::reverseFieldOrder() const
 {
-	GAssert(m_type == type_obj);
+	WAssert(m_type == type_obj);
 	size_t count = 0;
-	GDomObjField* pNewHead = nullptr;
+	WDomObjField* pNewHead = nullptr;
 	while(m_value.m_pLastField)
 	{
-		GDomObjField* pTemp = m_value.m_pLastField;
-		((GDomNode*)this)->m_value.m_pLastField = pTemp->m_pPrev;
+		WDomObjField* pTemp = m_value.m_pLastField;
+		((WDomNode*)this)->m_value.m_pLastField = pTemp->m_pPrev;
 		pTemp->m_pPrev = pNewHead;
 		pNewHead = pTemp;
 		count++;
 	}
-	((GDomNode*)this)->m_value.m_pLastField = pNewHead;
+	((WDomNode*)this)->m_value.m_pLastField = pNewHead;
 	return count;
 }
 
-size_t GDomNode::size() const
+size_t WDomNode::size() const
 {
-	GAssert(m_type == type_list);
+	WAssert(m_type == type_list);
 	if(!m_value.m_pArrayList)
 		return 0;
 	return m_value.m_pArrayList->m_size;
 }
 
-GDomNode* GDomNode::get(size_t index) const
+WDomNode* WDomNode::get(size_t index) const
 {
-	GAssert(m_type == type_list);
-	GAssert(index < m_value.m_pArrayList->m_size);
+	WAssert(m_type == type_list);
+	WAssert(index < m_value.m_pArrayList->m_size);
 	return m_value.m_pArrayList->m_items[index];
 }
 
-GDomNode* GDomNode::set(GDom* pDoc, const char* szName, GDomNode* pNode)
+WDomNode* WDomNode::set(WDom* pDoc, const char* szName, WDomNode* pNode)
 {
 	if(m_type != type_obj)
 		throw Ex(to_str_brief(*this), " is not an obj");
-	GDomObjField* pField;
+	WDomObjField* pField;
 	for(pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
 	{
 		if(strcmp(szName, pField->m_pName) == 0)
@@ -190,13 +190,13 @@ GDomNode* GDomNode::set(GDom* pDoc, const char* szName, GDomNode* pNode)
 	pField = pDoc->newField();
 	pField->m_pPrev = m_value.m_pLastField;
 	m_value.m_pLastField = pField;
-	GHeap* pHeap = pDoc->heap();
+	WHeap* pHeap = pDoc->heap();
 	pField->m_pName = pHeap->add(szName);
 	pField->m_pValue = pNode;
 	return pNode;
 }
 
-GDomNode* GDomNode::set(GDom* pDoc, size_t index, GDomNode* pNode)
+WDomNode* WDomNode::set(WDom* pDoc, size_t index, WDomNode* pNode)
 {
 	if(m_type != type_list)
 		throw Ex(to_str_brief(*this), " is not a list");
@@ -213,45 +213,45 @@ GDomNode* GDomNode::set(GDom* pDoc, size_t index, GDomNode* pNode)
 		throw Ex("tried to set index ", to_str(index), " in a list of size ", to_str(size()));
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, const char* szName, GDomNode* pNode)
+WDomNode* WDomNode::add(WDom* pDoc, const char* szName, WDomNode* pNode)
 {
 	if(m_type != type_obj)
 		throw Ex(to_str_brief(*this), " is not an obj");
-	GDomObjField* pField = pDoc->newField();
+	WDomObjField* pField = pDoc->newField();
 	pField->m_pPrev = m_value.m_pLastField;
 	m_value.m_pLastField = pField;
-	GHeap* pHeap = pDoc->heap();
+	WHeap* pHeap = pDoc->heap();
 	pField->m_pName = pHeap->add(szName);
 	pField->m_pValue = pNode;
 	return pNode;
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, const char* szName, bool b)
+WDomNode* WDomNode::add(WDom* pDoc, const char* szName, bool b)
 {
 	return add(pDoc, szName, pDoc->newBool(b));
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, const char* szName, long long n)
+WDomNode* WDomNode::add(WDom* pDoc, const char* szName, long long n)
 {
 	return add(pDoc, szName, pDoc->newInt(n));
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, const char* szName, size_t n)
+WDomNode* WDomNode::add(WDom* pDoc, const char* szName, size_t n)
 {
 	return add(pDoc, szName, pDoc->newInt((long long)n));
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, const char* szName, double d)
+WDomNode* WDomNode::add(WDom* pDoc, const char* szName, double d)
 {
 	return add(pDoc, szName, pDoc->newDouble(d));
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, const char* szName, const char* str)
+WDomNode* WDomNode::add(WDom* pDoc, const char* szName, const char* str)
 {
 	return add(pDoc, szName, pDoc->newString(str));
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, GDomNode* pNode)
+WDomNode* WDomNode::add(WDom* pDoc, WDomNode* pNode)
 {
 	if(m_type != type_list)
 		throw Ex(to_str_brief(*this), " is not a list");
@@ -259,7 +259,7 @@ GDomNode* GDomNode::add(GDom* pDoc, GDomNode* pNode)
 	{
 		// Reallocate the array of node pointers
 		size_t newCapacity = std::max((size_t)4, (m_value.m_pArrayList ? m_value.m_pArrayList->m_size * 2 : 0));
-		GDomArrayList* pArrayList = (GDomArrayList*)pDoc->m_heap.allocAligned(sizeof(size_t) + sizeof(size_t) + sizeof(GDomNode*) * newCapacity);
+		WDomArrayList* pArrayList = (WDomArrayList*)pDoc->m_heap.allocAligned(sizeof(size_t) + sizeof(size_t) + sizeof(WDomNode*) * newCapacity);
 		if(m_value.m_pArrayList)
 		{
 			for(size_t i = 0; i < m_value.m_pArrayList->m_size; i++)
@@ -276,32 +276,32 @@ GDomNode* GDomNode::add(GDom* pDoc, GDomNode* pNode)
 	return pNode;
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, bool b)
+WDomNode* WDomNode::add(WDom* pDoc, bool b)
 {
 	return add(pDoc, pDoc->newBool(b));
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, long long n)
+WDomNode* WDomNode::add(WDom* pDoc, long long n)
 {
 	return add(pDoc, pDoc->newInt(n));
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, size_t n)
+WDomNode* WDomNode::add(WDom* pDoc, size_t n)
 {
 	return add(pDoc, pDoc->newInt((long long)n));
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, double d)
+WDomNode* WDomNode::add(WDom* pDoc, double d)
 {
 	return add(pDoc, pDoc->newDouble(d));
 }
 
-GDomNode* GDomNode::add(GDom* pDoc, const char* str)
+WDomNode* WDomNode::add(WDom* pDoc, const char* str)
 {
 	return add(pDoc, pDoc->newString(str));
 }
 
-void GDomNode::del(const char* szField)
+void WDomNode::del(const char* szField)
 {
 	if(m_type != type_obj)
 		throw Ex(to_str_brief(*this), " is not an obj");
@@ -312,7 +312,7 @@ void GDomNode::del(const char* szField)
 	}
 	else
 	{
-		for(GDomObjField* pField = m_value.m_pLastField; pField->m_pPrev; pField = pField->m_pPrev)
+		for(WDomObjField* pField = m_value.m_pLastField; pField->m_pPrev; pField = pField->m_pPrev)
 		{
 			if(strcmp(pField->m_pPrev->m_pName, szField) == 0)
 			{
@@ -324,7 +324,7 @@ void GDomNode::del(const char* szField)
 	}
 }
 
-void GDomNode::del(size_t index)
+void WDomNode::del(size_t index)
 {
 	if(m_type != type_list)
 		throw Ex(to_str_brief(*this), " is not a list");
@@ -406,14 +406,14 @@ size_t writeJSONStringCpp(std::ostream& stream, const char* szString)
 	return chars;
 }
 
-void GDomNode::saveJson(const char* filename) const
+void WDomNode::saveJson(const char* filename) const
 {
-	GDom doc;
+	WDom doc;
 	doc.setRoot(this);
 	doc.saveJson(filename);
 }
 
-void GDomNode::writeJson(std::ostream& stream) const
+void WDomNode::writeJson(std::ostream& stream) const
 {
 	std::ios_base::fmtflags oldflags = stream.flags();
 	stream << std::fixed;
@@ -422,7 +422,7 @@ void GDomNode::writeJson(std::ostream& stream) const
 		case type_obj:
 			stream << "{";
 			reverseFieldOrder();
-			for(GDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
+			for(WDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
 			{
 				if(pField != m_value.m_pLastField)
 					stream << ",";
@@ -475,7 +475,7 @@ void newLineAndIndent(std::ostream& stream, size_t indents)
 		stream << "	";
 }
 
-void GDomNode::writeJsonPretty(std::ostream& stream, size_t indents) const
+void WDomNode::writeJsonPretty(std::ostream& stream, size_t indents) const
 {
 	std::ios_base::fmtflags oldflags = stream.flags();
 	stream << std::fixed;
@@ -484,7 +484,7 @@ void GDomNode::writeJsonPretty(std::ostream& stream, size_t indents) const
 		case type_obj:
 			stream << "{";
 			reverseFieldOrder();
-			for(GDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
+			for(WDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
 			{
 				newLineAndIndent(stream, indents + 1);
 				writeJSONString(stream, pField->m_pName);
@@ -507,8 +507,8 @@ void GDomNode::writeJsonPretty(std::ostream& stream, size_t indents) const
 					allAtomic = false;
 				for(size_t i = 0; i < m_value.m_pArrayList->m_size && allAtomic; i++)
 				{
-					GDomNode* pNode = m_value.m_pArrayList->m_items[i];
-					if(pNode->type() == GDomNode::type_obj || pNode->type() == GDomNode::type_list)
+					WDomNode* pNode = m_value.m_pArrayList->m_items[i];
+					if(pNode->type() == WDomNode::type_obj || pNode->type() == WDomNode::type_list)
 						allAtomic = false;
 				}
 			}
@@ -528,7 +528,7 @@ void GDomNode::writeJsonPretty(std::ostream& stream, size_t indents) const
 							if(i % 100 == 0)
 								newLineAndIndent(stream, indents);
 						}
-						GDomNode* pNode = m_value.m_pArrayList->m_items[i];
+						WDomNode* pNode = m_value.m_pArrayList->m_items[i];
 						pNode->writeJson(stream);
 					}
 				}
@@ -541,7 +541,7 @@ void GDomNode::writeJsonPretty(std::ostream& stream, size_t indents) const
 				stream << "[";
 				for(size_t i = 0; i < m_value.m_pArrayList->m_size; i++)
 				{
-					GDomNode* pNode = m_value.m_pArrayList->m_items[i];
+					WDomNode* pNode = m_value.m_pArrayList->m_items[i];
 					newLineAndIndent(stream, indents + 1);
 					pNode->writeJsonPretty(stream, indents + 1);
 					if(i + 1 < m_value.m_pArrayList->m_size)
@@ -573,7 +573,7 @@ void GDomNode::writeJsonPretty(std::ostream& stream, size_t indents) const
 	stream.flags(oldflags);
 }
 
-size_t GDomNode::writeJsonCpp(std::ostream& stream, size_t col) const
+size_t WDomNode::writeJsonCpp(std::ostream& stream, size_t col) const
 {
 	std::ios_base::fmtflags oldflags = stream.flags();
 	stream << std::fixed;
@@ -583,7 +583,7 @@ size_t GDomNode::writeJsonCpp(std::ostream& stream, size_t col) const
 			stream << "{";
 			col++;
 			reverseFieldOrder();
-			for(GDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
+			for(WDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
 			{
 				if(pField != m_value.m_pLastField)
 				{
@@ -660,13 +660,13 @@ size_t GDomNode::writeJsonCpp(std::ostream& stream, size_t col) const
 
 bool isXmlInlineType(int type)
 {
-	if(type == GDomNode::type_string || type == GDomNode::type_int || type == GDomNode::type_double || type == GDomNode::type_bool || type == GDomNode::type_null)
+	if(type == WDomNode::type_string || type == WDomNode::type_int || type == WDomNode::type_double || type == WDomNode::type_bool || type == WDomNode::type_null)
 		return true;
 	else
 		return false;
 }
 
-void GDomNode::writeXmlInlineValue(std::ostream& stream)
+void WDomNode::writeXmlInlineValue(std::ostream& stream)
 {
 	switch(m_type)
 	{
@@ -690,7 +690,7 @@ void GDomNode::writeXmlInlineValue(std::ostream& stream)
 	}
 }
 
-void GDomNode::writeXml(std::ostream& stream, const char* szLabel) const
+void WDomNode::writeXml(std::ostream& stream, const char* szLabel) const
 {
 	switch(m_type)
 	{
@@ -699,7 +699,7 @@ void GDomNode::writeXml(std::ostream& stream, const char* szLabel) const
 			stream << "<" << szLabel;
 			reverseFieldOrder();
 			size_t nonInlinedChildren = 0;
-			for(GDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
+			for(WDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
 			{
 				if(isXmlInlineType(pField->m_pValue->m_type))
 				{
@@ -715,7 +715,7 @@ void GDomNode::writeXml(std::ostream& stream, const char* szLabel) const
 			else
 			{
 				stream << ">";
-				for(GDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
+				for(WDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
 				{
 					if(!isXmlInlineType(pField->m_pValue->m_type))
 						pField->m_pValue->writeXml(stream, pField->m_pName);
@@ -731,7 +731,7 @@ void GDomNode::writeXml(std::ostream& stream, const char* szLabel) const
 			{
 				for(size_t i = 0; i < m_value.m_pArrayList->m_size; i++)
 				{
-					GDomNode* pNode = m_value.m_pArrayList->m_items[i];
+					WDomNode* pNode = m_value.m_pArrayList->m_items[i];
 					pNode->writeXml(stream, "i");
 				}
 			}
@@ -767,7 +767,7 @@ void GDomNode::writeXml(std::ostream& stream, const char* szLabel) const
 	}
 }
 
-bool GDomNode::isEqual(const GDomNode* pOther) const
+bool WDomNode::isEqual(const WDomNode* pOther) const
 {
 	switch(m_type)
 	{
@@ -775,8 +775,8 @@ bool GDomNode::isEqual(const GDomNode* pOther) const
 			if(pOther->m_type != type_obj)
 				return false;
 			{
-				GDomObjField* pOth = pOther->m_value.m_pLastField;
-				for(GDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
+				WDomObjField* pOth = pOther->m_value.m_pLastField;
+				for(WDomObjField* pField = m_value.m_pLastField; pField; pField = pField->m_pPrev)
 				{
 					if(pOth && strcmp(pField->m_pName, pOth->m_pName) == 0)
 					{
@@ -859,16 +859,16 @@ bool GDomNode::isEqual(const GDomNode* pOther) const
 
 // -------------------------------------------------------------------------------
 
-class GJsonTokenizer : public GTokenizer
+class WJsonTokenizer : public WTokenizer
 {
 public:
-	GCharSet m_whitespace, m_real, m_quot;
+	WCharSet m_whitespace, m_real, m_quot;
 
-	GJsonTokenizer(const char* szFilename) : GTokenizer(szFilename),
+	WJsonTokenizer(const char* szFilename) : WTokenizer(szFilename),
 	                                         m_whitespace("\t\n\r "), m_real("-.+0-9eE"), m_quot("\"") {}
-	GJsonTokenizer(const char* pFile, size_t len) : GTokenizer(pFile, len),
+	WJsonTokenizer(const char* pFile, size_t len) : WTokenizer(pFile, len),
 	                                                m_whitespace("\t\n\r "), m_real("-.+0-9eE"), m_quot("\"") {}
-	~GJsonTokenizer() override {}
+	~WJsonTokenizer() override {}
 };
 
 class Bogus1
@@ -878,66 +878,66 @@ public:
 	double m_double;
 };
 
-GDom::GDom()
+WDom::WDom()
 : m_heap(2000), m_pRoot(nullptr), m_line(0), m_len(0), m_pDoc(nullptr)
 {
 }
 
-GDom::~GDom()
+WDom::~WDom()
 {
 }
 
-void GDom::clear()
+void WDom::clear()
 {
 	m_pRoot = nullptr;
 	m_heap.clear();
 }
 
-GDomNode* GDom::newObj()
+WDomNode* WDom::newObj()
 {
-	GDomNode* pNewObj = (GDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + sizeof(GDomObjField*));
-	pNewObj->m_type = GDomNode::type_obj;
+	WDomNode* pNewObj = (WDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + sizeof(WDomObjField*));
+	pNewObj->m_type = WDomNode::type_obj;
 	pNewObj->m_value.m_pLastField = nullptr;
 	return pNewObj;
 }
 
-GDomNode* GDom::newList()
+WDomNode* WDom::newList()
 {
-	GDomNode* pNewList = (GDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + sizeof(GDomListItem*));
-	pNewList->m_type = GDomNode::type_list;
+	WDomNode* pNewList = (WDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + sizeof(WDomListItem*));
+	pNewList->m_type = WDomNode::type_list;
 	pNewList->m_value.m_pArrayList = nullptr;
 	return pNewList;
 }
 
-GDomNode* GDom::newNull()
+WDomNode* WDom::newNull()
 {
-	GDomNode* pNewNull = (GDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double));
-	pNewNull->m_type = GDomNode::type_null;
+	WDomNode* pNewNull = (WDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double));
+	pNewNull->m_type = WDomNode::type_null;
 	return pNewNull;
 }
 
-GDomNode* GDom::newBool(bool b)
+WDomNode* WDom::newBool(bool b)
 {
-	GDomNode* pNewBool = (GDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + sizeof(bool));
-	pNewBool->m_type = GDomNode::type_bool;
+	WDomNode* pNewBool = (WDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + sizeof(bool));
+	pNewBool->m_type = WDomNode::type_bool;
 	pNewBool->m_value.m_bool = b;
 	return pNewBool;
 }
 
-GDomNode* GDom::newInt(long long n)
+WDomNode* WDom::newInt(long long n)
 {
-	GDomNode* pNewInt = (GDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + sizeof(long long));
-	pNewInt->m_type = GDomNode::type_int;
+	WDomNode* pNewInt = (WDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + sizeof(long long));
+	pNewInt->m_type = WDomNode::type_int;
 	pNewInt->m_value.m_int = n;
 	return pNewInt;
 }
 
-GDomNode* GDom::newDouble(double d)
+WDomNode* WDom::newDouble(double d)
 {
 	if(d >= -1.5e308 && d <= 1.5e308)
 	{
-		GDomNode* pNewDouble = (GDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + sizeof(double));
-		pNewDouble->m_type = GDomNode::type_double;
+		WDomNode* pNewDouble = (WDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + sizeof(double));
+		pNewDouble->m_type = WDomNode::type_double;
 		pNewDouble->m_value.m_double = d;
 		return pNewDouble;
 	}
@@ -948,35 +948,35 @@ GDomNode* GDom::newDouble(double d)
 	}
 }
 
-GDomNode* GDom::newString(const char* pString, size_t len)
+WDomNode* WDom::newString(const char* pString, size_t len)
 {
-	GDomNode* pNewString = (GDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + len + 1);
-	pNewString->m_type = GDomNode::type_string;
+	WDomNode* pNewString = (WDomNode*)m_heap.allocAligned(offsetof(Bogus1, m_double) + len + 1);
+	pNewString->m_type = WDomNode::type_string;
 	memcpy(pNewString->m_value.m_string, pString, len);
 	pNewString->m_value.m_string[len] = '\0';
 	return pNewString;
 }
 
-GDomNode* GDom::newString(const char* szString)
+WDomNode* WDom::newString(const char* szString)
 {
 	return newString(szString, strlen(szString));
 }
 
-GDomObjField* GDom::newField()
+WDomObjField* WDom::newField()
 {
-	return (GDomObjField*)m_heap.allocAligned(sizeof(GDomObjField));
+	return (WDomObjField*)m_heap.allocAligned(sizeof(WDomObjField));
 }
 
-GDomNode* GDom::clone(GDomNode* pNode)
+WDomNode* WDom::clone(WDomNode* pNode)
 {
 	switch(pNode->type())
 	{
-		case GDomNode::type_obj:
+		case WDomNode::type_obj:
 		{
-			GDomNode* pClone = newObj();
-			for(GDomObjField* pField = pNode->m_value.m_pLastField; pField; pField = pField->m_pPrev)
+			WDomNode* pClone = newObj();
+			for(WDomObjField* pField = pNode->m_value.m_pLastField; pField; pField = pField->m_pPrev)
 			{
-				GDomObjField* pFieldClone = newField();
+				WDomObjField* pFieldClone = newField();
 				pFieldClone->m_pPrev = pClone->m_value.m_pLastField;
 				pClone->m_value.m_pLastField = pFieldClone;
 				pFieldClone->m_pName = m_heap.add(pField->m_pName);
@@ -984,23 +984,23 @@ GDomNode* GDom::clone(GDomNode* pNode)
 			}
 			return pClone;
 		}
-		case GDomNode::type_list:
+		case WDomNode::type_list:
 		{
-			GDomNode* pClone = newList();
+			WDomNode* pClone = newList();
 			for(size_t i = 0; i < pNode->size(); i++)
 				pClone->add(this, clone(pNode->get(i)));
 			return pClone;
 		}
-		case GDomNode::type_bool: return newBool(pNode->asBool());
-		case GDomNode::type_int: return newInt(pNode->asInt());
-		case GDomNode::type_double: return newDouble(pNode->asDouble());
-		case GDomNode::type_string: return newString(pNode->asString());
-		case GDomNode::type_null: return newNull(); ;
+		case WDomNode::type_bool: return newBool(pNode->asBool());
+		case WDomNode::type_int: return newInt(pNode->asInt());
+		case WDomNode::type_double: return newDouble(pNode->asDouble());
+		case WDomNode::type_string: return newString(pNode->asString());
+		case WDomNode::type_null: return newNull(); ;
 		default: throw Ex("Unexpected type");
 	}
 }
 
-char* GDom::loadJsonString(GJsonTokenizer& tok)
+char* WDom::loadJsonString(WJsonTokenizer& tok)
 {
 	tok.skipExact("\"");
 	char* szTok = tok.readUntil_escaped('\\', tok.m_quot);
@@ -1023,7 +1023,7 @@ char* GDom::loadJsonString(GJsonTokenizer& tok)
 				case 'r': c = '\r'; break;
 				case 't': c = '\t'; break;
 				case 'u':
-					GAssert(false); // Escaped unicode characters are not yet supported
+					WAssert(false); // Escaped unicode characters are not yet supported
 					c = '_';
 					eat += 3;
 					break;
@@ -1039,12 +1039,12 @@ char* GDom::loadJsonString(GJsonTokenizer& tok)
 	return szTok;
 }
 
-GDomNode* GDom::loadJsonObject(GJsonTokenizer& tok)
+WDomNode* WDom::loadJsonObject(WJsonTokenizer& tok)
 {
 	tok.skipExact("{");
-	GDomNode* pNewObj = newObj();
+	WDomNode* pNewObj = newObj();
 	bool readyForField = true;
-	GCharSet& whitespace = tok.m_whitespace;
+	WCharSet& whitespace = tok.m_whitespace;
 	while(tok.has_more())
 	{
 		tok.skipWhile(whitespace);
@@ -1065,7 +1065,7 @@ GDomNode* GDom::loadJsonObject(GJsonTokenizer& tok)
 		{
 			if(!readyForField)
 				throw Ex("Expected a ',' before the next field in JSON file at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
-			GDomObjField* pNewField = newField();
+			WDomObjField* pNewField = newField();
 			pNewField->m_pPrev = pNewObj->m_value.m_pLastField;
 			pNewObj->m_value.m_pLastField = pNewField;
 			pNewField->m_pName = m_heap.add(loadJsonString(tok));
@@ -1083,10 +1083,10 @@ GDomNode* GDom::loadJsonObject(GJsonTokenizer& tok)
 	return pNewObj;
 }
 
-GDomNode* GDom::loadJsonArray(GJsonTokenizer& tok)
+WDomNode* WDom::loadJsonArray(WJsonTokenizer& tok)
 {
 	tok.skipExact("[");
-	GDomNode* pNewList = newList();
+	WDomNode* pNewList = newList();
 	bool readyForValue = true;
 	while(tok.has_more())
 	{
@@ -1110,7 +1110,7 @@ GDomNode* GDom::loadJsonArray(GJsonTokenizer& tok)
 		{
 			if(!readyForValue)
 				throw Ex("Expected a ',' or ']' in JSON file at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
-			GDomNode* pValue = loadJsonValue(tok);
+			WDomNode* pValue = loadJsonValue(tok);
 			pNewList->add(this, pValue);
 			readyForValue = false;
 		}
@@ -1118,7 +1118,7 @@ GDomNode* GDom::loadJsonArray(GJsonTokenizer& tok)
 	return pNewList;
 }
 
-GDomNode* GDom::loadJsonNumber(GJsonTokenizer& tok)
+WDomNode* WDom::loadJsonNumber(WJsonTokenizer& tok)
 {
 	char* szString = tok.readWhile(tok.m_real);
 	// SAKBox: was a double only with a '.', so the integer reader stopped at an
@@ -1134,7 +1134,7 @@ GDomNode* GDom::loadJsonNumber(GJsonTokenizer& tok)
 	return newDouble(d);
 }
 
-GDomNode* GDom::loadJsonValue(GJsonTokenizer& tok)
+WDomNode* WDom::loadJsonValue(WJsonTokenizer& tok)
 {
 	char c = tok.peek();
 	if(c == '"')
@@ -1172,21 +1172,21 @@ GDomNode* GDom::loadJsonValue(GJsonTokenizer& tok)
 	}
 }
 
-void GDom::parseJson(const char* pJsonString, size_t len)
+void WDom::parseJson(const char* pJsonString, size_t len)
 {
-	GJsonTokenizer tok(pJsonString, len);
+	WJsonTokenizer tok(pJsonString, len);
 	tok.skipWhile(tok.m_whitespace);
 	setRoot(loadJsonValue(tok));
 }
 
-void GDom::loadJson(const char* szFilename)
+void WDom::loadJson(const char* szFilename)
 {
-	GJsonTokenizer tok(szFilename);
+	WJsonTokenizer tok(szFilename);
 	tok.skipWhile(tok.m_whitespace);
 	setRoot(loadJsonValue(tok));
 }
 
-void GDom::writeJson(std::ostream& stream) const
+void WDom::writeJson(std::ostream& stream) const
 {
 	if(!m_pRoot)
 		throw Ex("No root node has been set");
@@ -1194,7 +1194,7 @@ void GDom::writeJson(std::ostream& stream) const
 	m_pRoot->writeJson(stream);
 }
 
-void GDom::writeJsonPretty(std::ostream& stream) const
+void WDom::writeJsonPretty(std::ostream& stream) const
 {
 	if(!m_pRoot)
 		throw Ex("No root node has been set");
@@ -1202,7 +1202,7 @@ void GDom::writeJsonPretty(std::ostream& stream) const
 	m_pRoot->writeJsonPretty(stream, 0);
 }
 
-void GDom::writeJsonCpp(std::ostream& stream) const
+void WDom::writeJsonCpp(std::ostream& stream) const
 {
 	if(!m_pRoot)
 		throw Ex("No root node has been set");
@@ -1212,7 +1212,7 @@ void GDom::writeJsonCpp(std::ostream& stream) const
 	stream << "\";\n\n";
 }
 
-void GDom::saveJson(const char* szFilename) const
+void WDom::saveJson(const char* szFilename) const
 {
 	std::ofstream os;
 	os.exceptions(std::ios::badbit | std::ios::failbit);
@@ -1227,7 +1227,7 @@ void GDom::saveJson(const char* szFilename) const
 	writeJson(os);
 }
 
-void GDom::writeXml(std::ostream& stream) const
+void WDom::writeXml(std::ostream& stream) const
 {
 	if(!m_pRoot)
 		throw Ex("No root node has been set");
@@ -1236,14 +1236,14 @@ void GDom::writeXml(std::ostream& stream) const
 	m_pRoot->writeXml(stream, "root");
 }
 
-std::string to_str(const GDomNode& node)
+std::string to_str(const WDomNode& node)
 {
 	std::ostringstream os;
 	node.writeJsonPretty(os, 0);
 	return os.str();
 }
 
-std::string to_str_brief(const GDomNode& node)
+std::string to_str_brief(const WDomNode& node)
 {
 	std::ostringstream os;
 	node.writeJsonPretty(os, 0);
@@ -1257,7 +1257,7 @@ std::string to_str_brief(const GDomNode& node)
 }
 
 
-std::string to_str(const GDom& doc)
+std::string to_str(const WDom& doc)
 {
 	std::ostringstream os;
 	doc.writeJsonPretty(os);
@@ -1265,7 +1265,7 @@ std::string to_str(const GDom& doc)
 }
 
 // static
-void GDom::test()
+void WDom::test()
 {
 	const char* szTestFile =
 	  "{\n"
@@ -1296,7 +1296,7 @@ void GDom::test()
 	  "	\"height\": 5.8,\n"
 	  "	\"temp\":98.6\n"
 	  "}\n";
-	GDom doc;
+	WDom doc;
 	doc.parseJson(szTestFile, strlen(szTestFile));
 }
 
@@ -1316,23 +1316,23 @@ void GDom::test()
 
 
 
-GJsonAsADatabase::GJsonAsADatabase(const char* szBasePath)
+WJsonAsADatabase::WJsonAsADatabase(const char* szBasePath)
 : m_basePath(szBasePath)
 {
 }
 
-GJsonAsADatabase::~GJsonAsADatabase()
+WJsonAsADatabase::~WJsonAsADatabase()
 {
 	flush(true);
 }
 
-void GJsonAsADatabase::flush(bool clear_cache)
+void WJsonAsADatabase::flush(bool clear_cache)
 {
-	map<string, GJaadDom*>::iterator it = m_doms.begin();
+	map<string, WJaadDom*>::iterator it = m_doms.begin();
 	while(it != m_doms.end())
 	{
 		const string& filename = it->first;
-		GJaadDom* pDom = it->second;
+		WJaadDom* pDom = it->second;
 		if(pDom->modCount() > 0)
 		{
 			string fullpath = m_basePath;
@@ -1344,10 +1344,10 @@ void GJsonAsADatabase::flush(bool clear_cache)
 	}
 	if(clear_cache)
 	{
-		map<string, GJaadDom*>::iterator it = m_doms.begin();
+		map<string, WJaadDom*>::iterator it = m_doms.begin();
 		while(it != m_doms.end())
 		{
-			GJaadDom* pDom = it->second;
+			WJaadDom* pDom = it->second;
 			delete(pDom);
 			++it;
 		}
@@ -1356,7 +1356,7 @@ void GJsonAsADatabase::flush(bool clear_cache)
 }
 
 // static
-size_t GJsonAsADatabase::findTok(const char* s, char tok, size_t start)
+size_t WJsonAsADatabase::findTok(const char* s, char tok, size_t start)
 {
 	bool q = false;
 	bool qq = false;
@@ -1399,7 +1399,7 @@ size_t GJsonAsADatabase::findTok(const char* s, char tok, size_t start)
 }
 
 
-GDomNode* GJsonAsADatabase::findNode(GDom* pDoc, GDomNode* pOb, GDom* pResponseDom, const char* szCmd, char op)
+WDomNode* WJsonAsADatabase::findNode(WDom* pDoc, WDomNode* pOb, WDom* pResponseDom, const char* szCmd, char op)
 {
 	size_t pos = 0;
 	while(true)
@@ -1422,10 +1422,10 @@ GDomNode* GJsonAsADatabase::findNode(GDom* pDoc, GDomNode* pOb, GDom* pResponseD
 			if(field.length() == 0)
 				throw Ex("Expected a field name after '.'");
 			if(!pOb && op != '\0')
-				pOb = (GDomNode*)pDoc->setRoot(pDoc->newObj());
-			if(pOb->type() != GDomNode::type_obj)
+				pOb = (WDomNode*)pDoc->setRoot(pDoc->newObj());
+			if(pOb->type() != WDomNode::type_obj)
 				throw Ex("'.' can only be used on object types.");
-			GDomNode* pChild = pOb->getIfExists(field.c_str());
+			WDomNode* pChild = pOb->getIfExists(field.c_str());
 			if(!pChild)
 			{
 				if(op == '\0')
@@ -1442,7 +1442,7 @@ GDomNode* GJsonAsADatabase::findNode(GDom* pDoc, GDomNode* pOb, GDom* pResponseD
 		}
 		else if(c == '[')
 		{
-			if(pOb && pOb->type() != GDomNode::type_list)
+			if(pOb && pOb->type() != WDomNode::type_list)
 				throw Ex("'[]' can only be used with list types");
 
 			// Find the corresponding ']'
@@ -1454,7 +1454,7 @@ GDomNode* GJsonAsADatabase::findNode(GDom* pDoc, GDomNode* pOb, GDom* pResponseD
 				throw Ex("Expected an index or equation after '['");
 			string sIndex(szCmd + indStart, i - indStart);
 			if(!pOb && op != '\0')
-				pOb = (GDomNode*)pDoc->setRoot(pDoc->newList());
+				pOb = (WDomNode*)pDoc->setRoot(pDoc->newList());
 
 			// Parse the index
 			char c = sIndex[0];
@@ -1482,12 +1482,12 @@ GDomNode* GJsonAsADatabase::findNode(GDom* pDoc, GDomNode* pOb, GDom* pResponseD
 				if(sIndex.length() > eq && sIndex[eq + 1] == '=')
 					eq++;
 				pResponseDom->parseJson(sIndex.c_str() + eq + 1, sIndex.length() - eq - 1);
-				GDomNode* pPost = pResponseDom->root();
+				WDomNode* pPost = pResponseDom->root();
 				size_t j;
 				for(j = 0; j < pOb->size(); j++)
 				{
-					GDomNode* pCand = pOb->get(j);
-					GDomNode* pComp = findNode(pDoc, pCand, pResponseDom, pre.c_str(), op);
+					WDomNode* pCand = pOb->get(j);
+					WDomNode* pComp = findNode(pDoc, pCand, pResponseDom, pre.c_str(), op);
 					if(pComp->isEqual(pPost))
 					{
 						pOb = pCand;
@@ -1509,9 +1509,9 @@ GDomNode* GJsonAsADatabase::findNode(GDom* pDoc, GDomNode* pOb, GDom* pResponseD
 	return pOb;
 }
 
-GDomNode* GJsonAsADatabase::findLValue(GDom* pDoc, GDomNode* pOb, GDom* pResponseDom, const char* szCmd, string* pOutField, size_t* pOutIndex)
+WDomNode* WJsonAsADatabase::findLValue(WDom* pDoc, WDomNode* pOb, WDom* pResponseDom, const char* szCmd, string* pOutField, size_t* pOutIndex)
 {
-	GDomNode* pPrevOb = nullptr;
+	WDomNode* pPrevOb = nullptr;
 	size_t pos = 0;
 	while(true)
 	{
@@ -1535,7 +1535,7 @@ GDomNode* GJsonAsADatabase::findLValue(GDom* pDoc, GDomNode* pOb, GDom* pRespons
 				*pOutField = field;
 			if(field.length() == 0)
 				throw Ex("Expected a field name after '.'");
-			if(pOb->type() != GDomNode::type_obj)
+			if(pOb->type() != WDomNode::type_obj)
 				throw Ex("'.' can only be used on object types.");
 			pOb = pOb->getIfExists(field.c_str());
 			if(!pOb)
@@ -1558,7 +1558,7 @@ GDomNode* GJsonAsADatabase::findLValue(GDom* pDoc, GDomNode* pOb, GDom* pRespons
 		}
 		else if(c == '[')
 		{
-			if(pOb->type() != GDomNode::type_list)
+			if(pOb->type() != WDomNode::type_list)
 				throw Ex("'[]' can only be used with list types");
 
 			// Find the corresponding ']'
@@ -1616,12 +1616,12 @@ GDomNode* GJsonAsADatabase::findLValue(GDom* pDoc, GDomNode* pOb, GDom* pRespons
 				if(sIndex.length() > eq && sIndex[eq + 1] == '=')
 					eq++;
 				pResponseDom->parseJson(sIndex.c_str() + eq + 1, sIndex.length() - eq - 1);
-				GDomNode* pPost = pResponseDom->root();
+				WDomNode* pPost = pResponseDom->root();
 				size_t j;
 				for(j = 0; j < pOb->size(); j++)
 				{
-					GDomNode* pCand = pOb->get(j);
-					GDomNode* pComp = findNode(pDoc, pCand, pResponseDom, pre.c_str(), '=');
+					WDomNode* pCand = pOb->get(j);
+					WDomNode* pComp = findNode(pDoc, pCand, pResponseDom, pre.c_str(), '=');
 					if(pComp->isEqual(pPost))
 					{
 						if(pOutIndex)
@@ -1645,59 +1645,59 @@ GDomNode* GJsonAsADatabase::findLValue(GDom* pDoc, GDomNode* pOb, GDom* pRespons
 	return pPrevOb;
 }
 
-GJaadDom* GJsonAsADatabase::getDom(const char* szFile)
+WJaadDom* WJsonAsADatabase::getDom(const char* szFile)
 {
-	map<string, GJaadDom*>::iterator it = m_doms.find(szFile);
+	map<string, WJaadDom*>::iterator it = m_doms.find(szFile);
 	if(it == m_doms.end())
 	{
 		// Load the DOM from file
-		GJaadDom* pDoc = new GJaadDom();
-		Holder<GJaadDom> hDoc(pDoc);
+		WJaadDom* pDoc = new WJaadDom();
+		Holder<WJaadDom> hDoc(pDoc);
 		string filename = m_basePath;
 		filename += szFile;
-		if(GFile::doesFileExist(filename.c_str()))
+		if(WFile::doesFileExist(filename.c_str()))
 			pDoc->loadJson(filename.c_str());
 		else
 		{
 			PathData pd;
-			GFile::parsePath(filename.c_str(), &pd);
+			WFile::parsePath(filename.c_str(), &pd);
 			std::string dir = filename.substr(0, pd.fileStart);
-			if(!GFile::doesDirExist(dir.c_str()))
+			if(!WFile::doesDirExist(dir.c_str()))
 				throw Ex("No such directory: ", dir.substr(m_basePath.length()));
 		}
 		hDoc.release();
-		m_doms.insert(std::pair<string, GJaadDom*>(szFile, pDoc));
+		m_doms.insert(std::pair<string, WJaadDom*>(szFile, pDoc));
 		return pDoc;
 	}
 	else
 		return it->second;
 }
 
-void GJsonAsADatabase::add(GDomNode* pRequest, GDom* pDoc, GDomNode* pOb)
+void WJsonAsADatabase::add(WDomNode* pRequest, WDom* pDoc, WDomNode* pOb)
 {
-	if(pOb->type() == GDomNode::type_obj)
+	if(pOb->type() == WDomNode::type_obj)
 	{
 		const char* szName = pRequest->getString("name");
-		GDomNode* pValue = pRequest->get("val");
+		WDomNode* pValue = pRequest->get("val");
 		pOb->add(pDoc, szName, pDoc->clone(pValue));
 	}
-	else if(pOb->type() == GDomNode::type_list)
+	else if(pOb->type() == WDomNode::type_list)
 	{
-		GDomNode* pValue = pRequest->get("val");
+		WDomNode* pValue = pRequest->get("val");
 		pOb->add(pDoc, pDoc->clone(pValue));
 	}
 	else
 		throw Ex("An object or list type is needed for add");
 }
 
-void GJsonAsADatabase::del(GDomNode* pRequest, GDom* pDoc, GDomNode* pOb)
+void WJsonAsADatabase::del(WDomNode* pRequest, WDom* pDoc, WDomNode* pOb)
 {
-	if(pOb->type() == GDomNode::type_obj)
+	if(pOb->type() == WDomNode::type_obj)
 	{
 		const char* szName = pRequest->getString("name");
 		pOb->del(szName);
 	}
-	else if(pOb->type() == GDomNode::type_list)
+	else if(pOb->type() == WDomNode::type_list)
 	{
 		size_t index = pRequest->getInt("index");
 		pOb->del(index);
@@ -1706,17 +1706,17 @@ void GJsonAsADatabase::del(GDomNode* pRequest, GDom* pDoc, GDomNode* pOb)
 		throw Ex("An object or list type is needed for del");
 }
 
-const GDomNode* GJsonAsADatabase::apply(const char* szFilename, const char* szCmd, GDom* pResponseDom)
+const WDomNode* WJsonAsADatabase::apply(const char* szFilename, const char* szCmd, WDom* pResponseDom)
 {
 	// Find or load the DOM
-	GJaadDom* pDoc = getDom(szFilename);
+	WJaadDom* pDoc = getDom(szFilename);
 
 	// Do the command
 	size_t op = findTok(szCmd, '='); // possible bug: the '==' operator should not be detected here
 	if(szCmd[op] == '\0')
 	{
 		// No '=', so the user must be requesting an object be returned
-		GDomNode* pNode = findNode(pDoc, pDoc->root(), pResponseDom, szCmd, '\0');
+		WDomNode* pNode = findNode(pDoc, pDoc->root(), pResponseDom, szCmd, '\0');
 		return pNode;
 	}
 	pDoc->incModCount();
@@ -1724,12 +1724,12 @@ const GDomNode* GJsonAsADatabase::apply(const char* szFilename, const char* szCm
 	{
 		// It's a "+=" operation
 		string sLeft(szCmd, op - 1);
-		GDomNode* pNode = findNode(pDoc, pDoc->root(), pResponseDom, sLeft.c_str(), '+');
+		WDomNode* pNode = findNode(pDoc, pDoc->root(), pResponseDom, sLeft.c_str(), '+');
 		if(pNode)
 		{
-			if(pNode->type() != GDomNode::type_list)
+			if(pNode->type() != WDomNode::type_list)
 				throw Ex("The left part before '+=' is not a list type");
-			GDomNode* pOldRoot = pDoc->root();
+			WDomNode* pOldRoot = pDoc->root();
 			pDoc->parseJson(szCmd + op + 1, strlen(szCmd + op + 1));
 			pNode->add(pDoc, pDoc->root());
 			pDoc->setRoot(pOldRoot);
@@ -1748,18 +1748,18 @@ const GDomNode* GJsonAsADatabase::apply(const char* szFilename, const char* szCm
 	{
 		// It's a "-=" operation
 		string sLeft(szCmd, op - 1);
-		GDomNode* pNode = findNode(pDoc, pDoc->root(), pResponseDom, sLeft.c_str(), '-');
+		WDomNode* pNode = findNode(pDoc, pDoc->root(), pResponseDom, sLeft.c_str(), '-');
 		if(pNode)
 		{
 			string sField;
 			size_t index;
-			GDomNode* pVal = findLValue(pDoc, pNode, pResponseDom, szCmd + op + 1, &sField, &index);
-			if(pVal->type() == GDomNode::type_list)
+			WDomNode* pVal = findLValue(pDoc, pNode, pResponseDom, szCmd + op + 1, &sField, &index);
+			if(pVal->type() == WDomNode::type_list)
 			{
 				pVal->del(index);
 				return nullptr;
 			}
-			else if(pVal->type() == GDomNode::type_obj)
+			else if(pVal->type() == WDomNode::type_obj)
 			{
 				pVal->del(sField.c_str());
 				return nullptr;
@@ -1776,22 +1776,22 @@ const GDomNode* GJsonAsADatabase::apply(const char* szFilename, const char* szCm
 		string sLeft(szCmd, op);
 		string sField;
 		size_t index;
-		GDomNode* pNode = findLValue(pDoc, pDoc->root(), pResponseDom, sLeft.c_str(), &sField, &index);
+		WDomNode* pNode = findLValue(pDoc, pDoc->root(), pResponseDom, sLeft.c_str(), &sField, &index);
 		if(!pNode)
 			pDoc->parseJson(szCmd + op + 1, strlen(szCmd + op + 1));
-		else if(pNode->type() == GDomNode::type_obj)
+		else if(pNode->type() == WDomNode::type_obj)
 		{
-			GDomNode* pOldRoot = pDoc->root();
+			WDomNode* pOldRoot = pDoc->root();
 			pDoc->parseJson(szCmd + op + 1, strlen(szCmd + op + 1));
-			GDomNode* pVal = pDoc->root();
+			WDomNode* pVal = pDoc->root();
 			pDoc->setRoot(pOldRoot);
 			pNode->set(pDoc, sField.c_str(), pVal);
 		}
-		else if(pNode->type() == GDomNode::type_list)
+		else if(pNode->type() == WDomNode::type_list)
 		{
-			GDomNode* pOldRoot = pDoc->root();
+			WDomNode* pOldRoot = pDoc->root();
 			pDoc->parseJson(szCmd + op + 1, strlen(szCmd + op + 1));
-			GDomNode* pVal = pDoc->root();
+			WDomNode* pVal = pDoc->root();
 			pDoc->setRoot(pOldRoot);
 			pNode->set(pDoc, index, pVal);
 		}
@@ -1804,4 +1804,4 @@ const GDomNode* GJsonAsADatabase::apply(const char* szFilename, const char* szCm
 
 
 
-} // namespace GClasses
+} // namespace WClasses

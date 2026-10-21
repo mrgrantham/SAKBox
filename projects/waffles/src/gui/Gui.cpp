@@ -17,15 +17,15 @@
 */
 
 #include "Gui.h"
-#include <WClasses/GSDL.h>
-#include <WClasses/GImage.h>
-#include <WClasses/GHolders.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GFile.h>
-#include <WClasses/GThread.h>
-#include <WClasses/GBits.h>
-#include <WClasses/GString.h>
-#include <WClasses/GApp.h>
+#include <WClasses/WSDL.h>
+#include <WClasses/WImage.h>
+#include <WClasses/WHolders.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WFile.h>
+#include <WClasses/WThread.h>
+#include <WClasses/WBits.h>
+#include <WClasses/WString.h>
+#include <WClasses/WApp.h>
 #include <stdarg.h>
 #include <math.h>
 #ifdef WINDOWS
@@ -36,7 +36,7 @@
 #include <iostream>
 #include <fmt/core.h>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::string;
 
@@ -89,12 +89,12 @@ SDL_Window* ViewBase::makeScreen(int x, int y, const char* szTitle)
 	if(!sdlWindow)
 	{
 		// SDL_GetError();
-		throw GClasses::Ex("failed to create SDL screen"); // SAKBox: was a bare string
+		throw WClasses::Ex("failed to create SDL screen"); // SAKBox: was a bare string
 	}
 	return sdlWindow;
 }
 
-// SAKBox: the texture is SDL_PIXELFORMAT_BGRA8888 (0xBBGGRRAA) and GImage is
+// SAKBox: the texture is SDL_PIXELFORMAT_BGRA8888 (0xBBGGRRAA) and WImage is
 // 0xAARRGGBB, so a pixel converts either way by reversing its bytes. (On
 // Apple, blitImage did this with ntohl; elsewhere it copied the pixels
 // unconverted, using an undeclared w, and captureScreen didn't convert, so
@@ -109,7 +109,7 @@ static unsigned int argbFromTexture(Uint32 bgra)
 	return std::byteswap(bgra);
 }
 
-void ViewBase::captureScreen(GImage* pImage)
+void ViewBase::captureScreen(WImage* pImage)
 {
 	Uint32 format; // SDL_PixelFormatEnum
 	SDL_QueryTexture(sdlTexture, &format, nullptr, nullptr, nullptr);
@@ -120,7 +120,7 @@ void ViewBase::captureScreen(GImage* pImage)
 	const SDL_Rect* SDL_LOCK_ENTIRE_TEXTURE = nullptr;
 	if(SDL_LockTexture(sdlTexture, SDL_LOCK_ENTIRE_TEXTURE, (void**)&pixels, &pitch) < 0)
 	{
-		GAssert(false); // SDL_GetError(); // failed to lock the surface
+		WAssert(false); // SDL_GetError(); // failed to lock the surface
 		return;
 	}
 
@@ -156,7 +156,7 @@ void ViewBase::captureScreen(GImage* pImage)
 	SDL_UnlockTexture(sdlTexture); // SAKBox: was left locked
 }
 
-/*static*/ void ViewBase::blitImage(int* pixels, int pitch, Uint32 format, int x, int y, GImage* pImage)
+/*static*/ void ViewBase::blitImage(int* pixels, int pitch, Uint32 format, int x, int y, WImage* pImage)
 {
 	if(SDL_BYTESPERPIXEL(format) == 4)
 	{
@@ -178,7 +178,7 @@ void ViewBase::captureScreen(GImage* pImage)
 	else
 	{
 		// 16 bits per pixel
-		GAssert(SDL_BYTESPERPIXEL(format) == 2); // Only 16 and 32 bit video modes are supported
+		WAssert(SDL_BYTESPERPIXEL(format) == 2); // Only 16 and 32 bit video modes are supported
 		// fmt::println("16 bit pic blitImage");
 		int w = pImage->width();
 		int h = pImage->height();
@@ -200,12 +200,12 @@ void ViewBase::captureScreen(GImage* pImage)
 	}
 }
 
-/*static*/ void ViewBase::stretchClipAndBlitImage(int* pixels, int pitch, Uint32 format, GRect* pDestRect, GRect* pClipRect, GImage* pImage)
+/*static*/ void ViewBase::stretchClipAndBlitImage(int* pixels, int pitch, Uint32 format, WRect* pDestRect, WRect* pClipRect, WImage* pImage)
 {
 	float fSourceDX = (float)(pImage->width() - 1) / (float)(pDestRect->w - 1);
-	GAssert((int)((pDestRect->w - 1) * fSourceDX) < (int)pImage->width()); // Extends past source image width
+	WAssert((int)((pDestRect->w - 1) * fSourceDX) < (int)pImage->width()); // Extends past source image width
 	float fSourceDY = (float)(pImage->height() - 1) / (float)(pDestRect->h - 1);
-	GAssert((int)((pDestRect->h - 1) * fSourceDY) < (int)pImage->height()); // Extends past source image height
+	WAssert((int)((pDestRect->h - 1) * fSourceDY) < (int)pImage->height()); // Extends past source image height
 	float fSourceX = 0;
 	float fSourceY = 0;
 	int xStart = pDestRect->x;
@@ -252,7 +252,7 @@ void ViewBase::captureScreen(GImage* pImage)
 	else
 	{
 		// 16 bits per pixel
-		GAssert(pScreen->format->BytesPerPixel == 2); // Only 16 and 32 bit video modes are supported
+		WAssert(pScreen->format->BytesPerPixel == 2); // Only 16 and 32 bit video modes are supported
 		unsigned int colIn;
 		Uint16* pPix;
 		for(y = yStart; y < yEnd; y++)
@@ -304,7 +304,7 @@ void ViewBase::drawDot(int* pixels, int pitch, Uint32 format, int x, int y, unsi
 	else
 	{
 		// 16 bits per pixel
-		GAssert(SDL_BYTESPERPIXEL(format) == 2); // Only 16 and 32 bit video modes are supported
+		WAssert(SDL_BYTESPERPIXEL(format) == 2); // Only 16 and 32 bit video modes are supported
 		for(yy = std::max(m_screenRect.y, y - nSize); yy < nYMax; yy++)
 		{
 			for(xx = std::max(m_screenRect.x, x - nSize); xx < nXMax; xx++)
@@ -335,7 +335,7 @@ void ViewBase::update()
 	if(SDL_LockTexture(currentTexture, SDL_LOCK_ENTIRE_TEXTURE, (void**)&pixels, &pitch) < 0)
 	{
 		fmt::println("ERROR");
-		GAssert(false); // SDL_GetError(); // failed to lock the surface
+		WAssert(false); // SDL_GetError(); // failed to lock the surface
 		return;
 	}
 	// }
@@ -466,7 +466,7 @@ bool ControllerBase::handleEvents(double dTimeDelta)
 				}
 				break;
 			default:
-				GAssert(false); // unexpected case
+				WAssert(false); // unexpected case
 		}
 	}
 	else if(!onMousePos(m_mouseX, m_mouseY))
@@ -479,7 +479,7 @@ bool ControllerBase::handleEvents(double dTimeDelta)
 
 void ControllerBase::handleKeyPress(SDL_Keycode key, SDL_Keymod mod)
 {
-	char cKey = GSDL::filterKey(key);
+	char cKey = WSDL::filterKey(key);
 	if(cKey == 0)
 	{
 		onSpecialKey(key);
@@ -495,7 +495,7 @@ void ControllerBase::handleKeyPress(SDL_Keycode key, SDL_Keymod mod)
 
 		// Capitalize if shift is down
 		if(mod & KMOD_SHIFT)
-			cKey = GSDL::shiftKey(cKey);
+			cKey = WSDL::shiftKey(cKey);
 
 		m_pView->onChar(cKey);
 		m_lastPressedKey = key;
@@ -513,17 +513,17 @@ void ControllerBase::mousePos(int* pX, int* pY)
 class PopupView : public ViewBase
 {
 protected:
-	GImage* m_pBackgroundImage;
-	GWidgetDialog* m_pDialog;
+	WImage* m_pBackgroundImage;
+	WWidgetDialog* m_pDialog;
 	int m_nLeft, m_nTop, m_x, m_y;
 
 public:
-	PopupView(GWidgetDialog* pDialog)
+	PopupView(WWidgetDialog* pDialog)
 	: ViewBase(SDL_GetWindowTitle(window_)) // a popup keeps the window's title
 	{
 		m_nLeft = 0;
 		m_nTop = 0;
-		m_pBackgroundImage = new GImage();
+		m_pBackgroundImage = new WImage();
 		captureScreen(m_pBackgroundImage);
 		m_pBackgroundImage->contrastAndBrightness(.5, -64);
 		m_pDialog = pDialog;
@@ -567,7 +567,7 @@ protected:
 	void draw(int* pixels, int pitch) override
 	{
 		fmt::println("draw");
-		GImage* pDialogImage = m_pDialog->image();
+		WImage* pDialogImage = m_pDialog->image();
 		m_pBackgroundImage->blit(m_x, m_y, pDialogImage, m_pDialog->rect());
 		Uint32 format; // SDL_PixelFormatEnum
 		SDL_QueryTexture(sdlTexture, &format, nullptr, nullptr, nullptr);
@@ -582,7 +582,7 @@ protected:
 	bool* m_pKeepRunning;
 
 public:
-	PopupController(bool* pKeepRunning, GWidgetDialog* pDialog)
+	PopupController(bool* pKeepRunning, WWidgetDialog* pDialog)
 	: ControllerBase()
 	{
 		*pKeepRunning = true;
@@ -597,23 +597,23 @@ public:
 
 	void runModal()
 	{
-		double timeOld = GTime::seconds();
+		double timeOld = WTime::seconds();
 		double time;
 		m_pView->update();
 		while(*m_pKeepRunning && m_bKeepRunning)
 		{
-			time = GTime::seconds();
+			time = WTime::seconds();
 			if(handleEvents(time - timeOld)) // HandleEvents returns true if it thinks the view needs to be updated
 				m_pView->update();
 			// else
-			// 	GThread::sleep(10);
+			// 	WThread::sleep(10);
 			timeOld = time;
 		}
 	}
 };
 
 
-void RunPopup(GWidgetDialog* pDialog)
+void RunPopup(WWidgetDialog* pDialog)
 {
 	PopupController controller(pDialog->runningFlag(), pDialog);
 	controller.runModal();
@@ -738,10 +738,10 @@ void OpenFile(const char* szFilename)
 	SetForegroundWindow(itw.First());
 	//ShellExecute(NULL, NULL, szFilename, NULL, NULL, SW_SHOW);
 #else
-	// SAKBox: through GApp::openFile, which passes the name as one argument
+	// SAKBox: through WApp::openFile, which passes the name as one argument
 	// (this built "open <name> &" for the shell, so a ; or $(...) in a file
 	// name ran commands)
-	if(!GApp::openFile(szFilename))
+	if(!WApp::openFile(szFilename))
 	{
 		cout << "Failed to open " << szFilename << ". Please open it manually.\n";
 		cout.flush();
@@ -753,9 +753,9 @@ void OpenFile(const char* szFilename)
 void OpenAppFile(const char* szRelativeFilename)
 {
 	char szFilename[256];
-	int len = GApp::appPath(szFilename, 256, true);
+	int len = WApp::appPath(szFilename, 256, true);
 	safe_strcpy(szFilename + len, szRelativeFilename, 256 - len);
-	GFile::condensePath(szFilename);
+	WFile::condensePath(szFilename);
 	OpenFile(szFilename);
 }
 
@@ -765,7 +765,7 @@ void OpenAppFile(const char* szRelativeFilename)
 
 int MessageBoxDialog_CountLines(const char* szMessage)
 {
-	GStringChopper sc(szMessage, 40, 80, true);
+	WStringChopper sc(szMessage, 40, 80, true);
 	int nCount;
 	for(nCount = 0; sc.next(); nCount++)
 	{
@@ -774,21 +774,21 @@ int MessageBoxDialog_CountLines(const char* szMessage)
 }
 
 MessageBoxDialog::MessageBoxDialog(const char* szMessage)
-: GWidgetDialog(500, 100 + MessageBoxDialog_CountLines(szMessage) * 16, 0xffccbbaa)
+: WWidgetDialog(500, 100 + MessageBoxDialog_CountLines(szMessage) * 16, 0xffccbbaa)
 {
-	GStringChopper sc(szMessage, 40, 80, true);
+	WStringChopper sc(szMessage, 40, 80, true);
 	int x, y, w;
 	for(y = 40; true; y += 16)
 	{
 		const char* szLine = sc.next();
 		if(!szLine)
 			break;
-		w = GImage::measureTextWidth(szLine, 1.0f);
+		w = WImage::measureTextWidth(szLine, 1.0f);
 		x = (m_rect.w - 40 - w) / 2 + 20;
-		new GWidgetTextLabel(this, x, y, m_rect.w - x, 16, szLine, 0xff442200);
+		new WWidgetTextLabel(this, x, y, m_rect.w - x, 16, szLine, 0xff442200);
 	}
-	m_pOK = new GWidgetTextButton(this, 200, m_rect.h - 35, 100, 24, "OK");
-	new GWidgetGroupBox(this, 0, 0, m_rect.w, m_rect.h, 0xffddccbb, 0xffbbaa99);
+	m_pOK = new WWidgetTextButton(this, 200, m_rect.h - 35, 100, 24, "OK");
+	new WWidgetGroupBox(this, 0, 0, m_rect.w, m_rect.h, 0xffddccbb, 0xffbbaa99);
 }
 
 // virtual
@@ -797,24 +797,24 @@ MessageBoxDialog::~MessageBoxDialog()
 }
 
 // virtual
-void MessageBoxDialog::onReleaseTextButton(GWidgetTextButton* pButton)
+void MessageBoxDialog::onReleaseTextButton(WWidgetTextButton* pButton)
 {
 	if(pButton == m_pOK)
 		close();
 	else
-		GAssert(false); // unrecognized button
+		WAssert(false); // unrecognized button
 }
 
 // -----------------------------------------------------------------------------------------------
 
 
 GetStringDialog::GetStringDialog(const char* szMessage)
-: GWidgetDialog(600, 90, 0xffccbbaa)
+: WWidgetDialog(600, 90, 0xffccbbaa)
 {
-	new GWidgetTextLabel(this, 10, 5, m_rect.w - 20, 20, szMessage, 0xff442200);
-	m_pTextBox = new GWidgetTextBox(this, 10, 30, m_rect.w - 20, 20);
-	m_pOK = new GWidgetTextButton(this, 150, m_rect.h - 30, 100, 24, "OK");
-	m_pCancel = new GWidgetTextButton(this, 350, m_rect.h - 30, 100, 24, "Cancel");
+	new WWidgetTextLabel(this, 10, 5, m_rect.w - 20, 20, szMessage, 0xff442200);
+	m_pTextBox = new WWidgetTextBox(this, 10, 30, m_rect.w - 20, 20);
+	m_pOK = new WWidgetTextButton(this, 150, m_rect.h - 30, 100, 24, "OK");
+	m_pCancel = new WWidgetTextButton(this, 350, m_rect.h - 30, 100, 24, "Cancel");
 }
 
 // virtual
@@ -823,13 +823,13 @@ GetStringDialog::~GetStringDialog()
 }
 
 // virtual
-void GetStringDialog::onTextBoxPressEnter(GWidgetTextBox* pTextBox)
+void GetStringDialog::onTextBoxPressEnter(WWidgetTextBox* pTextBox)
 {
 	close();
 }
 
 // virtual
-void GetStringDialog::onReleaseTextButton(GWidgetTextButton* pButton)
+void GetStringDialog::onReleaseTextButton(WWidgetTextButton* pButton)
 {
 	if(pButton == m_pOK)
 		close();
@@ -839,18 +839,18 @@ void GetStringDialog::onReleaseTextButton(GWidgetTextButton* pButton)
 		close();
 	}
 	else
-		GAssert(false); // unrecognized text button
+		WAssert(false); // unrecognized text button
 }
 
 // -----------------------------------------------------------------------------------------------
 
 
 GetOpenFilenameDialog::GetOpenFilenameDialog(const char* szMessage, const char* szExt)
-: GWidgetDialog(700, 500, 0xffcc9966)
+: WWidgetDialog(700, 500, 0xffcc9966)
 {
-	new GWidgetTextLabel(this, 10, 5, 300, 20, szMessage, 0xff442200);
-	m_pFileBrowser = new GWidgetFileSystemBrowser(this, 10, 30, m_rect.w - 20, m_rect.h - 65, szExt);
-	m_pCancel = new GWidgetTextButton(this, (m_rect.w - 100) / 2, m_rect.h - 30, 100, 24, "Cancel");
+	new WWidgetTextLabel(this, 10, 5, 300, 20, szMessage, 0xff442200);
+	m_pFileBrowser = new WWidgetFileSystemBrowser(this, 10, 30, m_rect.w - 20, m_rect.h - 65, szExt);
+	m_pCancel = new WWidgetTextButton(this, (m_rect.w - 100) / 2, m_rect.h - 30, 100, 24, "Cancel");
 	m_szFilename = nullptr;
 }
 
@@ -860,7 +860,7 @@ GetOpenFilenameDialog::~GetOpenFilenameDialog()
 }
 
 // virtual
-void GetOpenFilenameDialog::onSelectFilename(GWidgetFileSystemBrowser* pBrowser, const char* szFilename)
+void GetOpenFilenameDialog::onSelectFilename(WWidgetFileSystemBrowser* pBrowser, const char* szFilename)
 {
 	delete[] m_szFilename;
 	m_szFilename = new char[strlen(szFilename) + 1];
@@ -877,7 +877,7 @@ void GetOpenFilenameDialog::onSelectFilename(GWidgetFileSystemBrowser* pBrowser,
 }
 
 // virtual
-void GetOpenFilenameDialog::onReleaseTextButton(GWidgetTextButton* pButton)
+void GetOpenFilenameDialog::onReleaseTextButton(WWidgetTextButton* pButton)
 {
 	if(pButton == m_pCancel)
 	{
@@ -902,15 +902,15 @@ char* GetOpenFilenameDialog::releaseFilename()
 // -----------------------------------------------------------------------------------------------
 
 GetSaveFilenameDialog::GetSaveFilenameDialog(const char* szMessage, const char* initialFilename, const char* szExt)
-: GWidgetDialog(700, 500, 0xffcc6699)
+: WWidgetDialog(700, 500, 0xffcc6699)
 {
-	new GWidgetTextLabel(this, 10, 5, 300, 20, szMessage, 0xff442200);
-	m_pFileBrowser = new GWidgetFileSystemBrowser(this, 10, 30, m_rect.w - 20, m_rect.h - 95, szExt);
-	m_pFilename = new GWidgetTextBox(this, 20, m_rect.h - 60, m_rect.w - 40, 20);
+	new WWidgetTextLabel(this, 10, 5, 300, 20, szMessage, 0xff442200);
+	m_pFileBrowser = new WWidgetFileSystemBrowser(this, 10, 30, m_rect.w - 20, m_rect.h - 95, szExt);
+	m_pFilename = new WWidgetTextBox(this, 20, m_rect.h - 60, m_rect.w - 40, 20);
 	m_pFilename->setText(initialFilename);
 	setFocusWidget(m_pFilename);
-	m_pSave = new GWidgetTextButton(this, m_rect.w / 2 - 120, m_rect.h - 30, 100, 24, "Save");
-	m_pCancel = new GWidgetTextButton(this, m_rect.w / 2 + 20, m_rect.h - 30, 100, 24, "Cancel");
+	m_pSave = new WWidgetTextButton(this, m_rect.w / 2 - 120, m_rect.h - 30, 100, 24, "Save");
+	m_pCancel = new WWidgetTextButton(this, m_rect.w / 2 + 20, m_rect.h - 30, 100, 24, "Cancel");
 	m_szFilename = nullptr;
 }
 
@@ -920,13 +920,13 @@ GetSaveFilenameDialog::~GetSaveFilenameDialog()
 }
 
 // virtual
-void GetSaveFilenameDialog::onSelectFilename(GWidgetFileSystemBrowser* pBrowser, const char* szFilename)
+void GetSaveFilenameDialog::onSelectFilename(WWidgetFileSystemBrowser* pBrowser, const char* szFilename)
 {
 	m_pFilename->setText(szFilename);
 }
 
 // virtual
-void GetSaveFilenameDialog::onReleaseTextButton(GWidgetTextButton* pButton)
+void GetSaveFilenameDialog::onReleaseTextButton(WWidgetTextButton* pButton)
 {
 	if(pButton == m_pCancel)
 	{

@@ -3,13 +3,13 @@
 #include <queue>
 #include <iostream>
 #include <set>
-#include "../../GClasses/GHtml.h"
-#include "../../GClasses/GApp.h"
-#include "../../GClasses/GHttp.h"
-#include "../../GClasses/GThread.h"
-#include "../../GClasses/GFile.h"
+#include "../../WClasses/WHtml.h"
+#include "../../WClasses/WApp.h"
+#include "../../WClasses/WHttp.h"
+#include "../../WClasses/WThread.h"
+#include "../../WClasses/WFile.h"
 
-using namespace GClasses;
+using namespace WClasses;
 using std::string;
 using std::queue;
 using std::cout;
@@ -22,22 +22,22 @@ unsigned char* downloadFromWeb(const char* szAddr, size_t timeout, size_t* pOutS
 {
 	if(*szAddr == '/')
 	{
-		return (unsigned char*)GFile::loadFile(szAddr, pOutSize);
+		return (unsigned char*)WFile::loadFile(szAddr, pOutSize);
 	}
 	else
 	{
-		GHttpClient client;
+		WHttpClient client;
 		if(!client.sendGetRequest(szAddr))
 			throw Ex("Error connecting");
 		float fProgress;
 		time_t start = time(NULL);
-		while(client.status(&fProgress) == GHttpClient::Downloading)
+		while(client.status(&fProgress) == WHttpClient::Downloading)
 		{
 			if((size_t)(time(NULL) - start) > timeout)
 				break;
-			GThread::sleep(50);
+			WThread::sleep(50);
 		}
-		if(client.status(&fProgress) != GHttpClient::Done)
+		if(client.status(&fProgress) != WHttpClient::Done)
 			throw Ex("Error downloading page");
 		return client.releaseData(pOutSize);
 	}
@@ -88,7 +88,7 @@ public:
 		return url;
 	}
 
-	void process_hyperlink(GHtmlElement* pEl)
+	void process_hyperlink(WHtmlElement* pEl)
 	{
 		for(size_t i = 0; i < pEl->attrNames.size(); i++)
 		{
@@ -118,13 +118,13 @@ public:
 		}
 	}
 
-	void process_html_file(GHtmlElement* pEl)
+	void process_html_file(WHtmlElement* pEl)
 	{
 		if(pEl->name.compare("a") == 0 || pEl->name.equals("A") == 0)
 			process_hyperlink(pEl);
 		for(size_t i = 0; i < pEl->children.size(); i++)
 		{
-			GHtmlElement* pChild = pEl->children[i];
+			WHtmlElement* pChild = pEl->children[i];
 			process_html_file(pEntry, pEl);
 		}
 	}
@@ -139,10 +139,10 @@ public:
 			return;
 		}
 		PathData pd;
-		GFile::parsePath(pEntry->destination.c_str(), &pd);
+		WFile::parsePath(pEntry->destination.c_str(), &pd);
 		if(_stricmp(pEntry->destination.c_str() + pd.extStart, ".htm") == 0 || _stricmp(pEntry->destination.c_str() + pd.extStart, ".html") == 0)
 		{
-			GHtmlDoc doc((char*)pFile, size);
+			WHtmlDoc doc((char*)pFile, size);
 			process_html_file(pEntry, doc.document());
 		}
 		else
@@ -182,7 +182,7 @@ public:
 };
 
 
-void findbrokenlinks(GArgReader& args)
+void findbrokenlinks(WArgReader& args)
 {
 	// Find URL base
 	const char* szInitialUrl = args.pop_string();

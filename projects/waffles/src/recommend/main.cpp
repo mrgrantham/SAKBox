@@ -20,7 +20,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "WClasses/GRecommenderLib.h"
+#include "WClasses/WRecommenderLib.h"
 #include <time.h>
 #include <iostream>
 #ifdef WIN32
@@ -32,7 +32,7 @@
 #include <vector>
 #include <set>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 using std::string;
@@ -42,49 +42,49 @@ using std::set;
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int nRet = 0;
 	PathData pd;
-	GFile::parsePath(argv[0], &pd);
+	WFile::parsePath(argv[0], &pd);
 	const char* appName = argv[0] + pd.fileStart;
-	GArgReader args(argc, argv);
+	WArgReader args(argc, argv);
 	try
 	{
 		args.pop_string(); // advance past the name of this app
 		if(args.size() >= 1)
 		{
 			if(args.if_pop("usage"))
-				GRecommenderLib::ShowUsage(appName);
+				WRecommenderLib::ShowUsage(appName);
 			else if(args.if_pop("crossvalidate"))
-				GRecommenderLib::crossValidate(args);
+				WRecommenderLib::crossValidate(args);
 			else if(args.if_pop("fillmissingvalues"))
-				GRecommenderLib::fillMissingValues(args);
+				WRecommenderLib::fillMissingValues(args);
 			else if(args.if_pop("precisionrecall"))
-				GRecommenderLib::precisionRecall(args);
+				WRecommenderLib::precisionRecall(args);
 			else if(args.if_pop("roc"))
-				GRecommenderLib::ROC(args);
+				WRecommenderLib::ROC(args);
 			else if(args.if_pop("transacc"))
-				GRecommenderLib::transacc(args);
+				WRecommenderLib::transacc(args);
 			else
 			{
 				nRet = 1;
 				string s = args.peek();
 				s += " is not a recognized command.";
-				GRecommenderLib::showError(args, appName, s.c_str());
+				WRecommenderLib::showError(args, appName, s.c_str());
 			}
 		}
 		else
 		{
 			nRet = 1;
-			GRecommenderLib::showError(args, appName, "Brief Usage Information:");
+			WRecommenderLib::showError(args, appName, "Brief Usage Information:");
 		}
 	}
 	catch(const std::exception& e)
 	{
 		nRet = 1;
 		if(strcmp(e.what(), "nevermind") != 0) // if an error message was not already displayed...
-			GRecommenderLib::showError(args, appName, e.what());
+			WRecommenderLib::showError(args, appName, e.what());
 	}
 	return nRet;
 }

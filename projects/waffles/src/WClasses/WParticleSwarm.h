@@ -19,33 +19,33 @@
 #ifndef __GPARTICLESWARM_H__
 #define __GPARTICLESWARM_H__
 
-#include "GOptimizer.h"
-#include "GMatrix.h"
+#include "WOptimizer.h"
+#include "WMatrix.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GRand;
+class WRand;
 
 
 /// An optimization algorithm inspired by flocking birds
-class GParticleSwarm : public GOptimizer
+class WParticleSwarm : public WOptimizer
 {
 protected:
 	double m_dMin, m_dRange;
 	double m_dLearningRate;
 	size_t m_nDimensions;
 	size_t m_nPopulation;
-	GMatrix m_pPositions;
-	GMatrix m_pVelocities;
-	GMatrix m_pBests;
-	GVec m_pErrors;
+	WMatrix m_pPositions;
+	WMatrix m_pVelocities;
+	WMatrix m_pBests;
+	WVec m_pErrors;
 	size_t m_nGlobalBest;
-	GRand* m_pRand;
+	WRand* m_pRand;
 
 public:
-	GParticleSwarm(GTargetFunction* pCritic, size_t nPopulation, double dMin, double dRange, GRand* pRand);
-	~GParticleSwarm() override;
+	WParticleSwarm(WTargetFunction* pCritic, size_t nPopulation, double dMin, double dRange, WRand* pRand);
+	~WParticleSwarm() override;
 
 	/// Perform a little more optimization
 	double iterate() override;
@@ -59,28 +59,28 @@ protected:
 
 
 // An optimization algorithm inspired by boucing balls
-class GBouncyBalls : public GOptimizer
+class WBouncyBalls : public WOptimizer
 {
 public:
-	GMatrix m_positions;
-	GMatrix m_velocities;
-	GVec m_errors;
+	WMatrix m_positions;
+	WMatrix m_velocities;
+	WVec m_errors;
 	size_t m_bestIndex;
 	size_t m_ball;
-	GRand& m_rand;
+	WRand& m_rand;
 	double m_probTeleport;
 	double m_probSpurt;
 
-	GBouncyBalls(GTargetFunction* pCritic, size_t population, GRand& rand, double probTeleport = 0.01);
-	~GBouncyBalls() override;
+	WBouncyBalls(WTargetFunction* pCritic, size_t population, WRand& rand, double probTeleport = 0.01);
+	~WBouncyBalls() override;
 
 	static void test();
 
 	double iterate() override;
-	const GVec& currentVector() override { return m_positions[m_bestIndex]; }
+	const WVec& currentVector() override { return m_positions[m_bestIndex]; }
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GPARTICLESWARM_H__

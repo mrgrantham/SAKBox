@@ -1,14 +1,14 @@
 #ifndef __GIMAGEJPEG_H__
 #define __GIMAGEJPEG_H__
 
-#include <WClasses/GImage.h>
+#include <WClasses/WImage.h>
 #include <stdlib.h>
 
-namespace GClasses
+namespace WClasses
 {
 
-void loadJpeg(GImage* pImage, const char* filename);
-void saveJpeg(GImage* pImage, const char* filename); //DOEST WORK. LEE WORK ON IT LATER
+void loadJpeg(WImage* pImage, const char* filename);
+void saveJpeg(WImage* pImage, const char* filename); //DOEST WORK. LEE WORK ON IT LATER
 
 }
 

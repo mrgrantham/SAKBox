@@ -8,32 +8,32 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "WClasses/GApp.h"
-#include "WClasses/GBits.h"
-#include "WClasses/GError.h"
-#include "WClasses/GHeap.h"
-#include "WClasses/GImage.h"
-#include "WClasses/GRand.h"
-#include "WClasses/GFile.h"
-#include "WClasses/GFunction.h"
-#include "WClasses/GHistogram.h"
-#include "WClasses/GTransform.h"
-#include "WClasses/GVec.h"
-#include "WClasses/GSparseMatrix.h"
-#include "WClasses/GHashTable.h"
-#include "WClasses/GHillClimber.h"
-#include "WClasses/GHolders.h"
-#include "WClasses/GManifold.h"
-#include "WClasses/GMath.h"
-#include "WClasses/GMatrix.h"
-#include "WClasses/GNeuralNet.h"
-#include "WClasses/GPlot.h"
-#include "WClasses/GRayTrace.h"
-#include "WClasses/GRect.h"
-#include "WClasses/GString.h"
-#include "WClasses/GDom.h"
+#include "WClasses/WApp.h"
+#include "WClasses/WBits.h"
+#include "WClasses/WError.h"
+#include "WClasses/WHeap.h"
+#include "WClasses/WImage.h"
+#include "WClasses/WRand.h"
+#include "WClasses/WFile.h"
+#include "WClasses/WFunction.h"
+#include "WClasses/WHistogram.h"
+#include "WClasses/WTransform.h"
+#include "WClasses/WVec.h"
+#include "WClasses/WSparseMatrix.h"
+#include "WClasses/WHashTable.h"
+#include "WClasses/WHillClimber.h"
+#include "WClasses/WHolders.h"
+#include "WClasses/WManifold.h"
+#include "WClasses/WMath.h"
+#include "WClasses/WMatrix.h"
+#include "WClasses/WNeuralNet.h"
+#include "WClasses/WPlot.h"
+#include "WClasses/WRayTrace.h"
+#include "WClasses/WRect.h"
+#include "WClasses/WString.h"
+#include "WClasses/WDom.h"
 #include "WClasses/usage.h"
-#include "WClasses/GString.h"
+#include "WClasses/WString.h"
 
 #include <time.h>
 #include <iostream>
@@ -44,29 +44,29 @@
 #endif
 #include <exception>
 #include <string>
-#include "png/GImagePng.h"
+#include "png/WImagePng.h"
 #include <memory>
 #include <set>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 using std::vector;
 using std::string;
 using std::ostringstream;
 
-GMatrix* loadData(const char* szFilename)
+WMatrix* loadData(const char* szFilename)
 {
 	// Load the dataset by extension
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
-	GMatrix* pData = new GMatrix();
+	WFile::parsePath(szFilename, &pd);
+	WMatrix* pData = new WMatrix();
 	vector<size_t> ambiguousCols;
 	if(_stricmp(szFilename + pd.extStart, ".arff") == 0)
 		pData->loadArff(szFilename);
 	else if(_stricmp(szFilename + pd.extStart, ".csv") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.parse(*pData, szFilename);
 		cerr << "\nParsing Report:\n";
 		for(size_t i = 0; i < pData->cols(); i++)
@@ -74,7 +74,7 @@ GMatrix* loadData(const char* szFilename)
 	}
 	else if(_stricmp(szFilename + pd.extStart, ".dat") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.setSeparator('\0');
 		parser.parse(*pData, szFilename);
 		cerr << "\nParsing Report:\n";
@@ -104,10 +104,10 @@ GMatrix* loadData(const char* szFilename)
 	return pData;
 }
 
-void cube(GArgReader& args)
+void cube(WArgReader& args)
 {
 	int side = args.pop_uint() - 1;
-	GMatrix data(0, 3);
+	WMatrix data(0, 3);
 	for(int y = 0; y < side; y++)
 	{
 		double b = ((double)y /* + 0.5*/) / side;
@@ -116,27 +116,27 @@ void cube(GArgReader& args)
 			double a = ((double)x /* + 0.5*/) / side;
 			// (SAKBox) aligned in columns by hand
 			// clang-format off
-			GVec& r0 = data.newRow(); r0[0] = 0.0;     r0[1] = 1.0 - a; r0[2] = b;
-			GVec& r1 = data.newRow(); r1[0] = 1.0;     r1[1] = a;       r1[2] = 1.0 - b;
-			GVec& r2 = data.newRow(); r2[0] = b;       r2[1] = 0.0;     r2[2] = 1.0 - a;
-			GVec& r3 = data.newRow(); r3[0] = 1.0 - b; r3[1] = 1.0;     r3[2] = a;
-			GVec& r4 = data.newRow(); r4[0] = 1.0 - a; r4[1] = b;       r4[2] = 0.0;
-			GVec& r5 = data.newRow(); r5[0] = a;       r5[1] = 1.0 - b; r5[2] = 1.0;
+			WVec& r0 = data.newRow(); r0[0] = 0.0;     r0[1] = 1.0 - a; r0[2] = b;
+			WVec& r1 = data.newRow(); r1[0] = 1.0;     r1[1] = a;       r1[2] = 1.0 - b;
+			WVec& r2 = data.newRow(); r2[0] = b;       r2[1] = 0.0;     r2[2] = 1.0 - a;
+			WVec& r3 = data.newRow(); r3[0] = 1.0 - b; r3[1] = 1.0;     r3[2] = a;
+			WVec& r4 = data.newRow(); r4[0] = 1.0 - a; r4[1] = b;       r4[2] = 0.0;
+			WVec& r5 = data.newRow(); r5[0] = a;       r5[1] = 1.0 - b; r5[2] = 1.0;
 			// clang-format on
 		}
 	}
-	GVec& rp = data.newRow();
+	WVec& rp = data.newRow();
 	rp[0] = 0.0;
 	rp[1] = 0.0;
 	rp[2] = 0.0;
-	GVec& ru = data.newRow();
+	WVec& ru = data.newRow();
 	ru[0] = 1.0;
 	ru[1] = 1.0;
 	ru[2] = 1.0;
 	data.print(cout);
 }
 
-void fishBowl(GArgReader& args)
+void fishBowl(WArgReader& args)
 {
 	int points = args.pop_uint();
 
@@ -154,11 +154,11 @@ void fishBowl(GArgReader& args)
 		throw Ex("opening too big--consumes entire fish bowl");
 
 	// Make the data
-	GRand prng(seed);
-	GMatrix data(0, 3);
+	WRand prng(seed);
+	WMatrix data(0, 3);
 	for(int i = 0; i < points; i++)
 	{
-		GVec& pRow = data.newRow();
+		WVec& pRow = data.newRow();
 		int j;
 		for(j = 100; j > 0; j--)
 		{
@@ -173,7 +173,7 @@ void fishBowl(GArgReader& args)
 	data.print(cout);
 }
 
-void Noise(GArgReader& args)
+void Noise(WArgReader& args)
 {
 	int pats = args.pop_uint();
 
@@ -224,9 +224,9 @@ void Noise(GArgReader& args)
 	}
 
 	// Make the data
-	GRand prng(nSeed);
-	GUniformRelation* pRelation = new GUniformRelation(dims, vals);
-	GMatrix data(pRelation);
+	WRand prng(nSeed);
+	WUniformRelation* pRelation = new WUniformRelation(dims, vals);
+	WMatrix data(pRelation);
 	if(dist.compare("gaussian") == 0 || dist.compare("normal") == 0)
 	{
 		for(int i = 0; i < pats; i++)
@@ -306,7 +306,7 @@ void Noise(GArgReader& args)
 	{
 		for(int i = 0; i < pats; i++)
 		{
-			GVec& row = data.newRow();
+			WVec& row = data.newRow();
 			row.fillSphericalShell(prng);
 			row *= p1;
 		}
@@ -327,7 +327,7 @@ void Noise(GArgReader& args)
 	data.print(cout);
 }
 
-void randomWalk(GArgReader& args)
+void randomWalk(WArgReader& args)
 {
 	// Parse args
 	size_t samples = args.pop_uint();
@@ -370,17 +370,17 @@ void randomWalk(GArgReader& args)
 	}
 
 	// Generate samples
-	GRand rand(seed);
+	WRand rand(seed);
 	scale.resize(dims, 1.0);
 	vector<double> pos;
 	pos.resize(dims, start);
-	GVec cur(dims);
-	GVec prev(dims);
-	GMatrix states(samples, dims);
-	GMatrix actions;
+	WVec cur(dims);
+	WVec prev(dims);
+	WMatrix states(samples, dims);
+	WMatrix actions;
 	if(discrete)
 	{
-		GUniformRelation* pRel = new GUniformRelation(1, dims * 2);
+		WUniformRelation* pRel = new WUniformRelation(1, dims * 2);
 		actions.setRelation(pRel);
 		actions.newRows(samples);
 		double d = 0.0;
@@ -388,7 +388,7 @@ void randomWalk(GArgReader& args)
 		for(size_t i = 0; i < samples; i++)
 		{
 			// Record the state
-			GVec& pState = states[i];
+			WVec& pState = states[i];
 			for(size_t j = 0; j < dims; j++)
 				pState[j] = pos[j];
 
@@ -440,7 +440,7 @@ void randomWalk(GArgReader& args)
 		for(size_t i = 0; i < samples; i++)
 		{
 			// Record the state
-			GVec& pState = states[i];
+			WVec& pState = states[i];
 			for(size_t j = 0; j < dims; j++)
 				pState[j] = pos[j];
 
@@ -518,14 +518,14 @@ bool isInsideUnitStar(double x, double y)
 double LengthOfSwissRoll(double x)
 {
 #ifdef WIN32
-	GAssert(false); // not implemented yet for Win32
+	WAssert(false); // not implemented yet for Win32
 	return 0;
 #else
 	return (x * sqrt(x * x + 1) + asinh(x)) / 2;
 #endif
 }
 
-void SwissRoll(GArgReader& args)
+void SwissRoll(WArgReader& args)
 {
 	int points = args.pop_uint();
 
@@ -549,17 +549,17 @@ void SwissRoll(GArgReader& args)
 	double unrolledWidth = 48.790603865663797;
 	double starCenterX = 43;
 	double starSize = 1.5;
-	GRand prng(nSeed);
-	GArffRelation rel;
+	WRand prng(nSeed);
+	WArffRelation rel;
 	rel.addAttribute("x", 0, nullptr);
 	rel.addAttribute("y", 0, nullptr);
 	if(!reduced)
 		rel.addAttribute("z", 0, nullptr);
-	GMatrix data(0, 3);
+	WMatrix data(0, 3);
 	for(int n = 0; n < points; n++)
 	{
 		double t = ((double)n * 8) / points;
-		GVec& pVector = data.newRow();
+		WVec& pVector = data.newRow();
 		pVector[0] = ((t + 2) * sin(t));
 		pVector[2] = ((t + 2) * cos(t));
 		if(cutOutStar)
@@ -594,7 +594,7 @@ double LengthOfSineFunc(void* pThis, double x)
 	return sqrt(d * d + 1.0);
 }
 
-void SCurve(GArgReader& args)
+void SCurve(WArgReader& args)
 {
 	int points = args.pop_uint();
 
@@ -612,24 +612,24 @@ void SCurve(GArgReader& args)
 	}
 
 	// Generate the data
-	GRand prng(nSeed);
-	GArffRelation rel;
+	WRand prng(nSeed);
+	WArffRelation rel;
 	rel.addAttribute("x", 0, nullptr);
 	rel.addAttribute("y", 0, nullptr);
 	if(!reduced)
 		rel.addAttribute("z", 0, nullptr);
-	GMatrix data(0, 3);
+	WMatrix data(0, 3);
 	for(int n = 0; n < points; n++)
 	{
 		double t = ((double)n * 2.2 * M_PI - .1 * M_PI) / points;
-		GVec& pVector = data.newRow();
+		WVec& pVector = data.newRow();
 		pVector[0] = 1.0 - sin(t);
 		pVector[1] = t;
 		pVector[2] = prng.uniform() * 2;
 		if(reduced)
 		{
 			pVector[0] = pVector[2];
-			pVector[1] = (n > 0 ? GMath::integrate(LengthOfSineFunc, 0, t, n + 30, nullptr) : 0);
+			pVector[1] = (n > 0 ? WMath::integrate(LengthOfSineFunc, 0, t, n + 30, nullptr) : 0);
 			pVector[2] = 0;
 		}
 	}
@@ -638,7 +638,7 @@ void SCurve(GArgReader& args)
 	data.print(cout);
 }
 
-void EntwinedSpirals(GArgReader& args)
+void EntwinedSpirals(WArgReader& args)
 {
 	int points = args.pop_uint();
 
@@ -656,15 +656,15 @@ void EntwinedSpirals(GArgReader& args)
 	}
 
 	// Generate the data
-	GRand prng(nSeed);
-	GArffRelation rel;
+	WRand prng(nSeed);
+	WArffRelation rel;
 	rel.addAttribute("x", 0, nullptr);
 	if(!reduced)
 	{
 		rel.addAttribute("y", 0, nullptr);
 		rel.addAttribute("z", 0, nullptr);
 	}
-	GMatrix data(0, 3);
+	WMatrix data(0, 3);
 
 	double dHeight = 3;
 	double dWraps = 1.5;
@@ -674,7 +674,7 @@ void EntwinedSpirals(GArgReader& args)
 	for(int n = 0; n < points; n++)
 	{
 		double t = ((double)n * dTotalLength) / points;
-		GVec& pVector = data.newRow();
+		WVec& pVector = data.newRow();
 		if(reduced)
 		{
 			pVector[0] = t;
@@ -711,7 +711,7 @@ void EntwinedSpirals(GArgReader& args)
 	data.print(cout);
 }
 
-void ImageTranslatedOverNoise(GArgReader& args)
+void ImageTranslatedOverNoise(WArgReader& args)
 {
 	const char* szFilenameIn = args.pop_string();
 
@@ -729,12 +729,12 @@ void ImageTranslatedOverNoise(GArgReader& args)
 	}
 
 	// Load the image
-	GImage imageFace;
+	WImage imageFace;
 	loadPng(&imageFace, szFilenameIn);
 
 	// Generate the noise image
-	GRand prng(nSeed);
-	GImage imageNoise;
+	WRand prng(nSeed);
+	WImage imageNoise;
 	imageNoise.setSize(imageFace.width() * 2, imageFace.height() * 2);
 	for(int y = 0; y < (int)imageNoise.height(); y++)
 	{
@@ -743,9 +743,9 @@ void ImageTranslatedOverNoise(GArgReader& args)
 	}
 
 	// Make the relation
-	GImage imageAll;
+	WImage imageAll;
 	imageAll.setSize(imageNoise.width(), imageNoise.height());
-	GArffRelation rel;
+	WArffRelation rel;
 	if(reduced)
 	{
 		rel.addAttribute("x", 0, nullptr);
@@ -761,15 +761,15 @@ void ImageTranslatedOverNoise(GArgReader& args)
 	}
 
 	// Generate the data
-	GMatrix data(0, reduced ? 2 : imageAll.width() * imageAll.height());
-	GRect r(0, 0, imageFace.width(), imageFace.height());
+	WMatrix data(0, reduced ? 2 : imageAll.width() * imageAll.height());
+	WRect r(0, 0, imageFace.width(), imageFace.height());
 	for(int y = 0; y <= (int)imageFace.height(); y++)
 	{
 		for(int x = 0; x <= (int)imageFace.width(); x++)
 		{
 			if(reduced)
 			{
-				GVec& pVec = data.newRow();
+				WVec& pVec = data.newRow();
 				pVec[0] = x;
 				pVec[1] = y;
 			}
@@ -777,7 +777,7 @@ void ImageTranslatedOverNoise(GArgReader& args)
 			{
 				imageAll.copy(&imageNoise);
 				imageAll.blit(x, y, &imageFace, &r);
-				GVec& pVec = data.newRow();
+				WVec& pVec = data.newRow();
 				for(int yy = 0; yy < (int)imageAll.height(); yy++)
 				{
 					for(int xx = 0; xx < (int)imageAll.width(); xx++)
@@ -791,7 +791,7 @@ void ImageTranslatedOverNoise(GArgReader& args)
 	data.print(cout);
 }
 
-void SelfIntersectingRibbon(GArgReader& args)
+void SelfIntersectingRibbon(WArgReader& args)
 {
 	unsigned int points = args.pop_uint();
 
@@ -805,12 +805,12 @@ void SelfIntersectingRibbon(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GRand prng(nSeed);
-	GMatrix data(0, 3);
+	WRand prng(nSeed);
+	WMatrix data(0, 3);
 	for(unsigned int i = 0; i < points; i++)
 	{
 		double t = M_PI / 4 + (1.5 * M_PI) * (double)i / points;
-		GVec& pPat = data.newRow();
+		WVec& pPat = data.newRow();
 		pPat[0] = sin(t * 2);
 		pPat[1] = -2.0 * cos(t);
 		pPat[2] = 2.0 * prng.uniform();
@@ -819,12 +819,12 @@ void SelfIntersectingRibbon(GArgReader& args)
 	data.print(cout);
 }
 
-void WindowedImageData(GArgReader& args)
+void WindowedImageData(WArgReader& args)
 {
 	const char* szFilenameIn = args.pop_string();
 
 	// Load the image
-	GImage imageSource;
+	WImage imageSource;
 	loadPng(&imageSource, szFilenameIn);
 
 	// Parse options
@@ -855,9 +855,9 @@ void WindowedImageData(GArgReader& args)
 	}
 
 	// Make the relation
-	GImage imageWindow;
+	WImage imageWindow;
 	imageWindow.setSize(windowWidth, windowHeight);
-	GArffRelation rel;
+	WArffRelation rel;
 	if(reduced)
 	{
 		rel.addAttribute("x", 0, nullptr);
@@ -879,7 +879,7 @@ void WindowedImageData(GArgReader& args)
 	// Generate the data
 	int centerx = ((int)imageSource.width() - (int)imageWindow.width()) / 2;
 	int centery = ((int)imageSource.height() - (int)imageWindow.height()) / 2;
-	GMatrix data(0, reduced ? 2 : imageWindow.width() * imageWindow.height() * 3);
+	WMatrix data(0, reduced ? 2 : imageWindow.width() * imageWindow.height() * 3);
 	for(int y = 0; y + (int)imageWindow.height() <= (int)imageSource.height(); y += vstep)
 	{
 		for(int x = 0; x + (int)imageWindow.width() <= (int)imageSource.width(); x += hstep)
@@ -888,15 +888,15 @@ void WindowedImageData(GArgReader& args)
 				continue;
 			if(reduced)
 			{
-				GVec& pVec = data.newRow();
+				WVec& pVec = data.newRow();
 				pVec[0] = x;
 				pVec[1] = y;
 			}
 			else
 			{
-				GRect r(x, y, imageWindow.width(), imageWindow.height());
+				WRect r(x, y, imageWindow.width(), imageWindow.height());
 				imageWindow.blit(0, 0, &imageSource, &r);
-				GVec& pVec = data.newRow();
+				WVec& pVec = data.newRow();
 				size_t pos = 0;
 				for(int yy = 0; yy < (int)imageWindow.height(); yy++)
 				{
@@ -916,7 +916,7 @@ void WindowedImageData(GArgReader& args)
 	data.print(cout);
 }
 
-void addCraneToScene(GRayTraceScene& scene, double craneYaw, double ballHeight, double ballRadius, double x, double y, double z)
+void addCraneToScene(WRayTraceScene& scene, double craneYaw, double ballHeight, double ballRadius, double x, double y, double z)
 {
 	double cranePitch = 1.0;
 	double craneLength = 3.0;
@@ -924,62 +924,62 @@ void addCraneToScene(GRayTraceScene& scene, double craneYaw, double ballHeight, 
 	double cableRadius = 0.03;
 
 	// Add the crane
-	GRayTracePhysicalMaterial* pCraneMaterial = new GRayTracePhysicalMaterial();
-	pCraneMaterial->setColor(GRayTraceMaterial::Diffuse, 0.9, 0.7, 0.3);
-	pCraneMaterial->setColor(GRayTraceMaterial::Reflective, 0.45, 0.35, 0.15);
+	WRayTracePhysicalMaterial* pCraneMaterial = new WRayTracePhysicalMaterial();
+	pCraneMaterial->setColor(WRayTraceMaterial::Diffuse, 0.9, 0.7, 0.3);
+	pCraneMaterial->setColor(WRayTraceMaterial::Reflective, 0.45, 0.35, 0.15);
 	scene.addMaterial(pCraneMaterial);
-	G3DVector craneBottom, craneTop;
+	W3DVector craneBottom, craneTop;
 	//craneBottom.set(0, 0, 0);
 	craneBottom.set(x - craneLength * cos(cranePitch) * sin(craneYaw), y - craneLength * sin(cranePitch), z - craneLength * cos(cranePitch) * (-cos(craneYaw)));
 	craneTop.set(x + craneLength * cos(cranePitch) * sin(craneYaw), y + craneLength * sin(cranePitch), z + craneLength * cos(cranePitch) * (-cos(craneYaw)));
-	GRayTraceTriMesh* pCrane = GRayTraceTriMesh::makeCylinder(pCraneMaterial, &craneBottom, &craneTop, craneRadius, 12, false /*end caps*/);
+	WRayTraceTriMesh* pCrane = WRayTraceTriMesh::makeCylinder(pCraneMaterial, &craneBottom, &craneTop, craneRadius, 12, false /*end caps*/);
 	pCrane->computePhongNormals();
 	scene.addMesh(pCrane);
 
 	// Add the cable
-	GRayTracePhysicalMaterial* pCableMaterial = new GRayTracePhysicalMaterial();
-	pCableMaterial->setColor(GRayTraceMaterial::Diffuse, 0.6, 0.6, 0.6);
+	WRayTracePhysicalMaterial* pCableMaterial = new WRayTracePhysicalMaterial();
+	pCableMaterial->setColor(WRayTraceMaterial::Diffuse, 0.6, 0.6, 0.6);
 	scene.addMaterial(pCableMaterial);
-	G3DVector ballCenter;
+	W3DVector ballCenter;
 	ballCenter.copy(craneTop);
 	ballCenter.m_vals[1] = y + ballHeight;
-	GRayTraceTriMesh* pCable = GRayTraceTriMesh::makeCylinder(pCableMaterial, &ballCenter, &craneTop, cableRadius, 12, false /*end caps*/);
+	WRayTraceTriMesh* pCable = WRayTraceTriMesh::makeCylinder(pCableMaterial, &ballCenter, &craneTop, cableRadius, 12, false /*end caps*/);
 	pCable->computePhongNormals();
 	scene.addMesh(pCable);
 
 	// Add the ball
-	GRayTracePhysicalMaterial* pBallMaterial = new GRayTracePhysicalMaterial();
-	pBallMaterial->setColor(GRayTraceMaterial::Diffuse, 0.1, 0.1, 0.2);
-	pBallMaterial->setColor(GRayTraceMaterial::Reflective, 0.2, 0.2, 0.4);
+	WRayTracePhysicalMaterial* pBallMaterial = new WRayTracePhysicalMaterial();
+	pBallMaterial->setColor(WRayTraceMaterial::Diffuse, 0.1, 0.1, 0.2);
+	pBallMaterial->setColor(WRayTraceMaterial::Reflective, 0.2, 0.2, 0.4);
 	scene.addMaterial(pBallMaterial);
-	GRayTraceSphere* pBall = new GRayTraceSphere(pBallMaterial, ballCenter.m_vals[0], ballCenter.m_vals[1], ballCenter.m_vals[2], ballRadius);
+	WRayTraceSphere* pBall = new WRayTraceSphere(pBallMaterial, ballCenter.m_vals[0], ballCenter.m_vals[1], ballCenter.m_vals[2], ballRadius);
 	scene.addObject(pBall);
 }
 
-GImage* makeCraneImage(double craneYaw, double ballHeight, int wid, int hgt, double ballRadius, bool front)
+WImage* makeCraneImage(double craneYaw, double ballHeight, int wid, int hgt, double ballRadius, bool front)
 {
 	if(front)
 		craneYaw = M_PI - craneYaw;
 
 	// Make a scene
-	GRand prng(0);
-	GRayTraceScene scene(&prng);
+	WRand prng(0);
+	WRayTraceScene scene(&prng);
 	scene.setAmbientLight(0.3, 0.3, 0.3);
-	scene.addLight(new GRayTraceDirectionalLight(-1.0, 2.0, 1.0, 0.1 /*r*/, 0.2 /*g*/, 0.3 /*b*/, 0.0 /*jitter*/));
-	scene.addLight(new GRayTraceDirectionalLight(1.0, 0.0, 0.3, 0.10 /*r*/, 0.15 /*g*/, 0.05 /*b*/, 0.0 /*jitter*/));
-	scene.addLight(new GRayTraceDirectionalLight(0.0, 0.0, 1.0, 0.15 /*r*/, 0.05 /*g*/, 0.10 /*b*/, 0.0 /*jitter*/));
+	scene.addLight(new WRayTraceDirectionalLight(-1.0, 2.0, 1.0, 0.1 /*r*/, 0.2 /*g*/, 0.3 /*b*/, 0.0 /*jitter*/));
+	scene.addLight(new WRayTraceDirectionalLight(1.0, 0.0, 0.3, 0.10 /*r*/, 0.15 /*g*/, 0.05 /*b*/, 0.0 /*jitter*/));
+	scene.addLight(new WRayTraceDirectionalLight(0.0, 0.0, 1.0, 0.15 /*r*/, 0.05 /*g*/, 0.10 /*b*/, 0.0 /*jitter*/));
 	scene.setBackgroundColor(1 /*a*/, 1.0 /*r*/, 1.0 /*g*/, 1.0 /*b*/);
-	GRayTraceCamera* pCamera = scene.camera();
+	WRayTraceCamera* pCamera = scene.camera();
 	pCamera->setViewAngle(1.0);
 	pCamera->setImageSize(wid, hgt);
 	if(front)
 		pCamera->lookFromPoint()->set(0.0, 0.7, 3.5);
 	else
 		pCamera->lookFromPoint()->set(0.0, 0.7, 1.0);
-	G3DVector cameraDirection(0.0, 0.0, -1.0);
+	W3DVector cameraDirection(0.0, 0.0, -1.0);
 	pCamera->setDirection(&cameraDirection, 0.0);
-	//scene.setRenderMode(GRayTraceScene::FAST_RAY_TRACE);
-	scene.setRenderMode(GRayTraceScene::QUALITY_RAY_TRACE);
+	//scene.setRenderMode(WRayTraceScene::FAST_RAY_TRACE);
+	scene.setRenderMode(WRayTraceScene::QUALITY_RAY_TRACE);
 
 	addCraneToScene(scene, craneYaw, ballHeight, ballRadius, 0.0, 0.0, 0.0);
 
@@ -988,28 +988,28 @@ GImage* makeCraneImage(double craneYaw, double ballHeight, int wid, int hgt, dou
 	return scene.releaseImage();
 }
 
-GImage* makeThreeCraneImage(double* craneYaw, double* ballHeight, int wid, int hgt, double ballRadius)
+WImage* makeThreeCraneImage(double* craneYaw, double* ballHeight, int wid, int hgt, double ballRadius)
 {
 	craneYaw[0] = M_PI - craneYaw[0];
 	craneYaw[1] = M_PI - craneYaw[1];
 	craneYaw[2] = M_PI - craneYaw[2];
 
 	// Make a scene
-	GRand prng(0);
-	GRayTraceScene scene(&prng);
+	WRand prng(0);
+	WRayTraceScene scene(&prng);
 	scene.setAmbientLight(0.3, 0.3, 0.3);
-	scene.addLight(new GRayTraceDirectionalLight(-1.0, 2.0, 1.0, 0.1 /*r*/, 0.2 /*g*/, 0.3 /*b*/, 0.0 /*jitter*/));
-	scene.addLight(new GRayTraceDirectionalLight(1.0, 0.0, 0.3, 0.10 /*r*/, 0.15 /*g*/, 0.05 /*b*/, 0.0 /*jitter*/));
-	scene.addLight(new GRayTraceDirectionalLight(0.0, 0.0, 1.0, 0.15 /*r*/, 0.05 /*g*/, 0.10 /*b*/, 0.0 /*jitter*/));
+	scene.addLight(new WRayTraceDirectionalLight(-1.0, 2.0, 1.0, 0.1 /*r*/, 0.2 /*g*/, 0.3 /*b*/, 0.0 /*jitter*/));
+	scene.addLight(new WRayTraceDirectionalLight(1.0, 0.0, 0.3, 0.10 /*r*/, 0.15 /*g*/, 0.05 /*b*/, 0.0 /*jitter*/));
+	scene.addLight(new WRayTraceDirectionalLight(0.0, 0.0, 1.0, 0.15 /*r*/, 0.05 /*g*/, 0.10 /*b*/, 0.0 /*jitter*/));
 	scene.setBackgroundColor(1 /*a*/, 1.0 /*r*/, 1.0 /*g*/, 1.0 /*b*/);
-	GRayTraceCamera* pCamera = scene.camera();
+	WRayTraceCamera* pCamera = scene.camera();
 	pCamera->setViewAngle(1.0);
 	pCamera->setImageSize(wid, hgt);
 	pCamera->lookFromPoint()->set(0.0, 0.7 /*0.84*/, 4.2);
-	G3DVector cameraDirection(0.0, 0.0, -1.0);
+	W3DVector cameraDirection(0.0, 0.0, -1.0);
 	pCamera->setDirection(&cameraDirection, 0.0);
-	//scene.setRenderMode(GRayTraceScene::FAST_RAY_TRACE);
-	scene.setRenderMode(GRayTraceScene::QUALITY_RAY_TRACE);
+	//scene.setRenderMode(WRayTraceScene::FAST_RAY_TRACE);
+	scene.setRenderMode(WRayTraceScene::QUALITY_RAY_TRACE);
 
 	addCraneToScene(scene, craneYaw[0], ballHeight[0], ballRadius, -1.0, 0.0, 0.0);
 	addCraneToScene(scene, craneYaw[1], ballHeight[1], ballRadius, 0.0, 0.0, 0.0);
@@ -1020,7 +1020,7 @@ GImage* makeThreeCraneImage(double* craneYaw, double* ballHeight, int wid, int h
 	return scene.releaseImage();
 }
 
-void CraneDataset(GArgReader& args)
+void CraneDataset(WArgReader& args)
 {
 	// Parse options
 	int wid = 64;
@@ -1058,8 +1058,8 @@ void CraneDataset(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GMatrix data(0, wid * hgt * (gray ? 1 : 3));
-	GImage grid;
+	WMatrix data(0, wid * hgt * (gray ? 1 : 3));
+	WImage grid;
 	grid.setSize(horizFrames * wid, vertFrames * hgt);
 	double dx = (0.75 - (-0.75)) / (horizFrames - 1);
 	double dy = (1.25 - 0.0) / (vertFrames - 1);
@@ -1071,16 +1071,16 @@ void CraneDataset(GArgReader& args)
 		{
 			double craneYaw = horiz * dx - 0.75;
 
-			GImage* pImage = makeCraneImage(craneYaw, ballHeight, wid, hgt, ballRadius, front);
+			WImage* pImage = makeCraneImage(craneYaw, ballHeight, wid, hgt, ballRadius, front);
 			if(blur > 0)
 				pImage->blur(blur);
-			Holder<GImage> hImage(pImage);
+			Holder<WImage> hImage(pImage);
 
-			GRect r(0, 0, wid, hgt);
+			WRect r(0, 0, wid, hgt);
 			grid.blit(wid * horiz, hgt * vert, pImage, &r);
 			grid.box(wid * horiz, hgt * vert, wid * horiz + wid - 1, hgt * vert + hgt - 1, 0xffb0b0b0);
 
-			GVec& pRow = data.newRow();
+			WVec& pRow = data.newRow();
 			size_t pos = 0;
 			unsigned int* pPixels = pImage->pixels();
 			for(int yy = 0; yy < hgt; yy++)
@@ -1106,10 +1106,10 @@ void CraneDataset(GArgReader& args)
 	data.print(cout);
 }
 
-void cranePath(GArgReader& args)
+void cranePath(WArgReader& args)
 {
-	GMatrix* pActions = loadData(args.pop_string());
-	Holder<GMatrix> hActions(pActions);
+	WMatrix* pActions = loadData(args.pop_string());
+	Holder<WMatrix> hActions(pActions);
 
 	// Parse options
 	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
@@ -1117,7 +1117,7 @@ void cranePath(GArgReader& args)
 	int hgt = 48;
 	int horizFrames = 25;
 	int vertFrames = 21;
-	GVec state(2);
+	WVec state(2);
 	double ballRadius = 0.3;
 	bool front = false;
 	double blur = 0.0;
@@ -1154,9 +1154,9 @@ void cranePath(GArgReader& args)
 	}
 
 	// Make the observation data
-	GRand prng(nSeed);
-	GMatrix data(0, wid * hgt * (gray ? 1 : 3));
-	GMatrix stateData(0, 2);
+	WRand prng(nSeed);
+	WMatrix data(0, wid * hgt * (gray ? 1 : 3));
+	WMatrix stateData(0, 2);
 	double dx = (0.75 - (-0.75)) / (horizFrames - 1);
 	double dy = (1.25 - 0.0) / (vertFrames - 1);
 	double posx = 0.0;
@@ -1170,7 +1170,7 @@ void cranePath(GArgReader& args)
 		stateData.newRow().copy(state);
 
 		// Generate the image vector
-		GImage* pImage = makeCraneImage(craneYaw, ballHeight, wid, hgt, ballRadius, front);
+		WImage* pImage = makeCraneImage(craneYaw, ballHeight, wid, hgt, ballRadius, front);
 		if(blur > 0)
 			pImage->blur(blur);
 
@@ -1179,8 +1179,8 @@ void cranePath(GArgReader& args)
 		sFilename += ".png";
 		savePng(pImage, sFilename.c_str());
 
-		std::unique_ptr<GImage> hImage(pImage);
-		GVec& pRow = data.newRow();
+		std::unique_ptr<WImage> hImage(pImage);
+		WVec& pRow = data.newRow();
 		size_t pos = 0;
 		unsigned int* pPixels = pImage->pixels();
 		for(int yy = 0; yy < hgt; yy++)
@@ -1235,10 +1235,10 @@ void cranePath(GArgReader& args)
 	data.print(cout);
 }
 
-void threeCranePath(GArgReader& args)
+void threeCranePath(WArgReader& args)
 {
-	GMatrix* pActions = loadData(args.pop_string());
-	Holder<GMatrix> hActions(pActions);
+	WMatrix* pActions = loadData(args.pop_string());
+	Holder<WMatrix> hActions(pActions);
 
 	// Parse options
 	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
@@ -1246,7 +1246,7 @@ void threeCranePath(GArgReader& args)
 	int hgt = 48;
 	int horizFrames = 25;
 	int vertFrames = 21;
-	GVec state(4);
+	WVec state(4);
 	double ballRadius = 0.3;
 	double blur = 0.0;
 	bool gray = false;
@@ -1280,9 +1280,9 @@ void threeCranePath(GArgReader& args)
 	}
 
 	// Make the observation data
-	GRand prng(nSeed);
-	GMatrix data(0, wid * hgt * (gray ? 1 : 3));
-	GMatrix stateData(0, 4);
+	WRand prng(nSeed);
+	WMatrix data(0, wid * hgt * (gray ? 1 : 3));
+	WMatrix stateData(0, 4);
 	double dx = (0.75 - (-0.75)) / (horizFrames - 1);
 	double dy = (1.25 - 0.0) / (vertFrames - 1);
 	double posx[3];
@@ -1310,11 +1310,11 @@ void threeCranePath(GArgReader& args)
 		stateData.newRow().copy(state);
 
 		// Generate the image vector
-		GImage* pImage = makeThreeCraneImage(craneYaw, ballHeight, wid, hgt, ballRadius);
+		WImage* pImage = makeThreeCraneImage(craneYaw, ballHeight, wid, hgt, ballRadius);
 		if(blur > 0)
 			pImage->blur(blur);
-		Holder<GImage> hImage(pImage);
-		GVec& pRow = data.newRow();
+		Holder<WImage> hImage(pImage);
+		WVec& pRow = data.newRow();
 		size_t pos = 0;
 		unsigned int* pPixels = pImage->pixels();
 		for(int yy = 0; yy < hgt; yy++)
@@ -1423,7 +1423,7 @@ void threeCranePath(GArgReader& args)
 	data.print(cout);
 }
 
-void randomSequence(GArgReader& args)
+void randomSequence(WArgReader& args)
 {
 	size_t len = args.pop_uint();
 
@@ -1441,21 +1441,21 @@ void randomSequence(GArgReader& args)
 	}
 
 	// Make the sequence
-	GRand prng(nSeed);
+	WRand prng(nSeed);
 	size_t* seq = new size_t[len];
 	ArrayHolder<size_t> hSeq(seq);
-	GIndexVec::makeIndexVec(seq, len);
-	GIndexVec::shuffle(seq, len, &prng);
+	WIndexVec::makeIndexVec(seq, len);
+	WIndexVec::shuffle(seq, len, &prng);
 
 	// Print it
 	for(size_t i = 0; i < len; i++)
 		cout << (seq[i] + start) << "\n";
 }
 
-void ScaleAndRotate(GArgReader& args)
+void ScaleAndRotate(WArgReader& args)
 {
 	// Load the image
-	GImage imageSource;
+	WImage imageSource;
 	loadPng(&imageSource, args.pop_string());
 
 	// Parse options
@@ -1480,28 +1480,28 @@ void ScaleAndRotate(GArgReader& args)
 
 	// Make the frames
 	double finalSize = 0.4;
-	GImage grid;
+	WImage grid;
 	grid.setSize(rotateFrames * imageSource.width(), scaleFrames * imageSource.height());
-	GImage rotated;
-	GImage frame;
+	WImage rotated;
+	WImage frame;
 	frame.setSize(imageSource.width(), imageSource.height());
-	GMatrix data(0, imageSource.width() * imageSource.height());
+	WMatrix data(0, imageSource.width() * imageSource.height());
 	for(int y = 0; y < scaleFrames; y++)
 	{
 		for(int x = 0; x < rotateFrames; x++)
 		{
 			// Make the frame
 			rotated.rotate(&imageSource, imageSource.width() / 2, imageSource.height() / 2, (double)x * arc / rotateFrames);
-			GDoubleRect rSrc(1.0, 1.0, imageSource.width() - 2, imageSource.height() - 2);
+			WDoubleRect rSrc(1.0, 1.0, imageSource.width() - 2, imageSource.height() - 2);
 			double s = (double)y / (scaleFrames - 1);
-			GDoubleRect rDest(1.0, 1.0, (1.0 - s) * rSrc.w + s * finalSize * rSrc.w, (1.0 - s) * rSrc.h + s * finalSize * rSrc.h);
+			WDoubleRect rDest(1.0, 1.0, (1.0 - s) * rSrc.w + s * finalSize * rSrc.w, (1.0 - s) * rSrc.h + s * finalSize * rSrc.h);
 			rDest.x += (rSrc.w - rDest.w) / 2.0;
 			rDest.y += (rSrc.h - rDest.h) / 2.0;
 			frame.clear(0xffffffff);
 			frame.blitStretchInterpolate(&rDest, &rotated, &rSrc);
 
 			// Convert to a data row
-			GVec& pRow = data.newRow();
+			WVec& pRow = data.newRow();
 			size_t pos = 0;
 			for(int b = 0; b < (int)imageSource.height(); b++)
 			{
@@ -1510,7 +1510,7 @@ void ScaleAndRotate(GArgReader& args)
 			}
 
 			// Save in the grid image
-			GRect r(0, 0, imageSource.width(), imageSource.height());
+			WRect r(0, 0, imageSource.width(), imageSource.height());
 			frame.box(0, 0, imageSource.width() - 1, imageSource.height() - 1, 0xffa0a0a0);
 			grid.blit(x * imageSource.width(), y * imageSource.height(), &frame, &r);
 		}
@@ -1520,10 +1520,10 @@ void ScaleAndRotate(GArgReader& args)
 	data.print(cout);
 }
 
-void gridRandomWalk(GArgReader& args)
+void gridRandomWalk(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	int width = args.pop_uint();
 	int height = (int)(pData->rows() / width);
 	if((height * width) != (int)pData->rows())
@@ -1556,13 +1556,13 @@ void gridRandomWalk(GArgReader& args)
 	}
 
 	// Generate the dataset
-	GRand prng(nSeed);
-	GMatrix dataObs(pData->relation().clone());
-	GMatrix dataControl(new GUniformRelation(1, 4));
-	GMatrix dataState(0, 2);
+	WRand prng(nSeed);
+	WMatrix dataObs(pData->relation().clone());
+	WMatrix dataControl(new WUniformRelation(1, 4));
+	WMatrix dataState(0, 2);
 	while(dataObs.rows() < samples)
 	{
-		GVec& pRow = dataState.newRow();
+		WVec& pRow = dataState.newRow();
 		pRow[0] = x;
 		pRow[1] = y;
 		dataObs.newRow().copy(pData->row(width * y + x));
@@ -1598,7 +1598,7 @@ void gridRandomWalk(GArgReader& args)
 	dataState.print(cout);
 }
 
-void vectorToImage(GImage* pImage, const double* pVec, int wid, int hgt)
+void vectorToImage(WImage* pImage, const double* pVec, int wid, int hgt)
 {
 	pImage->setSize(wid, hgt);
 	unsigned int* pPix = pImage->pixels();
@@ -1615,10 +1615,10 @@ void vectorToImage(GImage* pImage, const double* pVec, int wid, int hgt)
 	}
 }
 
-void vectorToImage(GArgReader& args)
+void vectorToImage(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t r = args.pop_uint();
 	if(r >= pData->rows())
 		throw Ex("row index out of range");
@@ -1628,13 +1628,13 @@ void vectorToImage(GArgReader& args)
 	double range = args.pop_double();
 	if((wid * hgt * channels) != pData->cols())
 		throw Ex("Invalid dimensions");
-	GVec& pVec = pData->row(r);
-	GImage image;
+	WVec& pVec = pData->row(r);
+	WImage image;
 	pVec.toImage(&image, wid, hgt, channels, range);
 	savePng(&image, "image.png");
 }
 
-void imagesToArff(GArgReader& args)
+void imagesToArff(WArgReader& args)
 {
 	const char* szPrefix = "";
 	size_t digits = 4;
@@ -1671,7 +1671,7 @@ void imagesToArff(GArgReader& args)
 	size_t w = 0;
 	size_t h = 0;
 	char buf[256];
-	GMatrix m;
+	WMatrix m;
 	while(true)
 	{
 		// SAKBox: was sprintf, which overflowed buf for a long -pre or -suf,
@@ -1679,8 +1679,8 @@ void imagesToArff(GArgReader& args)
 		int len = snprintf(buf, sizeof(buf), format.c_str(), szPrefix, (int)i, szSuffix);
 		if(len < 0 || (size_t)len >= sizeof(buf))
 			throw Ex("File name too long: ", szPrefix, "...", szSuffix);
-		GImage image;
-		if(!GFile::doesFileExist(buf))
+		WImage image;
+		if(!WFile::doesFileExist(buf))
 			break;
 		loadPng(&image, buf);
 		if(m.rows() > 0)
@@ -1702,46 +1702,46 @@ void imagesToArff(GArgReader& args)
 	m.print(cout);
 }
 
-void dataToFrames(GArgReader& args)
+void dataToFrames(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t wid = args.pop_uint();
 	size_t channels = args.pop_uint();
 	size_t hgt = pData->cols() / (wid * channels);
 	double range = args.pop_double();
 	if((wid * hgt * channels) != pData->cols())
 		throw Ex("Invalid dimensions");
-	GImage image;
-	GImage master;
+	WImage image;
+	WImage master;
 	master.setSize((unsigned int)wid, (unsigned int)(hgt * pData->rows()));
 	for(unsigned int i = 0; i < pData->rows(); i++)
 	{
 		pData->row(i).toImage(&image, wid, hgt, channels, range);
-		GRect r(0, 0, (int)wid, (int)hgt);
+		WRect r(0, 0, (int)wid, (int)hgt);
 		master.blit(0, i * (int)hgt, &image, &r);
 	}
 	savePng(&master, "frames.png");
 }
 
-void sceneRobotSimulationGrid(GArgReader& args)
+void sceneRobotSimulationGrid(WArgReader& args)
 {
 	const char* sceneFilename = args.pop_string();
 	int strafeLen = args.pop_uint();
 	int zoomLen = args.pop_uint();
 	int cameraWid = args.pop_uint();
 	int cameraHgt = args.pop_uint();
-	GImage scene;
+	WImage scene;
 	loadPng(&scene, sceneFilename);
 	if(scene.height() > scene.width() * cameraHgt / cameraWid)
 		throw Ex("Expected a panoramic (wide) scene");
 	double maxWid = (double)scene.height() * cameraWid / cameraHgt; // SAKBox: was integer division, as the frames' width w isn't
 	double maxStrafeStride = (scene.width() - maxWid) / strafeLen;
 
-	GImage frame;
+	WImage frame;
 	frame.setSize(cameraWid, cameraHgt);
 
-	GImage master;
+	WImage master;
 	master.setSize(cameraWid * (strafeLen + 1), cameraHgt * (zoomLen + 1));
 	for(double y = 0; y <= zoomLen; y++)
 	{
@@ -1757,17 +1757,17 @@ void sceneRobotSimulationGrid(GArgReader& args)
 			double strafeStride = z + (1.0 - z) * maxStrafeStride;
 			double left = ((double)scene.width() - w) / 2.0 + (x - strafeLen / 2.0) * strafeStride;
 			double top = (scene.height() - h) / 2.0;
-			GDoubleRect src(left, top, w, h);
-			GDoubleRect dest(0, 0, cameraWid, cameraHgt);
+			WDoubleRect src(left, top, w, h);
+			WDoubleRect dest(0, 0, cameraWid, cameraHgt);
 			frame.blitStretchInterpolate(&dest, &scene, &src);
-			GRect r(0, 0, cameraWid, cameraHgt);
+			WRect r(0, 0, cameraWid, cameraHgt);
 			master.blit((int)(cameraWid * x), (int)(cameraHgt * y), &frame, &r);
 		}
 	}
 	savePng(&master, "frames.png");
 }
 
-void sceneRobotSimulationPath(GArgReader& args)
+void sceneRobotSimulationPath(WArgReader& args)
 {
 	const char* sceneFilename = args.pop_string();
 	unsigned int frames = args.pop_uint();
@@ -1812,25 +1812,25 @@ void sceneRobotSimulationPath(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GImage scene;
+	WImage scene;
 	loadPng(&scene, sceneFilename);
 	if(scene.height() > scene.width() * cameraHgt / cameraWid)
 		throw Ex("Expected a panoramic (wide) scene");
 	double maxWid = (double)scene.height() * cameraWid / cameraHgt; // SAKBox: was integer division, as the frames' width w isn't
 	double maxStrafeStride = (scene.width() - maxWid) / strafeLen;
-	GRand prng(seed);
+	WRand prng(seed);
 
-	GImage frame;
+	WImage frame;
 	frame.setSize(cameraWid, cameraHgt);
 	double x = strafeLen / 2.0;
 	double y = 0.0; //zoomLen / 2.0;
-	GMatrix state(0, 2);
-	GMatrix act(new GUniformRelation(1, 4));
-	GMatrix obs(0, cameraWid * cameraHgt * 3);
+	WMatrix state(0, 2);
+	WMatrix act(new WUniformRelation(1, 4));
+	WMatrix obs(0, cameraWid * cameraHgt * 3);
 	for(unsigned int i = 0; i < frames; i++)
 	{
 		// Make the state
-		GVec& pVec = state.newRow();
+		WVec& pVec = state.newRow();
 		pVec[0] = x;
 		pVec[1] = y;
 
@@ -1842,12 +1842,12 @@ void sceneRobotSimulationPath(GArgReader& args)
 		double strafeStride = z + (1.0 - z) * maxStrafeStride;
 		double left = ((double)scene.width() - w) / 2.0 + (x - strafeLen / 2.0) * strafeStride;
 		double top = (scene.height() - h) / 2.0;
-		GDoubleRect src(left, top, w, h);
-		GDoubleRect dest(0, 0, cameraWid, cameraHgt);
+		WDoubleRect src(left, top, w, h);
+		WDoubleRect dest(0, 0, cameraWid, cameraHgt);
 		frame.blitStretchInterpolate(&dest, &scene, &src);
 
 		// Convert to an observation vector
-		GVec& pVec2 = obs.newRow();
+		WVec& pVec2 = obs.newRow();
 		size_t pos = 0;
 		unsigned int* pix = frame.pixels();
 		for(unsigned int yyy = 0; yyy < frame.height(); yyy++)
@@ -1899,7 +1899,7 @@ void sceneRobotSimulationPath(GArgReader& args)
 	act.saveArff(actFilename.c_str());
 }
 
-void manifold(GArgReader& args)
+void manifold(WArgReader& args)
 {
 	// Get the params
 	size_t samples = args.pop_uint();
@@ -1918,18 +1918,18 @@ void manifold(GArgReader& args)
 	string expr;
 	while(args.size() > 0)
 		expr += args.pop_string();
-	GFunctionParser mfp;
+	WFunctionParser mfp;
 	mfp.add(expr.c_str());
 
 	// Parse the equations
-	vector<GFunction*> funcs;
+	vector<WFunction*> funcs;
 	size_t intrinsicDims = 0;
 	char funcName[32];
 	size_t equations = 0;
 	while(true)
 	{
 		snprintf(funcName, sizeof(funcName), "y%d", (int)equations + 1);
-		GFunction* pFunc = mfp.getFunctionNoThrow(funcName);
+		WFunction* pFunc = mfp.getFunctionNoThrow(funcName);
 		if(!pFunc)
 		{
 			if(equations == 0)
@@ -1948,16 +1948,16 @@ void manifold(GArgReader& args)
 	}
 
 	// Generate the data
-	GRand prng(seed);
+	WRand prng(seed);
 	vector<double> params;
 	params.resize(intrinsicDims);
-	GMatrix data(0, funcs.size() + 1);
+	WMatrix data(0, funcs.size() + 1);
 	data.newRows(samples);
 	for(size_t i = 0; i < samples; i++)
 	{
 		for(size_t j = 0; j < intrinsicDims; j++)
 			params[j] = prng.uniform();
-		GVec& pRow = data[i];
+		WVec& pRow = data[i];
 		for(size_t j = 0; j < funcs.size(); j++)
 			pRow[j] = funcs[j]->call(params, mfp);
 		pRow[funcs.size()] = params[0];
@@ -1971,27 +1971,27 @@ void manifold(GArgReader& args)
 	data.print(cout);
 }
 
-void mapEquations(GArgReader& args)
+void mapEquations(WArgReader& args)
 {
 	// Get the params
-	GMatrix in;
+	WMatrix in;
 	in.loadArff(args.pop_string());
 
 	// Parse the expression
 	string expr;
 	while(args.size() > 0)
 		expr += args.pop_string();
-	GFunctionParser mfp;
+	WFunctionParser mfp;
 	mfp.add(expr.c_str());
 
 	// Parse the equations
-	vector<GFunction*> funcs;
+	vector<WFunction*> funcs;
 	char funcName[32];
 	size_t equations = 0;
 	while(true)
 	{
 		snprintf(funcName, sizeof(funcName), "y%d", (int)equations + 1);
-		GFunction* pFunc = mfp.getFunctionNoThrow(funcName);
+		WFunction* pFunc = mfp.getFunctionNoThrow(funcName);
 		if(!pFunc)
 		{
 			if(equations == 0)
@@ -2008,11 +2008,11 @@ void mapEquations(GArgReader& args)
 	vector<double> params;
 	size_t dims = in.cols();
 	params.resize(dims);
-	GMatrix out(in.rows(), funcs.size());
+	WMatrix out(in.rows(), funcs.size());
 	for(size_t i = 0; i < in.rows(); i++)
 	{
-		GVec& pIn = in[i];
-		GVec& pOut = out[i];
+		WVec& pIn = in[i];
+		WVec& pOut = out[i];
 		for(size_t j = 0; j < dims; j++)
 			params[j] = pIn[j];
 		for(size_t j = 0; j < funcs.size(); j++)
@@ -2023,12 +2023,12 @@ void mapEquations(GArgReader& args)
 	out.print(cout);
 }
 
-void MakeAttributeSummaryGraph(const GRelation* pRelation, GMatrix* pData, GImage* pImage, int attr)
+void MakeAttributeSummaryGraph(const WRelation* pRelation, WMatrix* pData, WImage* pImage, int attr)
 {
 	if(pRelation->valueCount(attr) == 0)
 	{
 		pImage->clear(0xffffffff);
-		GHistogram hist(*pData, attr, UNKNOWN_REAL_VALUE, UNKNOWN_REAL_VALUE, (size_t)pImage->width());
+		WHistogram hist(*pData, attr, UNKNOWN_REAL_VALUE, UNKNOWN_REAL_VALUE, (size_t)pImage->width());
 		double height = hist.binLikelihood(hist.modeBin());
 		double d = hist.xmax();
 		if(hist.xmin() >= d)
@@ -2037,7 +2037,7 @@ void MakeAttributeSummaryGraph(const GRelation* pRelation, GMatrix* pData, GImag
 			d += 1;
 		if(hist.xmin() >= d)
 			return;
-		GPlotWindow pw(pImage, hist.xmin(), 0.0, d, std::max(height, 1e-6));
+		WPlotWindow pw(pImage, hist.xmin(), 0.0, d, std::max(height, 1e-6));
 		for(int i = 0; i < (int)pImage->width(); i++)
 		{
 			double x, y;
@@ -2051,8 +2051,8 @@ void MakeAttributeSummaryGraph(const GRelation* pRelation, GMatrix* pData, GImag
 	else
 	{
 		size_t buckets = pRelation->valueCount(attr);
-		GTEMPBUF(double, hist, buckets);
-		GVecWrapper vw(hist, buckets);
+		WTEMPBUF(double, hist, buckets);
+		WVecWrapper vw(hist, buckets);
 		vw.fill(0.0);
 		for(size_t i = 0; i < pData->rows(); i++)
 		{
@@ -2078,7 +2078,7 @@ void MakeAttributeSummaryGraph(const GRelation* pRelation, GMatrix* pData, GImag
 	}
 }
 
-void MakeCorrelationGraph(const GRelation* pRelation, GMatrix* pData, GImage* pImage, int attrx, int attry, double jitter, GRand* pRand)
+void MakeCorrelationGraph(const WRelation* pRelation, WMatrix* pData, WImage* pImage, int attrx, int attry, double jitter, WRand* pRand)
 {
 	pImage->clear(0xffffffff);
 	double xmin, ymin, xmax, ymax;
@@ -2119,13 +2119,13 @@ void MakeCorrelationGraph(const GRelation* pRelation, GMatrix* pData, GImage* pI
 		return;
 	if(bothNominal)
 	{
-		GPlotWindow pw(pImage, 0.0, 0.0, 1.0, 1.0);
+		WPlotWindow pw(pImage, 0.0, 0.0, 1.0, 1.0);
 		double left = 0.0;
 		double right = 0.0;
 		size_t tot = pData->rows();
 		for(size_t i = 0; i < pRelation->valueCount(attrx); i++)
 		{
-			GMatrix tmp(pData->relation().clone());
+			WMatrix tmp(pData->relation().clone());
 			pData->splitCategoricalKeepIfNotEqual(&tmp, attrx, (int)i);
 			right += (double)tmp.rows() / tot;
 			double bot = 0.0;
@@ -2145,17 +2145,17 @@ void MakeCorrelationGraph(const GRelation* pRelation, GMatrix* pData, GImage* pI
 	}
 	else
 	{
-		GPlotWindow pw(pImage, xmin, ymin, xmax, ymax);
+		WPlotWindow pw(pImage, xmin, ymin, xmax, ymax);
 		size_t samples = 2048;
 		for(size_t i = 0; i < samples; i++)
 		{
-			GVec& pPat = pData->row(i * pData->rows() / samples);
+			WVec& pPat = pData->row(i * pData->rows() / samples);
 			pw.point(pPat[attrx] + pRand->normal() * jitter * (xmax - xmin), pPat[attry] + pRand->normal() * jitter * (ymax - ymin), 0xff000080);
 		}
 	}
 }
 
-void MakeCorrelationLabel(const GArffRelation* pRelation, GMatrix* pData, GImage* pImage, int attr, unsigned int bgCol)
+void MakeCorrelationLabel(const WArffRelation* pRelation, WMatrix* pData, WImage* pImage, int attr, unsigned int bgCol)
 {
 	pImage->clear(bgCol);
 	if(pRelation->valueCount(attr) == 0)
@@ -2166,45 +2166,45 @@ void MakeCorrelationLabel(const GArffRelation* pRelation, GMatrix* pData, GImage
 
 		for(int i = 0; i < 2; i++)
 		{
-			GImage image2;
+			WImage image2;
 			image2.setSize(pImage->width() - 16, 16);
 			image2.clear(0);
 			int xx = 0;
 			char szValue[64];
 			snprintf(szValue, sizeof(szValue), "%.4lg", (i == 0 ? min : max));
-			int eatspace = pImage->width() - 16 - GImage::measureTextWidth(szValue, 1.0f);
+			int eatspace = pImage->width() - 16 - WImage::measureTextWidth(szValue, 1.0f);
 			xx += eatspace;
 			image2.text(szValue, xx, 0, 1.0f, 0xff400000);
-			GImage image3;
+			WImage image3;
 			image3.rotateClockwise90(&image2);
-			GRect r3(0, 0, image3.width(), image3.height());
+			WRect r3(0, 0, image3.width(), image3.height());
 			pImage->blitAlpha((i == 0 ? 0 : pImage->width() - 16), 16, &image3, &r3);
 		}
 	}
 	else
 	{
 		pImage->text(pRelation->attrName(attr), 0, 0, 1.0f, 0xff000040);
-		GImage image2;
+		WImage image2;
 		image2.setSize(pImage->width() - 16, 16);
 		image2.clear(0);
-		GRect r2(0, 0, pImage->width() - 16, 16);
+		WRect r2(0, 0, pImage->width() - 16, 16);
 
 		int valueCount = (int)pRelation->valueCount(attr);
 		for(int i = 0; i < valueCount; i++)
 		{
-			GImage image_2;
+			WImage image_2;
 			image_2.setSize(pImage->width() - 16, 16);
 			image_2.clear(0);
 			int xx = 0;
 			ostringstream oss;
 			pRelation->printAttrValue(oss, attr, i);
 			string sValue = oss.str();
-			int eatspace = pImage->width() - 16 - GImage::measureTextWidth(sValue.c_str(), 1.0f);
+			int eatspace = pImage->width() - 16 - WImage::measureTextWidth(sValue.c_str(), 1.0f);
 			xx += eatspace;
 			image_2.text(sValue.c_str(), xx, 0, 1.0f, 0xff000040);
-			GImage image3;
+			WImage image3;
 			image3.rotateClockwise90(&image_2);
-			GRect r3(0, 0, image3.width(), image3.height());
+			WRect r3(0, 0, image3.width(), image3.height());
 			int span = pImage->width() / valueCount;
 			int start = std::max(0, (span - 16) / 2);
 			pImage->blitAlpha(start + span * i, 16, &image3, &r3);
@@ -2212,12 +2212,12 @@ void MakeCorrelationLabel(const GArffRelation* pRelation, GMatrix* pData, GImage
 	}
 }
 
-void PlotCorrelations(GArgReader& args)
+void PlotCorrelations(WArgReader& args)
 {
 	// Load the data
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
-	const GArffRelation* pRel = (const GArffRelation*)&pData->relation();
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
+	const WArffRelation* pRel = (const WArffRelation*)&pData->relation();
 
 	// Parse options
 	string filename = "plot.png";
@@ -2241,18 +2241,18 @@ void PlotCorrelations(GArgReader& args)
 	}
 
 	// Make the chart
-	GImage imageBig;
+	WImage imageBig;
 	int wid = (int)(std::min(maxAttrs, pRel->size()) + 1) * (cellsize + bordersize);
 	imageBig.setSize(wid, wid);
 	imageBig.clear(bgCol);
-	GRand prng(getpid() * (unsigned int)time(nullptr));
-	GImage imageCell;
-	GImage imageCell2;
+	WRand prng(getpid() * (unsigned int)time(nullptr));
+	WImage imageCell;
+	WImage imageCell2;
 	imageCell.setSize(cellsize, cellsize);
 	for(size_t i = 0; i < pRel->size() && i < maxAttrs; i++)
 	{
 		MakeCorrelationLabel(pRel, pData, &imageCell, (int)i, bgCol);
-		GRect r(0, 0, cellsize, cellsize);
+		WRect r(0, 0, cellsize, cellsize);
 		imageBig.blit(((int)i + 1) * (cellsize + bordersize), 0, &imageCell, &r);
 		imageCell2.rotateCounterClockwise90(&imageCell);
 		imageBig.blit(0, ((int)i + 1) * (cellsize + bordersize), &imageCell2, &r);
@@ -2265,7 +2265,7 @@ void PlotCorrelations(GArgReader& args)
 				MakeAttributeSummaryGraph(pRel, pData, &imageCell, (int)x);
 			else
 				MakeCorrelationGraph(pRel, pData, &imageCell, (int)x, (int)y, jitter, &prng);
-			GRect r(0, 0, cellsize, cellsize);
+			WRect r(0, 0, cellsize, cellsize);
 			imageBig.blit(((int)x + 1) * (cellsize + bordersize), ((int)y + 1) * (cellsize + bordersize), &imageCell, &r);
 		}
 	}
@@ -2274,9 +2274,9 @@ void PlotCorrelations(GArgReader& args)
 }
 
 
-void ppmToPng(GArgReader& args)
+void ppmToPng(WArgReader& args)
 {
-	GImage image;
+	WImage image;
 	image.loadPpm(args.pop_string());
 	savePng(&image, args.pop_string());
 }
@@ -2284,20 +2284,20 @@ void ppmToPng(GArgReader& args)
 class Compare3DPointsByDistanceFromCameraFunctor
 {
 protected:
-	GCamera* m_pCamera;
+	WCamera* m_pCamera;
 
 public:
-	Compare3DPointsByDistanceFromCameraFunctor(GCamera* pCamera)
+	Compare3DPointsByDistanceFromCameraFunctor(WCamera* pCamera)
 	: m_pCamera(pCamera)
 	{
 	}
 
 	// returns false if pA is closer than pB
-	bool operator()(const GVec* AA, const GVec* BB) const
+	bool operator()(const WVec* AA, const WVec* BB) const
 	{
-		const GVec& pA = *AA;
-		const GVec& pB = *BB;
-		G3DVector a, b, c, d;
+		const WVec& pA = *AA;
+		const WVec& pB = *BB;
+		W3DVector a, b, c, d;
 		a.m_vals[0] = pA[0];
 		a.m_vals[1] = pA[1];
 		a.m_vals[2] = pA[2];
@@ -2310,7 +2310,7 @@ public:
 	}
 };
 
-void toImageCoords(GImage* pImage, GCamera* pCamera, G3DVector* pIn, G3DVector* pOut)
+void toImageCoords(WImage* pImage, WCamera* pCamera, W3DVector* pIn, W3DVector* pOut)
 {
 	pCamera->project(pIn, pOut);
 
@@ -2318,15 +2318,15 @@ void toImageCoords(GImage* pImage, GCamera* pCamera, G3DVector* pIn, G3DVector* 
 	pOut->m_vals[1] = pImage->height() - 1 - pOut->m_vals[1];
 }
 
-void Plot3d(GImage* pImage, GMatrix* pData, unsigned int bgCol, float pointRadius, double cameraDist, G3DVector* pCameraDirection, bool box, bool labels)
+void Plot3d(WImage* pImage, WMatrix* pData, unsigned int bgCol, float pointRadius, double cameraDist, W3DVector* pCameraDirection, bool box, bool labels)
 {
-	GCamera camera(pImage->width(), pImage->height());
+	WCamera camera(pImage->width(), pImage->height());
 	camera.setViewAngle(M_PI / 3);
-	G3DVector mean;
+	W3DVector mean;
 	mean.m_vals[0] = pData->columnMean(0);
 	mean.m_vals[1] = pData->columnMean(1);
 	mean.m_vals[2] = pData->columnMean(2);
-	G3DVector min, max, range;
+	W3DVector min, max, range;
 	min.m_vals[0] = pData->columnMin(0);
 	range.m_vals[0] = pData->columnMax(0) - min.m_vals[0];
 	min.m_vals[1] = pData->columnMin(1);
@@ -2335,8 +2335,8 @@ void Plot3d(GImage* pImage, GMatrix* pData, unsigned int bgCol, float pointRadiu
 	range.m_vals[2] = pData->columnMax(2) - min.m_vals[2];
 	max.copy(range);
 	max.add(min);
-	G3DReal dist = sqrt(min.squaredDist(max)) * cameraDist;
-	G3DVector* pCameraPos = camera.lookFromPoint();
+	W3DReal dist = sqrt(min.squaredDist(max)) * cameraDist;
+	W3DVector* pCameraPos = camera.lookFromPoint();
 	pCameraPos->copy(*pCameraDirection);
 	pCameraPos->multiply(-1);
 	pCameraPos->normalize();
@@ -2344,7 +2344,7 @@ void Plot3d(GImage* pImage, GMatrix* pData, unsigned int bgCol, float pointRadiu
 	pCameraPos->add(mean);
 	camera.setDirection(pCameraDirection, 0.0);
 
-	G3DVector point, coords, point2, coords2;
+	W3DVector point, coords, point2, coords2;
 	pImage->clear(bgCol);
 
 	// Draw box
@@ -2400,7 +2400,7 @@ void Plot3d(GImage* pImage, GMatrix* pData, unsigned int bgCol, float pointRadiu
 		{
 			{
 				char tmp[32];
-				GPlotLabelSpacer pls(min.m_vals[0], max.m_vals[0], 10);
+				WPlotLabelSpacer pls(min.m_vals[0], max.m_vals[0], 10);
 				for(int i = 0; i < pls.count(); i++)
 				{
 					point.set(pls.label(i), min.m_vals[1], min.m_vals[2]);
@@ -2412,7 +2412,7 @@ void Plot3d(GImage* pImage, GMatrix* pData, unsigned int bgCol, float pointRadiu
 			}
 			{
 				char tmp[32];
-				GPlotLabelSpacer pls(min.m_vals[1], max.m_vals[1], 10);
+				WPlotLabelSpacer pls(min.m_vals[1], max.m_vals[1], 10);
 				for(int i = 0; i < pls.count(); i++)
 				{
 					point.set(min.m_vals[0], pls.label(i), min.m_vals[2]);
@@ -2424,7 +2424,7 @@ void Plot3d(GImage* pImage, GMatrix* pData, unsigned int bgCol, float pointRadiu
 			}
 			{
 				char tmp[32];
-				GPlotLabelSpacer pls(min.m_vals[2], max.m_vals[2], 10);
+				WPlotLabelSpacer pls(min.m_vals[2], max.m_vals[2], 10);
 				for(int i = 0; i < pls.count(); i++)
 				{
 					point.set(min.m_vals[0], min.m_vals[1], pls.label(i));
@@ -2439,14 +2439,14 @@ void Plot3d(GImage* pImage, GMatrix* pData, unsigned int bgCol, float pointRadiu
 
 	// Plot the points
 	Compare3DPointsByDistanceFromCameraFunctor comparator(&camera);
-	GMatrix copy(pData->rows(), 4);
+	WMatrix copy(pData->rows(), 4);
 	copy.copyBlock(*pData, 0, 0, pData->rows(), 3, 0, 0, false);
 	for(size_t i = 0; i < copy.rows(); i++)
 		copy.row(i)[3] = (double)i;
 	copy.sort(comparator);
 	for(size_t i = 0; i < copy.rows(); i++)
 	{
-		GVec& pVec = copy.row(i);
+		WVec& pVec = copy.row(i);
 		point.set(pVec[0], pVec[1], pVec[2]);
 		toImageCoords(pImage, &camera, &point, &coords);
 		float radius = pointRadius / (float)coords.m_vals[2];
@@ -2454,12 +2454,12 @@ void Plot3d(GImage* pImage, GMatrix* pData, unsigned int bgCol, float pointRadiu
 	}
 }
 
-void Plot3dMulti(GArgReader& args)
+void Plot3dMulti(WArgReader& args)
 {
 	// Load
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
-	const GArffRelation* pRel = (const GArffRelation*)&pData->relation();
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
+	const WArffRelation* pRel = (const WArffRelation*)&pData->relation();
 
 	// Parse options
 	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
@@ -2473,7 +2473,7 @@ void Plot3dMulti(GArgReader& args)
 	bool box = true;
 	bool labels = true;
 	unsigned int cBackground = 0xffffffff;
-	G3DVector cameraDirection;
+	W3DVector cameraDirection;
 	cameraDirection.set(0.6, -0.3, -0.8);
 	bool blast = false;
 	while(args.next_is_flag())
@@ -2524,10 +2524,10 @@ void Plot3dMulti(GArgReader& args)
 		throw Ex("Sorry, only continuous attributes are currently supported");
 
 	// Make plots
-	GRand prng(nSeed);
-	GImage masterImage;
+	WRand prng(nSeed);
+	WImage masterImage;
 	masterImage.setSize(horizPlots * wid, vertPlots * hgt);
-	GImage tmpImage;
+	WImage tmpImage;
 	tmpImage.setSize(wid, hgt);
 	for(int y = 0; y < vertPlots; y++)
 	{
@@ -2542,7 +2542,7 @@ void Plot3dMulti(GArgReader& args)
 				cout << "row " << y << ", col " << x << ", cameradirection " << cameraDirection.m_vals[0] << " " << cameraDirection.m_vals[1] << " " << cameraDirection.m_vals[2] << "\n";
 			}
 			Plot3d(&tmpImage, pData, cBackground, pointRadius, cameraDistance, &cameraDirection, box, labels);
-			GRect r(0, 0, wid, hgt);
+			WRect r(0, 0, wid, hgt);
 			masterImage.blit(wid * x, hgt * y, &tmpImage, &r);
 		}
 	}
@@ -2550,22 +2550,22 @@ void Plot3dMulti(GArgReader& args)
 	cout << "Plot saved to " << filename.c_str() << ".\n";
 }
 
-void model(GArgReader& args)
+void model(WArgReader& args)
 {
 	// Load the model
-	GDom doc;
+	WDom doc;
 	if(args.size() < 1)
 		throw Ex("Model not specified");
 	doc.loadJson(args.pop_string());
-	GLearnerLoader ll(true);
-	GSupervisedLearner* pModeler = ll.loadLearner(doc.root());
-	Holder<GSupervisedLearner> hModeler(pModeler);
+	WLearnerLoader ll(true);
+	WSupervisedLearner* pModeler = ll.loadLearner(doc.root());
+	Holder<WSupervisedLearner> hModeler(pModeler);
 
 	// Load the data
 	if(args.size() < 1)
 		throw Ex("Expected the filename of a dataset");
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	if(pData->cols() != pModeler->relFeatures().size() + pModeler->relLabels().size())
 		throw Ex("Model was trained with a different number of attributes than in this data");
 
@@ -2617,10 +2617,10 @@ void model(GArgReader& args)
 	xrange = pData->columnMax(attrx) - xmin;
 	ymin = pData->columnMin(attry);
 	yrange = pData->columnMax(attry) - ymin;
-	GImage image;
+	WImage image;
 	image.setSize(width, height);
-	GPlotWindow pw(&image, xmin, ymin, xmin + xrange, ymin + yrange);
-	GVec labels;
+	WPlotWindow pw(&image, xmin, ymin, xmin + xrange, ymin + yrange);
+	WVec labels;
 	unsigned int* pPix = image.pixels();
 	size_t step = std::max((size_t)1, pData->rows() / 100);
 	double xx, yy;
@@ -2638,7 +2638,7 @@ void model(GArgReader& args)
 			size_t count = 0;
 			for(size_t i = 0; i < pData->rows(); i += step)
 			{
-				GVec& features = pData->row(i);
+				WVec& features = pData->row(i);
 				features[attrx] = xx;
 				features[attry] = yy;
 				pModeler->predict(features, labels);
@@ -2665,7 +2665,7 @@ void model(GArgReader& args)
 	// Plot the data
 	for(size_t i = 0; i < pData->rows(); i++)
 	{
-		GVec& pRow = pData->row(i);
+		WVec& pRow = pData->row(i);
 		unsigned int hue;
 		if(continuous)
 			hue = MixColors(gARGB(0xff, 0, 0xff, 0xff), gARGB(0xff, 0xff, 0, 0), (int)(256.0 * (pRow[featureDims + labelDim] - labelMin) / labelRange));
@@ -2679,16 +2679,16 @@ void model(GArgReader& args)
 	cout << "Output saved to " << filename.c_str() << ".\n";
 }
 
-void rayTraceManifoldModel(GArgReader& args)
+void rayTraceManifoldModel(WArgReader& args)
 {
 	// Load the model
-	GDom doc;
+	WDom doc;
 	if(args.size() < 1)
 		throw Ex("Model not specified");
 	doc.loadJson(args.pop_string());
-	GLearnerLoader ll(true);
-	GSupervisedLearner* pModeler = ll.loadLearner(doc.root());
-	Holder<GSupervisedLearner> hModeler(pModeler);
+	WLearnerLoader ll(true);
+	WSupervisedLearner* pModeler = ll.loadLearner(doc.root());
+	Holder<WSupervisedLearner> hModeler(pModeler);
 	if(pModeler->relFeatures().size() != 2 || pModeler->relLabels().size() != 3)
 		throw Ex("The model has ", to_str(pModeler->relFeatures().size()), " inputs and ", to_str(pModeler->relLabels().size()), " outputs. 2 real inputs and 3 real outputs are expected");
 
@@ -2708,8 +2708,8 @@ void rayTraceManifoldModel(GArgReader& args)
 	size_t granularity = 50;
 	string filename = "plot.png";
 	double pointRadius = 0.02;
-	GMatrix* pPoints = nullptr;
-	Holder<GMatrix> hPoints;
+	WMatrix* pPoints = nullptr;
+	Holder<WMatrix> hPoints;
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-size"))
@@ -2738,7 +2738,7 @@ void rayTraceManifoldModel(GArgReader& args)
 		else if(args.if_pop("-points"))
 		{
 			delete(pPoints);
-			pPoints = new GMatrix();
+			pPoints = new WMatrix();
 			pPoints->loadArff(args.pop_string());
 			hPoints.reset(pPoints);
 			if(pPoints->cols() != 3)
@@ -2753,36 +2753,36 @@ void rayTraceManifoldModel(GArgReader& args)
 	}
 
 	// Set up the scene
-	GRand prng(0);
-	GRayTraceScene scene(&prng);
+	WRand prng(0);
+	WRayTraceScene scene(&prng);
 	scene.setBackgroundColor(1.0, 0.0, 0.0, 0.0);
 	scene.setAmbientLight(0.9, 0.9, 0.9);
-	scene.addLight(new GRayTraceDirectionalLight(0.1, 0.2, 0.3, // direction
+	scene.addLight(new WRayTraceDirectionalLight(0.1, 0.2, 0.3, // direction
 	                                             0.8,
 	                                             0.8,
 	                                             1.0, // color
 	                                             0.0)); // jitter
-	scene.addLight(new GRayTraceDirectionalLight(-0.1, -0.2, 0.3, // direction
+	scene.addLight(new WRayTraceDirectionalLight(-0.1, -0.2, 0.3, // direction
 	                                             0.8,
 	                                             1.0,
 	                                             0.8, // color
 	                                             0.0)); // jitter
-	scene.addLight(new GRayTraceDirectionalLight(-0.1, 0.9, -0.1, // direction
+	scene.addLight(new WRayTraceDirectionalLight(-0.1, 0.9, -0.1, // direction
 	                                             0.3,
 	                                             0.2,
 	                                             0.2, // color
 	                                             0.0)); // jitter
-	GRayTraceCamera* pCamera = scene.camera();
+	WRayTraceCamera* pCamera = scene.camera();
 	pCamera->setImageSize(width, height);
 	pCamera->setViewAngle(M_PI / 3);
-	G3DVector mean;
+	W3DVector mean;
 	mean.set(0, 0, 0);
 
 
-	G3DVector cameraDirection(-.35, -0.15, -0.5);
-	//	G3DVector cameraDirection(0.1, -0.25, -0.85);
-	G3DReal dist = 2.0;
-	G3DVector* pCameraPos = pCamera->lookFromPoint();
+	W3DVector cameraDirection(-.35, -0.15, -0.5);
+	//	W3DVector cameraDirection(0.1, -0.25, -0.85);
+	W3DReal dist = 2.0;
+	W3DVector* pCameraPos = pCamera->lookFromPoint();
 	pCameraPos->copy(cameraDirection);
 	pCameraPos->multiply(-1);
 	pCameraPos->normalize();
@@ -2791,31 +2791,31 @@ void rayTraceManifoldModel(GArgReader& args)
 	pCamera->setDirection(&cameraDirection, 0.0);
 
 	// Make bluish material
-	GRayTracePhysicalMaterial* pMat1 = new GRayTracePhysicalMaterial();
+	WRayTracePhysicalMaterial* pMat1 = new WRayTracePhysicalMaterial();
 	scene.addMaterial(pMat1);
-	pMat1->setColor(GRayTraceMaterial::Diffuse, 0.3, 0.4, 0.6);
-	pMat1->setColor(GRayTraceMaterial::Specular, 0.4, 0.4, 0.6);
-	pMat1->setColor(GRayTraceMaterial::Reflective, 0.2, 0.2, 0.3);
-	pMat1->setColor(GRayTraceMaterial::Transmissive, 0.7, 0.7, 0.8);
+	pMat1->setColor(WRayTraceMaterial::Diffuse, 0.3, 0.4, 0.6);
+	pMat1->setColor(WRayTraceMaterial::Specular, 0.4, 0.4, 0.6);
+	pMat1->setColor(WRayTraceMaterial::Reflective, 0.2, 0.2, 0.3);
+	pMat1->setColor(WRayTraceMaterial::Transmissive, 0.7, 0.7, 0.8);
 
 	// Make yellowish material
-	GRayTracePhysicalMaterial* pMat2 = new GRayTracePhysicalMaterial();
+	WRayTracePhysicalMaterial* pMat2 = new WRayTracePhysicalMaterial();
 	scene.addMaterial(pMat2);
-	pMat2->setColor(GRayTraceMaterial::Diffuse, 0.4, 0.4, 0.05);
-	pMat2->setColor(GRayTraceMaterial::Specular, 1.0, 1.0, 0.8);
-	pMat2->setColor(GRayTraceMaterial::Reflective, 0.5, 0.5, 0.3);
+	pMat2->setColor(WRayTraceMaterial::Diffuse, 0.4, 0.4, 0.05);
+	pMat2->setColor(WRayTraceMaterial::Specular, 1.0, 1.0, 0.8);
+	pMat2->setColor(WRayTraceMaterial::Reflective, 0.5, 0.5, 0.3);
 
 	// Make the surface
-	GVec in(2);
+	WVec in(2);
 	double astep = (amax - amin) / (std::max((size_t)2, granularity) - 1);
 	double bstep = (bmax - bmin) / (std::max((size_t)2, granularity) - 1);
-	GVec pred(3);
+	WVec pred(3);
 	for(in[1] = bmin; in[1] + bstep <= bmax; in[1] += bstep)
 	{
 		for(in[0] = amin; in[0] + astep <= amax;)
 		{
 			// Predict the 4 corners
-			G3DVector v1, v2, v3, v4;
+			W3DVector v1, v2, v3, v4;
 			pModeler->predict(in, pred);
 			v1.set(pred[0], pred[1], pred[2]);
 			in[1] += bstep;
@@ -2829,7 +2829,7 @@ void rayTraceManifoldModel(GArgReader& args)
 			v2.set(pred[0], pred[1], pred[2]);
 
 			// Add a quad surface
-			scene.addMesh(GRayTraceTriMesh::makeQuadSurface(pMat1, &v1, &v3, &v4, &v2));
+			scene.addMesh(WRayTraceTriMesh::makeQuadSurface(pMat1, &v1, &v3, &v4, &v2));
 		}
 	}
 
@@ -2838,24 +2838,24 @@ void rayTraceManifoldModel(GArgReader& args)
 	{
 		for(size_t i = 0; i < pPoints->rows(); i++)
 		{
-			GVec& pVec = pPoints->row(i);
-			scene.addObject(new GRayTraceSphere(pMat2, pVec[0], pVec[1], pVec[2], pointRadius));
+			WVec& pVec = pPoints->row(i);
+			scene.addObject(new WRayTraceSphere(pMat2, pVec[0], pVec[1], pVec[2], pointRadius));
 		}
 	}
 
-	//	scene.addObject(new GRayTraceSphere(pMat2, .5,.5,.5, 0.02)); // xyzr
+	//	scene.addObject(new WRayTraceSphere(pMat2, .5,.5,.5, 0.02)); // xyzr
 
 	// Ray-trace the scene
 	scene.render();
-	GImage* pImage = scene.image();
+	WImage* pImage = scene.image();
 	savePng(pImage, filename.c_str());
 	cout << "Output saved to " << filename.c_str() << ".\n";
 }
 
-void rowToImage(GArgReader& args)
+void rowToImage(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	unsigned int r = args.pop_uint();
 	if(r > pData->rows())
 		throw Ex("row index out of range");
@@ -2868,9 +2868,9 @@ void rowToImage(GArgReader& args)
 	size_t cols = pData->cols();
 	if((cols % (channels * width)) != 0)
 		throw Ex("The row has ", to_str(cols), " dims, which is not a multiple of ", to_str(channels), " channels times ", to_str(width), " pixels wide");
-	GVec& pRow = pData->row(r);
+	WVec& pRow = pData->row(r);
 	unsigned int height = (unsigned int)cols / (unsigned int)(channels * width);
-	GImage image;
+	WImage image;
 	pRow.toImage(&image, width, height, channels, range);
 	savePng(&image, filename.c_str());
 	cout << "Image saved to " << filename.c_str() << ".\n";
@@ -2888,7 +2888,7 @@ void ShowUsage(const char* appName)
 	cout.flush();
 }
 
-void showError(GArgReader& args, const char* szAppName, const char* szMessage)
+void showError(WArgReader& args, const char* szAppName, const char* szMessage)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -2927,7 +2927,7 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 	cerr.flush();
 }
 
-void mackeyGlass(GArgReader& args)
+void mackeyGlass(WArgReader& args)
 {
 	double initX = 0.5;
 	double beta = 0.25;
@@ -2971,7 +2971,7 @@ void mackeyGlass(GArgReader& args)
 
 	double x, xt;
 
-	GMatrix m(0, 1);
+	WMatrix m(0, 1);
 	for(size_t i = 0; i < count; i++)
 	{
 		if(m.rows() > 0)
@@ -2992,14 +2992,14 @@ void mackeyGlass(GArgReader& args)
 			xt = initX;
 		}
 
-		GVec& row = m.newRow();
-		row[0] = GMath::mackeyGlass(x, xt, beta, gamma, n);
+		WVec& row = m.newRow();
+		row[0] = WMath::mackeyGlass(x, xt, beta, gamma, n);
 	}
 
 	m.print(cout);
 }
 
-void lorenz63(GArgReader& args)
+void lorenz63(WArgReader& args)
 {
 	double x = 1.0, y = 1.0, z = 1.0;
 	double sigma = 10.0;
@@ -3050,7 +3050,7 @@ void lorenz63(GArgReader& args)
 		}
 	}
 
-	GMatrix m(count, 3);
+	WMatrix m(count, 3);
 
 	m[0][0] = x;
 	m[0][1] = y;
@@ -3058,7 +3058,7 @@ void lorenz63(GArgReader& args)
 
 	for(size_t i = 1; i < count; i++)
 	{
-		GVec& row = m[i - 1];
+		WVec& row = m[i - 1];
 		m[i][0] = row[0] + dt * (sigma * (row[1] - row[0]));
 		m[i][1] = row[1] + dt * (row[0] * (rho - row[2]) - row[1]);
 		m[i][2] = row[2] + dt * (row[0] * row[1] - beta * row[2]);
@@ -3070,9 +3070,9 @@ void lorenz63(GArgReader& args)
 int main(int argc, char* argv[])
 {
 	PathData pd;
-	GFile::parsePath(argv[0], &pd);
+	WFile::parsePath(argv[0], &pd);
 	const char* appName = argv[0] + pd.fileStart;
-	GArgReader args(argc, argv);
+	WArgReader args(argc, argv);
 	args.pop_string();
 	int ret = 0;
 	try

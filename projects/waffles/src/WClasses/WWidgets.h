@@ -19,69 +19,69 @@
 #ifndef __GWIDGETS_H__
 #define __GWIDGETS_H__
 
-#include "GRect.h"
-#include "GImage.h"
+#include "WRect.h"
+#include "WImage.h"
 #include <string>
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GWidgetAtomic;
-class GWidgetBulletGroup;
-class GWidgetBulletHole;
-class GWidgetCanvas;
-class GWidgetCheckBox;
-class GWidgetGroup;
-class GWidget;
-class GWidgetTextButton;
-class GWidgetTextTab;
-class GWidgetImageButton;
-class GWidgetVCRButton;
-class GWidgetHorizScrollBar;
-class GWidgetHorizSlider;
-class GWidgetVertScrollBar;
-class GWidgetTextLabel;
-class GWidgetFileSystemBrowser;
-class GWidgetSliderTab;
-class GWidgetTextBox;
-class GWidgetPolarLineGraph;
-class GWidgetPolarBarGraph;
-class GWidgetVertSlider;
-class GWave;
+class WWidgetAtomic;
+class WWidgetBulletGroup;
+class WWidgetBulletHole;
+class WWidgetCanvas;
+class WWidgetCheckBox;
+class WWidgetGroup;
+class WWidget;
+class WWidgetTextButton;
+class WWidgetTextTab;
+class WWidgetImageButton;
+class WWidgetVCRButton;
+class WWidgetHorizScrollBar;
+class WWidgetHorizSlider;
+class WWidgetVertScrollBar;
+class WWidgetTextLabel;
+class WWidgetFileSystemBrowser;
+class WWidgetSliderTab;
+class WWidgetTextBox;
+class WWidgetPolarLineGraph;
+class WWidgetPolarBarGraph;
+class WWidgetVertSlider;
+class WWave;
 
-class GWidgetCommon
+class WWidgetCommon
 {
 protected:
-	GImage m_bufferImage;
+	WImage m_bufferImage;
 
 public:
-	GWidgetCommon();
-	~GWidgetCommon();
+	WWidgetCommon();
+	~WWidgetCommon();
 
-	void drawButtonText(GImage* pImage, int x, int y, int w, int h, const char* text, bool pressed);
-	void drawLabelText(GImage* pImage, int x, int y, int w, int h, const char* text, float fontSize, bool alignLeft, unsigned int c);
-	void drawHorizCurvedOutSurface(GImage* pImage, int x, int y, int w, int h, unsigned int col = 0xff0000ff);
-	void drawHorizCurvedInSurface(GImage* pImage, int x, int y, int w, int h, unsigned int col = 0xff0000ff);
-	void drawVertCurvedOutSurface(GImage* pImage, int x, int y, int w, int h, unsigned int col = 0xff0000ff);
-	void drawVertCurvedInSurface(GImage* pImage, int x, int y, int w, int h, unsigned int col = 0xff0000ff);
-	void drawCursor(GImage* pImage, int x, int y, int w, int h);
+	void drawButtonText(WImage* pImage, int x, int y, int w, int h, const char* text, bool pressed);
+	void drawLabelText(WImage* pImage, int x, int y, int w, int h, const char* text, float fontSize, bool alignLeft, unsigned int c);
+	void drawHorizCurvedOutSurface(WImage* pImage, int x, int y, int w, int h, unsigned int col = 0xff0000ff);
+	void drawHorizCurvedInSurface(WImage* pImage, int x, int y, int w, int h, unsigned int col = 0xff0000ff);
+	void drawVertCurvedOutSurface(WImage* pImage, int x, int y, int w, int h, unsigned int col = 0xff0000ff);
+	void drawVertCurvedInSurface(WImage* pImage, int x, int y, int w, int h, unsigned int col = 0xff0000ff);
+	void drawCursor(WImage* pImage, int x, int y, int w, int h);
 
 	/// This method lets you draw a widget clipped by some rect. Note that
 	/// it uses a persistent buffer image to facilitate this. It doesn't
 	/// clear the image, so if your widget doesn't draw over its entire
 	/// rect, you'll see garbage from previous uses
-	void drawClipped(GImage* pCanvas, int x, int y, GWidget* pWidget, GRect* pClipRect);
+	void drawClipped(WImage* pCanvas, int x, int y, WWidget* pWidget, WRect* pClipRect);
 };
 
 
 
 
 /// The base class of all GUI widgets
-class GWidget
+class WWidget
 {
-	friend class GWidgetGroup;
-	friend class GWidgetGrid;
+	friend class WWidgetGroup;
+	friend class WWidgetGrid;
 public:
 	enum WidgetType
 	{
@@ -112,24 +112,24 @@ public:
 	};
 
 protected:
-	GRect m_rect;
-	GWidgetGroup* m_pParent;
-	GWidgetCommon* m_common;
+	WRect m_rect;
+	WWidgetGroup* m_pParent;
+	WWidgetCommon* m_common;
 	int m_nID; // for use by the owning parent
 
 public:
-	GWidget(GWidgetGroup* m_pParent, int x, int y, int w, int h);
-	virtual ~GWidget();
+	WWidget(WWidgetGroup* m_pParent, int x, int y, int w, int h);
+	virtual ~WWidget();
 
 	virtual WidgetType type() = 0;
 	virtual bool isAtomic() = 0;
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y) = 0;
+	virtual void draw(WImage* pCanvas, int x, int y) = 0;
 	void setPos(int x, int y);
-	GRect* rect() { return &m_rect; }
+	WRect* rect() { return &m_rect; }
 	int id() { return m_nID; }
-	GWidgetGroup* parent() { return m_pParent; }
+	WWidgetGroup* parent() { return m_pParent; }
 };
 
 
@@ -137,12 +137,12 @@ public:
 
 
 /// The base class of all atomic widgets (widgets that are not composed of other widgets).
-class GWidgetAtomic : public GWidget
+class WWidgetAtomic : public WWidget
 {
-	friend class GWidgetDialog;
+	friend class WWidgetDialog;
 public:
-	GWidgetAtomic(GWidgetGroup* pParent, int x, int y, int w, int h);
-	~GWidgetAtomic() override;
+	WWidgetAtomic(WWidgetGroup* pParent, int x, int y, int w, int h);
+	~WWidgetAtomic() override;
 
 	bool isAtomic() override { return true; }
 	virtual void onChar(char c);
@@ -163,81 +163,81 @@ protected:
 
 
 /// The base class of all widgets that are composed of other widgets
-class GWidgetGroup : public GWidget
+class WWidgetGroup : public WWidget
 {
-	friend class GWidget;
-	friend class GWidgetAtomic;
+	friend class WWidget;
+	friend class WWidgetAtomic;
 protected:
-	std::vector<GWidget*> m_widgets;
-	std::vector<GWidget*> m_dirtyChildren;
+	std::vector<WWidget*> m_widgets;
+	std::vector<WWidget*> m_dirtyChildren;
 	std::vector<unsigned int> m_dirtyBits;
 
 public:
-	GWidgetGroup(GWidgetGroup* pParent, int x, int y, int w, int h);
-	~GWidgetGroup() override;
+	WWidgetGroup(WWidgetGroup* pParent, int x, int y, int w, int h);
+	~WWidgetGroup() override;
 
 	bool isAtomic() override { return false; }
-	virtual GWidgetAtomic* findAtomicWidget(int x, int y);
-	virtual void onDestroyWidget(GWidget* pWidget);
+	virtual WWidgetAtomic* findAtomicWidget(int x, int y);
+	virtual void onDestroyWidget(WWidget* pWidget);
 	int childWidgetCount();
-	GWidget* childWidget(int n);
-	virtual void tattle(GWidget* pChild);
+	WWidget* childWidget(int n);
+	virtual void tattle(WWidget* pChild);
 
-	virtual void onPushTextButton(GWidgetTextButton* pButton)
+	virtual void onPushTextButton(WWidgetTextButton* pButton)
 	{
 		if(m_pParent)
 			m_pParent->onPushTextButton(pButton);
 	}
 
-	virtual void onReleaseTextButton(GWidgetTextButton* pButton)
+	virtual void onReleaseTextButton(WWidgetTextButton* pButton)
 	{
 		if(m_pParent)
 			m_pParent->onReleaseTextButton(pButton);
 	}
 
-	virtual void onReleaseImageButton(GWidgetImageButton* pButton)
+	virtual void onReleaseImageButton(WWidgetImageButton* pButton)
 	{
 		if(m_pParent)
 			m_pParent->onReleaseImageButton(pButton);
 	}
 
-	virtual void onPushVCRButton(GWidgetVCRButton* pButton)
+	virtual void onPushVCRButton(WWidgetVCRButton* pButton)
 	{
 		if(m_pParent)
 			m_pParent->onPushVCRButton(pButton);
 	}
 
-	virtual void onHorizScroll(GWidgetHorizScrollBar* pScrollBar)
+	virtual void onHorizScroll(WWidgetHorizScrollBar* pScrollBar)
 	{
 		if(m_pParent)
 			m_pParent->onHorizScroll(pScrollBar);
 	}
 
-	virtual void onVertScroll(GWidgetVertScrollBar* pScrollBar)
+	virtual void onVertScroll(WWidgetVertScrollBar* pScrollBar)
 	{
 		if(m_pParent)
 			m_pParent->onVertScroll(pScrollBar);
 	}
 
-	virtual void onClickTextLabel(GWidgetTextLabel* pLabel)
+	virtual void onClickTextLabel(WWidgetTextLabel* pLabel)
 	{
 		if(m_pParent)
 			m_pParent->onClickTextLabel(pLabel);
 	}
 
-	virtual void onSelectFilename(GWidgetFileSystemBrowser* pBrowser, const char* szFilename)
+	virtual void onSelectFilename(WWidgetFileSystemBrowser* pBrowser, const char* szFilename)
 	{
 		if(m_pParent)
 			m_pParent->onSelectFilename(pBrowser, szFilename);
 	}
 
-	virtual void onTextBoxTextChanged(GWidgetTextBox* pTextBox)
+	virtual void onTextBoxTextChanged(WWidgetTextBox* pTextBox)
 	{
 		if(m_pParent)
 			m_pParent->onTextBoxTextChanged(pTextBox);
 	}
 
-	virtual void onTextBoxPressEnter(GWidgetTextBox* pTextBox)
+	virtual void onTextBoxPressEnter(WWidgetTextBox* pTextBox)
 	{
 		if(m_pParent)
 			m_pParent->onTextBoxPressEnter(pTextBox);
@@ -255,75 +255,75 @@ public:
 			m_pParent->onSpecialKey(key);
 	}
 
-	virtual void onClickTab(GWidgetSliderTab* pTab)
+	virtual void onClickTab(WWidgetSliderTab* pTab)
 	{
 		if(m_pParent)
 			m_pParent->onClickTab(pTab);
 	}
 
-	virtual void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy)
+	virtual void onSlideTab(WWidgetSliderTab* pTab, int dx, int dy)
 	{
 		if(m_pParent)
 			m_pParent->onSlideTab(pTab, dx, dy);
 	}
 
-	virtual void onHorizSliderMove(GWidgetHorizSlider* pSlider)
+	virtual void onHorizSliderMove(WWidgetHorizSlider* pSlider)
 	{
 		if(m_pParent)
 			m_pParent->onHorizSliderMove(pSlider);
 	}
 
-	virtual void onVertSliderMove(GWidgetVertSlider* pSlider)
+	virtual void onVertSliderMove(WWidgetVertSlider* pSlider)
 	{
 		if(m_pParent)
 			m_pParent->onVertSliderMove(pSlider);
 	}
 
-	virtual void onCanvasMouseDown(GWidgetCanvas* pCanvas, int button, int x, int y)
+	virtual void onCanvasMouseDown(WWidgetCanvas* pCanvas, int button, int x, int y)
 	{
 		if(m_pParent)
 			m_pParent->onCanvasMouseDown(pCanvas, button, x, y);
 	}
 
-	virtual void onCanvasMouseUp(GWidgetCanvas* pCanvas, int button, int x, int y)
+	virtual void onCanvasMouseUp(WWidgetCanvas* pCanvas, int button, int x, int y)
 	{
 		if(m_pParent)
 			m_pParent->onCanvasMouseUp(pCanvas, button, x, y);
 	}
 
-	virtual void onCanvasMouseMove(GWidgetCanvas* pCanvas, int x, int y, bool bPressed)
+	virtual void onCanvasMouseMove(WWidgetCanvas* pCanvas, int x, int y, bool bPressed)
 	{
 		if(m_pParent)
 			m_pParent->onCanvasMouseMove(pCanvas, x, y, bPressed);
 	}
 
-	virtual void onSelectTextTab(GWidgetTextTab* pTab)
+	virtual void onSelectTextTab(WWidgetTextTab* pTab)
 	{
 		if(m_pParent)
 			m_pParent->onSelectTextTab(pTab);
 	}
 
-	virtual void onCheckBulletHole(GWidgetBulletHole* pBullet)
+	virtual void onCheckBulletHole(WWidgetBulletHole* pBullet)
 	{
 		if(m_pParent)
 			m_pParent->onCheckBulletHole(pBullet);
 	}
 
-	virtual void onChangeCheckBox(GWidgetCheckBox* pCheckBox)
+	virtual void onChangeCheckBox(WWidgetCheckBox* pCheckBox)
 	{
 		if(m_pParent)
 			m_pParent->onChangeCheckBox(pCheckBox);
 	}
 
-	virtual void onCustomEvent(GWidget* pWidget)
+	virtual void onCustomEvent(WWidget* pWidget)
 	{
 		if(m_pParent)
 			m_pParent->onCustomEvent(pWidget);
 	}
 
 protected:
-	void addWidget(GWidget* pWidget);
-	//void UpdateChildOntoMyCanvas(GWidget* pChild, unsigned int cBackground);
+	void addWidget(WWidget* pWidget);
+	//void UpdateChildOntoMyCanvas(WWidget* pChild, unsigned int cBackground);
 	bool getDirtyBit(int nBit);
 	void setDirtyBit(int nBit, bool bValue);
 	void setClean();
@@ -336,34 +336,34 @@ protected:
 
 
 /// A form or dialog
-class GWidgetDialog : public GWidgetGroup
+class WWidgetDialog : public WWidgetGroup
 {
 protected:
-	GImage m_image;
-	GWidgetAtomic* m_pGrabbedWidget;
-	GWidgetAtomic* m_pFocusWidget;
+	WImage m_image;
+	WWidgetAtomic* m_pGrabbedWidget;
+	WWidgetAtomic* m_pFocusWidget;
 	unsigned int m_cBackground;
 	int m_prevMouseX;
 	int m_prevMouseY;
 	bool m_bRunning;
 
 public:
-	GWidgetDialog(int w, int h, unsigned int cBackground);
-	~GWidgetDialog() override;
+	WWidgetDialog(int w, int h, unsigned int cBackground);
+	~WWidgetDialog() override;
 
 	WidgetType type() override { return Dialog; }
 
 	/// Sets the background image
-	void setBackgroundImage(GImage* pImage);
+	void setBackgroundImage(WImage* pImage);
 
 	/// Returns the widget that the mouse is currently grabbing
-	GWidgetAtomic* grabbedWidget() { return m_pGrabbedWidget; }
+	WWidgetAtomic* grabbedWidget() { return m_pGrabbedWidget; }
 
 	/// Returns the widget that currently has focus
-	GWidgetAtomic* focusWidget() { return m_pFocusWidget; }
+	WWidgetAtomic* focusWidget() { return m_pFocusWidget; }
 
 	/// Sets the widget with focus
-	void setFocusWidget(GWidgetAtomic* pWidget);
+	void setFocusWidget(WWidgetAtomic* pWidget);
 
 	/// You should call this when the user presses a mouse button
 	virtual void pressButton(int button, int x, int y);
@@ -371,7 +371,7 @@ public:
 	/// You should call this method when the mouse releases (un-clicks)
 	virtual void releaseButton(int button);
 
-	void onDestroyWidget(GWidget* pWidget) override;
+	void onDestroyWidget(WWidget* pWidget) override;
 
 	/// You should call this method when the user presses a key
 	virtual void handleChar(char c);
@@ -383,11 +383,11 @@ public:
 	virtual bool handleMousePos(int x, int y);
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Updates everything that needs to be updated, and makes an image
 	/// of the dialog in its current state so you can blit it to the screen
-	GImage* image();
+	WImage* image();
 
 	/// Returns the background color
 	unsigned int backgroundColor() { return m_cBackground; }
@@ -403,14 +403,14 @@ public:
 
 protected:
 	/// This is called by pressAt when the user clicks on an atomic widget
-	void grabWidget(GWidgetAtomic* pWidget, int button, int mouseX, int mouseY);
+	void grabWidget(WWidgetAtomic* pWidget, int button, int mouseX, int mouseY);
 };
 
 
 
 
 /// A button with text on it
-class GWidgetTextButton : public GWidgetAtomic
+class WWidgetTextButton : public WWidgetAtomic
 {
 protected:
 	std::string m_text;
@@ -419,13 +419,13 @@ protected:
 	unsigned int m_color;
 
 public:
-	GWidgetTextButton(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szText);
-	~GWidgetTextButton() override;
+	WWidgetTextButton(WWidgetGroup* pParent, int x, int y, int w, int h, const char* szText);
+	~WWidgetTextButton() override;
 
 	WidgetType type() override { return TextButton; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// sets the button text
 	void setText(const char* szText);
@@ -447,7 +447,7 @@ protected:
 
 
 /// Represents a tab (like for tabbed menus, etc.)
-class GWidgetTextTab : public GWidgetAtomic
+class WWidgetTextTab : public WWidgetAtomic
 {
 protected:
 	std::string m_text;
@@ -455,13 +455,13 @@ protected:
 	bool m_selected;
 
 public:
-	GWidgetTextTab(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szText, unsigned int cBackground = 0xff6600aa);
-	~GWidgetTextTab() override;
+	WWidgetTextTab(WWidgetGroup* pParent, int x, int y, int w, int h, const char* szText, unsigned int cBackground = 0xff6600aa);
+	~WWidgetTextTab() override;
 
 	WidgetType type() override { return TextTab; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// sets the tab text
 	void setText(const char* szText);
@@ -483,21 +483,21 @@ protected:
 
 /// A button with an image on it. The left half of the image is the
 /// unpressed image and the right half is the pressed image.
-class GWidgetImageButton : public GWidgetAtomic
+class WWidgetImageButton : public WWidgetAtomic
 {
 protected:
-	GImage m_image;
+	WImage m_image;
 	bool m_pressed, m_holding;
 	int m_pressedX, m_pressedY;
 
 public:
-	GWidgetImageButton(GWidgetGroup* pParent, int x, int y, GImage* pImage);
-	~GWidgetImageButton() override;
+	WWidgetImageButton(WWidgetGroup* pParent, int x, int y, WImage* pImage);
+	~WWidgetImageButton() override;
 
 	WidgetType type() override { return TextButton; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Returns true if the button is currently pressed
 	bool isPressed() { return m_pressed; }
@@ -513,21 +513,21 @@ protected:
 
 
 /// An image with multiple frames
-class GWidgetAnimation : public GWidgetAtomic
+class WWidgetAnimation : public WWidgetAtomic
 {
 protected:
-	GImage m_image;
+	WImage m_image;
 	int m_nFrames;
 	int m_nFrame;
 
 public:
-	GWidgetAnimation(GWidgetGroup* pParent, int x, int y, GImage* pImage, int nFrames);
-	~GWidgetAnimation() override;
+	WWidgetAnimation(WWidgetGroup* pParent, int x, int y, WImage* pImage, int nFrames);
+	~WWidgetAnimation() override;
 
 	WidgetType type() override { return Animation; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Sets the current animation frame
 	void setFrame(int nFrame);
@@ -538,7 +538,7 @@ public:
 
 
 /// A text label
-class GWidgetTextLabel : public GWidgetAtomic
+class WWidgetTextLabel : public WWidgetAtomic
 {
 protected:
 	std::string m_text;
@@ -549,13 +549,13 @@ protected:
 	bool m_bGrabbed;
 
 public:
-	GWidgetTextLabel(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szText, unsigned int c = 0xffffffff, unsigned int background = 0x00000000, float fontSize = 1.0f);
-	~GWidgetTextLabel() override;
+	WWidgetTextLabel(WWidgetGroup* pParent, int x, int y, int w, int h, const char* szText, unsigned int c = 0xffffffff, unsigned int background = 0x00000000, float fontSize = 1.0f);
+	~WWidgetTextLabel() override;
 
 	WidgetType type() override { return TextLabel; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Returns the label text
 	const std::string& text() { return m_text; }
@@ -593,41 +593,41 @@ protected:
 
 
 /*
-class GWidgetImageLabel : public GWidgetAtomic
+class WWidgetImageLabel : public WWidgetAtomic
 {
 protected:
-	GImage m_image;
+	WImage m_image;
 
 public:
-	GWidgetImageLabel(GWidgetGroup* pParent, int x, int y, const char* szHexPngFile);
-	virtual ~GWidgetImageLabel();
+	WWidgetImageLabel(WWidgetGroup* pParent, int x, int y, const char* szHexPngFile);
+	virtual ~WWidgetImageLabel();
 
 	virtual WidgetType type() { return ImageLabel; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	virtual void draw(GImage* pCanvas, int x, int y);
+	virtual void draw(WImage* pCanvas, int x, int y);
 };
 */
 
 
 
 /// This just draws a rectangular box.
-class GWidgetGroupBox : public GWidgetAtomic
+class WWidgetGroupBox : public WWidgetAtomic
 {
 protected:
 	unsigned int m_cLight;
 	unsigned int m_cShadow;
 
 public:
-	GWidgetGroupBox(GWidgetGroup* pParent, int x, int y, int w, int h, unsigned int cLight = 0xffc0c0c0, unsigned int cShadow = 0xff404040);
-	~GWidgetGroupBox() override;
+	WWidgetGroupBox(WWidgetGroup* pParent, int x, int y, int w, int h, unsigned int cLight = 0xffc0c0c0, unsigned int cShadow = 0xff404040);
+	~WWidgetGroupBox() override;
 
 	WidgetType type() override { return GroupBox; }
 
 	bool isClickable() override { return false; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Sets the light color
 	void setLightColor(unsigned int c);
@@ -640,7 +640,7 @@ public:
 
 
 /// A button with a common icon on it
-class GWidgetVCRButton : public GWidgetAtomic
+class WWidgetVCRButton : public WWidgetAtomic
 {
 public:
 	enum VCR_Type
@@ -657,13 +657,13 @@ protected:
 	bool m_pressed;
 
 public:
-	GWidgetVCRButton(GWidgetGroup* pParent, int x, int y, int w, int h, VCR_Type eType);
-	~GWidgetVCRButton() override;
+	WWidgetVCRButton(WWidgetGroup* pParent, int x, int y, int w, int h, VCR_Type eType);
+	~WWidgetVCRButton() override;
 
 	WidgetType type() override { return VCRButton; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Sets the button image
 	void setType(VCR_Type eType);
@@ -674,7 +674,7 @@ public:
 protected:
 	void grab(int button, int x, int y) override;
 	void release(int button) override;
-	void drawIcon(GImage* pCanvas, int nHorizOfs, int nVertOfs);
+	void drawIcon(WImage* pCanvas, int nHorizOfs, int nVertOfs);
 };
 
 
@@ -684,19 +684,19 @@ protected:
 /// Automatically determines wether to be horizontal or vertical
 /// based on dimensions. Progress ranges from 0 to 1, or from 0 to -1 if
 /// you want it to go the other way.
-class GWidgetProgressBar : public GWidgetAtomic
+class WWidgetProgressBar : public WWidgetAtomic
 {
 protected:
 	float m_fProgress;
 
 public:
-	GWidgetProgressBar(GWidgetGroup* pParent, int x, int y, int w, int h);
-	~GWidgetProgressBar() override;
+	WWidgetProgressBar(WWidgetGroup* pParent, int x, int y, int w, int h);
+	~WWidgetProgressBar() override;
 
 	WidgetType type() override { return ProgressBar; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Sets the current position of the progress bar (from 0 to 1)
 	void setProgress(float fProgress);
@@ -710,19 +710,19 @@ public:
 
 
 
-class GWidgetCheckBox : public GWidgetAtomic
+class WWidgetCheckBox : public WWidgetAtomic
 {
 protected:
 	bool m_checked;
 
 public:
-	GWidgetCheckBox(GWidgetGroup* pParent, int x, int y, int w, int h);
-	~GWidgetCheckBox() override;
+	WWidgetCheckBox(WWidgetGroup* pParent, int x, int y, int w, int h);
+	~WWidgetCheckBox() override;
 
 	WidgetType type() override { return CheckBox; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Sets whether or not the box has an "X" in it
 	void setChecked(bool checked);
@@ -738,22 +738,22 @@ protected:
 
 
 
-/// The easiest way to do bullets is to use the GWidgetBulletGroup class,
+/// The easiest way to do bullets is to use the WWidgetBulletGroup class,
 /// but if you really want to manage individual bullets yourself, you can
 /// use this class to do it.
-class GWidgetBulletHole : public GWidgetAtomic
+class WWidgetBulletHole : public WWidgetAtomic
 {
 protected:
 	bool m_checked;
 
 public:
-	GWidgetBulletHole(GWidgetGroup* pParent, int x, int y, int w, int h);
-	~GWidgetBulletHole() override;
+	WWidgetBulletHole(WWidgetGroup* pParent, int x, int y, int w, int h);
+	~WWidgetBulletHole() override;
 
 	WidgetType type() override { return BulletHole; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Puts a dot inside this bullet hole
 	void setChecked(bool checked);
@@ -771,7 +771,7 @@ protected:
 
 /// This creates a whole group of bullets arranged either horizontally
 /// or vertically at regular intervals.
-class GWidgetBulletGroup : public GWidgetGroup
+class WWidgetBulletGroup : public WWidgetGroup
 {
 protected:
 	int m_nSelection;
@@ -782,13 +782,13 @@ public:
 	/// bullet hole to the center of the next one. If "vertical" is true, they are arranged
 	/// vertically starting at (x,y) downward. If "vertical" is false, they are arranged
 	/// horizontally from (x,y) to the right.
-	GWidgetBulletGroup(GWidgetGroup* pParent, int x, int y, int w, int h, int count, int interval, bool vertical);
-	~GWidgetBulletGroup() override;
+	WWidgetBulletGroup(WWidgetGroup* pParent, int x, int y, int w, int h, int count, int interval, bool vertical);
+	~WWidgetBulletGroup() override;
 
 	WidgetType type() override { return BulletGroup; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Sets which bullet hole has a dot in it
 	void setSelection(int n);
@@ -797,15 +797,15 @@ public:
 	int selection() { return m_nSelection; }
 
 protected:
-	void onCheckBulletHole(GWidgetBulletHole* pBullet) override;
-	void tattle(GWidget* pChild) override;
+	void onCheckBulletHole(WWidgetBulletHole* pBullet) override;
+	void tattle(WWidget* pChild) override;
 };
 
 
 
 
 /// This widget is not meant to be used by itself. It creates one of the parts of a scroll bar or slider bar.
-class GWidgetSliderTab : public GWidgetAtomic
+class WWidgetSliderTab : public WWidgetAtomic
 {
 public:
 	enum Style
@@ -821,13 +821,13 @@ protected:
 	Style m_eStyle;
 
 public:
-	GWidgetSliderTab(GWidgetGroup* pParent, int x, int y, int w, int h, bool vertical, Style eStyle);
-	~GWidgetSliderTab() override;
+	WWidgetSliderTab(WWidgetGroup* pParent, int x, int y, int w, int h, bool vertical, Style eStyle);
+	~WWidgetSliderTab() override;
 
 	WidgetType type() override { return SliderTab; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Changes the size of this widget
 	void setSize(int w, int h);
@@ -844,21 +844,21 @@ protected:
 
 
 /// Makes a horizontal scroll bar
-class GWidgetHorizScrollBar : public GWidgetGroup
+class WWidgetHorizScrollBar : public WWidgetGroup
 {
 protected:
 	int m_nViewSize;
 	int m_nModelSize;
 	int m_nPos;
-	GWidgetVCRButton* m_pLeftButton;
-	GWidgetVCRButton* m_pRightButton;
-	GWidgetSliderTab* m_pLeftTab;
-	GWidgetSliderTab* m_pTab;
-	GWidgetSliderTab* m_pRightTab;
+	WWidgetVCRButton* m_pLeftButton;
+	WWidgetVCRButton* m_pRightButton;
+	WWidgetSliderTab* m_pLeftTab;
+	WWidgetSliderTab* m_pTab;
+	WWidgetSliderTab* m_pRightTab;
 
 public:
-	GWidgetHorizScrollBar(GWidgetGroup* pParent, int x, int y, int w, int h, int nViewSize, int nModelSize);
-	~GWidgetHorizScrollBar() override;
+	WWidgetHorizScrollBar(WWidgetGroup* pParent, int x, int y, int w, int h, int nViewSize, int nModelSize);
+	~WWidgetHorizScrollBar() override;
 
 	WidgetType type() override { return HScrollBar; }
 
@@ -885,12 +885,12 @@ public:
 	void setPos(int n);
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 protected:
-	void onPushVCRButton(GWidgetVCRButton* pButton) override;
-	void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy) override;
-	void onClickTab(GWidgetSliderTab* pTab) override;
+	void onPushVCRButton(WWidgetVCRButton* pButton) override;
+	void onSlideTab(WWidgetSliderTab* pTab, int dx, int dy) override;
+	void onClickTab(WWidgetSliderTab* pTab) override;
 	int buttonWidth();
 };
 
@@ -899,21 +899,21 @@ protected:
 
 
 /// Makes a vertical scroll bar
-class GWidgetVertScrollBar : public GWidgetGroup
+class WWidgetVertScrollBar : public WWidgetGroup
 {
 protected:
 	int m_nViewSize;
 	int m_nModelSize;
 	int m_nPos;
-	GWidgetVCRButton* m_pUpButton;
-	GWidgetVCRButton* m_pDownButton;
-	GWidgetSliderTab* m_pAboveTab;
-	GWidgetSliderTab* m_pTab;
-	GWidgetSliderTab* m_pBelowTab;
+	WWidgetVCRButton* m_pUpButton;
+	WWidgetVCRButton* m_pDownButton;
+	WWidgetSliderTab* m_pAboveTab;
+	WWidgetSliderTab* m_pTab;
+	WWidgetSliderTab* m_pBelowTab;
 
 public:
-	GWidgetVertScrollBar(GWidgetGroup* pParent, int x, int y, int w, int h, int nViewSize, int nModelSize);
-	~GWidgetVertScrollBar() override;
+	WWidgetVertScrollBar(WWidgetGroup* pParent, int x, int y, int w, int h, int nViewSize, int nModelSize);
+	~WWidgetVertScrollBar() override;
 
 	WidgetType type() override { return VScrollBar; }
 
@@ -940,12 +940,12 @@ public:
 	void setPos(int n);
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 protected:
-	void onPushVCRButton(GWidgetVCRButton* pButton) override;
-	void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy) override;
-	void onClickTab(GWidgetSliderTab* pTab) override;
+	void onPushVCRButton(WWidgetVCRButton* pButton) override;
+	void onSlideTab(WWidgetSliderTab* pTab, int dx, int dy) override;
+	void onClickTab(WWidgetSliderTab* pTab) override;
 	int buttonHeight();
 };
 
@@ -955,7 +955,7 @@ protected:
 
 
 /// This is a box in which the user can enter text
-class GWidgetTextBox : public GWidgetAtomic
+class WWidgetTextBox : public WWidgetAtomic
 {
 protected:
 	std::string m_text;
@@ -967,13 +967,13 @@ protected:
 	unsigned int m_cBackground;
 
 public:
-	GWidgetTextBox(GWidgetGroup* pParent, int x, int y, int w, int h);
-	~GWidgetTextBox() override;
+	WWidgetTextBox(WWidgetGroup* pParent, int x, int y, int w, int h);
+	~WWidgetTextBox() override;
 
 	WidgetType type() override { return TextBox; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	/// Returns the current contents of this text box
 	const std::string& text() { return m_text; }
@@ -1006,25 +1006,25 @@ protected:
 
 
 
-class GWidgetGrid : public GWidgetGroup
+class WWidgetGrid : public WWidgetGroup
 {
 protected:
-	std::vector<GWidget**> m_rows;
+	std::vector<WWidget**> m_rows;
 	int m_nColumns;
 	int m_nRowHeight;
 	int m_nHeaderHeight;
-	GWidget** m_pColumnHeaders;
+	WWidget** m_pColumnHeaders;
 	int* m_nColumnWidths;
-	GWidgetVertScrollBar* m_pVertScrollBar;
-	GWidgetHorizScrollBar* m_pHorizScrollBar;
+	WWidgetVertScrollBar* m_pVertScrollBar;
+	WWidgetHorizScrollBar* m_pHorizScrollBar;
 	unsigned int m_cBackground;
 
 public:
-	GWidgetGrid(GWidgetGroup* pParent, int nColumns, int x, int y, int w, int h, unsigned int cBackground = 0xff000000);
-	~GWidgetGrid() override;
+	WWidgetGrid(WWidgetGroup* pParent, int nColumns, int x, int y, int w, int h, unsigned int cBackground = 0xff000000);
+	~WWidgetGrid() override;
 
 	WidgetType type() override { return Grid; }
-	GWidgetAtomic* findAtomicWidget(int x, int y) override;
+	WWidgetAtomic* findAtomicWidget(int x, int y) override;
 	int rowHeight() { return m_nRowHeight; }
 	void setRowHeight(int n);
 	int headerHeight() { return m_nHeaderHeight; }
@@ -1044,10 +1044,10 @@ public:
 	int columnCount() { return m_nColumns; }
 
 	/// Sets the widget in a column header
-	GWidget* columnHeader(int col);
+	WWidget* columnHeader(int col);
 
 	/// Gets the widget in a column header
-	void setColumnHeader(int col, GWidget* pWidget);
+	void setColumnHeader(int col, WWidget* pWidget);
 
 	/// Gets the width of a column
 	int columnWidth(int col);
@@ -1059,46 +1059,46 @@ public:
 	int rowCount();
 
 	/// Gets the widget in the specified cell
-	GWidget* widget(int col, int row);
+	WWidget* widget(int col, int row);
 
 	/// Sets the widget in the specified cell
-	void setWidget(int col, int row, GWidget* pWidget);
+	void setWidget(int col, int row, WWidget* pWidget);
 
 	/// Deletes all the rows and all the widgets in them
 	void flushItems(bool deleteWidgets = true);
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
-	void tattle(GWidget* pChild) override;
+	void tattle(WWidget* pChild) override;
 
 protected:
-	void onVertScroll(GWidgetVertScrollBar* pScrollBar) override;
-	void onHorizScroll(GWidgetHorizScrollBar* pScrollBar) override;
+	void onVertScroll(WWidgetVertScrollBar* pScrollBar) override;
+	void onHorizScroll(WWidgetHorizScrollBar* pScrollBar) override;
 };
 
 
 
 
 
-class GWidgetFileSystemBrowser : public GWidgetGroup
+class WWidgetFileSystemBrowser : public WWidgetGroup
 {
 protected:
 	std::string m_path;
-	GWidgetTextLabel* m_pPath;
-	GWidgetGrid* m_pFiles;
+	WWidgetTextLabel* m_pPath;
+	WWidgetGrid* m_pFiles;
 	char* m_szExtensions;
 	bool m_bFileListDirty;
 
 public:
 	/// szExtension should be NULL if you want to allow all extensions
-	GWidgetFileSystemBrowser(GWidgetGroup* pParent, int x, int y, int w, int h, const char* szExtensions);
-	~GWidgetFileSystemBrowser() override;
+	WWidgetFileSystemBrowser(WWidgetGroup* pParent, int x, int y, int w, int h, const char* szExtensions);
+	~WWidgetFileSystemBrowser() override;
 
 	WidgetType type() override { return FileSystemBrowser; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 	void setFileListDirty()
 	{
@@ -1108,73 +1108,73 @@ public:
 
 protected:
 	virtual void dirFoldersAndFiles(std::string* pOutDir, std::vector<std::string>* pOutFolders, std::vector<std::string>* pOutFiles);
-	void onClickTextLabel(GWidgetTextLabel* pLabel) override;
+	void onClickTextLabel(WWidgetTextLabel* pLabel) override;
 	void reloadFileList();
 	void addFilename(bool bDir, const char* szFilename);
 };
 
 
 
-class GWidgetHorizSlider : public GWidgetGroup
+class WWidgetHorizSlider : public WWidgetGroup
 {
 protected:
 	bool m_dirty;
 	float m_fPos;
-	GWidgetSliderTab* m_pLeftTab;
-	GWidgetSliderTab* m_pTab;
-	GWidgetSliderTab* m_pRightTab;
+	WWidgetSliderTab* m_pLeftTab;
+	WWidgetSliderTab* m_pTab;
+	WWidgetSliderTab* m_pRightTab;
 
 public:
-	GWidgetHorizSlider(GWidgetGroup* pParent, int x, int y, int w, int h);
-	~GWidgetHorizSlider() override;
+	WWidgetHorizSlider(WWidgetGroup* pParent, int x, int y, int w, int h);
+	~WWidgetHorizSlider() override;
 
 	WidgetType type() override { return HorizSlider; }
 	float pos() { return m_fPos; }
 	void setPos(float f);
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 protected:
-	void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy) override;
-	void onClickTab(GWidgetSliderTab* pTab) override;
+	void onSlideTab(WWidgetSliderTab* pTab, int dx, int dy) override;
+	void onClickTab(WWidgetSliderTab* pTab) override;
 };
 
 
 
-class GWidgetVertSlider : public GWidgetGroup
+class WWidgetVertSlider : public WWidgetGroup
 {
 protected:
 	bool m_dirty;
 	float m_fPos;
-	GWidgetSliderTab* m_pAboveTab;
-	GWidgetSliderTab* m_pTab;
-	GWidgetSliderTab* m_pBelowTab;
+	WWidgetSliderTab* m_pAboveTab;
+	WWidgetSliderTab* m_pTab;
+	WWidgetSliderTab* m_pBelowTab;
 
 public:
-	GWidgetVertSlider(GWidgetGroup* pParent, int x, int y, int w, int h);
-	~GWidgetVertSlider() override;
+	WWidgetVertSlider(WWidgetGroup* pParent, int x, int y, int w, int h);
+	~WWidgetVertSlider() override;
 
 	WidgetType type() override { return VertSlider; }
 	float pos() { return m_fPos; }
 	void setPos(float f);
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 
 protected:
-	void onSlideTab(GWidgetSliderTab* pTab, int dx, int dy) override;
-	void onClickTab(GWidgetSliderTab* pTab) override;
+	void onSlideTab(WWidgetSliderTab* pTab, int dx, int dy) override;
+	void onClickTab(WWidgetSliderTab* pTab) override;
 };
 
 
 
 /// A painting canvas
-class GWidgetCanvas : public GWidgetAtomic
+class WWidgetCanvas : public WWidgetAtomic
 {
 protected:
-	GImage* m_pImageIn;
-	GImage* m_pSelectionMask;
+	WImage* m_pImageIn;
+	WImage* m_pSelectionMask;
 	float m_fZoom;
 	int m_nHScroll;
 	int m_nVScroll;
@@ -1182,13 +1182,13 @@ protected:
 	int m_nMouseX, m_nMouseY;
 
 public:
-	GWidgetCanvas(GWidgetGroup* pParent, int x, int y, int w, int h, GImage* pImage);
-	~GWidgetCanvas() override;
+	WWidgetCanvas(WWidgetGroup* pParent, int x, int y, int w, int h, WImage* pImage);
+	~WWidgetCanvas() override;
 
 	WidgetType type() override { return Canvas; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 	void setDirty();
 
 	float zoom() { return m_fZoom; }
@@ -1197,13 +1197,13 @@ public:
 	void setHorizScroll(int x);
 	void setVertScroll(int y);
 
-	void setImage(GImage* pImage);
+	void setImage(WImage* pImage);
 
 	/// Only the alpha channel of the mask is used. The other values should be
 	/// constant, or else the selection border will cut through the selection.
 	/// If you change what is selected, you should call this method again, even
 	/// though it may still be the same mask image.
-	void setSelectionMask(GImage* pMask);
+	void setSelectionMask(WImage* pMask);
 
 protected:
 	void onMouseMove(int dx, int dy) override;
@@ -1213,23 +1213,23 @@ protected:
 
 
 
-class GWidgetWave : public GWidgetAtomic
+class WWidgetWave : public WWidgetAtomic
 {
 protected:
-	GWave* m_pWave;
+	WWave* m_pWave;
 	int m_pos, m_width, m_selectionPos, m_selectionWidth;
 
 public:
-	GWidgetWave(GWidgetGroup* pParent, int x, int y, int w, int h);
-	~GWidgetWave() override;
+	WWidgetWave(WWidgetGroup* pParent, int x, int y, int w, int h);
+	~WWidgetWave() override;
 
 	WidgetType type() override { return Wave; }
 
 	/// Draws this widget on pCanvas at (x,y)
-	void draw(GImage* pCanvas, int x, int y) override;
+	void draw(WImage* pCanvas, int x, int y) override;
 	void setDirty();
 
-	void setWave(GWave* pWave);
+	void setWave(WWave* pWave);
 	int pos() { return m_pos; }
 	int width() { return m_width; }
 	void setRange(int pos, int width);
@@ -1242,6 +1242,6 @@ protected:
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GWIDGETS_H__

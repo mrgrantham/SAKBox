@@ -16,9 +16,9 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include <WClasses/GRand.h>
-#include <WClasses/GApp.h>
-#include <WClasses/GTime.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WTime.h>
 #include <map>
 #include "server.h"
 #include "diff.h"
@@ -31,8 +31,8 @@ using std::string;
 using std::make_pair;
 
 
-Server::Server(int port, GRand* pRand)
-: GDynamicPageServer(port, pRand, true) // SAKBox: browsed at myAddress(), the network name, so open to the network
+Server::Server(int port, WRand* pRand)
+: WDynamicPageServer(port, pRand, true) // SAKBox: browsed at myAddress(), the network name, so open to the network
 {
 }
 
@@ -42,13 +42,13 @@ Server::~Server()
 }
 
 // virtual
-GDynamicPageSessionExtension* Server::deserializeSessionExtension(const GDomNode* pNode)
+WDynamicPageSessionExtension* Server::deserializeSessionExtension(const WDomNode* pNode)
 {
 	return new Terminal(pNode, this);
 }
 
 // virtual
-GDynamicPageConnection* Server::makeConnection(SOCKET sock)
+WDynamicPageConnection* Server::makeConnection(SOCKET sock)
 {
 	return new Connection(sock, this);
 }
@@ -102,7 +102,7 @@ void makeFooter(ostream& response)
 
 
 // virtual
-void Connection::handleRequest(GDynamicPageSession* pSession, ostream& response)
+void Connection::handleRequest(WDynamicPageSession* pSession, ostream& response)
 {
 	try
 	{

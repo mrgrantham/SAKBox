@@ -16,13 +16,13 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GSelfOrganizingMap.h"
-#include "GVec.h"
-#include "GRand.h"
-#include "GMath.h"
-#include "GImage.h"
-#include "GDistance.h"
-#include "GDom.h"
+#include "WSelfOrganizingMap.h"
+#include "WVec.h"
+#include "WRand.h"
+#include "WMath.h"
+#include "WImage.h"
+#include "WDistance.h"
+#include "WDom.h"
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
@@ -34,7 +34,7 @@
 #include <algorithm>
 #include <memory>
 
-namespace GClasses
+namespace WClasses
 {
 
 namespace SOM
@@ -104,12 +104,12 @@ namespace SOM
 
 
 	NodeWeightInitializationTrainingSetSample::
-	  NodeWeightInitializationTrainingSetSample(GRand& rand)
+	  NodeWeightInitializationTrainingSetSample(WRand& rand)
 	: pRand(&rand) {}
 
 	//virtual
 	void NodeWeightInitializationTrainingSetSample::
-	  setWeights(std::vector<Node>& nodes, GDistanceMetric& weightDistance, const GMatrix* pIn) const
+	  setWeights(std::vector<Node>& nodes, WDistanceMetric& weightDistance, const WMatrix* pIn) const
 	{
 		assert(pRand != nullptr);
 		assert(pIn != nullptr);
@@ -149,7 +149,7 @@ namespace SOM
 	void ReporterChain::add(Reporter* toAdd) { m_reporters.push_back(toAdd); }
 
 	//virtual
-	void ReporterChain::start(const GMatrix* trainingData, int maxIterations, int maxSubIterations)
+	void ReporterChain::start(const WMatrix* trainingData, int maxIterations, int maxSubIterations)
 	{
 		for(iterator r = m_reporters.begin(); r != m_reporters.end(); ++r)
 		{
@@ -158,7 +158,7 @@ namespace SOM
 	}
 
 	//virtual
-	void ReporterChain::newStatus(unsigned iteration, unsigned subIteration, const GSelfOrganizingMap& map)
+	void ReporterChain::newStatus(unsigned iteration, unsigned subIteration, const WSelfOrganizingMap& map)
 	{
 		for(iterator r = m_reporters.begin(); r != m_reporters.end(); ++r)
 		{
@@ -167,7 +167,7 @@ namespace SOM
 	}
 
 	//virtual
-	void ReporterChain::stop(unsigned iteration, unsigned subIteration, const GSelfOrganizingMap& map)
+	void ReporterChain::stop(unsigned iteration, unsigned subIteration, const WSelfOrganizingMap& map)
 	{
 		for(iterator r = m_reporters.begin(); r != m_reporters.end(); ++r)
 		{
@@ -185,7 +185,7 @@ namespace SOM
 	}
 
 	//virtual
-	void SVG2DWeightReporter::start(const GMatrix* trainingData, int maxIterations, int maxSubIterations)
+	void SVG2DWeightReporter::start(const WMatrix* trainingData, int maxIterations, int maxSubIterations)
 	{
 		double log10 = std::log(10.0);
 		double iterDigits, subIterDigits;
@@ -337,7 +337,7 @@ namespace SOM
 
 	}
 
-	unsigned SVG2DWeightReporter::neighborsNeeded(const GSelfOrganizingMap& map)
+	unsigned SVG2DWeightReporter::neighborsNeeded(const WSelfOrganizingMap& map)
 	{
 		//TODO: write neighborsNeeded correctly so it will work with random topology.  It should store a graph as a multimap<size_t,size_t> node number to node number.  Build that graph using successively larger sets of neighbors until it is connected.
 		return 1;
@@ -345,7 +345,7 @@ namespace SOM
 
 
 	//virtual
-	void SVG2DWeightReporter::newStatus(unsigned iteration, unsigned subIteration, const GSelfOrganizingMap& map)
+	void SVG2DWeightReporter::newStatus(unsigned iteration, unsigned subIteration, const WSelfOrganizingMap& map)
 	{
 		//Create the output file (and update the next number to use)
 		std::stringstream fnBuf;
@@ -469,7 +469,7 @@ namespace SOM
 	}
 
 	//virtual
-	void SVG2DWeightReporter::stop(unsigned iteration, unsigned subIteration, const GSelfOrganizingMap& map)
+	void SVG2DWeightReporter::stop(unsigned iteration, unsigned subIteration, const WSelfOrganizingMap& map)
 	{
 		newStatus(iteration, subIteration, map);
 	}
@@ -571,7 +571,7 @@ namespace SOM
 	} //anonymous namespace
 
 	//virtual
-	void BatchTraining::train(GSelfOrganizingMap& map, const GMatrix* pIn)
+	void BatchTraining::train(WSelfOrganizingMap& map, const WMatrix* pIn)
 	{
 		assert(pIn != nullptr);
 		//Report start
@@ -633,7 +633,7 @@ namespace SOM
 				//For each input point
 				for(std::size_t rIdx = 0; rIdx < pIn->rows(); ++rIdx)
 				{
-					const GVec& pRow = pIn->row(rIdx);
+					const WVec& pRow = pIn->row(rIdx);
 					//Find the closest node
 					std::size_t best = map.bestMatch(pRow);
 					//compare to closest last time - if different, not converged
@@ -732,10 +732,10 @@ namespace SOM
 	}
 
 	//TODO: make all training algorithms take a pointer to a const
-	//GMatrix (this will require making GMatrix const-correct)
+	//WMatrix (this will require making WMatrix const-correct)
 
 	//virtual
-	void TraditionalTraining::train(GSelfOrganizingMap& map, const GMatrix* pInput)
+	void TraditionalTraining::train(WSelfOrganizingMap& map, const WMatrix* pInput)
 	{
 		assert(pInput != nullptr);
 		//Report start
@@ -751,9 +751,9 @@ namespace SOM
 		m_reporter->newStatus(0, 0, map);
 
 		//Copy the input
-		GMatrix* pInputCopy = new GMatrix();
+		WMatrix* pInputCopy = new WMatrix();
 		pInputCopy->copy(*pInput);
-		std::unique_ptr<GMatrix> inputCopy(pInputCopy);
+		std::unique_ptr<WMatrix> inputCopy(pInputCopy);
 
 		//For each iteration
 		for(unsigned iteration = 0; iteration < m_numIterations; ++iteration)
@@ -768,7 +768,7 @@ namespace SOM
 			{
 				inputCopy->shuffle(m_rand);
 			}
-			const GVec& point = inputCopy->row(iteration % inputCopy->rows());
+			const WVec& point = inputCopy->row(iteration % inputCopy->rows());
 
 			//Find the best match to the current input point
 			std::size_t best = map.bestMatch(point);
@@ -806,9 +806,9 @@ namespace SOM
 namespace
 {
 	//Add a double vector to the given document and return the node created
-	GDomNode* doubleVectorSerialize(GDom* pDoc, const std::vector<double>& v)
+	WDomNode* doubleVectorSerialize(WDom* pDoc, const std::vector<double>& v)
 	{
-		GDomNode* pNode = pDoc->newList();
+		WDomNode* pNode = pDoc->newList();
 		std::vector<double>::const_iterator it;
 		for(it = v.begin(); it != v.end(); ++it)
 		{
@@ -817,9 +817,9 @@ namespace
 		return pNode;
 	}
 
-	std::vector<double> doubleVectorDeserialize(const GDomNode* pNode)
+	std::vector<double> doubleVectorDeserialize(const WDomNode* pNode)
 	{
-		GDomListIterator it(pNode);
+		WDomListIterator it(pNode);
 		std::size_t size = it.remaining();
 		std::vector<double> out;
 		out.reserve(size);
@@ -833,9 +833,9 @@ namespace
 
 	///Serialize a vector containing some object that has a serialize method
 	template<class vectortype>
-	GDomNode* objVectorSerialize(GDom* pDoc, const vectortype& v)
+	WDomNode* objVectorSerialize(WDom* pDoc, const vectortype& v)
 	{
-		GDomNode* pNode = pDoc->newList();
+		WDomNode* pNode = pDoc->newList();
 		typename vectortype::const_iterator it;
 		for(it = v.begin(); it != v.end(); ++it)
 		{
@@ -845,11 +845,11 @@ namespace
 	}
 
 	///Deserialize a vector of any object that can be constructed from a
-	///GDomNode
+	///WDomNode
 	template<class vectortype>
-	vectortype objVectorDeserialize(const GDomNode* pNode)
+	vectortype objVectorDeserialize(const WDomNode* pNode)
 	{
-		GDomListIterator it(pNode);
+		WDomListIterator it(pNode);
 		std::size_t size = it.remaining();
 		vectortype out;
 		out.reserve(size);
@@ -862,37 +862,37 @@ namespace
 	}
 }
 
-SOM::Node::Node(const GDomNode* pNode)
+SOM::Node::Node(const WDomNode* pNode)
 : outputLocation(doubleVectorDeserialize(pNode->get("outputLocation"))),
   weights(doubleVectorDeserialize(pNode->get("weights"))) {}
 
 
-GDomNode* SOM::Node::serialize(GDom* pDoc) const
+WDomNode* SOM::Node::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "outputLocation", doubleVectorSerialize(pDoc, outputLocation));
 	pNode->add(pDoc, "weights", doubleVectorSerialize(pDoc, weights));
 	return pNode;
 }
 
 //virtual
-GDomNode* SOM::TrainingAlgorithm::serialize(GDom* pDoc) const
+WDomNode* SOM::TrainingAlgorithm::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "class", "DummyTrainingAlgorithm");
 	return pNode;
 }
 
-SOM::TrainingAlgorithm* SOM::TrainingAlgorithm::deserialize(const GDomNode* pNode)
+SOM::TrainingAlgorithm* SOM::TrainingAlgorithm::deserialize(const WDomNode* pNode)
 {
 	return new DummyTrainingAlgorithm();
 }
 
 
 //virtual
-GDomNode* GSelfOrganizingMap::serialize(GDom* pDoc) const
+WDomNode* WSelfOrganizingMap::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GSelfOrganizingMap");
+	WDomNode* pNode = baseDomNode(pDoc, "WSelfOrganizingMap");
 	pNode->add(pDoc, "inputDims", (long long)m_nInputDims);
 	pNode->add(pDoc, "outputAxes", doubleVectorSerialize(pDoc, m_outputAxes));
 	pNode->add(pDoc, "trainer", m_pTrainer->serialize(pDoc));
@@ -905,13 +905,13 @@ GDomNode* GSelfOrganizingMap::serialize(GDom* pDoc) const
 	return pNode;
 }
 
-GSelfOrganizingMap::GSelfOrganizingMap(const GDomNode* pNode) : GIncrementalTransform(pNode)
+WSelfOrganizingMap::WSelfOrganizingMap(const WDomNode* pNode) : WIncrementalTransform(pNode)
 {
 	m_nInputDims = (unsigned int)pNode->getInt("inputDims");
 	m_outputAxes = doubleVectorDeserialize(pNode->get("outputAxes"));
 	m_pTrainer = SOM::TrainingAlgorithm::deserialize(pNode->get("trainer"));
-	m_pWeightDistance = GDistanceMetric::deserialize(pNode->get("weightDistance"));
-	m_pNodeDistance = GDistanceMetric::deserialize(pNode->get("nodeDistance"));
+	m_pWeightDistance = WDistanceMetric::deserialize(pNode->get("weightDistance"));
+	m_pNodeDistance = WDistanceMetric::deserialize(pNode->get("nodeDistance"));
 
 	typedef std::vector<SOM::Node> nodevec;
 	m_nodes = objVectorDeserialize<nodevec>(pNode->get("nodes"));
@@ -919,14 +919,14 @@ GSelfOrganizingMap::GSelfOrganizingMap(const GDomNode* pNode) : GIncrementalTran
 }
 
 
-GSelfOrganizingMap::GSelfOrganizingMap(int nMapDims, int nMapWidth, GRand& rand, SOM::Reporter* r)
-: GIncrementalTransform(),
+WSelfOrganizingMap::WSelfOrganizingMap(int nMapDims, int nMapWidth, WRand& rand, SOM::Reporter* r)
+: WIncrementalTransform(),
   m_nInputDims(0), //Initialized in training
   m_outputAxes(nMapDims, nMapWidth - 1),
   m_pTrainer(new SOM::BatchTraining(2 * nMapWidth, 1, 100, 1, //DEBUG Change subiterations back to 100, iterations back to 100 and min neighborhood back to 1 after debugging
                                     new SOM::NodeWeightInitializationTrainingSetSample(rand), new SOM::GaussianWindowFunction(), r)),
-  m_pWeightDistance(new GRowDistance()),
-  m_pNodeDistance(new GRowDistance()),
+  m_pWeightDistance(new WRowDistance()),
+  m_pNodeDistance(new WRowDistance()),
   m_nodes((unsigned int)std::pow((double)nMapWidth, (double)nMapDims)),
   m_sortedNeighborsIsValid(false)
 {
@@ -946,11 +946,11 @@ GSelfOrganizingMap::GSelfOrganizingMap(int nMapDims, int nMapWidth, GRand& rand,
 	}
 
 	//Initialize the distance metrics to use all continuous attributes
-	m_pNodeDistance->init(new GUniformRelation(m_outputAxes.size()), true);
-	m_pWeightDistance->init(new GUniformRelation(1), true);
+	m_pNodeDistance->init(new WUniformRelation(m_outputAxes.size()), true);
+	m_pWeightDistance->init(new WUniformRelation(1), true);
 }
 
-GSelfOrganizingMap::GSelfOrganizingMap(const std::vector<double>& output_Axes, std::size_t numNodes, SOM::NodeLocationInitialization* topology, SOM::TrainingAlgorithm* trainer, GDistanceMetric* weightDist, GDistanceMetric* nodeDist)
+WSelfOrganizingMap::WSelfOrganizingMap(const std::vector<double>& output_Axes, std::size_t numNodes, SOM::NodeLocationInitialization* topology, SOM::TrainingAlgorithm* trainer, WDistanceMetric* weightDist, WDistanceMetric* nodeDist)
 : m_nInputDims(0), m_outputAxes(output_Axes), m_pTrainer(trainer),
   m_pWeightDistance(weightDist), m_pNodeDistance(nodeDist),
   m_nodes(numNodes),
@@ -973,12 +973,12 @@ GSelfOrganizingMap::GSelfOrganizingMap(const std::vector<double>& output_Axes, s
 	}
 
 	//Initialize the distance metrics to use all continuous attributes
-	m_pNodeDistance->init(new GUniformRelation(m_outputAxes.size()), true);
-	m_pWeightDistance->init(new GUniformRelation(1), true);
+	m_pNodeDistance->init(new WUniformRelation(m_outputAxes.size()), true);
+	m_pWeightDistance->init(new WUniformRelation(1), true);
 }
 
 
-GSelfOrganizingMap::~GSelfOrganizingMap()
+WSelfOrganizingMap::~WSelfOrganizingMap()
 {
 	delete m_pTrainer;
 	delete m_pWeightDistance;
@@ -986,14 +986,14 @@ GSelfOrganizingMap::~GSelfOrganizingMap()
 }
 
 
-GMatrix* GSelfOrganizingMap::reduce(const GMatrix& in)
+WMatrix* WSelfOrganizingMap::reduce(const WMatrix& in)
 {
 	// Train the map on the input
 	train(in);
 
 	// Make the output location
-	GMatrix* pOut = new GMatrix(in.rows(), outputDimensions());
-	std::unique_ptr<GMatrix> hOut(pOut);
+	WMatrix* pOut = new WMatrix(in.rows(), outputDimensions());
+	std::unique_ptr<WMatrix> hOut(pOut);
 
 	// Transform the input, putting it in the output
 	for(std::size_t i = 0; i < in.rows(); ++i)
@@ -1005,7 +1005,7 @@ GMatrix* GSelfOrganizingMap::reduce(const GMatrix& in)
 
 
 
-void GSelfOrganizingMap::transform(const GVec& in, GVec& out)
+void WSelfOrganizingMap::transform(const WVec& in, WVec& out)
 {
 	unsigned int idx = (unsigned int)bestMatch(in);
 	const SOM::Node& n = nodes().at(idx);
@@ -1014,7 +1014,7 @@ void GSelfOrganizingMap::transform(const GVec& in, GVec& out)
 
 
 
-std::size_t GSelfOrganizingMap::bestMatch(const GVec& in) const
+std::size_t WSelfOrganizingMap::bestMatch(const WVec& in) const
 {
 	//Eventually this should use a cached k-d tree for low dimensional
 	//spaces
@@ -1027,7 +1027,7 @@ std::size_t GSelfOrganizingMap::bestMatch(const GVec& in) const
 	{
 		const double* weights = &(cur->weights.front());
 		{
-			GConstVecWrapper w(weights, cur->weights.size());
+			WConstVecWrapper w(weights, cur->weights.size());
 			double dissim = (*m_pWeightDistance)(w, in);
 			if(dissim < bestDistance || best_Match >= nodes().size())
 			{
@@ -1039,7 +1039,7 @@ std::size_t GSelfOrganizingMap::bestMatch(const GVec& in) const
 	return best_Match;
 }
 
-std::vector<std::size_t> GSelfOrganizingMap::bestData(const GMatrix* data) const
+std::vector<std::size_t> WSelfOrganizingMap::bestData(const WMatrix* data) const
 {
 	typedef std::vector<SOM::Node>::const_iterator NIter;
 	if(data == nullptr)
@@ -1057,7 +1057,7 @@ std::vector<std::size_t> GSelfOrganizingMap::bestData(const GMatrix* data) const
 	for(NIter cur = nodes().begin(); cur != nodes().end(); ++cur)
 	{
 		const double* weights = &(cur->weights.front());
-		GConstVecWrapper w(weights, cur->weights.size());
+		WConstVecWrapper w(weights, cur->weights.size());
 		double bestDist = (*m_pWeightDistance)(w, data->row(0));
 		size_t bestIdx = 0;
 		for(unsigned dataIdx = 1; dataIdx < data->rows(); ++dataIdx)
@@ -1077,14 +1077,14 @@ std::vector<std::size_t> GSelfOrganizingMap::bestData(const GMatrix* data) const
 
 
 
-void GSelfOrganizingMap::regenerateSortedNeighbors() const
+void WSelfOrganizingMap::regenerateSortedNeighbors() const
 {
 	using SOM::NodeAndDistance;
 	//Erase the current sorted neighbors
 	m_sortedNeighbors.erase(m_sortedNeighbors.begin(), m_sortedNeighbors.end());
 	m_sortedNeighbors.reserve(m_nodes.size());
 
-	const GDistanceMetric* metric = m_pNodeDistance;
+	const WDistanceMetric* metric = m_pNodeDistance;
 	assert(metric != nullptr); //If can't maintain this assertion, allocate
 	//a temporary euclidean metric to use
 
@@ -1106,8 +1106,8 @@ void GSelfOrganizingMap::regenerateSortedNeighbors() const
 			{
 				if(other == curIdx) continue;
 				dist->nodeIdx = other;
-				GConstVecWrapper a(m_nodes[curIdx].outputLocation.data(), m_nodes[curIdx].outputLocation.size());
-				GConstVecWrapper b(m_nodes[other].outputLocation.data(), m_nodes[other].outputLocation.size());
+				WConstVecWrapper a(m_nodes[curIdx].outputLocation.data(), m_nodes[curIdx].outputLocation.size());
+				WConstVecWrapper b(m_nodes[other].outputLocation.data(), m_nodes[other].outputLocation.size());
 				dist->distance = (*metric)(a, b);
 				++dist;
 			}
@@ -1124,7 +1124,7 @@ void GSelfOrganizingMap::regenerateSortedNeighbors() const
 }
 
 
-std::vector<std::size_t> GSelfOrganizingMap::nearestNeighbors(unsigned nodeIdx, unsigned numNeighbors, double epsilon) const
+std::vector<std::size_t> WSelfOrganizingMap::nearestNeighbors(unsigned nodeIdx, unsigned numNeighbors, double epsilon) const
 {
 	std::vector<std::size_t> out;
 	//Take care of border cases in numNeighbors that would produce an
@@ -1170,7 +1170,7 @@ std::vector<std::size_t> GSelfOrganizingMap::nearestNeighbors(unsigned nodeIdx, 
 }
 
 std::vector<SOM::NodeAndDistance>
-GSelfOrganizingMap::neighborsInCircle(unsigned nodeIdx, double radius) const
+WSelfOrganizingMap::neighborsInCircle(unsigned nodeIdx, double radius) const
 {
 	//Get the neighbors of this node sorted by their distance from it
 	assert(nodeIdx < sortedNeighbors().size());
@@ -1189,31 +1189,31 @@ GSelfOrganizingMap::neighborsInCircle(unsigned nodeIdx, double radius) const
 
 
 
-#include "GRand.h"
-#include "GImage.h"
+#include "WRand.h"
+#include "WImage.h"
 namespace
 {
 	/*    ///The original test code - which I may still make use of some time
     void originalTest()
     {
       // Make a dataset of random colors
-      GRand prng(0);
-      GMatrix dataIn(1000, 3);
+      WRand prng(0);
+      WMatrix dataIn(1000, 3);
       int i;
       for(i = 0; i < 1000; i++)
 	{
-	  GVec& pVec = dataIn[i];
+	  WVec& pVec = dataIn[i];
 	  pVec[0] = prng.uniform();
 	  pVec[1] = prng.uniform();
 	  pVec[2] = prng.uniform();
 	}
 
       // Make the map
-      GSelfOrganizingMap som(2, 30, prng);
+      WSelfOrganizingMap som(2, 30, prng);
       som.train(dataIn);
 
       // Make an image of the map
-      GImage image;
+      WImage image;
       image.setSize(30, 30);
       int x, y;
       for(y = 0; y < 30; y++) {
@@ -1225,21 +1225,21 @@ namespace
       //image.SavePNGFile("som.png");
     }
 */
-#include "GSelfOrganizingMapTestData.h"
+#include "WSelfOrganizingMapTestData.h"
 
 } //Anonymous namespace
 
-void GSelfOrganizingMap::test()
+void WSelfOrganizingMap::test()
 {
 	bool generateReports = false;
-	GRand rand(1212);
+	WRand rand(1212);
 	SOM::Reporter* pReporter;
 	if(generateReports)
 		pReporter = new SOM::SVG2DWeightReporter("square_som_test", 0, 1, true);
 	else
 		pReporter = new SOM::ReporterChain();
-	GSelfOrganizingMap squareSom(2, 10, rand, pReporter);
-	GMatrix uniformSquareMat(0, 2);
+	WSelfOrganizingMap squareSom(2, 10, rand, pReporter);
+	WMatrix uniformSquareMat(0, 2);
 	for(unsigned i = 0; i < 170; ++i)
 	{
 		uniformSquareMat.newRow().copy(uniformSquare[i], 2);
@@ -1253,9 +1253,9 @@ void GSelfOrganizingMap::test()
 		cr->add(new SOM::SVG2DWeightReporter("cylinder_som_test_02", 0, 2, true));
 		cr->add(new SOM::SVG2DWeightReporter("cylinder_som_test_12", 1, 2, true));
 	}
-	GSelfOrganizingMap cylinderSom(2, 10, rand, cr.release());
+	WSelfOrganizingMap cylinderSom(2, 10, rand, cr.release());
 
-	GMatrix uniformCylinderMat(0, 3);
+	WMatrix uniformCylinderMat(0, 3);
 	for(unsigned i = 0; i < 170; ++i)
 	{
 		uniformCylinderMat.newRow().copy(uniformCylinder[i], 3);
@@ -1263,5 +1263,5 @@ void GSelfOrganizingMap::test()
 	cylinderSom.train(uniformCylinderMat);
 }
 
-} // namespace GClasses
+} // namespace WClasses
 

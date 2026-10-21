@@ -34,23 +34,23 @@
 #endif
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
 /// The threshold over which a temporary buffer will be placed on the heap instead of the stack.
 #define MAX_STACK_TEMP_BUFFER 1024
 
-/// A helper class used by the GTEMPBUF macro
-class GTempBufHelper
+/// A helper class used by the WTEMPBUF macro
+class WTempBufHelper
 {
 public:
 	char* m_pBuf;
-	GTempBufHelper(size_t nSize)
+	WTempBufHelper(size_t nSize)
 	{
 		m_pBuf = ((nSize > MAX_STACK_TEMP_BUFFER) ? new char[nSize] : nullptr);
 	}
 
-	~GTempBufHelper()
+	~WTempBufHelper()
 	{
 		delete[] m_pBuf;
 	}
@@ -59,37 +59,37 @@ public:
 
 // Macro for allocating a temporary buffer
 #ifdef _DEBUG
-/// This is a helper class used by the debug version of the GTEMPBUF macro to help detect buffer overruns.
-class GTempBufSentinel
+/// This is a helper class used by the debug version of the WTEMPBUF macro to help detect buffer overruns.
+class WTempBufSentinel
 {
 	void* m_pBuf;
 
 public:
-	GTempBufSentinel(void* pBuf);
-	~GTempBufSentinel();
+	WTempBufSentinel(void* pBuf);
+	~WTempBufSentinel();
 };
 
 /// A macro for allocating a temporary buffer. If the buffer is small, it will use alloca to put it on
 /// the stack. If the buffer is big, it will allocate it on the heap and use a holder to ensure that it
 /// is properly deleted.
-#define GTEMPBUF(typ, var, cnt)                                                                                                   \
-	GTempBufHelper var##__(sizeof(typ) * (cnt) + 1);                                                                              \
+#define WTEMPBUF(typ, var, cnt)                                                                                                   \
+	WTempBufHelper var##__(sizeof(typ) * (cnt) + 1);                                                                              \
 	typ* var = (((sizeof(typ) * (cnt)) <= MAX_STACK_TEMP_BUFFER) ? (typ*)alloca(sizeof(typ) * (cnt) + 1) : (typ*)var##__.m_pBuf); \
-	GTempBufSentinel var##_sentinel(&var[cnt]);
+	WTempBufSentinel var##_sentinel(&var[cnt]);
 #else
 
 /// A macro for allocating a temporary buffer. If the buffer is small, it will use alloca to put it on
 /// the stack. If the buffer is big, it will allocate it on the heap and use a holder to ensure that it
 /// is properly deleted.
-#define GTEMPBUF(typ, var, cnt)                  \
-	GTempBufHelper var##__(sizeof(typ) * (cnt)); \
+#define WTEMPBUF(typ, var, cnt)                  \
+	WTempBufHelper var##__(sizeof(typ) * (cnt)); \
 	typ* var = (((sizeof(typ) * (cnt)) <= MAX_STACK_TEMP_BUFFER) ? (typ*)alloca(sizeof(typ) * (cnt)) : (typ*)var##__.m_pBuf);
 #endif
 
-/// A macro for allocating a temporary GVec. If the size is small, it will use alloca to put its contents on the stack.
-#define GQUICKVEC(name, size)                        \
-	GTempBufHelper var##t1(sizeof(double) * (size)); \
-	GVecWrapper name((((sizeof(double) * (size)) <= MAX_STACK_TEMP_BUFFER) ? (double*)alloca(sizeof(double) * (size)) : (double*)var##t1.m_pBuf), size);
+/// A macro for allocating a temporary WVec. If the size is small, it will use alloca to put its contents on the stack.
+#define WQUICKVEC(name, size)                        \
+	WTempBufHelper var##t1(sizeof(double) * (size)); \
+	WVecWrapper name((((sizeof(double) * (size)) <= MAX_STACK_TEMP_BUFFER) ? (double*)alloca(sizeof(double) * (size)) : (double*)var##t1.m_pBuf), size);
 
 /// This class is very similar to the standard C++ class auto_ptr,
 /// except it throws an exception if you try to make a copy of it.
@@ -276,17 +276,17 @@ public:
 };
 
 /// Placing these on the stack can help catch buffer overruns
-class GOverrunSentinel
+class WOverrunSentinel
 {
 protected:
 	unsigned int m_sentinel;
 
 public:
-	GOverrunSentinel() : m_sentinel(0x5e47143a)
+	WOverrunSentinel() : m_sentinel(0x5e47143a)
 	{
 	}
 
-	~GOverrunSentinel()
+	~WOverrunSentinel()
 	{
 		Check();
 	}
@@ -296,6 +296,6 @@ public:
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GHOLDERS_H__

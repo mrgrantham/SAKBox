@@ -20,33 +20,33 @@
 #define __GKALMAN_H__
 
 #include <cstring>
-#include "GVec.h"
+#include "WVec.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GMatrix;
+class WMatrix;
 
 /// This is an implementation of the Extended Kalman Filter. This class
 /// is used by alternately calling advance and correct.
-class GExtendedKalmanFilter
+class WExtendedKalmanFilter
 {
 protected:
 	size_t m_stateDims, m_obsDims;
-	GVec m_x; // estimated state
-	GVec m_z; // observation buffer
-	GVec m_zz; // state correction buffer
-	GMatrix* m_pP; // estimated covariance of state
+	WVec m_x; // estimated state
+	WVec m_z; // observation buffer
+	WVec m_zz; // state correction buffer
+	WMatrix* m_pP; // estimated covariance of state
 
 public:
-	GExtendedKalmanFilter(int stateDims, int obsDims, int controlDims);
-	~GExtendedKalmanFilter();
+	WExtendedKalmanFilter(int stateDims, int obsDims, int controlDims);
+	~WExtendedKalmanFilter();
 
 	/// Use this to get and/or set the estimated state
-	GVec& state() { return m_x; }
+	WVec& state() { return m_x; }
 
 	/// Use this to get and/or set the estimated covariance of the state
-	GMatrix* stateCovariance() { return m_pP; }
+	WMatrix* stateCovariance() { return m_pP; }
 
 	/// Advance to the next time step. pControl is the control vector
 	/// to apply to the system at the current time step. pA is the
@@ -55,7 +55,7 @@ public:
 	/// change in f(x,u) over the change in one of the dimensions of
 	/// x, where f is the transition function, x is the state, and u
 	/// is the control vector.
-	void advance(const GVec& control, GMatrix* pA);
+	void advance(const WVec& control, WMatrix* pA);
 
 	/// Correct the estimates of state and covariance based on the
 	/// observations made in the new state (and assuming the observation function
@@ -64,24 +64,24 @@ public:
 	/// state. Each column in pH represents the change in h(x) over the change
 	/// in one of the dimensions of x, where h is the observation function,
 	/// and x is the state.
-	void correct(const GVec& observation, GMatrix* pH);
+	void correct(const WVec& observation, WMatrix* pH);
 
 	/// Computes the transition function. (Adjust the values in pInOutState
 	/// as directed by pControl.)
-	virtual void transition(GVec& inOutState, const GVec& control) = 0;
+	virtual void transition(WVec& inOutState, const WVec& control) = 0;
 
 	/// Computes the observation function. Put results in pOutObs.
-	virtual void observation(GVec& outObs, const GVec& state) = 0;
+	virtual void observation(WVec& outObs, const WVec& state) = 0;
 
 	/// pInOutCov is a nxn matrix, where n is the number of state dims.
 	/// This method should add the covariance of the transition noise to pInOutCov.
-	virtual void addTransitionNoise(GMatrix* pInOutCov) = 0;
+	virtual void addTransitionNoise(WMatrix* pInOutCov) = 0;
 
 	/// pInOutCov is a mxm matrix, where m is the number of observation dims.
 	/// This method should add the covariance of the observation noise to pInOutCov.
-	virtual void addObservationNoise(GMatrix* pInOutCov) = 0;
+	virtual void addObservationNoise(WMatrix* pInOutCov) = 0;
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GKALMAN_H__

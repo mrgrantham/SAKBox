@@ -18,17 +18,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GWidgets.h>
-#include <WClasses/GThread.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WWidgets.h>
+#include <WClasses/WThread.h>
 #include "gui/Gui.h"
 #include <exception>
 #include <iostream>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 
 class HelloModel;
@@ -52,7 +52,7 @@ class HelloModel
 {
 protected:
 	int m_x, m_y;
-	GRand m_rand;
+	WRand m_rand;
 
 public:
 	HelloModel()
@@ -77,23 +77,23 @@ public:
 const char* g_szMessage = "Hello GUI!";
 #define TEXT_SIZE 9.0f
 
-class HelloDialog : public GWidgetDialog
+class HelloDialog : public WWidgetDialog
 {
 protected:
 	HelloController* m_pController;
-	GImage* m_pImage;
-	GWidgetCanvas* m_pCanvas;
-	GWidgetTextButton* m_pQuitButton;
+	WImage* m_pImage;
+	WWidgetCanvas* m_pCanvas;
+	WWidgetTextButton* m_pQuitButton;
 
 public:
 	HelloDialog(HelloController* pController, int w, int h)
-	: GWidgetDialog(w, h, 0xff90d0f0) // a=ff, r=90, g=d0, b=f0
+	: WWidgetDialog(w, h, 0xff90d0f0) // a=ff, r=90, g=d0, b=f0
 	{
 		m_pController = pController;
-		m_pImage = new GImage();
+		m_pImage = new WImage();
 		m_pImage->setSize(800, 600);
-		m_pCanvas = new GWidgetCanvas(this, 10, 30, m_pImage->width(), m_pImage->height(), m_pImage);
-		m_pQuitButton = new GWidgetTextButton(this, 850, 300, 80, 24, "Quit");
+		m_pCanvas = new WWidgetCanvas(this, 10, 30, m_pImage->width(), m_pImage->height(), m_pImage);
+		m_pQuitButton = new WWidgetTextButton(this, 850, 300, 80, 24, "Quit");
 	}
 
 	~HelloDialog() override
@@ -109,12 +109,12 @@ public:
 		m_pCanvas->setImage(m_pImage);
 	}
 
-	void onReleaseTextButton(GWidgetTextButton* pButton) override
+	void onReleaseTextButton(WWidgetTextButton* pButton) override
 	{
 		if(pButton == m_pQuitButton)
 			m_pController->quit();
 		else
-			GAssert(false); // unknown button
+			WAssert(false); // unknown button
 	}
 };
 
@@ -193,14 +193,14 @@ HelloController::~HelloController()
 
 void HelloController::RunModal()
 {
-	double timeOld = GTime::seconds();
+	double timeOld = WTime::seconds();
 	double time;
 	m_pView->update();
 	while(m_bKeepRunning)
 	{
-		time = GTime::seconds();
+		time = WTime::seconds();
 		if(!handleEvents(time - timeOld))
-			GThread::sleep(50); // slow things down
+			WThread::sleep(50); // slow things down
 		m_pModel->update();
 		m_pView->update();
 		timeOld = time;

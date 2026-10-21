@@ -17,7 +17,7 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GError.h"
+#include "WError.h"
 #include <stdarg.h>
 #include <wchar.h>
 #include <exception>
@@ -32,13 +32,13 @@
 #ifndef WINDOWS
 #include <execinfo.h>
 #endif
-#include "GString.h"
+#include "WString.h"
 
 using std::exception;
 using std::string;
 using std::cerr;
 
-namespace GClasses
+namespace WClasses
 {
 
 bool g_exceptionExpected = false;
@@ -77,13 +77,13 @@ const char* Ex::what() const throw()
 
 
 
-GExpectException::GExpectException()
+WExpectException::WExpectException()
 {
 	m_prev = g_exceptionExpected;
 	g_exceptionExpected = true;
 }
 
-GExpectException::~GExpectException()
+WExpectException::~WExpectException()
 {
 	g_exceptionExpected = m_prev;
 }
@@ -123,13 +123,13 @@ void TestContains(const std::string& expectedSubstring, const std::string& got, 
 
 
 #ifdef WINDOWS
-void GAssertFailed(const char* filename, int line)
+void WAssertFailed(const char* filename, int line)
 {
 	cerr << "Debug Assert Failed in " << filename << ":" << line << std::endl;
 	cerr.flush();
 	__debugbreak();
 }
-void GAssertFailed(const char* filename, int line, const char* message)
+void WAssertFailed(const char* filename, int line, const char* message)
 {
 	cerr << "Debug Assert Failed in " << filename << ":" << line << std::endl;
 	cerr << "Message: " << message << std::endl;
@@ -137,14 +137,14 @@ void GAssertFailed(const char* filename, int line, const char* message)
 	__debugbreak();
 }
 #else
-void GAssertFailed(const char* filename, int line)
+void WAssertFailed(const char* filename, int line)
 {
 	cerr << "Debug Assert Failed in " << filename << ":" << line << std::endl;
 	cerr.flush();
 	raise(SIGINT);
 }
 
-void GAssertFailed(const char* filename, int line, const char* message)
+void WAssertFailed(const char* filename, int line, const char* message)
 {
 	cerr << "Debug Assert Failed in " << filename << ":" << line << std::endl;
 	cerr << "Message: " << message << std::endl;
@@ -193,4 +193,4 @@ long filelength(int filedes)
 #endif
 
 
-} // namespace GClasses
+} // namespace WClasses

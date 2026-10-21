@@ -16,23 +16,23 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "WClasses/GApp.h"
-#include "WClasses/GBits.h"
-#include "WClasses/GError.h"
-#include "WClasses/GFile.h"
-#include "WClasses/GHolders.h"
-#include "WClasses/GImage.h"
-#include "WClasses/GFourier.h"
-#include "WClasses/GMath.h"
-#include "WClasses/GVec.h"
-#include "WClasses/GWave.h"
-#include "WClasses/GMatrix.h"
+#include "WClasses/WApp.h"
+#include "WClasses/WBits.h"
+#include "WClasses/WError.h"
+#include "WClasses/WFile.h"
+#include "WClasses/WHolders.h"
+#include "WClasses/WImage.h"
+#include "WClasses/WFourier.h"
+#include "WClasses/WMath.h"
+#include "WClasses/WVec.h"
+#include "WClasses/WWave.h"
+#include "WClasses/WMatrix.h"
 #include "WClasses/usage.h"
 #include <exception>
 #include <iostream>
 #include <cmath>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 using std::cout;
 using std::string;
@@ -40,7 +40,7 @@ using std::string;
 // pow(2.0, 1.0 / 12.0)
 #define HALF_STEP_FACTOR 1.05946309435929526456182529494634170077920431749419
 
-class AmbientNoiseReducer : public GFourierWaveProcessor
+class AmbientNoiseReducer : public WFourierWaveProcessor
 {
 protected:
 	double m_deviations;
@@ -48,8 +48,8 @@ protected:
 	struct ComplexNumber* m_pNoise;
 
 public:
-	AmbientNoiseReducer(GWave& noise, size_t blockSize, double deviations)
-	: GFourierWaveProcessor(blockSize), m_deviations(deviations)
+	AmbientNoiseReducer(WWave& noise, size_t blockSize, double deviations)
+	: WFourierWaveProcessor(blockSize), m_deviations(deviations)
 	{
 		if(noise.channels() != 1)
 			throw Ex("Sorry, ", to_str(noise.channels()), "-channel ambient noise files are not yet supported");
@@ -57,7 +57,7 @@ public:
 		m_noiseBlocks = 0;
 
 		// Analyze the noise
-		GWaveIterator itNoise(noise);
+		WWaveIterator itNoise(noise);
 		if(itNoise.remaining() < m_blockSize * 8)
 			throw Ex("Not enough noise to analyze");
 		for(size_t i = 0; i < m_blockSize; i++)
@@ -65,7 +65,7 @@ public:
 		while(itNoise.remaining() > m_blockSize * 2)
 		{
 			encodeBlock(itNoise, m_pBufA, 0);
-			GFourier::fft(m_blockSize, m_pBufA, true);
+			WFourier::fft(m_blockSize, m_pBufA, true);
 			analyzeNoise(m_pBufA);
 		}
 	}
@@ -125,7 +125,7 @@ protected:
 	}
 };
 
-class PitchShifter : public GFourierWaveProcessor
+class PitchShifter : public WFourierWaveProcessor
 {
 protected:
 	double m_halfSteps;
@@ -136,7 +136,7 @@ public:
 	// If halfSteps is positive, it will shift the pitch up.
 	// If halfSteps is negative, it will shift the pitch down.
 	PitchShifter(size_t blockSize, double halfSteps)
-	: GFourierWaveProcessor(blockSize)
+	: WFourierWaveProcessor(blockSize)
 	{
 		m_fac = pow(2.0, -halfSteps / 12);
 		m_pBuf = new struct ComplexNumber[m_blockSize];
@@ -183,14 +183,14 @@ protected:
 	}
 };
 
-void amplify(GArgReader& args)
+void amplify(WArgReader& args)
 {
 	const char* inputFilename = args.pop_string();
 	double scale = args.pop_double();
 	const char* outputFilename = args.pop_string();
-	GWave w;
+	WWave w;
 	w.load(inputFilename);
-	GWaveIterator it(w);
+	WWaveIterator it(w);
 	size_t samples = it.remaining() * w.channels();
 	size_t clipped = 0;
 	for(; it.remaining() > 0; it.advance())
@@ -209,7 +209,7 @@ void amplify(GArgReader& args)
 		cout << "Warning: " << to_str((double)clipped * 100 / samples) << "% of samples were clipped!\n";
 }
 
-void makeSilence(GArgReader& args)
+void makeSilence(WArgReader& args)
 {
 	double seconds = args.pop_double();
 	const char* filename = args.pop_string();
@@ -234,20 +234,20 @@ void makeSilence(GArgReader& args)
 
 	// Generate the silence
 	size_t samples = (size_t)(sampleRate * seconds);
-	GWave w;
+	WWave w;
 	unsigned char* pData = new unsigned char[channels * samples * bitsPerSample];
 	w.setData(pData, bitsPerSample, (int)samples, channels, sampleRate);
-	for(GWaveIterator it(w); it.remaining() > 0; it.advance())
+	for(WWaveIterator it(w); it.remaining() > 0; it.advance())
 	{
 		double* pSample = it.current();
-		GVecWrapper vw(pSample, channels);
+		WVecWrapper vw(pSample, channels);
 		vw.fill(0.0);
 		it.set(pSample);
 	}
 	w.save(filename);
 }
 
-void makeSine(GArgReader& args)
+void makeSine(WArgReader& args)
 {
 	double seconds = args.pop_double();
 	double hertz = args.pop_double();
@@ -273,10 +273,10 @@ void makeSine(GArgReader& args)
 
 	// Generate the silence
 	size_t samples = (size_t)(sampleRate * seconds);
-	GWave w;
+	WWave w;
 	unsigned char* pData = new unsigned char[samples * bitsPerSample];
 	w.setData(pData, bitsPerSample, (int)samples, 1 /*channels*/, sampleRate);
-	GWaveIterator it(w);
+	WWaveIterator it(w);
 	size_t i = 0;
 	size_t total = it.remaining();
 	double scal = hertz * 2.0 * M_PI / sampleRate;
@@ -289,30 +289,30 @@ void makeSine(GArgReader& args)
 	w.save(filename);
 }
 
-void mix(GArgReader& args)
+void mix(WArgReader& args)
 {
 	const char* input1 = args.pop_string();
 	double scale1 = args.pop_double();
 	const char* input2 = args.pop_string();
 	double scale2 = args.pop_double();
 	const char* outputFilename = args.pop_string();
-	GWave w1;
+	WWave w1;
 	w1.load(input1);
-	GWave w2;
+	WWave w2;
 	w2.load(input2);
 	if(w1.channels() != w2.channels())
 		throw Ex("Mismatching number of channels");
 	if(w1.sampleRate() != w2.sampleRate())
 		throw Ex("Mismatching sample rates");
-	GWave* pW1 = &w1;
-	GWave* pW2 = &w2;
+	WWave* pW1 = &w1;
+	WWave* pW2 = &w2;
 	if(pW1->sampleCount() < pW2->sampleCount())
 	{
 		std::swap(pW1, pW2);
 		std::swap(scale1, scale2);
 	}
-	GWaveIterator it1(*pW1);
-	GWaveIterator it2(*pW2);
+	WWaveIterator it1(*pW1);
+	WWaveIterator it2(*pW2);
 	size_t samples = it1.remaining() * pW1->channels();
 	size_t clipped = 0;
 	for(; it1.remaining() > 0; it1.advance())
@@ -346,7 +346,7 @@ void mix(GArgReader& args)
 		cout << "Warning: " << to_str((double)clipped * 100 / samples) << "% of samples were clipped!\n";
 }
 
-void pitchShift(GArgReader& args)
+void pitchShift(WArgReader& args)
 {
 	const char* inputFilename = args.pop_string();
 	double halfSteps = args.pop_double();
@@ -361,18 +361,18 @@ void pitchShift(GArgReader& args)
 		else
 			throw Ex("Unrecognized option: ", args.pop_string());
 	}
-	if(!GBits::isPowerOfTwo((unsigned int)blockSize))
+	if(!WBits::isPowerOfTwo((unsigned int)blockSize))
 		throw Ex("the block size must be a power of 2");
 
 	// Shift pitch
-	GWave wSignal;
+	WWave wSignal;
 	wSignal.load(inputFilename);
 	PitchShifter ps(blockSize, halfSteps);
 	ps.reduce(wSignal);
 	wSignal.save(outputFilename);
 }
 
-void reduceAmbientNoise(GArgReader& args)
+void reduceAmbientNoise(WArgReader& args)
 {
 	const char* noiseFilename = args.pop_string();
 	const char* signalFilename = args.pop_string();
@@ -391,19 +391,19 @@ void reduceAmbientNoise(GArgReader& args)
 		else
 			throw Ex("Unrecognized option: ", args.pop_string());
 	}
-	if(!neuralDecomposition && !GBits::isPowerOfTwo((unsigned int)blockSize))
+	if(!neuralDecomposition && !WBits::isPowerOfTwo((unsigned int)blockSize))
 		throw Ex("the block size must be a power of 2");
 
-	GWave wNoise;
+	WWave wNoise;
 	wNoise.load(noiseFilename);
-	GWave wSignal;
+	WWave wSignal;
 	wSignal.load(signalFilename);
 	AmbientNoiseReducer denoiser(wNoise, blockSize, deviations);
 	denoiser.reduce(wSignal);
 	wSignal.save(outputFilename);
 }
 
-void sanitize(GArgReader& args)
+void sanitize(WArgReader& args)
 {
 	const char* inFilename = args.pop_string();
 	const char* outFilename = args.pop_string();
@@ -422,13 +422,13 @@ void sanitize(GArgReader& args)
 	}
 
 	// Sanitize
-	GWave w;
+	WWave w;
 	w.load(inFilename);
 	size_t samps = (size_t)(seconds * w.sampleRate());
 	for(unsigned short chan = 0; chan < w.channels(); chan++)
 	{
-		GWaveIterator itHead(w);
-		GWaveIterator itTail(w);
+		WWaveIterator itHead(w);
+		WWaveIterator itTail(w);
 		while(true)
 		{
 			if(itHead.remaining() > 0 && std::abs(itHead.current()[chan]) < thresh)
@@ -469,7 +469,7 @@ void sanitize(GArgReader& args)
 	w.save(outFilename);
 }
 
-void spectral(GArgReader& args)
+void spectral(WArgReader& args)
 {
 	const char* filename = args.pop_string();
 
@@ -491,13 +491,13 @@ void spectral(GArgReader& args)
 		else
 			throw Ex("Unrecognized option: ", args.pop_string());
 	}
-	if(!GBits::isPowerOfTwo((unsigned int)size))
+	if(!WBits::isPowerOfTwo((unsigned int)size))
 		throw Ex("the size must be a power of 2");
 
 	// Convert to the Fourier domain
-	GWave w;
+	WWave w;
 	w.load(filename);
-	GWaveIterator it(w);
+	WWaveIterator it(w);
 	if(it.remaining() < start + size)
 		throw Ex("out of range. (start + size > samples)");
 	for(size_t i = 0; i < start; i++)
@@ -512,7 +512,7 @@ void spectral(GArgReader& args)
 		p++;
 		it.advance();
 	}
-	GFourier::fft(size, pCN, true);
+	WFourier::fft(size, pCN, true);
 
 	// Find the max Fourier magnitude
 	p = pCN;
@@ -525,7 +525,7 @@ void spectral(GArgReader& args)
 	}
 
 	// Plot the frequency lines
-	GImage image;
+	WImage image;
 	image.setSize((unsigned int)size, (unsigned int)height);
 	image.clear(0xffffffff);
 	for(double i = 13.75; true; i *= 2)
@@ -565,7 +565,7 @@ void ShowUsage(const char* appName)
 	cout.flush();
 }
 
-void showError(GArgReader& args, const char* szAppName, const char* szMessage)
+void showError(WArgReader& args, const char* szAppName, const char* szMessage)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -601,13 +601,13 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int ret = 0;
 	PathData pd;
-	GFile::parsePath(argv[0], &pd);
+	WFile::parsePath(argv[0], &pd);
 	const char* appName = argv[0] + pd.fileStart;
-	GArgReader args(argc, argv);
+	WArgReader args(argc, argv);
 	args.pop_string(); // advance past the app name
 	try
 	{

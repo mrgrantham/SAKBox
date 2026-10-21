@@ -18,11 +18,11 @@
 
 
 #include "recommender.h"
-#include <WClasses/GRand.h>
-#include <WClasses/GDom.h>
-#include <WClasses/GHolders.h>
-#include <WClasses/GVec.h>
-#include <WClasses/GPlot.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WDom.h>
+#include <WClasses/WHolders.h>
+#include <WClasses/WVec.h>
+#include <WClasses/WPlot.h>
 #include <map>
 #include <cmath>
 #include <algorithm>
@@ -41,7 +41,7 @@ using std::ostream;
 using std::pair;
 
 
-User::User(string username, GRand& rand)
+User::User(string username, WRand& rand)
 : m_username(std::move(username))
 {
 	m_personality.resize(USER_PROFILE_SIZE);
@@ -54,15 +54,15 @@ User::~User()
 }
 
 // static
-User* User::fromDom(GDomNode* pNode, GRand& rand)
+User* User::fromDom(WDomNode* pNode, WRand& rand)
 {
 	const char* username = pNode->getString("username");
 	User* pUser = new User(username, rand);
 
 	// Deserialize the personality vector
-	GDomNode* pPersonality = pNode->get("pers");
+	WDomNode* pPersonality = pNode->get("pers");
 	{
-		GDomListIterator it(pPersonality);
+		WDomListIterator it(pPersonality);
 		size_t i;
 		for(i = 0; i < (size_t)USER_PROFILE_SIZE && it.current(); i++)
 		{
@@ -74,8 +74,8 @@ User* User::fromDom(GDomNode* pNode, GRand& rand)
 	}
 
 	// Deserialize the ratings
-	GDomNode* pRatings = pNode->get("ratings");
-	for(GDomListIterator it(pRatings); it.current(); it.advance())
+	WDomNode* pRatings = pNode->get("ratings");
+	for(WDomListIterator it(pRatings); it.current(); it.advance())
 	{
 		ptrdiff_t j = (ptrdiff_t)it.currentInt();
 		it.advance();
@@ -85,18 +85,18 @@ User* User::fromDom(GDomNode* pNode, GRand& rand)
 	return pUser;
 }
 
-GDomNode* User::toDom(GDom* pDoc)
+WDomNode* User::toDom(WDom* pDoc)
 {
-	GDomNode* pUser = pDoc->newObj();
+	WDomNode* pUser = pDoc->newObj();
 	pUser->add(pDoc, "username", m_username.c_str());
 
 	// Serialize the personality vector
-	GDomNode* pPersonality = pUser->add(pDoc, "pers", pDoc->newList());
+	WDomNode* pPersonality = pUser->add(pDoc, "pers", pDoc->newList());
 	for(size_t i = 0; i < USER_PROFILE_SIZE; i++)
 		pPersonality->add(pDoc, m_personality[i]);
 
 	// Serialize the ratings
-	GDomNode* pRatings = pUser->add(pDoc, "ratings", pDoc->newList());
+	WDomNode* pRatings = pUser->add(pDoc, "ratings", pDoc->newList());
 	for(std::map<size_t, float>::iterator it = m_map.begin(); it != m_map.end(); it++)
 	{
 		pRatings->add(pDoc, it->first);
@@ -118,14 +118,14 @@ bool User::getRating(size_t itemId, float* pOutRating)
 
 void User::addRating(size_t itemId, float rating)
 {
-	GAssert(rating >= -1.0f && rating <= 1.0f);
+	WAssert(rating >= -1.0f && rating <= 1.0f);
 	m_map[itemId] = rating;
 	m_vec.push_back(std::make_pair(itemId, rating));
 }
 
 void User::updateRating(size_t itemId, float rating)
 {
-	GAssert(rating >= -1.0f && rating <= 1.0f);
+	WAssert(rating >= -1.0f && rating <= 1.0f);
 	if(m_map.find(itemId) == m_map.end())
 		addRating(itemId, rating);
 	else
@@ -196,7 +196,7 @@ void User::swapItems(size_t a, size_t b)
 
 
 
-Item::Item(const char* szLeft, const char* szRight, const char* szSubmitter, time_t date, GRand* pRand)
+Item::Item(const char* szLeft, const char* szRight, const char* szSubmitter, time_t date, WRand* pRand)
 {
 	m_left = szLeft;
 	m_right = szRight;
@@ -207,15 +207,15 @@ Item::Item(const char* szLeft, const char* szRight, const char* szSubmitter, tim
 		m_weights[i] = 0.01 * pRand->normal();
 }
 
-Item::Item(GDomNode* pNode, GRand* pRand)
+Item::Item(WDomNode* pNode, WRand* pRand)
 {
 	m_left = pNode->getString("left");
 	m_right = pNode->getString("right");
 	m_submitter = pNode->getString("subm");
 	m_date = (time_t)pNode->getInt("date");
 	m_weights.resize(ITEM_PROFILE_SIZE);
-	GDomNode* pWeights = pNode->get("weights");
-	GDomListIterator it(pWeights);
+	WDomNode* pWeights = pNode->get("weights");
+	WDomListIterator it(pWeights);
 	size_t i;
 	for(i = 0; i < (size_t)ITEM_PROFILE_SIZE && it.current(); i++)
 	{
@@ -226,14 +226,14 @@ Item::Item(GDomNode* pNode, GRand* pRand)
 		m_weights[i] = LEARNING_RATE * pRand->normal();
 }
 
-GDomNode* Item::toDom(GDom* pDoc)
+WDomNode* Item::toDom(WDom* pDoc)
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "left", m_left.c_str());
 	pNode->add(pDoc, "right", m_right.c_str());
 	pNode->add(pDoc, "subm", m_submitter.c_str());
 	pNode->add(pDoc, "date", (long long)m_date);
-	GDomNode* pWeights = pNode->add(pDoc, "weights", pDoc->newList());
+	WDomNode* pWeights = pNode->add(pDoc, "weights", pDoc->newList());
 	for(size_t i = 0; i < ITEM_PROFILE_SIZE; i++)
 		pWeights->add(pDoc, m_weights[i]);
 	return pNode;
@@ -270,14 +270,14 @@ public:
 
 
 
-NeuralRecommender::NeuralRecommender(GRand& _rand)
+NeuralRecommender::NeuralRecommender(WRand& _rand)
 : rand(_rand), input_buf(USER_PROFILE_SIZE + ITEM_PROFILE_SIZE)
 {
-	nn.add(new GBlockLinear(USER_PROFILE_SIZE, COMMON_SIZE));
-	nn.concat(new GBlockLinear(ITEM_PROFILE_SIZE, COMMON_SIZE), USER_PROFILE_SIZE);
-	nn.add(new GBlockEl(2 * COMMON_SIZE));
-	nn.add(new GBlockBiasProduct(COMMON_SIZE));
-	nn.add(new GBlockLinear(COMMON_SIZE, PREDICT_SIZE));
+	nn.add(new WBlockLinear(USER_PROFILE_SIZE, COMMON_SIZE));
+	nn.concat(new WBlockLinear(ITEM_PROFILE_SIZE, COMMON_SIZE), USER_PROFILE_SIZE);
+	nn.add(new WBlockEl(2 * COMMON_SIZE));
+	nn.add(new WBlockBiasProduct(COMMON_SIZE));
+	nn.add(new WBlockLinear(COMMON_SIZE, PREDICT_SIZE));
 	nn.init(rand);
 }
 
@@ -297,17 +297,17 @@ void NeuralRecommender::flush()
 	m_items.clear();
 }
 
-GDomNode* NeuralRecommender::serialize(GDom* pDoc)
+WDomNode* NeuralRecommender::serialize(WDom* pDoc)
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 
 	// Save the users
-	GDomNode* pUsers = pNode->add(pDoc, "users", pDoc->newList());
+	WDomNode* pUsers = pNode->add(pDoc, "users", pDoc->newList());
 	for(vector<User*>::iterator it = m_users.begin(); it != m_users.end(); it++)
 		pUsers->add(pDoc, (*it)->toDom(pDoc));
 
 	// Save the items
-	GDomNode* pItems = pNode->add(pDoc, "items", pDoc->newList());
+	WDomNode* pItems = pNode->add(pDoc, "items", pDoc->newList());
 	for(size_t i = 0; i < m_items.size(); i++)
 		pItems->add(pDoc, m_items[i]->toDom(pDoc));
 
@@ -317,21 +317,21 @@ GDomNode* NeuralRecommender::serialize(GDom* pDoc)
 	return pNode;
 }
 
-void NeuralRecommender::deserialize(const GDomNode* pNode)
+void NeuralRecommender::deserialize(const WDomNode* pNode)
 {
 	flush();
 
 	// Load the users
-	GDomNode* pUsers = pNode->get("users");
-	for(GDomListIterator it(pUsers); it.current(); it.advance())
+	WDomNode* pUsers = pNode->get("users");
+	for(WDomListIterator it(pUsers); it.current(); it.advance())
 	{
 		User* pUser = User::fromDom(it.current(), rand);
 		addUser(pUser);
 	}
 
 	// Load the items
-	GDomNode* pItems = pNode->get("items");
-	GDomListIterator it(pItems);
+	WDomNode* pItems = pNode->get("items");
+	WDomListIterator it(pItems);
 	m_items.reserve(it.remaining());
 	for(; it.current(); it.advance())
 		m_items.push_back(new Item(it.current(), &rand));
@@ -358,8 +358,8 @@ void NeuralRecommender::refine(size_t iters)
 	// Train
 	if(samples.size() < 1)
 		return;
-	GVec target(1);
-	GVec inputBlame(USER_PROFILE_SIZE + ITEM_PROFILE_SIZE);
+	WVec target(1);
+	WVec inputBlame(USER_PROFILE_SIZE + ITEM_PROFILE_SIZE);
 	for(size_t i = 0; i < iters; i++)
 	{
 		size_t index = rand.next(samples.size());
@@ -391,8 +391,8 @@ void NeuralRecommender::refineUserOnly(User* pUser, size_t iters)
 	}
 
 	// Train
-	GVec target(1);
-	GVec inputBlame(USER_PROFILE_SIZE + ITEM_PROFILE_SIZE);
+	WVec target(1);
+	WVec inputBlame(USER_PROFILE_SIZE + ITEM_PROFILE_SIZE);
 	for(size_t i = 0; i < iters; i++)
 	{
 		size_t index = rand.next(samples.size());
@@ -415,7 +415,7 @@ double NeuralRecommender::predictRating(User& user, Item& item)
 {
 	input_buf.copy(0, user.personality());
 	input_buf.copy(USER_PROFILE_SIZE, item.weights());
-	GVec& pred = nn.forwardProp(input_buf);
+	WVec& pred = nn.forwardProp(input_buf);
 	return pred[0];
 }
 
@@ -452,8 +452,8 @@ void NeuralRecommender::addItem(const char* szLeft, const char* szRight, const c
 
 Item& NeuralRecommender::item(size_t id)
 {
-	GAssert(id < m_items.size());
-	GAssert(m_items[id] != NULL);
+	WAssert(id < m_items.size());
+	WAssert(m_items[id] != NULL);
 	return *m_items[id];
 }
 
@@ -526,12 +526,12 @@ void Submit::makeUrlSlider(Server* pServer, Account* pAccount, size_t itemId, os
 	response << "</td></tr></table>\n";
 }
 
-void Submit::pageFaq(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Submit::pageFaq(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	response << pServer->cache("faq.html");
 }
 
-void Submit::pageSurvey(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Submit::pageSurvey(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	Account* pAccount = getAccount(pSession);
 	NeuralRecommender& rec = pServer->recommender();
@@ -539,7 +539,7 @@ void Submit::pageSurvey(Server* pServer, GDynamicPageSession* pSession, ostream&
 	if(pSession->paramsLen() > 0)
 	{
 		// Do the action
-		GHttpParamParser params(pSession->params());
+		WHttpParamParser params(pSession->params());
 		const char* szAction = params.find("action");
 		if(!szAction)
 		{
@@ -622,8 +622,8 @@ void Submit::pageSurvey(Server* pServer, GDynamicPageSession* pSession, ostream&
 	// Random picks
 	size_t* pIndexes = new size_t[rec.items().size()];
 	Holder<size_t> hIndexes(pIndexes);
-	GIndexVec::makeIndexVec(pIndexes, rec.items().size());
-	GIndexVec::shuffle(pIndexes, rec.items().size(), pServer->prng());
+	WIndexVec::makeIndexVec(pIndexes, rec.items().size());
+	WIndexVec::shuffle(pIndexes, rec.items().size(), pServer->prng());
 	size_t sliderCount = 0;
 	for(size_t i = 0; i < rec.items().size(); i++)
 	{
@@ -679,7 +679,7 @@ void Submit::pageSurvey(Server* pServer, GDynamicPageSession* pSession, ostream&
 */
 }
 
-void Submit::pageRespond(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Submit::pageRespond(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	// Check access privileges
 	Account* pAccount = getAccount(pSession);
@@ -693,9 +693,9 @@ void Submit::pageRespond(Server* pServer, GDynamicPageSession* pSession, ostream
 	// Process params
 	if(pSession->paramsLen() > 0)
 	{
-		GHttpParamParser params(pSession->params());
+		WHttpParamParser params(pSession->params());
 		auto map = params.map();
-		std::map<const char*, const char*, GClasses::strComp>::iterator it = map.end();
+		std::map<const char*, const char*, WClasses::strComp>::iterator it = map.end();
 		while(it != map.begin())
 		{
 			it--;
@@ -761,7 +761,7 @@ void Submit::pageRespond(Server* pServer, GDynamicPageSession* pSession, ostream
 	response << "</form><br><br>\n\n";
 }
 
-void Submit::pageNewSurveyItem(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Submit::pageNewSurveyItem(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	response << pServer->cache("submit.html");
 }
@@ -769,7 +769,7 @@ void Submit::pageNewSurveyItem(Server* pServer, GDynamicPageSession* pSession, o
 double Submit::computeVariance(double* pCentroid, Topic& topic, User** pUsers, size_t accCount)
 {
 	// Compute the centroid
-	GVecWrapper vw(pCentroid, topic.size());
+	WVecWrapper vw(pCentroid, topic.size());
 	vw.fill(0.0);
 	User** pUs = pUsers;
 	for(size_t j = 0; j < accCount; j++)
@@ -827,7 +827,7 @@ size_t Submit::divideAccounts(Server* pServer, User** pUsers, size_t accCount, s
 		else
 			head++;
 	}
-	GAssert(head == tail);
+	WAssert(head == tail);
 	return head;
 }
 
@@ -914,7 +914,7 @@ public:
 
 
 
-void Submit::makeTree(Server* pServer, GBitTable& bt, User** pUsers, size_t accCount, ostream& response, vector<char>& prefix, int type)
+void Submit::makeTree(Server* pServer, WBitTable& bt, User** pUsers, size_t accCount, ostream& response, vector<char>& prefix, int type)
 {
 	// Try splitting on each of the remaining statements
 	size_t best = (size_t)-1;
@@ -1013,7 +1013,7 @@ string to_string(double d, int decimal_places)
 }
 
 
-void Submit::makeItemBody(GDynamicPageSession* pSession, ostream& response, size_t itemId, Item& item, User** pUsers, size_t accCount)
+void Submit::makeItemBody(WDynamicPageSession* pSession, ostream& response, size_t itemId, Item& item, User** pUsers, size_t accCount)
 {
 	std::multimap<double, User*> mm;
 	while(accCount > 0)
@@ -1057,7 +1057,7 @@ void Submit::makeItemBody(GDynamicPageSession* pSession, ostream& response, size
 	response << "</table>\n";
 }
 
-void Submit::makeUserBody(GDynamicPageSession* pSession, ostream& response, User* pA, User* pB, NeuralRecommender& rec)
+void Submit::makeUserBody(WDynamicPageSession* pSession, ostream& response, User* pA, User* pB, NeuralRecommender& rec)
 {
 	std::multimap<float, size_t> m;
 	float rA = 0.0f;
@@ -1089,7 +1089,7 @@ void Submit::makeUserBody(GDynamicPageSession* pSession, ostream& response, User
 	response << "</table>\n";
 }
 
-void Submit::pageStats(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Submit::pageStats(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	// Get the topic
 	Account* pAccount = getAccount(pSession);
@@ -1109,7 +1109,7 @@ void Submit::pageStats(Server* pServer, GDynamicPageSession* pSession, ostream& 
 	}
 
 	// Check the params
-	GHttpParamParser params(pSession->params());
+	WHttpParamParser params(pSession->params());
 	const char* szItemId = params.find("item");
 	if(szItemId)
 	{
@@ -1133,7 +1133,7 @@ void Submit::pageStats(Server* pServer, GDynamicPageSession* pSession, ostream& 
 		return;
 	}
 
-	GBitTable bt(rec.items().size());
+	WBitTable bt(rec.items().size());
 	vector<char> prefix;
 	response << "This ascii-art tree was constructed by dividing on the most controversial statements within each branch.\n";
 	response << "This tree is arranged such that the ascending branches lead to the usernames of people who support the left statement, and the descending branches lead to the usernames of people who support the right statement.\n";
@@ -1181,10 +1181,10 @@ void Submit::pageStats(Server* pServer, GDynamicPageSession* pSession, ostream& 
 	response << "<a href=\"/b/survey\">" << "Survey</a>\n";
 }
 
-void Submit::plotUsers(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Submit::plotUsers(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	pSession->connection()->setContentType("image/svg+xml");
-	GSVG svg(800, 800);
+	WSVG svg(800, 800);
 
 	const std::vector<User*>& users = pServer->recommender().users();
 	double xmin = 0;
@@ -1194,7 +1194,7 @@ void Submit::plotUsers(Server* pServer, GDynamicPageSession* pSession, ostream& 
 	for(std::vector<User*>::const_iterator it = users.begin(); it != users.end(); it++)
 	{
 		User* pUser = *it;
-		GVec& profile = pUser->personality();
+		WVec& profile = pUser->personality();
 		xmin = std::min(xmin, profile[1]);
 		xmax = std::max(xmax, profile[1]);
 		ymin = std::min(ymin, profile[2]);
@@ -1214,20 +1214,20 @@ void Submit::plotUsers(Server* pServer, GDynamicPageSession* pSession, ostream& 
 	for(std::vector<User*>::const_iterator it = users.begin(); it != users.end(); it++)
 	{
 		User* pUser = *it;
-		GVec& profile = pUser->personality();
+		WVec& profile = pUser->personality();
 		svg.dot(profile[1], profile[2], 0.75, 0x008080);
 		svg.text(profile[1], profile[2], (*it)->username(), 0.75);
 	}
 	svg.print(response);
 }
 
-void Submit::plotItems(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Submit::plotItems(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	// Get the topic
 	NeuralRecommender& rec = pServer->recommender();
 
 	pSession->connection()->setContentType("image/svg+xml");
-	GSVG svg(800, 800);
+	WSVG svg(800, 800);
 
 	double xmin = 0;
 	double ymin = 0;
@@ -1236,7 +1236,7 @@ void Submit::plotItems(Server* pServer, GDynamicPageSession* pSession, ostream& 
 	for(size_t i = 0; i < rec.items().size(); i++)
 	{
 		Item& item = rec.item(i);
-		GVec& weights = item.weights();
+		WVec& weights = item.weights();
 		xmin = std::min(xmin, weights[1]);
 		xmax = std::max(xmax, weights[1]);
 		ymin = std::min(ymin, weights[2]);
@@ -1257,14 +1257,14 @@ void Submit::plotItems(Server* pServer, GDynamicPageSession* pSession, ostream& 
 	{
 		Item& item = rec.item(i);
 		const char* szTitle = item.left();
-		GVec& weights = item.weights();
+		WVec& weights = item.weights();
 		svg.dot(weights[1], weights[2], 0.75, 0x008080);
 		svg.text(weights[1], weights[2], szTitle, 0.75);
 	}
 	svg.print(response);
 }
 
-void Submit::pageUpdateResponses(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Submit::pageUpdateResponses(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	Account* pAccount = getAccount(pSession);
 	User* pUser = pAccount->getUser(pServer->recommender());

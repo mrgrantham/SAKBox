@@ -16,13 +16,13 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GFile.h"
-#include "GError.h"
-#include "GHolders.h"
-//#include "GDirList.h"
-#include "GString.h"
-#include "GApp.h"
-#include "GBitTable.h"
+#include "WFile.h"
+#include "WError.h"
+#include "WHolders.h"
+//#include "WDirList.h"
+#include "WString.h"
+#include "WApp.h"
+#include "WBitTable.h"
 #ifdef WINDOWS
 #include <windows.h>
 #include <shlobj.h> // to get users' application data dir
@@ -49,7 +49,7 @@
 #include <filesystem>
 
 
-using namespace GClasses;
+using namespace WClasses;
 using std::string;
 using std::set;
 using std::map;
@@ -57,13 +57,13 @@ using std::make_pair;
 
 
 // static
-bool GFile::doesFileExist(const char* szFilename)
+bool WFile::doesFileExist(const char* szFilename)
 {
 	return (access(szFilename, 0) == 0);
 }
 
 // static
-bool GFile::doesDirExist(const char* szDir)
+bool WFile::doesDirExist(const char* szDir)
 {
 	char szBuff[256];
 	char* pCurDir = getcwd(szBuff, 255);
@@ -74,7 +74,7 @@ bool GFile::doesDirExist(const char* szDir)
 }
 
 // static
-bool GFile::deleteFile(const char* szFilename)
+bool WFile::deleteFile(const char* szFilename)
 {
 #ifdef WINDOWS
 	return DeleteFile(szFilename) ? true : false;
@@ -84,7 +84,7 @@ bool GFile::deleteFile(const char* szFilename)
 }
 
 // static
-bool GFile::removeDir(const char* szDir)
+bool WFile::removeDir(const char* szDir)
 {
 #ifdef WINDOWS
 	return _rmdir(szDir) == 0;
@@ -94,7 +94,7 @@ bool GFile::removeDir(const char* szDir)
 }
 
 // static
-bool GFile::makeDir(const char* szPath)
+bool WFile::makeDir(const char* szPath)
 {
 	char szDir[256];
 	safe_strcpy(szDir, szPath, 256);
@@ -120,7 +120,7 @@ bool GFile::makeDir(const char* szPath)
 }
 
 // Find the last slash and return what's past that
-const char* GFile::clipPath(const char* szBuff)
+const char* WFile::clipPath(const char* szBuff)
 {
 	int n = 0;
 	int i = 0;
@@ -134,7 +134,7 @@ const char* GFile::clipPath(const char* szBuff)
 }
 
 // Find the last slash and set it to '\0'
-char* GFile::clipFilename(char* szBuff)
+char* WFile::clipFilename(char* szBuff)
 {
 	int n = -1;
 	int i = 0;
@@ -149,7 +149,7 @@ char* GFile::clipFilename(char* szBuff)
 	return szBuff;
 }
 
-void GFile::fileList(std::vector<std::string>& list, const char* dir)
+void WFile::fileList(std::vector<std::string>& list, const char* dir)
 {
 #ifdef WINDOWS
 	string s = dir;
@@ -208,7 +208,7 @@ void GFile::fileList(std::vector<std::string>& list, const char* dir)
 #endif
 }
 
-void GFile::folderList(std::vector<std::string>& list, const char* dir, bool excludeDots)
+void WFile::folderList(std::vector<std::string>& list, const char* dir, bool excludeDots)
 {
 #ifdef WINDOWS
 	string s = dir;
@@ -272,7 +272,7 @@ void GFile::folderList(std::vector<std::string>& list, const char* dir, bool exc
 }
 
 // static
-void GFile::folderListRecursive(std::vector<std::string>& list, const char* dir)
+void WFile::folderListRecursive(std::vector<std::string>& list, const char* dir)
 {
 	list.push_back(dir);
 	std::vector<std::string> folders;
@@ -287,7 +287,7 @@ void GFile::folderListRecursive(std::vector<std::string>& list, const char* dir)
 }
 
 // static
-void GFile::fileListRecursive(std::vector<std::string>& list, const char* dir)
+void WFile::fileListRecursive(std::vector<std::string>& list, const char* dir)
 {
 	std::vector<std::string> folders;
 	folderListRecursive(folders, dir);
@@ -305,14 +305,14 @@ void GFile::fileListRecursive(std::vector<std::string>& list, const char* dir)
 	}
 }
 
-bool GFile::copyFile(const char* szSrcPath, const char* szDestPath)
+bool WFile::copyFile(const char* szSrcPath, const char* szDestPath)
 {
 	FILE* pSrc = fopen(szSrcPath, "rb");
 	if(!pSrc)
 		return false;
 
 	// create the subdirectory
-	GTEMPBUF(char, szSubdirectoryString, (int)strlen(szDestPath) + 1);
+	WTEMPBUF(char, szSubdirectoryString, (int)strlen(szDestPath) + 1);
 	strcpy(szSubdirectoryString, szDestPath);
 	clipFilename(szSubdirectoryString);
 	makeDir(szSubdirectoryString);
@@ -340,7 +340,7 @@ bool GFile::copyFile(const char* szSrcPath, const char* szDestPath)
 	return true;
 }
 
-bool GFile::localStorageDirectory(char* toHere)
+bool WFile::localStorageDirectory(char* toHere)
 {
 	toHere[0] = '\0';
 #ifdef WINDOWS
@@ -355,7 +355,7 @@ bool GFile::localStorageDirectory(char* toHere)
 #else
 #ifndef __linux__
 	// __APPLE__
-	GApp::appPath(toHere, 360, true);
+	WApp::appPath(toHere, 360, true);
 	return true;
 #else
 	char* szReturnValue;
@@ -372,7 +372,7 @@ bool GFile::localStorageDirectory(char* toHere)
 #endif
 }
 
-/*static*/ char* GFile::loadFile(const char* szFilename, size_t* pnSize)
+/*static*/ char* WFile::loadFile(const char* szFilename, size_t* pnSize)
 {
 	if(!std::filesystem::exists(szFilename))
 	{
@@ -406,7 +406,7 @@ bool GFile::localStorageDirectory(char* toHere)
 	return pBuf;
 }
 
-/*static*/ void GFile::saveFile(const char* pBuf, size_t size, const char* szFilename)
+/*static*/ void WFile::saveFile(const char* pBuf, size_t size, const char* szFilename)
 {
 	std::ofstream s;
 	s.exceptions(std::ios::badbit | std::ios::failbit);
@@ -421,7 +421,7 @@ bool GFile::localStorageDirectory(char* toHere)
 	s.write(pBuf, size);
 }
 
-/*static*/ void GFile::appendToFile(const char* szFilename, const char* szString)
+/*static*/ void WFile::appendToFile(const char* szFilename, const char* szString)
 {
 	std::ofstream s;
 	s.exceptions(std::ios::badbit | std::ios::failbit);
@@ -436,7 +436,7 @@ bool GFile::localStorageDirectory(char* toHere)
 	s << szString;
 }
 
-void GFile::condensePath(char* szPath)
+void WFile::condensePath(char* szPath)
 {
 	int n;
 #ifdef WINDOWS
@@ -485,7 +485,7 @@ void GFile::condensePath(char* szPath)
 }
 
 // static
-time_t GFile::modifiedTime(const char* szFilename)
+time_t WFile::modifiedTime(const char* szFilename)
 {
 	struct stat buffer;
 	/*int status = */ stat(szFilename, &buffer);
@@ -494,7 +494,7 @@ time_t GFile::modifiedTime(const char* szFilename)
 }
 
 // static
-void GFile::setModifiedTime(const char* szFilename, time_t t)
+void WFile::setModifiedTime(const char* szFilename, time_t t)
 {
 	struct stat bufferIn;
 	/*int status = */ stat(szFilename, &bufferIn);
@@ -505,7 +505,7 @@ void GFile::setModifiedTime(const char* szFilename, time_t t)
 }
 
 // static
-void GFile::parsePath(const char* szPath, struct PathData* pData)
+void WFile::parsePath(const char* szPath, struct PathData* pData)
 {
 #ifdef WINDOWS
 	if(szPath[0] != '\0' && szPath[1] == ':')
@@ -540,7 +540,7 @@ void GFile::parsePath(const char* szPath, struct PathData* pData)
 int g_tempID = 0;
 
 // static
-void GFile::tempFilename(char* pBuf)
+void WFile::tempFilename(char* pBuf)
 {
 #ifdef WINDOWS
 	char tmp[512];
@@ -569,7 +569,7 @@ void GFile::tempFilename(char* pBuf)
 
 
 
-string& GFileCache::get(const char* szFilename)
+string& WFileCache::get(const char* szFilename)
 {
 	// Find existing content
 	map<string, string>::iterator it = m_filename_to_page.find(szFilename);
@@ -628,9 +628,9 @@ public:
 unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned int* pOutNewLen, unsigned int keySize, unsigned int pieceSize, unsigned int origLen)
 {
 	// Build a map that counts how often all the pieces occur
-	GAssert(keySize > 0); // key size must be more than 0
-	GAssert(pieceSize > keySize && pieceSize <= 255); // piece size must be more than key size and less than 256
-	GAssert(len <= ((unsigned int)1 << (keySize * 8 - 1))); // len too big for this keySize
+	WAssert(keySize > 0); // key size must be more than 0
+	WAssert(pieceSize > keySize && pieceSize <= 255); // piece size must be more than key size and less than 256
+	WAssert(len <= ((unsigned int)1 << (keySize * 8 - 1))); // len too big for this keySize
 	CompressPieceComparer cpc1(pieceSize);
 	map<unsigned char*, unsigned char, CompressPieceComparer> pieces(cpc1); // map from offset to number of occurrences
 	CompressPieceComparer cpc2(keySize);
@@ -771,14 +771,14 @@ unsigned char* compressWorker(unsigned char* pData, unsigned int len, unsigned i
 const unsigned char g_pieceSizes[] = {18, 12, 7, 6, 5, 4, 3, 2};
 #define PIECE_SIZE_COUNT 8
 
-unsigned int GCompressor_chooseKeySize(unsigned char* pIn, unsigned int len)
+unsigned int WCompressor_chooseKeySize(unsigned char* pIn, unsigned int len)
 {
 	// try 1
 	{
 		if(len < 246)
 			return 1;
 		size_t usedCount = 0;
-		GBitTable bt(256);
+		WBitTable bt(256);
 		unsigned char* pPos = pIn;
 		for(size_t i = 0; i < len; i++)
 		{
@@ -799,7 +799,7 @@ unsigned int GCompressor_chooseKeySize(unsigned char* pIn, unsigned int len)
 		if(len < 65516)
 			return 2;
 		size_t usedCount = 0;
-		GBitTable bt(65536);
+		WBitTable bt(65536);
 		unsigned char* pPos = pIn;
 		for(size_t i = 1; i < len; i++)
 		{
@@ -822,10 +822,10 @@ unsigned int GCompressor_chooseKeySize(unsigned char* pIn, unsigned int len)
 }
 
 // static
-unsigned char* GCompressor::compress(unsigned char* pIn, unsigned int len, unsigned int* pOutNewLen)
+unsigned char* WCompressor::compress(unsigned char* pIn, unsigned int len, unsigned int* pOutNewLen)
 {
 	unsigned int origLen = len;
-	unsigned int keySize = GCompressor_chooseKeySize(pIn, len);
+	unsigned int keySize = WCompressor_chooseKeySize(pIn, len);
 	unsigned char* pOut = nullptr;
 	unsigned int newLen = 0;
 	for(int i = 0; i < PIECE_SIZE_COUNT; i++)
@@ -934,7 +934,7 @@ unsigned int uncompressWorker(unsigned char* pIn, unsigned int inLen, unsigned c
 }
 
 // static
-unsigned char* GCompressor::uncompress(unsigned char* pIn, unsigned int len, unsigned int* pOutUncompressedLen)
+unsigned char* WCompressor::uncompress(unsigned char* pIn, unsigned int len, unsigned int* pOutUncompressedLen)
 {
 	if(len < sizeof(unsigned int))
 		throw Ex("invalid data");
@@ -983,17 +983,17 @@ unsigned char* GCompressor::uncompress(unsigned char* pIn, unsigned int len, uns
 }
 
 // static
-void GCompressor::test()
+void WCompressor::test()
 {
 	const char* szTest = "a one and a two and a one two three four, one two three four xxx a one yyy a one zzz a one";
 	unsigned int len = (unsigned int)strlen(szTest);
 	unsigned int compressedLen;
-	unsigned char* pCompressed = GCompressor::compress((unsigned char*)szTest, len, &compressedLen);
+	unsigned char* pCompressed = WCompressor::compress((unsigned char*)szTest, len, &compressedLen);
 	std::unique_ptr<unsigned char[]> hCompressed(pCompressed);
 	if(compressedLen >= len)
 		throw Ex("failed to compress");
 	unsigned int finalLen;
-	unsigned char* pFinal = GCompressor::uncompress(pCompressed, compressedLen, &finalLen);
+	unsigned char* pFinal = WCompressor::uncompress(pCompressed, compressedLen, &finalLen);
 	std::unique_ptr<unsigned char[]> hFinal(pFinal);
 	if(finalLen != len)
 		throw Ex("failed to uncompress");

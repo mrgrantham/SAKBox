@@ -17,43 +17,43 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GError.h"
-#include "GSparseMatrix.h"
+#include "WError.h"
+#include "WSparseMatrix.h"
 #include <math.h>
-#include "GMatrix.h"
-#include "GVec.h"
-#include "GFile.h"
-#include "GRand.h"
-#include "GHolders.h"
+#include "WMatrix.h"
+#include "WVec.h"
+#include "WFile.h"
+#include "WRand.h"
+#include "WHolders.h"
 #include <fstream>
-#include "GDom.h"
+#include "WDom.h"
 #include <cmath>
 #include <set>
 #include <memory>
 
 using std::cout;
 
-namespace GClasses
+namespace WClasses
 {
 
-GSparseMatrix::GSparseMatrix(size_t rowCount, size_t colCount, double def_Value)
+WSparseMatrix::WSparseMatrix(size_t rowCount, size_t colCount, double def_Value)
 : m_cols(colCount), m_defaultValue(def_Value)
 {
 	m_rows.resize(rowCount);
 }
 
-GSparseMatrix::GSparseMatrix(const GDomNode* pNode)
+WSparseMatrix::WSparseMatrix(const WDomNode* pNode)
 {
 	m_defaultValue = pNode->getDouble("def");
 	m_cols = (size_t)pNode->getInt("cols");
-	GDomNode* pRows = pNode->get("rows");
-	GDomListIterator it1(pRows);
+	WDomNode* pRows = pNode->get("rows");
+	WDomListIterator it1(pRows);
 	size_t rowCount = it1.remaining();
 	m_rows.resize(rowCount);
 	for(size_t i = 0; i < rowCount; i++)
 	{
-		GDomNode* pElements = it1.current();
-		for(GDomListIterator it2(pElements); it2.current(); it2.advance())
+		WDomNode* pElements = it1.current();
+		for(WDomListIterator it2(pElements); it2.current(); it2.advance())
 		{
 			size_t col = (size_t)it2.currentInt();
 			it2.advance();
@@ -66,19 +66,19 @@ GSparseMatrix::GSparseMatrix(const GDomNode* pNode)
 	}
 }
 
-GSparseMatrix::~GSparseMatrix()
+WSparseMatrix::~WSparseMatrix()
 {
 }
 
-GDomNode* GSparseMatrix::serialize(GDom* pDoc) const
+WDomNode* WSparseMatrix::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "def", m_defaultValue);
 	pNode->add(pDoc, "cols", m_cols);
-	GDomNode* pRows = pNode->add(pDoc, "rows", pDoc->newList());
+	WDomNode* pRows = pNode->add(pDoc, "rows", pDoc->newList());
 	for(size_t i = 0; i < m_rows.size(); i++)
 	{
-		GDomNode* pElements = pRows->add(pDoc, pDoc->newList());
+		WDomNode* pElements = pRows->add(pDoc, pDoc->newList());
 		for(Iter it = rowBegin(i); it != rowEnd(i); it++)
 		{
 			pElements->add(pDoc, it->first);
@@ -88,7 +88,7 @@ GDomNode* GSparseMatrix::serialize(GDom* pDoc) const
 	return pNode;
 }
 
-void GSparseMatrix::fullRow(GVec& outFullRow, size_t r)
+void WSparseMatrix::fullRow(WVec& outFullRow, size_t r)
 {
 	outFullRow.resize(m_cols);
 	outFullRow.fill(m_defaultValue);
@@ -97,25 +97,25 @@ void GSparseMatrix::fullRow(GVec& outFullRow, size_t r)
 		outFullRow[it->first] = it->second;
 }
 
-double GSparseMatrix::get(size_t rowIndex, size_t colIndex) const
+double WSparseMatrix::get(size_t rowIndex, size_t colIndex) const
 {
-	GAssert(rowIndex < m_rows.size() && colIndex < m_cols); // out of range
+	WAssert(rowIndex < m_rows.size() && colIndex < m_cols); // out of range
 	SparseVec::const_iterator it = m_rows[rowIndex].find(colIndex);
 	if(it == m_rows[rowIndex].end())
 		return m_defaultValue;
 	return it->second;
 }
 
-void GSparseMatrix::set(size_t rowIndex, size_t colIndex, double val)
+void WSparseMatrix::set(size_t rowIndex, size_t colIndex, double val)
 {
-	GAssert(rowIndex < m_rows.size() && colIndex < m_cols); // out of range
+	WAssert(rowIndex < m_rows.size() && colIndex < m_cols); // out of range
 	if(val == m_defaultValue)
 		m_rows[rowIndex].erase(colIndex);
 	else
 		m_rows[rowIndex][colIndex] = val;
 }
 
-void GSparseMatrix::multiply(double scalar)
+void WSparseMatrix::multiply(double scalar)
 {
 	if(m_defaultValue != 0.0)
 		throw Ex("This method assumes the default value is 0");
@@ -127,11 +127,11 @@ void GSparseMatrix::multiply(double scalar)
 	}
 }
 
-GMatrix* GSparseMatrix::multiply(GMatrix* pThat, bool transposeThat)
+WMatrix* WSparseMatrix::multiply(WMatrix* pThat, bool transposeThat)
 {
 	// Transpose pThat if necessary
-	GMatrix* pOther = pThat;
-	std::unique_ptr<GMatrix> hOther;
+	WMatrix* pOther = pThat;
+	std::unique_ptr<WMatrix> hOther;
 	if(!transposeThat)
 	{
 		pOther = pThat->transpose();
@@ -141,34 +141,34 @@ GMatrix* GSparseMatrix::multiply(GMatrix* pThat, bool transposeThat)
 		throw Ex("Matrices have incompatible sizes");
 
 	// Do the multiplying
-	GMatrix* pResult = new GMatrix(rows(), pOther->rows());
+	WMatrix* pResult = new WMatrix(rows(), pOther->rows());
 	for(size_t r = 0; r < rows(); r++)
 	{
 		SparseVec& a = row(r);
-		GVec& out = pResult->row(r);
+		WVec& out = pResult->row(r);
 		for(size_t c = 0; c < pOther->rows(); c++)
 		{
-			GVec& b = pOther->row(c);
-			out[c] = GSparseVec::dotProduct(a, b);
+			WVec& b = pOther->row(c);
+			out[c] = WSparseVec::dotProduct(a, b);
 		}
 	}
 	return pResult;
 }
 
-GMatrix* GSparseMatrix::project(GMatrix& components)
+WMatrix* WSparseMatrix::project(WMatrix& components)
 {
-	GMatrix* pOut = new GMatrix(rows(), components.rows());
+	WMatrix* pOut = new WMatrix(rows(), components.rows());
 	for(size_t i = 0; i < rows(); i++)
 	{
 		for(size_t j = 0; j < components.rows(); j++)
 		{
-			(*pOut)[i][j] = GSparseVec::dotProduct(row(i), components.row(j));
+			(*pOut)[i][j] = WSparseVec::dotProduct(row(i), components.row(j));
 		}
 	}
 	return pOut;
 }
 
-void GSparseMatrix::copyFrom(const GSparseMatrix* that)
+void WSparseMatrix::copyFrom(const WSparseMatrix* that)
 {
 	size_t rowCount = std::min(m_rows.size(), that->rows());
 	for(size_t r = 0; r < rowCount; r++)
@@ -183,29 +183,29 @@ void GSparseMatrix::copyFrom(const GSparseMatrix* that)
 	}
 }
 
-void GSparseMatrix::copyFrom(const GMatrix* that)
+void WSparseMatrix::copyFrom(const WMatrix* that)
 {
 	size_t rowCount = std::min(m_rows.size(), that->rows());
 	size_t colCount = std::min(m_cols, (size_t)that->cols());
 	for(size_t r = 0; r < rowCount; r++)
 	{
-		const GVec& rr = that->row(r);
+		const WVec& rr = that->row(r);
 		for(size_t c = 0; c < colCount; c++)
 			set(r, c, rr[c]);
 	}
 }
 
-void GSparseMatrix::newRow()
+void WSparseMatrix::newRow()
 {
 	newRows(1);
 }
 
-void GSparseMatrix::newRows(size_t n)
+void WSparseMatrix::newRows(size_t n)
 {
 	m_rows.resize(m_rows.size() + n);
 }
 
-void GSparseMatrix::copyRow(SparseVec& r)
+void WSparseMatrix::copyRow(SparseVec& r)
 {
 	size_t n = m_rows.size();
 	newRow();
@@ -213,18 +213,18 @@ void GSparseMatrix::copyRow(SparseVec& r)
 	m = r;
 }
 
-void GSparseMatrix::clear()
+void WSparseMatrix::clear()
 {
 	for(size_t r = 0; r < rows(); r++)
 		m_rows[r].clear();
 }
 
-GMatrix* GSparseMatrix::toFullMatrix()
+WMatrix* WSparseMatrix::toFullMatrix()
 {
-	GMatrix* pData = new GMatrix(m_rows.size(), m_cols);
+	WMatrix* pData = new WMatrix(m_rows.size(), m_cols);
 	for(size_t r = 0; r < m_rows.size(); r++)
 	{
-		GVec& rr = pData->row(r);
+		WVec& rr = pData->row(r);
 		rr.fill(m_defaultValue);
 		Iter end = rowEnd(r);
 		for(Iter it = rowBegin(r); it != end; it++)
@@ -233,7 +233,7 @@ GMatrix* GSparseMatrix::toFullMatrix()
 	return pData;
 }
 
-void GSparseMatrix::swapColumns(size_t a, size_t b)
+void WSparseMatrix::swapColumns(size_t a, size_t b)
 {
 	for(size_t r = 0; r < m_rows.size(); r++)
 	{
@@ -244,12 +244,12 @@ void GSparseMatrix::swapColumns(size_t a, size_t b)
 	}
 }
 
-void GSparseMatrix::swapRows(size_t a, size_t b)
+void WSparseMatrix::swapRows(size_t a, size_t b)
 {
 	std::swap(m_rows[a], m_rows[b]);
 }
 
-void GSparseMatrix::shuffle(GRand* pRand, GMatrix* pLabels)
+void WSparseMatrix::shuffle(WRand* pRand, WMatrix* pLabels)
 {
 	if(pLabels)
 	{
@@ -267,11 +267,11 @@ void GSparseMatrix::shuffle(GRand* pRand, GMatrix* pLabels)
 	}
 }
 
-GSparseMatrix* GSparseMatrix::subMatrix(size_t r, size_t c, size_t height, size_t width)
+WSparseMatrix* WSparseMatrix::subMatrix(size_t r, size_t c, size_t height, size_t width)
 {
 	if(r + height >= m_rows.size() || c + width >= m_cols)
 		throw Ex("out of range");
-	GSparseMatrix* pSub = new GSparseMatrix(height, width, m_defaultValue);
+	WSparseMatrix* pSub = new WSparseMatrix(height, width, m_defaultValue);
 	for(size_t y = 0; y < height; y++)
 	{
 		for(size_t x = 0; x < width; x++)
@@ -280,9 +280,9 @@ GSparseMatrix* GSparseMatrix::subMatrix(size_t r, size_t c, size_t height, size_
 	return pSub;
 }
 
-GSparseMatrix* GSparseMatrix::transpose()
+WSparseMatrix* WSparseMatrix::transpose()
 {
-	GSparseMatrix* pThat = new GSparseMatrix(cols(), rows(), m_defaultValue);
+	WSparseMatrix* pThat = new WSparseMatrix(cols(), rows(), m_defaultValue);
 	for(size_t i = 0; i < rows(); i++)
 	{
 		Iter end = rowEnd(i);
@@ -297,7 +297,7 @@ GSparseMatrix* GSparseMatrix::transpose()
 
 
 
-double GSparseMatrix_pythag(double a, double b)
+double WSparseMatrix_pythag(double a, double b)
 {
 	double at = std::abs(a);
 	double bt = std::abs(b);
@@ -315,12 +315,12 @@ double GSparseMatrix_pythag(double a, double b)
 		return 0.0;
 }
 
-double GSparseMatrix_takeSign(double a, double b)
+double WSparseMatrix_takeSign(double a, double b)
 {
 	return (b >= 0.0 ? std::abs(a) : -std::abs(a));
 }
 
-void GSparseMatrix::singularValueDecomposition(GSparseMatrix** ppU, double** ppDiag, GSparseMatrix** ppV, bool throwIfNoConverge, size_t maxIters)
+void WSparseMatrix::singularValueDecomposition(WSparseMatrix** ppU, double** ppDiag, WSparseMatrix** ppV, bool throwIfNoConverge, size_t maxIters)
 {
 	if(m_defaultValue != 0.0)
 		throw Ex("Expected the default value to be 0");
@@ -328,31 +328,31 @@ void GSparseMatrix::singularValueDecomposition(GSparseMatrix** ppU, double** ppD
 		singularValueDecompositionHelper(ppU, ppDiag, ppV, throwIfNoConverge, maxIters);
 	else
 	{
-		GSparseMatrix* pTemp = transpose();
-		std::unique_ptr<GSparseMatrix> hTemp(pTemp);
+		WSparseMatrix* pTemp = transpose();
+		std::unique_ptr<WSparseMatrix> hTemp(pTemp);
 		pTemp->singularValueDecompositionHelper(ppV, ppDiag, ppU, throwIfNoConverge, maxIters);
-		GSparseMatrix* pOldV = *ppV;
+		WSparseMatrix* pOldV = *ppV;
 		*ppV = pOldV->transpose();
 		delete(pOldV);
-		GSparseMatrix* pOldU = *ppU;
+		WSparseMatrix* pOldU = *ppU;
 		*ppU = pOldU->transpose();
 		delete(pOldU);
 	}
 }
 
-double GSparseMatrix_safeDivide(double n, double d)
+double WSparseMatrix_safeDivide(double n, double d)
 {
 	if(d == 0.0 && n == 0.0)
 		return 0.0;
 	else
 	{
 		double t = n / d;
-		//GAssert(t > -1e200, "prob");
+		//WAssert(t > -1e200, "prob");
 		return t;
 	}
 }
 
-void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double** ppDiag, GSparseMatrix** ppV, bool throwIfNoConverge, size_t maxIters)
+void WSparseMatrix::singularValueDecompositionHelper(WSparseMatrix** ppU, double** ppDiag, WSparseMatrix** ppV, bool throwIfNoConverge, size_t maxIters)
 {
 	int m = (int)rows();
 	int n = (int)cols();
@@ -364,18 +364,18 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 	double norm = 0.0;
 	double g = 0.0;
 	double scale = 0.0;
-	GSparseMatrix* pU = new GSparseMatrix(m, m);
-	std::unique_ptr<GSparseMatrix> hU(pU);
+	WSparseMatrix* pU = new WSparseMatrix(m, m);
+	std::unique_ptr<WSparseMatrix> hU(pU);
 	pU->copyFrom(this);
 	double* pSigma = new double[n];
 	std::unique_ptr<double[]> hSigma(pSigma);
-	GSparseMatrix* pV = new GSparseMatrix(n, n);
-	std::unique_ptr<GSparseMatrix> hV(pV);
-	GTEMPBUF(double, temp, n);
+	WSparseMatrix* pV = new WSparseMatrix(n, n);
+	std::unique_ptr<WSparseMatrix> hV(pV);
+	WTEMPBUF(double, temp, n);
 
 	// Householder reduction to bidiagonal form
-	GSparseMatrix* pUT = pU->transpose();
-	std::unique_ptr<GSparseMatrix> hUT(pUT);
+	WSparseMatrix* pUT = pU->transpose();
+	std::unique_ptr<WSparseMatrix> hUT(pUT);
 	for(int i = 0; i < n; i++)
 	{
 		// Left-hand reduction
@@ -396,13 +396,13 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 				for(it = pUT->m_rows[i].begin(); it != end && it->first < (size_t)i; it++) {}
 				for(; it != end; it++)
 				{
-					double t = GSparseMatrix_safeDivide(it->second, scale);
+					double t = WSparseMatrix_safeDivide(it->second, scale);
 					it->second = t;
 					pU->row(it->first)[i] = t;
 					s += t * t;
 				}
 				f = pU->row(i)[i];
-				g = -GSparseMatrix_takeSign(sqrt(s), f);
+				g = -WSparseMatrix_takeSign(sqrt(s), f);
 				h = f * g - s;
 				pU->row(i)[i] = f - g;
 				pUT->row(i)[i] = f - g;
@@ -427,7 +427,7 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 								it2++;
 							}
 						}
-						f = GSparseMatrix_safeDivide(s, h);
+						f = WSparseMatrix_safeDivide(s, h);
 						for(it = pUT->m_rows[i].begin(); it != end && it->first < (size_t)i; it++) {}
 						for(; it != end; it++)
 						{
@@ -464,19 +464,19 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 				for(it = pU->m_rows[i].begin(); it != end && it->first < (size_t)l; it++) {}
 				for(; it != end; it++)
 				{
-					double t = GSparseMatrix_safeDivide(it->second, scale);
+					double t = WSparseMatrix_safeDivide(it->second, scale);
 					it->second = t;
 					pUT->row(it->first)[i] = t;
 					s += t * t;
 				}
 				f = pU->row(i)[l];
-				g = -GSparseMatrix_takeSign(sqrt(s), f);
+				g = -WSparseMatrix_takeSign(sqrt(s), f);
 				h = f * g - s;
 				pU->row(i)[l] = f - g;
 				pUT->row(l)[i] = f - g;
 				for(it = pU->m_rows[i].begin(); it != end && it->first < (size_t)l; it++) {}
 				for(; it != end; it++)
-					temp[it->first] = GSparseMatrix_safeDivide(it->second, h);
+					temp[it->first] = WSparseMatrix_safeDivide(it->second, h);
 				if(i != m - 1)
 				{
 					for(j = l; j < m; j++)
@@ -527,7 +527,7 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 			if(g != 0.0)
 			{
 				for(j = l; j < n; j++)
-					pV->row(i)[j] = GSparseMatrix_safeDivide(GSparseMatrix_safeDivide(pU->row(i)[j], pU->row(i)[l]), g); // (double-division to avoid underflow)
+					pV->row(i)[j] = WSparseMatrix_safeDivide(WSparseMatrix_safeDivide(pU->row(i)[j], pU->row(i)[l]), g); // (double-division to avoid underflow)
 				for(j = l; j < n; j++)
 				{
 					s = 0.0;
@@ -581,7 +581,7 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 		}
 		if(g != 0.0)
 		{
-			g = GSparseMatrix_safeDivide(1.0, g);
+			g = WSparseMatrix_safeDivide(1.0, g);
 			if(i != n - 1)
 			{
 				for(j = l; j < n; j++)
@@ -605,7 +605,7 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 							it2++;
 						}
 					}
-					f = GSparseMatrix_safeDivide(s, pU->row(i)[i]) * g;
+					f = WSparseMatrix_safeDivide(s, pU->row(i)[i]) * g;
 					for(it1 = pUT->m_rows[i].begin(); it1 != end && it1->first < (size_t)i; it1++) {}
 					for(; it1 != end; it1++)
 					{
@@ -664,9 +664,9 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 					if(std::abs(f) + norm == norm)
 						break;
 					g = pSigma[i];
-					h = GSparseMatrix_pythag(f, g);
+					h = WSparseMatrix_pythag(f, g);
 					pSigma[i] = h;
-					h = GSparseMatrix_safeDivide(1.0, h);
+					h = WSparseMatrix_safeDivide(1.0, h);
 					c = g * h;
 					s = -f * h;
 					indexes.clear();
@@ -710,9 +710,9 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 			y = pSigma[q];
 			g = temp[q];
 			h = temp[k];
-			f = GSparseMatrix_safeDivide(((y - z) * (y + z) + (g - h) * (g + h)), (2.0 * h * y));
-			g = GSparseMatrix_pythag(f, 1.0);
-			f = GSparseMatrix_safeDivide(((x - z) * (x + z) + h * (GSparseMatrix_safeDivide(y, (f + GSparseMatrix_takeSign(g, f))) - h)), x);
+			f = WSparseMatrix_safeDivide(((y - z) * (y + z) + (g - h) * (g + h)), (2.0 * h * y));
+			g = WSparseMatrix_pythag(f, 1.0);
+			f = WSparseMatrix_safeDivide(((x - z) * (x + z) + h * (WSparseMatrix_safeDivide(y, (f + WSparseMatrix_takeSign(g, f))) - h)), x);
 
 			// QR transform
 			c = 1.0;
@@ -724,10 +724,10 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 				y = pSigma[i];
 				h = s * g;
 				g = c * g;
-				z = GSparseMatrix_pythag(f, h);
+				z = WSparseMatrix_pythag(f, h);
 				temp[j] = z;
-				c = GSparseMatrix_safeDivide(f, z);
-				s = GSparseMatrix_safeDivide(h, z);
+				c = WSparseMatrix_safeDivide(f, z);
+				s = WSparseMatrix_safeDivide(h, z);
 				f = x * c + g * s;
 				g = g * c - x * s;
 				h = y * s;
@@ -746,11 +746,11 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 					pV->row(j)[*it] = x * c + z * s;
 					pV->row(i)[*it] = z * c - x * s;
 				}
-				z = GSparseMatrix_pythag(f, h);
+				z = WSparseMatrix_pythag(f, h);
 				pSigma[j] = z;
 				if(z != 0.0)
 				{
-					z = GSparseMatrix_safeDivide(1.0, z);
+					z = WSparseMatrix_safeDivide(1.0, z);
 					c = f * z;
 					s = h * z;
 				}
@@ -798,7 +798,7 @@ void GSparseMatrix::singularValueDecompositionHelper(GSparseMatrix** ppU, double
 	*ppV = hV.release();
 }
 
-void GSparseMatrix::principalComponentAboutOrigin(GVec& outVector, GRand* pRand)
+void WSparseMatrix::principalComponentAboutOrigin(WVec& outVector, WRand* pRand)
 {
 	if(m_defaultValue != 0.0)
 		throw Ex("Expected the default value to be 0");
@@ -810,7 +810,7 @@ void GSparseMatrix::principalComponentAboutOrigin(GVec& outVector, GRand* pRand)
 
 	// Iterate
 	size_t nCount = rows();
-	GVec pAccumulator(dims);
+	WVec pAccumulator(dims);
 	double d;
 	double mag = 0;
 	for(size_t iters = 0; iters < 200; iters++)
@@ -835,44 +835,44 @@ void GSparseMatrix::principalComponentAboutOrigin(GVec& outVector, GRand* pRand)
 	}
 }
 
-void GSparseMatrix::deleteLastRow()
+void WSparseMatrix::deleteLastRow()
 {
 	m_rows.pop_back();
 }
 
-void GSparseMatrix::resize(size_t rows, size_t cols)
+void WSparseMatrix::resize(size_t rows, size_t cols)
 {
 	clear();
 	m_cols = cols;
 	m_rows.resize(rows);
 }
 
-bool GSparseMatrix_testHelper(GSparseMatrix& sm)
+bool WSparseMatrix_testHelper(WSparseMatrix& sm)
 {
-	GMatrix* fm = sm.toFullMatrix();
-	std::unique_ptr<GMatrix> hFM(fm);
+	WMatrix* fm = sm.toFullMatrix();
+	std::unique_ptr<WMatrix> hFM(fm);
 
 	// Do it with the full matrix
-	GMatrix* pU;
+	WMatrix* pU;
 	double* pDiag;
-	GMatrix* pV;
+	WMatrix* pV;
 	fm->singularValueDecomposition(&pU, &pDiag, &pV);
-	std::unique_ptr<GMatrix> hU(pU);
+	std::unique_ptr<WMatrix> hU(pU);
 	std::unique_ptr<double[]> hDiag(pDiag);
-	std::unique_ptr<GMatrix> hV(pV);
+	std::unique_ptr<WMatrix> hV(pV);
 
 	// Do it with the sparse matrix
-	GSparseMatrix* pSU;
+	WSparseMatrix* pSU;
 	double* pSDiag;
-	GSparseMatrix* pSV;
+	WSparseMatrix* pSV;
 	sm.singularValueDecomposition(&pSU, &pSDiag, &pSV);
-	std::unique_ptr<GSparseMatrix> hSU(pSU);
+	std::unique_ptr<WSparseMatrix> hSU(pSU);
 	std::unique_ptr<double[]> hSDiag(pSDiag);
-	std::unique_ptr<GSparseMatrix> hSV(pSV);
+	std::unique_ptr<WSparseMatrix> hSV(pSV);
 
 	// Check the results
-	GMatrix* pV2 = pSV->toFullMatrix();
-	std::unique_ptr<GMatrix> hV2(pV2);
+	WMatrix* pV2 = pSV->toFullMatrix();
+	std::unique_ptr<WMatrix> hV2(pV2);
 	double err = pV2->sumSquaredDifference(*pV, false);
 	if(err > 1e-6)
 		return false;
@@ -880,18 +880,18 @@ bool GSparseMatrix_testHelper(GSparseMatrix& sm)
 }
 
 // static
-void GSparseMatrix::test()
+void WSparseMatrix::test()
 {
-	GRand prng(0);
+	WRand prng(0);
 	size_t failures = 0;
 	for(size_t i = 0; i < 100; i++)
 	{
 		size_t w = (size_t)prng.next(20) + 1;
 		size_t h = (size_t)prng.next(20) + 1;
-		GSparseMatrix m(h, w);
+		WSparseMatrix m(h, w);
 		for(size_t j = 0; j < 60; j++)
 			m.set((size_t)prng.next(h), (size_t)prng.next(w), prng.normal());
-		if(!GSparseMatrix_testHelper(m))
+		if(!WSparseMatrix_testHelper(m))
 			failures++;
 	}
 	size_t tolerance = 0;
@@ -906,7 +906,7 @@ void GSparseMatrix::test()
 
 
 // static
-size_t GSparseVec::indexOfMaxMagnitude(SparseVec& sparse)
+size_t WSparseVec::indexOfMaxMagnitude(SparseVec& sparse)
 {
 	size_t i = 0;
 	double mag = -1.0;
@@ -923,7 +923,7 @@ size_t GSparseVec::indexOfMaxMagnitude(SparseVec& sparse)
 }
 
 // static
-double GSparseVec::dotProduct(SparseVec& sparse, GVec& dense)
+double WSparseVec::dotProduct(SparseVec& sparse, WVec& dense)
 {
 	double d = 0.0;
 	for(SparseVec::iterator it = sparse.begin(); it != sparse.end(); it++)
@@ -932,7 +932,7 @@ double GSparseVec::dotProduct(SparseVec& sparse, GVec& dense)
 }
 
 // static
-double GSparseVec::dotProduct(SparseVec& a, SparseVec& b)
+double WSparseVec::dotProduct(SparseVec& a, SparseVec& b)
 {
 	double d = 0.0;
 	SparseVec::iterator itA = a.begin();
@@ -966,7 +966,7 @@ double GSparseVec::dotProduct(SparseVec& a, SparseVec& b)
 }
 
 // static
-size_t GSparseVec::count_matching_elements(SparseVec& a, SparseVec& b)
+size_t WSparseVec::count_matching_elements(SparseVec& a, SparseVec& b)
 {
 	size_t count = 0;
 	SparseVec::iterator itA = a.begin();
@@ -989,5 +989,5 @@ size_t GSparseVec::count_matching_elements(SparseVec& a, SparseVec& b)
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 

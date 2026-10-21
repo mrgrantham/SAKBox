@@ -17,30 +17,30 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GGaussianProcess.h"
-#include "GRand.h"
-#include "GDom.h"
-#include "GVec.h"
-#include "GDistribution.h"
-#include "GKernelTrick.h"
-#include "GHolders.h"
+#include "WGaussianProcess.h"
+#include "WRand.h"
+#include "WDom.h"
+#include "WVec.h"
+#include "WDistribution.h"
+#include "WKernelTrick.h"
+#include "WHolders.h"
 #include <cmath>
 #include <memory>
 
-namespace GClasses
+namespace WClasses
 {
 
-GRunningCovariance::GRunningCovariance(size_t dims) : m_counts(dims, dims), m_sums(dims + 1, dims)
+WRunningCovariance::WRunningCovariance(size_t dims) : m_counts(dims, dims), m_sums(dims + 1, dims)
 {
 	m_counts.fill(0.0);
 	m_sums.fill(0.0);
 }
 
-GRunningCovariance::~GRunningCovariance()
+WRunningCovariance::~WRunningCovariance()
 {
 }
 
-double GRunningCovariance::element(size_t row, size_t col)
+double WRunningCovariance::element(size_t row, size_t col)
 {
 	if(col < row)
 		std::swap(row, col);
@@ -50,7 +50,7 @@ double GRunningCovariance::element(size_t row, size_t col)
 	return n / (n - 1) * (m_sums[row][col] / m_counts[row][col] - (m_sums[m_counts.rows()][row] * m_sums[m_counts.rows()][col]) / (m_counts[row][row] * m_counts[col][col]));
 }
 
-void GRunningCovariance::add(const GVec& vec)
+void WRunningCovariance::add(const WVec& vec)
 {
 	for(size_t i = 0; i < m_counts.rows(); i++)
 	{
@@ -69,23 +69,23 @@ void GRunningCovariance::add(const GVec& vec)
 	}
 }
 
-void GRunningCovariance::decay(double gamma)
+void WRunningCovariance::decay(double gamma)
 {
 	m_counts.multiply(gamma);
 	m_sums.multiply(gamma);
 }
 
 // static
-void GRunningCovariance::test()
+void WRunningCovariance::test()
 {
-	GRand rand(0);
-	GMatrix m(13, 7);
+	WRand rand(0);
+	WMatrix m(13, 7);
 	for(size_t i = 0; i < m.rows(); i++)
 		m[i].fillUniform(rand);
-	GMatrix* pCov1 = m.covarianceMatrix();
-	std::unique_ptr<GMatrix> hCov1(pCov1);
+	WMatrix* pCov1 = m.covarianceMatrix();
+	std::unique_ptr<WMatrix> hCov1(pCov1);
 	m.centerMeanAtOrigin();
-	GRunningCovariance rc(m.cols());
+	WRunningCovariance rc(m.cols());
 	for(size_t i = 0; i < m.rows(); i++)
 		rc.add(m[i]);
 	for(size_t i = 0; i < m.cols(); i++)
@@ -106,47 +106,47 @@ void GRunningCovariance::test()
 
 
 
-GGaussianProcess::GGaussianProcess()
-: GSupervisedLearner(), m_noiseVar(1.0), m_weightsPriorVar(1024.0), m_maxSamples(350), m_pLInv(nullptr), m_pAlpha(nullptr), m_pStoredFeatures(nullptr), m_pBuf(nullptr)
+WGaussianProcess::WGaussianProcess()
+: WSupervisedLearner(), m_noiseVar(1.0), m_weightsPriorVar(1024.0), m_maxSamples(350), m_pLInv(nullptr), m_pAlpha(nullptr), m_pStoredFeatures(nullptr), m_pBuf(nullptr)
 {
-	m_pKernel = new GKernelIdentity();
+	m_pKernel = new WKernelIdentity();
 }
 
-GGaussianProcess::GGaussianProcess(const GDomNode* pNode)
-: GSupervisedLearner(pNode), m_pBuf(nullptr)
+WGaussianProcess::WGaussianProcess(const WDomNode* pNode)
+: WSupervisedLearner(pNode), m_pBuf(nullptr)
 {
 	m_weightsPriorVar = pNode->getDouble("wv");
 	m_noiseVar = pNode->getDouble("nv");
 	m_maxSamples = (size_t)pNode->getInt("ms");
-	m_pLInv = new GMatrix(pNode->get("l"));
-	m_pAlpha = new GMatrix(pNode->get("a"));
-	m_pStoredFeatures = new GMatrix(pNode->get("feat"));
-	m_pKernel = GKernel::deserialize(pNode->get("kernel"));
+	m_pLInv = new WMatrix(pNode->get("l"));
+	m_pAlpha = new WMatrix(pNode->get("a"));
+	m_pStoredFeatures = new WMatrix(pNode->get("feat"));
+	m_pKernel = WKernel::deserialize(pNode->get("kernel"));
 }
 
 // virtual
-GGaussianProcess::~GGaussianProcess()
+WGaussianProcess::~WGaussianProcess()
 {
 	clear();
 	delete(m_pKernel);
 }
 
 // static
-void GGaussianProcess::test()
+void WGaussianProcess::test()
 {
-	GAutoFilter af(new GGaussianProcess());
+	WAutoFilter af(new WGaussianProcess());
 	af.basicTest(0.693, 0.94);
 	af.clear();
-	GGaussianProcess* pGP = new GGaussianProcess();
-	pGP->setKernel(new GKernelGaussianRBF(0.2));
-	GAutoFilter af2(pGP);
+	WGaussianProcess* pGP = new WGaussianProcess();
+	pGP->setKernel(new WKernelGaussianRBF(0.2));
+	WAutoFilter af2(pGP);
 	af2.basicTest(0.67, 0.92);
 }
 
 // virtual
-GDomNode* GGaussianProcess::serialize(GDom* pDoc) const
+WDomNode* WGaussianProcess::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GGaussianProcess");
+	WDomNode* pNode = baseDomNode(pDoc, "WGaussianProcess");
 	pNode->add(pDoc, "wv", m_weightsPriorVar);
 	pNode->add(pDoc, "nv", m_noiseVar);
 	pNode->add(pDoc, "ms", m_maxSamples);
@@ -158,7 +158,7 @@ GDomNode* GGaussianProcess::serialize(GDom* pDoc) const
 }
 
 // virtual
-void GGaussianProcess::clear()
+void WGaussianProcess::clear()
 {
 	delete(m_pLInv);
 	m_pLInv = nullptr;
@@ -171,25 +171,25 @@ void GGaussianProcess::clear()
 }
 
 // virtual
-void GGaussianProcess::trainInner(const GMatrix& features, const GMatrix& labels)
+void WGaussianProcess::trainInner(const WMatrix& features, const WMatrix& labels)
 {
 	if(!features.relation().areContinuous())
-		throw Ex("GGaussianProcess only supports continuous features. Perhaps you should wrap it in a GAutoFilter.");
+		throw Ex("WGaussianProcess only supports continuous features. Perhaps you should wrap it in a WAutoFilter.");
 	if(!labels.relation().areContinuous())
-		throw Ex("GGaussianProcess only supports continuous labels. Perhaps you should wrap it in a GAutoFilter.");
+		throw Ex("WGaussianProcess only supports continuous labels. Perhaps you should wrap it in a WAutoFilter.");
 	if(features.rows() <= m_maxSamples)
 	{
 		trainInnerInner(features, labels);
 		return;
 	}
-	GMatrix f(features.relation().clone());
-	GReleaseDataHolder hF(&f);
-	GMatrix l(labels.relation().clone());
-	GReleaseDataHolder hL(&l);
+	WMatrix f(features.relation().clone());
+	WReleaseDataHolder hF(&f);
+	WMatrix l(labels.relation().clone());
+	WReleaseDataHolder hL(&l);
 	for(size_t i = 0; i < features.rows(); i++)
 	{
-		f.takeRow((GVec*)&features[i]);
-		l.takeRow((GVec*)&labels[i]);
+		f.takeRow((WVec*)&features[i]);
+		l.takeRow((WVec*)&labels[i]);
 	}
 	while(f.rows() > m_maxSamples)
 	{
@@ -200,20 +200,20 @@ void GGaussianProcess::trainInner(const GMatrix& features, const GMatrix& labels
 	trainInnerInner(f, l);
 }
 
-void GGaussianProcess::trainInnerInner(const GMatrix& features, const GMatrix& labels)
+void WGaussianProcess::trainInnerInner(const WMatrix& features, const WMatrix& labels)
 {
 	clear();
-	GMatrix* pL;
+	WMatrix* pL;
 	{
 		// Compute the kernel matrix
-		GMatrix k(features.rows(), features.rows());
+		WMatrix k(features.rows(), features.rows());
 		for(size_t i = 0; i < features.rows(); i++)
 		{
-			GVec& row = k[i];
-			const GVec& a = features[i];
+			WVec& row = k[i];
+			const WVec& a = features[i];
 			for(size_t j = 0; j < features.rows(); j++)
 			{
-				const GVec& b = features[j];
+				const WVec& b = features[j];
 				row[j] = m_weightsPriorVar * m_pKernel->apply(a, b);
 			}
 		}
@@ -225,31 +225,31 @@ void GGaussianProcess::trainInnerInner(const GMatrix& features, const GMatrix& l
 		// Compute L
 		pL = k.cholesky(true);
 	}
-	std::unique_ptr<GMatrix> hL(pL);
+	std::unique_ptr<WMatrix> hL(pL);
 
 	// Compute the model
 	m_pLInv = pL->pseudoInverse();
-	GMatrix* pTmp = GMatrix::multiply(*m_pLInv, labels, false, false);
-	std::unique_ptr<GMatrix> hTmp(pTmp);
-	GMatrix* pLTrans = pL->transpose();
-	std::unique_ptr<GMatrix> hLTrans(pLTrans);
-	GMatrix* pLTransInv = pLTrans->pseudoInverse();
-	std::unique_ptr<GMatrix> hLTransInv(pLTransInv);
-	m_pAlpha = GMatrix::multiply(*pLTransInv, *pTmp, false, false);
-	GAssert(m_pAlpha->rows() == features.rows());
-	GAssert(m_pAlpha->cols() == labels.cols());
-	m_pStoredFeatures = new GMatrix();
+	WMatrix* pTmp = WMatrix::multiply(*m_pLInv, labels, false, false);
+	std::unique_ptr<WMatrix> hTmp(pTmp);
+	WMatrix* pLTrans = pL->transpose();
+	std::unique_ptr<WMatrix> hLTrans(pLTrans);
+	WMatrix* pLTransInv = pLTrans->pseudoInverse();
+	std::unique_ptr<WMatrix> hLTransInv(pLTransInv);
+	m_pAlpha = WMatrix::multiply(*pLTransInv, *pTmp, false, false);
+	WAssert(m_pAlpha->rows() == features.rows());
+	WAssert(m_pAlpha->cols() == labels.cols());
+	m_pStoredFeatures = new WMatrix();
 	m_pStoredFeatures->copy(features);
 }
 
 // virtual
-void GGaussianProcess::predict(const GVec& in, GVec& out)
+void WGaussianProcess::predict(const WVec& in, WVec& out)
 {
 	if(!m_pBuf)
-		m_pBuf = new GMatrix(1, m_pStoredFeatures->rows());
+		m_pBuf = new WMatrix(1, m_pStoredFeatures->rows());
 
 	// Compute k*
-	GVec& k = m_pBuf->row(0);
+	WVec& k = m_pBuf->row(0);
 	for(size_t i = 0; i < m_pStoredFeatures->rows(); i++)
 		k[i] = m_weightsPriorVar * m_pKernel->apply(m_pStoredFeatures->row(i), in);
 
@@ -258,40 +258,40 @@ void GGaussianProcess::predict(const GVec& in, GVec& out)
 }
 
 // virtual
-void GGaussianProcess::predictDistribution(const GVec& in, GPrediction* out)
+void WGaussianProcess::predictDistribution(const WVec& in, WPrediction* out)
 {
 	if(!m_pBuf)
-		m_pBuf = new GMatrix(2, m_pStoredFeatures->rows());
+		m_pBuf = new WMatrix(2, m_pStoredFeatures->rows());
 	else if(m_pBuf->rows() < 2)
 		m_pBuf->newRow();
 
 	// Compute k*
-	GVec& k = m_pBuf->row(0);
+	WVec& k = m_pBuf->row(0);
 	for(size_t i = 0; i < m_pStoredFeatures->rows(); i++)
 		k[i] = m_weightsPriorVar * m_pKernel->apply(m_pStoredFeatures->row(i), in);
 
 	// Compute the prediction
-	GVec pred;
+	WVec pred;
 	m_pAlpha->multiply(m_pBuf->row(0), pred, true);
 
 	// Compute the variance
-	GVec& v = m_pBuf->row(1);
+	WVec& v = m_pBuf->row(1);
 	m_pLInv->multiply(k, v);
 	double variance = m_pKernel->apply(k, k) - v.squaredMagnitude();
 
 	// Store the results
 	for(size_t i = 0; i < m_pAlpha->cols(); i++)
 	{
-		GNormalDistribution* pNorm = out->makeNormal();
+		WNormalDistribution* pNorm = out->makeNormal();
 		pNorm->setMeanAndVariance(pred[i], variance);
 	}
 }
 
-void GGaussianProcess::setKernel(GKernel* pKernel)
+void WGaussianProcess::setKernel(WKernel* pKernel)
 {
 	delete(m_pKernel);
 	m_pKernel = pKernel;
 }
 
 
-} // namespace GClasses
+} // namespace WClasses

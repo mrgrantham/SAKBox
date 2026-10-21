@@ -16,11 +16,11 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GDirList.h"
-#include "GError.h"
-#include "GFile.h"
-#include "GBlob.h"
-#include "GHolders.h"
+#include "WDirList.h"
+#include "WError.h"
+#include "WFile.h"
+#include "WBlob.h"
+#include "WHolders.h"
 #include <string.h>
 #ifdef WINDOWS
 #include <direct.h> // for "getcwd", "chdir", etc.
@@ -32,16 +32,16 @@
 
 using std::string;
 
-namespace GClasses
+namespace WClasses
 {
 
-GDirList::GDirList()
+WDirList::WDirList()
 {
 	char buf[300];
 	if(!getcwd(buf, 300))
 		throw Ex("getcwd failed");
-	GFile::folderList(m_folders, buf, true);
-	GFile::fileList(m_files, buf);
+	WFile::folderList(m_folders, buf, true);
+	WFile::fileList(m_files, buf);
 }
 
 
@@ -50,7 +50,7 @@ GDirList::GDirList()
 #define BUF_SIZE 2048
 #define COMPRESS_BUF_SIZE 65536
 
-GFolderSerializer::GFolderSerializer(const char* szPath, bool compress)
+WFolderSerializer::WFolderSerializer(const char* szPath, bool compress)
 {
 	m_szPath = szPath;
 	m_szOrigPath = new char[300];
@@ -72,7 +72,7 @@ GFolderSerializer::GFolderSerializer(const char* szPath, bool compress)
 	m_bytesOut = 0;
 }
 
-GFolderSerializer::~GFolderSerializer()
+WFolderSerializer::~WFolderSerializer()
 {
 	if(chdir(m_szOrigPath) != 0)
 	{
@@ -86,7 +86,7 @@ GFolderSerializer::~GFolderSerializer()
 	delete[] m_pUncompressedBuf;
 }
 
-char* GFolderSerializer::nextPiece(size_t* pOutSize)
+char* WFolderSerializer::nextPiece(size_t* pOutSize)
 {
 	switch(m_state)
 	{
@@ -115,7 +115,7 @@ char* GFolderSerializer::nextPiece(size_t* pOutSize)
 			if(sPath.length() > 0 && (sPath[sPath.length() - 1] == '/' || sPath[sPath.length() - 1] == '\\'))
 				sPath.erase(sPath.length() - 1);
 			PathData pd;
-			GFile::parsePath(sPath.c_str(), &pd);
+			WFile::parsePath(sPath.c_str(), &pd);
 			if(pd.fileStart > 0)
 			{
 				string s;
@@ -144,7 +144,7 @@ char* GFolderSerializer::nextPiece(size_t* pOutSize)
 	return m_pBuf;
 }
 
-char* GFolderSerializer::next(size_t* pOutSize)
+char* WFolderSerializer::next(size_t* pOutSize)
 {
 	if(m_pUncompressedBuf) // If we are supposed to compress the output...
 	{
@@ -178,7 +178,7 @@ char* GFolderSerializer::next(size_t* pOutSize)
 				{
 					// Compress it, and return the compressed bytes
 					delete[] m_pCompressedBuf;
-					m_pCompressedBuf = GCompressor::compress((unsigned char*)m_pUncompressedBuf, COMPRESS_BUF_SIZE, &m_compressedSize);
+					m_pCompressedBuf = WCompressor::compress((unsigned char*)m_pUncompressedBuf, COMPRESS_BUF_SIZE, &m_compressedSize);
 					memcpy(m_pUncompressedBuf, pChunk + partLen, size - partLen);
 					m_uncompressedPos = size - partLen;
 					m_compressedBufReady = true;
@@ -195,7 +195,7 @@ char* GFolderSerializer::next(size_t* pOutSize)
 				{
 					// Compress whatever is left
 					delete[] m_pCompressedBuf;
-					m_pCompressedBuf = GCompressor::compress((unsigned char*)m_pUncompressedBuf, (unsigned int)m_uncompressedPos, &m_compressedSize);
+					m_pCompressedBuf = WCompressor::compress((unsigned char*)m_pUncompressedBuf, (unsigned int)m_uncompressedPos, &m_compressedSize);
 					m_compressedBufReady = true;
 					*pOutSize = sizeof(unsigned int);
 					m_bytesOut += sizeof(unsigned int);
@@ -216,7 +216,7 @@ char* GFolderSerializer::next(size_t* pOutSize)
 	}
 }
 
-void GFolderSerializer::addName(const char* szName)
+void WFolderSerializer::addName(const char* szName)
 {
 	unsigned int len = (unsigned int)strlen(szName);
 	memcpy(m_pPos, &len, sizeof(unsigned int));
@@ -227,7 +227,7 @@ void GFolderSerializer::addName(const char* szName)
 	m_size -= len;
 }
 
-void GFolderSerializer::startFile(const char* szFilename)
+void WFolderSerializer::startFile(const char* szFilename)
 {
 	// File indicator
 	*m_pPos = 'f';
@@ -259,7 +259,7 @@ void GFolderSerializer::startFile(const char* szFilename)
 	continueFile();
 }
 
-void GFolderSerializer::continueFile()
+void WFolderSerializer::continueFile()
 {
 	size_t chunk = std::min(m_size, m_remaining);
 	try
@@ -279,7 +279,7 @@ void GFolderSerializer::continueFile()
 		m_state = 1; // figure out what to do next
 }
 
-void GFolderSerializer::startDir(const char* szDirName)
+void WFolderSerializer::startDir(const char* szDirName)
 {
 	// File indicator
 	*m_pPos = 'd';
@@ -287,16 +287,16 @@ void GFolderSerializer::startDir(const char* szDirName)
 	m_size--;
 	addName(szDirName);
 
-	// Create the GDirList
+	// Create the WDirList
 	if(chdir(szDirName) != 0)
 		throw Ex("Failed to change dir to ", szDirName);
-	m_dirStack.push(new GDirList());
+	m_dirStack.push(new WDirList());
 	m_state = 3; // continue reading dir
 }
 
-void GFolderSerializer::continueDir()
+void WFolderSerializer::continueDir()
 {
-	GDirList* pDL = m_dirStack.top();
+	WDirList* pDL = m_dirStack.top();
 	if(pDL->m_folders.size() > 0)
 	{
 		startDir(pDL->m_folders.back().c_str());
@@ -330,10 +330,10 @@ void GFolderSerializer::continueDir()
 
 
 
-GFolderDeserializer::GFolderDeserializer(std::string* pBaseName)
+WFolderDeserializer::WFolderDeserializer(std::string* pBaseName)
 : m_pBaseName(pBaseName)
 {
-	m_pBQ1 = new GBlobQueue();
+	m_pBQ1 = new WBlobQueue();
 	m_pBQ2 = nullptr;
 	m_compressedBlockSize = 0;
 	m_state = 0;
@@ -343,14 +343,14 @@ GFolderDeserializer::GFolderDeserializer(std::string* pBaseName)
 		m_pBaseName->clear();
 }
 
-GFolderDeserializer::~GFolderDeserializer()
+WFolderDeserializer::~WFolderDeserializer()
 {
 	delete(m_pBQ1);
 	delete(m_pBQ2);
 	delete(m_pOutStream);
 }
 
-void GFolderDeserializer::pump1()
+void WFolderDeserializer::pump1()
 {
 	while(m_pBQ1->readyBytes() > 0)
 	{
@@ -365,7 +365,7 @@ void GFolderDeserializer::pump1()
 				else if(memcmp(pChunk, "cgfs", 4) == 0)
 				{
 					delete(m_pBQ2);
-					m_pBQ2 = new GBlobQueue();
+					m_pBQ2 = new WBlobQueue();
 					size_t readyBytes = m_pBQ1->readyBytes();
 					m_pBQ2->enqueue(m_pBQ1->dequeue(readyBytes), readyBytes);
 					m_state = 1;
@@ -410,7 +410,7 @@ void GFolderDeserializer::pump1()
 				sFilename.assign(pChunk, m_nameLen);
 				if(m_pBaseName && m_pBaseName->length() == 0)
 					m_pBaseName->assign(sFilename);
-				GAssert(m_pOutStream == NULL);
+				WAssert(m_pOutStream == NULL);
 				if(m_depth == 0 && access(sFilename.c_str(), 0) == 0)
 					throw Ex("There is already a file or folder named \"", sFilename.c_str(), "\"");
 				m_pOutStream = new std::ofstream();
@@ -482,7 +482,7 @@ void GFolderDeserializer::pump1()
 	}
 }
 
-void GFolderDeserializer::pump2()
+void WFolderDeserializer::pump2()
 {
 	while(m_pBQ2->readyBytes() > 0)
 	{
@@ -500,7 +500,7 @@ void GFolderDeserializer::pump2()
 			const char* pChunk = m_pBQ2->dequeue(m_compressedBlockSize);
 			if(!pChunk) return;
 			unsigned int uncompressedLen;
-			unsigned char* pUncompressed = GCompressor::uncompress((unsigned char*)pChunk, (unsigned int)m_compressedBlockSize, &uncompressedLen);
+			unsigned char* pUncompressed = WCompressor::uncompress((unsigned char*)pChunk, (unsigned int)m_compressedBlockSize, &uncompressedLen);
 			std::unique_ptr<unsigned char[]> hUncompressed(pUncompressed);
 			m_pBQ1->enqueue((char*)pUncompressed, (size_t)uncompressedLen);
 			pump1();
@@ -509,7 +509,7 @@ void GFolderDeserializer::pump2()
 	}
 }
 
-void GFolderDeserializer::doNext(const char* pBuf, size_t bufLen)
+void WFolderDeserializer::doNext(const char* pBuf, size_t bufLen)
 {
 	if(m_pBQ2)
 	{
@@ -525,4 +525,4 @@ void GFolderDeserializer::doNext(const char* pBuf, size_t bufLen)
 	}
 }
 
-} // namespace GClasses
+} // namespace WClasses

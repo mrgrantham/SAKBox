@@ -16,9 +16,9 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include <WClasses/GRand.h>
-#include <WClasses/GApp.h>
-#include <WClasses/GTime.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WTime.h>
 #include <map>
 #include <fstream>
 #include "server.h"
@@ -35,12 +35,12 @@ using std::string;
 using std::make_pair;
 
 
-Server::Server(int port, GRand* pRand)
-: GDynamicPageServer(port, pRand, true), // SAKBox: a multi-user forum, so open to the network
-  m_recommender(*pRand), m_lastMaintenance(GTime::seconds())
+Server::Server(int port, WRand* pRand)
+: WDynamicPageServer(port, pRand, true), // SAKBox: a multi-user forum, so open to the network
+  m_recommender(*pRand), m_lastMaintenance(WTime::seconds())
 {
 	char buf[300];
-	GApp::appPath(buf, 256, true);
+	WApp::appPath(buf, 256, true);
 	size_t len = strlen(buf);
 	if(len > 0)
 	{
@@ -49,7 +49,7 @@ Server::Server(int port, GRand* pRand)
 			--len; // nix training folder
 	}
 	buf[len] = '\0';
-	GFile::condensePath(buf);
+	WFile::condensePath(buf);
 	m_basePath = buf;
 #ifdef _DEBUG
 	m_basePath = "/var/www/html/mike/";
@@ -57,7 +57,7 @@ Server::Server(int port, GRand* pRand)
 	cout << "Base path: " << m_basePath << "\n";
 	m_toolsPath = m_basePath;
 	m_toolsPath += "community/b/";
-	m_pJaad = new GJsonAsADatabase(m_basePath.c_str());
+	m_pJaad = new WJsonAsADatabase(m_basePath.c_str());
 	loadBannedAddresses();
 }
 
@@ -86,7 +86,7 @@ Server::~Server()
 	cout.flush();
 }
 
-void Server::makeHeader(GDynamicPageSession* pSession, ostream& response, const char* szParamsMessage)
+void Server::makeHeader(WDynamicPageSession* pSession, ostream& response, const char* szParamsMessage)
 {
 	//response << "<!DOCTYPE html>";
 	response << "<html><head>\n";
@@ -141,7 +141,7 @@ void Server::makeHeader(GDynamicPageSession* pSession, ostream& response, const 
 	response << "</td><td id=\"mainbody\">\n\n\n\n";
 }
 
-void Server::makeFooter(GDynamicPageSession* pSession, ostream& response)
+void Server::makeFooter(WDynamicPageSession* pSession, ostream& response)
 {
 	// End of main row
 	response << "\n\n\n\n</td></tr>\n";
@@ -158,24 +158,24 @@ void Server::makeFooter(GDynamicPageSession* pSession, ostream& response)
 
 void Server::getLocalStorageFolder(char* buf)
 {
-	if(!GFile::localStorageDirectory(buf))
+	if(!WFile::localStorageDirectory(buf))
 		throw Ex("Failed to find local storage folder");
 	strcat(buf, "/.community/");
-	GFile::makeDir(buf);
-	if(!GFile::doesDirExist(buf))
+	WFile::makeDir(buf);
+	if(!WFile::doesDirExist(buf))
 		throw Ex("Failed to create folder in storage area");
 }
 
 void Server::saveState()
 {
-	GDom doc;
+	WDom doc;
 	doc.setRoot(serializeState(&doc));
 	char szStoragePath[300];
 	getLocalStorageFolder(szStoragePath);
 	strcat(szStoragePath, "state.json");
 	doc.saveJson(szStoragePath);
 	char szTime[256];
-	GTime::asciiTime(szTime, 256, false);
+	WTime::asciiTime(szTime, 256, false);
 	cout << "Server state saved at: " << szTime << "\n";
 }
 
@@ -290,10 +290,10 @@ void Server::deleteAccount(Account* pAccount)
 	saveState();
 }
 */
-GDomNode* Server::serializeState(GDom* pDoc)
+WDomNode* Server::serializeState(WDom* pDoc)
 {
-	GDomNode* pNode = GDynamicPageServer::serialize(pDoc);
-	GDomNode* pAccounts = pDoc->newList();
+	WDomNode* pNode = WDynamicPageServer::serialize(pDoc);
+	WDomNode* pAccounts = pDoc->newList();
 	pNode->add(pDoc, "accounts", pAccounts);
 	for(size_t i = 0; i < m_accounts.size(); i++)
 	{
@@ -304,16 +304,16 @@ GDomNode* Server::serializeState(GDom* pDoc)
 	return pNode;
 }
 
-void Server::deserializeState(const GDomNode* pNode)
+void Server::deserializeState(const WDomNode* pNode)
 {
 	// Load the accounts
-	GAssert(m_accounts.size() == 0);
+	WAssert(m_accounts.size() == 0);
 	for(size_t i = 0; i < m_accounts.size(); i++)
 		delete(m_accounts[i]);
 	m_accounts.clear();
 	m_username_to_index.clear();
-	GDomNode* pAccounts = pNode->get("accounts");
-	for(GDomListIterator it(pAccounts); it.current(); it.advance())
+	WDomNode* pAccounts = pNode->get("accounts");
+	for(WDomListIterator it(pAccounts); it.current(); it.advance())
 	{
 		Account* pAccount = Account::fromDom(it.current(), *m_pRand);
 		size_t index = m_accounts.size();
@@ -322,20 +322,20 @@ void Server::deserializeState(const GDomNode* pNode)
 	}
 
 	// Load the base stuff
-	GDynamicPageServer::deserialize(pNode);
+	WDynamicPageServer::deserialize(pNode);
 
 	// Recommender system
 	m_recommender.deserialize(pNode->get("recommender"));
 }
 
 // virtual
-GDynamicPageSessionExtension* Server::deserializeSessionExtension(const GDomNode* pNode)
+WDynamicPageSessionExtension* Server::deserializeSessionExtension(const WDomNode* pNode)
 {
 	return new Terminal(pNode, this);
 }
 
 // virtual
-GDynamicPageConnection* Server::makeConnection(SOCKET sock)
+WDynamicPageConnection* Server::makeConnection(SOCKET sock)
 {
 	return new Connection(sock, this);
 }
@@ -350,17 +350,17 @@ string& Server::cache(const char* szFilename)
 void Server::log(const char* message)
 {
 	string sDate;
-	GTime::appendTimeStampValue(&sDate, "-", " ", ":", true);
+	WTime::appendTimeStampValue(&sDate, "-", " ", ":", true);
 	cout << sDate << ": " << message << "\n";
 	cout.flush();
 }
 
 void Server::onIdle(double secondsSinceLastRequest)
 {
-	if(GTime::seconds() - m_lastMaintenance > 14400) // 4 hours
+	if(WTime::seconds() - m_lastMaintenance > 14400) // 4 hours
 	{
 		do_maintenance();
-		m_lastMaintenance = GTime::seconds();
+		m_lastMaintenance = WTime::seconds();
 	}
 }
 
@@ -414,7 +414,7 @@ void Server::loadBannedAddresses()
 	string banfile = m_basePath;
 	banfile += "community/banned_addresses.txt";
 	m_banned_addresses.clear();
-	if(!GFile::doesFileExist(banfile.c_str()))
+	if(!WFile::doesFileExist(banfile.c_str()))
 		return;
 	std::ifstream is;
 	is.open(banfile.c_str());
@@ -460,7 +460,7 @@ const char* g_auto_name_3[] =
 #define AUTO_NAME_3_COUNT (sizeof(g_auto_name_3) / sizeof(const char*))
 
 
-std::string Terminal::generateUsername(GRand& rand)
+std::string Terminal::generateUsername(WRand& rand)
 {
 	std::string s = g_auto_name_1[rand.next(AUTO_NAME_1_COUNT)];
 	s += '_';
@@ -471,7 +471,7 @@ std::string Terminal::generateUsername(GRand& rand)
 }
 
 
-Terminal* getTerminal(GDynamicPageSession* pSession)
+Terminal* getTerminal(WDynamicPageSession* pSession)
 {
 	Terminal* pTerminal = (Terminal*)pSession->extension();
 	if(!pTerminal)
@@ -482,7 +482,7 @@ Terminal* getTerminal(GDynamicPageSession* pSession)
 	return pTerminal;
 }
 
-Account* getAccount(GDynamicPageSession* pSession)
+Account* getAccount(WDynamicPageSession* pSession)
 {
 	// Get the terminal
 	Terminal* pTerminal = getTerminal(pSession);
@@ -543,16 +543,16 @@ bool check_url(const char* url, const char* dynpage)
 	return false;
 }
 
-void Connection::handleAjax(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Connection::handleAjax(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
-	GDom docIn;
-	GDom docOut;
-	GDomNode* pOutNode = docOut.newObj();
+	WDom docIn;
+	WDom docOut;
+	WDomNode* pOutNode = docOut.newObj();
 	setContentType("application/json");
 	try
 	{
 		docIn.parseJson(pSession->params(), pSession->paramsLen());
-		const GDomNode* pInNode = docIn.root();
+		const WDomNode* pInNode = docIn.root();
 		const char* action = pInNode->getString("action");
 		if(strcmp(action, "ping") == 0)
 		{
@@ -600,10 +600,10 @@ bool Connection::is_admin(Terminal* pTerminal, const char** ppParamsMessage)
 	return true;
 }
 
-const char* Connection::processParams(GDynamicPageSession* pSession)
+const char* Connection::processParams(WDynamicPageSession* pSession)
 {
 	const char* szParamsMessage = nullptr;
-	GHttpParamParser params(pSession->params());
+	WHttpParamParser params(pSession->params());
 	const char* szAction = params.find("action");
 	if(szAction)
 	{
@@ -706,13 +706,13 @@ const char* Connection::processParams(GDynamicPageSession* pSession)
 	return szParamsMessage;
 }
 
-void Connection::handleTools(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Connection::handleTools(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	const char* szParamsMessage = processParams(pSession);
 
 	// Find a method to make the requested page
 	bool headers = true;
-	void (*pageMaker)(Server* pServer, GDynamicPageSession* pSession, ostream& response) = nullptr;
+	void (*pageMaker)(Server* pServer, WDynamicPageSession* pSession, ostream& response) = nullptr;
 	const char* szUrl = m_szUrl + 2; // Skip "/b"
 	if(check_url(szUrl, "/account")) pageMaker = &Login::pageAccount;
 	else if(check_url(szUrl, "/browse")) pageMaker = &Editor::pageBrowse;
@@ -782,7 +782,7 @@ void Connection::handleTools(Server* pServer, GDynamicPageSession* pSession, ost
 }
 
 // virtual
-void Connection::handleRequest(GDynamicPageSession* pSession, ostream& response)
+void Connection::handleRequest(WDynamicPageSession* pSession, ostream& response)
 {
 	Server* pServer = (Server*)m_pServer;
 	try

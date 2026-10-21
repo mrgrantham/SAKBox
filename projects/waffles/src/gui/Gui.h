@@ -9,7 +9,7 @@
 #ifndef __GUI_H__
 #define __GUI_H__
 
-#include <WClasses/GWidgets.h>
+#include <WClasses/WWidgets.h>
 
 class ControllerBase;
 
@@ -39,7 +39,7 @@ protected:
 	static SDL_Texture* s_pTexture;
 	static int s_viewCount;
 	SDL_Window* m_pScreen;
-	GClasses::GRect m_screenRect;
+	WClasses::WRect m_screenRect;
 	SDL_Renderer* sdlRenderer;
 	SDL_Surface* window_surface; // software render
 	SDL_Texture* sdlTexture; // hardware render
@@ -55,12 +55,12 @@ public:
 	virtual void onMouseDown(int nButton, int x, int y) {}
 	virtual void onMouseUp(int nButton, int x, int y) {}
 	virtual bool onMousePos(int x, int y) { return false; }
-	GClasses::GRect* screenRect() { return &m_screenRect; }
-	void captureScreen(GClasses::GImage* pImage);
+	WClasses::WRect* screenRect() { return &m_screenRect; }
+	void captureScreen(WClasses::WImage* pImage);
 
 protected:
-	static void blitImage(int* pixels, int pitch, Uint32 format, int x, int y, GClasses::GImage* pImage);
-	static void stretchClipAndBlitImage(int* pixels, int pitch, Uint32 format, GClasses::GRect* pDestRect, GClasses::GRect* pClipRect, GClasses::GImage* pImage);
+	static void blitImage(int* pixels, int pitch, Uint32 format, int x, int y, WClasses::WImage* pImage);
+	static void stretchClipAndBlitImage(int* pixels, int pitch, Uint32 format, WClasses::WRect* pDestRect, WClasses::WRect* pClipRect, WClasses::WImage* pImage);
 
 	virtual void draw(int* pixels, int pitch) = 0;
 	void drawDot(int* pixels, int pitch, Uint32 format, int x, int y, unsigned int col, int nSize);
@@ -71,7 +71,7 @@ protected:
 // x, and y are the left and top margins. (Typically they will both be zero)
 // pBackgroundImage is a screen shot to show in the background
 // pDialog is the dialog to pop up in the middle
-void RunPopup(GClasses::GWidgetDialog* pDialog);
+void RunPopup(WClasses::WWidgetDialog* pDialog);
 
 
 void OpenFile(const char* szFilename);
@@ -79,68 +79,68 @@ void OpenAppFile(const char* szRelativeFilename);
 
 #endif // !NOGUI
 
-class MessageBoxDialog : public GClasses::GWidgetDialog
+class MessageBoxDialog : public WClasses::WWidgetDialog
 {
 protected:
-	GClasses::GWidgetTextButton* m_pOK;
+	WClasses::WWidgetTextButton* m_pOK;
 
 public:
 	MessageBoxDialog(const char* szMessage);
 	~MessageBoxDialog() override;
 
-	void onReleaseTextButton(GClasses::GWidgetTextButton* pButton) override;
+	void onReleaseTextButton(WClasses::WWidgetTextButton* pButton) override;
 };
 
 
 
-class GetStringDialog : public GClasses::GWidgetDialog
+class GetStringDialog : public WClasses::WWidgetDialog
 {
 public:
-	GClasses::GWidgetTextBox* m_pTextBox;
-	GClasses::GWidgetTextButton* m_pOK;
-	GClasses::GWidgetTextButton* m_pCancel;
+	WClasses::WWidgetTextBox* m_pTextBox;
+	WClasses::WWidgetTextButton* m_pOK;
+	WClasses::WWidgetTextButton* m_pCancel;
 
 	GetStringDialog(const char* szMessage);
 	~GetStringDialog() override;
 
-	void onTextBoxPressEnter(GClasses::GWidgetTextBox* pTextBox) override;
-	void onReleaseTextButton(GClasses::GWidgetTextButton* pButton) override;
+	void onTextBoxPressEnter(WClasses::WWidgetTextBox* pTextBox) override;
+	void onReleaseTextButton(WClasses::WWidgetTextButton* pButton) override;
 };
 
 
-class GetOpenFilenameDialog : public GClasses::GWidgetDialog
+class GetOpenFilenameDialog : public WClasses::WWidgetDialog
 {
 protected:
-	GClasses::GWidgetFileSystemBrowser* m_pFileBrowser;
-	GClasses::GWidgetTextButton* m_pCancel;
+	WClasses::WWidgetFileSystemBrowser* m_pFileBrowser;
+	WClasses::WWidgetTextButton* m_pCancel;
 	char* m_szFilename;
 
 public:
 	GetOpenFilenameDialog(const char* szMessage, const char* szExt);
 	~GetOpenFilenameDialog() override;
 
-	void onSelectFilename(GClasses::GWidgetFileSystemBrowser* pBrowser, const char* szFilename) override;
-	void onReleaseTextButton(GClasses::GWidgetTextButton* pButton) override;
+	void onSelectFilename(WClasses::WWidgetFileSystemBrowser* pBrowser, const char* szFilename) override;
+	void onReleaseTextButton(WClasses::WWidgetTextButton* pButton) override;
 	const char* filename();
 	char* releaseFilename();
 };
 
 
-class GetSaveFilenameDialog : public GClasses::GWidgetDialog
+class GetSaveFilenameDialog : public WClasses::WWidgetDialog
 {
 protected:
-	GClasses::GWidgetFileSystemBrowser* m_pFileBrowser;
-	GClasses::GWidgetTextBox* m_pFilename;
-	GClasses::GWidgetTextButton* m_pSave;
-	GClasses::GWidgetTextButton* m_pCancel;
+	WClasses::WWidgetFileSystemBrowser* m_pFileBrowser;
+	WClasses::WWidgetTextBox* m_pFilename;
+	WClasses::WWidgetTextButton* m_pSave;
+	WClasses::WWidgetTextButton* m_pCancel;
 	char* m_szFilename;
 
 public:
 	GetSaveFilenameDialog(const char* szMessage, const char* initialFilename, const char* szExt);
 	~GetSaveFilenameDialog() override;
 
-	void onSelectFilename(GClasses::GWidgetFileSystemBrowser* pBrowser, const char* szFilename) override;
-	void onReleaseTextButton(GClasses::GWidgetTextButton* pButton) override;
+	void onSelectFilename(WClasses::WWidgetFileSystemBrowser* pBrowser, const char* szFilename) override;
+	void onReleaseTextButton(WClasses::WWidgetTextButton* pButton) override;
 	const char* filename();
 	char* releaseFilename();
 };
@@ -151,8 +151,8 @@ class ControllerBase
 protected:
 	bool m_bKeepRunning;
 
-	static GClasses::GImage* s_pManualImage;
-	static GClasses::GImage* s_pCloseImage;
+	static WClasses::WImage* s_pManualImage;
+	static WClasses::WImage* s_pCloseImage;
 
 #ifndef NOGUI
 	enum KeyState

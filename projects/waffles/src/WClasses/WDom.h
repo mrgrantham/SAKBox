@@ -20,19 +20,19 @@
 #ifndef __GDOM_H__
 #define __GDOM_H__
 
-#include "GError.h"
-#include "GHeap.h"
-#include "GString.h"
+#include "WError.h"
+#include "WHeap.h"
+#include "WString.h"
 #include <iostream>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GDomNode;
-class GDom;
-class GDomObjField;
-class GDomArrayList;
-class GJsonTokenizer;
+class WDomNode;
+class WDom;
+class WDomObjField;
+class WDomArrayList;
+class WJsonTokenizer;
 
 
 #ifdef WINDOWS
@@ -40,29 +40,29 @@ class GJsonTokenizer;
 #pragma pack(1)
 #endif
 
-///\brief Converts a GDomNode to a string
-std::string to_str(const GDomNode& node);
+///\brief Converts a WDomNode to a string
+std::string to_str(const WDomNode& node);
 
-///\brief Converts a GDomNode to a string, but if the resulting string is more than about 60 characters then it will be shortened to show only the first and last segments separated by ellipses.
-std::string to_str_brief(const GDomNode& node);
+///\brief Converts a WDomNode to a string, but if the resulting string is more than about 60 characters then it will be shortened to show only the first and last segments separated by ellipses.
+std::string to_str_brief(const WDomNode& node);
 
-///\brief Converts a GDom to a string
-std::string to_str(const GDom& doc);
+///\brief Converts a WDom to a string
+std::string to_str(const WDom& doc);
 
 /// This class iterates over the items in a list node
-class GDomListIterator
+class WDomListIterator
 {
-	friend class GDomNode;
+	friend class WDomNode;
 protected:
-	const GDomNode* m_pList;
+	const WDomNode* m_pList;
 	size_t m_index;
 
 public:
-	GDomListIterator(const GDomNode* pNode);
-	~GDomListIterator();
+	WDomListIterator(const WDomNode* pNode);
+	~WDomListIterator();
 
 	/// Returns the current item in the list
-	GDomNode* current();
+	WDomNode* current();
 
 	/// Returns the current bool in the list
 	bool currentBool();
@@ -87,10 +87,10 @@ public:
 
 
 /// Represents a single node in a DOM
-class GDomNode
+class WDomNode
 {
-	friend class GDom;
-	friend class GDomListIterator;
+	friend class WDom;
+	friend class WDomListIterator;
 public:
 	enum nodetype
 	{
@@ -107,16 +107,16 @@ private:
 	char m_type;
 	union
 	{
-		GDomObjField* m_pLastField;
-		GDomArrayList* m_pArrayList;
+		WDomObjField* m_pLastField;
+		WDomArrayList* m_pArrayList;
 		bool m_bool;
 		long long m_int;
 		double m_double;
 		char m_string[8]; // 8 is a bogus value
 	} m_value;
 
-	GDomNode() {}
-	~GDomNode() {}
+	WDomNode() {}
+	~WDomNode() {}
 
 public:
 	/// Returns the type of this node
@@ -163,13 +163,13 @@ public:
 
 	/// Returns the node with the specified field name. Throws if this is not an object type. Returns
 	/// NULL if this is an object type, but there is no field with the specified name
-	GDomNode* getIfExists(const char* szName) const;
+	WDomNode* getIfExists(const char* szName) const;
 
 	/// Returns the node with the specified field name. Throws if this is not an object type. Throws
 	/// if there is no field with the name specified by szName
-	GDomNode* get(const char* szName) const
+	WDomNode* get(const char* szName) const
 	{
-		GDomNode* pNode = getIfExists(szName);
+		WDomNode* pNode = getIfExists(szName);
 		if(!pNode)
 			throw Ex("There is no field named ", szName);
 		return pNode;
@@ -197,7 +197,7 @@ public:
 
 	size_t size() const;
 
-	GDomNode* get(size_t index) const;
+	WDomNode* get(size_t index) const;
 
 	bool getBool(size_t index) const
 	{
@@ -221,49 +221,49 @@ public:
 
 	/// Replaces an existing field with the specified name.
 	/// If no existing field is found, adds a new one.
-	GDomNode* set(GDom* pDoc, const char* szName, GDomNode* pNode);
+	WDomNode* set(WDom* pDoc, const char* szName, WDomNode* pNode);
 
 	/// Sets the specified element in a list
-	GDomNode* set(GDom* pDoc, size_t index, GDomNode* pNode);
+	WDomNode* set(WDom* pDoc, size_t index, WDomNode* pNode);
 
 	/// Adds a field with the specified name to this object. Throws if this is not an object type
 	/// Returns pNode. (Yes, it returns the same node that you pass in. This is useful for
 	/// writing compact marshalling code.)
 	/// Assumes the user already knows there is no existing field with that name.
-	GDomNode* add(GDom* pDoc, const char* szName, GDomNode* pNode);
+	WDomNode* add(WDom* pDoc, const char* szName, WDomNode* pNode);
 
 	/// Adds a boolean field
-	GDomNode* add(GDom* pDoc, const char* szName, bool b);
+	WDomNode* add(WDom* pDoc, const char* szName, bool b);
 
 	/// Adds an int field
-	GDomNode* add(GDom* pDoc, const char* szName, long long n);
+	WDomNode* add(WDom* pDoc, const char* szName, long long n);
 
 	/// Adds an int field
-	GDomNode* add(GDom* pDoc, const char* szName, size_t n);
+	WDomNode* add(WDom* pDoc, const char* szName, size_t n);
 
 	/// Adds a double field
-	GDomNode* add(GDom* pDoc, const char* szName, double d);
+	WDomNode* add(WDom* pDoc, const char* szName, double d);
 
 	/// Adds a string field
-	GDomNode* add(GDom* pDoc, const char* szName, const char* str);
+	WDomNode* add(WDom* pDoc, const char* szName, const char* str);
 
 	/// Adds an item to a list node. Returns a pointer to the item passed in (pNode).
-	GDomNode* add(GDom* pDoc, GDomNode* pNode);
+	WDomNode* add(WDom* pDoc, WDomNode* pNode);
 
 	/// Adds a boolean list item
-	GDomNode* add(GDom* pDoc, bool b);
+	WDomNode* add(WDom* pDoc, bool b);
 
 	/// Adds an int list item
-	GDomNode* add(GDom* pDoc, long long n);
+	WDomNode* add(WDom* pDoc, long long n);
 
 	/// Adds an int list item
-	GDomNode* add(GDom* pDoc, size_t n);
+	WDomNode* add(WDom* pDoc, size_t n);
 
 	/// Adds a double list item
-	GDomNode* add(GDom* pDoc, double d);
+	WDomNode* add(WDom* pDoc, double d);
 
 	/// Adds a string list item
-	GDomNode* add(GDom* pDoc, const char* str);
+	WDomNode* add(WDom* pDoc, const char* str);
 
 	/// Removes the specified field from an object
 	void del(const char* szField);
@@ -287,11 +287,11 @@ public:
 	void writeXml(std::ostream& stream, const char* szLabel) const;
 
 	/// Returns true iff pOther is equivalent to this node
-	bool isEqual(const GDomNode* pOther) const;
+	bool isEqual(const WDomNode* pOther) const;
 
 protected:
 	/// Reverses the order of the fields in the object and returns
-	/// the number of fields.  Assumes this GDomNode is
+	/// the number of fields.  Assumes this WDomNode is
 	/// a object node.  Behavior is undefined if it is not an object
 	/// node.
 	///
@@ -313,19 +313,19 @@ protected:
 /// The DOM can be loaded-from or saved-to a file in JSON (JavaScript Object Notation)
 /// format. (See http://json.org.) In the future, support for XML and/or other formats
 /// may be added.
-class GDom
+class WDom
 {
-	friend class GDomNode;
+	friend class WDomNode;
 protected:
-	GHeap m_heap;
-	GDomNode* m_pRoot;
+	WHeap m_heap;
+	WDomNode* m_pRoot;
 	int m_line;
 	size_t m_len;
 	const char* m_pDoc;
 
 public:
-	GDom();
-	virtual ~GDom();
+	WDom();
+	virtual ~WDom();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -358,67 +358,67 @@ public:
 	void writeXml(std::ostream& stream) const;
 
 	/// Gets the root document node
-	const GDomNode* root() const { return m_pRoot; }
-	GDomNode* root() { return m_pRoot; }
+	const WDomNode* root() const { return m_pRoot; }
+	WDomNode* root() { return m_pRoot; }
 
 	/// Sets the root document node. (Returns the same node that you pass in.)
-	const GDomNode* setRoot(const GDomNode* pNode)
+	const WDomNode* setRoot(const WDomNode* pNode)
 	{
-		m_pRoot = (GDomNode*)pNode;
+		m_pRoot = (WDomNode*)pNode;
 		return pNode;
 	}
 
 	/// Makes a new object node
-	GDomNode* newObj();
+	WDomNode* newObj();
 
 	/// Makes a new list node
-	GDomNode* newList();
+	WDomNode* newList();
 
 	/// Makes a new node to represent a null value
-	GDomNode* newNull();
+	WDomNode* newNull();
 
 	/// Makes a new boolean node
-	GDomNode* newBool(bool b);
+	WDomNode* newBool(bool b);
 
 	/// Makes a new integer node
-	GDomNode* newInt(long long n);
+	WDomNode* newInt(long long n);
 
 	/// Makes a new double node
-	GDomNode* newDouble(double d);
+	WDomNode* newDouble(double d);
 
 	/// Makes a new string node from a null-terminated string. (If you want
 	/// to parse a JSON string, call parseJson instead. This method just wraps
 	/// the string in a node.)
-	GDomNode* newString(const char* szString);
+	WDomNode* newString(const char* szString);
 
 	/// Makes a new string node from the specified string segment
-	GDomNode* newString(const char* pString, size_t len);
+	WDomNode* newString(const char* pString, size_t len);
 
 	/// Makes a deep copy of pNode in this DOM
-	GDomNode* clone(GDomNode* pNode);
+	WDomNode* clone(WDomNode* pNode);
 
 	/// Returns a pointer to the heap used by this doc
-	GHeap* heap() { return &m_heap; }
+	WHeap* heap() { return &m_heap; }
 
 protected:
-	GDomObjField* newField();
-	GDomNode* loadJsonObject(GJsonTokenizer& tok);
-	GDomNode* loadJsonArray(GJsonTokenizer& tok);
-	GDomNode* loadJsonNumber(GJsonTokenizer& tok);
-	GDomNode* loadJsonValue(GJsonTokenizer& tok);
-	char* loadJsonString(GJsonTokenizer& tok);
+	WDomObjField* newField();
+	WDomNode* loadJsonObject(WJsonTokenizer& tok);
+	WDomNode* loadJsonArray(WJsonTokenizer& tok);
+	WDomNode* loadJsonNumber(WJsonTokenizer& tok);
+	WDomNode* loadJsonValue(WJsonTokenizer& tok);
+	char* loadJsonString(WJsonTokenizer& tok);
 };
 
 
 /// A Dom with a mod counter, for use with Jaad.
-class GJaadDom : public GDom
+class WJaadDom : public WDom
 {
 protected:
 	size_t m_modCount;
 
 public:
-	GJaadDom() : GDom(), m_modCount(0) {}
-	~GJaadDom() override {}
+	WJaadDom() : WDom(), m_modCount(0) {}
+	~WJaadDom() override {}
 
 	/// Gets the mod count
 	size_t modCount() { return m_modCount; }
@@ -457,20 +457,20 @@ public:
 /// "+= {'x':123, 'y':456}"              Add an object to a root list
 /// ".somefield = {'x':123, 'y':456}"    Set a field in the root object
 ///
-class GJsonAsADatabase
+class WJsonAsADatabase
 {
 protected:
 	std::string m_basePath;
-	std::map<std::string, GJaadDom*> m_doms;
+	std::map<std::string, WJaadDom*> m_doms;
 
 public:
-	GJsonAsADatabase(const char* szBasePath);
-	virtual ~GJsonAsADatabase();
+	WJsonAsADatabase(const char* szBasePath);
+	virtual ~WJsonAsADatabase();
 
 	/// Throws an exception if anything goes wrong.
 	/// Returns nullptr if an operation was successfully completed.
 	/// Returns the requested data if data was requested.
-	const GDomNode* apply(const char* szFilename, const char* szCmd, GDom* pResponseDom);
+	const WDomNode* apply(const char* szFilename, const char* szCmd, WDom* pResponseDom);
 
 	/// Writes any changed files to disk. If clear_cache is true, it also clears its cache.
 	void flush(bool clear_cache);
@@ -481,17 +481,17 @@ protected:
 	/// Returns s.size() if the token is not found.
 	static size_t findTok(const char* s, char tok, size_t start = 0);
 
-	GJaadDom* getDom(const char* szFile);
-	GDomNode* findNode(GDom* pDoc, GDomNode* pOb, GDom* pResponseDom, const char* szCmd, char op);
-	GDomNode* findLValue(GDom* pDoc, GDomNode* pOb, GDom* pResponseDom, const char* szCmd, std::string* pOutField, size_t* pOutIndex);
-	void add(GDomNode* pRequest, GDom* pDoc, GDomNode* pOb);
-	void del(GDomNode* pRequest, GDom* pDoc, GDomNode* pOb);
+	WJaadDom* getDom(const char* szFile);
+	WDomNode* findNode(WDom* pDoc, WDomNode* pOb, WDom* pResponseDom, const char* szCmd, char op);
+	WDomNode* findLValue(WDom* pDoc, WDomNode* pOb, WDom* pResponseDom, const char* szCmd, std::string* pOutField, size_t* pOutIndex);
+	void add(WDomNode* pRequest, WDom* pDoc, WDomNode* pOb);
+	void del(WDomNode* pRequest, WDom* pDoc, WDomNode* pOb);
 };
 
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 
 

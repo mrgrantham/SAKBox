@@ -20,30 +20,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fstream>
-#include "WClasses/GApp.h"
-#include "WClasses/GMatrix.h"
-#include "WClasses/GCluster.h"
-#include "WClasses/GDistance.h"
-#include "WClasses/GDistribution.h"
-#include "WClasses/GFile.h"
-#include "WClasses/GHolders.h"
-#include "WClasses/GImage.h"
-#include "WClasses/GKNN.h"
-#include "WClasses/GLinear.h"
-#include "WClasses/GError.h"
-#include "WClasses/GManifold.h"
-#include "WClasses/GNaiveBayes.h"
-#include "WClasses/GNaiveInstance.h"
-#include "WClasses/GNeuralNet.h"
-#include "WClasses/GRand.h"
-#include "WClasses/GSparseMatrix.h"
-#include "WClasses/GHtml.h"
-#include "WClasses/GText.h"
-#include "WClasses/GDirList.h"
-#include "WClasses/GTime.h"
-#include "WClasses/GTransform.h"
-#include "WClasses/GDom.h"
-#include "WClasses/GVec.h"
+#include "WClasses/WApp.h"
+#include "WClasses/WMatrix.h"
+#include "WClasses/WCluster.h"
+#include "WClasses/WDistance.h"
+#include "WClasses/WDistribution.h"
+#include "WClasses/WFile.h"
+#include "WClasses/WHolders.h"
+#include "WClasses/WImage.h"
+#include "WClasses/WKNN.h"
+#include "WClasses/WLinear.h"
+#include "WClasses/WError.h"
+#include "WClasses/WManifold.h"
+#include "WClasses/WNaiveBayes.h"
+#include "WClasses/WNaiveInstance.h"
+#include "WClasses/WNeuralNet.h"
+#include "WClasses/WRand.h"
+#include "WClasses/WSparseMatrix.h"
+#include "WClasses/WHtml.h"
+#include "WClasses/WText.h"
+#include "WClasses/WDirList.h"
+#include "WClasses/WTime.h"
+#include "WClasses/WTransform.h"
+#include "WClasses/WDom.h"
+#include "WClasses/WVec.h"
 #include "WClasses/usage.h"
 #include <time.h>
 #include <iostream>
@@ -57,23 +57,23 @@
 #include <set>
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 using std::string;
 using std::vector;
 using std::set;
 
-void loadData(GMatrix& data, const char* szFilename)
+void loadData(WMatrix& data, const char* szFilename)
 {
 	// Load the dataset by extension
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	if(_stricmp(szFilename + pd.extStart, ".arff") == 0)
 		data.loadArff(szFilename);
 	else if(_stricmp(szFilename + pd.extStart, ".csv") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.parse(data, szFilename);
 		cerr << "\nParsing Report:\n";
 		for(size_t i = 0; i < data.cols(); i++)
@@ -81,7 +81,7 @@ void loadData(GMatrix& data, const char* szFilename)
 	}
 	else if(_stricmp(szFilename + pd.extStart, ".dat") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.setSeparator('\0');
 		parser.parse(data, szFilename);
 		cerr << "\nParsing Report:\n";
@@ -92,46 +92,46 @@ void loadData(GMatrix& data, const char* szFilename)
 		throw Ex("Unsupported file format: ", szFilename + pd.extStart);
 }
 
-GTransducer* InstantiateAlgorithm(GArgReader& args);
+WTransducer* InstantiateAlgorithm(WArgReader& args);
 
-GBaselineLearner* InstantiateBaseline(GArgReader& args)
+WBaselineLearner* InstantiateBaseline(WArgReader& args)
 {
-	GBaselineLearner* pModel = new GBaselineLearner();
+	WBaselineLearner* pModel = new WBaselineLearner();
 	return pModel;
 }
 
-GKNN* InstantiateKNN(GArgReader& args)
+WKNN* InstantiateKNN(WArgReader& args)
 {
 	if(args.size() < 1)
 		throw Ex("The number of neighbors must be specified for knn");
 	int neighborCount = args.pop_uint();
-	GKNN* pModel = new GKNN();
+	WKNN* pModel = new WKNN();
 	pModel->setNeighborCount(neighborCount);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-equalweight"))
-			pModel->setInterpolationMethod(GKNN::Mean);
+			pModel->setInterpolationMethod(WKNN::Mean);
 		else if(args.if_pop("-scalefeatures"))
 			pModel->setOptimizeScaleFactors(true);
 		else if(args.if_pop("-cosine"))
-			pModel->setMetric(new GCosineSimilarity(), true);
+			pModel->setMetric(new WCosineSimilarity(), true);
 		else if(args.if_pop("-pearson"))
-			pModel->setMetric(new GPearsonCorrelation(), true);
+			pModel->setMetric(new WPearsonCorrelation(), true);
 		else
 			throw Ex("Invalid knn option: ", args.peek());
 	}
 	return pModel;
 }
 
-GLinearRegressor* InstantiateLinearRegressor(GArgReader& args)
+WLinearRegressor* InstantiateLinearRegressor(WArgReader& args)
 {
-	GLinearRegressor* pModel = new GLinearRegressor();
+	WLinearRegressor* pModel = new WLinearRegressor();
 	return pModel;
 }
 
-GNaiveBayes* InstantiateNaiveBayes(GArgReader& args)
+WNaiveBayes* InstantiateNaiveBayes(WArgReader& args)
 {
-	GNaiveBayes* pModel = new GNaiveBayes();
+	WNaiveBayes* pModel = new WNaiveBayes();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-ess"))
@@ -142,9 +142,9 @@ GNaiveBayes* InstantiateNaiveBayes(GArgReader& args)
 	return pModel;
 }
 
-GNaiveInstance* InstantiateNaiveInstance(GArgReader& args)
+WNaiveInstance* InstantiateNaiveInstance(WArgReader& args)
 {
-	GNaiveInstance* pModel = new GNaiveInstance();
+	WNaiveInstance* pModel = new WNaiveInstance();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-neighbors"))
@@ -155,7 +155,7 @@ GNaiveInstance* InstantiateNaiveInstance(GArgReader& args)
 	return pModel;
 }
 
-void showInstantiateAlgorithmError(const char* szMessage, GArgReader& args)
+void showInstantiateAlgorithmError(const char* szMessage, WArgReader& args)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -186,7 +186,7 @@ void showInstantiateAlgorithmError(const char* szMessage, GArgReader& args)
 	cerr.flush();
 }
 
-GTransducer* InstantiateAlgorithm(GArgReader& args)
+WTransducer* InstantiateAlgorithm(WArgReader& args)
 {
 	int argPos = args.get_pos();
 	if(args.size() < 1)
@@ -213,22 +213,22 @@ GTransducer* InstantiateAlgorithm(GArgReader& args)
 	return nullptr;
 }
 
-void multiplyDense(GArgReader& args)
+void multiplyDense(WArgReader& args)
 {
 	// Load the sparse matrix
 	if(args.size() < 1)
 		throw Ex("No dataset specified.");
-	GSparseMatrix* pA;
-	std::unique_ptr<GSparseMatrix> hA(nullptr);
+	WSparseMatrix* pA;
+	std::unique_ptr<WSparseMatrix> hA(nullptr);
 	{
-		GDom doc;
+		WDom doc;
 		doc.loadJson(args.pop_string());
-		pA = new GSparseMatrix(doc.root());
+		pA = new WSparseMatrix(doc.root());
 		hA.reset(pA);
 	}
 
 	// Load the dense matrix
-	GMatrix b;
+	WMatrix b;
 	b.loadArff(args.pop_string());
 
 	// Parse options
@@ -241,12 +241,12 @@ void multiplyDense(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GMatrix* pResult = pA->multiply(&b, transpose);
-	std::unique_ptr<GMatrix> hResult(pResult);
+	WMatrix* pResult = pA->multiply(&b, transpose);
+	std::unique_ptr<WMatrix> hResult(pResult);
 	pResult->print(cout);
 }
 
-void train(GArgReader& args)
+void train(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -261,40 +261,40 @@ void train(GArgReader& args)
 	// Load the sparse features
 	if(args.size() < 1)
 		throw Ex("Expected a filename of a sparse matrix.");
-	GSparseMatrix* pSparseFeatures;
-	std::unique_ptr<GSparseMatrix> hSparseFeatures(nullptr);
+	WSparseMatrix* pSparseFeatures;
+	std::unique_ptr<WSparseMatrix> hSparseFeatures(nullptr);
 	{
-		GDom doc;
+		WDom doc;
 		doc.loadJson(args.pop_string());
-		pSparseFeatures = new GSparseMatrix(doc.root());
+		pSparseFeatures = new WSparseMatrix(doc.root());
 		hSparseFeatures.reset(pSparseFeatures);
 	}
 
 	// Load the dense labels
-	GMatrix labels;
+	WMatrix labels;
 	labels.loadArff(args.pop_string());
 
 	// Instantiate the modeler
-	GTransducer* pSupLearner = InstantiateAlgorithm(args);
-	std::unique_ptr<GTransducer> hModel(pSupLearner);
+	WTransducer* pSupLearner = InstantiateAlgorithm(args);
+	std::unique_ptr<WTransducer> hModel(pSupLearner);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	if(!pSupLearner->canTrainIncrementally())
 		throw Ex("This algorithm cannot be trained with a sparse matrix. Only incremental learners (such as naivebayes, knn, and neuralnet) support this functionality.");
 	pSupLearner->rand().setSeed(seed);
-	GIncrementalLearner* pModel = (GIncrementalLearner*)pSupLearner;
+	WIncrementalLearner* pModel = (WIncrementalLearner*)pSupLearner;
 
 	// Train the modeler
 	pModel->trainSparse(*pSparseFeatures, labels);
 
 	// Output the trained model
-	GDom doc;
-	GDomNode* pRoot = pModel->serialize(&doc);
+	WDom doc;
+	WDomNode* pRoot = pModel->serialize(&doc);
 	doc.setRoot(pRoot);
 	doc.writeJson(cout);
 }
 
-void predict(GArgReader& args)
+void predict(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -307,30 +307,30 @@ void predict(GArgReader& args)
 	}
 
 	// Load the model
-	GDom doc;
+	WDom doc;
 	if(args.size() < 1)
 		throw Ex("Model not specified.");
 	doc.loadJson(args.pop_string());
-	GLearnerLoader ll(true);
-	GSupervisedLearner* pModeler = ll.loadLearner(doc.root());
-	std::unique_ptr<GSupervisedLearner> hModeler(pModeler);
+	WLearnerLoader ll(true);
+	WSupervisedLearner* pModeler = ll.loadLearner(doc.root());
+	std::unique_ptr<WSupervisedLearner> hModeler(pModeler);
 	pModeler->rand().setSeed(seed);
 
 	// Load the sparse features
 	if(args.size() < 1)
 		throw Ex("No dataset specified.");
-	GSparseMatrix* pData;
-	std::unique_ptr<GSparseMatrix> hData(nullptr);
+	WSparseMatrix* pData;
+	std::unique_ptr<WSparseMatrix> hData(nullptr);
 	{
-		GDom doc2;
+		WDom doc2;
 		doc2.loadJson(args.pop_string());
-		pData = new GSparseMatrix(doc2.root());
+		pData = new WSparseMatrix(doc2.root());
 		hData.reset(pData);
 	}
 
 	// Predict labels
-	GMatrix labels(pData->rows(), pModeler->relLabels().size());
-	GVec pFullRow(pData->cols());
+	WMatrix labels(pData->rows(), pModeler->relLabels().size());
+	WVec pFullRow(pData->cols());
 	for(unsigned int i = 0; i < pData->rows(); i++)
 	{
 		pData->fullRow(pFullRow, i);
@@ -339,7 +339,7 @@ void predict(GArgReader& args)
 	labels.print(cout);
 }
 
-void test(GArgReader& args)
+void test(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -352,44 +352,44 @@ void test(GArgReader& args)
 	}
 
 	// Load the model
-	GDom doc;
+	WDom doc;
 	if(args.size() < 1)
 		throw Ex("Model not specified.");
 	doc.loadJson(args.pop_string());
-	GLearnerLoader ll(true);
-	GSupervisedLearner* pModeler = ll.loadLearner(doc.root());
-	std::unique_ptr<GSupervisedLearner> hModeler(pModeler);
+	WLearnerLoader ll(true);
+	WSupervisedLearner* pModeler = ll.loadLearner(doc.root());
+	std::unique_ptr<WSupervisedLearner> hModeler(pModeler);
 	pModeler->rand().setSeed(seed);
 
 	// Load the sparse features
 	if(args.size() < 1)
 		throw Ex("No dataset specified.");
-	GSparseMatrix* pData;
-	std::unique_ptr<GSparseMatrix> hData(nullptr);
+	WSparseMatrix* pData;
+	std::unique_ptr<WSparseMatrix> hData(nullptr);
 	{
-		GDom doc2;
+		WDom doc2;
 		doc2.loadJson(args.pop_string());
-		pData = new GSparseMatrix(doc2.root());
+		pData = new WSparseMatrix(doc2.root());
 		hData.reset(pData);
 	}
 
 	// Load the dense labels
-	GMatrix labels;
+	WMatrix labels;
 	labels.loadArff(args.pop_string());
 	if(!labels.relation().isCompatible(pModeler->relLabels()))
 		throw Ex("The data is not compatible with the data used to trainn the model. (The meta-data is different.)");
 
 	// Test
-	GVec prediction(labels.cols());
-	GVec pFullRow(pData->cols());
-	GTEMPBUF(double, results, labels.cols());
-	GVecWrapper vw2(results, labels.cols());
+	WVec prediction(labels.cols());
+	WVec pFullRow(pData->cols());
+	WTEMPBUF(double, results, labels.cols());
+	WVecWrapper vw2(results, labels.cols());
 	vw2.fill(0.0);
 	for(size_t i = 0; i < pData->rows(); i++)
 	{
 		pData->fullRow(pFullRow, i);
 		pModeler->predict(pFullRow, prediction);
-		GVec& pTarget = labels.row(i);
+		WVec& pTarget = labels.row(i);
 		for(size_t j = 0; j < labels.cols(); j++)
 		{
 			if(labels.relation().valueCount(j) == 0)
@@ -404,52 +404,52 @@ void test(GArgReader& args)
 			}
 		}
 	}
-	GVecWrapper vw(results, labels.cols());
+	WVecWrapper vw(results, labels.cols());
 	vw *= (1.0 / pData->rows());
 	vw.print(cout);
 }
 
-void transpose(GArgReader& args)
+void transpose(WArgReader& args)
 {
 	// Load the sparse matrix
 	if(args.size() < 1)
 		throw Ex("No dataset specified.");
-	GSparseMatrix* pA;
-	std::unique_ptr<GSparseMatrix> hA(nullptr);
+	WSparseMatrix* pA;
+	std::unique_ptr<WSparseMatrix> hA(nullptr);
 	{
-		GDom doc;
+		WDom doc;
 		doc.loadJson(args.pop_string());
-		pA = new GSparseMatrix(doc.root());
+		pA = new WSparseMatrix(doc.root());
 		hA.reset(pA);
 	}
 
 	// Transpose it
-	GSparseMatrix* pB = pA->transpose();
-	std::unique_ptr<GSparseMatrix> hB(pB);
+	WSparseMatrix* pB = pA->transpose();
+	std::unique_ptr<WSparseMatrix> hB(pB);
 
 	// Print it
 	{
-		GDom doc;
+		WDom doc;
 		doc.setRoot(pB->serialize(&doc));
 		doc.writeJson(cout);
 	}
 }
 
-void addWordsToVocabFromTextFile(GVocabulary* pVocab, const char* szFilename)
+void addWordsToVocabFromTextFile(WVocabulary* pVocab, const char* szFilename)
 {
 	size_t len;
-	char* pFile = GFile::loadFile(szFilename, &len);
+	char* pFile = WFile::loadFile(szFilename, &len);
 	std::unique_ptr<char[]> hFile(pFile);
 	pVocab->newDoc();
 	pVocab->addWordsFromTextBlock(pFile, len);
 }
 
-void makeTextFileVector(GSparseMatrix* pFeatures, GMatrix* pLabels, int clss, size_t row, GVocabulary* pVocab, const char* szFilename, bool binary)
+void makeTextFileVector(WSparseMatrix* pFeatures, WMatrix* pLabels, int clss, size_t row, WVocabulary* pVocab, const char* szFilename, bool binary)
 {
 	size_t len;
-	char* pFile = GFile::loadFile(szFilename, &len);
+	char* pFile = WFile::loadFile(szFilename, &len);
 	std::unique_ptr<char[]> hFile(pFile);
-	GWordIterator it(pFile, len);
+	WWordIterator it(pFile, len);
 	const char* pWord;
 	size_t wordLen;
 	while(true)
@@ -469,7 +469,7 @@ void makeTextFileVector(GSparseMatrix* pFeatures, GMatrix* pLabels, int clss, si
 		pLabels->row(row)[0] = (double)clss;
 }
 
-void docsToSparseMatrix(GArgReader& args)
+void docsToSparseMatrix(WArgReader& args)
 {
 	// Parse options
 	bool useStemmer = true;
@@ -495,7 +495,7 @@ void docsToSparseMatrix(GArgReader& args)
 	}
 
 	// Parse the vocabulary
-	GVocabulary vocab(useStemmer);
+	WVocabulary vocab(useStemmer);
 	vocab.addTypicalStopWords();
 	vector<string> folders;
 	while(args.size() > 0)
@@ -509,12 +509,12 @@ void docsToSparseMatrix(GArgReader& args)
 			throw Ex("Failed to change directory to: ", szFolder, ", from: ", cwd);
 		{
 			vector<string> files;
-			GFile::fileList(files);
+			WFile::fileList(files);
 			for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 			{
 				const char* filename = it->c_str();
 				PathData pd;
-				GFile::parsePath(filename, &pd);
+				WFile::parsePath(filename, &pd);
 				if(_stricmp(filename + pd.extStart, ".txt") == 0)
 					addWordsToVocabFromTextFile(&vocab, filename);
 				else
@@ -529,16 +529,16 @@ void docsToSparseMatrix(GArgReader& args)
 	printf("-----\n");
 
 	// Make the sparse feature matrix and the label matrix
-	GSparseMatrix sparseFeatures(vocab.docCount(), vocab.wordCount());
-	GMatrix* pLabels = nullptr;
+	WSparseMatrix sparseFeatures(vocab.docCount(), vocab.wordCount());
+	WMatrix* pLabels = nullptr;
 	if(folders.size() > 1)
 	{
 		vector<size_t> classes;
 		classes.push_back(folders.size());
-		pLabels = new GMatrix(classes);
+		pLabels = new WMatrix(classes);
 		pLabels->newRows(vocab.docCount());
 	}
-	std::unique_ptr<GMatrix> hLabels(pLabels);
+	std::unique_ptr<WMatrix> hLabels(pLabels);
 	size_t row = 0;
 	for(int clss = 0; clss < (int)folders.size(); clss++)
 	{
@@ -550,12 +550,12 @@ void docsToSparseMatrix(GArgReader& args)
 			throw Ex("Failed to change directory to: ", szFolder, ", from: ", cwd);
 		{
 			vector<string> files;
-			GFile::fileList(files);
+			WFile::fileList(files);
 			for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 			{
 				const char* filename = it->c_str();
 				PathData pd;
-				GFile::parsePath(filename, &pd);
+				WFile::parsePath(filename, &pd);
 				if(_stricmp(filename + pd.extStart, ".txt") == 0)
 				{
 					printf("%d) %s\n", (int)row, filename);
@@ -578,20 +578,20 @@ void docsToSparseMatrix(GArgReader& args)
 			fprintf(pFile, "%s\n", szWord);
 		}
 	}
-	GDom doc;
+	WDom doc;
 	doc.setRoot(sparseFeatures.serialize(&doc));
 	doc.saveJson(featuresFilename.c_str());
 	if(pLabels)
 		pLabels->saveArff(labelsFilename.c_str());
 }
 
-void shuffle(GArgReader& args)
+void shuffle(WArgReader& args)
 {
 	// Load
-	GDom doc;
+	WDom doc;
 	doc.loadJson(args.pop_string());
-	GSparseMatrix* pData = new GSparseMatrix(doc.root());
-	std::unique_ptr<GSparseMatrix> hData(pData);
+	WSparseMatrix* pData = new WSparseMatrix(doc.root());
+	std::unique_ptr<WSparseMatrix> hData(pData);
 
 	// Parse options
 	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
@@ -611,30 +611,30 @@ void shuffle(GArgReader& args)
 	}
 
 	// Shuffle and print
-	GRand prng(nSeed);
-	GMatrix* pLabels = nullptr;
-	std::unique_ptr<GMatrix> hLabels(nullptr);
+	WRand prng(nSeed);
+	WMatrix* pLabels = nullptr;
+	std::unique_ptr<WMatrix> hLabels(nullptr);
 	if(labelsIn.length() > 0)
 	{
-		pLabels = new GMatrix();
+		pLabels = new WMatrix();
 		hLabels.reset(pLabels);
 		loadData(*pLabels, labelsIn.c_str());
 	}
 	pData->shuffle(&prng, pLabels);
-	GDom doc2;
+	WDom doc2;
 	doc2.setRoot(pData->serialize(&doc2));
 	doc2.writeJson(cout);
 	if(pLabels)
 		pLabels->saveArff(labelsOut.c_str());
 }
 
-void split(GArgReader& args)
+void split(WArgReader& args)
 {
 	// Load
-	GDom doc;
+	WDom doc;
 	doc.loadJson(args.pop_string());
-	GSparseMatrix* pData = new GSparseMatrix(doc.root());
-	std::unique_ptr<GSparseMatrix> hData(pData);
+	WSparseMatrix* pData = new WSparseMatrix(doc.root());
+	std::unique_ptr<WSparseMatrix> hData(pData);
 	size_t pats1 = args.pop_uint();
 	size_t pats2 = pData->rows() - pats1;
 	if(pats2 >= pData->rows())
@@ -643,23 +643,23 @@ void split(GArgReader& args)
 	const char* szFilename2 = args.pop_string();
 
 	// Split
-	GSparseMatrix* pPart1 = pData->subMatrix(0, 0, pData->cols(), pats1);
-	std::unique_ptr<GSparseMatrix> hPart1(pPart1);
-	GSparseMatrix* pPart2 = pData->subMatrix(0, pats1, pData->cols(), pats2);
-	std::unique_ptr<GSparseMatrix> hPart2(pPart2);
+	WSparseMatrix* pPart1 = pData->subMatrix(0, 0, pData->cols(), pats1);
+	std::unique_ptr<WSparseMatrix> hPart1(pPart1);
+	WSparseMatrix* pPart2 = pData->subMatrix(0, pats1, pData->cols(), pats2);
+	std::unique_ptr<WSparseMatrix> hPart2(pPart2);
 	doc.setRoot(pPart1->serialize(&doc));
 	doc.saveJson(szFilename1);
 	doc.setRoot(pPart2->serialize(&doc));
 	doc.saveJson(szFilename2);
 }
 
-void splitFold(GArgReader& args)
+void splitFold(WArgReader& args)
 {
 	// Load
-	GDom doc;
+	WDom doc;
 	doc.loadJson(args.pop_string());
-	GSparseMatrix* pData = new GSparseMatrix(doc.root());
-	std::unique_ptr<GSparseMatrix> hData(pData);
+	WSparseMatrix* pData = new WSparseMatrix(doc.root());
+	std::unique_ptr<WSparseMatrix> hData(pData);
 	size_t fold = args.pop_uint();
 	size_t folds = args.pop_uint();
 	if(fold >= folds)
@@ -680,8 +680,8 @@ void splitFold(GArgReader& args)
 	}
 
 	// Copy relevant portions of the data
-	GSparseMatrix train(0, pData->cols());
-	GSparseMatrix test(0, pData->cols());
+	WSparseMatrix train(0, pData->cols());
+	WSparseMatrix test(0, pData->cols());
 	size_t begin = pData->rows() * fold / folds;
 	size_t end = pData->rows() * (fold + 1) / folds;
 	for(size_t i = 0; i < begin; i++)
@@ -711,7 +711,7 @@ void ShowUsage(const char* appName)
 	cout.flush();
 }
 
-void showError(GArgReader& args, const char* szAppName, const char* szMessage)
+void showError(WArgReader& args, const char* szAppName, const char* szMessage)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -753,13 +753,13 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int nRet = 0;
 	PathData pd;
-	GFile::parsePath(argv[0], &pd);
+	WFile::parsePath(argv[0], &pd);
 	const char* appName = argv[0] + pd.fileStart;
-	GArgReader args(argc, argv);
+	WArgReader args(argc, argv);
 	try
 	{
 		args.pop_string(); // advance past the name of this app

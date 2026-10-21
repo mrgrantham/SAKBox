@@ -10,7 +10,7 @@ cc_library(
     ]),
     visibility = ["//visibility:public"],
     strip_include_prefix = "src",
-    deps = ["@libstemmer"], # GStemmer
+    deps = ["@libstemmer"], # WStemmer
 )
 
 cc_library(
@@ -26,7 +26,7 @@ cc_library(
 )
 
 cc_library(
-    name = "GImagePng",
+    name = "WImagePng",
     srcs = glob(["src/png/*.cpp",
     ]),
     hdrs = glob([
@@ -62,13 +62,13 @@ cc_binary(
     ],
 )
 
-# waffles_generate: makes datasets (src/depends/ because it needs libpng, through :GImagePng)
+# waffles_generate: makes datasets (src/depends/ because it needs libpng, through :WImagePng)
 cc_binary(
     name = "generate",
     srcs = ["src/depends/generate/main.cpp"],
     deps = [
         ":WClasses",
-        ":GImagePng",
+        ":WImagePng",
     ],
 )
 
@@ -133,21 +133,21 @@ cc_test(
     ],
 )
 
-# The PNG library's test needs :GImagePng as well
+# The PNG library's test needs :WImagePng as well
 cc_test(
-    name = "GImagePng_test",
+    name = "WImagePng_test",
     size = "small",
-    srcs = ["tests/GImagePng_test.cpp"],
+    srcs = ["tests/WImagePng_test.cpp"],
     deps = [
-        ":GImagePng",
+        ":WImagePng",
         ":WClasses",
         "@gtest//:gtest_main",
     ],
 )
 
 # SAKBox's tests of Waffles (alongside upstream's suite, :test above), one
-# file per area of the library, named after its header: tests/GMatrix_test.cpp
-# for GMatrix.h and so on. A test's comment says why it exists, such as the
+# file per area of the library, named after its header: tests/WMatrix_test.cpp
+# for WMatrix.h and so on. A test's comment says why it exists, such as the
 # bug it caught.
 [cc_test(
     name = name,
@@ -158,27 +158,27 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 ) for name in [
-    "G3D_test",
-    "GApp_test",
-    "GCluster_test",
-    "GDom_test",
-    "GError_test",
-    "GFunction_test",
-    "GHashTable_test",
-    "GHolders_test",
-    "GHttp_test",
-    "GImage_test",
-    "GLearner_test",
-    "GMath_test",
-    "GMatrix_test",
-    "GNeuralNet_test",
-    "GRand_test",
-    "GRayTrace_test",
-    "GRecommender_test",
-    "GRegion_test",
-    "GStemmer_test",
-    "GTime_test",
-    "GTransform_test",
-    "GVec_test",
+    "W3D_test",
+    "WApp_test",
+    "WCluster_test",
+    "WDom_test",
+    "WError_test",
+    "WFunction_test",
+    "WHashTable_test",
+    "WHolders_test",
+    "WHttp_test",
+    "WImage_test",
+    "WLearner_test",
+    "WMath_test",
+    "WMatrix_test",
+    "WNeuralNet_test",
+    "WRand_test",
+    "WRayTrace_test",
+    "WRecommender_test",
+    "WRegion_test",
+    "WStemmer_test",
+    "WTime_test",
+    "WTransform_test",
+    "WVec_test",
     "sha2_test",
 ]]

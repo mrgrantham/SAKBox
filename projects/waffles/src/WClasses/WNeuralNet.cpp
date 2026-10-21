@@ -17,60 +17,60 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GNeuralNet.h"
-#include "GMath.h"
-#include "GDistribution.h"
-#include "GError.h"
-#include "GRand.h"
-#include "GVec.h"
-#include "GDom.h"
-#include "GHillClimber.h"
-#include "GTransform.h"
-#include "GSparseMatrix.h"
-#include "GDistance.h"
-#include "GAssignment.h"
-#include "GHolders.h"
-#include "GBits.h"
-#include "GFourier.h"
+#include "WNeuralNet.h"
+#include "WMath.h"
+#include "WDistribution.h"
+#include "WError.h"
+#include "WRand.h"
+#include "WVec.h"
+#include "WDom.h"
+#include "WHillClimber.h"
+#include "WTransform.h"
+#include "WSparseMatrix.h"
+#include "WDistance.h"
+#include "WAssignment.h"
+#include "WHolders.h"
+#include "WBits.h"
+#include "WFourier.h"
 #include <memory>
 #include <string>
 #include <sstream>
-#include "GOptimizer.h"
-#include "GString.h"
+#include "WOptimizer.h"
+#include "WString.h"
 
 using std::vector;
 
-namespace GClasses
+namespace WClasses
 {
 
-GBlock::GBlock(size_t inputs, size_t outputs)
+WBlock::WBlock(size_t inputs, size_t outputs)
 : inputCount(inputs), outputCount(outputs), m_inPos(0)
 {
 }
 
-GBlock::GBlock(const GBlock& that)
+WBlock::WBlock(const WBlock& that)
 : inputCount(that.inputCount), outputCount(that.outputCount), m_inPos(that.m_inPos)
 {
 	input.setData(that.input);
-	output.setData(((GBlock*)&that)->output);
-	outBlame.setData(((GBlock*)&that)->outBlame);
-	inBlame.setData(((GBlock*)&that)->inBlame);
+	output.setData(((WBlock*)&that)->output);
+	outBlame.setData(((WBlock*)&that)->outBlame);
+	inBlame.setData(((WBlock*)&that)->inBlame);
 }
 
-GBlock::GBlock(const GDomNode* pNode)
+WBlock::WBlock(const WDomNode* pNode)
 {
 	m_inPos = pNode->getInt("inpos");
 	inputCount = pNode->getInt("in");
 	outputCount = pNode->getInt("out");
 }
 
-GBlock::~GBlock()
+WBlock::~WBlock()
 {
 }
 
-GDomNode* GBlock::baseDomNode(GDom* pDoc) const
+WDomNode* WBlock::baseDomNode(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "type", name().c_str());
 	pNode->add(pDoc, "inpos", m_inPos);
 	pNode->add(pDoc, "in", inputCount);
@@ -78,45 +78,45 @@ GDomNode* GBlock::baseDomNode(GDom* pDoc) const
 	return pNode;
 }
 
-GDomNode* GBlock::serialize(GDom* pDoc) const
+WDomNode* WBlock::serialize(WDom* pDoc) const
 {
 	return baseDomNode(pDoc);
 }
 
-GBlock* GBlock::deserializeBlock(GDomNode* pNode, GRand& rand)
+WBlock* WBlock::deserializeBlock(WDomNode* pNode, WRand& rand)
 {
 	const char* type = pNode->getString("type");
-	if(strcmp(type, "GBlockLinear") == 0) return new GBlockLinear(pNode);
-	else if(strcmp(type, "GBlockConv") == 0) return new GBlockConv(pNode);
-	else if(strcmp(type, "GBlockEl") == 0) return new GBlockEl(pNode);
-	else if(strcmp(type, "GBlockTanh") == 0) return new GBlockTanh(pNode);
-	else if(strcmp(type, "GBlockLogistic") == 0) return new GBlockLogistic(pNode);
-	else if(strcmp(type, "GBlockLeakyRectifier") == 0) return new GBlockLeakyRectifier(pNode);
-	else if(strcmp(type, "GBlockRectifier") == 0) return new GBlockRectifier(pNode);
-	else if(strcmp(type, "GBlockIdentity") == 0) return new GBlockIdentity(pNode);
-	else if(strcmp(type, "GBlockScaledTanh") == 0) return new GBlockScaledTanh(pNode);
-	else if(strcmp(type, "GBlockBentIdentity") == 0) return new GBlockBentIdentity(pNode);
-	else if(strcmp(type, "GBlockSigExp") == 0) return new GBlockSigExp(pNode);
-	else if(strcmp(type, "GBlockGaussian") == 0) return new GBlockGaussian(pNode);
-	else if(strcmp(type, "GBlockSine") == 0) return new GBlockSine(pNode);
-	else if(strcmp(type, "GBlockSoftPlus") == 0) return new GBlockSoftPlus(pNode);
-	else if(strcmp(type, "GBlockSoftRoot") == 0) return new GBlockSoftRoot(pNode);
-	else if(strcmp(type, "GBlockSoftMax") == 0) return new GBlockSoftMax(pNode);
-	else if(strcmp(type, "GBlockSpectral") == 0) return new GBlockSpectral(pNode);
-	else if(strcmp(type, "GBlockTemperedLinear") == 0) return new GBlockTemperedLinear(pNode);
-	else if(strcmp(type, "GBlockMaxPooling2D") == 0) return new GBlockMaxPooling2D(pNode);
-	else if(strcmp(type, "GBlockScalarSum") == 0) return new GBlockScalarSum(pNode);
-	else if(strcmp(type, "GBlockScalarProduct") == 0) return new GBlockScalarProduct(pNode);
-	else if(strcmp(type, "GBlockBiasProduct") == 0) return new GBlockBiasProduct(pNode);
-	else if(strcmp(type, "GBlockSwitch") == 0) return new GBlockSwitch(pNode);
-	else if(strcmp(type, "GBlockHinge") == 0) return new GBlockHinge(pNode);
-	else if(strcmp(type, "GBlockSoftExp") == 0) return new GBlockSoftExp(pNode);
-	else if(strcmp(type, "GBlockPAL") == 0) return new GBlockPAL(pNode, rand);
-	else if(strcmp(type, "GBlockLSTM") == 0) return new GBlockLSTM(pNode);
+	if(strcmp(type, "WBlockLinear") == 0) return new WBlockLinear(pNode);
+	else if(strcmp(type, "WBlockConv") == 0) return new WBlockConv(pNode);
+	else if(strcmp(type, "WBlockEl") == 0) return new WBlockEl(pNode);
+	else if(strcmp(type, "WBlockTanh") == 0) return new WBlockTanh(pNode);
+	else if(strcmp(type, "WBlockLogistic") == 0) return new WBlockLogistic(pNode);
+	else if(strcmp(type, "WBlockLeakyRectifier") == 0) return new WBlockLeakyRectifier(pNode);
+	else if(strcmp(type, "WBlockRectifier") == 0) return new WBlockRectifier(pNode);
+	else if(strcmp(type, "WBlockIdentity") == 0) return new WBlockIdentity(pNode);
+	else if(strcmp(type, "WBlockScaledTanh") == 0) return new WBlockScaledTanh(pNode);
+	else if(strcmp(type, "WBlockBentIdentity") == 0) return new WBlockBentIdentity(pNode);
+	else if(strcmp(type, "WBlockSigExp") == 0) return new WBlockSigExp(pNode);
+	else if(strcmp(type, "WBlockGaussian") == 0) return new WBlockGaussian(pNode);
+	else if(strcmp(type, "WBlockSine") == 0) return new WBlockSine(pNode);
+	else if(strcmp(type, "WBlockSoftPlus") == 0) return new WBlockSoftPlus(pNode);
+	else if(strcmp(type, "WBlockSoftRoot") == 0) return new WBlockSoftRoot(pNode);
+	else if(strcmp(type, "WBlockSoftMax") == 0) return new WBlockSoftMax(pNode);
+	else if(strcmp(type, "WBlockSpectral") == 0) return new WBlockSpectral(pNode);
+	else if(strcmp(type, "WBlockTemperedLinear") == 0) return new WBlockTemperedLinear(pNode);
+	else if(strcmp(type, "WBlockMaxPooling2D") == 0) return new WBlockMaxPooling2D(pNode);
+	else if(strcmp(type, "WBlockScalarSum") == 0) return new WBlockScalarSum(pNode);
+	else if(strcmp(type, "WBlockScalarProduct") == 0) return new WBlockScalarProduct(pNode);
+	else if(strcmp(type, "WBlockBiasProduct") == 0) return new WBlockBiasProduct(pNode);
+	else if(strcmp(type, "WBlockSwitch") == 0) return new WBlockSwitch(pNode);
+	else if(strcmp(type, "WBlockHinge") == 0) return new WBlockHinge(pNode);
+	else if(strcmp(type, "WBlockSoftExp") == 0) return new WBlockSoftExp(pNode);
+	else if(strcmp(type, "WBlockPAL") == 0) return new WBlockPAL(pNode, rand);
+	else if(strcmp(type, "WBlockLSTM") == 0) return new WBlockLSTM(pNode);
 	else throw Ex("Unrecognized neural network block type: ", type);
 }
 
-void GBlock::bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInBlame, GVec* pWeights, GVec* pGradient)
+void WBlock::bind(const WVec* pInput, WVec* pOutput, WVec* pOutBlame, WVec* pInBlame, WVec* pWeights, WVec* pGradient)
 {
 	if(pInput)
 		input.setData(*pInput);
@@ -168,14 +168,14 @@ void GBlock::bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInB
 	}
 }
 
-void GBlock::setInPos(size_t n)
+void WBlock::setInPos(size_t n)
 {
 	m_inPos = n;
 }
 
-double GBlock::computeBlame(const GVec& target)
+double WBlock::computeBlame(const WVec& target)
 {
-	GAssert(target.size() == outBlame.size());
+	WAssert(target.size() == outBlame.size());
 	double sse = 0.0;
 	for(size_t i = 0; i < target.size(); i++)
 	{
@@ -190,11 +190,11 @@ double GBlock::computeBlame(const GVec& target)
 	return sse;
 }
 
-std::string GBlock::to_str(bool includeWeights, bool includeActivations) const
+std::string WBlock::to_str(bool includeWeights, bool includeActivations) const
 {
 	std::ostringstream os;
 	os << "[" << name() << ": ";
-	os << GClasses::to_str(inputs()) << "->" << GClasses::to_str(outputs()) << ", WeightCount=" << GClasses::to_str(weightCount()) << "]";
+	os << WClasses::to_str(inputs()) << "->" << WClasses::to_str(outputs()) << ", WeightCount=" << WClasses::to_str(weightCount()) << "]";
 	if(includeWeights)
 		os << "\n(" << weights.to_str(',', 100) << ")";
 	if(includeActivations)
@@ -209,25 +209,25 @@ std::string GBlock::to_str(bool includeWeights, bool includeActivations) const
 	return os.str();
 }
 
-void GBlock::init_identity(GVec& weights)
+void WBlock::init_identity(WVec& weights)
 {
 	if(weights.size() > 0)
 		throw Ex("Sorry, this block does not support the init_identity method");
 }
 
-bool GBlock::is_identity(GVec& weights)
+bool WBlock::is_identity(WVec& weights)
 {
 	return false;
 }
 
-size_t GBlock::adjustedWeightCount(int inAdjustment, int outAdjustment)
+size_t WBlock::adjustedWeightCount(int inAdjustment, int outAdjustment)
 {
 	if(weightCount() == 0)
 		return 0;
 	throw Ex("Sorry, this block does not support the adjustedWeightCount method");
 }
 
-void GBlock::addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand)
+void WBlock::addUnits(size_t newInputs, size_t newOutputs, const WVec& weightsBef, WVec& weightsAft, WRand& rand)
 {
 	if(weightsBef.size() != 0)
 		throw Ex("Sorry, this block does not support addUnits");
@@ -235,7 +235,7 @@ void GBlock::addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBe
 	outputCount += newOutputs;
 }
 
-void GBlock::dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft)
+void WBlock::dropUnit(size_t input, size_t output, const WVec& weightsBef, WVec& weightsAft)
 {
 	if(weightsBef.size() != 0)
 		throw Ex("Sorry, this block does not support addUnit");
@@ -245,20 +245,20 @@ void GBlock::dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec&
 		outputCount--;
 }
 
-size_t GBlock::firstIgnoredInput(const GVec& weights)
+size_t WBlock::firstIgnoredInput(const WVec& weights)
 {
 	throw Ex("Sorry, this block does not support firstIgnoredInput");
 }
 
-void GBlock::biasMask(GVec& mask)
+void WBlock::biasMask(WVec& mask)
 {
 	mask.fill(0.0);
 }
 
-void GBlock::step(double learningRate, double momentum)
+void WBlock::step(double learningRate, double momentum)
 {
 	// Classic Momentum
-	GAssert(weights.size() == gradient.size());
+	WAssert(weights.size() == gradient.size());
 	for(size_t i = 0; i < gradient.size(); i++)
 	{
 		weights[i] += learningRate * gradient[i];
@@ -272,9 +272,9 @@ void GBlock::step(double learningRate, double momentum)
 */
 }
 
-void GBlock::step_jitter(double learningRate, double momentum, double jitter, GRand& rand)
+void WBlock::step_jitter(double learningRate, double momentum, double jitter, WRand& rand)
 {
-	GAssert(weights.size() == gradient.size());
+	WAssert(weights.size() == gradient.size());
 	double dev = jitter * std::sqrt(gradient.squaredMagnitude() / gradient.size());
 	for(size_t i = 0; i < gradient.size(); i++)
 	{
@@ -283,7 +283,7 @@ void GBlock::step_jitter(double learningRate, double momentum, double jitter, GR
 	}
 }
 
-void GBlock::finiteDifferencingTest(double tolerance)
+void WBlock::finiteDifferencingTest(double tolerance)
 {
 	// Store the worst offender
 #ifdef _DEBUG
@@ -295,10 +295,10 @@ void GBlock::finiteDifferencingTest(double tolerance)
 	double worst_computed = UNKNOWN_REAL_VALUE;
 	double worst_required_tolerance = tolerance;
 
-	GVec in(inputs());
-	GVec inBl(inputs());
+	WVec in(inputs());
+	WVec inBl(inputs());
 	bind(&in, nullptr, nullptr, &inBl, nullptr, nullptr);
-	GRand rand(0);
+	WRand rand(0);
 	for(size_t i = 0; i < 20; i++)
 	{
 		// Pick some random initial values
@@ -329,7 +329,7 @@ void GBlock::finiteDifferencingTest(double tolerance)
 				double greater = output[j];
 				in[k] -= epsilon;
 				double empirical_grad = (greater - lesser) / (epsilon + epsilon);
-				//std::cout << GClasses::to_str(inBl[k]) << "	" << GClasses::to_str(empirical_grad) << "\n";
+				//std::cout << WClasses::to_str(inBl[k]) << "	" << WClasses::to_str(empirical_grad) << "\n";
 				if(empirical_grad == 0)
 				{
 					if(std::abs(inBl[k]) <= 1e-8)
@@ -366,7 +366,7 @@ void GBlock::finiteDifferencingTest(double tolerance)
 				double greater = output[j];
 				weights[k] -= epsilon;
 				double empirical_grad = (greater - lesser) / (epsilon + epsilon);
-				//std::cout << GClasses::to_str(gradient[k]) << "	" << GClasses::to_str(empirical_grad) << "\n";
+				//std::cout << WClasses::to_str(gradient[k]) << "	" << WClasses::to_str(empirical_grad) << "\n";
 				if(empirical_grad == 0)
 				{
 					if(std::abs(gradient[k]) <= 1e-8)
@@ -396,9 +396,9 @@ void GBlock::finiteDifferencingTest(double tolerance)
 	if(worst_required_tolerance > tolerance)
 	{
 #ifdef _DEBUG
-		std::cerr << "i=" << GClasses::to_str(worst_i) << ", j=" << GClasses::to_str(worst_j) << "\n";
+		std::cerr << "i=" << WClasses::to_str(worst_i) << ", j=" << WClasses::to_str(worst_j) << "\n";
 #endif
-		throw Ex("Problem with ", (worst_backprop ? "backProp" : "updateGradient"), ". Expected about ", GClasses::to_str(worst_empirical), ". Got ", GClasses::to_str(worst_computed), ". This would require a tolerance of ", GClasses::to_str(worst_required_tolerance));
+		throw Ex("Problem with ", (worst_backprop ? "backProp" : "updateGradient"), ". Expected about ", WClasses::to_str(worst_empirical), ". Got ", WClasses::to_str(worst_computed), ". This would require a tolerance of ", WClasses::to_str(worst_required_tolerance));
 	}
 }
 
@@ -412,29 +412,29 @@ void GBlock::finiteDifferencingTest(double tolerance)
 
 
 
-GBlockActivation::GBlockActivation(size_t size)
-: GBlockWeightless(size, size)
+WBlockActivation::WBlockActivation(size_t size)
+: WBlockWeightless(size, size)
 {
 }
 
-GBlockActivation::GBlockActivation(const GDomNode* pNode)
-: GBlockWeightless(pNode)
+WBlockActivation::WBlockActivation(const WDomNode* pNode)
+: WBlockWeightless(pNode)
 {
 }
 
-void GBlockActivation::forwardProp()
+void WBlockActivation::forwardProp()
 {
 	for(size_t i = 0; i < inputCount; i++)
 		output[i] = eval(input[i]);
 }
 
-void GBlockActivation::backProp()
+void WBlockActivation::backProp()
 {
 	for(size_t i = 0; i < inputCount; i++)
 		inBlame[i] += outBlame[i] * derivative(input[i], output[i]);
 }
 
-void GBlockActivation::inverseProp(const GVec& output, GVec& input)
+void WBlockActivation::inverseProp(const WVec& output, WVec& input)
 {
 	for(size_t i = 0; i < outputCount; i++)
 		input[i] = inverse(output[i]);
@@ -447,7 +447,7 @@ void GBlockActivation::inverseProp(const GVec& output, GVec& input)
 
 
 
-void GBlockSoftMax::forwardProp()
+void WBlockSoftMax::forwardProp()
 {
 	// Activate with logistic function
 	double sum = 0.0;
@@ -463,19 +463,19 @@ void GBlockSoftMax::forwardProp()
 		output[i] *= scalar;
 }
 
-double GBlockSoftMax::computeBlame(const GVec& target)
+double WBlockSoftMax::computeBlame(const WVec& target)
 {
 	double sse = 0.0;
 	for(size_t i = 0; i < outputCount; i++)
 	{
-		GAssert(target[i] >= 0.0 && target[i] <= 1.0);
+		WAssert(target[i] >= 0.0 && target[i] <= 1.0);
 		outBlame[i] = target[i] - output[i];
 		sse += outBlame[i] * outBlame[i];
 	}
 	return sse;
 }
 
-void GBlockSoftMax::backProp()
+void WBlockSoftMax::backProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 		inBlame[i] += outBlame[i];
@@ -488,8 +488,8 @@ void GBlockSoftMax::backProp()
 
 
 
-GBlockSpectral::GBlockSpectral(double min_wavelength, double max_wavelength, size_t units, bool linear_spacing)
-: GBlockWeightless(1, units)
+WBlockSpectral::WBlockSpectral(double min_wavelength, double max_wavelength, size_t units, bool linear_spacing)
+: WBlockWeightless(1, units)
 {
 	size_t pairs = units / 2;
 	if(pairs * 2 != units)
@@ -509,24 +509,24 @@ GBlockSpectral::GBlockSpectral(double min_wavelength, double max_wavelength, siz
 	}
 }
 
-GBlockSpectral::GBlockSpectral(const GDomNode* pNode)
-: GBlockWeightless(pNode),
+WBlockSpectral::WBlockSpectral(const WDomNode* pNode)
+: WBlockWeightless(pNode),
   m_freq_start(pNode->getDouble("start")),
   m_freq_scale(pNode->getDouble("scale")),
   m_freq_shift(pNode->getDouble("shift"))
 {
 }
 
-GDomNode* GBlockSpectral::serialize(GDom* pDoc) const
+WDomNode* WBlockSpectral::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc);
+	WDomNode* pNode = baseDomNode(pDoc);
 	pNode->add(pDoc, "start", m_freq_start);
 	pNode->add(pDoc, "scale", m_freq_scale);
 	pNode->add(pDoc, "shift", m_freq_shift);
 	return pNode;
 }
 
-void GBlockSpectral::forwardProp()
+void WBlockSpectral::forwardProp()
 {
 	double freq = 2.0 * M_PI * m_freq_start;
 	size_t pairs = outputCount / 2;
@@ -539,7 +539,7 @@ void GBlockSpectral::forwardProp()
 	}
 }
 
-void GBlockSpectral::backProp()
+void WBlockSpectral::backProp()
 {
 	double freq = 2.0 * M_PI * m_freq_start;
 	size_t pairs = outputCount / 2;
@@ -558,13 +558,13 @@ void GBlockSpectral::backProp()
 
 
 
-void GBlockRepeater::forwardProp()
+void WBlockRepeater::forwardProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 		output[i] = input[i % inputCount];
 }
 
-void GBlockRepeater::backProp()
+void WBlockRepeater::backProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 		inBlame[i % inputCount] += outBlame[i];
@@ -577,8 +577,8 @@ void GBlockRepeater::backProp()
 
 
 
-GBlockSpreader::GBlockSpreader(size_t units, size_t spread)
-: GBlockWeightless(units, units), m_spread(spread), m_forw(units), m_back(units)
+WBlockSpreader::WBlockSpreader(size_t units, size_t spread)
+: WBlockWeightless(units, units), m_spread(spread), m_forw(units), m_back(units)
 {
 	size_t j = 0;
 	m_back.fill(INVALID_INDEX);
@@ -596,23 +596,23 @@ GBlockSpreader::GBlockSpreader(size_t units, size_t spread)
 	}
 }
 
-GBlockSpreader::GBlockSpreader(const GBlockSpreader& that)
-: GBlockSpreader(that.outputCount, that.m_spread)
+WBlockSpreader::WBlockSpreader(const WBlockSpreader& that)
+: WBlockSpreader(that.outputCount, that.m_spread)
 {
 }
 
-GBlockSpreader::GBlockSpreader(const GDomNode* pNode)
-: GBlockSpreader(pNode->getInt("out"), pNode->getInt("spread"))
+WBlockSpreader::WBlockSpreader(const WDomNode* pNode)
+: WBlockSpreader(pNode->getInt("out"), pNode->getInt("spread"))
 {
 }
 
-void GBlockSpreader::forwardProp()
+void WBlockSpreader::forwardProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 		output[m_forw[i]] = input[i];
 }
 
-void GBlockSpreader::backProp()
+void WBlockSpreader::backProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 		inBlame[i % inputCount] += outBlame[i];
@@ -625,21 +625,21 @@ void GBlockSpreader::backProp()
 
 
 
-GBlockLinear::GBlockLinear(size_t inputs, size_t outputs)
-: GBlock(inputs, outputs)
+WBlockLinear::WBlockLinear(size_t inputs, size_t outputs)
+: WBlock(inputs, outputs)
 {
 }
 
-GBlockLinear::GBlockLinear(GDomNode* pNode)
-: GBlock(pNode)
+WBlockLinear::WBlockLinear(WDomNode* pNode)
+: WBlock(pNode)
 {
 }
 
-std::string GBlockLinear::to_str(bool includeWeights, bool includeActivations) const
+std::string WBlockLinear::to_str(bool includeWeights, bool includeActivations) const
 {
 	std::ostringstream os;
 	os << "[" << name() << ": ";
-	os << GClasses::to_str(inputs()) << "->" << GClasses::to_str(outputs()) << ", Weights=" << GClasses::to_str(weightCount()) << "]";
+	os << WClasses::to_str(inputs()) << "->" << WClasses::to_str(outputs()) << ", Weights=" << WClasses::to_str(weightCount()) << "]";
 	if(includeWeights)
 	{
 		size_t colWid = 16;
@@ -655,7 +655,7 @@ std::string GBlockLinear::to_str(bool includeWeights, bool includeActivations) c
 		os << "          ";
 		for(size_t i = 0; i < outputCount; i++)
 		{
-			std::string s = GClasses::to_str(i);
+			std::string s = WClasses::to_str(i);
 			os << "Out ";
 			os << s;
 			os << std::string(colWid - 4 - s.length(), ' ');
@@ -664,10 +664,10 @@ std::string GBlockLinear::to_str(bool includeWeights, bool includeActivations) c
 		size_t pos = outputCount;
 		for(size_t i = 0; i < inputCount; i++)
 		{
-			std::string ss = GClasses::to_str(i);
+			std::string ss = WClasses::to_str(i);
 			os << std::string(5 - ss.length(), ' ');
 			os << "In ";
-			os << GClasses::to_str(ss);
+			os << WClasses::to_str(ss);
 			os << ": ";
 			for(size_t j = 0; j < outputCount; j++)
 			{
@@ -691,34 +691,34 @@ std::string GBlockLinear::to_str(bool includeWeights, bool includeActivations) c
 	return os.str();
 }
 
-void GBlockLinear::forwardProp()
+void WBlockLinear::forwardProp()
 {
 	// Start with the bias
 	output.copy(0, weights, 0, outputCount);
 
 	// Do the weights
 	size_t pos = outputCount;
-	GAssert(output[outputCount - 1] > -1e100 && output[outputCount - 1] < 1e100);
+	WAssert(output[outputCount - 1] > -1e100 && output[outputCount - 1] < 1e100);
 	for(size_t i = 0; i < inputCount; i++)
 	{
 		output.addScaled(input[i], weights, pos, outputCount);
 		pos += outputCount;
 	}
-	GAssert(output[outputCount - 1] > -1e100 && output[outputCount - 1] < 1e100);
+	WAssert(output[outputCount - 1] > -1e100 && output[outputCount - 1] < 1e100);
 }
 
-void GBlockLinear::backProp()
+void WBlockLinear::backProp()
 {
 	size_t pos = outputCount; // skip the bias weights
 	for(size_t i = 0; i < inputCount; i++)
 	{
-		const GConstVecWrapper v(weights, pos, outputCount);
+		const WConstVecWrapper v(weights, pos, outputCount);
 		inBlame[i] += outBlame.dotProduct(v);
 		pos += outputCount;
 	}
 }
 
-void GBlockLinear::updateGradient()
+void WBlockLinear::updateGradient()
 {
 	size_t pos = 0;
 	for(size_t j = 0; j < outputCount; j++)
@@ -731,7 +731,7 @@ void GBlockLinear::updateGradient()
 	}
 }
 
-void GBlockLinear::updateGradientNormalized()
+void WBlockLinear::updateGradientNormalized()
 {
 	size_t pos = 0;
 	for(size_t j = 0; j < outputCount; j++)
@@ -744,34 +744,34 @@ void GBlockLinear::updateGradientNormalized()
 	}
 }
 
-size_t GBlockLinear::weightCount() const
+size_t WBlockLinear::weightCount() const
 {
 	return (inputCount + 1) * outputCount;
 }
 
-void GBlockLinear::initWeights(GRand& rand)
+void WBlockLinear::initWeights(WRand& rand)
 {
 	weights.fillNormal(rand, 1.0 / std::max((size_t)1, inputCount));
 }
 
-void GBlockLinear::ordinaryLeastSquares(const GMatrix& features, const GMatrix& labels, GVec& outWeights)
+void WBlockLinear::ordinaryLeastSquares(const WMatrix& features, const WMatrix& labels, WVec& outWeights)
 {
 	if(features.rows() != labels.rows())
 		throw Ex("Mismatching number of rows");
 
 	// Compute centroids
-	GVec centroidFeat(features.cols());
+	WVec centroidFeat(features.cols());
 	features.centroid(centroidFeat);
-	GVec centroidLab(labels.cols());
+	WVec centroidLab(labels.cols());
 	labels.centroid(centroidLab);
 
 	// Compute numerator
-	GMatrix numerator(labels.cols(), features.cols());
+	WMatrix numerator(labels.cols(), features.cols());
 	numerator.fill(0.0);
 	for(size_t i = 0; i < features.rows(); i++)
 	{
-		const GVec& f = features[i];
-		const GVec& l = labels[i];
+		const WVec& f = features[i];
+		const WVec& l = labels[i];
 		for(size_t j = 0; j < labels.cols(); j++)
 		{
 			for(size_t k = 0; k < features.cols(); k++)
@@ -780,24 +780,24 @@ void GBlockLinear::ordinaryLeastSquares(const GMatrix& features, const GMatrix& 
 	}
 
 	// Compute denominator
-	GMatrix denomPre(features.cols(), features.cols());
+	WMatrix denomPre(features.cols(), features.cols());
 	denomPre.fill(0.0);
 	for(size_t i = 0; i < features.rows(); i++)
 	{
-		const GVec& f = features[i];
+		const WVec& f = features[i];
 		for(size_t j = 0; j < features.cols(); j++)
 		{
 			for(size_t k = 0; k < features.cols(); k++)
 				denomPre[j][k] += (f[j] - centroidFeat[j]) * (f[k] - centroidFeat[k]);
 		}
 	}
-	GMatrix* pDenom = denomPre.pseudoInverse();
-	Holder<GMatrix> hDenom(pDenom);
+	WMatrix* pDenom = denomPre.pseudoInverse();
+	Holder<WMatrix> hDenom(pDenom);
 
 	// Compute M and b
-	GMatrix* pM = GMatrix::multiply(numerator, *pDenom, false, true /*doesn't matter. it's symmetric about transposition*/);
-	Holder<GMatrix> hM(pM);
-	GVec b(labels.cols());
+	WMatrix* pM = WMatrix::multiply(numerator, *pDenom, false, true /*doesn't matter. it's symmetric about transposition*/);
+	Holder<WMatrix> hM(pM);
+	WVec b(labels.cols());
 	pM->multiply(centroidFeat, b);
 	b *= (-1);
 	b += centroidLab;
@@ -811,10 +811,10 @@ void GBlockLinear::ordinaryLeastSquares(const GMatrix& features, const GMatrix& 
 		for(size_t j = 0; j < pM->rows(); j++)
 			outWeights[pos++] = (*pM)[j][i];
 	}
-	GAssert(pos == outWeights.size());
+	WAssert(pos == outWeights.size());
 }
 
-void GBlockLinear::adjustInputRange(GVec& weights, size_t inputIndex, double oldMin, double oldMax, double newMin, double newMax)
+void WBlockLinear::adjustInputRange(WVec& weights, size_t inputIndex, double oldMin, double oldMax, double newMin, double newMax)
 {
 	double scalar = (oldMax - oldMin) / (newMax - newMin);
 	for(size_t i = 0; i < outputCount; i++)
@@ -826,7 +826,7 @@ void GBlockLinear::adjustInputRange(GVec& weights, size_t inputIndex, double old
 	}
 }
 
-void GBlockLinear::init_identity(GVec& weights)
+void WBlockLinear::init_identity(WVec& weights)
 {
 	weights.fill(0.0, 0, outputCount);
 	size_t pos = outputCount;
@@ -837,18 +837,18 @@ void GBlockLinear::init_identity(GVec& weights)
 	}
 }
 
-void GBlockLinear::biasMask(GVec& mask)
+void WBlockLinear::biasMask(WVec& mask)
 {
 	mask.fill(1.0, 0, outputCount);
 	mask.fill(0.0, outputCount, mask.size() - outputCount);
 }
 
-size_t GBlockLinear::adjustedWeightCount(int inAdjustment, int outAdjustment)
+size_t WBlockLinear::adjustedWeightCount(int inAdjustment, int outAdjustment)
 {
 	return (inputCount + inAdjustment + 1) * (outputCount + outAdjustment);
 }
 
-void GBlockLinear::addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand)
+void WBlockLinear::addUnits(size_t newInputs, size_t newOutputs, const WVec& weightsBef, WVec& weightsAft, WRand& rand)
 {
 	// Bias
 	weightsAft.copy(0, weightsBef, 0, outputCount); // Preserve existing biases
@@ -880,7 +880,7 @@ void GBlockLinear::addUnits(size_t newInputs, size_t newOutputs, const GVec& wei
 	outputCount += newOutputs;
 }
 
-void GBlockLinear::dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft)
+void WBlockLinear::dropUnit(size_t input, size_t output, const WVec& weightsBef, WVec& weightsAft)
 {
 	// Bias
 	size_t inpos = 0;
@@ -917,9 +917,9 @@ void GBlockLinear::dropUnit(size_t input, size_t output, const GVec& weightsBef,
 		outputCount--;
 }
 
-size_t GBlockLinear::firstIgnoredInput(const GVec& weights)
+size_t WBlockLinear::firstIgnoredInput(const WVec& weights)
 {
-	GConstVecWrapper vw;
+	WConstVecWrapper vw;
 	for(size_t i = 0; i < inputCount; i++)
 	{
 		vw.setData(weights, (i + 1) * outputCount, outputCount);
@@ -930,7 +930,7 @@ size_t GBlockLinear::firstIgnoredInput(const GVec& weights)
 }
 
 /*static*/
-void GBlockLinear::fuseLayers(GBlockLinear& aa, GVec& a, GBlockLinear& bb, GVec& b, bool targetA)
+void WBlockLinear::fuseLayers(WBlockLinear& aa, WVec& a, WBlockLinear& bb, WVec& b, bool targetA)
 {
 	if(aa.outputs() != bb.inputs())
 		throw Ex("Incompatible layers");
@@ -946,7 +946,7 @@ void GBlockLinear::fuseLayers(GBlockLinear& aa, GVec& a, GBlockLinear& bb, GVec&
 		if(aa.inputs() != aa.outputs())
 			throw Ex("The non-targeted layer must be square");
 	}
-	GVec target(targetA ? a.size() : b.size());
+	WVec target(targetA ? a.size() : b.size());
 	size_t ain = aa.inputs();
 	size_t aout = aa.outputs();
 	size_t bout = bb.outputs();
@@ -976,7 +976,7 @@ void GBlockLinear::fuseLayers(GBlockLinear& aa, GVec& a, GBlockLinear& bb, GVec&
 		b.copy(target);
 }
 
-void GBlockLinear::regularize_square(double lambda, const GVec* pWeightsNext)
+void WBlockLinear::regularize_square(double lambda, const WVec* pWeightsNext)
 {
 	if(inputCount != outputCount)
 		throw Ex("This method only works with square layers");
@@ -1015,17 +1015,17 @@ void GBlockLinear::regularize_square(double lambda, const GVec* pWeightsNext)
 
 
 
-GBlockFanOut::GBlockFanOut(size_t inputs, size_t outputsPerInput)
-: GBlock(inputs, outputsPerInput * inputs)
+WBlockFanOut::WBlockFanOut(size_t inputs, size_t outputsPerInput)
+: WBlock(inputs, outputsPerInput * inputs)
 {
 }
 
-GBlockFanOut::GBlockFanOut(GDomNode* pNode)
-: GBlock(pNode)
+WBlockFanOut::WBlockFanOut(WDomNode* pNode)
+: WBlock(pNode)
 {
 }
 
-void GBlockFanOut::forwardProp()
+void WBlockFanOut::forwardProp()
 {
 	size_t outputsPerInput = outputCount / inputCount;
 	size_t outpos = 0;
@@ -1042,11 +1042,11 @@ void GBlockFanOut::forwardProp()
 			weightpos += 2;
 		}
 	}
-	GAssert(outpos == output.size());
-	GAssert(weightpos == weights.size());
+	WAssert(outpos == output.size());
+	WAssert(weightpos == weights.size());
 }
 
-void GBlockFanOut::backProp()
+void WBlockFanOut::backProp()
 {
 	size_t outputsPerInput = outputCount / inputCount;
 	size_t outpos = 0;
@@ -1062,11 +1062,11 @@ void GBlockFanOut::backProp()
 			++weightpos;
 		}
 	}
-	GAssert(outpos == output.size());
-	GAssert(weightpos == weights.size());
+	WAssert(outpos == output.size());
+	WAssert(weightpos == weights.size());
 }
 
-void GBlockFanOut::updateGradient()
+void WBlockFanOut::updateGradient()
 {
 	size_t outputsPerInput = outputCount / inputCount;
 	size_t outpos = 0;
@@ -1088,16 +1088,16 @@ void GBlockFanOut::updateGradient()
 			}
 		}
 	}
-	GAssert(outpos == output.size());
-	GAssert(weightpos == weights.size());
+	WAssert(outpos == output.size());
+	WAssert(weightpos == weights.size());
 }
 
-size_t GBlockFanOut::weightCount() const
+size_t WBlockFanOut::weightCount() const
 {
 	return 2 * outputCount;
 }
 
-void GBlockFanOut::initWeights(GRand& rand)
+void WBlockFanOut::initWeights(WRand& rand)
 {
 	weights.fillNormal(rand);
 }
@@ -1111,17 +1111,17 @@ void GBlockFanOut::initWeights(GRand& rand)
 
 
 
-GBlockRunningNormalizer::GBlockRunningNormalizer(size_t units, double effective_batch_size)
-: GBlock(units, units), batch_size(effective_batch_size), inv_bs(1.0 / batch_size), decay_scalar(1.0 - inv_bs), epsilon(1e-8)
+WBlockRunningNormalizer::WBlockRunningNormalizer(size_t units, double effective_batch_size)
+: WBlock(units, units), batch_size(effective_batch_size), inv_bs(1.0 / batch_size), decay_scalar(1.0 - inv_bs), epsilon(1e-8)
 {
 }
 
-GBlockRunningNormalizer::GBlockRunningNormalizer(GDomNode* pNode)
-: GBlock(pNode)
+WBlockRunningNormalizer::WBlockRunningNormalizer(WDomNode* pNode)
+: WBlock(pNode)
 {
 }
 
-void GBlockRunningNormalizer::forwardProp()
+void WBlockRunningNormalizer::forwardProp()
 {
 	size_t pos = 0;
 	for(size_t i = 0; i < outputCount; i++)
@@ -1133,10 +1133,10 @@ void GBlockRunningNormalizer::forwardProp()
 		double beta = weights[pos++];
 		output[i] = gamma * x_hat + beta;
 	}
-	GAssert(pos == outputCount * 4);
+	WAssert(pos == outputCount * 4);
 }
 
-void GBlockRunningNormalizer::backProp()
+void WBlockRunningNormalizer::backProp()
 {
 	/*
 	size_t pos = 0;
@@ -1185,7 +1185,7 @@ void GBlockRunningNormalizer::backProp()
 	}
 }
 
-void GBlockRunningNormalizer::updateGradient()
+void WBlockRunningNormalizer::updateGradient()
 {
 	if(gradient.size() != outputCount)
 		throw Ex("gradient has unexpected size");
@@ -1194,10 +1194,10 @@ void GBlockRunningNormalizer::updateGradient()
 		gradient[pos++] += outBlame[i];
 }
 
-void GBlockRunningNormalizer::step(double learningRate, double momentum)
+void WBlockRunningNormalizer::step(double learningRate, double momentum)
 {
-	GAssert(gradient.size() == outputCount);
-	GAssert(weights.size() == 4 * outputCount);
+	WAssert(gradient.size() == outputCount);
+	WAssert(weights.size() == 4 * outputCount);
 	size_t pos = 0;
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1213,18 +1213,18 @@ void GBlockRunningNormalizer::step(double learningRate, double momentum)
 	}
 }
 
-size_t GBlockRunningNormalizer::weightCount() const
+size_t WBlockRunningNormalizer::weightCount() const
 {
 	return outputCount * 4;
 }
 
-size_t GBlockRunningNormalizer::gradCount() const
+size_t WBlockRunningNormalizer::gradCount() const
 {
 	return outputCount;
 }
-void GBlockRunningNormalizer::initWeights(GRand& rand)
+void WBlockRunningNormalizer::initWeights(WRand& rand)
 {
-	GAssert(weights.size() == 4 * outputCount);
+	WAssert(weights.size() == 4 * outputCount);
 	size_t pos = 0;
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1243,24 +1243,24 @@ void GBlockRunningNormalizer::initWeights(GRand& rand)
 
 
 
-GBlockWeightDigester::GBlockWeightDigester(GBlock* pDigestMyWeights, size_t extraInputs, size_t outputs)
-: GBlock(extraInputs, outputs), m_pDigestMyWeights(pDigestMyWeights)
+WBlockWeightDigester::WBlockWeightDigester(WBlock* pDigestMyWeights, size_t extraInputs, size_t outputs)
+: WBlock(extraInputs, outputs), m_pDigestMyWeights(pDigestMyWeights)
 {
 }
 
-GBlockWeightDigester::GBlockWeightDigester(GDomNode* pNode)
-: GBlock(pNode)
+WBlockWeightDigester::WBlockWeightDigester(WDomNode* pNode)
+: WBlock(pNode)
 {
 	throw Ex("Sorry, not implemented yet");
 }
 
-void GBlockWeightDigester::forwardProp()
+void WBlockWeightDigester::forwardProp()
 {
 	// Start with the bias
 	output.copy(0, weights, 0, outputCount);
 
 	// Weights from m_pDigestMyWeights
-	GVec& wi = m_pDigestMyWeights->weights;
+	WVec& wi = m_pDigestMyWeights->weights;
 	size_t pos = outputCount;
 	for(size_t i = 0; i < wi.size(); i++)
 	{
@@ -1276,7 +1276,7 @@ void GBlockWeightDigester::forwardProp()
 	}
 }
 
-void GBlockWeightDigester::backProp()
+void WBlockWeightDigester::backProp()
 {
 	// Skip the bias weights
 	size_t pos = outputCount;
@@ -1287,13 +1287,13 @@ void GBlockWeightDigester::backProp()
 	// Extra inputs
 	for(size_t i = 0; i < inputCount; i++)
 	{
-		const GConstVecWrapper v(weights, pos, outputCount);
+		const WConstVecWrapper v(weights, pos, outputCount);
 		inBlame[i] += outBlame.dotProduct(v);
 		pos += outputCount;
 	}
 }
 
-void GBlockWeightDigester::updateGradient()
+void WBlockWeightDigester::updateGradient()
 {
 	// Bias
 	size_t pos = 0;
@@ -1301,12 +1301,12 @@ void GBlockWeightDigester::updateGradient()
 		gradient[pos++] += outBlame[j];
 
 	// Update gradient for the weights from m_pDigestMyWeights
-	GVec& wi = m_pDigestMyWeights->weights;
-	GVec& wiGrad = m_pDigestMyWeights->gradient;
+	WVec& wi = m_pDigestMyWeights->weights;
+	WVec& wiGrad = m_pDigestMyWeights->gradient;
 	size_t ww = outputCount;
 	for(size_t i = 0; i < wi.size(); i++)
 	{
-		const GConstVecWrapper v(weights, ww, outputCount);
+		const WConstVecWrapper v(weights, ww, outputCount);
 		wiGrad[i] += outBlame.dotProduct(v);
 		ww += outputCount;
 	}
@@ -1328,12 +1328,12 @@ void GBlockWeightDigester::updateGradient()
 	}
 }
 
-size_t GBlockWeightDigester::weightCount() const
+size_t WBlockWeightDigester::weightCount() const
 {
 	return (1 + m_pDigestMyWeights->weightCount() + inputCount) * outputCount;
 }
 
-void GBlockWeightDigester::initWeights(GRand& rand)
+void WBlockWeightDigester::initWeights(WRand& rand)
 {
 	weights.fillNormal(rand, 1.0 / std::max((size_t)1, m_pDigestMyWeights->weightCount() + inputCount));
 }
@@ -1346,54 +1346,54 @@ void GBlockWeightDigester::initWeights(GRand& rand)
 
 
 
-GBlockTemperedLinear::GBlockTemperedLinear(size_t inputs, size_t outputs, double deviation_cap, double forget_rate)
-: GBlock(inputs, outputs), deviationCap(deviation_cap), forgetRate(forget_rate), moment1(outputs), moment2(outputs)
+WBlockTemperedLinear::WBlockTemperedLinear(size_t inputs, size_t outputs, double deviation_cap, double forget_rate)
+: WBlock(inputs, outputs), deviationCap(deviation_cap), forgetRate(forget_rate), moment1(outputs), moment2(outputs)
 {
 	moment1.fill(0.0);
 	moment2.fill(0.0);
 }
 
-GBlockTemperedLinear::GBlockTemperedLinear(const GBlockTemperedLinear& that)
-: GBlock(that), deviationCap(that.deviationCap), forgetRate(that.forgetRate), moment1(outputCount), moment2(outputCount)
+WBlockTemperedLinear::WBlockTemperedLinear(const WBlockTemperedLinear& that)
+: WBlock(that), deviationCap(that.deviationCap), forgetRate(that.forgetRate), moment1(outputCount), moment2(outputCount)
 {
 	moment1.copy(that.moment1);
 	moment2.copy(that.moment2);
 }
 
-GBlockTemperedLinear::GBlockTemperedLinear(GDomNode* pNode)
-: GBlock(pNode), deviationCap(pNode->getDouble("dc")), forgetRate(pNode->getDouble("fr")),
+WBlockTemperedLinear::WBlockTemperedLinear(WDomNode* pNode)
+: WBlock(pNode), deviationCap(pNode->getDouble("dc")), forgetRate(pNode->getDouble("fr")),
   moment1(pNode->get("mom1")), moment2(pNode->get("mom2"))
 {
 }
 
-void GBlockTemperedLinear::forwardProp()
+void WBlockTemperedLinear::forwardProp()
 {
 	// Start with the bias
 	output.copy(0, weights, 0, outputCount);
 
 	// Do the weights
 	size_t pos = outputCount;
-	GAssert(output[outputCount - 1] > -1e100 && output[outputCount - 1] < 1e100);
+	WAssert(output[outputCount - 1] > -1e100 && output[outputCount - 1] < 1e100);
 	for(size_t i = 0; i < inputCount; i++)
 	{
 		output.addScaled(input[i], weights, pos, outputCount);
 		pos += outputCount;
 	}
-	GAssert(output[outputCount - 1] > -1e100 && output[outputCount - 1] < 1e100);
+	WAssert(output[outputCount - 1] > -1e100 && output[outputCount - 1] < 1e100);
 }
 
-void GBlockTemperedLinear::backProp()
+void WBlockTemperedLinear::backProp()
 {
 	size_t pos = outputCount; // skip the bias weights
 	for(size_t i = 0; i < inputCount; i++)
 	{
-		const GConstVecWrapper v(weights, pos, outputCount);
+		const WConstVecWrapper v(weights, pos, outputCount);
 		inBlame[i] += outBlame.dotProduct(v);
 		pos += outputCount;
 	}
 }
 
-void GBlockTemperedLinear::updateGradient()
+void WBlockTemperedLinear::updateGradient()
 {
 	// Contain the output deviation
 	for(size_t i = 0; i < outputCount; i++)
@@ -1423,12 +1423,12 @@ void GBlockTemperedLinear::updateGradient()
 	}
 }
 
-size_t GBlockTemperedLinear::weightCount() const
+size_t WBlockTemperedLinear::weightCount() const
 {
 	return (inputCount + 1) * outputCount;
 }
 
-void GBlockTemperedLinear::initWeights(GRand& rand)
+void WBlockTemperedLinear::initWeights(WRand& rand)
 {
 	weights.fillNormal(rand, 1.0 / std::max((size_t)1, inputCount));
 }
@@ -1442,7 +1442,7 @@ void GBlockTemperedLinear::initWeights(GRand& rand)
 
 
 
-size_t GBlockConv_countElements(const std::initializer_list<size_t>& shape)
+size_t WBlockConv_countElements(const std::initializer_list<size_t>& shape)
 {
 	size_t n = 1;
 	for(const size_t* it = begin(shape); it != end(shape); ++it)
@@ -1450,9 +1450,9 @@ size_t GBlockConv_countElements(const std::initializer_list<size_t>& shape)
 	return n;
 }
 
-GBlockConv::GBlockConv(const std::initializer_list<size_t>& inputShape, const std::initializer_list<size_t>& filterShape, const std::initializer_list<size_t>& outputShape)
-: GBlock(GBlockConv_countElements(inputShape), GBlockConv_countElements(outputShape)),
-  filterSize(GBlockConv_countElements(filterShape)),
+WBlockConv::WBlockConv(const std::initializer_list<size_t>& inputShape, const std::initializer_list<size_t>& filterShape, const std::initializer_list<size_t>& outputShape)
+: WBlock(WBlockConv_countElements(inputShape), WBlockConv_countElements(outputShape)),
+  filterSize(WBlockConv_countElements(filterShape)),
   tensorInput(inputShape, false),
   tensorFilter(filterShape, false),
   tensorOutput(outputShape, false)
@@ -1499,8 +1499,8 @@ GBlockConv::GBlockConv(const std::initializer_list<size_t>& inputShape, const st
 	}
 }
 
-GBlockConv::GBlockConv(const GBlockConv& that)
-: GBlock(that),
+WBlockConv::WBlockConv(const WBlockConv& that)
+: WBlock(that),
   filterSize(that.filterSize),
   tensorInput(that.tensorInput),
   tensorFilter(that.tensorFilter),
@@ -1510,7 +1510,7 @@ GBlockConv::GBlockConv(const GBlockConv& that)
 {
 }
 
-size_t GBlockConv_countTensorSize(const GIndexVec& shape)
+size_t WBlockConv_countTensorSize(const WIndexVec& shape)
 {
 	size_t n = 1;
 	for(size_t i = 0; i < shape.size(); i++)
@@ -1518,22 +1518,22 @@ size_t GBlockConv_countTensorSize(const GIndexVec& shape)
 	return n;
 }
 
-GBlockConv::GBlockConv(GDomNode* pNode)
-: GBlock(pNode),
+WBlockConv::WBlockConv(WDomNode* pNode)
+: WBlock(pNode),
   tensorInput(pNode->get("inputShape")),
   tensorFilter(pNode->get("filterShape")),
   tensorOutput(pNode->get("outputShape")),
   filterCount(pNode->getInt("filterCount")),
   outputsPerFilter(outputCount / filterCount)
 {
-	filterSize = GBlockConv_countTensorSize(tensorFilter.shape) / filterCount;
+	filterSize = WBlockConv_countTensorSize(tensorFilter.shape) / filterCount;
 	if(filterCount * outputsPerFilter != outputCount)
 		throw Ex("output dimensions do not work with input and filter dimensions");
 }
 
-GDomNode* GBlockConv::serialize(GDom* pDoc) const
+WDomNode* WBlockConv::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc);
+	WDomNode* pNode = baseDomNode(pDoc);
 	pNode->add(pDoc, "filterCount", filterCount);
 	pNode->add(pDoc, "inputShape", tensorInput.shape.serialize(pDoc));
 	pNode->add(pDoc, "filterShape", tensorFilter.shape.serialize(pDoc));
@@ -1541,7 +1541,7 @@ GDomNode* GBlockConv::serialize(GDom* pDoc) const
 	return pNode;
 }
 
-void GBlockConv::forwardProp()
+void WBlockConv::forwardProp()
 {
 	tensorInput.setData(input);
 	size_t weightsPos = 0;
@@ -1550,16 +1550,16 @@ void GBlockConv::forwardProp()
 	{
 		tensorOutput.setData(output, outPos, outputsPerFilter);
 		tensorOutput.fill(weights[weightsPos++]); // initialize with the bias value
-		tensorFilter.setData(*(GVec*)&weights, weightsPos, filterSize);
-		GTensor::convolve(tensorInput, tensorFilter, tensorOutput, false, 1);
+		tensorFilter.setData(*(WVec*)&weights, weightsPos, filterSize);
+		WTensor::convolve(tensorInput, tensorFilter, tensorOutput, false, 1);
 		weightsPos += filterSize;
 		outPos += outputsPerFilter;
 	}
 	if(weightsPos != weights.size())
-		throw Ex("Expected ", GClasses::to_str(weightsPos), " weights. Got ", GClasses::to_str(weights.size()));
+		throw Ex("Expected ", WClasses::to_str(weightsPos), " weights. Got ", WClasses::to_str(weights.size()));
 }
 
-void GBlockConv::backProp()
+void WBlockConv::backProp()
 {
 	tensorInput.setData(inBlame);
 	size_t weightsPos = 0;
@@ -1568,15 +1568,15 @@ void GBlockConv::backProp()
 	{
 		tensorOutput.setData(outBlame, outPos, outputsPerFilter);
 		weightsPos++; // skip the bias
-		tensorFilter.setData(*(GVec*)&weights, weightsPos, filterSize);
-		GTensor::convolve(tensorFilter, tensorOutput, tensorInput, true, 1);
+		tensorFilter.setData(*(WVec*)&weights, weightsPos, filterSize);
+		WTensor::convolve(tensorFilter, tensorOutput, tensorInput, true, 1);
 		weightsPos += filterSize;
 		outPos += outputsPerFilter;
 	}
-	GAssert(weightsPos == weights.size());
+	WAssert(weightsPos == weights.size());
 }
 
-void GBlockConv::updateGradient()
+void WBlockConv::updateGradient()
 {
 	tensorInput.setData(input);
 	size_t gradPos = 0;
@@ -1586,43 +1586,43 @@ void GBlockConv::updateGradient()
 		tensorOutput.setData(outBlame, outPos, outputsPerFilter);
 		gradient[gradPos++] += tensorOutput.sum(); // the bias gradient
 		tensorFilter.setData(gradient, gradPos, filterSize);
-		GTensor::convolve(tensorInput, tensorOutput, tensorFilter, false, 1);
+		WTensor::convolve(tensorInput, tensorOutput, tensorFilter, false, 1);
 		gradPos += filterSize;
 		outPos += outputsPerFilter;
 	}
-	GAssert(gradPos == weights.size());
+	WAssert(gradPos == weights.size());
 }
 
-size_t GBlockConv::weightCount() const
+size_t WBlockConv::weightCount() const
 {
 	return filterCount * (filterSize + 1);
 }
 
-void GBlockConv::initWeights(GRand& rand)
+void WBlockConv::initWeights(WRand& rand)
 {
 	weights.fillNormal(rand, 1.0 / filterSize);
 }
 
-void GBlockConv::test()
+void WBlockConv::test()
 {
-	GNeuralNet nn;
-	nn.add(new GBlockConv({4}, {3}, {4}));
+	WNeuralNet nn;
+	nn.add(new WBlockConv({4}, {3}, {4}));
 	if(nn.weightCount() != 4)
 		throw Ex("Unexpected number of weights");
-	GVec w({0, 1, 2, 0}); // bias=0, filter={1,2,0}
+	WVec w({0, 1, 2, 0}); // bias=0, filter={1,2,0}
 	nn.init(w);
 
 	// Test forwardprop
-	GVec x({2, 1, 0, 3});
-	const GVec& pred = nn.forwardProp(x);
-	GVec expected({4, 4, 1, 6});
+	WVec x({2, 1, 0, 3});
+	const WVec& pred = nn.forwardProp(x);
+	WVec expected({4, 4, 1, 6});
 	if(std::sqrt(pred.squaredDistance(expected)) > 1e-10)
 		throw Ex("wrong");
 	/*
 	// Test backprop
-	GVec y({4, 5, 3, 3});
+	WVec y({4, 5, 3, 3});
 	nn.computeBlame(y);
-	GVec inBlame(4); inBlame.fill(0.0);
+	WVec inBlame(4); inBlame.fill(0.0);
 	nn.backpropagate(w, &inBlame);
 	if(std::abs(1.0 - inBlame[0]) > 1e-8) throw Ex("wrong");
 	if(std::abs(4.0 - inBlame[1]) > 1e-8) throw Ex("wrong");
@@ -1630,7 +1630,7 @@ void GBlockConv::test()
 	if(std::abs(0.0 - inBlame[3]) > 1e-8) throw Ex("wrong");
 
 	// Test update
-	GVec grad(4); grad.fill(0.0);
+	WVec grad(4); grad.fill(0.0);
 	nn.updateGradient(w, grad);
 	if(std::abs(3.0 - grad[0]) > 1e-8) throw Ex("wrong");
 	if(std::abs(4.0 - grad[1]) > 1e-8) throw Ex("wrong");
@@ -1644,8 +1644,8 @@ void GBlockConv::test()
 
 
 
-GBlockMaxPooling2D::GBlockMaxPooling2D(size_t _width, size_t _height, size_t _channels)
-: GBlockWeightless(_width * _height * _channels, _width * _height / 4 * _channels),
+WBlockMaxPooling2D::WBlockMaxPooling2D(size_t _width, size_t _height, size_t _channels)
+: WBlockWeightless(_width * _height * _channels, _width * _height / 4 * _channels),
   width(_width),
   height(_height),
   channels(_channels)
@@ -1654,17 +1654,17 @@ GBlockMaxPooling2D::GBlockMaxPooling2D(size_t _width, size_t _height, size_t _ch
 		throw Ex("Expected an even width and height");
 }
 
-GBlockMaxPooling2D::GBlockMaxPooling2D(GDomNode* pNode)
-: GBlockWeightless(pNode)
+WBlockMaxPooling2D::WBlockMaxPooling2D(WDomNode* pNode)
+: WBlockWeightless(pNode)
 {
 }
 
-GBlockMaxPooling2D::~GBlockMaxPooling2D()
+WBlockMaxPooling2D::~WBlockMaxPooling2D()
 {
 }
 
 // virtual
-void GBlockMaxPooling2D::forwardProp()
+void WBlockMaxPooling2D::forwardProp()
 {
 	size_t chanSize = width * height;
 	size_t chanStart = 0;
@@ -1686,7 +1686,7 @@ void GBlockMaxPooling2D::forwardProp()
 	}
 }
 
-void GBlockMaxPooling2D::backProp()
+void WBlockMaxPooling2D::backProp()
 {
 	size_t chanSize = width * height;
 	size_t chanStart = 0;
@@ -1731,28 +1731,28 @@ void GBlockMaxPooling2D::backProp()
 
 
 
-GBlockScalarSum::GBlockScalarSum(size_t outputs)
-: GBlockWeightless(outputs * 2, outputs)
+WBlockScalarSum::WBlockScalarSum(size_t outputs)
+: WBlockWeightless(outputs * 2, outputs)
 {
 }
 
-GBlockScalarSum::GBlockScalarSum(GDomNode* pNode)
-: GBlockWeightless(pNode)
+WBlockScalarSum::WBlockScalarSum(WDomNode* pNode)
+: WBlockWeightless(pNode)
 {
 }
 
-GBlockScalarSum::~GBlockScalarSum()
+WBlockScalarSum::~WBlockScalarSum()
 {
 }
 
 // virtual
-void GBlockScalarSum::forwardProp()
+void WBlockScalarSum::forwardProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 		output[i] = input[i] + input[outputCount + i];
 }
 
-void GBlockScalarSum::backProp()
+void WBlockScalarSum::backProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1769,28 +1769,28 @@ void GBlockScalarSum::backProp()
 
 
 
-GBlockScalarProduct::GBlockScalarProduct(size_t outputs)
-: GBlockWeightless(outputs * 2, outputs)
+WBlockScalarProduct::WBlockScalarProduct(size_t outputs)
+: WBlockWeightless(outputs * 2, outputs)
 {
 }
 
-GBlockScalarProduct::GBlockScalarProduct(GDomNode* pNode)
-: GBlockWeightless(pNode)
+WBlockScalarProduct::WBlockScalarProduct(WDomNode* pNode)
+: WBlockWeightless(pNode)
 {
 }
 
-GBlockScalarProduct::~GBlockScalarProduct()
+WBlockScalarProduct::~WBlockScalarProduct()
 {
 }
 
 // virtual
-void GBlockScalarProduct::forwardProp()
+void WBlockScalarProduct::forwardProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 		output[i] = input[i] * input[outputCount + i];
 }
 
-void GBlockScalarProduct::backProp()
+void WBlockScalarProduct::backProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1806,29 +1806,29 @@ void GBlockScalarProduct::backProp()
 
 
 
-GBlockBiasProduct::GBlockBiasProduct(size_t outputs)
-: GBlockWeightless(outputs * 2, outputs)
+WBlockBiasProduct::WBlockBiasProduct(size_t outputs)
+: WBlockWeightless(outputs * 2, outputs)
 {
 }
 
-GBlockBiasProduct::GBlockBiasProduct(GDomNode* pNode)
-: GBlockWeightless(pNode)
+WBlockBiasProduct::WBlockBiasProduct(WDomNode* pNode)
+: WBlockWeightless(pNode)
 {
 }
 
-GBlockBiasProduct::~GBlockBiasProduct()
+WBlockBiasProduct::~WBlockBiasProduct()
 {
 }
 
 // virtual
-void GBlockBiasProduct::forwardProp()
+void WBlockBiasProduct::forwardProp()
 {
 	output[0] = input[0] + input[outputCount];
 	for(size_t i = 1; i < outputCount; i++)
 		output[i] = input[i] * input[outputCount + i];
 }
 
-void GBlockBiasProduct::backProp()
+void WBlockBiasProduct::backProp()
 {
 	inBlame[0] += outBlame[0];
 	inBlame[outputCount] += outBlame[0];
@@ -1846,28 +1846,28 @@ void GBlockBiasProduct::backProp()
 
 
 
-GBlockSwitch::GBlockSwitch(size_t outputs)
-: GBlockWeightless(outputs * 3, outputs)
+WBlockSwitch::WBlockSwitch(size_t outputs)
+: WBlockWeightless(outputs * 3, outputs)
 {
 }
 
-GBlockSwitch::GBlockSwitch(GDomNode* pNode)
-: GBlockWeightless(pNode)
+WBlockSwitch::WBlockSwitch(WDomNode* pNode)
+: WBlockWeightless(pNode)
 {
 }
 
-GBlockSwitch::~GBlockSwitch()
+WBlockSwitch::~WBlockSwitch()
 {
 }
 
 // virtual
-void GBlockSwitch::forwardProp()
+void WBlockSwitch::forwardProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 		output[i] = input[i] * input[outputCount + i] + (1.0 - input[i]) * input[outputCount + outputCount + i];
 }
 
-void GBlockSwitch::backProp()
+void WBlockSwitch::backProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1883,17 +1883,17 @@ void GBlockSwitch::backProp()
 
 
 
-GBlockHinge::GBlockHinge(size_t size)
-: GBlock(size, size)
+WBlockHinge::WBlockHinge(size_t size)
+: WBlock(size, size)
 {
 }
 
-GBlockHinge::GBlockHinge(GDomNode* pNode)
-: GBlock(pNode)
+WBlockHinge::WBlockHinge(WDomNode* pNode)
+: WBlock(pNode)
 {
 }
 
-void GBlockHinge::forwardProp()
+void WBlockHinge::forwardProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1903,7 +1903,7 @@ void GBlockHinge::forwardProp()
 	}
 }
 
-void GBlockHinge::backProp()
+void WBlockHinge::backProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1913,7 +1913,7 @@ void GBlockHinge::backProp()
 	}
 }
 
-void GBlockHinge::updateGradient()
+void WBlockHinge::updateGradient()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1928,7 +1928,7 @@ void GBlockHinge::updateGradient()
 	}
 }
 
-void GBlockHinge::step(double learningRate, double momentum)
+void WBlockHinge::step(double learningRate, double momentum)
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1943,12 +1943,12 @@ void GBlockHinge::step(double learningRate, double momentum)
 	}
 }
 
-size_t GBlockHinge::weightCount() const
+size_t WBlockHinge::weightCount() const
 {
 	return outputCount * 2;
 }
 
-void GBlockHinge::initWeights(GRand& rand)
+void WBlockHinge::initWeights(WRand& rand)
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1957,7 +1957,7 @@ void GBlockHinge::initWeights(GRand& rand)
 	}
 }
 
-void GBlockHinge::init_identity(GVec& weights)
+void WBlockHinge::init_identity(WVec& weights)
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -1966,21 +1966,21 @@ void GBlockHinge::init_identity(GVec& weights)
 	}
 }
 
-bool GBlockHinge::is_identity(GVec& weights)
+bool WBlockHinge::is_identity(WVec& weights)
 {
-	GVecWrapper vw(weights, 0, outputCount);
+	WVecWrapper vw(weights, 0, outputCount);
 	if(vw.squaredMagnitude() == 0.0)
 		return true;
 	else
 		return false;
 }
 
-size_t GBlockHinge::adjustedWeightCount(int inAdjustment, int outAdjustment)
+size_t WBlockHinge::adjustedWeightCount(int inAdjustment, int outAdjustment)
 {
 	return (outputCount + outAdjustment) * 2;
 }
 
-void GBlockHinge::addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand)
+void WBlockHinge::addUnits(size_t newInputs, size_t newOutputs, const WVec& weightsBef, WVec& weightsAft, WRand& rand)
 {
 	if(newInputs != newOutputs)
 		throw Ex("The number of inputs and outputs must remain equal");
@@ -1996,7 +1996,7 @@ void GBlockHinge::addUnits(size_t newInputs, size_t newOutputs, const GVec& weig
 	outputCount += newOutputs;
 }
 
-void GBlockHinge::dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft)
+void WBlockHinge::dropUnit(size_t input, size_t output, const WVec& weightsBef, WVec& weightsAft)
 {
 	if(input != output)
 		throw Ex("Cannot drop mismatching inputs and outputs for an activation layer");
@@ -2028,56 +2028,56 @@ void GBlockHinge::dropUnit(size_t input, size_t output, const GVec& weightsBef, 
 
 
 
-GBlockElbow::GBlockElbow(size_t size)
-: GBlock(size, size)
+WBlockElbow::WBlockElbow(size_t size)
+: WBlock(size, size)
 {
 }
 
-GBlockElbow::GBlockElbow(GDomNode* pNode)
-: GBlock(pNode)
+WBlockElbow::WBlockElbow(WDomNode* pNode)
+: WBlock(pNode)
 {
 }
 
-void GBlockElbow::forwardProp()
+void WBlockElbow::forwardProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
 		double ax = weights[i] * input[i];
 		if(ax < 0)
-			output[i] = GBits::sign(weights[i]) * (std::exp(ax) - 1.0 - ax) + input[i];
+			output[i] = WBits::sign(weights[i]) * (std::exp(ax) - 1.0 - ax) + input[i];
 		//output[i] = (weights[i] == 0.0 ? input[i] : (std::exp(ax) - 1.0) / weights[i]);
 		else
 			output[i] = input[i];
 	}
 }
 
-void GBlockElbow::backProp()
+void WBlockElbow::backProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
 		double ax = weights[i] * input[i];
 		if(ax < 0)
-			inBlame[i] += outBlame[i] * (GBits::sign(weights[i]) * (weights[i] * (std::exp(ax) - 1.0)) + 1.0);
+			inBlame[i] += outBlame[i] * (WBits::sign(weights[i]) * (weights[i] * (std::exp(ax) - 1.0)) + 1.0);
 		//inBlame[i] += outBlame[i] * std::exp(ax);
 		else
 			inBlame[i] += outBlame[i];
 	}
 }
 
-void GBlockElbow::updateGradient()
+void WBlockElbow::updateGradient()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
 		double ax = weights[i] * input[i];
 		if(ax < 0)
-			gradient[i] += outBlame[i] * (GBits::sign(weights[i]) * (std::exp(ax) - 1.0) * input[i]);
+			gradient[i] += outBlame[i] * (WBits::sign(weights[i]) * (std::exp(ax) - 1.0) * input[i]);
 		//gradient[i] += outBlame[i] * (weights[i] == 0.0 ? 0.5 * input[i] * input[i] + 1.0 : (weights[i] * weights[i] + (ax - 1.0) * std::exp(ax) + 1.0) / (weights[i] * weights[i]));
 		else
 			gradient[i] += outBlame[i] * input[i];
 	}
 }
 
-void GBlockElbow::step(double learningRate, double momentum)
+void WBlockElbow::step(double learningRate, double momentum)
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -2086,22 +2086,22 @@ void GBlockElbow::step(double learningRate, double momentum)
 	}
 }
 
-size_t GBlockElbow::weightCount() const
+size_t WBlockElbow::weightCount() const
 {
 	return outputCount;
 }
 
-void GBlockElbow::initWeights(GRand& rand)
+void WBlockElbow::initWeights(WRand& rand)
 {
 	weights.fillUniform(rand, -1.0, 1.0);
 }
 
-void GBlockElbow::init_identity(GVec& weights)
+void WBlockElbow::init_identity(WVec& weights)
 {
 	weights.fill(0.0);
 }
 
-bool GBlockElbow::is_identity(GVec& weights)
+bool WBlockElbow::is_identity(WVec& weights)
 {
 	if(weights.squaredMagnitude() == 0.0)
 		return true;
@@ -2109,12 +2109,12 @@ bool GBlockElbow::is_identity(GVec& weights)
 		return false;
 }
 
-size_t GBlockElbow::adjustedWeightCount(int inAdjustment, int outAdjustment)
+size_t WBlockElbow::adjustedWeightCount(int inAdjustment, int outAdjustment)
 {
 	return outputCount + outAdjustment;
 }
 
-void GBlockElbow::addUnits(size_t newInputs, size_t newOutputs, const GVec& weightsBef, GVec& weightsAft, GRand& rand)
+void WBlockElbow::addUnits(size_t newInputs, size_t newOutputs, const WVec& weightsBef, WVec& weightsAft, WRand& rand)
 {
 	if(newInputs != newOutputs)
 		throw Ex("The number of inputs and outputs must remain equal");
@@ -2128,7 +2128,7 @@ void GBlockElbow::addUnits(size_t newInputs, size_t newOutputs, const GVec& weig
 	outputCount += newOutputs;
 }
 
-void GBlockElbow::dropUnit(size_t input, size_t output, const GVec& weightsBef, GVec& weightsAft)
+void WBlockElbow::dropUnit(size_t input, size_t output, const WVec& weightsBef, WVec& weightsAft)
 {
 	if(input != output)
 		throw Ex("Cannot drop mismatching inputs and outputs for an activation layer");
@@ -2158,17 +2158,17 @@ void GBlockElbow::dropUnit(size_t input, size_t output, const GVec& weightsBef, 
 
 
 
-GBlockLeakyTanh::GBlockLeakyTanh(size_t size)
-: GBlock(size, size)
+WBlockLeakyTanh::WBlockLeakyTanh(size_t size)
+: WBlock(size, size)
 {
 }
 
-GBlockLeakyTanh::GBlockLeakyTanh(GDomNode* pNode)
-: GBlock(pNode)
+WBlockLeakyTanh::WBlockLeakyTanh(WDomNode* pNode)
+: WBlock(pNode)
 {
 }
 
-void GBlockLeakyTanh::forwardProp()
+void WBlockLeakyTanh::forwardProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -2176,7 +2176,7 @@ void GBlockLeakyTanh::forwardProp()
 	}
 }
 
-void GBlockLeakyTanh::backProp()
+void WBlockLeakyTanh::backProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -2185,13 +2185,13 @@ void GBlockLeakyTanh::backProp()
 	}
 }
 
-void GBlockLeakyTanh::updateGradient()
+void WBlockLeakyTanh::updateGradient()
 {
 	for(size_t i = 0; i < outputCount; i++)
 		gradient[i] += tanh(input[i]) - input[i];
 }
 
-void GBlockLeakyTanh::step(double learningRate, double momentum)
+void WBlockLeakyTanh::step(double learningRate, double momentum)
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -2200,12 +2200,12 @@ void GBlockLeakyTanh::step(double learningRate, double momentum)
 	}
 }
 
-size_t GBlockLeakyTanh::weightCount() const
+size_t WBlockLeakyTanh::weightCount() const
 {
 	return outputCount;
 }
 
-void GBlockLeakyTanh::initWeights(GRand& rand)
+void WBlockLeakyTanh::initWeights(WRand& rand)
 {
 	for(size_t i = 0; i < outputCount; i++)
 		weights[i] = 0.0;
@@ -2222,24 +2222,24 @@ void GBlockLeakyTanh::initWeights(GRand& rand)
 
 
 
-GBlockSoftExp::GBlockSoftExp(size_t size, double beta)
-: GBlock(size, size), m_beta(beta)
+WBlockSoftExp::WBlockSoftExp(size_t size, double beta)
+: WBlock(size, size), m_beta(beta)
 {
 }
 
-GBlockSoftExp::GBlockSoftExp(GDomNode* pNode)
-: GBlock(pNode), m_beta(pNode->getDouble("beta"))
+WBlockSoftExp::WBlockSoftExp(WDomNode* pNode)
+: WBlock(pNode), m_beta(pNode->getDouble("beta"))
 {
 }
 
-GDomNode* GBlockSoftExp::serialize(GDom* pDoc) const
+WDomNode* WBlockSoftExp::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc);
+	WDomNode* pNode = baseDomNode(pDoc);
 	pNode->add(pDoc, "beta", m_beta);
 	return pNode;
 }
 
-void GBlockSoftExp::forwardProp()
+void WBlockSoftExp::forwardProp()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -2253,7 +2253,7 @@ void GBlockSoftExp::forwardProp()
 	}
 }
 
-void GBlockSoftExp::backProp()
+void WBlockSoftExp::backProp()
 {
 	for(size_t i = 0; i < inBlame.size(); i++)
 	{
@@ -2265,7 +2265,7 @@ void GBlockSoftExp::backProp()
 	}
 }
 
-void GBlockSoftExp::updateGradient()
+void WBlockSoftExp::updateGradient()
 {
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -2280,12 +2280,12 @@ void GBlockSoftExp::updateGradient()
 	}
 }
 
-size_t GBlockSoftExp::weightCount() const
+size_t WBlockSoftExp::weightCount() const
 {
 	return outputCount;
 }
 
-void GBlockSoftExp::initWeights(GRand& rand)
+void WBlockSoftExp::initWeights(WRand& rand)
 {
 	weights.fill(0.0);
 }
@@ -2304,30 +2304,30 @@ void GBlockSoftExp::initWeights(GRand& rand)
 
 
 
-GBlockPAL::GBlockPAL(size_t inputs, size_t outputs, GRand& rand)
-: GBlock(inputs, outputs), m_probs(outputs), m_rand(rand)
+WBlockPAL::WBlockPAL(size_t inputs, size_t outputs, WRand& rand)
+: WBlock(inputs, outputs), m_probs(outputs), m_rand(rand)
 {
 }
 
-GBlockPAL::GBlockPAL(GDomNode* pNode, GRand& rand)
-: GBlock(pNode), m_probs(outputCount), m_rand(rand)
+WBlockPAL::WBlockPAL(WDomNode* pNode, WRand& rand)
+: WBlock(pNode), m_probs(outputCount), m_rand(rand)
 {
 }
 
-void GBlockPAL::forwardProp()
+void WBlockPAL::forwardProp()
 {
 	// Compute probabilities of activating
 	size_t pos = 0;
 	output.copy(0, weights, pos, outputCount);
 	pos += outputCount;
-	GAssert(output[outputs() - 1] > -1e100 && output[outputs() - 1] < 1e100);
+	WAssert(output[outputs() - 1] > -1e100 && output[outputs() - 1] < 1e100);
 	for(size_t i = 0; i < inputCount; i++)
 	{
 		if(input[i] != 0.0)
 			output.addScaled(input[i], weights, pos, outputCount);
 		pos += outputCount;
 	}
-	GAssert(output[outputs() - 1] > -1e100 && output[outputs() - 1] < 1e100);
+	WAssert(output[outputs() - 1] > -1e100 && output[outputs() - 1] < 1e100);
 
 	// Compute actual activation values
 	size_t biasStart = pos;
@@ -2348,7 +2348,7 @@ void GBlockPAL::forwardProp()
 	}
 }
 
-void GBlockPAL::backProp()
+void WBlockPAL::backProp()
 {
 	size_t pos = outputCount + inputCount * outputCount + outputCount;
 	for(size_t i = 0; i < inputCount; i++)
@@ -2364,7 +2364,7 @@ void GBlockPAL::backProp()
 	}
 }
 
-void GBlockPAL::updateGradient()
+void WBlockPAL::updateGradient()
 {
 	size_t pos = 0;
 
@@ -2400,12 +2400,12 @@ void GBlockPAL::updateGradient()
 }
 
 
-size_t GBlockPAL::weightCount() const
+size_t WBlockPAL::weightCount() const
 {
 	return 2 * (inputCount + 1) * outputCount;
 }
 
-void GBlockPAL::initWeights(GRand& rand)
+void WBlockPAL::initWeights(WRand& rand)
 {
 	weights.fillNormal(rand, 1.0 / std::max((size_t)1, inputCount));
 }
@@ -2418,20 +2418,20 @@ void GBlockPAL::initWeights(GRand& rand)
 
 
 
-GBlockHypercube::GBlockHypercube(size_t dims, size_t vertexSizeIn, size_t vertexSizeOut)
-: GBlock((1 << dims) * vertexSizeIn, (1 << dims) * vertexSizeOut),
+WBlockHypercube::WBlockHypercube(size_t dims, size_t vertexSizeIn, size_t vertexSizeOut)
+: WBlock((1 << dims) * vertexSizeIn, (1 << dims) * vertexSizeOut),
   m_dims(dims),
   m_vertexSizeIn(vertexSizeIn),
   m_vertexSizeOut(vertexSizeOut)
 {
 }
 
-GBlockHypercube::GBlockHypercube(GDomNode* pNode)
-: GBlock(pNode)
+WBlockHypercube::WBlockHypercube(WDomNode* pNode)
+: WBlock(pNode)
 {
 }
 
-void GBlockHypercube::forwardProp()
+void WBlockHypercube::forwardProp()
 {
 	// Bias values
 	output.copy(0, weights, 0, outputCount);
@@ -2458,10 +2458,10 @@ void GBlockHypercube::forwardProp()
 			outPos += m_vertexSizeOut;
 		}
 	}
-	GAssert(pos == weights.size());
+	WAssert(pos == weights.size());
 }
 
-void GBlockHypercube::backProp()
+void WBlockHypercube::backProp()
 {
 	size_t vertices = 1 << m_dims;
 	size_t pos = outputCount;
@@ -2480,10 +2480,10 @@ void GBlockHypercube::backProp()
 			outPos += m_vertexSizeOut;
 		}
 	}
-	GAssert(pos == weights.size());
+	WAssert(pos == weights.size());
 }
 
-void GBlockHypercube::updateGradient()
+void WBlockHypercube::updateGradient()
 {
 	// Bias values
 	size_t pos = 0;
@@ -2510,15 +2510,15 @@ void GBlockHypercube::updateGradient()
 			outPos += m_vertexSizeOut;
 		}
 	}
-	GAssert(pos == weights.size());
+	WAssert(pos == weights.size());
 }
 
-size_t GBlockHypercube::weightCount() const
+size_t WBlockHypercube::weightCount() const
 {
 	return outputCount * (1 + m_dims * m_vertexSizeIn);
 }
 
-void GBlockHypercube::initWeights(GRand& rand)
+void WBlockHypercube::initWeights(WRand& rand)
 {
 	weights.fillNormal(rand, 1.0 / std::max((size_t)1, m_vertexSizeIn * m_dims));
 }
@@ -2534,17 +2534,17 @@ void GBlockHypercube::initWeights(GRand& rand)
 
 
 
-GBlockOptional::GBlockOptional(size_t inputs, size_t outputs)
-: GBlock(inputs, outputs)
+WBlockOptional::WBlockOptional(size_t inputs, size_t outputs)
+: WBlock(inputs, outputs)
 {
 }
 
-GBlockOptional::GBlockOptional(GDomNode* pNode)
-: GBlock(pNode)
+WBlockOptional::WBlockOptional(WDomNode* pNode)
+: WBlock(pNode)
 {
 }
 
-void GBlockOptional::forwardProp()
+void WBlockOptional::forwardProp()
 {
 	size_t pos = 0;
 	for(size_t i = 0; i < outputCount; i++)
@@ -2570,10 +2570,10 @@ void GBlockOptional::forwardProp()
 		}
 		output[i] = sumWeightedVals / sumWeights;
 	}
-	GAssert(pos == weights.size());
+	WAssert(pos == weights.size());
 }
 
-void GBlockOptional::backProp()
+void WBlockOptional::backProp()
 {
 	size_t pos = 0;
 	for(size_t i = 0; i < outputCount; i++)
@@ -2622,10 +2622,10 @@ void GBlockOptional::backProp()
 			pos += 4;
 		}
 	}
-	GAssert(pos == weights.size());
+	WAssert(pos == weights.size());
 }
 
-void GBlockOptional::updateGradient()
+void WBlockOptional::updateGradient()
 {
 	size_t pos = 0;
 	for(size_t i = 0; i < outputCount; i++)
@@ -2676,15 +2676,15 @@ void GBlockOptional::updateGradient()
 			pos += 4;
 		}
 	}
-	GAssert(pos == weights.size());
+	WAssert(pos == weights.size());
 }
 
-size_t GBlockOptional::weightCount() const
+size_t WBlockOptional::weightCount() const
 {
 	return 4 * inputCount * outputCount;
 }
 
-void GBlockOptional::initWeights(GRand& rand)
+void WBlockOptional::initWeights(WRand& rand)
 {
 	weights.fillNormal(rand, 1.0 / std::max((size_t)1, 4 * inputCount));
 }
@@ -2700,35 +2700,35 @@ void GBlockOptional::initWeights(GRand& rand)
 
 
 
-GBlockCatIn::GBlockCatIn(size_t valueCount, size_t units)
-: GBlock(1, units), m_valueCount(valueCount)
+WBlockCatIn::WBlockCatIn(size_t valueCount, size_t units)
+: WBlock(1, units), m_valueCount(valueCount)
 {
 }
 
-GBlockCatIn::GBlockCatIn(GDomNode* pNode)
-: GBlock(pNode), m_valueCount(pNode->getInt("values"))
+WBlockCatIn::WBlockCatIn(WDomNode* pNode)
+: WBlock(pNode), m_valueCount(pNode->getInt("values"))
 {
 }
 
-void GBlockCatIn::forwardProp()
+void WBlockCatIn::forwardProp()
 {
 	size_t i = (size_t)input[0];
-	GAssert(i < m_valueCount);
+	WAssert(i < m_valueCount);
 	output.copy(0, weights, outputCount * std::min(m_valueCount - 1, i), outputCount);
 }
 
-void GBlockCatIn::backProp()
+void WBlockCatIn::backProp()
 {
 	inBlame[0] = 0.0;
 }
 
-void GBlockCatIn::updateGradient()
+void WBlockCatIn::updateGradient()
 {
-	GAssert(gradient.size() == outBlame.size());
+	WAssert(gradient.size() == outBlame.size());
 	gradient.copy(outBlame);
 }
 
-void GBlockCatIn::step(double learningRate, double momentum)
+void WBlockCatIn::step(double learningRate, double momentum)
 {
 	size_t n = std::min(m_valueCount - 1, (size_t)input[0]);
 	size_t start = outputCount * n;
@@ -2739,17 +2739,17 @@ void GBlockCatIn::step(double learningRate, double momentum)
 	}
 }
 
-size_t GBlockCatIn::weightCount() const
+size_t WBlockCatIn::weightCount() const
 {
 	return m_valueCount * outputCount;
 }
 
-size_t GBlockCatIn::gradCount() const
+size_t WBlockCatIn::gradCount() const
 {
 	return outputCount;
 }
 
-void GBlockCatIn::initWeights(GRand& rand)
+void WBlockCatIn::initWeights(WRand& rand)
 {
 	weights.fillNormal(rand, 0.2);
 }
@@ -2763,24 +2763,24 @@ void GBlockCatIn::initWeights(GRand& rand)
 
 
 
-GBlockCatOut::GBlockCatOut(size_t categories, double margin)
-: GBlockWeightless(categories, 1), m_margin(margin)
+WBlockCatOut::WBlockCatOut(size_t categories, double margin)
+: WBlockWeightless(categories, 1), m_margin(margin)
 {
 }
 
-void GBlockCatOut::forwardProp()
+void WBlockCatOut::forwardProp()
 {
 	output[0] = (double)input.indexOfMax();
 }
 
-double GBlockCatOut::computeBlame(const GVec& target)
+double WBlockCatOut::computeBlame(const WVec& target)
 {
 	// We just store the target. backProp will use this value to compute a meaningful blame for each of the inputs.
 	outBlame[0] = target[0];
 	return 0.0;
 }
 
-void GBlockCatOut::backProp()
+void WBlockCatOut::backProp()
 {
 	size_t targ = (size_t)outBlame[0];
 	size_t pred = (size_t)output[0];
@@ -2807,8 +2807,8 @@ void GBlockCatOut::backProp()
 
 
 
-GBlockLSTM::GBlockLSTM(size_t inputs, size_t outputs)
-: GBlock(inputs, outputs), n(inputs + 2),
+WBlockLSTM::WBlockLSTM(size_t inputs, size_t outputs)
+: WBlock(inputs, outputs), n(inputs + 2),
   f(outputs),
   t(outputs),
   o(outputs),
@@ -2822,8 +2822,8 @@ GBlockLSTM::GBlockLSTM(size_t inputs, size_t outputs)
 {
 }
 
-GBlockLSTM::GBlockLSTM(const GBlockLSTM& that)
-: GBlock(that),
+WBlockLSTM::WBlockLSTM(const WBlockLSTM& that)
+: WBlock(that),
   n(that.inputCount + 2),
   f(that.outputCount),
   t(that.outputCount),
@@ -2838,8 +2838,8 @@ GBlockLSTM::GBlockLSTM(const GBlockLSTM& that)
 {
 }
 
-GBlockLSTM::GBlockLSTM(GDomNode* pNode)
-: GBlock(pNode), n(inputCount + 2),
+WBlockLSTM::WBlockLSTM(WDomNode* pNode)
+: WBlock(pNode), n(inputCount + 2),
   f(outputCount),
   t(outputCount),
   o(outputCount),
@@ -2853,27 +2853,27 @@ GBlockLSTM::GBlockLSTM(GDomNode* pNode)
 {
 }
 
-GBlockLSTM::~GBlockLSTM()
+WBlockLSTM::~WBlockLSTM()
 {
 	while(pSpare)
 	{
-		GBlockLSTM* pCondemned = pSpare;
+		WBlockLSTM* pCondemned = pSpare;
 		pSpare = pCondemned->pSpare;
-		GAssert(pCondemned->pSpare == nullptr);
+		WAssert(pCondemned->pSpare == nullptr);
 		pCondemned->pNextInstance = nullptr;
 		delete(pCondemned);
 	}
 	while(pNextInstance != this)
 	{
-		GBlockLSTM* pCondemned = pNextInstance;
+		WBlockLSTM* pCondemned = pNextInstance;
 		pNextInstance = pCondemned->pNextInstance;
-		GAssert(pCondemned->pSpare == nullptr);
+		WAssert(pCondemned->pSpare == nullptr);
 		pCondemned->pNextInstance = nullptr;
 		delete(pCondemned);
 	}
 }
 
-void GBlockLSTM::forwardProp_instance(const GVec& weights)
+void WBlockLSTM::forwardProp_instance(const WVec& weights)
 {
 	size_t pos = 0;
 
@@ -2883,7 +2883,7 @@ void GBlockLSTM::forwardProp_instance(const GVec& weights)
 		n[inputCount] = h[i];
 		n[inputCount + 1] = c[i];
 		f[i] = weights[pos++];
-		const GConstVecWrapper vw(weights, pos, inputCount + 2);
+		const WConstVecWrapper vw(weights, pos, inputCount + 2);
 		pos += inputCount + 2;
 		f[i] += n.dotProduct(vw);
 		f[i] = 1.0 / (1.0 + exp(-f[i]));
@@ -2895,7 +2895,7 @@ void GBlockLSTM::forwardProp_instance(const GVec& weights)
 		n[inputCount] = h[i];
 		n[inputCount + 1] = c[i];
 		t[i] = weights[pos++];
-		const GConstVecWrapper vw(weights, pos, inputCount + 2);
+		const WConstVecWrapper vw(weights, pos, inputCount + 2);
 		pos += inputCount + 2;
 		t[i] += n.dotProduct(vw);
 		t[i] = tanh(t[i]);
@@ -2907,16 +2907,16 @@ void GBlockLSTM::forwardProp_instance(const GVec& weights)
 		n[inputCount] = h[i];
 		n[inputCount + 1] = c[i];
 		o[i] = weights[pos++];
-		const GConstVecWrapper vw(weights, pos, inputCount + 2);
+		const WConstVecWrapper vw(weights, pos, inputCount + 2);
 		pos += inputCount + 2;
 		o[i] += n.dotProduct(vw);
 		o[i] = 1.0 / (1.0 + exp(-o[i]));
 	}
 }
 
-void GBlockLSTM::forwardProp()
+void WBlockLSTM::forwardProp()
 {
-	for(GBlockLSTM* pInst = pNextInstance; pInst != this; pInst = pInst->pNextInstance)
+	for(WBlockLSTM* pInst = pNextInstance; pInst != this; pInst = pInst->pNextInstance)
 	{
 		pInst->forwardProp_instance(weights);
 		pInst->stepInTime();
@@ -2929,12 +2929,12 @@ void GBlockLSTM::forwardProp()
 		output[i] = tanh(f[i] * c[i] + (1.0 - f[i]) * t[i]) * o[i];
 }
 
-void GBlockLSTM::resetState()
+void WBlockLSTM::resetState()
 {
 	// Move the ring of instances into the spare chain
 	while(pNextInstance != this)
 	{
-		GBlockLSTM* pCondemned = pNextInstance;
+		WBlockLSTM* pCondemned = pNextInstance;
 		pNextInstance = pCondemned->pNextInstance;
 		pCondemned->pNextInstance->pPrevInstance = this;
 		pCondemned->pSpare = pSpare;
@@ -2946,18 +2946,18 @@ void GBlockLSTM::resetState()
 	h.fill(0.0);
 }
 
-void GBlockLSTM::stepInTime()
+void WBlockLSTM::stepInTime()
 {
 	pNextInstance->h.copy(output);
 	for(size_t i = 0; i < outputCount; i++)
 		pNextInstance->c[i] = f[i] * c[i] + (1.0 - f[i]) * t[i];
 }
 
-GBlock* GBlockLSTM::advanceState(size_t unfoldedInstances)
+WBlock* WBlockLSTM::advanceState(size_t unfoldedInstances)
 {
 	// Count the instances
 	size_t count = 0;
-	for(GBlockLSTM* pInst = pNextInstance; true; pInst = pInst->pNextInstance)
+	for(WBlockLSTM* pInst = pNextInstance; true; pInst = pInst->pNextInstance)
 	{
 		count++;
 		if(pInst == this)
@@ -2965,10 +2965,10 @@ GBlock* GBlockLSTM::advanceState(size_t unfoldedInstances)
 	}
 
 	// Destroy superfluous instances
-	GAssert(unfoldedInstances > 0);
+	WAssert(unfoldedInstances > 0);
 	while(count > unfoldedInstances)
 	{
-		GBlockLSTM* pCondemned = pNextInstance;
+		WBlockLSTM* pCondemned = pNextInstance;
 		pNextInstance = pCondemned->pNextInstance;
 		pCondemned->pNextInstance->pPrevInstance = this;
 		pCondemned->pNextInstance = nullptr;
@@ -2996,7 +2996,7 @@ GBlock* GBlockLSTM::advanceState(size_t unfoldedInstances)
 	// Pass the spares forward
 	if(pNextInstance != this)
 	{
-		GAssert(!pNextInstance->pSpare);
+		WAssert(!pNextInstance->pSpare);
 		pNextInstance->pSpare = pSpare;
 		pSpare = nullptr;
 	}
@@ -3007,7 +3007,7 @@ GBlock* GBlockLSTM::advanceState(size_t unfoldedInstances)
 	return pNextInstance;
 }
 
-void GBlockLSTM::backProp_instance(const GVec& weights, bool current)
+void WBlockLSTM::backProp_instance(const WVec& weights, bool current)
 {
 	size_t pos = 0;
 
@@ -3072,9 +3072,9 @@ void GBlockLSTM::backProp_instance(const GVec& weights, bool current)
 	}
 }
 
-void GBlockLSTM::backProp()
+void WBlockLSTM::backProp()
 {
-	for(GBlockLSTM* pInst = pPrevInstance; pInst != this; pInst = pInst->pPrevInstance)
+	for(WBlockLSTM* pInst = pPrevInstance; pInst != this; pInst = pInst->pPrevInstance)
 	{
 		pInst->blame_c.fill(0.0);
 		pInst->blame_h.fill(0.0);
@@ -3083,11 +3083,11 @@ void GBlockLSTM::backProp()
 	blame_h.copy(outBlame);
 	if(pPrevInstance != this)
 		backProp_instance(weights, true);
-	for(GBlockLSTM* pInst = pPrevInstance; pInst != this && pInst->pPrevInstance != this; pInst = pInst->pPrevInstance)
+	for(WBlockLSTM* pInst = pPrevInstance; pInst != this && pInst->pPrevInstance != this; pInst = pInst->pPrevInstance)
 		pInst->backProp_instance(weights, false);
 }
 
-void GBlockLSTM::updateGradient_instance(GVec& weights, GVec& gradient)
+void WBlockLSTM::updateGradient_instance(WVec& weights, WVec& gradient)
 {
 	size_t pos = 0;
 
@@ -3137,19 +3137,19 @@ void GBlockLSTM::updateGradient_instance(GVec& weights, GVec& gradient)
 	}
 }
 
-void GBlockLSTM::updateGradient()
+void WBlockLSTM::updateGradient()
 {
-	for(GBlockLSTM* pInst = pNextInstance; pInst != this; pInst = pInst->pNextInstance)
+	for(WBlockLSTM* pInst = pNextInstance; pInst != this; pInst = pInst->pNextInstance)
 		pInst->updateGradient_instance(weights, gradient);
 	updateGradient_instance(weights, gradient);
 }
 
-size_t GBlockLSTM::weightCount() const
+size_t WBlockLSTM::weightCount() const
 {
 	return 3 * outputCount * (1 + inputCount + 2);
 }
 
-void GBlockLSTM::initWeights(GRand& rand)
+void WBlockLSTM::initWeights(WRand& rand)
 {
 	weights.fillNormal(rand, 1.0 / inputCount + 3);
 }
@@ -3166,18 +3166,18 @@ void GBlockLSTM::initWeights(GRand& rand)
 
 
 
-GLayer::GLayer()
+WLayer::WLayer()
 : input_count(0), output_count(0), weight_count(0)
 {
 }
 
-GLayer::GLayer(const GLayer& that, GLayer* pPrevLayer)
+WLayer::WLayer(const WLayer& that, WLayer* pPrevLayer)
 : input_count(that.input_count), output_count(that.output_count), weight_count(that.weight_count), grad_count(that.grad_count), output(that.output), outBlame(that.outBlame)
 {
 	size_t pos = 0;
 	for(size_t i = 0; i < that.m_blocks.size(); i++)
 	{
-		GBlock* pB = that.m_blocks[i]->clone();
+		WBlock* pB = that.m_blocks[i]->clone();
 		if(pPrevLayer)
 		{
 			pB->input.setData(pPrevLayer->output, pB->inPos(), pB->inputs());
@@ -3190,46 +3190,46 @@ GLayer::GLayer(const GLayer& that, GLayer* pPrevLayer)
 	}
 }
 
-GLayer::GLayer(GDomNode* pNode, GRand& rand)
+WLayer::WLayer(WDomNode* pNode, WRand& rand)
 : input_count(0),
   output_count(0),
   weight_count(0),
   grad_count(0)
 {
-	GDomNode* pBlocks = pNode->get("blocks");
-	GDomListIterator it(pBlocks);
+	WDomNode* pBlocks = pNode->get("blocks");
+	WDomListIterator it(pBlocks);
 	while(it.remaining() > 0)
 	{
-		GBlock* pBlock = GBlock::deserializeBlock(it.current(), rand);
+		WBlock* pBlock = WBlock::deserializeBlock(it.current(), rand);
 		add(pBlock, pBlock->inPos());
 		it.advance();
 	}
 }
 
 // virtual
-GLayer::~GLayer()
+WLayer::~WLayer()
 {
 	for(size_t i = 0; i < m_blocks.size(); i++)
 		delete(m_blocks[i]);
 }
 
-GDomNode* GLayer::serialize(GDom* pDoc) const
+WDomNode* WLayer::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newObj();
-	GDomNode* pBlocks = pNode->add(pDoc, "blocks", pDoc->newList());
+	WDomNode* pNode = pDoc->newObj();
+	WDomNode* pBlocks = pNode->add(pDoc, "blocks", pDoc->newList());
 	for(size_t i = 0; i < m_blocks.size(); i++)
 		pBlocks->add(pDoc, m_blocks[i]->serialize(pDoc));
 	return pNode;
 }
 
-void GLayer::add(GBlock* pBlock, size_t inPos)
+void WLayer::add(WBlock* pBlock, size_t inPos)
 {
 	pBlock->setInPos(inPos);
 	m_blocks.push_back(pBlock);
 	output_count = 0; // Force a recount
 }
 
-void GLayer::recount()
+void WLayer::recount()
 {
 	// Count the inputs and outputs
 	input_count = 0;
@@ -3248,44 +3248,44 @@ void GLayer::recount()
 	}
 }
 
-size_t GLayer::inputs() const
+size_t WLayer::inputs() const
 {
 	if(output_count == 0)
-		((GLayer*)this)->recount();
+		((WLayer*)this)->recount();
 	return input_count;
 }
 
-size_t GLayer::outputs() const
+size_t WLayer::outputs() const
 {
 	if(output_count == 0)
-		((GLayer*)this)->recount();
+		((WLayer*)this)->recount();
 	return output_count;
 }
 
-size_t GLayer::weightCount() const
+size_t WLayer::weightCount() const
 {
 	if(output_count == 0)
 	{
-		((GLayer*)this)->recount();
-		GAssert(weight_count < 100000000);
+		((WLayer*)this)->recount();
+		WAssert(weight_count < 100000000);
 	}
 	return weight_count;
 }
 
-size_t GLayer::gradCount() const
+size_t WLayer::gradCount() const
 {
 	if(output_count == 0)
-		((GLayer*)this)->recount();
+		((WLayer*)this)->recount();
 	return grad_count;
 }
 
-void GLayer::initWeights(GRand& rand)
+void WLayer::initWeights(WRand& rand)
 {
 	for(size_t i = 0; i < m_blocks.size(); i++)
 		m_blocks[i]->initWeights(rand);
 }
 
-void GLayer::bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInBlame, GVec& _weights, GVec& _gradient)
+void WLayer::bind(const WVec* pInput, WVec* pOutput, WVec* pOutBlame, WVec* pInBlame, WVec& _weights, WVec& _gradient)
 {
 	// Force a recount of sizes
 	output_count = 0;
@@ -3321,18 +3321,18 @@ void GLayer::bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInB
 		throw Ex("Expected an inBlame vector of size ", to_str(inputs()), ". Got ", to_str(pInBlame->size()));
 
 	// Bind all the blocks to the appropriate sub-buffers
-	GConstVecWrapper vwInput;
-	GVecWrapper vwOutput;
-	GVecWrapper vwOutBlame;
-	GVecWrapper vwInBlame;
-	GVecWrapper vwWeights;
-	GVecWrapper vwGradient;
+	WConstVecWrapper vwInput;
+	WVecWrapper vwOutput;
+	WVecWrapper vwOutBlame;
+	WVecWrapper vwInBlame;
+	WVecWrapper vwWeights;
+	WVecWrapper vwGradient;
 	size_t posOutput = 0;
 	size_t posWeights = 0;
 	size_t posGradient = 0;
 	for(size_t i = 0; i < blockCount(); i++)
 	{
-		GBlock& b = block(i);
+		WBlock& b = block(i);
 
 		// Figure out all of the sub-buffers for this block
 		if(pInput)
@@ -3354,111 +3354,111 @@ void GLayer::bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInB
 	}
 }
 
-void GLayer::bindInput(const GVec& _input)
+void WLayer::bindInput(const WVec& _input)
 {
-	GAssert(_input.size() == inputs());
+	WAssert(_input.size() == inputs());
 	for(size_t i = 0; i < blockCount(); i++)
 	{
-		GBlock& b = block(i);
+		WBlock& b = block(i);
 		b.input.setData(_input, b.inPos(), b.inputs());
 	}
 }
 
-void GLayer::bindInBlame(GVec& _inBlame)
+void WLayer::bindInBlame(WVec& _inBlame)
 {
-	GAssert(_inBlame.size() == inputs());
+	WAssert(_inBlame.size() == inputs());
 	for(size_t i = 0; i < blockCount(); i++)
 	{
-		GBlock& b = block(i);
+		WBlock& b = block(i);
 		b.inBlame.setData(_inBlame, b.inPos(), b.inputs());
 	}
 }
 
-void GLayer::forwardProp()
+void WLayer::forwardProp()
 {
 	for(size_t i = 0; i < blockCount(); i++)
 		m_blocks[i]->forwardProp();
 }
 
-void GLayer::backProp()
+void WLayer::backProp()
 {
 	for(size_t i = blockCount() - 1; i < blockCount(); i--)
 		m_blocks[i]->backProp();
 }
 
-void GLayer::updateGradient()
+void WLayer::updateGradient()
 {
 	for(size_t i = 0; i < blockCount(); i++)
 		m_blocks[i]->updateGradient();
 }
 
-void GLayer::updateGradientNormalized()
+void WLayer::updateGradientNormalized()
 {
 	for(size_t i = 0; i < blockCount(); i++)
 		m_blocks[i]->updateGradientNormalized();
 }
 
-void GLayer::step(double learningRate, double momentum)
+void WLayer::step(double learningRate, double momentum)
 {
 	for(size_t i = 0; i < blockCount(); i++)
 		m_blocks[i]->step(learningRate, momentum);
 }
 
-void GLayer::step_jitter(double learningRate, double momentum, double jitter, GRand& rand)
+void WLayer::step_jitter(double learningRate, double momentum, double jitter, WRand& rand)
 {
 	for(size_t i = 0; i < blockCount(); i++)
 		m_blocks[i]->step_jitter(learningRate, momentum, jitter, rand);
 }
 
-void GLayer::resetState()
+void WLayer::resetState()
 {
 	for(size_t i = 0; i < blockCount(); i++)
 		block(i).resetState();
 }
 
-void GLayer::advanceState(size_t unfoldedInstances)
+void WLayer::advanceState(size_t unfoldedInstances)
 {
 	for(size_t i = 0; i < blockCount(); i++)
 	{
-		GBlock* pOld = m_blocks[i];
-		GBlock* pNew = pOld->advanceState(unfoldedInstances);
+		WBlock* pOld = m_blocks[i];
+		WBlock* pNew = pOld->advanceState(unfoldedInstances);
 		if(pNew != pOld)
 		{
-			GAssert(pNew->input.data() == pOld->input.data());
-			GAssert(pNew->output.data() == pOld->output.data());
+			WAssert(pNew->input.data() == pOld->input.data());
+			WAssert(pNew->output.data() == pOld->output.data());
 			m_blocks[i] = pNew;
 		}
 	}
 }
 
-double GLayer::computeBlame(const GVec& target)
+double WLayer::computeBlame(const WVec& target)
 {
-	GAssert(target.size() == outBlame.size());
+	WAssert(target.size() == outBlame.size());
 	double sse = 0.0;
 	size_t pos = 0;
 	for(size_t i = 0; i < blockCount(); i++)
 	{
-		GBlock& b = block(i);
+		WBlock& b = block(i);
 		size_t n = b.outputs();
-		const GConstVecWrapper t(target, pos, n);
+		const WConstVecWrapper t(target, pos, n);
 		pos += n;
 		sse += b.computeBlame(t);
 	}
 	return sse;
 }
 
-void GLayer::biasMask(GVec& mask)
+void WLayer::biasMask(WVec& mask)
 {
 	size_t posWeights = 0;
 	for(size_t i = 0; i < blockCount(); i++)
 	{
-		GBlock& b = block(i);
+		WBlock& b = block(i);
 		size_t wc = b.weightCount();
-		GVecWrapper w(mask, posWeights, wc);
+		WVecWrapper w(mask, posWeights, wc);
 		posWeights += wc;
 		b.biasMask(w);
 	}
-	GAssert(posWeights == mask.size());
+	WAssert(posWeights == mask.size());
 }
 
 
@@ -3471,33 +3471,33 @@ void GLayer::biasMask(GVec& mask)
 
 
 
-GNeuralNet::GNeuralNet()
-: GBlock(0, 0), m_weightCount(0), m_gradCount(0)
+WNeuralNet::WNeuralNet()
+: WBlock(0, 0), m_weightCount(0), m_gradCount(0)
 {
 }
 
-GNeuralNet::GNeuralNet(const GNeuralNet& that)
-: GBlock(that), m_weightCount(that.m_weightCount), m_gradCount(that.m_gradCount) // SAKBox: m_gradCount was left uninitialised
+WNeuralNet::WNeuralNet(const WNeuralNet& that)
+: WBlock(that), m_weightCount(that.m_weightCount), m_gradCount(that.m_gradCount) // SAKBox: m_gradCount was left uninitialised
 {
 	for(size_t i = 0; i < that.m_layers.size(); i++)
 	{
-		m_layers.push_back(new GLayer(*that.m_layers[i], i > 0 ? m_layers[i - 1] : nullptr));
+		m_layers.push_back(new WLayer(*that.m_layers[i], i > 0 ? m_layers[i - 1] : nullptr));
 	}
 }
 
-GNeuralNet::GNeuralNet(GDomNode* pNode, GRand& rand)
-: GBlock(pNode), m_weightCount(0), m_gradCount(0)
+WNeuralNet::WNeuralNet(WDomNode* pNode, WRand& rand)
+: WBlock(pNode), m_weightCount(0), m_gradCount(0)
 {
 	deserialize(pNode, rand);
 }
 
 // virtual
-GNeuralNet::~GNeuralNet()
+WNeuralNet::~WNeuralNet()
 {
 	deleteAllLayers();
 }
 
-void GNeuralNet::deleteAllLayers()
+void WNeuralNet::deleteAllLayers()
 {
 	for(size_t i = 0; i < m_layers.size(); i++)
 		delete(m_layers[i]);
@@ -3506,10 +3506,10 @@ void GNeuralNet::deleteAllLayers()
 	m_gradCount = 0;
 }
 
-GDomNode* GNeuralNet::serialize(GDom* pDoc) const
+WDomNode* WNeuralNet::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc);
-	GDomNode* pLayers = pNode->add(pDoc, "layers", pDoc->newList());
+	WDomNode* pNode = baseDomNode(pDoc);
+	WDomNode* pLayers = pNode->add(pDoc, "layers", pDoc->newList());
 	for(size_t i = 0; i < m_layers.size(); i++)
 		pLayers->add(pDoc, m_layers[i]->serialize(pDoc));
 	if(weights.size() == 0)
@@ -3518,16 +3518,16 @@ GDomNode* GNeuralNet::serialize(GDom* pDoc) const
 	return pNode;
 }
 
-void GNeuralNet::deserialize(GDomNode* pNode, GRand& rand)
+void WNeuralNet::deserialize(WDomNode* pNode, WRand& rand)
 {
 	deleteAllLayers();
 	m_weightCount = 0;
 	m_gradCount = 0;
-	GDomNode* pLayers = pNode->get("layers");
-	GDomListIterator it(pLayers);
+	WDomNode* pLayers = pNode->get("layers");
+	WDomListIterator it(pLayers);
 	while(it.remaining() > 0)
 	{
-		GLayer* pNewLayer = new GLayer(it.current(), rand);
+		WLayer* pNewLayer = new WLayer(it.current(), rand);
 		m_layers.push_back(pNewLayer);
 		it.advance();
 	}
@@ -3535,17 +3535,17 @@ void GNeuralNet::deserialize(GDomNode* pNode, GRand& rand)
 	init(weightsBuf);
 }
 
-std::string GNeuralNet::to_str(const std::string& line_prefix, bool includeWeights, bool includeActivations) const
+std::string WNeuralNet::to_str(const std::string& line_prefix, bool includeWeights, bool includeActivations) const
 {
 	std::ostringstream oss;
-	oss << line_prefix << "[GNeuralNet: " << inputs() << "->" << outputs() << ", Weights=" << GClasses::to_str(weightCount()) << "\n";
+	oss << line_prefix << "[WNeuralNet: " << inputs() << "->" << outputs() << ", Weights=" << WClasses::to_str(weightCount()) << "\n";
 	[[maybe_unused]] size_t pos = 0;
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
 		oss << line_prefix << "  " << to_fixed_str(i, 2, ' ') << ") ";
 		for(size_t j = 0; j < m_layers[i]->blockCount(); j++)
 		{
-			GBlock& b = m_layers[i]->block(j);
+			WBlock& b = m_layers[i]->block(j);
 			size_t wc = b.weightCount();
 			pos += wc;
 			if(b.type() == block_neuralnet)
@@ -3560,12 +3560,12 @@ std::string GNeuralNet::to_str(const std::string& line_prefix, bool includeWeigh
 	return oss.str();
 }
 
-std::string GNeuralNet::to_str(bool includeWeights, bool includeActivations) const
+std::string WNeuralNet::to_str(bool includeWeights, bool includeActivations) const
 {
 	return to_str("", includeWeights, includeActivations);
 }
 
-void GNeuralNet::bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* pInBlame, GVec* pWeights, GVec* pGradient)
+void WNeuralNet::bind(const WVec* pInput, WVec* pOutput, WVec* pOutBlame, WVec* pInBlame, WVec* pWeights, WVec* pGradient)
 {
 	// Set the input, inBlame, weights, and gradient
 	if(pInput)
@@ -3596,16 +3596,16 @@ void GNeuralNet::bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* 
 	}
 
 	// Bind all the layers to the right parts of the buffers
-	const GVec* pIn = pInput;
-	GVec* pInBl = pInBlame;
+	const WVec* pIn = pInput;
+	WVec* pInBl = pInBlame;
 	size_t posWeights = 0;
 	size_t posGradient = 0;
-	GVecWrapper w;
-	GVecWrapper g;
-	GLayer* pLayPrev = nullptr;
+	WVecWrapper w;
+	WVecWrapper g;
+	WLayer* pLayPrev = nullptr;
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
-		GLayer& lay = *m_layers[i];
+		WLayer& lay = *m_layers[i];
 		size_t wc = lay.weightCount();
 		size_t gc = lay.gradCount();
 		w.setData(weights, posWeights, wc);
@@ -3625,7 +3625,7 @@ void GNeuralNet::bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* 
 	}
 
 	// Set output and outBlame
-	GLayer& outLay = *m_layers[m_layers.size() - 1];
+	WLayer& outLay = *m_layers[m_layers.size() - 1];
 	output.setData(outLay.output);
 	outBlame.setData(outLay.outBlame);
 
@@ -3636,10 +3636,10 @@ void GNeuralNet::bind(const GVec* pInput, GVec* pOutput, GVec* pOutBlame, GVec* 
 		throw Ex("Gradient size problem");
 }
 
-GBlock* GNeuralNet::add(GBlock* pBlock)
+WBlock* WNeuralNet::add(WBlock* pBlock)
 {
-	GAssert(m_weightCount == 0, "weights were counted before all blocks were added");
-	GLayer* pNewLayer = new GLayer();
+	WAssert(m_weightCount == 0, "weights were counted before all blocks were added");
+	WLayer* pNewLayer = new WLayer();
 	m_layers.push_back(pNewLayer);
 	pNewLayer->add(pBlock, 0);
 	if(m_layers.size() == 1)
@@ -3648,12 +3648,12 @@ GBlock* GNeuralNet::add(GBlock* pBlock)
 	return pBlock;
 }
 
-GBlock* GNeuralNet::concat(GBlock* pBlock, size_t inPos)
+WBlock* WNeuralNet::concat(WBlock* pBlock, size_t inPos)
 {
-	GAssert(m_weightCount == 0, "weights were counted before all blocks were added");
+	WAssert(m_weightCount == 0, "weights were counted before all blocks were added");
 	if(m_layers.size() == 0)
 		throw Ex("add must be called before concat");
-	GLayer* pLastLayer = m_layers[m_layers.size() - 1];
+	WLayer* pLastLayer = m_layers[m_layers.size() - 1];
 	pLastLayer->add(pBlock, inPos);
 	if(m_layers.size() == 1)
 		inputCount = pLastLayer->inputs();
@@ -3661,7 +3661,7 @@ GBlock* GNeuralNet::concat(GBlock* pBlock, size_t inPos)
 	return pBlock;
 }
 /*
-GVec* GNeuralNet::insert(size_t position, GBlock* pBlock, GVec* pOldWeights, GRand& rand)
+WVec* WNeuralNet::insert(size_t position, WBlock* pBlock, WVec* pOldWeights, WRand& rand)
 {
 	// Insert the block with a new layer
 	if(pOldWeights->size() != weightCount())
@@ -3676,23 +3676,23 @@ GVec* GNeuralNet::insert(size_t position, GBlock* pBlock, GVec* pOldWeights, GRa
 			throw Ex("Sorry, inserted blocks must have the same number of inputs and outputs");
 		if(pBlock->inputs() != layer(position).inputs())
 			throw Ex("this block size does not fit there");
-		GLayer* pPrevLayer = nullptr;
+		WLayer* pPrevLayer = nullptr;
 		if(position > 0)
 			pPrevLayer = m_layers[position - 1];
-		GLayer* pNewLayer = new GLayer();
+		WLayer* pNewLayer = new WLayer();
 		m_layers.insert(m_layers.begin() + position, pNewLayer);
 		pNewLayer->add(pBlock, 0);
 		pNewLayer->attach(pPrevLayer);
-		GLayer* pNextLayer = m_layers[position + 1];
+		WLayer* pNextLayer = m_layers[position + 1];
 		pNextLayer->attach(pNewLayer);
 	}
 
 	// Make the new weights
 	if(pBlock->weightCount() == 0)
 		return pOldWeights;
-	GVec* pNewWeights = new GVec(weightCount());
+	WVec* pNewWeights = new WVec(weightCount());
 	pNewWeights->copy(0, *pOldWeights, 0, layStart); // Everything before the new layer
-	GVecWrapper vw(*pNewWeights, layStart, pBlock->weightCount());
+	WVecWrapper vw(*pNewWeights, layStart, pBlock->weightCount());
 	pBlock->init_identity(vw);
 	pNewWeights->copy(layStart + pBlock->weightCount(), *pOldWeights, layStart, pOldWeights->size() - layStart);
 	if(layStart + pBlock->weightCount() + pOldWeights->size() - layStart != pNewWeights->size())
@@ -3702,7 +3702,7 @@ GVec* GNeuralNet::insert(size_t position, GBlock* pBlock, GVec* pOldWeights, GRa
 	return pNewWeights;
 }
 
-GVec* GNeuralNet::drop(size_t layer, GVec* pOldWeights)
+WVec* WNeuralNet::drop(size_t layer, WVec* pOldWeights)
 {
 	// Drop the layer
 	if(layer + 1 >= m_layers.size())
@@ -3710,21 +3710,21 @@ GVec* GNeuralNet::drop(size_t layer, GVec* pOldWeights)
 	if(pOldWeights->size() != weightCount())
 		throw Ex("Old weights have unexpected size");
 	size_t layStart = layerStart(layer);
-	GLayer* pLay = m_layers[layer];
-	GLayer* pLayBef = (layer > 0 ? m_layers[layer - 1] : nullptr);
+	WLayer* pLay = m_layers[layer];
+	WLayer* pLayBef = (layer > 0 ? m_layers[layer - 1] : nullptr);
 	if(pLay->inputs() != pLay->outputs())
 		throw Ex("Only layers with the same number of inputs and outputs can be dropped");
 	size_t condemnedWeights = pLay->weightCount();
 	m_weightCount = 0;
 	m_layers.erase(m_layers.begin() + layer);
-	GLayer& layAft = *m_layers[layer];
+	WLayer& layAft = *m_layers[layer];
 	layAft.attach(pLayBef);
 	delete(pLay);
 
 	// Adjust the weights
 	if(condemnedWeights == 0)
 		return pOldWeights;
-	GVec* pNewWeights = new GVec(pOldWeights->size() - condemnedWeights);
+	WVec* pNewWeights = new WVec(pOldWeights->size() - condemnedWeights);
 	pNewWeights->copy(0, *pOldWeights, 0, layStart);
 	pNewWeights->copy(layStart, *pOldWeights, layStart + condemnedWeights, pNewWeights->size() - layStart);
 	m_weightCount = 0; // Force a recount
@@ -3732,30 +3732,30 @@ GVec* GNeuralNet::drop(size_t layer, GVec* pOldWeights)
 	return pNewWeights;
 }
 
-GVec* GNeuralNet::increaseWidth(size_t newUnitsPerLayer, GVec* pWeights, size_t startLayer, size_t layerCount, GRand& rand)
+WVec* WNeuralNet::increaseWidth(size_t newUnitsPerLayer, WVec* pWeights, size_t startLayer, size_t layerCount, WRand& rand)
 {
 	// Allocate a new weights vector
 	size_t weightsCountAft = 0;
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
-		GLayer& lay = layer(i);
+		WLayer& lay = layer(i);
 		if(lay.blockCount() > 1)
 			throw Ex("Sorry, multiple blocks not yet supported");
-		GBlock& b = lay.block(0);
+		WBlock& b = lay.block(0);
 		weightsCountAft += b.adjustedWeightCount(i > startLayer && i <= startLayer + layerCount ? (int)newUnitsPerLayer : 0, i >= startLayer && i < startLayer + layerCount ? (int)newUnitsPerLayer : 0);
 	}
-	GVec* pWeightsAft = new GVec(weightsCountAft);
+	WVec* pWeightsAft = new WVec(weightsCountAft);
 
 	// Fill new weights
 	size_t posBef = 0;
 	size_t posAft = 0;
-	GVecWrapper vwBef;
-	GVecWrapper vwAft;
-	GLayer* pPrevLayer = nullptr;
+	WVecWrapper vwBef;
+	WVecWrapper vwAft;
+	WLayer* pPrevLayer = nullptr;
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
-		GLayer& lay = layer(i);
-		GBlock& b = lay.block(0);
+		WLayer& lay = layer(i);
+		WBlock& b = lay.block(0);
 		size_t wcBef = b.weightCount();
 		size_t wcAft = b.adjustedWeightCount(i > startLayer && i <= startLayer + layerCount ? (int)newUnitsPerLayer : 0, i >= startLayer && i < startLayer + layerCount ? (int)newUnitsPerLayer : 0);
 		vwBef.setData(*pWeights, posBef, wcBef);
@@ -3773,33 +3773,33 @@ GVec* GNeuralNet::increaseWidth(size_t newUnitsPerLayer, GVec* pWeights, size_t 
 	return pWeightsAft;
 }
 
-GVec* GNeuralNet::decrementWidth(GVec* pWeights, size_t startLayer, size_t layerCount)
+WVec* WNeuralNet::decrementWidth(WVec* pWeights, size_t startLayer, size_t layerCount)
 {
 	// Test whether a unit can be removed from each layer
 	vector<size_t> ignored_units;
 	size_t posBef = 0;
 	size_t sizeAft = 0;
-	GVecWrapper vwBef;
+	WVecWrapper vwBef;
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
-		GLayer& lay = layer(i);
+		WLayer& lay = layer(i);
 		if(lay.blockCount() > 1)
 			throw Ex("Sorry, multiple blocks not yet supported");
-		GBlock& b = lay.block(0);
+		WBlock& b = lay.block(0);
 		size_t wc = b.weightCount();
 		vwBef.setData(*pWeights, posBef, wc);
 		posBef += wc;
 		if(i > startLayer && i <= startLayer + layerCount)
 		{
-			if(b.type() == GBlock::block_linear)
+			if(b.type() == WBlock::block_linear)
 			{
 				size_t unit = b.firstIgnoredInput(vwBef);
 				if(unit == INVALID_INDEX)
 					return nullptr;
 				ignored_units.push_back(unit);
 			}
-			else if(b.type() == GBlock::block_hinge) {}
-			else if(b.type() == GBlock::block_elbow) {}
+			else if(b.type() == WBlock::block_hinge) {}
+			else if(b.type() == WBlock::block_elbow) {}
 			else
 				throw Ex("Unsupported block type");
 		}
@@ -3808,20 +3808,20 @@ GVec* GNeuralNet::decrementWidth(GVec* pWeights, size_t startLayer, size_t layer
 	ignored_units.push_back(INVALID_INDEX);
 
 	// Remove a unit from each layer
-	GVec* pWeightsAft = new GVec(sizeAft);
-	GVecWrapper vwAft;
+	WVec* pWeightsAft = new WVec(sizeAft);
+	WVecWrapper vwAft;
 	posBef = 0;
 	size_t posAft = 0;
 	size_t listPos = 0;
 	size_t inCondemned = INVALID_INDEX;
 	size_t outCondemned = INVALID_INDEX;
-	GLayer* pPrevLayer = nullptr;
+	WLayer* pPrevLayer = nullptr;
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
-		GLayer& lay = layer(i);
+		WLayer& lay = layer(i);
 		if(lay.blockCount() > 1)
 			throw Ex("Sorry, multiple blocks not yet supported");
-		GBlock& b = lay.block(0);
+		WBlock& b = lay.block(0);
 		size_t wcBef = b.weightCount();
 		size_t wcAft = b.adjustedWeightCount(i > startLayer && i <= startLayer + layerCount ? -1 : 0, i >= startLayer && i < startLayer + layerCount ? -1 : 0);
 		vwBef.setData(*pWeights, posBef, wcBef);
@@ -3830,15 +3830,15 @@ GVec* GNeuralNet::decrementWidth(GVec* pWeights, size_t startLayer, size_t layer
 		posAft += wcAft;
 		if(i >= startLayer && i <= startLayer + layerCount)
 		{
-			if(b.type() == GBlock::block_linear)
+			if(b.type() == WBlock::block_linear)
 			{
 				inCondemned = outCondemned;
 				outCondemned = ignored_units[listPos++];
 				b.dropUnit(inCondemned, outCondemned, vwBef, vwAft);
 			}
-			else if(b.type() == GBlock::block_hinge)
+			else if(b.type() == WBlock::block_hinge)
 				b.dropUnit(outCondemned, outCondemned, vwBef, vwAft);
-			else if(b.type() == GBlock::block_elbow)
+			else if(b.type() == WBlock::block_elbow)
 				b.dropUnit(outCondemned, outCondemned, vwBef, vwAft);
 			else
 				throw Ex("Unsupported block type");
@@ -3855,21 +3855,21 @@ GVec* GNeuralNet::decrementWidth(GVec* pWeights, size_t startLayer, size_t layer
 	return pWeightsAft;
 }
 */
-void GNeuralNet::regularize_square(double lambda)
+void WNeuralNet::regularize_square(double lambda)
 {
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
-		GLayer& lay = *m_layers[i];
-		GBlock& b = lay.block(0);
+		WLayer& lay = *m_layers[i];
+		WBlock& b = lay.block(0);
 		if(b.type() != block_linear)
 			continue;
 		if(b.inputs() != b.outputs())
 			continue;
-		GBlockLinear* pLin = (GBlockLinear*)&b;
-		GVec* pWeightsNext = nullptr;
+		WBlockLinear* pLin = (WBlockLinear*)&b;
+		WVec* pWeightsNext = nullptr;
 		if(i + 2 < m_layers.size())
 		{
-			GBlock& b2 = m_layers[i + 2]->block(0);
+			WBlock& b2 = m_layers[i + 2]->block(0);
 			if(b2.type() == block_linear && b2.inputs() == b.inputs() && b2.outputs() == b.outputs())
 				pWeightsNext = &b2.weights;
 		}
@@ -3877,13 +3877,13 @@ void GNeuralNet::regularize_square(double lambda)
 	}
 }
 
-void GNeuralNet::forwardProp()
+void WNeuralNet::forwardProp()
 {
 	for(size_t i = 0; i < m_layers.size(); i++)
 		m_layers[i]->forwardProp();
 }
 
-GVec& GNeuralNet::forwardProp(const GVec& in)
+WVec& WNeuralNet::forwardProp(const WVec& in)
 {
 	input.setData(in);
 	m_layers[0]->bindInput(in);
@@ -3891,19 +3891,19 @@ GVec& GNeuralNet::forwardProp(const GVec& in)
 	return output;
 }
 
-double GNeuralNet::computeBlame(const GVec& target)
+double WNeuralNet::computeBlame(const WVec& target)
 {
 	return outputLayer().computeBlame(target);
 }
 
-void GNeuralNet::backProp()
+void WNeuralNet::backProp()
 {
 	double minBlameSqMag = outputLayer().outBlame.squaredMagnitude() * 0.0001;
 	for(size_t i = m_layers.size() - 1; i > 0; i--)
 	{
-		GLayer& layPrev = *m_layers[i - 1];
+		WLayer& layPrev = *m_layers[i - 1];
 		layPrev.outBlame.fill(0.0);
-		GLayer& lay = *m_layers[i];
+		WLayer& lay = *m_layers[i];
 		lay.backProp();
 
 		// Ensure that the blame has not diminished into oblivion
@@ -3914,14 +3914,14 @@ void GNeuralNet::backProp()
 	m_layers[0]->backProp();
 }
 
-void GNeuralNet::backPropFast()
+void WNeuralNet::backPropFast()
 {
 	double minBlameSqMag = outputLayer().outBlame.squaredMagnitude() * 0.0001;
 	for(size_t i = m_layers.size() - 1; i > 0; i--)
 	{
-		GLayer& layPrev = *m_layers[i - 1];
+		WLayer& layPrev = *m_layers[i - 1];
 		layPrev.outBlame.fill(0.0);
-		GLayer& lay = *m_layers[i];
+		WLayer& lay = *m_layers[i];
 		lay.backProp();
 
 		// Ensure that the blame has not diminished into oblivion
@@ -3931,9 +3931,9 @@ void GNeuralNet::backPropFast()
 	}
 }
 
-void GNeuralNet::backpropagate(GVec* inputBlame)
+void WNeuralNet::backpropagate(WVec* inputBlame)
 {
-	GAssert(weights.size() == weightCount());
+	WAssert(weights.size() == weightCount());
 	if(inputBlame)
 	{
 		inBlame.setData(*inputBlame);
@@ -3946,31 +3946,31 @@ void GNeuralNet::backpropagate(GVec* inputBlame)
 		backPropFast();
 }
 
-void GNeuralNet::updateGradient()
+void WNeuralNet::updateGradient()
 {
 	for(size_t i = 0; i < m_layers.size(); i++)
 		m_layers[i]->updateGradient();
 }
 
-void GNeuralNet::updateGradientNormalized()
+void WNeuralNet::updateGradientNormalized()
 {
 	for(size_t i = 0; i < m_layers.size(); i++)
 		m_layers[i]->updateGradientNormalized();
 }
 
-void GNeuralNet::step(double learningRate, double momentum)
+void WNeuralNet::step(double learningRate, double momentum)
 {
 	for(size_t i = 0; i < m_layers.size(); i++)
 		m_layers[i]->step(learningRate, momentum);
 }
 
-void GNeuralNet::step_jitter(double learningRate, double momentum, double jitter, GRand& rand)
+void WNeuralNet::step_jitter(double learningRate, double momentum, double jitter, WRand& rand)
 {
 	for(size_t i = 0; i < m_layers.size(); i++)
 		m_layers[i]->step_jitter(learningRate, momentum, jitter, rand);
 }
 
-void GNeuralNet::recount()
+void WNeuralNet::recount()
 {
 	m_weightCount = 0;
 	m_gradCount = 0;
@@ -3979,38 +3979,38 @@ void GNeuralNet::recount()
 		m_weightCount += m_layers[i]->weightCount();
 		m_gradCount += m_layers[i]->gradCount();
 	}
-	GAssert(m_weightCount < 100000000);
+	WAssert(m_weightCount < 100000000);
 }
 
-size_t GNeuralNet::weightCount() const
+size_t WNeuralNet::weightCount() const
 {
 	if(m_weightCount == 0)
-		((GNeuralNet*)this)->recount();
+		((WNeuralNet*)this)->recount();
 	return m_weightCount;
 }
 
-size_t GNeuralNet::gradCount() const
+size_t WNeuralNet::gradCount() const
 {
 	if(m_weightCount == 0)
-		((GNeuralNet*)this)->recount();
+		((WNeuralNet*)this)->recount();
 	return m_gradCount;
 }
 
-void GNeuralNet::copyTopology(const GNeuralNet& other)
+void WNeuralNet::copyTopology(const WNeuralNet& other)
 {
 	deleteAllLayers();
 	m_weightCount = other.weightCount();
 	m_gradCount = other.gradCount();
-	GLayer* pPrevLayer = nullptr;
+	WLayer* pPrevLayer = nullptr;
 	for(size_t i = 0; i < other.m_layers.size(); i++)
 	{
-		GLayer* pNewLayer = new GLayer(*other.m_layers[i], pPrevLayer);
+		WLayer* pNewLayer = new WLayer(*other.m_layers[i], pPrevLayer);
 		m_layers.push_back(pNewLayer);
 		pPrevLayer = pNewLayer;
 	}
 }
 
-void GNeuralNet::initWeights(GRand& rand)
+void WNeuralNet::initWeights(WRand& rand)
 {
 	for(size_t i = 0; i < m_layers.size(); i++)
 		m_layers[i]->initWeights(rand);
@@ -4018,14 +4018,14 @@ void GNeuralNet::initWeights(GRand& rand)
 	// Check that the layers all line up
 	for(size_t i = 1; i < m_layers.size(); i++)
 	{
-		GLayer& a = *m_layers[i - 1];
-		GLayer& b = *m_layers[i];
+		WLayer& a = *m_layers[i - 1];
+		WLayer& b = *m_layers[i];
 		if(a.outputs() != b.inputs())
-			throw Ex("Layer ", GClasses::to_str(i - 1), " outputs ", GClasses::to_str(a.outputs()), " values, but layer ", GClasses::to_str(i), " expects ", GClasses::to_str(b.inputs()), " inputs");
+			throw Ex("Layer ", WClasses::to_str(i - 1), " outputs ", WClasses::to_str(a.outputs()), " values, but layer ", WClasses::to_str(i), " expects ", WClasses::to_str(b.inputs()), " inputs");
 	}
 }
 
-void GNeuralNet::init(GRand& rand, GNeuralNet* pBase)
+void WNeuralNet::init(WRand& rand, WNeuralNet* pBase)
 {
 	if(pBase)
 		bind(&pBase->output, nullptr, nullptr, &pBase->outBlame, nullptr, nullptr);
@@ -4035,30 +4035,30 @@ void GNeuralNet::init(GRand& rand, GNeuralNet* pBase)
 	gradient.fill(0.0);
 }
 
-void GNeuralNet::init(GVec& weights)
+void WNeuralNet::init(WVec& weights)
 {
 	bind(nullptr, nullptr, nullptr, nullptr, &weights, nullptr);
 	gradient.fill(0.0);
 }
 
-double GNeuralNet::measureLoss(const GMatrix& features, const GMatrix& labels, double* pOutSAE)
+double WNeuralNet::measureLoss(const WMatrix& features, const WMatrix& labels, double* pOutSAE)
 {
 	if(features.rows() != labels.rows())
 		throw Ex("Expected the features and labels to have the same number of rows");
 	if(features.cols() != inputs())
-		throw Ex("Mismatching number of inputs. Data has ", GClasses::to_str(features.cols()), ". Neural net expects ", GClasses::to_str(inputs()));
-	GRand rand(0);
+		throw Ex("Mismatching number of inputs. Data has ", WClasses::to_str(features.cols()), ". Neural net expects ", WClasses::to_str(inputs()));
+	WRand rand(0);
 	double sae = 0.0;
 	double sse = 0.0;
 	if(labels.cols() == outputs())
 	{
 		if(labels.cols() == 1 && labels.relation().valueCount(0) > 0)
 		{
-			// Classification with a GBlockCatOut on the output. Count misclassifications.
+			// Classification with a WBlockCatOut on the output. Count misclassifications.
 			for(size_t i = 0; i < features.rows(); i++)
 			{
-				GVec& prediction = forwardProp(features[i]);
-				const GVec& targ = labels[i];
+				WVec& prediction = forwardProp(features[i]);
+				const WVec& targ = labels[i];
 				if(targ[0] >= 0.0)
 				{
 					if((size_t)prediction[0] != (size_t)targ[0])
@@ -4072,8 +4072,8 @@ double GNeuralNet::measureLoss(const GMatrix& features, const GMatrix& labels, d
 			// Regression. Compute SSE and SAE.
 			for(size_t i = 0; i < features.rows(); i++)
 			{
-				GVec& prediction = forwardProp(features[i]);
-				const GVec& targ = labels[i];
+				WVec& prediction = forwardProp(features[i]);
+				const WVec& targ = labels[i];
 				for(size_t j = 0; j < prediction.size(); j++)
 				{
 					if(targ[j] != UNKNOWN_REAL_VALUE)
@@ -4091,8 +4091,8 @@ double GNeuralNet::measureLoss(const GMatrix& features, const GMatrix& labels, d
 		// Classification with 1-hot output. Count misclassifications.
 		for(size_t i = 0; i < features.rows(); i++)
 		{
-			GVec& prediction = forwardProp(features[i]);
-			const GVec& targ = labels[i];
+			WVec& prediction = forwardProp(features[i]);
+			const WVec& targ = labels[i];
 			if(targ[0] >= 0.0)
 			{
 				size_t j = prediction.indexOfMax();
@@ -4105,9 +4105,9 @@ double GNeuralNet::measureLoss(const GMatrix& features, const GMatrix& labels, d
 	else
 	{
 		if(labels.cols() == 1)
-			throw Ex("Mismatching number of outputs. Data has 1 column with ", GClasses::to_str(labels.relation().valueCount(0)), " categorical values. Neural net outputs ", GClasses::to_str(outputs()));
+			throw Ex("Mismatching number of outputs. Data has 1 column with ", WClasses::to_str(labels.relation().valueCount(0)), " categorical values. Neural net outputs ", WClasses::to_str(outputs()));
 		else
-			throw Ex("Mismatching number of outputs. Data has ", GClasses::to_str(labels.cols()), ". Neural net expects ", GClasses::to_str(outputs()));
+			throw Ex("Mismatching number of outputs. Data has ", WClasses::to_str(labels.cols()), ". Neural net expects ", WClasses::to_str(outputs()));
 	}
 
 	if(pOutSAE)
@@ -4115,20 +4115,20 @@ double GNeuralNet::measureLoss(const GMatrix& features, const GMatrix& labels, d
 	return sse;
 }
 
-void GNeuralNet::resetState()
+void WNeuralNet::resetState()
 {
 	for(size_t i = 0; i < m_layers.size(); i++)
 		m_layers[i]->resetState();
 }
 
-GBlock* GNeuralNet::advanceState(size_t unfoldedInstances)
+WBlock* WNeuralNet::advanceState(size_t unfoldedInstances)
 {
 	for(size_t i = 0; i < m_layers.size(); i++)
 		m_layers[i]->advanceState(unfoldedInstances);
 	return this;
 }
 
-std::string GNeuralNet::toEquation()
+std::string WNeuralNet::toEquation()
 {
 	std::ostringstream os;
 	size_t prev = 1;
@@ -4138,14 +4138,14 @@ std::string GNeuralNet::toEquation()
 	{
 		if(m_layers[i]->blockCount() > 1)
 			throw Ex("Multiple blocks not yet supported");
-		GBlock* b = &m_layers[i]->block(0);
+		WBlock* b = &m_layers[i]->block(0);
 		for(size_t j = 0; j < b->outputs(); j++)
 		{
 			if(i < m_layers.size() - 1)
-				os << "h" << GClasses::to_str(cur + j) << " = ";
+				os << "h" << WClasses::to_str(cur + j) << " = ";
 			else
-				os << "y" << GClasses::to_str(1 + j) << " = ";
-			if(b->type() == GBlock::block_linear)
+				os << "y" << WClasses::to_str(1 + j) << " = ";
+			if(b->type() == WBlock::block_linear)
 			{
 				size_t biasStart = wp;
 				wp += b->outputs();
@@ -4153,21 +4153,21 @@ std::string GNeuralNet::toEquation()
 				wp += b->inputs() * b->outputs();
 				for(size_t k = 0; k < b->outputs(); k++)
 				{
-					os << GClasses::to_str(weights[biasStart + k]);
+					os << WClasses::to_str(weights[biasStart + k]);
 					for(size_t l = 0; l < b->inputs(); l++)
 					{
 						if(weights[weightStart + b->outputs() * l + k] != 0.0)
-							os << " + " << GClasses::to_str(weights[weightStart + b->outputs() * l + k]) << (i == 0 ? " * x" : " * h") << GClasses::to_str(prev + l);
+							os << " + " << WClasses::to_str(weights[weightStart + b->outputs() * l + k]) << (i == 0 ? " * x" : " * h") << WClasses::to_str(prev + l);
 					}
 				}
 			}
-			else if(b->type() == GBlock::block_tanh)
+			else if(b->type() == WBlock::block_tanh)
 			{
-				os << "tanh( " << (i == 0 ? " * x" : " * h") << GClasses::to_str(prev + j);
+				os << "tanh( " << (i == 0 ? " * x" : " * h") << WClasses::to_str(prev + j);
 			}
-			else if(b->type() == GBlock::block_scalarproduct)
+			else if(b->type() == WBlock::block_scalarproduct)
 			{
-				os << (i == 0 ? " * x" : " * h") << GClasses::to_str(prev + j) << " * " << (i == 0 ? " * x" : " * h") << GClasses::to_str(prev + b->outputs() + j);
+				os << (i == 0 ? " * x" : " * h") << WClasses::to_str(prev + j) << " * " << (i == 0 ? " * x" : " * h") << WClasses::to_str(prev + b->outputs() + j);
 			}
 		}
 		os << ";\n";
@@ -4177,60 +4177,60 @@ std::string GNeuralNet::toEquation()
 	return os.str();
 }
 
-void GNeuralNet::biasMask(GVec& mask)
+void WNeuralNet::biasMask(WVec& mask)
 {
 	size_t posWeights = 0;
-	GVecWrapper w;
+	WVecWrapper w;
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
-		GLayer& lay = *m_layers[i];
+		WLayer& lay = *m_layers[i];
 		size_t wc = lay.weightCount();
 		w.setData(mask, posWeights, wc);
 		posWeights += wc;
 		lay.biasMask(w);
 	}
-	GAssert(posWeights == mask.size());
+	WAssert(posWeights == mask.size());
 }
 
-size_t GNeuralNet::layerStart(size_t layer)
+size_t WNeuralNet::layerStart(size_t layer)
 {
 	size_t posWeights = 0;
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
 		if(i == layer)
 			return posWeights;
-		GLayer& lay = *m_layers[i];
+		WLayer& lay = *m_layers[i];
 		size_t wc = lay.weightCount();
 		posWeights += wc;
 	}
 	throw Ex("Layer index out of range");
 }
 
-void GNeuralNet_finiteDifferencingTest(GNeuralNet& nn, GVec& x)
+void WNeuralNet_finiteDifferencingTest(WNeuralNet& nn, WVec& x)
 {
 	size_t outputCount = nn.outputs();
 
 	// Do it with finite differencing
 	double epsilon = 1e-6;
-	GMatrix measured(outputCount, nn.weightCount());
-	GVec xx;
-	GVec predNegCopy;
-	GVec& weights = nn.weights;
+	WMatrix measured(outputCount, nn.weightCount());
+	WVec xx;
+	WVec predNegCopy;
+	WVec& weights = nn.weights;
 	for(size_t i = 0; i < nn.weightCount(); i++)
 	{
 		weights[i] -= epsilon / 2.0;
 		predNegCopy.copy(nn.forwardProp(x));
 		weights[i] += epsilon;
-		GVec& predPos = nn.forwardProp(x);
+		WVec& predPos = nn.forwardProp(x);
 		weights[i] -= epsilon / 2.0;
 		for(size_t j = 0; j < outputCount; j++)
 			measured[j][i] = (predPos[j] - predNegCopy[j]) / epsilon;
 	}
 
 	// Do it with back-prop
-	GMatrix computed(outputCount, nn.gradCount());
-	GVec& pred = nn.forwardProp(x);
-	GVec targ;
+	WMatrix computed(outputCount, nn.gradCount());
+	WVec& pred = nn.forwardProp(x);
+	WVec targ;
 	targ.copy(pred);
 	for(size_t i = 0; i < outputCount; i++)
 	{
@@ -4265,99 +4265,99 @@ void GNeuralNet_finiteDifferencingTest(GNeuralNet& nn, GVec& x)
 		throw Ex("Not enough deviation");
 }
 
-void GNeuralNet_testLinearAndTanh()
+void WNeuralNet_testLinearAndTanh()
 {
-	GNeuralNet nn;
-	nn.add(new GBlockLinear(3, 5));
-	nn.add(new GBlockTanh(5));
-	nn.add(new GBlockLinear(5, 2));
+	WNeuralNet nn;
+	nn.add(new WBlockLinear(3, 5));
+	nn.add(new WBlockTanh(5));
+	nn.add(new WBlockLinear(5, 2));
 
-	GRand rand(0);
-	GVec weights(nn.weightCount());
+	WRand rand(0);
+	WVec weights(nn.weightCount());
 	weights.fillNormal(rand);
 	nn.init(weights);
 
-	GVec x(nn.inputs());
+	WVec x(nn.inputs());
 	x.fillNormal(rand);
 
 	nn.finiteDifferencingTest();
 }
 
-void GNeuralNet_testConvolutional1()
+void WNeuralNet_testConvolutional1()
 {
-	GNeuralNet nn;
-	nn.add(new GBlockConv({4, 4}, {3, 3}, {4, 4}));
+	WNeuralNet nn;
+	nn.add(new WBlockConv({4, 4}, {3, 3}, {4, 4}));
 
-	GRand rand(0);
-	GVec weights(nn.weightCount());
+	WRand rand(0);
+	WVec weights(nn.weightCount());
 	nn.init(weights);
 
 	weights.fillNormal(rand);
-	GVec x(nn.inputs());
+	WVec x(nn.inputs());
 	x.fillNormal(rand);
 
 	nn.finiteDifferencingTest();
 }
 
-void GNeuralNet_testConvolutional3()
+void WNeuralNet_testConvolutional3()
 {
-	GNeuralNet nn;
-	nn.add(new GBlockConv({4, 4}, {3, 3, 2}, {4, 4, 2}));
-	nn.add(new GBlockLeakyRectifier(16 * 2));
-	nn.add(new GBlockConv({4, 4, 2}, {3, 3, 2}, {4, 4}));
-	nn.add(new GBlockLeakyRectifier(16));
+	WNeuralNet nn;
+	nn.add(new WBlockConv({4, 4}, {3, 3, 2}, {4, 4, 2}));
+	nn.add(new WBlockLeakyRectifier(16 * 2));
+	nn.add(new WBlockConv({4, 4, 2}, {3, 3, 2}, {4, 4}));
+	nn.add(new WBlockLeakyRectifier(16));
 
-	GRand rand(123);
-	GVec weights(nn.weightCount());
+	WRand rand(123);
+	WVec weights(nn.weightCount());
 	weights.fillNormal(rand);
 	nn.init(weights);
-	GVec x(nn.inputs());
+	WVec x(nn.inputs());
 	x.fillNormal(rand);
 
-	GNeuralNet_finiteDifferencingTest(nn, x);
+	WNeuralNet_finiteDifferencingTest(nn, x);
 }
 
-void GNeuralNet_testSerializationRoundTrip()
+void WNeuralNet_testSerializationRoundTrip()
 {
 	// Make a random neural net
-	GNeuralNet nn;
-	nn.add(new GBlockLinear(1, 3));
-	nn.add(new GBlockTanh(3));
-	nn.add(new GBlockLinear(3, 2));
-	nn.add(new GBlockTanh(2));
-	nn.add(new GBlockLinear(2, 1));
-	nn.add(new GBlockTanh(1));
-	GVec weights(nn.weightCount());
+	WNeuralNet nn;
+	nn.add(new WBlockLinear(1, 3));
+	nn.add(new WBlockTanh(3));
+	nn.add(new WBlockLinear(3, 2));
+	nn.add(new WBlockTanh(2));
+	nn.add(new WBlockLinear(2, 1));
+	nn.add(new WBlockTanh(1));
+	WVec weights(nn.weightCount());
 	nn.init(weights);
-	GRand rand(0);
+	WRand rand(0);
 	weights.fillNormal(rand, 0.3);
 
 	// Make a prediction
-	GVec in(1);
+	WVec in(1);
 	in[0] = 0.5;
-	GVec& pred = nn.forwardProp(in);
+	WVec& pred = nn.forwardProp(in);
 
 	// Roundtrip through serialization
-	GDom doc;
-	GDomNode* pNode = nn.serialize(&doc);
-	GNeuralNet nn2(pNode, rand);
+	WDom doc;
+	WDomNode* pNode = nn.serialize(&doc);
+	WNeuralNet nn2(pNode, rand);
 
 	// Make the same prediction
-	GVec& pred2 = nn.forwardProp(in);
+	WVec& pred2 = nn.forwardProp(in);
 	if(std::abs(pred[0] - pred2[0]) > 1e-9)
 		throw Ex("failed");
 }
 /*
-void GNeuralNet_test_decrementWidthPositive()
+void WNeuralNet_test_decrementWidthPositive()
 {
-	GNeuralNet nn;
-	nn.add(new GBlockLinear(2, 3));
-	nn.add(new GBlockHinge(3));
-	nn.add(new GBlockLinear(3, 3));
-	nn.add(new GBlockHinge(3));
-	nn.add(new GBlockLinear(3, 2));
-	nn.add(new GBlockHinge(2));
-	GVec w({0, 1, 2,
+	WNeuralNet nn;
+	nn.add(new WBlockLinear(2, 3));
+	nn.add(new WBlockHinge(3));
+	nn.add(new WBlockLinear(3, 3));
+	nn.add(new WBlockHinge(3));
+	nn.add(new WBlockLinear(3, 2));
+	nn.add(new WBlockHinge(2));
+	WVec w({0, 1, 2,
 		3, 4, 5,
 		6, 7, 8,
 		9, 10, 11, 12, 13, 14,
@@ -4376,11 +4376,11 @@ void GNeuralNet_test_decrementWidthPositive()
 
 	//std::cout << "Bef:\n" << nn.to_str("", &w) << "\n";
 
-	GVec* pNewWeights = nn.decrementWidth(&w, 0, 4);
-	std::unique_ptr<GVec> hNewWeights(pNewWeights);
+	WVec* pNewWeights = nn.decrementWidth(&w, 0, 4);
+	std::unique_ptr<WVec> hNewWeights(pNewWeights);
 	//std::cout << "Aft:\n" << nn.to_str("", pNewWeights) << "\n";
 
-	GVec targ({0, 2,
+	WVec targ({0, 2,
 		3, 5,
 		6, 8,
 		9, 11, 12, 14,
@@ -4396,16 +4396,16 @@ void GNeuralNet_test_decrementWidthPositive()
 		throw Ex("Failed");
 }
 
-void GNeuralNet_test_decrementWidthNegative()
+void WNeuralNet_test_decrementWidthNegative()
 {
-	GNeuralNet nn;
-	nn.add(new GBlockLinear(2, 3));
-	nn.add(new GBlockHinge(3));
-	nn.add(new GBlockLinear(3, 3));
-	nn.add(new GBlockHinge(3));
-	nn.add(new GBlockLinear(3, 2));
-	nn.add(new GBlockHinge(2));
-	GVec w({0, 1, 2,
+	WNeuralNet nn;
+	nn.add(new WBlockLinear(2, 3));
+	nn.add(new WBlockHinge(3));
+	nn.add(new WBlockLinear(3, 3));
+	nn.add(new WBlockHinge(3));
+	nn.add(new WBlockLinear(3, 2));
+	nn.add(new WBlockHinge(2));
+	WVec w({0, 1, 2,
 		3, 4, 5,
 		6, 7, 8,
 		9, 10, 11, 12, 13, 14,
@@ -4424,32 +4424,32 @@ void GNeuralNet_test_decrementWidthNegative()
 
 	//std::cout << "Bef:\n" << nn.to_str("", &w) << "\n";
 
-	GVec* pNewWeights = nn.decrementWidth(&w, 0, 4);
+	WVec* pNewWeights = nn.decrementWidth(&w, 0, 4);
 	if(pNewWeights != nullptr)
 		throw Ex("Should not have succeeded");
 }
 
-void GNeuralNet_test_drop()
+void WNeuralNet_test_drop()
 {
-	GNeuralNet nn;
-	nn.add(new GBlockLinear(2, 3));
-	nn.add(new GBlockHinge(3));
-	nn.add(new GBlockLinear(3, 3));
-	nn.add(new GBlockHinge(3));
-	nn.add(new GBlockLinear(3, 2));
-	nn.add(new GBlockHinge(2));
-	GVec w(nn.weightCount());
+	WNeuralNet nn;
+	nn.add(new WBlockLinear(2, 3));
+	nn.add(new WBlockHinge(3));
+	nn.add(new WBlockLinear(3, 3));
+	nn.add(new WBlockHinge(3));
+	nn.add(new WBlockLinear(3, 2));
+	nn.add(new WBlockHinge(2));
+	WVec w(nn.weightCount());
 	for(size_t i = 0; i < nn.weightCount(); i++)
 		w[i] = i;
 	//std::cout << "Bef:\n" << nn.to_str("", &w) << "\n";
 
-	GVec* pNewWeights1 = nn.drop(2, &w);
-	std::unique_ptr<GVec> hNewWeights1(pNewWeights1);
-	GVec* pNewWeights2 = nn.drop(2, pNewWeights1);
-	std::unique_ptr<GVec> hNewWeights2(pNewWeights2);
+	WVec* pNewWeights1 = nn.drop(2, &w);
+	std::unique_ptr<WVec> hNewWeights1(pNewWeights1);
+	WVec* pNewWeights2 = nn.drop(2, pNewWeights1);
+	std::unique_ptr<WVec> hNewWeights2(pNewWeights2);
 	//std::cout << "Aft:\n" << nn.to_str("", pNewWeights2) << "\n";
 
-	GVec targ({0, 1, 2,
+	WVec targ({0, 1, 2,
 		3, 4, 5,
 		6, 7, 8,
 		9, 10, 11, 12, 13, 14,
@@ -4462,28 +4462,28 @@ void GNeuralNet_test_drop()
 		throw Ex("Failed");
 }
 
-void GNeuralNet_test_insert()
+void WNeuralNet_test_insert()
 {
-	GRand rand(0);
-	GNeuralNet nn;
-	nn.add(new GBlockLinear(2, 3));
-	nn.add(new GBlockHinge(3));
-	nn.add(new GBlockLinear(3, 3));
-	nn.add(new GBlockHinge(3));
-	nn.add(new GBlockLinear(3, 2));
-	nn.add(new GBlockHinge(2));
-	GVec w(nn.weightCount());
+	WRand rand(0);
+	WNeuralNet nn;
+	nn.add(new WBlockLinear(2, 3));
+	nn.add(new WBlockHinge(3));
+	nn.add(new WBlockLinear(3, 3));
+	nn.add(new WBlockHinge(3));
+	nn.add(new WBlockLinear(3, 2));
+	nn.add(new WBlockHinge(2));
+	WVec w(nn.weightCount());
 	for(size_t i = 0; i < nn.weightCount(); i++)
 		w[i] = i;
 	//std::cout << "Bef:\n" << nn.to_str("", &w) << "\n";
 
-	GVec* pNewWeights1 = nn.insert(4, new GBlockLinear(3, 3), &w, rand);
-	std::unique_ptr<GVec> hNewWeights1(pNewWeights1);
-	GVec* pNewWeights2 = nn.insert(5, new GBlockHinge(3), pNewWeights1, rand);
-	std::unique_ptr<GVec> hNewWeights2(pNewWeights2);
+	WVec* pNewWeights1 = nn.insert(4, new WBlockLinear(3, 3), &w, rand);
+	std::unique_ptr<WVec> hNewWeights1(pNewWeights1);
+	WVec* pNewWeights2 = nn.insert(5, new WBlockHinge(3), pNewWeights1, rand);
+	std::unique_ptr<WVec> hNewWeights2(pNewWeights2);
 	//std::cout << "Aft:\n" << nn.to_str("", pNewWeights2) << "\n";
 
-	GVec targ({0, 1, 2,
+	WVec targ({0, 1, 2,
 		3, 4, 5,
 		6, 7, 8,
 		9, 10, 11, 12, 13, 14,
@@ -4506,11 +4506,11 @@ void GNeuralNet_test_insert()
 		throw Ex("Failed");
 }
 
-void GNeuralNet_test_lstm()
+void WNeuralNet_test_lstm()
 {
 	size_t data_len = 1000;
-	GMatrix feat(data_len, 4);
-	GMatrix lab(data_len, 1);
+	WMatrix feat(data_len, 4);
+	WMatrix lab(data_len, 1);
 	double lab_val = 0.0;
 	for(size_t i = 0; i < data_len; i++)
 	{
@@ -4519,17 +4519,17 @@ void GNeuralNet_test_lstm()
 }
 */
 // static
-void GNeuralNet::test()
+void WNeuralNet::test()
 {
-	GNeuralNet_testLinearAndTanh();
-	GNeuralNet_testConvolutional1();
-	GNeuralNet_testConvolutional3();
-	GNeuralNet_testSerializationRoundTrip();
+	WNeuralNet_testLinearAndTanh();
+	WNeuralNet_testConvolutional1();
+	WNeuralNet_testConvolutional3();
+	WNeuralNet_testSerializationRoundTrip();
 	/*
-	GNeuralNet_test_drop();
-	GNeuralNet_test_insert();
-	GNeuralNet_test_decrementWidthPositive();
-	GNeuralNet_test_decrementWidthNegative();
+	WNeuralNet_test_drop();
+	WNeuralNet_test_insert();
+	WNeuralNet_test_decrementWidthPositive();
+	WNeuralNet_test_decrementWidthNegative();
 */
 }
 
@@ -4542,56 +4542,56 @@ void GNeuralNet::test()
 
 
 /*
-#ifdef GCUDA
-void GLayer::uploadCuda()
+#ifdef WCUDA
+void WLayer::uploadCuda()
 {
 	for(size_t i = 0; i < m_blocks.size(); i++)
 	{
-		GBlock& b = *m_blocks[i];
+		WBlock& b = *m_blocks[i];
 		b.uploadCuda();
 	}
 }
 
-void GLayer::downloadCuda()
+void WLayer::downloadCuda()
 {
 	for(size_t i = 0; i < m_blocks.size(); i++)
 	{
-		GBlock& b = *m_blocks[i];
+		WBlock& b = *m_blocks[i];
 		b.downloadCuda();
 	}
 }
 
-void GLayer::stepCuda(GContextLayer& ctx, double learningRate, const GCudaVector& gradient)
+void WLayer::stepCuda(WContextLayer& ctx, double learningRate, const WCudaVector& gradient)
 {
 	size_t gradPos = 0;
 	for(size_t i = 0; i < m_blocks.size(); i++)
 	{
-		GBlock& b = *m_blocks[i];
+		WBlock& b = *m_blocks[i];
 		size_t wc = b.weightCount();
-		GCudaVector grad(*(GCudaVector*)&gradient, gradPos, wc);
+		WCudaVector grad(*(WCudaVector*)&gradient, gradPos, wc);
 		b.stepCuda(ctx, learningRate, grad);
 		gradPos += wc;
 	}
 }
 
-void GContextLayer::forwardPropCuda(const GCudaVector& input, GCudaVector& output)
+void WContextLayer::forwardPropCuda(const WCudaVector& input, WCudaVector& output)
 {
 	size_t outPos = 0;
 	size_t recurrents = 0;
 	size_t comp = 0;
 	for(size_t i = 0; i < m_layer.blockCount(); i++)
 	{
-		const GBlock& b = m_layer.block(i);
-		GCudaVector in(*(GCudaVector*)&input, b.inPos(), b.inputs());
-		GCudaVector out(output, outPos, b.outputs());
-		if(b.type() == GBlock::block_neuralnet)
+		const WBlock& b = m_layer.block(i);
+		WCudaVector in(*(WCudaVector*)&input, b.inPos(), b.inputs());
+		WCudaVector out(output, outPos, b.outputs());
+		if(b.type() == WBlock::block_neuralnet)
 		{
-			GContextNeuralNet* pCompContext = m_components[comp++];
+			WContextNeuralNet* pCompContext = m_components[comp++];
 			b.forwardPropCuda(*pCompContext, in, out);
 		}
 		else if(b.isRecurrent())
 		{
-			GContextRecurrent* pRecContext = m_recurrents[recurrents++];
+			WContextRecurrent* pRecContext = m_recurrents[recurrents++];
 			pRecContext->forwardPropCuda(in, out);
 		}
 		else
@@ -4600,26 +4600,26 @@ void GContextLayer::forwardPropCuda(const GCudaVector& input, GCudaVector& outpu
 	}
 }
 
-void GContextLayer::forwardProp_trainingCuda(const GCudaVector& input, GCudaVector& output)
+void WContextLayer::forwardProp_trainingCuda(const WCudaVector& input, WCudaVector& output)
 {
-	GConstVecWrapper vwInput;
-	GVecWrapper vwOutput;
+	WConstVecWrapper vwInput;
+	WVecWrapper vwOutput;
 	size_t outPos = 0;
 	size_t recurrents = 0;
 	size_t comp = 0;
 	for(size_t i = 0; i < m_layer.blockCount(); i++)
 	{
-		const GBlock& b = m_layer.block(i);
-		GCudaVector in(*(GCudaVector*)&input, b.inPos(), b.inputs());
-		GCudaVector out(output, outPos, b.outputs());
-		if(b.type() == GBlock::block_neuralnet)
+		const WBlock& b = m_layer.block(i);
+		WCudaVector in(*(WCudaVector*)&input, b.inPos(), b.inputs());
+		WCudaVector out(output, outPos, b.outputs());
+		if(b.type() == WBlock::block_neuralnet)
 		{
-			GContextNeuralNet* pCompContext = m_components[comp++];
+			WContextNeuralNet* pCompContext = m_components[comp++];
 			b.forwardPropCuda(*pCompContext, in, out);
 		}
 		else if(b.isRecurrent())
 		{
-			GContextRecurrent* pRecContext = m_recurrents[recurrents++];
+			WContextRecurrent* pRecContext = m_recurrents[recurrents++];
 			pRecContext->forwardPropThroughTimeCuda(in, out);
 		}
 		else
@@ -4628,28 +4628,28 @@ void GContextLayer::forwardProp_trainingCuda(const GCudaVector& input, GCudaVect
 	}
 }
 
-void GContextLayer::backPropCuda(GContextLayer& ctx, const GCudaVector& input, const GCudaVector& output, const GCudaVector& outBlame, GCudaVector& inBlame)
+void WContextLayer::backPropCuda(WContextLayer& ctx, const WCudaVector& input, const WCudaVector& output, const WCudaVector& outBlame, WCudaVector& inBlame)
 {
-	GAssert(output.size() == outBlame.size());
+	WAssert(output.size() == outBlame.size());
 	size_t outPos = 0;
 	size_t recurrents = 0;
 	size_t comp = 0;
 	inBlame.fill(cudaEngine(), 0.0);
 	for(size_t i = 0; i < m_layer.blockCount(); i++)
 	{
-			const GBlock& b = m_layer.block(i);
-			GCudaVector in(*(GCudaVector*)&input, b.inPos(), b.inputs());
-			GCudaVector out(*(GCudaVector*)&output, outPos, b.outputs());
-			GCudaVector outBl(*(GCudaVector*)&outBlame, outPos, b.outputs());
-			GCudaVector inBl(inBlame, b.inPos(), b.inputs());
-			if(b.type() == GBlock::block_neuralnet)
+			const WBlock& b = m_layer.block(i);
+			WCudaVector in(*(WCudaVector*)&input, b.inPos(), b.inputs());
+			WCudaVector out(*(WCudaVector*)&output, outPos, b.outputs());
+			WCudaVector outBl(*(WCudaVector*)&outBlame, outPos, b.outputs());
+			WCudaVector inBl(inBlame, b.inPos(), b.inputs());
+			if(b.type() == WBlock::block_neuralnet)
 			{
-					GContextNeuralNet* pCompContext = m_components[comp++];
+					WContextNeuralNet* pCompContext = m_components[comp++];
 					b.backPropCuda(*pCompContext, in, out, outBl, inBl);
 			}
 			else if(b.isRecurrent())
 			{
-					GContextRecurrent* pRecContext = m_recurrents[recurrents++];
+					WContextRecurrent* pRecContext = m_recurrents[recurrents++];
 					pRecContext->backPropThroughTimeCuda(in, out, outBl, inBl);
 			}
 			else
@@ -4658,7 +4658,7 @@ void GContextLayer::backPropCuda(GContextLayer& ctx, const GCudaVector& input, c
 	}
 }
 
-void GContextLayer::updateGradientCuda(const GCudaVector& input, const GCudaVector& outBlame, GCudaVector& gradient)
+void WContextLayer::updateGradientCuda(const WCudaVector& input, const WCudaVector& outBlame, WCudaVector& gradient)
 {
 	size_t gradPos = 0;
 	size_t outPos = 0;
@@ -4666,19 +4666,19 @@ void GContextLayer::updateGradientCuda(const GCudaVector& input, const GCudaVect
 	size_t comp = 0;
 	for(size_t i = 0; i < m_layer.blockCount(); i++)
 	{
-		const GBlock& b = m_layer.block(i);
+		const WBlock& b = m_layer.block(i);
 		size_t wc = b.weightCount();
-		GCudaVector in(*(GCudaVector*)&input, b.inPos(), b.inputs());
-		GCudaVector outBl(*(GCudaVector*)&outBlame, outPos, b.outputs());
-		GCudaVector grad(gradient, gradPos, wc);
-		if(b.type() == GBlock::block_neuralnet)
+		WCudaVector in(*(WCudaVector*)&input, b.inPos(), b.inputs());
+		WCudaVector outBl(*(WCudaVector*)&outBlame, outPos, b.outputs());
+		WCudaVector grad(gradient, gradPos, wc);
+		if(b.type() == WBlock::block_neuralnet)
 		{
-			GContextNeuralNet* pCompContext = m_components[comp++];
+			WContextNeuralNet* pCompContext = m_components[comp++];
 			b.updateGradientCuda(*pCompContext, in, outBl, grad);
 		}
 		else if(b.isRecurrent())
 		{
-			GContextRecurrent* pRecContext = m_recurrents[recurrents++];
+			WContextRecurrent* pRecContext = m_recurrents[recurrents++];
 			pRecContext->updateGradientCuda(in, outBl, grad);
 		}
 		else
@@ -4688,20 +4688,20 @@ void GContextLayer::updateGradientCuda(const GCudaVector& input, const GCudaVect
 	}
 }
 
-#endif // GCUDA
+#endif // WCUDA
 
-std::string GNeuralNet::to_str(const std::string& line_prefix) const
+std::string WNeuralNet::to_str(const std::string& line_prefix) const
 {
 	std::ostringstream oss;
-	oss << line_prefix << "[GNeuralNet: " << inputs() << "->" << outputs() << ", Weights=" << GClasses::to_str(weightCount()) << "\n";
+	oss << line_prefix << "[WNeuralNet: " << inputs() << "->" << outputs() << ", Weights=" << WClasses::to_str(weightCount()) << "\n";
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
 		oss << line_prefix << "  " << to_fixed_str(i, 2, ' ') << ") ";
 		for(size_t j = 0; j < m_layers[i]->blockCount(); j++)
 		{
-			GBlock& b = m_layers[i]->block(j);
+			WBlock& b = m_layers[i]->block(j);
 			if(b.type() == block_neuralnet)
-				oss << "[GNeuralNet (contents not shown):" << b.inputs() << "->" << b.outputs() << ", Weights=" << GClasses::to_str(b.weightCount()) << "\n";
+				oss << "[WNeuralNet (contents not shown):" << b.inputs() << "->" << b.outputs() << ", Weights=" << WClasses::to_str(b.weightCount()) << "\n";
 			else
 				oss << b.to_str();
 		}
@@ -4711,51 +4711,51 @@ std::string GNeuralNet::to_str(const std::string& line_prefix) const
 	return oss.str();
 }
 
-#ifdef GCUDA
-void GNeuralNet::uploadCuda()
+#ifdef WCUDA
+void WNeuralNet::uploadCuda()
 {
 	for(size_t i = 0; i < layerCount(); i++)
 	{
-		GLayer& lay = layer(i);
+		WLayer& lay = layer(i);
 		lay.uploadCuda();
 	}
 }
 
-void GNeuralNet::downloadCuda()
+void WNeuralNet::downloadCuda()
 {
 	for(size_t i = 0; i < layerCount(); i++)
 	{
-		GLayer& lay = layer(i);
+		WLayer& lay = layer(i);
 		lay.downloadCuda();
 	}
 }
 
-void GNeuralNet::forwardPropCuda(GContext& ctx, const GCudaVector& input, GCudaVector& output) const
+void WNeuralNet::forwardPropCuda(WContext& ctx, const WCudaVector& input, WCudaVector& output) const
 {
-	GAssert(input.size() == layer(0).inputs());
-	GAssert(output.size() == outputLayer().outputs());
-	const GCudaVector* pInput = &input;
-	GContextNeuralNet* pContext = (GContextNeuralNet*)&ctx;
-	GAssert(output.d_vals == pContext->predictionCuda().d_vals);
-	GAssert(pContext->layerCount() == layerCount());
+	WAssert(input.size() == layer(0).inputs());
+	WAssert(output.size() == outputLayer().outputs());
+	const WCudaVector* pInput = &input;
+	WContextNeuralNet* pContext = (WContextNeuralNet*)&ctx;
+	WAssert(output.d_vals == pContext->predictionCuda().d_vals);
+	WAssert(pContext->layerCount() == layerCount());
 	for(size_t i = 0; i < m_layers.size(); i++)
 	{
-		GContextLayer* pLayer = pContext->m_layers[i];
+		WContextLayer* pLayer = pContext->m_layers[i];
 		pLayer->m_activationCuda.resize(pLayer->m_layer.outputs());
 		pLayer->forwardPropCuda(*pInput, pLayer->m_activationCuda);
 		pInput = &pLayer->m_activationCuda;
 	}
 }
 
-void GNeuralNet::backPropCuda(GContext& ctx, const GCudaVector& input, const GCudaVector& output, const GCudaVector& outBlame, GCudaVector& inBlame) const
+void WNeuralNet::backPropCuda(WContext& ctx, const WCudaVector& input, const WCudaVector& output, const WCudaVector& outBlame, WCudaVector& inBlame) const
 {
-	const GCudaVector* pOutput = &output;
-	const GCudaVector* pOutBlame = &outBlame;
-	GContextNeuralNet* pContext = (GContextNeuralNet*)&ctx;
+	const WCudaVector* pOutput = &output;
+	const WCudaVector* pOutBlame = &outBlame;
+	WContextNeuralNet* pContext = (WContextNeuralNet*)&ctx;
 	for(size_t i = pContext->m_layers.size() - 1; i > 0; i--)
 	{
-		GContextLayer* pLayer = pContext->m_layers[i];
-		GContextLayer* pPrevLayer = pContext->m_layers[i - 1];
+		WContextLayer* pLayer = pContext->m_layers[i];
+		WContextLayer* pPrevLayer = pContext->m_layers[i - 1];
 		pPrevLayer->m_blameCuda.resize(pPrevLayer->m_blame.size());
 		pLayer->backPropCuda(*pLayer, pPrevLayer->m_activationCuda, *pOutput, *pOutBlame, pPrevLayer->m_blameCuda);
 		pOutput = &pPrevLayer->m_activationCuda;
@@ -4763,67 +4763,67 @@ void GNeuralNet::backPropCuda(GContext& ctx, const GCudaVector& input, const GCu
 	}
 	if(inBlame.d_vals != outBlame.d_vals)
 	{
-		GContextLayer* pLayer = pContext->m_layers[0];
+		WContextLayer* pLayer = pContext->m_layers[0];
 		pLayer->backPropCuda(*pLayer, input, pLayer->m_activationCuda, pLayer->m_blameCuda, inBlame);
 	}
 }
 
-void GNeuralNet::updateGradientCuda(GContext& ctx, const GCudaVector &input, const GCudaVector& outBlame, GCudaVector& gradient) const
+void WNeuralNet::updateGradientCuda(WContext& ctx, const WCudaVector &input, const WCudaVector& outBlame, WCudaVector& gradient) const
 {
-	const GCudaVector* pInput = &input;
+	const WCudaVector* pInput = &input;
 	size_t gradPos = 0;
-	GContextNeuralNet* pContext = (GContextNeuralNet*)&ctx;
+	WContextNeuralNet* pContext = (WContextNeuralNet*)&ctx;
 	for(size_t i = 0; i < pContext->m_layers.size(); i++)
 	{
-		GContextLayer* pLayer = pContext->m_layers[i];
+		WContextLayer* pLayer = pContext->m_layers[i];
 		size_t wc = pLayer->m_layer.weightCount();
-		GCudaVector grad(gradient, gradPos, wc);
-		GAssert(gradPos + wc <= gradient.size());
+		WCudaVector grad(gradient, gradPos, wc);
+		WAssert(gradPos + wc <= gradient.size());
 		pLayer->updateGradientCuda(*pInput, pLayer->m_blameCuda, grad);
 		pInput = &pLayer->m_activationCuda;
 		gradPos += wc;
 	}
-	GAssert(gradPos == weightCount());
+	WAssert(gradPos == weightCount());
 }
 
-void GNeuralNet::stepCuda(GContext& ctx, double learningRate, const GCudaVector& gradient)
+void WNeuralNet::stepCuda(WContext& ctx, double learningRate, const WCudaVector& gradient)
 {
 	size_t gradPos = 0;
-	GContextNeuralNet* pContext = (GContextNeuralNet*)&ctx;
+	WContextNeuralNet* pContext = (WContextNeuralNet*)&ctx;
 	for(size_t i = 0; i < layerCount(); ++i)
 	{
-		GContextLayer* pLayer = pContext->m_layers[i];
-		GLayer& lay = layer(i);
+		WContextLayer* pLayer = pContext->m_layers[i];
+		WLayer& lay = layer(i);
 		size_t wc = lay.weightCount();
-		GCudaVector grad(*(GCudaVector*)&gradient, gradPos, wc);
+		WCudaVector grad(*(WCudaVector*)&gradient, gradPos, wc);
 		lay.stepCuda(*pLayer, learningRate, grad);
 		gradPos += wc;
 	}
-	GAssert(gradPos == weightCount());
+	WAssert(gradPos == weightCount());
 }
-#endif // GCUDA
+#endif // WCUDA
 
-void GNeuralNet::align(const GNeuralNet& that)
+void WNeuralNet::align(const WNeuralNet& that)
 {
 	if(layerCount() != that.layerCount())
 		throw Ex("mismatching number of layers");
 	for(size_t i = 0; i + 1 < m_layers.size(); i++)
 	{
 		// Copy weights into matrices
-		GLayer& lay = layer(i);
+		WLayer& lay = layer(i);
 		if(lay.blockCount() != 1)
 			throw Ex("Expected all layers to have exactly one block");
-		GBlock& lThis = lay.block(0);
+		WBlock& lThis = lay.block(0);
 		if(that.m_layers[i]->blockCount() != 1 || lThis.type() != that.m_layers[i]->block(0).type())
 			throw Ex("mismatching layer types");
-		if(lThis.type() == GBlock::block_linear)
+		if(lThis.type() == WBlock::block_linear)
 		{
-			GBlockLinear& layerThisCur = *(GBlockLinear*)&lThis;
-			GBlockLinear& layerThatCur = *(GBlockLinear*)&that.m_layers[i]->block(0);
+			WBlockLinear& layerThisCur = *(WBlockLinear*)&lThis;
+			WBlockLinear& layerThatCur = *(WBlockLinear*)&that.m_layers[i]->block(0);
 			if(layerThisCur.outputs() != layerThatCur.outputs())
 				throw Ex("mismatching layer size");
 
-			GMatrix costs(layerThisCur.outputs(), layerThatCur.outputs());
+			WMatrix costs(layerThisCur.outputs(), layerThatCur.outputs());
 			for(size_t k = 0; k < layerThisCur.outputs(); k++)
 			{
 				for(size_t j = 0; j < layerThatCur.outputs(); j++)
@@ -4832,8 +4832,8 @@ void GNeuralNet::align(const GNeuralNet& that)
 					double pos = d * d;
 					d = layerThisCur.bias()[k] + layerThatCur.bias()[j];
 					double neg = d * d;
-					GMatrix& wThis = layerThisCur.weights();
-					const GMatrix& wThat = layerThatCur.weights();
+					WMatrix& wThis = layerThisCur.weights();
+					const WMatrix& wThat = layerThatCur.weights();
 					for(size_t l = 0; l < layerThisCur.inputs(); l++)
 					{
 						d = wThis[l][k] - wThat[l][j];
@@ -4844,7 +4844,7 @@ void GNeuralNet::align(const GNeuralNet& that)
 					costs[j][k] = std::min(pos, neg);
 				}
 			}
-			GSimpleAssignment indexes = linearAssignment(costs);
+			WSimpleAssignment indexes = linearAssignment(costs);
 
 			// Align this layer with that layer
 			for(size_t j = 0; j < layerThisCur.outputs(); j++)
@@ -4859,7 +4859,7 @@ void GNeuralNet::align(const GNeuralNet& that)
 						if((size_t)indexes((unsigned int)m) == j)
 							break;
 					}
-					GAssert(m < layerThisCur.outputs());
+					WAssert(m < layerThisCur.outputs());
 					indexes.assign((unsigned int)m, (unsigned int)k);
 
 					// Swap nodes j and k
@@ -4889,9 +4889,9 @@ void GNeuralNet::align(const GNeuralNet& that)
 
 
 
-void GBlockResidual::forwardProp()
+void WBlockResidual::forwardProp()
 {
-	GNeuralNet::forwardProp();
+	WNeuralNet::forwardProp();
 	size_t j = 0;
 	for(size_t i = 0; i < output.size(); i++)
 	{
@@ -4901,9 +4901,9 @@ void GBlockResidual::forwardProp()
 	}
 }
 
-void GBlockResidual::backProp()
+void WBlockResidual::backProp()
 {
-	GNeuralNet::backProp();
+	WNeuralNet::backProp();
 	size_t j = 0;
 	for(size_t i = 0; i < outBlame.size(); i++)
 	{
@@ -4922,62 +4922,62 @@ void GBlockResidual::backProp()
 
 
 
-GNeuralNetLearner::GNeuralNetLearner()
-: GIncrementalLearner(), m_pOptimizer(nullptr)
+WNeuralNetLearner::WNeuralNetLearner()
+: WIncrementalLearner(), m_pOptimizer(nullptr)
 {
 }
 /*
-GNeuralNetLearner::GNeuralNetLearner(const GDomNode* pNode)
-: GIncrementalLearner(pNode),
+WNeuralNetLearner::WNeuralNetLearner(const WDomNode* pNode)
+: WIncrementalLearner(pNode),
 m_nn(pNode->get("nn"), m_rand),
 m_pOptimizer(nullptr)
 {
 }
 */
-GNeuralNetLearner::~GNeuralNetLearner()
+WNeuralNetLearner::~WNeuralNetLearner()
 {
 	delete(m_pOptimizer);
 }
 
-GNeuralNetOptimizer& GNeuralNetLearner::optimizer()
+WNeuralNetOptimizer& WNeuralNetLearner::optimizer()
 {
 	if(!m_pOptimizer)
-		m_pOptimizer = new GSGDOptimizer(m_nn, m_rand);
+		m_pOptimizer = new WSGDOptimizer(m_nn, m_rand);
 	return *m_pOptimizer;
 }
 
 // virtual
-GDomNode* GNeuralNetLearner::serialize(GDom* pDoc) const
+WDomNode* WNeuralNetLearner::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GNeuralNetLearner");
+	WDomNode* pNode = baseDomNode(pDoc, "WNeuralNetLearner");
 	pNode->add(pDoc, "nn", m_nn.serialize(pDoc));
 	return pNode;
 }
 
-void GNeuralNetLearner::trainIncremental(const GVec& in, const GVec& out)
+void WNeuralNetLearner::trainIncremental(const WVec& in, const WVec& out)
 {
-	throw Ex("GNeuralNetLearner::trainIncremental is not implemented (need to use GDifferentiableOptimizer).");
+	throw Ex("WNeuralNetLearner::trainIncremental is not implemented (need to use WDifferentiableOptimizer).");
 }
 
-void GNeuralNetLearner::trainSparse(GSparseMatrix& features, GMatrix& labels)
+void WNeuralNetLearner::trainSparse(WSparseMatrix& features, WMatrix& labels)
 {
-	throw Ex("GNeuralNetLearner::trainSparse is not implemented (need to use GDifferentiableOptimizer).");
+	throw Ex("WNeuralNetLearner::trainSparse is not implemented (need to use WDifferentiableOptimizer).");
 }
 
-void GNeuralNetLearner::trainInner(const GMatrix& features, const GMatrix& labels)
+void WNeuralNetLearner::trainInner(const WMatrix& features, const WMatrix& labels)
 {
 	beginIncrementalLearningInner(features.relation(), labels.relation());
-	GSGDOptimizer optimizer(m_nn, m_rand);
+	WSGDOptimizer optimizer(m_nn, m_rand);
 	optimizer.optimizeWithValidation(features, labels);
 }
 
-void GNeuralNetLearner::clear()
+void WNeuralNetLearner::clear()
 {
 	// Don't delete the layers here, because their topology will affect future training
 }
 
 // virtual
-bool GNeuralNetLearner::supportedFeatureRange(double* pOutMin, double* pOutMax)
+bool WNeuralNetLearner::supportedFeatureRange(double* pOutMin, double* pOutMax)
 {
 	*pOutMin = -1.0;
 	*pOutMax = 1.0;
@@ -4985,7 +4985,7 @@ bool GNeuralNetLearner::supportedFeatureRange(double* pOutMin, double* pOutMax)
 }
 
 // virtual
-bool GNeuralNetLearner::supportedLabelRange(double* pOutMin, double* pOutMax)
+bool WNeuralNetLearner::supportedLabelRange(double* pOutMin, double* pOutMax)
 {
 	// Assumes tanh's range; the network's actual output layer isn't checked
 	*pOutMin = -1.0;
@@ -4994,19 +4994,19 @@ bool GNeuralNetLearner::supportedLabelRange(double* pOutMin, double* pOutMax)
 }
 
 // virtual
-void GNeuralNetLearner::predictDistribution(const GVec& in, GPrediction* pOut)
+void WNeuralNetLearner::predictDistribution(const WVec& in, WPrediction* pOut)
 {
 	throw Ex("Sorry, this model does not predict a distribution");
 }
 
 // virtual
-void GNeuralNetLearner::predict(const GVec& in, GVec& out)
+void WNeuralNetLearner::predict(const WVec& in, WVec& out)
 {
 	out.copy(m_nn.forwardProp(in));
 }
 
 // virtual
-void GNeuralNetLearner::beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel)
+void WNeuralNetLearner::beginIncrementalLearningInner(const WRelation& featureRel, const WRelation& labelRel)
 {
 	if(labelRel.size() < 1)
 		throw Ex("The label relation must have at least 1 attribute");
@@ -5020,31 +5020,31 @@ void GNeuralNetLearner::beginIncrementalLearningInner(const GRelation& featureRe
 }
 
 
-void GNeuralNet_testMath()
+void WNeuralNet_testMath()
 {
-	GMatrix features(0, 2);
-	GVec& vec = features.newRow();
+	WMatrix features(0, 2);
+	WVec& vec = features.newRow();
 	vec[0] = 0.0;
 	vec[1] = -0.7;
-	GMatrix labels(0, 1);
+	WMatrix labels(0, 1);
 	labels.newRow()[0] = 1.0;
 
 	// Make the Neural Network
-	GNeuralNetLearner nn;
-	GBlockLinear* b0 = new GBlockLinear(2, 3);
-	GBlockTanh* b1 = new GBlockTanh(3);
-	GBlockLinear* b2 = new GBlockLinear(3, 1);
-	GBlockTanh* b3 = new GBlockTanh(1);
+	WNeuralNetLearner nn;
+	WBlockLinear* b0 = new WBlockLinear(2, 3);
+	WBlockTanh* b1 = new WBlockTanh(3);
+	WBlockLinear* b2 = new WBlockLinear(3, 1);
+	WBlockTanh* b3 = new WBlockTanh(1);
 	nn.nn().add(b0);
 	nn.nn().add(b1);
 	nn.nn().add(b2);
 	nn.nn().add(b3);
 	nn.beginIncrementalLearning(features.relation(), labels.relation());
-	GNeuralNetOptimizer& opt = nn.optimizer();
+	WNeuralNetOptimizer& opt = nn.optimizer();
 	opt.setLearningRate(0.175);
 	if(nn.nn().weightCount() != 13)
 		throw Ex("Wrong number of weights");
-	GVec& w = opt.model().weights;
+	WVec& w = opt.model().weights;
 
 	// Init the weights
 	w[0] = -0.01;
@@ -5063,9 +5063,9 @@ void GNeuralNet_testMath()
 
 	// Present one pattern for training
 	double tol = 1e-12;
-	GVec pat(2);
+	WVec pat(2);
 	pat.copy(features[0]);
-	GVec pred(1);
+	WVec pred(1);
 	opt.optimizeIncremental(features[0], labels[0]);
 
 	// Check forward prop values
@@ -5102,9 +5102,9 @@ void GNeuralNet_testMath()
 
 
 // static
-void GNeuralNetLearner::test()
+void WNeuralNetLearner::test()
 {
-	GNeuralNet_testMath();
+	WNeuralNet_testMath();
 }
 
 
@@ -5112,4 +5112,4 @@ void GNeuralNetLearner::test()
 
 
 
-} // namespace GClasses
+} // namespace WClasses

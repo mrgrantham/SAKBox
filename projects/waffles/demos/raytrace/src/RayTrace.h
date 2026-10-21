@@ -10,9 +10,9 @@
 #define __RAYTRACE_H__
 
 #include "gui/Gui.h"
-#include <WClasses/GRand.h>
-#include <WClasses/GImage.h>
-#include <WClasses/GRayTrace.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WImage.h>
+#include <WClasses/WRayTrace.h>
 
 class RayTraceController;
 class RayTraceDialog;
@@ -23,7 +23,7 @@ class RayTraceView : public ViewBase
 	friend class RayTraceController;
 protected:
 	RayTraceDialog* m_pDialog;
-	GClasses::GImage* m_pImage;
+	WClasses::WImage* m_pImage;
 
 public:
 	RayTraceView(RayTraceController* pController);
@@ -33,7 +33,7 @@ public:
 	void onMouseDown(int nButton, int x, int y) override;
 	void onMouseUp(int nButton, int x, int y) override;
 	bool onMousePos(int x, int y) override;
-	void SetImage(GClasses::GImage* pImage) { m_pImage = pImage; }
+	void SetImage(WClasses::WImage* pImage) { m_pImage = pImage; }
 
 protected:
 	void draw(int* pixels, int pitch) override;
@@ -51,9 +51,9 @@ protected:
 class RayTraceController : public ControllerBase
 {
 protected:
-	GClasses::GRayTraceScene* m_pScene;
+	WClasses::WRayTraceScene* m_pScene;
 	bool m_bRendering;
-	GClasses::GRand m_prng;
+	WClasses::WRand m_prng;
 
 public:
 	RayTraceController();

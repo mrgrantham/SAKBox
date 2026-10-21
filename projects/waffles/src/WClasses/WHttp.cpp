@@ -16,17 +16,17 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GFile.h"
-#include "GHttp.h"
+#include "WFile.h"
+#include "WHttp.h"
 #include <charconv>
-#include "GSocket.h"
-#include "GString.h"
-#include "GError.h"
-#include "GHolders.h"
-#include "GTime.h"
-#include "GThread.h" // Sleep
-#include "GHeap.h"
-#include "GApp.h" // GSignalHandler
+#include "WSocket.h"
+#include "WString.h"
+#include "WError.h"
+#include "WHolders.h"
+#include "WTime.h"
+#include "WThread.h" // Sleep
+#include "WHeap.h"
+#include "WApp.h" // WSignalHandler
 #include <csignal>
 #include <iostream>
 #include <time.h>
@@ -39,20 +39,20 @@ using std::string;
 using std::ostream;
 using std::ostringstream;
 
-namespace GClasses
+namespace WClasses
 {
 
-class GHttpClientSocket : public GTCPClient
+class WHttpClientSocket : public WTCPClient
 {
 protected:
-	GHttpClient* m_pParent;
+	WHttpClient* m_pParent;
 
 public:
-	GHttpClientSocket(GHttpClient* pParent) : GTCPClient(), m_pParent(pParent)
+	WHttpClientSocket(WHttpClient* pParent) : WTCPClient(), m_pParent(pParent)
 	{
 	}
 
-	~GHttpClientSocket() override
+	~WHttpClientSocket() override
 	{
 	}
 
@@ -81,12 +81,12 @@ bool parseHttpContentLength(const char* szValue, size_t* pOut)
 	return true;
 }
 
-void GHttpClient_parseURL(const char* szUrl, int* pnHostIndex, int* pnPortIndex, int* pnPathIndex, int* pnParamsIndex);
+void WHttpClient_parseURL(const char* szUrl, int* pnHostIndex, int* pnPortIndex, int* pnPathIndex, int* pnParamsIndex);
 
-int GHttp_urlPort(const char* szUrl)
+int WHttp_urlPort(const char* szUrl)
 {
 	int nHostIndex, nPortIndex, nPathIndex;
-	GHttpClient_parseURL(szUrl, &nHostIndex, &nPortIndex, &nPathIndex, nullptr);
+	WHttpClient_parseURL(szUrl, &nHostIndex, &nPortIndex, &nPathIndex, nullptr);
 	if(nPathIndex <= nPortIndex)
 		return 80;
 	// SAKBox: was atoi, so "abc" gave port 0 and 70000 was cut to 16 bits
@@ -96,7 +96,7 @@ int GHttp_urlPort(const char* szUrl)
 	return port;
 }
 
-GHttpClient::GHttpClient()
+WHttpClient::WHttpClient()
 {
 	m_pReceiveBuf = new char[2048];
 	m_pSocket = nullptr;
@@ -107,10 +107,10 @@ GHttpClient::GHttpClient()
 	strcpy(m_szServer, "\0");
 	m_szRedirect = nullptr;
 	m_dLastReceiveTime = 0;
-	strcpy(m_szClientName, "GHttpClient/1.0");
+	strcpy(m_szClientName, "WHttpClient/1.0");
 }
 
-GHttpClient::~GHttpClient()
+WHttpClient::~WHttpClient()
 {
 	delete[] m_pReceiveBuf;
 	delete(m_pSocket);
@@ -118,19 +118,19 @@ GHttpClient::~GHttpClient()
 	delete[] m_szRedirect;
 }
 
-void GHttpClient::abort()
+void WHttpClient::abort()
 {
 	m_pSocket->disconnect();
 	m_status = Aborted;
 }
 
-void GHttpClient::setClientName(const char* szClientName)
+void WHttpClient::setClientName(const char* szClientName)
 {
 	strncpy(m_szClientName, szClientName, 32);
 	m_szClientName[31] = '\0';
 }
 
-GHttpClient::Status GHttpClient::status(float* pfProgress)
+WHttpClient::Status WHttpClient::status(float* pfProgress)
 {
 	while(true)
 	{
@@ -139,7 +139,7 @@ GHttpClient::Status GHttpClient::status(float* pfProgress)
 		size_t nSize = m_pSocket->receive(m_pReceiveBuf, 2048);
 		if(nSize == 0)
 			break;
-		m_dLastReceiveTime = GTime::seconds();
+		m_dLastReceiveTime = WTime::seconds();
 		const unsigned char* szChunk = (const unsigned char*)m_pReceiveBuf;
 		onReceiveData(szChunk, nSize);
 		if(m_bPastHeader)
@@ -158,7 +158,7 @@ GHttpClient::Status GHttpClient::status(float* pfProgress)
 }
 
 //static
-void GHttpClient_parseURL(const char* szUrl, int* pnHostIndex, int* pnPortIndex, int* pnPathIndex, int* pnParamsIndex)
+void WHttpClient_parseURL(const char* szUrl, int* pnHostIndex, int* pnPortIndex, int* pnPathIndex, int* pnParamsIndex)
 {
 	// Find the host
 	int nHost = 0;
@@ -204,32 +204,32 @@ void GHttpClient_parseURL(const char* szUrl, int* pnHostIndex, int* pnPortIndex,
 		*pnPathIndex = nPath;
 }
 
-bool GHttpClient::sendGetRequest(const char* szUrl, bool headersOnly)
+bool WHttpClient::sendGetRequest(const char* szUrl, bool headersOnly)
 {
-	GTEMPBUF(char, szNewUrl, (int)strlen(szUrl) + 1);
+	WTEMPBUF(char, szNewUrl, (int)strlen(szUrl) + 1);
 	strcpy(szNewUrl, szUrl);
-	GFile::condensePath(szNewUrl);
+	WFile::condensePath(szNewUrl);
 
 	// Get the port
 	int nHostIndex, nPortIndex, nPathIndex;
-	GHttpClient_parseURL(szNewUrl, &nHostIndex, &nPortIndex, &nPathIndex, nullptr);
-	int nPort = GHttp_urlPort(szNewUrl);
+	WHttpClient_parseURL(szNewUrl, &nHostIndex, &nPortIndex, &nPathIndex, nullptr);
+	int nPort = WHttp_urlPort(szNewUrl);
 
 	// Copy the host name
 	int nTempBufSize = nPortIndex - nHostIndex + 1;
-	GTEMPBUF(char, szHost, nTempBufSize);
+	WTEMPBUF(char, szHost, nTempBufSize);
 	memcpy(szHost, &szNewUrl[nHostIndex], nPortIndex - nHostIndex);
 	szHost[nPortIndex - nHostIndex] = '\0';
 
 	// Connect
 	m_aborted = true;
-	if(!m_pSocket || GTime::seconds() - m_dLastReceiveTime > 10 || !m_pSocket->isConnected() || strcmp(szHost, m_szServer) != 0)
+	if(!m_pSocket || WTime::seconds() - m_dLastReceiveTime > 10 || !m_pSocket->isConnected() || strcmp(szHost, m_szServer) != 0)
 	{
 		delete(m_pSocket);
 		m_pSocket = nullptr;
 		try
 		{
-			m_pSocket = new GHttpClientSocket(this);
+			m_pSocket = new WHttpClientSocket(this);
 			m_pSocket->connect(szHost, nPort);
 		}
 		catch(...)
@@ -295,7 +295,7 @@ bool GHttpClient::sendGetRequest(const char* szUrl, bool headersOnly)
 	return true;
 }
 
-void GHttpClient::processHeader(const unsigned char* szData, size_t nSize)
+void WHttpClient::processHeader(const unsigned char* szData, size_t nSize)
 {
 	while(nSize > 0)
 	{
@@ -312,7 +312,7 @@ void GHttpClient::processHeader(const unsigned char* szData, size_t nSize)
 				if(m_bAmCurrentlyDoingJustHeaders)
 				{
 					m_status = Done;
-					GAssert(!(nSize > 0 && (m_bChunked || m_nContentSize > 0))); // uh we shouldn't have a body we were just waiting for the headers!
+					WAssert(!(nSize > 0 && (m_bChunked || m_nContentSize > 0))); // uh we shouldn't have a body we were just waiting for the headers!
 				}
 
 				if(m_szRedirect)
@@ -389,7 +389,7 @@ void GHttpClient::processHeader(const unsigned char* szData, size_t nSize)
 	}
 }
 
-void GHttpClient::processBody(const unsigned char* szData, size_t nSize)
+void WHttpClient::processBody(const unsigned char* szData, size_t nSize)
 {
 	if(m_bChunked)
 		processChunkBody(szData, nSize);
@@ -413,7 +413,7 @@ void GHttpClient::processBody(const unsigned char* szData, size_t nSize)
 		m_chunkBuf.write((const char*)szData, nSize);
 }
 
-void GHttpClient::onLoseConnection()
+void WHttpClient::onLoseConnection()
 {
 	if(m_bChunked || m_nContentSize > 0)
 	{
@@ -439,7 +439,7 @@ void GHttpClient::onLoseConnection()
 	m_aborted = true;
 }
 
-void GHttpClient::processChunkBody(const unsigned char* szData, size_t nSize)
+void WHttpClient::processChunkBody(const unsigned char* szData, size_t nSize)
 {
 	while(nSize > 0)
 	{
@@ -472,7 +472,7 @@ void GHttpClient::processChunkBody(const unsigned char* szData, size_t nSize)
 				else
 				{
 					nDig = 0;
-					GAssert(false); // expected a hex digit
+					WAssert(false); // expected a hex digit
 				}
 				m_nContentSize += (nDig * nPow);
 				nPow *= 16;
@@ -513,7 +513,7 @@ void GHttpClient::processChunkBody(const unsigned char* szData, size_t nSize)
 }
 
 // todo: this is a hack--fix it properly
-void GHttpClient::gimmeWhatYouGot()
+void WHttpClient::gimmeWhatYouGot()
 {
 	if(m_bChunked)
 	{
@@ -563,14 +563,14 @@ void GHttpClient::gimmeWhatYouGot()
 	}
 }
 
-unsigned char* GHttpClient::data(size_t* pnSize)
+unsigned char* WHttpClient::data(size_t* pnSize)
 {
 	if(m_status != Done)
 	{
 		gimmeWhatYouGot();
 		if(m_status == Done)
 		{
-			//GAssert(false); // todo: why are we giving it out early?
+			//WAssert(false); // todo: why are we giving it out early?
 		}
 	}
 
@@ -584,7 +584,7 @@ unsigned char* GHttpClient::data(size_t* pnSize)
 	return m_pData;
 }
 
-unsigned char* GHttpClient::releaseData(size_t* pnSize)
+unsigned char* WHttpClient::releaseData(size_t* pnSize)
 {
 	unsigned char* pData = data(pnSize);
 	if(!pData)
@@ -593,11 +593,11 @@ unsigned char* GHttpClient::releaseData(size_t* pnSize)
 	return pData;
 }
 
-unsigned char* GHttpClient::get(const char* url, size_t* pOutSize, unsigned int sleepMiliSecs, unsigned int timeoutSecs)
+unsigned char* WHttpClient::get(const char* url, size_t* pOutSize, unsigned int sleepMiliSecs, unsigned int timeoutSecs)
 {
 	if(!sendGetRequest(url))
 		throw Ex("Failed to connect to ", url);
-	double startTime = GTime::seconds();
+	double startTime = WTime::seconds();
 	float prevProg = 0.0f;
 	float prog = 0.0;
 	bool stillDownloading = true;
@@ -608,7 +608,7 @@ unsigned char* GHttpClient::get(const char* url, size_t* pOutSize, unsigned int 
 		{
 			case Downloading:
 			{
-				double time = GTime::seconds();
+				double time = WTime::seconds();
 				if(prog > prevProg)
 				{
 					prevProg = prog;
@@ -617,7 +617,7 @@ unsigned char* GHttpClient::get(const char* url, size_t* pOutSize, unsigned int 
 				else if(time - startTime > timeoutSecs)
 					throw Ex("Timed out while waiting for any progress downloading ", url);
 				else
-					GThread::sleep(sleepMiliSecs);
+					WThread::sleep(sleepMiliSecs);
 			}
 			break;
 			case Error:
@@ -644,17 +644,17 @@ unsigned char* GHttpClient::get(const char* url, size_t* pOutSize, unsigned int 
 
 
 
-class GWebSocketClientSocket : public GTCPClient
+class WWebSocketClientSocket : public WTCPClient
 {
 protected:
-	GWebSocketClient* m_pParent;
+	WWebSocketClient* m_pParent;
 
 public:
-	GWebSocketClientSocket(GWebSocketClient* pParent) : GTCPClient(), m_pParent(pParent)
+	WWebSocketClientSocket(WWebSocketClient* pParent) : WTCPClient(), m_pParent(pParent)
 	{
 	}
 
-	~GWebSocketClientSocket() override
+	~WWebSocketClientSocket() override
 	{
 	}
 
@@ -665,30 +665,30 @@ protected:
 	}
 };
 
-GWebSocketClient::GWebSocketClient()
+WWebSocketClient::WWebSocketClient()
 : m_pSocket(nullptr)
 {
 }
 
-GWebSocketClient::~GWebSocketClient()
+WWebSocketClient::~WWebSocketClient()
 {
 	delete(m_pSocket);
 }
 
-bool GWebSocketClient::get(const char* szUrl)
+bool WWebSocketClient::get(const char* szUrl)
 {
-	GTEMPBUF(char, szNewUrl, (int)strlen(szUrl) + 1);
+	WTEMPBUF(char, szNewUrl, (int)strlen(szUrl) + 1);
 	strcpy(szNewUrl, szUrl);
-	GFile::condensePath(szNewUrl);
+	WFile::condensePath(szNewUrl);
 
 	// Get the port
 	int nHostIndex, nPortIndex, nPathIndex;
-	GHttpClient_parseURL(szNewUrl, &nHostIndex, &nPortIndex, &nPathIndex, nullptr);
-	int nPort = GHttp_urlPort(szNewUrl);
+	WHttpClient_parseURL(szNewUrl, &nHostIndex, &nPortIndex, &nPathIndex, nullptr);
+	int nPort = WHttp_urlPort(szNewUrl);
 
 	// Copy the host name
 	int nTempBufSize = nPortIndex - nHostIndex + 1;
-	GTEMPBUF(char, szHost, nTempBufSize);
+	WTEMPBUF(char, szHost, nTempBufSize);
 	memcpy(szHost, &szNewUrl[nHostIndex], nPortIndex - nHostIndex);
 	szHost[nPortIndex - nHostIndex] = '\0';
 
@@ -699,7 +699,7 @@ bool GWebSocketClient::get(const char* szUrl)
 		m_pSocket = nullptr;
 		try
 		{
-			m_pSocket = new GWebSocketClientSocket(this);
+			m_pSocket = new WWebSocketClientSocket(this);
 			m_pSocket->connect(szHost, nPort);
 		}
 		catch(...)
@@ -736,7 +736,7 @@ bool GWebSocketClient::get(const char* szUrl)
 	return true;
 }
 
-void GWebSocketClient::onLoseConnection()
+void WWebSocketClient::onLoseConnection()
 {
 }
 
@@ -746,18 +746,18 @@ void GWebSocketClient::onLoseConnection()
 
 
 
-GHttpConnection::GHttpConnection(SOCKET sock) : GTCPConnection(sock), m_pPostBuffer(nullptr)
+WHttpConnection::WHttpConnection(SOCKET sock) : WTCPConnection(sock), m_pPostBuffer(nullptr)
 {
 	reset();
 }
 
 // virtual
-GHttpConnection::~GHttpConnection()
+WHttpConnection::~WHttpConnection()
 {
 	delete[] m_pPostBuffer;
 }
 
-void GHttpConnection::reset()
+void WHttpConnection::reset()
 {
 	m_nPos = 0;
 	m_eRequestType = None;
@@ -773,17 +773,17 @@ void GHttpConnection::reset()
 	m_modifiedTime = 0;
 }
 
-void GHttpConnection::setContentType(const char* szContentType)
+void WHttpConnection::setContentType(const char* szContentType)
 {
 	safe_strcpy(m_szContentType, szContentType, 64);
 }
 
-void GHttpConnection::allowOrigin(const char* szOrigin)
+void WHttpConnection::allowOrigin(const char* szOrigin)
 {
 	m_sAllowOrigin = szOrigin;
 }
 
-void GHttpConnection::setCookie(const char* szPayload, bool bPersist)
+void WHttpConnection::setCookie(const char* szPayload, bool bPersist)
 {
 	m_bPersistCookie = bPersist;
 	safe_strcpy(m_szCookieOutgoing, szPayload, MAX_COOKIE_SIZE);
@@ -796,22 +796,22 @@ void GHttpConnection::setCookie(const char* szPayload, bool bPersist)
 
 
 
-class GHttpServerSocket : public GTCPServer
+class WHttpServerSocket : public WTCPServer
 {
 protected:
-	GHttpServer* m_pServer;
+	WHttpServer* m_pServer;
 
 public:
-	GHttpServerSocket(unsigned short port, GHttpServer* pServer, bool networkAccessible) : GTCPServer(port, networkAccessible), m_pServer(pServer)
+	WHttpServerSocket(unsigned short port, WHttpServer* pServer, bool networkAccessible) : WTCPServer(port, networkAccessible), m_pServer(pServer)
 	{
 	}
 
-	~GHttpServerSocket() override
+	~WHttpServerSocket() override
 	{
 	}
 
 protected:
-	GTCPConnection* makeConnection(SOCKET s) override
+	WTCPConnection* makeConnection(SOCKET s) override
 	{
 		return m_pServer->makeConnection(s);
 	}
@@ -819,30 +819,30 @@ protected:
 
 // SAKBox: a request that can't be handled safely (a header value too long
 // for its buffer, or a bad Content-Length); the server hangs up on it
-class GHttpBadRequest : public Ex
+class WHttpBadRequest : public Ex
 {
 public:
 	using Ex::Ex;
 };
 
-GHttpServer::GHttpServer(int nPort, bool networkAccessible)
+WHttpServer::WHttpServer(int nPort, bool networkAccessible)
 {
 	m_pReceiveBuf = new char[2048];
-	m_pSocket = new GHttpServerSocket(nPort, this, networkAccessible);
+	m_pSocket = new WHttpServerSocket(nPort, this, networkAccessible);
 	if(!m_pSocket)
 		throw Ex("failed to open port"); // SAKBox: was a bare string, which catch (std::exception&) misses
 }
 
-GHttpServer::~GHttpServer()
+WHttpServer::~WHttpServer()
 {
 	delete[] m_pReceiveBuf;
 	delete(m_pSocket);
 }
 
-void GHttpServer::serveRequests()
+void WHttpServer::serveRequests()
 {
-	GSignalHandler signals;
-	double lastRequest = GTime::seconds();
+	WSignalHandler signals;
+	double lastRequest = WTime::seconds();
 	while(m_keepServing)
 	{
 		int sig = signals.check();
@@ -852,30 +852,30 @@ void GHttpServer::serveRequests()
 #endif
 		if(sig != 0)
 		{
-			std::cout << "Stopping: received " << GSignalHandler::to_str(sig) << "\n";
+			std::cout << "Stopping: received " << WSignalHandler::to_str(sig) << "\n";
 			break;
 		}
 		if(process())
-			lastRequest = GTime::seconds();
+			lastRequest = WTime::seconds();
 		else
 		{
-			onIdle(GTime::seconds() - lastRequest);
+			onIdle(WTime::seconds() - lastRequest);
 			if(m_keepServing)
-				GThread::sleep(100);
+				WThread::sleep(100);
 		}
 	}
 }
 
-bool GHttpServer::process()
+bool WHttpServer::process()
 {
 	unsigned char* pIn;
 	char c;
 	bool bDidSomething = false;
 	while(true)
 	{
-		GTCPConnection* pCon;
+		WTCPConnection* pCon;
 		size_t nMessageSize = m_pSocket->receive(m_pReceiveBuf, 2048, &pCon);
-		GHttpConnection* pConn = (GHttpConnection*)pCon;
+		WHttpConnection* pConn = (WHttpConnection*)pCon;
 		if(nMessageSize == 0)
 			break;
 		bDidSomething = true;
@@ -903,7 +903,7 @@ bool GHttpServer::process()
 						{
 							processHeaderLine(pConn, pConn->m_szLine);
 						}
-						catch(const GHttpBadRequest& e)
+						catch(const WHttpBadRequest& e)
 						{
 							std::cout << "Hung up on a bad HTTP request: " << e.what() << "\n";
 							m_pSocket->disconnect(pConn); // (deletes pConn)
@@ -920,28 +920,28 @@ bool GHttpServer::process()
 	return bDidSomething;
 }
 
-void GHttpServer::beginRequest(GHttpConnection* pConn, int eType, const char* szIn)
+void WHttpServer::beginRequest(WHttpConnection* pConn, int eType, const char* szIn)
 {
 	pConn->reset();
-	pConn->m_eRequestType = (GHttpConnection::RequestType)eType;
+	pConn->m_eRequestType = (WHttpConnection::RequestType)eType;
 	char* szOut = pConn->m_szUrl;
 	while(*szIn > ' ' && *szIn != '?')
 	{
 		if(szOut - pConn->m_szUrl >= MAX_URL_LEN - 1)
-			throw GHttpBadRequest("URL longer than ", to_str(MAX_URL_LEN - 1)); // SAKBox: wasn't checked
+			throw WHttpBadRequest("URL longer than ", to_str(MAX_URL_LEN - 1)); // SAKBox: wasn't checked
 		*szOut = *szIn;
 		szIn++;
 		szOut++;
 	}
 	*szOut = '\0';
-	if(eType == GHttpConnection::Get && *szIn == '?')
+	if(eType == WHttpConnection::Get && *szIn == '?')
 	{
 		szIn++;
 		szOut = pConn->m_szParams;
 		while(*szIn > ' ')
 		{
 			if(szOut - pConn->m_szParams >= MAX_URL_LEN - 1)
-				throw GHttpBadRequest("URL parameters longer than ", to_str(MAX_URL_LEN - 1)); // SAKBox: wasn't checked
+				throw WHttpBadRequest("URL parameters longer than ", to_str(MAX_URL_LEN - 1)); // SAKBox: wasn't checked
 			*szOut = *szIn;
 			szIn++;
 			szOut++;
@@ -952,7 +952,7 @@ void GHttpServer::beginRequest(GHttpConnection* pConn, int eType, const char* sz
 		pConn->m_szParams[0] = '\0';
 }
 
-void GHttpServer::onReceiveFullPostRequest(GHttpConnection* pConn)
+void WHttpServer::onReceiveFullPostRequest(WHttpConnection* pConn)
 {
 	pConn->m_modifiedTime = 0;
 	pConn->m_pContent = pConn->m_pPostBuffer;
@@ -970,7 +970,7 @@ void GHttpServer::onReceiveFullPostRequest(GHttpConnection* pConn)
 	}
 }
 
-void GHttpServer::processPostData(GHttpConnection* pConn, const unsigned char* pData, size_t nDataSize)
+void WHttpServer::processPostData(WHttpConnection* pConn, const unsigned char* pData, size_t nDataSize)
 {
 	if(nDataSize > pConn->m_nContentLength - pConn->m_nPos)
 		nDataSize = pConn->m_nContentLength - pConn->m_nPos;
@@ -983,7 +983,7 @@ void GHttpServer::processPostData(GHttpConnection* pConn, const unsigned char* p
 	}
 }
 
-void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
+void WHttpServer::processHeaderLine(WHttpConnection* pConn, const char* szLine)
 {
 	onProcessLine(pConn, szLine);
 
@@ -993,7 +993,7 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 
 	if(*szLine == '\0')
 	{
-		if(pConn->m_eRequestType == GHttpConnection::Get)
+		if(pConn->m_eRequestType == WHttpConnection::Get)
 		{
 			bool bModified = true;
 			if(pConn->m_szDate[0] != '\0')
@@ -1025,7 +1025,7 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 				}
 			}
 		}
-		else if(pConn->m_eRequestType == GHttpConnection::Head)
+		else if(pConn->m_eRequestType == WHttpConnection::Head)
 		{
 			pConn->m_modifiedTime = 0;
 			pConn->setHeaders(pConn->m_szUrl, pConn->m_szParams);
@@ -1038,7 +1038,7 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 				std::cout << "Error: Failed to send HEAD response: " << e.what() << "\n";
 			}
 		}
-		else if(pConn->m_eRequestType == GHttpConnection::Post)
+		else if(pConn->m_eRequestType == WHttpConnection::Post)
 		{
 			if(pConn->m_nContentLength > 0)
 				pConn->m_pPostBuffer = new char[pConn->m_nContentLength + 1];
@@ -1051,22 +1051,22 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 		}
 	}
 	else if(_strnicmp(szLine, "GET ", 4) == 0)
-		beginRequest(pConn, GHttpConnection::Get, szLine + 4);
+		beginRequest(pConn, WHttpConnection::Get, szLine + 4);
 	else if(_strnicmp(szLine, "HEAD ", 5) == 0)
-		beginRequest(pConn, GHttpConnection::Head, szLine + 5);
+		beginRequest(pConn, WHttpConnection::Head, szLine + 5);
 	else if(_strnicmp(szLine, "POST ", 5) == 0)
-		beginRequest(pConn, GHttpConnection::Post, szLine + 5);
+		beginRequest(pConn, WHttpConnection::Post, szLine + 5);
 	else if(_strnicmp(szLine, "Content-Length: ", 16) == 0)
 	{
 		// SAKBox: was atoi into a size_t, so "-1" became the largest size and
 		// the +1 for the terminator wrapped to a zero-byte buffer
 		if(!parseHttpContentLength(szLine + 16, &pConn->m_nContentLength))
-			throw GHttpBadRequest("bad Content-Length (a number up to ", to_str(MAX_HTTP_CONTENT_LENGTH), " expected)");
+			throw WHttpBadRequest("bad Content-Length (a number up to ", to_str(MAX_HTTP_CONTENT_LENGTH), " expected)");
 	}
 	else if(_strnicmp(szLine, "Cookie: ", 8) == 0)
 	{
 		if(strlen(szLine + 8) >= MAX_COOKIE_SIZE)
-			throw GHttpBadRequest("Cookie longer than ", to_str(MAX_COOKIE_SIZE - 1)); // SAKBox: wasn't checked
+			throw WHttpBadRequest("Cookie longer than ", to_str(MAX_COOKIE_SIZE - 1)); // SAKBox: wasn't checked
 		strcpy(pConn->m_szCookieIncoming, szLine + 8);
 	}
 	else if(_strnicmp(szLine, "If-Modified-Since: ", 19) == 0)
@@ -1076,7 +1076,7 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 		while(*szIn >= ' ')
 		{
 			if(szOut - pConn->m_szDate >= MAX_DATE_LEN - 1)
-				throw GHttpBadRequest("If-Modified-Since longer than ", to_str(MAX_DATE_LEN - 1)); // SAKBox: wasn't checked
+				throw WHttpBadRequest("If-Modified-Since longer than ", to_str(MAX_DATE_LEN - 1)); // SAKBox: wasn't checked
 			*szOut = *szIn;
 			szIn++;
 			szOut++;
@@ -1085,7 +1085,7 @@ void GHttpServer::processHeaderLine(GHttpConnection* pConn, const char* szLine)
 	}
 }
 
-void GHttpServer::sendResponse(GHttpConnection* pConn)
+void WHttpServer::sendResponse(WHttpConnection* pConn)
 {
 	// Convert the payload to a string
 	string sPayload = m_stream.str();
@@ -1096,7 +1096,7 @@ void GHttpServer::sendResponse(GHttpConnection* pConn)
 	std::ostringstream os;
 	os << "HTTP/1.1 200 OK\r\n";
 	os << "Content-Type: " << pConn->m_szContentType << "\r\n";
-	if(pConn->m_eRequestType != GHttpConnection::Head)
+	if(pConn->m_eRequestType != WHttpConnection::Head)
 		os << "Content-Length: " << sPayload.length() << "\r\n";
 	if(pConn->m_sAllowOrigin.length() > 0)
 	{
@@ -1106,13 +1106,13 @@ void GHttpServer::sendResponse(GHttpConnection* pConn)
 
 	// Set the date header
 	{
-		os << "Date: " << GTime::httpDate(time((time_t*)nullptr)) << "\r\n";
+		os << "Date: " << WTime::httpDate(time((time_t*)nullptr)) << "\r\n";
 	}
 
 	// Set the last-modified header
 	if(pConn->m_modifiedTime != 0)
 	{
-		os << "Last-Modified: " << GTime::httpDate(pConn->m_modifiedTime) << "\r\n";
+		os << "Last-Modified: " << WTime::httpDate(pConn->m_modifiedTime) << "\r\n";
 	}
 
 	// Set cookie
@@ -1131,11 +1131,11 @@ void GHttpServer::sendResponse(GHttpConnection* pConn)
 	m_pSocket->send(headers.c_str(), headers.length(), pConn);
 
 	// Send the payload
-	if(pConn->m_eRequestType != GHttpConnection::Head)
+	if(pConn->m_eRequestType != WHttpConnection::Head)
 		m_pSocket->send(sPayload.c_str(), sPayload.length(), pConn);
 }
 
-void GHttpServer::sendNotModifiedResponse(GHttpConnection* pConn)
+void WHttpServer::sendNotModifiedResponse(WHttpConnection* pConn)
 {
 	ostringstream os;
 	os << "HTTP/1.1 304 Not Modified\r\nDate: ";
@@ -1146,7 +1146,7 @@ void GHttpServer::sendNotModifiedResponse(GHttpConnection* pConn)
 }
 
 // The value of a hex digit, or -1 if c isn't one
-static int GHttp_hexDigit(char c)
+static int WHttp_hexDigit(char c)
 {
 	if(c >= '0' && c <= '9')
 		return c - '0';
@@ -1157,7 +1157,7 @@ static int GHttp_hexDigit(char c)
 	return -1;
 }
 
-/*static*/ void GHttpServer::unescapeUrl(char* szOut, const char* szIn, size_t nInLen)
+/*static*/ void WHttpServer::unescapeUrl(char* szOut, const char* szIn, size_t nInLen)
 {
 	while(nInLen > 0 && *szIn != '\0')
 	{
@@ -1165,8 +1165,8 @@ static int GHttp_hexDigit(char c)
 		// other '%' as it is. Any letter was taken as a digit up to 35 and
 		// anything else as 2 or 0, so "%G0" became '\0' (cutting the value
 		// short), and a '%' near the end was dropped.
-		const int hi = nInLen >= 3 && *szIn == '%' ? GHttp_hexDigit(szIn[1]) : -1;
-		const int lo = hi >= 0 ? GHttp_hexDigit(szIn[2]) : -1;
+		const int hi = nInLen >= 3 && *szIn == '%' ? WHttp_hexDigit(szIn[1]) : -1;
+		const int lo = hi >= 0 ? WHttp_hexDigit(szIn[2]) : -1;
 		if(lo >= 0)
 		{
 			*szOut = (char)(16 * hi + lo);
@@ -1185,7 +1185,7 @@ static int GHttp_hexDigit(char c)
 }
 
 // static
-bool GHttpServer::parseFileParam(const char* pParams, size_t nParamsLen, const char** ppFilename, size_t* pFilenameLen, const unsigned char** ppFile, size_t* pFileLen)
+bool WHttpServer::parseFileParam(const char* pParams, size_t nParamsLen, const char** ppFilename, size_t* pFilenameLen, const unsigned char** ppFile, size_t* pFileLen)
 {
 	// Measure the length of the unique divider string
 	size_t dividerLen;
@@ -1194,7 +1194,7 @@ bool GHttpServer::parseFileParam(const char* pParams, size_t nParamsLen, const c
 	}
 	if(dividerLen >= nParamsLen)
 		return false;
-	GAssert(dividerLen > 5 && dividerLen < 150); // divider length doesn't seem right
+	WAssert(dividerLen > 5 && dividerLen < 150); // divider length doesn't seem right
 
 	// Move to the next line of data
 	size_t pos = dividerLen + 1;
@@ -1202,7 +1202,7 @@ bool GHttpServer::parseFileParam(const char* pParams, size_t nParamsLen, const c
 		pos++;
 	if(pos >= nParamsLen)
 		return false;
-	GAssert(strncmp(&pParams[pos], "Content-Disposition: form-data", 30) == 0); // unexpected line
+	WAssert(strncmp(&pParams[pos], "Content-Disposition: form-data", 30) == 0); // unexpected line
 
 	// Find the filename
 	while(pos < nParamsLen && strncmp(&pParams[pos], "filename=\"", 10) != 0)
@@ -1247,12 +1247,12 @@ bool GHttpServer::parseFileParam(const char* pParams, size_t nParamsLen, const c
 
 
 
-GHttpParamParser::GHttpParamParser(const char* szParams, bool scrub)
+WHttpParamParser::WHttpParamParser(const char* szParams, bool scrub)
 {
 	m_pHeap = nullptr;
 	if(szParams)
 	{
-		m_pHeap = new GHeap(1024);
+		m_pHeap = new WHeap(1024);
 		int nNameStart = 0;
 		int nNameLen, nValueStart, nValueLen;
 		while(true)
@@ -1267,9 +1267,9 @@ GHttpParamParser::GHttpParamParser(const char* szParams, bool scrub)
 			{
 			}
 			char* szName = m_pHeap->allocate(nNameLen + 1);
-			GHttpServer::unescapeUrl(szName, &szParams[nNameStart], nNameLen);
+			WHttpServer::unescapeUrl(szName, &szParams[nNameStart], nNameLen);
 			char* szValue = m_pHeap->allocate(nValueLen + 1);
-			GHttpServer::unescapeUrl(szValue, &szParams[nValueStart], nValueLen);
+			WHttpServer::unescapeUrl(szValue, &szParams[nValueStart], nValueLen);
 			if(scrub)
 				scrubValue(szValue);
 			m_map.insert(std::make_pair(szName, szValue));
@@ -1280,7 +1280,7 @@ GHttpParamParser::GHttpParamParser(const char* szParams, bool scrub)
 	}
 }
 
-GHttpParamParser::~GHttpParamParser()
+WHttpParamParser::~WHttpParamParser()
 {
 	delete(m_pHeap);
 }
@@ -1295,7 +1295,7 @@ static bool isSafeParamChar(char c)
 	  || (c >= '#' && c <= '%') || c == ' ' || c == '!';
 }
 
-void GHttpParamParser::scrubValue(char* value)
+void WHttpParamParser::scrubValue(char* value)
 {
 	for(; *value != '\0'; value++)
 	{
@@ -1304,7 +1304,7 @@ void GHttpParamParser::scrubValue(char* value)
 	}
 }
 
-const char* GHttpParamParser::find(const char* szName)
+const char* WHttpParamParser::find(const char* szName)
 {
 	std::map<const char*, const char*, strComp>::iterator it = m_map.find(szName);
 	if(it == m_map.end())
@@ -1312,7 +1312,7 @@ const char* GHttpParamParser::find(const char* szName)
 	return it->second;
 }
 
-std::string GHttpParamParser::to_str(bool html)
+std::string WHttpParamParser::to_str(bool html)
 {
 	std::ostringstream os;
 	std::map<const char*, const char*, strComp>::iterator it = m_map.begin();
@@ -1340,7 +1340,7 @@ std::string GHttpParamParser::to_str(bool html)
 
 
 
-GHttpMultipartParser::GHttpMultipartParser(const char* pRawData, size_t len)
+WHttpMultipartParser::WHttpMultipartParser(const char* pRawData, size_t len)
 {
 	m_pRawData = pRawData;
 	m_len = len;
@@ -1353,11 +1353,11 @@ GHttpMultipartParser::GHttpMultipartParser(const char* pRawData, size_t len)
 	}
 }
 
-GHttpMultipartParser::~GHttpMultipartParser()
+WHttpMultipartParser::~WHttpMultipartParser()
 {
 }
 
-bool GHttpMultipartParser::next(size_t* pNameStart, size_t* pNameLen, size_t* pValueStart, size_t* pValueLen, size_t* pFilenameStart, size_t* pFilenameLen)
+bool WHttpMultipartParser::next(size_t* pNameStart, size_t* pNameLen, size_t* pValueStart, size_t* pValueLen, size_t* pFilenameStart, size_t* pFilenameLen)
 {
 	// Find the terminating sentinel
 	size_t start = m_pos;
@@ -1416,4 +1416,4 @@ bool GHttpMultipartParser::next(size_t* pNameStart, size_t* pNameLen, size_t* pV
 	return true;
 }
 
-} // namespace GClasses
+} // namespace WClasses

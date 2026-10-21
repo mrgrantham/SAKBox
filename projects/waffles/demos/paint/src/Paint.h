@@ -10,7 +10,7 @@
 #define __PAINT_H__
 
 #include "gui/Gui.h"
-#include <WClasses/GImage.h>
+#include <WClasses/WImage.h>
 
 class PaintTool;
 
@@ -18,15 +18,15 @@ class PaintTool;
 class PaintController : public ControllerBase
 {
 protected:
-	GClasses::GImage* m_pImage;
-	GClasses::GImage* m_pSelection;
+	WClasses::WImage* m_pImage;
+	WClasses::WImage* m_pSelection;
 
 public:
 	PaintController();
 	~PaintController() override;
 
-	GClasses::GImage* GetCanvas() { return m_pImage; }
-	GClasses::GImage* GetSelectionMask() { return m_pSelection; }
+	WClasses::WImage* GetCanvas() { return m_pImage; }
+	WClasses::WImage* GetSelectionMask() { return m_pSelection; }
 	void RunModal();
 	void RedrawCanvas();
 	void CleanCanvas();

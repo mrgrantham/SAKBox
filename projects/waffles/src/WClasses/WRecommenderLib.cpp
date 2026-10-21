@@ -18,10 +18,10 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GRecommenderLib.h"
+#include "WRecommenderLib.h"
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 using std::string;
@@ -29,7 +29,7 @@ using std::vector;
 using std::set;
 
 
-size_t GRecommenderLib::getAttrVal(const char* szString, size_t attrCount)
+size_t WRecommenderLib::getAttrVal(const char* szString, size_t attrCount)
 {
 	bool fromRight = false;
 	if(*szString == '*')
@@ -49,7 +49,7 @@ size_t GRecommenderLib::getAttrVal(const char* szString, size_t attrCount)
 	return val;
 }
 
-void GRecommenderLib::parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount)
+void WRecommenderLib::parseAttributeList(vector<size_t>& list, WArgReader& args, size_t attrCount)
 {
 	const char* szList = args.pop_string();
 	set<size_t> attrSet;
@@ -117,22 +117,22 @@ void GRecommenderLib::parseAttributeList(vector<size_t>& list, GArgReader& args,
 	}
 }
 
-void GRecommenderLib::loadData(GMatrix& data, const char* szFilename)
+void WRecommenderLib::loadData(WMatrix& data, const char* szFilename)
 {
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	if(_stricmp(szFilename + pd.extStart, ".sparse") == 0)
 	{
-		GDom doc;
+		WDom doc;
 		doc.loadJson(szFilename);
-		GSparseMatrix sm(doc.root());
+		WSparseMatrix sm(doc.root());
 		data.resize(0, 3);
 		for(size_t i = 0; i < sm.rows(); i++)
 		{
-			GSparseMatrix::Iter rowEnd = sm.rowEnd(i);
-			for(GSparseMatrix::Iter it = sm.rowBegin(i); it != rowEnd; it++)
+			WSparseMatrix::Iter rowEnd = sm.rowEnd(i);
+			for(WSparseMatrix::Iter it = sm.rowBegin(i); it != rowEnd; it++)
 			{
-				GVec& vec = data.newRow();
+				WVec& vec = data.newRow();
 				vec[0] = (double)i;
 				vec[1] = (double)it->first;
 				vec[2] = it->second;
@@ -145,15 +145,15 @@ void GRecommenderLib::loadData(GMatrix& data, const char* szFilename)
 		throw Ex("Unsupported file format: ", szFilename + pd.extStart);
 }
 
-GSparseMatrix* GRecommenderLib::loadSparseData(const char* szFilename)
+WSparseMatrix* WRecommenderLib::loadSparseData(const char* szFilename)
 {
 	// Load the dataset by extension
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	if(_stricmp(szFilename + pd.extStart, ".arff") == 0)
 	{
 		// Convert a 3-column dense ARFF file to a sparse matrix
-		GMatrix data;
+		WMatrix data;
 		data.loadArff(szFilename);
 		if(data.cols() != 3)
 			throw Ex("Expected 3 columns: 0) user or row-index, 1) item or col-index, 2) value or rating");
@@ -165,33 +165,33 @@ GSparseMatrix* GRecommenderLib::loadSparseData(const char* szFilename)
 			throw Ex("Invalid row indexes");
 		if(m1 < 0 || m1 > 1e10 || r1 < 2 || r1 > 1e10)
 			throw Ex("Invalid col indexes");
-		GSparseMatrix* pMatrix = new GSparseMatrix(size_t(m0 + r0) + 1, size_t(m1 + r1) + 1, UNKNOWN_REAL_VALUE);
-		std::unique_ptr<GSparseMatrix> hMatrix(pMatrix);
+		WSparseMatrix* pMatrix = new WSparseMatrix(size_t(m0 + r0) + 1, size_t(m1 + r1) + 1, UNKNOWN_REAL_VALUE);
+		std::unique_ptr<WSparseMatrix> hMatrix(pMatrix);
 		for(size_t i = 0; i < data.rows(); i++)
 		{
-			GVec& row = data.row(i);
+			WVec& row = data.row(i);
 			pMatrix->set(size_t(row[0]), size_t(row[1]), row[2]);
 		}
 		return hMatrix.release();
 	}
 	else if(_stricmp(szFilename + pd.extStart, ".sparse") == 0)
 	{
-		GDom doc;
+		WDom doc;
 		doc.loadJson(szFilename);
-		return new GSparseMatrix(doc.root());
+		return new WSparseMatrix(doc.root());
 	}
 	throw Ex("Unsupported file format: ", szFilename + pd.extStart);
 	return nullptr;
 }
 
-GBaselineRecommender* GRecommenderLib::InstantiateBaselineRecommender(GArgReader& args)
+WBaselineRecommender* WRecommenderLib::InstantiateBaselineRecommender(WArgReader& args)
 {
-	return new GBaselineRecommender();
+	return new WBaselineRecommender();
 }
 
-GBagOfRecommenders* GRecommenderLib::InstantiateBagOfRecommenders(GArgReader& args)
+WBagOfRecommenders* WRecommenderLib::InstantiateBagOfRecommenders(WArgReader& args)
 {
-	GBagOfRecommenders* pEnsemble = new GBagOfRecommenders();
+	WBagOfRecommenders* pEnsemble = new WBagOfRecommenders();
 	while(args.size() > 0)
 	{
 		if(args.if_pop("end"))
@@ -201,14 +201,14 @@ GBagOfRecommenders* GRecommenderLib::InstantiateBagOfRecommenders(GArgReader& ar
 		for(int i = 0; i < instance_count; i++)
 		{
 			args.set_pos(arg_pos);
-			GCollaborativeFilter* pRecommender = InstantiateAlgorithm(args);
+			WCollaborativeFilter* pRecommender = InstantiateAlgorithm(args);
 			pEnsemble->addRecommender(pRecommender);
 		}
 	}
 	return pEnsemble;
 }
 
-GInstanceRecommender* GRecommenderLib::InstantiateInstanceRecommender(GArgReader& args)
+WInstanceRecommender* WRecommenderLib::InstantiateInstanceRecommender(WArgReader& args)
 {
 	if(args.size() < 1)
 		throw Ex("The number of neighbors must be specified for this algorithm");
@@ -227,15 +227,15 @@ GInstanceRecommender* GRecommenderLib::InstantiateInstanceRecommender(GArgReader
 		else
 			throw Ex("Invalid option: ", args.peek());
 	}
-	GInstanceRecommender* pModel = new GInstanceRecommender(neighborCount);
+	WInstanceRecommender* pModel = new WInstanceRecommender(neighborCount);
 	if(pearson)
-		pModel->setMetric(new GPearsonCorrelation(), true);
+		pModel->setMetric(new WPearsonCorrelation(), true);
 	pModel->metric()->setRegularizer(regularizer);
 	pModel->setSigWeight(sig);
 	return pModel;
 }
 
-GDenseClusterRecommender* GRecommenderLib::InstantiateDenseClusterRecommender(GArgReader& args)
+WDenseClusterRecommender* WRecommenderLib::InstantiateDenseClusterRecommender(WArgReader& args)
 {
 	if(args.size() < 1)
 		throw Ex("The number of clusters must be specified for this algorithm");
@@ -255,23 +255,23 @@ GDenseClusterRecommender* GRecommenderLib::InstantiateDenseClusterRecommender(GA
 			throw Ex("Invalid option: ", args.peek());
 		// todo: allow the user to specify the clustering algorithm. (Currently, it uses k-means, but k-medoids and agglomerativeclusterer should also be an option)
 	}
-	GDenseClusterRecommender* pModel = new GDenseClusterRecommender(clusterCount);
+	WDenseClusterRecommender* pModel = new WDenseClusterRecommender(clusterCount);
 	if(norm == 2.0)
 	{
 		if(missingPenalty != 1.0)
 		{
-			GFuzzyKMeans* pClusterer = new GFuzzyKMeans(clusterCount, &pModel->rand());
+			WFuzzyKMeans* pClusterer = new WFuzzyKMeans(clusterCount, &pModel->rand());
 			pModel->setClusterer(pClusterer, true);
-			GRowDistance* pMetric = new GRowDistance();
+			WRowDistance* pMetric = new WRowDistance();
 			pClusterer->setMetric(pMetric, true);
 			pMetric->setDiffWithUnknown(missingPenalty);
 		}
 	}
 	else
 	{
-		GFuzzyKMeans* pClusterer = new GFuzzyKMeans(clusterCount, &pModel->rand());
+		WFuzzyKMeans* pClusterer = new WFuzzyKMeans(clusterCount, &pModel->rand());
 		pModel->setClusterer(pClusterer, true);
-		GLNormDistance* pMetric = new GLNormDistance(norm);
+		WLNormDistance* pMetric = new WLNormDistance(norm);
 		pClusterer->setMetric(pMetric, true);
 		if(missingPenalty != 1.0)
 			pMetric->setDiffWithUnknown(missingPenalty);
@@ -280,7 +280,7 @@ GDenseClusterRecommender* GRecommenderLib::InstantiateDenseClusterRecommender(GA
 	return pModel;
 }
 
-GSparseClusterRecommender* GRecommenderLib::InstantiateSparseClusterRecommender(GArgReader& args)
+WSparseClusterRecommender* WRecommenderLib::InstantiateSparseClusterRecommender(WArgReader& args)
 {
 	if(args.size() < 1)
 		throw Ex("The number of clusters must be specified for this algorithm");
@@ -294,22 +294,22 @@ GSparseClusterRecommender* GRecommenderLib::InstantiateSparseClusterRecommender(
 			throw Ex("Invalid option: ", args.peek());
 		// todo: allow the user to specify the clustering algorithm. (Currently, it uses k-means, but k-medoids should also be an option)
 	}
-	GSparseClusterRecommender* pModel = new GSparseClusterRecommender(clusterCount);
+	WSparseClusterRecommender* pModel = new WSparseClusterRecommender(clusterCount);
 	if(pearson)
 	{
-		GKMeansSparse* pClusterer = new GKMeansSparse(clusterCount, &pModel->rand());
-		pClusterer->setMetric(new GPearsonCorrelation(), true);
+		WKMeansSparse* pClusterer = new WKMeansSparse(clusterCount, &pModel->rand());
+		pClusterer->setMetric(new WPearsonCorrelation(), true);
 		pModel->setClusterer(pClusterer, true);
 	}
 	return pModel;
 }
 
-GMatrixFactorization* GRecommenderLib::InstantiateMatrixFactorization(GArgReader& args)
+WMatrixFactorization* WRecommenderLib::InstantiateMatrixFactorization(WArgReader& args)
 {
 	if(args.size() < 1)
 		throw Ex("The number of intrinsic dims must be specified for this algorithm");
 	size_t intrinsicDims = args.pop_uint();
-	GMatrixFactorization* pModel = new GMatrixFactorization(intrinsicDims);
+	WMatrixFactorization* pModel = new WMatrixFactorization(intrinsicDims);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-regularize"))
@@ -322,14 +322,14 @@ GMatrixFactorization* GRecommenderLib::InstantiateMatrixFactorization(GArgReader
 			pModel->nonNegative();
 		else if(args.if_pop("-clampusers"))
 		{
-			GMatrix tmp;
+			WMatrix tmp;
 			tmp.loadArff(args.pop_string());
 			size_t offset = args.pop_uint();
 			pModel->clampUsers(tmp, offset);
 		}
 		else if(args.if_pop("-clampitems"))
 		{
-			GMatrix tmp;
+			WMatrix tmp;
 			tmp.loadArff(args.pop_string());
 			size_t offset = args.pop_uint();
 			pModel->clampItems(tmp, offset);
@@ -340,16 +340,16 @@ GMatrixFactorization* GRecommenderLib::InstantiateMatrixFactorization(GArgReader
 	return pModel;
 }
 /*
-GNonlinearPCA* GRecommenderLib::InstantiateNonlinearPCA(GArgReader& args)
+WNonlinearPCA* WRecommenderLib::InstantiateNonlinearPCA(WArgReader& args)
 {
 	if(args.size() < 1)
 		throw Ex("The number of intrinsic dims must be specified for this algorithm");
 	size_t intrinsicDims = args.pop_uint();
-	GNonlinearPCA* pModel = new GNonlinearPCA(intrinsicDims);
+	WNonlinearPCA* pModel = new WNonlinearPCA(intrinsicDims);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-addlayer"))
-			pModel->model()->addLayer(new GLayerClassic(FLEXIBLE_SIZE, args.pop_uint()));
+			pModel->model()->addLayer(new WLayerClassic(FLEXIBLE_SIZE, args.pop_uint()));
 		else if(args.if_pop("-learningrate"))
 			pModel->model()->setLearningRate(args.pop_double());
 		else if(args.if_pop("-momentum"))
@@ -369,17 +369,17 @@ GNonlinearPCA* GRecommenderLib::InstantiateNonlinearPCA(GArgReader& args)
 		else if(args.if_pop("-regularize"))
 			pModel->setRegularizer(args.pop_double());
 		else if(args.if_pop("-dontsquashoutputs"))
-			pAF = new GActivationIdentity();
+			pAF = new WActivationIdentity();
 		else if(args.if_pop("-clampusers"))
 		{
-			GMatrix tmp;
+			WMatrix tmp;
 			tmp.loadArff(args.pop_string());
 			size_t offset = args.pop_uint();
 			pModel->clampUsers(tmp, offset);
 		}
 		else if(args.if_pop("-clampitems"))
 		{
-			GMatrix tmp;
+			WMatrix tmp;
 			tmp.loadArff(args.pop_string());
 			size_t offset = args.pop_uint();
 			pModel->clampItems(tmp, offset);
@@ -387,25 +387,25 @@ GNonlinearPCA* GRecommenderLib::InstantiateNonlinearPCA(GArgReader& args)
 		else
 			throw Ex("Invalid option: ", args.peek());
 	}
-	pModel->model()->addLayer(new GLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE, pAF));
+	pModel->model()->addLayer(new WLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE, pAF));
 	return pModel;
 }
 */
 /*
-GHybridNonlinearPCA* GRecommenderLib::InstantiateHybridNonlinearPCA(GArgReader& args)
+WHybridNonlinearPCA* WRecommenderLib::InstantiateHybridNonlinearPCA(WArgReader& args)
 {
 	if(args.size() < 2)
 		throw Ex("The number of input dims AND the location of the ARFF for the item attributes must be specified for this algorithm");
 	size_t intrinsicDims = args.pop_uint();
-	GMatrix data;
+	WMatrix data;
 	loadData(data, args.pop_string());
 //	size_t inputDims = args.pop_uint();
-	GHybridNonlinearPCA* pModel = new GHybridNonlinearPCA(intrinsicDims);
+	WHybridNonlinearPCA* pModel = new WHybridNonlinearPCA(intrinsicDims);
 	pModel->setItemAttributes(data);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-addlayer"))
-			pModel->model()->addLayer(new GLayerClassic(FLEXIBLE_SIZE, args.pop_uint()));
+			pModel->model()->addLayer(new WLayerClassic(FLEXIBLE_SIZE, args.pop_uint()));
 		else if(args.if_pop("-learningrate"))
 			pModel->model()->setLearningRate(args.pop_double());
 		else if(args.if_pop("-momentum"))
@@ -425,41 +425,41 @@ GHybridNonlinearPCA* GRecommenderLib::InstantiateHybridNonlinearPCA(GArgReader& 
 		else if(args.if_pop("-regularize"))
 			pModel->setRegularizer(args.pop_double());
 		else if(args.if_pop("-dontsquashoutputs"))
-			pAF = new GActivationIdentity();
+			pAF = new WActivationIdentity();
 		else
 			throw Ex("Invalid option: ", args.peek());
 	}
-	pModel->model()->addLayer(new GLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE, pAF));
+	pModel->model()->addLayer(new WLayerClassic(FLEXIBLE_SIZE, FLEXIBLE_SIZE, pAF));
 	return pModel;
 }
 */
-GContentBasedFilter* GRecommenderLib::InstantiateContentBasedFilter(GArgReader& args)
+WContentBasedFilter* WRecommenderLib::InstantiateContentBasedFilter(WArgReader& args)
 {
 	if(args.size() < 2)
 		throw Ex("The location of the ARFF for the item attributes and a learning algorithm must be specified for this algorithm");
-	GMatrix data;
+	WMatrix data;
 	loadData(data, args.pop_string());
-	GArgReader copy = args;
+	WArgReader copy = args;
 	args.clear_args();
-	GContentBasedFilter* pModel = new GContentBasedFilter(copy);
+	WContentBasedFilter* pModel = new WContentBasedFilter(copy);
 	pModel->setItemAttributes(data);
 
 	return pModel;
 }
 
 
-GContentBoostedCF* GRecommenderLib::InstantiateContentBoostedCF(GArgReader& args)
+WContentBoostedCF* WRecommenderLib::InstantiateContentBoostedCF(WArgReader& args)
 {
 	if(args.size() < 3)
 		throw Ex("The location of the ARFF for the item attributes and a learning algorithm must be specified for the content-based algorithm and the number of neighbors must be specified for the instance-based CF algorithm");
-	GArgReader copy = args;
+	WArgReader copy = args;
 	args.clear_args();
-	GContentBoostedCF* pModel = new GContentBoostedCF(copy);
+	WContentBoostedCF* pModel = new WContentBoostedCF(copy);
 
 	return pModel;
 }
 
-void GRecommenderLib::showInstantiateAlgorithmError(const char* szMessage, GArgReader& args)
+void WRecommenderLib::showInstantiateAlgorithmError(const char* szMessage, WArgReader& args)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -490,7 +490,7 @@ void GRecommenderLib::showInstantiateAlgorithmError(const char* szMessage, GArgR
 	cerr.flush();
 }
 
-GCollaborativeFilter* GRecommenderLib::InstantiateAlgorithm(GArgReader& args)
+WCollaborativeFilter* WRecommenderLib::InstantiateAlgorithm(WArgReader& args)
 {
 	int argPos = args.get_pos();
 	if(args.size() < 1)
@@ -529,7 +529,7 @@ GCollaborativeFilter* GRecommenderLib::InstantiateAlgorithm(GArgReader& args)
 	return nullptr;
 }
 
-void GRecommenderLib::crossValidate(GArgReader& args)
+void WRecommenderLib::crossValidate(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -549,12 +549,12 @@ void GRecommenderLib::crossValidate(GArgReader& args)
 	// Load the data
 	if(args.size() < 1)
 		throw Ex("No dataset specified.");
-	GMatrix data;
+	WMatrix data;
 	loadData(data, args.pop_string());
 
 	// Instantiate the recommender
-	GCollaborativeFilter* pModel = InstantiateAlgorithm(args);
-	std::unique_ptr<GCollaborativeFilter> hModel(pModel);
+	WCollaborativeFilter* pModel = InstantiateAlgorithm(args);
+	std::unique_ptr<WCollaborativeFilter> hModel(pModel);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	pModel->rand().setSeed(seed);
@@ -566,7 +566,7 @@ void GRecommenderLib::crossValidate(GArgReader& args)
 	cout << "RMSE=" << sqrt(mse) << ", MSE=" << mse << ", MAE=" << mae << "\n";
 }
 
-void GRecommenderLib::precisionRecall(GArgReader& args)
+void WRecommenderLib::precisionRecall(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -584,24 +584,24 @@ void GRecommenderLib::precisionRecall(GArgReader& args)
 	// Load the data
 	if(args.size() < 1)
 		throw Ex("No dataset specified.");
-	GMatrix data;
+	WMatrix data;
 	loadData(data, args.pop_string());
 
 	// Instantiate the recommender
-	GCollaborativeFilter* pModel = InstantiateAlgorithm(args);
-	std::unique_ptr<GCollaborativeFilter> hModel(pModel);
+	WCollaborativeFilter* pModel = InstantiateAlgorithm(args);
+	std::unique_ptr<WCollaborativeFilter> hModel(pModel);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	pModel->rand().setSeed(seed);
 
 	// Generate precision-recall data
-	GMatrix* pResults = pModel->precisionRecall(data, ideal);
-	std::unique_ptr<GMatrix> hResults(pResults);
+	WMatrix* pResults = pModel->precisionRecall(data, ideal);
+	std::unique_ptr<WMatrix> hResults(pResults);
 	pResults->deleteColumns(2, 1); // we don't need the false-positive rate column
 	pResults->print(cout);
 }
 
-void GRecommenderLib::ROC(GArgReader& args)
+void WRecommenderLib::ROC(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -619,27 +619,27 @@ void GRecommenderLib::ROC(GArgReader& args)
 	// Load the data
 	if(args.size() < 1)
 		throw Ex("No dataset specified.");
-	GMatrix data;
+	WMatrix data;
 	loadData(data, args.pop_string());
 
 	// Instantiate the recommender
-	GCollaborativeFilter* pModel = InstantiateAlgorithm(args);
-	std::unique_ptr<GCollaborativeFilter> hModel(pModel);
+	WCollaborativeFilter* pModel = InstantiateAlgorithm(args);
+	std::unique_ptr<WCollaborativeFilter> hModel(pModel);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	pModel->rand().setSeed(seed);
 
 	// Generate ROC data
-	GMatrix* pResults = pModel->precisionRecall(data, ideal);
-	std::unique_ptr<GMatrix> hResults(pResults);
-	double auc = GCollaborativeFilter::areaUnderCurve(*pResults);
+	WMatrix* pResults = pModel->precisionRecall(data, ideal);
+	std::unique_ptr<WMatrix> hResults(pResults);
+	double auc = WCollaborativeFilter::areaUnderCurve(*pResults);
 	pResults->deleteColumns(1, 1); // we don't need the precision column
 	pResults->swapColumns(0, 1);
 	cout << "% Area Under the Curve = " << auc << "\n";
 	pResults->print(cout);
 }
 
-void GRecommenderLib::transacc(GArgReader& args)
+void WRecommenderLib::transacc(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -654,16 +654,16 @@ void GRecommenderLib::transacc(GArgReader& args)
 	// Load the data
 	if(args.size() < 1)
 		throw Ex("No training set specified.");
-	GMatrix train;
+	WMatrix train;
 	loadData(train, args.pop_string());
 	if(args.size() < 1)
 		throw Ex("No test set specified.");
-	GMatrix test;
+	WMatrix test;
 	loadData(test, args.pop_string());
 
 	// Instantiate the recommender
-	GCollaborativeFilter* pModel = InstantiateAlgorithm(args);
-	std::unique_ptr<GCollaborativeFilter> hModel(pModel);
+	WCollaborativeFilter* pModel = InstantiateAlgorithm(args);
+	std::unique_ptr<WCollaborativeFilter> hModel(pModel);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	pModel->rand().setSeed(seed);
@@ -674,7 +674,7 @@ void GRecommenderLib::transacc(GArgReader& args)
 	cout << "MSE=" << mse << ", MAE=" << mae << "\n";
 }
 
-void GRecommenderLib::fillMissingValues(GArgReader& args)
+void WRecommenderLib::fillMissingValues(WArgReader& args)
 {
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
 	bool normalize = true;
@@ -689,7 +689,7 @@ void GRecommenderLib::fillMissingValues(GArgReader& args)
 	}
 
 	// Load the data and the filter
-	GMatrix dataOrig;
+	WMatrix dataOrig;
 	dataOrig.loadArff(args.pop_string());
 
 	// Parse params
@@ -707,40 +707,40 @@ void GRecommenderLib::fillMissingValues(GArgReader& args)
 	for(size_t i = ignore.size() - 1; i < ignore.size(); i--)
 		dataOrig.deleteColumns(ignore[i], 1);
 
-	GRelation* pOrigRel = dataOrig.relation().clone();
-	std::unique_ptr<GRelation> hOrigRel(pOrigRel);
-	GCollaborativeFilter* pModel = InstantiateAlgorithm(args);
-	std::unique_ptr<GCollaborativeFilter> hModel(pModel);
+	WRelation* pOrigRel = dataOrig.relation().clone();
+	std::unique_ptr<WRelation> hOrigRel(pOrigRel);
+	WCollaborativeFilter* pModel = InstantiateAlgorithm(args);
+	std::unique_ptr<WCollaborativeFilter> hModel(pModel);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	pModel->rand().setSeed(seed);
 
 	// Convert to all normalized real values
-	GNominalToCat* pNtc = new GNominalToCat();
-	GIncrementalTransform* pFilter = pNtc;
-	std::unique_ptr<GIncrementalTransformChainer> hChainer;
+	WNominalToCat* pNtc = new WNominalToCat();
+	WIncrementalTransform* pFilter = pNtc;
+	std::unique_ptr<WIncrementalTransformChainer> hChainer;
 	if(normalize)
 	{
-		GIncrementalTransformChainer* pChainer = new GIncrementalTransformChainer(new GNormalize(), pNtc);
+		WIncrementalTransformChainer* pChainer = new WIncrementalTransformChainer(new WNormalize(), pNtc);
 		hChainer.reset(pChainer);
 		pFilter = pChainer;
 	}
 	pNtc->preserveUnknowns();
 	pFilter->train(dataOrig);
-	GMatrix* pData = pFilter->transformBatch(dataOrig);
-	std::unique_ptr<GMatrix> hData(pData);
+	WMatrix* pData = pFilter->transformBatch(dataOrig);
+	std::unique_ptr<WMatrix> hData(pData);
 
 	// Convert to 3-column form
-	auto pMatrix = std::unique_ptr<GMatrix>(new GMatrix(0, 3));
+	auto pMatrix = std::unique_ptr<WMatrix>(new WMatrix(0, 3));
 	size_t dims = pData->cols();
 	for(size_t i = 0; i < pData->rows(); i++)
 	{
-		GVec& row = pData->row(i);
+		WVec& row = pData->row(i);
 		for(size_t j = 0; j < dims; j++)
 		{
 			if(row[j] != UNKNOWN_REAL_VALUE)
 			{
-				GVec& vec = pMatrix->newRow();
+				WVec& vec = pMatrix->newRow();
 				vec[0] = (double)i;
 				vec[1] = (double)j;
 				vec[2] = row[j];
@@ -754,12 +754,12 @@ void GRecommenderLib::fillMissingValues(GArgReader& args)
 	// Predict values for missing elements
 	for(size_t i = 0; i < pData->rows(); i++)
 	{
-		GVec& row = pData->row(i);
+		WVec& row = pData->row(i);
 		for(size_t j = 0; j < dims; j++)
 		{
 			if(row[j] == UNKNOWN_REAL_VALUE)
 				row[j] = pModel->predict(i, j);
-			GAssert(row[j] != UNKNOWN_REAL_VALUE);
+			WAssert(row[j] != UNKNOWN_REAL_VALUE);
 		}
 	}
 
@@ -769,7 +769,7 @@ void GRecommenderLib::fillMissingValues(GArgReader& args)
 	pOut->print(cout);
 }
 
-void GRecommenderLib::ShowUsage(const char* appName)
+void WRecommenderLib::ShowUsage(const char* appName)
 {
 	cout << "Full Usage Information\n";
 	cout << "[Square brackets] are used to indicate required arguments.\n";
@@ -784,7 +784,7 @@ void GRecommenderLib::ShowUsage(const char* appName)
 	cout.flush();
 }
 
-void GRecommenderLib::showError(GArgReader& args, const char* szAppName, const char* szMessage)
+void WRecommenderLib::showError(WArgReader& args, const char* szAppName, const char* szMessage)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";

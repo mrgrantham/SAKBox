@@ -16,31 +16,31 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#ifndef GTREE_H
-#define GTREE_H
+#ifndef WTREE_H
+#define WTREE_H
 
-#include "GError.h"
+#include "WError.h"
 #include <iostream>
 
-namespace GClasses
+namespace WClasses
 {
 
-/// This is a helper class used by GIndexedMultiSet
+/// This is a helper class used by WIndexedMultiSet
 template<typename T>
-class GTreeNode
+class WTreeNode
 {
 public:
 	T key;
-	GTreeNode* left;
-	GTreeNode* right;
+	WTreeNode* left;
+	WTreeNode* right;
 	size_t size;
 
-	GTreeNode(const T& k) : key(k)
+	WTreeNode(const T& k) : key(k)
 	{
 		isolate();
 	}
 
-	~GTreeNode()
+	~WTreeNode()
 	{
 		delete(left);
 		delete(right);
@@ -69,10 +69,10 @@ public:
 			left->print(depth + 1);
 	}
 
-	GTreeNode<T>* rotateLeft()
+	WTreeNode<T>* rotateLeft()
 	{
-		GTreeNode<T>* c = right;
-		GTreeNode<T>* gc = right->left;
+		WTreeNode<T>* c = right;
+		WTreeNode<T>* gc = right->left;
 		right = gc;
 		c->left = this;
 		recount();
@@ -80,10 +80,10 @@ public:
 		return c;
 	}
 
-	GTreeNode<T>* rotateRight()
+	WTreeNode<T>* rotateRight()
 	{
-		GTreeNode<T>* c = left;
-		GTreeNode<T>* gc = left->right;
+		WTreeNode<T>* c = left;
+		WTreeNode<T>* gc = left->right;
 		left = gc;
 		c->right = this;
 		recount();
@@ -91,7 +91,7 @@ public:
 		return c;
 	}
 
-	GTreeNode<T>* balance()
+	WTreeNode<T>* balance()
 	{
 		size_t lcount = left ? left->size : 0;
 		size_t rcount = right ? right->size : 0;
@@ -118,7 +118,7 @@ public:
 		}
 	}
 
-	GTreeNode<T>* insert(GTreeNode<T>* newNode)
+	WTreeNode<T>* insert(WTreeNode<T>* newNode)
 	{
 		if(newNode->key < key)
 		{
@@ -137,7 +137,7 @@ public:
 		return balance();
 	}
 
-	GTreeNode<T>* get(size_t index)
+	WTreeNode<T>* get(size_t index)
 	{
 		size_t lcount = left ? left->size : 0;
 		if(index < lcount)
@@ -148,7 +148,7 @@ public:
 			return this;
 	}
 
-	GTreeNode<T>* find(const T& k, size_t start, size_t* outIndex)
+	WTreeNode<T>* find(const T& k, size_t start, size_t* outIndex)
 	{
 		if(k < key)
 			return left ? left->find(k, start, outIndex) : NULL;
@@ -162,7 +162,7 @@ public:
 		}
 	}
 
-	GTreeNode<T>* remove_by_index(size_t index, GTreeNode<T>** outNode)
+	WTreeNode<T>* remove_by_index(size_t index, WTreeNode<T>** outNode)
 	{
 		size_t lcount = left ? left->size : 0;
 		if(index < lcount)
@@ -181,7 +181,7 @@ public:
 		return balance();
 	}
 
-	GTreeNode<T>* remove_by_value(const T& k, GTreeNode<T>** outNode)
+	WTreeNode<T>* remove_by_value(const T& k, WTreeNode<T>** outNode)
 	{
 		if(k < key)
 		{
@@ -214,19 +214,19 @@ public:
 /// It is implemented using a balanced tree structure, so
 /// most operations take O(log(n)) time.
 template<typename T>
-class GIndexedMultiSet
+class WIndexedMultiSet
 {
 private:
-	GTreeNode<T>* root;
-	GTreeNode<T>* spare;
+	WTreeNode<T>* root;
+	WTreeNode<T>* spare;
 
 public:
 	/// General-purpose constructor
-	GIndexedMultiSet() : root(nullptr), spare(nullptr)
+	WIndexedMultiSet() : root(nullptr), spare(nullptr)
 	{
 	}
 
-	~GIndexedMultiSet()
+	~WIndexedMultiSet()
 	{
 		delete(root);
 		delete(spare);
@@ -245,7 +245,7 @@ public:
 		if(spare)
 			spare->key = key;
 		else
-			spare = new GTreeNode<T>(key);
+			spare = new WTreeNode<T>(key);
 		if(root)
 			root = root->insert(spare);
 		else
@@ -287,7 +287,7 @@ public:
 	size_t find(T key)
 	{
 		size_t outIndex;
-		GTreeNode<T>* node = root ? root->find(key, 0, &outIndex) : NULL;
+		WTreeNode<T>* node = root ? root->find(key, 0, &outIndex) : NULL;
 		if(node)
 			return outIndex;
 		else
@@ -302,23 +302,23 @@ public:
 };
 
 
-template<typename T> class GRelationalRow;
+template<typename T> class WRelationalRow;
 
 
 template<typename T>
-class GRelationalElement
+class WRelationalElement
 {
 public:
-	GRelationalRow<T>* par;
-	GRelationalRow<T>* left;
-	GRelationalRow<T>* right;
+	WRelationalRow<T>* par;
+	WRelationalRow<T>* left;
+	WRelationalRow<T>* right;
 	size_t size;
 
-	GRelationalElement()
+	WRelationalElement()
 	{
 	}
 
-	~GRelationalElement()
+	~WRelationalElement()
 	{
 	}
 
@@ -333,19 +333,19 @@ public:
 
 
 template<typename T>
-class GRelationalRow
+class WRelationalRow
 {
 public:
 	T row;
-	GRelationalElement<T>* el;
+	WRelationalElement<T>* el;
 
-	GRelationalRow(const T& k, size_t columnCount) : row(k)
+	WRelationalRow(const T& k, size_t columnCount) : row(k)
 	{
-		el = new GRelationalElement<T>[columnCount];
+		el = new WRelationalElement<T>[columnCount];
 		isolate(columnCount);
 	}
 
-	~GRelationalRow()
+	~WRelationalRow()
 	{
 		delete(el[0].left);
 		delete(el[0].right);
@@ -363,11 +363,11 @@ public:
 		el[c].size = 1 + (el[c].left ? el[c].left->el[c].size : 0) + (el[c].right ? el[c].right->el[c].size : 0);
 	}
 
-	GRelationalRow<T>* rotateLeft(size_t c)
+	WRelationalRow<T>* rotateLeft(size_t c)
 	{
-		GRelationalRow<T>* t = el[c].right;
-		GRelationalRow<T>* g = t->el[c].left;
-		GRelationalRow<T>* p = el[c].par;
+		WRelationalRow<T>* t = el[c].right;
+		WRelationalRow<T>* g = t->el[c].left;
+		WRelationalRow<T>* p = el[c].par;
 		el[c].right = g;
 		t->el[c].left = this;
 		t->el[c].par = p;
@@ -379,11 +379,11 @@ public:
 		return t;
 	}
 
-	GRelationalRow<T>* rotateRight(size_t c)
+	WRelationalRow<T>* rotateRight(size_t c)
 	{
-		GRelationalRow<T>* t = el[c].left;
-		GRelationalRow<T>* g = t->el[c].right;
-		GRelationalRow<T>* p = el[c].par;
+		WRelationalRow<T>* t = el[c].left;
+		WRelationalRow<T>* g = t->el[c].right;
+		WRelationalRow<T>* p = el[c].par;
 		el[c].left = g;
 		t->el[c].right = this;
 		t->el[c].par = p;
@@ -395,7 +395,7 @@ public:
 		return t;
 	}
 
-	GRelationalRow<T>* balance(size_t c)
+	WRelationalRow<T>* balance(size_t c)
 	{
 		size_t lcount = el[c].left ? el[c].left->el[c].size : 0;
 		size_t rcount = el[c].right ? el[c].right->el[c].size : 0;
@@ -423,7 +423,7 @@ public:
 	}
 
 	template<typename Comp>
-	GRelationalRow<T>* insert(GRelationalRow<T>* newNode, size_t c, Comp& comp)
+	WRelationalRow<T>* insert(WRelationalRow<T>* newNode, size_t c, Comp& comp)
 	{
 		if(comp(newNode->row, row, c))
 		{
@@ -448,7 +448,7 @@ public:
 		return balance(c);
 	}
 
-	GRelationalRow<T>* get(size_t index, size_t c)
+	WRelationalRow<T>* get(size_t index, size_t c)
 	{
 		size_t lcount = el[c].left ? el[c].left->el[c].size : 0;
 		if(index < lcount)
@@ -459,10 +459,10 @@ public:
 			return this;
 	}
 
-	/// This should typically only be called through one of the methods in GRelationalTable.
+	/// This should typically only be called through one of the methods in WRelationalTable.
 	/// Returns a row that matches in the specified column, or NULL if there is no match.
 	template<typename Comp>
-	GRelationalRow<T>* find(T r, size_t start, size_t* outIndex, size_t c, Comp& comp)
+	WRelationalRow<T>* find(T r, size_t start, size_t* outIndex, size_t c, Comp& comp)
 	{
 		if(comp(r, row, c))
 			return el[c].left ? el[c].left->find(r, start, outIndex, c, comp) : nullptr;
@@ -476,10 +476,10 @@ public:
 		}
 	}
 
-	/// This should typically only be called through one of the methods in GRelationalTable.
+	/// This should typically only be called through one of the methods in WRelationalTable.
 	/// Returns a row that matches in the specified column, or an adjacent row if there is no exact match.
 	template<typename Comp>
-	GRelationalRow<T>* approximate(T r, size_t start, size_t* outIndex, size_t c, Comp& comp)
+	WRelationalRow<T>* approximate(T r, size_t start, size_t* outIndex, size_t c, Comp& comp)
 	{
 		if(comp(r, row, c))
 			return el[c].left ? el[c].left->approximate(r, start, outIndex, c, comp) : this;
@@ -493,18 +493,18 @@ public:
 		}
 	}
 
-	/// This should typically only be called through GRelationalTable::remove.
+	/// This should typically only be called through WRelationalTable::remove.
 	template<typename Comp>
-	GRelationalRow<T>* remove(size_t c, Comp& comp)
+	WRelationalRow<T>* remove(size_t c, Comp& comp)
 	{
 		size_t lcount = el[c].left ? el[c].left->el[c].size : 0;
 		size_t rcount = el[c].right ? el[c].right->el[c].size : 0;
-		GRelationalRow<T>* child;
+		WRelationalRow<T>* child;
 		if(lcount < rcount)
 			child = el[c].left ? el[c].right->insert(el[c].left, c, comp) : el[c].right;
 		else
 			child = el[c].right ? el[c].left->insert(el[c].right, c, comp) : el[c].left;
-		GRelationalRow<T>* par = el[c].par;
+		WRelationalRow<T>* par = el[c].par;
 		if(child)
 			child->el[c].par = par;
 		if(par)
@@ -513,7 +513,7 @@ public:
 				par->el[c].left = child ? child->balance(c) : nullptr;
 			else
 			{
-				GAssert(par->el[c].right == this);
+				WAssert(par->el[c].right == this);
 				par->el[c].right = child ? child->balance(c) : nullptr;
 			}
 			child = par;
@@ -524,7 +524,7 @@ public:
 					par->el[c].left = child->balance(c);
 				else
 				{
-					GAssert(par->el[c].right == child);
+					WAssert(par->el[c].right == child);
 					par->el[c].right = child->balance(c);
 				}
 				child = par;
@@ -537,9 +537,9 @@ public:
 			return nullptr;
 	}
 
-	GRelationalRow<T>* next(size_t c)
+	WRelationalRow<T>* next(size_t c)
 	{
-		GRelationalRow<T>* r = el[c].right;
+		WRelationalRow<T>* r = el[c].right;
 		if(r)
 		{
 			while(r->el[c].left)
@@ -549,7 +549,7 @@ public:
 		else
 		{
 			r = this;
-			GRelationalRow<T>* p = el[c].par;
+			WRelationalRow<T>* p = el[c].par;
 			while(p)
 			{
 				if(p->el[c].left == r)
@@ -561,9 +561,9 @@ public:
 		}
 	}
 
-	GRelationalRow<T>* prev(size_t c)
+	WRelationalRow<T>* prev(size_t c)
 	{
-		GRelationalRow<T>* l = el[c].left;
+		WRelationalRow<T>* l = el[c].left;
 		if(l)
 		{
 			while(l->el[c].right)
@@ -573,7 +573,7 @@ public:
 		else
 		{
 			l = this;
-			GRelationalRow<T>* p = el[c].par;
+			WRelationalRow<T>* p = el[c].par;
 			while(p)
 			{
 				if(p->el[c].right == l)
@@ -600,24 +600,24 @@ public:
 };
 
 
-/// See GTree.cpp for an example of how to use this class.
+/// See WTree.cpp for an example of how to use this class.
 template<typename T, typename Comp>
-class GRelationalTable
+class WRelationalTable
 {
 protected:
 	const Comp& comp;
-	GRelationalRow<T>** roots;
-	GRelationalRow<T>* spare;
+	WRelationalRow<T>** roots;
+	WRelationalRow<T>* spare;
 
 public:
-	GRelationalTable(const Comp& c) : comp(c), spare(nullptr)
+	WRelationalTable(const Comp& c) : comp(c), spare(nullptr)
 	{
-		roots = new GRelationalRow<T>*[c.cols()];
+		roots = new WRelationalRow<T>*[c.cols()];
 		for(size_t i = 0; i < c.cols(); i++)
 			roots[i] = nullptr;
 	}
 
-	~GRelationalTable()
+	~WRelationalTable()
 	{
 		delete(spare);
 		delete(roots[0]);
@@ -638,7 +638,7 @@ public:
 		if(spare)
 			spare->row = row;
 		else
-			spare = new GRelationalRow<T>(row, comp.cols());
+			spare = new WRelationalRow<T>(row, comp.cols());
 		if(roots[0])
 		{
 			for(size_t i = 0; i < comp.cols(); i++)
@@ -662,7 +662,7 @@ public:
 	}
 
 	/// Returns the nth row when the rows are sorted by column col.
-	GRelationalRow<T>* get(size_t n, size_t col)
+	WRelationalRow<T>* get(size_t n, size_t col)
 	{
 		return roots[col]->get(n, col);
 	}
@@ -670,7 +670,7 @@ public:
 	/// Returns a row where the element in column col matches the one in the provided row.
 	/// Returns NULL if no matches exist. If outIndex is non-NULL, it will be made to point
 	/// to the index of the returned row when sorted in column col.
-	GRelationalRow<T>* find(const T& row, size_t col, size_t* outIndex = nullptr)
+	WRelationalRow<T>* find(const T& row, size_t col, size_t* outIndex = nullptr)
 	{
 		if(roots[col])
 			return roots[col]->find(row, 0, outIndex, col, comp);
@@ -682,14 +682,14 @@ public:
 	/// greater than the one in the provided row. Returns NULL if no rows contain an element
 	/// in column col greater than the one in row. If outIndex is non-NULL, it will be made to point
 	/// to the index of the returned row when sorted in column col.
-	GRelationalRow<T>* firstEqualOrGreater(const T& row, size_t col, size_t* outIndex = nullptr)
+	WRelationalRow<T>* firstEqualOrGreater(const T& row, size_t col, size_t* outIndex = nullptr)
 	{
 		if(!roots[col])
 			return nullptr;
-		GRelationalRow<T>* node = roots[col]->approximate(row, 0, outIndex, col, comp);
+		WRelationalRow<T>* node = roots[col]->approximate(row, 0, outIndex, col, comp);
 		while(true)
 		{
-			GRelationalRow<T>* prev = node->prev(col);
+			WRelationalRow<T>* prev = node->prev(col);
 			if(!prev)
 				break;
 			if(comp(prev->row, row, col))
@@ -713,7 +713,7 @@ public:
 
 	/// Removes the specified row from this relational table.
 	/// (Behavior is undefined if the specified row is not actually in the table.)
-	void remove(GRelationalRow<T>* row)
+	void remove(WRelationalRow<T>* row)
 	{
 		for(size_t i = 0; i < comp.cols(); i++)
 			roots[i] = row->remove(i, comp);
@@ -733,8 +733,8 @@ public:
 	}
 };
 
-void GRelationalTable_test();
+void WRelationalTable_test();
 
-} // namespace GClasses
+} // namespace WClasses
 
-#endif // GTREE_H
+#endif // WTREE_H

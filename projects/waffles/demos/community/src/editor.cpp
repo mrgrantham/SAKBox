@@ -17,10 +17,10 @@
 */
 
 
-#include <WClasses/GHolders.h>
-#include <WClasses/GHtml.h>
-#include <WClasses/GText.h>
-#include <WClasses/GTime.h>
+#include <WClasses/WHolders.h>
+#include <WClasses/WHtml.h>
+#include <WClasses/WText.h>
+#include <WClasses/WTime.h>
 #include <vector>
 #include "editor.h"
 #include "server.h"
@@ -129,7 +129,7 @@ string Editor::userFolder(Server* pServer, Account* pAccount)
 	return foldername;
 }
 
-void Editor::ajaxFilelist(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut)
+void Editor::ajaxFilelist(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut)
 {
 	Account* pAccount = getAccount(pSession);
 	string foldername = pServer->m_basePath.c_str();
@@ -164,23 +164,23 @@ void Editor::ajaxFilelist(Server* pServer, GDynamicPageSession* pSession, const 
 	pOut->add(&doc, "path", pAccount->path().c_str());
 
 	// Add the folder list
-	GDomNode* pFolders = doc.newList();
+	WDomNode* pFolders = doc.newList();
 	pOut->add(&doc, "folders", pFolders);
 	vector<string> folderList;
-	GFile::folderList(folderList, foldername.c_str());
+	WFile::folderList(folderList, foldername.c_str());
 	for(size_t i = 0; i < folderList.size(); i++)
 		pFolders->add(&doc, folderList[i].c_str());
 
 	// Add the file list
-	GDomNode* pFiles = doc.newList();
+	WDomNode* pFiles = doc.newList();
 	pOut->add(&doc, "files", pFiles);
 	vector<string> fileList;
-	GFile::fileList(fileList, foldername.c_str());
+	WFile::fileList(fileList, foldername.c_str());
 	for(size_t i = 0; i < fileList.size(); i++)
 		pFiles->add(&doc, fileList[i].c_str());
 }
 
-void Editor::ajaxSaveText(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut)
+void Editor::ajaxSaveText(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut)
 {
 	// Find the filename
 	Account* pAccount = getAccount(pSession);
@@ -217,14 +217,14 @@ void Editor::archiveFile(const char* szFilename)
 	newFilename += "history/";
 	newFilename += fp.name;
 	newFilename += '_';
-	GTime::appendTimeStampValue(&newFilename, "-", "_", "-");
+	WTime::appendTimeStampValue(&newFilename, "-", "_", "-");
 	newFilename += fp.extension;
 	cout << "Archiving " << szFilename << " to " << newFilename << "\n";
-	if(!GFile::copyFile(szFilename, newFilename.c_str()))
+	if(!WFile::copyFile(szFilename, newFilename.c_str()))
 		cout << "Failed to copy file " << szFilename << " to " << newFilename << "\n";
 }
 
-void Editor::ajaxSaveGui(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut)
+void Editor::ajaxSaveGui(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut)
 {
 	// Load and parse the original file
 	Account* pAccount = getAccount(pSession);
@@ -232,13 +232,13 @@ void Editor::ajaxSaveGui(Server* pServer, GDynamicPageSession* pSession, const G
 	filename += "users";
 	filename += pIn->getString("filename");
 	archiveFile(filename.c_str());
-	GHtmlDoc domOld(filename.c_str());
+	WHtmlDoc domOld(filename.c_str());
 
 	// Find the old content
-	GHtmlElement* pOldContent = domOld.getElementById("content");
+	WHtmlElement* pOldContent = domOld.getElementById("content");
 	if(!pOldContent)
 	{
-		GHtmlElement* pHtml = domOld.document()->childTag("html");
+		WHtmlElement* pHtml = domOld.document()->childTag("html");
 		if(pHtml)
 			pOldContent = pHtml->childTag("body");
 		if(!pOldContent)
@@ -247,8 +247,8 @@ void Editor::ajaxSaveGui(Server* pServer, GDynamicPageSession* pSession, const G
 
 	// Parse the new content and strip the contenteditable attribute
 	const char* szNewContent = pIn->getString("content");
-	GHtmlDoc domNew(szNewContent, strlen(szNewContent));
-	GHtmlElement* pNewContent = domNew.getElementById("content");
+	WHtmlDoc domNew(szNewContent, strlen(szNewContent));
+	WHtmlElement* pNewContent = domNew.getElementById("content");
 	if(!pNewContent)
 		throw Ex("Expected a tag with id=\"content\"");
 	pNewContent->dropAttr("contenteditable");
@@ -273,15 +273,15 @@ void Editor::ajaxSaveGui(Server* pServer, GDynamicPageSession* pSession, const G
 	cout.flush();
 }
 
-void Editor::pageBrowse(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Editor::pageBrowse(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	response << pServer->cache("browse.html");
 }
 
-void Editor::pageEditText(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Editor::pageEditText(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	// Determine the file name from a URL parameter
-	GHttpParamParser params(pSession->params());
+	WHttpParamParser params(pSession->params());
 	const char* pagename = params.find("pagename");
 	if(!pagename || strlen(pagename) < 1)
 		throw Ex("Expected a page name.");
@@ -291,7 +291,7 @@ void Editor::pageEditText(Server* pServer, GDynamicPageSession* pSession, ostrea
 	filename += "users";
 	filename += pagename;
 	size_t fileLen;
-	char* pFile = GFile::loadFile(filename.c_str(), &fileLen);
+	char* pFile = WFile::loadFile(filename.c_str(), &fileLen);
 	ArrayHolder<char> hFile(pFile);
 
 	// Generate the page content
@@ -302,10 +302,10 @@ void Editor::pageEditText(Server* pServer, GDynamicPageSession* pSession, ostrea
 	response << "</textarea></td></tr></table>\n";
 }
 
-void Editor::pageEditGui(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Editor::pageEditGui(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	// Determine the file name from a URL parameter
-	GHttpParamParser params(pSession->params());
+	WHttpParamParser params(pSession->params());
 	const char* pagename = params.find("pagename");
 	if(!pagename || strlen(pagename) < 1)
 		throw Ex("Expected a page name.");
@@ -314,13 +314,13 @@ void Editor::pageEditGui(Server* pServer, GDynamicPageSession* pSession, ostream
 	string filename = pServer->m_basePath.c_str();
 	filename += "users";
 	filename += pagename;
-	GHtmlDoc dom(filename.c_str());
+	WHtmlDoc dom(filename.c_str());
 
 	// Find the content div and make it content-editable
-	GHtmlElement* pContent = dom.getElementById("content");
+	WHtmlElement* pContent = dom.getElementById("content");
 	if(!pContent)
 	{
-		GHtmlElement* pHtml = dom.document()->childTag("html");
+		WHtmlElement* pHtml = dom.document()->childTag("html");
 		if(pHtml)
 			pContent = pHtml->childTag("body");
 		if(!pContent)
@@ -338,7 +338,7 @@ void Editor::pageEditGui(Server* pServer, GDynamicPageSession* pSession, ostream
 	response << "</td></tr></table>\n";
 }
 
-void Editor::pagePreview(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Editor::pagePreview(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	string s = pSession->url();
 	size_t pos = s.find("/b/preview/");
@@ -349,7 +349,7 @@ void Editor::pagePreview(Server* pServer, GDynamicPageSession* pSession, ostream
 	response << "<iframe width=\"560\" height=\"315\" src=\"" << (s.c_str() + pos) << "\" frameborder=\"0\" allowfullscreen></iframe>";
 }
 
-void Editor::pageNewPage(Server* pServer, GDynamicPageSession* pSession, std::ostream& response)
+void Editor::pageNewPage(Server* pServer, WDynamicPageSession* pSession, std::ostream& response)
 {
 	Account* pAccount = getAccount(pSession);
 	string templatesFolder = pServer->m_basePath.c_str();
@@ -359,7 +359,7 @@ void Editor::pageNewPage(Server* pServer, GDynamicPageSession* pSession, std::os
 
 	// Get a list of matching files
 	vector<string> filelist;
-	GFile::fileList(filelist, templatesFolder.c_str());
+	WFile::fileList(filelist, templatesFolder.c_str());
 	response << "<ul>\n";
 	for(size_t i = 0; i < filelist.size(); i++)
 	{
@@ -384,7 +384,7 @@ void Editor::pageNewPage(Server* pServer, GDynamicPageSession* pSession, std::os
 }
 
 /*
-void Editor::pageRedirect(Server* pServer, GDynamicPageSession* pSession, ostream& response, const char* url)
+void Editor::pageRedirect(Server* pServer, WDynamicPageSession* pSession, ostream& response, const char* url)
 {
 	// Attempt an HTTP redirect
 	cout << "Redirecting from " << pSession->url() << " to " << url << "\n";
@@ -419,10 +419,10 @@ void Editor::writeHtmlPre(ostream& stream, char* file, size_t len)
 	}
 }
 
-void Editor::pageDiff(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Editor::pageDiff(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	// Determine the file name from a URL parameter
-	GHttpParamParser params(pSession->params());
+	WHttpParamParser params(pSession->params());
 	const char* leftname = params.find("left");
 	if(!leftname || strlen(leftname) < 1)
 	{
@@ -442,19 +442,19 @@ void Editor::pageDiff(Server* pServer, GDynamicPageSession* pSession, ostream& r
 	string leftfilename = filename + leftname;
 	string rightfilename = filename + rightname;
 	size_t leftSize, rightSize;
-	char* leftFile = GFile::loadFile(leftfilename.c_str(), &leftSize);
+	char* leftFile = WFile::loadFile(leftfilename.c_str(), &leftSize);
 	ArrayHolder<char> hLeftFile(leftFile);
-	char* rightFile = GFile::loadFile(rightfilename.c_str(), &rightSize);
+	char* rightFile = WFile::loadFile(rightfilename.c_str(), &rightSize);
 	ArrayHolder<char> hRightfile(rightFile);
 
 	// Diff the files
-	GDiffer diff;
+	WDiffer diff;
 	diff.compare(leftFile, leftSize, 0, rightFile, rightSize, 0);
 	if(leftSize + rightSize < 1024)
 		diff.simplify(6);
 	else
 		diff.simplify(12);
-	std::vector<GDiffChunk*>& chunks = diff.chunks();
+	std::vector<WDiffChunk*>& chunks = diff.chunks();
 
 	// Build the diff content
 	std::ostringstream ssLeft;
@@ -462,7 +462,7 @@ void Editor::pageDiff(Server* pServer, GDynamicPageSession* pSession, ostream& r
 	size_t spotCount = 0;
 	for(size_t i = 0; i < chunks.size(); i++)
 	{
-		GDiffChunk* pChunk = chunks[i];
+		WDiffChunk* pChunk = chunks[i];
 		if(pChunk->left != INVALID_INDEX && pChunk->right != INVALID_INDEX)
 		{
 			// Match
@@ -483,7 +483,7 @@ void Editor::pageDiff(Server* pServer, GDynamicPageSession* pSession, ostream& r
 			ssRight << "onclick=\"take('b" << to_str(spotCount) << "', 'a" << to_str(spotCount) << "')\" ";
 			ssRight << "href=\"#\">";
 
-			GDiffChunk* pChunk2 = (i + 1 < chunks.size() ? chunks[i + 1] : nullptr);
+			WDiffChunk* pChunk2 = (i + 1 < chunks.size() ? chunks[i + 1] : nullptr);
 			if(!pChunk2 || (pChunk2->left != INVALID_INDEX && pChunk2->right != INVALID_INDEX))
 			{
 				// Make a loner segment
@@ -507,10 +507,10 @@ void Editor::pageDiff(Server* pServer, GDynamicPageSession* pSession, ostream& r
 				// Make a differing segment
 				if(pChunk->right != INVALID_INDEX)
 					std::swap(pChunk, pChunk2);
-				GAssert(pChunk->left != INVALID_INDEX);
-				GAssert(pChunk->right == INVALID_INDEX);
-				GAssert(pChunk2->left == INVALID_INDEX);
-				GAssert(pChunk2->right != INVALID_INDEX);
+				WAssert(pChunk->left != INVALID_INDEX);
+				WAssert(pChunk->right == INVALID_INDEX);
+				WAssert(pChunk2->left == INVALID_INDEX);
+				WAssert(pChunk2->right != INVALID_INDEX);
 				writeHtmlPre(ssLeft, leftFile + pChunk->left, pChunk->len);
 				if(pChunk->len < pChunk2->len)
 				{
@@ -540,10 +540,10 @@ void Editor::pageDiff(Server* pServer, GDynamicPageSession* pSession, ostream& r
 	response << "\n</pre></td></tr></table>\n";
 }
 
-void Editor::pageHistory(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Editor::pageHistory(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	// Determine the file name from a URL parameter
-	GHttpParamParser params(pSession->params());
+	WHttpParamParser params(pSession->params());
 	const char* fn = params.find("file");
 	if(!fn || strlen(fn) < 1)
 	{
@@ -559,7 +559,7 @@ void Editor::pageHistory(Server* pServer, GDynamicPageSession* pSession, ostream
 
 	// Get a list of matching files
 	vector<string> filelist;
-	GFile::fileList(filelist, historyFolder.c_str());
+	WFile::fileList(filelist, historyFolder.c_str());
 	response << "<ul>\n";
 	for(size_t i = 0; i < filelist.size(); i++)
 	{

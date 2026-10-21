@@ -19,62 +19,62 @@
 #ifndef __GKERNELTRICK_H__
 #define __GKERNELTRICK_H__
 
-#include "GLearner.h"
-#include "GVec.h"
-#include "GDom.h"
+#include "WLearner.h"
+#include "WVec.h"
+#include "WDom.h"
 #include <math.h>
 #include <cmath>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GRand;
+class WRand;
 
 /// The base class for kernel functions. Classes which implement this
 /// must provide an "apply" method that applies the kernel to two
 /// vectors. Kernels may be combined together to form a more complex
 /// kernel, to which the kernel trick will still apply.
-class GKernel
+class WKernel
 {
 public:
-	GKernel() {}
-	virtual ~GKernel() {}
+	WKernel() {}
+	virtual ~WKernel() {}
 
 	/// Returns the name of this kernel.
 	virtual const char* name() const = 0;
 
 	/// Marshalls this object into a DOM.
-	virtual GDomNode* serialize(GDom* pDoc) = 0;
+	virtual WDomNode* serialize(WDom* pDoc) = 0;
 
 	/// Applies the kernel to the two specified vectors.
-	virtual double apply(const GVec& pA, const GVec& pB) = 0;
+	virtual double apply(const WVec& pA, const WVec& pB) = 0;
 
 	/// Deserializes a kernel object
-	static GKernel* deserialize(GDomNode* pNode);
+	static WKernel* deserialize(WDomNode* pNode);
 
 	/// Returns a complex kernel made by combining several other kernels.
 	/// This might be used to exercise kernel functionality or to test non-linear metrics.
 	/// The caller is responsible to delete the object this returns.
-	static GKernel* kernelComplex1();
+	static WKernel* kernelComplex1();
 
 
 protected:
 	/// Helper method used by the serialize methods in child classes
-	GDomNode* makeBaseNode(GDom* pDoc) const;
+	WDomNode* makeBaseNode(WDom* pDoc) const;
 };
 
 /// The identity kernel
-class GKernelIdentity : public GKernel
+class WKernelIdentity : public WKernel
 {
 public:
-	GKernelIdentity() : GKernel() {}
-	GKernelIdentity(GDomNode* pNode) : GKernel() {}
-	~GKernelIdentity() override {}
+	WKernelIdentity() : WKernel() {}
+	WKernelIdentity(WDomNode* pNode) : WKernel() {}
+	~WKernelIdentity() override {}
 
 	/// Marshalls this object into a DOM.
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = GKernel::makeBaseNode(pDoc);
+		WDomNode* pObj = WKernel::makeBaseNode(pDoc);
 		return pObj;
 	}
 
@@ -82,24 +82,24 @@ public:
 	const char* name() const override { return "identity"; }
 
 	/// Computes A*B
-	double apply(const GVec& pA, const GVec& pB) override
+	double apply(const WVec& pA, const WVec& pB) override
 	{
 		return pA.dotProductIgnoringUnknowns(pB);
 	}
 };
 
 /// Chi Squared kernel
-class GKernelChiSquared : public GKernel
+class WKernelChiSquared : public WKernel
 {
 public:
-	GKernelChiSquared() : GKernel() {}
-	GKernelChiSquared(GDomNode* pNode) : GKernel() {}
-	~GKernelChiSquared() override {}
+	WKernelChiSquared() : WKernel() {}
+	WKernelChiSquared(WDomNode* pNode) : WKernel() {}
+	~WKernelChiSquared() override {}
 
 	/// Marshalls this object into a DOM.
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = makeBaseNode(pDoc);
+		WDomNode* pObj = makeBaseNode(pDoc);
 		return pObj;
 	}
 
@@ -107,7 +107,7 @@ public:
 	const char* name() const override { return "chisquared"; }
 
 	/// Computes the sum over each element of 2 * a * b / (a + b)
-	double apply(const GVec& pA, const GVec& pB) override
+	double apply(const WVec& pA, const WVec& pB) override
 	{
 		double d = 0.0;
 		for(size_t i = 0; i < pA.size(); i++)
@@ -120,21 +120,21 @@ public:
 };
 
 /// A polynomial kernel
-class GKernelPolynomial : public GKernel
+class WKernelPolynomial : public WKernel
 {
 protected:
 	double m_offset;
 	unsigned int m_order;
 
 public:
-	GKernelPolynomial(double offset, unsigned int order) : GKernel(), m_offset(std::abs(offset)), m_order(order) {}
-	GKernelPolynomial(GDomNode* pNode) : GKernel(), m_offset(pNode->getDouble("offset")), m_order((unsigned int)pNode->getInt("order")) {}
-	~GKernelPolynomial() override {}
+	WKernelPolynomial(double offset, unsigned int order) : WKernel(), m_offset(std::abs(offset)), m_order(order) {}
+	WKernelPolynomial(WDomNode* pNode) : WKernel(), m_offset(pNode->getDouble("offset")), m_order((unsigned int)pNode->getInt("order")) {}
+	~WKernelPolynomial() override {}
 
 	/// Marshalls this object into a DOM.
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = makeBaseNode(pDoc);
+		WDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "offset", m_offset);
 		pObj->add(pDoc, "order", (long long)m_order);
 		return pObj;
@@ -144,27 +144,27 @@ public:
 	const char* name() const override { return "polynomial"; }
 
 	/// Computes (A * B + offset)^order
-	double apply(const GVec& pA, const GVec& pB) override
+	double apply(const WVec& pA, const WVec& pB) override
 	{
 		return pow(pA.dotProductIgnoringUnknowns(pB) + m_offset, (int)m_order);
 	}
 };
 
 /// A Gaussian RBF kernel
-class GKernelGaussianRBF : public GKernel
+class WKernelGaussianRBF : public WKernel
 {
 protected:
 	double m_variance;
 
 public:
-	GKernelGaussianRBF(double variance) : GKernel(), m_variance(std::abs(variance)) {}
-	GKernelGaussianRBF(GDomNode* pNode) : GKernel(), m_variance(pNode->getDouble("var")) {}
-	~GKernelGaussianRBF() override {}
+	WKernelGaussianRBF(double variance) : WKernel(), m_variance(std::abs(variance)) {}
+	WKernelGaussianRBF(WDomNode* pNode) : WKernel(), m_variance(pNode->getDouble("var")) {}
+	~WKernelGaussianRBF() override {}
 
 	/// Marshalls this object into a DOM.
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = makeBaseNode(pDoc);
+		WDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "var", m_variance);
 		return pObj;
 	}
@@ -173,29 +173,29 @@ public:
 	const char* name() const override { return "rbf"; }
 
 	/// Computes e^(-0.5 * ||A - B||^2 / variance)
-	double apply(const GVec& pA, const GVec& pB) override
+	double apply(const WVec& pA, const WVec& pB) override
 	{
 		return exp(-0.5 * pA.estimateSquaredDistanceWithUnknowns(pB) / m_variance);
 	}
 };
 
 /// A translation kernel
-class GKernelTranslate : public GKernel
+class WKernelTranslate : public WKernel
 {
 protected:
-	GKernel* m_pK;
+	WKernel* m_pK;
 	double m_value;
 
 public:
 	/// Takes ownership of pK
-	GKernelTranslate(GKernel* pK, double value) : GKernel(), m_pK(pK), m_value(std::abs(value)) {}
-	GKernelTranslate(GDomNode* pNode) : GKernel(), m_pK(GKernel::deserialize(pNode->get("k"))), m_value(pNode->getDouble("v")) {}
-	~GKernelTranslate() override { delete(m_pK); }
+	WKernelTranslate(WKernel* pK, double value) : WKernel(), m_pK(pK), m_value(std::abs(value)) {}
+	WKernelTranslate(WDomNode* pNode) : WKernel(), m_pK(WKernel::deserialize(pNode->get("k"))), m_value(pNode->getDouble("v")) {}
+	~WKernelTranslate() override { delete(m_pK); }
 
 	/// Marshalls this object into a DOM.
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = makeBaseNode(pDoc);
+		WDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k", m_pK->serialize(pDoc));
 		pObj->add(pDoc, "v", m_value);
 		return pObj;
@@ -205,29 +205,29 @@ public:
 	const char* name() const override { return "translate"; }
 
 	/// Computes K(A, B) + value
-	double apply(const GVec& pA, const GVec& pB) override
+	double apply(const WVec& pA, const WVec& pB) override
 	{
 		return m_pK->apply(pA, pB) + m_value;
 	}
 };
 
 /// A scalar kernel
-class GKernelScale : public GKernel
+class WKernelScale : public WKernel
 {
 protected:
-	GKernel* m_pK;
+	WKernel* m_pK;
 	double m_value;
 
 public:
 	/// Takes ownership of pK
-	GKernelScale(GKernel* pK, double value) : GKernel(), m_pK(pK), m_value(std::abs(value)) {}
-	GKernelScale(GDomNode* pNode) : GKernel(), m_pK(GKernel::deserialize(pNode->get("k"))), m_value(pNode->getDouble("v")) {}
-	~GKernelScale() override { delete(m_pK); }
+	WKernelScale(WKernel* pK, double value) : WKernel(), m_pK(pK), m_value(std::abs(value)) {}
+	WKernelScale(WDomNode* pNode) : WKernel(), m_pK(WKernel::deserialize(pNode->get("k"))), m_value(pNode->getDouble("v")) {}
+	~WKernelScale() override { delete(m_pK); }
 
 	/// Marshalls this object into a DOM.
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = makeBaseNode(pDoc);
+		WDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k", m_pK->serialize(pDoc));
 		pObj->add(pDoc, "v", m_value);
 		return pObj;
@@ -237,33 +237,33 @@ public:
 	const char* name() const override { return "scale"; }
 
 	/// Computes K(A, B) * value
-	double apply(const GVec& pA, const GVec& pB) override
+	double apply(const WVec& pA, const WVec& pB) override
 	{
 		return m_pK->apply(pA, pB) * m_value;
 	}
 };
 
 /// An addition kernel
-class GKernelAdd : public GKernel
+class WKernelAdd : public WKernel
 {
 protected:
-	GKernel* m_pK1;
-	GKernel* m_pK2;
+	WKernel* m_pK1;
+	WKernel* m_pK2;
 
 public:
 	/// Takes ownership of pK1 and pK2
-	GKernelAdd(GKernel* pK1, GKernel* pK2) : GKernel(), m_pK1(pK1), m_pK2(pK2) {}
-	GKernelAdd(GDomNode* pNode) : GKernel(), m_pK1(GKernel::deserialize(pNode->get("k1"))), m_pK2(GKernel::deserialize(pNode->get("k2"))) {}
-	~GKernelAdd() override
+	WKernelAdd(WKernel* pK1, WKernel* pK2) : WKernel(), m_pK1(pK1), m_pK2(pK2) {}
+	WKernelAdd(WDomNode* pNode) : WKernel(), m_pK1(WKernel::deserialize(pNode->get("k1"))), m_pK2(WKernel::deserialize(pNode->get("k2"))) {}
+	~WKernelAdd() override
 	{
 		delete(m_pK1);
 		delete(m_pK2);
 	}
 
 	/// Marshalls this object into a DOM.
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = makeBaseNode(pDoc);
+		WDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k1", m_pK1->serialize(pDoc));
 		pObj->add(pDoc, "k2", m_pK2->serialize(pDoc));
 		return pObj;
@@ -273,33 +273,33 @@ public:
 	const char* name() const override { return "add"; }
 
 	/// Computes K1(A, B) + K2(A, B)
-	double apply(const GVec& pA, const GVec& pB) override
+	double apply(const WVec& pA, const WVec& pB) override
 	{
 		return m_pK1->apply(pA, pB) + m_pK2->apply(pA, pB);
 	}
 };
 
 /// A multiplication kernel
-class GKernelMultiply : public GKernel
+class WKernelMultiply : public WKernel
 {
 protected:
-	GKernel* m_pK1;
-	GKernel* m_pK2;
+	WKernel* m_pK1;
+	WKernel* m_pK2;
 
 public:
 	/// Takes ownership of pK1 and pK2
-	GKernelMultiply(GKernel* pK1, GKernel* pK2) : GKernel(), m_pK1(pK1), m_pK2(pK2) {}
-	GKernelMultiply(GDomNode* pNode) : GKernel(), m_pK1(GKernel::deserialize(pNode->get("k1"))), m_pK2(GKernel::deserialize(pNode->get("k2"))) {}
-	~GKernelMultiply() override
+	WKernelMultiply(WKernel* pK1, WKernel* pK2) : WKernel(), m_pK1(pK1), m_pK2(pK2) {}
+	WKernelMultiply(WDomNode* pNode) : WKernel(), m_pK1(WKernel::deserialize(pNode->get("k1"))), m_pK2(WKernel::deserialize(pNode->get("k2"))) {}
+	~WKernelMultiply() override
 	{
 		delete(m_pK1);
 		delete(m_pK2);
 	}
 
 	/// Marshalls this object into a DOM.
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = makeBaseNode(pDoc);
+		WDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k1", m_pK1->serialize(pDoc));
 		pObj->add(pDoc, "k2", m_pK2->serialize(pDoc));
 		return pObj;
@@ -309,29 +309,29 @@ public:
 	const char* name() const override { return "multiply"; }
 
 	/// Computes K1(A, B) * K2(A, B)
-	double apply(const GVec& pA, const GVec& pB) override
+	double apply(const WVec& pA, const WVec& pB) override
 	{
 		return m_pK1->apply(pA, pB) * m_pK2->apply(pA, pB);
 	}
 };
 
 /// A power kernel
-class GKernelPow : public GKernel
+class WKernelPow : public WKernel
 {
 protected:
-	GKernel* m_pK;
+	WKernel* m_pK;
 	double m_value;
 
 public:
 	/// Takes ownership of pK
-	GKernelPow(GKernel* pK, unsigned int value) : GKernel(), m_pK(pK), m_value(value) {}
-	GKernelPow(GDomNode* pNode) : GKernel(), m_pK(GKernel::deserialize(pNode->get("k"))), m_value(pNode->getDouble("v")) {}
-	~GKernelPow() override { delete(m_pK); }
+	WKernelPow(WKernel* pK, unsigned int value) : WKernel(), m_pK(pK), m_value(value) {}
+	WKernelPow(WDomNode* pNode) : WKernel(), m_pK(WKernel::deserialize(pNode->get("k"))), m_value(pNode->getDouble("v")) {}
+	~WKernelPow() override { delete(m_pK); }
 
 	/// Marshalls this object into a DOM.
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = makeBaseNode(pDoc);
+		WDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k", m_pK->serialize(pDoc));
 		pObj->add(pDoc, "v", m_value);
 		return pObj;
@@ -341,28 +341,28 @@ public:
 	const char* name() const override { return "pow"; }
 
 	/// Computes K(A, B)^value
-	double apply(const GVec& pA, const GVec& pB) override
+	double apply(const WVec& pA, const WVec& pB) override
 	{
 		return pow(m_pK->apply(pA, pB), m_value);
 	}
 };
 
 /// The Exponential kernel
-class GKernelExp : public GKernel
+class WKernelExp : public WKernel
 {
 protected:
-	GKernel* m_pK;
+	WKernel* m_pK;
 
 public:
 	/// Takes ownership of pK
-	GKernelExp(GKernel* pK) : GKernel(), m_pK(pK) {}
-	GKernelExp(GDomNode* pNode) : GKernel(), m_pK(GKernel::deserialize(pNode->get("k"))) {}
-	~GKernelExp() override { delete(m_pK); }
+	WKernelExp(WKernel* pK) : WKernel(), m_pK(pK) {}
+	WKernelExp(WDomNode* pNode) : WKernel(), m_pK(WKernel::deserialize(pNode->get("k"))) {}
+	~WKernelExp() override { delete(m_pK); }
 
 	/// Marshalls this object into a DOM.
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = makeBaseNode(pDoc);
+		WDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k", m_pK->serialize(pDoc));
 		return pObj;
 	}
@@ -371,28 +371,28 @@ public:
 	const char* name() const override { return "exp"; }
 
 	/// Computes e^K(A, B)
-	double apply(const GVec& pA, const GVec& pB) override
+	double apply(const WVec& pA, const WVec& pB) override
 	{
 		return exp(m_pK->apply(pA, pB));
 	}
 };
 
 /// A Normalizing kernel
-class GKernelNormalize : public GKernel
+class WKernelNormalize : public WKernel
 {
 protected:
-	GKernel* m_pK;
+	WKernel* m_pK;
 
 public:
 	/// Takes ownership of pK
-	GKernelNormalize(GKernel* pK) : GKernel(), m_pK(pK) {}
-	GKernelNormalize(GDomNode* pNode) : GKernel(), m_pK(GKernel::deserialize(pNode->get("k"))) {}
-	~GKernelNormalize() override { delete(m_pK); }
+	WKernelNormalize(WKernel* pK) : WKernel(), m_pK(pK) {}
+	WKernelNormalize(WDomNode* pNode) : WKernel(), m_pK(WKernel::deserialize(pNode->get("k"))) {}
+	~WKernelNormalize() override { delete(m_pK); }
 
 	/// Marshalls this object into a DOM.
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = makeBaseNode(pDoc);
+		WDomNode* pObj = makeBaseNode(pDoc);
 		pObj->add(pDoc, "k", m_pK->serialize(pDoc));
 		return pObj;
 	}
@@ -401,13 +401,13 @@ public:
 	const char* name() const override { return "normalize"; }
 
 	/// Computes K(A, B) / sqrt(K(A, A) * K(B, B))
-	double apply(const GVec& pA, const GVec& pB) override
+	double apply(const WVec& pA, const WVec& pB) override
 	{
 		return m_pK->apply(pA, pB) / sqrt(m_pK->apply(pA, pA) * m_pK->apply(pB, pB));
 	}
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GKERNELTRICK_H__

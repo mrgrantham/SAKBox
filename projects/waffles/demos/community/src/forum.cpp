@@ -17,11 +17,11 @@
 */
 
 
-#include <WClasses/GHolders.h>
-#include <WClasses/GHtml.h>
-#include <WClasses/GText.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GFile.h>
+#include <WClasses/WHolders.h>
+#include <WClasses/WHtml.h>
+#include <WClasses/WText.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WFile.h>
 #include <vector>
 #include <sstream>
 #include "forum.h"
@@ -32,13 +32,13 @@ using std::string;
 using std::vector;
 using std::cout;
 
-void Forum::format_comment_recursive(Server* pServer, Account* pAccount, GDomNode* pEntry, std::ostream& os, std::string& reply_id, std::string& my_id, bool allow_direct_reply, size_t depth)
+void Forum::format_comment_recursive(Server* pServer, Account* pAccount, WDomNode* pEntry, std::ostream& os, std::string& reply_id, std::string& my_id, bool allow_direct_reply, size_t depth)
 {
 	// Extract relevant data
 	const char* szUsername = pServer->get_account(pEntry->getInt("user"))->username();
 	const char* szDate = pEntry->getString("date");
 	const char* szComment = pEntry->getString("comment");
-	GDomNode* pReplies = pEntry->getIfExists("replies");
+	WDomNode* pReplies = pEntry->getIfExists("replies");
 
 	// Add the comment enclosed in a "bubble" div
 	os << "<div class=\"bubble\"><table cellpadding=10px><tr>\n";
@@ -82,11 +82,11 @@ void Forum::format_comment_recursive(Server* pServer, Account* pAccount, GDomNod
 }
 
 
-void Forum::ajaxGetForumHtml(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut)
+void Forum::ajaxGetForumHtml(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut)
 {
 	// Change the username if requested
 	Account* pAccount = getAccount(pSession);
-	GDomNode* pChangeName = pIn->getIfExists("changename");
+	WDomNode* pChangeName = pIn->getIfExists("changename");
 	if(pChangeName)
 	{
 		const char* szNewName = pChangeName->asString();
@@ -106,14 +106,14 @@ void Forum::ajaxGetForumHtml(Server* pServer, GDynamicPageSession* pSession, con
 	}
 
 	// Request the whole comments file
-	GJsonAsADatabase& jaad = pServer->jaad();
-	const GDomNode* pResponse = jaad.apply(pIn->getString("file"), "", &doc);
+	WJsonAsADatabase& jaad = pServer->jaad();
+	const WDomNode* pResponse = jaad.apply(pIn->getString("file"), "", &doc);
 	std::ostringstream os;
 
 	// Convert to HTML
 	if(pResponse)
 	{
-		if(pResponse->type() == GDomNode::type_list)
+		if(pResponse->type() == WDomNode::type_list)
 		{
 			// Convert hierarchical list of comments into HTML
 			os << "<h2>Visitor Comments:</h2>\n";
@@ -130,7 +130,7 @@ void Forum::ajaxGetForumHtml(Server* pServer, GDynamicPageSession* pSession, con
 			// Add the comments
 			for(size_t i = 0; i < pResponse->size(); i++)
 			{
-				GDomNode* pEntry = pResponse->get(i);
+				WDomNode* pEntry = pResponse->get(i);
 				string id = "r";
 				id += to_str(i);
 				format_comment_recursive(pServer, pAccount, pEntry, os, id, id, true, 12);
@@ -239,7 +239,7 @@ size_t portions(const char* szString, double* whitespace, double* letters, doubl
 	return _chars;
 }
 
-void Forum::ajaxAddComment(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut)
+void Forum::ajaxAddComment(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut)
 {
 	// Get the data
 	Account* pAccount = getAccount(pSession);
@@ -309,7 +309,7 @@ void Forum::ajaxAddComment(Server* pServer, GDynamicPageSession* pSession, const
 
 	// Construct the JAAD command
 	string sDate;
-	GTime::appendTimeStampValue(&sDate, "-", " ", ":", true);
+	WTime::appendTimeStampValue(&sDate, "-", " ", ":", true);
 	string encodedIP = JSON_encode_string(szIpAddress);
 	string encodedDate = JSON_encode_string(sDate.c_str());
 	string encodedComment = JSON_encode_string(HTML_scrub_string(szComment).c_str());
@@ -320,8 +320,8 @@ void Forum::ajaxAddComment(Server* pServer, GDynamicPageSession* pSession, const
 	cmd << "}";
 
 	// Send the request
-	GJsonAsADatabase& jaad = pServer->jaad();
-	const GDomNode* pResponse = jaad.apply(szFilename, cmd.str().c_str(), &doc);
+	WJsonAsADatabase& jaad = pServer->jaad();
+	const WDomNode* pResponse = jaad.apply(szFilename, cmd.str().c_str(), &doc);
 	pOut->add(&doc, "response", pResponse);
 
 	// Log this comment
@@ -335,7 +335,7 @@ void Forum::ajaxAddComment(Server* pServer, GDynamicPageSession* pSession, const
 	jaad.apply("comments_feed.json", cmd2.str().c_str(), &doc);
 }
 
-void Forum::ajaxDelComment(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut)
+void Forum::ajaxDelComment(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut)
 {
 	// Get the data
 	Account* pAccount = getAccount(pSession);
@@ -389,8 +389,8 @@ void Forum::ajaxDelComment(Server* pServer, GDynamicPageSession* pSession, const
 	string path = cmd.str();
 	if(!pAccount->isAdmin())
 	{
-		GJsonAsADatabase& jaad = pServer->jaad();
-		const GDomNode* pResponse = jaad.apply(szFilename, path.c_str(), &doc);
+		WJsonAsADatabase& jaad = pServer->jaad();
+		const WDomNode* pResponse = jaad.apply(szFilename, path.c_str(), &doc);
 		size_t comment_user_id = pResponse->getInt("user");
 		if(comment_user_id != user_id)
 			throw Ex("You can only delete your own comments");
@@ -398,23 +398,23 @@ void Forum::ajaxDelComment(Server* pServer, GDynamicPageSession* pSession, const
 
 	string del_cmd = "-= ";
 	del_cmd += path;
-	GJsonAsADatabase& jaad = pServer->jaad();
+	WJsonAsADatabase& jaad = pServer->jaad();
 	jaad.apply(szFilename, del_cmd.c_str(), &doc);
 }
 
-void Forum::pageFeed(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Forum::pageFeed(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	// Process params
 	if(pSession->paramsLen() > 0)
 	{
-		GHttpParamParser params(pSession->params());
+		WHttpParamParser params(pSession->params());
 		const char* szAction = params.find("action");
 		if(strcmp(szAction, "ban") == 0)
 		{
 			// Ban checked users
 			pServer->log("Banning users");
 			auto map = params.map();
-			for(std::map<const char*, const char*, GClasses::strComp>::iterator it = map.begin(); it != map.end(); it++)
+			for(std::map<const char*, const char*, WClasses::strComp>::iterator it = map.begin(); it != map.end(); it++)
 			{
 				if(strncmp(it->first, "ban_", 4) == 0)
 				{
@@ -433,7 +433,7 @@ void Forum::pageFeed(Server* pServer, GDynamicPageSession* pSession, ostream& re
 			}
 
 			// Scrub the comments
-			GJsonAsADatabase& jaad = pServer->jaad();
+			WJsonAsADatabase& jaad = pServer->jaad();
 			jaad.flush(true);
 			scrub_all_comment_files(pServer);
 			response << "[Comments files scrubbed]<br>\n";
@@ -454,9 +454,9 @@ void Forum::pageFeed(Server* pServer, GDynamicPageSession* pSession, ostream& re
 	}
 
 	// Load the log file
-	GJsonAsADatabase& jaad = pServer->jaad();
-	GDom doc;
-	const GDomNode* pNode = jaad.apply("comments_feed.json", "", &doc);
+	WJsonAsADatabase& jaad = pServer->jaad();
+	WDom doc;
+	const WDomNode* pNode = jaad.apply("comments_feed.json", "", &doc);
 
 	// Generate a page
 	if(pNode)
@@ -467,7 +467,7 @@ void Forum::pageFeed(Server* pServer, GDynamicPageSession* pSession, ostream& re
 		response << "<table><tr><td>Ban user</td><td>Date</td><td>Username</td><td>IP</td><td>Comment</td></tr>\n";
 		for(size_t i = 0; i < pNode->size(); i++)
 		{
-			GDomNode* pComment = pNode->get(i);
+			WDomNode* pComment = pNode->get(i);
 			response << "<tr><td><input type=\"checkbox\" name=\"ban_" << to_str(pComment->getInt("user")) << "\"></td>";
 			response << "<td>" << pComment->getString("date") << "</td>";
 			response << "<td>" << pServer->get_account(pComment->getInt("user"))->username() << "</td>";
@@ -491,7 +491,7 @@ void Forum::pageFeed(Server* pServer, GDynamicPageSession* pSession, ostream& re
 	response << "</form><br><br>\n\n";
 }
 
-void Forum::pageForumWrapper(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Forum::pageForumWrapper(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	// Parse the url
 	string s = pSession->url();
@@ -501,11 +501,11 @@ void Forum::pageForumWrapper(Server* pServer, GDynamicPageSession* pSession, ost
 	if(s[s.length() - 1] == '/')
 		s += "index.html";
 	PathData pd;
-	GFile::parsePath(s.c_str(), &pd);
+	WFile::parsePath(s.c_str(), &pd);
 	/*if(pd.extStart == pd.len)
 	{
 		s += "/index.html";
-		GFile::parsePath(s.c_str(), &pd);
+		WFile::parsePath(s.c_str(), &pd);
 	}*/
 
 	// If it's not an HTML file, just send the file
@@ -520,34 +520,34 @@ void Forum::pageForumWrapper(Server* pServer, GDynamicPageSession* pSession, ost
 	{
 		string fullPath = pServer->m_basePath;
 		fullPath += s;
-		GHtmlDoc doc(fullPath.c_str());
-		GHtmlElement* pElHtml = doc.document()->childTag("html");
+		WHtmlDoc doc(fullPath.c_str());
+		WHtmlElement* pElHtml = doc.document()->childTag("html");
 		if(!pElHtml)
 			return throw Ex("Expected an html tag");
-		GHtmlElement* pElHead = pElHtml->childTag("head");
+		WHtmlElement* pElHead = pElHtml->childTag("head");
 		if(!pElHead)
-			pElHead = new GHtmlElement(pElHtml, "head", 0);
-		GHtmlElement* pElStyle = pElHead->childTag("style");
+			pElHead = new WHtmlElement(pElHtml, "head", 0);
+		WHtmlElement* pElStyle = pElHead->childTag("style");
 		if(!pElStyle)
-			pElStyle = new GHtmlElement(pElHead, "style");
-		GHtmlElement* pElBody = pElHtml->childTag("body");
+			pElStyle = new WHtmlElement(pElHead, "style");
+		WHtmlElement* pElBody = pElHtml->childTag("body");
 		if(!pElBody)
 			return throw Ex("Expected a body tag");
 
 		// Inject the comments stuff
 		string& sStyle = pServer->cache("chat_style.css");
-		GHtmlElement* pAddedStyle = new GHtmlElement(pElStyle, sStyle.c_str());
+		WHtmlElement* pAddedStyle = new WHtmlElement(pElStyle, sStyle.c_str());
 		pAddedStyle->text = true;
 		string sScript = "\nlet comments_file = \"";
 		sScript += s.substr(0, pd.extStart);
 		sScript += "_comments.json\";\n";
 		sScript += pServer->cache("chat_script.js");
-		GHtmlElement* pAddedScript = new GHtmlElement(pElBody, "script", 0);
+		WHtmlElement* pAddedScript = new WHtmlElement(pElBody, "script", 0);
 		pAddedScript->addAttr("type", "\"text/javascript\"");
-		GHtmlElement* pAddedScriptContent = new GHtmlElement(pAddedScript, sScript.c_str());
+		WHtmlElement* pAddedScriptContent = new WHtmlElement(pAddedScript, sScript.c_str());
 		pAddedScriptContent->text = true;
-		GHtmlElement* pAddedCenter = new GHtmlElement(pElBody, "center");
-		GHtmlElement* pAddedComments = new GHtmlElement(pAddedCenter, "div");
+		WHtmlElement* pAddedCenter = new WHtmlElement(pElBody, "center");
+		WHtmlElement* pAddedComments = new WHtmlElement(pAddedCenter, "div");
 		pAddedComments->addAttr("id", "\"comments\"");
 
 		doc.document()->write(response);
@@ -560,15 +560,15 @@ void Forum::pageForumWrapper(Server* pServer, GDynamicPageSession* pSession, ost
 	}
 }
 
-bool Forum::purge_comments_from_banned_users(Server* pServer, GDomNode* pList)
+bool Forum::purge_comments_from_banned_users(Server* pServer, WDomNode* pList)
 {
 	bool made_changes = false;
-	if(pList->type() != GDomNode::type_list)
+	if(pList->type() != WDomNode::type_list)
 		return made_changes;
 	for(size_t i = pList->size() - 1; i < pList->size(); --i)
 	{
-		GDomNode* pComment = pList->get(i);
-		GDomNode* pUserId = pComment->getIfExists("user");
+		WDomNode* pComment = pList->get(i);
+		WDomNode* pUserId = pComment->getIfExists("user");
 		if(pUserId)
 		{
 			size_t userId = pUserId->asInt();
@@ -582,7 +582,7 @@ bool Forum::purge_comments_from_banned_users(Server* pServer, GDomNode* pList)
 				}
 				else
 				{
-					GDomNode* pReplies = pComment->getIfExists("replies");
+					WDomNode* pReplies = pComment->getIfExists("replies");
 					if(pReplies)
 					{
 						if(purge_comments_from_banned_users(pServer, pReplies))
@@ -598,14 +598,14 @@ bool Forum::purge_comments_from_banned_users(Server* pServer, GDomNode* pList)
 void Forum::scrub_all_comment_files(Server* pServer)
 {
 	std::vector<std::string> file_list;
-	GFile::fileListRecursive(file_list, pServer->m_basePath.c_str());
+	WFile::fileListRecursive(file_list, pServer->m_basePath.c_str());
 	for(size_t i = 0; i < file_list.size(); i++)
 	{
 		if(ends_with(file_list[i], "comments.json"))
 		{
-			GDom dom;
+			WDom dom;
 			dom.loadJson(file_list[i].c_str());
-			GDomNode* pRootList = dom.root();
+			WDomNode* pRootList = dom.root();
 			if(purge_comments_from_banned_users(pServer, pRootList))
 				dom.saveJson(file_list[i].c_str());
 		}

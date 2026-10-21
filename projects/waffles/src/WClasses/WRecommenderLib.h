@@ -20,18 +20,18 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "GApp.h"
-#include "GCluster.h"
-#include "GMatrix.h"
-#include "GDistance.h"
-#include "GFile.h"
-#include "GError.h"
-#include "GHolders.h"
-#include "GNeuralNet.h"
-#include "GRand.h"
-#include "GRecommender.h"
-#include "GSparseMatrix.h"
-#include "GDom.h"
+#include "WApp.h"
+#include "WCluster.h"
+#include "WMatrix.h"
+#include "WDistance.h"
+#include "WFile.h"
+#include "WError.h"
+#include "WHolders.h"
+#include "WNeuralNet.h"
+#include "WRand.h"
+#include "WRecommender.h"
+#include "WSparseMatrix.h"
+#include "WDom.h"
 #include "usage.h"
 #include <time.h>
 #include <iostream>
@@ -50,57 +50,57 @@ using std::string;
 using std::vector;
 using std::set;
 
-namespace GClasses
+namespace WClasses
 {
 
-class GRecommenderLib
+class WRecommenderLib
 {
 public:
 	static size_t getAttrVal(const char* szString, size_t attrCount);
 
-	static void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount);
+	static void parseAttributeList(vector<size_t>& list, WArgReader& args, size_t attrCount);
 
-	static void loadData(GMatrix& data, const char* szFilename);
+	static void loadData(WMatrix& data, const char* szFilename);
 
-	static GSparseMatrix* loadSparseData(const char* szFilename);
+	static WSparseMatrix* loadSparseData(const char* szFilename);
 
-	static GBaselineRecommender* InstantiateBaselineRecommender(GArgReader& args);
+	static WBaselineRecommender* InstantiateBaselineRecommender(WArgReader& args);
 
-	static GBagOfRecommenders* InstantiateBagOfRecommenders(GArgReader& args);
+	static WBagOfRecommenders* InstantiateBagOfRecommenders(WArgReader& args);
 
-	static GInstanceRecommender* InstantiateInstanceRecommender(GArgReader& args);
+	static WInstanceRecommender* InstantiateInstanceRecommender(WArgReader& args);
 
-	static GDenseClusterRecommender* InstantiateDenseClusterRecommender(GArgReader& args);
+	static WDenseClusterRecommender* InstantiateDenseClusterRecommender(WArgReader& args);
 
-	static GSparseClusterRecommender* InstantiateSparseClusterRecommender(GArgReader& args);
+	static WSparseClusterRecommender* InstantiateSparseClusterRecommender(WArgReader& args);
 
-	static GMatrixFactorization* InstantiateMatrixFactorization(GArgReader& args);
+	static WMatrixFactorization* InstantiateMatrixFactorization(WArgReader& args);
 
-	//	static GNonlinearPCA* InstantiateNonlinearPCA(GArgReader& args);
+	//	static WNonlinearPCA* InstantiateNonlinearPCA(WArgReader& args);
 
-	//	static GHybridNonlinearPCA* InstantiateHybridNonlinearPCA(GArgReader& args);
+	//	static WHybridNonlinearPCA* InstantiateHybridNonlinearPCA(WArgReader& args);
 
-	static GContentBasedFilter* InstantiateContentBasedFilter(GArgReader& args);
+	static WContentBasedFilter* InstantiateContentBasedFilter(WArgReader& args);
 
-	static GContentBoostedCF* InstantiateContentBoostedCF(GArgReader& args);
+	static WContentBoostedCF* InstantiateContentBoostedCF(WArgReader& args);
 
-	static void showInstantiateAlgorithmError(const char* szMessage, GArgReader& args);
+	static void showInstantiateAlgorithmError(const char* szMessage, WArgReader& args);
 
-	static GCollaborativeFilter* InstantiateAlgorithm(GArgReader& args);
+	static WCollaborativeFilter* InstantiateAlgorithm(WArgReader& args);
 
-	static void crossValidate(GArgReader& args);
+	static void crossValidate(WArgReader& args);
 
-	static void precisionRecall(GArgReader& args);
+	static void precisionRecall(WArgReader& args);
 
-	static void ROC(GArgReader& args);
+	static void ROC(WArgReader& args);
 
-	static void transacc(GArgReader& args);
+	static void transacc(WArgReader& args);
 
-	static void fillMissingValues(GArgReader& args);
+	static void fillMissingValues(WArgReader& args);
 
 	static void ShowUsage(const char* appName);
 
-	static void showError(GArgReader& args, const char* szAppName, const char* szMessage);
+	static void showError(WArgReader& args, const char* szAppName, const char* szMessage);
 };
 
-} // namespace GClasses
+} // namespace WClasses

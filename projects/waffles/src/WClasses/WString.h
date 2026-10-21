@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <string>
 
-namespace GClasses
+namespace WClasses
 {
 
 
@@ -57,7 +57,7 @@ bool ends_with(std::string const& fullString, std::string const& ending);
 
 /// This class chops a big string at word breaks so you can display it intelligently
 /// on multiple lines
-class GStringChopper
+class WStringChopper
 {
 protected:
 	const char* m_szString;
@@ -68,8 +68,8 @@ protected:
 	bool m_bDropLeadingWhitespace;
 
 public:
-	GStringChopper(const char* szString, size_t nMinLength, size_t nMaxLength, bool bDropLeadingWhitespace);
-	~GStringChopper();
+	WStringChopper(const char* szString, size_t nMinLength, size_t nMaxLength, bool bDropLeadingWhitespace);
+	~WStringChopper();
 
 	/// Starts over with szString
 	void reset(const char* szString);
@@ -81,6 +81,6 @@ public:
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GSTRING_H__

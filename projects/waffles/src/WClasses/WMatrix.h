@@ -25,11 +25,11 @@
 #include <algorithm>
 #include <iostream>
 
-#include "GError.h"
-#include "GVec.h"
+#include "WError.h"
+#include "WVec.h"
 
 
-namespace GClasses
+namespace WClasses
 {
 
 #define UNKNOWN_REAL_VALUE -1e308
@@ -40,23 +40,23 @@ namespace GClasses
 #define UNKNOWN_DISCRETE_VALUE -1
 
 
-class GMatrix;
-class GPrediction;
-class GRand;
-class GDom;
-class GDomNode;
-class GArffTokenizer;
-class GDistanceMetric;
-class GSimpleAssignment;
-class GDistanceMetric;
-class GTokenizer;
+class WMatrix;
+class WPrediction;
+class WRand;
+class WDom;
+class WDomNode;
+class WArffTokenizer;
+class WDistanceMetric;
+class WSimpleAssignment;
+class WDistanceMetric;
+class WTokenizer;
 
 
 /// \brief Holds the metadata for a dataset.
 ///
 /// The metadata includes which attributes are continuous or nominal,
 /// and how many values each nominal attribute supports.
-class GRelation
+class WRelation
 {
 public:
 	enum RelationType
@@ -66,15 +66,15 @@ public:
 		ARFF
 	};
 
-	GRelation() {}
-	virtual ~GRelation() {}
+	WRelation() {}
+	virtual ~WRelation() {}
 
 	/// \brief Returns the type of relation
 	virtual RelationType type() const = 0;
 
 	/// \brief Marshal this object into a DOM, which can then be
 	/// converted to a variety of serial formats.
-	virtual GDomNode* serialize(GDom* pDoc) const = 0;
+	virtual WDomNode* serialize(WDom* pDoc) const = 0;
 
 	/// \brief Returns the number of attributes (columns)
 	virtual size_t size() const = 0;
@@ -92,15 +92,15 @@ public:
 	virtual bool areNominal(size_t first = 0, size_t count = INVALID_INDEX) const = 0;
 
 	/// \brief Makes a deep copy of this relation
-	virtual GRelation* clone() const = 0;
+	virtual WRelation* clone() const = 0;
 
 	/// \brief Returns a relation containing the same value counts as this object, but
 	/// not containing superfluous things, such as human-readable strings. (The returned
 	/// relation may be of a different type.)
-	virtual GRelation* cloneMinimal() const = 0;
+	virtual WRelation* cloneMinimal() const = 0;
 
 	/// \brief Makes a deep copy of the specified subset of this relation
-	virtual GRelation* cloneSub(size_t start, size_t count) const = 0;
+	virtual WRelation* cloneSub(size_t start, size_t count) const = 0;
 
 	/// \brief Deletes the specified attribute
 	virtual void deleteAttributes(size_t index, size_t count) = 0;
@@ -128,16 +128,16 @@ public:
 
 	/// \brief Returns true iff this and that have the same number of
 	/// values for each attribute
-	virtual bool isCompatible(const GRelation& that) const;
+	virtual bool isCompatible(const WRelation& that) const;
 
 	/// \brief Print a single row of data in ARFF format
 	void printRow(std::ostream& stream, const double* pRow, char separator = ',', const char* missing = "?") const;
 
 	/// \brief Load from a DOM.
-	static GRelation* deserialize(const GDomNode* pNode);
+	static WRelation* deserialize(const WDomNode* pNode);
 
 	/// \brief Saves to a file
-	void save(const GMatrix* pData, const char* szFilename) const;
+	void save(const WMatrix* pData, const char* szFilename) const;
 
 	/// \brief Performs unit tests for this class. Throws an exception
 	/// if there is a failure.
@@ -148,24 +148,24 @@ public:
 /// \brief A relation with a minimal memory footprint that assumes all
 /// attributes are continuous, or all of them are nominal and have the
 /// same number of possible values.
-class GUniformRelation : public GRelation
+class WUniformRelation : public WRelation
 {
 protected:
 	size_t m_attrCount;
 	size_t m_valueCount;
 
 public:
-	GUniformRelation(size_t attrCount, size_t values = 0)
+	WUniformRelation(size_t attrCount, size_t values = 0)
 	: m_attrCount(attrCount), m_valueCount(values)
 	{
 	}
 
-	GUniformRelation(const GDomNode* pNode);
+	WUniformRelation(const WDomNode* pNode);
 
 	RelationType type() const override { return UNIFORM; }
 
 	/// \brief Serializes this object
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// \brief Returns the number of attributes (columns)
 	size_t size() const override { return m_attrCount; }
@@ -174,21 +174,21 @@ public:
 	/// (or 0 if the attributes are continuous)
 	size_t valueCount(size_t) const override { return m_valueCount; }
 
-	/// \brief See the comment for GRelation::areContinuous
+	/// \brief See the comment for WRelation::areContinuous
 	bool areContinuous(size_t first = 0, size_t count = INVALID_INDEX) const override { return m_valueCount == 0; }
 
-	/// \brief See the comment for GRelation::areNominal
+	/// \brief See the comment for WRelation::areNominal
 	bool areNominal(size_t first = 0, size_t count = INVALID_INDEX) const override { return m_valueCount != 0; }
 
 	/// \brief Returns a copy of this object
-	GRelation* clone() const override { return new GUniformRelation(m_attrCount, m_valueCount); }
+	WRelation* clone() const override { return new WUniformRelation(m_attrCount, m_valueCount); }
 
 	/// \brief Returns a copy of this object
-	GRelation* cloneMinimal() const override { return clone(); }
+	WRelation* cloneMinimal() const override { return clone(); }
 
 	/// \brief Returns a deep copy of the specified subset of this
 	/// relation
-	GRelation* cloneSub(size_t, size_t count) const override { return new GUniformRelation(count, m_valueCount); }
+	WRelation* cloneSub(size_t, size_t count) const override { return new WUniformRelation(count, m_valueCount); }
 
 	/// \brief Drop the specified attribute
 	void deleteAttributes(size_t index, size_t count) override;
@@ -198,53 +198,53 @@ public:
 
 	/// \brief Returns true iff this and that have the same number of
 	/// values for each attribute
-	bool isCompatible(const GRelation& that) const override;
+	bool isCompatible(const WRelation& that) const override;
 };
 
 
 
-class GMixedRelation : public GRelation
+class WMixedRelation : public WRelation
 {
 protected:
 	std::vector<size_t> m_valueCounts;
 
 public:
 	/// \brief Makes an empty relation
-	GMixedRelation();
+	WMixedRelation();
 
 	/// \brief Construct a mixed relation. attrValues specifies the
 	/// number of nominal values in each attribute (column), or 0 for
 	/// continuous attributes.
-	GMixedRelation(std::vector<size_t>& attrValues);
+	WMixedRelation(std::vector<size_t>& attrValues);
 
 	/// \brief Loads from a DOM.
-	GMixedRelation(const GDomNode* pNode);
+	WMixedRelation(const WDomNode* pNode);
 
 	/// \brief Makes a copy of pCopyMe
-	GMixedRelation(const GRelation* pCopyMe);
+	WMixedRelation(const WRelation* pCopyMe);
 
 	/// \brief Makes a copy of the specified range of pCopyMe
-	GMixedRelation(const GRelation* pCopyMe, size_t firstAttr, size_t attrCount);
+	WMixedRelation(const WRelation* pCopyMe, size_t firstAttr, size_t attrCount);
 
-	~GMixedRelation() override;
+	~WMixedRelation() override;
 
 	RelationType type() const override { return MIXED; }
 
 	/// \brief Marshalls this object to a DOM, which can be saved to a
 	/// variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// \brief Makes a deep copy of this relation
-	GRelation* clone() const override;
+	WRelation* clone() const override;
 
 	/// \brief Returns a relation containing the same value counts as this object, but
 	/// not containing superfluous things, such as human-readable strings. (The returned
 	/// relation may be of a different type.)
-	GRelation* cloneMinimal() const override;
+	WRelation* cloneMinimal() const override;
 
 	/// \brief Makes a deep copy of the specified subset of this
 	/// relation
-	GRelation* cloneSub(size_t start, size_t count) const override;
+	WRelation* cloneSub(size_t start, size_t count) const override;
 
 	/// \brief Deletes all the attributes
 	virtual void flush();
@@ -260,14 +260,14 @@ public:
 	/// \brief Copies the specified attributes and adds them to this
 	/// relation.  If attrCount < 0, then it will copy all attributes
 	/// from firstAttr to the end.
-	void addAttrs(const GRelation& copyMe, size_t firstAttr = 0, size_t attrCount = INVALID_INDEX);
+	void addAttrs(const WRelation& copyMe, size_t firstAttr = 0, size_t attrCount = INVALID_INDEX);
 
 	/// \brief Flushes this relation and then copies all of the
 	/// attributes from pCopyMe
-	void copy(const GRelation* pCopyMe);
+	void copy(const WRelation* pCopyMe);
 
 	/// \brief Adds a copy of the specified attribute to this relation
-	virtual void copyAttr(const GRelation* pThat, size_t nAttr);
+	virtual void copyAttr(const WRelation* pThat, size_t nAttr);
 
 	/// \brief Returns the total number of attributes in this relation
 	size_t size() const override
@@ -299,51 +299,51 @@ public:
 };
 
 
-class GArffAttribute
+class WArffAttribute
 {
 public:
 	std::string m_name;
 	std::vector<std::string> m_values;
 
-	GDomNode* serialize(GDom* pDoc, size_t valCount) const;
+	WDomNode* serialize(WDom* pDoc, size_t valCount) const;
 };
 
 
 /// \brief ARFF = Attribute-Relation File Format. This stores richer
-/// information than GRelation. This includes a name, a name for each
+/// information than WRelation. This includes a name, a name for each
 /// attribute, and names for each supported nominal value.
-class GArffRelation : public GMixedRelation
+class WArffRelation : public WMixedRelation
 {
-	friend class GMatrix;
+	friend class WMatrix;
 protected:
 	std::string m_name;
-	std::vector<GArffAttribute> m_attrs;
+	std::vector<WArffAttribute> m_attrs;
 
 public:
 	/// General-purpose constructor
-	GArffRelation();
+	WArffRelation();
 
 	/// Deserializing constructor
-	GArffRelation(const GDomNode* pNode);
+	WArffRelation(const WDomNode* pNode);
 
-	~GArffRelation() override;
+	~WArffRelation() override;
 
 	RelationType type() const override { return ARFF; }
 
 	/// \brief Marshalls this object to a DOM, which can be saved to a
 	/// variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// \brief Returns a deep copy of this object
-	GRelation* clone() const override;
+	WRelation* clone() const override;
 
 	/// \brief Returns a relation containing the same value counts as this object, but
 	/// not containing superfluous things, such as human-readable strings. (The returned
 	/// relation will be of a different type.)
-	GRelation* cloneMinimal() const override;
+	WRelation* cloneMinimal() const override;
 
 	/// \brief Makes a deep copy of the specified subset of this relation
-	GRelation* cloneSub(size_t start, size_t count) const override;
+	WRelation* cloneSub(size_t start, size_t count) const override;
 
 	/// \brief Deletes all the attributes
 	void flush() override;
@@ -358,13 +358,13 @@ public:
 	/// the same names, the same number of values, and the names of
 	/// those values all match. (Empty strings are considered to match
 	/// everything.)
-	bool isCompatible(const GRelation& that) const override;
+	bool isCompatible(const WRelation& that) const override;
 
 	/// \brief Adds a new attribute (column) to the relation
 	void addAttribute(const char* szName, size_t nValues, std::vector<const char*>* pValues);
 
 	/// \brief Adds a copy of the specified attribute to this relation
-	void copyAttr(const GRelation* pThat, size_t nAttr) override;
+	void copyAttr(const WRelation* pThat, size_t nAttr) override;
 
 	/// \brief Returns the name of the relation
 	const char* name() const { return m_name.c_str(); }
@@ -416,7 +416,7 @@ public:
 	double parseValue(size_t attr, const char* val);
 
 	/// \brief Parses the meta-data for an attribute
-	void parseAttribute(GArffTokenizer& tok);
+	void parseAttribute(WArffTokenizer& tok);
 
 	/// \brief Drops the specified value from the list of possible values.
 	/// (Swaps the last value in to fill its slot.)
@@ -427,16 +427,16 @@ public:
 ///
 /// Elements can be discrete or continuous.
 ///
-/// References a GRelation object, which stores the meta-information about each column.
-class GMatrix
+/// References a WRelation object, which stores the meta-information about each column.
+class WMatrix
 {
 protected:
-	GRelation* m_pRelation;
-	std::vector<GVec*> m_rows;
+	WRelation* m_pRelation;
+	std::vector<WVec*> m_rows;
 
 public:
 	/// \brief Makes an empty 0x0 matrix.
-	GMatrix();
+	WMatrix();
 
 	/// \brief Construct a rows x cols matrix with all elements of the
 	/// matrix assumed to be continuous.
@@ -444,7 +444,7 @@ public:
 	/// It is okay to initially set rows to 0 and later call newRow to
 	/// add each row. Adding columns later, however, is not very
 	/// computationally efficient.)
-	GMatrix(size_t rows, size_t cols);
+	WMatrix(size_t rows, size_t cols);
 
 	/// \brief Construct a matrix with a mixed relation. That is, one
 	/// with some continuous attributes (columns), and some nominal
@@ -455,7 +455,7 @@ public:
 	///
 	/// Initially, this matrix will have 0 rows, but you can add more
 	/// rows by calling newRow or newRows.
-	GMatrix(std::vector<size_t>& attrValues);
+	WMatrix(std::vector<size_t>& attrValues);
 
 	/// \brief Create an empty matrix whose attributes/column types are
 	/// specified by pRelation
@@ -464,15 +464,15 @@ public:
 	///
 	/// Initially, this matrix will have 0 rows, but you can add more
 	/// rows by calling newRow or newRows.
-	GMatrix(GRelation* pRelation);
+	WMatrix(WRelation* pRelation);
 
 	///\brief Copy-constructor
 	///
 	///Copies \a orig, making a new relation object and new storage for
 	///the rows (with the same content).
 	///
-	///\param orig the GMatrix object to copy
-	GMatrix(const GMatrix& orig, size_t rowStart = 0, size_t colStart = 0, size_t rowCount = (size_t)-1, size_t colCount = (size_t)-1);
+	///\param orig the WMatrix object to copy
+	WMatrix(const WMatrix& orig, size_t rowStart = 0, size_t colStart = 0, size_t rowCount = (size_t)-1, size_t colCount = (size_t)-1);
 
 
 	//I put the operator= right after the copy constructor because you
@@ -484,16 +484,16 @@ public:
 	///Copies \a orig, making a new relation object and new storage for
 	///the rows (with the same content).
 	///
-	///\param orig the GMatrix object to copy
+	///\param orig the WMatrix object to copy
 	///
-	///\return a reference to this GMatrix object
-	GMatrix& operator=(const GMatrix& orig);
+	///\return a reference to this WMatrix object
+	WMatrix& operator=(const WMatrix& orig);
 
 
 	/// \brief Load from a DOM.
-	GMatrix(const GDomNode* pNode);
+	WMatrix(const WDomNode* pNode);
 
-	~GMatrix();
+	~WMatrix();
 
 	/// \brief Returns true iff all the entries in *this and \a
 	/// other are identical and their relations are compatible, and they
@@ -502,14 +502,14 @@ public:
 	/// \return true iff all the entries in *this and \a other are
 	/// identical, their relations are compatible, and they are the same
 	/// size
-	bool operator==(const GMatrix& other) const;
+	bool operator==(const WMatrix& other) const;
 
 	/// \brief Sets the relation for this dataset, which specifies the number of columns, and their data types.
 	/// If there are one or more rows in this matrix, and the new relation
 	/// does not have the same number of columns as the old relation, then
 	/// this will throw an exception.
 	/// Takes ownership of pRelation. That is, the destructor will delete it.
-	void setRelation(GRelation* pRelation);
+	void setRelation(WRelation* pRelation);
 
 	/// \brief Resizes this matrix. Assigns all columns to be continuous, and
 	/// replaces all element values with garbage.
@@ -517,7 +517,7 @@ public:
 
 	/// \brief Adds a new row to the matrix. (The values in the row are
 	/// not initialized.) Returns a reference to the new row.
-	GVec& newRow();
+	WVec& newRow();
 
 	/// \brief Adds 'n' new columns to the matrix. (This resizes every row and copies all the
 	/// existing data, which is rather inefficient.) The values in the new columns are not initialized.
@@ -531,17 +531,17 @@ public:
 	/// Adds scalar * pThat to this. (If transpose is true, adds
 	/// scalar * the transpose of pThat to this.) Both datasets must have the
 	/// same dimensions. Behavior is undefined for nominal columns.
-	void add(const GMatrix* pThat, bool transpose = false, double scalar = 1.0);
+	void add(const WMatrix* pThat, bool transpose = false, double scalar = 1.0);
 
 	/// \brief Copies the specified range of columns (including meta-data) from that matrix into this matrix,
 	/// replacing all data currently in this matrix.
-	void copyCols(const GMatrix& that, size_t firstCol, size_t colCount);
+	void copyCols(const WMatrix& that, size_t firstCol, size_t colCount);
 
 	/// \brief Copies (deep) all the data and metadata from that.
-	void copy(const GMatrix& that, size_t rowStart = 0, size_t colStart = 0, size_t rowCount = (size_t)-1, size_t colCount = (size_t)-1);
+	void copy(const WMatrix& that, size_t rowStart = 0, size_t colStart = 0, size_t rowCount = (size_t)-1, size_t colCount = (size_t)-1);
 
 	/// \brief Copies the transpose of that into this matrix.
-	void copyTranspose(GMatrix& that);
+	void copyTranspose(WMatrix& that);
 
 	/// \brief This computes the square root of this matrix. (If you
 	/// take the matrix that this returns and multiply it by its
@@ -552,7 +552,7 @@ public:
 	/// tolerant is true, it will return even if it cannot compute
 	/// accurate results. If tolerant is false (the default) and this
 	/// matrix is not positive definite, it will throw an exception.
-	GMatrix* cholesky(bool tolerant = false);
+	WMatrix* cholesky(bool tolerant = false);
 
 	/// \brief Copies the specified column into pOutVector
 	void col(size_t index, double* pOutVector);
@@ -568,12 +568,12 @@ public:
 
 	/// \brief Computes the eigenvalue that corresponds to the specified
 	/// eigenvector of this matrix
-	double eigenValue(const GVec& eigenVector);
+	double eigenValue(const WVec& eigenVector);
 
 	/// \brief Computes the eigenvector that corresponds to the
 	/// specified eigenvalue of this matrix. Note that this method
 	/// trashes this matrix, so make a copy first if you care.
-	void eigenVector(double eigenvalue, GVec& outVector);
+	void eigenVector(double eigenvalue, WVec& outVector);
 
 	/// \brief Computes y in the equation M*y=x (or y=M^(-1)x), where M
 	/// is this dataset, which must be a square matrix, and x is pVector
@@ -600,12 +600,12 @@ public:
 	/// with A.  (This rotates around the origin, so typically you will
 	/// want to subtract the centroid from both pA and pB before calling
 	/// this.)
-	static GMatrix* kabsch(GMatrix* pA, GMatrix* pB);
+	static WMatrix* kabsch(WMatrix* pA, WMatrix* pB);
 
 	/// \brief This uses the Kabsch algorithm to rotate and translate pB
 	/// in order to minimize RMS with pA. (pA and pB must have the same
 	/// number of rows and columns.)
-	static GMatrix* align(GMatrix* pA, GMatrix* pB);
+	static WMatrix* align(WMatrix* pA, WMatrix* pB);
 
 
 	/// \brief Loads an ARFF file and replaces the contents of this matrix with it.
@@ -621,7 +621,7 @@ public:
 	void parseArff(const char* szFile, size_t nLen, size_t maxRows = (size_t)-1);
 
 	/// \brief Parses an ARFF file and replaces the contents of this matrix with it.
-	void parseArff(GArffTokenizer& tok, size_t maxRows = (size_t)-1);
+	void parseArff(WArffTokenizer& tok, size_t maxRows = (size_t)-1);
 
 
 	/// \brief Sets this dataset to an identity matrix. (It doesn't
@@ -642,12 +642,12 @@ public:
 	/// will contain the attributes of both datasets. Both pSetA and
 	/// pSetB (and the resulting dataset) must have the same number of
 	/// rows
-	static GMatrix* mergeHoriz(const GMatrix* pSetA, const GMatrix* pSetB);
+	static WMatrix* mergeHoriz(const WMatrix* pSetA, const WMatrix* pSetB);
 
 	/// \brief Steals all the rows from pData and adds them to this set.
 	/// (You still have to delete pData.) Both datasets must have the
 	/// same number of columns.
-	void mergeVert(GMatrix* pData, bool ignoreMismatchingName = false);
+	void mergeVert(WMatrix* pData, bool ignoreMismatchingName = false);
 
 	/// \brief Computes nCount eigenvectors and the corresponding
 	/// eigenvalues using the power method (which is only accurate if a
@@ -656,7 +656,7 @@ public:
 	/// If mostSignificant is true, the largest eigenvalues are
 	/// found. If mostSignificant is false, the smallest eigenvalues are
 	/// found.
-	GMatrix* eigs(size_t nCount, GVec& eigenVals, GRand* pRand, bool mostSignificant);
+	WMatrix* eigs(size_t nCount, WVec& eigenVals, WRand* pRand, bool mostSignificant);
 
 	/// \brief Multiplies every element in this matrix by a scalar.
 	/// Behavior is undefined for nominal columns.
@@ -677,7 +677,7 @@ public:
 	///
 	/// \note if transpose is true, then pVectorIn is treated as a
 	/// row vector and is multiplied by this matrix to get pVectorOut.
-	void multiply(const GVec& vectorIn, GVec& vectorOut, bool transpose = false) const;
+	void multiply(const WVec& vectorIn, WVec& vectorOut, bool transpose = false) const;
 
 	/// \brief Matrix multiply.
 	///
@@ -686,16 +686,16 @@ public:
 	/// multiplication. (If you want the results to come out transposed,
 	/// you can use the equality (AB)^T=(B^T)(A^T) to figure out how to
 	/// specify the parameters.)
-	static GMatrix* multiply(const GMatrix& a, const GMatrix& b, bool transposeA, bool transposeB);
+	static WMatrix* multiply(const WMatrix& a, const WMatrix& b, bool transposeA, bool transposeB);
 
 	/// \brief Computes the Moore-Penrose pseudoinverse of this matrix
 	/// (using the SVD method). You are responsible to delete the
 	/// matrix this returns.
-	GMatrix* pseudoInverse();
+	WMatrix* pseudoInverse();
 
 	/// \brief Returns a const reference to the relation object, which holds meta-data about
 	/// the attributes (columns)
-	const GRelation& relation() const { return *m_pRelation; }
+	const WRelation& relation() const { return *m_pRelation; }
 
 	/// \brief Allocates space for the specified number of patterns (to
 	/// avoid superfluous resizing)
@@ -731,7 +731,7 @@ public:
 	///
 	/// \param maxIters the maximum number of iterations to perform in
 	///                 the SVD solver
-	void singularValueDecomposition(GMatrix** ppU, double** ppDiag, GMatrix** ppV, bool throwIfNoConverge = false, size_t maxIters = 80);
+	void singularValueDecomposition(WMatrix** ppU, double** ppDiag, WMatrix** ppV, bool throwIfNoConverge = false, size_t maxIters = 80);
 
 	/// \brief Matrix subtract. Subtracts the values in *pThat from *this.
 	///
@@ -743,7 +743,7 @@ public:
 	///
 	/// \param transpose If true, the transpose of *pThat is subtracted.
 	///                  If false, *pThat is subtracted
-	void subtract(const GMatrix* pThat, bool transpose);
+	void subtract(const WMatrix* pThat, bool transpose);
 
 	/// \brief Returns the sum squared difference between this matrix
 	/// and an identity matrix
@@ -751,7 +751,7 @@ public:
 
 	/// \brief Adds an already-allocated row to this dataset.
 	/// If pos is specified, the new row will be inserted and the speicified position.
-	void takeRow(GVec* pRow, size_t pos = (size_t)-1);
+	void takeRow(WVec* pRow, size_t pos = (size_t)-1);
 
 	/// \brief Converts the matrix to reduced row echelon form
 	size_t toReducedRowEchelonForm();
@@ -762,7 +762,7 @@ public:
 	void toVector(double* pVector) const;
 
 	/// \brief Marshalls this object to a DOM, which may be saved to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const;
+	WDomNode* serialize(WDom* pDoc) const;
 
 	/// \brief Returns the sum of the diagonal elements
 	double trace();
@@ -777,7 +777,7 @@ public:
 	///         transposed. All columns in the returned dataset will be
 	///         continuous.  The caller is responsible for deleting the
 	///         returned dataset.
-	GMatrix* transpose();
+	WMatrix* transpose();
 
 	/// \brief Copies the data from pVector over this dataset.
 	///
@@ -785,35 +785,35 @@ public:
 	void fromVector(const double* pVector, size_t nRows);
 
 	/// \brief Returns a pointer to the specified row
-	inline GVec& row(size_t index) { return *m_rows[index]; }
+	inline WVec& row(size_t index) { return *m_rows[index]; }
 
 	/// \brief Returns a const reference to the specified row
-	inline const GVec& row(size_t index) const { return *m_rows[index]; }
+	inline const WVec& row(size_t index) const { return *m_rows[index]; }
 
 	/// \brief Returns a reference to the first row
-	inline GVec& front() { return *m_rows[0]; }
-	inline const GVec& front() const { return *m_rows[0]; }
+	inline WVec& front() { return *m_rows[0]; }
+	inline const WVec& front() const { return *m_rows[0]; }
 
 	/// \brief Returns a reference to a row indexed from the back of the matrix.
 	/// index 0 (default) is the last row, index 1 is the second-to-last row, etc.
-	inline GVec& back(size_t reverse_index = 0) { return *m_rows[m_rows.size() - 1 - reverse_index]; }
-	inline const GVec& back(size_t reverse_index = 0) const { return *m_rows[m_rows.size() - 1 - reverse_index]; }
+	inline WVec& back(size_t reverse_index = 0) { return *m_rows[m_rows.size() - 1 - reverse_index]; }
+	inline const WVec& back(size_t reverse_index = 0) const { return *m_rows[m_rows.size() - 1 - reverse_index]; }
 
 	/// \brief Returns a reference to the specified row
-	inline GVec& operator[](size_t index) { return *m_rows[index]; }
+	inline WVec& operator[](size_t index) { return *m_rows[index]; }
 
 	/// \brief Returns a const reference to the specified row
-	inline const GVec& operator[](size_t index) const { return *m_rows[index]; }
+	inline const WVec& operator[](size_t index) const { return *m_rows[index]; }
 
 	/// \brief Fills all elements in the specified range of columns with the specified value.
 	/// If no column ranges are specified, the default is to set all of them.
 	void fill(double val, size_t colStart = 0, size_t colCount = INVALID_INDEX);
 
 	/// \brief Fills all elements with random values from a uniform distribution.
-	void fillUniform(GRand& rand, double min = 0.0, double max = 1.0);
+	void fillUniform(WRand& rand, double min = 0.0, double max = 1.0);
 
 	/// \brief Fills all elements with random values from a Normal distribution.
-	void fillNormal(GRand& rand, double deviation = 1.0);
+	void fillNormal(WRand& rand, double deviation = 1.0);
 
 	/// \brief Copies pVector over the specified column
 	void setCol(size_t index, const double* pVector);
@@ -822,7 +822,7 @@ public:
 	void swapRows(size_t a, size_t b);
 
 	/// \brief Swap pNewRow in for row i, and return row i. The caller is then responsible to delete the row that is returned.
-	GVec* swapRow(size_t i, GVec* pNewRow);
+	WVec* swapRow(size_t i, WVec* pNewRow);
 
 	/// \brief Swaps two columns
 	void swapColumns(size_t nAttr1, size_t nAttr2);
@@ -837,7 +837,7 @@ public:
 	/// releases it from this matrix.
 	///
 	/// The caller is responsible to delete the row (array of doubles) this method returns.
-	GVec* releaseRow(size_t index);
+	WVec* releaseRow(size_t index);
 
 	/// \brief Swaps the specified row with the last row, and then deletes it.
 	void deleteRow(size_t index);
@@ -846,7 +846,7 @@ public:
 	/// everything after it up one slot.
 	///
 	/// The caller is responsible to delete the row this method returns.
-	GVec* releaseRowPreserveOrder(size_t index);
+	WVec* releaseRowPreserveOrder(size_t index);
 
 	/// \brief Deletes the specified row and shifts everything after it up one slot
 	void deleteRowPreserveOrder(size_t index);
@@ -865,12 +865,12 @@ public:
 	///
 	/// If pExtension is non-NULL, then it will also be shuffled such
 	/// that corresponding rows are preserved.
-	void shuffle(GRand& rand, GMatrix* pExtension = nullptr);
+	void shuffle(WRand& rand, WMatrix* pExtension = nullptr);
 
 	/// \brief Shuffles the order of the rows. Also shuffles the rows in
 	/// "other" in the same way, such that corresponding rows are
 	/// preserved.
-	void shuffle2(GRand& rand, GMatrix& other);
+	void shuffle2(WRand& rand, WMatrix& other);
 
 	/// \brief This is an inferior way to shuffle the data
 	void shuffleLikeCards();
@@ -907,25 +907,25 @@ public:
 	///
 	/// If pExtensionA is non-NULL, then it will also split pExtensionA
 	/// such that corresponding rows are preserved.
-	void splitByPivot(GMatrix* pGreaterOrEqual, size_t nAttribute, double dPivot, GMatrix* pExtensionA = nullptr, GMatrix* pExtensionB = nullptr);
+	void splitByPivot(WMatrix* pGreaterOrEqual, size_t nAttribute, double dPivot, WMatrix* pExtensionA = nullptr, WMatrix* pExtensionB = nullptr);
 
 	/// \brief Moves all rows with the specified value in the specified
 	/// attribute into pSingleClass
 	///
 	/// If pExtensionA is non-NULL, then it will also split pExtensionA
 	/// such that corresponding rows are preserved.
-	void splitCategoricalKeepIfNotEqual(GMatrix* pSingleClass, size_t nAttr, int nValue, GMatrix* pExtensionA = nullptr, GMatrix* pExtensionB = nullptr);
+	void splitCategoricalKeepIfNotEqual(WMatrix* pSingleClass, size_t nAttr, int nValue, WMatrix* pExtensionA = nullptr, WMatrix* pExtensionB = nullptr);
 
 	/// \brief Moves all rows with the specified value in the specified
 	/// attribute into pOtherValues
 	///
 	/// If pExtensionA is non-NULL, then it will also split pExtensionA
 	/// such that corresponding rows are preserved.
-	void splitCategoricalKeepIfEqual(GMatrix* pOtherValues, size_t nAttr, int nValue, GMatrix* pExtensionA = nullptr, GMatrix* pExtensionB = nullptr);
+	void splitCategoricalKeepIfEqual(WMatrix* pOtherValues, size_t nAttr, int nValue, WMatrix* pExtensionA = nullptr, WMatrix* pExtensionB = nullptr);
 
 	/// \brief Removes the last nOtherRows rows from this data set and
 	/// puts them in "other". (Order is preserved.)
-	void splitBySize(GMatrix& other, size_t nOtherRows);
+	void splitBySize(WMatrix& other, size_t nOtherRows);
 
 	/// \brief Measures the entropy of the specified attribute
 	double entropy(size_t nColumn) const;
@@ -946,7 +946,7 @@ public:
 	/// If pWeights is non-NULL, then it is assumed to be a vector of weights, one for each row in this matrix.
 	/// If there are no values in this column with any weight, then it will throw an exception if throwIfEmpty is true,
 	/// or else return UNKNOWN_REAL_VALUE.
-	double columnMean(size_t nAttribute, const GVec* pWeights = nullptr, bool throwIfEmpty = true) const;
+	double columnMean(size_t nAttribute, const WVec* pWeights = nullptr, bool throwIfEmpty = true) const;
 
 	/// Returns the squared magnitude of the vector in the specified column.
 	double columnSquaredMagnitude(size_t col) const;
@@ -969,7 +969,7 @@ public:
 
 	/// \brief Computes the arithmetic means of all attributes
 	/// If pWeights is non-NULL, then it is assumed to be a vector of weights, one for each row in this matrix.
-	void centroid(GVec& outCentroid, const GVec* pWeights = nullptr) const;
+	void centroid(WVec& outCentroid, const WVec* pWeights = nullptr) const;
 
 	/// \brief Normalizes the specified column
 	void normalizeColumn(size_t col, double dInMin, double dInMax, double dOutMin = 0.0, double dOutMax = 1.0);
@@ -1005,7 +1005,7 @@ public:
 
 	/// \brief Replaces all missing values by copying a randomly
 	/// selected non-missing value in the same attribute.
-	void replaceMissingValuesRandomly(size_t nAttr, GRand* pRand);
+	void replaceMissingValuesRandomly(size_t nAttr, WRand* pRand);
 
 	/// \brief This is an efficient algorithm for iteratively computing
 	/// the principal component vector (the eigenvector of the
@@ -1017,27 +1017,27 @@ public:
 	/// The size of pOutVector will be the number of columns in this matrix.
 	/// (To compute the next principal component, call RemoveComponent,
 	/// then call this method again.)
-	void principalComponent(GVec& outVector, const GVec& centroid, GRand* pRand) const;
+	void principalComponent(WVec& outVector, const WVec& centroid, WRand* pRand) const;
 
 	/// \brief Computes the first principal component assuming the mean
 	/// is already subtracted out of the data
-	void principalComponentAboutOrigin(GVec& outVector, GRand* pRand) const;
+	void principalComponentAboutOrigin(WVec& outVector, WRand* pRand) const;
 
 	/// \brief Computes principal components, while ignoring missing
 	/// values
-	void principalComponentIgnoreUnknowns(GVec& outVector, const GVec& centroid, GRand* pRand) const;
+	void principalComponentIgnoreUnknowns(WVec& outVector, const WVec& centroid, WRand* pRand) const;
 
 	/// \brief Computes the first principal component of the data with
 	/// each row weighted according to the vector pWeights. (pWeights
 	/// must have an element for each row.)
-	void weightedPrincipalComponent(GVec& outVector, const GVec& centroid, const double* pWeights, GRand* pRand) const;
+	void weightedPrincipalComponent(WVec& outVector, const WVec& centroid, const double* pWeights, WRand* pRand) const;
 
 	/// \brief Computes the eigenvalue that corresponds to \a *pEigenvector.
 	///
 	/// After you compute the principal component, you can call this to
 	/// obtain the eigenvalue that corresponds to that principal
 	/// component vector (eigenvector).
-	double eigenValue(const double* pMean, const double* pEigenVector, GRand* pRand) const;
+	double eigenValue(const double* pMean, const double* pEigenVector, WRand* pRand) const;
 
 	/// \brief Removes the component specified by pComponent from the
 	/// data. (pComponent should already be normalized.)
@@ -1045,10 +1045,10 @@ public:
 	/// This might be useful, for example, to remove the first principal
 	/// component from the data so you can then proceed to compute the
 	/// second principal component, and so forth.
-	void removeComponent(const GVec& centroid, const GVec& component);
+	void removeComponent(const WVec& centroid, const WVec& component);
 
 	/// \brief Removes the specified component assuming the mean is zero.
-	void removeComponentAboutOrigin(const GVec& component);
+	void removeComponentAboutOrigin(const WVec& component);
 
 	/// \brief Computes the minimum number of principal components
 	/// necessary so that less than the specified portion of the
@@ -1058,7 +1058,7 @@ public:
 	/// components contains 90 percent of the deviation that the
 	/// original data contains, then if you pass the value 0.1 to this
 	/// method, it will return 3.
-	size_t countPrincipalComponents(double d, GRand* pRand) const;
+	size_t countPrincipalComponents(double d, WRand* pRand) const;
 
 	/// \brief Computes the sum-squared distance between pPoint and all
 	/// of the rows in this matrix.
@@ -1071,19 +1071,19 @@ public:
 	///       the mean after removing the corresponding component, and
 	///       then dividing by the number of dimensions. This is more
 	///       efficient than calling eigenValue.
-	double sumSquaredDistance(const GVec& point) const;
+	double sumSquaredDistance(const WVec& point) const;
 
 	/// \brief Computes the sum-squared distance between the specified
 	/// column of this and that. If the column is a nominal attribute,
 	/// then Hamming distance is used.
 	/// if pOutSAE is not NULL, the sum absolute error will be placed there.
-	double columnSumSquaredDifference(const GMatrix& that, size_t col, double* pOutSAE = nullptr) const;
+	double columnSumSquaredDifference(const WMatrix& that, size_t col, double* pOutSAE = nullptr) const;
 
 	/// \brief Computes the squared distance between this and that.
 	///
 	/// If transpose is true, computes the difference between this and
 	/// the transpose of that.
-	double sumSquaredDifference(const GMatrix& that, bool transpose = false) const;
+	double sumSquaredDifference(const WMatrix& that, bool transpose = false) const;
 
 	/// \brief Computes the linear coefficient between the two specified
 	/// attributes.
@@ -1095,7 +1095,7 @@ public:
 	/// \brief Finds a sphere that tightly bounds all the points in the specified vector of row-indexes.
 	///
 	/// Returns the squared radius of the sphere, and stores its center in pOutCenter.
-	double boundingSphere(GVec& outCenter, size_t* pIndexes, size_t indexCount, GDistanceMetric* pMetric) const;
+	double boundingSphere(WVec& outCenter, size_t* pIndexes, size_t indexCount, WDistanceMetric* pMetric) const;
 
 	/// \brief Computes the covariance between two attributes.
 	/// If pWeights is NULL, each row is given a weight of 1.
@@ -1103,13 +1103,13 @@ public:
 	double covariance(size_t nAttr1, double dMean1, size_t nAttr2, double dMean2, const double* pWeights = nullptr) const;
 
 	/// \brief Computes the covariance matrix of the data
-	GMatrix* covarianceMatrix() const;
+	WMatrix* covarianceMatrix() const;
 
 	/// \brief Performs a paired T-Test with data from the two specified
 	/// attributes.
 	///
 	/// pOutV will hold the degrees of freedom. pOutT will hold the T-value.
-	/// You can use GMath::tTestAlphaValue to convert these to a P-value.
+	/// You can use WMath::tTestAlphaValue to convert these to a P-value.
 	void pairedTTest(size_t* pOutV, double* pOutT, size_t attr1, size_t attr2, bool normalize) const;
 
 	/// \brief Performs the Wilcoxon signed ranks test from the two
@@ -1148,11 +1148,11 @@ public:
 	///
 	/// Returns false if the subspaces are so nearly parallel that pOut
 	/// cannot be computed with accuracy.
-	bool leastCorrelatedVector(GVec& out, const GMatrix* pThat, GRand* pRand) const;
+	bool leastCorrelatedVector(WVec& out, const WMatrix* pThat, WRand* pRand) const;
 
 	/// \brief Computes the cosine of the dihedral angle between this
 	/// subspace and pThat subspace
-	double dihedralCorrelation(const GMatrix* pThat, GRand* pRand) const;
+	double dihedralCorrelation(const WMatrix* pThat, WRand* pRand) const;
 
 	/// \brief Projects pPoint onto this hyperplane (where each row
 	/// defines one of the orthonormal basis vectors of this hyperplane)
@@ -1178,7 +1178,7 @@ public:
 	/// \f$-\infty\f$ for any pair of rows.  Other than that, there are no
 	/// limitations on the cost function.
 	///
-	/// Because of the limitations of GDistanceMetric, \a a and \a b
+	/// Because of the limitations of WDistanceMetric, \a a and \a b
 	/// must have the same number of columns.
 	///
 	/// If \f$m\f$ is \f$\max(rows(a), rows(b))\f$ then this routine
@@ -1201,13 +1201,13 @@ public:
 	/// \return the optimal assignment in which each of the rows of \a a
 	///         or \a b (whichever has fewer rows) is assigned to a row
 	///         of the other matrix
-	static GSimpleAssignment bipartiteMatching(GMatrix& a, GMatrix& b, GDistanceMetric& metric);
+	static WSimpleAssignment bipartiteMatching(WMatrix& a, WMatrix& b, WDistanceMetric& metric);
 
 	/// \brief Copies values from a rectangular region of the source matrix into this matrix.
 	/// The wid and hgt values are clipped if they exceed the size of the source matrix.
 	/// An exception is thrown if the destination is not big enough to hold the values at the specified location.
 	/// If checkMetaData is true, then this will throw an exception if the data types are incompatible.
-	void copyBlock(const GMatrix& source, size_t srcRow = 0, size_t srcCol = 0, size_t hgt = INVALID_INDEX, size_t wid = INVALID_INDEX, size_t destRow = 0, size_t destCol = 0, bool checkMetaData = true);
+	void copyBlock(const WMatrix& source, size_t srcRow = 0, size_t srcCol = 0, size_t hgt = INVALID_INDEX, size_t wid = INVALID_INDEX, size_t destRow = 0, size_t destCol = 0, bool checkMetaData = true);
 
 	/// Counts the number of unique values in the specified column. If maxCount
 	/// unique values are found, it immediately returns maxCount.
@@ -1220,7 +1220,7 @@ public:
 protected:
 	double determinantHelper(size_t nEndRow, size_t* pColumnList);
 	void inPlaceSquareTranspose();
-	void singularValueDecompositionHelper(GMatrix** ppU, double** ppDiag, GMatrix** ppV, bool throwIfNoConverge, size_t maxIters);
+	void singularValueDecompositionHelper(WMatrix** ppU, double** ppDiag, WMatrix** ppV, bool throwIfNoConverge, size_t maxIters);
 };
 
 
@@ -1228,7 +1228,7 @@ protected:
 /// A class for parsing CSV files (or tab-separated files, or whitespace separated files, etc.).
 /// (This class does not support Mac line endings, so you should replace all '\r' with '\n' before using this class if your
 /// data comes from a Mac.)
-class GCSVParser
+class WCSVParser
 {
 protected:
 	bool m_single_quotes; // If false, treats apostrophes as normal text. If true, treats them as quotation marks.
@@ -1244,8 +1244,8 @@ protected:
 	std::map<size_t, size_t> m_stripQuotes;
 
 public:
-	GCSVParser();
-	~GCSVParser();
+	WCSVParser();
+	~WCSVParser();
 
 	/// Specify the separating character. '\0' indicates that an arbitrary amount of whitespace is used for separation.
 	void setSeparator(char c) { m_separator = c; }
@@ -1277,10 +1277,10 @@ public:
 	void setStripQuotes(size_t attr);
 
 	/// Load the specified file, and parse it.
-	void parse(GMatrix& outMatrix, const char* szFilename);
+	void parse(WMatrix& outMatrix, const char* szFilename);
 
 	/// Parse the given string.
-	void parse(GMatrix& outMatrix, const char* pString, size_t len);
+	void parse(WMatrix& outMatrix, const char* pString, size_t len);
 
 	/// Return a string that reports the status of the specified column. (This should only be called after parsing.)
 	std::string& report(size_t column) { return m_report[column]; }
@@ -1290,24 +1290,24 @@ public:
 
 /// \brief This is a special holder that guarantees the data set will
 /// release all of its data before it is deleted
-class GReleaseDataHolder
+class WReleaseDataHolder
 {
 protected:
-	GMatrix* m_pData;
+	WMatrix* m_pData;
 
 public:
-	GReleaseDataHolder(GMatrix* pData = nullptr)
+	WReleaseDataHolder(WMatrix* pData = nullptr)
 	{
 		m_pData = pData;
 	}
 
-	~GReleaseDataHolder()
+	~WReleaseDataHolder()
 	{
 		if(m_pData)
 			m_pData->releaseAllRows();
 	}
 
-	void reset(GMatrix* pData = nullptr)
+	void reset(WMatrix* pData = nullptr)
 	{
 		if(m_pData && m_pData != pData)
 			m_pData->releaseAllRows();
@@ -1318,15 +1318,15 @@ public:
 
 /// \brief This class guarantees that the rows in b are merged
 /// vertically back into a when this object goes out of scope.
-class GMergeDataHolder
+class WMergeDataHolder
 {
 protected:
-	GMatrix& m_a;
-	GMatrix& m_b;
+	WMatrix& m_a;
+	WMatrix& m_b;
 
 public:
-	GMergeDataHolder(GMatrix& a, GMatrix& b) : m_a(a), m_b(b) {}
-	~GMergeDataHolder()
+	WMergeDataHolder(WMatrix& a, WMatrix& b) : m_a(a), m_b(b) {}
+	~WMergeDataHolder()
 	{
 		m_a.mergeVert(&m_b);
 	}
@@ -1339,23 +1339,23 @@ public:
 
 /// This class divides a matrix into two parts. The left-most columns are the features.
 /// The right-most columns are the labels.
-class GDataColSplitter
+class WDataColSplitter
 {
 protected:
-	GMatrix* m_pFeatures;
-	GMatrix* m_pLabels;
+	WMatrix* m_pFeatures;
+	WMatrix* m_pLabels;
 
 public:
 	/// Splits a dataset into a feature matrix and a label matrix. The right-most "labels" columns
 	/// are put in the label matrix
-	GDataColSplitter(const GMatrix& data, size_t labels);
-	~GDataColSplitter();
+	WDataColSplitter(const WMatrix& data, size_t labels);
+	~WDataColSplitter();
 
 	/// Returns a reference to the feature matrix
-	GMatrix& features() { return *m_pFeatures; }
+	WMatrix& features() { return *m_pFeatures; }
 
 	/// Returns a reference to the label matrix
-	GMatrix& labels() { return *m_pLabels; }
+	WMatrix& labels() { return *m_pLabels; }
 };
 
 
@@ -1366,46 +1366,46 @@ public:
 /// by randomly assigning each row to one of the two parts, keeping the corresponding
 /// rows together. The rows are shallow-copied. The destructor of this class releases
 /// all of the row references.
-class GDataRowSplitter
+class WDataRowSplitter
 {
 protected:
-	GMatrix m_f1;
-	GMatrix m_f2;
-	GMatrix m_l1;
-	GMatrix m_l2;
+	WMatrix m_f1;
+	WMatrix m_f2;
+	WMatrix m_l1;
+	WMatrix m_l2;
 
 public:
 	/// features and labels are expected to remain valid for the duration of this object.
 	/// proportion specifies the proportion of rows that will be referenced
 	/// by part 1 of the data. (In case of an exact tie, part 2 gets the extra row.)
-	GDataRowSplitter(const GMatrix& features, const GMatrix& labels, GRand& rand, size_t part1Rows);
-	~GDataRowSplitter();
+	WDataRowSplitter(const WMatrix& features, const WMatrix& labels, WRand& rand, size_t part1Rows);
+	~WDataRowSplitter();
 
 	/// Returns a reference to the first part of the features matrix
-	const GMatrix& features1() { return m_f1; }
+	const WMatrix& features1() { return m_f1; }
 
 	/// Returns a reference to the second part of the features matrix
-	const GMatrix& features2() { return m_f2; }
+	const WMatrix& features2() { return m_f2; }
 
 	/// Returns a reference to the first part of the labels matrix
-	const GMatrix& labels1() { return m_l1; }
+	const WMatrix& labels1() { return m_l1; }
 
 	/// returns a reference to the second part of the labels matrix
-	const GMatrix& labels2() { return m_l2; }
+	const WMatrix& labels2() { return m_l2; }
 };
 
 
 /// A matrix in which each row may have a differing number of columns.
-class GRaggedMatrix
+class WRaggedMatrix
 {
 protected:
-	std::vector<GVec*> m_rows;
+	std::vector<WVec*> m_rows;
 	size_t m_minCols;
 	size_t m_maxCols;
 
 public:
-	GRaggedMatrix();
-	~GRaggedMatrix();
+	WRaggedMatrix();
+	~WRaggedMatrix();
 
 	/// \brief Removes all the rows in this ragged matrix.
 	void flush();
@@ -1420,22 +1420,22 @@ public:
 	size_t maxCols() const { return m_maxCols; }
 
 	/// \brief Returns a reference to the specified row
-	inline GVec& operator[](size_t index) { return *m_rows[index]; }
+	inline WVec& operator[](size_t index) { return *m_rows[index]; }
 
 	/// \brief Returns a const reference to the specified row
-	inline const GVec& operator[](size_t index) const { return *m_rows[index]; }
+	inline const WVec& operator[](size_t index) const { return *m_rows[index]; }
 
 	/// \brief Adds a new row with the specified size to this ragged matrix.
-	GVec& newRow(size_t size);
+	WVec& newRow(size_t size);
 
 	/// \brief Parses a CSV file.
-	void parseCSV(GTokenizer& tok);
+	void parseCSV(WTokenizer& tok);
 
 	/// \brief Loads from a CSV file.
 	void loadCSV(const char* szFilename);
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GMATRIX_H__

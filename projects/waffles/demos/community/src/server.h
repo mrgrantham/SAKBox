@@ -21,25 +21,25 @@
 
 #include <map>
 #include <string>
-#include <WClasses/GFile.h>
-#include <WClasses/GDynamicPage.h>
+#include <WClasses/WFile.h>
+#include <WClasses/WDynamicPage.h>
 #include "recommender.h"
 
 class Account;
 class Connection;
 
-using namespace GClasses;
+using namespace WClasses;
 
-class Server : public GDynamicPageServer
+class Server : public WDynamicPageServer
 {
 protected:
 	std::map<std::string, size_t> m_username_to_index; // Mapping from username to account index
 	std::vector<Account*> m_accounts;
 	std::set<std::string> m_banned_addresses;
 	NeuralRecommender m_recommender; // The recommender system
-	GFileCache m_fileCache;
-	GJsonAsADatabase* m_pJaad;
-	double m_lastMaintenance; // (GTime::seconds)
+	WFileCache m_fileCache;
+	WJsonAsADatabase* m_pJaad;
+	double m_lastMaintenance; // (WTime::seconds)
 
 	/// Does maintenance every four hours, between requests
 	void onIdle(double secondsSinceLastRequest) override;
@@ -48,10 +48,10 @@ public:
 	std::string m_basePath;
 	std::string m_toolsPath;
 
-	Server(int port, GRand* pRand);
+	Server(int port, WRand* pRand);
 	~Server() override;
 	NeuralRecommender& recommender() { return m_recommender; }
-	GJsonAsADatabase& jaad() { return *m_pJaad; }
+	WJsonAsADatabase& jaad() { return *m_pJaad; }
 	void saveState();
 	void doSomeRecommenderTraining();
 	std::vector<Account*>& accounts() { return m_accounts; }
@@ -68,18 +68,18 @@ public:
 	Account* newAccount(const char* szUsername, const char* szPasswordHash);
 	//void deleteAccount(Account* pAccount);
 	bool onRenameAccount(const char* szOldName, const char* szNewName);
-	GDomNode* serializeState(GDom* pDoc);
-	void deserializeState(const GDomNode* pNode);
-	GDynamicPageSessionExtension* deserializeSessionExtension(const GDomNode* pNode) override;
-	GDynamicPageConnection* makeConnection(SOCKET sock) override;
+	WDomNode* serializeState(WDom* pDoc);
+	void deserializeState(const WDomNode* pNode);
+	WDynamicPageSessionExtension* deserializeSessionExtension(const WDomNode* pNode) override;
+	WDynamicPageConnection* makeConnection(SOCKET sock) override;
 	std::string& cache(const char* szFilename);
 	static void getLocalStorageFolder(char* buf);
 
 	/// Make the header part of standardized pages
-	static void makeHeader(GDynamicPageSession* pSession, std::ostream& response, const char* szParamsMessage);
+	static void makeHeader(WDynamicPageSession* pSession, std::ostream& response, const char* szParamsMessage);
 
 	/// Make the footer part of standardized pages
-	static void makeFooter(GDynamicPageSession* pSession, std::ostream& response);
+	static void makeFooter(WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Prints a timestamp and message to stdout, and flushes stdout
 	void log(const char* message);
@@ -149,7 +149,7 @@ public:
 		m_banned = banned;
 	}
 
-	static Account* fromDom(GDomNode* pNode, GRand& rand)
+	static Account* fromDom(WDomNode* pNode, WRand& rand)
 	{
 		const char* un = pNode->getString("username");
 		const char* pw = pNode->getString("password");
@@ -163,9 +163,9 @@ public:
 		return pAccount;
 	}
 
-	GDomNode* toDom(GDom* pDoc)
+	WDomNode* toDom(WDom* pDoc)
 	{
-		GDomNode* pAccount = pDoc->newObj();
+		WDomNode* pAccount = pDoc->newObj();
 		pAccount->add(pDoc, "username", m_username.c_str());
 		pAccount->add(pDoc, "password", m_passwordHash.c_str());
 		if(m_admin)
@@ -213,7 +213,7 @@ public:
 
 
 
-class Terminal : public GDynamicPageSessionExtension
+class Terminal : public WDynamicPageSessionExtension
 {
 protected:
 	size_t m_currentAccount; // The currently logged-in account. (nullptr if not logged in.)
@@ -221,14 +221,14 @@ protected:
 	std::vector<bool> m_requirePassword; // Whether or not the password is required on this machine
 
 public:
-	Terminal() : GDynamicPageSessionExtension(), m_currentAccount((size_t)-1)
+	Terminal() : WDynamicPageSessionExtension(), m_currentAccount((size_t)-1)
 	{
 	}
 
-	Terminal(const GDomNode* pNode, Server* pServer)
+	Terminal(const WDomNode* pNode, Server* pServer)
 	{
 		m_currentAccount = pNode->getInt("loggedin");
-		GDomListIterator it(pNode->get("accounts"));
+		WDomListIterator it(pNode->get("accounts"));
 		while(it.remaining() > 0)
 		{
 			const char* username = it.currentString();
@@ -238,7 +238,7 @@ public:
 			m_accounts.push_back(pAccount);
 			it.advance();
 		}
-		GDomListIterator it2(pNode->get("reqpw"));
+		WDomListIterator it2(pNode->get("reqpw"));
 		while(it2.remaining() > 0)
 		{
 			bool b = it2.currentBool();
@@ -255,21 +255,21 @@ public:
 			delete(m_accounts[i]);
 	}
 
-	/// Called when the sessions are destroyed, or a new GDynamicPageSessionExtension is
+	/// Called when the sessions are destroyed, or a new WDynamicPageSessionExtension is
 	/// explicitly associated with this cookie.
 	void onDisown() override
 	{
 	}
 
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
-		GDomNode* pObj = pDoc->newObj();
+		WDomNode* pObj = pDoc->newObj();
 		pObj->add(pDoc, "loggedin", m_currentAccount);
-		GDomNode* pAccList = pDoc->newList();
+		WDomNode* pAccList = pDoc->newList();
 		pObj->add(pDoc, "accounts", pAccList);
 		for(size_t i = 0; i < m_accounts.size(); i++)
 			pAccList->add(pDoc, m_accounts[i]->username());
-		GDomNode* pReqList = pDoc->newList();
+		WDomNode* pReqList = pDoc->newList();
 		pObj->add(pDoc, "reqpw", pReqList);
 		for(size_t i = 0; i < m_requirePassword.size(); i++)
 			pReqList->add(pDoc, m_requirePassword[i]);
@@ -306,7 +306,7 @@ public:
 		return false;
 	}
 
-	static std::string generateUsername(GRand& rand);
+	static std::string generateUsername(WRand& rand);
 
 	Account* makeNewAccount(Server* pServer)
 	{
@@ -377,10 +377,10 @@ public:
 };
 
 
-class Connection : public GDynamicPageConnection
+class Connection : public WDynamicPageConnection
 {
 public:
-	Connection(SOCKET sock, GDynamicPageServer* pServer) : GDynamicPageConnection(sock, pServer)
+	Connection(SOCKET sock, WDynamicPageServer* pServer) : WDynamicPageConnection(sock, pServer)
 	{
 	}
 
@@ -388,11 +388,11 @@ public:
 	{
 	}
 
-	void handleRequest(GDynamicPageSession* pSession, std::ostream& response) override;
-	void handleAjax(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
-	void handleTools(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	void handleRequest(WDynamicPageSession* pSession, std::ostream& response) override;
+	void handleAjax(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
+	void handleTools(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 	bool is_admin(Terminal* pTerminal, const char** ppParamsMessage);
-	const char* processParams(GDynamicPageSession* pSession);
+	const char* processParams(WDynamicPageSession* pSession);
 };
 
 
@@ -401,9 +401,9 @@ public:
 
 
 
-Terminal* getTerminal(GDynamicPageSession* pSession);
+Terminal* getTerminal(WDynamicPageSession* pSession);
 
-Account* getAccount(GDynamicPageSession* pSession);
+Account* getAccount(WDynamicPageSession* pSession);
 
 
 

@@ -13,16 +13,16 @@
 #include <png.h>
 #include <zlib.h>
 #endif
-#include <WClasses/GError.h>
-#include <WClasses/GImage.h>
-#include <WClasses/GHolders.h>
-#include <WClasses/GFile.h>
-#include <WClasses/GBits.h>
+#include <WClasses/WError.h>
+#include <WClasses/WImage.h>
+#include <WClasses/WHolders.h>
+#include <WClasses/WFile.h>
+#include <WClasses/WBits.h>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GPNGReader
+class WPNGReader
 {
 public:
 	png_structp m_pReadStruct;
@@ -31,7 +31,7 @@ public:
 	const unsigned char* m_pData;
 	int m_nPos;
 
-	GPNGReader(const unsigned char* pData)
+	WPNGReader(const unsigned char* pData)
 	{
 		m_pData = pData;
 		m_nPos = 0;
@@ -46,7 +46,7 @@ public:
 		m_pEndInfoStruct = png_create_info_struct(m_pReadStruct);
 	}
 
-	~GPNGReader()
+	~WPNGReader()
 	{
 		if(m_pReadStruct)
 			png_destroy_read_struct(&m_pReadStruct, &m_pInfoStruct, &m_pEndInfoStruct);
@@ -61,18 +61,18 @@ public:
 
 void readFunc(png_struct* pReadStruct, png_bytep pBuf, png_size_t nSize)
 {
-	GPNGReader* pReader = (GPNGReader*)png_get_io_ptr(pReadStruct);
+	WPNGReader* pReader = (WPNGReader*)png_get_io_ptr(pReadStruct);
 	pReader->ReadBytes((unsigned char*)pBuf, (int)nSize);
 }
 
-void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
+void loadPng(WImage* pImage, const unsigned char* pData, size_t nDataSize)
 {
 	// Check for the PNG signature
 	if(nDataSize < 8 || png_sig_cmp((png_bytep)pData, 0, 8) != 0)
 		throw Ex("not a png file");
 
 	// Read all PNG data up until the image data chunk.
-	GPNGReader reader(pData);
+	WPNGReader reader(pData);
 	png_set_read_fn(reader.m_pReadStruct, (png_voidp)&reader, (png_rw_ptr)readFunc);
 	png_read_info(reader.m_pReadStruct, reader.m_pInfoStruct);
 
@@ -99,7 +99,7 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 	// Update the 'info' struct with the gamma information
 	png_read_update_info(reader.m_pReadStruct, reader.m_pInfoStruct);
 
-	GAssert(png_get_bit_depth(reader.m_pReadStruct, reader.m_pInfoStruct) == 8);
+	WAssert(png_get_bit_depth(reader.m_pReadStruct, reader.m_pInfoStruct) == 8);
 
 	// Allocate the row pointers
 	unsigned long rowbytes = png_get_rowbytes(reader.m_pReadStruct, reader.m_pInfoStruct);
@@ -115,13 +115,13 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 		png_read_image(reader.m_pReadStruct, pRows);
 	}
 
-	// Copy to the GImage
+	// Copy to the WImage
 	unsigned long nPixels = width * height;
 	unsigned int* pRGBQuads = pImage->pixels();
 	unsigned char* pBytes = pRawData;
 	if(channels > 3)
 	{
-		GAssert(channels == 4); // unexpected number of channels
+		WAssert(channels == 4); // unexpected number of channels
 		for(i = 0; i < nPixels; i++)
 		{
 			*pRGBQuads = gARGB(pBytes[3], pBytes[0], pBytes[1], pBytes[2]);
@@ -141,7 +141,7 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 	else
 	{
 		throw Ex("Sorry, loading ", to_str(channels), "-channel pngs not supported");
-		/*		GAssert(channels == 1); // unexpected number of channels
+		/*		WAssert(channels == 1); // unexpected number of channels
 		for(i = 0; i < nPixels; i++)
 		{
 			*pRGBQuads = gARGB(0xff, pBytes[0], pBytes[0], pBytes[0]);
@@ -156,13 +156,13 @@ void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize)
 
 // -----------------------------------------------------------------------
 
-class GPNGWriter
+class WPNGWriter
 {
 public:
 	png_structp m_pWriteStruct;
 	png_infop m_pInfoStruct;
 
-	GPNGWriter()
+	WPNGWriter()
 	{
 		m_pWriteStruct = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, error_handler, nullptr);
 		if(!m_pWriteStruct)
@@ -172,7 +172,7 @@ public:
 			throw Ex("Failed to create info struct. Out of mem?");
 	}
 
-	~GPNGWriter()
+	~WPNGWriter()
 	{
 		png_destroy_write_struct(&m_pWriteStruct, &m_pInfoStruct);
 	}
@@ -184,10 +184,10 @@ public:
 };
 
 
-void savePng(GImage* pImage, FILE* pFile, bool bIncludeAlphaChannel)
+void savePng(WImage* pImage, FILE* pFile, bool bIncludeAlphaChannel)
 {
 	// Set the jump value (This has something to do with enabling the error handler)
-	GPNGWriter writer;
+	WPNGWriter writer;
 	if(setjmp(png_jmpbuf(writer.m_pWriteStruct)))
 		throw Ex("Failed to set the jump value");
 
@@ -244,29 +244,29 @@ void savePng(GImage* pImage, FILE* pFile, bool bIncludeAlphaChannel)
 	png_write_end(writer.m_pWriteStruct, writer.m_pInfoStruct);
 }
 
-void loadPng(GImage* pImage, const char* szFilename)
+void loadPng(WImage* pImage, const char* szFilename)
 {
 	size_t nSize;
-	char* pRawData = GFile::loadFile(szFilename, &nSize);
+	char* pRawData = WFile::loadFile(szFilename, &nSize);
 	ArrayHolder<char> hRawData(pRawData);
 	loadPng(pImage, (const unsigned char*)pRawData, nSize);
 }
 
-void loadPngFromHex(GImage* pImage, const char* szHex)
+void loadPngFromHex(WImage* pImage, const char* szHex)
 {
 	size_t len = strlen(szHex);
 	unsigned char* pBuf = new unsigned char[len / 2];
 	ArrayHolder<unsigned char> hBuf(pBuf);
-	GBits::hexToBuffer(szHex, len, pBuf);
+	WBits::hexToBuffer(szHex, len, pBuf);
 	loadPng(pImage, pBuf, len / 2);
 }
 
-void savePng(GImage* pImage, FILE* pFile)
+void savePng(WImage* pImage, FILE* pFile)
 {
 	savePng(pImage, pFile, true);
 }
 
-void savePng(GImage* pImage, const char* szFilename)
+void savePng(WImage* pImage, const char* szFilename)
 {
 	FILE* pFile = fopen(szFilename, "wb");
 	if(!pFile)
@@ -275,4 +275,4 @@ void savePng(GImage* pImage, const char* szFilename)
 	savePng(pImage, pFile);
 }
 
-} // namespace GClasses
+} // namespace WClasses

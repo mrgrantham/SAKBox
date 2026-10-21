@@ -23,27 +23,27 @@
 #include <iostream>
 
 class Server;
-namespace GClasses
+namespace WClasses
 {
-class GDynamicPageSession;
+class WDynamicPageSession;
 }
-using namespace GClasses;
+using namespace WClasses;
 
 
 class Login
 {
 public:
 	/// A page for admins only
-	static void pageAdmin(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageAdmin(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// A page to edit account preferences and settings
-	static void pageAccount(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageAccount(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// A page to make a new account
-	static void pageNewAccount(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageNewAccount(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// A javascript file to be included in pages that need credentials
-	static void pageTools(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageTools(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 };
 
 #endif // LOGIN

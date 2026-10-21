@@ -21,28 +21,28 @@
 #include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
-#include "WClasses/GApp.h"
-#include "WClasses/GError.h"
-#include "WClasses/GMatrix.h"
-#include "WClasses/GDecisionTree.h"
-#include "WClasses/GDynamicPage.h"
-#include "WClasses/GRand.h"
-#include "WClasses/GFile.h"
-#include "WClasses/GHistogram.h"
-#include "WClasses/GImage.h"
-#include "WClasses/GOptimizer.h"
-#include "WClasses/GHillClimber.h"
-#include "WClasses/G3D.h"
-#include "WClasses/GVec.h"
-#include "WClasses/GDom.h"
-#include "WClasses/GPlot.h"
-#include "WClasses/GFunction.h"
-#include "WClasses/GLearner.h"
-#include "WClasses/GTime.h"
-#include "WClasses/GThread.h"
-#include "WClasses/GNeuralNet.h"
-#include "WClasses/GManifold.h"
-#include "WClasses/GSelfOrganizingMap.h"
+#include "WClasses/WApp.h"
+#include "WClasses/WError.h"
+#include "WClasses/WMatrix.h"
+#include "WClasses/WDecisionTree.h"
+#include "WClasses/WDynamicPage.h"
+#include "WClasses/WRand.h"
+#include "WClasses/WFile.h"
+#include "WClasses/WHistogram.h"
+#include "WClasses/WImage.h"
+#include "WClasses/WOptimizer.h"
+#include "WClasses/WHillClimber.h"
+#include "WClasses/W3D.h"
+#include "WClasses/WVec.h"
+#include "WClasses/WDom.h"
+#include "WClasses/WPlot.h"
+#include "WClasses/WFunction.h"
+#include "WClasses/WLearner.h"
+#include "WClasses/WTime.h"
+#include "WClasses/WThread.h"
+#include "WClasses/WNeuralNet.h"
+#include "WClasses/WManifold.h"
+#include "WClasses/WSelfOrganizingMap.h"
 #include "WClasses/usage.h"
 #include <time.h>
 #include <iostream>
@@ -56,7 +56,7 @@
 #include <set>
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::string;
 using std::cout;
 using std::cerr;
@@ -84,7 +84,7 @@ size_t getAttrVal(const char* szString, size_t attrCount)
 	return val;
 }
 
-void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount)
+void parseAttributeList(vector<size_t>& list, WArgReader& args, size_t attrCount)
 {
 	const char* szList = args.pop_string();
 	set<size_t> attrSet;
@@ -152,17 +152,17 @@ void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount
 	}
 }
 
-void loadDataWithSwitches(GMatrix& data, GArgReader& args, size_t* pLabelDims)
+void loadDataWithSwitches(WMatrix& data, WArgReader& args, size_t* pLabelDims)
 {
 	// Load the dataset by extension
 	const char* szFilename = args.pop_string();
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	if(_stricmp(szFilename + pd.extStart, ".arff") == 0)
 		data.loadArff(szFilename);
 	else if(_stricmp(szFilename + pd.extStart, ".csv") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.parse(data, szFilename);
 		cerr << "\nParsing Report:\n";
 		for(size_t i = 0; i < data.cols(); i++)
@@ -170,7 +170,7 @@ void loadDataWithSwitches(GMatrix& data, GArgReader& args, size_t* pLabelDims)
 	}
 	else if(_stricmp(szFilename + pd.extStart, ".dat") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.setSeparator('\0');
 		parser.parse(data, szFilename);
 		cerr << "\nParsing Report:\n";
@@ -230,19 +230,19 @@ void loadDataWithSwitches(GMatrix& data, GArgReader& args, size_t* pLabelDims)
 	}
 }
 
-GMatrix* loadData(const char* szFilename)
+WMatrix* loadData(const char* szFilename)
 {
 	// Load the dataset by extension
-	GMatrix* pM = new GMatrix();
-	std::unique_ptr<GMatrix> hM(pM);
-	GMatrix& m = *pM;
+	WMatrix* pM = new WMatrix();
+	std::unique_ptr<WMatrix> hM(pM);
+	WMatrix& m = *pM;
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	if(_stricmp(szFilename + pd.extStart, ".arff") == 0)
 		m.loadArff(szFilename);
 	else if(_stricmp(szFilename + pd.extStart, ".csv") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.parse(m, szFilename);
 		cerr << "\nParsing Report:\n";
 		for(size_t i = 0; i < m.cols(); i++)
@@ -250,7 +250,7 @@ GMatrix* loadData(const char* szFilename)
 	}
 	else if(_stricmp(szFilename + pd.extStart, ".dat") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.setSeparator('\0');
 		parser.parse(m, szFilename);
 		cerr << "\nParsing Report:\n";
@@ -263,11 +263,11 @@ GMatrix* loadData(const char* szFilename)
 	return hM.release();
 }
 
-void PlotBar(GArgReader& args)
+void PlotBar(WArgReader& args)
 {
 	// Load the data
-	GMatrix* pData = loadData(args.pop_string());
-	std::unique_ptr<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	std::unique_ptr<WMatrix> hData(pData);
 	//if(!pData->relation()->areContinuous())
 	//	throw Ex("Expected all attributes to be continuous");
 
@@ -320,7 +320,7 @@ void PlotBar(GArgReader& args)
 	}
 
 	// Determine the range
-	GVec& pRow = pData->row(row);
+	WVec& pRow = pData->row(row);
 	if(ymin == UNKNOWN_REAL_VALUE || ymax == UNKNOWN_REAL_VALUE)
 	{
 		ymin = pRow[0];
@@ -342,9 +342,9 @@ void PlotBar(GArgReader& args)
 	// Determine the labels
 	while(labels.size() < pData->cols())
 	{
-		if(pData->relation().type() == GRelation::ARFF)
+		if(pData->relation().type() == WRelation::ARFF)
 		{
-			const GArffRelation* pRel = (GArffRelation*)&pData->relation();
+			const WArffRelation* pRel = (WArffRelation*)&pData->relation();
 			labels.push_back(pRel->attrName(labels.size()));
 		}
 		else
@@ -356,7 +356,7 @@ void PlotBar(GArgReader& args)
 	}
 
 	// Make the chart
-	GSVG svg(width, height);
+	WSVG svg(width, height);
 	svg.newChart(0, ymin, pData->cols() * thickness + (pData->cols() + 1) * spacing, ymax);
 	if(marks > 0)
 		svg.vertMarks((int)marks);
@@ -376,7 +376,7 @@ void PlotBar(GArgReader& args)
 		svg.rect(x, bot, thickness, hgt, c);
 
 		// Draw the label
-		svg.text(x + 0.5 * thickness, ymin - 10 * svg.vunit(), labels[i].c_str(), textSize, GSVG::End, 0xff000000, 45.0, serifs);
+		svg.text(x + 0.5 * thickness, ymin - 10 * svg.vunit(), labels[i].c_str(), textSize, WSVG::End, 0xff000000, 45.0, serifs);
 
 		x += thickness;
 		x += spacing;
@@ -384,7 +384,7 @@ void PlotBar(GArgReader& args)
 	svg.print(cout);
 }
 
-void PlotEquation(GArgReader& args, std::ostream& stream = std::cout)
+void PlotEquation(WArgReader& args, std::ostream& stream = std::cout)
 {
 	// Parse options
 	size_t width = 960;
@@ -446,7 +446,7 @@ void PlotEquation(GArgReader& args, std::ostream& stream = std::cout)
 		expr += args.pop_string();
 
 	// Parse the expression
-	GFunctionParser mfp;
+	WFunctionParser mfp;
 	mfp.add(expr.c_str());
 
 	// Make the chart
@@ -465,7 +465,7 @@ void PlotEquation(GArgReader& args, std::ostream& stream = std::cout)
 			ymax += dif;
 		}
 	}
-	GSVG svg(width, height);
+	WSVG svg(width, height);
 	svg.newChart(xmin, ymin, xmax, ymax, 0, 0, margin);
 	if(horizMarks)
 		svg.horizMarks((int)maxHorizMarks, !text);
@@ -482,7 +482,7 @@ void PlotEquation(GArgReader& args, std::ostream& stream = std::cout)
 	for(size_t i = 1; true; i++)
 	{
 		snprintf(szFuncName, sizeof(szFuncName), "f%d", (int)i);
-		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
+		WFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 		{
 			if(i == 1)
@@ -498,7 +498,7 @@ void PlotEquation(GArgReader& args, std::ostream& stream = std::cout)
 	{
 		// Find the function
 		snprintf(szFuncName, sizeof(szFuncName), "f%d", (int)i + 1);
-		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
+		WFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 			break;
 		if(pFunc->m_expectedParams != 1)
@@ -543,13 +543,13 @@ public:
 
 	ColType m_type;
 	size_t m_color;
-	GMatrix* m_pData;
+	WMatrix* m_pData;
 	size_t m_attrX;
 	size_t m_attrY;
 	double m_radius;
 	double m_thickness;
-	GFunctionParser* m_pFP;
-	GFunction* m_pFunc;
+	WFunctionParser* m_pFP;
+	WFunction* m_pFunc;
 
 	ScatterCol()
 	: m_pFP(nullptr), m_pFunc(nullptr)
@@ -561,7 +561,7 @@ public:
 		delete(m_pFP);
 	}
 
-	void parse(GArgReader& args, std::map<string, GMatrix*>& datasets)
+	void parse(WArgReader& args, std::map<string, WMatrix*>& datasets)
 	{
 		// Parse the color
 		m_type = Fixed;
@@ -604,12 +604,12 @@ public:
 
 		// Load the data
 		string filename = args.pop_string();
-		std::map<string, GMatrix*>::iterator it = datasets.find(filename);
+		std::map<string, WMatrix*>::iterator it = datasets.find(filename);
 		if(it == datasets.end())
 		{
-			m_pData = new GMatrix();
+			m_pData = new WMatrix();
 			m_pData->loadArff(filename.c_str());
-			datasets.insert(std::pair<string, GMatrix*>(filename, m_pData));
+			datasets.insert(std::pair<string, WMatrix*>(filename, m_pData));
 		}
 		else
 			m_pData = it->second;
@@ -621,7 +621,7 @@ public:
 				throw Ex("Sorry, only fixed colors are compatible with equations");
 			m_attrX = 0;
 			m_attrY = 0;
-			m_pFP = new GFunctionParser();
+			m_pFP = new WFunctionParser();
 			m_pFP->add(args.pop_string());
 			m_pFunc = m_pFP->getFunctionNoThrow("f");
 			if(!m_pFunc)
@@ -679,7 +679,7 @@ public:
 			return (double)i;
 	}
 
-	void plot(GSVG& svg, double xmin, double xmax, size_t width, bool logx, bool logy)
+	void plot(WSVG& svg, double xmin, double xmax, size_t width, bool logx, bool logy)
 	{
 		svg.add_raw("<g><!-- ");
 		svg.add_raw(attrName().c_str());
@@ -830,7 +830,7 @@ void determineRange(vector<ScatterCol>& cols, bool logx, bool forcePad, double p
 	}
 }
 
-void autolabel(vector<ScatterCol>& cols, bool horiz, double axisMin, double axisMax, GSVG& svg, bool serifs)
+void autolabel(vector<ScatterCol>& cols, bool horiz, double axisMin, double axisMax, WSVG& svg, bool serifs)
 {
 	// Count the unique attributes
 	size_t count = 1;
@@ -855,8 +855,8 @@ void autolabel(vector<ScatterCol>& cols, bool horiz, double axisMin, double axis
 		size_t attr = horiz ? cols[i].m_attrX : cols[i].m_attrY;
 		if(attr < cols[i].m_pData->cols())
 		{
-			if(cols[i].m_pData->relation().type() == GRelation::ARFF)
-				sLabel = ((GArffRelation*)&cols[i].m_pData->relation())->attrName(attr);
+			if(cols[i].m_pData->relation().type() == WRelation::ARFF)
+				sLabel = ((WArffRelation*)&cols[i].m_pData->relation())->attrName(attr);
 			else
 			{
 				sLabel = "Attr ";
@@ -877,14 +877,14 @@ void autolabel(vector<ScatterCol>& cols, bool horiz, double axisMin, double axis
 		// Draw the label
 		double plotPos = (axisMax - axisMin) * (double)(pos + 1) / (double)(count + 1) + axisMin;
 		if(horiz)
-			svg.text(plotPos, svg.horizLabelPos(), sLabel.c_str(), 1.5, GSVG::Middle, c, 0, serifs);
+			svg.text(plotPos, svg.horizLabelPos(), sLabel.c_str(), 1.5, WSVG::Middle, c, 0, serifs);
 		else
-			svg.text(svg.vertLabelPos(), plotPos, sLabel.c_str(), 1.5, GSVG::Middle, c, 90, serifs);
+			svg.text(svg.vertLabelPos(), plotPos, sLabel.c_str(), 1.5, WSVG::Middle, c, 90, serifs);
 		pos++;
 	}
 }
 /*
-void findGridPattern(GMatrix* pData, size_t attr, size_t& block, size_t& cycle)
+void findGridPattern(WMatrix* pData, size_t attr, size_t& block, size_t& cycle)
 {
 	// Count reps
 	for(block = 1; block < pData->rows(); block++)
@@ -918,7 +918,7 @@ void findGridPattern(GMatrix* pData, size_t attr, size_t& block, size_t& cycle)
 	}
 }
 */
-void makeGridDataSubset(GMatrix* pSource, GMatrix* pDest, size_t horizPos, size_t horizAttr, size_t horizBlock, size_t vertPos, size_t vertAttr, size_t vertBlock)
+void makeGridDataSubset(WMatrix* pSource, WMatrix* pDest, size_t horizPos, size_t horizAttr, size_t horizBlock, size_t vertPos, size_t vertAttr, size_t vertBlock)
 {
 	if(horizAttr == INVALID_INDEX)
 	{
@@ -953,9 +953,9 @@ void makeGridDataSubset(GMatrix* pSource, GMatrix* pDest, size_t horizPos, size_
 class DatasetDeleter
 {
 public:
-	std::map<string, GMatrix*>& datasets;
+	std::map<string, WMatrix*>& datasets;
 
-	DatasetDeleter(std::map<string, GMatrix*>& sets) : datasets(sets)
+	DatasetDeleter(std::map<string, WMatrix*>& sets) : datasets(sets)
 	{
 	}
 
@@ -968,7 +968,7 @@ public:
 	}
 };
 
-void PlotScatter(GArgReader& args)
+void PlotScatter(WArgReader& args)
 {
 	// Values pertaining to grids of charts
 	size_t horizCharts = 1;
@@ -994,7 +994,7 @@ void PlotScatter(GArgReader& args)
 	bool aspect = false;
 	string horizLabel;
 	string vertLabel;
-	GRand prng(0);
+	WRand prng(0);
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-size"))
@@ -1061,7 +1061,7 @@ void PlotScatter(GArgReader& args)
 		margin = (size_t)(std::min(width, height) * 0.2);
 
 	// Parse the colors
-	std::map<string, GMatrix*> datasets;
+	std::map<string, WMatrix*> datasets;
 	DatasetDeleter dsd(datasets);
 	vector<ScatterCol> cols;
 	while(args.size() > 0)
@@ -1091,7 +1091,7 @@ void PlotScatter(GArgReader& args)
 			ymax += dif;
 		}
 	}
-	GSVG svg(width, height, horizCharts, vertCharts);
+	WSVG svg(width, height, horizCharts, vertCharts);
 	for(size_t vert = 0; vert < vertCharts; vert++)
 	{
 		for(size_t horiz = 0; horiz < horizCharts; horiz++)
@@ -1108,11 +1108,11 @@ void PlotScatter(GArgReader& args)
 
 			// Draw the axis labels
 			if(horizLabel.length() > 0)
-				svg.text(0.5 * (xmin + xmax), svg.horizLabelPos(), horizLabel.c_str(), 1.5, GSVG::Middle, 0xff000000, 0, serifs);
+				svg.text(0.5 * (xmin + xmax), svg.horizLabelPos(), horizLabel.c_str(), 1.5, WSVG::Middle, 0xff000000, 0, serifs);
 			else
 				autolabel(cols, true, xmin, xmax, svg, serifs);
 			if(vertLabel.length() > 0)
-				svg.text(svg.vertLabelPos(), 0.5 * (ymin + ymax), vertLabel.c_str(), 1.5, GSVG::Middle, 0xff000000, 90, serifs);
+				svg.text(svg.vertLabelPos(), 0.5 * (ymin + ymax), vertLabel.c_str(), 1.5, WSVG::Middle, 0xff000000, 90, serifs);
 			else
 				autolabel(cols, false, ymin, ymax, svg, serifs);
 
@@ -1120,8 +1120,8 @@ void PlotScatter(GArgReader& args)
 			svg.clip();
 			/*			if(horizCharts > 1 || vertCharts > 1)
 			{
-				GMatrix temp(pData->relation().clone());
-				GReleaseDataHolder hTemp(&temp);
+				WMatrix temp(pData->relation().clone());
+				WReleaseDataHolder hTemp(&temp);
 				makeGridDataSubset(pData, &temp, horiz, horizAttr, horizBlock, vert, vertAttr, vertBlock);
 				for(size_t i = 0; i < cols.size(); i++)
 					cols[i].plot(svg, &temp, xmin, xmax, width);
@@ -1138,13 +1138,13 @@ void PlotScatter(GArgReader& args)
 	svg.print(cout);
 }
 
-void semanticMap(GArgReader& args)
+void semanticMap(WArgReader& args)
 {
 	string somFile = args.pop_string();
 	string dataFile = args.pop_string();
 
 	// Load the data
-	std::unique_ptr<GMatrix> hData(loadData(dataFile.c_str()));
+	std::unique_ptr<WMatrix> hData(loadData(dataFile.c_str()));
 	if(hData->rows() < 1)
 	{
 		throw Ex("The dataset is empty.  Cannot make a semantic map from "
@@ -1156,9 +1156,9 @@ void semanticMap(GArgReader& args)
 		         "without attributes.");
 	}
 	// Load the self organizing map
-	GDom doc;
+	WDom doc;
 	doc.loadJson(somFile.c_str());
-	GSelfOrganizingMap som(doc.root());
+	WSelfOrganizingMap som(doc.root());
 	// Parse the options
 	string outFilename = "semantic_map.svg";
 	unsigned labelCol = (unsigned int)hData->cols() - 1;
@@ -1244,15 +1244,15 @@ void semanticMap(GArgReader& args)
 	{
 		//winlist[i] holds the pointers to the rows of the dataset where
 		//nodes()[i] is the winner
-		std::vector<std::list<const GVec*> > winLists(som.nodes().size());
+		std::vector<std::list<const WVec*> > winLists(som.nodes().size());
 		for(size_t row = 0; row < hData->rows(); ++row)
 		{
-			const GVec& rowVec = hData->row(row);
+			const WVec& rowVec = hData->row(row);
 			size_t bestNode = som.bestMatch(rowVec);
 			winLists.at(bestNode).push_back(&rowVec);
 		}
 		//Calculate the variance of the labelCol column for each node
-		std::vector<std::list<const GVec*> >::const_iterator list;
+		std::vector<std::list<const WVec*> >::const_iterator list;
 		for(list = winLists.begin(); list != winLists.end(); ++list)
 		{
 			if(list->size() == 0)
@@ -1263,8 +1263,8 @@ void semanticMap(GArgReader& args)
 			else
 			{
 				//Copy the appropriate column into a 1-column matrix
-				GMatrix m(0, 1);
-				std::list<const GVec*>::const_iterator l;
+				WMatrix m(0, 1);
+				std::list<const WVec*>::const_iterator l;
 				for(l = list->begin(); l != list->end(); ++l)
 				{
 					m.newRow();
@@ -1280,8 +1280,8 @@ void semanticMap(GArgReader& args)
 	{
 		//Find the best data indices using only the first inputDimensions of
 		//the input data
-		GMatrix* pLessColumns = new GMatrix(*hData.get());
-		std::unique_ptr<GMatrix> lessColumns(pLessColumns);
+		WMatrix* pLessColumns = new WMatrix(*hData.get());
+		std::unique_ptr<WMatrix> lessColumns(pLessColumns);
 		while(lessColumns->cols() > som.inputDimensions())
 		{
 			lessColumns->deleteColumns(lessColumns->cols() - 1, 1);
@@ -1327,11 +1327,11 @@ void semanticMap(GArgReader& args)
 	cout << "Output written to \"" << outFilename << "\"\n";
 }
 
-void makeHistogram(GArgReader& args)
+void makeHistogram(WArgReader& args)
 {
 	// Load the data
-	GMatrix* pData = loadData(args.pop_string());
-	std::unique_ptr<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	std::unique_ptr<WMatrix> hData(pData);
 
 	// Parse options
 	size_t wid = 960;
@@ -1382,25 +1382,25 @@ void makeHistogram(GArgReader& args)
 			// Estimate the inverse density at each point
 			pData->sort(attr);
 			double laplace = 2.0 * (pData->row(pData->rows() - 1)[attr] - pData->row(0)[attr]) / pData->rows();
-			GMatrix invDensity(0, 2);
-			GVec& pBlock = invDensity.newRow();
+			WMatrix invDensity(0, 2);
+			WVec& pBlock = invDensity.newRow();
 			pBlock[0] = pData->row(0)[attr];
 			pBlock[1] = 0.0;
 			for(size_t i = k - 1; i < pData->rows(); i++)
 			{
 				double xBegin = pData->row(i + 1 - k)[attr];
 				double xEnd = pData->row(i)[attr];
-				GVec& pBlock2 = invDensity.newRow();
+				WVec& pBlock2 = invDensity.newRow();
 				pBlock2[0] = 0.5 * (xBegin + xEnd);
 				pBlock2[1] = (double)k / ((xEnd - xBegin + laplace) * pData->rows());
 			}
-			GVec& pBlock3 = invDensity.newRow();
+			WVec& pBlock3 = invDensity.newRow();
 			pBlock3[0] = pData->row(pData->rows() - 1)[attr];
 			pBlock3[1] = 0.0;
 
 			// Plot it
 			double maxHeight = invDensity.columnMax(1);
-			GSVG svg(wid, hgt);
+			WSVG svg(wid, hgt);
 			double xxmin = invDensity[0][0];
 			double xxmax = invDensity[invDensity.rows() - 1][0];
 			if(xmin != UNKNOWN_REAL_VALUE)
@@ -1439,9 +1439,9 @@ void makeHistogram(GArgReader& args)
 		}
 		else
 		{
-			GHistogram hist(*pData, attr, xmin, xmax, wid);
+			WHistogram hist(*pData, attr, xmin, xmax, wid);
 			double height = (ymax == UNKNOWN_REAL_VALUE ? hist.binLikelihood(hist.modeBin()) * 1.5 : ymax);
-			GSVG svg(wid, hgt);
+			WSVG svg(wid, hgt);
 			svg.newChart(hist.xmin(), 0.0, hist.xmax(), height);
 			for(double x = hist.xmin(); x <= hist.xmax(); x += svg.hunit())
 			{
@@ -1462,8 +1462,8 @@ void makeHistogram(GArgReader& args)
 	else
 	{
 		size_t buckets = pData->relation().valueCount(attr);
-		GTEMPBUF(double, hist, buckets);
-		GVecWrapper vw(hist, buckets);
+		WTEMPBUF(double, hist, buckets);
+		WVecWrapper vw(hist, buckets);
 		vw.fill(0.0);
 		for(size_t i = 0; i < pData->rows(); i++)
 		{
@@ -1473,7 +1473,7 @@ void makeHistogram(GArgReader& args)
 		}
 
 		// Plot it
-		GSVG svg(wid, hgt);
+		WSVG svg(wid, hgt);
 		svg.newChart(0.0, 0.0, (double)buckets, 1.0);
 		for(size_t i = 0; i < buckets; i++)
 			svg.rect((double)i, 0, 1, hist[i] / pData->rows(), (((i & 1) == 0) ? 0xff400000 : 0xff008040));
@@ -1487,13 +1487,13 @@ void makeHistogram(GArgReader& args)
 	}
 }
 
-void PrintStats(GArgReader& args)
+void PrintStats(WArgReader& args)
 {
 	// Load
 	const char* szFilename = args.pop_string();
-	GMatrix* pData = loadData(szFilename);
-	std::unique_ptr<GMatrix> hData(pData);
-	GArffRelation* pRel = (GArffRelation*)&pData->relation();
+	WMatrix* pData = loadData(szFilename);
+	std::unique_ptr<WMatrix> hData(pData);
+	WArffRelation* pRel = (WArffRelation*)&pData->relation();
 
 	// Options
 	bool printAll = false;
@@ -1523,7 +1523,7 @@ void PrintStats(GArgReader& args)
 		stepSize = 1;
 
 	// Print the arity
-	GMatrix arity(pRel->size(), 1);
+	WMatrix arity(pRel->size(), 1);
 	size_t maxArity = 0;
 	size_t sumArity = 0;
 	for(size_t i = 0; i < pRel->size(); i++)
@@ -1610,12 +1610,12 @@ void PrintStats(GArgReader& args)
 	}
 }
 
-void calcError(GArgReader& args)
+void calcError(WArgReader& args)
 {
-	GMatrix loader;
+	WMatrix loader;
 	loader.loadArff(args.pop_string());
 
-	GMatrix output(0, 1);
+	WMatrix output(0, 1);
 
 	int SSE = 0;
 	int MAPE = 1;
@@ -1637,7 +1637,7 @@ void calcError(GArgReader& args)
 
 	while(args.size() > 0)
 	{
-		GVec& row = output.newRow();
+		WVec& row = output.newRow();
 		row[0] = 0.0;
 
 		size_t col1 = args.pop_uint();
@@ -1681,10 +1681,10 @@ void calcError(GArgReader& args)
 	output.print(std::cout);
 }
 
-void percentSame(GArgReader& args)
+void percentSame(WArgReader& args)
 {
-	std::unique_ptr<GMatrix> hData1(loadData(args.pop_string()));
-	std::unique_ptr<GMatrix> hData2(loadData(args.pop_string()));
+	std::unique_ptr<WMatrix> hData1(loadData(args.pop_string()));
+	std::unique_ptr<WMatrix> hData2(loadData(args.pop_string()));
 	const size_t cols = hData1->cols();
 	const size_t rows = hData1->rows();
 	if(hData1->cols() != hData2->cols())
@@ -1736,8 +1736,8 @@ void percentSame(GArgReader& args)
 	vector<size_t> numSame(cols, 0);
 	for(size_t row = 0; row < rows; ++row)
 	{
-		const GVec& r1 = hData1->row(row);
-		const GVec& r2 = hData2->row(row);
+		const WVec& r1 = hData1->row(row);
+		const WVec& r2 = hData2->row(row);
 		for(size_t col = 0; col < cols; ++col)
 		{
 			if(r1[col] == r2[col]) { ++numSame[col]; }
@@ -1760,67 +1760,67 @@ void percentSame(GArgReader& args)
 	cout << std::endl;
 }
 
-void printDecisionTree(GArgReader& args)
+void printDecisionTree(WArgReader& args)
 {
 	// Load the model
-	GDom doc;
+	WDom doc;
 	if(args.size() < 1)
 		throw Ex("Model not specified.");
 	doc.loadJson(args.pop_string());
-	GLearnerLoader ll(true);
-	GSupervisedLearner* pModeler = ll.loadLearner(doc.root());
-	std::unique_ptr<GSupervisedLearner> hModeler(pModeler);
+	WLearnerLoader ll(true);
+	WSupervisedLearner* pModeler = ll.loadLearner(doc.root());
+	std::unique_ptr<WSupervisedLearner> hModeler(pModeler);
 	while(pModeler->isFilter())
-		pModeler = ((GFilter*)pModeler)->innerLearner();
+		pModeler = ((WFilter*)pModeler)->innerLearner();
 
 	if(args.size() > 0)
 	{
-		GMatrix data;
+		WMatrix data;
 		size_t ld;
 		loadDataWithSwitches(data, args, &ld);
 		size_t labelDims = pModeler->relLabels().size();
 		if(ld != labelDims)
 			throw Ex("Different number of label dims than the model was trained with");
-		GArffRelation relFeatures;
+		WArffRelation relFeatures;
 		relFeatures.addAttrs(data.relation(), 0, data.cols() - labelDims);
-		GArffRelation relLabels;
+		WArffRelation relLabels;
 		relLabels.addAttrs(data.relation(), data.cols() - labelDims, labelDims);
-		((GDecisionTree*)pModeler)->print(cout, &relFeatures, &relLabels);
+		((WDecisionTree*)pModeler)->print(cout, &relFeatures, &relLabels);
 	}
 	else
-		((GDecisionTree*)pModeler)->print(cout);
+		((WDecisionTree*)pModeler)->print(cout);
 }
 
 
-void printRandomForest(GArgReader& args)
+void printRandomForest(WArgReader& args)
 {
 	// Load the model
-	GDom doc;
+	WDom doc;
 	if(args.size() < 1)
 		throw Ex("Model not specified.");
 	doc.loadJson(args.pop_string());
-	GLearnerLoader ll(true);
-	GSupervisedLearner* pModeler = ll.loadLearner(doc.root());
-	std::unique_ptr<GSupervisedLearner> hModeler(pModeler);
+	WLearnerLoader ll(true);
+	WSupervisedLearner* pModeler = ll.loadLearner(doc.root());
+	std::unique_ptr<WSupervisedLearner> hModeler(pModeler);
 	while(pModeler->isFilter())
-		pModeler = ((GFilter*)pModeler)->innerLearner();
+		pModeler = ((WFilter*)pModeler)->innerLearner();
 
 	if(args.size() > 0)
 	{
 		size_t ld;
-		GMatrix data;
+		WMatrix data;
 		loadDataWithSwitches(data, args, &ld);
 		size_t labelDims = pModeler->relLabels().size();
 		if(ld != labelDims)
 			throw Ex("Different number of label dims than the model was trained with");
-		GArffRelation relFeatures;
+		WArffRelation relFeatures;
 		relFeatures.addAttrs(data.relation(), 0, data.cols() - labelDims);
-		GArffRelation relLabels;
+		WArffRelation relLabels;
 		relLabels.addAttrs(data.relation(), data.cols() - labelDims, labelDims);
-		((GRandomForest*)pModeler)->print(cout, &relFeatures, &relLabels);
+		((WRandomForest*)pModeler)->print(cout, &relFeatures, &relLabels);
 	}
 	else
-		((GRandomForest*)pModeler)->print(cout);
+		((WRandomForest*)pModeler)->print(cout);
 }
 
 
@@ -1828,10 +1828,10 @@ void printRandomForest(GArgReader& args)
 
 
 
-class GraphConnection : public GDynamicPageConnection
+class GraphConnection : public WDynamicPageConnection
 {
 public:
-	GraphConnection(SOCKET sock, GDynamicPageServer* pServer) : GDynamicPageConnection(sock, pServer)
+	GraphConnection(SOCKET sock, WDynamicPageServer* pServer) : WDynamicPageConnection(sock, pServer)
 	{
 	}
 
@@ -1839,10 +1839,10 @@ public:
 	{
 	}
 
-	void handleRequest(GDynamicPageSession* pSession, std::ostream& response) override;
+	void handleRequest(WDynamicPageSession* pSession, std::ostream& response) override;
 };
 
-class GraphServer : public GDynamicPageServer
+class GraphServer : public WDynamicPageServer
 {
 protected:
 	vector<UsageNode*> m_globals;
@@ -1851,7 +1851,7 @@ protected:
 public:
 	std::string m_basePath;
 
-	GraphServer(int port, GRand* pRand, bool networkAccessible);
+	GraphServer(int port, WRand* pRand, bool networkAccessible);
 	~GraphServer() override;
 
 protected:
@@ -1859,18 +1859,18 @@ protected:
 
 public:
 
-	GDynamicPageConnection* makeConnection(SOCKET sock) override
+	WDynamicPageConnection* makeConnection(SOCKET sock) override
 	{
 		return new GraphConnection(sock, this);
 	}
 };
 
-GraphServer::GraphServer(int port, GRand* pRand, bool networkAccessible) : GDynamicPageServer(port, pRand, networkAccessible), m_port(port)
+GraphServer::GraphServer(int port, WRand* pRand, bool networkAccessible) : WDynamicPageServer(port, pRand, networkAccessible), m_port(port)
 {
 	char buf[300];
-	GApp::appPath(buf, 256, true);
+	WApp::appPath(buf, 256, true);
 	strcat(buf, "web/");
-	GFile::condensePath(buf);
+	WFile::condensePath(buf);
 	m_basePath = buf;
 }
 
@@ -1889,12 +1889,12 @@ void GraphServer::onIdle(double secondsSinceLastRequest)
 }
 
 // virtual
-void GraphConnection::handleRequest(GDynamicPageSession* pDPSession, std::ostream& response)
+void GraphConnection::handleRequest(WDynamicPageSession* pDPSession, std::ostream& response)
 {
 	if(strcmp(m_szUrl, "/favicon.ico") == 0)
 		return;
 
-	GHttpParamParser pp(pDPSession->params(), false);
+	WHttpParamParser pp(pDPSession->params(), false);
 	const char* funcs = pp.find("funcs");
 	if(!funcs)
 		funcs = "-size 600 400\n-range -5 -1 5 4\n-aspect\n\"\ng(a,x) = ifnegative(a,-log(a*(-x)+1)/a,ifzero(a,x,(e^(a*x)-1)/a));\nf1(x) = g(-1,x);\nf2(x) = g(-0.5,x);\nf3(x) = g(0,x);\nf4(x) = g(0.5,x);\nf5(x) = g(1,x);\n\"";
@@ -1926,7 +1926,7 @@ void GraphConnection::handleRequest(GDynamicPageSession* pDPSession, std::ostrea
 			}
 		}
 	}
-	GArgReader eqargs((int)args.size(), args.data());
+	WArgReader eqargs((int)args.size(), args.data());
 
 	// Plot it
 	response << "\n\n\n<!-- BEGIN SVG FILE --->\n";
@@ -1986,11 +1986,11 @@ void GraphConnection::handleRequest(GDynamicPageSession* pDPSession, std::ostrea
 void LaunchBrowser(const char* szAddress)
 {
 	size_t addrLen = strlen(szAddress);
-	GTEMPBUF(char, szUrl, addrLen + 20);
+	WTEMPBUF(char, szUrl, addrLen + 20);
 	strcpy(szUrl, szAddress);
 	strcpy(szUrl + addrLen, "/graph");
 	cout << "Opening browser to: " << szUrl << "\n";
-	if(!GApp::openUrlInBrowser(szUrl))
+	if(!WApp::openUrlInBrowser(szUrl))
 	{
 		cout << "Failed to open the URL: " << szUrl << "\nPlease open this URL manually.\n";
 		cout.flush();
@@ -1998,7 +1998,7 @@ void LaunchBrowser(const char* szAddress)
 }
 
 // SAKBox: only this computer can connect unless -network is given
-void graph(GArgReader& args)
+void graph(WArgReader& args)
 {
 	bool networkAccessible = false;
 	while(args.size() > 0)
@@ -2010,7 +2010,7 @@ void graph(GArgReader& args)
 	}
 	int port = 8421;
 	size_t seed = (size_t)getpid() * (size_t)time(nullptr);
-	GRand prng(seed);
+	WRand prng(seed);
 	bool serverStarted = false;
 	try
 	{
@@ -2054,7 +2054,7 @@ void ShowUsage(const char* appName)
 	cout.flush();
 }
 
-void showError(GArgReader& args, const char* szAppName, const char* szMessage)
+void showError(WArgReader& args, const char* szAppName, const char* szMessage)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -2090,12 +2090,12 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	PathData pd;
-	GFile::parsePath(argv[0], &pd);
+	WFile::parsePath(argv[0], &pd);
 	const char* appName = argv[0] + pd.fileStart;
-	GArgReader args(argc, argv);
+	WArgReader args(argc, argv);
 	args.pop_string(); // advance past the app name
 	int ret = 0;
 	try

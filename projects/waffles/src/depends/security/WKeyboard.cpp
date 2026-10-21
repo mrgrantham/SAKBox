@@ -12,9 +12,9 @@
 // ---------------------
 //  DirectInput Version
 // ---------------------
-#include "GKeyboard.h"
+#include "WKeyboard.h"
 
-using namespace GClasses;
+using namespace WClasses;
 
 // This table converts keyboard scan codes to ASCII (no shift)
 // (SAKBox) a grid of scan codes, ten to a row
@@ -66,7 +66,7 @@ static unsigned char SCAN_CODES_WITH_SHIFT[] =
 // Caps = 58
 // Scroll Lock = 70
 
-GKeyboard::GKeyboard(LogKeyCallBack pLogKeyFunc, void* pParam)
+WKeyboard::WKeyboard(LogKeyCallBack pLogKeyFunc, void* pParam)
 {
 	HINSTANCE hInst = GetModuleHandle(0);
 	m_pLogKeyFunc = pLogKeyFunc;
@@ -89,7 +89,7 @@ GKeyboard::GKeyboard(LogKeyCallBack pLogKeyFunc, void* pParam)
 	m_bKeepWatching = true;
 }
 
-GKeyboard::~GKeyboard()
+WKeyboard::~WKeyboard()
 {
 	if(m_lpDIDKeyboard)
 		m_lpDIDKeyboard->Release();
@@ -97,13 +97,13 @@ GKeyboard::~GKeyboard()
 		m_lpDI->Release();
 }
 
-void GKeyboard::Update()
+void WKeyboard::Update()
 {
 	if(m_lpDIDKeyboard->GetDeviceState(256, &m_keys) == (DIERR_INPUTLOST | DIERR_NOTACQUIRED))
 		m_lpDIDKeyboard->Acquire();
 }
 
-void GKeyboard::Watch()
+void WKeyboard::Watch()
 {
 	// clear the old keys array
 	unsigned char bOldKeys[90];
@@ -163,14 +163,14 @@ void GKeyboard::Watch()
 //  X-Windows Version
 // -------------------
 
-#include "GKeyboard.h"
-#include <WClasses/GError.h>
+#include "WKeyboard.h"
+#include <WClasses/WError.h>
 #include <stdio.h>
 #include <X11/StringDefs.h>
 #include <X11/Xutil.h>
 #include <X11/Shell.h>
 
-using namespace GClasses;
+using namespace WClasses;
 
 int XlibErrorHandler(Display* pDisplay, XErrorEvent* pEvent)
 {
@@ -179,7 +179,7 @@ int XlibErrorHandler(Display* pDisplay, XErrorEvent* pEvent)
 	return 0;
 }
 
-GKeyboard::GKeyboard(LogKeyCallBack pLogKeyFunc, void* pParam)
+WKeyboard::WKeyboard(LogKeyCallBack pLogKeyFunc, void* pParam)
 {
 	m_pLogKeyFunc = pLogKeyFunc;
 	m_pParam = pParam;
@@ -188,11 +188,11 @@ GKeyboard::GKeyboard(LogKeyCallBack pLogKeyFunc, void* pParam)
 	XSetErrorHandler(XlibErrorHandler);
 }
 
-GKeyboard::~GKeyboard()
+WKeyboard::~WKeyboard()
 {
 }
 
-void GKeyboard::SelectAllChildWindows(Window root, unsigned long type)
+void WKeyboard::SelectAllChildWindows(Window root, unsigned long type)
 {
 	Window parent;
 	Window* pChildren;
@@ -200,7 +200,7 @@ void GKeyboard::SelectAllChildWindows(Window root, unsigned long type)
 
 	if(!XQueryTree(m_pDisplay, root, &root, &parent, &pChildren, &nChildCount))
 	{
-		//GAssert(false); // failed to query tree
+		//WAssert(false); // failed to query tree
 		return;
 	}
 	if(nChildCount <= 0)
@@ -216,7 +216,7 @@ void GKeyboard::SelectAllChildWindows(Window root, unsigned long type)
 	XFree((char*)pChildren);
 }
 
-void GKeyboard::GetKeyCode(XEvent* pEvent)
+void WKeyboard::GetKeyCode(XEvent* pEvent)
 {
 	if(!pEvent)
 	{
@@ -236,7 +236,7 @@ void GKeyboard::GetKeyCode(XEvent* pEvent)
 	}
 }
 
-void GKeyboard::Watch()
+void WKeyboard::Watch()
 {
 	XEvent event;
 	m_pDisplay = XOpenDisplay(":0");

@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fstream>
-#include "GLearnerLib.h"
+#include "WLearnerLib.h"
 #include <cassert>
 #include <time.h>
 #include <iostream>
@@ -34,7 +34,7 @@
 #include <vector>
 #include <set>
 
-using namespace GClasses;
+using namespace WClasses;
 
 using std::cout;
 using std::endl;
@@ -44,7 +44,7 @@ using std::vector;
 using std::set;
 using std::ostringstream;
 
-size_t GLearnerLib::getAttrVal(const char* szString, size_t attrCount)
+size_t WLearnerLib::getAttrVal(const char* szString, size_t attrCount)
 {
 	bool fromRight = false;
 	if(*szString == '*')
@@ -64,7 +64,7 @@ size_t GLearnerLib::getAttrVal(const char* szString, size_t attrCount)
 	return val;
 }
 
-void GLearnerLib::parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount)
+void WLearnerLib::parseAttributeList(vector<size_t>& list, WArgReader& args, size_t attrCount)
 {
 	const char* szList = args.pop_string();
 	set<size_t> attrSet;
@@ -132,15 +132,15 @@ void GLearnerLib::parseAttributeList(vector<size_t>& list, GArgReader& args, siz
 	}
 }
 
-void GLearnerLib::loadData(GArgReader& args, std::unique_ptr<GMatrix>& hFeaturesOut, std::unique_ptr<GMatrix>& hLabelsOut, bool requireMetadata)
+void WLearnerLib::loadData(WArgReader& args, std::unique_ptr<WMatrix>& hFeaturesOut, std::unique_ptr<WMatrix>& hLabelsOut, bool requireMetadata)
 {
 	// Load the dataset by extension
 	if(args.size() < 1)
 		throw Ex("Expected the filename of a datset. (Found end of arguments.)");
 	const char* szFilename = args.pop_string();
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
-	GMatrix data;
+	WFile::parsePath(szFilename, &pd);
+	WMatrix data;
 	vector<size_t> abortedCols;
 	vector<size_t> ambiguousCols;
 	const char* input_type;
@@ -163,7 +163,7 @@ void GLearnerLib::loadData(GArgReader& args, std::unique_ptr<GMatrix>& hFeatures
 	}
 	else if(_stricmp(input_type, "csv") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.parse(data, szFilename);
 		cerr << "\nParsing Report:\n";
 		for(size_t i = 0; i < data.cols(); i++)
@@ -173,7 +173,7 @@ void GLearnerLib::loadData(GArgReader& args, std::unique_ptr<GMatrix>& hFeatures
 	}
 	else if(_stricmp(input_type, "dat") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.setSeparator('\0');
 		parser.parse(data, szFilename);
 		cerr << "\nParsing Report:\n";
@@ -236,15 +236,15 @@ void GLearnerLib::loadData(GArgReader& args, std::unique_ptr<GMatrix>& hFeatures
 	}
 
 	// Split data into a feature matrix and a label matrix
-	GMatrix* pFeatures = new GMatrix(data, 0, 0, data.rows(), data.cols() - labelDims);
+	WMatrix* pFeatures = new WMatrix(data, 0, 0, data.rows(), data.cols() - labelDims);
 	hFeaturesOut.reset(pFeatures);
-	GMatrix* pLabels = new GMatrix(data, 0, data.cols() - labelDims, data.rows(), labelDims);
+	WMatrix* pLabels = new WMatrix(data, 0, data.cols() - labelDims, data.rows(), labelDims);
 	hLabelsOut.reset(pLabels);
 }
 
-GAgglomerativeTransducer* GLearnerLib::InstantiateAgglomerativeTransducer(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WAgglomerativeTransducer* WLearnerLib::InstantiateAgglomerativeTransducer(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GAgglomerativeTransducer* pTransducer = new GAgglomerativeTransducer();
+	WAgglomerativeTransducer* pTransducer = new WAgglomerativeTransducer();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-autotune"))
@@ -259,9 +259,9 @@ GAgglomerativeTransducer* GLearnerLib::InstantiateAgglomerativeTransducer(GArgRe
 	return pTransducer;
 }
 
-GBag* GLearnerLib::InstantiateBag(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WBag* WLearnerLib::InstantiateBag(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GBag* pEnsemble = new GBag();
+	WBag* pEnsemble = new WBag();
 	while(args.size() > 0)
 	{
 		if(args.if_pop("end"))
@@ -271,19 +271,19 @@ GBag* GLearnerLib::InstantiateBag(GArgReader& args, GMatrix* pFeatures, GMatrix*
 		for(int i = 0; i < instance_count; i++)
 		{
 			args.set_pos(arg_pos);
-			GTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
+			WTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
 			if(!pLearner->canGeneralize())
 			{
 				delete(pLearner);
 				throw Ex("bag does not support algorithms that cannot generalize.");
 			}
-			pEnsemble->addLearner((GSupervisedLearner*)pLearner);
+			pEnsemble->addLearner((WSupervisedLearner*)pLearner);
 		}
 	}
 	return pEnsemble;
 }
 
-GGradBoost* GLearnerLib::InstantiateGradBoost(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WGradBoost* WLearnerLib::InstantiateGradBoost(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
 	double trainingSizeRatio = 1;
 	size_t ensembleSize = 30;
@@ -304,23 +304,23 @@ GGradBoost* GLearnerLib::InstantiateGradBoost(GArgReader& args, GMatrix* pFeatur
 		}
 	}
 
-	GTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
+	WTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
 	if(!pLearner->canGeneralize())
 	{
 		delete(pLearner);
 		throw Ex("gradboost does not support algorithms that cannot generalize.");
 	}
 
-	GGradBoost* pEnsemble = new GGradBoost((GSupervisedLearner*)pLearner, true, new GLearnerLoader());
+	WGradBoost* pEnsemble = new WGradBoost((WSupervisedLearner*)pLearner, true, new WLearnerLoader());
 	pEnsemble->setTrainSize(trainingSizeRatio);
 	pEnsemble->setSize(ensembleSize);
 
 	return pEnsemble;
 }
 
-GBaselineLearner* GLearnerLib::InstantiateBaseline(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WBaselineLearner* WLearnerLib::InstantiateBaseline(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GBaselineLearner* pModel = new GBaselineLearner();
+	WBaselineLearner* pModel = new WBaselineLearner();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-autotune"))
@@ -335,9 +335,9 @@ GBaselineLearner* GLearnerLib::InstantiateBaseline(GArgReader& args, GMatrix* pF
 	return pModel;
 }
 
-GBayesianModelAveraging* GLearnerLib::InstantiateBMA(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WBayesianModelAveraging* WLearnerLib::InstantiateBMA(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GBayesianModelAveraging* pEnsemble = new GBayesianModelAveraging();
+	WBayesianModelAveraging* pEnsemble = new WBayesianModelAveraging();
 	while(args.size() > 0)
 	{
 		if(args.if_pop("end"))
@@ -347,21 +347,21 @@ GBayesianModelAveraging* GLearnerLib::InstantiateBMA(GArgReader& args, GMatrix* 
 		for(int i = 0; i < instance_count; i++)
 		{
 			args.set_pos(arg_pos);
-			GTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
+			WTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
 			if(!pLearner->canGeneralize())
 			{
 				delete(pLearner);
 				throw Ex("BMA does not support algorithms that cannot generalize.");
 			}
-			pEnsemble->addLearner((GSupervisedLearner*)pLearner);
+			pEnsemble->addLearner((WSupervisedLearner*)pLearner);
 		}
 	}
 	return pEnsemble;
 }
 
-GBayesianModelCombination* GLearnerLib::InstantiateBMC(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WBayesianModelCombination* WLearnerLib::InstantiateBMC(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GBayesianModelCombination* pEnsemble = new GBayesianModelCombination();
+	WBayesianModelCombination* pEnsemble = new WBayesianModelCombination();
 	size_t samples = 100;
 	while(args.next_is_flag())
 	{
@@ -380,19 +380,19 @@ GBayesianModelCombination* GLearnerLib::InstantiateBMC(GArgReader& args, GMatrix
 		for(int i = 0; i < instance_count; i++)
 		{
 			args.set_pos(arg_pos);
-			GTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
+			WTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
 			if(!pLearner->canGeneralize())
 			{
 				delete(pLearner);
 				throw Ex("BMC does not support algorithms that cannot generalize.");
 			}
-			pEnsemble->addLearner((GSupervisedLearner*)pLearner);
+			pEnsemble->addLearner((WSupervisedLearner*)pLearner);
 		}
 	}
 	return pEnsemble;
 }
 
-GResamplingAdaBoost* GLearnerLib::InstantiateBoost(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WResamplingAdaBoost* WLearnerLib::InstantiateBoost(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
 	double trainingSizeRatio = 1;
 	size_t ensembleSize = 30;
@@ -413,56 +413,56 @@ GResamplingAdaBoost* GLearnerLib::InstantiateBoost(GArgReader& args, GMatrix* pF
 		}
 	}
 
-	GTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
+	WTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
 	if(!pLearner->canGeneralize())
 	{
 		delete(pLearner);
 		throw Ex("boost does not support algorithms that cannot generalize.");
 	}
 
-	GResamplingAdaBoost* pEnsemble = new GResamplingAdaBoost((GSupervisedLearner*)pLearner, true, new GLearnerLoader());
+	WResamplingAdaBoost* pEnsemble = new WResamplingAdaBoost((WSupervisedLearner*)pLearner, true, new WLearnerLoader());
 	pEnsemble->setTrainSize(trainingSizeRatio);
 	pEnsemble->setSize(ensembleSize);
 
 	return pEnsemble;
 }
 
-GBucket* GLearnerLib::InstantiateBucket(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WBucket* WLearnerLib::InstantiateBucket(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GBucket* pEnsemble = new GBucket();
+	WBucket* pEnsemble = new WBucket();
 	while(args.size() > 0)
 	{
 		if(args.if_pop("end"))
 			break;
-		GTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
+		WTransducer* pLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
 		if(!pLearner->canGeneralize())
 		{
 			delete(pLearner);
 			throw Ex("crossvalidationselector does not support algorithms that cannot generalize.");
 		}
-		pEnsemble->addLearner((GSupervisedLearner*)pLearner);
+		pEnsemble->addLearner((WSupervisedLearner*)pLearner);
 	}
 	return pEnsemble;
 }
 
-GBucket* GLearnerLib::InstantiateCvdt(GArgReader& args)
+WBucket* WLearnerLib::InstantiateCvdt(WArgReader& args)
 {
 	size_t trees = args.pop_uint();
-	GBucket* pBucket = new GBucket();
-	GBag* pBag1 = new GBag();
+	WBucket* pBucket = new WBucket();
+	WBag* pBag1 = new WBag();
 	pBucket->addLearner(pBag1);
 	for(size_t i = 0; i < trees; i++)
-		pBag1->addLearner(new GDecisionTree());
-	GBag* pBag2 = new GBag();
+		pBag1->addLearner(new WDecisionTree());
+	WBag* pBag2 = new WBag();
 	pBucket->addLearner(pBag2);
 	for(size_t i = 0; i < trees; i++)
-		pBag2->addLearner(new GMeanMarginsTree());
+		pBag2->addLearner(new WMeanMarginsTree());
 	return pBucket;
 }
 
-GDecisionTree* GLearnerLib::InstantiateDecisionTree(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WDecisionTree* WLearnerLib::InstantiateDecisionTree(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GDecisionTree* pModel = new GDecisionTree();
+	WDecisionTree* pModel = new WDecisionTree();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-autotune"))
@@ -495,9 +495,9 @@ GDecisionTree* GLearnerLib::InstantiateDecisionTree(GArgReader& args, GMatrix* p
 	return pModel;
 }
 
-GGaussianProcess* GLearnerLib::InstantiateGaussianProcess(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WGaussianProcess* WLearnerLib::InstantiateGaussianProcess(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GGaussianProcess* pModel = new GGaussianProcess();
+	WGaussianProcess* pModel = new WGaussianProcess();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-noise"))
@@ -515,13 +515,13 @@ GGaussianProcess* GLearnerLib::InstantiateGaussianProcess(GArgReader& args, GMat
 		else if(args.if_pop("-kernel"))
 		{
 			if(args.if_pop("identity"))
-				pModel->setKernel(new GKernelIdentity());
+				pModel->setKernel(new WKernelIdentity());
 			else if(args.if_pop("chisquared"))
-				pModel->setKernel(new GKernelChiSquared());
+				pModel->setKernel(new WKernelChiSquared());
 			else if(args.if_pop("rbf"))
-				pModel->setKernel(new GKernelGaussianRBF(args.pop_double()));
+				pModel->setKernel(new WKernelGaussianRBF(args.pop_double()));
 			else if(args.if_pop("polynomial"))
-				pModel->setKernel(new GKernelPolynomial(args.pop_double(), args.pop_uint()));
+				pModel->setKernel(new WKernelPolynomial(args.pop_double(), args.pop_uint()));
 			else throw Ex("Unrecognized kernel: ", args.pop_string());
 		}
 		else
@@ -532,9 +532,9 @@ GGaussianProcess* GLearnerLib::InstantiateGaussianProcess(GArgReader& args, GMat
 	return pModel;
 }
 
-GGraphCutTransducer* GLearnerLib::InstantiateGraphCutTransducer(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WGraphCutTransducer* WLearnerLib::InstantiateGraphCutTransducer(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GGraphCutTransducer* pTransducer = new GGraphCutTransducer();
+	WGraphCutTransducer* pTransducer = new WGraphCutTransducer();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-autotune"))
@@ -551,52 +551,52 @@ GGraphCutTransducer* GLearnerLib::InstantiateGraphCutTransducer(GArgReader& args
 	return pTransducer;
 }
 
-GBayesianModelCombination* GLearnerLib::InstantiateHodgePodge(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WBayesianModelCombination* WLearnerLib::InstantiateHodgePodge(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GBayesianModelCombination* pEnsemble = new GBayesianModelCombination();
+	WBayesianModelCombination* pEnsemble = new WBayesianModelCombination();
 
-	GNaiveBayes* pNB = new GNaiveBayes();
+	WNaiveBayes* pNB = new WNaiveBayes();
 	pEnsemble->addLearner(pNB);
 
-	GNaiveBayes* pNB2 = new GNaiveBayes();
+	WNaiveBayes* pNB2 = new WNaiveBayes();
 	pNB2->setEquivalentSampleSize(1.0);
 	pEnsemble->addLearner(pNB2);
 
-	GLinearRegressor* pLin = new GLinearRegressor();
+	WLinearRegressor* pLin = new WLinearRegressor();
 	pEnsemble->addLearner(pLin);
 
-	GNaiveInstance* pNI = new GNaiveInstance();
+	WNaiveInstance* pNI = new WNaiveInstance();
 	pEnsemble->addLearner(pNI);
 
-	GNeuralNetLearner* pNN = new GNeuralNetLearner();
+	WNeuralNetLearner* pNN = new WNeuralNetLearner();
 	pEnsemble->addLearner(pNN);
 
-	GBaselineLearner* pBL = new GBaselineLearner();
+	WBaselineLearner* pBL = new WBaselineLearner();
 	pEnsemble->addLearner(pBL);
 
 	for(size_t i = 0; i < 6; i++)
 	{
-		GDecisionTree* pDT = new GDecisionTree();
+		WDecisionTree* pDT = new WDecisionTree();
 		pDT->setLeafThresh(6 * i);
 		pEnsemble->addLearner(pDT);
 	}
 
 	for(size_t i = 0; i < 12; i++)
 	{
-		GDecisionTree* pRDT = new GDecisionTree();
+		WDecisionTree* pRDT = new WDecisionTree();
 		pRDT->useRandomDivisions(1);
 		pEnsemble->addLearner(pRDT);
 	}
 
 	for(size_t i = 0; i < 8; i++)
 	{
-		GMeanMarginsTree* pMM = new GMeanMarginsTree();
+		WMeanMarginsTree* pMM = new WMeanMarginsTree();
 		pEnsemble->addLearner(pMM);
 	}
 
 	for(size_t i = 0; i < 5; i++)
 	{
-		GKNN* pKnn = new GKNN();
+		WKNN* pKnn = new WKNN();
 		pKnn->setNeighborCount(1);
 		pKnn->drawRandom(16);
 		pEnsemble->addLearner(pKnn);
@@ -604,7 +604,7 @@ GBayesianModelCombination* GLearnerLib::InstantiateHodgePodge(GArgReader& args, 
 
 	for(size_t i = 0; i < 3; i++)
 	{
-		GKNN* pKnn = new GKNN();
+		WKNN* pKnn = new WKNN();
 		pKnn->setNeighborCount(3);
 		pKnn->drawRandom(24);
 		pEnsemble->addLearner(pKnn);
@@ -613,9 +613,9 @@ GBayesianModelCombination* GLearnerLib::InstantiateHodgePodge(GArgReader& args, 
 	return pEnsemble;
 }
 
-GKNN* GLearnerLib::InstantiateKNN(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WKNN* WLearnerLib::InstantiateKNN(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GKNN* pModel = new GKNN();
+	WKNN* pModel = new WKNN();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-autotune"))
@@ -629,22 +629,22 @@ GKNN* GLearnerLib::InstantiateKNN(GArgReader& args, GMatrix* pFeatures, GMatrix*
 		else if(args.if_pop("-neighbors"))
 			pModel->setNeighborCount(args.pop_uint());
 		else if(args.if_pop("-equalweight"))
-			pModel->setInterpolationMethod(GKNN::Mean);
+			pModel->setInterpolationMethod(WKNN::Mean);
 		else if(args.if_pop("-scalefeatures"))
 			pModel->setOptimizeScaleFactors(true);
 		else if(args.if_pop("-cosine"))
-			pModel->setMetric(new GCosineSimilarity(), true);
+			pModel->setMetric(new WCosineSimilarity(), true);
 		else if(args.if_pop("-pearson"))
-			pModel->setMetric(new GPearsonCorrelation(), true);
+			pModel->setMetric(new WPearsonCorrelation(), true);
 		else
 			throw Ex("Invalid option: ", args.peek());
 	}
 	return pModel;
 }
 
-GLinearRegressor* GLearnerLib::InstantiateLinearRegressor(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WLinearRegressor* WLearnerLib::InstantiateLinearRegressor(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GLinearRegressor* pModel = new GLinearRegressor();
+	WLinearRegressor* pModel = new WLinearRegressor();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-autotune"))
@@ -659,9 +659,9 @@ GLinearRegressor* GLearnerLib::InstantiateLinearRegressor(GArgReader& args, GMat
 	return pModel;
 }
 
-GMeanMarginsTree* GLearnerLib::InstantiateMeanMarginsTree(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WMeanMarginsTree* WLearnerLib::InstantiateMeanMarginsTree(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GMeanMarginsTree* pModel = new GMeanMarginsTree();
+	WMeanMarginsTree* pModel = new WMeanMarginsTree();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-autotune"))
@@ -676,9 +676,9 @@ GMeanMarginsTree* GLearnerLib::InstantiateMeanMarginsTree(GArgReader& args, GMat
 	return pModel;
 }
 
-GNaiveBayes* GLearnerLib::InstantiateNaiveBayes(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WNaiveBayes* WLearnerLib::InstantiateNaiveBayes(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GNaiveBayes* pModel = new GNaiveBayes();
+	WNaiveBayes* pModel = new WNaiveBayes();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-autotune"))
@@ -695,9 +695,9 @@ GNaiveBayes* GLearnerLib::InstantiateNaiveBayes(GArgReader& args, GMatrix* pFeat
 	return pModel;
 }
 
-GNaiveInstance* GLearnerLib::InstantiateNaiveInstance(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WNaiveInstance* WLearnerLib::InstantiateNaiveInstance(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GNaiveInstance* pModel = new GNaiveInstance();
+	WNaiveInstance* pModel = new WNaiveInstance();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-"))
@@ -714,9 +714,9 @@ GNaiveInstance* GLearnerLib::InstantiateNaiveInstance(GArgReader& args, GMatrix*
 	return pModel;
 }
 
-GNeighborTransducer* GLearnerLib::InstantiateNeighborTransducer(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WNeighborTransducer* WLearnerLib::InstantiateNeighborTransducer(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GNeighborTransducer* pTransducer = new GNeighborTransducer();
+	WNeighborTransducer* pTransducer = new WNeighborTransducer();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-autotune"))
@@ -733,39 +733,39 @@ GNeighborTransducer* GLearnerLib::InstantiateNeighborTransducer(GArgReader& args
 	return pTransducer;
 }
 
-GBlock* GLearnerLib::instantiateBlock(GArgReader& args)
+WBlock* WLearnerLib::instantiateBlock(WArgReader& args)
 {
 	const char* szBlockName = args.pop_string();
 	if(strcmp(szBlockName, "linear") == 0)
-		return new GBlockLinear(args.pop_uint(), args.pop_uint());
+		return new WBlockLinear(args.pop_uint(), args.pop_uint());
 	/*	else if(strcmp(szBlockName, "bentidentity") == 0)
-		return new GBlockBentIdentity();
+		return new WBlockBentIdentity();
 	else if(strcmp(szBlockName, "gaussian") == 0)
-		return new GBlockGaussian();
+		return new WBlockGaussian();
 	else if(strcmp(szBlockName, "identity") == 0)
-		return new GBlockIdentity();
+		return new WBlockIdentity();
 	else if(strcmp(szBlockName, "logistic") == 0)
-		return new GBlockLogistic();
+		return new WBlockLogistic();
 	else if(strcmp(szBlockName, "rectifier") == 0)
-		return new GBlockRectifier();
+		return new WBlockRectifier();
 	else if(strcmp(szBlockName, "leakyrectifier") == 0)
-		return new GBlockLeakyRectifier();
+		return new WBlockLeakyRectifier();
 	else if(strcmp(szBlockName, "sigexp") == 0)
-		return new GBlockSigExp();
+		return new WBlockSigExp();
 	else if(strcmp(szBlockName, "sine") == 0)
-		return new GBlockSine();
+		return new WBlockSine();
 	else if(strcmp(szBlockName, "softplus") == 0)
-		return new GBlockSoftPlus();
+		return new WBlockSoftPlus();
 	else if(strcmp(szBlockName, "softroot") == 0)
-		return new GBlockSoftRoot();*/
+		return new WBlockSoftRoot();*/
 	else if(strcmp(szBlockName, "tanh") == 0)
-		return new GBlockTanh(args.pop_uint());
+		return new WBlockTanh(args.pop_uint());
 	throw Ex("Unrecognized block type: ", szBlockName);
 }
 
-GNeuralNetLearner* GLearnerLib::InstantiateNeuralNet(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WNeuralNetLearner* WLearnerLib::InstantiateNeuralNet(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
-	GNeuralNetLearner* pModel = new GNeuralNetLearner();
+	WNeuralNetLearner* pModel = new WNeuralNetLearner();
 	while(args.next_is_flag())
 	{
 		if(args.if_pop("-add"))
@@ -794,7 +794,7 @@ GNeuralNetLearner* GLearnerLib::InstantiateNeuralNet(GArgReader& args, GMatrix* 
 	return pModel;
 }
 
-GRandomForest* GLearnerLib::InstantiateRandomForest(GArgReader& args)
+WRandomForest* WLearnerLib::InstantiateRandomForest(WArgReader& args)
 {
 	size_t trees = args.pop_uint();
 	size_t samples = 1;
@@ -805,10 +805,10 @@ GRandomForest* GLearnerLib::InstantiateRandomForest(GArgReader& args)
 		else
 			throw Ex("Invalid random forest option: ", args.peek());
 	}
-	return new GRandomForest(trees, samples);
+	return new WRandomForest(trees, samples);
 }
 
-void GLearnerLib::showInstantiateAlgorithmError(const char* szMessage, GArgReader& args)
+void WLearnerLib::showInstantiateAlgorithmError(const char* szMessage, WArgReader& args)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -839,12 +839,12 @@ void GLearnerLib::showInstantiateAlgorithmError(const char* szMessage, GArgReade
 	cerr.flush();
 }
 
-GTransducer* GLearnerLib::InstantiateAlgorithm(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels)
+WTransducer* WLearnerLib::InstantiateAlgorithm(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels)
 {
 	int argPos = args.get_pos();
 	if(args.size() < 1)
 		throw Ex("No algorithm specified.");
-	GTransducer* pAlg = nullptr;
+	WTransducer* pAlg = nullptr;
 	try
 	{
 		if(args.if_pop("agglomerativetransducer"))
@@ -901,15 +901,15 @@ GTransducer* GLearnerLib::InstantiateAlgorithm(GArgReader& args, GMatrix* pFeatu
 	}
 	if(pAlg->canGeneralize())
 	{
-		GSupervisedLearner* pLearner = (GSupervisedLearner*)pAlg;
-		pAlg = new GAutoFilter(pLearner);
+		WSupervisedLearner* pLearner = (WSupervisedLearner*)pAlg;
+		pAlg = new WAutoFilter(pLearner);
 	}
 	return pAlg;
 }
 
-void GLearnerLib::autoTuneDecisionTree(GMatrix& features, GMatrix& labels)
+void WLearnerLib::autoTuneDecisionTree(WMatrix& features, WMatrix& labels)
 {
-	GDecisionTree dt;
+	WDecisionTree dt;
 	dt.autoTune(features, labels);
 	cout << "decisiontree";
 	if(dt.leafThresh() != 1)
@@ -919,9 +919,9 @@ void GLearnerLib::autoTuneDecisionTree(GMatrix& features, GMatrix& labels)
 	cout << "\n";
 }
 
-void GLearnerLib::autoTuneKNN(GMatrix& features, GMatrix& labels)
+void WLearnerLib::autoTuneKNN(WMatrix& features, WMatrix& labels)
 {
-	GKNN model;
+	WKNN model;
 	model.autoTune(features, labels);
 	cout << "knn";
 	if(model.neighborCount() != 1)
@@ -929,45 +929,45 @@ void GLearnerLib::autoTuneKNN(GMatrix& features, GMatrix& labels)
 	cout << "\n";
 }
 
-void GLearnerLib::autoTuneNeuralNet(GMatrix& features, GMatrix& labels)
+void WLearnerLib::autoTuneNeuralNet(WMatrix& features, WMatrix& labels)
 {
 	throw Ex("Cannot autotune neural net at this time. Recent changes to the way optimization works have broken this functionality.");
 }
 
-void GLearnerLib::autoTuneNaiveBayes(GMatrix& features, GMatrix& labels)
+void WLearnerLib::autoTuneNaiveBayes(WMatrix& features, WMatrix& labels)
 {
-	GNaiveBayes model;
+	WNaiveBayes model;
 	model.autoTune(features, labels);
 	cout << "naivebayes";
 	cout << " -ess " << model.equivalentSampleSize();
 	cout << "\n";
 }
 
-void GLearnerLib::autoTuneNaiveInstance(GMatrix& features, GMatrix& labels)
+void WLearnerLib::autoTuneNaiveInstance(WMatrix& features, WMatrix& labels)
 {
-	GNaiveInstance model;
+	WNaiveInstance model;
 	model.autoTune(features, labels);
 	cout << "naiveinstance";
 	cout << " -neighbors " << model.neighbors();
 	cout << "\n";
 }
 
-void GLearnerLib::autoTuneGraphCutTransducer(GMatrix& features, GMatrix& labels)
+void WLearnerLib::autoTuneGraphCutTransducer(WMatrix& features, WMatrix& labels)
 {
-	GGraphCutTransducer transducer;
+	WGraphCutTransducer transducer;
 	transducer.autoTune(features, labels);
 	cout << "graphcuttransducer";
 	cout << " -neighbors " << transducer.neighbors();
 	cout << "\n";
 }
 
-void GLearnerLib::autoTune(GArgReader& args)
+void WLearnerLib::autoTune(WArgReader& args)
 {
 	// Load the data
-	std::unique_ptr<GMatrix> hFeatures, hLabels;
+	std::unique_ptr<WMatrix> hFeatures, hLabels;
 	loadData(args, hFeatures, hLabels);
-	GMatrix* pFeatures = hFeatures.get();
-	GMatrix* pLabels = hLabels.get();
+	WMatrix* pFeatures = hFeatures.get();
+	WMatrix* pLabels = hLabels.get();
 
 	// Load the model name
 	const char* szModel = args.pop_string();
@@ -991,7 +991,7 @@ void GLearnerLib::autoTune(GArgReader& args)
 		throw Ex("Sorry, autotune does not currently support a model named ", szModel, ".");
 }
 
-void GLearnerLib::Train(GArgReader& args)
+void WLearnerLib::Train(WArgReader& args)
 {
 	// Parse options
 	size_t seed = getpid() * (unsigned int)time(nullptr);
@@ -1007,27 +1007,27 @@ void GLearnerLib::Train(GArgReader& args)
 	}
 
 	// Load the data
-	std::unique_ptr<GMatrix> hFeatures, hLabels;
+	std::unique_ptr<WMatrix> hFeatures, hLabels;
 	loadData(args, hFeatures, hLabels);
-	GMatrix* pFeatures = hFeatures.get();
-	GMatrix* pLabels = hLabels.get();
+	WMatrix* pFeatures = hFeatures.get();
+	WMatrix* pLabels = hLabels.get();
 
 	// Instantiate the modeler
-	GTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
+	WTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
 	pSupLearner->rand().setSeed(seed);
-	std::unique_ptr<GTransducer> hModel(pSupLearner);
+	std::unique_ptr<WTransducer> hModel(pSupLearner);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	if(!pSupLearner->canGeneralize())
 		throw Ex("This algorithm cannot be \"trained\". It can only be used to \"transduce\".");
-	GSupervisedLearner* pModel = (GSupervisedLearner*)pSupLearner;
+	WSupervisedLearner* pModel = (WSupervisedLearner*)pSupLearner;
 
 	// Train the modeler
 	pModel->train(*pFeatures, *pLabels);
 
 	// Output the trained model
-	GDom doc;
-	GDomNode* pRoot = pModel->serialize(&doc);
+	WDom doc;
+	WDomNode* pRoot = pModel->serialize(&doc);
 	doc.setRoot(pRoot);
 	if(embed)
 		doc.writeJsonCpp(cout);
@@ -1035,7 +1035,7 @@ void GLearnerLib::Train(GArgReader& args)
 		doc.writeJson(cout);
 }
 
-void GLearnerLib::predict(GArgReader& args)
+void WLearnerLib::predict(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -1048,20 +1048,20 @@ void GLearnerLib::predict(GArgReader& args)
 	}
 
 	// Load the model
-	GDom doc;
+	WDom doc;
 	if(args.size() < 1)
 		throw Ex("Model not specified.");
 	doc.loadJson(args.pop_string());
-	GLearnerLoader ll(true);
-	GSupervisedLearner* pModeler = ll.loadLearner(doc.root());
-	std::unique_ptr<GSupervisedLearner> hModeler(pModeler);
+	WLearnerLoader ll(true);
+	WSupervisedLearner* pModeler = ll.loadLearner(doc.root());
+	std::unique_ptr<WSupervisedLearner> hModeler(pModeler);
 	pModeler->rand().setSeed(seed);
 
 	// Load the data
-	std::unique_ptr<GMatrix> hFeatures, hLabels;
+	std::unique_ptr<WMatrix> hFeatures, hLabels;
 	loadData(args, hFeatures, hLabels, true);
-	GMatrix* pFeatures = hFeatures.get();
-	GMatrix* pLabels = hLabels.get();
+	WMatrix* pFeatures = hFeatures.get();
+	WMatrix* pLabels = hLabels.get();
 	if(pLabels->cols() != pModeler->relLabels().size())
 		throw Ex("The model was trained with ", to_str(pModeler->relLabels().size()), " label dims, but the specified dataset has ", to_str(pLabels->cols()));
 	if(!pFeatures->relation().isCompatible(pModeler->relFeatures()) || !pLabels->relation().isCompatible(pModeler->relLabels()))
@@ -1071,8 +1071,8 @@ void GLearnerLib::predict(GArgReader& args)
 	// Test
 	for(size_t i = 0; i < pFeatures->rows(); i++)
 	{
-		GVec& featureVec = pFeatures->row(i);
-		GVec& labelVec = pLabels->row(i);
+		WVec& featureVec = pFeatures->row(i);
+		WVec& labelVec = pLabels->row(i);
 		pModeler->predict(featureVec, labelVec);
 	}
 
@@ -1080,7 +1080,7 @@ void GLearnerLib::predict(GArgReader& args)
 	pLabels->print(cout);
 }
 
-void GLearnerLib::predictDistribution(GArgReader& args)
+void WLearnerLib::predictDistribution(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -1093,20 +1093,20 @@ void GLearnerLib::predictDistribution(GArgReader& args)
 	}
 
 	// Load the model
-	GDom doc;
+	WDom doc;
 	if(args.size() < 1)
 		throw Ex("Model not specified.");
 	doc.loadJson(args.pop_string());
-	GLearnerLoader ll(true);
-	GSupervisedLearner* pModeler = ll.loadLearner(doc.root());
-	std::unique_ptr<GSupervisedLearner> hModeler(pModeler);
+	WLearnerLoader ll(true);
+	WSupervisedLearner* pModeler = ll.loadLearner(doc.root());
+	std::unique_ptr<WSupervisedLearner> hModeler(pModeler);
 	pModeler->rand().setSeed(seed);
 
 	// Load the data
-	std::unique_ptr<GMatrix> hFeatures, hLabels;
+	std::unique_ptr<WMatrix> hFeatures, hLabels;
 	loadData(args, hFeatures, hLabels, true);
-	GMatrix* pFeatures = hFeatures.get();
-	GMatrix* pLabels = hLabels.get();
+	WMatrix* pFeatures = hFeatures.get();
+	WMatrix* pLabels = hLabels.get();
 	if(pLabels->cols() != pModeler->relLabels().size())
 		throw Ex("The model was trained with ", to_str(pModeler->relLabels().size()), " label dims, but the specified dataset has ", to_str(pLabels->cols()));
 	if(!pFeatures->relation().isCompatible(pModeler->relFeatures()) || !pLabels->relation().isCompatible(pModeler->relLabels()))
@@ -1115,13 +1115,13 @@ void GLearnerLib::predictDistribution(GArgReader& args)
 	// Predict
 
 	// If the model doesn't support probability distribution and  we'd like to
-	// return result we should wrap it with GLabelFilter like it's done
-	// with the GLinearRegressor
+	// return result we should wrap it with WLabelFilter like it's done
+	// with the WLinearRegressor
 
 	// Set ARFF header
 
-	// TODO: Not nice! Better have all GRelation type implement attrName().
-	GArffRelation* pModelRelLabels = (GArffRelation*)&pModeler->relLabels();
+	// TODO: Not nice! Better have all WRelation type implement attrName().
+	WArffRelation* pModelRelLabels = (WArffRelation*)&pModeler->relLabels();
 	const size_t modelRelLabelsSize = pModelRelLabels->size();
 
 	cout << "@RELATION" << " " << pModelRelLabels->name() << endl;
@@ -1148,8 +1148,8 @@ void GLearnerLib::predictDistribution(GArgReader& args)
 	     << "@data" << "\n"
 	     << endl;
 
-	GPrediction* p = new GPrediction[modelRelLabelsSize];
-	std::unique_ptr<GPrediction[]> hp(p);
+	WPrediction* p = new WPrediction[modelRelLabelsSize];
+	std::unique_ptr<WPrediction[]> hp(p);
 	for(size_t i = 0; i < pFeatures->rows(); ++i)
 	{
 		pModeler->predictDistribution(pFeatures->row(i), p);
@@ -1160,13 +1160,13 @@ void GLearnerLib::predictDistribution(GArgReader& args)
 
 			if(p[j].isContinuous())
 			{
-				GNormalDistribution* pNorm = p[j].asNormal();
+				WNormalDistribution* pNorm = p[j].asNormal();
 				cout << pNorm->mean() << "," << pNorm->variance();
 			}
 			else
 			{
-				GCategoricalDistribution* pCat = p[j].asCategorical();
-				GVec& values = pCat->values(pCat->valueCount());
+				WCategoricalDistribution* pCat = p[j].asCategorical();
+				WVec& values = pCat->values(pCat->valueCount());
 				for(size_t k = 0; k < pCat->valueCount(); ++k)
 				{
 					if(k > 0)
@@ -1179,7 +1179,7 @@ void GLearnerLib::predictDistribution(GArgReader& args)
 	}
 }
 
-void GLearnerLib::leftJustifiedString(const char* pIn, char* pOut, size_t outLen)
+void WLearnerLib::leftJustifiedString(const char* pIn, char* pOut, size_t outLen)
 {
 	for([[maybe_unused]] size_t i = 0; outLen > 0 && *pIn != '\0'; i++)
 	{
@@ -1194,7 +1194,7 @@ void GLearnerLib::leftJustifiedString(const char* pIn, char* pOut, size_t outLen
 	*pOut = '\0';
 }
 
-void GLearnerLib::rightJustifiedString(const char* pIn, char* pOut, size_t outLen)
+void WLearnerLib::rightJustifiedString(const char* pIn, char* pOut, size_t outLen)
 {
 	size_t inLen = strlen(pIn);
 	size_t spaces = std::max(outLen, inLen) - inLen;
@@ -1216,7 +1216,7 @@ void GLearnerLib::rightJustifiedString(const char* pIn, char* pOut, size_t outLe
 ///
 ///\param pRelation a pointer to the relation from which the
 ///                 variable_idx-'th variable is taken. Cannot be null
-std::string GLearnerLib::machineReadableConfusionHeader(std::size_t variable_idx, const GRelation* pRelation)
+std::string WLearnerLib::machineReadableConfusionHeader(std::size_t variable_idx, const WRelation* pRelation)
 {
 	assert(pRelation != nullptr);
 	ostringstream out;
@@ -1253,7 +1253,7 @@ std::string GLearnerLib::machineReadableConfusionHeader(std::size_t variable_idx
 ///\param pMatrix a pointer to the confusion matrix. (*pMatrix)[r][c]
 ///               is the number of times that r was expected and c was
 ///               received. Cannot be NULL.
-std::string GLearnerLib::machineReadableConfusionData(std::size_t variable_idx, const GRelation* pRelation, GMatrix const* const pMatrix)
+std::string WLearnerLib::machineReadableConfusionData(std::size_t variable_idx, const WRelation* pRelation, WMatrix const* const pMatrix)
 {
 	ostringstream out;
 	{
@@ -1261,7 +1261,7 @@ std::string GLearnerLib::machineReadableConfusionData(std::size_t variable_idx, 
 		pRelation->printAttrName(v_name, variable_idx);
 		out << v_name.str() << "," << variable_idx;
 	}
-	const GMatrix& m = *pMatrix;
+	const WMatrix& m = *pMatrix;
 	std::size_t n = pRelation->valueCount(variable_idx);
 	for(std::size_t r = 0; r < n; ++r)
 	{
@@ -1289,7 +1289,7 @@ std::string GLearnerLib::machineReadableConfusionData(std::size_t variable_idx, 
 ///                   pRelation. Row r, column c of matrixArray[i] is the
 ///                   number of times the value r of the attribute was expected
 ///                   and c was encountered.
-void GLearnerLib::printMachineReadableConfusionMatrices(const GRelation* pRelation, vector<GMatrix*>& matrixArray)
+void WLearnerLib::printMachineReadableConfusionMatrices(const WRelation* pRelation, vector<WMatrix*>& matrixArray)
 {
 	for(size_t i = 0; i < matrixArray.size(); i++)
 	{
@@ -1303,7 +1303,7 @@ void GLearnerLib::printMachineReadableConfusionMatrices(const GRelation* pRelati
 	}
 }
 
-void GLearnerLib::printConfusionMatrices(const GRelation* pRelation, vector<GMatrix*>& matrixArray)
+void WLearnerLib::printConfusionMatrices(const WRelation* pRelation, vector<WMatrix*>& matrixArray)
 {
 	cout << "\n(Rows=expected values, Cols=predicted values, Elements=number of occurrences)\n\n";
 	char buf[41];
@@ -1312,7 +1312,7 @@ void GLearnerLib::printConfusionMatrices(const GRelation* pRelation, vector<GMat
 	{
 		if(matrixArray[i] == nullptr)
 			continue;
-		GMatrix& cm = *matrixArray[i];
+		WMatrix& cm = *matrixArray[i];
 
 		// Print attribute name
 		oss.precision(9);
@@ -1356,7 +1356,7 @@ void GLearnerLib::printConfusionMatrices(const GRelation* pRelation, vector<GMat
 	}
 }
 
-void GLearnerLib::Test(GArgReader& args)
+void WLearnerLib::Test(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -1375,20 +1375,20 @@ void GLearnerLib::Test(GArgReader& args)
 	}
 
 	// Load the model
-	GDom doc;
+	WDom doc;
 	if(args.size() < 1)
 		throw Ex("Model not specified.");
 	doc.loadJson(args.pop_string());
-	GLearnerLoader ll(true);
-	GSupervisedLearner* pModeler = ll.loadLearner(doc.root());
-	std::unique_ptr<GSupervisedLearner> hModeler(pModeler);
+	WLearnerLoader ll(true);
+	WSupervisedLearner* pModeler = ll.loadLearner(doc.root());
+	std::unique_ptr<WSupervisedLearner> hModeler(pModeler);
 	pModeler->rand().setSeed(seed);
 
 	// Load the data
-	std::unique_ptr<GMatrix> hFeatures, hLabels;
+	std::unique_ptr<WMatrix> hFeatures, hLabels;
 	loadData(args, hFeatures, hLabels, true);
-	GMatrix* pFeatures = hFeatures.get();
-	GMatrix* pLabels = hLabels.get();
+	WMatrix* pFeatures = hFeatures.get();
+	WMatrix* pLabels = hLabels.get();
 	if(!pLabels->relation().isCompatible(pModeler->relLabels()))
 		throw Ex("This dataset is not compatible with the one used to train the model. (The meta-data is different.)");
 
@@ -1402,7 +1402,7 @@ void GLearnerLib::Test(GArgReader& args)
 
 	if(confusion || confusioncsv)
 	{
-		vector<GMatrix*> confusionMatrices;
+		vector<WMatrix*> confusionMatrices;
 		pModeler->confusion(*pFeatures, *pLabels, confusionMatrices);
 
 		// Print the confusion matrix
@@ -1418,7 +1418,7 @@ void GLearnerLib::Test(GArgReader& args)
 	}
 }
 
-void GLearnerLib::Transduce(GArgReader& args)
+void WLearnerLib::Transduce(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -1435,19 +1435,19 @@ void GLearnerLib::Transduce(GArgReader& args)
 		throw Ex("No labeled set specified.");
 
 	// Load the labeled and unlabeled sets
-	std::unique_ptr<GMatrix> hFeatures1, hLabels1, hFeatures2, hLabels2;
+	std::unique_ptr<WMatrix> hFeatures1, hLabels1, hFeatures2, hLabels2;
 	loadData(args, hFeatures1, hLabels1, true);
 	loadData(args, hFeatures2, hLabels2, true);
-	GMatrix* pFeatures1 = hFeatures1.get();
-	GMatrix* pLabels1 = hLabels1.get();
-	GMatrix* pFeatures2 = hFeatures2.get();
-	GMatrix* pLabels2 = hLabels2.get();
+	WMatrix* pFeatures1 = hFeatures1.get();
+	WMatrix* pLabels1 = hLabels1.get();
+	WMatrix* pFeatures2 = hFeatures2.get();
+	WMatrix* pLabels2 = hLabels2.get();
 	if(pFeatures1->cols() != pFeatures2->cols() || pLabels1->cols() != pLabels2->cols())
 		throw Ex("The labeled and unlabeled datasets must have the same number of columns. (The labels in the unlabeled set are just place-holders, and will be overwritten.)");
 
 	// Instantiate the modeler
-	GTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures1, pLabels1);
-	std::unique_ptr<GTransducer> hModel(pSupLearner);
+	WTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures1, pLabels1);
+	std::unique_ptr<WTransducer> hModel(pSupLearner);
 	pSupLearner->rand().setSeed(seed);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
@@ -1459,7 +1459,7 @@ void GLearnerLib::Transduce(GArgReader& args)
 	pLabels3->print(cout);
 }
 
-void GLearnerLib::TransductiveAccuracy(GArgReader& args)
+void WLearnerLib::TransductiveAccuracy(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -1478,25 +1478,25 @@ void GLearnerLib::TransductiveAccuracy(GArgReader& args)
 	}
 
 	// Load the data sets
-	std::unique_ptr<GMatrix> hFeatures1, hLabels1, hFeatures2, hLabels2;
+	std::unique_ptr<WMatrix> hFeatures1, hLabels1, hFeatures2, hLabels2;
 	loadData(args, hFeatures1, hLabels1, true);
 	loadData(args, hFeatures2, hLabels2, true);
-	GMatrix* pFeatures1 = hFeatures1.get();
-	GMatrix* pLabels1 = hLabels1.get();
-	GMatrix* pFeatures2 = hFeatures2.get();
-	GMatrix* pLabels2 = hLabels2.get();
+	WMatrix* pFeatures1 = hFeatures1.get();
+	WMatrix* pLabels1 = hLabels1.get();
+	WMatrix* pFeatures2 = hFeatures2.get();
+	WMatrix* pLabels2 = hLabels2.get();
 	if(pFeatures1->cols() != pFeatures2->cols() || pLabels1->cols() != pLabels2->cols())
 		throw Ex("The training and test datasets must have the same number of columns.");
 
 	// Instantiate the modeler
-	GTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures1, pLabels1);
-	std::unique_ptr<GTransducer> hModel(pSupLearner);
+	WTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures1, pLabels1);
+	std::unique_ptr<WTransducer> hModel(pSupLearner);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	pSupLearner->rand().setSeed(seed);
 
 	// Transduce and measure accuracy
-	vector<GMatrix*> confusionMatrices;
+	vector<WMatrix*> confusionMatrices;
 	double mse = pSupLearner->trainAndTest(*pFeatures1, *pLabels1, *pFeatures2, *pLabels2) / pFeatures2->rows();
 	if(pLabels2->cols() == 1 && pLabels2->relation().valueCount(0) > 0)
 		cout << "Misclassification rate: ";
@@ -1514,7 +1514,7 @@ void GLearnerLib::TransductiveAccuracy(GArgReader& args)
 */
 }
 
-void GLearnerLib::SplitTest(GArgReader& args)
+void WLearnerLib::SplitTest(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -1548,15 +1548,15 @@ void GLearnerLib::SplitTest(GArgReader& args)
 		throw Ex("trainratio must be between 0 and 1");
 
 	// Load the data
-	GRand prng(seed);
-	std::unique_ptr<GMatrix> hFeatures, hLabels;
+	WRand prng(seed);
+	std::unique_ptr<WMatrix> hFeatures, hLabels;
 	loadData(args, hFeatures, hLabels);
-	GMatrix* pFeatures = hFeatures.get();
-	GMatrix* pLabels = hLabels.get();
+	WMatrix* pFeatures = hFeatures.get();
+	WMatrix* pLabels = hLabels.get();
 
 	// Instantiate the modeler
-	GTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
-	std::unique_ptr<GTransducer> hModel(pSupLearner);
+	WTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
+	std::unique_ptr<WTransducer> hModel(pSupLearner);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	pSupLearner->rand().setSeed(seed);
@@ -1579,27 +1579,27 @@ void GLearnerLib::SplitTest(GArgReader& args)
 	{
 		// Shuffle and split the data
 		pFeatures->shuffle(prng, pLabels);
-		GMatrix testFeatures(pFeatures->relation().clone());
-		GMatrix testLabels(pLabels->relation().clone());
+		WMatrix testFeatures(pFeatures->relation().clone());
+		WMatrix testLabels(pLabels->relation().clone());
 		{
-			GMergeDataHolder hFeatures2(*pFeatures, testFeatures);
-			GMergeDataHolder hLabels2(*pLabels, testLabels);
+			WMergeDataHolder hFeatures2(*pFeatures, testFeatures);
+			WMergeDataHolder hLabels2(*pLabels, testLabels);
 			testFeatures.reserve(testPatterns);
 			testLabels.reserve(testPatterns);
 			pFeatures->splitBySize(testFeatures, testPatterns);
 			pLabels->splitBySize(testLabels, testPatterns);
 
 			// Test and print results
-			vector<GMatrix*> confusionMatrices;
+			vector<WMatrix*> confusionMatrices;
 			double mse = pSupLearner->trainAndTest(*pFeatures, *pLabels, testFeatures, testLabels) / testFeatures.rows();
 
 			// Write trained model file on last repetition
 			if(lastModelFile != "" && i + 1 == reps)
 			{
-				GSupervisedLearner* pSup =
-				  dynamic_cast<GSupervisedLearner*>(pSupLearner);
-				GDom doc;
-				GDomNode* pRoot = pSup->serialize(&doc);
+				WSupervisedLearner* pSup =
+				  dynamic_cast<WSupervisedLearner*>(pSupLearner);
+				WDom doc;
+				WDomNode* pRoot = pSup->serialize(&doc);
 				doc.setRoot(pRoot);
 				std::ofstream out(lastModelFile.c_str());
 				if(out)
@@ -1623,12 +1623,12 @@ void GLearnerLib::SplitTest(GArgReader& args)
 	cout << to_str(sumMSE / reps) << "\n";
 }
 
-void GLearnerLib::CrossValidateCallback(void* pSupLearner, size_t nRep, size_t nFold, double foldSSE, size_t rows)
+void WLearnerLib::CrossValidateCallback(void* pSupLearner, size_t nRep, size_t nFold, double foldSSE, size_t rows)
 {
 	cout << "Rep: " << nRep << ", Fold: " << nFold << ", Mean squared error: " << to_str(foldSSE / rows) << "\n";
 }
 
-void GLearnerLib::CrossValidate(GArgReader& args)
+void WLearnerLib::CrossValidate(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -1654,14 +1654,14 @@ void GLearnerLib::CrossValidate(GArgReader& args)
 		throw Ex("There must be at least 2 folds.");
 
 	// Load the data
-	std::unique_ptr<GMatrix> hFeatures, hLabels;
+	std::unique_ptr<WMatrix> hFeatures, hLabels;
 	loadData(args, hFeatures, hLabels);
-	GMatrix* pFeatures = hFeatures.get();
-	GMatrix* pLabels = hLabels.get();
+	WMatrix* pFeatures = hFeatures.get();
+	WMatrix* pLabels = hLabels.get();
 
 	// Instantiate the modeler
-	GTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
-	std::unique_ptr<GTransducer> hModel(pSupLearner);
+	WTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
+	std::unique_ptr<WTransducer> hModel(pSupLearner);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	pSupLearner->rand().setSeed(seed);
@@ -1690,7 +1690,7 @@ void GLearnerLib::CrossValidate(GArgReader& args)
 	}
 }
 
-void GLearnerLib::vette(string& s)
+void WLearnerLib::vette(string& s)
 {
 	for(size_t i = 0; i < s.length(); i++)
 	{
@@ -1699,7 +1699,7 @@ void GLearnerLib::vette(string& s)
 	}
 }
 
-void GLearnerLib::PrecisionRecall(GArgReader& args)
+void WLearnerLib::PrecisionRecall(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -1722,25 +1722,25 @@ void GLearnerLib::PrecisionRecall(GArgReader& args)
 		throw Ex("There must be at least 2 samples.");
 
 	// Load the data
-	std::unique_ptr<GMatrix> hFeatures, hLabels;
+	std::unique_ptr<WMatrix> hFeatures, hLabels;
 	loadData(args, hFeatures, hLabels);
-	GMatrix* pFeatures = hFeatures.get();
-	GMatrix* pLabels = hLabels.get();
+	WMatrix* pFeatures = hFeatures.get();
+	WMatrix* pLabels = hLabels.get();
 
 	// Instantiate the modeler
-	GTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
-	std::unique_ptr<GTransducer> hModel(pSupLearner);
+	WTransducer* pSupLearner = InstantiateAlgorithm(args, pFeatures, pLabels);
+	std::unique_ptr<WTransducer> hModel(pSupLearner);
 	pSupLearner->rand().setSeed(seed);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	if(!pSupLearner->canGeneralize())
 		throw Ex("This algorithm cannot be \"trained\". It can only be used to \"transduce\".");
-	GSupervisedLearner* pModel = (GSupervisedLearner*)pSupLearner;
+	WSupervisedLearner* pModel = (WSupervisedLearner*)pSupLearner;
 
 	// Build the relation for the results
-	GArffRelation* pRelation = new GArffRelation();
+	WArffRelation* pRelation = new WArffRelation();
 	pRelation->setName("untitled");
-	GArffRelation* pRel = pRelation;
+	WArffRelation* pRel = pRelation;
 	pRel->addAttribute("recall", 0, nullptr);
 	for(size_t i = 0; i < pLabels->cols(); i++)
 	{
@@ -1748,8 +1748,8 @@ void GLearnerLib::PrecisionRecall(GArgReader& args)
 		for(int val = 0; val < (int)valCount; val++)
 		{
 			string s = "precision_";
-			if(pLabels->relation().type() == GRelation::ARFF)
-				s += ((const GArffRelation&)pLabels->relation()).attrName(i);
+			if(pLabels->relation().type() == WRelation::ARFF)
+				s += ((const WArffRelation&)pLabels->relation()).attrName(i);
 			else
 			{
 				s += "attr";
@@ -1768,7 +1768,7 @@ void GLearnerLib::PrecisionRecall(GArgReader& args)
 	}
 
 	// Measure precision/recall
-	GMatrix results(pRelation);
+	WMatrix results(pRelation);
 	results.newRows(samples);
 	for(int i = 0; i < samples; i++)
 		results.row(i)[0] = (double)i / samples;
@@ -1782,11 +1782,11 @@ void GLearnerLib::PrecisionRecall(GArgReader& args)
 		for(size_t j = 0; j < valCount; j++)
 			results.setCol(pos++, precision + samples * j);
 	}
-	GAssert(pos == pRelation->size()); // counting problem
+	WAssert(pos == pRelation->size()); // counting problem
 	results.print(cout);
 }
 
-void GLearnerLib::sterilize(GArgReader& args)
+void WLearnerLib::sterilize(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(nullptr);
@@ -1805,34 +1805,34 @@ void GLearnerLib::sterilize(GArgReader& args)
 	}
 
 	// Load the data
-	std::unique_ptr<GMatrix> hFeatures, hLabels;
+	std::unique_ptr<WMatrix> hFeatures, hLabels;
 	loadData(args, hFeatures, hLabels);
-	GMatrix* pFeatures = hFeatures.get();
-	GMatrix* pLabels = hLabels.get();
+	WMatrix* pFeatures = hFeatures.get();
+	WMatrix* pLabels = hLabels.get();
 
 	// Instantiate the modeler
-	GTransducer* pTransducer = InstantiateAlgorithm(args, pFeatures, pLabels);
-	std::unique_ptr<GTransducer> hModel(pTransducer);
+	WTransducer* pTransducer = InstantiateAlgorithm(args, pFeatures, pLabels);
+	std::unique_ptr<WTransducer> hModel(pTransducer);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
 	pTransducer->rand().setSeed(seed);
 
 	// Sterilize
-	GMatrix sterileFeatures(pFeatures->relation().clone());
-	GReleaseDataHolder hSterileFeatures(&sterileFeatures);
-	GMatrix sterileLabels(pLabels->relation().clone());
-	GReleaseDataHolder hSterileLabels(&sterileLabels);
+	WMatrix sterileFeatures(pFeatures->relation().clone());
+	WReleaseDataHolder hSterileFeatures(&sterileFeatures);
+	WMatrix sterileLabels(pLabels->relation().clone());
+	WReleaseDataHolder hSterileLabels(&sterileLabels);
 	for(size_t fold = 0; fold < folds; fold++)
 	{
 		// Split the data
-		GMatrix trainFeatures(pFeatures->relation().clone());
-		GReleaseDataHolder hTrainFeatures(&trainFeatures);
-		GMatrix trainLabels(pLabels->relation().clone());
-		GReleaseDataHolder hTrainLabels(&trainLabels);
-		GMatrix testFeatures(pFeatures->relation().clone());
-		GReleaseDataHolder hTestFeatures(&testFeatures);
-		GMatrix testLabels(pLabels->relation().clone());
-		GReleaseDataHolder hTestLabels(&testLabels);
+		WMatrix trainFeatures(pFeatures->relation().clone());
+		WReleaseDataHolder hTrainFeatures(&trainFeatures);
+		WMatrix trainLabels(pLabels->relation().clone());
+		WReleaseDataHolder hTrainLabels(&trainLabels);
+		WMatrix testFeatures(pFeatures->relation().clone());
+		WReleaseDataHolder hTestFeatures(&testFeatures);
+		WMatrix testLabels(pLabels->relation().clone());
+		WReleaseDataHolder hTestLabels(&testLabels);
 		size_t foldBegin = fold * pFeatures->rows() / folds;
 		size_t foldEnd = (fold + 1) * pFeatures->rows() / folds;
 		for(size_t i = 0; i < foldBegin; i++)
@@ -1857,8 +1857,8 @@ void GLearnerLib::sterilize(GArgReader& args)
 		// Keep only the correct predictions
 		for(size_t j = 0; j < testLabels.rows(); j++)
 		{
-			GVec& target = testLabels[j];
-			GVec& predicted = pPredictedLabels->row(j);
+			WVec& target = testLabels[j];
+			WVec& predicted = pPredictedLabels->row(j);
 			for(size_t i = 0; i < testLabels.cols(); i++)
 			{
 				size_t vals = testLabels.relation().valueCount(i);
@@ -1883,12 +1883,12 @@ void GLearnerLib::sterilize(GArgReader& args)
 	}
 
 	// Merge the sterile features and labels
-	GMatrix* pSterile = GMatrix::mergeHoriz(&sterileFeatures, &sterileLabels);
-	std::unique_ptr<GMatrix> hSterile(pSterile);
+	WMatrix* pSterile = WMatrix::mergeHoriz(&sterileFeatures, &sterileLabels);
+	std::unique_ptr<WMatrix> hSterile(pSterile);
 	pSterile->print(cout);
 }
 /*
-void GLearnerLib::trainRecurrent(GArgReader& args)
+void WLearnerLib::trainRecurrent(WArgReader& args)
 {
 	// Parse options
 	unsigned int seed = getpid() * (unsigned int)time(NULL);
@@ -1957,9 +1957,9 @@ void GLearnerLib::trainRecurrent(GArgReader& args)
 		throw Ex("Unrecognized recurrent model training algorithm: ", alg);
 
 	// Load the data
-	GMatrix dataObs;
+	WMatrix dataObs;
 	dataObs.loadArff(args.pop_string());
-	GMatrix dataAction;
+	WMatrix dataAction;
 	dataAction.loadArff(args.pop_string());
 
 	// Get the number of context dims
@@ -1974,30 +1974,30 @@ void GLearnerLib::trainRecurrent(GArgReader& args)
 		throw Ex("The number of columns in the observation data must be a multiple of the product of the param dims");
 
 	// Instantiate the recurrent model
-	GTransducer* pTransitionFunc = InstantiateAlgorithm(args, NULL, NULL);
-	std::unique_ptr<GTransducer> hTransitionFunc(pTransitionFunc);
+	WTransducer* pTransitionFunc = InstantiateAlgorithm(args, NULL, NULL);
+	std::unique_ptr<WTransducer> hTransitionFunc(pTransitionFunc);
 	if(!pTransitionFunc->canGeneralize())
 		throw Ex("The algorithm specified for the transition function cannot be \"trained\". It can only be used to \"transduce\".");
 	pTransitionFunc->rand().setSeed(seed);
-	GTransducer* pObservationFunc = InstantiateAlgorithm(args, NULL, NULL);
-	std::unique_ptr<GTransducer> hObservationFunc(pObservationFunc);
+	WTransducer* pObservationFunc = InstantiateAlgorithm(args, NULL, NULL);
+	std::unique_ptr<WTransducer> hObservationFunc(pObservationFunc);
 	if(!pObservationFunc->canGeneralize())
 		throw Ex("The algorithm specified for the observation function cannot be \"trained\". It can only be used to \"transduce\".");
 	pObservationFunc->rand().setSeed((seed + 13) * 11);
 	if(args.size() > 0)
 		throw Ex("Superfluous argument: ", args.peek());
-	GRand prng(seed);
-	MyRecurrentModel model((GSupervisedLearner*)hTransitionFunc.release(), (GSupervisedLearner*)hObservationFunc.release(), dataAction.cols(), contextDims, dataObs.cols(), &prng, &paramDims, stateFilename, validationInterval);
+	WRand prng(seed);
+	MyRecurrentModel model((WSupervisedLearner*)hTransitionFunc.release(), (WSupervisedLearner*)hObservationFunc.release(), dataAction.cols(), contextDims, dataObs.cols(), &prng, &paramDims, stateFilename, validationInterval);
 
 	// Set it up to do validation during training if specified
-	vector<GMatrix*> validationData;
-	VectorOfPointersHolder<GMatrix> hValidationData(validationData);
+	vector<WMatrix*> validationData;
+	VectorOfPointersHolder<WMatrix> hValidationData(validationData);
 	if(validationInterval > 0)
 	{
 		for(size_t i = 0; i < validationFilenames.size(); i++)
 		{
-			GMatrix* pVal = new GMatrix();
-			std::unique_ptr<GMatrix> hVal(pVal);
+			WMatrix* pVal = new WMatrix();
+			std::unique_ptr<WMatrix> hVal(pVal);
 			pVal->loadArff(validationFilenames[i].c_str());
 			validationData.push_back(hVal.release());
 		}
@@ -2018,18 +2018,18 @@ void GLearnerLib::trainRecurrent(GArgReader& args)
 		model.trainHillClimber(&dataAction, &dataObs, 0.0, 0.0, 0.0, true, false);
 	else if(strcmp(alg, "annealing") == 0)
 		model.trainHillClimber(&dataAction, &dataObs, annealDeviation, annealDecay, annealTimeWindow, false, true);
-	GDom doc;
+	WDom doc;
 	doc.setRoot(model.serialize(&doc));
 	doc.saveJson(outFilename);
 }
 */
-void GLearnerLib::regress(GArgReader& args)
+void WLearnerLib::regress(WArgReader& args)
 {
 	// Load the data
-	std::unique_ptr<GMatrix> hFeatures, hLabels;
+	std::unique_ptr<WMatrix> hFeatures, hLabels;
 	loadData(args, hFeatures, hLabels);
-	GMatrix* pFeatures = hFeatures.get();
-	GMatrix* pLabels = hLabels.get();
+	WMatrix* pFeatures = hFeatures.get();
+	WMatrix* pLabels = hLabels.get();
 	if(pLabels->cols() != 1)
 		throw Ex("Sorry, only 1 label dimension currently supported");
 
@@ -2037,9 +2037,9 @@ void GLearnerLib::regress(GArgReader& args)
 	string expr;
 	while(args.size() > 0)
 		expr += args.pop_string();
-	GFunctionParser fp;
+	WFunctionParser fp;
 	fp.add(expr.c_str());
-	GFunction* pFunc = fp.getFunctionNoThrow("f");
+	WFunction* pFunc = fp.getFunctionNoThrow("f");
 	if(!pFunc)
 		throw Ex("Expected a function named \"f\".");
 	if((size_t)pFunc->m_expectedParams <= pFeatures->cols())
@@ -2047,12 +2047,12 @@ void GLearnerLib::regress(GArgReader& args)
 
 	// Optimize
 	OptimizerTargetFunc tf(pFeatures, pLabels, pFunc, &fp);
-	GHillClimber hc(&tf);
+	WHillClimber hc(&tf);
 	hc.searchUntil(10000, 200, 0.01);
 	double err = hc.currentError();
 	cout << "SSE = " << to_str(err) << "\n";
 	cout << "Params:\n";
-	const GVec& pVec = hc.currentVector();
+	const WVec& pVec = hc.currentVector();
 	for(size_t i = 0; i < (size_t)pFunc->m_expectedParams - pFeatures->cols(); i++)
 	{
 		if(i > 0)
@@ -2062,16 +2062,16 @@ void GLearnerLib::regress(GArgReader& args)
 	cout << "\n";
 }
 
-void GLearnerLib::metaData(GArgReader& args)
+void WLearnerLib::metaData(WArgReader& args)
 {
 	// Load the data
-	std::unique_ptr<GMatrix> hFeatures, hLabels;
+	std::unique_ptr<WMatrix> hFeatures, hLabels;
 	loadData(args, hFeatures, hLabels);
-	GMatrix* pFeatures = hFeatures.get();
-	GMatrix* pLabels = hLabels.get();
+	WMatrix* pFeatures = hFeatures.get();
+	WMatrix* pLabels = hLabels.get();
 
 	// Make the relation
-	GArffRelation* pRel = new GArffRelation();
+	WArffRelation* pRel = new WArffRelation();
 	pRel->addAttribute("log_rows", 0, nullptr);
 	pRel->addAttribute("log_feature_dims", 0, nullptr);
 	pRel->addAttribute("log_label_dims", 0, nullptr);
@@ -2092,8 +2092,8 @@ void GLearnerLib::metaData(GArgReader& args)
 	pRel->addAttribute("landmark_naivebayes", 0, nullptr);
 
 	// Make the meta-data
-	GMatrix meta(pRel);
-	GVec& row = meta.newRow();
+	WMatrix meta(pRel);
+	WVec& row = meta.newRow();
 	size_t r = 0;
 
 	// log_rows
@@ -2193,26 +2193,26 @@ void GLearnerLib::metaData(GArgReader& args)
 
 	// landmark_baseline
 	{
-		GBaselineLearner model;
+		WBaselineLearner model;
 		row[r++] = model.repValidate(*pFeatures, *pLabels, 5, 2) / pFeatures->rows();
 	}
 
 	// landmark_linear
 	{
-		GLinearRegressor model;
+		WLinearRegressor model;
 		row[r++] = model.repValidate(*pFeatures, *pLabels, 5, 2) / pFeatures->rows();
 	}
 
 	// landmark_decisiontree
 	{
-		GDecisionTree model;
+		WDecisionTree model;
 		model.useBinaryDivisions();
 		row[r++] = model.repValidate(*pFeatures, *pLabels, 5, 2) / pFeatures->rows();
 	}
 
 	// landmark_shallowtree
 	{
-		GDecisionTree model;
+		WDecisionTree model;
 		model.useBinaryDivisions();
 		model.setLeafThresh(24);
 		row[r++] = model.repValidate(*pFeatures, *pLabels, 5, 2) / pFeatures->rows();
@@ -2220,13 +2220,13 @@ void GLearnerLib::metaData(GArgReader& args)
 
 	// landmark_meanmarginstree
 	{
-		GMeanMarginsTree model;
+		WMeanMarginsTree model;
 		row[r++] = model.repValidate(*pFeatures, *pLabels, 5, 2) / pFeatures->rows();
 	}
 
 	// landmark_naivebayes
 	{
-		GNaiveBayes model;
+		WNaiveBayes model;
 		row[r++] = model.repValidate(*pFeatures, *pLabels, 5, 2) / pFeatures->rows();
 	}
 
@@ -2234,7 +2234,7 @@ void GLearnerLib::metaData(GArgReader& args)
 	meta.print(cout);
 }
 
-void GLearnerLib::ShowUsage(const char* appName)
+void WLearnerLib::ShowUsage(const char* appName)
 {
 	cout << "Full Usage Information\n";
 	cout << "[Square brackets] are used to indicate required arguments.\n";
@@ -2249,7 +2249,7 @@ void GLearnerLib::ShowUsage(const char* appName)
 	cout.flush();
 }
 
-void GLearnerLib::showError(GArgReader& args, const char* szAppName, const char* szMessage)
+void WLearnerLib::showError(WArgReader& args, const char* szAppName, const char* szMessage)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";

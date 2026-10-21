@@ -16,35 +16,35 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GEnsemble.h"
-#include "GVec.h"
+#include "WEnsemble.h"
+#include "WVec.h"
 #include <stdlib.h>
-#include "GDistribution.h"
-#include "GNeuralNet.h"
-#include "GDom.h"
-#include "GRand.h"
-#include "GHolders.h"
-#include "GThread.h"
+#include "WDistribution.h"
+#include "WNeuralNet.h"
+#include "WDom.h"
+#include "WRand.h"
+#include "WHolders.h"
+#include "WThread.h"
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::vector;
 
 
-GWeightedModel::GWeightedModel(GDomNode* pNode, GLearnerLoader& ll)
+WWeightedModel::WWeightedModel(WDomNode* pNode, WLearnerLoader& ll)
 {
 	m_weight = pNode->getDouble("w");
 	m_pModel = ll.loadLearner(pNode->get("m"));
 }
 
-GWeightedModel::~GWeightedModel()
+WWeightedModel::~WWeightedModel()
 {
 	delete(m_pModel);
 }
 
-GDomNode* GWeightedModel::serialize(GDom* pDoc) const
+WDomNode* WWeightedModel::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "w", m_weight);
 	pNode->add(pDoc, "m", m_pModel->serialize(pDoc));
 	return pNode;
@@ -54,51 +54,51 @@ GDomNode* GWeightedModel::serialize(GDom* pDoc) const
 
 
 
-GEnsemble::GEnsemble()
-: GSupervisedLearner(), m_pLabelRel(nullptr), m_workerThreads(1), m_pPredictMaster(nullptr)
+WEnsemble::WEnsemble()
+: WSupervisedLearner(), m_pLabelRel(nullptr), m_workerThreads(1), m_pPredictMaster(nullptr)
 {
 }
 
-GEnsemble::GEnsemble(const GDomNode* pNode, GLearnerLoader& ll)
-: GSupervisedLearner(pNode), m_pPredictMaster(nullptr)
+WEnsemble::WEnsemble(const WDomNode* pNode, WLearnerLoader& ll)
+: WSupervisedLearner(pNode), m_pPredictMaster(nullptr)
 {
-	m_pLabelRel = GRelation::deserialize(pNode->get("labelrel"));
+	m_pLabelRel = WRelation::deserialize(pNode->get("labelrel"));
 	size_t accumulatorDims = (size_t)pNode->getInt("accum");
 	m_accumulator.resize(accumulatorDims);
 	m_workerThreads = (size_t)pNode->getInt("threads");
-	GDomNode* pModels = pNode->get("models");
-	GDomListIterator it(pModels);
+	WDomNode* pModels = pNode->get("models");
+	WDomListIterator it(pModels);
 	size_t modelCount = it.remaining();
 	for(size_t i = 0; i < modelCount; i++)
 	{
-		GWeightedModel* pWM = new GWeightedModel(it.current(), ll);
+		WWeightedModel* pWM = new WWeightedModel(it.current(), ll);
 		m_models.push_back(pWM);
 		it.advance();
 	}
 }
 
-GEnsemble::~GEnsemble()
+WEnsemble::~WEnsemble()
 {
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		delete(*it);
 	delete(m_pLabelRel);
 	delete(m_pPredictMaster);
 }
 
 // virtual
-void GEnsemble::serializeBase(GDom* pDoc, GDomNode* pNode) const
+void WEnsemble::serializeBase(WDom* pDoc, WDomNode* pNode) const
 {
 	pNode->add(pDoc, "labelrel", m_pLabelRel->serialize(pDoc));
 	pNode->add(pDoc, "accum", m_accumulator.size());
 	pNode->add(pDoc, "threads", m_workerThreads);
-	GDomNode* pModels = pNode->add(pDoc, "models", pDoc->newList());
+	WDomNode* pModels = pNode->add(pDoc, "models", pDoc->newList());
 	for(size_t i = 0; i < m_models.size(); i++)
 		pModels->add(pDoc, m_models[i]->serialize(pDoc));
 }
 
-void GEnsemble::clearBase()
+void WEnsemble::clearBase()
 {
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		(*it)->m_pModel->clear();
 	delete(m_pLabelRel);
 	m_pLabelRel = nullptr;
@@ -108,7 +108,7 @@ void GEnsemble::clearBase()
 }
 
 // virtual
-void GEnsemble::trainInner(const GMatrix& features, const GMatrix& labels)
+void WEnsemble::trainInner(const WMatrix& features, const WMatrix& labels)
 {
 	delete(m_pLabelRel);
 	m_pLabelRel = labels.relation().clone();
@@ -129,17 +129,17 @@ void GEnsemble::trainInner(const GMatrix& features, const GMatrix& labels)
 	trainInnerInner(features, labels);
 }
 
-void GEnsemble::normalizeWeights()
+void WEnsemble::normalizeWeights()
 {
 	double sum = 0.0;
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		sum += (*it)->m_weight;
 	double f = 1.0 / sum;
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		(*it)->m_weight *= f;
 }
 
-void GEnsemble::castVote(double weight, const GVec& out)
+void WEnsemble::castVote(double weight, const WVec& out)
 {
 	size_t labelDims = m_pLabelRel->size();
 	size_t pos = 0;
@@ -164,7 +164,7 @@ void GEnsemble::castVote(double weight, const GVec& out)
 	}
 }
 
-void GEnsemble::tally(GPrediction* out)
+void WEnsemble::tally(WPrediction* out)
 {
 	size_t labelDims = m_pLabelRel->size();
 	size_t nDims = 0;
@@ -184,10 +184,10 @@ void GEnsemble::tally(GPrediction* out)
 			nDims += 2;
 		}
 	}
-	GAssert(nDims == m_accumulator.size()); // invalid dim count
+	WAssert(nDims == m_accumulator.size()); // invalid dim count
 }
 
-void GEnsemble::tally(GVec& out)
+void WEnsemble::tally(WVec& out)
 {
 	size_t labelDims = m_pLabelRel->size();
 	size_t nDims = 0;
@@ -205,59 +205,59 @@ void GEnsemble::tally(GVec& out)
 			nDims += 2;
 		}
 	}
-	GAssert(nDims == m_accumulator.size()); // invalid dim count
+	WAssert(nDims == m_accumulator.size()); // invalid dim count
 }
 
-class GEnsemblePredictWorker : public GWorkerThread
+class WEnsemblePredictWorker : public WWorkerThread
 {
 protected:
-	GEnsemble* m_pEnsemble;
-	GVec m_prediction;
+	WEnsemble* m_pEnsemble;
+	WVec m_prediction;
 
 public:
-	GEnsemblePredictWorker(GMasterThread& master, GEnsemble* pEnsemble, size_t outDims)
-	: GWorkerThread(master), m_pEnsemble(pEnsemble)
+	WEnsemblePredictWorker(WMasterThread& master, WEnsemble* pEnsemble, size_t outDims)
+	: WWorkerThread(master), m_pEnsemble(pEnsemble)
 	{
 		m_prediction.resize(outDims);
 	}
 
-	~GEnsemblePredictWorker() override
+	~WEnsemblePredictWorker() override
 	{
 	}
 
 	void doJob(size_t jobId) override
 	{
-		const GVec& in = *(const GVec*)m_pEnsemble->m_pPredictInput;
-		GWeightedModel* pWM = m_pEnsemble->models()[jobId];
+		const WVec& in = *(const WVec*)m_pEnsemble->m_pPredictInput;
+		WWeightedModel* pWM = m_pEnsemble->models()[jobId];
 		pWM->m_pModel->predict(in, m_prediction);
-		GSpinLockHolder lockHolder(m_master.getLock(), "GEnsemblePredictWorker::doJob");
+		WSpinLockHolder lockHolder(m_master.getLock(), "WEnsemblePredictWorker::doJob");
 		m_pEnsemble->castVote(pWM->m_weight, m_prediction);
 	}
 };
 
 // virtual
-void GEnsemble::predict(const GVec& in, GVec& out)
+void WEnsemble::predict(const WVec& in, WVec& out)
 {
 	m_accumulator.fill(0.0);
 	m_pPredictInput = &in;
 	if(!m_pPredictMaster)
 	{
-		m_pPredictMaster = new GMasterThread();
+		m_pPredictMaster = new WMasterThread();
 		for(size_t i = 0; i < m_workerThreads; i++)
-			m_pPredictMaster->addWorker(new GEnsemblePredictWorker(*m_pPredictMaster, this, m_models[0]->m_pModel->relLabels().size()));
+			m_pPredictMaster->addWorker(new WEnsemblePredictWorker(*m_pPredictMaster, this, m_models[0]->m_pModel->relLabels().size()));
 	}
 	m_pPredictMaster->doJobs(m_models.size());
 	tally(out);
 }
 
 // virtual
-void GEnsemble::predictDistribution(const GVec& in, GPrediction* out)
+void WEnsemble::predictDistribution(const WVec& in, WPrediction* out)
 {
-	GVec tmp(m_pLabelRel->size());
+	WVec tmp(m_pLabelRel->size());
 	m_accumulator.fill(0.0);
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 	{
-		GWeightedModel* pWM = *it;
+		WWeightedModel* pWM = *it;
 		pWM->m_pModel->predict(in, tmp);
 		castVote(pWM->m_weight, tmp);
 	}
@@ -270,64 +270,64 @@ void GEnsemble::predictDistribution(const GVec& in, GPrediction* out)
 
 
 
-GBag::GBag()
-: GEnsemble(), m_pCB(nullptr), m_pThis(nullptr), m_trainSize(1.0)
+WBag::WBag()
+: WEnsemble(), m_pCB(nullptr), m_pThis(nullptr), m_trainSize(1.0)
 {
 }
 
-GBag::GBag(const GDomNode* pNode, GLearnerLoader& ll)
-: GEnsemble(pNode, ll), m_pCB(nullptr), m_pThis(nullptr)
+WBag::WBag(const WDomNode* pNode, WLearnerLoader& ll)
+: WEnsemble(pNode, ll), m_pCB(nullptr), m_pThis(nullptr)
 {
 	m_trainSize = pNode->getDouble("ts");
 }
 
-GBag::~GBag()
+WBag::~WBag()
 {
 }
 
 // virtual
-GDomNode* GBag::serialize(GDom* pDoc) const
+WDomNode* WBag::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GBag");
+	WDomNode* pNode = baseDomNode(pDoc, "WBag");
 	serializeBase(pDoc, pNode);
 	pNode->add(pDoc, "ts", m_trainSize);
 	return pNode;
 }
 
-void GBag::clear()
+void WBag::clear()
 {
 	clearBase();
 }
 
-void GBag::flush()
+void WBag::flush()
 {
 	clear();
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		delete(*it);
 	m_models.clear();
 }
 
-void GBag::addLearner(GSupervisedLearner* pLearner)
+void WBag::addLearner(WSupervisedLearner* pLearner)
 {
 	pLearner->rand().setSeed(m_rand.next()); // Ensure that every learner has a different seed
-	GWeightedModel* pWM = new GWeightedModel(0.0, pLearner); // The weight will be fixed later
+	WWeightedModel* pWM = new WWeightedModel(0.0, pLearner); // The weight will be fixed later
 	m_models.push_back(pWM);
 }
 
-class GBagTrainWorker : public GWorkerThread
+class WBagTrainWorker : public WWorkerThread
 {
 protected:
-	GBag* m_pBag;
-	const GMatrix& m_features;
-	const GMatrix& m_labels;
-	GMatrix m_drawnFeatures;
-	GMatrix m_drawnLabels;
+	WBag* m_pBag;
+	const WMatrix& m_features;
+	const WMatrix& m_labels;
+	WMatrix m_drawnFeatures;
+	WMatrix m_drawnLabels;
 	size_t m_drawSize;
-	GRand m_rand;
+	WRand m_rand;
 
 public:
-	GBagTrainWorker(GMasterThread& master, GBag* pBag, const GMatrix& features, const GMatrix& labels, double trainSize, size_t seed)
-	: GWorkerThread(master),
+	WBagTrainWorker(WMasterThread& master, WBag* pBag, const WMatrix& features, const WMatrix& labels, double trainSize, size_t seed)
+	: WWorkerThread(master),
 	  m_pBag(pBag),
 	  m_features(features),
 	  m_labels(labels),
@@ -335,26 +335,26 @@ public:
 	  m_drawnLabels(labels.relation().clone()),
 	  m_rand(seed)
 	{
-		GAssert(m_features.rows() > 0);
+		WAssert(m_features.rows() > 0);
 		m_drawSize = size_t(trainSize * features.rows());
 		m_drawnFeatures.reserve(m_drawSize);
 		m_drawnLabels.reserve(m_drawSize);
 	}
 
-	~GBagTrainWorker() override
+	~WBagTrainWorker() override
 	{
 	}
 
 	void doJob(size_t jobId) override
 	{
 		// Randomly draw some data (with replacement)
-		GReleaseDataHolder hDrawnFeatures(&m_drawnFeatures);
-		GReleaseDataHolder hDrawnLabels(&m_drawnLabels);
+		WReleaseDataHolder hDrawnFeatures(&m_drawnFeatures);
+		WReleaseDataHolder hDrawnLabels(&m_drawnLabels);
 		for(size_t j = 0; j < m_drawSize; j++)
 		{
 			size_t r = (size_t)m_rand.next(m_features.rows());
-			m_drawnFeatures.takeRow((GVec*)&m_features[r]); // This case is only okay because we only use drawFeatures as a const GMatrix
-			m_drawnLabels.takeRow((GVec*)&m_labels[r]); // This case is only okay because we only use drawnLabels as a const GMatrix
+			m_drawnFeatures.takeRow((WVec*)&m_features[r]); // This case is only okay because we only use drawFeatures as a const WMatrix
+			m_drawnLabels.takeRow((WVec*)&m_labels[r]); // This case is only okay because we only use drawnLabels as a const WMatrix
 		}
 
 		// Train the learner with the drawn data
@@ -363,14 +363,14 @@ public:
 };
 
 // virtual
-void GBag::trainInnerInner(const GMatrix& features, const GMatrix& labels)
+void WBag::trainInnerInner(const WMatrix& features, const WMatrix& labels)
 {
 	/*
 	// Train all the models
 	size_t nLearnerCount = m_models.size();
 	size_t nDrawSize = size_t(m_trainSize * features.rows());
-	GMatrix drawnFeatures(features.relation().clone());
-	GMatrix drawnLabels(labels.relation().clone());
+	WMatrix drawnFeatures(features.relation().clone());
+	WMatrix drawnLabels(labels.relation().clone());
 	drawnFeatures.reserve(nDrawSize);
 	drawnLabels.reserve(nDrawSize);
 	{
@@ -380,13 +380,13 @@ void GBag::trainInnerInner(const GMatrix& features, const GMatrix& labels)
 				m_pCB(m_pThis, i, nLearnerCount);
 
 			// Randomly draw some data (with replacement)
-			GReleaseDataHolder hDrawnFeatures(&drawnFeatures);
-			GReleaseDataHolder hDrawnLabels(&drawnLabels);
+			WReleaseDataHolder hDrawnFeatures(&drawnFeatures);
+			WReleaseDataHolder hDrawnLabels(&drawnLabels);
 			for(size_t j = 0; j < nDrawSize; j++)
 			{
 				size_t r = (size_t)m_rand.next(features.rows());
-				drawnFeatures.takeRow((double*)features[r]); // This case is only okay because we only use drawFeatures as a const GMatrix
-				drawnLabels.takeRow((double*)labels[r]); // This case is only okay because we only use drawnLabels as a const GMatrix
+				drawnFeatures.takeRow((double*)features[r]); // This case is only okay because we only use drawFeatures as a const WMatrix
+				drawnLabels.takeRow((double*)labels[r]); // This case is only okay because we only use drawnLabels as a const WMatrix
 			}
 
 			// Train the learner with the drawn data
@@ -401,29 +401,29 @@ void GBag::trainInnerInner(const GMatrix& features, const GMatrix& labels)
 	normalizeWeights();
 */
 
-	GMasterThread trainMaster;
+	WMasterThread trainMaster;
 	for(size_t i = 0; i < m_workerThreads; i++)
-		trainMaster.addWorker(new GBagTrainWorker(trainMaster, this, features, labels, m_trainSize, (size_t)m_rand.next()));
+		trainMaster.addWorker(new WBagTrainWorker(trainMaster, this, features, labels, m_trainSize, (size_t)m_rand.next()));
 	trainMaster.doJobs(m_models.size());
 	determineWeights(features, labels);
 	normalizeWeights();
 }
 
 // virtual
-void GBag::determineWeights(const GMatrix& features, const GMatrix& labels)
+void WBag::determineWeights(const WMatrix& features, const WMatrix& labels)
 {
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		(*it)->m_weight = 1.0;
 }
 
-#include "GDecisionTree.h"
+#include "WDecisionTree.h"
 // static
-void GBag::test()
+void WBag::test()
 {
-	GBag bag;
+	WBag bag;
 	for(size_t i = 0; i < 64; i++)
 	{
-		GDecisionTree* pTree = new GDecisionTree();
+		WDecisionTree* pTree = new WDecisionTree();
 		pTree->useRandomDivisions();
 		bag.addLearner(pTree);
 	}
@@ -436,10 +436,10 @@ void GBag::test()
 
 
 // virtual
-void GBayesianModelAveraging::determineWeights(const GMatrix& features, const GMatrix& labels)
+void WBayesianModelAveraging::determineWeights(const WMatrix& features, const WMatrix& labels)
 {
 	double m = -1e38;
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 	{
 		double d = 1.0 - ((*it)->m_pModel->sumSquaredError(features, labels) / labels.rows());
 		double logProbHypothGivenData;
@@ -452,7 +452,7 @@ void GBayesianModelAveraging::determineWeights(const GMatrix& features, const GM
 		m = std::max(m, logProbHypothGivenData);
 		(*it)->m_weight = logProbHypothGivenData;
 	}
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 	{
 		double logProbHypothGivenData = (*it)->m_weight;
 		(*it)->m_weight = exp(logProbHypothGivenData - m);
@@ -460,21 +460,21 @@ void GBayesianModelAveraging::determineWeights(const GMatrix& features, const GM
 }
 
 // virtual
-GDomNode* GBayesianModelAveraging::serialize(GDom* pDoc) const
+WDomNode* WBayesianModelAveraging::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GBayesianModelAveraging");
+	WDomNode* pNode = baseDomNode(pDoc, "WBayesianModelAveraging");
 	serializeBase(pDoc, pNode);
 	pNode->add(pDoc, "ts", m_trainSize);
 	return pNode;
 }
 
 // static
-void GBayesianModelAveraging::test()
+void WBayesianModelAveraging::test()
 {
-	GBayesianModelAveraging bma;
+	WBayesianModelAveraging bma;
 	for(size_t i = 0; i < 32; i++)
 	{
-		GDecisionTree* pTree = new GDecisionTree();
+		WDecisionTree* pTree = new WDecisionTree();
 		pTree->useRandomDivisions();
 		bma.addLearner(pTree);
 	}
@@ -487,23 +487,23 @@ void GBayesianModelAveraging::test()
 
 
 
-GBayesianModelCombination::GBayesianModelCombination(const GDomNode* pNode, GLearnerLoader& ll)
-: GBag(pNode, ll)
+WBayesianModelCombination::WBayesianModelCombination(const WDomNode* pNode, WLearnerLoader& ll)
+: WBag(pNode, ll)
 {
 	m_samples = (size_t)pNode->getInt("samps");
 }
 
 // virtual
-void GBayesianModelCombination::determineWeights(const GMatrix& features, const GMatrix& labels)
+void WBayesianModelCombination::determineWeights(const WMatrix& features, const WMatrix& labels)
 {
-	GQUICKVEC(weights, m_models.size());
+	WQUICKVEC(weights, m_models.size());
 	weights.fill(0.0);
 	double sumWeight = 0.0;
 	double maxLogProb = -1e38;
 	for(size_t i = 0; i < m_samples; i++)
 	{
 		// Set weights randomly from a dirichlet distribution with unifrom probabilities
-		for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+		for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 			(*it)->m_weight = m_rand.exponential();
 		normalizeWeights();
 
@@ -526,19 +526,19 @@ void GBayesianModelCombination::determineWeights(const GMatrix& features, const 
 		double w = exp(logProbEnsembleGivenData - maxLogProb);
 		weights *= (sumWeight / (sumWeight + w));
 		size_t pos = 0;
-		for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+		for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 			weights[pos++] += (w * (*it)->m_weight);
 		sumWeight += w;
 	}
 	size_t pos = 0;
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		(*it)->m_weight = weights[pos++];
 }
 
 // virtual
-GDomNode* GBayesianModelCombination::serialize(GDom* pDoc) const
+WDomNode* WBayesianModelCombination::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GBayesianModelCombination");
+	WDomNode* pNode = baseDomNode(pDoc, "WBayesianModelCombination");
 	serializeBase(pDoc, pNode);
 	pNode->add(pDoc, "ts", m_trainSize);
 	pNode->add(pDoc, "samps", m_samples);
@@ -546,12 +546,12 @@ GDomNode* GBayesianModelCombination::serialize(GDom* pDoc) const
 }
 
 // static
-void GBayesianModelCombination::test()
+void WBayesianModelCombination::test()
 {
-	GBayesianModelCombination bmc;
+	WBayesianModelCombination bmc;
 	for(size_t i = 0; i < 32; i++)
 	{
-		GDecisionTree* pTree = new GDecisionTree();
+		WDecisionTree* pTree = new WDecisionTree();
 		pTree->useRandomDivisions();
 		bmc.addLearner(pTree);
 	}
@@ -562,20 +562,20 @@ void GBayesianModelCombination::test()
 
 
 
-GResamplingAdaBoost::GResamplingAdaBoost(GSupervisedLearner* pLearner, bool ownLearner, GLearnerLoader* pLoader)
-: GEnsemble(), m_pLearner(pLearner), m_ownLearner(ownLearner), m_pLoader(pLoader), m_trainSize(1.0), m_ensembleSize(30)
+WResamplingAdaBoost::WResamplingAdaBoost(WSupervisedLearner* pLearner, bool ownLearner, WLearnerLoader* pLoader)
+: WEnsemble(), m_pLearner(pLearner), m_ownLearner(ownLearner), m_pLoader(pLoader), m_trainSize(1.0), m_ensembleSize(30)
 {
 }
 
-GResamplingAdaBoost::GResamplingAdaBoost(const GDomNode* pNode, GLearnerLoader& ll)
-: GEnsemble(pNode, ll), m_pLearner(nullptr), m_ownLearner(false), m_pLoader(nullptr)
+WResamplingAdaBoost::WResamplingAdaBoost(const WDomNode* pNode, WLearnerLoader& ll)
+: WEnsemble(pNode, ll), m_pLearner(nullptr), m_ownLearner(false), m_pLoader(nullptr)
 {
 	m_trainSize = pNode->getDouble("ts");
 	m_ensembleSize = (size_t)pNode->getInt("es");
 }
 
 // virtual
-GResamplingAdaBoost::~GResamplingAdaBoost()
+WResamplingAdaBoost::~WResamplingAdaBoost()
 {
 	clear();
 	if(m_ownLearner)
@@ -584,9 +584,9 @@ GResamplingAdaBoost::~GResamplingAdaBoost()
 }
 
 // virtual
-GDomNode* GResamplingAdaBoost::serialize(GDom* pDoc) const
+WDomNode* WResamplingAdaBoost::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GResamplingAdaBoost");
+	WDomNode* pNode = baseDomNode(pDoc, "WResamplingAdaBoost");
 	serializeBase(pDoc, pNode);
 	pNode->add(pDoc, "es", m_ensembleSize);
 	pNode->add(pDoc, "ts", m_trainSize);
@@ -594,9 +594,9 @@ GDomNode* GResamplingAdaBoost::serialize(GDom* pDoc) const
 }
 
 // virtual
-void GResamplingAdaBoost::clear()
+void WResamplingAdaBoost::clear()
 {
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		delete(*it);
 	m_models.clear();
 	if(m_pLearner)
@@ -604,12 +604,12 @@ void GResamplingAdaBoost::clear()
 }
 
 // virtual
-void GResamplingAdaBoost::trainInnerInner(const GMatrix& features, const GMatrix& labels)
+void WResamplingAdaBoost::trainInnerInner(const WMatrix& features, const WMatrix& labels)
 {
 	clear();
 
 	// Initialize all instances with uniform weights
-	GVec pDistribution(features.rows());
+	WVec pDistribution(features.rows());
 	pDistribution.fill(1.0 / features.rows());
 	size_t drawRows = size_t(m_trainSize * features.rows());
 	size_t* pDrawnIndexes = new size_t[drawRows];
@@ -618,35 +618,35 @@ void GResamplingAdaBoost::trainInnerInner(const GMatrix& features, const GMatrix
 	// Train the ensemble
 	size_t labelDims = labels.cols();
 	double penalty = 1.0 / labelDims;
-	GVec prediction(labelDims);
+	WVec prediction(labelDims);
 	for(size_t es = 0; es < m_ensembleSize; es++)
 	{
 		// Draw a training set from the distribution
-		GCategoricalSamplerBatch csb(features.rows(), pDistribution, m_rand);
+		WCategoricalSamplerBatch csb(features.rows(), pDistribution, m_rand);
 		csb.draw(drawRows, pDrawnIndexes);
-		GMatrix drawnFeatures(features.relation().clone());
-		GReleaseDataHolder hDrawnFeatures(&drawnFeatures);
-		GMatrix drawnLabels(labels.relation().clone());
-		GReleaseDataHolder hDrawnLabels(&drawnLabels);
+		WMatrix drawnFeatures(features.relation().clone());
+		WReleaseDataHolder hDrawnFeatures(&drawnFeatures);
+		WMatrix drawnLabels(labels.relation().clone());
+		WReleaseDataHolder hDrawnLabels(&drawnLabels);
 		size_t* pIndex = pDrawnIndexes;
 		for(size_t i = 0; i < drawRows; i++)
 		{
-			drawnFeatures.takeRow((GVec*)&features[*pIndex]);
-			drawnLabels.takeRow((GVec*)&labels[*pIndex]);
+			drawnFeatures.takeRow((WVec*)&features[*pIndex]);
+			drawnLabels.takeRow((WVec*)&labels[*pIndex]);
 			pIndex++;
 		}
 
 		// Train an instance of the model and store a clone of it
 		m_pLearner->train(drawnFeatures, drawnLabels);
-		GDom doc;
-		GSupervisedLearner* pClone = m_pLoader->loadLearner(m_pLearner->serialize(&doc));
+		WDom doc;
+		WSupervisedLearner* pClone = m_pLoader->loadLearner(m_pLearner->serialize(&doc));
 
 		// Compute model weight
 		double err = 0.5;
 		for(size_t i = 0; i < features.rows(); i++)
 		{
 			pClone->predict(features[i], prediction);
-			const GVec& target = labels[i];
+			const WVec& target = labels[i];
 			for(size_t j = 0; j < labelDims; j++)
 			{
 				if((int)target[j] != (int)prediction[j])
@@ -660,14 +660,14 @@ void GResamplingAdaBoost::trainInnerInner(const GMatrix& features, const GMatrix
 			continue;
 		}
 		double weight = 0.5 * log((1.0 - err) / err);
-		m_models.push_back(new GWeightedModel(weight, pClone));
+		m_models.push_back(new WWeightedModel(weight, pClone));
 
 		// Update the distribution to favor mis-classified instances
 		for(size_t i = 0; i < features.rows(); i++)
 		{
 			err = 0.0;
 			pClone->predict(features[i], prediction);
-			const GVec& target = labels[i];
+			const WVec& target = labels[i];
 			for(size_t j = 0; j < labelDims; j++)
 			{
 				if((int)target[j] != (int)prediction[j])
@@ -686,11 +686,11 @@ void GResamplingAdaBoost::trainInnerInner(const GMatrix& features, const GMatrix
 }
 
 // static
-void GResamplingAdaBoost::test()
+void WResamplingAdaBoost::test()
 {
-	GDecisionTree* pLearner = new GDecisionTree();
+	WDecisionTree* pLearner = new WDecisionTree();
 	pLearner->useRandomDivisions();
-	GResamplingAdaBoost boost(pLearner, true, new GLearnerLoader());
+	WResamplingAdaBoost boost(pLearner, true, new WLearnerLoader());
 	boost.basicTest(0.753, 0.92);
 }
 
@@ -702,20 +702,20 @@ void GResamplingAdaBoost::test()
 
 
 
-GGradBoost::GGradBoost(GSupervisedLearner* pLearner, bool ownLearner, GLearnerLoader* pLoader)
-: GEnsemble(), m_pLearner(pLearner), m_ownLearner(ownLearner), m_pLoader(pLoader), m_trainSize(1.0), m_ensembleSize(30)
+WGradBoost::WGradBoost(WSupervisedLearner* pLearner, bool ownLearner, WLearnerLoader* pLoader)
+: WEnsemble(), m_pLearner(pLearner), m_ownLearner(ownLearner), m_pLoader(pLoader), m_trainSize(1.0), m_ensembleSize(30)
 {
 }
 
-GGradBoost::GGradBoost(const GDomNode* pNode, GLearnerLoader& ll)
-: GEnsemble(pNode, ll), m_pLearner(nullptr), m_ownLearner(false), m_pLoader(nullptr)
+WGradBoost::WGradBoost(const WDomNode* pNode, WLearnerLoader& ll)
+: WEnsemble(pNode, ll), m_pLearner(nullptr), m_ownLearner(false), m_pLoader(nullptr)
 {
 	m_trainSize = pNode->getDouble("ts");
 	m_ensembleSize = (size_t)pNode->getInt("es");
 }
 
 // virtual
-GGradBoost::~GGradBoost()
+WGradBoost::~WGradBoost()
 {
 	clear();
 	if(m_ownLearner)
@@ -724,9 +724,9 @@ GGradBoost::~GGradBoost()
 }
 
 // virtual
-GDomNode* GGradBoost::serialize(GDom* pDoc) const
+WDomNode* WGradBoost::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GGradBoost");
+	WDomNode* pNode = baseDomNode(pDoc, "WGradBoost");
 	serializeBase(pDoc, pNode);
 	pNode->add(pDoc, "es", m_ensembleSize);
 	pNode->add(pDoc, "ts", m_trainSize);
@@ -734,9 +734,9 @@ GDomNode* GGradBoost::serialize(GDom* pDoc) const
 }
 
 // virtual
-void GGradBoost::clear()
+void WGradBoost::clear()
 {
-	for(vector<GWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WWeightedModel*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		delete(*it);
 	m_models.clear();
 	if(m_pLearner)
@@ -744,7 +744,7 @@ void GGradBoost::clear()
 }
 
 // virtual
-void GGradBoost::trainInnerInner(const GMatrix& features, const GMatrix& labels)
+void WGradBoost::trainInnerInner(const WMatrix& features, const WMatrix& labels)
 {
 	clear();
 
@@ -755,18 +755,18 @@ void GGradBoost::trainInnerInner(const GMatrix& features, const GMatrix& labels)
 
 	// Train the ensemble
 	size_t drawRows = (size_t)(m_trainSize * features.rows());
-	GVec prediction(m_labelCentroid.size());
+	WVec prediction(m_labelCentroid.size());
 	for(size_t es = 0; es < m_ensembleSize; es++)
 	{
 		// Draw a training set from the distribution
-		GMatrix drawnFeatures(features.relation().clone());
-		GReleaseDataHolder hDrawnFeatures(&drawnFeatures);
-		GMatrix residualLabels(labels.relation().clone());
+		WMatrix drawnFeatures(features.relation().clone());
+		WReleaseDataHolder hDrawnFeatures(&drawnFeatures);
+		WMatrix residualLabels(labels.relation().clone());
 		for(size_t i = 0; i < drawRows; i++)
 		{
 			size_t index = m_rand.next(features.rows());
-			drawnFeatures.takeRow((GVec*)&features[index]);
-			GVec& lab = residualLabels.newRow();
+			drawnFeatures.takeRow((WVec*)&features[index]);
+			WVec& lab = residualLabels.newRow();
 			lab.copy(labels[index]);
 			predict(features[index], prediction);
 			lab -= prediction;
@@ -774,14 +774,14 @@ void GGradBoost::trainInnerInner(const GMatrix& features, const GMatrix& labels)
 
 		// Train an instance of the model and store a clone of it
 		m_pLearner->train(drawnFeatures, residualLabels);
-		GDom doc;
-		GSupervisedLearner* pClone = m_pLoader->loadLearner(m_pLearner->serialize(&doc));
-		m_models.push_back(new GWeightedModel(1.0, pClone));
+		WDom doc;
+		WSupervisedLearner* pClone = m_pLoader->loadLearner(m_pLearner->serialize(&doc));
+		m_models.push_back(new WWeightedModel(1.0, pClone));
 	}
 }
 
 // virtual
-void GGradBoost::predict(const GVec& in, GVec& out)
+void WGradBoost::predict(const WVec& in, WVec& out)
 {
 	out.copy(m_labelCentroid);
 	for(size_t i = 0; i < m_models.size(); i++)
@@ -800,17 +800,17 @@ void GGradBoost::predict(const GVec& in, GVec& out)
 
 
 
-GBucket::GBucket()
-: GSupervisedLearner()
+WBucket::WBucket()
+: WSupervisedLearner()
 {
 	m_nBestLearner = INVALID_INDEX;
 }
 
-GBucket::GBucket(const GDomNode* pNode, GLearnerLoader& ll)
-: GSupervisedLearner(pNode)
+WBucket::WBucket(const WDomNode* pNode, WLearnerLoader& ll)
+: WSupervisedLearner(pNode)
 {
-	GDomNode* pModels = pNode->get("models");
-	GDomListIterator it(pModels);
+	WDomNode* pModels = pNode->get("models");
+	WDomListIterator it(pModels);
 	size_t modelCount = it.remaining();
 	for(size_t i = 0; i < modelCount; i++)
 	{
@@ -820,47 +820,47 @@ GBucket::GBucket(const GDomNode* pNode, GLearnerLoader& ll)
 	m_nBestLearner = (size_t)pNode->getInt("best");
 }
 
-GBucket::~GBucket()
+WBucket::~WBucket()
 {
-	for(vector<GSupervisedLearner*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WSupervisedLearner*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		delete(*it);
 }
 
 // virtual
-GDomNode* GBucket::serialize(GDom* pDoc) const
+WDomNode* WBucket::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GBucket");
-	GDomNode* pModels = pNode->add(pDoc, "models", pDoc->newList());
+	WDomNode* pNode = baseDomNode(pDoc, "WBucket");
+	WDomNode* pModels = pNode->add(pDoc, "models", pDoc->newList());
 	pModels->add(pDoc, m_models[m_nBestLearner]->serialize(pDoc));
 	pNode->add(pDoc, "best", 0ll);
 	return pNode;
 }
 
-void GBucket::clear()
+void WBucket::clear()
 {
-	for(vector<GSupervisedLearner*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WSupervisedLearner*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		(*it)->clear();
 }
 
-void GBucket::flush()
+void WBucket::flush()
 {
-	for(vector<GSupervisedLearner*>::iterator it = m_models.begin(); it != m_models.end(); it++)
+	for(vector<WSupervisedLearner*>::iterator it = m_models.begin(); it != m_models.end(); it++)
 		delete(*it);
 	m_models.clear();
 }
 
-void GBucket::addLearner(GSupervisedLearner* pLearner)
+void WBucket::addLearner(WSupervisedLearner* pLearner)
 {
 	pLearner->rand().setSeed(m_rand.next()); // Ensure that every learner has a different seed
 	m_models.push_back(pLearner);
 }
 
 // virtual
-void GBucket::trainInner(const GMatrix& features, const GMatrix& labels)
+void WBucket::trainInner(const WMatrix& features, const WMatrix& labels)
 {
 	size_t nLearnerCount = m_models.size();
 	double dBestError = 1e200;
-	GSupervisedLearner* pLearner;
+	WSupervisedLearner* pLearner;
 	m_nBestLearner = (size_t)m_rand.next(nLearnerCount);
 	double err;
 	for(size_t i = 0; i < nLearnerCount; i++)
@@ -878,11 +878,11 @@ void GBucket::trainInner(const GMatrix& features, const GMatrix& labels)
 	pLearner->train(features, labels);
 }
 
-GSupervisedLearner* GBucket::releaseBestModeler()
+WSupervisedLearner* WBucket::releaseBestModeler()
 {
 	if(m_nBestLearner == INVALID_INDEX)
 		throw Ex("Not trained yet");
-	GSupervisedLearner* pModeler = m_models[m_nBestLearner];
+	WSupervisedLearner* pModeler = m_models[m_nBestLearner];
 	m_models[m_nBestLearner] = m_models[m_models.size() - 1];
 	m_models.pop_back();
 	m_nBestLearner = -1;
@@ -890,7 +890,7 @@ GSupervisedLearner* GBucket::releaseBestModeler()
 }
 
 // virtual
-void GBucket::predict(const GVec& in, GVec& out)
+void WBucket::predict(const WVec& in, WVec& out)
 {
 	if(m_nBestLearner == INVALID_INDEX)
 		throw Ex("not trained yet");
@@ -898,20 +898,20 @@ void GBucket::predict(const GVec& in, GVec& out)
 }
 
 // virtual
-void GBucket::predictDistribution(const GVec& in, GPrediction* out)
+void WBucket::predictDistribution(const WVec& in, WPrediction* out)
 {
 	if(m_nBestLearner == INVALID_INDEX)
 		throw Ex("not trained yet");
 	m_models[m_nBestLearner]->predictDistribution(in, out);
 }
 
-#include "GDecisionTree.h"
+#include "WDecisionTree.h"
 // static
-void GBucket::test()
+void WBucket::test()
 {
-	GBucket bucket;
-	bucket.addLearner(new GBaselineLearner());
-	bucket.addLearner(new GDecisionTree());
-	bucket.addLearner(new GAutoFilter(new GMeanMarginsTree()));
+	WBucket bucket;
+	bucket.addLearner(new WBaselineLearner());
+	bucket.addLearner(new WDecisionTree());
+	bucket.addLearner(new WAutoFilter(new WMeanMarginsTree()));
 	bucket.basicTest(0.695, 0.918);
 }

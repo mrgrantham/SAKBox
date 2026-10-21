@@ -16,27 +16,27 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GManifold.h"
+#include "WManifold.h"
 #include <stdio.h>
 #include <math.h>
-#include "GBits.h"
-#include "GBitTable.h"
-#include "GGraph.h"
-#include "GHillClimber.h"
-#include "GHeap.h"
-#include "GImage.h"
-#include "GKNN.h"
-#include "GLinear.h"
-#include "GMath.h"
-#include "GNeighborFinder.h"
-#include "GNeuralNet.h"
-#include "GPlot.h"
-#include "GSparseMatrix.h"
-#include "GTime.h"
-#include "GTransform.h"
-#include "GDom.h"
-#include "GVec.h"
-#include "GHolders.h"
+#include "WBits.h"
+#include "WBitTable.h"
+#include "WGraph.h"
+#include "WHillClimber.h"
+#include "WHeap.h"
+#include "WImage.h"
+#include "WKNN.h"
+#include "WLinear.h"
+#include "WMath.h"
+#include "WNeighborFinder.h"
+#include "WNeuralNet.h"
+#include "WPlot.h"
+#include "WSparseMatrix.h"
+#include "WTime.h"
+#include "WTransform.h"
+#include "WDom.h"
+#include "WVec.h"
+#include "WHolders.h"
 #include <deque>
 #include <set>
 #include <map>
@@ -45,7 +45,7 @@
 #include <queue>
 #include <memory>
 
-namespace GClasses
+namespace WClasses
 {
 
 using std::string;
@@ -60,12 +60,12 @@ using std::make_pair;
 #define USE_ANGLES
 #define STEP_SIZE_PER_POINT
 
-void GVec_copy(double* pDest, const double* pSource, size_t nDims)
+void WVec_copy(double* pDest, const double* pSource, size_t nDims)
 {
 	memcpy(pDest, pSource, sizeof(double) * nDims);
 }
 
-void GVec_add(double* pDest, const double* pSource, size_t nDims)
+void WVec_add(double* pDest, const double* pSource, size_t nDims)
 {
 	for(size_t i = 0; i < nDims; i++)
 	{
@@ -75,7 +75,7 @@ void GVec_add(double* pDest, const double* pSource, size_t nDims)
 	}
 }
 
-void GVec_multiply(double* pVector, double dScalar, size_t nDims)
+void WVec_multiply(double* pVector, double dScalar, size_t nDims)
 {
 	for(size_t i = 0; i < nDims; i++)
 	{
@@ -84,7 +84,7 @@ void GVec_multiply(double* pVector, double dScalar, size_t nDims)
 	}
 }
 
-void GVec_setAll(double* pVector, double value, size_t dims)
+void WVec_setAll(double* pVector, double value, size_t dims)
 {
 	for(size_t i = 0; i < dims; i++)
 	{
@@ -94,31 +94,31 @@ void GVec_setAll(double* pVector, double value, size_t dims)
 }
 
 // static
-void GManifold::computeNeighborWeights(const GMatrix* pData, size_t point, size_t k, const size_t* pNeighbors, double* pOutWeights)
+void WManifold::computeNeighborWeights(const WMatrix* pData, size_t point, size_t k, const size_t* pNeighbors, double* pOutWeights)
 {
 	// Create a matrix of all the neighbors normalized around the origin
 	size_t colCount = pData->cols();
-	GMatrix z(pData->relation().clone());
-	const GVec& row = pData->row(point);
+	WMatrix z(pData->relation().clone());
+	const WVec& row = pData->row(point);
 	for(size_t i = 0; i < k; i++)
 	{
 		if(*pNeighbors < pData->rows())
 		{
-			GVec& target = z.newRow();
+			WVec& target = z.newRow();
 			target.copy(pData->row(*pNeighbors));
 			target -= row;
 			pNeighbors++;
 		}
 		else
 		{
-			GVec& target = z.newRow();
+			WVec& target = z.newRow();
 			target.fill(1e12);
 		}
 	}
 
 	// Square it
-	GMatrix* pSquare = GMatrix::multiply(z, z, false, true);
-	std::unique_ptr<GMatrix> hSquare(pSquare);
+	WMatrix* pSquare = WMatrix::multiply(z, z, false, true);
+	std::unique_ptr<WMatrix> hSquare(pSquare);
 
 	// if the number of neighbors is more than the number of dimensions then the
 	// square matrix will not be full rank so we need to regularize it
@@ -136,24 +136,24 @@ void GManifold::computeNeighborWeights(const GMatrix* pData, size_t point, size_
 	// 		throw Ex("Failed to find a solution in computeNeighborWeights");
 
 	// Compute the weights the SVD way
-	GMatrix* pInv = pSquare->pseudoInverse();
-	std::unique_ptr<GMatrix> hInv(pInv);
+	WMatrix* pInv = pSquare->pseudoInverse();
+	std::unique_ptr<WMatrix> hInv(pInv);
 	for(size_t i = 0; i < pSquare->rows(); i++)
 		pOutWeights[i] = pInv->row(i).sum();
 
 	// Normalize the weights to sum to one
-	GVecWrapper vw(pOutWeights, pSquare->rows());
+	WVecWrapper vw(pOutWeights, pSquare->rows());
 	vw.sumToOne();
 }
 
 // static
-GMatrix* GManifold::blendNeighborhoods(size_t index, GMatrix* pA, double ratio, GMatrix* pB, size_t neighborCount, GNeighborFinder* pNF)
+WMatrix* WManifold::blendNeighborhoods(size_t index, WMatrix* pA, double ratio, WMatrix* pB, size_t neighborCount, WNeighborFinder* pNF)
 {
 	// Copy the two neighborhoods
 	size_t colCount = pA->cols();
-	GMatrix neighborhoodA(pA->relation().clone());
+	WMatrix neighborhoodA(pA->relation().clone());
 	neighborhoodA.newRow().copy(pA->row(index));
-	GMatrix neighborhoodB(pB->relation().clone());
+	WMatrix neighborhoodB(pB->relation().clone());
 	neighborhoodB.newRow().copy(pB->row(index));
 	for(size_t j = 0; j < neighborCount; j++)
 	{
@@ -162,7 +162,7 @@ GMatrix* GManifold::blendNeighborhoods(size_t index, GMatrix* pA, double ratio, 
 	}
 
 	// Subtract the means
-	GVec mean(colCount);
+	WVec mean(colCount);
 	neighborhoodA.centroid(mean);
 	for(size_t i = 0; i < neighborhoodA.rows(); i++)
 		neighborhoodA.row(i) -= mean;
@@ -171,9 +171,9 @@ GMatrix* GManifold::blendNeighborhoods(size_t index, GMatrix* pA, double ratio, 
 		neighborhoodB.row(i) -= mean;
 
 	// Use the kabsch algorithm to compute the optimal rotation
-	GMatrix* pKabsch = GMatrix::kabsch(&neighborhoodA, &neighborhoodB);
-	std::unique_ptr<GMatrix> hKabsch(pKabsch);
-	GMatrix* pC = GMatrix::multiply(neighborhoodB, *pKabsch, false, false);
+	WMatrix* pKabsch = WMatrix::kabsch(&neighborhoodA, &neighborhoodB);
+	std::unique_ptr<WMatrix> hKabsch(pKabsch);
+	WMatrix* pC = WMatrix::multiply(neighborhoodB, *pKabsch, false, false);
 	for(size_t i = 0; i < pC->rows(); i++)
 	{
 		pC->row(i) *= ratio;
@@ -184,7 +184,7 @@ GMatrix* GManifold::blendNeighborhoods(size_t index, GMatrix* pA, double ratio, 
 }
 
 // static
-GMatrix* GManifold::blendEmbeddings(GMatrix* pA, double* pRatios, GMatrix* pB, size_t neighborCount, GNeighborGraph* pNeighborTable, size_t seed)
+WMatrix* WManifold::blendEmbeddings(WMatrix* pA, double* pRatios, WMatrix* pB, size_t neighborCount, WNeighborGraph* pNeighborTable, size_t seed)
 {
 	// Check params
 	size_t rowCount = pA->rows();
@@ -193,14 +193,14 @@ GMatrix* GManifold::blendEmbeddings(GMatrix* pA, double* pRatios, GMatrix* pB, s
 		throw Ex("mismatching sizes");
 
 	// Blend the seed neighborhood
-	GMatrix* pC = new GMatrix(rowCount, colCount);
+	WMatrix* pC = new WMatrix(rowCount, colCount);
 	deque<size_t> q;
-	GBitTable visited(rowCount);
-	GBitTable established(rowCount);
+	WBitTable visited(rowCount);
+	WBitTable established(rowCount);
 	{
 		size_t nc = pNeighborTable->findNearest(neighborCount, seed);
-		GMatrix* pAve = blendNeighborhoods(seed, pA, pRatios[seed], pB, neighborCount, pNeighborTable);
-		std::unique_ptr<GMatrix> hAve(pAve);
+		WMatrix* pAve = blendNeighborhoods(seed, pA, pRatios[seed], pB, neighborCount, pNeighborTable);
+		std::unique_ptr<WMatrix> hAve(pAve);
 		pC->row(seed).copy(pAve->row(0));
 		visited.set(seed);
 		established.set(seed);
@@ -216,7 +216,7 @@ GMatrix* GManifold::blendEmbeddings(GMatrix* pA, double* pRatios, GMatrix* pB, s
 	}
 
 	// Align in a breadth-first manner
-	GVec mean(colCount);
+	WVec mean(colCount);
 	while(q.size() > 0)
 	{
 		size_t par = q.front();
@@ -224,13 +224,13 @@ GMatrix* GManifold::blendEmbeddings(GMatrix* pA, double* pRatios, GMatrix* pB, s
 
 		// Make a blended neighborhood
 		size_t nc = pNeighborTable->findNearest(neighborCount, par);
-		GMatrix* pD = blendNeighborhoods(par, pA, pRatios[par], pB, neighborCount, pNeighborTable);
-		std::unique_ptr<GMatrix> hD(pD);
+		WMatrix* pD = blendNeighborhoods(par, pA, pRatios[par], pB, neighborCount, pNeighborTable);
+		std::unique_ptr<WMatrix> hD(pD);
 
 		// Make sub-neighborhoods that contain only tentatively-placed points
-		GMatrix tentativeC(pC->relation().clone());
-		GMatrix tentativeD(pD->relation().clone());
-		GReleaseDataHolder hTentativeD(&tentativeD);
+		WMatrix tentativeC(pC->relation().clone());
+		WMatrix tentativeD(pD->relation().clone());
+		WReleaseDataHolder hTentativeD(&tentativeD);
 		tentativeC.newRow().copy(pC->row(par));
 		tentativeD.takeRow(&pD->row(0));
 		size_t ii = 1;
@@ -253,12 +253,12 @@ GMatrix* GManifold::blendEmbeddings(GMatrix* pA, double* pRatios, GMatrix* pB, s
 			tentativeC.row(i) -= mean;
 
 		// Compute the rotation to align the tentative neighborhoods
-		GMatrix* pKabsch = GMatrix::kabsch(&tentativeC, &tentativeD);
-		std::unique_ptr<GMatrix> hKabsch(pKabsch);
+		WMatrix* pKabsch = WMatrix::kabsch(&tentativeC, &tentativeD);
+		std::unique_ptr<WMatrix> hKabsch(pKabsch);
 
 		// Compute an aligned version of pD that fits with pC
-		GMatrix* pAligned = GMatrix::multiply(*pD, *pKabsch, false, false);
-		std::unique_ptr<GMatrix> hAligned(pAligned);
+		WMatrix* pAligned = WMatrix::multiply(*pD, *pKabsch, false, false);
+		std::unique_ptr<WMatrix> hAligned(pAligned);
 		for(size_t i = 0; i < pAligned->rows(); i++)
 			pAligned->row(i) += mean;
 
@@ -282,20 +282,20 @@ GMatrix* GManifold::blendEmbeddings(GMatrix* pA, double* pRatios, GMatrix* pB, s
 }
 
 // static
-GMatrix* GManifold::multiDimensionalScaling(GMatrix* pDistances, size_t targetDims, GRand* pRand, bool useSquaredDistances)
+WMatrix* WManifold::multiDimensionalScaling(WMatrix* pDistances, size_t targetDims, WRand* pRand, bool useSquaredDistances)
 {
 	size_t n = pDistances->rows();
 	if((size_t)pDistances->cols() != n)
 		throw Ex("Expected a square and symmetric distance matrix");
 
 	// Square every element in the distance matrix (unless it's already squared) and ensure symmetry
-	GMatrix* pD = new GMatrix(pDistances->relation().clone());
-	std::unique_ptr<GMatrix> hD(pD);
+	WMatrix* pD = new WMatrix(pDistances->relation().clone());
+	std::unique_ptr<WMatrix> hD(pD);
 	pD->newRows(n);
 	for(size_t i = 0; i < n; i++)
 	{
-		GVec& in = pDistances->row(i);
-		GVec& out = pD->row(i);
+		WVec& in = pDistances->row(i);
+		WVec& out = pD->row(i);
 		out[i] = 0.0;
 		if(useSquaredDistances)
 		{
@@ -311,64 +311,64 @@ GMatrix* GManifold::multiDimensionalScaling(GMatrix* pDistances, size_t targetDi
 	pD->mirrorTriangle(true);
 
 	// Some algebra
-	GVec rowsum(n);
-	GVec pEigenVals(targetDims);
+	WVec rowsum(n);
+	WVec pEigenVals(targetDims);
 	for(size_t i = 0; i < n; i++)
 		rowsum[i] = pD->row(i).sum();
 	double z = 1.0 / n;
 	double t = z * rowsum.sum();
 	for(size_t i = 0; i < n; i++)
 	{
-		GVec& row = pD->row(i);
+		WVec& row = pD->row(i);
 		for(size_t j = 0; j < n; j++)
 			row[j] = -0.5 * (row[j] + (z * (t - rowsum[i] - rowsum[j])));
 	}
 
 	// Compute eigenvectors
-	GMatrix* pEigs = pD->eigs(std::min(n, targetDims), pEigenVals, pRand, true);
+	WMatrix* pEigs = pD->eigs(std::min(n, targetDims), pEigenVals, pRand, true);
 	if(n < (size_t)targetDims)
 	{
 		throw Ex("targetDims cannot be larger than the number of rows or columns in the distance matrix");
 		/*
 		for(size_t i = n; i < targetDims; i++)
 			pEigenVals[i] = 0.0;
-		GMatrix* pEigs2 = new GMatrix(targetDims);
+		WMatrix* pEigs2 = new WMatrix(targetDims);
 		pEigs2->newRows(targetDims);
 		pEigs2->setAll(0.0);
 		for(size_t y = 0; y < n; y++)
-			GVec::copy(pEigs2->row(y), pEigs->row(y), n);
+			WVec::copy(pEigs2->row(y), pEigs->row(y), n);
 		delete(pEigs);
 		pEigs = pEigs2;
 */
 	}
-	std::unique_ptr<GMatrix> hEigs(pEigs);
+	std::unique_ptr<WMatrix> hEigs(pEigs);
 	for(size_t i = 0; i < targetDims; i++)
 		pEigs->row(i) *= sqrt(std::max(0.0, pEigenVals[i]));
-	GMatrix* pResults = pEigs->transpose();
+	WMatrix* pResults = pEigs->transpose();
 	return pResults;
 }
 
 #define POINT_COUNT 9
-void GManifold_testMultiDimensionalScaling()
+void WManifold_testMultiDimensionalScaling()
 {
 	// Test MDS
-	GRand prng(0);
-	GMatrix foo(POINT_COUNT, 2);
+	WRand prng(0);
+	WMatrix foo(POINT_COUNT, 2);
 	for(size_t i = 0; i < POINT_COUNT; i++)
 		foo[i].fillUniform(prng);
 
 	// Make distance matrix
-	GMatrix dst(POINT_COUNT, POINT_COUNT);
+	WMatrix dst(POINT_COUNT, POINT_COUNT);
 	for(size_t i = 0; i < POINT_COUNT; i++)
 	{
-		GVec& row = dst.row(i);
+		WVec& row = dst.row(i);
 		for(size_t j = i + 1; j < POINT_COUNT; j++)
 			row[j] = foo.row(i).squaredDistance(foo.row(j));
 	}
 
 	// Do MDS
-	GMatrix* pMDS = GManifold::multiDimensionalScaling(&dst, 2, &prng, true);
-	std::unique_ptr<GMatrix> hMDS(pMDS);
+	WMatrix* pMDS = WManifold::multiDimensionalScaling(&dst, 2, &prng, true);
+	std::unique_ptr<WMatrix> hMDS(pMDS);
 	for(size_t i = 0; i < POINT_COUNT; i++)
 	{
 		for(size_t j = 0; j < POINT_COUNT; j++)
@@ -382,9 +382,9 @@ void GManifold_testMultiDimensionalScaling()
 }
 
 // static
-void GManifold::test()
+void WManifold::test()
 {
-	GManifold_testMultiDimensionalScaling();
+	WManifold_testMultiDimensionalScaling();
 }
 
 
@@ -393,7 +393,7 @@ void GManifold::test()
 
 
 
-struct GManifoldSculptingNeighbor
+struct WManifoldSculptingNeighbor
 {
 	size_t m_nNeighbor;
 	size_t m_nNeighborsNeighborSlot;
@@ -403,23 +403,23 @@ struct GManifoldSculptingNeighbor
 	double m_junkDotProd;
 };
 
-struct GManifoldSculptingStuff
+struct WManifoldSculptingStuff
 {
 	size_t m_nCycle;
 	bool m_bAdjustable;
 };
 
-GManifoldSculpting::GManifoldSculpting(size_t nNeighbors, size_t targetDims, GRand* pRand)
+WManifoldSculpting::WManifoldSculpting(size_t nNeighbors, size_t targetDims, WRand* pRand)
 : m_pRand(pRand), m_pNF(nullptr)
 {
 	m_pMetaData = nullptr;
 	m_nDimensions = 0;
 	m_nTargetDims = targetDims;
-	m_pRelationAfter = new GUniformRelation(m_nTargetDims, 0);
+	m_pRelationAfter = new WUniformRelation(m_nTargetDims, 0);
 	m_nNeighbors = nNeighbors;
 
-	m_nStuffIndex = sizeof(struct GManifoldSculptingNeighbor) * m_nNeighbors;
-	m_nRecordSize = m_nStuffIndex + sizeof(struct GManifoldSculptingStuff);
+	m_nStuffIndex = sizeof(struct WManifoldSculptingNeighbor) * m_nNeighbors;
+	m_nRecordSize = m_nStuffIndex + sizeof(struct WManifoldSculptingStuff);
 
 	m_dSquishingRate = .99;
 	m_nPass = 0;
@@ -430,20 +430,20 @@ GManifoldSculpting::GManifoldSculpting(size_t nNeighbors, size_t targetDims, GRa
 	m_maxNeighborDist = 1e20;
 }
 
-GManifoldSculpting::~GManifoldSculpting()
+WManifoldSculpting::~WManifoldSculpting()
 {
 	delete(m_pData);
 	delete[] m_pMetaData;
 }
 
-void GManifoldSculpting::setPreprocessedData(GMatrix* pData)
+void WManifoldSculpting::setPreprocessedData(WMatrix* pData)
 {
 	delete(m_pData);
 	m_pData = pData;
 }
 
 // virtual
-GMatrix* GManifoldSculpting::reduce(const GMatrix& in)
+WMatrix* WManifoldSculpting::reduce(const WMatrix& in)
 {
 	beginTransform(&in);
 
@@ -465,7 +465,7 @@ GMatrix* GManifoldSculpting::reduce(const GMatrix& in)
 	}
 
 	// Produce the output data
-	GMatrix* pDataOut = new GMatrix(relationAfter().clone());
+	WMatrix* pDataOut = new WMatrix(relationAfter().clone());
 	pDataOut->newRows(m_pData->rows());
 	pDataOut->copyCols(*m_pData, 0, m_nTargetDims);
 	delete(m_pData);
@@ -473,7 +473,7 @@ GMatrix* GManifoldSculpting::reduce(const GMatrix& in)
 	return pDataOut;
 }
 
-double GManifoldSculpting_dotProduct(const double* pOriginA, const double* pTargetA, const double* pOriginB, const double* pTargetB, size_t nSize)
+double WManifoldSculpting_dotProduct(const double* pOriginA, const double* pTargetA, const double* pOriginB, const double* pTargetB, size_t nSize)
 {
 	double dVal = 0;
 	for(size_t n = 0; n < nSize; n++)
@@ -487,7 +487,7 @@ double GManifoldSculpting_dotProduct(const double* pOriginA, const double* pTarg
 	return dVal;
 }
 
-double GMS_sqDist(const double* pA, const double* pB, size_t nDims)
+double WMS_sqDist(const double* pA, const double* pB, size_t nDims)
 {
 	double dist = 0;
 	double d;
@@ -501,7 +501,7 @@ double GMS_sqDist(const double* pA, const double* pB, size_t nDims)
 	return dist;
 }
 
-void GManifoldSculpting::beginTransform(const GMatrix* pRealSpaceData)
+void WManifoldSculpting::beginTransform(const WMatrix* pRealSpaceData)
 {
 	m_nDimensions = pRealSpaceData->cols();
 	if(!pRealSpaceData->relation().areContinuous(0, m_nDimensions))
@@ -525,7 +525,7 @@ void GManifoldSculpting::beginTransform(const GMatrix* pRealSpaceData)
 		size_t preserveDims = m_nTargetDims * 6;
 		preserveDims = std::max((size_t)30, preserveDims);
 		preserveDims = std::min(pRealSpaceData->relation().size(), preserveDims);
-		GPCA pca(preserveDims);
+		WPCA pca(preserveDims);
 		pca.train(*pRealSpaceData);
 		m_pData = pca.transformBatch(*pRealSpaceData);
 	}
@@ -537,23 +537,23 @@ void GManifoldSculpting::beginTransform(const GMatrix* pRealSpaceData)
 	m_scale = 1.0;
 	for(size_t i = 0; i < m_pData->rows(); i++)
 	{
-		struct GManifoldSculptingNeighbor* pArrNeighbors = record(i);
+		struct WManifoldSculptingNeighbor* pArrNeighbors = record(i);
 		for(size_t j = 0; j < m_nNeighbors; j++)
 		{
 			size_t neighbor = pArrNeighbors[j].m_nNeighbor;
 			if(neighbor < m_pData->rows())
 			{
-				pArrNeighbors[j].m_junkSquaredDist = GMS_sqDist(m_pData->row(i).data() + m_nTargetDims, m_pData->row(neighbor).data() + m_nTargetDims, m_nDimensions - m_nTargetDims);
+				pArrNeighbors[j].m_junkSquaredDist = WMS_sqDist(m_pData->row(i).data() + m_nTargetDims, m_pData->row(neighbor).data() + m_nTargetDims, m_nDimensions - m_nTargetDims);
 				size_t slot = pArrNeighbors[j].m_nNeighborsNeighborSlot;
-				struct GManifoldSculptingNeighbor* pArrNeighborsNeighbors = record(neighbor);
+				struct WManifoldSculptingNeighbor* pArrNeighborsNeighbors = record(neighbor);
 				size_t neighborsNeighbor = pArrNeighborsNeighbors[slot].m_nNeighbor;
-				pArrNeighbors[j].m_junkDotProd = GManifoldSculpting_dotProduct(m_pData->row(neighbor).data() + m_nTargetDims, m_pData->row(i).data() + m_nTargetDims, m_pData->row(neighbor).data() + m_nTargetDims, m_pData->row(neighborsNeighbor).data() + m_nTargetDims, m_nDimensions - m_nTargetDims);
+				pArrNeighbors[j].m_junkDotProd = WManifoldSculpting_dotProduct(m_pData->row(neighbor).data() + m_nTargetDims, m_pData->row(i).data() + m_nTargetDims, m_pData->row(neighbor).data() + m_nTargetDims, m_pData->row(neighborsNeighbor).data() + m_nTargetDims, m_nDimensions - m_nTargetDims);
 			}
 		}
 	}
 }
 
-void GManifoldSculpting::calculateMetadata(const GMatrix* pData)
+void WManifoldSculpting::calculateMetadata(const WMatrix* pData)
 {
 	delete[] m_pMetaData;
 	m_pMetaData = new unsigned char[m_nRecordSize * pData->rows()];
@@ -563,8 +563,8 @@ void GManifoldSculpting::calculateMetadata(const GMatrix* pData)
 	size_t m_goodNeighbors = 0;
 	{
 		// Get the appropriate neighbor finder
-		std::unique_ptr<GNeighborFinderGeneralizing> hNF;
-		GNeighborFinderGeneralizing* pNF = m_pNF;
+		std::unique_ptr<WNeighborFinderGeneralizing> hNF;
+		WNeighborFinderGeneralizing* pNF = m_pNF;
 		if(pNF)
 		{
 			if(pNF->data() != pData)
@@ -572,7 +572,7 @@ void GManifoldSculpting::calculateMetadata(const GMatrix* pData)
 		}
 		else
 		{
-			pNF = new GKdTree(pData, nullptr, true);
+			pNF = new WKdTree(pData, nullptr, true);
 			hNF.reset(pNF);
 		}
 
@@ -582,7 +582,7 @@ void GManifoldSculpting::calculateMetadata(const GMatrix* pData)
 			stuff(i)->m_bAdjustable = true;
 			pNF->findNearest(m_nNeighbors, i);
 			pNF->sortNeighbors();
-			struct GManifoldSculptingNeighbor* pArrNeighbors = record(i);
+			struct WManifoldSculptingNeighbor* pArrNeighbors = record(i);
 			for(size_t j = 0; j < m_nNeighbors; j++)
 			{
 				pArrNeighbors[j].m_nNeighbor = pNF->neighbor(j);
@@ -597,8 +597,8 @@ void GManifoldSculpting::calculateMetadata(const GMatrix* pData)
 	m_dLearningRate = m_dAveNeighborDist;
 
 	// For each data point, find the most co-linear of each neighbor's neighbors
-	struct GManifoldSculptingNeighbor* pPoint;
-	struct GManifoldSculptingNeighbor* pVertex;
+	struct WManifoldSculptingNeighbor* pPoint;
+	struct WManifoldSculptingNeighbor* pVertex;
 	double dCosTheta;
 	for(size_t n = 0; n < pData->rows(); n++)
 	{
@@ -637,23 +637,23 @@ void GManifoldSculpting::calculateMetadata(const GMatrix* pData)
 
 				// todo: is this really helpful?
 				if(m_nTargetDims < 2)
-					pPoint[i].m_dCosTheta = GBits::sign(pPoint[i].m_dCosTheta);
+					pPoint[i].m_dCosTheta = WBits::sign(pPoint[i].m_dCosTheta);
 			}
 		}
 	}
 }
 
-void GManifoldSculpting::clampPoint(size_t n)
+void WManifoldSculpting::clampPoint(size_t n)
 {
 	stuff(n)->m_bAdjustable = false;
 }
 
-size_t GManifoldSculpting::countShortcuts(size_t nThreshold)
+size_t WManifoldSculpting::countShortcuts(size_t nThreshold)
 {
 	size_t nShortcuts = 0;
 	for(size_t n = 0; n < m_pData->rows(); n++)
 	{
-		struct GManifoldSculptingNeighbor* pPoint = record(n);
+		struct WManifoldSculptingNeighbor* pPoint = record(n);
 		for(size_t i = 0; i < m_nNeighbors; i++)
 		{
 			if(pPoint[i].m_nNeighbor < m_pData->rows() && std::abs((int)(pPoint[i].m_nNeighbor - n)) >= (int)nThreshold)
@@ -666,7 +666,7 @@ size_t GManifoldSculpting::countShortcuts(size_t nThreshold)
 	return nShortcuts;
 }
 
-double GManifoldSculpting::vectorCorrelation(const double* pdA, const double* pdV, const double* pdB)
+double WManifoldSculpting::vectorCorrelation(const double* pdA, const double* pdV, const double* pdB)
 {
 	double dDotProd = 0;
 	double dMagA = 0;
@@ -683,16 +683,16 @@ double GManifoldSculpting::vectorCorrelation(const double* pdA, const double* pd
 	if(dDotProd == 0)
 		return 0;
 	double dCorrelation = dDotProd / (sqrt(dMagA) * sqrt(dMagB));
-	GAssert(dCorrelation > -1.001 && dCorrelation < 1.001);
+	WAssert(dCorrelation > -1.001 && dCorrelation < 1.001);
 	return std::max(-1.0, std::min(1.0, dCorrelation));
 }
 
-double GManifoldSculpting::vectorCorrelation2(double squaredScale, size_t a, size_t vertex, struct GManifoldSculptingNeighbor* pNeighborRec)
+double WManifoldSculpting::vectorCorrelation2(double squaredScale, size_t a, size_t vertex, struct WManifoldSculptingNeighbor* pNeighborRec)
 {
 	size_t slot = pNeighborRec->m_nNeighborsNeighborSlot;
 	if(slot >= m_pData->rows())
 		return 0.0;
-	struct GManifoldSculptingNeighbor* pNeighborsNeighbors = record(vertex);
+	struct WManifoldSculptingNeighbor* pNeighborsNeighbors = record(vertex);
 	size_t b = pNeighborsNeighbors[slot].m_nNeighbor;
 	if(b >= m_pData->rows())
 		return 0.0;
@@ -717,36 +717,36 @@ double GManifoldSculpting::vectorCorrelation2(double squaredScale, size_t a, siz
 	if(dDotProd == 0)
 		return 0;
 	double dCorrelation = dDotProd / (sqrt(dMagA) * sqrt(dMagB));
-	GAssert(dCorrelation > -1.001 && dCorrelation < 1.001);
+	WAssert(dCorrelation > -1.001 && dCorrelation < 1.001);
 	return std::max(-1.0, std::min(1.0, dCorrelation));
 }
 
-double GManifoldSculpting::averageNeighborDistance(size_t nDims)
+double WManifoldSculpting::averageNeighborDistance(size_t nDims)
 {
 	double dSum = 0;
 	size_t goodNeighbors = 0;
 	for(size_t nPoint = 0; nPoint < m_pData->rows(); nPoint++)
 	{
-		struct GManifoldSculptingNeighbor* pPoint = record(nPoint);
+		struct WManifoldSculptingNeighbor* pPoint = record(nPoint);
 		for(size_t n = 0; n < m_nNeighbors; n++)
 		{
 			if(pPoint[n].m_nNeighbor < m_pData->rows())
 			{
 				goodNeighbors++;
-				dSum += sqrt(GMS_sqDist(m_pData->row(nPoint).data(), m_pData->row(pPoint[n].m_nNeighbor).data(), m_nDimensions));
+				dSum += sqrt(WMS_sqDist(m_pData->row(nPoint).data(), m_pData->row(pPoint[n].m_nNeighbor).data(), m_nDimensions));
 			}
 		}
 	}
 	return dSum / goodNeighbors;
 }
 
-double GManifoldSculpting::computeError(size_t nPoint)
+double WManifoldSculpting::computeError(size_t nPoint)
 {
 	double dError = 0;
 	double dDist;
 	double dTheta;
-	struct GManifoldSculptingNeighbor* pPoint = record(nPoint);
-	struct GManifoldSculptingStuff* pNeighborStuff;
+	struct WManifoldSculptingNeighbor* pPoint = record(nPoint);
+	struct WManifoldSculptingStuff* pNeighborStuff;
 	size_t n;
 	double squaredScale = m_scale * m_scale;
 	size_t accepted = 0;
@@ -778,7 +778,7 @@ double GManifoldSculpting::computeError(size_t nPoint)
 				dTheta *= 0.4;
 
 			// Distances
-			dDist = sqrt(GMS_sqDist(m_pData->row(nPoint).data(), m_pData->row(nNeighbor).data(), m_nTargetDims) + squaredScale * pPoint[n].m_junkSquaredDist);
+			dDist = sqrt(WMS_sqDist(m_pData->row(nPoint).data(), m_pData->row(nNeighbor).data(), m_nTargetDims) + squaredScale * pPoint[n].m_junkSquaredDist);
 			dDist -= pPoint[n].m_dDistance;
 			dDist /= std::max(m_dAveNeighborDist, 1e-10);
 			if(pNeighborStuff->m_nCycle != m_nPass && pNeighborStuff->m_bAdjustable)
@@ -790,7 +790,7 @@ double GManifoldSculpting::computeError(size_t nPoint)
 	return dError + supervisedError(nPoint);
 }
 
-size_t GManifoldSculpting::adjustDataPoint(size_t nPoint, double* pError)
+size_t WManifoldSculpting::adjustDataPoint(size_t nPoint, double* pError)
 {
 	bool bMadeProgress = true;
 	double* pValues = m_pData->row(nPoint).data();
@@ -823,23 +823,23 @@ size_t GManifoldSculpting::adjustDataPoint(size_t nPoint, double* pError)
 	return nSteps - 1; // the -1 is to undo the last incrementor
 }
 
-void GManifoldSculpting::moveMeanToOrigin()
+void WManifoldSculpting::moveMeanToOrigin()
 {
-	GTEMPBUF(double, mean, m_nTargetDims);
-	GVec_setAll(mean, 0.0, m_nTargetDims);
+	WTEMPBUF(double, mean, m_nTargetDims);
+	WVec_setAll(mean, 0.0, m_nTargetDims);
 	for(size_t i = 0; i < m_pData->rows(); i++)
-		GVec_add(mean, m_pData->row(i).data(), m_nTargetDims);
-	GVec_multiply(mean, -1.0 / m_pData->rows(), m_nTargetDims);
+		WVec_add(mean, m_pData->row(i).data(), m_nTargetDims);
+	WVec_multiply(mean, -1.0 / m_pData->rows(), m_nTargetDims);
 	for(size_t i = 0; i < m_pData->rows(); i++)
-		GVec_add(m_pData->row(i).data(), mean, m_nTargetDims);
+		WVec_add(m_pData->row(i).data(), mean, m_nTargetDims);
 }
 
-double GManifoldSculpting::squishPass(size_t nSeedDataPoint)
+double WManifoldSculpting::squishPass(size_t nSeedDataPoint)
 {
 	if(!m_pMetaData)
 		throw Ex("You must call BeginTransform before calling this method");
-	struct GManifoldSculptingNeighbor* pPoint;
-	struct GManifoldSculptingStuff* pStuff;
+	struct WManifoldSculptingNeighbor* pPoint;
+	struct WManifoldSculptingStuff* pStuff;
 
 	// Squish the extra dimensions
 	if(m_scale > 0.001)
@@ -848,18 +848,18 @@ double GManifoldSculpting::squishPass(size_t nSeedDataPoint)
 		if(m_scale > 0.001)
 		{
 			for(size_t n = 0; n < m_pData->rows(); n++)
-				GVec_multiply(m_pData->row(n).data() + m_nTargetDims, m_dSquishingRate, m_nDimensions - m_nTargetDims);
+				WVec_multiply(m_pData->row(n).data() + m_nTargetDims, m_dSquishingRate, m_nDimensions - m_nTargetDims);
 		}
 		else
 		{
 			for(size_t n = 0; n < m_pData->rows(); n++)
-				GVec_setAll(m_pData->row(n).data() + m_nTargetDims, 0.0, m_nDimensions - m_nTargetDims);
+				WVec_setAll(m_pData->row(n).data() + m_nTargetDims, 0.0, m_nDimensions - m_nTargetDims);
 			m_scale = 0;
 		}
 		while(averageNeighborDistance(m_nDimensions) < m_dAveNeighborDist)
 		{
 			for(size_t n = 0; n < m_pData->rows(); n++)
-				GVec_multiply(m_pData->row(n).data(), 1.0 / m_dSquishingRate, m_nTargetDims);
+				WVec_multiply(m_pData->row(n).data(), 1.0 / m_dSquishingRate, m_nTargetDims);
 		}
 	}
 
@@ -913,46 +913,46 @@ double GManifoldSculpting::squishPass(size_t nSeedDataPoint)
 
 
 
-GIsomap::GIsomap(size_t neighborCount, size_t targetDims, GRand* pRand) : m_neighborCount(neighborCount), m_targetDims(targetDims), m_pNF(nullptr), m_pRand(pRand), m_dropDisconnectedPoints(false)
+WIsomap::WIsomap(size_t neighborCount, size_t targetDims, WRand* pRand) : m_neighborCount(neighborCount), m_targetDims(targetDims), m_pNF(nullptr), m_pRand(pRand), m_dropDisconnectedPoints(false)
 {
 }
 
-GIsomap::GIsomap(GDomNode* pNode)
-: GTransform(pNode)
+WIsomap::WIsomap(WDomNode* pNode)
+: WTransform(pNode)
 {
 	m_targetDims = (size_t)pNode->getInt("targetDims");
 }
 
 // virtual
-GIsomap::~GIsomap()
+WIsomap::~WIsomap()
 {
 }
 
-GDomNode* GIsomap::serialize(GDom* pDoc) const
+WDomNode* WIsomap::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GIsomap");
+	WDomNode* pNode = baseDomNode(pDoc, "WIsomap");
 	pNode->add(pDoc, "targetDims", m_targetDims);
 	return pNode;
 }
 
-void GIsomap::setNeighborFinder(GNeighborFinder* pNF)
+void WIsomap::setNeighborFinder(WNeighborFinder* pNF)
 {
 	m_pNF = pNF;
 }
 
 // virtual
-GMatrix* GIsomap::reduce(const GMatrix& in)
+WMatrix* WIsomap::reduce(const WMatrix& in)
 {
-	GNeighborFinder* pNF = m_pNF;
-	std::unique_ptr<GNeighborFinder> hNF;
+	WNeighborFinder* pNF = m_pNF;
+	std::unique_ptr<WNeighborFinder> hNF;
 	if(!pNF)
 	{
-		pNF = new GKdTree(&in, nullptr, true);
+		pNF = new WKdTree(&in, nullptr, true);
 		hNF.reset(pNF);
 	}
 
 	// Compute the distance matrix using the Floyd Warshall algorithm
-	GFloydWarshall graph(in.rows());
+	WFloydWarshall graph(in.rows());
 	for(size_t i = 0; i < in.rows(); i++)
 	{
 		size_t nc = pNF->findNearest(m_neighborCount, i);
@@ -967,7 +967,7 @@ GMatrix* GIsomap::reduce(const GMatrix& in)
 	{
 		if(!m_dropDisconnectedPoints)
 			throw Ex("The local neighborhoods do not form a connected graph. Increasing the neighbor count may be a good solution. Another solution is to specify to dropDisconnectedPoints.");
-		GMatrix* pCM = graph.costMatrix();
+		WMatrix* pCM = graph.costMatrix();
 		size_t c = pCM->cols();
 		while(true)
 		{
@@ -999,7 +999,7 @@ GMatrix* GIsomap::reduce(const GMatrix& in)
 	}
 
 	// Do classic MDS on the distance matrix
-	return GManifold::multiDimensionalScaling(graph.costMatrix(), m_targetDims, m_pRand, false);
+	return WManifold::multiDimensionalScaling(graph.costMatrix(), m_targetDims, m_pRand, false);
 }
 
 
@@ -1018,39 +1018,39 @@ GMatrix* GIsomap::reduce(const GMatrix& in)
 #define SPARSE
 
 // Locally Linear Embedding
-class GLLEHelper
+class WLLEHelper
 {
 protected:
-	const GMatrix* m_pInputData;
-	GMatrix* m_pOutputData;
+	const WMatrix* m_pInputData;
+	WMatrix* m_pOutputData;
 	size_t m_nInputDims;
 	size_t m_nTargetDims;
 	size_t m_nNeighbors;
 	size_t* m_pNeighbors;
 #ifdef SPARSE
-	GSparseMatrix* m_pWeights;
+	WSparseMatrix* m_pWeights;
 #else
-	GMatrix* m_pWeights;
+	WMatrix* m_pWeights;
 #endif
-	GRand* m_pRand;
+	WRand* m_pRand;
 
-	GLLEHelper(const GMatrix* pData, size_t nTargetDims, size_t nNeighbors, GRand* pRand);
+	WLLEHelper(const WMatrix* pData, size_t nTargetDims, size_t nNeighbors, WRand* pRand);
 public:
-	~GLLEHelper();
+	~WLLEHelper();
 
 	// Uses LLE to compute the reduced dimensional embedding of the data
 	// associated with pNF.
-	static GMatrix* doLLE(GNeighborFinder* pNF, size_t nTargetDims, size_t neighbors, GRand* pRand);
+	static WMatrix* doLLE(WNeighborFinder* pNF, size_t nTargetDims, size_t neighbors, WRand* pRand);
 
 protected:
-	void findNeighbors(GNeighborFinder* pNF);
+	void findNeighbors(WNeighborFinder* pNF);
 	void findNeighborsTheSlowWay();
 	void computeWeights();
 	void computeEmbedding();
-	GMatrix* releaseOutputData();
+	WMatrix* releaseOutputData();
 };
 
-GLLEHelper::GLLEHelper(const GMatrix* pData, size_t nTargetDims, size_t nNeighbors, GRand* pRand)
+WLLEHelper::WLLEHelper(const WMatrix* pData, size_t nTargetDims, size_t nNeighbors, WRand* pRand)
 : m_pRand(pRand)
 {
 	m_pInputData = pData;
@@ -1061,31 +1061,31 @@ GLLEHelper::GLLEHelper(const GMatrix* pData, size_t nTargetDims, size_t nNeighbo
 	m_pOutputData = nullptr;
 }
 
-GLLEHelper::~GLLEHelper()
+WLLEHelper::~WLLEHelper()
 {
 	delete(m_pNeighbors);
 	delete(m_pWeights);
 	delete(m_pOutputData);
 }
 
-GMatrix* GLLEHelper::releaseOutputData()
+WMatrix* WLLEHelper::releaseOutputData()
 {
-	GMatrix* pData = m_pOutputData;
+	WMatrix* pData = m_pOutputData;
 	m_pOutputData = nullptr;
 	return pData;
 }
 
 // static
-GMatrix* GLLEHelper::doLLE(GNeighborFinder* pNF, size_t nTargetDims, size_t neighbors, GRand* pRand)
+WMatrix* WLLEHelper::doLLE(WNeighborFinder* pNF, size_t nTargetDims, size_t neighbors, WRand* pRand)
 {
-	GLLEHelper lle(pNF->data(), nTargetDims, neighbors, pRand);
+	WLLEHelper lle(pNF->data(), nTargetDims, neighbors, pRand);
 	lle.findNeighbors(pNF);
 	lle.computeWeights();
 	lle.computeEmbedding();
 	return lle.releaseOutputData();
 }
 
-void GLLEHelper::findNeighbors(GNeighborFinder* pNF)
+void WLLEHelper::findNeighbors(WNeighborFinder* pNF)
 {
 	delete(m_pNeighbors);
 	m_pNeighbors = new size_t[m_nNeighbors * m_pInputData->rows()];
@@ -1101,18 +1101,18 @@ void GLLEHelper::findNeighbors(GNeighborFinder* pNF)
 	}
 }
 
-void GLLEHelper::computeWeights()
+void WLLEHelper::computeWeights()
 {
 	size_t nRowCount = m_pInputData->rows();
-	GTEMPBUF(double, pVec, m_nNeighbors);
+	WTEMPBUF(double, pVec, m_nNeighbors);
 #ifdef SPARSE
-	m_pWeights = new GSparseMatrix(nRowCount, nRowCount);
+	m_pWeights = new WSparseMatrix(nRowCount, nRowCount);
 #else
-	m_pWeights = new GMatrix(nRowCount, nRowCount);
+	m_pWeights = new WMatrix(nRowCount, nRowCount);
 #endif
 	for(size_t n = 0; n < nRowCount; n++)
 	{
-		GManifold::computeNeighborWeights(m_pInputData, n, m_nNeighbors, m_pNeighbors + n * m_nNeighbors, pVec);
+		WManifold::computeNeighborWeights(m_pInputData, n, m_nNeighbors, m_pNeighbors + n * m_nNeighbors, pVec);
 		size_t pos = 0;
 		size_t* pHood = m_pNeighbors + n * m_nNeighbors;
 #ifdef SPARSE
@@ -1124,7 +1124,7 @@ void GLLEHelper::computeWeights()
 				pos++;
 		}
 #else
-		GVec_setAll(m_pWeights->row(n), 0.0, nRowCount);
+		WVec_setAll(m_pWeights->row(n), 0.0, nRowCount);
 		for(size_t i = 0; i < m_nNeighbors; i++)
 		{
 			if(pHood[i] < nRowCount)
@@ -1136,7 +1136,7 @@ void GLLEHelper::computeWeights()
 	}
 }
 
-void GLLEHelper::computeEmbedding()
+void WLLEHelper::computeEmbedding()
 {
 	//  Subtract the weights from the identity matrix
 	size_t row, col;
@@ -1153,15 +1153,15 @@ void GLLEHelper::computeEmbedding()
 	// Compute the smallest (m_nTargetDims+1) eigenvectors of (A^T)A, where A is m_pWeights
 #ifdef SPARSE
 	// The sparse matrix SVD way
-	GSparseMatrix* pU;
+	WSparseMatrix* pU;
 	double* diag;
-	GSparseMatrix* pV;
+	WSparseMatrix* pV;
 	m_pWeights->singularValueDecomposition(&pU, &diag, &pV);
-	std::unique_ptr<GSparseMatrix> hU(pU);
+	std::unique_ptr<WSparseMatrix> hU(pU);
 	std::unique_ptr<double[]> hDiag(diag);
-	std::unique_ptr<GSparseMatrix> hV(pV);
-	GMatrix* pEigVecs = new GMatrix(m_nTargetDims + 1, pV->cols());
-	std::unique_ptr<GMatrix> hEigVecs(pEigVecs);
+	std::unique_ptr<WSparseMatrix> hV(pV);
+	WMatrix* pEigVecs = new WMatrix(m_nTargetDims + 1, pV->cols());
+	std::unique_ptr<WMatrix> hEigVecs(pEigVecs);
 	for(size_t i = 1; i <= m_nTargetDims; i++)
 	{
 		size_t rowIn = pV->rows() - 1 - i;
@@ -1172,12 +1172,12 @@ void GLLEHelper::computeEmbedding()
 #else
 	/*
 	// The brute-force way (slow and not very precise)
-	GMatrix* pTmp = m_pWeights->clone();
-	std::unique_ptr<GMatrix> hTmp(pTmp);
-	GMatrix* pEigVecs = new GMatrix(nRowCount);
-	std::unique_ptr<GMatrix> hEigVecs(pEigVecs);
+	WMatrix* pTmp = m_pWeights->clone();
+	std::unique_ptr<WMatrix> hTmp(pTmp);
+	WMatrix* pEigVecs = new WMatrix(nRowCount);
+	std::unique_ptr<WMatrix> hEigVecs(pEigVecs);
 	pEigVecs->newRows(m_nTargetDims + 1);
-	GTEMPBUF(double, mean, nRowCount);
+	WTEMPBUF(double, mean, nRowCount);
 	pTmp->meanVector(mean);
 	for(size_t i = 0; i < nRowCount; i++)
 	{
@@ -1188,29 +1188,29 @@ void GLLEHelper::computeEmbedding()
 */
 
 	// The SVD way (seems to be the fastest and most accurate)
-	GMatrix* pU;
+	WMatrix* pU;
 	double* diag;
-	GMatrix* pV;
+	WMatrix* pV;
 	m_pWeights->singularValueDecomposition(&pU, &diag, &pV);
-	std::unique_ptr<GMatrix> hU(pU);
+	std::unique_ptr<WMatrix> hU(pU);
 	std::unique_ptr<double[]> hDiag(diag);
-	std::unique_ptr<GMatrix> hV(pV);
-	GMatrix* pEigVecs = new GMatrix(pV->relation(), pV->heap());
-	std::unique_ptr<GMatrix> hEigVecs(pEigVecs);
+	std::unique_ptr<WMatrix> hV(pV);
+	WMatrix* pEigVecs = new WMatrix(pV->relation(), pV->heap());
+	std::unique_ptr<WMatrix> hEigVecs(pEigVecs);
 	for(size_t i = 0; i <= m_nTargetDims; i++)
 		pEigVecs->takeRow(pV->releaseRow(pV->rows() - 1));
 
 /*
 	// The standard way
-	GMatrix* m = GMatrix::multiply(*m_pWeights, *m_pWeights, true, false);
-	std::unique_ptr<GMatrix> hM(m);
-	GMatrix* pEigVecs = m->eigs(m_nTargetDims + 1, NULL, m_pRand, false);
-	std::unique_ptr<GMatrix> hEigVecs(pEigVecs);
+	WMatrix* m = WMatrix::multiply(*m_pWeights, *m_pWeights, true, false);
+	std::unique_ptr<WMatrix> hM(m);
+	WMatrix* pEigVecs = m->eigs(m_nTargetDims + 1, NULL, m_pRand, false);
+	std::unique_ptr<WMatrix> hEigVecs(pEigVecs);
 */
 #endif
 
 	// Make the output data
-	m_pOutputData = new GMatrix(nRowCount, m_nTargetDims);
+	m_pOutputData = new WMatrix(nRowCount, m_nTargetDims);
 	double d = sqrt((double)nRowCount);
 	for(row = 0; row < nRowCount; row++)
 	{
@@ -1221,44 +1221,44 @@ void GLLEHelper::computeEmbedding()
 }
 
 
-GLLE::GLLE(size_t neighborCount, size_t targetDims, GRand* pRand) : m_neighborCount(neighborCount), m_targetDims(targetDims), m_pNF(nullptr), m_pRand(pRand)
+WLLE::WLLE(size_t neighborCount, size_t targetDims, WRand* pRand) : m_neighborCount(neighborCount), m_targetDims(targetDims), m_pNF(nullptr), m_pRand(pRand)
 {
 }
 
-GLLE::GLLE(GDomNode* pNode)
-: GTransform(pNode)
+WLLE::WLLE(WDomNode* pNode)
+: WTransform(pNode)
 {
 	m_targetDims = (size_t)pNode->getInt("targetDims");
 }
 
 // virtual
-GLLE::~GLLE()
+WLLE::~WLLE()
 {
 }
 
-GDomNode* GLLE::serialize(GDom* pDoc) const
+WDomNode* WLLE::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GLLE");
+	WDomNode* pNode = baseDomNode(pDoc, "WLLE");
 	pNode->add(pDoc, "targetDims", m_targetDims);
 	return pNode;
 }
 
-void GLLE::setNeighborFinder(GNeighborFinder* pNF)
+void WLLE::setNeighborFinder(WNeighborFinder* pNF)
 {
 	m_pNF = pNF;
 }
 
 // virtual
-GMatrix* GLLE::reduce(const GMatrix& in)
+WMatrix* WLLE::reduce(const WMatrix& in)
 {
-	GNeighborFinder* pNF = m_pNF;
-	std::unique_ptr<GNeighborFinder> hNF;
+	WNeighborFinder* pNF = m_pNF;
+	std::unique_ptr<WNeighborFinder> hNF;
 	if(!pNF)
 	{
-		pNF = new GKdTree(&in, nullptr, true);
+		pNF = new WKdTree(&in, nullptr, true);
 		hNF.reset(pNF);
 	}
-	return GLLEHelper::doLLE(pNF, m_targetDims, m_neighborCount, m_pRand);
+	return WLLEHelper::doLLE(pNF, m_targetDims, m_neighborCount, m_pRand);
 }
 
 
@@ -1273,24 +1273,24 @@ GMatrix* GLLE::reduce(const GMatrix& in)
 
 
 
-GBreadthFirstUnfolding::GBreadthFirstUnfolding(size_t reps, size_t neighborCount, size_t targetDims)
+WBreadthFirstUnfolding::WBreadthFirstUnfolding(size_t reps, size_t neighborCount, size_t targetDims)
 : m_reps(reps), m_neighborCount(neighborCount), m_targetDims(targetDims), m_pNF(nullptr), m_useMds(true), m_rand(0)
 {
 }
 
-GBreadthFirstUnfolding::GBreadthFirstUnfolding(GDomNode* pNode)
+WBreadthFirstUnfolding::WBreadthFirstUnfolding(WDomNode* pNode)
 : m_reps((size_t)pNode->getInt("reps")), m_neighborCount((size_t)pNode->getInt("neighbors")), m_targetDims((size_t)pNode->getInt("targetDims")), m_pNF(nullptr), m_useMds(pNode->getBool("useMds")), m_rand(0)
 {
 }
 
 // virtual
-GBreadthFirstUnfolding::~GBreadthFirstUnfolding()
+WBreadthFirstUnfolding::~WBreadthFirstUnfolding()
 {
 }
 
-GDomNode* GBreadthFirstUnfolding::serialize(GDom* pDoc) const
+WDomNode* WBreadthFirstUnfolding::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "reps", m_reps);
 	pNode->add(pDoc, "neighbors", m_neighborCount);
 	pNode->add(pDoc, "targetDims", m_targetDims);
@@ -1300,12 +1300,12 @@ GDomNode* GBreadthFirstUnfolding::serialize(GDom* pDoc) const
 	return pNode;
 }
 
-void GBreadthFirstUnfolding::setNeighborFinder(GNeighborFinder* pNF)
+void WBreadthFirstUnfolding::setNeighborFinder(WNeighborFinder* pNF)
 {
 	m_pNF = pNF;
 }
 
-void GVec_pairwiseDivide(double* pDest, double* pOther, size_t dims)
+void WVec_pairwiseDivide(double* pDest, double* pOther, size_t dims)
 {
 	while(dims > 0)
 	{
@@ -1314,7 +1314,7 @@ void GVec_pairwiseDivide(double* pDest, double* pOther, size_t dims)
 	}
 }
 
-void GVec_subtract(double* pDest, const double* pSource, size_t nDims)
+void WVec_subtract(double* pDest, const double* pSource, size_t nDims)
 {
 	for(size_t i = 0; i < nDims; i++)
 	{
@@ -1324,7 +1324,7 @@ void GVec_subtract(double* pDest, const double* pSource, size_t nDims)
 	}
 }
 
-double GVec_squaredMagnitude(const double* pVector, size_t nSize)
+double WVec_squaredMagnitude(const double* pVector, size_t nSize)
 {
 	double dMag = 0;
 	while(nSize > 0)
@@ -1336,53 +1336,53 @@ double GVec_squaredMagnitude(const double* pVector, size_t nSize)
 	return dMag;
 }
 
-void GVec_normalize(double* pVector, size_t nSize)
+void WVec_normalize(double* pVector, size_t nSize)
 {
-	double dMag = GVec_squaredMagnitude(pVector, nSize);
+	double dMag = WVec_squaredMagnitude(pVector, nSize);
 	if(dMag <= 0)
 		pVector[0] = 1.0;
 	else
-		GVec_multiply(pVector, 1.0 / sqrt(dMag), nSize);
+		WVec_multiply(pVector, 1.0 / sqrt(dMag), nSize);
 }
 
 // virtual
-GMatrix* GBreadthFirstUnfolding::reduce(const GMatrix& in)
+WMatrix* WBreadthFirstUnfolding::reduce(const WMatrix& in)
 {
 	// Obtain the neighbor finder
-	GNeighborFinder* pNF = m_pNF;
-	std::unique_ptr<GNeighborFinder> hNF;
+	WNeighborFinder* pNF = m_pNF;
+	std::unique_ptr<WNeighborFinder> hNF;
 	if(!pNF)
 	{
-		pNF = new GKdTree(&in, nullptr, true);
+		pNF = new WKdTree(&in, nullptr, true);
 		hNF.reset(pNF);
 	}
 
 	// Make sure the neighbor finder is cached
-	std::unique_ptr<GNeighborGraph> hNF2;
+	std::unique_ptr<WNeighborGraph> hNF2;
 	if(!pNF->isCached())
 	{
-		GNeighborGraph* pNF2 = new GNeighborGraph(pNF, false, m_neighborCount);
+		WNeighborGraph* pNF2 = new WNeighborGraph(pNF, false, m_neighborCount);
 		hNF2.reset(pNF2);
 		pNF = pNF2;
 	}
-	GNeighborGraph* pCachedNF = (GNeighborGraph*)pNF;
-	const GMatrix* pData = pNF->data();
+	WNeighborGraph* pCachedNF = (WNeighborGraph*)pNF;
+	const WMatrix* pData = pNF->data();
 
 	// Learn the manifold
 	double* pGlobalWeights = new double[in.rows() * 2];
 	std::unique_ptr<double[]> hGlobalWeights(pGlobalWeights);
 	double* pLocalWeights = pGlobalWeights + in.rows();
-	GVec_setAll(pGlobalWeights, 0.0, in.rows());
-	std::unique_ptr<GMatrix> hFinal;
+	WVec_setAll(pGlobalWeights, 0.0, in.rows());
+	std::unique_ptr<WMatrix> hFinal;
 	for(size_t i = 0; i < m_reps; i++)
 	{
-		GMatrix* pRep = unfold(pData, pCachedNF, (size_t)m_rand.next(pData->rows()), pLocalWeights);
+		WMatrix* pRep = unfold(pData, pCachedNF, (size_t)m_rand.next(pData->rows()), pLocalWeights);
 		if(hFinal.get())
 		{
-			GVec_add(pGlobalWeights, pLocalWeights, in.rows());
-			GVec_pairwiseDivide(pLocalWeights, pGlobalWeights, in.rows());
-			std::unique_ptr<GMatrix> hRep(pRep);
-			hFinal.reset(GManifold::blendEmbeddings(pRep, pLocalWeights, hFinal.get(), m_neighborCount, pCachedNF, (size_t)m_rand.next(pData->rows())));
+			WVec_add(pGlobalWeights, pLocalWeights, in.rows());
+			WVec_pairwiseDivide(pLocalWeights, pGlobalWeights, in.rows());
+			std::unique_ptr<WMatrix> hRep(pRep);
+			hFinal.reset(WManifold::blendEmbeddings(pRep, pLocalWeights, hFinal.get(), m_neighborCount, pCachedNF, (size_t)m_rand.next(pData->rows())));
 		}
 		else
 		{
@@ -1394,25 +1394,25 @@ GMatrix* GBreadthFirstUnfolding::reduce(const GMatrix& in)
 }
 
 // static
-double GBreadthFirstUnfolding::refinePoint(double* pPoint, double* pNeighbor, size_t dims, double distance, double learningRate, GRand* pRand)
+double WBreadthFirstUnfolding::refinePoint(double* pPoint, double* pNeighbor, size_t dims, double distance, double learningRate, WRand* pRand)
 {
-	GTEMPBUF(double, buf, dims);
-	GVec_copy(buf, pPoint, dims);
-	GVec_subtract(buf, pNeighbor, dims);
-	double mag = GVec_squaredMagnitude(buf, dims);
-	GVec_normalize(buf, dims);
-	GVec_multiply(buf, distance, dims);
-	GVec_add(buf, pNeighbor, dims);
-	GVec_subtract(buf, pPoint, dims);
-	GVec_multiply(buf, learningRate, dims);
-	GVec_add(pPoint, buf, dims);
+	WTEMPBUF(double, buf, dims);
+	WVec_copy(buf, pPoint, dims);
+	WVec_subtract(buf, pNeighbor, dims);
+	double mag = WVec_squaredMagnitude(buf, dims);
+	WVec_normalize(buf, dims);
+	WVec_multiply(buf, distance, dims);
+	WVec_add(buf, pNeighbor, dims);
+	WVec_subtract(buf, pPoint, dims);
+	WVec_multiply(buf, learningRate, dims);
+	WVec_add(pPoint, buf, dims);
 	return mag;
 }
 
-void GBreadthFirstUnfolding::refineNeighborhood(GMatrix* pLocal, size_t rootIndex, GNeighborGraph* pNeighborGraph)
+void WBreadthFirstUnfolding::refineNeighborhood(WMatrix* pLocal, size_t rootIndex, WNeighborGraph* pNeighborGraph)
 {
 	// Determine the index of every row in pLocal
-	GTEMPBUF(size_t, indexes, pLocal->rows())
+	WTEMPBUF(size_t, indexes, pLocal->rows())
 	size_t nc = pNeighborGraph->findNearest(m_neighborCount, rootIndex);
 	indexes[0] = rootIndex;
 	size_t pos = 1;
@@ -1422,7 +1422,7 @@ void GBreadthFirstUnfolding::refineNeighborhood(GMatrix* pLocal, size_t rootInde
 	}
 
 	// Make a pair-wise distance table
-	GTEMPBUF(double, distTable, pLocal->rows() * pLocal->rows());
+	WTEMPBUF(double, distTable, pLocal->rows() * pLocal->rows());
 	double* pTablePos = distTable;
 	for(size_t i = 0; i < pLocal->rows(); i++)
 	{
@@ -1483,13 +1483,13 @@ void GBreadthFirstUnfolding::refineNeighborhood(GMatrix* pLocal, size_t rootInde
 	}
 }
 
-GMatrix* GBreadthFirstUnfolding::reduceNeighborhood(const GMatrix* pIn, size_t index, GNeighborGraph* pNeighborGraph)
+WMatrix* WBreadthFirstUnfolding::reduceNeighborhood(const WMatrix* pIn, size_t index, WNeighborGraph* pNeighborGraph)
 {
-	GMatrix* pReducedNeighborhood = nullptr;
+	WMatrix* pReducedNeighborhood = nullptr;
 	if(m_useMds)
 	{
 		// Build index tables
-		GTEMPBUF(size_t, indexes, m_neighborCount + 1);
+		WTEMPBUF(size_t, indexes, m_neighborCount + 1);
 		size_t localSize = 0;
 		map<size_t, size_t> revIndexes;
 		map<size_t, size_t>::iterator it;
@@ -1503,7 +1503,7 @@ GMatrix* GBreadthFirstUnfolding::reduceNeighborhood(const GMatrix* pIn, size_t i
 		}
 
 		// Build a distance matrix
-		GFloydWarshall graph(localSize);
+		WFloydWarshall graph(localSize);
 		for(size_t i = 0; i < localSize; i++)
 		{
 			size_t from = indexes[i];
@@ -1520,25 +1520,25 @@ GMatrix* GBreadthFirstUnfolding::reduceNeighborhood(const GMatrix* pIn, size_t i
 			}
 		}
 		graph.compute();
-		GAssert(graph.isConnected());
+		WAssert(graph.isConnected());
 
 		// Use MDS to reduce the neighborhood
-		pReducedNeighborhood = GManifold::multiDimensionalScaling(graph.costMatrix(), m_targetDims, &m_rand, false);
+		pReducedNeighborhood = WManifold::multiDimensionalScaling(graph.costMatrix(), m_targetDims, &m_rand, false);
 	}
 	else
 	{
 		// Make a local neighborhood
-		GMatrix local(pIn->relation().clone());
-		GReleaseDataHolder hLocal(&local);
-		local.takeRow((GVec*)&pIn->row(index));
+		WMatrix local(pIn->relation().clone());
+		WReleaseDataHolder hLocal(&local);
+		local.takeRow((WVec*)&pIn->row(index));
 		size_t nc = pNeighborGraph->findNearest(m_neighborCount, index);
 		for(size_t j = 0; j < nc; j++)
 		{
-			local.takeRow((GVec*)&pIn->row(pNeighborGraph->neighbor(j)));
+			local.takeRow((WVec*)&pIn->row(pNeighborGraph->neighbor(j)));
 		}
 
 		// Use PCA to reduce the neighborhood
-		GPCA pca(m_targetDims);
+		WPCA pca(m_targetDims);
 		pca.train(local);
 		pReducedNeighborhood = pca.transformBatch(local);
 	}
@@ -1546,18 +1546,18 @@ GMatrix* GBreadthFirstUnfolding::reduceNeighborhood(const GMatrix* pIn, size_t i
 	return pReducedNeighborhood;
 }
 
-GMatrix* GBreadthFirstUnfolding::unfold(const GMatrix* pIn, GNeighborGraph* pNeighborTable, size_t seed, double* pOutWeights)
+WMatrix* WBreadthFirstUnfolding::unfold(const WMatrix* pIn, WNeighborGraph* pNeighborTable, size_t seed, double* pOutWeights)
 {
 	// Reduce the seed neighborhood
-	GMatrix* pOut = new GMatrix(pIn->rows(), m_targetDims);
-	std::unique_ptr<GMatrix> hOut(pOut);
+	WMatrix* pOut = new WMatrix(pIn->rows(), m_targetDims);
+	std::unique_ptr<WMatrix> hOut(pOut);
 	deque<size_t> q;
-	GBitTable visited(pIn->rows());
-	GBitTable established(pIn->rows());
+	WBitTable visited(pIn->rows());
+	WBitTable established(pIn->rows());
 	{
-		GMatrix* pLocal = reduceNeighborhood(pIn, seed, pNeighborTable);
-		std::unique_ptr<GMatrix> hLocal(pLocal);
-		GVec_copy(pOut->row(seed).data(), pLocal->row(0).data(), m_targetDims);
+		WMatrix* pLocal = reduceNeighborhood(pIn, seed, pNeighborTable);
+		std::unique_ptr<WMatrix> hLocal(pLocal);
+		WVec_copy(pOut->row(seed).data(), pLocal->row(0).data(), m_targetDims);
 		visited.set(seed);
 		established.set(seed);
 		size_t nc = pNeighborTable->findNearest(m_neighborCount, seed);
@@ -1565,7 +1565,7 @@ GMatrix* GBreadthFirstUnfolding::unfold(const GMatrix* pIn, GNeighborGraph* pNei
 		for(size_t j = 0; j < nc; j++)
 		{
 			size_t neigh = pNeighborTable->neighbor(j);
-			GVec_copy(pOut->row(neigh).data(), pLocal->row(i).data(), m_targetDims);
+			WVec_copy(pOut->row(neigh).data(), pLocal->row(i).data(), m_targetDims);
 			visited.set(neigh);
 			q.push_back(neigh);
 			q.push_back(1);
@@ -1575,7 +1575,7 @@ GMatrix* GBreadthFirstUnfolding::unfold(const GMatrix* pIn, GNeighborGraph* pNei
 	pOutWeights[seed] = 8.0;
 
 	// Reduce in a breadth-first manner
-	GVec mean(m_targetDims);
+	WVec mean(m_targetDims);
 	while(q.size() > 0)
 	{
 		size_t par = q.front();
@@ -1585,14 +1585,14 @@ GMatrix* GBreadthFirstUnfolding::unfold(const GMatrix* pIn, GNeighborGraph* pNei
 		pOutWeights[par] = 1.0 / (double)depth;
 
 		// Make a blended neighborhood
-		GMatrix* pLocal = reduceNeighborhood(pIn, par, pNeighborTable);
-		std::unique_ptr<GMatrix> hLocal(pLocal);
+		WMatrix* pLocal = reduceNeighborhood(pIn, par, pNeighborTable);
+		std::unique_ptr<WMatrix> hLocal(pLocal);
 
 		// Make sub-neighborhoods that contain only tentatively-placed points
-		GMatrix tentativeC(pOut->relation().clone());
-		GMatrix tentativeD(pLocal->relation().clone());
-		GReleaseDataHolder hTentativeD(&tentativeD);
-		GVec_copy(tentativeC.newRow().data(), pOut->row(par).data(), m_targetDims);
+		WMatrix tentativeC(pOut->relation().clone());
+		WMatrix tentativeD(pLocal->relation().clone());
+		WReleaseDataHolder hTentativeD(&tentativeD);
+		WVec_copy(tentativeC.newRow().data(), pOut->row(par).data(), m_targetDims);
 		tentativeD.takeRow(&pLocal->row(0));
 		size_t nc = pNeighborTable->findNearest(m_neighborCount, par);
 		size_t ii = 1;
@@ -1600,7 +1600,7 @@ GMatrix* GBreadthFirstUnfolding::unfold(const GMatrix* pIn, GNeighborGraph* pNei
 		{
 			if(visited.bit(pNeighborTable->neighbor(j)))
 			{
-				GVec_copy(tentativeC.newRow().data(), pOut->row(pNeighborTable->neighbor(j)).data(), m_targetDims);
+				WVec_copy(tentativeC.newRow().data(), pOut->row(pNeighborTable->neighbor(j)).data(), m_targetDims);
 				tentativeD.takeRow(&pLocal->row(ii));
 			}
 			ii++;
@@ -1609,29 +1609,29 @@ GMatrix* GBreadthFirstUnfolding::unfold(const GMatrix* pIn, GNeighborGraph* pNei
 		// Subtract the means
 		tentativeD.centroid(mean);
 		for(size_t i = 0; i < pLocal->rows(); i++)
-			GVec_subtract(pLocal->row(i).data(), mean.data(), m_targetDims); // (This will affect tentativeD too b/c it refs the same rows)
+			WVec_subtract(pLocal->row(i).data(), mean.data(), m_targetDims); // (This will affect tentativeD too b/c it refs the same rows)
 		tentativeC.centroid(mean);
 		for(size_t i = 0; i < tentativeC.rows(); i++)
-			GVec_subtract(tentativeC.row(i).data(), mean.data(), m_targetDims);
+			WVec_subtract(tentativeC.row(i).data(), mean.data(), m_targetDims);
 
 		// Compute the rotation to align the tentative neighborhoods
-		GMatrix* pKabsch = GMatrix::kabsch(&tentativeC, &tentativeD);
-		std::unique_ptr<GMatrix> hKabsch(pKabsch);
+		WMatrix* pKabsch = WMatrix::kabsch(&tentativeC, &tentativeD);
+		std::unique_ptr<WMatrix> hKabsch(pKabsch);
 
 		// Compute an aligned version of pLocal that fits with pOut
-		GMatrix* pAligned = GMatrix::multiply(*pLocal, *pKabsch, false, false);
-		std::unique_ptr<GMatrix> hAligned(pAligned);
+		WMatrix* pAligned = WMatrix::multiply(*pLocal, *pKabsch, false, false);
+		std::unique_ptr<WMatrix> hAligned(pAligned);
 		for(size_t i = 0; i < pAligned->rows(); i++)
-			GVec_add(pAligned->row(i).data(), mean.data(), m_targetDims);
+			WVec_add(pAligned->row(i).data(), mean.data(), m_targetDims);
 
 		// Accept the new points
-		GVec_copy(pOut->row(par).data(), pAligned->row(0).data(), m_targetDims);
+		WVec_copy(pOut->row(par).data(), pAligned->row(0).data(), m_targetDims);
 		established.set(par);
 		ii = 1;
 		for(size_t j = 0; j < nc; j++)
 		{
 			if(!established.bit(pNeighborTable->neighbor(j)))
-				GVec_copy(pOut->row(pNeighborTable->neighbor(j)).data(), pAligned->row(ii).data(), m_targetDims);
+				WVec_copy(pOut->row(pNeighborTable->neighbor(j)).data(), pAligned->row(ii).data(), m_targetDims);
 			if(!visited.bit(pNeighborTable->neighbor(j)))
 			{
 				visited.set(pNeighborTable->neighbor(j));
@@ -1659,7 +1659,7 @@ GMatrix* GBreadthFirstUnfolding::unfold(const GMatrix* pIn, GNeighborGraph* pNei
 
 
 
-GScalingUnfolder::GScalingUnfolder()
+WScalingUnfolder::WScalingUnfolder()
 : m_neighborCount(14),
   m_targetDims(2),
   m_passes(50),
@@ -1669,19 +1669,19 @@ GScalingUnfolder::GScalingUnfolder()
 {
 }
 
-GScalingUnfolder::GScalingUnfolder(GDomNode* pNode)
-: GTransform(pNode),
+WScalingUnfolder::WScalingUnfolder(WDomNode* pNode)
+: WTransform(pNode),
   m_rand(0)
 {
 	throw Ex("Sorry, this method is not implemented yet");
 }
 
 // virtual
-GScalingUnfolder::~GScalingUnfolder()
+WScalingUnfolder::~WScalingUnfolder()
 {
 }
 
-void GScalingUnfolder_adjustPoints(double* pA, double* pB, size_t dims, double curSqDist, double tarSqDist, GRand& rand)
+void WScalingUnfolder_adjustPoints(double* pA, double* pB, size_t dims, double curSqDist, double tarSqDist, WRand& rand)
 {
 	if(curSqDist == 0.0)
 	{
@@ -1707,13 +1707,13 @@ void GScalingUnfolder_adjustPoints(double* pA, double* pB, size_t dims, double c
 }
 
 // static
-void GScalingUnfolder::restore_local_distances_pass(GMatrix& intrinsic, GNeighborGraph& ng, size_t neighborCount, GRand& rand)
+void WScalingUnfolder::restore_local_distances_pass(WMatrix& intrinsic, WNeighborGraph& ng, size_t neighborCount, WRand& rand)
 {
 
 	// Do it in breadth-first order
 	size_t dims = intrinsic.cols();
 	std::queue<size_t> q;
-	GBitTable used(ng.data()->rows());
+	WBitTable used(ng.data()->rows());
 	size_t random_row = rand.next(intrinsic.rows());
 	size_t random_neigh = rand.next(ng.findNearest(neighborCount, random_row));
 	size_t seed = random_row * neighborCount + random_neigh;
@@ -1745,17 +1745,17 @@ void GScalingUnfolder::restore_local_distances_pass(GMatrix& intrinsic, GNeighbo
 		}
 
 		double dTarget = ng.distance(neighbor_index);
-		GVec& aa = intrinsic.row(a);
-		GVec& bb = intrinsic.row(b);
+		WVec& aa = intrinsic.row(a);
+		WVec& bb = intrinsic.row(b);
 		double dCur = aa.squaredDistance(bb);
-		GScalingUnfolder_adjustPoints(aa.data(), bb.data(), dims, dCur, dTarget, rand);
+		WScalingUnfolder_adjustPoints(aa.data(), bb.data(), dims, dCur, dTarget, rand);
 	}
 }
 
-void GScalingUnfolder::unfold(GMatrix& intrinsic, GNeighborGraph& nf, size_t encoderTrainIters, GNeuralNetLearner* pEncoder, GNeuralNetLearner* pDecoder, const GMatrix* pVisible)
+void WScalingUnfolder::unfold(WMatrix& intrinsic, WNeighborGraph& nf, size_t encoderTrainIters, WNeuralNetLearner* pEncoder, WNeuralNetLearner* pDecoder, const WMatrix* pVisible)
 {
-	GRandomIndexIterator* ii = pEncoder ? new GRandomIndexIterator(intrinsic.rows(), m_rand) : nullptr;
-	std::unique_ptr<GRandomIndexIterator> hII2(ii);
+	WRandomIndexIterator* ii = pEncoder ? new WRandomIndexIterator(intrinsic.rows(), m_rand) : nullptr;
+	std::unique_ptr<WRandomIndexIterator> hII2(ii);
 	for(size_t pass = 0; pass < m_passes; pass++)
 	{
 		// Scale up the data
@@ -1783,13 +1783,13 @@ void GScalingUnfolder::unfold(GMatrix& intrinsic, GNeighborGraph& nf, size_t enc
 }
 
 // static
-size_t GScalingUnfolder::unfold_iter(GMatrix& intrinsic, GRand& rand, size_t neighborCount, double scaleFactor, size_t refinements)
+size_t WScalingUnfolder::unfold_iter(WMatrix& intrinsic, WRand& rand, size_t neighborCount, double scaleFactor, size_t refinements)
 {
 	while(true)
 	{
 		// Find neighbors
-		GKdTree kdtree(&intrinsic, nullptr, false);
-		GNeighborGraph ng(&kdtree, false, neighborCount);
+		WKdTree kdtree(&intrinsic, nullptr, false);
+		WNeighborGraph ng(&kdtree, false, neighborCount);
 		if(!ng.isConnected())
 		{
 			if(neighborCount < 1 || neighborCount >= intrinsic.rows() - 1)
@@ -1809,18 +1809,18 @@ size_t GScalingUnfolder::unfold_iter(GMatrix& intrinsic, GRand& rand, size_t nei
 }
 
 // virtual
-GMatrix* GScalingUnfolder::reduce(const GMatrix& in)
+WMatrix* WScalingUnfolder::reduce(const WMatrix& in)
 {
 	// Find neighbors
-	GKdTree kdtree(&in, nullptr, false);
-	GNeighborGraph nf(&kdtree, false, m_neighborCount);
+	WKdTree kdtree(&in, nullptr, false);
+	WNeighborGraph nf(&kdtree, false, m_neighborCount);
 
 	// Make a copy of the data
-	GMatrix intrinsic(in);
+	WMatrix intrinsic(in);
 	unfold(intrinsic, nf);
 
 	// Shift the variance into the first few dimensions
-	GPCA pca(m_targetDims);
+	WPCA pca(m_targetDims);
 	pca.train(intrinsic);
 	return pca.transformBatch(intrinsic);
 }
@@ -1829,4 +1829,4 @@ GMatrix* GScalingUnfolder::reduce(const GMatrix& in)
 
 
 
-} // namespace GClasses
+} // namespace WClasses

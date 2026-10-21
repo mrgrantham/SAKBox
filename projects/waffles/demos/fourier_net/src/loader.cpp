@@ -1,4 +1,4 @@
-#include <WClasses/GRand.h>
+#include <WClasses/WRand.h>
 #include <math.h>
 #include "loader.h"
 #include <vector>
@@ -6,13 +6,13 @@
 #define TRAIN_SIZE 100
 #define TEST_SIZE 100
 
-void Loader::loadStockData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadStockData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
 	// 3   - AAPL
 	// 108 - MSFT
 	// 157 - DJI
 
-	GMatrix raw;
+	WMatrix raw;
 	raw.loadArff("data/stocks.arff");
 
 	size_t dims = 1;
@@ -48,11 +48,11 @@ void Loader::loadStockData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testF
 	}
 }
 
-void Loader::loadPrecipitationData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadPrecipitationData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
 	// Only 87 samples, so TEST_SIZE should be 23 if TRAIN_SIZE is 64
 
-	GMatrix raw;
+	WMatrix raw;
 	raw.loadArff("data/precipitation.arff");
 
 	size_t dims = 1;
@@ -92,11 +92,11 @@ void Loader::loadPrecipitationData(GMatrix& trainFeat, GMatrix& trainLab, GMatri
 	}
 }
 
-void Loader::loadTemperatureData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadTemperatureData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
 	// TODO: determine optimal granularity
 
-	GMatrix raw;
+	WMatrix raw;
 	raw.loadArff("data/melbourne-temperature.arff");
 
 	size_t dims = 2;
@@ -148,9 +148,9 @@ void Loader::loadTemperatureData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix&
 	}
 }
 
-void Loader::loadLaborData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadLaborData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
-	GMatrix raw;
+	WMatrix raw;
 	raw.loadArff("data/labor_stats.arff");
 
 	size_t dims = 1;
@@ -183,9 +183,9 @@ void Loader::loadLaborData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testF
 	}
 }
 
-void Loader::loadLaborData2(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadLaborData2(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
-	GMatrix raw;
+	WMatrix raw;
 	raw.loadArff("data/labor_stats.arff");
 
 	size_t dims = 1;
@@ -218,9 +218,9 @@ void Loader::loadLaborData2(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& test
 	}
 }
 
-void Loader::loadMackeyGlassData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadMackeyGlassData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
-	GMatrix raw;
+	WMatrix raw;
 	raw.loadArff("data/mackey_glass.arff");
 
 	size_t dims = 1;
@@ -253,9 +253,9 @@ void Loader::loadMackeyGlassData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix&
 	}
 }
 
-void Loader::loadSunSpotData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadSunSpotData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
-	GMatrix raw;
+	WMatrix raw;
 	raw.loadArff("data/sunspots.arff");
 
 	size_t dims = 1;
@@ -296,7 +296,7 @@ void Loader::loadSunSpotData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& tes
 	}
 }
 
-void Loader::loadToyData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadToyData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
 	size_t dims = 1;
 	size_t train_size = 100;
@@ -307,7 +307,7 @@ void Loader::loadToyData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFea
 	testFeat.resize(test_size, 1);
 	testLab.resize(test_size, dims);
 
-	GRand r(time(nullptr));
+	WRand r(time(nullptr));
 	size_t sines = 3;
 	size_t randsPerDim = 2 * sines + 2;
 	std::vector<double> rands(dims * randsPerDim);
@@ -350,7 +350,7 @@ void Loader::loadToyData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFea
 	}
 }
 
-void Loader::loadToyData2(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadToyData2(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
 	size_t dims = 1;
 	size_t train_size = 300;
@@ -380,7 +380,7 @@ void Loader::loadToyData2(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFe
 	}
 }
 
-void Loader::loadTest01(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadTest01(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
 	size_t dims = 1;
 	size_t train_size = 100;
@@ -433,7 +433,7 @@ void Loader::loadTest01(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat
 	}
 }
 
-void Loader::loadTest02(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadTest02(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
 	size_t train_size = 100;
 	size_t test_size = 100;
@@ -469,7 +469,7 @@ void Loader::loadTest02(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat
 	}
 }
 
-void Loader::loadTest04(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadTest04(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
 	size_t train_size = 128;
 	size_t test_size = 256;
@@ -505,9 +505,9 @@ void Loader::loadTest04(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat
 	}
 }
 
-void Loader::loadNASDAQ(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadNASDAQ(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
-	GMatrix rawTrain, rawTest;
+	WMatrix rawTrain, rawTest;
 	rawTrain.loadArff("data/nasdaq_train.arff");
 	rawTest.loadArff("data/nasdaq_test.arff");
 
@@ -538,9 +538,9 @@ void Loader::loadNASDAQ(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat
 	}
 }
 
-void Loader::loadAirPassengerData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadAirPassengerData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
-	GMatrix raw;
+	WMatrix raw;
 	raw.loadArff("data/air_passengers.arff");
 
 	size_t dims = 1;
@@ -580,9 +580,9 @@ void Loader::loadAirPassengerData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix
 	testLab.saveArff("out/test.arff");
 }
 
-void Loader::loadOzoneData(GMatrix& trainFeat, GMatrix& trainLab, GMatrix& testFeat, GMatrix& testLab)
+void Loader::loadOzoneData(WMatrix& trainFeat, WMatrix& trainLab, WMatrix& testFeat, WMatrix& testLab)
 {
-	GMatrix raw;
+	WMatrix raw;
 	raw.loadArff("data/mhsets_monthly-ozone.arff");
 
 	size_t dims = 1;

@@ -19,8 +19,8 @@
 #ifndef __GSOCKET_H__
 #define __GSOCKET_H__
 
-#include "GError.h"
-#include "GDom.h"
+#include "WError.h"
+#include "WDom.h"
 
 #ifndef WINDOWS
 #define SOCKET int
@@ -41,18 +41,18 @@
 #include <queue>
 #include <string.h>
 
-namespace GClasses
+namespace WClasses
 {
 
 /// This class is an abstraction of a TCP client socket connection
-class GTCPClient
+class WTCPClient
 {
 protected:
 	SOCKET m_sock;
 
 public:
-	GTCPClient();
-	virtual ~GTCPClient();
+	WTCPClient();
+	virtual ~WTCPClient();
 
 	/// Send some data. Throws an exception if the send fails for any reason (including
 	/// common reasons, such as if the server has closed the connection), so it is generally
@@ -82,18 +82,18 @@ protected:
 };
 
 
-/// This class is used by GTCPServer to represent a connection with one of
+/// This class is used by WTCPServer to represent a connection with one of
 /// the clients. (If you want to associate some additional objects with each
-/// connection, you can inherrit from this class, and overload GTCPServer::makeConnection
+/// connection, you can inherrit from this class, and overload WTCPServer::makeConnection
 /// to return your own custom object.)
-class GTCPConnection
+class WTCPConnection
 {
 protected:
 	SOCKET m_sock;
 
 public:
-	GTCPConnection(SOCKET sock) : m_sock(sock) {}
-	virtual ~GTCPConnection() {}
+	WTCPConnection(SOCKET sock) : m_sock(sock) {}
+	virtual ~WTCPConnection() {}
 
 	/// Returns the socket associated with this connection
 	SOCKET socket() { return m_sock; }
@@ -111,19 +111,19 @@ public:
 
 
 /// This class is an abstraction of a TCP server, which maintains a set of socket connections
-class GTCPServer
+class WTCPServer
 {
 protected:
 	SOCKET m_sock; // used to listen for incoming connections
-	std::set<GTCPConnection*> m_socks; // used to communicate with each connected client
+	std::set<WTCPConnection*> m_socks; // used to communicate with each connected client
 	bool m_networkAccessible;
 
 public:
 	/// Listens on port (0 for any free one). SAKBox: only programs on this
 	/// computer can connect (localhost), unless networkAccessible is true,
 	/// which accepts connections from any device on the network.
-	GTCPServer(unsigned short port, bool networkAccessible = false);
-	virtual ~GTCPServer();
+	WTCPServer(unsigned short port, bool networkAccessible = false);
+	virtual ~WTCPServer();
 
 	/// The port it listens on
 	unsigned short port() const;
@@ -138,71 +138,71 @@ public:
 	/// Send some data to the specified client. Throws an exception if the send fails for any reason (including
 	/// common reasons, such as if the client has closed the connection), so it is generally a good idea to send
 	/// within a try/catch block.
-	void send(const char* buf, size_t len, GTCPConnection* pConn);
+	void send(const char* buf, size_t len, WTCPConnection* pConn);
 
 	/// This method receives any data that is ready to be received. It returns the
 	/// number of bytes received. It immediately returns 0 if nothing is ready to
 	/// be recevied. The value at pOutConn will be set to indicate which client
 	/// it received the data from.
-	size_t receive(char* buf, size_t len, GTCPConnection** pOutConn);
+	size_t receive(char* buf, size_t len, WTCPConnection** pOutConn);
 
 	/// Disconnect from the specified client.
-	void disconnect(GTCPConnection* pConn);
+	void disconnect(WTCPConnection* pConn);
 
 	/// Obtains the name of this host.
 	static void hostName(char* buf, size_t len);
 
 	/// Returns a reference to the current set of connections
-	std::set<GTCPConnection*>& connections() { return m_socks; }
+	std::set<WTCPConnection*>& connections() { return m_socks; }
 
 	/// Accept any new incoming connections
 	void checkForNewConnections();
 
 protected:
 	/// This is called just before a new connection is accepted. It
-	/// returns a pointer to a new GTCPConnection object to
+	/// returns a pointer to a new WTCPConnection object to
 	/// associate with this connection. (The connection, however, isn't yet fully
 	/// established, so it might cause an error if you send something to the
 	/// client in an overload of this method.) If you want to associate
 	/// some data with each connection, you can overload this method to
 	/// create a custom object.
-	virtual GTCPConnection* makeConnection(SOCKET s) { return new GTCPConnection(s); }
+	virtual WTCPConnection* makeConnection(SOCKET s) { return new WTCPConnection(s); }
 
 	/// This is called when a connection is first known to have disconnected.
-	virtual void onDisconnect(GTCPConnection* pConn) {}
+	virtual void onDisconnect(WTCPConnection* pConn) {}
 
 	/// This is called when a client sends some bad data.
 	virtual void onReceiveBadData(const char* message) {}
 };
 
 
-/// This is a helper class used by GPackageConnection.
-class GPackageConnectionBuf
+/// This is a helper class used by WPackageConnection.
+class WPackageConnectionBuf
 {
 public:
 	char* m_pBuf;
 	unsigned int m_bufSize;
 	unsigned int m_dataSize;
 
-	GPackageConnectionBuf(char* pBuf, unsigned int bufSize, unsigned int dataSize)
+	WPackageConnectionBuf(char* pBuf, unsigned int bufSize, unsigned int dataSize)
 	: m_pBuf(pBuf), m_bufSize(bufSize), m_dataSize(dataSize)
 	{
 	}
 
-	GPackageConnectionBuf(const GPackageConnectionBuf& that)
+	WPackageConnectionBuf(const WPackageConnectionBuf& that)
 	: m_pBuf(that.m_pBuf), m_bufSize(that.m_bufSize), m_dataSize(that.m_dataSize)
 	{
 	}
 };
 
 
-/// This is a helper class used by GPackageServer. If you implement a custom
-/// connection object for a sub-class of GPackageServer, then it should inherrit
+/// This is a helper class used by WPackageServer. If you implement a custom
+/// connection object for a sub-class of WPackageServer, then it should inherrit
 /// from this class.
-class GPackageConnection : public GTCPConnection
+class WPackageConnection : public WTCPConnection
 {
 public:
-	std::queue<GPackageConnectionBuf> m_q;
+	std::queue<WPackageConnectionBuf> m_q;
 	char* m_pCondemned;
 	char* m_pBuf;
 	unsigned int m_header[2];
@@ -210,12 +210,12 @@ public:
 	unsigned int m_payloadBytes;
 	unsigned int m_bufSize;
 
-	GPackageConnection(SOCKET sock)
-	: GTCPConnection(sock), m_pCondemned(nullptr), m_pBuf(nullptr), m_headerBytes(0), m_payloadBytes(0), m_bufSize(0)
+	WPackageConnection(SOCKET sock)
+	: WTCPConnection(sock), m_pCondemned(nullptr), m_pBuf(nullptr), m_headerBytes(0), m_payloadBytes(0), m_bufSize(0)
 	{
 	}
 
-	~GPackageConnection() override
+	~WPackageConnection() override
 	{
 		delete[] m_pCondemned;
 		delete[] m_pBuf;
@@ -235,16 +235,16 @@ public:
 /// This class abstracts a client that speaks a home-made protocol that
 /// guarantees packages will arrive in the same order and size as when
 /// they were sent. This protocol is a simple layer on top of TCP.
-class GPackageClient
+class WPackageClient
 {
 protected:
-	GPackageConnection m_conn;
+	WPackageConnection m_conn;
 	unsigned int m_maxBufSize;
 	unsigned int m_maxPackageSize;
 
 public:
-	GPackageClient();
-	virtual ~GPackageClient();
+	WPackageClient();
+	virtual ~WPackageClient();
 
 	/// Send a package, which guarantees to arrive in the
 	/// same order and size as it was sent.
@@ -291,23 +291,23 @@ protected:
 /// This class abstracts a server that speaks a home-made protocol that
 /// guarantees packages will arrive in the same order and size as when
 /// they were sent. This protocol is a simple layer on top of TCP.
-class GPackageServer
+class WPackageServer
 {
 protected:
 	SOCKET m_sock; // used to listen for incoming connections
-	std::set<GPackageConnection*> m_socks; // used to communicate with each connected client
+	std::set<WPackageConnection*> m_socks; // used to communicate with each connected client
 	unsigned int m_maxBufSize;
 	unsigned int m_maxPackageSize;
 
 public:
 	/// SAKBox: only programs on this computer can connect (localhost) unless
-	/// networkAccessible is true, as with GTCPServer.
-	GPackageServer(unsigned short port, bool networkAccessible = false);
-	virtual ~GPackageServer();
+	/// networkAccessible is true, as with WTCPServer.
+	WPackageServer(unsigned short port, bool networkAccessible = false);
+	virtual ~WPackageServer();
 
 	/// Send a package, which guarantees to arrive in the
 	/// same order and size as it was sent.
-	void send(const char* buf, size_t len, GPackageConnection* pConn);
+	void send(const char* buf, size_t len, WPackageConnection* pConn);
 
 	/// Receives the next available package. (The order and size is
 	/// guaranteed to arrive the same as when it was sent.)
@@ -315,10 +315,10 @@ public:
 	/// The returned value is a pointer to an internal buffer, the
 	/// contents of which is only valid until the next time receive
 	/// is called.
-	char* receive(size_t* pOutLen, GPackageConnection** pOutConn);
+	char* receive(size_t* pOutLen, WPackageConnection** pOutConn);
 
 	/// Disconnect from the specified client.
-	void disconnect(GPackageConnection* pConn);
+	void disconnect(WPackageConnection* pConn);
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -337,26 +337,26 @@ public:
 
 	/// Receives any pending messages into an internal buffer (to unblock the
 	/// client, in case its send buffer is full.)
-	virtual void pump(GPackageConnection* pConn);
+	virtual void pump(WPackageConnection* pConn);
 
 	/// Returns a reference to the current set of connections
-	std::set<GPackageConnection*>& connections() { return m_socks; }
+	std::set<WPackageConnection*>& connections() { return m_socks; }
 
 	/// Accept any new incoming connections
 	void checkForNewConnections();
 
 protected:
 	/// This is called just before a new connection is accepted. It
-	/// returns a pointer to a new GPackageConnection object to
+	/// returns a pointer to a new WPackageConnection object to
 	/// associate with this connection. (The connection, however, isn't yet fully
 	/// established, so it might cause an error if you send something to the
 	/// client in an overload of this method.) If you want to associate
 	/// some data with each connection, you can overload this method to
 	/// create a custom object.
-	virtual GPackageConnection* makeConnection(SOCKET s) { return new GPackageConnection(s); }
+	virtual WPackageConnection* makeConnection(SOCKET s) { return new WPackageConnection(s); }
 
 	/// This is called when a connection is first known to have disconnected.
-	virtual void onDisconnect(GTCPConnection* pConn) {}
+	virtual void onDisconnect(WTCPConnection* pConn) {}
 
 	/// This is called when a client sends some bad data.
 	virtual void onReceiveBadData(const char* message) {}
@@ -365,40 +365,40 @@ protected:
 
 
 /// This is a socket client that sends and receives DOM nodes
-class GDomClient : public GPackageClient
+class WDomClient : public WPackageClient
 {
 protected:
-	GDom m_doc;
+	WDom m_doc;
 
 public:
-	GDomClient() : GPackageClient() {}
-	~GDomClient() override {}
+	WDomClient() : WPackageClient() {}
+	~WDomClient() override {}
 
 	/// Send the specified DOM node.
-	void send(GDomNode* pNode);
+	void send(WDomNode* pNode);
 
 	/// Receive the next available DOM node, or NULL if none are ready.
-	const GDomNode* receive();
+	const WDomNode* receive();
 };
 
 
 /// This is a socket server that sends and receives DOM nodes
-class GDomServer : public GPackageServer
+class WDomServer : public WPackageServer
 {
 protected:
-	GDom m_doc;
+	WDom m_doc;
 
 public:
-	GDomServer(unsigned int port) : GPackageServer(port) {}
-	~GDomServer() override {}
+	WDomServer(unsigned int port) : WPackageServer(port) {}
+	~WDomServer() override {}
 
 	/// Send the specified DOM node.
-	void send(GDomNode* pNode, GPackageConnection* pConn);
+	void send(WDomNode* pNode, WPackageConnection* pConn);
 
 	/// Receive the next available DOM node, or NULL if none are ready.
-	const GDomNode* receive(GPackageConnection** pOutConn);
+	const WDomNode* receive(WPackageConnection** pOutConn);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GSOCKET_H__

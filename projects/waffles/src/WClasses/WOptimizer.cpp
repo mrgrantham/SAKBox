@@ -17,28 +17,28 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GOptimizer.h"
-#include "GNeuralNet.h"
-#include "GVec.h"
-#include "GRand.h"
+#include "WOptimizer.h"
+#include "WNeuralNet.h"
+#include "WVec.h"
+#include "WRand.h"
 #include <string.h>
 #include <math.h>
 
-namespace GClasses
+namespace WClasses
 {
 
 using std::vector;
 
 
-GNeuralNetOptimizer::GNeuralNetOptimizer(GNeuralNet& model, GRand& rand, const GMatrix* pTrainingFeatures, const GMatrix* pTrainingLabels)
+WNeuralNetOptimizer::WNeuralNetOptimizer(WNeuralNet& model, WRand& rand, const WMatrix* pTrainingFeatures, const WMatrix* pTrainingLabels)
 : m_model(model),
   m_pTrainingFeatures(pTrainingFeatures),
   m_pTrainingLabels(pTrainingLabels),
-#ifdef GCUDA
+#ifdef WCUDA
   m_pTrainingFeaturesCuda(nullptr),
   m_pTrainingLabelsCuda(nullptr),
   m_useGPU(true),
-#endif // GCUDA
+#endif // WCUDA
   m_rand(rand),
   m_batchSize(1), m_batchesPerEpoch(INVALID_INDEX), m_epochs(100), m_windowSize(100), m_minImprovement(0.002), m_learningRate(0.05),
   m_pII(nullptr)
@@ -49,56 +49,56 @@ GNeuralNetOptimizer::GNeuralNetOptimizer(GNeuralNet& model, GRand& rand, const G
 		throw Ex("Layers must be added to the neural net before the optimizer is constructed");
 }
 
-GNeuralNetOptimizer::~GNeuralNetOptimizer()
+WNeuralNetOptimizer::~WNeuralNetOptimizer()
 {
 	delete(m_pII);
-#ifdef GCUDA
+#ifdef WCUDA
 	delete(m_pTrainingFeaturesCuda);
 	delete(m_pTrainingLabelsCuda);
-#endif // GCUDA
+#endif // WCUDA
 }
 
-void GNeuralNetOptimizer::resetState()
+void WNeuralNetOptimizer::resetState()
 {
 	m_model.resetState();
 }
 
-void GNeuralNetOptimizer::optimizeIncremental(const GVec& feat, const GVec& lab)
+void WNeuralNetOptimizer::optimizeIncremental(const WVec& feat, const WVec& lab)
 {
-	GAssert(feat.size() == m_model.layer(0).inputs() && lab.size() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
-	GAssert(feat.size() != 0 && lab.size() != 0, "Features/labels are empty!");
+	WAssert(feat.size() == m_model.layer(0).inputs() && lab.size() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
+	WAssert(feat.size() != 0 && lab.size() != 0, "Features/labels are empty!");
 	computeGradient(feat, lab);
 	descendGradient(m_learningRate);
 }
 
-#ifdef GCUDA
-void GNeuralNetOptimizer::optimizeIncrementalCuda(const GCudaVector& feat, const GCudaVector& lab)
+#ifdef WCUDA
+void WNeuralNetOptimizer::optimizeIncrementalCuda(const WCudaVector& feat, const WCudaVector& lab)
 {
-	GAssert(feat.size() == m_model.layer(0).inputs() && lab.size() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
-	GAssert(feat.size() != 0 && lab.size() != 0, "Features/labels are empty!");
+	WAssert(feat.size() == m_model.layer(0).inputs() && lab.size() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
+	WAssert(feat.size() != 0 && lab.size() != 0, "Features/labels are empty!");
 	computeGradientCuda(feat, lab);
 	descendGradientCuda(m_learningRate);
 }
-#endif // GCUDA
+#endif // WCUDA
 
-void GNeuralNetOptimizer::optimizeEpoch()
+void WNeuralNetOptimizer::optimizeEpoch()
 {
 	if(!m_pII || m_pII->length() != m_pTrainingFeatures->rows())
 	{
 		delete(m_pII);
-		m_pII = new GRandomIndexIterator(m_pTrainingFeatures->rows(), m_rand);
+		m_pII = new WRandomIndexIterator(m_pTrainingFeatures->rows(), m_rand);
 	}
 	m_pII->reset();
 	size_t index;
-#ifdef GCUDA
+#ifdef WCUDA
 	if(m_useGPU)
 	{
 		if(!m_pTrainingFeaturesCuda)
 		{
-			GAssert(!m_pTrainingLabelsCuda);
-			m_pTrainingFeaturesCuda = new GCudaMatrix();
+			WAssert(!m_pTrainingLabelsCuda);
+			m_pTrainingFeaturesCuda = new WCudaMatrix();
 			m_pTrainingFeaturesCuda->upload(*m_pTrainingFeatures);
-			m_pTrainingLabelsCuda = new GCudaMatrix();
+			m_pTrainingLabelsCuda = new WCudaMatrix();
 			m_pTrainingLabelsCuda->upload(*m_pTrainingLabels);
 		}
 		m_model.uploadCuda();
@@ -108,30 +108,30 @@ void GNeuralNetOptimizer::optimizeEpoch()
 	}
 	else
 	{
-#endif // GCUDA
+#endif // WCUDA
 		while(m_pII->next(index))
 			optimizeIncremental((*m_pTrainingFeatures)[index], (*m_pTrainingLabels)[index]);
-#ifdef GCUDA
+#ifdef WCUDA
 	}
-#endif // GCUDA
+#endif // WCUDA
 }
 
-void GNeuralNetOptimizer::optimizeBatch(const GMatrix& features, const GMatrix& labels, size_t start, size_t batchSize)
+void WNeuralNetOptimizer::optimizeBatch(const WMatrix& features, const WMatrix& labels, size_t start, size_t batchSize)
 {
-	GAssert(features.cols() == m_model.layer(0).inputs() && labels.cols() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
+	WAssert(features.cols() == m_model.layer(0).inputs() && labels.cols() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
 	for(size_t i = 0; i < batchSize; ++i)
 		computeGradient(features[start + i], labels[start + i]);
 	descendGradient(m_learningRate / batchSize);
 }
 
-void GNeuralNetOptimizer::optimizeBatch(const GMatrix& features, const GMatrix& labels, size_t start)
+void WNeuralNetOptimizer::optimizeBatch(const WMatrix& features, const WMatrix& labels, size_t start)
 {
 	optimizeBatch(features, labels, start, m_batchSize);
 }
 
-void GNeuralNetOptimizer::optimizeBatch(const GMatrix& features, const GMatrix& labels, GRandomIndexIterator& ii, size_t batchSize)
+void WNeuralNetOptimizer::optimizeBatch(const WMatrix& features, const WMatrix& labels, WRandomIndexIterator& ii, size_t batchSize)
 {
-	GAssert(features.cols() == m_model.layer(0).inputs() && labels.cols() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
+	WAssert(features.cols() == m_model.layer(0).inputs() && labels.cols() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
 	size_t j;
 	for(size_t i = 0; i < batchSize; ++i)
 	{
@@ -141,26 +141,26 @@ void GNeuralNetOptimizer::optimizeBatch(const GMatrix& features, const GMatrix& 
 	descendGradient(m_learningRate / batchSize);
 }
 
-void GNeuralNetOptimizer::optimizeBatch(const GMatrix& features, const GMatrix& labels, GRandomIndexIterator& ii)
+void WNeuralNetOptimizer::optimizeBatch(const WMatrix& features, const WMatrix& labels, WRandomIndexIterator& ii)
 {
 	optimizeBatch(features, labels, ii, m_batchSize);
 }
 
-void GNeuralNetOptimizer::optimize(const GMatrix& features, const GMatrix& labels)
+void WNeuralNetOptimizer::optimize(const WMatrix& features, const WMatrix& labels)
 {
-	GAssert(features.cols() == m_model.layer(0).inputs() && labels.cols() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
+	WAssert(features.cols() == m_model.layer(0).inputs() && labels.cols() == m_model.outputLayer().outputs(), "Features/labels size mismatch!");
 
 	size_t batchesPerEpoch = m_batchesPerEpoch;
 	if(m_batchesPerEpoch > features.rows())
 		batchesPerEpoch = features.rows();
 
-	GRandomIndexIterator ii(features.rows(), m_rand);
+	WRandomIndexIterator ii(features.rows(), m_rand);
 	for(size_t i = 0; i < m_epochs; ++i)
 		for(size_t j = 0; j < batchesPerEpoch; ++j)
 			optimizeBatch(features, labels, ii, m_batchSize);
 }
 
-void GNeuralNetOptimizer::optimizeWithValidation(const GMatrix& features, const GMatrix& labels, const GMatrix& validationFeat, const GMatrix& validationLab)
+void WNeuralNetOptimizer::optimizeWithValidation(const WMatrix& features, const WMatrix& labels, const WMatrix& validationFeat, const WMatrix& validationLab)
 {
 	size_t batchesPerEpoch = m_batchesPerEpoch;
 	if(m_batchesPerEpoch > features.rows())
@@ -168,7 +168,7 @@ void GNeuralNetOptimizer::optimizeWithValidation(const GMatrix& features, const 
 
 	double bestError = 1e308, currentError;
 	size_t k = 0;
-	GRandomIndexIterator ii(features.rows(), m_rand);
+	WRandomIndexIterator ii(features.rows(), m_rand);
 	for([[maybe_unused]] size_t i = 0;; ++i, ++k)
 	{
 		for(size_t j = 0; j < batchesPerEpoch; ++j)
@@ -192,13 +192,13 @@ void GNeuralNetOptimizer::optimizeWithValidation(const GMatrix& features, const 
 	}
 }
 
-void GNeuralNetOptimizer::optimizeWithValidation(const GMatrix& features, const GMatrix& labels, double validationPortion)
+void WNeuralNetOptimizer::optimizeWithValidation(const WMatrix& features, const WMatrix& labels, double validationPortion)
 {
 	size_t validationRows = (size_t)(validationPortion * features.rows());
 	size_t trainRows = features.rows() - validationRows;
 	if(validationRows > 0)
 	{
-		GDataRowSplitter splitter(features, labels, m_rand, trainRows);
+		WDataRowSplitter splitter(features, labels, m_rand, trainRows);
 		optimizeWithValidation(splitter.features1(), splitter.labels1(), splitter.features2(), splitter.labels2());
 	}
 	else
@@ -214,20 +214,20 @@ void GNeuralNetOptimizer::optimizeWithValidation(const GMatrix& features, const 
 
 
 
-GSGDOptimizer::GSGDOptimizer(GNeuralNet& model, GRand& rand, const GMatrix* pTrainingFeatures, const GMatrix* pTrainingLabels)
-: GNeuralNetOptimizer(model, rand, pTrainingFeatures, pTrainingLabels), m_momentum(0)
+WSGDOptimizer::WSGDOptimizer(WNeuralNet& model, WRand& rand, const WMatrix* pTrainingFeatures, const WMatrix* pTrainingLabels)
+: WNeuralNetOptimizer(model, rand, pTrainingFeatures, pTrainingLabels), m_momentum(0)
 {
 	init();
 }
 
-void GSGDOptimizer::init()
+void WSGDOptimizer::init()
 {
 	m_model.init(m_rand);
-#ifdef GCUDA
+#ifdef WCUDA
 	if(m_useGPU)
 	{
 		m_gradientCuda.resize(m_model.gradCount());
-		GContextNeuralNet& ctx = context();
+		WContextNeuralNet& ctx = context();
 		if(&ctx.cudaEngine() == nullptr)
 			throw Ex("This context has no cuda engine");
 		m_gradientCuda.fill(ctx.cudaEngine(), 0.0);
@@ -235,7 +235,7 @@ void GSGDOptimizer::init()
 #endif
 }
 
-void GSGDOptimizer::computeGradient(const GVec& feat, const GVec& lab)
+void WSGDOptimizer::computeGradient(const WVec& feat, const WVec& lab)
 {
 	m_model.forwardProp(feat);
 	m_model.computeBlame(lab);
@@ -243,27 +243,27 @@ void GSGDOptimizer::computeGradient(const GVec& feat, const GVec& lab)
 	m_model.updateGradient();
 }
 
-void GSGDOptimizer::descendGradient(double learningRate)
+void WSGDOptimizer::descendGradient(double learningRate)
 {
 	m_model.step(learningRate, m_momentum);
 }
 
-#ifdef GCUDA
-void GSGDOptimizer::computeGradientCuda(const GCudaVector& feat, const GCudaVector& lab)
+#ifdef WCUDA
+void WSGDOptimizer::computeGradientCuda(const WCudaVector& feat, const WCudaVector& lab)
 {
-	GContextNeuralNet& ctx = context();
-	GCudaVector& pred = ctx.forwardPropCuda(feat);
+	WContextNeuralNet& ctx = context();
+	WCudaVector& pred = ctx.forwardPropCuda(feat);
 	m_objective->calculateOutputLayerBlameCuda(ctx.cudaEngine(), pred, lab, ctx.blameCuda());
 	ctx.backPropCuda();
 	m_gradientCuda.scale(ctx.cudaEngine(), m_momentum);
 	ctx.updateGradientCuda(feat, m_gradientCuda);
 }
 
-void GSGDOptimizer::descendGradientCuda(double learningRate)
+void WSGDOptimizer::descendGradientCuda(double learningRate)
 {
 	m_model.stepCuda(context(), learningRate, m_gradientCuda);
 }
-#endif // GCUDA
+#endif // WCUDA
 
 
 
@@ -275,14 +275,14 @@ void GSGDOptimizer::descendGradientCuda(double learningRate)
 
 
 
-GAdamOptimizer::GAdamOptimizer(GNeuralNet& model, GRand& rand, const GMatrix* pTrainingFeatures, const GMatrix* pTrainingLabels)
-: GNeuralNetOptimizer(model, rand, pTrainingFeatures, pTrainingLabels), m_correct1(1.0), m_correct2(1.0), m_beta1(0.9), m_beta2(0.999), m_epsilon(1e-8)
+WAdamOptimizer::WAdamOptimizer(WNeuralNet& model, WRand& rand, const WMatrix* pTrainingFeatures, const WMatrix* pTrainingLabels)
+: WNeuralNetOptimizer(model, rand, pTrainingFeatures, pTrainingLabels), m_correct1(1.0), m_correct2(1.0), m_beta1(0.9), m_beta2(0.999), m_epsilon(1e-8)
 {
 	m_learningRate = 0.001;
 	init();
 }
 
-void GAdamOptimizer::init()
+void WAdamOptimizer::init()
 {
 	m_model.init(m_rand);
 	m_deltas.resize(m_gradient.size());
@@ -291,7 +291,7 @@ void GAdamOptimizer::init()
 	m_sqdeltas.fill(0.0);
 }
 
-void GAdamOptimizer::computeGradient(const GVec& feat, const GVec& lab)
+void WAdamOptimizer::computeGradient(const WVec& feat, const WVec& lab)
 {
 	m_model.forwardProp(feat);
 	m_model.computeBlame(lab);
@@ -309,7 +309,7 @@ void GAdamOptimizer::computeGradient(const GVec& feat, const GVec& lab)
 	}
 }
 
-void GAdamOptimizer::descendGradient(double learningRate)
+void WAdamOptimizer::descendGradient(double learningRate)
 {
 	double alpha1 = 1.0 / (1.0 - m_correct1);
 	double alpha2 = 1.0 / (1.0 - m_correct2);
@@ -318,17 +318,17 @@ void GAdamOptimizer::descendGradient(double learningRate)
 	m_model.step(learningRate, 0.0);
 }
 
-#ifdef GCUDA
-void GAdamOptimizer::computeGradientCuda(const GCudaVector& feat, const GCudaVector& lab)
+#ifdef WCUDA
+void WAdamOptimizer::computeGradientCuda(const WCudaVector& feat, const WCudaVector& lab)
 {
 	throw Ex("Sorry, not implemented yet");
 }
 
-void GAdamOptimizer::descendGradientCuda(double learningRate)
+void WAdamOptimizer::descendGradientCuda(double learningRate)
 {
 	throw Ex("Sorry, not implemented yet");
 }
-#endif // GCUDA
+#endif // WCUDA
 
 
 
@@ -340,20 +340,20 @@ void GAdamOptimizer::descendGradientCuda(double learningRate)
 
 
 
-GRMSPropOptimizer::GRMSPropOptimizer(GNeuralNet& model, GRand& rand, const GMatrix* pTrainingFeatures, const GMatrix* pTrainingLabels)
-: GNeuralNetOptimizer(model, rand, pTrainingFeatures, pTrainingLabels), m_momentum(0), m_gamma(0.9), m_epsilon(1e-6)
+WRMSPropOptimizer::WRMSPropOptimizer(WNeuralNet& model, WRand& rand, const WMatrix* pTrainingFeatures, const WMatrix* pTrainingLabels)
+: WNeuralNetOptimizer(model, rand, pTrainingFeatures, pTrainingLabels), m_momentum(0), m_gamma(0.9), m_epsilon(1e-6)
 {
 	init();
 }
 
-void GRMSPropOptimizer::init()
+void WRMSPropOptimizer::init()
 {
 	m_model.init(m_rand);
 	m_meanSquare.resize(m_gradient.size());
 	m_meanSquare.fill(0.0);
 }
 
-void GRMSPropOptimizer::computeGradient(const GVec& feat, const GVec& lab)
+void WRMSPropOptimizer::computeGradient(const WVec& feat, const WVec& lab)
 {
 	m_model.forwardProp(feat);
 	m_model.computeBlame(lab);
@@ -361,7 +361,7 @@ void GRMSPropOptimizer::computeGradient(const GVec& feat, const GVec& lab)
 	m_model.updateGradient();
 }
 
-void GRMSPropOptimizer::descendGradient(double learningRate)
+void WRMSPropOptimizer::descendGradient(double learningRate)
 {
 	for(size_t i = 0; i < m_meanSquare.size(); ++i)
 	{
@@ -372,17 +372,17 @@ void GRMSPropOptimizer::descendGradient(double learningRate)
 	m_model.step(learningRate, 0.0);
 }
 
-#ifdef GCUDA
-void GRMSPropOptimizer::computeGradientCuda(const GCudaVector& feat, const GCudaVector& lab)
+#ifdef WCUDA
+void WRMSPropOptimizer::computeGradientCuda(const WCudaVector& feat, const WCudaVector& lab)
 {
 	throw Ex("Sorry, not implemented yet");
 }
 
-void GRMSPropOptimizer::descendGradientCuda(double learningRate)
+void WRMSPropOptimizer::descendGradientCuda(double learningRate)
 {
 	throw Ex("Sorry, not implemented yet");
 }
-#endif // GCUDA
+#endif // WCUDA
 
 
 
@@ -397,19 +397,19 @@ void GRMSPropOptimizer::descendGradientCuda(double learningRate)
 
 
 
-GTargetFunction::GTargetFunction(size_t dims)
+WTargetFunction::WTargetFunction(size_t dims)
 {
-	m_pRelation = new GUniformRelation(dims, 0);
+	m_pRelation = new WUniformRelation(dims, 0);
 }
 
 // virtual
-GTargetFunction::~GTargetFunction()
+WTargetFunction::~WTargetFunction()
 {
 	delete(m_pRelation);
 }
 
 // virtual
-void GTargetFunction::initVector(GVec& pVector)
+void WTargetFunction::initVector(WVec& pVector)
 {
 	pVector.fill(0.0);
 }
@@ -424,7 +424,7 @@ void GTargetFunction::initVector(GVec& pVector)
 
 
 // virtual
-double GOptimizerBasicTestTargetFunction::computeError(const GVec& pVector)
+double WOptimizerBasicTestTargetFunction::computeError(const WVec& pVector)
 {
 	double a = pVector[0] - 0.123456789;
 	double b = pVector[1] + 9.876543210;
@@ -441,17 +441,17 @@ double GOptimizerBasicTestTargetFunction::computeError(const GVec& pVector)
 
 
 
-GOptimizer::GOptimizer(GTargetFunction* pCritic)
+WOptimizer::WOptimizer(WTargetFunction* pCritic)
 : m_pCritic(pCritic)
 {
 }
 
 // virtual
-GOptimizer::~GOptimizer()
+WOptimizer::~WOptimizer()
 {
 }
 
-double GOptimizer::searchUntil(size_t nBurnInIterations, size_t nIterations, double dImprovement)
+double WOptimizer::searchUntil(size_t nBurnInIterations, size_t nIterations, double dImprovement)
 {
 	for(size_t i = 0; i < nBurnInIterations; i++)
 		iterate();
@@ -472,7 +472,7 @@ double GOptimizer::searchUntil(size_t nBurnInIterations, size_t nIterations, dou
 	return dError;
 }
 
-void GOptimizer::basicTest(double minAccuracy, double warnRange)
+void WOptimizer::basicTest(double minAccuracy, double warnRange)
 {
 	double d = searchUntil(5, 100, 0.001);
 	if(d > minAccuracy)
@@ -488,35 +488,35 @@ void GOptimizer::basicTest(double minAccuracy, double warnRange)
 
 
 
-GParallelOptimizers::GParallelOptimizers(size_t dims)
+WParallelOptimizers::WParallelOptimizers(size_t dims)
 {
 	if(dims > 0)
-		m_pRelation = new GUniformRelation(dims, 0);
+		m_pRelation = new WUniformRelation(dims, 0);
 }
 
-GParallelOptimizers::~GParallelOptimizers()
+WParallelOptimizers::~WParallelOptimizers()
 {
-	for(vector<GOptimizer*>::iterator it = m_optimizers.begin(); it != m_optimizers.end(); it++)
+	for(vector<WOptimizer*>::iterator it = m_optimizers.begin(); it != m_optimizers.end(); it++)
 		delete(*it);
-	for(vector<GTargetFunction*>::iterator it = m_targetFunctions.begin(); it != m_targetFunctions.end(); it++)
+	for(vector<WTargetFunction*>::iterator it = m_targetFunctions.begin(); it != m_targetFunctions.end(); it++)
 		delete(*it);
 }
 
-void GParallelOptimizers::add(GTargetFunction* pTargetFunction, GOptimizer* pOptimizer)
+void WParallelOptimizers::add(WTargetFunction* pTargetFunction, WOptimizer* pOptimizer)
 {
 	m_targetFunctions.push_back(pTargetFunction);
 	m_optimizers.push_back(pOptimizer);
 }
 
-double GParallelOptimizers::iterateAll()
+double WParallelOptimizers::iterateAll()
 {
 	double err = 0;
-	for(vector<GOptimizer*>::iterator it = m_optimizers.begin(); it != m_optimizers.end(); it++)
+	for(vector<WOptimizer*>::iterator it = m_optimizers.begin(); it != m_optimizers.end(); it++)
 		err += (*it)->iterate();
 	return err;
 }
 
-double GParallelOptimizers::searchUntil(size_t nBurnInIterations, size_t nIterations, double dImprovement)
+double WParallelOptimizers::searchUntil(size_t nBurnInIterations, size_t nIterations, double dImprovement)
 {
 	for(size_t i = 1; i < nBurnInIterations; i++)
 		iterateAll();
@@ -542,20 +542,20 @@ double GParallelOptimizers::searchUntil(size_t nBurnInIterations, size_t nIterat
 
 
 
-class GAction
+class WAction
 {
 protected:
 	int m_nAction;
-	GAction* m_pPrev;
+	WAction* m_pPrev;
 	unsigned int m_nRefs;
 
-	~GAction()
+	~WAction()
 	{
 		if(m_pPrev)
 			m_pPrev->Release(); // todo: this could overflow the stack with recursion
 	}
 public:
-	GAction(int nAction, GAction* pPrev)
+	WAction(int nAction, WAction* pPrev)
 	: m_nAction(nAction), m_nRefs(0)
 	{
 		m_pPrev = pPrev;
@@ -574,7 +574,7 @@ public:
 			delete(this);
 	}
 
-	GAction* GetPrev() { return m_pPrev; }
+	WAction* GetPrev() { return m_pPrev; }
 	int GetAction() { return m_nAction; }
 };
 
@@ -589,22 +589,22 @@ public:
 
 
 
-GActionPath::GActionPath(GActionPathState* pState) : m_pLastAction(nullptr), m_nPathLen(0)
+WActionPath::WActionPath(WActionPathState* pState) : m_pLastAction(nullptr), m_nPathLen(0)
 {
 	m_pHeadState = pState;
 }
 
-GActionPath::~GActionPath()
+WActionPath::~WActionPath()
 {
 	if(m_pLastAction)
 		m_pLastAction->Release();
 	delete(m_pHeadState);
 }
 
-void GActionPath::doAction(size_t nAction)
+void WActionPath::doAction(size_t nAction)
 {
-	GAction* pPrevAction = m_pLastAction;
-	m_pLastAction = new GAction((int)nAction, pPrevAction);
+	WAction* pPrevAction = m_pLastAction;
+	m_pLastAction = new WAction((int)nAction, pPrevAction);
 	m_pLastAction->AddRef(); // referenced by m_pLastAction
 	if(pPrevAction)
 		pPrevAction->Release(); // no longer referenced by m_pLastAction
@@ -612,9 +612,9 @@ void GActionPath::doAction(size_t nAction)
 	m_pHeadState->performAction(nAction);
 }
 
-GActionPath* GActionPath::fork()
+WActionPath* WActionPath::fork()
 {
-	GActionPath* pNewPath = new GActionPath(m_pHeadState->copy());
+	WActionPath* pNewPath = new WActionPath(m_pHeadState->copy());
 	pNewPath->m_nPathLen = m_nPathLen;
 	pNewPath->m_pLastAction = m_pLastAction;
 	if(m_pLastAction)
@@ -622,12 +622,12 @@ GActionPath* GActionPath::fork()
 	return pNewPath;
 }
 
-void GActionPath::path(size_t nCount, size_t* pOutBuf)
+void WActionPath::path(size_t nCount, size_t* pOutBuf)
 {
 	while(nCount > m_nPathLen)
 		pOutBuf[--nCount] = -1;
 	size_t i = m_nPathLen;
-	GAction* pAction = m_pLastAction;
+	WAction* pAction = m_pLastAction;
 	while(i > nCount)
 	{
 		i--;
@@ -640,9 +640,9 @@ void GActionPath::path(size_t nCount, size_t* pOutBuf)
 	}
 }
 
-double GActionPath::critique()
+double WActionPath::critique()
 {
 	return m_pHeadState->critiquePath(m_nPathLen, m_pLastAction);
 }
 
-} // namespace GClasses
+} // namespace WClasses

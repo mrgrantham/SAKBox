@@ -20,13 +20,13 @@
 #ifndef __GBITTABLE_H__
 #define __GBITTABLE_H__
 
-#include "GError.h"
+#include "WError.h"
 
-namespace GClasses
+namespace WClasses
 {
 
 /// Represents a table of bits.
-class GBitTable
+class WBitTable
 {
 protected:
 	size_t m_size;
@@ -34,15 +34,15 @@ protected:
 
 public:
 	/// All bits are initialized to false
-	GBitTable(size_t bitCount);
+	WBitTable(size_t bitCount);
 
 	///Copy Constructor
-	GBitTable(const GBitTable& o);
+	WBitTable(const WBitTable& o);
 
 	///Operator=
-	GBitTable& operator=(const GBitTable& o);
+	WBitTable& operator=(const WBitTable& o);
 
-	virtual ~GBitTable();
+	virtual ~WBitTable();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -67,7 +67,7 @@ public:
 
 	/// Returns true iff the bit tables are exactly equal.
 	/// Returns false if the tables are not the same size.
-	bool equals(const GBitTable& that) const;
+	bool equals(const WBitTable& that) const;
 
 	/// Returns true iff the first "count" bits are set. (Note that
 	/// for most applications, it is more efficient to simply maintain
@@ -78,6 +78,6 @@ public:
 	bool areAllClear(size_t count);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GBITTABLE_H__

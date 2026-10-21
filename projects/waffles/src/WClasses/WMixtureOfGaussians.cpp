@@ -17,16 +17,16 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GMixtureOfGaussians.h"
-#include "GMatrix.h"
+#include "WMixtureOfGaussians.h"
+#include "WMatrix.h"
 #include <math.h>
-#include "GVec.h"
-#include "GRand.h"
+#include "WVec.h"
+#include "WRand.h"
 #include <cmath>
-using namespace GClasses;
+using namespace WClasses;
 using std::vector;
 
-GMixtureOfGaussians::GMixtureOfGaussians(int nKernelCount, GMatrix* pData, int nAttribute, double minVariance, GRand* pRand)
+WMixtureOfGaussians::WMixtureOfGaussians(int nKernelCount, WMatrix* pData, int nAttribute, double minVariance, WRand* pRand)
 {
 	m_nKernelCount = nKernelCount;
 	m_pData = pData;
@@ -50,22 +50,22 @@ GMixtureOfGaussians::GMixtureOfGaussians(int nKernelCount, GMatrix* pData, int n
 }
 
 // virtual
-GMixtureOfGaussians::~GMixtureOfGaussians()
+WMixtureOfGaussians::~WMixtureOfGaussians()
 {
 	delete[] m_pArrMeanVarWeight;
 }
 
 // static
-GMixtureOfGaussians* GMixtureOfGaussians::stochasticHammer(int nMinKernelCount, int nMaxKernelCount, int nItters, int nTrials, GMatrix* pData, int nAttribute, double minVariance, GRand* pRand)
+WMixtureOfGaussians* WMixtureOfGaussians::stochasticHammer(int nMinKernelCount, int nMaxKernelCount, int nItters, int nTrials, WMatrix* pData, int nAttribute, double minVariance, WRand* pRand)
 {
 	double dBestLogLikelihood = -1e300;
 	double d;
-	GMixtureOfGaussians* pBestMog = nullptr;
-	GMixtureOfGaussians* pMog;
+	WMixtureOfGaussians* pBestMog = nullptr;
+	WMixtureOfGaussians* pMog;
 	int trial, i;
 	for(trial = 0; trial < nTrials; trial++)
 	{
-		pMog = new GMixtureOfGaussians((int)pRand->next(nMaxKernelCount - nMinKernelCount + 1) + nMinKernelCount, pData, nAttribute, minVariance, pRand);
+		pMog = new WMixtureOfGaussians((int)pRand->next(nMaxKernelCount - nMinKernelCount + 1) + nMinKernelCount, pData, nAttribute, minVariance, pRand);
 		for(i = 1; i < nItters; i++)
 			pMog->iterate();
 		d = pMog->iterate();
@@ -82,13 +82,13 @@ GMixtureOfGaussians* GMixtureOfGaussians::stochasticHammer(int nMinKernelCount, 
 	return pBestMog;
 }
 
-double GMixtureOfGaussians::evalKernel(double x, int nKernel)
+double WMixtureOfGaussians::evalKernel(double x, int nKernel)
 {
 	m_dist.setMeanAndVariance(m_pArrMeanVarWeight[3 * nKernel], m_pArrMeanVarWeight[3 * nKernel + 1]);
 	return m_pArrMeanVarWeight[3 * nKernel + 2] * m_dist.likelihood(x);
 }
 
-double GMixtureOfGaussians::likelihoodOfEachCategoryGivenThisFeature(double x)
+double WMixtureOfGaussians::likelihoodOfEachCategoryGivenThisFeature(double x)
 {
 	int i;
 	double sum = 0;
@@ -112,13 +112,13 @@ double GMixtureOfGaussians::likelihoodOfEachCategoryGivenThisFeature(double x)
 	return sum;
 }
 
-double GMixtureOfGaussians::iterate()
+double WMixtureOfGaussians::iterate()
 {
 	// Compute the maximum likelihood kernel parameters
 	int i;
 	double x, d;
 	double likelihood = 0;
-	GVecWrapper vw(m_pTemp, 3 * m_nKernelCount);
+	WVecWrapper vw(m_pTemp, 3 * m_nKernelCount);
 	vw.fill(0.0);
 	for(size_t j = 0; j < m_pData->rows(); j++)
 	{
@@ -146,7 +146,7 @@ double GMixtureOfGaussians::iterate()
 	return likelihood;
 }
 
-void GMixtureOfGaussians::params(int nKernel, double* pMean, double* pVariance, double* pWeight)
+void WMixtureOfGaussians::params(int nKernel, double* pMean, double* pVariance, double* pWeight)
 {
 	*pMean = m_pArrMeanVarWeight[3 * nKernel];
 	*pVariance = m_pArrMeanVarWeight[3 * nKernel + 1];
@@ -159,12 +159,12 @@ void GMixtureOfGaussians::params(int nKernel, double* pMean, double* pVariance, 
 #define TOLERANCE 0.8
 
 // static
-void GMixtureOfGaussians::test()
+void WMixtureOfGaussians::test()
 {
 	// Randomly pick target weights
-	GRand prng(3);
-	GCategoricalDistribution cat;
-	GVec& weights = cat.values(KERNEL_COUNT);
+	WRand prng(3);
+	WCategoricalDistribution cat;
+	WVec& weights = cat.values(KERNEL_COUNT);
 	int i;
 	vector<double> probs;
 	for(i = 0; i < KERNEL_COUNT; i++)
@@ -182,19 +182,19 @@ void GMixtureOfGaussians::test()
 	}
 
 	// Make samples
-	GNormalDistribution dists[KERNEL_COUNT];
+	WNormalDistribution dists[KERNEL_COUNT];
 	for(i = 0; i < KERNEL_COUNT; i++)
 		dists[i].setMeanAndVariance(params[2 * i], params[2 * i + 1] * params[2 * i + 1]);
-	GMatrix data(0, 1);
+	WMatrix data(0, 1);
 	for(i = 0; i < SAMPLE_COUNT; i++)
 	{
-		GVec& vec = data.newRow();
+		WVec& vec = data.newRow();
 		size_t j = prng.categorical(probs);
 		vec[0] = prng.normal() * sqrt(dists[j].variance()) + dists[j].mean();
 	}
 
 	// Approxiimate the data with a mixture of Gaussians
-	GMixtureOfGaussians mog(KERNEL_COUNT, &data, 0 /*attr*/, .2 /*min variance*/, &prng);
+	WMixtureOfGaussians mog(KERNEL_COUNT, &data, 0 /*attr*/, .2 /*min variance*/, &prng);
 	for(i = 0; i < 300; i++)
 		mog.iterate();
 

@@ -18,37 +18,37 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GDistance.h"
-#include "GDom.h"
-#include "GVec.h"
+#include "WDistance.h"
+#include "WDom.h"
+#include "WVec.h"
 #include <math.h>
 #include <cassert>
 #include <memory>
 
 using std::map;
 
-namespace GClasses
+namespace WClasses
 {
 
-GDistanceMetric::GDistanceMetric(GDomNode* pNode)
+WDistanceMetric::WDistanceMetric(WDomNode* pNode)
 : m_scaleFactors(pNode->get("scalars"))
 {
-	m_pRelation = GRelation::deserialize(pNode->get("relation"));
+	m_pRelation = WRelation::deserialize(pNode->get("relation"));
 	if(m_pRelation->size() != m_scaleFactors.size())
 		throw Ex("Mismatching sizes");
 	m_ownRelation = true;
 }
 
 // virtual
-GDistanceMetric::~GDistanceMetric()
+WDistanceMetric::~WDistanceMetric()
 {
 	setRelation(nullptr, false);
 }
 
-void GDistanceMetric::setRelation(const GRelation* pRelation, bool own)
+void WDistanceMetric::setRelation(const WRelation* pRelation, bool own)
 {
 	if(m_ownRelation)
-		delete((GRelation*)m_pRelation);
+		delete((WRelation*)m_pRelation);
 	m_pRelation = pRelation;
 	m_ownRelation = own;
 	if(pRelation)
@@ -60,9 +60,9 @@ void GDistanceMetric::setRelation(const GRelation* pRelation, bool own)
 		m_scaleFactors.resize(0);
 }
 
-GDomNode* GDistanceMetric::baseDomNode(GDom* pDoc) const
+WDomNode* WDistanceMetric::baseDomNode(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "class", name());
 	pNode->add(pDoc, "relation", m_pRelation->serialize(pDoc));
 	pNode->add(pDoc, "scalars", m_scaleFactors.serialize(pDoc));
@@ -70,39 +70,39 @@ GDomNode* GDistanceMetric::baseDomNode(GDom* pDoc) const
 }
 
 // static
-GDistanceMetric* GDistanceMetric::deserialize(GDomNode* pNode)
+WDistanceMetric* WDistanceMetric::deserialize(WDomNode* pNode)
 {
 	const char* szClass = pNode->getString("class");
-	if(strcmp(szClass, "GRowDistance") == 0)
-		return new GRowDistance(pNode);
-	if(strcmp(szClass, "GDenseCosineDistance") == 0)
-		return new GDenseCosineDistance(pNode);
-	if(strcmp(szClass, "GLNormDistance") == 0)
-		return new GLNormDistance(pNode);
-	if(strcmp(szClass, "GKernelDistance") == 0)
-		return new GKernelDistance(pNode);
+	if(strcmp(szClass, "WRowDistance") == 0)
+		return new WRowDistance(pNode);
+	if(strcmp(szClass, "WDenseCosineDistance") == 0)
+		return new WDenseCosineDistance(pNode);
+	if(strcmp(szClass, "WLNormDistance") == 0)
+		return new WLNormDistance(pNode);
+	if(strcmp(szClass, "WKernelDistance") == 0)
+		return new WKernelDistance(pNode);
 	throw Ex("Unrecognized class: ", szClass);
 	return nullptr;
 }
 
-void GDistanceMetric_exerciseMetric(GDistanceMetric& metric)
+void WDistanceMetric_exerciseMetric(WDistanceMetric& metric)
 {
 	// Make two vectors
-	GVec a(2);
+	WVec a(2);
 	a.fill(1.0);
-	GVec b(2);
+	WVec b(2);
 	b.fill(2.0);
-	GUniformRelation rel(2);
+	WUniformRelation rel(2);
 	metric.init(&rel, false);
 
 	// Measure distance
 	double sqDist = metric.squaredDistance(a, b);
 
 	// Roundtrip through serialization
-	GDom doc;
-	GDomNode* pNode = metric.serialize(&doc);
-	GDistanceMetric* pRoundtripped = GDistanceMetric::deserialize(pNode);
-	std::unique_ptr<GDistanceMetric> hRoundtripped(pRoundtripped);
+	WDom doc;
+	WDomNode* pNode = metric.serialize(&doc);
+	WDistanceMetric* pRoundtripped = WDistanceMetric::deserialize(pNode);
+	std::unique_ptr<WDistanceMetric> hRoundtripped(pRoundtripped);
 
 	// Make sure the roundtripped metric still returns the same result
 	double sqDist2 = pRoundtripped->squaredDistance(a, b);
@@ -111,47 +111,47 @@ void GDistanceMetric_exerciseMetric(GDistanceMetric& metric)
 }
 
 // static
-void GDistanceMetric::test()
+void WDistanceMetric::test()
 {
-	GRowDistance d1;
-	GDistanceMetric_exerciseMetric(d1);
-	GLNormDistance d2(1.4);
-	GDistanceMetric_exerciseMetric(d2);
-	GDenseCosineDistance d3;
-	GDistanceMetric_exerciseMetric(d3);
-	GKernelDistance d4(GKernel::kernelComplex1(), true);
-	GDistanceMetric_exerciseMetric(d4);
+	WRowDistance d1;
+	WDistanceMetric_exerciseMetric(d1);
+	WLNormDistance d2(1.4);
+	WDistanceMetric_exerciseMetric(d2);
+	WDenseCosineDistance d3;
+	WDistanceMetric_exerciseMetric(d3);
+	WKernelDistance d4(WKernel::kernelComplex1(), true);
+	WDistanceMetric_exerciseMetric(d4);
 }
 
 // --------------------------------------------------------------------
 
-GRowDistance::GRowDistance()
-: GDistanceMetric(), m_diffWithUnknown(1.0)
+WRowDistance::WRowDistance()
+: WDistanceMetric(), m_diffWithUnknown(1.0)
 {
 }
 
-GRowDistance::GRowDistance(GDomNode* pNode)
-: GDistanceMetric(pNode)
+WRowDistance::WRowDistance(WDomNode* pNode)
+: WDistanceMetric(pNode)
 {
 	m_diffWithUnknown = pNode->getDouble("dwu");
 }
 
 // virtual
-GDomNode* GRowDistance::serialize(GDom* pDoc) const
+WDomNode* WRowDistance::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc);
+	WDomNode* pNode = baseDomNode(pDoc);
 	pNode->add(pDoc, "dwu", m_diffWithUnknown);
 	return pNode;
 }
 
 // virtual
-void GRowDistance::init(const GRelation* pRelation, bool own)
+void WRowDistance::init(const WRelation* pRelation, bool own)
 {
 	setRelation(pRelation, own);
 }
 
 // virtual
-double GRowDistance::squaredDistance(const GVec& a, const GVec& b) const
+double WRowDistance::squaredDistance(const WVec& a, const WVec& b) const
 {
 	if(a.size() != m_pRelation->size() || b.size() != m_pRelation->size())
 		throw Ex("unexpected size");
@@ -181,33 +181,33 @@ double GRowDistance::squaredDistance(const GVec& a, const GVec& b) const
 
 // --------------------------------------------------------------------
 
-GLNormDistance::GLNormDistance(double norm)
-: GDistanceMetric(), m_norm(norm), m_diffWithUnknown(1.0)
+WLNormDistance::WLNormDistance(double norm)
+: WDistanceMetric(), m_norm(norm), m_diffWithUnknown(1.0)
 {
 }
 
-GLNormDistance::GLNormDistance(GDomNode* pNode)
-: GDistanceMetric(pNode), m_norm(pNode->getDouble("norm")), m_diffWithUnknown(pNode->getDouble("dwu"))
+WLNormDistance::WLNormDistance(WDomNode* pNode)
+: WDistanceMetric(pNode), m_norm(pNode->getDouble("norm")), m_diffWithUnknown(pNode->getDouble("dwu"))
 {
 }
 
 // virtual
-GDomNode* GLNormDistance::serialize(GDom* pDoc) const
+WDomNode* WLNormDistance::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc);
+	WDomNode* pNode = baseDomNode(pDoc);
 	pNode->add(pDoc, "norm", m_norm);
 	pNode->add(pDoc, "dwu", m_diffWithUnknown);
 	return pNode;
 }
 
 // virtual
-void GLNormDistance::init(const GRelation* pRelation, bool own)
+void WLNormDistance::init(const WRelation* pRelation, bool own)
 {
 	setRelation(pRelation, own);
 }
 
 // virtual
-double GLNormDistance::squaredDistance(const GVec& a, const GVec& b) const
+double WLNormDistance::squaredDistance(const WVec& a, const WVec& b) const
 {
 	if(a.size() != m_pRelation->size() || b.size() != m_pRelation->size())
 		throw Ex("unexpected size");
@@ -238,31 +238,31 @@ double GLNormDistance::squaredDistance(const GVec& a, const GVec& b) const
 
 // --------------------------------------------------------------------
 
-GDenseCosineDistance::GDenseCosineDistance()
-: GDistanceMetric()
+WDenseCosineDistance::WDenseCosineDistance()
+: WDistanceMetric()
 {
 }
 
-GDenseCosineDistance::GDenseCosineDistance(GDomNode* pNode)
-: GDistanceMetric(pNode)
+WDenseCosineDistance::WDenseCosineDistance(WDomNode* pNode)
+: WDistanceMetric(pNode)
 {
 }
 
 // virtual
-GDomNode* GDenseCosineDistance::serialize(GDom* pDoc) const
+WDomNode* WDenseCosineDistance::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc);
+	WDomNode* pNode = baseDomNode(pDoc);
 	return pNode;
 }
 
 // virtual
-void GDenseCosineDistance::init(const GRelation* pRelation, bool own)
+void WDenseCosineDistance::init(const WRelation* pRelation, bool own)
 {
 	setRelation(pRelation, own);
 }
 
 // virtual
-double GDenseCosineDistance::squaredDistance(const GVec& a, const GVec& b) const
+double WDenseCosineDistance::squaredDistance(const WVec& a, const WVec& b) const
 {
 	if(a.size() != m_pRelation->size() || b.size() != m_pRelation->size())
 		throw Ex("unexpected size");
@@ -284,40 +284,40 @@ double GDenseCosineDistance::squaredDistance(const GVec& a, const GVec& b) const
 
 // --------------------------------------------------------------------
 
-GKernelDistance::GKernelDistance(GKernel* pKernel, bool own)
-: GDistanceMetric(), m_pKernel(pKernel), m_ownKernel(own)
+WKernelDistance::WKernelDistance(WKernel* pKernel, bool own)
+: WDistanceMetric(), m_pKernel(pKernel), m_ownKernel(own)
 {
 }
 
-GKernelDistance::GKernelDistance(GDomNode* pNode)
-: GDistanceMetric(pNode), m_ownKernel(true)
+WKernelDistance::WKernelDistance(WDomNode* pNode)
+: WDistanceMetric(pNode), m_ownKernel(true)
 {
-	m_pKernel = GKernel::deserialize(pNode->get("kernel"));
+	m_pKernel = WKernel::deserialize(pNode->get("kernel"));
 }
 
 // virtual
-GKernelDistance::~GKernelDistance()
+WKernelDistance::~WKernelDistance()
 {
 	if(m_ownKernel)
 		delete(m_pKernel);
 }
 
 // virtual
-GDomNode* GKernelDistance::serialize(GDom* pDoc) const
+WDomNode* WKernelDistance::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc);
+	WDomNode* pNode = baseDomNode(pDoc);
 	pNode->add(pDoc, "kernel", m_pKernel->serialize(pDoc));
 	return pNode;
 }
 
 // virtual
-void GKernelDistance::init(const GRelation* pRelation, bool own)
+void WKernelDistance::init(const WRelation* pRelation, bool own)
 {
 	setRelation(pRelation, own);
 }
 
 // virtual
-double GKernelDistance::squaredDistance(const GVec& a, const GVec& b) const
+double WKernelDistance::squaredDistance(const WVec& a, const WVec& b) const
 {
 	return 1.0 - m_pKernel->apply(a, b);
 }
@@ -325,25 +325,25 @@ double GKernelDistance::squaredDistance(const GVec& a, const GVec& b) const
 // --------------------------------------------------------------------
 
 // static
-GSparseSimilarity* GSparseSimilarity::deserialize(GDomNode* pNode)
+WSparseSimilarity* WSparseSimilarity::deserialize(WDomNode* pNode)
 {
 	const char* szClass = pNode->getString("class");
-	GSparseSimilarity* pObj = nullptr;
-	if(strcmp(szClass, "GCosineSimilarity") == 0)
-		return new GCosineSimilarity(pNode);
-	else if(strcmp(szClass, "GEuclidSimilarity") == 0)
-		return new GEuclidSimilarity(pNode);
-	else if(strcmp(szClass, "GPearsonCorrelation") == 0)
-		return new GPearsonCorrelation(pNode);
+	WSparseSimilarity* pObj = nullptr;
+	if(strcmp(szClass, "WCosineSimilarity") == 0)
+		return new WCosineSimilarity(pNode);
+	else if(strcmp(szClass, "WEuclidSimilarity") == 0)
+		return new WEuclidSimilarity(pNode);
+	else if(strcmp(szClass, "WPearsonCorrelation") == 0)
+		return new WPearsonCorrelation(pNode);
 	else
 		throw Ex("Unrecognized class: ", szClass);
 	pObj->m_regularizer = pNode->getDouble("reg");
 	return pObj;
 }
 
-GDomNode* GSparseSimilarity::baseDomNode(GDom* pDoc, const char* szClassName) const
+WDomNode* WSparseSimilarity::baseDomNode(WDom* pDoc, const char* szClassName) const
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "class", szClassName);
 	pNode->add(pDoc, "reg", m_regularizer);
 	return pNode;
@@ -352,14 +352,14 @@ GDomNode* GSparseSimilarity::baseDomNode(GDom* pDoc, const char* szClassName) co
 // --------------------------------------------------------------------
 
 // virtual
-GDomNode* GCosineSimilarity::serialize(GDom* pDoc) const
+WDomNode* WCosineSimilarity::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GCosineSimilarity");
+	WDomNode* pNode = baseDomNode(pDoc, "WCosineSimilarity");
 	return pNode;
 }
 
 // virtual
-double GCosineSimilarity::similarity(const map<size_t, double>& a, const map<size_t, double>& b)
+double WCosineSimilarity::similarity(const map<size_t, double>& a, const map<size_t, double>& b)
 {
 	map<size_t, double>::const_iterator itA = a.begin();
 	map<size_t, double>::const_iterator itB = b.begin();
@@ -401,7 +401,7 @@ double GCosineSimilarity::similarity(const map<size_t, double>& a, const map<siz
 }
 
 // virtual
-double GCosineSimilarity::similarity(const map<size_t, double>& a, const GVec& b)
+double WCosineSimilarity::similarity(const map<size_t, double>& a, const WVec& b)
 {
 	map<size_t, double>::const_iterator itA = a.begin();
 	if(itA == a.end())
@@ -424,7 +424,7 @@ double GCosineSimilarity::similarity(const map<size_t, double>& a, const GVec& b
 }
 
 // virtual
-double GCosineSimilarity::similarity(const GVec& a, const GVec& b)
+double WCosineSimilarity::similarity(const WVec& a, const WVec& b)
 {
 	if(a.size() != b.size())
 		throw Ex("mismatching sizes");
@@ -447,14 +447,14 @@ double GCosineSimilarity::similarity(const GVec& a, const GVec& b)
 // --------------------------------------------------------------------
 
 // virtual
-GDomNode* GPearsonCorrelation::serialize(GDom* pDoc) const
+WDomNode* WPearsonCorrelation::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GPearsonCorrelation");
+	WDomNode* pNode = baseDomNode(pDoc, "WPearsonCorrelation");
 	return pNode;
 }
 
 // virtual
-double GPearsonCorrelation::similarity(const map<size_t, double>& a, const map<size_t, double>& b)
+double WPearsonCorrelation::similarity(const map<size_t, double>& a, const map<size_t, double>& b)
 {
 	// Compute the mean of the overlapping portions
 	map<size_t, double>::const_iterator itA = a.begin();
@@ -529,7 +529,7 @@ double GPearsonCorrelation::similarity(const map<size_t, double>& a, const map<s
 }
 
 // virtual
-double GPearsonCorrelation::similarity(const map<size_t, double>& a, const GVec& b)
+double WPearsonCorrelation::similarity(const map<size_t, double>& a, const WVec& b)
 {
 	// Compute the mean of the overlapping portions
 	map<size_t, double>::const_iterator itA = a.begin();
@@ -566,7 +566,7 @@ double GPearsonCorrelation::similarity(const map<size_t, double>& a, const GVec&
 }
 
 // virtual
-double GPearsonCorrelation::similarity(const GVec& a, const GVec& b)
+double WPearsonCorrelation::similarity(const WVec& a, const WVec& b)
 {
 	if(a.size() != b.size())
 		throw Ex("mismatching sizes");
@@ -602,14 +602,14 @@ double GPearsonCorrelation::similarity(const GVec& a, const GVec& b)
 // --------------------------------------------------------------------
 
 // virtual
-GDomNode* GEuclidSimilarity::serialize(GDom* pDoc) const
+WDomNode* WEuclidSimilarity::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GEuclidSimilarity");
+	WDomNode* pNode = baseDomNode(pDoc, "WEuclidSimilarity");
 	return pNode;
 }
 
 // virtual
-double GEuclidSimilarity::similarity(const map<size_t, double>& a, const map<size_t, double>& b)
+double WEuclidSimilarity::similarity(const map<size_t, double>& a, const map<size_t, double>& b)
 {
 	map<size_t, double>::const_iterator itA = a.begin();
 	map<size_t, double>::const_iterator itB = b.begin();
@@ -647,7 +647,7 @@ double GEuclidSimilarity::similarity(const map<size_t, double>& a, const map<siz
 }
 
 // virtual
-double GEuclidSimilarity::similarity(const map<size_t, double>& a, const GVec& b)
+double WEuclidSimilarity::similarity(const map<size_t, double>& a, const WVec& b)
 {
 	map<size_t, double>::const_iterator itA = a.begin();
 	if(itA == a.end())
@@ -666,7 +666,7 @@ double GEuclidSimilarity::similarity(const map<size_t, double>& a, const GVec& b
 }
 
 // virtual
-double GEuclidSimilarity::similarity(const GVec& a, const GVec& b)
+double WEuclidSimilarity::similarity(const WVec& a, const WVec& b)
 {
 	if(a.size() != b.size())
 		throw Ex("mismatching sizes");
@@ -684,4 +684,4 @@ double GEuclidSimilarity::similarity(const GVec& a, const GVec& b)
 }
 
 
-} // namespace GClasses
+} // namespace WClasses

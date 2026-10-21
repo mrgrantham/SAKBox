@@ -16,30 +16,30 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GNaiveInstance.h"
-#include "GVec.h"
-#include "GDom.h"
-#include "GDistribution.h"
-#include "GTransform.h"
+#include "WNaiveInstance.h"
+#include "WVec.h"
+#include "WDom.h"
+#include "WDistribution.h"
+#include "WTransform.h"
 #include <map>
 
 using std::multimap;
 using std::make_pair;
 
-namespace GClasses
+namespace WClasses
 {
 
-class GNaiveInstanceAttr
+class WNaiveInstanceAttr
 {
 protected:
 	multimap<double, const double*> m_instances;
 
 public:
-	GNaiveInstanceAttr() {}
+	WNaiveInstanceAttr() {}
 
-	GNaiveInstanceAttr(GDomNode* pAttr, size_t labelDims, GHeap* pHeap)
+	WNaiveInstanceAttr(WDomNode* pAttr, size_t labelDims, WHeap* pHeap)
 	{
-		GDomListIterator it(pAttr);
+		WDomListIterator it(pAttr);
 		size_t count = it.remaining() / (1 + labelDims);
 		if(count * (1 + labelDims) != it.remaining())
 			throw Ex("invalid list size");
@@ -57,15 +57,15 @@ public:
 		}
 	}
 
-	virtual ~GNaiveInstanceAttr()
+	virtual ~WNaiveInstanceAttr()
 	{
 	}
 
 	multimap<double, const double*>& instances() { return m_instances; }
 
-	GDomNode* serialize(GDom* pDoc, size_t labelDims)
+	WDomNode* serialize(WDom* pDoc, size_t labelDims)
 	{
-		GDomNode* pList = pDoc->newList();
+		WDomNode* pList = pDoc->newList();
 		for(multimap<double, const double*>::iterator it = m_instances.begin(); it != m_instances.end(); it++)
 		{
 			pList->add(pDoc, it->first);
@@ -83,39 +83,39 @@ public:
 
 // -----------------------------------------------------------
 
-GNaiveInstance::GNaiveInstance()
-: GIncrementalLearner(), m_pHeap(nullptr)
+WNaiveInstance::WNaiveInstance()
+: WIncrementalLearner(), m_pHeap(nullptr)
 {
 	m_nNeighbors = 12;
 	m_pAttrs = nullptr;
 }
 
-GNaiveInstance::GNaiveInstance(const GDomNode* pNode)
-: GIncrementalLearner(pNode), m_pHeap(nullptr)
+WNaiveInstance::WNaiveInstance(const WDomNode* pNode)
+: WIncrementalLearner(pNode), m_pHeap(nullptr)
 {
 	m_pAttrs = nullptr;
 	m_nNeighbors = (size_t)pNode->getInt("neighbors");
 	beginIncrementalLearningInner(*m_pRelFeatures, *m_pRelLabels);
-	GDomNode* pAttrs = pNode->get("attrs");
-	GDomListIterator it(pAttrs);
+	WDomNode* pAttrs = pNode->get("attrs");
+	WDomListIterator it(pAttrs);
 	if(it.remaining() != m_pRelFeatures->size())
 		throw Ex("Expected ", to_str(m_pRelFeatures->size()), " attrs, got ", to_str(it.remaining()), " attrs");
-	m_pHeap = new GHeap(1024);
+	m_pHeap = new WHeap(1024);
 	for(size_t i = 0; i < m_pRelFeatures->size(); i++)
 	{
 		delete(m_pAttrs[i]);
-		m_pAttrs[i] = new GNaiveInstanceAttr(it.current(), m_pRelLabels->size(), m_pHeap);
+		m_pAttrs[i] = new WNaiveInstanceAttr(it.current(), m_pRelLabels->size(), m_pHeap);
 		it.advance();
 	}
 }
 
 // virtual
-GNaiveInstance::~GNaiveInstance()
+WNaiveInstance::~WNaiveInstance()
 {
 	clear();
 }
 
-void GNaiveInstance::clear()
+void WNaiveInstance::clear()
 {
 	if(m_pAttrs)
 	{
@@ -130,17 +130,17 @@ void GNaiveInstance::clear()
 }
 
 // virtual
-GDomNode* GNaiveInstance::serialize(GDom* pDoc) const
+WDomNode* WNaiveInstance::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = baseDomNode(pDoc, "GNaiveInstance");
+	WDomNode* pNode = baseDomNode(pDoc, "WNaiveInstance");
 	pNode->add(pDoc, "neighbors", m_nNeighbors);
-	GDomNode* pAttrs = pNode->add(pDoc, "attrs", pDoc->newList());
+	WDomNode* pAttrs = pNode->add(pDoc, "attrs", pDoc->newList());
 	for(size_t i = 0; i < m_pRelFeatures->size(); i++)
 		pAttrs->add(pDoc, m_pAttrs[i]->serialize(pDoc, m_pRelLabels->size()));
 	return pNode;
 }
 
-void GNaiveInstance::autoTune(GMatrix& features, GMatrix& labels)
+void WNaiveInstance::autoTune(WMatrix& features, WMatrix& labels)
 {
 	// Find the best ess value
 	size_t bestK = 0;
@@ -164,14 +164,14 @@ void GNaiveInstance::autoTune(GMatrix& features, GMatrix& labels)
 }
 
 // virtual
-void GNaiveInstance::beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel)
+void WNaiveInstance::beginIncrementalLearningInner(const WRelation& featureRel, const WRelation& labelRel)
 {
 	if(!featureRel.areContinuous() || !labelRel.areContinuous())
 		throw Ex("Only continuous attributes are supported.");
 	clear();
-	m_pAttrs = new GNaiveInstanceAttr*[m_pRelFeatures->size()];
+	m_pAttrs = new WNaiveInstanceAttr*[m_pRelFeatures->size()];
 	for(size_t i = 0; i < m_pRelFeatures->size(); i++)
-		m_pAttrs[i] = new GNaiveInstanceAttr();
+		m_pAttrs[i] = new WNaiveInstanceAttr();
 	m_pValueSums.resize(m_pRelLabels->size());
 	m_pWeightSums.resize(m_pRelLabels->size());
 	m_pSumBuffer.resize(m_pRelLabels->size());
@@ -179,10 +179,10 @@ void GNaiveInstance::beginIncrementalLearningInner(const GRelation& featureRel, 
 }
 
 // virtual
-void GNaiveInstance::trainIncremental(const GVec& pIn, const GVec& pOut)
+void WNaiveInstance::trainIncremental(const WVec& pIn, const WVec& pOut)
 {
 	if(!m_pHeap)
-		m_pHeap = new GHeap(1024);
+		m_pHeap = new WHeap(1024);
 	double* pOutputs = (double*)m_pHeap->allocAligned(sizeof(double) * m_pRelLabels->size());
 	memcpy(pOutputs, pOut.data(), sizeof(double) * m_pRelLabels->size());
 	for(size_t i = 0; i < m_pRelFeatures->size(); i++)
@@ -193,12 +193,12 @@ void GNaiveInstance::trainIncremental(const GVec& pIn, const GVec& pOut)
 }
 
 // virtual
-void GNaiveInstance::trainInner(const GMatrix& features, const GMatrix& labels)
+void WNaiveInstance::trainInner(const WMatrix& features, const WMatrix& labels)
 {
 	if(!features.relation().areContinuous())
-		throw Ex("GNaiveInstance only supports continuous features. Perhaps you should wrap it in a GAutoFilter.");
+		throw Ex("WNaiveInstance only supports continuous features. Perhaps you should wrap it in a WAutoFilter.");
 	if(!labels.relation().areContinuous())
-		throw Ex("GNaiveInstance only supports continuous labels. Perhaps you should wrap it in a GAutoFilter.");
+		throw Ex("WNaiveInstance only supports continuous labels. Perhaps you should wrap it in a WAutoFilter.");
 
 	beginIncrementalLearningInner(features.relation(), labels.relation());
 	for(size_t i = 0; i < features.rows(); i++)
@@ -206,19 +206,19 @@ void GNaiveInstance::trainInner(const GMatrix& features, const GMatrix& labels)
 }
 
 // virtual
-void GNaiveInstance::trainSparse(GSparseMatrix& features, GMatrix& labels)
+void WNaiveInstance::trainSparse(WSparseMatrix& features, WMatrix& labels)
 {
-	throw Ex("Sorry, trainSparse is not implemented yet in GNaiveInstance");
+	throw Ex("Sorry, trainSparse is not implemented yet in WNaiveInstance");
 }
 
-void GNaiveInstance::evalInput(size_t nInputDim, double dInput)
+void WNaiveInstance::evalInput(size_t nInputDim, double dInput)
 {
 	// Init the accumulators
 	m_pSumBuffer.fill(0.0);
 	m_pSumOfSquares.fill(0.0);
 
 	// Find the nodes on either side of dInput
-	GNaiveInstanceAttr* pAttr = m_pAttrs[nInputDim];
+	WNaiveInstanceAttr* pAttr = m_pAttrs[nInputDim];
 	multimap<double, const double*>& instances = pAttr->instances();
 	multimap<double, const double*>::iterator itLeft = instances.lower_bound(dInput);
 	multimap<double, const double*>::iterator itRight = itLeft;
@@ -250,7 +250,7 @@ void GNaiveInstance::evalInput(size_t nInputDim, double dInput)
 
 		// Accumulate values
 		const double* pOutputVec = goRight ? itRight->second : itLeft->second;
-		GConstVecWrapper vw(pOutputVec, m_pSumBuffer.size());
+		WConstVecWrapper vw(pOutputVec, m_pSumBuffer.size());
 		m_pSumBuffer += vw;
 		for(size_t j = 0; j < m_pRelLabels->size(); j++)
 			m_pSumOfSquares[j] += (pOutputVec[j] * pOutputVec[j]);
@@ -286,7 +286,7 @@ void GNaiveInstance::evalInput(size_t nInputDim, double dInput)
 }
 
 // virtual
-void GNaiveInstance::predictDistribution(const GVec& pIn, GPrediction* pOut)
+void WNaiveInstance::predictDistribution(const WVec& pIn, WPrediction* pOut)
 {
 	m_pWeightSums.fill(0.0);
 	m_pValueSums.fill(0.0);
@@ -294,13 +294,13 @@ void GNaiveInstance::predictDistribution(const GVec& pIn, GPrediction* pOut)
 		evalInput(i, pIn[i]);
 	for(size_t i = 0; i < m_pRelLabels->size(); i++)
 	{
-		GNormalDistribution* pNorm = pOut[i].makeNormal();
+		WNormalDistribution* pNorm = pOut[i].makeNormal();
 		pNorm->setMeanAndVariance(m_pValueSums[i] / m_pWeightSums[i], 1.0 / m_pWeightSums[i]);
 	}
 }
 
 // virtual
-void GNaiveInstance::predict(const GVec& pIn, GVec& pOut)
+void WNaiveInstance::predict(const WVec& pIn, WVec& pOut)
 {
 	m_pWeightSums.fill(0.0);
 	m_pValueSums.fill(0.0);
@@ -311,13 +311,13 @@ void GNaiveInstance::predict(const GVec& pIn, GVec& pOut)
 }
 
 //static
-void GNaiveInstance::test()
+void WNaiveInstance::test()
 {
 
-	GNaiveInstance* pNI = new GNaiveInstance();
-	GAutoFilter af(pNI);
+	WNaiveInstance* pNI = new WNaiveInstance();
+	WAutoFilter af(pNI);
 	pNI->setNeighbors(8);
 	af.basicTest(0.72, 0.44, 0.02);
 }
 
-} // namespace GClasses
+} // namespace WClasses

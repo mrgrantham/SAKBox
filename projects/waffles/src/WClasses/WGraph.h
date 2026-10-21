@@ -19,39 +19,39 @@
 #ifndef __GGRAPHCUT_H__
 #define __GGRAPHCUT_H__
 
-#include "GOptimizer.h"
+#include "WOptimizer.h"
 #include <stdlib.h>
 #include <deque>
 
-namespace GClasses
+namespace WClasses
 {
 
-struct GGraphCutNode;
-struct GGraphCutEdge;
-class GHeap;
-class GRegionAjacencyGraph;
-class GGraphEdgeIterator;
-class GRand;
+struct WGraphCutNode;
+struct WGraphCutEdge;
+class WHeap;
+class WRegionAjacencyGraph;
+class WGraphEdgeIterator;
+class WRand;
 
 
 /// This implements an optimized max-flow/min-cut algorithm described in
 /// "An experimental comparison of min-cut/max-flow algorithms for energy minimization in vision"
 /// by Boykov, Y. and Kolmogorov, V.
 /// This implementation assumes that edges are undirected
-class GGraphCut
+class WGraphCut
 {
-	friend class GGraphEdgeIterator;
+	friend class WGraphEdgeIterator;
 protected:
 	std::deque<size_t> m_q;
-	GHeap* m_pHeap;
+	WHeap* m_pHeap;
 	size_t m_nNodes;
-	struct GGraphCutNode* m_pNodes;
-	struct GGraphCutNode* m_pSource;
-	struct GGraphCutNode* m_pSink;
+	struct WGraphCutNode* m_pNodes;
+	struct WGraphCutNode* m_pSource;
+	struct WGraphCutNode* m_pSink;
 
 public:
-	GGraphCut(size_t nNodes);
-	~GGraphCut();
+	WGraphCut(size_t nNodes);
+	~WGraphCut();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -67,7 +67,7 @@ public:
 
 	/// Creates an edge from the node that represents each region
 	/// to the node for each of its neighbor regions.
-	void getEdgesFromRegionList(GRegionAjacencyGraph* pRegionList);
+	void getEdgesFromRegionList(WRegionAjacencyGraph* pRegionList);
 
 	/// This computes the cut. nSourceNode is the node that
 	/// represents the source, and nSinkNode is the node that
@@ -84,7 +84,7 @@ public:
 
 protected:
 	void growNode(size_t nNode);
-	void augmentPath(struct GGraphCutEdge* pEdge);
+	void augmentPath(struct WGraphCutEdge* pEdge);
 	void recycleTree(size_t nChild, size_t nParent);
 	void findAHome(size_t nNode);
 };
@@ -92,16 +92,16 @@ protected:
 
 /// Iterates over the edges that connect to the
 /// specified node
-class GGraphEdgeIterator
+class WGraphEdgeIterator
 {
 protected:
-	GGraphCut* m_pGraph;
+	WGraphCut* m_pGraph;
 	size_t m_nNode;
-	struct GGraphCutEdge* m_pCurrentEdge;
+	struct WGraphCutEdge* m_pCurrentEdge;
 
 public:
-	GGraphEdgeIterator(GGraphCut* pGraph, size_t nNode);
-	~GGraphEdgeIterator();
+	WGraphEdgeIterator(WGraphCut* pGraph, size_t nNode);
+	~WGraphEdgeIterator();
 
 	/// Starts over with a new node
 	void reset(size_t nNode);
@@ -117,17 +117,17 @@ public:
 
 /// Computes the shortest-cost path between all pairs of
 /// vertices in a graph. Takes O(n^3) time.
-class GFloydWarshall
+class WFloydWarshall
 {
 protected:
 	size_t m_nodes;
-	GMatrix* m_pCosts;
+	WMatrix* m_pCosts;
 	size_t* m_pPaths;
 
 public:
 	/// nodes specifies the number of nodes in the graph.
-	GFloydWarshall(size_t nodes);
-	~GFloydWarshall();
+	WFloydWarshall(size_t nodes);
+	~WFloydWarshall();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -153,11 +153,11 @@ public:
 	size_t next(size_t from, size_t goal);
 
 	/// Returns a pointer to the cost matrix
-	GMatrix* costMatrix() { return m_pCosts; }
+	WMatrix* costMatrix() { return m_pCosts; }
 
 	/// Returns the cost matrix. You are responsible to delete it.
 	/// (This class should not be used after this method is called.)
-	GMatrix* releaseCostMatrix();
+	WMatrix* releaseCostMatrix();
 
 	/// Scans the entire cost matrix, and returns false if any node
 	/// is unreachable from any other node. (Assumes compute has already
@@ -170,7 +170,7 @@ public:
 /// Implemented with a binary-heap priority-queue. If the graph is sparse
 /// on edges, it will run in about O(n log(n)) time. If the graph is dense,
 /// it runs in about O(n^2 log(n))
-class GDijkstra
+class WDijkstra
 {
 protected:
 	size_t m_nodes;
@@ -180,8 +180,8 @@ protected:
 	std::vector<double>* m_pEdgeCosts;
 
 public:
-	GDijkstra(size_t nodes);
-	~GDijkstra();
+	WDijkstra(size_t nodes);
+	~WDijkstra();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -208,7 +208,7 @@ public:
 
 /// Computes the number of times that the shortest-path between
 /// every pair of points passes over each edge and vertex
-class GBrandesBetweennessCentrality
+class WBrandesBetweennessCentrality
 {
 protected:
 	size_t m_nodeCount;
@@ -217,8 +217,8 @@ protected:
 	std::vector<double>* m_pEdgeBetweenness;
 
 public:
-	GBrandesBetweennessCentrality(size_t nodes);
-	~GBrandesBetweennessCentrality();
+	WBrandesBetweennessCentrality(size_t nodes);
+	~WBrandesBetweennessCentrality();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -270,7 +270,7 @@ public:
 
 /// This finds all of the atomic cycles (cycles that cannot be divided
 /// into two smaller cycles) in a graph
-class GAtomicCycleFinder
+class WAtomicCycleFinder
 {
 protected:
 	size_t m_nodeCount;
@@ -278,8 +278,8 @@ protected:
 	std::vector<size_t>* m_pMirrors;
 
 public:
-	GAtomicCycleFinder(size_t nodes);
-	virtual ~GAtomicCycleFinder();
+	WAtomicCycleFinder(size_t nodes);
+	virtual ~WAtomicCycleFinder();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -307,6 +307,6 @@ public:
 	virtual bool onDetectAtomicCycle(std::vector<size_t>& cycle) = 0;
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GGRAPHCUT_H__

@@ -19,13 +19,13 @@
 #ifndef __GLINEAR_H__
 #define __GLINEAR_H__
 
-#include "GLearner.h"
+#include "WLearner.h"
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GPCA;
+class WPCA;
 
 /// A linear regression model. Let f be a feature vector of real values, and let l be a label vector of real values,
 /// then this model estimates l=Bf+e, where B is a matrix of real values, and e is a
@@ -33,19 +33,19 @@ class GPCA;
 /// "beta", and e is called "epsilon". The approach used by this model to compute
 /// beta and epsilon, however, is much more efficient than the approach currently
 /// described in that article.)
-class GLinearRegressor : public GSupervisedLearner
+class WLinearRegressor : public WSupervisedLearner
 {
 protected:
-	GMatrix* m_pBeta;
-	GVec m_epsilon;
+	WMatrix* m_pBeta;
+	WVec m_epsilon;
 
 public:
-	GLinearRegressor();
+	WLinearRegressor();
 
 	/// Load from a text-format
-	GLinearRegressor(const GDomNode* pNode);
+	WLinearRegressor(const WDomNode* pNode);
 
-	~GLinearRegressor() override;
+	~WLinearRegressor() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -53,95 +53,95 @@ public:
 	/// Saves the model to a text file. (This doesn't save the short-term
 	/// memory used for incremental learning, so if you're doing "incremental"
 	/// learning, it will wake up with amnesia when you load it again.)
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GSupervisedLearner::clear
+	/// See the comment for WSupervisedLearner::clear
 	void clear() override;
 
 	/// Returns the matrix that represents the linear transformation.
-	GMatrix* beta() { return m_pBeta; }
+	WMatrix* beta() { return m_pBeta; }
 
 	/// Returns the vector that is added to the results after the linear transformation is applied.
-	GVec& epsilon() { return m_epsilon; }
+	WVec& epsilon() { return m_epsilon; }
 
 	/// Performs on-line gradient descent to refine the model
-	void refine(const GMatrix& features, const GMatrix& labels, double learningRate, size_t epochs, double learningRateDecayFactor);
+	void refine(const WMatrix& features, const WMatrix& labels, double learningRate, size_t epochs, double learningRateDecayFactor);
 
 	/// This model has no parameters to tune, so this method is a noop.
-	void autoTune(GMatrix& features, GMatrix& labels);
+	void autoTune(WMatrix& features, WMatrix& labels);
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& pIn, GVec& pOut) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& pIn, WVec& pOut) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& pIn, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& pIn, WPrediction* pOut) override;
 
 protected:
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleNominalFeatures
 	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
+	/// See the comment for WTransducer::canImplicitlyHandleNominalLabels
 	bool canImplicitlyHandleNominalLabels() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleMissingFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleMissingFeatures
 	bool canImplicitlyHandleMissingFeatures() override { return false; }
 };
 
 
 
-/// A linear regression model that predicts a distribution. (This algorithm also differs from GLinearRegressor
+/// A linear regression model that predicts a distribution. (This algorithm also differs from WLinearRegressor
 /// in that it computes its model in closed form instead of using a numerical approach to find it. In general,
-/// GLinearRegressor seems to be a bit more accurate. Perhaps the method used in this algorithm is not very
+/// WLinearRegressor seems to be a bit more accurate. Perhaps the method used in this algorithm is not very
 /// numerically stable.)
-class GLinearDistribution : public GSupervisedLearner
+class WLinearDistribution : public WSupervisedLearner
 {
 protected:
 	double m_noiseDev;
-	GMatrix* m_pAInv;
-	GMatrix* m_pWBar;
-	GVec m_buf;
+	WMatrix* m_pAInv;
+	WMatrix* m_pWBar;
+	WVec m_buf;
 
 public:
 	/// General-purpose constructor
-	GLinearDistribution();
+	WLinearDistribution();
 
 	/// Deserialization constructor
-	GLinearDistribution(const GDomNode* pNode);
+	WLinearDistribution(const WDomNode* pNode);
 
 	/// Destructor
-	~GLinearDistribution() override;
+	~WLinearDistribution() override;
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GSupervisedLearner::clear
+	/// See the comment for WSupervisedLearner::clear
 	void clear() override;
 
 	/// Specify the prior expected deviation of the noise (The default is 1.0.)
 	void setNoiseDeviation(double d) { m_noiseDev = d; }
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& pIn, GVec& pOut) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& pIn, WVec& pOut) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& pIn, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& pIn, WPrediction* pOut) override;
 
 protected:
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleNominalFeatures
 	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleMissingFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleMissingFeatures
 	bool canImplicitlyHandleMissingFeatures() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
+	/// See the comment for WTransducer::canImplicitlyHandleNominalLabels
 	bool canImplicitlyHandleNominalLabels() override { return false; }
 };
 
@@ -149,7 +149,7 @@ protected:
 
 
 
-class GLinearProgramming
+class WLinearProgramming
 {
 public:
 	/// Compute x that maximizes c*x, subject to Ax<=b, x>=0.
@@ -160,7 +160,7 @@ public:
 	/// The remaining constraints are assumed to be = constraints.
 	/// The answer is put in pOutX, which is the same size as pC.
 	/// Returns false if there is no solution, and true if it finds a solution.
-	static bool simplexMethod(GMatrix* pA, const double* pB, int leConstraints, int geConstraints, const double* pC, double* pOutX);
+	static bool simplexMethod(WMatrix* pA, const double* pB, int leConstraints, int geConstraints, const double* pC, double* pOutX);
 
 	/// Perform unit tests for this class. Throws an exception if any tests fail. Returns if they all pass.
 	static void test();
@@ -169,7 +169,7 @@ public:
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GLINEAR_H__
 

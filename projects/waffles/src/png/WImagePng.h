@@ -16,21 +16,21 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#ifndef GIMAGEPNG_H
-#define GIMAGEPNG_H
+#ifndef WIMAGEPNG_H
+#define WIMAGEPNG_H
 
-namespace GClasses
+namespace WClasses
 {
 
-class GImage;
+class WImage;
 
-void loadPng(GImage* pImage, const unsigned char* pData, size_t nDataSize);
-void loadPng(GImage* pImage, const char* szFilename);
-void loadPngFromHex(GClasses::GImage* pImage, const char* szHex);
+void loadPng(WImage* pImage, const unsigned char* pData, size_t nDataSize);
+void loadPng(WImage* pImage, const char* szFilename);
+void loadPngFromHex(WClasses::WImage* pImage, const char* szHex);
 
-void savePng(GClasses::GImage* pImage, FILE* pFile, bool bIncludeAlphaChannel);
-void savePng(GClasses::GImage* pImage, FILE* pFile);
-void savePng(GClasses::GImage* pImage, const char* szFilename);
+void savePng(WClasses::WImage* pImage, FILE* pFile, bool bIncludeAlphaChannel);
+void savePng(WClasses::WImage* pImage, FILE* pFile);
+void savePng(WClasses::WImage* pImage, const char* szFilename);
 
 }
 

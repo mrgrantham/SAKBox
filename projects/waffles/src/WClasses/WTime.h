@@ -22,14 +22,14 @@
 
 #include <ctime>
 #include <string>
-#include "GTree.h"
+#include "WTree.h"
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
 /// Provides some time-related functions
-class GTime
+class WTime
 {
 public:
 	/// Returns the number of seconds since "time X" with at least millisecond precision.
@@ -64,7 +64,7 @@ public:
 /// This class is used with big loops to estimate the wall-clock time until completion.
 /// It works by computing the running median of the duration of recent iterations,
 /// and projecting that duration across the remaining iterations.
-class GProgressEstimator
+class WProgressEstimator
 {
 protected:
 	size_t m_totalIters;
@@ -72,18 +72,18 @@ protected:
 	double m_startTime;
 	double m_iterStartTime;
 	double m_prevMedian;
-	GIndexedMultiSet<double> m_samples;
+	WIndexedMultiSet<double> m_samples;
 	std::vector<double> m_queue;
 	size_t m_queuePos;
 	std::string m_message;
 
 public:
-	GProgressEstimator(size_t total_iters, size_t sampleSize = 13);
-	~GProgressEstimator();
+	WProgressEstimator(size_t total_iters, size_t sampleSize = 13);
+	~WProgressEstimator();
 
 	const char* estimate(size_t iter);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GTIME_H__

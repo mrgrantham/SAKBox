@@ -17,18 +17,18 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GMath.h"
+#include "WMath.h"
 #include "string.h"
 #include <stdlib.h>
-#include "GError.h"
-#include "GVec.h"
+#include "WError.h"
+#include "WVec.h"
 #include <cmath>
-#include "GRand.h"
+#include "WRand.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-/*static*/ double GMath::gamma(double x)
+/*static*/ double WMath::gamma(double x)
 {
 #ifdef WINDOWS
 	int i, k, m;
@@ -107,7 +107,7 @@ namespace GClasses
 }
 
 // static
-double GMath::logGamma(double x)
+double WMath::logGamma(double x)
 {
 #ifdef WINDOWS
 	double x0, x2, xp, gl, gl0;
@@ -156,7 +156,7 @@ double GMath::logGamma(double x)
 #endif
 }
 
-double GMath::logFactorial(int x)
+double WMath::logFactorial(int x)
 {
 	// (SAKBox) one value per line
 	// clang-format off
@@ -210,7 +210,7 @@ double GMath::logFactorial(int x)
 // Bezier curve to get a Bezier curve that goes through those
 // points.)  The polynomial coefficients are put in pFuncValues
 // in the form c0 + c1*t + c2*t*t + c3*t*t*t + ...
-/*static*/ void GMath::newtonPolynomial(const double* pTValues, double* pFuncValues, int nPoints)
+/*static*/ void WMath::newtonPolynomial(const double* pTValues, double* pFuncValues, int nPoints)
 {
 	// Calculate the coefficients to Newton's blending functions
 	double* pNC = (double*)alloca(nPoints * sizeof(double));
@@ -244,9 +244,9 @@ double GMath::logFactorial(int x)
 }
 
 // static
-double GMath::integrate(MathFunc pFunc, double dStart, double dEnd, int nSteps, void* pThis)
+double WMath::integrate(MathFunc pFunc, double dStart, double dEnd, int nSteps, void* pThis)
 {
-	GAssert(nSteps >= 1); // must have at least one step
+	WAssert(nSteps >= 1); // must have at least one step
 	double dWidth = (dEnd - dStart);
 	double sum = 0;
 	double d = pFunc(pThis, dStart);
@@ -294,7 +294,7 @@ double GMath::integrate(MathFunc pFunc, double dStart, double dEnd, int nSteps, 
 	return sum * dWidth / nSteps;
 }
 
-double GMath_IncompleteBetaFunc(void* pThis, double x)
+double WMath_IncompleteBetaFunc(void* pThis, double x)
 {
 	double* params = (double*)pThis;
 	if(x <= 0 || x >= 1)
@@ -303,40 +303,40 @@ double GMath_IncompleteBetaFunc(void* pThis, double x)
 }
 
 // static
-double GMath::incompleteBeta(double x, double a, double b, int steps)
+double WMath::incompleteBeta(double x, double a, double b, int steps)
 {
 	double params[2];
 	params[0] = a;
 	params[1] = b;
-	return integrate(GMath_IncompleteBetaFunc, 0, x, steps, params);
+	return integrate(WMath_IncompleteBetaFunc, 0, x, steps, params);
 }
 
 // static
-double GMath::tTestAlphaValue(size_t v, double t)
+double WMath::tTestAlphaValue(size_t v, double t)
 {
 	double dv = (double)v;
 
-	double alpha = GMath::incompleteBeta(dv / (dv + t * t), dv / 2, 0.5, 200000);
-	alpha /= GMath::incompleteBeta(1, dv / 2, 0.5, 200000);
+	double alpha = WMath::incompleteBeta(dv / (dv + t * t), dv / 2, 0.5, 200000);
+	alpha /= WMath::incompleteBeta(1, dv / 2, 0.5, 200000);
 	/*
 	// An alternate way to compute the same thing
-	double alpha = GMath::Integrate(GMatrix_PairedTTestHelper, -t, t, 200000, &dv);
-	alpha /= (sqrt(dv) * GMath::IncompleteBeta(1, 0.5, dv / 2, 200000));
+	double alpha = WMath::Integrate(WMatrix_PairedTTestHelper, -t, t, 200000, &dv);
+	alpha /= (sqrt(dv) * WMath::IncompleteBeta(1, 0.5, dv / 2, 200000));
 	alpha = 1.0 - alpha;
 */
 	return alpha;
 }
 
 // static
-double GMath::wilcoxonPValue(int n, double t)
+double WMath::wilcoxonPValue(int n, double t)
 {
-	GAssert(n >= 12); // n is too small for this approximation to be any good
+	WAssert(n >= 12); // n is too small for this approximation to be any good
 	// SAKBox: n * (n + 1) / 4.0; with integers the expected value was truncated
 	double z = (t - n * (n + 1) / 4.0) / sqrt(((double)n * ((double)n + 1) * ((double)n + (double)n + 1)) / 24);
 	double alpha;
 #ifdef WINDOWS
 	alpha = 0;
-	throw Ex("Sorry, GMath::ComputeWilcoxonPValue is not implemented for Windows yet");
+	throw Ex("Sorry, WMath::ComputeWilcoxonPValue is not implemented for Windows yet");
 #else
 	alpha = 1.0 - erf(-z * M_SQRT1_2);
 #endif
@@ -344,9 +344,9 @@ double GMath::wilcoxonPValue(int n, double t)
 }
 
 // static
-void GMath::pascalsTriangle(size_t* pOutRow, size_t nRow)
+void WMath::pascalsTriangle(size_t* pOutRow, size_t nRow)
 {
-	GAssert(nRow >= 0);
+	WAssert(nRow >= 0);
 	for(size_t i = 0; i <= nRow; i++)
 	{
 		pOutRow[i] = 1;
@@ -356,14 +356,14 @@ void GMath::pascalsTriangle(size_t* pOutRow, size_t nRow)
 }
 
 // static
-double GMath::approximateErf(double x)
+double WMath::approximateErf(double x)
 {
 	double a = x * x * 8.0 / (3.0 * M_PI) * (M_PI - 3.0) / (4.0 - M_PI);
 	return sqrt(1.0 - exp(-x * x * (4.0 / M_PI + a) / (1.0 + a)));
 }
 
 // static
-double GMath::approximateInverseErf(double x)
+double WMath::approximateInverseErf(double x)
 {
 	double a = 8.0 / (3.0 * M_PI) * (M_PI - 3.0) / (4.0 - M_PI);
 	double b = log(1.0 - x * x);
@@ -373,7 +373,7 @@ double GMath::approximateInverseErf(double x)
 }
 
 // static
-double GMath::productLog(double x)
+double WMath::productLog(double x)
 {
 	/*
 	if(x < -1.0 / M_E)
@@ -452,7 +452,7 @@ double GMath::productLog(double x)
 }
 
 // static
-double GMath::softExponential(double alpha, double x)
+double WMath::softExponential(double alpha, double x)
 {
 	if(alpha < -1e-12)
 		return -(log(std::max(1e-12, 1.0 - alpha * (x + alpha)))) / alpha;
@@ -463,13 +463,13 @@ double GMath::softExponential(double alpha, double x)
 }
 
 // static
-double GMath::mackeyGlass(double x, double xt, double beta, double gamma, double n)
+double WMath::mackeyGlass(double x, double xt, double beta, double gamma, double n)
 {
 	return x + beta * (x / (1 + std::pow(xt, n))) - gamma * xt;
 }
 
 // static
-double GMath::functionInverse(double (*func)(const double* params, double x), const double* params, double y, double x1, double x2, double epsilon)
+double WMath::functionInverse(double (*func)(const double* params, double x), const double* params, double y, double x1, double x2, double epsilon)
 {
 	double y1 = func(params, x1);
 	double y2 = func(params, x2);
@@ -503,7 +503,7 @@ double GMath::functionInverse(double (*func)(const double* params, double x), co
 }
 
 // static
-double GMath::fuzzy(double x, double y, double alpha)
+double WMath::fuzzy(double x, double y, double alpha)
 {
 	double t = std::abs(alpha);
 	return (x + alpha) * (y + alpha) / (t + 1) - t;
@@ -514,7 +514,7 @@ double ComputeCosine(void* pThis, double d)
 	return cos(d);
 }
 
-void GMath_testFuzzy()
+void WMath_testFuzzy()
 {
 	/*
 	// Print a truth table
@@ -524,7 +524,7 @@ void GMath_testFuzzy()
 		{
 			for(double y = -1.0; y <= 1.0; y += 2.0)
 			{
-				std::cout << to_str(x) << " (" << to_str(a) << ") " << to_str(y) << " = " << to_str(GMath::fuzzy(x, y, a)) << "\n";
+				std::cout << to_str(x) << " (" << to_str(a) << ") " << to_str(y) << " = " << to_str(WMath::fuzzy(x, y, a)) << "\n";
 			}
 		}
 	}
@@ -570,22 +570,22 @@ void GMath_testFuzzy()
 	{
 		double x = in[8 * i];
 		double y = in[8 * i + 1];
-		if(GMath::fuzzy(x, y, 1.0) != in[8 * i + 2]) throw Ex("and wrong, ", to_str(i));
-		if(-GMath::fuzzy(x, y, -1.0) != in[8 * i + 3]) throw Ex("or wrong, ", to_str(i));
-		if(-GMath::fuzzy(x, y, 0.0) != in[8 * i + 4]) throw Ex("xor wrong, ", to_str(i));
-		if(-GMath::fuzzy(x, y, 1.0) != in[8 * i + 5]) throw Ex("nand wrong, ", to_str(i));
-		if(GMath::fuzzy(x, y, -1.0) != in[8 * i + 6]) throw Ex("nor wrong, ", to_str(i));
-		if(GMath::fuzzy(x, y, 0.0) != in[8 * i + 7]) throw Ex("nxor wrong, ", to_str(i));
+		if(WMath::fuzzy(x, y, 1.0) != in[8 * i + 2]) throw Ex("and wrong, ", to_str(i));
+		if(-WMath::fuzzy(x, y, -1.0) != in[8 * i + 3]) throw Ex("or wrong, ", to_str(i));
+		if(-WMath::fuzzy(x, y, 0.0) != in[8 * i + 4]) throw Ex("xor wrong, ", to_str(i));
+		if(-WMath::fuzzy(x, y, 1.0) != in[8 * i + 5]) throw Ex("nand wrong, ", to_str(i));
+		if(WMath::fuzzy(x, y, -1.0) != in[8 * i + 6]) throw Ex("nor wrong, ", to_str(i));
+		if(WMath::fuzzy(x, y, 0.0) != in[8 * i + 7]) throw Ex("nxor wrong, ", to_str(i));
 	}
 
 	// Test compliance with DeMorgan's law
-	GRand rand(0);
+	WRand rand(0);
 	for(size_t i = 0; i < 100; i++)
 	{
 		double alpha = rand.normal();
 		double x = rand.normal();
 		double y = rand.normal();
-		if(std::abs(GMath::fuzzy(x, y, -alpha) - GMath::fuzzy(-x, -y, alpha)) > 1e-8)
+		if(std::abs(WMath::fuzzy(x, y, -alpha) - WMath::fuzzy(-x, -y, alpha)) > 1e-8)
 			throw Ex("DeMorgan's law failed");
 	}
 
@@ -595,7 +595,7 @@ void GMath_testFuzzy()
 		double alpha = rand.uniform();
 		double x = rand.uniform();
 		double y = rand.uniform();
-		double val = GMath::fuzzy(x, y, alpha);
+		double val = WMath::fuzzy(x, y, alpha);
 		if(val < -1.0 || val > 1.0)
 			throw Ex("Out of range");
 	}
@@ -611,15 +611,15 @@ void GMath_testFuzzy()
 		if(a2 < a1) std::swap(a1, a2);
 		if(a3 < a1) std::swap(a1, a3);
 		if(a3 < a2) std::swap(a2, a3);
-		GAssert(a1 <= a2 && a2 <= a3);
-		if(GMath::fuzzy(x, y, a2) > GMath::fuzzy(x, y, a1))
+		WAssert(a1 <= a2 && a2 <= a3);
+		if(WMath::fuzzy(x, y, a2) > WMath::fuzzy(x, y, a1))
 		{
-			if(GMath::fuzzy(x, y, a3) < GMath::fuzzy(x, y, a2))
+			if(WMath::fuzzy(x, y, a3) < WMath::fuzzy(x, y, a2))
 				throw Ex("not monotonic at x=", to_str(x), ", y=", to_str(y));
 		}
-		else if(GMath::fuzzy(x, y, a2) < GMath::fuzzy(x, y, a1))
+		else if(WMath::fuzzy(x, y, a2) < WMath::fuzzy(x, y, a1))
 		{
-			if(GMath::fuzzy(x, y, a3) > GMath::fuzzy(x, y, a2))
+			if(WMath::fuzzy(x, y, a3) > WMath::fuzzy(x, y, a2))
 				throw Ex("not monotonic at x=", to_str(x), ", y=", to_str(y));
 		}
 	}
@@ -627,14 +627,14 @@ void GMath_testFuzzy()
 }
 
 // static
-void GMath::test()
+void WMath::test()
 {
 	// Test fuzzy logic
-	GMath_testFuzzy();
+	WMath_testFuzzy();
 
 	// Test Integrate
 	double dTarget = sin(M_PI / 2) - sin(-M_PI / 2);
-	double dComputed = GMath::integrate(ComputeCosine, -M_PI / 2, M_PI / 2, 500, nullptr);
+	double dComputed = WMath::integrate(ComputeCosine, -M_PI / 2, M_PI / 2, 500, nullptr);
 	if(std::abs(dTarget - dComputed) > .00001)
 		throw Ex("wrong answer");
 
@@ -657,7 +657,7 @@ void GMath::test()
 	x[1] = x1;
 	x[2] = x2;
 	x[3] = x3;
-	GMath::newtonPolynomial(t, x, 4);
+	WMath::newtonPolynomial(t, x, 4);
 	if(std::abs(x[0] + x[1] * t0 + x[2] * t0 * t0 + x[3] * t0 * t0 * t0 - x0) > .0000001)
 		throw Ex("wrong answer");
 	if(std::abs(x[0] + x[1] * t1 + x[2] * t1 * t1 + x[3] * t1 * t1 * t1 - x1) > .0000001)

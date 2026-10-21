@@ -31,59 +31,59 @@
 #ifdef WINDOWS
 #include <direct.h>
 #endif
-#include "WClasses/GApp.h"
-#include "WClasses/GAssignment.h"
-#include "WClasses/GBayesianNetwork.h"
-#include "WClasses/GBezier.h"
-#include "WClasses/GBits.h"
-#include "WClasses/GBitTable.h"
-#include "WClasses/GCluster.h"
-#include "WClasses/GCrypto.h"
-#include "WClasses/GDecisionTree.h"
-#include "WClasses/GDistance.h"
-#include "WClasses/GDistribution.h"
-#include "WClasses/GDom.h"
-#include "WClasses/GEnsemble.h"
-#include "WClasses/GError.h"
-#include "WClasses/GFile.h"
-#include "WClasses/GFourier.h"
-#include "WClasses/GFunction.h"
-#include "WClasses/GGaussianProcess.h"
-#include "WClasses/GGraph.h"
-#include "WClasses/GHashTable.h"
-#include "WClasses/GHiddenMarkovModel.h"
-#include "WClasses/GHillClimber.h"
-#include "WClasses/GHtml.h"
-#include "WClasses/GKeyPair.h"
-#include "WClasses/GKNN.h"
-#include "WClasses/GLinear.h"
-#include "WClasses/GManifold.h"
-#include "WClasses/GMath.h"
-#include "WClasses/GMatrix.h"
-#include "WClasses/GMixtureOfGaussians.h"
-#include "WClasses/GNaiveBayes.h"
-#include "WClasses/GNaiveInstance.h"
-#include "WClasses/GNeighborFinder.h"
-#include "WClasses/GNeuralNet.h"
-#include "WClasses/GParticleSwarm.h"
-#include "WClasses/GPolynomial.h"
-#include "WClasses/GPriorityQueue.h"
-#include "WClasses/GRand.h"
-#include "WClasses/GRayTrace.h"
-#include "WClasses/GRecommender.h"
-#include "WClasses/GRegion.h"
-#include "WClasses/GSelfOrganizingMap.h"
-#include "WClasses/GSocket.h"
-#include "WClasses/GSparseMatrix.h"
-#include "WClasses/GGridSearch.h"
-#include "WClasses/GThread.h"
-#include "WClasses/GTime.h"
-#include "WClasses/GTransform.h"
-#include "WClasses/GTree.h"
-#include "WClasses/GVec.h"
-#include "WClasses/GReverseBits.h"
+#include "WClasses/WApp.h"
+#include "WClasses/WAssignment.h"
+#include "WClasses/WBayesianNetwork.h"
+#include "WClasses/WBezier.h"
+#include "WClasses/WBits.h"
+#include "WClasses/WBitTable.h"
+#include "WClasses/WCluster.h"
+#include "WClasses/WCrypto.h"
+#include "WClasses/WDecisionTree.h"
+#include "WClasses/WDistance.h"
+#include "WClasses/WDistribution.h"
+#include "WClasses/WDom.h"
+#include "WClasses/WEnsemble.h"
+#include "WClasses/WError.h"
+#include "WClasses/WFile.h"
+#include "WClasses/WFourier.h"
+#include "WClasses/WFunction.h"
+#include "WClasses/WGaussianProcess.h"
+#include "WClasses/WGraph.h"
+#include "WClasses/WHashTable.h"
+#include "WClasses/WHiddenMarkovModel.h"
+#include "WClasses/WHillClimber.h"
+#include "WClasses/WHtml.h"
+#include "WClasses/WKeyPair.h"
+#include "WClasses/WKNN.h"
+#include "WClasses/WLinear.h"
+#include "WClasses/WManifold.h"
+#include "WClasses/WMath.h"
+#include "WClasses/WMatrix.h"
+#include "WClasses/WMixtureOfGaussians.h"
+#include "WClasses/WNaiveBayes.h"
+#include "WClasses/WNaiveInstance.h"
+#include "WClasses/WNeighborFinder.h"
+#include "WClasses/WNeuralNet.h"
+#include "WClasses/WParticleSwarm.h"
+#include "WClasses/WPolynomial.h"
+#include "WClasses/WPriorityQueue.h"
+#include "WClasses/WRand.h"
+#include "WClasses/WRayTrace.h"
+#include "WClasses/WRecommender.h"
+#include "WClasses/WRegion.h"
+#include "WClasses/WSelfOrganizingMap.h"
+#include "WClasses/WSocket.h"
+#include "WClasses/WSparseMatrix.h"
+#include "WClasses/WGridSearch.h"
+#include "WClasses/WThread.h"
+#include "WClasses/WTime.h"
+#include "WClasses/WTransform.h"
+#include "WClasses/WTree.h"
+#include "WClasses/WVec.h"
+#include "WClasses/WReverseBits.h"
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 using std::cout;
 using std::string;
@@ -93,7 +93,7 @@ typedef void (*TestFunc)();
 
 
 
-int sysExec(const char* szAppName, const char* szArgs, GPipe* pStdOut = nullptr, GPipe* pStdErr = nullptr, GPipe* pStdIn = nullptr)
+int sysExec(const char* szAppName, const char* szArgs, WPipe* pStdOut = nullptr, WPipe* pStdErr = nullptr, WPipe* pStdIn = nullptr)
 {
 	string s = szAppName;
 //#ifdef _DEBUG
@@ -104,7 +104,7 @@ int sysExec(const char* szAppName, const char* szArgs, GPipe* pStdOut = nullptr,
 #endif
 	s += ' ';
 	s += szArgs;
-	return GApp::systemExecute(s.c_str(), true, pStdOut, pStdErr, pStdIn);
+	return WApp::systemExecute(s.c_str(), true, pStdOut, pStdErr, pStdIn);
 }
 
 class TempFileMaker
@@ -117,12 +117,12 @@ public:
 	: m_szFilename(szFilename)
 	{
 		if(szContents)
-			GFile::saveFile(szContents, strlen(szContents), szFilename);
+			WFile::saveFile(szContents, strlen(szContents), szFilename);
 	}
 
 	~TempFileMaker()
 	{
-		GFile::deleteFile(m_szFilename);
+		WFile::deleteFile(m_szFilename);
 	}
 };
 
@@ -260,8 +260,8 @@ std::string run_dimred_attributeselector(const std::string& dataset, const std::
 	args += " -seed 0";
 
 	// Execute the command
-	GPipe pipeStdOut;
-	GPipe pipeStdErr;
+	WPipe pipeStdOut;
+	WPipe pipeStdErr;
 	retval = sysExec("waffles_dimred", args.c_str(), &pipeStdOut, &pipeStdErr);
 
 	return pipeStdOut.read() + pipeStdErr.read();
@@ -310,8 +310,8 @@ std::string run_transform_keeponlycolumns(const std::string& dataset, const std:
 	}
 
 	// Execute the command
-	GPipe pipeStdOut;
-	GPipe pipeStdErr;
+	WPipe pipeStdOut;
+	WPipe pipeStdErr;
 	retval = sysExec("waffles_transform", args.c_str(), &pipeStdOut, &pipeStdErr);
 
 	return pipeStdOut.read() + pipeStdErr.read();
@@ -454,7 +454,7 @@ void test_transform_mergevert()
 	                                  "4.5, charlie, false\n");
 
 	// Execute the command
-	GPipe pipeStdOut;
+	WPipe pipeStdOut;
 	if(sysExec("waffles_transform", "mergevert a.arff b.arff", &pipeStdOut) != 0)
 		throw Ex("exit status indicates failure");
 	char buf[512];
@@ -464,7 +464,7 @@ void test_transform_mergevert()
 	buf[len] = '\0';
 
 	// Check the results
-	GMatrix M;
+	WMatrix M;
 	M.parseArff(buf, strlen(buf));
 	if(M.rows() != 4 || M.cols() != 3)
 		throw Ex("failed");
@@ -475,7 +475,7 @@ void test_transform_mergevert()
 	if(M.relation().valueCount(2) != 2)
 		throw Ex("failed");
 	std::ostringstream oss;
-	const GArffRelation* pRel = (const GArffRelation*)&M.relation();
+	const WArffRelation* pRel = (const WArffRelation*)&M.relation();
 	pRel->printAttrValue(oss, 1, 2.0);
 	string s = oss.str();
 	if(strcmp(s.c_str(), "charlie") != 0)
@@ -507,7 +507,7 @@ void test_recommend_fillmissingvalues()
 	                                  "\n");
 
 	// Execute the command
-	GPipe pipeStdOut;
+	WPipe pipeStdOut;
 	if(sysExec("waffles_recommend", "fillmissingvalues a.arff baseline", &pipeStdOut) != 0)
 		throw Ex("exit status indicates failure");
 	char buf[512];
@@ -517,7 +517,7 @@ void test_recommend_fillmissingvalues()
 	buf[len] = '\0';
 
 	// Check the results
-	GMatrix M;
+	WMatrix M;
 	M.parseArff(buf, strlen(buf));
 	if(M.rows() != 7 || M.cols() != 4)
 		throw Ex("failed");
@@ -559,11 +559,11 @@ void test_parsearff_quoting()
 	  "3,9,\"is exact\"\n"
 	  "4,16,\"is\\ exact\"\n";
 
-	GMatrix M;
+	WMatrix M;
 	M.parseArff(inputArff, strlen(inputArff));
 	double expected_data[5][3] = {{1, 1, 0}, {2, 4, 0}, {1.414, 2, 1}, {3, 9, 0}, {4, 16, 2}};
-	const GArffRelation* pRel = (const GArffRelation*)&M.relation();
-	const GArffRelation& R = *pRel;
+	const WArffRelation* pRel = (const WArffRelation*)&M.relation();
+	const WArffRelation& R = *pRel;
 
 	TestEqual(R.size(), (std::size_t)3, "Incorrect number of attributes");
 	for(unsigned row = 0; row < 5; ++row)
@@ -595,7 +595,7 @@ void test_parsearff_quoting()
 void test_document_classification()
 {
 	{
-		GFile::makeDir("class_spam");
+		WFile::makeDir("class_spam");
 		TempFileMaker tempFile1("class_spam/a.txt", "Buy now! Cheap Viagara. All of your problems are solved. For a limited time, Act now. Click here to for a free sample. You might already be a winner! Hurry, supplies are limited.");
 		TempFileMaker tempFile2("class_spam/b.txt", "Congratulations, the Prince of Nigeria has selected you to be the benefactor of the sum of one million dollars! If you act now, he will immediately transfer this amount to your bank account.");
 		TempFileMaker tempFile3("class_spam/c.txt", "Winner winner winner! You are the winner of the one million dollar sweepstakes. To collect one million dollars, click here now! Hurry, or it will be given to the runner up.");
@@ -603,7 +603,7 @@ void test_document_classification()
 		TempFileMaker tempFile5("class_spam/e.txt", "Buy now! Just one dollar! Lap top computers. Cheap deals! Hurry. Supplies are limited. Mention this add and receive a free laptop with lifetime subscription.");
 		TempFileMaker tempFile6("class_spam/f.txt", "Free samples! Great deals! discounts! coupons! Winner! Free money! One million dollars in prizes! Viagara! Hurry! Cheap!");
 
-		GFile::makeDir("class_auto");
+		WFile::makeDir("class_auto");
 		TempFileMaker tempFile7("class_auto/a.txt", "Thank you for registering with our site. To confirm you identity, please follow this link.");
 		TempFileMaker tempFile8("class_auto/b.txt", "Thank you for signing up for an account at foo.com. Your automatically generated password is ax58c90s3.");
 		TempFileMaker tempFile9("class_auto/c.txt", "You, or someone claiming to be you has signed up for an account at yomamma.com. Please confirm your identity by clicking on the following link.");
@@ -611,7 +611,7 @@ void test_document_classification()
 		TempFileMaker tempFile11("class_auto/e.txt", "This is an automatically generated email. You have registered with somesite.com. Your new user name and password is found below. Thank you, and have a nice day.");
 		TempFileMaker tempFile12("class_auto/f.txt", "A password has automatically been generated for you. To log in, please click on the link found below. Your password is asdfjkl");
 
-		GFile::makeDir("class_ham");
+		WFile::makeDir("class_ham");
 		TempFileMaker tempFile13("class_ham/a.txt", "Dear Dr. Johnson, I am writing to inquire whether you will be attending the conference on document classification. I am seeking an opportunity to meet with you. Sincerely, Me.");
 		TempFileMaker tempFile14("class_ham/b.txt", "Dear Bob, Are you there? I have been looking for you all over. I am on the fourth floor of the computer building. Didn't we agree to meet at 2:30pm?");
 		TempFileMaker tempFile15("class_ham/c.txt", "Dear Susan, Thank you for baking me those delicious cinnamon rolls. I have never eaten anything so delicious in my entire life. You should become a professional chef. Sincerely, Me.");
@@ -621,7 +621,7 @@ void test_document_classification()
 
 		// Generate a sparse feature matrix and a corresponding dense label matrix
 		{
-			GPipe pipeIgnoreMe;
+			WPipe pipeIgnoreMe;
 			if(sysExec("waffles_sparse", "docstosparsematrix class_ham class_auto class_spam", &pipeIgnoreMe) != 0)
 				throw Ex("exit status indicates failure");
 		}
@@ -629,7 +629,7 @@ void test_document_classification()
 		TempFileMaker tempFileLabels("labels.arff", nullptr);
 
 		// Shuffle the data
-		GPipe pipeStdOut;
+		WPipe pipeStdOut;
 		if(sysExec("waffles_sparse", "shuffle features.sparse -seed 0 -labels labels.arff l2.arff", &pipeStdOut) != 0)
 			throw Ex("exit status indicates failure");
 		pipeStdOut.toFile("f2.sparse");
@@ -650,7 +650,7 @@ void test_document_classification()
 		TempFileMaker tempFileTestLabels("test.arff", nullptr);
 		TempFileMaker tempFileModel("model.json", nullptr);
 		char buf[256];
-		GMatrix results(18, models.size());
+		WMatrix results(18, models.size());
 		for(size_t i = 0; i < 18; i++)
 		{
 			// Separate the test fold from the rest of the data
@@ -671,13 +671,13 @@ void test_document_classification()
 				// Train the model
 				string sArgs = "train -seed 0 train.sparse train.arff ";
 				sArgs += models[j];
-				GPipe pipeStdOut2;
+				WPipe pipeStdOut2;
 				if(sysExec("waffles_sparse", sArgs.c_str(), &pipeStdOut2) != 0)
 					throw Ex("exit status indicates failure");
 				pipeStdOut2.toFile("model.json");
 
 				// Test the model
-				GPipe pipeStdOut3;
+				WPipe pipeStdOut3;
 				if(sysExec("waffles_sparse", "test -seed 0 model.json test.sparse test.arff", &pipeStdOut3) != 0)
 					throw Ex("exit status indicates failure");
 				size_t len = pipeStdOut3.read(buf, 256);
@@ -704,16 +704,16 @@ void test_document_classification()
 		//if(resultsKnnPearson < 0.50)
 		//	throw Ex("failed");
 	}
-	GFile::removeDir("class_ham");
-	GFile::removeDir("class_auto");
-	GFile::removeDir("class_spam");
+	WFile::removeDir("class_ham");
+	WFile::removeDir("class_auto");
+	WFile::removeDir("class_spam");
 }
 
 
 
 #define PERF_FILE_CHARS 9
 
-class GTestHarness
+class WTestHarness
 {
 protected:
 	std::ostringstream m_testTimes;
@@ -731,7 +731,7 @@ public:
 	///they were the arguments to main.  If no substrings are given
 	///(that is, no arguments are passed), all tests are run, as if one
 	///argument of an empty string had been given.
-	GTestHarness(int argc, char** argv)
+	WTestHarness(int argc, char** argv)
 	{
 		//Make list of test names to match
 		if(argc < 2)
@@ -748,7 +748,7 @@ public:
 
 		//Ready performance stats
 		char buf[256];
-		if(GApp::appPath(buf, 256, true) == -1)
+		if(WApp::appPath(buf, 256, true) == -1)
 			throw Ex("Failed to retrieve app path");
 		if(chdir(buf) != 0)
 			throw Ex("Failed to change the dir to the app folder");
@@ -757,17 +757,17 @@ public:
 		m_testTimes.width(PERF_FILE_CHARS);
 		m_testTimes.precision(PERF_FILE_CHARS - 3);
 		string s;
-		GTime::appendTimeStampValue(&s, "-", " ", ":", false);
+		WTime::appendTimeStampValue(&s, "-", " ", ":", false);
 		m_testTimes << s;
 	}
 
-	~GTestHarness()
+	~WTestHarness()
 	{
 		// Append the new measurements to perf.log
 #ifndef _DEBUG // Don't log time in debug mode, since that would look like a performance regression
 		std::ofstream os;
 		bool exists = false;
-		if(GFile::doesFileExist("perf.log"))
+		if(WFile::doesFileExist("perf.log"))
 			exists = true;
 		os.exceptions(std::ios::failbit | std::ios::badbit);
 		try
@@ -792,7 +792,7 @@ public:
 	{
 		m_testTimes << ",";
 
-		// Record PERF_FILE_CHARS letters of the test name (skipping the first letter, because it is usually 'G')
+		// Record PERF_FILE_CHARS letters of the test name (skipping the first letter, because it is usually 'W')
 		size_t n = std::min((size_t)PERF_FILE_CHARS, strlen(szTestName + 1));
 		char buf[PERF_FILE_CHARS + 1];
 		for(size_t j = 0; j < PERF_FILE_CHARS - n; j++)
@@ -849,7 +849,7 @@ public:
 		{
 			printTestName(szTestName);
 			bool passed = false;
-			double beginTime = GTime::seconds();
+			double beginTime = WTime::seconds();
 			try
 			{
 				pTest();
@@ -864,7 +864,7 @@ public:
 			{
 				cout << "\nA non-standard exception was thrown.\n\n";
 			}
-			double endTime = GTime::seconds();
+			double endTime = WTime::seconds();
 			logTime(szTestName, passed, endTime - beginTime);
 			if(passed)
 				cout << "Passed\n";
@@ -882,100 +882,100 @@ public:
 	void runAllTests()
 	{
 		// Class tests
-		runTest("GAgglomerativeClusterer", GAgglomerativeClusterer::test);
-		runTest("GAnnealing", GAnnealing::test);
-		runTest("GAssignment - linearAssignment", testLinearAssignment);
-		runTest("GAssignment - GSimpleAssignment", GSimpleAssignment::test);
-		runTest("GAtomicCycleFinder", GAtomicCycleFinder::test);
-		runTest("GAttributeSelector", GAttributeSelector::test);
-		runTest("GBag", GBag::test);
-		runTest("GBagOfRecommenders", GBagOfRecommenders::test);
-		runTest("GBallTree", GBallTree::test);
-		runTest("GBaselineLearner", GBaselineLearner::test);
-		runTest("GBaselineRecommender", GBaselineRecommender::test);
-		runTest("GBayesianModelAveraging", GBayesianModelAveraging::test);
-		runTest("GBayesianModelCombination", GBayesianModelCombination::test);
-		runTest("GBayesNet", GBayesNet::test);
-		runTest("GBezier", GBezier::test);
-		runTest("GBits", GBits::test);
-		runTest("GBitTable", GBitTable::test);
-		runTest("GBlockConv", GBlockConv::test);
-		runTest("GBouncyBalls", GBouncyBalls::test);
-		runTest("GReverseBits", reverseBitsTest);
-		runTest("GBrandesBetweenness", GBrandesBetweennessCentrality::test);
-		runTest("GBucket", GBucket::test);
-		runTest("GCategoricalSamplerBatch", GCategoricalSamplerBatch::test);
-		runTest("GCompressor", GCompressor::test);
-		runTest("GCoordVectorIterator", GCoordVectorIterator::test);
-		runTest("GCrypto", GCrypto::test);
-		runTest("GCycleCut", GCycleCut::test);
-		runTest("GDecisionTree", GDecisionTree::test);
-		runTest("GDenseClusterRecommender", GDenseClusterRecommender::test);
-		runTest("GDijkstra", GDijkstra::test);
-		runTest("GDistanceMetric", GDistanceMetric::test);
-		runTest("GDom", GDom::test);
-		runTest("GError.h - to_str", test_to_str);
-		runTest("GFloydWarshall", GFloydWarshall::test);
-		runTest("GFourier", GFourier::test);
-		runTest("GFunctionParser", GFunctionParser::test);
-		runTest("GGaussianProcess", GGaussianProcess::test);
-		runTest("GGraphCut", GGraphCut::test);
-		runTest("GHashTable", GHashTable::test);
-		runTest("GHiddenMarkovModel", GHiddenMarkovModel::test);
-		runTest("GHillClimber", GHillClimber::test);
-		runTest("GHtmlDoc", GHtmlDoc::test);
-		runTest("GIncrementalTransform", GIncrementalTransform::test);
-		runTest("GInstanceRecommender", GInstanceRecommender::test);
-		runTest("GKdTree", GKdTree::test);
-		runTest("GKeyPair", GKeyPair::test);
-		runTest("GKNN", GKNN::test);
-		runTest("GLinearDistribution", GLinearDistribution::test);
-		runTest("GLinearProgramming", GLinearProgramming::test);
-		runTest("GLinearRegressor", GLinearRegressor::test);
-		runTest("GManifold", GManifold::test);
-		runTest("GMath", GMath::test);
-		runTest("GMatrix", GMatrix::test);
-		runTest("GMatrix::parseArff quoting", test_parsearff_quoting);
-		runTest("GMatrixFactorization", GMatrixFactorization::test);
-		runTest("GMeanMarginsTree", GMeanMarginsTree::test);
-		runTest("GMixtureOfGaussians", GMixtureOfGaussians::test);
-		runTest("GMomentumGreedySearch", GMomentumGreedySearch::test);
-		runTest("GNaiveBayes", GNaiveBayes::test);
-		runTest("GNaiveInstance", GNaiveInstance::test);
-		runTest("GNeuralNet", GNeuralNet::test);
-		runTest("GNeuralNetLearner", GNeuralNetLearner::test);
-		runTest("GPackageServer", GPackageServer::test);
-		runTest("GPolynomial", GPolynomial::test);
-		runTest("GPriorityQueue", GPriorityQueue::test);
-		runTest("GProbeSearch", GProbeSearch::test);
-		runTest("GRand", GRand::test);
-		runTest("GRandomDirectionBinarySearch", GRandomDirectionBinarySearch::test);
-		runTest("GRandMersenneTwister", GRandMersenneTwister::test);
-		runTest("GRandomForest", GRandomForest::test);
-		runTest("GRelation", GRelation::test);
-		runTest("GRelationalTable", GRelationalTable_test);
-		runTest("GResamplingAdaBoost", GResamplingAdaBoost::test);
-		runTest("GRunningCovariance", GRunningCovariance::test);
-		runTest("GSelfOrganizingMap", GSelfOrganizingMap::test);
-		runTest("GShortcutPruner", GShortcutPruner::test);
-		runTest("GSimplePriorityQueue", GSimplePriorityQueue_test);
-		runTest("GSparseClusterRecommender", GSparseClusterRecommender::test);
-		runTest("GSparseInstance", GSparseInstance::test);
-		runTest("GSparseMatrix", GSparseMatrix::test);
-		runTest("GSpinLock", GSpinLock::test);
-		runTest("GSubImageFinder", GSubImageFinder::test);
-		runTest("GSubImageFinder2", GSubImageFinder2::test);
-		runTest("GSupervisedLearner", GSupervisedLearner::test);
-		runTest("GTensor", GTensor::test);
-		runTest("GVec", GVec::test);
+		runTest("WAgglomerativeClusterer", WAgglomerativeClusterer::test);
+		runTest("WAnnealing", WAnnealing::test);
+		runTest("WAssignment - linearAssignment", testLinearAssignment);
+		runTest("WAssignment - WSimpleAssignment", WSimpleAssignment::test);
+		runTest("WAtomicCycleFinder", WAtomicCycleFinder::test);
+		runTest("WAttributeSelector", WAttributeSelector::test);
+		runTest("WBag", WBag::test);
+		runTest("WBagOfRecommenders", WBagOfRecommenders::test);
+		runTest("WBallTree", WBallTree::test);
+		runTest("WBaselineLearner", WBaselineLearner::test);
+		runTest("WBaselineRecommender", WBaselineRecommender::test);
+		runTest("WBayesianModelAveraging", WBayesianModelAveraging::test);
+		runTest("WBayesianModelCombination", WBayesianModelCombination::test);
+		runTest("WBayesNet", WBayesNet::test);
+		runTest("WBezier", WBezier::test);
+		runTest("WBits", WBits::test);
+		runTest("WBitTable", WBitTable::test);
+		runTest("WBlockConv", WBlockConv::test);
+		runTest("WBouncyBalls", WBouncyBalls::test);
+		runTest("WReverseBits", reverseBitsTest);
+		runTest("WBrandesBetweenness", WBrandesBetweennessCentrality::test);
+		runTest("WBucket", WBucket::test);
+		runTest("WCategoricalSamplerBatch", WCategoricalSamplerBatch::test);
+		runTest("WCompressor", WCompressor::test);
+		runTest("WCoordVectorIterator", WCoordVectorIterator::test);
+		runTest("WCrypto", WCrypto::test);
+		runTest("WCycleCut", WCycleCut::test);
+		runTest("WDecisionTree", WDecisionTree::test);
+		runTest("WDenseClusterRecommender", WDenseClusterRecommender::test);
+		runTest("WDijkstra", WDijkstra::test);
+		runTest("WDistanceMetric", WDistanceMetric::test);
+		runTest("WDom", WDom::test);
+		runTest("WError.h - to_str", test_to_str);
+		runTest("WFloydWarshall", WFloydWarshall::test);
+		runTest("WFourier", WFourier::test);
+		runTest("WFunctionParser", WFunctionParser::test);
+		runTest("WGaussianProcess", WGaussianProcess::test);
+		runTest("WGraphCut", WGraphCut::test);
+		runTest("WHashTable", WHashTable::test);
+		runTest("WHiddenMarkovModel", WHiddenMarkovModel::test);
+		runTest("WHillClimber", WHillClimber::test);
+		runTest("WHtmlDoc", WHtmlDoc::test);
+		runTest("WIncrementalTransform", WIncrementalTransform::test);
+		runTest("WInstanceRecommender", WInstanceRecommender::test);
+		runTest("WKdTree", WKdTree::test);
+		runTest("WKeyPair", WKeyPair::test);
+		runTest("WKNN", WKNN::test);
+		runTest("WLinearDistribution", WLinearDistribution::test);
+		runTest("WLinearProgramming", WLinearProgramming::test);
+		runTest("WLinearRegressor", WLinearRegressor::test);
+		runTest("WManifold", WManifold::test);
+		runTest("WMath", WMath::test);
+		runTest("WMatrix", WMatrix::test);
+		runTest("WMatrix::parseArff quoting", test_parsearff_quoting);
+		runTest("WMatrixFactorization", WMatrixFactorization::test);
+		runTest("WMeanMarginsTree", WMeanMarginsTree::test);
+		runTest("WMixtureOfGaussians", WMixtureOfGaussians::test);
+		runTest("WMomentumGreedySearch", WMomentumGreedySearch::test);
+		runTest("WNaiveBayes", WNaiveBayes::test);
+		runTest("WNaiveInstance", WNaiveInstance::test);
+		runTest("WNeuralNet", WNeuralNet::test);
+		runTest("WNeuralNetLearner", WNeuralNetLearner::test);
+		runTest("WPackageServer", WPackageServer::test);
+		runTest("WPolynomial", WPolynomial::test);
+		runTest("WPriorityQueue", WPriorityQueue::test);
+		runTest("WProbeSearch", WProbeSearch::test);
+		runTest("WRand", WRand::test);
+		runTest("WRandomDirectionBinarySearch", WRandomDirectionBinarySearch::test);
+		runTest("WRandMersenneTwister", WRandMersenneTwister::test);
+		runTest("WRandomForest", WRandomForest::test);
+		runTest("WRelation", WRelation::test);
+		runTest("WRelationalTable", WRelationalTable_test);
+		runTest("WResamplingAdaBoost", WResamplingAdaBoost::test);
+		runTest("WRunningCovariance", WRunningCovariance::test);
+		runTest("WSelfOrganizingMap", WSelfOrganizingMap::test);
+		runTest("WShortcutPruner", WShortcutPruner::test);
+		runTest("WSimplePriorityQueue", WSimplePriorityQueue_test);
+		runTest("WSparseClusterRecommender", WSparseClusterRecommender::test);
+		runTest("WSparseInstance", WSparseInstance::test);
+		runTest("WSparseMatrix", WSparseMatrix::test);
+		runTest("WSpinLock", WSpinLock::test);
+		runTest("WSubImageFinder", WSubImageFinder::test);
+		runTest("WSubImageFinder2", WSubImageFinder2::test);
+		runTest("WSupervisedLearner", WSupervisedLearner::test);
+		runTest("WTensor", WTensor::test);
+		runTest("WVec", WVec::test);
 
 		// Test whether we can find and execute the command-line tools
 		bool runCommandLineTests = false;
 		string whyNot; // SAKBox: why the tools can't be used, for the message
 		try
 		{
-			GExpectException ee;
-			GPipe pipeStdOut;
+			WExpectException ee;
+			WPipe pipeStdOut;
 			if(sysExec("waffles_transform", "usage", &pipeStdOut) != 0)
 				throw Ex("exit status indicates failure");
 			char buf[256];
@@ -1070,7 +1070,7 @@ static void useBazelTools()
 
 int main(int argc, char* argv[])
 {
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 	useBazelTools();
 
 	if(argc < 2)
@@ -1082,7 +1082,7 @@ int main(int argc, char* argv[])
 	int nRet = 0;
 	try
 	{
-		GTestHarness harness(argc, argv);
+		WTestHarness harness(argc, argv);
 		harness.runAllTests();
 		if(harness.anyFailed())
 			nRet = 1;

@@ -20,22 +20,22 @@
 #ifndef __GRECT_H__
 #define __GRECT_H__
 
-#include "GError.h"
+#include "WError.h"
 
-namespace GClasses
+namespace WClasses
 {
 
 /// Represents a rectangular region with integers
-class GRect
+class WRect
 {
 public:
 	int x, y, w, h;
 
-	GRect()
+	WRect()
 	{
 	}
 
-	GRect(int _x, int _y, int _w, int _h)
+	WRect(int _x, int _y, int _w, int _h)
 	{
 		x = _x;
 		y = _y;
@@ -62,20 +62,20 @@ public:
 	}
 
 	/// Clips this rect to fit within pClippingRect
-	void clip(GRect* pClippingRect);
+	void clip(WRect* pClippingRect);
 };
 
 /// Represents a rectangular region with floats
-class GFloatRect
+class WFloatRect
 {
 public:
 	float x, y, w, h;
 
-	GFloatRect()
+	WFloatRect()
 	{
 	}
 
-	GFloatRect(float _x, float _y, float _w, float _h)
+	WFloatRect(float _x, float _y, float _w, float _h)
 	{
 		x = _x;
 		y = _y;
@@ -103,16 +103,16 @@ public:
 };
 
 /// Represents a rectangular region with doubles
-class GDoubleRect
+class WDoubleRect
 {
 public:
 	double x, y, w, h;
 
-	GDoubleRect()
+	WDoubleRect()
 	{
 	}
 
-	GDoubleRect(double _x, double _y, double _w, double _h)
+	WDoubleRect(double _x, double _y, double _w, double _h)
 	{
 		x = _x;
 		y = _y;
@@ -176,6 +176,6 @@ public:
 	}
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GRECT_H__

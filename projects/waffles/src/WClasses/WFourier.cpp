@@ -16,18 +16,18 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GFourier.h"
+#include "WFourier.h"
 #include <math.h>
-#include "GError.h"
-#include "GHolders.h"
-#include "GMath.h"
-#include "GImage.h"
-#include "GBits.h"
-#include "GVec.h"
+#include "WError.h"
+#include "WHolders.h"
+#include "WMath.h"
+#include "WImage.h"
+#include "WBits.h"
+#include "WVec.h"
 #include <cmath>
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 
 void ComplexNumber::interpolate(ComplexNumber& a, double w, ComplexNumber& b)
 {
@@ -75,7 +75,7 @@ inline size_t ReverseBits(size_t nValue, size_t nBits)
 	return nReversed;
 }
 
-void GFourier::fft(size_t arraySize, struct ComplexNumber* pComplexNumberArray, bool bForward)
+void WFourier::fft(size_t arraySize, struct ComplexNumber* pComplexNumberArray, bool bForward)
 {
 	double* pData = (double*)pComplexNumberArray;
 
@@ -97,7 +97,7 @@ void GFourier::fft(size_t arraySize, struct ComplexNumber* pComplexNumberArray, 
 	// Move the data to it's reversed-bit position
 	size_t totalSize = arraySize << 1;
 	{
-		GQUICKVEC(pTmp, totalSize);
+		WQUICKVEC(pTmp, totalSize);
 		for(size_t n = 0; n < arraySize; n++)
 		{
 			size_t nReversed = ReverseBits(n, nBits);
@@ -156,12 +156,12 @@ void GFourier::fft(size_t arraySize, struct ComplexNumber* pComplexNumberArray, 
 	// Normalize output if we're doing the inverse forier transform
 	if(!bForward)
 	{
-		GVecWrapper vw(pData, totalSize);
+		WVecWrapper vw(pData, totalSize);
 		vw *= (1.0 / (double)arraySize);
 	}
 }
 
-void GFourier::fft2d(size_t arrayWidth, size_t arrayHeight, struct ComplexNumber* p2DComplexNumberArray, bool bForward)
+void WFourier::fft2d(size_t arrayWidth, size_t arrayHeight, struct ComplexNumber* p2DComplexNumberArray, bool bForward)
 {
 	double* pData = (double*)p2DComplexNumberArray;
 
@@ -202,13 +202,13 @@ void GFourier::fft2d(size_t arrayWidth, size_t arrayHeight, struct ComplexNumber
 }
 
 // static
-struct ComplexNumber* GFourier::imageToFftArray(GImage* pImage, int* pWidth, int* pOneThirdHeight)
+struct ComplexNumber* WFourier::imageToFftArray(WImage* pImage, int* pWidth, int* pOneThirdHeight)
 {
 	int x, y;
 	int width = pImage->width();
 	int height = pImage->height();
-	int wid = GBits::boundingPowerOfTwo(width);
-	int hgt = GBits::boundingPowerOfTwo(height);
+	int wid = WBits::boundingPowerOfTwo(width);
+	int hgt = WBits::boundingPowerOfTwo(height);
 	struct ComplexNumber* pArray = new struct ComplexNumber[3 * wid * hgt];
 	std::unique_ptr<struct ComplexNumber[]> hArray(pArray);
 	int pos = 0;
@@ -294,9 +294,9 @@ struct ComplexNumber* GFourier::imageToFftArray(GImage* pImage, int* pWidth, int
 	}
 
 	// Convert to the Fourier domain
-	GFourier::fft2d(wid, hgt, pArray, true);
-	GFourier::fft2d(wid, hgt, &pArray[nGreenStart], true);
-	GFourier::fft2d(wid, hgt, &pArray[nBlueStart], true);
+	WFourier::fft2d(wid, hgt, pArray, true);
+	WFourier::fft2d(wid, hgt, &pArray[nGreenStart], true);
+	WFourier::fft2d(wid, hgt, &pArray[nBlueStart], true);
 
 	*pWidth = wid;
 	*pOneThirdHeight = hgt;
@@ -304,14 +304,14 @@ struct ComplexNumber* GFourier::imageToFftArray(GImage* pImage, int* pWidth, int
 }
 
 // static
-void GFourier::fftArrayToImage(struct ComplexNumber* pArray, int width, int oneThirdHeight, GImage* pImage, bool normalize)
+void WFourier::fftArrayToImage(struct ComplexNumber* pArray, int width, int oneThirdHeight, WImage* pImage, bool normalize)
 {
 	// Convert to the Spatial domain
 	int nGreenStart = width * oneThirdHeight;
 	int nBlueStart = nGreenStart + nGreenStart;
-	GFourier::fft2d(width, oneThirdHeight, pArray, false);
-	GFourier::fft2d(width, oneThirdHeight, &pArray[nGreenStart], false);
-	GFourier::fft2d(width, oneThirdHeight, &pArray[nBlueStart], false);
+	WFourier::fft2d(width, oneThirdHeight, pArray, false);
+	WFourier::fft2d(width, oneThirdHeight, &pArray[nGreenStart], false);
+	WFourier::fft2d(width, oneThirdHeight, &pArray[nBlueStart], false);
 
 	// Copy the data back into the image
 	int nWid = pImage->width();
@@ -357,7 +357,7 @@ void GFourier::fftArrayToImage(struct ComplexNumber* pArray, int width, int oneT
 }
 
 
-void GFourier::test()
+void WFourier::test()
 {
 	struct ComplexNumber cn[4];
 	cn[0].real = 1;
@@ -368,7 +368,7 @@ void GFourier::test()
 	cn[2].imag = 0;
 	cn[3].real = 1;
 	cn[3].imag = 0;
-	GFourier::fft(4, cn, true);
+	WFourier::fft(4, cn, true);
 	if(std::abs(cn[0].real - 4) > 1e-12)
 		throw Ex("wrong answer");
 	if(std::abs(cn[0].imag) > 1e-12)
@@ -381,7 +381,7 @@ void GFourier::test()
 		if(std::abs(cn[n].imag) > 1e-12)
 			throw Ex("wrong answer");
 	}
-	GFourier::fft(4, cn, false);
+	WFourier::fft(4, cn, false);
 	for(n = 0; n < 3; n++)
 	{
 		if(std::abs(cn[n].real - 1) > 1e-12)
@@ -395,17 +395,17 @@ void GFourier::test()
 
 
 
-GWavelet::GWavelet()
+WWavelet::WWavelet()
 : m_pBuf(nullptr), m_bufSize(0)
 {
 }
 
-GWavelet::~GWavelet()
+WWavelet::~WWavelet()
 {
 	delete[] m_pBuf;
 }
 
-double* GWavelet::getBuf(size_t n)
+double* WWavelet::getBuf(size_t n)
 {
 	if(m_bufSize < n)
 	{
@@ -415,7 +415,7 @@ double* GWavelet::getBuf(size_t n)
 	return m_pBuf;
 }
 
-void GWavelet::transform(double* x, size_t n)
+void WWavelet::transform(double* x, size_t n)
 {
 	if(n < 2)
 		throw Ex("out of range");
@@ -466,7 +466,7 @@ void GWavelet::transform(double* x, size_t n)
 	for(i = 0; i < n; i++) x[i] = tempbank[i];
 }
 
-void GWavelet::inverse(double* x, size_t n)
+void WWavelet::inverse(double* x, size_t n)
 {
 	if(n < 2)
 		throw Ex("out of range");
@@ -517,26 +517,26 @@ void GWavelet::inverse(double* x, size_t n)
 	x[n - 1] += 2 * a * x[n - 2];
 }
 
-#include "GMatrix.h"
+#include "WMatrix.h"
 // static
-void GWavelet::test()
+void WWavelet::test()
 {
-	GImage im;
+	WImage im;
 	im.loadPgm("/home/mike/tmp/mike.pgm");
-	GMatrix m(im.height(), im.width());
-	GWavelet w;
+	WMatrix m(im.height(), im.width());
+	WWavelet w;
 	for(size_t y = 0; y < im.height(); y++)
 	{
-		GVec& pRow = m[y];
+		WVec& pRow = m[y];
 		for(size_t x = 0; x < im.width(); x++)
 			pRow[x] = gGreen(im.pixel((int)x, (int)y));
 		w.transform(pRow.data(), im.width());
 	}
-	GMatrix* pT = m.transpose();
-	std::unique_ptr<GMatrix> hT(pT);
+	WMatrix* pT = m.transpose();
+	std::unique_ptr<WMatrix> hT(pT);
 	for(size_t x = 0; x < im.width(); x++)
 	{
-		GVec& pRow = pT->row(x);
+		WVec& pRow = pT->row(x);
 		w.transform(pRow.data(), im.height());
 		for(size_t y = 0; y < im.height(); y++)
 		{
@@ -547,18 +547,18 @@ void GWavelet::test()
 	im.savePgm("/home/mike/tmp/mike2.pgm");
 
 	// Now do the inverse transform
-	GMatrix* pM = pT->transpose();
-	std::unique_ptr<GMatrix> hM(pM);
+	WMatrix* pM = pT->transpose();
+	std::unique_ptr<WMatrix> hM(pM);
 	for(size_t y = 0; y < im.height(); y++)
 	{
-		GVec& pRow = pM->row(y);
+		WVec& pRow = pM->row(y);
 		w.inverse(pRow.data(), im.width());
 	}
-	GMatrix* pTT = pM->transpose();
-	std::unique_ptr<GMatrix> hTT(pTT);
+	WMatrix* pTT = pM->transpose();
+	std::unique_ptr<WMatrix> hTT(pTT);
 	for(size_t x = 0; x < im.width(); x++)
 	{
-		GVec& pRow = pTT->row(x);
+		WVec& pRow = pTT->row(x);
 		w.inverse(pRow.data(), im.height());
 		for(size_t y = 0; y < im.height(); y++)
 		{

@@ -19,29 +19,29 @@
 #ifndef __GDYNAMICPAGE_H__
 #define __GDYNAMICPAGE_H__
 
-#include "GHttp.h"
+#include "WHttp.h"
 #include <stddef.h>
 #include <vector>
 #include <string>
 #include <map>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GConstStringHashTable;
-class GDynamicPageServer;
-class GDynamicPageSession;
-class GDynamicPageConnection;
-class GRand;
-class GDom;
+class WConstStringHashTable;
+class WDynamicPageServer;
+class WDynamicPageSession;
+class WDynamicPageConnection;
+class WRand;
+class WDom;
 
 
 
-class GDynamicPageSessionExtension
+class WDynamicPageSessionExtension
 {
 public:
-	GDynamicPageSessionExtension() {}
-	virtual ~GDynamicPageSessionExtension() {}
+	WDynamicPageSessionExtension() {}
+	virtual ~WDynamicPageSessionExtension() {}
 
 	/// This method is called when a parent session is deleted,
 	/// or when another extension takes the place of this one.
@@ -53,50 +53,50 @@ public:
 	virtual void onDisown() = 0;
 
 	/// Marshal this object into a Dom node.
-	virtual GDomNode* serialize(GDom* pDoc) = 0;
+	virtual WDomNode* serialize(WDom* pDoc) = 0;
 };
 
 
-class GDynamicPageSession
+class WDynamicPageSession
 {
 protected:
 	unsigned long long m_id;
 	time_t m_tLastAccessed;
-	GDynamicPageSessionExtension* m_pExtension;
-	GDynamicPageConnection* m_pConnection;
+	WDynamicPageSessionExtension* m_pExtension;
+	WDynamicPageConnection* m_pConnection;
 
 public:
-	GDynamicPageSession(unsigned long long id);
-	GDynamicPageSession(GDynamicPageServer* pServer, GDomNode* pNode);
-	virtual ~GDynamicPageSession();
+	WDynamicPageSession(unsigned long long id);
+	WDynamicPageSession(WDynamicPageServer* pServer, WDomNode* pNode);
+	virtual ~WDynamicPageSession();
 
 	/// Returns the server object associated with this session
-	GDynamicPageServer* server();
+	WDynamicPageServer* server();
 
 	/// Returns the id associated with this session
 	unsigned long long id() { return m_id; }
 
 	/// Use this to store your own custom object with the session.
-	/// Your object should inherit from GDynamicPageSessionExtension.
+	/// Your object should inherit from WDynamicPageSessionExtension.
 	/// (The extension will not be deleted when the session is deleted,
-	/// but the GDynamicPageSessionExtension::onDisown method will be
+	/// but the WDynamicPageSessionExtension::onDisown method will be
 	/// called, which you can use to delete the extension.)
-	void setExtension(GDynamicPageSessionExtension* pExtension);
+	void setExtension(WDynamicPageSessionExtension* pExtension);
 
 	/// Stamp the session as having been accessed at the current time
 	void onAccess();
 
 	/// Associate the current connection with this session
-	void setConnection(GDynamicPageConnection* pConn);
+	void setConnection(WDynamicPageConnection* pConn);
 
-	GDynamicPageConnection* connection() { return m_pConnection; }
+	WDynamicPageConnection* connection() { return m_pConnection; }
 
 	/// Retrieve the extension object that was associated with this
 	/// session by a call to setExtension.
-	GDynamicPageSessionExtension* extension() { return m_pExtension; }
+	WDynamicPageSessionExtension* extension() { return m_pExtension; }
 
 	/// Marshal this object into a Dom node
-	GDomNode* serialize(GDom* pDom);
+	WDomNode* serialize(WDom* pDom);
 
 	// Get the current URL from the connection. (Convenience method.)
 	const char* url();
@@ -109,20 +109,20 @@ public:
 
 	// Add a 'cookie' field to pOutNode with this session's cookie.
 	// (This is needed because some browsers block cookies in AJAX requests.)
-	void addAjaxCookie(GDom& docOut, GDomNode* pOutNode);
+	void addAjaxCookie(WDom& docOut, WDomNode* pOutNode);
 };
 
 
 
 
-class GDynamicPageConnection : public GHttpConnection
+class WDynamicPageConnection : public WHttpConnection
 {
 public:
-	GDynamicPageServer* m_pServer;
+	WDynamicPageServer* m_pServer;
 
 
-	GDynamicPageConnection(SOCKET sock, GDynamicPageServer* pServer);
-	~GDynamicPageConnection() override;
+	WDynamicPageConnection(SOCKET sock, WDynamicPageServer* pServer);
+	~WDynamicPageConnection() override;
 
 	void doGet(std::ostream& response) override;
 	void doPost(std::ostream& response) override;
@@ -133,11 +133,11 @@ public:
 
 protected:
 	/// This method is called by doGet or doPost when a client requests something from the server
-	virtual void handleRequest(GDynamicPageSession* pSession, std::ostream& response) = 0;
+	virtual void handleRequest(WDynamicPageSession* pSession, std::ostream& response) = 0;
 
 	bool hasBeenModifiedSince(const char* szUrl, const char* szDate) override;
 	void setHeaders(const char* szUrl, const char* szParams) override;
-	GDynamicPageSession* establishSession();
+	WDynamicPageSession* establishSession();
 
 	void sendFile(const char* szMimeType, const char* szFilename, std::ostream& response);
 
@@ -148,22 +148,22 @@ protected:
 
 
 
-class GDynamicPageServer : public GHttpServer
+class WDynamicPageServer : public WHttpServer
 {
 protected:
-	GRand* m_pRand;
-	std::map<unsigned long long, GDynamicPageSession*> m_sessions;
+	WRand* m_pRand;
+	std::map<unsigned long long, WDynamicPageSession*> m_sessions;
 	char* m_szMyAddress;
 	char m_daemonSalt[16];
 	char m_passwordSalt[16];
 
 public:
 	/// SAKBox: only browsers on this computer can connect unless
-	/// networkAccessible is true (see GHttpServer).
-	GDynamicPageServer(int port, GRand* pRand, bool networkAccessible = false);
-	~GDynamicPageServer() override;
+	/// networkAccessible is true (see WHttpServer).
+	WDynamicPageServer(int port, WRand* pRand, bool networkAccessible = false);
+	~WDynamicPageServer() override;
 
-	virtual GDynamicPageSessionExtension* deserializeSessionExtension(const GDomNode* pNode)
+	virtual WDynamicPageSessionExtension* deserializeSessionExtension(const WDomNode* pNode)
 	{
 		throw Ex("deserializeSessionExtension has not be overridden");
 	}
@@ -171,10 +171,10 @@ public:
 	void flushSessions();
 
 	/// Returns the session with the specified id. If no session is found with that id, returns NULL.
-	GDynamicPageSession* findSession(unsigned long long id);
+	WDynamicPageSession* findSession(unsigned long long id);
 
 	/// Makes a new session with the specified id.
-	GDynamicPageSession* makeNewSession(unsigned long long id);
+	WDynamicPageSession* makeNewSession(unsigned long long id);
 
 	/// Prints all known session ids to the stream. (This is used for debugging purposes.)
 	void printSessionIds(std::ostream& stream);
@@ -186,16 +186,16 @@ public:
 	const char* daemonSalt();
 	const char* passwordSalt();
 
-	GRand* prng() { return m_pRand; }
+	WRand* prng() { return m_pRand; }
 	void redirect(std::ostream& response, const char* szUrl);
 
-	GDomNode* serialize(GDom* pDoc);
-	void deserialize(const GDomNode* pNode);
+	WDomNode* serialize(WDom* pDoc);
+	void deserialize(const WDomNode* pNode);
 
 protected:
 	void computePasswordSalt();
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GDYNAMICPAGE_H__

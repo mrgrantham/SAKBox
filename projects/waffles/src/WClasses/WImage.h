@@ -21,15 +21,15 @@
 #define __GIMAGE_H__
 
 #include <stddef.h>
-#include "GError.h"
+#include "WError.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GBezier;
-class GRect;
-class GRand;
-class GDoubleRect;
+class WBezier;
+class WRect;
+class WRand;
+class WDoubleRect;
 
 #define gBlue(c) ((c) & 0xff)
 #define gGreen(c) (((c) >> 8) & 0xff)
@@ -94,7 +94,7 @@ const char* rgbToHex(char* pOutHex, unsigned int c);
 unsigned int hexToRgb(const char* szHex);
 
 /// Represents an image
-class GImage
+class WImage
 {
 protected:
 	unsigned int* m_pPixels;
@@ -102,8 +102,8 @@ protected:
 	unsigned int m_height;
 
 public:
-	GImage();
-	virtual ~GImage();
+	WImage();
+	virtual ~WImage();
 
 	/// Load a file (Determines the format from the extension. Doesn't
 	/// handle incorrect extensions. Currently supports .png, .bmp, .ppm, and .pgm.)
@@ -155,14 +155,14 @@ public:
 	/// Get a pixel
 	inline unsigned int pixel(int nX, int nY) const
 	{
-		GAssert((unsigned int)nX < m_width && (unsigned int)nY < m_height); // out of range
+		WAssert((unsigned int)nX < m_width && (unsigned int)nY < m_height); // out of range
 		return m_pPixels[m_width * nY + nX];
 	}
 
 	/// Get a pixel reference
 	inline unsigned int* pixelRef(int nX, int nY)
 	{
-		GAssert((unsigned int)nX < m_width && (unsigned int)nY < m_height); // out of range
+		WAssert((unsigned int)nX < m_width && (unsigned int)nY < m_height); // out of range
 		return &m_pPixels[m_width * nY + nX];
 	}
 
@@ -175,7 +175,7 @@ public:
 	/// Drawing Primitives
 	inline void setPixel(int nX, int nY, unsigned int color)
 	{
-		GAssert((unsigned int)nX < m_width && (unsigned int)nY < m_height); // out of range
+		WAssert((unsigned int)nX < m_width && (unsigned int)nY < m_height); // out of range
 		m_pPixels[m_width * nY + nX] = color;
 	}
 
@@ -264,13 +264,13 @@ public:
 	/// Rotate the image around the specified point. dAngle is specified in radians. The results
 	/// are placed in this image. (This image is resized to the same size as the source image,
 	/// and anything that rotates out of bounds is clipped.)
-	void rotate(GImage* pSourceImage, int nX, int nY, double dAngle);
+	void rotate(WImage* pSourceImage, int nX, int nY, double dAngle);
 
 	/// Makes this a copy of pSourceImage rotated counter-clockwise by 90 degrees
-	void rotateCounterClockwise90(GImage* pSourceImage);
+	void rotateCounterClockwise90(WImage* pSourceImage);
 
 	/// Makes this a copy of pSourceImage rotated clockwise by 90 degrees
-	void rotateClockwise90(GImage* pSourceImage);
+	void rotateClockwise90(WImage* pSourceImage);
 
 	/// Scale the image
 	void scale(unsigned int nNewWidth, unsigned int nNewHeight);
@@ -300,26 +300,26 @@ public:
 	void invert();
 
 	/// Inverts the pixels in a particular rect
-	void invertRect(GRect* pRect);
+	void invertRect(WRect* pRect);
 
 	/// Finds edges and makes them glow
 	void makeEdgesGlow(float fThresh, int nThickness, int nOpacity, unsigned int color);
 
 	/// Draws a border around anything that touches the background color
-	void addBorder(const GImage* pSourceImage, unsigned int cBackground, unsigned int cBorder);
+	void addBorder(const WImage* pSourceImage, unsigned int cBackground, unsigned int cBorder);
 
-	void convolve(GImage* pKernel);
+	void convolve(WImage* pKernel);
 
-	void convolveKernel(GImage* pKernel);
+	void convolveKernel(WImage* pKernel);
 
 	void horizDifferenceize();
 	void horizSummize();
 
-	void swapData(GImage* pSwapImage);
+	void swapData(WImage* pSwapImage);
 
-	void copy(GImage* pSourceImage);
+	void copy(WImage* pSourceImage);
 
-	void copyRect(GImage* pSourceImage, int nLeft, int nTop, int nRight, int nBottom);
+	void copyRect(WImage* pSourceImage, int nLeft, int nTop, int nRight, int nBottom);
 
 	/// Returns the width of the image in pixels
 	unsigned int width() const { return m_width; }
@@ -331,23 +331,23 @@ public:
 	/// The dest area can be out of the dest image. The alpha channel is ignored.
 	/// The pSourceRect must be within the bounds of the source image. If pSourceRect
 	/// is NULL, then the full source image is used.
-	void blit(int x, int y, GImage* pSource, GRect* pSourceRect = nullptr);
+	void blit(int x, int y, WImage* pSource, WRect* pSourceRect = nullptr);
 
 	/// Blit an image into this image. The source rect must be within the source image.
 	/// The dest area can be out of the dest image. Also performs alpha blending.
-	void blitAlpha(int x, int y, GImage* pSource, GRect* pSourceRect = nullptr);
+	void blitAlpha(int x, int y, WImage* pSource, WRect* pSourceRect = nullptr);
 
 	/// Stretches the specified portion of the source rect to fit the destination
 	/// rect and alpha-blits onto the this image
-	void blitAlphaStretch(GRect* pDestRect, GImage* pImage, GRect* pSourceRect = nullptr);
+	void blitAlphaStretch(WRect* pDestRect, WImage* pImage, WRect* pSourceRect = nullptr);
 
 	/// Performs an interpolating stretch-blit, both to and from a sub-pixel-specified rect
-	void blitStretchInterpolate(GDoubleRect* pDestRect, GImage* pImage, GDoubleRect* pSourceRect = nullptr);
+	void blitStretchInterpolate(WDoubleRect* pDestRect, WImage* pImage, WDoubleRect* pSourceRect = nullptr);
 
 	/// Munges the image. nStyle should be 0, 1, 2, or 3. Each value munges a different way.
 	/// fExtent should be between 0 and 1, where 0 doesn't change much and 1 totally munges it.
 	/// You're responsible to delete the munged image this returns
-	GImage* munge(int nStyle, float fExtent);
+	WImage* munge(int nStyle, float fExtent);
 
 	/// dRadians ranges from 0 to 2PI
 	/// fAmount ranges from 0 to about 4, but small values (like .1) seem to look best
@@ -358,7 +358,7 @@ public:
 	void stretch(int nXStart, int nYStart, int nXEnd, int nYEnd);
 
 	/// Make a string of text that would be difficult for non-humans to read
-	void captcha(const char* szText, GRand* pRand);
+	void captcha(const char* szText, WRand* pRand);
 
 	/// Generates a discrete kernel to approximate a Gaussian. nWidth is both the
 	/// width and height of the kernel. (Usually an odd number is desireable so there
@@ -385,10 +385,10 @@ public:
 	void medianFilter(float fRadius);
 
 	/// a basic morphological operator
-	void dialate(GImage* pStructuringElement);
+	void dialate(WImage* pStructuringElement);
 
 	/// A basic morphological operator
-	void erode(GImage* pStructuringElement);
+	void erode(WImage* pStructuringElement);
 
 	/// if nPixels > 0, opens the image by the specified number of pixels
 	/// if nPixels < 0, closes the image by the specified number of pixels
@@ -402,7 +402,7 @@ public:
 	/// Uses moments to compute mean and orientation
 	void meanAndOrientation(double* pMeanX, double* pMeanY, double* pRadians);
 
-	void gradientMagnitudeImage(const GImage* pIn);
+	void gradientMagnitudeImage(const WImage* pIn);
 
 	/// Determines whether the point (x, y) is inside the triangle
 	/// specified by (x0, y0), (x1, y1), (x2, y2). On any edge is considered
@@ -424,7 +424,7 @@ public:
 	/// Adjusts the hue, saturation, and value of the image by the specified amounts.
 	/// The saturation and value are clipped with a min of 0 and a max of 1. The hue
 	/// has a cycle of 1, so adjusting by any integer will leave the hue unchanged.
-	void hueSaturationAndValue(GImage* pSource, float hue, float saturation, float value);
+	void hueSaturationAndValue(WImage* pSource, float hue, float saturation, float value);
 
 	/// Makes the darkest parts of the image darker. (Note that if you invert
 	/// first, shade, and then invert again, you will have hilighted the lightest
@@ -449,6 +449,6 @@ protected:
 	void textCharSmall(char ch, int x, int y, int wid, int hgt, float size, unsigned int col);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GIMAGE_H__

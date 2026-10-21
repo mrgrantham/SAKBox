@@ -17,8 +17,8 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GError.h"
-#include "GReverseBits.h"
+#include "WError.h"
+#include "WReverseBits.h"
 #include <bitset>
 #ifdef WINDOWS
 typedef unsigned char uint8_t;
@@ -27,7 +27,7 @@ typedef unsigned int uint32_t;
 #else
 #include <stdint.h> //Change to cstdint when C++0x comes out
 #endif
-namespace GClasses
+namespace WClasses
 {
 
 void reverseBitsTest()
@@ -59,4 +59,4 @@ void reverseBitsTest()
 	}
 }
 
-} //Namespace GClasses
+} //Namespace WClasses

@@ -18,13 +18,13 @@
 
 #include <exception>
 #include <iostream>
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
-#include <WClasses/GMatrix.h>
-#include <WClasses/GNeuralNet.h>
-#include <WClasses/GOptimizer.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GVec.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
+#include <WClasses/WMatrix.h>
+#include <WClasses/WNeuralNet.h>
+#include <WClasses/WOptimizer.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WVec.h>
 #include "series_networks/LinearWeights.h"
 #include "series_networks/SeriesPlot.h"
 #include <math.h>
@@ -32,14 +32,14 @@
 #include <cstring>
 #include <string>
 
-// SAKBox: ported from the 2015 neural network API (GLayerClassic,
-// GLayerMixed, GActivation*), which upstream removed without updating this
+// SAKBox: ported from the 2015 neural network API (WLayerClassic,
+// WLayerMixed, WActivation*), which upstream removed without updating this
 // demo, to the current block API, as fourier_net was: the mixed hidden layer
-// is one GBlockLinear holding all its units' weights, followed by sine,
+// is one WBlockLinear holding all its units' weights, followed by sine,
 // softplus and identity blocks side by side. Progress is drawn to
 // progress.svg where it is run (it used to open Firefox on it).
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 using std::cout;
 using std::string;
@@ -60,7 +60,7 @@ namespace
 string g_dataDir = "projects/waffles/demos/time_series/bin";
 string g_outDir = ".";
 
-double rmse(GNeuralNet& nn, const GMatrix& features, const GMatrix& labels)
+double rmse(WNeuralNet& nn, const WMatrix& features, const WMatrix& labels)
 {
 	return sqrt(nn.measureLoss(features, labels) / labels.rows());
 }
@@ -70,32 +70,32 @@ double rmse(GNeuralNet& nn, const GMatrix& features, const GMatrix& labels)
 void doit(size_t epochs)
 {
 	// Load the data
-	GMatrix trainLab;
-	GMatrix testLab;
+	WMatrix trainLab;
+	WMatrix testLab;
 	trainLab.loadArff((g_dataDir + "/train.arff").c_str());
 	testLab.loadArff((g_dataDir + "/test.arff").c_str());
 	double dataMin = trainLab.columnMin(0);
 	double dataMax = trainLab.columnMax(0);
 	trainLab.normalizeColumn(0, dataMin, dataMax, -5.0, 5.0);
 	testLab.normalizeColumn(0, dataMin, dataMax, -5.0, 5.0);
-	GMatrix trainFeat(trainLab.rows(), 1);
+	WMatrix trainFeat(trainLab.rows(), 1);
 	for(size_t i = 0; i < trainLab.rows(); i++)
 		trainFeat[i][0] = (double)i / trainLab.rows() - 0.5;
-	GMatrix testFeat(testLab.rows(), 1);
+	WMatrix testFeat(testLab.rows(), 1);
 	for(size_t i = 0; i < testLab.rows(); i++)
 		testFeat[i][0] = (double)(i + trainLab.rows()) / trainLab.rows() - 0.5;
 
 	// Make a neural network: a hidden layer of sine, softplus and identity
 	// units, and an identity output
 	const size_t sn = SINE_NODES, sp = SOFTPLUS_NODES, id = IDENTITY_NODES;
-	GNeuralNet nn;
-	nn.add(new GBlockLinear(1, sn + sp + id));
-	nn.add(new GBlockSine(sn));
-	nn.concat(new GBlockSoftPlus(sp), sn);
-	nn.concat(new GBlockIdentity(id), sn + sp);
-	nn.add(new GBlockLinear(sn + sp + id, trainLab.cols()));
-	GRand rand(0);
-	GSGDOptimizer optimizer(nn, rand); // allocates nn's weights
+	WNeuralNet nn;
+	nn.add(new WBlockLinear(1, sn + sp + id));
+	nn.add(new WBlockSine(sn));
+	nn.concat(new WBlockSoftPlus(sp), sn);
+	nn.concat(new WBlockIdentity(id), sn + sp);
+	nn.add(new WBlockLinear(sn + sp + id, trainLab.cols()));
+	WRand rand(0);
+	WSGDOptimizer optimizer(nn, rand); // allocates nn's weights
 	optimizer.setLearningRate(LEARNING_RATE);
 	LinearWeights hidden{nn.layer(0).block(0)};
 	LinearWeights output{nn.layer(2).block(0)};
@@ -129,7 +129,7 @@ void doit(size_t epochs)
 	cout << "Progress is drawn to " << progress << " (open it in a browser and reload).\n";
 
 	// Do some training
-	GRandomIndexIterator ii(trainLab.rows(), rand);
+	WRandomIndexIterator ii(trainLab.rows(), rand);
 	for(size_t epoch = 0; epoch < epochs; epoch++)
 	{
 		// Visit each sample in random order
@@ -159,7 +159,7 @@ void doit(size_t epochs)
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int nRet = 0;
 	try

@@ -20,13 +20,13 @@
 #ifndef __GNAIVEINSTANCE_H__
 #define __GNAIVEINSTANCE_H__
 
-#include "GLearner.h"
+#include "WLearner.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GNaiveInstanceAttr;
-class GHeap;
+class WNaiveInstanceAttr;
+class WHeap;
 
 
 /// This is an instance-based learner. Instead of finding the k-nearest
@@ -40,31 +40,31 @@ class GHeap;
 /// supports continuous features and labels (so it is common to wrap it
 /// in a Categorize filter which will convert nominal features to a categorical
 /// distribution of continuous values).
-class GNaiveInstance : public GIncrementalLearner
+class WNaiveInstance : public WIncrementalLearner
 {
 protected:
 	size_t m_nNeighbors;
-	GNaiveInstanceAttr** m_pAttrs;
-	GVec m_pValueSums;
-	GVec m_pWeightSums;
-	GVec m_pSumBuffer;
-	GVec m_pSumOfSquares;
-	GHeap* m_pHeap;
+	WNaiveInstanceAttr** m_pAttrs;
+	WVec m_pValueSums;
+	WVec m_pWeightSums;
+	WVec m_pSumBuffer;
+	WVec m_pSumOfSquares;
+	WHeap* m_pHeap;
 
 public:
 	/// nNeighbors is the number of neighbors (in each dimension)
 	/// that will contribute to the output value.
-	GNaiveInstance();
+	WNaiveInstance();
 
 	/// Deserializing constructor
-	GNaiveInstance(const GDomNode* pNode);
-	~GNaiveInstance() override;
+	WNaiveInstance(const WDomNode* pNode);
+	~WNaiveInstance() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// Specify the number of neighbors to use.
 	void setNeighbors(size_t k) { m_nNeighbors = k; }
@@ -72,42 +72,42 @@ public:
 	/// Returns the number of neighbors.
 	size_t neighbors() { return m_nNeighbors; }
 
-	/// See the comment for GIncrementalLearner::trainSparse.
-	void trainSparse(GSparseMatrix& features, GMatrix& labels) override;
+	/// See the comment for WIncrementalLearner::trainSparse.
+	void trainSparse(WSparseMatrix& features, WMatrix& labels) override;
 
-	/// See the comment for GSupervisedLearner::clear.
+	/// See the comment for WSupervisedLearner::clear.
 	void clear() override;
 
 	/// Uses cross-validation to find a set of parameters that works well with
 	/// the provided data.
-	void autoTune(GMatrix& features, GMatrix& labels);
+	void autoTune(WMatrix& features, WMatrix& labels);
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& in, GVec& out) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& in, WVec& out) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& in, WPrediction* pOut) override;
 
 	/// Incrementally train with a single instance
-	void trainIncremental(const GVec& in, const GVec& out) override;
+	void trainIncremental(const WVec& in, const WVec& out) override;
 
 protected:
 	void evalInput(size_t nInputDim, double dInput);
 
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleNominalFeatures
 	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
+	/// See the comment for WTransducer::canImplicitlyHandleNominalLabels
 	bool canImplicitlyHandleNominalLabels() override { return false; }
 
-	/// See the comment for GIncrementalLearner::beginIncrementalLearningInner
-	void beginIncrementalLearningInner(const GRelation& featureRel, const GRelation& labelRel) override;
+	/// See the comment for WIncrementalLearner::beginIncrementalLearningInner
+	void beginIncrementalLearningInner(const WRelation& featureRel, const WRelation& labelRel) override;
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GNAIVEINSTANCE_H__
 

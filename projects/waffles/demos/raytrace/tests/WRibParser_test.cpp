@@ -1,12 +1,12 @@
-// GRibParser: the RenderMan scene reader behind the raytrace demo.
+// WRibParser: the RenderMan scene reader behind the raytrace demo.
 #include <gtest/gtest.h>
 
-#include "GRibParser.h"
+#include "WRibParser.h"
 
-#include <WClasses/GError.h>
-#include <WClasses/GImage.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GRayTrace.h>
+#include <WClasses/WError.h>
+#include <WClasses/WImage.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WRayTrace.h>
 
 #include <cstdio>
 #include <fstream>
@@ -15,7 +15,7 @@
 #include <sstream>
 #include <string>
 
-using namespace GClasses;
+using namespace WClasses;
 
 namespace {
 const std::string kScenes = "projects/waffles/demos/raytrace/bin/";
@@ -28,7 +28,7 @@ std::string readFile(const std::string &path) {
 }
 
 // Parses a scene from text, as if it were a file
-std::unique_ptr<GRayTraceScene> parse(const std::string &text, GRand &rand) {
+std::unique_ptr<WRayTraceScene> parse(const std::string &text, WRand &rand) {
   FILE *file = tmpfile();
   if (file == nullptr || fputs(text.c_str(), file) < 0 || fseek(file, 0, SEEK_SET) != 0) {
     ADD_FAILURE() << "couldn't write the scene to a temporary file";
@@ -37,23 +37,23 @@ std::unique_ptr<GRayTraceScene> parse(const std::string &text, GRand &rand) {
   RibParser parser(&rand);
   const bool parsed = parser.createScene(file); // (closes the file)
   EXPECT_TRUE(parsed);
-  return std::unique_ptr<GRayTraceScene>(parser.releaseScene());
+  return std::unique_ptr<WRayTraceScene>(parser.releaseScene());
 }
 
-GImage *render(GRayTraceScene &scene) {
-  scene.setRenderMode(GRayTraceScene::FAST_RAY_TRACE);
+WImage *render(WRayTraceScene &scene) {
+  scene.setRenderMode(WRayTraceScene::FAST_RAY_TRACE);
   scene.renderBegin();
   while (scene.renderLine()) {
   }
   return scene.image();
 }
 
-size_t colourCount(GImage &image) {
+size_t colourCount(WImage &image) {
   std::set<unsigned int> colours(image.pixels(), image.pixels() + image.width() * image.height());
   return colours.size();
 }
 
-bool samePixels(GImage &a, GImage &b) {
+bool samePixels(WImage &a, WImage &b) {
   return a.width() == b.width() && a.height() == b.height() &&
          std::equal(a.pixels(), a.pixels() + a.width() * a.height(), b.pixels());
 }
@@ -78,18 +78,18 @@ std::string replaced(std::string text, const std::string &from, const std::strin
 TEST(RibParserTest, SampleScenesRender) {
   for (const char *name : {"fiveSpheres.rib", "billiards.rib", "arvo.rib"}) {
     SCOPED_TRACE(name);
-    GRand rand(0);
-    std::unique_ptr<GRayTraceScene> scene(RibParser::LoadScene((kScenes + name).c_str(), &rand));
+    WRand rand(0);
+    std::unique_ptr<WRayTraceScene> scene(RibParser::LoadScene((kScenes + name).c_str(), &rand));
     ASSERT_NE(scene, nullptr);
-    GImage *image = render(*scene);
+    WImage *image = render(*scene);
     EXPECT_GT(image->width(), 0u);
     EXPECT_GT(colourCount(*image), 10u);
   }
-  GRand rand(0);
-  std::unique_ptr<GRayTraceScene> scene(
+  WRand rand(0);
+  std::unique_ptr<WRayTraceScene> scene(
       RibParser::LoadScene((kScenes + "fiveSpheres.rib").c_str(), &rand));
   ASSERT_NE(scene, nullptr);
-  GImage *image = render(*scene);
+  WImage *image = render(*scene);
   EXPECT_EQ(image->width(), 256u); // Format 256 256 1
   EXPECT_EQ(image->height(), 256u);
 }
@@ -100,15 +100,15 @@ TEST(RibParserTest, SampleScenesRender) {
 TEST(RibParserTest, IndentedLinesReadTheSameAsUnindented) {
   const std::string text = readFile(kScenes + "fiveSpheres.rib");
   ASSERT_NE(text.find("\n    Translate"), std::string::npos); // the sample is indented
-  GRand rand1(0), rand2(0);
-  std::unique_ptr<GRayTraceScene> indented = parse(text, rand1);
-  std::unique_ptr<GRayTraceScene> flat = parse(removeIndents(text), rand2);
+  WRand rand1(0), rand2(0);
+  std::unique_ptr<WRayTraceScene> indented = parse(text, rand1);
+  std::unique_ptr<WRayTraceScene> flat = parse(removeIndents(text), rand2);
   ASSERT_NE(indented, nullptr);
   ASSERT_NE(flat, nullptr);
   EXPECT_TRUE(samePixels(*render(*indented), *render(*flat)));
   const std::string tabbed = replaced(text, "\n    Translate", "\n\t \tTranslate");
-  GRand rand3(0);
-  std::unique_ptr<GRayTraceScene> withTabs = parse(tabbed, rand3);
+  WRand rand3(0);
+  std::unique_ptr<WRayTraceScene> withTabs = parse(tabbed, rand3);
   ASSERT_NE(withTabs, nullptr);
   EXPECT_TRUE(samePixels(*render(*withTabs), *render(*flat)));
 }
@@ -117,10 +117,10 @@ TEST(RibParserTest, IndentedLinesReadTheSameAsUnindented) {
 TEST(RibParserTest, RayDepthDefaultsToFour) {
   const std::string text = readFile(kScenes + "fiveSpheres.rib");
   const std::string rayDepth = "Attribute \"cs655Setting\" \"rayDepth\" [ 4 ]";
-  GRand rand1(0), rand2(0), rand3(0);
-  std::unique_ptr<GRayTraceScene> four = parse(text, rand1);
-  std::unique_ptr<GRayTraceScene> unset = parse(replaced(text, rayDepth, ""), rand2);
-  std::unique_ptr<GRayTraceScene> one =
+  WRand rand1(0), rand2(0), rand3(0);
+  std::unique_ptr<WRayTraceScene> four = parse(text, rand1);
+  std::unique_ptr<WRayTraceScene> unset = parse(replaced(text, rayDepth, ""), rand2);
+  std::unique_ptr<WRayTraceScene> one =
       parse(replaced(text, rayDepth, "Attribute \"cs655Setting\" \"rayDepth\" [ 1 ]"), rand3);
   ASSERT_TRUE(four && unset && one);
   EXPECT_TRUE(samePixels(*render(*unset), *render(*four)));
@@ -131,7 +131,7 @@ TEST(RibParserTest, RayDepthDefaultsToFour) {
 TEST(RibParserTest, ANumberThatIsNotOneIsAnError) {
   const std::string text =
       replaced(readFile(kScenes + "fiveSpheres.rib"), "Format 256 256 1", "Format wide 256 1");
-  GRand rand(0);
+  WRand rand(0);
   try {
     parse(text, rand);
     FAIL() << "expected an error";

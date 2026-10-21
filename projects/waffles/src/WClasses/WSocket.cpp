@@ -16,20 +16,20 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GSocket.h"
+#include "WSocket.h"
 #include <time.h>
-#include "GHolders.h"
-#include "GError.h"
-#include "GThread.h"
-#include "GRand.h"
-#include "GApp.h"
-#include "GTime.h"
+#include "WHolders.h"
+#include "WError.h"
+#include "WThread.h"
+#include "WRand.h"
+#include "WApp.h"
+#include "WTime.h"
 #include <wchar.h>
 #include <sstream>
 #include <iostream>
 #include <queue>
 #ifdef WINDOWS
-#include "GWindows.h"
+#include "WWindows.h"
 #include <Ws2tcpip.h>
 #else
 #include <time.h>
@@ -53,7 +53,7 @@ typedef struct sockaddr SOCKADDR;
 typedef struct sockaddr_in SOCKADDR_IN;
 #endif
 
-namespace GClasses
+namespace WClasses
 {
 
 
@@ -66,7 +66,7 @@ string winstrerror(int err)
 }
 #endif
 
-bool GSocket_isReady(SOCKET s)
+bool WSocket_isReady(SOCKET s)
 {
 	fd_set sockSet;
 	FD_ZERO(&sockSet);
@@ -88,7 +88,7 @@ bool GSocket_isReady(SOCKET s)
 	return ret == 0 ? false : true;
 }
 
-void GSocket_setSocketMode(SOCKET s, bool blocking)
+void WSocket_setSocketMode(SOCKET s, bool blocking)
 {
 	unsigned long ulMode = blocking ? 0 : 1;
 #ifdef WINDOWS
@@ -99,13 +99,13 @@ void GSocket_setSocketMode(SOCKET s, bool blocking)
 		throw Ex("Error changing the mode of a socket");
 }
 
-size_t GSocket_bytesReady(SOCKET s)
+size_t WSocket_bytesReady(SOCKET s)
 {
 	if(s == INVALID_SOCKET)
 		return 0;
 	unsigned long bytesReadyToRead = 0;
 #ifdef WINDOWS
-	GWindows::yield(); // This is necessary because incoming packets go through the Windows message pump
+	WWindows::yield(); // This is necessary because incoming packets go through the Windows message pump
 	if(ioctlsocket(s, FIONREAD, &bytesReadyToRead) != 0)
 		throw Ex("ioctlsocket failed: ", winstrerror(WSAGetLastError()));
 #else
@@ -115,7 +115,7 @@ size_t GSocket_bytesReady(SOCKET s)
 	return bytesReadyToRead;
 }
 
-void GSocket_closeSocket(SOCKET s)
+void WSocket_closeSocket(SOCKET s)
 {
 	shutdown(s, 2 /*SHUT_RDWR*/);
 #ifdef WINDOWS
@@ -125,7 +125,7 @@ void GSocket_closeSocket(SOCKET s)
 #endif
 }
 
-in_addr GSocket_ipAddr(SOCKET s)
+in_addr WSocket_ipAddr(SOCKET s)
 {
 	struct sockaddr sAddr;
 	socklen_t l;
@@ -144,7 +144,7 @@ in_addr GSocket_ipAddr(SOCKET s)
 	return pInfo->sin_addr;
 }
 
-size_t GSocket_send(SOCKET s, const char* buf, size_t len)
+size_t WSocket_send(SOCKET s, const char* buf, size_t len)
 {
 	if(s == INVALID_SOCKET)
 		throw Ex("Tried to send over a socket that was not connected");
@@ -166,12 +166,12 @@ size_t GSocket_send(SOCKET s, const char* buf, size_t len)
 		if(err == WSAEWOULDBLOCK)
 			return 0;
 		else
-			throw Ex("Error sending in GTCPClient::send: ", winstrerror(err));
+			throw Ex("Error sending in WTCPClient::send: ", winstrerror(err));
 #else
 		if(errno == EWOULDBLOCK)
 			return 0;
 		else
-			throw Ex("Error sending in GTCPClient::send: ", strerror(errno));
+			throw Ex("Error sending in WTCPClient::send: ", strerror(errno));
 #endif
 		return 0;
 	}
@@ -179,7 +179,7 @@ size_t GSocket_send(SOCKET s, const char* buf, size_t len)
 		return (size_t)bytesSent;
 }
 
-void GSocket_init()
+void WSocket_init()
 {
 #ifdef WINDOWS
 	// Initialize Winsock
@@ -201,7 +201,7 @@ void GSocket_init()
 #endif
 }
 
-SOCKET GSocket_connect(const char* addr, unsigned short port, int timeoutSecs)
+SOCKET WSocket_connect(const char* addr, unsigned short port, int timeoutSecs)
 {
 	struct addrinfo hints, *res, *res0;
 	int error;
@@ -223,7 +223,7 @@ SOCKET GSocket_connect(const char* addr, unsigned short port, int timeoutSecs)
 			continue;
 		struct timeval timeout;
 		fd_set socketSet;
-		GSocket_setSocketMode(sock, false);
+		WSocket_setSocketMode(sock, false);
 
 		// Trying to connect with timeout
 		if(::connect(sock, res->ai_addr, (int)res->ai_addrlen) < 0)
@@ -240,7 +240,7 @@ SOCKET GSocket_connect(const char* addr, unsigned short port, int timeoutSecs)
 				FD_ZERO(&socketSet);
 				FD_SET(sock, &socketSet);
 #ifdef WINDOWS
-				GWindows::yield();
+				WWindows::yield();
 				int result = select((int)sock + 1, NULL, &socketSet, NULL, &timeout);
 				if(result < 0 && WSAGetLastError() != WSAEINTR)
 #else
@@ -257,7 +257,7 @@ SOCKET GSocket_connect(const char* addr, unsigned short port, int timeoutSecs)
 						throw Ex("getsockopt failed");
 					if(valopt)
 					{
-						GSocket_closeSocket(sock);
+						WSocket_closeSocket(sock);
 						sock = INVALID_SOCKET;
 						continue;
 					}
@@ -268,7 +268,7 @@ SOCKET GSocket_connect(const char* addr, unsigned short port, int timeoutSecs)
 				else
 				{
 					// Timeout exceeded
-					GSocket_closeSocket(sock);
+					WSocket_closeSocket(sock);
 					sock = INVALID_SOCKET;
 					continue;
 				}
@@ -276,7 +276,7 @@ SOCKET GSocket_connect(const char* addr, unsigned short port, int timeoutSecs)
 			else
 			{
 				// Failed to connect to this address
-				GSocket_closeSocket(sock);
+				WSocket_closeSocket(sock);
 				sock = INVALID_SOCKET;
 				continue;
 			}
@@ -291,51 +291,51 @@ SOCKET GSocket_connect(const char* addr, unsigned short port, int timeoutSecs)
 
 
 
-GTCPClient::GTCPClient()
+WTCPClient::WTCPClient()
 : m_sock(INVALID_SOCKET)
 {
-	GSocket_init();
+	WSocket_init();
 }
 
-GTCPClient::~GTCPClient()
+WTCPClient::~WTCPClient()
 {
 	disconnect();
 }
 
-void GTCPClient::disconnect()
+void WTCPClient::disconnect()
 {
 	if(m_sock == INVALID_SOCKET)
 		return;
 	onDisconnect();
-	GSocket_closeSocket(m_sock);
+	WSocket_closeSocket(m_sock);
 	m_sock = INVALID_SOCKET;
 }
 
-bool GTCPClient::isConnected()
+bool WTCPClient::isConnected()
 {
 	return m_sock == INVALID_SOCKET ? false : true;
 }
 
-void GTCPClient::connect(const char* addr, unsigned short port, int timeoutSecs)
+void WTCPClient::connect(const char* addr, unsigned short port, int timeoutSecs)
 {
 	disconnect();
-	m_sock = GSocket_connect(addr, port, timeoutSecs);
+	m_sock = WSocket_connect(addr, port, timeoutSecs);
 }
 
-void GTCPClient::send(const char* buf, size_t len)
+void WTCPClient::send(const char* buf, size_t len)
 {
 	try
 	{
 		while(len > 0)
 		{
-			size_t bytesSent = GSocket_send(m_sock, buf, len);
+			size_t bytesSent = WSocket_send(m_sock, buf, len);
 			if(bytesSent > 0)
 			{
 				buf += bytesSent;
 				len -= bytesSent;
 			}
 			else
-				GThread::sleep(0);
+				WThread::sleep(0);
 		}
 	}
 	catch(const std::exception&)
@@ -345,9 +345,9 @@ void GTCPClient::send(const char* buf, size_t len)
 	}
 }
 
-size_t GTCPClient::receive(char* buf, size_t len)
+size_t WTCPClient::receive(char* buf, size_t len)
 {
-	size_t bytesReady = GSocket_bytesReady(m_sock);
+	size_t bytesReady = WSocket_bytesReady(m_sock);
 	if(bytesReady > 0)
 	{
 		ssize_t bytesReceived = recv(m_sock, buf, (int)len, 0);
@@ -379,12 +379,12 @@ size_t GTCPClient::receive(char* buf, size_t len)
 
 
 
-in_addr GTCPConnection::ipAddr()
+in_addr WTCPConnection::ipAddr()
 {
-	return GSocket_ipAddr(m_sock);
+	return WSocket_ipAddr(m_sock);
 }
 
-const char* GTCPConnection::getIPAddress()
+const char* WTCPConnection::getIPAddress()
 {
 	return inet_ntoa(ipAddr());
 }
@@ -394,10 +394,10 @@ const char* GTCPConnection::getIPAddress()
 
 
 
-GTCPServer::GTCPServer(unsigned short port, bool networkAccessible)
+WTCPServer::WTCPServer(unsigned short port, bool networkAccessible)
 : m_networkAccessible(networkAccessible)
 {
-	GSocket_init();
+	WSocket_init();
 	m_sock = socket(AF_INET, SOCK_STREAM, 0); // use SOCK_DGRAM for UDP
 
 	// Tell the socket that it's okay to reuse an old crashed socket that hasn't timed out yet
@@ -429,7 +429,7 @@ GTCPServer::GTCPServer(unsigned short port, bool networkAccessible)
 #endif
 }
 
-unsigned short GTCPServer::port() const
+unsigned short WTCPServer::port() const
 {
 	sockaddr_in addr;
 	socklen_t len = sizeof(addr);
@@ -438,7 +438,7 @@ unsigned short GTCPServer::port() const
 	return ntohs(addr.sin_port);
 }
 
-std::string GTCPServer::boundAddress() const
+std::string WTCPServer::boundAddress() const
 {
 	sockaddr_in addr;
 	socklen_t len = sizeof(addr);
@@ -450,24 +450,24 @@ std::string GTCPServer::boundAddress() const
 	return buf;
 }
 
-GTCPServer::~GTCPServer()
+WTCPServer::~WTCPServer()
 {
 	while(m_socks.size() > 0)
 		disconnect(*m_socks.begin());
-	GSocket_closeSocket(m_sock);
+	WSocket_closeSocket(m_sock);
 }
 
-void GTCPServer::disconnect(GTCPConnection* pConn)
+void WTCPServer::disconnect(WTCPConnection* pConn)
 {
 	onDisconnect(pConn);
-	GSocket_closeSocket(pConn->socket());
+	WSocket_closeSocket(pConn->socket());
 	m_socks.erase(pConn);
 	delete(pConn);
 }
 
-void GTCPServer::checkForNewConnections()
+void WTCPServer::checkForNewConnections()
 {
-	if(!GSocket_isReady(m_sock))
+	if(!WSocket_isReady(m_sock))
 		return;
 
 	// Accept the connection
@@ -492,17 +492,17 @@ void GTCPServer::checkForNewConnections()
 		onReceiveBadData(s2.c_str());
 		return;
 	}
-	GSocket_setSocketMode(s, false);
+	WSocket_setSocketMode(s, false);
 	m_socks.insert(makeConnection(s));
 }
 
-size_t GTCPServer::receive(char* buf, size_t len, GTCPConnection** pOutConn)
+size_t WTCPServer::receive(char* buf, size_t len, WTCPConnection** pOutConn)
 {
 	checkForNewConnections();
-	for(set<GTCPConnection*>::iterator it = m_socks.begin(); it != m_socks.end(); it++)
+	for(set<WTCPConnection*>::iterator it = m_socks.begin(); it != m_socks.end(); it++)
 	{
-		GTCPConnection* pConn = *it;
-		if(GSocket_bytesReady(pConn->socket()) > 0)
+		WTCPConnection* pConn = *it;
+		if(WSocket_bytesReady(pConn->socket()) > 0)
 		{
 			ssize_t bytesReceived = recv(pConn->socket(), buf, (int)len, 0);
 			if(bytesReceived > 0)
@@ -531,20 +531,20 @@ size_t GTCPServer::receive(char* buf, size_t len, GTCPConnection** pOutConn)
 	return 0;
 }
 
-void GTCPServer::send(const char* buf, size_t len, GTCPConnection* pConn)
+void WTCPServer::send(const char* buf, size_t len, WTCPConnection* pConn)
 {
 	try
 	{
 		while(len > 0)
 		{
-			size_t bytesSent = GSocket_send(pConn->socket(), buf, len);
+			size_t bytesSent = WSocket_send(pConn->socket(), buf, len);
 			if(bytesSent > 0)
 			{
 				buf += bytesSent;
 				len -= bytesSent;
 			}
 			else
-				GThread::sleep(0);
+				WThread::sleep(0);
 		}
 	}
 	catch(const std::exception&)
@@ -555,7 +555,7 @@ void GTCPServer::send(const char* buf, size_t len, GTCPConnection* pConn)
 }
 
 // static
-void GTCPServer::hostName(char* buf, size_t len)
+void WTCPServer::hostName(char* buf, size_t len)
 {
 	if(gethostname(buf, (int)len) == SOCKET_ERROR)
 		throw Ex("failed to get host noame");
@@ -563,7 +563,7 @@ void GTCPServer::hostName(char* buf, size_t len)
 
 /*
 // static
-in_addr GTCPServer::hostNameToIPAddress(char* szHostName)
+in_addr WTCPServer::hostNameToIPAddress(char* szHostName)
 {
 	struct hostent* pHostEnt = gethostbyname(szHostName);
 	if(pHostEnt == 0)
@@ -603,9 +603,9 @@ in_addr GTCPServer::hostNameToIPAddress(char* szHostName)
 
 #define MAGIC_VALUE 0x0b57ac1e
 
-int GPackageConnection::receive(unsigned int maxBufSize, unsigned int maxPackageSize)
+int WPackageConnection::receive(unsigned int maxBufSize, unsigned int maxPackageSize)
 {
-	if(GSocket_bytesReady(m_sock) == 0)
+	if(WSocket_bytesReady(m_sock) == 0)
 		return 0; // Nothing bad happened
 	if(m_headerBytes < 2 * sizeof(unsigned int)) // if the header is still incomplete...
 	{
@@ -665,7 +665,7 @@ int GPackageConnection::receive(unsigned int maxBufSize, unsigned int maxPackage
 			m_payloadBytes += (unsigned int)bytesReceived;
 			if(m_payloadBytes >= m_header[1])
 			{
-				m_q.push(GPackageConnectionBuf(m_pBuf, m_bufSize, m_payloadBytes));
+				m_q.push(WPackageConnectionBuf(m_pBuf, m_bufSize, m_payloadBytes));
 				m_pBuf = nullptr;
 				m_bufSize = 0;
 				m_payloadBytes = 0;
@@ -687,11 +687,11 @@ int GPackageConnection::receive(unsigned int maxBufSize, unsigned int maxPackage
 	}
 }
 
-char* GPackageConnection::next(size_t* pOutSize)
+char* WPackageConnection::next(size_t* pOutSize)
 {
 	if(m_q.size() == 0)
 		return nullptr;
-	GPackageConnectionBuf& package = m_q.front();
+	WPackageConnectionBuf& package = m_q.front();
 	if(m_bufSize == 0)
 	{
 		m_pBuf = package.m_pBuf;
@@ -729,32 +729,32 @@ char* GPackageConnection::next(size_t* pOutSize)
 
 
 
-GPackageClient::GPackageClient()
+WPackageClient::WPackageClient()
 : m_conn(INVALID_SOCKET), m_maxBufSize(8192), m_maxPackageSize(0x1000000)
 {
 }
 
-GPackageClient::~GPackageClient()
+WPackageClient::~WPackageClient()
 {
 }
 
-void GPackageClient::disconnect()
+void WPackageClient::disconnect()
 {
 	if(m_conn.socket() == INVALID_SOCKET)
 		return;
 	onDisconnect();
-	GSocket_closeSocket(m_conn.socket());
+	WSocket_closeSocket(m_conn.socket());
 	m_conn.setSocket(INVALID_SOCKET);
 }
 
-void GPackageClient::connect(const char* addr, unsigned short port, int timeoutSecs)
+void WPackageClient::connect(const char* addr, unsigned short port, int timeoutSecs)
 {
 	disconnect();
-	m_conn.setSocket(GSocket_connect(addr, port, timeoutSecs));
+	m_conn.setSocket(WSocket_connect(addr, port, timeoutSecs));
 }
 
 // virtual
-void GPackageClient::pump()
+void WPackageClient::pump()
 {
 	int status = m_conn.receive(m_maxBufSize, m_maxPackageSize);
 	if(status)
@@ -769,10 +769,10 @@ void GPackageClient::pump()
 		else if(status == 3)
 			onReceiveBadData("Breach of protocol");
 	}
-	GThread::sleep(0);
+	WThread::sleep(0);
 }
 
-void GPackageClient::send(const char* buf, size_t len)
+void WPackageClient::send(const char* buf, size_t len)
 {
 	unsigned int header[2];
 	header[0] = MAGIC_VALUE;
@@ -783,7 +783,7 @@ void GPackageClient::send(const char* buf, size_t len)
 	{
 		while(hl > 0)
 		{
-			size_t bytesSent = GSocket_send(m_conn.socket(), pH, hl);
+			size_t bytesSent = WSocket_send(m_conn.socket(), pH, hl);
 			if(bytesSent > 0)
 			{
 				pH += bytesSent;
@@ -794,7 +794,7 @@ void GPackageClient::send(const char* buf, size_t len)
 		}
 		while(len > 0)
 		{
-			size_t bytesSent = GSocket_send(m_conn.socket(), buf, len);
+			size_t bytesSent = WSocket_send(m_conn.socket(), buf, len);
 			if(bytesSent > 0)
 			{
 				buf += bytesSent;
@@ -811,7 +811,7 @@ void GPackageClient::send(const char* buf, size_t len)
 	}
 }
 
-char* GPackageClient::receive(size_t* pLen)
+char* WPackageClient::receive(size_t* pLen)
 {
 	int status = m_conn.receive(m_maxBufSize, m_maxPackageSize);
 	if(status)
@@ -835,10 +835,10 @@ char* GPackageClient::receive(size_t* pLen)
 
 
 
-GPackageServer::GPackageServer(unsigned short port, bool networkAccessible)
+WPackageServer::WPackageServer(unsigned short port, bool networkAccessible)
 : m_maxBufSize(8192), m_maxPackageSize(0x1000000)
 {
-	GSocket_init();
+	WSocket_init();
 	m_sock = socket(AF_INET, SOCK_STREAM, 0); // use SOCK_DGRAM for UDP
 
 	// Tell the socket that it's okay to reuse an old crashed socket that hasn't timed out yet
@@ -870,23 +870,23 @@ GPackageServer::GPackageServer(unsigned short port, bool networkAccessible)
 #endif
 }
 
-GPackageServer::~GPackageServer()
+WPackageServer::~WPackageServer()
 {
 	while(m_socks.size() > 0)
 		disconnect(*m_socks.begin());
-	GSocket_closeSocket(m_sock);
+	WSocket_closeSocket(m_sock);
 }
 
-void GPackageServer::disconnect(GPackageConnection* pConn)
+void WPackageServer::disconnect(WPackageConnection* pConn)
 {
 	onDisconnect(pConn);
-	GSocket_closeSocket(pConn->socket());
+	WSocket_closeSocket(pConn->socket());
 	m_socks.erase(pConn);
 	delete(pConn);
 }
 
 // virtual
-void GPackageServer::pump(GPackageConnection* pConn)
+void WPackageServer::pump(WPackageConnection* pConn)
 {
 	int status = pConn->receive(m_maxBufSize, m_maxPackageSize);
 	if(status)
@@ -897,12 +897,12 @@ void GPackageServer::pump(GPackageConnection* pConn)
 			onReceiveBadData("Breach of protocol");
 		disconnect(pConn);
 	}
-	GThread::sleep(0);
+	WThread::sleep(0);
 }
 
-void GPackageServer::checkForNewConnections()
+void WPackageServer::checkForNewConnections()
 {
-	if(!GSocket_isReady(m_sock))
+	if(!WSocket_isReady(m_sock))
 		return;
 
 	// Accept the connection
@@ -927,11 +927,11 @@ void GPackageServer::checkForNewConnections()
 		onReceiveBadData(s2.c_str());
 		return;
 	}
-	GSocket_setSocketMode(s, false);
+	WSocket_setSocketMode(s, false);
 	m_socks.insert(makeConnection(s));
 }
 
-void GPackageServer::send(const char* buf, size_t len, GPackageConnection* pConn)
+void WPackageServer::send(const char* buf, size_t len, WPackageConnection* pConn)
 {
 	unsigned int header[2];
 	header[0] = MAGIC_VALUE;
@@ -942,7 +942,7 @@ void GPackageServer::send(const char* buf, size_t len, GPackageConnection* pConn
 	{
 		while(hl > 0)
 		{
-			size_t bytesSent = GSocket_send(pConn->socket(), pH, hl);
+			size_t bytesSent = WSocket_send(pConn->socket(), pH, hl);
 			if(bytesSent > 0)
 			{
 				pH += bytesSent;
@@ -953,7 +953,7 @@ void GPackageServer::send(const char* buf, size_t len, GPackageConnection* pConn
 		}
 		while(len > 0)
 		{
-			size_t bytesSent = GSocket_send(pConn->socket(), buf, len);
+			size_t bytesSent = WSocket_send(pConn->socket(), buf, len);
 			if(bytesSent > 0)
 			{
 				buf += bytesSent;
@@ -969,12 +969,12 @@ void GPackageServer::send(const char* buf, size_t len, GPackageConnection* pConn
 	}
 }
 
-char* GPackageServer::receive(size_t* pOutLen, GPackageConnection** pOutConn)
+char* WPackageServer::receive(size_t* pOutLen, WPackageConnection** pOutConn)
 {
 	checkForNewConnections();
-	for(set<GPackageConnection*>::iterator it = m_socks.begin(); it != m_socks.end(); it++)
+	for(set<WPackageConnection*>::iterator it = m_socks.begin(); it != m_socks.end(); it++)
 	{
-		GPackageConnection* pConn = *it;
+		WPackageConnection* pConn = *it;
 		int status = pConn->receive(m_maxBufSize, m_maxPackageSize);
 		if(status)
 		{
@@ -1003,15 +1003,15 @@ char* GPackageServer::receive(size_t* pOutLen, GPackageConnection** pOutConn)
 #define TEST_LEN 1000
 #define MAX_PACKET_LEN 257
 
-void GPackageServer_serial_test()
+void WPackageServer_serial_test()
 {
-	GPackageServer server(TEST_PORT);
-	GPackageClient clients[CLIENT_COUNT];
+	WPackageServer server(TEST_PORT);
+	WPackageClient clients[CLIENT_COUNT];
 	for(size_t i = 0; i < CLIENT_COUNT; i++)
 		clients[i].connect("localhost", TEST_PORT, 5);
 	std::queue<size_t> q[CLIENT_COUNT];
-	GRand randMaster(0);
-	GRand randData(1234);
+	WRand randMaster(0);
+	WRand randData(1234);
 	char buf[MAX_PACKET_LEN];
 	size_t sends = 0;
 	size_t receives = 0;
@@ -1038,7 +1038,7 @@ void GPackageServer_serial_test()
 				sends++;
 			}
 			else
-				GThread::sleep(0);
+				WThread::sleep(0);
 		}
 		else if(turn < CLIENT_COUNT + CLIENT_COUNT)
 		{
@@ -1067,12 +1067,12 @@ void GPackageServer_serial_test()
 				receives++;
 			}
 			else
-				GThread::sleep(0);
+				WThread::sleep(0);
 		}
 		else
 		{
 			size_t len;
-			GPackageConnection* pConn;
+			WPackageConnection* pConn;
 			char* pPackage = server.receive(&len, &pConn);
 			if(pPackage)
 			{
@@ -1081,7 +1081,7 @@ void GPackageServer_serial_test()
 				bounces++;
 			}
 			else
-				GThread::sleep(0);
+				WThread::sleep(0);
 		}
 		iters++;
 	}
@@ -1089,30 +1089,30 @@ void GPackageServer_serial_test()
 		throw Ex("something is amiss");
 }
 
-void GPackageServer::test()
+void WPackageServer::test()
 {
-	GPackageServer_serial_test();
-	//GPackageServer_threaded_test();
+	WPackageServer_serial_test();
+	//WPackageServer_threaded_test();
 }
 
 
 
 
 
-void GDomClient::send(GDomNode* pNode)
+void WDomClient::send(WDomNode* pNode)
 {
 	std::ostringstream os;
 	m_doc.setRoot(pNode);
 	m_doc.writeJson(os);
 	string s = os.str();
-	GPackageClient::send(s.c_str(), s.length());
+	WPackageClient::send(s.c_str(), s.length());
 }
 
-const GDomNode* GDomClient::receive()
+const WDomNode* WDomClient::receive()
 {
 	m_doc.clear();
 	size_t len;
-	char* pPackage = GPackageClient::receive(&len);
+	char* pPackage = WPackageClient::receive(&len);
 	if(pPackage)
 	{
 		m_doc.parseJson(pPackage, len);
@@ -1126,20 +1126,20 @@ const GDomNode* GDomClient::receive()
 
 
 
-void GDomServer::send(GDomNode* pNode, GPackageConnection* pConn)
+void WDomServer::send(WDomNode* pNode, WPackageConnection* pConn)
 {
 	std::ostringstream os;
 	m_doc.setRoot(pNode);
 	m_doc.writeJson(os);
 	string s = os.str();
-	GPackageServer::send(s.c_str(), s.length(), pConn);
+	WPackageServer::send(s.c_str(), s.length(), pConn);
 }
 
-const GDomNode* GDomServer::receive(GPackageConnection** pOutConn)
+const WDomNode* WDomServer::receive(WPackageConnection** pOutConn)
 {
 	m_doc.clear();
 	size_t len;
-	char* pPackage = GPackageServer::receive(&len, pOutConn);
+	char* pPackage = WPackageServer::receive(&len, pOutConn);
 	if(pPackage)
 	{
 		m_doc.parseJson(pPackage, len);
@@ -1152,4 +1152,4 @@ const GDomNode* GDomServer::receive(GPackageConnection** pOutConn)
 
 
 
-} // namespace GClasses
+} // namespace WClasses

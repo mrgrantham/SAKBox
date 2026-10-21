@@ -19,19 +19,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GThread.h>
-#include <WClasses/GFile.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GKNN.h>
-#include <WClasses/GReinforcement.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WThread.h>
+#include <WClasses/WFile.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WKNN.h>
+#include <WClasses/WReinforcement.h>
 #include <math.h>
 #include <exception>
 #include <iostream>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 
 const char* g_szAppPath = nullptr;
@@ -46,7 +46,7 @@ bool DoesHitWall(double* pState, double* pAction);
 void Move(double* pState, double* pAction);
 
 
-class TestQAgent : public GIncrementalLearnerQAgent
+class TestQAgent : public WIncrementalLearnerQAgent
 {
 protected:
 	double m_lastReward;
@@ -56,11 +56,11 @@ protected:
 	double m_penalty;
 	bool m_warpRandom;
 	int m_journeyCount;
-	GIncrementalLearner* m_pLearner;
+	WIncrementalLearner* m_pLearner;
 
 public:
-	TestQAgent(const GRelation& relation, double* pInitialState, GRand* prng, GAgentActionIterator* pActionIterator, double softMaxThresh, double soberness, double reward, double penalty, bool warpRandom)
-	: GIncrementalLearnerQAgent(relation, MakeLearner(prng), 1 /*actionDims*/, pInitialState, prng, pActionIterator, softMaxThresh)
+	TestQAgent(const WRelation& relation, double* pInitialState, WRand* prng, WAgentActionIterator* pActionIterator, double softMaxThresh, double soberness, double reward, double penalty, bool warpRandom)
+	: WIncrementalLearnerQAgent(relation, MakeLearner(prng), 1 /*actionDims*/, pInitialState, prng, pActionIterator, softMaxThresh)
 	{
 		m_lastReward = UNKNOWN_REAL_VALUE;
 		m_soberness = soberness;
@@ -77,13 +77,13 @@ public:
 		delete(m_pLearner);
 	}
 
-	GIncrementalLearner* MakeLearner(GRand* pRand)
+	WIncrementalLearner* MakeLearner(WRand* pRand)
 	{
 		size_t dims[3];
 		dims[0] = WORLD_SIZE; // x
 		dims[1] = WORLD_SIZE; // y
 		dims[2] = 4; // action
-		m_pLearner = new GInstanceTable(3, dims);
+		m_pLearner = new WInstanceTable(3, dims);
 		return m_pLearner;
 	}
 
@@ -167,7 +167,7 @@ void Move(double* pState, double* pAction)
 	else if((int)pAction[0] == 3)
 		--pState[1];
 	else
-		GAssert(false); // unrecognized move
+		WAssert(false); // unrecognized move
 }
 
 // todo: rewrite this method. The world shouldn't be hard-coded like this.
@@ -278,7 +278,7 @@ void PrintQTable(TestQAgent* pAgent)
 	}
 }
 
-void DoTest(GRand* prng, double rcoeff, double alpha, double gamma, double reward, double penalty, double soft_max_thresh, bool warpRandom)
+void DoTest(WRand* prng, double rcoeff, double alpha, double gamma, double reward, double penalty, double soft_max_thresh, bool warpRandom)
 {
 	printf("---------------------------------------\n");
 	printf("rcoeff=%lg, alpha=%lg, gamma=%lg, reward=%lg, penalty=%lg, softMaxThresh=%lg, warpRandom=%s\n", rcoeff, alpha, gamma, reward, penalty, soft_max_thresh, warpRandom ? "true" : "false");
@@ -286,11 +286,11 @@ void DoTest(GRand* prng, double rcoeff, double alpha, double gamma, double rewar
 	fflush(stdout);
 	soft_max_thresh /= 100;
 	double soberness = ((rcoeff * 4 / 100) - 1) / 3;
-	GMixedRelation rel;
+	WMixedRelation rel;
 	rel.addAttr(0); // x
 	rel.addAttr(0); // y
 	rel.addAttr(4); // {E,N,W,S}
-	GDiscreteActionIterator it(4);
+	WDiscreteActionIterator it(4);
 	double initialstate[2];
 	initialstate[0] = 0;
 	initialstate[1] = 0;
@@ -303,7 +303,7 @@ void DoTest(GRand* prng, double rcoeff, double alpha, double gamma, double rewar
 
 void DoIt()
 {
-	GRand prng(0);
+	WRand prng(0);
 
 	// rcoeff: 100 = always do what you try to do. 0 = when you try to go one way, you always randomly go another.
 	// alpha: 1 = totally confident about all observations. 0 = so insecure that it never learns anything.

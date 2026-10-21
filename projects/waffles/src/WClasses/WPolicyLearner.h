@@ -20,28 +20,28 @@
 #ifndef __GPOLICYLEARNER_H__
 #define __GPOLICYLEARNER_H__
 
-#include "GMatrix.h"
+#include "WMatrix.h"
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GRand;
-class GIncrementalLearner;
+class WRand;
+class WIncrementalLearner;
 
 
 /// Iterates through all the actions that are valid in the current state.
 /// If actions are continuous or very numerous, this should sample valid
 /// actions in a random order. The caller may decide that it has sampled
 /// enough at any time.
-class GAgentActionIterator
+class WAgentActionIterator
 {
 public:
-	GAgentActionIterator()
+	WAgentActionIterator()
 	{
 	}
 
-	virtual ~GAgentActionIterator()
+	virtual ~WAgentActionIterator()
 	{
 	}
 
@@ -56,7 +56,7 @@ public:
 	virtual int actionDims() = 0;
 
 	/// Produces a random action
-	virtual void randomAction(double* pOutAction, GRand* pRand) = 0;
+	virtual void randomAction(double* pOutAction, WRand* pRand) = 0;
 
 	/// Prepares to begin iterating over actions. (Note that this
 	/// is not called by the constructor, so you should even call
@@ -73,15 +73,15 @@ public:
 
 /// This is a simple and common action iterator that can be
 /// used when there is a discrete set of possible actions
-class GDiscreteActionIterator : public GAgentActionIterator
+class WDiscreteActionIterator : public WAgentActionIterator
 {
 protected:
 	int m_action;
 	int m_count;
 
 public:
-	GDiscreteActionIterator(int action_count) : GAgentActionIterator(), m_count(action_count) {}
-	~GDiscreteActionIterator() override {}
+	WDiscreteActionIterator(int action_count) : WAgentActionIterator(), m_count(action_count) {}
+	~WDiscreteActionIterator() override {}
 
 	/// Returns the total number of action values
 	int actionCount() override { return m_count; }
@@ -90,7 +90,7 @@ public:
 	int actionDims() override { return 1; }
 
 	/// Returns a random action
-	void randomAction(double* pOutAction, GRand* pRand) override;
+	void randomAction(double* pOutAction, WRand* pRand) override;
 
 	/// Resets the iterator
 	void reset(const double* pState) override;
@@ -103,10 +103,10 @@ public:
 
 
 /// This is the base class for algorithms that learn a policy.
-class GPolicyLearner
+class WPolicyLearner
 {
 protected:
-	GRelation* m_pRelation;
+	WRelation* m_pRelation;
 	int m_senseDims;
 	int m_actionDims;
 	bool m_teleported;
@@ -123,10 +123,10 @@ public:
 	/// pRelation specifies the type of each element in the sense and action vectors (whether they
 	/// are continuous or discrete). The first attributes refer to the senses, and the last actionDims
 	/// attributes refer to the actions.
-	GPolicyLearner(const GRelation& relation, int actionDims);
-	GPolicyLearner(GDomNode* pNode);
+	WPolicyLearner(const WRelation& relation, int actionDims);
+	WPolicyLearner(WDomNode* pNode);
 
-	virtual ~GPolicyLearner();
+	virtual ~WPolicyLearner();
 
 	/// This method tells the agent to learn from the current senses,
 	/// and select a new action vector. (This method should also
@@ -153,10 +153,10 @@ public:
 protected:
 	/// If a child class has a serialize method, it
 	/// should use this method to serialize the base-class stuff.
-	GDomNode* baseDomNode(GDom* pDoc);
+	WDomNode* baseDomNode(WDom* pDoc);
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GPOLICYLEARNER_H__

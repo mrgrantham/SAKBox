@@ -24,20 +24,20 @@
 #include <vector>
 #include <iostream>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GMatrix;
-class GRand;
-class GDomNode;
-class GDom;
-class GVec;
+class WMatrix;
+class WRand;
+class WDomNode;
+class WDom;
+class WVec;
 
 typedef std::map<size_t, double> SparseVec;
 
 /// This class stores a row-compressed sparse matrix. That is,
 /// each row consists of a map from a column-index to a value.
-class GSparseMatrix
+class WSparseMatrix
 {
 protected:
 	size_t m_cols;
@@ -49,19 +49,19 @@ public:
 	/// defaultValue specifies the common value that is not stored. (Typically,
 	/// defaultValue is 0, but for some applications it may make more sense to
 	/// set it to UNKNOWN_REAL_VALUE.)
-	GSparseMatrix(size_t rows, size_t cols, double defaultValue = 0.0);
+	WSparseMatrix(size_t rows, size_t cols, double defaultValue = 0.0);
 
 	/// Deserializes a sparse matrix
-	GSparseMatrix(const GDomNode* pNode);
+	WSparseMatrix(const WDomNode* pNode);
 
-	~GSparseMatrix();
+	~WSparseMatrix();
 
 	static void test();
 
 	typedef SparseVec::const_iterator Iter;
 
 	/// Serializes this object
-	GDomNode* serialize(GDom* pDoc) const;
+	WDomNode* serialize(WDom* pDoc) const;
 
 	/// Returns the default value--the common value that is not stored.
 	double defaultValue() { return m_defaultValue; }
@@ -73,7 +73,7 @@ public:
 	size_t cols() const { return m_cols; }
 
 	/// Copies a row into a non-sparse vector
-	void fullRow(GVec& outFullRow, size_t row);
+	void fullRow(WVec& outFullRow, size_t row);
 
 	/// Returns a const_iterator to the beginning of a row. The iterator
 	/// references a pair, such that first is the column, and second is the value.
@@ -104,11 +104,11 @@ public:
 	/// copied over the value in this. If the matrices are different
 	/// sizes, any non-overlapping elements will be left at the default value,
 	/// no-matter what value it has in that.
-	void copyFrom(const GSparseMatrix* that);
+	void copyFrom(const WSparseMatrix* that);
 
 	/// Copies values from "that" into "this". If the matrices are different
 	/// sizes, any non-overlapping elements will be left at the default value.
-	void copyFrom(const GMatrix* that);
+	void copyFrom(const WMatrix* that);
 
 	/// Adds a new empty row to this matrix
 	void newRow();
@@ -123,14 +123,14 @@ public:
 	void clear();
 
 	/// Converts to a full matrix
-	GMatrix* toFullMatrix();
+	WMatrix* toFullMatrix();
 
 	/// Multiplies the matrix by a scalar value
 	void multiply(double scalar);
 
 	/// Multiplies this sparse matrix by pThat dense matrix, and returns the resulting dense matrix.
 	/// If transposeThat is true, then it multiplies by the transpose of pThat.
-	GMatrix* multiply(GMatrix* pThat, bool transposeThat);
+	WMatrix* multiply(WMatrix* pThat, bool transposeThat);
 
 	/// Swaps the two specified columns. (This method is a lot slower than swapRows.)
 	void swapColumns(size_t a, size_t b);
@@ -140,28 +140,28 @@ public:
 
 	/// Shuffles the rows in this matrix. If pLabels is non-NULL, then it
 	/// will also be shuffled in a manner that preserves corresponding rows with this sparse matrix.
-	void shuffle(GRand* pRand, GMatrix* pLabels = nullptr);
+	void shuffle(WRand* pRand, WMatrix* pLabels = nullptr);
 
 	/// Returns a sub-matrix of this matrix
-	GSparseMatrix* subMatrix(size_t row, size_t col, size_t height, size_t width);
+	WSparseMatrix* subMatrix(size_t row, size_t col, size_t height, size_t width);
 
 	/// Returns the transpose of this matrix
-	GSparseMatrix* transpose();
+	WSparseMatrix* transpose();
 
 	/// Performs singular value decomposition. (Takes advantage of sparsity to
 	/// perform the decomposition efficiently.) Throws an exception if the default
 	/// value is not 0.0.
-	void singularValueDecomposition(GSparseMatrix** ppU, double** ppDiag, GSparseMatrix** ppV, bool throwIfNoConverge = false, size_t maxIters = 80);
+	void singularValueDecomposition(WSparseMatrix** ppU, double** ppDiag, WSparseMatrix** ppV, bool throwIfNoConverge = false, size_t maxIters = 80);
 
 	/// Computes the first principal component about the origin. (This method
 	/// expects the default value to be 0.0.) The size of pOutVector will be the
 	/// number of columns in this matrix.
 	/// (To compute the next principal component, call RemoveComponent,
 	/// then call this method again.)
-	void principalComponentAboutOrigin(GVec& outVector, GRand* pRand);
+	void principalComponentAboutOrigin(WVec& outVector, WRand* pRand);
 
 	/// Projects this sparse matrix onto the specified components. Returns a dense matrix.
-	GMatrix* project(GMatrix& components);
+	WMatrix* project(WMatrix& components);
 
 	/// Delete the last row in this sparse matrix. (Note that you can call swapRows to move any row
 	/// you want into the last position before you call this method.)
@@ -171,18 +171,18 @@ public:
 	void resize(size_t rows, size_t cols);
 
 protected:
-	void singularValueDecompositionHelper(GSparseMatrix** ppU, double** ppDiag, GSparseMatrix** ppV, bool throwIfNoConverge, size_t maxIters);
+	void singularValueDecompositionHelper(WSparseMatrix** ppU, double** ppDiag, WSparseMatrix** ppV, bool throwIfNoConverge, size_t maxIters);
 };
 
 /// Provides static methods for operating on sparse vectors
-class GSparseVec
+class WSparseVec
 {
 public:
 	/// Returns the index of the element with the largest magnitude
 	static size_t indexOfMaxMagnitude(SparseVec& sparse);
 
 	/// Computes the dot product of a sparse vector with a dense vector
-	static double dotProduct(SparseVec& sparse, GVec& dense);
+	static double dotProduct(SparseVec& sparse, WVec& dense);
 
 	/// Computes the dot product of two sparse vectors
 	static double dotProduct(SparseVec& a, SparseVec& b);
@@ -192,6 +192,6 @@ public:
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GSPARSEMATRIX_H__

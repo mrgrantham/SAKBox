@@ -1,7 +1,7 @@
-// GApp's command-line helpers.
+// WApp's command-line helpers.
 #include <gtest/gtest.h>
 
-#include <WClasses/GApp.h>
+#include <WClasses/WApp.h>
 
 #include <csignal>
 #include <cstdlib>
@@ -15,13 +15,13 @@
 #include <unistd.h>
 #endif
 
-using namespace GClasses;
+using namespace WClasses;
 
 // Command-line numbers: "abc" used to become 0.
 TEST(ArgReaderTest, PopDoubleRejectsNonNumbers) {
   char good[] = "2.5", sci[] = "-1e-3", bad[] = "abc", trailing[] = "3x";
   char *argv[] = {good, sci, bad, trailing};
-  GArgReader args(4, argv);
+  WArgReader args(4, argv);
   EXPECT_EQ(args.pop_double(), 2.5);
   EXPECT_EQ(args.pop_double(), -1e-3);
   EXPECT_THROW(args.pop_double(), std::exception);
@@ -32,14 +32,14 @@ TEST(ArgReaderTest, PopDoubleRejectsNonNumbers) {
 TEST(ArgReaderTest, PopUintRejectsEmptyAndTooBig) {
   char good[] = "42", empty[] = "", big[] = "4294967296", neg[] = "-1";
   char *argv[] = {good, empty, big, neg};
-  GArgReader args(4, argv);
+  WArgReader args(4, argv);
   EXPECT_EQ(args.pop_uint(), 42u);
   EXPECT_THROW(args.pop_uint(), std::exception);
   EXPECT_THROW(args.pop_uint(), std::exception);
   EXPECT_THROW(args.pop_uint(), std::exception);
 }
 
-// Running other programs. Unix only: on Windows GApp uses ShellExecute.
+// Running other programs. Unix only: on Windows WApp uses ShellExecute.
 #ifndef WINDOWS
 namespace {
 std::string tmpDir() {
@@ -65,30 +65,30 @@ TEST(SystemCallTest, RunsOneProgramNotAShellCommand) {
   // (true is run with the rest as its arguments, which it ignores)
   const std::string command =
       "/usr/bin/true ; /usr/bin/touch " + marker + " && /usr/bin/touch " + marker;
-  EXPECT_EQ(GApp::systemCall(command.c_str(), true, false), 0);
+  EXPECT_EQ(WApp::systemCall(command.c_str(), true, false), 0);
   EXPECT_FALSE(exists(marker));
-  EXPECT_EQ(GApp::systemCall("/bin/sh -c 'exit 3'", true, false), 3);
+  EXPECT_EQ(WApp::systemCall("/bin/sh -c 'exit 3'", true, false), 3);
 }
 
 // Quotes group an argument, as in a shell, and are removed: they used to be
 // passed on as part of it.
 TEST(SystemExecuteTest, QuotesGroupAnArgument) {
-  GPipe out;
-  EXPECT_EQ(GApp::systemExecute("/usr/bin/printf %s|%s \"a b\" 'c d'", true, &out), 0);
+  WPipe out;
+  EXPECT_EQ(WApp::systemExecute("/usr/bin/printf %s|%s \"a b\" 'c d'", true, &out), 0);
   EXPECT_EQ(out.read(), "a b|c d");
 }
 
 // A program that can't be run exits with 127, as in a shell. The forked
 // child used to throw instead, and carry on as a second copy of the caller.
 TEST(SystemExecuteTest, MissingProgramExits127) {
-  EXPECT_EQ(GApp::systemExecute("/nonexistent/program", true), 127);
+  EXPECT_EQ(WApp::systemExecute("/nonexistent/program", true), 127);
 }
 
 // A program killed by a signal is reported with that signal's number (it
 // gave the stop signal, 0).
 TEST(SystemExecuteTest, KilledBySignalNamesTheSignal) {
   try {
-    GApp::systemExecute("/bin/sh -c 'kill -TERM $$'", true);
+    WApp::systemExecute("/bin/sh -c 'kill -TERM $$'", true);
     FAIL() << "expected an exception";
   } catch (const std::exception &e) {
     EXPECT_NE(std::string(e.what()).find("signal 15"), std::string::npos) << e.what();
@@ -134,7 +134,7 @@ TEST(OpenTest, UrlIsOneArgumentNotShellText) {
   const std::string marker = tmpDir() + "/open_url_marker";
   unlink(marker.c_str());
   const std::string url = "http://localhost:8080/a?x=1&y=$(/usr/bin/touch " + marker + ")";
-  EXPECT_TRUE(GApp::openUrlInBrowser(url.c_str()));
+  EXPECT_TRUE(WApp::openUrlInBrowser(url.c_str()));
   EXPECT_EQ(opener.opened(), url + "\n");
   EXPECT_FALSE(exists(marker));
 }
@@ -142,15 +142,15 @@ TEST(OpenTest, UrlIsOneArgumentNotShellText) {
 TEST(OpenTest, FileNameWithSpacesAndSemicolons) {
   FakeOpener opener;
   const std::string name = tmpDir() + "/my file; name.txt";
-  EXPECT_TRUE(GApp::openFile(name.c_str()));
+  EXPECT_TRUE(WApp::openFile(name.c_str()));
   EXPECT_EQ(opener.opened(), name + "\n");
 }
 #endif // !WINDOWS
 
-// GSignalHandler turns SIGINT and SIGTERM into values check() returns, so a
+// WSignalHandler turns SIGINT and SIGTERM into values check() returns, so a
 // server can stop cleanly between requests.
 TEST(SignalHandlerTest, ReportsSigintAndSigterm) {
-  GSignalHandler handler;
+  WSignalHandler handler;
   EXPECT_EQ(handler.check(), 0);
   raise(SIGTERM);
   EXPECT_EQ(handler.check(), SIGTERM);
@@ -166,7 +166,7 @@ TEST(SignalHandlerTest, ReportsSigintAndSigterm) {
 TEST(SignalHandlerDeathTest, SegfaultStillEndsTheProgram) {
   EXPECT_EXIT(
       {
-        GSignalHandler handler;
+        WSignalHandler handler;
         raise(SIGSEGV);
         std::exit(0);
       },

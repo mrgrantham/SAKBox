@@ -18,8 +18,8 @@
 */
 
 #include <stdio.h>
-#include "GTime.h"
-#include "GString.h"
+#include "WTime.h"
+#include "WString.h"
 #include <time.h>
 #include <cmath>
 #ifdef WINDOWS
@@ -29,10 +29,10 @@
 #endif
 #include <sstream>
 
-namespace GClasses
+namespace WClasses
 {
 
-/*static*/ double GTime::seconds()
+/*static*/ double WTime::seconds()
 {
 #ifdef WINDOWS
 	return (double)GetTickCount() * 1e-3;
@@ -53,7 +53,7 @@ static const char* const g_GTime_months[] = {"Jan", "Feb", "Mar", "Apr", "May", 
 
 // SAKBox: t broken into parts, in GMT or local time, without gmtime and
 // localtime's buffer (shared by every thread)
-static struct tm GTime_parts(time_t t, bool bGreenwichMeanTime)
+static struct tm WTime_parts(time_t t, bool bGreenwichMeanTime)
 {
 	struct tm parts;
 #ifdef WINDOWS
@@ -70,15 +70,15 @@ static struct tm GTime_parts(time_t t, bool bGreenwichMeanTime)
 	return parts;
 }
 
-/*static*/ std::string GTime::httpDate(time_t t)
+/*static*/ std::string WTime::httpDate(time_t t)
 {
-	const struct tm parts = GTime_parts(t, true);
+	const struct tm parts = WTime_parts(t, true);
 	char buf[40];
 	snprintf(buf, sizeof(buf), "%s, %02d %s %04d %02d:%02d:%02d GMT", g_GTime_days[parts.tm_wday], parts.tm_mday, g_GTime_months[parts.tm_mon], 1900 + parts.tm_year, parts.tm_hour, parts.tm_min, parts.tm_sec);
 	return buf;
 }
 
-/*static*/ const char* GTime::asciiTime(char* szBuf, int nSize, bool bGreenwichMeanTime)
+/*static*/ const char* WTime::asciiTime(char* szBuf, int nSize, bool bGreenwichMeanTime)
 {
 	time_t t = time((time_t*)nullptr);
 #ifdef WINDOWS
@@ -92,7 +92,7 @@ static struct tm GTime_parts(time_t t, bool bGreenwichMeanTime)
 #else
 	// SAKBox: asctime's format ("Thu Nov  5 07:08:09 2026"), without
 	// asctime, gmtime and localtime's shared buffers
-	const struct tm parts = GTime_parts(t, bGreenwichMeanTime);
+	const struct tm parts = WTime_parts(t, bGreenwichMeanTime);
 	char buf[64];
 	snprintf(buf, sizeof(buf), "%s %s %2d %02d:%02d:%02d %d", g_GTime_days[parts.tm_wday], g_GTime_months[parts.tm_mon], parts.tm_mday, parts.tm_hour, parts.tm_min, parts.tm_sec, 1900 + parts.tm_year);
 	int len = safe_strcpy(szBuf, buf, nSize);
@@ -104,35 +104,35 @@ static struct tm GTime_parts(time_t t, bool bGreenwichMeanTime)
 	return szBuf;
 }
 
-void GTime_printTwoDigits(std::ostream& os, unsigned int n)
+void WTime_printTwoDigits(std::ostream& os, unsigned int n)
 {
 	if(n < 10)
 		os << "0";
 	os << n;
 }
 
-/*static*/ void GTime::appendTimeStampValue(std::string* pS, const char* sep1, const char* sep2, const char* sep3, bool bGreenwichMeanTime)
+/*static*/ void WTime::appendTimeStampValue(std::string* pS, const char* sep1, const char* sep2, const char* sep3, bool bGreenwichMeanTime)
 {
 	time_t t = time((time_t*)nullptr);
-	const struct tm parts = GTime_parts(t, bGreenwichMeanTime);
+	const struct tm parts = WTime_parts(t, bGreenwichMeanTime);
 	const struct tm* pTime = &parts;
 	std::ostringstream os;
 	unsigned int n = 1900 + pTime->tm_year;
 	os << n;
 	os << sep1;
-	GTime_printTwoDigits(os, pTime->tm_mon + 1);
+	WTime_printTwoDigits(os, pTime->tm_mon + 1);
 	os << sep1;
-	GTime_printTwoDigits(os, pTime->tm_mday);
+	WTime_printTwoDigits(os, pTime->tm_mday);
 	os << sep2;
-	GTime_printTwoDigits(os, pTime->tm_hour);
+	WTime_printTwoDigits(os, pTime->tm_hour);
 	os << sep3;
-	GTime_printTwoDigits(os, pTime->tm_min);
+	WTime_printTwoDigits(os, pTime->tm_min);
 	os << sep3;
-	GTime_printTwoDigits(os, pTime->tm_sec);
+	WTime_printTwoDigits(os, pTime->tm_sec);
 	(*pS).append(os.str());
 }
 
-int GTime_parseIntVal(const char* buf, int min, int max, bool* pOk)
+int WTime_parseIntVal(const char* buf, int min, int max, bool* pOk)
 {
 	for(size_t i = 0; buf[i] != '\0'; i++)
 	{
@@ -156,7 +156,7 @@ bool is_double_char(char c)
 	return false;
 }
 
-double GTime_parseDoubleVal(const char* buf, double min, double max, bool* pOk)
+double WTime_parseDoubleVal(const char* buf, double min, double max, bool* pOk)
 {
 	for(size_t i = 0; buf[i] != '\0'; i++)
 	{
@@ -171,7 +171,7 @@ double GTime_parseDoubleVal(const char* buf, double min, double max, bool* pOk)
 	return val;
 }
 
-/*static*/ bool GTime::fromString(double* pOutTime, const char* szData, const char* szFormat)
+/*static*/ bool WTime::fromString(double* pOutTime, const char* szData, const char* szFormat)
 {
 	double fractional_seconds = 0.0;
 	struct tm ts;
@@ -210,26 +210,26 @@ double GTime_parseDoubleVal(const char* buf, double min, double max, bool* pOk)
 		{
 			case 'y':
 			case 'Y':
-				ts.tm_year = GTime_parseIntVal(buf, 1000, 3000, &ok) - 1900;
+				ts.tm_year = WTime_parseIntVal(buf, 1000, 3000, &ok) - 1900;
 				break;
 			case 'M':
-				ts.tm_mon = GTime_parseIntVal(buf, 1, 12, &ok) - 1;
+				ts.tm_mon = WTime_parseIntVal(buf, 1, 12, &ok) - 1;
 				break;
 			case 'd':
 			case 'D':
-				ts.tm_mday = GTime_parseIntVal(buf, 1, 31, &ok);
+				ts.tm_mday = WTime_parseIntVal(buf, 1, 31, &ok);
 				break;
 			case 'h':
 			case 'H':
-				ts.tm_hour = GTime_parseIntVal(buf, 0, 23, &ok);
+				ts.tm_hour = WTime_parseIntVal(buf, 0, 23, &ok);
 				break;
 			case 'm':
-				ts.tm_min = GTime_parseIntVal(buf, 0, 59, &ok);
+				ts.tm_min = WTime_parseIntVal(buf, 0, 59, &ok);
 				break;
 			case 's':
 			case 'S':
 			{
-				double d = GTime_parseDoubleVal(buf, 0, 61, &ok);
+				double d = WTime_parseDoubleVal(buf, 0, 61, &ok);
 				ts.tm_sec = (int)std::floor(d);
 				fractional_seconds = d - std::floor(d);
 			}
@@ -256,23 +256,23 @@ double GTime_parseDoubleVal(const char* buf, double min, double max, bool* pOk)
 
 
 
-GProgressEstimator::GProgressEstimator(size_t totalIters, size_t sampleSize)
+WProgressEstimator::WProgressEstimator(size_t totalIters, size_t sampleSize)
 : m_totalIters(totalIters), m_sampleSize(sampleSize)
 {
-	m_startTime = GTime::seconds();
+	m_startTime = WTime::seconds();
 	m_iterStartTime = m_startTime;
 	m_queue.resize(sampleSize);
 	m_queuePos = 0;
 }
 
-GProgressEstimator::~GProgressEstimator()
+WProgressEstimator::~WProgressEstimator()
 {
 }
 
-const char* GProgressEstimator::estimate(size_t iter)
+const char* WProgressEstimator::estimate(size_t iter)
 {
 	// Measure the duration of the last iteration
-	double timeNow = GTime::seconds();
+	double timeNow = WTime::seconds();
 	double iterDuration = timeNow - m_iterStartTime;
 	if(m_samples.size() >= m_sampleSize)
 		m_samples.drop_by_value(m_queue[m_queuePos]);
@@ -329,5 +329,5 @@ const char* GProgressEstimator::estimate(size_t iter)
 }
 
 
-} // namespace GClasses
+} // namespace WClasses
 

@@ -23,33 +23,33 @@
 #include <cstddef>
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GConstStringHashTable;
-class GConstStringToIndexHashTable;
-class GStemmer;
-class GHeap;
+class WConstStringHashTable;
+class WConstStringToIndexHashTable;
+class WStemmer;
+class WHeap;
 
 
 /// This iterates over the words in a block of text
-class GWordIterator
+class WWordIterator
 {
 protected:
 	const char* m_pText;
 	size_t m_len;
 
 public:
-	GWordIterator(const char* text, size_t len);
-	~GWordIterator();
+	WWordIterator(const char* text, size_t len);
+	~WWordIterator();
 
 	/// Obtains the next word in the block of text. Returns false if there are no words left.
 	bool next(const char** ppWord, size_t* pLen);
 };
 
 
-/// Stores statistics about each word in a GVocabulary
-class GWordStats
+/// Stores statistics about each word in a WVocabulary
+class WWordStats
 {
 public:
 	size_t m_curDocFreq; // the number of times the word has been found in the current document
@@ -58,7 +58,7 @@ public:
 	size_t m_lastDocContainingWord; // the most recent document id in which this word has been found
 	const char* m_szWord;
 
-	GWordStats()
+	WWordStats()
 	: m_curDocFreq(1), m_maxWordFreq(1), m_docsContainingWord(1), m_lastDocContainingWord(0), m_szWord(nullptr)
 	{
 	}
@@ -68,22 +68,22 @@ public:
 /// This is a helper class which is useful for text-mining. It collects words,
 /// stems them, filters them through a list of stop-words, and assigns a discrete
 /// number to each word.
-class GVocabulary
+class WVocabulary
 {
 protected:
-	GStemmer* m_pStemmer;
+	WStemmer* m_pStemmer;
 	size_t m_minWordSize;
 	size_t m_vocabSize;
-	GConstStringHashTable* m_pStopWords;
-	GConstStringToIndexHashTable* m_pVocabulary;
-	GHeap* m_pHeap;
+	WConstStringHashTable* m_pStopWords;
+	WConstStringToIndexHashTable* m_pVocabulary;
+	WHeap* m_pHeap;
 	char wordBuf[64];
 	size_t m_docNumber;
-	std::vector<GWordStats>* m_pWordStats;
+	std::vector<WWordStats>* m_pWordStats;
 
 public:
-	GVocabulary(bool stemWords);
-	~GVocabulary();
+	WVocabulary(bool stemWords);
+	~WVocabulary();
 
 	/// Sets the minimum word size. Smaller words will be ignored. The
 	/// default is 4.
@@ -114,7 +114,7 @@ public:
 	const char* word(size_t index);
 
 	/// Returns a pointer to the heap this uses to store strings
-	GHeap* heap() { return m_pHeap; }
+	WHeap* heap() { return m_pHeap; }
 
 	/// If you want this to track statistics about the number of docs
 	/// that contain each word, and the max number of times each word occurs
@@ -127,7 +127,7 @@ public:
 
 	/// Returns the stats about a word. Throws if you weren't tracking
 	/// stats (ie if you didn't call newDoc before each new document).
-	GWordStats& stats(size_t word);
+	WWordStats& stats(size_t word);
 
 	/// Returns the number of documents from which words have been added so far.
 	size_t docCount() { return m_docNumber + 1; }
@@ -141,7 +141,7 @@ public:
 
 
 /// Represents a portion of a diff. Each chunk represents a left-only, right-only, or matching section.
-class GDiffChunk
+class WDiffChunk
 {
 public:
 	size_t left; // Line number in the left file, or INVALID_INDEX
@@ -151,14 +151,14 @@ public:
 
 
 /// Diffs two files. (Works with binary files as well as text files.)
-class GDiffer
+class WDiffer
 {
 protected:
-	std::vector<GDiffChunk*> m_chunks;
+	std::vector<WDiffChunk*> m_chunks;
 
 public:
-	GDiffer();
-	~GDiffer();
+	WDiffer();
+	~WDiffer();
 
 protected:
 	static void biggest_matching_segment_one_way(const char* file1, size_t len1, size_t pos1, size_t spot, const char* file2, size_t len2, size_t pos2, size_t* match1, size_t* match2, size_t* matchLen);
@@ -179,10 +179,10 @@ public:
 	void simplify(size_t min_match_size);
 
 	/// Returns a vector describing all the left-only, right-only, and matching "chunks" in the two files.
-	std::vector<GDiffChunk*>& chunks() { return m_chunks; }
+	std::vector<WDiffChunk*>& chunks() { return m_chunks; }
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GTEXT_H__

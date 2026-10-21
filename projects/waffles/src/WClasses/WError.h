@@ -45,7 +45,7 @@
 
 
 
-namespace GClasses
+namespace WClasses
 {
 
 
@@ -62,21 +62,21 @@ std::string to_str(const T& n)
 	return os.str();
 }
 
-class GMatrix; //Forward declare GMatrix so that I can declare a
+class WMatrix; //Forward declare WMatrix so that I can declare a
 //to_str override for it
 
-///\brief Allow GMatrix objects to easily be converted into a string
+///\brief Allow WMatrix objects to easily be converted into a string
 ///for debugging
 ///
-///\note this is defined with the rest of the GMatrix code in
-///      GMatrix.cpp.  It is only declared in GError.h
+///\note this is defined with the rest of the WMatrix code in
+///      WMatrix.cpp.  It is only declared in WError.h
 ///
 ///\param m the matrix that will be converted to a string
 ///
 ///\return a string representing the matrix \a m
 ///
 ///\see template<class T> to_str(const T& n)
-std::string to_str(const GMatrix& m);
+std::string to_str(const WMatrix& m);
 
 /// SAKBox: the strict counterpart of atoi and atof (which give 0 for "abc",
 /// 12 for "12x" and overflow silently). Reads all of [szFirst, szLast) as one
@@ -250,23 +250,23 @@ public:
 #define INVALID_INDEX ((size_t)-1)
 
 
-void GAssertFailed(const char* filename, int line);
-void GAssertFailed(const char* filename, int line, const char* message);
+void WAssertFailed(const char* filename, int line);
+void WAssertFailed(const char* filename, int line, const char* message);
 
 #ifdef _DEBUG
-#define GASSERT_HELPER1(x)                     \
+#define WASSERT_HELPER1(x)                     \
 	{                                          \
 		if(!(x))                               \
-			GAssertFailed(__FILE__, __LINE__); \
+			WAssertFailed(__FILE__, __LINE__); \
 	}
-#define GASSERT_HELPER2(x, msg)                     \
+#define WASSERT_HELPER2(x, msg)                     \
 	{                                               \
 		if(!(x))                                    \
-			GAssertFailed(__FILE__, __LINE__, msg); \
+			WAssertFailed(__FILE__, __LINE__, msg); \
 	}
 #else // _DEBUG
-#define GASSERT_HELPER1(x) ((void)0)
-#define GASSERT_HELPER2(x, msg) ((void)0)
+#define WASSERT_HELPER1(x) ((void)0)
+#define WASSERT_HELPER2(x, msg) ((void)0)
 #endif // else _DEBUG
 
 #define COUNT_GASSERT_ARGS_IMPL2(_1, _2, count, ...) \
@@ -276,26 +276,26 @@ void GAssertFailed(const char* filename, int line, const char* message);
 #define COUNT_GASSERT_ARGS(...) \
 	COUNT_GASSERT_ARGS_IMPL((__VA_ARGS__, 2, 1, 0))
 /* Pick the right helper macro to invoke. */
-#define GASSERT_CHOOSE_HELPER2(count) GASSERT_HELPER##count
-#define GASSERT_CHOOSE_HELPER1(count) GASSERT_CHOOSE_HELPER2(count)
-#define GASSERT_CHOOSE_HELPER(count) GASSERT_CHOOSE_HELPER1(count)
+#define WASSERT_CHOOSE_HELPER2(count) WASSERT_HELPER##count
+#define WASSERT_CHOOSE_HELPER1(count) WASSERT_CHOOSE_HELPER2(count)
+#define WASSERT_CHOOSE_HELPER(count) WASSERT_CHOOSE_HELPER1(count)
 /* The actual macro. */
-#define GASSERT_GLUE(x, y) x y
-#define GAssert(...) \
-	GASSERT_GLUE(GASSERT_CHOOSE_HELPER(COUNT_GASSERT_ARGS(__VA_ARGS__)), (__VA_ARGS__))
+#define WASSERT_GLUE(x, y) x y
+#define WAssert(...) \
+	WASSERT_GLUE(WASSERT_CHOOSE_HELPER(COUNT_GASSERT_ARGS(__VA_ARGS__)), (__VA_ARGS__))
 
 
 
 ///\brief Instantiating an object of this class specifies that any exceptions thrown
 /// during the life of this object should be treated as "expected".
-class GExpectException
+class WExpectException
 {
 protected:
 	bool m_prev;
 
 public:
-	GExpectException();
-	~GExpectException();
+	WExpectException();
+	~WExpectException();
 };
 
 
@@ -328,7 +328,7 @@ long filelength(int filedes);
 ///
 ///Calls operator==(const T1&,const T2&) to determine equality.
 ///
-///Calls GClasses::to_str to form the string representation of \a expected
+///Calls WClasses::to_str to form the string representation of \a expected
 ///and \a got
 ///
 ///\param expected The value expected from specifications
@@ -349,8 +349,8 @@ void TestEqual(const T1& expected, const T2& got, const std::string& test_descr)
 		  << endl
 		  << "Test for equality failed: " << test_descr << endl
 		  << endl
-		  << "Expected: " << GClasses::to_str(expected) << endl
-		  << "Got     : " << GClasses::to_str(got) << endl;
+		  << "Expected: " << WClasses::to_str(expected) << endl
+		  << "Got     : " << WClasses::to_str(got) << endl;
 		throw Ex("Test for equality failed: ", test_descr);
 	}
 }
@@ -389,6 +389,6 @@ void TestEqual(char* expected, char* got, const std::string& desc);
 ///            in diagnosing the bug.
 void TestContains(const std::string& expectedSubstring, const std::string& got, const std::string& desc);
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GERROR_H__

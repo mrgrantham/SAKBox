@@ -20,29 +20,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "GBigInt.h"
-#include "GError.h"
-#include "GHolders.h"
-#include "GKeyPair.h"
-#include "GDom.h"
+#include "WBigInt.h"
+#include "WError.h"
+#include "WHolders.h"
+#include "WKeyPair.h"
+#include "WDom.h"
 #ifndef WINDOWS
 #include <sys/types.h>
 typedef int64_t __int64;
 #endif // not WINDOWS
 
-namespace GClasses
+namespace WClasses
 {
 
-GBigInt::GBigInt()
+WBigInt::WBigInt()
 {
 	m_pBits = nullptr;
 	m_nUInts = 0;
 	m_bSign = true;
 }
 
-GBigInt::GBigInt(GDomNode* pNode)
+WBigInt::WBigInt(WDomNode* pNode)
 {
-	GDomListIterator it(pNode);
+	WDomListIterator it(pNode);
 	m_nUInts = (unsigned int)it.remaining();
 	m_pBits = new unsigned int[m_nUInts - 1];
 	if(it.currentInt() >= 0)
@@ -57,21 +57,21 @@ GBigInt::GBigInt(GDomNode* pNode)
 	}
 }
 
-GBigInt::~GBigInt()
+WBigInt::~WBigInt()
 {
 	delete[] m_pBits;
 }
 
-GDomNode* GBigInt::serialize(GDom* pDoc) const
+WDomNode* WBigInt::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newList();
+	WDomNode* pNode = pDoc->newList();
 	pNode->add(pDoc, m_bSign ? 1ll : -1ll);
 	for(unsigned int i = 0; i < m_nUInts; i++)
 		pNode->add(pDoc, (long long)m_pBits[i]);
 	return pNode;
 }
 
-unsigned int GBigInt::getBitCount()
+unsigned int WBigInt::getBitCount()
 {
 	if(m_nUInts < 1)
 		return 0;
@@ -94,7 +94,7 @@ unsigned int GBigInt::getBitCount()
 	return nBitCount;
 }
 
-void GBigInt::resize(unsigned int nBits)
+void WBigInt::resize(unsigned int nBits)
 {
 	if(nBits < 1)
 	{
@@ -125,7 +125,7 @@ void GBigInt::resize(unsigned int nBits)
 	m_nUInts = nNewUInts;
 }
 
-void GBigInt::setBit(unsigned int nPos, bool bVal)
+void WBigInt::setBit(unsigned int nPos, bool bVal)
 {
 	if(nPos >= m_nUInts * BITS_PER_INT)
 		resize(nPos + 1);
@@ -135,14 +135,14 @@ void GBigInt::setBit(unsigned int nPos, bool bVal)
 		m_pBits[nPos / BITS_PER_INT] &= ~(1 << (nPos % BITS_PER_INT));
 }
 
-void GBigInt::setUInt(unsigned int nPos, unsigned int nVal)
+void WBigInt::setUInt(unsigned int nPos, unsigned int nVal)
 {
 	if(nPos >= m_nUInts)
 		resize((nPos + 1) * BITS_PER_INT);
 	m_pBits[nPos] = nVal;
 }
 
-void GBigInt::copy(GBigInt* pBigNumber)
+void WBigInt::copy(WBigInt* pBigNumber)
 {
 	if(m_nUInts < pBigNumber->m_nUInts)
 		resize(pBigNumber->m_nUInts * BITS_PER_INT);
@@ -156,13 +156,13 @@ void GBigInt::copy(GBigInt* pBigNumber)
 	m_bSign = pBigNumber->m_bSign;
 }
 
-void GBigInt::setToZero()
+void WBigInt::setToZero()
 {
 	memset(m_pBits, '\0', m_nUInts * sizeof(unsigned int));
 	m_bSign = true;
 }
 
-bool GBigInt::isZero()
+bool WBigInt::isZero()
 {
 	if(m_nUInts < 1)
 		return true;
@@ -175,7 +175,7 @@ bool GBigInt::isZero()
 	return true;
 }
 
-unsigned int* GBigInt::toBufferGiveOwnership()
+unsigned int* WBigInt::toBufferGiveOwnership()
 {
 	unsigned int* pBuffer = m_pBits;
 	m_bSign = true;
@@ -184,7 +184,7 @@ unsigned int* GBigInt::toBufferGiveOwnership()
 	return pBuffer;
 }
 
-bool GBigInt::toBuffer(unsigned int* pBuffer, int nBufferSize)
+bool WBigInt::toBuffer(unsigned int* pBuffer, int nBufferSize)
 {
 	int nSize = getUIntCount();
 	if(nBufferSize < nSize)
@@ -195,7 +195,7 @@ bool GBigInt::toBuffer(unsigned int* pBuffer, int nBufferSize)
 	return true;
 }
 
-void GBigInt::fromBuffer(const unsigned int* pBuffer, int nBufferSize)
+void WBigInt::fromBuffer(const unsigned int* pBuffer, int nBufferSize)
 {
 	setToZero();
 	int n;
@@ -203,11 +203,11 @@ void GBigInt::fromBuffer(const unsigned int* pBuffer, int nBufferSize)
 		setUInt(n, pBuffer[n]);
 }
 
-void GBigInt::fromByteBuffer(const unsigned char* pBuffer, int nBufferChars)
+void WBigInt::fromByteBuffer(const unsigned char* pBuffer, int nBufferChars)
 {
 	// Make sure input is alligned to sizeof(unsigned int)
 	int nTempBufSize = nBufferChars + sizeof(unsigned int) - 1;
-	GTEMPBUF(unsigned char, pBuf, nTempBufSize);
+	WTEMPBUF(unsigned char, pBuf, nTempBufSize);
 	if((nBufferChars % sizeof(unsigned int)) != 0)
 	{
 		memset(pBuf, '\0', nBufferChars + sizeof(unsigned int) - 1);
@@ -219,7 +219,7 @@ void GBigInt::fromByteBuffer(const unsigned char* pBuffer, int nBufferChars)
 	fromBuffer((unsigned int*)pBuffer, nBufferChars);
 }
 
-bool GBigInt::toHex(char* szBuff, int nBufferSize)
+bool WBigInt::toHex(char* szBuff, int nBufferSize)
 {
 	bool bStarted = false;
 	int nUInts = getUIntCount();
@@ -246,7 +246,7 @@ bool GBigInt::toHex(char* szBuff, int nBufferSize)
 	return true;
 }
 
-bool GBigInt::fromHex(const char* szHexValue)
+bool WBigInt::fromHex(const char* szHexValue)
 {
 	unsigned int nLength = (unsigned int)strlen(szHexValue);
 	resize(nLength * 4);
@@ -277,12 +277,12 @@ bool GBigInt::fromHex(const char* szHexValue)
 	return true;
 }
 
-void GBigInt::negate()
+void WBigInt::negate()
 {
 	m_bSign = !m_bSign;
 }
 
-int GBigInt::compareTo(GBigInt* pOperand)
+int WBigInt::compareTo(WBigInt* pOperand)
 {
 	if(m_bSign != pOperand->m_bSign)
 	{
@@ -313,7 +313,7 @@ int GBigInt::compareTo(GBigInt* pOperand)
 	return m_bSign ? nCmp : -nCmp;
 }
 
-void GBigInt::increment()
+void WBigInt::increment()
 {
 	if(!m_bSign)
 	{
@@ -333,7 +333,7 @@ void GBigInt::increment()
 	}
 }
 
-void GBigInt::decrement()
+void WBigInt::decrement()
 {
 	if(!m_bSign)
 	{
@@ -361,7 +361,7 @@ void GBigInt::decrement()
 	}
 }
 
-void GBigInt::add(GBigInt* pBigNumber)
+void WBigInt::add(WBigInt* pBigNumber)
 {
 	// Check signs
 	if(!m_bSign)
@@ -412,7 +412,7 @@ void GBigInt::add(GBigInt* pBigNumber)
 	}
 }
 
-void GBigInt::subtract(GBigInt* pBigNumber)
+void WBigInt::subtract(WBigInt* pBigNumber)
 {
 	// Check signs
 	if(!m_bSign)
@@ -431,9 +431,9 @@ void GBigInt::subtract(GBigInt* pBigNumber)
 	}
 
 	// Check sizes
-	GBigInt tmp;
-	GBigInt* pA = this;
-	GBigInt* pB = pBigNumber;
+	WBigInt tmp;
+	WBigInt* pA = this;
+	WBigInt* pB = pBigNumber;
 	int nCmp = compareTo(pBigNumber);
 	if(nCmp < 0)
 	{
@@ -473,13 +473,13 @@ void GBigInt::subtract(GBigInt* pBigNumber)
 	}
 }
 
-void GBigInt::shiftLeft(unsigned int nBits)
+void WBigInt::shiftLeft(unsigned int nBits)
 {
 	shiftLeftBits(nBits % BITS_PER_INT);
 	shiftLeftUInts(nBits / BITS_PER_INT);
 }
 
-void GBigInt::shiftLeftBits(unsigned int nBits)
+void WBigInt::shiftLeftBits(unsigned int nBits)
 {
 	if(m_nUInts == 0)
 		return;
@@ -499,7 +499,7 @@ void GBigInt::shiftLeftBits(unsigned int nBits)
 	}
 }
 
-void GBigInt::shiftLeftUInts(unsigned int nUInts)
+void WBigInt::shiftLeftUInts(unsigned int nUInts)
 {
 	if(m_nUInts == 0)
 		return;
@@ -531,13 +531,13 @@ void GBigInt::shiftLeftUInts(unsigned int nUInts)
 	return;
 }
 
-void GBigInt::shiftRight(unsigned int nBits)
+void WBigInt::shiftRight(unsigned int nBits)
 {
 	shiftRightBits(nBits % BITS_PER_INT);
 	shiftRightUInts(nBits / BITS_PER_INT);
 }
 
-void GBigInt::shiftRightBits(unsigned int nBits)
+void WBigInt::shiftRightBits(unsigned int nBits)
 {
 	if(m_nUInts == 0)
 		return;
@@ -558,7 +558,7 @@ void GBigInt::shiftRightBits(unsigned int nBits)
 	}
 }
 
-void GBigInt::shiftRightUInts(unsigned int nUInts)
+void WBigInt::shiftRightUInts(unsigned int nUInts)
 {
 	if(m_nUInts == 0)
 		return;
@@ -571,7 +571,7 @@ void GBigInt::shiftRightUInts(unsigned int nUInts)
 		m_pBits[n] = 0;
 }
 
-void GBigInt::Or(GBigInt* pBigNumber)
+void WBigInt::Or(WBigInt* pBigNumber)
 {
 	if(m_nUInts < pBigNumber->m_nUInts)
 		resize(pBigNumber->m_nUInts * BITS_PER_INT);
@@ -580,14 +580,14 @@ void GBigInt::Or(GBigInt* pBigNumber)
 		m_pBits[n] |= pBigNumber->getUInt(n);
 }
 
-void GBigInt::And(GBigInt* pBigNumber)
+void WBigInt::And(WBigInt* pBigNumber)
 {
 	unsigned int n;
 	for(n = 0; n < m_nUInts; n++)
 		m_pBits[n] &= pBigNumber->getUInt(n);
 }
 
-void GBigInt::Xor(GBigInt* pBigNumber)
+void WBigInt::Xor(WBigInt* pBigNumber)
 {
 	if(m_nUInts < pBigNumber->m_nUInts)
 		resize(pBigNumber->m_nUInts * BITS_PER_INT);
@@ -596,7 +596,7 @@ void GBigInt::Xor(GBigInt* pBigNumber)
 		m_pBits[n] ^= pBigNumber->getUInt(n);
 }
 
-void GBigInt::multiply(GBigInt* pBigNumber, unsigned int nUInt)
+void WBigInt::multiply(WBigInt* pBigNumber, unsigned int nUInt)
 {
 	if(nUInt == 0)
 	{
@@ -620,11 +620,11 @@ void GBigInt::multiply(GBigInt* pBigNumber, unsigned int nUInt)
 	}
 }
 
-void GBigInt::multiply(GBigInt* pFirst, GBigInt* pSecond)
+void WBigInt::multiply(WBigInt* pFirst, WBigInt* pSecond)
 {
 	setToZero();
 	resize(pFirst->getBitCount() + pSecond->getBitCount());
-	GBigInt tmp;
+	WBigInt tmp;
 	unsigned int nUInts = pFirst->m_nUInts;
 	if(pSecond->m_nUInts > nUInts)
 		nUInts = pSecond->m_nUInts;
@@ -638,7 +638,7 @@ void GBigInt::multiply(GBigInt* pFirst, GBigInt* pSecond)
 	m_bSign = ((pFirst->m_bSign == pSecond->m_bSign) ? true : false);
 }
 
-void GBigInt::divide(GBigInt* pInNominator, GBigInt* pInDenominator, GBigInt* pOutRemainder)
+void WBigInt::divide(WBigInt* pInNominator, WBigInt* pInDenominator, WBigInt* pOutRemainder)
 {
 	setToZero();
 	resize(pInNominator->getBitCount());
@@ -667,7 +667,7 @@ void GBigInt::divide(GBigInt* pInNominator, GBigInt* pInDenominator, GBigInt* pO
 
 // DO NOT use for crypto
 // This is NOT a cryptographic random number generator
-void GBigInt::setRandom(unsigned int nBits)
+void WBigInt::setRandom(unsigned int nBits)
 {
 	resize(nBits);
 	unsigned int nBytes = nBits / 8;
@@ -686,27 +686,27 @@ void GBigInt::setRandom(unsigned int nBits)
 
 // Input:  integers a, b
 // Output: [this,x,y] where "this" is the greatest common divisor of a,b and where g=xa+by (x or y can be negative)
-void GBigInt::euclid(GBigInt* pA1, GBigInt* pB1, GBigInt* pOutX /*=NULL*/, GBigInt* pOutY /*=NULL*/)
+void WBigInt::euclid(WBigInt* pA1, WBigInt* pB1, WBigInt* pOutX /*=NULL*/, WBigInt* pOutY /*=NULL*/)
 {
-	GBigInt q;
-	GBigInt r;
-	GBigInt x;
-	GBigInt y;
+	WBigInt q;
+	WBigInt r;
+	WBigInt x;
+	WBigInt y;
 
-	GBigInt a;
+	WBigInt a;
 	a.copy(pA1);
 	a.setSign(true);
 
-	GBigInt b;
+	WBigInt b;
 	b.copy(pB1);
 	b.setSign(true);
 
-	GBigInt x0;
+	WBigInt x0;
 	x0.increment();
 	x0.setSign(pA1->getSign());
-	GBigInt x1;
-	GBigInt y0;
-	GBigInt y1;
+	WBigInt x1;
+	WBigInt y0;
+	WBigInt y1;
 	y1.increment();
 	y1.setSign(pB1->getSign());
 
@@ -743,7 +743,7 @@ void GBigInt::euclid(GBigInt* pA1, GBigInt* pB1, GBigInt* pOutX /*=NULL*/, GBigI
 // Output: It will return a key that has no common factors with pProd.  It starts
 //         with the random data you provide and increments it until it fits this
 //         criteria.
-void GBigInt::selectPublicKey(const unsigned int* pRandomData, int nRandomDataUInts, GBigInt* pProd)
+void WBigInt::selectPublicKey(const unsigned int* pRandomData, int nRandomDataUInts, WBigInt* pProd)
 {
 	// copy random data
 	setToZero();
@@ -752,7 +752,7 @@ void GBigInt::selectPublicKey(const unsigned int* pRandomData, int nRandomDataUI
 		setUInt(n, pRandomData[n]);
 
 	// increment until this number has no common factor with pProd
-	GBigInt tmp;
+	WBigInt tmp;
 	while(true)
 	{
 		tmp.euclid(this, pProd);
@@ -764,12 +764,12 @@ void GBigInt::selectPublicKey(const unsigned int* pRandomData, int nRandomDataUI
 }
 
 // (Used by CalculatePrivateKey)
-void EuclidSwap(GBigInt* a, GBigInt* b, GBigInt* c)
+void EuclidSwap(WBigInt* a, WBigInt* b, WBigInt* c)
 {
-	GBigInt t1;
+	WBigInt t1;
 	t1.copy(a);
 	a->copy(b);
-	GBigInt tmp;
+	WBigInt tmp;
 	tmp.multiply(b, c);
 	b->copy(&t1);
 	b->subtract(&tmp);
@@ -778,16 +778,16 @@ void EuclidSwap(GBigInt* a, GBigInt* b, GBigInt* c)
 // Input:  pProd is the product of (p - 1) * (q - 1) where p and q are prime
 //         pPublicKey is a number that has no common factors with pProd
 // Output: this will become a private key to go with the public key
-void GBigInt::calculatePrivateKey(GBigInt* pPublicKey, GBigInt* pProd)
+void WBigInt::calculatePrivateKey(WBigInt* pPublicKey, WBigInt* pProd)
 {
-	GBigInt d;
-	GBigInt q;
-	GBigInt d2;
-	GBigInt u;
-	GBigInt u2;
-	GBigInt v;
-	GBigInt v2;
-	GBigInt r; // holds a remainder (unused)
+	WBigInt d;
+	WBigInt q;
+	WBigInt d2;
+	WBigInt u;
+	WBigInt u2;
+	WBigInt v;
+	WBigInt v2;
+	WBigInt r; // holds a remainder (unused)
 
 	d.copy(pPublicKey);
 	d2.copy(pProd);
@@ -814,16 +814,16 @@ void GBigInt::calculatePrivateKey(GBigInt* pPublicKey, GBigInt* pProd)
 
 // Input:  a, k>=0, n>=2
 // Output: "this" where "this" = (a^k)%n   (^ = exponent operator, not xor operatore)
-void GBigInt::powerMod(GBigInt* pA, GBigInt* pK, GBigInt* pN)
+void WBigInt::powerMod(WBigInt* pA, WBigInt* pK, WBigInt* pN)
 {
-	GBigInt k;
+	WBigInt k;
 	k.copy(pK);
-	GBigInt c;
+	WBigInt c;
 	c.copy(pA);
-	GBigInt b;
+	WBigInt b;
 	b.increment();
-	GBigInt p;
-	GBigInt q;
+	WBigInt p;
+	WBigInt q;
 	while(!k.isZero())
 	{
 		if(k.getBit(0))
@@ -842,26 +842,26 @@ void GBigInt::powerMod(GBigInt* pA, GBigInt* pK, GBigInt* pN)
 // Input:  n>=3, a where 2<=a<n
 // Output: "true" if this is either prime or a strong pseudoprime to base a,
 //		   "false" otherwise
-bool GBigInt::millerRabin(GBigInt* pA)
+bool WBigInt::millerRabin(WBigInt* pA)
 {
 	if(!getBit(0))
 		return false;
-	GBigInt g;
+	WBigInt g;
 	g.euclid(pA, this);
-	GBigInt one;
+	WBigInt one;
 	one.increment();
 	if(g.compareTo(&one) > 0)
 		return false;
-	GBigInt m;
+	WBigInt m;
 	m.copy(this);
 	m.decrement();
-	GBigInt s;
+	WBigInt s;
 	while(!m.getBit(0))
 	{
 		m.shiftRightBits(1);
 		s.increment();
 	}
-	GBigInt b;
+	WBigInt b;
 	b.powerMod(pA, &m, this);
 	if(b.compareTo(&one) == 0)
 		return true;
@@ -870,8 +870,8 @@ bool GBigInt::millerRabin(GBigInt* pA)
 	increment();
 	if(nCmp == 0)
 		return true;
-	GBigInt i;
-	GBigInt b1;
+	WBigInt i;
+	WBigInt b1;
 	i.increment();
 	while(i.compareTo(&s) < 0)
 	{
@@ -893,10 +893,10 @@ bool GBigInt::millerRabin(GBigInt* pA)
 
 // Output: true = pretty darn sure (99.99%) it's prime
 //		   false = definately (100%) not prime
-bool GBigInt::isPrime()
+bool WBigInt::isPrime()
 {
 	// Two is prime.  All values less than Two are not prime
-	GBigInt two;
+	WBigInt two;
 	two.increment();
 	two.increment();
 	int nCmp = compareTo(&two);
@@ -923,7 +923,7 @@ bool GBigInt::isPrime()
 	// Do 25 iterations of Miller-Rabin
 	nBits--;
 	unsigned int i;
-	GBigInt a;
+	WBigInt a;
 	for(i = 1; i <= 25; i++)
 	{
 		a.setRandom(nBits);
@@ -938,5 +938,5 @@ bool GBigInt::isPrime()
 	return true;
 }
 
-} // namespace GClasses
+} // namespace WClasses
 

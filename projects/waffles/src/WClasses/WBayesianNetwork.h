@@ -22,27 +22,27 @@
 
 #include <vector>
 #include <cstddef>
-#include "GHeap.h"
-#include "GRand.h"
+#include "WHeap.h"
+#include "WRand.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GRand;
-class GBNCategorical;
-class GBNVariable;
+class WRand;
+class WBNCategorical;
+class WBNVariable;
 
 
 /// The base class of all nodes in a Bayesian belief network
-class GBNNode
+class WBNNode
 {
 protected:
 	bool m_observed;
 	double m_observedValue;
 
 public:
-	GBNNode();
-	virtual ~GBNNode();
+	WBNNode();
+	virtual ~WBNNode();
 
 	/// Returns the current value of this node. If this node represents a
 	/// random variable, then it returns the value most-recently sampled
@@ -51,79 +51,79 @@ public:
 
 	/// This method is called when this node is added as the parent to pChild.
 	/// It gives this node a chance to link back to the child if needed.
-	virtual void onNewChild(GBNVariable* pChild) = 0;
+	virtual void onNewChild(WBNVariable* pChild) = 0;
 };
 
 
 /// A node in a belief network that represents a constant value.
-class GBNConstant : public GBNNode
+class WBNConstant : public WBNNode
 {
 public:
 	/// General-purpose constructor
-	GBNConstant(double val) : GBNNode()
+	WBNConstant(double val) : WBNNode()
 	{
 		m_observed = true;
 		m_observedValue = val;
 	}
-	~GBNConstant() override {}
+	~WBNConstant() override {}
 
 	/// Returns the constant value
 	double currentValue() override { return m_observedValue; }
 
 	/// This method is a no-op.
-	void onNewChild(GBNVariable* pChild) override {}
+	void onNewChild(WBNVariable* pChild) override {}
 };
 
 
 /// A node in a belief network that always returns the sum of its parent nodes.
-class GBNSum : public GBNNode
+class WBNSum : public WBNNode
 {
 protected:
-	std::vector<GBNNode*> m_parents;
+	std::vector<WBNNode*> m_parents;
 	bool m_gotChildren;
 
 public:
 	/// General-purpose constructor
-	GBNSum() : GBNNode(), m_gotChildren(false) { m_observed = true; }
-	~GBNSum() override {}
+	WBNSum() : WBNNode(), m_gotChildren(false) { m_observed = true; }
+	~WBNSum() override {}
 
 	/// Adds a new parent node to this one, to be included in the summation.
 	/// All parents must be added before any child nodes are added.
-	void addParent(GBNNode* pNode);
+	void addParent(WBNNode* pNode);
 
 	/// Returns the sum of the current values of all the parents of this node.
 	double currentValue() override;
 
 	/// This method links all the parent nodes of this node back to the child.
-	void onNewChild(GBNVariable* pChild) override;
+	void onNewChild(WBNVariable* pChild) override;
 };
 
 
 /// A node in a belief network that always returns the product of its parent nodes.
-class GBNProduct : public GBNNode
+class WBNProduct : public WBNNode
 {
 protected:
-	std::vector<GBNNode*> m_parents;
+	std::vector<WBNNode*> m_parents;
 	bool m_gotChildren;
 
 public:
 	/// General-purpose constructor
-	GBNProduct() : GBNNode(), m_gotChildren(false) { m_observed = true; }
-	~GBNProduct() override {}
+	WBNProduct() : WBNNode(), m_gotChildren(false) { m_observed = true; }
+	~WBNProduct() override {}
 
 	/// Adds a new parent node to this one, to be included in the summation
-	void addParent(GBNNode* pNode);
+	void addParent(WBNNode* pNode);
 
 	/// Returns the sum of the current values of all the parents of this node.
 	double currentValue() override;
 
 	/// This method links all the parent nodes of this node back to the child.
-	void onNewChild(GBNVariable* pChild) override;
+	void onNewChild(WBNVariable* pChild) override;
 };
 
 
 /// A node in a belief network that applies some math operation to the output of its one parent node.
-class GBNMath : public GBNNode
+class WBNMath : public WBNNode
 {
 public:
 	enum math_op
@@ -140,41 +140,41 @@ public:
 	};
 
 protected:
-	GBNNode* m_parent;
+	WBNNode* m_parent;
 	math_op m_op;
 
 public:
 	/// General-purpose constructor
-	GBNMath(GBNNode* pParent, math_op operation) : GBNNode(), m_parent(pParent), m_op(operation) { m_observed = true; }
-	~GBNMath() override {}
+	WBNMath(WBNNode* pParent, math_op operation) : WBNNode(), m_parent(pParent), m_op(operation) { m_observed = true; }
+	~WBNMath() override {}
 
 	/// Returns the sum of the current values of all the parents of this node.
 	double currentValue() override;
 
 	/// This method links the parent node of this node back to the child.
-	void onNewChild(GBNVariable* pChild) override;
+	void onNewChild(WBNVariable* pChild) override;
 };
 
 
 /// The base class of nodes in a belief network that represent variable values.
-class GBNVariable : public GBNNode
+class WBNVariable : public WBNNode
 {
 protected:
-	std::vector<GBNCategorical*> m_catParents;
-	std::vector<GBNVariable*> m_children;
+	std::vector<WBNCategorical*> m_catParents;
+	std::vector<WBNVariable*> m_children;
 
 public:
-	GBNVariable();
-	~GBNVariable() override;
+	WBNVariable();
+	~WBNVariable() override;
 
 	/// Returns all nodes that are known to depend on this one.
-	const std::vector<GBNVariable*>& children() { return m_children; }
+	const std::vector<WBNVariable*>& children() { return m_children; }
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful after you call this method.
-	virtual void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) = 0;
+	virtual void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) = 0;
 
 	/// Compute the likelihood of drawing the value "x" from the distribution represented
 	/// in this node given the current values in all of the parent nodes. If "x" is not
@@ -186,7 +186,7 @@ public:
 
 	/// Draw a new Gibbs sample for this node given the current values of all other nodes
 	/// it its Markov blanket.
-	virtual void sample(GRand* pRand) = 0;
+	virtual void sample(WRand* pRand) = 0;
 
 	/// Set this node to an observed value. After calling this, subsequent calls to
 	/// sample will not change its value.
@@ -214,29 +214,29 @@ public:
 	size_t currentCatIndex();
 
 	/// This method links back to the child node that just added this node as a parent.
-	void onNewChild(GBNVariable* pChild) override;
+	void onNewChild(WBNVariable* pChild) override;
 };
 
 
 
 
 /// A node in a belief network that represents a categorical distribution.
-/// Instances of this class can serve as parent-nodes to any GBNVariable node. The child
+/// Instances of this class can serve as parent-nodes to any WBNVariable node. The child
 /// node must specify distribution parameters for every category that the parent node
 /// supports (or for every combination of categories if there are multiply categorical parents).
-class GBNCategorical : public GBNVariable
+class WBNCategorical : public WBNVariable
 {
 protected:
 	size_t m_categories;
 	size_t m_val;
-	std::vector<GBNNode*> m_weights;
+	std::vector<WBNNode*> m_weights;
 
 public:
 	/// General-purpose constructor. All of the categories will initially be given a weight
 	/// of pDefaultWeight. Typically, you will want to change these (by calling setWeights)
 	/// after you construct a node.
-	GBNCategorical(size_t categories, GBNNode* pDefaultWeight);
-	~GBNCategorical() override {}
+	WBNCategorical(size_t categories, WBNNode* pDefaultWeight);
+	~WBNCategorical() override {}
 
 	/// Returns the number of categories supported by this distribution.
 	size_t categories() { return m_categories; }
@@ -248,17 +248,17 @@ public:
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setWeights) after you call this method.
-	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
+	void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) override;
 
 	/// Set the weights for one of the categorical distributions of this node.
 	/// If there are n categories in this node, then the first n parameters should be non-NULL.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this categorical distribution is being specified.
-	void setWeights(size_t cat, GBNNode* pW1, GBNNode* pW2, GBNNode* pW3 = nullptr, GBNNode* pW4 = nullptr, GBNNode* pW5 = nullptr, GBNNode* pW6 = nullptr, GBNNode* pW7 = nullptr, GBNNode* pW8 = nullptr);
+	void setWeights(size_t cat, WBNNode* pW1, WBNNode* pW2, WBNNode* pW3 = nullptr, WBNNode* pW4 = nullptr, WBNNode* pW5 = nullptr, WBNNode* pW6 = nullptr, WBNNode* pW7 = nullptr, WBNNode* pW8 = nullptr);
 
 	/// Draws a new Gibbs sample for this node given the current values of all other nodes
 	/// it its Markov blanket.
-	void sample(GRand* pRand) override;
+	void sample(WRand* pRand) override;
 
 	/// Computes the likelihood that the specified value (after being truncated to an integer)
 	/// would be drawn from this categorical distribution given the current values of all the
@@ -270,7 +270,7 @@ public:
 
 /// This is the base class for nodes in a belief network that are sampled using
 /// the Metropolis algorithm.
-class GBNMetropolisNode : public GBNVariable
+class WBNMetropolisNode : public WBNVariable
 {
 protected:
 	double m_currentMean;
@@ -278,15 +278,15 @@ protected:
 
 public:
 	/// General-purpose constructor.
-	GBNMetropolisNode();
-	~GBNMetropolisNode() override {}
+	WBNMetropolisNode();
+	~WBNMetropolisNode() override {}
 
 	/// Returns the most recent value sampled from this node.
 	double currentValue() override;
 
 	/// Draws a new Gibbs sample for this node given the current values of all other nodes
 	/// it its Markov blanket. Uses the Metropolis algorithm to do so.
-	void sample(GRand* pRand) override;
+	void sample(WRand* pRand) override;
 
 	/// This should return true iff this node supports only discrete values
 	virtual bool isDiscrete() = 0;
@@ -304,16 +304,16 @@ protected:
 
 	/// Sample the network in a manner that can be proven to converge to a
 	/// true joint distribution for the network.
-	void metropolis(GRand* pRand);
+	void metropolis(WRand* pRand);
 };
 
 
 
 /// A node in a belief network that represents a Gaussian, or normal, distribution.
-class GBNNormal : public GBNMetropolisNode
+class WBNNormal : public WBNMetropolisNode
 {
 protected:
-	std::vector<GBNNode*> m_meanAndDev;
+	std::vector<WBNNode*> m_meanAndDev;
 	bool m_devIsVariance;
 
 public:
@@ -321,24 +321,24 @@ public:
 	/// for the Metropolis algorithm. pDefaultVal specifies a bogus value to be
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setMeanAndDev) after constructing this node.
-	GBNNormal(GBNNode* pDefaultVal);
-	~GBNNormal() override {}
+	WBNNormal(WBNNode* pDefaultVal);
+	~WBNNormal() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setMeanAndDev) after you call this method.
-	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
+	void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) override;
 
 	/// Set the mean and deviation for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setMeanAndDev(size_t cat, GBNNode* pMean, GBNNode* pDeviation);
+	void setMeanAndDev(size_t cat, WBNNode* pMean, WBNNode* pDeviation);
 
 	/// Set the mean and variance for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setMeanAndVariance(size_t cat, GBNNode* pMean, GBNNode* pVariance);
+	void setMeanAndVariance(size_t cat, WBNNode* pMean, WBNNode* pVariance);
 
 	/// Returns false.
 	bool isDiscrete() override { return false; }
@@ -347,7 +347,7 @@ public:
 	/// the current values of all the parent nodes.
 	double likelihood(double x) override;
 
-	/// See the comment for GBNMetropolisNode::initMean()
+	/// See the comment for WBNMetropolisNode::initMean()
 	double initMean() override;
 };
 
@@ -355,29 +355,29 @@ public:
 
 
 /// A node in a belief network that represents a lognormal distribution.
-class GBNLogNormal : public GBNMetropolisNode
+class WBNLogNormal : public WBNMetropolisNode
 {
 protected:
-	std::vector<GBNNode*> m_meanAndDev;
+	std::vector<WBNNode*> m_meanAndDev;
 
 public:
 	/// General-purpose constructor. The prior mean and deviation parameters are
 	/// for the Metropolis algorithm. pDefaultVal specifies a bogus value to be
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setMeanAndDev) after constructing this node.
-	GBNLogNormal(GBNNode* pDefaultVal);
-	~GBNLogNormal() override {}
+	WBNLogNormal(WBNNode* pDefaultVal);
+	~WBNLogNormal() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setMeanAndDev) after you call this method.
-	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
+	void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) override;
 
 	/// Set the mean and deviation for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setMeanAndDev(size_t cat, GBNNode* pMean, GBNNode* pDeviation);
+	void setMeanAndDev(size_t cat, WBNNode* pMean, WBNNode* pDeviation);
 
 	/// Returns false.
 	bool isDiscrete() override { return false; }
@@ -386,7 +386,7 @@ public:
 	/// the current values of all the parent nodes.
 	double likelihood(double x) override;
 
-	/// See the comment for GBNMetropolisNode::initMean()
+	/// See the comment for WBNMetropolisNode::initMean()
 	double initMean() override;
 };
 
@@ -394,29 +394,29 @@ public:
 
 
 /// A node in a belief network that represents a Pareto distribution.
-class GBNPareto : public GBNMetropolisNode
+class WBNPareto : public WBNMetropolisNode
 {
 protected:
-	std::vector<GBNNode*> m_alphaAndM;
+	std::vector<WBNNode*> m_alphaAndM;
 
 public:
 	/// General-purpose constructor. The prior mean and deviation parameters are
 	/// for the Metropolis algorithm. pDefaultVal specifies a bogus value to be
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setAlphaAndM) after constructing this node.
-	GBNPareto(GBNNode* pDefaultVal);
-	~GBNPareto() override {}
+	WBNPareto(WBNNode* pDefaultVal);
+	~WBNPareto() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setAlphaAndM) after you call this method.
-	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
+	void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) override;
 
 	/// Set the alpha and M parameters for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setAlphaAndM(size_t cat, GBNNode* pAlpha, GBNNode* pM);
+	void setAlphaAndM(size_t cat, WBNNode* pAlpha, WBNNode* pM);
 
 	/// Returns false.
 	bool isDiscrete() override { return false; }
@@ -425,7 +425,7 @@ public:
 	/// the current values of all the parent nodes.
 	double likelihood(double x) override;
 
-	/// See the comment for GBNMetropolisNode::initMean()
+	/// See the comment for WBNMetropolisNode::initMean()
 	double initMean() override;
 };
 
@@ -433,29 +433,29 @@ public:
 
 
 /// A node in a belief network that represents a uniform discrete distribution.
-class GBNUniformDiscrete : public GBNMetropolisNode
+class WBNUniformDiscrete : public WBNMetropolisNode
 {
 protected:
-	std::vector<GBNNode*> m_minAndMax;
+	std::vector<WBNNode*> m_minAndMax;
 
 public:
 	/// General-purpose constructor. The prior mean and deviation parameters are
 	/// for the Metropolis algorithm. pDefaultVal specifies a bogus value to be
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setMinAndMax) after constructing this node.
-	GBNUniformDiscrete(GBNNode* pDefaultVal);
-	~GBNUniformDiscrete() override {}
+	WBNUniformDiscrete(WBNNode* pDefaultVal);
+	~WBNUniformDiscrete() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setMinAndMax) after you call this method.
-	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
+	void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) override;
 
 	/// Set the min and max parameters for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setMinAndMax(size_t cat, GBNNode* pMin, GBNNode* pMax);
+	void setMinAndMax(size_t cat, WBNNode* pMin, WBNNode* pMax);
 
 	/// Returns true.
 	bool isDiscrete() override { return true; }
@@ -464,7 +464,7 @@ public:
 	/// the current values of all the parent nodes.
 	double likelihood(double x) override;
 
-	/// See the comment for GBNMetropolisNode::initMean()
+	/// See the comment for WBNMetropolisNode::initMean()
 	double initMean() override;
 };
 
@@ -472,29 +472,29 @@ public:
 
 
 /// A node in a belief network that represents a uniform continuous distribution.
-class GBNUniformContinuous : public GBNMetropolisNode
+class WBNUniformContinuous : public WBNMetropolisNode
 {
 protected:
-	std::vector<GBNNode*> m_minAndMax;
+	std::vector<WBNNode*> m_minAndMax;
 
 public:
 	/// General-purpose constructor. The prior mean and deviation parameters are
 	/// for the Metropolis algorithm. pDefaultVal specifies a bogus value to be
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setMinAndMax) after constructing this node.
-	GBNUniformContinuous(GBNNode* pDefaultVal);
-	~GBNUniformContinuous() override {}
+	WBNUniformContinuous(WBNNode* pDefaultVal);
+	~WBNUniformContinuous() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setMinAndMax) after you call this method.
-	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
+	void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) override;
 
 	/// Set the min and max parameters for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setMinAndMax(size_t cat, GBNNode* pMin, GBNNode* pMax);
+	void setMinAndMax(size_t cat, WBNNode* pMin, WBNNode* pMax);
 
 	/// Returns false.
 	bool isDiscrete() override { return false; }
@@ -503,7 +503,7 @@ public:
 	/// the current values of all the parent nodes.
 	double likelihood(double x) override;
 
-	/// See the comment for GBNMetropolisNode::initMean()
+	/// See the comment for WBNMetropolisNode::initMean()
 	double initMean() override;
 };
 
@@ -511,29 +511,29 @@ public:
 
 
 /// A node in a belief network that represents a Poisson distribution.
-class GBNPoisson : public GBNMetropolisNode
+class WBNPoisson : public WBNMetropolisNode
 {
 protected:
-	std::vector<GBNNode*> m_lambda;
+	std::vector<WBNNode*> m_lambda;
 
 public:
 	/// General-purpose constructor. The prior mean and deviation parameters are
 	/// for the Metropolis algorithm. pDefaultVal specifies a bogus value to be
 	/// used for the parameter of this distribution. Typically, you will
 	/// change this value (by calling setLambda) after constructing this node.
-	GBNPoisson(GBNNode* pDefaultVal);
-	~GBNPoisson() override {}
+	WBNPoisson(WBNNode* pDefaultVal);
+	~WBNPoisson() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setLambda) after you call this method.
-	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
+	void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) override;
 
 	/// Set the lambda parameter for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setLambda(size_t cat, GBNNode* pLambda);
+	void setLambda(size_t cat, WBNNode* pLambda);
 
 	/// Returns true.
 	bool isDiscrete() override { return true; }
@@ -542,7 +542,7 @@ public:
 	/// the current values of all the parent nodes.
 	double likelihood(double x) override;
 
-	/// See the comment for GBNMetropolisNode::initMean()
+	/// See the comment for WBNMetropolisNode::initMean()
 	double initMean() override;
 };
 
@@ -550,29 +550,29 @@ public:
 
 
 /// A node in a belief network that represents an exponential distribution.
-class GBNExponential : public GBNMetropolisNode
+class WBNExponential : public WBNMetropolisNode
 {
 protected:
-	std::vector<GBNNode*> m_lambda;
+	std::vector<WBNNode*> m_lambda;
 
 public:
 	/// General-purpose constructor. The prior mean and deviation parameters are
 	/// for the Metropolis algorithm. pDefaultVal specifies a bogus value to be
 	/// used for the parameter of this distribution. Typically, you will
 	/// change this value (by calling setLambda) after constructing this node.
-	GBNExponential(GBNNode* pDefaultVal);
-	~GBNExponential() override {}
+	WBNExponential(WBNNode* pDefaultVal);
+	~WBNExponential() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setLambda) after you call this method.
-	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
+	void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) override;
 
 	/// Set the lambda parameter for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setLambda(size_t cat, GBNNode* pLambda);
+	void setLambda(size_t cat, WBNNode* pLambda);
 
 	/// Returns true.
 	bool isDiscrete() override { return false; }
@@ -581,7 +581,7 @@ public:
 	/// the current values of all the parent nodes.
 	double likelihood(double x) override;
 
-	/// See the comment for GBNMetropolisNode::initMean()
+	/// See the comment for WBNMetropolisNode::initMean()
 	double initMean() override;
 };
 
@@ -589,29 +589,29 @@ public:
 
 
 /// A node in a belief network that represents a beta distribution.
-class GBNBeta : public GBNMetropolisNode
+class WBNBeta : public WBNMetropolisNode
 {
 protected:
-	std::vector<GBNNode*> m_alphaAndBeta;
+	std::vector<WBNNode*> m_alphaAndBeta;
 
 public:
 	/// General-purpose constructor. The prior mean and deviation parameters are
 	/// for the Metropolis algorithm. pDefaultVal specifies a bogus value to be
 	/// used for the parameters of this distribution. Typically, you will
 	/// change these values (by calling setAlphaAndBeta) after constructing this node.
-	GBNBeta(GBNNode* pDefaultVal);
-	~GBNBeta() override {}
+	WBNBeta(WBNNode* pDefaultVal);
+	~WBNBeta() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setAlphaAndBeta) after you call this method.
-	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
+	void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) override;
 
 	/// Set the alpha and beta values for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setAlphaAndBeta(size_t cat, GBNNode* pAlpha, GBNNode* pBeta);
+	void setAlphaAndBeta(size_t cat, WBNNode* pAlpha, WBNNode* pBeta);
 
 	/// Returns false.
 	bool isDiscrete() override { return false; }
@@ -620,7 +620,7 @@ public:
 	/// the current values of all the parent nodes.
 	double likelihood(double x) override;
 
-	/// See the comment for GBNMetropolisNode::initMean()
+	/// See the comment for WBNMetropolisNode::initMean()
 	double initMean() override;
 };
 
@@ -628,10 +628,10 @@ public:
 
 
 /// A node in a belief network that represents a gamma distribution.
-class GBNGamma : public GBNMetropolisNode
+class WBNGamma : public WBNMetropolisNode
 {
 protected:
-	std::vector<GBNNode*> m_alphaAndBeta;
+	std::vector<WBNNode*> m_alphaAndBeta;
 	bool m_betaIsScaleInsteadOfRate;
 
 public:
@@ -641,24 +641,24 @@ public:
 	/// change these values (by calling setAlphaAndBeta or setShapeAndScale) after constructing this node.
 	/// If the "beta" parameter is scale (typically denoted with theta) instead of rate,
 	/// then betaIsScaleInsteadOfRate should be set to true.
-	GBNGamma(GBNNode* pDefaultVal);
-	~GBNGamma() override {}
+	WBNGamma(WBNNode* pDefaultVal);
+	~WBNGamma() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setAlphaAndBeta or setShapeAndScale) after you call this method.
-	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
+	void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) override;
 
 	/// Set the shape and rate (alpha and beta) values for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setAlphaAndBeta(size_t cat, GBNNode* pAlpha, GBNNode* pBeta);
+	void setAlphaAndBeta(size_t cat, WBNNode* pAlpha, WBNNode* pBeta);
 
 	/// Set the shape and scale (k and theta) values for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setShapeAndScale(size_t cat, GBNNode* pK, GBNNode* pTheta);
+	void setShapeAndScale(size_t cat, WBNNode* pK, WBNNode* pTheta);
 
 	/// Returns false.
 	bool isDiscrete() override { return false; }
@@ -667,7 +667,7 @@ public:
 	/// the current values of all the parent nodes.
 	double likelihood(double x) override;
 
-	/// See the comment for GBNMetropolisNode::initMean()
+	/// See the comment for WBNMetropolisNode::initMean()
 	double initMean() override;
 };
 
@@ -675,10 +675,10 @@ public:
 
 
 /// A node in a belief network that represents an inverse-gamma distribution.
-class GBNInverseGamma : public GBNMetropolisNode
+class WBNInverseGamma : public WBNMetropolisNode
 {
 protected:
-	std::vector<GBNNode*> m_alphaAndBeta;
+	std::vector<WBNNode*> m_alphaAndBeta;
 
 public:
 	/// General-purpose constructor. The prior mean and deviation parameters are
@@ -687,19 +687,19 @@ public:
 	/// change these values (by calling setAlphaAndBeta) after constructing this node.
 	/// If the "beta" parameter is scale (typically denoted with theta) instead of rate,
 	/// then betaIsScaleInsteadOfRate should be set to true.
-	GBNInverseGamma(GBNNode* pDefaultVal);
-	~GBNInverseGamma() override {}
+	WBNInverseGamma(WBNNode* pDefaultVal);
+	~WBNInverseGamma() override {}
 
 	/// Adds a categorical node as a parent of this node. Calling this method will cause
 	/// This node to resize its table of distribution parameters, so a default value is
 	/// required to fill in new elements. Typically, you will set these new elements to
 	/// something more meaningful (by calling setAlphaAndBeta) after you call this method.
-	void addCatParent(GBNCategorical* pNode, GBNNode* pDefaultVal) override;
+	void addCatParent(WBNCategorical* pNode, WBNNode* pDefaultVal) override;
 
 	/// Set the shape and scale (alpha and beta) values for one of the distributions of this node.
 	/// "cat" specifies the index of the combination of values (in little-endian order) in the
 	/// categorical parent distributions for which this distribution is being specified.
-	void setAlphaAndBeta(size_t cat, GBNNode* pAlpha, GBNNode* pBeta);
+	void setAlphaAndBeta(size_t cat, WBNNode* pAlpha, WBNNode* pBeta);
 
 	/// Returns false.
 	bool isDiscrete() override { return false; }
@@ -708,7 +708,7 @@ public:
 	/// the current values of all the parent nodes.
 	double likelihood(double x) override;
 
-	/// See the comment for GBNMetropolisNode::initMean()
+	/// See the comment for WBNMetropolisNode::initMean()
 	double initMean() override;
 };
 
@@ -719,74 +719,74 @@ public:
 /// It allocates nodes in its own heap using placement new, so you don't have to worry about deleting the nodes.
 /// You can allocate your nodes manually and use them separately from this class if you want, but it is a lot
 /// easier if you use this class to manage it all.
-class GBayesNet
+class WBayesNet
 {
 protected:
-	GHeap m_heap;
-	std::vector<GBNNode*> m_nodes;
-	std::vector<GBNVariable*> m_sampleNodes;
-	GRand m_rand;
-	GBNConstant* m_pConstOne;
+	WHeap m_heap;
+	std::vector<WBNNode*> m_nodes;
+	std::vector<WBNVariable*> m_sampleNodes;
+	WRand m_rand;
+	WBNConstant* m_pConstOne;
 
 public:
 	/// General-purpose constructor
-	GBayesNet(size_t seed = 0);
-	~GBayesNet();
+	WBayesNet(size_t seed = 0);
+	~WBayesNet();
 
 	/// Performs unit tests for this class. Throws an exception if any tests fail.
 	static void test();
 
 	/// Returns a reference to the pseudo-random number generator used by this network.
 	/// You might use this, for example, to change the random seed.
-	GRand& rand() { return m_rand; }
+	WRand& rand() { return m_rand; }
 
 	/// Return a constant value that can be used as a default parameter for various nodes.
-	GBNConstant* def() { return m_pConstOne; }
+	WBNConstant* def() { return m_pConstOne; }
 
 	/// Return a pointer to a node that represents a constant value.
-	GBNConstant* newConst(double val);
+	WBNConstant* newConst(double val);
 
 	/// Return a pointer to a node that sums all of its parent values.
-	GBNSum* newSum();
+	WBNSum* newSum();
 
 	/// Return a pointer to a node that sums all of its parent values.
-	GBNProduct* newProduct();
+	WBNProduct* newProduct();
 
 	/// Return a pointer to a node that sums all of its parent values.
-	GBNMath* newMath(GBNNode* pParent, GBNMath::math_op operation);
+	WBNMath* newMath(WBNNode* pParent, WBNMath::math_op operation);
 
 	/// Return a pointer to a node that represents a categorical distribution.
-	GBNCategorical* newCat(size_t categories);
+	WBNCategorical* newCat(size_t categories);
 
 	/// Return a pointer to a node that represents a normal distribution.
-	GBNNormal* newNormal();
+	WBNNormal* newNormal();
 
 	/// Return a pointer to a node that represents a lognormal distribution.
-	GBNLogNormal* newLogNormal();
+	WBNLogNormal* newLogNormal();
 
 	/// Return a pointer to a node that represents a Pareto distribution.
-	GBNPareto* newPareto();
+	WBNPareto* newPareto();
 
 	/// Return a pointer to a node that represents a uniform discrete distribution.
-	GBNUniformDiscrete* newUniformDiscrete();
+	WBNUniformDiscrete* newUniformDiscrete();
 
 	/// Return a pointer to a node that represents a uniform continuous distribution.
-	GBNUniformContinuous* newUniformContinuous();
+	WBNUniformContinuous* newUniformContinuous();
 
 	/// Return a pointer to a node that represents a Poisson distribution.
-	GBNPoisson* newPoisson();
+	WBNPoisson* newPoisson();
 
 	/// Return a pointer to a node that represents an Exponential distribution.
-	GBNExponential* newExponential();
+	WBNExponential* newExponential();
 
 	/// Return a pointer to a node that represents a Beta distribution.
-	GBNBeta* newBeta();
+	WBNBeta* newBeta();
 
 	/// Return a pointer to a node that represents a Gamma distribution.
-	GBNGamma* newGamma();
+	WBNGamma* newGamma();
 
 	/// Return a pointer to a node that represents an Inverse-Gamma distribution.
-	GBNInverseGamma* newInverseGamma();
+	WBNInverseGamma* newInverseGamma();
 
 	/// Draw a Gibbs sample for each node in the graph in random order.
 	void sample();
@@ -794,6 +794,6 @@ public:
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GBN_H__

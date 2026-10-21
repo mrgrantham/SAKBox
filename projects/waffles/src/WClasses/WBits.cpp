@@ -16,13 +16,13 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GBits.h"
-#include "GRand.h"
+#include "WBits.h"
+#include "WRand.h"
 
-using namespace GClasses;
+using namespace WClasses;
 
 //static
-bool GBits::isValidFloat(const char* pString, size_t len)
+bool WBits::isValidFloat(const char* pString, size_t len)
 {
 	if(len == 0)
 		return false;
@@ -74,7 +74,7 @@ bool GBits::isValidFloat(const char* pString, size_t len)
 	return true;
 }
 
-unsigned char GBits::reverse_bits(unsigned char n)
+unsigned char WBits::reverse_bits(unsigned char n)
 {
 	static const unsigned char bit_reverse_table[256] =
 	  {
@@ -82,12 +82,12 @@ unsigned char GBits::reverse_bits(unsigned char n)
 	return bit_reverse_table[n];
 }
 
-size_t GBits::base64Size(size_t inSize)
+size_t WBits::base64Size(size_t inSize)
 {
 	return ((inSize + 2) / 3) * 4;
 }
 
-void GBits::toBase64(unsigned char* pIn, size_t inSize, char* pOut)
+void WBits::toBase64(unsigned char* pIn, size_t inSize, char* pOut)
 {
 	static const char* base64Table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -119,7 +119,7 @@ void GBits::toBase64(unsigned char* pIn, size_t inSize, char* pOut)
 		}
 		else
 		{
-			GAssert(inSize == 1);
+			WAssert(inSize == 1);
 			unsigned char c1 = (pIn[0] & 252) >> 2;
 			unsigned char c2 = (pIn[0] & 3) << 4;
 			pOut[0] = base64Table[c1];
@@ -145,15 +145,15 @@ size_t count_trailing_zeros(size_t n)
 
 void test_boundingShift()
 {
-	GRand rand(0);
+	WRand rand(0);
 	for(size_t i = 0; i < 1000; i++)
 	{
 		size_t bits = (size_t)rand.next(31);
 		int n = 1 << bits;
-		if(GBits::boundingShift(n) != bits)
+		if(WBits::boundingShift(n) != bits)
 			throw Ex("failed");
 		n++;
-		if(GBits::boundingShift(n) != bits + 1)
+		if(WBits::boundingShift(n) != bits + 1)
 			throw Ex("failed");
 	}
 }
@@ -162,12 +162,12 @@ void test_countTrailingZeros()
 {
 	for(size_t i = 0; i < 10000; i++)
 	{
-		if(count_trailing_zeros(i) != GBits::countTrailingZeros(i))
+		if(count_trailing_zeros(i) != WBits::countTrailingZeros(i))
 			throw Ex("failed");
 	}
 }
 
-void GBits::test()
+void WBits::test()
 {
 	test_boundingShift();
 	test_countTrailingZeros();

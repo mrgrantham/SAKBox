@@ -14,7 +14,7 @@
   at http://jmlr.org/papers/volume12/gashler11a/gashler11a.pdf. If you find
   our code to be useful, the Waffles team would love to hear how you use it.
 */
-///@file Test data designed to be #included in GSelfOrganizingMap.cpp in an anonymous namespace.
+///@file Test data designed to be #included in WSelfOrganizingMap.cpp in an anonymous namespace.
 
 // (SAKBox) test data, laid out in rows
 // clang-format off

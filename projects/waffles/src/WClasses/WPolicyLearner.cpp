@@ -17,40 +17,40 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GPolicyLearner.h"
-#include "GKNN.h"
-#include "GDecisionTree.h"
-#include "GNeighborFinder.h"
-#include "GOptimizer.h"
+#include "WPolicyLearner.h"
+#include "WKNN.h"
+#include "WDecisionTree.h"
+#include "WNeighborFinder.h"
+#include "WOptimizer.h"
 #include <stdlib.h>
-#include "GVec.h"
-#include "GRand.h"
-//#include "GImage.h"
-#include "GHeap.h"
-#include "GHillClimber.h"
-#include "GDom.h"
+#include "WVec.h"
+#include "WRand.h"
+//#include "WImage.h"
+#include "WHeap.h"
+#include "WHillClimber.h"
+#include "WDom.h"
 #include <deque>
 #include <math.h>
 
-namespace GClasses
+namespace WClasses
 {
 
 using std::deque;
 
 // virtual
-void GDiscreteActionIterator::reset(const double* pState)
+void WDiscreteActionIterator::reset(const double* pState)
 {
 	m_action = 0;
 }
 
 // virtual
-void GDiscreteActionIterator::randomAction(double* pOutAction, GRand* pRand)
+void WDiscreteActionIterator::randomAction(double* pOutAction, WRand* pRand)
 {
 	*pOutAction = (double)pRand->next(m_count);
 }
 
 // virtual
-bool GDiscreteActionIterator::nextAction(double* pOutAction)
+bool WDiscreteActionIterator::nextAction(double* pOutAction)
 {
 	if(m_action < m_count)
 	{
@@ -63,7 +63,7 @@ bool GDiscreteActionIterator::nextAction(double* pOutAction)
 
 // -----------------------------------------------------------------------------
 
-GPolicyLearner::GPolicyLearner(const GRelation& relation, int actionDims)
+WPolicyLearner::WPolicyLearner(const WRelation& relation, int actionDims)
 : m_pRelation(relation.clone())
 {
 	m_senseDims = (int)m_pRelation->size() - actionDims;
@@ -74,29 +74,29 @@ GPolicyLearner::GPolicyLearner(const GRelation& relation, int actionDims)
 	m_explore = true;
 }
 
-GPolicyLearner::GPolicyLearner(GDomNode* pAgent)
+WPolicyLearner::WPolicyLearner(WDomNode* pAgent)
 {
-	m_pRelation = GRelation::deserialize(pAgent->get("relation"));
+	m_pRelation = WRelation::deserialize(pAgent->get("relation"));
 	m_actionDims = (int)pAgent->getInt("actionDims");
 	m_senseDims = (int)m_pRelation->size() - m_actionDims;
 	m_teleported = true;
 }
 
 // virtual
-GPolicyLearner::~GPolicyLearner()
+WPolicyLearner::~WPolicyLearner()
 {
 	delete(m_pRelation);
 }
 
 
-GDomNode* GPolicyLearner::baseDomNode(GDom* pDoc)
+WDomNode* WPolicyLearner::baseDomNode(WDom* pDoc)
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	pNode->add(pDoc, "actionDims", (long long)m_actionDims);
 	pNode->add(pDoc, "relation", m_pRelation->serialize(pDoc));
 	return pNode;
 }
 
 
-} // namespace GClasses
+} // namespace WClasses
 

@@ -1,9 +1,9 @@
-// png/GImagePng.h: Waffles' PNG reading and writing (with the repo's
+// png/WImagePng.h: Waffles' PNG reading and writing (with the repo's
 // libpng), which the plot tool and waffles_generate use.
 #include <gtest/gtest.h>
 
-#include <WClasses/GImage.h>
-#include <png/GImagePng.h>
+#include <WClasses/WImage.h>
+#include <png/WImagePng.h>
 
 #include <cstdlib>
 #include <png.h>
@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-using namespace GClasses;
+using namespace WClasses;
 
 namespace {
 std::string tmpPath(const char *name) {
@@ -22,8 +22,8 @@ std::string tmpPath(const char *name) {
 
 // An image saved as a PNG loads back with the same size and pixels, with
 // and without its alpha channel.
-TEST(GImagePngTest, SavedImageLoadsBackTheSame) {
-  GImage image;
+TEST(WImagePngTest, SavedImageLoadsBackTheSame) {
+  WImage image;
   image.setSize(7, 5);
   for (int y = 0; y < 5; y++)
     for (int x = 0; x < 7; x++)
@@ -34,7 +34,7 @@ TEST(GImagePngTest, SavedImageLoadsBackTheSame) {
   ASSERT_NE(f, nullptr);
   savePng(&image, f, true);
   fclose(f);
-  GImage loaded;
+  WImage loaded;
   loadPng(&loaded, rgba.c_str());
   ASSERT_EQ(loaded.width(), 7u);
   ASSERT_EQ(loaded.height(), 5u);
@@ -49,15 +49,15 @@ TEST(GImagePngTest, SavedImageLoadsBackTheSame) {
   ASSERT_NE(f, nullptr);
   savePng(&image, f, false);
   fclose(f);
-  GImage opaque;
+  WImage opaque;
   loadPng(&opaque, rgb.c_str());
   for (int y = 0; y < 5; y++)
     for (int x = 0; x < 7; x++)
       EXPECT_EQ(opaque.pixel(x, y), image.pixel(x, y) | 0xff000000u) << x << "," << y;
 }
 
-TEST(GImagePngTest, RejectsDataThatIsntAPng) {
-  GImage image;
+TEST(WImagePngTest, RejectsDataThatIsntAPng) {
+  WImage image;
   const unsigned char notPng[] = "GIF89a, not a png";
   EXPECT_THROW(loadPng(&image, notPng, sizeof(notPng)), std::exception);
 }
@@ -93,56 +93,56 @@ void writeRawPng(const std::string &path, int w, int h, int depth, int colorType
   fclose(f);
 }
 
-GImage load(const std::string &path) {
-  GImage image;
+WImage load(const std::string &path) {
+  WImage image;
   loadPng(&image, path.c_str());
   return image;
 }
 } // namespace
 
-TEST(GImagePngTest, LoadsGreyscale) {
+TEST(WImagePngTest, LoadsGreyscale) {
   const std::string path = tmpPath("grey.png");
   writeRawPng(path, 3, 1, 8, PNG_COLOR_TYPE_GRAY, {{0, 100, 255}});
-  GImage image = load(path);
+  WImage image = load(path);
   ASSERT_EQ(image.width(), 3u);
   EXPECT_EQ(image.pixel(0, 0), gARGB(255, 0, 0, 0));
   EXPECT_EQ(image.pixel(1, 0), gARGB(255, 100, 100, 100));
   EXPECT_EQ(image.pixel(2, 0), gARGB(255, 255, 255, 255));
 }
 
-TEST(GImagePngTest, LoadsGreyWithAlpha) {
+TEST(WImagePngTest, LoadsGreyWithAlpha) {
   const std::string path = tmpPath("grey_alpha.png");
   writeRawPng(path, 2, 1, 8, PNG_COLOR_TYPE_GRAY_ALPHA, {{100, 50, 200, 255}});
-  GImage image = load(path);
+  WImage image = load(path);
   EXPECT_EQ(image.pixel(0, 0), gARGB(50, 100, 100, 100));
   EXPECT_EQ(image.pixel(1, 0), gARGB(255, 200, 200, 200));
 }
 
-TEST(GImagePngTest, LoadsPalette) {
+TEST(WImagePngTest, LoadsPalette) {
   const std::string path = tmpPath("palette.png");
   const std::vector<png_color> palette = {{10, 20, 30}, {200, 100, 0}};
   writeRawPng(path, 3, 1, 8, PNG_COLOR_TYPE_PALETTE, {{1, 0, 1}}, palette);
-  GImage image = load(path);
+  WImage image = load(path);
   EXPECT_EQ(image.pixel(0, 0), gARGB(255, 200, 100, 0));
   EXPECT_EQ(image.pixel(1, 0), gARGB(255, 10, 20, 30));
   EXPECT_EQ(image.pixel(2, 0), gARGB(255, 200, 100, 0));
 }
 
 // A palette's transparency (its tRNS chunk) becomes the alpha channel
-TEST(GImagePngTest, LoadsPaletteWithTransparency) {
+TEST(WImagePngTest, LoadsPaletteWithTransparency) {
   const std::string path = tmpPath("palette_alpha.png");
   const std::vector<png_color> palette = {{10, 20, 30}, {200, 100, 0}};
   writeRawPng(path, 2, 1, 8, PNG_COLOR_TYPE_PALETTE, {{0, 1}}, palette, {0, 128});
-  GImage image = load(path);
+  WImage image = load(path);
   EXPECT_EQ(image.pixel(0, 0), gARGB(0, 10, 20, 30));
   EXPECT_EQ(image.pixel(1, 0), gARGB(128, 200, 100, 0));
 }
 
 // Fewer than 8 bits per pixel: 1-bit black and white, eight pixels a byte
-TEST(GImagePngTest, LoadsOneBitGreyscale) {
+TEST(WImagePngTest, LoadsOneBitGreyscale) {
   const std::string path = tmpPath("one_bit.png");
   writeRawPng(path, 8, 1, 1, PNG_COLOR_TYPE_GRAY, {{0b10100000}});
-  GImage image = load(path);
+  WImage image = load(path);
   ASSERT_EQ(image.width(), 8u);
   EXPECT_EQ(image.pixel(0, 0), gARGB(255, 255, 255, 255));
   EXPECT_EQ(image.pixel(1, 0), gARGB(255, 0, 0, 0));
@@ -151,7 +151,7 @@ TEST(GImagePngTest, LoadsOneBitGreyscale) {
 }
 
 // 16 bits per channel, scaled to 8 (v * 257 is v exactly at 16 bits)
-TEST(GImagePngTest, LoadsSixteenBitRgb) {
+TEST(WImagePngTest, LoadsSixteenBitRgb) {
   const std::string path = tmpPath("sixteen.png");
   auto be16 = [](int v) { return std::vector<png_byte>{(png_byte)(v >> 8), (png_byte)(v & 0xff)}; };
   std::vector<png_byte> row;
@@ -160,7 +160,7 @@ TEST(GImagePngTest, LoadsSixteenBitRgb) {
     row.insert(row.end(), b.begin(), b.end());
   }
   writeRawPng(path, 2, 1, 16, PNG_COLOR_TYPE_RGB, {row});
-  GImage image = load(path);
+  WImage image = load(path);
   EXPECT_EQ(image.pixel(0, 0), gARGB(255, 10, 20, 30));
   EXPECT_EQ(image.pixel(1, 0), gARGB(255, 250, 128, 0));
 }

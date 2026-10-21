@@ -19,33 +19,33 @@
 #ifndef __GHTML_H__
 #define __GHTML_H__
 
-#include "GError.h"
-#include "GTokenizer.h"
+#include "WError.h"
+#include "WTokenizer.h"
 #include <vector>
 #include <string>
 #include <map>
 #include <ostream>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GConstStringHashTable;
-struct GHtmlTagHandlerStruct;
+class WConstStringHashTable;
+struct WHtmlTagHandlerStruct;
 
-class GHtmlElement
+class WHtmlElement
 {
 public:
-	GHtmlElement* parent;
+	WHtmlElement* parent;
 	bool text;
 	bool singleton;
 	std::string name; // or the text if this is a text element
 	std::vector<std::string> attrNames;
 	std::vector<std::string> attrValues;
-	std::vector<GHtmlElement*> children;
+	std::vector<WHtmlElement*> children;
 
 	/// Makes an element and inserts it at the specified position of its parent's children.
 	/// If pos is -1 (the default), then it is added at the end of the children.
-	GHtmlElement(GHtmlElement* par, const char* szTagName, int pos = -1)
+	WHtmlElement(WHtmlElement* par, const char* szTagName, int pos = -1)
 	: parent(par), text(false), singleton(false), name(szTagName)
 	{
 		if(par)
@@ -57,13 +57,13 @@ public:
 		}
 	}
 
-	~GHtmlElement()
+	~WHtmlElement()
 	{
 		for(size_t i = 0; i < children.size(); i++)
 			delete(children[i]);
 	}
 
-	void populateIdMap(std::map<std::string, GHtmlElement*>& id_to_el);
+	void populateIdMap(std::map<std::string, WHtmlElement*>& id_to_el);
 
 	void write(std::ostream& stream) const;
 
@@ -72,7 +72,7 @@ public:
 	void writeTextOnly(std::ostream& stream) const;
 
 	/// Returns a pointer to the first immediate child element with the specified tag name
-	GHtmlElement* childTag(const char* szTagName);
+	WHtmlElement* childTag(const char* szTagName);
 
 	/// Adds an attribute name/value pair to this element
 	void addAttr(const char* szName, const char* szValue);
@@ -81,35 +81,35 @@ public:
 	void dropAttr(const char* szName);
 
 	/// Swaps the positions of two html element-branches in their DOMs. (Assumes one does not descend from the other--that would create nasty cycles.)
-	void swap(GHtmlElement* that);
+	void swap(WHtmlElement* that);
 };
 
 
 
-class GHtmlDoc
+class WHtmlDoc
 {
 protected:
-	GHtmlElement* m_pDocument;
-	std::map<std::string, GHtmlElement*>* m_id_to_el;
+	WHtmlElement* m_pDocument;
+	std::map<std::string, WHtmlElement*>* m_id_to_el;
 
 public:
-	GHtmlDoc(const char* szFilename);
+	WHtmlDoc(const char* szFilename);
 
-	GHtmlDoc(const char* pFile, size_t len);
+	WHtmlDoc(const char* pFile, size_t len);
 
-	~GHtmlDoc();
+	~WHtmlDoc();
 
-	GHtmlElement* document() { return m_pDocument; }
+	WHtmlElement* document() { return m_pDocument; }
 
-	GHtmlElement* getElementById(const char* id);
+	WHtmlElement* getElementById(const char* id);
 
-	//GHtmlElement* getBody();
+	//WHtmlElement* getBody();
 
 	static void test();
 };
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GHTML_H__

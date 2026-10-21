@@ -11,48 +11,48 @@
 #else
 #include <unistd.h>
 #endif
-#include <WClasses/GTime.h>
-#include <WClasses/GError.h>
-#include <WClasses/GRayTrace.h>
-#include <WClasses/GBits.h>
-#include <WClasses/GThread.h>
-#include "GRibParser.h"
+#include <WClasses/WTime.h>
+#include <WClasses/WError.h>
+#include <WClasses/WRayTrace.h>
+#include <WClasses/WBits.h>
+#include <WClasses/WThread.h>
+#include "WRibParser.h"
 
-using namespace GClasses;
+using namespace WClasses;
 
-class RayTraceDialog : public GWidgetDialog
+class RayTraceDialog : public WWidgetDialog
 {
 	friend class RayTraceController;
 protected:
 	RayTraceController* m_pController;
-	GWidgetFileSystemBrowser* m_pFileSystemBrowser;
-	GWidgetCheckBox* m_pCheckBox;
+	WWidgetFileSystemBrowser* m_pFileSystemBrowser;
+	WWidgetCheckBox* m_pCheckBox;
 
 public:
 	RayTraceDialog(RayTraceController* pController, int w, int h)
-	: GWidgetDialog(w, h, 0xff884466)
+	: WWidgetDialog(w, h, 0xff884466)
 	{
 		m_pController = pController;
 
-		m_pFileSystemBrowser = new GWidgetFileSystemBrowser(this, 100, 400, 800, 280, ".rib");
-		m_pCheckBox = new GWidgetCheckBox(this, 5, 400, 20, 20);
-		new GWidgetTextLabel(this, 26, 405, 70, 12, "High Quality", 0xff002200);
+		m_pFileSystemBrowser = new WWidgetFileSystemBrowser(this, 100, 400, 800, 280, ".rib");
+		m_pCheckBox = new WWidgetCheckBox(this, 5, 400, 20, 20);
+		new WWidgetTextLabel(this, 26, 405, 70, 12, "High Quality", 0xff002200);
 	}
 
 	~RayTraceDialog() override
 	{
 	}
 
-	void onReleaseTextButton(GWidgetTextButton* pButton) override
+	void onReleaseTextButton(WWidgetTextButton* pButton) override
 	{
 	}
 
-	void onSelectFilename(GWidgetFileSystemBrowser* pBrowser, const char* szFilename) override
+	void onSelectFilename(WWidgetFileSystemBrowser* pBrowser, const char* szFilename) override
 	{
 		m_pController->OnSelectFile(szFilename);
 	}
 
-	void onChangeCheckBox(GWidgetCheckBox* pCheckBox) override
+	void onChangeCheckBox(WWidgetCheckBox* pCheckBox) override
 	{
 		m_pController->SetHighQuality(pCheckBox->isChecked());
 	}
@@ -75,10 +75,10 @@ RayTraceView::~RayTraceView()
 
 /*virtual*/ void RayTraceView::draw(int* pixels, int pitch)
 {
-	GImage* pCanvas = m_pDialog->image();
+	WImage* pCanvas = m_pDialog->image();
 	if(m_pImage)
 	{
-		GRect r(0, 0, m_pImage->width(), m_pImage->height());
+		WRect r(0, 0, m_pImage->width(), m_pImage->height());
 		pCanvas->blit(0, 0, m_pImage, &r);
 	}
 	Uint32 format; // SDL_PixelFormatEnum
@@ -127,9 +127,9 @@ void RayTraceController::SetHighQuality(bool b)
 	if(!m_pScene)
 		return;
 	if(b)
-		m_pScene->setRenderMode(GRayTraceScene::QUALITY_RAY_TRACE);
+		m_pScene->setRenderMode(WRayTraceScene::QUALITY_RAY_TRACE);
 	else
-		m_pScene->setRenderMode(GRayTraceScene::FAST_RAY_TRACE);
+		m_pScene->setRenderMode(WRayTraceScene::FAST_RAY_TRACE);
 }
 
 void RayTraceController::OnSelectFile(const char* szFilename)
@@ -144,7 +144,7 @@ void RayTraceController::OnSelectFile(const char* szFilename)
 	SetHighQuality(((RayTraceView*)m_pView)->m_pDialog->m_pCheckBox->isChecked());
 	m_pScene->renderBegin();
 	m_pScene->drawWireFrame();
-	GImage* pImage = m_pScene->image();
+	WImage* pImage = m_pScene->image();
 	//m_pScene->RenderSinglePixel(pImage->GetWidth() / 2, pImage->GetHeight() / 2);
 	((RayTraceView*)m_pView)->SetImage(pImage);
 	m_bRendering = true;
@@ -152,13 +152,13 @@ void RayTraceController::OnSelectFile(const char* szFilename)
 
 void RayTraceController::RunModal()
 {
-	double timeOld = GTime::seconds();
+	double timeOld = WTime::seconds();
 	double time;
 	double timeUpdate = 0;
 	m_pView->update();
 	while(m_bKeepRunning)
 	{
-		time = GTime::seconds();
+		time = WTime::seconds();
 		if(handleEvents(time - timeOld)) // HandleEvents returns true if it thinks the view needs to be updated
 		{
 			m_pView->update();
@@ -175,7 +175,7 @@ void RayTraceController::RunModal()
 		}
 		else
 		{
-			GThread::sleep(10);
+			WThread::sleep(10);
 		}
 		timeOld = time;
 	}

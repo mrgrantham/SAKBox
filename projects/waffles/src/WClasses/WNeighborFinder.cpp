@@ -17,33 +17,33 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GNeighborFinder.h"
-#include "GVec.h"
-#include "GRand.h"
-#include "GPlot.h"
+#include "WNeighborFinder.h"
+#include "WVec.h"
+#include "WRand.h"
+#include "WPlot.h"
 #include <stdlib.h>
 #include <vector>
 #include <queue>
 #include <set>
-#include "GOptimizer.h"
-#include "GHillClimber.h"
+#include "WOptimizer.h"
+#include "WHillClimber.h"
 #include <string.h>
-#include "GGraph.h"
-#include "GBitTable.h"
+#include "WGraph.h"
+#include "WBitTable.h"
 #include <deque>
-#include "GDom.h"
-#include "GKNN.h"
-#include "GHolders.h"
-#include "GTransform.h"
+#include "WDom.h"
+#include "WKNN.h"
+#include "WHolders.h"
+#include "WTransform.h"
 #include <sstream>
 #include <string>
 #include <iostream>
-#include "GDistance.h"
+#include "WDistance.h"
 #include <cmath>
 #include <map>
-#include "GPriorityQueue.h"
+#include "WPriorityQueue.h"
 #include <memory>
-#include "GSparseMatrix.h"
+#include "WSparseMatrix.h"
 
 
 //using std::cerr;
@@ -57,32 +57,32 @@ using std::string;
 using std::map;
 using std::multimap;
 
-namespace GClasses
+namespace WClasses
 {
 
 
-GNeighborGraph::GNeighborGraph(GNeighborFinder* pNF, bool own, size_t neighbors)
-: GNeighborFinder(pNF->data()), m_pNF(pNF), m_own(own)
+WNeighborGraph::WNeighborGraph(WNeighborFinder* pNF, bool own, size_t neighbors)
+: WNeighborFinder(pNF->data()), m_pNF(pNF), m_own(own)
 {
 	m_neighs.resize(m_pData->rows());
 	m_dists.resize(m_pData->rows());
 	fillCacheNearest(neighbors);
 }
 
-GNeighborGraph::GNeighborGraph(double squaredRadius, GNeighborFinder* pNF, bool own)
-: GNeighborFinder(pNF->data()), m_pNF(pNF), m_own(own)
+WNeighborGraph::WNeighborGraph(double squaredRadius, WNeighborFinder* pNF, bool own)
+: WNeighborFinder(pNF->data()), m_pNF(pNF), m_own(own)
 {
 	m_neighs.resize(m_pData->rows());
 	m_dists.resize(m_pData->rows());
 	fillCacheRadius(squaredRadius);
 }
 
-GNeighborGraph::GNeighborGraph(bool own, GNeighborFinderGeneralizing* pNF)
-: GNeighborFinder(pNF->data()), m_pNF(pNF), m_own(own)
+WNeighborGraph::WNeighborGraph(bool own, WNeighborFinderGeneralizing* pNF)
+: WNeighborFinder(pNF->data()), m_pNF(pNF), m_own(own)
 {
 	m_neighs.resize(m_pData->rows());
 	m_dists.resize(m_pData->rows());
-	GDistanceMetric* pMetric = pNF->metric();
+	WDistanceMetric* pMetric = pNF->metric();
 	for(size_t i = 0; i < m_pData->rows(); i++)
 	{
 		double prev = 0.0;
@@ -104,13 +104,13 @@ GNeighborGraph::GNeighborGraph(bool own, GNeighborFinderGeneralizing* pNF)
 }
 
 // virtual
-GNeighborGraph::~GNeighborGraph()
+WNeighborGraph::~WNeighborGraph()
 {
 	if(m_own)
 		delete(m_pNF);
 }
 
-void GNeighborGraph::fillCacheNearest(size_t k)
+void WNeighborGraph::fillCacheNearest(size_t k)
 {
 	for(size_t i = 0; i < m_pData->rows(); i++)
 	{
@@ -125,7 +125,7 @@ void GNeighborGraph::fillCacheNearest(size_t k)
 	}
 }
 
-void GNeighborGraph::fillCacheRadius(double squaredRadius)
+void WNeighborGraph::fillCacheRadius(double squaredRadius)
 {
 	for(size_t i = 0; i < m_pData->rows(); i++)
 	{
@@ -140,7 +140,7 @@ void GNeighborGraph::fillCacheRadius(double squaredRadius)
 	}
 }
 
-void GNeighborGraph::recomputeDistances(GDistanceMetric* pMetric)
+void WNeighborGraph::recomputeDistances(WDistanceMetric* pMetric)
 {
 	pMetric->init(&m_pData->relation(), false);
 	for(size_t i = 0; i < m_pData->rows(); i++)
@@ -154,19 +154,19 @@ void GNeighborGraph::recomputeDistances(GDistanceMetric* pMetric)
 	}
 }
 
-void GNeighborGraph::swapInData(const GMatrix* pNewData)
+void WNeighborGraph::swapInData(const WMatrix* pNewData)
 {
 	m_pData = pNewData;
 }
 
-size_t GNeighborGraph::cutShortcuts(size_t cycleLen)
+size_t WNeighborGraph::cutShortcuts(size_t cycleLen)
 {
-	GCycleCut cc(this, m_pData, m_neighs[0].size());
+	WCycleCut cc(this, m_pData, m_neighs[0].size());
 	cc.setCycleThreshold(cycleLen);
 	return cc.cut();
 }
 
-bool GNeighborGraph::isConnected()
+bool WNeighborGraph::isConnected()
 {
 	// Make a table containing bi-directional neighbor connections
 	vector< vector<size_t> > bidirTable;
@@ -183,7 +183,7 @@ bool GNeighborGraph::isConnected()
 	}
 
 	// Use a breadth-first search to determine if the graph is fully connected
-	GBitTable bt(m_pData->rows());
+	WBitTable bt(m_pData->rows());
 	deque<size_t> q;
 	bt.set(0);
 	q.push_back(0);
@@ -208,12 +208,12 @@ bool GNeighborGraph::isConnected()
 	return false;
 }
 
-void GNeighborGraph::set(size_t point, size_t neighbor_number, size_t neigh)
+void WNeighborGraph::set(size_t point, size_t neighbor_number, size_t neigh)
 {
 	m_neighs[point][neighbor_number] = neigh;
 }
 
-void GNeighborGraph::dropInvalidNeighbors()
+void WNeighborGraph::dropInvalidNeighbors()
 {
 	for(size_t i = 0; i < m_neighs.size(); i++)
 	{
@@ -232,7 +232,7 @@ void GNeighborGraph::dropInvalidNeighbors()
 
 /// This helper class keeps neighbors sorted as a binary heap, such that the most dissimilar
 /// of the k-current-neighbors is always at the front of the heap.
-class GClosestNeighborFindingHelper
+class WClosestNeighborFindingHelper
 {
 protected:
 	size_t m_neighbors;
@@ -240,15 +240,15 @@ protected:
 	std::vector<double>& m_dists;
 
 public:
-	GClosestNeighborFindingHelper(size_t neighbors, std::vector<size_t>& neighs, std::vector<double>& dists)
+	WClosestNeighborFindingHelper(size_t neighbors, std::vector<size_t>& neighs, std::vector<double>& dists)
 	: m_neighbors(neighbors), m_neighs(neighs), m_dists(dists)
 	{
-		GAssert(m_neighbors >= 1);
+		WAssert(m_neighbors >= 1);
 		neighs.clear();
 		dists.clear();
 	}
 
-	~GClosestNeighborFindingHelper()
+	~WClosestNeighborFindingHelper()
 	{
 	}
 
@@ -309,10 +309,10 @@ public:
 	{
 		vector<size_t> neighbors;
 		vector<double> distances;
-		GMatrix values1(0, 1);
-		GMatrix values2(0, 1);
-		GClosestNeighborFindingHelper ob(TEST_NEIGHBOR_COUNT, neighbors, distances);
-		GRand prng(0);
+		WMatrix values1(0, 1);
+		WMatrix values2(0, 1);
+		WClosestNeighborFindingHelper ob(TEST_NEIGHBOR_COUNT, neighbors, distances);
+		WRand prng(0);
 		for(size_t i = 0; i < 300; i++)
 		{
 			double d = prng.uniform();
@@ -334,25 +334,25 @@ public:
 
 // --------------------------------------------------------------------------------
 
-GNeighborFinderGeneralizing::GNeighborFinderGeneralizing(const GMatrix* pData, GDistanceMetric* pMetric, bool ownMetric)
-: GNeighborFinder(pData), m_pMetric(pMetric), m_ownMetric(ownMetric)
+WNeighborFinderGeneralizing::WNeighborFinderGeneralizing(const WMatrix* pData, WDistanceMetric* pMetric, bool ownMetric)
+: WNeighborFinder(pData), m_pMetric(pMetric), m_ownMetric(ownMetric)
 {
 	if(!m_pMetric)
 	{
-		m_pMetric = new GRowDistance();
+		m_pMetric = new WRowDistance();
 		m_ownMetric = true;
 	}
 	m_pMetric->init(&pData->relation(), false);
 }
 
 // virtual
-GNeighborFinderGeneralizing::~GNeighborFinderGeneralizing()
+WNeighborFinderGeneralizing::~WNeighborFinderGeneralizing()
 {
 	if(m_ownMetric)
 		delete(m_pMetric);
 }
 
-void GNeighborFinderGeneralizing::insertionSortNeighbors(size_t start, size_t end)
+void WNeighborFinderGeneralizing::insertionSortNeighbors(size_t start, size_t end)
 {
 	for(size_t i = start + 1; i < end; i++)
 	{
@@ -366,7 +366,7 @@ void GNeighborFinderGeneralizing::insertionSortNeighbors(size_t start, size_t en
 	}
 }
 
-void GNeighborFinderGeneralizing::sortNeighbors(size_t beg, size_t end)
+void WNeighborFinderGeneralizing::sortNeighbors(size_t beg, size_t end)
 {
 	end = std::min(end, m_neighs.size());
 	if(beg + 6 >= end)
@@ -435,23 +435,23 @@ void GNeighborFinderGeneralizing::sortNeighbors(size_t beg, size_t end)
 
 // --------------------------------------------------------------------------------
 
-GBruteForceNeighborFinder::GBruteForceNeighborFinder(GMatrix* pData, GDistanceMetric* pMetric, bool ownMetric)
-: GNeighborFinderGeneralizing(pData, pMetric, ownMetric)
+WBruteForceNeighborFinder::WBruteForceNeighborFinder(WMatrix* pData, WDistanceMetric* pMetric, bool ownMetric)
+: WNeighborFinderGeneralizing(pData, pMetric, ownMetric)
 {
 }
 
-GBruteForceNeighborFinder::~GBruteForceNeighborFinder()
+WBruteForceNeighborFinder::~WBruteForceNeighborFinder()
 {
 }
 
 // virtual
-void GBruteForceNeighborFinder::reoptimize()
+void WBruteForceNeighborFinder::reoptimize()
 {
 }
 
-size_t GBruteForceNeighborFinder::findNearest(size_t k, const GVec& vec, size_t exclude)
+size_t WBruteForceNeighborFinder::findNearest(size_t k, const WVec& vec, size_t exclude)
 {
-	GClosestNeighborFindingHelper helper(k, m_neighs, m_dists);
+	WClosestNeighborFindingHelper helper(k, m_neighs, m_dists);
 	for(size_t i = 0; i < m_pData->rows(); i++)
 	{
 		if(i == exclude)
@@ -461,7 +461,7 @@ size_t GBruteForceNeighborFinder::findNearest(size_t k, const GVec& vec, size_t 
 	return m_neighs.size();
 }
 
-size_t GBruteForceNeighborFinder::findWithinRadius(double squaredRadius, const GVec& vec, size_t exclude)
+size_t WBruteForceNeighborFinder::findWithinRadius(double squaredRadius, const WVec& vec, size_t exclude)
 {
 	m_neighs.clear();
 	m_dists.clear();
@@ -480,52 +480,52 @@ size_t GBruteForceNeighborFinder::findWithinRadius(double squaredRadius, const G
 }
 
 // virtual
-size_t GBruteForceNeighborFinder::findNearest(size_t k, const GVec& vec)
+size_t WBruteForceNeighborFinder::findNearest(size_t k, const WVec& vec)
 {
 	return findNearest(k, vec, INVALID_INDEX);
 }
 
 // virtual
-size_t GBruteForceNeighborFinder::findNearest(size_t k, size_t index)
+size_t WBruteForceNeighborFinder::findNearest(size_t k, size_t index)
 {
 	return findNearest(k, m_pData->row(index), index);
 }
 
 // virtual
-size_t GBruteForceNeighborFinder::findWithinRadius(double squaredRadius, const GVec& vec)
+size_t WBruteForceNeighborFinder::findWithinRadius(double squaredRadius, const WVec& vec)
 {
 	return findWithinRadius(squaredRadius, vec, INVALID_INDEX);
 }
 
 // virtual
-size_t GBruteForceNeighborFinder::findWithinRadius(double squaredRadius, size_t index)
+size_t WBruteForceNeighborFinder::findWithinRadius(double squaredRadius, size_t index)
 {
 	return findWithinRadius(squaredRadius, m_pData->row(index), index);
 }
 
 // --------------------------------------------------------------------------------
 
-GSparseNeighborFinder::GSparseNeighborFinder(GSparseMatrix* pData, GMatrix* pBogusData, GSparseSimilarity* pMetric, bool ownMetric)
-: GNeighborFinderGeneralizing(pBogusData, new GRowDistance(), true),
+WSparseNeighborFinder::WSparseNeighborFinder(WSparseMatrix* pData, WMatrix* pBogusData, WSparseSimilarity* pMetric, bool ownMetric)
+: WNeighborFinderGeneralizing(pBogusData, new WRowDistance(), true),
   m_pData(pData),
   m_pSparseMetric(pMetric),
   m_ownSparseMetric(ownMetric)
 {
 }
 
-GSparseNeighborFinder::~GSparseNeighborFinder()
+WSparseNeighborFinder::~WSparseNeighborFinder()
 {
 	if(m_ownSparseMetric)
 		delete(m_pSparseMetric);
 }
 
 // virtual
-void GSparseNeighborFinder::reoptimize()
+void WSparseNeighborFinder::reoptimize()
 {
 }
 
 // virtual
-size_t GSparseNeighborFinder::findNearest(size_t k, const GVec& vec)
+size_t WSparseNeighborFinder::findNearest(size_t k, const WVec& vec)
 {
 	m_neighs.clear();
 	m_dists.clear();
@@ -547,7 +547,7 @@ size_t GSparseNeighborFinder::findNearest(size_t k, const GVec& vec)
 }
 
 // virtual
-size_t GSparseNeighborFinder::findNearest(size_t k, size_t index)
+size_t WSparseNeighborFinder::findNearest(size_t k, size_t index)
 {
 	map<size_t, double>& vec = m_pData->row(index);
 	m_neighs.clear();
@@ -572,20 +572,20 @@ size_t GSparseNeighborFinder::findNearest(size_t k, size_t index)
 }
 
 // virtual
-size_t GSparseNeighborFinder::findWithinRadius(double squaredRadius, const GVec& vec)
+size_t WSparseNeighborFinder::findWithinRadius(double squaredRadius, const WVec& vec)
 {
 	throw Ex("Sorry, not implemented yet"); // SAKBox: was throw new, which catch (std::exception&) misses (and leaks)
 }
 
 // virtual
-size_t GSparseNeighborFinder::findWithinRadius(double squaredRadius, size_t index)
+size_t WSparseNeighborFinder::findWithinRadius(double squaredRadius, size_t index)
 {
 	throw Ex("Sorry, not implemented yet"); // SAKBox: was throw new, which catch (std::exception&) misses (and leaks)
 }
 
 // --------------------------------------------------------------------------------
 
-class GKdNode
+class WKdNode
 {
 protected:
 	double m_minDist;
@@ -593,16 +593,16 @@ protected:
 	size_t m_dims;
 
 public:
-	GKdNode(size_t dims)
+	WKdNode(size_t dims)
 	{
 		m_dims = dims;
 		m_pOffset = new double[dims];
-		GVecWrapper vw(m_pOffset, dims);
+		WVecWrapper vw(m_pOffset, dims);
 		vw.fill(0.0);
 		m_minDist = 0;
 	}
 
-	virtual ~GKdNode()
+	virtual ~WKdNode()
 	{
 		delete[] m_pOffset;
 	}
@@ -612,11 +612,11 @@ public:
 	// Builds an array of all the indexes in all of the leaf nodes that descend from me
 	virtual size_t Gather(size_t* pOutIndexes) = 0;
 
-	virtual void Insert(GKdTree* pTree, size_t index, double* pRow) = 0;
+	virtual void Insert(WKdTree* pTree, size_t index, double* pRow) = 0;
 
-	virtual void Remove(GKdTree* pTree, size_t index, double* pRow) = 0;
+	virtual void Remove(WKdTree* pTree, size_t index, double* pRow) = 0;
 
-	virtual void Rename(GKdTree* pTree, size_t oldIndex, size_t newIndex, double* pRow) = 0;
+	virtual void Rename(WKdTree* pTree, size_t oldIndex, size_t newIndex, double* pRow) = 0;
 
 	double GetMinDist()
 	{
@@ -628,13 +628,13 @@ public:
 		return m_dims;
 	}
 
-	void CopyOffset(GKdNode* pParent)
+	void CopyOffset(WKdNode* pParent)
 	{
 		memcpy(m_pOffset, pParent->m_pOffset, sizeof(double) * m_dims);
 		m_minDist = pParent->m_minDist;
 	}
 
-	void AdjustOffset(size_t attr, double offset, const GVec& scaleFactors)
+	void AdjustOffset(size_t attr, double offset, const WVec& scaleFactors)
 	{
 		if(offset > m_pOffset[attr])
 		{
@@ -646,11 +646,11 @@ public:
 };
 
 
-class GKdInteriorNode : public GKdNode
+class WKdInteriorNode : public WKdNode
 {
 protected:
-	GKdNode* m_pLess;
-	GKdNode* m_pGreaterOrEqual;
+	WKdNode* m_pLess;
+	WKdNode* m_pGreaterOrEqual;
 	size_t m_size;
 	size_t m_attr;
 	double m_pivot;
@@ -658,13 +658,13 @@ protected:
 public:
 	size_t m_timeLeft;
 
-	GKdInteriorNode(size_t dims, GKdNode* pLess, GKdNode* pGreaterOrEqual, size_t size, size_t attr, double pivot)
-	: GKdNode(dims), m_pLess(pLess), m_pGreaterOrEqual(pGreaterOrEqual), m_size(size), m_attr(attr), m_pivot(pivot)
+	WKdInteriorNode(size_t dims, WKdNode* pLess, WKdNode* pGreaterOrEqual, size_t size, size_t attr, double pivot)
+	: WKdNode(dims), m_pLess(pLess), m_pGreaterOrEqual(pGreaterOrEqual), m_size(size), m_attr(attr), m_pivot(pivot)
 	{
 		m_timeLeft = (size_t)std::min((double)0x7fffffff, ((double)size * size) / 36 + 6);
 	}
 
-	~GKdInteriorNode() override
+	~WKdInteriorNode() override
 	{
 		delete(m_pLess);
 		delete(m_pGreaterOrEqual);
@@ -672,25 +672,25 @@ public:
 
 	bool IsLeaf() override { return false; }
 
-	GKdNode* Rebuild(GKdTree* pTree)
+	WKdNode* Rebuild(WKdTree* pTree)
 	{
 		size_t* pIndexes = new size_t[m_size];
 		std::unique_ptr<size_t[]> hIndexes(pIndexes);
 		size_t used = Gather(pIndexes);
-		GAssert(used == m_size); // m_size is wrong. This may corrupt memory.
+		WAssert(used == m_size); // m_size is wrong. This may corrupt memory.
 		return pTree->buildTree(used, pIndexes);
 	}
 
-	void Insert(GKdTree* pTree, size_t index, double* pRow) override
+	void Insert(WKdTree* pTree, size_t index, double* pRow) override
 	{
 		m_timeLeft--;
 		if(pTree->isGreaterOrEqual(pRow, m_attr, m_pivot))
 		{
 			m_pGreaterOrEqual->Insert(pTree, index, pRow);
 			m_size++;
-			if(!m_pGreaterOrEqual->IsLeaf() && ((GKdInteriorNode*)m_pGreaterOrEqual)->m_timeLeft == 0 && m_timeLeft >= m_size / 4)
+			if(!m_pGreaterOrEqual->IsLeaf() && ((WKdInteriorNode*)m_pGreaterOrEqual)->m_timeLeft == 0 && m_timeLeft >= m_size / 4)
 			{
-				GKdNode* pNewNode = ((GKdInteriorNode*)m_pGreaterOrEqual)->Rebuild(pTree);
+				WKdNode* pNewNode = ((WKdInteriorNode*)m_pGreaterOrEqual)->Rebuild(pTree);
 				delete(m_pGreaterOrEqual);
 				m_pGreaterOrEqual = pNewNode;
 			}
@@ -699,16 +699,16 @@ public:
 		{
 			m_pLess->Insert(pTree, index, pRow);
 			m_size++;
-			if(!m_pLess->IsLeaf() && ((GKdInteriorNode*)m_pLess)->m_timeLeft == 0 && m_timeLeft >= m_size / 4)
+			if(!m_pLess->IsLeaf() && ((WKdInteriorNode*)m_pLess)->m_timeLeft == 0 && m_timeLeft >= m_size / 4)
 			{
-				GKdNode* pNewNode = ((GKdInteriorNode*)m_pLess)->Rebuild(pTree);
+				WKdNode* pNewNode = ((WKdInteriorNode*)m_pLess)->Rebuild(pTree);
 				delete(m_pLess);
 				m_pLess = pNewNode;
 			}
 		}
 	}
 
-	void Remove(GKdTree* pTree, size_t index, double* pRow) override
+	void Remove(WKdTree* pTree, size_t index, double* pRow) override
 	{
 		m_timeLeft--;
 		if(pTree->isGreaterOrEqual(pRow, m_attr, m_pivot))
@@ -718,7 +718,7 @@ public:
 		m_size--;
 	}
 
-	void Rename(GKdTree* pTree, size_t oldIndex, size_t newIndex, double* pRow) override
+	void Rename(WKdTree* pTree, size_t oldIndex, size_t newIndex, double* pRow) override
 	{
 		if(pTree->isGreaterOrEqual(pRow, m_attr, m_pivot))
 			m_pGreaterOrEqual->Rename(pTree, oldIndex, newIndex, pRow);
@@ -726,8 +726,8 @@ public:
 			m_pLess->Rename(pTree, oldIndex, newIndex, pRow);
 	}
 
-	GKdNode* GetLess() { return m_pLess; }
-	GKdNode* GetGreaterOrEqual() { return m_pGreaterOrEqual; }
+	WKdNode* GetLess() { return m_pLess; }
+	WKdNode* GetGreaterOrEqual() { return m_pGreaterOrEqual; }
 	size_t GetSize() { return m_size; }
 
 	void GetDivision(size_t* pAttr, double* pPivot)
@@ -744,21 +744,21 @@ public:
 };
 
 
-class GKdLeafNode : public GKdNode
+class WKdLeafNode : public WKdNode
 {
 protected:
 	vector<size_t> m_indexes;
 
 public:
-	GKdLeafNode(size_t count, size_t* pIndexes, size_t dims, size_t maxLeafSize)
-	: GKdNode(dims)
+	WKdLeafNode(size_t count, size_t* pIndexes, size_t dims, size_t maxLeafSize)
+	: WKdNode(dims)
 	{
 		m_indexes.reserve(std::max(count, maxLeafSize));
 		for(size_t i = 0; i < count; i++)
 			m_indexes.push_back(pIndexes[i]);
 	}
 
-	~GKdLeafNode() override
+	~WKdLeafNode() override
 	{
 	}
 
@@ -769,12 +769,12 @@ public:
 		return m_indexes.size();
 	}
 
-	void Insert(GKdTree* pTree, size_t index, double* pRow) override
+	void Insert(WKdTree* pTree, size_t index, double* pRow) override
 	{
 		m_indexes.push_back(index);
 	}
 
-	void Remove(GKdTree* pTree, size_t index, double* pRow) override
+	void Remove(WKdTree* pTree, size_t index, double* pRow) override
 	{
 		size_t count = m_indexes.size();
 		for(size_t i = 0; i < count; i++)
@@ -786,10 +786,10 @@ public:
 				return;
 			}
 		}
-		GAssert(false); // failed to find index. Did the row change?
+		WAssert(false); // failed to find index. Did the row change?
 	}
 
-	void Rename(GKdTree* pTree, size_t oldIndex, size_t newIndex, double* pRow) override
+	void Rename(WKdTree* pTree, size_t oldIndex, size_t newIndex, double* pRow) override
 	{
 		size_t count = m_indexes.size();
 		for(size_t i = 0; i < count; i++)
@@ -800,7 +800,7 @@ public:
 				return;
 			}
 		}
-		GAssert(false); // failed to find index. Did the row change?
+		WAssert(false); // failed to find index. Did the row change?
 	}
 
 	vector<size_t>* GetIndexes() { return &m_indexes; }
@@ -819,37 +819,37 @@ public:
 
 // --------------------------------------------------------------------------------------------------------
 
-GKdTree::GKdTree(const GMatrix* pData, GDistanceMetric* pMetric, bool ownMetric)
-: GNeighborFinderGeneralizing(pData, pMetric, ownMetric)
+WKdTree::WKdTree(const WMatrix* pData, WDistanceMetric* pMetric, bool ownMetric)
+: WNeighborFinderGeneralizing(pData, pMetric, ownMetric)
 {
 	m_maxLeafSize = 6;
 	size_t count = pData->rows();
-	GTEMPBUF(size_t, tmp, count);
+	WTEMPBUF(size_t, tmp, count);
 	for(size_t i = 0; i < count; i++)
 		tmp[i] = i;
 	m_pRoot = buildTree(count, tmp);
 }
 
 // virtual
-GKdTree::~GKdTree()
+WKdTree::~WKdTree()
 {
 	delete(m_pRoot);
 }
 
-void GKdTree::computePivotAndGoodness(size_t count, size_t* pIndexes, size_t attr, double* pOutPivot, double* pOutGoodness)
+void WKdTree::computePivotAndGoodness(size_t count, size_t* pIndexes, size_t attr, double* pOutPivot, double* pOutGoodness)
 {
 	size_t valueCount = m_pMetric->relation()->valueCount(attr);
 	if(valueCount > 0)
 	{
 		// Count the ocurrences of each value
-		GTEMPBUF(size_t, counts, valueCount);
+		WTEMPBUF(size_t, counts, valueCount);
 		memset(counts, '\0', sizeof(size_t) * valueCount);
 		for(size_t i = 0; i < count; i++)
 		{
-			const GVec& pPat = m_pData->row(pIndexes[i]);
+			const WVec& pPat = m_pData->row(pIndexes[i]);
 			if((int)pPat[attr] >= 0)
 			{
-				GAssert((unsigned int)pPat[attr] < (unsigned int)valueCount); // out of range
+				WAssert((unsigned int)pPat[attr] < (unsigned int)valueCount); // out of range
 				if((unsigned int)pPat[attr] < (unsigned int)valueCount)
 					counts[(int)pPat[attr]]++;
 			}
@@ -873,7 +873,7 @@ void GKdTree::computePivotAndGoodness(size_t count, size_t* pIndexes, size_t att
 				entropy -= ratio * log(ratio);
 			}
 		}
-		const GVec& pScaleFactors = m_pMetric->scaleFactors();
+		const WVec& pScaleFactors = m_pMetric->scaleFactors();
 		entropy *= (pScaleFactors[attr] * pScaleFactors[attr]);
 
 		*pOutPivot = (double)max;
@@ -886,8 +886,8 @@ void GKdTree::computePivotAndGoodness(size_t count, size_t* pIndexes, size_t att
 		double mean = 0;
 		for(size_t i = 0; i < count; i++)
 		{
-			GAssert(pIndexes[i] < m_pData->rows());
-			const GVec& pPat = m_pData->row(pIndexes[i]);
+			WAssert(pIndexes[i] < m_pData->rows());
+			const WVec& pPat = m_pData->row(pIndexes[i]);
 			if(pPat[attr] != UNKNOWN_REAL_VALUE)
 				mean += pPat[attr];
 			else
@@ -898,10 +898,10 @@ void GKdTree::computePivotAndGoodness(size_t count, size_t* pIndexes, size_t att
 		// Compute the scaled variance
 		double var = 0;
 		double d;
-		const GVec& scaleFactors = m_pMetric->scaleFactors();
+		const WVec& scaleFactors = m_pMetric->scaleFactors();
 		for(size_t i = 0; i < count; i++)
 		{
-			const GVec& pPat = m_pData->row(pIndexes[i]);
+			const WVec& pPat = m_pData->row(pIndexes[i]);
 			if(pPat[attr] != UNKNOWN_REAL_VALUE)
 			{
 				d = (pPat[attr] - mean) * scaleFactors[attr];
@@ -915,7 +915,7 @@ void GKdTree::computePivotAndGoodness(size_t count, size_t* pIndexes, size_t att
 	}
 }
 
-size_t GKdTree::splitIndexes(size_t count, size_t* pIndexes, size_t attr, double pivot)
+size_t WKdTree::splitIndexes(size_t count, size_t* pIndexes, size_t attr, double pivot)
 {
 	size_t t;
 	size_t beg = 0;
@@ -924,7 +924,7 @@ size_t GKdTree::splitIndexes(size_t count, size_t* pIndexes, size_t attr, double
 	{
 		while(end >= beg && end < count)
 		{
-			const GVec& pPat = m_pData->row(pIndexes[beg]);
+			const WVec& pPat = m_pData->row(pIndexes[beg]);
 			if(pPat[attr] >= pivot)
 			{
 				t = pIndexes[beg];
@@ -940,7 +940,7 @@ size_t GKdTree::splitIndexes(size_t count, size_t* pIndexes, size_t attr, double
 	{
 		while(end >= beg && end < count)
 		{
-			const GVec& pPat = m_pData->row(pIndexes[beg]);
+			const WVec& pPat = m_pData->row(pIndexes[beg]);
 			if((int)pPat[attr] == (int)pivot)
 			{
 				t = pIndexes[beg];
@@ -956,7 +956,7 @@ size_t GKdTree::splitIndexes(size_t count, size_t* pIndexes, size_t attr, double
 }
 
 // static
-bool GKdTree::isGreaterOrEqual(const double* pPat, size_t attr, double pivot)
+bool WKdTree::isGreaterOrEqual(const double* pPat, size_t attr, double pivot)
 {
 	if(m_pMetric->relation()->valueCount(attr) == 0)
 		return (pPat[attr] >= pivot);
@@ -964,11 +964,11 @@ bool GKdTree::isGreaterOrEqual(const double* pPat, size_t attr, double pivot)
 		return ((int)pPat[attr] == (int)pivot);
 }
 
-GKdNode* GKdTree::buildTree(size_t count, size_t* pIndexes)
+WKdNode* WKdTree::buildTree(size_t count, size_t* pIndexes)
 {
 	size_t dims = m_pMetric->relation()->size();
 	if(count <= (size_t)m_maxLeafSize)
-		return new GKdLeafNode(count, pIndexes, dims, m_maxLeafSize);
+		return new WKdLeafNode(count, pIndexes, dims, m_maxLeafSize);
 
 	// Find a good place to split
 	double pivot, goodness, p, g;
@@ -989,18 +989,18 @@ GKdNode* GKdTree::buildTree(size_t count, size_t* pIndexes)
 	size_t lessCount = splitIndexes(count, pIndexes, attr, pivot);
 	size_t greaterOrEqualCount = count - lessCount;
 	if(lessCount == 0 || greaterOrEqualCount == 0)
-		return new GKdLeafNode(count, pIndexes, dims, m_maxLeafSize);
+		return new WKdLeafNode(count, pIndexes, dims, m_maxLeafSize);
 
 	// Make an interior node
-	GKdNode* pLess = buildTree(lessCount, pIndexes);
-	GKdNode* greaterOrEqual = buildTree(greaterOrEqualCount, pIndexes + lessCount);
-	return new GKdInteriorNode(dims, pLess, greaterOrEqual, count, attr, pivot);
+	WKdNode* pLess = buildTree(lessCount, pIndexes);
+	WKdNode* greaterOrEqual = buildTree(greaterOrEqualCount, pIndexes + lessCount);
+	return new WKdInteriorNode(dims, pLess, greaterOrEqual, count, attr, pivot);
 }
 
 class KdTree_Compare_Nodes_Functor
 {
 public:
-	bool operator()(GKdNode* pA, GKdNode* pB) const
+	bool operator()(WKdNode* pA, WKdNode* pB) const
 	{
 		double a = pA->GetMinDist();
 		double b = pB->GetMinDist();
@@ -1008,29 +1008,29 @@ public:
 	}
 };
 
-size_t GKdTree::findNearest(size_t k, const GVec& vec, size_t nExclude)
+size_t WKdTree::findNearest(size_t k, const WVec& vec, size_t nExclude)
 {
-	GClosestNeighborFindingHelper helper(k, m_neighs, m_dists);
+	WClosestNeighborFindingHelper helper(k, m_neighs, m_dists);
 	KdTree_Compare_Nodes_Functor comparator;
-	priority_queue< GKdNode*, vector<GKdNode*>, KdTree_Compare_Nodes_Functor > q(comparator);
+	priority_queue< WKdNode*, vector<WKdNode*>, KdTree_Compare_Nodes_Functor > q(comparator);
 	q.push(m_pRoot);
 	while(q.size() > 0)
 	{
-		GKdNode* pNode = q.top();
+		WKdNode* pNode = q.top();
 		q.pop();
 		if(pNode->GetMinDist() >= helper.GetWorstDist())
 			break;
 		if(pNode->IsLeaf())
 		{
 			double squaredDist;
-			vector<size_t>* pIndexes = ((GKdLeafNode*)pNode)->GetIndexes();
+			vector<size_t>* pIndexes = ((WKdLeafNode*)pNode)->GetIndexes();
 			size_t count = pIndexes->size();
 			for(size_t i = 0; i < count; i++)
 			{
 				size_t index = (*pIndexes)[i];
 				if(index == nExclude)
 					continue;
-				const GVec& pCand = m_pData->row(index);
+				const WVec& pCand = m_pData->row(index);
 				squaredDist = m_pMetric->squaredDistance(vec, pCand);
 				helper.TryPoint(index, squaredDist);
 			}
@@ -1039,11 +1039,11 @@ size_t GKdTree::findNearest(size_t k, const GVec& vec, size_t nExclude)
 		{
 			size_t attr;
 			double pivot;
-			GKdInteriorNode* pParent = (GKdInteriorNode*)pNode;
+			WKdInteriorNode* pParent = (WKdInteriorNode*)pNode;
 			pParent->GetDivision(&attr, &pivot);
-			GKdNode* pLess = pParent->GetLess();
+			WKdNode* pLess = pParent->GetLess();
 			pLess->CopyOffset(pParent);
-			GKdNode* pGreaterOrEqual = pParent->GetGreaterOrEqual();
+			WKdNode* pGreaterOrEqual = pParent->GetGreaterOrEqual();
 			pGreaterOrEqual->CopyOffset(pParent);
 			if(isGreaterOrEqual(vec.data(), attr, pivot))
 				pLess->AdjustOffset(attr, vec[attr] - pivot, m_pMetric->scaleFactors());
@@ -1056,30 +1056,30 @@ size_t GKdTree::findNearest(size_t k, const GVec& vec, size_t nExclude)
 	return m_neighs.size();
 }
 
-size_t GKdTree::findWithinRadius(double squaredRadius, const GVec& vec, size_t nExclude)
+size_t WKdTree::findWithinRadius(double squaredRadius, const WVec& vec, size_t nExclude)
 {
 	m_neighs.clear();
 	m_dists.clear();
 	KdTree_Compare_Nodes_Functor comparator;
-	priority_queue< GKdNode*, vector<GKdNode*>, KdTree_Compare_Nodes_Functor > q(comparator);
+	priority_queue< WKdNode*, vector<WKdNode*>, KdTree_Compare_Nodes_Functor > q(comparator);
 	q.push(m_pRoot);
 	while(q.size() > 0)
 	{
-		GKdNode* pNode = q.top();
+		WKdNode* pNode = q.top();
 		q.pop();
 		if(pNode->GetMinDist() > squaredRadius)
 			break;
 		if(pNode->IsLeaf())
 		{
 			double squaredDist;
-			vector<size_t>* pIndexes = ((GKdLeafNode*)pNode)->GetIndexes();
+			vector<size_t>* pIndexes = ((WKdLeafNode*)pNode)->GetIndexes();
 			size_t count = pIndexes->size();
 			for(size_t i = 0; i < count; i++)
 			{
 				size_t index = (*pIndexes)[i];
 				if(index == nExclude)
 					continue;
-				const GVec& pCand = m_pData->row(index);
+				const WVec& pCand = m_pData->row(index);
 				squaredDist = m_pMetric->squaredDistance(vec, pCand);
 				if(squaredDist <= squaredRadius)
 				{
@@ -1092,11 +1092,11 @@ size_t GKdTree::findWithinRadius(double squaredRadius, const GVec& vec, size_t n
 		{
 			size_t attr;
 			double pivot;
-			GKdInteriorNode* pParent = (GKdInteriorNode*)pNode;
+			WKdInteriorNode* pParent = (WKdInteriorNode*)pNode;
 			pParent->GetDivision(&attr, &pivot);
-			GKdNode* pLess = pParent->GetLess();
+			WKdNode* pLess = pParent->GetLess();
 			pLess->CopyOffset(pParent);
-			GKdNode* pGreaterOrEqual = pParent->GetGreaterOrEqual();
+			WKdNode* pGreaterOrEqual = pParent->GetGreaterOrEqual();
 			pGreaterOrEqual->CopyOffset(pParent);
 			if(isGreaterOrEqual(vec.data(), attr, pivot))
 				pLess->AdjustOffset(attr, vec[attr] - pivot, m_pMetric->scaleFactors());
@@ -1110,48 +1110,48 @@ size_t GKdTree::findWithinRadius(double squaredRadius, const GVec& vec, size_t n
 }
 
 // virtual
-size_t GKdTree::findNearest(size_t k, size_t index)
+size_t WKdTree::findNearest(size_t k, size_t index)
 {
 	return findNearest(k, m_pData->row(index), index);
 }
 
 // virtual
-size_t GKdTree::findNearest(size_t k, const GVec& vec)
+size_t WKdTree::findNearest(size_t k, const WVec& vec)
 {
 	return findNearest(k, vec, INVALID_INDEX);
 }
 
 // virtual
-size_t GKdTree::findWithinRadius(double squaredRadius, size_t index)
+size_t WKdTree::findWithinRadius(double squaredRadius, size_t index)
 {
 	return findWithinRadius(squaredRadius, m_pData->row(index), index);
 }
 
 // virtual
-size_t GKdTree::findWithinRadius(double squaredRadius, const GVec& vector)
+size_t WKdTree::findWithinRadius(double squaredRadius, const WVec& vector)
 {
 	return findWithinRadius(squaredRadius, vector, INVALID_INDEX);
 }
 
 // virtual
-void GKdTree::reoptimize()
+void WKdTree::reoptimize()
 {
 	if(!m_pRoot->IsLeaf())
 	{
-		GKdNode* pNewNode = ((GKdInteriorNode*)m_pRoot)->Rebuild(this);
+		WKdNode* pNewNode = ((WKdInteriorNode*)m_pRoot)->Rebuild(this);
 		delete(m_pRoot);
 		m_pRoot = pNewNode;
 	}
 }
 
 // static
-double GKdTree::medianDistanceToNeighbor(GMatrix& data, size_t n)
+double WKdTree::medianDistanceToNeighbor(WMatrix& data, size_t n)
 {
 	if(n < 1)
 		return 0.0; // 0 is the point itself
 
 	// Fill a vector with the distances to the n^th neighbor of each point
-	GKdTree kdtree(&data, nullptr, false);
+	WKdTree kdtree(&data, nullptr, false);
 	vector<double> vals;
 	vals.reserve(data.rows());
 	for(size_t i = 0; i < data.rows(); i++)
@@ -1180,18 +1180,18 @@ double GKdTree::medianDistanceToNeighbor(GMatrix& data, size_t n)
 }
 
 
-//#	include "GImage.h"
+//#	include "WImage.h"
 
-void MeasureBounds(GMatrix* pData, GKdNode* pNode, size_t attr, double* pMin, double* pMax)
+void MeasureBounds(WMatrix* pData, WKdNode* pNode, size_t attr, double* pMin, double* pMax)
 {
 	if(pNode->IsLeaf())
 	{
 		double min = 1e200;
 		double max = -1e200;
-		vector<size_t>* pIndexes = ((GKdLeafNode*)pNode)->GetIndexes();
+		vector<size_t>* pIndexes = ((WKdLeafNode*)pNode)->GetIndexes();
 		for(size_t i = 0; i < pIndexes->size(); i++)
 		{
-			GVec& pPat = pData->row((*pIndexes)[i]);
+			WVec& pPat = pData->row((*pIndexes)[i]);
 			min = std::min(pPat[attr], min);
 			max = std::max(pPat[attr], max);
 		}
@@ -1201,23 +1201,23 @@ void MeasureBounds(GMatrix* pData, GKdNode* pNode, size_t attr, double* pMin, do
 	else
 	{
 		double min1, min2, max1, max2;
-		GKdNode* pChild = ((GKdInteriorNode*)pNode)->GetLess();
+		WKdNode* pChild = ((WKdInteriorNode*)pNode)->GetLess();
 		MeasureBounds(pData, pChild, attr, &min1, &max1);
-		pChild = ((GKdInteriorNode*)pNode)->GetGreaterOrEqual();
+		pChild = ((WKdInteriorNode*)pNode)->GetGreaterOrEqual();
 		MeasureBounds(pData, pChild, attr, &min2, &max2);
 		*pMin = std::min(min1, min2);
 		*pMax = std::max(max1, max2);
 	}
 }
 
-void DrawKdNode(GPlotWindow* pw, GKdNode* pNode, GMatrix* pData)
+void DrawKdNode(WPlotWindow* pw, WKdNode* pNode, WMatrix* pData)
 {
 	if(pNode->IsLeaf())
 	{
-		vector<size_t>* pIndexes = ((GKdLeafNode*)pNode)->GetIndexes();
+		vector<size_t>* pIndexes = ((WKdLeafNode*)pNode)->GetIndexes();
 		for(size_t i = 0; i < pIndexes->size(); i++)
 		{
-			GVec& pPat = pData->row((*pIndexes)[i]);
+			WVec& pPat = pData->row((*pIndexes)[i]);
 			pw->dot(pPat[0], pPat[1], 5, 0xff00ff00, 0xff000000);
 			std::ostringstream os;
 			os << (*pIndexes)[i];
@@ -1229,7 +1229,7 @@ void DrawKdNode(GPlotWindow* pw, GKdNode* pNode, GMatrix* pData)
 	{
 		size_t attr;
 		double pivot, min, max;
-		((GKdInteriorNode*)pNode)->GetDivision(&attr, &pivot);
+		((WKdInteriorNode*)pNode)->GetDivision(&attr, &pivot);
 		if(attr == 0)
 		{
 			MeasureBounds(pData, pNode, 1, &min, &max);
@@ -1237,45 +1237,45 @@ void DrawKdNode(GPlotWindow* pw, GKdNode* pNode, GMatrix* pData)
 		}
 		else
 		{
-			GAssert(attr == 1); // unsupported value
+			WAssert(attr == 1); // unsupported value
 			MeasureBounds(pData, pNode, 0, &min, &max);
 			pw->line(min, pivot, max, pivot, 0xffff0000);
 		}
-		GKdNode* pChild = ((GKdInteriorNode*)pNode)->GetLess();
+		WKdNode* pChild = ((WKdInteriorNode*)pNode)->GetLess();
 		DrawKdNode(pw, pChild, pData);
-		pChild = ((GKdInteriorNode*)pNode)->GetGreaterOrEqual();
+		pChild = ((WKdInteriorNode*)pNode)->GetGreaterOrEqual();
 		DrawKdNode(pw, pChild, pData);
 	}
 }
 
-class GDontGoFarMetric : public GDistanceMetric
+class WDontGoFarMetric : public WDistanceMetric
 {
 public:
 	double m_squaredMaxDist;
 
-	GDontGoFarMetric(double maxDist)
-	: GDistanceMetric(), m_squaredMaxDist(maxDist * maxDist)
+	WDontGoFarMetric(double maxDist)
+	: WDistanceMetric(), m_squaredMaxDist(maxDist * maxDist)
 	{
 	}
 
-	~GDontGoFarMetric() override
+	~WDontGoFarMetric() override
 	{
 	}
 
-	const char* name() const override { return "GDontGoFarMetric"; }
+	const char* name() const override { return "WDontGoFarMetric"; }
 
-	GDomNode* serialize(GDom* pDoc) const override
+	WDomNode* serialize(WDom* pDoc) const override
 	{
 		throw Ex("not implemented");
 		return nullptr;
 	}
 
-	void init(const GRelation* pRelation, bool own) override
+	void init(const WRelation* pRelation, bool own) override
 	{
 		setRelation(pRelation, own);
 	}
 
-	double squaredDistance(const GVec& pA, const GVec& pB) const override
+	double squaredDistance(const WVec& pA, const WVec& pB) const override
 	{
 		double squaredDist = pA.squaredDistance(pB);
 		if(squaredDist > m_squaredMaxDist)
@@ -1284,19 +1284,19 @@ public:
 	}
 };
 
-void GKdTree_testThatItDoesntLookFar()
+void WKdTree_testThatItDoesntLookFar()
 {
-	GRand prng(0);
-	GMatrix tmp(100000, 2);
+	WRand prng(0);
+	WMatrix tmp(100000, 2);
 	for(size_t i = 0; i < tmp.rows(); i++)
 	{
-		GVec& pRow = tmp[i];
+		WVec& pRow = tmp[i];
 		pRow[0] = prng.uniform();
 		pRow[1] = prng.uniform();
 	}
-	GDontGoFarMetric metric(0.05);
-	GKdTree kdTree(&tmp, &metric, false);
-	GVec row(2);
+	WDontGoFarMetric metric(0.05);
+	WKdTree kdTree(&tmp, &metric, false);
+	WVec row(2);
 	for(size_t i = 0; i < 100; i++)
 	{
 		row[0] = prng.uniform();
@@ -1310,20 +1310,20 @@ void GKdTree_testThatItDoesntLookFar()
 #define TEST_NEIGHBORS 24
 
 // static
-void GKdTree::test()
+void WKdTree::test()
 {
-	GClosestNeighborFindingHelper::test();
-	GKdTree_testThatItDoesntLookFar();
+	WClosestNeighborFindingHelper::test();
+	WKdTree_testThatItDoesntLookFar();
 
 	// Test neighbor sorting
 	{
-		GRand rand(0);
-		GMatrix data(256, 1);
+		WRand rand(0);
+		WMatrix data(256, 1);
 		for(size_t i = 0; i < data.rows(); i++)
 			data[i][0] = rand.uniform();
 		data.sort(0);
-		GRandomIndexIterator ii(data.rows(), rand);
-		GKdTree kd(&data);
+		WRandomIndexIterator ii(data.rows(), rand);
+		WKdTree kd(&data);
 		size_t index;
 		kd.m_neighs.clear();
 		kd.m_dists.clear();
@@ -1342,23 +1342,23 @@ void GKdTree::test()
 	}
 
 
-	GMatrix data(new GUniformRelation(TEST_DIMS, 0));
+	WMatrix data(new WUniformRelation(TEST_DIMS, 0));
 	data.reserve(TEST_PATTERNS);
-	GRand prng(0);
+	WRand prng(0);
 	for(size_t i = 0; i < TEST_PATTERNS; i++)
 	{
-		GVec& pPat = data.newRow();
+		WVec& pPat = data.newRow();
 		pPat.fillNormal(prng);
 		pPat.normalize();
 	}
-	GBruteForceNeighborFinder bf(&data);
-	GKdTree kd(&data);
+	WBruteForceNeighborFinder bf(&data);
+	WKdTree kd(&data);
 	/*
-	GAssert(TEST_DIMS == 2); // You must change TEST_DIMS to 2 if you're going to plot the tree
-	GImage image;
+	WAssert(TEST_DIMS == 2); // You must change TEST_DIMS to 2 if you're going to plot the tree
+	WImage image;
 	image.SetSize(1000, 1000);
 	image.Clear(0xff000000);
-	GPlotWindow pw(&image, -1.1, -1.1, 1.1, 1.1);
+	WPlotWindow pw(&image, -1.1, -1.1, 1.1, 1.1);
 	DrawKdNode(&pw, kd.GetRoot(), &data);
 	image.SavePNGFile("kdtree.png");
 */
@@ -1392,31 +1392,31 @@ void GKdTree::test()
 
 
 
-class GBallNode
+class WBallNode
 {
 public:
-	GVec m_center;
+	WVec m_center;
 	double m_radius;
 
-	GBallNode(size_t count, size_t* pIndexes, const GMatrix* pData, GDistanceMetric* pMetric)
+	WBallNode(size_t count, size_t* pIndexes, const WMatrix* pData, WDistanceMetric* pMetric)
 	: m_center(pData->cols())
 	{
 		m_radius = sqrt(pData->boundingSphere(m_center, pIndexes, count, pMetric));
 	}
 
-	virtual ~GBallNode()
+	virtual ~WBallNode()
 	{
 	}
 
 	virtual bool isLeaf() = 0;
 
-	double distance(GDistanceMetric* pMetric, const GVec& pVec)
+	double distance(WDistanceMetric* pMetric, const WVec& pVec)
 	{
 		return sqrt(pMetric->squaredDistance(m_center, pVec)) - m_radius;
 	}
 
 	/// Move the center and radius just enough to enclose both pVec and the previous ball
-	void enclose(GDistanceMetric* pMetric, const GVec& pVec)
+	void enclose(WDistanceMetric* pMetric, const WVec& pVec)
 	{
 		double d = distance(pMetric, pVec) + 1e-9;
 		if(d > 0)
@@ -1429,27 +1429,27 @@ public:
 		}
 	}
 
-	virtual void insert(size_t index, GDistanceMetric* pMetric, const GVec& pVec) = 0;
+	virtual void insert(size_t index, WDistanceMetric* pMetric, const WVec& pVec) = 0;
 
-	virtual bool drop(size_t index, GDistanceMetric* pMetric, const GVec& pVec) = 0;
+	virtual bool drop(size_t index, WDistanceMetric* pMetric, const WVec& pVec) = 0;
 
 	virtual void dropAll() = 0;
 
-	virtual void print(std::ostream& stream, size_t depth, GDistanceMetric* pMetric, const GVec& pVec, const GMatrix* pData) = 0;
+	virtual void print(std::ostream& stream, size_t depth, WDistanceMetric* pMetric, const WVec& pVec, const WMatrix* pData) = 0;
 };
 
-class GBallInterior : public GBallNode
+class WBallInterior : public WBallNode
 {
 public:
-	GBallNode* m_pLeft;
-	GBallNode* m_pRight;
+	WBallNode* m_pLeft;
+	WBallNode* m_pRight;
 
-	GBallInterior(size_t count, size_t* pIndexes, const GMatrix* pData, GDistanceMetric* pMetric)
-	: GBallNode(count, pIndexes, pData, pMetric), m_pLeft(nullptr), m_pRight(nullptr)
+	WBallInterior(size_t count, size_t* pIndexes, const WMatrix* pData, WDistanceMetric* pMetric)
+	: WBallNode(count, pIndexes, pData, pMetric), m_pLeft(nullptr), m_pRight(nullptr)
 	{
 	}
 
-	~GBallInterior() override
+	~WBallInterior() override
 	{
 		delete(m_pLeft);
 		delete(m_pRight);
@@ -1457,7 +1457,7 @@ public:
 
 	bool isLeaf() override { return false; }
 
-	void insert(size_t index, GDistanceMetric* pMetric, const GVec& pVec) override
+	void insert(size_t index, WDistanceMetric* pMetric, const WVec& pVec) override
 	{
 		enclose(pMetric, pVec);
 		if(m_pLeft->distance(pMetric, pVec) < m_pRight->distance(pMetric, pVec))
@@ -1466,7 +1466,7 @@ public:
 			m_pRight->insert(index, pMetric, pVec);
 	}
 
-	bool drop(size_t index, GDistanceMetric* pMetric, const GVec& pVec) override
+	bool drop(size_t index, WDistanceMetric* pMetric, const WVec& pVec) override
 	{
 		if(m_pLeft->distance(pMetric, pVec) <= 0.0)
 		{
@@ -1487,7 +1487,7 @@ public:
 		m_pRight->dropAll();
 	}
 
-	void print(std::ostream& stream, size_t depth, GDistanceMetric* pMetric, const GVec& pVec, const GMatrix* pData) override
+	void print(std::ostream& stream, size_t depth, WDistanceMetric* pMetric, const WVec& pVec, const WMatrix* pData) override
 	{
 		m_pRight->print(stream, depth + 1, pMetric, pVec, pData);
 		for(size_t i = 0; i < depth; i++)
@@ -1498,32 +1498,32 @@ public:
 	}
 };
 
-class GBallLeaf : public GBallNode
+class WBallLeaf : public WBallNode
 {
 public:
 	std::vector<size_t> m_indexes;
 
-	GBallLeaf(size_t count, size_t* pIndexes, const GMatrix* pData, GDistanceMetric* pMetric)
-	: GBallNode(count, pIndexes, pData, pMetric)
+	WBallLeaf(size_t count, size_t* pIndexes, const WMatrix* pData, WDistanceMetric* pMetric)
+	: WBallNode(count, pIndexes, pData, pMetric)
 	{
 		m_indexes.reserve(count);
 		for(size_t i = 0; i < count; i++)
 			m_indexes.push_back(pIndexes[i]);
 	}
 
-	~GBallLeaf() override
+	~WBallLeaf() override
 	{
 	}
 
 	bool isLeaf() override { return true; }
 
-	void insert(size_t index, GDistanceMetric* pMetric, const GVec& pVec) override
+	void insert(size_t index, WDistanceMetric* pMetric, const WVec& pVec) override
 	{
 		enclose(pMetric, pVec);
 		m_indexes.push_back(index);
 	}
 
-	bool drop(size_t index, GDistanceMetric* pMetric, const GVec& pVec) override
+	bool drop(size_t index, WDistanceMetric* pMetric, const WVec& pVec) override
 	{
 		for(size_t i = 0; i < m_indexes.size(); i++)
 		{
@@ -1542,7 +1542,7 @@ public:
 		m_indexes.clear();
 	}
 
-	void print(std::ostream& stream, size_t depth, GDistanceMetric* pMetric, const GVec& pVec, const GMatrix* pData) override
+	void print(std::ostream& stream, size_t depth, WDistanceMetric* pMetric, const WVec& pVec, const WMatrix* pData) override
 	{
 		for(size_t i = 0; i < depth; i++)
 			stream << "  ";
@@ -1559,8 +1559,8 @@ public:
 };
 
 
-GBallTree::GBallTree(const GMatrix* pData, GDistanceMetric* pMetric, bool ownMetric)
-: GNeighborFinderGeneralizing(pData, pMetric, ownMetric),
+WBallTree::WBallTree(const WMatrix* pData, WDistanceMetric* pMetric, bool ownMetric)
+: WNeighborFinderGeneralizing(pData, pMetric, ownMetric),
   m_maxLeafSize(6),
   m_pRoot(nullptr)
 {
@@ -1568,52 +1568,52 @@ GBallTree::GBallTree(const GMatrix* pData, GDistanceMetric* pMetric, bool ownMet
 }
 
 // virtual
-GBallTree::~GBallTree()
+WBallTree::~WBallTree()
 {
 	delete(m_pRoot);
 }
 
-void GBallTree::reoptimize()
+void WBallTree::reoptimize()
 {
 	if(m_pRoot && m_pRoot->isLeaf())
 		return;
 	delete(m_pRoot);
-	GIndexVec indexes(m_pData->rows());
-	GIndexVec::makeIndexVec(indexes.m_data, m_pData->rows());
+	WIndexVec indexes(m_pData->rows());
+	WIndexVec::makeIndexVec(indexes.m_data, m_pData->rows());
 	m_pRoot = buildTree(m_pData->rows(), indexes.m_data);
 	m_size = m_pData->rows();
 }
 
 // virtual
-size_t GBallTree::findNearest(size_t k, size_t index)
+size_t WBallTree::findNearest(size_t k, size_t index)
 {
 	return findNearest(k, m_pData->row(index), index);
 }
 
 // virtual
-size_t GBallTree::findNearest(size_t k, const GVec& vec)
+size_t WBallTree::findNearest(size_t k, const WVec& vec)
 {
 	return findNearest(k, vec, INVALID_INDEX);
 }
 
 // virtual
-size_t GBallTree::findWithinRadius(double squaredRadius, size_t index)
+size_t WBallTree::findWithinRadius(double squaredRadius, size_t index)
 {
 	return findWithinRadius(squaredRadius, m_pData->row(index), index);
 }
 
 // virtual
-size_t GBallTree::findWithinRadius(double squaredRadius, const GVec& vec)
+size_t WBallTree::findWithinRadius(double squaredRadius, const WVec& vec)
 {
 	return findWithinRadius(squaredRadius, vec, INVALID_INDEX);
 }
 
-GBallNode* GBallTree::buildTree(size_t count, size_t* pIndexes)
+WBallNode* WBallTree::buildTree(size_t count, size_t* pIndexes)
 {
 	if(count > m_maxLeafSize)
 	{
 		// Find the two farthest points
-		const GVec& pA = m_pData->row(pIndexes[0]);
+		const WVec& pA = m_pData->row(pIndexes[0]);
 		size_t b = 1;
 		double sdist = m_pMetric->squaredDistance(pA, m_pData->row(pIndexes[b]));
 		for(size_t i = 2; i < count; i++)
@@ -1625,7 +1625,7 @@ GBallNode* GBallTree::buildTree(size_t count, size_t* pIndexes)
 				b = i;
 			}
 		}
-		const GVec& pB = m_pData->row(pIndexes[b]);
+		const WVec& pB = m_pData->row(pIndexes[b]);
 		size_t c = 0;
 		sdist = m_pMetric->squaredDistance(pB, m_pData->row(pIndexes[c]));
 		for(size_t i = 1; i < count; i++)
@@ -1639,7 +1639,7 @@ GBallNode* GBallTree::buildTree(size_t count, size_t* pIndexes)
 				c = i;
 			}
 		}
-		const GVec& pC = m_pData->row(pIndexes[c]);
+		const WVec& pC = m_pData->row(pIndexes[c]);
 
 		// Split based on closeness to b or c
 		size_t leftCount = 0;
@@ -1654,35 +1654,35 @@ GBallNode* GBallTree::buildTree(size_t count, size_t* pIndexes)
 			}
 		}
 		if(leftCount == 0 || leftCount == count) // If we could not separate any of the points (which may occur if they are all the same point)...
-			return new GBallLeaf(count, pIndexes, m_pData, m_pMetric);
-		GBallInterior* pInterior = new GBallInterior(count, pIndexes, m_pData, m_pMetric);
-		std::unique_ptr<GBallInterior> hInterior(pInterior);
+			return new WBallLeaf(count, pIndexes, m_pData, m_pMetric);
+		WBallInterior* pInterior = new WBallInterior(count, pIndexes, m_pData, m_pMetric);
+		std::unique_ptr<WBallInterior> hInterior(pInterior);
 		pInterior->m_pLeft = buildTree(leftCount, pIndexes);
-		GAssert(pInterior->m_pLeft);
+		WAssert(pInterior->m_pLeft);
 		pInterior->m_pRight = buildTree(count - leftCount, pIndexes + leftCount);
-		GAssert(pInterior->m_pRight);
+		WAssert(pInterior->m_pRight);
 		return hInterior.release();
 	}
 	else
-		return new GBallLeaf(count, pIndexes, m_pData, m_pMetric);
+		return new WBallLeaf(count, pIndexes, m_pData, m_pMetric);
 }
 
 
-size_t GBallTree::findNearest(size_t k, const GVec& vec, size_t nExclude)
+size_t WBallTree::findNearest(size_t k, const WVec& vec, size_t nExclude)
 {
-	GClosestNeighborFindingHelper helper(k, m_neighs, m_dists);
-	GSimplePriorityQueue<GBallNode*> q;
+	WClosestNeighborFindingHelper helper(k, m_neighs, m_dists);
+	WSimplePriorityQueue<WBallNode*> q;
 	q.insert(m_pRoot, m_pRoot->distance(m_pMetric, vec));
 	while(q.size() > 0)
 	{
 		double dist = q.peekValue();
 		if(helper.GetWorstDist() < dist * dist)
 			break;
-		GBallNode* pBall = q.peekObject();
+		WBallNode* pBall = q.peekObject();
 		q.pop();
 		if(pBall->isLeaf())
 		{
-			GBallLeaf* pLeaf = (GBallLeaf*)pBall;
+			WBallLeaf* pLeaf = (WBallLeaf*)pBall;
 			for(size_t i = 0; i < pLeaf->m_indexes.size(); i++)
 			{
 				size_t index = pLeaf->m_indexes[i];
@@ -1692,7 +1692,7 @@ size_t GBallTree::findNearest(size_t k, const GVec& vec, size_t nExclude)
 		}
 		else
 		{
-			GBallInterior* pInt = (GBallInterior*)pBall;
+			WBallInterior* pInt = (WBallInterior*)pBall;
 			q.insert(pInt->m_pLeft, pInt->m_pLeft->distance(m_pMetric, vec));
 			q.insert(pInt->m_pRight, pInt->m_pRight->distance(m_pMetric, vec));
 		}
@@ -1700,22 +1700,22 @@ size_t GBallTree::findNearest(size_t k, const GVec& vec, size_t nExclude)
 	return m_neighs.size();
 }
 
-size_t GBallTree::findWithinRadius(double squaredRadius, const GVec& vec, size_t nExclude)
+size_t WBallTree::findWithinRadius(double squaredRadius, const WVec& vec, size_t nExclude)
 {
 	m_neighs.clear();
 	m_dists.clear();
-	GSimplePriorityQueue<GBallNode*> q;
+	WSimplePriorityQueue<WBallNode*> q;
 	q.insert(m_pRoot, m_pRoot->distance(m_pMetric, vec));
 	while(q.size() > 0)
 	{
 		double dist = q.peekValue();
 		if(dist * dist > squaredRadius)
 			break;
-		GBallNode* pBall = q.peekObject();
+		WBallNode* pBall = q.peekObject();
 		q.pop();
 		if(pBall->isLeaf())
 		{
-			GBallLeaf* pLeaf = (GBallLeaf*)pBall;
+			WBallLeaf* pLeaf = (WBallLeaf*)pBall;
 			for(size_t i = 0; i < pLeaf->m_indexes.size(); i++)
 			{
 				size_t index = pLeaf->m_indexes[i];
@@ -1732,7 +1732,7 @@ size_t GBallTree::findWithinRadius(double squaredRadius, const GVec& vec, size_t
 		}
 		else
 		{
-			GBallInterior* pInt = (GBallInterior*)pBall;
+			WBallInterior* pInt = (WBallInterior*)pBall;
 			q.insert(pInt->m_pLeft, pInt->m_pLeft->distance(m_pMetric, vec));
 			q.insert(pInt->m_pRight, pInt->m_pRight->distance(m_pMetric, vec));
 		}
@@ -1740,20 +1740,20 @@ size_t GBallTree::findWithinRadius(double squaredRadius, const GVec& vec, size_t
 	return m_neighs.size();
 }
 
-void GBallTree::insert(size_t index)
+void WBallTree::insert(size_t index)
 {
 	m_pRoot->insert(index, m_pMetric, m_pData->row(index));
 	m_size++;
 }
 
-void GBallTree::drop(size_t index)
+void WBallTree::drop(size_t index)
 {
 	if(!m_pRoot->drop(index, m_pMetric, m_pData->row(index)))
 		throw Ex("Could not find the specified index in this structure. (This could happen if the corresponding point in the dataset has changed.)");
 	m_size--;
 }
 
-void GBallTree::dropAll()
+void WBallTree::dropAll()
 {
 	m_pRoot->dropAll();
 	m_size = 0;
@@ -1764,16 +1764,16 @@ void GBallTree::dropAll()
 #define TEST_BALLTREE_DIMS 7
 #define TEST_BALLTREE_NEIGHBORS 17
 // static
-void GBallTree::test()
+void WBallTree::test()
 {
-	GRand r(0);
+	WRand r(0);
 	for(size_t i = 0; i < TEST_BALLTREE_ITERS; i++)
 	{
-		GMatrix m(TEST_BALLTREE_ROWS, TEST_BALLTREE_DIMS);
+		WMatrix m(TEST_BALLTREE_ROWS, TEST_BALLTREE_DIMS);
 		for(size_t j = 0; j < TEST_BALLTREE_ROWS; j++)
 			m[j].fillUniform(r);
-		GKdTree kd(&m);
-		GBallTree ball(&m);
+		WKdTree kd(&m);
+		WBallTree ball(&m);
 		size_t nckd = kd.findNearest(TEST_BALLTREE_NEIGHBORS, 0);
 		kd.sortNeighbors();
 		size_t ncbt = ball.findNearest(TEST_BALLTREE_NEIGHBORS, 0);
@@ -1789,13 +1789,13 @@ void GBallTree::test()
 				std::cout << "Matrix:\n";
 				m.print(std::cout);
 				std::cout << "kdTree:\n";
-				GIndexVec::print(std::cout, kdInd, TEST_BALLTREE_NEIGHBORS);
+				WIndexVec::print(std::cout, kdInd, TEST_BALLTREE_NEIGHBORS);
 				std::cout << "\nballTree:\n";
-				GIndexVec::print(std::cout, ballInd, TEST_BALLTREE_NEIGHBORS);
+				WIndexVec::print(std::cout, ballInd, TEST_BALLTREE_NEIGHBORS);
 				std::cout << "\nkdTree distances:\n";
-				GVec::print(std::cout, 8, kdDist, TEST_BALLTREE_NEIGHBORS);
+				WVec::print(std::cout, 8, kdDist, TEST_BALLTREE_NEIGHBORS);
 				std::cout << "\nballTree distances:\n";
-				GVec::print(std::cout, 8, ballDist, TEST_BALLTREE_NEIGHBORS);
+				WVec::print(std::cout, 8, ballDist, TEST_BALLTREE_NEIGHBORS);
 				std::cout << "\nTree:\n";
 				ball.m_pRoot->print(std::cout, 0, ball.m_pMetric, m[0], &m);
 				*/
@@ -1819,18 +1819,18 @@ void GBallTree::test()
 
 
 
-class GShortcutPrunerAtomicCycleDetector : public GAtomicCycleFinder
+class WShortcutPrunerAtomicCycleDetector : public WAtomicCycleFinder
 {
 protected:
-	GShortcutPruner* m_pThis;
+	WShortcutPruner* m_pThis;
 	size_t m_thresh;
 
 public:
-	GShortcutPrunerAtomicCycleDetector(size_t nodes, GShortcutPruner* pThis, size_t thresh) : GAtomicCycleFinder(nodes), m_pThis(pThis), m_thresh(thresh)
+	WShortcutPrunerAtomicCycleDetector(size_t nodes, WShortcutPruner* pThis, size_t thresh) : WAtomicCycleFinder(nodes), m_pThis(pThis), m_thresh(thresh)
 	{
 	}
 
-	~GShortcutPrunerAtomicCycleDetector() override
+	~WShortcutPrunerAtomicCycleDetector() override
 	{
 	}
 
@@ -1846,18 +1846,18 @@ public:
 	}
 };
 
-GShortcutPruner::GShortcutPruner(size_t* pNeighborhoods, size_t n, size_t k)
+WShortcutPruner::WShortcutPruner(size_t* pNeighborhoods, size_t n, size_t k)
 : m_pNeighborhoods(pNeighborhoods), m_n(n), m_k(k), m_cycleThresh(10), m_subGraphRange(6), m_cuts(0)
 {
 }
 
-GShortcutPruner::~GShortcutPruner()
+WShortcutPruner::~WShortcutPruner()
 {
 }
 
-bool GShortcutPruner::isEveryNodeReachable()
+bool WShortcutPruner::isEveryNodeReachable()
 {
-	GBitTable visited(m_n);
+	WBitTable visited(m_n);
 	deque<size_t> q;
 	visited.set(0);
 	q.push_back(0);
@@ -1883,12 +1883,12 @@ bool GShortcutPruner::isEveryNodeReachable()
 	return true;
 }
 
-size_t GShortcutPruner::prune()
+size_t WShortcutPruner::prune()
 {
 	while(true)
 	{
 		bool everyNodeReachable = isEveryNodeReachable();
-		GShortcutPrunerAtomicCycleDetector g(m_n, this, m_cycleThresh);
+		WShortcutPrunerAtomicCycleDetector g(m_n, this, m_cycleThresh);
 		size_t* pHood = m_pNeighborhoods;
 		for(size_t i = 0; i < m_n; i++)
 		{
@@ -1909,13 +1909,13 @@ size_t GShortcutPruner::prune()
 	return m_cuts;
 }
 
-void GShortcutPruner::onDetectBigAtomicCycle(vector<size_t>& cycle)
+void WShortcutPruner::onDetectBigAtomicCycle(vector<size_t>& cycle)
 {
 	// Make a subgraph containing only nodes close to the cycle
 	size_t* mapIn = new size_t[m_n];
 	std::unique_ptr<size_t[]> hMapIn(mapIn);
 	vector<size_t> mapOut;
-	GBitTable visited(m_n);
+	WBitTable visited(m_n);
 	deque<size_t> q;
 	for(vector<size_t>::iterator it = cycle.begin(); it != cycle.end(); it++)
 	{
@@ -1946,7 +1946,7 @@ void GShortcutPruner::onDetectBigAtomicCycle(vector<size_t>& cycle)
 	}
 
 	// Compute betweenness of all edges
-	GBrandesBetweennessCentrality g(mapOut.size());
+	WBrandesBetweennessCentrality g(mapOut.size());
 	for(size_t i = 0; i < mapOut.size(); i++)
 	{
 		size_t* pHood = m_pNeighborhoods + mapOut[i] * m_k;
@@ -2009,7 +2009,7 @@ void GShortcutPruner::onDetectBigAtomicCycle(vector<size_t>& cycle)
 }
 
 // static
-void GShortcutPruner::test()
+void WShortcutPruner::test()
 {
 	// Make a fully-connected grid
 	size_t w = 6;
@@ -2040,7 +2040,7 @@ void GShortcutPruner::test()
 	pNeighbors[((h - 1) * w + (w - 1)) * k + 0] = w - 1; // connect (w-1,h-1) to (w-1,0)
 
 	// Cut the shortcuts
-	GShortcutPruner pruner(pNeighbors, n, k);
+	WShortcutPruner pruner(pNeighbors, n, k);
 	pruner.setCycleThreshold(h);
 	pruner.setSubGraphRange(3);
 	size_t cuts = pruner.prune();
@@ -2064,20 +2064,20 @@ void GShortcutPruner::test()
 
 
 
-class GCycleCutAtomicCycleDetector : public GAtomicCycleFinder
+class WCycleCutAtomicCycleDetector : public WAtomicCycleFinder
 {
 protected:
-	GCycleCut* m_pThis;
+	WCycleCut* m_pThis;
 	size_t m_thresh;
 	bool m_restore;
 	bool m_gotOne;
 
 public:
-	GCycleCutAtomicCycleDetector(size_t nodes, GCycleCut* pThis, size_t thresh, bool restore) : GAtomicCycleFinder(nodes), m_pThis(pThis), m_thresh(thresh), m_restore(restore), m_gotOne(false)
+	WCycleCutAtomicCycleDetector(size_t nodes, WCycleCut* pThis, size_t thresh, bool restore) : WAtomicCycleFinder(nodes), m_pThis(pThis), m_thresh(thresh), m_restore(restore), m_gotOne(false)
 	{
 	}
 
-	~GCycleCutAtomicCycleDetector() override
+	~WCycleCutAtomicCycleDetector() override
 	{
 	}
 
@@ -2098,7 +2098,7 @@ public:
 	}
 };
 
-GCycleCut::GCycleCut(GNeighborGraph* pNeighborGraph, const GMatrix* pPoints, size_t k)
+WCycleCut::WCycleCut(WNeighborGraph* pNeighborGraph, const WMatrix* pPoints, size_t k)
 : m_pNeighborGraph(pNeighborGraph), m_pPoints(pPoints), m_k(k), m_cycleThresh(10), m_cutCount(0)
 {
 	// Compute the mean neighbor distance
@@ -2126,14 +2126,14 @@ GCycleCut::GCycleCut(GNeighborGraph* pNeighborGraph, const GMatrix* pPoints, siz
 	}
 }
 
-GCycleCut::~GCycleCut()
+WCycleCut::~WCycleCut()
 {
 }
 
-bool GCycleCut::doAnyBigAtomicCyclesExist()
+bool WCycleCut::doAnyBigAtomicCyclesExist()
 {
 	// Make the graph
-	GCycleCutAtomicCycleDetector g(m_pPoints->rows(), this, m_cycleThresh, true);
+	WCycleCutAtomicCycleDetector g(m_pPoints->rows(), this, m_cycleThresh, true);
 	for(size_t i = 0; i < m_pPoints->rows(); i++)
 	{
 		size_t nc = m_pNeighborGraph->findNearest(m_k, i);
@@ -2146,7 +2146,7 @@ bool GCycleCut::doAnyBigAtomicCyclesExist()
 	return g.gotOne();
 }
 
-size_t GCycleCut::cut()
+size_t WCycleCut::cut()
 {
 	m_cuts.clear();
 
@@ -2154,7 +2154,7 @@ size_t GCycleCut::cut()
 	while(true)
 	{
 		// Make the graph
-		GCycleCutAtomicCycleDetector g(m_pPoints->rows(), this, m_cycleThresh, false);
+		WCycleCutAtomicCycleDetector g(m_pPoints->rows(), this, m_cycleThresh, false);
 		for(size_t i = 0; i < m_pPoints->rows(); i++)
 		{
 			size_t nc = m_pNeighborGraph->findNearest(m_k, i);
@@ -2174,10 +2174,10 @@ size_t GCycleCut::cut()
 	{
 		size_t point = *it;
 		it++;
-		GAssert(it != m_cuts.end()); // broken cuts list
+		WAssert(it != m_cuts.end()); // broken cuts list
 		size_t neigh = *it;
 		it++;
-		GAssert(it != m_cuts.end()); // broken cuts list
+		WAssert(it != m_cuts.end()); // broken cuts list
 		size_t other = *it;
 		it++;
 
@@ -2194,7 +2194,7 @@ size_t GCycleCut::cut()
 	return m_cutCount;
 }
 
-void GCycleCut::onDetectBigAtomicCycle(vector<size_t>& cycle)
+void WCycleCut::onDetectBigAtomicCycle(vector<size_t>& cycle)
 {
 	// Find the bottleneck
 	double bottleneck = 1e308;
@@ -2207,7 +2207,7 @@ void GCycleCut::onDetectBigAtomicCycle(vector<size_t>& cycle)
 		if(i == 0 || d < bottleneck)
 			bottleneck = d;
 	}
-	GAssert(bottleneck > 0); // all capacities should be greater than zero
+	WAssert(bottleneck > 0); // all capacities should be greater than zero
 
 	// Reduce every edge in the cycle by the bottleneck's capacity
 	for(size_t i = 0; i < cycle.size(); i++)
@@ -2248,7 +2248,7 @@ void GCycleCut::onDetectBigAtomicCycle(vector<size_t>& cycle)
 					break;
 				}
 			}
-			GAssert(rev != INVALID_INDEX || forw != INVALID_INDEX); // couldn't find the edge
+			WAssert(rev != INVALID_INDEX || forw != INVALID_INDEX); // couldn't find the edge
 			if(forw != INVALID_INDEX)
 			{
 				m_pNeighborGraph->set(from, forw, INVALID_INDEX);
@@ -2270,15 +2270,15 @@ void GCycleCut::onDetectBigAtomicCycle(vector<size_t>& cycle)
 }
 
 // static
-void GCycleCut::test()
+void WCycleCut::test()
 {
 	// todo: This test was removed because I didn't want to port it when I made some API changes.
-	// I believe GCycleCut still works, but I really should write a new test to exercise it.
+	// I believe WCycleCut still works, but I really should write a new test to exercise it.
 }
 
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 

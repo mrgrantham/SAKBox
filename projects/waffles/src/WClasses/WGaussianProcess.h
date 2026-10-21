@@ -20,26 +20,26 @@
 #ifndef __GGAUSSIANPROCESS_H__
 #define __GGAUSSIANPROCESS_H__
 
-#include "GMatrix.h"
-#include "GLearner.h"
+#include "WMatrix.h"
+#include "WLearner.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GKernel;
+class WKernel;
 
 /// Computes a running covariance matrix about the origin.
-class GRunningCovariance
+class WRunningCovariance
 {
 protected:
-	GMatrix m_counts; // upper triangle contains the counts of the number of relevant samples.
-	GMatrix m_sums; // upper triangle contains sums of coproducts. Last row contains sums of samples.
+	WMatrix m_counts; // upper triangle contains the counts of the number of relevant samples.
+	WMatrix m_sums; // upper triangle contains sums of coproducts. Last row contains sums of samples.
 
 public:
 	/// Prepares to compute a dims x dims covariance matrix. All attributes are
 	/// assumed to be continuous.
-	GRunningCovariance(size_t dims);
-	~GRunningCovariance();
+	WRunningCovariance(size_t dims);
+	~WRunningCovariance();
 
 	static void test();
 
@@ -47,7 +47,7 @@ public:
 	/// about the origin, not the centroid. If pVec comes from a distribution with a
 	/// non-zero mean, then you may need to subtract the mean before calling this method.)
 	/// It is okay for some elements of pVec to be UNKNOWN_REAL_VALUE.
-	void add(const GVec& vec);
+	void add(const WVec& vec);
 
 	/// Multiplies relevant internal counts and sums by gamma. (This is used
 	/// for computing "moving covariance" instead of "running covariance".)
@@ -62,40 +62,40 @@ public:
 /// A Gaussian Process model. This class was implemented according to the specification
 /// in Algorithm 2.1 on page 19 of chapter 2 of http://www.gaussianprocesses.org/gpml/chapters/
 /// by Carl Edward Rasmussen and Christopher K. I. Williams.
-class GGaussianProcess : public GSupervisedLearner
+class WGaussianProcess : public WSupervisedLearner
 {
 protected:
 	double m_noiseVar;
 	double m_weightsPriorVar;
 	size_t m_maxSamples;
-	GMatrix* m_pLInv;
-	GMatrix* m_pAlpha;
-	GMatrix* m_pStoredFeatures;
-	GMatrix* m_pBuf;
-	GKernel* m_pKernel;
+	WMatrix* m_pLInv;
+	WMatrix* m_pAlpha;
+	WMatrix* m_pStoredFeatures;
+	WMatrix* m_pBuf;
+	WKernel* m_pKernel;
 
 public:
 	/// General-purpose constructor
-	GGaussianProcess();
+	WGaussianProcess();
 
 	/// Deserialization constructor
-	GGaussianProcess(const GDomNode* pNode);
+	WGaussianProcess(const WDomNode* pNode);
 
 	/// Destructor
-	~GGaussianProcess() override;
+	~WGaussianProcess() override;
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GSupervisedLearner::clear
+	/// See the comment for WSupervisedLearner::clear
 	void clear() override;
 
 	/// Sets the kernel to use. Takes ownership of pKernel. (The default is the
 	/// identity kernel, which just does linear regression, so you almost certainly
 	/// will want to change the kernel before using this model.)
-	void setKernel(GKernel* pKernel);
+	void setKernel(WKernel* pKernel);
 
 	/// Sets the noise variance term. (The default is 0.0.)
 	void setNoiseVariance(double v) { m_noiseVar = v; }
@@ -109,28 +109,28 @@ public:
 	void setMaxSamples(size_t m) { m_maxSamples = m; }
 
 protected:
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& in, GVec& out) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& in, WVec& out) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& in, WPrediction* pOut) override;
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleNominalFeatures
 	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleMissingFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleMissingFeatures
 	bool canImplicitlyHandleMissingFeatures() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
+	/// See the comment for WTransducer::canImplicitlyHandleNominalLabels
 	bool canImplicitlyHandleNominalLabels() override { return false; }
 
 	/// Called by trainInner
-	void trainInnerInner(const GMatrix& features, const GMatrix& labels);
+	void trainInnerInner(const WMatrix& features, const WMatrix& labels);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif

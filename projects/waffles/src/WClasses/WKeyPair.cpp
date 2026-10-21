@@ -17,35 +17,35 @@
 */
 
 #include <stdio.h>
-#include "GKeyPair.h"
-#include "GBigInt.h"
-#include "GError.h"
-#include "GRand.h"
-#include "GDom.h"
+#include "WKeyPair.h"
+#include "WBigInt.h"
+#include "WError.h"
+#include "WRand.h"
+#include "WDom.h"
 #include <time.h>
 
-namespace GClasses
+namespace WClasses
 {
 
-GKeyPair::GKeyPair()
+WKeyPair::WKeyPair()
 {
 	m_pPrivateKey = nullptr;
 	m_pPublicKey = nullptr;
 	m_pN = nullptr;
 }
 
-GKeyPair::GKeyPair(GDomNode* pNode)
+WKeyPair::WKeyPair(WDomNode* pNode)
 {
-	m_pN = new GBigInt(pNode->get("n"));
-	m_pPublicKey = new GBigInt(pNode->get("public"));
-	GDomNode* pPrivate = pNode->getIfExists("private");
+	m_pN = new WBigInt(pNode->get("n"));
+	m_pPublicKey = new WBigInt(pNode->get("public"));
+	WDomNode* pPrivate = pNode->getIfExists("private");
 	if(pPrivate)
-		m_pPrivateKey = new GBigInt(pPrivate);
+		m_pPrivateKey = new WBigInt(pPrivate);
 	else
 		m_pPrivateKey = nullptr;
 }
 
-GKeyPair::~GKeyPair()
+WKeyPair::~WKeyPair()
 {
 	if(m_pPrivateKey)
 		m_pPrivateKey->setToZero();
@@ -58,70 +58,70 @@ GKeyPair::~GKeyPair()
 	delete(m_pN);
 }
 
-void GKeyPair::setPublicKey(GBigInt* pPublicKey)
+void WKeyPair::setPublicKey(WBigInt* pPublicKey)
 {
 	delete(m_pPublicKey);
 	m_pPublicKey = pPublicKey;
 }
 
-void GKeyPair::setPrivateKey(GBigInt* pPrivateKey)
+void WKeyPair::setPrivateKey(WBigInt* pPrivateKey)
 {
 	delete(m_pPrivateKey);
 	m_pPrivateKey = pPrivateKey;
 }
 
-void GKeyPair::setN(GBigInt* pN)
+void WKeyPair::setN(WBigInt* pN)
 {
 	delete(m_pN);
 	m_pN = pN;
 }
 
-void GKeyPair::copyPublicKey(GBigInt* pPublicKey)
+void WKeyPair::copyPublicKey(WBigInt* pPublicKey)
 {
 	delete(m_pPublicKey);
-	m_pPublicKey = new GBigInt();
+	m_pPublicKey = new WBigInt();
 	m_pPublicKey->copy(pPublicKey);
 }
 
-void GKeyPair::copyPrivateKey(GBigInt* pPrivateKey)
+void WKeyPair::copyPrivateKey(WBigInt* pPrivateKey)
 {
 	delete(m_pPrivateKey);
-	m_pPrivateKey = new GBigInt();
+	m_pPrivateKey = new WBigInt();
 	m_pPrivateKey->copy(pPrivateKey);
 }
 
-void GKeyPair::copyN(GBigInt* pN)
+void WKeyPair::copyN(WBigInt* pN)
 {
 	delete(m_pN);
-	m_pN = new GBigInt();
+	m_pN = new WBigInt();
 	m_pN->copy(pN);
 }
 
-GBigInt* GKeyPair::publicKey()
+WBigInt* WKeyPair::publicKey()
 {
 	return m_pPublicKey;
 }
 
-GBigInt* GKeyPair::privateKey()
+WBigInt* WKeyPair::privateKey()
 {
 	return m_pPrivateKey;
 }
 
-GBigInt* GKeyPair::n()
+WBigInt* WKeyPair::n()
 {
 	return m_pN;
 }
 
-void GKeyPair::generateKeyPair(unsigned int uintCount, const unsigned int* pRawCryptographicBytes1, const unsigned int* pRawCryptographicBytes2, const unsigned int* pRawCryptographicBytes3)
+void WKeyPair::generateKeyPair(unsigned int uintCount, const unsigned int* pRawCryptographicBytes1, const unsigned int* pRawCryptographicBytes2, const unsigned int* pRawCryptographicBytes3)
 {
 	// Make places to put the data
-	GBigInt* pOutPublicKey = new GBigInt();
-	GBigInt* pOutPrivateKey = new GBigInt();
-	GBigInt* pOutN = new GBigInt();
+	WBigInt* pOutPublicKey = new WBigInt();
+	WBigInt* pOutPrivateKey = new WBigInt();
+	WBigInt* pOutN = new WBigInt();
 
 	// Find two primes
-	GBigInt p;
-	GBigInt q;
+	WBigInt p;
+	WBigInt q;
 	int i;
 	for(i = (int)uintCount - 1; i >= 0; i--)
 		p.setUInt(i, pRawCryptographicBytes1[i]);
@@ -150,22 +150,22 @@ void GKeyPair::generateKeyPair(unsigned int uintCount, const unsigned int* pRawC
 	// Calculate prod ((p - 1) * (q - 1))
 	p.decrement();
 	q.decrement();
-	GBigInt prod;
+	WBigInt prod;
 	prod.multiply(&p, &q);
 
 	// Calculate public and private keys
 	pOutPublicKey->selectPublicKey(pRawCryptographicBytes3, uintCount, &prod);
 	pOutPrivateKey->calculatePrivateKey(pOutPublicKey, &prod);
 
-	// Fill in "this" GKeyPair object
+	// Fill in "this" WKeyPair object
 	setPublicKey(pOutPublicKey);
 	setPrivateKey(pOutPrivateKey);
 	setN(pOutN);
 }
 
-GDomNode* GKeyPair::serialize(GDom* pDoc, bool bIncludePrivateKey)
+WDomNode* WKeyPair::serialize(WDom* pDoc, bool bIncludePrivateKey)
 {
-	GDomNode* pNode = pDoc->newObj();
+	WDomNode* pNode = pDoc->newObj();
 	if(!n() || !publicKey())
 		throw Ex("No key has been made yet");
 	if(bIncludePrivateKey && !privateKey())
@@ -177,16 +177,16 @@ GDomNode* GKeyPair::serialize(GDom* pDoc, bool bIncludePrivateKey)
 	return pNode;
 }
 
-int GKeyPair::maxBlockSize()
+int WKeyPair::maxBlockSize()
 {
 	return (m_pN->getBitCount() - 1) / 8;
 }
 
-unsigned char* GKeyPair::powerMod(const unsigned char* pInput, int nInputSize, bool bPublicKey, int* pnOutputSize)
+unsigned char* WKeyPair::powerMod(const unsigned char* pInput, int nInputSize, bool bPublicKey, int* pnOutputSize)
 {
-	GBigInt input;
+	WBigInt input;
 	input.fromByteBuffer(pInput, nInputSize);
-	GBigInt results;
+	WBigInt results;
 	results.powerMod(&input, bPublicKey ? publicKey() : privateKey(), n());
 	*pnOutputSize = results.getUIntCount() * sizeof(unsigned int);
 	unsigned char* pOutput = (unsigned char*)results.toBufferGiveOwnership();
@@ -195,25 +195,25 @@ unsigned char* GKeyPair::powerMod(const unsigned char* pInput, int nInputSize, b
 	return pOutput;
 }
 
-/*static*/ void GKeyPair::test()
+/*static*/ void WKeyPair::test()
 {
-	GRand prng(0);
+	WRand prng(0);
 	unsigned int buf[6];
 	for(int i = 0; i < 6; i++)
 		buf[i] = (unsigned int)prng.next();
-	GKeyPair kp;
+	WKeyPair kp;
 	kp.generateKeyPair(2, buf, buf + 2, buf + 4);
 
 	// Make up a message
-	GBigInt message;
+	WBigInt message;
 	message.setUInt(0, 0x6a54);
 
 	// Encrypt it
-	GBigInt cypher;
+	WBigInt cypher;
 	cypher.powerMod(&message, kp.privateKey(), kp.n());
 
 	// Decrypt it
-	GBigInt final;
+	WBigInt final;
 	final.powerMod(&cypher, kp.publicKey(), kp.n());
 
 	// Check the final value
@@ -221,4 +221,4 @@ unsigned char* GKeyPair::powerMod(const unsigned char* pInput, int nInputSize, b
 		throw Ex("failed");
 }
 
-} // namespace GClasses
+} // namespace WClasses

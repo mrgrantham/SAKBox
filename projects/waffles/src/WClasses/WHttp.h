@@ -25,22 +25,22 @@
 #include <sstream>
 #include <map>
 #include <string.h>
-#include "GSocket.h"
+#include "WSocket.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GHttpClientSocket;
-class GWebSocketClientSocket;
-class GHttpServerSocket;
-class GTCPServer;
-class GHttpConnection;
-class GHeap;
-class GConstStringHashTable;
+class WHttpClientSocket;
+class WWebSocketClientSocket;
+class WHttpServerSocket;
+class WTCPServer;
+class WHttpConnection;
+class WHeap;
+class WConstStringHashTable;
 
 
 /// This class allows you to get files using the HTTP protocol
-class GHttpClient
+class WHttpClient
 {
 public:
 	enum Status
@@ -63,7 +63,7 @@ protected:
 	bool m_aborted;
 	unsigned char* m_pData;
 	size_t m_nDataPos;
-	GHttpClientSocket* m_pSocket;
+	WHttpClientSocket* m_pSocket;
 	Status m_status;
 	std::ostringstream m_chunkBuf;
 	bool m_bPastHeader;
@@ -72,8 +72,8 @@ protected:
 	bool m_bAmCurrentlyDoingJustHeaders;
 
 public:
-	GHttpClient();
-	virtual ~GHttpClient();
+	WHttpClient();
+	virtual ~WHttpClient();
 
 	/// Gets a file from the specified URL. You are responsible to delete[] the data this returns. The size of the
 	/// data is returned at *pOutSize. An exception is thrown if any error occurs. sleepMiliSecs specifies how long
@@ -108,7 +108,7 @@ public:
 	/// This is called when the connection is lost
 	void onLoseConnection();
 
-	/// Specify the name that the client uses to identify itself when requesting a file. The default is "GHttpClient/1.0".
+	/// Specify the name that the client uses to identify itself when requesting a file. The default is "WHttpClient/1.0".
 	void setClientName(const char* szClientName);
 
 	/// The client may call this method to abort the download
@@ -124,14 +124,14 @@ protected:
 	void gimmeWhatYouGot();
 };
 
-class GWebSocketClient
+class WWebSocketClient
 {
 protected:
-	GWebSocketClientSocket* m_pSocket;
+	WWebSocketClientSocket* m_pSocket;
 
 public:
-	GWebSocketClient();
-	~GWebSocketClient();
+	WWebSocketClient();
+	~WWebSocketClient();
 
 	bool get(const char* szUrl);
 
@@ -157,13 +157,13 @@ bool parseHttpContentLength(const char* szValue, size_t* pOut);
 
 /// SAKBox: the port in a URL ("http://host:8080/page"), or 80 if it has none.
 /// Throws if the port isn't a number from 1 to 65535.
-int GHttp_urlPort(const char* szUrl);
+int WHttp_urlPort(const char* szUrl);
 #define MAX_MIME_LEN 64
 
-/// Each GHttpConnection represents an HTTP connection between a client and the server.
-/// A GHTTPServer is a collection of GHTTPConnection objects.
+/// Each WHttpConnection represents an HTTP connection between a client and the server.
+/// A WHTTPServer is a collection of WHTTPConnection objects.
 /// To implement a HTTP server, you will typically override the doGet and doPost methods of this class to generate web pages.
-class GHttpConnection : public GTCPConnection
+class WHttpConnection : public WTCPConnection
 {
 public:
 	enum RequestType
@@ -191,9 +191,9 @@ public:
 	time_t m_modifiedTime;
 
 	/// General-purpose constructor
-	GHttpConnection(SOCKET sock);
+	WHttpConnection(SOCKET sock);
 
-	~GHttpConnection() override;
+	~WHttpConnection() override;
 
 	/// Clear all the buffers in this object.
 	void reset();
@@ -232,11 +232,11 @@ public:
 
 
 /// This class allows you to implement a simple HTTP daemon
-class GHttpServer
+class WHttpServer
 {
 protected:
 	char* m_pReceiveBuf;
-	GHttpServerSocket* m_pSocket;
+	WHttpServerSocket* m_pSocket;
 	std::ostringstream m_stream;
 	std::atomic<bool> m_keepServing{true};
 
@@ -249,8 +249,8 @@ public:
 	/// Listens on nPort (0 for any free one). SAKBox: only browsers on this
 	/// computer can connect (localhost), unless networkAccessible is true,
 	/// which lets any device on the network connect.
-	GHttpServer(int nPort, bool networkAccessible = false);
-	virtual ~GHttpServer();
+	WHttpServer(int nPort, bool networkAccessible = false);
+	virtual ~WHttpServer();
 
 	/// You should call this method constantly inside the main loop.
 	/// It returns true if it did anything, and false if it didn't, so
@@ -278,19 +278,19 @@ public:
 	static bool parseFileParam(const char* pParams, size_t nParamsLen, const char** ppFilename, size_t* pFilenameLen, const unsigned char** ppFile, size_t* pFileLen);
 
 	/// Returns a reference to the socket on which this server listens
-	GTCPServer* socket() { return (GTCPServer*)m_pSocket; }
+	WTCPServer* socket() { return (WTCPServer*)m_pSocket; }
 
-	/// This method should return a new instance of an object that inherrits from GHttpConnection.
-	virtual GHttpConnection* makeConnection(SOCKET s) = 0;
+	/// This method should return a new instance of an object that inherrits from WHttpConnection.
+	virtual WHttpConnection* makeConnection(SOCKET s) = 0;
 
 protected:
-	virtual void onProcessLine(GHttpConnection* pConn, const char* szLine) {}
-	void processPostData(GHttpConnection* pConn, const unsigned char* pData, size_t nDataSize);
-	void processHeaderLine(GHttpConnection* pConn, const char* szLine);
-	void beginRequest(GHttpConnection* pConn, int eType, const char* szIn);
-	void sendResponse(GHttpConnection* pConn);
-	void sendNotModifiedResponse(GHttpConnection* pConn);
-	void onReceiveFullPostRequest(GHttpConnection* pConn);
+	virtual void onProcessLine(WHttpConnection* pConn, const char* szLine) {}
+	void processPostData(WHttpConnection* pConn, const unsigned char* pData, size_t nDataSize);
+	void processHeaderLine(WHttpConnection* pConn, const char* szLine);
+	void beginRequest(WHttpConnection* pConn, int eType, const char* szIn);
+	void sendResponse(WHttpConnection* pConn);
+	void sendNotModifiedResponse(WHttpConnection* pConn);
+	void onReceiveFullPostRequest(WHttpConnection* pConn);
 };
 
 
@@ -301,10 +301,10 @@ struct strComp
 
 
 /// A class for parsing the name/value pairs that follow the "?" in a URL.
-class GHttpParamParser
+class WHttpParamParser
 {
 protected:
-	GHeap* m_pHeap;
+	WHeap* m_pHeap;
 	std::map<const char*, const char*, strComp> m_map;
 
 public:
@@ -312,9 +312,9 @@ public:
 	/// If scrub is true, then the values will be scrubbed: characters other
 	/// than letters, digits and space ! # $ % ( ) * + , - . / : < = > ? @
 	/// are replaced with '_'. (SAKBox: this used to list fewer than the code
-	/// keeps; see isSafeParamChar in GHttp.cpp.)
-	GHttpParamParser(const char* szParams, bool scrub = true);
-	~GHttpParamParser();
+	/// keeps; see isSafeParamChar in WHttp.cpp.)
+	WHttpParamParser(const char* szParams, bool scrub = true);
+	~WHttpParamParser();
 
 	/// Returns the value associated with the specified name. Returns NULL if the name is not found.
 	const char* find(const char* szName);
@@ -330,7 +330,7 @@ protected:
 };
 
 
-class GHttpMultipartParser
+class WHttpMultipartParser
 {
 protected:
 	const char* m_pRawData;
@@ -340,12 +340,12 @@ protected:
 	size_t m_len;
 
 public:
-	GHttpMultipartParser(const char* pRawData, size_t len);
-	~GHttpMultipartParser();
+	WHttpMultipartParser(const char* pRawData, size_t len);
+	~WHttpMultipartParser();
 
 	bool next(size_t* pNameStart, size_t* pNameLen, size_t* pValueStart, size_t* pValueLen, size_t* pFilenameStart, size_t* pFilenameLen);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GHTTP_H__

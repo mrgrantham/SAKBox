@@ -22,9 +22,9 @@
 
 #include <stddef.h>
 #include <string.h>
-#include "GError.h"
+#include "WError.h"
 
-namespace GClasses
+namespace WClasses
 {
 
 #define ALIGN_BYTES 1 // For byte-addressable machines
@@ -39,7 +39,7 @@ namespace GClasses
 /// delete them all by simply deleting the heap. You can't,
 /// however, reuse the space for individual objects in
 /// this heap.
-class GHeap
+class WHeap
 {
 protected:
 	char* m_pCurrentBlock;
@@ -47,19 +47,19 @@ protected:
 	size_t m_nCurrentPos;
 
 public:
-	GHeap(size_t nMinBlockSize)
+	WHeap(size_t nMinBlockSize)
 	{
 		m_pCurrentBlock = nullptr;
 		m_nMinBlockSize = nMinBlockSize;
 		m_nCurrentPos = nMinBlockSize;
 	}
 
-	GHeap(const GHeap& that)
+	WHeap(const WHeap& that)
 	{
 		throw Ex("This object is not intended to be copied by value");
 	}
 
-	virtual ~GHeap();
+	virtual ~WHeap();
 
 	/// Deletes all the blocks and frees up memory
 	void clear();
@@ -117,6 +117,6 @@ public:
 	}
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GHEAP_H__

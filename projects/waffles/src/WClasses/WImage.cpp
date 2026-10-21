@@ -17,19 +17,19 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GImage.h"
-#include "GBitTable.h"
+#include "WImage.h"
+#include "WBitTable.h"
 #include <math.h>
-#include "GError.h"
+#include "WError.h"
 #include <stdlib.h>
-#include "GBits.h"
-#include "GFile.h"
-#include "GRect.h"
-#include "GFourier.h"
-#include "GOptimizer.h"
-#include "GHillClimber.h"
-#include "GMath.h"
-#include "GHolders.h"
+#include "WBits.h"
+#include "WFile.h"
+#include "WRect.h"
+#include "WFourier.h"
+#include "WOptimizer.h"
+#include "WHillClimber.h"
+#include "WMath.h"
+#include "WHolders.h"
 #include <vector>
 #include <algorithm>
 #include <string.h>
@@ -37,7 +37,7 @@
 #include <cmath>
 #include <memory>
 
-namespace GClasses
+namespace WClasses
 {
 using std::vector;
 using std::string;
@@ -82,9 +82,9 @@ typedef struct tagBITMAPFILEHEADER {
 
 const char* rgbToHex(char* pOutHex, unsigned int c)
 {
-	GBits::byteToHexBigEndian(gRed(c), pOutHex);
-	GBits::byteToHexBigEndian(gGreen(c), pOutHex + 2);
-	GBits::byteToHexBigEndian(gBlue(c), pOutHex + 4);
+	WBits::byteToHexBigEndian(gRed(c), pOutHex);
+	WBits::byteToHexBigEndian(gGreen(c), pOutHex + 2);
+	WBits::byteToHexBigEndian(gBlue(c), pOutHex + 4);
 	pOutHex[6] = '\0';
 	return pOutHex;
 }
@@ -93,9 +93,9 @@ unsigned int hexToRgb(const char* szHex)
 {
 	if(szHex[0] == '\0' || szHex[1] == '\0' || szHex[2] == '\0' || szHex[3] == '\0' || szHex[4] == '\0' || szHex[5] == '\0')
 		throw Ex("A color value should consist of six hexadecimal digits");
-	unsigned char r = GBits::hexToByte(szHex[1], szHex[0]);
-	unsigned char g = GBits::hexToByte(szHex[3], szHex[2]);
-	unsigned char b = GBits::hexToByte(szHex[5], szHex[4]);
+	unsigned char r = WBits::hexToByte(szHex[1], szHex[0]);
+	unsigned char g = WBits::hexToByte(szHex[3], szHex[2]);
+	unsigned char b = WBits::hexToByte(szHex[5], szHex[4]);
 	return gRGB(r, g, b);
 }
 
@@ -159,7 +159,7 @@ void rgbToHsv(unsigned int c, float* pHue, float* pSaturation, float* pValue)
 
 unsigned int gAHSV(int alpha, float hue, float saturation, float value)
 {
-	GAssert(hue >= 0 && hue <= 1 && saturation >= 0 && saturation <= 1 && value >= 0 && value <= 1); // out of range
+	WAssert(hue >= 0 && hue <= 1 && saturation >= 0 && saturation <= 1 && value >= 0 && value <= 1); // out of range
 	hue -= floor(hue);
 	hue *= 6;
 	int h = (int)hue;
@@ -181,19 +181,19 @@ unsigned int gAHSV(int alpha, float hue, float saturation, float value)
 	}
 }
 
-GImage::GImage()
+WImage::WImage()
 {
 	m_pPixels = nullptr;
 	m_width = 0;
 	m_height = 0;
 }
 
-GImage::~GImage()
+WImage::~WImage()
 {
 	delete[] m_pPixels;
 }
 
-void GImage::setSize(unsigned int nWidth, unsigned int nHeight)
+void WImage::setSize(unsigned int nWidth, unsigned int nHeight)
 {
 	if(nWidth == m_width && nHeight == m_height)
 		return;
@@ -210,13 +210,13 @@ void GImage::setSize(unsigned int nWidth, unsigned int nHeight)
 	m_height = nHeight;
 }
 
-void GImage::copy(GImage* pSourceImage)
+void WImage::copy(WImage* pSourceImage)
 {
 	setSize(pSourceImage->width(), pSourceImage->height());
 	memcpy(m_pPixels, pSourceImage->pixels(), m_width * m_height * sizeof(unsigned int));
 }
 
-void GImage::copyRect(GImage* pSourceImage, int nLeft, int nTop, int nRight, int nBottom)
+void WImage::copyRect(WImage* pSourceImage, int nLeft, int nTop, int nRight, int nBottom)
 {
 	int nWidth = nRight - nLeft + 1;
 	int nHeight = nBottom - nTop + 1;
@@ -233,7 +233,7 @@ void GImage::copyRect(GImage* pSourceImage, int nLeft, int nTop, int nRight, int
 	}
 }
 
-void GImage::clear(unsigned int color)
+void WImage::clear(unsigned int color)
 {
 	unsigned int nSize = m_width * m_height;
 	unsigned int nPos;
@@ -241,7 +241,7 @@ void GImage::clear(unsigned int color)
 		m_pPixels[nPos] = color;
 }
 
-void GImage::setPixelTranslucent(int nX, int nY, unsigned int color, double dOpacity)
+void WImage::setPixelTranslucent(int nX, int nY, unsigned int color, double dOpacity)
 {
 	unsigned int cOld = pixel(nX, nY);
 	unsigned int c = gRGB(
@@ -251,18 +251,18 @@ void GImage::setPixelTranslucent(int nX, int nY, unsigned int color, double dOpa
 	setPixel(nX, nY, c);
 }
 
-void GImage::setPixelIfInRange(int nX, int nY, unsigned int color)
+void WImage::setPixelIfInRange(int nX, int nY, unsigned int color)
 {
 	if((unsigned int)nX < m_width && (unsigned int)nY < m_height)
 		setPixel(nX, nY, color);
 }
 
-unsigned int GImage::pixelNearest(int nX, int nY) const
+unsigned int WImage::pixelNearest(int nX, int nY) const
 {
 	return pixel(std::max(0, std::min((int)m_width - 1, nX)), std::max(0, std::min((int)m_height - 1, nY)));
 }
 
-unsigned int GImage::interpolatePixel(float dX, float dY)
+unsigned int WImage::interpolatePixel(float dX, float dY)
 {
 	int nX = (int)dX;
 	int nY = (int)dY;
@@ -285,10 +285,10 @@ unsigned int GImage::interpolatePixel(float dX, float dY)
 	return gARGB((int)(dYDif * dA2 + (1 - dYDif) * dA1), (int)(dYDif * dR2 + (1 - dYDif) * dR1), (int)(dYDif * dG2 + (1 - dYDif) * dG1), (int)(dYDif * dB2 + (1 - dYDif) * dB1));
 }
 
-void GImage::loadByExtension(const char* szFilename)
+void WImage::loadByExtension(const char* szFilename)
 {
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	const char* szExt = &szFilename[pd.extStart];
 	if(_stricmp(szExt, ".bmp") == 0)
 		loadBmp(szFilename);
@@ -300,10 +300,10 @@ void GImage::loadByExtension(const char* szFilename)
 		throw Ex("Unrecognized extension");
 }
 
-void GImage::saveByExtension(const char* szFilename)
+void WImage::saveByExtension(const char* szFilename)
 {
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	const char* szExt = &szFilename[pd.extStart];
 	if(_stricmp(szExt, ".bmp") == 0)
 		saveBmp(szFilename);
@@ -315,7 +315,7 @@ void GImage::saveByExtension(const char* szFilename)
 		throw Ex("Unrecognized extension");
 }
 
-void GImage::loadPpm(const char* szFilename)
+void WImage::loadPpm(const char* szFilename)
 {
 	FILE* pFile = fopen(szFilename, "rb");
 	if(!pFile)
@@ -381,7 +381,7 @@ int ReadNextPixMapInteger(FILE* pFile)
 	return value;
 }
 
-void GImage::loadPixMap(FILE* pFile, bool bTextData, bool bGrayScale)
+void WImage::loadPixMap(FILE* pFile, bool bTextData, bool bGrayScale)
 {
 	if(!pFile)
 		throw Ex("expected a valid stream");
@@ -458,7 +458,7 @@ void GImage::loadPixMap(FILE* pFile, bool bTextData, bool bGrayScale)
 	}
 }
 
-void GImage::loadPgm(const char* szFilename)
+void WImage::loadPgm(const char* szFilename)
 {
 	FILE* pFile = fopen(szFilename, "rb");
 	if(!pFile)
@@ -477,7 +477,7 @@ void GImage::loadPgm(const char* szFilename)
 		throw Ex("Unexpected format");
 }
 
-void GImage::savePixMap(FILE* pFile, bool bTextData, bool bGrayScale)
+void WImage::savePixMap(FILE* pFile, bool bTextData, bool bGrayScale)
 {
 	// Write header junk
 	std::ostringstream os;
@@ -517,7 +517,7 @@ void GImage::savePixMap(FILE* pFile, bool bTextData, bool bGrayScale)
 	}
 }
 
-void GImage::savePpm(const char* szFilename)
+void WImage::savePpm(const char* szFilename)
 {
 	FILE* pFile = fopen(szFilename, "wb");
 	if(!pFile)
@@ -528,7 +528,7 @@ void GImage::savePpm(const char* szFilename)
 	savePixMap(pFile, false, false);
 }
 
-void GImage::savePgm(const char* szFilename)
+void WImage::savePgm(const char* szFilename)
 {
 	FILE* pFile = fopen(szFilename, "wb");
 	if(!pFile)
@@ -545,7 +545,7 @@ inline unsigned int ColorToGrayScale(unsigned int c)
 	return gRGB(nGray, nGray, nGray);
 }
 
-void GImage::convertToGrayScale()
+void WImage::convertToGrayScale()
 {
 	unsigned int nSize = m_width * m_height;
 	unsigned int nPos;
@@ -557,7 +557,7 @@ void GImage::convertToGrayScale()
 	}
 }
 
-void GImage::equalizeColorSpread()
+void WImage::equalizeColorSpread()
 {
 	// Create the histogram data
 	unsigned int pnHistData[257];
@@ -599,11 +599,11 @@ void GImage::equalizeColorSpread()
 	}
 }
 
-void GImage::locallyEqualizeColorSpread(int nLocalSize, float fExtent)
+void WImage::locallyEqualizeColorSpread(int nLocalSize, float fExtent)
 {
 	if(nLocalSize % 2 != 0)
 		nLocalSize++;
-	GAssert(nLocalSize > 2); // Local size must be more than 2
+	WAssert(nLocalSize > 2); // Local size must be more than 2
 
 	// Create histograms for all the local regions
 	int nHalfRegionSize = nLocalSize >> 1;
@@ -647,13 +647,13 @@ void GImage::locallyEqualizeColorSpread(int nLocalSize, float fExtent)
 	for(nY = 0; nY < (int)m_height; nY++)
 	{
 		nVert = nY / nHalfRegionSize;
-		GAssert(nVert < nVertRegions); // Region out of range
+		WAssert(nVert < nVertRegions); // Region out of range
 		nDY = nY % nHalfRegionSize;
 		for(nX = 0; nX < (int)m_width; nX++)
 		{
 			// Get the Pixel
 			nHoriz = nX / nHalfRegionSize;
-			GAssert(nHoriz < nHorizRegions); // Region out of range
+			WAssert(nHoriz < nHorizRegions); // Region out of range
 			nDX = nX % nHalfRegionSize;
 			col = pixel(nX, nY);
 			nGrayscale = gGray(col) >> 8;
@@ -687,7 +687,7 @@ void GImage::locallyEqualizeColorSpread(int nLocalSize, float fExtent)
 	}
 }
 
-bool GImage::clipLineEndPoints(int& nX1, int& nY1, int& nX2, int& nY2)
+bool WImage::clipLineEndPoints(int& nX1, int& nY1, int& nX2, int& nY2)
 {
 	// Check nX1
 	if(nX1 < 0)
@@ -755,7 +755,7 @@ bool GImage::clipLineEndPoints(int& nX1, int& nY1, int& nX2, int& nY2)
 	return true;
 }
 
-void GImage::line(int nX1, int nY1, int nX2, int nY2, unsigned int color)
+void WImage::line(int nX1, int nY1, int nX2, int nY2, unsigned int color)
 {
 	if(!clipLineEndPoints(nX1, nY1, nX2, nY2))
 		return;
@@ -763,7 +763,7 @@ void GImage::line(int nX1, int nY1, int nX2, int nY2, unsigned int color)
 }
 
 // Note: This uses the Bresenham line drawing algorithm
-void GImage::lineNoChecks(int nX1, int nY1, int nX2, int nY2, unsigned int color)
+void WImage::lineNoChecks(int nX1, int nY1, int nX2, int nY2, unsigned int color)
 {
 	int n;
 	int nXDif = std::abs(nX2 - nX1);
@@ -852,7 +852,7 @@ void GImage::lineNoChecks(int nX1, int nY1, int nX2, int nY2, unsigned int color
 	}
 }
 
-void GImage::lineAntiAlias(int nX1, int nY1, int nX2, int nY2, unsigned int color)
+void WImage::lineAntiAlias(int nX1, int nY1, int nX2, int nY2, unsigned int color)
 {
 	if(!clipLineEndPoints(nX1, nY1, nX2, nY2))
 		return;
@@ -961,7 +961,7 @@ void GImage::lineAntiAlias(int nX1, int nY1, int nX2, int nY2, unsigned int colo
 	}
 }
 
-void GImage::floodFillRecurser(int nX, int nY, unsigned char nSrcR, unsigned char nSrcG, unsigned char nSrcB, unsigned char nDstR, unsigned char nDstG, unsigned char nDstB, int nTolerance)
+void WImage::floodFillRecurser(int nX, int nY, unsigned char nSrcR, unsigned char nSrcG, unsigned char nSrcB, unsigned char nDstR, unsigned char nDstG, unsigned char nDstB, int nTolerance)
 {
 	unsigned int col;
 	int nDif;
@@ -973,8 +973,8 @@ void GImage::floodFillRecurser(int nX, int nY, unsigned char nSrcR, unsigned cha
 			break;
 		nX--;
 	}
-	GBitTable btUp(m_width);
-	GBitTable btDn(m_width);
+	WBitTable btUp(m_width);
+	WBitTable btDn(m_width);
 	while(true)
 	{
 		setPixel(nX, nY, gRGB(nDstR, nDstG, nDstB));
@@ -1043,13 +1043,13 @@ void GImage::floodFillRecurser(int nX, int nY, unsigned char nSrcR, unsigned cha
 	}
 }
 
-void GImage::floodFill(int nX, int nY, unsigned int color, int nTolerance)
+void WImage::floodFill(int nX, int nY, unsigned int color, int nTolerance)
 {
 	unsigned int col = pixel(nX, nY);
 	floodFillRecurser(nX, nY, gRed(col), gGreen(col), gBlue(col), gRed(color), gGreen(color), gBlue(color), nTolerance);
 }
 
-void GImage::boundaryFill(int nX, int nY, unsigned char nBoundaryR, unsigned char nBoundaryG, unsigned char nBoundaryB, unsigned char nFillR, unsigned char nFillG, unsigned char nFillB, int nTolerance)
+void WImage::boundaryFill(int nX, int nY, unsigned char nBoundaryR, unsigned char nBoundaryG, unsigned char nBoundaryB, unsigned char nFillR, unsigned char nFillG, unsigned char nFillB, int nTolerance)
 {
 	int nDif;
 	unsigned int col = pixel(nX, nY);
@@ -1064,8 +1064,8 @@ void GImage::boundaryFill(int nX, int nY, unsigned char nBoundaryR, unsigned cha
 			break;
 		nX--;
 	}
-	GBitTable btUp(m_width);
-	GBitTable btDn(m_width);
+	WBitTable btUp(m_width);
+	WBitTable btDn(m_width);
 	while(true)
 	{
 		setPixel(nX, nY, gRGB(nFillR, nFillG, nFillB));
@@ -1134,7 +1134,7 @@ void GImage::boundaryFill(int nX, int nY, unsigned char nBoundaryR, unsigned cha
 	}
 }
 
-void GImage::circle(int nX, int nY, float fRadius, unsigned int color)
+void WImage::circle(int nX, int nY, float fRadius, unsigned int color)
 {
 	int radiusSquared = (int)(fRadius * fRadius + (float).5);
 	int x = 0;
@@ -1158,7 +1158,7 @@ void GImage::circle(int nX, int nY, float fRadius, unsigned int color)
 	}
 }
 
-void GImage::circleFill(int nX, int nY, float fRadius, unsigned int color)
+void WImage::circleFill(int nX, int nY, float fRadius, unsigned int color)
 {
 	int radiusSquared = (int)(fRadius * fRadius + (float).5);
 	int x = 0;
@@ -1178,7 +1178,7 @@ void GImage::circleFill(int nX, int nY, float fRadius, unsigned int color)
 	}
 }
 
-void GImage::ellipse(int nX, int nY, double dRadius, double dHeightToWidthRatio, unsigned int color)
+void WImage::ellipse(int nX, int nY, double dRadius, double dHeightToWidthRatio, unsigned int color)
 {
 	double dAngle;
 	double dStep = .9 / dRadius;
@@ -1203,7 +1203,7 @@ void GImage::ellipse(int nX, int nY, double dRadius, double dHeightToWidthRatio,
 	}
 }
 
-void GImage::rotate(GImage* pSourceImage, int nX, int nY, double dAngle)
+void WImage::rotate(WImage* pSourceImage, int nX, int nY, double dAngle)
 {
 	setSize(pSourceImage->width(), pSourceImage->height());
 	int x;
@@ -1222,27 +1222,27 @@ void GImage::rotate(GImage* pSourceImage, int nX, int nY, double dAngle)
 	}
 }
 
-void GImage::saveBmp(const char* szFilename)
+void WImage::saveBmp(const char* szFilename)
 {
 	unsigned int nSize = m_width * m_height;
 
 	BITMAPFILEHEADER h1;
-	h1.bfType = GBits::n16ToLittleEndian((unsigned short)19778); // "BM"
-	h1.bfSize = GBits::n32ToLittleEndian((unsigned int)(sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + 3 * nSize));
+	h1.bfType = WBits::n16ToLittleEndian((unsigned short)19778); // "BM"
+	h1.bfSize = WBits::n32ToLittleEndian((unsigned int)(sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + 3 * nSize));
 	h1.bfReserved1 = 0;
 	h1.bfReserved2 = 0;
-	h1.bfOffBits = GBits::n32ToLittleEndian((unsigned int)(sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER)));
+	h1.bfOffBits = WBits::n32ToLittleEndian((unsigned int)(sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER)));
 
 	BITMAPINFOHEADER h2;
-	h2.biSize = GBits::n32ToLittleEndian((unsigned int)sizeof(BITMAPINFOHEADER));
-	h2.biWidth = GBits::n32ToLittleEndian((unsigned int)m_width);
-	h2.biHeight = GBits::n32ToLittleEndian((unsigned int)m_height);
-	h2.biPlanes = GBits::n16ToLittleEndian((unsigned short)1);
-	h2.biBitCount = GBits::n16ToLittleEndian((unsigned short)24);
+	h2.biSize = WBits::n32ToLittleEndian((unsigned int)sizeof(BITMAPINFOHEADER));
+	h2.biWidth = WBits::n32ToLittleEndian((unsigned int)m_width);
+	h2.biHeight = WBits::n32ToLittleEndian((unsigned int)m_height);
+	h2.biPlanes = WBits::n16ToLittleEndian((unsigned short)1);
+	h2.biBitCount = WBits::n16ToLittleEndian((unsigned short)24);
 	h2.biCompression = 0;
-	h2.biSizeImage = GBits::n32ToLittleEndian(3 * nSize);
-	h2.biXPelsPerMeter = GBits::n32ToLittleEndian((unsigned int)3780);
-	h2.biYPelsPerMeter = GBits::n32ToLittleEndian((unsigned int)3780);
+	h2.biSizeImage = WBits::n32ToLittleEndian(3 * nSize);
+	h2.biXPelsPerMeter = WBits::n32ToLittleEndian((unsigned int)3780);
+	h2.biYPelsPerMeter = WBits::n32ToLittleEndian((unsigned int)3780);
 	h2.biClrUsed = 0;
 	h2.biClrImportant = 0;
 
@@ -1284,7 +1284,7 @@ void GImage::saveBmp(const char* szFilename)
 	}
 }
 
-void GImage::loadBmp(const char* szFilename)
+void WImage::loadBmp(const char* szFilename)
 {
 	FILE* pFile = fopen(szFilename, "rb");
 	FileHolder hFile(pFile);
@@ -1293,7 +1293,7 @@ void GImage::loadBmp(const char* szFilename)
 	loadBmp(pFile);
 }
 
-void GImage::loadBmp(FILE* pFile)
+void WImage::loadBmp(FILE* pFile)
 {
 	BITMAPFILEHEADER h1;
 	BITMAPINFOHEADER h2;
@@ -1335,7 +1335,7 @@ void GImage::loadBmp(FILE* pFile)
 	}
 }
 
-void GImage::loadBmp(const unsigned char* pRawData, int nLen)
+void WImage::loadBmp(const unsigned char* pRawData, int nLen)
 {
 	if(nLen < (int)(sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER)))
 		throw Ex("Unrecognized bitmap format");
@@ -1374,14 +1374,14 @@ void GImage::loadBmp(const unsigned char* pRawData, int nLen)
 	}
 }
 
-void GImage::crop(int left, int top, int wid, int hgt)
+void WImage::crop(int left, int top, int wid, int hgt)
 {
 	if(wid < 1 || hgt < 1)
 	{
 		setSize(wid, hgt);
 		return;
 	}
-	GImage tmp;
+	WImage tmp;
 	tmp.setSize(wid, hgt);
 
 	int l = std::max(0, left);
@@ -1390,12 +1390,12 @@ void GImage::crop(int left, int top, int wid, int hgt)
 	int tt = std::max(-top, 0);
 	int w = std::min((int)wid - ll, std::min((int)m_width - l, (int)wid));
 	int h = std::min((int)hgt - tt, std::min((int)m_height - t, (int)hgt));
-	GRect r(l, t, w, h);
+	WRect r(l, t, w, h);
 	tmp.blit(ll, tt, this, &r);
 	swapData(&tmp);
 }
 
-void GImage::box(int nX1, int nY1, int nX2, int nY2, unsigned int color)
+void WImage::box(int nX1, int nY1, int nX2, int nY2, unsigned int color)
 {
 	int tmp;
 	if(nX1 > nX2)
@@ -1433,7 +1433,7 @@ void GImage::box(int nX1, int nY1, int nX2, int nY2, unsigned int color)
 	}
 }
 
-void GImage::boxFill(int x, int y, int w, int h, unsigned int c)
+void WImage::boxFill(int x, int y, int w, int h, unsigned int c)
 {
 	x = std::max(0, x);
 	y = std::max(0, y);
@@ -1451,11 +1451,11 @@ void GImage::boxFill(int x, int y, int w, int h, unsigned int c)
 	}
 }
 
-void GImage::scale(unsigned int nNewWidth, unsigned int nNewHeight)
+void WImage::scale(unsigned int nNewWidth, unsigned int nNewHeight)
 {
 	unsigned int nOldWidth = m_width;
 	unsigned int nOldHeight = m_height;
-	GImage tmpImage;
+	WImage tmpImage;
 	tmpImage.swapData(this);
 	setSize(nNewWidth, nNewHeight);
 	unsigned int col;
@@ -1470,7 +1470,7 @@ void GImage::scale(unsigned int nNewWidth, unsigned int nNewHeight)
 	}
 }
 
-void GImage::flipHorizontally()
+void WImage::flipHorizontally()
 {
 	unsigned int c1;
 	unsigned int c2;
@@ -1488,7 +1488,7 @@ void GImage::flipHorizontally()
 	}
 }
 
-void GImage::flipVertically()
+void WImage::flipVertically()
 {
 	unsigned int c1;
 	unsigned int c2;
@@ -1506,7 +1506,7 @@ void GImage::flipVertically()
 	}
 }
 
-void GImage::swapData(GImage* pSwapImage)
+void WImage::swapData(WImage* pSwapImage)
 {
 	unsigned int* pTmpRGBQuads = m_pPixels;
 	unsigned int nTmpWidth = m_width;
@@ -1519,9 +1519,9 @@ void GImage::swapData(GImage* pSwapImage)
 	pSwapImage->m_height = nTmpHeight;
 }
 
-void GImage::convolve(GImage* pKernel)
+void WImage::convolve(WImage* pKernel)
 {
-	GImage NewImage;
+	WImage NewImage;
 	NewImage.setSize(m_width, m_height);
 	unsigned int c1;
 	unsigned int c2;
@@ -1570,9 +1570,9 @@ void GImage::convolve(GImage* pKernel)
 	swapData(&NewImage);
 }
 
-void GImage::convolveKernel(GImage* pKernel)
+void WImage::convolveKernel(WImage* pKernel)
 {
-	GImage NewImage;
+	WImage NewImage;
 	NewImage.setSize(m_width, m_height);
 	unsigned int c1;
 	unsigned int c2;
@@ -1608,12 +1608,12 @@ void GImage::convolveKernel(GImage* pKernel)
 	swapData(&NewImage);
 }
 
-void GImage::blur(double dRadius)
+void WImage::blur(double dRadius)
 {
 	// Calculate how big of a kernel we need
 	int nFactor = (int)dRadius;
 	int nWidth = nFactor * 2 + 1;
-	GImage imgKernel;
+	WImage imgKernel;
 	imgKernel.setSize(nWidth, nWidth);
 
 	// Produce the blurring kernel
@@ -1635,9 +1635,9 @@ void GImage::blur(double dRadius)
 	convolve(&imgKernel);
 }
 
-void GImage::blurQuick(int iters, int nRadius)
+void WImage::blurQuick(int iters, int nRadius)
 {
-	GImage tmp;
+	WImage tmp;
 	tmp.setSize(width(), height());
 	unsigned int c;
 	for(int iter = 0; iter < iters; iter++)
@@ -1680,12 +1680,12 @@ void GImage::blurQuick(int iters, int nRadius)
 	}
 }
 
-void GImage::sharpen(double dFactor)
+void WImage::sharpen(double dFactor)
 {
-	GImage imgBlurred;
+	WImage imgBlurred;
 	imgBlurred.copy(this);
 	imgBlurred.blur(dFactor);
-	GImage imgTmp;
+	WImage imgTmp;
 	imgTmp.setSize(m_width, m_height);
 	unsigned int col;
 	int nRed, nGreen, nBlue;
@@ -1708,7 +1708,7 @@ void GImage::sharpen(double dFactor)
 	swapData(&imgTmp);
 }
 
-void GImage::invert()
+void WImage::invert()
 {
 	int x, y;
 	unsigned int col;
@@ -1722,7 +1722,7 @@ void GImage::invert()
 	}
 }
 
-void GImage::invertRect(GRect* pRect)
+void WImage::invertRect(WRect* pRect)
 {
 	int x, y;
 	unsigned int col;
@@ -1736,7 +1736,7 @@ void GImage::invertRect(GRect* pRect)
 	}
 }
 
-void GImage::addBorder(const GImage* pSourceImage, unsigned int cBackground, unsigned int cBorder)
+void WImage::addBorder(const WImage* pSourceImage, unsigned int cBackground, unsigned int cBorder)
 {
 	setSize(pSourceImage->width(), pSourceImage->height());
 	int x, y;
@@ -1770,10 +1770,10 @@ void GImage::addBorder(const GImage* pSourceImage, unsigned int cBackground, uns
 	}
 }
 
-void GImage::makeEdgesGlow(float fThresh, int nThickness, int nOpacity, unsigned int color)
+void WImage::makeEdgesGlow(float fThresh, int nThickness, int nOpacity, unsigned int color)
 {
 	// Make initial mask
-	GImage tmp;
+	WImage tmp;
 	tmp.setSize(m_width, m_height);
 	unsigned int col, colLeft, colRight, colTop, colBottom;
 	int x, y, dif;
@@ -1825,7 +1825,7 @@ void GImage::makeEdgesGlow(float fThresh, int nThickness, int nOpacity, unsigned
 	}
 }
 
-void GImage::horizDifferenceize()
+void WImage::horizDifferenceize()
 {
 	if(m_width < 2)
 		return;
@@ -1843,7 +1843,7 @@ void GImage::horizDifferenceize()
 	}
 }
 
-void GImage::horizSummize()
+void WImage::horizSummize()
 {
 	if(m_width < 2)
 		return;
@@ -1861,7 +1861,7 @@ void GImage::horizSummize()
 	}
 }
 
-void GImage::dot(float x, float y, float radius, unsigned int fore, unsigned int back)
+void WImage::dot(float x, float y, float radius, unsigned int fore, unsigned int back)
 {
 	int a = (int)floor(x + 0.5);
 	if((unsigned int)a == 0x80000000)
@@ -2245,7 +2245,7 @@ static const unsigned short g_fontCharStart[97] =
 #define B_SW 0x40
 #define B_NW 0x80
 
-void GImage::textCharSmall(char ch, int x, int y, int wid, int hgt, float size, unsigned int col)
+void WImage::textCharSmall(char ch, int x, int y, int wid, int hgt, float size, unsigned int col)
 {
 	unsigned char charIndex = std::min((unsigned char)95, (unsigned char)(ch - 32));
 	int ofs = g_fontCharStart[charIndex];
@@ -2284,7 +2284,7 @@ void GImage::textCharSmall(char ch, int x, int y, int wid, int hgt, float size, 
 	}
 }
 
-void GImage::textChar(char ch, int x, int y, int wid, int hgt, float size, unsigned int col)
+void WImage::textChar(char ch, int x, int y, int wid, int hgt, float size, unsigned int col)
 {
 	if(size < 1.5f)
 	{
@@ -2422,7 +2422,7 @@ void GImage::textChar(char ch, int x, int y, int wid, int hgt, float size, unsig
 	}
 }
 
-void GImage::text(const char* txt, int x, int y, float size, unsigned int col, int wid, int hgt)
+void WImage::text(const char* txt, int x, int y, float size, unsigned int col, int wid, int hgt)
 {
 	while(*txt != '\0')
 	{
@@ -2438,7 +2438,7 @@ void GImage::text(const char* txt, int x, int y, float size, unsigned int col, i
 }
 
 // static
-int GImage::measureCharWidth(char c, float size)
+int WImage::measureCharWidth(char c, float size)
 {
 	unsigned char charIndex = std::min((unsigned char)95, (unsigned char)(c - 32));
 	int ofs = g_fontCharStart[charIndex];
@@ -2447,7 +2447,7 @@ int GImage::measureCharWidth(char c, float size)
 }
 
 // static
-int GImage::measureTextWidth(const char* text, float size)
+int WImage::measureTextWidth(const char* text, float size)
 {
 	int wid = 0;
 	while(*text != '\0')
@@ -2458,7 +2458,7 @@ int GImage::measureTextWidth(const char* text, float size)
 	return wid;
 }
 
-int GImage::countTextChars(int horizArea, const char* text, float size)
+int WImage::countTextChars(int horizArea, const char* text, float size)
 {
 	int charCount = 0;
 	while(*text != '\0')
@@ -2475,7 +2475,7 @@ int GImage::countTextChars(int horizArea, const char* text, float size)
 	return charCount;
 }
 
-void GImage::blit(int x, int y, GImage* pSource, GRect* pSourceRect)
+void WImage::blit(int x, int y, WImage* pSource, WRect* pSourceRect)
 {
 	int sx, sy, sw, sh;
 	if(pSourceRect)
@@ -2521,7 +2521,7 @@ void GImage::blit(int x, int y, GImage* pSource, GRect* pSourceRect)
 	}
 }
 
-void GImage::blitAlpha(int x, int y, GImage* pSource, GRect* pSourceRect)
+void WImage::blitAlpha(int x, int y, WImage* pSource, WRect* pSourceRect)
 {
 	int sx, sy, sw, sh;
 	if(pSourceRect)
@@ -2572,7 +2572,7 @@ void GImage::blitAlpha(int x, int y, GImage* pSource, GRect* pSourceRect)
 	}
 }
 
-void GImage::blitAlphaStretch(GRect* pDestRect, GImage* pSource, GRect* pSourceRect)
+void WImage::blitAlphaStretch(WRect* pDestRect, WImage* pSource, WRect* pSourceRect)
 {
 	float fSourceX, fSourceY, fSourceDX, fSourceDY;
 	if(pSourceRect)
@@ -2632,7 +2632,7 @@ void GImage::blitAlphaStretch(GRect* pDestRect, GImage* pSource, GRect* pSourceR
 	}
 }
 
-void GImage::blitStretchInterpolate(GDoubleRect* pDestRect, GImage* pSource, GDoubleRect* pSourceRect)
+void WImage::blitStretchInterpolate(WDoubleRect* pDestRect, WImage* pSource, WDoubleRect* pSourceRect)
 {
 	double sx, sy, sw, sh;
 	if(pSourceRect)
@@ -2664,7 +2664,7 @@ void GImage::blitStretchInterpolate(GDoubleRect* pDestRect, GImage* pSource, GDo
 	}
 }
 
-void GImage::moveLight(double dRadians, float fAmount)
+void WImage::moveLight(double dRadians, float fAmount)
 {
 	float dx = (float)cos(dRadians);
 	float dy = (float)sin(dRadians);
@@ -2683,14 +2683,14 @@ void GImage::moveLight(double dRadians, float fAmount)
 	}
 }
 
-GImage* GImage::munge(int nStyle, float fExtent)
+WImage* WImage::munge(int nStyle, float fExtent)
 {
-	GImage* pMunged = new GImage();
+	WImage* pMunged = new WImage();
 	pMunged->setSize(m_width, m_height);
 	int x, y;
 	unsigned int col;
 	double d;
-	GRand prng(0);
+	WRand prng(0);
 	switch(nStyle)
 	{
 		case 0: // particle-blur (pick a random pixel in the proximity)
@@ -2789,7 +2789,7 @@ GImage* GImage::munge(int nStyle, float fExtent)
 	return pMunged;
 }
 
-void GImage::triangleFill(float x1, float y1, float x2, float y2, float x3, float y3, unsigned int c)
+void WImage::triangleFill(float x1, float y1, float x2, float y2, float x3, float y3, unsigned int c)
 {
 	// Get y1 on top, y2 in middle, and y3 on bottom
 	if(y2 < y1)
@@ -2910,7 +2910,7 @@ void GImage::triangleFill(float x1, float y1, float x2, float y2, float x3, floa
 	}
 }
 /*
-void GImage::fatLine(float x1, float y1, float x2, float y2, float fThickness, unsigned int color)
+void WImage::fatLine(float x1, float y1, float x2, float y2, float fThickness, unsigned int color)
 {
 	double dAngle = atan2((double)(y2 - y1), (double)(x2 - x1));
 	float c = (fThickness * (float)cos(dAngle) / 2.0f + 0.5f);
@@ -2919,7 +2919,7 @@ void GImage::fatLine(float x1, float y1, float x2, float y2, float fThickness, u
 	triangleFill(x2 + s, y2 - c, x2 - s, y2 + c, x1 - s, y1 + c, color);
 }
 */
-void GImage::fatLine(float x1, float y1, float x2, float y2, float thickness, unsigned int color)
+void WImage::fatLine(float x1, float y1, float x2, float y2, float thickness, unsigned int color)
 {
 	float dy = y2 - y1;
 	float dx = x2 - x1;
@@ -2969,9 +2969,9 @@ void GImage::fatLine(float x1, float y1, float x2, float y2, float thickness, un
 	}
 }
 
-void GImage::stretch(int nXStart, int nYStart, int nXEnd, int nYEnd)
+void WImage::stretch(int nXStart, int nYStart, int nXEnd, int nYEnd)
 {
-	GImage tmp;
+	WImage tmp;
 	tmp.setSize(width(), height());
 	unsigned int col;
 	float d;
@@ -2991,14 +2991,14 @@ void GImage::stretch(int nXStart, int nYStart, int nXEnd, int nYEnd)
 	swapData(&tmp);
 }
 
-void GImage::captcha(const char* szText, GRand* pRand)
+void WImage::captcha(const char* szText, WRand* pRand)
 {
 	int nWidth = measureTextWidth(szText, 4.0f);
 	setSize(nWidth + 32, 64);
 	clear(0xffeeeecc);
-	GRect r(16, 16, nWidth + 16, 32);
+	WRect r(16, 16, nWidth + 16, 32);
 	text(szText, 16, 16, 4.0f, 0xff444400, nWidth, 64);
-	GImage* pTmp = munge(0, 0.01f);
+	WImage* pTmp = munge(0, 0.01f);
 	swapData(pTmp);
 	delete(pTmp);
 	int i;
@@ -3027,10 +3027,10 @@ void GImage::captcha(const char* szText, GRand* pRand)
 	delete(pTmp);
 }
 
-void GImage::gaussianKernel(int nWidth, float fDepth)
+void WImage::gaussianKernel(int nWidth, float fDepth)
 {
-	GAssert(nWidth >= 1); // out of range
-	GAssert(fDepth >= 1 && fDepth <= 255); // out of range
+	WAssert(nWidth >= 1); // out of range
+	WAssert(fDepth >= 1 && fDepth <= 255); // out of range
 	double dRadius = sqrt(std::max(0.0, -2.0 * log(1.0 / (double)fDepth)));
 	setSize(nWidth, nWidth);
 	double dCenter = (double)(nWidth - 1) / 2.0;
@@ -3042,20 +3042,20 @@ void GImage::gaussianKernel(int nWidth, float fDepth)
 		for(x = 0; x < nWidth; x++)
 		{
 			r = sqrt((dCenter - x) * (dCenter - x) + (dCenter - y) * (dCenter - y));
-			val = fDepth * (float)GMath::gaussian(r * dRadius / dCenter);
+			val = fDepth * (float)WMath::gaussian(r * dRadius / dCenter);
 			v = ClipChan((int)(val + (float).5));
 			setPixel(x, y, gARGB(0xff, v, v, v));
 		}
 	}
 }
 
-void GImage::highPassFilter(double dExtent)
+void WImage::highPassFilter(double dExtent)
 {
 	dExtent *= (2.0 * std::max(width(), height()));
 
 	// Convert to the Fourier domain
 	int nChannelWidth, nChannelHeight;
-	struct ComplexNumber* pArray = GFourier::imageToFftArray(this, &nChannelWidth, &nChannelHeight);
+	struct ComplexNumber* pArray = WFourier::imageToFftArray(this, &nChannelWidth, &nChannelHeight);
 	std::unique_ptr<struct ComplexNumber[]> hArray(pArray);
 	int nChannelSize = nChannelWidth * nChannelHeight;
 
@@ -3070,7 +3070,7 @@ void GImage::highPassFilter(double dExtent)
 			d = sqrt((double)(x * x + y * y));
 			if((int)d >= radius)
 				break;
-			fac = GMath::softStep(d / dExtent, 2.0);
+			fac = WMath::softStep(d / dExtent, 2.0);
 			nStart = 0;
 			for(i = 0; i < 3; i++)
 			{
@@ -3088,16 +3088,16 @@ void GImage::highPassFilter(double dExtent)
 	}
 
 	// Convert back to the spatial domain
-	GFourier::fftArrayToImage(pArray, nChannelWidth, nChannelHeight, this, true);
+	WFourier::fftArrayToImage(pArray, nChannelWidth, nChannelHeight, this, true);
 }
 
-void GImage::lowPassFilter(double dExtent)
+void WImage::lowPassFilter(double dExtent)
 {
 	dExtent *= (2.0 * std::max(width(), height()));
 
 	// Convert to the Fourier domain
 	int nChannelWidth, nChannelHeight;
-	struct ComplexNumber* pArray = GFourier::imageToFftArray(this, &nChannelWidth, &nChannelHeight);
+	struct ComplexNumber* pArray = WFourier::imageToFftArray(this, &nChannelWidth, &nChannelHeight);
 	std::unique_ptr<struct ComplexNumber[]> hArray(pArray);
 	int nChannelSize = nChannelWidth * nChannelHeight;
 
@@ -3112,7 +3112,7 @@ void GImage::lowPassFilter(double dExtent)
 			d = sqrt((double)(x * x + y * y));
 			if((int)d >= radius)
 				break;
-			fac = 1.0 - GMath::softStep(d / dExtent, 2.0);
+			fac = 1.0 - WMath::softStep(d / dExtent, 2.0);
 			nStart = 0;
 			for(i = 0; i < 3; i++)
 			{
@@ -3130,10 +3130,10 @@ void GImage::lowPassFilter(double dExtent)
 	}
 
 	// Convert back to the spatial domain
-	GFourier::fftArrayToImage(pArray, nChannelWidth, nChannelHeight, this, true);
+	WFourier::fftArrayToImage(pArray, nChannelWidth, nChannelHeight, this, true);
 }
 
-void GImage::threshold(int nGrayscaleValue)
+void WImage::threshold(int nGrayscaleValue)
 {
 	int x, y, g;
 	for(y = 0; y < (int)m_height; y++)
@@ -3149,7 +3149,7 @@ void GImage::threshold(int nGrayscaleValue)
 	}
 }
 
-void GImage::medianFilter(float fRadius)
+void WImage::medianFilter(float fRadius)
 {
 	int x, y, i, j, d2, median, size;
 	int r = (int)ceil(fRadius);
@@ -3179,19 +3179,19 @@ void GImage::medianFilter(float fRadius)
 				}
 			}
 			size = (int)arr.size();
-			GAssert(size > 0); // no data
+			WAssert(size > 0); // no data
 			std::sort(arr.begin(), arr.end());
 			median = (arr[(size - 1) / 2] + arr[size / 2]) / 2;
 			median = median >> 8;
-			GAssert(median >= 0 && median <= 255); // out of range
+			WAssert(median >= 0 && median <= 255); // out of range
 			setPixel(x, y, gARGB(0xff, median, median, median));
 		}
 	}
 }
 
-void GImage::dialate(GImage* pStructuringElement)
+void WImage::dialate(WImage* pStructuringElement)
 {
-	GImage target;
+	WImage target;
 	target.setSize(width(), height());
 	int x, y, i, j, r, g, b, u, v;
 	unsigned int c1, c2;
@@ -3231,9 +3231,9 @@ void GImage::dialate(GImage* pStructuringElement)
 	swapData(&target);
 }
 
-void GImage::erode(GImage* pStructuringElement)
+void WImage::erode(WImage* pStructuringElement)
 {
-	GImage target;
+	WImage target;
 	target.setSize(width(), height());
 	int x, y, i, j, r, g, b, u, v;
 	unsigned int c1, c2;
@@ -3273,9 +3273,9 @@ void GImage::erode(GImage* pStructuringElement)
 	swapData(&target);
 }
 
-void GImage::open(int nPixels)
+void WImage::open(int nPixels)
 {
-	GImage structuringElement;
+	WImage structuringElement;
 	structuringElement.gaussianKernel((int)(std::abs(nPixels) * 2 + 1), (float)1);
 	if(nPixels > 0)
 	{
@@ -3289,7 +3289,7 @@ void GImage::open(int nPixels)
 	}
 }
 
-void GImage::arrow(int x1, int y1, int x2, int y2, unsigned int col, int headSize)
+void WImage::arrow(int x1, int y1, int x2, int y2, unsigned int col, int headSize)
 {
 	line(x1, y1, x2, y2, col);
 	double theta = atan2((double)(y2 - y1), (double)(x2 - x1));
@@ -3297,7 +3297,7 @@ void GImage::arrow(int x1, int y1, int x2, int y2, unsigned int col, int headSiz
 	line(x2, y2, x2 + (int)(headSize * cos(theta + M_PI - .3)), y2 + (int)(headSize * sin(theta + M_PI - .314)), col);
 }
 
-double GImage::moment(double centerX, double centerY, double i, double j)
+double WImage::moment(double centerX, double centerY, double i, double j)
 {
 	int x, y, g;
 	double dNom = 0;
@@ -3317,7 +3317,7 @@ double GImage::moment(double centerX, double centerY, double i, double j)
 	return dNom / dDenom;
 }
 
-void GImage::meanAndOrientation(double* pMeanX, double* pMeanY, double* pRadians)
+void WImage::meanAndOrientation(double* pMeanX, double* pMeanY, double* pRadians)
 {
 	*pMeanX = moment(0, 0, 1, 0);
 	*pMeanY = moment(0, 0, 0, 1);
@@ -3328,7 +3328,7 @@ void GImage::meanAndOrientation(double* pMeanX, double* pMeanY, double* pRadians
 	*pRadians = atan2(dNom, dDenom) / 2.0;
 }
 
-void GImage::gradientMagnitudeImage(const GImage* pIn)
+void WImage::gradientMagnitudeImage(const WImage* pIn)
 {
 	setSize(pIn->width(), pIn->height());
 	unsigned int c1, c2, c3, c4, c5, c6, c7, c8;
@@ -3354,14 +3354,14 @@ void GImage::gradientMagnitudeImage(const GImage* pIn)
 			//r1 = (int)(sqrt((double)(r1 * r1 + r2 * r2)) / 5.65685424949238); // 5.65854 = 4 * sqrt(2)
 			//g1 = (int)(sqrt((double)(g1 * g1 + g2 * g2)) / 5.65685424949238);
 			//b1 = (int)(sqrt((double)(b1 * b1 + b2 * b2)) / 5.65685424949238);
-			//GAssert(r1 >= 0 && r1 < 257 && g1 >= 0 && g1 < 257 && b1 >= 0 && b1 < 257); // bad clippage
+			//WAssert(r1 >= 0 && r1 < 257 && g1 >= 0 && g1 < 257 && b1 >= 0 && b1 < 257); // bad clippage
 			//setPixel(x, y, gARGB(0xff, ClipChan(r1), ClipChan(g1), ClipChan(b1)));
 			setPixel(x, y, std::max(r1 * r1 + r2 * r2, std::max(g1 * g1 + g2 * g2, b1 * b1 + b2 * b2)));
 		}
 	}
 }
 
-void GImage::setGlobalAlpha(int alpha)
+void WImage::setGlobalAlpha(int alpha)
 {
 	unsigned int c;
 	int x, y;
@@ -3376,17 +3376,17 @@ void GImage::setGlobalAlpha(int alpha)
 }
 
 // static
-bool GImage::isPointInsideTriangle(float x, float y, float x0, float y0, float x1, float y1, float x2, float y2)
+bool WImage::isPointInsideTriangle(float x, float y, float x0, float y0, float x1, float y1, float x2, float y2)
 {
-	int s1 = GBits::sign((x1 - x0) * (y0 - y) - (x0 - x) * (y1 - y0));
+	int s1 = WBits::sign((x1 - x0) * (y0 - y) - (x0 - x) * (y1 - y0));
 	if(s1 == 0)
 		return true;
-	int s2 = GBits::sign((x2 - x1) * (y1 - y) - (x1 - x) * (y2 - y1));
+	int s2 = WBits::sign((x2 - x1) * (y1 - y) - (x1 - x) * (y2 - y1));
 	if(s2 == 0)
 		return true;
 	if(s1 != s2)
 		return false;
-	s2 = GBits::sign((x0 - x2) * (y2 - y) - (x2 - x) * (y0 - y2));
+	s2 = WBits::sign((x0 - x2) * (y2 - y) - (x2 - x) * (y0 - y2));
 	if(s2 == 0)
 		return true;
 	if(s1 != s2)
@@ -3395,7 +3395,7 @@ bool GImage::isPointInsideTriangle(float x, float y, float x0, float y0, float x
 }
 
 // static
-void GImage::triangleWeights(float* pW0, float* pW1, float* pW2, float x, float y, float x0, float y0, float x1, float y1, float x2, float y2)
+void WImage::triangleWeights(float* pW0, float* pW1, float* pW2, float x, float y, float x0, float y0, float x1, float y1, float x2, float y2)
 {
 	float t = (float)1.0 / ((x0 * y1 + x1 * y2 + x2 * y0) - (y0 * x1 + y1 * x2 + y2 * x0));
 	*pW0 = t * ((x1 * y2 - x2 * y1) + (y1 - y2) * x + (x2 - x1) * y);
@@ -3403,12 +3403,12 @@ void GImage::triangleWeights(float* pW0, float* pW1, float* pW2, float x, float 
 	*pW2 = t * ((x0 * y1 - x1 * y0) + (y0 - y1) * x + (x1 - x0) * y);
 }
 
-unsigned int GImage::interpolateWithinTriangle(float w0, float w1, float w2, float x0, float y0, float x1, float y1, float x2, float y2)
+unsigned int WImage::interpolateWithinTriangle(float w0, float w1, float w2, float x0, float y0, float x1, float y1, float x2, float y2)
 {
 	return interpolatePixel(w0 * x0 + w1 * x1 + w2 * x2, w0 * y0 + w1 * y1 + w2 * y2);
 }
 
-void GImage::rotateCounterClockwise90(GImage* pSourceImage)
+void WImage::rotateCounterClockwise90(WImage* pSourceImage)
 {
 	setSize((int)pSourceImage->m_height, (int)pSourceImage->m_width);
 	int x, y, z;
@@ -3420,7 +3420,7 @@ void GImage::rotateCounterClockwise90(GImage* pSourceImage)
 	}
 }
 
-void GImage::rotateClockwise90(GImage* pSourceImage)
+void WImage::rotateClockwise90(WImage* pSourceImage)
 {
 	setSize(pSourceImage->m_height, pSourceImage->m_width);
 	int x, y;
@@ -3431,7 +3431,7 @@ void GImage::rotateClockwise90(GImage* pSourceImage)
 	}
 }
 
-void GImage::contrastAndBrightness(float fContrastScale, int nBrightnessDelta)
+void WImage::contrastAndBrightness(float fContrastScale, int nBrightnessDelta)
 {
 	int x, y;
 	float fCenter = (float)128 - fContrastScale * 128;
@@ -3449,7 +3449,7 @@ void GImage::contrastAndBrightness(float fContrastScale, int nBrightnessDelta)
 	}
 }
 
-void GImage::hueSaturationAndValue(GImage* pSource, float hue, float saturation, float value)
+void WImage::hueSaturationAndValue(WImage* pSource, float hue, float saturation, float value)
 {
 	setSize(pSource->m_width, pSource->m_height);
 	int x, y;
@@ -3470,9 +3470,9 @@ void GImage::hueSaturationAndValue(GImage* pSource, float hue, float saturation,
 	}
 }
 
-void GImage::shade(float fStart, float fEnd, float fSteepness)
+void WImage::shade(float fStart, float fEnd, float fSteepness)
 {
-	GAssert(fStart >= fEnd); // fStart should be >= fEnd
+	WAssert(fStart >= fEnd); // fStart should be >= fEnd
 	float fBrightness, f;
 	int x, y;
 	unsigned int c;
@@ -3490,7 +3490,7 @@ void GImage::shade(float fStart, float fEnd, float fSteepness)
 				}
 				else
 				{
-					f = (float)GMath::softStep((fBrightness - fEnd) / (fStart - fEnd), fSteepness);
+					f = (float)WMath::softStep((fBrightness - fEnd) / (fStart - fEnd), fSteepness);
 					setPixel(x, y, gARGB(gAlpha(c), ClipChan((int)(f * gRed(c))), ClipChan((int)(f * gGreen(c))), ClipChan((int)(f * gBlue(c)))));
 				}
 			}
@@ -3498,14 +3498,14 @@ void GImage::shade(float fStart, float fEnd, float fSteepness)
 	}
 }
 
-void GImage::convertAbgrToArgb()
+void WImage::convertAbgrToArgb()
 {
 	unsigned int count = m_width * m_height;
 	for(unsigned i = 0; i < count; i++)
 		m_pPixels[i] = abgrToArgb((unsigned int)m_pPixels[i]);
 }
 
-void GImage::replaceColor(unsigned int before, unsigned int after)
+void WImage::replaceColor(unsigned int before, unsigned int after)
 {
 	unsigned int* pEnd = pixels() + (m_width * m_height);
 	for(unsigned int* pPix = pixels(); pPix != pEnd; pPix++)
@@ -3515,4 +3515,4 @@ void GImage::replaceColor(unsigned int before, unsigned int after)
 	}
 }
 
-} // namespace GClasses
+} // namespace WClasses

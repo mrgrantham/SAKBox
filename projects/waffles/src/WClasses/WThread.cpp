@@ -17,8 +17,8 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GThread.h"
-#include "GError.h"
+#include "WThread.h"
+#include "WError.h"
 #include <time.h>
 #ifdef WINDOWS
 #include <windows.h>
@@ -28,11 +28,11 @@
 
 using std::vector;
 
-namespace GClasses
+namespace WClasses
 {
 
 // static
-void GThread::sleep(unsigned int nMiliseconds)
+void WThread::sleep(unsigned int nMiliseconds)
 {
 #ifdef WINDOWS
 	MSG aMsg;
@@ -47,7 +47,7 @@ void GThread::sleep(unsigned int nMiliseconds)
 #endif
 }
 
-THREAD_HANDLE GThread::spawnThread(unsigned int (*pFunc)(void*), void* pData)
+THREAD_HANDLE WThread::spawnThread(unsigned int (*pFunc)(void*), void* pData)
 {
 #ifdef WINDOWS
 	unsigned int nID;
@@ -70,9 +70,9 @@ THREAD_HANDLE GThread::spawnThread(unsigned int (*pFunc)(void*), void* pData)
 #endif
 }
 
-unsigned int GThread::startThread(void* pObj)
+unsigned int WThread::startThread(void* pObj)
 {
-	GThread* pThread = (GThread*)pObj;
+	WThread* pThread = (WThread*)pObj;
 	pThread->m_finished = false;
 	pThread->m_started = true;
 	pThread->run();
@@ -80,17 +80,17 @@ unsigned int GThread::startThread(void* pObj)
 	return 0;
 }
 
-THREAD_HANDLE GThread::spawn()
+THREAD_HANDLE WThread::spawn()
 {
 	m_finished = false;
 	m_started = false;
-	return GThread::spawnThread(GThread::startThread, this);
+	return WThread::spawnThread(WThread::startThread, this);
 }
 
-void GThread::join(size_t miliseconds)
+void WThread::join(size_t miliseconds)
 {
 	while(!m_finished)
-		GThread::sleep(miliseconds);
+		WThread::sleep(miliseconds);
 }
 
 
@@ -98,7 +98,7 @@ void GThread::join(size_t miliseconds)
 
 
 
-GSpinLock::GSpinLock()
+WSpinLock::WSpinLock()
 {
 	m_dwLocked = 0;
 #ifndef WINDOWS
@@ -109,7 +109,7 @@ GSpinLock::GSpinLock()
 #endif
 }
 
-GSpinLock::~GSpinLock()
+WSpinLock::~WSpinLock()
 {
 #ifndef WINDOWS
 	pthread_mutex_destroy(&m_mutex);
@@ -123,7 +123,7 @@ static inline unsigned int testAndSet(volatile long* pDWord)
 }
 #endif // WINDOWS
 
-void GSpinLock::lock(const char* szWhoHoldsTheLock)
+void WSpinLock::lock(const char* szWhoHoldsTheLock)
 {
 #ifdef _DEBUG
 	time_t t;
@@ -139,9 +139,9 @@ void GSpinLock::lock(const char* szWhoHoldsTheLock)
 	{
 #ifdef _DEBUG
 		tCurrentTime = time(&t);
-		GAssert(tCurrentTime - tStartTime < 10); // Blocked for 10 seconds!
+		WAssert(tCurrentTime - tStartTime < 10); // Blocked for 10 seconds!
 #endif // _DEBUG
-		GThread::sleep(0);
+		WThread::sleep(0);
 	}
 #ifndef WINDOWS
 	m_dwLocked = 1;
@@ -151,7 +151,7 @@ void GSpinLock::lock(const char* szWhoHoldsTheLock)
 #endif // _DEBUG
 }
 
-void GSpinLock::unlock()
+void WSpinLock::unlock()
 {
 #ifdef _DEBUG
 	m_szWhoHoldsTheLock = "<Not Locked>";
@@ -171,7 +171,7 @@ struct TestSpinLockThreadStruct
 {
 	int* pBalance;
 	bool* pExitFlag;
-	GSpinLock* pSpinLock;
+	WSpinLock* pSpinLock;
 	int nOne;
 };
 
@@ -210,21 +210,21 @@ unsigned int TestSpinLockThread(void* pParameter)
 	}
 
 	// Clean up and exit
-	GAssert(*pThreadStruct->pExitFlag == false); // expected this to be false
+	WAssert(*pThreadStruct->pExitFlag == false); // expected this to be false
 	*pThreadStruct->pExitFlag = true;
 	delete(pThreadStruct);
 	return 1;
 }
 
 // static
-void GSpinLock::test()
+void WSpinLock::test()
 {
 	bool exitFlags[THREAD_COUNT];
 	int n;
 	for(n = 0; n < THREAD_COUNT; n++)
 		exitFlags[n] = false;
 	int nBalance = 0;
-	GSpinLock sl;
+	WSpinLock sl;
 
 	// spawn a bunch of threads
 	for(n = 0; n < THREAD_COUNT; n++)
@@ -234,7 +234,7 @@ void GSpinLock::test()
 		pThreadStruct->pExitFlag = &exitFlags[n];
 		pThreadStruct->pSpinLock = &sl;
 		pThreadStruct->nOne = 1;
-		THREAD_HANDLE hThread = GThread::spawnThread(TestSpinLockThread, pThreadStruct);
+		THREAD_HANDLE hThread = WThread::spawnThread(TestSpinLockThread, pThreadStruct);
 		if(hThread == BAD_HANDLE)
 			throw Ex("failed");
 	}
@@ -248,7 +248,7 @@ void GSpinLock::test()
 			if(!exitFlags[n])
 			{
 				bDone = false;
-				GThread::sleep(0);
+				WThread::sleep(0);
 				break;
 			}
 		}
@@ -270,13 +270,13 @@ void GSpinLock::test()
 
 
 
-void GWorkerThread::pump()
+void WWorkerThread::pump()
 {
 	while(m_keepAlive)
 	{
 		size_t jobId = m_master.nextJob(this);
 		if(jobId == INVALID_INDEX)
-			GThread::sleep(m_boredom & (~3)); // The "&(~3)" makes it so values < 4 will evaluate to 0, which just yields
+			WThread::sleep(m_boredom & (~3)); // The "&(~3)" makes it so values < 4 will evaluate to 0, which just yields
 		else
 		{
 #ifdef _DEBUG
@@ -296,18 +296,18 @@ void GWorkerThread::pump()
 
 
 
-GMasterThread::GMasterThread()
+WMasterThread::WMasterThread()
 : m_job(0), m_jobCount(0), m_pMasterLock(nullptr)
 {
 }
 
-GMasterThread::~GMasterThread()
+WMasterThread::~WMasterThread()
 {
-	for(vector<GWorkerThread*>::iterator it = m_workers.begin(); it != m_workers.end(); it++)
+	for(vector<WWorkerThread*>::iterator it = m_workers.begin(); it != m_workers.end(); it++)
 	{
 		if(m_pMasterLock)
 		{
-			GAssert(!(*it)->m_working); // A worker is still working on a job!
+			WAssert(!(*it)->m_working); // A worker is still working on a job!
 			(*it)->m_keepAlive = false; // The worker thread will delete the worker object
 		}
 		else
@@ -316,22 +316,22 @@ GMasterThread::~GMasterThread()
 	delete(m_pMasterLock);
 }
 
-void GMasterThread::addWorker(GWorkerThread* pWorker)
+void WMasterThread::addWorker(WWorkerThread* pWorker)
 {
 	if(m_pMasterLock)
 		throw Ex("Sorry, workers may not be added after jobs have already been performed.");
 	m_workers.push_back(pWorker);
 }
 
-void GMasterThread::doJobs(size_t jobCount)
+void WMasterThread::doJobs(size_t jobCount)
 {
 	// Update the number of available jobs
 	{
-		GSpinLockHolder lockHolder(m_pMasterLock, "GMasterThread::reset");
+		WSpinLockHolder lockHolder(m_pMasterLock, "WMasterThread::reset");
 		m_job = 0;
 		m_jobCount = jobCount;
 		m_activeWorkers = m_workers.size();
-		for(vector<GWorkerThread*>::iterator it = m_workers.begin(); it != m_workers.end(); it++)
+		for(vector<WWorkerThread*>::iterator it = m_workers.begin(); it != m_workers.end(); it++)
 			(*it)->m_boredom = 0;
 	}
 
@@ -343,7 +343,7 @@ void GMasterThread::doJobs(size_t jobCount)
 			// Just do the jobs now
 			if(m_workers.size() == 0)
 				throw Ex("There are no worker threads. addWorker must be called at least once before you call doJobs.");
-			GWorkerThread* pWorker = m_workers[0];
+			WWorkerThread* pWorker = m_workers[0];
 			while(m_job < m_jobCount)
 				pWorker->doJob(m_job++);
 			m_activeWorkers = 0;
@@ -351,9 +351,9 @@ void GMasterThread::doJobs(size_t jobCount)
 		else
 		{
 			// Spawn a thread for each worker
-			m_pMasterLock = new GSpinLock();
-			for(vector<GWorkerThread*>::iterator it = m_workers.begin(); it != m_workers.end(); it++)
-				GThread::spawnThread(spawnWorker, *it);
+			m_pMasterLock = new WSpinLock();
+			for(vector<WWorkerThread*>::iterator it = m_workers.begin(); it != m_workers.end(); it++)
+				WThread::spawnThread(spawnWorker, *it);
 		}
 	}
 
@@ -361,14 +361,14 @@ void GMasterThread::doJobs(size_t jobCount)
 	while(m_activeWorkers > 0)
 	{
 		if(m_jobCount > 20)
-			GThread::sleep(0); // todo: maybe sleep a little longer if there are a lot of jobs
+			WThread::sleep(0); // todo: maybe sleep a little longer if there are a lot of jobs
 	}
-	GAssert(m_job >= m_jobCount);
+	WAssert(m_job >= m_jobCount);
 }
 
-size_t GMasterThread::nextJob(GWorkerThread* pWorker)
+size_t WMasterThread::nextJob(WWorkerThread* pWorker)
 {
-	GSpinLockHolder lockHolder(m_pMasterLock, "GMasterThread::nextJob");
+	WSpinLockHolder lockHolder(m_pMasterLock, "WMasterThread::nextJob");
 	if(m_job < m_jobCount)
 	{
 		pWorker->m_boredom = 0;
@@ -384,12 +384,12 @@ size_t GMasterThread::nextJob(GWorkerThread* pWorker)
 }
 
 // static
-unsigned int GMasterThread::spawnWorker(void* pWorkerObject)
+unsigned int WMasterThread::spawnWorker(void* pWorkerObject)
 {
-	((GWorkerThread*)pWorkerObject)->pump();
+	((WWorkerThread*)pWorkerObject)->pump();
 	return 0;
 }
 
 
-} // namespace GClasses
+} // namespace WClasses
 

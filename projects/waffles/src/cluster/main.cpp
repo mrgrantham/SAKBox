@@ -20,27 +20,27 @@
 #include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
-#include "WClasses/GApp.h"
-#include "WClasses/GBits.h"
-#include "WClasses/GCluster.h"
-#include "WClasses/GError.h"
-#include "WClasses/GMatrix.h"
-#include "WClasses/GImage.h"
-#include "WClasses/GRand.h"
-#include "WClasses/GFile.h"
-#include "WClasses/GTransform.h"
-#include "WClasses/GVec.h"
-#include "WClasses/GHashTable.h"
-#include "WClasses/GHillClimber.h"
-#include "WClasses/GManifold.h"
-#include "WClasses/GNeighborFinder.h"
-#include "WClasses/GNeuralNet.h"
-#include "WClasses/GHeap.h"
-#include "WClasses/GRect.h"
-#include "WClasses/GSparseMatrix.h"
-#include "WClasses/GMath.h"
-#include "WClasses/GDom.h"
-#include "WClasses/GSelfOrganizingMap.h"
+#include "WClasses/WApp.h"
+#include "WClasses/WBits.h"
+#include "WClasses/WCluster.h"
+#include "WClasses/WError.h"
+#include "WClasses/WMatrix.h"
+#include "WClasses/WImage.h"
+#include "WClasses/WRand.h"
+#include "WClasses/WFile.h"
+#include "WClasses/WTransform.h"
+#include "WClasses/WVec.h"
+#include "WClasses/WHashTable.h"
+#include "WClasses/WHillClimber.h"
+#include "WClasses/WManifold.h"
+#include "WClasses/WNeighborFinder.h"
+#include "WClasses/WNeuralNet.h"
+#include "WClasses/WHeap.h"
+#include "WClasses/WRect.h"
+#include "WClasses/WSparseMatrix.h"
+#include "WClasses/WMath.h"
+#include "WClasses/WDom.h"
+#include "WClasses/WSelfOrganizingMap.h"
 #include <time.h>
 #include <iostream>
 #include <string>
@@ -54,7 +54,7 @@
 #include "WClasses/usage.h"
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 using std::vector;
@@ -62,16 +62,16 @@ using std::string;
 using std::set;
 using std::map;
 
-void loadData(GMatrix& m, const char* szFilename)
+void loadData(WMatrix& m, const char* szFilename)
 {
 	// Load the dataset by extension
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	if(_stricmp(szFilename + pd.extStart, ".arff") == 0)
 		m.loadArff(szFilename);
 	else if(_stricmp(szFilename + pd.extStart, ".csv") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.parse(m, szFilename);
 		cerr << "\nParsing Report:\n";
 		for(size_t i = 0; i < m.cols(); i++)
@@ -79,7 +79,7 @@ void loadData(GMatrix& m, const char* szFilename)
 	}
 	else if(_stricmp(szFilename + pd.extStart, ".dat") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.setSeparator('\0');
 		parser.parse(m, szFilename);
 		cerr << "\nParsing Report:\n";
@@ -90,24 +90,24 @@ void loadData(GMatrix& m, const char* szFilename)
 		throw Ex("Unsupported file format: ", szFilename + pd.extStart);
 }
 
-void agglomerativeclusterer(GArgReader& args)
+void agglomerativeclusterer(WArgReader& args)
 {
 	// Load the file and params
-	GMatrix data;
+	WMatrix data;
 	loadData(data, args.pop_string());
 	int clusters = args.pop_uint();
 
 	// Do the clustering
-	GAgglomerativeClusterer clusterer(clusters);
-	GMatrix* pOut = clusterer.reduce(data);
-	std::unique_ptr<GMatrix> hOut(pOut);
+	WAgglomerativeClusterer clusterer(clusters);
+	WMatrix* pOut = clusterer.reduce(data);
+	std::unique_ptr<WMatrix> hOut(pOut);
 	pOut->print(cout);
 }
 
-void fuzzykmeans(GArgReader& args)
+void fuzzykmeans(WArgReader& args)
 {
 	// Load the file and params
-	GMatrix data;
+	WMatrix data;
 	loadData(data, args.pop_string());
 	int clusters = args.pop_uint();
 
@@ -128,19 +128,19 @@ void fuzzykmeans(GArgReader& args)
 	}
 
 	// Do the clustering
-	GRand prng(nSeed);
-	GFuzzyKMeans clusterer(clusters, &prng);
+	WRand prng(nSeed);
+	WFuzzyKMeans clusterer(clusters, &prng);
 	clusterer.setFuzzifier(fuzzifier);
 	clusterer.setReps(reps);
-	GMatrix* pOut = clusterer.reduce(data);
-	std::unique_ptr<GMatrix> hOut(pOut);
+	WMatrix* pOut = clusterer.reduce(data);
+	std::unique_ptr<WMatrix> hOut(pOut);
 	pOut->print(cout);
 }
 
-void kmeans(GArgReader& args)
+void kmeans(WArgReader& args)
 {
 	// Load the file and params
-	GMatrix data;
+	WMatrix data;
 	loadData(data, args.pop_string());
 	int clusters = args.pop_uint();
 
@@ -158,25 +158,25 @@ void kmeans(GArgReader& args)
 	}
 
 	// Do the clustering
-	GRand prng(nSeed);
-	GKMeans clusterer(clusters, &prng);
+	WRand prng(nSeed);
+	WKMeans clusterer(clusters, &prng);
 	clusterer.setReps(reps);
-	GMatrix* pOut = clusterer.reduce(data);
-	std::unique_ptr<GMatrix> hOut(pOut);
+	WMatrix* pOut = clusterer.reduce(data);
+	std::unique_ptr<WMatrix> hOut(pOut);
 	pOut->print(cout);
 }
 
-void kmedoids(GArgReader& args)
+void kmedoids(WArgReader& args)
 {
 	// Load the file and params
-	GMatrix data;
+	WMatrix data;
 	loadData(data, args.pop_string());
 	int clusters = args.pop_uint();
 
 	// Do the clustering
-	GKMedoids clusterer(clusters);
-	GMatrix* pOut = clusterer.reduce(data);
-	std::unique_ptr<GMatrix> hOut(pOut);
+	WKMedoids clusterer(clusters);
+	WMatrix* pOut = clusterer.reduce(data);
+	std::unique_ptr<WMatrix> hOut(pOut);
 	pOut->print(cout);
 }
 
@@ -192,7 +192,7 @@ void ShowUsage(const char* appName)
 	cout.flush();
 }
 
-void showError(GArgReader& args, const char* szAppName, const char* szMessage)
+void showError(WArgReader& args, const char* szAppName, const char* szMessage)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -228,13 +228,13 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int ret = 0;
 	PathData pd;
-	GFile::parsePath(argv[0], &pd);
+	WFile::parsePath(argv[0], &pd);
 	const char* appName = argv[0] + pd.fileStart;
-	GArgReader args(argc, argv);
+	WArgReader args(argc, argv);
 	args.pop_string(); // advance past the app name
 	try
 	{

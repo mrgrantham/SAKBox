@@ -22,18 +22,18 @@
 #include <map>
 #include <iostream>
 #include <string>
-#include <WClasses/GFile.h>
-#include <WClasses/GDynamicPage.h>
+#include <WClasses/WFile.h>
+#include <WClasses/WDynamicPage.h>
 
 class Account;
 
-using namespace GClasses;
+using namespace WClasses;
 
 
-class Server : public GDynamicPageServer
+class Server : public WDynamicPageServer
 {
 protected:
-	GFileCache m_fileCache;
+	WFileCache m_fileCache;
 
 	/// Stops once the browser has had the page for a while
 	void onIdle(double secondsSinceLastRequest) override
@@ -48,10 +48,10 @@ protected:
 public:
 	std::string m_basePath;
 
-	Server(int port, GRand* pRand);
+	Server(int port, WRand* pRand);
 	~Server() override;
-	GDynamicPageSessionExtension* deserializeSessionExtension(const GDomNode* pNode) override;
-	GDynamicPageConnection* makeConnection(SOCKET sock) override;
+	WDynamicPageSessionExtension* deserializeSessionExtension(const WDomNode* pNode) override;
+	WDynamicPageConnection* makeConnection(SOCKET sock) override;
 };
 
 
@@ -59,14 +59,14 @@ public:
 
 
 
-class Terminal : public GDynamicPageSessionExtension
+class Terminal : public WDynamicPageSessionExtension
 {
 public:
-	Terminal() : GDynamicPageSessionExtension()
+	Terminal() : WDynamicPageSessionExtension()
 	{
 	}
 
-	Terminal(const GDomNode* pNode, Server* pServer)
+	Terminal(const WDomNode* pNode, Server* pServer)
 	{
 	}
 
@@ -74,12 +74,12 @@ public:
 	{
 	}
 
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
 		return nullptr;
 	}
 
-	/// Called when the sessions are destroyed, or a new GDynamicPageSessionExtension is
+	/// Called when the sessions are destroyed, or a new WDynamicPageSessionExtension is
 	/// explicitly associated with this cookie.
 	void onDisown() override
 	{
@@ -87,10 +87,10 @@ public:
 };
 
 
-class Connection : public GDynamicPageConnection
+class Connection : public WDynamicPageConnection
 {
 public:
-	Connection(SOCKET sock, GDynamicPageServer* pServer) : GDynamicPageConnection(sock, pServer)
+	Connection(SOCKET sock, WDynamicPageServer* pServer) : WDynamicPageConnection(sock, pServer)
 	{
 	}
 
@@ -98,7 +98,7 @@ public:
 	{
 	}
 
-	void handleRequest(GDynamicPageSession* pSession, std::ostream& response) override;
+	void handleRequest(WDynamicPageSession* pSession, std::ostream& response) override;
 };
 
 
@@ -107,9 +107,9 @@ public:
 
 
 
-Terminal* getTerminal(GDynamicPageSession* pSession);
+Terminal* getTerminal(WDynamicPageSession* pSession);
 
-Account* getAccount(GDynamicPageSession* pSession);
+Account* getAccount(WDynamicPageSession* pSession);
 
 
 

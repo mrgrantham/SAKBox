@@ -16,13 +16,13 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GTree.h"
+#include "WTree.h"
 #include <string>
 #include <utility>
 
 using std::string;
 
-namespace GClasses
+namespace WClasses
 {
 
 class MyRelationalObject
@@ -50,14 +50,14 @@ public:
 	}
 };
 
-void GRelationalTable_test()
+void WRelationalTable_test()
 {
 	MyRelationalObject ob1(9, "a"); // 9*1=9
 	MyRelationalObject ob2(4, "yo"); // 4*2=8
 	MyRelationalObject ob3(1, "abcdefghijklmnopqrstuvwxyz"); // 1*26=26
 	MyRelationalObject ob4(3, "sasquatch"); // 3*9=27
 	MyRelationalObjectComparer comp;
-	GRelationalTable<MyRelationalObject*, MyRelationalObjectComparer> table(comp);
+	WRelationalTable<MyRelationalObject*, MyRelationalObjectComparer> table(comp);
 	table.insert(&ob1);
 	table.insert(&ob2);
 	table.insert(&ob3);
@@ -100,20 +100,20 @@ void GRelationalTable_test()
 	// Test find and findGreaterOrEqual
 	MyRelationalObject t1(4, "banana");
 	MyRelationalObject t2(5, "banana");
-	GRelationalRow<MyRelationalObject*>* ta = table.find(&t1, 0);
+	WRelationalRow<MyRelationalObject*>* ta = table.find(&t1, 0);
 	if(!ta)
 		throw Ex("failed");
 	if(ta->row->m_n != 4)
 		throw Ex("failed");
-	GRelationalRow<MyRelationalObject*>* tb = table.find(&t2, 0);
+	WRelationalRow<MyRelationalObject*>* tb = table.find(&t2, 0);
 	if(tb)
 		throw Ex("failed");
-	GRelationalRow<MyRelationalObject*>* tc = table.firstEqualOrGreater(&t1, 0);
+	WRelationalRow<MyRelationalObject*>* tc = table.firstEqualOrGreater(&t1, 0);
 	if(!tc)
 		throw Ex("failed");
 	if(tc->row->m_n != 4)
 		throw Ex("failed");
-	GRelationalRow<MyRelationalObject*>* td = table.firstEqualOrGreater(&t2, 0);
+	WRelationalRow<MyRelationalObject*>* td = table.firstEqualOrGreater(&t2, 0);
 	if(!td)
 		throw Ex("failed");
 	if(td->row->m_n != 9)
@@ -154,5 +154,5 @@ void GRelationalTable_test()
 		throw Ex("failed");
 }
 
-} // namespace GClasses
+} // namespace WClasses
 

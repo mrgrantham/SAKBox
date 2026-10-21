@@ -18,13 +18,13 @@
 #define MAX_KEY_CODE_LEN 32
 #endif // !WIN32
 
-namespace GClasses
+namespace WClasses
 {
 
 typedef void (*LogKeyCallBack)(void* pThis, char c);
 
 /// This is a cross-platform keystroke sniffer. You must only use it for doing good, and not evil.
-class GKeyboard
+class WKeyboard
 {
 protected:
 	bool m_bKeepWatching;
@@ -42,8 +42,8 @@ protected:
 #endif // !WIN32
 
 public:
-	GKeyboard(LogKeyCallBack pLogKeyFunc, void* pParam);
-	~GKeyboard();
+	WKeyboard(LogKeyCallBack pLogKeyFunc, void* pParam);
+	~WKeyboard();
 
 	void Watch();
 	void Stop() { m_bKeepWatching = false; }
@@ -59,7 +59,7 @@ protected:
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // !__APPLE__
 #endif // __GKEYBOARD_H__

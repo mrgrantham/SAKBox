@@ -18,74 +18,74 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "WClasses/GLearnerLib.h"
+#include "WClasses/WLearnerLib.h"
 
-using namespace GClasses;
+using namespace WClasses;
 
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int nRet = 0;
 	PathData pd;
-	GFile::parsePath(argv[0], &pd);
+	WFile::parsePath(argv[0], &pd);
 	const char* appName = argv[0] + pd.fileStart;
-	GArgReader args(argc, argv);
+	WArgReader args(argc, argv);
 	try
 	{
 		args.pop_string(); // advance past the name of this app
 		if(args.size() >= 1)
 		{
 			if(args.if_pop("usage"))
-				GLearnerLib::ShowUsage(appName);
+				WLearnerLib::ShowUsage(appName);
 			else if(args.if_pop("autotune"))
-				GLearnerLib::autoTune(args);
+				WLearnerLib::autoTune(args);
 			else if(args.if_pop("train"))
-				GLearnerLib::Train(args);
+				WLearnerLib::Train(args);
 			else if(args.if_pop("test"))
-				GLearnerLib::Test(args);
+				WLearnerLib::Test(args);
 			else if(args.if_pop("predict"))
-				GLearnerLib::predict(args);
+				WLearnerLib::predict(args);
 			else if(args.if_pop("predictdistribution"))
-				GLearnerLib::predictDistribution(args);
+				WLearnerLib::predictDistribution(args);
 			else if(args.if_pop("transduce"))
-				GLearnerLib::Transduce(args);
+				WLearnerLib::Transduce(args);
 			else if(args.if_pop("transacc"))
-				GLearnerLib::TransductiveAccuracy(args);
+				WLearnerLib::TransductiveAccuracy(args);
 			else if(args.if_pop("splittest"))
-				GLearnerLib::SplitTest(args);
+				WLearnerLib::SplitTest(args);
 			else if(args.if_pop("crossvalidate"))
-				GLearnerLib::CrossValidate(args);
+				WLearnerLib::CrossValidate(args);
 			else if(args.if_pop("precisionrecall"))
-				GLearnerLib::PrecisionRecall(args);
+				WLearnerLib::PrecisionRecall(args);
 			else if(args.if_pop("sterilize"))
-				GLearnerLib::sterilize(args);
+				WLearnerLib::sterilize(args);
 			//			else if(args.if_pop("trainrecurrent"))
-			//				GLearnerLib::trainRecurrent(args);
+			//				WLearnerLib::trainRecurrent(args);
 			else if(args.if_pop("regress"))
-				GLearnerLib::regress(args);
+				WLearnerLib::regress(args);
 			else if(args.if_pop("metadata"))
-				GLearnerLib::metaData(args);
+				WLearnerLib::metaData(args);
 			else
 			{
 				nRet = 1;
 				string s = args.peek();
 				s += " is not a recognized command.";
-				GLearnerLib::showError(args, appName, s.c_str());
+				WLearnerLib::showError(args, appName, s.c_str());
 			}
 		}
 		else
 		{
 			nRet = 1;
-			GLearnerLib::showError(args, appName, "Brief Usage Information:");
+			WLearnerLib::showError(args, appName, "Brief Usage Information:");
 		}
 	}
 	catch(const std::exception& e)
 	{
 		nRet = 1;
 		if(strcmp(e.what(), "nevermind") != 0) // if an error message was not already displayed...
-			GLearnerLib::showError(args, appName, e.what());
+			WLearnerLib::showError(args, appName, e.what());
 	}
 	return nRet;
 }

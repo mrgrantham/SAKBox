@@ -16,66 +16,66 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GGraph.h"
+#include "WGraph.h"
 #include <stddef.h>
 #include <stdlib.h>
-#include "GError.h"
-#include "GBitTable.h"
-#include "GHashTable.h"
-#include "GRegion.h"
-#include "GHeap.h"
-#include "GMatrix.h"
-#include "GNeighborFinder.h"
-#include "GRand.h"
-#include "GVec.h"
-#include "GHolders.h"
+#include "WError.h"
+#include "WBitTable.h"
+#include "WHashTable.h"
+#include "WRegion.h"
+#include "WHeap.h"
+#include "WMatrix.h"
+#include "WNeighborFinder.h"
+#include "WRand.h"
+#include "WVec.h"
+#include "WHolders.h"
 #include <vector>
 #include <deque>
 #include <cmath>
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::vector;
 using std::deque;
 
-namespace GClasses
+namespace WClasses
 {
-struct GGraphCutNode
+struct WGraphCutNode
 {
 public:
-	GGraphCutNode* m_pRoot;
-	GGraphCutEdge* m_pParent;
+	WGraphCutNode* m_pRoot;
+	WGraphCutEdge* m_pParent;
 	size_t m_nSibling;
 	size_t m_nChild;
-	struct GGraphCutEdge* m_pEdges;
+	struct WGraphCutEdge* m_pEdges;
 
 
-	GGraphCutNode()
+	WGraphCutNode()
 	: m_pRoot(nullptr), m_pParent(nullptr), m_nSibling(INVALID_INDEX), m_nChild(INVALID_INDEX), m_pEdges(nullptr)
 	{
 	}
 
-	struct GGraphCutNode* GetRoot()
+	struct WGraphCutNode* GetRoot()
 	{
 		return m_pRoot;
 	}
 
-	void SetRoot(struct GGraphCutNode* pRoot)
+	void SetRoot(struct WGraphCutNode* pRoot)
 	{
 		m_pRoot = pRoot;
 	}
 
-	struct GGraphCutEdge* GetParentEdge()
+	struct WGraphCutEdge* GetParentEdge()
 	{
 		return m_pParent;
 	}
 
-	struct GGraphCutEdge* GetFirstEdge()
+	struct WGraphCutEdge* GetFirstEdge()
 	{
 		return m_pEdges;
 	}
 
-	void SetFirstEdge(struct GGraphCutEdge* pEdge)
+	void SetFirstEdge(struct WGraphCutEdge* pEdge)
 	{
 		m_pEdges = pEdge;
 	}
@@ -91,16 +91,16 @@ public:
 	}
 };
 
-struct GGraphCutEdge
+struct WGraphCutEdge
 {
 public:
 	size_t m_nNode1;
 	size_t m_nNode2;
-	GGraphCutEdge* m_pNext1;
-	GGraphCutEdge* m_pNext2;
+	WGraphCutEdge* m_pNext1;
+	WGraphCutEdge* m_pNext2;
 	float m_fCapacity;
 
-	struct GGraphCutEdge* GetNextEdge(size_t nNode)
+	struct WGraphCutEdge* GetNextEdge(size_t nNode)
 	{
 		if(nNode == m_nNode1)
 			return m_pNext1;
@@ -108,7 +108,7 @@ public:
 			return m_pNext2;
 		else
 		{
-			GAssert(false); // This edge isn't connected to that node
+			WAssert(false); // This edge isn't connected to that node
 			return nullptr;
 		}
 	}
@@ -121,7 +121,7 @@ public:
 			return m_nNode1;
 		else
 		{
-			GAssert(false); // This edge isn't connected to that node
+			WAssert(false); // This edge isn't connected to that node
 			return INVALID_INDEX;
 		}
 	}
@@ -132,27 +132,27 @@ public:
 // ---------------------------------------------------------------------------
 
 
-GGraphCut::GGraphCut(size_t nNodes)
+WGraphCut::WGraphCut(size_t nNodes)
 {
-	m_pHeap = new GHeap(1024);
+	m_pHeap = new WHeap(1024);
 	m_nNodes = nNodes;
-	m_pNodes = new GGraphCutNode[nNodes];
+	m_pNodes = new WGraphCutNode[nNodes];
 	m_pSource = nullptr;
 	m_pSink = nullptr;
 }
 
-GGraphCut::~GGraphCut()
+WGraphCut::~WGraphCut()
 {
 	delete(m_pHeap);
 	delete[] m_pNodes;
 }
 
-void GGraphCut::addEdge(size_t nNode1, size_t nNode2, float fCapacity)
+void WGraphCut::addEdge(size_t nNode1, size_t nNode2, float fCapacity)
 {
-	GAssert(nNode1 != nNode2); // edge to itself?
-	GAssert(nNode1 != INVALID_INDEX && nNode1 < m_nNodes); // out of range
-	GAssert(nNode2 != INVALID_INDEX && nNode2 < m_nNodes); // out of range
-	struct GGraphCutEdge* pNewEdge = (struct GGraphCutEdge*)m_pHeap->allocate(sizeof(struct GGraphCutEdge));
+	WAssert(nNode1 != nNode2); // edge to itself?
+	WAssert(nNode1 != INVALID_INDEX && nNode1 < m_nNodes); // out of range
+	WAssert(nNode2 != INVALID_INDEX && nNode2 < m_nNodes); // out of range
+	struct WGraphCutEdge* pNewEdge = (struct WGraphCutEdge*)m_pHeap->allocate(sizeof(struct WGraphCutEdge));
 	pNewEdge->m_nNode1 = nNode1;
 	pNewEdge->m_nNode2 = nNode2;
 	pNewEdge->m_pNext1 = m_pNodes[nNode1].GetFirstEdge();
@@ -162,7 +162,7 @@ void GGraphCut::addEdge(size_t nNode1, size_t nNode2, float fCapacity)
 	pNewEdge->m_fCapacity = fCapacity;
 }
 
-void GGraphCut::getEdgesFromRegionList(GRegionAjacencyGraph* pRegionList)
+void WGraphCut::getEdgesFromRegionList(WRegionAjacencyGraph* pRegionList)
 {
 	size_t nNode1, nNode2;
 	float r1, g1, b1, r2, g2, b2;
@@ -181,11 +181,11 @@ void GGraphCut::getEdgesFromRegionList(GRegionAjacencyGraph* pRegionList)
 	}
 }
 
-void GGraphCut::recycleTree(size_t nChild, size_t nParent)
+void WGraphCut::recycleTree(size_t nChild, size_t nParent)
 {
-	struct GGraphCutNode* pChild = &m_pNodes[nChild];
-	struct GGraphCutNode* pParent = &m_pNodes[nParent];
-	GAssert(pChild->GetRoot()); // Expected the child node to be part of a tree
+	struct WGraphCutNode* pChild = &m_pNodes[nChild];
+	struct WGraphCutNode* pParent = &m_pNodes[nParent];
+	WAssert(pChild->GetRoot()); // Expected the child node to be part of a tree
 
 	// Unlink the child from the parent
 	size_t nPrev = INVALID_INDEX;
@@ -194,7 +194,7 @@ void GGraphCut::recycleTree(size_t nChild, size_t nParent)
 		nPrev = nCurrent;
 	if(nCurrent == INVALID_INDEX)
 	{
-		GAssert(false); // Failed to find the child
+		WAssert(false); // Failed to find the child
 		return;
 	}
 	if(nPrev != INVALID_INDEX)
@@ -204,12 +204,12 @@ void GGraphCut::recycleTree(size_t nChild, size_t nParent)
 	pChild->m_nSibling = INVALID_INDEX;
 	pChild->m_pParent = nullptr;
 	pChild->m_pRoot = nullptr;
-	//GAssert(!pChild->IsAncestor(pParent)); // still linked
+	//WAssert(!pChild->IsAncestor(pParent)); // still linked
 
 	/*
 	// Attempt to find another suitable parent for the tree
-	struct GGraphCutEdge* pCandEdge;
-	struct GGraphCutNode* pCandidate;
+	struct WGraphCutEdge* pCandEdge;
+	struct WGraphCutNode* pCandidate;
 	for(pCandEdge = pChild->GetFirstEdge(); pCandEdge; pCandEdge = pCandEdge->GetNextEdge(pChild))
 	{
 		if(pCandEdge->m_fCapacity <= 0)
@@ -233,10 +233,10 @@ void GGraphCut::recycleTree(size_t nChild, size_t nParent)
 			break;
 		recycleTree(nGrandChild, nChild);
 	}
-	GAssert(pChild->GetFirstChild() == INVALID_INDEX && !pChild->GetParentEdge()); // Didn't recycle properly
+	WAssert(pChild->GetFirstChild() == INVALID_INDEX && !pChild->GetParentEdge()); // Didn't recycle properly
 
 	// Any rooted neighbors of the child now become active since they have an unclaimed neighbor
-	struct GGraphCutEdge* pEdge;
+	struct WGraphCutEdge* pEdge;
 	size_t nOther;
 	for(pEdge = pChild->GetFirstEdge(); pEdge; pEdge = pEdge->GetNextEdge(nChild))
 	{
@@ -249,15 +249,15 @@ void GGraphCut::recycleTree(size_t nChild, size_t nParent)
 }
 
 // pEdge is the edge that joins the two trees
-void GGraphCut::augmentPath(struct GGraphCutEdge* pEdge)
+void WGraphCut::augmentPath(struct WGraphCutEdge* pEdge)
 {
 	// Find the bottle-neck
 	float fBottleneck = pEdge->m_fCapacity;
 	size_t nNode = pEdge->m_nNode1;
-	struct GGraphCutEdge* pParentEdge = m_pNodes[nNode].GetParentEdge();
+	struct WGraphCutEdge* pParentEdge = m_pNodes[nNode].GetParentEdge();
 	while(pParentEdge)
 	{
-		GAssert(pParentEdge->m_fCapacity > 0); // Expected a non-saturated edge
+		WAssert(pParentEdge->m_fCapacity > 0); // Expected a non-saturated edge
 		if(pParentEdge->m_fCapacity < fBottleneck)
 			fBottleneck = pParentEdge->m_fCapacity;
 		nNode = pParentEdge->GetOtherNode(nNode);
@@ -267,7 +267,7 @@ void GGraphCut::augmentPath(struct GGraphCutEdge* pEdge)
 	pParentEdge = m_pNodes[nNode].GetParentEdge();
 	while(pParentEdge)
 	{
-		GAssert(pParentEdge->m_fCapacity > 0); // Expected a non-saturated edge
+		WAssert(pParentEdge->m_fCapacity > 0); // Expected a non-saturated edge
 		if(pParentEdge->m_fCapacity < fBottleneck)
 			fBottleneck = pParentEdge->m_fCapacity;
 		nNode = pParentEdge->GetOtherNode(nNode);
@@ -298,13 +298,13 @@ void GGraphCut::augmentPath(struct GGraphCutEdge* pEdge)
 	}
 }
 
-void GGraphCut::growNode(size_t nNode)
+void WGraphCut::growNode(size_t nNode)
 {
-	struct GGraphCutNode* pNode = &m_pNodes[nNode];
-	struct GGraphCutEdge* pEdge;
+	struct WGraphCutNode* pNode = &m_pNodes[nNode];
+	struct WGraphCutEdge* pEdge;
 	size_t nCandidate;
-	struct GGraphCutNode* pCandidate;
-	struct GGraphCutNode* pCandRoot;
+	struct WGraphCutNode* pCandidate;
+	struct WGraphCutNode* pCandRoot;
 	bool bRedo = false;
 	for(pEdge = pNode->GetFirstEdge(); pEdge; pEdge = bRedo ? pEdge : pEdge->GetNextEdge(nNode))
 	{
@@ -327,9 +327,9 @@ void GGraphCut::growNode(size_t nNode)
 		else
 		{
 			// Link the candidate as a new child of pNode
-			GAssert(pCandidate->m_nChild == INVALID_INDEX); // That node has children of its own
-			GAssert(pNode != pCandidate); // Circular edge!
-			GAssert(pNode->m_pParent != pEdge); // That's the node's parent edge!
+			WAssert(pCandidate->m_nChild == INVALID_INDEX); // That node has children of its own
+			WAssert(pNode != pCandidate); // Circular edge!
+			WAssert(pNode->m_pParent != pEdge); // That's the node's parent edge!
 			pCandidate->m_pRoot = pNode->m_pRoot;
 			pCandidate->m_pParent = pEdge;
 			pCandidate->m_nSibling = pNode->m_nChild;
@@ -342,10 +342,10 @@ void GGraphCut::growNode(size_t nNode)
 	}
 }
 
-void GGraphCut::cut(size_t nSourceNode, size_t nSinkNode)
+void WGraphCut::cut(size_t nSourceNode, size_t nSinkNode)
 {
 	// Push the source and sink into the queue
-	struct GGraphCutNode* pNode;
+	struct WGraphCutNode* pNode;
 	pNode = &m_pNodes[nSourceNode];
 	pNode->SetRoot(pNode);
 	m_pSource = pNode;
@@ -367,14 +367,14 @@ void GGraphCut::cut(size_t nSourceNode, size_t nSinkNode)
 	}
 }
 
-void GGraphCut::findAHome(size_t nNode)
+void WGraphCut::findAHome(size_t nNode)
 {
 	// Find a new root for this node
-	struct GGraphCutNode* pNode = &m_pNodes[nNode];
-	struct GGraphCutNode* pNewRoot = nullptr;
-	struct GGraphCutNode* pOther;
-	struct GGraphCutEdge* pEdge;
-	struct GGraphCutEdge* pFollowEdge;
+	struct WGraphCutNode* pNode = &m_pNodes[nNode];
+	struct WGraphCutNode* pNewRoot = nullptr;
+	struct WGraphCutNode* pOther;
+	struct WGraphCutEdge* pEdge;
+	struct WGraphCutEdge* pFollowEdge;
 	size_t nCurrent = nNode;
 	size_t nSafety = 500;
 	while(!pNewRoot && --nSafety > 0)
@@ -402,7 +402,7 @@ void GGraphCut::findAHome(size_t nNode)
 		pNewRoot = m_pSink;
 
 	// Give neighbors the same root
-	GAssert(m_q.size() == 0); // queue still in use
+	WAssert(m_q.size() == 0); // queue still in use
 	pNode->SetRoot(pNewRoot);
 	m_q.push_back(nNode);
 	size_t nOther;
@@ -423,22 +423,22 @@ void GGraphCut::findAHome(size_t nNode)
 	}
 }
 
-bool GGraphCut::isSource(size_t nNode)
+bool WGraphCut::isSource(size_t nNode)
 {
 	if(!m_pSource)
 		throw Ex("You must call 'Cut' before calling this method");
-	GAssert(nNode != INVALID_INDEX && nNode < m_nNodes); // out of range
-	struct GGraphCutNode* pNode = &m_pNodes[nNode];
+	WAssert(nNode != INVALID_INDEX && nNode < m_nNodes); // out of range
+	struct WGraphCutNode* pNode = &m_pNodes[nNode];
 	if(!pNode->GetRoot())
 		findAHome(nNode);
 	return (pNode->GetRoot() == m_pSource);
 }
 
-bool GGraphCut::doesBorderTheCut(size_t nNode)
+bool WGraphCut::doesBorderTheCut(size_t nNode)
 {
 	bool bSource = isSource(nNode);
-	struct GGraphCutNode* pNode = &m_pNodes[nNode];
-	struct GGraphCutEdge* pEdge;
+	struct WGraphCutNode* pNode = &m_pNodes[nNode];
+	struct WGraphCutEdge* pEdge;
 	for(pEdge = pNode->GetFirstEdge(); pEdge; pEdge = pEdge->GetNextEdge(nNode))
 	{
 		if(isSource(pEdge->GetOtherNode(nNode)) != bSource)
@@ -454,9 +454,9 @@ bool GGraphCut::doesBorderTheCut(size_t nNode)
 //   \ |  |  | /
 //     5--6--7
 // static
-void GGraphCut::test()
+void WGraphCut::test()
 {
-	GGraphCut graph(8);
+	WGraphCut graph(8);
 	graph.addEdge(0, 2, 3);
 	graph.addEdge(0, 5, 3);
 	graph.addEdge(1, 4, 3);
@@ -489,24 +489,24 @@ void GGraphCut::test()
 
 // --------------------------------------------------------------------
 
-GGraphEdgeIterator::GGraphEdgeIterator(GGraphCut* pGraph, size_t nNode)
+WGraphEdgeIterator::WGraphEdgeIterator(WGraphCut* pGraph, size_t nNode)
 {
 	m_pGraph = pGraph;
 	reset(nNode);
 }
 
-GGraphEdgeIterator::~GGraphEdgeIterator()
+WGraphEdgeIterator::~WGraphEdgeIterator()
 {
 }
 
-void GGraphEdgeIterator::reset(size_t nNode)
+void WGraphEdgeIterator::reset(size_t nNode)
 {
-	GAssert(nNode != INVALID_INDEX && nNode < m_pGraph->nodeCount()); // out of range
+	WAssert(nNode != INVALID_INDEX && nNode < m_pGraph->nodeCount()); // out of range
 	m_nNode = nNode;
 	m_pCurrentEdge = m_pGraph->m_pNodes[nNode].GetFirstEdge();
 }
 
-bool GGraphEdgeIterator::next(size_t* pNode, float* pEdgeWeight, bool* pOutgoing)
+bool WGraphEdgeIterator::next(size_t* pNode, float* pEdgeWeight, bool* pOutgoing)
 {
 	if(!m_pCurrentEdge)
 		return false;
@@ -517,7 +517,7 @@ bool GGraphEdgeIterator::next(size_t* pNode, float* pEdgeWeight, bool* pOutgoing
 	}
 	else
 	{
-		GAssert(m_pCurrentEdge->m_nNode2 == m_nNode); // bad edge
+		WAssert(m_pCurrentEdge->m_nNode2 == m_nNode); // bad edge
 		*pNode = m_pCurrentEdge->m_nNode1;
 		*pOutgoing = false;
 	}
@@ -534,10 +534,10 @@ bool GGraphEdgeIterator::next(size_t* pNode, float* pEdgeWeight, bool* pOutgoing
 
 
 
-GFloydWarshall::GFloydWarshall(size_t nodes)
+WFloydWarshall::WFloydWarshall(size_t nodes)
 {
 	m_nodes = nodes;
-	m_pCosts = new GMatrix(nodes, nodes);
+	m_pCosts = new WMatrix(nodes, nodes);
 	m_pCosts->fill(1e300);
 	for(size_t i = 0; i < nodes; i++)
 		m_pCosts->row(i)[i] = 0;
@@ -545,19 +545,19 @@ GFloydWarshall::GFloydWarshall(size_t nodes)
 	memset(m_pPaths, 0xff, sizeof(size_t) * nodes * nodes);
 }
 
-GFloydWarshall::~GFloydWarshall()
+WFloydWarshall::~WFloydWarshall()
 {
 	delete(m_pCosts);
 	delete[] m_pPaths;
 }
 
-GMatrix* GFloydWarshall::releaseCostMatrix()
+WMatrix* WFloydWarshall::releaseCostMatrix()
 {
 	m_pCosts = nullptr;
 	return m_pCosts;
 }
 
-void GFloydWarshall::addDirectedEdge(size_t from, size_t to, double edgecost)
+void WFloydWarshall::addDirectedEdge(size_t from, size_t to, double edgecost)
 {
 	if(edgecost < m_pCosts->row(from)[to])
 	{
@@ -566,7 +566,7 @@ void GFloydWarshall::addDirectedEdge(size_t from, size_t to, double edgecost)
 	}
 }
 
-void GFloydWarshall::compute()
+void WFloydWarshall::compute()
 {
 	// Compute the paths
 	double t;
@@ -587,11 +587,11 @@ void GFloydWarshall::compute()
 	}
 }
 
-bool GFloydWarshall::isConnected()
+bool WFloydWarshall::isConnected()
 {
 	for(size_t i = 0; i < m_nodes; i++)
 	{
-		GVec& pRow = m_pCosts->row(i);
+		WVec& pRow = m_pCosts->row(i);
 		for(size_t j = 0; j < m_nodes; j++)
 		{
 			if(pRow[j] == 1e300)
@@ -601,26 +601,26 @@ bool GFloydWarshall::isConnected()
 	return true;
 }
 
-double GFloydWarshall::cost(size_t from, size_t to)
+double WFloydWarshall::cost(size_t from, size_t to)
 {
 	return m_pCosts->row(from)[to];
 }
 
-size_t GFloydWarshall::next(size_t from, size_t goal)
+size_t WFloydWarshall::next(size_t from, size_t goal)
 {
 	return m_pPaths[from * m_nodes + goal];
 }
 
 #define NODE_COUNT 12
 // static
-void GFloydWarshall::test()
+void WFloydWarshall::test()
 {
-	GRand prng(0);
+	WRand prng(0);
 	for(size_t i = 0; i < 100; i++)
 	{
-		GFloydWarshall g1(NODE_COUNT);
-		GDijkstra g2(NODE_COUNT);
-		GBitTable edgesUsed(NODE_COUNT * NODE_COUNT);
+		WFloydWarshall g1(NODE_COUNT);
+		WDijkstra g2(NODE_COUNT);
+		WBitTable edgesUsed(NODE_COUNT * NODE_COUNT);
 		size_t edgeCount = (size_t)prng.next(NODE_COUNT * NODE_COUNT);
 		for(size_t j = 0; j < edgeCount; j++)
 		{
@@ -651,7 +651,7 @@ void GFloydWarshall::test()
 
 
 
-GDijkstra::GDijkstra(size_t nodes)
+WDijkstra::WDijkstra(size_t nodes)
 {
 	m_nodes = nodes;
 	m_pNeighbors = new vector<size_t>[nodes];
@@ -660,7 +660,7 @@ GDijkstra::GDijkstra(size_t nodes)
 	m_pPrevious = new size_t[nodes];
 }
 
-GDijkstra::~GDijkstra()
+WDijkstra::~WDijkstra()
 {
 	delete[] m_pNeighbors;
 	delete[] m_pEdgeCosts;
@@ -668,13 +668,13 @@ GDijkstra::~GDijkstra()
 	delete[] m_pPrevious;
 }
 
-void GDijkstra::addDirectedEdge(size_t from, size_t to, double edgecost)
+void WDijkstra::addDirectedEdge(size_t from, size_t to, double edgecost)
 {
 	m_pNeighbors[from].push_back(to);
 	m_pEdgeCosts[from].push_back(edgecost);
 }
 
-void GDijkstra::compute(size_t origin)
+void WDijkstra::compute(size_t origin)
 {
 	for(size_t i = 0; i < m_nodes; i++)
 	{
@@ -755,20 +755,20 @@ void GDijkstra::compute(size_t origin)
 	}
 }
 
-double GDijkstra::cost(size_t target)
+double WDijkstra::cost(size_t target)
 {
 	return m_pCosts[target];
 }
 
-size_t GDijkstra::previous(size_t vertex)
+size_t WDijkstra::previous(size_t vertex)
 {
 	return m_pPrevious[vertex];
 }
 
 // static
-void GDijkstra::test()
+void WDijkstra::test()
 {
-	GDijkstra g(6);
+	WDijkstra g(6);
 	g.addDirectedEdge(4, 1, 0.1);
 	g.addDirectedEdge(1, 4, 0.1);
 	g.addDirectedEdge(2, 1, 0.7);
@@ -807,30 +807,30 @@ void GDijkstra::test()
 
 
 
-GBrandesBetweennessCentrality::GBrandesBetweennessCentrality(size_t nodes)
+WBrandesBetweennessCentrality::WBrandesBetweennessCentrality(size_t nodes)
 : m_nodeCount(nodes), m_pVertexBetweenness(nullptr), m_pEdgeBetweenness(nullptr)
 {
 	m_pNeighbors = new std::vector<size_t>[m_nodeCount];
 }
 
-GBrandesBetweennessCentrality::~GBrandesBetweennessCentrality()
+WBrandesBetweennessCentrality::~WBrandesBetweennessCentrality()
 {
 	delete[] m_pNeighbors;
 	delete[] m_pVertexBetweenness;
 	delete[] m_pEdgeBetweenness;
 }
 
-size_t GBrandesBetweennessCentrality::nodeCount()
+size_t WBrandesBetweennessCentrality::nodeCount()
 {
 	return m_nodeCount;
 }
 
-void GBrandesBetweennessCentrality::addDirectedEdge(size_t from, size_t to)
+void WBrandesBetweennessCentrality::addDirectedEdge(size_t from, size_t to)
 {
 	m_pNeighbors[from].push_back(to);
 }
 
-void GBrandesBetweennessCentrality::addDirectedEdgeIfNotDupe(size_t from, size_t to)
+void WBrandesBetweennessCentrality::addDirectedEdgeIfNotDupe(size_t from, size_t to)
 {
 	for(vector<size_t>::iterator it = m_pNeighbors[from].begin(); it != m_pNeighbors[from].end(); it++)
 	{
@@ -840,7 +840,7 @@ void GBrandesBetweennessCentrality::addDirectedEdgeIfNotDupe(size_t from, size_t
 	addDirectedEdge(from, to);
 }
 
-void GBrandesBetweennessCentrality::compute()
+void WBrandesBetweennessCentrality::compute()
 {
 	// Initialize all the betweennesses to zero
 	delete[] m_pVertexBetweenness;
@@ -865,7 +865,7 @@ void GBrandesBetweennessCentrality::compute()
 		double* sigma = new double[2 * m_nodeCount];
 		std::unique_ptr<double[]> hSigma(sigma);
 		double* d = sigma + m_nodeCount;
-		GVecWrapper vw(sigma, m_nodeCount);
+		WVecWrapper vw(sigma, m_nodeCount);
 		vw.fill(0.0);
 		sigma[s] = 1.0;
 
@@ -904,7 +904,7 @@ void GBrandesBetweennessCentrality::compute()
 		}
 
 		// Update the betweenness values
-		GVecWrapper vw2(d, m_nodeCount);
+		WVecWrapper vw2(d, m_nodeCount);
 		vw2.fill(0.0);
 		while(stack.size() > 0)
 		{
@@ -924,12 +924,12 @@ void GBrandesBetweennessCentrality::compute()
 	}
 }
 
-double GBrandesBetweennessCentrality::vertexBetweenness(size_t vertex)
+double WBrandesBetweennessCentrality::vertexBetweenness(size_t vertex)
 {
 	return m_pVertexBetweenness[vertex];
 }
 
-size_t GBrandesBetweennessCentrality::neighborIndex(size_t from, size_t to)
+size_t WBrandesBetweennessCentrality::neighborIndex(size_t from, size_t to)
 {
 	size_t index = 0;
 	for(vector<size_t>::iterator it = m_pNeighbors[from].begin(); it != m_pNeighbors[from].end(); it++)
@@ -941,12 +941,12 @@ size_t GBrandesBetweennessCentrality::neighborIndex(size_t from, size_t to)
 	return INVALID_INDEX;
 }
 
-double GBrandesBetweennessCentrality::edgeBetweennessByNeighbor(size_t vertex, size_t neighIndex)
+double WBrandesBetweennessCentrality::edgeBetweennessByNeighbor(size_t vertex, size_t neighIndex)
 {
 	return m_pEdgeBetweenness[vertex][neighIndex];
 }
 
-double GBrandesBetweennessCentrality::edgeBetweennessByVertex(size_t vertex1, size_t vertex2)
+double WBrandesBetweennessCentrality::edgeBetweennessByVertex(size_t vertex1, size_t vertex2)
 {
 	size_t index = neighborIndex(vertex1, vertex2);
 	if(index == INVALID_INDEX)
@@ -959,13 +959,13 @@ double GBrandesBetweennessCentrality::edgeBetweennessByVertex(size_t vertex1, si
 }
 
 // static
-void GBrandesBetweennessCentrality::test()
+void WBrandesBetweennessCentrality::test()
 {
 	//   _        _
 	//  0 \      / 5
 	//  |  >2--3<  |
 	//  1_/      \_4
-	GBrandesBetweennessCentrality graph(6);
+	WBrandesBetweennessCentrality graph(6);
 	graph.addDirectedEdge(0, 1);
 	graph.addDirectedEdge(1, 0);
 	graph.addDirectedEdge(1, 2);
@@ -1001,7 +1001,7 @@ void GBrandesBetweennessCentrality::test()
 
 
 
-GAtomicCycleFinder::GAtomicCycleFinder(size_t nodes)
+WAtomicCycleFinder::WAtomicCycleFinder(size_t nodes)
 : m_nodeCount(nodes)
 {
 	m_pNeighbors = new vector<size_t>[m_nodeCount];
@@ -1009,18 +1009,18 @@ GAtomicCycleFinder::GAtomicCycleFinder(size_t nodes)
 }
 
 // virtual
-GAtomicCycleFinder::~GAtomicCycleFinder()
+WAtomicCycleFinder::~WAtomicCycleFinder()
 {
 	delete[] m_pNeighbors;
 	delete[] m_pMirrors;
 }
 
-size_t GAtomicCycleFinder::nodeCount()
+size_t WAtomicCycleFinder::nodeCount()
 {
 	return m_nodeCount;
 }
 
-void GAtomicCycleFinder::addEdge(size_t a, size_t b)
+void WAtomicCycleFinder::addEdge(size_t a, size_t b)
 {
 	size_t aSize = m_pNeighbors[a].size();
 	size_t bSize = m_pNeighbors[b].size();
@@ -1030,7 +1030,7 @@ void GAtomicCycleFinder::addEdge(size_t a, size_t b)
 	m_pMirrors[b].push_back(aSize);
 }
 
-void GAtomicCycleFinder::addEdgeIfNotDupe(size_t a, size_t b)
+void WAtomicCycleFinder::addEdgeIfNotDupe(size_t a, size_t b)
 {
 	if(b == INVALID_INDEX)
 		return;
@@ -1053,7 +1053,7 @@ void GAtomicCycleFinder::addEdgeIfNotDupe(size_t a, size_t b)
 	addEdge(a, b);
 }
 
-void GAtomicCycleFinder::compute()
+void WAtomicCycleFinder::compute()
 {
 	size_t* pEdgeStarts = new size_t[m_nodeCount];
 	std::unique_ptr<size_t[]> hEdgeStarts(pEdgeStarts);
@@ -1067,8 +1067,8 @@ void GAtomicCycleFinder::compute()
 	// Outer breadth-first-search. (An atomic cycle is detected each
 	// time this search discovers a node that was already discovered.)
 	vector<size_t> cycle;
-	GBitTable visited(m_nodeCount);
-	GBitTable edges(edgeCount);
+	WBitTable visited(m_nodeCount);
+	WBitTable edges(edgeCount);
 	deque<size_t> q;
 	visited.set(0);
 	q.push_back(0);
@@ -1091,7 +1091,7 @@ void GAtomicCycleFinder::compute()
 					size_t* pPrevs = new size_t[m_nodeCount];
 					std::unique_ptr<size_t[]> hPrevs(pPrevs);
 					pPrevs[b] = INVALID_INDEX;
-					GBitTable visited2(m_nodeCount);
+					WBitTable visited2(m_nodeCount);
 					deque<size_t> q2;
 					visited2.set(b);
 					q2.push_back(b);
@@ -1119,7 +1119,7 @@ void GAtomicCycleFinder::compute()
 											cycle.push_back(i);
 											i = pPrevs[i];
 										}
-										GAssert(i == b);
+										WAssert(i == b);
 										cycle.push_back(i);
 										if(!onDetectAtomicCycle(cycle))
 											return;
@@ -1147,17 +1147,17 @@ void GAtomicCycleFinder::compute()
 	}
 }
 
-class GTestAtomicCycleFinder : public GAtomicCycleFinder
+class WTestAtomicCycleFinder : public WAtomicCycleFinder
 {
 protected:
 	bool m_three, m_four, m_five;
 
 public:
-	GTestAtomicCycleFinder(size_t nodes) : GAtomicCycleFinder(nodes), m_three(false), m_four(false), m_five(false)
+	WTestAtomicCycleFinder(size_t nodes) : WAtomicCycleFinder(nodes), m_three(false), m_four(false), m_five(false)
 	{
 	}
 
-	~GTestAtomicCycleFinder() override
+	~WTestAtomicCycleFinder() override
 	{
 	}
 
@@ -1182,12 +1182,12 @@ public:
 };
 
 // static
-void GAtomicCycleFinder::test()
+void WAtomicCycleFinder::test()
 {
 	// 6-7-0-1
 	// |/ /  |
 	// 5-4-3-2
-	GTestAtomicCycleFinder graph(8);
+	WTestAtomicCycleFinder graph(8);
 	graph.addEdge(0, 1);
 	graph.addEdge(1, 2);
 	graph.addEdge(2, 3);

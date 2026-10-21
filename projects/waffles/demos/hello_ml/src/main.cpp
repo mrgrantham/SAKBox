@@ -19,60 +19,60 @@
 #include <exception>
 #include <iostream>
 #include <vector>
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
-#include <WClasses/GDecisionTree.h>
-#include <WClasses/GNeuralNet.h>
-#include <WClasses/GKNN.h>
-#include <WClasses/GNaiveBayes.h>
-#include <WClasses/GEnsemble.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
+#include <WClasses/WDecisionTree.h>
+#include <WClasses/WNeuralNet.h>
+#include <WClasses/WKNN.h>
+#include <WClasses/WNaiveBayes.h>
+#include <WClasses/WEnsemble.h>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 using std::cout;
 using std::vector;
 
-void do_decision_tree(GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
+void do_decision_tree(WMatrix& features, WMatrix& labels, WVec& test_features, WVec& predicted_labels)
 {
-	GDecisionTree model;
+	WDecisionTree model;
 	model.train(features, labels);
 	model.predict(test_features, predicted_labels);
 }
 
-void do_neural_network(GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
+void do_neural_network(WMatrix& features, WMatrix& labels, WVec& test_features, WVec& predicted_labels)
 {
-	GNeuralNetLearner nn;
-	nn.nn().add(new GBlockLinear(9, 5));
-	nn.nn().add(new GBlockTanh(5));
-	nn.nn().add(new GBlockLinear(5, 2));
-	nn.nn().add(new GBlockTanh(2));
-	GAutoFilter af(&nn, false);
+	WNeuralNetLearner nn;
+	nn.nn().add(new WBlockLinear(9, 5));
+	nn.nn().add(new WBlockTanh(5));
+	nn.nn().add(new WBlockLinear(5, 2));
+	nn.nn().add(new WBlockTanh(2));
+	WAutoFilter af(&nn, false);
 	af.train(features, labels);
 	af.predict(test_features, predicted_labels);
 }
 
-void do_knn(GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
+void do_knn(WMatrix& features, WMatrix& labels, WVec& test_features, WVec& predicted_labels)
 {
-	GKNN model;
+	WKNN model;
 	model.setNeighborCount(3); // use the 3-nearest neighbors
-	model.setInterpolationMethod(GKNN::Linear); // use linear interpolation
+	model.setInterpolationMethod(WKNN::Linear); // use linear interpolation
 	model.train(features, labels);
 	model.predict(test_features, predicted_labels);
 }
 
-void do_naivebayes(GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
+void do_naivebayes(WMatrix& features, WMatrix& labels, WVec& test_features, WVec& predicted_labels)
 {
-	GAutoFilter model(new GNaiveBayes());
+	WAutoFilter model(new WNaiveBayes());
 	model.train(features, labels);
 	model.predict(test_features, predicted_labels);
 }
 
-void do_ensemble(GMatrix& features, GMatrix& labels, GVec& test_features, GVec& predicted_labels)
+void do_ensemble(WMatrix& features, WMatrix& labels, WVec& test_features, WVec& predicted_labels)
 {
-	GBag ensemble;
+	WBag ensemble;
 	for(size_t i = 0; i < 50; i++)
 	{
-		GDecisionTree* pDT = new GDecisionTree();
+		WDecisionTree* pDT = new WDecisionTree();
 		pDT->useRandomDivisions(1); // Make random tree
 		ensemble.addLearner(pDT);
 	}
@@ -95,9 +95,9 @@ void doit()
 	label_values.push_back(0); // cost = continuous
 
 	// Make some contrived hard-coded training data
-	GMatrix feat(feature_values);
+	WMatrix feat(feature_values);
 	feat.newRows(12);
-	GMatrix lab(label_values);
+	WMatrix lab(label_values);
 	lab.newRows(12);
 	// (SAKBox) a table, aligned in columns by hand
 	// clang-format off
@@ -117,8 +117,8 @@ void doit()
 	// clang-format on
 
 	// Make a test vector
-	GVec test_features(4);
-	GVec predicted_labels(2);
+	WVec test_features(4);
+	WVec predicted_labels(2);
 	cout << "This demo trains and tests several supervised learning models using some contrived hard-coded training data to predict the tastiness and cost of a pizza.\n\n";
 	test_features[0] = 15.0;
 	test_features[1] = 2;
@@ -147,7 +147,7 @@ void doit()
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int nRet = 0;
 	try

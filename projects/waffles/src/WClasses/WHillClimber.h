@@ -20,11 +20,11 @@
 #ifndef __GGREEDYSEARCH_H__
 #define __GGREEDYSEARCH_H__
 
-#include "GOptimizer.h"
-#include "GVec.h"
-#include "GRand.h"
+#include "WOptimizer.h"
+#include "WVec.h"
+#include "WRand.h"
 
-namespace GClasses
+namespace WClasses
 {
 
 
@@ -33,31 +33,31 @@ namespace GClasses
 /// the opposite direction. If both directions are worse,
 /// it decreases the step size for that dimension, otherwise
 /// it increases the step size for that dimension.
-class GMomentumGreedySearch : public GOptimizer
+class WMomentumGreedySearch : public WOptimizer
 {
 protected:
 	size_t m_nDimensions;
 	size_t m_nCurrentDim;
-	GVec m_pStepSizes;
-	GVec m_pVector;
+	WVec m_pStepSizes;
+	WVec m_pVector;
 	double m_dError;
 	double m_dChangeFactor;
 
 public:
-	GMomentumGreedySearch(GTargetFunction* pCritic);
-	~GMomentumGreedySearch() override;
+	WMomentumGreedySearch(WTargetFunction* pCritic);
+	~WMomentumGreedySearch() override;
 
 	/// Performs unit testing. Throws an exception if any test fails.
 	static void test();
 
 	/// Returns a pointer to the state vector
-	const GVec& currentVector() override { return m_pVector; }
+	const WVec& currentVector() override { return m_pVector; }
 
 	/// Set all the current step sizes to this value
 	void setAllStepSizes(double dStepSize);
 
 	/// Returns the vector of step sizes
-	GVec& stepSizes();
+	WVec& stepSizes();
 
 	double iterate() override;
 
@@ -74,26 +74,26 @@ protected:
 /// a lot smaller, a little smaller, same spot, a little bigger, and a lot bigger.
 /// If it picks a smaller adjustment, the step size in that dimension is made smaller.
 /// If it picks a bigger adjustment, the step size in that dimension is made bigger.
-class GHillClimber : public GOptimizer
+class WHillClimber : public WOptimizer
 {
 protected:
 	size_t m_nDims;
 	size_t m_dim;
-	GVec m_pStepSizes;
-	GVec m_pVector;
-	GVec m_pAnnealCand;
+	WVec m_pStepSizes;
+	WVec m_pVector;
+	WVec m_pAnnealCand;
 	double m_dError;
 	double m_dChangeFactor;
 
 public:
-	GHillClimber(GTargetFunction* pCritic);
-	~GHillClimber() override;
+	WHillClimber(WTargetFunction* pCritic);
+	~WHillClimber() override;
 
 	/// Performs unit testing. Throws an exception if any test fails.
 	static void test();
 
 	/// Returns a pointer to the current vector
-	const GVec& currentVector() override { return m_pVector; }
+	const WVec& currentVector() override { return m_pVector; }
 
 	/// Returns the error for the current vector
 	double currentError() { return m_dError; }
@@ -102,13 +102,13 @@ public:
 	void setStepSizes(double size);
 
 	/// Returns the vector of step sizes
-	GVec& stepSizes();
+	WVec& stepSizes();
 
 	double iterate() override;
 
 	/// You can call this method to simulate one annealing jump with the
 	/// specified deviation in all dimensions.
-	double anneal(double dev, GRand* pRand);
+	double anneal(double dev, WRand* pRand);
 
 	/// d should be a value between 0 and 1
 	void setChangeFactor(double d) { m_dChangeFactor = d; }
@@ -122,21 +122,21 @@ protected:
 /// Perturbs the current vector in a random direction.
 /// If it made the vector worse, restores the previous vector.
 /// Decays the deviation of perturbation over time.
-class GAnnealing : public GOptimizer
+class WAnnealing : public WOptimizer
 {
 protected:
 	double m_initialDeviation;
 	double m_deviation;
 	double m_decay;
 	size_t m_dims;
-	GVec m_pVector;
-	GVec m_pCandidate;
+	WVec m_pVector;
+	WVec m_pCandidate;
 	double m_dError;
-	GRand* m_pRand;
+	WRand* m_pRand;
 
 public:
-	GAnnealing(GTargetFunction* pTargetFunc, GRand* pRand);
-	~GAnnealing() override;
+	WAnnealing(WTargetFunction* pTargetFunc, WRand* pRand);
+	~WAnnealing() override;
 
 	/// Performs unit testing. Throws an exception if any test fails.
 	static void test();
@@ -146,7 +146,7 @@ public:
 	double iterate() override;
 
 	/// Returns the best vector yet found.
-	const GVec& currentVector() override { return m_pVector; }
+	const WVec& currentVector() override { return m_pVector; }
 
 	/// Specify the current deviation to use for annealing. (A random vector
 	/// from a Normal distribution with the specified deviation will be added to each
@@ -162,19 +162,19 @@ protected:
 
 /// This algorithm picks a random direction, then uses binary search
 /// to determine how far to step, and repeats
-class GRandomDirectionBinarySearch : public GOptimizer
+class WRandomDirectionBinarySearch : public WOptimizer
 {
 protected:
-	GVec m_direction;
-	GVec m_current;
+	WVec m_direction;
+	WVec m_current;
 	size_t m_dims;
 	double m_stepSize;
 	double m_err;
-	GRand* m_pRand;
+	WRand* m_pRand;
 
 public:
-	GRandomDirectionBinarySearch(GTargetFunction* pTargetFunc, GRand* pRand);
-	~GRandomDirectionBinarySearch() override;
+	WRandomDirectionBinarySearch(WTargetFunction* pTargetFunc, WRand* pRand);
+	~WRandomDirectionBinarySearch() override;
 
 	/// Performs unit testing. Throws an exception if any test fails.
 	static void test();
@@ -184,7 +184,7 @@ public:
 	double iterate() override;
 
 	/// Returns the best vector yet found.
-	const GVec& currentVector() override { return m_current; }
+	const WVec& currentVector() override { return m_current; }
 };
 
 
@@ -195,24 +195,24 @@ public:
 /// it only measures the gradient in one dimension (which it cycles
 /// round-robin style) per iteration and uses the remembered gradient
 /// in the other dimensions.
-class GEmpiricalGradientDescent : public GOptimizer
+class WEmpiricalGradientDescent : public WOptimizer
 {
 protected:
 	double m_dLearningRate;
 	size_t m_nDimensions;
-	GVec m_pVector;
-	GVec m_pGradient;
-	GVec m_pDelta;
+	WVec m_pVector;
+	WVec m_pGradient;
+	WVec m_pDelta;
 	double m_dFeelDistance;
 	double m_dMomentum;
-	GRand* m_pRand;
+	WRand* m_pRand;
 
 public:
-	GEmpiricalGradientDescent(GTargetFunction* pCritic, GRand* pRand);
-	~GEmpiricalGradientDescent() override;
+	WEmpiricalGradientDescent(WTargetFunction* pCritic, WRand* pRand);
+	~WEmpiricalGradientDescent() override;
 
 	/// Returns the best vector yet found.
-	const GVec& currentVector() override { return m_pVector; }
+	const WVec& currentVector() override { return m_pVector; }
 
 	/// Performs a little more optimization. (Call this in a loop until
 	/// acceptable results are found.)
@@ -234,25 +234,25 @@ protected:
 /// the gradient using a minimal number of samples. It is more efficient
 /// than empirical gradient descent, but it only works well if the optimization
 /// surface is quite locally linear.
-class GSampleClimber : public GOptimizer
+class WSampleClimber : public WOptimizer
 {
 protected:
-	GRand* m_pRand;
+	WRand* m_pRand;
 	double m_dStepSize;
 	double m_alpha;
 	double m_error;
 	size_t m_dims;
-	GVec m_pVector;
-	GVec m_pDir;
-	GVec m_pCand;
-	GVec m_pGradient;
+	WVec m_pVector;
+	WVec m_pDir;
+	WVec m_pCand;
+	WVec m_pGradient;
 
 public:
-	GSampleClimber(GTargetFunction* pCritic, GRand* pRand);
-	~GSampleClimber() override;
+	WSampleClimber(WTargetFunction* pCritic, WRand* pRand);
+	~WSampleClimber() override;
 
 	/// Returns the best vector yet found
-	const GVec& currentVector() override { return m_pVector; }
+	const WVec& currentVector() override { return m_pVector; }
 
 	/// Performs a little more optimization. (Call this in a loop until
 	/// acceptable results are found.)
@@ -273,6 +273,6 @@ protected:
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GGREEDYSEARCH_H__

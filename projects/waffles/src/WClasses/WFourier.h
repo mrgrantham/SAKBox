@@ -19,12 +19,12 @@
 #ifndef __GFOURIER_H__
 #define __GFOURIER_H__
 
-#include "GError.h"
+#include "WError.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GImage;
+class WImage;
 
 
 struct ComplexNumber
@@ -52,7 +52,7 @@ struct ComplexNumber
 
 
 /// Fourier transform
-class GFourier
+class WFourier
 {
 public:
 	/// This will do a Fast Forier Transform. arraySize must be a power of 2. If bForward is
@@ -65,12 +65,12 @@ public:
 
 	/// pArrayWidth returns the width of the array and pOneThirdHeight returns one third the height of the array
 	/// (in other words, the height used by each of the three RGB channels)
-	static struct ComplexNumber* imageToFftArray(GImage* pImage, int* pArrayWidth, int* pOneThirdHeight);
+	static struct ComplexNumber* imageToFftArray(WImage* pImage, int* pArrayWidth, int* pOneThirdHeight);
 
 	/// nArrayWidth is the width of the array. nOneThirdHeight is one third the height of the array. pImage is assumed
 	/// to already be allocated and set to the size of the image embedded in the array. normalize specifies whether or
 	/// not to ajust the pixel values to use their full range.
-	static void fftArrayToImage(struct ComplexNumber* pArray, int nArrayWidth, int nOneThirdHeight, GImage* pImage, bool normalize);
+	static void fftArrayToImage(struct ComplexNumber* pArray, int nArrayWidth, int nOneThirdHeight, WImage* pImage, bool normalize);
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -79,15 +79,15 @@ public:
 
 
 /// Wavelet transform
-class GWavelet
+class WWavelet
 {
 protected:
 	double* m_pBuf;
 	size_t m_bufSize;
 
 public:
-	GWavelet();
-	~GWavelet();
+	WWavelet();
+	~WWavelet();
 
 	static void test();
 
@@ -98,6 +98,6 @@ protected:
 	double* getBuf(size_t n);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GFOURIER_H__

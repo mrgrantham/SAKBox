@@ -23,30 +23,30 @@
 #include <cstddef>
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
 typedef int (*PointerComparer)(void* pThis, void* pA, void* pB);
 
-/// An internal class used by GPriorityQueue. You should not use this class directly.
-class GPriorityQueueEntry
+/// An internal class used by WPriorityQueue. You should not use this class directly.
+class WPriorityQueueEntry
 {
 public:
 	int m_minIndex;
 	int m_maxIndex;
 	void* m_pPayload;
 
-	GPriorityQueueEntry(int minIndex = 0, int maxIndex = 0, void* pPayload = nullptr)
+	WPriorityQueueEntry(int minIndex = 0, int maxIndex = 0, void* pPayload = nullptr)
 	: m_minIndex(minIndex), m_maxIndex(maxIndex), m_pPayload(pPayload)
 	{
 	}
 
-	GPriorityQueueEntry(const GPriorityQueueEntry& other)
+	WPriorityQueueEntry(const WPriorityQueueEntry& other)
 	: m_minIndex(other.m_minIndex), m_maxIndex(other.m_maxIndex), m_pPayload(other.m_pPayload)
 	{
 	}
 
-	~GPriorityQueueEntry() {}
+	~WPriorityQueueEntry() {}
 };
 
 
@@ -54,16 +54,16 @@ public:
 /// multimap STL class can also be used to implement a double-ended priority queue,
 /// but the STL does not currently provide a heap-based double-ended priority queue,
 /// which is asymptotically more efficient for insertions.)
-class GPriorityQueue
+class WPriorityQueue
 {
 protected:
-	std::vector<GPriorityQueueEntry> m_entries;
+	std::vector<WPriorityQueueEntry> m_entries;
 	PointerComparer m_pCompareFunc;
 	void* m_pThis;
 
 public:
-	GPriorityQueue(PointerComparer pCompareFunc, void* pThis);
-	~GPriorityQueue();
+	WPriorityQueue(PointerComparer pCompareFunc, void* pThis);
+	~WPriorityQueue();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -103,18 +103,18 @@ protected:
 
 /// Implements a simple priority queue of objects sorted by a double-precision value
 template<typename T>
-class GSimplePriorityQueue
+class WSimplePriorityQueue
 {
 protected:
 	std::vector<T> m_objects;
 	std::vector<double> m_values;
 
 public:
-	GSimplePriorityQueue()
+	WSimplePriorityQueue()
 	{
 	}
 
-	~GSimplePriorityQueue()
+	~WSimplePriorityQueue()
 	{
 	}
 
@@ -184,10 +184,10 @@ public:
 };
 
 #ifndef NO_TEST_CODE
-void GSimplePriorityQueue_test();
+void WSimplePriorityQueue_test();
 #endif
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GPRIORITYQUEUE_H__

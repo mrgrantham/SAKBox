@@ -20,30 +20,30 @@
 #ifndef __GPOLYNOMIAL_H__
 #define __GPOLYNOMIAL_H__
 
-#include "GLearner.h"
+#include "WLearner.h"
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GPolynomialSingleLabel;
+class WPolynomialSingleLabel;
 
 
 /// This regresses a multi-dimensional polynomial to fit the data
-class GPolynomial : public GSupervisedLearner
+class WPolynomial : public WSupervisedLearner
 {
 protected:
 	size_t m_controlPoints;
-	std::vector<GPolynomialSingleLabel*> m_polys;
+	std::vector<WPolynomialSingleLabel*> m_polys;
 
 public:
 	/// It will have the same number of control points in every feature dimension
-	GPolynomial();
+	WPolynomial();
 
 	/// Load from a DOM.
-	GPolynomial(const GDomNode* pNode);
+	WPolynomial(const WDomNode* pNode);
 
-	~GPolynomial() override;
+	~WPolynomial() override;
 
 	/// Set the number of control points in the Bezier representation of the
 	/// polynomial (which is one more than the polynomial order). The default
@@ -55,35 +55,35 @@ public:
 
 	/// Uses cross-validation to find a set of parameters that works well with
 	/// the provided data.
-	void autoTune(GMatrix& features, GMatrix& labels);
+	void autoTune(WMatrix& features, WMatrix& labels);
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GSupervisedLearner::clear
+	/// See the comment for WSupervisedLearner::clear
 	void clear() override;
 
 protected:
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& in, GVec& out) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& in, WVec& out) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& in, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& in, WPrediction* pOut) override;
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleNominalFeatures
 	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
+	/// See the comment for WTransducer::canImplicitlyHandleNominalLabels
 	bool canImplicitlyHandleNominalLabels() override { return false; }
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GPOLYNOMIAL_H__

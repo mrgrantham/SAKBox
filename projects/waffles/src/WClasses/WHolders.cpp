@@ -17,26 +17,26 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GHolders.h"
-#include "GError.h"
+#include "WHolders.h"
+#include "WError.h"
 
-namespace GClasses
+namespace WClasses
 {
 
 #ifdef _DEBUG
-GTempBufSentinel::GTempBufSentinel(void* pBuf)
+WTempBufSentinel::WTempBufSentinel(void* pBuf)
 : m_pBuf(pBuf)
 {
 	*(char*)pBuf = 'S';
 }
 
-GTempBufSentinel::~GTempBufSentinel()
+WTempBufSentinel::~WTempBufSentinel()
 {
-	GAssert(*(char*)m_pBuf == 'S'); // buffer overrun!
+	WAssert(*(char*)m_pBuf == 'S'); // buffer overrun!
 }
 #endif // _DEBUG
 
-void GOverrunSentinel::Check()
+void WOverrunSentinel::Check()
 {
 	if(m_sentinel != 0x5e47143a)
 		throw Ex("buffer overrun!");
@@ -48,9 +48,9 @@ void FileHolder::reset(FILE* pFile)
 	if(m_pFile && pFile != m_pFile)
 	{
 		if(fclose(m_pFile) != 0)
-			GAssert(false);
+			WAssert(false);
 	}
 	m_pFile = pFile;
 }
 
-} // namespace GClasses
+} // namespace WClasses

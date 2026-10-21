@@ -22,39 +22,39 @@
 #include <sys/types.h>
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GImage;
-class GHeap;
-class GVideo;
-class GRect;
-struct GRegionEdge;
-struct GRegion;
+class WImage;
+class WHeap;
+class WVideo;
+class WRect;
+struct WRegionEdge;
+struct WRegion;
 
 
-struct GRegion
+struct WRegion
 {
 	int m_nPixels;
 	int m_nSumRed;
 	int m_nSumGreen;
 	int m_nSumBlue;
-	struct GRegionEdge* m_pNeighbors;
+	struct WRegionEdge* m_pNeighbors;
 };
 
 
 /// The base class for region ajacency graphs. These are useful
 /// for breaking down an image into patches of similar color.
-class GRegionAjacencyGraph
+class WRegionAjacencyGraph
 {
 protected:
-	std::vector<GRegion*> m_regions;
-	std::vector<GRegionEdge*> m_neighbors;
-	GHeap* m_pHeap;
+	std::vector<WRegion*> m_regions;
+	std::vector<WRegionEdge*> m_neighbors;
+	WHeap* m_pHeap;
 
 public:
-	GRegionAjacencyGraph();
-	virtual ~GRegionAjacencyGraph();
+	WRegionAjacencyGraph();
+	virtual ~WRegionAjacencyGraph();
 
 	/// Creates a new region and returns the region number
 	size_t addRegion();
@@ -63,7 +63,7 @@ public:
 	size_t regionCount();
 
 	/// Get a region
-	struct GRegion& region(size_t i) { return *m_regions[i]; }
+	struct WRegion& region(size_t i) { return *m_regions[i]; }
 
 	/// Returns the average pixel color in the specified region
 	void averageColor(size_t nRegion, float* pRed, float* pGreen, float* pBlue);
@@ -87,25 +87,25 @@ public:
 /// Implements a region adjacency graph for 2D images, and lets
 /// you merge similar regions to create a hierarchical breakdown
 /// of the image.
-class G2DRegionGraph : public GRegionAjacencyGraph
+class W2DRegionGraph : public WRegionAjacencyGraph
 {
 protected:
-	GImage* m_pRegionMask;
+	WImage* m_pRegionMask;
 
 public:
-	G2DRegionGraph(int nWidth, int nHeight);
-	~G2DRegionGraph() override;
+	W2DRegionGraph(int nWidth, int nHeight);
+	~W2DRegionGraph() override;
 
 	/// Toboggans the gradient magnitude image of the provided image to produce a
 	/// list of watershed regions
-	void makeWatershedRegions(const GImage* pImage);
+	void makeWatershedRegions(const WImage* pImage);
 
-	/// Given a G2DRegionGraph, this merges every region with its closest neighbor to
-	/// form a coarser G2DRegionGraph
-	void makeCoarserRegions(G2DRegionGraph* pFineRegions);
+	/// Given a W2DRegionGraph, this merges every region with its closest neighbor to
+	/// form a coarser W2DRegionGraph
+	void makeCoarserRegions(W2DRegionGraph* pFineRegions);
 
 	/// Gets a pointer to the region mask image
-	GImage* regionMask() { return m_pRegionMask; }
+	WImage* regionMask() { return m_pRegionMask; }
 
 	/// Specifies which region the given pixel belongs to. The color
 	/// of the pixel is also specified so it can keep track of the
@@ -115,25 +115,25 @@ public:
 
 
 
-class G3DRegionGraph : public GRegionAjacencyGraph
+class W3DRegionGraph : public WRegionAjacencyGraph
 {
 protected:
-	std::vector<GImage*> m_regionMask;
+	std::vector<WImage*> m_regionMask;
 
 public:
-	G3DRegionGraph(size_t frames, int nWidth, int nHeight);
-	~G3DRegionGraph() override;
+	W3DRegionGraph(size_t frames, int nWidth, int nHeight);
+	~W3DRegionGraph() override;
 
 	/// Toboggans the gradient magnitude image of the provided image to produce a
 	/// list of watershed regions
-	void makeWatershedRegions(const std::vector<GImage*>& frames);
+	void makeWatershedRegions(const std::vector<WImage*>& frames);
 
-	/// Given a G3DRegionGraph, this merges every region with its closest neighbor to
-	/// form a coarser G3DRegionGraph
-	void makeCoarserRegions(G3DRegionGraph* pFineRegions);
+	/// Given a W3DRegionGraph, this merges every region with its closest neighbor to
+	/// form a coarser W3DRegionGraph
+	void makeCoarserRegions(W3DRegionGraph* pFineRegions);
 
 	/// Gets a pointer to the region mask image
-	std::vector<GImage*>& regionMask() { return m_regionMask; }
+	std::vector<WImage*>& regionMask() { return m_regionMask; }
 
 	/// Specifies which region the given pixel belongs to. The color
 	/// of the pixel is also specified so it can keep track of the
@@ -146,10 +146,10 @@ public:
 /// Iterates the border of a 2D region by running around the border and reporting
 /// the coordinates of each interior border pixel and the direction to the
 /// edge. It goes in a counter-clockwise direction.
-class GRegionBorderIterator
+class WRegionBorderIterator
 {
 protected:
-	GImage* m_pImage;
+	WImage* m_pImage;
 	unsigned int m_nRegion;
 	int m_x, m_y, m_endX, m_endY;
 	int m_direction;
@@ -159,8 +159,8 @@ public:
 	/// The point (nSampleX, nSampleY) should be somewhere in the region
 	/// The image pImage should be a region mask, such that all points
 	/// in the same region have exactly the same pixel value.
-	GRegionBorderIterator(GImage* pImage, int nSampleX, int nSampleY);
-	~GRegionBorderIterator();
+	WRegionBorderIterator(WImage* pImage, int nSampleX, int nSampleY);
+	~WRegionBorderIterator();
 
 	/// If it returns false, the current values are invalid and it's done.
 	/// If it returns true, pX and pY will hold the coordinates
@@ -178,19 +178,19 @@ protected:
 /// the same color and are transitively adjacent. In other
 /// words, if you were to flood-fill a the specified point,
 /// this returns all the pixels that would be changed.
-class GRegionAreaIterator
+class WRegionAreaIterator
 {
 protected:
 	unsigned int m_nRegion;
 	int m_left, m_right, m_top, m_bottom, m_x, m_y;
-	GImage* m_pImage;
+	WImage* m_pImage;
 
 public:
 	/// The point (nSampleX, nSampleY) should be somewhere in the region
 	/// The image pImage should be a region mask, such that all points
 	/// in the same region have exactly the same pixel value.
-	GRegionAreaIterator(GImage* pImage, int nSampleX, int nSampleY);
-	~GRegionAreaIterator();
+	WRegionAreaIterator(WImage* pImage, int nSampleX, int nSampleY);
+	~WRegionAreaIterator();
 
 	/// If it returns false, the current values are invalid and it's done.
 	/// If it returns true, pX and pY will hold the coordinates
@@ -202,7 +202,7 @@ public:
 
 /// This class uses Fourier phase correlation to efficiently find
 /// sub-images within a larger image
-class GSubImageFinder
+class WSubImageFinder
 {
 protected:
 	int m_nHaystackWidth, m_nHaystackHeight, m_nHaystackX, m_nHaystackY;
@@ -219,8 +219,8 @@ protected:
 public:
 	/// pHaystack is the image that will be searched for
 	/// sub-images. Its dimensions do not need to be powers of 2.
-	GSubImageFinder(GImage* pHaystack);
-	~GSubImageFinder();
+	WSubImageFinder(WImage* pHaystack);
+	~WSubImageFinder();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -230,31 +230,31 @@ public:
 	/// to search for. pHaystackRect allows you to restrict the range. Note that
 	/// restricting the range does not really improve performance. Also note that
 	/// it's okay for pHaystackRect to range outside of the bounds of pImage.
-	void findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRect* pNeedleRect, GRect* pHaystackRect);
+	void findSubImage(int* pOutX, int* pOutY, WImage* pNeedle, WRect* pNeedleRect, WRect* pHaystackRect);
 };
 
 /// This class uses heuristics to find sub-images within a larger image.
-/// It is slower, but more stable than GSubImageFinder.
-class GSubImageFinder2
+/// It is slower, but more stable than WSubImageFinder.
+class WSubImageFinder2
 {
 protected:
-	GImage* m_pHaystack;
+	WImage* m_pHaystack;
 
 public:
 	/// pHaystack is the image in which to search. It can have any dimensions.
-	GSubImageFinder2(GImage* pHaystack);
-	~GSubImageFinder2();
+	WSubImageFinder2(WImage* pHaystack);
+	~WSubImageFinder2();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Finds the best x and y positions of pNeedle within pHaystack. It is assumed that the
 	/// needle fits entirely within the haystack. There are no restrictions on image sizes.
-	void findSubImage(int* pOutX, int* pOutY, GImage* pNeedle, GRect* pNeedleRect);
+	void findSubImage(int* pOutX, int* pOutY, WImage* pNeedle, WRect* pNeedleRect);
 };
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GREGION_H__

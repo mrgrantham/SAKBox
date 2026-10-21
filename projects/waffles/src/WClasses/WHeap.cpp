@@ -17,18 +17,18 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GHeap.h"
-#include "GError.h"
+#include "WHeap.h"
+#include "WError.h"
 
-using namespace GClasses;
+using namespace WClasses;
 
 // virtual
-GHeap::~GHeap()
+WHeap::~WHeap()
 {
 	clear();
 }
 
-void GHeap::clear()
+void WHeap::clear()
 {
 	while(m_pCurrentBlock)
 	{

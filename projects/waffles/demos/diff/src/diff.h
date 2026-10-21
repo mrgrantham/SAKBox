@@ -20,20 +20,20 @@
 #ifndef EDITOR
 #define EDITOR
 
-#include <WClasses/GDynamicPage.h>
+#include <WClasses/WDynamicPage.h>
 #include <iostream>
 
 class Server;
 class Account;
 
-using namespace GClasses;
+using namespace WClasses;
 
 // Provides pages for editing web pages with version control
 class Editor
 {
 public:
 	/// Diff-merge two files
-	static void pageDiff(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageDiff(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 protected:
 

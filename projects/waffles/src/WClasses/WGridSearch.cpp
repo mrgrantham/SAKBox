@@ -16,19 +16,19 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GGridSearch.h"
+#include "WGridSearch.h"
 #include <math.h>
 #include <stdio.h>
-#include "GVec.h"
-#include "GRand.h"
+#include "WVec.h"
+#include "WRand.h"
 
 using std::vector;
 
-namespace GClasses
+namespace WClasses
 {
 
-GGridSearch::GGridSearch(GTargetFunction* pCritic)
-: GOptimizer(pCritic), m_pCandidate(pCritic->relation()->size()), m_pBestVector(pCritic->relation()->size())
+WGridSearch::WGridSearch(WTargetFunction* pCritic)
+: WOptimizer(pCritic), m_pCandidate(pCritic->relation()->size()), m_pBestVector(pCritic->relation()->size())
 {
 	if(!pCritic->relation()->areContinuous(0, pCritic->relation()->size()))
 		throw Ex("Discrete attributes are not supported");
@@ -36,17 +36,17 @@ GGridSearch::GGridSearch(GTargetFunction* pCritic)
 	ranges.resize(pCritic->relation()->size());
 	for(size_t i = 0; i < (size_t)pCritic->relation()->size(); i++)
 		ranges[i] = 0x4000001;
-	m_pCvi = new GCoordVectorIterator(ranges);
+	m_pCvi = new WCoordVectorIterator(ranges);
 }
 
 // virtual
-GGridSearch::~GGridSearch()
+WGridSearch::~WGridSearch()
 {
 	delete(m_pCvi);
 }
 
 // virtual
-double GGridSearch::iterate()
+double WGridSearch::iterate()
 {
 	size_t* pCur = m_pCvi->current();
 	for(size_t i = 0; i < (size_t)m_pCritic->relation()->size(); i++)
@@ -62,7 +62,7 @@ double GGridSearch::iterate()
 }
 
 // virtual
-const GVec& GGridSearch::currentVector()
+const WVec& WGridSearch::currentVector()
 {
 	return m_pBestVector;
 }
@@ -75,20 +75,20 @@ const GVec& GGridSearch::currentVector()
 
 
 
-GRandomSearch::GRandomSearch(GTargetFunction* pCritic, GRand* pRand)
-: GOptimizer(pCritic), m_pRand(pRand), m_pCandidate(pCritic->relation()->size()), m_pBestVector(pCritic->relation()->size())
+WRandomSearch::WRandomSearch(WTargetFunction* pCritic, WRand* pRand)
+: WOptimizer(pCritic), m_pRand(pRand), m_pCandidate(pCritic->relation()->size()), m_pBestVector(pCritic->relation()->size())
 {
 	if(!pCritic->relation()->areContinuous(0, pCritic->relation()->size()))
 		throw Ex("Discrete attributes are not supported");
 }
 
 // virtual
-GRandomSearch::~GRandomSearch()
+WRandomSearch::~WRandomSearch()
 {
 }
 
 // virtual
-double GRandomSearch::iterate()
+double WRandomSearch::iterate()
 {
 	m_pCandidate.fillUniform(*m_pRand);
 	double err = m_pCritic->computeError(m_pCandidate);
@@ -101,7 +101,7 @@ double GRandomSearch::iterate()
 }
 
 // virtual
-const GVec& GRandomSearch::currentVector()
+const WVec& WRandomSearch::currentVector()
 {
 	return m_pBestVector;
 }
@@ -111,8 +111,8 @@ const GVec& GRandomSearch::currentVector()
 
 
 
-GMinBinSearch::GMinBinSearch(GTargetFunction* pCritic)
-: GOptimizer(pCritic), m_curDim(0), m_stepSize(0.25), m_pCurrent(m_pCritic->relation()->size())
+WMinBinSearch::WMinBinSearch(WTargetFunction* pCritic)
+: WOptimizer(pCritic), m_curDim(0), m_stepSize(0.25), m_pCurrent(m_pCritic->relation()->size())
 {
 	if(!pCritic->relation()->areContinuous(0, pCritic->relation()->size()))
 		throw Ex("Discrete attributes are not supported");
@@ -121,12 +121,12 @@ GMinBinSearch::GMinBinSearch(GTargetFunction* pCritic)
 }
 
 // virtual
-GMinBinSearch::~GMinBinSearch()
+WMinBinSearch::~WMinBinSearch()
 {
 }
 
 // virtual
-double GMinBinSearch::iterate()
+double WMinBinSearch::iterate()
 {
 	m_pCurrent[m_curDim] += m_stepSize;
 	double d = m_pCritic->computeError(m_pCurrent);
@@ -155,8 +155,8 @@ double GMinBinSearch::iterate()
 
 
 
-GProbeSearch::GProbeSearch(GTargetFunction* pCritic)
-: GOptimizer(pCritic), m_rand(0), m_pMins(pCritic->relation()->size()), m_pMaxs(pCritic->relation()->size()), m_pVector(pCritic->relation()->size()), m_pBestYet(pCritic->relation()->size())
+WProbeSearch::WProbeSearch(WTargetFunction* pCritic)
+: WOptimizer(pCritic), m_rand(0), m_pMins(pCritic->relation()->size()), m_pMaxs(pCritic->relation()->size()), m_pVector(pCritic->relation()->size()), m_pBestYet(pCritic->relation()->size())
 {
 	if(!pCritic->relation()->areContinuous(0, pCritic->relation()->size()))
 		throw Ex("Discrete attributes are not supported");
@@ -166,11 +166,11 @@ GProbeSearch::GProbeSearch(GTargetFunction* pCritic)
 	reset();
 }
 
-/*virtual*/ GProbeSearch::~GProbeSearch()
+/*virtual*/ WProbeSearch::~WProbeSearch()
 {
 }
 
-void GProbeSearch::reset()
+void WProbeSearch::reset()
 {
 	m_nMask[0] = 0;
 	m_nMask[1] = 0;
@@ -182,7 +182,7 @@ void GProbeSearch::reset()
 	m_bestError = 1e308;
 }
 
-void GProbeSearch::resetStab()
+void WProbeSearch::resetStab()
 {
 	m_nCurrentDim = 0;
 	m_nDepth = 0;
@@ -198,7 +198,7 @@ void GProbeSearch::resetStab()
 	m_nStabs++;
 }
 
-double GProbeSearch::sample(bool greater)
+double WProbeSearch::sample(bool greater)
 {
 	double bestLocal = 1e300;
 	m_rand.setSeed(0);
@@ -226,7 +226,7 @@ double GProbeSearch::sample(bool greater)
 	return bestLocal;
 }
 
-/*virtual*/ double GProbeSearch::iterate()
+/*virtual*/ double WProbeSearch::iterate()
 {
 	// Test the center of both halves
 	double dError1 = sample(false);
@@ -259,19 +259,19 @@ double GProbeSearch::sample(bool greater)
 }
 
 
-class GProbeSearchTestCritic : public GTargetFunction
+class WProbeSearchTestCritic : public WTargetFunction
 {
 public:
-	GVec m_target;
+	WVec m_target;
 
-	GProbeSearchTestCritic() : GTargetFunction(3), m_target(3)
+	WProbeSearchTestCritic() : WTargetFunction(3), m_target(3)
 	{
 		m_target[0] = 0.7314;
 		m_target[1] = 0.1833;
 		m_target[2] = 0.3831;
 	}
 
-	~GProbeSearchTestCritic() override
+	~WProbeSearchTestCritic() override
 	{
 	}
 
@@ -279,11 +279,11 @@ public:
 	virtual bool isConstrained() { return false; }
 
 protected:
-	void initVector(GVec& pVector) override
+	void initVector(WVec& pVector) override
 	{
 	}
 
-	double computeError(const GVec& pVector) override
+	double computeError(const WVec& pVector) override
 	{
 		if(pVector[0] < 0.5)
 			return 0.001;
@@ -295,10 +295,10 @@ protected:
 };
 
 // static
-void GProbeSearch::test()
+void WProbeSearch::test()
 {
-	GProbeSearchTestCritic critic;
-	GProbeSearch search(&critic);
+	WProbeSearchTestCritic critic;
+	WProbeSearch search(&critic);
 	size_t stabdepth = 30;
 	search.setStabDepth(stabdepth);
 	size_t i;
@@ -309,5 +309,5 @@ void GProbeSearch::test()
 		throw Ex("failed");
 }
 
-} // namespace GClasses
+} // namespace WClasses
 

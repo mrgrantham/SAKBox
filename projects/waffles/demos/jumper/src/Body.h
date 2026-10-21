@@ -31,10 +31,10 @@ class btConstraintSolver;
 struct btCollisionAlgorithmCreateFunc;
 class btDefaultCollisionConfiguration;
 
-namespace GClasses
+namespace WClasses
 {
-	class GSupervisedLearner;
-	class GVec;
+	class WSupervisedLearner;
+	class WVec;
 }
 
 
@@ -116,10 +116,10 @@ public:
 	// Returns 1 if laying on tummy, -1 if laying on back, 0 if laying on side, some value in-between for other positions
 	btScalar getFaceDownness();
 
-	void DoAction(GClasses::GSupervisedLearner* pPolicy, double time);
+	void DoAction(WClasses::WSupervisedLearner* pPolicy, double time);
 
 protected:
-	void makeFeatureVector(GClasses::GVec& features, double time);
+	void makeFeatureVector(WClasses::WVec& features, double time);
 };
 
 
@@ -140,7 +140,7 @@ class RagdollDemo : public SdlDemoApplication
 
 	btDefaultCollisionConfiguration* m_collisionConfiguration;
 
-	GClasses::GSupervisedLearner* m_pPolicy;
+	WClasses::WSupervisedLearner* m_pPolicy;
 
 	double m_time;
 
@@ -163,7 +163,7 @@ public:
 		m_time = 0;
 	}
 
-	void SetPolicy(GClasses::GSupervisedLearner* pPolicy)
+	void SetPolicy(WClasses::WSupervisedLearner* pPolicy)
 	{
 		m_pPolicy = pPolicy;
 	}

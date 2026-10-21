@@ -20,13 +20,13 @@
 #ifndef EDITOR
 #define EDITOR
 
-#include <WClasses/GDynamicPage.h>
+#include <WClasses/WDynamicPage.h>
 #include <iostream>
 
 class Server;
 class Account;
 
-using namespace GClasses;
+using namespace WClasses;
 
 // Provides pages for editing web pages with version control
 class Editor
@@ -34,34 +34,34 @@ class Editor
 public:
 
 	/// Produces a list of all the files in the current directory
-	static void ajaxFilelist(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut);
+	static void ajaxFilelist(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut);
 
 	/// Saves edited raw text back to a file
-	static void ajaxSaveText(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut);
+	static void ajaxSaveText(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut);
 
 	/// Writes changes from the graphical editor to the file
-	static void ajaxSaveGui(Server* pServer, GDynamicPageSession* pSession, const GDomNode* pIn, GDom& doc, GDomNode* pOut);
+	static void ajaxSaveGui(Server* pServer, WDynamicPageSession* pSession, const WDomNode* pIn, WDom& doc, WDomNode* pOut);
 
 	/// Browse the HTML documents in the user's current folder
-	static void pageBrowse(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageBrowse(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Edit the raw source of an HTML document
-	static void pageEditText(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageEditText(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Edit an HTML page with a graphical editor
-	static void pageEditGui(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageEditGui(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Diff-merge two files
-	static void pageDiff(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageDiff(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// A page showing all known revisions of a particular file
-	static void pageHistory(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageHistory(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// A page showing how a web page will look embedded in an iframe
-	static void pagePreview(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pagePreview(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 	/// Shows a list of templates for making a new page
-	static void pageNewPage(Server* pServer, GDynamicPageSession* pSession, std::ostream& response);
+	static void pageNewPage(Server* pServer, WDynamicPageSession* pSession, std::ostream& response);
 
 protected:
 

@@ -18,26 +18,26 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <WClasses/GApp.h>
-#include <WClasses/GCluster.h>
-#include <WClasses/GDecisionTree.h>
-#include <WClasses/GEnsemble.h>
-#include <WClasses/GTransform.h>
-#include <WClasses/GHolders.h>
-#include <WClasses/GKNN.h>
-#include <WClasses/GLearner.h>
-#include <WClasses/GLinear.h>
-#include <WClasses/GError.h>
-#include <WClasses/GNaiveBayes.h>
-#include <WClasses/GNaiveInstance.h>
-#include <WClasses/GNeuralNet.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GTime.h>
-#include <WClasses/GVec.h>
-#include <WClasses/GWidgets.h>
-#include <WClasses/GThread.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WCluster.h>
+#include <WClasses/WDecisionTree.h>
+#include <WClasses/WEnsemble.h>
+#include <WClasses/WTransform.h>
+#include <WClasses/WHolders.h>
+#include <WClasses/WKNN.h>
+#include <WClasses/WLearner.h>
+#include <WClasses/WLinear.h>
+#include <WClasses/WError.h>
+#include <WClasses/WNaiveBayes.h>
+#include <WClasses/WNaiveInstance.h>
+#include <WClasses/WNeuralNet.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WVec.h>
+#include <WClasses/WWidgets.h>
+#include <WClasses/WThread.h>
 #include "gui/Gui.h"
-#include "png/GImagePng.h"
+#include "png/WImagePng.h"
 #include <exception>
 #include <iostream>
 
@@ -45,7 +45,7 @@
 #include <direct.h>
 #endif
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 
@@ -63,38 +63,38 @@ public:
 
 #define USE_IMAGE
 
-class InterpolateDialog : public GWidgetDialog
+class InterpolateDialog : public WWidgetDialog
 {
 protected:
 	InterpolateController* m_pController;
-	GImage* m_pImageSmall;
-	GImage* m_pImageBig;
+	WImage* m_pImageSmall;
+	WImage* m_pImageBig;
 	size_t m_scale;
-	GWidgetCanvas* m_pCanvasSmall;
-	GWidgetCanvas* m_pCanvasBig;
-	GWidgetGrid* m_pModels;
-	GRand* m_pRand;
+	WWidgetCanvas* m_pCanvasSmall;
+	WWidgetCanvas* m_pCanvasBig;
+	WWidgetGrid* m_pModels;
+	WRand* m_pRand;
 	bool m_animate;
-	GMatrix* m_pTrainingFeatures;
-	GMatrix* m_pTrainingLabels;
-	volatile GNeuralNetLearner* m_pNNForTraining;
-	GNeuralNetLearner* m_pNNCopyForVisualizing;
-	GSupervisedLearner* m_pTrainedModel;
-	GSpinLock m_weightsLock;
+	WMatrix* m_pTrainingFeatures;
+	WMatrix* m_pTrainingLabels;
+	volatile WNeuralNetLearner* m_pNNForTraining;
+	WNeuralNetLearner* m_pNNCopyForVisualizing;
+	WSupervisedLearner* m_pTrainedModel;
+	WSpinLock m_weightsLock;
 	volatile size_t m_workerMode; // 0 = exit, 1 = hybernate, 2 = yield, 3 = train
 	volatile bool m_workerWorking;
 	bool m_testing;
-	GCoordVectorIterator* m_pCvi;
-	GVec m_in;
-	GVec m_out;
+	WCoordVectorIterator* m_pCvi;
+	WVec m_in;
+	WVec m_out;
 
 public:
 	InterpolateDialog(InterpolateController* pController, int w, int h)
-	: GWidgetDialog(w, h, 0xff90d0f0), m_in(2), m_out(3) // a=ff, r=90, g=d0, b=f0
+	: WWidgetDialog(w, h, 0xff90d0f0), m_in(2), m_out(3) // a=ff, r=90, g=d0, b=f0
 	{
 		m_pController = pController;
-		m_pRand = new GRand(0);
-		m_pImageSmall = new GImage();
+		m_pRand = new WRand(0);
+		m_pImageSmall = new WImage();
 #ifdef USE_IMAGE
 		loadPng(m_pImageSmall, "input.png");
 #else
@@ -104,11 +104,11 @@ public:
 #endif
 		//m_pImageSmall->loadPng("input.png");
 		m_scale = 12;
-		m_pImageBig = new GImage();
+		m_pImageBig = new WImage();
 		m_pImageBig->setSize(m_pImageSmall->width() * m_scale, m_pImageSmall->height() * m_scale);
-		m_pCanvasSmall = new GWidgetCanvas(this, 5, 35, m_pImageSmall->width(), m_pImageSmall->height(), m_pImageSmall);
-		m_pCanvasBig = new GWidgetCanvas(this, 310, 5, m_pImageBig->width(), m_pImageBig->height(), m_pImageBig);
-		m_pModels = new GWidgetGrid(this, 2, 5, 90, 290, 500, 0xff60a0c0);
+		m_pCanvasSmall = new WWidgetCanvas(this, 5, 35, m_pImageSmall->width(), m_pImageSmall->height(), m_pImageSmall);
+		m_pCanvasBig = new WWidgetCanvas(this, 310, 5, m_pImageBig->width(), m_pImageBig->height(), m_pImageBig);
+		m_pModels = new WWidgetGrid(this, 2, 5, 90, 290, 500, 0xff60a0c0);
 		m_pModels->setRowHeight(36);
 		m_pModels->setColumnWidth(0, 30);
 		m_pModels->setColumnWidth(1, 242);
@@ -117,20 +117,20 @@ public:
 		m_pNNCopyForVisualizing = nullptr;
 
 		// Make the training data
-		m_pTrainingFeatures = new GMatrix(m_pImageSmall->width() * m_pImageSmall->height(), 2);
-		m_pTrainingLabels = new GMatrix(m_pImageSmall->width() * m_pImageSmall->height(), 3);
+		m_pTrainingFeatures = new WMatrix(m_pImageSmall->width() * m_pImageSmall->height(), 2);
+		m_pTrainingLabels = new WMatrix(m_pImageSmall->width() * m_pImageSmall->height(), 3);
 		size_t ranges[2];
 		ranges[0] = m_pImageSmall->width();
 		ranges[1] = m_pImageSmall->height();
-		GCoordVectorIterator cvi(2, ranges);
+		WCoordVectorIterator cvi(2, ranges);
 		unsigned int* pPix = m_pImageSmall->pixels();
 		for(size_t i = 0; true; i++)
 		{
-			GAssert(i < m_pTrainingFeatures->rows());
-			GVec& pFeature = m_pTrainingFeatures->row(i);
+			WAssert(i < m_pTrainingFeatures->rows());
+			WVec& pFeature = m_pTrainingFeatures->row(i);
 			cvi.currentNormalized(pFeature.data());
-			GAssert(i < m_pTrainingLabels->rows());
-			GVec& pLabel = m_pTrainingLabels->row(i);
+			WAssert(i < m_pTrainingLabels->rows());
+			WVec& pLabel = m_pTrainingLabels->row(i);
 			pLabel[0] = ((double)gRed(*pPix)) / 255;
 			pLabel[1] = ((double)gGreen(*pPix)) / 255;
 			pLabel[2] = ((double)gBlue(*pPix)) / 255;
@@ -141,13 +141,13 @@ public:
 
 		ranges[0] = m_pImageBig->width();
 		ranges[1] = m_pImageBig->height();
-		m_pCvi = new GCoordVectorIterator(2, ranges);
+		m_pCvi = new WCoordVectorIterator(2, ranges);
 		m_testing = false;
 
 		// Launch the worker thread
 		m_workerMode = 1; // hybernate
 		m_workerWorking = true;
-		/*HANDLE threadHandle = */ GThread::spawnThread(launchworkerThread, this);
+		/*HANDLE threadHandle = */ WThread::spawnThread(launchworkerThread, this);
 
 		addModels();
 	}
@@ -156,7 +156,7 @@ public:
 	{
 		m_workerMode = 0; // tell the worker thread to exit
 		while(m_workerWorking)
-			GThread::sleep(0);
+			WThread::sleep(0);
 		delete(m_pTrainingFeatures);
 		delete(m_pTrainingLabels);
 		delete(m_pImageSmall);
@@ -168,13 +168,13 @@ public:
 		delete(m_pCvi);
 	}
 
-	void onCheckBulletHole(GWidgetBulletHole* pBullet) override
+	void onCheckBulletHole(WWidgetBulletHole* pBullet) override
 	{
 		int selectedIndex = -1;
 		int n = m_pModels->rowCount();
 		for(int i = 0; i < n; i++)
 		{
-			GWidgetBulletHole* pBH = (GWidgetBulletHole*)m_pModels->widget(0, i);
+			WWidgetBulletHole* pBH = (WWidgetBulletHole*)m_pModels->widget(0, i);
 			if(pBH)
 			{
 				if(pBH == pBullet)
@@ -191,13 +191,13 @@ public:
 	{
 		m_workerMode = 1; // hybernate
 		int index = m_pModels->rowCount();
-		m_pModels->setWidget(0, index, new GWidgetBulletHole(m_pModels, 0, 0, 20, 20));
-		GWidgetTextLabel* pDescription = new GWidgetTextLabel(m_pModels, 0, 0, 242, 36, descr);
+		m_pModels->setWidget(0, index, new WWidgetBulletHole(m_pModels, 0, 0, 20, 20));
+		WWidgetTextLabel* pDescription = new WWidgetTextLabel(m_pModels, 0, 0, 242, 36, descr);
 		pDescription->wrap();
 		m_pModels->setWidget(1, index, pDescription);
 	}
 
-	void doSupervisedLearner(GSupervisedLearner* pModel)
+	void doSupervisedLearner(WSupervisedLearner* pModel)
 	{
 		m_pImageBig->clear(0x003060);
 		m_workerMode = 1; // hybernate
@@ -208,32 +208,32 @@ public:
 		m_testing = true;
 	}
 
-	void doTransducer(GTransducer* pModel)
+	void doTransducer(WTransducer* pModel)
 	{
 		// Make the unlabeled data
-		GMatrix dataUnlabeled(m_pImageBig->width() * m_pImageBig->height(), 2);
+		WMatrix dataUnlabeled(m_pImageBig->width() * m_pImageBig->height(), 2);
 		size_t ranges[2];
 		ranges[0] = m_pImageBig->width();
 		ranges[1] = m_pImageBig->height();
-		GCoordVectorIterator cvi(2, ranges);
+		WCoordVectorIterator cvi(2, ranges);
 		for(size_t i = 0; true; i++)
 		{
-			GVec& pFeature = dataUnlabeled.row(i);
+			WVec& pFeature = dataUnlabeled.row(i);
 			cvi.currentNormalized(pFeature.data());
 			if(!cvi.advance())
 				break;
 		}
 
 		// Predict labels
-		std::unique_ptr<GClasses::GMatrix> hLabels = pModel->transduce(*m_pTrainingFeatures, *m_pTrainingLabels, dataUnlabeled);
-		GMatrix* pLabels = hLabels.get();
+		std::unique_ptr<WClasses::WMatrix> hLabels = pModel->transduce(*m_pTrainingFeatures, *m_pTrainingLabels, dataUnlabeled);
+		WMatrix* pLabels = hLabels.get();
 
 		// Copy the labels into the big image
 		cvi.reset();
 		unsigned int* pPix = m_pImageBig->pixels();
 		for(size_t i = 0; true; i++)
 		{
-			GVec& pRow = pLabels->row(i);
+			WVec& pRow = pLabels->row(i);
 			int r = ClipChan((int)(pRow[0] * 255.0));
 			int g = ClipChan((int)(pRow[1] * 255.0));
 			int b = ClipChan((int)(pRow[2] * 255.0));
@@ -247,21 +247,21 @@ public:
 	}
 
 	// takes ownership of pNN
-	void doBackProp(GNeuralNetLearner* pNN)
+	void doBackProp(WNeuralNetLearner* pNN)
 	{
 		m_workerMode = 2; // yield
-		GUniformRelation featureRel(2);
-		GUniformRelation labelRel(3);
+		WUniformRelation featureRel(2);
+		WUniformRelation labelRel(3);
 		{
-			GSpinLockHolder hLock(&m_weightsLock, "replacing the network");
+			WSpinLockHolder hLock(&m_weightsLock, "replacing the network");
 			delete(m_pNNForTraining);
 			m_pNNForTraining = pNN;
 			pNN->beginIncrementalLearning(featureRel, labelRel);
 			/*			for(size_t i = 0; i < pNN->layerCount(); i++)
-				pNN->getLayer(i)->setActivationFunction(new GActivationSoftPlus());
+				pNN->getLayer(i)->setActivationFunction(new WActivationSoftPlus());
 			pNN->setLearningRate(0.005);*/
 			delete(m_pNNCopyForVisualizing);
-			m_pNNCopyForVisualizing = new GNeuralNetLearner();
+			m_pNNCopyForVisualizing = new WNeuralNetLearner();
 			// SAKBox: copyStructure is now copyTopology, which clones the layers
 			// still bound to pNN's weights; init gives the copy its own
 			m_pNNCopyForVisualizing->nn().copyTopology(pNN->nn());
@@ -295,73 +295,73 @@ public:
 		m_workerMode = 1;
 		if(index == 0)
 		{
-			GKNN* pModel = new GKNN();
+			WKNN* pModel = new WKNN();
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 1)
 		{
-			GKNN* pModel = new GKNN();
+			WKNN* pModel = new WKNN();
 			pModel->setNeighborCount(2);
-			pModel->setInterpolationMethod(GKNN::Mean);
+			pModel->setInterpolationMethod(WKNN::Mean);
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 2)
 		{
-			GKNN* pModel = new GKNN();
+			WKNN* pModel = new WKNN();
 			pModel->setNeighborCount(2);
-			pModel->setInterpolationMethod(GKNN::Linear);
+			pModel->setInterpolationMethod(WKNN::Linear);
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 3)
 		{
-			GKNN* pModel = new GKNN();
+			WKNN* pModel = new WKNN();
 			pModel->setNeighborCount(4);
-			pModel->setInterpolationMethod(GKNN::Mean);
+			pModel->setInterpolationMethod(WKNN::Mean);
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 4)
 		{
-			GKNN* pModel = new GKNN();
+			WKNN* pModel = new WKNN();
 			pModel->setNeighborCount(4);
-			pModel->setInterpolationMethod(GKNN::Linear);
+			pModel->setInterpolationMethod(WKNN::Linear);
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 5)
 		{
-			GKNN* pModel = new GKNN();
+			WKNN* pModel = new WKNN();
 			pModel->setNeighborCount(8);
-			pModel->setInterpolationMethod(GKNN::Mean);
+			pModel->setInterpolationMethod(WKNN::Mean);
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 6)
 		{
-			GKNN* pModel = new GKNN();
+			WKNN* pModel = new WKNN();
 			pModel->setNeighborCount(8);
-			pModel->setInterpolationMethod(GKNN::Linear);
+			pModel->setInterpolationMethod(WKNN::Linear);
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 7)
 		{
-			GSupervisedLearner* pModel = new GAutoFilter(new GNaiveBayes(), true);
+			WSupervisedLearner* pModel = new WAutoFilter(new WNaiveBayes(), true);
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 8)
 		{
-			GDecisionTree* pModel = new GDecisionTree();
+			WDecisionTree* pModel = new WDecisionTree();
 			pModel->useRandomDivisions(1);
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 9)
 		{
-			GMeanMarginsTree* pModel = new GMeanMarginsTree();
+			WMeanMarginsTree* pModel = new WMeanMarginsTree();
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 10)
 		{
-			GBag* pBag = new GBag();
+			WBag* pBag = new WBag();
 			for(int i = 0; i < 30; i++)
 			{
-				GDecisionTree* pTree = new GDecisionTree();
+				WDecisionTree* pTree = new WDecisionTree();
 				pTree->rand().setSeed(i);
 				pTree->useRandomDivisions();
 				pBag->addLearner(pTree);
@@ -370,10 +370,10 @@ public:
 		}
 		else if(index == 11)
 		{
-			GBag* pBag = new GBag();
+			WBag* pBag = new WBag();
 			for(int i = 0; i < 30; i++)
 			{
-				GMeanMarginsTree* pTree = new GMeanMarginsTree();
+				WMeanMarginsTree* pTree = new WMeanMarginsTree();
 				pTree->rand().setSeed(i);
 				pBag->addLearner(pTree);
 			}
@@ -381,52 +381,52 @@ public:
 		}
 		else if(index == 12)
 		{
-			GNeuralNetLearner* pModel = new GNeuralNetLearner();
-			pModel->nn().add(new GBlockLinear(2, 3));
-			pModel->nn().add(new GBlockTanh(3));
+			WNeuralNetLearner* pModel = new WNeuralNetLearner();
+			pModel->nn().add(new WBlockLinear(2, 3));
+			pModel->nn().add(new WBlockTanh(3));
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 13)
 		{
-			GNeuralNetLearner* pNN = new GNeuralNetLearner();
-			pNN->nn().add(new GBlockLinear(2, 16));
-			pNN->nn().add(new GBlockTanh(16));
-			pNN->nn().add(new GBlockLinear(16, 16));
-			pNN->nn().add(new GBlockTanh(16));
-			pNN->nn().add(new GBlockLinear(16, 16));
-			pNN->nn().add(new GBlockTanh(16));
-			pNN->nn().add(new GBlockLinear(16, 16));
-			pNN->nn().add(new GBlockTanh(16));
-			pNN->nn().add(new GBlockLinear(16, 3));
-			pNN->nn().add(new GBlockTanh(3));
+			WNeuralNetLearner* pNN = new WNeuralNetLearner();
+			pNN->nn().add(new WBlockLinear(2, 16));
+			pNN->nn().add(new WBlockTanh(16));
+			pNN->nn().add(new WBlockLinear(16, 16));
+			pNN->nn().add(new WBlockTanh(16));
+			pNN->nn().add(new WBlockLinear(16, 16));
+			pNN->nn().add(new WBlockTanh(16));
+			pNN->nn().add(new WBlockLinear(16, 16));
+			pNN->nn().add(new WBlockTanh(16));
+			pNN->nn().add(new WBlockLinear(16, 3));
+			pNN->nn().add(new WBlockTanh(3));
 
 			doBackProp(pNN);
 		}
 		else if(index == 14)
 		{
-			GNaiveInstance* pModel = new GNaiveInstance();
+			WNaiveInstance* pModel = new WNaiveInstance();
 			pModel->setNeighbors(20);
 			doSupervisedLearner(pModel);
 		}
 		else if(index == 15)
 		{
-			GBaselineLearner* pModel = new GBaselineLearner();
+			WBaselineLearner* pModel = new WBaselineLearner();
 			doSupervisedLearner(pModel);
 		}
 	}
 
 	void workerThread()
 	{
-		GAssert(m_workerWorking);
+		WAssert(m_workerWorking);
 		while(m_workerMode > 0)
 		{
 			if(m_workerMode == 2) // yield
-				GThread::sleep(0);
+				WThread::sleep(0);
 			else if(m_workerMode == 3) // train
 			{
-				GSpinLockHolder hLock(&m_weightsLock, "training the network");
-				GNeuralNetLearner* pNN = (GNeuralNetLearner*)m_pNNForTraining;
-				GNeuralNetOptimizer& opt = pNN->optimizer();
+				WSpinLockHolder hLock(&m_weightsLock, "training the network");
+				WNeuralNetLearner* pNN = (WNeuralNetLearner*)m_pNNForTraining;
+				WNeuralNetOptimizer& opt = pNN->optimizer();
 				for(size_t i = 0; i < 100; i++)
 				{
 					size_t r = (size_t)m_pRand->next(m_pTrainingFeatures->rows());
@@ -434,7 +434,7 @@ public:
 				}
 			}
 			else
-				GThread::sleep(200); // hybernate
+				WThread::sleep(200); // hybernate
 		}
 		m_workerWorking = false;
 	}
@@ -452,8 +452,8 @@ public:
 			// Copy the weights
 			m_workerMode = 2; // yield
 			{
-				GSpinLockHolder hLock(&m_weightsLock, "updating display");
-				GNeuralNetLearner* pNN = (GNeuralNetLearner*)m_pNNForTraining;
+				WSpinLockHolder hLock(&m_weightsLock, "updating display");
+				WNeuralNetLearner* pNN = (WNeuralNetLearner*)m_pNNForTraining;
 				// SAKBox: the weights are now kept by the network, not its optimizer
 				m_pNNCopyForVisualizing->nn().weights.copy(pNN->nn().weights);
 			}
@@ -477,11 +477,11 @@ public:
 			m_pCanvasBig->setImage(m_pImageBig);
 
 			// Slow down the display thread a little bit
-			GThread::sleep(100);
+			WThread::sleep(100);
 		}
 		else if(m_testing)
 		{
-			double startTime = GTime::seconds();
+			double startTime = WTime::seconds();
 
 			// Display the image
 			while(true)
@@ -500,7 +500,7 @@ public:
 						break;
 					}
 				}
-				if(GTime::seconds() - startTime >= 0.25)
+				if(WTime::seconds() - startTime >= 0.25)
 					break;
 			}
 			m_pCanvasBig->setImage(m_pImageBig);
@@ -580,15 +580,15 @@ InterpolateController::~InterpolateController()
 
 void InterpolateController::RunModal()
 {
-	double timeOld = GTime::seconds();
+	double timeOld = WTime::seconds();
 	double time;
 	m_pView->update();
 	while(m_bKeepRunning)
 	{
-		time = GTime::seconds();
+		time = WTime::seconds();
 		handleEvents(time - timeOld);
 		m_pView->update();
-		GThread::sleep(50); // slow things down
+		WThread::sleep(50); // slow things down
 		timeOld = time;
 	}
 }

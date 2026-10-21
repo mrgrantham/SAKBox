@@ -21,12 +21,12 @@ subject to the following restrictions:
 #include "btBulletDynamicsCommon.h"
 
 #include <SDL2/SDL.h>
-#include <WClasses/GError.h>
+#include <WClasses/WError.h>
 
 void SdlDemoApplication::run(int width, int height, const char* title)
 {
 	if(SDL_Init(SDL_INIT_VIDEO) != 0)
-		throw GClasses::Ex("Couldn't start SDL: ", SDL_GetError());
+		throw WClasses::Ex("Couldn't start SDL: ", SDL_GetError());
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -34,10 +34,10 @@ void SdlDemoApplication::run(int width, int height, const char* title)
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 	m_pWindow = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	if(!m_pWindow)
-		throw GClasses::Ex("Couldn't open a window: ", SDL_GetError());
+		throw WClasses::Ex("Couldn't open a window: ", SDL_GetError());
 	SDL_GLContext context = SDL_GL_CreateContext(m_pWindow);
 	if(!context)
-		throw GClasses::Ex("Couldn't create an OpenGL context: ", SDL_GetError());
+		throw WClasses::Ex("Couldn't create an OpenGL context: ", SDL_GetError());
 	SDL_GL_SetSwapInterval(1); // sync to the display, so it runs at its refresh rate
 
 	myinit();

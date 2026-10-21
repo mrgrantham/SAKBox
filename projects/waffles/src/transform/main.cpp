@@ -20,28 +20,28 @@
 #include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
-#include "WClasses/GApp.h"
-#include "WClasses/GBits.h"
-#include "WClasses/GCluster.h"
-#include "WClasses/GDistance.h"
-#include "WClasses/GDom.h"
-#include "WClasses/GError.h"
-#include "WClasses/GMatrix.h"
-#include "WClasses/GRand.h"
-#include "WClasses/GFile.h"
-#include "WClasses/GFunction.h"
-#include "WClasses/GHtml.h"
-#include "WClasses/GTransform.h"
-#include "WClasses/GVec.h"
-#include "WClasses/GHashTable.h"
-#include "WClasses/GHolders.h"
-#include "WClasses/GHillClimber.h"
-#include "WClasses/GNeighborFinder.h"
-#include "WClasses/GNeuralNet.h"
-#include "WClasses/GHeap.h"
-#include "WClasses/GRect.h"
-#include "WClasses/GSparseMatrix.h"
-#include "WClasses/GMath.h"
+#include "WClasses/WApp.h"
+#include "WClasses/WBits.h"
+#include "WClasses/WCluster.h"
+#include "WClasses/WDistance.h"
+#include "WClasses/WDom.h"
+#include "WClasses/WError.h"
+#include "WClasses/WMatrix.h"
+#include "WClasses/WRand.h"
+#include "WClasses/WFile.h"
+#include "WClasses/WFunction.h"
+#include "WClasses/WHtml.h"
+#include "WClasses/WTransform.h"
+#include "WClasses/WVec.h"
+#include "WClasses/WHashTable.h"
+#include "WClasses/WHolders.h"
+#include "WClasses/WHillClimber.h"
+#include "WClasses/WNeighborFinder.h"
+#include "WClasses/WNeuralNet.h"
+#include "WClasses/WHeap.h"
+#include "WClasses/WRect.h"
+#include "WClasses/WSparseMatrix.h"
+#include "WClasses/WMath.h"
 #include <time.h>
 #include <iostream>
 #include <fstream>
@@ -55,7 +55,7 @@
 #include <exception>
 #include "WClasses/usage.h"
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 using std::vector;
@@ -83,7 +83,7 @@ size_t getAttrVal(const char* szString, size_t attrCount)
 	return val;
 }
 
-void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount)
+void parseAttributeList(vector<size_t>& list, WArgReader& args, size_t attrCount)
 {
 	const char* szList = args.pop_string();
 	set<size_t> attrSet;
@@ -151,20 +151,20 @@ void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount
 	}
 }
 
-GMatrix* loadData(const char* szFilename)
+WMatrix* loadData(const char* szFilename)
 {
 	// Load the dataset by extension
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
-	GMatrix* pData = new GMatrix();
-	Holder<GMatrix> hData(pData);
+	WFile::parsePath(szFilename, &pd);
+	WMatrix* pData = new WMatrix();
+	Holder<WMatrix> hData(pData);
 	if(_stricmp(szFilename + pd.extStart, ".arff") == 0)
 		pData->loadArff(szFilename);
 	else if(_stricmp(szFilename + pd.extStart, ".raw") == 0)
 		pData->loadRaw(szFilename);
 	else if(_stricmp(szFilename + pd.extStart, ".csv") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.parse(*pData, szFilename);
 		cerr << "\nParsing Report:\n";
 		for(size_t i = 0; i < pData->cols(); i++)
@@ -172,7 +172,7 @@ GMatrix* loadData(const char* szFilename)
 	}
 	else if(_stricmp(szFilename + pd.extStart, ".dat") == 0)
 	{
-		GCSVParser parser;
+		WCSVParser parser;
 		parser.setSeparator('\0');
 		parser.parse(*pData, szFilename);
 		cerr << "\nParsing Report:\n";
@@ -184,7 +184,7 @@ GMatrix* loadData(const char* szFilename)
 	return hData.release();
 }
 
-void AddIndexAttribute(GArgReader& args)
+void AddIndexAttribute(WArgReader& args)
 {
 	// Parse args
 	const char* filename = args.pop_string();
@@ -203,53 +203,53 @@ void AddIndexAttribute(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GMatrix* pData = loadData(filename);
-	Holder<GMatrix> hData(pData);
-	GArffRelation* pIndexRelation = new GArffRelation();
+	WMatrix* pData = loadData(filename);
+	Holder<WMatrix> hData(pData);
+	WArffRelation* pIndexRelation = new WArffRelation();
 	pIndexRelation->addAttribute(name.c_str(), 0, nullptr);
-	GMatrix indexes(pIndexRelation);
+	WMatrix indexes(pIndexRelation);
 	indexes.newRows(pData->rows());
 	for(size_t i = 0; i < pData->rows(); i++)
 		indexes.row(i)[0] = nStartValue + i * nIncrement;
-	GMatrix* pUnified = GMatrix::mergeHoriz(&indexes, pData);
-	Holder<GMatrix> hUnified(pUnified);
+	WMatrix* pUnified = WMatrix::mergeHoriz(&indexes, pData);
+	Holder<WMatrix> hUnified(pUnified);
 	pUnified->print(cout);
 }
 
-void addCategoryColumn(GArgReader& args)
+void addCategoryColumn(WArgReader& args)
 {
 	const char* filename = args.pop_string();
 	const char* catname = args.pop_string();
 	const char* catvalue = args.pop_string();
-	GMatrix* pData = loadData(filename);
-	Holder<GMatrix> hData(pData);
-	GArffRelation* pIndexRelation = new GArffRelation();
+	WMatrix* pData = loadData(filename);
+	Holder<WMatrix> hData(pData);
+	WArffRelation* pIndexRelation = new WArffRelation();
 	vector<const char*> vals;
 	vals.push_back(catvalue);
 	pIndexRelation->addAttribute(catname, 1, &vals);
-	GMatrix indexes(pIndexRelation);
+	WMatrix indexes(pIndexRelation);
 	indexes.newRows(pData->rows());
 	for(size_t i = 0; i < pData->rows(); i++)
 		indexes.row(i)[0] = 0.0;
-	GMatrix* pUnified = GMatrix::mergeHoriz(&indexes, pData);
-	Holder<GMatrix> hUnified(pUnified);
+	WMatrix* pUnified = WMatrix::mergeHoriz(&indexes, pData);
+	Holder<WMatrix> hUnified(pUnified);
 	pUnified->print(cout);
 }
 
-void addMatrices(GArgReader& args)
+void addMatrices(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
-	GMatrix* pB = loadData(args.pop_string());
-	Holder<GMatrix> hB(pB);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
+	WMatrix* pB = loadData(args.pop_string());
+	Holder<WMatrix> hB(pB);
 	pA->add(pB, false);
 	pA->print(cout);
 }
 
-void addNoise(GArgReader& args)
+void addNoise(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	double dev = args.pop_double();
 
 	// Parse the options
@@ -265,40 +265,40 @@ void addNoise(GArgReader& args)
 			throw Ex("Invalid neighbor finder option: ", args.peek());
 	}
 
-	GRand prng(seed);
+	WRand prng(seed);
 	size_t cols = pData->cols() - excludeLast;
 	for(size_t r = 0; r < pData->rows(); r++)
 	{
-		GVec& pRow = pData->row(r);
+		WVec& pRow = pData->row(r);
 		for(size_t c = 0; c < cols; c++)
 			pRow[c] += dev * prng.normal();
 	}
 	pData->print(cout);
 }
 
-void align(GArgReader& args)
+void align(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
-	GMatrix* pB = loadData(args.pop_string());
-	Holder<GMatrix> hB(pB);
-	GMatrix* pC = GMatrix::align(pA, pB);
-	Holder<GMatrix> hC(pC);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
+	WMatrix* pB = loadData(args.pop_string());
+	Holder<WMatrix> hB(pB);
+	WMatrix* pC = WMatrix::align(pA, pB);
+	Holder<WMatrix> hC(pC);
 	pC->print(cout);
 }
 
-void autoCorrelation(GArgReader& args)
+void autoCorrelation(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t lag = std::min((size_t)256, pData->rows() / 2);
 	size_t dims = pData->cols();
-	GVec mean(dims);
+	WVec mean(dims);
 	pData->centroid(mean);
-	GMatrix ac(0, dims + 1);
+	WMatrix ac(0, dims + 1);
 	for(size_t i = 1; i <= lag; i++)
 	{
-		GVec& pRow = ac.newRow();
+		WVec& pRow = ac.newRow();
 		pRow[0] = (double)i;
 		for(size_t j = 0; j < dims; j++)
 		{
@@ -306,8 +306,8 @@ void autoCorrelation(GArgReader& args)
 			size_t k;
 			for(k = 0; k + i < pData->rows(); k++)
 			{
-				GVec& pA = pData->row(k);
-				GVec& pB = pData->row(k + i);
+				WVec& pA = pData->row(k);
+				WVec& pB = pData->row(k + i);
 				pRow[j + 1] += (pA[j] - mean[j]) * (pB[j] - mean[j]);
 			}
 			pRow[j + 1] /= k;
@@ -317,12 +317,12 @@ void autoCorrelation(GArgReader& args)
 }
 
 ///TODO: this command should be documented
-void center(GArgReader& args)
+void center(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	unsigned int r = args.pop_uint();
-	GVec& pRow = pData->row(r);
+	WVec& pRow = pData->row(r);
 	for(size_t i = 0; i < r; ++i)
 		pData->row(i) -= pRow;
 	for(size_t i = r + 1; i < pData->rows(); ++i)
@@ -331,20 +331,20 @@ void center(GArgReader& args)
 	pData->print(cout);
 }
 
-void cholesky(GArgReader& args)
+void cholesky(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
-	GMatrix* pB = pA->cholesky();
-	Holder<GMatrix> hB(pB);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
+	WMatrix* pB = pA->cholesky();
+	Holder<WMatrix> hB(pB);
 	pB->print(cout);
 }
 
-void colstats(GArgReader& args)
+void colstats(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
-	GMatrix stats(pA->relation().clone());
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
+	WMatrix stats(pA->relation().clone());
 	stats.newRows(4);
 	for(size_t i = 0; i < pA->cols(); i++)
 	{
@@ -356,10 +356,10 @@ void colstats(GArgReader& args)
 	stats.print(cout);
 }
 
-void correlation(GArgReader& args)
+void correlation(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
 	int attr1 = args.pop_uint();
 	int attr2 = args.pop_uint();
 
@@ -389,25 +389,25 @@ void correlation(GArgReader& args)
 	cout << corr << "\n";
 }
 
-void covariance(GArgReader& args)
+void covariance(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
-	GMatrix* pB = pA->covarianceMatrix();
-	Holder<GMatrix> hB(pB);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
+	WMatrix* pB = pA->covarianceMatrix();
+	Holder<WMatrix> hB(pB);
 	pB->print(cout);
 }
 
-void cumulativeColumns(GArgReader& args)
+void cumulativeColumns(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
 	vector<size_t> cols;
 	parseAttributeList(cols, args, pA->cols());
-	GVec* pPrevRow = &pA->row(0);
+	WVec* pPrevRow = &pA->row(0);
 	for(size_t i = 1; i < pA->rows(); i++)
 	{
-		GVec& pRow = pA->row(i);
+		WVec& pRow = pA->row(i);
 		for(vector<size_t>::iterator it = cols.begin(); it != cols.end(); it++)
 			pRow[*it] += (*pPrevRow)[*it];
 		pPrevRow = &pRow;
@@ -415,20 +415,20 @@ void cumulativeColumns(GArgReader& args)
 	pA->print(cout);
 }
 
-void determinant(GArgReader& args)
+void determinant(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
 	double d = pA->determinant();
 	cout.precision(14);
 	cout << d << "\n";
 }
 
-void Discretize(GArgReader& args)
+void Discretize(WArgReader& args)
 {
 	// Load the file
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 
 	// Parse Options
 	size_t nFirst = 0;
@@ -458,20 +458,20 @@ void Discretize(GArgReader& args)
 		double range = pData->columnMax(i) - min;
 		for(size_t j = 0; j < pData->rows(); j++)
 		{
-			GVec& pPat = pData->row(j);
+			WVec& pPat = pData->row(j);
 			pPat[i] = (double)std::max((size_t)0, std::min(nBuckets - 1, (size_t)floor(((pPat[i] - min) * nBuckets) / range)));
 		}
-		((GArffRelation*)&pData->relation())->setAttrValueCount(i, nBuckets);
+		((WArffRelation*)&pData->relation())->setAttrValueCount(i, nBuckets);
 	}
 
 	// Print results
 	pData->print(cout);
 }
 
-void dropColumns(GArgReader& args)
+void dropColumns(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	vector<size_t> colList;
 	size_t attrCount = pData->cols();
 	parseAttributeList(colList, args, attrCount);
@@ -482,10 +482,10 @@ void dropColumns(GArgReader& args)
 	pData->print(cout);
 }
 
-void dropHomogeneousCols(GArgReader& args)
+void dropHomogeneousCols(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	vector<size_t> colList;
 	size_t attrCount = pData->cols();
 	for(size_t i = 0; i < attrCount; i++)
@@ -499,7 +499,7 @@ void dropHomogeneousCols(GArgReader& args)
 	pData->print(cout);
 }
 
-void dupes(GArgReader& args)
+void dupes(WArgReader& args)
 {
 	std::map<std::string, std::vector<std::string>* > themap;
 	std::ifstream file(args.pop_string());
@@ -533,11 +533,11 @@ void dupes(GArgReader& args)
 	}
 }
 
-void keepOnlyColumns(GArgReader& args)
+void keepOnlyColumns(WArgReader& args)
 {
 	//Load the data file and the list of columns to keep
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	vector<size_t> inputColList;
 	size_t attrCount = pData->cols();
 	parseAttributeList(inputColList, args, attrCount);
@@ -563,15 +563,15 @@ void keepOnlyColumns(GArgReader& args)
 	pData->print(cout);
 }
 
-void DropMissingValues(GArgReader& args)
+void DropMissingValues(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
-	const GRelation* pRelation = &pData->relation();
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
+	const WRelation* pRelation = &pData->relation();
 	size_t dims = pRelation->size();
 	for(size_t i = pData->rows() - 1; i < pData->rows(); i--)
 	{
-		GVec& pPat = pData->row(i);
+		WVec& pPat = pData->row(i);
 		bool drop = false;
 		for(size_t j = 0; j < dims; j++)
 		{
@@ -598,9 +598,9 @@ void DropMissingValues(GArgReader& args)
 	pData->print(cout);
 }
 
-void dropRandomValues(GArgReader& args)
+void dropRandomValues(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
+	WMatrix* pData = loadData(args.pop_string());
 	double portion = args.pop_double();
 
 	// Parse the options
@@ -613,7 +613,7 @@ void dropRandomValues(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GRand rand(seed);
+	WRand rand(seed);
 	size_t n = pData->rows() * pData->cols();
 	size_t k = size_t(portion * n);
 	for(size_t i = 0; i < pData->cols(); i++)
@@ -647,31 +647,31 @@ void dropRandomValues(GArgReader& args)
 	pData->print(cout);
 }
 
-void dropRows(GArgReader& args)
+void dropRows(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t newSize = args.pop_uint();
 	while(pData->rows() > newSize)
 		pData->deleteRow(pData->rows() - 1);
 	pData->print(cout);
 }
 
-void dropIfTooClose(GArgReader& args)
+void dropIfTooClose(WArgReader& args)
 {
 	const char* szDataset = args.pop_string();
 	size_t col = args.pop_uint();
 	double minGap = args.pop_double();
-	GMatrix* pData = loadData(szDataset);
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(szDataset);
+	Holder<WMatrix> hData(pData);
 	{
-		GMatrix keep(pData->relation().clone());
-		GReleaseDataHolder hKeep(&keep);
+		WMatrix keep(pData->relation().clone());
+		WReleaseDataHolder hKeep(&keep);
 		keep.takeRow(&pData->row(0));
-		GVec& pLastKept = pData->row(0);
+		WVec& pLastKept = pData->row(0);
 		for(size_t i = 1; i < pData->rows(); i++)
 		{
-			GVec& pCand = pData->row(i);
+			WVec& pCand = pData->row(i);
 			if(pCand[col] - pLastKept[col] >= minGap)
 			{
 				keep.takeRow(&pCand);
@@ -682,10 +682,10 @@ void dropIfTooClose(GArgReader& args)
 	}
 }
 
-void dropUnusedValues(GArgReader& args)
+void dropUnusedValues(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	for(size_t i = 0; i < pData->cols(); i++)
 	{
 		size_t valCount = pData->relation().valueCount(i);
@@ -705,27 +705,27 @@ void dropUnusedValues(GArgReader& args)
 				pData->dropValue(i, (int)j);
 				j--;
 				valCount--;
-				GAssert(valCount == pData->relation().valueCount(i));
+				WAssert(valCount == pData->relation().valueCount(i));
 			}
 		}
 	}
 	pData->print(cout);
 }
 
-void enumerateValues(GArgReader& args)
+void enumerateValues(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t col = args.pop_uint();
 	if(pData->relation().valueCount(col) > 0)
-		((GArffRelation*)&pData->relation())->setAttrValueCount(col, 0);
+		((WArffRelation*)&pData->relation())->setAttrValueCount(col, 0);
 	else
 	{
 		size_t n = 0;
 		map<double, size_t> themap;
 		for(size_t i = 0; i < pData->rows(); i++)
 		{
-			GVec& pRow = pData->row(i);
+			WVec& pRow = pData->row(i);
 			map<double, size_t>::iterator it = themap.find(pRow[col]);
 			if(it == themap.end())
 			{
@@ -740,11 +740,11 @@ void enumerateValues(GArgReader& args)
 	pData->print(cout);
 }
 
-void Export(GArgReader& args)
+void Export(WArgReader& args)
 {
 	// Load
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 
 	// Parse options
 	char separator = ',';
@@ -786,22 +786,22 @@ void Export(GArgReader& args)
 		pData->relation().printRow(cout, pData->row(i).data(), separator, missing);
 }
 
-void extractText(GArgReader& args)
+void extractText(WArgReader& args)
 {
-	GHtmlDoc doc(args.pop_string());
+	WHtmlDoc doc(args.pop_string());
 	doc.document()->writeTextOnly(cout);
 }
 
-void Import(GArgReader& args)
+void Import(WArgReader& args)
 {
 	// Load the file
 	size_t len;
 	const char* filename = args.pop_string();
-	char* pFile = GFile::loadFile(filename, &len);
+	char* pFile = WFile::loadFile(filename, &len);
 	ArrayHolder<char> hFile(pFile);
 
 	// Parse Options
-	GCSVParser parser;
+	WCSVParser parser;
 	char separator = ',';
 	bool tolerant = false;
 	bool columnNamesInFirstRow = false;
@@ -850,7 +850,7 @@ void Import(GArgReader& args)
 	}
 
 	// Parse the file
-	GMatrix data;
+	WMatrix data;
 	parser.setSeparator(separator);
 	parser.setMaxVals(maxVals);
 	if(tolerant)
@@ -861,19 +861,19 @@ void Import(GArgReader& args)
 	cerr << "\nParsing Report:\n";
 	for(size_t i = 0; i < data.cols(); i++)
 		cerr << to_str(i) << ") " << parser.report(i) << "\n";
-	((GArffRelation*)&data.relation())->setName(filename);
+	((WArffRelation*)&data.relation())->setName(filename);
 
 	// Print the data
 	data.print(cout);
 }
 
-void ComputeMeanSquaredError(GMatrix* pData1, GMatrix* pData2, size_t dims, GVec& results)
+void ComputeMeanSquaredError(WMatrix* pData1, WMatrix* pData2, size_t dims, WVec& results)
 {
 	results.fill(0.0);
 	for(size_t i = 0; i < pData1->rows(); i++)
 	{
-		GVec& pPat1 = pData1->row(i);
-		GVec& pPat2 = pData2->row(i);
+		WVec& pPat1 = pData1->row(i);
+		WVec& pPat2 = pData2->row(i);
 		for(size_t j = 0; j < dims; j++)
 		{
 			if(pPat1[j] != UNKNOWN_REAL_VALUE && pPat2[j] != UNKNOWN_REAL_VALUE)
@@ -886,19 +886,19 @@ void ComputeMeanSquaredError(GMatrix* pData1, GMatrix* pData2, size_t dims, GVec
 	results *= (1.0 / pData1->rows());
 }
 
-class FitDataCritic : public GTargetFunction
+class FitDataCritic : public WTargetFunction
 {
 protected:
-	GMatrix* m_pData1;
-	GMatrix* m_pData2;
+	WMatrix* m_pData1;
+	WMatrix* m_pData2;
 	size_t m_attrs;
-	GMatrix m_transformed;
-	GMatrix m_transform;
-	GVec m_results;
+	WMatrix m_transformed;
+	WMatrix m_transform;
+	WVec m_results;
 
 public:
-	FitDataCritic(GMatrix* pData1, GMatrix* pData2, size_t attrs)
-	: GTargetFunction(attrs + attrs * attrs), m_pData1(pData1), m_pData2(pData2), m_attrs(attrs), m_transformed(pData1->rows(), attrs), m_transform(attrs, attrs)
+	FitDataCritic(WMatrix* pData1, WMatrix* pData2, size_t attrs)
+	: WTargetFunction(attrs + attrs * attrs), m_pData1(pData1), m_pData2(pData2), m_attrs(attrs), m_transformed(pData1->rows(), attrs), m_transform(attrs, attrs)
 	{
 		m_transform.makeIdentity();
 		m_results.resize(attrs);
@@ -911,25 +911,25 @@ public:
 	bool isStable() override { return true; }
 	virtual bool isConstrained() { return false; }
 
-	void initVector(GVec& pVector) override
+	void initVector(WVec& pVector) override
 	{
 		pVector.fill(0.0);
 		m_transform.toVector(pVector.data() + m_attrs);
 	}
 
-	void TransformData(const GVec& pVector)
+	void TransformData(const WVec& pVector)
 	{
 		m_transform.fromVector(pVector.data() + m_attrs, m_attrs);
 		for(size_t i = 0; i < m_pData2->rows(); i++)
 		{
-			GVec& pPatIn = m_pData2->row(i);
-			GVec& pPatOut = m_transformed.row(i);
+			WVec& pPatIn = m_pData2->row(i);
+			WVec& pPatOut = m_transformed.row(i);
 			m_transform.multiply(pPatIn, pPatOut);
 			pPatOut += pVector;
 		}
 	}
 
-	double computeError(const GVec& pVector) override
+	double computeError(const WVec& pVector) override
 	{
 		TransformData(pVector);
 		ComputeMeanSquaredError(m_pData1, &m_transformed, m_attrs, m_results);
@@ -937,7 +937,7 @@ public:
 		return sum;
 	}
 
-	void ShowResults(const GVec& pVector, bool sumOverAttributes)
+	void ShowResults(const WVec& pVector, bool sumOverAttributes)
 	{
 		TransformData(pVector);
 		ComputeMeanSquaredError(m_pData1, &m_transformed, m_attrs, m_results);
@@ -950,18 +950,18 @@ public:
 		}
 	}
 
-	const GVec& GetResults() { return m_results; }
+	const WVec& GetResults() { return m_results; }
 };
 
-void MeasureMeanSquaredError(GArgReader& args)
+void MeasureMeanSquaredError(WArgReader& args)
 {
 	// Load the first file
-	GMatrix* pData1 = loadData(args.pop_string());
-	Holder<GMatrix> hData1(pData1);
+	WMatrix* pData1 = loadData(args.pop_string());
+	Holder<WMatrix> hData1(pData1);
 
 	// Load the second file
-	GMatrix* pData2 = loadData(args.pop_string());
-	Holder<GMatrix> hData2(pData2);
+	WMatrix* pData2 = loadData(args.pop_string());
+	Holder<WMatrix> hData2(pData2);
 
 	// check sizes
 	if(pData1->relation().size() != pData2->relation().size())
@@ -986,7 +986,7 @@ void MeasureMeanSquaredError(GArgReader& args)
 	if(fit)
 	{
 		FitDataCritic critic(pData1, pData2, dims);
-		GHillClimber search(&critic);
+		WHillClimber search(&critic);
 
 		double dPrevError;
 		double dError = search.iterate();
@@ -1009,7 +1009,7 @@ void MeasureMeanSquaredError(GArgReader& args)
 	else
 	{
 		// Compute mean squared error
-		GQUICKVEC(results, dims);
+		WQUICKVEC(results, dims);
 		ComputeMeanSquaredError(pData1, pData2, dims, results);
 		cout.precision(14);
 		if(sumOverAttributes)
@@ -1020,30 +1020,30 @@ void MeasureMeanSquaredError(GArgReader& args)
 	cout << "\n";
 }
 
-void mergeHoriz(GArgReader& args)
+void mergeHoriz(WArgReader& args)
 {
-	GMatrix* pData1 = loadData(args.pop_string());
-	Holder<GMatrix> hData1(pData1);
-	GMatrix* pMerged = pData1;
-	Holder<GMatrix> hMerged(nullptr);
+	WMatrix* pData1 = loadData(args.pop_string());
+	Holder<WMatrix> hData1(pData1);
+	WMatrix* pMerged = pData1;
+	Holder<WMatrix> hMerged(nullptr);
 	while(args.size() > 0)
 	{
-		GMatrix* pData2 = loadData(args.pop_string());
-		Holder<GMatrix> hData2(pData2);
+		WMatrix* pData2 = loadData(args.pop_string());
+		Holder<WMatrix> hData2(pData2);
 		if(pMerged->rows() != pData2->rows())
 			throw Ex("The datasets must have the same number of rows");
-		pMerged = GMatrix::mergeHoriz(pMerged, pData2);
+		pMerged = WMatrix::mergeHoriz(pMerged, pData2);
 		hMerged.reset(pMerged);
 	}
 	pMerged->print(cout);
 }
 
-void mergeVert(GArgReader& args)
+void mergeVert(WArgReader& args)
 {
-	GMatrix* pData1 = loadData(args.pop_string());
-	Holder<GMatrix> hData1(pData1);
-	GMatrix* pData2 = loadData(args.pop_string());
-	Holder<GMatrix> hData2(pData2);
+	WMatrix* pData1 = loadData(args.pop_string());
+	Holder<WMatrix> hData1(pData1);
+	WMatrix* pData2 = loadData(args.pop_string());
+	Holder<WMatrix> hData2(pData2);
 
 	bool ignoreMismatchingName = false;
 	if(args.if_pop("-f"))
@@ -1055,12 +1055,12 @@ void mergeVert(GArgReader& args)
 	pData1->print(cout);
 }
 
-void multiplyMatrices(GArgReader& args)
+void multiplyMatrices(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
-	GMatrix* pB = loadData(args.pop_string());
-	Holder<GMatrix> hB(pB);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
+	WMatrix* pB = loadData(args.pop_string());
+	Holder<WMatrix> hB(pB);
 
 	// Parse Options
 	bool transposeA = false;
@@ -1075,15 +1075,15 @@ void multiplyMatrices(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GMatrix* pC = GMatrix::multiply(*pA, *pB, transposeA, transposeB);
-	Holder<GMatrix> hC(pC);
+	WMatrix* pC = WMatrix::multiply(*pA, *pB, transposeA, transposeB);
+	Holder<WMatrix> hC(pC);
 	pC->print(cout);
 }
 
-void multiplyScalar(GArgReader& args)
+void multiplyScalar(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
 	double scale = args.pop_double();
 	if(args.size() > 0)
 		throw Ex("Superfluous arg: ", args.pop_string());
@@ -1091,10 +1091,10 @@ void multiplyScalar(GArgReader& args)
 	pA->print(cout);
 }
 
-void zeroMean(GArgReader& args)
+void zeroMean(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
 	if(args.size() > 0)
 		throw Ex("Superfluous arg: ", args.pop_string());
 	pA->centerMeanAtOrigin();
@@ -1102,10 +1102,10 @@ void zeroMean(GArgReader& args)
 }
 
 
-void normalize(GArgReader& args)
+void normalize(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 
 	double min = 0.0;
 	double max = 1.0;
@@ -1120,31 +1120,31 @@ void normalize(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GNormalize transform(min, max);
+	WNormalize transform(min, max);
 	transform.train(*pData);
-	GMatrix* pOut = transform.transformBatch(*pData);
-	Holder<GMatrix> hOut(pOut);
+	WMatrix* pOut = transform.transformBatch(*pData);
+	Holder<WMatrix> hOut(pOut);
 	pOut->print(cout);
 }
 
-void normalizeMagnitude(GArgReader& args)
+void normalizeMagnitude(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	for(size_t i = 0; i < pData->rows(); i++)
 		pData->row(i).normalize();
 	pData->print(cout);
 }
 
-void neighbors(GArgReader& args)
+void neighbors(WArgReader& args)
 {
 	// Load the data
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t neighborCount = args.pop_uint();
 
 	// Find the neighbors
-	GKdTree neighborFinder(pData, nullptr, true);
+	WKdTree neighborFinder(pData, nullptr, true);
 	double sumClosest = 0;
 	double sumAll = 0;
 	for(size_t i = 0; i < pData->rows(); i++)
@@ -1162,11 +1162,11 @@ void neighbors(GArgReader& args)
 	cout << "average neighbor distance = " << (sumAll / (pData->rows() * neighborCount)) << "\n";
 }
 
-void nominalToCat(GArgReader& args)
+void nominalToCat(WArgReader& args)
 {
 	// Load the file
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 
 	// Parse Options
 	int maxValues = 12;
@@ -1179,22 +1179,22 @@ void nominalToCat(GArgReader& args)
 	}
 
 	// Transform the data
-	GNominalToCat transform(maxValues);
+	WNominalToCat transform(maxValues);
 	transform.train(*pData);
-	GMatrix* pDataNew = transform.transformBatch(*pData);
-	Holder<GMatrix> hDataNew(pDataNew);
+	WMatrix* pDataNew = transform.transformBatch(*pData);
+	Holder<WMatrix> hDataNew(pDataNew);
 
 	// Print results
 	pDataNew->print(cout);
 }
 
-void obfuscate(GArgReader& args)
+void obfuscate(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
-	if(pData->relation().type() != GRelation::ARFF)
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
+	if(pData->relation().type() != WRelation::ARFF)
 		throw Ex("Expected some meta-data");
-	GArffRelation* pRel = (GArffRelation*)&pData->relation();
+	WArffRelation* pRel = (WArffRelation*)&pData->relation();
 	pRel->setName("Untitled");
 	for(size_t i = 0; i < pRel->size(); i++)
 	{
@@ -1208,20 +1208,20 @@ void obfuscate(GArgReader& args)
 	pData->print(cout);
 }
 
-void overlay(GArgReader& args)
+void overlay(WArgReader& args)
 {
-	GMatrix* pBase = loadData(args.pop_string());
-	Holder<GMatrix> hBase(pBase);
-	GMatrix* pOver = loadData(args.pop_string());
-	Holder<GMatrix> hOver(pOver);
+	WMatrix* pBase = loadData(args.pop_string());
+	Holder<WMatrix> hBase(pBase);
+	WMatrix* pOver = loadData(args.pop_string());
+	Holder<WMatrix> hOver(pOver);
 	if(pOver->rows() != pBase->rows() || pOver->cols() != pBase->cols())
 		throw Ex("Matrices not the same size");
 	size_t dims = pOver->cols();
-	const GRelation* pRelOver = &pOver->relation();
+	const WRelation* pRelOver = &pOver->relation();
 	for(size_t i = 0; i < pOver->rows(); i++)
 	{
-		GVec& pVecBase = pBase->row(i);
-		GVec& pVecOver = pOver->row(i);
+		WVec& pVecBase = pBase->row(i);
+		WVec& pVecOver = pOver->row(i);
 		for(size_t j = 0; j < dims; j++)
 		{
 			size_t vals = pRelOver->valueCount(j);
@@ -1240,56 +1240,56 @@ void overlay(GArgReader& args)
 	pOver->print(cout);
 }
 
-void powerColumns(GArgReader& args)
+void powerColumns(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
 	vector<size_t> cols;
 	parseAttributeList(cols, args, pA->cols());
 	double exponent = args.pop_double();
 	for(size_t i = 0; i < pA->rows(); i++)
 	{
-		GVec& pRow = pA->row(i);
+		WVec& pRow = pA->row(i);
 		for(vector<size_t>::iterator it = cols.begin(); it != cols.end(); it++)
 			pRow[*it] = pow(pRow[*it], exponent);
 	}
 	pA->print(cout);
 }
 
-void prettify(GArgReader& args)
+void prettify(WArgReader& args)
 {
-	GDom doc;
+	WDom doc;
 	doc.loadJson(args.pop_string());
 	doc.writeJsonPretty(cout);
 }
 
-void prettifyHtml(GArgReader& args)
+void prettifyHtml(WArgReader& args)
 {
-	GHtmlDoc doc(args.pop_string());
+	WHtmlDoc doc(args.pop_string());
 	doc.document()->writePretty(cout);
 }
 
-void pseudoInverse(GArgReader& args)
+void pseudoInverse(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
-	GMatrix* pInverted = pData->pseudoInverse();
-	Holder<GMatrix> hInverted(pInverted);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
+	WMatrix* pInverted = pData->pseudoInverse();
+	Holder<WMatrix> hInverted(pInverted);
 	pInverted->print(cout);
 }
 
-void reducedRowEchelonForm(GArgReader& args)
+void reducedRowEchelonForm(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
 	pA->toReducedRowEchelonForm();
 	pA->print(cout);
 }
 
-void reorderColumns(GArgReader& args)
+void reorderColumns(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 
 	// Parse and check the list of columns
 	vector<size_t> colList;
@@ -1335,11 +1335,11 @@ void reorderColumns(GArgReader& args)
 	pData->print(cout);
 }
 
-void rotate(GArgReader& args)
+void rotate(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
-	const GRelation* relation = &pA->relation();
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
+	const WRelation* relation = &pA->relation();
 	unsigned colx = args.pop_uint();
 	if(colx >= pA->cols())
 	{
@@ -1376,7 +1376,7 @@ void rotate(GArgReader& args)
 	double sinAngle = std::sin(angle);
 	for(std::size_t rowIdx = 0; rowIdx < pA->rows(); ++rowIdx)
 	{
-		GVec& row = (*pA)[rowIdx];
+		WVec& row = (*pA)[rowIdx];
 		double x = row[colx];
 		double y = row[coly];
 		row[colx] = x * cosAngle - y * sinAngle;
@@ -1387,14 +1387,14 @@ void rotate(GArgReader& args)
 
 #define MAX_LINE_LENGTH (1024 * 1024)
 
-void sampleRows(GArgReader& args)
+void sampleRows(WArgReader& args)
 {
 	const char* filename = args.pop_string();
 	double portion = args.pop_double();
 	if(portion < 0 || portion > 1)
 		throw Ex("The portion must be between 0 and 1");
 	PathData pd;
-	GFile::parsePath(filename, &pd);
+	WFile::parsePath(filename, &pd);
 	bool arff = false;
 	if(_stricmp(filename + pd.extStart, ".arff") == 0)
 		arff = true;
@@ -1408,7 +1408,7 @@ void sampleRows(GArgReader& args)
 		else
 			throw Ex("Invalid option: ", args.peek());
 	}
-	GRand rand(seed);
+	WRand rand(seed);
 
 	size_t size = 0;
 	std::ifstream s;
@@ -1422,7 +1422,7 @@ void sampleRows(GArgReader& args)
 	}
 	catch(const std::exception&)
 	{
-		if(GFile::doesFileExist(filename))
+		if(WFile::doesFileExist(filename))
 			throw Ex("Error while trying to open the existing file: ", filename);
 		else
 			throw Ex("File not found: ", filename);
@@ -1449,12 +1449,12 @@ void sampleRows(GArgReader& args)
 	}
 }
 
-void sampleRowsRegularly(GArgReader& args)
+void sampleRowsRegularly(WArgReader& args)
 {
 	const char* filename = args.pop_string();
 	size_t freq = args.pop_uint();
 	PathData pd;
-	GFile::parsePath(filename, &pd);
+	WFile::parsePath(filename, &pd);
 	bool arff = false;
 	if(_stricmp(filename + pd.extStart, ".arff") == 0)
 		arff = true;
@@ -1471,7 +1471,7 @@ void sampleRowsRegularly(GArgReader& args)
 	}
 	catch(const std::exception&)
 	{
-		if(GFile::doesFileExist(filename))
+		if(WFile::doesFileExist(filename))
 			throw Ex("Error while trying to open the existing file: ", filename);
 		else
 			throw Ex("File not found: ", filename);
@@ -1498,42 +1498,42 @@ void sampleRowsRegularly(GArgReader& args)
 	}
 }
 
-void scaleColumns(GArgReader& args)
+void scaleColumns(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
 	vector<size_t> cols;
 	parseAttributeList(cols, args, pA->cols());
 	double scalar = args.pop_double();
 	for(size_t i = 0; i < pA->rows(); i++)
 	{
-		GVec& pRow = pA->row(i);
+		WVec& pRow = pA->row(i);
 		for(vector<size_t>::iterator it = cols.begin(); it != cols.end(); it++)
 			pRow[*it] *= scalar;
 	}
 	pA->print(cout);
 }
 
-void shiftColumns(GArgReader& args)
+void shiftColumns(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
 	vector<size_t> cols;
 	parseAttributeList(cols, args, pA->cols());
 	double offset = args.pop_double();
 	for(size_t i = 0; i < pA->rows(); i++)
 	{
-		GVec& pRow = pA->row(i);
+		WVec& pRow = pA->row(i);
 		for(vector<size_t>::iterator it = cols.begin(); it != cols.end(); it++)
 			pRow[*it] += offset;
 	}
 	pA->print(cout);
 }
 
-void significance(GArgReader& args)
+void significance(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	int attr1 = args.pop_uint();
 	int attr2 = args.pop_uint();
 
@@ -1563,7 +1563,7 @@ void significance(GArgReader& args)
 		int more = 0;
 		for(size_t i = 0; i < pData->rows(); i++)
 		{
-			GVec& pRow = pData->row(i);
+			WVec& pRow = pData->row(i);
 			if(std::abs(pRow[attr1] - pRow[attr2]) < tolerance)
 				eq++;
 			else if(pRow[attr1] < pRow[attr2])
@@ -1580,7 +1580,7 @@ void significance(GArgReader& args)
 		size_t v;
 		double t;
 		pData->pairedTTest(&v, &t, attr1, attr2, false);
-		double p = GMath::tTestAlphaValue(v, t);
+		double p = WMath::tTestAlphaValue(v, t);
 		cout << "v=" << v << ", t=" << t << ", p=" << p << "\n";
 	}
 	{
@@ -1588,7 +1588,7 @@ void significance(GArgReader& args)
 		size_t v;
 		double t;
 		pData->pairedTTest(&v, &t, attr1, attr2, true);
-		double p = GMath::tTestAlphaValue(v, t);
+		double p = WMath::tTestAlphaValue(v, t);
 		cout << "v=" << v << ", t=" << t << ", p=" << p << "\n";
 	}
 	{
@@ -1601,7 +1601,7 @@ void significance(GArgReader& args)
 		double w_sum = wPlus - wMinus;
 		cout << "W- = " << wMinus << ", W+ = " << wPlus << ", W_min = " << w_min << ", W_sum = " << w_sum << "\n";
 
-		double p_min = 0.5 * GMath::wilcoxonPValue(num, w_min);
+		double p_min = 0.5 * WMath::wilcoxonPValue(num, w_min);
 		if(num < 10)
 			cout << "Because the number of signed ranks is small, you should use a lookup table, rather than rely on the normal approximation for the P-value.\n";
 		cout << "One-tailed P-value (for directional comparisons--is A better than B?) computed with a normal approximation using W_min = " << 0.5 * p_min << "\n";
@@ -1609,31 +1609,31 @@ void significance(GArgReader& args)
 		cout << "To show that something is \"better\" than something else, use the one-tailed P-value.\n";
 		cout << "Commonly, a P-value less that 0.05 is considered to be significant.\n";
 		/*
-			double p_sum = GMath::wilcoxonPValue(num, w_sum);
+			double p_sum = WMath::wilcoxonPValue(num, w_sum);
 			cout << "Directional (one-tailed) P-value computed with W_sum = " << p_sum << "\n";
 */
 	}
 }
 
-void aggregateCols(GArgReader& args)
+void aggregateCols(WArgReader& args)
 {
 	size_t c = args.pop_uint();
 	vector<string> files;
-	GFile::fileList(files);
-	GMatrix* pResults = nullptr;
-	Holder<GMatrix> hResults;
+	WFile::fileList(files);
+	WMatrix* pResults = nullptr;
+	Holder<WMatrix> hResults;
 	size_t i = 0;
 	for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 	{
 		PathData pd;
-		GFile::parsePath(it->c_str(), &pd);
+		WFile::parsePath(it->c_str(), &pd);
 		if(strcmp(it->c_str() + pd.extStart, ".arff") != 0)
 			continue;
-		GMatrix* pData = loadData(it->c_str());
-		Holder<GMatrix> hData(pData);
+		WMatrix* pData = loadData(it->c_str());
+		Holder<WMatrix> hData(pData);
 		if(!pResults)
 		{
-			pResults = new GMatrix(pData->rows(), files.size());
+			pResults = new WMatrix(pData->rows(), files.size());
 			hResults.reset(pResults);
 		}
 		pResults->copyBlock(*pData, 0, c, pData->rows(), 1, 0, i, false);
@@ -1642,24 +1642,24 @@ void aggregateCols(GArgReader& args)
 	pResults->print(cout);
 }
 
-void aggregateRows(GArgReader& args)
+void aggregateRows(WArgReader& args)
 {
 	size_t r = args.pop_uint();
 	vector<string> files;
-	GFile::fileList(files);
-	GMatrix* pResults = nullptr;
-	Holder<GMatrix> hResults;
+	WFile::fileList(files);
+	WMatrix* pResults = nullptr;
+	Holder<WMatrix> hResults;
 	for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 	{
 		PathData pd;
-		GFile::parsePath(it->c_str(), &pd);
+		WFile::parsePath(it->c_str(), &pd);
 		if(strcmp(it->c_str() + pd.extStart, ".arff") != 0)
 			continue;
-		GMatrix* pData = loadData(it->c_str());
-		Holder<GMatrix> hData(pData);
+		WMatrix* pData = loadData(it->c_str());
+		Holder<WMatrix> hData(pData);
 		if(!pResults)
 		{
-			pResults = new GMatrix(pData->relation().clone());
+			pResults = new WMatrix(pData->relation().clone());
 			hResults.reset(pResults);
 		}
 		pResults->takeRow(pData->releaseRow(r));
@@ -1667,11 +1667,11 @@ void aggregateRows(GArgReader& args)
 	pResults->print(cout);
 }
 
-void split(GArgReader& args)
+void split(WArgReader& args)
 {
 	// Load
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	int pats = (int)pData->rows() - args.pop_uint();
 	if(pats < 0)
 		throw Ex("out of range. The data only has ", to_str(pData->rows()), " rows.");
@@ -1695,24 +1695,24 @@ void split(GArgReader& args)
 	}
 
 	// Shuffle if necessary
-	GRand rng(nSeed);
+	WRand rng(nSeed);
 	if(shouldShuffle)
 	{
 		pData->shuffle(rng);
 	}
 
 	// Split
-	GMatrix other(pData->relation().clone());
+	WMatrix other(pData->relation().clone());
 	pData->splitBySize(other, pats);
 	pData->saveArff(szFilename1);
 	other.saveArff(szFilename2);
 }
 
-void splitFold(GArgReader& args)
+void splitFold(WArgReader& args)
 {
 	// Load
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t fold = args.pop_uint();
 	size_t folds = args.pop_uint();
 	if(fold >= folds)
@@ -1733,8 +1733,8 @@ void splitFold(GArgReader& args)
 	}
 
 	// Copy relevant portions of the data
-	GMatrix train(pData->relation().clone());
-	GMatrix test(pData->relation().clone());
+	WMatrix train(pData->relation().clone());
+	WMatrix test(pData->relation().clone());
 	size_t begin = pData->rows() * fold / folds;
 	size_t end = pData->rows() * (fold + 1) / folds;
 	for(size_t i = 0; i < begin; i++)
@@ -1747,11 +1747,11 @@ void splitFold(GArgReader& args)
 	test.saveArff(filenameTest.c_str());
 }
 
-void splitClass(GArgReader& args)
+void splitClass(WArgReader& args)
 {
 	const char* filename = args.pop_string();
-	GMatrix* pData = loadData(filename);
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(filename);
+	Holder<WMatrix> hData(pData);
 	size_t classAttr = args.pop_uint();
 
 	bool dropClass = false;
@@ -1765,11 +1765,11 @@ void splitClass(GArgReader& args)
 
 	for(size_t i = 0; i < pData->relation().valueCount(classAttr); i++)
 	{
-		GMatrix tmp(pData->relation().clone());
+		WMatrix tmp(pData->relation().clone());
 		pData->splitCategoricalKeepIfNotEqual(&tmp, classAttr, (int)i);
 		std::ostringstream oss;
 		PathData pd;
-		GFile::parsePath(filename, &pd);
+		WFile::parsePath(filename, &pd);
 		string fn;
 		fn.assign(filename + pd.fileStart, pd.extStart - pd.fileStart);
 		oss << fn << "_";
@@ -1782,36 +1782,36 @@ void splitClass(GArgReader& args)
 	}
 }
 
-void splitVal(GArgReader& args)
+void splitVal(WArgReader& args)
 {
 	const char* filename = args.pop_string();
-	GMatrix* pData = loadData(filename);
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(filename);
+	Holder<WMatrix> hData(pData);
 	size_t col = args.pop_uint();
 	double val = args.pop_double();
-	GMatrix ge(pData->relation().clone());
+	WMatrix ge(pData->relation().clone());
 	pData->splitByPivot(&ge, col, val);
 	pData->saveArff("less_than.arff");
 	ge.saveArff("greater_or_equal.arff");
 }
 
-void squaredDistance(GArgReader& args)
+void squaredDistance(WArgReader& args)
 {
-	GMatrix* pA = loadData(args.pop_string());
-	Holder<GMatrix> hA(pA);
-	GMatrix* pB = loadData(args.pop_string());
-	Holder<GMatrix> hB(pB);
+	WMatrix* pA = loadData(args.pop_string());
+	Holder<WMatrix> hA(pA);
+	WMatrix* pB = loadData(args.pop_string());
+	Holder<WMatrix> hB(pB);
 	double d = pA->sumSquaredDifference(*pB, false);
 	cout << "Sum squared distance: " << d << "\n";
 	cout << "Mean squared distance: " << (d / pA->rows()) << "\n";
 	cout << "Root mean squared distance: " << sqrt(d / pA->rows()) << "\n";
 }
 
-void fillMissingValues(GArgReader& args)
+void fillMissingValues(WArgReader& args)
 {
 	// Load
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 
 	// Parse options
 	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
@@ -1827,7 +1827,7 @@ void fillMissingValues(GArgReader& args)
 	}
 
 	// Replace missing values and print
-	GRand prng(nSeed);
+	WRand prng(nSeed);
 	if(random)
 	{
 		for(size_t i = 0; i < pData->relation().size(); i++)
@@ -1841,10 +1841,10 @@ void fillMissingValues(GArgReader& args)
 	pData->print(cout);
 }
 
-void filterElements(GArgReader& args)
+void filterElements(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t attr = args.pop_uint();
 	double dmin = args.pop_double();
 	double dmax = args.pop_double();
@@ -1879,10 +1879,10 @@ void filterElements(GArgReader& args)
 	pData->print(cout);
 }
 
-void filterRows(GArgReader& args)
+void filterRows(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t attr = args.pop_uint();
 	double dmin = args.pop_double();
 	double dmax = args.pop_double();
@@ -1930,10 +1930,10 @@ void filterRows(GArgReader& args)
 	pData->print(cout);
 }
 
-void _function(GArgReader& args)
+void _function(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 
 	// Accumulate the expression
 	string expr;
@@ -1941,7 +1941,7 @@ void _function(GArgReader& args)
 		expr += args.pop_string();
 
 	// Parse the expression
-	GFunctionParser mfp;
+	WFunctionParser mfp;
 	mfp.add(expr.c_str());
 
 	// Count the functions
@@ -1951,7 +1951,7 @@ void _function(GArgReader& args)
 	{
 		// Find the function
 		snprintf(szFuncName, sizeof(szFuncName), "f%d", i);
-		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
+		WFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 		{
 			if(i == 1)
@@ -1964,18 +1964,18 @@ void _function(GArgReader& args)
 	}
 
 	// Compute the output matrix
-	GMatrix out(pData->rows(), funcCount);
+	WMatrix out(pData->rows(), funcCount);
 	vector<double> params;
 	for(int i = 1; true; i++)
 	{
 		snprintf(szFuncName, sizeof(szFuncName), "f%d", i);
-		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
+		WFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 			break;
 		params.resize(pFunc->m_expectedParams);
 		for(size_t j = 0; j < pData->rows(); j++)
 		{
-			GVec& pIn = pData->row(j);
+			WVec& pIn = pData->row(j);
 			for(size_t k = 0; k < (size_t)pFunc->m_expectedParams; k++)
 				params[k] = pIn[k];
 			out[j][i - 1] = pFunc->call(params, mfp);
@@ -1984,10 +1984,10 @@ void _function(GArgReader& args)
 	out.print(cout);
 }
 
-void _function2(GArgReader& args)
+void _function2(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 
 	// Accumulate the expression
 	string expr;
@@ -1995,7 +1995,7 @@ void _function2(GArgReader& args)
 		expr += args.pop_string();
 
 	// Parse the expression
-	GFunctionParser mfp;
+	WFunctionParser mfp;
 	mfp.add(expr.c_str());
 
 	// Count the functions
@@ -2005,7 +2005,7 @@ void _function2(GArgReader& args)
 	{
 		// Find the function
 		snprintf(szFuncName, sizeof(szFuncName), "f%d", i);
-		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
+		WFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 		{
 			if(i == 1)
@@ -2021,7 +2021,7 @@ void _function2(GArgReader& args)
 	{
 		// Find the function
 		snprintf(szFuncName, sizeof(szFuncName), "g%d", i);
-		GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
+		WFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 		if(!pFunc)
 			break;
 		if((size_t)pFunc->m_expectedParams > 2 * pData->cols()) // The first half of the parameters are the current row. The second half are the iterated row.
@@ -2034,22 +2034,22 @@ void _function2(GArgReader& args)
 	vector<double> params;
 	vector<double> gsum;
 	gsum.resize(gCount);
-	GMatrix out(pData->rows(), fCount);
+	WMatrix out(pData->rows(), fCount);
 	for(size_t j = 0; j < pData->rows(); j++)
 	{
 		for(size_t i = 0; i < gCount; i++)
 			gsum[i] = 0.0;
-		GVec& pCur = pData->row(j);
+		WVec& pCur = pData->row(j);
 
 		// Compute the gsum vector, which applies all the "g" functions to every row and sums the returned values
 		for(size_t k = 0; k < pData->rows(); k++)
 		{
-			GVec& pItt = pData->row(k);
+			WVec& pItt = pData->row(k);
 			{
 				for(int i = 1; true; i++)
 				{
 					snprintf(szFuncName, sizeof(szFuncName), "g%d", i);
-					GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
+					WFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 					if(!pFunc)
 						break;
 					params.resize(pFunc->m_expectedParams);
@@ -2067,7 +2067,7 @@ void _function2(GArgReader& args)
 		for(int i = 1; true; i++)
 		{
 			snprintf(szFuncName, sizeof(szFuncName), "g%d", i);
-			GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
+			WFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 			if(!pFunc)
 				break;
 			snprintf(buf, sizeof(buf), "h%d=%f", i, gsum[i - 1]);
@@ -2078,7 +2078,7 @@ void _function2(GArgReader& args)
 		for(int i = 1; true; i++)
 		{
 			snprintf(szFuncName, sizeof(szFuncName), "f%d", i);
-			GFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
+			WFunction* pFunc = mfp.getFunctionNoThrow(szFuncName);
 			if(!pFunc)
 				break;
 			params.resize(pFunc->m_expectedParams);
@@ -2090,10 +2090,10 @@ void _function2(GArgReader& args)
 	out.print(cout);
 }
 
-void geodistance(GArgReader& args)
+void geodistance(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t lat1 = args.pop_uint();
 	size_t lon1 = args.pop_uint();
 	size_t lat2 = args.pop_uint();
@@ -2108,9 +2108,9 @@ void geodistance(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GArffRelation* pRel = new GArffRelation();
+	WArffRelation* pRel = new WArffRelation();
 	pRel->addAttribute("geodistance", 0, nullptr);
-	GMatrix tmp(pRel);
+	WMatrix tmp(pRel);
 	tmp.newRows(pData->rows());
 
 	for(size_t i = 0; i < pData->rows(); i++)
@@ -2135,11 +2135,11 @@ void geodistance(GArgReader& args)
 	tmp.print(cout);
 }
 
-void Shuffle(GArgReader& args)
+void Shuffle(WArgReader& args)
 {
 	// Load
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 
 	// Parse options
 	unsigned int nSeed = getpid() * (unsigned int)time(nullptr);
@@ -2152,15 +2152,15 @@ void Shuffle(GArgReader& args)
 	}
 
 	// Shuffle and print
-	GRand prng(nSeed);
+	WRand prng(nSeed);
 	pData->shuffle(prng);
 	pData->print(cout);
 }
 
-void SortByAttribute(GArgReader& args)
+void SortByAttribute(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t nAttr = args.pop_uint();
 	size_t attrCount = pData->relation().size();
 	if(nAttr >= attrCount)
@@ -2182,10 +2182,10 @@ void SortByAttribute(GArgReader& args)
 	pData->print(cout);
 }
 
-void SwapAttributes(GArgReader& args)
+void SwapAttributes(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	size_t nAttr1 = args.pop_uint();
 	size_t nAttr2 = args.pop_uint();
 	size_t attrCount = pData->relation().size();
@@ -2197,10 +2197,10 @@ void SwapAttributes(GArgReader& args)
 	pData->print(cout);
 }
 
-void threshold(GArgReader& args)
+void threshold(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	unsigned column = args.pop_uint();
 	if(column >= hData->cols())
 	{
@@ -2240,22 +2240,22 @@ void threshold(GArgReader& args)
 	hData->print(cout);
 }
 
-void Transpose(GArgReader& args)
+void Transpose(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
-	GMatrix* pTransposed = pData->transpose();
-	Holder<GMatrix> hTransposed(pTransposed);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
+	WMatrix* pTransposed = pData->transpose();
+	Holder<WMatrix> hTransposed(pTransposed);
 	pTransposed->print(cout);
 }
 
-void transition(GArgReader& args)
+void transition(WArgReader& args)
 {
 	// Load the input data
-	GMatrix* pActions = loadData(args.pop_string());
-	Holder<GMatrix> hActions(pActions);
-	GMatrix* pState = loadData(args.pop_string());
-	Holder<GMatrix> hState(pState);
+	WMatrix* pActions = loadData(args.pop_string());
+	Holder<WMatrix> hActions(pActions);
+	WMatrix* pState = loadData(args.pop_string());
+	Holder<WMatrix> hState(pState);
 	if(pState->rows() != pActions->rows())
 		throw Ex("Expected the same number of rows in both datasets");
 
@@ -2272,14 +2272,14 @@ void transition(GArgReader& args)
 	// Make the output data
 	size_t actionDims = pActions->cols();
 	size_t stateDims = pState->cols();
-	GMixedRelation* pRelation = new GMixedRelation();
+	WMixedRelation* pRelation = new WMixedRelation();
 	pRelation->addAttrs(pActions->relation());
 	pRelation->addAttrs(stateDims + stateDims, 0);
-	GMatrix* pTransition = new GMatrix(pRelation);
+	WMatrix* pTransition = new WMatrix(pRelation);
 	pTransition->newRows(pActions->rows() - 1);
 	for(size_t i = 0; i < pActions->rows() - 1; i++)
 	{
-		GVec& pOut = pTransition->row(i);
+		WVec& pOut = pTransition->row(i);
 		memcpy(pOut.data(), pActions->row(i).data(), actionDims * sizeof(double));
 		memcpy(pOut.data() + actionDims, pState->row(i).data(), stateDims * sizeof(double));
 		memcpy(pOut.data() + actionDims + stateDims, pState->row(i + 1).data(), stateDims * sizeof(double));
@@ -2292,16 +2292,16 @@ void transition(GArgReader& args)
 	pTransition->print(cout);
 }
 
-void uglify(GArgReader& args)
+void uglify(WArgReader& args)
 {
-	GDom doc;
+	WDom doc;
 	doc.loadJson(args.pop_string());
 	doc.writeJson(cout);
 }
 
-void unique(GArgReader& args)
+void unique(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
+	WMatrix* pData = loadData(args.pop_string());
 	size_t col = args.pop_uint();
 
 	// Parse the options
@@ -2314,10 +2314,10 @@ void unique(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	map<double, GVec*> unique_rows;
+	map<double, WVec*> unique_rows;
 	for(size_t i = 0; i < pData->rows(); i++)
 	{
-		GVec& r = pData->row(i);
+		WVec& r = pData->row(i);
 		if(last)
 			unique_rows[r[col]] = &r; // The last row with a unique value in col will stick
 		else
@@ -2326,26 +2326,26 @@ void unique(GArgReader& args)
 				unique_rows[r[col]] = &r; // the first row with a unique value in col will stick
 		}
 	}
-	GMatrix uniqueData(pData->relation().clone());
-	GReleaseDataHolder hUniqueData(&uniqueData);
-	map<double, GVec*>::iterator it;
+	WMatrix uniqueData(pData->relation().clone());
+	WReleaseDataHolder hUniqueData(&uniqueData);
+	map<double, WVec*>::iterator it;
 	for(it = unique_rows.begin(); it != unique_rows.end(); it++)
 		uniqueData.takeRow(it->second);
 	uniqueData.print(cout);
 }
 
-void wilcoxon(GArgReader& args)
+void wilcoxon(WArgReader& args)
 {
 	size_t n = args.pop_uint();
 	double w = args.pop_double();
-	double p = GMath::wilcoxonPValue((int)n, w);
+	double p = WMath::wilcoxonPValue((int)n, w);
 	cout << p << "\n";
 }
 
-void toraw(GArgReader& args)
+void toraw(WArgReader& args)
 {
-	GMatrix* pData = loadData(args.pop_string());
-	Holder<GMatrix> hData(pData);
+	WMatrix* pData = loadData(args.pop_string());
+	Holder<WMatrix> hData(pData);
 	pData->saveRaw(args.pop_string());
 }
 
@@ -2361,7 +2361,7 @@ void ShowUsage(const char* appName)
 	cout.flush();
 }
 
-void showError(GArgReader& args, const char* szAppName, const char* szMessage)
+void showError(WArgReader& args, const char* szAppName, const char* szMessage)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -2403,13 +2403,13 @@ void showError(GArgReader& args, const char* szAppName, const char* szMessage)
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int ret = 0;
 	PathData pd;
-	GFile::parsePath(argv[0], &pd);
+	WFile::parsePath(argv[0], &pd);
 	const char* appName = argv[0] + pd.fileStart;
-	GArgReader args(argc, argv);
+	WArgReader args(argc, argv);
 	args.pop_string(); // advance past the app name
 	try
 	{

@@ -19,24 +19,24 @@
 #ifndef __REINFORCEMENT_H__
 #define __REINFORCEMENT_H__
 
-#include "GPolicyLearner.h"
-#include "GLearner.h"
+#include "WPolicyLearner.h"
+#include "WLearner.h"
 
-namespace GClasses
+namespace WClasses
 {
 
-class GRand;
-class GKNN;
+class WRand;
+class WKNN;
 class Bogie;
 
 
 /// The base class of a Q-Learner. To use this class, there are four
-/// abstract methods you'll need to implement. See also the comment for GPolicyLearner.
-class GQLearner : public GPolicyLearner
+/// abstract methods you'll need to implement. See also the comment for WPolicyLearner.
+class WQLearner : public WPolicyLearner
 {
 protected:
-	GRand* m_pRand;
-	GAgentActionIterator* m_pActionIterator;
+	WRand* m_pRand;
+	WAgentActionIterator* m_pActionIterator;
 	double m_learningRate;
 	double m_discountFactor;
 	double* m_pSenses;
@@ -44,8 +44,8 @@ protected:
 	int m_actionCap;
 
 public:
-	GQLearner(const GRelation& relation, int actionDims, double* pInitialState, GRand* pRand, GAgentActionIterator* pActionIterator);
-	~GQLearner() override;
+	WQLearner(const WRelation& relation, int actionDims, double* pInitialState, WRand* pRand, WAgentActionIterator* pActionIterator);
+	~WQLearner() override;
 
 	/// Sets the learning rate (often called "alpha"). If state is deterministic and actions
 	/// have deterministic consequences, then this should be 1. If there is any non-determinism,
@@ -66,7 +66,7 @@ public:
 	/// This is the complement to GetQValue.
 	virtual void setQValue(const double* pState, const double* pAction, double qValue) = 0;
 
-	/// See GPolicyLearner::refinePolicyAndChooseNextAction
+	/// See WPolicyLearner::refinePolicyAndChooseNextAction
 	void refinePolicyAndChooseNextAction(const double* pSenses, double* pOutActions) override;
 
 	/// This specifies a cap on how many actions to sample. (If actions are
@@ -98,16 +98,16 @@ protected:
 
 
 
-/// This is an implementation of GQLearner that uses an incremental learner for
+/// This is an implementation of WQLearner that uses an incremental learner for
 /// its Q-table and a SoftMax (usually pick the best action, but sometimes randomly
 /// pick the action) strategy to balance between exploration vs exploitation. To use
 /// this class, you need to supply an incremental learner (see the comment for the
 /// constructor for more details) and to implement the GetRewardForLastAction method.
-class GIncrementalLearnerQAgent : public GQLearner
+class WIncrementalLearnerQAgent : public WQLearner
 {
 protected:
-	GIncrementalLearner* m_pQTable;
-	GVec m_buf;
+	WIncrementalLearner* m_pQTable;
+	WVec m_buf;
 	double m_softMaxThresh;
 
 public:
@@ -115,17 +115,17 @@ public:
 	/// attributes, then the first (n-1) attributes refer to the sense (state) and action,
 	/// and the last attribute refers to the Q-value (the current estimate of the
 	/// utility of performing that action in that state).
-	/// For actionDims, see the comment for GPolicyLearner::GPolicyLearner.
+	/// For actionDims, see the comment for WPolicyLearner::WPolicyLearner.
 	/// pInitialState is the initial sense vector.
 	/// If softMaxThresh is 0, it always picks a random action. If softMaxThresh is 1, it
 	/// always picks the best action. For values in between, it does something in between.
-	GIncrementalLearnerQAgent(const GRelation& obsControlRelation, GIncrementalLearner* pQTable, int actionDims, double* pInitialState, GRand* pRand, GAgentActionIterator* pActionIterator, double softMaxThresh);
-	~GIncrementalLearnerQAgent() override;
+	WIncrementalLearnerQAgent(const WRelation& obsControlRelation, WIncrementalLearner* pQTable, int actionDims, double* pInitialState, WRand* pRand, WAgentActionIterator* pActionIterator, double softMaxThresh);
+	~WIncrementalLearnerQAgent() override;
 
-	/// See the comment for GQLearner::GetQValue
+	/// See the comment for WQLearner::GetQValue
 	double getQValue(const double* pState, const double* pAction) override;
 
-	/// See the comment for GQLearner::SetQValue
+	/// See the comment for WQLearner::SetQValue
 	void setQValue(const double* pState, const double* pAction, double qValue) override;
 
 protected:
@@ -133,6 +133,6 @@ protected:
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __REINFORCEMENT_H__

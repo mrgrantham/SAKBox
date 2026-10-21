@@ -16,9 +16,9 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GCudaMatrix.h"
-#include "../../GClasses/GError.h"
-//#include "GCudaLayers.h"
+#include "WCudaMatrix.h"
+#include "../../WClasses/WError.h"
+//#include "WCudaLayers.h"
 #include <cuda.h>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
@@ -205,54 +205,54 @@ __global__ void cuda_conv2D_updateDeltas(double* delta, double* biasDelta, const
 	}
 }
 
-namespace GClasses {
+namespace WClasses {
 
-void GCudaVector::fill(GCudaEngine& engine, double val)
+void WCudaVector::fill(WCudaEngine& engine, double val)
 {
 	size_t blockSize = engine.m_blockSize;
 	size_t gridSize = (m_size + blockSize - 1) / blockSize;
 	cuda_fill<<<gridSize, blockSize>>>(this->d_vals, val, (int)m_size);
 }
 
-void GCudaMatrix::fill(GCudaEngine& engine, double val)
+void WCudaMatrix::fill(WCudaEngine& engine, double val)
 {
 	size_t blockSize = engine.m_blockSize;
 	size_t gridSize = (m_rows * m_cols + blockSize - 1) / blockSize;
 	cuda_fill<<<gridSize, blockSize>>>(this->d_vals, val, (int)(m_rows * m_cols));
 }
 
-void GCudaVector::activateTanh(GCudaEngine& engine)
+void WCudaVector::activateTanh(WCudaEngine& engine)
 {
 	size_t blockSize = engine.m_blockSize;
 	size_t gridSize = (m_size + blockSize - 1) / blockSize;
 	cuda_activateTanh<<<gridSize, blockSize>>>(this->d_vals, (int)m_size);
 }
 
-void GCudaVector::deactivateTanh(GCudaEngine& engine, const GCudaVector& activation)
+void WCudaVector::deactivateTanh(WCudaEngine& engine, const WCudaVector& activation)
 {
-	GAssert(activation.m_size == m_size);
+	WAssert(activation.m_size == m_size);
 	size_t blockSize = engine.m_blockSize;
 	size_t gridSize = (m_size + blockSize - 1) / blockSize;
 	cuda_deactivateTanh<<<gridSize, blockSize>>>(this->d_vals, activation.d_vals, (int)m_size);
 }
 /*
-void GCudaVector::activateBend(GCudaEngine& engine)
+void WCudaVector::activateBend(WCudaEngine& engine)
 {
 	size_t blockSize = engine.m_blockSize;
 	size_t gridSize = (m_size + blockSize - 1) / blockSize;
 	cuda_activateBend<<<gridSize, blockSize>>>(this->d_vals, (int)m_size);
 }
 
-void GCudaVector::deactivateBend(GCudaEngine& engine, const GCudaVector& activation)
+void WCudaVector::deactivateBend(WCudaEngine& engine, const WCudaVector& activation)
 {
-	GAssert(activation.m_size == m_size);
+	WAssert(activation.m_size == m_size);
 	size_t blockSize = engine.m_blockSize;
 	size_t gridSize = (m_size + blockSize - 1) / blockSize;
 	cuda_deactivateBend<<<gridSize, blockSize>>>(this->d_vals, activation.d_vals, (int)m_size);
 }
 */
 
-void Conv2D_feedForward(GCudaEngine& engine, GCudaVector& activation, GCudaVector& net, GCudaVector& incoming, const GCudaMatrix& kernels, const GCudaVector& bias, size_t kernelCount, size_t kernelRows, size_t kernelCols, size_t outputRows, size_t outputCols, size_t inputRows, size_t inputCols, size_t inputChannels, size_t padding, size_t stride)
+void Conv2D_feedForward(WCudaEngine& engine, WCudaVector& activation, WCudaVector& net, WCudaVector& incoming, const WCudaMatrix& kernels, const WCudaVector& bias, size_t kernelCount, size_t kernelRows, size_t kernelCols, size_t outputRows, size_t outputCols, size_t inputRows, size_t inputCols, size_t inputChannels, size_t padding, size_t stride)
 {
 	size_t n = kernelCount * outputRows * outputCols;
 	size_t blockSize = engine.m_blockSize;
@@ -260,14 +260,14 @@ void Conv2D_feedForward(GCudaEngine& engine, GCudaVector& activation, GCudaVecto
 	cuda_conv2D_ff<<<gridSize, blockSize>>>(activation.d_vals, net.d_vals, incoming.d_vals, kernels.d_vals, bias.d_vals, kernelCount, kernelRows, kernelCols, outputRows, outputCols, inputRows, inputCols, inputChannels, padding, stride);
 }
 
-void Conv2D_deactivate(GCudaEngine& engine, GCudaVector& error, const GCudaVector& net, const GCudaVector& activation, size_t outputs)
+void Conv2D_deactivate(WCudaEngine& engine, WCudaVector& error, const WCudaVector& net, const WCudaVector& activation, size_t outputs)
 {
 	size_t blockSize = engine.m_blockSize;
 	size_t gridSize = (outputs + blockSize - 1) / blockSize;
 	cuda_conv2D_deactivate<<<gridSize, blockSize>>>(error.d_vals, net.d_vals, activation.d_vals, outputs);
 }
 
-void Conv2D_backPropError(GCudaEngine& engine, GCudaVector& upStreamError, const GCudaVector& err, const GCudaMatrix& kernels, size_t kernelCount, size_t kernelRows, size_t kernelCols, size_t outputRows, size_t outputCols, size_t inputChannels, size_t inputRows, size_t inputCols, size_t padding, size_t stride)
+void Conv2D_backPropError(WCudaEngine& engine, WCudaVector& upStreamError, const WCudaVector& err, const WCudaMatrix& kernels, size_t kernelCount, size_t kernelRows, size_t kernelCols, size_t outputRows, size_t outputCols, size_t inputChannels, size_t inputRows, size_t inputCols, size_t padding, size_t stride)
 {
 	upStreamError.fill(engine, 0.0);
 	size_t n = kernelCount * outputRows * inputChannels;
@@ -276,7 +276,7 @@ void Conv2D_backPropError(GCudaEngine& engine, GCudaVector& upStreamError, const
 	cuda_conv2D_backPropError<<<gridSize, blockSize>>>(upStreamError.d_vals, err.d_vals, kernels.d_vals, kernelCount, kernelRows, kernelCols, outputRows, outputCols, inputChannels, inputRows, inputCols, padding, stride);
 }
 
-void Conv2D_updateDeltas(GCudaEngine& engine, GCudaMatrix& delta, GCudaVector& biasDelta, const GCudaVector& upStreamActivation, const GCudaVector& err, double momentum, size_t kernelCount, size_t kernelRows, size_t kernelCols, size_t outputRows, size_t outputCols, size_t inputChannels, size_t inputRows, size_t inputCols, size_t padding, size_t stride)
+void Conv2D_updateDeltas(WCudaEngine& engine, WCudaMatrix& delta, WCudaVector& biasDelta, const WCudaVector& upStreamActivation, const WCudaVector& err, double momentum, size_t kernelCount, size_t kernelRows, size_t kernelCols, size_t outputRows, size_t outputCols, size_t inputChannels, size_t inputRows, size_t inputCols, size_t padding, size_t stride)
 {
 	if(momentum != 1.0)
 	{
@@ -291,4 +291,4 @@ void Conv2D_updateDeltas(GCudaEngine& engine, GCudaMatrix& delta, GCudaVector& b
 
 
 
-} // namespace GClasses
+} // namespace WClasses

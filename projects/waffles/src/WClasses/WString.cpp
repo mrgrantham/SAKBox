@@ -17,15 +17,15 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GString.h"
-#include "GError.h"
+#include "WString.h"
+#include "WError.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
 
 using std::string;
 
-namespace GClasses
+namespace WClasses
 {
 
 
@@ -257,9 +257,9 @@ void test_to_str()
 
 
 
-GStringChopper::GStringChopper(const char* szString, size_t nMinLength, size_t nMaxLength, bool bDropLeadingWhitespace)
+WStringChopper::WStringChopper(const char* szString, size_t nMinLength, size_t nMaxLength, bool bDropLeadingWhitespace)
 {
-	GAssert(nMinLength > 0 && nMaxLength >= nMinLength); // lengths out of range
+	WAssert(nMinLength > 0 && nMaxLength >= nMinLength); // lengths out of range
 	m_bDropLeadingWhitespace = bDropLeadingWhitespace;
 	if(nMinLength < 1)
 		nMinLength = 1;
@@ -275,12 +275,12 @@ GStringChopper::GStringChopper(const char* szString, size_t nMinLength, size_t n
 		m_pBuf = nullptr;
 }
 
-GStringChopper::~GStringChopper()
+WStringChopper::~WStringChopper()
 {
 	delete[] m_pBuf;
 }
 
-void GStringChopper::reset(const char* szString)
+void WStringChopper::reset(const char* szString)
 {
 	m_szString = szString;
 	m_nLen = strlen(szString);
@@ -288,7 +288,7 @@ void GStringChopper::reset(const char* szString)
 		m_pBuf = new char[m_nMaxLen + 1];
 }
 
-const char* GStringChopper::next()
+const char* WStringChopper::next()
 {
 	if(m_nLen <= 0)
 		return nullptr;
@@ -319,4 +319,4 @@ const char* GStringChopper::next()
 }
 
 
-} // namespace GClasses
+} // namespace WClasses

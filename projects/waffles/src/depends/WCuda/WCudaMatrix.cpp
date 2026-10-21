@@ -16,23 +16,23 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GCudaMatrix.h"
-#include "../../GClasses/GError.h"
-#include "../../GClasses/GMatrix.h"
+#include "WCudaMatrix.h"
+#include "../../WClasses/WError.h"
+#include "../../WClasses/WMatrix.h"
 #include <cuda.h>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <curand.h>
 
-namespace GClasses
+namespace WClasses
 {
 
 bool g_haveEngine = false;
 
-GCudaEngine::GCudaEngine()
+WCudaEngine::WCudaEngine()
 {
 	if(g_haveEngine)
-		throw Ex("There should only be one GCudaEngine in existence at any time");
+		throw Ex("There should only be one WCudaEngine in existence at any time");
 	g_haveEngine = true;
 	cublasStatus_t status = cublasCreate((cublasHandle_t*)&m_handle);
 	if(status != CUBLAS_STATUS_SUCCESS)
@@ -52,14 +52,14 @@ GCudaEngine::GCudaEngine()
 	m_hogWild = false;
 }
 
-GCudaEngine::~GCudaEngine()
+WCudaEngine::~WCudaEngine()
 {
 	if(cublasDestroy((cublasHandle_t)m_handle) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDestroy failed");
 	g_haveEngine = false;
 }
 
-void GCudaEngine::sync()
+void WCudaEngine::sync()
 {
 	if(!m_hogWild)
 	{
@@ -75,18 +75,18 @@ void GCudaEngine::sync()
 
 
 
-GCudaVector::GCudaVector()
+WCudaVector::WCudaVector()
 : m_size(0), d_vals(NULL)
 {
 }
 
-GCudaVector::~GCudaVector()
+WCudaVector::~WCudaVector()
 {
 	if(d_vals)
 		cudaFree(d_vals);
 }
 
-void GCudaVector::resize(size_t size)
+void WCudaVector::resize(size_t size)
 {
 	if(d_vals)
 		cudaFree(d_vals);
@@ -95,7 +95,7 @@ void GCudaVector::resize(size_t size)
 	m_size = size;
 }
 
-void GCudaVector::upload(const GVec& hostVector)
+void WCudaVector::upload(const WVec& hostVector)
 {
 	if(m_size != hostVector.size())
 		resize(hostVector.size());
@@ -103,14 +103,14 @@ void GCudaVector::upload(const GVec& hostVector)
 		throw Ex("cublasSetVector failed");
 }
 
-void GCudaVector::download(GVec& hostVector) const
+void WCudaVector::download(WVec& hostVector) const
 {
 	hostVector.resize(m_size);
 	if(cublasGetVector(m_size, sizeof(double), d_vals, 1, hostVector.data(), 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasGetVector failed");
 }
 
-void GCudaVector::copy(GCudaEngine& engine, const GCudaVector& that)
+void WCudaVector::copy(WCudaEngine& engine, const WCudaVector& that)
 {
 	if(m_size != that.m_size)
 		resize(that.m_size);
@@ -118,29 +118,29 @@ void GCudaVector::copy(GCudaEngine& engine, const GCudaVector& that)
 		throw Ex("cublasDcopy failed");
 }
 
-void GCudaVector::add(GCudaEngine& engine, GCudaVector& that, double thatScalar)
+void WCudaVector::add(WCudaEngine& engine, WCudaVector& that, double thatScalar)
 {
-	GAssert(m_size == that.m_size);
+	WAssert(m_size == that.m_size);
 	if(cublasDaxpy((cublasHandle_t)engine.m_handle, m_size, &thatScalar, that.d_vals, 1, d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDaxpy failed");
 }
 
-void GCudaVector::scale(GCudaEngine& engine, double scalar)
+void WCudaVector::scale(WCudaEngine& engine, double scalar)
 {
 	if(cublasDscal((cublasHandle_t)engine.m_handle, m_size, &scalar, d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDscal failed");
 }
 
-void GCudaVector::randomUniform(GCudaEngine& engine)
+void WCudaVector::randomUniform(WCudaEngine& engine)
 {
 	if(curandGenerateUniformDouble((curandGenerator_t)engine.m_prng, d_vals, m_size) != CURAND_STATUS_SUCCESS)
 		throw Ex("curandGenerateUniformDouble failed");
 }
 
-void GCudaVector::randomNormal(GCudaEngine& engine, double mean, double dev)
+void WCudaVector::randomNormal(WCudaEngine& engine, double mean, double dev)
 {
 	if(curandGenerateNormalDouble((curandGenerator_t)engine.m_prng, d_vals, m_size, mean, dev) != CURAND_STATUS_SUCCESS)
-		throw Ex("curandGenerateNormalDouble failed in GCudaVector::randomNormal");
+		throw Ex("curandGenerateNormalDouble failed in WCudaVector::randomNormal");
 }
 
 
@@ -150,18 +150,18 @@ void GCudaVector::randomNormal(GCudaEngine& engine, double mean, double dev)
 
 
 
-GCudaMatrix::GCudaMatrix()
+WCudaMatrix::WCudaMatrix()
 : m_rows(0), m_cols(0), d_vals(NULL)
 {
 }
 
-GCudaMatrix::~GCudaMatrix()
+WCudaMatrix::~WCudaMatrix()
 {
 	if(d_vals)
 		cudaFree(d_vals);
 }
 
-void GCudaMatrix::resize(size_t rows, size_t cols)
+void WCudaMatrix::resize(size_t rows, size_t cols)
 {
 	if(d_vals)
 		cudaFree(d_vals);
@@ -171,7 +171,7 @@ void GCudaMatrix::resize(size_t rows, size_t cols)
 	m_cols = cols;
 }
 
-void GCudaMatrix::upload(const GMatrix& m)
+void WCudaMatrix::upload(const WMatrix& m)
 {
 	if(m_rows != m.rows() || m_cols != m.cols())
 		resize(m.rows(), m.cols());
@@ -184,7 +184,7 @@ void GCudaMatrix::upload(const GMatrix& m)
 	}
 }
 
-void GCudaMatrix::download(GMatrix& m) const
+void WCudaMatrix::download(WMatrix& m) const
 {
 	if(m.rows() != m_rows || m.cols() != m_cols)
 		m.resize(m_rows, m_cols);
@@ -197,7 +197,7 @@ void GCudaMatrix::download(GMatrix& m) const
 	}
 }
 
-void GCudaMatrix::copy(GCudaEngine& engine, GCudaMatrix& that)
+void WCudaMatrix::copy(WCudaEngine& engine, WCudaMatrix& that)
 {
 	if(that.rows() != m_rows || that.cols() != m_cols)
 		resize(that.rows(), that.cols());
@@ -205,22 +205,22 @@ void GCudaMatrix::copy(GCudaEngine& engine, GCudaMatrix& that)
 		throw Ex("cublasDcopy failed");
 }
 
-void GCudaMatrix::scale(GCudaEngine& engine, double scalar)
+void WCudaMatrix::scale(WCudaEngine& engine, double scalar)
 {
 	if(cublasDscal((cublasHandle_t)engine.m_handle, m_rows * m_cols, &scalar, d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDscal failed");
 }
 
-void GCudaMatrix::add(GCudaEngine& engine, GCudaMatrix& that, double thatScalar)
+void WCudaMatrix::add(WCudaEngine& engine, WCudaMatrix& that, double thatScalar)
 {
-	GAssert(that.rows() == m_rows && that.cols() == m_cols);
+	WAssert(that.rows() == m_rows && that.cols() == m_cols);
 	if(cublasDaxpy((cublasHandle_t)engine.m_handle, m_rows * m_cols, &thatScalar, that.d_vals, 1, d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDaxpy failed");
 }
 
-void GCudaMatrix::rowVectorTimesThis(GCudaEngine& engine, const GCudaVector& in, GCudaVector& out)
+void WCudaMatrix::rowVectorTimesThis(WCudaEngine& engine, const WCudaVector& in, WCudaVector& out)
 {
-	GAssert(in.m_size == m_rows);
+	WAssert(in.m_size == m_rows);
 	if(out.size() != m_cols)
 		out.resize(m_cols);
 	double alpha = 1.0f;
@@ -229,9 +229,9 @@ void GCudaMatrix::rowVectorTimesThis(GCudaEngine& engine, const GCudaVector& in,
 		throw Ex("cublasDgemv failed");
 }
 
-void GCudaMatrix::thisTimesColumnVector(GCudaEngine& engine, const GCudaVector& in, GCudaVector& out)
+void WCudaMatrix::thisTimesColumnVector(WCudaEngine& engine, const WCudaVector& in, WCudaVector& out)
 {
-	GAssert(in.m_size == m_cols);
+	WAssert(in.m_size == m_cols);
 	if(out.m_size != m_rows)
 		out.resize(m_rows);
 	double alpha = 1.0f;
@@ -240,32 +240,32 @@ void GCudaMatrix::thisTimesColumnVector(GCudaEngine& engine, const GCudaVector& 
 		throw Ex("cublasDgemv failed");
 }
 
-void GCudaMatrix::feedIn(GCudaEngine& engine, const GCudaVector& in, GCudaVector& out, size_t inputStart)
+void WCudaMatrix::feedIn(WCudaEngine& engine, const WCudaVector& in, WCudaVector& out, size_t inputStart)
 {
-	GAssert(inputStart + in.m_size <= m_rows);
-	GAssert(out.m_size == m_cols);
+	WAssert(inputStart + in.m_size <= m_rows);
+	WAssert(out.m_size == m_cols);
 	double alpha = 1.0f;
 	double beta = 1.0f;
 	if(cublasDgemv((cublasHandle_t)engine.m_handle, CUBLAS_OP_N, m_cols, in.m_size, &alpha, d_vals + inputStart * m_cols, m_cols, in.d_vals, 1, &beta, out.d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDgemv failed");
 }
 
-void GCudaMatrix::backPropError(GCudaEngine& engine, const GCudaVector& in, GCudaVector& out, size_t inputStart)
+void WCudaMatrix::backPropError(WCudaEngine& engine, const WCudaVector& in, WCudaVector& out, size_t inputStart)
 {
-	GAssert(in.m_size == m_cols);
+	WAssert(in.m_size == m_cols);
 	double alpha = 1.0f;
 	double beta = 0.0f;
 	if(cublasDgemv((cublasHandle_t)engine.m_handle, CUBLAS_OP_T, in.size(), m_rows, &alpha, d_vals, m_cols, in.d_vals + inputStart, 1, &beta, out.d_vals, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDgemv failed");
 }
 
-void GCudaMatrix::addOuterProduct(GCudaEngine& engine, GCudaVector& upStreamInput, GCudaVector& downStreamError, double learningRate)
+void WCudaMatrix::addOuterProduct(WCudaEngine& engine, WCudaVector& upStreamInput, WCudaVector& downStreamError, double learningRate)
 {
 	if(cublasDger((cublasHandle_t)engine.m_handle, m_cols, upStreamInput.size(), &learningRate, downStreamError.d_vals, 1, upStreamInput.d_vals, 1, d_vals, m_cols) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDger failed");
 }
 
-double GCudaMatrix::rowSumAbs(GCudaEngine& engine, size_t row)
+double WCudaMatrix::rowSumAbs(WCudaEngine& engine, size_t row)
 {
 	double res;
 	if(cublasDasum((cublasHandle_t)engine.m_handle, m_cols, d_vals + row * m_cols, 1, &res) != CUBLAS_STATUS_SUCCESS)
@@ -273,7 +273,7 @@ double GCudaMatrix::rowSumAbs(GCudaEngine& engine, size_t row)
 	return res;
 }
 
-double GCudaMatrix::rowSumSquare(GCudaEngine& engine, size_t row)
+double WCudaMatrix::rowSumSquare(WCudaEngine& engine, size_t row)
 {
 	double res;
 	if(cublasDdot((cublasHandle_t)engine.m_handle, m_cols, d_vals + row * m_cols, 1, d_vals + row * m_cols, 1, &res) != CUBLAS_STATUS_SUCCESS)
@@ -281,7 +281,7 @@ double GCudaMatrix::rowSumSquare(GCudaEngine& engine, size_t row)
 	return res;
 }
 
-double GCudaMatrix::colSumAbs(GCudaEngine& engine, size_t col)
+double WCudaMatrix::colSumAbs(WCudaEngine& engine, size_t col)
 {
 	double res;
 	if(cublasDasum((cublasHandle_t)engine.m_handle, m_rows, d_vals + col, m_cols, &res) != CUBLAS_STATUS_SUCCESS)
@@ -289,7 +289,7 @@ double GCudaMatrix::colSumAbs(GCudaEngine& engine, size_t col)
 	return res;
 }
 
-double GCudaMatrix::colSumSquare(GCudaEngine& engine, size_t col)
+double WCudaMatrix::colSumSquare(WCudaEngine& engine, size_t col)
 {
 	double res;
 	if(cublasDdot((cublasHandle_t)engine.m_handle, m_rows, d_vals + col, m_cols, d_vals + col, m_cols, &res) != CUBLAS_STATUS_SUCCESS)
@@ -297,23 +297,23 @@ double GCudaMatrix::colSumSquare(GCudaEngine& engine, size_t col)
 	return res;
 }
 
-void GCudaMatrix::scaleRow(GCudaEngine& engine, size_t row, double scalar)
+void WCudaMatrix::scaleRow(WCudaEngine& engine, size_t row, double scalar)
 {
 	if(cublasDscal((cublasHandle_t)engine.m_handle, m_cols, &scalar, d_vals + row * m_cols, 1) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDscal failed");
 }
 
-void GCudaMatrix::scaleCol(GCudaEngine& engine, size_t col, double scalar)
+void WCudaMatrix::scaleCol(WCudaEngine& engine, size_t col, double scalar)
 {
 	if(cublasDscal((cublasHandle_t)engine.m_handle, m_rows, &scalar, d_vals + col, m_cols) != CUBLAS_STATUS_SUCCESS)
 		throw Ex("cublasDscal failed");
 }
 
-void GCudaMatrix::fillNormal(GCudaEngine& engine, double mean, double dev)
+void WCudaMatrix::fillNormal(WCudaEngine& engine, double mean, double dev)
 {
 	if(curandGenerateNormalDouble((curandGenerator_t)engine.m_prng, d_vals, m_rows * m_cols, mean, dev) != CURAND_STATUS_SUCCESS)
-		throw Ex("curandGenerateNormalDouble failed in GCudaMatrix::fillNormal");
+		throw Ex("curandGenerateNormalDouble failed in WCudaMatrix::fillNormal");
 }
 
-} // namespace GClasses
+} // namespace WClasses
 

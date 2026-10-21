@@ -18,15 +18,15 @@
 */
 
 #include <stdio.h>
-#include "GHashTable.h"
-#include "GError.h"
-#include "GHolders.h"
+#include "WHashTable.h"
+#include "WError.h"
+#include "WHolders.h"
 #include <wchar.h>
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 
-GHashTableBase::GHashTableBase(size_t nInitialBucketCount)
+WHashTableBase::WHashTableBase(size_t nInitialBucketCount)
 {
 	m_nBucketCount = 0;
 	m_pBuckets = nullptr;
@@ -35,7 +35,7 @@ GHashTableBase::GHashTableBase(size_t nInitialBucketCount)
 	_Resize(nInitialBucketCount);
 }
 
-GHashTableBase::~GHashTableBase()
+WHashTableBase::~WHashTableBase()
 {
 	delete[] m_pBuckets;
 }
@@ -57,7 +57,7 @@ inline bool IsObviousNonPrime(size_t n)
 	return false;
 }
 
-void GHashTableBase::_Resize(size_t nNewSize)
+void WHashTableBase::_Resize(size_t nNewSize)
 {
 	// Find a good size
 	if(nNewSize < m_nCount * 3)
@@ -105,10 +105,10 @@ void GHashTableBase::_Resize(size_t nNewSize)
 	m_nModCount++;
 }
 
-void GHashTableBase::_Add(const char* pKey, const void* pValue)
+void WHashTableBase::_Add(const char* pKey, const void* pValue)
 {
 	// Check inputs
-	GAssert(pKey);
+	WAssert(pKey);
 
 	// Resize if necessary
 	if(m_nCount * 2 > m_nBucketCount)
@@ -118,7 +118,7 @@ void GHashTableBase::_Add(const char* pKey, const void* pValue)
 
 	// Determine which bucket
 	size_t nPos = hash(pKey, m_nBucketCount);
-	GAssert(nPos < m_nBucketCount); // Out of range
+	WAssert(nPos < m_nBucketCount); // Out of range
 
 	// Insert it
 	m_nCount++;
@@ -164,7 +164,7 @@ void GHashTableBase::_Add(const char* pKey, const void* pValue)
 			m_pBuckets[nPos].pPrev->pNext = m_pBuckets[nPos].pNext;
 		else
 		{
-			GAssert(m_pFirstEmpty == &m_pBuckets[nPos]); // Orphaned empty bucket!  Only m_pFirstEmpty and non-empty buckets should have a NULL value for pPrev.
+			WAssert(m_pFirstEmpty == &m_pBuckets[nPos]); // Orphaned empty bucket!  Only m_pFirstEmpty and non-empty buckets should have a NULL value for pPrev.
 			m_pFirstEmpty = m_pBuckets[nPos].pNext;
 		}
 		if(m_pBuckets[nPos].pNext)
@@ -174,15 +174,15 @@ void GHashTableBase::_Add(const char* pKey, const void* pValue)
 		m_pBuckets[nPos].pKey = pKey;
 		m_pBuckets[nPos].pValue = pValue;
 	}
-	GAssert(m_pFirstEmpty && m_pFirstEmpty->pNext); // Less than two empty slots left!
+	WAssert(m_pFirstEmpty && m_pFirstEmpty->pNext); // Less than two empty slots left!
 }
 
 
-size_t GHashTableBase::_Count(const char* pKey)
+size_t WHashTableBase::_Count(const char* pKey)
 {
-	GAssert(pKey != NULL);
+	WAssert(pKey != NULL);
 	size_t nPos = hash(pKey, m_nBucketCount);
-	GAssert(nPos < m_nBucketCount); // Out of range
+	WAssert(nPos < m_nBucketCount); // Out of range
 	if(!m_pBuckets[nPos].pKey || m_pBuckets[nPos].pPrev)
 		return 0;
 	size_t nCount = 0;
@@ -195,23 +195,23 @@ size_t GHashTableBase::_Count(const char* pKey)
 	return nCount;
 }
 
-void GHashTableBase::_Remove(const char* pKey)
+void WHashTableBase::_Remove(const char* pKey)
 {
-	GAssert(pKey != NULL);
+	WAssert(pKey != NULL);
 	size_t nPos = hash(pKey, m_nBucketCount);
-	GAssert(nPos < m_nBucketCount); // Out of range
+	WAssert(nPos < m_nBucketCount); // Out of range
 	if(!m_pBuckets[nPos].pKey || m_pBuckets[nPos].pPrev)
 		return;
 	struct HashBucket* pBucket;
 	for(pBucket = &m_pBuckets[nPos]; pBucket; pBucket = pBucket->pNext)
 	{
-		GAssert(pBucket->pKey); // empty bucket should not be in a chain!
+		WAssert(pBucket->pKey); // empty bucket should not be in a chain!
 		if(areKeysEqual(pBucket->pKey, pKey))
 		{
 			if(pBucket->pPrev)
 			{
 				// It's just a renter, so unlink it and delete the bucket
-				GAssert(pBucket != &m_pBuckets[nPos]); // The landlord bucket shouldn't have a prev
+				WAssert(pBucket != &m_pBuckets[nPos]); // The landlord bucket shouldn't have a prev
 				pBucket->pPrev->pNext = pBucket->pNext;
 				if(pBucket->pNext)
 					pBucket->pNext->pPrev = pBucket->pPrev;
@@ -224,7 +224,7 @@ void GHashTableBase::_Remove(const char* pKey)
 			else
 			{
 				// It's a landlord
-				GAssert(pBucket == &m_pBuckets[nPos]); // Renters should have a prev
+				WAssert(pBucket == &m_pBuckets[nPos]); // Renters should have a prev
 				if(pBucket->pNext)
 				{
 					// Move the next renter into the landlord bucket
@@ -261,9 +261,9 @@ void GHashTableBase::_Remove(const char* pKey)
 
 #define TEST_HASH_TABLE_ELEMENTS 32000
 
-bool VerifyBucketCount(GHashTableBase* pHT)
+bool VerifyBucketCount(WHashTableBase* pHT)
 {
-	GHashTableEnumerator hte(pHT);
+	WHashTableEnumerator hte(pHT);
 	void* pValue;
 	size_t n = 0;
 	while(hte.next(&pValue))
@@ -274,10 +274,10 @@ bool VerifyBucketCount(GHashTableBase* pHT)
 }
 
 // static
-void GHashTable::test()
+void WHashTable::test()
 {
 	size_t nElements = TEST_HASH_TABLE_ELEMENTS;
-	GHashTable ht(13);
+	WHashTable ht(13);
 	size_t* pNothing = new size_t[nElements];
 	std::unique_ptr<size_t[]> hNothing(pNothing);
 	size_t n;
@@ -307,9 +307,9 @@ void GHashTable::test()
 
 // ------------------------------------------------------------------------------
 
-const char* GHashTableEnumerator::next(void** ppValue)
+const char* WHashTableEnumerator::next(void** ppValue)
 {
-	GAssert(m_pHashTable->revisionNumber() == m_nModCount); // The HashTable was modified since this enumerator was constructed!
+	WAssert(m_pHashTable->revisionNumber() == m_nModCount); // The HashTable was modified since this enumerator was constructed!
 	const void* pValue;
 	while(m_nPos < m_pHashTable->m_nBucketCount)
 	{
@@ -325,7 +325,7 @@ const char* GHashTableEnumerator::next(void** ppValue)
 	return nullptr;
 }
 
-void* GHashTableEnumerator::currentValue()
+void* WHashTableEnumerator::currentValue()
 {
 	if(m_nPos <= 0)
 		return nullptr;
@@ -334,17 +334,17 @@ void* GHashTableEnumerator::currentValue()
 
 // ------------------------------------------------------------------------------
 
-bool GConstStringHashTable::get(const char* pKey, size_t nLen, void** ppOutValue)
+bool WConstStringHashTable::get(const char* pKey, size_t nLen, void** ppOutValue)
 {
-	GTEMPBUF(char, szKey, nLen + 1);
+	WTEMPBUF(char, szKey, nLen + 1);
 	memcpy(szKey, pKey, nLen);
 	szKey[nLen] = '\0';
 	return get(szKey, ppOutValue);
 }
 
-bool GConstStringToIndexHashTable::get(const char* pKey, size_t nLen, size_t* pValue)
+bool WConstStringToIndexHashTable::get(const char* pKey, size_t nLen, size_t* pValue)
 {
-	GTEMPBUF(char, szKey, nLen + 1);
+	WTEMPBUF(char, szKey, nLen + 1);
 	memcpy(szKey, pKey, nLen);
 	szKey[nLen] = '\0';
 	return get(szKey, pValue);
@@ -352,8 +352,8 @@ bool GConstStringToIndexHashTable::get(const char* pKey, size_t nLen, size_t* pV
 
 // ------------------------------------------------------------------------------
 
-GNodeHashTable::GNodeHashTable(bool bOwnNodes, size_t nInitialBucketCount)
-: GHashTableBase(nInitialBucketCount)
+WNodeHashTable::WNodeHashTable(bool bOwnNodes, size_t nInitialBucketCount)
+: WHashTableBase(nInitialBucketCount)
 {
 	if(bOwnNodes)
 		m_pNodes = new std::vector<HashTableNode*>();
@@ -362,7 +362,7 @@ GNodeHashTable::GNodeHashTable(bool bOwnNodes, size_t nInitialBucketCount)
 }
 
 // virtual
-GNodeHashTable::~GNodeHashTable()
+WNodeHashTable::~WNodeHashTable()
 {
 	if(m_pNodes)
 	{
@@ -373,7 +373,7 @@ GNodeHashTable::~GNodeHashTable()
 	}
 }
 
-void GNodeHashTable::add(HashTableNode* pRec)
+void WNodeHashTable::add(HashTableNode* pRec)
 {
 	if(m_pNodes)
 		m_pNodes->push_back(pRec);

@@ -24,17 +24,17 @@
 #ifndef __GASSIGNMENT_H__
 #define __GASSIGNMENT_H__
 
-#include "GError.h"
-#include "GHolders.h"
+#include "WError.h"
+#include "WHolders.h"
 #include <cassert>
 #include <algorithm>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GMatrix;
-class GDom;
-class GDomNode;
+class WMatrix;
+class WDom;
+class WDomNode;
 
 ///\brief An abstract base class defining an assignment between two sets
 ///
@@ -60,21 +60,21 @@ class GDomNode;
 ///
 /// inverse(int) gives the mapping from B->A (as in
 /// \code if(assignment.inverse(1)==-1){do_something();} \endcode )
-class GAssignment
+class WAssignment
 {
 public:
-	///\brief Return the number of elements in the A set of this GAssignment
+	///\brief Return the number of elements in the A set of this WAssignment
 	///
 	///See the class comment for more information.
 	///
-	///\return the number of elements in the A set of this GAssignment
+	///\return the number of elements in the A set of this WAssignment
 	virtual std::size_t sizeA() const = 0;
 
-	///\brief Return the number of elements in the B set of this GAssignment
+	///\brief Return the number of elements in the B set of this WAssignment
 	///
 	///See the class comment for more information.
 	///
-	///\return the number of elements in the B set of this GAssignment
+	///\return the number of elements in the B set of this WAssignment
 	virtual std::size_t sizeB() const = 0;
 
 	///\brief Return the number of the member of set B corresponding to
@@ -102,17 +102,17 @@ public:
 	virtual int inverse(unsigned memberOfB) const = 0;
 
 	///\brief A do-nothing destructor needed since there will be subclasses
-	virtual ~GAssignment() {};
+	virtual ~WAssignment() {};
 };
 
-///\brief A simple concrete implementation of the GAssignment protocol
+///\brief A simple concrete implementation of the WAssignment protocol
 ///using std::vector<int>
 ///
-///\see linearAssignment(GMatrix, ShouldMinimize, const double)
-///\see linearAssignment(GMatrix, ShouldMaximize, const double)
-///\see linearAssignmentBruteForce(GMatrix, ShouldMinimize)
-///\see linearAssignmentBruteForce(GMatrix, ShouldMaximize)
-class GSimpleAssignment : public GAssignment
+///\see linearAssignment(WMatrix, ShouldMinimize, const double)
+///\see linearAssignment(WMatrix, ShouldMaximize, const double)
+///\see linearAssignmentBruteForce(WMatrix, ShouldMinimize)
+///\see linearAssignmentBruteForce(WMatrix, ShouldMaximize)
+class WSimpleAssignment : public WAssignment
 {
 protected:
 	///\brief aForB[i] has the member of A assigned to a given member of
@@ -131,7 +131,7 @@ public:
 	///
 	///\param bSize the number of elements in set B (the second set in
 	///             the assignment)
-	GSimpleAssignment(std::size_t aSize, std::size_t bSize) : aForB(bSize, -1),
+	WSimpleAssignment(std::size_t aSize, std::size_t bSize) : aForB(bSize, -1),
 	                                                          bForA(aSize, -1) {}
 
 	///\brief Create an assignment between two sets of the given sizes
@@ -139,7 +139,7 @@ public:
 	///
 	///Just like writing:
 	///\code
-	///GSimpleAssignment foo(bForA.size(), \a bSize);
+	///WSimpleAssignment foo(bForA.size(), \a bSize);
 	///foo.setBForA(bForA);
 	///\endcode
 	///
@@ -150,9 +150,9 @@ public:
 	///           A.  It is the index of the corresponding element of
 	///           set B or -1 if there is no corresponding element.
 	///
-	///\see GSimpleAssignment(std::size_t, std::size_t)
+	///\see WSimpleAssignment(std::size_t, std::size_t)
 	///\see bForA(const std::vector<int>&)
-	GSimpleAssignment(std::size_t bSize, const std::vector<int>& bfA)
+	WSimpleAssignment(std::size_t bSize, const std::vector<int>& bfA)
 	: aForB(bSize, -1), bForA(bfA)
 	{
 		for(std::size_t i = 0; i < bForA.size(); ++i)
@@ -245,18 +245,18 @@ public:
 		assert(aForB[memberOfB] == -1);
 	}
 
-	///\brief Return the number of elements in the A set of this GAssignment
+	///\brief Return the number of elements in the A set of this WAssignment
 	///
 	///See the class comment for more information.
 	///
-	///\return the number of elements in the A set of this GAssignment
+	///\return the number of elements in the A set of this WAssignment
 	std::size_t sizeA() const override { return bForA.size(); }
 
-	///\brief Return the number of elements in the B set of this GAssignment
+	///\brief Return the number of elements in the B set of this WAssignment
 	///
 	///See the class comment for more information.
 	///
-	///\return the number of elements in the B set of this GAssignment
+	///\return the number of elements in the B set of this WAssignment
 	std::size_t sizeB() const override { return aForB.size(); }
 
 	///\brief Return the number of the member of set B corresponding to
@@ -298,11 +298,11 @@ public:
 	///operator()(unsigned) and inverse()(unsigned) give identical
 	///results on both *this and other for all valid input values.
 	///
-	///\param other the GSimpleAssignment object to compare to this
+	///\param other the WSimpleAssignment object to compare to this
 	///
 	///\return true if the assignments are the same, false otherwise.
 	///        See main description for details.
-	virtual bool operator==(const GSimpleAssignment& other) const
+	virtual bool operator==(const WSimpleAssignment& other) const
 	{
 		return sizeA() == other.sizeA() && sizeB() == other.sizeB()
 		  && std::equal(aForB.begin(), aForB.end(), other.aForB.begin())
@@ -312,11 +312,11 @@ public:
 	///\brief Return true iff *this, expressed as the input to setBForA
 	/// with sizeB prepended is lexiographically less than other
 	///
-	///\param other the GSimpleAssignment being compared to this one
+	///\param other the WSimpleAssignment being compared to this one
 	///
 	///\return true iff *this, expressed as the input to setBForA with
 	///sizeB prepended is lexiographically less than other
-	virtual bool operator<(const GSimpleAssignment& other) const
+	virtual bool operator<(const WSimpleAssignment& other) const
 	{
 		if(sizeB() < other.sizeB())
 		{
@@ -344,10 +344,10 @@ public:
 	}
 
 	///\brief A do-nothing destructor needed since there may be subclasses
-	~GSimpleAssignment() override {};
+	~WSimpleAssignment() override {};
 
 
-	///\brief Run unit tests for GSimpleAssignment - throws an exception
+	///\brief Run unit tests for WSimpleAssignment - throws an exception
 	///if an error is found.
 	static void test();
 };
@@ -364,11 +364,11 @@ public:
 ///
 ///\param costs costs[i][j] is the cost of assigning element i from
 ///             set A to element j from set B.
-double cost(const GSimpleAssignment& assign, const GMatrix& costs);
+double cost(const WSimpleAssignment& assign, const WMatrix& costs);
 
 ///\brief Print assignment \a gsa to \a out in a human-readable form
 ///
-///The GSimpleAssignment \a gsa is written to out as a sequence of pairs
+///The WSimpleAssignment \a gsa is written to out as a sequence of pairs
 ///{a,b} where a is an index in set A and b is an index into set B.
 ///Any indices that are not listed are unassigned.
 ///
@@ -377,10 +377,10 @@ double cost(const GSimpleAssignment& assign, const GMatrix& costs);
 ///
 ///\param out the stream on which the assignment will be printed
 ///
-///\param gsa the GSimpleAssignment object to print
+///\param gsa the WSimpleAssignment object to print
 ///
 ///\return out after gsa has been written to it
-std::ostream& operator<<(std::ostream& out, const GSimpleAssignment& gsa);
+std::ostream& operator<<(std::ostream& out, const WSimpleAssignment& gsa);
 
 ///\brief Tag class to indicate that the linearAssignment routine
 ///should maximize the cost of the assignment
@@ -394,10 +394,10 @@ class ShouldMinimize
 {
 };
 
-///\brief Return a GSimpleAssignment that minimizes the cost of the assignment
+///\brief Return a WSimpleAssignment that minimizes the cost of the assignment
 ///
 ///costs[i][j] is the cost of assigning element i in set A to element
-///j in set B.  The GSimpleAssignment object returned minimizes the sum
+///j in set B.  The WSimpleAssignment object returned minimizes the sum
 ///of the costs for all assignments made.  All elements in the smaller
 ///set will be assigned a corresponding element in the larger set.
 ///
@@ -418,17 +418,17 @@ class ShouldMinimize
 ///\return a Simple assignment object that minimizes the cost of the
 ///        assignment.
 ///
-///\see linearAssignment(GMatrix, ShouldMaximize, const double)
+///\see linearAssignment(WMatrix, ShouldMaximize, const double)
 ///
 ///\see LAPVJRCT
-GSimpleAssignment linearAssignment(GMatrix costs, ShouldMinimize sm = ShouldMinimize(), const double epsilon = 1e-8);
+WSimpleAssignment linearAssignment(WMatrix costs, ShouldMinimize sm = ShouldMinimize(), const double epsilon = 1e-8);
 
 
-///\brief Return a GSimpleAssignment that maximizes the benefit of the
+///\brief Return a WSimpleAssignment that maximizes the benefit of the
 ///assignment
 ///
 ///benefits[i][j] is the benefit of assigning element i in set A to element
-///j in set B.  The GSimpleAssignment object returned maximizes the sum
+///j in set B.  The WSimpleAssignment object returned maximizes the sum
 ///of the benefits for all assignments made.  All elements in the smaller
 ///set will be assigned a corresponding element in the larger set.
 ///
@@ -449,10 +449,10 @@ GSimpleAssignment linearAssignment(GMatrix costs, ShouldMinimize sm = ShouldMini
 ///\return a Simple assignment object that maximizes the cost of the
 ///        assignment.
 ///
-///\see linearAssignment(GMatrix, ShouldMinimize, const double)
+///\see linearAssignment(WMatrix, ShouldMinimize, const double)
 ///
 ///\see LAPVJRCT
-GSimpleAssignment linearAssignment(GMatrix benefits, ShouldMaximize sm, const double epsilon = 1e-8);
+WSimpleAssignment linearAssignment(WMatrix benefits, ShouldMaximize sm, const double epsilon = 1e-8);
 
 ///\brief Solve a linear assignment minimization problem by the VERY SLOW brute
 ///force method
@@ -473,8 +473,8 @@ GSimpleAssignment linearAssignment(GMatrix benefits, ShouldMaximize sm, const do
 ///
 ///\param sm A tag class to distinguish this from the code which
 ///          maximizes the benefits.  Just pass ShouldMinimize
-std::vector<GSimpleAssignment>
-linearAssignmentBruteForce(GMatrix costs, ShouldMinimize sm = ShouldMinimize());
+std::vector<WSimpleAssignment>
+linearAssignmentBruteForce(WMatrix costs, ShouldMinimize sm = ShouldMinimize());
 
 
 ///\brief Solve a linear assignment maximization problem by the VERY SLOW brute
@@ -496,8 +496,8 @@ linearAssignmentBruteForce(GMatrix costs, ShouldMinimize sm = ShouldMinimize());
 ///
 ///\param sm A tag class to distinguish this from the code which
 ///          maximizes the benefits.  Just pass ShouldMaximize
-std::vector<GSimpleAssignment>
-linearAssignmentBruteForce(GMatrix benefits, ShouldMaximize sm);
+std::vector<WSimpleAssignment>
+linearAssignmentBruteForce(WMatrix benefits, ShouldMaximize sm);
 
 
 ///\brief Rectangular linear assignment problem solver by Volgenant and Jonker
@@ -562,7 +562,7 @@ linearAssignmentBruteForce(GMatrix benefits, ShouldMaximize sm);
 ///\param epsilon Threshold to use in floating point comparisons.  If
 ///               two values differ by epsilon, they are considered to
 ///               be equal
-void LAPVJRCT(GMatrix cost, std::vector<int>& rowAssign, std::vector<int>& colAssign, std::vector<double>& rowPotential, std::vector<double>& colPotential, double& totalCost, const double epsilon = 1e-8);
+void LAPVJRCT(WMatrix cost, std::vector<int>& rowAssign, std::vector<int>& colAssign, std::vector<double>& rowPotential, std::vector<double>& colPotential, double& totalCost, const double epsilon = 1e-8);
 
 
 ///\brief Runs unit tests on the linear assignment code and supporting

@@ -1,33 +1,33 @@
 /*
-  SAKBox: GStemmer wraps the repo's libstemmer (Snowball). This file used to
+  SAKBox: WStemmer wraps the repo's libstemmer (Snowball). This file used to
   hold a copy of Martin Porter's C implementation of his stemmer
   (tartarus.org/~martin/PorterStemmer), which departs from the published
   algorithm in a few places; Snowball's "porter" follows it as published.
 */
 
-#include "GStemmer.h"
+#include "WStemmer.h"
 
-#include "GError.h"
+#include "WError.h"
 
 #include <cctype>
 #include <libstemmer.h>
 
-namespace GClasses
+namespace WClasses
 {
 
-GStemmer::GStemmer()
+WStemmer::WStemmer()
 : m_pStemmer(sb_stemmer_new("porter", "UTF_8"))
 {
 	if(!m_pStemmer)
 		throw Ex("Failed to create the Porter stemmer");
 }
 
-GStemmer::~GStemmer()
+WStemmer::~WStemmer()
 {
 	sb_stemmer_delete(m_pStemmer);
 }
 
-const char* GStemmer::getStem(const char* szWord, size_t nLen)
+const char* WStemmer::getStem(const char* szWord, size_t nLen)
 {
 	// Lowercase (tolower takes an unsigned char: a negative char, such as a
 	// UTF-8 byte, is undefined behaviour)
@@ -41,4 +41,4 @@ const char* GStemmer::getStem(const char* szWord, size_t nLen)
 	return m_stem.c_str();
 }
 
-} // namespace GClasses
+} // namespace WClasses

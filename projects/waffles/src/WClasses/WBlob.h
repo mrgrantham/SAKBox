@@ -21,17 +21,17 @@
 #define __GBLOB_H__
 
 #include <string.h>
-#include "GError.h"
+#include "WError.h"
 #include <string>
 
-namespace GClasses
+namespace WClasses
 {
 
 /// This class is for deserializing blobs. It takes care of
 /// Endianness issues and protects against buffer overruns.
 /// This class would be particularly useful for writing a network
 /// protocol.
-class GBlobIncoming
+class WBlobIncoming
 {
 protected:
 	size_t m_nBufferSize;
@@ -40,9 +40,9 @@ protected:
 	bool m_bDeleteBuffer;
 
 public:
-	GBlobIncoming();
-	GBlobIncoming(unsigned char* pBuffer, size_t nSize, bool bDeleteBuffer);
-	~GBlobIncoming();
+	WBlobIncoming();
+	WBlobIncoming(unsigned char* pBuffer, size_t nSize, bool bDeleteBuffer);
+	~WBlobIncoming();
 
 	unsigned char* getBlob() { return m_pBuffer; }
 	size_t getPos() { return m_nBufferPos; }
@@ -84,8 +84,8 @@ public:
 	void peek(size_t nIndex, unsigned char* pData, size_t nSize);
 };
 
-/// This class is for serializing objects. It is the complement to GBlobIncoming.
-class GBlobOutgoing
+/// This class is for serializing objects. It is the complement to WBlobIncoming.
+class WBlobOutgoing
 {
 protected:
 	size_t m_nBufferSize;
@@ -94,8 +94,8 @@ protected:
 	bool m_bOkToResizeBuffer;
 
 public:
-	GBlobOutgoing(size_t nBufferSize, bool bOkToResizeBuffer);
-	~GBlobOutgoing();
+	WBlobOutgoing(size_t nBufferSize, bool bOkToResizeBuffer);
+	~WBlobOutgoing();
 
 	void setPos(size_t pos) { m_nBufferPos = pos; }
 	unsigned char* getBlob() { return m_pBuffer; }
@@ -146,7 +146,7 @@ protected:
 /// This is a special queue for handling blobs that come in and go out in varying sizes.
 /// It is particulary designed for streaming things that must travel or be parsed in
 /// packets that may differ in size from how they are sent or transmitted.
-class GBlobQueue
+class WBlobQueue
 {
 protected:
 	char* m_pBuffer;
@@ -156,8 +156,8 @@ protected:
 	size_t m_bytesRemaining;
 
 public:
-	GBlobQueue();
-	~GBlobQueue();
+	WBlobQueue();
+	~WBlobQueue();
 
 	/// Adds some bytes to the queue. pBlob is assumed to remain valid until
 	/// a call to dequeue returns NULL.
@@ -184,6 +184,6 @@ protected:
 	void reallocBuffer(size_t newSize);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GBLOB_H__

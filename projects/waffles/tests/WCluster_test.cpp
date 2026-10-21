@@ -1,13 +1,13 @@
-// GKMeansSparse.
+// WKMeansSparse.
 #include <gtest/gtest.h>
 
-#include <WClasses/GCluster.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GSparseMatrix.h>
+#include <WClasses/WCluster.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WSparseMatrix.h>
 
 #include <vector>
 
-using namespace GClasses;
+using namespace WClasses;
 
 // Sparse k-means keeps a running mean per element over the rows that have
 // it, but count / (count + 1) divided integers (always 0), so each update
@@ -21,7 +21,7 @@ using namespace GClasses;
 // first, and the second cluster stayed empty and never moved. An empty
 // cluster is now restarted from another cluster's worst-fitting row.
 TEST(KMeansSparseTest, RareElementsDontDragTheCentres) {
-  GSparseMatrix data(8, 3);
+  WSparseMatrix data(8, 3);
   for (size_t i = 0; i < 4; i++) { // cluster A: mostly element 0
     data.set(i, 0, 1.0);
     data.set(i, 1, 0.1);
@@ -34,8 +34,8 @@ TEST(KMeansSparseTest, RareElementsDontDragTheCentres) {
   data.set(7, 2, 1.0);
   for (unsigned seed = 1; seed <= 20; seed++) {
     SCOPED_TRACE(testing::Message() << "seed " << seed);
-    GRand rand(seed);
-    GKMeansSparse kmeans(2, &rand);
+    WRand rand(seed);
+    WKMeansSparse kmeans(2, &rand);
     kmeans.cluster(&data);
     for (size_t i = 1; i < 4; i++)
       EXPECT_EQ(kmeans.whichCluster(i), kmeans.whichCluster(0)) << "row " << i;
@@ -52,8 +52,8 @@ TEST(KMeansSparseTest, RareElementsDontDragTheCentres) {
 // users in 3 taste groups (rows in mixed order, each rating 2/3 of the
 // items, with noise): the old code found the groups for almost no seeds.
 TEST(KMeansSparseTest, EveryCentreFollowsItsRows) {
-  GRand noise(12345);
-  GSparseMatrix data(30, 9);
+  WRand noise(12345);
+  WSparseMatrix data(30, 9);
   std::vector<size_t> group(30);
   for (size_t r = 0; r < 30; r++) {
     const size_t row = (r * 7) % 30, g = r % 3;
@@ -64,8 +64,8 @@ TEST(KMeansSparseTest, EveryCentreFollowsItsRows) {
   }
   size_t found = 0;
   for (unsigned seed = 1; seed <= 50; seed++) {
-    GRand rand(seed);
-    GKMeansSparse kmeans(3, &rand);
+    WRand rand(seed);
+    WKMeansSparse kmeans(3, &rand);
     kmeans.cluster(&data);
     // Found: rows share a cluster exactly when they share a group
     bool same = true;

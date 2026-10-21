@@ -18,15 +18,15 @@
 
 #include <exception>
 #include <iostream>
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 
 int main(int argc, char* argv[])
 {
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 	if(argc > 1)
 		throw Ex("No args were expected");
 

@@ -1,11 +1,11 @@
-#include "GImageJpeg.h"
+#include "WImageJpeg.h"
 #include <exception>
 #include <iostream>
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
-#include <WClasses/GImage.h>
-#include <WClasses/GFile.h>
-#include <WClasses/GBits.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
+#include <WClasses/WImage.h>
+#include <WClasses/WFile.h>
+#include <WClasses/WBits.h>
 #include <stdio.h>
 #include <jpeglib.h>
 #include <stdlib.h>
@@ -13,7 +13,7 @@
 using std::cerr;
 using std::cout;
 
-namespace GClasses
+namespace WClasses
 {
 
 
@@ -28,7 +28,7 @@ namespace GClasses
 
 
 
-void loadJpeg(GImage* pImage, const char* filename)
+void loadJpeg(WImage* pImage, const char* filename)
 {
 
 	/* these are standard libjpeg structures for reading(decompression) */
@@ -65,7 +65,7 @@ void loadJpeg(GImage* pImage, const char* filename)
 
 	//std::size_t buffer;
 
-	//Set GImage and make raw image point to it.
+	//Set WImage and make raw image point to it.
 
 	pImage->setSize(cinfo.output_width, cinfo.output_height);
 	unsigned int* raw = pImage->pixelRef(0, 0);
@@ -122,7 +122,7 @@ void loadJpeg(GImage* pImage, const char* filename)
 // LEE IMPLEMENT THIS LATER
 
 
-void saveJpeg(GImage* pImage, const char* filename)
+void saveJpeg(WImage* pImage, const char* filename)
 {
 	struct jpeg_compress_struct cinfo;
 	struct jpeg_error_mgr jerr;
@@ -163,4 +163,4 @@ void saveJpeg(GImage* pImage, const char* filename)
 	fclose(outfile);
 }
 
-} // namespace GClasses
+} // namespace WClasses

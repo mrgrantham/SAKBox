@@ -16,17 +16,17 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GParticleSwarm.h"
+#include "WParticleSwarm.h"
 #include <string.h>
-#include "GVec.h"
-#include "GRand.h"
+#include "WVec.h"
+#include "WRand.h"
 #include <cmath>
 
-namespace GClasses
+namespace WClasses
 {
 
-GParticleSwarm::GParticleSwarm(GTargetFunction* pCritic, size_t nPopulation, double dMin, double dRange, GRand* pRand)
-: GOptimizer(pCritic), m_pPositions(nPopulation, pCritic->relation()->size()), m_pVelocities(nPopulation, pCritic->relation()->size()), m_pBests(nPopulation, pCritic->relation()->size()), m_pErrors(nPopulation), m_pRand(pRand)
+WParticleSwarm::WParticleSwarm(WTargetFunction* pCritic, size_t nPopulation, double dMin, double dRange, WRand* pRand)
+: WOptimizer(pCritic), m_pPositions(nPopulation, pCritic->relation()->size()), m_pVelocities(nPopulation, pCritic->relation()->size()), m_pBests(nPopulation, pCritic->relation()->size()), m_pErrors(nPopulation), m_pRand(pRand)
 {
 	if(!pCritic->relation()->areContinuous(0, pCritic->relation()->size()))
 		throw Ex("Discrete attributes are not supported");
@@ -38,11 +38,11 @@ GParticleSwarm::GParticleSwarm(GTargetFunction* pCritic, size_t nPopulation, dou
 	reset();
 }
 
-/*virtual*/ GParticleSwarm::~GParticleSwarm()
+/*virtual*/ WParticleSwarm::~WParticleSwarm()
 {
 }
 
-void GParticleSwarm::reset()
+void WParticleSwarm::reset()
 {
 	for(size_t i = 0; i < m_nPopulation; i++)
 	{
@@ -54,7 +54,7 @@ void GParticleSwarm::reset()
 	m_nGlobalBest = 0;
 }
 
-/*virtual*/ double GParticleSwarm::iterate()
+/*virtual*/ double WParticleSwarm::iterate()
 {
 	// Advance
 	size_t n = m_nPopulation * m_nDimensions;
@@ -97,8 +97,8 @@ void GParticleSwarm::reset()
 
 
 
-GBouncyBalls::GBouncyBalls(GTargetFunction* pCritic, size_t population, GRand& rand, double probTeleport)
-: GOptimizer(pCritic),
+WBouncyBalls::WBouncyBalls(WTargetFunction* pCritic, size_t population, WRand& rand, double probTeleport)
+: WOptimizer(pCritic),
   m_positions(population, pCritic->relation()->size()),
   m_velocities(population, pCritic->relation()->size()),
   m_errors(population),
@@ -113,12 +113,12 @@ GBouncyBalls::GBouncyBalls(GTargetFunction* pCritic, size_t population, GRand& r
 	m_errors.fill(1e200);
 }
 
-GBouncyBalls::~GBouncyBalls()
+WBouncyBalls::~WBouncyBalls()
 {
 }
 
 // virtual
-double GBouncyBalls::iterate()
+double WBouncyBalls::iterate()
 {
 	m_positions[m_ball] += m_velocities[m_ball];
 	double newErr = m_pCritic->computeError(m_positions[m_ball]);
@@ -151,14 +151,14 @@ double GBouncyBalls::iterate()
 }
 
 // static
-void GBouncyBalls::test()
+void WBouncyBalls::test()
 {
-	GRand rand(0);
-	GOptimizerBasicTestTargetFunction target;
-	GBouncyBalls opt(&target, 10, rand, 0.01);
+	WRand rand(0);
+	WOptimizerBasicTestTargetFunction target;
+	WBouncyBalls opt(&target, 10, rand, 0.01);
 	opt.basicTest(0.002);
 }
 
 
 
-} // namespace GClasses
+} // namespace WClasses

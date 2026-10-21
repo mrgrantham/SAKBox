@@ -1,8 +1,8 @@
-// GHttpParamParser, GHttpClient and GHttpServer.
+// WHttpParamParser, WHttpClient and WHttpServer.
 #include <gtest/gtest.h>
 
-#include <WClasses/GHttp.h>
-#include <WClasses/GSocket.h>
+#include <WClasses/WHttp.h>
+#include <WClasses/WSocket.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -24,7 +24,7 @@
 #include <thread>
 #include <vector>
 
-using namespace GClasses;
+using namespace WClasses;
 
 TEST(HttpParamParserTest, ScrubKeepsOnlySafeCharacters) {
   std::string kept;
@@ -32,7 +32,7 @@ TEST(HttpParamParserTest, ScrubKeepsOnlySafeCharacters) {
     if (c == '&' || c == '=' || c == '%' || c == '+')
       continue; // parameter syntax, not value characters
     const std::string params = std::string("v=x") + c + "x";
-    GHttpParamParser pp(params.c_str());
+    WHttpParamParser pp(params.c_str());
     const char *v = pp.find("v");
     ASSERT_NE(v, nullptr) << "char " << c;
     ASSERT_EQ(strlen(v), 3u) << "char " << c;
@@ -48,7 +48,7 @@ TEST(HttpParamParserTest, ScrubKeepsOnlySafeCharacters) {
 namespace {
 // (status() reports Aborted once the connection is gone, so read the
 // outcome onLoseConnection records directly)
-struct ClientInState : GHttpClient {
+struct ClientInState : WHttpClient {
   ClientInState(bool chunked, size_t contentSize) {
     m_bChunked = chunked;
     m_nContentSize = contentSize;
@@ -56,7 +56,7 @@ struct ClientInState : GHttpClient {
   }
   Status outcome() const { return m_status; }
 };
-GHttpClient::Status statusAfterLosingConnection(bool chunked, size_t contentSize) {
+WHttpClient::Status statusAfterLosingConnection(bool chunked, size_t contentSize) {
   ClientInState client(chunked, contentSize);
   client.onLoseConnection();
   return client.outcome();
@@ -65,17 +65,17 @@ GHttpClient::Status statusAfterLosingConnection(bool chunked, size_t contentSize
 
 TEST(HttpClientTest, LosingTheConnectionMidBodyIsAnError) {
   // The body's length was known (chunked, or a Content-Length): cut short
-  EXPECT_EQ(statusAfterLosingConnection(true, 0), GHttpClient::Error);
-  EXPECT_EQ(statusAfterLosingConnection(false, 100), GHttpClient::Error);
+  EXPECT_EQ(statusAfterLosingConnection(true, 0), WHttpClient::Error);
+  EXPECT_EQ(statusAfterLosingConnection(false, 100), WHttpClient::Error);
   // No length given: the server ends the body by closing the connection
-  EXPECT_EQ(statusAfterLosingConnection(false, 0), GHttpClient::Done);
+  EXPECT_EQ(statusAfterLosingConnection(false, 0), WHttpClient::Done);
 }
 
 // A client's Content-Length was read with atoi into a size_t: "-1" became
 // the largest size, so the +1 for the terminator wrapped to a zero-byte
 // buffer that the body was then written into.
 namespace {
-struct ClientReadingHeaders : GHttpClient {
+struct ClientReadingHeaders : WHttpClient {
   void header(const char *line) { processHeader((const unsigned char *)line, strlen(line)); }
   Status outcome() const { return m_status; }
   size_t contentSize() const { return m_nContentSize; }
@@ -98,13 +98,13 @@ TEST(HttpClientTest, BadContentLengthIsAnError) {
     ClientReadingHeaders client;
     client.header("HTTP/1.1 200 OK\n");
     client.header((std::string("Content-Length: ") + value + "\n").c_str());
-    EXPECT_EQ(client.outcome(), GHttpClient::Error);
+    EXPECT_EQ(client.outcome(), WHttpClient::Error);
     EXPECT_FALSE(client.hasBuffer());
   }
   ClientReadingHeaders ok;
   ok.header("HTTP/1.1 200 OK\n");
   ok.header("Content-Length: 1234\n");
-  EXPECT_EQ(ok.outcome(), GHttpClient::Downloading);
+  EXPECT_EQ(ok.outcome(), WHttpClient::Downloading);
   EXPECT_EQ(ok.contentSize(), 1234u);
   EXPECT_TRUE(ok.hasBuffer());
 }
@@ -124,8 +124,8 @@ TEST(HttpContentLengthTest, OnlyAWholeNumberWithinTheLimit) {
 // A server answering every GET with "got <url>" and every POST with
 // "posted <body>"
 namespace {
-struct EchoConnection : GHttpConnection {
-  explicit EchoConnection(SOCKET s) : GHttpConnection(s) {}
+struct EchoConnection : WHttpConnection {
+  explicit EchoConnection(SOCKET s) : WHttpConnection(s) {}
   void doGet(std::ostream &response) override {
     response << "got " << m_szUrl;
     if (strcmp(m_szUrl, "/big") == 0)
@@ -137,10 +137,10 @@ struct EchoConnection : GHttpConnection {
   bool hasBeenModifiedSince(const char *, const char *) override { return true; }
   void setHeaders(const char *, const char *) override {}
 };
-struct EchoServer : GHttpServer {
+struct EchoServer : WHttpServer {
   explicit EchoServer(bool networkAccessible = false)
-      : GHttpServer(0, networkAccessible) {} // port 0: any free port
-  GHttpConnection *makeConnection(SOCKET s) override { return new EchoConnection(s); }
+      : WHttpServer(0, networkAccessible) {} // port 0: any free port
+  WHttpConnection *makeConnection(SOCKET s) override { return new EchoConnection(s); }
 };
 
 // Sends a request to the server and returns what comes back: its reply, or
@@ -195,7 +195,7 @@ TEST(HttpServerTest, AnswersGoodRequests) {
   EchoServer server;
   const std::string reply = send(server, "GET /hello HTTP/1.1\r\n\r\n");
   EXPECT_NE(reply.find("got /hello"), std::string::npos);
-  // An RFC 1123 date, as GTime::httpDate makes
+  // An RFC 1123 date, as WTime::httpDate makes
   EXPECT_TRUE(std::regex_search(
       reply, std::regex("\r\nDate: (Mon|Tue|Wed|Thu|Fri|Sat|Sun), [0-9]{2} "
                         "[A-Z][a-z]{2} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT\r\n")))
@@ -282,7 +282,7 @@ struct IdleEchoServer : EchoServer {
 };
 
 // Sends a request to a server that's serving on another thread
-std::string fetch(GHttpServer &server, const std::string &url) {
+std::string fetch(WHttpServer &server, const std::string &url) {
   int sock = ::socket(AF_INET, SOCK_STREAM, 0);
   timeval timeout{5, 0};
   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
@@ -371,13 +371,13 @@ TEST(HttpServeRequestsTest, StopsOnSigtermButNotSigpipe) {
 // A URL's port was read with atoi: "abc" gave port 0, and 70000 was cut to
 // 16 bits, connecting to port 4464.
 TEST(HttpUrlTest, PortMustBeValid) {
-  EXPECT_EQ(GHttp_urlPort("http://example.com/page"), 80);
-  EXPECT_EQ(GHttp_urlPort("http://example.com:8080/page"), 8080);
-  EXPECT_EQ(GHttp_urlPort("http://example.com:65535/"), 65535);
+  EXPECT_EQ(WHttp_urlPort("http://example.com/page"), 80);
+  EXPECT_EQ(WHttp_urlPort("http://example.com:8080/page"), 8080);
+  EXPECT_EQ(WHttp_urlPort("http://example.com:65535/"), 65535);
   for (const char *bad :
        {"http://example.com:abc/", "http://example.com:70000/", "http://example.com:0/",
         "http://example.com:/", "http://example.com:80x/"})
-    EXPECT_THROW(GHttp_urlPort(bad), std::exception) << bad;
+    EXPECT_THROW(WHttp_urlPort(bad), std::exception) << bad;
 }
 
 // unescapeUrl turned any letter after '%' into a "digit" up to 35 and a
@@ -387,7 +387,7 @@ TEST(HttpUrlTest, PortMustBeValid) {
 namespace {
 std::string unescaped(const std::string &s) {
   std::string out(s.size() + 1, '?');
-  GHttpServer::unescapeUrl(&out[0], s.c_str(), s.size());
+  WHttpServer::unescapeUrl(&out[0], s.c_str(), s.size());
   return out.c_str();
 }
 } // namespace
@@ -405,8 +405,8 @@ TEST(HttpUnescapeUrlTest, DecodesOnlyValidEscapes) {
     EXPECT_EQ(unescaped(k[0]), k[1]) << k[0];
   // Only the first nInLen characters are read
   std::string out(8, '?');
-  GHttpServer::unescapeUrl(&out[0], "ab%41cd", 2);
+  WHttpServer::unescapeUrl(&out[0], "ab%41cd", 2);
   EXPECT_STREQ(out.c_str(), "ab");
-  GHttpServer::unescapeUrl(&out[0], "ab%41cd", 4);
+  WHttpServer::unescapeUrl(&out[0], "ab%41cd", 4);
   EXPECT_STREQ(out.c_str(), "ab%4");
 }

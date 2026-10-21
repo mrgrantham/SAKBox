@@ -1,25 +1,25 @@
-// GNominalToCat and GDataPreprocessor::autoTrans.
+// WNominalToCat and WDataPreprocessor::autoTrans.
 #include <gtest/gtest.h>
 
-#include <WClasses/GMatrix.h>
-#include <WClasses/GTransform.h>
+#include <WClasses/WMatrix.h>
+#include <WClasses/WTransform.h>
 
 #include <memory>
 #include <vector>
 
-using namespace GClasses;
+using namespace WClasses;
 
 TEST(NominalToCatTest, OneHotOnlyBetweenThreeValuesAndTheCap) {
   // A number, then categories with 2, 3, 5, 11 and 12 values (cap 12)
   std::vector<size_t> valueCounts = {0, 2, 3, 5, 11, 12};
-  GMixedRelation rel(valueCounts);
-  GNominalToCat ntc(12);
+  WMixedRelation rel(valueCounts);
+  WNominalToCat ntc(12);
   ntc.train(rel);
   // 1 + 1 + 3 + 5 + 11 + 1
   EXPECT_EQ(ntc.after().size(), 22u);
 
   // A row: number 0.25, then values 1, 2, 4, 10, 7
-  GVec in(6), out(ntc.after().size());
+  WVec in(6), out(ntc.after().size());
   in[0] = 0.25;
   in[1] = 1;
   in[2] = 2;
@@ -38,7 +38,7 @@ TEST(NominalToCatTest, OneHotOnlyBetweenThreeValuesAndTheCap) {
   EXPECT_EQ(ntc.after().valueCount(21), 0u); // 12 values: a single number
 
   // And back
-  GVec back(6);
+  WVec back(6);
   ntc.untransform(out, back);
   for (size_t i = 0; i < 5; i++)
     EXPECT_EQ(back[i], in[i]) << "column " << i;
@@ -48,15 +48,15 @@ namespace {
 // Whether autoTrans rescales a single number column holding [lo, hi] for a
 // target range of [-1, 1], and if so where lo and hi end up
 bool rescales(double lo, double hi, double *pLoOut = nullptr, double *pHiOut = nullptr) {
-  GMatrix data(2, 1);
+  WMatrix data(2, 1);
   data[0][0] = lo;
   data[1][0] = hi;
-  std::unique_ptr<GIncrementalTransform> trans(
-      GDataPreprocessor::autoTrans(data, false, false, true, -1.0, 1.0));
+  std::unique_ptr<WIncrementalTransform> trans(
+      WDataPreprocessor::autoTrans(data, false, false, true, -1.0, 1.0));
   if (!trans)
     return false;
   trans->train(data);
-  GVec out(1);
+  WVec out(1);
   trans->transform(data[0], out);
   if (pLoOut)
     *pLoOut = out[0];

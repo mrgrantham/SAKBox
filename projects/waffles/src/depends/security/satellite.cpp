@@ -6,14 +6,14 @@
 // -------------------------------------------------------------
 
 #include "satellite.h"
-#include "../../GClasses/GSocket.h"
-#include "../../GClasses/GDirList.h"
-#include "../../GClasses/GThread.h"
-#include "../../GClasses/GApp.h"
-#include "../../GClasses/sha2.h"
-#include "../../GClasses/GFile.h"
-#include "../../GClasses/GError.h"
-#include "../../GClasses/GHolders.h"
+#include "../../WClasses/WSocket.h"
+#include "../../WClasses/WDirList.h"
+#include "../../WClasses/WThread.h"
+#include "../../WClasses/WApp.h"
+#include "../../WClasses/sha2.h"
+#include "../../WClasses/WFile.h"
+#include "../../WClasses/WError.h"
+#include "../../WClasses/WHolders.h"
 #include <string>
 #include <vector>
 #ifdef WINDOWS
@@ -24,7 +24,7 @@
 #include <ostream>
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::string;
 using std::cin;
 using std::cout;
@@ -62,7 +62,7 @@ void Satellite::Connect(const char* szAddr, int port, int timeoutSecs)
 {
 	m_lastPacketTime = time(NULL);
 	m_timeoutSecs = timeoutSecs;
-	m_pSocket = new GPackageClient();
+	m_pSocket = new WPackageClient();
 	m_pSocket->connect(szAddr, port, std::min(30, timeoutSecs));
 
 	// Send request to connect
@@ -71,19 +71,19 @@ void Satellite::Connect(const char* szAddr, int port, int timeoutSecs)
 	m_pSocket->send((const char*)m_blobOut.getBlob(), m_blobOut.getBlobSize());
 }
 
-void Satellite::OnServerWantsToDisconnect(GBlobIncoming* pBlobIn)
+void Satellite::OnServerWantsToDisconnect(WBlobIncoming* pBlobIn)
 {
 	Disconnect();
 }
 
-void Satellite::OnServerWantsPing(GBlobIncoming* pBlobIn)
+void Satellite::OnServerWantsPing(WBlobIncoming* pBlobIn)
 {
 	m_blobOut.setPos(0);
 	m_blobOut.add(201); // client responds to ping
 	m_pSocket->send((const char*)m_blobOut.getBlob(), m_blobOut.getBlobSize());
 }
 
-void Satellite::OnServerWantsFileList(GBlobIncoming* pBlobIn)
+void Satellite::OnServerWantsFileList(WBlobIncoming* pBlobIn)
 {
 	m_blobOut.setPos(0);
 	m_blobOut.add(203); // client delivers file list
@@ -104,7 +104,7 @@ void Satellite::OnServerWantsFileList(GBlobIncoming* pBlobIn)
 		m_blobOut.add("..");
 	{
 		vector<string> files;
-		GFile::folderList(files);
+		WFile::folderList(files);
 		for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 		{
 			const char* szDir = it->c_str();
@@ -116,7 +116,7 @@ void Satellite::OnServerWantsFileList(GBlobIncoming* pBlobIn)
 	// Get the Files
 	{
 		vector<string> files;
-		GFile::fileList(files);
+		WFile::fileList(files);
 		for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 		{
 			const char* szDir = it->c_str();
@@ -127,7 +127,7 @@ void Satellite::OnServerWantsFileList(GBlobIncoming* pBlobIn)
 	m_pSocket->send((const char*)m_blobOut.getBlob(), m_blobOut.getBlobSize());
 }
 
-void Satellite::OnServerWantsDirectoryChange(GBlobIncoming* pBlobIn)
+void Satellite::OnServerWantsDirectoryChange(WBlobIncoming* pBlobIn)
 {
 	string s;
 	pBlobIn->get(&s);
@@ -138,7 +138,7 @@ void Satellite::OnServerWantsDirectoryChange(GBlobIncoming* pBlobIn)
 	m_pSocket->send((const char*)m_blobOut.getBlob(), m_blobOut.getBlobSize());
 }
 
-void Satellite::OnServerWantsToSendFile(GBlobIncoming* pBlobIn)
+void Satellite::OnServerWantsToSendFile(WBlobIncoming* pBlobIn)
 {
 	if(m_pFile)
 		throw Ex("Already receiving a file");
@@ -154,7 +154,7 @@ void Satellite::OnServerWantsToSendFile(GBlobIncoming* pBlobIn)
 	m_uploading = false;
 }
 
-void Satellite::OnServerSendsFileChunk(GBlobIncoming* pBlobIn)
+void Satellite::OnServerSendsFileChunk(WBlobIncoming* pBlobIn)
 {
 	if(m_uploading)
 		throw Ex("Client is uploading");
@@ -167,7 +167,7 @@ void Satellite::OnServerSendsFileChunk(GBlobIncoming* pBlobIn)
 		throw Ex("error writing to file");
 }
 
-void Satellite::OnServerDoneSendingFile(GBlobIncoming* pBlobIn)
+void Satellite::OnServerDoneSendingFile(WBlobIncoming* pBlobIn)
 {
 	if(m_uploading)
 		throw Ex("Client is uploading");
@@ -182,7 +182,7 @@ void Satellite::OnServerDoneSendingFile(GBlobIncoming* pBlobIn)
 		throw Ex("File hash for ", m_filename.c_str(), " does not match");
 }
 
-void Satellite::OnServerWantsToDownloadFile(GBlobIncoming* pBlobIn)
+void Satellite::OnServerWantsToDownloadFile(WBlobIncoming* pBlobIn)
 {
 	if(m_pFile)
 		throw Ex("Still transferring another file");
@@ -240,21 +240,21 @@ void Satellite::CompleteFileTransfer()
 	m_pSocket->send((const char*)m_blobOut.getBlob(), m_blobOut.getBlobSize());
 }
 
-void Satellite::ExecuteCommand(GBlobIncoming* pBlobIn)
+void Satellite::ExecuteCommand(WBlobIncoming* pBlobIn)
 {
 	string sCommand;
 	pBlobIn->get(&sCommand);
-	GApp::systemCall(sCommand.c_str(), false, false);
+	WApp::systemCall(sCommand.c_str(), false, false);
 }
 
-void Satellite::Delete_File(GBlobIncoming* pBlobIn)
+void Satellite::Delete_File(WBlobIncoming* pBlobIn)
 {
 	string fn;
 	pBlobIn->get(&fn);
-	GFile::deleteFile(fn.c_str());
+	WFile::deleteFile(fn.c_str());
 }
 
-void Satellite::HandlePacket(GBlobIncoming* pBlobIn)
+void Satellite::HandlePacket(WBlobIncoming* pBlobIn)
 {
 	int id;
 	pBlobIn->get(&id);
@@ -388,9 +388,9 @@ void Satellite::Go(const char* szAddr, int port, int connectInterval, int timeou
 		if(m_pSocket) // If we're already connected
 		{
 			if(Process())
-				GThread::sleep(15);
+				WThread::sleep(15);
 			else
-				GThread::sleep(150);
+				WThread::sleep(150);
 		}
 		else
 		{
@@ -409,7 +409,7 @@ void Satellite::Go(const char* szAddr, int port, int connectInterval, int timeou
 				// todo: self-destruct
 #endif
 */
-				GThread::sleep(900);
+				WThread::sleep(900);
 			}
 		}
 	}
@@ -455,10 +455,10 @@ void Sha512DigestFile(unsigned char* pOut64ByteHash, const char* filename)
 class CommandCenter
 {
 protected:
-	GPackageServer* m_pSocket;
-	GBlobIncoming m_blobIn;
-	GBlobOutgoing m_blobOut;
-	GPackageConnection* m_pConn;
+	WPackageServer* m_pSocket;
+	WBlobIncoming m_blobIn;
+	WBlobOutgoing m_blobOut;
+	WPackageConnection* m_pConn;
 	string m_remoteDir;
 	FILE* m_pFile;
 	unsigned char* m_pBuf;
@@ -478,7 +478,7 @@ public:
 	CommandCenter(int port)
 	: m_blobOut(2048, true)
 	{
-		m_pSocket = new GPackageServer(port, true); // SAKBox: reached from other machines, so open to the network
+		m_pSocket = new WPackageServer(port, true); // SAKBox: reached from other machines, so open to the network
 		m_pConn = NULL;
 		m_remoteDir = "<Not Connected>";
 		m_pFile = NULL;
@@ -518,7 +518,7 @@ public:
 			oss << "	.." << "\n";
 		{
 			vector<string> files;
-			GFile::folderList(files);
+			WFile::folderList(files);
 			for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 			{
 				const char* szDir = it->c_str();
@@ -531,7 +531,7 @@ public:
 		size_t filecount = 0;
 		{
 			vector<string> files;
-			GFile::fileList(files);
+			WFile::fileList(files);
 			for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 			{
 				const char* szFile = it->c_str();
@@ -629,7 +629,7 @@ public:
 
 	void localDeleteFile(const char* szFilename)
 	{
-		GFile::deleteFile(szFilename);
+		WFile::deleteFile(szFilename);
 	}
 
 	void pullFile(const char* szFilename)
@@ -648,7 +648,7 @@ public:
 
 		// Send a request for the file
 		PathData pd;
-		GFile::parsePath(szFilename, &pd);
+		WFile::parsePath(szFilename, &pd);
 		m_blobOut.setPos(0);
 		m_blobOut.add(607); // server requests a file
 		m_blobOut.add(szFilename + pd.fileStart);
@@ -667,12 +667,12 @@ public:
 	//  Handlers
 	// ---------
 
-	void OnClientWantsToConnect(GBlobIncoming* pBlobIn)
+	void OnClientWantsToConnect(WBlobIncoming* pBlobIn)
 	{
 		statusMessage("A satellite has connected.");
 	}
 
-	void OnClientReportsError(GBlobIncoming* pBlob)
+	void OnClientReportsError(WBlobIncoming* pBlob)
 	{
 		string s;
 		pBlob->get(&s);
@@ -682,7 +682,7 @@ public:
 		statusMessage(s2.c_str());
 	}
 
-	void OnClientDeliversFileList(GBlobIncoming* pBlobIn)
+	void OnClientDeliversFileList(WBlobIncoming* pBlobIn)
 	{
 		// Get the dir
 		pBlobIn->get(&m_remoteDir);
@@ -764,7 +764,7 @@ public:
 		onUpdateUploadFileProgress(1.0f);
 	}
 
-	void OnClientDeliversFileInfo(GBlobIncoming* pBlobIn)
+	void OnClientDeliversFileInfo(WBlobIncoming* pBlobIn)
 	{
 		if(m_uploading)
 			throw Ex("Server is uploading");
@@ -774,7 +774,7 @@ public:
 			pBlobIn->get(&m_fileHash[i]);
 	}
 
-	void OnClientSendsFileChunk(GBlobIncoming* pBlobIn)
+	void OnClientSendsFileChunk(WBlobIncoming* pBlobIn)
 	{
 		if(m_uploading)
 			throw Ex("Server is uploading");
@@ -791,12 +791,12 @@ public:
 		onUpdateDownloadFileProgress((float)m_filePos / m_fileLen);
 	}
 
-	void OnClientRespondsToPing(GBlobIncoming* pBlobIn)
+	void OnClientRespondsToPing(WBlobIncoming* pBlobIn)
 	{
 		statusMessage("pong");
 	}
 
-	void OnClientDidIt(GBlobIncoming* pBlobIn)
+	void OnClientDidIt(WBlobIncoming* pBlobIn)
 	{
 		statusMessage("ok");
 	}
@@ -809,7 +809,7 @@ public:
 		statusMessage(s.c_str());
 	}
 
-	void OnClientDoneSendingFile(GBlobIncoming* pBlobIn)
+	void OnClientDoneSendingFile(WBlobIncoming* pBlobIn)
 	{
 		if(m_uploading)
 			throw Ex("Server is uploading");
@@ -826,7 +826,7 @@ public:
 	//  Pump
 	// ---------
 
-	void HandlePacket(GBlobIncoming* pBlob)
+	void HandlePacket(WBlobIncoming* pBlob)
 	{
 		int id;
 		pBlob->get(&id);
@@ -869,7 +869,7 @@ public:
 			while(true)
 			{
 				size_t size;
-				GPackageConnection* pConn;
+				WPackageConnection* pConn;
 				char* pPacket = m_pSocket->receive(&size, &pConn);
 				if(!pPacket)
 					break;
@@ -1000,7 +1000,7 @@ public:
 
 	void go()
 	{
-		GPassiveConsole pc(true);
+		WPassiveConsole pc(true);
 		cout << "Enter \"?\" to see a list of available commands.\n";
 		prompt();
 		while(m_keepGoing)
@@ -1033,7 +1033,7 @@ public:
 				}
 			}
 			Process();
-			GThread::sleep(100);
+			WThread::sleep(100);
 		}
 	}
 };

@@ -1,5 +1,5 @@
 /*
-  The GRand class is dedicated by all of its authors, including
+  The WRand class is dedicated by all of its authors, including
 
     Michael S. Gashler,
     Eric Moyer,
@@ -17,7 +17,7 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 /*
-	The GRandMersenneTwister class is derived from
+	The WRandMersenneTwister class is derived from
 	The Mersene Twister Generator from the file mt19937-64.c
 	by Takuji Nishimura and Makoto Matsumoto which contains the
 	following header comment:
@@ -77,15 +77,15 @@
 */
 
 #include <string.h>
-#include "GRand.h"
+#include "WRand.h"
 #include <math.h>
-#include "GError.h"
+#include "WError.h"
 #include <stdlib.h>
-#include "GHistogram.h"
-#include "GTime.h"
-#include "GMath.h"
-#include "GVec.h"
-#include "GReverseBits.h"
+#include "WHistogram.h"
+#include "WTime.h"
+#include "WMath.h"
+#include "WVec.h"
+#include "WReverseBits.h"
 #include <cmath>
 #include <ctime>
 #ifdef WINDOWS
@@ -94,40 +94,40 @@
 #include <unistd.h>
 #endif
 
-namespace GClasses
+namespace WClasses
 {
 
 using std::vector;
 
 static_assert(sizeof(uint64_t) == 8, "unexpected size");
 
-GRand::GRand(uint64_t seed)
+WRand::WRand(uint64_t seed)
 {
 	setSeed(seed);
 }
 
-GRand::GRand(const GRand& that)
+WRand::WRand(const WRand& that)
 {
-	throw Ex("It is usually an error to copy a GRand object by value. If you really meant to do that, use the copyState method instead.");
+	throw Ex("It is usually an error to copy a WRand object by value. If you really meant to do that, use the copyState method instead.");
 }
 
-GRand::~GRand()
+WRand::~WRand()
 {
 }
 
-void GRand::setSeed(uint64_t seed)
+void WRand::setSeed(uint64_t seed)
 {
 	m_b = 0xCA535ACA9535ACB2ull + seed;
 	m_a = 0x6CCF6660A66C35E7ull + (seed << 24);
 }
 
-void GRand::copyState(const GRand& copyMyState)
+void WRand::copyState(const WRand& copyMyState)
 {
 	m_a = copyMyState.m_a;
 	m_b = copyMyState.m_b;
 }
 
-uint64_t GRand::next(uint64_t range)
+uint64_t WRand::next(uint64_t range)
 {
 	// Use rejection to find a random value in a range that is a multiple of "range"
 	uint64_t n = (0xffffffffffffffffull % range) + 1;
@@ -141,14 +141,14 @@ uint64_t GRand::next(uint64_t range)
 	return x % range;
 }
 
-double GRand::uniform()
+double WRand::uniform()
 {
 	// use 52 random bits for the mantissa (as specified in IEEE 754. See
 	// http://en.wikipedia.org/wiki/Double_precision_floating-point_format)
 	return (double)(next() & 0xfffffffffffffull) / 4503599627370496.0;
 }
 
-double GRand::normal()
+double WRand::normal()
 {
 	double x, y, mag;
 	do
@@ -160,7 +160,7 @@ double GRand::normal()
 	return y * sqrt(-2.0 * log(mag) / mag); // the Box-Muller transform
 }
 
-size_t GRand::categorical(vector<double>& probabilities)
+size_t WRand::categorical(vector<double>& probabilities)
 {
 	double d = uniform();
 	size_t i = 0;
@@ -171,21 +171,21 @@ size_t GRand::categorical(vector<double>& probabilities)
 			return i;
 		i++;
 	}
-	GAssert(false); // the probabilities are not normalized
+	WAssert(false); // the probabilities are not normalized
 	return probabilities.size() - 1;
 }
 
-double GRand::exponential()
+double WRand::exponential()
 {
 	return -log(uniform());
 }
 
-double GRand::cauchy()
+double WRand::cauchy()
 {
 	return normal() / normal();
 }
 
-int GRand::poisson(double mu)
+int WRand::poisson(double mu)
 {
 	if(mu <= 0)
 		throw Ex("invalid parameter");
@@ -227,7 +227,7 @@ int GRand::poisson(double mu)
 			y = 1 + exp(a - b * x);
 			ck1 = a - b * x + log(.1e-18 + u2 / (y * y));
 #ifdef WINDOWS
-			ck2 = k + n * log(.1e-18 + mu) - GMath::logGamma(n + 1.0);
+			ck2 = k + n * log(.1e-18 + mu) - WMath::logGamma(n + 1.0);
 #else
 			ck2 = k + n * log(.1e-18 + mu) - lgamma(n + 1.0);
 #endif
@@ -238,7 +238,7 @@ int GRand::poisson(double mu)
 	}
 }
 
-double GRand::gamma(double alpha)
+double WRand::gamma(double alpha)
 {
 	double x;
 	if(alpha <= 0)
@@ -295,12 +295,12 @@ double GRand::gamma(double alpha)
 	return 0;
 }
 
-double GRand::chiSquare(double t)
+double WRand::chiSquare(double t)
 {
 	return gamma(t / 2.0) * 2.0;
 }
 
-size_t GRand::binomial(size_t n, double p)
+size_t WRand::binomial(size_t n, double p)
 {
 	size_t c = 0;
 	for(size_t i = 0; i < n; i++)
@@ -311,16 +311,16 @@ size_t GRand::binomial(size_t n, double p)
 	return c;
 }
 
-size_t GRand::binomial_approx(size_t n, double p)
+size_t WRand::binomial_approx(size_t n, double p)
 {
 	double mean = p * n;
 	double dev = sqrt(std::max(0.0, mean * (1.0 - p)));
 	return std::min(n, size_t(floor(std::max(0.0, normal() * dev + mean + 0.5))));
 }
 
-void GRand_sumToOne(double* pVector, size_t size)
+void WRand_sumToOne(double* pVector, size_t size)
 {
-	GConstVecWrapper vw(pVector, size);
+	WConstVecWrapper vw(pVector, size);
 	double sum = vw.sum();
 	if(sum == 0)
 		vw.fill(1.0 / size);
@@ -332,68 +332,68 @@ void GRand_sumToOne(double* pVector, size_t size)
 	}
 }
 
-void GRand::simplex(double* pOutVec, size_t dims)
+void WRand::simplex(double* pOutVec, size_t dims)
 {
 	for(size_t i = 0; i < dims; i++)
 		*(pOutVec++) = exponential();
-	GRand_sumToOne(pOutVec, dims);
+	WRand_sumToOne(pOutVec, dims);
 }
 
-double GRand::softImpulse(double s)
+double WRand::softImpulse(double s)
 {
 	double y = uniform();
 	return 1.0 / (1.0 + pow(1.0 / y - 1.0, 1.0 / s));
 }
 
-double GRand::weibull(double gammaVal)
+double WRand::weibull(double gammaVal)
 {
 	if(gammaVal <= 0)
 		throw Ex("invalid parameter");
 	return pow(exponential(), (1.0 / gammaVal));
 }
 
-void GRand::dirichlet(double* pOutVec, const double* pParams, int dims)
+void WRand::dirichlet(double* pOutVec, const double* pParams, int dims)
 {
 	double* pOut = pOutVec;
 	const double* pIn = pParams;
 	for(int i = 0; i < dims; i++)
 		*(pOut++) = gamma(*(pIn++));
-	GRand_sumToOne(pOutVec, dims);
+	WRand_sumToOne(pOutVec, dims);
 }
 
-double GRand::student(double t)
+double WRand::student(double t)
 {
 	if(t <= 0)
 		throw Ex("invalid parameter");
 	return normal() / sqrt(chiSquare(t) / t);
 }
 
-int GRand::geometric(double p)
+int WRand::geometric(double p)
 {
 	if(p <= 0 || p >= 1)
 		throw Ex("invalid parameter");
 	return (int)floor(-exponential() / log(1.0 - p));
 }
 
-double GRand::f(double t, double u)
+double WRand::f(double t, double u)
 {
 	if(t <= 0 || u <= 0)
 		throw Ex("invalid parameters");
 	return chiSquare(t) * u / (t * chiSquare(u));
 }
 
-double GRand::logistic()
+double WRand::logistic()
 {
 	double y = uniform();
 	return log(y) - log(1.0 - y);
 }
 
-double GRand::logNormal(double mean, double dev)
+double WRand::logNormal(double mean, double dev)
 {
 	return exp(normal() * dev + mean);
 }
 
-double GRand::beta(double alphaVal, double betaVal)
+double WRand::beta(double alphaVal, double betaVal)
 {
 	if(alphaVal <= 0 || betaVal <= 0)
 		throw Ex("invalid parameters");
@@ -402,9 +402,9 @@ double GRand::beta(double alphaVal, double betaVal)
 }
 
 #define TEST_BIT_HIST_ITERS 100000
-void GRand_testBitHistogram()
+void WRand_testBitHistogram()
 {
-	GRand prng(0);
+	WRand prng(0);
 	size_t counts[64];
 	for(size_t i = 0; i < 64; i++)
 		counts[i] = 0;
@@ -425,32 +425,32 @@ void GRand_testBitHistogram()
 	}
 }
 
-#define GRANDUINT_TEST_PRELUDE_SIZE 10000
-#define GRANDUINT_TEST_PERIOD_SIZE 100000
+#define WRANDUINT_TEST_PRELUDE_SIZE 10000
+#define WRANDUINT_TEST_PERIOD_SIZE 100000
 
-void GRand_testSpeed()
+void WRand_testSpeed()
 {
 	// Compare speed with rand(). (Be sure to build optimized, or else the results aren't very meaningful.)
 	int i;
 	double t1, t2, t3;
-	t1 = GTime::seconds();
+	t1 = WTime::seconds();
 	for(i = 0; i < 100000000; i++)
 		rand();
-	t2 = GTime::seconds();
-	GRand gr(0);
+	t2 = WTime::seconds();
+	WRand gr(0);
 	for(i = 0; i < 100000000; i++)
 		gr.next();
-	t3 = GTime::seconds();
+	t3 = WTime::seconds();
 	double randtime = t2 - t1;
 	double grandtime = t3 - t2;
 	if(randtime < grandtime)
-		throw Ex("rand is faster than GRand");
+		throw Ex("rand is faster than WRand");
 }
 
-void GRand_testRange()
+void WRand_testRange()
 {
 	// Make sure random doubles are within range
-	GRand r(0);
+	WRand r(0);
 	double min = 0.5;
 	double max = 0.5;
 	for(int n = 0; n < 100000; n++)
@@ -467,10 +467,10 @@ void GRand_testRange()
 		throw Ex("poor max");
 }
 
-void GRand_test_determinism()
+void WRand_test_determinism()
 {
 	static unsigned int expected[] = {1917992778u, 1993289697u, 632158740u, 2429171905u, 22912061u, 2753716493u, 316743267u, 3124664097u, 382509932u, 191925157u, 2298038407u, 246378453u, 1806533664u, 2162141831u, 2260504017u, 3155449906u};
-	GRand rand(12345678);
+	WRand rand(12345678);
 	for(size_t i = 0; i < 16; i++)
 	{
 		if((unsigned int)rand.next() != expected[i])
@@ -479,21 +479,21 @@ void GRand_test_determinism()
 }
 
 // static
-void GRand::test()
+void WRand::test()
 {
-	GRand_testBitHistogram();
+	WRand_testBitHistogram();
 
 	// Test cycle length
 	int n;
 	for(n = 0; n < 100; n++)
 	{
-		GRand r(n);
-		for(uint64_t j = 0; j < GRANDUINT_TEST_PRELUDE_SIZE; j++)
+		WRand r(n);
+		for(uint64_t j = 0; j < WRANDUINT_TEST_PRELUDE_SIZE; j++)
 			r.next();
 		uint64_t startA = r.m_a;
 		uint64_t startB = r.m_b;
 		r.next();
-		for(uint64_t j = 0; j < GRANDUINT_TEST_PERIOD_SIZE; j++)
+		for(uint64_t j = 0; j < WRANDUINT_TEST_PERIOD_SIZE; j++)
 		{
 			if(r.m_a == startA || r.m_b == startB)
 				throw Ex("Loop too small");
@@ -501,15 +501,15 @@ void GRand::test()
 		}
 	}
 
-	GRand_testRange();
-	GRand_test_determinism();
-	//GRand_testSpeed();
+	WRand_testRange();
+	WRand_test_determinism();
+	//WRand_testSpeed();
 	// todo: add a test for correlations
 }
 
 
 /* initializes mt[NN] with a seed */
-void GRandMersenneTwister::init_genrand64(uint64_t seed)
+void WRandMersenneTwister::init_genrand64(uint64_t seed)
 {
 	mt[0] = seed;
 	for(mti = 1; mti < NN; mti++)
@@ -517,7 +517,7 @@ void GRandMersenneTwister::init_genrand64(uint64_t seed)
 }
 
 /* generates a random number on [0, 2^64-1]-interval */
-uint64_t GRandMersenneTwister::genrand64_int64(void)
+uint64_t WRandMersenneTwister::genrand64_int64(void)
 {
 	unsigned int i;
 	uint64_t x;
@@ -551,7 +551,7 @@ uint64_t GRandMersenneTwister::genrand64_int64(void)
 	return x;
 }
 
-void GRandMersenneTwister::init_by_array64(uint64_t init_key[], uint64_t key_length)
+void WRandMersenneTwister::init_by_array64(uint64_t init_key[], uint64_t key_length)
 {
 	uint64_t i, j, k;
 	init_genrand64(19650218ULL);
@@ -1146,12 +1146,12 @@ namespace
 
 }
 
-void GRandMersenneTwister::test()
+void WRandMersenneTwister::test()
 {
 	std::string s("");
 	uint64_t init[4] = {0x12345ULL, 0x23456ULL, 0x34567ULL, 0x45678ULL};
 	uint64_t length = 4;
-	GRandMersenneTwister tw(1);
+	WRandMersenneTwister tw(1);
 	tw.init_by_array64(init, length);
 	for(int i = 0; i < 1000; ++i)
 	{
@@ -1175,4 +1175,4 @@ void GRandMersenneTwister::test()
 }
 
 
-} // namespace GClasses
+} // namespace WClasses

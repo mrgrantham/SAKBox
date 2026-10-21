@@ -1,17 +1,17 @@
-// GFunctionParser.
+// WFunctionParser.
 #include <gtest/gtest.h>
 
-#include <WClasses/GFunction.h>
+#include <WClasses/WFunction.h>
 
 #include <stdexcept>
 #include <vector>
 
-using namespace GClasses;
+using namespace WClasses;
 
 TEST(FunctionParserTest, NumbersMayStartWithAPoint) {
-  GFunctionParser mfp;
+  WFunctionParser mfp;
   mfp.add("f(x)=x*.5+.25");
-  GFunction *pFunc = mfp.getFunction("f");
+  WFunction *pFunc = mfp.getFunction("f");
   std::vector<double> params = {3.0};
   EXPECT_DOUBLE_EQ(pFunc->call(params, mfp), 1.75);
 }
@@ -20,6 +20,6 @@ TEST(FunctionParserTest, NumbersMayStartWithAPoint) {
 // well-formed numbers (1.2.3 is already two), but one too big for a double
 // (1e999) became infinity.
 TEST(FunctionParserTest, NumbersTooBigAreErrors) {
-  GFunctionParser mfp;
+  WFunctionParser mfp;
   EXPECT_THROW(mfp.add("f(x)=x*1e999"), std::exception);
 }

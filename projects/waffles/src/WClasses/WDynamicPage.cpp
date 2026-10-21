@@ -16,20 +16,20 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GDynamicPage.h"
-#include "GApp.h"
-#include "GBits.h"
-#include "GHashTable.h"
-#include "GDom.h"
-#include "GImage.h"
-#include "GHolders.h"
-#include "GFile.h"
-#include "GThread.h"
-#include "GString.h"
-#include "GSocket.h"
-#include "GTime.h"
+#include "WDynamicPage.h"
+#include "WApp.h"
+#include "WBits.h"
+#include "WHashTable.h"
+#include "WDom.h"
+#include "WImage.h"
+#include "WHolders.h"
+#include "WFile.h"
+#include "WThread.h"
+#include "WString.h"
+#include "WSocket.h"
+#include "WTime.h"
 #include "sha2.h"
-#include "GRand.h"
+#include "WRand.h"
 #ifndef WINDOWS
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -41,7 +41,7 @@
 #include <iostream>
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::vector;
 using std::string;
 using std::cout;
@@ -51,7 +51,7 @@ using std::ostream;
 using std::ostringstream;
 
 
-GDynamicPageSession::GDynamicPageSession(unsigned long long ident)
+WDynamicPageSession::WDynamicPageSession(unsigned long long ident)
 : m_pConnection(nullptr)
 {
 	m_id = ident;
@@ -59,12 +59,12 @@ GDynamicPageSession::GDynamicPageSession(unsigned long long ident)
 	m_pExtension = nullptr;
 }
 
-GDynamicPageSession::GDynamicPageSession(GDynamicPageServer* pServer, GDomNode* pNode)
+WDynamicPageSession::WDynamicPageSession(WDynamicPageServer* pServer, WDomNode* pNode)
 : m_pConnection(nullptr)
 {
 	m_id = (unsigned long long)pNode->getInt("id");
 	m_tLastAccessed = (time_t)pNode->getInt("acc");
-	GDomNode* pExt = pNode->getIfExists("ext");
+	WDomNode* pExt = pNode->getIfExists("ext");
 	if(pExt)
 		m_pExtension = pServer->deserializeSessionExtension(pExt);
 	else
@@ -72,38 +72,38 @@ GDynamicPageSession::GDynamicPageSession(GDynamicPageServer* pServer, GDomNode* 
 }
 
 // virtual
-GDynamicPageSession::~GDynamicPageSession()
+WDynamicPageSession::~WDynamicPageSession()
 {
 	if(m_pExtension)
 		m_pExtension->onDisown();
 }
 
-GDynamicPageServer* GDynamicPageSession::server()
+WDynamicPageServer* WDynamicPageSession::server()
 {
 	return m_pConnection->m_pServer;
 }
 
-void GDynamicPageSession::setConnection(GDynamicPageConnection* pConn)
+void WDynamicPageSession::setConnection(WDynamicPageConnection* pConn)
 {
 	m_pConnection = pConn;
 }
 
-void GDynamicPageSession::onAccess()
+void WDynamicPageSession::onAccess()
 {
 	time_t t;
 	m_tLastAccessed = time(&t);
 }
 
-void GDynamicPageSession::setExtension(GDynamicPageSessionExtension* pExtension)
+void WDynamicPageSession::setExtension(WDynamicPageSessionExtension* pExtension)
 {
 	if(m_pExtension)
 		m_pExtension->onDisown();
 	m_pExtension = pExtension;
 }
 
-GDomNode* GDynamicPageSession::serialize(GDom* pDoc)
+WDomNode* WDynamicPageSession::serialize(WDom* pDoc)
 {
-	GDomNode* pObj = pDoc->newObj();
+	WDomNode* pObj = pDoc->newObj();
 	pObj->add(pDoc, "id", (long long)m_id);
 	pObj->add(pDoc, "acc", (long long)m_tLastAccessed);
 	if(m_pExtension)
@@ -111,22 +111,22 @@ GDomNode* GDynamicPageSession::serialize(GDom* pDoc)
 	return pObj;
 }
 
-const char* GDynamicPageSession::url()
+const char* WDynamicPageSession::url()
 {
 	return m_pConnection->m_szUrl;
 }
 
-const char* GDynamicPageSession::params()
+const char* WDynamicPageSession::params()
 {
 	return m_pConnection->m_pContent;
 }
 
-size_t GDynamicPageSession::paramsLen()
+size_t WDynamicPageSession::paramsLen()
 {
 	return m_pConnection->m_nContentLength;
 }
 
-void GDynamicPageSession::addAjaxCookie(GDom& docOut, GDomNode* pOutNode)
+void WDynamicPageSession::addAjaxCookie(WDom& docOut, WDomNode* pOutNode)
 {
 	std::ostringstream os;
 	os << "GDPSI=";
@@ -136,18 +136,18 @@ void GDynamicPageSession::addAjaxCookie(GDom& docOut, GDomNode* pOutNode)
 
 // ------------------------------------------------------
 
-GDynamicPageConnection::GDynamicPageConnection(SOCKET sock, GDynamicPageServer* pServer)
-: GHttpConnection(sock), m_pServer(pServer)
+WDynamicPageConnection::WDynamicPageConnection(SOCKET sock, WDynamicPageServer* pServer)
+: WHttpConnection(sock), m_pServer(pServer)
 {
 }
 
 // virtual
-GDynamicPageConnection::~GDynamicPageConnection()
+WDynamicPageConnection::~WDynamicPageConnection()
 {
 }
 
 // virtual
-bool GDynamicPageConnection::hasBeenModifiedSince(const char* szUrl, const char* szDate)
+bool WDynamicPageConnection::hasBeenModifiedSince(const char* szUrl, const char* szDate)
 {
 	return true;
 }
@@ -181,10 +181,10 @@ const char* _strnstr(const char* big, const char* small, size_t len)
 	return nullptr;
 }
 
-GDynamicPageSession* GDynamicPageConnection::establishSession()
+WDynamicPageSession* WDynamicPageConnection::establishSession()
 {
 	// Check for a cookie in the HTTP header
-	GDynamicPageSession* pSession = nullptr;
+	WDynamicPageSession* pSession = nullptr;
 	if(m_szCookieIncoming[0] != '\0')
 	{
 		const char* crumb = strstr(m_szCookieIncoming, "GDPSI=");
@@ -235,7 +235,7 @@ GDynamicPageSession* GDynamicPageConnection::establishSession()
 	if(!pSession)
 	{
 		// Make a new cookie
-		unsigned long long nSessionID = (unsigned long long)m_pServer->prng()->next() ^ (unsigned long long)(GTime::seconds() * 10000);
+		unsigned long long nSessionID = (unsigned long long)m_pServer->prng()->next() ^ (unsigned long long)(WTime::seconds() * 10000);
 		std::ostringstream os;
 		os << "GDPSI=";
 		os << nSessionID;
@@ -249,10 +249,10 @@ GDynamicPageSession* GDynamicPageConnection::establishSession()
 }
 
 // virtual
-void GDynamicPageConnection::doGet(ostream& response)
+void WDynamicPageConnection::doGet(ostream& response)
 {
 	// Set up the session
-	GDynamicPageSession* pSession = establishSession();
+	WDynamicPageSession* pSession = establishSession();
 
 	// Handle the request
 	setContentType("text/html");
@@ -260,34 +260,34 @@ void GDynamicPageConnection::doGet(ostream& response)
 }
 
 // virtual
-void GDynamicPageConnection::doPost(ostream& response)
+void WDynamicPageConnection::doPost(ostream& response)
 {
-	GDynamicPageSession* pSession = establishSession();
+	WDynamicPageSession* pSession = establishSession();
 	handleRequest(pSession, response);
 }
 
 // virtual
-void GDynamicPageConnection::setHeaders(const char* szUrl, const char* szParams)
+void WDynamicPageConnection::setHeaders(const char* szUrl, const char* szParams)
 {
 	// todo: write me
 }
 
-void GDynamicPageConnection::sendFile(const char* szMimeType, const char* szFilename, ostream& response)
+void WDynamicPageConnection::sendFile(const char* szMimeType, const char* szFilename, ostream& response)
 {
 	// Load the file
 	size_t nSize;
-	char* pFile = GFile::loadFile(szFilename, &nSize);
+	char* pFile = WFile::loadFile(szFilename, &nSize);
 	std::unique_ptr<char[]> hFile(pFile);
 
 	// Set the headers
 	setContentType(szMimeType);
-	setModifiedTime(GFile::modifiedTime(szFilename));
+	setModifiedTime(WFile::modifiedTime(szFilename));
 
 	// Send the file
 	response.write(pFile, nSize);
 }
 
-void GDynamicPageConnection::sendFileSafe(const char* szJailPath, const char* szLocalPath, ostream& response)
+void WDynamicPageConnection::sendFileSafe(const char* szJailPath, const char* szLocalPath, ostream& response)
 {
 	//cout << "Requested file: " << szLocalPath;
 	//cout.flush();
@@ -295,10 +295,10 @@ void GDynamicPageConnection::sendFileSafe(const char* szJailPath, const char* sz
 	// Make sure the file is within the jail
 	size_t jailLen = strlen(szJailPath);
 	size_t localLen = strlen(szLocalPath);
-	GTEMPBUF(char, buf, jailLen + localLen + 1);
+	WTEMPBUF(char, buf, jailLen + localLen + 1);
 	strcpy(buf, szJailPath);
 	strcpy(buf + jailLen, szLocalPath);
-	GFile::condensePath(buf);
+	WFile::condensePath(buf);
 	if(strncmp(buf, szJailPath, jailLen) != 0)
 	{
 		//cout << "Denied because " << buf << " it is not within " << szJailPath << "\n";
@@ -306,7 +306,7 @@ void GDynamicPageConnection::sendFileSafe(const char* szJailPath, const char* sz
 	}
 
 	// Send the file
-	if(GFile::doesFileExist(buf))
+	if(WFile::doesFileExist(buf))
 	{
 		// Send the file
 		try
@@ -343,10 +343,10 @@ const char* g_pExtensionToMimeTypeHackTable[] =
 };
 
 // static
-const char* GDynamicPageConnection::extensionToMimeType(const char* szFilename)
+const char* WDynamicPageConnection::extensionToMimeType(const char* szFilename)
 {
 	PathData pd;
-	GFile::parsePath(szFilename, &pd);
+	WFile::parsePath(szFilename, &pd);
 	const char* szExt = szFilename + pd.extStart;
 	const char* szMimeType = "text/html";
 	for(size_t i = 0; i < sizeof(g_pExtensionToMimeTypeHackTable) / sizeof(const char*); i += 2)
@@ -363,8 +363,8 @@ const char* GDynamicPageConnection::extensionToMimeType(const char* szFilename)
 
 // ------------------------------------------------------
 
-GDynamicPageServer::GDynamicPageServer(int port, GRand* pRand, bool networkAccessible)
-: GHttpServer(port, networkAccessible), m_pRand(pRand)
+WDynamicPageServer::WDynamicPageServer(int port, WRand* pRand, bool networkAccessible)
+: WHttpServer(port, networkAccessible), m_pRand(pRand)
 {
 	// Init captcha salt
 	int i;
@@ -383,7 +383,7 @@ GDynamicPageServer::GDynamicPageServer(int port, GRand* pRand, bool networkAcces
 	strcpy(szBuf, "http://");
 	try
 	{
-		GTCPServer::hostName(szBuf + 7, 256);
+		WTCPServer::hostName(szBuf + 7, 256);
 	}
 	catch(...)
 	{
@@ -398,38 +398,38 @@ GDynamicPageServer::GDynamicPageServer(int port, GRand* pRand, bool networkAcces
 	strcpy(m_szMyAddress, szBuf);
 }
 
-GDynamicPageServer::~GDynamicPageServer()
+WDynamicPageServer::~WDynamicPageServer()
 {
 	flushSessions();
 	delete[] m_szMyAddress;
 }
 
-void GDynamicPageServer::flushSessions()
+void WDynamicPageServer::flushSessions()
 {
-	for(map<unsigned long long, GDynamicPageSession*>::iterator it = m_sessions.begin(); it != m_sessions.end(); it++)
+	for(map<unsigned long long, WDynamicPageSession*>::iterator it = m_sessions.begin(); it != m_sessions.end(); it++)
 		delete(it->second);
 	m_sessions.clear();
 }
 
-GDynamicPageSession* GDynamicPageServer::makeNewSession(unsigned long long id)
+WDynamicPageSession* WDynamicPageServer::makeNewSession(unsigned long long id)
 {
-	GDynamicPageSession* pSession = new GDynamicPageSession(id);
+	WDynamicPageSession* pSession = new WDynamicPageSession(id);
 	m_sessions.insert(make_pair(id, pSession));
 	return pSession;
 }
 
-GDynamicPageSession* GDynamicPageServer::findSession(unsigned long long id)
+WDynamicPageSession* WDynamicPageServer::findSession(unsigned long long id)
 {
-	map<unsigned long long, GDynamicPageSession*>::iterator it = m_sessions.find(id);
+	map<unsigned long long, WDynamicPageSession*>::iterator it = m_sessions.find(id);
 	if(it == m_sessions.end())
 		return nullptr;
 	else
 		return it->second;
 }
 
-void GDynamicPageServer::printSessionIds(std::ostream& stream)
+void WDynamicPageServer::printSessionIds(std::ostream& stream)
 {
-	map<unsigned long long, GDynamicPageSession*>::iterator it;
+	map<unsigned long long, WDynamicPageSession*>::iterator it;
 	for(it = m_sessions.begin(); it != m_sessions.end(); it++)
 	{
 		stream << "	" << it->first << "\n";
@@ -437,17 +437,17 @@ void GDynamicPageServer::printSessionIds(std::ostream& stream)
 	stream.flush();
 }
 
-const char* GDynamicPageServer::myAddress()
+const char* WDynamicPageServer::myAddress()
 {
 	return m_szMyAddress;
 }
 
-const char* GDynamicPageServer::daemonSalt()
+const char* WDynamicPageServer::daemonSalt()
 {
 	return m_daemonSalt;
 }
 
-void GDynamicPageServer::setDaemonSalt(const char* szSalt)
+void WDynamicPageServer::setDaemonSalt(const char* szSalt)
 {
 	if(strlen(szSalt) != 14)
 		throw Ex("Salt has unexpected length");
@@ -455,12 +455,12 @@ void GDynamicPageServer::setDaemonSalt(const char* szSalt)
 	computePasswordSalt();
 }
 
-const char* GDynamicPageServer::passwordSalt()
+const char* WDynamicPageServer::passwordSalt()
 {
 	return m_passwordSalt;
 }
 
-void GDynamicPageServer::computePasswordSalt()
+void WDynamicPageServer::computePasswordSalt()
 {
 	unsigned char digest[SHA512_DIGEST_LENGTH];
 	sha512_ctx ctx;
@@ -480,7 +480,7 @@ void GDynamicPageServer::computePasswordSalt()
 	m_passwordSalt[14] = '\0';
 }
 
-void GDynamicPageServer::redirect(std::ostream& response, const char* szUrl)
+void WDynamicPageServer::redirect(std::ostream& response, const char* szUrl)
 {
 	ostringstream& r = reinterpret_cast<ostringstream&>(response);
 	r.str("");
@@ -492,23 +492,23 @@ void GDynamicPageServer::redirect(std::ostream& response, const char* szUrl)
 	r << "\">here</a>\n";
 }
 
-GDomNode* GDynamicPageServer::serialize(GDom* pDoc)
+WDomNode* WDynamicPageServer::serialize(WDom* pDoc)
 {
-	GDomNode* pObj = pDoc->newObj();
+	WDomNode* pObj = pDoc->newObj();
 	pObj->add(pDoc, "daemonSalt", m_daemonSalt);
 	pObj->add(pDoc, "pwSalt", m_passwordSalt);
-	GDomNode* pSessionList = pDoc->newList();
+	WDomNode* pSessionList = pDoc->newList();
 	pObj->add(pDoc, "sessions", pSessionList);
-	for(std::map<unsigned long long, GDynamicPageSession*>::iterator it = m_sessions.begin(); it != m_sessions.end(); it++)
+	for(std::map<unsigned long long, WDynamicPageSession*>::iterator it = m_sessions.begin(); it != m_sessions.end(); it++)
 	{
-		GDynamicPageSession* pSession = it->second;
-		GDomNode* pSessionNode = pSession->serialize(pDoc);
+		WDynamicPageSession* pSession = it->second;
+		WDomNode* pSessionNode = pSession->serialize(pDoc);
 		pSessionList->add(pDoc, pSessionNode);
 	}
 	return pObj;
 }
 
-void GDynamicPageServer::deserialize(const GDomNode* pNode)
+void WDynamicPageServer::deserialize(const WDomNode* pNode)
 {
 	const char* szDaemonSalt = pNode->getString("daemonSalt");
 	if(strlen(szDaemonSalt) > 14)
@@ -519,14 +519,14 @@ void GDynamicPageServer::deserialize(const GDomNode* pNode)
 		throw Ex("bad pw salt size");
 	strcpy(m_passwordSalt, szPasswordSalt);
 	flushSessions();
-	GDomNode* pSessionList = pNode->get("sessions");
-	GDomListIterator it(pSessionList);
+	WDomNode* pSessionList = pNode->get("sessions");
+	WDomListIterator it(pSessionList);
 	while(it.remaining() > 0)
 	{
-		GDomNode* pSessionNode = it.current();
+		WDomNode* pSessionNode = it.current();
 		unsigned long long id = (unsigned long long)pSessionNode->getInt("id");
-		GDynamicPageSession* pSession = new GDynamicPageSession(this, pSessionNode);
-		m_sessions.insert(std::pair<unsigned long long, GDynamicPageSession*>(id, pSession));
+		WDynamicPageSession* pSession = new WDynamicPageSession(this, pSessionNode);
+		m_sessions.insert(std::pair<unsigned long long, WDynamicPageSession*>(id, pSession));
 		it.advance();
 	}
 }

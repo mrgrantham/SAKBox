@@ -3,13 +3,13 @@
 
 #include <stdlib.h>
 
-namespace GClasses
+namespace WClasses
 {
-class GArgReader;
+class WArgReader;
 }
 
 unsigned char* downloadFromWeb(const char* szAddr, size_t timeout, size_t* pOutSize);
-//void findbrokenlinks(GClasses::GArgReader& args);
+//void findbrokenlinks(WClasses::WArgReader& args);
 
 
 #endif

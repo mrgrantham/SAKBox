@@ -16,15 +16,15 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GHtml.h"
-#include "GHashTable.h"
-#include "GTokenizer.h"
+#include "WHtml.h"
+#include "WHashTable.h"
+#include "WTokenizer.h"
 #include <set>
 #include <string.h>
 
 using std::string;
 
-namespace GClasses
+namespace WClasses
 {
 
 struct InsensitiveCompare
@@ -37,16 +37,16 @@ struct InsensitiveCompare
 
 
 
-// A helper class used by the GHtmlDoc constructor to parse HTML files into a DOM
-class GHtmlParser : public GTokenizer
+// A helper class used by the WHtmlDoc constructor to parse HTML files into a DOM
+class WHtmlParser : public WTokenizer
 {
 protected:
-	GCharSet m_tagStart;
-	GCharSet m_tagEnd;
-	GCharSet m_endTagName;
-	GCharSet m_endAttrName;
-	GCharSet m_hyphen;
-	GCharSet m_whitespace;
+	WCharSet m_tagStart;
+	WCharSet m_tagEnd;
+	WCharSet m_endTagName;
+	WCharSet m_endAttrName;
+	WCharSet m_hyphen;
+	WCharSet m_whitespace;
 	std::set<std::string, InsensitiveCompare> singletons;
 	//std::set<std::string, InsensitiveCompare> self_closing;
 	std::set<std::string, InsensitiveCompare> special;
@@ -90,7 +90,7 @@ public:
 		special.insert("style");
 	}
 
-	GHtmlParser(const char* szFilename) : GTokenizer(szFilename),
+	WHtmlParser(const char* szFilename) : WTokenizer(szFilename),
 	                                      m_tagStart("<"),
 	                                      m_tagEnd(">"),
 	                                      m_endTagName("> \t\r\n/"),
@@ -101,7 +101,7 @@ public:
 		addSingletons();
 	}
 
-	GHtmlParser(const char* pFile, size_t len) : GTokenizer(pFile, len),
+	WHtmlParser(const char* pFile, size_t len) : WTokenizer(pFile, len),
 	                                             m_tagStart("<"),
 	                                             m_tagEnd(">"),
 	                                             m_endTagName("> \t\r\n"),
@@ -112,7 +112,7 @@ public:
 		addSingletons();
 	}
 
-	~GHtmlParser() override
+	~WHtmlParser() override
 	{
 	}
 
@@ -124,7 +124,7 @@ public:
 		return szTagName;
 	}
 
-	GHtmlElement* parseTag(GHtmlElement* par)
+	WHtmlElement* parseTag(WHtmlElement* par)
 	{
 		// Parse the tag name
 		skip(1); // Move past the '<'
@@ -147,12 +147,12 @@ public:
 				s += szMore;
 			}
 			skip(1);
-			GHtmlElement* pEl = new GHtmlElement(par, s.c_str());
+			WHtmlElement* pEl = new WHtmlElement(par, s.c_str());
 			pEl->singleton = true;
 			return pEl;
 		}
 
-		GHtmlElement* pEl = new GHtmlElement(par, szTagName);
+		WHtmlElement* pEl = new WHtmlElement(par, szTagName);
 
 		// Digest the attributes
 		while(true)
@@ -203,12 +203,12 @@ public:
 		return pEl;
 	}
 
-	GHtmlElement* parse()
+	WHtmlElement* parse()
 	{
-		GHtmlElement* pDocument = new GHtmlElement(nullptr, "document");
+		WHtmlElement* pDocument = new WHtmlElement(nullptr, "document");
 		pDocument->text = true; // text and singleton is a unique combination of flags for the document tag
 		pDocument->singleton = true; // text and singleton is a unique combination of flags for the document tag
-		GHtmlElement* pCur = pDocument;
+		WHtmlElement* pCur = pDocument;
 		bool parsing_special = false; // indicates a tag that surrounds a special language, such as <style> or <script>
 		while(has_more())
 		{
@@ -222,7 +222,7 @@ public:
 					const char* szCloseName = parseCloser();
 					while(true)
 					{
-						GHtmlElement* pChild = pCur;
+						WHtmlElement* pChild = pCur;
 						pCur = pCur->parent;
 						if(_stricmp(szCloseName, pChild->name.c_str()) == 0)
 							break;
@@ -235,13 +235,13 @@ public:
 				{
 					// Parse a text element
 					const char* szText = readWhile(m_tagStart);
-					GHtmlElement* pEl = new GHtmlElement(pCur, szText);
+					WHtmlElement* pEl = new WHtmlElement(pCur, szText);
 					pEl->text = true;
 				}
 				else
 				{
 					// Parse an opener tag
-					GHtmlElement* pEl = parseTag(pCur);
+					WHtmlElement* pEl = parseTag(pCur);
 					if(!pEl->singleton)
 						pCur = pEl;
 					if(special.find(pEl->name) != special.end())
@@ -252,7 +252,7 @@ public:
 			{
 				// Parse a text element
 				const char* szText = readUntil(m_tagStart, 1, 2048);
-				GHtmlElement* pEl = new GHtmlElement(pCur, szText);
+				WHtmlElement* pEl = new WHtmlElement(pCur, szText);
 				pEl->text = true;
 			}
 		}
@@ -281,20 +281,20 @@ string attrValueTrim(string& s)
 	return s.substr(beg, end - beg);
 }
 
-void GHtmlElement::populateIdMap(std::map<std::string, GHtmlElement*>& id_to_el)
+void WHtmlElement::populateIdMap(std::map<std::string, WHtmlElement*>& id_to_el)
 {
 	for(size_t i = 0; i < attrNames.size(); i++)
 	{
 		if(_stricmp(attrNames[i].c_str(), "id") == 0 && attrValues.size() > i)
 		{
-			id_to_el.insert(std::pair<std::string, GHtmlElement*>(attrValueTrim(attrValues[i]), this));
+			id_to_el.insert(std::pair<std::string, WHtmlElement*>(attrValueTrim(attrValues[i]), this));
 		}
 	}
 	for(size_t i = 0; i < children.size(); i++)
 		children[i]->populateIdMap(id_to_el);
 }
 
-void GHtmlElement::write(std::ostream& stream) const
+void WHtmlElement::write(std::ostream& stream) const
 {
 	if(text)
 	{
@@ -328,7 +328,7 @@ void GHtmlElement::write(std::ostream& stream) const
 	}
 }
 
-void GHtmlElement::writePretty(std::ostream& stream, size_t depth) const
+void WHtmlElement::writePretty(std::ostream& stream, size_t depth) const
 {
 	if(text)
 	{
@@ -375,7 +375,7 @@ void GHtmlElement::writePretty(std::ostream& stream, size_t depth) const
 	}
 }
 
-void GHtmlElement::writeTextOnly(std::ostream& stream) const
+void WHtmlElement::writeTextOnly(std::ostream& stream) const
 {
 	if(text)
 	{
@@ -401,24 +401,24 @@ void GHtmlElement::writeTextOnly(std::ostream& stream) const
 	}
 }
 
-GHtmlElement* GHtmlElement::childTag(const char* szTagName)
+WHtmlElement* WHtmlElement::childTag(const char* szTagName)
 {
 	for(size_t i = 0; i < children.size(); i++)
 	{
-		GHtmlElement* pEl = children[i];
+		WHtmlElement* pEl = children[i];
 		if(_stricmp(pEl->name.c_str(), szTagName) == 0)
 			return pEl;
 	}
 	return nullptr;
 }
 
-void GHtmlElement::addAttr(const char* szName, const char* szValue)
+void WHtmlElement::addAttr(const char* szName, const char* szValue)
 {
 	attrNames.push_back(szName);
 	attrValues.push_back(szValue);
 }
 
-void GHtmlElement::dropAttr(const char* szName)
+void WHtmlElement::dropAttr(const char* szName)
 {
 	for(size_t i = 0; i < attrNames.size(); i++)
 	{
@@ -430,7 +430,7 @@ void GHtmlElement::dropAttr(const char* szName)
 	}
 }
 
-void GHtmlElement::swap(GHtmlElement* that)
+void WHtmlElement::swap(WHtmlElement* that)
 {
 	// Find the indexes of "this"
 	size_t indexThis;
@@ -462,50 +462,50 @@ void GHtmlElement::swap(GHtmlElement* that)
 
 
 
-GHtmlDoc::GHtmlDoc(const char* szFilename)
+WHtmlDoc::WHtmlDoc(const char* szFilename)
 : m_id_to_el(nullptr)
 {
-	GHtmlParser parser(szFilename);
+	WHtmlParser parser(szFilename);
 	m_pDocument = parser.parse();
 }
 
-GHtmlDoc::GHtmlDoc(const char* pDoc, size_t size)
+WHtmlDoc::WHtmlDoc(const char* pDoc, size_t size)
 : m_id_to_el(nullptr)
 {
-	GHtmlParser parser(pDoc, size);
+	WHtmlParser parser(pDoc, size);
 	m_pDocument = parser.parse();
 }
 
-GHtmlDoc::~GHtmlDoc()
+WHtmlDoc::~WHtmlDoc()
 {
 	delete(m_id_to_el);
 	delete(m_pDocument);
 }
 
-GHtmlElement* GHtmlDoc::getElementById(const char* id)
+WHtmlElement* WHtmlDoc::getElementById(const char* id)
 {
 	if(!m_id_to_el)
 	{
-		m_id_to_el = new std::map<std::string, GHtmlElement*>();
+		m_id_to_el = new std::map<std::string, WHtmlElement*>();
 		m_pDocument->populateIdMap(*m_id_to_el);
 	}
-	std::map<std::string, GHtmlElement*>::iterator it = m_id_to_el->find(id);
+	std::map<std::string, WHtmlElement*>::iterator it = m_id_to_el->find(id);
 	if(it == m_id_to_el->end())
 		return nullptr;
 	return it->second;
 }
 
 /*
-GHtmlElement* GHtmlDoc::getBody()
+WHtmlElement* WHtmlDoc::getBody()
 {
-	GHtmlElement* pHtml = m_pDocument->childTag("html");
+	WHtmlElement* pHtml = m_pDocument->childTag("html");
 	if(!pHtml)
 		return nullptr;
 	return pHtml->childTag("body");
 }
 */
 
-void GHtmlDoc::test()
+void WHtmlDoc::test()
 {
 	const char* raw =
 	  "<!doctype html>\n"
@@ -534,7 +534,7 @@ void GHtmlDoc::test()
 	  "	   <br><br>\n"
 	  "<iframe width=\"720\" height=\"405\" src=\"https://www.youtube.com/embed/KzGjEkp772s?start=25\" frameborder=\"0\" allow=\"accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>\n"
 	  "</td></tr></table></body></html>\n";
-	GHtmlDoc doc(raw, strlen(raw));
+	WHtmlDoc doc(raw, strlen(raw));
 	std::ostringstream os;
 	doc.document()->write(os);
 	string s = os.str();

@@ -1,7 +1,7 @@
-// GDom's JSON database, GJsonAsADatabase.
+// WDom's JSON database, WJsonAsADatabase.
 #include <gtest/gtest.h>
 
-#include <WClasses/GDom.h>
+#include <WClasses/WDom.h>
 
 #include <cstdlib>
 #include <cstring>
@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-using namespace GClasses;
+using namespace WClasses;
 
 namespace {
 // The database after the commands, and whether one of them threw
@@ -25,8 +25,8 @@ std::string jsonAfter(const std::vector<const char *> &cmds, bool *pThrew = null
     std::ofstream f(dir / "db.json");
     f << "{}"; // an empty database
   }
-  GJsonAsADatabase db((dir.string() + "/").c_str());
-  GDom response;
+  WJsonAsADatabase db((dir.string() + "/").c_str());
+  WDom response;
   for (const char *cmd : cmds) {
     try {
       db.apply("db.json", cmd, &response);
@@ -36,7 +36,7 @@ std::string jsonAfter(const std::vector<const char *> &cmds, bool *pThrew = null
       *pThrew = true;
     }
   }
-  const GDomNode *root = db.apply("db.json", "", &response);
+  const WDomNode *root = db.apply("db.json", "", &response);
   std::ostringstream os;
   if (root)
     root->writeJson(os);
@@ -78,10 +78,10 @@ TEST(JsonAsADatabaseTest, AssigningCreatesWhatsMissing) {
 // JSON numbers were read as integers unless they had a '.', and the integer
 // reader stopped at the 'e': 1e5 loaded as 1 and 2E-3 as 2.
 TEST(JsonNumberTest, ExponentsAndInvalidNumbers) {
-  GDom doc;
+  WDom doc;
   const char *json = "[1e5, 2E-3, 7, 1.5, -3, 12345678901234567890]";
   doc.parseJson(json, strlen(json));
-  const GDomNode *list = doc.root();
+  const WDomNode *list = doc.root();
   ASSERT_EQ(list->size(), 6u);
   EXPECT_DOUBLE_EQ(list->get(size_t(0))->asDouble(), 100000.0);
   EXPECT_DOUBLE_EQ(list->get(size_t(1))->asDouble(), 0.002);
@@ -91,7 +91,7 @@ TEST(JsonNumberTest, ExponentsAndInvalidNumbers) {
   // Too big for an integer: read as a decimal instead
   EXPECT_DOUBLE_EQ(list->get(size_t(5))->asDouble(), 12345678901234567890.0);
   for (const char *bad : {"[1-2]", "[+5]", "[1e]", "[-]"}) {
-    GDom d;
+    WDom d;
     EXPECT_THROW(d.parseJson(bad, strlen(bad)), std::exception) << bad;
   }
 }

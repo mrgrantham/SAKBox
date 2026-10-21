@@ -16,21 +16,21 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GBezier.h"
-//#include "G3D.h"
-#include "GError.h"
-#include "GHolders.h"
-#include "GRand.h"
+#include "WBezier.h"
+//#include "W3D.h"
+#include "WError.h"
+#include "WHolders.h"
+#include "WRand.h"
 #include <stdlib.h>
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 
-namespace GClasses
+namespace WClasses
 {
-struct GBezierPoint
+struct WBezierPoint
 {
-	G3DVector point;
+	W3DVector point;
 	double weight;
 
 	inline void Multiply(double dMag)
@@ -39,7 +39,7 @@ struct GBezierPoint
 		weight *= dMag;
 	}
 
-	inline void Add(GBezierPoint* pPoint)
+	inline void Add(WBezierPoint* pPoint)
 	{
 		point.add(pPoint->point);
 		weight += pPoint->weight;
@@ -47,17 +47,17 @@ struct GBezierPoint
 };
 }
 
-GBezier::GBezier(int nControlPoints)
+WBezier::WBezier(int nControlPoints)
 {
 	m_nControlPoints = nControlPoints;
-	m_pPoints = new GBezierPoint[nControlPoints];
+	m_pPoints = new WBezierPoint[nControlPoints];
 }
 
-GBezier::GBezier(GBezier* pThat)
+WBezier::WBezier(WBezier* pThat)
 {
 	m_nControlPoints = pThat->m_nControlPoints;
-	m_pPoints = new GBezierPoint[m_nControlPoints];
-	G3DVector pnt;
+	m_pPoints = new WBezierPoint[m_nControlPoints];
+	W3DVector pnt;
 	double weight;
 	int n;
 	for(n = 0; n < m_nControlPoints; n++)
@@ -67,15 +67,15 @@ GBezier::GBezier(GBezier* pThat)
 	}
 }
 
-GBezier::~GBezier()
+WBezier::~WBezier()
 {
 	delete[] m_pPoints;
 }
 
-GBezier* GBezier::copy()
+WBezier* WBezier::copy()
 {
-	GBezier* pNewBezier = new GBezier(m_nControlPoints);
-	G3DVector pnt;
+	WBezier* pNewBezier = new WBezier(m_nControlPoints);
+	W3DVector pnt;
 	double weight;
 	int n;
 	for(n = 0; n < m_nControlPoints; n++)
@@ -87,7 +87,7 @@ GBezier* GBezier::copy()
 }
 
 // Determine the point on the rational Bezier curve using the Horner algorithm
-void GBezier::point(double t, G3DVector* pOutPoint)
+void WBezier::point(double t, W3DVector* pOutPoint)
 {
 	int n = m_nControlPoints - 1;
 	if(t == 1.0)
@@ -122,29 +122,29 @@ void GBezier::point(double t, G3DVector* pOutPoint)
 	pOutPoint->m_vals[2] /= fw;
 }
 
-int GBezier::controlPointCount()
+int WBezier::controlPointCount()
 {
 	return m_nControlPoints;
 }
 
-void GBezier::controlPoint(G3DVector* pOutPoint, double* pOutWeight, int n)
+void WBezier::controlPoint(W3DVector* pOutPoint, double* pOutWeight, int n)
 {
-	GAssert(n >= 0 && n <= m_nControlPoints); // out of range
+	WAssert(n >= 0 && n <= m_nControlPoints); // out of range
 	*pOutPoint = m_pPoints[n].point;
 	*pOutWeight = m_pPoints[n].weight;
 }
 
-void GBezier::setControlPoint(int n, G3DVector* pPoint, double weight)
+void WBezier::setControlPoint(int n, W3DVector* pPoint, double weight)
 {
-	GAssert(n >= 0 && n <= m_nControlPoints); // out of range
+	WAssert(n >= 0 && n <= m_nControlPoints); // out of range
 	m_pPoints[n].point = *pPoint;
 	m_pPoints[n].weight = weight;
 }
 
-void GBezier::elevateDegree()
+void WBezier::elevateDegree()
 {
 	// Allocate the new control points and set the first and last one
-	GBezierPoint* pNewControlPoints = new GBezierPoint[m_nControlPoints + 1];
+	WBezierPoint* pNewControlPoints = new WBezierPoint[m_nControlPoints + 1];
 	pNewControlPoints[0] = m_pPoints[0];
 	pNewControlPoints[m_nControlPoints] = m_pPoints[m_nControlPoints - 1];
 
@@ -154,8 +154,8 @@ void GBezier::elevateDegree()
 		m_pPoints[n].point.multiply(m_pPoints[n].weight);
 
 	// Determine the new intermediate control points
-	struct GBezierPoint p1;
-	struct GBezierPoint p2;
+	struct WBezierPoint p1;
+	struct WBezierPoint p2;
 	for(n = 1; n < m_nControlPoints; n++)
 	{
 		// Find the new 4D control point
@@ -178,7 +178,7 @@ void GBezier::elevateDegree()
 }
 
 // Returns a 2D triangular array of 4D control points determined by the deCasteljau algorithm
-struct GBezierPoint* GBezier::deCasteljau(double t, bool bTail)
+struct WBezierPoint* WBezier::deCasteljau(double t, bool bTail)
 {
 	// Convert from weighted (rational) 3D control points to integral (non-rational) 4D control points
 	int n;
@@ -186,7 +186,7 @@ struct GBezierPoint* GBezier::deCasteljau(double t, bool bTail)
 		m_pPoints[n].point.multiply(m_pPoints[n].weight);
 
 	// Populate the biggest row with the current control points
-	GBezierPoint* pDeCasteljauPoints = (GBezierPoint*)alloca(sizeof(GBezierPoint) * m_nControlPoints * (m_nControlPoints + 1) / 2);
+	WBezierPoint* pDeCasteljauPoints = (WBezierPoint*)alloca(sizeof(WBezierPoint) * m_nControlPoints * (m_nControlPoints + 1) / 2);
 	int y = m_nControlPoints - 1;
 	n = (y * (y + 1)) / 2;
 	int x;
@@ -194,8 +194,8 @@ struct GBezierPoint* GBezier::deCasteljau(double t, bool bTail)
 		pDeCasteljauPoints[n + x] = m_pPoints[x];
 
 	// Calculate the rest of the points
-	struct GBezierPoint p1;
-	struct GBezierPoint p2;
+	struct WBezierPoint p1;
+	struct WBezierPoint p2;
 	for(y--; y >= 0; y--)
 	{
 		n = (y * (y + 1)) / 2;
@@ -211,7 +211,7 @@ struct GBezierPoint* GBezier::deCasteljau(double t, bool bTail)
 	}
 
 	// Extract the segment control points and convert back to weighted (rational) 3D points
-	GBezierPoint* pSegment = new GBezierPoint[m_nControlPoints];
+	WBezierPoint* pSegment = new WBezierPoint[m_nControlPoints];
 	for(y = 0; y < m_nControlPoints; y++)
 	{
 		if(bTail)
@@ -224,33 +224,33 @@ struct GBezierPoint* GBezier::deCasteljau(double t, bool bTail)
 	return pSegment;
 }
 
-void GBezier::segment(double t, bool bTail)
+void WBezier::segment(double t, bool bTail)
 {
-	GBezierPoint* pNewControlPoints = deCasteljau(t, bTail);
+	WBezierPoint* pNewControlPoints = deCasteljau(t, bTail);
 	delete[] m_pPoints;
 	m_pPoints = pNewControlPoints;
 }
 
-void GBezier::derivativeAtZero(G3DVector* pOutPoint)
+void WBezier::derivativeAtZero(W3DVector* pOutPoint)
 {
-	GAssert(m_nControlPoints > 1); // undefined with only one point
+	WAssert(m_nControlPoints > 1); // undefined with only one point
 	*pOutPoint = m_pPoints[1].point;
 	pOutPoint->subtract(m_pPoints[0].point);
 	double d = m_pPoints[1].weight * (m_nControlPoints - 1) / m_pPoints[0].weight;
 	pOutPoint->multiply(d);
 }
 
-double GBezier::curvatureAtZero()
+double WBezier::curvatureAtZero()
 {
 	if(m_nControlPoints < 3)
 		return 0;
 
-	G3DVector vec1 = m_pPoints[1].point;
+	W3DVector vec1 = m_pPoints[1].point;
 	vec1.subtract(m_pPoints[0].point);
 	double aSquared = vec1.squaredMag();
 	vec1.multiply(1.0 / sqrt(aSquared));
 
-	G3DVector vec2 = m_pPoints[2].point;
+	W3DVector vec2 = m_pPoints[2].point;
 	vec2.subtract(m_pPoints[1].point);
 	double dSquared = vec2.squaredMag();
 	vec2.dotProduct(vec1);
@@ -261,7 +261,7 @@ double GBezier::curvatureAtZero()
 
 double DoPolarEquation(int n, double* pPolarCoords, int nPolarCoords)
 {
-	GAssert(nPolarCoords >= n); // nPolarCoords must be bigger than n
+	WAssert(nPolarCoords >= n); // nPolarCoords must be bigger than n
 	int* pPermutations = (int*)alloca(n * sizeof(int));
 	int i;
 	for(i = 0; i < n; i++)
@@ -275,7 +275,7 @@ double DoPolarEquation(int n, double* pPolarCoords, int nPolarCoords)
 		double dTemp = 1;
 		for(i = 0; i < n; i++)
 		{
-			GAssert(pPermutations[i] < nPolarCoords); // internal error
+			WAssert(pPermutations[i] < nPolarCoords); // internal error
 			dTemp *= pPolarCoords[pPermutations[i]];
 		}
 		dSum += dTemp;
@@ -291,7 +291,7 @@ double DoPolarEquation(int n, double* pPolarCoords, int nPolarCoords)
 	return dSum / nPermutations;
 }
 
-void CalculateBernsteinCoefficient(G3DVector* pOutPoint, double* pPolarCoords, G3DVector* pPolyCoeff, int nPolyCoeff)
+void CalculateBernsteinCoefficient(W3DVector* pOutPoint, double* pPolarCoords, W3DVector* pPolyCoeff, int nPolyCoeff)
 {
 	pOutPoint->m_vals[0] = 0;
 	pOutPoint->m_vals[1] = 0;
@@ -307,14 +307,14 @@ void CalculateBernsteinCoefficient(G3DVector* pOutPoint, double* pPolarCoords, G
 	}
 }
 
-/*static*/ GBezier* GBezier::fromPolynomial(G3DVector* pCoefficients, int nCoefficients)
+/*static*/ WBezier* WBezier::fromPolynomial(W3DVector* pCoefficients, int nCoefficients)
 {
 	double* pPolarCoords = (double*)alloca((nCoefficients - 1) * sizeof(double));
 	int n;
 	for(n = 0; n < nCoefficients - 1; n++)
 		pPolarCoords[n] = 0;
-	GBezier* pNewBezier = new GBezier(nCoefficients);
-	G3DVector point;
+	WBezier* pNewBezier = new WBezier(nCoefficients);
+	W3DVector point;
 	CalculateBernsteinCoefficient(&point, pPolarCoords, pCoefficients, nCoefficients);
 	pNewBezier->setControlPoint(0, &point, 1);
 	for(n = 0; n < nCoefficients - 1; n++)
@@ -326,13 +326,13 @@ void CalculateBernsteinCoefficient(G3DVector* pOutPoint, double* pPolarCoords, G
 	return pNewBezier;
 }
 
-void GBezier::toPolynomial(G3DVector* pOutCoefficients)
+void WBezier::toPolynomial(W3DVector* pOutCoefficients)
 {
 	int n;
 	for(n = 0; n < m_nControlPoints; n++)
 	{
 		pOutCoefficients[n] = m_pPoints[n].point;
-		GAssert(m_pPoints[n].weight == m_pPoints[0].weight); // Rational (weighted) Bezier curves can't be represented as a polynomial--pretending all weights are the same
+		WAssert(m_pPoints[n].weight == m_pPoints[0].weight); // Rational (weighted) Bezier curves can't be represented as a polynomial--pretending all weights are the same
 	}
 	int i;
 	for(i = 1; i < m_nControlPoints; i++)
@@ -340,32 +340,32 @@ void GBezier::toPolynomial(G3DVector* pOutCoefficients)
 		for(n = m_nControlPoints - 1; n >= i; n--)
 			pOutCoefficients[n].subtract(pOutCoefficients[n - 1]);
 	}
-	GTEMPBUF(size_t, pPascalsTriangle, m_nControlPoints);
-	GMath::pascalsTriangle(pPascalsTriangle, m_nControlPoints - 1);
+	WTEMPBUF(size_t, pPascalsTriangle, m_nControlPoints);
+	WMath::pascalsTriangle(pPascalsTriangle, m_nControlPoints - 1);
 	for(n = 0; n < m_nControlPoints; n++)
 		pOutCoefficients[n].multiply((double)pPascalsTriangle[n]);
 }
 
 // static
-void GBezier::test()
+void WBezier::test()
 {
 	// Generate a random Bezier curve with seven control points
-	GRand prng(0);
-	G3DVector p1, p2, p3;
-	GBezier* pOrig = new GBezier(7);
-	std::unique_ptr<GBezier> hOrig(pOrig);
+	WRand prng(0);
+	W3DVector p1, p2, p3;
+	WBezier* pOrig = new WBezier(7);
+	std::unique_ptr<WBezier> hOrig(pOrig);
 	int n;
 	for(n = 0; n < pOrig->controlPointCount(); n++)
 	{
-		p1.m_vals[0] = (G3DReal)prng.next(1000000);
-		p1.m_vals[1] = (G3DReal)prng.next(1000000);
-		p1.m_vals[2] = (G3DReal)prng.next(1000000);
+		p1.m_vals[0] = (W3DReal)prng.next(1000000);
+		p1.m_vals[1] = (W3DReal)prng.next(1000000);
+		p1.m_vals[2] = (W3DReal)prng.next(1000000);
 		pOrig->setControlPoint(n, &p1, 1);
 	}
 
 	// Test that elevating the degree doesn't change the curve
-	GBezier* pCopy = pOrig->copy();
-	std::unique_ptr<GBezier> hCopy(pCopy);
+	WBezier* pCopy = pOrig->copy();
+	std::unique_ptr<WBezier> hCopy(pCopy);
 	pCopy->elevateDegree();
 	if(pCopy->controlPointCount() != pOrig->controlPointCount() + 1)
 		throw Ex("wrong answer");
@@ -378,8 +378,8 @@ void GBezier::test()
 	}
 
 	// Test that we can segment the curve properly
-	GBezier* pCopy2 = pCopy->copy();
-	std::unique_ptr<GBezier> hCopy2(pCopy2);
+	WBezier* pCopy2 = pCopy->copy();
+	std::unique_ptr<WBezier> hCopy2(pCopy2);
 	pCopy->segment(.3, false);
 	pCopy2->segment(.3, true);
 	for(n = 0; n < 10; n++)
@@ -394,10 +394,10 @@ void GBezier::test()
 	}
 
 	// Test that it round-trips through a polynomial
-	G3DVector coeff[7];
+	W3DVector coeff[7];
 	pOrig->toPolynomial(coeff);
-	GBezier* pAnother = GBezier::fromPolynomial(coeff, 7);
-	std::unique_ptr<GBezier> hAnother(pAnother);
+	WBezier* pAnother = WBezier::fromPolynomial(coeff, 7);
+	std::unique_ptr<WBezier> hAnother(pAnother);
 	for(n = 0; n < 10; n++)
 	{
 		pOrig->point((double)n / 10, &p1);
@@ -409,28 +409,28 @@ void GBezier::test()
 
 // ---------------------------------------------------------------------------------------------------
 
-namespace GClasses
+namespace WClasses
 {
-struct GNurbsPoint
+struct WNurbsPoint
 {
-	G3DVector point;
+	W3DVector point;
 	double weight;
 	double knotInterval;
 };
 }
 
-GNurbs::GNurbs(int nControlPoints, int nDegree, bool periodic)
+WNurbs::WNurbs(int nControlPoints, int nDegree, bool periodic)
 {
-	GAssert(m_nControlPoints > m_nDegree); // You must have more control points than the degree
+	WAssert(m_nControlPoints > m_nDegree); // You must have more control points than the degree
 	m_nControlPoints = nControlPoints;
 	m_nDegree = nDegree;
-	m_pPoints = new GNurbsPoint[nControlPoints];
+	m_pPoints = new WNurbsPoint[nControlPoints];
 	m_bPeriodic = periodic;
 }
 
-GNurbs::GNurbs(GNurbs* pThat)
+WNurbs::WNurbs(WNurbs* pThat)
 {
-	m_pPoints = new GNurbsPoint[pThat->m_nControlPoints];
+	m_pPoints = new WNurbsPoint[pThat->m_nControlPoints];
 	m_nDegree = pThat->m_nDegree;
 	m_nControlPoints = pThat->m_nControlPoints;
 	int n;
@@ -439,29 +439,29 @@ GNurbs::GNurbs(GNurbs* pThat)
 	m_bPeriodic = pThat->m_bPeriodic;
 }
 
-GNurbs::~GNurbs()
+WNurbs::~WNurbs()
 {
 	delete[] m_pPoints;
 }
 
-void GNurbs::controlPoint(G3DVector* pOutPoint, double* pOutWeight, int n)
+void WNurbs::controlPoint(W3DVector* pOutPoint, double* pOutWeight, int n)
 {
 	*pOutPoint = m_pPoints[n].point;
 	*pOutWeight = m_pPoints[n].weight;
 }
 
-void GNurbs::setControlPoint(int n, G3DVector* pPoint, double weight)
+void WNurbs::setControlPoint(int n, W3DVector* pPoint, double weight)
 {
 	m_pPoints[n].point = *pPoint;
 	m_pPoints[n].weight = weight;
 }
 
-double GNurbs::knotInterval(int n)
+double WNurbs::knotInterval(int n)
 {
 	return m_pPoints[n].knotInterval;
 }
 
-void GNurbs::setKnotInterval(int n, double dInterval)
+void WNurbs::setKnotInterval(int n, double dInterval)
 {
 	m_pPoints[n].knotInterval = dInterval;
 }
@@ -472,14 +472,14 @@ inline int WrapAround(int i, int n)
 	return ((i % n) + n) % n;
 }
 
-void GNurbs::pointCircular(struct GBezierPoint* pOutPoint, int n)
+void WNurbs::pointCircular(struct WBezierPoint* pOutPoint, int n)
 {
 	int nControlPoint = WrapAround(n, m_nControlPoints);
 	pOutPoint->point = m_pPoints[nControlPoint].point;
 	pOutPoint->weight = m_pPoints[nControlPoint].weight;
 }
 
-double GNurbs::knotValue(int n)
+double WNurbs::knotValue(int n)
 {
 	if(m_bPeriodic)
 	{
@@ -519,19 +519,19 @@ double GNurbs::knotValue(int n)
 	}
 }
 
-void MixPoints(struct GBezierPoint* pA, const struct GBezierPoint* pB, double dA, double dTarget, double dB)
+void MixPoints(struct WBezierPoint* pA, const struct WBezierPoint* pB, double dA, double dTarget, double dB)
 {
-	struct GBezierPoint temp = *pB;
+	struct WBezierPoint temp = *pB;
 	temp.Multiply(dTarget - dA);
 	pA->Multiply(dB - dTarget);
 	pA->Add(&temp);
 	pA->Multiply(1.0 / (dB - dA));
 }
 
-void GNurbs::calculateBezierControlPoint(struct GBezierPoint* pOutPoint, int nInterval, int nBezierControlPoint)
+void WNurbs::calculateBezierControlPoint(struct WBezierPoint* pOutPoint, int nInterval, int nBezierControlPoint)
 {
-	GAssert(nBezierControlPoint < m_nDegree - 1); // This method won't get the last control point in the Bezier curve.  Use the first control point of the next interval instead (since they're the same point).
-	struct GBezierPoint* pPoints = (struct GBezierPoint*)alloca(m_nDegree * sizeof(struct GBezierPoint));
+	WAssert(nBezierControlPoint < m_nDegree - 1); // This method won't get the last control point in the Bezier curve.  Use the first control point of the next interval instead (since they're the same point).
+	struct WBezierPoint* pPoints = (struct WBezierPoint*)alloca(m_nDegree * sizeof(struct WBezierPoint));
 	int nStartPoint = nInterval - (m_nDegree >> 1);
 	int n;
 	for(n = 0; n < m_nDegree; n++)
@@ -549,7 +549,7 @@ void GNurbs::calculateBezierControlPoint(struct GBezierPoint* pOutPoint, int nIn
 		{
 			double dAKnot = knotValue(nStartKnotPos + i);
 			double dBKnot = knotValue(nEndKnotPos + i);
-			GAssert(dAKnot <= dTargetKnot && dTargetKnot <= dBKnot);
+			WAssert(dAKnot <= dTargetKnot && dTargetKnot <= dBKnot);
 			MixPoints(&pPoints[i], &pPoints[i + 1], dAKnot, dTargetKnot, dBKnot);
 		}
 		nStartKnotPos++;
@@ -558,10 +558,10 @@ void GNurbs::calculateBezierControlPoint(struct GBezierPoint* pOutPoint, int nIn
 }
 
 
-GBezier* GNurbs::bezier(int nInterval)
+WBezier* WNurbs::bezier(int nInterval)
 {
-	GBezier* pBez = new GBezier(m_nDegree + 1);
-	struct GBezierPoint point;
+	WBezier* pBez = new WBezier(m_nDegree + 1);
+	struct WBezierPoint point;
 	int n;
 	for(n = 0; n < m_nDegree; n++)
 	{
@@ -574,7 +574,7 @@ GBezier* GNurbs::bezier(int nInterval)
 }
 
 // This will mess up the value at pB and will return the answer in pA
-void GNurbs::newKnotPeriodic(struct GBezierPoint* pA, struct GBezierPoint* pB, int n, int nControlPoint, double dRatio)
+void WNurbs::newKnotPeriodic(struct WBezierPoint* pA, struct WBezierPoint* pB, int n, int nControlPoint, double dRatio)
 {
 	double dSum = 0;
 	double dMin = 0;
@@ -597,14 +597,14 @@ void GNurbs::newKnotPeriodic(struct GBezierPoint* pA, struct GBezierPoint* pB, i
 	pA->Add(pB);
 }
 
-void GNurbs::insertKnotPeriodic(int nInterval, double dRatio)
+void WNurbs::insertKnotPeriodic(int nInterval, double dRatio)
 {
 	if(!m_bPeriodic)
 		throw Ex("This function is not implemented for non-periodic NURBS");
-	struct GNurbsPoint* pNewPoints = new struct GNurbsPoint[m_nControlPoints + 1];
+	struct WNurbsPoint* pNewPoints = new struct WNurbsPoint[m_nControlPoints + 1];
 	int nStart = nInterval - (m_nDegree >> 1);
-	struct GBezierPoint a;
-	struct GBezierPoint b;
+	struct WBezierPoint a;
+	struct WBezierPoint b;
 	double dNewKnotInterval;
 	int n;
 	for(n = 0; n < m_nDegree; n++)

@@ -9,7 +9,7 @@ cc_binary(
     deps = [
         "//projects/waffles:WClasses",
         "//projects/waffles:Gui",
-        "//projects/waffles:GImagePng",
+        "//projects/waffles:WImagePng",
         "@fmt",
         "@backward",
     ],

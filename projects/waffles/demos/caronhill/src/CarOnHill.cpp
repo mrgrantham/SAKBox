@@ -11,32 +11,32 @@
 #else
 #include <unistd.h>
 #endif
-#include <WClasses/GTime.h>
-#include <WClasses/GThread.h>
-#include <WClasses/GError.h>
-#include <WClasses/GFile.h>
-#include <WClasses/GRand.h>
-#include <WClasses/GKNN.h>
-#include <WClasses/GReinforcement.h>
+#include <WClasses/WTime.h>
+#include <WClasses/WThread.h>
+#include <WClasses/WError.h>
+#include <WClasses/WFile.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WKNN.h>
+#include <WClasses/WReinforcement.h>
 #include <math.h>
 #include <sstream>
-#include "png/GImagePng.h"
+#include "png/WImagePng.h"
 #include <fmt/core.h>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::string;
 
 bool g_updateView = true;
 
-class CarQAgent : public GIncrementalLearnerQAgent
+class CarQAgent : public WIncrementalLearnerQAgent
 {
 protected:
 	double m_lastReward;
-	GIncrementalLearner* m_pQTable;
+	WIncrementalLearner* m_pQTable;
 
 public:
-	CarQAgent(const GRelation& obsControlRelation, double* pInitialState, GRand* prng, GAgentActionIterator* pActionIterator)
-	: GIncrementalLearnerQAgent(obsControlRelation, MakeQTable(), 1 /*actionDims*/, pInitialState, prng, pActionIterator, 0.99 /*softMaxThresh*/)
+	CarQAgent(const WRelation& obsControlRelation, double* pInitialState, WRand* prng, WAgentActionIterator* pActionIterator)
+	: WIncrementalLearnerQAgent(obsControlRelation, MakeQTable(), 1 /*actionDims*/, pInitialState, prng, pActionIterator, 0.99 /*softMaxThresh*/)
 	{
 		m_lastReward = UNKNOWN_REAL_VALUE;
 	}
@@ -46,13 +46,13 @@ public:
 		delete(m_pQTable);
 	}
 
-	GIncrementalLearner* MakeQTable()
+	WIncrementalLearner* MakeQTable()
 	{
 		size_t dims[3];
 		dims[0] = 50; // position
 		dims[1] = 50; // velocity
 		dims[2] = 2; // actions
-		m_pQTable = new GInstanceTable(3, dims);
+		m_pQTable = new WInstanceTable(3, dims);
 		return m_pQTable;
 	}
 
@@ -72,19 +72,19 @@ public:
 class CarOnHillModel
 {
 protected:
-	GImage* m_pImage;
-	GImage* m_pCar;
-	GImage* m_pRotatedCar;
+	WImage* m_pImage;
+	WImage* m_pCar;
+	WImage* m_pRotatedCar;
 	double m_carPos;
 	double m_velocity;
-	GDiscreteActionIterator* m_pActionIterator;
-	GPolicyLearner* m_pAgents[1];
-	GRand* m_prng;
-	GWidgetTextLabel* m_pWins;
+	WDiscreteActionIterator* m_pActionIterator;
+	WPolicyLearner* m_pAgents[1];
+	WRand* m_prng;
+	WWidgetTextLabel* m_pWins;
 	int m_wins;
 
 public:
-	CarOnHillModel(GRand* prng, GImage* pImage, GWidgetTextLabel* pWins)
+	CarOnHillModel(WRand* prng, WImage* pImage, WWidgetTextLabel* pWins)
 	{
 		m_pWins = pWins;
 		m_wins = 0;
@@ -94,26 +94,26 @@ public:
 		m_prng = prng;
 
 		// Load the car image and add some border so we can rotate it
-		GImage tmp;
+		WImage tmp;
 		loadPng(&tmp, "projects/waffles/demos/caronhill/data/minicar.png");
-		m_pCar = new GImage();
+		m_pCar = new WImage();
 		m_pCar->setSize(70, 60);
-		GRect r(0, 0, 60, 36);
+		WRect r(0, 0, 60, 36);
 		m_pCar->blit(5, 5, &tmp, &r);
-		m_pRotatedCar = new GImage();
+		m_pRotatedCar = new WImage();
 
 		// Make the agent
-		GMixedRelation relAgent;
+		WMixedRelation relAgent;
 		relAgent.addAttr(0); // position
 		relAgent.addAttr(0); // velocity
 		relAgent.addAttr(2); // action {forward, reverse}
 		double initialState[2];
 		initialState[0] = m_carPos;
 		initialState[1] = m_velocity;
-		m_pActionIterator = new GDiscreteActionIterator(2);
+		m_pActionIterator = new WDiscreteActionIterator(2);
 		m_pAgents[0] = new CarQAgent(relAgent, initialState, m_prng, m_pActionIterator);
-		((GQLearner*)m_pAgents[0])->setLearningRate(.9);
-		((GQLearner*)m_pAgents[0])->setDiscountFactor(0.98);
+		((WQLearner*)m_pAgents[0])->setLearningRate(.9);
+		((WQLearner*)m_pAgents[0])->setDiscountFactor(0.98);
 	}
 
 	virtual ~CarOnHillModel()
@@ -133,7 +133,7 @@ public:
 		double y = m_carPos * m_carPos - m_carPos * m_carPos * m_carPos;
 		int i = (int)((m_carPos + 0.4) * m_pImage->width() / 1.4);
 		int j = (int)(m_pImage->height() - y * 3 * m_pImage->height() - 50);
-		GRect r(0, 0, 70, 60);
+		WRect r(0, 0, 70, 60);
 		m_pImage->blitAlpha(i - 35, j - 40, m_pRotatedCar, &r);
 	}
 
@@ -218,41 +218,41 @@ public:
 };
 
 
-class CarOnHillDialog : public GWidgetDialog
+class CarOnHillDialog : public WWidgetDialog
 {
 protected:
 	CarOnHillController* m_pController;
-	GWidgetCanvas* m_pCanvas;
-	GImage* m_pImage;
+	WWidgetCanvas* m_pCanvas;
+	WImage* m_pImage;
 	CarOnHillModel* m_pModel;
-	GRand* m_prng;
-	GWidgetBulletGroup* m_pBullets;
-	GWidgetCheckBox* m_pUpdateDisplay;
-	GWidgetTextLabel* m_pWins;
+	WRand* m_prng;
+	WWidgetBulletGroup* m_pBullets;
+	WWidgetCheckBox* m_pUpdateDisplay;
+	WWidgetTextLabel* m_pWins;
 	bool m_bPrevUpdate;
 
 public:
 	CarOnHillDialog(CarOnHillController* pController, int w, int h)
-	: GWidgetDialog(w, h, 0xff90d0f0)
+	: WWidgetDialog(w, h, 0xff90d0f0)
 	{
 		m_pController = pController;
 
-		m_pBullets = new GWidgetBulletGroup(this, 820, 102, 14, 14, 2, 30, true);
-		new GWidgetTextLabel(this, 840, 100, 100, 24, "Mouse", 0xff306000);
-		new GWidgetTextLabel(this, 840, 130, 100, 24, "Q-Learner", 0xff306000);
+		m_pBullets = new WWidgetBulletGroup(this, 820, 102, 14, 14, 2, 30, true);
+		new WWidgetTextLabel(this, 840, 100, 100, 24, "Mouse", 0xff306000);
+		new WWidgetTextLabel(this, 840, 130, 100, 24, "Q-Learner", 0xff306000);
 		m_pBullets->setSelection(1);
 
-		m_pWins = new GWidgetTextLabel(this, 820, 300, 100, 24, "Wins: 0", 0xff306000, 0xff90d0f0);
+		m_pWins = new WWidgetTextLabel(this, 820, 300, 100, 24, "Wins: 0", 0xff306000, 0xff90d0f0);
 
-		m_pUpdateDisplay = new GWidgetCheckBox(this, 820, 402, 18, 18);
+		m_pUpdateDisplay = new WWidgetCheckBox(this, 820, 402, 18, 18);
 		m_pUpdateDisplay->setChecked(true);
-		new GWidgetTextLabel(this, 840, 400, 100, 24, "Slow", 0xff306000);
+		new WWidgetTextLabel(this, 840, 400, 100, 24, "Slow", 0xff306000);
 
-		m_pImage = new GImage();
+		m_pImage = new WImage();
 		m_pImage->setSize(800, 600);
 
-		m_pCanvas = new GWidgetCanvas(this, 10, 30, m_pImage->width(), m_pImage->height(), m_pImage);
-		m_prng = new GRand(0);
+		m_pCanvas = new WWidgetCanvas(this, 10, 30, m_pImage->width(), m_pImage->height(), m_pImage);
+		m_prng = new WRand(0);
 		m_pModel = new CarOnHillModel(m_prng, m_pImage, m_pWins);
 		m_bPrevUpdate = true;
 	}
@@ -360,12 +360,12 @@ CarOnHillController::~CarOnHillController()
 
 void CarOnHillController::RunModal()
 {
-	double timeOld = GTime::seconds();
+	double timeOld = WTime::seconds();
 	double time;
 	m_pView->update();
 	while(m_bKeepRunning)
 	{
-		time = GTime::seconds();
+		time = WTime::seconds();
 		if(handleEvents(time - timeOld) || g_updateView)
 		{
 			m_pView->update();

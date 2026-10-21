@@ -20,13 +20,13 @@
 #ifndef __GHISTOGRAM_H__
 #define __GHISTOGRAM_H__
 
-#include "GMatrix.h"
+#include "WMatrix.h"
 
-namespace GClasses
+namespace WClasses
 {
 
 /// Gathers values and puts them in bins.
-class GHistogram
+class WHistogram
 {
 protected:
 	double* m_bins;
@@ -36,14 +36,14 @@ protected:
 public:
 	/// This creates an empty histogram. You will need to call addSample
 	/// To fill it with values.
-	GHistogram(double min, double max, size_t binCount);
+	WHistogram(double min, double max, size_t binCount);
 
 	/// Creates a histogram and fills it with values in the specified column of data.
 	/// If xmin and/or xmax are UNKNOWN_REAL_VALUE, then it will determine a suitable
 	/// range automatically. The number of buckets will be computed as
 	/// min(maxBuckets,floor(sqrt(data.rows))).
-	GHistogram(GMatrix& data, size_t col, double xmin = UNKNOWN_REAL_VALUE, double xmax = UNKNOWN_REAL_VALUE, size_t maxBuckets = 10000000);
-	~GHistogram();
+	WHistogram(WMatrix& data, size_t col, double xmin = UNKNOWN_REAL_VALUE, double xmax = UNKNOWN_REAL_VALUE, size_t maxBuckets = 10000000);
+	~WHistogram();
 
 	/// Adds a sample to the histogram.
 	void addSample(double x, double weight = 1.0);
@@ -81,6 +81,6 @@ public:
 	double xmax() { return m_max; }
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GHISTOGRAM_H__

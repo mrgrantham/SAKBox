@@ -20,24 +20,24 @@
 #ifndef __GDECISIONTREE_H__
 #define __GDECISIONTREE_H__
 
-#include "GLearner.h"
+#include "WLearner.h"
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GDecisionTreeNode;
-class GRegressionTreeNode;
-class GRand;
-class GMeanMarginsTreeNode;
-class GDecisionTreeLeafNode;
-class GBag;
+class WDecisionTreeNode;
+class WRegressionTreeNode;
+class WRand;
+class WMeanMarginsTreeNode;
+class WDecisionTreeLeafNode;
+class WBag;
 
 
 /// This is an efficient learning algorithm. It divides
 /// on the attributes that reduce entropy the most, or alternatively
 /// can make random divisions.
-class GDecisionTree : public GSupervisedLearner
+class WDecisionTree : public WSupervisedLearner
 {
 public:
 	enum DivisionAlgorithm
@@ -47,7 +47,7 @@ public:
 	};
 
 protected:
-	GDecisionTreeNode* m_pRoot;
+	WDecisionTreeNode* m_pRoot;
 	DivisionAlgorithm m_eAlg;
 	size_t m_leafThresh;
 	size_t m_randomDraws;
@@ -55,19 +55,19 @@ protected:
 	bool m_binaryDivisions;
 
 public:
-	/// General-purpose constructor. See also the comment for GSupervisedLearner::GSupervisedLearner.
-	GDecisionTree();
+	/// General-purpose constructor. See also the comment for WSupervisedLearner::WSupervisedLearner.
+	WDecisionTree();
 
 	/// Loads from a DOM.
-	GDecisionTree(const GDomNode* pNode);
+	WDecisionTree(const WDomNode* pNode);
 
-	~GDecisionTree() override;
+	~WDecisionTree() override;
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
 	/// Specifies for this decision tree to use random divisions (instead of
 	/// divisions that reduce entropy). Random divisions make the algorithm
@@ -110,41 +110,41 @@ public:
 	/// Prints an ascii representation of the decision tree to the specified stream.
 	/// pRelation is an optional relation that can be supplied in order to provide
 	/// better meta-data to make the print-out richer.
-	void print(std::ostream& stream, GArffRelation* pFeatureRel = nullptr, GArffRelation* pLabelRel = nullptr);
+	void print(std::ostream& stream, WArffRelation* pFeatureRel = nullptr, WArffRelation* pLabelRel = nullptr);
 
 	/// Uses cross-validation to find a set of parameters that works well with
 	/// the provided data.
-	void autoTune(GMatrix& features, GMatrix& labels);
+	void autoTune(WMatrix& features, WMatrix& labels);
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& pIn, GVec& pOut) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& pIn, WVec& pOut) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& pIn, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& pIn, WPrediction* pOut) override;
 
 protected:
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
 	/// Finds the leaf node that corresponds with the specified feature vector
-	GDecisionTreeLeafNode* findLeaf(const GVec& pIn, size_t* pDepth);
+	WDecisionTreeLeafNode* findLeaf(const WVec& pIn, size_t* pDepth);
 
 	/// A recursive helper method used to construct the decision tree
-	GDecisionTreeNode* buildBranch(GMatrix& features, GMatrix& labels, std::vector<size_t>& attrPool, size_t nDepth, size_t tolerance);
+	WDecisionTreeNode* buildBranch(WMatrix& features, WMatrix& labels, std::vector<size_t>& attrPool, size_t nDepth, size_t tolerance);
 
 	/// InfoGain is defined as the difference in entropy in the data
 	/// before and after dividing it based on the specified attribute. For
 	/// continuous attributes it uses the difference between the original
 	/// variance and the sum of the variances of the two parts after
 	/// dividing at the point the maximizes this value.
-	double measureInfoGain(GMatrix* pData, size_t nAttribute, double* pPivot);
+	double measureInfoGain(WMatrix* pData, size_t nAttribute, double* pPivot);
 
-	size_t pickDivision(GMatrix& features, GMatrix& labels, double* pPivot, std::vector<size_t>& attrPool, size_t nDepth);
+	size_t pickDivision(WMatrix& features, WMatrix& labels, double* pPivot, std::vector<size_t>& attrPool, size_t nDepth);
 };
 
 
 
-/// A GMeanMarginsTree is an oblique decision tree specified in
+/// A WMeanMarginsTree is an oblique decision tree specified in
 /// Gashler, Michael S. and Giraud-Carrier, Christophe and Martinez, Tony.
 /// Decision Tree Ensemble: Small Heterogeneous Is Better Than Large
 /// Homogeneous. In The Seventh International Conference on Machine
@@ -159,87 +159,87 @@ protected:
 /// the mean and principle component of those two vectors. The dividing
 /// criteria for this node is to subtract the mean and then see whether
 /// the dot-product with the principle component is positive or negative.
-class GMeanMarginsTree : public GSupervisedLearner
+class WMeanMarginsTree : public WSupervisedLearner
 {
 protected:
 	size_t m_internalFeatureDims, m_internalLabelDims;
-	GMeanMarginsTreeNode* m_pRoot;
+	WMeanMarginsTreeNode* m_pRoot;
 
 public:
-	/// General-purpose constructor. See also the comment for GSupervisedLearner::GSupervisedLearner.
-	GMeanMarginsTree();
+	/// General-purpose constructor. See also the comment for WSupervisedLearner::WSupervisedLearner.
+	WMeanMarginsTree();
 
 	/// Load from a DOM.
-	GMeanMarginsTree(const GDomNode* pNode);
+	WMeanMarginsTree(const WDomNode* pNode);
 
-	~GMeanMarginsTree() override;
+	~WMeanMarginsTree() override;
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& pIn, GVec& pOut) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& pIn, WVec& pOut) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& pIn, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& pIn, WPrediction* pOut) override;
 
-	/// See the comment for GSupervisedLearner::clear
+	/// See the comment for WSupervisedLearner::clear
 	void clear() override;
 
 	/// This model has no parameters to tune, so this method is a noop.
-	void autoTune(GMatrix& features, GMatrix& labels);
+	void autoTune(WMatrix& features, WMatrix& labels);
 
 protected:
-	GMeanMarginsTreeNode* buildNode(GMatrix& features, GMatrix& labels, size_t* pBuf2);
+	WMeanMarginsTreeNode* buildNode(WMatrix& features, WMatrix& labels, size_t* pBuf2);
 
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalFeatures
+	/// See the comment for WTransducer::canImplicitlyHandleNominalFeatures
 	bool canImplicitlyHandleNominalFeatures() override { return false; }
 
-	/// See the comment for GTransducer::canImplicitlyHandleNominalLabels
+	/// See the comment for WTransducer::canImplicitlyHandleNominalLabels
 	bool canImplicitlyHandleNominalLabels() override { return false; }
 };
 
 
 
-class GRandomForest : public GSupervisedLearner
+class WRandomForest : public WSupervisedLearner
 {
 protected:
-	GBag* m_pEnsemble;
+	WBag* m_pEnsemble;
 
 public:
-	GRandomForest(size_t trees, size_t samples = 1);
-	GRandomForest(const GDomNode* pNode, GLearnerLoader& ll);
-	~GRandomForest() override;
+	WRandomForest(size_t trees, size_t samples = 1);
+	WRandomForest(const WDomNode* pNode, WLearnerLoader& ll);
+	~WRandomForest() override;
 
 	static void test();
 
 	/// Marshal this object into a DOM, which can then be converted to a variety of serial formats.
-	GDomNode* serialize(GDom* pDoc) const override;
+	WDomNode* serialize(WDom* pDoc) const override;
 
-	/// See the comment for GSupervisedLearner::clear
+	/// See the comment for WSupervisedLearner::clear
 	void clear() override;
 
 	/// Prints an ascii representation of the random forest to the specified stream.
 	/// pRelation is an optional relation that can be supplied in order to provide
 	/// better meta-data to make the print-out richer.
-	void print(std::ostream& stream, GArffRelation* pFeatureRel = nullptr, GArffRelation* pLabelRel = nullptr);
+	void print(std::ostream& stream, WArffRelation* pFeatureRel = nullptr, WArffRelation* pLabelRel = nullptr);
 
-	/// See the comment for GSupervisedLearner::predict
-	void predict(const GVec& pIn, GVec& pOut) override;
+	/// See the comment for WSupervisedLearner::predict
+	void predict(const WVec& pIn, WVec& pOut) override;
 
-	/// See the comment for GSupervisedLearner::predictDistribution
-	void predictDistribution(const GVec& pIn, GPrediction* pOut) override;
+	/// See the comment for WSupervisedLearner::predictDistribution
+	void predictDistribution(const WVec& pIn, WPrediction* pOut) override;
 
 protected:
-	/// See the comment for GSupervisedLearner::trainInner
-	void trainInner(const GMatrix& features, const GMatrix& labels) override;
+	/// See the comment for WSupervisedLearner::trainInner
+	void trainInner(const WMatrix& features, const WMatrix& labels) override;
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GDECISIONTREE_H__

@@ -26,17 +26,17 @@
 #else
 #include <unistd.h>
 #endif
-#include "WClasses/GDynamicPage.h"
-#include "WClasses/GApp.h"
-#include "WClasses/GDom.h"
-#include "WClasses/GString.h"
-#include "WClasses/GHolders.h"
-#include "WClasses/GFile.h"
-#include "WClasses/GTime.h"
-#include "WClasses/GThread.h"
-#include "WClasses/GRand.h"
-#include "WClasses/GHashTable.h"
-#include "WClasses/GDirList.h"
+#include "WClasses/WDynamicPage.h"
+#include "WClasses/WApp.h"
+#include "WClasses/WDom.h"
+#include "WClasses/WString.h"
+#include "WClasses/WHolders.h"
+#include "WClasses/WFile.h"
+#include "WClasses/WTime.h"
+#include "WClasses/WThread.h"
+#include "WClasses/WRand.h"
+#include "WClasses/WHashTable.h"
+#include "WClasses/WDirList.h"
 #include <wchar.h>
 #include <string>
 #include <exception>
@@ -47,7 +47,7 @@
 #include <sstream>
 #include <stack>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cerr;
 using std::string;
@@ -57,10 +57,10 @@ using std::ostringstream;
 
 class Page;
 
-class MySession : public GDynamicPageSessionExtension
+class MySession : public WDynamicPageSessionExtension
 {
 protected:
-	GDynamicPageSession* m_pDPSession;
+	WDynamicPageSession* m_pDPSession;
 	size_t m_page;
 	Page* m_pRootPage;
 	Page* m_pCurrentPage;
@@ -70,7 +70,7 @@ protected:
 	std::stack<Page*> m_pageStack;
 
 public:
-	MySession(GDynamicPageSession* pDPSession);
+	MySession(WDynamicPageSession* pDPSession);
 
 	~MySession() override
 	{
@@ -84,7 +84,7 @@ public:
 		delete(this);
 	}
 
-	GDomNode* serialize(GDom* pDoc) override
+	WDomNode* serialize(WDom* pDoc) override
 	{
 		throw Ex("This should never be called");
 	}
@@ -102,7 +102,7 @@ public:
 	void doNext(const char* szParams);
 };
 
-MySession* getSession(GDynamicPageSession* pDPSession)
+MySession* getSession(WDynamicPageSession* pDPSession)
 {
 	MySession* pSess = (MySession*)pDPSession->extension();
 	if(!pSess)
@@ -113,10 +113,10 @@ MySession* getSession(GDynamicPageSession* pDPSession)
 	return pSess;
 }
 
-class Connection : public GDynamicPageConnection
+class Connection : public WDynamicPageConnection
 {
 public:
-	Connection(SOCKET sock, GDynamicPageServer* pServer) : GDynamicPageConnection(sock, pServer)
+	Connection(SOCKET sock, WDynamicPageServer* pServer) : WDynamicPageConnection(sock, pServer)
 	{
 	}
 
@@ -124,13 +124,13 @@ public:
 	{
 	}
 
-	void handleRequest(GDynamicPageSession* pSession, std::ostream& response) override;
+	void handleRequest(WDynamicPageSession* pSession, std::ostream& response) override;
 
 protected:
 	void addScript(std::ostream& response);
 };
 
-class Server : public GDynamicPageServer
+class Server : public WDynamicPageServer
 {
 protected:
 	vector<UsageNode*> m_globals;
@@ -139,7 +139,7 @@ protected:
 public:
 	std::string m_basePath;
 
-	Server(int port, GRand* pRand, bool networkAccessible);
+	Server(int port, WRand* pRand, bool networkAccessible);
 	~Server() override;
 	UsageNode* globalUsageNode(const char* name, UsageNode* pDefaultNode);
 
@@ -148,7 +148,7 @@ protected:
 
 public:
 
-	GDynamicPageConnection* makeConnection(SOCKET sock) override
+	WDynamicPageConnection* makeConnection(SOCKET sock) override
 	{
 		return new Connection(sock, this);
 	}
@@ -362,7 +362,7 @@ public:
 		response << "</td></tr></table>\n";
 	}
 
-	void setChoices(GHttpParamParser& pp)
+	void setChoices(WHttpParamParser& pp)
 	{
 		if(m_mode == mode_choose_one)
 		{
@@ -524,14 +524,14 @@ public:
 	{
 		if(m_mode == mode_choose_one)
 		{
-			GAssert(m_children.size() == 1); // expected one child page
+			WAssert(m_children.size() == 1); // expected one child page
 			if(partType(m_pOrigNode, 0) == pt_string)
 				stream << m_pOrigNode->tok() << " ";
 			m_children[0]->makeCommand(stream);
 		}
 		else if(m_mode == mode_struct)
 		{
-			[[maybe_unused]] int stringPos = 0; // only checked by GAssert
+			[[maybe_unused]] int stringPos = 0; // only checked by WAssert
 			int structPos = 0;
 			int lonerPos = 0;
 			for(size_t i = 0; i < m_pOrigNode->parts().size(); i++)
@@ -546,11 +546,11 @@ public:
 					stream << m_structData[structPos++] << " ";
 				else
 				{
-					GAssert(pt == pt_loner); // unexpected value
+					WAssert(pt == pt_loner); // unexpected value
 					m_children[lonerPos++]->makeCommand(stream);
 				}
 			}
-			GAssert((size_t)(stringPos + structPos + lonerPos) == m_pOrigNode->parts().size());
+			WAssert((size_t)(stringPos + structPos + lonerPos) == m_pOrigNode->parts().size());
 		}
 		else if(m_mode == mode_options)
 		{
@@ -573,8 +573,8 @@ public:
 
 
 
-MySession::MySession(GDynamicPageSession* pDPSession)
-: GDynamicPageSessionExtension(), m_pDPSession(pDPSession)
+MySession::MySession(WDynamicPageSession* pDPSession)
+: WDynamicPageSessionExtension(), m_pDPSession(pDPSession)
 {
 	m_page = 0;
 	m_pRootNode = makeMasterUsageTree();
@@ -589,7 +589,7 @@ void MySession::doNext(const char* szParams)
 	Page* pNext = nullptr;
 
 	// Find the page ID
-	GHttpParamParser pp(szParams);
+	WHttpParamParser pp(szParams);
 	const char* szPageId = pp.find("pageid");
 	size_t pageId = INVALID_INDEX;
 	if(szPageId && !parseNumber(szPageId, &pageId))
@@ -720,12 +720,12 @@ void MySession::doNext(const char* szParams)
 
 
 
-Server::Server(int port, GRand* pRand, bool networkAccessible) : GDynamicPageServer(port, pRand, networkAccessible), m_port(port)
+Server::Server(int port, WRand* pRand, bool networkAccessible) : WDynamicPageServer(port, pRand, networkAccessible), m_port(port)
 {
 	char buf[300];
-	GApp::appPath(buf, 256, true);
+	WApp::appPath(buf, 256, true);
 	strcat(buf, "web/");
-	GFile::condensePath(buf);
+	WFile::condensePath(buf);
 	m_basePath = buf;
 
 	m_globals.push_back(makeAlgorithmUsageTree());
@@ -833,7 +833,7 @@ void Connection::addScript(std::ostream& response)
 }
 
 // virtual
-void Connection::handleRequest(GDynamicPageSession* pDPSession, std::ostream& response)
+void Connection::handleRequest(WDynamicPageSession* pDPSession, std::ostream& response)
 {
 	if(strcmp(m_szUrl, "/favicon.ico") == 0)
 		return;
@@ -876,7 +876,7 @@ void Connection::handleRequest(GDynamicPageSession* pDPSession, std::ostream& re
 		}
 		{
 			vector<string> folders;
-			GFile::folderList(folders);
+			WFile::folderList(folders);
 			for(vector<string>::iterator it = folders.begin(); it != folders.end(); it++)
 			{
 				const char* szDirName = it->c_str();
@@ -889,7 +889,7 @@ void Connection::handleRequest(GDynamicPageSession* pDPSession, std::ostream& re
 		}
 		{
 			vector<string> files;
-			GFile::fileList(files);
+			WFile::fileList(files);
 			for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 			{
 				const char* szFilename = it->c_str();
@@ -928,11 +928,11 @@ void Server::onIdle(double secondsSinceLastRequest)
 
 void getLocalStorageFolder(char* buf)
 {
-	if(!GFile::localStorageDirectory(buf))
+	if(!WFile::localStorageDirectory(buf))
 		throw Ex("Failed to find local storage folder");
 	strcat(buf, "/.hello/");
-	GFile::makeDir(buf);
-	if(!GFile::doesDirExist(buf))
+	WFile::makeDir(buf);
+	if(!WFile::doesDirExist(buf))
 		throw Ex("Failed to create folder in storage area");
 }
 
@@ -940,11 +940,11 @@ void getLocalStorageFolder(char* buf)
 void LaunchBrowser(const char* szAddress)
 {
 	size_t addrLen = strlen(szAddress);
-	GTEMPBUF(char, szUrl, addrLen + 20);
+	WTEMPBUF(char, szUrl, addrLen + 20);
 	strcpy(szUrl, szAddress);
 	strcpy(szUrl + addrLen, "/wizard");
 	cout << "Opening browser to: " << szUrl << "\n";
-	if(!GApp::openUrlInBrowser(szUrl))
+	if(!WApp::openUrlInBrowser(szUrl))
 	{
 		cout << "Failed to open the URL: " << szUrl << "\nPlease open this URL manually.\n";
 		cout.flush();
@@ -957,7 +957,7 @@ void do_wizard(bool networkAccessible)
 {
 	int port = 8421;
 	size_t seed = (size_t)getpid() * (size_t)time(nullptr);
-	GRand prng(seed);
+	WRand prng(seed);
 	bool serverStarted = false;
 	try
 	{
@@ -1100,7 +1100,7 @@ public:
 		// Complete with matching dir names
 		{
 			vector<string> folders;
-			GFile::folderList(folders);
+			WFile::folderList(folders);
 			for(vector<string>::iterator it = folders.begin(); it != folders.end(); it++)
 			{
 				const char* fn = it->c_str();
@@ -1118,7 +1118,7 @@ public:
 		// Complete with matching filenames
 		{
 			vector<string> files;
-			GFile::fileList(files);
+			WFile::fileList(files);
 			for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 			{
 				const char* fn = it->c_str();
@@ -1136,7 +1136,7 @@ public:
 		}
 	}
 
-	bool doCompletion(GArgReader& args, UsageNode* pNode, size_t nodePos)
+	bool doCompletion(WArgReader& args, UsageNode* pNode, size_t nodePos)
 	{
 		vector<string>& parts = pNode->parts();
 		size_t flex = 0; // the number of flexible parts
@@ -1220,7 +1220,7 @@ public:
 						{
 							if(part[0] != '<')
 								throw Ex("Unexpected token, ", tok, ", in arg ", to_str(args.get_pos() - 3));
-							GAssert(nodePos + 1 >= parts.size());
+							WAssert(nodePos + 1 >= parts.size());
 							return false; // Failed to match any option, so move on to the next template item. (All the other cases return true to indicate that it is possible to match the same template item again.)
 						}
 					}
@@ -1264,7 +1264,7 @@ void complete_command(int nArgs, char* pArgs[])
 			pArgs = pArgsNew;
 			nArgs++;
 		}
-		GArgReader args(nArgs, pArgs);
+		WArgReader args(nArgs, pArgs);
 		args.pop_string(); // waffles_wizard
 		args.pop_string(); // complete
 		args.pop_string(); // the current arg number

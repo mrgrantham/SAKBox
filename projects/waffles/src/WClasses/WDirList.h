@@ -23,26 +23,26 @@
 #include <stack>
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GBlobQueue;
+class WBlobQueue;
 
 /// This class contains a list of files and a list of folders.
 /// The constructor populates these lists with the names of files and folders in
 /// the current working directory
-class GDirList
+class WDirList
 {
 public:
-	GDirList();
-	~GDirList() {}
+	WDirList();
+	~WDirList() {}
 
 	std::vector<std::string> m_folders;
 	std::vector<std::string> m_files;
 };
 
 /// This turns a file or a folder (and its contents recursively) into a stream of bytes
-class GFolderSerializer
+class WFolderSerializer
 {
 protected:
 	const char* m_szPath;
@@ -53,7 +53,7 @@ protected:
 	size_t m_state;
 	size_t m_remaining;
 	std::ifstream* m_pInStream;
-	std::stack<GDirList*> m_dirStack;
+	std::stack<WDirList*> m_dirStack;
 	unsigned char* m_pCompressedBuf;
 	char* m_pUncompressedBuf;
 	size_t m_uncompressedPos;
@@ -63,8 +63,8 @@ protected:
 
 public:
 	/// szPath can be a filename or a foldername
-	GFolderSerializer(const char* szPath, bool compress);
-	~GFolderSerializer();
+	WFolderSerializer(const char* szPath, bool compress);
+	~WFolderSerializer();
 
 	/// Returns a pointer to the next chunk of bytes. Returns NULL
 	/// if it is done.
@@ -82,12 +82,12 @@ protected:
 	void continueDir();
 };
 
-/// This class complements GFolderSerializer
-class GFolderDeserializer
+/// This class complements WFolderSerializer
+class WFolderDeserializer
 {
 protected:
-	GBlobQueue* m_pBQ1;
-	GBlobQueue* m_pBQ2;
+	WBlobQueue* m_pBQ1;
+	WBlobQueue* m_pBQ2;
 	size_t m_compressedBlockSize;
 	size_t m_state;
 	unsigned int m_nameLen;
@@ -97,8 +97,8 @@ protected:
 	std::string* m_pBaseName;
 
 public:
-	GFolderDeserializer(std::string* pBaseName = nullptr);
-	~GFolderDeserializer();
+	WFolderDeserializer(std::string* pBaseName = nullptr);
+	~WFolderDeserializer();
 
 	void doNext(const char* pBuf, size_t bufLen);
 
@@ -108,6 +108,6 @@ protected:
 };
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GDIRLIST_H__

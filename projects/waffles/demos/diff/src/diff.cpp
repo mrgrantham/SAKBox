@@ -17,10 +17,10 @@
 */
 
 
-#include <WClasses/GHolders.h>
-#include <WClasses/GHtml.h>
-#include <WClasses/GText.h>
-#include <WClasses/GTime.h>
+#include <WClasses/WHolders.h>
+#include <WClasses/WHtml.h>
+#include <WClasses/WText.h>
+#include <WClasses/WTime.h>
 #include <vector>
 #include "diff.h"
 #include "server.h"
@@ -125,10 +125,10 @@ void Editor::writeHtmlPre(ostream& stream, char* file, size_t len)
 	}
 }
 
-void Editor::pageDiff(Server* pServer, GDynamicPageSession* pSession, ostream& response)
+void Editor::pageDiff(Server* pServer, WDynamicPageSession* pSession, ostream& response)
 {
 	// Determine the file name from a URL parameter
-	GHttpParamParser params(pSession->params());
+	WHttpParamParser params(pSession->params());
 	const char* leftname = params.find("left");
 	if(!leftname || strlen(leftname) < 1)
 	{
@@ -144,19 +144,19 @@ void Editor::pageDiff(Server* pServer, GDynamicPageSession* pSession, ostream& r
 
 	// Load the files
 	size_t leftSize, rightSize;
-	char* leftFile = GFile::loadFile(leftname, &leftSize);
+	char* leftFile = WFile::loadFile(leftname, &leftSize);
 	ArrayHolder<char> hLeftFile(leftFile);
-	char* rightFile = GFile::loadFile(rightname, &rightSize);
+	char* rightFile = WFile::loadFile(rightname, &rightSize);
 	ArrayHolder<char> hRightfile(rightFile);
 
 	// Diff the files
-	GDiffer diff;
+	WDiffer diff;
 	diff.compare(leftFile, leftSize, 0, rightFile, rightSize, 0);
 	if(leftSize + rightSize < 1024)
 		diff.simplify(6);
 	else
 		diff.simplify(9);
-	std::vector<GDiffChunk*>& chunks = diff.chunks();
+	std::vector<WDiffChunk*>& chunks = diff.chunks();
 
 	// Build the diff content
 	std::ostringstream ssLeft;
@@ -164,7 +164,7 @@ void Editor::pageDiff(Server* pServer, GDynamicPageSession* pSession, ostream& r
 	size_t spotCount = 0;
 	for(size_t i = 0; i < chunks.size(); i++)
 	{
-		GDiffChunk* pChunk = chunks[i];
+		WDiffChunk* pChunk = chunks[i];
 		if(pChunk->left != INVALID_INDEX && pChunk->right != INVALID_INDEX)
 		{
 			// Match
@@ -185,7 +185,7 @@ void Editor::pageDiff(Server* pServer, GDynamicPageSession* pSession, ostream& r
 			ssRight << "onclick=\"take('b" << to_str(spotCount) << "', 'a" << to_str(spotCount) << "')\" ";
 			ssRight << "href=\"#\">";
 
-			GDiffChunk* pChunk2 = (i + 1 < chunks.size() ? chunks[i + 1] : nullptr);
+			WDiffChunk* pChunk2 = (i + 1 < chunks.size() ? chunks[i + 1] : nullptr);
 			if(!pChunk2 || (pChunk2->left != INVALID_INDEX && pChunk2->right != INVALID_INDEX))
 			{
 				// Make a loner segment
@@ -209,10 +209,10 @@ void Editor::pageDiff(Server* pServer, GDynamicPageSession* pSession, ostream& r
 				// Make a differing segment
 				if(pChunk->right != INVALID_INDEX)
 					std::swap(pChunk, pChunk2);
-				GAssert(pChunk->left != INVALID_INDEX);
-				GAssert(pChunk->right == INVALID_INDEX);
-				GAssert(pChunk2->left == INVALID_INDEX);
-				GAssert(pChunk2->right != INVALID_INDEX);
+				WAssert(pChunk->left != INVALID_INDEX);
+				WAssert(pChunk->right == INVALID_INDEX);
+				WAssert(pChunk2->left == INVALID_INDEX);
+				WAssert(pChunk2->right != INVALID_INDEX);
 				writeHtmlPre(ssLeft, leftFile + pChunk->left, pChunk->len);
 				if(pChunk->len < pChunk2->len)
 				{

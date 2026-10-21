@@ -22,10 +22,10 @@
 
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
-class GHiddenMarkovModel
+class WHiddenMarkovModel
 {
 protected:
 	int m_stateCount;
@@ -37,8 +37,8 @@ protected:
 	int m_maxLen;
 
 public:
-	GHiddenMarkovModel(int stateCount, int symbolCount);
-	~GHiddenMarkovModel();
+	WHiddenMarkovModel(int stateCount, int symbolCount);
+	~WHiddenMarkovModel();
 
 	/// Performs unit tests for this class. Throws an exception if there is a failure.
 	static void test();
@@ -80,6 +80,6 @@ protected:
 	void baumWelchEndTraining();
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif

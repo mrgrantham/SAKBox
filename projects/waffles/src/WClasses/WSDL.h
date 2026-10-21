@@ -1,11 +1,11 @@
 #ifndef __GSDL_H__
 #define __GSDL_H__
 
-namespace GClasses
+namespace WClasses
 {
 
 /// A collection of routines that are useful when interfacing with SDL
-class GSDL
+class WSDL
 {
 public:
 	/// Figures out which character to display if the shift key is held down
@@ -16,6 +16,6 @@ public:
 	static char filterKey(int key);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GSDL_H__

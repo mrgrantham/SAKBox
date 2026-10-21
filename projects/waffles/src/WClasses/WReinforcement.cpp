@@ -16,19 +16,19 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GReinforcement.h"
-#include "GVec.h"
-#include "GNeuralNet.h"
-#include "GKNN.h"
-#include "GRand.h"
-#include "GHolders.h"
+#include "WReinforcement.h"
+#include "WVec.h"
+#include "WNeuralNet.h"
+#include "WKNN.h"
+#include "WRand.h"
+#include "WHolders.h"
 #include <string.h>
 
-namespace GClasses
+namespace WClasses
 {
 
-GQLearner::GQLearner(const GRelation& relation, int actionDims, double* pInitialState, GRand* pRand, GAgentActionIterator* pActionIterator)
-: GPolicyLearner(relation, actionDims), m_pRand(pRand), m_pActionIterator(pActionIterator)
+WQLearner::WQLearner(const WRelation& relation, int actionDims, double* pInitialState, WRand* pRand, WAgentActionIterator* pActionIterator)
+: WPolicyLearner(relation, actionDims), m_pRand(pRand), m_pActionIterator(pActionIterator)
 {
 	m_learningRate = 1;
 	m_discountFactor = 0.98;
@@ -39,24 +39,24 @@ GQLearner::GQLearner(const GRelation& relation, int actionDims, double* pInitial
 }
 
 // virtual
-GQLearner::~GQLearner()
+WQLearner::~WQLearner()
 {
 	delete[] m_pSenses;
 }
 
-void GQLearner::setLearningRate(double d)
+void WQLearner::setLearningRate(double d)
 {
 	m_learningRate = d;
 }
 
 // Sets the factor for discounting future rewards.
-void GQLearner::setDiscountFactor(double d)
+void WQLearner::setDiscountFactor(double d)
 {
 	m_discountFactor = d;
 }
 
 // virtual
-void GQLearner::refinePolicyAndChooseNextAction(const double* pSenses, double* pOutActions)
+void WQLearner::refinePolicyAndChooseNextAction(const double* pSenses, double* pOutActions)
 {
 	double reward;
 	if(m_teleported)
@@ -93,12 +93,12 @@ void GQLearner::refinePolicyAndChooseNextAction(const double* pSenses, double* p
 
 // -----------------------------------------------------------------
 
-GIncrementalLearnerQAgent::GIncrementalLearnerQAgent(const GRelation& obsControlRelation, GIncrementalLearner* pQTable, int actionDims, double* pInitialState, GRand* pRand, GAgentActionIterator* pActionIterator, double softMaxThresh)
-: GQLearner(obsControlRelation, actionDims, pInitialState, pRand, pActionIterator), m_buf(m_senseDims + m_actionDims)
+WIncrementalLearnerQAgent::WIncrementalLearnerQAgent(const WRelation& obsControlRelation, WIncrementalLearner* pQTable, int actionDims, double* pInitialState, WRand* pRand, WAgentActionIterator* pActionIterator, double softMaxThresh)
+: WQLearner(obsControlRelation, actionDims, pInitialState, pRand, pActionIterator), m_buf(m_senseDims + m_actionDims)
 {
 	// Enable incremental learning
 	m_pQTable = pQTable;
-	GUniformRelation qRel(1);
+	WUniformRelation qRel(1);
 	pQTable->beginIncrementalLearning(obsControlRelation, qRel);
 
 	// Init other stuff
@@ -108,33 +108,33 @@ GIncrementalLearnerQAgent::GIncrementalLearnerQAgent(const GRelation& obsControl
 }
 
 // virtual
-GIncrementalLearnerQAgent::~GIncrementalLearnerQAgent()
+WIncrementalLearnerQAgent::~WIncrementalLearnerQAgent()
 {
 }
 
 // virtual
-double GIncrementalLearnerQAgent::getQValue(const double* pState, const double* pAction)
+double WIncrementalLearnerQAgent::getQValue(const double* pState, const double* pAction)
 {
 	memcpy(m_buf.data(), pState, m_senseDims * sizeof(double));
 	memcpy(m_buf.data() + m_senseDims, pAction, m_actionDims * sizeof(double));
-	GVec out(1);
+	WVec out(1);
 	m_pQTable->predict(m_buf, out);
-	GAssert(out[0] > -1e200);
+	WAssert(out[0] > -1e200);
 	return out[0];
 }
 
 // virtual
-void GIncrementalLearnerQAgent::setQValue(const double* pState, const double* pAction, double qValue)
+void WIncrementalLearnerQAgent::setQValue(const double* pState, const double* pAction, double qValue)
 {
 	memcpy(m_buf.data(), pState, m_senseDims * sizeof(double));
 	memcpy(m_buf.data() + m_senseDims, pAction, m_actionDims * sizeof(double));
-	GVec tmp(1);
+	WVec tmp(1);
 	tmp[0] = qValue;
 	m_pQTable->trainIncremental(m_buf, tmp);
 }
 
 // virtual
-void GIncrementalLearnerQAgent::chooseAction(const double* pSenses, double* pActions)
+void WIncrementalLearnerQAgent::chooseAction(const double* pSenses, double* pActions)
 {
 	m_pActionIterator->reset(pSenses);
 	if(m_explore && m_pRand->uniform() >= m_softMaxThresh)
@@ -148,7 +148,7 @@ void GIncrementalLearnerQAgent::chooseAction(const double* pSenses, double* pAct
 		double bestQ = -1e200;
 		double q;
 		int i;
-		GTEMPBUF(double, pCand, m_actionDims);
+		WTEMPBUF(double, pCand, m_actionDims);
 		for(i = 1; i < m_actionCap; i++)
 		{
 			if(!m_pActionIterator->nextAction(pCand))
@@ -163,5 +163,5 @@ void GIncrementalLearnerQAgent::chooseAction(const double* pSenses, double* pAct
 	}
 }
 
-} // namespace GClasses
+} // namespace WClasses
 

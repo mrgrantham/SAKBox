@@ -1,7 +1,7 @@
-// GImage.
+// WImage.
 #include <gtest/gtest.h>
 
-#include <WClasses/GImage.h>
+#include <WClasses/WImage.h>
 
 #include <cmath>
 #include <cstddef>
@@ -12,10 +12,10 @@
 #include <stdexcept>
 #include <string>
 
-using namespace GClasses;
+using namespace WClasses;
 
 namespace {
-uint64_t fingerprint(GImage &image) {
+uint64_t fingerprint(WImage &image) {
   uint64_t h = 1469598103934665603ull; // FNV-1a
   const unsigned int *p = image.pixels();
   for (size_t i = 0; i < (size_t)image.width() * image.height(); i++) {
@@ -28,11 +28,11 @@ uint64_t fingerprint(GImage &image) {
 
 TEST(ImageTextTest, RenderingIsUnchanged) {
   // Every printable character, at a few sizes (fingerprint recorded from
-  // the code before the rewrite of GImage::textChar's drawing rules)
+  // the code before the rewrite of WImage::textChar's drawing rules)
   std::string all;
   for (char c = ' '; c <= '~'; c++)
     all += c;
-  GImage image;
+  WImage image;
   image.setSize(1200, 160);
   image.clear(0xff000000);
   image.text(all.c_str(), 0, 0, 1.0f, 0xffffffff);
@@ -50,11 +50,11 @@ TEST(ImagePixMapTest, HeaderNumbersMustBeWhole) {
     f << header << std::string(12, '\x7f'); // 2 x 2 pixels, 3 bytes each
     return dir + "/" + name;
   };
-  GImage ok;
+  WImage ok;
   ok.loadPpm(write("ok.ppm", "P6\n2 2\n255\n").c_str());
   EXPECT_EQ(ok.width(), 2u);
   EXPECT_EQ(ok.height(), 2u);
-  GImage bad;
+  WImage bad;
   EXPECT_THROW(bad.loadPpm(write("bad.ppm", "P6\n2x 2\n255\n").c_str()), std::exception);
 }
 
@@ -64,12 +64,12 @@ TEST(ImagePixMapTest, HeaderNumbersMustBeWhole) {
 // wrapped to about 4 billion instead of going negative, so the waves were
 // wrong there. Checked against the effect's formula, worked out here.
 TEST(ImageMungeTest, WavesAroundTheMiddle) {
-  GImage image;
+  WImage image;
   image.setSize(64, 48);
   for (int y = 0; y < 48; y++)
     for (int x = 0; x < 64; x++)
       image.setPixel(x, y, ((x / 4 + y / 4) % 2) ? 0xffffffff : 0xff000000);
-  std::unique_ptr<GImage> waved(image.munge(3, 0.5f));
+  std::unique_ptr<WImage> waved(image.munge(3, 0.5f));
   float extent = 1 - 0.5f; // as munge eases it
   extent *= extent;
   extent = 1 - extent;

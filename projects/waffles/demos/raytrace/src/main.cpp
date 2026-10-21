@@ -8,8 +8,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <WClasses/GApp.h>
-#include <WClasses/GError.h>
+#include <WClasses/WApp.h>
+#include <WClasses/WError.h>
 #include "RayTrace.h"
 #ifdef WINDOWS
 #include <direct.h>

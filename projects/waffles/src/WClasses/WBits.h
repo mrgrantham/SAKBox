@@ -20,16 +20,16 @@
 #define __GBITS_H__
 
 #include <stdlib.h>
-#include "GError.h"
+#include "WError.h"
 
-namespace GClasses
+namespace WClasses
 {
 
 #define BITS_PER_BYTE 8
 #define BITS_PER_UINT (BITS_PER_BYTE * sizeof(unsigned int))
 
 /// Contains various functions for bit analysis
-class GBits
+class WBits
 {
 public:
 	/// returns true iff the specified string is a valid floating point number.
@@ -166,7 +166,7 @@ public:
 			v2 = msn - 'A' + 10;
 		else
 			v2 = msn - 'a' + 10;
-		GAssert(v1 >= 0 && v1 <= 15 && v2 >= 0 && v2 <= 15);
+		WAssert(v1 >= 0 && v1 <= 15 && v2 >= 0 && v2 <= 15);
 		return (v1 | (v2 << 4));
 	}
 
@@ -215,7 +215,7 @@ public:
 	/// pBuffer should be half the size of nHexSize
 	static void hexToBuffer(const char* pHex, size_t nHexSize, unsigned char* pBuffer)
 	{
-		GAssert(nHexSize % 2 == 0); // not a multiple of 2
+		WAssert(nHexSize % 2 == 0); // not a multiple of 2
 		nHexSize /= 2;
 		for(size_t n = 0; n < nHexSize; n++)
 			pBuffer[n] = hexToByte(pHex[2 * n], pHex[2 * n + 1]);
@@ -224,7 +224,7 @@ public:
 	/// pBuffer should be half the size of nHexSize
 	static void hexToBufferBigEndian(const char* pHex, size_t nHexSize, unsigned char* pBuffer)
 	{
-		GAssert(nHexSize % 2 == 0); // not a multiple of 2
+		WAssert(nHexSize % 2 == 0); // not a multiple of 2
 		nHexSize /= 2;
 		for(size_t n = 0; n < nHexSize; n++)
 			pBuffer[n] = hexToByte(pHex[2 * n + 1], pHex[2 * n]);
@@ -489,6 +489,6 @@ public:
 	static void test();
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GBITS_H__

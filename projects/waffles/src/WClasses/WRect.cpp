@@ -15,11 +15,11 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GRect.h"
+#include "WRect.h"
 
-using namespace GClasses;
+using namespace WClasses;
 
-void GRect::clip(GRect* pClippingRect)
+void WRect::clip(WRect* pClippingRect)
 {
 	if(x + w > pClippingRect->x + pClippingRect->w)
 		w = pClippingRect->x + pClippingRect->w - x;

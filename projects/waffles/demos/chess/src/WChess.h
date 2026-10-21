@@ -23,16 +23,16 @@
 #include <string.h>
 #include <iostream>
 
-namespace GClasses
+namespace WClasses
 {
 
 #define MAX_PIECE_MOVES 27
 
-class GRand;
+class WRand;
 
 /// Represents the state of a chess board, and provides
 /// some basic functionality for implementing a chess game.
-class GChessBoard
+class WChessBoard
 {
 public:
 	enum Piece
@@ -53,18 +53,18 @@ protected:
 	unsigned int m_rows[8];
 
 public:
-	GChessBoard()
+	WChessBoard()
 	{
 		resetBoard();
 	}
 
 	/// copy-constructor
-	GChessBoard(const GChessBoard& that)
+	WChessBoard(const WChessBoard& that)
 	{
 		memcpy(m_rows, that.m_rows, sizeof(int) * 8);
 	}
 
-	~GChessBoard()
+	~WChessBoard()
 	{
 	}
 
@@ -131,27 +131,27 @@ protected:
 
 
 /// Iterates through all the possible moves for the specified color.
-class GChessMoveIterator
+class WChessMoveIterator
 {
 protected:
 	int m_n, m_move, m_moveCount;
 	int m_moves[2 * MAX_PIECE_MOVES];
-	GChessBoard* m_pBoard;
+	WChessBoard* m_pBoard;
 	bool m_white;
 
 public:
 	/// Constructs a move iterator. (Doesn't call Reset, so you must still call Reset before you call GetNextMove).
-	GChessMoveIterator();
-	~GChessMoveIterator();
+	WChessMoveIterator();
+	~WChessMoveIterator();
 
 	/// Resets the iterator and specifies the color whose moves you wish to iterate.
-	void reset(GChessBoard* pBoard, bool white);
+	void reset(WChessBoard* pBoard, bool white);
 
 	/// Gets the next possible move for the specified color. Returns false if there are no more moves (so the
 	/// values in xSrc, ySrc, xDest, and yDest are bogus)
 	bool nextMove(int* xSrc, int* ySrc, int* xDest, int* yDest);
 };
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GCHESS_H__

@@ -1,18 +1,18 @@
-// GRand: random deviates.
+// WRand: random deviates.
 #include <gtest/gtest.h>
 
-#include <WClasses/GRand.h>
+#include <WClasses/WRand.h>
 
 #include <string>
 
-using namespace GClasses;
+using namespace WClasses;
 
 // Poisson deviates with mu >= 30 come from a rejection method that rounds
 // its candidate to the nearest integer. The rounding moved from
 // (int)(x + 0.5) to lround; these values, recorded from the code before,
 // pin down that the deviates didn't change.
 TEST(RandTest, PoissonDeviatesForLargeMu) {
-  GRand rand(1234);
+  WRand rand(1234);
   std::string seq;
   for (int i = 0; i < 12; i++)
     seq += std::to_string(rand.poisson(100.0)) + " ";

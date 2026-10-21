@@ -21,34 +21,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fstream>
-#include "GApp.h"
-#include "GMatrix.h"
-#include "GCluster.h"
-#include "GDecisionTree.h"
-#include "GDistance.h"
-#include "GDistribution.h"
-#include "GEnsemble.h"
-#include "GFile.h"
-#include "GFunction.h"
-#include "GGaussianProcess.h"
-#include "GHillClimber.h"
-#include "GHolders.h"
-#include "GImage.h"
-#include "GKernelTrick.h"
-#include "GKNN.h"
-#include "GLinear.h"
-#include "GError.h"
-#include "GManifold.h"
-#include "GNaiveBayes.h"
-#include "GNaiveInstance.h"
-#include "GNeuralNet.h"
-#include "GOptimizer.h"
-#include "GRand.h"
-#include "GSparseMatrix.h"
-#include "GTime.h"
-#include "GTransform.h"
-#include "GDom.h"
-#include "GVec.h"
+#include "WApp.h"
+#include "WMatrix.h"
+#include "WCluster.h"
+#include "WDecisionTree.h"
+#include "WDistance.h"
+#include "WDistribution.h"
+#include "WEnsemble.h"
+#include "WFile.h"
+#include "WFunction.h"
+#include "WGaussianProcess.h"
+#include "WHillClimber.h"
+#include "WHolders.h"
+#include "WImage.h"
+#include "WKernelTrick.h"
+#include "WKNN.h"
+#include "WLinear.h"
+#include "WError.h"
+#include "WManifold.h"
+#include "WNaiveBayes.h"
+#include "WNaiveInstance.h"
+#include "WNeuralNet.h"
+#include "WOptimizer.h"
+#include "WRand.h"
+#include "WSparseMatrix.h"
+#include "WTime.h"
+#include "WTransform.h"
+#include "WDom.h"
+#include "WVec.h"
 #include "usage.h"
 #include <cassert>
 #include <time.h>
@@ -63,7 +63,7 @@
 #include <set>
 #include <memory>
 
-namespace GClasses
+namespace WClasses
 {
 
 using std::cout;
@@ -74,82 +74,82 @@ using std::set;
 using std::ostringstream;
 
 ///Provides some useful functions for instantiating learning algorithms from the command line
-class GLearnerLib
+class WLearnerLib
 {
 public:
-	static GTransducer* InstantiateAlgorithm(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WTransducer* InstantiateAlgorithm(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
 	static size_t getAttrVal(const char* szString, size_t attrCount);
 
-	static void parseAttributeList(vector<size_t>& list, GArgReader& args, size_t attrCount);
+	static void parseAttributeList(vector<size_t>& list, WArgReader& args, size_t attrCount);
 
-	static void loadData(GArgReader& args, std::unique_ptr<GMatrix>& hFeaturesOut, std::unique_ptr<GMatrix>& hLabelsOut, bool requireMetadata = false);
+	static void loadData(WArgReader& args, std::unique_ptr<WMatrix>& hFeaturesOut, std::unique_ptr<WMatrix>& hLabelsOut, bool requireMetadata = false);
 
-	static GAgglomerativeTransducer* InstantiateAgglomerativeTransducer(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WAgglomerativeTransducer* InstantiateAgglomerativeTransducer(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GBaselineLearner* InstantiateBaseline(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WBaselineLearner* InstantiateBaseline(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GBayesianModelAveraging* InstantiateBMA(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WBayesianModelAveraging* InstantiateBMA(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GBayesianModelCombination* InstantiateBMC(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WBayesianModelCombination* InstantiateBMC(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GBag* InstantiateBag(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WBag* InstantiateBag(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GGradBoost* InstantiateGradBoost(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WGradBoost* InstantiateGradBoost(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GResamplingAdaBoost* InstantiateBoost(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WResamplingAdaBoost* InstantiateBoost(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GBucket* InstantiateBucket(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WBucket* InstantiateBucket(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GBucket* InstantiateCvdt(GArgReader& args);
+	static WBucket* InstantiateCvdt(WArgReader& args);
 
-	static GDecisionTree* InstantiateDecisionTree(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WDecisionTree* InstantiateDecisionTree(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GGaussianProcess* InstantiateGaussianProcess(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WGaussianProcess* InstantiateGaussianProcess(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GGraphCutTransducer* InstantiateGraphCutTransducer(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WGraphCutTransducer* InstantiateGraphCutTransducer(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GBayesianModelCombination* InstantiateHodgePodge(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WBayesianModelCombination* InstantiateHodgePodge(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GKNN* InstantiateKNN(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WKNN* InstantiateKNN(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GLinearRegressor* InstantiateLinearRegressor(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WLinearRegressor* InstantiateLinearRegressor(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GMeanMarginsTree* InstantiateMeanMarginsTree(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WMeanMarginsTree* InstantiateMeanMarginsTree(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GNaiveBayes* InstantiateNaiveBayes(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WNaiveBayes* InstantiateNaiveBayes(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GNaiveInstance* InstantiateNaiveInstance(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WNaiveInstance* InstantiateNaiveInstance(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GBlock* instantiateBlock(GArgReader& args);
+	static WBlock* instantiateBlock(WArgReader& args);
 
-	static GNeuralNetLearner* InstantiateNeuralNet(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WNeuralNetLearner* InstantiateNeuralNet(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GNeighborTransducer* InstantiateNeighborTransducer(GArgReader& args, GMatrix* pFeatures, GMatrix* pLabels);
+	static WNeighborTransducer* InstantiateNeighborTransducer(WArgReader& args, WMatrix* pFeatures, WMatrix* pLabels);
 
-	static GRandomForest* InstantiateRandomForest(GArgReader& args);
+	static WRandomForest* InstantiateRandomForest(WArgReader& args);
 
-	static void showInstantiateAlgorithmError(const char* szMessage, GArgReader& args);
+	static void showInstantiateAlgorithmError(const char* szMessage, WArgReader& args);
 
-	static void autoTuneDecisionTree(GMatrix& features, GMatrix& labels);
+	static void autoTuneDecisionTree(WMatrix& features, WMatrix& labels);
 
-	static void autoTuneKNN(GMatrix& features, GMatrix& labels);
+	static void autoTuneKNN(WMatrix& features, WMatrix& labels);
 
-	static void autoTuneNeuralNet(GMatrix& features, GMatrix& labels);
+	static void autoTuneNeuralNet(WMatrix& features, WMatrix& labels);
 
-	static void autoTuneNaiveBayes(GMatrix& features, GMatrix& labels);
+	static void autoTuneNaiveBayes(WMatrix& features, WMatrix& labels);
 
-	static void autoTuneNaiveInstance(GMatrix& features, GMatrix& labels);
+	static void autoTuneNaiveInstance(WMatrix& features, WMatrix& labels);
 
-	static void autoTuneGraphCutTransducer(GMatrix& features, GMatrix& labels);
+	static void autoTuneGraphCutTransducer(WMatrix& features, WMatrix& labels);
 
-	static void autoTune(GArgReader& args);
+	static void autoTune(WArgReader& args);
 
-	static void Train(GArgReader& args);
+	static void Train(WArgReader& args);
 
-	static void predict(GArgReader& args);
+	static void predict(WArgReader& args);
 
-	static void predictDistribution(GArgReader& args);
+	static void predictDistribution(WArgReader& args);
 
 	static void leftJustifiedString(const char* pIn, char* pOut, size_t outLen);
 
@@ -168,7 +168,7 @@ public:
 	///
 	///\param pRelation a pointer to the relation from which the
 	///                 variable_idx-'th variable is taken. Cannot be null
-	static std::string machineReadableConfusionHeader(std::size_t variable_idx, const GRelation* pRelation);
+	static std::string machineReadableConfusionHeader(std::size_t variable_idx, const WRelation* pRelation);
 
 	//\brief Returns the data for the machine readable confusion matrix
 	///for variable \a variable_idx as printed by
@@ -185,7 +185,7 @@ public:
 	///\param pMatrix a pointer to the confusion matrix. (*pMatrix)[r][c]
 	///               is the number of times that r was expected and c was
 	///               received. Cannot be NULL.
-	static std::string machineReadableConfusionData(std::size_t variable_idx, const GRelation* pRelation, GMatrix const* const pMatrix);
+	static std::string machineReadableConfusionData(std::size_t variable_idx, const WRelation* pRelation, WMatrix const* const pMatrix);
 
 	///\brief Prints the confusion matrices as machine-readable csv-like lines.
 	///
@@ -203,47 +203,47 @@ public:
 	///                   pRelation. Row r, column c of matrixArray[i] is the
 	///                   number of times the value r of the attribute was expected
 	///                   and c was encountered.
-	static void printMachineReadableConfusionMatrices(const GRelation* pRelation, vector<GMatrix*>& matrixArray);
+	static void printMachineReadableConfusionMatrices(const WRelation* pRelation, vector<WMatrix*>& matrixArray);
 
-	static void printConfusionMatrices(const GRelation* pRelation, vector<GMatrix*>& matrixArray);
+	static void printConfusionMatrices(const WRelation* pRelation, vector<WMatrix*>& matrixArray);
 
-	static void Test(GArgReader& args);
+	static void Test(WArgReader& args);
 
-	static void Transduce(GArgReader& args);
+	static void Transduce(WArgReader& args);
 
-	static void TransductiveAccuracy(GArgReader& args);
+	static void TransductiveAccuracy(WArgReader& args);
 
-	static void SplitTest(GArgReader& args);
+	static void SplitTest(WArgReader& args);
 
 	static void CrossValidateCallback(void* pSupLearner, size_t nRep, size_t nFold, double foldSSE, size_t rows);
 
-	static void CrossValidate(GArgReader& args);
+	static void CrossValidate(WArgReader& args);
 
 	static void vette(string& s);
 
-	static void PrecisionRecall(GArgReader& args);
+	static void PrecisionRecall(WArgReader& args);
 
-	static void sterilize(GArgReader& args);
+	static void sterilize(WArgReader& args);
 
-	static void regress(GArgReader& args);
+	static void regress(WArgReader& args);
 
-	static void metaData(GArgReader& args);
+	static void metaData(WArgReader& args);
 
 	static void ShowUsage(const char* appName);
 
-	static void showError(GArgReader& args, const char* szAppName, const char* szMessage);
+	static void showError(WArgReader& args, const char* szAppName, const char* szMessage);
 };
 
 
-class OptimizerTargetFunc : public GTargetFunction
+class OptimizerTargetFunc : public WTargetFunction
 {
 public:
-	GMatrix* m_pIn;
-	GMatrix* m_pOut;
-	GFunction* m_pFunc;
-	GFunctionParser* m_pParser;
+	WMatrix* m_pIn;
+	WMatrix* m_pOut;
+	WFunction* m_pFunc;
+	WFunctionParser* m_pParser;
 
-	OptimizerTargetFunc(GMatrix* pIn, GMatrix* pOut, GFunction* pFunc, GFunctionParser* pParser) : GTargetFunction(pFunc->m_expectedParams - pIn->cols()), m_pIn(pIn), m_pOut(pOut), m_pFunc(pFunc), m_pParser(pParser)
+	OptimizerTargetFunc(WMatrix* pIn, WMatrix* pOut, WFunction* pFunc, WFunctionParser* pParser) : WTargetFunction(pFunc->m_expectedParams - pIn->cols()), m_pIn(pIn), m_pOut(pOut), m_pFunc(pFunc), m_pParser(pParser)
 	{
 	}
 
@@ -254,12 +254,12 @@ public:
 	bool isStable() override { return true; }
 	virtual bool isConstrained() { return false; }
 
-	void initVector(GVec& pVector) override
+	void initVector(WVec& pVector) override
 	{
 		pVector.fill(0.1);
 	}
 
-	double computeError(const GVec& pVector) override
+	double computeError(const WVec& pVector) override
 	{
 		double sse = 0.0;
 		vector<double> params;
@@ -269,11 +269,11 @@ public:
 			params[inDims + j] = pVector[j];
 		for(size_t i = 0; i < m_pIn->rows(); i++)
 		{
-			GVec& pIn = m_pIn->row(i);
+			WVec& pIn = m_pIn->row(i);
 			for(size_t j = 0; j < inDims; j++)
 				params[j] = pIn[j];
 			double pred = m_pFunc->call(params, *m_pParser);
-			GVec& pOut = m_pOut->row(i);
+			WVec& pOut = m_pOut->row(i);
 			double d = pOut[0] - pred;
 			sse += d * d;
 		}
@@ -281,4 +281,4 @@ public:
 	}
 };
 
-} // namespace GClasses
+} // namespace WClasses

@@ -4,7 +4,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 # time series.
 
 # Identity, perturbation, regularization and input renormalization for a
-# GBlockLinear's weights (what Waffles' old GLayerClassic could do)
+# WBlockLinear's weights (what Waffles' old WLayerClassic could do)
 cc_library(
     name = "LinearWeights",
     hdrs = ["LinearWeights.h"],

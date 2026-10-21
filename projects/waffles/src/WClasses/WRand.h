@@ -1,5 +1,5 @@
 /*
-  The GRand class is dedicated by all of its authors, including
+  The WRand class is dedicated by all of its authors, including
 
     Michael S. Gashler,
     Eric Moyer,
@@ -17,7 +17,7 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 /*
-	The GRandMersenneTwister class is derived from
+	The WRandMersenneTwister class is derived from
 	The Mersene Twister Generator from the file mt19937-64.c
 	by Takuji Nishimura and Makoto Matsumoto which contains the
 	following header comment:
@@ -82,7 +82,7 @@
 #include <stdint.h>
 #include <vector>
 
-namespace GClasses
+namespace WClasses
 {
 
 
@@ -91,7 +91,7 @@ namespace GClasses
 /// When subclassing it, overriding the next and setSeed methods will
 /// be sufficient.  However, all of the methods are virtual, so you
 /// can give them more efficient or accurate versions if you wish.
-class GRand
+class WRand
 {
 protected:
 	uint64_t m_a;
@@ -102,28 +102,28 @@ public:
 	///
 	/// \param seed the seed to use for generating numbers from the
 	///        random number generator
-	GRand(uint64_t seed);
+	WRand(uint64_t seed);
 
 	/// Copy constructor. Throws an exception to prevent copying this object by value.
-	GRand(const GRand& that);
+	WRand(const WRand& that);
 
 	/// Destructor
-	virtual ~GRand();
+	virtual ~WRand();
 
 	/// Sets the seed
 	///
 	/// \note If you subclass this, make sure you call the superclass
 	///       version.  Because the earlier code was not designed for
-	///       subclassing, the GRand class is not abstract.  Thus, if
-	///       someone has passed a GRand object of your new type by
+	///       subclassing, the WRand class is not abstract.  Thus, if
+	///       someone has passed a WRand object of your new type by
 	///       value, they will get a copy of the sub-object with default
 	///       behavior.  To make their program work, the seed for the
 	///       default generator needs to be set rather than being left
 	///       uninitialized.
 	virtual void setSeed(uint64_t seed);
 
-	/// Copies the state of another GRand object
-	virtual void copyState(const GRand& copyMyState);
+	/// Copies the state of another WRand object
+	virtual void copyState(const WRand& copyMyState);
 
 	/// Returns an unsigned pseudo-random 64-bit value
 	virtual uint64_t next()
@@ -186,8 +186,8 @@ public:
 
 	/// Returns a random value from a categorical distribution
 	/// with the specified vector of category probabilities. (Note: If you need
-	/// to draw many values from a categorical distribution, the GCategoricalSampler
-	/// and GCategoricalSamplerBatch classes are designed to do this more efficiently.)
+	/// to draw many values from a categorical distribution, the WCategoricalSampler
+	/// and WCategoricalSamplerBatch classes are designed to do this more efficiently.)
 	virtual std::size_t categorical(std::vector<double>& probabilities);
 
 	/// Returns a random value from a standard Cauchy distribution
@@ -284,7 +284,7 @@ public:
 /// \brief A 64-bit pseudo-random number generator based on the
 /// Mersenne Twister
 ///
-/// Remember: do not pass objects of this class by value as GRand
+/// Remember: do not pass objects of this class by value as WRand
 /// objects - the resulting objects will still work, but they will not
 /// use the Mersene Twister random number generator
 ///
@@ -336,9 +336,9 @@ public:
 /// http://www.math.hiroshima-u.ac.jp/~m-mat/MT/emt.html
 /// email: m-mat @ math.sci.hiroshima-u.ac.jp (remove spaces)
 ///
-class GRandMersenneTwister : public GRand
+class WRandMersenneTwister : public WRand
 {
-	using GRand::next;
+	using WRand::next;
 private:
 	///Number of elements in the state-vector array
 	const static uint64_t NN = 312;
@@ -378,7 +378,7 @@ public:
 	///
 	/// \param seed the seed to use for generating numbers from the
 	///        random number generator
-	GRandMersenneTwister(uint64_t seed) : GRand(seed)
+	WRandMersenneTwister(uint64_t seed) : WRand(seed)
 	{
 		mag01[0] = 0ULL;
 		mag01[1] = MATRIX_A;
@@ -386,18 +386,18 @@ public:
 	}
 
 	/// Destructor
-	~GRandMersenneTwister() override {}
+	~WRandMersenneTwister() override {}
 
 	/// Sets the seed
 	///
-	/// \note If you subclass this, make sure you call GRand::setSeed
+	/// \note If you subclass this, make sure you call WRand::setSeed
 	///       (see the comment there)
 	///
 	/// \param seed the seed to use for generating numbers from the
 	///        random number generator
 	void setSeed(uint64_t seed) override
 	{
-		GRand::setSeed(seed);
+		WRand::setSeed(seed);
 		init_genrand64(seed);
 	}
 
@@ -444,6 +444,6 @@ public:
 
 
 
-} // namespace GClasses
+} // namespace WClasses
 
 #endif // __GRAND_H__

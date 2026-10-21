@@ -17,30 +17,30 @@
   our code to be useful, the Waffles team would love to hear how you use it.
 */
 
-#include "GVec.h"
-#include "GRand.h"
-#include "GError.h"
-#include "GMatrix.h"
-#include "GBits.h"
-#include "GDom.h"
-#include "GMath.h"
-#include "GImage.h"
-#include "GBitTable.h"
-#include "GHolders.h"
-#include "GTokenizer.h"
-#include "GTime.h"
+#include "WVec.h"
+#include "WRand.h"
+#include "WError.h"
+#include "WMatrix.h"
+#include "WBits.h"
+#include "WDom.h"
+#include "WMath.h"
+#include "WImage.h"
+#include "WBitTable.h"
+#include "WHolders.h"
+#include "WTokenizer.h"
+#include "WTime.h"
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <queue>
 
-namespace GClasses
+namespace WClasses
 {
 
 using std::vector;
 using std::string;
 
-GVec::GVec(size_t n)
+WVec::WVec(size_t n)
 : m_size(n)
 {
 	if(n == 0)
@@ -49,7 +49,7 @@ GVec::GVec(size_t n)
 		m_data = new double[n];
 }
 
-GVec::GVec(int n)
+WVec::WVec(int n)
 : m_size(n)
 {
 	if(n == 0)
@@ -58,7 +58,7 @@ GVec::GVec(int n)
 		m_data = new double[n];
 }
 
-GVec::GVec(const std::initializer_list<double>& list)
+WVec::WVec(const std::initializer_list<double>& list)
 : m_size(list.size())
 {
 	if(list.size() == 0)
@@ -72,18 +72,18 @@ GVec::GVec(const std::initializer_list<double>& list)
 	}
 }
 
-GVec::GVec(GDomNode* pNode)
+WVec::WVec(WDomNode* pNode)
 : m_data(nullptr), m_size(0)
 {
 	deserialize(pNode);
 }
 
-GVec::~GVec()
+WVec::~WVec()
 {
 	delete[] m_data;
 }
 
-void GVec::resize(size_t n)
+void WVec::resize(size_t n)
 {
 	if(m_size == n)
 		return;
@@ -93,7 +93,7 @@ void GVec::resize(size_t n)
 	resize_implicit(n);
 }
 
-void GVec::resize_implicit(size_t n)
+void WVec::resize_implicit(size_t n)
 {
 	if(m_size == n)
 		return;
@@ -106,7 +106,7 @@ void GVec::resize_implicit(size_t n)
 		m_data = new double[n];
 }
 
-void GVec::resizePreserve(size_t n)
+void WVec::resizePreserve(size_t n)
 {
 	if(m_size == n)
 		return;
@@ -122,113 +122,113 @@ void GVec::resizePreserve(size_t n)
 	delete[] oldData;
 }
 
-void GVec::fill(const double val, size_t startPos, size_t elements)
+void WVec::fill(const double val, size_t startPos, size_t elements)
 {
 	size_t endPos = std::min(startPos + elements, m_size);
 	for(size_t i = startPos; i < endPos; i++)
 		m_data[i] = val;
 }
 
-GVec GVec::operator+(const GVec& that) const
+WVec WVec::operator+(const WVec& that) const
 {
-	GAssert(size() == that.size());
-	GVec v(m_size);
+	WAssert(size() == that.size());
+	WVec v(m_size);
 	for(size_t i = 0; i < m_size; i++)
 		v[i] = (*this)[i] + that[i];
 	return v;
 }
 
-GVec& GVec::operator+=(const GVec& that)
+WVec& WVec::operator+=(const WVec& that)
 {
-	GAssert(size() == that.size());
+	WAssert(size() == that.size());
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] += that[i];
 	return *this;
 }
 
-GVec& GVec::operator+=(const double scalar)
+WVec& WVec::operator+=(const double scalar)
 {
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] += scalar;
 	return *this;
 }
 
-GVec GVec::operator-(const GVec& that) const
+WVec WVec::operator-(const WVec& that) const
 {
-	GAssert(size() == that.size());
-	GVec v(m_size);
+	WAssert(size() == that.size());
+	WVec v(m_size);
 	for(size_t i = 0; i < m_size; i++)
 		v[i] = (*this)[i] - that[i];
 	return v;
 }
 
-GVec& GVec::operator-=(const GVec& that)
+WVec& WVec::operator-=(const WVec& that)
 {
-	GAssert(size() == that.size());
+	WAssert(size() == that.size());
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] -= that[i];
 	return *this;
 }
 
-GVec GVec::operator*(double scalar) const
+WVec WVec::operator*(double scalar) const
 {
-	GVec v(m_size);
+	WVec v(m_size);
 	for(size_t i = 0; i < m_size; i++)
 		v[i] = (*this)[i] * scalar;
 	return v;
 }
 
-GVec& GVec::operator*=(double scalar)
+WVec& WVec::operator*=(double scalar)
 {
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] *= scalar;
 	return *this;
 }
 
-GVec& GVec::operator*=(const GVec& that)
+WVec& WVec::operator*=(const WVec& that)
 {
-	GAssert(size() == that.size());
+	WAssert(size() == that.size());
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] *= that[i];
 	return *this;
 }
 
-GVec& GVec::operator/=(double scalar)
+WVec& WVec::operator/=(double scalar)
 {
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] /= scalar;
 	return *this;
 }
 
-void GVec::copy(const GVec& orig, size_t start, size_t size)
+void WVec::copy(const WVec& orig, size_t start, size_t size)
 {
-	GAssert(start <= orig.size());
+	WAssert(start <= orig.size());
 	size = std::min(size, orig.size() - start);
 	resize_implicit(size);
 	for(size_t i = 0; i < size; i++)
 		m_data[i] = orig[start + i];
 }
 
-void GVec::copy(const double* pSource, size_t n)
+void WVec::copy(const double* pSource, size_t n)
 {
 	resize_implicit(n);
 	for(size_t i = 0; i < n; i++)
 		(*this)[i] = *(pSource++);
 }
 
-void GVec::copy(size_t pos, const GVec& that, size_t start, size_t length)
+void WVec::copy(size_t pos, const WVec& that, size_t start, size_t length)
 {
 	if(length == (size_t)-1)
 		length = that.size() - start;
 	else if(start + length > that.size())
-		throw Ex("Input out of range. that size=", GClasses::to_str(that.size()), ", start=", GClasses::to_str(start), ", length=", GClasses::to_str(length));
+		throw Ex("Input out of range. that size=", WClasses::to_str(that.size()), ", start=", WClasses::to_str(start), ", length=", WClasses::to_str(length));
 	if(pos + length > m_size || start + length > that.m_size)
-		throw Ex("Out of range. this size=", GClasses::to_str(m_size), ", pos=", GClasses::to_str(pos), ", that size=", GClasses::to_str(that.m_size));
+		throw Ex("Out of range. this size=", WClasses::to_str(m_size), ", pos=", WClasses::to_str(pos), ", that size=", WClasses::to_str(that.m_size));
 	for(size_t i = 0; i < length; i++)
 		(*this)[pos + i] = that[start + i];
 }
 
-double GVec::mean() const
+double WVec::mean() const
 {
 	double m = 0.0;
 	for(size_t i = 0; i < m_size; i++)
@@ -241,7 +241,7 @@ double GVec::mean() const
 		return 0.0;
 }
 
-double GVec::squaredMagnitude() const
+double WVec::squaredMagnitude() const
 {
 	double s = 0.0;
 	for(size_t i = 0; i < m_size; i++)
@@ -252,7 +252,7 @@ double GVec::squaredMagnitude() const
 	return s;
 }
 
-void GVec::normalize()
+void WVec::normalize()
 {
 	double mag = std::sqrt(squaredMagnitude());
 	if(mag < 1e-16)
@@ -261,7 +261,7 @@ void GVec::normalize()
 		(*this) *= (1.0 / mag);
 }
 
-void GVec::sumToOne()
+void WVec::sumToOne()
 {
 	double s = sum();
 	if(s < 1e-16)
@@ -270,9 +270,9 @@ void GVec::sumToOne()
 		(*this) *= (1.0 / s);
 }
 
-double GVec::squaredDistance(const GVec& that) const
+double WVec::squaredDistance(const WVec& that) const
 {
-	GAssert(size() == that.size());
+	WAssert(size() == that.size());
 	double s = 0.0;
 	for(size_t i = 0; i < m_size; i++)
 	{
@@ -282,25 +282,25 @@ double GVec::squaredDistance(const GVec& that) const
 	return s;
 }
 
-void GVec::fillUniform(GRand& rand, double min, double max)
+void WVec::fillUniform(WRand& rand, double min, double max)
 {
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] = rand.uniform() * (max - min) + min;
 }
 
-void GVec::fillNormal(GRand& rand, double deviation)
+void WVec::fillNormal(WRand& rand, double deviation)
 {
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] = rand.normal() * deviation;
 }
 
-void GVec::perturbNormal(GRand& rand, double deviation)
+void WVec::perturbNormal(WRand& rand, double deviation)
 {
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] += rand.normal() * deviation;
 }
 
-void GVec::fillSphericalShell(GRand& rand, double radius)
+void WVec::fillSphericalShell(WRand& rand, double radius)
 {
 	fillNormal(rand);
 	normalize();
@@ -308,20 +308,20 @@ void GVec::fillSphericalShell(GRand& rand, double radius)
 		(*this) *= radius;
 }
 
-void GVec::fillSphericalVolume(GRand& rand)
+void WVec::fillSphericalVolume(WRand& rand)
 {
 	fillSphericalShell(rand);
 	(*this) *= std::pow(rand.uniform(), 1.0 / m_size);
 }
 
-void GVec::fillSimplex(GRand& rand)
+void WVec::fillSimplex(WRand& rand)
 {
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] = rand.exponential();
 	(*this) *= (1.0 / sum());
 }
 
-void GVec::print(std::ostream& stream, char separator, size_t max_elements_per_line) const
+void WVec::print(std::ostream& stream, char separator, size_t max_elements_per_line) const
 {
 	std::streamsize oldPrecision = stream.precision(14);
 	if(m_size > 0)
@@ -336,14 +336,14 @@ void GVec::print(std::ostream& stream, char separator, size_t max_elements_per_l
 	stream.precision(oldPrecision);
 }
 
-std::string GVec::to_str(char separator, size_t max_elements_per_line) const
+std::string WVec::to_str(char separator, size_t max_elements_per_line) const
 {
 	std::ostringstream ss;
 	print(ss, separator, max_elements_per_line);
 	return ss.str();
 }
 
-double GVec::sum() const
+double WVec::sum() const
 {
 	double s = 0.0;
 	for(size_t i = 0; i < m_size; i++)
@@ -351,7 +351,7 @@ double GVec::sum() const
 	return s;
 }
 
-size_t GVec::indexOfMax(size_t startPos, size_t endPos) const
+size_t WVec::indexOfMax(size_t startPos, size_t endPos) const
 {
 	endPos = std::min(m_size, endPos);
 	size_t maxIndex = startPos;
@@ -367,7 +367,7 @@ size_t GVec::indexOfMax(size_t startPos, size_t endPos) const
 	return maxIndex;
 }
 
-size_t GVec::indexOfMin(size_t startPos, size_t endPos) const
+size_t WVec::indexOfMin(size_t startPos, size_t endPos) const
 {
 	endPos = std::min(m_size, endPos);
 	size_t minIndex = startPos;
@@ -383,7 +383,7 @@ size_t GVec::indexOfMin(size_t startPos, size_t endPos) const
 	return minIndex;
 }
 
-double GVec::max(size_t startPos, size_t endPos) const
+double WVec::max(size_t startPos, size_t endPos) const
 {
 	endPos = std::min(m_size, endPos);
 	double maxValue = -1e300;
@@ -397,7 +397,7 @@ double GVec::max(size_t startPos, size_t endPos) const
 	return maxValue;
 }
 
-double GVec::min(size_t startPos, size_t endPos) const
+double WVec::min(size_t startPos, size_t endPos) const
 {
 	endPos = std::min(m_size, endPos);
 	double minValue = 1e300;
@@ -411,17 +411,17 @@ double GVec::min(size_t startPos, size_t endPos) const
 	return minValue;
 }
 
-GDomNode* GVec::serialize(GDom* pDoc) const
+WDomNode* WVec::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newList();
+	WDomNode* pNode = pDoc->newList();
 	for(size_t i = 0; i < m_size; i++)
 		pNode->add(pDoc, (*this)[i]);
 	return pNode;
 }
 
-void GVec::deserialize(const GDomNode* pNode)
+void WVec::deserialize(const WDomNode* pNode)
 {
-	GDomListIterator it(pNode);
+	WDomListIterator it(pNode);
 	resize_implicit(it.remaining());
 	for(size_t i = 0; it.current(); i++)
 	{
@@ -430,18 +430,18 @@ void GVec::deserialize(const GDomNode* pNode)
 	}
 }
 
-double GVec::dotProduct(const GVec& that) const
+double WVec::dotProduct(const WVec& that) const
 {
-	GAssert(size() == that.size());
+	WAssert(size() == that.size());
 	double s = 0.0;
 	for(size_t i = 0; i < m_size; i++)
 		s += ((*this)[i] * that[i]);
 	return s;
 }
 
-double GVec::dotProductIgnoringUnknowns(const GVec& that) const
+double WVec::dotProductIgnoringUnknowns(const WVec& that) const
 {
-	GAssert(size() == that.size());
+	WAssert(size() == that.size());
 	double s = 0.0;
 	for(size_t i = 0; i < m_size; i++)
 	{
@@ -451,10 +451,10 @@ double GVec::dotProductIgnoringUnknowns(const GVec& that) const
 	return s;
 }
 
-double GVec::dotProductIgnoringUnknowns(const GVec& from, const GVec& to) const
+double WVec::dotProductIgnoringUnknowns(const WVec& from, const WVec& to) const
 {
-	GAssert(size() == from.size());
-	GAssert(size() == to.size());
+	WAssert(size() == from.size());
+	WAssert(size() == to.size());
 	double s = 0.0;
 	for(size_t i = 0; i < m_size; i++)
 	{
@@ -464,9 +464,9 @@ double GVec::dotProductIgnoringUnknowns(const GVec& from, const GVec& to) const
 	return s;
 }
 
-double GVec::estimateSquaredDistanceWithUnknowns(const GVec& that) const
+double WVec::estimateSquaredDistanceWithUnknowns(const WVec& that) const
 {
-	GAssert(size() == that.size());
+	WAssert(size() == that.size());
 	double dist = 0;
 	double d;
 	size_t nMissing = 0;
@@ -486,31 +486,31 @@ double GVec::estimateSquaredDistanceWithUnknowns(const GVec& that) const
 		return dist * m_size / (m_size - nMissing);
 }
 
-void GVec::addScaled(double scalar, const GVec& that, size_t start, size_t size)
+void WVec::addScaled(double scalar, const WVec& that, size_t start, size_t size)
 {
-	GAssert(start + size <= that.size() || size == (size_t)-1);
+	WAssert(start + size <= that.size() || size == (size_t)-1);
 	size = std::min(size, that.size() - start);
-	GAssert(this->size() >= size);
+	WAssert(this->size() >= size);
 	for(size_t i = 0; i < size; i++)
 		(*this)[i] += (scalar * that[start + i]);
 }
 
-void GVec::addScaled(size_t startPos, double scalar, const GVec& that, size_t start, size_t size)
+void WVec::addScaled(size_t startPos, double scalar, const WVec& that, size_t start, size_t size)
 {
-	GAssert(start + size <= that.size() || size == (size_t)-1);
+	WAssert(start + size <= that.size() || size == (size_t)-1);
 	size = std::min(size, that.size() - start);
-	GAssert(this->size() >= size + startPos);
+	WAssert(this->size() >= size + startPos);
 	for(size_t i = 0; i < size; i++)
 		(*this)[startPos + i] += (scalar * that[start + i]);
 }
 
-void GVec::regularize(double amount)
+void WVec::regularize(double amount)
 {
 	regularizeL2(amount);
 	regularizeL1(0.2 * amount);
 }
 
-void GVec::regularizeL1(double amount)
+void WVec::regularizeL1(double amount)
 {
 	for(size_t i = 0; i < m_size; i++)
 	{
@@ -521,12 +521,12 @@ void GVec::regularizeL1(double amount)
 	}
 }
 
-void GVec::regularizeL2(double amount)
+void WVec::regularizeL2(double amount)
 {
 	(*this) *= (1.0 - amount);
 }
 
-void GVec::erase(size_t start, size_t count)
+void WVec::erase(size_t start, size_t count)
 {
 	if(start + count > m_size)
 		throw Ex("out of range");
@@ -541,7 +541,7 @@ void GVec::erase(size_t start, size_t count)
 	}
 }
 
-double GVec::correlation(const GVec& that) const
+double WVec::correlation(const WVec& that) const
 {
 	double d = this->dotProduct(that);
 	if(d == 0.0)
@@ -549,22 +549,22 @@ double GVec::correlation(const GVec& that) const
 	return d / (sqrt(this->squaredMagnitude() * that.squaredMagnitude()));
 }
 
-void GVec::clip(double min, double max)
+void WVec::clip(double min, double max)
 {
-	GAssert(max >= min);
+	WAssert(max >= min);
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] = std::max(min, std::min(max, (*this)[i]));
 }
 
-void GVec::subtractComponent(const GVec& component)
+void WVec::subtractComponent(const WVec& component)
 {
-	GAssert(size() == component.size());
+	WAssert(size() == component.size());
 	double comp = dotProduct(component);
 	for(size_t i = 0; i < m_size; i++)
 		(*this)[i] -= component[i] * comp;
 }
 
-void GVec::toImage(GImage* pImage, int width, int height, int channels, double range) const
+void WVec::toImage(WImage* pImage, int width, int height, int channels, double range) const
 {
 	if(size() != (size_t)width * (size_t)height * (size_t)channels)
 		throw Ex("Size mismatch");
@@ -600,7 +600,7 @@ void GVec::toImage(GImage* pImage, int width, int height, int channels, double r
 		throw Ex("unsupported value for channels");
 }
 
-void GVec::fromImage(GImage* pImage, int width, int height, int channels, double range)
+void WVec::fromImage(WImage* pImage, int width, int height, int channels, double range)
 {
 	resize_implicit(width * height * channels);
 	unsigned int* pix = pImage->pixels();
@@ -634,7 +634,7 @@ void GVec::fromImage(GImage* pImage, int width, int height, int channels, double
 		throw Ex("unsupported value for channels");
 }
 
-void GVec::swapContents(GVec& that)
+void WVec::swapContents(WVec& that)
 {
 	std::swap(m_data, that.m_data);
 	std::swap(m_size, that.m_size);
@@ -642,13 +642,13 @@ void GVec::swapContents(GVec& that)
 
 
 // static
-void GVec::test()
+void WVec::test()
 {
 	{
 		// Test some static methods
-		GRand prng(0);
-		GVec v1(100);
-		GVec v2(100);
+		WRand prng(0);
+		WVec v1(100);
+		WVec v2(100);
 		for(int i = 0; i < 10; i++)
 		{
 			v1.fillSphericalShell(prng);
@@ -664,11 +664,11 @@ void GVec::test()
 		}
 	}
 
-	// Test the basic operations of the GVec object
-	GVec v1(2);
+	// Test the basic operations of the WVec object
+	WVec v1(2);
 	v1[0] = 2.0;
 	v1[1] = 7.0;
-	GVec v2;
+	WVec v2;
 	v2.copy(v1);
 	if(v2.size() != 2)
 		throw Ex("failed");
@@ -689,7 +689,7 @@ void GVec::test()
 	v1[1] = 2.0;
 	v2[0] = 3.0;
 	v2[1] = 4.0;
-	GVec v3 = v1 + v2;
+	WVec v3 = v1 + v2;
 	if(v3.squaredMagnitude() != 52.0)
 		throw Ex("failed");
 	v3 += v1;
@@ -705,8 +705,8 @@ void GVec::test()
 		throw Ex("failed");
 
 	// Test some other methods:
-	GVec v4(10);
-	GVec v5(10);
+	WVec v4(10);
+	WVec v5(10);
 	for(size_t i = 0; i < 10; i++)
 	{
 		v4[i] = (double)i;
@@ -724,7 +724,7 @@ void GVec::test()
 	double mean = v4.mean();
 	if(mean != 6.5)
 		throw Ex("failed");
-	GVec v6(2);
+	WVec v6(2);
 	v6[0] = 10;
 	v6[1] = 10;
 	v6 /= 2;
@@ -732,7 +732,7 @@ void GVec::test()
 		throw Ex("failed");
 }
 
-std::string to_str(const GVec& v)
+std::string to_str(const WVec& v)
 {
 	return v.to_str();
 }
@@ -742,7 +742,7 @@ std::string to_str(const GVec& v)
 
 
 
-GIndexVec::GIndexVec(size_t n)
+WIndexVec::WIndexVec(size_t n)
 : m_size(n)
 {
 	if(n == 0)
@@ -751,7 +751,7 @@ GIndexVec::GIndexVec(size_t n)
 		m_data = new size_t[n];
 }
 
-GIndexVec::GIndexVec(const std::initializer_list<size_t>& list)
+WIndexVec::WIndexVec(const std::initializer_list<size_t>& list)
 : m_size(list.size())
 {
 	if(list.size() == 0)
@@ -765,7 +765,7 @@ GIndexVec::GIndexVec(const std::initializer_list<size_t>& list)
 	}
 }
 
-GIndexVec::GIndexVec(const GIndexVec& copyMe)
+WIndexVec::WIndexVec(const WIndexVec& copyMe)
 {
 	if(copyMe.size() == 0)
 		m_data = nullptr;
@@ -775,10 +775,10 @@ GIndexVec::GIndexVec(const GIndexVec& copyMe)
 	memcpy(m_data, copyMe.m_data, sizeof(size_t) * m_size);
 }
 
-GIndexVec::GIndexVec(GDomNode* pNode)
+WIndexVec::WIndexVec(WDomNode* pNode)
 : m_data(nullptr), m_size(0)
 {
-	GDomListIterator it(pNode);
+	WDomListIterator it(pNode);
 	resize(it.remaining());
 	for(size_t i = 0; it.current(); i++)
 	{
@@ -787,20 +787,20 @@ GIndexVec::GIndexVec(GDomNode* pNode)
 	}
 }
 
-GIndexVec::~GIndexVec()
+WIndexVec::~WIndexVec()
 {
 	delete[] m_data;
 }
 
-GDomNode* GIndexVec::serialize(GDom* pDoc) const
+WDomNode* WIndexVec::serialize(WDom* pDoc) const
 {
-	GDomNode* pNode = pDoc->newList();
+	WDomNode* pNode = pDoc->newList();
 	for(size_t i = 0; i < m_size; i++)
 		pNode->add(pDoc, (*this)[i]);
 	return pNode;
 }
 
-void GIndexVec::resize(size_t n)
+void WIndexVec::resize(size_t n)
 {
 	delete[] m_data;
 	m_size = n;
@@ -810,19 +810,19 @@ void GIndexVec::resize(size_t n)
 		m_data = new size_t[n];
 }
 
-void GIndexVec::fill(size_t val)
+void WIndexVec::fill(size_t val)
 {
 	for(size_t i = 0; i < m_size; i++)
 		m_data[i] = val;
 }
 
-void GIndexVec::fillIndexes()
+void WIndexVec::fillIndexes()
 {
 	for(size_t i = 0; i < m_size; i++)
 		m_data[i] = i;
 }
 
-size_t GIndexVec::popRandom(GRand& rand)
+size_t WIndexVec::popRandom(WRand& rand)
 {
 	if(m_size == 0)
 		throw Ex("Nothing to pop");
@@ -837,7 +837,7 @@ size_t GIndexVec::popRandom(GRand& rand)
 	return v;
 }
 
-void GIndexVec::erase(size_t start, size_t count)
+void WIndexVec::erase(size_t start, size_t count)
 {
 	if(start + count > m_size)
 		throw Ex("out of range");
@@ -852,7 +852,7 @@ void GIndexVec::erase(size_t start, size_t count)
 	}
 }
 
-void GIndexVec::append(size_t count)
+void WIndexVec::append(size_t count)
 {
 	size_t* pNewData = new size_t[m_size + count];
 	memcpy(pNewData, m_data, sizeof(size_t) * m_size);
@@ -866,7 +866,7 @@ void GIndexVec::append(size_t count)
 
 
 // static
-void GIndexVec::makeIndexVec(size_t* pVec, size_t size)
+void WIndexVec::makeIndexVec(size_t* pVec, size_t size)
 {
 	for(size_t i = 0; i < size; i++)
 	{
@@ -876,7 +876,7 @@ void GIndexVec::makeIndexVec(size_t* pVec, size_t size)
 }
 
 // static
-void GIndexVec::shuffle(size_t* pVec, size_t size, GRand* pRand)
+void WIndexVec::shuffle(size_t* pVec, size_t size, WRand* pRand)
 {
 	for(size_t i = size; i > 1; i--)
 	{
@@ -888,7 +888,7 @@ void GIndexVec::shuffle(size_t* pVec, size_t size, GRand* pRand)
 }
 
 // static
-void GIndexVec::setAll(size_t* pVec, size_t value, size_t size)
+void WIndexVec::setAll(size_t* pVec, size_t value, size_t size)
 {
 	while(size > 0)
 	{
@@ -899,13 +899,13 @@ void GIndexVec::setAll(size_t* pVec, size_t value, size_t size)
 }
 
 // static
-void GIndexVec::copy(size_t* pDest, const size_t* pSource, size_t nDims)
+void WIndexVec::copy(size_t* pDest, const size_t* pSource, size_t nDims)
 {
 	memcpy(pDest, pSource, sizeof(size_t) * nDims);
 }
 
 // static
-size_t GIndexVec::maxValue(size_t* pVec, size_t size)
+size_t WIndexVec::maxValue(size_t* pVec, size_t size)
 {
 	size_t m = *(pVec++);
 	size--;
@@ -918,7 +918,7 @@ size_t GIndexVec::maxValue(size_t* pVec, size_t size)
 }
 
 // static
-size_t GIndexVec::indexOfMax(size_t* pVec, size_t size)
+size_t WIndexVec::indexOfMax(size_t* pVec, size_t size)
 {
 	size_t index = 0;
 	size_t m = *(pVec++);
@@ -939,16 +939,16 @@ size_t GIndexVec::indexOfMax(size_t* pVec, size_t size)
 }
 
 // static
-GDomNode* GIndexVec::serialize(GDom* pDoc, const size_t* pVec, size_t dims)
+WDomNode* WIndexVec::serialize(WDom* pDoc, const size_t* pVec, size_t dims)
 {
-	GDomNode* pNode = pDoc->newList();
+	WDomNode* pNode = pDoc->newList();
 	for(size_t i = 0; i < dims; i++)
 		pNode->add(pDoc, *(pVec++));
 	return pNode;
 }
 
 // static
-void GIndexVec::deserialize(size_t* pVec, GDomListIterator& it)
+void WIndexVec::deserialize(size_t* pVec, WDomListIterator& it)
 {
 	while(it.current())
 	{
@@ -958,7 +958,7 @@ void GIndexVec::deserialize(size_t* pVec, GDomListIterator& it)
 }
 
 // static
-void GIndexVec::print(std::ostream& stream, size_t* pVec, size_t dims)
+void WIndexVec::print(std::ostream& stream, size_t* pVec, size_t dims)
 {
 	if(dims == 0)
 		return;
@@ -975,7 +975,7 @@ void GIndexVec::print(std::ostream& stream, size_t* pVec, size_t dims)
 
 
 
-GRandomIndexIterator::GRandomIndexIterator(size_t len, GRand& rnd)
+WRandomIndexIterator::WRandomIndexIterator(size_t len, WRand& rnd)
 : m_length(len), m_rand(rnd)
 {
 	m_pIndexes = new size_t[len];
@@ -986,26 +986,26 @@ GRandomIndexIterator::GRandomIndexIterator(size_t len, GRand& rnd)
 	m_pCur = m_pEnd;
 }
 
-GRandomIndexIterator::~GRandomIndexIterator()
+WRandomIndexIterator::~WRandomIndexIterator()
 {
 	delete[] m_pIndexes;
 }
 
-void GRandomIndexIterator::reset()
+void WRandomIndexIterator::reset()
 {
 	for(size_t i = m_length; i > 1; i--)
 		std::swap(m_pIndexes[i - 1], m_pIndexes[m_rand.next(i)]);
 	m_pCur = m_pIndexes;
 }
 
-void GRandomIndexIterator::resetPart(size_t size)
+void WRandomIndexIterator::resetPart(size_t size)
 {
 	for(size_t i = size; i > 1; i--)
 		std::swap(m_pIndexes[i - 1], m_pIndexes[m_rand.next(i)]);
 	m_pCur = m_pIndexes;
 }
 
-bool GRandomIndexIterator::next(size_t& outIndex)
+bool WRandomIndexIterator::next(size_t& outIndex)
 {
 	if(m_pCur == m_pEnd)
 		return false;
@@ -1017,30 +1017,30 @@ bool GRandomIndexIterator::next(size_t& outIndex)
 
 
 
-GCoordVectorIterator::GCoordVectorIterator(size_t dimCount, size_t* pRanges)
+WCoordVectorIterator::WCoordVectorIterator(size_t dimCount, size_t* pRanges)
 {
 	m_pCoords = nullptr;
 	reset(dimCount, pRanges);
 }
 
-GCoordVectorIterator::GCoordVectorIterator(vector<size_t>& range)
+WCoordVectorIterator::WCoordVectorIterator(vector<size_t>& range)
 {
 	m_pCoords = nullptr;
 	reset(range);
 }
 
-GCoordVectorIterator::~GCoordVectorIterator()
+WCoordVectorIterator::~WCoordVectorIterator()
 {
 	delete[] m_pCoords;
 }
 
-void GCoordVectorIterator::reset()
+void WCoordVectorIterator::reset()
 {
 	memset(m_pCoords, '\0', sizeof(size_t) * m_dims);
 	m_sampleShift = INVALID_INDEX;
 }
 
-void GCoordVectorIterator::reset(size_t dimCount, size_t* pRanges)
+void WCoordVectorIterator::reset(size_t dimCount, size_t* pRanges)
 {
 	m_dims = dimCount;
 	delete[] m_pCoords;
@@ -1064,7 +1064,7 @@ void GCoordVectorIterator::reset(size_t dimCount, size_t* pRanges)
 	reset();
 }
 
-void GCoordVectorIterator::reset(vector<size_t>& range)
+void WCoordVectorIterator::reset(vector<size_t>& range)
 {
 	m_dims = range.size();
 	delete[] m_pCoords;
@@ -1083,7 +1083,7 @@ void GCoordVectorIterator::reset(vector<size_t>& range)
 	reset();
 }
 
-size_t GCoordVectorIterator::coordCount()
+size_t WCoordVectorIterator::coordCount()
 {
 	size_t n = 1;
 	size_t* pR = m_pRanges;
@@ -1092,7 +1092,7 @@ size_t GCoordVectorIterator::coordCount()
 	return n;
 }
 
-bool GCoordVectorIterator::advance()
+bool WCoordVectorIterator::advance()
 {
 	size_t j;
 	for(j = 0; j < m_dims; j++)
@@ -1109,7 +1109,7 @@ bool GCoordVectorIterator::advance()
 	return true;
 }
 
-bool GCoordVectorIterator::advance(size_t steps)
+bool WCoordVectorIterator::advance(size_t steps)
 {
 	size_t j;
 	for(j = 0; j < m_dims; j++)
@@ -1127,14 +1127,14 @@ bool GCoordVectorIterator::advance(size_t steps)
 	return true;
 }
 
-bool GCoordVectorIterator::advanceSampling()
+bool WCoordVectorIterator::advanceSampling()
 {
 	if(m_sampleShift == INVALID_INDEX) // if we have not yet computed the step size
 	{
 		size_t r = m_pRanges[0];
 		for(size_t i = 1; i < m_dims; i++)
 			r = std::max(r, m_pRanges[i]);
-		m_sampleShift = GBits::boundingShift(r);
+		m_sampleShift = WBits::boundingShift(r);
 		m_sampleMask = 0;
 	}
 
@@ -1166,12 +1166,12 @@ bool GCoordVectorIterator::advanceSampling()
 	return true;
 }
 
-size_t* GCoordVectorIterator::current()
+size_t* WCoordVectorIterator::current()
 {
 	return m_pCoords;
 }
 
-void GCoordVectorIterator::currentNormalized(double* pCoords)
+void WCoordVectorIterator::currentNormalized(double* pCoords)
 {
 	for(size_t i = 0; i < m_dims; i++)
 	{
@@ -1180,7 +1180,7 @@ void GCoordVectorIterator::currentNormalized(double* pCoords)
 	}
 }
 
-size_t GCoordVectorIterator::currentIndex()
+size_t WCoordVectorIterator::currentIndex()
 {
 	size_t index = 0;
 	size_t n = 1;
@@ -1192,7 +1192,7 @@ size_t GCoordVectorIterator::currentIndex()
 	return index;
 }
 
-void GCoordVectorIterator::setRandom(GRand* pRand)
+void WCoordVectorIterator::setRandom(WRand* pRand)
 {
 	for(size_t i = 0; i < m_dims; i++)
 		m_pCoords[i] = (size_t)pRand->next(m_pRanges[i]);
@@ -1200,17 +1200,17 @@ void GCoordVectorIterator::setRandom(GRand* pRand)
 
 #define TEST_DIMS 4
 // static
-void GCoordVectorIterator::test()
+void WCoordVectorIterator::test()
 {
 	size_t r = 11;
 	size_t size = 1;
 	for(size_t i = 0; i < TEST_DIMS; i++)
 		size *= r;
-	GBitTable bt(size);
+	WBitTable bt(size);
 	size_t ranges[TEST_DIMS];
 	for(size_t i = 0; i < TEST_DIMS; i++)
 		ranges[i] = r;
-	GCoordVectorIterator cvi(TEST_DIMS, ranges);
+	WCoordVectorIterator cvi(TEST_DIMS, ranges);
 	size_t count = 0;
 	while(true)
 	{
@@ -1231,7 +1231,7 @@ void GCoordVectorIterator::test()
 
 
 
-size_t GTensor_countTensorSize(const GIndexVec& shape)
+size_t WTensor_countTensorSize(const WIndexVec& shape)
 {
 	size_t n = 1;
 	for(size_t i = 0; i < shape.size(); i++)
@@ -1239,7 +1239,7 @@ size_t GTensor_countTensorSize(const GIndexVec& shape)
 	return n;
 }
 
-GTensor::GTensor(const std::initializer_list<size_t>& list, bool ownBuffer, GVec* pBuffer)
+WTensor::WTensor(const std::initializer_list<size_t>& list, bool ownBuffer, WVec* pBuffer)
 : shape(list.size()), pHolder(nullptr)
 {
 	// Populate the shape
@@ -1253,13 +1253,13 @@ GTensor::GTensor(const std::initializer_list<size_t>& list, bool ownBuffer, GVec
 
 	// Arrange for the buffer
 	if(pBuffer && tot != pBuffer->size())
-		throw Ex("Mismatching sizes. pBuffer has ", GClasses::to_str(pBuffer->size()), ", but the shape requires ", GClasses::to_str(tot));
+		throw Ex("Mismatching sizes. pBuffer has ", WClasses::to_str(pBuffer->size()), ", but the shape requires ", WClasses::to_str(tot));
 	if(ownBuffer)
 	{
 		if(pBuffer)
 			pHolder = pBuffer;
 		else
-			pHolder = new GVec(tot);
+			pHolder = new WVec(tot);
 		setData(*pHolder);
 	}
 	else
@@ -1269,24 +1269,24 @@ GTensor::GTensor(const std::initializer_list<size_t>& list, bool ownBuffer, GVec
 	}
 }
 
-GTensor::GTensor(const GTensor& copyMe)
-: GVecWrapper(copyMe),
+WTensor::WTensor(const WTensor& copyMe)
+: WVecWrapper(copyMe),
   shape(copyMe.shape), pHolder(nullptr)
 {
 }
 
-GTensor::GTensor(GDomNode* pNode)
-: GVecWrapper(nullptr, 0),
+WTensor::WTensor(WDomNode* pNode)
+: WVecWrapper(nullptr, 0),
   shape(pNode), pHolder(nullptr)
 {
 }
 
-GTensor::~GTensor()
+WTensor::~WTensor()
 {
 	delete(pHolder);
 }
 
-void GTensor::get(GVecWrapper& out, size_t index)
+void WTensor::get(WVecWrapper& out, size_t index)
 {
 	size_t len = 1;
 	for(size_t i = 1; i < shape.size(); i++)
@@ -1295,31 +1295,31 @@ void GTensor::get(GVecWrapper& out, size_t index)
 }
 
 
-class GTensorAttr
+class WTensorAttr
 {
 public:
 	std::string m_name;
 	std::vector<std::string> m_values;
 
-	GDomNode* serialize(GDom* pDoc, size_t valCount) const;
+	WDomNode* serialize(WDom* pDoc, size_t valCount) const;
 };
 
-class GTensorMeta
+class WTensorMeta
 {
 public:
-	std::vector<GTensorAttr*> m_attrs;
+	std::vector<WTensorAttr*> m_attrs;
 
 
-	~GTensorMeta()
+	~WTensorMeta()
 	{
 		for(size_t i = 0; i < m_attrs.size(); i++)
 			delete(m_attrs[i]);
 	}
 
-	// Adds a column named name, or attr_<index> if the name is empty (as GArffRelation does)
-	GTensorAttr* addAttr(const string& name)
+	// Adds a column named name, or attr_<index> if the name is empty (as WArffRelation does)
+	WTensorAttr* addAttr(const string& name)
 	{
-		GTensorAttr* pAttr = new GTensorAttr();
+		WTensorAttr* pAttr = new WTensorAttr();
 		pAttr->m_name = name.length() > 0 ? name : "attr_" + to_str(m_attrs.size());
 		m_attrs.push_back(pAttr);
 		return pAttr;
@@ -1331,7 +1331,7 @@ public:
 		return m_attrs[nAttr]->m_name + " (" + to_str(nAttr) + ")";
 	}
 
-	void parseAttribute(GTokenizer& tok, GCharSet& cs_whitespace, GCharSet& cs_spaces, GCharSet& cs_argEnd, GCharSet& cs_valEnd, GCharSet& cs_newline)
+	void parseAttribute(WTokenizer& tok, WCharSet& cs_whitespace, WCharSet& cs_spaces, WCharSet& cs_argEnd, WCharSet& cs_valEnd, WCharSet& cs_newline)
 	{
 		tok.skipWhile(cs_spaces);
 		string dataname = tok.readUntil_escaped_quoted(cs_argEnd);
@@ -1340,7 +1340,7 @@ public:
 		if(c == '{')
 		{
 			tok.skip(1);
-			GTensorAttr* pAttr = addAttr(dataname);
+			WTensorAttr* pAttr = addAttr(dataname);
 			while(true)
 			{
 				tok.readUntil_escaped_quoted(cs_valEnd);
@@ -1416,7 +1416,7 @@ public:
 };
 
 
-double GTensor_parseValue(GTensorMeta& relation, size_t col, const char* szVal, GTokenizer& tok)
+double WTensor_parseValue(WTensorMeta& relation, size_t col, const char* szVal, WTokenizer& tok)
 {
 	size_t vals = relation.m_attrs[col]->m_values.size();
 	if(vals == 0) // Continuous
@@ -1449,28 +1449,28 @@ double GTensor_parseValue(GTensorMeta& relation, size_t col, const char* szVal, 
 		throw Ex("Unexpected attribute type, ", to_str(vals));
 }
 
-void GTensor::loadArff(const char* szFilename)
+void WTensor::loadArff(const char* szFilename)
 {
-	GTokenizer tok(szFilename);
+	WTokenizer tok(szFilename);
 	parseArff(tok);
 }
 
-void GTensor::parseArff(GTokenizer& tok)
+void WTensor::parseArff(WTokenizer& tok)
 {
 	delete(pHolder);
 	pHolder = nullptr;
-	GCharSet cs_whitespace("\t\n\r ");
-	GCharSet cs_spaces(" \t");
-	GCharSet cs_space(" ");
-	GCharSet cs_valEnd(",}\n");
-	GCharSet cs_valEnder(" ,\t}\n");
-	GCharSet cs_valHardEnder(",}\t\n");
-	GCharSet cs_argEnd(" \t\n{\r");
-	GCharSet cs_newline("\n");
-	GCharSet cs_commaNewlineTab(",\n\t");
+	WCharSet cs_whitespace("\t\n\r ");
+	WCharSet cs_spaces(" \t");
+	WCharSet cs_space(" ");
+	WCharSet cs_valEnd(",}\n");
+	WCharSet cs_valEnder(" ,\t}\n");
+	WCharSet cs_valHardEnder(",}\t\n");
+	WCharSet cs_argEnd(" \t\n{\r");
+	WCharSet cs_newline("\n");
+	WCharSet cs_commaNewlineTab(",\n\t");
 
 	// Parse the meta data
-	GTensorMeta meta;
+	WTensorMeta meta;
 	while(true)
 	{
 		tok.skipWhile(cs_whitespace);
@@ -1541,7 +1541,7 @@ void GTensor::parseArff(GTokenizer& tok)
 						throw Ex("Column index out of range at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
 					tok.skipWhile(cs_spaces);
 					const char* szVal = tok.readUntil_escaped_quoted(cs_valEnder);
-					data_buf.push(GTensor_parseValue(meta, column, szVal, tok));
+					data_buf.push(WTensor_parseValue(meta, column, szVal, tok));
 					tok.skipUntil(cs_valHardEnder);
 					c2 = tok.peek();
 					if(c2 == ',' || c2 == '\t')
@@ -1568,7 +1568,7 @@ void GTensor::parseArff(GTokenizer& tok)
 					throw Ex("Too many values on line ", to_str(tok.line()), ", col ", to_str(tok.col()));
 				tok.readUntil_escaped_quoted(cs_commaNewlineTab);
 				const char* szVal = tok.trim(cs_whitespace);
-				data_buf.push(GTensor_parseValue(meta, column, szVal, tok));
+				data_buf.push(WTensor_parseValue(meta, column, szVal, tok));
 				column++;
 				char c2 = tok.peek();
 				while(c2 == '\t' || c2 == ' ')
@@ -1599,7 +1599,7 @@ void GTensor::parseArff(GTokenizer& tok)
 	shape.resize(2);
 	shape[0] = rowCount;
 	shape[1] = colCount;
-	pHolder = new GVec(data_buf.size());
+	pHolder = new WVec(data_buf.size());
 	setData(*pHolder);
 	for(size_t i = 0; !data_buf.empty(); i++)
 	{
@@ -1608,12 +1608,12 @@ void GTensor::parseArff(GTokenizer& tok)
 	}
 }
 
-void GTensor::convolve(const GTensor& in, const GTensor& filter, GTensor& out, bool flipFilter, size_t stride)
+void WTensor::convolve(const WTensor& in, const WTensor& filter, WTensor& out, bool flipFilter, size_t stride)
 {
 	// Precompute some values
 	size_t dc = in.shape.size();
-	GAssert(dc == filter.shape.size());
-	GAssert(dc == out.shape.size());
+	WAssert(dc == filter.shape.size());
+	WAssert(dc == out.shape.size());
 	size_t* kinner = (size_t*)alloca(sizeof(size_t) * 5 * dc);
 	size_t* kouter = kinner + dc;
 	size_t* stepInner = kouter + dc;
@@ -1701,46 +1701,46 @@ void GTensor::convolve(const GTensor& in, const GTensor& filter, GTensor& out, b
 }
 
 // static
-void GTensor::test()
+void WTensor::test()
 {
 	{
 		// 1D test
-		GVec in({2, 3, 1, 0, 1});
-		GTensor tin({5}, false, &in);
+		WVec in({2, 3, 1, 0, 1});
+		WTensor tin({5}, false, &in);
 
-		GVec k({1, 0, 2});
-		GTensor tk({3}, false, &k);
+		WVec k({1, 0, 2});
+		WTensor tk({3}, false, &k);
 
-		GVec out(7);
+		WVec out(7);
 		out.fill(0.0);
-		GTensor tout({7}, false, &out);
+		WTensor tout({7}, false, &out);
 
-		GTensor::convolve(tin, tk, tout, true, 1);
+		WTensor::convolve(tin, tk, tout, true, 1);
 
 		//     2 3 1 0 1
 		// 2 0 1 --->
-		GVec expected({2, 3, 5, 6, 3, 0, 2});
+		WVec expected({2, 3, 5, 6, 3, 0, 2});
 		if(std::sqrt(out.squaredDistance(expected)) > 1e-10)
 			throw Ex("wrong");
 	}
 
 	{
 		// 2D test
-		GVec in(
+		WVec in(
 		  {1, 2, 3, 4, 5, 6, 7, 8, 9});
-		GTensor tin({3, 3}, false, &in);
+		WTensor tin({3, 3}, false, &in);
 
-		GVec k(
+		WVec k(
 		  {1, 2, 1, 0, 0, 0, -1, -2, -1});
-		GTensor tk({3, 3}, false, &k);
+		WTensor tk({3, 3}, false, &k);
 
-		GVec out(9);
+		WVec out(9);
 		out.fill(0.0);
-		GTensor tout({3, 3}, false, &out);
+		WTensor tout({3, 3}, false, &out);
 
-		GTensor::convolve(tin, tk, tout, false, 1);
+		WTensor::convolve(tin, tk, tout, false, 1);
 
-		GVec expected(
+		WVec expected(
 		  {-13, -20, -17, -18, -24, -18, 13, 20, 17});
 		if(std::sqrt(out.squaredDistance(expected)) > 1e-10)
 			throw Ex("wrong");
@@ -1749,4 +1749,4 @@ void GTensor::test()
 
 
 
-} // namespace GClasses
+} // namespace WClasses
