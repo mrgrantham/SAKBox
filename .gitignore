@@ -8,3 +8,6 @@ external
 
 # Python bytecode (tools/)
 __pycache__/
+
+# Dear ImGui saves its window layout here when a demo runs
+imgui.ini
