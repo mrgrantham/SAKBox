@@ -4,7 +4,9 @@
 #include <WClasses/WBitTable.h>
 #include <WClasses/WMatrix.h>
 
+#include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -146,6 +148,50 @@ TEST(ArffStringColumnTest, WarnsWhenItLooksLikeFreeText) {
   EXPECT_NE(warning.find("string column 's' has 40 different values in 40 rows"), std::string::npos)
       << warning;
   EXPECT_EQ(m.relation().valueCount(0), 40u); // loaded anyway
+}
+
+// WArffStrings::refuse turns string columns away instead: loading throws,
+// naming the column, and the matrix keeps what it held. Files without one
+// load as usual.
+TEST(ArffStringColumnTest, RefusedWhenAsked) {
+  const std::string arff = "@relation r\n@attribute h real\n@attribute name string\n"
+                           "@data\n1.5,alice\n";
+  WMatrix m = loadArff("@relation before\n@attribute x real\n@data\n7\n8\n");
+  try {
+    m.parseArff(arff.c_str(), arff.size(), WArffStrings::refuse);
+    FAIL() << "a string column was loaded";
+  } catch (const std::exception &e) {
+    EXPECT_NE(std::string(e.what()).find("Column 'name' is an ARFF string column"),
+              std::string::npos)
+        << e.what();
+  }
+  ASSERT_EQ(m.rows(), 2u); // unchanged
+  EXPECT_EQ(m.cols(), 1u);
+  EXPECT_EQ(m[1][0], 8.0);
+
+  const std::string fine = "@relation r\n@attribute h real\n@attribute c {red,blue}\n"
+                           "@data\n1.5,blue\n2.5,red\n";
+  m.parseArff(fine.c_str(), fine.size(), WArffStrings::refuse);
+  ASSERT_EQ(m.rows(), 2u);
+  EXPECT_EQ(m[0][1], 1.0); // blue
+
+  // The default is still to load it as a category
+  m.parseArff(arff.c_str(), arff.size(), WArffStrings::asCategories);
+  EXPECT_EQ(m.relation().valueCount(1), 1u);
+}
+
+// The same from a file, with loadArff
+TEST(ArffStringColumnTest, RefusedFromAFile) {
+  const char *tmp = getenv("TEST_TMPDIR");
+  const std::string path = std::string(tmp ? tmp : ".") + "/strings.arff";
+  {
+    std::ofstream out(path);
+    out << "@relation r\n@attribute name string\n@data\nalice\n";
+  }
+  WMatrix m;
+  EXPECT_THROW(m.loadArff(path.c_str(), WArffStrings::refuse), std::exception);
+  m.loadArff(path.c_str());
+  EXPECT_EQ(m.rows(), 1u);
 }
 
 // ARFF numbers were checked only by their first character, so "1.5abc"

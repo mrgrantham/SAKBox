@@ -1110,8 +1110,15 @@ double WMatrix_parseValue(WArffRelation* pRelation, size_t col, const char* szVa
 
 void WMatrix::parseArff(WArffTokenizer& tok, size_t maxRows)
 {
-	// Parse the meta data
-	WArffRelation* pRelation = new WArffRelation();
+	parseArff(tok, WArffStrings::asCategories, maxRows);
+}
+
+void WMatrix::parseArff(WArffTokenizer& tok, WArffStrings stringColumns, size_t maxRows)
+{
+	// Parse the meta data. SAKBox: the relation is owned here until the
+	// matrix takes it, so it isn't leaked when the file is refused.
+	std::unique_ptr<WArffRelation> relation(new WArffRelation());
+	WArffRelation* pRelation = relation.get();
 	while(true)
 	{
 		tok.skipWhile(tok.m_whitespace);
@@ -1146,8 +1153,18 @@ void WMatrix::parseArff(WArffTokenizer& tok, size_t maxRows)
 			throw Ex("Expected a '%' or a '@' at line ", to_str(tok.line()), ", col ", to_str(tok.col()));
 	}
 
+	// SAKBox: refused before the matrix is changed
+	if(stringColumns == WArffStrings::refuse)
+	{
+		for(size_t i = 0; i < pRelation->size(); i++)
+		{
+			if(pRelation->valueCount(i) == INVALID_INDEX)
+				throw Ex("Column '", pRelation->attrName(i), "' is an ARFF string column, which isn't loaded (WArffStrings::refuse): Waffles can only keep text as a category");
+		}
+	}
+
 	flush();
-	setRelation(pRelation);
+	setRelation(relation.release());
 	size_t colCount = pRelation->size();
 	std::map<size_t, WArffStringValues> strings; // SAKBox: see WMatrix_parseValue
 	while(true)
@@ -1255,8 +1272,13 @@ void WMatrix::parseArff(WArffTokenizer& tok, size_t maxRows)
 
 void WMatrix::loadArff(const char* szFilename, size_t maxRows)
 {
+	loadArff(szFilename, WArffStrings::asCategories, maxRows);
+}
+
+void WMatrix::loadArff(const char* szFilename, WArffStrings stringColumns, size_t maxRows)
+{
 	WArffTokenizer tok(szFilename);
-	parseArff(tok, maxRows);
+	parseArff(tok, stringColumns, maxRows);
 }
 
 void WMatrix::loadRaw(const char* szFilename)
@@ -1312,8 +1334,13 @@ void WMatrix::saveRaw(const char* szFilename)
 // static
 void WMatrix::parseArff(const char* szFile, size_t nLen, size_t maxRows)
 {
+	parseArff(szFile, nLen, WArffStrings::asCategories, maxRows);
+}
+
+void WMatrix::parseArff(const char* szFile, size_t nLen, WArffStrings stringColumns, size_t maxRows)
+{
 	WArffTokenizer tok(szFile, nLen);
-	parseArff(tok, maxRows);
+	parseArff(tok, stringColumns, maxRows);
 }
 
 size_t WMatrix::countUniqueValues(size_t column, size_t maxCount) const

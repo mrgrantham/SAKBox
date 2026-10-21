@@ -428,6 +428,19 @@ public:
 /// Elements can be discrete or continuous.
 ///
 /// References a WRelation object, which stores the meta-information about each column.
+/// SAKBox: what loading an ARFF file does with its `string` columns.
+/// Waffles stores every value as a number, so it can't keep text as written.
+enum class WArffStrings
+{
+	/// Load each string column as a category of the texts it holds, one
+	/// value per distinct text (the default; see WMatrix::parseArff)
+	asCategories,
+	/// Refuse a file with a string column: loading throws, naming the
+	/// column, and leaves the matrix as it was. For when nothing should be
+	/// loaded that Waffles can't represent as written.
+	refuse,
+};
+
 class WMatrix
 {
 protected:
@@ -611,6 +624,10 @@ public:
 	/// \brief Loads an ARFF file and replaces the contents of this matrix with it.
 	void loadArff(const char* szFilename, size_t maxRows = (size_t)-1);
 
+	/// \brief Loads an ARFF file and replaces the contents of this matrix
+	/// with it, handling its string columns as `stringColumns` says.
+	void loadArff(const char* szFilename, WArffStrings stringColumns, size_t maxRows = (size_t)-1);
+
 	/// \brief Loads a raw (binary) file and replaces the contents of this matrix with it.
 	void loadRaw(const char* szFilename);
 
@@ -620,8 +637,16 @@ public:
 	/// \brief Parses an ARFF file and replaces the contents of this matrix with it.
 	void parseArff(const char* szFile, size_t nLen, size_t maxRows = (size_t)-1);
 
+	/// \brief Parses an ARFF file and replaces the contents of this matrix
+	/// with it, handling its string columns as `stringColumns` says.
+	void parseArff(const char* szFile, size_t nLen, WArffStrings stringColumns, size_t maxRows = (size_t)-1);
+
 	/// \brief Parses an ARFF file and replaces the contents of this matrix with it.
 	void parseArff(WArffTokenizer& tok, size_t maxRows = (size_t)-1);
+
+	/// \brief Parses an ARFF file and replaces the contents of this matrix
+	/// with it, handling its string columns as `stringColumns` says.
+	void parseArff(WArffTokenizer& tok, WArffStrings stringColumns, size_t maxRows = (size_t)-1);
 
 
 	/// \brief Sets this dataset to an identity matrix. (It doesn't
