@@ -195,6 +195,12 @@ public:
 		return get(szName)->asString();
 	}
 
+	/// SAKBox: the class name a saved object gives in the field szName
+	/// ("class", or "type" for a neural network's blocks), for loaders to
+	/// compare. Waffles' classes were renamed from G... to W..., and a G
+	/// prefix is read as W, so files saved before the rename still load.
+	std::string getClassName(const char* szName = "class") const;
+
 	size_t size() const;
 
 	WDomNode* get(size_t index) const;

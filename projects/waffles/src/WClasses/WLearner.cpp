@@ -928,7 +928,8 @@ void WIncrementalLearner::beginIncrementalLearning(const WMatrix& features, cons
 // virtual
 WIncrementalTransform* WLearnerLoader::loadIncrementalTransform(const WDomNode* pNode)
 {
-	const char* szClass = pNode->getString("class");
+	const std::string className = pNode->getClassName();
+	const char* szClass = className.c_str();
 	if(szClass[0] == 'W')
 	{
 		if(szClass[1] < 'N')
@@ -978,7 +979,8 @@ WIncrementalTransform* WLearnerLoader::loadIncrementalTransform(const WDomNode* 
 // virtual
 WSupervisedLearner* WLearnerLoader::loadLearner(const WDomNode* pNode)
 {
-	const char* szClass = pNode->getString("class");
+	const std::string className = pNode->getClassName();
+	const char* szClass = className.c_str();
 	if(szClass[0] == 'W')
 	{
 		if(szClass[1] < 'J')
@@ -1058,7 +1060,8 @@ WSupervisedLearner* WLearnerLoader::loadLearner(const WDomNode* pNode)
 // virtual
 WCollaborativeFilter* WLearnerLoader::loadCollaborativeFilter(const WDomNode* pNode)
 {
-	const char* szClass = pNode->getString("class");
+	const std::string className = pNode->getClassName();
+	const char* szClass = className.c_str();
 	if(szClass[0] == 'W')
 	{
 		if(strcmp(szClass, "WBagOfRecommenders") == 0)

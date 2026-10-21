@@ -1,12 +1,22 @@
 // WDom's JSON database, WJsonAsADatabase.
 #include <gtest/gtest.h>
 
+#include <WClasses/WDecisionTree.h>
+#include <WClasses/WDistance.h>
 #include <WClasses/WDom.h>
+#include <WClasses/WLearner.h>
+#include <WClasses/WMatrix.h>
+#include <WClasses/WNeuralNet.h>
+#include <WClasses/WRand.h>
+#include <WClasses/WRecommender.h>
+#include <WClasses/WTransform.h>
 
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <memory>
+#include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -94,4 +104,150 @@ TEST(JsonNumberTest, ExponentsAndInvalidNumbers) {
     WDom d;
     EXPECT_THROW(d.parseJson(bad, strlen(bad)), std::exception) << bad;
   }
+}
+
+// Waffles' classes were renamed from G... to W..., and files saved before
+// then name them the old way ("class": "GDecisionTree"). Each loader still
+// loads them: these save an object, rewrite its class names as an old file
+// has them, and load that.
+namespace {
+// `node` saved as JSON text and parsed back into `doc`, with its class
+// names as a file saved before the rename has them if `oldNames`
+WDomNode *reloaded(const WDomNode *node, WDom &doc, bool oldNames = true) {
+  std::ostringstream json;
+  node->writeJson(json);
+  std::string text = json.str();
+  if (oldNames) {
+    text = std::regex_replace(text, std::regex(R"re("(class|type)":"W([A-Z0-9]))re"),
+                              R"re("$1":"G$2)re");
+    EXPECT_NE(text, json.str()) << "no class names were rewritten";
+    EXPECT_EQ(text.find(R"("class":"W)"), std::string::npos) << text;
+  }
+  doc.parseJson(text.c_str(), text.size());
+  return doc.root();
+}
+
+// For the other tests
+WDomNode *savedWithOldNames(const WDomNode *node, WDom &doc) { return reloaded(node, doc); }
+} // namespace
+
+TEST(OldClassNameTest, IsReadAsTheNewName) {
+  WDom doc;
+  const char *json = R"({"a":"GMatrix","b":"WMatrix","c":"G3DVector","d":"Gaussian","e":"rbf"})";
+  doc.parseJson(json, strlen(json));
+  EXPECT_EQ(doc.root()->getClassName("a"), "WMatrix");
+  EXPECT_EQ(doc.root()->getClassName("b"), "WMatrix");
+  EXPECT_EQ(doc.root()->getClassName("c"), "W3DVector");
+  EXPECT_EQ(doc.root()->getClassName("d"), "Gaussian"); // not a prefix
+  EXPECT_EQ(doc.root()->getClassName("e"), "rbf");
+}
+
+// A random forest, which saves the class names of its trees too. Its
+// predictions are compared with the same file loaded under the new names,
+// since saving as JSON text keeps only six decimal places.
+TEST(OldClassNameTest, LearnerLoads) {
+  WMatrix features(0, 1), labels(0, 1);
+  for (int i = 0; i < 20; i++) {
+    features.newRow()[0] = i;
+    labels.newRow()[0] = i < 10 ? 0.0 : 1.0;
+  }
+  WRandomForest forest(3);
+  forest.rand().setSeed(0);
+  forest.train(features, labels);
+  WDom saved, asNew, asOld;
+  WLearnerLoader loader;
+  const WDomNode *node = forest.serialize(&saved);
+  std::unique_ptr<WSupervisedLearner> loadedNew(loader.loadLearner(reloaded(node, asNew, false)));
+  std::unique_ptr<WSupervisedLearner> loadedOld(loader.loadLearner(reloaded(node, asOld)));
+  ASSERT_NE(loadedOld, nullptr);
+  WVec expected(1), got(1);
+  for (double x : {2.0, 15.0}) {
+    loadedNew->predict(WVec({x}), expected);
+    loadedOld->predict(WVec({x}), got);
+    EXPECT_EQ(got[0], expected[0]) << x;
+  }
+}
+
+TEST(OldClassNameTest, TransformLoads) {
+  WMatrix data(0, 2);
+  WVec &a = data.newRow();
+  a[0] = 1;
+  a[1] = 10;
+  WVec &b = data.newRow();
+  b[0] = 3;
+  b[1] = 30;
+  WNormalize normalize;
+  normalize.train(data);
+  WDom saved, old;
+  WLearnerLoader loader;
+  std::unique_ptr<WIncrementalTransform> loaded(
+      loader.loadIncrementalTransform(savedWithOldNames(normalize.serialize(&saved), old)));
+  ASSERT_NE(loaded, nullptr);
+  WVec expected(2), got(2); // transform writes into vectors of the right size
+  normalize.transform(WVec({2.0, 20.0}), expected);
+  loaded->transform(WVec({2.0, 20.0}), got);
+  ASSERT_EQ(got.size(), expected.size());
+  for (size_t i = 0; i < got.size(); i++)
+    EXPECT_EQ(got[i], expected[i]) << i;
+}
+
+TEST(OldClassNameTest, RecommenderLoads) {
+  WMatrix ratings(0, 3);
+  for (size_t user = 0; user < 3; user++)
+    for (size_t item = 0; item < 3; item++) {
+      WVec &row = ratings.newRow();
+      row[0] = (double)user;
+      row[1] = (double)item;
+      row[2] = (double)(user + 2 * item);
+    }
+  WBaselineRecommender baseline;
+  baseline.train(ratings);
+  WDom saved, old;
+  WLearnerLoader loader;
+  std::unique_ptr<WCollaborativeFilter> loaded(
+      loader.loadCollaborativeFilter(savedWithOldNames(baseline.serialize(&saved), old)));
+  ASSERT_NE(loaded, nullptr);
+  EXPECT_EQ(loaded->predict(1, 2), baseline.predict(1, 2));
+}
+
+TEST(OldClassNameTest, DistanceMetricLoads) {
+  WMatrix data(0, 2);
+  WRowDistance metric;
+  metric.init(&data.relation(), false);
+  WDom saved, old;
+  std::unique_ptr<WDistanceMetric> loaded(
+      WDistanceMetric::deserialize(savedWithOldNames(metric.serialize(&saved), old)));
+  ASSERT_NE(loaded, nullptr);
+  EXPECT_EQ(loaded->squaredDistance(WVec({0.0, 0.0}), WVec({3.0, 4.0})), 25.0);
+}
+
+TEST(OldClassNameTest, SparseSimilarityLoads) {
+  WCosineSimilarity similarity;
+  WDom saved, old;
+  std::unique_ptr<WSparseSimilarity> loaded(
+      WSparseSimilarity::deserialize(savedWithOldNames(similarity.serialize(&saved), old)));
+  ASSERT_NE(loaded, nullptr);
+  EXPECT_DOUBLE_EQ(loaded->similarity(WVec({1.0, 0.0}), WVec({1.0, 1.0})),
+                   similarity.similarity(WVec({1.0, 0.0}), WVec({1.0, 1.0})));
+}
+
+// A neural network's blocks give their class as "type". Compared with the
+// same file loaded under the new names, as saving keeps six decimal places.
+TEST(OldClassNameTest, NeuralNetBlocksLoad) {
+  WRand rand(0);
+  WNeuralNet nn;
+  nn.add(new WBlockLinear(2, 3));
+  nn.add(new WBlockTanh(3));
+  nn.init(rand);
+  WDom saved, asNew, asOld;
+  const WDomNode *node = nn.serialize(&saved);
+  WNeuralNet loadedNew(reloaded(node, asNew, false), rand);
+  WNeuralNet loadedOld(reloaded(node, asOld), rand);
+  const WVec input({0.5, -1.0});
+  WVec expected;
+  expected.copy(loadedNew.forwardProp(input));
+  const WVec &got = loadedOld.forwardProp(input);
+  ASSERT_EQ(got.size(), expected.size());
+  for (size_t i = 0; i < got.size(); i++)
+    EXPECT_EQ(got[i], expected[i]) << i;
 }

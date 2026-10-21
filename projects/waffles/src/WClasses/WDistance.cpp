@@ -72,7 +72,8 @@ WDomNode* WDistanceMetric::baseDomNode(WDom* pDoc) const
 // static
 WDistanceMetric* WDistanceMetric::deserialize(WDomNode* pNode)
 {
-	const char* szClass = pNode->getString("class");
+	const std::string className = pNode->getClassName();
+	const char* szClass = className.c_str();
 	if(strcmp(szClass, "WRowDistance") == 0)
 		return new WRowDistance(pNode);
 	if(strcmp(szClass, "WDenseCosineDistance") == 0)
@@ -327,7 +328,8 @@ double WKernelDistance::squaredDistance(const WVec& a, const WVec& b) const
 // static
 WSparseSimilarity* WSparseSimilarity::deserialize(WDomNode* pNode)
 {
-	const char* szClass = pNode->getString("class");
+	const std::string className = pNode->getClassName();
+	const char* szClass = className.c_str();
 	WSparseSimilarity* pObj = nullptr;
 	if(strcmp(szClass, "WCosineSimilarity") == 0)
 		return new WCosineSimilarity(pNode);

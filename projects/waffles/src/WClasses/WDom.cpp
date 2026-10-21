@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <ctype.h>
 #include "WDom.h"
 #include "WFile.h"
 #include "WHolders.h"
@@ -165,6 +166,14 @@ size_t WDomNode::size() const
 	if(!m_value.m_pArrayList)
 		return 0;
 	return m_value.m_pArrayList->m_size;
+}
+
+std::string WDomNode::getClassName(const char* szName) const
+{
+	std::string name = getString(szName);
+	if(name.size() >= 2 && name[0] == 'G' && (isupper((unsigned char)name[1]) || isdigit((unsigned char)name[1])))
+		name[0] = 'W';
+	return name;
 }
 
 WDomNode* WDomNode::get(size_t index) const

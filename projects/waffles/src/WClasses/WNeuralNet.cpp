@@ -85,7 +85,8 @@ WDomNode* WBlock::serialize(WDom* pDoc) const
 
 WBlock* WBlock::deserializeBlock(WDomNode* pNode, WRand& rand)
 {
-	const char* type = pNode->getString("type");
+	const std::string typeName = pNode->getClassName("type");
+	const char* type = typeName.c_str();
 	if(strcmp(type, "WBlockLinear") == 0) return new WBlockLinear(pNode);
 	else if(strcmp(type, "WBlockConv") == 0) return new WBlockConv(pNode);
 	else if(strcmp(type, "WBlockEl") == 0) return new WBlockEl(pNode);
