@@ -24,7 +24,7 @@ A server runs with `GHttpServer::serveRequests()`: it handles requests until `st
 
 ARFF `string` columns load as categories: each distinct text (compared exactly, ignoring surrounding quotes) is one value, so a column of names or labels is usable by any learner. Waffles stores values as numbers and has nowhere to keep text, and upstream loaded these columns as zeros, discarding the text. A column where most values differ (at least 20, in more than half the rows) is likely free text, which a learner would see as arbitrary numbers, so loading it prints a warning. Saving writes the column as a category (`{alice,bob,...}`), not `string`.
 
-It builds with the rest of the repo as strict C++26 with `-Werror`. The `cuda` demo and the upstream Makefiles, CMake and Visual Studio files are kept but not used.
+It builds with the rest of the repo as strict C++26 with `-Werror`. Bazel is its only build: upstream's Makefiles, CMake files and Visual Studio projects are removed. The `cuda` demo is kept but not built (it needs NVIDIA's CUDA toolkit, and its Makefile was its only build).
 
 ## What SAKBox has changed
 
@@ -65,7 +65,7 @@ It builds with the rest of the repo as strict C++26 with `-Werror`. The `cuda` d
   - `tolower` was given plain `char`s, which are negative for bytes above 127 (UTF-8 letters), and that is undefined behaviour; they are cast to `unsigned char` first.
   - Smaller fixes clang-tidy found: wrong `throw`s, `GHttp`'s port, `memcpy` of a non-trivial type, and how the `plot` and `wizard` tools seed their generators.
 - **Tests:** the suite used to pass whatever failed (failures were printed, not reported) and skipped the command-line tool tests under Bazel; both are fixed. Three test functions that were never run (`GDenseClusterRecommender`, `GFunctionParser`, `GSparseInstance`) now are, with real limits instead of placeholders. `GWavelet::test` stays out: it reads a file on its author's machine.
-- **Line endings:** Waffles' sources, headers and README had CRLF line endings; they're stored with LF now, like the rest of the repo (see the top-level README). Its Visual Studio files keep CRLF.
+- **Line endings:** Waffles' sources, headers and README had CRLF line endings; they're stored with LF now, like the rest of the repo (see the top-level README).
 - **Static analysis:** Waffles is checked by the repo's clang-tidy setup like the rest of the repo (see the top-level README). It's formatted with clang-format in its own style rather than the repo's (`.clang-format` here: tabs, braces on their own lines, `if(` with no space, no line limit), chosen to match how most of Waffles was written so formatting changed as little as possible; `tests/` has the repo style (`tests/.clang-format`). Data tables and other hand-aligned blocks are marked `// clang-format off`. The third-party code bundled here (the jumper demo's files from Bullet's OpenGL demos, except the SDL2 window that replaced their GLUT one, DirectInput's `dinput.h` and KTH's `md4` in `src/depends/security/`, Gladman's `sha2` and `uitypes.h`) is listed in the repo's `.clang-format-ignore` and keeps its own layout. Fixes clang-tidy applied itself (`override`, `nullptr`, `const &` parameters) are in. Sorts of pointers say what they sort by, with `std::ranges` projections (`std::ranges::sort(m_rows, std::ranges::less{}, [dim](const GVec* pRow) { return (*pRow)[dim]; })`) instead of one-use comparator classes. `bugprone-nondeterministic-pointer-iteration-order` flagged every `std::sort` of pointers, even ones comparing the values pointed at, as these did; it doesn't look at `std::ranges` algorithms at all, so sorting pointers by address that way would go unflagged. Their results, including the order of equal values, are pinned by `GMatrix_test`, `GRayTrace_test` and `GRegion_test`. The copied SHA-2 code (`sha2.cpp`, by Brian Gladman) added to its byte count inside `if` conditions (`if((ctx->count[0] += free) < free)`); the addition is now its own statement, rather than the lines being marked as copied code, and `sha2_test` checks the standard digests and the carry into the count's high word. The last few: `GBlock::deserialize`, the static factory that makes a block from a DOM node, is now `GBlock::deserializeBlock`, since `GNeuralNet::deserialize` (loading a net in place, like `GVec::deserialize`) hid it under the same name with a different meaning; a Poisson deviate's candidate is rounded with `lround` instead of `(int)(x + 0.5)`; `GNodeHashTable::get` reads its result as a typed pointer instead of through a `void**` cast; `GTensor`'s copy constructor calls `GVecWrapper`'s; a decision-tree node's child array is value-initialised instead of `memset`; and `GSimpleAssignment::test` checks `operator<` against an equal copy rather than `a<a`. `GNeuralNet_test`, `GRand_test` (deviates recorded before the change), `GHashTable_test` and `GVec_test` cover them. Waffles now has no clang-tidy findings.
 - **SHA-2 stays Brian Gladman's copy** (`sha2.cpp`, `sha2.h`, `uitypes.h`), on purpose, rather than the registry's BoringSSL. It's about 800 lines with no dependencies, fixed (the length bugs above) and tested (`sha2_test`), and Waffles only hashes small inputs with it: `GCrypto`'s scrambling and `GDynamicPageServer::passwordSalt()`. BoringSSL is large to build, makes no promise of a stable API, and would bring in a TLS library nothing else needs. Revisit if Waffles ever needs real cryptography (TLS, signatures), when BoringSSL would come in anyway.
 - **Warnings:** counters that are computed but never read (`epochs`, `hits`, `nDepth`, `nTries`, ...) are kept, as instrumentation, and marked `[[maybe_unused]]`.
@@ -93,54 +93,8 @@ Two kinds:
 Waffles is a comprehensive machine learning and data mining library. It includes many tools and algorithms from neural networks to recommender systems.
 
 # Build Instructions
-You may be interested in a more stable but older build of Waffles, check out the release for Waffles v1.0.
 
-## Linux and OS X
-
-### To install
-
-1. Install g++ and make (if they are not already installed)
-    1. On Debian, Ubuntu, and derivatives:
-
-            sudo apt-get install g++ make
-
-    2. On Red Hat, Fedora, and derivatives:
-
-            sudo yum install g++ make
-
-    3. On OS X:
-
-            xcode-select --install
-
-2. cd src
-3. sudo make install
-
-### To uninstall
-
-	sudo make uninstall
-
-### To build optimized binaries without installing them
-
-	make opt
-
-### To build unoptimized binaries with debug symbols
-
-	make dbg
-
-To build demo apps and additional tools, see web/docs/linux.html.
-
-## Windows
-
-1.	Install Microsoft Visual C++ 2013 Express Edition.
-2.	File->Open->Project/Solution
-3.	Open waffles\src\waffles.sln
-4.	Change to Release mode.
-5.	Build (F7).
-6.	Set the startup app to the app you want to try.
-7.	Set any relevant arguments in Project->Properties->Debugging->Command Arguments
-8.	Run it (F5).
-
-If you also want to try the demo apps, see web/docs/windows.html.
+*SAKBox: upstream's instructions here built Waffles with `make` on Linux and OS X and with Visual Studio on Windows. Those build files are removed; build with Bazel instead (see [Building](#building) above). The pages they pointed to, `web/docs/linux.html` and `web/docs/windows.html`, describe the old build.*
 
 ***
 

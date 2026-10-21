@@ -2,8 +2,3 @@
 # platform or editor, so tools that rewrite a file can't change its endings.
 # Git detects binary files and leaves them alone.
 * text=auto eol=lf
-
-# Visual Studio's files are kept byte for byte (CRLF, as Visual Studio writes them).
-*.sln -text
-*.vcxproj -text
-*.vcproj -text
