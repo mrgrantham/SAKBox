@@ -88,6 +88,7 @@
 #include "WReverseBits.h"
 #include <cmath>
 #include <ctime>
+#include <random>
 #ifdef WINDOWS
 #include <process.h>
 #else
@@ -100,6 +101,11 @@ namespace WClasses
 using std::vector;
 
 static_assert(sizeof(uint64_t) == 8, "unexpected size");
+
+// SAKBox: WRand and its subclasses can be used wherever the standard library
+// takes a random bit generator (see WRand.h)
+static_assert(std::uniform_random_bit_generator<WRand>);
+static_assert(std::uniform_random_bit_generator<WRandMersenneTwister>);
 
 WRand::WRand(uint64_t seed)
 {

@@ -80,6 +80,7 @@
 #define __GRAND_H__
 
 #include <stdint.h>
+#include <limits>
 #include <vector>
 
 namespace WClasses
@@ -124,6 +125,26 @@ public:
 
 	/// Copies the state of another WRand object
 	virtual void copyState(const WRand& copyMyState);
+
+	/// \name Standard random bit generator
+	/// SAKBox: a WRand (or a subclass, such as WRandMersenneTwister) is a
+	/// C++ uniform random bit generator, so it can be passed straight to the
+	/// <random> distributions, std::shuffle, std::sample and anything else
+	/// that takes one: each call rand() is a call to next(). It isn't a full
+	/// random number engine (it can't be copied, compared or streamed), so
+	/// the engine adaptors such as std::discard_block_engine can't hold one.
+	///
+	/// The standard leaves the algorithms of std::shuffle and the
+	/// distributions to each library, so the same seed gives different
+	/// results on different platforms. Where exact results matter, as in
+	/// Waffles' learners and tests, use WRand's own methods (shuffle,
+	/// uniform, normal, ...), which are the same everywhere.
+	///@{
+	using result_type = uint64_t;
+	static constexpr result_type min() { return 0; }
+	static constexpr result_type max() { return std::numeric_limits<result_type>::max(); }
+	result_type operator()() { return next(); }
+	///@}
 
 	/// Returns an unsigned pseudo-random 64-bit value
 	virtual uint64_t next()
