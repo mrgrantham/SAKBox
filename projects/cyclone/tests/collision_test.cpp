@@ -199,83 +199,132 @@ struct CubeOnCube {
 
 } // namespace
 
-// Resting level, the plain detector finds one contact, at one corner. As
-// the top cube rocks each of its corners down in turn, the cache gathers a
-// contact at each, so level again it is held at all four, each as deep as
-// the cubes overlap, pushing the bottom cube down.
-TEST(BoxContactCacheTest, GathersAContactAtEachCornerAsABoxRocks) {
+// Resting level, the plain detector finds one contact, at one corner. The
+// cache finds the whole face at once (SAKBox; it used to gather a corner
+// each frame as the top cube rocked): all four corners on the first frame,
+// each as deep as the cubes overlap.
+TEST(BoxContactCacheTest, HoldsARestingBoxAtFourCornersAtOnce) {
   CubeOnCube cubes;
   {
     Contacts c;
     EXPECT_EQ(CollisionDetector::boxAndBox(cubes.bottom, cubes.top, &c.data), 1u);
   }
-  unsigned expected = 1;
-  for (auto [x, z] :
-       {std::pair{1.0, 1.0}, std::pair{-1.0, 1.0}, std::pair{-1.0, -1.0}, std::pair{1.0, -1.0}}) {
-    SCOPED_TRACE(testing::Message() << "dipping corner " << x << ", " << z);
-    cubes.tiltTowards(x, z);
-    EXPECT_EQ(cubes.frame(), expected++);
-  }
-  cubes.place(Vector3(0, 1.99, 0));
   ASSERT_EQ(cubes.frame(), 4u);
   std::set<std::pair<int, int>> corners;
   for (unsigned i = 0; i < 4; ++i) {
     const Contact &contact = cubes.c.array[i];
     EXPECT_NEAR(contact.penetration, 0.01, 1e-9);
-    expectNear(contact.contactNormal, Vector3(0, -1, 0));
-    EXPECT_NEAR(contact.contactPoint.y, 0.99, 1e-9);
+    EXPECT_NEAR(std::abs(contact.contactNormal.y), 1, 1e-9);
+    EXPECT_NEAR(contact.contactPoint.y, 0.995, 0.005 + 1e-9); // either cube's corner
     corners.insert({contact.contactPoint.x > 0, contact.contactPoint.z > 0});
   }
   EXPECT_EQ(corners.size(), 4u);
 }
 
-// Lifted more than the tolerance (0.1 m) clear, the kept contacts are
-// dropped: none now, and only the deepest one when the cube comes back.
-TEST(BoxContactCacheTest, DropsContactsOnceTheBoxesMoveApart) {
-  CubeOnCube cubes;
-  for (auto [x, z] : {std::pair{1.0, 1.0}, std::pair{-1.0, -1.0}}) {
-    cubes.tiltTowards(x, z);
-    cubes.frame();
-  }
-  cubes.place(Vector3(0, 1.99 + 0.05, 0)); // within the tolerance: kept
-  EXPECT_EQ(cubes.frame(), 2u);
-  cubes.place(Vector3(0, 2.2, 0));
-  EXPECT_EQ(cubes.frame(), 0u);
-  cubes.place(Vector3(0, 1.99, 0));
-  EXPECT_EQ(cubes.frame(), 1u);
-}
-
-// Slid half off the bottom cube, the top cube's corners beyond its edge are
-// dropped; those still over it stay.
-TEST(BoxContactCacheTest, DropsCornersThatSlideOffTheFace) {
+// Rocking, it's still held at all four corners of the face, whichever
+// dips. (Tilted, each cube's corners are a little apart across the face, so
+// there can be a contact for each.)
+TEST(BoxContactCacheTest, HoldsARockingBoxAtFourCorners) {
   CubeOnCube cubes;
   for (auto [x, z] :
        {std::pair{1.0, 1.0}, std::pair{-1.0, 1.0}, std::pair{-1.0, -1.0}, std::pair{1.0, -1.0}}) {
+    SCOPED_TRACE(testing::Message() << "dipping corner " << x << ", " << z);
     cubes.tiltTowards(x, z);
-    cubes.frame();
+    const unsigned found = cubes.frame();
+    ASSERT_GE(found, 4u);
+    std::set<std::pair<int, int>> corners;
+    for (unsigned i = 0; i < found; ++i)
+      corners.insert({cubes.c.array[i].contactPoint.x > 0, cubes.c.array[i].contactPoint.z > 0});
+    EXPECT_EQ(corners.size(), 4u);
   }
-  cubes.place(Vector3(1.5, 1.99, 0));
-  const unsigned found = cubes.frame();
-  EXPECT_GE(found, 2u);
-  for (unsigned i = 0; i < found; ++i)
-    EXPECT_LE(cubes.c.array[i].contactPoint.x, 1.0 + 1e-9);
 }
 
+// Lifted, but within the tolerance (0.1 m), the kept contacts stay; more
+// than the tolerance clear they're dropped, and found again when the cube
+// comes back.
+TEST(BoxContactCacheTest, DropsContactsOnceTheBoxesMoveApart) {
+  CubeOnCube cubes;
+  cubes.frame();
+  cubes.place(Vector3(0, 1.99 + 0.05, 0)); // within the tolerance: kept
+  EXPECT_EQ(cubes.frame(), 4u);
+  cubes.place(Vector3(0, 2.2, 0));
+  EXPECT_EQ(cubes.frame(), 0u);
+  cubes.place(Vector3(0, 1.99 + 0.05, 0)); // apart, and nothing kept
+  EXPECT_EQ(cubes.frame(), 0u);
+  cubes.place(Vector3(0, 1.99, 0));
+  EXPECT_EQ(cubes.frame(), 4u);
+}
+
+// Slid half off the bottom cube, the top cube is held where the faces
+// still overlap: no contact is beyond the bottom cube's edge, and the top
+// cube's middle (x = 1.5) is no longer over the contacts, so it tips off.
+TEST(BoxContactCacheTest, DropsCornersThatSlideOffTheFace) {
+  CubeOnCube cubes;
+  cubes.frame();
+  cubes.place(Vector3(1.5, 1.99, 0));
+  const unsigned found = cubes.frame();
+  EXPECT_EQ(found, 4u);
+  for (unsigned i = 0; i < found; ++i) {
+    EXPECT_LE(cubes.c.array[i].contactPoint.x, 1.0 + 1e-9);
+    EXPECT_GE(cubes.c.array[i].contactPoint.x, 0.5 - 1e-9);
+  }
+}
+
+// Forgetting a box (or clearing the cache) drops what was kept for it: the
+// cubes, lifted within the tolerance, then have no contact.
 TEST(BoxContactCacheTest, ForgetAndClear) {
   CubeOnCube cubes;
-  for (auto [x, z] : {std::pair{1.0, 1.0}, std::pair{-1.0, -1.0}}) {
-    cubes.tiltTowards(x, z);
-    cubes.frame();
-  }
-  cubes.place(Vector3(0, 1.99, 0));
-  EXPECT_EQ(cubes.frame(), 2u);
-  cubes.cache.forget(cubes.top);
-  EXPECT_EQ(cubes.frame(), 1u);
-  cubes.tiltTowards(-1, 1);
   cubes.frame();
-  cubes.cache.clear();
+  cubes.place(Vector3(0, 1.99 + 0.05, 0));
+  EXPECT_EQ(cubes.frame(), 4u);
+  cubes.cache.forget(cubes.top);
+  EXPECT_EQ(cubes.frame(), 0u);
   cubes.place(Vector3(0, 1.99, 0));
-  EXPECT_EQ(cubes.frame(), 1u);
+  cubes.frame();
+  cubes.place(Vector3(0, 1.99 + 0.05, 0));
+  cubes.cache.clear();
+  EXPECT_EQ(cubes.frame(), 0u);
+}
+
+// The whole area where two faces touch, on the first frame, for a box set
+// on another turned, and hanging off it (Catto, GDC 2007; Gregorius,
+// GDC 2015): the corners of that area (up to eight), between the faces,
+// with the top cube's middle over them (so it's held still).
+TEST(BoxContactCacheTest, FindsTheAreaWhereTheFacesTouch) {
+  struct Case {
+    const char *name;
+    Vector3 position;
+    double turn; // about y, radians
+  };
+  for (const Case &test : {Case{"turned 45 degrees", Vector3(0, 1.99, 0), R_PI / 4},
+                           Case{"turned 10 degrees", Vector3(0, 1.99, 0), R_PI / 18},
+                           Case{"hanging 0.6 off", Vector3(0.6, 1.99, 0.3), 0},
+                           Case{"smaller box", Vector3(0.2, 1.49, -0.1), 0.3}}) {
+    SCOPED_TRACE(test.name);
+    CubeOnCube cubes;
+    if (test.position.y < 1.9) {
+      cubes.top.halfSize = Vector3(0.5, 0.5, 0.5);
+    }
+    cubes.place(test.position, Quaternion(std::cos(test.turn / 2), 0, std::sin(test.turn / 2), 0));
+    const unsigned found = cubes.frame();
+    ASSERT_GE(found, 4u);
+    double minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
+    for (unsigned i = 0; i < found; ++i) {
+      const Contact &contact = cubes.c.array[i];
+      EXPECT_NEAR(std::abs(contact.contactNormal.y), 1, 1e-6);
+      EXPECT_NEAR(contact.penetration, 0.01, 1e-6);
+      EXPECT_LE(std::abs(contact.contactPoint.x), 1 + 1e-6); // on the bottom cube's face
+      EXPECT_LE(std::abs(contact.contactPoint.z), 1 + 1e-6);
+      minX = std::min<double>(minX, contact.contactPoint.x);
+      maxX = std::max<double>(maxX, contact.contactPoint.x);
+      minZ = std::min<double>(minZ, contact.contactPoint.z);
+      maxZ = std::max<double>(maxZ, contact.contactPoint.z);
+    }
+    EXPECT_LT(minX, test.position.x);
+    EXPECT_GT(maxX, test.position.x);
+    EXPECT_LT(minZ, test.position.z);
+    EXPECT_GT(maxZ, test.position.z);
+  }
 }
 
 // Two cubes meeting edge to edge (one turned 45 degrees about z, the other

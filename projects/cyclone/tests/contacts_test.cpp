@@ -652,6 +652,19 @@ TEST(ResolveTogetherTest, AwakeStacksStandStill) {
   }
 }
 
+// A new stack doesn't lean: each pair of boxes is held at the whole area
+// where their faces touch from the first frame. (Gathering a corner a
+// frame, ten boxes leant about 15 cm in their first seconds.)
+TEST(ResolveTogetherTest, NewStackDoesntLean) {
+  BoxWorld scene(stackOf(10), together);
+  double leant = 0;
+  for (int i = 0; i < 120; ++i) {
+    scene.run(1.0 / 60);
+    leant = std::max(leant, farthestSideways(scene));
+  }
+  EXPECT_LT(leant, 0.03);
+}
+
 // The same tall stack with the book's resolver falls: the limitation the
 // method is for (README, known limitations).
 TEST(ResolveTogetherTest, BooksResolverDropsTheSameStack) {

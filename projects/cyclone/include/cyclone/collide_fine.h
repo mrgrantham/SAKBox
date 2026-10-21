@@ -266,10 +266,19 @@ public:
 };
 
 /**
- * SAKBox: which parts of two boxes a contact is between: a vertex of one
- * box on a face of the other, or an edge of each. Unlike the contact
+ * SAKBox: which parts of two boxes a contact is between. Unlike the contact
  * itself, this stays the same while the boxes move a little, so it can be
  * kept from frame to frame (see BoxContactCache).
+ *
+ * - A vertex of one box on a face of the other.
+ * - An edge of each, crossing (the edge-on-edge contact boxAndBox finds).
+ * - Where faces rest on each other, an edge of one box's face crossing the
+ *   edge of the other box's face (the reference face): the incident edge
+ *   crosses the plane through the reference edge, square to the face, and
+ *   the contact is that point's depth below the face, along its normal.
+ *   These are the points that clipping one face against the other finds;
+ *   `faceAxis` is the reference face's axis (its side is that axis's bit of
+ *   the reference edge).
  *
  * Corners are numbered by bits: 1 for +x, 2 for +y, 4 for +z (clear for
  * the negative side). A face is its axis and the side of the box it's on
@@ -277,10 +286,17 @@ public:
  * edges along it (the other two axes' bits).
  */
 struct BoxContactFeature {
-  enum Kind : unsigned char { VertexOfTwoOnFaceOfOne, VertexOfOneOnFaceOfTwo, EdgeOnEdge };
+  enum Kind : unsigned char {
+    VertexOfTwoOnFaceOfOne,
+    VertexOfOneOnFaceOfTwo,
+    EdgeOnEdge,
+    EdgeCrossingFaceOfOne, // one's edge is the reference edge, two's crosses it
+    EdgeCrossingFaceOfTwo,
+  };
   Kind kind = EdgeOnEdge;
   unsigned char oneAxis = 0, oneCorner = 0;
   unsigned char twoAxis = 0, twoCorner = 0;
+  unsigned char faceAxis = 0;
 
   bool operator==(const BoxContactFeature &) const = default;
 };
@@ -304,7 +320,13 @@ struct BoxContactFeature {
  */
 class BoxContactCache {
 public:
-  /** At most this many contacts are kept for one pair of boxes. */
+  /**
+   * At most this many contacts are kept for one pair of boxes, those that
+   * best cover the area where they touch: as many as the corners of the
+   * area where two box faces overlap. (The book's resolver stacks worse
+   * with fewer: cut to four, as Gregorius suggests for faster solvers,
+   * eight awake boxes fell within a second.)
+   */
   static constexpr unsigned maxContactsPerPair = 8;
 
   /**
