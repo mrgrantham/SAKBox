@@ -13,7 +13,7 @@
 
 <h2>Serialization</h2>
 
-<p>In order to write code that will serialize and deserialize your models, you will use the GDom and GDomNode classes (see the <a href="../apidoc/html/index.html">API documentation</a>). These classes enable you to build a document object model (DOM) that can be serialized to a variety of formats, such as <a href="http://json.org">JSON</a>, <a href="http://en.wikipedia.org/wiki/XML">XML</a>, or <a href="http://en.wikipedia.org/wiki/Binary_large_object">BLOb</a>.</p>
+<p>In order to write code that will serialize and deserialize your models, you will use the WDom and WDomNode classes (see the <a href="../apidoc/html/index.html">API documentation</a>). These classes enable you to build a document object model (DOM) that can be serialized to a variety of formats, such as <a href="http://json.org">JSON</a>, <a href="http://en.wikipedia.org/wiki/XML">XML</a>, or <a href="http://en.wikipedia.org/wiki/Binary_large_object">BLOb</a>.</p>
 
 <p>Why not just serialize/deserialize your model directly? There are several advantages to using a DOM. Most significantly, it is very easy to build a DOM, and to use one. So, this reduces the burden on the developer. Another advantage is that you can serialize to the format of your choice without having to write special code for it. So, all you need to do is write a method that will convert your model to the DOM, and you can decide later what format to use for serialization.</p>
 
@@ -30,14 +30,14 @@
 </pre>
 Here is some code that will marshall this object into a DOM:
 <pre>
-	GDomNode* MyClass::serialize(GDom* pDoc)
+	WDomNode* MyClass::serialize(WDom* pDoc)
 	{
-		GDomNode* pNode = pDoc->newObj();
+		WDomNode* pNode = pDoc->newObj();
 		pNode->add(pDoc, "name", m_name.c_str());
 		pNode->add(pDoc, "age", m_age);
 		pNode->add(pDoc, "height", (long long)m_height);
 		pNode->add(pDoc, "admin", m_admin);
-		GDomNode* pFriends = pNode->add(pDoc, "friends", pDoc->newList());
+		WDomNode* pFriends = pNode->add(pDoc, "friends", pDoc->newList());
 		for(size_t i = 0; i &lt; m_friends.size(); i++)
 			pFriends->add(pDoc, m_friends[i].c_str());
 		return pNode;
@@ -64,13 +64,13 @@ Here is a <a href="http://json.org">JSON</a> encoding of this DOM:
 
 <p>Next, let's write some code that will unmarshall the object from the DOM
 <pre>
-	void MyClass::MyClass(GDomNode* pNode)
+	void MyClass::MyClass(WDomNode* pNode)
 	{
 		m_name = pNode->getString("name");
 		m_age = pNode->getInt("age");
 		m_height = pNode->getDouble("height");
 		m_admin = pNode->getBool("admin");
-		for(GDomListIterator li(pNode->field("friends")); li.current(); li.advance())
+		for(WDomListIterator li(pNode->field("friends")); li.current(); li.advance())
 			m_friends.push_back(li.currentString());
 	}
 </pre>

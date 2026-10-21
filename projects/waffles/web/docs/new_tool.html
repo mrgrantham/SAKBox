@@ -45,18 +45,18 @@ This switch statement just tells it to execute the tool that is specified by the
 
 <li>Now, we are ready to implement our tool. So, we add a function that transposes a matrix:<br>
 <pre>
-	void Transpose(GArgReader& args)
+	void Transpose(WArgReader& args)
 	{
-		GMatrix* pData = loadData(args.pop_string());
-		std::unique_ptr&lt;GMatrix&gt; hData(pData);
-		GMatrix* pTransposed = pData->transpose();
-		std::unique_ptr&lt;GMatrix&gt; hTransposed(pTransposed);
+		WMatrix* pData = loadData(args.pop_string());
+		std::unique_ptr&lt;WMatrix&gt; hData(pData);
+		WMatrix* pTransposed = pData->transpose();
+		std::unique_ptr&lt;WMatrix&gt; hTransposed(pTransposed);
 		pTransposed->print(cout);
 	}
 </pre>
 The first line in this function loads the dataset specified by the next command-line argument.<br>
 The second line constructs a "holder" object that will delete(pData) in its destructor. (This is better than just calling delete(pData) at the end of your function, because it will clean up the memory even if an exception is thrown.)<br>
-The third line is the one that really does the job. In this case, it was easy to implement because the GMatrix class already has a method that transposes the data.<br>
+The third line is the one that really does the job. In this case, it was easy to implement because the WMatrix class already has a method that transposes the data.<br>
 The fourth line constructs a "holder" object that will delete(pTransposed) in its destructor.<br>
 The last line prints the transposed matrix to stdout.
 </li>

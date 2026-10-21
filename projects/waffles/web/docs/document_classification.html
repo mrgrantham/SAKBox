@@ -46,7 +46,7 @@ This creates two files, named "features.sparse" and "labels.arff". features.spar
 </pre>
 This example shows how to divide the data for fold 0. To do ten-fold cross-validation, we would repeat these commands for each fold from 0 to 9.</p>
 
-<p>Now, it's time to train a classifier. First, you need to select a classification algorithm that can be trained with a sparse matrix. These are the algorithms that inherit from GIncrementalLearner. To see the full list of choices, go the the <a href="../apidoc/html/index.html">API docs</a>, open up the "class hierarchy", then navigate to GTransducer->GSupervisedLearner->GIncrementalLearner. The classes that inherit from GIncrementalLearner are the ones that can train on a sparse matrix. GKNN and GNaiveBayes are probably the most common choices for this task.</p>
+<p>Now, it's time to train a classifier. First, you need to select a classification algorithm that can be trained with a sparse matrix. These are the algorithms that inherit from WIncrementalLearner. To see the full list of choices, go the the <a href="../apidoc/html/index.html">API docs</a>, open up the "class hierarchy", then navigate to WTransducer->WSupervisedLearner->WIncrementalLearner. The classes that inherit from WIncrementalLearner are the ones that can train on a sparse matrix. WKNN and WNaiveBayes are probably the most common choices for this task.</p>
 
 <p>Let's train a 7-nn instance learner that uses the cosine method to evaluate the similarity between sparse vectors:
 <pre>

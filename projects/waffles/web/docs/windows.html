@@ -58,21 +58,21 @@
 
 
 <span style="font-weight: bold;">
-	When I link the GClasses library to my project, I get a bunch of linker errors saying msvcrt.lib and libcmt.lib are fighting with each other.
+	When I link the WClasses library to my project, I get a bunch of linker errors saying msvcrt.lib and libcmt.lib are fighting with each other.
 </span><br><div style="margin-left: 40px;">
-	On Windows, the GClasses library is built with the
+	On Windows, the WClasses library is built with the
 	static runtime libraries to reduce dll-hell. If you  
 	try to link it with your code, and your code uses the
 	dynamic runtime libraries, you will get linker errors.
-	The solution is to rebuild GClasses with dynamic
+	The solution is to rebuild WClasses with dynamic
 	runtime libraries, or rebuild your app with static
 	runtime libraries. You can't mix static and dynamic
 	libraries on Windows. If that doesn't help, you need to be careful to
 	make sure that you build all of your libraries with the same settings.
-	To do this, open your solution in VC++. In the Solution Explorer, right-click on GClasses, then click "Properties".
+	To do this, open your solution in VC++. In the Solution Explorer, right-click on WClasses, then click "Properties".
 	Check the following settings, and make sure that they match the settings for your libraries and project: Configuration Properties->General->Use of MFC,
 	Configuration Properties->C/C++->Code Generation->Basic Runtime Checks, and Configuration Propterties->C/C++->Code Generation->Runtime Library.
-	If those all match and you still have problems, try use a diffing program to examine everything that differs between the GClasses.vcxproj file and the .vcxproj files for your program.
+	If those all match and you still have problems, try use a diffing program to examine everything that differs between the WClasses.vcxproj file and the .vcxproj files for your program.
 </div><br><br>
 
 

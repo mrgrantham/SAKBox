@@ -13,45 +13,45 @@
 
 <h2>Representing your data</h2>
 
-<p>There are two main data structures that you need to know about: GVec and GMatrix.
-The <b>GVec</b> class stores a vector of values. These values can be continuous (real-valued) or nominal (categorical).</p>
-The <b>GMatrix</b> class is a two-dimensional table. It can be thought of as an array of GVec objects.</p>
+<p>There are two main data structures that you need to know about: WVec and WMatrix.
+The <b>WVec</b> class stores a vector of values. These values can be continuous (real-valued) or nominal (categorical).</p>
+The <b>WMatrix</b> class is a two-dimensional table. It can be thought of as an array of WVec objects.</p>
 
-<p>To get started, you probably want to include GMatrix.h.</p>
+<p>To get started, you probably want to include WMatrix.h.</p>
 <pre>
-	#include &lt;GClasses/GMatrix.h&gt;
+	#include &lt;WClasses/WMatrix.h&gt;
 </pre>
 
-<p>Then, you can load a GMatrix from <a href="http://www.cs.waikato.ac.nz/~ml/weka/arff.html">ARFF</a> format as follows:</p>
+<p>Then, you can load a WMatrix from <a href="http://www.cs.waikato.ac.nz/~ml/weka/arff.html">ARFF</a> format as follows:</p>
 <pre>
-	GMatrix M;
+	WMatrix M;
 	M.loadArff("mydata.arff");
 </pre>
 
 <p>You can also load from a text file of comma-separated values (a CSV file):</p>
 <pre>
-	GCSVParser p;
+	WCSVParser p;
 	p.parse(M, "mydata.csv");
 </pre>
 
 <p>or tab-separated values:</p>
 <pre>
-	GCSVParser p;
+	WCSVParser p;
 	p.setSeparator('\t');
 	p.parse(M, "mydata.tsv");
 </pre>
 
-<p>(The GCSVParser class also provides functionality to specify the format for date-stamp columns, to specify the type of ambiguous columns,
-to generate a report of parsing errors, etc. For more details, see the GCSVParser class in the GClasses API docs.)</p>
+<p>(The WCSVParser class also provides functionality to specify the format for date-stamp columns, to specify the type of ambiguous columns,
+to generate a report of parsing errors, etc. For more details, see the WCSVParser class in the WClasses API docs.)</p>
 
-<p>You can construct an uninitialized GMatrix of continuous values by specifying the number of rows and columns:</p>
+<p>You can construct an uninitialized WMatrix of continuous values by specifying the number of rows and columns:</p>
 <pre>
-	GMatrix M(5, 7); // 5 rows, 7 columns
+	WMatrix M(5, 7); // 5 rows, 7 columns
 </pre>
 
 <p>You can use array notation to access a row of the matrix:</p>
 <pre>
-	GVec&amp; row = M[3];
+	WVec&amp; row = M[3];
 </pre>
 
 <p>This will set element 3,5 to 3.14159, and element 0,2 to 3.34159:</p>
@@ -69,9 +69,9 @@ The second column is binary, and the third column supports three class values:</
 	vals.push_back(0);
 	vals.push_back(2);
 	vals.push_back(3);
-	GMatrix mydata(vals);
-	GVec&amp; row0 = mydata.newRow();
-	GVec&amp; row1 = mydata.newRow();
+	WMatrix mydata(vals);
+	WVec&amp; row0 = mydata.newRow();
+	WVec&amp; row1 = mydata.newRow();
 </pre>
 
 <p>Nominal elements contain an integer value (stored as a double) that specifies the index of its class or category.
@@ -81,18 +81,18 @@ For example, a nominal attribute with 4 possible class values supports the value
 <p>Now, to tie it all together, here is a simple example program that will load some data, mess with it a little bit, and then print the results to stdout.</p>
 
 <pre>
-	#include &lt;GClasses/GMatrix.h&gt;
-	#include &lt;GClasses/GRand.h&gt;
+	#include &lt;WClasses/WMatrix.h&gt;
+	#include &lt;WClasses/WRand.h&gt;
 	#include &lt;iostream&gt;
 
-	using namespace GClasses;
+	using namespace WClasses;
 	using std::cout;
 
 	int main(int argc, char *argv[])
 	{
-		GMatrix M; // make a matrix
+		WMatrix M; // make a matrix
 		M.loadArff("mydata.arff"); // load some data
-		GRand rand(0); // construct a random number generator with seed 0
+		WRand rand(0); // construct a random number generator with seed 0
 		M.shuffle(&amp;rand); // shuffle the row order
 		M.sort(2); // sort rows by column 2 in ascending order
 		M.reverseRows(); // reverse the row order

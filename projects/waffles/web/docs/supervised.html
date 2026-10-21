@@ -13,13 +13,13 @@
 
 <h2>Coding With Supervised Learners</h2>
 
-<p>The GSupervisedLearner class is declared in Learner.h. All classes that inherit from GSupervisedLearner must implement a method named
+<p>The WSupervisedLearner class is declared in Learner.h. All classes that inherit from WSupervisedLearner must implement a method named
 <pre>
-	void train(const GMatrix&amp; features, const GMatrix&amp; labels);
+	void train(const WMatrix&amp; features, const WMatrix&amp; labels);
 </pre>
 and one named
 <pre>
-	void predict(const GVec&amp; in, GVec&amp; out);
+	void predict(const WVec&amp; in, WVec&amp; out);
 </pre>
 . As you might expect, the train method trains the model, and the predict method uses a trained model to make a prediction.</p>
 
@@ -31,12 +31,12 @@ you call the train method. Here is an example that will load an ARFF file, swap 
 matrix and a label matrix. In this case, the last 2 columns will be used for the label matrix:</p>
 
 <pre>
-	GMatrix data;
+	WMatrix data;
 	data.loadArff("mydata.arff");
 	data.swapColumns(1, data.cols() - 1);
-	GDataColSplitter splitter(data, 2);
-	GMatrix&amp; features = splitter.features();
-	GMatrix&amp; labels = splitter.labels();
+	WDataColSplitter splitter(data, 2);
+	WMatrix&amp; features = splitter.features();
+	WMatrix&amp; labels = splitter.labels();
 </pre>
 
 <p>Notice that you are not restricted to having one-dimensional labels. Our supervised learning algorithms can implicitly handle labels
@@ -45,37 +45,37 @@ comprised of 3 channel values), or points in <i>n</i>-dimensional space, or cont
 
 <p>So, training a model is as simple as calling the train method.</p>
 <pre>
-	GDecisionTree model;
+	WDecisionTree model;
 	model.train(features, labels);
 </pre>
 or
 <pre>
-	GKNN model;
+	WKNN model;
 	model.setNeighborCount(3);
 	model.train(features, labels);
 </pre>
 etc. For a full list of all of our supervised learning algorithms, take a look in the <a href="../apidoc/html/index.html">API docs</a> at
-the class hierarchy. Expand GTransducer to show all the classes that inherit from it.
-Then, expand GSupervisedLearner (which inherits from GTransducer) to show all the classes that inherit from it.
-Also, expand GIncrementalLearner.</p>
+the class hierarchy. Expand WTransducer to show all the classes that inherit from it.
+Then, expand WSupervisedLearner (which inherits from WTransducer) to show all the classes that inherit from it.
+Also, expand WIncrementalLearner.</p>
 
 <p>To make a prediction using a trained model, just pass one row of features in to the predict method, and the predicted label
 vector will come out. Example:</p>
 <pre>
-	GVec out(2);
+	WVec out(2);
 	model.predict(features[10], out);
 </pre>
 
 <p>Note that some learning algorithms may not implicitly support all types of data. This problem can be solved by wrapping
 the learning algorithm in a filter. A filter is a class that converts the data to a suitable type before passing it to
-the learning algorithm. Perhaps, the easiest filter to use is GAutoFilter. Example:</p>
+the learning algorithm. Perhaps, the easiest filter to use is WAutoFilter. Example:</p>
 
 <pre>
-	GNaiveBayes model;
-	GAutoFilter af(&amp;model, false);
+	WNaiveBayes model;
+	WAutoFilter af(&amp;model, false);
 	af.train(features, labels); // It is okay if features and/or labels contains continuous values,
 	                            // even though naive Bayes only supports categorical values. The
-	                            // GAutoFilter class will take care of type conversions as needed.
+	                            // WAutoFilter class will take care of type conversions as needed.
 
 	...
 

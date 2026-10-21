@@ -28,17 +28,17 @@
 <ul>
 	<li>Some traditional textbooks consider each layer in a neural network to contain both weights and a nonlinearity (a.k.a. activation function, a.k.a. transfer function).
 		To enable greater flexibility, we treat these as two separate blocks of network units.</li>
-	<li>Each <b>GBlock</b> object represents a block of network units.
-		There are many types of blocks: GBlockLinear contains a fully-connected set of weights. GBlockTanh contains tanh units. Etc.</li>
-	<li>A <b>GNeuralNet</b> combines many GBlock objects.</li>
-	<li>You can call GNeuralNet::add to add a block to your neural network as its own layer.
+	<li>Each <b>WBlock</b> object represents a block of network units.
+		There are many types of blocks: WBlockLinear contains a fully-connected set of weights. WBlockTanh contains tanh units. Etc.</li>
+	<li>A <b>WNeuralNet</b> combines many WBlock objects.</li>
+	<li>You can call WNeuralNet::add to add a block to your neural network as its own layer.
 		It will be added on the output-most end.</li>
-	<li>Alternatively, you can call GNeuralNet::concatenate to append a block to the last existing layer.</li>
-	<li>GNeuralNet is also a type of GBlock, so you can nest entire neural networks inside of neural networks if you want to.</li>
-	<li><b>GNeuralNetOptimizer</b> is the base class for methods that train the weights of a GNeuralNet.
-		There are several types of GNeuralNetOptimizer. For example, GSGDOptimizer trains the neural net with stochastic gradient descent.</li>
-	<li><b>GNeuralNetLearner</b> is a convenience wrapper around a GNeuralNet and a GSGDOptimizer.
-		It implements GSupervisedLearner, so it makes it easy to compare a neural network with other learning algorithms in Waffles.</li>
+	<li>Alternatively, you can call WNeuralNet::concatenate to append a block to the last existing layer.</li>
+	<li>WNeuralNet is also a type of WBlock, so you can nest entire neural networks inside of neural networks if you want to.</li>
+	<li><b>WNeuralNetOptimizer</b> is the base class for methods that train the weights of a WNeuralNet.
+		There are several types of WNeuralNetOptimizer. For example, WSGDOptimizer trains the neural net with stochastic gradient descent.</li>
+	<li><b>WNeuralNetLearner</b> is a convenience wrapper around a WNeuralNet and a WSGDOptimizer.
+		It implements WSupervisedLearner, so it makes it easy to compare a neural network with other learning algorithms in Waffles.</li>
 </ul>
 
 </p>
@@ -51,27 +51,27 @@
 <p>Logistic regression is fitting your data with a single layer of logistic units. Here are the #includes that we are going to need for this example:</p>
 
 <pre class="code">
-	#include &lt;GClasses/GActivation.h&gt;
-	#include &lt;GClasses/GMatrix.h&gt;
-	#include &lt;GClasses/GNeuralNet.h&gt;
-	#include &lt;GClasses/GRand.h&gt;
-	#include &lt;GClasses/GTransform.h&gt;
+	#include &lt;WClasses/WActivation.h&gt;
+	#include &lt;WClasses/WMatrix.h&gt;
+	#include &lt;WClasses/WNeuralNet.h&gt;
+	#include &lt;WClasses/WRand.h&gt;
+	#include &lt;WClasses/WTransform.h&gt;
 </pre>
 
 <p>We are going to need some data, so let's load some data from an ARFF file. Let's use <a href="http://mldata.org/repository/data/download/arff/datasets-uci-iris/">Iris</a>,
 a well-known dataset for machine learning examples:</p>
 
 <pre class="code">
-	GMatrix data;
+	WMatrix data;
 	data.loadArff("iris.arff");
 </pre>
 
 <p>"data" is a 150x5 matrix. Next, we need to divide this data into a feature matrix (the inputs) and a label matrix (the outputs):</p>
 
 <pre class="code">
-	GDataColSplitter cs(data, 1); // the "iris" dataset has only 1 column of "labels"
-	const GMatrix&amp; inputs = cs.features();
-	const GMatrix&amp; outputs = cs.labels();
+	WDataColSplitter cs(data, 1); // the "iris" dataset has only 1 column of "labels"
+	const WMatrix&amp; inputs = cs.features();
+	const WMatrix&amp; outputs = cs.labels();
 </pre>
 
 <p>"inputs" is a 150x4 matrix of real values, and "outputs" is a 150x1 matrix of categorical values.
@@ -79,36 +79,36 @@ Neural networks typically only support continuous values, but the labels in the 
 (also known as a categorical distribution, a one-hot representation, or binarized representation):</p>
 
 <pre class="code">
-	GNominalToCat nc;
+	WNominalToCat nc;
 	nc.train(outputs);
-	GMatrix* pRealOutputs = nc.transformBatch(outputs);
+	WMatrix* pRealOutputs = nc.transformBatch(outputs);
 </pre>
 
 <p>pRealOutputs points to a 150x3 matrix of real values. Now, lets further divide our data into a training portion and a testing portion:</p>
 
 <pre class="code">
-	GRand r(0);
-	GDataRowSplitter rs(inputs, *pRealOutputs, r, 75);
-	const GMatrix&amp; trainingFeatures = rs.features1();
-	const GMatrix&amp; trainingLabels = rs.labels1();
-	const GMatrix&amp; testingFeatures = rs.features2();
-	const GMatrix&amp; testingLabels = rs.labels2();
+	WRand r(0);
+	WDataRowSplitter rs(inputs, *pRealOutputs, r, 75);
+	const WMatrix&amp; trainingFeatures = rs.features1();
+	const WMatrix&amp; trainingLabels = rs.labels1();
+	const WMatrix&amp; testingFeatures = rs.features2();
+	const WMatrix&amp; testingLabels = rs.labels2();
 </pre>
 
 Now, we are ready to train a layer of logistic units that takes 4 inputs and gives 3 outputs.
 The activation function is specified as a separate layer:</p>
 
 <pre class="code">
-	GNeuralNet nn;
-	nn.add(new GBlockLinear(4, 3));
-	nn.add(new GBlockLogistic(3));
+	WNeuralNet nn;
+	nn.add(new WBlockLinear(4, 3));
+	nn.add(new WBlockLogistic(3));
 </pre>
 
 To train our model, we will create an optimizer. We wil use stochastic gradient descent (SGD). We also set the learning rate here:
 
 <pre class="code">
-	GRand(0);
-	GSGDOptimizer optimizer(nn, rand);
+	WRand(0);
+	WSGDOptimizer optimizer(nn, rand);
 	optimizer.setLearningRate(0.05);
 	optimizer.optimizeWithValidation(trainingFeatures, trainingLabels);
 </pre>
@@ -131,7 +131,7 @@ To train our model, we will create an optimizer. We wil use stochastic gradient 
 <p>Or, preferably:</p>
 
 <pre class="code">
-	std::unique_ptr&lt;GMatrix&gt; hRealOutputs(pRealOutputs);
+	std::unique_ptr&lt;WMatrix&gt; hRealOutputs(pRealOutputs);
 </pre>
 
 
@@ -143,13 +143,13 @@ To train our model, we will create an optimizer. We wil use stochastic gradient 
 <p>The previous example was not actually very useful because root-mean-squared only tells us how poorly the neural network fit to our
 continuous representation of the data. It does not really tell us how accurate the neural network is for classifying this data.
 So, instead of transforming the data to meet the model, we can transform the model to meet the data. Specifically,
-we can use the GAutoFilter class to turn the neural network into a classifier:</p>
+we can use the WAutoFilter class to turn the neural network into a classifier:</p>
 
 <pre class="code">
-	GNeuralNetLearner learner;
-	learner.nn().add(new GBlockLinear(4, 3));
-	learner.nn().add(new GBlockLogistic(3));
-	GAutoFilter af(&amp;learner, false); // false means the auto-filter does not need to "delete(&amp;nn)" when it is destroyed.
+	WNeuralNetLearner learner;
+	learner.nn().add(new WBlockLinear(4, 3));
+	learner.nn().add(new WBlockLogistic(3));
+	WAutoFilter af(&amp;learner, false); // false means the auto-filter does not need to "delete(&amp;nn)" when it is destroyed.
 </pre>
 
 <p>Now, we can train the auto-filter using the original data (with nominal labels). We no longer need to explicitly train
@@ -182,7 +182,7 @@ training.)</p>
 <br><br>
 <h3>Stopping criteria</h3>
 
-<p>The GNeuralNetOptimizer::optimizeWithValidation method divides the training data into a training portion and a validation
+<p>The WNeuralNetOptimizer::optimizeWithValidation method divides the training data into a training portion and a validation
 portion. The default uses 65% for training and 35% for validation. Suppose you wanted to change this
 ratio to 60/40. This would be done as follows:</p>
 
@@ -223,7 +223,7 @@ By default, optimize will run stochastically through the entire set of training 
 <p>You can write your neural network to a file:</p>
 
 <pre class="code">
-GDom doc;
+WDom doc;
 doc.setRoot(nn.serialize(&amp;doc));
 doc.saveJson("my_neural_net.json");
 </pre>
@@ -231,9 +231,9 @@ doc.saveJson("my_neural_net.json");
 <p>Then, you can load it from the file again:</p>
 
 <pre class="code">
-GDom doc;
+WDom doc;
 doc.loadJson("my_neural_net.json");
-GNeuralNet* pNN = new GNeuralNet(doc.root());
+WNeuralNet* pNN = new WNeuralNet(doc.root());
 </pre>
 
 
@@ -248,49 +248,49 @@ And, here is some code that trains a neural network with this data:</p>
 <pre class="code">
 #include &lt;iostream&gt;
 #include &lt;cmath&gt;
-#include &lt;GClasses/GApp.h&gt;
-#include &lt;GClasses/GError.h&gt;
-#include &lt;GClasses/GNeuralNet.h&gt;
-#include &lt;GClasses/GActivation.h&gt;
-#include &lt;GClasses/GTransform.h&gt;
-#include &lt;GClasses/GTime.h&gt;
-#include &lt;GClasses/GVec.h&gt;
+#include &lt;WClasses/WApp.h&gt;
+#include &lt;WClasses/WError.h&gt;
+#include &lt;WClasses/WNeuralNet.h&gt;
+#include &lt;WClasses/WActivation.h&gt;
+#include &lt;WClasses/WTransform.h&gt;
+#include &lt;WClasses/WTime.h&gt;
+#include &lt;WClasses/WVec.h&gt;
 
-using namespace GClasses;
+using namespace WClasses;
 using std::cerr;
 using std::cout;
 
 int main(int argc, char *argv[])
 {
 	// Load the data
-	GMatrix train;
+	WMatrix train;
 	train.loadArff("/somepath/data/mnist/train.arff");
-	GMatrix test;
+	WMatrix test;
 	test.loadArff("/somepath/data/mnist/test.arff");
-	GMatrix rawTestLabels(test, 0, test.cols() - 1, test.rows(), 1);
+	WMatrix rawTestLabels(test, 0, test.cols() - 1, test.rows(), 1);
 
 	// Preprocess the data
-	GDataPreprocessor dpFeat(train,
+	WDataPreprocessor dpFeat(train,
 		0, 0, // rowStart, colStart
 		train.rows(), train.cols() - 1, // rowCount, colCount
 		false, false, true, // allowMissing, allowNominal, allowContinuous
 		-1.0, 1.0); // minVal, maxVal
 	dpFeat.add(test, 0, 0, test.rows(), test.cols() - 1);
-	GDataPreprocessor dpLab(train,
+	WDataPreprocessor dpLab(train,
 		0, train.cols() - 1, // rowStart, colStart
 		train.rows(), 1, // rowCount, colCount
 		false, false, true, // allowMissing, allowNominal, allowContinuous
 		-1.0, 1.0); // minVal, maxVal
 	dpLab.add(test, 0, test.cols() - 1, test.rows(), 1);
-	GMatrix&amp; trainFeatures = dpFeat.get(0);
-	GMatrix&amp; trainLabels = dpLab.get(0);
-	GMatrix&amp; testFeatures = dpFeat.get(1);
+	WMatrix&amp; trainFeatures = dpFeat.get(0);
+	WMatrix&amp; trainLabels = dpLab.get(0);
+	WMatrix&amp; testFeatures = dpFeat.get(1);
 
 	// Make a neural network
-	GNeuralNet nn;
-	nn.add(new GBlockLinear(28 * 28, 80), new GBlockTanh(80),
-		new GBlockLinear(80, 30), new GBlockTanh(30),
-		new GBlockLinear(30, 10), new GBlockTanh(10));
+	WNeuralNet nn;
+	nn.add(new WBlockLinear(28 * 28, 80), new WBlockTanh(80),
+		new WBlockLinear(80, 30), new WBlockTanh(30),
+		new WBlockLinear(30, 10), new WBlockTanh(10));
 
 	// Print some info
 	cout &lt;&lt; "% Training patterns: " &lt;&lt; to_str(trainFeatures.rows()) &lt;&lt; "\n";
@@ -303,14 +303,14 @@ int main(int argc, char *argv[])
 	cout &lt;&lt; "@DATA\n";
 
 	// Train
-	GRand rand(0);
-	GSGDOptimizer optimizer(nn, rand, &amp;trainFeatures, &amp;trainLabels);
+	WRand rand(0);
+	WSGDOptimizer optimizer(nn, rand, &amp;trainFeatures, &amp;trainLabels);
 	optimizer.setLearningRate(0.01);
-	double starttime = GTime::seconds();
+	double starttime = WTime::seconds();
 	for(size_t epoch = 0; epoch &lt; 10; epoch++)
 	{
 		double mis = nn.measureLoss(optimizer.weights(), testFeatures, rawTestLabels);
-		cout &lt;&lt; to_str((double)mis / testFeatures.rows()) &lt;&lt; "," &lt;&lt; to_str(GTime::seconds() - starttime) &lt;&lt; "\n";
+		cout &lt;&lt; to_str((double)mis / testFeatures.rows()) &lt;&lt; "," &lt;&lt; to_str(WTime::seconds() - starttime) &lt;&lt; "\n";
 		cout.flush();
 		optimizer.optimizeEpoch();
 	}
@@ -324,13 +324,13 @@ int main(int argc, char *argv[])
 % Training patterns: 60000
 % Testing patterns: 10000
 % Topology:
-% [GNeuralNet: 784-&gt;10, Weights=65540
-%    0) [GBlockLinear: 784-&gt;80, Weights=62800]
-%    1) [GBlockTanh: 80-&gt;80, Weights=0]
-%    2) [GBlockLinear: 80-&gt;30, Weights=2430]
-%    3) [GBlockTanh: 30-&gt;30, Weights=0]
-%    4) [GBlockLinear: 30-&gt;10, Weights=310]
-%    5) [GBlockTanh: 10-&gt;10, Weights=0]
+% [WNeuralNet: 784-&gt;10, Weights=65540
+%    0) [WBlockLinear: 784-&gt;80, Weights=62800]
+%    1) [WBlockTanh: 80-&gt;80, Weights=0]
+%    2) [WBlockLinear: 80-&gt;30, Weights=2430]
+%    3) [WBlockTanh: 30-&gt;30, Weights=0]
+%    4) [WBlockLinear: 30-&gt;10, Weights=310]
+%    5) [WBlockTanh: 10-&gt;10, Weights=0]
 % ]
 @RELATION neural_net_training
 @ATTRIBUTE misclassification_rate real
@@ -355,17 +355,17 @@ You can get much better accuracy using bigger layers, but then training will tak
 
 <pre class="code">
 	// Make a neural network
-	GNeuralNet nn;
-	nn.add(new GBlockConv({28, 28}, {5, 5, 32}, {28, 28, 32}));
-	nn.add(new GBlockLeakyRectifier(28 * 28 * 32));
-	nn.add(new GBlockMaxPooling2D(28, 28, 32));
-	nn.add(new GBlockConv({14, 14, 32}, {5, 5, 32, 64}, {14, 14, 1, 64}));
-	nn.add(new GBlockLeakyRectifier(14 * 14 * 64));
-	nn.add(new GBlockMaxPooling2D(14, 14, 64));
-	nn.add(new GBlockLinear(7 * 7 * 64, 1000));
-	nn.add(new GBlockLeakyRectifier(1000));
-	nn.add(new GBlockLinear(1000, 10));
-	nn.add(new GBlockLeakyRectifier(10));
+	WNeuralNet nn;
+	nn.add(new WBlockConv({28, 28}, {5, 5, 32}, {28, 28, 32}));
+	nn.add(new WBlockLeakyRectifier(28 * 28 * 32));
+	nn.add(new WBlockMaxPooling2D(28, 28, 32));
+	nn.add(new WBlockConv({14, 14, 32}, {5, 5, 32, 64}, {14, 14, 1, 64}));
+	nn.add(new WBlockLeakyRectifier(14 * 14 * 64));
+	nn.add(new WBlockMaxPooling2D(14, 14, 64));
+	nn.add(new WBlockLinear(7 * 7 * 64, 1000));
+	nn.add(new WBlockLeakyRectifier(1000));
+	nn.add(new WBlockLinear(1000, 10));
+	nn.add(new WBlockLeakyRectifier(10));
 </pre>
 
 <p>Results:</p>
@@ -374,17 +374,17 @@ You can get much better accuracy using bigger layers, but then training will tak
 % Training patterns: 60000
 % Testing patterns: 10000
 % Topology:
-% [GNeuralNet: 784->10, Weights=6449506
-%    0) [GBlockConv: 784->25088, Weights=25632]
-%    1) [GBlockLeakyRectifier: 25088->25088, Weights=0]
-%    2) [GBlockMaxPooling2D: 25088->6272, Weights=0]
-%    3) [GBlockConv: 6272->12544, Weights=3276864]
-%    4) [GBlockLeakyRectifier: 12544->12544, Weights=0]
-%    5) [GBlockMaxPooling2D: 12544->3136, Weights=0]
-%    6) [GBlockLinear: 3136->1000, Weights=3137000]
-%    7) [GBlockLeakyRectifier: 1000->1000, Weights=0]
-%    8) [GBlockLinear: 1000->10, Weights=10010]
-%    9) [GBlockLeakyRectifier: 10->10, Weights=0]
+% [WNeuralNet: 784->10, Weights=6449506
+%    0) [WBlockConv: 784->25088, Weights=25632]
+%    1) [WBlockLeakyRectifier: 25088->25088, Weights=0]
+%    2) [WBlockMaxPooling2D: 25088->6272, Weights=0]
+%    3) [WBlockConv: 6272->12544, Weights=3276864]
+%    4) [WBlockLeakyRectifier: 12544->12544, Weights=0]
+%    5) [WBlockMaxPooling2D: 12544->3136, Weights=0]
+%    6) [WBlockLinear: 3136->1000, Weights=3137000]
+%    7) [WBlockLeakyRectifier: 1000->1000, Weights=0]
+%    8) [WBlockLinear: 1000->10, Weights=10010]
+%    9) [WBlockLeakyRectifier: 10->10, Weights=0]
 % ]
 @RELATION neural_net_training
 @ATTRIBUTE misclassification_rate real
@@ -416,19 +416,19 @@ Here are some changes to the training section of the previous example to train t
 
 <pre class="code">
 	// Train
-	GRand rand(0);
-	<font color="red">GVec weights(nn.weightCount());
-	GVec grad(nn.weightCount());
+	WRand rand(0);
+	<font color="red">WVec weights(nn.weightCount());
+	WVec grad(nn.weightCount());
 	grad.fill(0.0);
 	nn.initWeights(rand, weights);
 	double learningRate = 0.01;
 	double momentum = 0.0;
-	GRandomIndexIterator ii(trainFeatures.rows(), rand);</font>
-	double starttime = GTime::seconds();
+	WRandomIndexIterator ii(trainFeatures.rows(), rand);</font>
+	double starttime = WTime::seconds();
 	for(size_t epoch = 0; epoch &lt; 10; epoch++)
 	{
 		double mis = nn.measureLoss(<font color="red">weights</font>, testFeatures, rawTestLabels);
-		cout &lt;&lt; to_str((double)mis / testFeatures.rows()) &lt;&lt; "," &lt;&lt; to_str(GTime::seconds() - starttime) &lt;&lt; "\n";
+		cout &lt;&lt; to_str((double)mis / testFeatures.rows()) &lt;&lt; "," &lt;&lt; to_str(WTime::seconds() - starttime) &lt;&lt; "\n";
 		cout.flush();
 		<font color="red">ii.reset();
 		size_t index;

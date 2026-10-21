@@ -37,43 +37,43 @@ tournament, and 2- error on the part of the golfer. Here is a belief network tha
 
 <p>Our first task is to instantiate this network. Here is some code to do this:
 <pre class="code">
-	GBayesNet bn;
+	WBayesNet bn;
 
 	// Make the 4 nodes that are not on a plate
-	GBNNormal* pTournMean = bn.newNormal();
+	WBNNormal* pTournMean = bn.newNormal();
 	pTournMean-&gt;setMeanAndVariance(0, bn.newConst(72.0), bn.newConst(2.0));
-	GBNInverseGamma* pTournVar = bn.newInverseGamma();
+	WBNInverseGamma* pTournVar = bn.newInverseGamma();
 	pTournVar-&gt;setAlphaAndBeta(0, bn.newConst(18), bn.newConst(66.667));
-	GBNInverseGamma* pGolferVar = bn.newInverseGamma();
+	WBNInverseGamma* pGolferVar = bn.newInverseGamma();
 	pGolferVar-&gt;setAlphaAndBeta(0, bn.newConst(18), bn.newConst(66.667));
-	GBNInverseGamma* pInstVar = bn.newInverseGamma();
+	WBNInverseGamma* pInstVar = bn.newInverseGamma();
 	pInstVar-&gt;setAlphaAndBeta(0, bn.newConst(83), bn.newConst(714.29));
 
 	// Make the 42 tournament nodes
-	vector&lt;GBNNormal*&gt; tourns;
+	vector&lt;WBNNormal*&gt; tourns;
 	for(size_t i = 0; i &lt; 42; i++)
 	{
-		GBNNormal* pTourn = bn.newNormal();
+		WBNNormal* pTourn = bn.newNormal();
 		pTourn-&gt;setMeanAndVariance(0, pTournMean, pTournVar);
 		tourns.push_back(pTourn);
 	}
 
 	// Make the 604 golfer nodes
-	vector&lt;GBNNormal*&gt; golfers;
+	vector&lt;WBNNormal*&gt; golfers;
 	for(size_t i = 0; i &lt; 604; i++)
 	{
-		GBNNormal* pGolfer = bn.newNormal();
+		WBNNormal* pGolfer = bn.newNormal();
 		pGolfer-&gt;setMeanAndVariance(0, bn.newConst(0), pGolferVar);
 		golfers.push_back(pGolfer);
 	}
 
 	// Make the 5700 swing nodes
-	GMatrix data;
+	WMatrix data;
 	data.loadArff("golfdata.arff");
 	for(size_t i = 0; i &lt; data.rows(); i++)
 	{
 		double* pRow = data[i];
-		GBNSum* pSum = bn.newSum();
+		WBNSum* pSum = bn.newSum();
 		size_t tourn = (size_t)pRow[2] - 1;
 		if(tourn &gt;= 42)
 			throw Ex("tournament out of range");
@@ -82,7 +82,7 @@ tournament, and 2- error on the part of the golfer. Here is a belief network tha
 			throw Ex("golfer out of range");
 		pSum-&gt;addParent(tourns[tourn]);
 		pSum-&gt;addParent(golfers[golfer]);
-		GBNNormal* pInst = bn.newNormal();
+		WBNNormal* pInst = bn.newNormal();
 		pInst-&gt;setMeanAndVariance(0, pSum, pInstVar);
 		pInst-&gt;setObserved(pRow[1]);
 	}
@@ -96,7 +96,7 @@ Now, we are ready to use MCMC to do some inference. We will begin by doing some 
 
 Then, we can draw some samples to represent the joint distribution. We will store these samples in a matrix:
 <pre class="code">
-	GMatrix results(0, 604);
+	WMatrix results(0, 604);
 	for(size_t i = 0; i &lt; 50000; i++)
 	{
 		bn.sample();
@@ -109,7 +109,7 @@ Then, we can draw some samples to represent the joint distribution. We will stor
 Finally, let's examine the results. I computed the median "error" of each golfer,
 then sorted by this value, and printed the first 10 lines.
 <pre class="code">
-	GMatrix digest(604, 2);
+	WMatrix digest(604, 2);
 	for(size_t i = 0; i &lt; 604; i++)
 	{
 		digest[i][0] = i;
@@ -118,7 +118,7 @@ then sorted by this value, and printed the first 10 lines.
 	digest.sort(1);
 	for(size_t i = 0; i &lt; 10; i++)
 	{
-		((const GArffRelation&amp;)data.relation()).printAttrValue(cout, 0, digest[i][0]);
+		((const WArffRelation&amp;)data.relation()).printAttrValue(cout, 0, digest[i][0]);
 		cout &lt;&lt; "	" &lt;&lt; digest[i][1] &lt;&lt; "\n";
 	}
 </pre>
