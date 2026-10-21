@@ -5,6 +5,7 @@
 #include "FlightSimPadd.hpp"
 
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Testing.hpp>
 
 #include <gtest/gtest.h>
 
@@ -59,6 +60,15 @@ public:
       std::this_thread::sleep_for(1ms);
     }
     return true;
+  }
+
+  // A key command, as the display sends it
+  void command(GameCommand::Type type) { send(GameCommand{type}); }
+
+  // An edit on the precision lab panel: sent straight to the simulation, as
+  // the display's panel sends it
+  bool changeControl(const std::string &control, const ScratchPadd::ControlTypeVariant &value) {
+    return sendTo<FlightSimPadd>(ControlChange{.controlName = control, .controlTypeValue = value});
   }
 
   WorldSnapshot last() {
@@ -168,17 +178,16 @@ TEST(FlightPaddsTest, AutopilotRunMatchesOriginalGame) {
 TEST(FlightPaddsTest, ControlChangeAppliesToSimulation) {
   RunningSystem<FlightSimPadd, DriverPadd> running;
   auto &driver = running.padd<DriverPadd>();
-  driver.send(ControlChange{.paddName = "FlightSim",
-                            .controlName = "Flight bits",
-                            .controlTypeValue = Controls::Integer(6)});
-  driver.send(ControlChange{.paddName = "FlightSim",
-                            .controlName = "Rounding",
-                            .controlTypeValue = Controls::String("stochastic")});
+  EXPECT_TRUE(driver.changeControl("Flight bits", Controls::Integer(6)));
+  EXPECT_TRUE(driver.changeControl("Rounding", Controls::String("stochastic")));
   ASSERT_TRUE(driver.run(2));
 
   EXPECT_EQ(driver.last().groups[0].fracBits, 6);
-  EXPECT_EQ(running.padd<FlightSimPadd>().sim().settings.rounding,
-            Flex::Math::Rounding::Stochastic);
+  // Read on the simulation's own thread
+  EXPECT_EQ(
+      ScratchPadd::onPaddThread(running.padd<FlightSimPadd>(),
+                                [](FlightSimPadd &sim) { return sim.sim().settings.rounding; }),
+      Flex::Math::Rounding::Stochastic);
 }
 
 // The T key's command flips the Autopilot control, and FlightSimPadd sends a
@@ -186,7 +195,7 @@ TEST(FlightPaddsTest, ControlChangeAppliesToSimulation) {
 TEST(FlightPaddsTest, ToggleAutopilotUpdatesControl) {
   RunningSystem<FlightSimPadd, DriverPadd> running;
   auto &driver = running.padd<DriverPadd>();
-  driver.send(GameCommand{GameCommand::Type::ToggleAutopilot});
+  driver.command(GameCommand::Type::ToggleAutopilot);
   ASSERT_TRUE(driver.run(1));
 
   EXPECT_TRUE(driver.last().autopilot);
@@ -204,13 +213,13 @@ TEST(FlightPaddsTest, PauseAndRestartCommands) {
   const double before = driver.last().z;
   EXPECT_LT(before, 0.0);
 
-  driver.send(GameCommand{GameCommand::Type::TogglePause});
+  driver.command(GameCommand::Type::TogglePause);
   ASSERT_TRUE(driver.run(30));
   EXPECT_EQ(driver.last().z, before);
   EXPECT_TRUE(driver.last().paused);
 
-  driver.send(GameCommand{GameCommand::Type::TogglePause});
-  driver.send(GameCommand{GameCommand::Type::Restart});
+  driver.command(GameCommand::Type::TogglePause);
+  driver.command(GameCommand::Type::Restart);
   ASSERT_TRUE(driver.run(1));
   EXPECT_GT(driver.last().z, before); // back near the start
   EXPECT_EQ(driver.last().score, 0);

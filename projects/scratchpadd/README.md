@@ -136,6 +136,40 @@ receive<GatePassed>([this](const GatePassed &event) {
 - Senders check a padd's handlers from their own threads, so the handlers are guarded by a read-write lock: sending takes a shared lock, changing them an exclusive one. Each handler is held by `shared_ptr`, so a handler runs after the lock is released and can't be destroyed while it runs.
 - `Base` registers handlers for the control messages itself; stopping those would stop the padd answering control panels.
 
+**Sending to one padd.** `sendTo` sends a message to one padd and no other. Name the padd by its class (each class appears once in a system), or get an address once and keep it:
+
+```cpp
+sendTo<DisplayPadd>(Text{"hello"});                 // by class
+PaddAddress story = addressOf("StoryPadd");          // by name, looked up once (from prepare() on)
+sendTo(story, GatePassed{3});                        // no lookup at all
+```
+
+- It returns `false`, sending nothing, if there's no such padd or the padd has no handler for the type; both are logged as errors. An empty `PaddAddress` (from a failed lookup) is `false`.
+- A padd can send to itself (`sendTo(address(), ...)`); the message is queued like any other.
+- Messages from one padd to another arrive in the order they were sent, whichever way they're sent.
+- There's no "include the sender" version: a direct send names its one receiver.
+- By class it's one hash lookup of the class's `type_index`; with a kept address, none. Names are only compared by `addressOf(name)`, which is why to keep the address rather than look it up per message.
+
+**Who sent a message.** A handler can take the sender's address as a second argument, and reply to it:
+
+```cpp
+receive<Ping>([this](const Ping &ping, PaddAddress from) { sendTo(from, Pong{ping.id}); });
+```
+
+- Every send records its sender, broadcasts included. A message sent from outside any padd (`System::sendIncludeSender(nullptr, ...)`) has an empty `from`.
+- One-argument handlers (`[](const Ping &ping) {...}`) are unchanged; `receive` works out which kind it was given when it compiles.
+- The sender travels with each delivery, not inside the message, since one message (from `makeMessage`) can be sent more than once, by different padds.
+
+**Padds only talk through messages.** A padd's state belongs to its own thread, so other code may not call into a padd; it sends the padd a message. This is enforced, not just a convention:
+
+- *At compile time.* What a padd does is protected in `Base`: `receive`, `send`, `sendTo`, `push`, and its controls (`control`, `setControl`, `addControl`, `removeControl`, `updateControl`). C++ only lets a class use protected members of objects of its own class, so one padd can't call another's even through a pointer to it. Running a padd (`run`, `stop`, `deliver`, `initialize`...) is private to `Base` and the system. What stays public only reads a padd or waits for it: `paddName()`, `isRunning()`, `pendingWorkCount()`, `workLoopPasses()`, `waitForStart()`, `waitForStop()`, `waitForWorkCompletion()`.
+- *Addresses can't be opened.* A `PaddAddress` can be copied, compared, sent to and named, but has no way to get at the padd behind it. The system hands out padds only as addresses.
+- *At run time.* The control methods check they're on the padd's own thread (while it runs: from `starting()` to `finishing()`), and throw `std::logic_error` naming the padd and method if not. Call `assertOnPaddThread("method")` at the top of your own padd methods that touch its state.
+- *What it can't stop.* C++ can't stop a deliberate workaround (a pointer kept in a global, a cast), and public methods you add to your own padd class are yours to guard: keep them private, or check the thread.
+- `Messages_test` checks the compile-time rules when it compiles, so loosening one fails the build.
+
+**Tests** reach inside padds through `ScratchPadd::PaddTestAccess` (`ScratchPadd/Testing.hpp`): sending as if from a padd, queueing work on it, and its controls. `onPaddThread(padd, work)` runs `work` on the padd's own thread and returns its result, for reading a running padd's controls. A test's own padd class can also make a protected method public with a `using` declaration.
+
 The library defines only general-purpose messages in [`messages/include/ScratchPadd/Messages/`](messages/include/ScratchPadd/Messages/): `Text` (a string) and the three control messages below. The demo's `Triangle` (`demo/include/DemoMessages.hpp`) is an example of an app-defined message.
 
 ### Controls
@@ -183,9 +217,9 @@ Each sends a fresh `ControlSnapshot`, so panels show the change straight away. N
 
 Behind the panel are three messages; `Base` handles the owner's side automatically:
 
-1. **Discover.** The panel sends a `ControlRequest` (`DisplayPadd` does this once its window is up). Every padd with controls replies with a `ControlSnapshot`: its name and all its controls. A request can name one padd to ask only that padd.
-2. **Edit.** When the user edits a widget, the panel sends a `ControlChange` carrying the owner's name (copied from the snapshot), the control's name and the new value. There's no direct addressing, so every padd receives it, and only the padd it names acts on it.
-3. **Apply and confirm.** The owner enforces its own rules: numbers are clamped to the control's range, strings must be one of the allowed values, and the type must match; only the value is taken, so a change can't alter a range. If the change is valid it's stored and `controlChanged()` is called. Either way the owner replies with a fresh snapshot, so the panel shows the value the owner actually holds (a clamped number snaps back, for example).
+1. **Discover.** The panel broadcasts a `ControlRequest` (`DisplayPadd` does this once its window is up). Every padd with controls replies to the panel that asked, and only that panel, with a `ControlSnapshot`: its name and all its controls. To ask one padd, send the request to it with `sendTo`.
+2. **Edit.** When the user edits a widget, the panel sends a `ControlChange` (the control's name and the new value) straight to the padd the snapshot came from: the snapshot handler takes the sender's address, and the panel keeps it.
+3. **Apply and confirm.** The owner enforces its own rules: numbers are clamped to the control's range, strings must be one of the allowed values, and the type must match; only the value is taken, so a change can't alter a range. If the change is valid it's stored and `controlChanged()` is called. Either way the owner replies to every panel with a fresh snapshot, so they all show the value the owner actually holds (a clamped number snaps back, for example).
 
 The panel only ever holds copies from snapshots, and each owner changes its own values on its own thread, so no locking is needed. A snapshot with no controls (sent when a padd removes its last one) removes that padd's panel; `DisplayPadd` takes it away with `Graphics::removeView`. `messages/tests/Controls_test.cpp` covers the round trip, range enforcement, rejection and who replies.
 
@@ -260,13 +294,12 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `basis:Examples_test` | The examples in this README |
 | `basis:Base_test` | Padd names, and a system starting and stopping |
 | `basis:Threading_test` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
-| `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes) |
-| `messages:Controls_test` | The control round trip: who replies to requests and changes, range clamping, rejected changes, `controlChanged()` and `control<C>()`; and an owner's own changes: `setControl()` (by the same rules, telling panels), `addControl()`, `removeControl()` (the last removal empties the panel), and a padd without controls adding one |
+| `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes); `sendTo` (only the named padd, by class and by name, to itself, in order, refused for a missing padd, an empty address or an unhandled type, and four padds sending to one at once from their own threads losing nothing, each in order and with the right sender); the sender (a reply to it, and no sender for a message from outside); and, when it compiles, that code outside a padd can't call into one |
+| `messages:Controls_test` | The control round trip: requests answered to the panel that asked (all padds, or one sent the request), changes sent straight to their owner and every panel told, unknown padds refused, range clamping, rejected changes, `controlChanged()` and `control<C>()`, and a running padd's controls refused from another thread; and an owner's own changes: `setControl()` (by the same rules, telling panels), `addControl()`, `removeControl()` (the last removal empties the panel), and a padd without controls adding one |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
 
-- **No direct addressing.** A message goes to every padd that handles its type; to target one padd, put its name in the message (as `ControlChange` does).
 - **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled; a message nobody handles is silently dropped.
 - Audio is a stub.
 

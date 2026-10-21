@@ -50,7 +50,10 @@ private:
   // Draws `world`, then sends the next FrameInput.
   void drawFrame(const WorldSnapshot &world);
   void showEvent(const FlightEvent &event);
-  void showControls(const ScratchPadd::MessageType::ControlSnapshot &snapshot);
+  // Shows `snapshot` in a panel; edits go straight to `owner`, the padd it
+  // came from.
+  void showControls(const ScratchPadd::MessageType::ControlSnapshot &snapshot,
+                    ScratchPadd::PaddAddress owner);
   void drawWorld(int width, int height, float time);
   void drawHud();
   // `base`, blended toward the obstacle's flash colour while it flashes.

@@ -2,6 +2,7 @@
 // too. The padds are copied from the README with two test-only changes, marked
 // below: a shorter interval, and a way to read what was received.
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Testing.hpp>
 
 #include <gtest/gtest.h>
 
@@ -115,15 +116,15 @@ TEST(ExamplesTest, ControlsHaveDefaultsAndAcceptChanges) {
 
   EXPECT_DOUBLE_EQ(mover.speed(), 1.0);
 
+  // (Not started, so the test's thread may change the padd's controls.)
   ScratchPadd::MessageType::ControlChange change{
-      .paddName = "Mover",
       .controlName = "speed",
       .controlTypeValue = ScratchPadd::ControlType::Double(4.5, std::make_pair(0.0, 10.0))};
-  mover.updateControl(change);
+  ScratchPadd::PaddTestAccess::updateControl(mover, change);
   EXPECT_DOUBLE_EQ(mover.speed(), 4.5);
 
   // A change with the wrong type is rejected.
   change.controlTypeValue = ScratchPadd::ControlType::Boolean(false);
-  mover.updateControl(change);
+  ScratchPadd::PaddTestAccess::updateControl(mover, change);
   EXPECT_DOUBLE_EQ(mover.speed(), 4.5);
 }

@@ -50,7 +50,8 @@ public:
     ImVec4 *getBackgroundColor() override { return {}; };
     // Shows `controls`, replacing whatever was shown before.
     void setControls(const ScratchPadd::MessageType::ControlSnapshot &controls);
-    // Called with a ControlChange each time the user edits a control.
+    // Called with a ControlChange each time the user edits a control (the
+    // padd that owns the panel sends it to the padd whose controls it shows).
     void setOnChange(ChangeHandler onChange) { onChange_ = std::move(onChange); }
     // Where the panel first appears, as a fraction of the window: (0, 0) is
     // the top-left corner, (1, 0) the top-right. Without this, ImGui picks

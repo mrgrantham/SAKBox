@@ -1,6 +1,7 @@
 #include <DataDepRetriever/DataDependencies.hpp>
 #include <ScratchPadd/Base.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Testing.hpp>
 
 #include <gtest/gtest.h>
 
@@ -9,6 +10,7 @@
 #include <chrono>
 #include <cmath>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -174,18 +176,24 @@ TEST(ControlsTest, TestControlChange) {
       controlTypeValue); // make a copy. value held in ControlExposurePadd will be unchanged until
                          // the update is round tripped back from ControlGeneratorPadd
   updatedControlTypeValue.value = updatedValue;
-  // Send a control change back to the generator
-  controlExpPadd->send(
-      ScratchPadd::MessageType::ControlChange{.paddName = controlGenPadd->name(),
-                                              .controlName = controlName,
-                                              .controlTypeValue = updatedControlTypeValue});
+  // Send a control change back to the generator, as the exposure padd's
+  // panel would: straight to it
+  using Access = ScratchPadd::PaddTestAccess;
+  EXPECT_TRUE(
+      Access::sendTo(*controlExpPadd, Access::addressOf<ControlGeneratorPadd>(*controlExpPadd),
+                     ScratchPadd::MessageType::ControlChange{
+                         .controlName = controlName, .controlTypeValue = updatedControlTypeValue}));
 
   controlGenPadd->waitForWorkCompletion();
   controlExpPadd->waitForWorkCompletion();
 
   // Check that the ControlsGeneratorPadd controls map has been updated with the new value
+  // (read on its own thread, the only one that may touch its controls)
 
-  auto genPaddControlsAfterChange = controlGenPadd->generateControlsSnapshot().controlMap;
+  auto genPaddControlsAfterChange =
+      ScratchPadd::onPaddThread(*controlGenPadd, [](ControlGeneratorPadd &padd) {
+        return Access::snapshot(padd);
+      }).controlMap;
   EXPECT_EQ(genPaddControlsAfterChange.size(), 4);
   EXPECT_TRUE(genPaddControlsAfterChange.contains(controlName));
   EXPECT_TRUE(std::holds_alternative<ScratchPadd::ControlType::Double>(
@@ -260,31 +268,49 @@ public:
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 };
 
-// Stands in for DisplayPadd: records every snapshot it receives.
-class PanelPadd : public ScratchPadd::Base {
+// Stands in for DisplayPadd: records every snapshot it receives, and who
+// it came from. Its methods are called from the test's thread, and only
+// send messages, which is safe from any thread.
+template <int Id> class PanelPaddOf : public ScratchPadd::Base {
 public:
-  PanelPadd(ScratchPadd::System *system) : Base(system) {
-    receive<ControlSnapshot>([this](const ControlSnapshot &snapshot) {
-      std::lock_guard<std::mutex> lk(mutex_);
-      snapshots_.push_back(snapshot);
-    });
+  PanelPaddOf(ScratchPadd::System *system) : Base(system) {
+    receive<ControlSnapshot>(
+        [this](const ControlSnapshot &snapshot, ScratchPadd::PaddAddress from) {
+          std::lock_guard<std::mutex> lk(mutex_);
+          snapshots_.push_back(snapshot);
+          senders_.push_back(from.name());
+        });
   }
-  std::string name() override { return "Panel"; }
+  std::string name() override { return Id == 1 ? "Panel" : "Panel" + std::to_string(Id); }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 
   std::vector<ControlSnapshot> snapshots() {
     std::lock_guard<std::mutex> lk(mutex_);
     return snapshots_;
   }
-  void change(const std::string &padd, const std::string &control,
-              const ScratchPadd::ControlTypeVariant &value) {
-    send(ControlChange{.paddName = padd, .controlName = control, .controlTypeValue = value});
+  std::vector<std::string> senders() {
+    std::lock_guard<std::mutex> lk(mutex_);
+    return senders_;
   }
+  // An edit on this panel: sent straight to the padd named `padd`, as
+  // DisplayPadd sends it to the padd its snapshot came from
+  bool change(const std::string &padd, const std::string &control,
+              const ScratchPadd::ControlTypeVariant &value) {
+    return sendTo(addressOf(padd),
+                  ControlChange{.controlName = control, .controlTypeValue = value});
+  }
+  // Asks every padd with controls for them
+  void requestAll() { send(ControlRequest{}); }
+  // Asks just the padd named `padd`
+  bool request(const std::string &padd) { return sendTo(addressOf(padd), ControlRequest{}); }
 
 private:
   std::mutex mutex_;
   std::vector<ControlSnapshot> snapshots_;
+  std::vector<std::string> senders_;
 };
+using PanelPadd = PanelPaddOf<1>;
+using OtherPanelPadd = PanelPaddOf<2>;
 
 template <typename... Padds> class RunningSystem {
 public:
@@ -330,25 +356,63 @@ double speedIn(const ControlSnapshot &snapshot) {
   return std::get<Controls::Double>(snapshot.controlMap.at("speed")).value;
 }
 
+// A running padd's control `name`, read on its own thread
+template <typename C, typename Padd> C controlOf(Padd &padd, const std::string &name) {
+  return ScratchPadd::onPaddThread(
+      padd, [&](Padd &p) { return ScratchPadd::PaddTestAccess::control<C>(p, name); });
+}
+
 } // namespace
 
 // A ControlRequest gets one snapshot from each padd that has controls; padds
 // without controls stay silent.
 TEST(ControlsTest, RequestGetsOneSnapshotPerPaddWithControls) {
   RunningSystem<PanelPadd, OwnerA, OwnerB, NoControlsPadd> running;
-  running.padd<PanelPadd>().send(ControlRequest{});
+  running.padd<PanelPadd>().requestAll();
   ASSERT_TRUE(running.settles());
   EXPECT_EQ(snapshotNames(running.padd<PanelPadd>().snapshots()),
             (std::vector<std::string>{"Owner1", "Owner2"}));
+  EXPECT_EQ(running.padd<PanelPadd>().senders().size(), 2u); // each from its owner
 }
 
-// A ControlRequest naming a padd is answered by that padd only.
-TEST(ControlsTest, RequestCanNameOnePadd) {
+// A ControlRequest sent to one padd is answered by that padd only.
+TEST(ControlsTest, RequestCanBeSentToOnePadd) {
   RunningSystem<PanelPadd, OwnerA, OwnerB> running;
-  running.padd<PanelPadd>().send(ControlRequest{.paddName = "Owner2"});
+  EXPECT_TRUE(running.padd<PanelPadd>().request("Owner2"));
   ASSERT_TRUE(running.settles());
   EXPECT_EQ(snapshotNames(running.padd<PanelPadd>().snapshots()),
             std::vector<std::string>{"Owner2"});
+  EXPECT_EQ(running.padd<PanelPadd>().senders(), std::vector<std::string>{"Owner2"});
+}
+
+// The replies to a request go to the panel that asked, not to every panel.
+TEST(ControlsTest, RepliesGoOnlyToThePanelThatAsked) {
+  RunningSystem<PanelPadd, OtherPanelPadd, OwnerA, OwnerB> running;
+  running.padd<PanelPadd>().requestAll();
+  ASSERT_TRUE(running.settles());
+  EXPECT_EQ(running.padd<PanelPadd>().snapshots().size(), 2u);
+  EXPECT_TRUE(running.padd<OtherPanelPadd>().snapshots().empty());
+}
+
+// A change goes straight to its owner, whose new value every panel is told.
+TEST(ControlsTest, EveryPanelSeesAChange) {
+  RunningSystem<PanelPadd, OtherPanelPadd, OwnerA> running;
+  EXPECT_TRUE(running.padd<PanelPadd>().change("Owner1", "speed", Controls::Double(3.0)));
+  ASSERT_TRUE(running.settles());
+  for (const auto &snapshots :
+       {running.padd<PanelPadd>().snapshots(), running.padd<OtherPanelPadd>().snapshots()}) {
+    ASSERT_EQ(snapshots.size(), 1u);
+    EXPECT_DOUBLE_EQ(speedIn(snapshots[0]), 3.0);
+  }
+}
+
+// A change to a padd that isn't there, or a request to one, isn't sent.
+TEST(ControlsTest, ChangesToUnknownPaddsAreRefused) {
+  RunningSystem<PanelPadd, OwnerA> running;
+  EXPECT_FALSE(running.padd<PanelPadd>().change("Nobody", "speed", Controls::Double(3.0)));
+  EXPECT_FALSE(running.padd<PanelPadd>().request("Nobody"));
+  ASSERT_TRUE(running.settles());
+  EXPECT_TRUE(running.padd<PanelPadd>().snapshots().empty());
 }
 
 // A change is applied only by the padd it names, which replies with exactly
@@ -358,8 +422,8 @@ TEST(ControlsTest, ChangeOnlyAffectsAndRepliesFromTarget) {
   running.padd<PanelPadd>().change("Owner1", "speed", Controls::Double(4.0));
   ASSERT_TRUE(running.settles());
 
-  EXPECT_DOUBLE_EQ(running.padd<OwnerA>().control<Controls::Double>("speed").value, 4.0);
-  EXPECT_DOUBLE_EQ(running.padd<OwnerB>().control<Controls::Double>("speed").value, 1.0);
+  EXPECT_DOUBLE_EQ(controlOf<Controls::Double>(running.padd<OwnerA>(), "speed").value, 4.0);
+  EXPECT_DOUBLE_EQ(controlOf<Controls::Double>(running.padd<OwnerB>(), "speed").value, 1.0);
 
   const auto snapshots = running.padd<PanelPadd>().snapshots();
   ASSERT_EQ(snapshots.size(), 1u);
@@ -381,9 +445,9 @@ TEST(ControlsTest, NumbersAreClampedToTheirRange) {
   ASSERT_TRUE(running.settles());
 
   auto &owner = running.padd<OwnerA>();
-  EXPECT_DOUBLE_EQ(owner.control<Controls::Double>("speed").value, 10.0);
-  EXPECT_EQ(owner.control<Controls::Integer>("count").value, 2);
-  EXPECT_DOUBLE_EQ(owner.control<Controls::Double>("free").value, 1000.0);
+  EXPECT_DOUBLE_EQ(controlOf<Controls::Double>(owner, "speed").value, 10.0);
+  EXPECT_EQ(controlOf<Controls::Integer>(owner, "count").value, 2);
+  EXPECT_DOUBLE_EQ(controlOf<Controls::Double>(owner, "free").value, 1000.0);
   EXPECT_DOUBLE_EQ(speedIn(panel.snapshots().back()), 10.0);
 }
 
@@ -394,7 +458,7 @@ TEST(ControlsTest, ChangeCannotAlterRange) {
                                    Controls::Double(50.0, std::make_pair(0.0, 1000.0)));
   ASSERT_TRUE(running.settles());
 
-  const auto &speed = running.padd<OwnerA>().control<Controls::Double>("speed");
+  const auto speed = controlOf<Controls::Double>(running.padd<OwnerA>(), "speed");
   EXPECT_DOUBLE_EQ(speed.value, 10.0);
   EXPECT_EQ(speed.enforcableRange, std::make_optional(std::make_pair(0.0, 10.0)));
 }
@@ -411,8 +475,8 @@ TEST(ControlsTest, InvalidChangesAreRejected) {
   ASSERT_TRUE(running.settles());
 
   auto &owner = running.padd<OwnerA>();
-  EXPECT_EQ(owner.control<Controls::String>("mode").value, "easy");
-  EXPECT_DOUBLE_EQ(owner.control<Controls::Double>("speed").value, 1.0);
+  EXPECT_EQ(controlOf<Controls::String>(owner, "mode").value, "easy");
+  EXPECT_DOUBLE_EQ(controlOf<Controls::Double>(owner, "speed").value, 1.0);
   EXPECT_TRUE(owner.changed().empty());
   EXPECT_EQ(panel.snapshots().size(), 4u);
 }
@@ -427,31 +491,55 @@ TEST(ControlsTest, ValidChangesOfEveryKindApply) {
   ASSERT_TRUE(running.settles());
 
   auto &owner = running.padd<OwnerA>();
-  EXPECT_FALSE(owner.control<Controls::Boolean>("enabled").value);
-  EXPECT_EQ(owner.control<Controls::String>("mode").value, "hard");
-  EXPECT_EQ(owner.control<Controls::String>("label").value, std::string(500, 'x'));
+  EXPECT_FALSE(controlOf<Controls::Boolean>(owner, "enabled").value);
+  EXPECT_EQ(controlOf<Controls::String>(owner, "mode").value, "hard");
+  EXPECT_EQ(controlOf<Controls::String>(owner, "label").value, std::string(500, 'x'));
   EXPECT_EQ(owner.changed(), (std::vector<std::string>{"enabled", "mode", "label"}));
 }
 
-// control<C>() reads current values and reports misuse.
+// control<C>() reads current values and reports misuse. (Before the padd
+// starts, any thread may.)
 TEST(ControlsTest, ControlAccessor) {
+  using Access = ScratchPadd::PaddTestAccess;
   ScratchPadd::SystemImplementation<OwnerA> system;
   system.instantiate();
   auto &owner = *std::get<std::unique_ptr<OwnerA>>(system.getWorkers());
-  EXPECT_EQ(owner.control<Controls::Integer>("count").value, 5);
-  EXPECT_THROW(owner.control<Controls::Boolean>("count"), std::bad_variant_access);
-  EXPECT_THROW(owner.control<Controls::Integer>("missing"), std::out_of_range);
+  EXPECT_EQ(Access::control<Controls::Integer>(owner, "count").value, 5);
+  EXPECT_THROW(Access::control<Controls::Boolean>(owner, "count"), std::bad_variant_access);
+  EXPECT_THROW(Access::control<Controls::Integer>(owner, "missing"), std::out_of_range);
+}
+
+// While a padd runs, its controls can only be read or changed on its own
+// thread; from another thread the call throws, naming the padd and method.
+TEST(ControlsTest, ControlsOnlyOnThePaddsThread) {
+  using Access = ScratchPadd::PaddTestAccess;
+  RunningSystem<PanelPadd, OwnerA> running;
+  auto &owner = running.padd<OwnerA>();
+  EXPECT_THROW(Access::setControl(owner, "speed", Controls::Double(2.0)), std::logic_error);
+  EXPECT_THROW(Access::control<Controls::Double>(owner, "speed"), std::logic_error);
+  EXPECT_THROW(Access::addControl(owner, "new", Controls::Boolean(true)), std::logic_error);
+  try {
+    Access::removeControl(owner, "speed");
+    ADD_FAILURE() << "removeControl from the test's thread didn't throw";
+  } catch (const std::logic_error &error) {
+    EXPECT_NE(std::string(error.what()).find("Owner1: removeControl()"), std::string::npos)
+        << error.what();
+  }
+  // On its own thread, the same calls work
+  EXPECT_TRUE(ScratchPadd::onPaddThread(
+      owner, [](OwnerA &o) { return Access::setControl(o, "speed", Controls::Double(2.0)); }));
+  EXPECT_DOUBLE_EQ(controlOf<Controls::Double>(owner, "speed").value, 2.0);
 }
 
 // An owner can change its own controls while it runs (setControl,
 // addControl, removeControl, on its own thread), and each change sends a
 // snapshot, so panels stay current.
 namespace {
-// Runs `work` on `padd`'s own thread and waits for the system to settle
+// Runs `work` on `padd`'s own thread, then waits for the system to settle
 template <typename Padd, typename... Padds>
-void onPaddThread(RunningSystem<Padds...> &running, const std::function<void(Padd &)> &work) {
-  Padd &padd = running.template padd<Padd>();
-  padd.push([&padd, work] { work(padd); });
+void onPaddThreadThenSettle(RunningSystem<Padds...> &running,
+                            const std::function<void(Padd &)> &work) {
+  ScratchPadd::onPaddThread(running.template padd<Padd>(), work);
   ASSERT_TRUE(running.settles());
 }
 
@@ -465,8 +553,9 @@ bool hasControl(const ControlSnapshot &snapshot, const std::string &name) {
 TEST(ControlUpdateTest, SetControlTellsPanels) {
   RunningSystem<PanelPadd, OwnerA> running;
   std::atomic<bool> applied = false;
-  onPaddThread<OwnerA>(
-      running, [&](OwnerA &owner) { applied = owner.setControl("speed", Controls::Double(4.0)); });
+  onPaddThreadThenSettle<OwnerA>(running, [&](OwnerA &owner) {
+    applied = ScratchPadd::PaddTestAccess::setControl(owner, "speed", Controls::Double(4.0));
+  });
   EXPECT_TRUE(applied);
   const auto snapshots = running.padd<PanelPadd>().snapshots();
   ASSERT_EQ(snapshots.size(), 1u);
@@ -480,10 +569,10 @@ TEST(ControlUpdateTest, SetControlTellsPanels) {
 TEST(ControlUpdateTest, SetControlFollowsTheRules) {
   RunningSystem<PanelPadd, OwnerA> running;
   std::atomic<bool> clamped = false, wrongType = true, unknown = true;
-  onPaddThread<OwnerA>(running, [&](OwnerA &owner) {
-    clamped = owner.setControl("speed", Controls::Double(50.0));
-    wrongType = owner.setControl("speed", Controls::Integer(3));
-    unknown = owner.setControl("missing", Controls::Double(1.0));
+  onPaddThreadThenSettle<OwnerA>(running, [&](OwnerA &owner) {
+    clamped = ScratchPadd::PaddTestAccess::setControl(owner, "speed", Controls::Double(50.0));
+    wrongType = ScratchPadd::PaddTestAccess::setControl(owner, "speed", Controls::Integer(3));
+    unknown = ScratchPadd::PaddTestAccess::setControl(owner, "missing", Controls::Double(1.0));
   });
   EXPECT_TRUE(clamped);
   EXPECT_FALSE(wrongType);
@@ -497,12 +586,14 @@ TEST(ControlUpdateTest, SetControlFollowsTheRules) {
 // see it
 TEST(ControlUpdateTest, AddControlShowsUp) {
   RunningSystem<PanelPadd, OwnerA> running;
-  onPaddThread<OwnerA>(running, [](OwnerA &owner) {
-    owner.addControl("volume", Controls::Integer(3, std::make_pair(0, 11)));
-    owner.addControl("speed", Controls::Double(20.0, std::make_pair(0.0, 100.0)));
+  onPaddThreadThenSettle<OwnerA>(running, [](OwnerA &owner) {
+    ScratchPadd::PaddTestAccess::addControl(owner, "volume",
+                                            Controls::Integer(3, std::make_pair(0, 11)));
+    ScratchPadd::PaddTestAccess::addControl(owner, "speed",
+                                            Controls::Double(20.0, std::make_pair(0.0, 100.0)));
   });
   auto &owner = running.padd<OwnerA>();
-  EXPECT_EQ(owner.control<Controls::Integer>("volume").value, 3);
+  EXPECT_EQ(controlOf<Controls::Integer>(owner, "volume").value, 3);
   const auto snapshots = running.padd<PanelPadd>().snapshots();
   ASSERT_EQ(snapshots.size(), 2u);
   EXPECT_TRUE(hasControl(snapshots[0], "volume"));
@@ -511,7 +602,7 @@ TEST(ControlUpdateTest, AddControlShowsUp) {
   // The replacement's wider range is the one that applies now
   running.padd<PanelPadd>().change("Owner1", "speed", Controls::Double(80.0));
   ASSERT_TRUE(running.settles());
-  EXPECT_DOUBLE_EQ(owner.control<Controls::Double>("speed").value, 80.0);
+  EXPECT_DOUBLE_EQ(controlOf<Controls::Double>(owner, "speed").value, 80.0);
 }
 
 // removeControl removes a control; removing the last one sends an empty
@@ -519,9 +610,9 @@ TEST(ControlUpdateTest, AddControlShowsUp) {
 TEST(ControlUpdateTest, RemoveControlUpdatesPanels) {
   RunningSystem<PanelPadd, OwnerA> running;
   std::atomic<bool> removedSpeed = false, removedMissing = true;
-  onPaddThread<OwnerA>(running, [&](OwnerA &owner) {
-    removedSpeed = owner.removeControl("speed");
-    removedMissing = owner.removeControl("missing");
+  onPaddThreadThenSettle<OwnerA>(running, [&](OwnerA &owner) {
+    removedSpeed = ScratchPadd::PaddTestAccess::removeControl(owner, "speed");
+    removedMissing = ScratchPadd::PaddTestAccess::removeControl(owner, "missing");
   });
   EXPECT_TRUE(removedSpeed);
   EXPECT_FALSE(removedMissing);
@@ -530,16 +621,16 @@ TEST(ControlUpdateTest, RemoveControlUpdatesPanels) {
   EXPECT_FALSE(hasControl(snapshots[0], "speed"));
   EXPECT_TRUE(hasControl(snapshots[0], "count"));
 
-  onPaddThread<OwnerA>(running, [](OwnerA &owner) {
+  onPaddThreadThenSettle<OwnerA>(running, [](OwnerA &owner) {
     for (const char *name : {"free", "count", "enabled", "mode", "label"})
-      owner.removeControl(name);
+      ScratchPadd::PaddTestAccess::removeControl(owner, name);
   });
   snapshots = running.padd<PanelPadd>().snapshots();
   ASSERT_EQ(snapshots.size(), 6u);
   EXPECT_TRUE(snapshots.back().controlMap.empty());
 
   // With no controls left, it no longer answers requests
-  running.padd<PanelPadd>().send(ControlRequest{});
+  running.padd<PanelPadd>().requestAll();
   ASSERT_TRUE(running.settles());
   EXPECT_EQ(running.padd<PanelPadd>().snapshots().size(), 6u);
 }
@@ -547,12 +638,13 @@ TEST(ControlUpdateTest, RemoveControlUpdatesPanels) {
 // A padd that started without controls gets a panel when it adds one
 TEST(ControlUpdateTest, PaddWithoutControlsCanAddOne) {
   RunningSystem<PanelPadd, NoControlsPadd> running;
-  running.padd<PanelPadd>().send(ControlRequest{});
+  running.padd<PanelPadd>().requestAll();
   ASSERT_TRUE(running.settles());
   EXPECT_TRUE(running.padd<PanelPadd>().snapshots().empty());
 
-  onPaddThread<NoControlsPadd>(
-      running, [](NoControlsPadd &padd) { padd.addControl("on", Controls::Boolean(true)); });
+  onPaddThreadThenSettle<NoControlsPadd>(running, [](NoControlsPadd &padd) {
+    ScratchPadd::PaddTestAccess::addControl(padd, "on", Controls::Boolean(true));
+  });
   const auto snapshots = running.padd<PanelPadd>().snapshots();
   ASSERT_EQ(snapshots.size(), 1u);
   EXPECT_EQ(snapshots[0].paddName, "NoControls");

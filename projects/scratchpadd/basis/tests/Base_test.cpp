@@ -3,6 +3,7 @@
 #include <ScratchPadd/Base.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Testing.hpp>
 
 class TestSenderPadd : public ScratchPadd::Base {
 public:
@@ -39,9 +40,11 @@ class TestSystem : public ScratchPadd::System {
   void send(ScratchPadd::Base *sender, ScratchPadd::Message message) override {
     spdlog::info("Test send()");
   }
-  void sendIncludeSender(ScratchPadd::Message message) override {
+  void sendIncludeSender(ScratchPadd::Base *sender, ScratchPadd::Message message) override {
     spdlog::info("Test sendIncludeSender()");
   }
+  ScratchPadd::PaddAddress paddOfType(std::type_index) override { return {}; }
+  ScratchPadd::PaddAddress paddNamed(std::string_view) override { return {}; }
   bool isRunning() override { return true; }
 };
 
@@ -55,8 +58,8 @@ TEST(BaseTest, PaddNamesComeFromClassName) {
 
   // SystemImplementation normally does this; Base's destructor needs the
   // logger that initialize() creates.
-  testSenderPadd.initialize();
-  testReceiverPadd.initialize();
+  ScratchPadd::PaddTestAccess::initialize(testSenderPadd);
+  ScratchPadd::PaddTestAccess::initialize(testReceiverPadd);
   EXPECT_EQ(testSenderPadd.name(), "TestSenderPadd");
   EXPECT_EQ(testReceiverPadd.name(), "TestReceiverPadd");
 }

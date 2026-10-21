@@ -9,8 +9,13 @@
 #include <condition_variable>
 #include <mutex>
 
+#include <map>
 #include <set>
+#include <string>
+#include <string_view>
 #include <tuple>
+#include <typeindex>
+#include <unordered_map>
 
 namespace ScratchPadd {
 
@@ -30,6 +35,10 @@ private:
   // Shared by the main-thread padds' queues: a push to any of them, or
   // stop(), wakes the main-thread loop.
   WakeSignal mainThreadSignal_;
+  // Each padd by its class and by its name, for sending to one padd. Built
+  // by instantiate() and never changed after, so any thread may read them.
+  std::unordered_map<std::type_index, Base *> paddsByType_;
+  std::map<std::string, Base *, std::less<>> paddsByName_;
 
   // The main-thread padds share this loop: each pass runs every one's queued
   // work in list order, then sleeps until work is pushed to any of them (their
@@ -90,6 +99,14 @@ public:
     ((std::get<std::unique_ptr<Workers>>(workers_) = std::make_unique<Workers>(this)), ...);
     std::apply([](auto const &...worker) { (worker->initialize(), ...); }, workers_);
     assert(workerNamesUnique());
+    (paddsByType_.emplace(std::type_index(typeid(Workers)),
+                          std::get<std::unique_ptr<Workers>>(workers_).get()),
+     ...);
+    std::apply(
+        [this](auto const &...worker) {
+          (paddsByName_.emplace(worker->paddName(), worker.get()), ...);
+        },
+        workers_);
     // Main-thread padds share one loop, so they share its wake-up signal.
     std::apply(
         [this](auto const &...worker) {
@@ -172,28 +189,36 @@ public:
     }
     scratchPaddSystemConditionVariable_.notify_all();
   }
-  // Queues `message` for `receiver` if it has a handler for the message's
-  // type; padds that don't handle it never see it.
-  void sendWork(ScratchPadd::Base *receiver, const Message &message) {
-    if (!receiver->handles(message->type())) {
-      return;
+  // Queues `message` (from `sender`) for `receiver` if it has a handler for
+  // the message's type; padds that don't handle it never see it.
+  void sendWork(Base *sender, Base *receiver, const Message &message) {
+    if (receiver->enqueue(message, PaddAddress(sender))) {
+      logger().debug("sendWork() to {}", receiver->paddName());
     }
-    logger().debug("sendWork() to {}", receiver->paddName());
-    receiver->push([receiver, message] { receiver->deliver(message); });
   }
 
   // Send to receiver if they are not the same as the sender
-  void sendIfUnmatched(ScratchPadd::Base *sender, Base *possibleReceiver, const Message &message) {
+  void sendIfUnmatched(Base *sender, Base *possibleReceiver, const Message &message) {
     if (sender != possibleReceiver) {
-      sendWork(possibleReceiver, message);
+      sendWork(sender, possibleReceiver, message);
     }
   }
-  void send(ScratchPadd::Base *sender, Message message) override {
+  void send(Base *sender, Message message) override {
     logger().debug("sending from {}", sender->paddName());
     (sendIfUnmatched(sender, std::get<std::unique_ptr<Workers>>(workers_).get(), message), ...);
   }
-  void sendIncludeSender(ScratchPadd::Message message) override {
-    (sendWork(std::get<std::unique_ptr<Workers>>(workers_).get(), message), ...);
+  void sendIncludeSender(Base *sender, Message message) override {
+    (sendWork(sender, std::get<std::unique_ptr<Workers>>(workers_).get(), message), ...);
+  }
+
+  PaddAddress paddOfType(std::type_index type) override {
+    auto found = paddsByType_.find(type);
+    return found == paddsByType_.end() ? PaddAddress() : PaddAddress(found->second);
+  }
+
+  PaddAddress paddNamed(std::string_view name) override {
+    auto found = paddsByName_.find(name);
+    return found == paddsByName_.end() ? PaddAddress() : PaddAddress(found->second);
   }
 };
 

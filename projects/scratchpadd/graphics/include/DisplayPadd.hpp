@@ -25,9 +25,8 @@ public:
       std::cout << paddName() << " Text: " << text << "\n";
     });
     receive<ScratchPadd::MessageType::ControlSnapshot>(
-        [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
-          showControls(snapshot);
-        });
+        [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot,
+               ScratchPadd::PaddAddress owner) { showControls(snapshot, owner); });
   }
 
   std::unordered_map<std::string, ScratchPadd::ControlTypeVariant> generateControls() override {
@@ -67,6 +66,11 @@ public:
 
   ~DisplayPadd() override { spdlog::info("Destroying: {}", paddName()); }
 
+  std::string name() override { return __CLASS_NAME__; }
+
+  bool shouldUseMainThread() override { return true; }
+
+private:
   // Draws one frame, then queues the next. The buffer swap waits for the
   // display's refresh (vsync), so this runs at the display's rate without a
   // timer and without spinning.
@@ -85,17 +89,14 @@ public:
     push([this] { drawFrame(); });
   }
 
-  std::string name() override { return __CLASS_NAME__; }
-
-  bool shouldUseMainThread() override { return true; }
-
   // Shows `snapshot` in that padd's control panel, creating the panel the
   // first time, and removing it when the padd has no controls left (it
-  // removed its last one). Edits in the panel are sent back to the padd as
-  // ControlChanges; its reply arrives here as the next snapshot. Snapshots
-  // are handled on this padd's thread, which also draws, so a panel never
-  // changes mid-frame.
-  void showControls(const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
+  // removed its last one). Edits in the panel are sent straight to `owner`,
+  // the padd the snapshot came from, as ControlChanges; its reply arrives
+  // here as the next snapshot. Snapshots are handled on this padd's thread,
+  // which also draws, so a panel never changes mid-frame.
+  void showControls(const ScratchPadd::MessageType::ControlSnapshot &snapshot,
+                    ScratchPadd::PaddAddress owner) {
     auto existing = controlViews_.find(snapshot.paddName);
     if (snapshot.controlMap.empty()) {
       if (existing != controlViews_.end()) {
@@ -110,8 +111,9 @@ public:
     }
     auto view = ControlViewBuilder();
     view->setControls(snapshot);
-    view->setOnChange(
-        [this](const ScratchPadd::MessageType::ControlChange &change) { send(change); });
+    view->setOnChange([this, owner](const ScratchPadd::MessageType::ControlChange &change) {
+      sendTo(owner, change);
+    });
     controlViews_[snapshot.paddName] = view.get();
     graphics_->addView(std::move(view));
   }

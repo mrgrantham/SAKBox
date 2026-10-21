@@ -59,17 +59,18 @@ struct ControlSnapshot {
   ControlValueMap controlMap;
 };
 
-// Send back to all Padds when there is a change in a value on a control panel
+// An edit made on a control panel, sent straight to the padd whose control
+// it is (Base::sendTo, to the address its snapshot came from). The padd
+// applies it and replies to every panel with a fresh snapshot.
 struct ControlChange {
-  std::string paddName;
   std::string controlName;
   ControlTypeVariant controlTypeValue;
 };
 
-// initial request to get all panels with available controls
-struct ControlRequest {
-  std::optional<std::string> paddName;
-};
+// Asks for controls: every padd with controls replies to the sender with a
+// ControlSnapshot. Broadcast it to ask them all, or send it to one padd
+// (Base::sendTo) to ask just that one.
+struct ControlRequest {};
 
 } // namespace MessageType
 } // namespace ScratchPadd

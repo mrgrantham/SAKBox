@@ -11,68 +11,59 @@
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 #include <thread>
+#include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 
 #include <ScratchPadd/Helper.hpp>
 #include <ScratchPadd/Logger.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
+#include <ScratchPadd/PaddAddress.hpp>
 #include <ScratchPadd/System.hpp>
 #include <ScratchPadd/WorkQueue.hpp>
 
 namespace ScratchPadd {
 using namespace std::chrono_literals;
 
+// The base of every padd: a worker with its own queue of work, run on its
+// own thread (or the system's main thread), that talks to other padds only
+// by sending them messages.
+//
+// What's public is safe to call from anywhere: reading a padd's name and
+// state, and waiting for it. Everything a padd does (receiving and sending
+// messages, its controls, queueing its own work) is protected, so only the
+// padd's own code can call it; C++ doesn't let one padd call another's
+// protected members, even through a pointer to it. Running the padd is the
+// system's job, and private. The methods that change a padd's state also
+// check they're on the padd's own thread (assertOnPaddThread()).
 class Base : public Logger {
-protected:
-  // Read by the work loop and written from other threads (e.g. stop()).
-  std::atomic<bool> on_{false};
-  std::thread workerThread_;
-  EventTimer repeatingTimer_;
-  System *system_;
-  // Wakes this padd's own thread when work arrives. Main-thread padds are
-  // switched to the system's shared signal instead (useWakeSignal).
-  WakeSignal ownSignal_;
-  WorkQueue workQueue_{&ownSignal_};
-  std::atomic<ssize_t> pendingWork_{0};
-  std::atomic<std::uint64_t> workLoopPasses_{0};
-  std::condition_variable workCompletionConditionVariable_;
-  std::mutex workCompletionMutex_;
-  std::condition_variable scratchPaddConditionVariable_;
-
-private:
-  std::unordered_map<std::string, ControlTypeVariant> controlMap_;
-  std::optional<std::chrono::duration<double>> repeatInterval_{std::nullopt};
-  std::string name_{"Unnamed Padd"};
-  bool shouldUseMainThread_{false};
-  std::mutex scratchPaddMutex_;
-  // Message handlers by message type. Senders read this from their own
-  // threads (handles()) while the padd may change it (receive(),
-  // stopReceiving()), so it's guarded by handlersMutex_. Each handler is held
-  // by shared_ptr so deliver() can run it after unlocking, even if the
-  // handler replaces or removes itself.
-  using Handler = std::function<void(const MessageBase &)>;
-  std::unordered_map<std::type_index, std::shared_ptr<const Handler>> handlers_;
-  mutable std::shared_mutex handlersMutex_;
+  template <typename... Workers> friend class SystemImplementation;
+  friend struct PaddTestAccess;
 
 public:
   Base(System *system) : system_(system) {
-    // Every padd with controls answers control requests (all of them, or
-    // those naming it) with a snapshot.
-    receive<MessageType::ControlRequest>([this](const MessageType::ControlRequest &request) {
-      if (controlMap_.empty() || (request.paddName && *request.paddName != name_)) {
-        return;
-      }
-      send(generateControlsSnapshot());
-    });
-    // A change names the padd it's for; every other padd ignores it. The owner
-    // applies it (if valid) and always replies with a snapshot, so a panel
-    // shows the value the owner actually holds, e.g. after clamping.
+    // Every padd with controls answers a control request with a snapshot:
+    // to the padd that asked, or (from outside any padd) to every panel.
+    receive<MessageType::ControlRequest>(
+        [this](const MessageType::ControlRequest &, PaddAddress from) {
+          if (controlMap_.empty()) {
+            return;
+          }
+          if (from) {
+            sendTo(from, generateControlsSnapshot());
+          } else {
+            send(generateControlsSnapshot());
+          }
+        });
+    // A change is sent straight to the padd whose control it is. The padd
+    // applies it (if valid) and always replies to every panel with a
+    // snapshot, so they show the value it actually holds, e.g. after
+    // clamping.
     receive<MessageType::ControlChange>([this](const MessageType::ControlChange &change) {
-      if (change.paddName != name_) {
-        return;
-      }
       logger().info("{} control change: {}", name_, change.controlName);
       if (updateControl(change)) {
         controlChanged(change.controlName);
@@ -87,28 +78,16 @@ public:
     logger().info("Base() Destroying: {}", name_);
   }
 
-  bool isRunning() { return on_; }
+  // Reading a padd's state, and waiting for it: safe from any thread.
 
-  // This method takes the controlMap which has references to the actual
-  // variables and create a snapshot which is just all the same info but has a
-  // copy by value of the control values at that point in time
-  ScratchPadd::MessageType::ControlSnapshot generateControlsSnapshot() {
-    return ScratchPadd::MessageType::ControlSnapshot{.paddName = name_, .controlMap = controlMap_};
-  }
+  bool isRunning() const { return on_; }
 
-  // This padd's control `name`, as control type C (e.g.
-  // control<ControlType::Double>("speed").value). Throws std::out_of_range for
-  // an unknown name and std::bad_variant_access for the wrong type. Call from
-  // the padd's own thread, where changes are applied.
-  template <typename C> const C &control(const std::string &name) const {
-    return std::get<C>(controlMap_.at(name));
-  }
+  // The name name() gave when the padd was initialized (before that,
+  // "Unnamed Padd"). Doesn't call name() again, which for a padd built on
+  // __CLASS_NAME__ demangles its class name each time.
+  const std::string &paddName() const { return name_; }
 
-  // Called on the padd's thread after a ControlChange to control `name` has
-  // been applied. Override to react to edits from a control panel.
-  virtual void controlChanged(const std::string &name) {}
-
-  ssize_t pendingWorkCount() { return pendingWork_; }
+  ssize_t pendingWorkCount() const { return pendingWork_; }
 
   // How many times the work loop has drained this padd's queue. An idle padd
   // sleeps, so this only grows when work arrives (tests use it).
@@ -122,15 +101,29 @@ public:
     });
   }
 
+  void waitForStop() {
+    std::unique_lock<std::mutex> lk(scratchPaddMutex_);
+    logger().info("Waiting For {} to Stop...", name_);
+    scratchPaddConditionVariable_.wait(lk, [this] { return !on_; });
+  }
+
+  void waitForStart() {
+    std::unique_lock<std::mutex> lk(scratchPaddMutex_);
+    logger().info("Waiting For {} to Start...", name_);
+    scratchPaddConditionVariable_.wait(lk, [this] { return on_.load(); });
+    logger().info("Wait completed for starting {}...", name_);
+  }
+
+protected:
+  // The system this padd belongs to (to stop it, for example)
+  System *system_;
+
+  // --- Hooks a padd overrides ---
+
   // Every Padd needs to implement this so their name can be setup for use in
   // the system. It's read once, when the system initializes the padd; use
   // paddName() after that.
   virtual std::string name() = 0;
-
-  // The name name() gave when the padd was initialized (before that,
-  // "Unnamed Padd"). Doesn't call name() again, which for a padd built on
-  // __CLASS_NAME__ demangles its class name each time.
-  const std::string &paddName() const { return name_; }
 
   // Implementing this to true will execute the Padd work queue in whatever
   // thread the overall system was started in. Overriding this method to return
@@ -148,46 +141,9 @@ public:
   // removeControl(). Return {} for none.
   virtual ScratchPadd::ControlValueMap generateControls() = 0;
 
-  // on_ is changed while holding scratchPaddMutex_ so a thread in
-  // waitForStart()/waitForStop() can't check it and then miss the notify.
-  void notifyStart() {
-    {
-      std::lock_guard<std::mutex> lk(scratchPaddMutex_);
-      on_ = true;
-    }
-    scratchPaddConditionVariable_.notify_all();
-  }
-
-  void notifyStop() {
-    {
-      std::lock_guard<std::mutex> lk(scratchPaddMutex_);
-      on_ = false;
-    }
-    scratchPaddConditionVariable_.notify_all();
-  }
-
-  void waitForStop() {
-    std::unique_lock<std::mutex> lk(scratchPaddMutex_);
-    logger().info("Waiting For {} to Stop...", name_);
-    scratchPaddConditionVariable_.wait(lk, [this] { return !on_; });
-  }
-
-  void waitForStart() {
-    std::unique_lock<std::mutex> lk(scratchPaddMutex_);
-    logger().info("Waiting For {} to Start...", name_);
-    scratchPaddConditionVariable_.wait(lk, [this] { return on_.load(); });
-    logger().info("Wait completed for starting {}...", name_);
-  }
-
-  // Initialize all compoments that require virtual methods implemented
-  // in child class
-  void initialize() {
-    name_ = name();
-    createLoggerIfNeeded(name_);
-    repeatInterval_ = repeatInterval();
-    shouldUseMainThread_ = shouldUseMainThread();
-    controlMap_ = generateControls();
-  }
+  // Called on the padd's thread after a ControlChange to control `name` has
+  // been applied. Override to react to edits from a control panel.
+  virtual void controlChanged(const std::string &name) {}
 
   // Any setup where order of for Padds may be necessary
   // Called from primary thread used by System instance before start
@@ -207,6 +163,314 @@ public:
   // be added by overriding this method
   virtual void finishing() {}
 
+  virtual void repeat() {
+    logger().info("Base::repeat() called. Padd set a repeat interval of {}ms with "
+                  "no method override",
+                  repeatInterval_ ? repeatInterval_->count() : 0);
+  }
+
+  // --- Messages ---
+
+  // Registers `onMessage` for messages of type T, replacing any earlier
+  // handler for T. It runs on this padd's thread and gets the contents as a
+  // const reference (the message is shared with other padds), and if it
+  // takes a second argument, the address of the padd that sent it (empty
+  // for a message from outside any padd), to reply to with sendTo():
+  //
+  //   receive<Ping>([this](const Ping &ping) { ... });
+  //   receive<Ping>([this](const Ping &ping, PaddAddress from) { sendTo(from, Pong{}); });
+  //
+  // Usually called from the constructor or prepare(), but a running padd can
+  // call it too (typically from its own thread, e.g. in a handler or
+  // repeat()). The system only queues a message for padds that handle its
+  // type when it's sent, so messages sent before the handler was registered
+  // never arrive.
+  template <typename T, typename OnMessage> void receive(OnMessage onMessage) {
+    constexpr bool takesSender = std::is_invocable_v<const OnMessage &, const T &, PaddAddress>;
+    static_assert(takesSender || std::is_invocable_v<const OnMessage &, const T &>,
+                  "a handler for T takes (const T &) or (const T &, PaddAddress from)");
+    auto handler = std::make_shared<const Handler>(
+        [onMessage = std::move(onMessage)](const MessageBase &message, PaddAddress from) {
+          const T &contents = static_cast<const MessageOf<T> &>(message).value;
+          if constexpr (takesSender) {
+            onMessage(contents, from);
+          } else {
+            onMessage(contents);
+          }
+        });
+    std::unique_lock lock(handlersMutex_);
+    handlers_.insert_or_assign(std::type_index(typeid(T)), std::move(handler));
+  }
+
+  // Removes this padd's handler for messages of type T, so they stop being
+  // sent to it. Messages of type T already queued are dropped when their turn
+  // comes. Can be called while the padd runs, like receive(). Returns false
+  // if there was no handler for T.
+  template <typename T> bool stopReceiving() {
+    std::unique_lock lock(handlersMutex_);
+    return handlers_.erase(std::type_index(typeid(T))) != 0;
+  }
+
+  // Sends `message` to every other padd that handles its type.
+  void send(Message message) {
+    logger().debug("send({}) from {}", message->typeName(), name_);
+    system_->send(this, std::move(message));
+  }
+
+  // Sends `contents` (any copyable struct) to every other padd that handles
+  // its type.
+  template <typename T> void send(T contents) { send(makeMessage(std::move(contents))); }
+
+  // Sends `message` to every padd that handles its type, including this one.
+  void sendIncludeSender(Message message) { system_->sendIncludeSender(this, std::move(message)); }
+
+  // Sends `contents` to every padd that handles its type, including this one.
+  template <typename T> void sendIncludeSender(T contents) {
+    sendIncludeSender(makeMessage(std::move(contents)));
+  }
+
+  // Sends `message` to the one padd `to` names (this one included), and no
+  // other. Returns false, sending nothing, if `to` is empty or that padd has
+  // no handler for the message's type; both are logged as errors.
+  bool sendTo(PaddAddress to, const Message &message) {
+    if (!to) {
+      logger().error("{}: sendTo({}) to no padd", name_, message->typeName());
+      return false;
+    }
+    if (!to.padd_->enqueue(message, address())) {
+      logger().error("{}: sendTo({}): {} has no handler for it", name_, message->typeName(),
+                     to.name());
+      return false;
+    }
+    return true;
+  }
+
+  // Sends `contents` to the one padd `to` names.
+  template <typename T> bool sendTo(PaddAddress to, T contents) {
+    return sendTo(to, makeMessage(std::move(contents)));
+  }
+
+  // Sends `contents` to the padd of class Padd (each class appears once in a
+  // system), e.g. sendTo<DisplayPadd>(Text{"hello"}).
+  template <typename Padd, typename T> bool sendTo(T contents) {
+    return sendTo(addressOf<Padd>(), std::move(contents));
+  }
+
+  // This padd's own address
+  PaddAddress address() { return PaddAddress(this); }
+
+  // The address of the padd of class Padd, or an empty address if the
+  // system has none. Works once the system has built its padds (from
+  // prepare() on, not in a constructor).
+  template <typename Padd> PaddAddress addressOf() const {
+    return system_->paddOfType(std::type_index(typeid(Padd)));
+  }
+
+  // The address of the padd named `name`, or an empty address. Look an
+  // address up once and keep it, rather than by name for every message.
+  PaddAddress addressOf(std::string_view name) const { return system_->paddNamed(name); }
+
+  // Queues `job` to run on this padd's thread and wakes it, e.g. to queue
+  // the next frame of drawing. Safe from any thread. (Protected: a padd can
+  // queue work for itself, not for another.)
+  void push(WorkQueue::Job job) {
+    pendingWork_++;
+    workQueue_.push(std::move(job));
+  }
+
+  // --- Controls ---
+
+  // This method takes the controlMap which has references to the actual
+  // variables and create a snapshot which is just all the same info but has a
+  // copy by value of the control values at that point in time
+  ScratchPadd::MessageType::ControlSnapshot generateControlsSnapshot() const {
+    assertOnPaddThread("generateControlsSnapshot");
+    return ScratchPadd::MessageType::ControlSnapshot{.paddName = name_, .controlMap = controlMap_};
+  }
+
+  // This padd's control `name`, as control type C (e.g.
+  // control<ControlType::Double>("speed").value). Throws std::out_of_range for
+  // an unknown name and std::bad_variant_access for the wrong type. Call from
+  // the padd's own thread, where changes are applied.
+  template <typename C> const C &control(const std::string &name) const {
+    assertOnPaddThread("control");
+    return std::get<C>(controlMap_.at(name));
+  }
+
+  // Applies the value in `controlChange` to this padd's control, enforcing
+  // the control's own rules: numbers are clamped to its range, strings must
+  // be one of its allowed values, and the type must match. Only the value is
+  // copied, so a change can't alter a control's range. Returns true if the
+  // change was applied.
+  bool updateControl(const ScratchPadd::MessageType::ControlChange &controlChange) {
+    assertOnPaddThread("updateControl");
+    auto control = controlMap_.find(controlChange.controlName);
+    if (control == controlMap_.end()) {
+      logger().error("No control named {}", controlChange.controlName);
+      return false;
+    }
+    if (!VariantsHoldSameType(controlChange.controlTypeValue, control->second)) {
+      logger().error("In {}, ControlChange holds different value type than "
+                     "ControlMap for {}",
+                     name_, controlChange.controlName);
+      return false;
+    }
+    const auto &incoming = controlChange.controlTypeValue;
+    return std::visit(
+        VariantHandler{
+            [&](ControlType::Double &current) {
+              double value = std::get<ControlType::Double>(incoming).value;
+              if (std::isnan(value)) {
+                return false;
+              }
+              if (current.enforcableRange) {
+                value = std::clamp(value, current.enforcableRange->first,
+                                   current.enforcableRange->second);
+              }
+              current.value = value;
+              return true;
+            },
+            [&](ControlType::Integer &current) {
+              int32_t value = std::get<ControlType::Integer>(incoming).value;
+              if (current.enforcableRange) {
+                value = std::clamp(value, current.enforcableRange->first,
+                                   current.enforcableRange->second);
+              }
+              current.value = value;
+              return true;
+            },
+            [&](ControlType::Boolean &current) {
+              current.value = std::get<ControlType::Boolean>(incoming).value;
+              return true;
+            },
+            [&](ControlType::String &current) {
+              const std::string &value = std::get<ControlType::String>(incoming).value;
+              if (current.enforcableRange &&
+                  std::find(current.enforcableRange->begin(), current.enforcableRange->end(),
+                            value) == current.enforcableRange->end()) {
+                logger().error("In {}, \"{}\" is not an allowed value for {}", name_, value,
+                               controlChange.controlName);
+                return false;
+              }
+              current.value = value;
+              return true;
+            },
+        },
+        control->second);
+  }
+
+  // Changes this padd makes to its own controls while it runs. Call them on
+  // the padd's own thread, like control<C>(). Each sends a fresh snapshot,
+  // so control panels show the change straight away. None calls
+  // controlChanged(), which reports edits made from a panel.
+
+  // Sets control `name` to the value in `value`, under the same rules as an
+  // edit from a panel (clamped to its range, an allowed string, the same
+  // type; only the value is taken). Returns false, changing nothing and
+  // sending nothing, if it isn't allowed.
+  bool setControl(const std::string &name, ControlTypeVariant value) {
+    if (!updateControl(MessageType::ControlChange{.controlName = name,
+                                                  .controlTypeValue = std::move(value)})) {
+      return false;
+    }
+    send(generateControlsSnapshot());
+    return true;
+  }
+
+  // Adds control `name`, or replaces the one with that name (its range
+  // too), and gives it a panel if it's this padd's first.
+  void addControl(const std::string &name, ControlTypeVariant control) {
+    assertOnPaddThread("addControl");
+    controlMap_.insert_or_assign(name, std::move(control));
+    send(generateControlsSnapshot());
+  }
+
+  // Removes control `name`. Removing the last one sends an empty snapshot,
+  // which takes this padd's panel away. Returns false if there was none.
+  bool removeControl(const std::string &name) {
+    assertOnPaddThread("removeControl");
+    if (controlMap_.erase(name) == 0) {
+      return false;
+    }
+    send(generateControlsSnapshot());
+    return true;
+  }
+
+  // Throws std::logic_error unless called on this padd's own thread (or
+  // before it starts, or after it finishes). The methods that change or read
+  // a padd's state call it; a padd's own methods that do the same can too.
+  // Another thread wanting something from a padd should send it a message.
+  void assertOnPaddThread(const char *method) const {
+    const std::thread::id owner = ownerThread_.load();
+    if (owner != std::thread::id() && owner != std::this_thread::get_id()) {
+      throw std::logic_error(name_ + ": " + method +
+                             "() called from another thread. A padd's state is only touched on "
+                             "its own thread; send it a message instead.");
+    }
+  }
+
+private:
+  using Handler = std::function<void(const MessageBase &, PaddAddress from)>;
+
+  // Read by the work loop and written from other threads (e.g. stop()).
+  std::atomic<bool> on_{false};
+  // The thread the padd runs on while it runs (its own, or the system's
+  // main thread), for assertOnPaddThread(); empty before and after
+  std::atomic<std::thread::id> ownerThread_;
+  std::thread workerThread_;
+  EventTimer repeatingTimer_;
+  // Wakes this padd's own thread when work arrives. Main-thread padds are
+  // switched to the system's shared signal instead (useWakeSignal).
+  WakeSignal ownSignal_;
+  WorkQueue workQueue_{&ownSignal_};
+  std::atomic<ssize_t> pendingWork_{0};
+  std::atomic<std::uint64_t> workLoopPasses_{0};
+  std::condition_variable workCompletionConditionVariable_;
+  std::mutex workCompletionMutex_;
+  std::condition_variable scratchPaddConditionVariable_;
+  std::unordered_map<std::string, ControlTypeVariant> controlMap_;
+  std::optional<std::chrono::duration<double>> repeatInterval_{std::nullopt};
+  std::string name_{"Unnamed Padd"};
+  bool shouldUseMainThread_{false};
+  std::mutex scratchPaddMutex_;
+  // Message handlers by message type. Senders read this from their own
+  // threads (handles()) while the padd may change it (receive(),
+  // stopReceiving()), so it's guarded by handlersMutex_. Each handler is held
+  // by shared_ptr so deliver() can run it after unlocking, even if the
+  // handler replaces or removes itself.
+  std::unordered_map<std::type_index, std::shared_ptr<const Handler>> handlers_;
+  mutable std::shared_mutex handlersMutex_;
+
+  // --- Run by the system ---
+
+  // Initialize all compoments that require virtual methods implemented
+  // in child class
+  void initialize() {
+    name_ = name();
+    createLoggerIfNeeded(name_);
+    repeatInterval_ = repeatInterval();
+    shouldUseMainThread_ = shouldUseMainThread();
+    controlMap_ = generateControls();
+  }
+
+  // on_ is changed while holding scratchPaddMutex_ so a thread in
+  // waitForStart()/waitForStop() can't check it and then miss the notify.
+  void notifyStart() {
+    {
+      std::lock_guard<std::mutex> lk(scratchPaddMutex_);
+      on_ = true;
+    }
+    scratchPaddConditionVariable_.notify_all();
+  }
+
+  void notifyStop() {
+    {
+      std::lock_guard<std::mutex> lk(scratchPaddMutex_);
+      on_ = false;
+    }
+    scratchPaddConditionVariable_.notify_all();
+  }
+
   // These wrappers will allow tracking calls and adding metrics
   // as well as handling any eventual additional internal setup
   // associated with Padd lifecycle
@@ -214,8 +478,11 @@ public:
 
   void cleanupWrapper() { cleanup(); }
 
+  // Runs on the padd's thread, which from here until finishing() is the
+  // only one allowed to touch its state
   void startingWrapper() {
     logger().info("Starting {}", name_);
+    ownerThread_ = std::this_thread::get_id();
     starting();
     startRepeater();
     notifyStart();
@@ -224,12 +491,7 @@ public:
   void finishingWrapper() {
     logger().info("Finishing {}", name_);
     finishing();
-  }
-
-  virtual void repeat() {
-    logger().info("Base::repeat() called. Padd set a repeat interval of {}ms with "
-                  "no method override",
-                  repeatInterval_ ? repeatInterval_->count() : 0);
+    ownerThread_ = std::thread::id();
   }
 
   void runIfIndependentThread() {
@@ -309,62 +571,6 @@ public:
     }
   }
 
-  // Queues `job` to run on this padd's thread and wakes it. Safe from any
-  // thread.
-  void push(WorkQueue::Job job) {
-    pendingWork_++;
-    workQueue_.push(std::move(job));
-  }
-
-  // Registers `handler` for messages of type T, replacing any earlier
-  // handler for T. The handler runs on this padd's thread and gets the
-  // contents as a const reference; the message is shared with other padds.
-  //
-  // Usually called from the constructor or prepare(), but a running padd can
-  // call it too (typically from its own thread, e.g. in a handler or
-  // repeat()). The system only queues a message for padds that handle its
-  // type when it's sent, so messages sent before the handler was registered
-  // never arrive.
-  template <typename T, typename OnMessage> void receive(OnMessage onMessage) {
-    auto handler = std::make_shared<const Handler>(
-        [onMessage = std::move(onMessage)](const MessageBase &message) {
-          onMessage(static_cast<const MessageOf<T> &>(message).value);
-        });
-    std::unique_lock lock(handlersMutex_);
-    handlers_.insert_or_assign(std::type_index(typeid(T)), std::move(handler));
-  }
-
-  // Removes this padd's handler for messages of type T, so they stop being
-  // sent to it. Messages of type T already queued are dropped when their turn
-  // comes. Can be called while the padd runs, like receive(). Returns false
-  // if there was no handler for T.
-  template <typename T> bool stopReceiving() {
-    std::unique_lock lock(handlersMutex_);
-    return handlers_.erase(std::type_index(typeid(T))) != 0;
-  }
-
-  // Whether this padd has a handler for messages of `type`. Safe from any
-  // thread; the system calls it from the sender's.
-  bool handles(std::type_index type) const {
-    std::shared_lock lock(handlersMutex_);
-    return handlers_.contains(type);
-  }
-
-  // Runs this padd's current handler for `message`, if it still has one.
-  // Called on the padd's thread by the work queue.
-  void deliver(const Message &message) {
-    std::shared_ptr<const Handler> handler;
-    {
-      std::shared_lock lock(handlersMutex_);
-      auto found = handlers_.find(message->type());
-      if (found == handlers_.end()) {
-        return;
-      }
-      handler = found->second;
-    }
-    (*handler)(*message);
-  }
-
   void stop() {
     logger().info("Stopping: {}", name_);
     repeatingTimer_.stop(); // might need to flush the queue
@@ -375,119 +581,42 @@ public:
     }
   }
 
-  // Sends `message` to every other padd that handles its type.
-  void send(Message message) {
-    logger().debug("send({}) from {}", message->typeName(), name_);
-    system_->send(this, std::move(message));
+  // Whether this padd has a handler for messages of `type`. Safe from any
+  // thread; the system calls it from the sender's.
+  bool handles(std::type_index type) const {
+    std::shared_lock lock(handlersMutex_);
+    return handlers_.contains(type);
   }
 
-  // Sends `contents` (any copyable struct) to every other padd that handles
-  // its type.
-  template <typename T> void send(T contents) { send(makeMessage(std::move(contents))); }
-
-  // Sends `message` to every padd that handles its type, including this one.
-  void sendIncludeSender(Message message) { system_->sendIncludeSender(std::move(message)); }
-
-  // Sends `contents` to every padd that handles its type, including this one.
-  template <typename T> void sendIncludeSender(T contents) {
-    sendIncludeSender(makeMessage(std::move(contents)));
-  }
-
-  // Applies the value in `controlChange` to this padd's control, enforcing
-  // the control's own rules: numbers are clamped to its range, strings must
-  // be one of its allowed values, and the type must match. Only the value is
-  // copied, so a change can't alter a control's range. Returns true if the
-  // change was applied.
-  bool updateControl(const ScratchPadd::MessageType::ControlChange &controlChange) {
-    auto control = controlMap_.find(controlChange.controlName);
-    if (control == controlMap_.end()) {
-      logger().error("No control named {}", controlChange.controlName);
+  // Queues `message` (from `from`) for this padd's handler, if it has one
+  // for the message's type; returns false if not. Safe from any thread.
+  bool enqueue(const Message &message, PaddAddress from) {
+    if (!handles(message->type())) {
       return false;
     }
-    if (!VariantsHoldSameType(controlChange.controlTypeValue, control->second)) {
-      logger().error("In {}, ControlChange holds different value type than "
-                     "ControlMap for {}",
-                     name_, controlChange.controlName);
-      return false;
-    }
-    const auto &incoming = controlChange.controlTypeValue;
-    return std::visit(
-        VariantHandler{
-            [&](ControlType::Double &current) {
-              double value = std::get<ControlType::Double>(incoming).value;
-              if (std::isnan(value)) {
-                return false;
-              }
-              if (current.enforcableRange) {
-                value = std::clamp(value, current.enforcableRange->first,
-                                   current.enforcableRange->second);
-              }
-              current.value = value;
-              return true;
-            },
-            [&](ControlType::Integer &current) {
-              int32_t value = std::get<ControlType::Integer>(incoming).value;
-              if (current.enforcableRange) {
-                value = std::clamp(value, current.enforcableRange->first,
-                                   current.enforcableRange->second);
-              }
-              current.value = value;
-              return true;
-            },
-            [&](ControlType::Boolean &current) {
-              current.value = std::get<ControlType::Boolean>(incoming).value;
-              return true;
-            },
-            [&](ControlType::String &current) {
-              const std::string &value = std::get<ControlType::String>(incoming).value;
-              if (current.enforcableRange &&
-                  std::find(current.enforcableRange->begin(), current.enforcableRange->end(),
-                            value) == current.enforcableRange->end()) {
-                logger().error("In {}, \"{}\" is not an allowed value for {}", name_, value,
-                               controlChange.controlName);
-                return false;
-              }
-              current.value = value;
-              return true;
-            },
-        },
-        control->second);
-  }
-
-  // Changes this padd makes to its own controls while it runs. Call them on
-  // the padd's own thread, like control<C>(). Each sends a fresh snapshot,
-  // so control panels show the change straight away. None calls
-  // controlChanged(), which reports edits made from a panel.
-
-  // Sets control `name` to the value in `value`, under the same rules as an
-  // edit from a panel (clamped to its range, an allowed string, the same
-  // type; only the value is taken). Returns false, changing nothing and
-  // sending nothing, if it isn't allowed.
-  bool setControl(const std::string &name, ControlTypeVariant value) {
-    if (!updateControl(MessageType::ControlChange{
-            .paddName = name_, .controlName = name, .controlTypeValue = std::move(value)})) {
-      return false;
-    }
-    send(generateControlsSnapshot());
+    push([this, message, from] { deliver(message, from); });
     return true;
   }
 
-  // Adds control `name`, or replaces the one with that name (its range
-  // too), and gives it a panel if it's this padd's first.
-  void addControl(const std::string &name, ControlTypeVariant control) {
-    controlMap_.insert_or_assign(name, std::move(control));
-    send(generateControlsSnapshot());
-  }
-
-  // Removes control `name`. Removing the last one sends an empty snapshot,
-  // which takes this padd's panel away. Returns false if there was none.
-  bool removeControl(const std::string &name) {
-    if (controlMap_.erase(name) == 0) {
-      return false;
+  // Runs this padd's current handler for `message`, if it still has one.
+  // Called on the padd's thread by the work queue.
+  void deliver(const Message &message, PaddAddress from) {
+    std::shared_ptr<const Handler> handler;
+    {
+      std::shared_lock lock(handlersMutex_);
+      auto found = handlers_.find(message->type());
+      if (found == handlers_.end()) {
+        return;
+      }
+      handler = found->second;
     }
-    send(generateControlsSnapshot());
-    return true;
+    (*handler)(*message, from);
   }
 };
+
+inline const std::string &PaddAddress::name() const {
+  static const std::string none = "(no padd)";
+  return padd_ ? padd_->paddName() : none;
+}
 
 } // namespace ScratchPadd

@@ -42,7 +42,7 @@ EventLogPadd (own thread) ◄──────────── events ──�
 | Padd | Owns | Receives | Sends |
 | --- | --- | --- | --- |
 | `FlightSimPadd` | the game: `FlightSim`, and the precision lab as controls | `FrameInput`, `GameCommand`, control messages | events, then one `WorldSnapshot` per frame; `ControlSnapshot` |
-| `FlightDisplayPadd` | window, input, rendering, HUD, control panels, and visual-only state (eased ship position, hit flashes, fading messages) | `WorldSnapshot`, events, `ControlSnapshot` | `FrameInput` each frame, `GameCommand` for P/R/T, `ControlRequest`, `ControlChange` |
+| `FlightDisplayPadd` | window, input, rendering, HUD, control panels, and visual-only state (eased ship position, hit flashes, fading messages) | `WorldSnapshot`, events, `ControlSnapshot` | `FrameInput` each frame, `GameCommand` for P/R/T, `ControlRequest`, and `ControlChange` straight to the padd whose controls a panel shows (`sendTo`, to the address its snapshot came from) |
 | `EventLogPadd` | terminal output | events | — |
 
 **Frames are a chain, not a timer.** The display sends a `FrameInput` (the frame's real time and steering). The simulation advances by that much and answers with what happened (`GatePassed`, `Crashed`, `PowerupCollected`, `WallPhased`, `GameOver`) and a `WorldSnapshot`. Drawing the snapshot waits for vsync and then sends the next `FrameInput`. Because `FlightSimPadd` is listed before `FlightDisplayPadd` in `main.cpp`, each frame draws the snapshot that answers its own input.

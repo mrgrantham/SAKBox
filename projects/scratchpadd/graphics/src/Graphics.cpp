@@ -68,8 +68,8 @@ void Graphics::ControlView::buildControls() {
         control);
 
     if (edited && onChange_) {
-      onChange_(ScratchPadd::MessageType::ControlChange{
-          .paddName = controls_.paddName, .controlName = controlName, .controlTypeValue = control});
+      onChange_(ScratchPadd::MessageType::ControlChange{.controlName = controlName,
+                                                        .controlTypeValue = control});
     }
   }
 }

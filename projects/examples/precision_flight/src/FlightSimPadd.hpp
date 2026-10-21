@@ -78,14 +78,10 @@ private:
       sim_.reset();
       break;
     case GameCommand::Type::ToggleAutopilot:
-      // Changed by the owner itself, so tell panels with a fresh snapshot
-      updateControl(ScratchPadd::MessageType::ControlChange{
-          .paddName = paddName(),
-          .controlName = "Autopilot",
-          .controlTypeValue = ScratchPadd::ControlType::Boolean(
-              !control<ScratchPadd::ControlType::Boolean>("Autopilot").value)});
+      // Changed by the owner itself; setControl tells the panels
+      setControl("Autopilot", ScratchPadd::ControlType::Boolean(
+                                  !control<ScratchPadd::ControlType::Boolean>("Autopilot").value));
       applyControls();
-      send(generateControlsSnapshot());
       break;
     }
   }

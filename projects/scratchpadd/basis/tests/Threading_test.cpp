@@ -1,5 +1,6 @@
 #include <ScratchPadd/Base.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Testing.hpp>
 
 #include <gtest/gtest.h>
 
@@ -127,12 +128,12 @@ TEST(ThreadingTest, TestStartStopHandoffBetweenThreads) {
   auto &padd = *std::get<std::unique_ptr<BackgroundA>>(system.getWorkers());
 
   for (int i = 0; i < 200; ++i) {
-    std::thread starter([&] { padd.notifyStart(); });
+    std::thread starter([&] { ScratchPadd::PaddTestAccess::notifyStart(padd); });
     padd.waitForStart();
     EXPECT_TRUE(padd.isRunning());
     starter.join();
 
-    std::thread stopper([&] { padd.notifyStop(); });
+    std::thread stopper([&] { ScratchPadd::PaddTestAccess::notifyStop(padd); });
     padd.waitForStop();
     EXPECT_FALSE(padd.isRunning());
     stopper.join();
@@ -272,7 +273,8 @@ TEST(ThreadingTest, ConcurrentSendersLoseNothing) {
   for (int sender = 0; sender < kSenders; ++sender) {
     senders.emplace_back([&, sender] {
       for (int job = 0; job < kJobs; ++job) {
-        padd.push([&seen, sender, job] { seen[sender].push_back(job); });
+        ScratchPadd::PaddTestAccess::push(padd,
+                                          [&seen, sender, job] { seen[sender].push_back(job); });
       }
     });
   }

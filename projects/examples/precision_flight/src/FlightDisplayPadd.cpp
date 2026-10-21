@@ -292,9 +292,8 @@ FlightDisplayPadd::FlightDisplayPadd(ScratchPadd::System *system)
       controlPanels_(std::make_unique<ControlPanels>()) {
   receive<WorldSnapshot>([this](const WorldSnapshot &world) { drawFrame(world); });
   receive<ScratchPadd::MessageType::ControlSnapshot>(
-      [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
-        showControls(snapshot);
-      });
+      [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot,
+             ScratchPadd::PaddAddress owner) { showControls(snapshot, owner); });
   receive<GatePassed>([this](const GatePassed &e) { showEvent(e); });
   receive<Crashed>([this](const Crashed &e) { showEvent(e); });
   receive<PowerupCollected>([this](const PowerupCollected &e) { showEvent(e); });
@@ -399,7 +398,8 @@ void FlightDisplayPadd::showEvent(const FlightEvent &event) {
   }
 }
 
-void FlightDisplayPadd::showControls(const ScratchPadd::MessageType::ControlSnapshot &snapshot) {
+void FlightDisplayPadd::showControls(const ScratchPadd::MessageType::ControlSnapshot &snapshot,
+                                     ScratchPadd::PaddAddress owner) {
   auto &views = controlPanels_->views;
   auto existing = views.find(snapshot.paddName);
   if (existing != views.end()) {
@@ -408,8 +408,9 @@ void FlightDisplayPadd::showControls(const ScratchPadd::MessageType::ControlSnap
   }
   auto view = ControlViewBuilder();
   view->setControls(snapshot);
-  view->setOnChange(
-      [this](const ScratchPadd::MessageType::ControlChange &change) { send(change); });
+  view->setOnChange([this, owner](const ScratchPadd::MessageType::ControlChange &change) {
+    sendTo(owner, change);
+  });
   view->setInitialPlacement(ImVec2(1, 0)); // top-right, clear of the HUD at top-left
   views[snapshot.paddName] = std::move(view);
 }
