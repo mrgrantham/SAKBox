@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <cyclone/body.h>
 #include <memory.h>
+#include <utility>
 
 using namespace cyclone;
 
@@ -154,6 +155,10 @@ void RigidBody::integrate(real_duration timeStep) {
   // Clear accumulators.
   clearAccumulators();
 
+  // SAKBox: the contact resolver marks a body in a group for one step only,
+  // so a body that has stopped touching others sleeps on its own again
+  const bool sleepsWithGroup = std::exchange(inContactGroup, false);
+
   // Update the kinetic energy store, and possibly put the body to
   // sleep.
   if (canSleep) {
@@ -165,7 +170,7 @@ void RigidBody::integrate(real_duration timeStep) {
     // SAKBox: a body touching others sleeps with its group, so it isn't
     // woken again by a neighbour still settling (ContactResolver)
     if (motion < sleepEpsilon) {
-      if (!inContactGroup)
+      if (!sleepsWithGroup)
         setAwake(false);
     } else if (motion > 10 * sleepEpsilon)
       motion = 10 * sleepEpsilon;

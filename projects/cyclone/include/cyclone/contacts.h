@@ -293,7 +293,11 @@ protected:
    */
   real positionEpsilon;
 
-  /** SAKBox: scratch space for sleepInGroups, kept between frames. */
+  /**
+   * SAKBox: scratch space for sleepInGroups. Their contents are only used
+   * within one call; they are members so their memory is reused each step
+   * rather than allocated afresh.
+   */
   struct ContactGroup {
     unsigned size = 0;
     bool settled = true;
@@ -409,7 +413,7 @@ protected:
    * body in it has settled and can sleep. Bodies sleeping one by one kept
    * waking each other (Contact::matchAwakeState), so a stack never slept.
    * Each body is marked with whether it's in a group of two or more;
-   * integrate() leaves those to this method. Waking is unchanged: a body
+   * the next integrate() leaves those to this method. Waking is unchanged: a body
    * is woken through a contact with an awake body that needs resolving.
    */
   void sleepInGroups(Contact *contacts, unsigned numContacts);

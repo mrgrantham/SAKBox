@@ -458,6 +458,8 @@ std::vector<Vector3> stackOf(int height) {
   return positions;
 }
 
+// Lets the scene's bodies sleep (bodyAt makes them unable to, so that other
+// tests run them the whole time)
 void letSleep(BoxWorld &scene) {
   for (const auto &body : scene.bodies)
     body->setCanSleep(true);
@@ -560,6 +562,22 @@ TEST(SleepTest, BodyThatCantSleepKeepsItsGroupAwake) {
   scene.run(5);
   EXPECT_TRUE(scene.bodies[0]->getAwake());
   EXPECT_TRUE(scene.bodies[1]->getAwake());
+}
+
+// A body that leaves its group sleeps on its own again, even with no
+// contacts at all (the world then skips the resolver). Two boxes float
+// touching, without gravity, then one is moved away.
+TEST(SleepTest, BodyThatLeavesItsGroupSleepsAlone) {
+  BoxWorld scene({Vector3(0, 5, 0), Vector3(1, 5, 0)});
+  letSleep(scene);
+  for (const auto &body : scene.bodies)
+    scene.world.getForceRegistry().remove(body.get(), &scene.gravity);
+  scene.run(1.0 / 60);
+  ASSERT_TRUE(scene.bodies[0]->getInContactGroup());
+
+  scene.bodies[1]->setPosition(10, 5, 0);
+  scene.run(5);
+  EXPECT_TRUE(allAsleep(scene));
 }
 
 // The world's contact array is shared by its generators in turn: once it's

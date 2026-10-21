@@ -615,6 +615,8 @@ void ContactResolver::sleepInGroups(Contact *contacts, unsigned numContacts) {
     RigidBody *root = body;
     while (groupParent[root] != root)
       root = groupParent[root];
+    // Point each body on the way straight at the root, so later lookups
+    // are quick
     while (body != root)
       body = std::exchange(groupParent[body], root);
     return root;

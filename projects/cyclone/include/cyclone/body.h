@@ -183,7 +183,10 @@ protected:
   /**
    * SAKBox: whether the body touched another movable body when contacts
    * were last resolved. Such a body falls asleep with the group it
-   * touches (see ContactResolver::sleepInGroups), not on its own.
+   * touches (see ContactResolver::sleepInGroups), not on its own. The
+   * resolver sets it each step and integrate() clears it after reading
+   * it, so it lasts one step: a body that stops touching others (or a
+   * step with no contacts, which skips the resolver) leaves it false.
    */
   bool inContactGroup = false;
 
@@ -835,7 +838,8 @@ public:
    * SAKBox: whether the body touched another movable body when contacts
    * were last resolved. The contact resolver sets this; a body in a group
    * is left for the resolver to put to sleep with the rest of its group,
-   * so integrate() doesn't put it to sleep on its own.
+   * so integrate() doesn't put it to sleep on its own. integrate() clears
+   * it, so it holds only until the next step.
    */
   bool getInContactGroup() const { return inContactGroup; }
   void setInContactGroup(const bool inGroup) { inContactGroup = inGroup; }
