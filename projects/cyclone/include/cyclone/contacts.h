@@ -27,6 +27,7 @@
 #define CYCLONE_CONTACTS_H
 
 #include "body.h"
+#include <unordered_map>
 
 namespace cyclone {
 
@@ -292,6 +293,14 @@ protected:
    */
   real positionEpsilon;
 
+  /** SAKBox: scratch space for sleepInGroups, kept between frames. */
+  struct ContactGroup {
+    unsigned size = 0;
+    bool settled = true;
+  };
+  std::unordered_map<RigidBody *, RigidBody *> groupParent;
+  std::unordered_map<RigidBody *, ContactGroup> groups;
+
 public:
   /**
    * Stores the number of velocity iterations used in the
@@ -368,6 +377,9 @@ public:
    *
    * @param duration The duration of the previous integration step.
    * This is used to compensate for forces applied.
+   *
+   * SAKBox: afterwards, bodies touching each other fall asleep as a group
+   * (see sleepInGroups).
    */
   void resolveContacts(Contact *contactArray, unsigned numContacts, real duration);
 
@@ -390,6 +402,17 @@ protected:
    * using the given number of iterations.
    */
   void adjustPositions(Contact *contacts, unsigned numContacts, real duration);
+
+  /**
+   * SAKBox: puts each group of bodies the contacts join to sleep at once
+   * (the ground and other immovable bodies don't join groups), when every
+   * body in it has settled and can sleep. Bodies sleeping one by one kept
+   * waking each other (Contact::matchAwakeState), so a stack never slept.
+   * Each body is marked with whether it's in a group of two or more;
+   * integrate() leaves those to this method. Waking is unchanged: a body
+   * is woken through a contact with an awake body that needs resolving.
+   */
+  void sleepInGroups(Contact *contacts, unsigned numContacts);
 };
 
 /**

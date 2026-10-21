@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <cyclone/contacts.h>
 #include <memory.h>
+#include <utility>
 
 using namespace cyclone;
 
@@ -488,6 +489,8 @@ void ContactResolver::resolveContacts(Contact *contacts, unsigned numContacts, r
 
   // Resolve the velocity problems with the contacts.
   adjustVelocities(contacts, numContacts, duration);
+
+  sleepInGroups(contacts, numContacts);
 }
 
 void ContactResolver::prepareContacts(Contact *contacts, unsigned numContacts, real duration) {
@@ -601,5 +604,46 @@ void ContactResolver::adjustPositions(Contact *c, unsigned numContacts, real dur
         }
     }
     positionIterationsUsed++;
+  }
+}
+
+void ContactResolver::sleepInGroups(Contact *contacts, unsigned numContacts) {
+  // Join the movable bodies each contact touches, union-find style: each
+  // body points towards the body that names its group
+  groupParent.clear();
+  auto groupOf = [this](RigidBody *body) {
+    RigidBody *root = body;
+    while (groupParent[root] != root)
+      root = groupParent[root];
+    while (body != root)
+      body = std::exchange(groupParent[body], root);
+    return root;
+  };
+  for (unsigned i = 0; i < numContacts; i++)
+    for (RigidBody *body : contacts[i].body)
+      if (body && body->hasFiniteMass())
+        groupParent.try_emplace(body, body);
+  for (unsigned i = 0; i < numContacts; i++) {
+    RigidBody *one = contacts[i].body[0], *two = contacts[i].body[1];
+    if (one && two && one->hasFiniteMass() && two->hasFiniteMass())
+      groupParent[groupOf(one)] = groupOf(two);
+  }
+
+  // Tally each group: its size, and whether every body in it has settled
+  groups.clear();
+  for (const auto &[body, parent] : groupParent) {
+    ContactGroup &group = groups[groupOf(body)];
+    group.size++;
+    if (!body->getCanSleep() || (body->getAwake() && body->getMotion() >= sleepEpsilon))
+      group.settled = false;
+  }
+
+  for (const auto &[body, parent] : groupParent) {
+    const ContactGroup &group = groups[groupOf(body)];
+    body->setInContactGroup(group.size > 1);
+    if (group.size == 1)
+      continue;
+    if (group.settled && body->getAwake())
+      body->setAwake(false);
   }
 }

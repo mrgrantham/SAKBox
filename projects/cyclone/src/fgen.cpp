@@ -78,6 +78,11 @@ void Gravity::updateForce(RigidBody *body, real duration) {
   if (!body->hasFiniteMass())
     return;
 
+  // SAKBox: gravity is always there, so it doesn't wake a sleeping body
+  // (adding a force does); a sleeping body isn't moved, so needs none
+  if (!body->getAwake())
+    return;
+
   // Apply the mass-scaled force to the body
   body->addForce(gravity * body->getMass());
 }

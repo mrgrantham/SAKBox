@@ -162,9 +162,12 @@ void RigidBody::integrate(real_duration timeStep) {
     real bias = sleepBias;
     motion = bias * motion + (1 - bias) * currentMotion;
 
-    if (motion < sleepEpsilon)
-      setAwake(false);
-    else if (motion > 10 * sleepEpsilon)
+    // SAKBox: a body touching others sleeps with its group, so it isn't
+    // woken again by a neighbour still settling (ContactResolver)
+    if (motion < sleepEpsilon) {
+      if (!inContactGroup)
+        setAwake(false);
+    } else if (motion > 10 * sleepEpsilon)
       motion = 10 * sleepEpsilon;
   }
 }

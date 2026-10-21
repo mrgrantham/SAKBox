@@ -181,6 +181,13 @@ protected:
   bool canSleep = true;
 
   /**
+   * SAKBox: whether the body touched another movable body when contacts
+   * were last resolved. Such a body falls asleep with the group it
+   * touches (see ContactResolver::sleepInGroups), not on its own.
+   */
+  bool inContactGroup = false;
+
+  /**
    * Holds a transform matrix for converting body space into
    * world space and vice versa. This can be achieved by calling
    * the getPointIn*Space functions.
@@ -817,6 +824,21 @@ public:
    * @param canSleep Whether the body can now be put to sleep.
    */
   void setCanSleep(const bool canSleep = true);
+
+  /**
+   * SAKBox: the recency-weighted mean of the body's squared speed and
+   * spin, which puts it to sleep once it falls below sleepEpsilon.
+   */
+  real getMotion() const { return motion; }
+
+  /**
+   * SAKBox: whether the body touched another movable body when contacts
+   * were last resolved. The contact resolver sets this; a body in a group
+   * is left for the resolver to put to sleep with the rest of its group,
+   * so integrate() doesn't put it to sleep on its own.
+   */
+  bool getInContactGroup() const { return inContactGroup; }
+  void setInContactGroup(const bool inGroup) { inContactGroup = inGroup; }
 
   /*@}*/
 

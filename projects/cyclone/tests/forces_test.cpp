@@ -86,6 +86,17 @@ TEST(RigidForceTest, GravityIsMassTimesG) {
   expectNear(forceOn(*body, gravity), Vector3(0, -3 * 9.81, 0));
 }
 
+// Gravity is always there, so unlike other forces it doesn't wake a sleeping
+// body (one under it could otherwise never sleep).
+TEST(RigidForceTest, GravityLeavesASleepingBodyAsleep) {
+  auto body = bodyAt(Vector3());
+  body->setCanSleep(true);
+  body->setAwake(false);
+  Gravity gravity(Vector3(0, -9.81, 0));
+  gravity.updateForce(body.get(), 0.01);
+  EXPECT_FALSE(body->getAwake());
+}
+
 // A spring of rest length 2 and stiffness 10 between two bodies: stretched to
 // 3 it pulls them together with 10 N; squashed to 1 it pushes them apart
 // with 10 N; at 2 it does nothing.

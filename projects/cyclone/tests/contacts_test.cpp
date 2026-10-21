@@ -450,6 +450,118 @@ TEST(WorldTest, StacksOfBoxesStand) {
   }
 }
 
+// The centres of `height` unit cubes stacked from the ground up
+std::vector<Vector3> stackOf(int height) {
+  std::vector<Vector3> positions(height);
+  for (int i = 0; i < height; ++i)
+    positions[i] = Vector3(0, 0.5 + i, 0);
+  return positions;
+}
+
+void letSleep(BoxWorld &scene) {
+  for (const auto &body : scene.bodies)
+    body->setCanSleep(true);
+}
+
+bool allAsleep(const BoxWorld &scene) {
+  return std::none_of(scene.bodies.begin(), scene.bodies.end(),
+                      [](const auto &body) { return body->getAwake(); });
+}
+
+// A box on its own on the ground still falls asleep by itself.
+TEST(SleepTest, LoneBoxFallsAsleep) {
+  BoxWorld scene(stackOf(1));
+  letSleep(scene);
+  scene.run(5);
+  EXPECT_FALSE(scene.bodies[0]->getAwake());
+  EXPECT_FALSE(scene.bodies[0]->getInContactGroup());
+}
+
+// A stack falls asleep as one, a few seconds after it's built, and stays
+// put, each box resting less than the resolver's 1 cm position tolerance
+// into the one below. (Box by box, each box that fell asleep was woken by
+// the one on it still settling, so a stack never slept.)
+TEST(SleepTest, StackFallsAsleepTogether) {
+  for (int height : {2, 3, 5}) {
+    SCOPED_TRACE(testing::Message() << height << " boxes");
+    BoxWorld scene(stackOf(height));
+    letSleep(scene);
+    scene.run(5);
+    EXPECT_TRUE(allAsleep(scene));
+    for (size_t i = 0; i < scene.bodies.size(); ++i) {
+      SCOPED_TRACE(testing::Message() << "box " << i);
+      EXPECT_TRUE(scene.bodies[i]->getInContactGroup());
+      EXPECT_NEAR(scene.bodies[i]->getPosition().x, 0, 0.02);
+      EXPECT_NEAR(scene.bodies[i]->getPosition().y, 0.5 + i, 0.01 * (i + 1));
+    }
+  }
+}
+
+// A box dropped onto a sleeping stack wakes the whole stack, which falls
+// asleep again, four high, once it has settled.
+TEST(SleepTest, BoxDroppedOnAStackWakesItAll) {
+  // The fourth box waits on the ground off to one side
+  std::vector<Vector3> positions = stackOf(3);
+  positions.push_back(Vector3(10, 0.5, 0));
+  BoxWorld scene(positions);
+  letSleep(scene);
+  scene.run(5);
+  ASSERT_TRUE(allAsleep(scene));
+
+  RigidBody &dropped = *scene.bodies[3];
+  dropped.setPosition(0, 4, 0);
+  dropped.setVelocity(0, -2, 0);
+  dropped.setAwake();
+  scene.run(0.5);
+  for (int i = 0; i < 3; ++i)
+    EXPECT_TRUE(scene.bodies[i]->getAwake()) << "box " << i;
+
+  scene.run(5);
+  EXPECT_TRUE(allAsleep(scene));
+  for (size_t i = 0; i < scene.bodies.size(); ++i)
+    EXPECT_NEAR(scene.bodies[i]->getPosition().y, 0.5 + i, 0.01 * (i + 1)) << "box " << i;
+}
+
+// Knocking the bottom box out of a sleeping stack wakes the box on it at
+// once, and it falls.
+TEST(SleepTest, KnockingOutTheBottomBoxDropsTheTop) {
+  BoxWorld scene(stackOf(2));
+  letSleep(scene);
+  scene.run(5);
+  ASSERT_TRUE(allAsleep(scene));
+
+  scene.bodies[0]->setAwake();
+  scene.bodies[0]->setVelocity(10, 0, 0);
+  scene.run(1.0 / 60);
+  EXPECT_TRUE(scene.bodies[1]->getAwake());
+  scene.run(2);
+  EXPECT_LT(scene.bodies[1]->getPosition().y, 1);
+}
+
+// A tall stack set up asleep, as the book suggests for a level, stays up
+// until something hits it: awake from the start, it rocks and falls within
+// seconds.
+TEST(SleepTest, TallStackSetUpAsleepStaysUp) {
+  BoxWorld scene(stackOf(8));
+  letSleep(scene);
+  for (const auto &body : scene.bodies)
+    body->setAwake(false);
+  scene.run(30);
+  EXPECT_TRUE(allAsleep(scene));
+  for (size_t i = 0; i < scene.bodies.size(); ++i)
+    EXPECT_NEAR(scene.bodies[i]->getPosition().y, 0.5 + i, 1e-9) << "box " << i;
+}
+
+// A body that can't sleep keeps everything it touches awake.
+TEST(SleepTest, BodyThatCantSleepKeepsItsGroupAwake) {
+  BoxWorld scene(stackOf(2));
+  letSleep(scene);
+  scene.bodies[1]->setCanSleep(false);
+  scene.run(5);
+  EXPECT_TRUE(scene.bodies[0]->getAwake());
+  EXPECT_TRUE(scene.bodies[1]->getAwake());
+}
+
 // The world's contact array is shared by its generators in turn: once it's
 // full, the rest aren't asked, and generateContacts reports what fitted.
 TEST(WorldTest, ContactsStopWhenTheArrayIsFull) {
