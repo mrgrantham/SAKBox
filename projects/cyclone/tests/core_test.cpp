@@ -371,6 +371,7 @@ TEST(CollisionTest, SphereFrictionSpinsTheRightWay) {
             1u);
 
   ContactResolver resolver(10);
+  resolver.setMethod(ContactResolver::Method::oneContactAtATime); // the book's, as written
   resolver.resolveContacts(fixture.contacts, fixture.data.contactCount, 0.01);
 
   EXPECT_LT(one.getRotation().z, 0.0);

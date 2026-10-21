@@ -18,6 +18,13 @@ namespace {
 
 constexpr double kTolerance = 1e-9;
 
+// The book's resolver, which these tests pin: one contact at a time
+ContactResolver booksResolver(unsigned iterations) {
+  ContactResolver resolver(iterations);
+  resolver.setMethod(ContactResolver::Method::oneContactAtATime);
+  return resolver;
+}
+
 std::unique_ptr<RigidBody> bodyAt(const Vector3 &position) {
   auto body = std::make_unique<RigidBody>();
   body->setMass(1.0);
@@ -60,7 +67,7 @@ struct BallOnGround {
     ground.direction = Vector3(0, 1, 0);
     ground.offset = 0;
     found = CollisionDetector::sphereAndHalfSpace(sphere, ground, &data);
-    ContactResolver resolver(10);
+    ContactResolver resolver = booksResolver(10);
     resolver.resolveContacts(contacts, found, 1.0 / 60);
   }
 };
@@ -124,7 +131,7 @@ TEST(ContactResolverTest, HeadOnElasticCollisionSwapsVelocities) {
   data.restitution = 1;
   data.reset(2);
   ASSERT_EQ(CollisionDetector::sphereAndSphere(a, b, &data), 1u);
-  ContactResolver(10).resolveContacts(contacts, 1, 1.0 / 60);
+  booksResolver(10).resolveContacts(contacts, 1, 1.0 / 60);
   EXPECT_NEAR(one->getVelocity().x, -1, 1e-6);
   EXPECT_NEAR(two->getVelocity().x, 1, 1e-6);
   EXPECT_NEAR(one->getPosition().x + 2.0, two->getPosition().x,
@@ -147,7 +154,7 @@ TEST(JointTest, ContactOnlyWhenStretchedBeyondItsSlack) {
 
   // Resolving it brings them back within the slack
   contact.setBodyData(one.get(), two.get(), 0, 0);
-  ContactResolver(10).resolveContacts(&contact, 1, 1.0 / 60);
+  booksResolver(10).resolveContacts(&contact, 1, 1.0 / 60);
   EXPECT_NEAR((two->getPosition() - one->getPosition()).magnitude(), 0.5, 1e-6);
 
   two->setPosition(0.3, 0, 0);
@@ -915,12 +922,12 @@ TEST(JointConstraintTest, BooksResolverTakesJointsAsContacts) {
   jointA.set(pivotA.get(), Vector3(), viaJoints.get(), Vector3(), 0.5);
   jointB.set(pivotB.get(), Vector3(), viaContacts.get(), Vector3(), 0.5);
 
-  ContactResolver resolver(10);
+  ContactResolver resolver = booksResolver(10);
   Joint *joints[] = {&jointA};
   resolver.resolveContacts(nullptr, 0, 1.0 / 60, joints);
   Contact contact;
   ASSERT_EQ(jointB.addContact(&contact, 1), 1u);
-  ContactResolver(10).resolveContacts(&contact, 1, 1.0 / 60);
+  booksResolver(10).resolveContacts(&contact, 1, 1.0 / 60);
   EXPECT_NEAR(viaJoints->getPosition().x, viaContacts->getPosition().x, kTolerance);
   EXPECT_NEAR(viaJoints->getPosition().y, viaContacts->getPosition().y, kTolerance);
   EXPECT_LT(viaJoints->getPosition().x, 2.0); // pulled back towards the pivot

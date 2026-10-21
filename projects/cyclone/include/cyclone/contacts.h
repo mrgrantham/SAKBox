@@ -338,7 +338,10 @@ public:
     sequentialImpulses,
   };
 
-  /** SAKBox: chooses how contacts are resolved (the book's way by default). */
+  /**
+   * SAKBox: chooses how contacts are resolved: together by default, or the
+   * book's way.
+   */
   void setMethod(Method method) { this->method = method; }
 
   /** SAKBox: how contacts are resolved. */
@@ -365,7 +368,7 @@ public:
 
 protected:
   /** SAKBox: see setMethod. */
-  Method method = Method::oneContactAtATime;
+  Method method = Method::sequentialImpulses;
 
   /** SAKBox: see setSweeps. */
   unsigned velocitySweeps = 40;

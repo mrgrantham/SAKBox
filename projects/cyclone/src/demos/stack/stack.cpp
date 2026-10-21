@@ -4,7 +4,7 @@
  * Ten 1 m boxes are stacked on the ground and never allowed to sleep, so
  * the contact resolver has to hold them up every frame. Resolving the
  * contacts together (cyclone::ContactResolver::Method::sequentialImpulses,
- * the default here) keeps the tower standing still; M switches to the
+ * the default) keeps the tower standing still; M switches to the
  * book's resolver, which handles one contact at a time, and the tower
  * creeps sideways and falls (README, known limitations). 1-9 and 0 rebuild
  * the tower with that many boxes (0 is ten). Awake boxes are red.
