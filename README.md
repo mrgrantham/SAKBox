@@ -136,11 +136,21 @@ Development and testing happen on **macOS** (Apple Silicon, Xcode).
 
 ### Linux
 
-Tested on 2026-10-20 with GCC 14.4 on Debian (ARM64), in the official `gcc:14` Docker image. Everything builds except the camera example, whose OpenCV build doesn't finish yet (its bundled image libraries fail to link to zlib), and the 3DS example, which needs Docker. 45 of the 49 tests pass. The other four are Waffles tests:
+Tested on 2026-10-20 with GCC 14.4 on Debian (ARM64), in the official `gcc:14` Docker image: everything builds and all the tests pass, except the 3DS example, which needs Docker (not available inside that container). Results that are exact on one platform can differ slightly on another; see [Floating-point results across platforms](#floating-point-results-across-platforms).
 
-- `GMatrix_test` and `GRayTrace_test` compare against results recorded on macOS that depend on how the standard library's sort orders equal keys, which GCC's library does differently.
-- The jumper demo's `PolicyLearner_test` compares a Bullet simulation against a value recorded on macOS. The simulation is chaotic, so tiny floating-point differences between compilers change the result.
-- `waffles:test` stops with a floating-point exception in `GFuzzyKMeans`. Waffles turns floating-point exceptions on with `feenableexcept`, which macOS doesn't have, so this only shows up on Linux.
+To repeat the check from macOS, with Docker running (`colima start`; give it 8 GB, `colima start --memory 8`, or Bazel runs out of memory):
+
+``` bash
+docker run --rm -v "$PWD":/repo:ro -v sakbox-gcc-cache:/root/.cache gcc:14 bash -c '
+  apt-get update -qq && apt-get install -y -qq libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
+    libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev python3 >/dev/null
+  curl -fsSL -o /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-$(dpkg --print-architecture)
+  chmod +x /usr/local/bin/bazel
+  mkdir /src && cd /repo && tar --exclude="./bazel-*" -cf - . | (cd /src && tar xf -) && cd /src
+  bazel test --keep_going //... -- -//projects/examples/read-controls/...'
+```
+
+The checkout is mounted read-only and copied inside, so the Linux build can't touch your Bazel output links or lockfile; the `sakbox-gcc-cache` volume keeps Bazel's downloads and cache between runs.
 
 Clang builds on Linux haven't been tried; add `--config=clang` for them (see the prerequisites in [Getting Started](#getting-started)). Bazelisk provides Bazel for x86-64 and ARM64 (including 64-bit Raspberry Pi OS). The windowing and OpenGL examples need the X11 and Mesa development packages:
 
@@ -154,3 +164,23 @@ sudo apt install libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
 ### Windows
 
 Not supported yet. Most libraries build there in principle, but nothing has been tested, and the OpenCV build (used by the camera example) only handles macOS and Linux library names so far. flexmath uses `__int128`, which MSVC lacks; [its README](projects/flexmath/README.md#portability) says what to change.
+
+### Floating-point results across platforms
+
+The same code gives slightly different floating-point results on different platforms, so an exact value recorded on one (a test's expected number, a hash of a rendered image) can fail on another. Within one build, results are exactly repeatable.
+
+**Why they differ:**
+
+- **Fused multiply-add.** Clang turns `a * b + c` into one fused instruction, rounded once (`-ffp-contract=on` is its default). GCC in strict ISO mode, as here (`-std=c++26`), keeps a separate multiply and add, rounded twice. Both are allowed by the language, but the last bit differs.
+- **The maths library.** `sin`, `cos`, `exp`, `pow`, `atan2` and the like come from the platform (Apple's libm, glibc on Linux, Microsoft's CRT), and aren't required to be correctly rounded, so they can differ in the last bit. `sqrt` and the basic arithmetic are exact under IEEE 754 and don't vary.
+- **Code generation** may also differ (the order of operations once vectorised, for example), though without `-ffast-math` compilers keep to the source's order.
+
+Most code never notices a last-bit difference, but chaotic simulations amplify it. The Waffles jumper demo's Bullet simulation gives a jump height of 0.6288 with Apple clang and 0.6318 with GCC 14 on Linux, and 0.6229 with Apple clang with fused multiply-adds off: fusion alone changes the result, and the maths library (or code generation) accounts for the rest. Its test now checks the height against a range, and exact repeatability within a build.
+
+**Making results match across platforms** (not done yet; it's the first item on [flexmath's roadmap](projects/flexmath/README.md#roadmap)):
+
+1. Turn fusion off everywhere: `build --copt=-ffp-contract=off` in `.bazelrc`, for external libraries too (Bullet's arithmetic is what varies), not only `projects/`. Never use `-ffast-math`, which allows reordering.
+2. Use maths functions that give the same result on every platform, instead of the system's: a correctly rounded library such as [CORE-MATH](https://core-math.gitlabpages.inria.fr/) (correct rounding has one right answer, so every platform agrees), or one implementation built from source everywhere, such as [OpenLibm](https://openlibm.org/). Code that calls `std::sin` and friends, Bullet included, has to be pointed at it, for example through a header that wraps the calls.
+3. Check it by running the same simulation on macOS and on Linux (the GCC Docker image used for the Linux notes above) and comparing exact results, then pin an exact value in a test again.
+
+Expect a small speed cost: unfused arithmetic is slightly slower, and correctly rounded functions can be slower than the system's.

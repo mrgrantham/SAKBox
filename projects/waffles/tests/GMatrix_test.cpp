@@ -181,25 +181,34 @@ TEST(ArffNumberTest, CategoryNumberMustBeInRange) {
   EXPECT_THROW(rel.parseValue(1, "2.5abc"), std::exception);
 }
 
-// GMatrix::sort and sortPartial, recorded from the code before they moved
-// to std::ranges (with many equal keys, so the order of equal rows is
-// pinned down too, not only the sorting).
+// GMatrix::sort and sortPartial. Neither promises an order for rows with
+// equal keys (std::ranges::sort isn't stable), and standard libraries break
+// ties differently, so these check what is promised: the order of the keys,
+// that each row moves whole, and that no row is lost or repeated.
 namespace {
+// The key each row of keyedRows() is given, from its id
+double keyOf(size_t id) { return (double)((id * 37) % 10); }
+
 // 100 rows of (key, id), with keys 0-9 repeated in a scrambled order
 GMatrix keyedRows() {
   GMatrix m(100, 2);
   for (size_t i = 0; i < 100; i++) {
-    m[i][0] = (double)((i * 37) % 10);
+    m[i][0] = keyOf(i);
     m[i][1] = (double)i;
   }
   return m;
 }
-// The rows' ids, in order: "0 10 80 ..."
-std::string ids(const GMatrix &m) {
-  std::string out;
-  for (size_t i = 0; i < m.rows(); i++)
-    out += (i ? " " : "") + std::to_string((int)m[i][1]);
-  return out;
+
+// Every id appears exactly once, still with its own key
+void expectSameRows(const GMatrix &m) {
+  std::vector<bool> seen(100, false);
+  for (size_t i = 0; i < m.rows(); i++) {
+    const size_t id = (size_t)m[i][1];
+    ASSERT_LT(id, seen.size()) << "row " << i;
+    EXPECT_FALSE(seen[id]) << "id " << id << " appears twice";
+    seen[id] = true;
+    EXPECT_EQ(m[i][0], keyOf(id)) << "row " << i << " was split";
+  }
 }
 } // namespace
 
@@ -208,11 +217,7 @@ TEST(MatrixSortTest, SortsByAColumn) {
   m.sort(0);
   for (size_t i = 1; i < m.rows(); i++)
     ASSERT_LE(m[i - 1][0], m[i][0]) << "row " << i;
-  EXPECT_EQ(ids(m), "0 10 80 40 50 20 60 30 70 90 33 83 73 93 63 53 13 23 43 3 "
-                    "86 76 96 16 56 6 46 26 36 66 99 39 69 29 49 89 79 9 19 59 "
-                    "42 92 2 72 32 12 52 22 82 62 95 75 25 65 35 15 85 55 5 45 "
-                    "88 78 58 48 38 28 8 98 68 18 31 21 41 1 91 71 11 81 61 51 "
-                    "4 54 84 64 24 74 44 94 34 14 57 77 7 87 17 47 67 27 37 97");
+  expectSameRows(m);
 }
 
 TEST(MatrixSortTest, SortPartialPutsTheRightRowInPlace) {
@@ -221,9 +226,5 @@ TEST(MatrixSortTest, SortPartialPutsTheRightRowInPlace) {
   EXPECT_EQ(m[50][0], 5.0);
   for (size_t i = 0; i < m.rows(); i++)
     EXPECT_TRUE(i < 50 ? m[i][0] <= 5.0 : m[i][0] >= 5.0) << "row " << i;
-  EXPECT_EQ(ids(m), "0 90 80 70 60 50 40 30 20 10 96 93 86 13 83 76 16 73 3 66 "
-                    "63 56 53 23 46 43 26 6 36 33 99 9 32 29 92 89 12 82 2 39 "
-                    "79 72 42 69 19 62 59 22 52 49 5 51 48 47 54 7 21 57 58 24 "
-                    "4 61 45 8 64 55 44 67 68 25 18 71 41 17 74 75 15 77 78 27 "
-                    "38 81 37 14 84 85 28 87 88 35 1 91 34 11 94 95 65 97 98 31");
+  expectSameRows(m);
 }

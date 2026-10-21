@@ -1390,10 +1390,14 @@ GRayTraceColor* GRayTraceImageTexture::color(ColorType eType, GRayTraceRay* pRay
 
 // -----------------------------------------------------------------------------
 
-// Sorts the objects by their centres along dimension dim
+// Sorts the objects by their centres along dimension dim. SAKBox: a stable
+// sort, so objects whose centres tie keep the order they were added in.
+// With std::sort the tie order was up to the standard library, which shapes
+// the tree, and so the pixels where objects meet at equal distances: GCC's
+// library rendered such a scene differently from macOS's.
 static void GRayTrace_sortByCenter(vector<GRayTraceObject*>& objects, int dim)
 {
-	std::ranges::sort(objects, std::ranges::less{}, [dim](GRayTraceObject* pObject)
+	std::ranges::stable_sort(objects, std::ranges::less{}, [dim](GRayTraceObject* pObject)
 	{
 		G3DVector center;
 		pObject->center(&center);

@@ -273,6 +273,6 @@ flexmath's original design (February 2023) had each `FlexPoint` register itself 
 
 ## Roadmap
 
-1. **Deterministic floating point.** Deterministic `sin`, `cos`, `exp`, `pow` and `atan2` (correctly rounded or fixed polynomial implementations), plus `-ffp-contract=off` repo-wide, so the `double` and `FlexReal` paths match across machines.
+1. **Deterministic floating point.** Deterministic `sin`, `cos`, `exp`, `pow` and `atan2` (correctly rounded or fixed polynomial implementations), plus `-ffp-contract=off` repo-wide, so the `double` and `FlexReal` paths match across machines. The top-level README's [Floating-point results across platforms](../../README.md#floating-point-results-across-platforms) explains the differences, with measurements, and the likely fix.
 2. **Cyclone integration hooks.** Snap Cyclone's state at chosen points instead of every operation: `commit()` after integration and contact resolution, `view()` for collision reads. Each point would be tied to its own group, so integration, collision and contacts can have separate precision.
 3. **CORDIC trig for `FlexPoint`.** Integer-only sine and cosine whose iteration count doubles as an *angle precision* setting, for visibly stepped rotation.

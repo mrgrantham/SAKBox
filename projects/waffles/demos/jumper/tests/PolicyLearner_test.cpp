@@ -25,12 +25,16 @@ std::string tempPath(const std::string &name) {
 }
 } // namespace
 
-// The hand-made policy's jump, as Bullet 3.26 simulates it. Each run is the
-// same, so a policy is scored the same in training and when it's shown. If
-// a Bullet upgrade changes the physics, this changes.
+// The hand-made policy's jump, as Bullet 3.26 simulates it. Each run of a
+// build is exactly the same, so a policy is scored the same in training and
+// when it's shown. The height itself is only checked to be a real jump: the
+// simulation is chaotic, so the last digits vary with the compiler and maths
+// library (0.6288 with Apple clang, 0.6318 with GCC 14 on Linux, 0.6229 with
+// Apple clang without fused multiply-adds).
 TEST(PolicyLearnerTest, SimulationIsRepeatable) {
   const double height = JumpHeight(nullptr);
-  EXPECT_NEAR(height, 0.628827, 1e-6);
+  EXPECT_GT(height, 0.55);
+  EXPECT_LT(height, 0.70);
   EXPECT_EQ(JumpHeight(nullptr), height);
 }
 

@@ -33,6 +33,16 @@ cmake(
         "CMAKE_CXX_STANDARD": "17",
         # Bundled zlib links statically; @zlib's libz.1.dylib isn't in runfiles.
         "BUILD_ZLIB": "ON",
+        # The image formats' libraries too, from OpenCV's own copies. That's
+        # OpenCV's default on macOS; on Linux it used whatever the system had
+        # installed, and the system's libraries asked for a zlib that isn't
+        # there (the bundled one is a CMake target), so imgcodecs didn't link.
+        "BUILD_JPEG": "ON",
+        "BUILD_PNG": "ON",
+        "BUILD_TIFF": "ON",
+        "BUILD_WEBP": "ON",
+        "BUILD_OPENJPEG": "ON",
+        "BUILD_OPENEXR": "ON",
         # Only the C++ libraries are used. The binding generators also fail to
         # configure because they can't read the Eigen version.
         "BUILD_JAVA": "OFF",

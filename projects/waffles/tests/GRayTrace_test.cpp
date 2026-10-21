@@ -201,8 +201,9 @@ TEST(LetterMakerTest, LetterWidths) {
 
 // A scene with enough objects (spheres and a cylinder's triangles) to build
 // a bounding box tree several levels deep, many of them lined up so their
-// centres tie. The fingerprint was recorded from the code before the tree's
-// sorts moved to std::ranges.
+// centres tie. The tree sorts ties stably, so the image is the same with
+// every standard library (an unstable sort gave GCC's library a different
+// tree, and different pixels where objects meet, from macOS's).
 namespace {
 uint64_t fingerprint(GImage &image) {
   uint64_t h = 1469598103934665603ull; // FNV-1a
@@ -237,5 +238,5 @@ TEST(RayTraceRenderTest, BoundingBoxTreeSceneIsUnchanged) {
   G3DVector bottom(-4, -3, 0), top(4, 3, -2);
   scene.addMesh(GRayTraceTriMesh::makeCylinder(material, &bottom, &top, 0.3, 8, true));
   scene.render();
-  EXPECT_EQ(fingerprint(*scene.image()), 1356674062122050204ull);
+  EXPECT_EQ(fingerprint(*scene.image()), 13256887051471822239ull);
 }
