@@ -119,6 +119,12 @@ public:
   ForceRegistry &getForceRegistry();
 
   /**
+   * SAKBox: returns the contact resolver, to choose how it works (see
+   * ContactResolver::setMethod).
+   */
+  ContactResolver &getResolver() { return resolver; }
+
+  /**
    * Returns the contacts found in the last call to
    * generateContacts (or runPhysics).
    */

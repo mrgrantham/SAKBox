@@ -371,6 +371,9 @@ void BigBallisticDemo::display() {
   case UNUSED:
     break;
   }
+
+  // SAKBox: which contact resolver is in use (M switches)
+  renderResolverMethod();
 }
 
 void BigBallisticDemo::generateContacts() {

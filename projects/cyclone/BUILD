@@ -89,6 +89,14 @@ cc_binary(
 )
 
 cc_binary(
+    name = "stack",
+    srcs = ["src/demos/stack/stack.cpp", "src/demos/main.cpp"],
+    deps = [
+        ":app",
+    ],
+)
+
+cc_binary(
     name = "fireworks",
     srcs = ["src/demos/fireworks/fireworks.cpp", "src/demos/main.cpp"],
     deps = [

@@ -343,10 +343,14 @@ namespace {
 // pair against each other, the pairs' contacts kept from frame to frame
 class BoxContacts : public ContactGenerator {
 public:
-  std::vector<CollisionBox> boxes;
+  // Mutable because their transforms are brought up to date here: World
+  // integrates the bodies and then asks for contacts
+  mutable std::vector<CollisionBox> boxes;
   mutable BoxContactCache cache;
 
   unsigned addContact(Contact *contact, unsigned limit) const override {
+    for (CollisionBox &box : boxes)
+      box.calculateInternals();
     CollisionData data;
     data.contactArray = contact;
     data.friction = 0.9;
@@ -373,7 +377,9 @@ struct BoxWorld {
   std::vector<std::unique_ptr<RigidBody>> bodies;
   BoxContacts contacts;
 
-  explicit BoxWorld(const std::vector<Vector3> &positions) {
+  explicit BoxWorld(const std::vector<Vector3> &positions,
+                    ContactResolver::Method method = ContactResolver::Method::oneContactAtATime) {
+    world.getResolver().setMethod(method);
     for (const Vector3 &position : positions) {
       bodies.push_back(bodyAt(position));
       RigidBody &body = *bodies.back();
@@ -406,8 +412,6 @@ double BoxWorld::run(double seconds) {
   double mostTilted = 0;
   for (int i = 0; i < static_cast<int>(seconds * 60); ++i) {
     world.startFrame();
-    for (CollisionBox &box : contacts.boxes)
-      box.calculateInternals();
     world.runPhysics(1.0 / 60);
     for (const auto &body : bodies)
       mostTilted = std::max(mostTilted, tiltDegrees(*body));
@@ -599,4 +603,153 @@ TEST(WorldTest, ContactsStopWhenTheArrayIsFull) {
   EXPECT_EQ(world.generateContacts(), 6u);
   EXPECT_EQ(second.lastLimit, 3u);
   EXPECT_EQ(third.calls, 0u);
+}
+
+// ---------------------------------------------------------------------------
+// Resolving contacts together (ContactResolver::Method::sequentialImpulses)
+
+namespace {
+constexpr ContactResolver::Method together = ContactResolver::Method::sequentialImpulses;
+
+// The farthest any box is from its place in the stack, sideways
+double farthestSideways(const BoxWorld &scene) {
+  double farthest = 0;
+  for (const auto &body : scene.bodies)
+    farthest = std::max<double>(farthest, std::hypot(body->getPosition().x, body->getPosition().z));
+  return farthest;
+}
+
+double fastest(const BoxWorld &scene) {
+  double fastest = 0;
+  for (const auto &body : scene.bodies)
+    fastest = std::max<double>(fastest, body->getVelocity().magnitude());
+  return fastest;
+}
+} // namespace
+
+// Awake stacks of up to ten boxes stand for 30 s. They lean a little at
+// first, while the contact cache gathers each pair's corners, settle within
+// 10 s, and then don't move: no creep. (The book's resolver drops five boxes after
+// about 20 s, eight after 7 s and ten after 5 s.)
+TEST(ResolveTogetherTest, AwakeStacksStandStill) {
+  for (int height : {3, 5, 8, 10}) {
+    SCOPED_TRACE(testing::Message() << height << " boxes");
+    BoxWorld scene(stackOf(height), together);
+    EXPECT_LT(scene.run(10), 2.0);
+    std::vector<Vector3> settled;
+    settled.reserve(scene.bodies.size());
+    for (const auto &body : scene.bodies)
+      settled.push_back(body->getPosition());
+    EXPECT_LT(scene.run(20), 2.0);
+    EXPECT_LT(farthestSideways(scene), 0.1);
+    EXPECT_LT(fastest(scene), 0.01);
+    for (size_t i = 0; i < scene.bodies.size(); ++i) {
+      SCOPED_TRACE(testing::Message() << "box " << i);
+      const Vector3 position = scene.bodies[i]->getPosition();
+      EXPECT_LT((position - settled[i]).magnitude(), 0.005); // no creep
+      EXPECT_NEAR(position.y, 0.5 + i, 0.004 * (i + 1));     // a few mm into the one below
+    }
+  }
+}
+
+// The same tall stack with the book's resolver falls: the limitation the
+// method is for (README, known limitations).
+TEST(ResolveTogetherTest, BooksResolverDropsTheSameStack) {
+  BoxWorld scene(stackOf(8));
+  scene.run(30);
+  EXPECT_LT(scene.bodies.back()->getPosition().y, 6.0);
+}
+
+// A box dropped from 3 m lands flat and comes to rest, as with the book's
+// resolver.
+TEST(ResolveTogetherTest, DroppedBoxComesToRest) {
+  BoxWorld scene({Vector3(0, 3, 0)}, together);
+  EXPECT_LT(scene.run(5), 1.0);
+  const RigidBody &box = *scene.bodies[0];
+  EXPECT_NEAR(box.getPosition().y, 0.5, 0.005);
+  EXPECT_NEAR(box.getVelocity().magnitude(), 0, 0.01);
+}
+
+// Stacks still fall asleep as one, and a box dropped on a sleeping stack
+// wakes it all. After the impact each box may rest up to the resolver's 1 cm
+// position tolerance into the one below, as with the book's resolver.
+TEST(ResolveTogetherTest, StacksSleepAndWake) {
+  std::vector<Vector3> positions = stackOf(5);
+  positions.push_back(Vector3(10, 0.5, 0));
+  BoxWorld scene(positions, together);
+  letSleep(scene);
+  scene.run(5);
+  ASSERT_TRUE(allAsleep(scene));
+
+  RigidBody &dropped = *scene.bodies[5];
+  dropped.setPosition(0, 6, 0);
+  dropped.setVelocity(0, -2, 0);
+  dropped.setAwake();
+  scene.run(0.5);
+  for (int i = 0; i < 5; ++i)
+    EXPECT_TRUE(scene.bodies[i]->getAwake()) << "box " << i;
+  scene.run(5);
+  EXPECT_TRUE(allAsleep(scene));
+  for (size_t i = 0; i < scene.bodies.size(); ++i)
+    EXPECT_NEAR(scene.bodies[i]->getPosition().y, 0.5 + i, 0.01 * (i + 1)) << "box " << i;
+}
+
+// Knocking the bottom box out still drops the one on it.
+TEST(ResolveTogetherTest, KnockingOutTheBottomBoxDropsTheTop) {
+  BoxWorld scene(stackOf(2), together);
+  scene.run(2);
+  scene.bodies[0]->setVelocity(10, 0, 0);
+  scene.run(2);
+  EXPECT_LT(scene.bodies[1]->getPosition().y, 1);
+}
+
+// A box sliding along the ground slows at friction x g, as with one contact
+// at a time: friction is limited by the push at each contact.
+TEST(ResolveTogetherTest, SlidingBoxSlowsAtFrictionTimesG) {
+  BoxWorld scene({Vector3(0, 0.5, 0)}, together);
+  scene.run(0.5);
+  scene.bodies[0]->setVelocity(5, 0, 0);
+  scene.run(0.2);
+  const double before = scene.bodies[0]->getVelocity().x;
+  scene.run(0.2);
+  const double slowing = (before - scene.bodies[0]->getVelocity().x) / 0.2;
+  EXPECT_NEAR(slowing, 0.9 * 9.81, 0.5); // the scene's friction is 0.9
+}
+
+// A ball dropped onto the ground in the game loop bounces at restitution x
+// its speed when it lands, less the speed gravity added during the step (the
+// book's rule, which the book's resolver follows too).
+TEST(ResolveTogetherTest, BounceKeepsRestitutionTimesSpeed) {
+  auto ball = bodyAt(Vector3(0, 3, 0));
+  ball->setAcceleration(Vector3::GRAVITY);
+  CollisionSphere sphere;
+  sphere.body = ball.get();
+  sphere.radius = 1;
+  ContactResolver resolver(10);
+  resolver.setMethod(together);
+  Contact contacts[4];
+  double landing = 0, leaving = 0;
+  for (int step = 0; step < 120 && leaving == 0; ++step) {
+    ball->clearAccumulators();
+    ball->calculateDerivedData();
+    ball->integrate(1.0 / 60);
+    sphere.calculateInternals();
+    CollisionData data;
+    data.contactArray = contacts;
+    data.friction = 0;
+    data.restitution = 0.5;
+    data.tolerance = 0.1;
+    data.reset(4);
+    CollisionPlane ground;
+    ground.direction = Vector3(0, 1, 0);
+    ground.offset = 0;
+    if (CollisionDetector::sphereAndHalfSpace(sphere, ground, &data) == 0)
+      continue;
+    landing = ball->getVelocity().y;
+    resolver.resolveContacts(contacts, data.contactCount, 1.0 / 60);
+    if (ball->getVelocity().y > 0)
+      leaving = ball->getVelocity().y;
+  }
+  ASSERT_LT(landing, -5);
+  EXPECT_NEAR(leaving, 0.5 * (-landing - 9.81 / 60), 1e-3);
 }

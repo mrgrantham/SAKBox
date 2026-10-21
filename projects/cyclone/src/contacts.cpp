@@ -10,6 +10,7 @@
  * software licence.
  */
 
+#include <algorithm>
 #include <assert.h>
 #include <cyclone/contacts.h>
 #include <memory.h>
@@ -469,6 +470,13 @@ void ContactResolver::setIterations(unsigned velocityIterations, unsigned positi
   ContactResolver::positionIterations = positionIterations;
 }
 
+void ContactResolver::setSweeps(unsigned velocitySweeps, unsigned settleSweeps,
+                                unsigned positionSweeps) {
+  ContactResolver::velocitySweeps = velocitySweeps;
+  ContactResolver::settleSweeps = settleSweeps;
+  ContactResolver::positionSweeps = positionSweeps;
+}
+
 void ContactResolver::setEpsilon(real velocityEpsilon, real positionEpsilon) {
   ContactResolver::velocityEpsilon = velocityEpsilon;
   ContactResolver::positionEpsilon = positionEpsilon;
@@ -483,6 +491,12 @@ void ContactResolver::resolveContacts(Contact *contacts, unsigned numContacts, r
 
   // Prepare the contacts for processing
   prepareContacts(contacts, numContacts, duration);
+
+  if (method == Method::sequentialImpulses) {
+    resolveTogether(contacts, numContacts, duration);
+    sleepInGroups(contacts, numContacts);
+    return;
+  }
 
   // Resolve the interpenetration problems with the contacts.
   adjustPositions(contacts, numContacts, duration);
@@ -648,4 +662,315 @@ void ContactResolver::sleepInGroups(Contact *contacts, unsigned numContacts) {
     if (group.settled && body->getAwake())
       body->setAwake(false);
   }
+}
+
+// SAKBox: Method::sequentialImpulses
+
+namespace {
+// A body moves in response to a contact unless it's missing (the ground),
+// immovable, or asleep
+RigidBody *movableBody(RigidBody *body) {
+  return body && body->hasFiniteMass() && body->getAwake() ? body : nullptr;
+}
+
+// How much the speed of `body` along `direction`, at `offset` from its
+// centre, changes for a unit impulse along `direction` there
+real responseAlong(const RigidBody *body, const Vector3 &offset, const Vector3 &direction) {
+  if (!body)
+    return 0;
+  const Vector3 turn = body->getInverseInertiaTensorWorld().transform(offset % direction);
+  return body->getInverseMass() + (turn % offset) * direction;
+}
+
+// The velocity of the point at `offset` from the centre of a body moving
+// with `linear` and `angular` velocity
+Vector3 pointVelocity(const Vector3 &offset, const Vector3 &linear, const Vector3 &angular) {
+  return linear + angular % offset;
+}
+
+// The change in `body`'s linear and angular velocity from `impulse` at
+// `offset` from its centre
+void addImpulse(const RigidBody *body, const Vector3 &offset, const Vector3 &impulse,
+                Vector3 &linear, Vector3 &angular) {
+  linear += impulse * body->getInverseMass();
+  angular += body->getInverseInertiaTensorWorld().transform(offset % impulse);
+}
+
+// Scales `tangentImpulse` down, if need be, so friction stays within its
+// limit: friction coefficient x push (the friction cone)
+void limitFriction(real tangentImpulse[2], real limit) {
+  const real friction =
+      real_sqrt(tangentImpulse[0] * tangentImpulse[0] + tangentImpulse[1] * tangentImpulse[1]);
+  if (friction > limit) {
+    tangentImpulse[0] *= limit / friction;
+    tangentImpulse[1] *= limit / friction;
+  }
+}
+
+// Moves `body` as if it had moved with `linear` and `angular` velocity for
+// `duration`
+void moveBy(RigidBody *body, const Vector3 &linear, const Vector3 &angular, real duration) {
+  body->setPosition(body->getPosition() + linear * duration);
+  Quaternion orientation;
+  body->getOrientation(&orientation);
+  orientation.addScaledVector(angular, duration);
+  body->setOrientation(orientation);
+}
+} // namespace
+
+Vector3 ContactResolver::takeKeptImpulse(const Contact &contact) {
+  const auto kept = lastImpulses.find({contact.body[0], contact.body[1]});
+  if (kept == lastImpulses.end())
+    return Vector3();
+  const Vector3 localPoint = contact.body[0]->getPointInLocalSpace(contact.contactPoint);
+  KeptImpulse *nearest = nullptr;
+  real nearestDistance = warmStartMatchDistance * warmStartMatchDistance;
+  for (KeptImpulse &candidate : kept->second) {
+    const real distance = (candidate.localPoint - localPoint).squareMagnitude();
+    if (!candidate.taken && distance < nearestDistance) {
+      nearestDistance = distance;
+      nearest = &candidate;
+    }
+  }
+  if (!nearest)
+    return Vector3();
+  nearest->taken = true;
+  return nearest->impulse;
+}
+
+void ContactResolver::resolveTogether(Contact *contacts, unsigned numContacts, real duration) {
+  // Wake a sleeping body touched by an awake one where the contact needs
+  // resolving, as the book's resolver does, until no more wake: a body
+  // that's woken can wake the next, so a knock carries through a stack.
+  for (bool woke = true; woke;) {
+    woke = false;
+    for (unsigned i = 0; i < numContacts; i++) {
+      Contact &contact = contacts[i];
+      if (!contact.body[1] || contact.body[0]->getAwake() == contact.body[1]->getAwake())
+        continue;
+      if (contact.desiredDeltaVelocity > velocityEpsilon || contact.penetration > positionEpsilon) {
+        contact.matchAwakeState();
+        woke = true;
+      }
+    }
+  }
+
+  velocityIterationsUsed = 0;
+
+  // Set up each contact that a movable body takes part in, and note each
+  // such body's velocities: integrate() has already moved it by them
+  solverContacts.clear();
+  startVelocities.clear();
+  for (unsigned i = 0; i < numContacts; i++) {
+    Contact &contact = contacts[i];
+    SolverContact solverContact{
+        .contact = &contact,
+        .movable = {movableBody(contact.body[0]), movableBody(contact.body[1])}};
+    if (!solverContact.movable[0] && !solverContact.movable[1])
+      continue;
+    for (RigidBody *body : solverContact.movable)
+      if (body)
+        startVelocities.try_emplace(body, Motion{body->getVelocity(), body->getRotation()});
+
+    const Vector3 *offset = contact.relativeContactPosition;
+    solverContact.normal = contact.contactNormal;
+    solverContact.tangent[0] = contact.contactToWorld.getAxisVector(1);
+    solverContact.tangent[1] = contact.contactToWorld.getAxisVector(2);
+    auto response = [&](const Vector3 &direction) {
+      return responseAlong(solverContact.movable[0], offset[0], direction) +
+             responseAlong(solverContact.movable[1], offset[1], direction);
+    };
+    solverContact.normalResponse = response(solverContact.normal);
+    solverContact.tangentResponse[0] = response(solverContact.tangent[0]);
+    solverContact.tangentResponse[1] = response(solverContact.tangent[1]);
+
+    // The bodies end the step where they started plus the resolved velocity
+    // x duration (see below), so this is the overlap they'd have if they
+    // didn't move along the normal; negative while they're apart. Apart,
+    // they may close the gap this step but no further, so the contact only
+    // pushes once they touch; touching, they mustn't close at all. Faster
+    // than the book's bounce threshold they bounce, as the book works out.
+    solverContact.startNormalVelocity = contact.contactVelocity.x;
+    const real overlapAtStart = contact.penetration + solverContact.startNormalVelocity * duration;
+    solverContact.targetNormalVelocity = std::min(overlapAtStart, (real)0) / duration;
+    solverContact.bounceVelocity =
+        std::max(contact.contactVelocity.x + contact.desiredDeltaVelocity, (real)0);
+    if (solverContact.bounceVelocity > 0)
+      solverContact.targetNormalVelocity =
+          std::max(solverContact.targetNormalVelocity, solverContact.bounceVelocity);
+
+    // Warm start: begin with last step's impulse, as far as it still fits
+    // this contact (pushing only, friction within the cone)
+    const Vector3 kept = takeKeptImpulse(contact);
+    solverContact.normalImpulse = std::max(kept * solverContact.normal, (real)0);
+    solverContact.tangentImpulse[0] = kept * solverContact.tangent[0];
+    solverContact.tangentImpulse[1] = kept * solverContact.tangent[1];
+    limitFriction(solverContact.tangentImpulse, contact.friction * solverContact.normalImpulse);
+    solverContacts.push_back(solverContact);
+  }
+  for (const SolverContact &solverContact : solverContacts) {
+    const Vector3 *offset = solverContact.contact->relativeContactPosition;
+    const Vector3 impulse = solverContact.impulse();
+    if (RigidBody *body = solverContact.movable[0]) {
+      Vector3 linear, angular;
+      addImpulse(body, offset[0], impulse, linear, angular);
+      body->addVelocity(linear);
+      body->addRotation(angular);
+    }
+    if (RigidBody *body = solverContact.movable[1]) {
+      Vector3 linear, angular;
+      addImpulse(body, offset[1], impulse * -1, linear, angular);
+      body->addVelocity(linear);
+      body->addRotation(angular);
+    }
+  }
+
+  sweepVelocities(&SolverContact::targetNormalVelocity, velocitySweeps);
+
+  // integrate() moved each body by its starting velocities; move it as if
+  // it had had the resolved ones instead (semi-implicit Euler, as in
+  // integrate()). This also undoes the step's fall into whatever it rests
+  // on, and since the resolved velocities respect friction, so does the
+  // move: there's no sideways slip for friction to miss.
+  for (auto &[body, start] : startVelocities)
+    moveBy(body, body->getVelocity() - start.linear, body->getRotation() - start.angular, duration);
+
+  // Settle: contacts the move has just brought together end the step still
+  // (or bouncing), rather than closing as fast as they did to get there;
+  // those still apart may close the gap that's left.
+  for (SolverContact &solverContact : solverContacts) {
+    if (solverContact.bounceVelocity > 0) {
+      solverContact.targetNormalVelocity = solverContact.bounceVelocity;
+    } else {
+      const real gap = -overlapNow(solverContact, duration);
+      solverContact.targetNormalVelocity = gap > 0 ? -gap / duration : (real)0;
+    }
+  }
+  sweepVelocities(&SolverContact::targetNormalVelocity, settleSweeps);
+
+  removeOverlap(duration);
+
+  // Keep this step's impulses to start the next step from
+  lastImpulses.clear();
+  for (const SolverContact &solverContact : solverContacts) {
+    const Contact &contact = *solverContact.contact;
+    lastImpulses[{contact.body[0], contact.body[1]}].push_back(
+        {.localPoint = contact.body[0]->getPointInLocalSpace(contact.contactPoint),
+         .impulse = solverContact.impulse()});
+  }
+}
+
+real ContactResolver::overlapNow(const SolverContact &solverContact, real duration) const {
+  const Vector3 *offset = solverContact.contact->relativeContactPosition;
+  Vector3 velocity;
+  for (int b = 0; b < 2; b++)
+    if (const RigidBody *body = solverContact.movable[b]) {
+      const Vector3 point = pointVelocity(offset[b], body->getVelocity(), body->getRotation());
+      velocity += b == 0 ? point : point * -1;
+    }
+  return solverContact.contact->penetration -
+         (velocity * solverContact.normal - solverContact.startNormalVelocity) * duration;
+}
+
+void ContactResolver::sweepVelocities(real SolverContact::*target, unsigned sweeps) {
+  // Each visit adjusts a contact's running totals by what it takes to reach
+  // its target now, given what the other contacts have done, keeping the
+  // totals within their limits: friction first, then the push.
+  for (unsigned sweep = 0; sweep < sweeps; sweep++, velocityIterationsUsed++) {
+    for (SolverContact &solverContact : solverContacts) {
+      const Vector3 *offset = solverContact.contact->relativeContactPosition;
+      RigidBody *const *movable = solverContact.movable;
+      auto relativeVelocity = [&] {
+        Vector3 velocity;
+        if (movable[0])
+          velocity +=
+              pointVelocity(offset[0], movable[0]->getVelocity(), movable[0]->getRotation());
+        if (movable[1])
+          velocity -=
+              pointVelocity(offset[1], movable[1]->getVelocity(), movable[1]->getRotation());
+        return velocity;
+      };
+      auto apply = [&](const Vector3 &impulse) {
+        for (int b = 0; b < 2; b++)
+          if (movable[b]) {
+            Vector3 linear, angular;
+            addImpulse(movable[b], offset[b], b == 0 ? impulse : impulse * -1, linear, angular);
+            movable[b]->addVelocity(linear);
+            movable[b]->addRotation(angular);
+          }
+      };
+
+      // Friction: stop the sliding, up to friction x push
+      Vector3 velocity = relativeVelocity();
+      real tangentImpulse[2];
+      for (int t = 0; t < 2; t++)
+        tangentImpulse[t] =
+            solverContact.tangentImpulse[t] -
+            (velocity * solverContact.tangent[t]) / solverContact.tangentResponse[t];
+      limitFriction(tangentImpulse, solverContact.contact->friction * solverContact.normalImpulse);
+      apply(solverContact.tangent[0] * (tangentImpulse[0] - solverContact.tangentImpulse[0]) +
+            solverContact.tangent[1] * (tangentImpulse[1] - solverContact.tangentImpulse[1]));
+      solverContact.tangentImpulse[0] = tangentImpulse[0];
+      solverContact.tangentImpulse[1] = tangentImpulse[1];
+
+      // The push: reach the target normal velocity, pushing but never
+      // pulling
+      velocity = relativeVelocity();
+      const real normalImpulse = std::max(
+          solverContact.normalImpulse + (solverContact.*target - velocity * solverContact.normal) /
+                                            solverContact.normalResponse,
+          (real)0);
+      apply(solverContact.normal * (normalImpulse - solverContact.normalImpulse));
+      solverContact.normalImpulse = normalImpulse;
+    }
+  }
+}
+
+void ContactResolver::removeOverlap(real duration) {
+  // The overlap left after the move, beyond positionEpsilon, sets a
+  // separating speed for each contact to reach on velocities of its own:
+  // like the velocity sweeps, but along the normal only. They move the
+  // bodies, and then are dropped, so removing overlap doesn't set bodies
+  // moving.
+  separatingVelocities.clear();
+  for (SolverContact &solverContact : solverContacts) {
+    for (RigidBody *body : solverContact.movable)
+      if (body)
+        separatingVelocities.try_emplace(body);
+    solverContact.targetSeparatingSpeed =
+        std::max(overlapNow(solverContact, duration) - positionEpsilon, (real)0) *
+        overlapCorrection / duration;
+  }
+
+  for (positionIterationsUsed = 0; positionIterationsUsed < positionSweeps;
+       positionIterationsUsed++) {
+    for (SolverContact &solverContact : solverContacts) {
+      if (solverContact.targetSeparatingSpeed <= 0)
+        continue;
+      const Vector3 *offset = solverContact.contact->relativeContactPosition;
+      real separatingSpeed = 0;
+      for (int b = 0; b < 2; b++)
+        if (RigidBody *body = solverContact.movable[b]) {
+          const Motion &motion = separatingVelocities[body];
+          const real speed =
+              pointVelocity(offset[b], motion.linear, motion.angular) * solverContact.normal;
+          separatingSpeed += b == 0 ? speed : -speed;
+        }
+      const real positionImpulse = std::max(
+          solverContact.positionImpulse + (solverContact.targetSeparatingSpeed - separatingSpeed) /
+                                              solverContact.normalResponse,
+          (real)0);
+      const Vector3 change =
+          solverContact.normal * (positionImpulse - solverContact.positionImpulse);
+      for (int b = 0; b < 2; b++)
+        if (RigidBody *body = solverContact.movable[b]) {
+          Motion &motion = separatingVelocities[body];
+          addImpulse(body, offset[b], b == 0 ? change : change * -1, motion.linear, motion.angular);
+        }
+      solverContact.positionImpulse = positionImpulse;
+    }
+  }
+
+  for (auto &[body, motion] : separatingVelocities)
+    moveBy(body, motion.linear, motion.angular, duration);
 }

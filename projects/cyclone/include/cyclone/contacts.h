@@ -27,7 +27,10 @@
 #define CYCLONE_CONTACTS_H
 
 #include "body.h"
+#include <map>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace cyclone {
 
@@ -307,6 +310,141 @@ protected:
 
 public:
   /**
+   * SAKBox: how a set of contacts is resolved.
+   */
+  enum class Method {
+    /**
+     * The book's resolver: positions, then velocities, one contact at a
+     * time, the worst first. Fast and robust for impacts and flat resting,
+     * but friction at one contact is ignored while another is resolved, so
+     * awake stacks creep sideways and tall ones fall (book sections 15.5
+     * and 17.3.1).
+     */
+    oneContactAtATime,
+    /**
+     * Sequential impulses (Catto, "Iterative Dynamics with Temporal
+     * Coherence", GDC 2005), which the book outlines in chapter 18. Every
+     * contact is swept many times, keeping a running total of its push and
+     * friction (the friction clamped to the cone allowed by the push), so
+     * all the contacts on a body are satisfied together. Each step starts
+     * from the last step's totals (warm starting). Bodies are then moved as
+     * if they had had the resolved velocities for the whole step, and any
+     * overlap left is removed by moving them along the contact normals,
+     * without changing their velocities (split impulses). Awake stacks of
+     * ten boxes stand still. See resolveTogether().
+     */
+    sequentialImpulses,
+  };
+
+  /** SAKBox: chooses how contacts are resolved (the book's way by default). */
+  void setMethod(Method method) { this->method = method; }
+
+  /** SAKBox: how contacts are resolved. */
+  Method getMethod() const { return method; }
+
+  /**
+   * SAKBox: for Method::sequentialImpulses, how many times each kind of
+   * sweep visits every contact (see resolveTogether): velocity sweeps for
+   * pushes and friction, settle sweeps after the bodies have moved, and
+   * position sweeps for overlap. Unlike setIterations' counts these don't
+   * grow with the number of contacts; each sweep costs one visit per
+   * contact. The defaults, 40, 10 and 10, keep awake stacks of ten boxes
+   * still.
+   */
+  void setSweeps(unsigned velocitySweeps, unsigned settleSweeps, unsigned positionSweeps);
+
+  /**
+   * SAKBox: forgets the pushes and friction kept from the last step for
+   * warm starting (Method::sequentialImpulses). Call it when bodies are
+   * teleported or deleted, so a new body at a freed address doesn't inherit
+   * a deleted one's contacts.
+   */
+  void forgetWarmStart() { lastImpulses.clear(); }
+
+protected:
+  /** SAKBox: see setMethod. */
+  Method method = Method::oneContactAtATime;
+
+  /** SAKBox: see setSweeps. */
+  unsigned velocitySweeps = 40;
+  unsigned settleSweeps = 10;
+  unsigned positionSweeps = 10;
+
+  /**
+   * SAKBox: the share of the overlap beyond positionEpsilon that each step
+   * removes, for Method::sequentialImpulses. Taking it all at once makes
+   * bodies jitter as overlap comes and goes.
+   */
+  static inline const real overlapCorrection = (real)0.8;
+
+  /**
+   * SAKBox: the most a contact point may have moved on its body since the
+   * last step and still be taken for the same contact when warm starting.
+   */
+  static inline const real warmStartMatchDistance = (real)0.05;
+
+  /**
+   * SAKBox: one contact as Method::sequentialImpulses works on it.
+   */
+  struct SolverContact {
+    Contact *contact;
+    // The bodies that move in response: null for the ground, immovable
+    // bodies and sleeping ones
+    RigidBody *movable[2];
+    Vector3 normal, tangent[2];
+    // How much the bodies' relative speed at the contact changes for a
+    // unit impulse along the normal and along each tangent
+    real normalResponse, tangentResponse[2];
+    // The relative velocity along the normal when integrate() moved the
+    // bodies this step (separating is positive)
+    real startNormalVelocity;
+    // The separating speed to leave with (zero, or the bounce)
+    real bounceVelocity;
+    // The normal velocity the velocity sweeps aim for at least
+    real targetNormalVelocity;
+    // The separating speed the position sweeps aim for, to remove overlap
+    real targetSeparatingSpeed = 0;
+    // Running totals of the impulses applied: velocity sweeps' push and
+    // friction, and position sweeps' push
+    real normalImpulse = 0, tangentImpulse[2] = {0, 0};
+    real positionImpulse = 0;
+
+    // The total velocity sweep impulse, in world coordinates
+    Vector3 impulse() const {
+      return normal * normalImpulse + tangent[0] * tangentImpulse[0] +
+             tangent[1] * tangentImpulse[1];
+    }
+  };
+  std::vector<SolverContact> solverContacts;
+
+  /** SAKBox: a body's linear and angular velocity. */
+  struct Motion {
+    Vector3 linear, angular;
+  };
+
+  /**
+   * SAKBox: each movable body's velocities when integrate() moved it this
+   * step, and the velocities the position sweeps use (they only move the
+   * bodies, then are dropped).
+   */
+  std::unordered_map<RigidBody *, Motion> startVelocities;
+  std::unordered_map<RigidBody *, Motion> separatingVelocities;
+
+  /**
+   * SAKBox: the total impulse each contact applied last step (in world
+   * coordinates), and where it was on the first body (in that body's
+   * coordinates), by pair of bodies, for warm starting.
+   */
+  struct KeptImpulse {
+    Vector3 localPoint;
+    Vector3 impulse;
+    // Whether a contact this step has already taken it
+    bool taken = false;
+  };
+  std::map<std::pair<const RigidBody *, const RigidBody *>, std::vector<KeptImpulse>> lastImpulses;
+
+public:
+  /**
    * Stores the number of velocity iterations used in the
    * last call to resolve contacts.
    */
@@ -418,6 +556,35 @@ protected:
    * is woken through a contact with an awake body that needs resolving.
    */
   void sleepInGroups(Contact *contacts, unsigned numContacts);
+
+  /**
+   * SAKBox: resolves the contacts by Method::sequentialImpulses: wakes
+   * sleeping bodies that need to move, sets up each contact and warm starts
+   * it, sweeps the velocities, moves the bodies by the change in velocity,
+   * removes overlap, and keeps this step's impulses for the next.
+   */
+  void resolveTogether(Contact *contacts, unsigned numContacts, real duration);
+
+  /**
+   * SAKBox: the velocity sweeps of resolveTogether, `sweeps` times, aiming
+   * for each contact's `target` normal velocity.
+   */
+  void sweepVelocities(real SolverContact::*target, unsigned sweeps);
+
+  /**
+   * SAKBox: the overlap at a contact once the bodies have moved with their
+   * current velocities for the step; negative while apart.
+   */
+  real overlapNow(const SolverContact &solverContact, real duration) const;
+
+  /** SAKBox: the position sweeps of resolveTogether, removing overlap. */
+  void removeOverlap(real duration);
+
+  /**
+   * SAKBox: the impulse `contact` applied last step, taking it so no other
+   * contact this step does; zero if it's new.
+   */
+  Vector3 takeKeptImpulse(const Contact &contact);
 };
 
 /**

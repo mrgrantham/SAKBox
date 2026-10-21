@@ -210,7 +210,9 @@ public:
 
 // SAKBox: the keys every RigidBodyApplication handles, for the demos'
 // overlays (see Application::getDescription)
-#define RIGID_BODY_KEYS "P: run/pause   Space: one frame   R: reset   C: contacts   Drag: camera"
+#define RIGID_BODY_KEYS                                                                            \
+  "P: run/pause   Space: one frame   R: reset   C: contacts   Drag: camera\n"                      \
+  "M: switch contact resolver (shown bottom right)"
 
 /**
  * This application adds additional functionality used in many of the
@@ -254,6 +256,13 @@ protected:
 
   /** Processes the objects in the simulation forward in time. */
   virtual void updateObjects(cyclone::real duration) = 0;
+
+  /**
+   * SAKBox: writes which contact resolver is in use in the bottom right
+   * corner (M switches; see cyclone::ContactResolver::Method). drawDebug()
+   * calls it.
+   */
+  void renderResolverMethod();
 
   /**
    * Finishes drawing the frame, adding debugging information

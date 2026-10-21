@@ -259,7 +259,17 @@ void RigidBodyApplication::display() {
   glTranslatef(0, -5.0f, 0);
 }
 
+void RigidBodyApplication::renderResolverMethod() {
+  const char *text = resolver.getMethod() == cyclone::ContactResolver::Method::sequentialImpulses
+                         ? "Resolver: all contacts together"
+                         : "Resolver: one contact at a time (the book's)";
+  const float textWidth = (float)stb_easy_font_width(const_cast<char *>(text));
+  glColor3f(0.1f, 0.1f, 0.15f);
+  renderText(width / pixelScale - textWidth - 10.0f, 10.0f, text);
+}
+
 void RigidBodyApplication::drawDebug() {
+  renderResolverMethod();
   if (!renderDebugInfo)
     return;
 
@@ -333,6 +343,17 @@ void RigidBodyApplication::key(unsigned char key) {
     // Advance one frame
     autoPauseSimulation = true;
     pauseSimulation = false;
+    break;
+
+  case 'M':
+  case 'm':
+    // SAKBox: switch between the book's resolver and resolving the contacts
+    // together, to compare them
+    resolver.setMethod(resolver.getMethod() == cyclone::ContactResolver::Method::sequentialImpulses
+                           ? cyclone::ContactResolver::Method::oneContactAtATime
+                           : cyclone::ContactResolver::Method::sequentialImpulses);
+    resolver.forgetWarmStart();
+    return;
   }
 
   Application::key(key);
