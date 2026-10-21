@@ -6,6 +6,8 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <functional>
+#include <future>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -243,4 +245,148 @@ TEST(MessageTest, TypeNameIsWorkedOutOncePerType) {
   EXPECT_EQ(first->typeName(), "(anonymous namespace)::Ping");
   EXPECT_EQ(&first->typeName(), &second->typeName()); // the same string
   EXPECT_EQ(ScratchPadd::makeMessage(Shape{})->typeName(), "(anonymous namespace)::Shape");
+}
+
+// A running padd can start and stop handling a type (receive() and
+// stopReceiving()), from its own thread, including from inside a handler.
+namespace {
+// A padd that starts out handling only Ping, and records what it gets.
+class ChangingPadd : public ScratchPadd::Base {
+public:
+  ChangingPadd(ScratchPadd::System *system) : Base(system) { receivePings(); }
+  std::string name() override { return "ChangingPadd"; }
+  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+
+  void receivePings() {
+    receive<Ping>([this](const Ping &ping) { record("ping " + std::to_string(ping.id)); });
+  }
+  void receiveShapes() {
+    receive<Shape>([this](const Shape &shape) { record("shape " + shape.name); });
+  }
+  void record(const std::string &entry) {
+    std::lock_guard<std::mutex> lk(mutex_);
+    received_.push_back(entry);
+  }
+  std::vector<std::string> received() {
+    std::lock_guard<std::mutex> lk(mutex_);
+    return received_;
+  }
+
+private:
+  std::mutex mutex_;
+  std::vector<std::string> received_;
+};
+
+// Runs `work` on `padd`'s own thread and waits for the system to settle
+template <typename Padd, typename... Padds>
+void onPaddThread(RunningSystem<Padds...> &running, const std::function<void(Padd &)> &work) {
+  Padd &padd = running.template padd<Padd>();
+  padd.push([&padd, work] { work(padd); });
+  ASSERT_TRUE(running.settles());
+}
+} // namespace
+
+TEST(ChangingHandlersTest, StartReceivingWhileRunning) {
+  RunningSystem<Sender, ChangingPadd> running;
+  auto &sender = running.padd<Sender>();
+  auto &changing = running.padd<ChangingPadd>();
+
+  sender.send(Shape{.name = "early"}); // not handled yet, so never queued
+  onPaddThread<ChangingPadd>(running, [](ChangingPadd &padd) { padd.receiveShapes(); });
+  EXPECT_TRUE(changing.handles(typeid(Shape)));
+  sender.send(Shape{.name = "late"});
+  ASSERT_TRUE(running.settles());
+  EXPECT_EQ(changing.received(), std::vector<std::string>{"shape late"});
+}
+
+TEST(ChangingHandlersTest, StopReceivingWhileRunning) {
+  RunningSystem<Sender, ChangingPadd> running;
+  auto &sender = running.padd<Sender>();
+  auto &changing = running.padd<ChangingPadd>();
+
+  sender.send(Ping{1});
+  ASSERT_TRUE(running.settles());
+  bool stopped = false, stoppedAgain = true;
+  onPaddThread<ChangingPadd>(running, [&](ChangingPadd &padd) {
+    stopped = padd.stopReceiving<Ping>();
+    stoppedAgain = padd.stopReceiving<Ping>();
+  });
+  EXPECT_TRUE(stopped);
+  EXPECT_FALSE(stoppedAgain); // there was nothing left to remove
+  EXPECT_FALSE(changing.handles(typeid(Ping)));
+
+  sender.send(Ping{2});
+  EXPECT_EQ(changing.pendingWorkCount(), 0); // not even queued
+  onPaddThread<ChangingPadd>(running, [](ChangingPadd &padd) { padd.receivePings(); });
+  sender.send(Ping{3});
+  ASSERT_TRUE(running.settles());
+  EXPECT_EQ(changing.received(), (std::vector<std::string>{"ping 1", "ping 3"}));
+}
+
+// A handler can remove itself while it runs. Pings queued behind it are
+// dropped when their turn comes, rather than run by a handler that's gone.
+TEST(ChangingHandlersTest, HandlerCanStopItsOwnType) {
+  RunningSystem<Sender, ChangingPadd> running;
+  auto &changing = running.padd<ChangingPadd>();
+  onPaddThread<ChangingPadd>(running, [](ChangingPadd &padd) {
+    padd.receive<Ping>([&padd](const Ping &ping) {
+      padd.record("last ping " + std::to_string(ping.id));
+      padd.stopReceiving<Ping>(); // destroys this handler's stored copy
+    });
+  });
+  // Queue three behind a job that holds the padd's thread, so all three are
+  // queued before the first one runs
+  std::promise<void> release;
+  changing.push([gate = release.get_future().share()] { gate.wait(); });
+  for (int id = 1; id <= 3; id++)
+    running.padd<Sender>().send(Ping{id});
+  EXPECT_EQ(changing.pendingWorkCount(), 4);
+  release.set_value();
+  ASSERT_TRUE(running.settles());
+  EXPECT_EQ(changing.received(), std::vector<std::string>{"last ping 1"});
+}
+
+// A handler can replace itself; the next message goes to the replacement.
+TEST(ChangingHandlersTest, HandlerCanReplaceItself) {
+  RunningSystem<Sender, ChangingPadd> running;
+  onPaddThread<ChangingPadd>(running, [](ChangingPadd &padd) {
+    padd.receive<Ping>([&padd](const Ping &ping) {
+      padd.record("first " + std::to_string(ping.id));
+      padd.receivePings();
+    });
+  });
+  for (int id = 1; id <= 3; id++)
+    running.padd<Sender>().send(Ping{id});
+  ASSERT_TRUE(running.settles());
+  EXPECT_EQ(running.padd<ChangingPadd>().received(),
+            (std::vector<std::string>{"first 1", "ping 2", "ping 3"}));
+}
+
+// Senders check handles() on their own threads while the padd changes its
+// handlers on its own; under ThreadSanitizer this checks that's safe. Each
+// Ping is received at most once, in the order sent.
+TEST(ChangingHandlersTest, SendingWhileHandlersChange) {
+  RunningSystem<Sender, ChangingPadd> running;
+  auto &changing = running.padd<ChangingPadd>();
+  std::thread toggler([&] {
+    for (int i = 0; i < 200; i++) {
+      changing.push([&changing, i] {
+        if (i % 2 == 0)
+          changing.stopReceiving<Ping>();
+        else
+          changing.receivePings();
+      });
+    }
+  });
+  for (int id = 0; id < 2000; id++)
+    running.padd<Sender>().send(Ping{id});
+  toggler.join();
+  ASSERT_TRUE(running.settles());
+
+  int last = -1;
+  for (const std::string &entry : changing.received()) {
+    const int id = std::stoi(entry.substr(5)); // after "ping "
+    EXPECT_GT(id, last);
+    last = id;
+  }
 }

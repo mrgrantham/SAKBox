@@ -118,9 +118,23 @@ send(GatePassed{3});
 ```
 
 - `send(contents)` delivers to every *other* padd that has a handler for the type; `sendIncludeSender(contents)` includes the sender. Padds without a handler never see the message, not even in their queue.
-- Register handlers in the constructor or `prepare()`. They can't change once the padd is running (an assert checks this), which is what lets padd threads read them without locking.
+- Register handlers in the constructor or `prepare()`, or change them while the padd runs (see below).
 - A message is created once and shared by every receiver, so handlers get it as a `const` reference.
 - To send one prepared message several times, wrap it once with `makeMessage(contents)` and pass the resulting `ScratchPadd::Message`. `messageAs<T>(message)` unwraps it, or returns null if it holds another type.
+
+**Changing handlers while running.** A running padd can start handling a type with `receive<T>()` and stop with `stopReceiving<T>()` (which returns `false` if it had no handler for T). Call them on the padd's own thread, for example from a handler or `repeat()`; a handler may even replace or remove itself.
+
+```cpp
+// A padd that listens for one GatePassed, then ignores the rest
+receive<GatePassed>([this](const GatePassed &event) {
+  logger().info("first gate: {}", event.gate);
+  stopReceiving<GatePassed>();
+});
+```
+
+- Whether a padd gets a message is decided when the message is sent. Messages sent before `receive<T>()` never arrive; those already queued when `stopReceiving<T>()` runs are dropped when their turn comes, and the handler that was removed never runs again.
+- Senders check a padd's handlers from their own threads, so the handlers are guarded by a read-write lock: sending takes a shared lock, changing them an exclusive one. Each handler is held by `shared_ptr`, so a handler runs after the lock is released and can't be destroyed while it runs.
+- `Base` registers handlers for the control messages itself; stopping those would stop the padd answering control panels.
 
 The library defines only general-purpose messages in [`messages/include/ScratchPadd/Messages/`](messages/include/ScratchPadd/Messages/): `Text` (a string) and the three control messages below. The demo's `Triangle` (`demo/include/DemoMessages.hpp`) is an example of an app-defined message.
 
@@ -246,13 +260,12 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `basis:Examples_test` | The examples in this README |
 | `basis:Base_test` | Padd names, and a system starting and stopping |
 | `basis:Threading_test` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
-| `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type |
+| `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes) |
 | `messages:Controls_test` | The control round trip: who replies to requests and changes, range clamping, rejected changes, `controlChanged()` and `control<C>()`; and an owner's own changes: `setControl()` (by the same rules, telling panels), `addControl()`, `removeControl()` (the last removal empties the panel), and a padd without controls adding one |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
 
-- **Handlers are fixed once a padd starts.** A padd can't start or stop listening for a type while running.
 - **No direct addressing.** A message goes to every padd that handles its type; to target one padd, put its name in the message (as `ControlChange` does).
 - **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled; a message nobody handles is silently dropped.
 - Audio is a stub.

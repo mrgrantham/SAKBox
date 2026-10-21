@@ -3,7 +3,6 @@
 #include <ScratchPadd/EventTimer.hpp>
 #include <algorithm>
 #include <atomic>
-#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
@@ -11,6 +10,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <typeindex>
 #include <unordered_map>
@@ -47,8 +47,14 @@ private:
   std::string name_{"Unnamed Padd"};
   bool shouldUseMainThread_{false};
   std::mutex scratchPaddMutex_;
-  // Message handlers by message type. Only changed before the padd starts.
-  std::unordered_map<std::type_index, std::function<void(const MessageBase &)>> handlers_;
+  // Message handlers by message type. Senders read this from their own
+  // threads (handles()) while the padd may change it (receive(),
+  // stopReceiving()), so it's guarded by handlersMutex_. Each handler is held
+  // by shared_ptr so deliver() can run it after unlocking, even if the
+  // handler replaces or removes itself.
+  using Handler = std::function<void(const MessageBase &)>;
+  std::unordered_map<std::type_index, std::shared_ptr<const Handler>> handlers_;
+  mutable std::shared_mutex handlersMutex_;
 
 public:
   Base(System *system) : system_(system) {
@@ -314,27 +320,49 @@ public:
   // handler for T. The handler runs on this padd's thread and gets the
   // contents as a const reference; the message is shared with other padds.
   //
-  // Call from the constructor or prepare(): handlers can't change once the
-  // padd is running, which lets its threads read them without locking. The
-  // system only queues a message for padds that have a handler for its type.
-  template <typename T, typename Handler> void receive(Handler handler) {
-    assert(!on_ && "register message handlers before the padd starts");
-    handlers_[std::type_index(typeid(T))] = [handler =
-                                                 std::move(handler)](const MessageBase &message) {
-      handler(static_cast<const MessageOf<T> &>(message).value);
-    };
+  // Usually called from the constructor or prepare(), but a running padd can
+  // call it too (typically from its own thread, e.g. in a handler or
+  // repeat()). The system only queues a message for padds that handle its
+  // type when it's sent, so messages sent before the handler was registered
+  // never arrive.
+  template <typename T, typename OnMessage> void receive(OnMessage onMessage) {
+    auto handler = std::make_shared<const Handler>(
+        [onMessage = std::move(onMessage)](const MessageBase &message) {
+          onMessage(static_cast<const MessageOf<T> &>(message).value);
+        });
+    std::unique_lock lock(handlersMutex_);
+    handlers_.insert_or_assign(std::type_index(typeid(T)), std::move(handler));
   }
 
-  // Whether this padd has a handler for messages of `type`.
-  bool handles(std::type_index type) const { return handlers_.contains(type); }
+  // Removes this padd's handler for messages of type T, so they stop being
+  // sent to it. Messages of type T already queued are dropped when their turn
+  // comes. Can be called while the padd runs, like receive(). Returns false
+  // if there was no handler for T.
+  template <typename T> bool stopReceiving() {
+    std::unique_lock lock(handlersMutex_);
+    return handlers_.erase(std::type_index(typeid(T))) != 0;
+  }
 
-  // Runs this padd's handler for `message`. Called on the padd's thread by
-  // the work queue.
+  // Whether this padd has a handler for messages of `type`. Safe from any
+  // thread; the system calls it from the sender's.
+  bool handles(std::type_index type) const {
+    std::shared_lock lock(handlersMutex_);
+    return handlers_.contains(type);
+  }
+
+  // Runs this padd's current handler for `message`, if it still has one.
+  // Called on the padd's thread by the work queue.
   void deliver(const Message &message) {
-    auto handler = handlers_.find(message->type());
-    if (handler != handlers_.end()) {
-      handler->second(*message);
+    std::shared_ptr<const Handler> handler;
+    {
+      std::shared_lock lock(handlersMutex_);
+      auto found = handlers_.find(message->type());
+      if (found == handlers_.end()) {
+        return;
+      }
+      handler = found->second;
     }
+    (*handler)(*message);
   }
 
   void stop() {
