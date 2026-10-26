@@ -37,7 +37,7 @@ BUILD		:=	build
 # Bazel rule (extra_srcs in BUILD)
 SOURCES		:=	source scratchpadd_audio/core/src third_party/miniaudio
 DATA		:=	data
-INCLUDES	:=	include scratchpadd_audio/core/include third_party
+INCLUDES	:=	include scratchpadd_audio/core/include scratchpadd_audio/tests third_party
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs

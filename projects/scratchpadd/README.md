@@ -295,13 +295,24 @@ sendTo(audio_, PlayMusic{.path = "music/theme.mp3", .settings = {.loop = true}})
 | `PlaySound{name, settings}` | Plays a loaded sound | `Playing{name, voice, ok, error}`, then `VoiceFinished{name, voice}` when it ends |
 | `PlayMusic{path, settings}` | Streams a music file, decoded as it plays | `Playing`, then `VoiceFinished` |
 | `StopVoice{voice}`, `SetVoice{voice, settings}` | Fades one voice out, or changes how it plays | |
-| `StopMusic{}`, `StopAll{}` | Fades out all music, or everything | |
+| `StopMusic{}`, `StopAll{}` | Fades out all music (MIDI files too), or everything | |
+| `PlayMidi{path, settings}` | Plays a MIDI file (`.mid`) on the instrument; one at a time | `Playing`, then `VoiceFinished` |
+| `PlayMidiEvent{event}` | Plays a MIDI event on the instrument now, e.g. `MidiEvent::noteOn(0, 60, 100)` | |
+| `LoadSoundFont{path}` | Plays MIDI with a SoundFont's instruments from now on | `SoundFontLoaded{path, ok, error}` |
+| `UseBuiltInInstrument{}` | Goes back to the built-in instrument | |
 
 - `settings` (`VoiceSettings`): `volume` (1 is as recorded), `pan` (a balance: -1 is left only, 0 both sides as recorded, 1 right only), `pitch` (playback speed: 2 is an octave up and half as long), and `loop`.
-- Answers go back to the padd that asked, with `reply()`: handle `Playing`, `VoiceFinished` or `SoundLoaded` to hear them, or don't. They come in the order things were asked. The demo's `StoryPadd` plays a chime made in code each time its chapter advances, without listening for answers.
+- Answers go back to the padd that asked, with `reply()`: handle `Playing`, `VoiceFinished` or `SoundLoaded` to hear them, or don't. They come in the order things were asked. The demo's `StoryPadd` plays a tune on a vibraphone, a note a chapter, and a chime made in code every fifth, without listening for answers.
 - Controls: `master`, `sounds` and `music` volume (0 to 1), and `mute`. Sounds and music are mixed in two groups, each with its own volume under the master volume.
 - Padds that only send these messages depend on `:audio_messages`, not the engine. AudioPadd itself is in `:audio`.
 - Sound files are found from the working directory, like any other file. Loading decodes the whole file (and converts it to the output's rate) on AudioPadd's thread, so load sounds before they're needed. Music is decoded half a second ahead as it plays, so it can be long.
+
+**MIDI.** MIDI files and events play on one instrument:
+
+- **The built-in instrument** (`BuiltInSynth`) needs no files, so MIDI works everywhere from the start. Each of General MIDI's 16 instrument families (pianos, organs, guitars, strings, brass, synths, ...) has its own simple tone and envelope, and channel 10 plays synthesized drums. It follows volume, expression, pan, sustain, pitch bend (two semitones), all-notes-off and all-sound-off. It's for sketching and for the 3DS; it doesn't sound like real instruments.
+- **A SoundFont** (`.sf2`, or the Ogg-compressed `.sf3` on desktops) sounds like one, played with [TinySoundFont](https://github.com/schellingb/TinySoundFont) (MIT). No SoundFont is in the repo. The demo uses [FluidR3Mono](https://github.com/musescore/MuseScore/tree/v3.6.2/share/sound) (MIT, General MIDI, 24 MB), which Bazel downloads only when the demo is built (`@fluidr3_mono_soundfont`, pinned by checksum; its license is downloaded beside it). Loading reads every sample into memory as floats: FluidR3Mono takes about 4 s and 250 MB, and AudioPadd's thread does nothing else meanwhile (sounds and MIDI already playing carry on; streamed music can run dry). On a 3DS, use the built-in instrument or a small `.sf2`.
+- A MIDI file is read into a sequence when played and timed on the audio thread, in 32-frame steps, so each event lands within a millisecond of its time whatever AudioPadd is doing. Its `settings`: volume and pan as for any voice (applied to the instrument), `pitch` is speed, `loop` starts it over (letting hanging notes go first). Events and files play in the Music group.
+- The instrument plays up to 48 notes at once (`EngineConfig::instrumentNotes`); more take over the oldest or quietest. Everything either instrument needs is allocated when it's made, so playing allocates nothing on the audio thread (TinySoundFont's voices and channels too; the tests check it).
 
 **How it works.** The engine (`audio/core`) is two halves joined by two wait-free queues:
 
@@ -309,9 +320,10 @@ sendTo(audio_, PlayMusic{.path = "music/theme.mp3", .settings = {.loop = true}})
 - The *engine* runs on AudioPadd's thread and does the slow work: decoding and resampling files when they're loaded (with [miniaudio](https://miniaud.io)), decoding music ahead into a ring buffer, and freeing memory once the mixer says it's done with it. AudioPadd calls its `update()` every 20 ms.
 - Sounds are resampled once, when loaded, so mixing is a copy, or a linear interpolation for a pitched voice. Volume and pan changes, and stops, ramp over one block (up to 1024 frames) rather than jump, so they don't click.
 - `Output` is where the mix goes: `DeviceOutput` plays through miniaudio's device (Core Audio, PulseAudio/ALSA/JACK, WASAPI; with no sound device it falls back to miniaudio's silent null device, so the engine still runs), and `OfflineOutput` mixes only when asked, which the tests use to check exact samples. Tests swap AudioPadd's output with `AudioPadd::outputFactory()`.
-- The core is plain C++ with no other ScratchPadd dependency, and doesn't throw or need RTTI, so it builds for the 3DS. On a 3DS, [`audio/3ds/selftest`](audio/3ds/selftest/BUILD) runs the core's checks on the console's own CPU and times a mix: 16 pitched voices take 90 ms per second of audio in the Azahar emulator. It shows the results on the top screen and writes them to `scratchpadd-audio-selftest.txt` on the SD card. Build it with `bazel build //projects/scratchpadd/audio/3ds/selftest:scratchpadd-audio-selftest` (needs Docker; see [`tools/devkitpro`](../../tools/devkitpro/README.md)) and run the `.3dsx` as the [read-controls example](../examples/read-controls/README.md) describes.
+- `MixingScope` (`RealTime.hpp`) marks the audio thread while it mixes, and allocations made there are counted: TinySoundFont's report themselves, and tests report every `new`. The tests check the count stays at zero.
+- The core is plain C++ with no other ScratchPadd dependency, and doesn't throw or need RTTI, so it builds for the 3DS. On a 3DS, [`audio/3ds/selftest`](audio/3ds/selftest/BUILD) runs the core's checks on the console's own CPU and times a mix: 16 pitched voices take 94 ms per second of audio in the Azahar emulator, and 16 notes of the built-in instrument 113 ms. It shows the results on the top screen and writes them to `scratchpadd-audio-selftest.txt` on the SD card. `bazel run //projects/scratchpadd/audio/3ds/selftest:scratchpadd-audio-selftest` builds it (needs Docker; see [`tools/devkitpro`](../../tools/devkitpro/README.md)) and opens it in the Azahar emulator, which Bazel downloads; the results file is then in `.azahar/user/sdmc` (see [`tools/azahar`](../../tools/azahar/README.md)).
 
-miniaudio (public domain or MIT-0) is downloaded by Bazel; nothing needs installing. On Linux it finds PulseAudio or ALSA when the program runs, so no development packages are needed to build.
+miniaudio (public domain or MIT-0), TinySoundFont (MIT) and stb_vorbis (public domain or MIT) are downloaded by Bazel; nothing needs installing. On Linux it finds PulseAudio or ALSA when the program runs, so no development packages are needed to build.
 
 ## Packages
 
@@ -321,7 +333,7 @@ miniaudio (public domain or MIT-0) is downloaded by Bazel; nothing needs install
 | `//projects/scratchpadd/messages` | The message wrapper (`Message`, `makeMessage`), `Text`, and the control types |
 | `//projects/scratchpadd/utilities` | Logging, `Timer`, `EventTimer` and helpers like `VariantHandler` |
 | `//projects/scratchpadd/graphics` | GLFW/ImGui/OpenGL window and views |
-| `//projects/scratchpadd/audio` | `:audio` (`AudioPadd`), `:audio_messages` (what padds send it), `:audio_core` (the engine, also built for the 3DS), `:audio_device` (playback through the sound device) |
+| `//projects/scratchpadd/audio` | `:audio` (`AudioPadd`), `:audio_messages` (what padds send it), `:audio_core` (the engine and instruments, also built for the 3DS), `:audio_device` (playback through the sound device) |
 | `//projects/scratchpadd/demo` | The demo app |
 
 ## Building and Testing
@@ -341,17 +353,17 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `basis:Threading_test` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
 | `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes); `sendTo` (only the named padd, by class and by name, to itself, in order, refused for a missing padd, an empty address or an unhandled type, and four padds sending to one at once from their own threads losing nothing, each in order and with the right sender); the sender (a reply to it, `reply()` reaching only senders that handle the answer, and no sender for a message from outside); broadcasts nobody handles noted once per type; and, when it compiles, that code outside a padd can't call into one |
 | `messages:Controls_test` | The control round trip: requests answered to the panel that asked (all padds, or one sent the request), changes sent straight to their owner and every panel told, unknown padds refused, range clamping, rejected changes, `controlChanged()` and `control<C>()`, and a running padd's controls refused from another thread; and an owner's own changes: `setControl()` (by the same rules, telling panels), `addControl()`, `removeControl()` (the last removal empties the panel), and a padd without controls adding one |
-| `audio:AudioCore_test` | The audio core, through `OfflineOutput`: the queues (including two threads at once), exact samples, voices adding up, volumes, balance, pitch, loops, stops and volume changes ramping, finished voices reported once, unloading a sound while it plays, the voice limit, files resampled from another rate and channel count, missing files, music streamed frame for frame and looping without a gap, music running dry counted, mixing allocating nothing, and how long a second of 32 voices takes to mix |
-| `audio:AudioPadd_test` | AudioPadd in a running system: answers to loading and playing, `VoiceFinished` to the padd that played, failures answered with why, padds that don't listen for answers, the volume controls and mute, stopping one voice, music or everything, and four padds asking at once while the audio thread mixes |
+| `audio:AudioCore_test` | The audio core, through `OfflineOutput`: the queues (including two threads at once), exact samples, voices adding up, volumes, balance, pitch, loops, stops and volume changes ramping, finished voices reported once, unloading a sound while it plays, the voice limit, files resampled from another rate and channel count, missing files, music streamed frame for frame and looping without a gap, music running dry counted, mixing allocating nothing (and that an allocation there would be counted), and how long a second of 32 voices takes to mix |
+| `audio:Midi_test` | MIDI: events' bytes, MIDI files read with their times in frames, the built-in instrument (pitch by key, notes held or dying away, sustain pedal, pitch bend, volume and pan, drums, all-sound-off without a click, taking over notes when full), a SoundFont made in code played in tune, either instrument and the engine playing without allocating, sequences on time, looping until stopped, one at a time, choosing the instrument, and how long a second of 32 notes takes |
+| `audio:AudioPadd_test` | AudioPadd in a running system: answers to loading and playing, `VoiceFinished` to the padd that played, failures answered with why, padds that don't listen for answers, the volume controls and mute, stopping one voice, music or everything, four padds asking at once while the audio thread mixes, MIDI files and events, `StopMusic` stopping MIDI, and loading SoundFonts |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
 
 - **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled, since handlers are registered while the program runs (and can change). A broadcast nobody handles is dropped, with a warning the first time for its type; a direct send to a padd without a handler is refused, with an error.
-- **Audio:** no MIDI or SoundFonts yet, no sound on the 3DS yet (the core runs there, mixing offline), and sounds are held fully decoded in memory (fine for effects; stream long pieces with `PlayMusic`).
+- **Audio:** no sound on the 3DS yet (the core runs there, mixing offline). Sounds are held fully decoded in memory (fine for effects; stream long pieces with `PlayMusic`), and so is a SoundFont. The built-in instrument is simple, and ignores MIDI's pitch-bend range setting (RPN 0).
 
 ## Roadmap
 
-1. Audio: MIDI files and SoundFonts (TinySoundFont), with a built-in instrument.
-2. Audio on the 3DS, through its DSP (`ndsp`).
-3. MIDI input from controllers (RtMidi), on desktops.
+1. Audio on the 3DS, through its DSP (`ndsp`).
+2. MIDI input from controllers (RtMidi), on desktops.

@@ -5,8 +5,13 @@
 // sdmc:/scratchpadd-audio-selftest.txt; START exits.
 #include <3ds.h>
 
+#include <ScratchPadd/Audio/BuiltInSynth.hpp>
 #include <ScratchPadd/Audio/Engine.hpp>
+#include <ScratchPadd/Audio/RealTime.hpp>
+#include <ScratchPadd/Audio/SoundFontSynth.hpp>
 #include <miniaudio/miniaudio.h>
+
+#include "MidiTestData.hpp"
 
 #include <cmath>
 #include <cstdarg>
@@ -183,6 +188,69 @@ void streamsMusic() {
         "a missing file is an error");
 }
 
+// The loudest left sample of the next `frames` frames of `synth`
+float loudest(Synth &synth, std::uint32_t frames) {
+  std::vector<float> out(2 * frames, 0.0f);
+  synth.render(out.data(), frames);
+  float peak = 0;
+  for (std::uint32_t i = 0; i < frames; ++i)
+    peak = std::max(peak, std::fabs(out[2 * i]));
+  return peak;
+}
+
+void builtInInstrument() {
+  BuiltInSynth synth(kRate);
+  synth.handle(MidiEvent::programChange(0, 16)); // an organ: holds its note
+  synth.handle(MidiEvent::noteOn(0, 60, 127));
+  const float held = loudest(synth, kRate / 4);
+  synth.handle(MidiEvent::noteOff(0, 60));
+  loudest(synth, kRate);
+  const bool letGo = synth.notesSounding() == 0;
+  synth.handle(MidiEvent::noteOn(9, 36, 127)); // a kick drum
+  check(held > 0.05f && letGo && loudest(synth, kRate / 10) > 0.01f,
+        "built-in instrument: notes, drums");
+}
+
+// A SoundFont made in code: a sine at 440 Hz on key 69. Playing it
+// allocates nothing (TinySoundFont reports its allocations).
+void soundFont() {
+  const MidiTestData::Bytes bytes = MidiTestData::soundFont();
+  std::string error;
+  auto synth = SoundFontSynth::load(bytes.data(), bytes.size(), kRate, 16, error);
+  if (!synth) {
+    check(false, "a SoundFont plays in tune");
+    return;
+  }
+  std::vector<float> out(2 * (kRate / 4), 0.0f);
+  const std::uint32_t before = allocationsWhileMixing();
+  {
+    const MixingScope mixing;
+    synth->handle(MidiEvent::noteOn(0, 69, 127));
+    synth->render(out.data(), kRate / 4);
+  }
+  int cycles = 0;
+  for (std::uint32_t i = 1; i < kRate / 4; ++i)
+    cycles += out[2 * (i - 1)] < 0.0f && out[2 * i] >= 0.0f;
+  check(std::abs(cycles * 4 - 440) <= 8 && allocationsWhileMixing() == before,
+        "a SoundFont plays in tune");
+}
+
+// A MIDI file's note starts on time: at 0.1 s
+void midiOnTime() {
+  const MidiTestData::Bytes file =
+      MidiTestData::midiFile({{0, 0xC0, 16, 0}, {96, 0x90, 69, 127}, {192, 0x80, 69, 0}});
+  std::string error;
+  Offline offline;
+  const auto sequence = readMidi(file.data(), file.size(), kRate, error);
+  const bool playing = sequence && offline.engine.playMidi(sequence, {}, error).has_value();
+  const std::vector<float> out = offline.render(kRate / 5);
+  std::uint32_t first = 0;
+  while (first < kRate / 5 && out[2 * first] == 0.0f)
+    ++first;
+  const int late = static_cast<int>(first) - static_cast<int>(kRate / 10);
+  check(playing && late >= -32 && late <= 1, "MIDI files play on time");
+}
+
 // 16 voices, pitched (so interpolated) and looping: a second of audio,
 // timed on this CPU
 void timeAFullMix() {
@@ -197,6 +265,22 @@ void timeAFullMix() {
   const double ms = static_cast<double>(svcGetSystemTick() - start) * 1000.0 / SYSCLOCK_ARM11;
   report("", "16 voices, 1 s at %lu Hz: %.1f ms", static_cast<unsigned long>(kRate), ms);
   check(ms < 500.0, "mixes in under half real time");
+}
+
+// 16 notes of the built-in instrument, a second of them timed
+void timeTheInstrument() {
+  Offline offline;
+  for (int note = 0; note < 16; ++note) {
+    offline.engine.midi(MidiEvent::programChange(note % 8, note * 8));
+    offline.engine.midi(MidiEvent::noteOn(note % 8, 48 + note, 100));
+  }
+  std::vector<float> out(2 * 512);
+  const u64 start = svcGetSystemTick();
+  for (std::uint32_t frame = 0; frame < kRate; frame += 512)
+    offline.output.render(out.data(), 512);
+  const double ms = static_cast<double>(svcGetSystemTick() - start) * 1000.0 / SYSCLOCK_ARM11;
+  report("", "16 notes, 1 s: %.1f ms", ms);
+  check(ms < 500.0, "the instrument too");
 }
 
 } // namespace
@@ -214,7 +298,11 @@ int main() {
   loopAndStop();
   resamples();
   streamsMusic();
+  builtInInstrument();
+  soundFont();
+  midiOnTime();
   timeAFullMix();
+  timeTheInstrument();
 
   report(failed ? "\x1b[31m" : "\x1b[32m", "\n%d passed, %d failed", passed, failed);
   if (results) {

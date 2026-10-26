@@ -1,7 +1,9 @@
 #pragma once
 
+#include <ScratchPadd/Audio/MidiSequence.hpp>
 #include <ScratchPadd/Audio/Output.hpp>
 #include <ScratchPadd/Audio/SpscQueue.hpp>
+#include <ScratchPadd/Audio/Synth.hpp>
 #include <ScratchPadd/Audio/Voice.hpp>
 
 #include <array>
@@ -31,11 +33,25 @@ struct StreamBuffer {
 
 // What the owner asks the audio thread to do (see Engine)
 struct Command {
-  enum class Kind : std::uint8_t { Play, PlayStream, Stop, Set, StopAll, Forget, SetGain };
+  enum class Kind : std::uint8_t {
+    Play,
+    PlayStream,
+    PlaySequence,
+    Stop,
+    Set,
+    StopAll,
+    Forget,
+    SetGain,
+    SetSynth,
+    Midi,
+  };
   Kind kind = Kind::StopAll;
   VoiceId voice = 0;
   const Sound *sound = nullptr;
   StreamBuffer *stream = nullptr;
+  const MidiSequence *sequence = nullptr;
+  Synth *synth = nullptr; // SetSynth: the instrument to play MIDI with from now on
+  MidiEvent midi;         // Midi: an event for the instrument now
   VoiceSettings settings;
   Group group = Group::Sounds;
   bool master = false; // SetGain: the master volume rather than `group`'s
@@ -48,6 +64,7 @@ struct Event {
   Kind kind = Kind::Finished;
   VoiceId voice = 0;            // Finished: which voice
   const Sound *sound = nullptr; // Forgotten: no voice uses it any more
+  const Synth *synth = nullptr; // Forgotten: an instrument no longer played
 };
 
 // Counters the audio thread keeps, readable from any thread. They wrap
@@ -58,6 +75,7 @@ struct MixerStats {
   std::atomic<std::uint32_t> underruns{0};     // blocks where music ran dry
   std::atomic<std::uint32_t> droppedEvents{0}; // events the owner's queue had no room for
   std::atomic<std::uint32_t> voicesPlaying{0};
+  std::atomic<std::uint32_t> notesSounding{0}; // the instrument's, as last mixed
 };
 
 // The audio-thread half of the engine: plays voices into the output's
@@ -83,26 +101,41 @@ private:
     VoiceId id = 0; // 0: free
     const Sound *sound = nullptr;
     StreamBuffer *stream = nullptr;
+    const MidiSequence *sequence = nullptr;
+    std::size_t nextEvent = 0; // in `sequence`
     VoiceSettings settings;
     Group group = Group::Sounds;
-    double position = 0;    // in frames, into `sound`
+    double position = 0;    // in frames, into `sound` or `sequence`
     float gain[2] = {0, 0}; // left and right, as last mixed
     bool stopping = false;  // fading to silence this block, then freed
   };
 
   void apply(const Command &command) noexcept;
   void mixBlock(float *out, std::uint32_t frames) noexcept;
-  // The left and right gain `voice` should have now
-  void targetGain(const Voice &voice, float (&gain)[2]) const noexcept;
+  // The left and right gain of a voice playing with `settings` now
+  void targetGain(const VoiceSettings &settings, Group group, bool stopping,
+                  float (&gain)[2]) const noexcept;
   // Mixes `voice` into `out`, ramping from its last gain to `target`;
   // returns false once it has finished
   bool mixSound(Voice &voice, float *out, std::uint32_t frames, const float (&target)[2]) noexcept;
   bool mixStream(Voice &voice, float *out, std::uint32_t frames, const float (&target)[2]) noexcept;
+  // The instrument: sequences' events played on time, and its sound mixed
+  void mixSynth(float *out, std::uint32_t frames) noexcept;
+  // Plays `voice`'s sequence events due in the next `frames` frames;
+  // returns false once it has ended
+  bool advanceSequence(Voice &voice, std::uint32_t frames) noexcept;
   void finish(Voice &voice) noexcept;
   void report(const Event &event) noexcept;
 
   std::vector<Voice> voices_;
   std::vector<float> scratch_; // one block of stream samples
+  Synth *synth_ = nullptr;
+  std::vector<float> synthBus_; // one block of the instrument's sound
+  // How the instrument is mixed, in the Music group: with the settings of
+  // the last sequence played (or set), kept after it ends so its notes'
+  // tails keep them
+  VoiceSettings synthSettings_;
+  float synthGain_[2] = {1, 1};
   SpscQueue<Command> commands_;
   SpscQueue<Event> events_;
   std::array<float, kGroups> groupGain_{1.0f, 1.0f};

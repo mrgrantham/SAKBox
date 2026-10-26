@@ -11,3 +11,6 @@ __pycache__/
 
 # Dear ImGui saves its window layout here when a demo runs
 imgui.ini
+
+# Azahar's settings and SD card when `bazel run` opens a 3DS app (tools/azahar)
+.azahar/

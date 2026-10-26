@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ScratchPadd/Audio/MidiSequence.hpp>
 #include <ScratchPadd/Audio/Mixer.hpp>
 #include <ScratchPadd/Audio/Output.hpp>
 
@@ -17,6 +18,7 @@ struct EngineConfig {
   std::uint32_t maxVoices = 32;       // sounds and music playing at once
   std::uint32_t queueCapacity = 1024; // commands waiting for the audio thread
   double musicAheadSeconds = 0.5;     // music decoded ahead of what's playing
+  std::uint32_t instrumentNotes = 48; // notes the instrument plays at once
 };
 
 // What a load did: ok, or why not
@@ -82,6 +84,27 @@ public:
   bool set(VoiceId voice, const VoiceSettings &settings);
   void stopAll();
 
+  // MIDI is played by one instrument: at first the built-in one
+  // (BuiltInSynth), or a SoundFont once loaded. Loading reads the whole
+  // SoundFont on this thread; the instrument changes once it's ready, and
+  // an error leaves the one playing.
+  LoadResult loadSoundFont(const std::string &path);
+  LoadResult loadSoundFont(const void *data, std::size_t size);
+  void useBuiltInInstrument();
+
+  // Plays a MIDI event on the instrument now: a key pressed on a keyboard,
+  // say
+  void midi(const MidiEvent &event);
+
+  // Plays a MIDI file, or a sequence, on the instrument, in the Music
+  // group. One plays at a time: starting one stops the last. `settings`:
+  // volume and pan as for any voice, pitch is speed, and loop. Returns its
+  // voice, or nothing (with the reason in `error`).
+  std::optional<VoiceId> playMidi(const std::string &path, const VoiceSettings &settings,
+                                  std::string &error);
+  std::optional<VoiceId> playMidi(std::shared_ptr<const MidiSequence> sequence,
+                                  const VoiceSettings &settings, std::string &error);
+
   // Volumes: one per group, under a master volume (1 as recorded)
   void setGroupVolume(Group group, float volume);
   void setMasterVolume(float volume);
@@ -98,7 +121,8 @@ public:
 private:
   struct Music; // a decoder and its ring (Engine.cpp)
   struct VoiceInfo {
-    std::shared_ptr<Music> music; // null for a sound
+    std::shared_ptr<Music> music;                 // set for streamed music
+    std::shared_ptr<const MidiSequence> sequence; // set for MIDI
   };
 
   void send(const Command &command);
@@ -106,6 +130,7 @@ private:
   void collectEvents(std::vector<VoiceId> &finished);
   void decodeAhead(Music &music);
   LoadResult store(const std::string &name, std::shared_ptr<Sound> sound);
+  void useSynth(std::unique_ptr<Synth> synth);
 
   Output &output_;
   EngineConfig config_;
@@ -117,7 +142,11 @@ private:
   // Sounds unloaded or replaced, kept until the audio thread forgets them
   std::vector<std::shared_ptr<Sound>> retiring_;
   std::map<VoiceId, VoiceInfo> voices_;
-  std::deque<Command> pending_; // commands the queue had no room for yet
+  std::deque<Command> pending_;  // commands the queue had no room for yet
+  std::unique_ptr<Synth> synth_; // the instrument
+  // Instruments replaced, kept until the audio thread forgets them
+  std::vector<std::unique_ptr<Synth>> retiringSynths_;
+  VoiceId midiVoice_ = 0; // the MIDI sequence playing, if any
 };
 
 } // namespace ScratchPadd::Audio

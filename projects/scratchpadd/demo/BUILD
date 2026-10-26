@@ -8,6 +8,7 @@ cc_library(
     visibility = ["//visibility:public"],
     strip_include_prefix = "include/",
     deps = [
+        "//projects/data_dep_retriever",
         "//projects/scratchpadd/audio:audio_messages",
         "//projects/scratchpadd/basis",
     ],
@@ -16,6 +17,11 @@ cc_library(
 cc_binary(
     name = "demo",
     srcs = ["src/main.cpp"],
+    # The General MIDI SoundFont StoryPadd's tune plays on (MIT; see MODULE.bazel)
+    data = [
+        "@fluidr3_mono_soundfont//file",
+        "@fluidr3_mono_soundfont_license//file",
+    ],
     deps = [
         "//projects/scratchpadd/basis:basis",
         "@backward",

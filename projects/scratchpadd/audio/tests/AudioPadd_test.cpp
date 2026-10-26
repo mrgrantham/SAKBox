@@ -5,10 +5,13 @@
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Testing.hpp>
 
+#include "MidiTestData.hpp"
+
 #include <gtest/gtest.h>
 
 #include <atomic>
 #include <chrono>
+#include <fstream>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -26,6 +29,7 @@ public:
     receive<SoundLoaded>([this](const SoundLoaded &loaded) { keep(loaded_, loaded); });
     receive<Playing>([this](const Playing &playing) { keep(playing_, playing); });
     receive<VoiceFinished>([this](const VoiceFinished &done) { keep(finished_, done); });
+    receive<SoundFontLoaded>([this](const SoundFontLoaded &loaded) { keep(fonts_, loaded); });
   }
   std::string name() override { return "Listener" + std::to_string(N); }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
@@ -38,6 +42,7 @@ public:
   std::vector<SoundLoaded> loaded() { return copy(loaded_); }
   std::vector<Playing> playing() { return copy(playing_); }
   std::vector<VoiceFinished> finished() { return copy(finished_); }
+  std::vector<SoundFontLoaded> fonts() { return copy(fonts_); }
 
 private:
   template <typename T> void keep(std::vector<T> &list, const T &item) {
@@ -52,6 +57,7 @@ private:
   std::vector<SoundLoaded> loaded_;
   std::vector<Playing> playing_;
   std::vector<VoiceFinished> finished_;
+  std::vector<SoundFontLoaded> fonts_;
 };
 using Listener = ListenerPadd<0>;
 
@@ -117,6 +123,23 @@ LoadSoundSamples constantSamples(const std::string &name, std::uint32_t frames, 
           .samples = std::make_shared<const std::vector<float>>(frames, value),
           .rate = 48000,
           .channels = 1};
+}
+
+// Writes `bytes` to a file in the test's temporary folder; returns its path
+std::string writeFile(const std::string &name, const std::vector<std::uint8_t> &bytes) {
+  const std::string path = testing::TempDir() + name;
+  std::ofstream(path, std::ios::binary)
+      .write(reinterpret_cast<const char *>(bytes.data()),
+             static_cast<std::streamsize>(bytes.size()));
+  return path;
+}
+
+// The loudest sample of the next `frames` frames
+float loudest(const std::vector<float> &stereo) {
+  float peak = 0;
+  for (float sample : stereo)
+    peak = std::max(peak, std::abs(sample));
+  return peak;
 }
 
 } // namespace
@@ -277,4 +300,64 @@ TEST(AudioPaddTest, ManyPaddsAtOnce) {
   EXPECT_GT(playedOverall, 0u);
   mixing = false;
   audioThread.join();
+}
+
+// A MIDI file plays (answered, then reported finished); events play now
+TEST(AudioPaddTest, PlaysMidi) {
+  AudioSystem<Listener> running;
+  auto &listener = running.padd<Listener>();
+  // A note for the first quarter second (240 ticks)
+  const std::string path =
+      writeFile("tune.mid", MidiTestData::midiFile({{0, 0x90, 69, 127}, {240, 0x80, 69, 0}}));
+  listener.ask(PlayMidi{.path = path});
+  ASSERT_TRUE(running.settles());
+  ASSERT_EQ(listener.playing().size(), 1u);
+  EXPECT_TRUE(listener.playing()[0].ok) << listener.playing()[0].error;
+  EXPECT_GT(loudest(running.render(4800)), 0.01f);
+  running.render(48000);
+  ASSERT_TRUE(eventually([&] { return listener.finished().size() == 1; }));
+  EXPECT_EQ(listener.finished()[0].name, path);
+
+  running.render(48000); // the note dies away
+  listener.ask(PlayMidiEvent{.event = MidiEvent::noteOn(0, 60, 127)});
+  ASSERT_TRUE(running.settles());
+  EXPECT_GT(loudest(running.render(4800)), 0.01f);
+}
+
+// StopMusic stops a MIDI file too
+TEST(AudioPaddTest, StopMusicStopsMidi) {
+  AudioSystem<Listener> running;
+  auto &listener = running.padd<Listener>();
+  const std::string path =
+      writeFile("long.mid", MidiTestData::midiFile({{0, 0x90, 60, 100}, {9600, 0x80, 60, 0}}));
+  listener.ask(PlayMidi{.path = path});
+  ASSERT_TRUE(running.settles());
+  running.render(4800);
+  listener.ask(StopMusic{});
+  ASSERT_TRUE(running.settles());
+  running.render(1024);
+  ASSERT_TRUE(eventually([&] { return listener.finished().size() == 1; }));
+}
+
+// Loading a SoundFont is answered; one that can't be read says why
+TEST(AudioPaddTest, LoadsSoundFonts) {
+  AudioSystem<Listener> running;
+  auto &listener = running.padd<Listener>();
+  listener.ask(LoadSoundFont{.path = testing::TempDir() + "missing.sf2"});
+  const std::string path = writeFile("sine.sf2", MidiTestData::soundFont());
+  listener.ask(LoadSoundFont{.path = path});
+  listener.ask(PlayMidi{.path = testing::TempDir() + "missing.mid"});
+  ASSERT_TRUE(running.settles());
+  const auto fonts = listener.fonts();
+  ASSERT_EQ(fonts.size(), 2u);
+  EXPECT_FALSE(fonts[0].ok);
+  EXPECT_NE(fonts[0].error.find("can't read"), std::string::npos) << fonts[0].error;
+  EXPECT_TRUE(fonts[1].ok) << fonts[1].error;
+  EXPECT_EQ(fonts[1].path, path);
+  ASSERT_EQ(listener.playing().size(), 1u);
+  EXPECT_FALSE(listener.playing()[0].ok);
+  listener.ask(PlayMidiEvent{.event = MidiEvent::noteOn(0, 69, 127)});
+  listener.ask(UseBuiltInInstrument{});
+  ASSERT_TRUE(running.settles());
+  running.render(256);
 }

@@ -7,6 +7,7 @@
 // type to hear it, or don't. Answers come back in the order things were
 // asked, so a padd that asks twice can tell its answers apart.
 
+#include <ScratchPadd/Audio/MidiEvent.hpp>
 #include <ScratchPadd/Audio/Voice.hpp>
 
 #include <cstdint>
@@ -81,7 +82,36 @@ struct SetVoice {
   VoiceSettings settings;
 };
 
-// Fades out all music, or everything
+// MIDI plays on one instrument: the built-in one until a SoundFont is
+// loaded. LoadSoundFont makes MIDI play with a SoundFont's instruments
+// (.sf2; .sf3 too on desktops). Answered with SoundFontLoaded; if it can't
+// be loaded, the instrument stays as it was.
+struct LoadSoundFont {
+  std::string path;
+};
+
+struct SoundFontLoaded {
+  std::string path;
+  bool ok = false;
+  std::string error;
+};
+
+struct UseBuiltInInstrument {};
+
+// Plays a MIDI event on the instrument now: a note from a keyboard, say
+struct PlayMidiEvent {
+  MidiEvent event;
+};
+
+// Plays a MIDI file on the instrument, in the Music group. One plays at a
+// time: starting one stops the last. Pitch is speed. Answered like
+// PlaySound, with the path as the name.
+struct PlayMidi {
+  std::string path;
+  VoiceSettings settings;
+};
+
+// Fades out all music (MIDI files included), or everything
 struct StopMusic {};
 struct StopAll {};
 

@@ -1,7 +1,11 @@
 // The audio core, heard through OfflineOutput: every test mixes on its own
 // thread and checks the samples exactly, the same on every machine.
 #include <ScratchPadd/Audio/Engine.hpp>
+#include <ScratchPadd/Audio/RealTime.hpp>
 #include <ScratchPadd/Audio/SpscQueue.hpp>
+
+#include "CountAllocations.hpp"
+#include "OfflineEngine.hpp"
 
 #include <gtest/gtest.h>
 #include <miniaudio/miniaudio.h>
@@ -9,68 +13,15 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
-#include <cstdlib>
-#include <new>
 #include <optional>
 #include <string>
 #include <thread>
 #include <vector>
 
 using namespace ScratchPadd::Audio;
-
-// Counts allocations made while `countingThisThread` is set, so a test can
-// check that mixing allocates nothing
-namespace {
-thread_local bool countingThisThread = false;
-std::atomic<int> allocationsCounted{0};
-} // namespace
-
-void *operator new(std::size_t size) {
-  if (countingThisThread) {
-    ++allocationsCounted;
-  }
-  if (void *memory = std::malloc(size == 0 ? 1 : size)) {
-    return memory;
-  }
-  throw std::bad_alloc();
-}
-void operator delete(void *memory) noexcept { std::free(memory); }
-void operator delete(void *memory, std::size_t) noexcept { std::free(memory); }
+using namespace OfflineEngine;
 
 namespace {
-
-constexpr std::uint32_t kRate = 48000;
-
-// An engine playing into an offline output, which the test renders
-struct Offline {
-  OfflineOutput output{kRate};
-  Engine engine;
-  explicit Offline(const EngineConfig &config = {}) : engine(output, config) {
-    std::string error;
-    EXPECT_TRUE(engine.start(error)) << error;
-  }
-  // The next `frames` frames, interleaved stereo
-  std::vector<float> render(std::uint32_t frames) {
-    std::vector<float> out(2 * frames);
-    output.render(out.data(), frames);
-    return out;
-  }
-  // Loads stereo samples at the engine's rate (copied as they are)
-  void load(const std::string &name, const std::vector<float> &stereo) {
-    const LoadResult result = engine.loadSamples(name, stereo.data(), stereo.size(), kRate, 2);
-    ASSERT_TRUE(result.ok) << result.error;
-  }
-};
-
-// The voice a play call started, failing the test (with `why`) if it
-// started none
-VoiceId started(std::optional<VoiceId> voice, const std::string &why = "no voice started") {
-  if (!voice) {
-    ADD_FAILURE() << why;
-    return 0;
-  }
-  return *voice;
-}
 
 // `frames` frames: left counts up from 0.01, right is minus that
 std::vector<float> ramp(std::uint32_t frames) {
@@ -428,12 +379,24 @@ TEST(RealTimeTest, MixingAllocatesNothing) {
   offline.engine.set(voices[2], {.volume = 0.3f});
   offline.engine.setMasterVolume(0.8f);
   std::vector<float> out(2 * 512);
-  allocationsCounted = 0;
-  countingThisThread = true;
+  const std::uint32_t before = allocationsWhileMixing();
   for (int block = 0; block < 20; ++block)
     offline.output.render(out.data(), 512);
-  countingThisThread = false;
-  EXPECT_EQ(allocationsCounted.load(), 0);
+  EXPECT_EQ(allocationsWhileMixing(), before);
+}
+
+// The check above would see an allocation: one made while mixing is
+// counted, and one made otherwise isn't. (Calling operator new itself: an
+// optimizer may drop a `new` expression that's deleted at once.)
+TEST(RealTimeTest, AllocationsWhileMixingAreCounted) {
+  const std::uint32_t before = allocationsWhileMixing();
+  ::operator delete(::operator new(16));
+  EXPECT_EQ(allocationsWhileMixing(), before);
+  {
+    const MixingScope mixing;
+    ::operator delete(::operator new(16));
+  }
+  EXPECT_EQ(allocationsWhileMixing(), before + 1);
 }
 
 // One second of audio with every voice busy (pitched, so interpolated, and

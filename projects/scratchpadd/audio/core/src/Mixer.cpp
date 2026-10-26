@@ -1,17 +1,21 @@
 #include <ScratchPadd/Audio/Mixer.hpp>
 
+#include <ScratchPadd/Audio/RealTime.hpp>
+
 #include <algorithm>
 #include <cmath>
 
 namespace ScratchPadd::Audio {
 
 Mixer::Mixer(std::uint32_t maxVoices, std::uint32_t queueCapacity)
-    : voices_(maxVoices), scratch_(2 * kMaxBlock), commands_(queueCapacity),
+    : voices_(maxVoices), scratch_(2 * kMaxBlock), synthBus_(2 * kMaxBlock),
+      commands_(queueCapacity),
       // Each voice can finish once and each command forget one sound, so
       // this many events can't overflow before the owner reads them
       events_(queueCapacity + maxVoices) {}
 
 void Mixer::render(float *out, std::uint32_t frames) noexcept {
+  const MixingScope mixing; // counts any allocation made here (there should be none)
   // Commands first, so this block already plays what was asked before it
   Command command;
   while (commands_.pop(command)) {
@@ -38,7 +42,8 @@ void Mixer::apply(const Command &command) noexcept {
   };
   switch (command.kind) {
   case Command::Kind::Play:
-  case Command::Kind::PlayStream: {
+  case Command::Kind::PlayStream:
+  case Command::Kind::PlaySequence: {
     // The owner counts voices, so a free one is always there; if not,
     // report the voice finished rather than lose it
     Voice *free = voiceWithId(0);
@@ -49,10 +54,14 @@ void Mixer::apply(const Command &command) noexcept {
     *free = Voice{.id = command.voice,
                   .sound = command.sound,
                   .stream = command.stream,
+                  .sequence = command.sequence,
                   .settings = command.settings,
                   .group = command.group};
     // Start at full gain: a fade-in would blunt every sound's attack
-    targetGain(*free, free->gain);
+    targetGain(free->settings, free->group, false, free->gain);
+    if (free->sequence) {
+      synthSettings_ = free->settings;
+    }
     stats_.voicesPlaying.fetch_add(1, std::memory_order_relaxed);
     return;
   }
@@ -64,6 +73,9 @@ void Mixer::apply(const Command &command) noexcept {
   case Command::Kind::Set:
     if (Voice *voice = voiceWithId(command.voice)) {
       voice->settings = command.settings; // gains ramp to the new values
+      if (voice->sequence) {
+        synthSettings_ = command.settings;
+      }
     }
     return;
   case Command::Kind::StopAll:
@@ -88,17 +100,29 @@ void Mixer::apply(const Command &command) noexcept {
       groupGain_[static_cast<std::size_t>(command.group)] = command.gain;
     }
     return;
+  case Command::Kind::SetSynth:
+    // The owner frees the old one once told it's no longer played
+    if (synth_) {
+      report({.kind = Event::Kind::Forgotten, .synth = synth_});
+    }
+    synth_ = command.synth;
+    return;
+  case Command::Kind::Midi:
+    if (synth_) {
+      synth_->handle(command.midi);
+    }
+    return;
   }
 }
 
-void Mixer::targetGain(const Voice &voice, float (&gain)[2]) const noexcept {
+void Mixer::targetGain(const VoiceSettings &settings, Group group, bool stopping,
+                       float (&gain)[2]) const noexcept {
   // Balance, as on a stereo amplifier: every sound is stereo, so the centre
   // leaves both sides as recorded, and moving right turns the left side
   // down (and the other way), to silence at the end
-  const float pan = std::clamp(voice.settings.pan, -1.0f, 1.0f);
-  const float level = voice.stopping ? 0.0f
-                                     : voice.settings.volume * masterGain_ *
-                                           groupGain_[static_cast<std::size_t>(voice.group)];
+  const float pan = std::clamp(settings.pan, -1.0f, 1.0f);
+  const float level =
+      stopping ? 0.0f : settings.volume * masterGain_ * groupGain_[static_cast<std::size_t>(group)];
   gain[0] = level * (pan > 0.0f ? 1.0f - pan : 1.0f);
   gain[1] = level * (pan < 0.0f ? 1.0f + pan : 1.0f);
 }
@@ -109,8 +133,17 @@ void Mixer::mixBlock(float *out, std::uint32_t frames) noexcept {
     if (voice.id == 0) {
       continue;
     }
+    if (voice.sequence) { // played by the instrument, in mixSynth
+      if (voice.stopping) {
+        if (synth_) {
+          synth_->allNotesOff();
+        }
+        finish(voice);
+      }
+      continue;
+    }
     float target[2];
-    targetGain(voice, target);
+    targetGain(voice.settings, voice.group, voice.stopping, target);
     const bool playing =
         voice.sound ? mixSound(voice, out, frames, target) : mixStream(voice, out, frames, target);
     voice.gain[0] = target[0];
@@ -118,6 +151,72 @@ void Mixer::mixBlock(float *out, std::uint32_t frames) noexcept {
     if (!playing || voice.stopping) {
       finish(voice);
     }
+  }
+  mixSynth(out, frames);
+}
+
+void Mixer::mixSynth(float *out, std::uint32_t frames) noexcept {
+  if (!synth_) { // nothing can play a sequence
+    for (Voice &voice : voices_) {
+      if (voice.id != 0 && voice.sequence) {
+        finish(voice);
+      }
+    }
+    return;
+  }
+  // In steps short enough that each event lands within a millisecond of
+  // its time
+  constexpr std::uint32_t kStep = 32;
+  float *bus = synthBus_.data();
+  std::fill(bus, bus + 2 * frames, 0.0f);
+  for (std::uint32_t done = 0; done < frames;) {
+    const std::uint32_t step = std::min(kStep, frames - done);
+    for (Voice &voice : voices_) {
+      if (voice.id != 0 && voice.sequence && !advanceSequence(voice, step)) {
+        finish(voice);
+      }
+    }
+    synth_->render(bus + 2 * done, step);
+    done += step;
+  }
+  float target[2];
+  targetGain(synthSettings_, Group::Music, false, target);
+  const float stepLeft = (target[0] - synthGain_[0]) / static_cast<float>(frames);
+  const float stepRight = (target[1] - synthGain_[1]) / static_cast<float>(frames);
+  float left = synthGain_[0], right = synthGain_[1];
+  for (std::uint32_t i = 0; i < frames; ++i) {
+    out[2 * i] += bus[2 * i] * left;
+    out[2 * i + 1] += bus[2 * i + 1] * right;
+    left += stepLeft;
+    right += stepRight;
+  }
+  synthGain_[0] = target[0];
+  synthGain_[1] = target[1];
+  stats_.notesSounding.store(synth_->notesSounding(), std::memory_order_relaxed);
+}
+
+bool Mixer::advanceSequence(Voice &voice, std::uint32_t frames) noexcept {
+  const MidiSequence &sequence = *voice.sequence;
+  // Pitch is speed here too: 2 plays it twice as fast
+  double end = voice.position + frames * static_cast<double>(std::max(voice.settings.pitch, 0.0f));
+  for (;;) {
+    while (voice.nextEvent < sequence.events.size() &&
+           sequence.events[voice.nextEvent].frame < end) {
+      synth_->handle(sequence.events[voice.nextEvent].event);
+      ++voice.nextEvent;
+    }
+    if (end < sequence.frames) {
+      voice.position = end;
+      return true;
+    }
+    // Past the end, every event played: over, or round again, without
+    // notes left hanging
+    if (!voice.settings.loop || sequence.frames == 0) {
+      return false;
+    }
+    synth_->allNotesOff();
+    end -= sequence.frames;
+    voice.nextEvent = 0;
   }
 }
 

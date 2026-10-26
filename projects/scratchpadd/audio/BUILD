@@ -9,6 +9,15 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
+# One MIDI message (a note, a controller, ...): shared by the engine and the
+# messages that play MIDI
+cc_library(
+    name = "audio_midi_event",
+    hdrs = ["core/include/ScratchPadd/Audio/MidiEvent.hpp"],
+    strip_include_prefix = "core/include/",
+    visibility = ["//visibility:public"],
+)
+
 # The audio core: sounds, voices, the mixer and music streaming, talking to
 # an Output (see README). Plain C++ with no other ScratchPadd dependency, so
 # the same code builds for the 3DS. Decodes with miniaudio.
@@ -17,13 +26,21 @@ cc_library(
     srcs = glob(["core/src/*.cpp"]),
     hdrs = glob(
         ["core/include/**/*.hpp"],
-        exclude = ["core/include/ScratchPadd/Audio/Voice.hpp"],
+        exclude = [
+            "core/include/ScratchPadd/Audio/MidiEvent.hpp",
+            "core/include/ScratchPadd/Audio/Voice.hpp",
+        ],
     ),
+    # Compressed SoundFonts (.sf3), with stb_vorbis (the 3DS build leaves it out)
+    local_defines = ["SCRATCHPADD_AUDIO_SF3"],
     strip_include_prefix = "core/include/",
     visibility = ["//visibility:public"],
     deps = [
+        ":audio_midi_event",
         ":audio_voice",
         "@miniaudio",
+        "@stb//:stb_vorbis",
+        "@tinysoundfont",
     ],
 )
 
@@ -53,7 +70,10 @@ cc_library(
     hdrs = ["messages/include/ScratchPadd/Audio/Messages.hpp"],
     strip_include_prefix = "messages/include/",
     visibility = ["//visibility:public"],
-    deps = [":audio_voice"],
+    deps = [
+        ":audio_midi_event",
+        ":audio_voice",
+    ],
 )
 
 # AudioPadd: the engine as a padd, played with messages
@@ -70,12 +90,36 @@ cc_library(
     ],
 )
 
+# Helpers the core's tests share
+cc_library(
+    name = "audio_test_helpers",
+    testonly = True,
+    hdrs = [
+        "tests/CountAllocations.hpp",
+        "tests/MidiTestData.hpp",
+        "tests/OfflineEngine.hpp",
+    ],
+    strip_include_prefix = "tests/",
+    deps = [
+        ":audio_core",
+        "@gtest",
+    ],
+)
+
+# MidiTestData.hpp, for the 3DS self-test
+filegroup(
+    name = "midi_test_data",
+    srcs = ["tests/MidiTestData.hpp"],
+    visibility = ["//projects/scratchpadd/audio/3ds:__subpackages__"],
+)
+
 cc_test(
     name = "AudioCore_test",
     size = "small",
     srcs = ["tests/AudioCore_test.cpp"],
     deps = [
         ":audio_core",
+        ":audio_test_helpers",
         "@gtest//:gtest_main",
         "@miniaudio",
     ],
@@ -87,8 +131,20 @@ cc_test(
     srcs = ["tests/AudioPadd_test.cpp"],
     deps = [
         ":audio",
+        ":audio_test_helpers",
         "//projects/scratchpadd/basis",
         "@gtest//:gtest_main",
         "@miniaudio",
+    ],
+)
+
+cc_test(
+    name = "Midi_test",
+    size = "small",
+    srcs = ["tests/Midi_test.cpp"],
+    deps = [
+        ":audio_core",
+        ":audio_test_helpers",
+        "@gtest//:gtest_main",
     ],
 )

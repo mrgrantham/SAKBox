@@ -24,6 +24,8 @@ bazel_dep(name = "boost.filesystem", version = "1.90.0.bcr.1")
 # Libraries built with our own BUILD files in //third_party
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+
 new_git_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 
 http_archive(
@@ -41,6 +43,88 @@ http_archive(
     sha256 = "b900edcffe979816e2560a0580b9b1216d674b4f17fbadeca8f777a7f8ab0274",
     strip_prefix = "miniaudio-0.11.25",
     url = "https://github.com/mackron/miniaudio/archive/refs/tags/0.11.25.tar.gz",
+)
+
+# Azahar 2126.2, the 3DS emulator `bazel run` opens 3DS apps in
+# (//tools/azahar). Only the build for the machine running it is downloaded,
+# the first time a 3DS app is built. GPL-2.0, run as a separate program.
+http_archive(
+    name = "azahar_macos_arm64",
+    build_file = "//third_party:azahar_macos.BUILD",
+    sha256 = "c24dec2bd5111b7d79513d686c5aece6612cdbf9737b2e6ea99cfc426f1d4aef",
+    strip_prefix = "azahar-macos-arm64-2126.2",
+    url = "https://github.com/azahar-emu/azahar/releases/download/2126.2/azahar-macos-arm64-2126.2.zip",
+)
+
+http_archive(
+    name = "azahar_macos_x86_64",
+    build_file = "//third_party:azahar_macos.BUILD",
+    sha256 = "b3f87eca11ffcccf929c80abeea976f00917be81444d49f48d3dc7ceb3627947",
+    strip_prefix = "azahar-macos-x86_64-2126.2",
+    url = "https://github.com/azahar-emu/azahar/releases/download/2126.2/azahar-macos-x86_64-2126.2.zip",
+)
+
+http_file(
+    name = "azahar_linux_x86_64",
+    downloaded_file_path = "azahar.AppImage",
+    executable = True,
+    sha256 = "af037f8b775198f636b14bcfe63fb401b02246ebfefe1025bb905ce042556960",
+    url = "https://github.com/azahar-emu/azahar/releases/download/2126.2/azahar.AppImage",
+)
+
+# The tools that make 3DS CIA files (//tools/devkitpro): makerom, bannertool,
+# and the CIA settings and boot logo bannertool's build tools hold. All MIT.
+# Compiled from source inside devkitPro's image the first time a 3DS app is
+# built, for whatever processor Docker runs on.
+http_archive(
+    name = "project_ctr",
+    build_file = "//third_party:project_ctr.BUILD",
+    sha256 = "446bd23919b7e9fa10540a784202d388a0b93ef4d7165f3990481edd2aa2f946",
+    strip_prefix = "Project_CTR-makerom-v0.19.0",
+    url = "https://github.com/3DSGuy/Project_CTR/archive/refs/tags/makerom-v0.19.0.tar.gz",
+)
+
+http_archive(
+    name = "bannertool",
+    build_file = "//third_party:bannertool.BUILD",
+    sha256 = "c73de017f48224230958191b0da952ee5742c7483d652a7b8863b09e76b78f80",
+    strip_prefix = "bannertool-1.2.0",
+    url = "https://github.com/diasurgical/bannertool/archive/refs/tags/1.2.0.tar.gz",
+)
+
+http_archive(
+    name = "ctr_buildtools",
+    build_file = "//third_party:ctr_buildtools.BUILD",
+    sha256 = "f86c0d390c44d668d0d2c83ad9f804ccb313affc9ee80fda0347e675eef28511",
+    strip_prefix = "buildtools-b7043ff1854be48ef0d055bba81b0a69a5bc892f",
+    url = "https://github.com/Steveice10/buildtools/archive/b7043ff1854be48ef0d055bba81b0a69a5bc892f.tar.gz",
+)
+
+# TinySoundFont: SoundFont synthesis and MIDI files, for ScratchPadd's audio
+# (//projects/scratchpadd/audio). MIT.
+http_archive(
+    name = "tinysoundfont",
+    build_file = "//third_party:tinysoundfont.BUILD",
+    sha256 = "76c356df524f71f2a34f67fa0cb2cb946036fe7a65d2930a849569c5e742fa57",
+    strip_prefix = "TinySoundFont-853a0a171759f1ddba0de1442133a75912bbeffa",
+    url = "https://github.com/schellingb/TinySoundFont/archive/853a0a171759f1ddba0de1442133a75912bbeffa.tar.gz",
+)
+
+# A General MIDI SoundFont for the ScratchPadd demo (FluidR3Mono, as
+# MuseScore 3.6.2 ships it: 24 MB, Ogg-compressed). MIT. Downloaded only when
+# the demo is built.
+http_file(
+    name = "fluidr3_mono_soundfont",
+    downloaded_file_path = "FluidR3Mono_GM.sf3",
+    sha256 = "2aacd036d7058d40a371846ef2f5dc5f130d648ab3837fe2626591ba49a71254",
+    url = "https://raw.githubusercontent.com/musescore/MuseScore/3224f342d12f4af8ea782e929c49f5ce85f97da6/share/sound/FluidR3Mono_GM.sf3",
+)
+
+http_file(
+    name = "fluidr3_mono_soundfont_license",
+    downloaded_file_path = "FluidR3Mono_License.md",
+    sha256 = "cf1889febeafd2b0a20c2c82359245524fc7dba29ded336cc3b51e0bcfdc8b84",
+    url = "https://raw.githubusercontent.com/musescore/MuseScore/3224f342d12f4af8ea782e929c49f5ce85f97da6/share/sound/FluidR3Mono_License.md",
 )
 
 http_archive(

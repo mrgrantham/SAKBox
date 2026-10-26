@@ -62,6 +62,29 @@ public:
       }
       answerPlay(from, play.path, voice, error, /*music=*/true);
     });
+    receive<PlayMidi>([this](const PlayMidi &play, ScratchPadd::PaddAddress from) {
+      std::optional<VoiceId> voice;
+      std::string error = outputError_;
+      if (error.empty()) {
+        voice = engine_.playMidi(play.path, play.settings, error);
+      }
+      answerPlay(from, play.path, voice, error, /*music=*/true);
+    });
+    receive<PlayMidiEvent>([this](const PlayMidiEvent &play) { engine_.midi(play.event); });
+    receive<LoadSoundFont>([this](const LoadSoundFont &load, ScratchPadd::PaddAddress from) {
+      const auto started = std::chrono::steady_clock::now();
+      const LoadResult result = engine_.loadSoundFont(load.path);
+      if (result.ok) {
+        logger().info(
+            "{}: loaded {} in {:.1f} s", paddName(), load.path,
+            std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count());
+      } else {
+        logger().error("{}: {}", paddName(), result.error);
+      }
+      reply(from, SoundFontLoaded{.path = load.path, .ok = result.ok, .error = result.error});
+    });
+    receive<UseBuiltInInstrument>(
+        [this](const UseBuiltInInstrument &) { engine_.useBuiltInInstrument(); });
     receive<StopVoice>([this](const StopVoice &stop) { engine_.stop(stop.voice); });
     receive<SetVoice>([this](const SetVoice &set) { engine_.set(set.voice, set.settings); });
     receive<StopMusic>([this](const StopMusic &) {

@@ -16,29 +16,13 @@ This builds `bazel-bin/projects/examples/read-controls/read-controls.3dsx` (plus
 
 [Azahar](https://github.com/azahar-emu/azahar) is the maintained 3DS emulator (the successor to Citra and Lime3DS). Homebrew like this runs without any Nintendo system files.
 
-Azahar publishes builds for macOS, Linux and Windows. The steps below are for macOS (tested); on Linux or Windows, download the build for your system from [its releases](https://github.com/azahar-emu/azahar/releases) and open `read-controls.3dsx` with **File → Load File…** (or pass its full path on the command line). The controls and behaviour below are the same everywhere.
-
-### Installing Azahar on macOS
-
-It isn't in Homebrew. Download the build for your Mac from [its releases](https://github.com/azahar-emu/azahar/releases) (`azahar-macos-arm64-<version>.zip` for Apple Silicon), unzip it and move `Azahar.app` to `/Applications`. For example (tested with 2126.2):
+Bazel downloads Azahar and opens the app in it:
 
 ```
-cd ~/Downloads
-curl -LO https://github.com/azahar-emu/azahar/releases/download/2126.2/azahar-macos-arm64-2126.2.zip
-shasum -a 256 azahar-macos-arm64-2126.2.zip   # compare with the sha256 on the release page
-unzip azahar-macos-arm64-2126.2.zip
-mv azahar-macos-arm64-2126.2/Azahar.app /Applications/
+bazel run //projects/examples/read-controls
 ```
 
-The app isn't notarized by Apple. Downloaded with `curl` it opens normally; if it was downloaded with a browser and macOS refuses to open it, right-click it and choose **Open**.
-
-### Running the app (macOS)
-
-```
-open -a Azahar --args ~/Programming_Projects/SAKBox/bazel-bin/projects/examples/read-controls/read-controls.3dsx
-```
-
-Use the full path: it works from any folder. (A path relative to the current folder fails when run from elsewhere, and Azahar reports a missing file as "The application file format not supported".) You can also use **File → Load File…** in Azahar.
+Nothing needs installing: Bazel fetches a pinned Azahar for your machine the first time, and Azahar keeps its settings and SD card in the repo's `.azahar/` folder. Closing Azahar ends the command. See [`tools/azahar`](../../../tools/azahar/README.md) for what's supported where and how to use another Azahar.
 
 When it's running the top screen shows:
 
@@ -67,4 +51,4 @@ Each press prints lines like `KEY_A down`, `KEY_A held`, `KEY_A up`; holding an 
 
 ## On a real 3DS
 
-Copy `read-controls.3dsx` to the SD card's `/3ds/` folder and start it from the Homebrew Launcher.
+Copy `read-controls.3dsx` to the SD card's `/3ds/` folder and start it from the Homebrew Launcher. Or install `read-controls.cia` with FBI (on a 3DS with custom firmware) and start it from the HOME Menu.

@@ -5,7 +5,10 @@ Builds Nintendo 3DS homebrew with [devkitPro](https://devkitpro.org)'s toolchain
 | File | What it is |
 | --- | --- |
 | `defs.bzl` | `DEVKITARM_IMAGE` (the pinned image) and the `devkitpro_3ds_app` rule |
-| `build_3ds.py` | Runs devkitPro's `make` inside the image. Sources (each with the path the rule chose for it) go in and the built files come out as tar streams on stdin/stdout, so no folders are shared with the container and nothing it writes ends up owned by root. Python, so it runs the same on every host. |
+| `run_in_azahar.sh` | What `bazel run` runs: opens the app in Azahar (see [`tools/azahar`](../azahar/README.md)) |
+| `build_3ds.py` | Builds an app inside the image: devkitPro's `make`, then the CIA (bannertool's banner, makerom) |
+| `build_cia_tools.py` | Builds makerom and bannertool from source inside the image (the `cia_tools` target) |
+| `devkitpro_image.py` | Runs a script in the image for the two above. Files go in and results come out as tar streams on stdin/stdout, so no folders are shared with the container and nothing it writes ends up owned by root. Python, so it runs the same on every host. |
 
 The pinned image is `devkitpro/devkitarm:20260610`: devkitARM r68 (GCC 16.1), libctru 2.7.0, citro2d 1.7.0, citro3d 1.7.1, 3dstools 1.3.1 and the `3ds-*` libraries (zlib, curl, freetype, box2d, ...). It is built for both arm64 (Apple Silicon, runs natively) and amd64.
 
@@ -36,7 +39,22 @@ devkitpro_3ds_app(
 )
 ```
 
-`srcs` must include a devkitPro 3DS `Makefile` (the standard template from devkitPro's 3ds examples) with the sources at the paths it expects. The rule builds `my-app.3dsx` (the app), `my-app.smdh` (its title and icon) and `my-app.elf` (with debug symbols) in `bazel-bin`. `app_name` sets a different output name.
+`srcs` must include a devkitPro 3DS `Makefile` (the standard template from devkitPro's 3ds examples) with the sources at the paths it expects. The rule builds, in `bazel-bin`:
+
+- `my-app.3dsx`: the app, for the Homebrew Launcher (copy it to the SD card's `/3ds/` folder).
+- `my-app.cia`: the same app as a title to install to the HOME Menu, with [FBI](https://github.com/lifehackerhansol/FBI) on a 3DS with custom firmware, or **File → Install CIA** (or `azahar -i`) in Azahar. It has its own icon (the `.smdh`) and a HOME Menu banner.
+- `my-app.smdh` (its title and icon) and `my-app.elf` (with debug symbols).
+
+`app_name` sets a different output name. For the CIA:
+
+| Attribute | What | Default |
+| --- | --- | --- |
+| `unique_id` | The title's ID, `0xF0000`-`0xF7FFF` for homebrew. Two CIAs with the same ID replace each other when installed. | One worked out from the target's label, so each app has its own |
+| `product_code` | Its product code | `CTR-H-` and the last four digits of the ID |
+| `banner_image` | The HOME Menu banner, a 256x128 PNG | A plain blue one |
+| `banner_sound` | The banner's sound, a WAV of up to 3 seconds | A short chime |
+
+The CIA is unencrypted, made the standard way for homebrew: [makerom](https://github.com/3DSGuy/Project_CTR) (from Project_CTR) builds it from the `.elf` with the settings file (`template.rsf`) and boot logo of [Steveice10's buildtools](https://github.com/Steveice10/buildtools), and [bannertool](https://github.com/diasurgical/bannertool) makes the banner. All three are MIT, pinned in `MODULE.bazel`, and built from source inside the devkitPro image by `//tools/devkitpro:cia_tools` the first time a 3DS app is built (Bazel then caches them), so they run on whatever processor Docker does. bannertool is compiled directly rather than with its own Makefile, which only knows x86 hosts.
 
 `extra_srcs` brings in sources from other packages or external repositories, each label mapped to the folder its files go in. Files keep their paths within their own package, under that folder, and the `Makefile` lists the folders like any other (`SOURCES`, `INCLUDES`). For example, the [ScratchPadd audio self-test](../../projects/scratchpadd/audio/3ds/selftest/BUILD) builds the audio core and miniaudio from where they live:
 
@@ -55,7 +73,7 @@ Every app is tagged `devkitpro`, so a build that can't run Docker can leave them
 
 Only source files can be staged (not files other rules generate), and a C++ library built this way must suit devkitPro's 3DS `Makefile`, which compiles with `-fno-rtti -fno-exceptions`.
 
-See [`projects/examples/read-controls`](../../projects/examples/read-controls/README.md) for an example, including how to run the result in an emulator.
+`bazel run` on the target builds the app and opens it in the Azahar emulator, which Bazel downloads and sets up (see [`tools/azahar`](../azahar/README.md)). See [`projects/examples/read-controls`](../../projects/examples/read-controls/README.md) for an example.
 
 ## Updating the toolchain
 

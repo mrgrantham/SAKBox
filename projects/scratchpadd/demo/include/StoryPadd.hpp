@@ -1,4 +1,5 @@
 #pragma once
+#include <DataDepRetriever/DataDependencies.hpp>
 #include <DemoMessages.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
 #include <ScratchPadd/Base.hpp>
@@ -14,6 +15,7 @@ class StoryPadd : public ScratchPadd::Base {
   ScratchPadd::Timer performanceTimer_;
   int32_t chapter_ = 0;
   ScratchPadd::PaddAddress audio_; // AudioPadd, if the system has one
+  int lastKey_ = 60;               // the tune's note playing
 
   // A soft bell, made in code: two sine partials dying away over 0.8 s
   static ScratchPadd::Audio::LoadSoundSamples chime() {
@@ -53,16 +55,26 @@ public:
     // The padd changes a control itself; the panel shows it straight away
     chapter_ = (chapter_ + 1) % 100;
     setControl("chapter", ScratchPadd::ControlType::Integer(chapter_));
-    // Each chapter rings the chime, a step further up a pentatonic scale
-    // (pitch is playback speed: 2^(semitones/12))
     if (audio_) {
-      constexpr int kScale[] = {0, 2, 4, 7, 9};
-      const int step = kScale[chapter_ % 5] + 12 * ((chapter_ / 5) % 2);
+      playChapterMusic();
+    }
+  }
+
+  // Each chapter plays the next note of a tune up and down a pentatonic
+  // scale, on a vibraphone (MIDI), and every fifth rings the chime (a sound
+  // made in code)
+  void playChapterMusic() {
+    using ScratchPadd::Audio::MidiEvent;
+    using ScratchPadd::Audio::PlayMidiEvent;
+    constexpr int kTune[] = {60, 62, 64, 67, 69, 72, 69, 67, 64, 62};
+    const int key = kTune[chapter_ % 10];
+    sendTo(audio_, PlayMidiEvent{.event = MidiEvent::noteOff(0, lastKey_)});
+    sendTo(audio_, PlayMidiEvent{.event = MidiEvent::noteOn(0, key, 90)});
+    lastKey_ = key;
+    if (chapter_ % 5 == 0) {
       sendTo(audio_, ScratchPadd::Audio::PlaySound{
                          .name = "chime",
-                         .settings = {.volume = 0.3f,
-                                      .pan = chapter_ % 2 == 0 ? -0.5f : 0.5f,
-                                      .pitch = std::exp2(static_cast<float>(step) / 12.0f)}});
+                         .settings = {.volume = 0.3f, .pan = chapter_ % 10 == 0 ? -0.5f : 0.5f}});
     }
   }
 
@@ -87,6 +99,14 @@ public:
   void starting() override {
     if (audio_) {
       sendTo(audio_, chime());
+      // The General MIDI SoundFont Bazel downloads with the demo; the
+      // built-in instrument plays until it's loaded, or if it isn't there
+      if (const auto font = DataDepRetriever::GetFullDependencyPath(
+              "fluidr3_mono_soundfont/file/FluidR3Mono_GM.sf3")) {
+        sendTo(audio_, ScratchPadd::Audio::LoadSoundFont{.path = *font});
+      }
+      sendTo(audio_, ScratchPadd::Audio::PlayMidiEvent{
+                         .event = ScratchPadd::Audio::MidiEvent::programChange(0, 11)});
     }
     // A message type defined by the demo, not the library (DemoMessages.hpp)
     send(Demo::Triangle{.position = {.x = 1, .y = 2}});

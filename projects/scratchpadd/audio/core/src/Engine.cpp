@@ -1,5 +1,8 @@
 #include <ScratchPadd/Audio/Engine.hpp>
 
+#include <ScratchPadd/Audio/BuiltInSynth.hpp>
+#include <ScratchPadd/Audio/SoundFontSynth.hpp>
+
 #include <miniaudio/miniaudio.h>
 
 #include <algorithm>
@@ -33,7 +36,9 @@ struct Engine::Music {
 
 Engine::Engine(Output &output, const EngineConfig &config)
     : output_(output), config_(config), sampleRate_(output.sampleRate()),
-      mixer_(config.maxVoices, config.queueCapacity) {}
+      mixer_(config.maxVoices, config.queueCapacity) {
+  useBuiltInInstrument();
+}
 
 Engine::~Engine() { stop(); }
 
@@ -194,6 +199,64 @@ bool Engine::set(VoiceId voice, const VoiceSettings &settings) {
 
 void Engine::stopAll() { send({.kind = Command::Kind::StopAll}); }
 
+LoadResult Engine::loadSoundFont(const std::string &path) {
+  std::string error;
+  auto synth = SoundFontSynth::load(path, sampleRate_, config_.instrumentNotes, error);
+  if (!synth) {
+    return {.ok = false, .error = error};
+  }
+  useSynth(std::move(synth));
+  return {.ok = true};
+}
+
+LoadResult Engine::loadSoundFont(const void *data, std::size_t size) {
+  std::string error;
+  auto synth = SoundFontSynth::load(data, size, sampleRate_, config_.instrumentNotes, error);
+  if (!synth) {
+    return {.ok = false, .error = error};
+  }
+  useSynth(std::move(synth));
+  return {.ok = true};
+}
+
+void Engine::useBuiltInInstrument() {
+  useSynth(std::make_unique<BuiltInSynth>(sampleRate_, config_.instrumentNotes));
+}
+
+void Engine::useSynth(std::unique_ptr<Synth> synth) {
+  send({.kind = Command::Kind::SetSynth, .synth = synth.get()});
+  if (synth_) {
+    retiringSynths_.push_back(std::move(synth_));
+  }
+  synth_ = std::move(synth);
+}
+
+void Engine::midi(const MidiEvent &event) { send({.kind = Command::Kind::Midi, .midi = event}); }
+
+std::optional<VoiceId> Engine::playMidi(const std::string &path, const VoiceSettings &settings,
+                                        std::string &error) {
+  auto sequence = readMidiFile(path, sampleRate_, error);
+  return sequence ? playMidi(std::move(sequence), settings, error) : std::nullopt;
+}
+
+std::optional<VoiceId> Engine::playMidi(std::shared_ptr<const MidiSequence> sequence,
+                                        const VoiceSettings &settings, std::string &error) {
+  stop(midiVoice_);
+  if (voices_.size() >= config_.maxVoices) {
+    error = "every voice is in use";
+    return std::nullopt;
+  }
+  const VoiceId voice = nextVoice_++;
+  send({.kind = Command::Kind::PlaySequence,
+        .voice = voice,
+        .sequence = sequence.get(),
+        .settings = settings,
+        .group = Group::Music});
+  voices_[voice] = {.sequence = std::move(sequence)};
+  midiVoice_ = voice;
+  return voice;
+}
+
 void Engine::setGroupVolume(Group group, float volume) {
   send({.kind = Command::Kind::SetGain, .group = group, .gain = volume});
 }
@@ -235,6 +298,8 @@ void Engine::collectEvents(std::vector<VoiceId> &finished) {
       if (voices_.erase(event.voice) != 0) {
         finished.push_back(event.voice);
       }
+    } else if (event.synth) {
+      std::erase_if(retiringSynths_, [&](const auto &synth) { return synth.get() == event.synth; });
     } else {
       std::erase_if(retiring_, [&](const auto &sound) { return sound.get() == event.sound; });
     }

@@ -10,7 +10,7 @@ A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the 
 - A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`). The code under `projects/` also builds with `-pedantic-errors` (no compiler extensions), `-Werror` (no warnings), `-Wsuggest-override` (overriding functions must say `override`) and `-Wnon-virtual-dtor` (a class with virtual functions has a virtual destructor); with Clang, also `-Wsuggest-destructor-override` (destructors too) and `-Wdocumentation` (doc comments must match the code). See [Code conventions](#code-conventions). GCC doesn't have the Clang-only checks and rejects them as unknown options, so `.bazelrc` keeps them in a `clang` config: macOS turns it on itself (it always builds with Clang), and on Linux you add `--config=clang` when building with Clang, for example `bazel build --config=clang //...`. These apply to the repo's own code only: external libraries' headers are included as system headers (`--features=external_include_paths`), so their warnings don't count against it.
 - On Linux, the system packages listed under [Linux](#linux).
 - Optional, for static analysis and formatting: clang-tidy and clang-format (18 or later, for `.clang-format-ignore`), which Xcode doesn't include. On macOS, `brew install llvm clang-format` (Homebrew keeps LLVM off your `PATH`, so your compiler stays Xcode's); on Linux, your distribution's `clang-tidy` and `clang-format` packages. See [Static analysis](#static-analysis), which also covers the optional pre-commit hook that checks both on each commit (`git config core.hooksPath tools/git_hooks`).
-- For the 3DS apps only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine (see [`tools/devkitpro`](tools/devkitpro/README.md)). Without Docker running, those targets fail with a message saying so.
+- For the 3DS apps only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine (see [`tools/devkitpro`](tools/devkitpro/README.md)). Without Docker running, those targets fail with a message saying so. `bazel run` opens them in the Azahar emulator, which Bazel downloads and sets up too (see [`tools/azahar`](tools/azahar/README.md)).
 - Optional, to check a change on Linux from a Mac: Docker, which [`tools/linux_check`](tools/linux_check/README.md) uses to build and test the repo with GCC or Clang in a Linux container (see [Linux](#linux)).
 
 All other dependencies are declared in `MODULE.bazel` and downloaded by Bazel on the first build.
@@ -52,8 +52,8 @@ Small programs under `projects/examples/`, mostly one per library. Run any of th
 | Backtrace | `//projects/examples/backtrace:exampleBacktrace` | Prints a stack trace with backward-cpp |
 | Tabulate | `//projects/examples/tabulate:exampleTabulate` | Formatted terminal tables |
 | YAML table | `//projects/examples/yamltable:exampleYaml` | Parses YAML with rapidyaml and yaml-cpp and prints a table |
-| [3DS read-controls](projects/examples/read-controls/README.md) | `//projects/examples/read-controls:read-controls` | Nintendo 3DS homebrew: shows the buttons pressed and the circle pad's position. Builds `read-controls.3dsx` (run it with the Homebrew Launcher, or in the Azahar emulator as its README describes) using the devkitPro toolchain from `//tools/devkitpro`, which needs Docker |
-| [3DS audio self-test](projects/scratchpadd/README.md#audio) | `//projects/scratchpadd/audio/3ds/selftest:scratchpadd-audio-selftest` | Nintendo 3DS homebrew: runs the ScratchPadd audio core's checks on the 3DS and times a mix, showing the results on screen and writing them to the SD card. Built and run like read-controls |
+| [3DS read-controls](projects/examples/read-controls/README.md) | `//projects/examples/read-controls:read-controls` | Nintendo 3DS homebrew: shows the buttons pressed and the circle pad's position. Builds `read-controls.3dsx` and `read-controls.cia` using the devkitPro toolchain from `//tools/devkitpro`, which needs Docker; `bazel run` opens it in the Azahar emulator, which Bazel downloads (`//tools/azahar`) |
+| [3DS audio self-test](projects/scratchpadd/README.md#audio) | `//projects/scratchpadd/audio/3ds/selftest:scratchpadd-audio-selftest` | Nintendo 3DS homebrew: runs the ScratchPadd audio core's checks on the 3DS and times a mix, showing the results on screen and writing them to the SD card. Built and run (`bazel run`) like read-controls |
 
 ## Third Party
 
@@ -147,6 +147,8 @@ Add a commit to it when it's a rename or reformatting of that kind (its full has
 ## Platform Notes
 
 Development and testing happen on **macOS** (Apple Silicon, Xcode).
+
+**After updating Xcode**, builds can fail with `I/O exception during sandboxed execution: Running '.../xcode-locator <old version>' failed with code 1`: Bazel still has the old Xcode version recorded. `bazel fetch --configure --force` makes it look again (`bazel shutdown` alone isn't enough).
 
 ### Linux
 
