@@ -899,6 +899,14 @@ public:
   void clearAccumulators();
 
   /**
+   * SAKBox: the force and torque added since the accumulators were last
+   * cleared, in world coordinates (World::runPhysics keeps them for each of
+   * a frame's sub-steps).
+   */
+  const Vector3 &getForceAccumulator() const { return forceAccum; }
+  const Vector3 &getTorqueAccumulator() const { return torqueAccum; }
+
+  /**
    * Adds the given force to centre of mass of the rigid body.
    * The force is expressed in world-coordinates.
    *

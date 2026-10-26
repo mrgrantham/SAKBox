@@ -16,14 +16,6 @@ cyclone::Vector3 velocityAt(const cyclone::RigidBody *body, const cyclone::Vecto
   return body->getVelocity() + body->getRotation() % (point - body->getPosition());
 }
 
-/** A hit: the fastest contact between a pair of bodies this frame */
-struct Hit {
-  std::pair<const void *, const void *> pair;
-  float speed = 0;
-  cyclone::Vector3 point;
-  float mass = 1; // the lighter body's (kg)
-};
-
 } // namespace
 
 ImpactSounds::ImpactSounds(ScratchPadd::Audio::Output &output) : engine_(output) {
@@ -42,8 +34,8 @@ void ImpactSounds::hear(const cyclone::Contact *contacts, unsigned count, float 
     return;
   }
   // The fastest contact for each pair of bodies (a box resting on the
-  // ground has several contacts; it's one knock)
-  std::vector<Hit> hits;
+  // ground has several contacts; it's one knock), over the frame's steps
+  std::vector<Hit> &hits = heard_;
   for (unsigned i = 0; i < count; ++i) {
     const cyclone::Contact &contact = contacts[i];
     // Cyclone's closing velocity: body 0's relative to body 1, along the
@@ -67,6 +59,10 @@ void ImpactSounds::hear(const cyclone::Contact *contacts, unsigned count, float 
       hit->point = contact.contactPoint;
     }
   }
+}
+
+void ImpactSounds::playHits() {
+  std::vector<Hit> &hits = heard_;
   // The hardest hits first, a few a frame, each pair not too often
   std::sort(hits.begin(), hits.end(), [](const Hit &a, const Hit &b) { return a.speed > b.speed; });
   int played = 0;
@@ -97,6 +93,7 @@ void ImpactSounds::hear(const cyclone::Contact *contacts, unsigned count, float 
       ++dropped_;
     }
   }
+  hits.clear();
   // Forget pairs that haven't knocked for a while
   std::erase_if(lastKnock_, [&](const auto &entry) { return clock_ - entry.second > 1.0f; });
 }

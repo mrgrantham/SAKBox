@@ -32,6 +32,13 @@ cc_library(
     copts = ["-O2", "-fPIC"],
 )
 
+# The rigid-body demos' physics clock, shared with fixed_steps_test
+cc_library(
+    name = "fixed_steps",
+    hdrs = ["src/demos/fixed_steps.h"],
+    strip_include_prefix = "src/demos",
+)
+
 # The demos' framework, built twice below: with Cyclone's usual real, and
 # with flexmath's (app_flex)
 APP_SRCS = ["src/demos/app.cpp", "src/demos/impact_sounds.cpp", "src/demos/shapes.cpp"]
@@ -39,6 +46,7 @@ APP_SRCS = ["src/demos/app.cpp", "src/demos/impact_sounds.cpp", "src/demos/shape
 APP_HDRS = ["src/demos/app.h", "src/demos/impact_sounds.h", "src/demos/ogl_headers.h", "src/demos/shapes.h"]
 
 APP_DEPS = [
+    ":fixed_steps",
     ":timing",
     # SAKBox: sounds for the rigid-body demos (impact_sounds.h)
     "//projects/scratchpadd/audio:audio_core",
@@ -269,6 +277,16 @@ cc_test(
     srcs = ["tests/impact_sounds_test.cpp"],
     deps = [
         ":app",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "fixed_steps_test",
+    size = "small",
+    srcs = ["tests/fixed_steps_test.cpp"],
+    deps = [
+        ":fixed_steps",
         "@gtest//:gtest_main",
     ],
 )

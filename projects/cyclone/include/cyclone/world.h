@@ -24,6 +24,7 @@
 #include "fgen.h"
 #include "joints.h"
 
+#include <utility>
 #include <vector>
 
 namespace cyclone {
@@ -81,6 +82,21 @@ protected:
    */
   std::vector<Contact> contacts;
 
+  /**
+   * SAKBox: how many smaller steps runPhysics takes each call (see
+   * setSubSteps).
+   */
+  unsigned subSteps = 1;
+
+  /**
+   * SAKBox: the forces and torques added to each body by hand before
+   * runPhysics, kept for each of its sub-steps.
+   */
+  std::vector<std::pair<Vector3, Vector3>> forcesAddedByHand;
+
+  /** SAKBox: one of runPhysics' sub-steps, `duration` long. */
+  void runStep(real_duration duration);
+
 public:
   /**
    * Creates a new simulator that can handle up to the given
@@ -100,8 +116,22 @@ public:
   /**
    * Processes all the physics for the world: applies the force
    * generators, integrates the bodies and resolves their contacts.
+   * SAKBox: in getSubSteps() equal steps. Forces added to bodies by hand
+   * since startFrame act through all of them, as through one step.
    */
   void runPhysics(real_duration duration);
+
+  /**
+   * SAKBox: has runPhysics split each call into `count` equal steps
+   * (at least 1, the default), each applying the force generators,
+   * integrating, finding contacts and resolving them. The same as calling
+   * startFrame and runPhysics `count` times as often, each for a
+   * `count`th of the time: smaller steps stretch joints less on impact and
+   * take less energy out of a swing, for `count` times the work. It can be
+   * changed between calls.
+   */
+  void setSubSteps(unsigned count) { subSteps = count > 0 ? count : 1; }
+  unsigned getSubSteps() const { return subSteps; }
 
   /**
    * Initialises the world for a simulation frame. This clears
@@ -142,7 +172,7 @@ public:
 
   /**
    * Returns the contacts found in the last call to
-   * generateContacts (or runPhysics).
+   * generateContacts (or runPhysics: its last sub-step).
    */
   const Contact *getContacts() const;
 };

@@ -19,10 +19,13 @@ struct Outcome {
   double fastestSideways = 0; // fastest horizontal bone speed at any point
   double restingSpeed = 0;    // the fastest bone's speed, averaged over the last second
   double meanStretch = 0;     // how far joints are beyond their slack, on average
+  double worstStretch = 0;    // the most any joint was beyond its slack, after any step
 };
 
-// Runs a freshly reset ragdoll for `seconds` with fixed steps of `dt`.
-Outcome simulate(Method method, double dt, unsigned seed, bool push = true, double seconds = 4.0) {
+// Runs a freshly reset ragdoll for `seconds` with fixed steps of `dt`, each
+// split into `subSteps` (as the demo framework does; see FixedSteps).
+Outcome simulate(Method method, double dt, unsigned seed, bool push = true, double seconds = 4.0,
+                 unsigned subSteps = 1) {
   static constexpr unsigned kMaxContacts = 256;
   auto contacts = std::make_unique<cyclone::Contact[]>(kMaxContacts);
   cyclone::CollisionData cData;
@@ -45,9 +48,13 @@ Outcome simulate(Method method, double dt, unsigned seed, bool push = true, doub
   const int lastSecond = static_cast<int>(1.0 / dt);
   double stretchTotal = 0;
   for (int i = 0; i < steps; ++i) {
-    model->integrate(dt);
-    model->generateContacts(cData, kMaxContacts);
-    resolver.resolveContacts(cData.contactArray, cData.contactCount, dt, model->jointList());
+    const double subStep = dt / subSteps;
+    for (unsigned j = 0; j < subSteps; ++j) {
+      model->integrate(subStep);
+      model->generateContacts(cData, kMaxContacts);
+      resolver.resolveContacts(cData.contactArray, cData.contactCount, subStep, model->jointList());
+    }
+    outcome.worstStretch = std::max(outcome.worstStretch, model->worstStretch());
     double fastestNow = 0;
     for (const ragdoll::Bone &bone : model->bones) {
       const cyclone::Vector3 v = bone.body->getVelocity();
@@ -132,5 +139,28 @@ TEST(RagdollTest, ComesToRestWhenResolvedTogether) {
     EXPECT_LT(together, 0.04);
     EXPECT_GT(book, 1.5 * together);
     EXPECT_LT(togetherStretch, 0.015); // m
+  }
+}
+
+// Sub-steps: smaller steps within each step stretch the joints far less
+// when the ragdoll hits the ground. Over 20 pushes, the worst any joint
+// stretched beyond its slack:
+//
+//   steps a second   1 sub-step   2       4       8
+//   60               6.7 cm       0.9 cm  0.03 cm 0.003 cm
+//   20               62 cm        21 cm   2.6 cm  0.3 cm
+//
+// And it still comes to rest.
+TEST(RagdollTest, SubStepsStretchJointsLess) {
+  for (double dt : {1.0 / 60, 0.05}) {
+    SCOPED_TRACE(testing::Message() << "dt " << dt);
+    double worst[2] = {0, 0}; // with 1 and 4 sub-steps
+    for (unsigned seed = 1; seed <= 20; ++seed) {
+      worst[0] = std::max(worst[0], simulate(Method::sequentialImpulses, dt, seed).worstStretch);
+      const Outcome o = simulate(Method::sequentialImpulses, dt, seed, true, 10.0, 4);
+      worst[1] = std::max(worst[1], o.worstStretch);
+      EXPECT_LT(o.restingSpeed, 0.2) << "seed " << seed;
+    }
+    EXPECT_LT(worst[1], worst[0] / 10);
   }
 }

@@ -4,6 +4,7 @@
 // ragdoll demo, which adds rendering, and by tests/ragdoll_test.cpp.
 #pragma once
 
+#include <algorithm>
 #include <cyclone/cyclone.h>
 #include <span>
 
@@ -195,6 +196,27 @@ public:
         cyclone::CollisionDetector::sphereAndSphere(boneSphere, otherSphere, &cData);
       }
     }
+  }
+
+  // How far the most stretched joint's two points are beyond its slack (m),
+  // where the bones are now (the resolver moves them without updating their
+  // transforms; the next integrate does)
+  double worstStretch() const {
+    const auto pointNow = [](const cyclone::RigidBody *body, const cyclone::Vector3 &local) {
+      cyclone::Quaternion orientation = body->getOrientation();
+      orientation.normalise();
+      cyclone::Matrix4 transform;
+      transform.setOrientationAndPos(orientation, body->getPosition());
+      return transform.transform(local);
+    };
+    double worst = 0;
+    for (const cyclone::Joint &joint : joints) {
+      const double length =
+          (pointNow(joint.body[1], joint.position[1]) - pointNow(joint.body[0], joint.position[0]))
+              .magnitude();
+      worst = std::max(worst, length - joint.error);
+    }
+    return worst;
   }
 
 private:

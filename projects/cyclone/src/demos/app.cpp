@@ -12,6 +12,9 @@
 #include "app.h"
 #include "ogl_headers.h"
 #include "timing.h"
+#include <chrono>
+#include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -224,36 +227,50 @@ RigidBodyApplication::RigidBodyApplication()
 void RigidBodyApplication::update() {
   sounds.update(); // (paused or not)
 
-  // Find the duration of the last frame in seconds
-  float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
-  if (duration <= 0.0f)
-    return;
-  else if (duration > 0.05f)
-    duration = 0.05f;
-
   // Exit immediately if we aren't running the simulation
   if (pauseSimulation) {
     Application::update();
     return;
-  } else if (autoPauseSimulation) {
-    pauseSimulation = true;
-    autoPauseSimulation = false;
   }
 
-  // Update the objects
-  updateObjects(duration);
+  // SAKBox: the steps this frame covers (see FixedSteps), or just one
+  // (Space)
+  unsigned steps = 1;
+  if (autoPauseSimulation) {
+    pauseSimulation = true;
+    autoPauseSimulation = false;
+  } else {
+    steps = physicsClock.stepsFor(TimingData::get().lastFrameDuration * 0.001);
+  }
 
-  // Perform the contact generation
-  generateContacts();
-
-  // SAKBox: knocks for the hits among them, before they're resolved
+  const auto started = std::chrono::steady_clock::now();
   sounds.setCameraAngle(theta);
-  sounds.hear(cData.contactArray, cData.contactCount, duration);
-
-  // Resolve detected contacts
-  resolver.resolveContacts(cData.contactArray, cData.contactCount, duration, getJoints());
+  for (unsigned i = 0; i < steps; ++i)
+    runStep();
+  sounds.playHits();
+  const std::chrono::duration<double, std::milli> took = std::chrono::steady_clock::now() - started;
+  physicsMilliseconds += 0.05 * (took.count() - physicsMilliseconds);
 
   Application::update();
+}
+
+void RigidBodyApplication::runStep() {
+  const auto duration = static_cast<cyclone::real>(physicsClock.subStepSeconds());
+  for (unsigned subStep = 0; subStep < physicsClock.subSteps(); ++subStep) {
+    // Update the objects
+    updateObjects(duration);
+
+    // Perform the contact generation
+    generateContacts();
+
+    // SAKBox: the hits among them, before they're resolved
+    sounds.hear(cData.contactArray, cData.contactCount, duration);
+
+    // Resolve detected contacts
+    resolver.resolveContacts(cData.contactArray, cData.contactCount, duration, getJoints());
+
+    afterStep();
+  }
 }
 
 void RigidBodyApplication::display() {
@@ -289,9 +306,21 @@ void RigidBodyApplication::renderSoundState() {
   renderText(width / pixelScale - textWidth - 10.0f, 25.0f, text.c_str());
 }
 
+void RigidBodyApplication::renderPhysicsSteps() {
+  char text[128];
+  std::snprintf(
+      text, sizeof text, "Physics: %d steps a second, %u sub-step%s each ([ ]), %.2f ms a frame",
+      static_cast<int>(std::lround(1 / FixedSteps::kStepSeconds)), physicsClock.subSteps(),
+      physicsClock.subSteps() == 1 ? "" : "s", physicsMilliseconds);
+  const float textWidth = (float)stb_easy_font_width(text);
+  glColor3f(0.1f, 0.1f, 0.15f);
+  renderText(width / pixelScale - textWidth - 10.0f, 40.0f, text);
+}
+
 void RigidBodyApplication::renderCornerStatus() {
   renderResolverMethod();
   renderSoundState();
+  renderPhysicsSteps();
 }
 
 void RigidBodyApplication::drawDebug() {
@@ -372,10 +401,16 @@ void RigidBodyApplication::key(unsigned char key) {
     return;
 
   case ' ':
-    // Advance one frame
+    // Advance one step
     autoPauseSimulation = true;
     pauseSimulation = false;
     break;
+
+  case '[':
+  case ']':
+    // SAKBox: fewer or more sub-steps a step
+    physicsClock.setSubSteps(physicsClock.subSteps() + (key == ']' ? 1 : -1));
+    return;
 
   case 'M':
   case 'm':

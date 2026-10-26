@@ -3,7 +3,7 @@
  *
  * A ball is thrown at a large block (both rigid bodies; the throw is
  * randomised a little in reset()). When generateContacts() finds the ball
- * touching the block, update() calls divideBlock(), which replaces the
+ * touching the block, afterStep() calls divideBlock(), which replaces the
  * block with eight smaller ones. It cuts the block three ways: through the
  * point of impact across the two axes perpendicular to the hit, and
  * through the centre along it. Each piece gets mass in proportion to its
@@ -250,7 +250,7 @@ class FractureDemo : public RigidBodyApplication {
   void reset() override;
 
   /** Processes the physics. */
-  void update() override;
+  void afterStep() override;
 
 public:
   /** Creates a new demo object. */
@@ -392,10 +392,9 @@ void FractureDemo::reset() {
   blockContacts.clear();
 }
 
-void FractureDemo::update() {
-  RigidBodyApplication::update();
-
-  // Handle fractures.
+void FractureDemo::afterStep() {
+  // Handle fractures. (SAKBox: after the step that hit, before the next
+  // finds new contacts)
   if (hit) {
     blocks[0].divideBlock(cData.contactArray[fracture_contact], blocks, blocks + 1);
     blockContacts.clear(); // the blocks are new pieces

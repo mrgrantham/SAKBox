@@ -28,9 +28,15 @@ public:
     contact.contactNormal = cyclone::Vector3(0, 1, 0);
     return contact;
   }
-  void hear(ImpactSounds &sounds, float seconds = 1.0f / 60) {
+  // One step's contacts
+  void hearStep(ImpactSounds &sounds, float seconds) {
     std::vector<cyclone::Contact> all(contacts_.begin(), contacts_.end());
     sounds.hear(all.data(), static_cast<unsigned>(all.size()), seconds);
+  }
+  // A frame of one step
+  void hear(ImpactSounds &sounds, float seconds = 1.0f / 60) {
+    hearStep(sounds, seconds);
+    sounds.playHits();
   }
 
 private:
@@ -93,6 +99,30 @@ TEST(ImpactSoundsTest, AFewHitsAFrame) {
     scene.body(2.0f + i * 0.2f, static_cast<float>(i));
   scene.hear(sounds);
   EXPECT_EQ(sounds.knocks(), static_cast<std::uint32_t>(ImpactSounds::kHitsPerFrame));
+}
+
+// A frame of several steps (sub-steps, or catching up): a pair hit in more
+// than one knocks once, and only the hardest few of all their hits knock
+TEST(ImpactSoundsTest, AFrameOfSeveralSteps) {
+  ScratchPadd::Audio::OfflineOutput output;
+  ImpactSounds sounds(output);
+  Scene one;
+  one.body(5);
+  for (int step = 0; step < 4; ++step)
+    one.hearStep(sounds, 1.0f / 240);
+  EXPECT_EQ(sounds.knocks(), 0u); // not until the frame's done
+  sounds.playHits();
+  EXPECT_EQ(sounds.knocks(), 1u);
+
+  ScratchPadd::Audio::OfflineOutput crowdedOutput;
+  ImpactSounds crowded(crowdedOutput);
+  Scene crowd;
+  for (int i = 0; i < 20; ++i)
+    crowd.body(2.0f + i * 0.2f, static_cast<float>(i));
+  for (int step = 0; step < 4; ++step)
+    crowd.hearStep(crowded, 1.0f / 240);
+  crowded.playHits();
+  EXPECT_EQ(crowded.knocks(), static_cast<std::uint32_t>(ImpactSounds::kHitsPerFrame));
 }
 
 // Turned off (V in the demos), nothing knocks

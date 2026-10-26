@@ -45,6 +45,35 @@ unsigned World::generateContacts() {
 }
 
 void World::runPhysics(real_duration duration) {
+  // SAKBox: in sub-steps (see setSubSteps)
+  const real_duration step = duration / subSteps;
+  if (subSteps > 1) {
+    forcesAddedByHand.clear();
+    for (RigidBody *body : bodies)
+      forcesAddedByHand.emplace_back(body->getForceAccumulator(), body->getTorqueAccumulator());
+  }
+  for (unsigned subStep = 0; subStep < subSteps; ++subStep) {
+    if (subStep > 0) {
+      // What startFrame does between steps (integrating cleared the
+      // accumulators; resolving moved the bodies), keeping the forces
+      // added by hand
+      for (size_t i = 0; i < bodies.size(); ++i) {
+        RigidBody *body = bodies[i];
+        body->calculateDerivedData();
+        // (Added again only if there are any: adding wakes a body)
+        const auto &[force, torque] = forcesAddedByHand[i];
+        body->clearAccumulators();
+        if (force != Vector3())
+          body->addForce(force);
+        if (torque != Vector3())
+          body->addTorque(torque);
+      }
+    }
+    runStep(step);
+  }
+}
+
+void World::runStep(real_duration duration) {
   // First apply the force generators
   registry.updateForces(duration);
 

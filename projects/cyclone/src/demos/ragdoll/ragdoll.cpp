@@ -27,7 +27,8 @@
 
 #include "ragdoll_physics.h"
 
-#include <stdio.h>
+#include <algorithm>
+#include <cstdio>
 
 /** Draws a bone. */
 static void renderBone(const ragdoll::Bone &bone) {
@@ -56,6 +57,15 @@ class RagdollDemo : public RigidBodyApplication {
   /** The bones and joints (ragdoll_physics.h). */
   ragdoll::Ragdoll model;
 
+  /**
+   * SAKBox: the most any joint has stretched beyond its slack since the
+   * last reset (m), to compare sub-steps ([ and ]) by
+   */
+  double worstStretch = 0;
+
+  /** SAKBox: measures the joints after each step. */
+  void afterStep() override { worstStretch = std::max(worstStretch, model.worstStretch()); }
+
   /** Processes the contact generation code. */
   void generateContacts() override;
 
@@ -80,7 +90,7 @@ public:
     return "A ragdoll: 12 rigid boxes for bones, linked by 11 joints that let\n"
            "their ends drift a little apart, like short cables. The contact\n"
            "resolver holds the body together. It starts with a small shove and\n"
-           "collapses.\n" RIGID_BODY_KEYS;
+           "collapses. Bottom left: the most a joint has stretched since R.\n" RIGID_BODY_KEYS;
   }
 
   /** Display the particle positions. */
@@ -99,6 +109,7 @@ void RagdollDemo::generateContacts() { model.generateContacts(cData, maxContacts
 
 void RagdollDemo::reset() {
   model.reset(random);
+  worstStretch = 0;
 
   // Reset the contacts
   cData.contactCount = 0;
@@ -179,6 +190,11 @@ void RagdollDemo::display() {
   glEnd();
 
   RigidBodyApplication::drawDebug();
+
+  char text[64];
+  std::snprintf(text, sizeof text, "Worst joint stretch since reset: %.2f cm", worstStretch * 100);
+  glColor3f(0.1f, 0.1f, 0.15f);
+  renderText(10.0f, 10.0f, text);
 }
 
 /**

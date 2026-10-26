@@ -14,6 +14,7 @@
 #include "impact_sounds.h"
 #include <ScratchPadd/Audio/DeviceOutput.hpp>
 #include <cyclone/cyclone.h>
+#include <fixed_steps.h>
 #include <memory>
 #include <span>
 
@@ -215,8 +216,9 @@ public:
 // SAKBox: the keys every RigidBodyApplication handles, for the demos'
 // overlays (see Application::getDescription)
 #define RIGID_BODY_KEYS                                                                            \
-  "P: run/pause   Space: one frame   R: reset   C: contacts   Drag: camera\n"                      \
-  "M: switch contact resolver (shown bottom right)   V: sound on/off"
+  "P: run/pause   Space: one step   R: reset   C: contacts   Drag: camera\n"                       \
+  "M: switch contact resolver (shown bottom right)   V: sound on/off\n"                            \
+  "[ ]: fewer/more physics sub-steps"
 
 /**
  * This application adds additional functionality used in many of the
@@ -262,6 +264,15 @@ protected:
   /** Pauses the simulation after the next frame automatically */
   bool autoPauseSimulation;
 
+  /**
+   * SAKBox: physics runs in fixed steps of physicsClock's length, each in
+   * its sub-steps ([ and ] change how many), whatever the frame rate
+   */
+  FixedSteps physicsClock;
+
+  /** SAKBox: milliseconds of physics a frame, smoothed (for the corner) */
+  double physicsMilliseconds = 0;
+
   /** Processes the contact generation code. */
   virtual void generateContacts() = 0;
 
@@ -273,6 +284,15 @@ protected:
    * cyclone::ContactResolver::resolveContacts). None by default.
    */
   virtual std::span<cyclone::Joint *const> getJoints() { return {}; }
+
+  /**
+   * SAKBox: called after each (sub-)step's contacts are resolved, with
+   * them still in cData. Does nothing by default.
+   */
+  virtual void afterStep() {}
+
+  /** SAKBox: one physics step, in its sub-steps */
+  void runStep();
 
   /**
    * SAKBox: writes which contact resolver is in use in the bottom right
@@ -288,7 +308,13 @@ protected:
   void renderSoundState();
 
   /**
-   * SAKBox: the bottom-right corner: the resolver and the sound. drawDebug()
+   * SAKBox: writes the sub-steps a step and the time physics takes a frame,
+   * above the sound.
+   */
+  void renderPhysicsSteps();
+
+  /**
+   * SAKBox: the bottom-right corner: the resolver, the sound and the steps. drawDebug()
    * calls it; a demo that doesn't use drawDebug() calls it itself.
    */
   void renderCornerStatus();

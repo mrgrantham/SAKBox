@@ -183,11 +183,12 @@ std::string problemWith(const RigidBody &body) {
   return "";
 }
 
-// Runs every scene with `method` at `steps` a second; returns the first
-// problem, or an empty string
-std::string runAll(ContactResolver::Method method, int steps) {
+// Runs every scene with `method` at `steps` a second, each in `subSteps`
+// (see World::setSubSteps); returns the first problem, or an empty string
+std::string runAll(ContactResolver::Method method, int steps, unsigned subSteps = 1) {
   for (unsigned seed = 1; seed <= kScenes; ++seed) {
     Scene scene(seed, method);
+    scene.world.setSubSteps(subSteps);
     for (int step = 0; step < kSeconds * steps; ++step) {
       scene.world.startFrame();
       scene.world.runPhysics(1.0 / steps);
@@ -195,9 +196,9 @@ std::string runAll(ContactResolver::Method method, int steps) {
         const std::string problem = problemWith(*scene.bodies[i]);
         if (!problem.empty()) {
           std::ostringstream report;
-          report << "seed " << seed << ", " << steps << " steps a second, step " << step << " ("
-                 << static_cast<double>(step) / steps << " s), body " << i << " of "
-                 << scene.bodies.size() << ": " << problem;
+          report << "seed " << seed << ", " << steps << " steps a second in " << subSteps
+                 << " sub-steps, step " << step << " (" << static_cast<double>(step) / steps
+                 << " s), body " << i << " of " << scene.bodies.size() << ": " << problem;
           return report.str();
         }
       }
@@ -389,4 +390,12 @@ TEST(StressTest, TheBooksResolverAt60StepsASecond) {
 
 TEST(StressTest, TheBooksResolverAt20StepsASecond) {
   EXPECT_EQ(runAll(ContactResolver::Method::oneContactAtATime, 20), "");
+}
+
+TEST(StressTest, ResolvingTogetherIn4SubSteps) {
+  EXPECT_EQ(runAll(ContactResolver::Method::sequentialImpulses, 20, 4), "");
+}
+
+TEST(StressTest, TheBooksResolverIn4SubSteps) {
+  EXPECT_EQ(runAll(ContactResolver::Method::oneContactAtATime, 20, 4), "");
 }

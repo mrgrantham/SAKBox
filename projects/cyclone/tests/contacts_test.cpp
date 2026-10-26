@@ -905,6 +905,46 @@ TEST(JointConstraintTest, PendulumHoldsToItsPivot) {
   EXPECT_LT(shortfall[1], shortfall[0] / 2);
 }
 
+// Sub-steps (World::setSubSteps) are smaller steps: four a step at 60 steps a
+// second swing the pendulum just as 240 whole steps a second do, so it
+// loses less of its swing.
+TEST(JointConstraintTest, SubStepsAreSmallerSteps) {
+  Chain inSubSteps(1, 0), inSmallSteps(1, 0);
+  inSubSteps.world.setSubSteps(4);
+  inSubSteps.run(1, 1.0 / 60);
+  inSmallSteps.run(1, 1.0 / 240);
+  const RigidBody &a = *inSubSteps.links[0], &b = *inSmallSteps.links[0];
+  EXPECT_NEAR((a.getPosition() - b.getPosition()).magnitude(), 0, 1e-9);
+  EXPECT_NEAR((a.getVelocity() - b.getVelocity()).magnitude(), 0, 1e-9);
+}
+
+// A force added by hand before runPhysics acts through all its sub-steps:
+// the frame gives the same push however it's split.
+TEST(WorldTest, ForcesAddedByHandActThroughEverySubStep) {
+  for (unsigned subSteps : {1u, 4u}) {
+    SCOPED_TRACE(testing::Message() << subSteps << " sub-steps");
+    World world(4);
+    world.setSubSteps(subSteps);
+    auto body = bodyAt(Vector3());
+    world.getBodies().push_back(body.get());
+    world.startFrame();
+    body->addForce(Vector3(6, 0, 0));
+    body->addTorque(Vector3(0, 6, 0));
+    world.runPhysics(1.0 / 6); // 1 m/s, and 1 rad/s, from 1 kg
+    EXPECT_NEAR(body->getVelocity().x, 1.0, 1e-9);
+    EXPECT_NEAR(body->getRotation().y, 1.0, 1e-9);
+  }
+}
+
+// Stacks stand just as still in sub-steps.
+TEST(ResolveTogetherTest, StacksStandInSubSteps) {
+  BoxWorld scene(stackOf(10), together);
+  scene.world.setSubSteps(4);
+  EXPECT_LT(scene.run(10), 2.0);
+  EXPECT_LT(farthestSideways(scene), 0.1);
+  EXPECT_LT(fastest(scene), 0.01);
+}
+
 // A chain of five links stays joined as it swings down and whips about.
 TEST(JointConstraintTest, ChainStaysJoined) {
   Chain chain(5, 0);

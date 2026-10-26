@@ -11,15 +11,16 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 /**
- * Knocks for the rigid-body demos: each frame, hear() looks at the contacts
- * and plays a knock for each pair of bodies that hit (rather than rest on)
- * each other. Louder the faster they hit, lower the heavier the lighter of
- * the two is, and panned to where it happened on screen. A pair knocks at
- * most once every kRepeatSeconds, and at most kHitsPerFrame pairs knock in
- * a frame (the hardest), so a collapsing stack doesn't make hundreds of
- * clicks. Sounds are made in code (ScratchPadd::Audio::MadeSounds).
+ * Knocks for the rigid-body demos: after each physics step, hear() looks at
+ * its contacts for pairs of bodies that hit (rather than rest on) each other,
+ * and at the end of the frame playHits() plays a knock for each pair heard. Louder the faster they
+ * hit, lower the heavier the lighter of the two is, and panned to where it happened on screen. A
+ * pair knocks at most once every kRepeatSeconds, and at most kHitsPerFrame pairs knock in a frame
+ * (the hardest), so a collapsing stack doesn't make hundreds of clicks. Sounds are made in code
+ * (ScratchPadd::Audio::MadeSounds).
  */
 class ImpactSounds {
 public:
@@ -33,8 +34,14 @@ public:
   /** Plays through `output`; if it can't start, stays silent (see error()) */
   explicit ImpactSounds(ScratchPadd::Audio::Output &output);
 
-  /** Plays the hits among this frame's `contacts`, `seconds` after the last */
+  /**
+   * Notes the hits among a step's `contacts`, `seconds` after the last step.
+   * A frame can take several steps.
+   */
   void hear(const cyclone::Contact *contacts, unsigned count, float seconds);
+
+  /** Plays the hits heard since the last call: call once a frame */
+  void playHits();
 
   /** A blast at `position` */
   void blast(const cyclone::Vector3 &position);
@@ -59,6 +66,14 @@ public:
   std::uint32_t dropped() const { return dropped_; }
 
 private:
+  /** A hit: the fastest contact between a pair of bodies in a frame */
+  struct Hit {
+    std::pair<const void *, const void *> pair;
+    float speed = 0;
+    cyclone::Vector3 point;
+    float mass = 1; // the lighter body's (kg)
+  };
+
   float panFor(const cyclone::Vector3 &position) const;
 
   ScratchPadd::Audio::Engine engine_;
@@ -71,4 +86,5 @@ private:
   std::uint32_t jitter_ = 1; // for small differences in pitch
   // When each pair of bodies last knocked
   std::map<std::pair<const void *, const void *>, float> lastKnock_;
+  std::vector<Hit> heard_; // this frame's, until playHits()
 };
