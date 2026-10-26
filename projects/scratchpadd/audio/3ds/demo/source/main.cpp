@@ -6,6 +6,7 @@
 #include <3ds.h>
 
 #include <ScratchPadd/Audio/Engine.hpp>
+#include <ScratchPadd/Audio/MadeSounds.hpp>
 #include <ScratchPadd/Audio/NdspOutput.hpp>
 
 #include <algorithm>
@@ -22,19 +23,6 @@ namespace {
 
 constexpr const char *kSoundFontPath = "sdmc:/3ds/scratchpadd/instrument.sf2";
 constexpr const char *kFiguresPath = "sdmc:/scratchpadd-audio-3ds-demo.txt";
-
-// A soft bell: two sine partials dying away over 0.8 s, mono
-std::vector<float> chime(std::uint32_t rate) {
-  std::vector<float> samples(rate * 8 / 10);
-  for (std::size_t i = 0; i < samples.size(); ++i) {
-    const float t = static_cast<float>(i) / static_cast<float>(rate);
-    const float attack = std::min(1.0f, t * 200.0f);
-    samples[i] = attack * std::exp(-5.0f * t) *
-                 (0.6f * std::sin(6.2831853f * 880.0f * t) +
-                  0.25f * std::sin(6.2831853f * 2.76f * 880.0f * t));
-  }
-  return samples;
-}
 
 // Four seconds of music at 120 beats a minute: a vibraphone tune, a bass
 // line, and kick and hi-hats on General MIDI's drum channel
@@ -107,7 +95,7 @@ int main() {
   }
 
   const std::uint32_t rate = engine.sampleRate();
-  const std::vector<float> bell = chime(rate);
+  const std::vector<float> bell = MadeSounds::chime(rate);
   engine.loadSamples("chime", bell.data(), bell.size(), rate, 1);
   const std::shared_ptr<const MidiSequence> music = tune(rate);
   std::optional<VoiceId> musicVoice = engine.playMidi(music, {.volume = 0.8f, .loop = true}, error);

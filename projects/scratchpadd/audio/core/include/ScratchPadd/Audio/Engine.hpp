@@ -14,11 +14,23 @@
 
 namespace ScratchPadd::Audio {
 
+// What play() does when maxVoices are playing
+enum class WhenVoicesFull : std::uint8_t {
+  // Takes over the quietest sound playing (the oldest of the quietest),
+  // which fades out over one block, unless the new one is quieter still:
+  // then it's refused. Music and MIDI are never taken over. As game audio
+  // does: a burst of sounds keeps the loudest, newest ones.
+  StealQuietest,
+  // Refuses the new sound
+  Refuse,
+};
+
 struct EngineConfig {
   std::uint32_t maxVoices = 32;       // sounds and music playing at once
   std::uint32_t queueCapacity = 1024; // commands waiting for the audio thread
   double musicAheadSeconds = 0.5;     // music decoded ahead of what's playing
   std::uint32_t instrumentNotes = 48; // notes the instrument plays at once
+  WhenVoicesFull whenVoicesFull = WhenVoicesFull::StealQuietest;
 };
 
 // What a load did: ok, or why not
@@ -123,7 +135,15 @@ private:
   struct VoiceInfo {
     std::shared_ptr<Music> music;                 // set for streamed music
     std::shared_ptr<const MidiSequence> sequence; // set for MIDI
+    float volume = 1.0f;                          // as last set, for choosing one to take over
+    bool stopping = false;                        // fading out: no longer counted against maxVoices
   };
+
+  // Voices playing and not stopping: what maxVoices limits
+  std::size_t liveVoices() const;
+  // Makes room for a voice at `volume` (see WhenVoicesFull); false if
+  // there's none
+  bool makeRoom(float volume);
 
   void send(const Command &command);
   void flushPending();

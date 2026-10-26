@@ -6,6 +6,7 @@
 #include <miniaudio/miniaudio.h>
 
 #include <algorithm>
+#include <limits>
 
 namespace ScratchPadd::Audio {
 
@@ -36,7 +37,8 @@ struct Engine::Music {
 
 Engine::Engine(Output &output, const EngineConfig &config)
     : output_(output), config_(config), sampleRate_(output.sampleRate()),
-      mixer_(config.maxVoices, config.queueCapacity, sampleRate_) {
+      // (Twice the voices, so ones taken over can fade out beside new ones)
+      mixer_(2 * config.maxVoices, config.queueCapacity, sampleRate_) {
   useBuiltInInstrument();
 }
 
@@ -141,11 +143,11 @@ bool Engine::unload(const std::string &name) {
 
 std::optional<VoiceId> Engine::play(const std::string &name, const VoiceSettings &settings) {
   auto found = sounds_.find(name);
-  if (found == sounds_.end() || voices_.size() >= config_.maxVoices) {
+  if (found == sounds_.end() || !makeRoom(settings.volume)) {
     return std::nullopt;
   }
   const VoiceId voice = nextVoice_++;
-  voices_[voice] = {};
+  voices_[voice] = {.volume = settings.volume};
   send({.kind = Command::Kind::Play,
         .voice = voice,
         .sound = found->second.get(),
@@ -156,7 +158,8 @@ std::optional<VoiceId> Engine::play(const std::string &name, const VoiceSettings
 
 std::optional<VoiceId> Engine::playMusic(const std::string &path, const VoiceSettings &settings,
                                          std::string &error) {
-  if (voices_.size() >= config_.maxVoices) {
+  // (Music takes over any sound, however loud)
+  if (!makeRoom(std::numeric_limits<float>::infinity())) {
     error = "every voice is in use";
     return std::nullopt;
   }
@@ -177,27 +180,65 @@ std::optional<VoiceId> Engine::playMusic(const std::string &path, const VoiceSet
         .stream = &music->buffer,
         .settings = settings,
         .group = Group::Music});
-  voices_[voice] = {.music = std::move(music)};
+  voices_[voice] = {.music = std::move(music), .volume = settings.volume};
   return voice;
 }
 
 bool Engine::stop(VoiceId voice) {
-  if (!voices_.contains(voice)) {
+  auto found = voices_.find(voice);
+  if (found == voices_.end()) {
     return false;
   }
+  found->second.stopping = true;
   send({.kind = Command::Kind::Stop, .voice = voice});
   return true;
 }
 
 bool Engine::set(VoiceId voice, const VoiceSettings &settings) {
-  if (!voices_.contains(voice)) {
+  auto found = voices_.find(voice);
+  if (found == voices_.end()) {
     return false;
   }
+  found->second.volume = settings.volume;
   send({.kind = Command::Kind::Set, .voice = voice, .settings = settings});
   return true;
 }
 
-void Engine::stopAll() { send({.kind = Command::Kind::StopAll}); }
+void Engine::stopAll() {
+  for (auto &[voice, info] : voices_) {
+    info.stopping = true;
+  }
+  send({.kind = Command::Kind::StopAll});
+}
+
+std::size_t Engine::liveVoices() const {
+  return static_cast<std::size_t>(std::count_if(
+      voices_.begin(), voices_.end(), [](const auto &entry) { return !entry.second.stopping; }));
+}
+
+bool Engine::makeRoom(float volume) {
+  if (liveVoices() < config_.maxVoices) {
+    return true;
+  }
+  if (config_.whenVoicesFull == WhenVoicesFull::Refuse) {
+    return false;
+  }
+  // The quietest sound playing, the oldest (lowest voice) of those
+  const VoiceInfo *quietest = nullptr;
+  VoiceId victim = 0;
+  for (const auto &[voice, info] : voices_) {
+    if (!info.stopping && !info.music && !info.sequence &&
+        (!quietest || info.volume < quietest->volume)) {
+      quietest = &info;
+      victim = voice;
+    }
+  }
+  if (!quietest || quietest->volume > volume) {
+    return false;
+  }
+  stop(victim);
+  return true;
+}
 
 LoadResult Engine::loadSoundFont(const std::string &path) {
   std::string error;
@@ -242,7 +283,7 @@ std::optional<VoiceId> Engine::playMidi(const std::string &path, const VoiceSett
 std::optional<VoiceId> Engine::playMidi(std::shared_ptr<const MidiSequence> sequence,
                                         const VoiceSettings &settings, std::string &error) {
   stop(midiVoice_);
-  if (voices_.size() >= config_.maxVoices) {
+  if (!makeRoom(std::numeric_limits<float>::infinity())) {
     error = "every voice is in use";
     return std::nullopt;
   }
@@ -252,7 +293,7 @@ std::optional<VoiceId> Engine::playMidi(std::shared_ptr<const MidiSequence> sequ
         .sequence = sequence.get(),
         .settings = settings,
         .group = Group::Music});
-  voices_[voice] = {.sequence = std::move(sequence)};
+  voices_[voice] = {.sequence = std::move(sequence), .volume = settings.volume};
   midiVoice_ = voice;
   return voice;
 }

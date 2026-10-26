@@ -18,15 +18,29 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
+# Sounds made in code (a chime, a knock, a blast), for programs to play
+# without sound files. No dependencies.
+cc_library(
+    name = "audio_made_sounds",
+    srcs = ["core/src/MadeSounds.cpp"],
+    hdrs = ["core/include/ScratchPadd/Audio/MadeSounds.hpp"],
+    strip_include_prefix = "core/include/",
+    visibility = ["//visibility:public"],
+)
+
 # The audio core: sounds, voices, the mixer and music streaming, talking to
 # an Output (see README). Plain C++ with no other ScratchPadd dependency, so
 # the same code builds for the 3DS. Decodes with miniaudio.
 cc_library(
     name = "audio_core",
-    srcs = glob(["core/src/*.cpp"]),
+    srcs = glob(
+        ["core/src/*.cpp"],
+        exclude = ["core/src/MadeSounds.cpp"],
+    ),
     hdrs = glob(
         ["core/include/**/*.hpp"],
         exclude = [
+            "core/include/ScratchPadd/Audio/MadeSounds.hpp",
             "core/include/ScratchPadd/Audio/MidiEvent.hpp",
             "core/include/ScratchPadd/Audio/Voice.hpp",
         ],
@@ -159,5 +173,15 @@ cc_binary(
         ":audio_core",
         "//projects/data_dep_retriever",
         "@miniaudio",
+    ],
+)
+
+cc_test(
+    name = "MadeSounds_test",
+    size = "small",
+    srcs = ["tests/MadeSounds_test.cpp"],
+    deps = [
+        ":audio_made_sounds",
+        "@gtest//:gtest_main",
     ],
 )

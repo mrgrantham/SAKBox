@@ -1,11 +1,10 @@
 #pragma once
 #include <DataDepRetriever/DataDependencies.hpp>
 #include <DemoMessages.hpp>
+#include <ScratchPadd/Audio/MadeSounds.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
 #include <ScratchPadd/Base.hpp>
 
-#include <algorithm>
-#include <cmath>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -17,19 +16,14 @@ class StoryPadd : public ScratchPadd::Base {
   ScratchPadd::PaddAddress audio_; // AudioPadd, if the system has one
   int lastKey_ = 60;               // the tune's note playing
 
-  // A soft bell, made in code: two sine partials dying away over 0.8 s
+  // A soft bell, made in code
   static ScratchPadd::Audio::LoadSoundSamples chime() {
     constexpr std::uint32_t kRate = 48000;
-    constexpr float kTwoPi = 6.2831853f;
-    auto samples = std::make_shared<std::vector<float>>(kRate * 8 / 10);
-    for (std::size_t i = 0; i < samples->size(); ++i) {
-      const float t = static_cast<float>(i) / kRate;
-      const float attack = std::min(1.0f, t * 200.0f); // 5 ms, so it doesn't click
-      (*samples)[i] =
-          attack * std::exp(-5.0f * t) *
-          (0.6f * std::sin(kTwoPi * 880.0f * t) + 0.25f * std::sin(kTwoPi * 2.76f * 880.0f * t));
-    }
-    return {.name = "chime", .samples = std::move(samples), .rate = kRate, .channels = 1};
+    return {.name = "chime",
+            .samples = std::make_shared<const std::vector<float>>(
+                ScratchPadd::Audio::MadeSounds::chime(kRate)),
+            .rate = kRate,
+            .channels = 1};
   }
 
 public:

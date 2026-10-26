@@ -11,7 +11,10 @@
  */
 #include <cstdlib>
 
+#include "impact_sounds.h"
+#include <ScratchPadd/Audio/DeviceOutput.hpp>
 #include <cyclone/cyclone.h>
+#include <memory>
 #include <span>
 
 /**
@@ -213,7 +216,7 @@ public:
 // overlays (see Application::getDescription)
 #define RIGID_BODY_KEYS                                                                            \
   "P: run/pause   Space: one frame   R: reset   C: contacts   Drag: camera\n"                      \
-  "M: switch contact resolver (shown bottom right)"
+  "M: switch contact resolver (shown bottom right)   V: sound on/off"
 
 /**
  * This application adds additional functionality used in many of the
@@ -243,6 +246,13 @@ protected:
   /** Holds the position of the mouse at the last frame of a drag. */
   int last_x, last_y;
 
+  /**
+   * SAKBox: knocks when bodies hit (see ImpactSounds), through the sound
+   * device. V turns them off and on.
+   */
+  ScratchPadd::Audio::DeviceOutput soundOutput;
+  ImpactSounds sounds{soundOutput};
+
   /** True if the contacts should be rendered. */
   bool renderDebugInfo;
 
@@ -270,6 +280,12 @@ protected:
    * calls it.
    */
   void renderResolverMethod();
+
+  /**
+   * SAKBox: writes whether sound is on, and how many knocks have played,
+   * above the resolver. drawDebug() calls it.
+   */
+  void renderSoundState();
 
   /**
    * Finishes drawing the frame, adding debugging information

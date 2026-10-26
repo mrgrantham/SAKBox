@@ -226,9 +226,10 @@ TEST(MixerTest, UnloadWhilePlaying) {
   EXPECT_EQ(offline.engine.update(), std::vector<VoiceId>{voice});
 }
 
-// No more voices than the limit; a finished one frees its place
-TEST(MixerTest, VoiceLimit) {
-  Offline offline({.maxVoices = 2});
+// Refusing when full: no more voices than the limit; a finished one frees
+// its place
+TEST(MixerTest, VoiceLimitRefusing) {
+  Offline offline({.maxVoices = 2, .whenVoicesFull = WhenVoicesFull::Refuse});
   offline.load("short", constant(10));
   EXPECT_TRUE(offline.engine.play("short"));
   EXPECT_TRUE(offline.engine.play("short"));
@@ -237,6 +238,43 @@ TEST(MixerTest, VoiceLimit) {
   offline.render(32);
   offline.engine.update();
   EXPECT_TRUE(offline.engine.play("short"));
+}
+
+// Stealing when full (the default): a new sound takes over the quietest
+// playing, which fades out and is reported finished; a sound quieter than
+// all of them is refused; of equally quiet ones, the oldest goes
+TEST(MixerTest, VoiceLimitStealing) {
+  Offline offline({.maxVoices = 2});
+  offline.load("hum", constant(48000, 0.25f));
+  const VoiceId quiet = started(offline.engine.play("hum", {.volume = 0.2f, .loop = true}));
+  const VoiceId loud = started(offline.engine.play("hum", {.volume = 1.0f, .loop = true}));
+  EXPECT_FALSE(offline.engine.play("hum", {.volume = 0.1f})); // quieter than both
+  const VoiceId newcomer = started(offline.engine.play("hum", {.volume = 0.5f, .loop = true}));
+  offline.render(2048); // the quiet one fades out
+  EXPECT_EQ(offline.engine.update(), std::vector<VoiceId>{quiet});
+  EXPECT_TRUE(offline.engine.isPlaying(loud));
+  EXPECT_TRUE(offline.engine.isPlaying(newcomer));
+  EXPECT_FLOAT_EQ(offline.render(16)[0], 0.25f * (1.0f + 0.5f));
+  // Equally loud: the oldest goes
+  const VoiceId third = started(offline.engine.play("hum", {.volume = 0.5f, .loop = true}));
+  offline.render(2048);
+  EXPECT_EQ(offline.engine.update(), std::vector<VoiceId>{newcomer});
+  EXPECT_TRUE(offline.engine.isPlaying(third));
+}
+
+// Music isn't taken over, and takes over a sound when it needs a voice
+TEST(MixerTest, StealingSparesMusic) {
+  const std::string path =
+      writeWav("steal.wav", kRate, 2, kRate, [](std::uint32_t, std::uint32_t) { return 0.1f; });
+  Offline offline({.maxVoices = 1});
+  offline.load("hum", constant(48000, 0.25f));
+  started(offline.engine.play("hum", {.loop = true}));
+  std::string error;
+  const VoiceId music = started(offline.engine.playMusic(path, {.loop = true}, error), error);
+  EXPECT_FALSE(offline.engine.play("hum", {.volume = 1.0f})); // the music stays
+  offline.render(2048);
+  offline.engine.update();
+  EXPECT_TRUE(offline.engine.isPlaying(music));
 }
 
 // Volume changes ramp across a block rather than jump

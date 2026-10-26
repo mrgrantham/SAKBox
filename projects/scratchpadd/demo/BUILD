@@ -9,6 +9,7 @@ cc_library(
     strip_include_prefix = "include/",
     deps = [
         "//projects/data_dep_retriever",
+        "//projects/scratchpadd/audio:audio_made_sounds",
         "//projects/scratchpadd/audio:audio_messages",
         "//projects/scratchpadd/basis",
     ],

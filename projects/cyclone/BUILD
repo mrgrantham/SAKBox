@@ -32,12 +32,28 @@ cc_library(
     copts = ["-O2", "-fPIC"],
 )
 
+# The demos' framework, built twice below: with Cyclone's usual real, and
+# with flexmath's (app_flex)
+APP_SRCS = ["src/demos/app.cpp", "src/demos/impact_sounds.cpp", "src/demos/shapes.cpp"]
+
+APP_HDRS = ["src/demos/app.h", "src/demos/impact_sounds.h", "src/demos/ogl_headers.h", "src/demos/shapes.h"]
+
+APP_DEPS = [
+    ":timing",
+    # SAKBox: sounds for the rigid-body demos (impact_sounds.h)
+    "//projects/scratchpadd/audio:audio_core",
+    "//projects/scratchpadd/audio:audio_device",
+    "//projects/scratchpadd/audio:audio_made_sounds",
+    "@glfw",
+    "@stb",
+]
+
 cc_library(
     name = "app",
-    srcs = ["src/demos/app.cpp", "src/demos/shapes.cpp"],
-    hdrs = ["src/demos/app.h", "src/demos/ogl_headers.h", "src/demos/shapes.h"],
+    srcs = APP_SRCS,
+    hdrs = APP_HDRS,
     defines = ["GL_SILENCE_DEPRECATION"],
-    deps = [":timing", ":cyclone", "@glfw", "@stb"],
+    deps = APP_DEPS + [":cyclone"],
     strip_include_prefix = "src",
     # The demos open a GLFW window and draw with legacy OpenGL and GLU (GLFW
     # links OpenGL on macOS); the engine itself has no platform dependency.
@@ -155,10 +171,10 @@ cc_binary(
 # Cyclone built with an adjustable-precision real (flexmath FlexReal)
 cc_library(
     name = "app_flex",
-    srcs = ["src/demos/app.cpp", "src/demos/shapes.cpp"],
-    hdrs = ["src/demos/app.h", "src/demos/ogl_headers.h", "src/demos/shapes.h"],
+    srcs = APP_SRCS,
+    hdrs = APP_HDRS,
     defines = ["GL_SILENCE_DEPRECATION"],
-    deps = [":timing", ":cyclone_flex", "@glfw", "@stb"],
+    deps = APP_DEPS + [":cyclone_flex"],
     strip_include_prefix = "src",
     # The demos open a GLFW window and draw with legacy OpenGL and GLU (GLFW
     # links OpenGL on macOS); the engine itself has no platform dependency.
@@ -243,6 +259,16 @@ cc_test(
     srcs = ["tests/random_test.cpp"],
     deps = [
         ":cyclone",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "impact_sounds_test",
+    size = "small",
+    srcs = ["tests/impact_sounds_test.cpp"],
+    deps = [
+        ":app",
         "@gtest//:gtest_main",
     ],
 )

@@ -222,6 +222,8 @@ RigidBodyApplication::RigidBodyApplication()
 }
 
 void RigidBodyApplication::update() {
+  sounds.update(); // (paused or not)
+
   // Find the duration of the last frame in seconds
   float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
   if (duration <= 0.0f)
@@ -243,6 +245,10 @@ void RigidBodyApplication::update() {
 
   // Perform the contact generation
   generateContacts();
+
+  // SAKBox: knocks for the hits among them, before they're resolved
+  sounds.setCameraAngle(theta);
+  sounds.hear(cData.contactArray, cData.contactCount, duration);
 
   // Resolve detected contacts
   resolver.resolveContacts(cData.contactArray, cData.contactCount, duration, getJoints());
@@ -268,8 +274,24 @@ void RigidBodyApplication::renderResolverMethod() {
   renderText(width / pixelScale - textWidth - 10.0f, 10.0f, text);
 }
 
+void RigidBodyApplication::renderSoundState() {
+  std::string text;
+  if (!sounds.playing()) {
+    text = "No sound: " + sounds.error();
+  } else if (!sounds.enabled()) {
+    text = "Sound: off";
+  } else {
+    text = "Sound: on, " + std::to_string(sounds.knocks()) + " knocks, " +
+           std::to_string(sounds.dropped()) + " too quiet to fit";
+  }
+  const float textWidth = (float)stb_easy_font_width(const_cast<char *>(text.c_str()));
+  glColor3f(0.1f, 0.1f, 0.15f);
+  renderText(width / pixelScale - textWidth - 10.0f, 25.0f, text.c_str());
+}
+
 void RigidBodyApplication::drawDebug() {
   renderResolverMethod();
+  renderSoundState();
   if (!renderDebugInfo)
     return;
 
@@ -331,6 +353,12 @@ void RigidBodyApplication::key(unsigned char key) {
   case 'c':
     // Toggle rendering of contacts
     renderDebugInfo = !renderDebugInfo;
+    return;
+
+  case 'V':
+  case 'v':
+    // SAKBox: sound off and on
+    sounds.setEnabled(!sounds.enabled());
     return;
 
   case 'P':
