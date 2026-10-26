@@ -3,6 +3,7 @@
 // Worker Padds used in system
 #include <AudioPadd.hpp>
 #include <DisplayPadd.hpp>
+#include <MidiInputPadd.hpp>
 #include <ShapeLoggerPadd.hpp>
 #include <StoryPadd.hpp>
 
@@ -17,7 +18,7 @@
 // void signal_handler(int sig);
 
 ScratchPadd::System *spsystem =
-    ScratchPadd::SystemBuilder<DisplayPadd, StoryPadd, AudioPadd, ShapeLoggerPadd>();
+    ScratchPadd::SystemBuilder<DisplayPadd, StoryPadd, AudioPadd, MidiInputPadd, ShapeLoggerPadd>();
 
 int main(int argc, char **argv) {
   DataDepRetriever::ConfigureDependencies(argv[0]);

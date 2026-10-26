@@ -105,6 +105,35 @@ TEST(MidiEventTest, MakesMidisBytes) {
   EXPECT_EQ(bend(99999), 16383);
 }
 
+// The event in a port's bytes, failing the test if there's none
+template <std::size_t N> MidiEvent eventIn(const unsigned char (&bytes)[N]) {
+  const auto event = MidiEvent::fromBytes(bytes, N);
+  if (!event) {
+    ADD_FAILURE() << "no event";
+    return {};
+  }
+  return *event;
+}
+
+// What a MIDI port delivers, as events: channel messages only
+TEST(MidiEventTest, ReadsAPortsBytes) {
+  const unsigned char note[] = {0x93, 64, 100}, program[] = {0xC2, 5}, clock[] = {0xF8},
+                      sysex[] = {0xF0, 1, 2, 0xF7}, data[] = {0x40, 0x40}, cut[] = {0x90, 60};
+  const MidiEvent on = eventIn(note);
+  EXPECT_EQ(on.kind(), MidiEvent::NoteOn);
+  EXPECT_EQ(on.channel(), 3);
+  EXPECT_EQ(on.data1, 64);
+  EXPECT_EQ(on.data2, 100);
+  const MidiEvent change = eventIn(program);
+  EXPECT_EQ(change.kind(), MidiEvent::ProgramChange);
+  EXPECT_EQ(change.data1, 5);
+  EXPECT_FALSE(MidiEvent::fromBytes(clock, sizeof clock));
+  EXPECT_FALSE(MidiEvent::fromBytes(sysex, sizeof sysex));
+  EXPECT_FALSE(MidiEvent::fromBytes(data, sizeof data)); // no status byte
+  EXPECT_FALSE(MidiEvent::fromBytes(cut, sizeof cut));   // too short
+  EXPECT_FALSE(MidiEvent::fromBytes(note, 0));
+}
+
 // A MIDI file's events, timed in frames: 960 ticks a second here
 TEST(MidiSequenceTest, ReadsTimesInFrames) {
   const auto read = sequence({{0, 0x90, 60, 100}, {480, 0x80, 60, 0}, {960, 0xC1, 5, 0}});

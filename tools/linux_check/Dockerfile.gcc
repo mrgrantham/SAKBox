@@ -2,10 +2,10 @@
 FROM gcc:14
 
 # The packages the README's Linux notes list, for the windowing and OpenGL
-# examples, and Python for the repo's tools
+# examples and MIDI input (ALSA), and Python for the repo's tools
 RUN apt-get update -qq \
  && apt-get install -y -qq libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
-      libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev python3 >/dev/null \
+      libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev libasound2-dev python3 >/dev/null \
  && rm -rf /var/lib/apt/lists/*
 
 # Bazelisk, which runs the Bazel version pinned in .bazelversion

@@ -8,7 +8,7 @@ Builds and tests the repo on Linux, in a Docker container, with GCC or Clang, so
 | `Dockerfile.gcc` | GCC 14 (the official `gcc:14` image) |
 | `Dockerfile.clang` | Clang 18 on Ubuntu 24.04, with GCC 14's standard library (libstdc++), as Clang on Ubuntu uses by default |
 
-Both images add the X11 and Mesa packages the README's Linux notes list, Python, and [Bazelisk](https://github.com/bazelbuild/bazelisk) 1.25.0, which runs the Bazel version in `.bazelversion`.
+Both images add the X11, Mesa and ALSA packages the README's Linux notes list, Python, and [Bazelisk](https://github.com/bazelbuild/bazelisk) 1.25.0, which runs the Bazel version in `.bazelversion`.
 
 ## Setup
 

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <optional>
 
 // One MIDI message: what a MIDI file, a MIDI keyboard or a program tells an
 // instrument. Shared by the engine and the messages that drive it.
@@ -43,6 +45,24 @@ struct MidiEvent {
   static MidiEvent pitchBend(int channel, int bend) {
     const int value = std::clamp(bend + 8192, 0, 16383);
     return make(PitchBend, channel, value & 0x7F, value >> 7);
+  }
+
+  // The event in a MIDI message's bytes, as a MIDI port delivers them, or
+  // nothing if they aren't a note, controller or other channel message
+  // (system messages: clock, SysEx, ...), or are too short
+  static std::optional<MidiEvent> fromBytes(const unsigned char *bytes, std::size_t size) {
+    if (size == 0 || bytes[0] < 0x80 || bytes[0] >= 0xF0) {
+      return std::nullopt;
+    }
+    const std::uint8_t kind = bytes[0] & 0xF0;
+    // Program change and channel pressure have one data byte; the rest two
+    const std::size_t needs = kind == ProgramChange || kind == ChannelPressure ? 2 : 3;
+    if (size < needs) {
+      return std::nullopt;
+    }
+    return MidiEvent{.status = bytes[0],
+                     .data1 = static_cast<std::uint8_t>(bytes[1] & 0x7F),
+                     .data2 = static_cast<std::uint8_t>(needs == 3 ? bytes[2] & 0x7F : 0)};
   }
 
 private:

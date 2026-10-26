@@ -27,6 +27,7 @@ cc_binary(
         "@backward",
         "//projects/scratchpadd/graphics:graphics",
         "//projects/scratchpadd/audio:audio",
+        "//projects/scratchpadd/midi_input",
         "//projects/scratchpadd/messages:messages",
         ":demo_padds",
     ],

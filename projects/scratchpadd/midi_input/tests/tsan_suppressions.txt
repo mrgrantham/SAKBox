@@ -1,0 +1,9 @@
+# ThreadSanitizer suppressions for MidiInputPadd's tests.
+#
+# RtMidi's Core MIDI input callback runs on Core MIDI's thread and reads the
+# state RtMidi set up when the port was opened. Core MIDI orders the two
+# (the port is connected before callbacks start) inside the system
+# framework, which ThreadSanitizer doesn't instrument, so it reports races
+# that aren't there. Only RtMidi's callback is suppressed; MidiInputPadd's
+# own code is still checked.
+race:midiInputCallback

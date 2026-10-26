@@ -326,6 +326,17 @@ sendTo(audio_, PlayMusic{.path = "music/theme.mp3", .settings = {.loop = true}})
 
 miniaudio (public domain or MIT-0), TinySoundFont (MIT) and stb_vorbis (public domain or MIT) are downloaded by Bazel; nothing needs installing. On Linux it finds PulseAudio or ALSA when the program runs, so no development packages are needed to build.
 
+### MIDI input
+
+`MidiInputPadd` (`//projects/scratchpadd/midi_input`) plays MIDI keyboards and controllers, on desktops, with [RtMidi](https://github.com/thestk/rtmidi) 6.0.0 (MIT-style, downloaded by Bazel): Core MIDI on macOS, ALSA on Linux, Windows MIDI on Windows.
+
+- It listens on every MIDI input port, and opens ones plugged in later within a second (it looks again every second, by port name), letting go of ones unplugged. Its `ports` control lists them. To listen on only some, set `MidiInputPadd::portFilter()` (a test of each port's name) before the system starts. MIDI ports belong to the whole machine, not one program, so the tests use it to hear only their own virtual keyboard: Bazel runs tests side by side, and without it each would play the others' notes.
+- Each note, controller or other channel message is broadcast as `MidiInput{event, port}` (`:midi_input_messages`), for any padd to handle, and, with the `playThrough` control on (the default), played on AudioPadd's instrument with `PlayMidiEvent`. The demo includes it, so a keyboard plugged in plays the demo's instrument (FluidR3Mono once loaded).
+- System messages (clock, SysEx, active sensing) are left out.
+- RtMidi calls back on its own thread; the callback only queues the event for the padd's thread.
+- On a machine with no MIDI system (Linux without ALSA's sequencer, as in a container) it logs that once and carries on; its tests are skipped there.
+- Building on Linux needs ALSA's development package, `libasound2-dev` (see the top-level README's Linux notes).
+
 ## Packages
 
 | Bazel target | Contents |
@@ -335,6 +346,7 @@ miniaudio (public domain or MIT-0), TinySoundFont (MIT) and stb_vorbis (public d
 | `//projects/scratchpadd/utilities` | Logging, `Timer`, `EventTimer` and helpers like `VariantHandler` |
 | `//projects/scratchpadd/graphics` | GLFW/ImGui/OpenGL window and views |
 | `//projects/scratchpadd/audio` | `:audio` (`AudioPadd`), `:audio_messages` (what padds send it), `:audio_core` (the engine and instruments, also built for the 3DS), `:audio_device` (playback through the sound device) |
+| `//projects/scratchpadd/midi_input` | `MidiInputPadd` (MIDI keyboards and controllers, desktops) and `:midi_input_messages` |
 | `//projects/scratchpadd/demo` | The demo app |
 
 ## Building and Testing
@@ -355,8 +367,9 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes); `sendTo` (only the named padd, by class and by name, to itself, in order, refused for a missing padd, an empty address or an unhandled type, and four padds sending to one at once from their own threads losing nothing, each in order and with the right sender); the sender (a reply to it, `reply()` reaching only senders that handle the answer, and no sender for a message from outside); broadcasts nobody handles noted once per type; and, when it compiles, that code outside a padd can't call into one |
 | `messages:Controls_test` | The control round trip: requests answered to the panel that asked (all padds, or one sent the request), changes sent straight to their owner and every panel told, unknown padds refused, range clamping, rejected changes, `controlChanged()` and `control<C>()`, and a running padd's controls refused from another thread; and an owner's own changes: `setControl()` (by the same rules, telling panels), `addControl()`, `removeControl()` (the last removal empties the panel), and a padd without controls adding one |
 | `audio:AudioCore_test` | The audio core, through `OfflineOutput`: the queues (including two threads at once), exact samples, voices adding up, volumes, balance, pitch, loops, stops and volume changes ramping, finished voices reported once, unloading a sound while it plays, the voice limit, files resampled from another rate and channel count, missing files, music streamed frame for frame and looping without a gap, music running dry counted, mixing allocating nothing (and that an allocation there would be counted), and how long a second of 32 voices takes to mix |
-| `audio:Midi_test` | MIDI: events' bytes, MIDI files read with their times in frames, the built-in instrument (pitch by key, notes held or dying away, sustain pedal, pitch bend, volume and pan, drums, all-sound-off without a click, taking over notes when full), a SoundFont made in code played in tune, either instrument and the engine playing without allocating, sequences on time, looping until stopped, one at a time, choosing the instrument, and how long a second of 32 notes takes |
+| `audio:Midi_test` | MIDI: events' bytes (made, and read from a port's bytes), MIDI files read with their times in frames, the built-in instrument (pitch by key, notes held or dying away, sustain pedal, pitch bend, volume and pan, drums, all-sound-off without a click, taking over notes when full), a SoundFont made in code played in tune, either instrument and the engine playing without allocating, sequences on time, looping until stopped, one at a time, choosing the instrument, and how long a second of 32 notes takes |
 | `audio:AudioPadd_test` | AudioPadd in a running system: answers to loading and playing, `VoiceFinished` to the padd that played, failures answered with why, padds that don't listen for answers, the volume controls and mute, stopping one voice, music or everything, four padds asking at once while the audio thread mixes, MIDI files and events, `StopMusic` stopping MIDI, and loading SoundFonts |
+| `midi_input:MidiInputPadd_test` | With a virtual MIDI port as the keyboard (and `portFilter()` listening to it alone): a note reaching listeners with its port and playing on AudioPadd's instrument, `playThrough` off, and a keyboard unplugged (skipped without a MIDI system, as in Linux containers). Under ThreadSanitizer it uses `tests/tsan_suppressions.txt`, which hides races TSan reports inside RtMidi's Core MIDI callback because it can't see Core MIDI's own ordering |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
@@ -366,4 +379,4 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 
 ## Roadmap
 
-1. MIDI input from controllers (RtMidi), on desktops.
+1. Padds on the 3DS, so AudioPadd and the rest run there as on desktops.

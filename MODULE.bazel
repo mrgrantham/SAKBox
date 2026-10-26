@@ -100,6 +100,16 @@ http_archive(
     url = "https://github.com/Steveice10/buildtools/archive/b7043ff1854be48ef0d055bba81b0a69a5bc892f.tar.gz",
 )
 
+# RtMidi 6.0.0: MIDI input from keyboards and controllers, for ScratchPadd's
+# MidiInputPadd (//projects/scratchpadd/midi_input). MIT-style.
+http_archive(
+    name = "rtmidi",
+    build_file = "//third_party:rtmidi.BUILD",
+    sha256 = "ef7bcda27fee6936b651c29ebe9544c74959d0b1583b716ce80a1c6fea7617f0",
+    strip_prefix = "rtmidi-6.0.0",
+    url = "https://github.com/thestk/rtmidi/archive/refs/tags/6.0.0.tar.gz",
+)
+
 # TinySoundFont: SoundFont synthesis and MIDI files, for ScratchPadd's audio
 # (//projects/scratchpadd/audio). MIT.
 http_archive(

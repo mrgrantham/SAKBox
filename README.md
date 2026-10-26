@@ -163,12 +163,14 @@ python3 tools/linux_check/check.py gcc     # or clang
 
 It builds and tests the repo inside a Linux container and prints Bazel's summary. Give Docker enough memory (Colima: `colima start --memory 8`) or Bazel runs out.
 
-Building with Clang on Linux yourself, add `--config=clang` (`bazel build --config=clang //...`) for the Clang-only checks (see the prerequisites in [Getting Started](#getting-started)); with GCC, nothing extra is needed. Bazelisk provides Bazel for x86-64 and ARM64 (including 64-bit Raspberry Pi OS). The windowing and OpenGL examples need the X11 and Mesa development packages:
+Building with Clang on Linux yourself, add `--config=clang` (`bazel build --config=clang //...`) for the Clang-only checks (see the prerequisites in [Getting Started](#getting-started)); with GCC, nothing extra is needed. Bazelisk provides Bazel for x86-64 and ARM64 (including 64-bit Raspberry Pi OS). The windowing and OpenGL examples need the X11 and Mesa development packages, and ScratchPadd's MIDI input (RtMidi) needs ALSA's:
 
 ``` bash
 sudo apt install libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
-                 libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev
+                 libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev libasound2-dev
 ```
+
+`alsa/asoundlib.h: No such file or directory` means `libasound2-dev` is missing.
 
 `Could NOT find OpenGL` means `libgl1-mesa-dev` is missing; `Could NOT find OpenGL (missing: EGL)` means `libegl1-mesa-dev` is. Package names can differ slightly between Ubuntu and Raspberry Pi OS.
 
