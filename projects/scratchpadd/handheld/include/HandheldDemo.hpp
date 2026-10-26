@@ -41,12 +41,24 @@ inline std::string threadNumber() {
   return std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()) % 10000);
 }
 
-// Gives AudioPadd a chime, a knock and a blast made in code (rendered when
-// the app is built: MadeSoundsPcm16, as making them on a DS takes seconds),
-// plays them for
-// A, B and X, and a tune for Y (a note every 250 ms, from repeat()); logs
-// AudioPadd's answers, and plays the chime once all three have loaded, so
-// the log shows sound works without a button
+// On the DS, the sounds and the tune are files in the app's file system
+// (NitroFS, packed into the .nds when it's built: see BUILD's demo_files);
+// elsewhere they're compiled in
+#if defined(__NDS__)
+inline constexpr bool kSoundsFromFiles = true;
+#else
+inline constexpr bool kSoundsFromFiles = false;
+#endif
+
+// Gives AudioPadd a chime, a knock and a blast made in code, plays them for
+// A, B and X, and a tune for Y; logs AudioPadd's answers, and plays the
+// chime once all three have loaded, so the log shows sound works without a
+// button.
+// - On the DS: WAV files (nitro:/sounds/chime.wav, 16-bit; knock.wav, 8-bit;
+//   blast.wav, IMA-ADPCM), and the tune is a MIDI file played by AudioPadd
+//   (nitro:/music/tune.mid, looping).
+// - Elsewhere: compiled in, rendered when the app is built (MadeSoundsPcm16),
+//   and the tune is a note every 250 ms from repeat().
 class SoundBoardPadd : public ScratchPadd::Base {
 public:
   SoundBoardPadd(ScratchPadd::System *system) : Base(system) {
@@ -74,6 +86,13 @@ public:
   void prepare() override {
     audio_ = addressOf("AudioPadd");
     using namespace ScratchPadd::Audio;
+    if constexpr (kSoundsFromFiles) {
+      for (const char *name : {"chime", "knock", "blast"}) {
+        sendTo(audio_,
+               LoadSound{.name = name, .path = std::string("nitro:/sounds/") + name + ".wav"});
+      }
+      return;
+    }
     const auto load = [&](const char *name, std::vector<std::int16_t> samples) {
       sendTo(audio_, LoadSoundPcm16{.name = name,
                                     .samples = std::make_shared<const std::vector<std::int16_t>>(
@@ -97,7 +116,7 @@ public:
     if (++ticks_ % 4 == 0) { // every second: shows timers work
       send(StatusLine{4, "Timer: " + std::to_string(ticks_ / 4) + " s"});
     }
-    if (!tunePlaying_) {
+    if (!tunePlaying_ || kSoundsFromFiles) { // (the MIDI file plays itself)
       return;
     }
     using ScratchPadd::Audio::MidiEvent;
@@ -122,7 +141,14 @@ private:
       ++played_;
     } else if (button == "Y") {
       tunePlaying_ = !tunePlaying_;
-      if (!tunePlaying_ && lastKey_) {
+      if constexpr (kSoundsFromFiles) {
+        if (tunePlaying_) {
+          sendTo(audio_, ScratchPadd::Audio::PlayMidi{.path = "nitro:/music/tune.mid",
+                                                      .settings = {.loop = true}});
+        } else {
+          sendTo(audio_, ScratchPadd::Audio::StopMusic{});
+        }
+      } else if (!tunePlaying_ && lastKey_) {
         sendTo(audio_, ScratchPadd::Audio::PlayMidiEvent{
                            ScratchPadd::Audio::MidiEvent::noteOff(0, *lastKey_)});
         lastKey_.reset();

@@ -197,15 +197,17 @@ filegroup(
 )
 
 # The parts of the core the DS's AudioPadd needs, without the engine (which
-# it doesn't use): the messages' Voice.hpp and MidiEvent.hpp, and the sounds
-# made in code
+# it doesn't use): the messages' Voice.hpp and MidiEvent.hpp, the sounds
+# made in code, and the MIDI file reader (with TinySoundFont's tml.h)
 filegroup(
     name = "audio_core_without_engine_sources",
     srcs = [
         "core/include/ScratchPadd/Audio/MadeSounds.hpp",
         "core/include/ScratchPadd/Audio/MidiEvent.hpp",
+        "core/include/ScratchPadd/Audio/MidiSequence.hpp",
         "core/include/ScratchPadd/Audio/Voice.hpp",
         "core/src/MadeSounds.cpp",
+        "core/src/MidiSequence.cpp",
     ],
     visibility = ["//visibility:public"],
 )

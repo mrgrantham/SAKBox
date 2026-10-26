@@ -217,10 +217,19 @@ def devkitpro_3ds_app(name, tags = [], **kwargs):
     """
     _devkitpro_3ds_app(name = name, tags = tags + ["devkitpro"], **kwargs)
 
+# Where nitro_files go in a DS app's folder; its Makefile packs that folder
+# into the .nds with NITRO_FILES
+NITRO_FILES_FOLDER = "nitrofiles"
+
 def _devkitpro_nds_app_impl(ctx):
     name = ctx.attr.app_name or ctx.label.name
     outs = [ctx.actions.declare_file(name + ext) for ext in [".nds", ".elf"]]
     staged = _staged_files(ctx)
+    for target, folder in ctx.attr.nitro_files.items():
+        root = _package_root(target.label)
+        for f in target.files.to_list():
+            path = "/".join([part for part in [NITRO_FILES_FOLDER, folder.strip("/"), _staged_under(f, root)] if part])
+            staged.append((f, path))
     args = ctx.actions.args()
     args.add(DEVKITARM_IMAGE)
     args.add(name)
@@ -260,6 +269,15 @@ _devkitpro_nds_app = rule(
           "opens it in the melonDS emulator.",
     executable = True,
     attrs = _SOURCE_ATTRS | {
+        "nitro_files": attr.label_keyed_string_dict(
+            allow_files = True,
+            doc = "Files for the app's file system (NitroFS, packed into the " +
+                  ".nds), each label mapped to the folder its files go in " +
+                  "there, at their paths within their own package. The " +
+                  "app's Makefile packs them with `NITRO_FILES := $(CURDIR)/" +
+                  NITRO_FILES_FOLDER + "`; the app reads them as " +
+                  "nitro:/<folder>/<path> once nitroFSInit() has run.",
+        ),
         "_launcher": attr.label(
             default = "//tools/devkitpro:run_in_melonds.sh",
             allow_single_file = True,

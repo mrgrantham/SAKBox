@@ -82,7 +82,7 @@ devkitpro_nds_app(
 )
 ```
 
-It builds `my-ds-app.nds` (for a flash card, or an emulator) and `my-ds-app.elf`, and `bazel run` opens it in melonDS. See [the ScratchPadd DS demo](../../projects/scratchpadd/ds/demo/BUILD), and [`projects/scratchpadd/ds/platform`](../../projects/scratchpadd/ds/platform/BUILD) for what C++ code that uses `std::atomic` or `std::chrono`'s clocks needs on the DS.
+It builds `my-ds-app.nds` (for a flash card, or an emulator) and `my-ds-app.elf`, and `bazel run` opens it in melonDS. `nitro_files` packs files into the app's file system (NitroFS, carried in the `.nds`): each label maps to the folder its files go in there, at their paths within their own package, as for `extra_srcs`; they're staged in `nitrofiles/`, which the `Makefile` packs with `NITRO_FILES := $(CURDIR)/nitrofiles` (see the ScratchPadd DS demo's), and the app reads them as `nitro:/<folder>/<path>` after `nitroFSInit(nullptr)` (in libfat: link `-lfat`). See [the ScratchPadd DS demo](../../projects/scratchpadd/ds/demo/BUILD), and [`projects/scratchpadd/ds/platform`](../../projects/scratchpadd/ds/platform/BUILD) for what C++ code that uses `std::atomic` or `std::chrono`'s clocks needs on the DS.
 
 Every app is tagged `devkitpro`, so a build that can't run Docker can leave them all out with `--build_tag_filters=-devkitpro` (as [`tools/linux_check`](../linux_check/README.md) does).
 

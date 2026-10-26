@@ -16,6 +16,10 @@ devkitpro_nds_app(
         "//projects/scratchpadd/audio/made_sounds_pcm16:sources": "scratchpadd_audio_pcm16",
         "//projects/scratchpadd/audio:audio_padd_sources": "scratchpadd_audio",
         "//projects/scratchpadd/audio:audio_core_without_engine_sources": "scratchpadd_audio",
+        "//projects/scratchpadd/audio/wav_reader:sources": "scratchpadd_audio_wav",
+        "@tinysoundfont//:sources": "third_party/tinysoundfont",
         "@spdlog//:sources": "third_party/spdlog",
     },
+    # Its file system (NitroFS): nitro:/sounds/*.wav and nitro:/music/tune.mid
+    nitro_files = {"//projects/scratchpadd/handheld:demo_files": ""},
 )

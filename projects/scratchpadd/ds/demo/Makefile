@@ -18,11 +18,14 @@ TARGET		:=	$(shell basename $(CURDIR))
 GAME_TITLE	:=	ScratchPadd
 GAME_SUBTITLE1	:=	Padds on threads, talking by messages
 GAME_SUBTITLE2	:=	SAKBox
+# The app's file system (NitroFS): the BUILD's nitro_files, staged here
+NITRODATA	:=	nitrofiles
 BUILD		:=	build
-SOURCES		:=	source scratchpadd/utilities/src scratchpadd_ds/platform/src scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src
+SOURCES		:=	source scratchpadd/utilities/src scratchpadd_ds/platform/src scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd_audio_wav/src
 INCLUDES	:=	include build scratchpadd/basis/include scratchpadd/messages/include \
 			scratchpadd/utilities/include scratchpadd/handheld/include scratchpadd_audio_pcm16/include scratchpadd_audio/include \
-			scratchpadd_audio/messages/include scratchpadd_audio/core/include third_party/spdlog/include
+			scratchpadd_audio/messages/include scratchpadd_audio/core/include scratchpadd_audio_wav/include third_party \
+			third_party/spdlog/include
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -43,7 +46,7 @@ LDFLAGS	=	-specs=ds_arm9.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
-LIBS	:= -lnds9
+LIBS	:= -lfat -lnds9 # libfat has nitroFSInit (the file system)
 
 
 #---------------------------------------------------------------------------------
@@ -60,6 +63,7 @@ ifneq ($(BUILD),$(notdir $(CURDIR)))
 #---------------------------------------------------------------------------------
 
 export OUTPUT	:=	$(CURDIR)/$(TARGET)
+export NITRO_FILES	:=	$(CURDIR)/$(NITRODATA)
 
 export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)

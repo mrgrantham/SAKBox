@@ -12,6 +12,7 @@
 //
 // A, B and X play a chime, a knock and a blast; Y starts and stops the
 // tune; START quits.
+#include <filesystem.h>
 #include <nds.h>
 
 #include <AudioPadd.hpp>
@@ -103,8 +104,15 @@ private:
 
 int main() {
   spdlog::set_level(spdlog::level::off); // the screens are for the padds
+  // The app's file system (NitroFS), packed into the .nds: AudioPadd reads
+  // the sounds and the tune from it (nitro:/...). Without it, they don't load
+  // and the log says why.
+  const bool files = nitroFSInit(nullptr);
   ScratchPadd::SystemImplementation<ScreenPadd, SoundBoardPadd, AudioPadd> system;
   system.instantiate();
+  if (!files) {
+    std::printf("\x1b[23;1HNo file system (nitroFSInit)\x1b[K");
+  }
   system.start(); // returns when ScreenPadd stops it (START)
   return 0;
 }
