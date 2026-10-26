@@ -76,6 +76,7 @@ struct MixerStats {
   std::atomic<std::uint32_t> droppedEvents{0}; // events the owner's queue had no room for
   std::atomic<std::uint32_t> voicesPlaying{0};
   std::atomic<std::uint32_t> notesSounding{0}; // the instrument's, as last mixed
+  std::atomic<std::uint32_t> limitedBlocks{0}; // blocks the limiter turned down
 };
 
 // The audio-thread half of the engine: plays voices into the output's
@@ -87,7 +88,7 @@ public:
   // The longest block mixed at once; longer render() calls are split
   static constexpr std::uint32_t kMaxBlock = 1024;
 
-  Mixer(std::uint32_t maxVoices, std::uint32_t queueCapacity);
+  Mixer(std::uint32_t maxVoices, std::uint32_t queueCapacity, std::uint32_t sampleRate);
 
   void render(float *interleavedStereo, std::uint32_t frames) noexcept override;
 
@@ -124,6 +125,8 @@ private:
   // Plays `voice`'s sequence events due in the next `frames` frames;
   // returns false once it has ended
   bool advanceSequence(Voice &voice, std::uint32_t frames) noexcept;
+  // The limiter on the whole mix (see Mixer.cpp)
+  void limit(float *out, std::uint32_t frames) noexcept;
   void finish(Voice &voice) noexcept;
   void report(const Event &event) noexcept;
 
@@ -140,6 +143,8 @@ private:
   SpscQueue<Event> events_;
   std::array<float, kGroups> groupGain_{1.0f, 1.0f};
   float masterGain_ = 1.0f;
+  float limiterGain_ = 1.0f;     // 1: not limiting
+  float limiterRecovery_ = 1.0f; // per sample, toward 1
   MixerStats stats_;
 };
 

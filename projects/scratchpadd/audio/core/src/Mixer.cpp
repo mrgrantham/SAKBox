@@ -7,12 +7,19 @@
 
 namespace ScratchPadd::Audio {
 
-Mixer::Mixer(std::uint32_t maxVoices, std::uint32_t queueCapacity)
+namespace {
+// How long the limiter takes to give back the gain it took (a time constant)
+constexpr float kLimiterRecoverySeconds = 0.1f;
+} // namespace
+
+Mixer::Mixer(std::uint32_t maxVoices, std::uint32_t queueCapacity, std::uint32_t sampleRate)
     : voices_(maxVoices), scratch_(2 * kMaxBlock), synthBus_(2 * kMaxBlock),
       commands_(queueCapacity),
       // Each voice can finish once and each command forget one sound, so
       // this many events can't overflow before the owner reads them
-      events_(queueCapacity + maxVoices) {}
+      events_(queueCapacity + maxVoices),
+      limiterRecovery_(
+          std::exp(-1.0f / (kLimiterRecoverySeconds * static_cast<float>(sampleRate)))) {}
 
 void Mixer::render(float *out, std::uint32_t frames) noexcept {
   const MixingScope mixing; // counts any allocation made here (there should be none)
@@ -24,6 +31,7 @@ void Mixer::render(float *out, std::uint32_t frames) noexcept {
   while (frames > 0) {
     const std::uint32_t block = std::min(frames, kMaxBlock);
     mixBlock(out, block);
+    limit(out, block);
     out += 2 * block;
     frames -= block;
     stats_.frames.fetch_add(block, std::memory_order_relaxed);
@@ -280,6 +288,34 @@ bool Mixer::mixStream(Voice &voice, float *out, std::uint32_t frames,
     right += stepRight;
   }
   return !(ended && got < frames);
+}
+
+// A peak limiter: everything mixed together can add up past full scale (a
+// loud SoundFont instrument, many sounds at once), which the output would
+// clip, crackling. Where a sample would go past it, the gain drops at once
+// to keep it at full scale, then recovers over about kLimiterRecoverySeconds.
+// Below full scale, once recovered, the mix passes through untouched, to
+// the last bit. (No look-ahead, so the sharpest peaks are squared off a
+// little; nothing clips.)
+void Mixer::limit(float *out, std::uint32_t frames) noexcept {
+  bool limited = false;
+  float gain = limiterGain_;
+  for (std::uint32_t i = 0; i < frames; ++i) {
+    gain = 1.0f - (1.0f - gain) * limiterRecovery_;
+    const float peak = std::max(std::abs(out[2 * i]), std::abs(out[2 * i + 1]));
+    if (peak * gain > 1.0f) {
+      gain = 1.0f / peak;
+    }
+    if (gain < 1.0f) {
+      out[2 * i] *= gain;
+      out[2 * i + 1] *= gain;
+      limited = true;
+    }
+  }
+  limiterGain_ = gain;
+  if (limited) {
+    stats_.limitedBlocks.fetch_add(1, std::memory_order_relaxed);
+  }
 }
 
 void Mixer::finish(Voice &voice) noexcept {

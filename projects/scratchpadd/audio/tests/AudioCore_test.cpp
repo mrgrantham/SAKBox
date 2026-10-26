@@ -253,6 +253,25 @@ TEST(MixerTest, VolumeChangesRamp) {
   EXPECT_EQ(offline.render(10)[0], 0.0f);
 }
 
+// Sounds that add up past full scale are held to it, not clipped: the
+// limiter turns the mix down, then gives the gain back once they're quieter
+TEST(MixerTest, LimiterHoldsTheMixToFullScale) {
+  Offline offline;
+  offline.load("loud", constant(kRate * 2, 0.8f));
+  const VoiceId first = started(offline.engine.play("loud", {.loop = true}));
+  started(offline.engine.play("loud", {.loop = true}));
+  const std::vector<float> both = offline.render(4800); // 1.6 together
+  float peak = 0;
+  for (float sample : both)
+    peak = std::max(peak, std::abs(sample));
+  EXPECT_LE(peak, 1.0f);
+  EXPECT_NEAR(peak, 1.0f, 1e-5);
+  EXPECT_GT(offline.engine.stats().limitedBlocks.load(), 0u);
+  offline.engine.stop(first);
+  offline.render(kRate); // a second: well past the recovery
+  EXPECT_NEAR(offline.render(16)[0], 0.8f, 1e-3);
+}
+
 // ---------------------------------------------------------------------------
 // Files and music
 

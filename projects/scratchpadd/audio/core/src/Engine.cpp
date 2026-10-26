@@ -36,7 +36,7 @@ struct Engine::Music {
 
 Engine::Engine(Output &output, const EngineConfig &config)
     : output_(output), config_(config), sampleRate_(output.sampleRate()),
-      mixer_(config.maxVoices, config.queueCapacity) {
+      mixer_(config.maxVoices, config.queueCapacity, sampleRate_) {
   useBuiltInInstrument();
 }
 

@@ -7,8 +7,13 @@ namespace ScratchPadd::Audio {
 
 namespace {
 
-constexpr int kDrumChannel = 9;      // General MIDI's channel 10
-constexpr float kOutputGain = 0.25f; // room for a few notes at full velocity
+constexpr int kDrumChannel = 9; // General MIDI's channel 10
+// Levels: a three-note chord at velocity 100 peaks around half of full
+// scale, about as loud as a SoundFont (with its headroom: SoundFontSynth),
+// leaving room for other sounds. The drums' sounds are quieter by nature
+// (short, noisy), so they get more.
+constexpr float kOutputGain = 0.5f;
+constexpr float kDrumGain = 2.0f;
 constexpr float kSilent = 1e-4f;     // a note this quiet is over
 constexpr float kQuickFade = 0.005f; // seconds: all-sound-off, without a click
 constexpr double kTwoPi = 6.283185307179586;
@@ -312,8 +317,8 @@ void BuiltInSynth::render(float *stereo, std::uint32_t frames) noexcept {
 
 void BuiltInSynth::renderNote(Note &note, float *stereo, std::uint32_t frames) noexcept {
   const Channel &c = channels_[note.channel];
-  const float gain =
-      kOutputGain * note.velocity * c.volume * c.volume * c.expression * c.expression;
+  const float gain = kOutputGain * (note.drum ? kDrumGain : 1.0f) * note.velocity * c.volume *
+                     c.volume * c.expression * c.expression;
   const float left = gain * (c.pan > 0.0f ? 1.0f - c.pan : 1.0f);
   const float right = gain * (c.pan < 0.0f ? 1.0f + c.pan : 1.0f);
   const float toTable = static_cast<float>(kTableSize) / sampleRate_;

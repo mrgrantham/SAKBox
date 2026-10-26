@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 # How a voice plays (volume, pan, pitch, loop) and the mix groups: shared by
 # the engine and the messages that drive it
@@ -146,5 +146,18 @@ cc_test(
         ":audio_core",
         ":audio_test_helpers",
         "@gtest//:gtest_main",
+    ],
+)
+
+# Renders the built-in instrument (and FluidR3, to compare) to WAV files in
+# .audio-samples/, to listen to: bazel run :render_instrument_samples
+cc_binary(
+    name = "render_instrument_samples",
+    srcs = ["tools/RenderInstrumentSamples.cpp"],
+    data = ["@fluidr3_mono_soundfont//file"],
+    deps = [
+        ":audio_core",
+        "//projects/data_dep_retriever",
+        "@miniaudio",
     ],
 )

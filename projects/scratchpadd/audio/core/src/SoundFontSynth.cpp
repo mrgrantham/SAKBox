@@ -34,6 +34,13 @@ namespace ScratchPadd::Audio {
 namespace {
 constexpr int kChannels = 16;
 constexpr int kDrumChannel = 9; // General MIDI's channel 10
+// General MIDI SoundFonts are made loud, and their instruments' levels vary
+// a lot: at full gain a chord on many of FluidR3's goes past full scale
+// (its synth lead by 10 dB, its piano not at all). Turned down this much,
+// FluidR3 averages about as loud as the built-in instrument; the mixer's
+// limiter catches the loudest instruments. (FluidSynth turns them down more,
+// by 14 dB, with no limiter.)
+constexpr float kHeadroomDb = -4.0f;
 } // namespace
 
 std::unique_ptr<SoundFontSynth> SoundFontSynth::load(const std::string &path,
@@ -71,7 +78,7 @@ SoundFontSynth::SoundFontSynth(tsf *font, std::uint32_t sampleRate, std::uint32_
   // notes beyond it steal one rather than grow the list) and all 16
   // channels, each on General MIDI's first instrument (channel 10 on drums;
   // set from the last, so all 16 are allocated at once)
-  tsf_set_output(font_, TSF_STEREO_INTERLEAVED, static_cast<int>(sampleRate), 0.0f);
+  tsf_set_output(font_, TSF_STEREO_INTERLEAVED, static_cast<int>(sampleRate), kHeadroomDb);
   tsf_set_max_voices(font_, static_cast<int>(maxNotes));
   for (int channel = kChannels - 1; channel >= 0; --channel) {
     tsf_channel_set_presetnumber(font_, channel, 0, channel == kDrumChannel);
