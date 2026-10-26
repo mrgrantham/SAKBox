@@ -7,7 +7,8 @@
 //               Cyclone's demo) in fixed steps and sub-steps (FixedSteps),
 //               timing each step
 //
-// A: reset (a new shove)   X: 1, 2 or 4 sub-steps   START: quit
+// A: reset (a new shove)   X: 1, 2 or 4 sub-steps   Y: 60 or 30 steps a second
+// START: quit
 #include <nds.h>
 
 #include <ScratchPadd/ScratchPadd.hpp>
@@ -41,6 +42,7 @@ struct BonesSnapshot {
 // starts (each from a fresh ragdoll, over its first steps)
 struct Benchmark {
   struct Row {
+    int stepsPerSecond = 0;
     int subSteps = 0;
     int velocitySweeps = 0, settleSweeps = 0, positionSweeps = 0;
     double stepMilliseconds = 0;
@@ -52,6 +54,7 @@ struct Benchmark {
 
 // What the physics measured over the last second
 struct PhysicsFigures {
+  int stepsPerSecond = 0;
   int subSteps = 0;
   double stepMilliseconds = 0; // a whole step, all its sub-steps
   double busy = 0;             // share of the second spent stepping
@@ -72,6 +75,12 @@ public:
         reset();
       } else if (pressed.key == KEY_X) {
         clock_.setSubSteps(clock_.subSteps() == 4 ? 1 : clock_.subSteps() * 2);
+      } else if (pressed.key == KEY_Y) {
+        // Half as many steps a second is half the work for each second
+        // simulated, with coarser steps (joints stretch more on impact)
+        clock_.setStepSeconds(clock_.stepSeconds() == kSlowStepSeconds
+                                  ? FixedSteps::kDefaultStepSeconds
+                                  : kSlowStepSeconds);
       }
     });
     reset();
@@ -106,7 +115,8 @@ public:
     const auto second = Clock::now() - secondStart_;
     if (second >= std::chrono::seconds(1)) {
       const double seconds = std::chrono::duration<double>(second).count();
-      send(PhysicsFigures{.subSteps = static_cast<int>(clock_.subSteps()),
+      send(PhysicsFigures{.stepsPerSecond = static_cast<int>(std::lround(1 / clock_.stepSeconds())),
+                          .subSteps = static_cast<int>(clock_.subSteps()),
                           .stepMilliseconds =
                               stepsTaken_
                                   ? std::chrono::duration<double, std::milli>(stepping_).count() /
@@ -124,17 +134,20 @@ public:
 private:
   // Sub-steps, and the resolver's velocity, settle and position sweeps
   struct Settings {
-    unsigned subSteps, velocitySweeps, settleSweeps, positionSweeps;
+    unsigned stepsPerSecond, subSteps, velocitySweeps, settleSweeps, positionSweeps;
   };
   // Cyclone's own sweeps (40, 10, 10) suit desktops; with sub-steps a few
   // sweeps each are enough (Box2D v3 takes one), and on the DS they're what
   // the time goes on
-  static constexpr Settings kRunSettings{2, 8, 2, 2};
+  static constexpr Settings kRunSettings{60, 2, 8, 2, 2};
+  // Y's other step length: 30 steps a second
+  static constexpr double kSlowStepSeconds = 1.0 / 30;
   static constexpr Settings kMeasured[] = {
-      {1, 40, 10, 10}, {2, 40, 10, 10}, {2, 8, 2, 2}, {4, 4, 1, 1}};
+      {60, 1, 40, 10, 10}, {60, 2, 8, 2, 2}, {60, 4, 4, 1, 1}, {30, 2, 8, 2, 2}};
   static constexpr int kStepsMeasured = 5;
 
   void useSettings(const Settings &settings) {
+    clock_.setStepSeconds(1.0 / settings.stepsPerSecond);
     clock_.setSubSteps(settings.subSteps);
     resolver_.setSweeps(settings.velocitySweeps, settings.settleSweeps, settings.positionSweeps);
   }
@@ -150,6 +163,7 @@ private:
         step();
       }
       result.rows[i] = {
+          .stepsPerSecond = static_cast<int>(settings.stepsPerSecond),
           .subSteps = static_cast<int>(settings.subSteps),
           .velocitySweeps = static_cast<int>(settings.velocitySweeps),
           .settleSweeps = static_cast<int>(settings.settleSweeps),
@@ -236,8 +250,17 @@ class ScreenPadd : public ScratchPadd::Base {
 public:
   ScreenPadd(ScratchPadd::System *system) : Base(system) {
     receive<BonesSnapshot>([this](const BonesSnapshot &bones) { bones_ = bones; });
-    receive<PhysicsFigures>([this](const PhysicsFigures &figures) { figures_ = figures; });
-    receive<Benchmark>([this](const Benchmark &benchmark) { benchmark_ = benchmark; });
+    // The figures are written when they change (about once a second), not
+    // each frame: formatting numbers is float work, done in software on the
+    // DS, and the main thread's time comes out of the physics'
+    receive<PhysicsFigures>([this](const PhysicsFigures &figures) {
+      figures_ = figures;
+      drawFigures();
+    });
+    receive<Benchmark>([this](const Benchmark &benchmark) {
+      benchmark_ = benchmark;
+      drawFigures();
+    });
   }
   std::string name() override { return "ScreenPadd"; }
   // The frame loop, on the main thread as in devkitPro's examples
@@ -275,13 +298,12 @@ private:
       system_->stop();
       return;
     }
-    for (int key : {KEY_A, KEY_X}) {
+    for (int key : {KEY_A, KEY_X, KEY_Y}) {
       if (down & key) {
         send(ButtonPressed{key});
       }
     }
     drawRagdoll();
-    drawFigures();
     glFlush(0);
     swiWaitForVBlank();
     push([this] { frame(); });
@@ -317,7 +339,7 @@ private:
 
   void drawFigures() {
     std::printf("\x1b[1;1HCyclone's ragdoll on a DS\x1b[K");
-    std::printf("\x1b[3;1HPhysics: 60 steps a second,\x1b[K");
+    std::printf("\x1b[3;1HPhysics: %d steps a second,\x1b[K", figures_.stepsPerSecond);
     std::printf("\x1b[4;1H  %d sub-step%s each\x1b[K", figures_.subSteps,
                 figures_.subSteps == 1 ? "" : "s");
     // (While running, a step's time includes the main thread's, which takes
@@ -327,14 +349,16 @@ private:
     std::printf("\x1b[7;1HSimulation speed: %.2fx\x1b[K", figures_.speed);
     std::printf("\x1b[8;1HWorst joint stretch: %.2f cm\x1b[K", 100 * figures_.worstStretch);
     std::printf("\x1b[10;1HA: reset  X: sub-steps\x1b[K");
-    std::printf("\x1b[11;1HSTART: quit\x1b[K");
+    std::printf("\x1b[11;1HY: 60 or 30 steps a second\x1b[K");
+    std::printf("\x1b[12;1HSTART: quit\x1b[K");
     std::printf("\x1b[13;1HMeasured at start (ms a step):\x1b[K");
-    std::printf("\x1b[14;1Hsub-steps sweeps        ms\x1b[K");
+    std::printf("\x1b[14;1Hsteps/s sub sweeps        ms\x1b[K");
     int row = 15;
     for (const Benchmark::Row &r : benchmark_.rows) {
       if (r.subSteps > 0) {
-        std::printf("\x1b[%d;1H%-9d %2d/%2d/%2d  %7.1f\x1b[K", row, r.subSteps, r.velocitySweeps,
-                    r.settleSweeps, r.positionSweeps, r.stepMilliseconds);
+        std::printf("\x1b[%d;1H%-7d %-3d %2d/%2d/%2d  %7.1f\x1b[K", row, r.stepsPerSecond,
+                    r.subSteps, r.velocitySweeps, r.settleSweeps, r.positionSweeps,
+                    r.stepMilliseconds);
       }
       ++row;
     }

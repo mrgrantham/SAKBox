@@ -131,24 +131,29 @@ The demos' physics runs in **fixed steps** of 1/60 s (`FixedSteps`, `src/demos/f
 
 ## On the Nintendo DS
 
-[`ds`](ds/source/main.cpp) runs the ragdoll (the same `ragdoll_physics.h` as the demo) on a Nintendo DS, in [ScratchPadd](../scratchpadd/README.md#on-the-nintendo-3ds-and-ds) padds: `RagdollPadd` steps it on its own thread in fixed steps and sub-steps (`FixedSteps`), timing each step, and `ScreenPadd` draws it with the DS's 3D hardware on the top screen, with the figures on the bottom one. A resets it with a new shove, X changes the sub-steps (1, 2, 4).
+[`ds`](ds/source/main.cpp) runs the ragdoll (the same `ragdoll_physics.h` as the demo) on a Nintendo DS, in [ScratchPadd](../scratchpadd/README.md#on-the-nintendo-3ds-and-ds) padds: `RagdollPadd` steps it on its own thread in fixed steps and sub-steps (`FixedSteps`), timing each step, and `ScreenPadd` draws it with the DS's 3D hardware on the top screen, with the figures on the bottom one. A resets it with a new shove, X changes the sub-steps (1, 2, 4), and Y switches between 60 and 30 steps a second.
 
 ```bash
 bazel run //projects/cyclone/ds:cyclone-ds-ragdoll   # needs Docker running (tools/devkitpro); opens melonDS
 ```
 
-It builds Cyclone in single precision (`CYCLONE_SINGLE_PRECISION`, see `precision.h`). The DS has no floating-point hardware, so every `float` operation is done in software by the C library, on a 67 MHz ARM9; `double` is slower still.
+It builds Cyclone in single precision (`CYCLONE_SINGLE_PRECISION`, see `precision.h`). The DS has no floating-point hardware, so every `float` operation is done in software by the C library, on a 67 MHz ARM9.
 
-**It's too slow for real time.** When it starts, the app times a few settings (each from a fresh ragdoll, over its first five steps) and shows them; in melonDS, milliseconds a step, against 16.7 ms for 60 steps a second:
+**It's too slow for real time.** When it starts, the app times a few settings (each from a fresh ragdoll, falling, over its first five steps) and shows them; in melonDS:
 
-| Sub-steps | Resolver sweeps (velocity/settle/position) | Thumb, float | ARM, float | Thumb, double |
+| Steps a second | Sub-steps | Resolver sweeps (velocity/settle/position) | ms a step | Real time it manages |
 | --- | --- | --- | --- | --- |
-| 1 | 40/10/10 (Cyclone's own) | 154 | 151 | 272 |
-| 2 | 40/10/10 | 310 | 304 | 554 |
-| 2 | 8/2/2 | 109 | 109 | 188 |
-| 4 | 4/1/1 | 165 | 165 | 282 |
+| 60 | 1 | 40/10/10 (Cyclone's own) | 122 | 0.14x |
+| 60 | 2 | 8/2/2 (what it runs with) | 87 | 0.19x |
+| 60 | 4 | 4/1/1 | 131 | 0.13x |
+| 30 | 2 | 8/2/2 | 85 | 0.39x |
 
-At 2 sub-steps of 8/2/2 sweeps (what it runs with) a sub-step takes 7 ms to move the bones, 8 ms to find contacts and 42 ms to resolve them, so the ragdoll runs at about a tenth of real time (the display keeps its 60 frames a second, since the main thread takes over each frame to draw). Fewer sweeps help less than they might, as setting up each contact and joint (their world inertia, warm starting) costs about as much as the sweeps. ARM instructions instead of Thumb gain about 2%: the time is in the software floating point. Real time needs about ten times as much speed, which means fixed-point arithmetic (roadmap). Measured in melonDS, not on a console.
+- A sub-step at 8/2/2 sweeps takes 5 ms to move the bones, 6 ms to find contacts and 32 ms to resolve them. Fewer sweeps help less than they might, as setting up each contact and joint (their world inertia, warm starting) costs about as much as the sweeps.
+- Once the ragdoll lies on the ground, every bone touches it, and a step costs about twice as much (about 0.1x real time at 60 steps a second, 0.2x at 30).
+- `double` is 1.75 times slower than `float`, and ARM instructions instead of Thumb gain about 2%: the time is in the software floating point.
+- The figures on the bottom screen are written only when they change, about once a second: formatting numbers is float work too, and the main thread's time comes out of the physics'. Writing them each frame made the physics 25% slower.
+
+Real time needs about five to ten times as much speed, which means fixed-point arithmetic (roadmap). Measured in melonDS, not on a console.
 
 ## What SAKBox has changed
 
@@ -247,4 +252,4 @@ The engine's formulas were checked against Millington's *Game Physics Engine Dev
 1. **Cheaper sub-steps,** as Box2D v3's "soft step" takes them: find contacts once a step and only integrate and solve in each sub-step, updating each contact's depth from how its bodies moved. Worth it if finding contacts is what makes sub-steps cost too much (a big scene, or the 3DS); the sub-steps here are the results to match.
 2. **Blended drawing between fixed steps in the demos:** draw each body between its last two steps' positions, by how far the frame is into the next step, so motion is smooth on screens whose rate isn't a multiple of 60 (it costs a step of delay). The [Cyclone padds example](../examples/cyclone_padds/README.md) does this for the ragdoll (`SnapshotTimeline`).
 3. **Sub-steps for the particle world** (`ParticleWorld`), and the mass-aggregate demos in fixed steps.
-4. **Fixed-point `real` for the DS,** where the ragdoll runs at a tenth of real time in software floating point (see [On the Nintendo DS](#on-the-nintendo-ds)): a 32-bit fixed-point type with the DS's hardware divide and square root. Cyclone's `real` can already change (the flex build swaps in another type); the work is in the type itself and in ranges (inertia tensors and their inverses, squared lengths) that fixed point can hold. Then fewer, cheaper contact set-ups.
+4. **Fixed-point `real` for the DS,** where the ragdoll runs at a tenth to a fifth of real time in software floating point (see [On the Nintendo DS](#on-the-nintendo-ds)): a 32-bit fixed-point type with the DS's hardware divide and square root. Cyclone's `real` can already change (the flex build swaps in another type); the work is in the type itself and in ranges (inertia tensors and their inverses, squared lengths) that fixed point can hold. Then fewer, cheaper contact set-ups.
