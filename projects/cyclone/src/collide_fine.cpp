@@ -965,14 +965,37 @@ unsigned CollisionDetector::boxAndSphere(const CollisionBox &box, const Collisio
   if (dist > sphere.radius * sphere.radius)
     return 0;
 
-  // Compile the contact
-  Vector3 closestPtWorld = box.transform.transform(closestPt);
-
   Contact *contact = data->contacts;
-  contact->contactNormal = (closestPtWorld - centre);
-  contact->contactNormal.normalise();
-  contact->contactPoint = closestPtWorld;
-  contact->penetration = sphere.radius - real_sqrt(dist);
+  if (dist > 0) {
+    // Compile the contact
+    Vector3 closestPtWorld = box.transform.transform(closestPt);
+    contact->contactNormal = (closestPtWorld - centre);
+    contact->contactNormal.normalise();
+    contact->contactPoint = closestPtWorld;
+    contact->penetration = sphere.radius - real_sqrt(dist);
+  } else {
+    // SAKBox: the sphere's centre is inside the box (a fast sphere can get
+    // there in one step), so the closest point is the centre itself and
+    // gives no normal: it was a zero vector, and resolving the contact
+    // turned both bodies' state to NaN. Push the sphere out through the
+    // nearest face instead, as Box2D and Bullet do.
+    unsigned axis = 0;
+    real depth = box.halfSize.x - real_abs(relCentre.x);
+    for (unsigned i = 1; i < 3; i++) {
+      const real faceDepth = box.halfSize[i] - real_abs(relCentre[i]);
+      if (faceDepth < depth) {
+        depth = faceDepth;
+        axis = i;
+      }
+    }
+    Vector3 outward(0, 0, 0); // the face's outward direction, in box coordinates
+    outward[axis] = relCentre[axis] < 0 ? -1 : 1;
+    closestPt[axis] = outward[axis] * box.halfSize[axis];
+    // (Pointing from the sphere into the box, as for a sphere outside)
+    contact->contactNormal = box.transform.transformDirection(outward * -1);
+    contact->contactPoint = box.transform.transform(closestPt);
+    contact->penetration = sphere.radius + depth;
+  }
   contact->setBodyData(box.body, sphere.body, data->friction, data->restitution);
 
   data->addContacts(1);

@@ -386,6 +386,75 @@ TEST(BoxCollisionTest, SphereClearOfBoxDoesntTouch) {
             0u);
 }
 
+// A sphere whose centre is inside the box (a fast one can get there in one
+// step) is pushed out through the nearest face: the normal points from the
+// sphere into the box, as for one outside, and it's as deep as the radius
+// plus how far the centre is in. (The closest point used to be the centre
+// itself, giving a zero normal, and resolving it made both bodies NaN.)
+TEST(BoxCollisionTest, SphereCentreInsideBoxGoesOutTheNearestFace) {
+  struct Case {
+    Vector3 centre, normal, point;
+    double penetration;
+  };
+  for (const Case &expected : {
+           Case{Vector3(0, 0.8, 0), Vector3(0, -1, 0), Vector3(0, 1, 0), 0.25 + 0.2},
+           Case{Vector3(-0.7, 0.1, 0.2), Vector3(1, 0, 0), Vector3(-1, 0.1, 0.2), 0.25 + 0.3},
+           Case{Vector3(0.1, 0.2, -0.9), Vector3(0, 0, 1), Vector3(0.1, 0.2, -1), 0.25 + 0.1},
+       }) {
+    auto boxBody = bodyAt(Vector3(0, 0, 0));
+    auto ball = bodyAt(expected.centre);
+    Contacts c;
+    ASSERT_EQ(CollisionDetector::boxAndSphere(boxOn(*boxBody, Vector3(1, 1, 1)),
+                                              sphereOn(*ball, 0.25), &c.data),
+              1u);
+    const Contact &contact = c.array[0];
+    expectNear(contact.contactNormal, expected.normal);
+    expectNear(contact.contactPoint, expected.point);
+    EXPECT_NEAR(contact.penetration, expected.penetration, kTolerance);
+  }
+}
+
+// The same for a turned box: the face and its normal turn with it
+TEST(BoxCollisionTest, SphereCentreInsideTurnedBox) {
+  auto boxBody = bodyAt(Vector3(5, 0, 0));
+  boxBody->setOrientation(
+      Quaternion(std::cos(M_PI / 4), 0, 0, std::sin(M_PI / 4))); // 90 deg about z
+  boxBody->calculateDerivedData();
+  // In the box's own coordinates the centre is near its +x face, which the
+  // turn points along world +y
+  auto ball = bodyAt(Vector3(5, 0.85, 0));
+  Contacts c;
+  ASSERT_EQ(CollisionDetector::boxAndSphere(boxOn(*boxBody, Vector3(1, 1, 1)),
+                                            sphereOn(*ball, 0.25), &c.data),
+            1u);
+  expectNear(c.array[0].contactNormal, Vector3(0, -1, 0), 1e-6);
+  expectNear(c.array[0].contactPoint, Vector3(5, 1, 0), 1e-6);
+  EXPECT_NEAR(c.array[0].penetration, 0.25 + 0.15, 1e-6);
+}
+
+// Resolving it leaves both bodies with finite, sensible motion: the sphere
+// bounces back out of the face it came in through
+TEST(BoxCollisionTest, FastSphereInsideBoxResolvesWithoutNaN) {
+  auto boxBody = bodyAt(Vector3(0, 0, 0));
+  boxBody->setMass(8);
+  auto ball = bodyAt(Vector3(0, 0, -0.6)); // went in through the -z face...
+  ball->setMass(0.1);
+  ball->setVelocity(0, 0, 100); // ...at 100 m/s, a laser shot in bigballistic
+  Contacts c;
+  ASSERT_EQ(CollisionDetector::boxAndSphere(boxOn(*boxBody, Vector3(1, 1, 1)), sphereOn(*ball, 0.2),
+                                            &c.data),
+            1u);
+  ContactResolver resolver(16);
+  resolver.resolveContacts(c.array, c.data.contactCount, 1.0 / 60);
+  for (const RigidBody *body : {boxBody.get(), ball.get()}) {
+    for (const Vector3 &v : {body->getPosition(), body->getVelocity(), body->getRotation()}) {
+      EXPECT_TRUE(std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z));
+    }
+  }
+  EXPECT_LT(ball->getVelocity().z, 0);    // bounced back
+  EXPECT_GT(boxBody->getVelocity().z, 0); // and knocked the box on
+}
+
 // ---------------------------------------------------------------------------
 // The quick yes/no tests agree with the full contact generation
 

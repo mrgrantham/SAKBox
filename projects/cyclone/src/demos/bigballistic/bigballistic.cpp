@@ -101,6 +101,9 @@ public:
 
     // Set the data common to all particle types
     body->setPosition(0.0f, 1.5f, 0.0f);
+    // SAKBox: a reused round started with the last one's orientation and spin
+    body->setOrientation(1, 0, 0, 0);
+    body->setRotation(0, 0, 0);
     startTime = TimingData::get().lastFrameTimestamp;
 
     // Clear the force accumulators
