@@ -21,7 +21,10 @@ cc_library(
         ":ragdoll_messages",
         "//projects/cyclone",
         "//projects/cyclone:fixed_steps",
+        "//projects/cyclone:impact_knocks",
         "//projects/cyclone:ragdoll_physics",
+        "//projects/scratchpadd/audio:audio_made_sounds",
+        "//projects/scratchpadd/audio:audio_messages",
         "//projects/scratchpadd/basis",
     ],
 )
@@ -36,6 +39,7 @@ cc_binary(
     deps = [
         ":ragdoll_messages",
         ":ragdoll_physics_padd",
+        "//projects/scratchpadd/audio",
         "//projects/scratchpadd/graphics",
         "@glew",
         "@glfw",

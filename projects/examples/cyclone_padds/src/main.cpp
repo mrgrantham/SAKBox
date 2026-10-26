@@ -5,10 +5,13 @@
 //                                    sub-steps; its controls set them
 //   RagdollWindowPadd  (main thread) draws its snapshots at the screen's rate,
 //                                    blended; every padd's controls; keys
+//   AudioPadd          (own thread)  plays the knocks the physics padd sends
 //
 //   bazel run //projects/examples/cyclone_padds
 #include "RagdollPhysicsPadd.hpp"
 #include "RagdollWindowPadd.hpp"
+
+#include <AudioPadd.hpp>
 
 #include <ScratchPadd/ScratchPadd.hpp>
 
@@ -17,7 +20,7 @@
 int main() {
   spdlog::set_level(spdlog::level::warn);
   ScratchPadd::SystemImplementation<CyclonePadds::RagdollPhysicsPadd,
-                                    CyclonePadds::RagdollWindowPadd>
+                                    CyclonePadds::RagdollWindowPadd, AudioPadd>
       system;
   system.instantiate();
   system.start(); // returns when the window closes

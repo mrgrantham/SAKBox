@@ -66,7 +66,7 @@ TEST(ImpactSoundsTest, HitsKnockAndRestingDoesnt) {
   ASSERT_TRUE(sounds.playing()) << sounds.error();
   Scene resting;
   resting.body(0);
-  resting.body(ImpactSounds::kQuietestHit * 0.5f);
+  resting.body(ImpactKnocks::kQuietestHit * 0.5f);
   resting.hear(sounds);
   EXPECT_EQ(sounds.knocks(), 0u);
   Scene hit;
@@ -86,7 +86,7 @@ TEST(ImpactSoundsTest, APairKnocksOnceAWhile) {
   scene.hear(sounds);
   scene.hear(sounds); // the same hit, the next frame
   EXPECT_EQ(sounds.knocks(), 1u);
-  scene.hear(sounds, ImpactSounds::kRepeatSeconds);
+  scene.hear(sounds, ImpactKnocks::kRepeatSeconds);
   EXPECT_EQ(sounds.knocks(), 2u);
 }
 
@@ -98,7 +98,7 @@ TEST(ImpactSoundsTest, AFewHitsAFrame) {
   for (int i = 0; i < 20; ++i)
     scene.body(2.0f + i * 0.2f, static_cast<float>(i));
   scene.hear(sounds);
-  EXPECT_EQ(sounds.knocks(), static_cast<std::uint32_t>(ImpactSounds::kHitsPerFrame));
+  EXPECT_EQ(sounds.knocks(), static_cast<std::uint32_t>(ImpactKnocks::kHitsPerFrame));
 }
 
 // A frame of several steps (sub-steps, or catching up): a pair hit in more
@@ -122,7 +122,7 @@ TEST(ImpactSoundsTest, AFrameOfSeveralSteps) {
   for (int step = 0; step < 4; ++step)
     crowd.hearStep(crowded, 1.0f / 240);
   crowded.playHits();
-  EXPECT_EQ(crowded.knocks(), static_cast<std::uint32_t>(ImpactSounds::kHitsPerFrame));
+  EXPECT_EQ(crowded.knocks(), static_cast<std::uint32_t>(ImpactKnocks::kHitsPerFrame));
 }
 
 // Turned off (V in the demos), nothing knocks

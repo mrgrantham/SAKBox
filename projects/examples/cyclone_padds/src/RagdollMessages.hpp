@@ -41,6 +41,9 @@ struct PhysicsStats {
   // since the ragdoll was last reset (m)
   double stretchNow = 0;
   double worstStretch = 0;
+  // Knocks sent to AudioPadd so far, and whether there's one to send them to
+  std::uint32_t knocks = 0;
+  bool audio = false;
 };
 
 // The ragdoll after a physics padd tick: sent each tick that took a step.
@@ -53,6 +56,13 @@ struct RagdollSnapshot {
   std::vector<BoneSnapshot> bones;
   std::vector<JointSnapshot> joints;
   PhysicsStats stats;
+};
+
+// The window's camera has turned: its angle around the vertical (degrees,
+// looking at the origin from +x when 0), so knocks are panned to where they
+// are on screen
+struct CameraTurned {
+  float degrees = 0;
 };
 
 // Keys in the window, for the physics padd

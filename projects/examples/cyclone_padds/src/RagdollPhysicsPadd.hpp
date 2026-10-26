@@ -11,10 +11,14 @@
 
 #include "RagdollMessages.hpp"
 
+#include <ScratchPadd/Audio/MadeSounds.hpp>
+#include <ScratchPadd/Audio/Messages.hpp>
+
 #include <ScratchPadd/Base.hpp>
 
 #include <cyclone/cyclone.h>
 #include <fixed_steps.h>
+#include <impact_knocks.h>
 #include <ragdoll_physics.h>
 
 #include <algorithm>
@@ -37,6 +41,8 @@ public:
         resolver_(kMaxContacts * 8), ragdoll_(std::make_unique<ragdoll::Ragdoll>()) {
     cData_.contactArray = contacts_.get();
     receive<RagdollCommand>([this](const RagdollCommand &command) { runCommand(command); });
+    receive<CameraTurned>(
+        [this](const CameraTurned &camera) { knocks_.setCameraAngle(camera.degrees); });
     reset();
   }
 
@@ -55,10 +61,26 @@ public:
                            std::make_pair(1, static_cast<int>(FixedSteps::kMostSubSteps)))},
         {"Resolver", Controls::String(kTogether, std::vector<std::string>{kTogether, kOneAtATime})},
         {"Paused", Controls::Boolean(false)},
+        {"Sound", Controls::Boolean(true)},
     };
   }
 
   void controlChanged(const std::string &) override { applyControls(); }
+
+  // Finds AudioPadd, if the system has one, and gives it the knock (made in
+  // code, so there's no file to find)
+  void prepare() override {
+    audio_ = addressOf("AudioPadd");
+    if (audio_) {
+      constexpr std::uint32_t kRate = 48000;
+      sendTo(audio_, ScratchPadd::Audio::LoadSoundSamples{
+                         .name = "knock",
+                         .samples = std::make_shared<const std::vector<float>>(
+                             ScratchPadd::Audio::MadeSounds::knock(kRate)),
+                         .rate = kRate,
+                         .channels = 1});
+    }
+  }
 
   void starting() override {
     applyControls();
@@ -85,6 +107,7 @@ public:
       busySeconds_ = 0;
       busySince_ = done;
     }
+    playKnocks();
     if (steps > 0) {
       send(snapshot());
     }
@@ -104,12 +127,29 @@ private:
     for (unsigned i = 0; i < clock_.subSteps(); ++i) {
       ragdoll_->integrate(duration);
       ragdoll_->generateContacts(cData_, kMaxContacts);
+      knocks_.hear(cData_.contactArray, cData_.contactCount, duration); // before they're resolved
       resolver_.resolveContacts(cData_.contactArray, cData_.contactCount, duration,
                                 ragdoll_->jointList());
     }
     time_ += clock_.stepSeconds();
     stretchNow_ = ragdoll_->worstStretch();
     worstStretch_ = std::max(worstStretch_, stretchNow_);
+  }
+
+  // Asks AudioPadd to play this tick's knocks (the hits ImpactKnocks chose
+  // from all its steps), as the demos play theirs each frame
+  void playKnocks() {
+    knocks_.takeKnocks(knocksToPlay_);
+    if (!sound_ || !audio_) {
+      return;
+    }
+    for (const Knock &knock : knocksToPlay_) {
+      ++knocksSent_;
+      sendTo(audio_,
+             ScratchPadd::Audio::PlaySound{
+                 .name = "knock",
+                 .settings = {.volume = knock.volume, .pan = knock.pan, .pitch = knock.pitch}});
+    }
   }
 
   RagdollSnapshot snapshot() const {
@@ -150,7 +190,9 @@ private:
                .subSteps = static_cast<int>(clock_.subSteps()),
                .busy = busy_,
                .stretchNow = stretchNow_,
-               .worstStretch = worstStretch_};
+               .worstStretch = worstStretch_,
+               .knocks = knocksSent_,
+               .audio = static_cast<bool>(audio_)};
     return s;
   }
 
@@ -191,6 +233,7 @@ private:
       resolver_.forgetWarmStart();
     }
     paused_ = control<Controls::Boolean>("Paused").value;
+    sound_ = control<Controls::Boolean>("Sound").value;
   }
 
   std::unique_ptr<cyclone::Contact[]> contacts_;
@@ -199,6 +242,11 @@ private:
   std::unique_ptr<ragdoll::Ragdoll> ragdoll_;
   cyclone::Random random_;
   FixedSteps clock_;
+  ImpactKnocks knocks_;
+  std::vector<Knock> knocksToPlay_; // reused each tick
+  ScratchPadd::PaddAddress audio_;
+  bool sound_ = true;
+  std::uint32_t knocksSent_ = 0;
   bool paused_ = false;
 
   double time_ = 0;

@@ -39,11 +39,22 @@ cc_library(
     strip_include_prefix = "src/demos",
 )
 
+# Which hits to knock for (no audio): for code outside the demos, such as the
+# Cyclone padds example. The demos' framework compiles the same files into
+# itself, as it's built against both Cyclone and the flex build.
+cc_library(
+    name = "impact_knocks",
+    srcs = ["src/demos/impact_knocks.cpp"],
+    hdrs = ["src/demos/impact_knocks.h"],
+    strip_include_prefix = "src/demos",
+    deps = [":cyclone"],
+)
+
 # The demos' framework, built twice below: with Cyclone's usual real, and
 # with flexmath's (app_flex)
-APP_SRCS = ["src/demos/app.cpp", "src/demos/impact_sounds.cpp", "src/demos/shapes.cpp"]
+APP_SRCS = ["src/demos/app.cpp", "src/demos/impact_knocks.cpp", "src/demos/impact_sounds.cpp", "src/demos/shapes.cpp"]
 
-APP_HDRS = ["src/demos/app.h", "src/demos/impact_sounds.h", "src/demos/ogl_headers.h", "src/demos/shapes.h"]
+APP_HDRS = ["src/demos/app.h", "src/demos/impact_knocks.h", "src/demos/impact_sounds.h", "src/demos/ogl_headers.h", "src/demos/shapes.h"]
 
 APP_DEPS = [
     ":fixed_steps",

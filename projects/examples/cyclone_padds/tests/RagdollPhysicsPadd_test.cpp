@@ -3,6 +3,8 @@
 // sends what the window's keys and panel send. No window needed.
 #include "RagdollPhysicsPadd.hpp"
 
+#include <ScratchPadd/Audio/Messages.hpp>
+
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Testing.hpp>
 
@@ -70,8 +72,47 @@ private:
   std::vector<ControlSnapshot> controlSnapshots_;
 };
 
+// Stands in for AudioPadd (named the same, so the physics padd finds it):
+// records the sounds it's given and asked to play
+class AudioStandIn : public ScratchPadd::Base {
+public:
+  AudioStandIn(ScratchPadd::System *system) : Base(system) {
+    receive<ScratchPadd::Audio::LoadSoundSamples>(
+        [this](const ScratchPadd::Audio::LoadSoundSamples &load) {
+          std::lock_guard<std::mutex> lk(mutex_);
+          loaded_.push_back(load.name);
+          loadedSamples_ = load.samples ? load.samples->size() : 0;
+        });
+    receive<ScratchPadd::Audio::PlaySound>([this](const ScratchPadd::Audio::PlaySound &play) {
+      std::lock_guard<std::mutex> lk(mutex_);
+      played_.push_back(play);
+    });
+  }
+  std::string name() override { return "AudioPadd"; }
+  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+
+  std::vector<std::string> loaded() {
+    std::lock_guard<std::mutex> lk(mutex_);
+    return loaded_;
+  }
+  std::size_t loadedSamples() {
+    std::lock_guard<std::mutex> lk(mutex_);
+    return loadedSamples_;
+  }
+  std::vector<ScratchPadd::Audio::PlaySound> played() {
+    std::lock_guard<std::mutex> lk(mutex_);
+    return played_;
+  }
+
+private:
+  std::mutex mutex_;
+  std::vector<std::string> loaded_;
+  std::size_t loadedSamples_ = 0;
+  std::vector<ScratchPadd::Audio::PlaySound> played_;
+};
+
 struct RunningSystem {
-  ScratchPadd::SystemImplementation<RagdollPhysicsPadd, ViewerPadd> system;
+  ScratchPadd::SystemImplementation<RagdollPhysicsPadd, ViewerPadd, AudioStandIn> system;
   std::thread mainThread;
   RunningSystem() {
     system.instantiate();
@@ -83,6 +124,7 @@ struct RunningSystem {
     mainThread.join();
   }
   ViewerPadd &viewer() { return *std::get<std::unique_ptr<ViewerPadd>>(system.getWorkers()); }
+  AudioStandIn &audio() { return *std::get<std::unique_ptr<AudioStandIn>>(system.getWorkers()); }
   RagdollPhysicsPadd &physics() {
     return *std::get<std::unique_ptr<RagdollPhysicsPadd>>(system.getWorkers());
   }
@@ -179,4 +221,35 @@ TEST(RagdollPhysicsPaddTest, PauseStopsTime) {
   EXPECT_EQ(
       ScratchPadd::onPaddThread(running.physics(), [](RagdollPhysicsPadd &p) { return p.time(); }),
       time);
+}
+
+// The physics padd gives AudioPadd the knock, then asks it to play a knock
+// for each hit as the ragdoll falls: each a knock's volume (0.15 to 1),
+// panned no further than 0.8
+TEST(RagdollPhysicsPaddTest, HitsKnockThroughAudioPadd) {
+  RunningSystem running;
+  AudioStandIn &audio = running.audio();
+  const auto deadline = std::chrono::steady_clock::now() + 5s;
+  while (audio.played().empty() && std::chrono::steady_clock::now() < deadline) {
+    std::this_thread::sleep_for(5ms);
+  }
+  EXPECT_EQ(audio.loaded(), std::vector<std::string>{"knock"});
+  EXPECT_GT(audio.loadedSamples(), 0u);
+  const auto played = audio.played();
+  ASSERT_FALSE(played.empty());
+  for (const ScratchPadd::Audio::PlaySound &play : played) {
+    EXPECT_EQ(play.name, "knock");
+    EXPECT_GE(play.settings.volume, 0.15f);
+    EXPECT_LE(play.settings.volume, 1.0f);
+    EXPECT_LE(std::abs(play.settings.pan), 0.8f);
+  }
+}
+
+// With the Sound control off, the hits play nothing
+TEST(RagdollPhysicsPaddTest, SoundOffPlaysNothing) {
+  RunningSystem running;
+  EXPECT_TRUE(running.viewer().changeControl("Sound", Controls::Boolean(false)));
+  ASSERT_TRUE(
+      running.viewer().waitFor([](const auto &s) { return !s.empty() && s.back().time > 3; }));
+  EXPECT_TRUE(running.audio().played().empty());
 }

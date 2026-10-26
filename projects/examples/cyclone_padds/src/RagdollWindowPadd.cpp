@@ -273,6 +273,7 @@ void RagdollWindowPadd::starting() {
   // Ask every padd with controls for them, this one included (its blending
   // switch), then start drawing
   sendIncludeSender(ScratchPadd::MessageType::ControlRequest{});
+  send(CameraTurned{cameraTurn_});
   push([this] { drawFrame(); });
 }
 
@@ -335,8 +336,11 @@ void RagdollWindowPadd::handleKeys() {
   } else if (!down) {
     dragging_ = false;
   }
-  if (dragging_) {
+  if (dragging_ && x != dragX_) {
     cameraTurn_ += static_cast<float>(x - dragX_) * 0.25f;
+    send(CameraTurned{cameraTurn_});
+  }
+  if (dragging_) {
     cameraRise_ = std::clamp(cameraRise_ + static_cast<float>(y - dragY_) * 0.25f, 0.0f, 80.0f);
   }
   dragX_ = x;
@@ -356,6 +360,11 @@ void RagdollWindowPadd::drawStats() {
     ImGui::Text("Physics thread busy: %.1f%%", 100 * stats.busy);
     ImGui::Text("Joint stretch now: %.2f cm, worst since reset: %.2f cm", 100 * stats.stretchNow,
                 100 * stats.worstStretch);
+    if (stats.audio) {
+      ImGui::Text("Knocks sent to AudioPadd: %u", static_cast<unsigned>(stats.knocks));
+    } else {
+      ImGui::TextUnformatted("No AudioPadd: no sound");
+    }
   } else {
     ImGui::TextUnformatted("Waiting for the physics...");
   }
