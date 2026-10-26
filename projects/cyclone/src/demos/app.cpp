@@ -310,7 +310,7 @@ void RigidBodyApplication::renderPhysicsSteps() {
   char text[128];
   std::snprintf(
       text, sizeof text, "Physics: %d steps a second, %u sub-step%s each ([ ]), %.2f ms a frame",
-      static_cast<int>(std::lround(1 / FixedSteps::kStepSeconds)), physicsClock.subSteps(),
+      static_cast<int>(std::lround(1 / physicsClock.stepSeconds())), physicsClock.subSteps(),
       physicsClock.subSteps() == 1 ? "" : "s", physicsMilliseconds);
   const float textWidth = (float)stb_easy_font_width(text);
   glColor3f(0.1f, 0.1f, 0.15f);

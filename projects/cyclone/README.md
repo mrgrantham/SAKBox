@@ -127,7 +127,7 @@ Over 20 pushed ragdolls (`ragdoll_test`), the most any joint stretched beyond it
 | 60 | 6.7 cm | 0.9 cm | 0.03 cm | 0.003 cm |
 | 20 | 62 cm | 21 cm | 2.6 cm | 0.3 cm |
 
-The demos' physics runs in **fixed steps** of 1/60 s (`FixedSteps`, `src/demos/fixed_steps.h`): each frame adds its time, and runs the whole steps it covers. Frames used to step by their own length, so the simulation changed with the screen's refresh rate and with every stutter. A frame over 0.1 s (a stall) counts as 0.1 s, so the simulation slows rather than taking a burst of steps to catch up; a step is due up to a quarter of a step early, so 60 Hz frames of 16 and 17 ms take one step each. Drawing isn't blended between steps, so on a screen whose rate isn't a multiple of 60 motion is a little uneven (roadmap).
+The demos' physics runs in **fixed steps** of 1/60 s (`FixedSteps`, `src/demos/fixed_steps.h`; `setStepSeconds` changes the length, which the [Cyclone padds example](../examples/cyclone_padds/README.md) offers as a slider): each frame adds its time, and runs the whole steps it covers. Frames used to step by their own length, so the simulation changed with the screen's refresh rate and with every stutter. A frame over 0.1 s (a stall) counts as 0.1 s, so the simulation slows rather than taking a burst of steps to catch up; a step is due up to a quarter of a step early, so 60 Hz frames of 16 and 17 ms take one step each. Drawing isn't blended between steps, so on a screen whose rate isn't a multiple of 60 motion is a little uneven (roadmap).
 
 ## What SAKBox has changed
 
@@ -189,7 +189,7 @@ Changes inside the code are marked with `SAKBox:` comments.
 | `stress_test` | Random scenes, 200 of each: boxes and spheres (50 g to 500 kg, up to 100 m/s and 20 rad/s, some joined by joints) with both resolvers, and particles joined by rods, cables, anchors, springs and bungees, each at 60 and at 20 steps a second for 10 s (the rigid bodies also at 20 in four sub-steps), every body checked after every step: finite position, velocity, spin and orientation, a unit orientation, under 1,000 m/s and within 10 km. A failure names the seed, step and body. It finds the bugs scenes built by hand miss: with the old `boxAndSphere` it fails on its first scene. (About 60 s.) |
 | `random_test` | The random number generator: repeatable from a seed; reals, integers, vectors and orientations spread evenly over their ranges; asking for an integer below 0 is an error |
 | `impact_sounds_test` | The demos' knocks, heard through an offline output: a hit knocks and resting doesn't, a pair knocks at most once in its repeat time, only the hardest six hits a frame knock (also over a frame of several steps, where a pair hit in more than one knocks once), turned off nothing plays, and a hit sounds on the side of the screen it happened (the camera turned either way) |
-| `fixed_steps_test` | The demos' physics clock: one step a frame at 60 Hz despite 16 and 17 ms frames; 60 steps a second at 144, 120, 30 and 20 Hz; a 2 s stall counting as 0.1 s; sub-steps splitting the step, starting at 2 and between 1 and 16 |
+| `fixed_steps_test` | The demos' physics clock: one step a frame at 60 Hz despite 16 and 17 ms frames; 60 steps a second at 144, 120, 30 and 20 Hz; a 2 s stall counting as 0.1 s; changing the step length as it runs (240 steps a second, time not yet stepped carried over); sub-steps splitting the step, starting at 2 and between 1 and 16 |
 | `flex_test` | The flex build: `FlexReal` as `real`, precision snapping in the engine, and that time steps and drag stay at full precision (stochastic rounding keeps drag unbiased) |
 
 ## Known limitations
@@ -223,5 +223,5 @@ The engine's formulas were checked against Millington's *Game Physics Engine Dev
 ## Roadmap
 
 1. **Cheaper sub-steps,** as Box2D v3's "soft step" takes them: find contacts once a step and only integrate and solve in each sub-step, updating each contact's depth from how its bodies moved. Worth it if finding contacts is what makes sub-steps cost too much (a big scene, or the 3DS); the sub-steps here are the results to match.
-2. **Blended drawing between fixed steps:** draw each body between its last two steps' positions, by how far the frame is into the next step, so motion is smooth on screens whose rate isn't a multiple of 60 (it costs a step of delay).
+2. **Blended drawing between fixed steps in the demos:** draw each body between its last two steps' positions, by how far the frame is into the next step, so motion is smooth on screens whose rate isn't a multiple of 60 (it costs a step of delay). The [Cyclone padds example](../examples/cyclone_padds/README.md) does this for the ragdoll (`SnapshotTimeline`).
 3. **Sub-steps for the particle world** (`ParticleWorld`), and the mass-aggregate demos in fixed steps.

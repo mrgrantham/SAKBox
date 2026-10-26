@@ -44,6 +44,7 @@ Small programs under `projects/examples/`, mostly one per library. Run any of th
 | [Precision Flight](projects/examples/precision_flight/README.md) | `//projects/examples/precision_flight:precision_flight` | Star Fox-style rail game built on flexmath and ScratchPadd, where powerups change numeric precision. `--autopilot` plays itself |
 | Camera | `//projects/examples/camera:exampleCamera` | Live webcam feed with OpenCV and SDL2. M mirrors, Q quits; optional camera index argument |
 | OpenGL tutorial | `//projects/examples/opengl_tutorial:opengl_tutorial` | GLFW/GLEW scene with a textured, lit pyramid; WASD and Space move the camera |
+| [Cyclone in padds](projects/examples/cyclone_padds/README.md) | `//projects/examples/cyclone_padds` | Cyclone's ragdoll with its physics and its window in separate ScratchPadd padds: fixed steps and sub-steps set by sliders, drawn blended between snapshots |
 | Shader playground | `//projects/examples/shader_playground:shader_playground` | Shadertoy-style fragment shaders rendered through ScratchPadd |
 | ImGui + SDL2 | `//projects/examples/imgui_sdl2:exampleImguiSDL2` | Dear ImGui's demo window on SDL2 and OpenGL 3 |
 | SDL2 | `//projects/examples/sdl2:exampleSDL2` | Opens an SDL2 window and renders a blank streaming texture (a starting template) |

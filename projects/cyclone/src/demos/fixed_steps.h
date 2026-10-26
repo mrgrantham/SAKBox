@@ -1,5 +1,7 @@
 /*
- * SAKBox: the rigid-body demos' physics clock.
+ * SAKBox: the rigid-body demos' physics clock. Also used by the Cyclone
+ * padds example (//projects/examples/cyclone_padds), which changes the step
+ * length while it runs.
  */
 #pragma once
 
@@ -16,7 +18,7 @@
  */
 class FixedSteps {
 public:
-  static constexpr double kStepSeconds = 1.0 / 60;
+  static constexpr double kDefaultStepSeconds = 1.0 / 60;
   static constexpr unsigned kMostSubSteps = 16;
   /**
    * The demos start with 2 sub-steps a step: the most gain for the least
@@ -33,26 +35,34 @@ public:
    */
   static constexpr double kLongestFrame = 0.1;
   /**
-   * A step is due this much early, so frame times that wobble around the
-   * step (16 and 17 ms, for 60 Hz) take one step each rather than now and
-   * then none and then two
+   * A step is due this much of a step early, so frame times that wobble
+   * around the step (16 and 17 ms, for 60 Hz) take one step each rather than
+   * now and then none and then two
    */
-  static constexpr double kEarliness = 0.25 * kStepSeconds;
+  static constexpr double kEarliness = 0.25;
 
   /** Adds a frame `seconds` long; returns how many steps are due */
   unsigned stepsFor(double seconds) {
     pending_ += std::clamp(seconds, 0.0, kLongestFrame);
-    const auto due = static_cast<unsigned>(std::floor((pending_ + kEarliness) / kStepSeconds));
-    pending_ -= due * kStepSeconds;
+    const auto due = static_cast<unsigned>(std::floor(pending_ / stepSeconds_ + kEarliness));
+    pending_ -= due * stepSeconds_;
     return due;
   }
+
+  /**
+   * How long each step is: kDefaultStepSeconds to start. Changing it keeps
+   * the time not yet stepped.
+   */
+  void setStepSeconds(double seconds) { stepSeconds_ = seconds; }
+  double stepSeconds() const { return stepSeconds_; }
 
   /** Sub-steps per step: 1 (whole steps) to kMostSubSteps */
   void setSubSteps(unsigned count) { subSteps_ = std::clamp(count, 1u, kMostSubSteps); }
   unsigned subSteps() const { return subSteps_; }
-  double subStepSeconds() const { return kStepSeconds / subSteps_; }
+  double subStepSeconds() const { return stepSeconds_ / subSteps_; }
 
 private:
+  double stepSeconds_ = kDefaultStepSeconds;
   double pending_ = 0; // seconds not yet stepped (negative when a step came early)
   unsigned subSteps_ = kDefaultSubSteps;
 };

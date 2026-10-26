@@ -71,7 +71,7 @@ To see a bigger system, run the demo: a window with a shader view, the Dear ImGu
 bazel run //projects/scratchpadd/demo
 ```
 
-[`shader_playground`](../examples/shader_playground) is another complete ScratchPadd app.
+[`shader_playground`](../examples/shader_playground) is another complete ScratchPadd app, and [Cyclone in padds](../examples/cyclone_padds/README.md) runs a physics simulation on its own thread, sending snapshots to a window padd that draws them blended at the screen's rate.
 
 ## Concepts
 

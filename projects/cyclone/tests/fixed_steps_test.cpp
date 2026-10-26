@@ -7,7 +7,7 @@
 
 namespace {
 
-constexpr double kStep = FixedSteps::kStepSeconds;
+constexpr double kStep = FixedSteps::kDefaultStepSeconds;
 
 // How many steps `frames` frames `seconds` long take in all
 unsigned stepsOver(FixedSteps &clock, int frames, double seconds) {
@@ -46,6 +46,19 @@ TEST(FixedStepsTest, AStallDoesntPileUpSteps) {
   EXPECT_EQ(clock.stepsFor(2.0),
             static_cast<unsigned>(std::lround(FixedSteps::kLongestFrame / kStep)));
   EXPECT_EQ(clock.stepsFor(-1.0), 0u);
+}
+
+// The step length can change as it runs: 240 steps a second take four
+// steps a 60 Hz frame, and time not yet stepped carries over
+TEST(FixedStepsTest, StepLengthCanChange) {
+  FixedSteps clock;
+  EXPECT_EQ(clock.stepsFor(0.010), 0u); // 10 ms not yet a step
+  clock.setStepSeconds(1.0 / 240);
+  EXPECT_DOUBLE_EQ(clock.stepSeconds(), 1.0 / 240);
+  EXPECT_EQ(clock.stepsFor(0.0), 2u); // the 10 ms are two of the new steps
+  EXPECT_NEAR(stepsOver(clock, 60, 1.0 / 60), 240, 1);
+  clock.setSubSteps(4);
+  EXPECT_DOUBLE_EQ(clock.subStepSeconds(), 1.0 / 960);
 }
 
 TEST(FixedStepsTest, SubStepsSplitTheStep) {
