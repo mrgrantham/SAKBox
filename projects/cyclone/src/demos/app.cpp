@@ -289,9 +289,13 @@ void RigidBodyApplication::renderSoundState() {
   renderText(width / pixelScale - textWidth - 10.0f, 25.0f, text.c_str());
 }
 
-void RigidBodyApplication::drawDebug() {
+void RigidBodyApplication::renderCornerStatus() {
   renderResolverMethod();
   renderSoundState();
+}
+
+void RigidBodyApplication::drawDebug() {
+  renderCornerStatus();
   if (!renderDebugInfo)
     return;
 

@@ -375,8 +375,8 @@ void BigBallisticDemo::display() {
     break;
   }
 
-  // SAKBox: which contact resolver is in use (M switches)
-  renderResolverMethod();
+  // SAKBox: the contact resolver in use (M switches) and the sound (V)
+  renderCornerStatus();
 }
 
 void BigBallisticDemo::generateContacts() {

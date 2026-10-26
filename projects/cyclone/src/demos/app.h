@@ -283,9 +283,15 @@ protected:
 
   /**
    * SAKBox: writes whether sound is on, and how many knocks have played,
-   * above the resolver. drawDebug() calls it.
+   * above the resolver.
    */
   void renderSoundState();
+
+  /**
+   * SAKBox: the bottom-right corner: the resolver and the sound. drawDebug()
+   * calls it; a demo that doesn't use drawDebug() calls it itself.
+   */
+  void renderCornerStatus();
 
   /**
    * Finishes drawing the frame, adding debugging information
