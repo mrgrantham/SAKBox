@@ -19,7 +19,9 @@ namespace {
 // (Questrial is drawn larger than most fonts at the same size, so it needs
 // less of one)
 constexpr float kTextSize = 15.0f;
-constexpr float kTitleSize = 17.0f;
+// Futura's lowercase letters are short, so titles need a larger size than
+// the text to look larger (at 17 they looked smaller than 15 px Questrial)
+constexpr float kTitleSize = 20.0f;
 // macOS's own Futura; Futura Medium is the collection's first face
 constexpr const char *kSystemFutura = "/System/Library/Fonts/Supplemental/Futura.ttc";
 constexpr int kFuturaMediumFace = 0;
