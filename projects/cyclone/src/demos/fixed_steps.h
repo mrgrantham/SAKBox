@@ -19,6 +19,15 @@ public:
   static constexpr double kStepSeconds = 1.0 / 60;
   static constexpr unsigned kMostSubSteps = 16;
   /**
+   * The demos start with 2 sub-steps a step: the most gain for the least
+   * work. Over 20 pushed ragdolls at 60 steps a second, the most a joint
+   * stretched went from 6.7 cm in whole steps to 0.9 cm in 2 sub-steps (and
+   * 0.03 cm in 4), for twice the physics work (well under a millisecond a
+   * frame in these demos). See ragdoll_test. The engine itself
+   * (cyclone::World) still defaults to whole steps.
+   */
+  static constexpr unsigned kDefaultSubSteps = 2;
+  /**
    * A longer frame (a stall, a breakpoint) counts as this long: the
    * simulation slows down rather than taking ever more steps to catch up
    */
@@ -45,5 +54,5 @@ public:
 
 private:
   double pending_ = 0; // seconds not yet stepped (negative when a step came early)
-  unsigned subSteps_ = 1;
+  unsigned subSteps_ = kDefaultSubSteps;
 };

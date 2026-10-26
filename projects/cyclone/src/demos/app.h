@@ -266,7 +266,8 @@ protected:
 
   /**
    * SAKBox: physics runs in fixed steps of physicsClock's length, each in
-   * its sub-steps ([ and ] change how many), whatever the frame rate
+   * its sub-steps (2 to start, FixedSteps::kDefaultSubSteps; [ and ] change
+   * how many), whatever the frame rate
    */
   FixedSteps physicsClock;
 

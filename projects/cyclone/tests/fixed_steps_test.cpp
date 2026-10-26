@@ -50,7 +50,9 @@ TEST(FixedStepsTest, AStallDoesntPileUpSteps) {
 
 TEST(FixedStepsTest, SubStepsSplitTheStep) {
   FixedSteps clock;
-  EXPECT_EQ(clock.subSteps(), 1u);
+  EXPECT_EQ(clock.subSteps(), FixedSteps::kDefaultSubSteps);
+  EXPECT_DOUBLE_EQ(clock.subStepSeconds(), kStep / FixedSteps::kDefaultSubSteps);
+  clock.setSubSteps(1);
   EXPECT_DOUBLE_EQ(clock.subStepSeconds(), kStep);
   clock.setSubSteps(4);
   EXPECT_DOUBLE_EQ(clock.subStepSeconds(), kStep / 4);

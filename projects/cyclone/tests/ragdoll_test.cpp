@@ -150,17 +150,21 @@ TEST(RagdollTest, ComesToRestWhenResolvedTogether) {
 //   60               6.7 cm       0.9 cm  0.03 cm 0.003 cm
 //   20               62 cm        21 cm   2.6 cm  0.3 cm
 //
-// And it still comes to rest.
+// Two, the demos' default (FixedSteps::kDefaultSubSteps), already cut it
+// several times. And it still comes to rest.
 TEST(RagdollTest, SubStepsStretchJointsLess) {
   for (double dt : {1.0 / 60, 0.05}) {
     SCOPED_TRACE(testing::Message() << "dt " << dt);
-    double worst[2] = {0, 0}; // with 1 and 4 sub-steps
+    double worst[3] = {0, 0, 0}; // with 1, 4 and 2 sub-steps
     for (unsigned seed = 1; seed <= 20; ++seed) {
       worst[0] = std::max(worst[0], simulate(Method::sequentialImpulses, dt, seed).worstStretch);
+      worst[2] = std::max(
+          worst[2], simulate(Method::sequentialImpulses, dt, seed, true, 4.0, 2).worstStretch);
       const Outcome o = simulate(Method::sequentialImpulses, dt, seed, true, 10.0, 4);
       worst[1] = std::max(worst[1], o.worstStretch);
       EXPECT_LT(o.restingSpeed, 0.2) << "seed " << seed;
     }
     EXPECT_LT(worst[1], worst[0] / 10);
+    EXPECT_LT(worst[2], worst[0] / 2.5);
   }
 }
