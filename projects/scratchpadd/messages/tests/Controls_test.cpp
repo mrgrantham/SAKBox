@@ -23,7 +23,7 @@ public:
     spdlog::info("Constructing: {}", name());
   }
   std::string name() override { return __CLASS_NAME__; }
-  bool shouldUseMainThread() override { return true; }
+  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
 
   ScratchPadd::ControlValueMap generateControls() override {
     logger().info("Generating controls for {}", name());
@@ -57,7 +57,7 @@ public:
           setupControlView(snapshot);
         });
   }
-  bool shouldUseMainThread() override { return true; }
+  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
 
   void starting() override { send(ScratchPadd::MessageType::ControlRequest{}); }
 

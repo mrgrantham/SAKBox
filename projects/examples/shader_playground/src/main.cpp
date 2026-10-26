@@ -14,7 +14,7 @@ private:
   ScratchPadd::Timer performanceTimer_;
 
 public:
-  bool shouldUseMainThread() override { return true; }
+  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
 
   Playground(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());

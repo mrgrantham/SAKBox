@@ -77,7 +77,7 @@ bazel run //projects/scratchpadd/demo
 
 ### Lifecycle
 
-`instantiate()` constructs the padds and then reads their configuration once: `name()`, `repeatInterval()`, `shouldUseMainThread()` and `generateControls()`. Changing what those return later has no effect. In particular `name()` is called once: after that, use `paddName()`, which returns the cached name without calling it again (a `name()` built on `__CLASS_NAME__` demangles the class name on each call). In a padd's constructor, which runs before `instantiate()` reads the name, `paddName()` is still `"Unnamed Padd"`, so call `name()` there. The system itself uses `paddName()`, and a message's type name (`typeName()`, logged by `send()`) is worked out once per type, so sending a message doesn't call either.
+`instantiate()` constructs the padds and then reads their configuration once: `name()`, `repeatInterval()`, `runOn()` and `generateControls()`. Changing what those return later has no effect. In particular `name()` is called once: after that, use `paddName()`, which returns the cached name without calling it again (a `name()` built on `__CLASS_NAME__` demangles the class name on each call). In a padd's constructor, which runs before `instantiate()` reads the name, `paddName()` is still `"Unnamed Padd"`, so call `name()` there. The system itself uses `paddName()`, and a message's type name (`typeName()`, logged by `send()`) is worked out once per type, so sending a message doesn't call either.
 
 After that, each padd goes through these hooks. All except the constructor are optional overrides:
 
@@ -95,9 +95,28 @@ Use `prepare()`/`cleanup()` for setup that must happen in order across padds, an
 
 ### Threads
 
-By default each padd gets its own thread, which processes its work queue: incoming messages and `repeat()` calls, one at a time, in order.
+A padd says which thread its work runs on by what its `runOn()` returns, a `ScratchPadd::RunOn` (in `ScratchPadd/Threads.hpp`):
 
-A padd whose `shouldUseMainThread()` returns `true` instead runs on the thread that called `start()`. Use this for anything that must run on the main thread, like windowing on macOS. All main-thread padds share one loop: each pass runs every one's queued work, in the order the padds are listed, then sleeps until work is pushed to any of them.
+| `runOn()` returns | The padd runs on |
+| --- | --- |
+| `RunOn::BackgroundThread` (the default, where there are threads) | a thread of its own, which processes its work queue: incoming messages and `repeat()` calls, one at a time, in order |
+| `RunOn::MainThread` | the thread that called `start()`. Use this for anything that must run on the main thread, like windowing on macOS. All main-thread padds share one loop: each pass runs every one's queued work, in the order the padds are listed, then sleeps until work is pushed to any of them |
+
+```cpp
+class DisplayPadd : public ScratchPadd::Base {
+public:
+  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; } // windowing
+  ...
+};
+```
+
+`runOn()` is read once, when the system is built. A padd that doesn't override it gets `kDefaultRunOn`, which suits the platform (below).
+
+**Platforms without threads.** Some have none: devkitPro's libnds for the Nintendo DS has no `std::thread`. `Threads.hpp` works out at compile time whether the C++ library has threads, as `SCRATCHPADD_HAS_THREADS` (1 or 0; `ScratchPadd::kHasThreads` in code): 0 where libstdc++ lacks `_GLIBCXX_HAS_GTHREADS` or libc++ has threads turned off, on the DS (`__NDS__`), and wherever `SCRATCHPADD_NO_THREADS` is defined. Where it's 0:
+
+- `RunOn::BackgroundThread` doesn't exist, so **a padd whose `runOn()` returns it doesn't compile** (the compiler says `no member named 'BackgroundThread' in 'ScratchPadd::RunOn'`). A padd can't ask for a thread the platform can't give it.
+- `kDefaultRunOn` is `RunOn::MainThread`, so a padd that doesn't override `runOn()` builds and runs on either kind of platform.
+- `RunOnUnthreaded_test` builds with `SCRATCHPADD_NO_THREADS` and checks both. That's the check for now: the rest of ScratchPadd (its locks, and the timer threads behind `repeat()`) still uses threads, so it doesn't build for the DS yet; that's the roadmap's next step for the DS.
 
 `start()` blocks until `stop()` is called. `stop()` only requests shutdown and returns immediately, so it is safe from any thread, including from inside a padd: the demo's `DisplayPadd` calls `system_->stop()` when its window closes. `start()` then shuts down on its own thread, in order: every padd stops (background padds run `finishing()` on their own threads), main-thread padds run `finishing()`, and every padd runs `cleanup()`. `start()` returns once that is done. Tests start the system on a separate thread and call `waitForStart()` to wait until every padd is running.
 
@@ -368,6 +387,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | --- | --- |
 | `basis:Examples_test` | The examples in this README |
 | `basis:Base_test` | Padd names, and a system starting and stopping |
+| `basis:RunOn_test`, `basis:RunOnUnthreaded_test` | The same test built with threads and without (`SCRATCHPADD_NO_THREADS`): `RunOn::BackgroundThread` exists only with threads, and a padd that doesn't override `runOn()` gets a background thread with threads and runs on `start()`'s thread without |
 | `basis:Threading_test` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
 | `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes); `sendTo` (only the named padd, by class and by name, to itself, in order, refused for a missing padd, an empty address or an unhandled type, and four padds sending to one at once from their own threads losing nothing, each in order and with the right sender); the sender (a reply to it, `reply()` reaching only senders that handle the answer, and no sender for a message from outside); broadcasts nobody handles noted once per type; and, when it compiles, that code outside a padd can't call into one |
 | `messages:Controls_test` | The control round trip: requests answered to the panel that asked (all padds, or one sent the request), changes sent straight to their owner and every panel told, unknown padds refused, range clamping, rejected changes, `controlChanged()` and `control<C>()`, and a running padd's controls refused from another thread; and an owner's own changes: `setControl()` (by the same rules, telling panels), `addControl()`, `removeControl()` (the last removal empties the panel), and a padd without controls adding one |
@@ -386,3 +406,10 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 ## Roadmap
 
 1. Padds on the 3DS, so AudioPadd and the rest run there as on desktops.
+2. **The Nintendo DS, with devkitPro's libnds** (devkitARM, the toolchain the 3DS builds already use). libnds has no threads, so every padd runs on the main thread there (see *Platforms without threads*); the rest, in order:
+   1. A first `.nds` build, with the [melonDS](https://melonds.kuribo64.net) emulator run by Bazel as Azahar is for the 3DS.
+   2. ScratchPadd built without threads: its locks and atomics through names that do nothing with one thread, `repeat()` run by the main loop rather than timer threads (waiting for the screen's next refresh in between), logging without spdlog (whose registry needs `std::mutex`), and a clock from the DS's hardware timers if `std::chrono::steady_clock` has none. The start and stop signalling should go through one helper, rather than an `#if` at each place it happens. Size matters too, with 4 MB of RAM for code and data.
+   3. Cyclone on the DS, measured: the DS has no floating-point hardware, so `float` is done in software. A fixed-point `real` would suit it (Cyclone's `real` can already change, as the flex build shows), with the DS's hardware divide and square root.
+   4. Sound through the DS's 16 hardware channels (an `Output` that gives each voice a channel rather than mixing in software, which is too slow there), and a simpler built-in instrument or Maxmod for music.
+
+   BlocksDS, a newer SDK built on libnds, adds cooperative threads (`cothread`); if they turn out to matter, step 2 could use them instead.

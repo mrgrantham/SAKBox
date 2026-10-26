@@ -30,7 +30,9 @@ public:
   ~RagdollWindowPadd() override;
 
   std::string name() override { return "RagdollWindow"; }
-  bool shouldUseMainThread() override { return true; } // windowing must be on the main thread
+  ScratchPadd::RunOn runOn() override {
+    return ScratchPadd::RunOn::MainThread;
+  } // windowing must be on the main thread
   ScratchPadd::ControlValueMap generateControls() override {
     return {{"Blend between snapshots", ScratchPadd::ControlType::Boolean(true)}};
   }

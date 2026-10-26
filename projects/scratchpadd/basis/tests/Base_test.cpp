@@ -7,7 +7,7 @@
 
 class TestSenderPadd : public ScratchPadd::Base {
 public:
-  bool shouldUseMainThread() override { return true; }
+  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
 
   TestSenderPadd(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());
@@ -20,7 +20,7 @@ public:
 
 class TestReceiverPadd : public ScratchPadd::Base {
 public:
-  bool shouldUseMainThread() override { return true; }
+  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
 
   TestReceiverPadd(ScratchPadd::System *system) : Base(system) {
     spdlog::info("Constructing: {}", name());

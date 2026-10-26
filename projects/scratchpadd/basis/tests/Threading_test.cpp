@@ -17,11 +17,11 @@ namespace {
 
 // A padd that can run a job on whichever thread its work queue is processed
 // on and report back that thread's id.
-template <bool UseMainThread, int Id> class ThreadPadd : public ScratchPadd::Base {
+template <ScratchPadd::RunOn Thread, int Id> class ThreadPadd : public ScratchPadd::Base {
 public:
   ThreadPadd(ScratchPadd::System *system) : Base(system) {}
   std::string name() override { return "ThreadPadd" + std::to_string(Id); }
-  bool shouldUseMainThread() override { return UseMainThread; }
+  ScratchPadd::RunOn runOn() override { return Thread; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 
   // Queues a job and returns the id of the thread that ran it.
@@ -34,10 +34,10 @@ public:
   }
 };
 
-using MainA = ThreadPadd<true, 1>;
-using MainB = ThreadPadd<true, 2>;
-using BackgroundA = ThreadPadd<false, 3>;
-using BackgroundB = ThreadPadd<false, 4>;
+using MainA = ThreadPadd<ScratchPadd::RunOn::MainThread, 1>;
+using MainB = ThreadPadd<ScratchPadd::RunOn::MainThread, 2>;
+using BackgroundA = ThreadPadd<ScratchPadd::RunOn::BackgroundThread, 3>;
+using BackgroundB = ThreadPadd<ScratchPadd::RunOn::BackgroundThread, 4>;
 
 // Runs a system on its own thread, standing in for the app's main thread.
 template <typename... Padds> class RunningSystem {
@@ -66,7 +66,7 @@ public:
 
 } // namespace
 
-// Implementing shouldUseMainThread() to return true for all padds makes every
+// runOn() returning RunOn::MainThread for all padds makes every
 // padd run in the main thread event loop.
 TEST(ThreadingTest, TestAllMainThread) {
   RunningSystem<MainA, MainB> running;
@@ -76,7 +76,7 @@ TEST(ThreadingTest, TestAllMainThread) {
   EXPECT_EQ(running.padd<MainB>().workThreadId(), mainId);
 }
 
-// Implementing shouldUseMainThread() to return false for all padds makes each
+// runOn() returning RunOn::BackgroundThread for all padds makes each
 // padd run on its own background thread.
 TEST(ThreadingTest, TestAllBackgroundThreads) {
   RunningSystem<BackgroundA, BackgroundB> running;
@@ -90,7 +90,7 @@ TEST(ThreadingTest, TestAllBackgroundThreads) {
   EXPECT_NE(a, std::this_thread::get_id());
 }
 
-// Implementing shouldUseMainThread() differently for different padds gives
+// runOn() returning different threads for different padds gives
 // each padd the correct behavior.
 TEST(ThreadingTest, TestMixedBackgroundAndMainThreads) {
   RunningSystem<MainA, BackgroundA, MainB, BackgroundB> running;
@@ -159,18 +159,18 @@ struct HookLog {
 };
 HookLog hookLog;
 
-template <bool UseMainThread, int Id> class RecordingPadd : public ThreadPadd<UseMainThread, Id> {
+template <ScratchPadd::RunOn Thread, int Id> class RecordingPadd : public ThreadPadd<Thread, Id> {
 public:
-  using ThreadPadd<UseMainThread, Id>::ThreadPadd;
+  using ThreadPadd<Thread, Id>::ThreadPadd;
   void finishing() override { hookLog.add("finishing", this->name()); }
   void cleanup() override { hookLog.add("cleanup", this->name()); }
 };
 
 // Calls system_->stop() from inside its own repeat().
-template <bool UseMainThread, int Id>
-class SelfStoppingPadd : public ThreadPadd<UseMainThread, Id> {
+template <ScratchPadd::RunOn Thread, int Id>
+class SelfStoppingPadd : public ThreadPadd<Thread, Id> {
 public:
-  using ThreadPadd<UseMainThread, Id>::ThreadPadd;
+  using ThreadPadd<Thread, Id>::ThreadPadd;
   std::optional<std::chrono::duration<double>> repeatInterval() override { return 5ms; }
   void repeat() override { this->system_->stop(); }
 };
@@ -197,8 +197,8 @@ template <typename... Padds> bool startReturnsAfterSelfStop() {
 // finishing() runs for every padd before any cleanup(); cleanup() runs on the
 // thread that called start(); finishing() runs on each padd's own thread.
 TEST(ThreadingTest, TestShutdownOrder) {
-  using Main = RecordingPadd<true, 5>;
-  using Background = RecordingPadd<false, 6>;
+  using Main = RecordingPadd<ScratchPadd::RunOn::MainThread, 5>;
+  using Background = RecordingPadd<ScratchPadd::RunOn::BackgroundThread, 6>;
   hookLog.entries.clear();
   std::thread::id mainId;
   {
@@ -223,11 +223,13 @@ TEST(ThreadingTest, TestShutdownOrder) {
 
 // A padd can stop the system from inside itself, whichever thread it runs on.
 TEST(ThreadingTest, TestStopFromInsideMainThreadPadd) {
-  EXPECT_TRUE((startReturnsAfterSelfStop<SelfStoppingPadd<true, 7>, BackgroundA>()));
+  EXPECT_TRUE((startReturnsAfterSelfStop<SelfStoppingPadd<ScratchPadd::RunOn::MainThread, 7>,
+                                         BackgroundA>()));
 }
 
 TEST(ThreadingTest, TestStopFromInsideBackgroundPadd) {
-  EXPECT_TRUE((startReturnsAfterSelfStop<SelfStoppingPadd<false, 8>, MainA>()));
+  EXPECT_TRUE((startReturnsAfterSelfStop<SelfStoppingPadd<ScratchPadd::RunOn::BackgroundThread, 8>,
+                                         MainA>()));
 }
 
 // Padds don't poll: with no work, their loops sleep instead of spinning.

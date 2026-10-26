@@ -29,7 +29,7 @@ public:
   }
 
   std::string name() override { return "FlightSim"; }
-  bool shouldUseMainThread() override { return true; }
+  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
 
   // The precision lab, with today's defaults and ranges.
   ScratchPadd::ControlValueMap generateControls() override {

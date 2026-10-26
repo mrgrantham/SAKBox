@@ -24,6 +24,7 @@
 #include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/PaddAddress.hpp>
 #include <ScratchPadd/System.hpp>
+#include <ScratchPadd/Threads.hpp>
 #include <ScratchPadd/WorkQueue.hpp>
 
 namespace ScratchPadd {
@@ -125,10 +126,18 @@ protected:
   // paddName() after that.
   virtual std::string name() = 0;
 
-  // Implementing this to true will execute the Padd work queue in whatever
-  // thread the overall system was started in. Overriding this method to return
-  // false will run the work queue in its own background thread
-  virtual bool shouldUseMainThread() { return false; }
+  // Which thread this padd's work runs on (see RunOn in Threads.hpp). Read
+  // once, by initialize().
+  //   RunOn::MainThread: the thread that called System::start(), shared
+  //     with the other main-thread padds. Override to return it for work
+  //     that must run there, such as a window on macOS.
+  //   RunOn::BackgroundThread: a thread of its own. Only exists where there
+  //     are threads (SCRATCHPADD_HAS_THREADS); on a platform without them,
+  //     such as the Nintendo DS, returning it doesn't compile.
+  // By default (kDefaultRunOn) a background thread where there are threads,
+  // and the main thread where there aren't, so a padd that doesn't override
+  // this builds everywhere.
+  virtual RunOn runOn() { return kDefaultRunOn; }
 
   // Overriding this to return a std::chrono::duration interval will setup
   // the padd to call the repeat() virtual method repeatedly on the interval
@@ -444,7 +453,8 @@ private:
                            : 0.0;
   }
   std::string name_{"Unnamed Padd"};
-  bool shouldUseMainThread_{false};
+  // runOn() as read by initialize()
+  bool usesMainThread_{false};
   std::mutex scratchPaddMutex_;
   // Message handlers by message type. Senders read this from their own
   // threads (handles()) while the padd may change it (receive(),
@@ -462,7 +472,7 @@ private:
     name_ = name();
     createLoggerIfNeeded(name_);
     repeatInterval_ = repeatInterval();
-    shouldUseMainThread_ = shouldUseMainThread();
+    usesMainThread_ = runOn() == RunOn::MainThread;
     controlMap_ = generateControls();
   }
 
@@ -508,15 +518,15 @@ private:
   }
 
   void runIfIndependentThread() {
-    if (!shouldUseMainThread_) {
+    if (!usesMainThread_) {
       logger().info("Start Independent Thread: {}", name_);
       workerThread_ = std::thread(&Base::run, this);
     }
   }
 
-  // shouldUseMainThread() as read by initialize(); the system uses this to
+  // runOn() as read by initialize(); the system uses this to
   // decide which padds run in its main-thread loop.
-  bool usesMainThread() const { return shouldUseMainThread_; }
+  bool usesMainThread() const { return usesMainThread_; }
 
   // Makes pushes to this padd wake `signal` instead of the padd's own. The
   // system calls this for main-thread padds, so that a push to any of them
@@ -525,19 +535,19 @@ private:
 
   // Called by the system's main-thread loop, which does the waiting.
   void runIfMainThread() {
-    if (shouldUseMainThread_ && on_) {
+    if (usesMainThread_ && on_) {
       processWork();
     }
   }
 
   void startingIfMainThread() {
-    if (shouldUseMainThread_) {
+    if (usesMainThread_) {
       startingWrapper();
     }
   }
 
   void finishingIfMainThread() {
-    if (shouldUseMainThread_) {
+    if (usesMainThread_) {
       finishingWrapper();
     }
   }

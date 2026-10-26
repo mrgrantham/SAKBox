@@ -68,7 +68,7 @@ public:
 
   std::string name() override { return __CLASS_NAME__; }
 
-  bool shouldUseMainThread() override { return true; }
+  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
 
 private:
   // Draws one frame, then queues the next. The buffer swap waits for the
