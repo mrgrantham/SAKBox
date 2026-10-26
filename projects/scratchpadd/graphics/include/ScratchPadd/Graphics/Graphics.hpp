@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <ScratchPadd/Graphics/Colors.hpp>
+#include <ScratchPadd/Graphics/Theme.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
 #include <functional>
 #include <optional>

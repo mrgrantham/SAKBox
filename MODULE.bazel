@@ -135,6 +135,38 @@ http_file(
     url = "https://raw.githubusercontent.com/musescore/MuseScore/3224f342d12f4af8ea782e929c49f5ce85f97da6/share/sound/FluidR3Mono_License.md",
 )
 
+# Fonts for ScratchPadd's ImGui theme (SIL Open Font License), compiled into
+# the graphics library (see projects/scratchpadd/graphics): Jost, a free font
+# in the spirit of Futura, for titles where Futura isn't installed, and
+# Questrial, a geometric sans of the same family, for text.
+http_file(
+    name = "jost_medium_font",
+    downloaded_file_path = "Jost-500-Medium.ttf",
+    sha256 = "4f96c348370bb0b49534ed3da233ffc2f5a47dcc8ec642f175cc9b009d859926",
+    url = "https://raw.githubusercontent.com/indestructible-type/Jost/35f141c970538f1ed0f235789c19156b3ce2a762/fonts/ttf/Jost-500-Medium.ttf",
+)
+
+http_file(
+    name = "jost_font_license",
+    downloaded_file_path = "OFL.txt",
+    sha256 = "3cc70947dfb71a1afa639b26efa7939e792c9dbf32652332aab57c356697f77b",
+    url = "https://raw.githubusercontent.com/indestructible-type/Jost/35f141c970538f1ed0f235789c19156b3ce2a762/OFL.txt",
+)
+
+http_file(
+    name = "questrial_font",
+    downloaded_file_path = "Questrial-Regular.ttf",
+    sha256 = "0ee7f2debabb13773fd38468b31820e11fca202a8f98c4d80b6ffcb796899b6f",
+    url = "https://raw.githubusercontent.com/google/fonts/e7db6ca603fd4862010383ff17ffd6cc4ffac1c0/ofl/questrial/Questrial-Regular.ttf",
+)
+
+http_file(
+    name = "questrial_font_license",
+    downloaded_file_path = "OFL.txt",
+    sha256 = "c9bcf9bea97a216657d25325f418f0fe7fd0bc847b3dbb3f1b5a05b207370608",
+    url = "https://raw.githubusercontent.com/google/fonts/e7db6ca603fd4862010383ff17ffd6cc4ffac1c0/ofl/questrial/OFL.txt",
+)
+
 http_archive(
     name = "spdlog",
     build_file = "//third_party:spdlog.BUILD",

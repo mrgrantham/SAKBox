@@ -47,7 +47,7 @@ public:
     ImGuiIO &io = ImGui::GetIO();
     (void)io;
 
-    ImGui::StyleColorsDark();
+    Theme::apply(Theme::Colors::Dark); // ScratchPadd's look (Theme.hpp)
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);

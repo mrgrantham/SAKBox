@@ -261,7 +261,7 @@ void RagdollWindowPadd::starting() {
 
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  ImGui::StyleColorsLight();
+  Theme::apply(Theme::Colors::Light);
   ImGui::GetIO().IniFilename = nullptr; // don't write imgui.ini into the working directory
   ImGui_ImplGlfw_InitForOpenGL(window_, true);
   ImGui_ImplOpenGL3_Init("#version 330");
@@ -303,8 +303,12 @@ void RagdollWindowPadd::showControls(const ScratchPadd::MessageType::ControlSnap
   view->setOnChange([this, owner](const ScratchPadd::MessageType::ControlChange &change) {
     sendTo(owner, change);
   });
-  // Top right, the physics above the window's own
-  view->setInitialPlacement(ImVec2(1, snapshot.paddName == name() ? 0.45f : 0.0f));
+  // Down the right side: the physics, then this window's own, then the rest
+  // (AudioPadd's volumes)
+  const float down = snapshot.paddName == "RagdollPhysics" ? 0.0f
+                     : snapshot.paddName == name()         ? 0.45f
+                                                           : 0.7f;
+  view->setInitialPlacement(ImVec2(1, down));
   views[snapshot.paddName] = std::move(view);
 }
 
@@ -349,7 +353,7 @@ void RagdollWindowPadd::handleKeys() {
 
 void RagdollWindowPadd::drawStats() {
   ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-  ImGui::Begin("Cyclone in padds", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+  Theme::beginWindow("Cyclone in padds", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
   ImGui::TextUnformatted("RagdollPhysics steps the ragdoll on its own thread and sends\n"
                          "a snapshot each tick; this window draws them at the screen's rate.");
   ImGui::Separator();

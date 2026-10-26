@@ -287,6 +287,27 @@ void finishing() override { graphics_->tearDown(); }
 - `Graphics::ImguiView` shows the Dear ImGui demo window.
 - `Graphics::addView` adds a view and `Graphics::removeView` destroys and removes one; call them on the thread that draws, between frames (as `DisplayPadd`'s message handlers are).
 - The backend is chosen at compile time. Only OpenGL (`SCRATCHPADD_GL`, set by the `graphics` target) exists so far.
+- `DisplayPadd` opens each padd's control panel at the next spot along the bottom of the window (left, middle, right, then top right), so they don't open on top of each other. ImGui saves where windows were to `imgui.ini` in the working directory and puts them back there next time, so to see the default places again, delete that file.
+
+### The look
+
+Every ScratchPadd window uses one look for Dear ImGui (`ScratchPadd/Graphics/Theme.hpp`), set once after the ImGui context is made:
+
+```cpp
+ImGui::CreateContext();
+Theme::apply(Theme::Colors::Dark); // or Theme::Colors::Light
+```
+
+| | |
+| --- | --- |
+| Colors | A mid-century palette: walnut, charcoal and cream, with teal title bars, orange for sliders, check marks and pressed buttons, and mustard for headers and selections. `Dark` is walnut with cream text; `Light` is cream and sand with dark text. Each is one `Palette` of 13 colors in `Theme.cpp`, from which every one of ImGui's colors is set, so changing the look means changing those. Windows are opaque, so panels that overlap don't show through each other. |
+| Spacing | Roomy: 12 by 10 px around a window's contents, 8 by 5 inside frames, 10 by 7 between items; corners rounded 4 px (windows 6) |
+| Titles | **Futura** Medium, 17 px, where the system has it (macOS's own, `/System/Library/Fonts/Supplemental/Futura.ttc`, read when the program starts; Futura's license doesn't let it be shipped), and otherwise **Jost** Medium, a free font made in Futura's spirit |
+| Text | **Questrial**, 15 px: a free geometric sans of the same family, chosen over Jost, Poppins and Didact Gothic because it stays legible at small sizes (its lowercase letters are taller) |
+
+- **Titles in the title font:** ImGui draws a window's title with whatever font is current when the window begins, so `Theme::beginWindow(name, open, flags)` begins it with the title font and then goes back to the text font. Use it in place of `ImGui::Begin()` (and still call `ImGui::End()`). `Theme::heading(text)` writes a heading inside a window in the title font, and `Theme::titleFont()` gives the font itself. ScratchPadd's views and control panels, Precision Flight and Cyclone in padds use them; windows that call `ImGui::Begin()` directly (the ImGui demo's) get text-font titles.
+- **Fonts are compiled in.** Jost and Questrial (both under the SIL Open Font License) are downloaded by Bazel, pinned by checksum in `MODULE.bazel`, and turned into C++ arrays by [`tools/embed_file`](../../tools/embed_file/README.md) when the graphics library is built, so a program never has to find a font file. Their licenses are downloaded with them and travel in the runfiles of every program that uses the graphics library.
+- **Sizes stay sharp on high-resolution screens:** ImGui 1.92 and later draw fonts at the screen's own resolution, so nothing needs scaling by hand.
 
 ## Audio
 
@@ -368,7 +389,7 @@ miniaudio (public domain or MIT-0), TinySoundFont (MIT) and stb_vorbis (public d
 | `//projects/scratchpadd/basis` | The core: `Base`, `System`, `SystemBuilder`. Depend on this; it includes `messages` and `utilities` |
 | `//projects/scratchpadd/messages` | The message wrapper (`Message`, `makeMessage`), `Text`, and the control types |
 | `//projects/scratchpadd/utilities` | Logging, `Timer`, `EventTimer` and helpers like `VariantHandler` |
-| `//projects/scratchpadd/graphics` | GLFW/ImGui/OpenGL window and views |
+| `//projects/scratchpadd/graphics` | GLFW/ImGui/OpenGL window and views, and the ImGui theme (`Theme.hpp`) |
 | `//projects/scratchpadd/audio` | `:audio` (`AudioPadd`), `:audio_messages` (what padds send it), `:audio_core` (the engine and instruments, also built for the 3DS), `:audio_device` (playback through the sound device) |
 | `//projects/scratchpadd/midi_input` | `MidiInputPadd` (MIDI keyboards and controllers, desktops) and `:midi_input_messages` |
 | `//projects/scratchpadd/demo` | The demo app |
@@ -396,6 +417,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `audio:Midi_test` | MIDI: events' bytes (made, and read from a port's bytes), MIDI files read with their times in frames, the built-in instrument (pitch by key, notes held or dying away, sustain pedal, pitch bend, volume and pan, drums, all-sound-off without a click, taking over notes when full), a SoundFont made in code played in tune, either instrument and the engine playing without allocating, sequences on time, looping until stopped, one at a time, choosing the instrument, and how long a second of 32 notes takes |
 | `audio:AudioPadd_test` | AudioPadd in a running system: answers to loading and playing, `VoiceFinished` to the padd that played, failures answered with why, padds that don't listen for answers, the volume controls and mute, stopping one voice, music or everything, four padds asking at once while the audio thread mixes, MIDI files and events, `StopMusic` stopping MIDI, and loading SoundFonts |
 | `midi_input:MidiInputPadd_test` | With a virtual MIDI port as the keyboard (and `portFilter()` listening to it alone): a note reaching listeners with its port and playing on AudioPadd's instrument, `playThrough` off, and a keyboard unplugged (skipped without a MIDI system, as in Linux containers). Under ThreadSanitizer it uses `tests/tsan_suppressions.txt`, which hides races TSan reports inside RtMidi's Core MIDI callback because it can't see Core MIDI's own ordering |
+| `graphics:Theme_test` | The compiled-in fonts are TrueType fonts; the theme sets the text and title fonts (different ones), the spacing, and the dark and light palettes |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations

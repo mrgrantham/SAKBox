@@ -333,7 +333,7 @@ void FlightDisplayPadd::starting() {
 
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  ImGui::StyleColorsDark();
+  Theme::apply(Theme::Colors::Dark);
   ImGui::GetIO().IniFilename = nullptr; // don't write imgui.ini into the working directory
   ImGui_ImplGlfw_InitForOpenGL(window_, true);
   ImGui_ImplOpenGL3_Init("#version 330");
@@ -607,7 +607,7 @@ void FlightDisplayPadd::drawHud() {
   const WorldSnapshot &g = world_;
   ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
   ImGui::SetNextWindowBgAlpha(0.75f);
-  ImGui::Begin("Precision Flight", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+  Theme::beginWindow("Precision Flight", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
   ImGui::Text("Score %d   Distance %.0f", g.score, -g.z);
   ImGui::Text("Gates %d   Gold %d   Phased walls %d", g.gates, g.goldGates, g.phasedWalls);

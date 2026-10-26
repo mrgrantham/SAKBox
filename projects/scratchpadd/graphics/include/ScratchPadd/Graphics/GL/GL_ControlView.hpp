@@ -13,7 +13,7 @@ public:
       ImGui::SetNextWindowPos(position, ImGuiCond_FirstUseEver, *placement_);
     }
     // Sized to fit its controls, so labels aren't cut off and nothing scrolls
-    ImGui::Begin(controls_.paddName.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    Theme::beginWindow(controls_.paddName.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
     buildControls();
     ImGui::End();
   }

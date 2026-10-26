@@ -144,7 +144,7 @@ public:
     // calculated correctly
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.f, 0.f));
-    ImGui::Begin(name_.c_str(), &open_);
+    Theme::beginWindow(name_.c_str(), &open_);
 
     ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 

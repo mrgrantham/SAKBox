@@ -3,6 +3,7 @@
 #include <ScratchPadd/Graphics/Graphics.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/Timer.hpp>
+#include <iterator>
 using namespace std::chrono_literals;
 
 class DisplayPadd : public ScratchPadd::Base {
@@ -12,6 +13,7 @@ private:
   // One control panel per padd with controls, by padd name. The views are
   // owned by graphics_; this map finds them to update in place.
   std::unordered_map<std::string, Graphics::ControlView *> controlViews_;
+  std::size_t panelsPlaced_ = 0; // for where the next panel opens
 
 public:
   void prepare() override {
@@ -114,6 +116,10 @@ private:
     view->setOnChange([this, owner](const ScratchPadd::MessageType::ControlChange &change) {
       sendTo(owner, change);
     });
+    // Each new panel at the next spot along the bottom of the window, so
+    // they don't all open on top of each other
+    constexpr ImVec2 kPanelSpots[] = {{0.0f, 1.0f}, {0.5f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}};
+    view->setInitialPlacement(kPanelSpots[panelsPlaced_++ % std::size(kPanelSpots)]);
     controlViews_[snapshot.paddName] = view.get();
     graphics_->addView(std::move(view));
   }
