@@ -11,8 +11,6 @@ cc_library(
     ],
     strip_include_prefix = "include/",
     deps = [
-        "@boost.program_options",
-        "@boost.filesystem",
         "@fmt",
         "@spdlog",
         "//projects/scratchpadd/messages",

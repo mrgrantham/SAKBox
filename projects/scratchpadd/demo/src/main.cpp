@@ -7,7 +7,6 @@
 #include <ShapeLoggerPadd.hpp>
 #include <StoryPadd.hpp>
 
-#include <boost/program_options.hpp>
 #include <chrono>
 #include <iostream>
 #include <signal.h> //  our new library

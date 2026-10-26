@@ -23,7 +23,7 @@ bazel test //...       # run all the tests
 bazel run //projects/examples/precision_flight:precision_flight   # run one target
 ```
 
-The first build takes a while, mostly to compile OpenCV, SDL2 and Boost; later builds are cached. Arguments for the program go after `--`, e.g. `bazel run //projects/examples/camera:exampleCamera -- 1`.
+The first build takes a while, mostly to compile OpenCV and SDL2; later builds are cached. Arguments for the program go after `--`, e.g. `bazel run //projects/examples/camera:exampleCamera -- 1`.
 
 ## Projects
 
@@ -58,7 +58,7 @@ Small programs under `projects/examples/`, mostly one per library. Run any of th
 
 ## Third Party
 
-`third_party/` holds Bazel build files for libraries that aren't in the [Bazel Central Registry](https://registry.bazel.build/); `MODULE.bazel` points each one at its upstream source. Libraries that are in the registry (fmt, googletest, Boost, Catch2, ...) are plain `bazel_dep`s.
+`third_party/` holds Bazel build files for libraries that aren't in the [Bazel Central Registry](https://registry.bazel.build/); `MODULE.bazel` points each one at its upstream source. Libraries that are in the registry (fmt, googletest, Catch2, Bullet, ...) are plain `bazel_dep`s.
 
 ## Editor Setup
 
@@ -104,6 +104,8 @@ The build enforces it for everything under `projects/`: `-Wsuggest-override` mak
 **Text files use LF line endings.** `.gitattributes` has Git store and check out every text file with LF on every platform, so an editor or script that rewrites a file can't change its endings. Git detects binary files and leaves them alone.
 
 **Bazel libraries are named after what they hold.** A library built from one main source file is named after that file, spelled as it is: Waffles' `WImagePng.cpp` is `:WImagePng`, its `Gui.cpp` is `:Gui`. A library of many files is named after its folder (`:WClasses`, `:flexmath`), or, when that name is the folder's program, after what the files are together (`:flight_padds`, `:demo_padds`). Don't shorten a name to a category (`:png`, `:gui`): it hides what's inside and can be mistaken for a third-party library (`@libpng`).
+
+**Command-line options: use [CLI11](https://github.com/CLIUtils/CLI11).** When a program needs options, add it from the Bazel Central Registry (`bazel_dep(name = "cli11", version = ...)` in `MODULE.bazel`; no `third_party/` file needed) in the same change as the program that uses it, rather than ahead of time. It's header-only with no dependencies, binds options straight to variables, and handles subcommands, validation and help text. For a program with only a few flags, cxxopts (also in the registry) is lighter. (Boost.ProgramOptions was a dependency of ScratchPadd until 2026-10, with nothing using it.)
 
 **Test files are named `<Source>_test.cpp`**, after the file they test and spelled as it is: `FlexReal_test.cpp` tests `FlexReal.hpp`, `WMatrix_test.cpp` tests `WMatrix.h`, `core_test.cpp` tests Cyclone's `core.h`. A test of something that isn't one file (threading, the README's examples) is named after that: `Threading_test.cpp`, `Examples_test.cpp`. Its Bazel target has the same name (`:FlexReal_test`). This is the googletest and Bazel convention; it also sorts a test next to the code it tests. Libraries kept as published (libpng's `pngtest.cpp`, Waffles' own `src/test/`) keep their names.
 
