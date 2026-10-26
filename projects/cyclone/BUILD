@@ -272,3 +272,15 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+# Random scenes run with both resolvers, every body checked after every step
+# (see the file)
+cc_test(
+    name = "stress_test",
+    size = "medium",
+    srcs = ["tests/stress_test.cpp"],
+    deps = [
+        ":cyclone",
+        "@gtest//:gtest_main",
+    ],
+)

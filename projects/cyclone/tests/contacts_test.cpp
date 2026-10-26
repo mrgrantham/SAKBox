@@ -165,6 +165,35 @@ TEST(JointTest, ContactOnlyWhenStretchedBeyondItsSlack) {
 // ---------------------------------------------------------------------------
 // Particle links
 
+// The resolver updates every other contact's penetration by how far each
+// resolve moved the particles. A contact resolved for its velocity alone
+// (closing, but not overlapping) moves nothing, so must count as no move:
+// it used to keep its last move, here from the frame before, which "used
+// up" another contact's penetration so that it was never pushed out.
+// (Particles tied by rods flew apart; see stress_test.)
+TEST(ParticleContactTest, AVelocityOnlyResolveMovesNothing) {
+  auto a = particleAt(Vector3(0, 0, 0));
+  ParticleContact contacts[2];
+  ParticleContactResolver resolver(10);
+  // Frame one: the ground pushes the particle up by 1
+  contacts[0].particle[0] = a.get();
+  contacts[0].particle[1] = nullptr;
+  contacts[0].contactNormal = Vector3(0, 1, 0);
+  contacts[0].penetration = 1;
+  contacts[0].restitution = 0;
+  resolver.resolveContacts(contacts, 1, 1.0 / 60);
+  EXPECT_NEAR(a->getPosition().y, 1.0, kTolerance);
+  // Frame two, the same array: falling onto the ground (closing, not
+  // overlapping), and sunk 0.5 into a second surface facing the same way
+  a->setVelocity(0, -1, 0);
+  contacts[0].penetration = 0;
+  contacts[1] = contacts[0];
+  contacts[1].penetration = 0.5;
+  resolver.resolveContacts(contacts, 2, 1.0 / 60);
+  EXPECT_NEAR(a->getPosition().y, 1.5, kTolerance); // pushed out of the second
+  EXPECT_NEAR(a->getVelocity().y, 0.0, kTolerance); // and stopped by the first
+}
+
 // A 2 m cable: slack at 1 m, taut and pulled back to 2 m at 3 m.
 TEST(ParticleLinkTest, CableOnlyPullsWhenTaut) {
   auto a = particleAt(Vector3(0, 0, 0)), b = particleAt(Vector3(1, 0, 0));

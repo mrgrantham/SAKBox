@@ -90,6 +90,16 @@ void ParticleContact::resolveVelocity(real duration) {
 }
 
 void ParticleContact::resolveInterpenetration(real duration) {
+  // SAKBox: no movement unless this sets one. The resolver reads it after
+  // every resolve, to update the other contacts' penetration, including
+  // for a contact that's closing but not overlapping (velocity only) or
+  // has nothing to move; upstream returned early and left the last move in
+  // place (or uninitialised memory), so those contacts were corrected by a
+  // stale move. Particles tied by rods then flew apart, and more
+  // iterations made it worse.
+  particleMovement[0].clear();
+  particleMovement[1].clear();
+
   // If we don't have any penetration, skip this step.
   if (penetration <= 0)
     return;
