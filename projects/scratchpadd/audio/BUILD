@@ -186,11 +186,26 @@ cc_test(
     ],
 )
 
-# AudioPadd and the messages it handles, as sources, for builds outside
-# Bazel's C++ rules (the 3DS and DS apps; see //tools/devkitpro). With
-# :audio_core_sources.
+# AudioPadd (both kinds: see include/AudioPadd.hpp) and the messages it
+# handles, as sources, for builds outside Bazel's C++ rules (the 3DS and DS
+# apps; see //tools/devkitpro). With :audio_core_sources on the 3DS, or
+# :audio_core_without_engine_sources on the DS.
 filegroup(
     name = "audio_padd_sources",
     srcs = glob(["include/**", "messages/include/**"]),
+    visibility = ["//visibility:public"],
+)
+
+# The parts of the core the DS's AudioPadd needs, without the engine (which
+# it doesn't use): the messages' Voice.hpp and MidiEvent.hpp, and the sounds
+# made in code
+filegroup(
+    name = "audio_core_without_engine_sources",
+    srcs = [
+        "core/include/ScratchPadd/Audio/MadeSounds.hpp",
+        "core/include/ScratchPadd/Audio/MidiEvent.hpp",
+        "core/include/ScratchPadd/Audio/Voice.hpp",
+        "core/src/MadeSounds.cpp",
+    ],
     visibility = ["//visibility:public"],
 )

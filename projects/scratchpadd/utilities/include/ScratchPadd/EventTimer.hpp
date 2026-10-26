@@ -1,9 +1,24 @@
 #pragma once
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+
+// The timer waits for its next event on a condition variable, so stop() can
+// wake it at once. That needs a timed wait, which works everywhere
+// ScratchPadd runs except the Nintendo DS: calico, devkitPro's DS system
+// library, has no timed wait (its CondVar has only condvarWait), so
+// pthread_cond_timedwait, and with it std::condition_variable::wait_for,
+// returns at once there. On the DS the timer sleeps in short slices instead
+// (calico's sleep works), checking for stop() between them.
+#if defined(__NDS__)
+#define SCRATCHPADD_TIMER_SLEEPS_IN_SLICES 1
+#else
+#define SCRATCHPADD_TIMER_SLEEPS_IN_SLICES 0
+#endif
+
 namespace ScratchPadd {
 
 // Runs an event on a background thread, either repeatedly at an interval or
@@ -23,8 +38,23 @@ class EventTimer {
   // Sleeps for `duration` unless stop() is called first. Returns true if the
   // full duration elapsed.
   template <typename Duration> bool sleepUnlessStopped(Duration duration) {
+#if SCRATCHPADD_TIMER_SLEEPS_IN_SLICES
+    // How long stop() can take to be noticed
+    constexpr std::chrono::milliseconds kSlice{5};
+    const auto until = std::chrono::steady_clock::now() +
+                       std::chrono::ceil<std::chrono::steady_clock::duration>(duration);
+    while (!should_stop_) {
+      const auto left = until - std::chrono::steady_clock::now();
+      if (left <= std::chrono::steady_clock::duration::zero()) {
+        return true;
+      }
+      std::this_thread::sleep_for(std::min<std::chrono::steady_clock::duration>(left, kSlice));
+    }
+    return false;
+#else
     std::unique_lock<std::mutex> lk(mutex_);
     return !stop_condition_variable_.wait_for(lk, duration, [this] { return should_stop_.load(); });
+#endif
   }
 
   template <typename Body> void startThread(Body body) {

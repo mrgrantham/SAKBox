@@ -34,6 +34,16 @@ struct LoadSoundSamples {
   std::uint32_t channels = 1;
 };
 
+// The same with 16-bit samples, such as MadeSoundsPcm16's, rendered when the
+// program is built: where float is slow (the DS, with no floating-point
+// hardware) this loads with no float work at all. Answered with SoundLoaded.
+struct LoadSoundPcm16 {
+  std::string name;
+  std::shared_ptr<const std::vector<std::int16_t>> samples;
+  std::uint32_t rate = 48000;
+  std::uint32_t channels = 1;
+};
+
 struct SoundLoaded {
   std::string name;
   bool ok = false;

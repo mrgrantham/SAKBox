@@ -1,16 +1,17 @@
-# devkitPro for Nintendo 3DS
+# devkitPro for Nintendo 3DS and DS
 
-Builds Nintendo 3DS homebrew with [devkitPro](https://devkitpro.org)'s toolchain, managed by Bazel: the compiler and every library come from devkitPro's official Docker image, pinned by digest in [`defs.bzl`](defs.bzl). Nothing is installed in `/opt` and no `sudo` is needed.
+Builds Nintendo 3DS and DS homebrew with [devkitPro](https://devkitpro.org)'s toolchain, managed by Bazel: the compiler and every library come from devkitPro's official Docker image, pinned by digest in [`defs.bzl`](defs.bzl). Nothing is installed in `/opt` and no `sudo` is needed.
 
 | File | What it is |
 | --- | --- |
-| `defs.bzl` | `DEVKITARM_IMAGE` (the pinned image) and the `devkitpro_3ds_app` rule |
-| `run_in_azahar.sh` | What `bazel run` runs: opens the app in Azahar (see [`tools/azahar`](../azahar/README.md)) |
+| `defs.bzl` | `DEVKITARM_IMAGE` (the pinned image), and the `devkitpro_3ds_app` and `devkitpro_nds_app` rules |
+| `run_in_azahar.sh`, `run_in_melonds.sh` | What `bazel run` runs: opens a 3DS app in Azahar (see [`tools/azahar`](../azahar/README.md)), or a DS app in melonDS (see [`tools/melonds`](../melonds/README.md)) |
+| `build_nds.py` | Builds a DS app inside the image: devkitPro's `make`, which makes the `.nds` |
 | `build_3ds.py` | Builds an app inside the image: devkitPro's `make`, then the CIA (bannertool's banner, makerom) |
 | `build_cia_tools.py` | Builds makerom and bannertool from source inside the image (the `cia_tools` target) |
 | `devkitpro_image.py` | Runs a script in the image for the two above. Files go in and results come out as tar streams on stdin/stdout, so no folders are shared with the container and nothing it writes ends up owned by root. Python, so it runs the same on every host. |
 
-The pinned image is `devkitpro/devkitarm:20260610`: devkitARM r68 (GCC 16.1), libctru 2.7.0, citro2d 1.7.0, citro3d 1.7.1, 3dstools 1.3.1 and the `3ds-*` libraries (zlib, curl, freetype, box2d, ...). It is built for both arm64 (Apple Silicon, runs natively) and amd64.
+The pinned image is `devkitpro/devkitarm:20260610`: devkitARM r68 (GCC 16.1), libctru 2.7.0, citro2d 1.7.0, citro3d 1.7.1, 3dstools 1.3.1 and the `3ds-*` libraries (zlib, curl, freetype, box2d, ...), and for the DS libnds on calico, with ndstool. It is built for both arm64 (Apple Silicon, runs natively) and amd64.
 
 ## Setup
 
@@ -69,9 +70,23 @@ devkitpro_3ds_app(
 )
 ```
 
+**DS apps** build the same way, with a devkitPro DS `Makefile` (the template from devkitPro's `examples/nds`):
+
+```
+load("//tools/devkitpro:defs.bzl", "devkitpro_nds_app")
+
+devkitpro_nds_app(
+    name = "my-ds-app",
+    srcs = ["Makefile"] + glob(["source/**"]),
+    extra_srcs = {...},  # as for a 3DS app
+)
+```
+
+It builds `my-ds-app.nds` (for a flash card, or an emulator) and `my-ds-app.elf`, and `bazel run` opens it in melonDS. See [the ScratchPadd DS demo](../../projects/scratchpadd/ds/demo/BUILD), and [`projects/scratchpadd/ds/platform`](../../projects/scratchpadd/ds/platform/BUILD) for what C++ code that uses `std::atomic` or `std::chrono`'s clocks needs on the DS.
+
 Every app is tagged `devkitpro`, so a build that can't run Docker can leave them all out with `--build_tag_filters=-devkitpro` (as [`tools/linux_check`](../linux_check/README.md) does).
 
-Only source files can be staged (not files other rules generate). devkitPro's template `Makefile` compiles C++ with `-fno-rtti -fno-exceptions`; code that needs either keeps them in its own `Makefile`, as the [ScratchPadd 3DS demo](../../projects/scratchpadd/3ds/demo/Makefile) does (ScratchPadd uses both).
+Files other rules generate can be staged as well as sources, at their package's paths (the DS and 3DS ScratchPadd demos stage sounds rendered when they're built). devkitPro's template `Makefile` compiles C++ with `-fno-rtti -fno-exceptions`; code that needs either keeps them in its own `Makefile`, as the [ScratchPadd 3DS demo](../../projects/scratchpadd/3ds/demo/Makefile) does (ScratchPadd uses both).
 
 `bazel run` on the target builds the app and opens it in the Azahar emulator, which Bazel downloads and sets up (see [`tools/azahar`](../azahar/README.md)). See [`projects/examples/read-controls`](../../projects/examples/read-controls/README.md) for an example.
 

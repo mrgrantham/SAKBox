@@ -50,7 +50,13 @@ typedef Flex::Math::FlexReal real;
 #define real_fmod Flex::Math::flex_fmod
 #define real_epsilon DBL_EPSILON
 #define R_PI 3.14159265358979
-#elif 0
+#elif defined(CYCLONE_SINGLE_PRECISION)
+/**
+ * SAKBox: CYCLONE_SINGLE_PRECISION picks single precision (upstream had
+ * `#elif 0`, so only by editing this file). The DS build uses it: the DS
+ * has no floating-point hardware, and float is the cheaper of the two to
+ * do in software.
+ */
 /**
  * Defines we're in single precision mode, for any code
  * that needs to be conditionally compiled.

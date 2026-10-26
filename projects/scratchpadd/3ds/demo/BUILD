@@ -10,6 +10,8 @@ devkitpro_3ds_app(
         "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
         "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
         "//projects/scratchpadd/utilities:sources": "scratchpadd/utilities",
+        "//projects/scratchpadd/handheld:sources": "scratchpadd/handheld",
+        "//projects/scratchpadd/audio/made_sounds_pcm16:sources": "scratchpadd_audio_pcm16",
         "//projects/scratchpadd/audio:audio_padd_sources": "scratchpadd_audio",
         "//projects/scratchpadd/audio:audio_core_sources": "scratchpadd_audio",
         "//projects/scratchpadd/audio/3ds/output:ndsp_output_sources": "scratchpadd_audio_3ds/output",

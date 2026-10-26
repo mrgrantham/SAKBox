@@ -18,6 +18,14 @@ py_binary(
     deps = [":devkitpro_image"],
 )
 
+# devkitPro's make, for a DS app
+py_binary(
+    name = "build_nds",
+    srcs = ["build_nds.py"],
+    visibility = ["//visibility:public"],
+    deps = [":devkitpro_image"],
+)
+
 py_binary(
     name = "build_cia_tools",
     srcs = ["build_cia_tools.py"],
@@ -32,5 +40,9 @@ devkitpro_cia_tools(
     visibility = ["//visibility:public"],
 )
 
-# What `bazel run` does for a 3DS app: opens it in the Azahar emulator
-exports_files(["run_in_azahar.sh"])
+# What `bazel run` does for a 3DS app (opens it in the Azahar emulator) and
+# for a DS app (in melonDS)
+exports_files([
+    "run_in_azahar.sh",
+    "run_in_melonds.sh",
+])

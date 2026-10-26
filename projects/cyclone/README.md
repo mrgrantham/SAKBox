@@ -129,6 +129,27 @@ Over 20 pushed ragdolls (`ragdoll_test`), the most any joint stretched beyond it
 
 The demos' physics runs in **fixed steps** of 1/60 s (`FixedSteps`, `src/demos/fixed_steps.h`; `setStepSeconds` changes the length, which the [Cyclone padds example](../examples/cyclone_padds/README.md) offers as a slider): each frame adds its time, and runs the whole steps it covers. Frames used to step by their own length, so the simulation changed with the screen's refresh rate and with every stutter. A frame over 0.1 s (a stall) counts as 0.1 s, so the simulation slows rather than taking a burst of steps to catch up; a step is due up to a quarter of a step early, so 60 Hz frames of 16 and 17 ms take one step each. Drawing isn't blended between steps, so on a screen whose rate isn't a multiple of 60 motion is a little uneven (roadmap).
 
+## On the Nintendo DS
+
+[`ds`](ds/source/main.cpp) runs the ragdoll (the same `ragdoll_physics.h` as the demo) on a Nintendo DS, in [ScratchPadd](../scratchpadd/README.md#on-the-nintendo-3ds-and-ds) padds: `RagdollPadd` steps it on its own thread in fixed steps and sub-steps (`FixedSteps`), timing each step, and `ScreenPadd` draws it with the DS's 3D hardware on the top screen, with the figures on the bottom one. A resets it with a new shove, X changes the sub-steps (1, 2, 4).
+
+```bash
+bazel run //projects/cyclone/ds:cyclone-ds-ragdoll   # needs Docker running (tools/devkitpro); opens melonDS
+```
+
+It builds Cyclone in single precision (`CYCLONE_SINGLE_PRECISION`, see `precision.h`). The DS has no floating-point hardware, so every `float` operation is done in software by the C library, on a 67 MHz ARM9; `double` is slower still.
+
+**It's too slow for real time.** When it starts, the app times a few settings (each from a fresh ragdoll, over its first five steps) and shows them; in melonDS, milliseconds a step, against 16.7 ms for 60 steps a second:
+
+| Sub-steps | Resolver sweeps (velocity/settle/position) | Thumb, float | ARM, float | Thumb, double |
+| --- | --- | --- | --- | --- |
+| 1 | 40/10/10 (Cyclone's own) | 154 | 151 | 272 |
+| 2 | 40/10/10 | 310 | 304 | 554 |
+| 2 | 8/2/2 | 109 | 109 | 188 |
+| 4 | 4/1/1 | 165 | 165 | 282 |
+
+At 2 sub-steps of 8/2/2 sweeps (what it runs with) a sub-step takes 7 ms to move the bones, 8 ms to find contacts and 42 ms to resolve them, so the ragdoll runs at about a tenth of real time (the display keeps its 60 frames a second, since the main thread takes over each frame to draw). Fewer sweeps help less than they might, as setting up each contact and joint (their world inertia, warm starting) costs about as much as the sweeps. ARM instructions instead of Thumb gain about 2%: the time is in the software floating point. Real time needs about ten times as much speed, which means fixed-point arithmetic (roadmap). Measured in melonDS, not on a console.
+
 ## What SAKBox has changed
 
 Compared with the last upstream version:
@@ -170,6 +191,7 @@ Compared with the last upstream version:
   - **`Gravity` woke sleeping bodies:** it adds its force with `addForce`, which wakes the body (as the book's code does), so a body under the gravity force generator could never sleep. The book says forces that are always there, like gravity, shouldn't wake a body. It now leaves sleeping bodies alone. The demos give gravity as an acceleration instead, so none changes.
   - **Particles update their velocity before moving,** as rigid bodies already did (upstream, and the book's section 3.3, moved them with the old velocity first). `ParticleFakeSpring` relies on this order: before, its stiff springs (stiffness 400 and up at 60 steps a second) swung wider and wider; now they hold at every stiffness tried, up to 1,000,000. Particles resting on the ground also sit still now, where before they jittered by a frame of gravity. Every particle demo moves very slightly differently.
 - **Contacts are resolved together** (`ContactResolver::Method::sequentialImpulses`, the default since joints became constraints; `setMethod(Method::oneContactAtATime)` brings back the book's resolver; see [Resolving contacts together](#resolving-contacts-together)), so awake stacks stand still. Joints are then constraints between their two anchor points (see [Joints](#joints)), which `resolveContacts` takes separately from the contacts, and `World` holds in `getJoints()`. `World::getResolver()` exposes a world's resolver to choose it. The new `stack` demo shows the difference, and M switches resolver in every rigid-body demo.
+- **Single precision when asked:** `CYCLONE_SINGLE_PRECISION` picks `float` for `real` (upstream had `#elif 0`, so only by editing `precision.h`); the DS app uses it. Without it, `real` is `double`, as before.
 - **Sub-steps** (`World::setSubSteps`, and `[` and `]` in the rigid-body demos), and the rigid-body demos run in fixed steps rather than steps as long as each frame; see [Sub-steps](#sub-steps). A demo that acts on a step's contacts does it in `afterStep()` (fracture splits the block there, after the step that hit).
 - **Demo options:** `--run` starts the rigid-body demos unpaused; `--keys` plays scripted key presses and clicks.
 - **GLFW instead of GLUT:** the demos open a GLFW window (GLUT is deprecated on macOS and tied the demos to it). GLUT's sphere, cube and bitmap text are replaced by `src/demos/shapes.cpp` (the same geometry: GLU spheres, GLUT's cube faces and normals) and `stb_easy_font`. They draw at full Retina resolution, with text and line widths scaled to keep their size on screen.
@@ -225,3 +247,4 @@ The engine's formulas were checked against Millington's *Game Physics Engine Dev
 1. **Cheaper sub-steps,** as Box2D v3's "soft step" takes them: find contacts once a step and only integrate and solve in each sub-step, updating each contact's depth from how its bodies moved. Worth it if finding contacts is what makes sub-steps cost too much (a big scene, or the 3DS); the sub-steps here are the results to match.
 2. **Blended drawing between fixed steps in the demos:** draw each body between its last two steps' positions, by how far the frame is into the next step, so motion is smooth on screens whose rate isn't a multiple of 60 (it costs a step of delay). The [Cyclone padds example](../examples/cyclone_padds/README.md) does this for the ragdoll (`SnapshotTimeline`).
 3. **Sub-steps for the particle world** (`ParticleWorld`), and the mass-aggregate demos in fixed steps.
+4. **Fixed-point `real` for the DS,** where the ragdoll runs at a tenth of real time in software floating point (see [On the Nintendo DS](#on-the-nintendo-ds)): a 32-bit fixed-point type with the DS's hardware divide and square root. Cyclone's `real` can already change (the flex build swaps in another type); the work is in the type itself and in ranges (inertia tensors and their inverses, squared lengths) that fixed point can hold. Then fewer, cheaper contact set-ups.

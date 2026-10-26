@@ -112,11 +112,11 @@ public:
 
 `runOn()` is read once, when the system is built. A padd that doesn't override it gets `kDefaultRunOn`, which suits the platform (below).
 
-**Platforms without threads.** Some have none: devkitPro's libnds for the Nintendo DS has no `std::thread`. `Threads.hpp` works out at compile time whether the C++ library has threads, as `SCRATCHPADD_HAS_THREADS` (1 or 0; `ScratchPadd::kHasThreads` in code): 0 where libstdc++ lacks `_GLIBCXX_HAS_GTHREADS` or libc++ has threads turned off, on the DS (`__NDS__`), and wherever `SCRATCHPADD_NO_THREADS` is defined. Where it's 0:
+**Platforms without threads.** Some C++ libraries are built without threads (for some bare-metal targets, say). `Threads.hpp` works out at compile time whether the C++ library has them, as `SCRATCHPADD_HAS_THREADS` (1 or 0; `ScratchPadd::kHasThreads` in code): 0 where libstdc++ lacks `_GLIBCXX_HAS_GTHREADS` or libc++ has threads turned off, and wherever `SCRATCHPADD_NO_THREADS` is defined. (The 3DS and the DS have threads: see [On the Nintendo 3DS and DS](#on-the-nintendo-3ds-and-ds).) Where it's 0:
 
 - `RunOn::BackgroundThread` doesn't exist, so **a padd whose `runOn()` returns it doesn't compile** (the compiler says `no member named 'BackgroundThread' in 'ScratchPadd::RunOn'`). A padd can't ask for a thread the platform can't give it.
 - `kDefaultRunOn` is `RunOn::MainThread`, so a padd that doesn't override `runOn()` builds and runs on either kind of platform.
-- `RunOnUnthreaded_test` builds with `SCRATCHPADD_NO_THREADS` and checks both. That's the check for now: the rest of ScratchPadd (its locks, and the timer threads behind `repeat()`) still uses threads, so it doesn't build for the DS yet; that's the roadmap's next step for the DS.
+- `RunOnUnthreaded_test` builds with `SCRATCHPADD_NO_THREADS` and checks both. That's as far as it goes: the rest of ScratchPadd (its locks, and the timer threads behind `repeat()`) still uses threads, so ScratchPadd as a whole needs a C++ library with them.
 
 `start()` blocks until `stop()` is called. `stop()` only requests shutdown and returns immediately, so it is safe from any thread, including from inside a padd: the demo's `DisplayPadd` calls `system_->stop()` when its window closes. `start()` then shuts down on its own thread, in order: every padd stops (background padds run `finishing()` on their own threads), main-thread padds run `finishing()`, and every padd runs `cleanup()`. `start()` returns once that is done. Tests start the system on a separate thread and call `waitForStart()` to wait until every padd is running.
 
@@ -311,7 +311,7 @@ Theme::apply(Theme::Colors::Dark); // or Theme::Colors::Light
 
 ## Audio
 
-`AudioPadd` plays sounds and music for the other padds, which ask it with messages. It runs on macOS, Linux and Windows through the system's sound device, and on the Nintendo 3DS through its DSP (see [On the Nintendo 3DS](#on-the-nintendo-3ds)). Which one is chosen when it's built (`PlatformAudioOutput`).
+`AudioPadd` plays sounds and music for the other padds, which ask it with messages. It runs on macOS, Linux and Windows through the system's sound device, on the Nintendo 3DS through its DSP, and on the Nintendo DS on its hardware sound channels (see [On the Nintendo 3DS and DS](#on-the-nintendo-3ds-and-ds)). `AudioPadd.hpp` picks one of two implementations, with the same name and messages: `AudioPadd/MixingAudioPadd.hpp` mixes in software with the audio engine (desktops and the 3DS; its output, `PlatformAudioOutput`, is the sound device or the 3DS's DSP), and `AudioPadd/HardwareChannelsAudioPadd.hpp` plays each sound on one of the DS's 16 channels. Everything below is the mixing one; the DS's differences are in that section.
 
 ```cpp
 #include <ScratchPadd/Audio/Messages.hpp> // from //projects/scratchpadd/audio:audio_messages
@@ -331,6 +331,7 @@ sendTo(audio_, PlayMusic{.path = "music/theme.mp3", .settings = {.loop = true}})
 | --- | --- | --- |
 | `LoadSound{name, path}` | Loads a WAV, FLAC or MP3 file as a named sound, replacing any of that name | `SoundLoaded{name, ok, error}` |
 | `LoadSoundSamples{name, samples, rate, channels}` | Loads samples made in code (a `shared_ptr` to interleaved floats, so sending copies nothing) | `SoundLoaded` |
+| `LoadSoundPcm16{name, samples, rate, channels}` | The same with 16-bit samples, such as the sounds made in code rendered when the program is built (`MadeSoundsPcm16`): no float work, for the DS | `SoundLoaded` |
 | `UnloadSound{name}` | Unloads a sound; its voices stop at once | |
 | `PlaySound{name, settings}` | Plays a loaded sound | `Playing{name, voice, ok, error}`, then `VoiceFinished{name, voice}` when it ends |
 | `PlayMusic{path, settings}` | Streams a music file, decoded as it plays | `Playing`, then `VoiceFinished` |
@@ -382,29 +383,40 @@ miniaudio (public domain or MIT-0), TinySoundFont (MIT) and stb_vorbis (public d
 - On a machine with no MIDI system (Linux without ALSA's sequencer, as in a container) it logs that once and carries on; its tests are skipped there.
 - Building on Linux needs ALSA's development package, `libasound2-dev` (see the top-level README's Linux notes).
 
-## On the Nintendo 3DS
+## On the Nintendo 3DS and DS
 
-Padds run on the 3DS as on desktops, threads and all: devkitPro's libctru gives the C++ library real threads (`std::thread`, mutexes, condition variables), so `RunOn::BackgroundThread` works and AudioPadd plays through the DSP (`NdspOutput`). [`3ds/demo`](3ds/demo/source/main.cpp) shows it:
+Padds run on both as on desktops, threads and all. devkitPro gives the C++ library real threads on each: libctru's on the 3DS, and calico's on the DS (calico is devkitPro's system library under libnds), so `std::thread`, mutexes and condition variables work and `RunOn::BackgroundThread` is there. The two demos are the same three padds; [`handheld/include/HandheldDemo.hpp`](handheld/include/HandheldDemo.hpp) holds what they share, and each adds a `ScreenPadd` for its own screens and buttons:
 
 | Padd | Runs on | Does |
 | --- | --- | --- |
-| `ScreenPadd` | the main thread, where devkitPro's examples run the frame loop and the HOME Menu's checks (`aptMainLoop()`) | the frame loop: reads the buttons and sends each one pressed as a message; shows what the other padds send it on the top screen. Each frame queues the next, and `gspWaitForVBlank()` paces them at 60 a second |
-| `SoundBoardPadd` | its own thread | gives AudioPadd a chime, a knock and a blast made in code (at the DSP's rate), plays them for A, B and X, and a tune for Y, a note every 250 ms from `repeat()`; logs AudioPadd's answers |
-| `AudioPadd` | its own thread | plays them through the DSP |
+| `ScreenPadd` | the main thread, where devkitPro's examples run the frame loop (and, on the 3DS, the HOME Menu's checks) | the frame loop: reads the buttons and sends each one pressed as a message; shows what the other padds send it. Each frame queues the next, and waiting for the screen's refresh paces them at 60 a second |
+| `SoundBoardPadd` | its own thread | gives AudioPadd a chime, a knock and a blast, plays them for A, B and X, and a tune for Y, a note every 250 ms from `repeat()`; shows a timer and logs AudioPadd's answers (the chime plays by itself once all three have loaded, so the log shows sound works without a button) |
+| `AudioPadd` | its own thread | plays them: through the 3DS's DSP, or on the DS's hardware channels |
 
 ```bash
 bazel run //projects/scratchpadd/3ds/demo:scratchpadd-3ds-demo   # needs Docker running; opens Azahar
+bazel run //projects/scratchpadd/ds/demo:scratchpadd-ds-demo     # opens melonDS
 ```
 
-It builds `scratchpadd-3ds-demo.3dsx` and `.cia` like any 3DS app here (see [`tools/devkitpro`](../../tools/devkitpro/README.md)). In Azahar the padds report their threads, the three sounds load, and a chime plays by itself once they have, at 60 frames a second. START quits.
+They build like any 3DS or DS app here (`.3dsx` and `.cia`, or `.nds`; see [`tools/devkitpro`](../../tools/devkitpro/README.md)). In the emulators the padds report their threads, the timer counts, the three sounds load and the chime plays, at 60 frames a second. START quits. [Cyclone's DS app](../cyclone/README.md#on-the-nintendo-ds) runs the ragdoll's physics in a padd the same way.
 
-How the 3DS build differs:
+How the builds differ from a desktop's:
 
-- **The sources are staged into devkitPro's `Makefile`**, from filegroups next to each package: `basis:sources`, `messages:sources`, `utilities:sources`, `audio:audio_padd_sources` with `audio:audio_core_sources` and `audio/3ds/output:ndsp_output_sources`, and spdlog's, miniaudio's and TinySoundFont's (see the demo's `BUILD`).
-- **RTTI and exceptions stay on.** devkitPro's template turns both off; ScratchPadd needs RTTI (each message's type) and exceptions (a control of the wrong type), so the demo's `Makefile` leaves them on, and compiles as C++26 (`-std=gnu++26`).
-- **Logging is off** (`spdlog::set_level(spdlog::level::off)`): the screens are the app's. spdlog itself builds and runs there.
-- **The 3DS's CPU is slow** (268 MHz): ScratchPadd's per-message costs (a `std::function` and a shared message per delivery) are fine at the demo's rates, but a padd sending thousands of messages a second should be measured.
+- **The sources are staged into devkitPro's `Makefile`**, from filegroups next to each package: `basis:sources`, `messages:sources`, `utilities:sources`, `handheld:sources`, `audio:audio_padd_sources` with `audio:audio_core_sources` (3DS) or `audio:audio_core_without_engine_sources` (DS), `audio/made_sounds_pcm16:sources`, and spdlog's (see each demo's `BUILD`).
+- **RTTI and exceptions stay on.** devkitPro's templates turn both off; ScratchPadd needs RTTI (each message's type) and exceptions (a control of the wrong type), so the demos' `Makefile`s leave them on, and compile as C++26 (`-std=gnu++26`).
+- **Logging is off** (`spdlog::set_level(spdlog::level::off)`): the screens are the app's. spdlog itself builds and runs on both.
+- **The sounds are rendered when the app is built** (`audio/made_sounds_pcm16`): a program on the build machine writes the sounds made in code as 16-bit samples, `tools/embed_file` compiles them in, and the sound board loads them with `LoadSoundPcm16`. Making them on the DS, in software float, took 24 seconds, with the screens blank meanwhile.
 
+**The DS needs more.** Its CPU is an ARM9 at 67 MHz with no floating-point hardware and no atomic instructions, and calico leaves out two things the C++ library relies on. [`ds/platform`](ds/platform/BUILD) fills them in, and DS apps stage it into their build:
+
+- **`std::atomic`** (`src/atomics.c`): GCC turns atomic operations into calls to libatomic's functions on this CPU, and devkitARM has no libatomic for the DS. These are those functions, each made atomic by turning interrupts off for its few instructions (the DS has one core, and calico switches threads only on an interrupt).
+- **A clock** (`src/clock.c`): calico doesn't provide newlib's `clock_gettime()` hook, so `std::chrono::steady_clock` read garbage and every timed wait went wrong. This provides it from calico's tick counter (about 523 kHz), starting the counter if nothing has yet (calico starts it lazily, and until then it reads 0). The wall clock is the DS's real-time clock carried forward by the same ticks, as the real-time clock counts only whole seconds, and newlib times condition-variable waits against it.
+- **Timers sleep in slices** (`EventTimer.hpp`): calico has no timed wait on a condition variable (its `CondVar` has only an untimed wait), so `std::condition_variable::wait_for` returns at once there. On the DS, the thread behind each `repeat()` sleeps in 5 ms slices instead, checking for `stop()` between them.
+- **No time slicing:** calico runs the highest-priority thread that's ready, and doesn't share the CPU between threads of the same priority, so a padd doing long work holds it until it waits. Padds wait whenever they're idle, so ordinary apps are fine (the main thread, which draws, still takes over each frame), but long work in a padd keeps the others waiting.
+- **AudioPadd plays on the hardware channels** (`AudioPadd/HardwareChannelsAudioPadd.hpp`): the engine mixes in float, far too slow there. Sounds are kept as 16-bit mono, each played on one of the 16 channels at its rate times its pitch, with its volume and pan (and the group, master and mute controls); with every channel busy, a sound isn't played and `Playing` says so. `VoiceFinished` is worked out from a sound's length. MIDI events play `MadeSounds::note` (rendered at build time) at each note's pitch, and a knock on the drum channel; a note rings out its decay. Files (`LoadSound`, `PlayMusic`, `PlayMidi`) and SoundFonts aren't supported (the app has no file system set up), and are answered with why.
+- **The app is small enough:** the demo's `.nds` is about 700 KB, of the DS's 4 MB.
+
+## Packages
 ## Packages
 
 | Bazel target | Contents |
@@ -414,7 +426,10 @@ How the 3DS build differs:
 | `//projects/scratchpadd/utilities` | Logging, `Timer`, `EventTimer` and helpers like `VariantHandler` |
 | `//projects/scratchpadd/graphics` | GLFW/ImGui/OpenGL window and views, and the ImGui theme (`Theme.hpp`) |
 | `//projects/scratchpadd/audio` | `:audio` (`AudioPadd`), `:audio_messages` (what padds send it), `:audio_core` (the engine and instruments, also built for the 3DS), `:audio_device` (playback through the sound device) |
-| `//projects/scratchpadd/3ds/demo` | Padds on a Nintendo 3DS, with AudioPadd through its DSP |
+| `//projects/scratchpadd/3ds/demo`, `//projects/scratchpadd/ds/demo` | Padds on a Nintendo 3DS (AudioPadd through its DSP) and DS (on its hardware channels) |
+| `//projects/scratchpadd/handheld` | What those two demos share (`HandheldDemo.hpp`) |
+| `//projects/scratchpadd/ds/platform` | What ScratchPadd needs on the DS that devkitPro lacks: `std::atomic`'s functions and a clock |
+| `//projects/scratchpadd/audio/made_sounds_pcm16` | The sounds made in code, rendered when the program is built, as 16-bit samples (`MadeSoundsPcm16.hpp`) |
 | `//projects/scratchpadd/midi_input` | `MidiInputPadd` (MIDI keyboards and controllers, desktops) and `:midi_input_messages` |
 | `//projects/scratchpadd/demo` | The demo app |
 
@@ -437,9 +452,10 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes); `sendTo` (only the named padd, by class and by name, to itself, in order, refused for a missing padd, an empty address or an unhandled type, and four padds sending to one at once from their own threads losing nothing, each in order and with the right sender); the sender (a reply to it, `reply()` reaching only senders that handle the answer, and no sender for a message from outside); broadcasts nobody handles noted once per type; and, when it compiles, that code outside a padd can't call into one |
 | `messages:Controls_test` | The control round trip: requests answered to the panel that asked (all padds, or one sent the request), changes sent straight to their owner and every panel told, unknown padds refused, range clamping, rejected changes, `controlChanged()` and `control<C>()`, and a running padd's controls refused from another thread; and an owner's own changes: `setControl()` (by the same rules, telling panels), `addControl()`, `removeControl()` (the last removal empties the panel), and a padd without controls adding one |
 | `audio:AudioCore_test` | The audio core, through `OfflineOutput`: the queues (including two threads at once), exact samples, voices adding up, volumes, balance, pitch, loops, stops and volume changes ramping, the limiter holding sounds that add up past full scale to it and then recovering, finished voices reported once, unloading a sound while it plays, the voice limit (refusing, and stealing the quietest or oldest, never music), files resampled from another rate and channel count, missing files, music streamed frame for frame and looping without a gap, music running dry counted, mixing allocating nothing (and that an allocation there would be counted), and how long a second of 32 voices takes to mix |
+| `audio/made_sounds_pcm16:MadeSoundsPcm16_test` | The sounds rendered at build time are the sounds made in code, to within one 16-bit step |
 | `audio:MadeSounds_test` | Sounds made in code: their lengths at two rates, peaking at 0.9, starting and ending without a click, and the same every time |
 | `audio:Midi_test` | MIDI: events' bytes (made, and read from a port's bytes), MIDI files read with their times in frames, the built-in instrument (pitch by key, notes held or dying away, sustain pedal, pitch bend, volume and pan, drums, all-sound-off without a click, taking over notes when full), a SoundFont made in code played in tune, either instrument and the engine playing without allocating, sequences on time, looping until stopped, one at a time, choosing the instrument, and how long a second of 32 notes takes |
-| `audio:AudioPadd_test` | AudioPadd in a running system: answers to loading and playing, `VoiceFinished` to the padd that played, failures answered with why, padds that don't listen for answers, the volume controls and mute, stopping one voice, music or everything, four padds asking at once while the audio thread mixes, MIDI files and events, `StopMusic` stopping MIDI, and loading SoundFonts |
+| `audio:AudioPadd_test` | AudioPadd in a running system: answers to loading and playing, `VoiceFinished` to the padd that played, failures answered with why, padds that don't listen for answers, 16-bit samples (`LoadSoundPcm16`), the volume controls and mute, stopping one voice, music or everything, four padds asking at once while the audio thread mixes, MIDI files and events, `StopMusic` stopping MIDI, and loading SoundFonts |
 | `midi_input:MidiInputPadd_test` | With a virtual MIDI port as the keyboard (and `portFilter()` listening to it alone): a note reaching listeners with its port and playing on AudioPadd's instrument, `playThrough` off, and a keyboard unplugged (skipped without a MIDI system, as in Linux containers). Under ThreadSanitizer it uses `tests/tsan_suppressions.txt`, which hides races TSan reports inside RtMidi's Core MIDI callback because it can't see Core MIDI's own ordering |
 | `graphics:Theme_test` | The compiled-in fonts are TrueType fonts; the theme sets the text and title fonts (different ones), the spacing, and the dark and light palettes |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
@@ -447,14 +463,9 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 ## Known Limitations
 
 - **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled, since handlers are registered while the program runs (and can change). A broadcast nobody handles is dropped, with a warning the first time for its type; a direct send to a padd without a handler is refused, with an error.
-- **The 3DS:** padds and sound have run only in the Azahar emulator, not on a console. Sounds are held fully decoded in memory (fine for effects; stream long pieces with `PlayMusic`), and so is a SoundFont. The built-in instrument is simple, and ignores MIDI's pitch-bend range setting (RPN 0).
+- **The 3DS and DS:** padds and sound have run only in the emulators (Azahar and melonDS), not on a console. On the DS, AudioPadd plays only sounds loaded from memory (no files or SoundFonts), its instrument is one note played at each pitch, and padds of the same priority don't share the CPU (above). Sounds are held fully decoded in memory (fine for effects; stream long pieces with `PlayMusic`), and so is a SoundFont. The built-in instrument is simple, and ignores MIDI's pitch-bend range setting (RPN 0).
 
 ## Roadmap
 
-1. **The Nintendo DS, with devkitPro's libnds** (devkitARM, the toolchain the 3DS builds already use). libnds has no threads, so every padd runs on the main thread there (see *Platforms without threads*); the rest, in order:
-   1. A first `.nds` build, with the [melonDS](https://melonds.kuribo64.net) emulator run by Bazel as Azahar is for the 3DS.
-   2. ScratchPadd built without threads: its locks and atomics through names that do nothing with one thread, `repeat()` run by the main loop rather than timer threads (waiting for the screen's next refresh in between), logging without spdlog (whose registry needs `std::mutex`), and a clock from the DS's hardware timers if `std::chrono::steady_clock` has none. The start and stop signalling should go through one helper, rather than an `#if` at each place it happens. Size matters too, with 4 MB of RAM for code and data.
-   3. Cyclone on the DS, measured: the DS has no floating-point hardware, so `float` is done in software. A fixed-point `real` would suit it (Cyclone's `real` can already change, as the flex build shows), with the DS's hardware divide and square root.
-   4. Sound through the DS's 16 hardware channels (an `Output` that gives each voice a channel rather than mixing in software, which is too slow there), and a simpler built-in instrument or Maxmod for music.
-
-   BlocksDS, a newer SDK built on libnds, adds cooperative threads (`cothread`); if they turn out to matter, step 2 could use them instead.
+1. **A file system on the DS** (devkitPro's NitroFS, files packed into the `.nds`), so its AudioPadd can load sound files and MIDI.
+2. **A run on real consoles**, 3DS and DS: everything here has run only in the emulators.

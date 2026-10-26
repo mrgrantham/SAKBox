@@ -70,6 +70,23 @@ http_file(
     url = "https://github.com/azahar-emu/azahar/releases/download/2126.2/azahar.AppImage",
 )
 
+# melonDS 1.1, the DS emulator `bazel run` opens DS apps in (//tools/melonds).
+# Only the build for the machine running it is downloaded, the first time a
+# DS app is run. GPL-3.0, run as a separate program.
+http_archive(
+    name = "melonds_macos",
+    build_file = "//third_party:melonds_macos.BUILD",
+    sha256 = "79843a5e5cab93188bd11942bff5440b9505ee91c6f526f7e90c22e3cff6718d",
+    url = "https://github.com/melonDS-emu/melonDS/releases/download/1.1/melonDS-1.1-macOS-universal.zip",
+)
+
+http_archive(
+    name = "melonds_linux_x86_64",
+    build_file = "//third_party:melonds_linux.BUILD",
+    sha256 = "bf377420a2e95f2cd2cdda17d5372b51c2534f858b038db9ec6d129554875124",
+    url = "https://github.com/melonDS-emu/melonDS/releases/download/1.1/melonDS-1.1-appimage-x86_64.zip",
+)
+
 # The tools that make 3DS CIA files (//tools/devkitpro): makerom, bannertool,
 # and the CIA settings and boot logo bannertool's build tools hold. All MIT.
 # Compiled from source inside devkitPro's image the first time a 3DS app is

@@ -15,41 +15,19 @@
 #include <3ds.h>
 
 #include <AudioPadd.hpp>
-#include <ScratchPadd/Audio/MadeSounds.hpp>
-#include <ScratchPadd/Audio/Messages.hpp>
+#include <HandheldDemo.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 
 #include <spdlog/spdlog.h>
 
 #include <cstdio>
 #include <deque>
-#include <functional>
 #include <map>
-#include <memory>
 #include <string>
-#include <thread>
 
 namespace {
 
-// A button pressed this frame
-struct ButtonPressed {
-  std::string button;
-};
-
-// A status line on the top screen (row 0 is the first under the title), or
-// a line for the log under them
-struct StatusLine {
-  int row = 0;
-  std::string text;
-};
-struct LogLine {
-  std::string text;
-};
-
-// A short number for the thread this runs on, to show which padd is where
-std::string threadNumber() {
-  return std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()) % 10000);
-}
+using namespace HandheldDemo;
 
 class ScreenPadd : public ScratchPadd::Base {
 public:
@@ -74,7 +52,10 @@ public:
   }
 
 private:
-  static constexpr std::size_t kLogLines = 18;
+  static constexpr int kStatusRow = 3; // status lines 0-7 go from here
+  static constexpr int kHelpRow = 12;
+  static constexpr int kLogRow = 14;
+  static constexpr std::size_t kLogLines = 16;
 
   // One frame, then the next (gspWaitForVBlank paces them at 60 a second)
   void frame() {
@@ -102,15 +83,16 @@ private:
     push([this] { frame(); });
   }
 
-  // The title, the status lines, the buttons, then the log (rows are 1-based)
+  // The title, the status lines (each at its own row), the buttons, then
+  // the log (rows are 1-based; the top screen's console is 50 columns by 30
+  // rows)
   void draw() {
     std::printf("\x1b[1;1HScratchPadd on a 3DS: padds talking by messages\x1b[K");
-    int row = 3;
-    for (const auto &[index, text] : status_) {
-      std::printf("\x1b[%d;1H%.49s\x1b[K", row++, text.c_str());
+    for (const auto &[row, text] : status_) {
+      std::printf("\x1b[%d;1H%.49s\x1b[K", kStatusRow + row, text.c_str());
     }
-    std::printf("\x1b[%d;1HA chime  B knock  X blast  Y tune  START quit\x1b[K", ++row);
-    row += 2;
+    std::printf("\x1b[%d;1HA chime  B knock  X blast  Y tune  START quit\x1b[K", kHelpRow);
+    int row = kLogRow;
     for (const std::string &line : log_) {
       std::printf("\x1b[%d;1H%.49s\x1b[K", row++, line.c_str());
     }
@@ -119,98 +101,6 @@ private:
   PrintConsole top_;
   std::map<int, std::string> status_;
   std::deque<std::string> log_;
-};
-
-class SoundBoardPadd : public ScratchPadd::Base {
-public:
-  SoundBoardPadd(ScratchPadd::System *system) : Base(system) {
-    receive<ButtonPressed>([this](const ButtonPressed &pressed) { press(pressed.button); });
-    using namespace ScratchPadd::Audio;
-    receive<SoundLoaded>([this](const SoundLoaded &loaded) {
-      send(LogLine{loaded.name + (loaded.ok ? " loaded" : " not loaded: " + loaded.error)});
-      if (loaded.ok && ++loaded_ == kSounds) {
-        sendTo(audio_, PlaySound{.name = "chime"});
-      }
-    });
-    receive<Playing>([this](const Playing &playing) {
-      send(LogLine{"AudioPadd: " + playing.name +
-                   (playing.ok ? " playing" : " not playing: " + playing.error)});
-    });
-  }
-  std::string name() override { return "SoundBoardPadd"; }
-  ScratchPadd::ControlValueMap generateControls() override { return {}; }
-  // The tune's beat
-  std::optional<std::chrono::duration<double>> repeatInterval() override {
-    return std::chrono::milliseconds(250);
-  }
-
-  // Gives AudioPadd the sounds, made in code
-  void prepare() override {
-    audio_ = addressOf("AudioPadd");
-    using namespace ScratchPadd::Audio;
-    constexpr std::uint32_t kRate = 32728; // the DSP's own rate, so nothing is resampled
-    const auto load = [&](const char *name, std::vector<float> samples) {
-      sendTo(audio_, LoadSoundSamples{
-                         .name = name,
-                         .samples = std::make_shared<const std::vector<float>>(std::move(samples)),
-                         .rate = kRate,
-                         .channels = 1});
-    };
-    load("chime", MadeSounds::chime(kRate));
-    load("knock", MadeSounds::knock(kRate));
-    load("blast", MadeSounds::blast(kRate));
-  }
-
-  void starting() override {
-    send(StatusLine{1, "SoundBoardPadd: own thread " + threadNumber()});
-    // The tune's instrument: a vibraphone (General MIDI's 12th) on channel 1
-    sendTo(audio_,
-           ScratchPadd::Audio::PlayMidiEvent{ScratchPadd::Audio::MidiEvent::programChange(0, 11)});
-  }
-
-  void repeat() override {
-    if (!tunePlaying_) {
-      return;
-    }
-    using ScratchPadd::Audio::MidiEvent;
-    using ScratchPadd::Audio::PlayMidiEvent;
-    constexpr int kTune[] = {72, 76, 79, 76, 74, 77, 81, 77};
-    const int key = kTune[beat_++ % std::size(kTune)];
-    if (lastKey_) {
-      sendTo(audio_, PlayMidiEvent{MidiEvent::noteOff(0, *lastKey_)});
-    }
-    sendTo(audio_, PlayMidiEvent{MidiEvent::noteOn(0, key, 90)});
-    lastKey_ = key;
-    send(StatusLine{3, "Tune: beat " + std::to_string(beat_)});
-  }
-
-private:
-  void press(const std::string &button) {
-    static const std::map<std::string, const char *> kSounds = {
-        {"A", "chime"}, {"B", "knock"}, {"X", "blast"}};
-    if (auto sound = kSounds.find(button); sound != kSounds.end()) {
-      sendTo(audio_, ScratchPadd::Audio::PlaySound{.name = sound->second});
-      send(LogLine{button + ": " + sound->second + " (thread " + threadNumber() + ")"});
-      ++played_;
-    } else if (button == "Y") {
-      tunePlaying_ = !tunePlaying_;
-      if (!tunePlaying_ && lastKey_) {
-        sendTo(audio_, ScratchPadd::Audio::PlayMidiEvent{
-                           ScratchPadd::Audio::MidiEvent::noteOff(0, *lastKey_)});
-        lastKey_.reset();
-      }
-      send(LogLine{std::string("Y: tune ") + (tunePlaying_ ? "on" : "off")});
-    }
-    send(StatusLine{2, "Sounds played: " + std::to_string(played_)});
-  }
-
-  static constexpr int kSounds = 3;
-  ScratchPadd::PaddAddress audio_;
-  int loaded_ = 0;
-  bool tunePlaying_ = false;
-  int beat_ = 0;
-  int played_ = 0;
-  std::optional<int> lastKey_;
 };
 
 } // namespace

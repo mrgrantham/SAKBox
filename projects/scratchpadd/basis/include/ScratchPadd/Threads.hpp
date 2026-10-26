@@ -4,17 +4,18 @@
 // thread to run on (RunOn, the answer to Base::runOn()).
 //
 // SCRATCHPADD_HAS_THREADS is 1 where the C++ library has threads and 0 where
-// it doesn't: devkitPro's libnds for the Nintendo DS, for one, has no
-// std::thread. It's worked out at compile time from the C++ library's own
+// it doesn't (a C++ library built without them, as for some bare-metal
+// targets). It's worked out at compile time from the C++ library's own
 // configuration (libstdc++ defines _GLIBCXX_HAS_GTHREADS when it has threads;
 // libc++ sets _LIBCPP_HAS_THREADS, or before version 20 defines
-// _LIBCPP_HAS_NO_THREADS when it hasn't), and it's 0 on the DS (__NDS__) and
-// wherever SCRATCHPADD_NO_THREADS is defined (RunOnUnthreaded_test does,
-// to check a build without threads on a desktop).
+// _LIBCPP_HAS_NO_THREADS when it hasn't), and it's 0 wherever
+// SCRATCHPADD_NO_THREADS is defined (RunOnUnthreaded_test does, to check a
+// build without threads on a desktop). The 3DS and DS have threads: libctru's,
+// and calico's (devkitPro's DS system library) behind std::thread.
 
 #include <version> // the C++ library's configuration macros
 
-#if defined(SCRATCHPADD_NO_THREADS) || defined(__NDS__)
+#if defined(SCRATCHPADD_NO_THREADS)
 #define SCRATCHPADD_HAS_THREADS 0
 #elif defined(__GLIBCXX__) && !defined(_GLIBCXX_HAS_GTHREADS)
 #define SCRATCHPADD_HAS_THREADS 0

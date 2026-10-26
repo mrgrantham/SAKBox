@@ -14,6 +14,8 @@ imgui.ini
 
 # Azahar's settings and SD card when `bazel run` opens a 3DS app (tools/azahar)
 .azahar/
+# melonDS's settings when `bazel run` opens a DS app (tools/melonds)
+.melonds/
 
 # What bazel run //projects/scratchpadd/audio:render_instrument_samples writes
 .audio-samples/

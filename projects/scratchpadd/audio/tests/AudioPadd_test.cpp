@@ -168,6 +168,23 @@ TEST(AudioPaddTest, AnswersAndReportsTheEnd) {
   EXPECT_EQ(listener.finished()[0].name, "beep");
 }
 
+// 16-bit samples (LoadSoundPcm16) load and play like float ones: full scale
+// is 1
+TEST(AudioPaddTest, LoadsSixteenBitSamples) {
+  AudioSystem<Listener> running;
+  auto &listener = running.padd<Listener>();
+  listener.ask(LoadSoundPcm16{.name = "beep",
+                              .samples = std::make_shared<const std::vector<std::int16_t>>(
+                                  100, static_cast<std::int16_t>(16384)),
+                              .rate = 48000,
+                              .channels = 1});
+  listener.ask(PlaySound{.name = "beep"});
+  ASSERT_TRUE(running.settles());
+  ASSERT_EQ(listener.loaded().size(), 1u);
+  EXPECT_TRUE(listener.loaded()[0].ok) << listener.loaded()[0].error;
+  EXPECT_NEAR(running.render(16)[0], 16384 / 32767.0f, 1e-6f);
+}
+
 // What can't be done is answered with why
 TEST(AudioPaddTest, FailuresAreAnswered) {
   AudioSystem<Listener> running;

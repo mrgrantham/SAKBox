@@ -13,7 +13,7 @@ embed_file(
 )
 ```
 
-The library defines `Theme::Fonts::questrial` (`const unsigned char[]`, the file's bytes) and `Theme::Fonts::questrialSize` (`const std::size_t`). Declare them where they're used:
+The library defines `Theme::Fonts::questrial` (`const unsigned char[]`, the file's bytes, aligned to 4) and `Theme::Fonts::questrialSize` (`const std::size_t`). Declare them where they're used:
 
 ```cpp
 namespace Theme::Fonts {

@@ -82,4 +82,13 @@ std::vector<float> blast(std::uint32_t sampleRate) {
   });
 }
 
+std::vector<float> note(std::uint32_t sampleRate) {
+  const float frequency = 440.0f * std::pow(2.0f, static_cast<float>(kNoteKey - 69) / 12.0f);
+  return make(sampleRate, 1.5f, [=](float t) {
+    const float phase = kTwoPi * frequency * t;
+    return fadeIn(t, 0.002f) * std::exp(-2.5f * t) *
+           (std::sin(phase) + 0.25f * std::sin(4 * phase));
+  });
+}
+
 } // namespace ScratchPadd::Audio::MadeSounds

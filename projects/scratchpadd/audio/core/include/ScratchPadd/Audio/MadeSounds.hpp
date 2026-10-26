@@ -20,4 +20,12 @@ std::vector<float> knock(std::uint32_t sampleRate);
 // about 2 s
 std::vector<float> blast(std::uint32_t sampleRate);
 
+// A note: C5 (523 Hz), a bright attack ringing down over 1.5 s, like a
+// vibraphone. The DS's AudioPadd plays it at each MIDI note's pitch, as its
+// instrument.
+std::vector<float> note(std::uint32_t sampleRate);
+
+// The C5 that note() plays, as a MIDI key
+inline constexpr int kNoteKey = 72;
+
 } // namespace ScratchPadd::Audio::MadeSounds

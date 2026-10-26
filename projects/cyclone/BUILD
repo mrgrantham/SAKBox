@@ -313,3 +313,17 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+# The engine's sources and the demos' headers that need no window (the
+# ragdoll, the physics clock, the knocks), for builds outside Bazel's C++
+# rules: the DS app staged into devkitPro's Makefile (see //tools/devkitpro)
+filegroup(
+    name = "sources",
+    srcs = glob(["include/**", "src/*.cpp"]) + [
+        "src/demos/fixed_steps.h",
+        "src/demos/impact_knocks.cpp",
+        "src/demos/impact_knocks.h",
+        "src/demos/ragdoll/ragdoll_physics.h",
+    ],
+    visibility = ["//visibility:public"],
+)
