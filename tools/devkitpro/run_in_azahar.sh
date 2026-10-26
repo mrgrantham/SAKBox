@@ -25,6 +25,17 @@ fi
 
 home="${BUILD_WORKSPACE_DIRECTORY:-$PWD}/.azahar"
 mkdir -p "$home/user"
+
+# Sound: libctru's ndsp won't start without the DSP's firmware at
+# sdmc:/3ds/dspfirm.cdc, but Azahar emulates the DSP (HLE) and ignores what
+# the file holds, so a placeholder lets apps play sound here. (On a real
+# 3DS, and for Azahar's LLE audio, put the firmware dumped with DSP1 there
+# instead; this leaves an existing file alone.)
+firmware="$home/user/sdmc/3ds/dspfirm.cdc"
+if [ ! -e "$firmware" ]; then
+  mkdir -p "$(dirname "$firmware")"
+  echo "Placeholder: Azahar's emulated (HLE) DSP doesn't use the firmware." > "$firmware"
+fi
 echo "Opening @@APP@@ in Azahar; close Azahar to finish."
 echo "Its SD card is $home/user/sdmc."
 

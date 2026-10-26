@@ -53,6 +53,7 @@ Small programs under `projects/examples/`, mostly one per library. Run any of th
 | Tabulate | `//projects/examples/tabulate:exampleTabulate` | Formatted terminal tables |
 | YAML table | `//projects/examples/yamltable:exampleYaml` | Parses YAML with rapidyaml and yaml-cpp and prints a table |
 | [3DS read-controls](projects/examples/read-controls/README.md) | `//projects/examples/read-controls:read-controls` | Nintendo 3DS homebrew: shows the buttons pressed and the circle pad's position. Builds `read-controls.3dsx` and `read-controls.cia` using the devkitPro toolchain from `//tools/devkitpro`, which needs Docker; `bazel run` opens it in the Azahar emulator, which Bazel downloads (`//tools/azahar`) |
+| [3DS audio demo](projects/scratchpadd/README.md#audio) | `//projects/scratchpadd/audio/3ds/demo:scratchpadd-audio-3ds-demo` | Nintendo 3DS homebrew: ScratchPadd audio through the 3DS's DSP, playing a tune and chimes by itself, with the output's figures on screen. Built and run (`bazel run`) like read-controls |
 | [3DS audio self-test](projects/scratchpadd/README.md#audio) | `//projects/scratchpadd/audio/3ds/selftest:scratchpadd-audio-selftest` | Nintendo 3DS homebrew: runs the ScratchPadd audio core's checks on the 3DS and times a mix, showing the results on screen and writing them to the SD card. Built and run (`bazel run`) like read-controls |
 
 ## Third Party

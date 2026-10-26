@@ -271,7 +271,7 @@ void finishing() override { graphics_->tearDown(); }
 
 ## Audio
 
-`AudioPadd` plays sounds and music for the other padds, which ask it with messages. It runs on macOS, Linux and Windows through the system's sound device, and its engine (the audio core) also builds for the Nintendo 3DS.
+`AudioPadd` plays sounds and music for the other padds, which ask it with messages. It runs on macOS, Linux and Windows through the system's sound device, and its engine (the audio core) also plays on the Nintendo 3DS, through its DSP.
 
 ```cpp
 #include <ScratchPadd/Audio/Messages.hpp> // from //projects/scratchpadd/audio:audio_messages
@@ -320,8 +320,9 @@ sendTo(audio_, PlayMusic{.path = "music/theme.mp3", .settings = {.loop = true}})
 - The *engine* runs on AudioPadd's thread and does the slow work: decoding and resampling files when they're loaded (with [miniaudio](https://miniaud.io)), decoding music ahead into a ring buffer, and freeing memory once the mixer says it's done with it. AudioPadd calls its `update()` every 20 ms.
 - Sounds are resampled once, when loaded, so mixing is a copy, or a linear interpolation for a pitched voice. Volume and pan changes, and stops, ramp over one block (up to 1024 frames) rather than jump, so they don't click.
 - `Output` is where the mix goes: `DeviceOutput` plays through miniaudio's device (Core Audio, PulseAudio/ALSA/JACK, WASAPI; with no sound device it falls back to miniaudio's silent null device, so the engine still runs), and `OfflineOutput` mixes only when asked, which the tests use to check exact samples. Tests swap AudioPadd's output with `AudioPadd::outputFactory()`.
+- **On a 3DS**, `NdspOutput` ([`audio/3ds/output`](audio/3ds/output/include/ScratchPadd/Audio/NdspOutput.hpp)) plays through the DSP with libctru's ndsp, at the DSP's own rate (about 32,728 Hz, so nothing is resampled on the way out), in four 512-frame buffers (16 ms each, 64 ms in all). The DSP's callback only wakes a mixing thread, one priority step above the app's, which refills the buffers the DSP has finished, as SDL's 3DS audio does; it counts underruns and times each mix. The app's own loop (the owner) calls `Engine::update()` each frame. The 3DS has no padd system yet, so apps use the engine directly. ndsp needs the DSP's firmware at `sdmc:/3ds/dspfirm.cdc`, dumped from the console with DSP1; without it the engine reports so and stays silent.
 - `MixingScope` (`RealTime.hpp`) marks the audio thread while it mixes, and allocations made there are counted: TinySoundFont's report themselves, and tests report every `new`. The tests check the count stays at zero.
-- The core is plain C++ with no other ScratchPadd dependency, and doesn't throw or need RTTI, so it builds for the 3DS. On a 3DS, [`audio/3ds/selftest`](audio/3ds/selftest/BUILD) runs the core's checks on the console's own CPU and times a mix: 16 pitched voices take 94 ms per second of audio in the Azahar emulator, and 16 notes of the built-in instrument 113 ms. It shows the results on the top screen and writes them to `scratchpadd-audio-selftest.txt` on the SD card. `bazel run //projects/scratchpadd/audio/3ds/selftest:scratchpadd-audio-selftest` builds it (needs Docker; see [`tools/devkitpro`](../../tools/devkitpro/README.md)) and opens it in the Azahar emulator, which Bazel downloads; the results file is then in `.azahar/user/sdmc` (see [`tools/azahar`](../../tools/azahar/README.md)).
+- The core is plain C++ with no other ScratchPadd dependency, and doesn't throw or need RTTI, so it builds for the 3DS. On a 3DS, [`audio/3ds/selftest`](audio/3ds/selftest/BUILD) runs the core's checks on the console's own CPU and times a mix: 16 pitched voices take 94 ms per second of audio in the Azahar emulator, and 16 notes of the built-in instrument 113 ms. [`audio/3ds/demo`](audio/3ds/demo/BUILD) plays through the DSP by itself: a tune on the built-in instrument and a chime every two seconds, with the output's figures on the top screen (buffers queued and mixed, underruns, mix time, voices, notes) and in `scratchpadd-audio-3ds-demo.txt` on the SD card. In Azahar it plays with no underruns, mixing each 15.6 ms buffer in under 2 ms. `bazel run //projects/scratchpadd/audio/3ds/demo:scratchpadd-audio-3ds-demo` opens it. It shows the results on the top screen and writes them to `scratchpadd-audio-selftest.txt` on the SD card. `bazel run //projects/scratchpadd/audio/3ds/selftest:scratchpadd-audio-selftest` builds it (needs Docker; see [`tools/devkitpro`](../../tools/devkitpro/README.md)) and opens it in the Azahar emulator, which Bazel downloads; the results file is then in `.azahar/user/sdmc` (see [`tools/azahar`](../../tools/azahar/README.md)).
 
 miniaudio (public domain or MIT-0), TinySoundFont (MIT) and stb_vorbis (public domain or MIT) are downloaded by Bazel; nothing needs installing. On Linux it finds PulseAudio or ALSA when the program runs, so no development packages are needed to build.
 
@@ -361,9 +362,8 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 ## Known Limitations
 
 - **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled, since handlers are registered while the program runs (and can change). A broadcast nobody handles is dropped, with a warning the first time for its type; a direct send to a padd without a handler is refused, with an error.
-- **Audio:** no sound on the 3DS yet (the core runs there, mixing offline). Sounds are held fully decoded in memory (fine for effects; stream long pieces with `PlayMusic`), and so is a SoundFont. The built-in instrument is simple, and ignores MIDI's pitch-bend range setting (RPN 0).
+- **Audio:** on the 3DS the engine is used directly (no padds there yet), and sound has been heard only in the Azahar emulator, not on a console. Sounds are held fully decoded in memory (fine for effects; stream long pieces with `PlayMusic`), and so is a SoundFont. The built-in instrument is simple, and ignores MIDI's pitch-bend range setting (RPN 0).
 
 ## Roadmap
 
-1. Audio on the 3DS, through its DSP (`ndsp`).
-2. MIDI input from controllers (RtMidi), on desktops.
+1. MIDI input from controllers (RtMidi), on desktops.
