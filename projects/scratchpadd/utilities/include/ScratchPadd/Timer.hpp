@@ -1,7 +1,7 @@
 #pragma once
 
 #include <chrono>
-#include <fmt/format.h>
+#include <format>
 #include <spdlog/spdlog.h>
 #include <string>
 
@@ -114,9 +114,7 @@ public:
     auto timedSeconds = std::chrono::duration_cast<std::chrono::seconds>(interval);
     interval -= timedSeconds;
     auto timedMilliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(interval);
-    // return fmt::format("{}h {}m {}s
-    // {}ms",timedHours.count(),timedMinutes.count(),timedSeconds.count(),timedMilliseconds.count());
-    return fmt::format("{}m {}s {}ms", timedMinutes.count(), timedSeconds.count(),
+    return std::format("{}m {}s {}ms", timedMinutes.count(), timedSeconds.count(),
                        timedMilliseconds.count());
   }
 

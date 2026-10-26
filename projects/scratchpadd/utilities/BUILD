@@ -21,3 +21,11 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+# The sources, for builds outside Bazel's C++ rules (the 3DS and DS apps,
+# staged into devkitPro's Makefiles; see //tools/devkitpro)
+filegroup(
+    name = "sources",
+    srcs = glob(["include/**", "src/**"]),
+    visibility = ["//visibility:public"],
+)

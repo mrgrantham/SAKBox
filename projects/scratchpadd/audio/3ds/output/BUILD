@@ -4,5 +4,5 @@
 filegroup(
     name = "ndsp_output_sources",
     srcs = glob(["include/**", "src/**"]),
-    visibility = ["//projects/scratchpadd/audio/3ds:__subpackages__"],
+    visibility = ["//projects/scratchpadd:__subpackages__"],
 )

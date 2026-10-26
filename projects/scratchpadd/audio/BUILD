@@ -185,3 +185,12 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+# AudioPadd and the messages it handles, as sources, for builds outside
+# Bazel's C++ rules (the 3DS and DS apps; see //tools/devkitpro). With
+# :audio_core_sources.
+filegroup(
+    name = "audio_padd_sources",
+    srcs = glob(["include/**", "messages/include/**"]),
+    visibility = ["//visibility:public"],
+)

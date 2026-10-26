@@ -14,3 +14,10 @@ cc_library(
     includes = ["include"],
     visibility = ["//visibility:public"],
 )
+
+# The headers and license, for builds outside Bazel's C++ rules (the 3DS and
+# DS apps; see //tools/devkitpro)
+filegroup(
+    name = "sources",
+    srcs = glob(["include/**"]) + ["LICENSE"],
+)

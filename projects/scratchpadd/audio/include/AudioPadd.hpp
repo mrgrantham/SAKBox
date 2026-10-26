@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ScratchPadd/Audio/DeviceOutput.hpp>
 #include <ScratchPadd/Audio/Engine.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
 #include <ScratchPadd/Base.hpp>
@@ -12,6 +11,16 @@
 #include <optional>
 #include <string>
 
+// The platform's sound output: the 3DS's DSP there, the sound device
+// (miniaudio) on desktops
+#if defined(__3DS__)
+#include <ScratchPadd/Audio/NdspOutput.hpp>
+using PlatformAudioOutput = ScratchPadd::Audio::NdspOutput;
+#else
+#include <ScratchPadd/Audio/DeviceOutput.hpp>
+using PlatformAudioOutput = ScratchPadd::Audio::DeviceOutput;
+#endif
+
 // Plays sounds and music for the other padds, which ask with the messages
 // in ScratchPadd/Audio/Messages.hpp. The engine mixes on the sound device's
 // own thread; this padd's thread does the slow work (loading files, decoding
@@ -19,13 +28,12 @@
 // Controls: master, sounds and music volume, and mute.
 class AudioPadd : public ScratchPadd::Base {
 public:
-  // What AudioPadd plays through, made when it's constructed: the sound
-  // device, unless set otherwise first (tests use an OfflineOutput).
+  // What AudioPadd plays through, made when it's constructed: the
+  // platform's (PlatformAudioOutput: the sound device, or a 3DS's DSP),
+  // unless set otherwise first (tests use an OfflineOutput).
   using OutputFactory = std::function<std::unique_ptr<ScratchPadd::Audio::Output>()>;
   static OutputFactory &outputFactory() {
-    static OutputFactory factory = [] {
-      return std::make_unique<ScratchPadd::Audio::DeviceOutput>();
-    };
+    static OutputFactory factory = [] { return std::make_unique<PlatformAudioOutput>(); };
     return factory;
   }
 

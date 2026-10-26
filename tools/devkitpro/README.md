@@ -71,7 +71,7 @@ devkitpro_3ds_app(
 
 Every app is tagged `devkitpro`, so a build that can't run Docker can leave them all out with `--build_tag_filters=-devkitpro` (as [`tools/linux_check`](../linux_check/README.md) does).
 
-Only source files can be staged (not files other rules generate), and a C++ library built this way must suit devkitPro's 3DS `Makefile`, which compiles with `-fno-rtti -fno-exceptions`.
+Only source files can be staged (not files other rules generate). devkitPro's template `Makefile` compiles C++ with `-fno-rtti -fno-exceptions`; code that needs either keeps them in its own `Makefile`, as the [ScratchPadd 3DS demo](../../projects/scratchpadd/3ds/demo/Makefile) does (ScratchPadd uses both).
 
 `bazel run` on the target builds the app and opens it in the Azahar emulator, which Bazel downloads and sets up (see [`tools/azahar`](../azahar/README.md)). See [`projects/examples/read-controls`](../../projects/examples/read-controls/README.md) for an example.
 

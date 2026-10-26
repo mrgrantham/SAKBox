@@ -311,7 +311,7 @@ Theme::apply(Theme::Colors::Dark); // or Theme::Colors::Light
 
 ## Audio
 
-`AudioPadd` plays sounds and music for the other padds, which ask it with messages. It runs on macOS, Linux and Windows through the system's sound device, and its engine (the audio core) also plays on the Nintendo 3DS, through its DSP.
+`AudioPadd` plays sounds and music for the other padds, which ask it with messages. It runs on macOS, Linux and Windows through the system's sound device, and on the Nintendo 3DS through its DSP (see [On the Nintendo 3DS](#on-the-nintendo-3ds)). Which one is chosen when it's built (`PlatformAudioOutput`).
 
 ```cpp
 #include <ScratchPadd/Audio/Messages.hpp> // from //projects/scratchpadd/audio:audio_messages
@@ -365,7 +365,7 @@ sendTo(audio_, PlayMusic{.path = "music/theme.mp3", .settings = {.loop = true}})
 - **A limiter on the whole mix** keeps it from clipping: where sounds add up past full scale (a loud SoundFont instrument, many sounds at once), it turns the mix down at once, then gives the gain back over about 0.1 s. Below full scale the mix passes through untouched. `MixerStats::limitedBlocks` counts the blocks it acted on.
 - Sounds are resampled once, when loaded, so mixing is a copy, or a linear interpolation for a pitched voice. Volume and pan changes, and stops, ramp over one block (up to 1024 frames) rather than jump, so they don't click.
 - `Output` is where the mix goes: `DeviceOutput` plays through miniaudio's device (Core Audio, PulseAudio/ALSA/JACK, WASAPI; with no sound device it falls back to miniaudio's silent null device, so the engine still runs), and `OfflineOutput` mixes only when asked, which the tests use to check exact samples. Tests swap AudioPadd's output with `AudioPadd::outputFactory()`.
-- **On a 3DS**, `NdspOutput` ([`audio/3ds/output`](audio/3ds/output/include/ScratchPadd/Audio/NdspOutput.hpp)) plays through the DSP with libctru's ndsp, at the DSP's own rate (about 32,728 Hz, so nothing is resampled on the way out), in four 512-frame buffers (16 ms each, 64 ms in all). The DSP's callback only wakes a mixing thread, one priority step above the app's, which refills the buffers the DSP has finished, as SDL's 3DS audio does; it counts underruns and times each mix. The app's own loop (the owner) calls `Engine::update()` each frame. The 3DS has no padd system yet, so apps use the engine directly. ndsp needs the DSP's firmware at `sdmc:/3ds/dspfirm.cdc`, dumped from the console with DSP1; without it the engine reports so and stays silent.
+- **On a 3DS**, `NdspOutput` ([`audio/3ds/output`](audio/3ds/output/include/ScratchPadd/Audio/NdspOutput.hpp)) plays through the DSP with libctru's ndsp, at the DSP's own rate (about 32,728 Hz, so nothing is resampled on the way out), in four 512-frame buffers (16 ms each, 64 ms in all). The DSP's callback only wakes a mixing thread, one priority step above the app's, which refills the buffers the DSP has finished, as SDL's 3DS audio does; it counts underruns and times each mix. Whoever owns the engine calls `Engine::update()` regularly: AudioPadd does every 20 ms, as on desktops, and an app using the engine directly (the audio demo below) does each frame. ndsp needs the DSP's firmware at `sdmc:/3ds/dspfirm.cdc`, dumped from the console with DSP1; without it the engine reports so and stays silent.
 - `MixingScope` (`RealTime.hpp`) marks the audio thread while it mixes, and allocations made there are counted: TinySoundFont's report themselves, and tests report every `new`. The tests check the count stays at zero.
 - The core is plain C++ with no other ScratchPadd dependency, and doesn't throw or need RTTI, so it builds for the 3DS. On a 3DS, [`audio/3ds/selftest`](audio/3ds/selftest/BUILD) runs the core's checks on the console's own CPU and times a mix: 16 pitched voices take 94 ms per second of audio in the Azahar emulator, and 16 notes of the built-in instrument 113 ms. [`audio/3ds/demo`](audio/3ds/demo/BUILD) plays through the DSP by itself: a tune on the built-in instrument and a chime every two seconds, with the output's figures on the top screen (buffers queued and mixed, underruns, mix time, voices, notes) and in `scratchpadd-audio-3ds-demo.txt` on the SD card. In Azahar it plays with no underruns, mixing each 15.6 ms buffer in under 2 ms. `bazel run //projects/scratchpadd/audio/3ds/demo:scratchpadd-audio-3ds-demo` opens it. It shows the results on the top screen and writes them to `scratchpadd-audio-selftest.txt` on the SD card. `bazel run //projects/scratchpadd/audio/3ds/selftest:scratchpadd-audio-selftest` builds it (needs Docker; see [`tools/devkitpro`](../../tools/devkitpro/README.md)) and opens it in the Azahar emulator, which Bazel downloads; the results file is then in `.azahar/user/sdmc` (see [`tools/azahar`](../../tools/azahar/README.md)).
 
@@ -382,6 +382,29 @@ miniaudio (public domain or MIT-0), TinySoundFont (MIT) and stb_vorbis (public d
 - On a machine with no MIDI system (Linux without ALSA's sequencer, as in a container) it logs that once and carries on; its tests are skipped there.
 - Building on Linux needs ALSA's development package, `libasound2-dev` (see the top-level README's Linux notes).
 
+## On the Nintendo 3DS
+
+Padds run on the 3DS as on desktops, threads and all: devkitPro's libctru gives the C++ library real threads (`std::thread`, mutexes, condition variables), so `RunOn::BackgroundThread` works and AudioPadd plays through the DSP (`NdspOutput`). [`3ds/demo`](3ds/demo/source/main.cpp) shows it:
+
+| Padd | Runs on | Does |
+| --- | --- | --- |
+| `ScreenPadd` | the main thread, where devkitPro's examples run the frame loop and the HOME Menu's checks (`aptMainLoop()`) | the frame loop: reads the buttons and sends each one pressed as a message; shows what the other padds send it on the top screen. Each frame queues the next, and `gspWaitForVBlank()` paces them at 60 a second |
+| `SoundBoardPadd` | its own thread | gives AudioPadd a chime, a knock and a blast made in code (at the DSP's rate), plays them for A, B and X, and a tune for Y, a note every 250 ms from `repeat()`; logs AudioPadd's answers |
+| `AudioPadd` | its own thread | plays them through the DSP |
+
+```bash
+bazel run //projects/scratchpadd/3ds/demo:scratchpadd-3ds-demo   # needs Docker running; opens Azahar
+```
+
+It builds `scratchpadd-3ds-demo.3dsx` and `.cia` like any 3DS app here (see [`tools/devkitpro`](../../tools/devkitpro/README.md)). In Azahar the padds report their threads, the three sounds load, and a chime plays by itself once they have, at 60 frames a second. START quits.
+
+How the 3DS build differs:
+
+- **The sources are staged into devkitPro's `Makefile`**, from filegroups next to each package: `basis:sources`, `messages:sources`, `utilities:sources`, `audio:audio_padd_sources` with `audio:audio_core_sources` and `audio/3ds/output:ndsp_output_sources`, and spdlog's, miniaudio's and TinySoundFont's (see the demo's `BUILD`).
+- **RTTI and exceptions stay on.** devkitPro's template turns both off; ScratchPadd needs RTTI (each message's type) and exceptions (a control of the wrong type), so the demo's `Makefile` leaves them on, and compiles as C++26 (`-std=gnu++26`).
+- **Logging is off** (`spdlog::set_level(spdlog::level::off)`): the screens are the app's. spdlog itself builds and runs there.
+- **The 3DS's CPU is slow** (268 MHz): ScratchPadd's per-message costs (a `std::function` and a shared message per delivery) are fine at the demo's rates, but a padd sending thousands of messages a second should be measured.
+
 ## Packages
 
 | Bazel target | Contents |
@@ -391,6 +414,7 @@ miniaudio (public domain or MIT-0), TinySoundFont (MIT) and stb_vorbis (public d
 | `//projects/scratchpadd/utilities` | Logging, `Timer`, `EventTimer` and helpers like `VariantHandler` |
 | `//projects/scratchpadd/graphics` | GLFW/ImGui/OpenGL window and views, and the ImGui theme (`Theme.hpp`) |
 | `//projects/scratchpadd/audio` | `:audio` (`AudioPadd`), `:audio_messages` (what padds send it), `:audio_core` (the engine and instruments, also built for the 3DS), `:audio_device` (playback through the sound device) |
+| `//projects/scratchpadd/3ds/demo` | Padds on a Nintendo 3DS, with AudioPadd through its DSP |
 | `//projects/scratchpadd/midi_input` | `MidiInputPadd` (MIDI keyboards and controllers, desktops) and `:midi_input_messages` |
 | `//projects/scratchpadd/demo` | The demo app |
 
@@ -423,12 +447,11 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 ## Known Limitations
 
 - **Dispatch is a runtime lookup.** Unlike `std::visit`, nothing checks at compile time that a type is handled, since handlers are registered while the program runs (and can change). A broadcast nobody handles is dropped, with a warning the first time for its type; a direct send to a padd without a handler is refused, with an error.
-- **Audio:** on the 3DS the engine is used directly (no padds there yet), and sound has been heard only in the Azahar emulator, not on a console. Sounds are held fully decoded in memory (fine for effects; stream long pieces with `PlayMusic`), and so is a SoundFont. The built-in instrument is simple, and ignores MIDI's pitch-bend range setting (RPN 0).
+- **The 3DS:** padds and sound have run only in the Azahar emulator, not on a console. Sounds are held fully decoded in memory (fine for effects; stream long pieces with `PlayMusic`), and so is a SoundFont. The built-in instrument is simple, and ignores MIDI's pitch-bend range setting (RPN 0).
 
 ## Roadmap
 
-1. Padds on the 3DS, so AudioPadd and the rest run there as on desktops.
-2. **The Nintendo DS, with devkitPro's libnds** (devkitARM, the toolchain the 3DS builds already use). libnds has no threads, so every padd runs on the main thread there (see *Platforms without threads*); the rest, in order:
+1. **The Nintendo DS, with devkitPro's libnds** (devkitARM, the toolchain the 3DS builds already use). libnds has no threads, so every padd runs on the main thread there (see *Platforms without threads*); the rest, in order:
    1. A first `.nds` build, with the [melonDS](https://melonds.kuribo64.net) emulator run by Bazel as Azahar is for the 3DS.
    2. ScratchPadd built without threads: its locks and atomics through names that do nothing with one thread, `repeat()` run by the main loop rather than timer threads (waiting for the screen's next refresh in between), logging without spdlog (whose registry needs `std::mutex`), and a clock from the DS's hardware timers if `std::chrono::steady_clock` has none. The start and stop signalling should go through one helper, rather than an `#if` at each place it happens. Size matters too, with 4 MB of RAM for code and data.
    3. Cyclone on the DS, measured: the DS has no floating-point hardware, so `float` is done in software. A fixed-point `real` would suit it (Cyclone's `real` can already change, as the flex build shows), with the DS's hardware divide and square root.
