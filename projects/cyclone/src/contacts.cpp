@@ -520,7 +520,7 @@ void ContactResolver::resolveContacts(Contact *contacts, unsigned numContacts, r
   if (method == Method::sequentialImpulses) {
     if (numContacts == 0 && joints.empty())
       return;
-    beginStep(contacts, numContacts, duration, joints);
+    beginStep(contacts, numContacts, duration, 1, joints);
     resolveSubStep(duration, false);
     endStep();
     return;
@@ -865,10 +865,11 @@ void ContactResolver::wakeTouched(std::span<Contact> contacts, std::span<Joint *
 }
 
 void ContactResolver::beginStep(Contact *contacts, unsigned numContacts, real duration,
-                                std::span<Joint *const> joints) {
+                                unsigned subSteps, std::span<Joint *const> joints) {
   bodySlots.clear();
   stepContacts = std::span<Contact>(contacts, numContacts);
   stepJoints = joints;
+  stepSubSteps = subSteps;
   prepareContacts(contacts, numContacts, duration);
   for (Contact &contact : stepContacts)
     contact.keepAnchors();
@@ -976,7 +977,8 @@ void ContactResolver::resolveSubStep(real duration, bool contactsFollowBodies) {
     }
   }
 
-  sweepVelocities(&SolverContact::targetNormalVelocity, velocitySweeps);
+  sweepVelocities(&SolverContact::targetNormalVelocity,
+                  sweepsEachSubStep(velocitySweeps, stepSubSteps));
 
   // integrate() moved each body by its starting velocities; move it as if
   // it had had the resolved ones instead (semi-implicit Euler, as in
@@ -1002,7 +1004,8 @@ void ContactResolver::resolveSubStep(real duration, bool contactsFollowBodies) {
     }
   }
   settleJoints(duration);
-  sweepVelocities(&SolverContact::targetNormalVelocity, settleSweeps);
+  sweepVelocities(&SolverContact::targetNormalVelocity,
+                  sweepsEachSubStep(settleSweeps, stepSubSteps));
 
   removeOverlap(duration);
 
@@ -1126,8 +1129,8 @@ void ContactResolver::removeOverlap(real duration) {
   }
   setJointPositionTargets(duration);
 
-  for (positionIterationsUsed = 0; positionIterationsUsed < positionSweeps;
-       positionIterationsUsed++) {
+  const unsigned sweeps = sweepsEachSubStep(positionSweeps, stepSubSteps);
+  for (positionIterationsUsed = 0; positionIterationsUsed < sweeps; positionIterationsUsed++) {
     for (SolverContact &solverContact : solverContacts) {
       if (!solverContact.active() || solverContact.targetSeparatingSpeed <= 0)
         continue;

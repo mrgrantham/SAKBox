@@ -912,13 +912,28 @@ TEST(WorldTest, ForcesAddedByHandActThroughEverySubStep) {
   }
 }
 
-// Stacks stand just as still in sub-steps.
+// A step's sweeps are shared among its sub-steps, each taking its share
+// rounded up, and at least one.
+TEST(ResolveTogetherTest, SubStepsShareTheStepsSweeps) {
+  EXPECT_EQ(ContactResolver::sweepsEachSubStep(40, 1), 40u);
+  EXPECT_EQ(ContactResolver::sweepsEachSubStep(40, 4), 10u);
+  EXPECT_EQ(ContactResolver::sweepsEachSubStep(10, 4), 3u);
+  EXPECT_EQ(ContactResolver::sweepsEachSubStep(10, 8), 2u);
+  EXPECT_EQ(ContactResolver::sweepsEachSubStep(10, 16), 1u);
+  EXPECT_EQ(ContactResolver::sweepsEachSubStep(0, 4), 1u);
+}
+
+// Stacks stand just as still in sub-steps, sharing the step's sweeps: in 16,
+// each takes 3/1/1.
 TEST(ResolveTogetherTest, StacksStandInSubSteps) {
-  BoxWorld scene(stackOf(10), together);
-  scene.world.setSubSteps(4);
-  EXPECT_LT(scene.run(10), 2.0);
-  EXPECT_LT(farthestSideways(scene), 0.1);
-  EXPECT_LT(fastest(scene), 0.01);
+  for (unsigned subSteps : {4u, 8u, 16u}) {
+    SCOPED_TRACE(testing::Message() << subSteps << " sub-steps");
+    BoxWorld scene(stackOf(10), together);
+    scene.world.setSubSteps(subSteps);
+    EXPECT_LT(scene.run(10), 2.0);
+    EXPECT_LT(farthestSideways(scene), 0.1);
+    EXPECT_LT(fastest(scene), 0.01);
+  }
 }
 
 // A chain of five links stays joined as it swings down and whips about.

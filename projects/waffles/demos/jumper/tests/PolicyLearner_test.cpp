@@ -34,10 +34,10 @@ std::string tempPath(const std::string &name) {
 // fused multiply-adds off and Cyclone's maths functions are correctly
 // rounded (see the top-level README's "Floating-point results across
 // platforms"). Checked on macOS (Apple clang) and on Linux (GCC 14 and
-// Clang, on ARM64 and x86-64). It's 0.5059 m.
+// Clang, on ARM64 and x86-64). It's 0.5399 m.
 TEST(PolicyLearnerTest, SimulationIsTheSameEverywhere) {
   const double height = JumpHeight(nullptr);
-  EXPECT_EQ(height, 0x1.0304a1eb1ccd6p-1) << std::hexfloat << height;
+  EXPECT_EQ(height, 0x1.1467e00e32ff3p-1) << std::hexfloat << height;
   EXPECT_EQ(JumpHeight(nullptr), height);
 }
 

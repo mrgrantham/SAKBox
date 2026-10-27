@@ -141,7 +141,7 @@ auto statsAre(int stepsPerSecond, int subSteps) {
 } // namespace
 
 // Snapshots of the whole ragdoll arrive, its time keeping up with real time,
-// at 60 steps a second in 2 sub-steps to start
+// at 60 steps a second in 4 sub-steps to start
 TEST(RagdollPhysicsPaddTest, SendsSnapshotsInRealTime) {
   RunningSystem running;
   ViewerPadd &viewer = running.viewer();
@@ -169,8 +169,8 @@ TEST(RagdollPhysicsPaddTest, ControlsSetStepsAndSubSteps) {
   RunningSystem running;
   ViewerPadd &viewer = running.viewer();
   EXPECT_TRUE(viewer.changeControl("Steps a second", Controls::Integer(240)));
-  EXPECT_TRUE(viewer.changeControl("Sub-steps", Controls::Integer(4)));
-  ASSERT_TRUE(viewer.waitFor(statsAre(240, 4)));
+  EXPECT_TRUE(viewer.changeControl("Sub-steps", Controls::Integer(8)));
+  ASSERT_TRUE(viewer.waitFor(statsAre(240, 8)));
   const std::size_t from = viewer.snapshots().size();
   ASSERT_TRUE(viewer.waitFor([&](const auto &s) { return s.size() >= from + 10; }));
   const auto snapshots = viewer.snapshots();

@@ -138,15 +138,16 @@ TEST(RagdollTest, ComesToRestWhenResolvedTogether) {
 }
 
 // Sub-steps: smaller steps within each step stretch the joints far less
-// when the ragdoll hits the ground. Over 20 pushes, the worst any joint
-// stretched beyond its slack:
+// when the ragdoll hits the ground, sharing the step's sweeps (so costing
+// about the same; see ContactResolver::setSweeps). Over 20 pushes, the worst
+// any joint stretched beyond its slack:
 //
-//   steps a second   1 sub-step   2       4       8
-//   60               7.2 cm       0.7 cm  0.04 cm 0.001 cm
-//   20               64 cm        16 cm   2.4 cm  0.2 cm
+//   steps a second   1 sub-step   2        4         8
+//   60               7.2 cm       0.11 cm  0.004 cm  0.03 cm
+//   20               64 cm        10 cm    0.29 cm   0.04 cm
 //
-// Two, the demos' default (FixedSteps::kDefaultSubSteps), already cut it
-// several times. And it still comes to rest, if more slowly: an arm left
+// Four, the demos' default (FixedSteps::kDefaultSubSteps), cut it over a
+// hundred times. And it still comes to rest, if more slowly: an arm left
 // dangling (from a shoulder pulled to its full slack, the rest of the body on
 // the ground) swings like a pendulum, slowed only by the bones' angular
 // damping (its speed halves every 3 to 4 s), so some runs, in fixed point

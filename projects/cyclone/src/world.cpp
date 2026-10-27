@@ -236,8 +236,9 @@ void World::runPhysics(real_duration duration) {
           contactsFound(getStepContacts(), duration);
         if (calculateIterations)
           resolver.setIterations((contactCount + (unsigned)joints.size()) * 4 + 1);
-        timed(lastProfile.resolve,
-              [&] { resolver.beginStep(contacts.data(), contactCount, (real)subStep, joints); });
+        timed(lastProfile.resolve, [&] {
+          resolver.beginStep(contacts.data(), contactCount, (real)subStep, subSteps, joints);
+        });
       }
       timed(lastProfile.resolve, [&] { resolver.resolveSubStep((real)subStep, i > 0); });
     }

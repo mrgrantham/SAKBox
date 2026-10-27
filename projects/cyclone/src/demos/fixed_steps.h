@@ -21,14 +21,14 @@ public:
   static constexpr double kDefaultStepSeconds = 1.0 / 60;
   static constexpr unsigned kMostSubSteps = 16;
   /**
-   * The demos start with 2 sub-steps a step: the most gain for the least
-   * work. Over 20 pushed ragdolls at 60 steps a second, the most a joint
-   * stretched went from 6.7 cm in whole steps to 0.9 cm in 2 sub-steps (and
-   * 0.03 cm in 4), for twice the physics work (well under a millisecond a
-   * frame in these demos). See ragdoll_test. The engine itself
-   * (cyclone::World) still defaults to whole steps.
+   * The demos start with 4 sub-steps a step. They share the step's resolver
+   * sweeps (cyclone::ContactResolver::setSweeps), so they cost about what
+   * one does, and over 20 pushed ragdolls the most a joint stretched went
+   * from 7.2 cm in whole steps to 0.004 cm at 60 steps a second (64 cm to
+   * 0.3 cm at 20). See ragdoll_test. The engine itself (cyclone::World)
+   * still defaults to whole steps.
    */
-  static constexpr unsigned kDefaultSubSteps = 2;
+  static constexpr unsigned kDefaultSubSteps = 4;
   /**
    * A longer frame (a stall, a breakpoint) counts as this long: the
    * simulation slows down rather than taking ever more steps to catch up

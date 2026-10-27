@@ -184,18 +184,19 @@ public:
   }
 
 private:
-  // Sub-steps, and the resolver's velocity, settle and position sweeps
+  // Sub-steps, and the resolver's velocity, settle and position sweeps a
+  // step (shared among its sub-steps; see ContactResolver::setSweeps)
   struct Settings {
     unsigned stepsPerSecond, subSteps, velocitySweeps, settleSweeps, positionSweeps;
   };
-  // Cyclone's own sweeps (40, 10, 10) suit desktops; with sub-steps a few
-  // sweeps each are enough (Box2D v3 takes one), and on the DS they're what
-  // the time goes on
-  static constexpr Settings kRunSettings{60, 2, 8, 2, 2};
+  // Cyclone's own sweeps (40, 10, 10 a step) suit desktops; on the DS
+  // they're what the time goes on, so it takes 16, 4, 4 (8, 2, 2 in each of
+  // its two sub-steps; Box2D v3 takes one a sub-step)
+  static constexpr Settings kRunSettings{60, 2, 16, 4, 4};
   // Y's other step length: 30 steps a second
   static constexpr double kSlowStepSeconds = 1.0 / 30;
   static constexpr Settings kMeasured[] = {
-      {60, 1, 40, 10, 10}, {60, 2, 8, 2, 2}, {60, 4, 4, 1, 1}, {30, 2, 8, 2, 2}};
+      {60, 1, 40, 10, 10}, {60, 2, 16, 4, 4}, {60, 4, 16, 4, 4}, {30, 2, 16, 4, 4}};
   static constexpr int kStepsMeasured = 5;
 
   void useSettings(const Settings &settings) {
@@ -416,7 +417,7 @@ private:
       }
       ++row;
     }
-    std::printf("\x1b[%d;1HA step at 60/2, 8/2/2, ms:\x1b[K", ++row);
+    std::printf("\x1b[%d;1HA step at 60/2, 16/4/4, ms:\x1b[K", ++row);
     std::printf("\x1b[%d;1Hmove %.1f find %.1f solve %.1f\x1b[K", ++row,
                 benchmark_.integrateMilliseconds, benchmark_.contactsMilliseconds,
                 benchmark_.resolveMilliseconds);

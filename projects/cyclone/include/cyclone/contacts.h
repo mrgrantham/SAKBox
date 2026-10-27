@@ -27,6 +27,7 @@
 #define CYCLONE_CONTACTS_H
 
 #include "body.h"
+#include <algorithm>
 #include <span>
 #include <utility>
 #include <vector>
@@ -414,14 +415,30 @@ public:
 
   /**
    * SAKBox: for Method::sequentialImpulses, how many times each kind of
-   * sweep visits every contact (see resolveSubStep): velocity sweeps for
-   * pushes and friction, settle sweeps after the bodies have moved, and
-   * position sweeps for overlap. Unlike setIterations' counts these don't
-   * grow with the number of contacts; each sweep costs one visit per
-   * contact. The defaults, 40, 10 and 10, keep awake stacks of ten boxes
-   * still.
+   * sweep visits every contact in a step (see resolveSubStep): velocity
+   * sweeps for pushes and friction, settle sweeps after the bodies have
+   * moved, and position sweeps for overlap. Unlike setIterations' counts
+   * these don't grow with the number of contacts; each sweep costs one
+   * visit per contact. The defaults, 40, 10 and 10, keep awake stacks of
+   * ten boxes still.
+   *
+   * They're for a whole step: a step in sub-steps shares them out, each
+   * sub-step taking its share rounded up (sweepsEachSubStep), so more
+   * sub-steps cost about the same and hold joints far better. In 4
+   * sub-steps the defaults are 10/3/3 each; in 8, 5/2/2. A sub-step
+   * always takes at least one of each. (Box2D v3 takes one velocity sweep
+   * and one relax a sub-step, with soft constraints; these hard ones need
+   * a few more: at 1/1/1 a stack of ten never quite stops.)
    */
   void setSweeps(unsigned velocitySweeps, unsigned settleSweeps, unsigned positionSweeps);
+
+  /**
+   * SAKBox: a sub-step's share of `sweeps` a step, in a step of `subSteps`
+   * (see setSweeps): rounded up, so the step takes at least `sweeps`.
+   */
+  static unsigned sweepsEachSubStep(unsigned sweeps, unsigned subSteps) {
+    return std::max((sweeps + subSteps - 1) / std::max(subSteps, 1u), 1u);
+  }
 
   /**
    * SAKBox: forgets the pushes and friction kept from the last step for
@@ -435,10 +452,13 @@ protected:
   /** SAKBox: see setMethod. */
   Method method = Method::sequentialImpulses;
 
-  /** SAKBox: see setSweeps. */
+  /** SAKBox: see setSweeps (a whole step's). */
   unsigned velocitySweeps = 40;
   unsigned settleSweeps = 10;
   unsigned positionSweeps = 10;
+
+  /** SAKBox: how many sub-steps the step beginStep began has. */
+  unsigned stepSubSteps = 1;
 
   /**
    * SAKBox: the share of the overlap beyond positionEpsilon that each step
@@ -746,9 +766,10 @@ public:
    * contact's directions and how its bodies respond along them, and starts
    * it from last step's impulse (warm starting). Those are kept for the
    * step's sub-steps (the book suggests keeping contact calculations,
-   * section 16.2.4); `duration` is a sub-step's.
+   * section 16.2.4); `duration` is a sub-step's, and the step has
+   * `subSteps` of them, which share its sweeps (setSweeps).
    */
-  void beginStep(Contact *contacts, unsigned numContacts, real duration,
+  void beginStep(Contact *contacts, unsigned numContacts, real duration, unsigned subSteps,
                  std::span<Joint *const> joints);
 
   /**
