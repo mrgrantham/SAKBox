@@ -62,7 +62,7 @@ Small programs under `projects/examples/`, mostly one per library. Run any of th
 
 ## Third Party
 
-`third_party/` holds Bazel build files for libraries that aren't in the [Bazel Central Registry](https://registry.bazel.build/); `MODULE.bazel` points each one at its upstream source. Libraries that are in the registry (fmt, googletest, Catch2, Bullet, ...) are plain `bazel_dep`s.
+`third_party/` holds Bazel build files for libraries that aren't in the [Bazel Central Registry](https://registry.bazel.build/); `MODULE.bazel` points each one at its upstream source. Libraries that are in the registry (fmt, googletest, Catch2, ...) are plain `bazel_dep`s.
 
 ## Editor Setup
 
