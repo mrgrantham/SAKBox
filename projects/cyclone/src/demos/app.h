@@ -266,7 +266,7 @@ public:
 #define RIGID_BODY_KEYS                                                                            \
   "P: run/pause   Space: one step   R: reset   C: contacts   Drag: camera\n"                       \
   "M: switch contact resolver (shown bottom right)\n"                                              \
-  "[ ]: fewer/more physics sub-steps"
+  "[ ]: fewer/more physics sub-steps   B: blend drawing between steps"
 
 /**
  * This application adds additional functionality used in many of the
@@ -338,6 +338,23 @@ protected:
    * how many), whatever the frame rate
    */
   FixedSteps physicsClock;
+
+  /**
+   * SAKBox: whether bodies are drawn blended between their last two steps
+   * (B turns it off and on), so they move smoothly on screens whose frames
+   * don't fall on the steps, one step behind
+   */
+  bool blendDrawing = true;
+
+  /**
+   * SAKBox: how far between their last step and now to draw the bodies
+   * (cyclone::RigidBody::getBlendedGLTransform): how far the frame is into
+   * the next step, or 1 (where they are) when paused or not blending
+   */
+  cyclone::real drawFraction() const {
+    return pauseSimulation || !blendDrawing ? (cyclone::real)1
+                                            : (cyclone::real)physicsClock.stepFraction();
+  }
 
   /** SAKBox: milliseconds of physics a frame, smoothed (for the corner) */
   double physicsMilliseconds = 0;

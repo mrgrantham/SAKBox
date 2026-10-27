@@ -45,10 +45,10 @@ public:
   ~AmmoRound() { delete body; }
 
   /** Draws the box, excluding its shadow. */
-  void render() {
+  void render(cyclone::real fraction) {
     // Get the OpenGL transformation
     GLfloat mat[16];
-    body->getGLTransform(mat);
+    body->getBlendedGLTransform(fraction, mat);
 
     glPushMatrix();
     glMultMatrixf(mat);
@@ -117,6 +117,8 @@ public:
 
     // Clear the force accumulators
     body->calculateDerivedData();
+    // SAKBox: drawn from the gun, not blended from where the round last was
+    body->rememberPose();
     calculateInternals();
   }
 };
@@ -131,10 +133,10 @@ public:
   ~Box() { delete body; }
 
   /** Draws the box, excluding its shadow. */
-  void render() {
+  void render(cyclone::real fraction) {
     // Get the OpenGL transformation
     GLfloat mat[16];
-    body->getGLTransform(mat);
+    body->getBlendedGLTransform(fraction, mat);
 
     glPushMatrix();
     glMultMatrixf(mat);
@@ -373,7 +375,7 @@ void BigBallisticDemo::display() {
   glColor3f(1, 0, 0);
   for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
     if (shot->type != UNUSED) {
-      shot->render();
+      shot->render(drawFraction());
     }
   }
 
@@ -385,7 +387,7 @@ void BigBallisticDemo::display() {
   glEnable(GL_COLOR_MATERIAL);
   glColor3f(1, 0, 0);
   for (Box *box = boxData; box < boxData + boxes; box++) {
-    box->render();
+    box->render(drawFraction());
   }
   glDisable(GL_COLOR_MATERIAL);
   glDisable(GL_LIGHTING);

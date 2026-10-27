@@ -74,3 +74,16 @@ TEST(FixedStepsTest, SubStepsSplitTheStep) {
   clock.setSubSteps(1000);
   EXPECT_EQ(clock.subSteps(), FixedSteps::kMostSubSteps);
 }
+
+// How far the time is into the next step, for drawing between steps: 0
+// just after a step (or while one came early), up to 1 just before the next.
+TEST(FixedStepsTest, StepFractionIsHowFarIntoTheNextStep) {
+  FixedSteps clock;
+  EXPECT_EQ(clock.stepFraction(), 0);
+  EXPECT_EQ(clock.stepsFor(kStep * 0.5), 0u);
+  EXPECT_NEAR(clock.stepFraction(), 0.5, 1e-12);
+  EXPECT_EQ(clock.stepsFor(kStep * 0.6), 1u);
+  EXPECT_NEAR(clock.stepFraction(), 0.1, 1e-12);
+  EXPECT_EQ(clock.stepsFor(kStep * 0.7), 1u); // due a quarter step early
+  EXPECT_EQ(clock.stepFraction(), 0);
+}

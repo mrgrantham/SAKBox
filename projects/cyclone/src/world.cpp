@@ -200,9 +200,15 @@ void World::integrate(real_duration duration, bool firstSubStep) {
     shape->calculateInternals();
 }
 
+void World::rememberPoses() {
+  for (RigidBody *body : bodies)
+    body->rememberPose();
+}
+
 void World::runPhysics(real_duration duration) {
   // SAKBox: in sub-steps (see setSubSteps)
   lastProfile = {};
+  rememberPoses();
   const unsigned subSteps = settings.subSteps;
   const real_duration subStep = duration / subSteps;
   if (subSteps > 1) {

@@ -494,6 +494,24 @@ public:
   }
 
   /**
+   * SAKBox: the orientation `fraction` of the way from `from` to `to` (0
+   * to 1), turning the shorter way round: their components blended and
+   * normalised ("nlerp"). It turns a little unevenly over a big turn, but
+   * between two steps a body turns little, and it's far cheaper than a
+   * slerp.
+   */
+  static Quaternion blend(const Quaternion &from, const Quaternion &to, real fraction) {
+    // q and -q are the same orientation: blend towards whichever is nearer
+    const real dot = from.r * to.r + from.i * to.i + from.j * to.j + from.k * to.k;
+    const real sign = dot < 0 ? (real)-1 : (real)1;
+    Quaternion blended(
+        from.r + (to.r * sign - from.r) * fraction, from.i + (to.i * sign - from.i) * fraction,
+        from.j + (to.j * sign - from.j) * fraction, from.k + (to.k * sign - from.k) * fraction);
+    blended.normalise();
+    return blended;
+  }
+
+  /**
    * Multiplies the quaternion by the given quaternion.
    *
    * @param multiplier The quaternion by which to multiply.

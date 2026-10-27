@@ -222,6 +222,16 @@ protected:
    */
   Matrix4 transformMatrix;
 
+  /**
+   * SAKBox: the body's position and orientation at the start of the last
+   * step (see rememberPose), for drawing it between steps.
+   */
+  Vector3 previousPosition;
+  Quaternion previousOrientation;
+
+  /** SAKBox: whether rememberPose has been called since the body was made. */
+  bool poseRemembered = false;
+
   /*@}*/
 
   /**
@@ -677,6 +687,35 @@ public:
    * @param matrix A pointer to the matrix to fill.
    */
   void getGLTransform(float matrix[16]) const;
+
+  /**
+   * SAKBox: remembers where the body is now, to draw it between this pose
+   * and the next (getBlendedTransform). World calls it for each of its
+   * bodies at the start of every step. Call it after placing a body by hand
+   * (resetting or teleporting it), so it isn't drawn sliding over from where
+   * it was; until it's first called, the body is drawn where it is.
+   */
+  void rememberPose();
+
+  /**
+   * SAKBox: where the body is `fraction` of the way from its remembered
+   * pose (rememberPose: the start of the last step) to where it is now, for
+   * drawing it between steps. A game whose frames don't fall on its steps
+   * draws each frame `fraction` = how far the frame is into the next step,
+   * so it moves smoothly, one step behind the simulation ("Fix Your
+   * Timestep!", Glenn Fiedler; Bullet blends its motion states the same
+   * way). 1 is where it is now.
+   */
+  Vector3 getBlendedPosition(real fraction) const;
+
+  /** SAKBox: as getBlendedPosition, for the orientation (Quaternion::blend). */
+  Quaternion getBlendedOrientation(real fraction) const;
+
+  /** SAKBox: as getTransform, blended (see getBlendedPosition). */
+  Matrix4 getBlendedTransform(real fraction) const;
+
+  /** SAKBox: as getGLTransform, blended (see getBlendedPosition). */
+  void getBlendedGLTransform(real fraction, float matrix[16]) const;
 
   /**
    * Gets a transformation representing the rigid body's

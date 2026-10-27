@@ -57,9 +57,9 @@ public:
   }
 
   // Draws the box (red: awake, blue: asleep)
-  void render() const {
+  void render(cyclone::real fraction) const {
     GLfloat mat[16];
-    body->getGLTransform(mat);
+    body->getBlendedGLTransform(fraction, mat);
     if (body->getAwake())
       glColor3f(1.0f, 0.7f, 0.7f);
     else
@@ -71,9 +71,9 @@ public:
   }
 
   // Draws its shadow on the ground
-  void renderShadow() const {
+  void renderShadow(cyclone::real fraction) const {
     GLfloat mat[16];
-    body->getGLTransform(mat);
+    body->getBlendedGLTransform(fraction, mat);
     glPushMatrix();
     glScalef(1.0f, 0, 1.0f);
     glMultMatrixf(mat);
@@ -165,7 +165,7 @@ void StackDemo::display() {
   glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
   for (const auto &box : boxes)
-    box->render();
+    box->render(drawFraction());
   glPopMatrix();
   glDisable(GL_LIGHTING);
   glDisable(GL_COLOR_MATERIAL);
@@ -187,7 +187,7 @@ void StackDemo::display() {
   glDisable(GL_DEPTH_TEST);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   for (const auto &box : boxes)
-    box->renderShadow();
+    box->renderShadow(drawFraction());
   glDisable(GL_BLEND);
 
   // The boxes
@@ -197,7 +197,7 @@ void StackDemo::display() {
   glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
   for (const auto &box : boxes)
-    box->render();
+    box->render(drawFraction());
   glDisable(GL_COLOR_MATERIAL);
   glDisable(GL_LIGHTING);
   glDisable(GL_DEPTH_TEST);

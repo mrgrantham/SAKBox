@@ -319,9 +319,11 @@ std::string RigidBodyApplication::soundState() {
 void RigidBodyApplication::renderPhysicsSteps() {
   char text[128];
   std::snprintf(
-      text, sizeof text, "Physics: %d steps a second, %u sub-step%s each ([ ]), %.2f ms a frame",
+      text, sizeof text,
+      "Physics: %d steps a second, %u sub-step%s each ([ ]), drawn %s (B), %.2f ms a frame",
       static_cast<int>(std::lround(1 / physicsClock.stepSeconds())), physicsClock.subSteps(),
-      physicsClock.subSteps() == 1 ? "" : "s", physicsMilliseconds);
+      physicsClock.subSteps() == 1 ? "" : "s", blendDrawing ? "blended" : "unblended",
+      physicsMilliseconds);
   const float textWidth = (float)stb_easy_font_width(text);
   glColor3f(0.1f, 0.1f, 0.15f);
   renderText(width / pixelScale - textWidth - 10.0f, 40.0f, text);
@@ -386,6 +388,14 @@ void RigidBodyApplication::key(unsigned char key) {
   case 'r':
     // Reset the simulation
     reset();
+    // SAKBox: drawn where they are now, not sliding from before the reset
+    getWorld().rememberPoses();
+    return;
+
+  case 'B':
+  case 'b':
+    // SAKBox: draw blended between steps, or as the last step left them
+    blendDrawing = !blendDrawing;
     return;
 
   case 'C':

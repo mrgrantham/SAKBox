@@ -332,26 +332,59 @@ void RigidBody::getTransform(real matrix[16]) const {
   matrix[15] = 1;
 }
 
-void RigidBody::getGLTransform(float matrix[16]) const {
-  matrix[0] = (float)transformMatrix.data[0];
-  matrix[1] = (float)transformMatrix.data[4];
-  matrix[2] = (float)transformMatrix.data[8];
+namespace {
+// `transform` as OpenGL takes it: transposed, as floats, with its last row
+void toGLTransform(const Matrix4 &transform, float matrix[16]) {
+  matrix[0] = (float)transform.data[0];
+  matrix[1] = (float)transform.data[4];
+  matrix[2] = (float)transform.data[8];
   matrix[3] = 0;
 
-  matrix[4] = (float)transformMatrix.data[1];
-  matrix[5] = (float)transformMatrix.data[5];
-  matrix[6] = (float)transformMatrix.data[9];
+  matrix[4] = (float)transform.data[1];
+  matrix[5] = (float)transform.data[5];
+  matrix[6] = (float)transform.data[9];
   matrix[7] = 0;
 
-  matrix[8] = (float)transformMatrix.data[2];
-  matrix[9] = (float)transformMatrix.data[6];
-  matrix[10] = (float)transformMatrix.data[10];
+  matrix[8] = (float)transform.data[2];
+  matrix[9] = (float)transform.data[6];
+  matrix[10] = (float)transform.data[10];
   matrix[11] = 0;
 
-  matrix[12] = (float)transformMatrix.data[3];
-  matrix[13] = (float)transformMatrix.data[7];
-  matrix[14] = (float)transformMatrix.data[11];
+  matrix[12] = (float)transform.data[3];
+  matrix[13] = (float)transform.data[7];
+  matrix[14] = (float)transform.data[11];
   matrix[15] = 1;
+}
+} // namespace
+
+void RigidBody::getGLTransform(float matrix[16]) const { toGLTransform(transformMatrix, matrix); }
+
+void RigidBody::rememberPose() {
+  previousPosition = position;
+  previousOrientation = orientation;
+  poseRemembered = true;
+}
+
+Vector3 RigidBody::getBlendedPosition(real fraction) const {
+  if (!poseRemembered)
+    return position;
+  return previousPosition + (position - previousPosition) * fraction;
+}
+
+Quaternion RigidBody::getBlendedOrientation(real fraction) const {
+  if (!poseRemembered)
+    return orientation;
+  return Quaternion::blend(previousOrientation, orientation, fraction);
+}
+
+Matrix4 RigidBody::getBlendedTransform(real fraction) const {
+  Matrix4 transform;
+  transform.setOrientationAndPos(getBlendedOrientation(fraction), getBlendedPosition(fraction));
+  return transform;
+}
+
+void RigidBody::getBlendedGLTransform(real fraction, float matrix[16]) const {
+  toGLTransform(getBlendedTransform(fraction), matrix);
 }
 
 Matrix4 RigidBody::getTransform() const { return transformMatrix; }

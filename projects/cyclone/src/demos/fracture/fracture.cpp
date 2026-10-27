@@ -42,10 +42,10 @@ public:
   ~Block() { delete body; }
 
   /** Draws the block. */
-  void render() {
+  void render(cyclone::real fraction) {
     // Get the OpenGL transformation
     GLfloat mat[16];
-    body->getGLTransform(mat);
+    body->getBlendedGLTransform(fraction, mat);
 
     if (body->getAwake())
       glColor3f(1.0f, 0.7f, 0.7f);
@@ -211,6 +211,8 @@ public:
       blocks[i].body->setAcceleration(cyclone::Vector3::GRAVITY);
       blocks[i].body->clearAccumulators();
       blocks[i].body->calculateDerivedData();
+      // SAKBox: drawn from here, not blended from where this body last was
+      blocks[i].body->rememberPose();
       blocks[i].offset = cyclone::Matrix4();
       blocks[i].exists = true;
       blocks[i].halfSize = halfSize;
@@ -390,7 +392,7 @@ void FractureDemo::display() {
   glEnable(GL_NORMALIZE);
   for (Block *block = blocks; block < blocks + MAX_BLOCKS; block++) {
     if (block->exists)
-      block->render();
+      block->render(drawFraction());
   }
   glDisable(GL_NORMALIZE);
 

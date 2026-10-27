@@ -30,11 +30,11 @@
 #include <algorithm>
 #include <cstdio>
 
-/** Draws a bone. */
-static void renderBone(const ragdoll::Bone &bone) {
+/** Draws a bone, `fraction` of the way from its last step to now. */
+static void renderBone(const ragdoll::Bone &bone, cyclone::real fraction) {
   // Get the OpenGL transformation
   GLfloat mat[16];
-  bone.body->getGLTransform(mat);
+  bone.body->getBlendedGLTransform(fraction, mat);
 
   if (bone.body->getAwake())
     glColor3f(0.5f, 0.3f, 0.3f);
@@ -133,7 +133,7 @@ void RagdollDemo::display() {
   glEnable(GL_NORMALIZE);
   glColor3f(1, 0, 0);
   for (const ragdoll::Bone &bone : model.bones) {
-    renderBone(bone);
+    renderBone(bone, drawFraction());
   }
   glDisable(GL_NORMALIZE);
 

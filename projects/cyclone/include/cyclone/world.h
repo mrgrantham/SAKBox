@@ -224,8 +224,17 @@ public:
    * integration, and each later sub-step brings them up to where their
    * bodies are now (Contact::followAnchors) rather than finding them
    * afresh. With the book's resolver, each sub-step finds them afresh.
+   * First it remembers each body's pose (RigidBody::rememberPose), to draw
+   * it between this step and the next.
    */
   void runPhysics(real_duration duration);
+
+  /**
+   * SAKBox: remembers every body's pose as it is now (see
+   * RigidBody::rememberPose): call it after placing the bodies by hand, as
+   * a reset does, so they aren't drawn sliding from where they were.
+   */
+  void rememberPoses();
 
   /**
    * SAKBox: runs the physics in this many steps of duration / count each

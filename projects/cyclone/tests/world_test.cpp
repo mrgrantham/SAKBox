@@ -233,3 +233,34 @@ TEST(WorldTest, RemovingABodyRemovesItsShapes) {
   EXPECT_EQ(scene.world.getBodies().size(), 1u);
   EXPECT_EQ(scene.contactsBetween(removed.body, nullptr), 0u);
 }
+
+// Each step remembers where every body started it, so it can be drawn
+// between there and where it is now: a quarter of the way at 0.25, turned a
+// quarter of the way too. A body placed by hand is drawn where it is, once
+// its new pose is remembered (or before any is).
+TEST(WorldTest, BodiesAreDrawnBlendedBetweenSteps) {
+  Scene scene;
+  RigidBody &body = *scene.sphere(Vector3(0, 5, 0), 0.5).body;
+  EXPECT_EQ(body.getBlendedPosition(0).y, 5); // nothing remembered yet: where it is
+  body.setRotation(Vector3(0, 6, 0));         // turning about y
+  const Vector3 start = body.getPosition();
+  scene.world.startFrame();
+  scene.world.runPhysics(1.0 / 60);
+  const Vector3 now = body.getPosition();
+  EXPECT_LT(now.y, start.y);
+  EXPECT_NEAR(body.getBlendedPosition(0).y, start.y, 1e-12);
+  EXPECT_NEAR(body.getBlendedPosition(1).y, now.y, 1e-12);
+  EXPECT_NEAR(body.getBlendedPosition(0.25).y, start.y + (now.y - start.y) * 0.25, 1e-12);
+
+  // The angle turned, from the orientation's real part: cos(angle / 2)
+  auto turned = [](const Quaternion &q) { return 2 * std::acos(std::min<double>(q.r, 1)); };
+  const double fullTurn = turned(body.getOrientation());
+  EXPECT_GT(fullTurn, 0.05);
+  EXPECT_NEAR(turned(body.getBlendedOrientation(0.25)), fullTurn * 0.25, 1e-3);
+  const Matrix4 blended = body.getBlendedTransform(0.25);
+  EXPECT_NEAR(blended.getAxisVector(3).y, body.getBlendedPosition(0.25).y, 1e-12);
+
+  body.setPosition(Vector3(10, 5, 0)); // teleported
+  scene.world.rememberPoses();
+  EXPECT_EQ(body.getBlendedPosition(0).x, 10);
+}

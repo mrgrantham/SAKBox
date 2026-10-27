@@ -53,6 +53,13 @@ public:
    * How long each step is: kDefaultStepSeconds to start. Changing it keeps
    * the time not yet stepped.
    */
+  /**
+   * How far the time so far is into the next step, from 0 to 1: the
+   * fraction to draw bodies at between their last step and now (see
+   * cyclone::RigidBody::getBlendedPosition). 0 while a step came early.
+   */
+  double stepFraction() const { return std::clamp(pending_ / stepSeconds_, 0.0, 1.0); }
+
   void setStepSeconds(double seconds) { stepSeconds_ = seconds; }
   double stepSeconds() const { return stepSeconds_; }
 

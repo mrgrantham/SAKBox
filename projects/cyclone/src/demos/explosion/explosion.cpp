@@ -39,10 +39,10 @@ public:
   ~Ball() { delete body; }
 
   /** Draws the box, excluding its shadow. */
-  void render() {
+  void render(cyclone::real fraction) {
     // Get the OpenGL transformation
     GLfloat mat[16];
-    body->getGLTransform(mat);
+    body->getBlendedGLTransform(fraction, mat);
 
     if (body->getAwake())
       glColor3f(1.0f, 0.7f, 0.7f);
@@ -56,10 +56,10 @@ public:
   }
 
   /** Draws the ground plane shadow for the box. */
-  void renderShadow() {
+  void renderShadow(cyclone::real fraction) {
     // Get the OpenGL transformation
     GLfloat mat[16];
-    body->getGLTransform(mat);
+    body->getBlendedGLTransform(fraction, mat);
 
     glPushMatrix();
     glScalef(1.0f, 0, 1.0f);
@@ -115,10 +115,10 @@ public:
   ~Box() { delete body; }
 
   /** Draws the box, excluding its shadow. */
-  void render() {
+  void render(cyclone::real fraction) {
     // Get the OpenGL transformation
     GLfloat mat[16];
-    body->getGLTransform(mat);
+    body->getBlendedGLTransform(fraction, mat);
 
     if (isOverlapping)
       glColor3f(0.7f, 1.0f, 0.7f);
@@ -135,10 +135,10 @@ public:
   }
 
   /** Draws the ground plane shadow for the box. */
-  void renderShadow() {
+  void renderShadow(cyclone::real fraction) {
     // Get the OpenGL transformation
     GLfloat mat[16];
-    body->getGLTransform(mat);
+    body->getBlendedGLTransform(fraction, mat);
 
     glPushMatrix();
     glScalef(1.0f, 0, 1.0f);
@@ -377,10 +377,10 @@ void ExplosionDemo::display() {
   glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
   for (Box *box = boxData; box < boxData + boxes; box++) {
-    box->render();
+    box->render(drawFraction());
   }
   for (Ball *ball = ballData; ball < ballData + balls; ball++) {
-    ball->render();
+    ball->render(drawFraction());
   }
   glPopMatrix();
   glDisable(GL_LIGHTING);
@@ -423,10 +423,10 @@ void ExplosionDemo::display() {
   glDisable(GL_DEPTH_TEST);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   for (Box *box = boxData; box < boxData + boxes; box++) {
-    box->renderShadow();
+    box->renderShadow(drawFraction());
   }
   for (Ball *ball = ballData; ball < ballData + balls; ball++) {
-    ball->renderShadow();
+    ball->renderShadow(drawFraction());
   }
   glDisable(GL_BLEND);
 
@@ -437,10 +437,10 @@ void ExplosionDemo::display() {
   glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
   for (Box *box = boxData; box < boxData + boxes; box++) {
-    box->render();
+    box->render(drawFraction());
   }
   for (Ball *ball = ballData; ball < ballData + balls; ball++) {
-    ball->render();
+    ball->render(drawFraction());
   }
   glDisable(GL_COLOR_MATERIAL);
   glDisable(GL_LIGHTING);

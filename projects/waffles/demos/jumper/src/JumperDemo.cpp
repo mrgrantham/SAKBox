@@ -8,12 +8,13 @@
 
 namespace
 {
-// Runs `draw` placed where `shape`'s body is
+// Runs `draw` placed where `shape`'s body is, `fraction` of the way from its
+// last step to now
 template<typename Draw>
-void drawOnBody(const cyclone::CollisionPrimitive& shape, Draw draw)
+void drawOnBody(const cyclone::CollisionPrimitive& shape, cyclone::real fraction, Draw draw)
 {
 	GLfloat transform[16];
-	shape.body->getGLTransform(transform);
+	shape.body->getBlendedGLTransform(fraction, transform);
 	glPushMatrix();
 	glMultMatrixf(transform);
 	draw();
@@ -88,14 +89,14 @@ public:
 		for(unsigned part = 0; part < Robot::capsuleCount; part++)
 		{
 			const cyclone::CollisionCapsule& capsule = robot.capsule(Robot::Part(part));
-			drawOnBody(capsule, [&]
+			drawOnBody(capsule, drawFraction(), [&]
 			{ solidCapsule(capsule.radius, capsule.halfLength, 16); });
 		}
 		glColor3f(0.3f, 0.3f, 0.35f);
 		for(Robot::Part part : {Robot::leftFoot, Robot::rightFoot})
 		{
 			const cyclone::CollisionBox& foot = robot.foot(part);
-			drawOnBody(foot, [&]
+			drawOnBody(foot, drawFraction(), [&]
 			{
 				glScaled(foot.halfSize.x * 2, foot.halfSize.y * 2, foot.halfSize.z * 2);
 				solidCube(1);
