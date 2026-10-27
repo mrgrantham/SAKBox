@@ -25,6 +25,7 @@ class JumperDemo : public RigidBodyApplication
 protected:
 	Jumper m_jumper;
 	double m_highest = 0; // the highest its lowest point has been this jump
+	unsigned m_subStepsTaken = 0;
 
 	void updateObjects(cyclone::real duration) override { m_jumper.move(duration); }
 
@@ -32,12 +33,19 @@ protected:
 
 	std::span<cyclone::Joint* const> getJoints() override { return m_jumper.robot().joints(); }
 
-	void afterStep() override { m_highest = std::max(m_highest, m_jumper.robot().lowestPoint()); }
+	// The height after each whole step, as JumpHeight measures it, so the
+	// highest shown is the height the policy scored
+	void afterStep() override
+	{
+		if(++m_subStepsTaken % physicsClock.subSteps() == 0)
+			m_highest = std::max(m_highest, m_jumper.robot().lowestPoint());
+	}
 
 	void reset() override
 	{
 		m_jumper.reset();
 		m_highest = 0;
+		m_subStepsTaken = 0;
 		cData.contactCount = 0;
 	}
 
