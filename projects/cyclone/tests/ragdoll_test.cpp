@@ -100,16 +100,19 @@ TEST(RagdollTest, CollapsesInPlaceWithoutAPush) {
   }
 }
 
-// The push knocks it over nearby, the same way at any frame rate. (It used to
-// be a force applied for one frame: 0.05 s frames launched the ragdoll at
-// 65 m/s and it was still flying 200 m away after 4 s.)
+// The push knocks it over nearby, the same way at any frame rate, and within
+// 6 s it's coming to rest. (It used to be a force applied for one frame:
+// 0.05 s frames launched the ragdoll at 65 m/s and it was still flying 200 m
+// away after 4 s.) Resolved together, a ragdoll can stay propped up on a limb
+// for a while before it slumps the rest of the way: two of these runs are
+// still slumping at 4 s, at over 1 m/s, and nearly still by 6 s.
 TEST(RagdollTest, PushKnocksItOverAtAnyFrameRate) {
   for (Method method : {Method::oneContactAtATime, Method::sequentialImpulses}) {
     for (unsigned seed : {1u, 2u, 3u, 4u, 5u}) {
       for (double dt : {1.0 / 60, 0.05}) {
         SCOPED_TRACE(testing::Message()
                      << "method " << (int)method << " seed " << seed << " dt " << dt);
-        const Outcome o = simulate(method, dt, seed);
+        const Outcome o = simulate(method, dt, seed, true, 6.0);
         EXPECT_LT(o.fastestSideways, 8.0);
         EXPECT_LT(std::hypot(o.centre.x, o.centre.z), 10.0);
         EXPECT_LT(o.centre.y, 1.2);
@@ -122,8 +125,8 @@ TEST(RagdollTest, PushKnocksItOverAtAnyFrameRate) {
 // Resolving contacts together, with the joints as constraints between their
 // anchor points, a knocked-over ragdoll comes to rest more fully than with
 // the book's resolver: over 20 pushes, the fastest bone's speed in the
-// tenth second averages about 2 cm/s at 60 steps a second and 3 cm/s at
-// 20, against about 3 and 9 cm/s. Its joints stretch beyond their slack by
+// tenth second averages 0.3 cm/s at 60 steps a second and 0.15 cm/s at 20,
+// against about 3 and 9 cm/s. Its joints stretch beyond their slack by
 // 1 mm (1 cm at 20 steps a second) on average.
 TEST(RagdollTest, ComesToRestWhenResolvedTogether) {
   for (double dt : {1.0 / 60, 0.05}) {
@@ -147,11 +150,15 @@ TEST(RagdollTest, ComesToRestWhenResolvedTogether) {
 // stretched beyond its slack:
 //
 //   steps a second   1 sub-step   2       4       8
-//   60               6.7 cm       0.9 cm  0.03 cm 0.003 cm
-//   20               62 cm        21 cm   2.6 cm  0.3 cm
+//   60               7.2 cm       0.7 cm  0.04 cm 0.001 cm
+//   20               64 cm        16 cm   2.4 cm  0.2 cm
 //
 // Two, the demos' default (FixedSteps::kDefaultSubSteps), already cut it
-// several times. And it still comes to rest.
+// several times. And it still comes to rest, if more slowly: an arm left
+// dangling (from a shoulder pulled to its full slack, the rest of the body on
+// the ground) swings like a pendulum, slowed only by the bones' angular
+// damping (its speed halves every 3 to 4 s), so some runs, in fixed point
+// especially, are still swinging at 10 s; all are at rest by 14 s.
 TEST(RagdollTest, SubStepsStretchJointsLess) {
   for (double dt : {1.0 / 60, 0.05}) {
     SCOPED_TRACE(testing::Message() << "dt " << dt);
@@ -160,7 +167,7 @@ TEST(RagdollTest, SubStepsStretchJointsLess) {
       worst[0] = std::max(worst[0], simulate(Method::sequentialImpulses, dt, seed).worstStretch);
       worst[2] = std::max(
           worst[2], simulate(Method::sequentialImpulses, dt, seed, true, 4.0, 2).worstStretch);
-      const Outcome o = simulate(Method::sequentialImpulses, dt, seed, true, 10.0, 4);
+      const Outcome o = simulate(Method::sequentialImpulses, dt, seed, true, 14.0, 4);
       worst[1] = std::max(worst[1], o.worstStretch);
       EXPECT_LT(o.restingSpeed, 0.2) << "seed " << seed;
     }

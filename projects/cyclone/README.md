@@ -111,9 +111,10 @@ Moving the bodies by the change in velocity (step 4) is what stopped both the sw
 - **Slack (`error` above 0):** a cable, as the book's joint behaves. It only pulls, along the line between the anchors, once they are `error` apart; until then they may move apart freely, up to the slack this step but no further. This is Box2D's rope joint.
 - Each end uses its own anchor, so the lever arms are right. The book's resolver instead gets the contact `Joint::addContact` makes, at the midpoint between the anchors, which is what it always had.
 - Bodies joined by a joint wake and sleep together.
+- A cable's starting speed, which sets how far it may stretch this step, is taken from the velocities the bodies had when `integrate()` moved them, before any warm start. It was taken after the joints set up before it had warm-started, which changes the velocities of any body they share, so in a chain like the ragdoll each joint felt its neighbours' kicks: the ragdoll jittered at rest (1.9 cm/s at 60 steps a second, 3.3 at 20; now 0.3 and 0.15).
 - A joint can also limit how its bodies turn: see [Hinges and cones](#hinges-and-cones).
 
-The ragdoll comes to rest better this way than with the book's resolver. Over 20 pushes, its fastest bone in the tenth second averages 1.9 cm/s at 60 steps a second and 3.3 cm/s at 20, where the book's resolver leaves it jittering at 3.2 and 9.2 cm/s. Its joints stretch beyond their slack by 1 mm on average (1 cm at 20 steps a second). Stopping collisions between bones a joint connects, which Erin Catto recommends for ragdolls ("Ragdolls", GDC 2012), made no difference, so they still collide. Box2D damps a ragdoll's limbs with friction in each joint; with joints solved this way the ragdoll comes to rest without it.
+The ragdoll comes to rest better this way than with the book's resolver. Over 20 pushes, its fastest bone in the tenth second averages 0.3 cm/s at 60 steps a second and 0.15 cm/s at 20, where the book's resolver leaves it jittering at 3.2 and 9.2 cm/s. Its joints stretch beyond their slack by 1 mm on average (1 cm at 20 steps a second). In sub-steps it takes longer: an arm left dangling from a shoulder at its full slack swings like a pendulum, slowed only by damping, so with four sub-steps some pushes leave it swinging for over 10 s. Stopping collisions between bones a joint connects, which Erin Catto recommends for ragdolls ("Ragdolls", GDC 2012), made no difference, so they still collide. Box2D damps a ragdoll's limbs with friction in each joint; with joints solved this way the ragdoll comes to rest without it.
 
 ### Hinges and cones
 
@@ -134,7 +135,7 @@ world.getJoints().push_back(&knee);
 
 `getAngle()` gives a hinge's angle now. `ConeJoint::setAxis(worldAxis, maxAngle)` lets body two's axis tilt any way, up to `maxAngle` from body one's: the swing limit of Bullet's cone-twist joint (it has no twist limit). Both need contacts resolved together; the book's resolver takes only their anchors (`Joint::addContact`). A joint measures its angles from its bodies' orientations as they are (`RigidBody::getOrientationNow`), since the resolver turns bodies without updating their transforms.
 
-A row's starting speed, which a limit uses to work out how far it may turn this step, is taken from the velocities the bodies had when `integrate()` moved them, before any warm start: measured after the anchors' warm start, a hinged pendulum resting on its limit was let through every other step.
+A row's starting speed, which a limit uses to work out how far it may turn this step, is taken from the velocities the bodies had when `integrate()` moved them, before any warm start, as a cable's is (see [Joints](#joints)): measured after the anchors' warm start, a hinged pendulum resting on its limit was let through every other step.
 
 ### Capsules
 
@@ -171,14 +172,14 @@ Splitting each step into smaller ones makes joints hold far better when somethin
 
 The rigid-body demos step the same way (`RigidBodyApplication::runStep`): `[` and `]` set 1 to 16 sub-steps, and the bottom right shows how many and how long the physics takes a frame. The ragdoll shows, bottom left, the most any joint has stretched since R.
 
-**The demos start at 2 sub-steps** (`FixedSteps::kDefaultSubSteps`): the biggest gain for the least work. In the table below, going from 1 to 2 cuts the ragdoll's worst stretch over seven times at 60 steps a second, while each further doubling costs as much again for a stretch already under a centimetre. Two sub-steps double the physics work, which is still well under a millisecond a frame in these demos. Press `[` for whole steps, as before, or `]` for more. `World` itself still defaults to 1 (`setSubSteps` to change it), so code using the engine directly keeps its cost and results unless it asks for sub-steps.
+**The demos start at 2 sub-steps** (`FixedSteps::kDefaultSubSteps`): the biggest gain for the least work. In the table below, going from 1 to 2 cuts the ragdoll's worst stretch ten times at 60 steps a second, while each further doubling costs as much again for a stretch already under a centimetre. Two sub-steps double the physics work, which is still well under a millisecond a frame in these demos. Press `[` for whole steps, as before, or `]` for more. `World` itself still defaults to 1 (`setSubSteps` to change it), so code using the engine directly keeps its cost and results unless it asks for sub-steps.
 
 Over 20 pushed ragdolls (`ragdoll_test`), the most any joint stretched beyond its slack:
 
 | Steps a second | 1 sub-step | 2 | 4 | 8 |
 | --- | --- | --- | --- | --- |
-| 60 | 6.7 cm | 0.9 cm | 0.03 cm | 0.003 cm |
-| 20 | 62 cm | 21 cm | 2.6 cm | 0.3 cm |
+| 60 | 7.2 cm | 0.7 cm | 0.04 cm | 0.001 cm |
+| 20 | 64 cm | 16 cm | 2.4 cm | 0.2 cm |
 
 The demos' physics runs in **fixed steps** of 1/60 s (`FixedSteps`, `src/demos/fixed_steps.h`; `setStepSeconds` changes the length, which the [Cyclone padds example](../examples/cyclone_padds/README.md) offers as a slider): each frame adds its time, and runs the whole steps it covers. Frames used to step by their own length, so the simulation changed with the screen's refresh rate and with every stutter. A frame over 0.1 s (a stall) counts as 0.1 s, so the simulation slows rather than taking a burst of steps to catch up; a step is due up to a quarter of a step early, so 60 Hz frames of 16 and 17 ms take one step each. Drawing isn't blended between steps, so on a screen whose rate isn't a multiple of 60 motion is a little uneven (roadmap).
 
@@ -288,9 +289,9 @@ Changes inside the code are marked with `SAKBox:` comments.
   - *Fix:* resolve the contacts together (`Method::sequentialImpulses`, the default; see [Resolving contacts together](#resolving-contacts-together)). Awake stacks of ten then stand still for as long as they're left (moving under 2 cm in all); fifteen stand, moving under 10 cm.
   - *Or:* set tall stacks up asleep (`setAwake(false)`), as the book suggests for a level. They then stand until hit.
 - **Joints, resolved together, stretch for a moment when a chain hits something hard,** and a swinging joint loses a little energy each step.
-  - *Stretch:* when the ragdoll's first bone hits the ground, the rest of it is still falling at about 8 m/s, and stopping the whole chain in one step leaves some joints up to 7 cm beyond their slack for a step or two at 60 steps a second (62 cm at 20). More sweeps don't help; the book's resolver stretches them as far. Box2D's documentation says the same of its joint chains.
+  - *Stretch:* when the ragdoll's first bone hits the ground, the rest of it is still falling at about 8 m/s, and stopping the whole chain in one step leaves some joints up to 7 cm beyond their slack for a step or two at 60 steps a second (64 cm at 20). More sweeps don't help; the book's resolver stretches them as far. Box2D's documentation says the same of its joint chains.
   - *Energy:* each step takes out the speed that would carry a body off the circle its joint holds it to, which also takes a little of its swing. A pendulum reaches the bottom of its first swing about 6% slower than a real one at 60 steps a second, and less than half that short at 240. This happens in any velocity-level solver.
-  - *Fix:* sub-steps (see [Sub-steps](#sub-steps)). Four a step cut the ragdoll's worst stretch to 0.03 cm at 60 steps a second (2.6 cm at 20), and swing the pendulum as 240 steps a second do, for four times the physics work.
+  - *Fix:* sub-steps (see [Sub-steps](#sub-steps)). Four a step cut the ragdoll's worst stretch to 0.04 cm at 60 steps a second (2.4 cm at 20), and swing the pendulum as 240 steps a second do, for four times the physics work.
   - *Cause:* the book explains it (sections 15.5 and 17.3.1). The resolver handles one contact at a time, so the friction at one contact isn't respected while it resolves another. The book's remedies are sleep, which SAKBox now does for stacks, and resolving all the contacts at once (chapter 18).
 - **Fixed point has less range and precision than `double`.** The ragdoll behaves as well in Q16.16 and Q32.32 as in `double` (`ragdoll_test_flex_point16` and `..._flex_point`), but other tests fail in fixed point:
   - *Range (Q16.16):* values run to ±32768, so the stress test's extreme scenes (500 kg at 100 m/s is a momentum of 50,000) overflow, and a body's state turns to garbage.

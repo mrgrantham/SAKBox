@@ -1136,8 +1136,17 @@ void ContactResolver::setUpJoints(std::span<Joint *const> joints, real duration)
       anchor[end] = joint->body[end]->getPointInWorldSpace(joint->position[end]);
       solverJoint.offset[end] = anchor[end] - joint->body[end]->getPosition();
     }
-    const Vector3 relativeVelocity = anchorVelocity(solverJoint.movable[1], solverJoint.offset[1]) -
-                                     anchorVelocity(solverJoint.movable[0], solverJoint.offset[0]);
+    // Anchor two's velocity relative to anchor one's when integrate() moved
+    // the bodies: from the velocities kept then, since joints set up before
+    // this one have already changed them with their warm starts
+    const auto startVelocity = [this](RigidBody *body, const Vector3 &offset) {
+      if (!body)
+        return Vector3();
+      const Motion &start = startVelocities[body];
+      return pointVelocity(offset, start.linear, start.angular);
+    };
+    const Vector3 relativeVelocity = startVelocity(solverJoint.movable[1], solverJoint.offset[1]) -
+                                     startVelocity(solverJoint.movable[0], solverJoint.offset[0]);
     solverJoint.separation = anchor[1] - anchor[0];
     solverJoint.startRelativeVelocity = relativeVelocity;
     solverJoint.cable = joint->error > 0;
