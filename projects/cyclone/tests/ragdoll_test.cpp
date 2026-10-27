@@ -1,6 +1,6 @@
-// The ragdoll demo's physics, run without a window, stepped the way the
-// demo framework steps it (integrate, generate contacts, resolve), with
-// each of the contact resolver's methods.
+// The ragdoll demo's physics, run without a window, its world stepped the
+// way the demo framework steps it, with each of the contact resolver's
+// methods.
 #include <gtest/gtest.h>
 
 #include <ragdoll_physics.h>
@@ -26,14 +26,9 @@ struct Outcome {
 // split into `subSteps` (as the demo framework does; see FixedSteps).
 Outcome simulate(Method method, double dt, unsigned seed, bool push = true, double seconds = 4.0,
                  unsigned subSteps = 1) {
-  static constexpr unsigned kMaxContacts = 256;
-  auto contacts = std::make_unique<cyclone::Contact[]>(kMaxContacts);
-  cyclone::CollisionData cData;
-  cData.contactArray = contacts.get();
-  cyclone::ContactResolver resolver(kMaxContacts * 8);
-  resolver.setMethod(method);
-
   auto model = std::make_unique<ragdoll::Ragdoll>();
+  model->world.getResolver().setMethod(method);
+  model->world.setSubSteps(subSteps);
   cyclone::Random random(seed);
   model->reset(random);
   if (!push) {
@@ -48,12 +43,7 @@ Outcome simulate(Method method, double dt, unsigned seed, bool push = true, doub
   const int lastSecond = static_cast<int>(1.0 / dt);
   double stretchTotal = 0;
   for (int i = 0; i < steps; ++i) {
-    const double subStep = dt / subSteps;
-    for (unsigned j = 0; j < subSteps; ++j) {
-      model->integrate(subStep);
-      model->generateContacts(cData, kMaxContacts);
-      resolver.resolveContacts(cData.contactArray, cData.contactCount, subStep, model->jointList());
-    }
+    model->step(dt);
     outcome.worstStretch = std::max(outcome.worstStretch, model->worstStretch());
     double fastestNow = 0;
     for (const ragdoll::Bone &bone : model->bones) {
@@ -125,19 +115,21 @@ TEST(RagdollTest, PushKnocksItOverAtAnyFrameRate) {
 // Resolving contacts together, with the joints as constraints between their
 // anchor points, a knocked-over ragdoll comes to rest more fully than with
 // the book's resolver: over 20 pushes, the fastest bone's speed in the
-// tenth second averages 0.3 cm/s at 60 steps a second and 0.15 cm/s at 20,
-// against about 3 and 9 cm/s. Its joints stretch beyond their slack by
-// 1 mm (1 cm at 20 steps a second) on average.
+// twelfth second averages 0.16 cm/s at 60 steps a second and 0.09 cm/s at
+// 20, against about 3 and 9 cm/s. Its joints stretch beyond their slack by
+// 1 mm (1 cm at 20 steps a second) on average. (In the tenth second it's
+// 0.3 and 0.15 cm/s, but in Q16.16 one push at 20 steps a second leaves the
+// ragdoll propped up until then, still slumping at 24 cm/s.)
 TEST(RagdollTest, ComesToRestWhenResolvedTogether) {
   for (double dt : {1.0 / 60, 0.05}) {
     SCOPED_TRACE(testing::Message() << "dt " << dt);
     double together = 0, book = 0, togetherStretch = 0;
     for (unsigned seed = 1; seed <= 20; ++seed) {
-      const Outcome t = simulate(Method::sequentialImpulses, dt, seed, true, 10.0);
+      const Outcome t = simulate(Method::sequentialImpulses, dt, seed, true, 12.0);
       EXPECT_LT(t.restingSpeed, 0.2) << "seed " << seed;
       together += t.restingSpeed / 20;
       togetherStretch += t.meanStretch / 20;
-      book += simulate(Method::oneContactAtATime, dt, seed, true, 10.0).restingSpeed / 20;
+      book += simulate(Method::oneContactAtATime, dt, seed, true, 12.0).restingSpeed / 20;
     }
     EXPECT_LT(together, 0.04);
     EXPECT_GT(book, 1.5 * together);

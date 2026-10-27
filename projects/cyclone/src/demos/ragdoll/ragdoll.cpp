@@ -54,7 +54,7 @@ static void renderBone(const ragdoll::Bone &bone) {
 class RagdollDemo : public RigidBodyApplication {
   cyclone::Random random;
 
-  /** The bones and joints (ragdoll_physics.h). */
+  /** The bones and joints, in their world (ragdoll_physics.h). */
   ragdoll::Ragdoll model;
 
   /**
@@ -66,11 +66,8 @@ class RagdollDemo : public RigidBodyApplication {
   /** SAKBox: measures the joints after each step. */
   void afterStep() override { worstStretch = std::max(worstStretch, model.worstStretch()); }
 
-  /** Processes the contact generation code. */
-  void generateContacts() override;
-
-  /** Processes the objects in the simulation forward in time. */
-  void updateObjects(cyclone::real duration) override;
+  /** SAKBox: the ragdoll's world. */
+  cyclone::World &getWorld() override { return model.world; }
 
   /** Resets the position of all the bones. */
   void reset() override;
@@ -95,9 +92,6 @@ public:
 
   /** Display the particle positions. */
   void display() override;
-
-  /** SAKBox: the joints, for the resolver. */
-  std::span<cyclone::Joint *const> getJoints() override { return model.jointList(); }
 };
 
 // Method definitions
@@ -105,17 +99,10 @@ RagdollDemo::RagdollDemo() : RigidBodyApplication() { reset(); }
 
 const char *RagdollDemo::getTitle() { return "Cyclone > Ragdoll Demo"; }
 
-void RagdollDemo::generateContacts() { model.generateContacts(cData, maxContacts); }
-
 void RagdollDemo::reset() {
   model.reset(random);
   worstStretch = 0;
-
-  // Reset the contacts
-  cData.contactCount = 0;
 }
-
-void RagdollDemo::updateObjects(cyclone::real duration) { model.integrate(duration); }
 
 void RagdollDemo::initGraphics() {
   GLfloat lightAmbient[] = {0.8f, 0.8f, 0.8f, 1.0f};

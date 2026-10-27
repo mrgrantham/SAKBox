@@ -199,7 +199,8 @@ cc_binary(
     ],
 )
 
-# The ragdoll's physics, shared by the demo and ragdoll_test
+# The ragdoll's physics (a World), shared by the demo, ragdoll_test, the
+# Cyclone padds example and the DS app
 cc_library(
     name = "ragdoll_physics",
     hdrs = ["src/demos/ragdoll/ragdoll_physics.h"],
@@ -303,6 +304,18 @@ cc_test(
     name = "contacts_test",
     size = "small",
     srcs = ["tests/contacts_test.cpp"],
+    deps = [
+        ":cyclone",
+        "@gtest//:gtest_main",
+    ],
+)
+
+# World: shapes, planes, filters, joints, and sub-steps with the contacts
+# found once a step
+cc_test(
+    name = "world_test",
+    size = "small",
+    srcs = ["tests/world_test.cpp"],
     deps = [
         ":cyclone",
         "@gtest//:gtest_main",

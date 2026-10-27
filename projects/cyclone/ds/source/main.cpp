@@ -65,7 +65,8 @@ struct Benchmark {
     double stepMilliseconds = 0;
   };
   std::array<Row, 4> rows{};
-  // Where the time goes in a sub-step at the settings it runs with
+  // Where the time goes in a step at the settings it runs with (all its
+  // sub-steps; see cyclone::World::Profile)
   double integrateMilliseconds = 0, contactsMilliseconds = 0, resolveMilliseconds = 0;
 };
 
@@ -81,12 +82,8 @@ struct PhysicsFigures {
 
 class RagdollPadd : public ScratchPadd::Base {
 public:
-  static constexpr unsigned kMaxContacts = 256;
-
   RagdollPadd(ScratchPadd::System *system)
-      : Base(system), contacts_(std::make_unique<cyclone::Contact[]>(kMaxContacts)),
-        resolver_(kMaxContacts * 8), ragdoll_(std::make_unique<ragdoll::Ragdoll>()) {
-    cData_.contactArray = contacts_.get();
+      : Base(system), ragdoll_(std::make_unique<ragdoll::Ragdoll>()) {
     receive<ButtonPressed>([this](const ButtonPressed &pressed) {
       if (pressed.key == KEY_A) {
         reset();
@@ -166,7 +163,8 @@ private:
   void useSettings(const Settings &settings) {
     clock_.setStepSeconds(1.0 / settings.stepsPerSecond);
     clock_.setSubSteps(settings.subSteps);
-    resolver_.setSweeps(settings.velocitySweeps, settings.settleSweeps, settings.positionSweeps);
+    ragdoll_->world.getResolver().setSweeps(settings.velocitySweeps, settings.settleSweeps,
+                                            settings.positionSweeps);
   }
 
   Benchmark benchmark() {
@@ -189,42 +187,24 @@ private:
               std::chrono::duration<double, std::milli>(Clock::now() - started).count() /
               kStepsMeasured};
     }
-    // Each phase of a sub-step, at the settings it runs with
+    // Each phase of a step, at the settings it runs with
     useSettings(kRunSettings);
     reset();
-    const auto duration = static_cast<cyclone::real>(clock_.subStepSeconds());
-    Clock::duration integrating{}, findingContacts{}, resolving{};
-    constexpr int kSubStepsMeasured = 10;
-    for (int i = 0; i < kSubStepsMeasured; ++i) {
-      auto t = Clock::now();
-      ragdoll_->integrate(duration);
-      integrating += Clock::now() - t;
-      t = Clock::now();
-      ragdoll_->generateContacts(cData_, kMaxContacts);
-      findingContacts += Clock::now() - t;
-      t = Clock::now();
-      resolver_.resolveContacts(cData_.contactArray, cData_.contactCount, duration,
-                                ragdoll_->jointList());
-      resolving += Clock::now() - t;
+    constexpr int kStepsProfiled = 10;
+    for (int i = 0; i < kStepsProfiled; ++i) {
+      step();
+      const cyclone::World::Profile &profile = ragdoll_->world.profile();
+      result.integrateMilliseconds += profile.integrate / kStepsProfiled;
+      result.contactsMilliseconds += profile.findContacts / kStepsProfiled;
+      result.resolveMilliseconds += profile.resolve / kStepsProfiled;
     }
-    const auto ms = [](Clock::duration d) {
-      return std::chrono::duration<double, std::milli>(d).count() / kSubStepsMeasured;
-    };
-    result.integrateMilliseconds = ms(integrating);
-    result.contactsMilliseconds = ms(findingContacts);
-    result.resolveMilliseconds = ms(resolving);
     return result;
   }
 
   // One step, in its sub-steps, as Cyclone's demos step
   void step() {
-    const auto duration = static_cast<cyclone::real>(clock_.subStepSeconds());
-    for (unsigned i = 0; i < clock_.subSteps(); ++i) {
-      ragdoll_->integrate(duration);
-      ragdoll_->generateContacts(cData_, kMaxContacts);
-      resolver_.resolveContacts(cData_.contactArray, cData_.contactCount, duration,
-                                ragdoll_->jointList());
-    }
+    ragdoll_->world.setSubSteps(clock_.subSteps());
+    ragdoll_->step(clock_.stepSeconds());
     worstStretch_ = std::max(worstStretch_, ragdoll_->worstStretch());
   }
 
@@ -246,14 +226,9 @@ private:
 
   void reset() {
     ragdoll_->reset(random_);
-    resolver_.forgetWarmStart();
-    cData_.contactCount = 0;
     worstStretch_ = 0;
   }
 
-  std::unique_ptr<cyclone::Contact[]> contacts_;
-  cyclone::CollisionData cData_;
-  cyclone::ContactResolver resolver_;
   std::unique_ptr<ragdoll::Ragdoll> ragdoll_;
   cyclone::Random random_;
   FixedSteps clock_;
@@ -379,7 +354,7 @@ private:
       }
       ++row;
     }
-    std::printf("\x1b[%d;1HA sub-step at 8/2/2, ms:\x1b[K", ++row);
+    std::printf("\x1b[%d;1HA step at 60/2, 8/2/2, ms:\x1b[K", ++row);
     std::printf("\x1b[%d;1Hmove %.1f find %.1f solve %.1f\x1b[K", ++row,
                 benchmark_.integrateMilliseconds, benchmark_.contactsMilliseconds,
                 benchmark_.resolveMilliseconds);

@@ -12,10 +12,10 @@
 #include "app.h"
 #include "ogl_headers.h"
 #include "timing.h"
-#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -218,11 +218,8 @@ void MassAggregateApplication::update() {
 }
 
 RigidBodyApplication::RigidBodyApplication()
-    : resolver(maxContacts * 8), theta(0.0f), phi(15.0f),
-
-      renderDebugInfo(false), pauseSimulation(true), autoPauseSimulation(false) {
-  cData.contactArray = contacts;
-}
+    : theta(0.0f), phi(15.0f), renderDebugInfo(false), pauseSimulation(true),
+      autoPauseSimulation(false) {}
 
 void RigidBodyApplication::update() {
   sounds.update(); // (paused or not)
@@ -243,34 +240,33 @@ void RigidBodyApplication::update() {
     steps = physicsClock.stepsFor(TimingData::get().lastFrameDuration * 0.001);
   }
 
-  const auto started = std::chrono::steady_clock::now();
   sounds.setCameraAngle(theta);
-  for (unsigned i = 0; i < steps; ++i)
+  double took = 0;
+  for (unsigned i = 0; i < steps; ++i) {
     runStep();
+    const cyclone::World::Profile &profile = getWorld().profile();
+    took += profile.findContacts + profile.integrate + profile.resolve;
+  }
   sounds.playHits();
-  const std::chrono::duration<double, std::milli> took = std::chrono::steady_clock::now() - started;
-  physicsMilliseconds += 0.05 * (took.count() - physicsMilliseconds);
+  physicsMilliseconds += 0.05 * (took - physicsMilliseconds);
 
   Application::update();
 }
 
 void RigidBodyApplication::runStep() {
-  const auto duration = static_cast<cyclone::real>(physicsClock.subStepSeconds());
-  for (unsigned subStep = 0; subStep < physicsClock.subSteps(); ++subStep) {
-    // Update the objects
-    updateObjects(duration);
-
-    // Perform the contact generation
-    generateContacts();
-
-    // SAKBox: the hits among them, before they're resolved
-    sounds.hear(cData.contactArray, cData.contactCount, duration);
-
-    // Resolve detected contacts
-    resolver.resolveContacts(cData.contactArray, cData.contactCount, duration, getJoints());
-
-    afterStep();
-  }
+  cyclone::World &world = getWorld();
+  // The hits among the contacts, before they're resolved, and the demo's
+  // look at them (set each step, as the world is the demo's)
+  world.contactsFound = [this](std::span<const cyclone::Contact> contacts,
+                               cyclone::real_duration seconds) {
+    sounds.hear(contacts, static_cast<float>(seconds));
+    contactsFound(contacts);
+  };
+  world.setSubSteps(physicsClock.subSteps());
+  world.startFrame();
+  beforeStep();
+  world.runPhysics(physicsClock.stepSeconds());
+  afterStep();
 }
 
 void RigidBodyApplication::display() {
@@ -283,9 +279,10 @@ void RigidBodyApplication::display() {
 }
 
 void RigidBodyApplication::renderResolverMethod() {
-  const char *text = resolver.getMethod() == cyclone::ContactResolver::Method::sequentialImpulses
-                         ? "Resolver: all contacts together"
-                         : "Resolver: one contact at a time (the book's)";
+  const char *text =
+      getWorld().getResolver().getMethod() == cyclone::ContactResolver::Method::sequentialImpulses
+          ? "Resolver: all contacts together"
+          : "Resolver: one contact at a time (the book's)";
   const float textWidth = (float)stb_easy_font_width(const_cast<char *>(text));
   glColor3f(0.1f, 0.1f, 0.15f);
   renderText(width / pixelScale - textWidth - 10.0f, 10.0f, text);
@@ -328,24 +325,21 @@ void RigidBodyApplication::drawDebug() {
   if (!renderDebugInfo)
     return;
 
-  // Recalculate the contacts, so they are current (in case we're
-  // paused, for example).
-  generateContacts();
-
-  // Render the contacts, if required
+  // SAKBox: the last step's contacts (where they were found, with those a
+  // little apart that sub-steps follow)
   glBegin(GL_LINES);
-  for (unsigned i = 0; i < cData.contactCount; i++) {
+  for (const cyclone::Contact &contact : getWorld().getStepContacts()) {
     // Interbody contacts are in green, floor contacts are red.
-    if (contacts[i].body[1]) {
+    if (contact.body[1]) {
       glColor3f(0, 1, 0);
     } else {
       glColor3f(1, 0, 0);
     }
 
-    cyclone::Vector3 vec = contacts[i].contactPoint;
+    cyclone::Vector3 vec = contact.contactPoint;
     glVertex3f(vec.x, vec.y, vec.z);
 
-    vec += contacts[i].contactNormal;
+    vec += contact.contactNormal;
     glVertex3f(vec.x, vec.y, vec.z);
   }
 
@@ -416,11 +410,15 @@ void RigidBodyApplication::key(unsigned char key) {
   case 'm':
     // SAKBox: switch between the book's resolver and resolving the contacts
     // together, to compare them
-    resolver.setMethod(resolver.getMethod() == cyclone::ContactResolver::Method::sequentialImpulses
-                           ? cyclone::ContactResolver::Method::oneContactAtATime
-                           : cyclone::ContactResolver::Method::sequentialImpulses);
-    resolver.forgetWarmStart();
-    return;
+    {
+      cyclone::ContactResolver &resolver = getWorld().getResolver();
+      resolver.setMethod(resolver.getMethod() ==
+                                 cyclone::ContactResolver::Method::sequentialImpulses
+                             ? cyclone::ContactResolver::Method::oneContactAtATime
+                             : cyclone::ContactResolver::Method::sequentialImpulses);
+      resolver.forgetWarmStart();
+      return;
+    }
   }
 
   Application::key(key);

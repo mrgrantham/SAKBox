@@ -1,41 +1,40 @@
-// The ragdoll's physics: twelve box bones held together by eleven joints,
-// colliding with the ground and (as spheres) with each other. The joints go
-// to the contact resolver with the contacts (see jointList()). Shared by the
-// ragdoll demo, which adds rendering, and by tests/ragdoll_test.cpp.
+// The ragdoll's physics: a World of twelve box bones held together by
+// eleven joints, colliding with the ground (as boxes) and with each other
+// (as spheres). Shared by the ragdoll demo, which adds rendering, by
+// tests/ragdoll_test.cpp, by the Cyclone padds example and by the DS app.
 #pragma once
 
 #include <algorithm>
 #include <cyclone/cyclone.h>
-#include <span>
 
 namespace ragdoll {
 
 constexpr unsigned kBones = 12;
 constexpr unsigned kJoints = 11;
 
+// What each of a bone's shapes collides with (see cyclone::CollisionFilter):
+// its box with the ground (category 1, a plane's default), its sphere with
+// the other bones' spheres
+constexpr cyclone::CollisionFilter kBoneBox{.category = 2, .mask = 1};
+constexpr cyclone::CollisionFilter kBoneSphere{.category = 4, .mask = 4};
+
 class Bone : public cyclone::CollisionBox {
 public:
-  Bone() { body = new cyclone::RigidBody(); }
-  ~Bone() { delete body; }
-  Bone(const Bone &) = delete;
-  Bone &operator=(const Bone &) = delete;
-
   /**
    * We use a sphere to collide bone on bone to allow some limited
-   * interpenetration.
+   * interpenetration. (SAKBox: the largest that fits in the box, on the
+   * same body.)
    */
-  cyclone::CollisionSphere getCollisionSphere() const {
-    cyclone::CollisionSphere sphere;
-    sphere.body = body;
-    sphere.radius = halfSize.x;
-    sphere.offset = cyclone::Matrix4();
-    if (halfSize.y < sphere.radius)
-      sphere.radius = halfSize.y;
-    if (halfSize.z < sphere.radius)
-      sphere.radius = halfSize.z;
-    sphere.calculateInternals();
-    return sphere;
+  cyclone::CollisionSphere sphere;
+
+  Bone() {
+    body = &rigidBody;
+    sphere.body = &rigidBody;
+    filter = kBoneBox;
+    sphere.filter = kBoneSphere;
   }
+  Bone(const Bone &) = delete;
+  Bone &operator=(const Bone &) = delete;
 
   /** Sets the bone to a specific location. */
   void setState(const cyclone::Vector3 &position, const cyclone::Vector3 &extents) {
@@ -44,6 +43,7 @@ public:
     body->setVelocity(cyclone::Vector3());
     body->setRotation(cyclone::Vector3());
     halfSize = extents;
+    sphere.radius = std::min({halfSize.x, halfSize.y, halfSize.z});
 
     cyclone::real mass = halfSize.x * halfSize.y * halfSize.z * 8.0f;
     body->setMass(mass);
@@ -62,16 +62,30 @@ public:
 
     body->calculateDerivedData();
     calculateInternals();
+    sphere.calculateInternals();
   }
+
+private:
+  cyclone::RigidBody rigidBody;
 };
+
+// The most contacts a step can have, and the iterations the book's resolver
+// takes (as many as the demos always gave it)
+constexpr unsigned kMaxContacts = 256;
 
 class Ragdoll {
 public:
   Bone bones[kBones];
   cyclone::Joint joints[kJoints];
 
-  // The joints, as the contact resolver takes them
-  std::span<cyclone::Joint *const> jointList() { return jointPointers; }
+  /**
+   * The world the bones and joints are in, on the ground (y = 0). Bones
+   * bounce off the ground a little (restitution 0.6).
+   */
+  cyclone::World world{{.maxContacts = kMaxContacts,
+                        .friction = (cyclone::real)0.9,
+                        .restitution = (cyclone::real)0.6,
+                        .iterations = kMaxContacts * 8}};
 
   Ragdoll() {
     // Right Knee
@@ -116,9 +130,24 @@ public:
     joints[10].set(bones[6].body, cyclone::Vector3(0, 0.367f, 0.8f), bones[10].body,
                    cyclone::Vector3(0, 0.888f, -0.32f), 0.15f);
 
-    for (unsigned i = 0; i < kJoints; i++)
-      jointPointers[i] = &joints[i];
+    cyclone::CollisionPlane ground;
+    ground.direction = cyclone::Vector3(0, 1, 0);
+    ground.offset = 0;
+    world.addPlane(ground);
+    for (Bone &bone : bones) {
+      world.addBody(bone.body);
+      world.addShape(&bone);
+      world.addShape(&bone.sphere);
+    }
+    // Joined bones collide too, as they always have: the spheres of a joint's
+    // two bones keep them from folding through each other
+    for (cyclone::Joint &joint : joints) {
+      joint.collideConnected = true;
+      world.addJoint(&joint);
+    }
   }
+  Ragdoll(const Ragdoll &) = delete;
+  Ragdoll &operator=(const Ragdoll &) = delete;
 
   // Stands the ragdoll up and gives it a random push so it falls over.
   // SAKBox: upstream pushed with forces of 500-1000 N, whose effect scales
@@ -128,6 +157,7 @@ public:
   void reset(cyclone::Random &random) {
     for (cyclone::Joint &joint : joints)
       joint.impulse = cyclone::Vector3(); // a fresh start for warm starting
+    world.getResolver().forgetWarmStart();
     bones[0].setState(cyclone::Vector3(0, 0.993, -0.5), cyclone::Vector3(0.301, 1.0, 0.234));
     bones[1].setState(cyclone::Vector3(0, 3.159, -0.56), cyclone::Vector3(0.301, 1.0, 0.234));
     bones[2].setState(cyclone::Vector3(0, 0.993, 0.5), cyclone::Vector3(0.301, 1.0, 0.234));
@@ -151,51 +181,10 @@ public:
         cyclone::Vector3(random.randomBinomial(2.0), random.randomBinomial(2.0), 0));
   }
 
-  // Moves every bone forward by `duration` seconds.
-  void integrate(cyclone::real duration) {
-    for (Bone &bone : bones) {
-      bone.body->integrate(duration);
-      bone.calculateInternals();
-    }
-  }
-
-  // Writes this step's contacts (ground and bone-on-bone) into `cData`,
-  // which holds room for `maxContacts`. SAKBox: the joints are given to the
-  // resolver separately (jointList()); they used to add their contacts
-  // here, which the book's resolver still does with them.
-  void generateContacts(cyclone::CollisionData &cData, unsigned maxContacts) {
-    // Create the ground plane data
-    cyclone::CollisionPlane plane;
-    plane.direction = cyclone::Vector3(0, 1, 0);
-    plane.offset = 0;
-
-    // Set up the collision data structure
-    cData.reset(maxContacts);
-    cData.friction = (cyclone::real)0.9;
-    cData.restitution = (cyclone::real)0.6;
-    cData.tolerance = (cyclone::real)0.1;
-
-    // Perform exhaustive collision detection on the ground plane
-    cyclone::Matrix4 transform, otherTransform;
-    cyclone::Vector3 position, otherPosition;
-    for (Bone *bone = bones; bone < bones + kBones; bone++) {
-      // Check for collisions with the ground plane
-      if (!cData.hasMoreContacts())
-        return;
-      cyclone::CollisionDetector::boxAndHalfSpace(*bone, plane, &cData);
-
-      cyclone::CollisionSphere boneSphere = bone->getCollisionSphere();
-
-      // Check for collisions with each other box
-      for (Bone *other = bone + 1; other < bones + kBones; other++) {
-        if (!cData.hasMoreContacts())
-          return;
-
-        cyclone::CollisionSphere otherSphere = other->getCollisionSphere();
-
-        cyclone::CollisionDetector::sphereAndSphere(boneSphere, otherSphere, &cData);
-      }
-    }
+  // One step of `seconds`, in the world's sub-steps
+  void step(cyclone::real_duration seconds) {
+    world.startFrame();
+    world.runPhysics(seconds);
   }
 
   // How far the most stretched joint's two points are beyond its slack (m),
@@ -218,9 +207,6 @@ public:
     }
     return worst;
   }
-
-private:
-  cyclone::Joint *jointPointers[kJoints];
 };
 
 } // namespace ragdoll

@@ -15,13 +15,12 @@ cyclone::Vector3 velocityAt(const cyclone::RigidBody *body, const cyclone::Vecto
 
 } // namespace
 
-void ImpactKnocks::hear(const cyclone::Contact *contacts, unsigned count, float seconds) {
+void ImpactKnocks::hear(std::span<const cyclone::Contact> contacts, float seconds) {
   clock_ += seconds;
   // The fastest contact for each pair of bodies (a box resting on the
   // ground has several contacts; it's one knock), over the frame's steps
   std::vector<Hit> &hits = heard_;
-  for (unsigned i = 0; i < count; ++i) {
-    const cyclone::Contact &contact = contacts[i];
+  for (const cyclone::Contact &contact : contacts) {
     // Cyclone's closing velocity: body 0's relative to body 1, along the
     // normal, negative as they come together
     const cyclone::Vector3 relative = velocityAt(contact.body[0], contact.contactPoint) -

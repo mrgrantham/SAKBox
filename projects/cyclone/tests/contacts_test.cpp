@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -376,43 +377,14 @@ TEST(ParticleWorldTest, PendulumKeepsItsLengthAndPeriod) {
 
 namespace {
 
-// Contacts for a world of boxes: each against the ground (y = 0) and every
-// pair against each other, the pairs' contacts kept from frame to frame
-class BoxContacts : public ContactGenerator {
-public:
-  // Mutable because their transforms are brought up to date here: World
-  // integrates the bodies and then asks for contacts
-  mutable std::vector<CollisionBox> boxes;
-  mutable BoxContactCache cache;
-
-  unsigned addContact(Contact *contact, unsigned limit) const override {
-    for (CollisionBox &box : boxes)
-      box.calculateInternals();
-    CollisionData data;
-    data.contactArray = contact;
-    data.friction = 0.9;
-    data.restitution = 0.1;
-    data.tolerance = 0.1;
-    data.reset(limit);
-    CollisionPlane ground;
-    ground.direction = Vector3(0, 1, 0);
-    ground.offset = 0;
-    for (size_t i = 0; i < boxes.size() && data.hasMoreContacts(); ++i) {
-      CollisionDetector::boxAndHalfSpace(boxes[i], ground, &data);
-      for (size_t j = i + 1; j < boxes.size() && data.hasMoreContacts(); ++j)
-        cache.boxAndBox(boxes[i], boxes[j], &data);
-    }
-    return data.contactCount;
-  }
-};
-
 // Unit cubes (mass 1) at the given heights, falling under a gravity
-// generator registered with the world
+// generator registered with the world, onto the ground (y = 0) and each
+// other: the world's box shapes and plane
 struct BoxWorld {
-  World world{256};
+  World world{World::Settings{.maxContacts = 256, .friction = 0.9, .restitution = 0.1}};
   Gravity gravity{Vector3::GRAVITY};
   std::vector<std::unique_ptr<RigidBody>> bodies;
-  BoxContacts contacts;
+  std::deque<CollisionBox> boxes; // (a deque, so adding one moves none)
 
   explicit BoxWorld(const std::vector<Vector3> &positions,
                     ContactResolver::Method method = ContactResolver::Method::oneContactAtATime) {
@@ -427,12 +399,15 @@ struct BoxWorld {
       body.calculateDerivedData();
       world.getBodies().push_back(&body);
       world.getForceRegistry().add(&body, &gravity);
-      CollisionBox box;
+      CollisionBox &box = boxes.emplace_back();
       box.body = &body;
       box.halfSize = Vector3(0.5, 0.5, 0.5);
-      contacts.boxes.push_back(box);
+      world.addShape(&box);
     }
-    world.getContactGenerators().push_back(&contacts);
+    CollisionPlane ground;
+    ground.direction = Vector3(0, 1, 0);
+    ground.offset = 0;
+    world.addPlane(ground);
   }
 
   // Runs the world for `seconds`, returning the most any box tipped

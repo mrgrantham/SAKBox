@@ -34,10 +34,10 @@ std::string tempPath(const std::string &name) {
 // fused multiply-adds off and Cyclone's maths functions are correctly
 // rounded (see the top-level README's "Floating-point results across
 // platforms"). Checked on macOS (Apple clang) and on Linux (GCC 14 and
-// Clang, on ARM64 and x86-64). It's 0.4718 m.
+// Clang, on ARM64 and x86-64). It's 0.5059 m.
 TEST(PolicyLearnerTest, SimulationIsTheSameEverywhere) {
   const double height = JumpHeight(nullptr);
-  EXPECT_EQ(height, 0x1.e31ed4f90cc96p-2) << std::hexfloat << height;
+  EXPECT_EQ(height, 0x1.0304a1eb1ccd6p-1) << std::hexfloat << height;
   EXPECT_EQ(JumpHeight(nullptr), height);
 }
 
@@ -46,17 +46,10 @@ TEST(PolicyLearnerTest, SimulationIsTheSameEverywhere) {
 // the resolver's slop), its joints together, and nothing through the floor.
 TEST(PolicyLearnerTest, LimpRobotSlumpsWithinItsLimits) {
   Robot robot;
-  cyclone::ContactResolver resolver(kMaxContacts * 8);
-  cyclone::Contact contacts[kMaxContacts];
-  cyclone::CollisionData data;
-  data.contactArray = contacts;
-  const double subStep = kStepSeconds / kSubSteps;
+  robot.world().setSubSteps(kSubSteps);
   double furthestPastLimit = 0, widestJoint = 0, lowest = 0;
-  for (int i = 0; i < 120 * static_cast<int>(kSubSteps); i++) {
-    robot.integrate(static_cast<cyclone::real>(subStep));
-    robot.generateContacts(data, kMaxContacts);
-    resolver.resolveContacts(contacts, data.contactCount, static_cast<cyclone::real>(subStep),
-                             robot.joints());
+  for (int i = 0; i < 120; i++) {
+    robot.step(kStepSeconds);
     for (unsigned h = 0; h < Robot::hingeCount; h++) {
       const auto &hinge = static_cast<const cyclone::HingeJoint &>(*robot.joints()[h]);
       const double angle = robot.angle(Robot::Hinge(h));

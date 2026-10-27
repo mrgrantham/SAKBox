@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -34,12 +35,13 @@ namespace CyclonePadds {
 
 class RagdollPhysicsPadd : public ScratchPadd::Base {
 public:
-  static constexpr unsigned kMaxContacts = 256;
-
   RagdollPhysicsPadd(ScratchPadd::System *system)
-      : Base(system), contacts_(std::make_unique<cyclone::Contact[]>(kMaxContacts)),
-        resolver_(kMaxContacts * 8), ragdoll_(std::make_unique<ragdoll::Ragdoll>()) {
-    cData_.contactArray = contacts_.get();
+      : Base(system), ragdoll_(std::make_unique<ragdoll::Ragdoll>()) {
+    // The hits among each step's contacts, before they're resolved
+    ragdoll_->world.contactsFound = [this](std::span<const cyclone::Contact> contacts,
+                                           cyclone::real_duration seconds) {
+      knocks_.hear(contacts, static_cast<float>(seconds));
+    };
     receive<RagdollCommand>([this](const RagdollCommand &command) { runCommand(command); });
     receive<CameraTurned>(
         [this](const CameraTurned &camera) { knocks_.setCameraAngle(camera.degrees); });
@@ -123,14 +125,8 @@ private:
   // One step, in its sub-steps: the rigid-body demos' step
   // (RigidBodyApplication::runStep)
   void runStep() {
-    const auto duration = static_cast<cyclone::real>(clock_.subStepSeconds());
-    for (unsigned i = 0; i < clock_.subSteps(); ++i) {
-      ragdoll_->integrate(duration);
-      ragdoll_->generateContacts(cData_, kMaxContacts);
-      knocks_.hear(cData_.contactArray, cData_.contactCount, duration); // before they're resolved
-      resolver_.resolveContacts(cData_.contactArray, cData_.contactCount, duration,
-                                ragdoll_->jointList());
-    }
+    ragdoll_->world.setSubSteps(clock_.subSteps());
+    ragdoll_->step(clock_.stepSeconds());
     time_ += clock_.stepSeconds();
     stretchNow_ = ragdoll_->worstStretch();
     worstStretch_ = std::max(worstStretch_, stretchNow_);
@@ -198,8 +194,6 @@ private:
 
   void reset() {
     ragdoll_->reset(random_);
-    resolver_.forgetWarmStart();
-    cData_.contactCount = 0;
     stretchNow_ = 0;
     worstStretch_ = 0;
     ++generation_;
@@ -228,17 +222,15 @@ private:
     const auto method = control<Controls::String>("Resolver").value == kOneAtATime
                             ? cyclone::ContactResolver::Method::oneContactAtATime
                             : cyclone::ContactResolver::Method::sequentialImpulses;
-    if (method != resolver_.getMethod()) {
-      resolver_.setMethod(method);
-      resolver_.forgetWarmStart();
+    cyclone::ContactResolver &resolver = ragdoll_->world.getResolver();
+    if (method != resolver.getMethod()) {
+      resolver.setMethod(method);
+      resolver.forgetWarmStart();
     }
     paused_ = control<Controls::Boolean>("Paused").value;
     sound_ = control<Controls::Boolean>("Sound").value;
   }
 
-  std::unique_ptr<cyclone::Contact[]> contacts_;
-  cyclone::CollisionData cData_;
-  cyclone::ContactResolver resolver_;
   std::unique_ptr<ragdoll::Ragdoll> ragdoll_;
   cyclone::Random random_;
   FixedSteps clock_;

@@ -478,6 +478,9 @@ public:
    */
   void remove(RigidBody *body, ForceGenerator *fg);
 
+  /** SAKBox: removes every registration of `body`. */
+  void remove(const RigidBody *body);
+
   /**
    * Clears all registrations from the registry. This will
    * not delete the bodies or the force generators

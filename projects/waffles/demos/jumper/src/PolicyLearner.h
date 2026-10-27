@@ -16,19 +16,19 @@ class WVec;
 static_assert(LABEL_DIMS == Robot::hingeCount, "the policy moves each hinge");
 
 /// How the jump is simulated, in training and in the window alike: steps of
-/// 1/60 s, each in two sub-steps (as the Cyclone demos' FixedSteps), with
-/// room for this many contacts (as their RigidBodyApplication)
+/// 1/60 s, each in two sub-steps (as the Cyclone demos' FixedSteps)
 const double kStepSeconds = 1.0 / 60;
 const unsigned kSubSteps = 2;
-const unsigned kMaxContacts = 256;
 
 /// The robot moved by a policy (or by manualPolicy, given none): before
-/// each physics step, the policy reads the time and how the robot is lying,
-/// and sets its motors
+/// each physics sub-step, the policy reads the time and how the robot is
+/// lying, and sets its motors (in the robot's world's beforeSubStep)
 class Jumper
 {
 public:
 	explicit Jumper(WClasses::WNeuralNetLearner* pPolicy);
+	Jumper(const Jumper&) = delete;
+	Jumper& operator=(const Jumper&) = delete;
 
 	Robot& robot() { return m_robot; }
 
@@ -38,11 +38,13 @@ public:
 	/// Stands the robot up to jump again
 	void reset();
 
-	/// The start of a physics step: the policy acts, and the robot moves on
-	/// by `duration` (its contacts are then found and resolved)
-	void move(double duration);
+	/// One physics step of kStepSeconds, in kSubSteps
+	void step() { m_robot.step(kStepSeconds); }
 
 protected:
+	/// The start of a physics sub-step of `duration`: the policy acts
+	void act(double duration);
+
 	Robot m_robot;
 	WClasses::WNeuralNetLearner* m_pPolicy;
 	double m_time = 0;

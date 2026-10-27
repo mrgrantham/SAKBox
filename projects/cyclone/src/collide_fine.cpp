@@ -21,6 +21,20 @@ using namespace cyclone;
 
 void CollisionPrimitive::calculateInternals() { transform = body->getTransform() * offset; }
 
+real CollisionPrimitive::boundingRadius() const {
+  switch (shape) {
+  case Shape::sphere:
+    return static_cast<const CollisionSphere *>(this)->radius;
+  case Shape::box:
+    return static_cast<const CollisionBox *>(this)->halfSize.magnitude();
+  case Shape::capsule: {
+    const auto *capsule = static_cast<const CollisionCapsule *>(this);
+    return capsule->radius + capsule->halfLength;
+  }
+  }
+  return 0;
+}
+
 bool IntersectionTests::sphereAndHalfSpace(const CollisionSphere &sphere,
                                            const CollisionPlane &plane) {
   // Find the distance from the origin
@@ -101,15 +115,16 @@ bool IntersectionTests::boxAndBox(const CollisionBox &one, const CollisionBox &t
 }
 #undef TEST_OVERLAP
 
-bool IntersectionTests::boxAndHalfSpace(const CollisionBox &box, const CollisionPlane &plane) {
+bool IntersectionTests::boxAndHalfSpace(const CollisionBox &box, const CollisionPlane &plane,
+                                        real tolerance) {
   // Work out the projected radius of the box onto the plane direction
   real projectedRadius = transformToAxis(box, plane.direction);
 
   // Work out how far the box is from the origin
   real boxDistance = plane.direction * box.getAxis(3) - projectedRadius;
 
-  // Check for the intersection
-  return boxDistance <= plane.offset;
+  // Check for the intersection (SAKBox: or that it's within `tolerance`)
+  return boxDistance <= plane.offset + tolerance;
 }
 
 unsigned CollisionDetector::sphereAndTruePlane(const CollisionSphere &sphere,
@@ -161,7 +176,8 @@ unsigned CollisionDetector::sphereAndHalfSpace(const CollisionSphere &sphere,
   // Find the distance from the plane
   real ballDistance = plane.direction * position - sphere.radius - plane.offset;
 
-  if (ballDistance >= 0)
+  // SAKBox: or no further from it than the margin (see CollisionData)
+  if (ballDistance >= data->margin)
     return 0;
 
   // Create the contact - it has a normal in the plane direction.
@@ -189,8 +205,9 @@ unsigned CollisionDetector::sphereAndSphere(const CollisionSphere &one, const Co
   Vector3 midline = positionOne - positionTwo;
   real size = midline.magnitude();
 
-  // See if it is large enough.
-  if (size <= 0.0f || size >= one.radius + two.radius) {
+  // See if it is large enough. (SAKBox: or no further apart than the
+  // tolerance, see CollisionData)
+  if (size <= 0.0f || size >= one.radius + two.radius + data->margin) {
     return 0;
   }
 
@@ -243,7 +260,7 @@ static constexpr double relativeAxisTolerance = 0.95;
 static constexpr double absoluteAxisTolerance = 0.01;
 
 static inline bool tryAxis(const CollisionBox &one, const CollisionBox &two, Vector3 axis,
-                           const Vector3 &toCentre, unsigned index,
+                           const Vector3 &toCentre, unsigned index, real collisionMargin,
 
                            // These values may be updated
                            real &smallestPenetration, unsigned &smallestCase) {
@@ -254,16 +271,22 @@ static inline bool tryAxis(const CollisionBox &one, const CollisionBox &two, Vec
 
   real penetration = penetrationOnAxis(one, two, axis, toCentre);
 
-  if (penetration < 0)
+  // SAKBox: the boxes are apart along this axis, by more than the margin
+  // (CollisionData::margin; up to it, they make a contact with negative
+  // penetration)
+  if (penetration < -collisionMargin)
     return false;
   // SAKBox: the first axis is taken as it is; later ones must be clearly
   // shallower (see relativeAxisTolerance), by a margin scaled to the
-  // smaller box
+  // smaller box. Apart along either, the further apart is taken.
   const real margin =
       (real)absoluteAxisTolerance * std::min({one.halfSize.x, one.halfSize.y, one.halfSize.z,
                                               two.halfSize.x, two.halfSize.y, two.halfSize.z});
-  if (smallestCase == 0xffffff ||
-      penetration < (real)relativeAxisTolerance * smallestPenetration - margin) {
+  const bool clearlyShallower =
+      penetration < 0 || smallestPenetration < 0
+          ? penetration < smallestPenetration
+          : penetration < (real)relativeAxisTolerance * smallestPenetration - margin;
+  if (smallestCase == 0xffffff || clearlyShallower) {
     smallestPenetration = penetration;
     smallestCase = index;
   }
@@ -348,7 +371,7 @@ static inline Vector3 contactPoint(const Vector3 &pOne, const Vector3 &dOne, rea
 // This preprocessor definition is only used as a convenience
 // in the boxAndBox contact generation method.
 #define CHECK_OVERLAP(axis, index)                                                                 \
-  if (!tryAxis(one, two, (axis), toCentre, (index), pen, best))                                    \
+  if (!tryAxis(one, two, (axis), toCentre, (index), data->margin, pen, best))                      \
     return 0;
 
 unsigned CollisionDetector::boxAndBox(const CollisionBox &one, const CollisionBox &two,
@@ -928,10 +951,12 @@ unsigned CollisionDetector::boxAndSphere(const CollisionBox &box, const Collisio
   Vector3 centre = sphere.getAxis(3);
   Vector3 relCentre = box.transform.transformInverse(centre);
 
-  // Early out check to see if we can exclude the contact
-  if (real_abs(relCentre.x) - sphere.radius > box.halfSize.x ||
-      real_abs(relCentre.y) - sphere.radius > box.halfSize.y ||
-      real_abs(relCentre.z) - sphere.radius > box.halfSize.z) {
+  // Early out check to see if we can exclude the contact (SAKBox: allowing
+  // for the margin, see CollisionData)
+  const real reach = sphere.radius + data->margin;
+  if (real_abs(relCentre.x) - reach > box.halfSize.x ||
+      real_abs(relCentre.y) - reach > box.halfSize.y ||
+      real_abs(relCentre.z) - reach > box.halfSize.z) {
     return 0;
   }
 
@@ -962,7 +987,7 @@ unsigned CollisionDetector::boxAndSphere(const CollisionBox &box, const Collisio
 
   // Check we're in contact
   dist = (closestPt - relCentre).squareMagnitude();
-  if (dist > sphere.radius * sphere.radius)
+  if (dist > reach * reach)
     return 0;
 
   Contact *contact = data->contacts;
@@ -1008,8 +1033,8 @@ unsigned CollisionDetector::boxAndHalfSpace(const CollisionBox &box, const Colli
   if (data->contactsLeft <= 0)
     return 0;
 
-  // Check for intersection
-  if (!IntersectionTests::boxAndHalfSpace(box, plane)) {
+  // Check for intersection (SAKBox: or that it's within the margin)
+  if (!IntersectionTests::boxAndHalfSpace(box, plane, data->margin)) {
     return 0;
   }
 
@@ -1033,8 +1058,9 @@ unsigned CollisionDetector::boxAndHalfSpace(const CollisionBox &box, const Colli
     // Calculate the distance from the plane
     real vertexDistance = vertexPos * plane.direction;
 
-    // Compare this to the plane's distance
-    if (vertexDistance <= plane.offset) {
+    // Compare this to the plane's distance (SAKBox: allowing for the
+    // margin, see CollisionData)
+    if (vertexDistance <= plane.offset + data->margin) {
       // Create the contact data.
 
       // The contact point is halfway between the vertex and the

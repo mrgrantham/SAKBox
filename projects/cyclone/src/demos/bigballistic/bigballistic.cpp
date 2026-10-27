@@ -3,10 +3,9 @@
  *
  * The ballistic demo again, with rigid bodies: each shot is a sphere
  * (AmmoRound, a CollisionSphere on a RigidBody) and the targets are boxes
- * (Box). generateContacts() asks the CollisionDetector for box-ground and
- * box-shot contacts each frame; the shared RigidBodyApplication resolves
+ * (Box). The world finds box-ground and box-shot contacts (their collision
+ * filters keep shots off the ground and boxes off each other) and resolves
  * them, so a hit shoves and spins the box. A shot that hits is retired.
- * Boxes don't collide with each other.
  *
  * Part of the Cyclone physics system.
  *
@@ -22,16 +21,26 @@
 #include "../timing.h"
 #include <cyclone/cyclone.h>
 
+#include <span>
 #include <stdio.h>
+#include <vector>
 
 enum ShotType { UNUSED = 0, PISTOL, ARTILLERY, FIREBALL, LASER };
+
+// SAKBox: what collides with what (see cyclone::CollisionFilter): shots with
+// boxes, boxes with shots and the ground (category 1, a plane's default)
+constexpr cyclone::CollisionFilter kShotFilter{.category = 2, .mask = 4};
+constexpr cyclone::CollisionFilter kBoxFilter{.category = 4, .mask = 1 | 2};
 
 class AmmoRound : public cyclone::CollisionSphere {
 public:
   ShotType type;
   unsigned startTime;
 
-  AmmoRound() { body = new cyclone::RigidBody; }
+  AmmoRound() {
+    body = new cyclone::RigidBody;
+    filter = kShotFilter;
+  }
 
   ~AmmoRound() { delete body; }
 
@@ -114,7 +123,10 @@ public:
 
 class Box : public cyclone::CollisionBox {
 public:
-  Box() { body = new cyclone::RigidBody; }
+  Box() {
+    body = new cyclone::RigidBody;
+    filter = kBoxFilter;
+  }
 
   ~Box() { delete body; }
 
@@ -186,11 +198,24 @@ class BigBallisticDemo : public RigidBodyApplication {
   /** Resets the position of all the boxes and primes the explosion. */
   void reset() override;
 
-  /** Build the contacts for the current situation. */
-  void generateContacts() override;
+  /** SAKBox: the world the boxes and the shots in flight are in. */
+  cyclone::World world{demoWorldSettings((cyclone::real)0.1)};
+  cyclone::World &getWorld() override { return world; }
 
-  /** Processes the objects in the simulation forward in time. */
-  void updateObjects(cyclone::real duration) override;
+  /** SAKBox: notes the shots that hit a box, to retire after the step. */
+  void contactsFound(std::span<const cyclone::Contact> contacts) override;
+
+  /** SAKBox: retires the shots that hit or flew out of range. */
+  void afterStep() override;
+
+  /** SAKBox: takes a shot out of the world, for reuse. */
+  void retire(AmmoRound &shot) {
+    world.removeBody(shot.body);
+    shot.type = UNUSED;
+  }
+
+  /** SAKBox: the shots that hit something this step. */
+  std::vector<AmmoRound *> hits;
 
   /** Dispatches a round. */
   void fire();
@@ -228,6 +253,11 @@ public:
 // Method definitions
 BigBallisticDemo::BigBallisticDemo() : RigidBodyApplication(), currentShotType(LASER) {
   pauseSimulation = false;
+  world.addPlane(ground());
+  for (Box &box : boxData) {
+    world.addBody(box.body);
+    world.addShape(&box);
+  }
   reset();
 }
 
@@ -246,8 +276,10 @@ void BigBallisticDemo::initGraphics() {
 void BigBallisticDemo::reset() {
   // Make all shots unused
   for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
-    shot->type = UNUSED;
+    if (shot->type != UNUSED)
+      retire(*shot);
   }
+  world.getResolver().forgetWarmStart();
 
   // Initialise the box
   cyclone::real z = 20.0f;
@@ -273,32 +305,38 @@ void BigBallisticDemo::fire() {
 
   // Set the shot
   shot->setState(currentShotType);
+  world.addBody(shot->body);
+  world.addShape(shot);
 }
 
-void BigBallisticDemo::updateObjects(cyclone::real duration) {
-  // Update the physics of each particle in turn
+void BigBallisticDemo::contactsFound(std::span<const cyclone::Contact> contacts) {
+  // When we get a collision, remove the shot (it only touches boxes)
+  for (const cyclone::Contact &contact : contacts) {
+    for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
+      if (shot->type != UNUSED && (contact.body[0] == shot->body || contact.body[1] == shot->body))
+        hits.push_back(shot);
+    }
+  }
+}
+
+void BigBallisticDemo::afterStep() {
+  for (AmmoRound *shot : hits) {
+    if (shot->type != UNUSED)
+      retire(*shot);
+  }
+  hits.clear();
+
   for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
     if (shot->type != UNUSED) {
-      // Run the physics
-      shot->body->integrate(duration);
-      shot->calculateInternals();
-
       // Check if the particle is now invalid
       if (shot->body->getPosition().y < 0.0f ||
           shot->startTime + 5000 < TimingData::get().lastFrameTimestamp ||
           shot->body->getPosition().z > 200.0f) {
         // We simply set the shot type to be unused, so the
         // memory it occupies can be reused by another shot.
-        shot->type = UNUSED;
+        retire(*shot);
       }
     }
-  }
-
-  // Update the boxes
-  for (Box *box = boxData; box < boxData + boxes; box++) {
-    // Run the physics
-    box->body->integrate(duration);
-    box->calculateInternals();
   }
 }
 
@@ -377,41 +415,6 @@ void BigBallisticDemo::display() {
 
   // SAKBox: the contact resolver in use (M switches) and the sound (V)
   renderCornerStatus();
-}
-
-void BigBallisticDemo::generateContacts() {
-  // Create the ground plane data
-  cyclone::CollisionPlane plane;
-  plane.direction = cyclone::Vector3(0, 1, 0);
-  plane.offset = 0;
-
-  // Set up the collision data structure
-  cData.reset(maxContacts);
-  cData.friction = (cyclone::real)0.9;
-  cData.restitution = (cyclone::real)0.1;
-  cData.tolerance = (cyclone::real)0.1;
-
-  // Check ground plane collisions
-  for (Box *box = boxData; box < boxData + boxes; box++) {
-    if (!cData.hasMoreContacts())
-      return;
-    cyclone::CollisionDetector::boxAndHalfSpace(*box, plane, &cData);
-
-    // Check for collisions with each shot
-    for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
-      if (shot->type != UNUSED) {
-        if (!cData.hasMoreContacts())
-          return;
-
-        // When we get a collision, remove the shot
-        if (cyclone::CollisionDetector::boxAndSphere(*box, *shot, &cData)) {
-          shot->type = UNUSED;
-        }
-      }
-    }
-  }
-
-  // NB We aren't checking box-box collisions.
 }
 
 void BigBallisticDemo::mouse(int button, int state, int x, int y) {

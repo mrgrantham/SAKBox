@@ -85,6 +85,10 @@ const Vector3 pelvisStart(0, 1.0, 0);
 const real linearDamping = 0.95, angularDamping = 0.15;
 const real friction = 0.9;
 
+// Room for as many contacts as the Cyclone demos' worlds, and as many
+// iterations of the book's resolver
+const unsigned maxContacts = 256;
+
 // How the motors drive: Bullet's motors aimed for 8 rad/s, with an
 // impulse of up to the joint's strength each step of 1/60 s, which is a
 // twist of 60 x strength (N m)
@@ -106,16 +110,10 @@ cyclone::Quaternion standingOrientation(Robot::Part part)
 	return cyclone::Quaternion(real_cos((real)half), 0, 0, real_sin((real)half));
 }
 
-// How far from its centre a part reaches, in any direction
-double reach(unsigned part)
-{
-	if(part < Robot::capsuleCount)
-		return capsuleShapes[part].radius + capsuleShapes[part].length / 2;
-	return footHalfSize.magnitude();
-}
 } // namespace
 
 Robot::Robot()
+: m_world({.maxContacts = maxContacts, .friction = friction, .restitution = 0, .iterations = maxContacts * 8})
 {
 	for(unsigned i = 0; i < hingeCount; i++)
 		m_jointList[i] = &m_hinges[i];
@@ -160,13 +158,20 @@ Robot::Robot()
 	m_neck.set(&m_bodies[spine], neckAtSpine, &m_bodies[head], neckAtHead, 0);
 	m_neck.setAxis(Vector3(0, 1, 0), (real)neckTilt);
 
-	// Every pair of parts collides, but for those joined together
-	for(unsigned a = 0; a < partCount; a++)
-		for(unsigned b = 0; b < partCount; b++)
-			m_collide[a][b] = a != b;
-	for(const HingeShape& shape : hingeShapes)
-		m_collide[shape.parent][shape.child] = m_collide[shape.child][shape.parent] = false;
-	m_collide[spine][head] = m_collide[head][spine] = false;
+	// Its world: every pair of parts collides, but for those joined together
+	// (a joint keeps its two parts' shapes apart)
+	cyclone::CollisionPlane ground;
+	ground.direction = Vector3(0, 1, 0);
+	ground.offset = 0;
+	m_world.addPlane(ground);
+	for(cyclone::RigidBody& body : m_bodies)
+		m_world.addBody(&body);
+	for(cyclone::CollisionCapsule& capsule : m_capsules)
+		m_world.addShape(&capsule);
+	for(cyclone::CollisionBox& foot : m_feet)
+		m_world.addShape(&foot);
+	for(cyclone::Joint* joint : m_jointList)
+		m_world.addJoint(joint);
 }
 
 void Robot::reset()
@@ -209,6 +214,7 @@ void Robot::reset()
 	}
 	for(cyclone::HingeJoint& hinge : m_hinges)
 		hinge.setMotor(0, 0);
+	m_world.getResolver().forgetWarmStart();
 }
 
 void Robot::setMotors(std::span<const double, hingeCount> outputs)
@@ -223,62 +229,10 @@ void Robot::setMotors(std::span<const double, hingeCount> outputs)
 	}
 }
 
-void Robot::integrate(real duration)
+void Robot::step(cyclone::real_duration seconds)
 {
-	for(cyclone::RigidBody& body : m_bodies)
-		body.integrate(duration);
-	for(cyclone::CollisionCapsule& capsule : m_capsules)
-		capsule.calculateInternals();
-	for(cyclone::CollisionBox& foot : m_feet)
-		foot.calculateInternals();
-}
-
-const cyclone::CollisionPrimitive& Robot::shape(unsigned part) const
-{
-	if(part < capsuleCount)
-		return m_capsules[part];
-	return m_feet[part - leftFoot];
-}
-
-void Robot::generateContacts(cyclone::CollisionData& data, unsigned maxContacts) const
-{
-	using cyclone::CollisionDetector;
-	data.reset(maxContacts);
-	data.friction = friction;
-	data.restitution = 0;
-	data.tolerance = (real)0.1;
-
-	cyclone::CollisionPlane ground;
-	ground.direction = Vector3(0, 1, 0);
-	ground.offset = 0;
-	for(unsigned part = 0; part < partCount && data.hasMoreContacts(); part++)
-	{
-		if(part < capsuleCount)
-			CollisionDetector::capsuleAndHalfSpace(m_capsules[part], ground, &data);
-		else
-			CollisionDetector::boxAndHalfSpace(m_feet[part - leftFoot], ground, &data);
-	}
-
-	for(unsigned a = 0; a < partCount; a++)
-	{
-		for(unsigned b = a + 1; b < partCount && data.hasMoreContacts(); b++)
-		{
-			// Only parts that aren't joined, and are near enough to touch
-			if(!m_collide[a][b])
-				continue;
-			const cyclone::CollisionPrimitive& one = shape(a);
-			const cyclone::CollisionPrimitive& two = shape(b);
-			const double apart = (one.getAxis(3) - two.getAxis(3)).magnitude();
-			if(apart > reach(a) + reach(b))
-				continue;
-			if(b < capsuleCount) // (b > a, so both are capsules)
-				CollisionDetector::capsuleAndCapsule(m_capsules[a], m_capsules[b], &data);
-			else if(a < capsuleCount)
-				CollisionDetector::capsuleAndBox(m_capsules[a], m_feet[b - leftFoot], &data);
-			else
-				CollisionDetector::boxAndBox(m_feet[0], m_feet[1], &data);
-		}
-	}
+	m_world.startFrame();
+	m_world.runPhysics(seconds);
 }
 
 double Robot::lowestPoint() const

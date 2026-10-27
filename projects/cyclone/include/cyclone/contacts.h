@@ -267,6 +267,32 @@ protected:
    * function has access to these anyway.
    */
   Vector3 calculateFrictionImpulse(Matrix3 *inverseInertiaTensor);
+
+  /**
+   * SAKBox: where the contact touches each body, in that body's
+   * coordinates (in the world's for no body), and its penetration, as it
+   * was found: kept over a step's sub-steps (keepAnchors, followAnchors).
+   */
+  Vector3 anchor[2];
+  real foundPenetration;
+
+  /**
+   * SAKBox: notes where the contact is on each body, and its penetration,
+   * to follow the bodies with as they move (call after calculateInternals).
+   */
+  void keepAnchors();
+
+  /**
+   * SAKBox: brings the contact up to date after its bodies have moved,
+   * without finding it again: its penetration changes by how far the two
+   * anchors have moved apart along the normal (the book's "Updating
+   * Penetration Depths", section 14.4, which updates contacts this way
+   * within a step), and its velocities are worked out afresh. Its point,
+   * normal and basis stay as found, as do the offsets of the point from
+   * the bodies' centres, which the resolver's responses for the step were
+   * worked out with.
+   */
+  void followAnchors(real duration);
 };
 
 /**
@@ -372,7 +398,7 @@ public:
      * if they had had the resolved velocities for the whole step, and any
      * overlap left is removed by moving them along the contact normals,
      * without changing their velocities (split impulses). Awake stacks of
-     * ten boxes stand still. See resolveTogether().
+     * ten boxes stand still. See beginStep(), resolveSubStep() and endStep().
      */
     sequentialImpulses,
   };
@@ -388,7 +414,7 @@ public:
 
   /**
    * SAKBox: for Method::sequentialImpulses, how many times each kind of
-   * sweep visits every contact (see resolveTogether): velocity sweeps for
+   * sweep visits every contact (see resolveSubStep): velocity sweeps for
    * pushes and friction, settle sweeps after the bodies have moved, and
    * position sweeps for overlap. Unlike setIterations' counts these don't
    * grow with the number of contacts; each sweep costs one visit per
@@ -451,8 +477,10 @@ protected:
   struct SolverContact {
     Contact *contact;
     // The bodies that move in response: null for the ground, immovable
-    // bodies and sleeping ones
+    // bodies and sleeping ones. With neither, the contact is left out (until
+    // one of its bodies wakes, if that happens partway through a step)
     RigidBody *movable[2];
+    bool active() const { return movable[0] || movable[1]; }
     Vector3 normal, tangent[2];
     // How much the bodies' relative speed at the contact changes for a
     // unit impulse along the normal and along each tangent
@@ -699,12 +727,46 @@ public:
    * SAKBox: resolves the contacts and holds the joints together. Resolving
    * contacts together (Method::sequentialImpulses), each joint is a
    * constraint of its own between its two anchor points (see
-   * resolveTogether); with the book's resolver, each joint adds the contact
+   * resolveSubStep); with the book's resolver, each joint adds the contact
    * Joint::addContact makes, as if it were a contact generator. Don't also
    * pass a joint's contact in `contactArray`.
    */
   void resolveContacts(Contact *contactArray, unsigned numContacts, real duration,
                        std::span<Joint *const> joints);
+
+  /**
+   * SAKBox: resolving a step's contacts over its sub-steps
+   * (Method::sequentialImpulses), with the contacts found once, at the
+   * start of the step, as World does: beginStep with the contacts and
+   * joints, then for each sub-step integrate the bodies and call
+   * resolveSubStep, then endStep. resolveContacts is the three at once, for
+   * contacts found after integrating.
+   *
+   * beginStep wakes sleeping bodies that need to move, works out each
+   * contact's directions and how its bodies respond along them, and starts
+   * it from last step's impulse (warm starting). Those are kept for the
+   * step's sub-steps (the book suggests keeping contact calculations,
+   * section 16.2.4); `duration` is a sub-step's.
+   */
+  void beginStep(Contact *contacts, unsigned numContacts, real duration,
+                 std::span<Joint *const> joints);
+
+  /**
+   * SAKBox: resolves the step's contacts and joints for one sub-step, after
+   * integrate() has moved the bodies: warm starts them from the last
+   * sub-step's impulses, sweeps the velocities, moves the bodies by the
+   * change in velocity, settles, and removes overlap. With
+   * `contactsFollowBodies`, each contact is first brought up to where its
+   * bodies are now (Contact::followAnchors); without it, they're taken as
+   * found, for contacts found after integrating.
+   */
+  void resolveSubStep(real duration, bool contactsFollowBodies);
+
+  /**
+   * SAKBox: ends the step: keeps its impulses to start the next one from,
+   * and puts bodies to sleep in groups (sleepInGroups).
+   */
+  void endStep();
 
 protected:
   /**
@@ -737,16 +799,17 @@ protected:
    */
   void sleepInGroups(Contact *contacts, unsigned numContacts, std::span<Joint *const> joints = {});
 
-  /**
-   * SAKBox: resolves the contacts by Method::sequentialImpulses: wakes
-   * sleeping bodies that need to move, sets up each contact and warm starts
-   * it, sweeps the velocities, moves the bodies by the change in velocity,
-   * removes overlap, and keeps this step's impulses for the next.
-   */
-  void resolveTogether(Contact *contacts, unsigned numContacts, real duration,
-                       std::span<Joint *const> joints);
+  /** SAKBox: the contacts and joints beginStep was given, for the step. */
+  std::span<Contact> stepContacts;
+  std::span<Joint *const> stepJoints;
 
-  /** SAKBox: sets up and warm starts each joint for resolveTogether. */
+  /**
+   * SAKBox: wakes a sleeping body touched by an awake one where the contact
+   * needs resolving, until no more wake, and both ends of a joint.
+   */
+  void wakeTouched(std::span<Contact> contacts, std::span<Joint *const> joints);
+
+  /** SAKBox: sets up and warm starts each joint for resolveSubStep. */
   void setUpJoints(std::span<Joint *const> joints, real duration);
 
   /** SAKBox: sets up and warm starts the joints' angular constraints. */
@@ -769,7 +832,7 @@ protected:
   void sweepJointPositions();
 
   /**
-   * SAKBox: the velocity sweeps of resolveTogether, `sweeps` times, aiming
+   * SAKBox: the velocity sweeps of resolveSubStep, `sweeps` times, aiming
    * for each contact's `target` normal velocity.
    */
   void sweepVelocities(real SolverContact::*target, unsigned sweeps);
@@ -780,7 +843,7 @@ protected:
    */
   real overlapNow(const SolverContact &solverContact, real duration) const;
 
-  /** SAKBox: the position sweeps of resolveTogether, removing overlap. */
+  /** SAKBox: the position sweeps of resolveSubStep, removing overlap. */
   void removeOverlap(real duration);
 
   /**

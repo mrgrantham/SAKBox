@@ -227,17 +227,33 @@ public:
  */
 class RigidBodyApplication : public Application {
 protected:
-  /** Holds the maximum number of contacts. */
-  const static unsigned maxContacts = 256;
+  /**
+   * SAKBox: the world the demo simulates. The demo adds its bodies, shapes,
+   * planes and joints to it; runStep() steps it, the sounds hear its
+   * contacts and drawDebug() draws them.
+   */
+  virtual cyclone::World &getWorld() = 0;
 
-  /** Holds the array of contacts. */
-  cyclone::Contact contacts[maxContacts];
+  /**
+   * SAKBox: the settings the demos' worlds share: room for 256 contacts, the
+   * friction they've always had, how bouncy the demo's bodies are, and as
+   * many iterations of the book's resolver as they've always had
+   */
+  static cyclone::World::Settings demoWorldSettings(cyclone::real restitution) {
+    constexpr unsigned maxContacts = 256;
+    return {.maxContacts = maxContacts,
+            .friction = (cyclone::real)0.9,
+            .restitution = restitution,
+            .iterations = maxContacts * 8};
+  }
 
-  /** Holds the collision data structure for collision detection. */
-  cyclone::CollisionData cData;
-
-  /** Holds the contact resolver. */
-  cyclone::ContactResolver resolver;
+  /** SAKBox: the ground (y = 0), for a world to add. */
+  static cyclone::CollisionPlane ground() {
+    cyclone::CollisionPlane plane;
+    plane.direction = cyclone::Vector3(0, 1, 0);
+    plane.offset = 0;
+    return plane;
+  }
 
   /** Holds the camera angle. */
   float theta;
@@ -282,25 +298,22 @@ protected:
   /** SAKBox: milliseconds of physics a frame, smoothed (for the corner) */
   double physicsMilliseconds = 0;
 
-  /** Processes the contact generation code. */
-  virtual void generateContacts() = 0;
-
-  /** Processes the objects in the simulation forward in time. */
-  virtual void updateObjects(cyclone::real duration) = 0;
-
   /**
-   * SAKBox: the joints to hold together with the contacts (see
-   * cyclone::ContactResolver::resolveContacts). None by default.
+   * SAKBox: called before each step, after its forces are cleared (forces
+   * added here act through every sub-step), and after it. Do nothing by
+   * default.
    */
-  virtual std::span<cyclone::Joint *const> getJoints() { return {}; }
-
-  /**
-   * SAKBox: called after each (sub-)step's contacts are resolved, with
-   * them still in cData. Does nothing by default.
-   */
+  virtual void beforeStep() {}
   virtual void afterStep() {}
 
-  /** SAKBox: one physics step, in its sub-steps */
+  /**
+   * SAKBox: called each time the world finds contacts, before they're
+   * resolved (see cyclone::World::contactsFound), after the sounds hear
+   * them. Does nothing by default.
+   */
+  virtual void contactsFound(std::span<const cyclone::Contact> contacts) {}
+
+  /** SAKBox: one physics step of the world, in its sub-steps */
   void runStep();
 
   /**

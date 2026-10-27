@@ -10,6 +10,7 @@
 #include <cyclone/contacts.h>
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -27,8 +28,8 @@ public:
    * Notes the hits among a step's `contacts`, `seconds` after the last step.
    * A frame can take several steps.
    */
-  void hear(const cyclone::Contact *contacts, unsigned count, float seconds) {
-    hits_.hear(contacts, count, seconds);
+  void hear(std::span<const cyclone::Contact> contacts, float seconds) {
+    hits_.hear(contacts, seconds);
   }
 
   /** Plays the hits heard since the last call: call once a frame */

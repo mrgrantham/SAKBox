@@ -25,28 +25,18 @@ class JumperDemo : public RigidBodyApplication
 protected:
 	Jumper m_jumper;
 	double m_highest = 0; // the highest its lowest point has been this jump
-	unsigned m_subStepsTaken = 0;
 
-	void updateObjects(cyclone::real duration) override { m_jumper.move(duration); }
+	// The robot's world, its policy acting before each sub-step
+	cyclone::World& getWorld() override { return m_jumper.robot().world(); }
 
-	void generateContacts() override { m_jumper.robot().generateContacts(cData, maxContacts); }
-
-	std::span<cyclone::Joint* const> getJoints() override { return m_jumper.robot().joints(); }
-
-	// The height after each whole step, as JumpHeight measures it, so the
-	// highest shown is the height the policy scored
-	void afterStep() override
-	{
-		if(++m_subStepsTaken % physicsClock.subSteps() == 0)
-			m_highest = std::max(m_highest, m_jumper.robot().lowestPoint());
-	}
+	// The height after each step, as JumpHeight measures it, so the highest
+	// shown is the height the policy scored
+	void afterStep() override { m_highest = std::max(m_highest, m_jumper.robot().lowestPoint()); }
 
 	void reset() override
 	{
 		m_jumper.reset();
 		m_highest = 0;
-		m_subStepsTaken = 0;
-		cData.contactCount = 0;
 	}
 
 public:
@@ -54,7 +44,6 @@ public:
 	: m_jumper(pPolicy)
 	{
 		// Simulated as JumpHeight scores it (PolicyLearner.h)
-		static_assert(kMaxContacts == maxContacts);
 		physicsClock.setStepSeconds(kStepSeconds);
 		physicsClock.setSubSteps(kSubSteps);
 		// A robot 1.8 m tall: closer than the demos' 10 m scenes

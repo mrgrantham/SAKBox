@@ -90,12 +90,10 @@ class StackDemo : public RigidBodyApplication {
   std::vector<std::unique_ptr<Box>> boxes;
   unsigned height = 10;
 
-  // The contacts between boxes, kept from frame to frame
-  cyclone::BoxContactCache boxContacts;
+  cyclone::World world{demoWorldSettings((cyclone::real)0.1)};
 
+  cyclone::World &getWorld() override { return world; }
   void reset() override;
-  void generateContacts() override;
-  void updateObjects(cyclone::real duration) override;
 
 public:
   StackDemo();
@@ -118,48 +116,21 @@ public:
 StackDemo::StackDemo() {
   // Turned, so two sides of each box show
   theta = 30;
-  resolver.setMethod(cyclone::ContactResolver::Method::sequentialImpulses);
+  world.addPlane(ground());
   reset();
 }
 
 void StackDemo::reset() {
+  for (const auto &box : boxes)
+    world.removeBody(box->body);
   boxes.clear();
   for (unsigned i = 0; i < height; i++) {
     boxes.push_back(std::make_unique<Box>());
     boxes.back()->placeAt((cyclone::real)0.5 + i);
+    world.addBody(boxes.back()->body);
+    world.addShape(boxes.back().get());
   }
-  cData.contactCount = 0;
-  boxContacts.clear();
-  resolver.forgetWarmStart();
-}
-
-void StackDemo::generateContacts() {
-  cyclone::CollisionPlane ground;
-  ground.direction = cyclone::Vector3(0, 1, 0);
-  ground.offset = 0;
-
-  cData.reset(maxContacts);
-  cData.friction = (cyclone::real)0.9;
-  cData.restitution = (cyclone::real)0.1;
-  cData.tolerance = (cyclone::real)0.1;
-
-  for (size_t i = 0; i < boxes.size(); i++) {
-    if (!cData.hasMoreContacts())
-      return;
-    cyclone::CollisionDetector::boxAndHalfSpace(*boxes[i], ground, &cData);
-    for (size_t j = i + 1; j < boxes.size(); j++) {
-      if (!cData.hasMoreContacts())
-        return;
-      boxContacts.boxAndBox(*boxes[i], *boxes[j], &cData);
-    }
-  }
-}
-
-void StackDemo::updateObjects(cyclone::real duration) {
-  for (const auto &box : boxes) {
-    box->body->integrate(duration);
-    box->calculateInternals();
-  }
+  world.getResolver().forgetWarmStart();
 }
 
 void StackDemo::initGraphics() {

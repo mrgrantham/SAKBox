@@ -33,6 +33,9 @@ std::unique_ptr<WNeuralNetLearner> MakePolicy()
 Jumper::Jumper(WNeuralNetLearner* pPolicy)
 : m_pPolicy(pPolicy)
 {
+	m_robot.world().setSubSteps(kSubSteps);
+	m_robot.world().beforeSubStep = [this](cyclone::real_duration duration)
+	{ act(duration); };
 }
 
 void Jumper::reset()
@@ -41,7 +44,7 @@ void Jumper::reset()
 	m_time = 0;
 }
 
-void Jumper::move(double duration)
+void Jumper::act(double duration)
 {
 	// What the policy sees: the time, and how the robot is lying
 	WVec features(FEATURE_DIMS);
@@ -54,30 +57,17 @@ void Jumper::move(double duration)
 	else
 		manualPolicy(features, labels);
 	m_robot.setMotors(std::span<const double, LABEL_DIMS>(labels.data(), LABEL_DIMS));
-
-	m_robot.integrate((cyclone::real)duration);
 	m_time += duration;
 }
 
 double JumpHeight(WNeuralNetLearner* pPolicy)
 {
-	// Step by step as the window does (RigidBodyApplication::runStep): move,
-	// find the contacts, resolve them
+	// Step by step as the window does (RigidBodyApplication::runStep)
 	Jumper jumper(pPolicy);
-	cyclone::ContactResolver resolver(kMaxContacts * 8);
-	cyclone::Contact contacts[kMaxContacts];
-	cyclone::CollisionData data;
-	data.contactArray = contacts;
-	const double subStep = kStepSeconds / kSubSteps;
 	double height = 0;
 	for(int step = 0; step < 240; step++)
 	{
-		for(unsigned i = 0; i < kSubSteps; i++)
-		{
-			jumper.move(subStep);
-			jumper.robot().generateContacts(data, kMaxContacts);
-			resolver.resolveContacts(contacts, data.contactCount, (cyclone::real)subStep, jumper.robot().joints());
-		}
+		jumper.step();
 		height = std::max(height, jumper.robot().lowestPoint());
 	}
 	return height;

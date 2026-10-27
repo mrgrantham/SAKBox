@@ -26,6 +26,7 @@
 #define CYCLONE_COLLISION_FINE_H
 
 #include "contacts.h"
+#include <cstdint>
 
 #include <map>
 #include <utility>
@@ -39,10 +40,31 @@ class CollisionDetector;
 struct BoxContactFeature;
 
 /**
+ * SAKBox: which collision shapes touch which, as Box2D filters them: two
+ * shapes (or a shape and a plane) collide only if each one's category is
+ * in the other's mask. Every shape is in category 1 and collides with
+ * everything unless set otherwise. The ragdoll, for one, gives each bone a
+ * box that only meets the ground and a sphere that only meets other bones.
+ */
+struct CollisionFilter {
+  std::uint32_t category = 1;
+  std::uint32_t mask = ~std::uint32_t{0};
+
+  bool collidesWith(const CollisionFilter &other) const {
+    return (category & other.mask) != 0 && (other.category & mask) != 0;
+  }
+};
+
+/**
  * Represents a primitive to detect collisions against.
  */
 class CollisionPrimitive {
 public:
+  /**
+   * SAKBox: which kind of primitive it is, so World can pick the collision
+   * test for each pair.
+   */
+  enum class Shape : unsigned char { sphere, box, capsule };
   /**
    * This class exists to help the collision detector
    * and intersection routines, so they should have
@@ -60,6 +82,19 @@ public:
    * The offset of this primitive from the given rigid body.
    */
   Matrix4 offset;
+
+  /** SAKBox: which shapes and planes it collides with (in a World). */
+  CollisionFilter filter;
+
+  /** SAKBox: which kind of primitive it is. */
+  Shape getShape() const { return shape; }
+
+  /**
+   * SAKBox: how far the primitive reaches from its centre, in any
+   * direction: the radius of a sphere around it, for a quick test of
+   * whether two can touch.
+   */
+  real boundingRadius() const;
 
   /**
    * Calculates the internals for the primitive.
@@ -81,12 +116,16 @@ public:
   const Matrix4 &getTransform() const { return transform; }
 
 protected:
+  explicit CollisionPrimitive(Shape shape) : shape(shape) {}
+
   /**
    * The resultant transform of the primitive. This is
    * calculated by combining the offset of the primitive
    * with the transform of the rigid body.
    */
   Matrix4 transform;
+
+  Shape shape;
 };
 
 /**
@@ -95,6 +134,8 @@ protected:
  */
 class CollisionSphere : public CollisionPrimitive {
 public:
+  CollisionSphere() : CollisionPrimitive(Shape::sphere) {}
+
   /**
    * The radius of the sphere.
    */
@@ -117,6 +158,9 @@ public:
    * The distance of the plane from the origin.
    */
   real offset;
+
+  /** SAKBox: which shapes collide with it (in a World). */
+  CollisionFilter filter;
 };
 
 /**
@@ -125,17 +169,14 @@ public:
  */
 class CollisionBox : public CollisionPrimitive {
 public:
+  CollisionBox() : CollisionPrimitive(Shape::box) {}
+
   /**
    * Holds the half-sizes of the box along each of its local axes.
    */
   Vector3 halfSize;
 };
 
-/**
- * A wrapper class that holds fast intersection tests. These
- * can be used to drive the coarse collision detection system or
- * as an early out in the full collision tests below.
- */
 /**
  * SAKBox: a capsule, "a cylinder with hemispherical ends", one of the
  * primitives the book builds its contact generation for (section 13.1),
@@ -149,6 +190,8 @@ public:
  */
 class CollisionCapsule : public CollisionPrimitive {
 public:
+  CollisionCapsule() : CollisionPrimitive(Shape::capsule) {}
+
   /** The radius of the ends, and of the cylinder between them. */
   real radius;
 
@@ -162,6 +205,11 @@ public:
   CollisionSphere sphereAt(real along) const;
 };
 
+/**
+ * A wrapper class that holds fast intersection tests. These
+ * can be used to drive the coarse collision detection system or
+ * as an early out in the full collision tests below.
+ */
 class IntersectionTests {
 public:
   static bool sphereAndHalfSpace(const CollisionSphere &sphere, const CollisionPlane &plane);
@@ -182,7 +230,8 @@ public:
    * offset of the limiting plane from the origin, along the given
    * direction.
    */
-  static bool boxAndHalfSpace(const CollisionBox &box, const CollisionPlane &plane);
+  static bool boxAndHalfSpace(const CollisionBox &box, const CollisionPlane &plane,
+                              real tolerance = 0);
 };
 
 /**
@@ -216,8 +265,23 @@ struct CollisionData {
   /**
    * Holds the collision tolerance, even uncolliding objects this
    * close should have collisions generated.
+   *
+   * SAKBox: BoxContactCache keeps box contacts this close (see margin for
+   * the other tests).
    */
-  real tolerance;
+  real tolerance = 0;
+
+  /**
+   * SAKBox: the book's pessimistic collision detection (section 16.1.4):
+   * the sphere, box, box-and-plane, box-and-sphere and capsule tests make a
+   * contact for shapes this close, with negative penetration (how far apart
+   * they are), which resolving contacts together treats as a gap the bodies
+   * may close but not cross. World sets it for each pair, from how far its
+   * bodies can move in the step. Zero by default: contacts only where shapes
+   * overlap, as the book's resolver needs (it would push shapes apart
+   * before they touch).
+   */
+  real margin = 0;
 
   /**
    * Checks if there are more contacts available in the contact

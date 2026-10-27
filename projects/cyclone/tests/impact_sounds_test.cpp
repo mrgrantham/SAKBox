@@ -31,7 +31,7 @@ public:
   // One step's contacts
   void hearStep(ImpactSounds &sounds, float seconds) {
     std::vector<cyclone::Contact> all(contacts_.begin(), contacts_.end());
-    sounds.hear(all.data(), static_cast<unsigned>(all.size()), seconds);
+    sounds.hear(all, seconds);
   }
   // A frame of one step
   void hear(ImpactSounds &sounds, float seconds = 1.0f / 60) {

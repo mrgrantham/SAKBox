@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <deque>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -35,56 +36,16 @@ constexpr double kFastestSane = 1000;  // m/s: shots start at up to 100
 constexpr double kFarthestSane = 1e4;  // m
 constexpr double kMostMassRatio = 100; // between particles joined by a rod or cable
 
-// Every box and sphere against the ground (y = 0) and against each other
-class Shapes : public ContactGenerator {
-public:
-  // Mutable: their transforms are brought up to date here, after World
-  // integrates the bodies
-  mutable std::vector<CollisionBox> boxes;
-  mutable std::vector<CollisionSphere> spheres;
-  mutable BoxContactCache cache;
-
-  unsigned addContact(Contact *contact, unsigned limit) const override {
-    for (CollisionBox &box : boxes)
-      box.calculateInternals();
-    for (CollisionSphere &sphere : spheres)
-      sphere.calculateInternals();
-    CollisionData data;
-    data.contactArray = contact;
-    data.friction = 0.6;
-    data.restitution = 0.3;
-    data.tolerance = 0.1;
-    data.reset(limit);
-    CollisionPlane ground;
-    ground.direction = Vector3(0, 1, 0);
-    ground.offset = 0;
-    for (size_t i = 0; i < boxes.size(); ++i) {
-      if (!data.hasMoreContacts())
-        return data.contactCount;
-      CollisionDetector::boxAndHalfSpace(boxes[i], ground, &data);
-      for (size_t j = i + 1; j < boxes.size() && data.hasMoreContacts(); ++j)
-        cache.boxAndBox(boxes[i], boxes[j], &data);
-      for (size_t j = 0; j < spheres.size() && data.hasMoreContacts(); ++j)
-        CollisionDetector::boxAndSphere(boxes[i], spheres[j], &data);
-    }
-    for (size_t i = 0; i < spheres.size(); ++i) {
-      if (!data.hasMoreContacts())
-        return data.contactCount;
-      CollisionDetector::sphereAndHalfSpace(spheres[i], ground, &data);
-      for (size_t j = i + 1; j < spheres.size() && data.hasMoreContacts(); ++j)
-        CollisionDetector::sphereAndSphere(spheres[i], spheres[j], &data);
-    }
-    return data.contactCount;
-  }
-};
-
-// A random scene, the same for the same seed
+// A random scene, the same for the same seed: boxes and spheres on the
+// ground (y = 0) and against each other, the World's shapes
 struct Scene {
-  World world{1024};
+  World world{World::Settings{.maxContacts = 1024, .friction = 0.6, .restitution = 0.3}};
   Gravity gravity{Vector3::GRAVITY};
   std::vector<std::unique_ptr<RigidBody>> bodies;
   std::vector<std::unique_ptr<Joint>> joints;
-  Shapes shapes;
+  // (Deques, so adding one moves none)
+  std::deque<CollisionBox> boxes;
+  std::deque<CollisionSphere> spheres;
 
   Scene(unsigned seed, ContactResolver::Method method) {
     world.getResolver().setMethod(method);
@@ -104,18 +65,18 @@ struct Scene {
         const Vector3 half(random.randomReal(0.1, 1.5), random.randomReal(0.1, 1.5),
                            random.randomReal(0.1, 1.5));
         inertia.setBlockInertiaTensor(half, mass);
-        CollisionBox box;
+        CollisionBox &box = boxes.emplace_back();
         box.body = body.get();
         box.halfSize = half;
-        shapes.boxes.push_back(box);
+        world.addShape(&box);
       } else {
         const double radius = random.randomReal(0.1, 1.5);
         const double coeff = 0.4 * mass * radius * radius;
         inertia.setInertiaTensorCoeffs(coeff, coeff, coeff);
-        CollisionSphere sphere;
+        CollisionSphere &sphere = spheres.emplace_back();
         sphere.body = body.get();
         sphere.radius = radius;
-        shapes.spheres.push_back(sphere);
+        world.addShape(&sphere);
       }
       body->setInertiaTensor(inertia);
       body->setDamping(0.99, 0.8);
@@ -146,15 +107,15 @@ struct Scene {
         auto joint = std::make_unique<Joint>();
         joint->set(a, random.randomVector(0.3), b, random.randomVector(0.3),
                    random.randomInt(2) == 0 ? (real)0 : random.randomReal(0.1, 1.0));
+        joint->collideConnected = true; // the harder case: the bodies still collide
         world.getJoints().push_back(joint.get());
         joints.push_back(std::move(joint));
       }
     }
-    for (CollisionBox &box : shapes.boxes)
-      box.calculateInternals();
-    for (CollisionSphere &sphere : shapes.spheres)
-      sphere.calculateInternals();
-    world.getContactGenerators().push_back(&shapes);
+    CollisionPlane ground;
+    ground.direction = Vector3(0, 1, 0);
+    ground.offset = 0;
+    world.addPlane(ground);
   }
 };
 

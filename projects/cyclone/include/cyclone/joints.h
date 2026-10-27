@@ -59,6 +59,13 @@ public:
   real error;
 
   /**
+   * SAKBox: whether the two bodies' shapes collide with each other in a
+   * World. Off by default, as in Box2D: jointed bodies usually overlap
+   * where they're joined.
+   */
+  bool collideConnected = false;
+
+  /**
    * SAKBox: the impulse the joint applied last step when contacts are
    * resolved together (ContactResolver::Method::sequentialImpulses), which
    * starts the next step (warm starting): on body two, in world

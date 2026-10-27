@@ -12,7 +12,8 @@
 /// A robot of thirteen parts: capsules for the body, head, arms and legs,
 /// and boxes for the feet, joined by eleven hinges (the policy's motors)
 /// and a neck that tilts. It faces -z, with its left side towards -x, and
-/// stands on the ground (y = 0).
+/// stands on the ground (y = 0), in a world of its own (world()), where
+/// parts collide with the ground and each other but for those joined.
 class Robot
 {
 public:
@@ -68,16 +69,15 @@ public:
 	/// as hard as the output's size, up to the joint's strength that way
 	void setMotors(std::span<const double, hingeCount> outputs);
 
-	/// Moves every part on by `duration` seconds (before its contacts are
-	/// found and resolved)
-	void integrate(cyclone::real duration);
+	/// The world its parts, shapes and joints are in. Code that acts as it
+	/// moves (a policy setting its motors) does it in the world's
+	/// beforeSubStep.
+	cyclone::World& world() { return m_world; }
 
-	/// Writes the contacts between the parts and the ground, and between
-	/// parts that aren't joined, into `data`, which has room for
-	/// `maxContacts`
-	void generateContacts(cyclone::CollisionData& data, unsigned maxContacts) const;
+	/// One step of `seconds`, in the world's sub-steps
+	void step(cyclone::real_duration seconds);
 
-	/// The joints, as the contact resolver takes them
+	/// The joints: the hinges (in Hinge's order), then the neck
 	std::span<cyclone::Joint* const> joints() { return m_jointList; }
 
 	/// How high the robot's lowest point is (m): its height off the ground
@@ -104,10 +104,7 @@ protected:
 	cyclone::HingeJoint m_hinges[hingeCount];
 	cyclone::ConeJoint m_neck;
 	cyclone::Joint* m_jointList[hingeCount + 1];
-	// Which pairs of parts can collide: all but the joined ones
-	bool m_collide[partCount][partCount];
-
-	const cyclone::CollisionPrimitive& shape(unsigned part) const;
+	cyclone::World m_world;
 };
 
 #endif // JUMPER_ROBOT_H

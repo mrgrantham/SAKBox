@@ -35,6 +35,11 @@ void ForceRegistry::remove(RigidBody *body, ForceGenerator *fg) {
   });
 }
 
+void ForceRegistry::remove(const RigidBody *body) {
+  std::erase_if(registrations,
+                [&](const ForceRegistration &registration) { return registration.body == body; });
+}
+
 void ForceRegistry::clear() { registrations.clear(); }
 
 Buoyancy::Buoyancy(const Vector3 &cOfB, real maxDepth, real volume, real waterHeight,

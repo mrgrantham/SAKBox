@@ -2,8 +2,8 @@
  * Fracture: a block that shatters when hit.
  *
  * A ball is thrown at a large block (both rigid bodies; the throw is
- * randomised a little in reset()). When generateContacts() finds the ball
- * touching the block, afterStep() calls divideBlock(), which replaces the
+ * randomised a little in reset()). When the world finds the ball touching
+ * the block, afterStep() calls divideBlock(), which replaces the
  * block with eight smaller ones. It cuts the block three ways: through the
  * point of impact across the two axes perpendicular to the hit, and
  * through the centre along it. Each piece gets mass in proportion to its
@@ -25,6 +25,8 @@
 #include "../timing.h"
 #include <cyclone/cyclone.h>
 
+#include <optional>
+#include <span>
 #include <stdio.h>
 
 #define MAX_BLOCKS 9
@@ -223,10 +225,12 @@ public:
  * The main demo class definition.
  */
 class FractureDemo : public RigidBodyApplication {
-  /** Tracks if a block has been hit. */
-  bool hit;
-  bool ball_active;
-  unsigned fracture_contact;
+  /**
+   * Tracks if a block has been hit. (SAKBox: the ball's contact with it,
+   * found in the step.)
+   */
+  std::optional<cyclone::Contact> hit;
+  bool ball_active = false;
 
   /** Handle random numbers. */
   cyclone::Random random;
@@ -234,17 +238,21 @@ class FractureDemo : public RigidBodyApplication {
   /** Holds the bodies. */
   Block blocks[MAX_BLOCKS];
 
-  /** The contacts between blocks, kept from frame to frame */
-  cyclone::BoxContactCache blockContacts;
-
   /** Holds the projectile. */
   cyclone::CollisionSphere ball;
 
-  /** Processes the contact generation code. */
-  void generateContacts() override;
+  /** SAKBox: the world the blocks that exist and the ball are in. */
+  cyclone::World world{demoWorldSettings((cyclone::real)0.2)};
+  cyclone::World &getWorld() override { return world; }
 
-  /** Processes the objects in the simulation forward in time. */
-  void updateObjects(cyclone::real duration) override;
+  /** SAKBox: notes the ball's contact with the block, if it hits. */
+  void contactsFound(std::span<const cyclone::Contact> contacts) override;
+
+  /** SAKBox: puts a block or the ball in the world. */
+  void addToWorld(cyclone::CollisionPrimitive &shape) {
+    world.addBody(shape.body);
+    world.addShape(&shape);
+  }
 
   /** Resets the position of all the blocks. */
   void reset() override;
@@ -288,73 +296,34 @@ FractureDemo::FractureDemo() : RigidBodyApplication() {
   ball.body->setCanSleep(false);
   ball.body->setAwake(true);
 
+  world.addPlane(ground());
+
   // Set up the initial block
   reset();
 }
 
 const char *FractureDemo::getTitle() { return "Cyclone > Fracture Demo"; }
 
-void FractureDemo::generateContacts() {
-  hit = false;
-
-  // Create the ground plane data
-  cyclone::CollisionPlane plane;
-  plane.direction = cyclone::Vector3(0, 1, 0);
-  plane.offset = 0;
-
-  // Set up the collision data structure
-  cData.reset(maxContacts);
-  cData.friction = (cyclone::real)0.9;
-  cData.restitution = (cyclone::real)0.2;
-  cData.tolerance = (cyclone::real)0.1;
-
-  // Perform collision detection
-  cyclone::Matrix4 transform, otherTransform;
-  cyclone::Vector3 position, otherPosition;
-  for (Block *block = blocks; block < blocks + MAX_BLOCKS; block++) {
-    if (!block->exists)
-      continue;
-
-    // Check for collisions with the ground plane
-    if (!cData.hasMoreContacts())
-      return;
-    cyclone::CollisionDetector::boxAndHalfSpace(*block, plane, &cData);
-
-    if (ball_active) {
-      // And with the sphere
-      if (!cData.hasMoreContacts())
-        return;
-      if (cyclone::CollisionDetector::boxAndSphere(*block, ball, &cData)) {
-        hit = true;
-        fracture_contact = cData.contactCount - 1;
-      }
+void FractureDemo::contactsFound(std::span<const cyclone::Contact> contacts) {
+  if (hit || !ball_active)
+    return;
+  for (const cyclone::Contact &contact : contacts) {
+    if (contact.body[0] == ball.body || contact.body[1] == ball.body) {
+      if (contact.body[0] == blocks[0].body || contact.body[1] == blocks[0].body)
+        hit = contact;
     }
-
-    // Check for collisions with each other box
-    for (Block *other = block + 1; other < blocks + MAX_BLOCKS; other++) {
-      if (!other->exists)
-        continue;
-
-      if (!cData.hasMoreContacts())
-        return;
-      blockContacts.boxAndBox(*block, *other, &cData);
-    }
-  }
-
-  // Check for sphere ground collisions
-  if (ball_active) {
-    if (!cData.hasMoreContacts())
-      return;
-    cyclone::CollisionDetector::sphereAndHalfSpace(ball, plane, &cData);
   }
 }
 
 void FractureDemo::reset() {
   // Only the first block exists
-  blocks[0].exists = true;
-  for (Block *block = blocks + 1; block < blocks + MAX_BLOCKS; block++) {
+  for (Block *block = blocks; block < blocks + MAX_BLOCKS; block++) {
+    if (block->exists)
+      world.removeBody(block->body);
     block->exists = false;
   }
+  blocks[0].exists = true;
+  addToWorld(blocks[0]);
 
   // Set the first block
   blocks[0].halfSize = cyclone::Vector3(4, 4, 4);
@@ -374,6 +343,8 @@ void FractureDemo::reset() {
   blocks[0].body->setAwake(true);
   blocks[0].body->setCanSleep(true);
 
+  if (!ball_active)
+    addToWorld(ball);
   ball_active = true;
 
   // Set up the ball
@@ -385,34 +356,21 @@ void FractureDemo::reset() {
   ball.body->setAwake(true);
   ball.calculateInternals();
 
-  hit = false;
-
-  // Reset the contacts
-  cData.contactCount = 0;
-  blockContacts.clear();
+  hit.reset();
+  world.getResolver().forgetWarmStart();
 }
 
 void FractureDemo::afterStep() {
   // Handle fractures. (SAKBox: after the step that hit, before the next
   // finds new contacts)
   if (hit) {
-    blocks[0].divideBlock(cData.contactArray[fracture_contact], blocks, blocks + 1);
-    blockContacts.clear(); // the blocks are new pieces
+    world.removeBody(blocks[0].body);
+    blocks[0].divideBlock(*hit, blocks, blocks + 1);
+    for (Block *block = blocks + 1; block < blocks + MAX_BLOCKS; block++)
+      addToWorld(*block);
+    world.removeBody(ball.body);
     ball_active = false;
-  }
-}
-
-void FractureDemo::updateObjects(cyclone::real duration) {
-  for (Block *block = blocks; block < blocks + MAX_BLOCKS; block++) {
-    if (block->exists) {
-      block->body->integrate(duration);
-      block->calculateInternals();
-    }
-  }
-
-  if (ball_active) {
-    ball.body->integrate(duration);
-    ball.calculateInternals();
+    hit.reset();
   }
 }
 

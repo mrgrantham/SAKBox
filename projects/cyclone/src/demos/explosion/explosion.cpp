@@ -2,11 +2,10 @@
  * Explosion: boxes and balls colliding.
  *
  * Five boxes and five balls, all rigid bodies, start stacked and tumble
- * into a heap. generateContacts() checks every pair (box-box, box-ball,
- * ball-ball) and each against the ground, and the shared resolver handles
- * the contacts. Resting bodies fall asleep (drawn blue; a box overlapping
- * another box is green) and W wakes them. X sets off a cyclone::Explosion
- * at the centre of the ground (SAKBox: upstream never finished it): an
+ * into a heap. The world finds the contacts between every pair (box-box,
+ * box-ball, ball-ball) and each against the ground, and resolves them. Resting bodies fall asleep
+ * (drawn blue; a box overlapping another box is green) and W wakes them. X sets off a
+ * cyclone::Explosion at the centre of the ground (SAKBox: upstream never finished it): an
  * implosion, a shock wave (drawn as a red ring while it travels) and a
  * convection chimney. Edit and up modes move the first box with the mouse,
  * for setting up collisions.
@@ -201,9 +200,6 @@ class ExplosionDemo : public RigidBodyApplication {
   /** Holds the box data. */
   Box boxData[boxes];
 
-  /** The contacts between boxes, kept from frame to frame */
-  cyclone::BoxContactCache boxContacts;
-
   /**
    * Holds the number of balls in the simulation.
    */
@@ -222,11 +218,12 @@ class ExplosionDemo : public RigidBodyApplication {
   /** Resets the position of all the boxes and primes the explosion. */
   void reset() override;
 
-  /** Processes the contact generation code. */
-  void generateContacts() override;
+  /** SAKBox: the world the boxes and balls are in. */
+  cyclone::World world{demoWorldSettings((cyclone::real)0.6)};
+  cyclone::World &getWorld() override { return world; }
 
-  /** Processes the objects in the simulation forward in time. */
-  void updateObjects(cyclone::real duration) override;
+  /** SAKBox: applies the explosion's forces for a sub-step, while it lasts. */
+  void explode(cyclone::real_duration duration);
 
 public:
   /** Creates a new demo object. */
@@ -274,6 +271,17 @@ ExplosionDemo::ExplosionDemo() : RigidBodyApplication(), editMode(false), upMode
   explosion.peakConvectionForce = 200;
   explosion.chimneyRadius = 3;
 
+  world.addPlane(ground());
+  for (Box &box : boxData) {
+    world.addBody(box.body);
+    world.addShape(&box);
+  }
+  for (Ball &ball : ballData) {
+    world.addBody(ball.body);
+    world.addShape(&ball);
+  }
+  world.beforeSubStep = [this](cyclone::real_duration duration) { explode(duration); };
+
   // Reset the position of the boxes
   reset();
 }
@@ -306,96 +314,20 @@ void ExplosionDemo::reset() {
     ball->random(&random);
   }
 
-  // Reset the contacts
-  cData.contactCount = 0;
-  boxContacts.clear();
+  world.getResolver().forgetWarmStart();
   exploding = false;
 }
 
-void ExplosionDemo::generateContacts() {
-  // Note that this method makes a lot of use of early returns to avoid
-  // processing lots of potential contacts that it hasn't got room to
-  // store.
-
-  // Create the ground plane data
-  cyclone::CollisionPlane plane;
-  plane.direction = cyclone::Vector3(0, 1, 0);
-  plane.offset = 0;
-
-  // Set up the collision data structure
-  cData.reset(maxContacts);
-  cData.friction = (cyclone::real)0.9;
-  cData.restitution = (cyclone::real)0.6;
-  cData.tolerance = (cyclone::real)0.1;
-
-  // Perform exhaustive collision detection
-  cyclone::Matrix4 transform, otherTransform;
-  cyclone::Vector3 position, otherPosition;
-  for (Box *box = boxData; box < boxData + boxes; box++) {
-    // Check for collisions with the ground plane
-    if (!cData.hasMoreContacts())
-      return;
-    cyclone::CollisionDetector::boxAndHalfSpace(*box, plane, &cData);
-
-    // Check for collisions with each other box
-    for (Box *other = box + 1; other < boxData + boxes; other++) {
-      if (!cData.hasMoreContacts())
-        return;
-      boxContacts.boxAndBox(*box, *other, &cData);
-
-      if (cyclone::IntersectionTests::boxAndBox(*box, *other)) {
-        box->isOverlapping = other->isOverlapping = true;
-      }
-    }
-
-    // Check for collisions with each ball
-    for (Ball *other = ballData; other < ballData + balls; other++) {
-      if (!cData.hasMoreContacts())
-        return;
-      cyclone::CollisionDetector::boxAndSphere(*box, *other, &cData);
-    }
-  }
-
-  for (Ball *ball = ballData; ball < ballData + balls; ball++) {
-    // Check for collisions with the ground plane
-    if (!cData.hasMoreContacts())
-      return;
-    cyclone::CollisionDetector::sphereAndHalfSpace(*ball, plane, &cData);
-
-    for (Ball *other = ball + 1; other < ballData + balls; other++) {
-      // Check for collisions with the ground plane
-      if (!cData.hasMoreContacts())
-        return;
-      cyclone::CollisionDetector::sphereAndSphere(*ball, *other, &cData);
-    }
-  }
-}
-
-void ExplosionDemo::updateObjects(cyclone::real duration) {
+void ExplosionDemo::explode(cyclone::real_duration duration) {
   // The explosion's forces (they wake the bodies they reach)
-  if (exploding) {
-    for (Box *box = boxData; box < boxData + boxes; box++)
-      explosion.updateForce(box->body, duration);
-    for (Ball *ball = ballData; ball < ballData + balls; ball++)
-      explosion.updateForce(ball->body, duration);
-    explosion.advanceTime(duration);
-    exploding = explosion.isActive();
-  }
-
-  // Update the physics of each box in turn
-  for (Box *box = boxData; box < boxData + boxes; box++) {
-    // Run the physics
-    box->body->integrate(duration);
-    box->calculateInternals();
-    box->isOverlapping = false;
-  }
-
-  // Update the physics of each ball in turn
-  for (Ball *ball = ballData; ball < ballData + balls; ball++) {
-    // Run the physics
-    ball->body->integrate(duration);
-    ball->calculateInternals();
-  }
+  if (!exploding)
+    return;
+  for (Box *box = boxData; box < boxData + boxes; box++)
+    explosion.updateForce(box->body, duration);
+  for (Ball *ball = ballData; ball < ballData + balls; ball++)
+    explosion.updateForce(ball->body, duration);
+  explosion.advanceTime(duration);
+  exploding = explosion.isActive();
 }
 
 void ExplosionDemo::initGraphics() {
@@ -418,6 +350,13 @@ void ExplosionDemo::display() {
   for (Box *box = boxData; box < boxData + boxes; box++) {
     box->calculateInternals();
     box->isOverlapping = false;
+  }
+  // SAKBox: and which overlap another (drawn green)
+  for (Box *box = boxData; box < boxData + boxes; box++) {
+    for (Box *other = box + 1; other < boxData + boxes; other++) {
+      if (cyclone::IntersectionTests::boxAndBox(*box, *other))
+        box->isOverlapping = other->isOverlapping = true;
+    }
   }
 
   // Update the transform matrices of each ball in turn

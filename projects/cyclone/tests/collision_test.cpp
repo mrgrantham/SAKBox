@@ -596,6 +596,51 @@ TEST(CapsuleCollisionTest, InertiaTensorMatchesSphereAndRod) {
 }
 
 // ---------------------------------------------------------------------------
+// Pessimistic collision detection: shapes within the margin make
+// contacts with negative penetration (how far apart they are; the book's
+// section 16.1.4)
+
+TEST(MarginTest, ShapesWithinTheMarginMakeContactsApart) {
+  auto above = bodyAt(Vector3(0, 1.05, 0)); // 5 cm clear of the ground
+  auto far = bodyAt(Vector3(0, 1.2, 0));    // 20 cm clear
+  for (double margin : {0.0, 0.1}) {
+    SCOPED_TRACE(testing::Message() << "margin " << margin);
+    Contacts boxes, spheres, farBoxes;
+    boxes.data.margin = spheres.data.margin = farBoxes.data.margin = margin;
+    const unsigned boxContacts =
+        CollisionDetector::boxAndHalfSpace(boxOn(*above, Vector3(1, 1, 1)), ground(), &boxes.data);
+    const unsigned sphereContacts =
+        CollisionDetector::sphereAndHalfSpace(sphereOn(*above, 1), ground(), &spheres.data);
+    EXPECT_EQ(
+        CollisionDetector::boxAndHalfSpace(boxOn(*far, Vector3(1, 1, 1)), ground(), &farBoxes.data),
+        0u);
+    if (margin == 0) {
+      EXPECT_EQ(boxContacts, 0u);
+      EXPECT_EQ(sphereContacts, 0u);
+      continue;
+    }
+    ASSERT_EQ(boxContacts, 4u);
+    EXPECT_NEAR(boxes.array[0].penetration, -0.05, kTolerance);
+    ASSERT_EQ(sphereContacts, 1u);
+    EXPECT_NEAR(spheres.array[0].penetration, -0.05, kTolerance);
+    EXPECT_TRUE(
+        IntersectionTests::boxAndHalfSpace(boxOn(*above, Vector3(1, 1, 1)), ground(), margin));
+  }
+
+  // Two spheres and a sphere beside a box, 5 cm apart
+  auto one = bodyAt(Vector3(0, 0, 0)), two = bodyAt(Vector3(2.05, 0, 0));
+  Contacts apart;
+  apart.data.margin = 0.1;
+  ASSERT_EQ(CollisionDetector::sphereAndSphere(sphereOn(*one, 1), sphereOn(*two, 1), &apart.data),
+            1u);
+  EXPECT_NEAR(apart.array[0].penetration, -0.05, kTolerance);
+  ASSERT_EQ(CollisionDetector::boxAndSphere(boxOn(*one, Vector3(1, 1, 1)), sphereOn(*two, 1),
+                                            &apart.data),
+            1u);
+  EXPECT_NEAR(apart.array[1].penetration, -0.05, kTolerance);
+}
+
+// ---------------------------------------------------------------------------
 // The quick yes/no tests agree with the full contact generation
 
 TEST(IntersectionTest, QuickTestsAgreeWithContactGeneration) {
