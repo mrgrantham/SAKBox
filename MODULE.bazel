@@ -42,6 +42,18 @@ http_archive(
     url = "https://github.com/mackron/miniaudio/archive/refs/tags/0.11.25.tar.gz",
 )
 
+# CORE-MATH, correctly rounded maths functions (MIT): sin, cos, exp, pow and
+# the rest give the one right answer for every input, so results match on
+# every platform (//projects/flexmath:correctly_rounded). It has no
+# releases; this is its main branch on 2026-10-09.
+http_archive(
+    name = "core_math",
+    build_file = "//third_party:core_math.BUILD",
+    sha256 = "4cef4c7cebfccab68c44eeb058455d41413fb15e839c9227d19ee5e283a87848",
+    strip_prefix = "core-math-040ee482a8caefe2afe71a3a59d43923d2f0c7e6",
+    url = "https://gitlab.inria.fr/core-math/core-math/-/archive/040ee482a8caefe2afe71a3a59d43923d2f0c7e6/core-math-040ee482a8caefe2afe71a3a59d43923d2f0c7e6.tar.gz",
+)
+
 # Azahar 2126.2, the 3DS emulator `bazel run` opens 3DS apps in
 # (//tools/azahar). Only the build for the machine running it is downloaded,
 # the first time a 3DS app is built. GPL-2.0, run as a separate program.

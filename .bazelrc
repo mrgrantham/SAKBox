@@ -1,4 +1,11 @@
 build --cxxopt='-std=c++26'
+# Floating-point results the same on every platform: no fused multiply-adds
+# (Clang fuses a * b + c by default, GCC in strict ISO mode doesn't, and the
+# fused result is rounded once instead of twice), in every library and in
+# tools that run during the build. See the README's "Floating-point results
+# across platforms".
+build --copt=-ffp-contract=off
+build --host_copt=-ffp-contract=off
 # Strict ISO C++ for the repo's own code: compiler extensions are errors.
 # External libraries are left alone.
 build --per_file_copt='^projects/.*@-pedantic-errors'

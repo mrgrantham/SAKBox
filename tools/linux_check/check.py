@@ -9,8 +9,12 @@ and the errors. The full output of the last run is kept in the volume
 (--log prints it).
 
 Usage:
-  python3 tools/linux_check/check.py gcc|clang [TARGET ...]
-  python3 tools/linux_check/check.py gcc|clang --log
+  python3 tools/linux_check/check.py gcc|clang [--x86-64] [TARGET ...]
+  python3 tools/linux_check/check.py gcc|clang [--x86-64] --log
+
+The container runs on Docker's own architecture (ARM64 on Apple silicon).
+--x86-64 runs it as x86-64 instead, under Docker's emulation, which is much
+slower: name the targets to check rather than building everything.
 
 It leaves out the 3DS apps (tagged devkitpro), which need Docker themselves,
 and that isn't available inside the container. With no targets it builds
@@ -54,21 +58,27 @@ def main(argv):
         print(__doc__.strip(), file=sys.stderr)
         return 2
     compiler, rest = argv[0], argv[1:]
+    x86_64 = "--x86-64" in rest
+    rest = [arg for arg in rest if arg != "--x86-64"]
+    # An emulated x86-64 container has its own image and cache
+    platform = ["--platform", "linux/amd64"] if x86_64 else []
+    suffix = "-x86-64" if x86_64 else ""
     docker = shutil.which("docker")
     if not docker or not docker_running(docker):
         print("Docker isn't running. Start it (colima start --memory 8, or Docker Desktop) "
               "and run this again.", file=sys.stderr)
         return 1
-    image = f"sakbox-linux-{compiler}"
-    volume = f"sakbox-linux-{compiler}-cache"
+    image = f"sakbox-linux-{compiler}{suffix}"
+    volume = f"sakbox-linux-{compiler}{suffix}-cache"
 
     if rest == ["--log"]:
-        return subprocess.run([docker, "run", "--rm", "-v", f"{volume}:/root/.cache", image,
-                               "cat", LOG]).returncode
+        return subprocess.run([docker, "run", "--rm", *platform, "-v", f"{volume}:/root/.cache",
+                               image, "cat", LOG]).returncode
 
     print(f"Building the {compiler} image (quick once it's built)...", flush=True)
-    built = subprocess.run([docker, "build", "-q", "-t", image, "-f", str(HERE / f"Dockerfile.{compiler}"),
-                            str(HERE)], capture_output=True, text=True)
+    built = subprocess.run([docker, "build", "-q", *platform, "-t", image, "-f",
+                            str(HERE / f"Dockerfile.{compiler}"), str(HERE)],
+                           capture_output=True, text=True)
     if built.returncode != 0:
         print(built.stderr, file=sys.stderr)
         return built.returncode
@@ -76,9 +86,11 @@ def main(argv):
     # Clang-only checks are in the clang config (see .bazelrc)
     flags = (["--config=clang"] if compiler == "clang" else []) + SKIP_3DS_APPS
     targets = rest or DEFAULT_TARGETS
-    print(f"Building and testing with {compiler}: {' '.join(targets)}", flush=True)
-    return subprocess.run([docker, "run", "--rm", "-v", f"{REPO}:/repo:ro", "-v", f"{volume}:/root/.cache",
-                           image, "bash", "-c", INSIDE, "inside", *flags, "--", *targets]).returncode
+    print(f"Building and testing with {compiler}{' on x86-64' if x86_64 else ''}: "
+          f"{' '.join(targets)}", flush=True)
+    return subprocess.run([docker, "run", "--rm", *platform, "-v", f"{REPO}:/repo:ro", "-v",
+                           f"{volume}:/root/.cache", image, "bash", "-c", INSIDE, "inside", *flags,
+                           "--", *targets]).returncode
 
 
 if __name__ == "__main__":

@@ -186,20 +186,26 @@ Not supported yet. Most libraries build there in principle, but nothing has been
 
 ### Floating-point results across platforms
 
-The same code gives slightly different floating-point results on different platforms, so an exact value recorded on one (a test's expected number, a hash of a rendered image) can fail on another. Within one build, results are exactly repeatable.
+Left to themselves, the same code gives slightly different floating-point results on different platforms, so an exact value recorded on one (a test's expected number, a hash of a rendered image) can fail on another. The repo's build deals with the two main causes, so the physics (Cyclone, and flexmath's `FlexReal`) gives the same results to the last bit on macOS and Linux, with Clang or GCC (checked on ARM64; see below for x86-64).
 
-**Why they differ:**
+**Why results differ:**
 
 - **Fused multiply-add.** Clang turns `a * b + c` into one fused instruction, rounded once (`-ffp-contract=on` is its default). GCC in strict ISO mode, as here (`-std=c++26`), keeps a separate multiply and add, rounded twice. Both are allowed by the language, but the last bit differs.
-- **The maths library.** `sin`, `cos`, `exp`, `pow`, `atan2` and the like come from the platform (Apple's libm, glibc on Linux, Microsoft's CRT), and aren't required to be correctly rounded, so they can differ in the last bit. `sqrt` and the basic arithmetic are exact under IEEE 754 and don't vary.
+- **The maths library.** `sin`, `cos`, `exp`, `pow`, `atan2` and the like come from the platform (Apple's libm, glibc on Linux, Microsoft's CRT), and aren't required to be correctly rounded, so each gets the last bit wrong on different inputs. On CORE-MATH's lists of hard inputs, Apple's libm gives a different double from the correctly rounded one for a quarter of `sin`'s and one in twelve of `pow`'s. `sqrt` and the basic arithmetic are exact under IEEE 754 and don't vary.
 - **Code generation** may also differ (the order of operations once vectorised, for example), though without `-ffast-math` compilers keep to the source's order.
 
-Most code never notices a last-bit difference, but chaotic simulations amplify it. The Waffles jumper demo's simulation, when it ran on Bullet, gave a jump height of 0.6288 with Apple clang and 0.6318 with GCC 14 on Linux, and 0.6229 with Apple clang with fused multiply-adds off: fusion alone changed the result, and the maths library (or code generation) accounted for the rest. Its test (now of the jumper on Cyclone) checks the height against a range, and exact repeatability within a build.
+Most code never notices a last-bit difference, but chaotic simulations amplify it. The Waffles jumper demo's simulation, when it ran on Bullet, gave a jump height of 0.6288 with Apple clang and 0.6318 with GCC 14 on Linux, and 0.6229 with Apple clang with fused multiply-adds off: fusion alone changed the result, and the maths library (or code generation) accounted for the rest.
 
-**Making results match across platforms** (not done yet; it's the first item on [flexmath's roadmap](projects/flexmath/README.md#roadmap)):
+**How the build makes them match:**
 
-1. Turn fusion off everywhere: `build --copt=-ffp-contract=off` in `.bazelrc`, for external libraries too, not only `projects/`. Never use `-ffast-math`, which allows reordering.
-2. Use maths functions that give the same result on every platform, instead of the system's: a correctly rounded library such as [CORE-MATH](https://core-math.gitlabpages.inria.fr/) (correct rounding has one right answer, so every platform agrees), or one implementation built from source everywhere, such as [OpenLibm](https://openlibm.org/). Code that calls `std::sin` and friends has to be pointed at it, for example through a header that wraps the calls.
-3. Check it by running the same simulation on macOS and on Linux (the GCC Docker image used for the Linux notes above) and comparing exact results, then pin an exact value in a test again.
+1. **No fused multiply-adds anywhere:** `build --copt=-ffp-contract=off` (and `--host_copt`, for tools run during the build) in `.bazelrc`, external libraries included. Never use `-ffast-math`, which allows reordering.
+2. **Correctly rounded maths functions:** `//projects/flexmath:correctly_rounded` (`<CorrectlyRounded.hpp>`) gives [CORE-MATH](https://core-math.gitlabpages.inria.fr/)'s `sin`, `cos`, `exp`, `log`, `pow`, `atan2`, `asin` and `acos`. Correct rounding has one right answer for every input, so every platform agrees. Cyclone's `real_sin` and friends (`precision.h`) and `FlexReal`'s `flex_sin` and friends use them. See [flexmath's Determinism](projects/flexmath/README.md#determinism).
+3. **A pinned result checks it:** the Waffles jumper's test expects the hand-made policy's jump height to the last bit (`0x1.e31ed4f90cc96p-2`, 0.4718 m), and passes on macOS with Apple clang and on Linux with GCC 14 and Clang, on ARM64 (`tools/linux_check`). Correct rounding and unfused arithmetic don't depend on the processor, so x86-64 should agree, but it isn't checked yet: `tools/linux_check`'s `--x86-64` runs it under Docker's emulation, and Colima's default emulation (QEMU) crashed the compilers partway through the build.
 
-Expect a small speed cost: unfused arithmetic is slightly slower, and correctly rounded functions can be slower than the system's.
+What it doesn't cover:
+
+- **Code calling `std::sin` and the like directly** gets the system's functions: Waffles' learners, ScratchPadd, the demos' drawing. Use `CorrectlyRounded.hpp` where results must match across machines.
+- **The DS and 3DS builds** (devkitPro's Makefiles, not Bazel) keep their own compiler settings and newlib's maths; Cyclone's single-precision build, which the DS uses, calls `sinf` and friends.
+- **Windows:** CORE-MATH uses `__int128`, which MSVC lacks (see [flexmath's Portability](projects/flexmath/README.md#portability)).
+
+It costs a little speed: unfused arithmetic is slightly slower, and correctly rounded functions can be slower than the system's.

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <CorrectlyRounded.hpp>
 #include <FlexPrecision.hpp>
 #include <cmath>
 #include <type_traits>
@@ -54,10 +55,10 @@ private:
 //   not convert it; cast with (double) or call value().
 // - It emulates precision loss only. Values keep double's range; use
 //   Precision::overflow on a group for range effects.
-// - flex_sin and the other functions below compute in double with the
-//   platform's math library and then snap. Results can differ slightly
-//   between platforms, so FlexReal is not a determinism guarantee; use
-//   FlexPoint for state that must match across machines.
+// - flex_sin and the other functions below compute in double, correctly
+//   rounded (CorrectlyRounded.hpp), and then snap, so built with fused
+//   multiply-adds off, as the repo is, FlexReal gives the same results on
+//   every platform. (FlexPoint does with any build: it's integers only.)
 // - The default constructor leaves the value uninitialised, like double.
 //   This keeps FlexReal trivial, so it can be a member of a union.
 class FlexReal {
@@ -118,20 +119,22 @@ FLEXMATH_REAL_COMPARISON(>=)
 #undef FLEXMATH_REAL_COMPARISON
 
 // Math functions: computed in double, then snapped to the active precision.
-// Named to match Cyclone's real_sqrt / real_sin / ... macros.
+// Named to match Cyclone's real_sqrt / real_sin / ... macros. sin, cos, exp,
+// pow and atan2 are correctly rounded (CorrectlyRounded.hpp), so they give
+// the same result on every platform; sqrt, fabs and fmod are exact anyway.
 inline FlexReal flex_sqrt(FlexReal x) { return FlexReal(std::sqrt(x.value())); }
 inline FlexReal flex_abs(FlexReal x) { return FlexReal(std::fabs(x.value())); }
-inline FlexReal flex_sin(FlexReal x) { return FlexReal(std::sin(x.value())); }
-inline FlexReal flex_cos(FlexReal x) { return FlexReal(std::cos(x.value())); }
-inline FlexReal flex_exp(FlexReal x) { return FlexReal(std::exp(x.value())); }
+inline FlexReal flex_sin(FlexReal x) { return FlexReal(CorrectlyRounded::sin(x.value())); }
+inline FlexReal flex_cos(FlexReal x) { return FlexReal(CorrectlyRounded::cos(x.value())); }
+inline FlexReal flex_exp(FlexReal x) { return FlexReal(CorrectlyRounded::exp(x.value())); }
 inline FlexReal flex_pow(FlexReal x, FlexReal y) {
-  return FlexReal(std::pow(x.value(), y.value()));
+  return FlexReal(CorrectlyRounded::pow(x.value(), y.value()));
 }
 inline FlexReal flex_fmod(FlexReal x, FlexReal y) {
   return FlexReal(std::fmod(x.value(), y.value()));
 }
 inline FlexReal flex_atan2(FlexReal y, FlexReal x) {
-  return FlexReal(std::atan2(y.value(), x.value()));
+  return FlexReal(CorrectlyRounded::atan2(y.value(), x.value()));
 }
 
 } // namespace Flex::Math

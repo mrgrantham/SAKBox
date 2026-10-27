@@ -1,5 +1,15 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
+# Maths functions that give the same result on every platform (CORE-MATH's,
+# correctly rounded; see CorrectlyRounded.hpp)
+cc_library(
+    name = "correctly_rounded",
+    hdrs = ["include/CorrectlyRounded.hpp"],
+    strip_include_prefix = "include/",
+    visibility = ["//visibility:public"],
+    deps = ["@core_math"],
+)
+
 cc_library(
     name = "flexmath",
     srcs = [
@@ -20,7 +30,21 @@ cc_library(
     ],
     strip_include_prefix = "include/",
     visibility = ["//visibility:public"],
-    deps = ["@fmt"],
+    deps = [
+        ":correctly_rounded",
+        "@fmt",
+    ],
+)
+
+# CORE-MATH's functions give the correctly rounded result where the
+# system's may not
+cc_test(
+    name = "CorrectlyRounded_test",
+    srcs = ["tests/CorrectlyRounded_test.cpp"],
+    deps = [
+        ":correctly_rounded",
+        "@gtest//:gtest_main",
+    ],
 )
 
 # The examples from README.md and the header comments

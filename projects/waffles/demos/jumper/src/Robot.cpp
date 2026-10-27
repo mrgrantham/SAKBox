@@ -103,7 +103,7 @@ cyclone::Quaternion standingOrientation(Robot::Part part)
 		return cyclone::Quaternion();
 	const double sign = (part == Robot::leftUpperArm || part == Robot::leftLowerArm) ? -1 : 1;
 	const double half = sign * armTilt / 2;
-	return cyclone::Quaternion(std::cos(half), 0, 0, std::sin(half));
+	return cyclone::Quaternion(real_cos(half), 0, 0, real_sin(half));
 }
 
 // How far from its centre a part reaches, in any direction

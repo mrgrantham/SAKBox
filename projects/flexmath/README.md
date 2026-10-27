@@ -204,13 +204,18 @@ Things to know:
 - Mixed arithmetic with `int`, `float` or `double` on either side produces a snapped `FlexReal`.
 - It converts implicitly to `double`, but **not through C varargs**: `printf("%f", x)` needs `(double)x` or `x.value()`.
 - It emulates precision loss, not overflow: values keep `double`'s range.
-- `flex_sin`, `flex_pow` and the other math functions call the platform's math library, so `FlexReal` is **not** deterministic across machines.
+- `flex_sin`, `flex_cos`, `flex_exp`, `flex_pow` and `flex_atan2` are correctly rounded (see [Determinism](#determinism)), so they give the same result on every machine; `flex_sqrt`, `flex_abs` and `flex_fmod` are exact anyway.
 
 ## Determinism
 
 `FlexPoint`, `FlexVector`, `FlexMatrix` and `FlexPoint::quantized()` use only integer arithmetic, so they give bit-identical results on every machine and compiler. Use them for state that has to stay in sync: replays, lockstep multiplayer, verified leaderboards.
 
-`quantize()` on `double`s and `FlexReal` are deterministic on a given build and platform, but not guaranteed across platforms. Compilers may fuse multiply-adds (FMA) differently, and math libraries differ for `sin`, `pow` and similar. Making the floating-point side deterministic is on the [roadmap](#roadmap).
+`quantize()` on `double`s and `FlexReal` give the same results on every platform too, built the repo's way. Two things made floating point differ between machines (the top-level README's [Floating-point results across platforms](../../README.md#floating-point-results-across-platforms) has the details and measurements), and both are dealt with:
+
+- **Fused multiply-adds:** Clang fuses `a * b + c` into one operation, rounded once, and GCC doesn't. The repo turns fusion off everywhere (`-ffp-contract=off` in `.bazelrc`).
+- **The maths library:** the system's `sin`, `pow` and the like (Apple's libm, glibc) aren't correctly rounded, and each gets the last bit wrong on different inputs. `CorrectlyRounded.hpp` (`//projects/flexmath:correctly_rounded`) gives CORE-MATH's instead ([core-math.gitlabpages.inria.fr](https://core-math.gitlabpages.inria.fr/), MIT, fetched by `MODULE.bazel`): `Flex::Math::CorrectlyRounded::sin`, `cos`, `exp`, `log`, `pow`, `atan2`, `asin` and `acos`, each returning the double nearest the exact result, the one right answer, so every platform agrees. `FlexReal`'s functions and Cyclone's `real_sin` and friends use them. `sqrt`, `fabs` and `fmod` are exact under IEEE 754 already. `CorrectlyRounded_test` checks six of CORE-MATH's hard cases against 200-bit results (from mpmath); Apple's libm is one bit off on each.
+
+Code that calls `std::sin` and the like directly still gets the system's: use `CorrectlyRounded.hpp` where results must match across machines. The cost is speed: CORE-MATH's functions can be slower than the system's, and unfused arithmetic slightly so.
 
 Quantizing state does *not* make floating point deterministic by itself. It makes cross-machine differences rarer, since most tiny discrepancies snap to the same grid point. A value sitting right on a grid boundary can still snap differently.
 
@@ -223,7 +228,7 @@ bazel run //projects/cyclone:flightsim_flex    # [ and ] change precision, N rou
 bazel test //projects/cyclone:flex_test
 ```
 
-The plain `//projects/cyclone:cyclone` build is unaffected and doesn't depend on flexmath.
+The plain `//projects/cyclone:cyclone` build doesn't use `FlexReal`; it uses only `:correctly_rounded`, for its maths functions.
 
 Precision applies to the bodies' *state*: positions, velocities, orientations, and every result computed from them. The time step and the per-frame drag factors derived from it (`pow(damping, dt)`) keep full precision. Snapping those would bias every frame the same way: at 6 bits a drag factor of 0.99644 truncates to 0.984375, four times the drag, and the flight sim's plane slowed to a crawl. The `real_duration` type and `CYCLONE_FULL_PRECISION_SCOPE` in `precision.h` implement this.
 
@@ -245,6 +250,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `Rounding_test` | Stochastic rounding: on-grid values unchanged, results are neighbouring grid values, unbiased on average, small increments accumulate, seeding, overflow |
 | `FlexGroup_test` | Overrides (stacking, release order, moves), policies, `activate()`, the controller, and the two Precision Flight mechanics as library properties |
 | `FlexVector_test`, `FlexMatrix_test` | Element-wise operations, products, quantization, dimension checks |
+| `CorrectlyRounded_test` | CORE-MATH's functions on six hard cases, against results worked out with 200-bit arithmetic, and some easy ones |
 | `Examples_test` | Every code example in this README |
 
 ## Portability
@@ -257,9 +263,11 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `operator/` (`FlexPoint.cpp`) | The dividend is shifted up by 32 first, to keep the fraction |
 | `quantized()` with `Overflow::Wrap` (`FlexPoint.cpp`) | The span the value wraps within, 2 x limit, can reach 2^63, one more than an `int64_t` holds |
 
+CORE-MATH's functions (`:correctly_rounded`) use `unsigned __int128` too, in C, and need GCC or Clang the same way.
+
 `__int128` isn't standard C++ but an extension that GCC and Clang provide on 64-bit targets. The alias is declared with `__extension__` so that the build's `-pedantic-errors` allows it (GCC rejects it otherwise; Clang doesn't mind). GCC and Clang on macOS and Linux are covered.
 
-**Windows, when it's added:** MSVC has no 128-bit integer type, so these three places need another route there:
+**Windows, when it's added:** MSVC has no 128-bit integer type, so these three places (and CORE-MATH) need another route there:
 
 - **Simplest: build with clang-cl** (Clang with MSVC's command line), which provides `__int128` on 64-bit Windows, so nothing changes.
 - **With MSVC itself:** replace each use with a helper function, kept in one header, that uses `__int128` where the compiler has it and MSVC's intrinsics where it doesn't:
@@ -273,6 +281,6 @@ flexmath's original design (February 2023) had each `FlexPoint` register itself 
 
 ## Roadmap
 
-1. **Deterministic floating point.** Deterministic `sin`, `cos`, `exp`, `pow` and `atan2` (correctly rounded or fixed polynomial implementations), plus `-ffp-contract=off` repo-wide, so the `double` and `FlexReal` paths match across machines. The top-level README's [Floating-point results across platforms](../../README.md#floating-point-results-across-platforms) explains the differences, with measurements, and the likely fix.
+1. **LLVM libc's maths functions instead of CORE-MATH's, once they're header-only.** LLVM's C library is moving its correctly rounded functions into headers (`libc/shared/math/`, starting with `sin` in early 2026), which would make them one include with no C library to build, maintained by the LLVM project. Being correctly rounded, they give exactly the same results as CORE-MATH's, so switching changes nothing (the pinned jump height and `CorrectlyRounded_test` would show it). Worth doing once `sin`, `cos`, `exp`, `log`, `pow`, `atan2`, `asin` and `acos` are all there.
 2. **Cyclone integration hooks.** Snap Cyclone's state at chosen points instead of every operation: `commit()` after integration and contact resolution, `view()` for collision reads. Each point would be tied to its own group, so integration, collision and contacts can have separate precision.
 3. **CORDIC trig for `FlexPoint`.** Integer-only sine and cosine whose iteration count doubles as an *angle precision* setting, for visibly stepped rotation.

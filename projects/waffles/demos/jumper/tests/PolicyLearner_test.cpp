@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <memory>
 #include <string>
 #include <unistd.h>
@@ -27,13 +28,16 @@ std::string tempPath(const std::string &name) {
 }
 } // namespace
 
-// The hand-made policy's jump, as Cyclone simulates it: a real jump (its
-// lowest point 0.4718 m off the ground on a Mac), and exactly the same every
-// run, so a policy is scored the same in training and when it's shown.
-TEST(PolicyLearnerTest, SimulationIsRepeatable) {
+// The hand-made policy's jump, as Cyclone simulates it, to the last bit: the
+// same every run, so a policy is scored the same in training and when it's
+// shown, and the same on every platform and compiler, since the build turns
+// fused multiply-adds off and Cyclone's maths functions are correctly
+// rounded (see the top-level README's "Floating-point results across
+// platforms"). Checked on macOS (Apple clang) and on Linux (GCC 14 and
+// Clang, on ARM64). It's 0.4718 m.
+TEST(PolicyLearnerTest, SimulationIsTheSameEverywhere) {
   const double height = JumpHeight(nullptr);
-  EXPECT_GT(height, 0.40);
-  EXPECT_LT(height, 0.55);
+  EXPECT_EQ(height, 0x1.e31ed4f90cc96p-2) << std::hexfloat << height;
   EXPECT_EQ(JumpHeight(nullptr), height);
 }
 

@@ -29,6 +29,8 @@
 
 #if defined(CYCLONE_FLEX_REAL)
 #include <FlexReal.hpp>
+#elif !defined(CYCLONE_SINGLE_PRECISION)
+#include <CorrectlyRounded.hpp>
 #endif
 
 namespace cyclone {
@@ -102,14 +104,17 @@ typedef float real;
 #define DOUBLE_PRECISION
 typedef double real;
 #define REAL_MAX DBL_MAX
+// SAKBox: sin, cos, exp, pow and atan2 are correctly rounded, so the engine
+// gives the same results on every platform (flexmath's CorrectlyRounded.hpp);
+// sqrt, fabs and fmod are exact anyway
 #define real_sqrt sqrt
 #define real_abs fabs
-#define real_sin sin
-#define real_cos cos
-#define real_exp exp
-#define real_pow pow
+#define real_sin Flex::Math::CorrectlyRounded::sin
+#define real_cos Flex::Math::CorrectlyRounded::cos
+#define real_exp Flex::Math::CorrectlyRounded::exp
+#define real_pow Flex::Math::CorrectlyRounded::pow
 #define real_fmod fmod
-#define real_atan2 atan2
+#define real_atan2 Flex::Math::CorrectlyRounded::atan2
 #define real_epsilon DBL_EPSILON
 #define R_PI 3.14159265358979
 #endif
