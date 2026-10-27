@@ -9,14 +9,17 @@
  * implies agreement with all terms and conditions of the accompanying
  * software licence.
  */
+#include <algorithm>
 #include <cstdlib>
 
+#include "demo_sounds.h"
 #include "impact_sounds.h"
 #include <ScratchPadd/Audio/DeviceOutput.hpp>
 #include <cyclone/cyclone.h>
 #include <fixed_steps.h>
 #include <memory>
 #include <span>
+#include <string>
 
 /**
  * An application is the base class for all demonstration progams.
@@ -68,6 +71,40 @@ protected:
   /** SAKBox: whether the description overlay is showing. */
   bool showOverlay = true;
 
+  /**
+   * SAKBox: the demo's sounds (see DemoSounds), through the sound device.
+   * V turns them off and on; the bottom right says which.
+   */
+  ScratchPadd::Audio::DeviceOutput soundOutput;
+  DemoSounds sounds{soundOutput};
+
+  /**
+   * SAKBox: knocks when things hit (see ImpactSounds): a demo has it hear
+   * its contacts, and update() plays the knocks each frame.
+   */
+  ImpactSounds impacts{sounds};
+
+  /** SAKBox: has the knocks hear `world`'s contacts each step. */
+  void hearContacts(cyclone::ParticleWorld &world) {
+    world.contactsFound = [this](std::span<const cyclone::ParticleContact> contacts,
+                                 cyclone::real_duration seconds) {
+      impacts.hear(contacts, static_cast<float>(seconds));
+    };
+  }
+
+  /**
+   * SAKBox: how high above the bottom right the sound's state is written
+   * (points), clear of what the demo writes there
+   */
+  float soundStateHeight = 10.0f;
+
+  /** SAKBox: the sound's state, for the bottom right. */
+  virtual std::string soundState();
+
+  /** SAKBox: pan (-0.8 left to 0.8 right) for something `across` of the way across the screen (-1
+   * to 1). */
+  static float panAcross(float across) { return 0.8f * std::clamp(across, -1.0f, 1.0f); }
+
 public:
   // SAKBox: set by main.cpp from the window's framebuffer and point sizes.
   void setPixelScale(float scale) { pixelScale = scale; }
@@ -90,9 +127,12 @@ public:
   /** SAKBox: shows or hides the description overlay (the H key). */
   void toggleOverlay() { showOverlay = !showOverlay; }
 
+  /** SAKBox: turns sound off or on (the V key). */
+  void toggleSound() { sounds.setEnabled(!sounds.enabled()); }
+
   /**
-   * SAKBox: draws the description over the scene. main.cpp calls it after
-   * display() each frame.
+   * SAKBox: draws the description over the scene, and the sound's state
+   * in the bottom right. main.cpp calls it after display() each frame.
    */
   void renderOverlay();
 
@@ -138,7 +178,8 @@ public:
    *
    * The default implementation requests that the display be refreshed.
    * It should probably be called from any subclass update as the last
-   * command.
+   * command. (SAKBox: it plays the knocks heard, and collects the sounds
+   * that have finished.)
    */
   virtual void update();
 
@@ -187,6 +228,13 @@ public:
    * status information to the application.
    */
   void renderText(float x, float y, const char *text);
+
+  /**
+   * SAKBox: renders `text` on a translucent white panel whose top left is
+   * at `left, top` (points from the bottom left), with `margin` around it,
+   * so it reads on light and dark scenes
+   */
+  void renderPanel(float left, float top, float margin, const std::string &text);
 };
 
 /**
@@ -217,7 +265,7 @@ public:
 // overlays (see Application::getDescription)
 #define RIGID_BODY_KEYS                                                                            \
   "P: run/pause   Space: one step   R: reset   C: contacts   Drag: camera\n"                       \
-  "M: switch contact resolver (shown bottom right)   V: sound on/off\n"                            \
+  "M: switch contact resolver (shown bottom right)\n"                                              \
   "[ ]: fewer/more physics sub-steps"
 
 /**
@@ -272,12 +320,8 @@ protected:
   /** Holds the position of the mouse at the last frame of a drag. */
   int last_x, last_y;
 
-  /**
-   * SAKBox: knocks when bodies hit (see ImpactSounds), through the sound
-   * device. V turns them off and on.
-   */
-  ScratchPadd::Audio::DeviceOutput soundOutput;
-  ImpactSounds sounds{soundOutput};
+  /** SAKBox: the sound's state, with how many knocks have played. */
+  std::string soundState() override;
 
   /** True if the contacts should be rendered. */
   bool renderDebugInfo;
@@ -324,19 +368,13 @@ protected:
   void renderResolverMethod();
 
   /**
-   * SAKBox: writes whether sound is on, and how many knocks have played,
-   * above the resolver.
-   */
-  void renderSoundState();
-
-  /**
    * SAKBox: writes the sub-steps a step and the time physics takes a frame,
-   * above the sound.
+   * above the sound (which renderOverlay writes).
    */
   void renderPhysicsSteps();
 
   /**
-   * SAKBox: the bottom-right corner: the resolver, the sound and the steps. drawDebug()
+   * SAKBox: the bottom-right corner: the resolver and the steps. drawDebug()
    * calls it; a demo that doesn't use drawDebug() calls it itself.
    */
   void renderCornerStatus();

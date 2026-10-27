@@ -19,10 +19,15 @@ GAME_TITLE	:=	Cyclone ragdoll
 GAME_SUBTITLE1	:=	Cyclone's physics, in padds
 GAME_SUBTITLE2	:=	SAKBox
 BUILD		:=	build
-SOURCES		:=	source cyclone/src scratchpadd/utilities/src scratchpadd_ds/platform/src
+# (cyclone/src/demos is the knock chooser, impact_knocks.cpp; the audio
+# directories are AudioPadd's, as in the ScratchPadd DS demo)
+SOURCES		:=	source cyclone/src cyclone/src/demos scratchpadd/utilities/src scratchpadd_ds/platform/src \
+			scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd_audio_wav/src
 INCLUDES	:=	include build cyclone/include cyclone/src/demos cyclone/src/demos/ragdoll \
 			scratchpadd/basis/include scratchpadd/messages/include \
-			scratchpadd/utilities/include third_party/spdlog/include flexmath/include
+			scratchpadd/utilities/include third_party/spdlog/include flexmath/include \
+			scratchpadd_audio_pcm16/include scratchpadd_audio/include scratchpadd_audio/messages/include \
+			scratchpadd_audio/core/include scratchpadd_audio_wav/include third_party
 
 #---------------------------------------------------------------------------------
 # options for code generation

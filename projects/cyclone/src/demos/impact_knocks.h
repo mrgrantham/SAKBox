@@ -7,6 +7,7 @@
 #pragma once
 
 #include <cyclone/contacts.h>
+#include <cyclone/pcontacts.h>
 
 #include <cstdint>
 #include <map>
@@ -46,6 +47,12 @@ public:
   void hear(std::span<const cyclone::Contact> contacts, float seconds);
 
   /**
+   * The same for particles' contacts (ParticleWorld::contactsFound): a
+   * particle hitting the ground, or a cable or rod snapping taut
+   */
+  void hear(std::span<const cyclone::ParticleContact> contacts, float seconds);
+
+  /**
    * The knocks for the hits heard since the last call, the hardest first,
    * into `knocks` (cleared first). Call once a frame.
    */
@@ -61,13 +68,17 @@ public:
   float panFor(const cyclone::Vector3 &position) const;
 
 private:
-  /** A hit: the fastest contact between a pair of bodies in a frame */
+  /** A hit: the fastest contact between a pair of bodies (or particles) in a frame */
   struct Hit {
     std::pair<const void *, const void *> pair;
     float speed = 0;
     cyclone::Vector3 point;
     float mass = 1; // the lighter body's (kg)
   };
+
+  /** Notes a hit between `pair`, keeping the fastest a frame */
+  void noteHit(std::pair<const void *, const void *> pair, float speed,
+               const cyclone::Vector3 &point, float mass);
 
   float cameraAngle_ = 0;
   float clock_ = 0;

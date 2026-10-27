@@ -8,7 +8,7 @@
  * MassAggregateApplication) turns all of these into contacts and resolves
  * them each frame. A 10 kg weight, drawn in red, is shared between the
  * deck particles nearest it (updateAdditionalMass()), so the deck sags
- * wherever it is.
+ * wherever it is. SAKBox: cables knock as they snap taut.
  *
  * Part of the Cyclone physics system.
  *

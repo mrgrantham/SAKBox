@@ -7,7 +7,8 @@
  * acceleration (standing in for gravity) and damping, all set in fire().
  * update() integrates the live shots and retires any that hit the ground,
  * fly past 200 m or live 5 s; display() draws the range and each shot with
- * its shadow.
+ * its shadow. SAKBox: each shot sounds as it's fired (a gunshot, a cannon,
+ * a whoosh of fire, a zap), and artillery booms where it lands.
  *
  * Part of the Cyclone physics system.
  *
@@ -23,6 +24,7 @@
 #include "../timing.h"
 #include <cyclone/cyclone.h>
 
+#include <algorithm>
 #include <stdio.h>
 
 /**
@@ -162,6 +164,26 @@ void BallisticDemo::fire() {
     break;
   }
 
+  // SAKBox: the sound of firing it, from the gun (left of the middle: the
+  // camera looks across the range, which runs away to the right)
+  const float gunPan = panAcross(-0.4f);
+  switch (currentShotType) {
+  case PISTOL:
+    sounds.play("shot", {.volume = 0.8f, .pan = gunPan, .pitch = 1.2f});
+    break;
+  case ARTILLERY:
+    sounds.play("shot", {.volume = 1.0f, .pan = gunPan, .pitch = 0.5f}); // a big gun: lower
+    break;
+  case FIREBALL:
+    sounds.play("whoosh", {.volume = 0.8f, .pan = gunPan, .pitch = 0.7f});
+    break;
+  case LASER:
+    sounds.play("zap", {.volume = 0.7f, .pan = gunPan});
+    break;
+  case UNUSED:
+    break;
+  }
+
   // Set the data common to all particle types
   shot->particle.setPosition(0.0f, 1.5f, 0.0f);
   shot->startTime = TimingData::get().lastFrameTimestamp;
@@ -182,6 +204,13 @@ void BallisticDemo::update() {
     if (shot->type != UNUSED) {
       // Run the physics
       shot->particle.integrate(duration);
+
+      // SAKBox: artillery booms where it lands, quieter the farther off
+      if (shot->type == ARTILLERY && shot->particle.getPosition().y < 0.0f) {
+        const float distance = static_cast<float>(shot->particle.getPosition().z);
+        sounds.play("blast", {.volume = std::clamp(20.0f / distance, 0.2f, 1.0f),
+                              .pan = panAcross((distance - 22.0f) / 80.0f)});
+      }
 
       // Check if the particle is now invalid
       if (shot->particle.getPosition().y < 0.0f ||

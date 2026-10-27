@@ -7,6 +7,8 @@
  * many new fireworks of given types, inheriting the parent's velocity plus
  * a random spread. initFireworkRules() defines the nine types, some of
  * which burst into others, and a slot pool holds the fireworks in flight.
+ * SAKBox: a launch whooshes, and a burst in the air crackles, panned to
+ * where it is.
  *
  * Part of the Cyclone physics system.
  *
@@ -22,6 +24,7 @@
 #include "../timing.h"
 #include <cyclone/cyclone.h>
 
+#include <optional>
 #include <stdio.h>
 
 static cyclone::Random crandom;
@@ -355,6 +358,10 @@ void FireworksDemo::update() {
   if (duration <= 0.0f)
     return;
 
+  // SAKBox: where the highest burst this frame is, to crackle (one a frame:
+  // fireworks bursting together are one crackle; kept by value, as the
+  // payload can reuse the burst firework's slot)
+  std::optional<cyclone::Vector3> highestBurst;
   for (Firework *firework = fireworks; firework < fireworks + maxFireworks; firework++) {
     // Check if we need to process this firework.
     if (firework->type > 0) {
@@ -362,6 +369,9 @@ void FireworksDemo::update() {
       if (firework->update(duration)) {
         // Find the appropriate rule
         FireworkRule *rule = rules + (firework->type - 1);
+        if (rule->payloadCount > 0 && firework->getPosition().y > 0 &&
+            (!highestBurst || firework->getPosition().y > highestBurst->y))
+          highestBurst = firework->getPosition();
 
         // Delete the current firework (this doesn't affect its
         // position and velocity for passing to the create function,
@@ -376,6 +386,12 @@ void FireworksDemo::update() {
         }
       }
     }
+  }
+  // The camera looks along -z from z = 10, so the right of the screen is +x
+  if (highestBurst) {
+    const float across = static_cast<float>(highestBurst->x) / 8.0f;
+    sounds.play("crackle", {.volume = 0.8f, .pan = panAcross(across)});
+    sounds.play("blast", {.volume = 0.25f, .pan = panAcross(across), .pitch = 1.5f});
   }
 
   Application::update();
@@ -441,6 +457,9 @@ void FireworksDemo::display() {
 }
 
 void FireworksDemo::key(unsigned char key) {
+  // SAKBox: a launch whooshes up
+  if (key >= '1' && key <= '9')
+    sounds.play("whoosh", {.volume = 0.7f, .pitch = 1.3f});
   switch (key) {
   case '1':
     create(1, 1, nullptr);

@@ -1,8 +1,11 @@
-// The simulation and event-log padds, driven by a test padd that stands in
-// for FlightDisplayPadd: it chains FrameInputs the same way and records the
-// snapshots, events and control snapshots that come back. No window needed.
+// The simulation, event-log and sound padds, driven by a test padd that
+// stands in for FlightDisplayPadd: it chains FrameInputs the same way and
+// records the snapshots, events and control snapshots that come back. No
+// window or sound device needed: a stand-in AudioPadd records what it's
+// asked to play.
 #include "EventLogPadd.hpp"
 #include "FlightSimPadd.hpp"
+#include "FlightSoundPadd.hpp"
 
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Testing.hpp>
@@ -83,12 +86,18 @@ public:
     std::lock_guard<std::mutex> lk(mutex_);
     return controlSnapshots_;
   }
+  // The sound each event heard so far cues (cueFor)
+  std::vector<std::string> cues() {
+    std::lock_guard<std::mutex> lk(mutex_);
+    return cues_;
+  }
 
 private:
   template <typename... Events> void recordEvents() {
     (receive<Events>([this](const Events &event) {
        std::lock_guard<std::mutex> lk(mutex_);
        eventLines_.push_back(logLine(event));
+       cues_.push_back(cueFor(event).sound);
      }),
      ...);
   }
@@ -97,7 +106,40 @@ private:
   std::mutex mutex_;
   WorldSnapshot last_;
   std::vector<std::string> eventLines_;
+  std::vector<std::string> cues_;
   std::vector<ControlSnapshot> controlSnapshots_;
+};
+
+// Stands in for AudioPadd (named the same, so FlightSoundPadd finds it):
+// records the sounds it's given and asked to play
+class AudioStandIn : public ScratchPadd::Base {
+public:
+  AudioStandIn(ScratchPadd::System *system) : Base(system) {
+    receive<ScratchPadd::Audio::LoadSoundSamples>(
+        [this](const ScratchPadd::Audio::LoadSoundSamples &load) {
+          std::lock_guard<std::mutex> lk(mutex_);
+          loaded_.push_back(load.name);
+        });
+    receive<ScratchPadd::Audio::PlaySound>([this](const ScratchPadd::Audio::PlaySound &play) {
+      std::lock_guard<std::mutex> lk(mutex_);
+      played_.push_back(play.name);
+    });
+  }
+  std::string name() override { return "AudioPadd"; }
+  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+
+  std::vector<std::string> loaded() {
+    std::lock_guard<std::mutex> lk(mutex_);
+    return loaded_;
+  }
+  std::vector<std::string> played() {
+    std::lock_guard<std::mutex> lk(mutex_);
+    return played_;
+  }
+
+private:
+  std::mutex mutex_;
+  std::vector<std::string> loaded_, played_;
 };
 
 // Captures EventLogPadd's output instead of printing it.
@@ -223,4 +265,43 @@ TEST(FlightPaddsTest, PauseAndRestartCommands) {
   ASSERT_TRUE(driver.run(1));
   EXPECT_GT(driver.last().z, before); // back near the start
   EXPECT_EQ(driver.last().score, 0);
+}
+
+// Each event's cue: gates chime (gold higher), a wall zaps and a gate's
+// frame clanks, FOCUS chimes up and PHASE down, phasing whooshes, and the
+// game ends with a blast
+TEST(FlightSoundTest, EachEventHasItsCue) {
+  const SoundCue gate = cueFor(GatePassed{.gold = false});
+  const SoundCue gold = cueFor(GatePassed{.gold = true});
+  EXPECT_EQ(gate.sound, "chime");
+  EXPECT_EQ(gold.sound, "chime");
+  EXPECT_GT(gold.settings.pitch, gate.settings.pitch);
+  EXPECT_EQ(cueFor(Crashed{.wall = true, .damage = 34}).sound, "zap");
+  EXPECT_EQ(cueFor(Crashed{.wall = false, .damage = 20}).sound, "knock");
+  EXPECT_GT(cueFor(Crashed{.wall = true, .damage = 34}).settings.volume,
+            cueFor(Crashed{.wall = true, .damage = 5}).settings.volume);
+  const SoundCue focus = cueFor(PowerupCollected{.kind = Kind::FocusPickup});
+  const SoundCue phase = cueFor(PowerupCollected{.kind = Kind::PhasePickup});
+  EXPECT_GT(focus.settings.pitch, 1.0f);
+  EXPECT_LT(phase.settings.pitch, 1.0f);
+  EXPECT_EQ(cueFor(WallPhased{}).sound, "whoosh");
+  EXPECT_EQ(cueFor(GameOver{}).sound, "blast");
+}
+
+// Through the padds: FlightSoundPadd gives AudioPadd its sounds, then asks
+// it to play each event's cue, in order, over the whole autopilot run
+TEST(FlightSoundTest, AutopilotRunPlaysEachEventsCue) {
+  RunningSystem<FlightSimPadd, DriverPadd, FlightSoundPadd, AudioStandIn> running(
+      /*autopilot=*/true);
+  auto &driver = running.padd<DriverPadd>();
+  auto &audio = running.padd<AudioStandIn>();
+  ASSERT_TRUE(driver.run(120 * 60));
+  const std::vector<std::string> cues = driver.cues();
+  ASSERT_FALSE(cues.empty());
+  const auto deadline = std::chrono::steady_clock::now() + 5s;
+  while (audio.played().size() < cues.size() && std::chrono::steady_clock::now() < deadline) {
+    std::this_thread::sleep_for(1ms);
+  }
+  EXPECT_EQ(audio.played(), cues);
+  EXPECT_EQ(audio.loaded(), (std::vector<std::string>{"chime", "zap", "knock", "whoosh", "blast"}));
 }

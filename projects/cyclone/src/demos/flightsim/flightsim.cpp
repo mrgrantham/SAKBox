@@ -8,6 +8,8 @@
  * ailerons and a rudder) and a fixed tail plane (Aero). The resulting
  * torques pitch, roll and yaw the plane. update() adds the forces,
  * integrates, and treats the ground very simply (crash if too fast).
+ * SAKBox: its engine drones and the wind rushes past, both higher and the
+ * wind louder the faster it flies, and a crash booms.
  *
  * Part of the Cyclone physics system.
  *
@@ -23,6 +25,7 @@
 #include "../timing.h"
 #include <cyclone/cyclone.h>
 
+#include <algorithm>
 #include <cassert>
 #include <stdio.h>
 
@@ -275,9 +278,17 @@ void FlightSimDemo::update() {
     aircraft.setPosition(pos);
 
     if (aircraft.getVelocity().y < -10.0f) {
+      sounds.play("blast", {.volume = 0.8f}); // SAKBox
       resetPlane();
     }
   }
+
+  // SAKBox: the engine and the wind, by how fast it flies (about 10 to
+  // 30 m/s)
+  const float speed = static_cast<float>(aircraft.getVelocity().magnitude());
+  const float fast = std::clamp(speed / 30.0f, 0.0f, 1.0f);
+  sounds.setLoop("engine", {.volume = 0.3f, .pitch = 0.8f + 0.6f * fast});
+  sounds.setLoop("wind", {.volume = 0.1f + 0.5f * fast * fast, .pitch = 0.7f + 0.6f * fast});
 
   Application::update();
 }

@@ -7,7 +7,7 @@
  * a jelly; it also lifts the head particle more the more of the blob is
  * near it. The Platforms are particle contact generators: lines the blob
  * rests and rolls on. The keys push the head particle; the camera follows
- * the blob.
+ * the blob. SAKBox: it knocks as it lands on a platform.
  *
  * Part of the Cyclone physics system.
  *
@@ -298,6 +298,7 @@ BlobDemo::BlobDemo() : world(PLATFORM_COUNT + BLOB_COUNT, PLATFORM_COUNT), xAxis
     world.getParticles().push_back(blobs + i);
     world.getForceRegistry().add(blobs + i, &blobForceGenerator);
   }
+  hearContacts(world); // SAKBox
 }
 
 void BlobDemo::reset() {

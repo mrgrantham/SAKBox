@@ -5,15 +5,22 @@
 //               physics' figures on the bottom screen; sends the buttons
 //   RagdollPadd (own thread)  steps the ragdoll (ragdoll_physics.h, as in
 //               Cyclone's demo) in fixed steps and sub-steps (FixedSteps),
-//               timing each step
+//               timing each step, and sends AudioPadd a knock for each hit
+//               (ImpactKnocks, as the demos choose them)
+//   AudioPadd   (own thread)  plays the knocks on the DS's hardware sound
+//               channels (AudioPadd/HardwareChannelsAudioPadd.hpp)
 //
 // A: reset (a new shove)   X: 1, 2 or 4 sub-steps   Y: 60 or 30 steps a second
 // START: quit
 #include <nds.h>
 
+#include <AudioPadd.hpp>
+#include <ScratchPadd/Audio/MadeSoundsPcm16.hpp>
+#include <ScratchPadd/Audio/Messages.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <cyclone/cyclone.h>
 #include <fixed_steps.h>
+#include <impact_knocks.h>
 #include <ragdoll_physics.h>
 
 #include <spdlog/spdlog.h>
@@ -21,10 +28,13 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <memory>
+#include <span>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 namespace {
 
@@ -78,6 +88,8 @@ struct PhysicsFigures {
   double busy = 0;             // share of the second spent stepping
   double speed = 0;            // simulated seconds a second (under 1: falling behind)
   double worstStretch = 0;     // the most a joint was beyond its slack since reset (m)
+  unsigned knocks = 0;         // knocks sent to AudioPadd so far
+  bool audio = false;          // whether there's an AudioPadd to send them to
 };
 
 class RagdollPadd : public ScratchPadd::Base {
@@ -105,11 +117,34 @@ public:
     return std::chrono::duration<double>(FixedSteps::kDefaultStepSeconds);
   }
 
-  // Times a few settings first (a few seconds), then runs with the cheap one
+  // Finds AudioPadd and gives it the knock: made in code, rendered when the
+  // app is built (16-bit samples: no float work here)
+  void prepare() override {
+    audio_ = addressOf("AudioPadd");
+    if (audio_) {
+      namespace Pcm16 = ScratchPadd::Audio::MadeSoundsPcm16;
+      sendTo(audio_,
+             ScratchPadd::Audio::LoadSoundPcm16{
+                 .name = "knock",
+                 .samples = std::make_shared<const std::vector<std::int16_t>>(Pcm16::knock()),
+                 .rate = Pcm16::kRate,
+                 .channels = 1});
+    }
+  }
+
+  // Times a few settings first (a few seconds), then runs with the cheap one,
+  // hearing its hits (not while timing, so the figures are the physics')
   void starting() override {
     send(benchmark());
     useSettings(kRunSettings);
     reset();
+    // The camera looks from (3, 2.2) across the ground: 36 degrees around
+    // from +x (see ImpactKnocks::setCameraAngle)
+    knocks_.setCameraAngle(36);
+    ragdoll_->world.contactsFound = [this](std::span<const cyclone::Contact> contacts,
+                                           cyclone::real_duration seconds) {
+      knocks_.hear(contacts, static_cast<float>(seconds));
+    };
     lastTick_ = secondStart_ = Clock::now();
   }
 
@@ -126,6 +161,7 @@ public:
     if (steps > 0) {
       send(snapshot());
     }
+    playKnocks();
     const auto second = Clock::now() - secondStart_;
     if (second >= std::chrono::seconds(1)) {
       const double seconds = std::chrono::duration<double>(second).count();
@@ -138,7 +174,9 @@ public:
                                   : 0,
                           .busy = std::chrono::duration<double>(stepping_).count() / seconds,
                           .speed = stepsTaken_ * clock_.stepSeconds() / seconds,
-                          .worstStretch = worstStretch_});
+                          .worstStretch = worstStretch_,
+                          .knocks = knocksSent_,
+                          .audio = static_cast<bool>(audio_)});
       secondStart_ = Clock::now();
       stepping_ = {};
       stepsTaken_ = 0;
@@ -208,6 +246,21 @@ private:
     worstStretch_ = std::max(worstStretch_, ragdoll_->worstStretch());
   }
 
+  // Asks AudioPadd to play this tick's knocks
+  void playKnocks() {
+    knocks_.takeKnocks(knocksToPlay_);
+    if (!audio_) {
+      return;
+    }
+    for (const Knock &knock : knocksToPlay_) {
+      ++knocksSent_;
+      sendTo(audio_,
+             ScratchPadd::Audio::PlaySound{
+                 .name = "knock",
+                 .settings = {.volume = knock.volume, .pan = knock.pan, .pitch = knock.pitch}});
+    }
+  }
+
   BonesSnapshot snapshot() const {
     BonesSnapshot s;
     for (unsigned b = 0; b < ragdoll::kBones; ++b) {
@@ -230,6 +283,10 @@ private:
   }
 
   std::unique_ptr<ragdoll::Ragdoll> ragdoll_;
+  ImpactKnocks knocks_;
+  std::vector<Knock> knocksToPlay_; // reused each tick
+  ScratchPadd::PaddAddress audio_;
+  unsigned knocksSent_ = 0;
   cyclone::Random random_;
   FixedSteps clock_;
   double worstStretch_ = 0;
@@ -340,6 +397,11 @@ private:
     std::printf("\x1b[6;1HPhysics thread busy: %.0f%%\x1b[K", 100 * figures_.busy);
     std::printf("\x1b[7;1HSimulation speed: %.2fx\x1b[K", figures_.speed);
     std::printf("\x1b[8;1HWorst joint stretch: %.2f cm\x1b[K", 100 * figures_.worstStretch);
+    if (figures_.audio) {
+      std::printf("\x1b[9;1HKnocks played: %u\x1b[K", figures_.knocks);
+    } else {
+      std::printf("\x1b[9;1HNo AudioPadd: no sound\x1b[K");
+    }
     std::printf("\x1b[10;1HA: reset  X: sub-steps\x1b[K");
     std::printf("\x1b[11;1HY: 60 or 30 steps a second\x1b[K");
     std::printf("\x1b[12;1HSTART: quit\x1b[K");
@@ -369,7 +431,7 @@ private:
 
 int main() {
   spdlog::set_level(spdlog::level::off); // the screens are for the padds
-  ScratchPadd::SystemImplementation<ScreenPadd, RagdollPadd> system;
+  ScratchPadd::SystemImplementation<ScreenPadd, RagdollPadd, AudioPadd> system;
   system.instantiate();
   system.start(); // returns when ScreenPadd stops it (START)
   return 0;

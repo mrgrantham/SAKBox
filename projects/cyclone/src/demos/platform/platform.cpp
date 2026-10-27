@@ -7,7 +7,7 @@
  * comes entirely from contacts the ParticleWorld resolves each frame. A
  * 10 kg weight, drawn in red, is shared between the four top corners
  * (updateAdditionalMass()); moving it shifts the centre of mass and the
- * frame tips over onto its heavier side.
+ * frame tips over onto its heavier side. SAKBox: it knocks as it lands.
  *
  * Part of the Cyclone physics system.
  *

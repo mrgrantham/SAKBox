@@ -66,6 +66,8 @@ void ParticleWorld::runPhysics(real_duration duration) {
 
   // Generate contacts
   unsigned usedContacts = generateContacts();
+  if (contactsFound)
+    contactsFound({contacts, usedContacts}, duration);
 
   // And process them
   if (usedContacts) {

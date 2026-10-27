@@ -47,10 +47,12 @@ static void framebufferResized(GLFWwindow *window, int width, int height) {
 }
 
 static void typed(GLFWwindow *, unsigned int codepoint) {
-  // H shows or hides the description overlay; no demo uses it. The demos'
-  // keys are all ASCII.
+  // H shows or hides the description overlay, and V turns sound off and
+  // on; no demo uses them. The demos' keys are all ASCII.
   if (codepoint == 'h' || codepoint == 'H')
     app->toggleOverlay();
+  else if (codepoint == 'v' || codepoint == 'V')
+    app->toggleSound();
   else if (codepoint < 128)
     app->key(static_cast<unsigned char>(codepoint));
 }

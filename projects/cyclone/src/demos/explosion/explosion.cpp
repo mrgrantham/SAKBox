@@ -290,7 +290,7 @@ void ExplosionDemo::detonate() {
   explosion.detonation = cyclone::Vector3(0, 0, 0);
   explosion.restart();
   exploding = true;
-  sounds.blast(explosion.detonation); // SAKBox
+  impacts.blast(explosion.detonation); // SAKBox
 }
 
 void ExplosionDemo::reset() {

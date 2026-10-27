@@ -53,7 +53,18 @@ const char *Application::getTitle() { return "Cyclone Demo"; }
 
 void Application::deinit() {}
 
-void Application::update() {}
+void Application::update() {
+  impacts.playHits();
+  sounds.update();
+}
+
+std::string Application::soundState() {
+  if (!sounds.playing())
+    return "No sound: " + sounds.error();
+  if (!sounds.enabled())
+    return "Sound: off (V)";
+  return "Sound: on (V), " + std::to_string(sounds.played()) + " played";
+}
 
 void Application::key(unsigned char key) {}
 
@@ -78,19 +89,29 @@ void Application::mouseDrag(int x, int y) {}
 
 // The following methods aren't intended to be overloaded
 void Application::renderOverlay() {
+  // SAKBox: the sound's state, bottom right
+  const std::string state = soundState();
+  const float stateMargin = 2;
+  const float stateWidth = (float)stb_easy_font_width(const_cast<char *>(state.c_str()));
+  renderPanel(width / pixelScale - stateWidth - 10.0f - stateMargin,
+              soundStateHeight + 8.0f + stateMargin, stateMargin, state);
+
   const char *description = getDescription();
   if (!description)
     return;
-  std::string text =
-      showOverlay ? std::string(description) + "\n\nH: hide" : std::string("H: what is this demo?");
+  std::string text = showOverlay ? std::string(description) + "\n\nH: hide   V: sound on/off"
+                                 : std::string("H: what is this demo?");
+  // 8 points in from the top-left corner
+  const float inset = 8;
+  renderPanel(inset, height / pixelScale - inset, 6, text);
+}
 
+void Application::renderPanel(float left, float top, float margin, const std::string &text) {
   // The panel's size in points, from stb_easy_font's measurements, with a
-  // margin; it sits 8 points in from the top-left corner.
-  const float margin = 6, inset = 8;
-  const float textWidth = (float)stb_easy_font_width(text.data());
-  const float textHeight = (float)stb_easy_font_height(text.data());
-  const float top = height / pixelScale - inset;
-  const float left = inset, right = left + textWidth + 2 * margin;
+  // margin
+  const float textWidth = (float)stb_easy_font_width(const_cast<char *>(text.c_str()));
+  const float textHeight = (float)stb_easy_font_height(const_cast<char *>(text.c_str()));
+  const float right = left + textWidth + 2 * margin;
   const float bottom = top - textHeight - 2 * margin;
 
   glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT);
@@ -173,6 +194,7 @@ MassAggregateApplication::MassAggregateApplication(unsigned int particleCount)
 
   groundContactGenerator.init(&world.getParticles());
   world.getContactGenerators().push_back(&groundContactGenerator);
+  hearContacts(world); // SAKBox: knocks on the ground, and as cables snap taut
 }
 
 MassAggregateApplication::~MassAggregateApplication() { delete[] particleArray; }
@@ -219,11 +241,11 @@ void MassAggregateApplication::update() {
 
 RigidBodyApplication::RigidBodyApplication()
     : theta(0.0f), phi(15.0f), renderDebugInfo(false), pauseSimulation(true),
-      autoPauseSimulation(false) {}
+      autoPauseSimulation(false) {
+  soundStateHeight = 25.0f; // between the resolver and the steps
+}
 
 void RigidBodyApplication::update() {
-  sounds.update(); // (paused or not)
-
   // Exit immediately if we aren't running the simulation
   if (pauseSimulation) {
     Application::update();
@@ -240,14 +262,13 @@ void RigidBodyApplication::update() {
     steps = physicsClock.stepsFor(TimingData::get().lastFrameDuration * 0.001);
   }
 
-  sounds.setCameraAngle(theta);
+  impacts.setCameraAngle(theta);
   double took = 0;
   for (unsigned i = 0; i < steps; ++i) {
     runStep();
     const cyclone::World::Profile &profile = getWorld().profile();
     took += profile.findContacts + profile.integrate + profile.resolve;
   }
-  sounds.playHits();
   physicsMilliseconds += 0.05 * (took - physicsMilliseconds);
 
   Application::update();
@@ -259,7 +280,7 @@ void RigidBodyApplication::runStep() {
   // look at them (set each step, as the world is the demo's)
   world.contactsFound = [this](std::span<const cyclone::Contact> contacts,
                                cyclone::real_duration seconds) {
-    sounds.hear(contacts, static_cast<float>(seconds));
+    impacts.hear(contacts, static_cast<float>(seconds));
     contactsFound(contacts);
   };
   world.setSubSteps(physicsClock.subSteps());
@@ -288,19 +309,11 @@ void RigidBodyApplication::renderResolverMethod() {
   renderText(width / pixelScale - textWidth - 10.0f, 10.0f, text);
 }
 
-void RigidBodyApplication::renderSoundState() {
-  std::string text;
-  if (!sounds.playing()) {
-    text = "No sound: " + sounds.error();
-  } else if (!sounds.enabled()) {
-    text = "Sound: off";
-  } else {
-    text = "Sound: on, " + std::to_string(sounds.knocks()) + " knocks, " +
-           std::to_string(sounds.dropped()) + " too quiet to fit";
-  }
-  const float textWidth = (float)stb_easy_font_width(const_cast<char *>(text.c_str()));
-  glColor3f(0.1f, 0.1f, 0.15f);
-  renderText(width / pixelScale - textWidth - 10.0f, 25.0f, text.c_str());
+std::string RigidBodyApplication::soundState() {
+  if (!sounds.playing() || !sounds.enabled())
+    return Application::soundState();
+  return "Sound: on (V), " + std::to_string(impacts.knocks()) + " knocks, " +
+         std::to_string(impacts.dropped()) + " too quiet to fit";
 }
 
 void RigidBodyApplication::renderPhysicsSteps() {
@@ -316,7 +329,6 @@ void RigidBodyApplication::renderPhysicsSteps() {
 
 void RigidBodyApplication::renderCornerStatus() {
   renderResolverMethod();
-  renderSoundState();
   renderPhysicsSteps();
 }
 
@@ -380,12 +392,6 @@ void RigidBodyApplication::key(unsigned char key) {
   case 'c':
     // Toggle rendering of contacts
     renderDebugInfo = !renderDebugInfo;
-    return;
-
-  case 'V':
-  case 'v':
-    // SAKBox: sound off and on
-    sounds.setEnabled(!sounds.enabled());
     return;
 
   case 'P':

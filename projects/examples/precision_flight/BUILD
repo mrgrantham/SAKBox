@@ -15,16 +15,21 @@ cc_library(
     ],
 )
 
-# The padds that run the simulation and log its events (no graphics)
+# The padds that run the simulation, log its events and turn them into
+# sounds (no graphics; the sounds play through AudioPadd, if the system has
+# one)
 cc_library(
     name = "flight_padds",
     hdrs = [
         "src/EventLogPadd.hpp",
         "src/FlightSimPadd.hpp",
+        "src/FlightSoundPadd.hpp",
     ],
     strip_include_prefix = "src",
     deps = [
         ":FlightSim",
+        "//projects/scratchpadd/audio:audio_made_sounds",
+        "//projects/scratchpadd/audio:audio_messages",
         "//projects/scratchpadd/basis",
     ],
 )
@@ -38,6 +43,7 @@ cc_binary(
     ],
     deps = [
         ":flight_padds",
+        "//projects/scratchpadd/audio",
         "//projects/scratchpadd/graphics",
         "@glew",
         "@glfw",

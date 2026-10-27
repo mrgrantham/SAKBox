@@ -411,7 +411,9 @@ void FlightDisplayPadd::showControls(const ScratchPadd::MessageType::ControlSnap
   view->setOnChange([this, owner](const ScratchPadd::MessageType::ControlChange &change) {
     sendTo(owner, change);
   });
-  view->setInitialPlacement(ImVec2(1, 0)); // top-right, clear of the HUD at top-left
+  // The precision lab top-right, clear of the HUD at top-left; any other
+  // padd's panel (AudioPadd's volumes) bottom-right, clear of the lab
+  view->setInitialPlacement(snapshot.paddName == "FlightSim" ? ImVec2(1, 0) : ImVec2(1, 1));
   views[snapshot.paddName] = std::move(view);
 }
 

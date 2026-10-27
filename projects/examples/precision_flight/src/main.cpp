@@ -13,16 +13,21 @@
 //                   thin energy walls slip between samples. Render drops to
 //                   3 bits while phased: the world visibly glitches.
 //
-// The game runs as three ScratchPadd padds (see README.md):
+// The game runs as five ScratchPadd padds (see README.md):
 //   FlightSimPadd     (main thread) the simulation; the precision lab is its controls
 //   FlightDisplayPadd (main thread) window, input, rendering, HUD, control panels
 //   EventLogPadd      (own thread)  prints game events to the terminal
+//   FlightSoundPadd   (own thread)  turns game events into sounds
+//   AudioPadd         (own thread)  plays them
 //
 //   bazel run //projects/examples/precision_flight:precision_flight [-- --autopilot]
 
 #include "EventLogPadd.hpp"
 #include "FlightDisplayPadd.hpp"
 #include "FlightSimPadd.hpp"
+#include "FlightSoundPadd.hpp"
+
+#include <AudioPadd.hpp>
 
 #include <ScratchPadd/ScratchPadd.hpp>
 
@@ -41,7 +46,9 @@ int main(int argc, char **argv) {
 
   // The simulation is listed before the display so each frame draws the
   // snapshot answering that frame's input (both run on this thread).
-  ScratchPadd::SystemImplementation<FlightSimPadd, FlightDisplayPadd, EventLogPadd> system;
+  ScratchPadd::SystemImplementation<FlightSimPadd, FlightDisplayPadd, EventLogPadd, FlightSoundPadd,
+                                    AudioPadd>
+      system;
   system.instantiate();
   system.start(); // returns when the window closes
   return 0;

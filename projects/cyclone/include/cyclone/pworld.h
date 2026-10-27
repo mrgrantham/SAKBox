@@ -22,6 +22,9 @@
 #include "pfgen.h"
 #include "plinks.h"
 
+#include <functional>
+#include <span>
+
 namespace cyclone {
 
 /**
@@ -125,6 +128,13 @@ public:
    * Returns the force registry.
    */
   ParticleForceRegistry &getForceRegistry();
+
+  /**
+   * SAKBox: called each step with the contacts found, before they're
+   * resolved, as World's contactsFound is: for code that listens for hits,
+   * such as sounds.
+   */
+  std::function<void(std::span<const ParticleContact>, real_duration)> contactsFound;
 };
 
 /**

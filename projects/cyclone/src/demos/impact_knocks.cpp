@@ -19,28 +19,51 @@ void ImpactKnocks::hear(std::span<const cyclone::Contact> contacts, float second
   clock_ += seconds;
   // The fastest contact for each pair of bodies (a box resting on the
   // ground has several contacts; it's one knock), over the frame's steps
-  std::vector<Hit> &hits = heard_;
   for (const cyclone::Contact &contact : contacts) {
     // Cyclone's closing velocity: body 0's relative to body 1, along the
     // normal, negative as they come together
     const cyclone::Vector3 relative = velocityAt(contact.body[0], contact.contactPoint) -
                                       velocityAt(contact.body[1], contact.contactPoint);
-    const float speed = static_cast<float>(-(relative * contact.contactNormal));
-    if (speed < kQuietestHit) {
-      continue;
+    float mass = static_cast<float>(contact.body[0]->getMass());
+    if (contact.body[1] && contact.body[1]->hasFiniteMass()) {
+      mass = std::min(mass, static_cast<float>(contact.body[1]->getMass()));
     }
-    const auto pair = std::make_pair<const void *, const void *>(contact.body[0], contact.body[1]);
-    auto hit = std::find_if(hits.begin(), hits.end(), [&](const Hit &h) { return h.pair == pair; });
-    if (hit == hits.end()) {
-      float mass = static_cast<float>(contact.body[0]->getMass());
-      if (contact.body[1] && contact.body[1]->hasFiniteMass()) {
-        mass = std::min(mass, static_cast<float>(contact.body[1]->getMass()));
+    noteHit({contact.body[0], contact.body[1]},
+            static_cast<float>(-(relative * contact.contactNormal)), contact.contactPoint, mass);
+  }
+}
+
+void ImpactKnocks::hear(std::span<const cyclone::ParticleContact> contacts, float seconds) {
+  clock_ += seconds;
+  for (const cyclone::ParticleContact &contact : contacts) {
+    const cyclone::Particle *one = contact.particle[0], *two = contact.particle[1];
+    cyclone::Vector3 relative = one->getVelocity();
+    float mass = static_cast<float>(one->getMass());
+    if (two) {
+      relative -= two->getVelocity();
+      if (two->hasFiniteMass()) {
+        mass = std::min(mass, static_cast<float>(two->getMass()));
       }
-      hits.push_back({.pair = pair, .speed = speed, .point = contact.contactPoint, .mass = mass});
-    } else if (speed > hit->speed) {
-      hit->speed = speed;
-      hit->point = contact.contactPoint;
     }
+    // As for bodies: closing along the normal (towards particle 0) is
+    // negative
+    noteHit({one, two}, static_cast<float>(-(relative * contact.contactNormal)), one->getPosition(),
+            mass);
+  }
+}
+
+void ImpactKnocks::noteHit(std::pair<const void *, const void *> pair, float speed,
+                           const cyclone::Vector3 &point, float mass) {
+  if (speed < kQuietestHit) {
+    return;
+  }
+  auto hit =
+      std::find_if(heard_.begin(), heard_.end(), [&](const Hit &h) { return h.pair == pair; });
+  if (hit == heard_.end()) {
+    heard_.push_back({.pair = pair, .speed = speed, .point = point, .mass = mass});
+  } else if (speed > hit->speed) {
+    hit->speed = speed;
+    hit->point = point;
   }
 }
 

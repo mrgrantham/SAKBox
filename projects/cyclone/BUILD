@@ -85,12 +85,14 @@ cc_library(
     name = "app",
     srcs = [
         "src/demos/app.cpp",
+        "src/demos/demo_sounds.cpp",
         "src/demos/impact_sounds.cpp",
         "src/demos/shapes.cpp",
         "src/demos/window.cpp",
     ],
     hdrs = [
         "src/demos/app.h",
+        "src/demos/demo_sounds.h",
         "src/demos/impact_sounds.h",
         "src/demos/ogl_headers.h",
         "src/demos/shapes.h",
@@ -110,7 +112,7 @@ cc_library(
         ":fixed_steps",
         ":impact_knocks",
         ":timing",
-        # SAKBox: sounds for the rigid-body demos (impact_sounds.h)
+        # SAKBox: the demos' sounds (demo_sounds.h, impact_sounds.h)
         "//projects/scratchpadd/audio:audio_core",
         "//projects/scratchpadd/audio:audio_device",
         "//projects/scratchpadd/audio:audio_made_sounds",

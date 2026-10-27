@@ -6,7 +6,8 @@
  * its weight, so it floats and bobs. The sail is an aerodynamic surface
  * (Aero, applied 2 m from the boat's centre along its length) driven by
  * the wind, which drifts randomly every frame; its force pushes the boat
- * along. The view follows the boat.
+ * along. The view follows the boat. SAKBox: the wind blows louder and
+ * higher as it gets up.
  *
  * Part of the Cyclone physics system.
  *
@@ -22,6 +23,7 @@
 #include "../timing.h"
 #include <cyclone/cyclone.h>
 
+#include <algorithm>
 #include <cassert>
 #include <stdio.h>
 
@@ -198,6 +200,10 @@ void SailboatDemo::update() {
 
   // Change the wind speed.
   windspeed = windspeed * 0.9f + r.randomXZVector(1.0f);
+
+  // SAKBox: the wind, by how strong it is (it drifts about 1 to 4 m/s)
+  const float strength = std::clamp(static_cast<float>(windspeed.magnitude()) / 4.0f, 0.0f, 1.0f);
+  sounds.setLoop("wind", {.volume = 0.15f + 0.45f * strength, .pitch = 0.8f + 0.4f * strength});
 
   Application::update();
 }
