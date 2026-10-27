@@ -103,7 +103,7 @@ cyclone::Quaternion standingOrientation(Robot::Part part)
 		return cyclone::Quaternion();
 	const double sign = (part == Robot::leftUpperArm || part == Robot::leftLowerArm) ? -1 : 1;
 	const double half = sign * armTilt / 2;
-	return cyclone::Quaternion(real_cos(half), 0, 0, real_sin(half));
+	return cyclone::Quaternion(real_cos((real)half), 0, 0, real_sin((real)half));
 }
 
 // How far from its centre a part reaches, in any direction
@@ -293,7 +293,7 @@ double Robot::lowestPoint() const
 		{
 			// The lower end's centre, less the radius
 			const double endHeight = std::abs(orientation.transform(Vector3(0, 1, 0)).y) * m_capsules[part].halfLength;
-			lowest = std::min(lowest, centre - endHeight - m_capsules[part].radius);
+			lowest = std::min<double>(lowest, centre - endHeight - m_capsules[part].radius);
 		}
 		else
 		{

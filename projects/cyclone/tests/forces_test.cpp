@@ -562,7 +562,7 @@ double runFakeSpring(Particle &particle, ParticleFakeSpring &spring, int steps) 
     particle.clearAccumulator();
     spring.updateForce(&particle, 1.0 / 60);
     particle.integrate(1.0 / 60);
-    farthest = std::max(farthest, particle.getPosition().magnitude());
+    farthest = std::max<double>(farthest, particle.getPosition().magnitude());
   }
   return farthest;
 }
@@ -580,7 +580,7 @@ TEST(ParticleForceTest, FakeSpringSettlesOnItsAnchor) {
   double closest = 1;
   for (int i = 0; i < 60 * 15; ++i) {
     runFakeSpring(*particle, spring, 1);
-    closest = std::min(closest, particle->getPosition().x);
+    closest = std::min<double>(closest, particle->getPosition().x);
   }
   EXPECT_LT(closest, 0.0); // it swung through the anchor
   EXPECT_NEAR(particle->getPosition().x, 0, 1e-3);

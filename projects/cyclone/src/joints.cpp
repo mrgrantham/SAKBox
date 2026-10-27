@@ -160,7 +160,7 @@ unsigned ConeJoint::getAngularConstraints(AngularConstraint *constraints) const 
   // and it's as far from the limit as it can be.
   const Vector3 tilt = directionNow(body[0], axis[0]) % directionNow(body[1], axis[1]);
   const real sine = tilt.magnitude();
-  if (sine < (real)1e-6)
+  if (sine <= (real)1e-6)
     return 0;
   constraints[0] = {.kind = AngularConstraint::Kind::limit,
                     .axis = tilt * ((real)-1 / sine),

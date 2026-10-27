@@ -214,7 +214,7 @@ public:
       const double length =
           (pointNow(joint.body[1], joint.position[1]) - pointNow(joint.body[0], joint.position[0]))
               .magnitude();
-      worst = std::max(worst, length - joint.error);
+      worst = std::max<double>(worst, length - joint.error);
     }
     return worst;
   }

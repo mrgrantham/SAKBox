@@ -61,7 +61,7 @@ TEST(PolicyLearnerTest, LimpRobotSlumpsWithinItsLimits) {
       const auto &hinge = static_cast<const cyclone::HingeJoint &>(*robot.joints()[h]);
       const double angle = robot.angle(Robot::Hinge(h));
       furthestPastLimit =
-          std::max({furthestPastLimit, hinge.lowerLimit - angle, angle - hinge.upperLimit});
+          std::max<double>({furthestPastLimit, hinge.lowerLimit - angle, angle - hinge.upperLimit});
     }
     for (const cyclone::Joint *joint : robot.joints()) {
       joint->body[0]->calculateDerivedData();

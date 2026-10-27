@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <memory>
 #include <string>
+#include <type_traits>
 
 namespace {
 
@@ -33,9 +34,25 @@ struct ButtonPressed {
   int key = 0; // libnds' KEY_*
 };
 
-// Each bone's eight corners, in metres, after a tick
+// The DS's 3D vertices are 4.12 fixed point (-8 to 8), so the world is
+// drawn at a quarter of its size
+constexpr float kDrawScale = 0.25f;
+
+// A position (m) as a vertex coordinate. Cyclone's real is Q16.16 fixed point
+// here (FlexPoint16, see the Makefile), so that's a shift: 16 fraction bits
+// to 12, and a quarter (2 bits) smaller. (Through float, it was software
+// floating point for each of the 288 coordinates a step.)
+v16 vertexCoordinate(cyclone::real metres) {
+  if constexpr (std::is_same_v<cyclone::real, Flex::Math::FlexPoint16>) {
+    return static_cast<v16>(metres.valueFixed() >> 6);
+  } else {
+    return floattov16(static_cast<float>(metres) * kDrawScale);
+  }
+}
+
+// Each bone's eight corners after a tick, ready to draw
 struct BonesSnapshot {
-  std::array<std::array<std::array<float, 3>, 8>, ragdoll::kBones> corners{};
+  std::array<std::array<std::array<v16, 3>, 8>, ragdoll::kBones> corners{};
 };
 
 // How long a step took with each of a few settings, measured when the app
@@ -220,8 +237,8 @@ private:
                                      (c & 2) ? bone.halfSize.y : -bone.halfSize.y,
                                      (c & 4) ? bone.halfSize.z : -bone.halfSize.z);
         const cyclone::Vector3 world = bone.body->getPointInWorldSpace(local);
-        s.corners[b][c] = {static_cast<float>(world.x), static_cast<float>(world.y),
-                           static_cast<float>(world.z)};
+        s.corners[b][c] = {vertexCoordinate(world.x), vertexCoordinate(world.y),
+                           vertexCoordinate(world.z)};
       }
     }
     return s;
@@ -283,10 +300,6 @@ public:
   }
 
 private:
-  // The DS's 3D vertices are 4.12 fixed point (-8 to 8), so the world is
-  // drawn at a quarter of its size
-  static constexpr float kScale = 0.25f;
-
   void frame() {
     if (!pmMainLoop()) {
       system_->stop();
@@ -309,18 +322,22 @@ private:
     push([this] { frame(); });
   }
 
-  static v16 at(float metres) { return floattov16(metres * kScale); }
-
   void drawRagdoll() {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    gluLookAt(3.0f, 1.2f, 2.2f, 0.0f, 0.3f, 0.0f, 0.0f, 1.0f, 0.0f);
+    {
+      // gluLookAt uses the divider and square root unit, which the physics
+      // thread's fixed point uses too (FixedPointNds.hpp): no switching
+      // threads partway through
+      Flex::Math::HardwareMathsLock lock;
+      gluLookAt(3.0f, 1.2f, 2.2f, 0.0f, 0.3f, 0.0f, 0.0f, 1.0f, 0.0f);
+    }
     glPolyFmt(POLY_ALPHA(31) | POLY_CULL_NONE);
     glBegin(GL_QUADS);
     // The ground: a sand square, 16 m across
     glColor3b(200, 190, 160);
     for (auto [x, z] : {std::pair{-8.0f, -8.0f}, {8.0f, -8.0f}, {8.0f, 8.0f}, {-8.0f, 8.0f}}) {
-      glVertex3v16(floattov16(x * kScale), 0, floattov16(z * kScale));
+      glVertex3v16(floattov16(x * kDrawScale), 0, floattov16(z * kDrawScale));
     }
     // Each bone's six faces, shaded by which way they face
     static constexpr int kFaces[6][4] = {{0, 1, 3, 2}, {4, 6, 7, 5}, {0, 4, 5, 1},
@@ -330,7 +347,7 @@ private:
       for (int f = 0; f < 6; ++f) {
         glColor3b(kShade[f], kShade[f] * 2 / 3, kShade[f] * 2 / 3);
         for (int corner : kFaces[f]) {
-          glVertex3v16(at(bone[corner][0]), at(bone[corner][1]), at(bone[corner][2]));
+          glVertex3v16(bone[corner][0], bone[corner][1], bone[corner][2]);
         }
       }
     }

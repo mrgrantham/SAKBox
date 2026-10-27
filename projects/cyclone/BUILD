@@ -1,4 +1,6 @@
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load(":real.bzl", "real_binary", "real_test")
 
 # Cyclone physics engine by Ian Millington (MIT, see LICENSE). Originally from
 # https://github.com/idmillington/cyclone-physics (master, Jan 2024); maintained
@@ -6,24 +8,51 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
+# The type of cyclone::real (precision.h) in every target the build makes:
+#   bazel run //projects/cyclone:ragdoll --//projects/cyclone:real=flex_point16
+# double (the default); float; flex_real (flexmath's FlexReal, a double that
+# snaps to a precision that can change as it runs); flex_point or
+# flex_point16 (flexmath's Q32.32 and Q16.16 fixed point). real_binary and
+# real_test (real.bzl) build one target with a given type.
+REAL_TYPES = ["double", "float", "flex_real", "flex_point", "flex_point16"]
+
+string_flag(
+    name = "real",
+    build_setting_default = "double",
+    values = REAL_TYPES,
+)
+
+[config_setting(
+    name = "real_" + real,
+    flag_values = {":real": real},
+) for real in REAL_TYPES]
+
+# The define precision.h picks real by, and propagates to every dependent
+REAL_DEFINES = select({
+    ":real_float": ["CYCLONE_SINGLE_PRECISION"],
+    ":real_flex_real": ["CYCLONE_FLEX_REAL"],
+    ":real_flex_point": ["CYCLONE_FLEX_POINT"],
+    ":real_flex_point16": ["CYCLONE_FLEX_POINT16"],
+    "//conditions:default": [],
+})
+
+# flexmath's types; double's maths functions are flexmath's correctly
+# rounded ones
+REAL_DEPS = select({
+    ":real_flex_real": ["//projects/flexmath"],
+    ":real_flex_point": ["//projects/flexmath"],
+    ":real_flex_point16": ["//projects/flexmath"],
+    "//conditions:default": [],
+}) + ["//projects/flexmath:correctly_rounded"]
+
+# The engine, with the real type the build picks (:real)
 cc_library(
     name = "cyclone",
     srcs = ["src/body.cpp","src/collide_coarse.cpp","src/collide_fine.cpp","src/contacts.cpp","src/core.cpp","src/fgen.cpp","src/joints.cpp","src/particle.cpp","src/pcontacts.cpp","src/pfgen.cpp","src/plinks.cpp","src/pworld.cpp","src/random.cpp","src/world.cpp"],
     hdrs = ["include/cyclone/body.h","include/cyclone/cyclone.h","include/cyclone/collide_coarse.h","include/cyclone/collide_fine.h","include/cyclone/contacts.h","include/cyclone/core.h","include/cyclone/fgen.h","include/cyclone/joints.h","include/cyclone/particle.h","include/cyclone/precision.h","include/cyclone/pcontacts.h","include/cyclone/pfgen.h","include/cyclone/plinks.h","include/cyclone/pworld.h","include/cyclone/random.h","include/cyclone/world.h"],
     copts = ["-O2", "-fPIC"],
-    # real_sin and friends are correctly rounded (precision.h)
-    deps = ["//projects/flexmath:correctly_rounded"],
-    strip_include_prefix = "include",
-)
-
-cc_library(
-    name = "cyclone_flex",
-    srcs = ["src/body.cpp","src/collide_coarse.cpp","src/collide_fine.cpp","src/contacts.cpp","src/core.cpp","src/fgen.cpp","src/joints.cpp","src/particle.cpp","src/pcontacts.cpp","src/pfgen.cpp","src/plinks.cpp","src/pworld.cpp","src/random.cpp","src/world.cpp"],
-    hdrs = ["include/cyclone/body.h","include/cyclone/cyclone.h","include/cyclone/collide_coarse.h","include/cyclone/collide_fine.h","include/cyclone/contacts.h","include/cyclone/core.h","include/cyclone/fgen.h","include/cyclone/joints.h","include/cyclone/particle.h","include/cyclone/precision.h","include/cyclone/pcontacts.h","include/cyclone/pfgen.h","include/cyclone/plinks.h","include/cyclone/pworld.h","include/cyclone/random.h","include/cyclone/world.h"],
-    copts = ["-O2", "-fPIC"],
-    # cyclone::real becomes flexmath's FlexReal; propagates to dependents
-    defines = ["CYCLONE_FLEX_REAL"],
-    deps = ["//projects/flexmath"],
+    defines = REAL_DEFINES,
+    deps = REAL_DEPS,
     strip_include_prefix = "include",
 )
 
@@ -41,9 +70,8 @@ cc_library(
     strip_include_prefix = "src/demos",
 )
 
-# Which hits to knock for (no audio): for code outside the demos, such as the
-# Cyclone padds example. The demos' framework compiles the same files into
-# itself, as it's built against both Cyclone and the flex build.
+# Which hits to knock for (no audio): for the demos' framework, and for code
+# outside the demos, such as the Cyclone padds example
 cc_library(
     name = "impact_knocks",
     srcs = ["src/demos/impact_knocks.cpp"],
@@ -52,30 +80,23 @@ cc_library(
     deps = [":cyclone"],
 )
 
-# The demos' framework, built twice below: with Cyclone's usual real, and
-# with flexmath's (app_flex)
-APP_SRCS = ["src/demos/app.cpp", "src/demos/impact_knocks.cpp", "src/demos/impact_sounds.cpp", "src/demos/shapes.cpp", "src/demos/window.cpp"]
-
-APP_HDRS = ["src/demos/app.h", "src/demos/impact_knocks.h", "src/demos/impact_sounds.h", "src/demos/ogl_headers.h", "src/demos/shapes.h", "src/demos/window.h"]
-
-APP_DEPS = [
-    ":fixed_steps",
-    ":timing",
-    # SAKBox: sounds for the rigid-body demos (impact_sounds.h)
-    "//projects/scratchpadd/audio:audio_core",
-    "//projects/scratchpadd/audio:audio_device",
-    "//projects/scratchpadd/audio:audio_made_sounds",
-    "@glfw",
-    "@stb",
-]
-
+# The demos' framework, with the real type the build picks (:real)
 cc_library(
     name = "app",
-    srcs = APP_SRCS,
-    hdrs = APP_HDRS,
+    srcs = [
+        "src/demos/app.cpp",
+        "src/demos/impact_sounds.cpp",
+        "src/demos/shapes.cpp",
+        "src/demos/window.cpp",
+    ],
+    hdrs = [
+        "src/demos/app.h",
+        "src/demos/impact_sounds.h",
+        "src/demos/ogl_headers.h",
+        "src/demos/shapes.h",
+        "src/demos/window.h",
+    ],
     defines = ["GL_SILENCE_DEPRECATION"],
-    deps = APP_DEPS + [":cyclone"],
-    strip_include_prefix = "src",
     # The demos open a GLFW window and draw with legacy OpenGL and GLU (GLFW
     # links OpenGL on macOS); the engine itself has no platform dependency.
     linkopts = select({
@@ -83,6 +104,19 @@ cc_library(
         "@platforms//os:windows": ["opengl32.lib", "glu32.lib"],
         "//conditions:default": [],
     }),
+    strip_include_prefix = "src",
+    deps = [
+        ":cyclone",
+        ":fixed_steps",
+        ":impact_knocks",
+        ":timing",
+        # SAKBox: sounds for the rigid-body demos (impact_sounds.h)
+        "//projects/scratchpadd/audio:audio_core",
+        "//projects/scratchpadd/audio:audio_device",
+        "//projects/scratchpadd/audio:audio_made_sounds",
+        "@glfw",
+        "@stb",
+    ],
 )
 
 cc_binary(
@@ -189,39 +223,29 @@ cc_binary(
         ":app",
     ],
 )
-# Cyclone built with an adjustable-precision real (flexmath FlexReal)
-cc_library(
-    name = "app_flex",
-    srcs = APP_SRCS,
-    hdrs = APP_HDRS,
-    defines = ["GL_SILENCE_DEPRECATION"],
-    deps = APP_DEPS + [":cyclone_flex"],
-    strip_include_prefix = "src",
-    # The demos open a GLFW window and draw with legacy OpenGL and GLU (GLFW
-    # links OpenGL on macOS); the engine itself has no platform dependency.
-    linkopts = select({
-        "@platforms//os:linux": ["-lGL", "-lGLU"],
-        "@platforms//os:windows": ["opengl32.lib", "glu32.lib"],
-        "//conditions:default": [],
-    }),
-)
-
-cc_binary(
+# The flight sim on FlexReal, whatever :real is set to
+real_binary(
     name = "flightsim_flex",
-    srcs = ["src/demos/flightsim/flightsim.cpp", "src/demos/main.cpp"],
-    deps = [
-        ":app_flex",
-    ],
+    real = "flex_real",
+    target = ":flightsim",
 )
 
 cc_test(
-    name = "flex_test",
+    name = "flex_test_on_flex_real",
     size = "small",
     srcs = ["tests/flex_test.cpp"],
+    tags = ["manual"],  # built through flex_test, with real set to flex_real
     deps = [
-        ":cyclone_flex",
+        ":cyclone",
         "@gtest//:gtest_main",
     ],
+)
+
+real_test(
+    name = "flex_test",
+    size = "small",
+    real = "flex_real",
+    target = ":flex_test_on_flex_real",
 )
 
 cc_test(
@@ -243,6 +267,17 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+# The ragdoll in fixed point, as the DS runs it (Q16.16), and in Q32.32
+[real_test(
+    name = "ragdoll_test_" + real,
+    size = "medium",
+    real = real,
+    target = ":ragdoll_test",
+) for real in [
+    "flex_point",
+    "flex_point16",
+]]
 
 cc_test(
     name = "collision_test",

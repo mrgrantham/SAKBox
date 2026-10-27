@@ -118,6 +118,19 @@ protected:
   real angularDamping;
 
   /**
+   * SAKBox: the factors integrate() works out from the damping and the time
+   * step (the drag on velocity and rotation, and the sleep bias: each a
+   * pow), kept from the last step and worked out again only when one of
+   * those changes. Steps are usually all the same length, and pow is slow
+   * where it's done in software (the DS).
+   */
+  struct StepFactors {
+    real_duration timeStep = -1;
+    real linearDamping = 0, angularDamping = 0;
+    real linearDrag = 0, angularDrag = 0, sleepBias = 0;
+  } stepFactors;
+
+  /**
    * Holds the linear position of the rigid body in
    * world space.
    */

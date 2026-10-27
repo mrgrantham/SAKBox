@@ -14,9 +14,8 @@ bazel run //projects/cyclone:fracture      # or any demo below
 
 | Target | What it is |
 | --- | --- |
-| `//projects/cyclone:cyclone` | The engine, in double precision. Include `<cyclone/cyclone.h>`. |
-| `//projects/cyclone:cyclone_flex` | The same engine with `cyclone::real` as flexmath's `FlexReal`, so the whole engine runs at a precision you can change while it runs (see [flexmath](../flexmath/README.md#using-flexmath-with-cyclone)). |
-| `:app`, `:app_flex`, `:timing` | The demo framework (GLFW window, camera, timing, text, sphere, cube and capsule drawing), for each engine build. A program with its own `main`, such as the [Waffles jumper](../waffles/README.md), opens a demo with `runInWindow` (`<demos/window.h>`). |
+| `//projects/cyclone:cyclone` | The engine. Include `<cyclone/cyclone.h>`. Its number type, `cyclone::real`, is `double` unless the build setting `:real` says otherwise (see [The number type](#the-number-type)). |
+| `:app`, `:timing` | The demo framework (GLFW window, camera, timing, text, sphere, cube and capsule drawing). A program with its own `main`, such as the [Waffles jumper](../waffles/README.md), opens a demo with `runInWindow` (`<demos/window.h>`). |
 
 The engine libraries are plain C++ with no graphics or platform dependency; only the demo framework links GLFW and OpenGL.
 
@@ -25,7 +24,7 @@ The main pieces of the engine, in `include/cyclone/`:
 | Header | Contents |
 | --- | --- |
 | `core.h` | `Vector3`, `Quaternion`, `Matrix3`, `Matrix4` |
-| `precision.h` | The `real` type and math functions (double, or `FlexReal` in the flex build). In both, `real_sin`, `real_cos`, `real_exp`, `real_pow` and `real_atan2` are correctly rounded (flexmath's `CorrectlyRounded.hpp`), so the engine gives the same results on every platform |
+| `precision.h` | The `real` type and math functions (see [The number type](#the-number-type)). For `double` and flexmath's types, `real_sin`, `real_cos`, `real_exp`, `real_pow` and `real_atan2` are correctly rounded (flexmath's `CorrectlyRounded.hpp`), so the engine gives the same results on every platform |
 | `particle.h`, `pfgen.h`, `plinks.h`, `pcontacts.h`, `pworld.h` | Particles, their force generators, links (cables, rods), contacts and world |
 | `body.h`, `fgen.h`, `joints.h`, `world.h` | Rigid bodies, force generators (gravity, springs, aerodynamics, buoyancy), joints (ball and socket, cable, hinge, cone) and world (`world.h` isn't in `cyclone.h`; include it directly) |
 | `collide_coarse.h`, `collide_fine.h`, `contacts.h` | Broad-phase bounding volumes, primitive collision tests (spheres, boxes, capsules, planes), and contact resolution |
@@ -48,7 +47,7 @@ Each demo is a binary: `bazel run //projects/cyclone:<name>`. They open a GLFW w
 | `ragdoll` | A ragdoll made of jointed bones | Rigid-body keys |
 | `stack` | A tower of boxes that are never allowed to sleep, held up by resolving the contacts together; M switches to the book's resolver, and the tower creeps and falls | 1-9 and 0 rebuild it with that many boxes (0 is ten); plus the rigid-body keys |
 | `flightsim` | An aircraft with aerodynamic control surfaces | W/S pitch, A/D roll, Q/E yaw, X centres the controls, R resets |
-| `flightsim_flex` | The flight sim on `cyclone_flex` | As `flightsim`, plus `[` and `]` step the engine's precision (down to 2 bits), N cycles stochastic, truncating and nearest rounding, F returns to full precision |
+| `flightsim_flex` | The flight sim on flexmath's `FlexReal` (`--//projects/cyclone:real=flex_real`, always) | As `flightsim`, plus `[` and `]` step the engine's precision (down to 2 bits), N cycles stochastic, truncating and nearest rounding, F returns to full precision |
 | `sailboat` | A boat with a sail and buoyancy | Q/E trim the sail, W centres it |
 
 The rigid-body demos (`bigballistic`, `explosion`, `fracture`, `ragdoll`, `stack`) start paused and share these keys: P pauses or resumes, Space advances one step, R resets, C toggles drawing contacts, M switches the contact resolver (see [Resolving contacts together](#resolving-contacts-together); the one in use is shown bottom right), and `[` and `]` take fewer or more physics sub-steps (they start at 2; see [Sub-steps](#sub-steps)). Drag with the mouse to turn the camera. Pass `--run` to start them running, e.g. `bazel run //projects/cyclone:fracture -- --run`.
@@ -56,6 +55,27 @@ The rigid-body demos (`bigballistic`, `explosion`, `fracture`, `ragdoll`, `stack
 **Sound.** The rigid-body demos knock when bodies hit, played with [ScratchPadd's audio engine](../scratchpadd/README.md#audio) through the sound device; V turns it off and on, and the bottom right shows how many knocks have played. After each physics step, `ImpactKnocks` (`src/demos/impact_knocks.h`) works out how fast each pair of touching bodies is closing at its fastest contact, and at the end of the frame it chooses knocks for the pairs hitting at over 1 m/s (resting contacts stay quiet), which `ImpactSounds` (`src/demos/impact_sounds.h`) plays: louder the faster (full at 10 m/s), lower the heavier the lighter of the two is (a 1 kg box as made, 100 kg about an octave down, with a little variation each time), and panned to where it happened on screen. A pair knocks at most every 0.1 s, and at most six pairs a frame, the hardest. The explosion's blast has its own sound. The sounds are made in code (`ScratchPadd::Audio::MadeSounds`), so there are no sound files. `ImpactKnocks` has no audio dependency (`:impact_knocks`), so other code can play its knocks its own way: the [Cyclone padds example](../examples/cyclone_padds/README.md) sends them to AudioPadd. A burst of hits plays its loudest, newest ones: when every voice is busy the engine takes over the quietest sound playing (see voice stealing in ScratchPadd's README).
 
 Every demo also takes `--keys "SECONDS:INPUT,..."`, which plays input into it so its controls can be tested without touching the keyboard: at each time (seconds after launch) each character of INPUT goes to the demo's key handler, or INPUT `click` is a left click. For example `bazel run //projects/cyclone:bigballistic -- --run --keys "1:2,1.5:click,4:r"` picks artillery, fires it and resets.
+
+## The number type
+
+`cyclone::real` (`precision.h`) is the engine's number type, picked for the whole build by the setting `//projects/cyclone:real`:
+
+```bash
+bazel run //projects/cyclone:ragdoll --//projects/cyclone:real=flex_point16
+bazel test //projects/cyclone/... --//projects/cyclone:real=flex_point
+```
+
+| Value | `real` is | Notes |
+| --- | --- | --- |
+| `double` (the default) | `double` | Maths functions correctly rounded, so results match across platforms (see the top-level README's [Floating-point results across platforms](../../README.md#floating-point-results-across-platforms)) |
+| `float` | `float` | The system's maths functions |
+| `flex_real` | flexmath's `FlexReal` | A double that snaps to a precision that can change as it runs (`flightsim_flex`) |
+| `flex_point` | flexmath's `FlexPoint` | Q32.32 fixed point: integer arithmetic, the same on every machine with any build |
+| `flex_point16` | flexmath's `FlexPoint16` | Q16.16 fixed point, fast on 32-bit processors without floating-point hardware: the DS build uses it ([On the Nintendo DS](#on-the-nintendo-ds)) |
+
+It sets a define that `precision.h` reads (`CYCLONE_FLEX_POINT16` and so on) and propagates to everything built on Cyclone, so the demos, the tests and the Waffles jumper all build with any of them. `real_binary` and `real_test` (`real.bzl`) build one target with a given type whatever the command line says: `flightsim_flex`, `flex_test`, and `ragdoll_test_flex_point16` and `ragdoll_test_flex_point`, which `bazel test //...` runs.
+
+The engine keeps to what all of them can do: maths through `real_sqrt` and friends, constants as `(real)0.5`, and tiny guards compared with `<=` (`length <= (real)1e-9`), since 1e-9 is zero in fixed point and a zero length must still be caught. In fixed point the range and precision are the limits: see [Known limitations](#known-limitations).
 
 ## Resolving contacts together
 
@@ -170,23 +190,24 @@ The demos' physics runs in **fixed steps** of 1/60 s (`FixedSteps`, `src/demos/f
 bazel run //projects/cyclone/ds:cyclone-ds-ragdoll   # needs Docker running (tools/devkitpro); opens melonDS
 ```
 
-It builds Cyclone in single precision (`CYCLONE_SINGLE_PRECISION`, see `precision.h`). The DS has no floating-point hardware, so every `float` operation is done in software by the C library, on a 67 MHz ARM9.
+It builds Cyclone in Q16.16 fixed point: `real` is flexmath's `FlexPoint16` (`CYCLONE_FLEX_POINT16`; see [The number type](#the-number-type)). The DS has no floating-point hardware, so `float`, which it used before, was all done in software by the C library, on a 67 MHz ARM9. Fixed point is integer arithmetic, with the DS's hardware divider and square root unit for division and square roots (`FixedPointNds.hpp` in flexmath, which locks interrupts around each calculation, since the unit's registers are shared; the drawing thread does the same around `gluLookAt`, which uses them too). The snapshots the drawing thread gets are 4.12 vertex coordinates already, a shift from Q16.16, where they used to go through `float`.
 
-**It's too slow for real time.** When it starts, the app times a few settings (each from a fresh ragdoll, falling, over its first five steps) and shows them; in melonDS:
+**Steps take a third of the time they did, but it's still short of real time at 60 steps a second.** When it starts, the app times a few settings (each from a fresh ragdoll, falling, over its first five steps) and shows them; in melonDS, ms a step:
 
-| Steps a second | Sub-steps | Resolver sweeps (velocity/settle/position) | ms a step | Real time it manages |
-| --- | --- | --- | --- | --- |
-| 60 | 1 | 40/10/10 (Cyclone's own) | 122 | 0.14x |
-| 60 | 2 | 8/2/2 (what it runs with) | 87 | 0.19x |
-| 60 | 4 | 4/1/1 | 131 | 0.13x |
-| 30 | 2 | 8/2/2 | 85 | 0.39x |
+| Steps a second | Sub-steps | Resolver sweeps (velocity/settle/position) | `float` | Q16.16 | Real time Q16.16 manages |
+| --- | --- | --- | --- | --- | --- |
+| 60 | 1 | 40/10/10 (Cyclone's own) | 122 | 33.0 | 0.50x |
+| 60 | 2 | 8/2/2 (what it runs with) | 87 | 24.9 | 0.67x |
+| 60 | 4 | 4/1/1 | 131 | 38.1 | 0.44x |
+| 30 | 2 | 8/2/2 | 85 | 23.6 | 1.4x |
 
-- A sub-step at 8/2/2 sweeps takes 5 ms to move the bones, 6 ms to find contacts and 32 ms to resolve them. Fewer sweeps help less than they might, as setting up each contact and joint (their world inertia, warm starting) costs about as much as the sweeps.
-- Once the ragdoll lies on the ground, every bone touches it, and a step costs about twice as much (about 0.1x real time at 60 steps a second, 0.2x at 30).
-- `double` is 1.75 times slower than `float`, and ARM instructions instead of Thumb gain about 2%: the time is in the software floating point.
-- The figures on the bottom screen are written only when they change, about once a second: formatting numbers is float work too, and the main thread's time comes out of the physics'. Writing them each frame made the physics 25% slower.
+- A sub-step at 8/2/2 sweeps takes 1.0 ms to move the bones, 1.5 ms to find contacts and 9.8 ms to resolve them (5, 6 and 32 ms in `float`).
+- **ARM instructions, not Thumb, matter most.** devkitPro's template compiles to Thumb, which on the ARM9 has no 32 x 32 -> 64-bit multiply, so every fixed-point multiply was a library call: in Thumb, Q16.16 took 70 ms a step, hardly better than `float`. ARM instructions (`-marm` in the Makefile) brought it to 24.9 ms. (With `float` they gained only 2%: the time was in the software floating point.)
+- Fixed point also brought two engine changes that every build benefits from: `RigidBody` keeps its drag factors (`pow` of the damping over the step) from step to step instead of working them out again (moving the bones went from 8.6 to 3.3 ms a sub-step in Thumb), and constants such as `(real)0.5` become fixed point when compiling.
+- Once the ragdoll lies on the ground, every bone touches it, and a step costs about twice as much: 58 ms, 0.29x real time, at 60 steps a second.
+- The figures on the bottom screen are written only when they change, about once a second: formatting numbers is float work, and the main thread's time comes out of the physics'. Writing them each frame made the physics 25% slower.
 
-Real time needs about five to ten times as much speed, which means fixed-point arithmetic (roadmap). Measured in melonDS, not on a console.
+Real time at 60 steps a second needs about two to four times as much speed again, mostly in resolving contacts (roadmap). Measured in melonDS, not on a console.
 
 ## What SAKBox has changed
 
@@ -230,6 +251,8 @@ Compared with the last upstream version:
   - **Particles update their velocity before moving,** as rigid bodies already did (upstream, and the book's section 3.3, moved them with the old velocity first). `ParticleFakeSpring` relies on this order: before, its stiff springs (stiffness 400 and up at 60 steps a second) swung wider and wider; now they hold at every stiffness tried, up to 1,000,000. Particles resting on the ground also sit still now, where before they jittered by a frame of gravity. Every particle demo moves very slightly differently.
 - **Contacts are resolved together** (`ContactResolver::Method::sequentialImpulses`, the default since joints became constraints; `setMethod(Method::oneContactAtATime)` brings back the book's resolver; see [Resolving contacts together](#resolving-contacts-together)), so awake stacks stand still. Joints are then constraints between their two anchor points (see [Joints](#joints)), which `resolveContacts` takes separately from the contacts, and `World` holds in `getJoints()`. `World::getResolver()` exposes a world's resolver to choose it. The new `stack` demo shows the difference, and M switches resolver in every rigid-body demo.
 - **The same results on every platform:** the maths functions in `precision.h` are correctly rounded (CORE-MATH's, through flexmath's `CorrectlyRounded.hpp`) rather than the system's, and the repo builds with fused multiply-adds off, so a simulation runs the same to the last bit on macOS and Linux, with Clang or GCC (checked on ARM64). The Waffles jumper's test pins its jump height to check it. See the top-level README's [Floating-point results across platforms](../../README.md#floating-point-results-across-platforms).
+- **Any number type, by a build setting** (`//projects/cyclone:real`; see [The number type](#the-number-type)): `double`, `float`, or flexmath's `FlexReal`, `FlexPoint` (Q32.32) or `FlexPoint16` (Q16.16, the DS's). It replaces the separate `:cyclone_flex` and `:app_flex` targets; `flightsim_flex` and `flex_test` are built with the setting fixed (`real.bzl`). Guards against tiny lengths compare with `<=`, so they still catch zero in fixed point, where `1e-9` rounds to zero.
+- **`RigidBody` keeps its drag factors** (`pow` of the damping over the step, and the sleep bias, as the book works them out in sections 10.4 and 16.2.1) from step to step, and works them out again only when the step length or damping changes: steps are usually all the same, and `pow` is slow where it's done in software.
 - **Single precision when asked:** `CYCLONE_SINGLE_PRECISION` picks `float` for `real` (upstream had `#elif 0`, so only by editing `precision.h`); the DS app uses it. Without it, `real` is `double`, as before.
 - **Sub-steps** (`World::setSubSteps`, and `[` and `]` in the rigid-body demos), and the rigid-body demos run in fixed steps rather than steps as long as each frame; see [Sub-steps](#sub-steps). A demo that acts on a step's contacts does it in `afterStep()` (fracture splits the block there, after the step that hit).
 - **Hinges, cones and capsules** (see [Hinges and cones](#hinges-and-cones) and [Capsules](#capsules)), for the Waffles jumper, which moved from Bullet to Cyclone. `real_atan2` joins `precision.h`'s functions, for hinge angles.
@@ -253,6 +276,7 @@ Changes inside the code are marked with `SAKBox:` comments.
 | `random_test` | The random number generator: repeatable from a seed; reals, integers, vectors and orientations spread evenly over their ranges; asking for an integer below 0 is an error |
 | `impact_sounds_test` | The demos' knocks, heard through an offline output: a hit knocks and resting doesn't, a pair knocks at most once in its repeat time, only the hardest six hits a frame knock (also over a frame of several steps, where a pair hit in more than one knocks once), turned off nothing plays, and a hit sounds on the side of the screen it happened (the camera turned either way) |
 | `fixed_steps_test` | The demos' physics clock: one step a frame at 60 Hz despite 16 and 17 ms frames; 60 steps a second at 144, 120, 30 and 20 Hz; a 2 s stall counting as 0.1 s; changing the step length as it runs (240 steps a second, time not yet stepped carried over); sub-steps splitting the step, starting at 2 and between 1 and 16 |
+| `ragdoll_test_flex_point16`, `ragdoll_test_flex_point` | `ragdoll_test` in Q16.16 (as the DS runs it) and Q32.32 fixed point, with the same expectations |
 | `flex_test` | The flex build: `FlexReal` as `real`, precision snapping in the engine, and that time steps and drag stay at full precision (stochastic rounding keeps drag unbiased) |
 
 ## Known limitations
@@ -268,6 +292,12 @@ Changes inside the code are marked with `SAKBox:` comments.
   - *Energy:* each step takes out the speed that would carry a body off the circle its joint holds it to, which also takes a little of its swing. A pendulum reaches the bottom of its first swing about 6% slower than a real one at 60 steps a second, and less than half that short at 240. This happens in any velocity-level solver.
   - *Fix:* sub-steps (see [Sub-steps](#sub-steps)). Four a step cut the ragdoll's worst stretch to 0.03 cm at 60 steps a second (2.6 cm at 20), and swing the pendulum as 240 steps a second do, for four times the physics work.
   - *Cause:* the book explains it (sections 15.5 and 17.3.1). The resolver handles one contact at a time, so the friction at one contact isn't respected while it resolves another. The book's remedies are sleep, which SAKBox now does for stacks, and resolving all the contacts at once (chapter 18).
+- **Fixed point has less range and precision than `double`.** The ragdoll behaves as well in Q16.16 and Q32.32 as in `double` (`ragdoll_test_flex_point16` and `..._flex_point`), but other tests fail in fixed point:
+  - *Range (Q16.16):* values run to ±32768, so the stress test's extreme scenes (500 kg at 100 m/s is a momentum of 50,000) overflow, and a body's state turns to garbage.
+  - *Precision (Q16.16):* the step is 1.5e-5, so stacks of boxes drift and topple, a pendulum loses its swing faster, and orientations stay unit length only to about 1e-3 (the stress test allows less).
+  - *Q32.32* passes the stress test's scenes when contacts are resolved together, but the book's resolver blows up in one (seed 64).
+  - *Exact results:* tests that check results to 1e-9 (`core_test`, `forces_test`) can't pass in fixed point.
+  Keep a fixed-point scene small: masses of a few kilograms, speeds of a few metres a second, a few metres across.
 - **Hinges and cones need contacts resolved together** (`Method::sequentialImpulses`, the default): the book's resolver holds only their anchors, so they turn freely, as balls and sockets. A cone limits how far its axis tilts, not how far the bodies twist about it.
 - **`ParticleFakeSpring` rings longer than a real spring.** Each step puts the particle where the real spring would be, but leaves its velocity a little off (the book calls this the velocity mismatch), so the damping comes out weaker: a soft spring (stiffness 4, damping 2) takes about 15 s to settle where a real one takes 5.
 - **A heavy particle hanging from a much lighter one can't be held.** When a light particle carries a much heavier one by a rod or cable (over about 100 times its mass), the particle resolver's corrections overshoot more each step, and the light one is flung about, at 1,000 m/s within a few seconds in `stress_test`'s worst scenes. Resolving one contact at a time can't hold that case, as Box2D's author notes of iterative solvers in general; the answer is solving the whole chain at once (a direct solver). Keep the masses of particles joined by rods and cables within about 100 times of each other. (The stress test does.)
@@ -289,4 +319,4 @@ The engine's formulas were checked against Millington's *Game Physics Engine Dev
 1. **Cheaper sub-steps,** as Box2D v3's "soft step" takes them: find contacts once a step and only integrate and solve in each sub-step, updating each contact's depth from how its bodies moved. Worth it if finding contacts is what makes sub-steps cost too much (a big scene, or the 3DS); the sub-steps here are the results to match.
 2. **Blended drawing between fixed steps in the demos:** draw each body between its last two steps' positions, by how far the frame is into the next step, so motion is smooth on screens whose rate isn't a multiple of 60 (it costs a step of delay). The [Cyclone padds example](../examples/cyclone_padds/README.md) does this for the ragdoll (`SnapshotTimeline`).
 3. **Sub-steps for the particle world** (`ParticleWorld`), and the mass-aggregate demos in fixed steps.
-4. **Fixed-point `real` for the DS,** where the ragdoll runs at a tenth to a fifth of real time in software floating point (see [On the Nintendo DS](#on-the-nintendo-ds)): a 32-bit fixed-point type with the DS's hardware divide and square root. Cyclone's `real` can already change (the flex build swaps in another type); the work is in the type itself and in ranges (inertia tensors and their inverses, squared lengths) that fixed point can hold. Then fewer, cheaper contact set-ups.
+4. **Real time on the DS.** In Q16.16 a sub-step is 12.3 ms, 9.8 of them resolving contacts, and a ragdoll on the ground costs twice as much. The resolver's set-up each step is the likely next target: it looks bodies up in hash maps (`startVelocities`, `separatingVelocities`, the warm-start map), and a hash's modulo is a software division on the ARM9; then fewer, cheaper contact set-ups. Profile on the DS first (see [On the Nintendo DS](#on-the-nintendo-ds)).

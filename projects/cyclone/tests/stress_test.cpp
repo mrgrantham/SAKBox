@@ -145,7 +145,7 @@ struct Scene {
           continue;
         auto joint = std::make_unique<Joint>();
         joint->set(a, random.randomVector(0.3), b, random.randomVector(0.3),
-                   random.randomInt(2) == 0 ? 0 : random.randomReal(0.1, 1.0));
+                   random.randomInt(2) == 0 ? (real)0 : random.randomReal(0.1, 1.0));
         world.getJoints().push_back(joint.get());
         joints.push_back(std::move(joint));
       }

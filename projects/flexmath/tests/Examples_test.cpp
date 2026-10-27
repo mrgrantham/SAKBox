@@ -83,6 +83,15 @@ TEST_CASE("README FlexPoint example", "[examples]") {
   REQUIRE(FlexPoint::fromFixed(c.valueFixed()) == c);
 }
 
+TEST_CASE("README FlexPoint16 example", "[examples]") {
+  FlexPoint16 x = 2.5;
+  FlexPoint16 y = x * 2 + 0.25;
+  REQUIRE(y == FlexPoint16(5.25));
+  REQUIRE(flex_sqrt(FlexPoint16(2)).valueFixed() == 92681); // 1.41420...
+  REQUIRE(flex_sqrt(FlexPoint16(2)) * flex_sqrt(FlexPoint16(2)) <= FlexPoint16(2));
+  REQUIRE(FlexPoint16::max().value() > 32767.99);
+}
+
 TEST_CASE("README FlexReal example", "[examples]") {
   {
     ScopedActivePrecision coarse(Precision{.fracBits = 2});

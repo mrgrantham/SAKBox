@@ -8,6 +8,7 @@ devkitpro_nds_app(
     srcs = ["Makefile"] + glob(["source/**"]),
     extra_srcs = {
         "//projects/cyclone:sources": "cyclone",
+        "//projects/flexmath:fixed_point_sources": "flexmath",
         "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
         "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
         "//projects/scratchpadd/utilities:sources": "scratchpadd/utilities",

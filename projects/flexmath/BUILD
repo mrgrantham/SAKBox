@@ -1,5 +1,18 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
+# The fixed-point types without fmt, for a DS build (devkitPro's Makefile
+# builds, given these by extra_srcs): FixedPoint.hpp, what it includes, and
+# its DS arithmetic
+filegroup(
+    name = "fixed_point_sources",
+    srcs = [
+        "include/FixedPoint.hpp",
+        "include/FixedPointNds.hpp",
+        "include/FlexPrecision.hpp",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 # Maths functions that give the same result on every platform (CORE-MATH's,
 # correctly rounded; see CorrectlyRounded.hpp)
 cc_library(
@@ -16,10 +29,10 @@ cc_library(
         "src/FlexController.cpp",
         "src/FlexGroup.cpp",
         "src/FlexMatrix.cpp",
-        "src/FlexPoint.cpp",
         "src/FlexVector.cpp",
     ],
     hdrs = [
+        "include/FixedPoint.hpp",
         "include/FlexController.hpp",
         "include/FlexGroup.hpp",
         "include/FlexMatrix.hpp",
@@ -81,6 +94,17 @@ cc_test(
     deps = [
         ":flexmath",
         "@gtest",
+    ],
+)
+
+# FlexPoint16 and FlexPoint's arithmetic, maths functions and the portable
+# 128-bit code
+cc_test(
+    name = "FixedPoint_test",
+    srcs = ["tests/FixedPoint_test.cpp"],
+    deps = [
+        ":flexmath",
+        "@gtest//:gtest_main",
     ],
 )
 

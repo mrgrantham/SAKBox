@@ -1147,7 +1147,7 @@ void ContactResolver::setUpJoints(std::span<Joint *const> joints, real duration)
       // Along the line between the anchors. Anchors on top of each other
       // can't be stretched this step, so there's nothing to do.
       solverJoint.length = solverJoint.separation.magnitude();
-      if (solverJoint.length < (real)1e-9) {
+      if (solverJoint.length <= (real)1e-9) {
         joint->impulse = Vector3();
         continue;
       }
@@ -1314,7 +1314,7 @@ void ContactResolver::setJointPositionTargets(real duration) {
     if (solverJoint.cable) {
       const real length = separationNow.magnitude();
       solverJoint.targetSpeed = 0;
-      if (length < (real)1e-9)
+      if (length <= (real)1e-9)
         continue;
       solverJoint.direction = separationNow * ((real)1 / length);
       solverJoint.response =

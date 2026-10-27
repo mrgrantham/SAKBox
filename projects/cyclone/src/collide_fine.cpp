@@ -546,7 +546,7 @@ static bool fillKeptContact(const CollisionBox &one, const CollisionBox &two,
     const Vector3 middle = toReference.transformInverse(
         incident.getTransform() * cornerPoint(incident, incidentEdge, incidentAxis));
     const Vector3 along = toReference.transformInverseDirection(incident.getAxis(incidentAxis));
-    if (real_abs(along[sideAxis]) < (real)1e-6)
+    if (real_abs(along[sideAxis]) <= (real)1e-6)
       return false; // the edges are parallel, so never cross
     const real slack = (real)1e-6;
     const real t = (side * reference.halfSize[sideAxis] - middle[sideAxis]) / along[sideAxis];

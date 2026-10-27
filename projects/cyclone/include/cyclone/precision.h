@@ -29,20 +29,39 @@
 
 #if defined(CYCLONE_FLEX_REAL)
 #include <FlexReal.hpp>
+#elif defined(CYCLONE_FLEX_POINT) || defined(CYCLONE_FLEX_POINT16)
+#include <FixedPoint.hpp>
 #elif !defined(CYCLONE_SINGLE_PRECISION)
 #include <CorrectlyRounded.hpp>
 #endif
 
 namespace cyclone {
 
-#if defined(CYCLONE_FLEX_REAL)
+#if defined(CYCLONE_FLEX_REAL) || defined(CYCLONE_FLEX_POINT) || defined(CYCLONE_FLEX_POINT16)
 /**
- * SAKBox addition: real snaps to a precision that can change at
- * runtime (flexmath's FlexReal, see projects/flexmath).
+ * SAKBox addition: real is one of flexmath's types (see projects/flexmath),
+ * picked by the //projects/cyclone:real build setting:
+ * - CYCLONE_FLEX_REAL: FlexReal, a double that snaps to a precision that can
+ *   change at runtime.
+ * - CYCLONE_FLEX_POINT: FlexPoint, Q32.32 fixed point (64-bit integers).
+ * - CYCLONE_FLEX_POINT16: FlexPoint16, Q16.16 fixed point (32-bit integers),
+ *   which the DS build uses: it has no floating-point hardware.
+ * All three name their maths functions flex_sqrt and so on.
  */
 #define FLEX_PRECISION
+#if defined(CYCLONE_FLEX_REAL)
 typedef Flex::Math::FlexReal real;
 #define REAL_MAX DBL_MAX
+#define real_epsilon DBL_EPSILON
+#else
+#if defined(CYCLONE_FLEX_POINT)
+typedef Flex::Math::FlexPoint real;
+#else
+typedef Flex::Math::FlexPoint16 real;
+#endif
+#define REAL_MAX real::max()
+#define real_epsilon real::epsilon()
+#endif
 #define real_sqrt Flex::Math::flex_sqrt
 #define real_abs Flex::Math::flex_abs
 #define real_sin Flex::Math::flex_sin
@@ -51,14 +70,13 @@ typedef Flex::Math::FlexReal real;
 #define real_pow Flex::Math::flex_pow
 #define real_fmod Flex::Math::flex_fmod
 #define real_atan2 Flex::Math::flex_atan2
-#define real_epsilon DBL_EPSILON
 #define R_PI 3.14159265358979
 #elif defined(CYCLONE_SINGLE_PRECISION)
 /**
  * SAKBox: CYCLONE_SINGLE_PRECISION picks single precision (upstream had
- * `#elif 0`, so only by editing this file). The DS build uses it: the DS
- * has no floating-point hardware, and float is the cheaper of the two to
- * do in software.
+ * `#elif 0`, so only by editing this file); --//projects/cyclone:real=float
+ * sets it. Its maths functions are the system's (sinf and so on), not
+ * correctly rounded. The DS build used it until it moved to fixed point.
  */
 /**
  * Defines we're in single precision mode, for any code

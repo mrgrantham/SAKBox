@@ -67,7 +67,7 @@ Outcome simulate(Method method, double dt, unsigned seed, bool push = true, doub
       const double length = (joint.body[1]->getPointInWorldSpace(joint.position[1]) -
                              joint.body[0]->getPointInWorldSpace(joint.position[0]))
                                 .magnitude();
-      stretchTotal += std::max(0.0, length - joint.error);
+      stretchTotal += std::max<double>(0.0, length - joint.error);
     }
   }
   outcome.meanStretch = stretchTotal / (steps * ragdoll::kJoints);

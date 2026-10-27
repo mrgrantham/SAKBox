@@ -22,19 +22,24 @@ BUILD		:=	build
 SOURCES		:=	source cyclone/src scratchpadd/utilities/src scratchpadd_ds/platform/src
 INCLUDES	:=	include build cyclone/include cyclone/src/demos cyclone/src/demos/ragdoll \
 			scratchpadd/basis/include scratchpadd/messages/include \
-			scratchpadd/utilities/include third_party/spdlog/include
+			scratchpadd/utilities/include third_party/spdlog/include flexmath/include
 
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH	:=	-march=armv5te -mtune=arm946e-s -mthumb
+# ARM instructions rather than devkitPro's usual Thumb: Thumb on the ARM9 has
+# no 32 x 32 -> 64-bit multiply, which every fixed-point multiply needs, so
+# each was a library call. ARM made the ragdoll's steps 2.8 times as fast.
+ARCH	:=	-march=armv5te -mtune=arm946e-s -marm
 
 CFLAGS	:=	-g -Wall -O2 -ffunction-sections -fdata-sections\
 			$(ARCH)
 
-# Cyclone in single precision: the DS has no floating-point hardware, and
-# float is the cheaper of the two to do in software
-CFLAGS	+=	$(INCLUDE) -DARM9 -DCYCLONE_SINGLE_PRECISION
+# Cyclone in Q16.16 fixed point (flexmath's FlexPoint16, see precision.h):
+# the DS has no floating-point hardware, so float was all done in software;
+# fixed point is integer arithmetic, with the DS's hardware divider and
+# square root
+CFLAGS	+=	$(INCLUDE) -DARM9 -DCYCLONE_FLEX_POINT16
 # ScratchPadd needs RTTI (each message's type) and exceptions (a control of
 # the wrong type), so unlike devkitPro's template this keeps both
 CXXFLAGS	:= $(CFLAGS) -std=gnu++26

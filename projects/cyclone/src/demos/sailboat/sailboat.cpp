@@ -172,7 +172,8 @@ void SailboatDemo::display() {
   glPopMatrix();
 
   char buffer[256];
-  snprintf(buffer, sizeof(buffer), "Speed %.1f", sailboat.getVelocity().magnitude());
+  snprintf(buffer, sizeof(buffer), "Speed %.1f",
+           static_cast<double>(sailboat.getVelocity().magnitude()));
   glColor3f(0, 0, 0);
   renderText(10.0f, 24.0f, buffer);
 

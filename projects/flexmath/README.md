@@ -165,6 +165,7 @@ It's an ordinary object rather than a global singleton: the game owns one, and t
 | Type | Header | What it is | Use it for |
 |---|---|---|---|
 | `FlexPoint` | `FlexPoint.hpp` | Signed **Q32.32 fixed point**: a 64-bit integer counting units of 2^-32. | Game state, especially state that must be [deterministic](#determinism). |
+| `FlexPoint16` | `FlexPoint.hpp` (`FixedPoint.hpp` without fmt) | Signed **Q16.16 fixed point**: a 32-bit integer counting units of 2^-16. | Fast arithmetic on 32-bit processors without floating-point hardware, such as the Nintendo DS (Cyclone runs on it there). |
 | `FlexReal` | `FlexReal.hpp` | A `double` that snaps **every operation** to the thread's active precision. | The `PerOperation` policy; replacing an engine's `real` typedef. |
 | `FlexVector` | `FlexVector.hpp` | A variable-length vector of `FlexPoint`s: element-wise `+ - *`, scaling, `dot`, `quantized`. | Small deterministic vector math. |
 | `FlexMatrix` | `FlexMatrix.hpp` | A row-major matrix of `FlexPoint`s: `+ -`, matrix product, scaling, `quantized`. | Small deterministic matrix math. |
@@ -184,9 +185,27 @@ FlexPoint::fromFixed(c.valueFixed());  // round-trips the raw bits, e.g. for sav
 
 Things to know:
 - **Range is about ±2^31.** Exceeding it, in construction or arithmetic, overflows the underlying `int64_t`.
+- **It's one size of a template.** `FixedPoint<IntBits, FracBits>` (`FixedPoint.hpp`) is 32 or 64 bits in all; `FlexPoint` is `FixedPoint<32, 32>` and `FlexPoint16` is `FixedPoint<16, 16>` (see [FlexPoint16](#flexpoint16)). Everything here applies to both.
+- **It mixes with other numbers** in arithmetic and comparisons (`x * 2`, `0.5 < x`) and converts to `double` implicitly, as `FlexReal` does, so it can stand in for a `real` typedef. Converting from a floating-point constant (`(real)0.5`) happens when compiling.
+- **Maths functions:** `flex_sqrt`, `flex_abs` and `flex_fmod` work in integers and are exact; `flex_sin`, `flex_cos`, `flex_exp`, `flex_pow` and `flex_atan2` go through `double`, correctly rounded (`CorrectlyRounded.hpp`), and round to the nearest step. They're named as `FlexReal`'s are, so code written for one takes the other.
 - **`+` and `-` are exact.** `*` rounds toward negative infinity in the last place (2^-32), and `/` truncates toward zero. **Dividing by zero is undefined behaviour**, so check divisors first.
 - `value()` converts to `double` exactly while |value| < 2^21.
 - Comparisons are exact. To compare at a reduced precision, compare quantized values: `a.quantized(p) == b.quantized(p)`.
+
+### FlexPoint16
+
+```cpp
+FlexPoint16 x = 2.5;                   // Q16.16: 32 bits, steps of 2^-16 (1.5e-5)
+FlexPoint16 y = x * 2 + 0.25;          // 5.25, mixing with other numbers
+flex_sqrt(FlexPoint16(2));             // 1.41420: the largest step whose square is at most 2
+FlexPoint16::max();                    // 32767.99998: the range is about ±32768
+```
+
+The same type as `FlexPoint` at half the size: 16 integer bits and 16 fraction bits in an `int32_t`. A multiply is one 32 x 32 -> 64-bit multiply and a shift, and a divide or square root one 64-bit operation, so on a 32-bit processor without floating-point hardware it's far faster than `float`, which is done in software there.
+
+- **Mind the range.** ±32768 is enough for positions, speeds and impulses in a small scene (Cyclone's ragdoll), but a square overflows past 181, and a 500 kg body at 100 m/s has a momentum of 50,000. Cyclone's stress test's extreme scenes overflow it, and stacks lose precision (see Cyclone's [Known limitations](../cyclone/README.md#known-limitations)).
+- **On the Nintendo DS** (`__NDS__`), its divide and square root use the DS's hardware divider and square root unit (`FixedPointNds.hpp`, which `FixedPoint.hpp` includes there). They're shared registers, so each calculation runs with interrupts locked, and code on other threads that calls libnds's own maths (which doesn't lock) should take a `Flex::Math::HardwareMathsLock` around it. The DS has no CORE-MATH (it needs `__int128`), so `flex_sin` and friends use newlib's `double` functions there.
+- `FixedPoint.hpp` needs nothing but the standard library (and `CorrectlyRounded.hpp`, except on the DS), so a DS build compiles it from `//projects/flexmath:fixed_point_sources`; `FlexPoint.hpp` adds printing with fmt.
 
 ### FlexReal
 
@@ -208,7 +227,7 @@ Things to know:
 
 ## Determinism
 
-`FlexPoint`, `FlexVector`, `FlexMatrix` and `FlexPoint::quantized()` use only integer arithmetic, so they give bit-identical results on every machine and compiler. Use them for state that has to stay in sync: replays, lockstep multiplayer, verified leaderboards.
+`FlexPoint`, `FlexPoint16`, `FlexVector`, `FlexMatrix` and `quantized()` on them use only integer arithmetic, so they give bit-identical results on every machine and compiler. Use them for state that has to stay in sync: replays, lockstep multiplayer, verified leaderboards.
 
 `quantize()` on `double`s and `FlexReal` give the same results on every platform too, built the repo's way. Two things made floating point differ between machines (the top-level README's [Floating-point results across platforms](../../README.md#floating-point-results-across-platforms) has the details and measurements), and both are dealt with:
 
@@ -221,14 +240,15 @@ Quantizing state does *not* make floating point deterministic by itself. It make
 
 ## Using flexmath with Cyclone
 
-SAKBox's copy of the Cyclone physics engine ([`projects/cyclone`](../cyclone/README.md)) has a flex build in which its `real` type is `Flex::Math::FlexReal`, so the whole engine runs at an adjustable precision:
+SAKBox's copy of the Cyclone physics engine ([`projects/cyclone`](../cyclone/README.md)) builds with any of flexmath's types as its `real`, picked by a build setting, `--//projects/cyclone:real=`: `flex_real` (`FlexReal`, so the whole engine runs at an adjustable precision), `flex_point` (`FlexPoint`) or `flex_point16` (`FlexPoint16`, which the DS build uses; see [On the Nintendo DS](../cyclone/README.md#on-the-nintendo-ds)). All three name their maths functions `flex_sqrt` and so on, so `precision.h` maps Cyclone's `real_sqrt` and friends to them the same way.
 
 ```sh
-bazel run //projects/cyclone:flightsim_flex    # [ and ] change precision, N rounding, F full
+bazel run //projects/cyclone:flightsim_flex    # on FlexReal: [ and ] change precision, N rounding, F full
 bazel test //projects/cyclone:flex_test
+bazel run //projects/cyclone:ragdoll --//projects/cyclone:real=flex_point16   # in Q16.16
 ```
 
-The plain `//projects/cyclone:cyclone` build doesn't use `FlexReal`; it uses only `:correctly_rounded`, for its maths functions.
+The plain build (`double`) doesn't use flexmath's types; it uses only `:correctly_rounded`, for its maths functions.
 
 Precision applies to the bodies' *state*: positions, velocities, orientations, and every result computed from them. The time step and the per-frame drag factors derived from it (`pow(damping, dt)`) keep full precision. Snapping those would bias every frame the same way: at 6 bits a drag factor of 0.99644 truncates to 0.984375, four times the drag, and the flight sim's plane slowed to a crawl. The `real_duration` type and `CYCLONE_FULL_PRECISION_SCOPE` in `precision.h` implement this.
 
@@ -245,6 +265,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 
 | Test | Covers |
 |---|---|
+| `FixedPoint_test` | `FlexPoint16`'s step, range and arithmetic, mixing with other numbers, its exact square root over 10,000 values, the maths functions, quantizing, and the portable 128-bit arithmetic against `__int128` over 100,000 values |
 | `FlexPoint_test` | Fixed-point arithmetic, rounding, overflow modes, and agreement between the integer and `double` snapping paths over thousands of random cases |
 | `FlexReal_test` | Per-operation snapping, nested scopes, `quantize()` properties (snapping twice = once, order preserved) |
 | `Rounding_test` | Stochastic rounding: on-grid values unchanged, results are neighbouring grid values, unbiased on average, small increments accumulate, seeding, overflow |
@@ -255,27 +276,13 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 
 ## Portability
 
-`FlexPoint` needs integers wider than its 64 bits in three places, and uses `__int128` for them, through the alias `FlexPoint::FlexPointWide`:
+`FlexPoint` needs integers wider than its 64 bits for a moment, in its multiply (the product of two 32.32 values is 128 bits wide before it's shifted back down) and divide (the dividend is shifted up by 32 first, to keep the fraction). `FixedPoint.hpp` uses GCC's and Clang's `__int128` for them where the compiler has it (64-bit targets), and portable versions built from 64-bit arithmetic where it doesn't: 32-bit targets such as the DS and 3DS, and MSVC. `FixedPoint_test` checks the portable versions against `__int128`. Wrapping a value (`Overflow::Wrap`) works in unsigned 64-bit arithmetic, which needs neither. `FlexPoint16` only needs 64-bit integers.
 
-| Where | Why 64 bits aren't enough |
-|---|---|
-| `operator*` (`FlexPoint.hpp`) | The product of two 32.32 values is 128 bits wide before it is shifted back down by 32 |
-| `operator/` (`FlexPoint.cpp`) | The dividend is shifted up by 32 first, to keep the fraction |
-| `quantized()` with `Overflow::Wrap` (`FlexPoint.cpp`) | The span the value wraps within, 2 x limit, can reach 2^63, one more than an `int64_t` holds |
+`__int128` isn't standard C++ but an extension; it's declared with `__extension__` so that the build's `-pedantic-errors` allows it (GCC rejects it otherwise; Clang doesn't mind).
 
-CORE-MATH's functions (`:correctly_rounded`) use `unsigned __int128` too, in C, and need GCC or Clang the same way.
+CORE-MATH's functions (`:correctly_rounded`) use `unsigned __int128` too, in C, and have no portable fallback: on MSVC they'd need clang-cl (Clang with MSVC's command line, which has `__int128` on 64-bit Windows), or LLVM libc's header-only functions once they're complete (see the [roadmap](#roadmap)). The DS build uses newlib's functions instead.
 
-`__int128` isn't standard C++ but an extension that GCC and Clang provide on 64-bit targets. The alias is declared with `__extension__` so that the build's `-pedantic-errors` allows it (GCC rejects it otherwise; Clang doesn't mind). GCC and Clang on macOS and Linux are covered.
-
-**Windows, when it's added:** MSVC has no 128-bit integer type, so these three places (and CORE-MATH) need another route there:
-
-- **Simplest: build with clang-cl** (Clang with MSVC's command line), which provides `__int128` on 64-bit Windows, so nothing changes.
-- **With MSVC itself:** replace each use with a helper function, kept in one header, that uses `__int128` where the compiler has it and MSVC's intrinsics where it doesn't:
-  - Multiply: `_mul128` gives the full signed 128-bit product as two 64-bit halves (x64 only; on ARM64, `__mulh` gives the high half), then shift the pair down by 32.
-  - Divide: `_div128` divides a 128-bit value by a 64-bit one (Visual Studio 2019 and later, x64 only). Unlike the GCC version, which keeps the low 64 bits of an oversized quotient, it raises a hardware exception when the quotient doesn't fit in 64 bits, so dividing by a very small value would need a check first.
-  - Wrap: no 128-bit type is needed. The span fits in an unsigned 64-bit integer (`uint64_t`), so the wrap can be done in unsigned arithmetic.
-- Test the helpers against the `__int128` results: `FlexPoint_test` already compares the integer path with `double` over thousands of random cases.
-
+## Design notes
 
 flexmath's original design (February 2023) had each `FlexPoint` register itself with its `FlexGroup` through a singleton `FlexController`, so a group could find and update its values when precision changed. The concepts — groups of values sharing a precision knob, and a central controller — are unchanged. The mechanism changed: values now *read* their group's precision when used, instead of groups *pushing* changes to registered values. That removes per-value registration, which was costly for the temporaries that arithmetic creates. It also makes a precision change instant, and lets each group choose whether detail lost at low precision is kept (`View`) or discarded (`Lossy`).
 

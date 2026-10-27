@@ -113,15 +113,24 @@ void RigidBody::integrate(real_duration timeStep) {
     return;
 
   // SAKBox: the time step and the per-frame factors derived from it keep
-  // full precision in the flex build; only the body's state snaps.
-  real duration, linearDrag, angularDrag, sleepBias;
+  // full precision in the flex build; only the body's state snaps. The
+  // factors are worked out again only when the step or damping changes
+  // (see StepFactors).
+  real duration;
   {
     CYCLONE_FULL_PRECISION_SCOPE;
     duration = timeStep;
-    linearDrag = real_pow(linearDamping, duration);
-    angularDrag = real_pow(angularDamping, duration);
-    sleepBias = real_pow(0.5, duration);
+    if (timeStep != stepFactors.timeStep || linearDamping != stepFactors.linearDamping ||
+        angularDamping != stepFactors.angularDamping)
+      stepFactors = {.timeStep = timeStep,
+                     .linearDamping = linearDamping,
+                     .angularDamping = angularDamping,
+                     .linearDrag = real_pow(linearDamping, duration),
+                     .angularDrag = real_pow(angularDamping, duration),
+                     .sleepBias = real_pow((real)0.5, duration)};
   }
+  const real linearDrag = stepFactors.linearDrag, angularDrag = stepFactors.angularDrag,
+             sleepBias = stepFactors.sleepBias;
 
   // Calculate linear acceleration from force inputs.
   lastFrameAcceleration = acceleration;

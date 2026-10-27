@@ -182,7 +182,7 @@ sudo apt install libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
 
 ### Windows
 
-Not supported yet. Most libraries build there in principle, but nothing has been tested, and the OpenCV build (used by the camera example) only handles macOS and Linux library names so far. flexmath uses `__int128`, which MSVC lacks; [its README](projects/flexmath/README.md#portability) says what to change.
+Not supported yet. Most libraries build there in principle, but nothing has been tested, and the OpenCV build (used by the camera example) only handles macOS and Linux library names so far. flexmath's correctly rounded maths (CORE-MATH) uses `__int128`, which MSVC lacks; [its README](projects/flexmath/README.md#portability) says what to do. (Its fixed-point types have portable code for it.)
 
 ### Floating-point results across platforms
 
