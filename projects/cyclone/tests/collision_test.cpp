@@ -456,6 +456,146 @@ TEST(BoxCollisionTest, FastSphereInsideBoxResolvesWithoutNaN) {
 }
 
 // ---------------------------------------------------------------------------
+// Capsules: a sphere swept along a segment, so their contacts are spheres'
+
+namespace {
+
+// A capsule on `body`, along its Y axis, unless `lying` along X (turned a
+// quarter turn about Z)
+CollisionCapsule capsuleOn(RigidBody &body, double radius, double halfLength, bool lying = false) {
+  if (lying) {
+    const double half = std::acos(-1.0) / 4;
+    body.setOrientation(Quaternion(std::cos(half), 0, 0, std::sin(half)));
+    body.calculateDerivedData();
+  }
+  CollisionCapsule capsule;
+  capsule.body = &body;
+  capsule.radius = radius;
+  capsule.halfLength = halfLength;
+  capsule.calculateInternals();
+  return capsule;
+}
+
+} // namespace
+
+// Lying on the ground, sunk 0.05, a capsule touches at both ends, so it
+// rests level: each contact is 0.05 deep, under the centre of its end.
+TEST(CapsuleCollisionTest, LyingOnTheGroundTouchesAtBothEnds) {
+  auto body = bodyAt(Vector3(0, 0.15, 0));
+  Contacts c;
+  ASSERT_EQ(
+      CollisionDetector::capsuleAndHalfSpace(capsuleOn(*body, 0.2, 1, true), ground(), &c.data),
+      2u);
+  for (unsigned i = 0; i < 2; ++i) {
+    expectNear(c.array[i].contactNormal, Vector3(0, 1, 0));
+    EXPECT_NEAR(c.array[i].penetration, 0.05, kTolerance);
+    EXPECT_NEAR(std::abs(c.array[i].contactPoint.x), 1.0, kTolerance);
+    EXPECT_EQ(c.array[i].body[0], body.get());
+  }
+}
+
+// Standing on end, only its lower end touches; above the ground, nothing.
+TEST(CapsuleCollisionTest, StandingTouchesAtItsLowerEnd) {
+  auto standing = bodyAt(Vector3(0, 1.15, 0)), above = bodyAt(Vector3(0, 2, 0));
+  Contacts c;
+  ASSERT_EQ(CollisionDetector::capsuleAndHalfSpace(capsuleOn(*standing, 0.2, 1), ground(), &c.data),
+            1u);
+  EXPECT_NEAR(c.array[0].penetration, 0.05, kTolerance);
+  EXPECT_NEAR(c.array[0].contactPoint.y, 0, kTolerance); // on the ground, as a sphere's is
+  EXPECT_EQ(CollisionDetector::capsuleAndHalfSpace(capsuleOn(*above, 0.2, 1), ground(), &c.data),
+            0u);
+}
+
+// A sphere beside the middle of a standing capsule touches its side, pushed
+// straight out from the segment; one beyond its end, the end's round cap.
+TEST(CapsuleCollisionTest, SphereAgainstSideAndEnd) {
+  auto capsuleBody = bodyAt(Vector3(0, 0, 0));
+  const CollisionCapsule capsule = capsuleOn(*capsuleBody, 0.5, 1);
+  auto side = bodyAt(Vector3(0.9, 0.3, 0)), end = bodyAt(Vector3(0, 1.9, 0));
+  Contacts c;
+  ASSERT_EQ(CollisionDetector::capsuleAndSphere(capsule, sphereOn(*side, 0.5), &c.data), 1u);
+  expectNear(c.array[0].contactNormal, Vector3(-1, 0, 0)); // pushing the capsule away
+  EXPECT_NEAR(c.array[0].penetration, 0.1, kTolerance);
+  ASSERT_EQ(CollisionDetector::capsuleAndSphere(capsule, sphereOn(*end, 0.5), &c.data), 1u);
+  expectNear(c.array[1].contactNormal, Vector3(0, -1, 0));
+  EXPECT_NEAR(c.array[1].penetration, 0.1, kTolerance);
+}
+
+// Crossed capsules touch where their segments pass nearest, at one point.
+TEST(CapsuleCollisionTest, CrossedCapsulesTouchWhereTheyCross) {
+  auto lower = bodyAt(Vector3(0, 0, 0)), upper = bodyAt(Vector3(0.3, 0.35, 0));
+  const CollisionCapsule lying = capsuleOn(*lower, 0.2, 1, true); // along x
+  auto turned = capsuleOn(*upper, 0.2, 1);
+  const double half = std::acos(-1.0) / 4; // along z
+  upper->setOrientation(Quaternion(std::cos(half), std::sin(half), 0, 0));
+  upper->calculateDerivedData();
+  turned.calculateInternals();
+  Contacts c;
+  ASSERT_EQ(CollisionDetector::capsuleAndCapsule(lying, turned, &c.data), 1u);
+  expectNear(c.array[0].contactNormal, Vector3(0, -1, 0));
+  EXPECT_NEAR(c.array[0].penetration, 0.05, kTolerance);
+  expectNear(c.array[0].contactPoint, Vector3(0.3, 0.175, 0));
+}
+
+// Side by side, capsules touch along a line: a contact at each end of where
+// they overlap, so one lies level on the other.
+TEST(CapsuleCollisionTest, ParallelCapsulesTouchAtBothEndsOfTheOverlap) {
+  auto lower = bodyAt(Vector3(0, 0, 0)), upper = bodyAt(Vector3(0.5, 0.35, 0));
+  Contacts c;
+  ASSERT_EQ(CollisionDetector::capsuleAndCapsule(capsuleOn(*lower, 0.2, 1, true),
+                                                 capsuleOn(*upper, 0.2, 1, true), &c.data),
+            2u);
+  std::vector<double> xs;
+  for (unsigned i = 0; i < 2; ++i) {
+    expectNear(c.array[i].contactNormal, Vector3(0, -1, 0));
+    EXPECT_NEAR(c.array[i].penetration, 0.05, kTolerance);
+    xs.push_back(c.array[i].contactPoint.x);
+  }
+  std::sort(xs.begin(), xs.end());
+  EXPECT_NEAR(xs[0], -0.5, kTolerance); // the overlap: x from -0.5 to 1
+  EXPECT_NEAR(xs[1], 1.0, kTolerance);
+}
+
+// Lying on a box's top face, a capsule touches at both ends; lying across
+// its edge, with both ends clear, at the point over the edge.
+TEST(CapsuleCollisionTest, CapsuleOnABoxFaceAndAcrossItsEdge) {
+  auto boxBody = bodyAt(Vector3(0, 0, 0));
+  const CollisionBox box = boxOn(*boxBody, Vector3(2, 1, 2));
+  auto onFace = bodyAt(Vector3(0, 1.15, 0));
+  Contacts c;
+  ASSERT_EQ(CollisionDetector::capsuleAndBox(capsuleOn(*onFace, 0.2, 1, true), box, &c.data), 2u);
+  for (unsigned i = 0; i < 2; ++i) {
+    EXPECT_NEAR(c.array[i].penetration, 0.05, 1e-6);
+    EXPECT_NEAR(std::abs(c.array[i].contactPoint.x), 1.0, 1e-6);
+  }
+
+  // Tipped 45 degrees over the box's +x top edge, its middle on the edge
+  auto acrossEdge = bodyAt(Vector3(2 + 0.15 / std::sqrt(2.0), 1 + 0.15 / std::sqrt(2.0), 0));
+  CollisionCapsule tipped = capsuleOn(*acrossEdge, 0.2, 1);
+  const double half = std::acos(-1.0) / 8;
+  acrossEdge->setOrientation(Quaternion(std::cos(half), 0, 0, std::sin(half)));
+  acrossEdge->calculateDerivedData();
+  tipped.calculateInternals();
+  Contacts edge;
+  ASSERT_EQ(CollisionDetector::capsuleAndBox(tipped, box, &edge.data), 1u);
+  expectNear(edge.array[0].contactPoint, Vector3(2, 1, 0), 1e-6);
+  EXPECT_NEAR(edge.array[0].penetration, 0.05, 1e-6);
+}
+
+// A capsule's inertia tensor: with no length it's a sphere's (2/5 m r^2),
+// and very thin it's a rod's (m L^2 / 12 across, nothing along).
+TEST(CapsuleCollisionTest, InertiaTensorMatchesSphereAndRod) {
+  Matrix3 sphere, rod;
+  sphere.setCapsuleInertiaTensor(0.5, 0, 2);
+  for (int i : {0, 4, 8})
+    EXPECT_NEAR(sphere.data[i], 0.4 * 2 * 0.25, kTolerance);
+  rod.setCapsuleInertiaTensor(1e-4, 1, 3);
+  EXPECT_NEAR(rod.data[0], 3 * 4.0 / 12, 1e-3);
+  EXPECT_NEAR(rod.data[8], 3 * 4.0 / 12, 1e-3);
+  EXPECT_NEAR(rod.data[4], 0, 1e-6);
+}
+
+// ---------------------------------------------------------------------------
 // The quick yes/no tests agree with the full contact generation
 
 TEST(IntersectionTest, QuickTestsAgreeWithContactGeneration) {

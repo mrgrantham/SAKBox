@@ -276,10 +276,10 @@ void RigidBodyApplication::runStep() {
 void RigidBodyApplication::display() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
-  gluLookAt(18.0f, 0, 0, 0, 0, 0, 0, 1.0f, 0);
+  gluLookAt(cameraDistance, 0, 0, 0, 0, 0, 0, 1.0f, 0);
   glRotatef(-phi, 0, 0, 1);
   glRotatef(theta, 0, 1, 0);
-  glTranslatef(0, -5.0f, 0);
+  glTranslatef(0, -cameraTargetHeight, 0);
 }
 
 void RigidBodyApplication::renderResolverMethod() {

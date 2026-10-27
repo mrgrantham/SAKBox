@@ -8,11 +8,9 @@
 #include <WClasses/WEvolutionary.h>
 #include <WClasses/WTime.h>
 #include <WClasses/WVec.h>
-#include "Body.h"
-#include "DemoApplication.h"
-#include "btBulletDynamicsCommon.h"
 #include <algorithm>
 #include <cstdio>
+#include <span>
 
 // SAKBox: ported from the 2015 network API (WNeuralNet as a learner,
 // WLayerClassic, WActivationBend) to blocks: a policy is a WNeuralNetLearner
@@ -32,15 +30,55 @@ std::unique_ptr<WNeuralNetLearner> MakePolicy()
 	return pPolicy;
 }
 
+Jumper::Jumper(WNeuralNetLearner* pPolicy)
+: m_pPolicy(pPolicy)
+{
+}
+
+void Jumper::reset()
+{
+	m_robot.reset();
+	m_time = 0;
+}
+
+void Jumper::move(double duration)
+{
+	// What the policy sees: the time, and how the robot is lying
+	WVec features(FEATURE_DIMS);
+	features[0] = m_time;
+	features[1] = m_robot.faceDownness();
+	features[2] = m_robot.uprightness();
+	WVec labels(LABEL_DIMS);
+	if(m_pPolicy)
+		m_pPolicy->predict(features, labels);
+	else
+		manualPolicy(features, labels);
+	m_robot.setMotors(std::span<const double, LABEL_DIMS>(labels.data(), LABEL_DIMS));
+
+	m_robot.integrate((cyclone::real)duration);
+	m_time += duration;
+}
+
 double JumpHeight(WNeuralNetLearner* pPolicy)
 {
-	RagdollDemo simulation;
-	simulation.SetPolicy(pPolicy);
-	float height = 0;
-	for(int i = 0; i < 240; i++)
+	// Step by step as the window does (RigidBodyApplication::runStep): move,
+	// find the contacts, resolve them
+	Jumper jumper(pPolicy);
+	cyclone::ContactResolver resolver(kMaxContacts * 8);
+	cyclone::Contact contacts[kMaxContacts];
+	cyclone::CollisionData data;
+	data.contactArray = contacts;
+	const double subStep = kStepSeconds / kSubSteps;
+	double height = 0;
+	for(int step = 0; step < 240; step++)
 	{
-		simulation.advanceTime(1.0f / 60);
-		height = std::max(height, simulation.getRagDoll(0)->getLowestPoint());
+		for(unsigned i = 0; i < kSubSteps; i++)
+		{
+			jumper.move(subStep);
+			jumper.robot().generateContacts(data, kMaxContacts);
+			resolver.resolveContacts(contacts, data.contactCount, (cyclone::real)subStep, jumper.robot().joints());
+		}
+		height = std::max(height, jumper.robot().lowestPoint());
 	}
 	return height;
 }

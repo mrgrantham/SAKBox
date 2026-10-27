@@ -52,9 +52,9 @@ cc_library(
 
 # The demos' framework, built twice below: with Cyclone's usual real, and
 # with flexmath's (app_flex)
-APP_SRCS = ["src/demos/app.cpp", "src/demos/impact_knocks.cpp", "src/demos/impact_sounds.cpp", "src/demos/shapes.cpp"]
+APP_SRCS = ["src/demos/app.cpp", "src/demos/impact_knocks.cpp", "src/demos/impact_sounds.cpp", "src/demos/shapes.cpp", "src/demos/window.cpp"]
 
-APP_HDRS = ["src/demos/app.h", "src/demos/impact_knocks.h", "src/demos/impact_sounds.h", "src/demos/ogl_headers.h", "src/demos/shapes.h"]
+APP_HDRS = ["src/demos/app.h", "src/demos/impact_knocks.h", "src/demos/impact_sounds.h", "src/demos/ogl_headers.h", "src/demos/shapes.h", "src/demos/window.h"]
 
 APP_DEPS = [
     ":fixed_steps",

@@ -611,6 +611,16 @@ public:
   void getOrientation(real matrix[9]) const;
 
   /**
+   * SAKBox: the body's orientation now, as a matrix made from its
+   * (normalised) quaternion. getOrientation(Matrix3 *) and the transform
+   * give the orientation as calculateDerivedData last left it; the contact
+   * resolver turns bodies without calling it (the next step does), so
+   * code that measures bodies between steps, such as joints' angles, uses
+   * this.
+   */
+  Matrix3 getOrientationNow() const;
+
+  /**
    * Fills the given matrix with a transformation representing
    * the rigid body's position and orientation.
    *

@@ -841,6 +841,29 @@ public:
   }
 
   /**
+   * SAKBox: sets the matrix as the inertia tensor of a solid capsule of
+   * `mass` (a cylinder with hemispherical ends, see CollisionCapsule) along
+   * the body's Y axis: the cylinder of length 2 halfLength and both ends
+   * of `radius`. Built from the book's shapes (appendix A): the cylinder's
+   * tensor (A.3.3), plus the two ends, each half the sphere's (A.3.2),
+   * moved out to the end of the cylinder by the parallel axis theorem
+   * (its centre of mass is 3/8 of the radius from its flat face).
+   */
+  void setCapsuleInertiaTensor(real radius, real halfLength, real mass) {
+    const real length = halfLength * 2;
+    const real cylinderVolume = length * radius * radius;
+    const real spheresVolume = (real)4 / 3 * radius * radius * radius; // both ends (pi cancels)
+    const real cylinderMass = mass * cylinderVolume / (cylinderVolume + spheresVolume);
+    const real spheresMass = mass - cylinderMass;
+    const real squared = radius * radius;
+    const real along = cylinderMass * squared / 2 + spheresMass * squared * (real)0.4;
+    const real across =
+        cylinderMass * (length * length / 12 + squared / 4) +
+        spheresMass * (squared * (real)0.4 + length * length / 4 + length * radius * (real)3 / 8);
+    setInertiaTensorCoeffs(across, along, across);
+  }
+
+  /**
    * Sets the matrix to be a skew symmetric matrix based on
    * the given vector. The skew symmetric matrix is the equivalent
    * of the vector product. So if a,b are vectors. a x b = A_s b

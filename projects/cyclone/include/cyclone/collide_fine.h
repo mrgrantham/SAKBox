@@ -136,6 +136,32 @@ public:
  * can be used to drive the coarse collision detection system or
  * as an early out in the full collision tests below.
  */
+/**
+ * SAKBox: a capsule, "a cylinder with hemispherical ends", one of the
+ * primitives the book builds its contact generation for (section 13.1),
+ * though it only works through spheres and boxes ("Capsules are more
+ * difficult than spheres, but can be useful in some situations"). It's
+ * every point within `radius` of a line segment along the primitive's Y
+ * axis, from -halfLength to +halfLength: a sphere swept along the
+ * segment. So its contacts are a sphere's, at the points of the segment
+ * nearest the other shape, and CollisionDetector's capsule functions make
+ * them with its sphere functions.
+ */
+class CollisionCapsule : public CollisionPrimitive {
+public:
+  /** The radius of the ends, and of the cylinder between them. */
+  real radius;
+
+  /** Half the length of the segment between the ends' centres. */
+  real halfLength;
+
+  /**
+   * The sphere of the capsule's radius at `along` on its segment (from
+   * -halfLength to +halfLength), on its body, ready to collide.
+   */
+  CollisionSphere sphereAt(real along) const;
+};
+
 class IntersectionTests {
 public:
   static bool sphereAndHalfSpace(const CollisionSphere &sphere, const CollisionPlane &plane);
@@ -263,6 +289,40 @@ public:
 
   static unsigned boxAndSphere(const CollisionBox &box, const CollisionSphere &sphere,
                                CollisionData *data);
+
+  /**
+   * SAKBox: a capsule against a half-space, such as the ground: the
+   * capsule's lowest point is always on one of its ends, so each end
+   * touches as a sphere would. Lying flat, it touches at both, so it rests
+   * level, as a box does on its corners.
+   */
+  static unsigned capsuleAndHalfSpace(const CollisionCapsule &capsule, const CollisionPlane &plane,
+                                      CollisionData *data);
+
+  /**
+   * SAKBox: a capsule against a sphere: the sphere against the capsule's
+   * sphere at the point of its segment nearest the sphere's centre.
+   */
+  static unsigned capsuleAndSphere(const CollisionCapsule &capsule, const CollisionSphere &sphere,
+                                   CollisionData *data);
+
+  /**
+   * SAKBox: two capsules: the spheres at the nearest points of their
+   * segments (Ericson, "Real-Time Collision Detection", section 5.1.9).
+   * Side by side (their segments parallel), they touch along a line, so
+   * there's a contact at each end of where the segments overlap, and they
+   * rest level on each other.
+   */
+  static unsigned capsuleAndCapsule(const CollisionCapsule &one, const CollisionCapsule &two,
+                                    CollisionData *data);
+
+  /**
+   * SAKBox: a capsule against a box: each end that touches the box, as a
+   * sphere would (two, lying on a face), or if neither does, the point of
+   * the segment nearest the box (lying across an edge).
+   */
+  static unsigned capsuleAndBox(const CollisionCapsule &capsule, const CollisionBox &box,
+                                CollisionData *data);
 };
 
 /**

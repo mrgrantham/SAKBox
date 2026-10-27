@@ -245,6 +245,14 @@ protected:
   /** Holds the camera elevation. */
   float phi;
 
+  /**
+   * SAKBox: how far the camera is from what it looks at, and how high that
+   * is (m): the demos' scenes are about 10 m across; a smaller one comes
+   * closer.
+   */
+  float cameraDistance = 18.0f;
+  float cameraTargetHeight = 5.0f;
+
   /** Holds the position of the mouse at the last frame of a drag. */
   int last_x, last_y;
 

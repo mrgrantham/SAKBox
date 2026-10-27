@@ -9,6 +9,8 @@
 #include <WClasses/WNeuralNet.h>
 #include <WClasses/WRand.h>
 
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -25,17 +27,55 @@ std::string tempPath(const std::string &name) {
 }
 } // namespace
 
-// The hand-made policy's jump, as Bullet 3.26 simulates it. Each run of a
-// build is exactly the same, so a policy is scored the same in training and
-// when it's shown. The height itself is only checked to be a real jump: the
-// simulation is chaotic, so the last digits vary with the compiler and maths
-// library (0.6288 with Apple clang, 0.6318 with GCC 14 on Linux, 0.6229 with
-// Apple clang without fused multiply-adds).
+// The hand-made policy's jump, as Cyclone simulates it: a real jump (its
+// lowest point 0.4718 m off the ground on a Mac), and exactly the same every
+// run, so a policy is scored the same in training and when it's shown.
 TEST(PolicyLearnerTest, SimulationIsRepeatable) {
   const double height = JumpHeight(nullptr);
-  EXPECT_GT(height, 0.55);
-  EXPECT_LT(height, 0.70);
+  EXPECT_GT(height, 0.40);
+  EXPECT_LT(height, 0.55);
   EXPECT_EQ(JumpHeight(nullptr), height);
+}
+
+// With its motors off, the robot slumps like a ragdoll, and stays in one
+// piece as it does: every hinge within its limits (past them by no more than
+// the resolver's slop), its joints together, and nothing through the floor.
+TEST(PolicyLearnerTest, LimpRobotSlumpsWithinItsLimits) {
+  Robot robot;
+  cyclone::ContactResolver resolver(kMaxContacts * 8);
+  cyclone::Contact contacts[kMaxContacts];
+  cyclone::CollisionData data;
+  data.contactArray = contacts;
+  const double subStep = kStepSeconds / kSubSteps;
+  double furthestPastLimit = 0, widestJoint = 0, lowest = 0;
+  for (int i = 0; i < 120 * static_cast<int>(kSubSteps); i++) {
+    robot.integrate(static_cast<cyclone::real>(subStep));
+    robot.generateContacts(data, kMaxContacts);
+    resolver.resolveContacts(contacts, data.contactCount, static_cast<cyclone::real>(subStep),
+                             robot.joints());
+    for (unsigned h = 0; h < Robot::hingeCount; h++) {
+      const auto &hinge = static_cast<const cyclone::HingeJoint &>(*robot.joints()[h]);
+      const double angle = robot.angle(Robot::Hinge(h));
+      furthestPastLimit =
+          std::max({furthestPastLimit, hinge.lowerLimit - angle, angle - hinge.upperLimit});
+    }
+    for (const cyclone::Joint *joint : robot.joints()) {
+      joint->body[0]->calculateDerivedData();
+      joint->body[1]->calculateDerivedData();
+      widestJoint =
+          std::max<double>(widestJoint, (joint->body[1]->getPointInWorldSpace(joint->position[1]) -
+                                         joint->body[0]->getPointInWorldSpace(joint->position[0]))
+                                            .magnitude());
+    }
+    lowest = std::min(lowest, robot.lowestPoint());
+  }
+  EXPECT_LT(furthestPastLimit, 0.05);
+  EXPECT_LT(widestJoint, 0.01);
+  // It sinks briefly as it lands (the position sweeps take overlap out a
+  // fifth a step), and rests within the resolver's tolerance (1 cm)
+  EXPECT_GT(lowest, -0.04);
+  EXPECT_GT(robot.lowestPoint(), -0.011);
+  EXPECT_LT(robot.uprightness(), 0.99); // it did slump
 }
 
 TEST(PolicyLearnerTest, PolicyMapsThreeFeaturesToElevenJoints) {

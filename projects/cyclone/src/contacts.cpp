@@ -910,6 +910,8 @@ void ContactResolver::resolveTogether(Contact *contacts, unsigned numContacts, r
   for (const SolverJoint &solverJoint : solverJoints)
     if (solverJoint.cable)
       solverJoint.joint->impulse = solverJoint.direction * -solverJoint.cableImpulse;
+  for (const SolverAngularConstraint &solver : solverAngularConstraints)
+    solver.joint->angularImpulse[solver.index] = solver.impulse;
 
   // Keep this step's impulses to start the next step from
   lastImpulses.clear();
@@ -1084,6 +1086,38 @@ void changeVelocity(RigidBody *body, const Vector3 &linear, const Vector3 &angul
   body->addVelocity(linear);
   body->addRotation(angular);
 }
+
+// How much the turning speed of `body` about `axis` changes for a unit
+// twist about it (zero for no body)
+real turnResponse(const RigidBody *body, const Vector3 &axis) {
+  return body ? body->getInverseInertiaTensorWorld().transform(axis) * axis : (real)0;
+}
+
+// How fast body two turns relative to body one about `axis`, given each
+// body's angular velocity by `spin` (the bodies' own, or the position
+// sweeps')
+template <typename Spin>
+real relativeTurning(RigidBody *const movable[2], const Vector3 &axis, Spin spin) {
+  real speed = 0;
+  if (movable[1])
+    speed += spin(movable[1]) * axis;
+  if (movable[0])
+    speed -= spin(movable[0]) * axis;
+  return speed;
+}
+
+Vector3 ownSpin(const RigidBody *body) { return body->getRotation(); }
+
+// Applies `twist` (an angular impulse) to body two and the opposite to body
+// one, changing the velocities `applyTo` changes, as applyAcrossJoint does
+template <typename ApplyTo>
+void twistAcrossJoint(RigidBody *const movable[2], const Vector3 &twist, ApplyTo applyTo) {
+  for (int end = 0; end < 2; end++)
+    if (movable[end])
+      applyTo(
+          movable[end], Vector3(),
+          movable[end]->getInverseInertiaTensorWorld().transform(end == 1 ? twist : twist * -1));
+}
 } // namespace
 
 void ContactResolver::setUpJoints(std::span<Joint *const> joints, real duration) {
@@ -1137,6 +1171,60 @@ void ContactResolver::setUpJoints(std::span<Joint *const> joints, real duration)
     applyAcrossJoint(solverJoint.movable, solverJoint.offset, warmStart, changeVelocity);
     solverJoints.push_back(solverJoint);
   }
+  setUpAngularConstraints(joints, duration);
+}
+
+void ContactResolver::setUpAngularConstraints(std::span<Joint *const> joints, real duration) {
+  using Kind = AngularConstraint::Kind;
+  solverAngularConstraints.clear();
+  AngularConstraint constraints[Joint::maxAngularConstraints];
+  for (Joint *joint : joints) {
+    RigidBody *const movable[2] = {movableBody(joint->body[0]), movableBody(joint->body[1])};
+    if (!movable[0] && !movable[1])
+      continue;
+    const unsigned count = joint->getAngularConstraints(constraints);
+    for (unsigned i = 0; i < count; i++) {
+      SolverAngularConstraint solver{.joint = joint,
+                                     .index = i,
+                                     .constraint = constraints[i],
+                                     .movable = {movable[0], movable[1]}};
+      const Vector3 &axis = solver.constraint.axis;
+      solver.response = turnResponse(movable[0], axis) + turnResponse(movable[1], axis);
+      if (solver.response <= 0)
+        continue;
+      // (From the velocities integrate() moved them by: the anchors' warm
+      // start has already changed them)
+      solver.startSpeed = relativeTurning(
+          movable, axis, [this](RigidBody *body) { return startVelocities[body].angular; });
+      switch (solver.constraint.kind) {
+      case Kind::hold:
+        // No turning about the axis, twisting either way
+        solver.targetSpeed = 0;
+        solver.minImpulse = -REAL_MAX;
+        solver.maxImpulse = REAL_MAX;
+        break;
+      case Kind::limit: {
+        // As for a contact: the bodies may turn up to the room the limit
+        // left before integrate() moved them, but no further, and the
+        // limit only pushes
+        const real roomAtStart = solver.constraint.angle - solver.startSpeed * duration;
+        solver.targetSpeed = -std::max(roomAtStart, (real)0) / duration;
+        solver.minImpulse = 0;
+        solver.maxImpulse = REAL_MAX;
+        break;
+      }
+      case Kind::motor:
+        solver.targetSpeed = solver.constraint.speed;
+        solver.maxImpulse = solver.constraint.maxTorque * duration;
+        solver.minImpulse = -solver.maxImpulse;
+        break;
+      }
+      // Warm start, as far as last step's twist still fits
+      solver.impulse = std::clamp(joint->angularImpulse[i], solver.minImpulse, solver.maxImpulse);
+      twistAcrossJoint(movable, axis * solver.impulse, changeVelocity);
+      solverAngularConstraints.push_back(solver);
+    }
+  }
 }
 
 void ContactResolver::sweepJoints() {
@@ -1164,6 +1252,17 @@ void ContactResolver::sweepJoints() {
       solverJoint.joint->impulse += impulse;
     }
   }
+
+  // Each angular constraint: reach its target turning speed (at least, for
+  // a limit), keeping its total twist within bounds
+  for (SolverAngularConstraint &solver : solverAngularConstraints) {
+    const Vector3 &axis = solver.constraint.axis;
+    const real speed = relativeTurning(solver.movable, axis, ownSpin);
+    const real impulse = std::clamp(solver.impulse + (solver.targetSpeed - speed) / solver.response,
+                                    solver.minImpulse, solver.maxImpulse);
+    twistAcrossJoint(solver.movable, axis * (impulse - solver.impulse), changeVelocity);
+    solver.impulse = impulse;
+  }
 }
 
 void ContactResolver::settleJoints(real duration) {
@@ -1178,6 +1277,18 @@ void ContactResolver::settleJoints(real duration) {
         solverJoint.length +
         (relativeVelocity * solverJoint.direction - solverJoint.startSpeed) * duration;
     solverJoint.allowedSpeed = std::max((solverJoint.joint->error - lengthNow) / duration, (real)0);
+  }
+
+  // And a limit the move has just brought the bodies to ends the step no
+  // longer turning into it; one with room left may close it
+  for (SolverAngularConstraint &solver : solverAngularConstraints) {
+    if (solver.constraint.kind != AngularConstraint::Kind::limit)
+      continue;
+    const real roomNow =
+        solver.constraint.angle +
+        (relativeTurning(solver.movable, solver.constraint.axis, ownSpin) - solver.startSpeed) *
+            duration;
+    solver.targetSpeed = roomNow > 0 ? -roomNow / duration : (real)0;
   }
 }
 
@@ -1221,6 +1332,34 @@ void ContactResolver::setJointPositionTargets(real duration) {
       solverJoint.targetVelocity = correction * ((real)-1 / duration);
     }
   }
+
+  // The angular constraints, likewise measured as the bodies are now: a
+  // hold turns back all its bodies have turned off (up to
+  // maxAngularCorrection), a limit all they've gone beyond it past
+  // angularSlop; a motor has nothing to correct
+  using Kind = AngularConstraint::Kind;
+  AngularConstraint constraintsNow[Joint::maxAngularConstraints];
+  const Joint *measured = nullptr;
+  unsigned countNow = 0;
+  for (SolverAngularConstraint &solver : solverAngularConstraints) {
+    if (solver.joint != measured) {
+      measured = solver.joint;
+      countNow = solver.joint->getAngularConstraints(constraintsNow);
+    }
+    solver.positionImpulse = 0;
+    solver.positionTargetSpeed = 0;
+    if (solver.index >= countNow || solver.constraint.kind == Kind::motor)
+      continue;
+    const AngularConstraint &now = constraintsNow[solver.index];
+    solver.constraint.axis = now.axis;
+    solver.response =
+        turnResponse(solver.movable[0], now.axis) + turnResponse(solver.movable[1], now.axis);
+    const real correction =
+        solver.constraint.kind == Kind::hold
+            ? -std::clamp(now.angle, -maxAngularCorrection, maxAngularCorrection)
+            : std::min(std::max(-now.angle - angularSlop, (real)0), maxAngularCorrection);
+    solver.positionTargetSpeed = correction / duration;
+  }
 }
 
 void ContactResolver::sweepJointPositions() {
@@ -1252,5 +1391,21 @@ void ContactResolver::sweepJointPositions() {
           solverJoint.effectiveMass.transform(solverJoint.targetVelocity - relativeVelocity);
       applyAcrossJoint(solverJoint.movable, solverJoint.offset, impulse, moveVelocity);
     }
+  }
+
+  // Holds keep the axes in line (turning either way); limits only turn the
+  // bodies back from beyond them
+  const auto moveSpin = [this](RigidBody *body) { return separatingVelocities[body].angular; };
+  for (SolverAngularConstraint &solver : solverAngularConstraints) {
+    const bool hold = solver.constraint.kind == AngularConstraint::Kind::hold;
+    if (!hold && solver.positionTargetSpeed <= 0)
+      continue;
+    const Vector3 &axis = solver.constraint.axis;
+    const real speed = relativeTurning(solver.movable, axis, moveSpin);
+    real impulse = solver.positionImpulse + (solver.positionTargetSpeed - speed) / solver.response;
+    if (!hold)
+      impulse = std::max(impulse, (real)0);
+    twistAcrossJoint(solver.movable, axis * (impulse - solver.positionImpulse), moveVelocity);
+    solver.positionImpulse = impulse;
   }
 }

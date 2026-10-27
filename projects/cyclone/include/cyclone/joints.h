@@ -79,6 +79,115 @@ public:
    * ContactResolver::resolveContacts.)
    */
   unsigned addContact(Contact *contact, unsigned limit) const override;
+
+  /** SAKBox: the most angular constraints a joint has (a hinge's). */
+  static constexpr unsigned maxAngularConstraints = 5;
+
+  /**
+   * SAKBox: the limits on how the two bodies turn relative to each other,
+   * where they are now (from their orientations, which the resolver keeps
+   * up to date as it moves them): written into `constraints`, which has
+   * room for maxAngularConstraints, returning how many. A joint returns
+   * them in the same order every step, so each can start from its last
+   * impulse (angularImpulse). The resolver adds them to the anchor's when
+   * resolving contacts together; the book's resolver doesn't use them.
+   *
+   * A plain Joint has none: its bodies turn freely about it, a ball and
+   * socket. HingeJoint and ConeJoint add them.
+   */
+  virtual unsigned getAngularConstraints(AngularConstraint *constraints) const;
+
+  /**
+   * SAKBox: each angular constraint's impulse last step, in the order
+   * getAngularConstraints gives them, to start the next step from (warm
+   * starting, as `impulse` is for the anchor). Zero them after moving the
+   * bodies by hand.
+   */
+  real angularImpulse[maxAngularConstraints] = {};
+};
+
+/**
+ * SAKBox: a hinge, which the book names among the joints that "restrict
+ * the ability of one object to rotate with respect to another" (section
+ * 17.2.1): a ball and socket (set its `error` to zero) whose bodies may
+ * only turn relative to each other about one axis, like a door or a knee.
+ * Optionally its angle is limited to a range, and a motor drives it.
+ *
+ * The book doesn't build one (with its one-contact-at-a-time resolver it's
+ * "quite frankly, inconvenient"), and suggests the Jacobian rows of chapter
+ * 18 instead, which is how this is made: two holds keep the axes lined up,
+ * and two limits and a motor act about the axis (getAngularConstraints).
+ * They're the rows Erin Catto gives for a revolute joint (Box2D's, and
+ * Bullet's btHingeConstraint), solved as he describes ("Iterative Dynamics
+ * with Temporal Coherence", 2005; "Modeling and Solving Constraints", GDC
+ * 2009). It needs contacts resolved together (sequentialImpulses).
+ */
+class HingeJoint : public Joint {
+public:
+  /** The hinge's axis in each body's coordinates, of unit length. */
+  Vector3 axis[2];
+
+  /**
+   * A direction at right angles to the axis in each body's coordinates:
+   * the hinge's angle is how far body two's has turned from body one's,
+   * about body one's axis.
+   */
+  Vector3 reference[2];
+
+  /** Whether the angle is kept between lowerLimit and upperLimit. */
+  bool limited = false;
+  real lowerLimit = 0, upperLimit = 0;
+
+  /**
+   * The motor: drives the angle at motorSpeed (rad/s) with a twist of up to
+   * motorTorque (N m). Off at zero torque.
+   */
+  real motorSpeed = 0, motorTorque = 0;
+
+  /**
+   * Sets the axis, given in world coordinates, as the bodies are now (put
+   * them in place and set the anchors first, with set()): the angle is zero
+   * as they are, and grows as body two turns about the axis by the right-
+   * hand rule.
+   */
+  void setAxis(const Vector3 &worldAxis);
+
+  /** Keeps the angle between `lower` and `upper` (rad). */
+  void setLimits(real lower, real upper);
+
+  /** Drives the angle at `speed` (rad/s) with up to `maxTorque` (N m). */
+  void setMotor(real speed, real maxTorque);
+
+  /** The angle (rad, from -pi to pi), as the bodies are now. */
+  real getAngle() const;
+
+  unsigned getAngularConstraints(AngularConstraint *constraints) const override;
+};
+
+/**
+ * SAKBox: a ball and socket that only lets body two's axis tilt so far from
+ * body one's, in any direction, like a neck or a shoulder (the "swing" of
+ * Bullet's btConeTwistConstraint, without its twist limit). Built as one
+ * limit row, as HingeJoint's are. It needs contacts resolved together.
+ */
+class ConeJoint : public Joint {
+public:
+  /** The axis in each body's coordinates, of unit length. */
+  Vector3 axis[2];
+
+  /** How far body two's axis may tilt from body one's (rad). */
+  real maxAngle = 0;
+
+  /**
+   * Sets the axis, given in world coordinates, as the bodies are now (set
+   * the anchors first, with set()), and how far it may tilt.
+   */
+  void setAxis(const Vector3 &worldAxis, real maxAngle);
+
+  /** How far body two's axis is tilted from body one's (rad), now. */
+  real getAngle() const;
+
+  unsigned getAngularConstraints(AngularConstraint *constraints) const override;
 };
 
 } // namespace cyclone

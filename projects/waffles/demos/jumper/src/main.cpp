@@ -1,13 +1,8 @@
-#include "Body.h"
-#include <WClasses/WError.h>
-#include <WClasses/WMatrix.h>
-#include <WClasses/WKNN.h>
-#include <WClasses/WRand.h>
-#include <WClasses/WNeuralNet.h>
-#include <WClasses/WRand.h>
-#include <WClasses/WImage.h>
-#include <WClasses/WHolders.h>
+#include "JumperDemo.h"
 #include "PolicyLearner.h"
+#include <WClasses/WError.h>
+#include <WClasses/WNeuralNet.h>
+#include <demos/window.h>
 #include <iostream>
 #include <memory>
 
@@ -15,7 +10,7 @@ using namespace WClasses;
 using std::cerr;
 using std::cout;
 
-void DoIt(int argc, char* argv[])
+int DoIt(int argc, char* argv[])
 {
 	if(argc < 2)
 	{
@@ -32,8 +27,10 @@ void DoIt(int argc, char* argv[])
 		cout << "	jumper [policy_file]		see it jump\n";
 		cout << "	jumper manual			see the hand-made seed policy jump\n";
 		cout << "	jumper height [policy_file]	print how high it jumps (the seed\n";
-		cout << "					policy's if no file is given)\n";
-		return;
+		cout << "					policy's if no file is given)\n\n";
+		cout << "Seeing it jump takes the Cyclone demos' options after the\n";
+		cout << "policy: --run, and --keys \"SECONDS:INPUT,...\" (R jumps again).\n";
+		return 0;
 	}
 	else if(_stricmp(argv[1], "train") == 0)
 	{
@@ -51,11 +48,7 @@ void DoIt(int argc, char* argv[])
 		Train();
 
 		cout << "Well, that's enough. I think I'll stop now.\n";
-	}
-	else if(_stricmp(argv[1], "manual") == 0)
-	{
-		RagdollDemo demoApp;
-		demoApp.run(800, 600, "Demo of a robot that learns to jump");
+		return 0;
 	}
 	else if(_stricmp(argv[1], "height") == 0)
 	{
@@ -63,37 +56,28 @@ void DoIt(int argc, char* argv[])
 		if(argc > 2)
 			pPolicy = LoadPolicy(argv[2]);
 		cout << JumpHeight(pPolicy.get()) << "\n";
+		return 0;
 	}
-	else
-	{
-#ifdef NOGUI
-		cout << "This binary was compiled with NOGUI (which means it isn't\n";
-		cout << "linked with the GL libraries. This feature might be useful\n";
-		cout << "for someone that wants to train on a fast cluster that doesn't\n";
-		cout << "have display stuff installed.) Obviously you can't view the\n";
-		cout << "jumper without a GUI, so if you want to see it, you'll have\n";
-		cout << "to rebuild without the NOGUI switch.\n";
-#else
-		cout << "Press space-bar to see it jump again, and q to quit.\n";
-		std::unique_ptr<WNeuralNetLearner> pPolicy = LoadPolicy(argv[1]);
-		RagdollDemo demoApp;
-		demoApp.SetPolicy(pPolicy.get());
-		demoApp.run(800, 600, "Demo of a robot that learns to jump");
-#endif
-	}
+
+	// See it jump, with the hand-made policy or one from a file. (The window
+	// reads its own options from what follows.)
+	std::unique_ptr<WNeuralNetLearner> pPolicy;
+	if(_stricmp(argv[1], "manual") != 0)
+		pPolicy = LoadPolicy(argv[1]);
+	auto makeDemo = [&]
+	{ return MakeJumperDemo(pPolicy.get()); };
+	return runInWindow(makeDemo, argc - 1, argv + 1);
 }
 
 int main(int argc, char* argv[])
 {
-	int ret = 0;
 	try
 	{
-		DoIt(argc, argv);
+		return DoIt(argc, argv);
 	}
 	catch(const std::exception& e)
 	{
 		cerr << e.what() << "\n";
-		ret = 1;
+		return 1;
 	}
-	return ret;
 }

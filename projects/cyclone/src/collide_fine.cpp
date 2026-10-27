@@ -1064,3 +1064,165 @@ unsigned CollisionDetector::boxAndHalfSpace(const CollisionBox &box, const Colli
   data->addContacts(contactsUsed);
   return contactsUsed;
 }
+
+// SAKBox: capsules (see CollisionCapsule). Each is a sphere swept along a
+// segment, so these find the points of the segment nearest the other shape
+// and make the contacts with the sphere functions above.
+
+CollisionSphere CollisionCapsule::sphereAt(real along) const {
+  CollisionSphere sphere;
+  sphere.body = body;
+  sphere.radius = radius;
+  Matrix4 alongSegment; // a move of `along` along the capsule's Y axis
+  alongSegment.data[7] = along;
+  sphere.offset = offset * alongSegment;
+  sphere.calculateInternals();
+  return sphere;
+}
+
+namespace {
+// A capsule's segment in world coordinates: from `start` (its -halfLength
+// end) along `direction` (to its +halfLength end)
+struct Segment {
+  Vector3 start, direction;
+
+  explicit Segment(const CollisionCapsule &capsule) {
+    const Vector3 axis = capsule.getAxis(1);
+    start = capsule.getAxis(3) - axis * capsule.halfLength;
+    direction = axis * (capsule.halfLength * 2);
+  }
+
+  Vector3 at(real fraction) const { return start + direction * fraction; }
+
+  // The fraction of the way along that's nearest `point`
+  real nearestTo(const Vector3 &point) const {
+    const real lengthSquared = direction.squareMagnitude();
+    if (lengthSquared <= 0)
+      return 0;
+    return std::clamp(((point - start) * direction) / lengthSquared, (real)0, (real)1);
+  }
+};
+
+// Where `fraction` of the way along a capsule's segment is, as its sphereAt
+// takes it
+real alongCapsule(const CollisionCapsule &capsule, real fraction) {
+  return capsule.halfLength * (fraction * 2 - 1);
+}
+
+// The fractions of the way along segments one and two of their nearest
+// points (Ericson, "Real-Time Collision Detection", section 5.1.9,
+// ClosestPtSegmentSegment)
+void nearestOnSegments(const Segment &one, const Segment &two, real &fractionOne,
+                       real &fractionTwo) {
+  const Vector3 between = one.start - two.start;
+  const real lengthOne = one.direction.squareMagnitude();
+  const real lengthTwo = two.direction.squareMagnitude();
+  const real f = two.direction * between;
+  if (lengthOne <= 0) { // segment one is a point
+    fractionOne = 0;
+    fractionTwo = lengthTwo > 0 ? std::clamp(f / lengthTwo, (real)0, (real)1) : (real)0;
+    return;
+  }
+  const real c = one.direction * between;
+  if (lengthTwo <= 0) { // segment two is a point
+    fractionTwo = 0;
+    fractionOne = std::clamp(-c / lengthOne, (real)0, (real)1);
+    return;
+  }
+  const real b = one.direction * two.direction;
+  const real denominator = lengthOne * lengthTwo - b * b; // zero when parallel
+  fractionOne = denominator > 0
+                    ? std::clamp((b * f - c * lengthTwo) / denominator, (real)0, (real)1)
+                    : (real)0;
+  fractionTwo = (b * fractionOne + f) / lengthTwo;
+  if (fractionTwo < 0) {
+    fractionTwo = 0;
+    fractionOne = std::clamp(-c / lengthOne, (real)0, (real)1);
+  } else if (fractionTwo > 1) {
+    fractionTwo = 1;
+    fractionOne = std::clamp((b - c) / lengthOne, (real)0, (real)1);
+  }
+}
+} // namespace
+
+unsigned CollisionDetector::capsuleAndHalfSpace(const CollisionCapsule &capsule,
+                                                const CollisionPlane &plane, CollisionData *data) {
+  unsigned used = 0;
+  for (real end : {-capsule.halfLength, capsule.halfLength}) {
+    used += sphereAndHalfSpace(capsule.sphereAt(end), plane, data);
+    if (capsule.halfLength <= 0)
+      break; // a sphere: one end is enough
+  }
+  return used;
+}
+
+unsigned CollisionDetector::capsuleAndSphere(const CollisionCapsule &capsule,
+                                             const CollisionSphere &sphere, CollisionData *data) {
+  const Segment segment(capsule);
+  const real nearest = segment.nearestTo(sphere.getAxis(3));
+  return sphereAndSphere(capsule.sphereAt(alongCapsule(capsule, nearest)), sphere, data);
+}
+
+unsigned CollisionDetector::capsuleAndCapsule(const CollisionCapsule &one,
+                                              const CollisionCapsule &two, CollisionData *data) {
+  const Segment segmentOne(one), segmentTwo(two);
+  auto touchAt = [&](real fractionOne, real fractionTwo) {
+    return sphereAndSphere(one.sphereAt(alongCapsule(one, fractionOne)),
+                           two.sphereAt(alongCapsule(two, fractionTwo)), data);
+  };
+
+  // Side by side (within about 2 degrees of parallel), where segment two
+  // lies alongside segment one: a contact at each end of that stretch
+  const real lengthOne = segmentOne.direction.squareMagnitude();
+  const real lengthTwo = segmentTwo.direction.squareMagnitude();
+  const Vector3 across = segmentOne.direction % segmentTwo.direction;
+  if (lengthOne > 0 && lengthTwo > 0 &&
+      across.squareMagnitude() < (real)1e-3 * lengthOne * lengthTwo) {
+    const real startTwo =
+        ((segmentTwo.start - segmentOne.start) * segmentOne.direction) / lengthOne;
+    const real endTwo = ((segmentTwo.at(1) - segmentOne.start) * segmentOne.direction) / lengthOne;
+    const real from = std::max(std::min(startTwo, endTwo), (real)0);
+    const real to = std::min(std::max(startTwo, endTwo), (real)1);
+    if (from <= to) {
+      unsigned used = touchAt(from, segmentTwo.nearestTo(segmentOne.at(from)));
+      if (to > from && data->hasMoreContacts())
+        used += touchAt(to, segmentTwo.nearestTo(segmentOne.at(to)));
+      return used;
+    }
+  }
+
+  real fractionOne, fractionTwo;
+  nearestOnSegments(segmentOne, segmentTwo, fractionOne, fractionTwo);
+  return touchAt(fractionOne, fractionTwo);
+}
+
+unsigned CollisionDetector::capsuleAndBox(const CollisionCapsule &capsule, const CollisionBox &box,
+                                          CollisionData *data) {
+  unsigned used = 0;
+  for (real end : {-capsule.halfLength, capsule.halfLength})
+    if (data->hasMoreContacts())
+      used += boxAndSphere(box, capsule.sphereAt(end), data);
+  if (used > 0 || !data->hasMoreContacts())
+    return used;
+
+  // Neither end touches, but the middle may (lying across an edge). How far
+  // a point is from a box rises and falls only once along a segment (it's
+  // convex), so narrowing in by thirds finds the nearest point.
+  const Segment segment(capsule);
+  auto distanceSquared = [&](real fraction) {
+    const Vector3 local = box.getTransform().transformInverse(segment.at(fraction));
+    Vector3 nearest = local;
+    for (unsigned i = 0; i < 3; i++)
+      nearest[i] = std::clamp(local[i], -box.halfSize[i], box.halfSize[i]);
+    return (local - nearest).squareMagnitude();
+  };
+  real low = 0, high = 1;
+  for (int i = 0; i < 40; i++) {
+    const real third = (high - low) / 3;
+    if (distanceSquared(low + third) < distanceSquared(high - third))
+      high -= third;
+    else
+      low += third;
+  }
+  return boxAndSphere(box, capsule.sphereAt(alongCapsule(capsule, (low + high) / 2)), data);
+}

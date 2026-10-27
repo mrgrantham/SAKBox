@@ -1,17 +1,23 @@
-// SAKBox: replacements for glutSolidSphere and glutSolidCube.
+// SAKBox: replacements for glutSolidSphere and glutSolidCube, and capsules.
 #include "shapes.h"
 
 #include "ogl_headers.h"
 
-void solidSphere(double radius, int slices, int stacks) {
-  // GLUT's own glutSolidSphere is a filled, smoothly shaded GLU quadric.
+#include <initializer_list>
+
+// A filled, smoothly shaded GLU quadric, as GLUT's solid shapes are
+static GLUquadric *solidQuadric() {
   static GLUquadric *quadric = [] {
     GLUquadric *q = gluNewQuadric();
     gluQuadricDrawStyle(q, GLU_FILL);
     gluQuadricNormals(q, GLU_SMOOTH);
     return q;
   }();
-  gluSphere(quadric, radius, slices, stacks);
+  return quadric;
+}
+
+void solidSphere(double radius, int slices, int stacks) {
+  gluSphere(solidQuadric(), radius, slices, stacks);
 }
 
 void solidCube(double size) {
@@ -36,4 +42,20 @@ void solidCube(double size) {
       glVertex3fv(v[faces[i][j]]);
   }
   glEnd();
+}
+
+void solidCapsule(double radius, double halfLength, int slices) {
+  for (double end : {-halfLength, halfLength}) {
+    glPushMatrix();
+    glTranslated(0, end, 0);
+    solidSphere(radius, slices, slices / 2);
+    glPopMatrix();
+  }
+  // GLU's cylinder runs up the Z axis from zero: turn it onto Y, starting at
+  // the lower end
+  glPushMatrix();
+  glTranslated(0, -halfLength, 0);
+  glRotated(-90, 1, 0, 0);
+  gluCylinder(solidQuadric(), radius, radius, halfLength * 2, slices, 1);
+  glPopMatrix();
 }

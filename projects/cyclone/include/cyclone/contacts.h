@@ -43,6 +43,59 @@ class ContactResolver;
 class Joint;
 
 /**
+ * SAKBox: one limit on how a joint's two bodies may turn relative to each
+ * other, about one direction (joints.h makes them). In the book's terms it's a row of the
+ * Jacobian (section 18.1: joints and motors are made "by adding entries
+ * directly into the Jacobian"), solved one at a time alongside the contacts
+ * and the joints' anchors, as the resolver solves everything (sequential
+ * impulses, the iterative way of solving chapter 18's equations).
+ *
+ * It acts with an equal and opposite twist (angular impulse): impulse x
+ * axis on body two and the opposite on body one, which changes how fast
+ * body two turns relative to body one about `axis`.
+ */
+struct AngularConstraint {
+  enum class Kind {
+    /**
+     * Stops the bodies turning relative to each other about the axis,
+     * twisting either way, and turns back the `angle` body two has turned
+     * off about it. A hinge holds two directions this way.
+     */
+    hold,
+
+    /**
+     * A one-sided limit, like a contact: the bodies may turn freely about
+     * the axis, and up to `angle` (the room left before the limit) the
+     * other way. Beyond the limit (`angle` below zero) it turns them back.
+     */
+    limit,
+
+    /**
+     * Drives the bodies' relative turning about the axis to `speed`, with a
+     * twist of at most `maxTorque`.
+     */
+    motor,
+  };
+
+  Kind kind = Kind::hold;
+
+  /** The direction, in world coordinates, of unit length. */
+  Vector3 axis;
+
+  /**
+   * A hold's angle turned off (rad), or a limit's room left (rad,
+   * negative beyond it).
+   */
+  real angle = 0;
+
+  /** A motor's target speed of turning (rad/s). */
+  real speed = 0;
+
+  /** A motor's strongest twist (N m): at most this x duration a step. */
+  real maxTorque = 0;
+};
+
+/**
  * A contact represents two bodies in contact. Resolving a
  * contact removes their interpenetration, and applies sufficient
  * impulse to keep them apart. Colliding bodies may also rebound.
@@ -398,6 +451,15 @@ protected:
   static inline const real maxCorrection = (real)0.2;
 
   /**
+   * SAKBox: the most the position sweeps turn a joint's bodies back in one
+   * step (rad), and how far past an angle limit they may go before they're
+   * turned back: Box2D's b2_maxAngularCorrection (8 degrees) and
+   * b2_angularSlop (2 degrees).
+   */
+  static inline const real maxAngularCorrection = (real)0.14;
+  static inline const real angularSlop = (real)0.035;
+
+  /**
    * SAKBox: one contact as Method::sequentialImpulses works on it.
    */
   struct SolverContact {
@@ -472,6 +534,34 @@ protected:
     real targetSpeed = 0;
   };
   std::vector<SolverJoint> solverJoints;
+
+  /**
+   * SAKBox: one of a joint's angular constraints (hinges' and cones', see
+   * AngularConstraint) as Method::sequentialImpulses works on it: a twist
+   * about one axis, like a contact's push along its normal.
+   */
+  struct SolverAngularConstraint {
+    Joint *joint;
+    // Its place among the joint's, which keeps its impulse
+    // (Joint::angularImpulse)
+    unsigned index;
+    AngularConstraint constraint;
+    // As for SolverContact: the bodies that turn in response
+    RigidBody *movable[2];
+    // How much the bodies' relative turning speed about the axis changes
+    // for a unit twist, and that speed when integrate() moved the bodies
+    real response;
+    real startSpeed;
+    // The relative turning speed the velocity sweeps aim for (at least, for
+    // a limit), and the bounds on their total twist
+    real targetSpeed;
+    real minImpulse, maxImpulse;
+    real impulse = 0;
+    // The position sweeps' target and running total
+    real positionTargetSpeed = 0;
+    real positionImpulse = 0;
+  };
+  std::vector<SolverAngularConstraint> solverAngularConstraints;
 
   /** SAKBox: scratch space for the book's resolver to add joints' contacts. */
   std::vector<Contact> contactsWithJoints;
@@ -639,7 +729,10 @@ protected:
   /** SAKBox: sets up and warm starts each joint for resolveTogether. */
   void setUpJoints(std::span<Joint *const> joints, real duration);
 
-  /** SAKBox: one velocity sweep over the joints. */
+  /** SAKBox: sets up and warm starts the joints' angular constraints. */
+  void setUpAngularConstraints(std::span<Joint *const> joints, real duration);
+
+  /** SAKBox: one velocity sweep over the joints (and their angular constraints). */
   void sweepJoints();
 
   /**
@@ -648,7 +741,10 @@ protected:
    */
   void settleJoints(real duration);
 
-  /** SAKBox: the joints' part of removeOverlap: targets, then one sweep. */
+  /**
+   * SAKBox: the joints' part of removeOverlap (their angular constraints
+   * too): targets, then one sweep.
+   */
   void setJointPositionTargets(real duration);
   void sweepJointPositions();
 

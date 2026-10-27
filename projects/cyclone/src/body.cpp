@@ -288,6 +288,14 @@ Quaternion RigidBody::getOrientation() const { return orientation; }
 
 void RigidBody::getOrientation(Matrix3 *matrix) const { getOrientation(matrix->data); }
 
+Matrix3 RigidBody::getOrientationNow() const {
+  Quaternion normalised = orientation;
+  normalised.normalise();
+  Matrix3 matrix;
+  matrix.setOrientation(normalised);
+  return matrix;
+}
+
 void RigidBody::getOrientation(real matrix[9]) const {
   matrix[0] = transformMatrix.data[0];
   matrix[1] = transformMatrix.data[1];

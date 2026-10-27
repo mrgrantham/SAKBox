@@ -9,9 +9,3 @@ projects/waffles/src/depends/security/md4.*
 projects/waffles/src/WClasses/sha2.cpp
 projects/waffles/src/WClasses/sha2.h
 projects/waffles/src/WClasses/uitypes.h
-# (the jumper demo's files from Bullet's OpenGL demo framework)
-projects/waffles/demos/jumper/src/Body.*
-projects/waffles/demos/jumper/src/DemoApplication.*
-projects/waffles/demos/jumper/src/GL_ShapeDrawer.*
-projects/waffles/demos/jumper/src/GLDebugDrawer.*
-projects/waffles/demos/jumper/src/GLDebugFont.*

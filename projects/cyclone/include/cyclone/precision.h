@@ -48,6 +48,7 @@ typedef Flex::Math::FlexReal real;
 #define real_exp Flex::Math::flex_exp
 #define real_pow Flex::Math::flex_pow
 #define real_fmod Flex::Math::flex_fmod
+#define real_atan2 Flex::Math::flex_atan2
 #define real_epsilon DBL_EPSILON
 #define R_PI 3.14159265358979
 #elif defined(CYCLONE_SINGLE_PRECISION)
@@ -91,6 +92,8 @@ typedef float real;
 /** Defines the precision of the floating point modulo operator. */
 #define real_fmod fmodf
 
+#define real_atan2 atan2f
+
 /** Defines the number e on which 1+e == 1 **/
 #define real_epsilon FLT_EPSILON
 
@@ -106,6 +109,7 @@ typedef double real;
 #define real_exp exp
 #define real_pow pow
 #define real_fmod fmod
+#define real_atan2 atan2
 #define real_epsilon DBL_EPSILON
 #define R_PI 3.14159265358979
 #endif

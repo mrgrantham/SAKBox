@@ -130,5 +130,8 @@ inline FlexReal flex_pow(FlexReal x, FlexReal y) {
 inline FlexReal flex_fmod(FlexReal x, FlexReal y) {
   return FlexReal(std::fmod(x.value(), y.value()));
 }
+inline FlexReal flex_atan2(FlexReal y, FlexReal x) {
+  return FlexReal(std::atan2(y.value(), x.value()));
+}
 
 } // namespace Flex::Math

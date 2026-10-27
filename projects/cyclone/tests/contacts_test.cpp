@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -1000,4 +1001,127 @@ TEST(JointConstraintTest, BooksResolverTakesJointsAsContacts) {
   EXPECT_NEAR(viaJoints->getPosition().x, viaContacts->getPosition().x, kTolerance);
   EXPECT_NEAR(viaJoints->getPosition().y, viaContacts->getPosition().y, kTolerance);
   EXPECT_LT(viaJoints->getPosition().x, 2.0); // pulled back towards the pivot
+}
+
+// ---------------------------------------------------------------------------
+// Hinges and cones: joints that limit turning (angular constraints)
+
+namespace {
+
+// A 1 kg rod 1 m from a fixed pivot at the origin, joined to it by
+// `joint` (a HingeJoint or ConeJoint) at the pivot, in a World of its own:
+// a pendulum, or with no gravity a rotor
+template <typename JointType> struct Swing {
+  World world{8};
+  std::unique_ptr<RigidBody> pivot = fixedAt(Vector3());
+  std::unique_ptr<RigidBody> bob;
+  JointType joint;
+
+  Swing(const Vector3 &bobAt, bool gravity) : bob(bodyAt(bobAt)) {
+    world.getResolver().setMethod(together);
+    Matrix3 inertia;
+    inertia.setDiagonal(0.1, 0.1, 0.1);
+    bob->setInertiaTensor(inertia);
+    if (gravity)
+      bob->setAcceleration(Vector3::GRAVITY);
+    bob->calculateDerivedData();
+    world.getBodies().push_back(bob.get());
+    joint.set(pivot.get(), Vector3(), bob.get(), bobAt * -1, 0);
+    world.getJoints().push_back(&joint);
+  }
+
+  void run(double seconds, const std::function<void()> &afterEachStep = [] {}) {
+    for (int step = 0; step < static_cast<int>(std::lround(seconds * 60)); ++step) {
+      world.startFrame();
+      world.runPhysics(1.0 / 60);
+      bob->calculateDerivedData();
+      afterEachStep();
+    }
+  }
+};
+
+// How far past an angle limit the position sweeps let a joint go before
+// turning it back (ContactResolver::angularSlop, 2 degrees)
+constexpr double kAngularSlop = 0.035;
+
+// The angle (rad) between a hinge's or cone's axis on each body, now
+template <typename JointType> double axesApart(const JointType &joint) {
+  const Vector3 one = joint.body[0]->getDirectionInWorldSpace(joint.axis[0]);
+  const Vector3 two = joint.body[1]->getDirectionInWorldSpace(joint.axis[1]);
+  return std::atan2((one % two).magnitude(), one * two);
+}
+
+} // namespace
+
+// A hinge lets its bodies turn only about its axis: a pendulum hinged about
+// z, set spinning about x and moving along z as well, still swings down in
+// the x-y plane, its axis held in line and its anchor held to the pivot.
+TEST(HingeJointTest, TurnsOnlyAboutItsAxis) {
+  Swing<HingeJoint> swing(Vector3(1, 0, 0), true);
+  swing.joint.setAxis(Vector3(0, 0, 1));
+  swing.bob->setRotation(Vector3(3, 0, 0));
+  swing.bob->setVelocity(Vector3(0, 0, 1));
+  double worstApart = 0, farthestOff = 0, lowest = 0;
+  swing.run(2, [&] {
+    worstApart = std::max(worstApart, axesApart(swing.joint));
+    farthestOff = std::max<double>(farthestOff, std::abs(swing.bob->getPosition().z));
+    lowest = std::min<double>(lowest, swing.bob->getPosition().y);
+  });
+  EXPECT_LT(worstApart, 0.02);
+  EXPECT_LT(farthestOff, 0.02);
+  EXPECT_LT(anchorGap(swing.joint), 0.002);
+  EXPECT_NEAR(lowest, -1.0, 0.02);
+}
+
+// The angle is zero as the hinge is set up and grows turning about its axis
+// by the right-hand rule: the pendulum falling from level turns about -z.
+TEST(HingeJointTest, AngleFollowsTheRightHandRule) {
+  Swing<HingeJoint> swing(Vector3(1, 0, 0), true);
+  swing.joint.setAxis(Vector3(0, 0, 1));
+  EXPECT_NEAR(swing.joint.getAngle(), 0, kTolerance);
+  swing.run(0.2);
+  EXPECT_LT(swing.joint.getAngle(), -0.1);
+}
+
+// A limit stops the swing: falling from level, the pendulum stops at its
+// lower limit (-0.5 rad) rather than swinging down, going past it by no
+// more than the slop the position sweeps allow, and comes to rest there.
+TEST(HingeJointTest, LimitStopsTheSwing) {
+  Swing<HingeJoint> swing(Vector3(1, 0, 0), true);
+  swing.joint.setAxis(Vector3(0, 0, 1));
+  swing.joint.setLimits(-0.5, 0.5);
+  double lowestAngle = 0;
+  swing.run(3, [&] { lowestAngle = std::min<double>(lowestAngle, swing.joint.getAngle()); });
+  EXPECT_GT(lowestAngle, -0.5 - kAngularSlop);
+  EXPECT_NEAR(swing.joint.getAngle(), -0.5, 0.01);
+  EXPECT_LT(swing.bob->getRotation().magnitude(), 0.05);
+}
+
+// A motor drives the hinge at its speed when it's strong enough, and when
+// it isn't, turns it as fast as its torque can: torque / moment of inertia
+// about the pivot (the rod's own 0.1 plus 1 kg at 1 m).
+TEST(HingeJointTest, MotorReachesItsSpeedOrItsTorqueLimit) {
+  Swing<HingeJoint> strong(Vector3(1, 0, 0), false), weak(Vector3(1, 0, 0), false);
+  for (HingeJoint *joint : {&strong.joint, &weak.joint})
+    joint->setAxis(Vector3(0, 0, 1));
+  strong.joint.setMotor(2, 100);
+  weak.joint.setMotor(2, 0.5);
+  strong.run(0.1);
+  weak.run(1);
+  EXPECT_NEAR(strong.bob->getRotation().z, 2, 0.01);
+  EXPECT_NEAR(weak.bob->getRotation().z, 0.5 / 1.1, 0.01);
+}
+
+// A cone joint lets the bob swing any way, but no further than its angle
+// from the axis: hanging straight down and knocked sideways hard enough to
+// swing to 1.2 rad, it stops at 0.3, past it by no more than the slop.
+TEST(ConeJointTest, LimitsTheTilt) {
+  Swing<ConeJoint> swing(Vector3(0, -1, 0), true);
+  swing.joint.setAxis(Vector3(0, -1, 0), 0.3);
+  swing.bob->setVelocity(Vector3(2, 0, 2));
+  double widest = 0;
+  swing.run(2, [&] { widest = std::max<double>(widest, swing.joint.getAngle()); });
+  EXPECT_LT(widest, 0.3 + kAngularSlop + 0.01);
+  EXPECT_GT(widest, 0.25);
+  EXPECT_LT(anchorGap(swing.joint), 0.002);
 }

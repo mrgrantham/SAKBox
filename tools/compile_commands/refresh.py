@@ -17,7 +17,8 @@ them into the format clangd reads:
   external_include_paths makes it -isystem, so <...> includes search it too;
   that's harmless in Bazel's sandbox, which holds only declared files, but
   here the whole repo is visible, and a stray file there shadows a standard
-  header (Bullet's `version` file is found for <version>).
+  header (Bullet's `version` file was found for <version>, when the jumper
+  demo used Bullet).
 
 Re-run it after adding source files or changing BUILD deps. The generated
 files (compile_commands.json, external, .cache/) are git-ignored.

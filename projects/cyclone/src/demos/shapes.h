@@ -11,4 +11,9 @@ void solidSphere(double radius, int slices, int stacks);
 // (glutSolidCube).
 void solidCube(double size);
 
+// A capsule along the Y axis, centred on the origin: a cylinder of `radius`
+// from -halfLength to +halfLength with a sphere at each end (as
+// cyclone::CollisionCapsule), built from `slices` around.
+void solidCapsule(double radius, double halfLength, int slices);
+
 #endif // CYCLONE_DEMOS_SHAPES_H
