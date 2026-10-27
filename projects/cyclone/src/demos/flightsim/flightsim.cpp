@@ -78,6 +78,9 @@ public:
   /** Update the particle positions. */
   void update() override;
 
+  /** SAKBox: one fixed step of `duration` (update runs those due) */
+  void step(cyclone::real_duration duration);
+
   /** Handle a key press. */
   void key(unsigned char key) override;
 };
@@ -144,6 +147,7 @@ void FlightSimDemo::resetPlane() {
 
   aircraft.setVelocity(0, 0, 0);
   aircraft.setRotation(0, 0, 0);
+  aircraft.rememberPose(); // SAKBox: drawn here, not sliding from the crash
 }
 
 static void drawAircraft() {
@@ -188,9 +192,12 @@ void FlightSimDemo::display() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
 
-  cyclone::Vector3 pos = aircraft.getPosition();
+  // SAKBox: the aircraft, and the camera following it, blended between
+  // steps (see Application::drawFraction)
+  const cyclone::Matrix4 transform = aircraft.getBlendedTransform(drawFraction());
+  cyclone::Vector3 pos = transform.getAxisVector(3);
   cyclone::Vector3 offset(4.0f + aircraft.getVelocity().magnitude(), 0, 0);
-  offset = aircraft.getTransform().transformDirection(offset);
+  offset = transform.transformDirection(offset);
   gluLookAt(pos.x + offset.x, pos.y + 5.0f, pos.z + offset.z, pos.x, pos.y, pos.z, 0.0, 1.0, 0.0);
 
   glColor3f(0.6f, 0.6f, 0.6f);
@@ -207,7 +214,6 @@ void FlightSimDemo::display() {
   glEnd();
 
   // Set the transform matrix for the aircraft
-  cyclone::Matrix4 transform = aircraft.getTransform();
   GLfloat gl_transform[16];
   transform.fillGLArray(gl_transform);
   glPushMatrix();
@@ -252,10 +258,23 @@ void FlightSimDemo::display() {
 }
 
 void FlightSimDemo::update() {
-  // Find the duration of the last frame in seconds
-  float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
-  if (duration <= 0.0f)
-    return;
+  // SAKBox: in fixed steps (see FixedSteps), where it ran a step as long as
+  // each frame
+  runDueSteps([this](cyclone::real_duration seconds) { step(seconds); });
+
+  // SAKBox: the engine and the wind, by how fast it flies (about 10 to
+  // 30 m/s)
+  const float speed = static_cast<float>(aircraft.getVelocity().magnitude());
+  const float fast = std::clamp(speed / 30.0f, 0.0f, 1.0f);
+  sounds.setLoop("engine", {.volume = 0.3f, .pitch = 0.8f + 0.6f * fast});
+  sounds.setLoop("wind", {.volume = 0.1f + 0.5f * fast * fast, .pitch = 0.7f + 0.6f * fast});
+
+  Application::update();
+}
+
+void FlightSimDemo::step(cyclone::real_duration duration) {
+  // SAKBox: drawn between where it was and where this step leaves it
+  aircraft.rememberPose();
 
   // Start with no forces or acceleration.
   aircraft.clearAccumulators();
@@ -282,15 +301,6 @@ void FlightSimDemo::update() {
       resetPlane();
     }
   }
-
-  // SAKBox: the engine and the wind, by how fast it flies (about 10 to
-  // 30 m/s)
-  const float speed = static_cast<float>(aircraft.getVelocity().magnitude());
-  const float fast = std::clamp(speed / 30.0f, 0.0f, 1.0f);
-  sounds.setLoop("engine", {.volume = 0.3f, .pitch = 0.8f + 0.6f * fast});
-  sounds.setLoop("wind", {.volume = 0.1f + 0.5f * fast * fast, .pitch = 0.7f + 0.6f * fast});
-
-  Application::update();
 }
 
 const char *FlightSimDemo::getTitle() { return "Cyclone > Flight Sim Demo"; }

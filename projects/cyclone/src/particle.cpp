@@ -121,6 +121,17 @@ void Particle::getAcceleration(Vector3 *acceleration) const {
 
 Vector3 Particle::getAcceleration() const { return acceleration; }
 
+void Particle::rememberPosition() {
+  previousPosition = position;
+  positionRemembered = true;
+}
+
+Vector3 Particle::getBlendedPosition(real fraction) const {
+  if (!positionRemembered)
+    return position;
+  return previousPosition + (position - previousPosition) * fraction;
+}
+
 void Particle::clearAccumulator() { forceAccum.clear(); }
 
 void Particle::addForce(const Vector3 &force) { forceAccum += force; }

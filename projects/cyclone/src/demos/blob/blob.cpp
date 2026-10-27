@@ -241,6 +241,12 @@ public:
   /** Update the particle positions. */
   void update() override;
 
+  /** SAKBox: one fixed step of `duration` seconds (update runs those due) */
+  void step(float duration);
+
+  /** SAKBox: its particle world takes sub-steps */
+  bool usesSubSteps() const override { return true; }
+
   /** Handle a key press. */
   void key(unsigned char key) override;
 };
@@ -312,13 +318,16 @@ void BlobDemo::reset() {
                          cyclone::Vector3(0, 1.0f + r.randomReal(), 0));
     blobs[i].setVelocity(0, 0, 0);
     blobs[i].clearAccumulator();
+    blobs[i].rememberPosition(); // SAKBox: drawn here, not sliding from before
   }
 }
 
 BlobDemo::~BlobDemo() { delete blobs; }
 
 void BlobDemo::display() {
-  cyclone::Vector3 pos = blobs[0].getPosition();
+  // SAKBox: blended between steps (see Application::drawFraction)
+  const cyclone::real fraction = drawFraction();
+  cyclone::Vector3 pos = blobs[0].getBlendedPosition(fraction);
 
   // Clear the view port and set the camera direction
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -339,14 +348,14 @@ void BlobDemo::display() {
 
   glColor3f(1, 0, 0);
   for (unsigned i = 0; i < BLOB_COUNT; i++) {
-    const cyclone::Vector3 &p = blobs[i].getPosition();
+    const cyclone::Vector3 p = blobs[i].getBlendedPosition(fraction);
     glPushMatrix();
     glTranslatef(p.x, p.y, p.z);
     solidSphere(BLOB_RADIUS, 12, 12);
     glPopMatrix();
   }
 
-  cyclone::Vector3 p = blobs[0].getPosition();
+  cyclone::Vector3 p = blobs[0].getBlendedPosition(fraction);
   cyclone::Vector3 v = blobs[0].getVelocity() * 0.05f;
   v.trim(BLOB_RADIUS * 0.5f);
   p = p + v;
@@ -367,13 +376,16 @@ void BlobDemo::display() {
 }
 
 void BlobDemo::update() {
+  // SAKBox: in fixed steps and sub-steps (see FixedSteps), where it ran a
+  // step as long as each frame
+  runDueSteps([this](cyclone::real_duration seconds) { step(static_cast<float>(seconds)); });
+  Application::update();
+}
+
+void BlobDemo::step(float duration) {
+  world.setSubSteps(physicsClock.subSteps());
   // Clear accumulators
   world.startFrame();
-
-  // Find the duration of the last frame in seconds
-  float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
-  if (duration <= 0.0f)
-    return;
 
   // Recenter the axes
   xAxis *= pow(0.1f, duration);
@@ -392,8 +404,6 @@ void BlobDemo::update() {
     position.z = 0.0f;
     blobs[i].setPosition(position);
   }
-
-  Application::update();
 }
 
 const char *BlobDemo::getTitle() { return "Cyclone > Blob Demo"; }

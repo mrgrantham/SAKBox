@@ -176,20 +176,24 @@ void BridgeDemo::updateAdditionalMass() {
 
   // Add the proportion to the correct masses
   particleArray[x * 2 + z].setMass(BASE_MASS + EXTRA_MASS * (1 - xp) * (1 - zp));
-  massDisplayPos.addScaledVector(particleArray[x * 2 + z].getPosition(), (1 - xp) * (1 - zp));
+  massDisplayPos.addScaledVector(particleArray[x * 2 + z].getBlendedPosition(drawFraction()),
+                                 (1 - xp) * (1 - zp));
 
   if (xp > 0) {
     particleArray[x * 2 + z + 2].setMass(BASE_MASS + EXTRA_MASS * xp * (1 - zp));
-    massDisplayPos.addScaledVector(particleArray[x * 2 + z + 2].getPosition(), xp * (1 - zp));
+    massDisplayPos.addScaledVector(particleArray[x * 2 + z + 2].getBlendedPosition(drawFraction()),
+                                   xp * (1 - zp));
 
     if (zp > 0) {
       particleArray[x * 2 + z + 3].setMass(BASE_MASS + EXTRA_MASS * xp * zp);
-      massDisplayPos.addScaledVector(particleArray[x * 2 + z + 3].getPosition(), xp * zp);
+      massDisplayPos.addScaledVector(
+          particleArray[x * 2 + z + 3].getBlendedPosition(drawFraction()), xp * zp);
     }
   }
   if (zp > 0) {
     particleArray[x * 2 + z + 1].setMass(BASE_MASS + EXTRA_MASS * (1 - xp) * zp);
-    massDisplayPos.addScaledVector(particleArray[x * 2 + z + 1].getPosition(), (1 - xp) * zp);
+    massDisplayPos.addScaledVector(particleArray[x * 2 + z + 1].getBlendedPosition(drawFraction()),
+                                   (1 - xp) * zp);
   }
 }
 
@@ -200,8 +204,8 @@ void BridgeDemo::display() {
   glColor3f(0, 0, 1);
   for (unsigned i = 0; i < ROD_COUNT; i++) {
     cyclone::Particle **particles = rods[i].particle;
-    const cyclone::Vector3 &p0 = particles[0]->getPosition();
-    const cyclone::Vector3 &p1 = particles[1]->getPosition();
+    const cyclone::Vector3 &p0 = particles[0]->getBlendedPosition(drawFraction());
+    const cyclone::Vector3 &p1 = particles[1]->getBlendedPosition(drawFraction());
     glVertex3f(p0.x, p0.y, p0.z);
     glVertex3f(p1.x, p1.y, p1.z);
   }
@@ -209,15 +213,15 @@ void BridgeDemo::display() {
   glColor3f(0, 1, 0);
   for (unsigned i = 0; i < CABLE_COUNT; i++) {
     cyclone::Particle **particles = cables[i].particle;
-    const cyclone::Vector3 &p0 = particles[0]->getPosition();
-    const cyclone::Vector3 &p1 = particles[1]->getPosition();
+    const cyclone::Vector3 &p0 = particles[0]->getBlendedPosition(drawFraction());
+    const cyclone::Vector3 &p1 = particles[1]->getBlendedPosition(drawFraction());
     glVertex3f(p0.x, p0.y, p0.z);
     glVertex3f(p1.x, p1.y, p1.z);
   }
 
   glColor3f(0.7f, 0.7f, 0.7f);
   for (unsigned i = 0; i < SUPPORT_COUNT; i++) {
-    const cyclone::Vector3 &p0 = supports[i].particle->getPosition();
+    const cyclone::Vector3 &p0 = supports[i].particle->getBlendedPosition(drawFraction());
     const cyclone::Vector3 &p1 = supports[i].anchor;
     glVertex3f(p0.x, p0.y, p0.z);
     glVertex3f(p1.x, p1.y, p1.z);

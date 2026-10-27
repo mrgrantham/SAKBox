@@ -51,7 +51,9 @@ public:
    * removed.
    */
   bool update(cyclone::real duration) {
-    // Update our physical state
+    // Update our physical state (SAKBox: drawn between where it was and
+    // where it gets to)
+    rememberPosition();
     integrate(duration);
 
     // We work backwards from our age to zero.
@@ -167,6 +169,9 @@ struct FireworkRule {
     firework->setAcceleration(cyclone::Vector3::GRAVITY);
 
     firework->clearAccumulator();
+    // SAKBox: drawn from here, not sliding from where this slot's last
+    // firework was
+    firework->rememberPosition();
   }
 };
 
@@ -223,6 +228,12 @@ public:
 
   /** Update the particle positions. */
   void update() override;
+
+  /** SAKBox: where the highest burst in this frame's steps was, to crackle */
+  std::optional<cyclone::Vector3> highestBurst;
+
+  /** SAKBox: one fixed step of `duration` (update runs those due) */
+  void step(cyclone::real_duration duration);
 
   /** Display the particle positions. */
   void display() override;
@@ -353,15 +364,24 @@ void FireworksDemo::create(unsigned type, unsigned number, const Firework *paren
 }
 
 void FireworksDemo::update() {
-  // Find the duration of the last frame in seconds
-  float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
-  if (duration <= 0.0f)
-    return;
+  // SAKBox: in fixed steps (see FixedSteps), where it ran a step as long as
+  // each frame
+  highestBurst.reset();
+  runDueSteps([this](cyclone::real_duration seconds) { step(seconds); });
 
-  // SAKBox: where the highest burst this frame is, to crackle (one a frame:
-  // fireworks bursting together are one crackle; kept by value, as the
-  // payload can reuse the burst firework's slot)
-  std::optional<cyclone::Vector3> highestBurst;
+  // SAKBox: a crackle where the highest burst this frame is (one a frame:
+  // fireworks bursting together are one crackle). The camera looks along -z
+  // from z = 10, so the right of the screen is +x
+  if (highestBurst) {
+    const float across = static_cast<float>(highestBurst->x) / 8.0f;
+    sounds.play("crackle", {.volume = 0.8f, .pan = panAcross(across)});
+    sounds.play("blast", {.volume = 0.25f, .pan = panAcross(across), .pitch = 1.5f});
+  }
+
+  Application::update();
+}
+
+void FireworksDemo::step(cyclone::real_duration duration) {
   for (Firework *firework = fireworks; firework < fireworks + maxFireworks; firework++) {
     // Check if we need to process this firework.
     if (firework->type > 0) {
@@ -369,6 +389,8 @@ void FireworksDemo::update() {
       if (firework->update(duration)) {
         // Find the appropriate rule
         FireworkRule *rule = rules + (firework->type - 1);
+        // SAKBox: kept by value, as the payload can reuse the burst
+        // firework's slot
         if (rule->payloadCount > 0 && firework->getPosition().y > 0 &&
             (!highestBurst || firework->getPosition().y > highestBurst->y))
           highestBurst = firework->getPosition();
@@ -387,14 +409,6 @@ void FireworksDemo::update() {
       }
     }
   }
-  // The camera looks along -z from z = 10, so the right of the screen is +x
-  if (highestBurst) {
-    const float across = static_cast<float>(highestBurst->x) / 8.0f;
-    sounds.play("crackle", {.volume = 0.8f, .pan = panAcross(across)});
-    sounds.play("blast", {.volume = 0.25f, .pan = panAcross(across), .pitch = 1.5f});
-  }
-
-  Application::update();
 }
 
 void FireworksDemo::display() {
@@ -440,7 +454,7 @@ void FireworksDemo::display() {
         break;
       };
 
-      const cyclone::Vector3 &pos = firework->getPosition();
+      const cyclone::Vector3 pos = firework->getBlendedPosition(drawFraction());
       glVertex3f(pos.x - size, pos.y - size, pos.z);
       glVertex3f(pos.x + size, pos.y - size, pos.z);
       glVertex3f(pos.x + size, pos.y + size, pos.z);

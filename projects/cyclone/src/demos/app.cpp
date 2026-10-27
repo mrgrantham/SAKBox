@@ -12,6 +12,7 @@
 #include "app.h"
 #include "ogl_headers.h"
 #include "timing.h"
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -58,6 +59,32 @@ void Application::update() {
   sounds.update();
 }
 
+void Application::runDueSteps(const std::function<void(cyclone::real_duration)> &step) {
+  const unsigned steps = physicsClock.stepsFor(TimingData::get().lastFrameDuration * 0.001);
+  const auto start = std::chrono::steady_clock::now();
+  for (unsigned i = 0; i < steps; ++i)
+    step(physicsClock.stepSeconds());
+  const double took =
+      std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+  physicsMilliseconds += 0.05 * (took - physicsMilliseconds);
+}
+
+void Application::renderPhysicsSteps() {
+  char subSteps[48] = "";
+  if (usesSubSteps())
+    std::snprintf(subSteps, sizeof subSteps, ", %u sub-step%s each ([ ])", physicsClock.subSteps(),
+                  physicsClock.subSteps() == 1 ? "" : "s");
+  char text[160];
+  std::snprintf(text, sizeof text, "Physics: %d steps a second%s, drawn %s (B), %.2f ms a frame",
+                static_cast<int>(std::lround(1 / physicsClock.stepSeconds())), subSteps,
+                blendDrawing ? "blended" : "unblended", physicsMilliseconds);
+  // On a panel, as the sound's state is, so it reads over any scene
+  const float margin = 2;
+  const float textWidth = (float)stb_easy_font_width(text);
+  renderPanel(width / pixelScale - textWidth - 10.0f - margin, soundStateHeight + 23.0f + margin,
+              margin, text);
+}
+
 std::string Application::soundState() {
   if (!sounds.playing())
     return "No sound: " + sounds.error();
@@ -89,7 +116,8 @@ void Application::mouseDrag(int x, int y) {}
 
 // The following methods aren't intended to be overloaded
 void Application::renderOverlay() {
-  // SAKBox: the sound's state, bottom right
+  // SAKBox: the physics' steps, above the sound's state, bottom right
+  renderPhysicsSteps();
   const std::string state = soundState();
   const float stateMargin = 2;
   const float stateWidth = (float)stb_easy_font_width(const_cast<char *>(state.c_str()));
@@ -99,7 +127,9 @@ void Application::renderOverlay() {
   const char *description = getDescription();
   if (!description)
     return;
-  std::string text = showOverlay ? std::string(description) + "\n\nH: hide   V: sound on/off"
+  std::string text = showOverlay ? std::string(description) +
+                                       "\n\nH: hide   V: sound on/off   B: blend drawing" +
+                                       (usesSubSteps() ? "   [ ]: fewer/more sub-steps" : "")
                                  : std::string("H: what is this demo?");
   // 8 points in from the top-left corner
   const float inset = 8;
@@ -216,7 +246,7 @@ void MassAggregateApplication::display() {
   for (cyclone::ParticleWorld::Particles::iterator p = particles.begin(); p != particles.end();
        p++) {
     cyclone::Particle *particle = *p;
-    const cyclone::Vector3 &pos = particle->getPosition();
+    const cyclone::Vector3 pos = particle->getBlendedPosition(drawFraction());
     glPushMatrix();
     glTranslatef(pos.x, pos.y, pos.z);
     solidSphere(0.1f, 20, 10);
@@ -225,16 +255,15 @@ void MassAggregateApplication::display() {
 }
 
 void MassAggregateApplication::update() {
-  // Clear accumulators
-  world.startFrame();
-
-  // Find the duration of the last frame in seconds
-  float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
-  if (duration <= 0.0f)
-    return;
-
-  // Run the simulation
-  world.runPhysics(duration);
+  // SAKBox: in fixed steps and sub-steps (see FixedSteps), where it ran a
+  // step as long as each frame
+  runDueSteps([this](cyclone::real_duration seconds) {
+    world.setSubSteps(physicsClock.subSteps());
+    // Clear accumulators
+    world.startFrame();
+    // Run the simulation
+    world.runPhysics(seconds);
+  });
 
   Application::update();
 }
@@ -316,23 +345,7 @@ std::string RigidBodyApplication::soundState() {
          std::to_string(impacts.dropped()) + " too quiet to fit";
 }
 
-void RigidBodyApplication::renderPhysicsSteps() {
-  char text[128];
-  std::snprintf(
-      text, sizeof text,
-      "Physics: %d steps a second, %u sub-step%s each ([ ]), drawn %s (B), %.2f ms a frame",
-      static_cast<int>(std::lround(1 / physicsClock.stepSeconds())), physicsClock.subSteps(),
-      physicsClock.subSteps() == 1 ? "" : "s", blendDrawing ? "blended" : "unblended",
-      physicsMilliseconds);
-  const float textWidth = (float)stb_easy_font_width(text);
-  glColor3f(0.1f, 0.1f, 0.15f);
-  renderText(width / pixelScale - textWidth - 10.0f, 40.0f, text);
-}
-
-void RigidBodyApplication::renderCornerStatus() {
-  renderResolverMethod();
-  renderPhysicsSteps();
-}
+void RigidBodyApplication::renderCornerStatus() { renderResolverMethod(); }
 
 void RigidBodyApplication::drawDebug() {
   renderCornerStatus();
@@ -392,12 +405,6 @@ void RigidBodyApplication::key(unsigned char key) {
     getWorld().rememberPoses();
     return;
 
-  case 'B':
-  case 'b':
-    // SAKBox: draw blended between steps, or as the last step left them
-    blendDrawing = !blendDrawing;
-    return;
-
   case 'C':
   case 'c':
     // Toggle rendering of contacts
@@ -415,12 +422,6 @@ void RigidBodyApplication::key(unsigned char key) {
     autoPauseSimulation = true;
     pauseSimulation = false;
     break;
-
-  case '[':
-  case ']':
-    // SAKBox: fewer or more sub-steps a step
-    physicsClock.setSubSteps(physicsClock.subSteps() + (key == ']' ? 1 : -1));
-    return;
 
   case 'M':
   case 'm':

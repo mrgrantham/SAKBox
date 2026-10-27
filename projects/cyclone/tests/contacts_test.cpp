@@ -372,6 +372,65 @@ TEST(ParticleWorldTest, PendulumKeepsItsLengthAndPeriod) {
   EXPECT_NEAR(bottoms[2] - bottoms[0], period, 0.01 * period);
 }
 
+// Sub-steps are smaller steps: a pendulum swung at 60 steps a second in 10
+// sub-steps each swings exactly as one at 600 whole steps a second, and a
+// force added by hand acts through every sub-step, as it would through the
+// whole step.
+TEST(ParticleWorldTest, SubStepsAreSmallerSteps) {
+  struct Pendulum {
+    ParticleWorld world{10};
+    std::unique_ptr<Particle> bob = particleAt(Vector3(1, 0, 0));
+    ParticleRodConstraint rod;
+    Pendulum() {
+      bob->setAcceleration(Vector3::GRAVITY);
+      rod.particle = bob.get();
+      rod.anchor = Vector3(0, 0, 0);
+      rod.length = 1;
+      world.getParticles().push_back(bob.get());
+      world.getContactGenerators().push_back(&rod);
+    }
+  };
+  Pendulum whole, inSubSteps;
+  inSubSteps.world.setSubSteps(10);
+  for (int i = 0; i < 60; ++i) {
+    inSubSteps.world.startFrame();
+    inSubSteps.world.runPhysics(1.0 / 60);
+    for (int j = 0; j < 10; ++j) {
+      whole.world.startFrame();
+      whole.world.runPhysics(1.0 / 60 / 10);
+    }
+    ASSERT_NEAR(inSubSteps.bob->getPosition().x, whole.bob->getPosition().x, 1e-12) << i;
+    ASSERT_NEAR(inSubSteps.bob->getPosition().y, whole.bob->getPosition().y, 1e-12) << i;
+  }
+
+  ParticleWorld world(10);
+  auto pushed = particleAt(Vector3());
+  world.getParticles().push_back(pushed.get());
+  world.setSubSteps(4);
+  world.startFrame();
+  pushed->addForce(Vector3(60, 0, 0)); // 60 N on 1 kg for 1/60 s: 1 m/s
+  world.runPhysics(1.0 / 60);
+  EXPECT_NEAR(pushed->getVelocity().x, 1, 1e-9);
+}
+
+// Each step remembers where every particle started it, so it can be drawn
+// between there and where it is now; one never remembered is drawn where it
+// is.
+TEST(ParticleWorldTest, ParticlesAreDrawnBlendedBetweenSteps) {
+  ParticleWorld world(10);
+  auto particle = particleAt(Vector3(0, 5, 0));
+  particle->setAcceleration(Vector3::GRAVITY);
+  world.getParticles().push_back(particle.get());
+  EXPECT_EQ(particle->getBlendedPosition(0).y, 5);
+  world.startFrame();
+  world.runPhysics(1.0 / 60);
+  const double now = particle->getPosition().y;
+  EXPECT_LT(now, 5);
+  EXPECT_NEAR(particle->getBlendedPosition(0).y, 5, 1e-12);
+  EXPECT_NEAR(particle->getBlendedPosition(0.5).y, (5 + now) / 2, 1e-12);
+  EXPECT_NEAR(particle->getBlendedPosition(1).y, now, 1e-12);
+}
+
 // ---------------------------------------------------------------------------
 // The rigid-body world
 

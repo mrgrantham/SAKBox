@@ -24,6 +24,7 @@
 
 #include <functional>
 #include <span>
+#include <vector>
 
 namespace cyclone {
 
@@ -74,6 +75,12 @@ protected:
    */
   unsigned maxContacts;
 
+  /** SAKBox: see setSubSteps. */
+  unsigned subSteps = 1;
+
+  /** SAKBox: each particle's forces added by hand, kept for every sub-step. */
+  std::vector<Vector3> forcesAddedByHand;
+
 public:
   /**
    * Creates a new particle simulator that can handle up to the
@@ -103,8 +110,31 @@ public:
 
   /**
    * Processes all the physics for the particle world.
+   *
+   * SAKBox: one step of `duration`, in sub-steps (setSubSteps), each
+   * applying the force generators, integrating, and finding and resolving
+   * the contacts afresh: the book's step, run that many times shorter.
+   * (The rigid-body World finds its contacts once a step and follows them;
+   * particle contacts are cheap to find, and their generators are the
+   * demos' own code, so here each sub-step simply finds them again.) First
+   * it remembers each particle's position (Particle::rememberPosition), to
+   * draw it between this step and the next.
    */
   void runPhysics(real_duration duration);
+
+  /**
+   * SAKBox: runs each step in this many sub-steps of duration / count (1
+   * or more; 1 by default). Forces added to particles by hand before
+   * runPhysics act through every sub-step.
+   */
+  void setSubSteps(unsigned count) { subSteps = count > 0 ? count : 1; }
+  unsigned getSubSteps() const { return subSteps; }
+
+  /**
+   * SAKBox: remembers every particle's position as it is now (see
+   * Particle::rememberPosition), after placing them by hand.
+   */
+  void rememberPositions();
 
   /**
    * Initializes the world for a simulation frame. This clears
@@ -130,7 +160,7 @@ public:
   ParticleForceRegistry &getForceRegistry();
 
   /**
-   * SAKBox: called each step with the contacts found, before they're
+   * SAKBox: called each sub-step with the contacts found, before they're
    * resolved, as World's contactsFound is: for code that listens for hits,
    * such as sounds.
    */

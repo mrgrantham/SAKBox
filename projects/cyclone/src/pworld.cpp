@@ -57,23 +57,45 @@ void ParticleWorld::integrate(real_duration duration) {
   }
 }
 
+void ParticleWorld::rememberPositions() {
+  for (Particle *particle : particles)
+    particle->rememberPosition();
+}
+
 void ParticleWorld::runPhysics(real_duration duration) {
-  // First apply the force generators
-  registry.updateForces(duration);
+  rememberPositions();
+  // SAKBox: in sub-steps (see setSubSteps), each with the forces added by
+  // hand (integrating clears them)
+  const real_duration subStep = duration / subSteps;
+  if (subSteps > 1) {
+    forcesAddedByHand.clear();
+    for (Particle *particle : particles)
+      forcesAddedByHand.push_back(particle->getForceAccumulator());
+  }
+  for (unsigned i = 0; i < subSteps; ++i) {
+    if (i > 0)
+      for (size_t p = 0; p < particles.size(); ++p) {
+        particles[p]->clearAccumulator();
+        particles[p]->addForce(forcesAddedByHand[p]);
+      }
 
-  // Then integrate the objects
-  integrate(duration);
+    // First apply the force generators
+    registry.updateForces(subStep);
 
-  // Generate contacts
-  unsigned usedContacts = generateContacts();
-  if (contactsFound)
-    contactsFound({contacts, usedContacts}, duration);
+    // Then integrate the objects
+    integrate(subStep);
 
-  // And process them
-  if (usedContacts) {
-    if (calculateIterations)
-      resolver.setIterations(usedContacts * 2);
-    resolver.resolveContacts(contacts, usedContacts, duration);
+    // Generate contacts
+    unsigned usedContacts = generateContacts();
+    if (contactsFound)
+      contactsFound({contacts, usedContacts}, subStep);
+
+    // And process them
+    if (usedContacts) {
+      if (calculateIterations)
+        resolver.setIterations(usedContacts * 2);
+      resolver.resolveContacts(contacts, usedContacts, subStep);
+    }
   }
 }
 

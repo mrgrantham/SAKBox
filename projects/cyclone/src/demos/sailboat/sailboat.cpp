@@ -66,6 +66,9 @@ public:
   /** Update the particle positions. */
   void update() override;
 
+  /** SAKBox: one fixed step of `duration` (update runs those due) */
+  void step(cyclone::real_duration duration);
+
   /** Handle a key press. */
   void key(unsigned char key) override;
 };
@@ -143,9 +146,12 @@ void SailboatDemo::display() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
 
-  cyclone::Vector3 pos = sailboat.getPosition();
+  // SAKBox: the boat, and the camera following it, blended between steps
+  // (see Application::drawFraction)
+  const cyclone::Matrix4 transform = sailboat.getBlendedTransform(drawFraction());
+  cyclone::Vector3 pos = transform.getAxisVector(3);
   cyclone::Vector3 offset(4.0f, 0, 0);
-  offset = sailboat.getTransform().transformDirection(offset);
+  offset = transform.transformDirection(offset);
   gluLookAt(pos.x + offset.x, pos.y + 5.0f, pos.z + offset.z, pos.x, pos.y, pos.z, 0.0, 1.0, 0.0);
 
   glColor3f(0.6f, 0.6f, 0.6f);
@@ -162,7 +168,6 @@ void SailboatDemo::display() {
   glEnd();
 
   // Set the transform matrix for the aircraft
-  cyclone::Matrix4 transform = sailboat.getTransform();
   GLfloat gl_transform[16];
   transform.fillGLArray(gl_transform);
   glPushMatrix();
@@ -184,10 +189,20 @@ void SailboatDemo::display() {
 }
 
 void SailboatDemo::update() {
-  // Find the duration of the last frame in seconds
-  float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
-  if (duration <= 0.0f)
-    return;
+  // SAKBox: in fixed steps (see FixedSteps), where it ran a step as long as
+  // each frame
+  runDueSteps([this](cyclone::real_duration seconds) { step(seconds); });
+
+  // SAKBox: the wind, by how strong it is (it drifts about 1 to 4 m/s)
+  const float strength = std::clamp(static_cast<float>(windspeed.magnitude()) / 4.0f, 0.0f, 1.0f);
+  sounds.setLoop("wind", {.volume = 0.15f + 0.45f * strength, .pitch = 0.8f + 0.4f * strength});
+
+  Application::update();
+}
+
+void SailboatDemo::step(cyclone::real_duration duration) {
+  // SAKBox: drawn between where it was and where this step leaves it
+  sailboat.rememberPose();
 
   // Start with no forces or acceleration.
   sailboat.clearAccumulators();
@@ -200,12 +215,6 @@ void SailboatDemo::update() {
 
   // Change the wind speed.
   windspeed = windspeed * 0.9f + r.randomXZVector(1.0f);
-
-  // SAKBox: the wind, by how strong it is (it drifts about 1 to 4 m/s)
-  const float strength = std::clamp(static_cast<float>(windspeed.magnitude()) / 4.0f, 0.0f, 1.0f);
-  sounds.setLoop("wind", {.volume = 0.15f + 0.45f * strength, .pitch = 0.8f + 0.4f * strength});
-
-  Application::update();
 }
 
 const char *SailboatDemo::getTitle() { return "Cyclone > Sail Boat Demo"; }

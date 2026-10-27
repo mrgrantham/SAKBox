@@ -11,6 +11,7 @@
  */
 #include <algorithm>
 #include <cstdlib>
+#include <functional>
 
 #include "demo_sounds.h"
 #include "impact_sounds.h"
@@ -101,6 +102,50 @@ protected:
   /** SAKBox: the sound's state, for the bottom right. */
   virtual std::string soundState();
 
+  /**
+   * SAKBox: physics runs in fixed steps of physicsClock's length, whatever
+   * the frame rate (see FixedSteps), each in its sub-steps in demos whose
+   * world takes them (4 to start, FixedSteps::kDefaultSubSteps; [ and ]
+   * change how many)
+   */
+  FixedSteps physicsClock;
+
+  /** SAKBox: milliseconds of physics a frame, smoothed (for the corner) */
+  double physicsMilliseconds = 0;
+
+  /**
+   * SAKBox: whether bodies are drawn blended between their last two steps
+   * (B turns it off and on), so they move smoothly on screens whose frames
+   * don't fall on the steps, one step behind
+   */
+  bool blendDrawing = true;
+
+  /** SAKBox: whether the simulation is paused (it isn't, unless a demo says) */
+  virtual bool simulationPaused() const { return false; }
+
+  /**
+   * SAKBox: how far between their last step and now to draw the bodies
+   * and particles (cyclone::RigidBody::getBlendedGLTransform,
+   * cyclone::Particle::getBlendedPosition): how far the frame is into the
+   * next step, or 1 (where they are) when paused or not blending
+   */
+  cyclone::real drawFraction() const {
+    return simulationPaused() || !blendDrawing ? (cyclone::real)1
+                                               : (cyclone::real)physicsClock.stepFraction();
+  }
+
+  /**
+   * SAKBox: runs the fixed steps the last frame covers (physicsClock),
+   * calling `step` with each one's length, and times them for the corner
+   */
+  void runDueSteps(const std::function<void(cyclone::real_duration)> &step);
+
+  /**
+   * SAKBox: writes the steps a second, the sub-steps, whether drawing is
+   * blended and the time physics takes a frame, above the sound
+   */
+  void renderPhysicsSteps();
+
   /** SAKBox: pan (-0.8 left to 0.8 right) for something `across` of the way across the screen (-1
    * to 1). */
   static float panAcross(float across) { return 0.8f * std::clamp(across, -1.0f, 1.0f); }
@@ -129,6 +174,21 @@ public:
 
   /** SAKBox: turns sound off or on (the V key). */
   void toggleSound() { sounds.setEnabled(!sounds.enabled()); }
+
+  /** SAKBox: whether the demo's world takes sub-steps ([ and ] set them) */
+  virtual bool usesSubSteps() const { return false; }
+
+  /** SAKBox: turns drawing blended between steps off or on (the B key). */
+  void toggleBlending() { blendDrawing = !blendDrawing; }
+
+  /**
+   * SAKBox: takes `change` more sub-steps a step, if the demo's world takes
+   * them (the [ and ] keys)
+   */
+  void changeSubSteps(int change) {
+    if (usesSubSteps())
+      physicsClock.setSubSteps(physicsClock.subSteps() + change);
+  }
 
   /**
    * SAKBox: draws the description over the scene, and the sound's state
@@ -254,6 +314,9 @@ public:
   /** Update the particle positions. */
   void update() override;
 
+  /** SAKBox: the particle world takes sub-steps */
+  bool usesSubSteps() const override { return true; }
+
   /** Sets up the graphic rendering. */
   void initGraphics() override;
 
@@ -265,8 +328,7 @@ public:
 // overlays (see Application::getDescription)
 #define RIGID_BODY_KEYS                                                                            \
   "P: run/pause   Space: one step   R: reset   C: contacts   Drag: camera\n"                       \
-  "M: switch contact resolver (shown bottom right)\n"                                              \
-  "[ ]: fewer/more physics sub-steps   B: blend drawing between steps"
+  "M: switch contact resolver (shown bottom right)"
 
 /**
  * This application adds additional functionality used in many of the
@@ -332,32 +394,11 @@ protected:
   /** Pauses the simulation after the next frame automatically */
   bool autoPauseSimulation;
 
-  /**
-   * SAKBox: physics runs in fixed steps of physicsClock's length, each in
-   * its sub-steps (4 to start, FixedSteps::kDefaultSubSteps; [ and ] change
-   * how many), whatever the frame rate
-   */
-  FixedSteps physicsClock;
+  /** SAKBox: paused with P, and while stepping once with Space */
+  bool simulationPaused() const override { return pauseSimulation; }
 
-  /**
-   * SAKBox: whether bodies are drawn blended between their last two steps
-   * (B turns it off and on), so they move smoothly on screens whose frames
-   * don't fall on the steps, one step behind
-   */
-  bool blendDrawing = true;
-
-  /**
-   * SAKBox: how far between their last step and now to draw the bodies
-   * (cyclone::RigidBody::getBlendedGLTransform): how far the frame is into
-   * the next step, or 1 (where they are) when paused or not blending
-   */
-  cyclone::real drawFraction() const {
-    return pauseSimulation || !blendDrawing ? (cyclone::real)1
-                                            : (cyclone::real)physicsClock.stepFraction();
-  }
-
-  /** SAKBox: milliseconds of physics a frame, smoothed (for the corner) */
-  double physicsMilliseconds = 0;
+  /** SAKBox: the world takes sub-steps */
+  bool usesSubSteps() const override { return true; }
 
   /**
    * SAKBox: called before each step, after its forces are cleared (forces
@@ -383,12 +424,6 @@ protected:
    * calls it.
    */
   void renderResolverMethod();
-
-  /**
-   * SAKBox: writes the sub-steps a step and the time physics takes a frame,
-   * above the sound (which renderOverlay writes).
-   */
-  void renderPhysicsSteps();
 
   /**
    * SAKBox: the bottom-right corner: the resolver and the steps. drawDebug()

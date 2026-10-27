@@ -178,20 +178,23 @@ void PlatformDemo::updateAdditionalMass() {
 
   // Add the proportion to the correct masses
   particleArray[2].setMass(BASE_MASS + EXTRA_MASS * (1 - xp) * (1 - zp));
-  massDisplayPos.addScaledVector(particleArray[2].getPosition(), (1 - xp) * (1 - zp));
+  massDisplayPos.addScaledVector(particleArray[2].getBlendedPosition(drawFraction()),
+                                 (1 - xp) * (1 - zp));
 
   if (xp > 0) {
     particleArray[4].setMass(BASE_MASS + EXTRA_MASS * xp * (1 - zp));
-    massDisplayPos.addScaledVector(particleArray[4].getPosition(), xp * (1 - zp));
+    massDisplayPos.addScaledVector(particleArray[4].getBlendedPosition(drawFraction()),
+                                   xp * (1 - zp));
 
     if (zp > 0) {
       particleArray[5].setMass(BASE_MASS + EXTRA_MASS * xp * zp);
-      massDisplayPos.addScaledVector(particleArray[5].getPosition(), xp * zp);
+      massDisplayPos.addScaledVector(particleArray[5].getBlendedPosition(drawFraction()), xp * zp);
     }
   }
   if (zp > 0) {
     particleArray[3].setMass(BASE_MASS + EXTRA_MASS * (1 - xp) * zp);
-    massDisplayPos.addScaledVector(particleArray[3].getPosition(), (1 - xp) * zp);
+    massDisplayPos.addScaledVector(particleArray[3].getBlendedPosition(drawFraction()),
+                                   (1 - xp) * zp);
   }
 }
 
@@ -202,8 +205,8 @@ void PlatformDemo::display() {
   glColor3f(0, 0, 1);
   for (unsigned i = 0; i < ROD_COUNT; i++) {
     cyclone::Particle **particles = rods[i].particle;
-    const cyclone::Vector3 &p0 = particles[0]->getPosition();
-    const cyclone::Vector3 &p1 = particles[1]->getPosition();
+    const cyclone::Vector3 &p0 = particles[0]->getBlendedPosition(drawFraction());
+    const cyclone::Vector3 &p1 = particles[1]->getBlendedPosition(drawFraction());
     glVertex3f(p0.x, p0.y, p0.z);
     glVertex3f(p1.x, p1.y, p1.z);
   }

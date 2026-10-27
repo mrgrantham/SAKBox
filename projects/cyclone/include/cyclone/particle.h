@@ -120,6 +120,14 @@ protected:
   Vector3 forceAccum;
 
   /**
+   * SAKBox: the particle's position at the start of the last step (see
+   * rememberPosition), for drawing it between steps, and whether it has
+   * been remembered since the particle was made.
+   */
+  Vector3 previousPosition;
+  bool positionRemembered = false;
+
+  /**
    * Holds the acceleration of the particle.  This value
    * can be used to set acceleration due to gravity (its primary
    * use), or any other constant acceleration.
@@ -347,6 +355,28 @@ public:
    * particle.
    */
   /*@{*/
+
+  /**
+   * SAKBox: remembers where the particle is now, to draw it between here
+   * and where the next step leaves it (getBlendedPosition), as
+   * RigidBody::rememberPose does for a body. ParticleWorld calls it for
+   * its particles at the start of every step; call it for particles
+   * stepped by hand, and after placing one by hand.
+   */
+  void rememberPosition();
+
+  /**
+   * SAKBox: where the particle is `fraction` of the way from its
+   * remembered position to where it is now (see
+   * RigidBody::getBlendedPosition). Until a position is remembered, where
+   * it is.
+   */
+  Vector3 getBlendedPosition(real fraction) const;
+
+  /**
+   * SAKBox: the forces added since the accumulator was last cleared.
+   */
+  const Vector3 &getForceAccumulator() const { return forceAccum; }
 
   /**
    * Clears the forces applied to the particle. This will be

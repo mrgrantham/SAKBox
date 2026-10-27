@@ -41,10 +41,9 @@ class BallisticDemo : public Application {
     ShotType type;
     unsigned startTime;
 
-    /** Draws the round. */
-    void render() {
-      cyclone::Vector3 position;
-      particle.getPosition(&position);
+    /** Draws the round, `fraction` of the way from its last step to now. */
+    void render(cyclone::real fraction) {
+      const cyclone::Vector3 position = particle.getBlendedPosition(fraction);
 
       glColor3f(0, 0, 0);
       glPushMatrix();
@@ -95,6 +94,9 @@ public:
 
   /** Update the particle positions. */
   void update() override;
+
+  /** SAKBox: one fixed step of `duration` (update runs those due) */
+  void step(cyclone::real_duration duration);
 
   /** Display the particle positions. */
   void display() override;
@@ -191,18 +193,23 @@ void BallisticDemo::fire() {
 
   // Clear the force accumulators
   shot->particle.clearAccumulator();
+  // SAKBox: drawn from the gun, not sliding from where the round last was
+  shot->particle.rememberPosition();
 }
 
 void BallisticDemo::update() {
-  // Find the duration of the last frame in seconds
-  float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
-  if (duration <= 0.0f)
-    return;
+  // SAKBox: in fixed steps (see FixedSteps), where it ran a step as long as
+  // each frame
+  runDueSteps([this](cyclone::real_duration seconds) { step(seconds); });
+  Application::update();
+}
 
+void BallisticDemo::step(cyclone::real_duration duration) {
   // Update the physics of each particle in turn
   for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
     if (shot->type != UNUSED) {
-      // Run the physics
+      // Run the physics, drawn between where it was and where it gets to
+      shot->particle.rememberPosition();
       shot->particle.integrate(duration);
 
       // SAKBox: artillery booms where it lands, quieter the farther off
@@ -222,8 +229,6 @@ void BallisticDemo::update() {
       }
     }
   }
-
-  Application::update();
 }
 
 void BallisticDemo::display() {
@@ -256,7 +261,7 @@ void BallisticDemo::display() {
   // Render each particle in turn
   for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
     if (shot->type != UNUSED) {
-      shot->render();
+      shot->render(drawFraction());
     }
   }
 
