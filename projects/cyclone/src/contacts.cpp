@@ -15,6 +15,7 @@
 #include <cyclone/contacts.h>
 #include <cyclone/joints.h>
 #include <memory.h>
+#include <tuple>
 #include <utility>
 
 using namespace cyclone;
@@ -491,6 +492,7 @@ void ContactResolver::resolveContacts(Contact *contacts, unsigned numContacts, r
                                       std::span<Joint *const> joints) {
   if (!isValid())
     return;
+  bodySlots.clear();
 
   if (method == Method::sequentialImpulses) {
     if (numContacts == 0 && joints.empty())
@@ -643,54 +645,84 @@ void ContactResolver::adjustPositions(Contact *c, unsigned numContacts, real dur
   }
 }
 
+ContactResolver::BodySlot &ContactResolver::slotOf(RigidBody *body) {
+  const unsigned slot = body->getResolverSlot();
+  if (slot < bodySlots.size() && bodySlots[slot].body == body)
+    return bodySlots[slot];
+  body->setResolverSlot(static_cast<unsigned>(bodySlots.size()));
+  return bodySlots.emplace_back(BodySlot{.body = body});
+}
+
+void ContactResolver::rememberStart(RigidBody *body) {
+  BodySlot &slot = slotOf(body);
+  if (!slot.hasStart) {
+    slot.start = Motion{body->getVelocity(), body->getRotation()};
+    slot.hasStart = true;
+  }
+}
+
 void ContactResolver::sleepInGroups(Contact *contacts, unsigned numContacts,
                                     std::span<Joint *const> joints) {
   // Join the movable bodies each contact touches, union-find style: each
-  // body points towards the body that names its group
-  groupParent.clear();
-  auto groupOf = [this](RigidBody *body) {
-    RigidBody *root = body;
-    while (groupParent[root] != root)
-      root = groupParent[root];
-    // Point each body on the way straight at the root, so later lookups
+  // body's slot points towards the slot of the body that names its group
+  auto addToGroups = [this](RigidBody *body) {
+    if (!body || !body->hasFiniteMass())
+      return;
+    BodySlot &slot = slotOf(body);
+    if (!slot.inGroups) {
+      slot.inGroups = true;
+      slot.groupParent = body->getResolverSlot();
+      slot.groupSize = 0;
+      slot.groupSettled = true;
+    }
+  };
+  auto groupOf = [this](unsigned slot) {
+    unsigned root = slot;
+    while (bodySlots[root].groupParent != root)
+      root = bodySlots[root].groupParent;
+    // Point each slot on the way straight at the root, so later lookups
     // are quick
-    while (body != root)
-      body = std::exchange(groupParent[body], root);
+    while (slot != root)
+      slot = std::exchange(bodySlots[slot].groupParent, root);
     return root;
   };
   for (unsigned i = 0; i < numContacts; i++)
     for (RigidBody *body : contacts[i].body)
-      if (body && body->hasFiniteMass())
-        groupParent.try_emplace(body, body);
+      addToGroups(body);
   // SAKBox: bodies joined by a joint are in the same group too
   for (const Joint *joint : joints)
     for (RigidBody *body : joint->body)
-      if (body && body->hasFiniteMass())
-        groupParent.try_emplace(body, body);
+      addToGroups(body);
   auto join = [&](RigidBody *one, RigidBody *two) {
     if (one && two && one->hasFiniteMass() && two->hasFiniteMass())
-      groupParent[groupOf(one)] = groupOf(two);
+      bodySlots[groupOf(one->getResolverSlot())].groupParent = groupOf(two->getResolverSlot());
   };
   for (unsigned i = 0; i < numContacts; i++)
     join(contacts[i].body[0], contacts[i].body[1]);
   for (const Joint *joint : joints)
     join(joint->body[0], joint->body[1]);
 
-  // Tally each group: its size, and whether every body in it has settled
-  groups.clear();
-  for (const auto &[body, parent] : groupParent) {
-    ContactGroup &group = groups[groupOf(body)];
-    group.size++;
+  // Tally each group, in the slot that names it: its size, and whether
+  // every body in it has settled
+  for (unsigned i = 0; i < bodySlots.size(); i++) {
+    if (!bodySlots[i].inGroups)
+      continue;
+    BodySlot &group = bodySlots[groupOf(i)];
+    group.groupSize++;
+    const RigidBody *body = bodySlots[i].body;
     if (!body->getCanSleep() || (body->getAwake() && body->getMotion() >= sleepEpsilon))
-      group.settled = false;
+      group.groupSettled = false;
   }
 
-  for (const auto &[body, parent] : groupParent) {
-    const ContactGroup &group = groups[groupOf(body)];
-    body->setInContactGroup(group.size > 1);
-    if (group.size == 1)
+  for (unsigned i = 0; i < bodySlots.size(); i++) {
+    if (!bodySlots[i].inGroups)
       continue;
-    if (group.settled && body->getAwake())
+    const BodySlot &group = bodySlots[groupOf(i)];
+    RigidBody *body = bodySlots[i].body;
+    body->setInContactGroup(group.groupSize > 1);
+    if (group.groupSize == 1)
+      continue;
+    if (group.groupSettled && body->getAwake())
       body->setAwake(false);
   }
 }
@@ -763,13 +795,16 @@ Vector3 pointNow(const RigidBody *body, const Vector3 &local) {
 } // namespace
 
 Vector3 ContactResolver::takeKeptImpulse(const Contact &contact) {
-  const auto kept = lastImpulses.find({contact.body[0], contact.body[1]});
-  if (kept == lastImpulses.end())
+  const auto kept = std::ranges::equal_range(
+      lastImpulses,
+      std::pair<const RigidBody *, const RigidBody *>(contact.body[0], contact.body[1]),
+      std::less{}, &KeptImpulse::bodies);
+  if (kept.empty())
     return Vector3();
   const Vector3 localPoint = contact.body[0]->getPointInLocalSpace(contact.contactPoint);
   KeptImpulse *nearest = nullptr;
   real nearestDistance = warmStartMatchDistance * warmStartMatchDistance;
-  for (KeptImpulse &candidate : kept->second) {
+  for (KeptImpulse &candidate : kept) {
     const real distance = (candidate.localPoint - localPoint).squareMagnitude();
     if (!candidate.taken && distance < nearestDistance) {
       nearestDistance = distance;
@@ -812,7 +847,6 @@ void ContactResolver::resolveTogether(Contact *contacts, unsigned numContacts, r
   // Set up each contact that a movable body takes part in, and note each
   // such body's velocities: integrate() has already moved it by them
   solverContacts.clear();
-  startVelocities.clear();
   for (unsigned i = 0; i < numContacts; i++) {
     Contact &contact = contacts[i];
     SolverContact solverContact{
@@ -822,7 +856,7 @@ void ContactResolver::resolveTogether(Contact *contacts, unsigned numContacts, r
       continue;
     for (RigidBody *body : solverContact.movable)
       if (body)
-        startVelocities.try_emplace(body, Motion{body->getVelocity(), body->getRotation()});
+        rememberStart(body);
 
     const Vector3 *offset = contact.relativeContactPosition;
     solverContact.normal = contact.contactNormal;
@@ -887,8 +921,10 @@ void ContactResolver::resolveTogether(Contact *contacts, unsigned numContacts, r
   // integrate()). This also undoes the step's fall into whatever it rests
   // on, and since the resolved velocities respect friction, so does the
   // move: there's no sideways slip for friction to miss.
-  for (auto &[body, start] : startVelocities)
-    moveBy(body, body->getVelocity() - start.linear, body->getRotation() - start.angular, duration);
+  for (const BodySlot &slot : bodySlots)
+    if (slot.hasStart)
+      moveBy(slot.body, slot.body->getVelocity() - slot.start.linear,
+             slot.body->getRotation() - slot.start.angular, duration);
 
   // Settle: contacts the move has just brought together end the step still
   // (or bouncing), rather than closing as fast as they did to get there;
@@ -917,10 +953,15 @@ void ContactResolver::resolveTogether(Contact *contacts, unsigned numContacts, r
   lastImpulses.clear();
   for (const SolverContact &solverContact : solverContacts) {
     const Contact &contact = *solverContact.contact;
-    lastImpulses[{contact.body[0], contact.body[1]}].push_back(
-        {.localPoint = contact.body[0]->getPointInLocalSpace(contact.contactPoint),
+    lastImpulses.push_back(
+        {.bodies = {contact.body[0], contact.body[1]},
+         .order = static_cast<unsigned>(lastImpulses.size()),
+         .localPoint = contact.body[0]->getPointInLocalSpace(contact.contactPoint),
          .impulse = solverContact.impulse()});
   }
+  std::ranges::sort(lastImpulses, [](const KeptImpulse &a, const KeptImpulse &b) {
+    return std::tie(a.bodies, a.order) < std::tie(b.bodies, b.order);
+  });
 }
 
 real ContactResolver::overlapNow(const SolverContact &solverContact, real duration) const {
@@ -996,11 +1037,14 @@ void ContactResolver::removeOverlap(real duration) {
   // like the velocity sweeps, but along the normal only. They move the
   // bodies, and then are dropped, so removing overlap doesn't set bodies
   // moving.
-  separatingVelocities.clear();
+  for (BodySlot &slot : bodySlots) {
+    slot.separates = false;
+    slot.separating = Motion{};
+  }
   for (SolverContact &solverContact : solverContacts) {
     for (RigidBody *body : solverContact.movable)
       if (body)
-        separatingVelocities.try_emplace(body);
+        slotOf(body).separates = true;
     solverContact.targetSeparatingSpeed =
         std::min(std::max(overlapNow(solverContact, duration) - positionEpsilon, (real)0) *
                      overlapCorrection,
@@ -1018,7 +1062,7 @@ void ContactResolver::removeOverlap(real duration) {
       real separatingSpeed = 0;
       for (int b = 0; b < 2; b++)
         if (RigidBody *body = solverContact.movable[b]) {
-          const Motion &motion = separatingVelocities[body];
+          const Motion &motion = slotOf(body).separating;
           const real speed =
               pointVelocity(offset[b], motion.linear, motion.angular) * solverContact.normal;
           separatingSpeed += b == 0 ? speed : -speed;
@@ -1031,7 +1075,7 @@ void ContactResolver::removeOverlap(real duration) {
           solverContact.normal * (positionImpulse - solverContact.positionImpulse);
       for (int b = 0; b < 2; b++)
         if (RigidBody *body = solverContact.movable[b]) {
-          Motion &motion = separatingVelocities[body];
+          Motion &motion = slotOf(body).separating;
           addImpulse(body, offset[b], b == 0 ? change : change * -1, motion.linear, motion.angular);
         }
       solverContact.positionImpulse = positionImpulse;
@@ -1039,8 +1083,9 @@ void ContactResolver::removeOverlap(real duration) {
     sweepJointPositions();
   }
 
-  for (auto &[body, motion] : separatingVelocities)
-    moveBy(body, motion.linear, motion.angular, duration);
+  for (const BodySlot &slot : bodySlots)
+    if (slot.separates)
+      moveBy(slot.body, slot.separating.linear, slot.separating.angular, duration);
 }
 
 // SAKBox: joints when resolving contacts together
@@ -1129,7 +1174,7 @@ void ContactResolver::setUpJoints(std::span<Joint *const> joints, real duration)
       continue;
     for (RigidBody *body : solverJoint.movable)
       if (body)
-        startVelocities.try_emplace(body, Motion{body->getVelocity(), body->getRotation()});
+        rememberStart(body);
 
     Vector3 anchor[2];
     for (int end = 0; end < 2; end++) {
@@ -1142,7 +1187,7 @@ void ContactResolver::setUpJoints(std::span<Joint *const> joints, real duration)
     const auto startVelocity = [this](RigidBody *body, const Vector3 &offset) {
       if (!body)
         return Vector3();
-      const Motion &start = startVelocities[body];
+      const Motion &start = slotOf(body).start;
       return pointVelocity(offset, start.linear, start.angular);
     };
     const Vector3 relativeVelocity = startVelocity(solverJoint.movable[1], solverJoint.offset[1]) -
@@ -1204,7 +1249,7 @@ void ContactResolver::setUpAngularConstraints(std::span<Joint *const> joints, re
       // (From the velocities integrate() moved them by: the anchors' warm
       // start has already changed them)
       solver.startSpeed = relativeTurning(
-          movable, axis, [this](RigidBody *body) { return startVelocities[body].angular; });
+          movable, axis, [this](RigidBody *body) { return slotOf(body).start.angular; });
       switch (solver.constraint.kind) {
       case Kind::hold:
         // No turning about the axis, twisting either way
@@ -1310,7 +1355,7 @@ void ContactResolver::setJointPositionTargets(real duration) {
   for (SolverJoint &solverJoint : solverJoints) {
     for (RigidBody *body : solverJoint.movable)
       if (body)
-        separatingVelocities.try_emplace(body);
+        slotOf(body).separates = true;
     solverJoint.positionImpulse = Vector3();
     solverJoint.positionImpulseAlong = 0;
     const Joint &joint = *solverJoint.joint;
@@ -1373,7 +1418,7 @@ void ContactResolver::setJointPositionTargets(real duration) {
 
 void ContactResolver::sweepJointPositions() {
   auto moveVelocity = [this](RigidBody *body, const Vector3 &linear, const Vector3 &angular) {
-    Motion &motion = separatingVelocities[body];
+    Motion &motion = slotOf(body).separating;
     motion.linear += linear;
     motion.angular += angular;
   };
@@ -1381,7 +1426,7 @@ void ContactResolver::sweepJointPositions() {
     Vector3 relativeVelocity;
     for (int end = 0; end < 2; end++)
       if (RigidBody *body = solverJoint.movable[end]) {
-        const Motion &motion = separatingVelocities[body];
+        const Motion &motion = slotOf(body).separating;
         const Vector3 velocity =
             pointVelocity(solverJoint.offset[end], motion.linear, motion.angular);
         relativeVelocity += end == 1 ? velocity : velocity * -1;
@@ -1404,7 +1449,7 @@ void ContactResolver::sweepJointPositions() {
 
   // Holds keep the axes in line (turning either way); limits only turn the
   // bodies back from beyond them
-  const auto moveSpin = [this](RigidBody *body) { return separatingVelocities[body].angular; };
+  const auto moveSpin = [this](RigidBody *body) { return slotOf(body).separating.angular; };
   for (SolverAngularConstraint &solver : solverAngularConstraints) {
     const bool hold = solver.constraint.kind == AngularConstraint::Kind::hold;
     if (!hold && solver.positionTargetSpeed <= 0)

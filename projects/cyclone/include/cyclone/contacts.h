@@ -27,9 +27,7 @@
 #define CYCLONE_CONTACTS_H
 
 #include "body.h"
-#include <map>
 #include <span>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -351,18 +349,6 @@ protected:
    */
   real positionEpsilon;
 
-  /**
-   * SAKBox: scratch space for sleepInGroups. Their contents are only used
-   * within one call; they are members so their memory is reused each step
-   * rather than allocated afresh.
-   */
-  struct ContactGroup {
-    unsigned size = 0;
-    bool settled = true;
-  };
-  std::unordered_map<RigidBody *, RigidBody *> groupParent;
-  std::unordered_map<RigidBody *, ContactGroup> groups;
-
 public:
   /**
    * SAKBox: how a set of contacts is resolved.
@@ -572,25 +558,59 @@ protected:
   };
 
   /**
-   * SAKBox: each movable body's velocities when integrate() moved it this
-   * step, and the velocities the position sweeps use (they only move the
-   * bodies, then are dropped).
+   * SAKBox: what the resolver keeps for each body it works on in a call, in
+   * a slot the body points back at (RigidBody::resolverSlot), so a body's
+   * slot is found by reading one field. (They were maps keyed by the body,
+   * and looking bodies up took a tenth of the resolver's time; on the DS
+   * each hash also cost a software division.) The slots are cleared each
+   * call and their memory reused.
    */
-  std::unordered_map<RigidBody *, Motion> startVelocities;
-  std::unordered_map<RigidBody *, Motion> separatingVelocities;
+  struct BodySlot {
+    RigidBody *body;
+    // The velocities when integrate() moved the body this step (only for
+    // bodies that move in response to contacts or joints)
+    bool hasStart = false;
+    Motion start;
+    // The velocities the position sweeps use: they only move the bodies,
+    // then are dropped
+    bool separates = false;
+    Motion separating;
+    // sleepInGroups: the slot towards the one that names the body's group
+    // (union-find), and that group's tally
+    unsigned groupParent = 0;
+    bool inGroups = false;
+    unsigned groupSize = 0;
+    bool groupSettled = true;
+  };
+  std::vector<BodySlot> bodySlots;
+
+  /** SAKBox: `body`'s slot this call, given one if it has none yet. */
+  BodySlot &slotOf(RigidBody *body);
+
+  /**
+   * SAKBox: notes the velocities `body` has now as those integrate() moved
+   * it by, unless it has them already.
+   */
+  void rememberStart(RigidBody *body);
 
   /**
    * SAKBox: the total impulse each contact applied last step (in world
    * coordinates), and where it was on the first body (in that body's
-   * coordinates), by pair of bodies, for warm starting.
+   * coordinates), for warm starting: sorted by the pair of bodies, so a
+   * pair's are found by a binary search. (A flat list, refilled each step
+   * in the memory it already has; it was a map of lists, allocated afresh
+   * each step.)
    */
   struct KeptImpulse {
+    std::pair<const RigidBody *, const RigidBody *> bodies;
+    // Its contact's place among the step's, so a pair's stay in that order
+    unsigned order;
     Vector3 localPoint;
     Vector3 impulse;
     // Whether a contact this step has already taken it
     bool taken = false;
   };
-  std::map<std::pair<const RigidBody *, const RigidBody *>, std::vector<KeptImpulse>> lastImpulses;
+  std::vector<KeptImpulse> lastImpulses;
 
 public:
   /**

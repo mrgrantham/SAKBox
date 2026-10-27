@@ -197,18 +197,18 @@ It builds Cyclone in Q16.16 fixed point: `real` is flexmath's `FlexPoint16` (`CY
 
 | Steps a second | Sub-steps | Resolver sweeps (velocity/settle/position) | `float` | Q16.16 | Real time Q16.16 manages |
 | --- | --- | --- | --- | --- | --- |
-| 60 | 1 | 40/10/10 (Cyclone's own) | 122 | 33.0 | 0.50x |
-| 60 | 2 | 8/2/2 (what it runs with) | 87 | 24.9 | 0.67x |
-| 60 | 4 | 4/1/1 | 131 | 38.1 | 0.44x |
-| 30 | 2 | 8/2/2 | 85 | 23.6 | 1.4x |
+| 60 | 1 | 40/10/10 (Cyclone's own) | 122 | 29.1 | 0.57x |
+| 60 | 2 | 8/2/2 (what it runs with) | 87 | 19.3 | 0.86x |
+| 60 | 4 | 4/1/1 | 131 | 27.6 | 0.60x |
+| 30 | 2 | 8/2/2 | 85 | 18.2 | 1.8x |
 
-- A sub-step at 8/2/2 sweeps takes 1.0 ms to move the bones, 1.5 ms to find contacts and 9.8 ms to resolve them (5, 6 and 32 ms in `float`).
+- A sub-step at 8/2/2 sweeps takes 1.0 ms to move the bones, 1.5 ms to find contacts and 7.0 ms to resolve them (5, 6 and 32 ms in `float`). Resolving took 9.8 ms until the resolver stopped looking bodies up in hash maps (see [What SAKBox has changed](#what-sakbox-has-changed)): on the ARM9 each hash costs a software division.
 - **ARM instructions, not Thumb, matter most.** devkitPro's template compiles to Thumb, which on the ARM9 has no 32 x 32 -> 64-bit multiply, so every fixed-point multiply was a library call: in Thumb, Q16.16 took 70 ms a step, hardly better than `float`. ARM instructions (`-marm` in the Makefile) brought it to 24.9 ms. (With `float` they gained only 2%: the time was in the software floating point.)
 - Fixed point also brought two engine changes that every build benefits from: `RigidBody` keeps its drag factors (`pow` of the damping over the step) from step to step instead of working them out again (moving the bones went from 8.6 to 3.3 ms a sub-step in Thumb), and constants such as `(real)0.5` become fixed point when compiling.
-- Once the ragdoll lies on the ground, every bone touches it, and a step costs about twice as much: 58 ms, 0.29x real time, at 60 steps a second.
+- Once the ragdoll lies on the ground, every bone touches it, and a step costs about twice as much: 51 ms, 0.33x real time, at 60 steps a second.
 - The figures on the bottom screen are written only when they change, about once a second: formatting numbers is float work, and the main thread's time comes out of the physics'. Writing them each frame made the physics 25% slower.
 
-Real time at 60 steps a second needs about two to four times as much speed again, mostly in resolving contacts (roadmap). Measured in melonDS, not on a console.
+Real time at 60 steps a second needs about one and a half to three times as much speed again, mostly in resolving contacts (roadmap). Measured in melonDS, not on a console.
 
 ## What SAKBox has changed
 
@@ -253,6 +253,7 @@ Compared with the last upstream version:
 - **Contacts are resolved together** (`ContactResolver::Method::sequentialImpulses`, the default since joints became constraints; `setMethod(Method::oneContactAtATime)` brings back the book's resolver; see [Resolving contacts together](#resolving-contacts-together)), so awake stacks stand still. Joints are then constraints between their two anchor points (see [Joints](#joints)), which `resolveContacts` takes separately from the contacts, and `World` holds in `getJoints()`. `World::getResolver()` exposes a world's resolver to choose it. The new `stack` demo shows the difference, and M switches resolver in every rigid-body demo.
 - **The same results on every platform:** the maths functions in `precision.h` are correctly rounded (CORE-MATH's, through flexmath's `CorrectlyRounded.hpp`) rather than the system's, and the repo builds with fused multiply-adds off, so a simulation runs the same to the last bit on macOS and Linux, with Clang or GCC, on ARM64 or x86-64. The Waffles jumper's test pins its jump height to check it. See the top-level README's [Floating-point results across platforms](../../README.md#floating-point-results-across-platforms).
 - **Any number type, by a build setting** (`//projects/cyclone:real`; see [The number type](#the-number-type)): `double`, `float`, or flexmath's `FlexReal`, `FlexPoint` (Q32.32) or `FlexPoint16` (Q16.16, the DS's). It replaces the separate `:cyclone_flex` and `:app_flex` targets; `flightsim_flex` and `flex_test` are built with the setting fixed (`real.bzl`). Guards against tiny lengths compare with `<=`, so they still catch zero in fixed point, where `1e-9` rounds to zero.
+- **The resolver keeps what it works out per body in slots, not maps.** Each body it works on in a call gets a slot (`RigidBody::resolverSlot` points at it) for its velocities at the start of the step, the position sweeps' velocities and its sleep group, and the warm-start impulses are a flat list sorted by pair of bodies, refilled in the memory it already has. They were hash maps and a map of lists, looked up by body and allocated afresh each call: a tenth of the resolver's time on a Mac, more on the DS, where each hash is a software division. Results are bit-for-bit the same. Resolving the ragdoll got 5% to 25% faster on a Mac (more the fewer sweeps), and 29% on the DS.
 - **`RigidBody` keeps its drag factors** (`pow` of the damping over the step, and the sleep bias, as the book works them out in sections 10.4 and 16.2.1) from step to step, and works them out again only when the step length or damping changes: steps are usually all the same, and `pow` is slow where it's done in software.
 - **Single precision when asked:** `CYCLONE_SINGLE_PRECISION` picks `float` for `real` (upstream had `#elif 0`, so only by editing `precision.h`); the DS app uses it. Without it, `real` is `double`, as before.
 - **Sub-steps** (`World::setSubSteps`, and `[` and `]` in the rigid-body demos), and the rigid-body demos run in fixed steps rather than steps as long as each frame; see [Sub-steps](#sub-steps). A demo that acts on a step's contacts does it in `afterStep()` (fracture splits the block there, after the step that hit).
@@ -320,4 +321,4 @@ The engine's formulas were checked against Millington's *Game Physics Engine Dev
 1. **Cheaper sub-steps,** as Box2D v3's "soft step" takes them: find contacts once a step and only integrate and solve in each sub-step, updating each contact's depth from how its bodies moved. Worth it if finding contacts is what makes sub-steps cost too much (a big scene, or the 3DS); the sub-steps here are the results to match.
 2. **Blended drawing between fixed steps in the demos:** draw each body between its last two steps' positions, by how far the frame is into the next step, so motion is smooth on screens whose rate isn't a multiple of 60 (it costs a step of delay). The [Cyclone padds example](../examples/cyclone_padds/README.md) does this for the ragdoll (`SnapshotTimeline`).
 3. **Sub-steps for the particle world** (`ParticleWorld`), and the mass-aggregate demos in fixed steps.
-4. **Real time on the DS.** In Q16.16 a sub-step is 12.3 ms, 9.8 of them resolving contacts, and a ragdoll on the ground costs twice as much. The resolver's set-up each step is the likely next target: it looks bodies up in hash maps (`startVelocities`, `separatingVelocities`, the warm-start map), and a hash's modulo is a software division on the ARM9; then fewer, cheaper contact set-ups. Profile on the DS first (see [On the Nintendo DS](#on-the-nintendo-ds)).
+4. **Real time on the DS.** In Q16.16 a sub-step is 9.5 ms, 7.0 of them resolving contacts, and a ragdoll on the ground costs twice as much. Setting up each contact and joint again in every sub-step is a large part of that; finding contacts once a step and keeping their set-up for its sub-steps (as the book suggests, sections 14.4, 16.1.4 and 16.2.4) is next. Profile on the DS first (see [On the Nintendo DS](#on-the-nintendo-ds)).

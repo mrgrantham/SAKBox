@@ -204,6 +204,14 @@ protected:
   bool inContactGroup = false;
 
   /**
+   * SAKBox: where the contact resolver keeps what it works out for this
+   * body while it resolves (ContactResolver's body slots), so it finds it by
+   * reading this rather than looking the body up in a map. Only the
+   * resolver reads or sets it; it means nothing between calls.
+   */
+  unsigned resolverSlot = 0;
+
+  /**
    * Holds a transform matrix for converting body space into
    * world space and vice versa. This can be achieved by calling
    * the getPointIn*Space functions.
@@ -866,6 +874,10 @@ public:
    */
   bool getInContactGroup() const { return inContactGroup; }
   void setInContactGroup(const bool inGroup) { inContactGroup = inGroup; }
+
+  /** SAKBox: the contact resolver's slot for the body (see resolverSlot). */
+  unsigned getResolverSlot() const { return resolverSlot; }
+  void setResolverSlot(unsigned slot) { resolverSlot = slot; }
 
   /*@}*/
 
