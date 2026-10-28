@@ -26,7 +26,7 @@ cc_binary(
     deps = [
         "//projects/scratchpadd/basis:basis",
         "@backward",
-        "//projects/scratchpadd/graphics:graphics",
+        "//projects/scratchpadd/debug_ui",
         "//projects/scratchpadd/audio:audio",
         "//projects/scratchpadd/midi_input",
         "//projects/scratchpadd/messages:messages",

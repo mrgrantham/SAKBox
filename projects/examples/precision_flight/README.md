@@ -46,7 +46,7 @@ AudioPadd (own thread)
 | Padd | Owns | Receives | Sends |
 | --- | --- | --- | --- |
 | `FlightSimPadd` | the game: `FlightSim`, and the precision lab as controls | `FrameInput`, `GameCommand`, control messages | events, then one `WorldSnapshot` per frame; `ControlSnapshot` |
-| `FlightDisplayPadd` | window, input, rendering, HUD, control panels, and visual-only state (eased ship position, hit flashes, fading messages) | `WorldSnapshot`, events, `ControlSnapshot` | `FrameInput` each frame, `GameCommand` for P/R/T, `ControlRequest`, and `ControlChange` straight to the padd whose controls a panel shows (`sendTo`, to the address its snapshot came from) |
+| `FlightDisplayPadd` | window, input, rendering (ScratchPadd's [scene layer](../../scratchpadd/README.md#scene-layer); the render precision through its desktop vertex snapping), HUD and control panels ([debug UI](../../scratchpadd/README.md#debug-ui)), and visual-only state (eased ship position, hit flashes, fading messages) | `WorldSnapshot`, events, `ControlSnapshot` | `FrameInput` each frame, `GameCommand` for P/R/T, `ControlRequest`, and `ControlChange` straight to the padd whose controls a panel shows (`sendTo`, to the address its snapshot came from) |
 | `EventLogPadd` | terminal output | events | — |
 | `FlightSoundPadd` | which sound each event makes (`cueFor`) | events | the sounds, made in code, to AudioPadd once (`LoadSoundSamples`), then a `PlaySound` for each event's cue |
 | `AudioPadd` | the sound device (ScratchPadd's [audio](../../scratchpadd/README.md#audio)) | `LoadSoundSamples`, `PlaySound`, its volume controls | — |

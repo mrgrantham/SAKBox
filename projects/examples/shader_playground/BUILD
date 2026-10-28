@@ -10,7 +10,10 @@ cc_binary(
         srcs = ["src/main.cpp"],
         deps = [
         "//projects/scratchpadd/basis:basis",
-        "//projects/scratchpadd/graphics:graphics",
+        "//projects/data_dep_retriever",
+        "//projects/scratchpadd/debug_ui",
+        "//projects/scratchpadd/scene",
+        "//projects/scratchpadd/scene/gl",
         "//projects/scratchpadd/messages:messages",
         "@backward",
         ],

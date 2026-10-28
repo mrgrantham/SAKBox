@@ -65,7 +65,7 @@ int main() {
 
 Every padd must implement `name()` (unique within the system) and `generateControls()`, and have a constructor that takes a `ScratchPadd::System *`. These examples are compiled and run by `basis/tests/Examples_test.cpp`.
 
-To see a bigger system, run the demo: a window with a shader view, the Dear ImGui demo, and a control panel for `StoryPadd`'s controls (edits are logged; `chapter` counts up by itself, and ticking `showExtra` adds an `extra` control), plus a demo-defined `Triangle` message logged by another padd. Close the window to quit.
+To see a bigger system, run the demo: a window with a small lit scene, the Dear ImGui demo, and a control panel for `StoryPadd`'s controls (edits are logged; `chapter` counts up by itself, and ticking `showExtra` adds an `extra` control), plus a demo-defined `Triangle` message logged by another padd. Close the window to quit.
 
 ```bash
 bazel run //projects/scratchpadd/demo
@@ -241,62 +241,64 @@ Behind the panel are three messages; `Base` handles the owner's side automatical
 2. **Edit.** When the user edits a widget, the panel sends a `ControlChange` (the control's name and the new value) straight to the padd the snapshot came from: the snapshot handler takes the sender's address, and the panel keeps it.
 3. **Apply and confirm.** The owner enforces its own rules: numbers are clamped to the control's range, strings must be one of the allowed values, and the type must match; only the value is taken, so a change can't alter a range. If the change is valid it's stored and `controlChanged()` is called. Either way the owner replies to every panel with a fresh snapshot, so they all show the value the owner actually holds (a clamped number snaps back, for example).
 
-The panel only ever holds copies from snapshots, and each owner changes its own values on its own thread, so no locking is needed. A snapshot with no controls (sent when a padd removes its last one) removes that padd's panel; `DisplayPadd` takes it away with `Graphics::removeView`. `messages/tests/Controls_test.cpp` covers the round trip, range enforcement, rejection and who replies.
+The panel only ever holds copies from snapshots, and each owner changes its own values on its own thread, so no locking is needed. A snapshot with no controls (sent when a padd removes its last one) removes that padd's panel (`DebugUi::ControlPanels` closes it). `messages/tests/Controls_test.cpp` covers the round trip, range enforcement, rejection and who replies.
 
 ### Logging and Timing
 
 Every padd has a `logger()` (spdlog) named after the padd. The `PADDLOG_INFO`, `PADDLOG_ERROR`, ... macros log through the current thread's logger, and `PADDLOG_INTERVAL` rate-limits a log line. `ScratchPadd::Timer` measures durations and averages intervals, and `SCOPED_METHOD_TIMER()` logs how long the enclosing function took.
 
-## Graphics
+## Scene layer
 
-The `graphics` package provides a window with Dear ImGui and OpenGL views. Create it in a main-thread padd:
+The `scene` package (`ScratchPadd/Scene/Scene.hpp`) draws 3D the same way on every platform: meshes loaded once and drawn by handle, each with a transform and a material, a camera, up to four directional lights, fog, lines, and an overlay of text and rectangles in screen points. Each platform has a backend, chosen when a program is built; so far the only one is OpenGL 3.3 for desktops (`scene/gl`), with the Nintendo DS's next. Its design, and the asset pipeline from Blender to come, are in [`scene/DESIGN.md`](scene/DESIGN.md).
 
 ```cpp
-void prepare() override { graphics_ = GraphicsBuilder(); }
+namespace Scene = ScratchPadd::Scene;
 
-void starting() override {
-  graphics_->setupWindow(1366, 768);
-  graphics_->addView(GetGL_ViewBuilder()
-                         .setName("Example")
-                         .setFrameBuffer(800, 600)
-                         .setSize(300, 300)
-                         .setPosition(20, 40)
-                         .setFragmentShaderPath(GetFragmentShaderPath("example"))
-                         .setVertexShaderPath(GetVertexShaderPath("example"))
-                         .setGeometry(SampleItems::vertices, SampleItems::indices)
-                         .build());
-  push([this] { drawFrame(); }); // start drawing
-}
+// In a main-thread padd's starting() (windows must open on the main thread on macOS)
+display_ = std::make_unique<Scene::Display>(1280, 800, "My window"); // isOpen(), error() if not
+renderer_ = std::make_unique<Scene::Renderer>(*display_);
+box_ = renderer_->load(Scene::MeshBuilder().box({}, {0.5f, 0.5f, 0.5f}, {200, 120, 60}).data());
+push([this] { drawFrame(); });
 
-// Queued once at the end of starting(); each frame queues the next. The
-// buffer swap waits for the display's refresh, so frames run at the
-// display's rate with no timer and no spinning.
+// Each frame queues the next; endFrame waits for the screen's refresh, so it
+// draws at the screen's rate with no timer and no spinning
 void drawFrame() {
-  if (!graphics_->draw()) { // false once the window is closed
-    system_->stop();
-    return;
-  }
+  if (!display_->isOpen()) { system_->stop(); return; }
+  display_->pollEvents();
+  Scene::Environment environment{.background = {20, 20, 30}};
+  environment.addLight({.direction = {-0.4f, -1, -0.3f}, .colour = {200, 200, 200}});
+  renderer_->beginFrame({.eye = {0, 2, 6}}, environment);
+  renderer_->draw(box_, Scene::Transform::rotation({0, 1, 0}, angle_), {});
+  renderer_->overlay().text(10, 10, "Hello", {255, 255, 255});
+  renderer_->endFrame();
   push([this] { drawFrame(); });
 }
-
-void finishing() override { graphics_->tearDown(); }
 ```
 
-- Each `GL_View` renders a shader into a framebuffer shown in its own ImGui window. Shaders get Shadertoy-style uniforms: `iTime`, `iResolution`, `iMouse`, plus `uniform_color`.
-- Shader files are Bazel data dependencies. Call `DataDepRetriever::ConfigureDependencies(argv[0])` at the start of `main()` so `GetFragmentShaderPath()` can find them, and pass a directory (relative to the repo root) for shaders outside this package, as `shader_playground` does.
-- `Graphics::ImguiView` shows the Dear ImGui demo window.
-- `Graphics::addView` adds a view and `Graphics::removeView` destroys and removes one; call them on the thread that draws, between frames (as `DisplayPadd`'s message handlers are).
-- The backend is chosen at compile time. Only OpenGL (`SCRATCHPADD_GL`, set by the `graphics` target) exists so far.
-- `DisplayPadd` opens each padd's control panel at the next spot along the bottom of the window (left, middle, right, then top right), so they don't open on top of each other. ImGui saves where windows were to `imgui.ini` in the working directory and puts them back there next time, so to see the default places again, delete that file.
+- **Materials are what the DS does in hardware:** lit or unlit, a colour multiplying the mesh's vertex colours, opacity in 32 steps (`alpha`, 0-31), and wireframe. Translucent meshes are kept to the end of the frame and drawn farthest first, without hiding what's behind them.
+- **Meshes made in code** come from `MeshBuilder`: flat-shaded triangles, quads and boxes, each face with its own normal. Meshes made in Blender will come cooked by the build (see the design).
+- **Transforms** are 3 x 4 affine matrices (`Transform`): rotation and scale, then position, composed with `*`.
+- **The overlay** draws text (stb_easy_font's, made of small rectangles, so it needs no font texture), rectangles and 2D lines over the 3D. `Renderer::toScreen` turns a 3D point into the overlay's points, which draws 3D lines over everything: the Cyclone padds window shows the ragdoll's joints through its bones that way.
+- **On desktops, `Display` is a GLFW window** with the keyboard and mouse: `keyDown`, `keyPressed` (each press once), `mouseDown`, the cursor, the time, and its size in points and pixels. While ImGui wants the keyboard or mouse (typing in a field), the display tells the app they're taken.
+- **Desktop-only extras** are in `ScratchPadd/Scene/GL/Desktop.hpp`: vertex snapping to a grid (`Desktop::setVertexSnap`, Precision Flight's render precision), and `Desktop::ShaderPanel`, a Shadertoy-style shader drawn into a texture of its own (`iTime`, `iResolution`, `iMouse`, `uniform_color`) to show in an ImGui window, as the shader playground does. An app that uses them builds only for desktops.
+
+## Debug UI
+
+The `debug_ui` package puts Dear ImGui on a desktop `Display`, with ScratchPadd's look, for panels, sliders and stats over the scene. It's never compiled for the DS.
+
+```cpp
+ui_ = std::make_unique<ScratchPadd::DebugUi::Ui>(*display_); // after the renderer
+// each frame, after pollEvents and before any ImGui window:
+ui_->newFrame();   // ImGui is drawn last, when the renderer ends the frame
+```
+
+- **Control panels:** `DebugUi::ControlPanels` shows every padd's controls, one panel per padd (see [Controls](#controls) above). A window padd sends a `ControlRequest`, hands each `ControlSnapshot` to `show()`, and draws them each frame; edits go straight back to the padd each came from. Panels open at the next spot along the bottom of the window (left, middle, right, then top right) unless the window says where.
+- **`DisplayPadd`** is a window for any system: a small lit scene, every padd's control panel, and ImGui's demo window. The ScratchPadd demo uses it.
+- ImGui keeps no `imgui.ini`, so panels open in the same places each time.
 
 ### The look
 
-Every ScratchPadd window uses one look for Dear ImGui (`ScratchPadd/Graphics/Theme.hpp`), set once after the ImGui context is made:
-
-```cpp
-ImGui::CreateContext();
-Theme::apply(Theme::Colors::Dark); // or Theme::Colors::Light
-```
+Every ScratchPadd window uses one look for Dear ImGui (`ScratchPadd/DebugUi/Theme.hpp`), which `DebugUi::Ui` sets when it starts ImGui (`Theme::Colors::Dark`, or `Light` if asked):
 
 | | |
 | --- | --- |
@@ -305,8 +307,8 @@ Theme::apply(Theme::Colors::Dark); // or Theme::Colors::Light
 | Titles | **Futura** Medium, 20 px (larger than the text's 15 px, because Futura's lowercase letters are short and Questrial's tall: at 17 px titles looked smaller than the text), where the system has it (macOS's own, `/System/Library/Fonts/Supplemental/Futura.ttc`, read when the program starts; Futura's license doesn't let it be shipped), and otherwise **Jost** Medium, a free font made in Futura's spirit |
 | Text | **Questrial**, 15 px: a free geometric sans of the same family, chosen over Jost, Poppins and Didact Gothic because it stays legible at small sizes (its lowercase letters are taller) |
 
-- **Titles in the title font:** ImGui draws a window's title with whatever font is current when the window begins, so `Theme::beginWindow(name, open, flags)` begins it with the title font and then goes back to the text font. Use it in place of `ImGui::Begin()` (and still call `ImGui::End()`). `Theme::heading(text)` writes a heading inside a window in the title font, and `Theme::titleFont()` gives the font itself. ScratchPadd's views and control panels, Precision Flight and Cyclone in padds use them; windows that call `ImGui::Begin()` directly (the ImGui demo's) get text-font titles.
-- **Fonts are compiled in.** Jost and Questrial (both under the SIL Open Font License) are downloaded by Bazel, pinned by checksum in `MODULE.bazel`, and turned into C++ arrays by [`tools/embed_file`](../../tools/embed_file/README.md) when the graphics library is built, so a program never has to find a font file. Their licenses are downloaded with them and travel in the runfiles of every program that uses the graphics library.
+- **Titles in the title font:** ImGui draws a window's title with whatever font is current when the window begins, so `Theme::beginWindow(name, open, flags)` begins it with the title font and then goes back to the text font. Use it in place of `ImGui::Begin()` (and still call `ImGui::End()`). `Theme::heading(text)` writes a heading inside a window in the title font, and `Theme::titleFont()` gives the font itself. ScratchPadd's control panels, the shader playground, Precision Flight and Cyclone in padds use them; windows that call `ImGui::Begin()` directly (the ImGui demo's) get text-font titles.
+- **Fonts are compiled in.** Jost and Questrial (both under the SIL Open Font License) are downloaded by Bazel, pinned by checksum in `MODULE.bazel`, and turned into C++ arrays by [`tools/embed_file`](../../tools/embed_file/README.md) when the debug UI is built, so a program never has to find a font file. Their licenses are downloaded with them and travel in the runfiles of every program that uses the debug UI.
 - **Sizes stay sharp on high-resolution screens:** ImGui 1.92 and later draw fonts at the screen's own resolution, so nothing needs scaling by hand.
 
 ## Audio
@@ -423,14 +425,15 @@ How the builds differ from a desktop's:
 - **The app is small enough:** the demo's `.nds` is about 900 KB with its files (about 50 KB of them), of the DS's 4 MB.
 
 ## Packages
-## Packages
 
 | Bazel target | Contents |
 | --- | --- |
 | `//projects/scratchpadd/basis` | The core: `Base`, `System`, `SystemBuilder`. Depend on this; it includes `messages` and `utilities` |
 | `//projects/scratchpadd/messages` | The message wrapper (`Message`, `makeMessage`), `Text`, and the control types |
 | `//projects/scratchpadd/utilities` | Logging, `Timer`, `EventTimer` and helpers like `VariantHandler` |
-| `//projects/scratchpadd/graphics` | GLFW/ImGui/OpenGL window and views, and the ImGui theme (`Theme.hpp`) |
+| `//projects/scratchpadd/scene` | The scene layer's API (`Scene.hpp`): types, meshes made in code, the overlay |
+| `//projects/scratchpadd/scene/gl` | Its OpenGL 3.3 backend: the renderer, `Display` (a GLFW window), and the desktop extras (`Desktop.hpp`) |
+| `//projects/scratchpadd/debug_ui` | Dear ImGui on a `Display` (`DebugUi.hpp`), the theme (`Theme.hpp`), control panels, and `DisplayPadd` |
 | `//projects/scratchpadd/audio` | `:audio` (`AudioPadd`), `:audio_messages` (what padds send it), `:audio_core` (the engine and instruments, also built for the 3DS), `:audio_device` (playback through the sound device) |
 | `//projects/scratchpadd/3ds/demo`, `//projects/scratchpadd/ds/demo` | Padds on a Nintendo 3DS (AudioPadd through its DSP) and DS (on its hardware channels) |
 | `//projects/scratchpadd/handheld` | What those two demos share (`HandheldDemo.hpp`), and the files the DS demo carries (`:demo_files`) |
@@ -466,7 +469,10 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `audio:Midi_test` | MIDI: events' bytes (made, and read from a port's bytes), MIDI files read with their times in frames, the built-in instrument (pitch by key, notes held or dying away, sustain pedal, pitch bend, volume and pan, drums, all-sound-off without a click, taking over notes when full), a SoundFont made in code played in tune, either instrument and the engine playing without allocating, sequences on time, looping until stopped, one at a time, choosing the instrument, and how long a second of 32 notes takes |
 | `audio:AudioPadd_test` | AudioPadd in a running system: answers to loading and playing, `VoiceFinished` to the padd that played, failures answered with why, padds that don't listen for answers, 16-bit samples (`LoadSoundPcm16`), the volume controls and mute, stopping one voice, music or everything, four padds asking at once while the audio thread mixes, MIDI files and events, `StopMusic` stopping MIDI, and loading SoundFonts |
 | `midi_input:MidiInputPadd_test` | With a virtual MIDI port as the keyboard (and `portFilter()` listening to it alone): a note reaching listeners with its port and playing on AudioPadd's instrument, `playThrough` off, and a keyboard unplugged (skipped without a MIDI system, as in Linux containers). Under ThreadSanitizer it uses `tests/tsan_suppressions.txt`, which hides races TSan reports inside RtMidi's Core MIDI callback because it can't see Core MIDI's own ordering |
-| `graphics:Theme_test` | The compiled-in fonts are TrueType fonts; the theme sets the text and title fonts (different ones), the spacing, and the dark and light palettes |
+| `debug_ui:Theme_test` | The compiled-in fonts are TrueType fonts; the theme sets the text and title fonts (different ones), the spacing, and the dark and light palettes |
+| `debug_ui:ControlPanels_test` | A window's control panels: one per padd, updated in place, closed when the padd has no controls left, opened along the bottom or where the window says, and placed only when opened |
+| `scene:Scene_test` | Transforms (turns, moves and scales, composed in order), boxes facing outward with each face wound counter-clockwise, the overlay's text, rectangles and lines as triangles, at most four lights |
+| `scene/gl:Renderer_test` | The OpenGL backend drawing into a hidden window, its pixels read back: unlit colours (vertex times material), lighting (ambient plus lights, nothing from behind), translucency blending over what's behind, fog, wireframe, lines, the overlay over the scene, vertex snapping, and `toScreen`. Tagged `display`: it needs a display, so the Linux check builds it but doesn't run it |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations

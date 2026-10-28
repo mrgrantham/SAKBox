@@ -35,7 +35,7 @@ struct Material {
   enum class Shading { unlit, lit } shading = Shading::lit;
   Colour colour;            // multiplies the vertex colours (or is the colour, lit on the DS)
   std::uint8_t alpha = 31;  // 0-31, as the DS has it
-  bool outline = false;     // the DS's edge marking; desktops draw an outline pass
+  bool wireframe = false;   // only the triangles' edges (the DS: alpha 0)
 };
 struct Light { Vector3 direction; Colour colour; };   // directional; up to 4
 struct Camera { Vector3 eye, target, up; float fieldOfView, near, far; };
@@ -51,7 +51,8 @@ public:
   void beginFrame(const Camera &camera, std::span<const Light> lights, Colour background);
   void draw(const Mesh &mesh, const Transform &where, const Material &material);
   void drawLines(std::span<const Vector3> ends, Colour colour);  // pairs of ends
-  Overlay &overlay();  // text and rectangles in screen points, drawn over the 3D
+  Overlay &overlay();  // text, rectangles and lines in screen points, over the 3D
+  bool toScreen(const Vector3 &point, float &x, float &y) const; // a 3D point in the overlay's
   void endFrame();     // waits for the screen's refresh
   Capabilities capabilities() const;  // e.g. how many polygons a frame, if limited
 };
@@ -60,9 +61,9 @@ public:
 ```
 
 - **Retained meshes, frames drawn fresh.** Meshes are uploaded once and drawn by handle, so the DS can keep each as a display list and a desktop as a vertex buffer. Everything else is drawn each frame, so the API keeps no scene graph to sync.
-- **The materials are what the DS can do in hardware:** unlit or lit with up to 4 directional lights, a colour, alpha in 32 steps, and an outline. Desktops draw each with one of a few built-in shaders. Fog and toon shading can come later, the same way.
+- **The materials are what the DS can do in hardware:** unlit or lit with up to 4 directional lights, a colour, alpha in 32 steps, and wireframe; the environment adds fog. Desktops draw them all with one built-in shader. Outlines (the DS's edge marking) and toon shading can come later, the same way.
 - **The DS can't take floats cheaply,** having no floating-point hardware. So `Scalar` is Q16.16 there, which is what Cyclone already runs in on the DS, and float on desktops. An app computes its transforms in `Scalar`. The ragdoll's bones go straight in, with no conversion. *For review:* an alternative is one fixed type everywhere, but desktop code would then pay for fixed point it doesn't need.
-- **The backend is a build-time choice.** `Renderer`'s methods are defined in each backend's own `.cpp`, and its private state comes from a header that backend provides. Bazel picks one with `select()`, and the DS's Makefile build gets the DS one. Nothing is virtual, so the DS pays nothing to dispatch.
+- **The backend is a build-time choice.** `Renderer`'s methods are defined in each backend's own `.cpp`, and its state is a `Renderer::Backend` each backend defines, behind a pointer. A program links one backend's library (the DS's Makefile build will get the DS's). Nothing is virtual, so the DS pays nothing to dispatch; the pointer costs one allocation, when the renderer is made.
 - **Capabilities, not assumptions.** `capabilities()` says what a backend can't do, e.g. a polygon limit, so a shared app can check for it.
 - **Lines** count against the DS's polygon budget: the DS draws each as a triangle with two corners in the same place.
 - **The overlay** is bitmap text and filled rectangles, in screen points. On the DS it's drawn as 3D quads on the top screen; text on the bottom screen stays the DS console, as now.
@@ -139,7 +140,7 @@ scene(
 ## Phases
 
 0. **This review.**
-1. **The scene API and the OpenGL backend,** with `debug_ui` split out of `graphics`. The ScratchPadd demo, the shader playground, the Cyclone padds window and Precision Flight move onto it, removing their three copies of window and ImGui setup. Tests: each material and the overlay drawn to an offscreen buffer and compared with reference images, plus the API's handle and frame rules.
+1. **The scene API and the OpenGL backend** *(done)*, with `debug_ui` split out of `graphics`, and `graphics` removed. The ScratchPadd demo, the shader playground, the Cyclone padds window and Precision Flight moved onto it, which removed their three copies of window and ImGui setup. Two things were added on the way: `Renderer::toScreen` and `Overlay::line`, for 3D lines drawn over everything (the padds window's joints through the bones), which the DS can't do with depth testing; and fog in the environment. Tests: each material, fog, wireframe, lines, the overlay, snapping and `toScreen` drawn into a hidden window and checked pixel by pixel (rather than against reference images, which would differ between GPUs), plus the transforms, meshes and overlay on their own.
 2. **The asset pipeline:**
    - the Blender download and export;
    - the cook tool;

@@ -1,17 +1,10 @@
 #include "FlightDisplayPadd.hpp"
 
-// GLEW must be included before GLFW
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#include <ScratchPadd/Scene/GL/Desktop.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include "imgui.h"
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-
-#include <ScratchPadd/Graphics/Graphics.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -19,281 +12,118 @@
 
 namespace PrecisionFlight {
 
+namespace Scene = ScratchPadd::Scene;
+
 namespace {
 const glm::vec3 kSkyColor(0.02f, 0.03f, 0.08f);
-} // namespace
 
-// ---------------------------------------------------------------------------
-// Rendering
-
-const char *kVertexShader = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aNormal;
-
-uniform mat4 uModel;
-uniform mat4 uViewProj;
-uniform float uWorldSnap;  // world-space grid vertices snap to (0 = off)
-uniform float uScreenSnap; // pixel grid vertices snap to (0 = off)
-uniform vec2 uViewport;
-
-out vec3 vNormal;
-out float vDepth;
-
-void main() {
-  vec4 world = uModel * vec4(aPos, 1.0);
-  if (uWorldSnap > 0.0) {
-    world.xyz = floor(world.xyz / uWorldSnap + 0.5) * uWorldSnap;
-  }
-  vec4 clip = uViewProj * world;
-  if (uScreenSnap > 0.0 && clip.w > 0.0) {
-    vec2 pixel = (clip.xy / clip.w * 0.5 + 0.5) * uViewport;
-    pixel = floor(pixel / uScreenSnap + 0.5) * uScreenSnap;
-    clip.xy = (pixel / uViewport * 2.0 - 1.0) * clip.w;
-  }
-  gl_Position = clip;
-  vNormal = mat3(uModel) * aNormal;
-  vDepth = clip.w;
-}
-)";
-
-const char *kFragmentShader = R"(#version 330 core
-in vec3 vNormal;
-in float vDepth;
-
-uniform vec3 uColor;
-uniform float uAlpha;
-uniform bool uLit;
-uniform vec3 uFogColor;
-uniform float uFogDensity;
-
-out vec4 FragColor;
-
-void main() {
-  vec3 color = uColor;
-  if (uLit) {
-    vec3 n = normalize(vNormal);
-    float diffuse = abs(dot(n, normalize(vec3(0.4, 0.8, 0.3))));
-    color *= 0.35 + 0.65 * diffuse;
-  }
-  float fog = clamp(1.0 - exp(-uFogDensity * vDepth), 0.0, 1.0);
-  FragColor = vec4(mix(color, uFogColor, fog), uAlpha);
-}
-)";
-
-GLuint compileShader(GLenum type, const char *source) {
-  GLuint shader = glCreateShader(type);
-  glShaderSource(shader, 1, &source, nullptr);
-  glCompileShader(shader);
-  GLint ok = 0;
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-  if (!ok) {
-    char log[1024];
-    glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
-    std::fprintf(stderr, "Shader compile error: %s\n", log);
-  }
-  return shader;
+Scene::Vector3 toScene(glm::vec3 v) { return {v.x, v.y, v.z}; }
+Scene::Colour toColour(glm::vec3 c, float alpha = 1.0f) {
+  return Scene::Colour::fromUnit(c.r, c.g, c.b, alpha);
 }
 
-GLuint linkProgram(const char *vertexSource, const char *fragmentSource) {
-  GLuint vertex = compileShader(GL_VERTEX_SHADER, vertexSource);
-  GLuint fragment = compileShader(GL_FRAGMENT_SHADER, fragmentSource);
-  GLuint program = glCreateProgram();
-  glAttachShader(program, vertex);
-  glAttachShader(program, fragment);
-  glLinkProgram(program);
-  GLint ok = 0;
-  glGetProgramiv(program, GL_LINK_STATUS, &ok);
-  if (!ok) {
-    char log[1024];
-    glGetProgramInfoLog(program, sizeof(log), nullptr, log);
-    std::fprintf(stderr, "Program link error: %s\n", log);
-  }
-  glDeleteShader(vertex);
-  glDeleteShader(fragment);
-  return program;
+// A glm transform (rotation, scale and position) as the scene layer's
+Scene::Transform toScene(const glm::mat4 &m) {
+  Scene::Transform t;
+  for (int row = 0; row < 3; ++row)
+    for (int column = 0; column < 4; ++column)
+      t.m[row][column] = m[column][row]; // glm is column-major
+  return t;
 }
 
-// Interleaved position (3 floats) + normal (3 floats)
-struct Mesh {
-  GLuint vao = 0;
-  GLuint vbo = 0;
-  GLsizei count = 0;
-  GLenum mode = GL_TRIANGLES;
-};
-
-void uploadMesh(Mesh &mesh, const std::vector<float> &data) {
-  glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
-  glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_DYNAMIC_DRAW);
-  mesh.count = static_cast<GLsizei>(data.size() / 6);
-}
-
-Mesh makeMesh(const std::vector<float> &data, GLenum mode) {
-  Mesh mesh;
-  mesh.mode = mode;
-  glGenVertexArrays(1, &mesh.vao);
-  glGenBuffers(1, &mesh.vbo);
-  glBindVertexArray(mesh.vao);
-  uploadMesh(mesh, data);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)nullptr);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
-  glEnableVertexAttribArray(1);
-  glBindVertexArray(0);
-  return mesh;
-}
-
-void pushVertex(std::vector<float> &data, glm::vec3 p, glm::vec3 n) {
-  data.insert(data.end(), {p.x, p.y, p.z, n.x, n.y, n.z});
-}
-
-void pushTriangle(std::vector<float> &data, glm::vec3 a, glm::vec3 b, glm::vec3 c) {
-  glm::vec3 n = glm::normalize(glm::cross(b - a, c - a));
-  pushVertex(data, a, n);
-  pushVertex(data, b, n);
-  pushVertex(data, c, n);
-}
-
-void pushQuad(std::vector<float> &data, glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d) {
-  pushTriangle(data, a, b, c);
-  pushTriangle(data, a, c, d);
-}
-
-// Unit cube centred on the origin
-std::vector<float> cubeData() {
-  std::vector<float> d;
-  const float h = 0.5f;
-  glm::vec3 p[8] = {{-h, -h, -h}, {h, -h, -h}, {h, h, -h}, {-h, h, -h},
-                    {-h, -h, h},  {h, -h, h},  {h, h, h},  {-h, h, h}};
-  pushQuad(d, p[4], p[5], p[6], p[7]); // +z
-  pushQuad(d, p[1], p[0], p[3], p[2]); // -z
-  pushQuad(d, p[5], p[1], p[2], p[6]); // +x
-  pushQuad(d, p[0], p[4], p[7], p[3]); // -x
-  pushQuad(d, p[7], p[6], p[2], p[3]); // +y
-  pushQuad(d, p[0], p[1], p[5], p[4]); // -y
-  return d;
+Scene::Transform box(glm::vec3 center, glm::vec3 size) {
+  return toScene(glm::scale(glm::translate(glm::mat4(1.0f), center), size));
 }
 
 // Low-poly fighter facing -z
-std::vector<float> shipData() {
-  std::vector<float> d;
-  glm::vec3 nose(0.0f, 0.0f, -1.4f), top(0.0f, 0.28f, 0.3f), bottom(0.0f, -0.18f, 0.4f),
-      tail(0.0f, 0.05f, 0.65f), left(-1.3f, -0.1f, 0.5f), right(1.3f, -0.1f, 0.5f),
-      finLeft(-0.55f, 0.65f, 0.7f), finRight(0.55f, 0.65f, 0.7f);
-  pushTriangle(d, nose, left, top);
-  pushTriangle(d, nose, top, right);
-  pushTriangle(d, top, left, tail);
-  pushTriangle(d, top, tail, right);
-  pushTriangle(d, nose, bottom, left);
-  pushTriangle(d, nose, right, bottom);
-  pushTriangle(d, left, bottom, tail);
-  pushTriangle(d, bottom, right, tail);
-  pushTriangle(d, top, tail, finLeft);
-  pushTriangle(d, top, finRight, tail);
-  return d;
+Scene::MeshBuilder shipMesh() {
+  const Scene::Vector3 nose{0.0f, 0.0f, -1.4f}, top{0.0f, 0.28f, 0.3f}, bottom{0.0f, -0.18f, 0.4f},
+      tail{0.0f, 0.05f, 0.65f}, left{-1.3f, -0.1f, 0.5f}, right{1.3f, -0.1f, 0.5f},
+      finLeft{-0.55f, 0.65f, 0.7f}, finRight{0.55f, 0.65f, 0.7f};
+  Scene::MeshBuilder ship;
+  ship.triangle(nose, left, top)
+      .triangle(nose, top, right)
+      .triangle(top, left, tail)
+      .triangle(top, tail, right)
+      .triangle(nose, bottom, left)
+      .triangle(nose, right, bottom)
+      .triangle(left, bottom, tail)
+      .triangle(bottom, right, tail)
+      .triangle(top, tail, finLeft)
+      .triangle(top, finRight, tail);
+  return ship;
 }
 
-std::vector<float> octahedronData() {
-  std::vector<float> d;
-  glm::vec3 up(0, 1, 0), down(0, -1, 0);
-  glm::vec3 ring[4] = {{1, 0, 0}, {0, 0, 1}, {-1, 0, 0}, {0, 0, -1}};
+Scene::MeshBuilder octahedronMesh() {
+  const Scene::Vector3 up{0, 1, 0}, down{0, -1, 0};
+  const Scene::Vector3 ring[4] = {{1, 0, 0}, {0, 0, 1}, {-1, 0, 0}, {0, 0, -1}};
+  Scene::MeshBuilder octahedron;
   for (int i = 0; i < 4; ++i) {
-    glm::vec3 a = ring[i], b = ring[(i + 1) % 4];
-    pushTriangle(d, up, b, a);
-    pushTriangle(d, down, a, b);
+    const Scene::Vector3 a = ring[i], b = ring[(i + 1) % 4];
+    octahedron.triangle(up, b, a).triangle(down, a, b);
   }
-  return d;
+  return octahedron;
 }
 
-struct Renderer {
-  GLuint program = 0;
-  GLint model, viewProj, worldSnap, screenSnap, viewport, color, alpha, lit, fogColor, fogDensity;
-  Mesh cube, ship, octahedron, ground, posts;
-
-  void init() {
-    program = linkProgram(kVertexShader, kFragmentShader);
-    model = glGetUniformLocation(program, "uModel");
-    viewProj = glGetUniformLocation(program, "uViewProj");
-    worldSnap = glGetUniformLocation(program, "uWorldSnap");
-    screenSnap = glGetUniformLocation(program, "uScreenSnap");
-    viewport = glGetUniformLocation(program, "uViewport");
-    color = glGetUniformLocation(program, "uColor");
-    alpha = glGetUniformLocation(program, "uAlpha");
-    lit = glGetUniformLocation(program, "uLit");
-    fogColor = glGetUniformLocation(program, "uFogColor");
-    fogDensity = glGetUniformLocation(program, "uFogDensity");
-    cube = makeMesh(cubeData(), GL_TRIANGLES);
-    ship = makeMesh(shipData(), GL_TRIANGLES);
-    octahedron = makeMesh(octahedronData(), GL_TRIANGLES);
-    ground = makeMesh({}, GL_LINES);
-    posts = makeMesh({}, GL_LINES);
-  }
-
-  // Render precision: fewer bits means coarser vertex snapping
-  void setSnap(int bits) {
-    float world = static_cast<float>(std::ldexp(8.0, -bits));
-    float screen = static_cast<float>(std::ldexp(64.0, -bits));
-    glUniform1f(worldSnap, world < 0.02f ? 0.0f : world);
-    glUniform1f(screenSnap, screen < 1.0f ? 0.0f : screen);
-  }
-
-  void draw(const Mesh &mesh, const glm::mat4 &m, glm::vec3 c, bool isLit = true, float a = 1.0f) {
-    glUniformMatrix4fv(model, 1, GL_FALSE, glm::value_ptr(m));
-    glUniform3fv(color, 1, glm::value_ptr(c));
-    glUniform1f(alpha, a);
-    glUniform1i(lit, isLit ? 1 : 0);
-    glBindVertexArray(mesh.vao);
-    glDrawArrays(mesh.mode, 0, mesh.count);
-  }
-
-  void drawBox(glm::vec3 center, glm::vec3 size, glm::vec3 c, bool isLit = true, float a = 1.0f) {
-    draw(cube, glm::scale(glm::translate(glm::mat4(1.0f), center), size), c, isLit, a);
-  }
-};
-
-void drawGate(Renderer &r, const Obstacle &o, glm::vec3 color) {
-  const float t = kGateBar, d = 2.0f * kWallHalfZ;
-  float left = o.cx - o.w / 2, right = o.cx + o.w / 2, bottom = o.cy - o.h / 2,
-        top = o.cy + o.h / 2;
-  r.drawBox({left - t / 2, o.cy, o.z}, {t, o.h + 2 * t, d}, color);
-  r.drawBox({right + t / 2, o.cy, o.z}, {t, o.h + 2 * t, d}, color);
-  r.drawBox({o.cx, top + t / 2, o.z}, {o.w, t, d}, color);
-  r.drawBox({o.cx, bottom - t / 2, o.z}, {o.w, t, d}, color);
+// Render precision: fewer bits means coarser vertex snapping
+void setSnap(Scene::Renderer &renderer, int bits) {
+  const auto world = static_cast<float>(std::ldexp(8.0, -bits));
+  const auto screen = static_cast<float>(std::ldexp(64.0, -bits));
+  Scene::Desktop::setVertexSnap(renderer, world < 0.02f ? 0.0f : world,
+                                screen < 1.0f ? 0.0f : screen);
 }
 
-void buildLines(Renderer &r, double z) {
-  std::vector<float> ground, posts;
-  const glm::vec3 up(0, 1, 0);
+// The ground's grid and the posts beside the lane, around `z`, as line ends
+void groundLines(double z, std::vector<Scene::Vector3> &ground,
+                 std::vector<Scene::Vector3> &posts) {
+  ground.clear();
+  posts.clear();
   const float zNear = static_cast<float>(z) + 12.0f, zFar = static_cast<float>(z) - 260.0f;
   for (float gz = std::floor(zNear / 4.0f) * 4.0f; gz > zFar; gz -= 4.0f) {
-    pushVertex(ground, {-60.0f, kGroundY, gz}, up);
-    pushVertex(ground, {60.0f, kGroundY, gz}, up);
+    ground.push_back({-60.0f, kGroundY, gz});
+    ground.push_back({60.0f, kGroundY, gz});
   }
   for (float gx = -60.0f; gx <= 60.0f; gx += 4.0f) {
-    pushVertex(ground, {gx, kGroundY, zNear}, up);
-    pushVertex(ground, {gx, kGroundY, zFar}, up);
+    ground.push_back({gx, kGroundY, zNear});
+    ground.push_back({gx, kGroundY, zFar});
   }
   for (float pz = std::floor(zNear / 8.0f) * 8.0f; pz > zFar; pz -= 8.0f) {
     for (float side : {-1.0f, 1.0f}) {
-      float px = side * (kLaneHalfWidth + 1.2f);
-      pushVertex(posts, {px, kGroundY, pz}, up);
-      pushVertex(posts, {px, kCeilingY - 1.0f, pz}, up);
+      const float px = side * (kLaneHalfWidth + 1.2f);
+      posts.push_back({px, kGroundY, pz});
+      posts.push_back({px, kCeilingY - 1.0f, pz});
     }
   }
-  uploadMesh(r.ground, ground);
-  uploadMesh(r.posts, posts);
 }
 
-struct FlightDisplayPadd::ControlPanels {
-  std::unordered_map<std::string, std::unique_ptr<Graphics::ControlView>> views; // by padd name
-};
+void drawGate(Scene::Renderer &r, Scene::Mesh cube, const Obstacle &o, glm::vec3 color) {
+  const float t = kGateBar, d = 2.0f * kWallHalfZ;
+  const float left = o.cx - o.w / 2, right = o.cx + o.w / 2, bottom = o.cy - o.h / 2,
+              top = o.cy + o.h / 2;
+  const Scene::Material lit{.colour = toColour(color)};
+  r.draw(cube, box({left - t / 2, o.cy, o.z}, {t, o.h + 2 * t, d}), lit);
+  r.draw(cube, box({right + t / 2, o.cy, o.z}, {t, o.h + 2 * t, d}), lit);
+  r.draw(cube, box({o.cx, top + t / 2, o.z}, {o.w, t, d}), lit);
+  r.draw(cube, box({o.cx, bottom - t / 2, o.z}, {o.w, t, d}), lit);
+}
+
+} // namespace
 
 FlightDisplayPadd::FlightDisplayPadd(ScratchPadd::System *system)
-    : Base(system), renderer_(std::make_unique<Renderer>()),
-      controlPanels_(std::make_unique<ControlPanels>()) {
+    : Base(system),
+      panels_(
+          [this](ScratchPadd::PaddAddress owner,
+                 const ScratchPadd::MessageType::ControlChange &change) { sendTo(owner, change); },
+          // The precision lab top-right, clear of the HUD at top-left; any
+          // other padd's panel (AudioPadd's volumes) bottom-right, clear of
+          // the lab
+          [](const std::string &padd, std::size_t) {
+            return padd == "FlightSim" ? ImVec2(1, 0) : ImVec2(1, 1);
+          }) {
   receive<WorldSnapshot>([this](const WorldSnapshot &world) { drawFrame(world); });
   receive<ScratchPadd::MessageType::ControlSnapshot>(
       [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot,
-             ScratchPadd::PaddAddress owner) { showControls(snapshot, owner); });
+             ScratchPadd::PaddAddress owner) { panels_.show(snapshot, owner); });
   receive<GatePassed>([this](const GatePassed &e) { showEvent(e); });
   receive<Crashed>([this](const Crashed &e) { showEvent(e); });
   receive<PowerupCollected>([this](const PowerupCollected &e) { showEvent(e); });
@@ -304,63 +134,30 @@ FlightDisplayPadd::FlightDisplayPadd(ScratchPadd::System *system)
 FlightDisplayPadd::~FlightDisplayPadd() = default;
 
 void FlightDisplayPadd::starting() {
-  if (!glfwInit()) {
-    std::fprintf(stderr, "Failed to initialize GLFW\n");
+  display_ = std::make_unique<Scene::Display>(1280, 800, "Precision Flight");
+  if (!display_->isOpen()) {
+    std::fprintf(stderr, "No window: %s\n", display_->error().c_str());
     system_->stop();
     return;
   }
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // required on macOS
-  glfwWindowHint(GLFW_SAMPLES, 4);
-
-  window_ = glfwCreateWindow(1280, 800, "Precision Flight", nullptr, nullptr);
-  if (!window_) {
-    std::fprintf(stderr, "Failed to create window\n");
-    system_->stop();
-    return;
-  }
-  glfwMakeContextCurrent(window_);
-  glfwSwapInterval(1);
-
-  glewExperimental = GL_TRUE;
-  if (glewInit() != GLEW_OK) {
-    std::fprintf(stderr, "Failed to initialize GLEW\n");
-    system_->stop();
-    return;
-  }
-
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  Theme::apply(Theme::Colors::Dark);
-  ImGui::GetIO().IniFilename = nullptr; // don't write imgui.ini into the working directory
-  ImGui_ImplGlfw_InitForOpenGL(window_, true);
-  ImGui_ImplOpenGL3_Init("#version 330");
-
-  renderer_->init();
-  glEnable(GL_DEPTH_TEST);
-  glEnable(GL_MULTISAMPLE);
-  glLineWidth(1.0f);
+  renderer_ = std::make_unique<Scene::Renderer>(*display_);
+  ui_ = std::make_unique<ScratchPadd::DebugUi::Ui>(*display_);
+  meshes_.cube = renderer_->load(Scene::MeshBuilder().box({}, {0.5f, 0.5f, 0.5f}).data());
+  meshes_.ship = renderer_->load(shipMesh().data());
+  meshes_.octahedron = renderer_->load(octahedronMesh().data());
 
   // Ask the padds with controls (the simulation's precision lab) for them,
   // then start the frame chain.
   send(ScratchPadd::MessageType::ControlRequest{});
-  previousTime_ = glfwGetTime();
+  previousTime_ = display_->seconds();
   send(FrameInput{});
 }
 
 void FlightDisplayPadd::finishing() {
-  if (!window_) {
-    return;
-  }
-  controlPanels_->views.clear();
-  ImGui_ImplOpenGL3_Shutdown();
-  ImGui_ImplGlfw_Shutdown();
-  ImGui::DestroyContext();
-  glfwDestroyWindow(window_);
-  glfwTerminate();
-  window_ = nullptr;
+  panels_.clear();
+  ui_.reset();
+  renderer_.reset();
+  display_.reset();
 }
 
 void FlightDisplayPadd::showEvent(const FlightEvent &event) {
@@ -398,25 +195,6 @@ void FlightDisplayPadd::showEvent(const FlightEvent &event) {
   }
 }
 
-void FlightDisplayPadd::showControls(const ScratchPadd::MessageType::ControlSnapshot &snapshot,
-                                     ScratchPadd::PaddAddress owner) {
-  auto &views = controlPanels_->views;
-  auto existing = views.find(snapshot.paddName);
-  if (existing != views.end()) {
-    existing->second->setControls(snapshot);
-    return;
-  }
-  auto view = ControlViewBuilder();
-  view->setControls(snapshot);
-  view->setOnChange([this, owner](const ScratchPadd::MessageType::ControlChange &change) {
-    sendTo(owner, change);
-  });
-  // The precision lab top-right, clear of the HUD at top-left; any other
-  // padd's panel (AudioPadd's volumes) bottom-right, clear of the lab
-  view->setInitialPlacement(snapshot.paddName == "FlightSim" ? ImVec2(1, 0) : ImVec2(1, 1));
-  views[snapshot.paddName] = std::move(view);
-}
-
 glm::vec3 FlightDisplayPadd::flashed(const Obstacle &o, glm::vec3 base) const {
   auto flash = flashes_.find(o.id);
   if (flash == flashes_.end() || flash->second.seconds <= 0.0f) {
@@ -426,42 +204,35 @@ glm::vec3 FlightDisplayPadd::flashed(const Obstacle &o, glm::vec3 base) const {
 }
 
 void FlightDisplayPadd::drawFrame(const WorldSnapshot &world) {
-  if (!window_) {
-    return;
-  }
-  if (glfwWindowShouldClose(window_)) {
-    system_->stop(); // ends the frame chain
+  if (!display_ || !display_->isOpen()) {
+    if (display_)
+      system_->stop(); // ends the frame chain
     return;
   }
   world_ = world;
 
-  glfwPollEvents();
-  const double now = glfwGetTime();
+  display_->pollEvents();
+  ui_->newFrame();
+  const double now = display_->seconds();
   const double frame = std::min(now - previousTime_, 0.25);
   previousTime_ = now;
 
-  // One-shot keys become commands for the simulation
-  const bool typing = ImGui::GetIO().WantTextInput;
-  auto pressed = [&](int key, bool &held) {
-    const bool down = !typing && glfwGetKey(window_, key) == GLFW_PRESS;
-    const bool edge = down && !held;
-    held = down;
-    return edge;
-  };
-  if (pressed(GLFW_KEY_P, pauseHeld_)) {
+  // One-shot keys become commands for the simulation (none while typing in
+  // a panel: the display gives keys to ImGui then)
+  if (display_->keyPressed(Scene::keyFor('P'))) {
     send(GameCommand{GameCommand::Type::TogglePause});
   }
-  if (pressed(GLFW_KEY_R, restartHeld_)) {
+  if (display_->keyPressed(Scene::keyFor('R'))) {
     send(GameCommand{GameCommand::Type::Restart});
     smoothed_ = glm::vec2(0.0f);
     flashes_.clear();
     messages_.clear();
   }
-  if (pressed(GLFW_KEY_T, autopilotHeld_)) {
+  if (display_->keyPressed(Scene::keyFor('T'))) {
     send(GameCommand{GameCommand::Type::ToggleAutopilot});
   }
-  if (glfwGetKey(window_, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-    glfwSetWindowShouldClose(window_, GLFW_TRUE);
+  if (display_->keyDown(Scene::Key::Escape)) {
+    display_->close();
   }
 
   if (!world_.paused) {
@@ -476,78 +247,62 @@ void FlightDisplayPadd::drawFrame(const WorldSnapshot &world) {
     }
   }
 
-  int width, height;
-  glfwGetFramebufferSize(window_, &width, &height);
-  glViewport(0, 0, width, height);
-  glClearColor(kSkyColor.r, kSkyColor.g, kSkyColor.b, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  drawWorld(width, height, static_cast<float>(now));
-
-  ImGui_ImplOpenGL3_NewFrame();
-  ImGui_ImplGlfw_NewFrame();
-  ImGui::NewFrame();
+  drawWorld(static_cast<float>(now));
   drawHud();
-  for (auto &[name, view] : controlPanels_->views) {
-    view->draw();
-  }
-  ImGui::Render();
-  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-  glfwSwapBuffers(window_);
-
-  // GLFW 3.3 on macOS can render into a quarter of a high-DPI window until
-  // the window moves once
-  if (!nudged_) {
-    int wx, wy;
-    glfwGetWindowPos(window_, &wx, &wy);
-    glfwSetWindowPos(window_, wx + 1, wy);
-    nudged_ = true;
-  }
+  panels_.draw();
+  renderer_->endFrame(); // waits for the screen's refresh
 
   // Steering for the next frame (the simulation ignores it on autopilot)
-  auto key = [&](int a, int b) {
-    return !typing &&
-           (glfwGetKey(window_, a) == GLFW_PRESS || glfwGetKey(window_, b) == GLFW_PRESS);
+  auto key = [&](Scene::Key a, Scene::Key b) {
+    return display_->keyDown(a) || display_->keyDown(b);
   };
   FrameInput next;
   next.seconds = frame;
-  next.inputX = (key(GLFW_KEY_D, GLFW_KEY_RIGHT) ? 1.0f : 0.0f) -
-                (key(GLFW_KEY_A, GLFW_KEY_LEFT) ? 1.0f : 0.0f);
-  next.inputY =
-      (key(GLFW_KEY_W, GLFW_KEY_UP) ? 1.0f : 0.0f) - (key(GLFW_KEY_S, GLFW_KEY_DOWN) ? 1.0f : 0.0f);
+  next.inputX = (key(Scene::keyFor('D'), Scene::Key::Right) ? 1.0f : 0.0f) -
+                (key(Scene::keyFor('A'), Scene::Key::Left) ? 1.0f : 0.0f);
+  next.inputY = (key(Scene::keyFor('W'), Scene::Key::Up) ? 1.0f : 0.0f) -
+                (key(Scene::keyFor('S'), Scene::Key::Down) ? 1.0f : 0.0f);
   send(next);
 }
 
-void FlightDisplayPadd::drawWorld(int width, int height, float time) {
-  Renderer &r = *renderer_;
+void FlightDisplayPadd::drawWorld(float time) {
+  Scene::Renderer &r = *renderer_;
   const WorldSnapshot &g = world_;
-  glUseProgram(r.program);
-  glUniform2f(r.viewport, static_cast<float>(width), static_cast<float>(height));
-  glUniform3fv(r.fogColor, 1, glm::value_ptr(kSkyColor));
-  glUniform1f(r.fogDensity, 0.012f);
-
   const float z = static_cast<float>(g.z);
-  glm::vec3 eye(smoothed_.x * 0.55f, smoothed_.y * 0.45f + 2.0f, z + 7.5f);
-  glm::vec3 target(smoothed_.x * 0.8f, smoothed_.y * 0.7f + 0.6f, z - 14.0f);
-  glm::mat4 view = glm::lookAt(eye, target, glm::vec3(0, 1, 0));
-  glm::mat4 proj =
-      glm::perspective(glm::radians(60.0f), width / std::max(1.0f, float(height)), 0.1f, 400.0f);
-  glm::mat4 viewProj = proj * view;
-  glUniformMatrix4fv(r.viewProj, 1, GL_FALSE, glm::value_ptr(viewProj));
+  const Scene::Camera camera{
+      .eye = toScene({smoothed_.x * 0.55f, smoothed_.y * 0.45f + 2.0f, z + 7.5f}),
+      .target = toScene({smoothed_.x * 0.8f, smoothed_.y * 0.7f + 0.6f, z - 14.0f}),
+      .fieldOfView = 60,
+      .farPlane = 400};
+  // Lit from one direction both ways, so faces facing away are as bright as
+  // faces facing it (0.35 + 0.65 |n . light|), fogged into the night sky
+  const Scene::Vector3 light = Scene::Vector3{0.4f, 0.8f, 0.3f}.normalised();
+  Scene::Environment environment{.background = toColour(kSkyColor),
+                                 .ambient = Scene::Colour::fromUnit(0.35f, 0.35f, 0.35f),
+                                 .fog = {.colour = toColour(kSkyColor), .density = 0.012f}};
+  environment
+      .addLight({.direction = -light, .colour = Scene::Colour::fromUnit(0.65f, 0.65f, 0.65f)})
+      .addLight({.direction = light, .colour = Scene::Colour::fromUnit(0.65f, 0.65f, 0.65f)});
+  r.beginFrame(camera, environment);
+  setSnap(r, g.renderBits);
 
-  r.setSnap(g.renderBits);
+  static std::vector<Scene::Vector3> ground, posts;
+  groundLines(g.z, ground, posts);
+  r.drawLines(ground, toColour({0.08f, 0.35f, 0.5f}));
+  r.drawLines(posts, toColour({0.45f, 0.2f, 0.6f}));
 
-  buildLines(r, g.z);
-  r.draw(r.ground, glm::mat4(1.0f), {0.08f, 0.35f, 0.5f}, false);
-  r.draw(r.posts, glm::mat4(1.0f), {0.45f, 0.2f, 0.6f}, false);
-
+  const auto unlit = [](glm::vec3 colour, float alpha = 1.0f) {
+    return Scene::Material{.shading = Scene::Material::Shading::unlit,
+                           .colour = toColour(colour),
+                           .alpha = static_cast<std::uint8_t>(std::lround(alpha * 31))};
+  };
   for (const Obstacle &o : g.obstacles) {
     switch (o.kind) {
     case Kind::Gate:
-      drawGate(r, o, flashed(o, {0.25f, 0.85f, 0.4f}));
+      drawGate(r, meshes_.cube, o, flashed(o, {0.25f, 0.85f, 0.4f}));
       break;
     case Kind::GoldGate:
-      drawGate(r, o, flashed(o, {1.0f, 0.78f, 0.15f}));
+      drawGate(r, meshes_.cube, o, flashed(o, {1.0f, 0.78f, 0.15f}));
       break;
     case Kind::FocusPickup:
     case Kind::PhasePickup: {
@@ -557,13 +312,21 @@ void FlightDisplayPadd::drawWorld(int width, int height, float time) {
       glm::mat4 m = glm::translate(glm::mat4(1.0f), {o.cx, o.cy, o.z});
       m = glm::rotate(m, time * 2.0f, glm::vec3(0, 1, 0));
       m = glm::scale(m, glm::vec3(0.6f, 0.8f, 0.6f));
-      glm::vec3 c =
+      const glm::vec3 c =
           o.kind == Kind::FocusPickup ? glm::vec3(0.3f, 0.9f, 1.0f) : glm::vec3(1.0f, 0.3f, 0.9f);
-      r.draw(r.octahedron, m, c);
+      r.draw(meshes_.octahedron, toScene(m), {.colour = toColour(c)});
       break;
     }
-    case Kind::PhaseWall:
-      break; // translucent, drawn below
+    case Kind::PhaseWall: {
+      // Translucent energy walls: the renderer draws them after everything
+      // solid, farthest first
+      const float pulse = 0.3f + 0.1f * std::sin(time * 6.0f + o.z);
+      r.draw(meshes_.cube,
+             box({0.0f, (kGroundY + kCeilingY) / 2, o.z},
+                 {2 * kLaneHalfWidth + 3.0f, kCeilingY - kGroundY, 2 * kWallHalfZ}),
+             unlit(flashed(o, {1.0f, 0.2f, 0.85f}), pulse));
+      break;
+    }
     }
   }
 
@@ -572,37 +335,25 @@ void FlightDisplayPadd::drawWorld(int width, int height, float time) {
   glm::mat4 ship = glm::translate(glm::mat4(1.0f), {smoothed_.x, smoothed_.y, z});
   ship = glm::rotate(ship, std::clamp(-g.vx * 0.06f, -0.7f, 0.7f), {0, 0, 1});
   ship = glm::rotate(ship, std::clamp(g.vy * 0.03f, -0.4f, 0.4f), {1, 0, 0});
-  r.draw(r.ship, ship,
-         g.phase.active() ? glm::vec3(0.85f, 0.55f, 0.95f) : glm::vec3(0.75f, 0.8f, 0.9f));
-  r.draw(r.cube,
-         glm::scale(glm::translate(ship, {0.0f, 0.05f, 0.7f}), glm::vec3(0.35f, 0.18f, 0.1f)),
-         {1.0f, 0.55f + 0.2f * std::sin(time * 30.0f), 0.1f}, false);
+  r.draw(meshes_.ship, toScene(ship),
+         {.colour = toColour(g.phase.active() ? glm::vec3(0.85f, 0.55f, 0.95f)
+                                              : glm::vec3(0.75f, 0.8f, 0.9f))});
+  r.draw(
+      meshes_.cube,
+      toScene(glm::scale(glm::translate(ship, {0.0f, 0.05f, 0.7f}), glm::vec3(0.35f, 0.18f, 0.1f))),
+      unlit({1.0f, 0.55f + 0.2f * std::sin(time * 30.0f), 0.1f}));
 
   // Physics hitbox at the exact observed position, without render snapping
   if (showHitbox_) {
-    r.setSnap(64);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    r.drawBox({g.observed.x, g.observed.y, g.observedZ},
-              {2 * kShipHalfX, 2 * kShipHalfY, 2 * kShipHalfZ}, {1.0f, 1.0f, 0.3f}, false);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    r.setSnap(g.renderBits);
+    Scene::Desktop::setVertexSnap(r, 0, 0);
+    Scene::Material wire = unlit({1.0f, 1.0f, 0.3f});
+    wire.wireframe = true;
+    r.draw(meshes_.cube,
+           box({g.observed.x, g.observed.y, g.observedZ},
+               {2 * kShipHalfX, 2 * kShipHalfY, 2 * kShipHalfZ}),
+           wire);
+    setSnap(r, g.renderBits);
   }
-
-  // Translucent energy walls, far to near
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glDepthMask(GL_FALSE);
-  for (auto it = g.obstacles.rbegin(); it != g.obstacles.rend(); ++it) {
-    if (it->kind != Kind::PhaseWall) {
-      continue;
-    }
-    float pulse = 0.3f + 0.1f * std::sin(time * 6.0f + it->z);
-    r.drawBox({0.0f, (kGroundY + kCeilingY) / 2, it->z},
-              {2 * kLaneHalfWidth + 3.0f, kCeilingY - kGroundY, 2 * kWallHalfZ},
-              flashed(*it, {1.0f, 0.2f, 0.85f}), false, pulse);
-  }
-  glDepthMask(GL_TRUE);
-  glDisable(GL_BLEND);
 }
 
 void FlightDisplayPadd::drawHud() {

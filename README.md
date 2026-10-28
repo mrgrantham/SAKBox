@@ -29,7 +29,7 @@ The first build takes a while, mostly to compile OpenCV and SDL2; later builds a
 
 | Project | Description |
 | --- | --- |
-| [ScratchPadd](projects/scratchpadd/README.md) | Message passing and thread management between subsystems ("padds") of one process, with an OpenGL/ImGui display padd. Demo: `bazel run //projects/scratchpadd/demo` |
+| [ScratchPadd](projects/scratchpadd/README.md) | Message passing and thread management between subsystems ("padds") of one process, with a scene layer that draws 3D the same way on desktops and (to come) the DS, and an ImGui debug UI. Demo: `bazel run //projects/scratchpadd/demo` |
 | [flexmath](projects/flexmath/README.md) | Numeric precision that can change at runtime: fixed-point values, precision groups and powerup-style overrides |
 | [Waffles](projects/waffles/README.md) | Mike Gashler's machine learning and data mining library (public domain), built with Bazel here. Includes its command-line tools (`learn`, `cluster`, `plot`, ...) and demos such as `chess` and `caronhill` |
 | [Cyclone](projects/cyclone/README.md) | Ian Millington's rigid-body physics engine (MIT), maintained in SAKBox since upstream stopped in 2020. Includes a flexmath build in which every `real` is a `FlexReal`, and demos: `bazel run //projects/cyclone:<demo>` for `ballistic`, `bigballistic`, `blob`, `bridge`, `explosion`, `fireworks`, `flightsim`, `fracture`, `platform`, `ragdoll`, `sailboat` or `stack`. `flightsim_flex` is the flight sim at adjustable precision: `[` and `]` step it, N switches between stochastic, truncating and nearest rounding |

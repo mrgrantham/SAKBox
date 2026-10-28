@@ -44,13 +44,11 @@ cc_binary(
     deps = [
         ":flight_padds",
         "//projects/scratchpadd/audio",
-        "//projects/scratchpadd/graphics",
-        "@glew",
-        "@glfw",
+        "//projects/scratchpadd/debug_ui",
+        "//projects/scratchpadd/scene",
+        "//projects/scratchpadd/scene/gl",
         "@glm",
         "@imgui",
-        "@imgui//:imgui_backend_glfw",
-        "@imgui//:imgui_backend_opengl3",
     ],
 )
 

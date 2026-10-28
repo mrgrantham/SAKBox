@@ -1,143 +1,53 @@
 #include "RagdollWindowPadd.hpp"
 
-// GLEW must be included before GLFW
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include "imgui.h"
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-
-#include <ScratchPadd/Graphics/Graphics.hpp>
 
 #include <algorithm>
-#include <cstdio>
-#include <unordered_map>
+#include <cmath>
+#include <numbers>
 #include <vector>
 
 namespace CyclonePadds {
 
+namespace Scene = ScratchPadd::Scene;
+
 namespace {
 
-const glm::vec3 kSkyColor(0.88f, 0.93f, 0.98f);
-const glm::vec3 kBoneColor(0.62f, 0.42f, 0.40f);
-const glm::vec3 kGroundColor(0.70f, 0.72f, 0.75f);
-const glm::vec3 kJointHeld(0.1f, 0.65f, 0.2f);     // within its slack
-const glm::vec3 kJointStretched(0.9f, 0.1f, 0.1f); // beyond it
+const Scene::Colour kSky{224, 237, 250};
+const Scene::Colour kBone{158, 107, 102};
+const Scene::Colour kGround{179, 184, 191};
+const Scene::Colour kJointHeld{26, 166, 51};      // within its slack
+const Scene::Colour kJointStretched{230, 26, 26}; // beyond it
 const glm::vec3 kLookAt(0.0f, 1.5f, 0.0f);
 constexpr float kCameraDistance = 14.0f;
 
-const char *kVertexShader = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aNormal;
-uniform mat4 uModel;
-uniform mat4 uViewProj;
-out vec3 vNormal;
-void main() {
-  vNormal = mat3(uModel) * aNormal;
-  gl_Position = uViewProj * uModel * vec4(aPos, 1.0);
-}
-)";
+Scene::Vector3 toScene(const glm::vec3 &v) { return {v.x, v.y, v.z}; }
 
-const char *kFragmentShader = R"(#version 330 core
-in vec3 vNormal;
-uniform vec3 uColor;
-uniform int uLit;
-out vec4 fragColor;
-void main() {
-  vec3 color = uColor;
-  if (uLit == 1) {
-    float light = max(dot(normalize(vNormal), normalize(vec3(0.4, 1.0, 0.3))), 0.0);
-    color *= 0.45 + 0.55 * light;
-  }
-  fragColor = vec4(color, 1.0);
-}
-)";
-
-GLuint compileShader(GLenum type, const char *source) {
-  GLuint shader = glCreateShader(type);
-  glShaderSource(shader, 1, &source, nullptr);
-  glCompileShader(shader);
-  GLint ok = 0;
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-  if (!ok) {
-    char log[1024];
-    glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
-    std::fprintf(stderr, "Shader compile error: %s\n", log);
-  }
-  return shader;
+// A glm transform (rotation, scale and position) as the scene layer's
+Scene::Transform toScene(const glm::mat4 &m) {
+  Scene::Transform t;
+  for (int row = 0; row < 3; ++row)
+    for (int column = 0; column < 4; ++column)
+      t.m[row][column] = m[column][row]; // glm is column-major
+  return t;
 }
 
-// Vertices are a position and a normal, 6 floats
-struct Mesh {
-  GLuint vao = 0, vbo = 0;
-  GLsizei count = 0;
-  GLenum mode = GL_TRIANGLES;
-};
-
-void upload(Mesh &mesh, const std::vector<float> &data) {
-  glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
-  glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(data.size() * sizeof(float)), data.data(),
-               GL_DYNAMIC_DRAW);
-  mesh.count = static_cast<GLsizei>(data.size() / 6);
-}
-
-Mesh makeMesh(const std::vector<float> &data, GLenum mode) {
-  Mesh mesh;
-  mesh.mode = mode;
-  glGenVertexArrays(1, &mesh.vao);
-  glGenBuffers(1, &mesh.vbo);
-  glBindVertexArray(mesh.vao);
-  upload(mesh, data);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), nullptr);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
-                        reinterpret_cast<void *>(3 * sizeof(float)));
-  glEnableVertexAttribArray(1);
-  glBindVertexArray(0);
-  return mesh;
-}
-
-void pushVertex(std::vector<float> &data, glm::vec3 p, glm::vec3 n = glm::vec3(0, 1, 0)) {
-  data.insert(data.end(), {p.x, p.y, p.z, n.x, n.y, n.z});
-}
-
-// A unit cube centred on the origin, each face with its own normal
-std::vector<float> cubeData() {
-  std::vector<float> d;
-  const float h = 0.5f;
-  const glm::vec3 p[8] = {{-h, -h, -h}, {h, -h, -h}, {h, h, -h}, {-h, h, -h},
-                          {-h, -h, h},  {h, -h, h},  {h, h, h},  {-h, h, h}};
-  const int faces[6][4] = {{4, 5, 6, 7}, {1, 0, 3, 2}, {5, 1, 2, 6},
-                           {0, 4, 7, 3}, {7, 6, 2, 3}, {0, 1, 5, 4}};
-  for (const auto &f : faces) {
-    const glm::vec3 n = glm::normalize(glm::cross(p[f[1]] - p[f[0]], p[f[2]] - p[f[0]]));
-    for (int corner : {0, 1, 2, 0, 2, 3}) {
-      pushVertex(d, p[f[corner]], n);
-    }
-  }
-  return d;
-}
-
-// Rings a metre apart on the ground, and the two axes
-std::vector<float> groundData() {
-  std::vector<float> d;
+// Rings a metre apart on the ground, and the two axes, as line ends
+std::vector<Scene::Vector3> groundLines() {
+  std::vector<Scene::Vector3> ends;
   for (int ring = 1; ring < 20; ++ring) {
     for (int i = 0; i < 48; ++i) {
       for (int end : {i, i + 1}) {
-        const float angle = 2.0f * 3.14159265f * static_cast<float>(end) / 48.0f;
-        pushVertex(d, glm::vec3(ring * std::cos(angle), 0, ring * std::sin(angle)));
+        const float angle = 2.0f * std::numbers::pi_v<float> * static_cast<float>(end) / 48.0f;
+        ends.push_back({ring * std::cos(angle), 0, ring * std::sin(angle)});
       }
     }
   }
-  pushVertex(d, {-20, 0, 0});
-  pushVertex(d, {20, 0, 0});
-  pushVertex(d, {0, 0, -20});
-  pushVertex(d, {0, 0, 20});
-  return d;
+  ends.insert(ends.end(), {{-20, 0, 0}, {20, 0, 0}, {0, 0, -20}, {0, 0, 20}});
+  return ends;
 }
 
 // Where a point fixed to a bone (in its own coordinates) is now
@@ -147,74 +57,16 @@ glm::vec3 pointOn(const BoneSnapshot &bone, glm::vec3 point) {
 
 } // namespace
 
-struct RagdollRenderer {
-  GLuint program = 0;
-  GLint model = -1, viewProj = -1, color = -1, lit = -1;
-  Mesh cube, ground, joints;
-
-  void init() {
-    program = glCreateProgram();
-    const GLuint vertex = compileShader(GL_VERTEX_SHADER, kVertexShader);
-    const GLuint fragment = compileShader(GL_FRAGMENT_SHADER, kFragmentShader);
-    glAttachShader(program, vertex);
-    glAttachShader(program, fragment);
-    glLinkProgram(program);
-    glDeleteShader(vertex);
-    glDeleteShader(fragment);
-    model = glGetUniformLocation(program, "uModel");
-    viewProj = glGetUniformLocation(program, "uViewProj");
-    color = glGetUniformLocation(program, "uColor");
-    lit = glGetUniformLocation(program, "uLit");
-    cube = makeMesh(cubeData(), GL_TRIANGLES);
-    ground = makeMesh(groundData(), GL_LINES);
-    joints = makeMesh({}, GL_LINES);
-  }
-
-  void draw(const Mesh &mesh, const glm::mat4 &m, glm::vec3 c, bool isLit) {
-    glUniformMatrix4fv(model, 1, GL_FALSE, glm::value_ptr(m));
-    glUniform3fv(color, 1, glm::value_ptr(c));
-    glUniform1i(lit, isLit ? 1 : 0);
-    glBindVertexArray(mesh.vao);
-    glDrawArrays(mesh.mode, 0, mesh.count);
-  }
-
-  // The bones as boxes, and each joint as a line between its two points:
-  // green within its slack, red beyond it
-  void drawRagdoll(const std::vector<BoneSnapshot> &bones, const std::vector<JointSnapshot> &js) {
-    for (const BoneSnapshot &bone : bones) {
-      const glm::mat4 m = glm::translate(glm::mat4(1.0f), bone.position) *
-                          glm::mat4_cast(bone.orientation) *
-                          glm::scale(glm::mat4(1.0f), 2.0f * bone.halfSize);
-      draw(cube, m, kBoneColor, true);
-    }
-    std::vector<float> held, stretched;
-    for (const JointSnapshot &joint : js) {
-      if (joint.bones[0] >= static_cast<int>(bones.size()) ||
-          joint.bones[1] >= static_cast<int>(bones.size())) {
-        continue;
-      }
-      const glm::vec3 a = pointOn(bones[joint.bones[0]], joint.points[0]);
-      const glm::vec3 b = pointOn(bones[joint.bones[1]], joint.points[1]);
-      std::vector<float> &lines = glm::distance(a, b) > joint.slack ? stretched : held;
-      pushVertex(lines, a);
-      pushVertex(lines, b);
-    }
-    glDisable(GL_DEPTH_TEST); // joints show through the bones
-    for (auto [lines, c] : {std::pair{&held, kJointHeld}, std::pair{&stretched, kJointStretched}}) {
-      upload(joints, *lines);
-      draw(joints, glm::mat4(1.0f), c, false);
-    }
-    glEnable(GL_DEPTH_TEST);
-  }
-};
-
-struct RagdollWindowPadd::ControlPanels {
-  std::unordered_map<std::string, std::unique_ptr<Graphics::ControlView>> views; // by padd name
-};
-
 RagdollWindowPadd::RagdollWindowPadd(ScratchPadd::System *system)
-    : Base(system), renderer_(std::make_unique<RagdollRenderer>()),
-      controlPanels_(std::make_unique<ControlPanels>()) {
+    : Base(system),
+      panels_(
+          [this](ScratchPadd::PaddAddress owner,
+                 const ScratchPadd::MessageType::ControlChange &change) { sendTo(owner, change); },
+          // Down the right side: the physics, then this window's own, then
+          // the rest (AudioPadd's volumes)
+          [this](const std::string &padd, std::size_t) {
+            return ImVec2(1, padd == "RagdollPhysics" ? 0.0f : padd == name() ? 0.45f : 0.7f);
+          }) {
   receive<RagdollSnapshot>([this](const RagdollSnapshot &snapshot) {
     // Draw a tick and a step behind the physics, so there's a snapshot on
     // each side to blend between
@@ -224,7 +76,7 @@ RagdollWindowPadd::RagdollWindowPadd(ScratchPadd::System *system)
   });
   receive<ScratchPadd::MessageType::ControlSnapshot>(
       [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot,
-             ScratchPadd::PaddAddress owner) { showControls(snapshot, owner); });
+             ScratchPadd::PaddAddress owner) { panels_.show(snapshot, owner); });
 }
 
 RagdollWindowPadd::~RagdollWindowPadd() = default;
@@ -234,41 +86,15 @@ double RagdollWindowPadd::now() const {
 }
 
 void RagdollWindowPadd::starting() {
-  if (!glfwInit()) {
-    std::fprintf(stderr, "Failed to initialize GLFW\n");
+  display_ = std::make_unique<Scene::Display>(1280, 800, "Cyclone padds: ragdoll");
+  if (!display_->isOpen()) {
+    spdlog::error("No window: {}", display_->error());
     system_->stop();
     return;
   }
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // required on macOS
-  glfwWindowHint(GLFW_SAMPLES, 4);
-  window_ = glfwCreateWindow(1280, 800, "Cyclone padds: ragdoll", nullptr, nullptr);
-  if (!window_) {
-    std::fprintf(stderr, "Failed to create window\n");
-    system_->stop();
-    return;
-  }
-  glfwMakeContextCurrent(window_);
-  glfwSwapInterval(1);
-  glewExperimental = GL_TRUE;
-  if (glewInit() != GLEW_OK) {
-    std::fprintf(stderr, "Failed to initialize GLEW\n");
-    system_->stop();
-    return;
-  }
-
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  Theme::apply(Theme::Colors::Light);
-  ImGui::GetIO().IniFilename = nullptr; // don't write imgui.ini into the working directory
-  ImGui_ImplGlfw_InitForOpenGL(window_, true);
-  ImGui_ImplOpenGL3_Init("#version 330");
-
-  renderer_->init();
-  glEnable(GL_DEPTH_TEST);
-  glEnable(GL_MULTISAMPLE);
+  renderer_ = std::make_unique<Scene::Renderer>(*display_);
+  ui_ = std::make_unique<ScratchPadd::DebugUi::Ui>(*display_, Theme::Colors::Light);
+  cube_ = renderer_->load(Scene::MeshBuilder().box({}, {0.5f, 0.5f, 0.5f}).data());
 
   // Ask every padd with controls for them, this one included (its blending
   // switch), then start drawing
@@ -278,74 +104,37 @@ void RagdollWindowPadd::starting() {
 }
 
 void RagdollWindowPadd::finishing() {
-  if (!window_) {
-    return;
-  }
-  controlPanels_->views.clear();
-  ImGui_ImplOpenGL3_Shutdown();
-  ImGui_ImplGlfw_Shutdown();
-  ImGui::DestroyContext();
-  glfwDestroyWindow(window_);
-  glfwTerminate();
-  window_ = nullptr;
-}
-
-void RagdollWindowPadd::showControls(const ScratchPadd::MessageType::ControlSnapshot &snapshot,
-                                     ScratchPadd::PaddAddress owner) {
-  auto &views = controlPanels_->views;
-  auto existing = views.find(snapshot.paddName);
-  if (existing != views.end()) {
-    existing->second->setControls(snapshot);
-    return;
-  }
-  auto view = ControlViewBuilder();
-  view->setControls(snapshot);
-  view->setOnChange([this, owner](const ScratchPadd::MessageType::ControlChange &change) {
-    sendTo(owner, change);
-  });
-  // Down the right side: the physics, then this window's own, then the rest
-  // (AudioPadd's volumes)
-  const float down = snapshot.paddName == "RagdollPhysics" ? 0.0f
-                     : snapshot.paddName == name()         ? 0.45f
-                                                           : 0.7f;
-  view->setInitialPlacement(ImVec2(1, down));
-  views[snapshot.paddName] = std::move(view);
+  panels_.clear();
+  ui_.reset();
+  renderer_.reset();
+  display_.reset();
 }
 
 void RagdollWindowPadd::handleKeys() {
-  const ImGuiIO &io = ImGui::GetIO();
-  const bool typing = io.WantTextInput;
-  auto pressed = [&](int key, bool &held) {
-    const bool down = !typing && glfwGetKey(window_, key) == GLFW_PRESS;
-    const bool edge = down && !held;
-    held = down;
-    return edge;
-  };
-  if (pressed(GLFW_KEY_R, resetHeld_)) {
+  if (display_->keyPressed(Scene::keyFor('R'))) {
     send(RagdollCommand{RagdollCommand::Type::Reset});
   }
-  if (pressed(GLFW_KEY_P, pauseHeld_)) {
+  if (display_->keyPressed(Scene::keyFor('P'))) {
     send(RagdollCommand{RagdollCommand::Type::TogglePause});
   }
-  if (glfwGetKey(window_, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-    glfwSetWindowShouldClose(window_, GLFW_TRUE);
+  if (display_->keyDown(Scene::Key::Escape)) {
+    display_->close();
   }
 
   // Dragging outside the panels turns the camera
-  double x, y;
-  glfwGetCursorPos(window_, &x, &y);
-  const bool down = glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-  if (down && !dragging_ && !io.WantCaptureMouse) {
+  const float x = display_->cursorX(), y = display_->cursorY();
+  const bool down = display_->mouseDown(Scene::MouseButton::Left);
+  if (down && !dragging_) {
     dragging_ = true;
   } else if (!down) {
     dragging_ = false;
   }
   if (dragging_ && x != dragX_) {
-    cameraTurn_ += static_cast<float>(x - dragX_) * 0.25f;
+    cameraTurn_ += (x - dragX_) * 0.25f;
     send(CameraTurned{cameraTurn_});
   }
   if (dragging_) {
-    cameraRise_ = std::clamp(cameraRise_ + static_cast<float>(y - dragY_) * 0.25f, 0.0f, 80.0f);
+    cameraRise_ = std::clamp(cameraRise_ + (y - dragY_) * 0.25f, 0.0f, 80.0f);
   }
   dragX_ = x;
   dragY_ = y;
@@ -382,15 +171,37 @@ void RagdollWindowPadd::drawStats() {
   ImGui::End();
 }
 
-void RagdollWindowPadd::drawFrame() {
-  if (!window_) {
-    return;
+void RagdollWindowPadd::drawRagdoll(const std::vector<BoneSnapshot> &bones,
+                                    const std::vector<JointSnapshot> &joints) {
+  for (const BoneSnapshot &bone : bones) {
+    const glm::mat4 m = glm::translate(glm::mat4(1.0f), bone.position) *
+                        glm::mat4_cast(bone.orientation) *
+                        glm::scale(glm::mat4(1.0f), 2.0f * bone.halfSize);
+    renderer_->draw(cube_, toScene(m), {.colour = kBone});
   }
-  if (glfwWindowShouldClose(window_)) {
+  // The joints over the bones (drawn on the overlay, so they show through)
+  for (const JointSnapshot &joint : joints) {
+    if (joint.bones[0] >= static_cast<int>(bones.size()) ||
+        joint.bones[1] >= static_cast<int>(bones.size())) {
+      continue;
+    }
+    const glm::vec3 a = pointOn(bones[joint.bones[0]], joint.points[0]);
+    const glm::vec3 b = pointOn(bones[joint.bones[1]], joint.points[1]);
+    float ax, ay, bx, by;
+    if (renderer_->toScreen(toScene(a), ax, ay) && renderer_->toScreen(toScene(b), bx, by)) {
+      renderer_->overlay().line(
+          ax, ay, bx, by, glm::distance(a, b) > joint.slack ? kJointStretched : kJointHeld, 2);
+    }
+  }
+}
+
+void RagdollWindowPadd::drawFrame() {
+  if (!display_->isOpen()) {
     system_->stop(); // ends the frame chain
     return;
   }
-  glfwPollEvents();
+  display_->pollEvents();
+  ui_->newFrame();
   handleKeys();
 
   const double time = now();
@@ -402,48 +213,25 @@ void RagdollWindowPadd::drawFrame() {
     countingSince_ = time;
   }
 
-  int width, height;
-  glfwGetFramebufferSize(window_, &width, &height);
-  glViewport(0, 0, width, height);
-  glClearColor(kSkyColor.r, kSkyColor.g, kSkyColor.b, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
   const float turn = glm::radians(cameraTurn_), rise = glm::radians(cameraRise_);
   const glm::vec3 eye =
       kLookAt + kCameraDistance * glm::vec3(std::cos(rise) * std::cos(turn), std::sin(rise),
                                             std::cos(rise) * std::sin(turn));
-  const float aspect = height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
-  const glm::mat4 viewProj = glm::perspective(glm::radians(50.0f), aspect, 0.1f, 200.0f) *
-                             glm::lookAt(eye, kLookAt, glm::vec3(0, 1, 0));
-  RagdollRenderer &r = *renderer_;
-  glUseProgram(r.program);
-  glUniformMatrix4fv(r.viewProj, 1, GL_FALSE, glm::value_ptr(viewProj));
-  r.draw(r.ground, glm::mat4(1.0f), kGroundColor, false);
+  const Scene::Camera camera{
+      .eye = toScene(eye), .target = toScene(kLookAt), .fieldOfView = 50, .farPlane = 200};
+  // Lit from above and to the side, never darker than 45%
+  Scene::Environment environment{.background = kSky, .ambient = {115, 115, 115}};
+  environment.addLight({.direction = {-0.4f, -1.0f, -0.3f}, .colour = {140, 140, 140}});
+  renderer_->beginFrame(camera, environment);
+  static const std::vector<Scene::Vector3> ground = groundLines();
+  renderer_->drawLines(ground, kGround);
   if (const RagdollSnapshot *newest = timeline_.newest()) {
     const bool blend = control<ScratchPadd::ControlType::Boolean>("Blend between snapshots").value;
-    r.drawRagdoll(timeline_.bonesAt(time, blend), newest->joints);
+    drawRagdoll(timeline_.bonesAt(time, blend), newest->joints);
   }
-
-  ImGui_ImplOpenGL3_NewFrame();
-  ImGui_ImplGlfw_NewFrame();
-  ImGui::NewFrame();
   drawStats();
-  for (auto &[padd, view] : controlPanels_->views) {
-    view->draw();
-  }
-  ImGui::Render();
-  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-  glfwSwapBuffers(window_); // waits for the screen's refresh
-
-  // GLFW 3.3 on macOS can render into a quarter of a high-DPI window until
-  // the window moves once
-  if (!nudged_) {
-    int wx, wy;
-    glfwGetWindowPos(window_, &wx, &wy);
-    glfwSetWindowPos(window_, wx + 1, wy);
-    nudged_ = true;
-  }
-
+  panels_.draw();
+  renderer_->endFrame(); // waits for the screen's refresh
   push([this] { drawFrame(); });
 }
 
