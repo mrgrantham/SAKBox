@@ -11,12 +11,14 @@
 //                  channels (AudioPadd/HardwareChannelsAudioPadd.hpp)
 //
 // A, B and X play a chime, a knock and a blast; Y starts and stops the
-// tune; START quits.
+// tune; SELECT shows every padd's controls (AudioPadd's volumes) in place of
+// the text, as tabs (HandheldControls); START quits.
 #include <filesystem.h>
 #include <nds.h>
 
 #include <AudioPadd.hpp>
 #include <HandheldDemo.hpp>
+#include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 
 #include <spdlog/spdlog.h>
@@ -32,7 +34,17 @@ using namespace HandheldDemo;
 
 class ScreenPadd : public ScratchPadd::Base {
 public:
-  ScreenPadd(ScratchPadd::System *system) : Base(system) {
+  ScreenPadd(ScratchPadd::System *system)
+      : Base(system), controls_(
+                          [this](ScratchPadd::PaddAddress owner,
+                                 const ScratchPadd::MessageType::ControlChange &change) {
+                            sendTo(owner, change);
+                          },
+                          ScratchPadd::HandheldControls::usableColumns(32), 24) {
+    // Every padd's controls, for the panel SELECT shows
+    receive<ScratchPadd::MessageType::ControlSnapshot>(
+        [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot,
+               ScratchPadd::PaddAddress owner) { controls_.show(snapshot, owner); });
     receive<StatusLine>([this](const StatusLine &line) { status_[line.row] = line.text; });
     receive<LogLine>([this](const LogLine &line) {
       log_.push_back(line.text);
@@ -49,6 +61,8 @@ public:
   void starting() override {
     consoleDemoInit();
     status_[0] = "ScreenPadd: main " + threadNumber();
+    controls_.setVisible(false); // the text first; SELECT for the controls
+    send(ScratchPadd::MessageType::ControlRequest{});
     push([this] { frame(); });
   }
 
@@ -71,10 +85,21 @@ private:
       system_->stop();
       return;
     }
+    // While the controls are shown, the buttons are theirs
+    const bool wasShown = controls_.visible();
+    controls_.handle(ScratchPadd::HandheldControls::inputFrom(static_cast<std::uint32_t>(down)));
+    if (controls_.visible() != wasShown) {
+      std::printf("\x1b[2J"); // the screen cleared for the other
+    }
+    if (controls_.visible()) {
+      ScratchPadd::HandheldControls::draw(controls_);
+      push([this] { frame(); });
+      return;
+    }
     static const std::pair<int, const char *> kButtons[] = {
         {KEY_A, "A"}, {KEY_B, "B"}, {KEY_X, "X"}, {KEY_Y, "Y"}};
     for (const auto &[key, button] : kButtons) {
-      if (down & key) {
+      if ((down & key) && !wasShown) {
         send(ButtonPressed{button});
       }
     }
@@ -90,12 +115,14 @@ private:
       std::printf("\x1b[%d;1H%.32s\x1b[K", kStatusRow + row, text.c_str());
     }
     std::printf("\x1b[%d;1HA chime B knock X blast Y tune\x1b[K", kHelpRow);
+    std::printf("\x1b[%d;1HSELECT controls  START quit\x1b[K", kHelpRow + 1);
     int row = kLogRow;
     for (const std::string &line : log_) {
       std::printf("\x1b[%d;1H%.32s\x1b[K", row++, line.c_str());
     }
   }
 
+  ScratchPadd::HandheldControls::ControlTabs controls_;
   std::map<int, std::string> status_;
   std::deque<std::string> log_;
 };

@@ -11,11 +11,13 @@
 //   AudioPadd      (own thread)  plays them through the 3DS's DSP
 //
 // A, B and X play a chime, a knock and a blast; Y starts and stops the
-// tune; START quits.
+// tune; SELECT shows every padd's controls (AudioPadd's volumes) on the
+// bottom screen, as tabs (HandheldControls); START quits.
 #include <3ds.h>
 
 #include <AudioPadd.hpp>
 #include <HandheldDemo.hpp>
+#include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 
 #include <spdlog/spdlog.h>
@@ -31,7 +33,18 @@ using namespace HandheldDemo;
 
 class ScreenPadd : public ScratchPadd::Base {
 public:
-  ScreenPadd(ScratchPadd::System *system) : Base(system) {
+  ScreenPadd(ScratchPadd::System *system)
+      : Base(system),
+        controls_(
+            [this](ScratchPadd::PaddAddress owner,
+                   const ScratchPadd::MessageType::ControlChange &change) {
+              sendTo(owner, change);
+            },
+            ScratchPadd::HandheldControls::usableColumns(40), 30) { // the bottom screen's console
+    // Every padd's controls, for the panel SELECT shows
+    receive<ScratchPadd::MessageType::ControlSnapshot>(
+        [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot,
+               ScratchPadd::PaddAddress owner) { controls_.show(snapshot, owner); });
     receive<StatusLine>([this](const StatusLine &line) { status_[line.row] = line.text; });
     receive<LogLine>([this](const LogLine &line) {
       log_.push_back(line.text);
@@ -46,8 +59,12 @@ public:
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 
   void starting() override {
+    consoleInit(GFX_BOTTOM, &bottom_);
     consoleInit(GFX_TOP, &top_);
     status_[0] = "ScreenPadd: main thread " + threadNumber();
+    controls_.setVisible(false); // SELECT shows them
+    showControlsHint();
+    send(ScratchPadd::MessageType::ControlRequest{});
     push([this] { frame(); });
   }
 
@@ -69,11 +86,25 @@ private:
       system_->stop();
       return;
     }
-    static const std::pair<u32, const char *> kButtons[] = {
-        {KEY_A, "A"}, {KEY_B, "B"}, {KEY_X, "X"}, {KEY_Y, "Y"}};
-    for (const auto &[key, button] : kButtons) {
-      if (down & key) {
-        send(ButtonPressed{button});
+    // The controls on the bottom screen; while they're shown, the buttons
+    // are theirs
+    const bool wasShown = controls_.visible();
+    controls_.handle(ScratchPadd::HandheldControls::inputFrom(down));
+    consoleSelect(&bottom_);
+    if (controls_.visible() != wasShown) {
+      std::printf("\x1b[2J");
+      if (!controls_.visible())
+        showControlsHint();
+    }
+    ScratchPadd::HandheldControls::draw(controls_);
+    consoleSelect(&top_);
+    if (!wasShown && !controls_.visible()) {
+      static const std::pair<u32, const char *> kButtons[] = {
+          {KEY_A, "A"}, {KEY_B, "B"}, {KEY_X, "X"}, {KEY_Y, "Y"}};
+      for (const auto &[key, button] : kButtons) {
+        if (down & key) {
+          send(ButtonPressed{button});
+        }
       }
     }
     draw();
@@ -92,13 +123,22 @@ private:
       std::printf("\x1b[%d;1H%.49s\x1b[K", kStatusRow + row, text.c_str());
     }
     std::printf("\x1b[%d;1HA chime  B knock  X blast  Y tune  START quit\x1b[K", kHelpRow);
+    std::printf("\x1b[%d;1HSELECT controls (bottom screen)\x1b[K", kHelpRow + 1);
     int row = kLogRow;
     for (const std::string &line : log_) {
       std::printf("\x1b[%d;1H%.49s\x1b[K", row++, line.c_str());
     }
   }
 
-  PrintConsole top_;
+  // While the controls are hidden, the bottom screen says how to show them
+  void showControlsHint() {
+    consoleSelect(&bottom_);
+    std::printf("\x1b[1;1HSELECT: every padd's controls");
+    consoleSelect(&top_);
+  }
+
+  PrintConsole top_, bottom_;
+  ScratchPadd::HandheldControls::ControlTabs controls_;
   std::map<int, std::string> status_;
   std::deque<std::string> log_;
 };

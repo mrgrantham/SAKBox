@@ -9,6 +9,7 @@ devkitpro_3ds_app(
     extra_srcs = {
         "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
         "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
+        "//projects/scratchpadd/handheld_controls:sources": "scratchpadd/handheld_controls",
         "//projects/scratchpadd/utilities:sources": "scratchpadd/utilities",
         "//projects/scratchpadd/handheld:sources": "scratchpadd/handheld",
         "//projects/scratchpadd/audio/made_sounds_pcm16:sources": "scratchpadd_audio_pcm16",

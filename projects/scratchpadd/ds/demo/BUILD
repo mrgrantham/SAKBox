@@ -10,6 +10,7 @@ devkitpro_nds_app(
     extra_srcs = {
         "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
         "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
+        "//projects/scratchpadd/handheld_controls:sources": "scratchpadd/handheld_controls",
         "//projects/scratchpadd/utilities:sources": "scratchpadd/utilities",
         "//projects/scratchpadd/ds/platform:sources": "scratchpadd_ds/platform",
         "//projects/scratchpadd/handheld:sources": "scratchpadd/handheld",

@@ -10,13 +10,15 @@
 //   AudioPadd   (own thread)  plays the knocks on the DS's hardware sound
 //               channels (AudioPadd/HardwareChannelsAudioPadd.hpp)
 //
-// A: reset (a new shove)   X: 1, 2 or 4 sub-steps   Y: 60 or 30 steps a second
-// START: quit
+// A: reset (a new shove)   X: 1, 2 or 4 sub-steps   Y: 30 or 60 steps a second
+// B: blend drawing between steps   SELECT: every padd's controls, as tabs, in
+// place of the figures (HandheldControls)   START: quit
 #include <nds.h>
 
 #include <AudioPadd.hpp>
 #include <ScratchPadd/Audio/MadeSoundsPcm16.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
+#include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <cyclone/cyclone.h>
 #include <fixed_steps.h>
@@ -106,18 +108,34 @@ public:
         reset();
       } else if (pressed.key == KEY_X) {
         clock_.setSubSteps(clock_.subSteps() == 4 ? 1 : clock_.subSteps() * 2);
+        setControl("Sub-steps",
+                   ScratchPadd::ControlType::Integer(static_cast<std::int32_t>(clock_.subSteps())));
       } else if (pressed.key == KEY_Y) {
         // Half as many steps a second is half the work for each second
         // simulated, with coarser steps (joints stretch more on impact)
-        clock_.setStepSeconds(clock_.stepSeconds() == kSlowStepSeconds
-                                  ? FixedSteps::kDefaultStepSeconds
-                                  : kSlowStepSeconds);
+        setStepsPerSecond(clock_.stepSeconds() == kSlowStepSeconds ? 60 : 30);
+        setControl("Steps a second", ScratchPadd::ControlType::String(
+                                         clock_.stepSeconds() == kSlowStepSeconds ? "30" : "60"));
       }
     });
     reset();
   }
   std::string name() override { return "RagdollPadd"; }
-  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+  // The settings X and Y change, as controls too (shown with SELECT)
+  ScratchPadd::ControlValueMap generateControls() override {
+    return {{"Sub-steps", ScratchPadd::ControlType::Integer(
+                              static_cast<std::int32_t>(kRunSettings.subSteps), {{1, 8}})},
+            {"Steps a second", ScratchPadd::ControlType::String(
+                                   std::to_string(kRunSettings.stepsPerSecond), {{"30", "60"}})}};
+  }
+  void controlChanged(const std::string &name) override {
+    if (name == "Sub-steps") {
+      clock_.setSubSteps(
+          static_cast<unsigned>(control<ScratchPadd::ControlType::Integer>(name).value));
+    } else if (name == "Steps a second") {
+      setStepsPerSecond(control<ScratchPadd::ControlType::String>(name).value == "30" ? 30 : 60);
+    }
+  }
   std::optional<std::chrono::duration<double>> repeatInterval() override {
     return std::chrono::duration<double>(FixedSteps::kDefaultStepSeconds);
   }
@@ -292,6 +310,10 @@ private:
     return s;
   }
 
+  void setStepsPerSecond(int steps) {
+    clock_.setStepSeconds(steps == 30 ? kSlowStepSeconds : FixedSteps::kDefaultStepSeconds);
+  }
+
   void reset() {
     ragdoll_->reset(random_);
     worstStretch_ = 0;
@@ -314,7 +336,17 @@ private:
 
 class ScreenPadd : public ScratchPadd::Base {
 public:
-  ScreenPadd(ScratchPadd::System *system) : Base(system) {
+  ScreenPadd(ScratchPadd::System *system)
+      : Base(system), controls_(
+                          [this](ScratchPadd::PaddAddress owner,
+                                 const ScratchPadd::MessageType::ControlChange &change) {
+                            sendTo(owner, change);
+                          },
+                          ScratchPadd::HandheldControls::usableColumns(32), 24) {
+    // Every padd's controls (this one's too), for the panel SELECT shows
+    receive<ScratchPadd::MessageType::ControlSnapshot>(
+        [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot,
+               ScratchPadd::PaddAddress owner) { controls_.show(snapshot, owner); });
     // Each snapshot is drawn blended in from the last over a step, so the
     // bones move smoothly at any step rate (a step behind)
     receive<BonesSnapshot>([this](const BonesSnapshot &bones) {
@@ -337,7 +369,10 @@ public:
   std::string name() override { return "ScreenPadd"; }
   // The frame loop, on the main thread as in devkitPro's examples
   ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
-  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+  // Whether bones are drawn blended between steps (B, or the panel)
+  ScratchPadd::ControlValueMap generateControls() override {
+    return {{"Blend", ScratchPadd::ControlType::Boolean(true)}};
+  }
 
   void starting() override {
     videoSetMode(MODE_0_3D);
@@ -351,6 +386,8 @@ public:
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluPerspective(50, 256.0f / 192.0f, 0.1f, 40);
+    controls_.setVisible(false); // the figures first; SELECT for the controls
+    sendIncludeSender(ScratchPadd::MessageType::ControlRequest{});
     push([this] { frame(); });
   }
 
@@ -366,13 +403,24 @@ private:
       system_->stop();
       return;
     }
-    if (down & KEY_B) {
-      blend_ = !blend_;
-      drawFigures();
+    // While the controls are shown, the buttons are theirs
+    const bool wasShown = controls_.visible();
+    controls_.handle(ScratchPadd::HandheldControls::inputFrom(static_cast<std::uint32_t>(down)));
+    if (controls_.visible() != wasShown) {
+      std::printf("\x1b[2J"); // the screen cleared for the other
+      if (!controls_.visible())
+        drawFigures();
     }
-    for (int key : {KEY_A, KEY_X, KEY_Y}) {
-      if (down & key) {
-        send(ButtonPressed{key});
+    ScratchPadd::HandheldControls::draw(controls_);
+    if (!wasShown && !controls_.visible()) {
+      if (down & KEY_B) {
+        setControl("Blend", ScratchPadd::ControlType::Boolean(!blend()));
+        drawFigures();
+      }
+      for (int key : {KEY_A, KEY_X, KEY_Y}) {
+        if (down & key) {
+          send(ButtonPressed{key});
+        }
       }
     }
     drawRagdoll();
@@ -406,7 +454,7 @@ private:
     // 1/4096ths: the bones are drawn that far from the last snapshot to the
     // latest (integer arithmetic: no float work)
     int fraction = 4096;
-    if (blend_ && latest_.stepMicroseconds > 0) {
+    if (blend() && latest_.stepMicroseconds > 0) {
       const auto since =
           std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - latestArrived_);
       fraction = static_cast<int>(
@@ -431,10 +479,13 @@ private:
   }
 
   void drawFigures() {
+    if (controls_.visible()) {
+      return; // the panel has the screen; they're drawn when it's hidden
+    }
     std::printf("\x1b[1;1HCyclone's ragdoll on a DS\x1b[K");
     std::printf("\x1b[3;1HPhysics: %d steps a second,\x1b[K", figures_.stepsPerSecond);
     std::printf("\x1b[4;1H  %d sub-step%s each, %s\x1b[K", figures_.subSteps,
-                figures_.subSteps == 1 ? "" : "s", blend_ ? "blended" : "unblended");
+                figures_.subSteps == 1 ? "" : "s", blend() ? "blended" : "unblended");
     // (While running, a step's time includes the main thread's, which takes
     // over each frame to draw)
     std::printf("\x1b[5;1HA step takes %.0f ms (running)\x1b[K", figures_.stepMilliseconds);
@@ -447,7 +498,7 @@ private:
       std::printf("\x1b[9;1HNo AudioPadd: no sound\x1b[K");
     }
     std::printf("\x1b[10;1HA: reset X: sub-steps B: blend\x1b[K");
-    std::printf("\x1b[11;1HY: 60 or 30 steps a second\x1b[K");
+    std::printf("\x1b[11;1HY: 30/60 steps  SELECT: controls\x1b[K");
     std::printf("\x1b[12;1HSTART: quit\x1b[K");
     std::printf("\x1b[13;1HMeasured at start (ms a step):\x1b[K");
     std::printf("\x1b[14;1Hsteps/s sub sweeps        ms\x1b[K");
@@ -470,7 +521,8 @@ private:
   // latest came
   BonesSnapshot previous_, latest_;
   Clock::time_point latestArrived_;
-  bool blend_ = true; // B turns it off and on
+  bool blend() const { return control<ScratchPadd::ControlType::Boolean>("Blend").value; }
+  ScratchPadd::HandheldControls::ControlTabs controls_;
   PhysicsFigures figures_;
   Benchmark benchmark_;
 };
