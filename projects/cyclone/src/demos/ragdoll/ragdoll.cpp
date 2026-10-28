@@ -87,7 +87,8 @@ public:
     return "A ragdoll: 12 rigid boxes for bones, linked by 11 joints that let\n"
            "their ends drift a little apart, like short cables. The contact\n"
            "resolver holds the body together. It starts with a small shove and\n"
-           "collapses. Bottom left: the most a joint has stretched since R.\n" RIGID_BODY_KEYS;
+           "collapses, and once still falls asleep (blue). Bottom left: the most\n"
+           "a joint has stretched since R.\n" RIGID_BODY_KEYS;
   }
 
   /** Display the particle positions. */

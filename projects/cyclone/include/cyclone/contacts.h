@@ -503,8 +503,17 @@ protected:
     bool active() const { return movable[0] || movable[1]; }
     Vector3 normal, tangent[2];
     // How much the bodies' relative speed at the contact changes for a
-    // unit impulse along the normal and along each tangent
+    // unit impulse along the normal and along each tangent, and the
+    // impulse for a unit change (its inverse: the sweeps multiply by it)
     real normalResponse, tangentResponse[2];
+    real normalMass, tangentMass[2];
+    // How each body's spin changes for a unit impulse along the normal and
+    // along each tangent: its inverse inertia x (offset x direction). Body
+    // two's turns the other way, as its impulse is the opposite. With the
+    // masses, worked out once a sub-step, so a sweep's visit takes no
+    // division, square root or inertia transform (as Box2D keeps each
+    // contact's effective mass and offsets)
+    Vector3 turnPerImpulse[2][3];
     // The relative velocity along the normal when integrate() moved the
     // bodies this step (separating is positive)
     real startNormalVelocity;
@@ -557,6 +566,13 @@ protected:
     // allowed)
     Vector3 direction;
     real response;
+    // How each end's body turns for a unit impulse along the direction,
+    // worked out with the response, so the sweeps don't transform. (They
+    // still divide by the response. Multiplying by a stored inverse
+    // instead, as contacts do, loses precision in Q16.16 when the speed
+    // change is large: there the collapsing ragdoll slid 1.3 m instead of
+    // 0.9. A ragdoll has far fewer joints than contacts, so it costs little.)
+    Vector3 turnPerImpulse[2];
     real length, startSpeed;
     real allowedSpeed;
     real cableImpulse = 0;

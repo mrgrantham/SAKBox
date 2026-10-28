@@ -63,6 +63,11 @@ v16 vertexCoordinate(cyclone::real metres) {
 // Each bone's eight corners after a tick, ready to draw
 struct BonesSnapshot {
   std::array<std::array<std::array<v16, 3>, 8>, ragdoll::kBones> corners{};
+  // The step length (µs), for drawing between this snapshot and the last;
+  // and whether the ragdoll was reset since the last (so it isn't drawn
+  // sliding over from before)
+  std::int32_t stepMicroseconds = 0;
+  bool restarted = false;
 };
 
 // How long a step took with each of a few settings, measured when the app
@@ -74,7 +79,7 @@ struct Benchmark {
     int velocitySweeps = 0, settleSweeps = 0, positionSweeps = 0;
     double stepMilliseconds = 0;
   };
-  std::array<Row, 4> rows{};
+  std::array<Row, 5> rows{};
   // Where the time goes in a step at the settings it runs with (all its
   // sub-steps; see cyclone::World::Profile)
   double integrateMilliseconds = 0, contactsMilliseconds = 0, resolveMilliseconds = 0;
@@ -189,14 +194,21 @@ private:
   struct Settings {
     unsigned stepsPerSecond, subSteps, velocitySweeps, settleSweeps, positionSweeps;
   };
-  // Cyclone's own sweeps (40, 10, 10 a step) suit desktops; on the DS
-  // they're what the time goes on, so it takes 16, 4, 4 (8, 2, 2 in each of
-  // its two sub-steps; Box2D v3 takes one a sub-step)
-  static constexpr Settings kRunSettings{60, 2, 16, 4, 4};
-  // Y's other step length: 30 steps a second
+  // It runs 30 steps a second, drawn blended between them (ScreenPadd), in
+  // 4 sub-steps: at 60 a falling step (15 ms in 2 sub-steps) and the
+  // drawing don't fit in a frame, while at 30 a step in 4 takes 21 ms of
+  // its 33, and joints hold as well as at 60 in 2 (they stretch 0.6 cm at
+  // most over 20 pushes; 5 cm in 2 sub-steps). Cyclone's own sweeps (40,
+  // 10, 10 a step) suit desktops; on the DS they're what the time goes on,
+  // so it takes 16, 4, 4 (4, 1, 1 in each sub-step; Box2D v3 takes one)
+  static constexpr Settings kRunSettings{30, 4, 16, 4, 4};
+  // 30 steps a second; Y switches between it and FixedSteps' 60
   static constexpr double kSlowStepSeconds = 1.0 / 30;
-  static constexpr Settings kMeasured[] = {
-      {60, 1, 40, 10, 10}, {60, 2, 16, 4, 4}, {60, 4, 16, 4, 4}, {30, 2, 16, 4, 4}};
+  static constexpr Settings kMeasured[] = {{60, 1, 40, 10, 10},
+                                           {60, 2, 16, 4, 4},
+                                           {60, 4, 16, 4, 4},
+                                           {30, 2, 16, 4, 4},
+                                           {30, 4, 16, 4, 4}};
   static constexpr int kStepsMeasured = 5;
 
   void useSettings(const Settings &settings) {
@@ -262,8 +274,10 @@ private:
     }
   }
 
-  BonesSnapshot snapshot() const {
+  BonesSnapshot snapshot() {
     BonesSnapshot s;
+    s.stepMicroseconds = static_cast<std::int32_t>(std::lround(clock_.stepSeconds() * 1e6));
+    s.restarted = std::exchange(restarted_, false);
     for (unsigned b = 0; b < ragdoll::kBones; ++b) {
       const ragdoll::Bone &bone = ragdoll_->bones[b];
       for (int c = 0; c < 8; ++c) {
@@ -281,6 +295,7 @@ private:
   void reset() {
     ragdoll_->reset(random_);
     worstStretch_ = 0;
+    restarted_ = true;
   }
 
   std::unique_ptr<ragdoll::Ragdoll> ragdoll_;
@@ -291,6 +306,7 @@ private:
   cyclone::Random random_;
   FixedSteps clock_;
   double worstStretch_ = 0;
+  bool restarted_ = false; // reset since the last snapshot
   Clock::time_point lastTick_, secondStart_;
   Clock::duration stepping_{};
   int stepsTaken_ = 0;
@@ -299,7 +315,13 @@ private:
 class ScreenPadd : public ScratchPadd::Base {
 public:
   ScreenPadd(ScratchPadd::System *system) : Base(system) {
-    receive<BonesSnapshot>([this](const BonesSnapshot &bones) { bones_ = bones; });
+    // Each snapshot is drawn blended in from the last over a step, so the
+    // bones move smoothly at any step rate (a step behind)
+    receive<BonesSnapshot>([this](const BonesSnapshot &bones) {
+      previous_ = bones.restarted ? bones : latest_;
+      latest_ = bones;
+      latestArrived_ = Clock::now();
+    });
     // The figures are written when they change (about once a second), not
     // each frame: formatting numbers is float work, done in software on the
     // DS, and the main thread's time comes out of the physics'
@@ -344,6 +366,10 @@ private:
       system_->stop();
       return;
     }
+    if (down & KEY_B) {
+      blend_ = !blend_;
+      drawFigures();
+    }
     for (int key : {KEY_A, KEY_X, KEY_Y}) {
       if (down & key) {
         send(ButtonPressed{key});
@@ -376,11 +402,28 @@ private:
     static constexpr int kFaces[6][4] = {{0, 1, 3, 2}, {4, 6, 7, 5}, {0, 4, 5, 1},
                                          {2, 3, 7, 6}, {0, 2, 6, 4}, {1, 5, 7, 3}};
     static constexpr u8 kShade[6] = {150, 150, 120, 200, 170, 170};
-    for (const auto &bone : bones_.corners) {
+    // How far into the step after the latest snapshot the time is, in
+    // 1/4096ths: the bones are drawn that far from the last snapshot to the
+    // latest (integer arithmetic: no float work)
+    int fraction = 4096;
+    if (blend_ && latest_.stepMicroseconds > 0) {
+      const auto since =
+          std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - latestArrived_);
+      fraction = static_cast<int>(
+          std::min<long long>(since.count() * 4096 / latest_.stepMicroseconds, 4096));
+    }
+    for (unsigned b = 0; b < ragdoll::kBones; ++b) {
+      const auto &from = previous_.corners[b];
+      const auto &to = latest_.corners[b];
       for (int f = 0; f < 6; ++f) {
         glColor3b(kShade[f], kShade[f] * 2 / 3, kShade[f] * 2 / 3);
         for (int corner : kFaces[f]) {
-          glVertex3v16(bone[corner][0], bone[corner][1], bone[corner][2]);
+          v16 point[3];
+          for (int axis = 0; axis < 3; ++axis) {
+            point[axis] = static_cast<v16>(
+                from[corner][axis] + ((to[corner][axis] - from[corner][axis]) * fraction >> 12));
+          }
+          glVertex3v16(point[0], point[1], point[2]);
         }
       }
     }
@@ -390,8 +433,8 @@ private:
   void drawFigures() {
     std::printf("\x1b[1;1HCyclone's ragdoll on a DS\x1b[K");
     std::printf("\x1b[3;1HPhysics: %d steps a second,\x1b[K", figures_.stepsPerSecond);
-    std::printf("\x1b[4;1H  %d sub-step%s each\x1b[K", figures_.subSteps,
-                figures_.subSteps == 1 ? "" : "s");
+    std::printf("\x1b[4;1H  %d sub-step%s each, %s\x1b[K", figures_.subSteps,
+                figures_.subSteps == 1 ? "" : "s", blend_ ? "blended" : "unblended");
     // (While running, a step's time includes the main thread's, which takes
     // over each frame to draw)
     std::printf("\x1b[5;1HA step takes %.0f ms (running)\x1b[K", figures_.stepMilliseconds);
@@ -403,7 +446,7 @@ private:
     } else {
       std::printf("\x1b[9;1HNo AudioPadd: no sound\x1b[K");
     }
-    std::printf("\x1b[10;1HA: reset  X: sub-steps\x1b[K");
+    std::printf("\x1b[10;1HA: reset X: sub-steps B: blend\x1b[K");
     std::printf("\x1b[11;1HY: 60 or 30 steps a second\x1b[K");
     std::printf("\x1b[12;1HSTART: quit\x1b[K");
     std::printf("\x1b[13;1HMeasured at start (ms a step):\x1b[K");
@@ -417,13 +460,17 @@ private:
       }
       ++row;
     }
-    std::printf("\x1b[%d;1HA step at 60/2, 16/4/4, ms:\x1b[K", ++row);
+    std::printf("\x1b[%d;1HA step as it runs, ms:\x1b[K", ++row);
     std::printf("\x1b[%d;1Hmove %.1f find %.1f solve %.1f\x1b[K", ++row,
                 benchmark_.integrateMilliseconds, benchmark_.contactsMilliseconds,
                 benchmark_.resolveMilliseconds);
   }
 
-  BonesSnapshot bones_;
+  // The last two snapshots, drawn between (see drawRagdoll), and when the
+  // latest came
+  BonesSnapshot previous_, latest_;
+  Clock::time_point latestArrived_;
+  bool blend_ = true; // B turns it off and on
   PhysicsFigures figures_;
   Benchmark benchmark_;
 };

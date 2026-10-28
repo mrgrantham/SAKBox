@@ -57,7 +57,12 @@ public:
     body->clearAccumulators();
     body->setAcceleration(cyclone::Vector3::GRAVITY);
 
-    body->setCanSleep(false);
+    // SAKBox: the book's ragdoll never sleeps; this one does, once it lies
+    // still: its bones fall asleep together, as a group joined by joints
+    // and contacts (ContactResolver::sleepInGroups), and then cost nothing
+    // until something wakes them (20 pushes in ragdoll_test all sleep,
+    // within 11 s). On the DS a ragdoll lying on the ground costs the most.
+    body->setCanSleep(true);
     body->setAwake();
 
     body->calculateDerivedData();

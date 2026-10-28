@@ -759,15 +759,6 @@ RigidBody *movableBody(RigidBody *body) {
   return body && body->hasFiniteMass() && body->getAwake() ? body : nullptr;
 }
 
-// How much the speed of `body` along `direction`, at `offset` from its
-// centre, changes for a unit impulse along `direction` there
-real responseAlong(const RigidBody *body, const Vector3 &offset, const Vector3 &direction) {
-  if (!body)
-    return 0;
-  const Vector3 turn = body->getInverseInertiaTensorWorld().transform(offset % direction);
-  return body->getInverseMass() + (turn % offset) * direction;
-}
-
 // The velocity of the point at `offset` from the centre of a body moving
 // with `linear` and `angular` velocity
 Vector3 pointVelocity(const Vector3 &offset, const Vector3 &linear, const Vector3 &angular) {
@@ -785,11 +776,14 @@ void addImpulse(const RigidBody *body, const Vector3 &offset, const Vector3 &imp
 // Scales `tangentImpulse` down, if need be, so friction stays within its
 // limit: friction coefficient x push (the friction cone)
 void limitFriction(real tangentImpulse[2], real limit) {
-  const real friction =
-      real_sqrt(tangentImpulse[0] * tangentImpulse[0] + tangentImpulse[1] * tangentImpulse[1]);
-  if (friction > limit) {
-    tangentImpulse[0] *= limit / friction;
-    tangentImpulse[1] *= limit / friction;
+  // (Compared squared, so the square root and division are only taken when
+  // it's over: most visits it isn't)
+  const real squared =
+      tangentImpulse[0] * tangentImpulse[0] + tangentImpulse[1] * tangentImpulse[1];
+  if (squared > limit * limit) {
+    const real scale = limit / real_sqrt(squared);
+    tangentImpulse[0] *= scale;
+    tangentImpulse[1] *= scale;
   }
 }
 
@@ -933,13 +927,22 @@ void ContactResolver::resolveSubStep(real duration, bool contactsFollowBodies) {
     // out each sub-step: the response from the start of a step no longer
     // matches the impulses a turned body takes, and the sweeps overshoot)
     const Vector3 *offset = contact.relativeContactPosition;
-    auto response = [&](const Vector3 &direction) {
-      return responseAlong(solverContact.movable[0], offset[0], direction) +
-             responseAlong(solverContact.movable[1], offset[1], direction);
+    auto response = [&](int direction, const Vector3 &along) {
+      real total = 0;
+      for (int b = 0; b < 2; b++)
+        if (const RigidBody *body = solverContact.movable[b]) {
+          const Vector3 turn = body->getInverseInertiaTensorWorld().transform(offset[b] % along);
+          solverContact.turnPerImpulse[b][direction] = turn;
+          total += body->getInverseMass() + (turn % offset[b]) * along;
+        }
+      return total;
     };
-    solverContact.normalResponse = response(solverContact.normal);
-    solverContact.tangentResponse[0] = response(solverContact.tangent[0]);
-    solverContact.tangentResponse[1] = response(solverContact.tangent[1]);
+    solverContact.normalResponse = response(0, solverContact.normal);
+    solverContact.tangentResponse[0] = response(1, solverContact.tangent[0]);
+    solverContact.tangentResponse[1] = response(2, solverContact.tangent[1]);
+    solverContact.normalMass = 1 / solverContact.normalResponse;
+    solverContact.tangentMass[0] = 1 / solverContact.tangentResponse[0];
+    solverContact.tangentMass[1] = 1 / solverContact.tangentResponse[1];
 
     // The bodies end the step where they started plus the resolved velocity
     // x duration (see below), so this is the overlap they'd have if they
@@ -1068,26 +1071,32 @@ void ContactResolver::sweepVelocities(real SolverContact::*target, unsigned swee
               pointVelocity(offset[1], movable[1]->getVelocity(), movable[1]->getRotation());
         return velocity;
       };
-      auto apply = [&](const Vector3 &impulse) {
-        for (int b = 0; b < 2; b++)
-          if (movable[b]) {
-            Vector3 linear, angular;
-            addImpulse(movable[b], offset[b], b == 0 ? impulse : impulse * -1, linear, angular);
-            movable[b]->addVelocity(linear);
-            movable[b]->addRotation(angular);
-          }
+      // An impulse `linear` (on body one; body two takes the opposite),
+      // which turns body b by `turn(b)`
+      auto apply = [&](const Vector3 &linear, auto turn) {
+        if (RigidBody *body = movable[0]) {
+          body->addVelocity(linear * body->getInverseMass());
+          body->addRotation(turn(0));
+        }
+        if (RigidBody *body = movable[1]) {
+          body->addVelocity(linear * -body->getInverseMass());
+          body->addRotation(turn(1) * -1);
+        }
       };
 
       // Friction: stop the sliding, up to friction x push
       Vector3 velocity = relativeVelocity();
       real tangentImpulse[2];
       for (int t = 0; t < 2; t++)
-        tangentImpulse[t] =
-            solverContact.tangentImpulse[t] -
-            (velocity * solverContact.tangent[t]) / solverContact.tangentResponse[t];
+        tangentImpulse[t] = solverContact.tangentImpulse[t] -
+                            (velocity * solverContact.tangent[t]) * solverContact.tangentMass[t];
       limitFriction(tangentImpulse, solverContact.contact->friction * solverContact.normalImpulse);
-      apply(solverContact.tangent[0] * (tangentImpulse[0] - solverContact.tangentImpulse[0]) +
-            solverContact.tangent[1] * (tangentImpulse[1] - solverContact.tangentImpulse[1]));
+      const real slide[2] = {tangentImpulse[0] - solverContact.tangentImpulse[0],
+                             tangentImpulse[1] - solverContact.tangentImpulse[1]};
+      apply(solverContact.tangent[0] * slide[0] + solverContact.tangent[1] * slide[1], [&](int b) {
+        return solverContact.turnPerImpulse[b][1] * slide[0] +
+               solverContact.turnPerImpulse[b][2] * slide[1];
+      });
       solverContact.tangentImpulse[0] = tangentImpulse[0];
       solverContact.tangentImpulse[1] = tangentImpulse[1];
 
@@ -1095,10 +1104,12 @@ void ContactResolver::sweepVelocities(real SolverContact::*target, unsigned swee
       // pulling
       velocity = relativeVelocity();
       const real normalImpulse = std::max(
-          solverContact.normalImpulse + (solverContact.*target - velocity * solverContact.normal) /
-                                            solverContact.normalResponse,
+          solverContact.normalImpulse +
+              (solverContact.*target - velocity * solverContact.normal) * solverContact.normalMass,
           (real)0);
-      apply(solverContact.normal * (normalImpulse - solverContact.normalImpulse));
+      const real push = normalImpulse - solverContact.normalImpulse;
+      apply(solverContact.normal * push,
+            [&](int b) { return solverContact.turnPerImpulse[b][0] * push; });
       solverContact.normalImpulse = normalImpulse;
     }
     sweepJoints();
@@ -1144,15 +1155,16 @@ void ContactResolver::removeOverlap(real duration) {
           separatingSpeed += b == 0 ? speed : -speed;
         }
       const real positionImpulse = std::max(
-          solverContact.positionImpulse + (solverContact.targetSeparatingSpeed - separatingSpeed) /
-                                              solverContact.normalResponse,
+          solverContact.positionImpulse +
+              (solverContact.targetSeparatingSpeed - separatingSpeed) * solverContact.normalMass,
           (real)0);
-      const Vector3 change =
-          solverContact.normal * (positionImpulse - solverContact.positionImpulse);
+      const real push = positionImpulse - solverContact.positionImpulse;
       for (int b = 0; b < 2; b++)
         if (RigidBody *body = solverContact.movable[b]) {
           Motion &motion = slotOf(body).separating;
-          addImpulse(body, offset[b], b == 0 ? change : change * -1, motion.linear, motion.angular);
+          const real sign = b == 0 ? (real)1 : (real)-1;
+          motion.linear += solverContact.normal * (push * sign * body->getInverseMass());
+          motion.angular += solverContact.turnPerImpulse[b][0] * (push * sign);
         }
       solverContact.positionImpulse = positionImpulse;
     }
@@ -1200,6 +1212,33 @@ void applyAcrossJoint(RigidBody *const movable[2], const Vector3 offset[2], cons
       Vector3 linear, angular;
       addImpulse(movable[end], offset[end], end == 1 ? impulse : impulse * -1, linear, angular);
       applyTo(movable[end], linear, angular);
+    }
+}
+
+// A cable's response along `direction` (how much its anchors' separating
+// speed changes for a unit impulse), filling in how each end's body turns for
+// a unit impulse along it
+real cableResponse(RigidBody *const movable[2], const Vector3 offset[2], const Vector3 &direction,
+                   Vector3 turnPerImpulse[2]) {
+  real response = 0;
+  for (int end = 0; end < 2; end++)
+    if (const RigidBody *body = movable[end]) {
+      turnPerImpulse[end] = body->getInverseInertiaTensorWorld().transform(offset[end] % direction);
+      response += body->getInverseMass() + (turnPerImpulse[end] % offset[end]) * direction;
+    }
+  return response;
+}
+
+// Applies `impulse` along a cable's `direction` to anchor two and the
+// opposite to anchor one, as applyAcrossJoint does, from each end's turn
+// for a unit impulse (cableResponse)
+template <typename ApplyTo>
+void applyAlongCable(RigidBody *const movable[2], const Vector3 &direction,
+                     const Vector3 turnPerImpulse[2], real impulse, ApplyTo applyTo) {
+  for (int end = 0; end < 2; end++)
+    if (RigidBody *body = movable[end]) {
+      const real signed_ = end == 1 ? impulse : -impulse;
+      applyTo(body, direction * (signed_ * body->getInverseMass()), turnPerImpulse[end] * signed_);
     }
 }
 
@@ -1282,9 +1321,8 @@ void ContactResolver::setUpJoints(std::span<Joint *const> joints, real duration)
         continue;
       }
       solverJoint.direction = solverJoint.separation * ((real)1 / solverJoint.length);
-      solverJoint.response =
-          responseAlong(solverJoint.movable[0], solverJoint.offset[0], solverJoint.direction) +
-          responseAlong(solverJoint.movable[1], solverJoint.offset[1], solverJoint.direction);
+      solverJoint.response = cableResponse(solverJoint.movable, solverJoint.offset,
+                                           solverJoint.direction, solverJoint.turnPerImpulse);
       solverJoint.startSpeed = relativeVelocity * solverJoint.direction;
       // As for a contact: the anchors may move apart up to the slack this
       // step (from where they were before integrate()), but no further
@@ -1368,9 +1406,8 @@ void ContactResolver::sweepJoints() {
       const real impulse = std::max(solverJoint.cableImpulse +
                                         (speed - solverJoint.allowedSpeed) / solverJoint.response,
                                     (real)0);
-      applyAcrossJoint(solverJoint.movable, solverJoint.offset,
-                       solverJoint.direction * -(impulse - solverJoint.cableImpulse),
-                       changeVelocity);
+      applyAlongCable(solverJoint.movable, solverJoint.direction, solverJoint.turnPerImpulse,
+                      -(impulse - solverJoint.cableImpulse), changeVelocity);
       solverJoint.cableImpulse = impulse;
     } else {
       // Stop the anchors moving apart in any direction, pushing or pulling
@@ -1447,9 +1484,8 @@ void ContactResolver::setJointPositionTargets(real duration) {
       if (length <= (real)1e-9)
         continue;
       solverJoint.direction = separationNow * ((real)1 / length);
-      solverJoint.response =
-          responseAlong(solverJoint.movable[0], solverJoint.offset[0], solverJoint.direction) +
-          responseAlong(solverJoint.movable[1], solverJoint.offset[1], solverJoint.direction);
+      solverJoint.response = cableResponse(solverJoint.movable, solverJoint.offset,
+                                           solverJoint.direction, solverJoint.turnPerImpulse);
       solverJoint.targetSpeed =
           -std::clamp(length - joint.error, (real)0, maxCorrection) / duration;
     } else {
@@ -1512,9 +1548,8 @@ void ContactResolver::sweepJointPositions() {
       const real impulse = std::max(solverJoint.positionImpulseAlong +
                                         (speed - solverJoint.targetSpeed) / solverJoint.response,
                                     (real)0);
-      applyAcrossJoint(solverJoint.movable, solverJoint.offset,
-                       solverJoint.direction * -(impulse - solverJoint.positionImpulseAlong),
-                       moveVelocity);
+      applyAlongCable(solverJoint.movable, solverJoint.direction, solverJoint.turnPerImpulse,
+                      -(impulse - solverJoint.positionImpulseAlong), moveVelocity);
       solverJoint.positionImpulseAlong = impulse;
     } else {
       const Vector3 impulse =

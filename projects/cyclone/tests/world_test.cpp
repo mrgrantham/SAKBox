@@ -264,3 +264,21 @@ TEST(WorldTest, BodiesAreDrawnBlendedBetweenSteps) {
   scene.world.rememberPoses();
   EXPECT_EQ(body.getBlendedPosition(0).x, 10);
 }
+
+// With every body asleep, a step does nothing: no contacts are found, and
+// nothing moves, until a body wakes.
+TEST(WorldTest, AWorldAsleepSkipsItsSteps) {
+  Scene scene;
+  RigidBody &body = *scene.box(Vector3(0, 0.49, 0), Vector3(0.5, 0.5, 0.5)).body;
+  body.setCanSleep(true);
+  body.setAwake(false);
+  scene.world.startFrame();
+  scene.world.runPhysics(1.0 / 60);
+  EXPECT_TRUE(scene.world.getStepContacts().empty());
+  EXPECT_EQ(body.getPosition().y, 0.49);
+
+  body.setAwake();
+  scene.world.startFrame();
+  scene.world.runPhysics(1.0 / 60);
+  EXPECT_FALSE(scene.world.getStepContacts().empty());
+}

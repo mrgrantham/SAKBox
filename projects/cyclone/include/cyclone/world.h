@@ -193,6 +193,14 @@ protected:
    */
   void integrate(real_duration duration, bool firstSubStep);
 
+  /**
+   * SAKBox: updates every body's sleep measure (RigidBody::updateSleep) over
+   * `duration`: once a step resolving together, from the velocities the
+   * step ends with; after each sub-step's integration with the book's
+   * resolver, whose sub-steps are whole steps to it.
+   */
+  void updateSleep(real_duration duration);
+
 public:
   /** SAKBox: a world that simulates with the default Settings, or as `settings` says. */
   World();
@@ -225,7 +233,8 @@ public:
    * bodies are now (Contact::followAnchors) rather than finding them
    * afresh. With the book's resolver, each sub-step finds them afresh.
    * First it remembers each body's pose (RigidBody::rememberPose), to draw
-   * it between this step and the next.
+   * it between this step and the next. With every body asleep, that's all
+   * it does.
    */
   void runPhysics(real_duration duration);
 

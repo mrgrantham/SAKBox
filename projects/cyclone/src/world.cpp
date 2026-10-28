@@ -193,11 +193,17 @@ void World::integrate(real_duration duration, bool firstSubStep) {
   // First apply the force generators
   registry.updateForces(duration);
 
-  // Then integrate the objects
+  // Then integrate the objects (SAKBox: their sleep is updated once a
+  // step, in runPhysics)
   for (RigidBody *body : bodies)
-    body->integrate(duration);
+    body->integrateWithoutSleep(duration);
   for (CollisionPrimitive *shape : shapes)
     shape->calculateInternals();
+}
+
+void World::updateSleep(real_duration duration) {
+  for (RigidBody *body : bodies)
+    body->updateSleep(duration);
 }
 
 void World::rememberPoses() {
@@ -209,6 +215,13 @@ void World::runPhysics(real_duration duration) {
   // SAKBox: in sub-steps (see setSubSteps)
   lastProfile = {};
   rememberPoses();
+  // With every body asleep nothing moves, so there's nothing to find or
+  // resolve until something wakes one (a push, a hand-added force, or a
+  // body placed by hand)
+  if (std::ranges::none_of(bodies, [](const RigidBody *body) { return body->getAwake(); })) {
+    contactCount = 0;
+    return;
+  }
   const unsigned subSteps = settings.subSteps;
   const real_duration subStep = duration / subSteps;
   if (subSteps > 1) {
@@ -248,13 +261,18 @@ void World::runPhysics(real_duration duration) {
       }
       timed(lastProfile.resolve, [&] { resolver.resolveSubStep((real)subStep, i > 0); });
     }
+    updateSleep(duration);
     timed(lastProfile.resolve, [&] { resolver.endStep(); });
     return;
   }
 
   // The book's resolver: each sub-step finds the contacts afresh
   for (unsigned i = 0; i < subSteps; ++i) {
-    timed(lastProfile.integrate, [&] { integrate(subStep, i == 0); });
+    timed(lastProfile.integrate, [&] {
+      integrate(subStep, i == 0);
+      // As the book's step does: each sub-step is a whole step to it
+      updateSleep(subStep);
+    });
     timed(lastProfile.findContacts, [&] { contactCount = findContacts(0); });
     if (contactsFound)
       contactsFound(getStepContacts(), subStep);

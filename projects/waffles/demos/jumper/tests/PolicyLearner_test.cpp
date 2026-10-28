@@ -37,7 +37,7 @@ std::string tempPath(const std::string &name) {
 // Clang, on ARM64 and x86-64). It's 0.5399 m.
 TEST(PolicyLearnerTest, SimulationIsTheSameEverywhere) {
   const double height = JumpHeight(nullptr);
-  EXPECT_EQ(height, 0x1.1467e00e32ff3p-1) << std::hexfloat << height;
+  EXPECT_EQ(height, 0x1.1467e00e32fbep-1) << std::hexfloat << height;
   EXPECT_EQ(JumpHeight(nullptr), height);
 }
 

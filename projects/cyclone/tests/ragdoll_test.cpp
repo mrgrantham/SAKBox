@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <vector>
 
 namespace {
 
@@ -166,5 +167,41 @@ TEST(RagdollTest, SubStepsStretchJointsLess) {
     }
     EXPECT_LT(worst[1], worst[0] / 10);
     EXPECT_LT(worst[2], worst[0] / 2.5);
+  }
+}
+
+// Once it lies still, the ragdoll falls asleep: all its bones together, as
+// one group (it then costs nothing to step). Over 20 pushes, in the demos'
+// 4 sub-steps, all are asleep within 12 s (about 7 s on average). And it
+// was still, not frozen partway through a fall or a swing: woken, no bone
+// moves more than 10 cm in the next 5 s.
+TEST(RagdollTest, FallsAsleepOnceStill) {
+  const double dt = 1.0 / 60;
+  for (unsigned seed = 1; seed <= 20; ++seed) {
+    SCOPED_TRACE(testing::Message() << "seed " << seed);
+    auto model = std::make_unique<ragdoll::Ragdoll>();
+    model->world.setSubSteps(4);
+    cyclone::Random random(seed);
+    model->reset(random);
+    auto allAsleep = [&] {
+      return std::ranges::none_of(model->bones,
+                                  [](const ragdoll::Bone &bone) { return bone.body->getAwake(); });
+    };
+    int steps = 0;
+    while (!allAsleep() && steps < static_cast<int>(12 / dt)) {
+      model->step(dt);
+      ++steps;
+    }
+    ASSERT_TRUE(allAsleep());
+
+    std::vector<cyclone::Vector3> asleepAt;
+    for (ragdoll::Bone &bone : model->bones) {
+      asleepAt.push_back(bone.body->getPosition());
+      bone.body->setAwake();
+    }
+    for (int i = 0; i < static_cast<int>(5 / dt); ++i)
+      model->step(dt);
+    for (size_t b = 0; b < asleepAt.size(); ++b)
+      EXPECT_LT((model->bones[b].body->getPosition() - asleepAt[b]).magnitude(), 0.1) << b;
   }
 }

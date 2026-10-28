@@ -119,16 +119,26 @@ protected:
 
   /**
    * SAKBox: the factors integrate() works out from the damping and the time
-   * step (the drag on velocity and rotation, and the sleep bias: each a
-   * pow), kept from the last step and worked out again only when one of
-   * those changes. Steps are usually all the same length, and pow is slow
-   * where it's done in software (the DS).
+   * step (the drag on velocity and rotation: each a pow), kept from the
+   * last step and worked out again only when one of those changes. Steps
+   * are usually all the same length, and pow is slow where it's done in
+   * software (the DS).
    */
   struct StepFactors {
     real_duration timeStep = -1;
     real linearDamping = 0, angularDamping = 0;
-    real linearDrag = 0, angularDrag = 0, sleepBias = 0;
+    real linearDrag = 0, angularDrag = 0;
   } stepFactors;
+
+  /**
+   * SAKBox: the sleep bias for updateSleep's time step (a pow), kept as
+   * StepFactors are. Its own, as World updates sleep once a step while
+   * integrating in sub-steps.
+   */
+  struct SleepFactor {
+    real_duration timeStep = -1;
+    real bias = 0;
+  } sleepFactor;
 
   /**
    * Holds the linear position of the rigid body in
@@ -315,6 +325,27 @@ public:
    * may be inaccurate in some cases.
    */
   void integrate(real_duration duration);
+
+  /**
+   * SAKBox: integrates as integrate() does, but leaves the body's sleep
+   * measure alone, for a world that updates it once a step (updateSleep)
+   * while integrating in sub-steps.
+   */
+  void integrateWithoutSleep(real_duration duration);
+
+  /**
+   * SAKBox: updates the body's measure of how much it moves (its recent
+   * kinetic energy, as the book keeps it, section 16.2.1) from its velocity
+   * now, over `duration`, and puts it to sleep once that's below
+   * sleepEpsilon (unless it sleeps with a group: see
+   * ContactResolver::sleepInGroups). integrate() does this after moving
+   * the body, as the book's does. World does it once a step instead, after
+   * resolving, from the velocities the step ends with: within a step in
+   * sub-steps, a contact found a little apart lets a body close the gap
+   * fast for a sub-step, and the measure taken there kept a ragdoll lying
+   * still from ever counting as still.
+   */
+  void updateSleep(real_duration duration);
 
   /*@}*/
 

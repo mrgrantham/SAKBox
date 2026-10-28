@@ -111,6 +111,13 @@ void RigidBody::calculateDerivedData() {
 void RigidBody::integrate(real_duration timeStep) {
   if (!isAwake)
     return;
+  integrateWithoutSleep(timeStep);
+  updateSleep(timeStep);
+}
+
+void RigidBody::integrateWithoutSleep(real_duration timeStep) {
+  if (!isAwake)
+    return;
 
   // SAKBox: the time step and the per-frame factors derived from it keep
   // full precision in the flex build; only the body's state snaps. The
@@ -126,11 +133,9 @@ void RigidBody::integrate(real_duration timeStep) {
                      .linearDamping = linearDamping,
                      .angularDamping = angularDamping,
                      .linearDrag = real_pow(linearDamping, duration),
-                     .angularDrag = real_pow(angularDamping, duration),
-                     .sleepBias = real_pow((real)0.5, duration)};
+                     .angularDrag = real_pow(angularDamping, duration)};
   }
-  const real linearDrag = stepFactors.linearDrag, angularDrag = stepFactors.angularDrag,
-             sleepBias = stepFactors.sleepBias;
+  const real linearDrag = stepFactors.linearDrag, angularDrag = stepFactors.angularDrag;
 
   // Calculate linear acceleration from force inputs.
   lastFrameAcceleration = acceleration;
@@ -163,6 +168,16 @@ void RigidBody::integrate(real_duration timeStep) {
 
   // Clear accumulators.
   clearAccumulators();
+}
+
+void RigidBody::updateSleep(real_duration timeStep) {
+  if (!isAwake)
+    return;
+  {
+    CYCLONE_FULL_PRECISION_SCOPE;
+    if (timeStep != sleepFactor.timeStep)
+      sleepFactor = {.timeStep = timeStep, .bias = real_pow((real)0.5, timeStep)};
+  }
 
   // SAKBox: the contact resolver marks a body in a group for one step only,
   // so a body that has stopped touching others sleeps on its own again
@@ -173,7 +188,7 @@ void RigidBody::integrate(real_duration timeStep) {
   if (canSleep) {
     real currentMotion = velocity.scalarProduct(velocity) + rotation.scalarProduct(rotation);
 
-    real bias = sleepBias;
+    real bias = sleepFactor.bias;
     motion = bias * motion + (1 - bias) * currentMotion;
 
     // SAKBox: a body touching others sleeps with its group, so it isn't
