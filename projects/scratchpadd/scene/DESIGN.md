@@ -133,7 +133,8 @@ scene(
   | Linux needs | X11/Wayland client and GL libraries even headless (`libxkbcommon0`, `libxkbcommon-x11-0`, `libsm6`, `libice6`, `libxi6`, `libxrender1`, `libxfixes3`, `libxxf86vm1`, `libgl1`, `libegl1`, `libwayland-client0`, `libdecor-0-0`); the top-level README's Linux notes and the Linux check's Dockerfiles would gain them |
   | The test model | `Ship` with 15,744 triangles, and `Ship_DS`, a linked duplicate with a Decimate modifier at 0.1, exported with 1,573. Its `sak.platform` property and the vertex colours came through. |
 
-- **Machines with no Blender build** (Intel Macs, Linux on ARM) can't build models. This includes our Linux checks on Apple silicon, which run ARM64 containers. The rules will say so plainly, and those builds can run on x86-64 (the check's `--x86-64` mode) or point `BLENDER` at a Blender. *For review:* an alternative for such machines is cooked output committed as a fallback, but that brings back the stale-file problem this choice avoids.
+- **Machines with no Blender build** (Intel Macs, Linux on ARM) can't export models, though the cook tool runs anywhere. On such a machine a model target fails with a plain message: Blender has no build for this machine, so build as x86-64 or point `BLENDER` at a Blender.
+- **The Linux check skips models on ARM64.** Model targets, and every app and test that uses one, carry a `blender` tag. The Linux check's ARM64 runs (its default on Apple silicon) leave them out with `--build_tag_filters=-blender`, as they already leave out the 3DS apps (`-devkitpro`). Its `--x86-64` runs build and test them. So the ARM64 run no longer covers models, and a Linux-only problem in one shows up only in the slower x86-64 run. Nothing extra is committed, and nothing can go stale. (Considered and not chosen, for now: committing each model's `.glb` beside its `.blend` as a fallback for such machines, checked against a fresh export where Blender runs.)
 
 ## Phases
 
