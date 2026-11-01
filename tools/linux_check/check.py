@@ -17,9 +17,11 @@ The container runs on Docker's own architecture (ARM64 on Apple silicon).
 slower: name the targets to check rather than building everything.
 
 It leaves out the 3DS apps (tagged devkitpro), which need Docker themselves,
-and that isn't available inside the container, and doesn't run the tests
-that open a window (tagged display), as the container has no display. With
-no targets it builds and tests everything else. Exits with Bazel's exit
+and that isn't available inside the container; doesn't run the tests that
+open a window (tagged display), as the container has no display; and, on
+ARM64, leaves out models from Blender (tagged blender), as blender.org has
+no Blender for Linux on ARM (--x86-64 builds them). With no targets it
+builds and tests everything else. Exits with Bazel's exit
 code.
 """
 
@@ -34,8 +36,12 @@ COMPILERS = ("gcc", "clang")
 DEFAULT_TARGETS = ["//..."]
 # The 3DS apps build in devkitPro's Docker image, which can't run in here;
 # tests that open a window (tagged display) are built but not run, as there's
-# no display in here
-SKIPPED = ["--build_tag_filters=-devkitpro", "--test_tag_filters=-devkitpro,-display"]
+# no display in here; and on ARM64, models from Blender (tagged blender) are
+# left out, as blender.org has no Blender for Linux on ARM (--x86-64 builds
+# them)
+def skipped(x86_64):
+    left_out = "-devkitpro" if x86_64 else "-devkitpro,-blender"
+    return [f"--build_tag_filters={left_out}", f"--test_tag_filters={left_out},-display"]
 LOG = "/root/.cache/last-run.log"
 
 # Run inside the container: copy the checkout, build and test, keep the log,
@@ -86,9 +92,21 @@ def main(argv):
     if built.returncode != 0:
         print(built.stderr, file=sys.stderr)
         return built.returncode
+    # Docker's classic builder (Colima's, without buildx) ignores --platform
+    # and builds for the machine's own architecture
+    if x86_64:
+        architecture = subprocess.run([docker, "image", "inspect", image, "--format",
+                                       "{{.Architecture}}"], capture_output=True,
+                                      text=True).stdout.strip()
+        if architecture != "amd64":
+            print(f"Docker built {image} for {architecture}, not x86-64: its classic builder "
+                  "ignores --platform. Install buildx (brew install docker-buildx, then add "
+                  '"cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"] to '
+                  "~/.docker/config.json) and run this again.", file=sys.stderr)
+            return 1
 
     # Clang-only checks are in the clang config (see .bazelrc)
-    flags = (["--config=clang"] if compiler == "clang" else []) + SKIPPED
+    flags = (["--config=clang"] if compiler == "clang" else []) + skipped(x86_64)
     targets = rest or DEFAULT_TARGETS
     print(f"Building and testing with {compiler}{' on x86-64' if x86_64 else ''}: "
           f"{' '.join(targets)}", flush=True)

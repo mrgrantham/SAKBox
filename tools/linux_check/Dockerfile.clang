@@ -5,12 +5,14 @@ FROM ubuntu:24.04
 
 # Clang, GCC 14's standard library, the packages the README's Linux notes
 # list for the windowing and OpenGL examples and MIDI input (ALSA), Python
-# for the repo's tools,
-# and git and curl for Bazel's downloads (several libraries come from git)
+# for the repo's tools, what Blender needs even headless (it exports models
+# in the build, on x86-64), and git and curl for Bazel's downloads (several libraries come from git)
 RUN apt-get update -qq \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq clang-18 libstdc++-14-dev g++-14 \
       libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
-      libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev libasound2-dev python3 git curl ca-certificates >/dev/null \
+      libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev libasound2-dev python3 \
+      libxkbcommon0 libxkbcommon-x11-0 libsm6 libice6 libxrender1 libxfixes3 libxxf86vm1 \
+      libwayland-client0 libdecor-0-0 git curl ca-certificates >/dev/null \
  && rm -rf /var/lib/apt/lists/*
 
 # Bazelisk, which runs the Bazel version pinned in .bazelversion

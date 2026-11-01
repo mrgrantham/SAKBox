@@ -11,6 +11,7 @@ A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the 
 - On Linux, the system packages listed under [Linux](#linux).
 - Optional, for static analysis and formatting: clang-tidy and clang-format (18 or later, for `.clang-format-ignore`), which Xcode doesn't include. On macOS, `brew install llvm clang-format` (Homebrew keeps LLVM off your `PATH`, so your compiler stays Xcode's); on Linux, your distribution's `clang-tidy` and `clang-format` packages. See [Static analysis](#static-analysis), which also covers the optional pre-commit hook that checks both on each commit (`git config core.hooksPath tools/git_hooks`).
 - For the 3DS and DS apps only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine (see [`tools/devkitpro`](tools/devkitpro/README.md)). Without Docker running, those targets fail with a message saying so. `bazel run` opens them in the Azahar (3DS) or melonDS (DS) emulator, which Bazel downloads and sets up too (see [`tools/azahar`](tools/azahar/README.md) and [`tools/melonds`](tools/melonds/README.md)).
+- For the models from Blender only (`tools/assets`): nothing to install on macOS with Apple silicon or Linux x86-64; Bazel downloads Blender the first time a model is built (see [`tools/blender`](tools/blender/README.md); on Linux it needs the libraries in [Linux](#linux)). Intel Macs and Linux on ARM have no Blender build: point `--action_env=BLENDER` at a Blender, or leave those targets out (they're tagged `blender`).
 - Optional, to check a change on Linux from a Mac: Docker, which [`tools/linux_check`](tools/linux_check/README.md) uses to build and test the repo with GCC or Clang in a Linux container (see [Linux](#linux)).
 
 All other dependencies are declared in `MODULE.bazel` and downloaded by Bazel on the first build.
@@ -44,6 +45,7 @@ Small programs under `projects/examples/`, mostly one per library. Run any of th
 | [Precision Flight](projects/examples/precision_flight/README.md) | `//projects/examples/precision_flight:precision_flight` | Star Fox-style rail game built on flexmath and ScratchPadd, where powerups change numeric precision. `--autopilot` plays itself |
 | Camera | `//projects/examples/camera:exampleCamera` | Live webcam feed with OpenCV and SDL2. M mirrors, Q quits; optional camera index argument |
 | OpenGL tutorial | `//projects/examples/opengl_tutorial:opengl_tutorial` | GLFW/GLEW scene with a textured, lit pyramid; WASD and Space move the camera |
+| [Models from Blender](projects/examples/blender_model/README.md) | `//projects/examples/blender_model` | Two models made in Blender, exported and cooked by the build ([`tools/assets`](tools/assets/README.md)), each beside the DS's version: one made by hand in Blender, one simplified by the build to its budget. Bazel downloads Blender (`//tools/blender`) |
 | [Cyclone in padds](projects/examples/cyclone_padds/README.md) | `//projects/examples/cyclone_padds` | Cyclone's ragdoll with its physics and its window in separate ScratchPadd padds: fixed steps and sub-steps set by sliders, drawn blended between snapshots |
 | Shader playground | `//projects/examples/shader_playground:shader_playground` | Shadertoy-style fragment shaders rendered through ScratchPadd |
 | ImGui + SDL2 | `//projects/examples/imgui_sdl2:exampleImguiSDL2` | Dear ImGui's demo window on SDL2 and OpenGL 3 |
@@ -179,6 +181,13 @@ sudo apt install libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
 `alsa/asoundlib.h: No such file or directory` means `libasound2-dev` is missing.
 
 `Could NOT find OpenGL` means `libgl1-mesa-dev` is missing; `Could NOT find OpenGL (missing: EGL)` means `libegl1-mesa-dev` is. Package names can differ slightly between Ubuntu and Raspberry Pi OS.
+
+Models from Blender ([`tools/assets`](tools/assets/README.md)) build on x86-64 only, as blender.org builds no Blender for Linux on ARM; Bazel downloads Blender, which needs these even run headless:
+
+``` bash
+sudo apt install libxkbcommon0 libxkbcommon-x11-0 libsm6 libice6 libxrender1 libxfixes3 \
+                 libxxf86vm1 libwayland-client0 libdecor-0-0
+```
 
 ### Windows
 

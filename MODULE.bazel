@@ -5,6 +5,7 @@ bazel_dep(name = "rules_cc", version = "0.2.26")
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "rules_python", version = "2.4.2")
+bazel_dep(name = "rules_shell", version = "0.8.0")
 bazel_dep(name = "rules_foreign_cc", version = "0.16.0")
 bazel_dep(name = "rules_apple", version = "5.3.0", repo_name = "build_bazel_rules_apple")
 bazel_dep(name = "apple_support", version = "2.10.1", repo_name = "build_bazel_apple_support")
@@ -17,6 +18,9 @@ bazel_dep(name = "googletest", version = "1.18.0.bcr.1", repo_name = "gtest")
 bazel_dep(name = "catch2", version = "3.15.1")
 bazel_dep(name = "libstemmer", version = "2.2.0")
 bazel_dep(name = "libjpeg_turbo", version = "3.1.3.bcr.6")
+
+# Mesh simplification for the cook tool (//tools/assets), MIT
+bazel_dep(name = "meshoptimizer", version = "1.3.bcr.1")
 
 # Libraries built with our own BUILD files in //third_party
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -80,6 +84,15 @@ http_file(
     sha256 = "af037f8b775198f636b14bcfe63fb401b02246ebfefe1025bb905ce042556960",
     url = "https://github.com/azahar-emu/azahar/releases/download/2126.2/azahar.AppImage",
 )
+
+# Blender 5.2.3 LTS, which exports the models scene_model builds
+# (//tools/assets): downloaded for the machine Bazel runs on (macOS on Apple
+# silicon, Linux x86-64), the first time a model is built, and pinned by
+# blender.org's SHA-256s (//tools/blender). GPL-2.0-or-later, run as a
+# separate program.
+blender_repository = use_repo_rule("//tools/blender:blender.bzl", "blender_repository")
+
+blender_repository(name = "blender")
 
 # melonDS 1.1, the DS emulator `bazel run` opens DS apps in (//tools/melonds).
 # Only the build for the machine running it is downloaded, the first time a
@@ -333,6 +346,16 @@ new_git_repository(
     build_file = "//third_party:openpnp-capture.BUILD",
     remote = "https://github.com/openpnp/openpnp-capture.git",
     tag = "v0.0.24",
+)
+
+# cgltf 1.15, a single-header glTF 2.0 reader, for the cook tool
+# (//tools/assets), MIT
+http_archive(
+    name = "cgltf",
+    build_file = "//third_party:cgltf.BUILD",
+    sha256 = "84e352092e5cd6aab7f66de62ddb66beb5e6f18d412ca9d12950d7a55bfef25a",
+    strip_prefix = "cgltf-1.15",
+    url = "https://github.com/jkuhlmann/cgltf/archive/refs/tags/v1.15.tar.gz",
 )
 
 # Library used in opengl tutorial for textures (//projects/examples/opengl_tutorial)

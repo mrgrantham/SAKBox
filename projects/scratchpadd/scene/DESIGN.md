@@ -141,12 +141,12 @@ scene(
 
 0. **This review.**
 1. **The scene API and the OpenGL backend** *(done)*, with `debug_ui` split out of `graphics`, and `graphics` removed. The ScratchPadd demo, the shader playground, the Cyclone padds window and Precision Flight moved onto it, which removed their three copies of window and ImGui setup. Two things were added on the way: `Renderer::toScreen` and `Overlay::line`, for 3D lines drawn over everything (the padds window's joints through the bones), which the DS can't do with depth testing; and fog in the environment. Tests: each material, fog, wireframe, lines, the overlay, snapping and `toScreen` drawn into a hidden window and checked pixel by pixel (rather than against reference images, which would differ between GPUs), plus the transforms, meshes and overlay on their own.
-2. **The asset pipeline:**
-   - the Blender download and export;
-   - the cook tool;
-   - `scene_model` and `scene`;
-   - the three modes, the override flag and the reports.
+2. **The asset pipeline** *(done)*: [`tools/blender`](../../../tools/blender/README.md) (Blender downloaded by Bazel) and [`tools/assets`](../../../tools/assets/README.md) (the export script, the cook tool, `scene_model` and `scene`, the three modes, the override flag and the reports), shown working by [`examples/blender_model`](../../examples/blender_model/README.md). What it settled on the way:
+   - Each platform is cooked in an action of its own, so a model over the DS's budget stops only what's built for the DS.
+   - The DS's version is, for now, a `Scene::MeshData` like the desktop's (triangle lists), counted at a polygon and three vertices a triangle. Display lists, and the quads and strips that cost fewer vertices, come with the DS backend (phase 3).
+   - Flat-shaded meshes are welded to simplify (otherwise every edge is a seam) and made flat again after.
+   - A `scene` is a validation output too, so anything depending on it checks it.
+   - Tests: the cook on meshes made in code, and the cook tool on a model Blender exported in the build (each mode's outcome and message, scenes within and over the limit).
 
-   Tests: a model under and over budget in each mode, a hand-made `Ship_DS` that's itself over, a scene over its frame limit, and the flag.
 3. **The DS backend:** display lists, vertex colours, lights, the overlay, and a debug-build check of the DS's polygon and vertex counters. The DS ragdoll moves onto it.
 4. **Later:** Metal, then the 3DS once its budgets are measured.

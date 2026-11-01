@@ -276,7 +276,7 @@ void drawFrame() {
 ```
 
 - **Materials are what the DS does in hardware:** lit or unlit, a colour multiplying the mesh's vertex colours, opacity in 32 steps (`alpha`, 0-31), and wireframe. Translucent meshes are kept to the end of the frame and drawn farthest first, without hiding what's behind them.
-- **Meshes made in code** come from `MeshBuilder`: flat-shaded triangles, quads and boxes, each face with its own normal. Meshes made in Blender will come cooked by the build (see the design).
+- **Meshes made in code** come from `MeshBuilder`: flat-shaded triangles, quads and boxes, each face with its own normal. **Meshes made in Blender** come cooked by the build, a version for each platform, checked against its budget and simplified to fit if the rule says so ([`tools/assets`](../../tools/assets/README.md)): `renderer.load(Assets::rock)`.
 - **Transforms** are 3 x 4 affine matrices (`Transform`): rotation and scale, then position, composed with `*`.
 - **The overlay** draws text (stb_easy_font's, made of small rectangles, so it needs no font texture), rectangles and 2D lines over the 3D. `Renderer::toScreen` turns a 3D point into the overlay's points, which draws 3D lines over everything: the Cyclone padds window shows the ragdoll's joints through its bones that way.
 - **On desktops, `Display` is a GLFW window** with the keyboard and mouse: `keyDown`, `keyPressed` (each press once), `mouseDown`, the cursor, the time, and its size in points and pixels. While ImGui wants the keyboard or mouse (typing in a field), the display tells the app they're taken.
