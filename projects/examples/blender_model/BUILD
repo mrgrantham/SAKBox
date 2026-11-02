@@ -10,6 +10,7 @@ scene_model(
     name = "ship",
     src = "models/models.blend",
     object = "Ship",
+    visibility = ["//projects/examples/blender_model:__subpackages__"],  # ds/
 )
 
 # No DS version in the .blend: the build simplifies it to 200 polygons.
@@ -21,9 +22,10 @@ scene_model(
     budget = {"ds": 200},
     object = "Rock",
     over_budget = {"ds": "SIMPLIFY_AGGRESSIVE"},
+    visibility = ["//projects/examples/blender_model:__subpackages__"],  # ds/
 )
 
-# The rock as Blender exported it, for //tools/assets:cook_test
+# The rock as Blender exported it, for //tools/assets:cook_tool_test
 filegroup(
     name = "rock_glb",
     srcs = [":rock_cooked"],

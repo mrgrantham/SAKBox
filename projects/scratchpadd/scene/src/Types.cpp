@@ -21,7 +21,7 @@ Transform Transform::scaling(const Vector3 &v) {
 Transform Transform::rotation(const Vector3 &axis, Scalar radians) {
   // Rodrigues' formula: cos I + sin [axis]x + (1 - cos) axis axis^T
   const Vector3 a = axis.normalised();
-  const Scalar c = std::cos(radians), s = std::sin(radians), k = 1 - c;
+  const Scalar c = cosine(radians), s = sine(radians), k = Scalar(1) - c;
   Transform t;
   t.m[0] = {c + a.x * a.x * k, a.x * a.y * k - a.z * s, a.x * a.z * k + a.y * s, 0};
   t.m[1] = {a.y * a.x * k + a.z * s, c + a.y * a.y * k, a.y * a.z * k - a.x * s, 0};
@@ -42,7 +42,7 @@ Transform Transform::operator*(const Transform &o) const {
   Transform t;
   for (int r = 0; r < 3; ++r) {
     for (int c = 0; c < 4; ++c) {
-      Scalar sum = c == 3 ? m[r][3] : 0;
+      Scalar sum = c == 3 ? m[r][3] : Scalar(0);
       for (int k = 0; k < 3; ++k)
         sum += m[r][k] * o.m[k][c];
       t.m[r][c] = sum;

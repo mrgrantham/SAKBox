@@ -7,12 +7,27 @@
 #include <cmath>
 #include <cstdint>
 
+#if defined(__NDS__) || defined(SCRATCHPADD_SCENE_FIXED_POINT)
+#include <FixedPoint.hpp>
+#endif
+
 namespace ScratchPadd::Scene {
 
-// The scene's number type: float on desktops. (On the DS it will be
-// flexmath's FlexPoint16, Q16.16, as the DS has no floating-point hardware;
-// see DESIGN.md.)
+// The scene's number type: float on desktops, and on the DS flexmath's
+// FlexPoint16 (Q16.16), as the DS has no floating-point hardware: what
+// Cyclone runs in there, so its positions go straight in. Desktops can
+// build with it too (SCRATCHPADD_SCENE_FIXED_POINT), to test it.
+#if defined(__NDS__) || defined(SCRATCHPADD_SCENE_FIXED_POINT)
+using Scalar = Flex::Math::FlexPoint16;
+inline Scalar squareRoot(Scalar x) { return Flex::Math::flex_sqrt(x); }
+inline Scalar sine(Scalar radians) { return Flex::Math::flex_sin(radians); }
+inline Scalar cosine(Scalar radians) { return Flex::Math::flex_cos(radians); }
+#else
 using Scalar = float;
+inline Scalar squareRoot(Scalar x) { return std::sqrt(x); }
+inline Scalar sine(Scalar radians) { return std::sin(radians); }
+inline Scalar cosine(Scalar radians) { return std::cos(radians); }
+#endif
 
 struct Vector3 {
   Scalar x = 0, y = 0, z = 0;
@@ -27,11 +42,28 @@ struct Vector3 {
   Vector3 cross(const Vector3 &o) const {
     return {y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x};
   }
-  Scalar length() const { return std::sqrt(dot(*this)); }
-  // This vector at length 1 (or zero, if it's zero)
+  // Its length, and it at length 1 (or zero, if it's zero). Each first
+  // divides by its largest component, so the squares stay small: in Q16.16
+  // (the DS's) a vector 182 long would otherwise square past its range.
+  Scalar length() const {
+    const Scalar most = largestComponent();
+    if (!(most > Scalar(0)))
+      return Scalar(0);
+    const Vector3 small{x / most, y / most, z / most};
+    return most * squareRoot(small.dot(small));
+  }
   Vector3 normalised() const {
-    const Scalar l = length();
-    return l > 0 ? *this * (1 / l) : Vector3{};
+    const Scalar most = largestComponent();
+    if (!(most > Scalar(0)))
+      return {};
+    const Vector3 small{x / most, y / most, z / most};
+    const Scalar l = squareRoot(small.dot(small));
+    return {small.x / l, small.y / l, small.z / l};
+  }
+  Scalar largestComponent() const {
+    auto size = [](Scalar v) { return v < Scalar(0) ? -v : v; };
+    const Scalar a = size(x), b = size(y), c = size(z);
+    return a > b ? (a > c ? a : c) : (b > c ? b : c);
   }
 };
 

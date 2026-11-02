@@ -31,7 +31,7 @@ Scene::Mesh rock = renderer.load(Assets::rock);
 | Target | What it is |
 | --- | --- |
 | `:rock` | A `cc_library` for desktops: `rock.h`, with `Assets::rock` (a `Scene::MeshData`), and `Assets::rockTriangles` and `rockVertices` |
-| `:rock_ds_sources` | The DS's version, the same names, for a DS app's Makefile build (`devkitpro_nds_app`'s `extra_srcs`) |
+| `:rock_ds_sources` | The DS's version, the same names, for a DS app's Makefile build: `rock_ds.h` and `rock_ds.cpp`, given by `devkitpro_nds_app`'s `extra_srcs` (the example's DS app has `"...:rock_ds_sources": "assets"`, and `assets` in its Makefile's `SOURCES` and `INCLUDES`). A DS app in another package needs the rule's `visibility` |
 | `:rock_ds_preview` | The DS's version as a `cc_library` for desktops, in `Assets::Ds`, to see what the DS will draw |
 | `:rock_cooked` | The files; its `report` output group has a report a platform (`rock_ds.report.json`): the object used, the mode, the budget, the polygons and vertices before and after, the steps taken and the error |
 
@@ -53,7 +53,7 @@ A model is its object's mesh in the object's own coordinates: where it sits in t
 
 - `--//tools/assets:over_budget=FAIL` (or either other mode) overrides every rule for one build. A CI run with `FAIL` lists every model that fits only because it was simplified.
 - **A flat-shaded mesh** (each face its own vertices with the face's normal, as Blender exports flat shading) has every edge as a seam, so the simplifier could collapse nothing. The cook welds it (vertices at the same place with the same colour made one), simplifies that, and makes it flat-shaded again. The example's rock: `SIMPLIFY` took it from 5,120 to 396 triangles within the 5% cap, short of its 200; `SIMPLIFY_AGGRESSIVE` reached 200.
-- **How the DS counts:** a polygon and three vertices a triangle, as a triangle list costs. The DS's backend (phase 3 of the design) will join triangles into quads and strips, which cost fewer vertices; the count will follow it.
+- **How the DS counts:** a polygon and three vertices a triangle, as the DS backend draws them (triangle lists): in the example's DS app, the hardware's counters agreed with it. Strips and quads would cost fewer vertices; if the backend comes to use them, the count will follow.
 - Desktops have no budget, so their version is never simplified.
 
 ## Requirements
@@ -65,4 +65,4 @@ Blender is downloaded by Bazel the first time a model is built (see [`tools/blen
 | Test | Covers |
 | --- | --- |
 | `Cook_test` | The cook on meshes made in the test: costs (a polygon and three vertices a triangle), a model within budget left as it is in every mode, `FAIL` changing nothing, `SIMPLIFY` bringing a flat grid within budget without moving it, a bumpy one too rough for `SIMPLIFY`'s error cap that `SIMPLIFY_AGGRESSIVE` fits with its later steps, a flat-shaded mesh simplified and still flat-shaded, and the modes' names |
-| `cook_test` | The cook tool on the example's rock as Blender exported it in the build: `FAIL` over budget with its message and the fixes it suggests, `SIMPLIFY` falling short and saying `SIMPLIFY_AGGRESSIVE` goes further, `SIMPLIFY_AGGRESSIVE` fitting and writing its report, the desktop's version as it is, a missing object, and scenes within and over the DS's frame limit, with the report. Tagged `blender` |
+| `cook_tool_test` | The cook tool on the example's rock as Blender exported it in the build: `FAIL` over budget with its message and the fixes it suggests, `SIMPLIFY` falling short and saying `SIMPLIFY_AGGRESSIVE` goes further, `SIMPLIFY_AGGRESSIVE` fitting and writing its report, the desktop's version as it is, a missing object, and scenes within and over the DS's frame limit, with the report. Tagged `blender`. (Not `cook_test`: on a Mac's case-insensitive disk, its logs and `Cook_test`'s would share a folder) |

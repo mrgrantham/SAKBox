@@ -9,6 +9,13 @@
 #include <span>
 #include <vector>
 
+// The DS's C library (newlib) has <sys/types.h> define `quad` as a macro
+// (quad_t), which renames MeshBuilder::quad in any file that has seen it.
+// Included here, it's renamed the same way in every file, so they agree.
+#if __has_include(<sys/types.h>)
+#include <sys/types.h>
+#endif
+
 namespace ScratchPadd::Scene {
 
 struct Vertex {

@@ -249,7 +249,7 @@ Every padd has a `logger()` (spdlog) named after the padd. The `PADDLOG_INFO`, `
 
 ## Scene layer
 
-The `scene` package (`ScratchPadd/Scene/Scene.hpp`) draws 3D the same way on every platform: meshes loaded once and drawn by handle, each with a transform and a material, a camera, up to four directional lights, fog, lines, and an overlay of text and rectangles in screen points. Each platform has a backend, chosen when a program is built; so far the only one is OpenGL 3.3 for desktops (`scene/gl`), with the Nintendo DS's next. Its design, and the asset pipeline from Blender to come, are in [`scene/DESIGN.md`](scene/DESIGN.md).
+The `scene` package (`ScratchPadd/Scene/Scene.hpp`) draws 3D the same way on every platform: meshes loaded once and drawn by handle, each with a transform and a material, a camera, up to four directional lights, fog, lines, and an overlay of text and rectangles in screen points. Each platform has a backend, chosen when a program is built: OpenGL 3.3 for desktops (`scene/gl`) and the Nintendo DS's 3D hardware (`scene/ds`). Its design is in [`scene/DESIGN.md`](scene/DESIGN.md).
 
 ```cpp
 namespace Scene = ScratchPadd::Scene;
@@ -277,9 +277,23 @@ void drawFrame() {
 
 - **Materials are what the DS does in hardware:** lit or unlit, a colour multiplying the mesh's vertex colours, opacity in 32 steps (`alpha`, 0-31), and wireframe. Translucent meshes are kept to the end of the frame and drawn farthest first, without hiding what's behind them.
 - **Meshes made in code** come from `MeshBuilder`: flat-shaded triangles, quads and boxes, each face with its own normal. **Meshes made in Blender** come cooked by the build, a version for each platform, checked against its budget and simplified to fit if the rule says so ([`tools/assets`](../../tools/assets/README.md)): `renderer.load(Assets::rock)`.
-- **Transforms** are 3 x 4 affine matrices (`Transform`): rotation and scale, then position, composed with `*`.
-- **The overlay** draws text (stb_easy_font's, made of small rectangles, so it needs no font texture), rectangles and 2D lines over the 3D. `Renderer::toScreen` turns a 3D point into the overlay's points, which draws 3D lines over everything: the Cyclone padds window shows the ragdoll's joints through its bones that way.
+- **Transforms** are 3 x 4 affine matrices (`Transform`): rotation and scale, then position, composed with `*`. Their numbers are `Scalar`: `float` on desktops, Q16.16 fixed point on the DS (flexmath's `FlexPoint16`, what Cyclone runs in there).
+- **The overlay** draws rectangles and 2D lines over the 3D, then text over them in the backend's font: stb_easy_font's on desktops (made of small rectangles, so it needs no font texture), the DS's 8-point text cells there. `Overlay::textWidth` and `lineHeight` measure it in that font. `Renderer::toScreen` turns a 3D point into the overlay's points, which draws 3D lines over everything: the Cyclone padds window shows the ragdoll's joints through its bones that way.
+- **`Renderer::lastFrame()`** gives what the last frame drew, counted as the DS counts it (a polygon and three vertices a triangle), and `capabilities()` what the backend can't do: the DS's 2048 polygons a frame, and no fog there yet.
 - **On desktops, `Display` is a GLFW window** with the keyboard and mouse: `keyDown`, `keyPressed` (each press once), `mouseDown`, the cursor, the time, and its size in points and pixels. While ImGui wants the keyboard or mouse (typing in a field), the display tells the app they're taken.
+- **On the DS** ([`scene/ds`](scene/ds)), `Display` is the top screen, with a 2D text layer over the 3D for the overlay's text; the bottom screen stays the app's console. Meshes become display lists when they're drawn, a few per mesh (lit or unlit, the material's colour, the ambient light). A debug build stops with a message on a frame that overflows the DS's polygon or vertex memory; the build's [`scene` rule](../../tools/assets/README.md) checks a scene's models before that. The Cyclone ragdoll and the [Blender models example](../examples/blender_model/README.md) run on it. A DS app builds it from its Makefile, with these `extra_srcs`, and `scratchpadd/scene/src scratchpadd/scene_ds/src` in `SOURCES` and their `include` folders (and `flexmath/include`) in `INCLUDES`:
+
+  ```python
+  "//projects/flexmath:fixed_point_sources": "flexmath",
+  "//projects/scratchpadd/scene:sources": "scratchpadd/scene",
+  "//projects/scratchpadd/scene/ds:sources": "scratchpadd/scene_ds",
+  ```
+
+  ```cpp
+  Scene::Display display;   // the top screen (3D, and the overlay's text layer)
+  consoleDemoInit();        // the bottom screen's console, for printf
+  Scene::Renderer renderer(display);
+  ```
 - **Desktop-only extras** are in `ScratchPadd/Scene/GL/Desktop.hpp`: vertex snapping to a grid (`Desktop::setVertexSnap`, Precision Flight's render precision), and `Desktop::ShaderPanel`, a Shadertoy-style shader drawn into a texture of its own (`iTime`, `iResolution`, `iMouse`, `uniform_color`) to show in an ImGui window, as the shader playground does. An app that uses them builds only for desktops.
 
 ## Debug UI
@@ -444,7 +458,8 @@ How the builds differ from a desktop's:
 | `//projects/scratchpadd/messages` | The message wrapper (`Message`, `makeMessage`), `Text`, and the control types |
 | `//projects/scratchpadd/utilities` | Logging, `Timer`, `EventTimer` and helpers like `VariantHandler` |
 | `//projects/scratchpadd/scene` | The scene layer's API (`Scene.hpp`): types, meshes made in code, the overlay |
-| `//projects/scratchpadd/scene/gl` | Its OpenGL 3.3 backend: the renderer, `Display` (a GLFW window), and the desktop extras (`Desktop.hpp`) |
+| `//projects/scratchpadd/scene/gl` | Its OpenGL 3.3 backend: the renderer, `Display` (a GLFW window), the overlay's text (stb_easy_font), and the desktop extras (`Desktop.hpp`) |
+| `//projects/scratchpadd/scene/ds` | Its DS backend (libnds' GX): the renderer, `Display` (the top screen), and display lists; sources for DS apps' Makefile builds (`sources`), and the display lists built for tests |
 | `//projects/scratchpadd/debug_ui` | Dear ImGui on a `Display` (`DebugUi.hpp`), the theme (`Theme.hpp`), control panels, and `DisplayPadd` |
 | `//projects/scratchpadd/audio` | `:audio` (`AudioPadd`), `:audio_messages` (what padds send it), `:audio_core` (the engine and instruments, also built for the 3DS), `:audio_device` (playback through the sound device) |
 | `//projects/scratchpadd/3ds/demo`, `//projects/scratchpadd/ds/demo` | Padds on a Nintendo 3DS (AudioPadd through its DSP) and DS (on its hardware channels) |
@@ -485,7 +500,9 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `midi_input:MidiInputPadd_test` | With a virtual MIDI port as the keyboard (and `portFilter()` listening to it alone): a note reaching listeners with its port and playing on AudioPadd's instrument, `playThrough` off, and a keyboard unplugged (skipped without a MIDI system, as in Linux containers). Under ThreadSanitizer it uses `tests/tsan_suppressions.txt`, which hides races TSan reports inside RtMidi's Core MIDI callback because it can't see Core MIDI's own ordering |
 | `debug_ui:Theme_test` | The compiled-in fonts are TrueType fonts; the theme sets the text and title fonts (different ones), the spacing, and the dark and light palettes |
 | `debug_ui:ControlPanels_test` | A window's control panels: one per padd, updated in place, closed when the padd has no controls left, opened along the bottom or where the window says, and placed only when opened |
-| `scene:Scene_test` | Transforms (turns, moves and scales, composed in order), boxes facing outward with each face wound counter-clockwise, the overlay's text, rectangles and lines as triangles, at most four lights |
+| `scene:Scene_test`, `Scene_fixed_point_test` | Transforms (turns, moves and scales, composed in order), long vectors' lengths and directions, boxes facing outward with each face wound counter-clockwise, the overlay's rectangles and lines as triangles and its text kept as given, at most four lights. The second builds it all with `Scalar` as the DS has it (Q16.16) |
+| `scene/gl:OverlayText_test` | The overlay's text on desktops: triangles where it was put, within its width and line height |
+| `scene/ds:DisplayList_test`, `DisplayList_fixed_point_test` | The DS's display lists, read back command by command: numbers converted as the DS has them, unlit colours (times the material's) and lit materials, emission and normals, each sent only when it changes, big meshes scaled to fit 4.12, and four commands packed a word |
 | `scene/gl:Renderer_test` | The OpenGL backend drawing into a hidden window, its pixels read back: unlit colours (vertex times material), lighting (ambient plus lights, nothing from behind), translucency blending over what's behind, fog, wireframe, lines, the overlay over the scene, vertex snapping, and `toScreen`. Tagged `display`: it needs a display, so the Linux check builds it but doesn't run it |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 

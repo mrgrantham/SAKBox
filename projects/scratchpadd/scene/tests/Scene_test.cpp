@@ -1,18 +1,23 @@
 // The scene layer's shared parts, without a backend: transforms, meshes
-// built in code, and the overlay.
+// built in code, and the overlay. Built twice: with Scalar as float, and as
+// the DS has it (Q16.16).
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <gtest/gtest.h>
 
 #include <numbers>
+#include <type_traits>
 
 using namespace ScratchPadd::Scene;
 
 namespace {
+// Float's rounding, or Q16.16's steps (2^-16) over a few operations (the
+// fixed-point build, as on the DS)
+constexpr double kTolerance = std::is_floating_point_v<Scalar> ? 1e-5 : 1e-3;
 void expectNear(const Vector3 &actual, const Vector3 &expected) {
-  EXPECT_NEAR(actual.x, expected.x, 1e-5f);
-  EXPECT_NEAR(actual.y, expected.y, 1e-5f);
-  EXPECT_NEAR(actual.z, expected.z, 1e-5f);
+  EXPECT_NEAR(actual.x, expected.x, kTolerance);
+  EXPECT_NEAR(actual.y, expected.y, kTolerance);
+  EXPECT_NEAR(actual.z, expected.z, kTolerance);
 }
 constexpr float kQuarterTurn = std::numbers::pi_v<float> / 2;
 } // namespace
@@ -40,6 +45,20 @@ TEST(TransformTest, FromAxesPutsEachAxisWhereSaid) {
   expectNear(t.apply({0, 1, 0}), {4, 0, 0});
 }
 
+// Lengths and directions of long vectors: in Q16.16, 256 squared would be
+// past its range, so they're taken from the vector scaled down first
+TEST(VectorTest, LongVectorsKeepTheirLengthAndDirection) {
+  EXPECT_NEAR(Vector3(0, 256, 0).length(), 256, kTolerance);
+  expectNear(Vector3(0, 256, 0).normalised(), {0, 1, 0});
+  expectNear(Vector3(300, 0, -400).normalised(), {0.6f, 0, -0.8f});
+  EXPECT_NEAR(Vector3(300, 0, -400).length(), 500, kTolerance);
+  expectNear(Vector3{}.normalised(), {});
+  // A 16 m quad's normal (the DS ragdoll's ground)
+  MeshBuilder builder;
+  builder.quad({-8, 0, 8}, {8, 0, 8}, {8, 0, -8}, {-8, 0, -8});
+  expectNear(builder.data().vertices[0].normal, {0, 1, 0});
+}
+
 // Faces get their own vertices with the face's normal, facing out, and
 // each triangle winds counter-clockwise seen from its front.
 TEST(MeshBuilderTest, BoxesFaceOutward) {
@@ -59,31 +78,25 @@ TEST(MeshBuilderTest, BoxesFaceOutward) {
   }
 }
 
-// Text becomes coloured triangles where it was put, scaled; rectangles are
-// two triangles; clear() empties it for the next frame.
-TEST(OverlayTest, TextAndRectanglesBecomeTriangles) {
+// Rectangles are two triangles; text is kept as it was given, for the
+// backend to draw in its font; clear() empties both for the next frame.
+TEST(OverlayTest, CollectsShapesAndText) {
   Overlay overlay;
   overlay.rectangle(10, 20, 30, 40, Colour{1, 2, 3, 4});
   ASSERT_EQ(overlay.triangles().size(), 6u);
   EXPECT_EQ(overlay.triangles()[2].x, 40);
   EXPECT_EQ(overlay.triangles()[2].y, 60);
 
-  overlay.clear();
   overlay.text(100, 50, "Hi", Colour{255, 0, 0}, 2);
-  ASSERT_FALSE(overlay.triangles().empty());
-  EXPECT_EQ(overlay.triangles().size() % 3, 0u);
-  float right = 0, bottom = 0;
-  for (const Overlay::Vertex &v : overlay.triangles()) {
-    EXPECT_GE(v.x, 100);
-    EXPECT_GE(v.y, 50);
-    right = std::max(right, v.x);
-    bottom = std::max(bottom, v.y);
-    EXPECT_EQ(v.colour, (Colour{255, 0, 0}));
-  }
-  EXPECT_LE(right, 100 + Overlay::textWidth("Hi", 2));
-  EXPECT_LE(bottom, 50 + Overlay::kLineHeight * 2);
-  EXPECT_FLOAT_EQ(Overlay::textWidth("Hi", 2), 2 * Overlay::textWidth("Hi"));
-  EXPECT_GT(Overlay::textWidth("Hello"), Overlay::textWidth("Hi"));
+  ASSERT_EQ(overlay.texts().size(), 1u);
+  EXPECT_EQ(overlay.texts()[0].text, "Hi");
+  EXPECT_EQ(overlay.texts()[0].x, 100);
+  EXPECT_EQ(overlay.texts()[0].scale, 2);
+  EXPECT_EQ(overlay.triangles().size(), 6u); // text isn't triangles here
+
+  overlay.clear();
+  EXPECT_TRUE(overlay.triangles().empty());
+  EXPECT_TRUE(overlay.texts().empty());
 }
 
 // A line is a quad `thickness` wide around it

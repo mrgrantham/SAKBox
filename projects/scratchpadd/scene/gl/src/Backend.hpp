@@ -21,6 +21,9 @@ GLuint linkProgram(const char *vertexSource, const char *fragmentSource);
 // 0 position, 1 normal, 2 colour (0-1)
 void describeVertices();
 
+// Adds `text`'s triangles (stb_easy_font's rectangles) to `triangles`
+void appendTextTriangles(const Overlay::Text &text, std::vector<Overlay::Vertex> &triangles);
+
 struct Renderer::Backend {
   explicit Backend(Display &display);
   ~Backend();
@@ -43,6 +46,8 @@ struct Renderer::Backend {
   Display &display;
   std::vector<LoadedMesh> meshes; // by Mesh::id - 1; unloaded ones have vao 0
   std::vector<Later> later;
+  FrameCounts counting, last;                    // this frame's so far; the last one's
+  std::vector<Overlay::Vertex> overlayTriangles; // reused each frame
 
   GLuint program = 0;
   struct {

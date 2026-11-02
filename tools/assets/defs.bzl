@@ -68,7 +68,7 @@ def _scene_model_impl(ctx):
         if mode not in _MODES:
             fail("over_budget for {} is {}: it must be one of {}".format(platform, mode, _MODES))
         base = name + suffix
-        cc = ctx.actions.declare_file(base + ".cc")
+        cc = ctx.actions.declare_file(base + ".cpp")  # (devkitPro's Makefiles build .cpp, not .cc)
         h = ctx.actions.declare_file(base + ".h")
         report = ctx.actions.declare_file(base + ".report.json")
         count = ctx.actions.declare_file(base + ".counts")

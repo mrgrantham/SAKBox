@@ -25,7 +25,7 @@ check() { # NAME EXPECTED-EXIT GREP-PATTERN COMMAND...
 model() { # MODE
   "$cook" model --gltf "$glb" --name rock --object Rock --label //test:rock \
     --report "$out/$1.json" --counts "$out/$1.counts" \
-    --output ds Assets "$out/$1.cc" "$out/$1.h" 200 6144 "$1"
+    --output ds Assets "$out/$1.cpp" "$out/$1.h" 200 6144 "$1"
 }
 
 check fail 1 "over the DS's budget: 5120 polygons" model FAIL
@@ -35,9 +35,9 @@ check aggressive 0 "" model SIMPLIFY_AGGRESSIVE
 check aggressive_fits 0 "rockTriangles = 200" cat "$out/SIMPLIFY_AGGRESSIVE.h"
 check report 0 '"fits": true' cat "$out/SIMPLIFY_AGGRESSIVE.json"
 check desktop 0 "rockTriangles = 5120" sh -c "\"$cook\" model --gltf \"$glb\" --name rock --object Rock \
-  --output desktop Assets \"$out/d.cc\" \"$out/d.h\" 0 0 FAIL && cat \"$out/d.h\""
+  --output desktop Assets \"$out/d.cpp\" \"$out/d.h\" 0 0 FAIL && cat \"$out/d.h\""
 check missing 1 "no object named Nothing" "$cook" model --gltf "$glb" --name x --object Nothing \
-  --output ds Assets "$out/x.cc" "$out/x.h" 0 0 FAIL
+  --output ds Assets "$out/x.cpp" "$out/x.h" 0 0 FAIL
 
 # 11 rocks of 200 polygons: 2200, over the DS's 2048 a frame
 check scene_over 1 "shows more than the DS draws a frame" "$cook" scene --label //test:scene \

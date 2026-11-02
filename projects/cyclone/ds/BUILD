@@ -1,7 +1,8 @@
 load("//tools/devkitpro:defs.bzl", "devkitpro_nds_app")
 
 # Cyclone's ragdoll on a Nintendo DS, in padds: the physics on its own
-# thread, timed, drawn by the DS's 3D hardware, and knocking as it hits
+# thread, timed, drawn with ScratchPadd's scene layer (its DS backend), and
+# knocking as it hits
 # (AudioPadd on the DS's hardware sound channels). Needs Docker running (see
 # //tools/devkitpro); `bazel run` opens it in melonDS.
 devkitpro_nds_app(
@@ -13,6 +14,8 @@ devkitpro_nds_app(
         "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
         "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
         "//projects/scratchpadd/handheld_controls:sources": "scratchpadd/handheld_controls",
+        "//projects/scratchpadd/scene:sources": "scratchpadd/scene",
+        "//projects/scratchpadd/scene/ds:sources": "scratchpadd/scene_ds",
         "//projects/scratchpadd/utilities:sources": "scratchpadd/utilities",
         "//projects/scratchpadd/ds/platform:sources": "scratchpadd_ds/platform",
         "//projects/scratchpadd/audio/made_sounds_pcm16:sources": "scratchpadd_audio_pcm16",

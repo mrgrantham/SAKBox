@@ -66,9 +66,9 @@ cc_test(
 # rock): each over_budget mode, and scenes within and over the DS's frame.
 # Tagged blender, as it needs Blender (not on Linux on ARM).
 sh_test(
-    name = "cook_test",
+    name = "cook_tool_test",
     size = "small",
-    srcs = ["tests/cook_test.sh"],
+    srcs = ["tests/cook_tool_test.sh"],
     args = [
         "$(rootpath :cook)",
         "$(rootpath //projects/examples/blender_model:rock_glb)",

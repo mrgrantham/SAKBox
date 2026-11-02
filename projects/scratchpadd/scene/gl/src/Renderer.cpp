@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdio>
+#include <utility>
 
 namespace ScratchPadd::Scene {
 
@@ -219,12 +220,18 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glBindVertexArray(loaded.vao);
   glDrawElements(GL_TRIANGLES, loaded.indexCount, GL_UNSIGNED_INT, nullptr);
+  counting.polygons += static_cast<unsigned>(loaded.indexCount) / 3;
+  counting.vertices += static_cast<unsigned>(loaded.indexCount);
   if (material.wireframe)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
-  if (overlay.triangles().empty())
+  // The shapes, then the text over them
+  overlayTriangles.assign(overlay.triangles().begin(), overlay.triangles().end());
+  for (const Overlay::Text &text : overlay.texts())
+    appendTextTriangles(text, overlayTriangles);
+  if (overlayTriangles.empty())
     return;
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
@@ -235,9 +242,9 @@ void Renderer::Backend::drawOverlay(const Overlay &overlay) {
   glBindVertexArray(overlayVao);
   glBindBuffer(GL_ARRAY_BUFFER, overlayVbo);
   glBufferData(GL_ARRAY_BUFFER,
-               static_cast<GLsizeiptr>(overlay.triangles().size() * sizeof(Overlay::Vertex)),
-               overlay.triangles().data(), GL_STREAM_DRAW);
-  glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(overlay.triangles().size()));
+               static_cast<GLsizeiptr>(overlayTriangles.size() * sizeof(Overlay::Vertex)),
+               overlayTriangles.data(), GL_STREAM_DRAW);
+  glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(overlayTriangles.size()));
   glDisable(GL_BLEND);
   glEnable(GL_DEPTH_TEST);
 }
@@ -313,6 +320,7 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   glUniform1f(b.uniform.fogDensity, environment.fog.density);
   b.worldSnap = b.screenSnap = 0;
   b.later.clear();
+  b.counting = {};
   overlay_.clear();
 }
 
@@ -347,6 +355,8 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
   glUniform1f(b.uniform.worldSnap, b.worldSnap);
   glUniform1f(b.uniform.screenSnap, b.screenSnap);
   glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(vertices.size() / 2 * 2));
+  b.counting.polygons += static_cast<unsigned>(vertices.size() / 2);
+  b.counting.vertices += static_cast<unsigned>(vertices.size() / 2 * 3);
 }
 
 void Renderer::endFrame() {
@@ -369,6 +379,7 @@ void Renderer::endFrame() {
   b.drawOverlay(overlay_);
   overlay_.clear();
   glBindVertexArray(0);
+  b.last = std::exchange(b.counting, {});
   b.display.present();
 }
 
@@ -382,5 +393,7 @@ bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
 }
 
 Capabilities Renderer::capabilities() const { return {}; }
+
+FrameCounts Renderer::lastFrame() const { return backend_->last; }
 
 } // namespace ScratchPadd::Scene
