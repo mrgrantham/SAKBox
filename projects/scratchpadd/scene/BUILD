@@ -3,7 +3,8 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 # The scene layer's API (Scene.hpp) and what every backend shares: its
 # types, meshes built in code, and the overlay's text and rectangles. A
 # program also links one backend, which defines Renderer and its Display
-# (for OpenGL, //projects/scratchpadd/scene/gl). See DESIGN.md.
+# (on desktops, //projects/scratchpadd/scene/desktop picks one). See
+# DESIGN.md.
 [cc_library(
     name = "scene" + suffix,
     hdrs = glob(["include/**/*.hpp"]),

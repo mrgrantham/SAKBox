@@ -1,5 +1,5 @@
 // The overlay's text on desktops (stb_easy_font), without a window
-#include "../src/Backend.hpp"
+#include <ScratchPadd/Scene/Desktop/OverlayText.hpp>
 
 #include <gtest/gtest.h>
 

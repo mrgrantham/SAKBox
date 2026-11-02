@@ -1,6 +1,6 @@
 #include "FlightDisplayPadd.hpp"
 
-#include <ScratchPadd/Scene/GL/Desktop.hpp>
+#include <ScratchPadd/Scene/Desktop/Desktop.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
 

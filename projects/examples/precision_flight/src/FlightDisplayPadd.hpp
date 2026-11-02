@@ -13,7 +13,7 @@
 #include <ScratchPadd/Base.hpp>
 #include <ScratchPadd/DebugUi/ControlPanel.hpp>
 #include <ScratchPadd/DebugUi/DebugUi.hpp>
-#include <ScratchPadd/Scene/GL/Display.hpp>
+#include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <deque>

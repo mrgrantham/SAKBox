@@ -1,67 +1,31 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
 # The scene layer's OpenGL 3.3 backend, for desktops: Scene::Renderer, the
-# window it draws into (Display.hpp, GLFW), and what desktops can do beyond
-# the shared API (Desktop.hpp). See ../DESIGN.md.
+# desktop extras (Desktop.hpp) and its part of the window (WindowBackend.hpp).
+# Apps depend on //projects/scratchpadd/scene/desktop, which picks a
+# backend. See ../DESIGN.md.
 cc_library(
     name = "gl",
-    hdrs = glob(["include/**/*.hpp"]),
     srcs = [
         "src/Backend.hpp",
         "src/Desktop.cpp",
-        "src/Display.cpp",
-        "src/OverlayText.cpp",
         "src/Renderer.cpp",
+        "src/Window.cpp",
     ],
+    # Its window hooks (src/Window.cpp) are called from the window library,
+    # which links after it: kept whole, so GNU ld finds them
+    alwayslink = True,
     defines = ["GL_SILENCE_DEPRECATION"],
     linkopts = select({
-        "@platforms//os:windows": [
-            "-DEFAULTLIB:user32.lib",
-            "-DEFAULTLIB:gdi32.lib",
-            "-DEFAULTLIB:shell32.lib",
-        ],
-        "@platforms//os:macos": [
-            "-framework OpenGL",
-            "-framework Cocoa",
-            "-framework IOKit",
-            "-framework CoreFoundation",
-            "-framework CoreVideo",
-        ],
+        "@platforms//os:macos": ["-framework OpenGL"],
         "//conditions:default": [],
     }),
-    strip_include_prefix = "include/",
-    visibility = ["//visibility:public"],
+    visibility = ["//projects/scratchpadd:__subpackages__"],
     deps = [
         "//projects/scratchpadd/scene",
+        "//projects/scratchpadd/scene/desktop:window",
         "@glew",
         "@glfw",
         "@glm",
-        "@stb",
-    ],
-)
-
-# The overlay's text (stb_easy_font) on its own: no window needed
-cc_test(
-    name = "OverlayText_test",
-    size = "small",
-    srcs = ["tests/OverlayText_test.cpp"],
-    deps = [
-        ":gl",
-        "@gtest//:gtest_main",
-    ],
-)
-
-# Draws scenes into a hidden window and reads its pixels back, so it needs
-# a display and OpenGL 3.3: it runs on desktops, not in the headless Linux
-# check (tagged "display"; see tools/linux_check).
-cc_test(
-    name = "Renderer_test",
-    size = "small",
-    srcs = ["tests/Renderer_test.cpp"],
-    tags = ["display"],
-    deps = [
-        ":gl",
-        "@glew",
-        "@gtest//:gtest_main",
     ],
 )

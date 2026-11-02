@@ -4,6 +4,8 @@
 // overlay drawn last, in screen points.
 #include "Backend.hpp"
 
+#include <ScratchPadd/Scene/Desktop/OverlayText.hpp>
+
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -97,16 +99,16 @@ out vec4 fragmentColour;
 void main() { fragmentColour = vColour; }
 )";
 
-GLuint compileShader(GLenum type, const char *source) {
+GLuint compileShader(GLenum type, const char *source, std::string &log) {
   const GLuint shader = glCreateShader(type);
   glShaderSource(shader, 1, &source, nullptr);
   glCompileShader(shader);
   GLint ok = 0;
   glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
   if (!ok) {
-    char log[1024];
-    glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
-    std::fprintf(stderr, "Shader compile error: %s\n", log);
+    char text[1024];
+    glGetShaderInfoLog(shader, sizeof(text), nullptr, text);
+    log += std::string(type == GL_VERTEX_SHADER ? "vertex shader: " : "fragment shader: ") + text;
   }
   return shader;
 }
@@ -124,22 +126,29 @@ glm::mat4 toGlm(const Transform &t) {
 
 } // namespace
 
-GLuint linkProgram(const char *vertexSource, const char *fragmentSource) {
-  const GLuint vertex = compileShader(GL_VERTEX_SHADER, vertexSource);
-  const GLuint fragment = compileShader(GL_FRAGMENT_SHADER, fragmentSource);
+GLuint linkProgram(const char *vertexSource, const char *fragmentSource, std::string *error) {
+  std::string log;
+  const GLuint vertex = compileShader(GL_VERTEX_SHADER, vertexSource, log);
+  const GLuint fragment = compileShader(GL_FRAGMENT_SHADER, fragmentSource, log);
   const GLuint program = glCreateProgram();
   glAttachShader(program, vertex);
   glAttachShader(program, fragment);
   glLinkProgram(program);
   GLint ok = 0;
   glGetProgramiv(program, GL_LINK_STATUS, &ok);
-  if (!ok) {
-    char log[1024];
-    glGetProgramInfoLog(program, sizeof(log), nullptr, log);
-    std::fprintf(stderr, "Shader link error: %s\n", log);
+  if (!ok && log.empty()) {
+    char text[1024];
+    glGetProgramInfoLog(program, sizeof(text), nullptr, text);
+    log = std::string("linking: ") + text;
   }
   glDeleteShader(vertex);
   glDeleteShader(fragment);
+  if (!log.empty()) {
+    if (error)
+      *error = log;
+    else
+      std::fprintf(stderr, "Shader error: %s\n", log.c_str());
+  }
   return program;
 }
 

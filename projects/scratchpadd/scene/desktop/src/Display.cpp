@@ -1,8 +1,9 @@
-// GLEW must be included before GLFW
-#include <GL/glew.h>
+// The window and its input, the same for every desktop backend; the
+// backend sets the window up to draw in (WindowBackend.hpp)
 #include <GLFW/glfw3.h>
 
-#include <ScratchPadd/Scene/GL/Display.hpp>
+#include <ScratchPadd/Scene/Desktop/Display.hpp>
+#include <ScratchPadd/Scene/Desktop/WindowBackend.hpp>
 
 #include <utility>
 
@@ -43,22 +44,18 @@ Display::Display(int width, int height, const std::string &title, bool visible) 
   }
   ++openWindows;
   glfwStarted_ = true;
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // required on macOS
-  glfwWindowHint(GLFW_SAMPLES, 4);
+  visible_ = visible;
+  glfwDefaultWindowHints();
+  WindowBackend::hint();
   glfwWindowHint(GLFW_VISIBLE, visible ? GLFW_TRUE : GLFW_FALSE);
   window_ = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
   if (!window_) {
-    error_ = "no window: OpenGL 3.3 isn't available";
+    error_ = "no window: " + WindowBackend::kName + " isn't available";
     return;
   }
-  glfwMakeContextCurrent(window_);
-  glfwSwapInterval(visible ? 1 : 0); // wait for the screen's refresh, if shown
-  glewExperimental = GL_TRUE;
-  if (glewInit() != GLEW_OK) {
-    error_ = "GLEW couldn't load OpenGL's functions";
+  if (std::string why = WindowBackend::attach(*this); !why.empty()) {
+    error_ = std::move(why);
+    surface_.reset();
     glfwDestroyWindow(window_);
     window_ = nullptr;
     return;
@@ -68,6 +65,7 @@ Display::Display(int width, int height, const std::string &title, bool visible) 
 }
 
 Display::~Display() {
+  surface_.reset(); // the backend's, before its window
   if (window_)
     glfwDestroyWindow(window_);
   if (glfwStarted_ && --openWindows == 0)
@@ -153,15 +151,7 @@ void Display::present() {
     return;
   for (const auto &[id, draw] : drawLast_)
     draw();
-  glfwSwapBuffers(window_);
-  // GLFW 3.3 on macOS can render into a quarter of a high-DPI window until
-  // the window moves once
-  if (!nudged_) {
-    int x = 0, y = 0;
-    glfwGetWindowPos(window_, &x, &y);
-    glfwSetWindowPos(window_, x + 1, y);
-    nudged_ = true;
-  }
+  WindowBackend::show(*this);
 }
 
 } // namespace ScratchPadd::Scene

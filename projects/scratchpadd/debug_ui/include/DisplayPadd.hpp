@@ -11,7 +11,7 @@
 #include <ScratchPadd/DebugUi/ControlPanel.hpp>
 #include <ScratchPadd/DebugUi/DebugUi.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
-#include <ScratchPadd/Scene/GL/Display.hpp>
+#include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/Timer.hpp>
 

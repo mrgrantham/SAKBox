@@ -21,7 +21,7 @@ cc_library(
         "//projects/scratchpadd/basis",
         "//projects/scratchpadd/messages",
         "//projects/scratchpadd/scene",
-        "//projects/scratchpadd/scene/gl",
+        "//projects/scratchpadd/scene/desktop",
         "@imgui",
         "@imgui//:imgui_backend_glfw",
         "@imgui//:imgui_backend_opengl3",

@@ -46,7 +46,7 @@ cc_binary(
         "//projects/scratchpadd/audio",
         "//projects/scratchpadd/debug_ui",
         "//projects/scratchpadd/scene",
-        "//projects/scratchpadd/scene/gl",
+        "//projects/scratchpadd/scene/desktop",
         "@glm",
         "@imgui",
     ],

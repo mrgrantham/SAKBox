@@ -25,7 +25,7 @@
 namespace ScratchPadd::Scene {
 
 // Where frames go: a window on desktops, a screen on the DS. Each backend
-// defines it (for OpenGL, ScratchPadd/Scene/GL/Window.hpp).
+// defines it (on desktops, ScratchPadd/Scene/Desktop/Display.hpp).
 class Display;
 
 // A loaded mesh, drawn by handle. 0 is no mesh.
@@ -82,6 +82,7 @@ public:
   // The backend's own state, for its extras (on desktops, Desktop.hpp)
   struct Backend;
   Backend &backend() { return *backend_; }
+  const Backend &backend() const { return *backend_; }
 
 private:
   std::unique_ptr<Backend> backend_;

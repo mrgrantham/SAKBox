@@ -13,7 +13,7 @@ cc_binary(
         "//projects/data_dep_retriever",
         "//projects/scratchpadd/debug_ui",
         "//projects/scratchpadd/scene",
-        "//projects/scratchpadd/scene/gl",
+        "//projects/scratchpadd/scene/desktop",
         "//projects/scratchpadd/messages:messages",
         "@backward",
         ],

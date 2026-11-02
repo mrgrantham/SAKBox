@@ -2,7 +2,7 @@
 // draw it, beside the DS's version of it. The ship's DS version was made by
 // hand in Blender (Ship_DS, a Decimate modifier on a linked duplicate); the
 // rock's was simplified by the build to its budget (SIMPLIFY_AGGRESSIVE).
-#include <ScratchPadd/Scene/GL/Display.hpp>
+#include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 

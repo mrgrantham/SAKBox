@@ -1,10 +1,9 @@
-// The overlay's text on desktops: stb_easy_font's letters, built from small
-// rectangles, so it needs no font texture
-#include "Backend.hpp"
+#include <ScratchPadd/Scene/Desktop/OverlayText.hpp>
 
 #include <stb/stb_easy_font.h>
 
 #include <string>
+#include <string_view>
 
 namespace ScratchPadd::Scene {
 

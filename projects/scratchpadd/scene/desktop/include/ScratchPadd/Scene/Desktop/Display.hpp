@@ -1,12 +1,13 @@
-// Display.hpp - the OpenGL backend's Display: a GLFW window with an OpenGL
-// 3.3 core context, and its keyboard and mouse. Open it on the main thread
-// (macOS insists), in a main-thread padd, and draw into it with a
-// Scene::Renderer.
+// Display.hpp - a desktop's Display: a GLFW window, set up for the desktop
+// backend the program was built with (OpenGL or Metal), and its keyboard and
+// mouse. Open it on the main thread (macOS insists), in a main-thread padd,
+// and draw into it with a Scene::Renderer.
 #pragma once
 
 #include <ScratchPadd/Scene/Types.hpp>
 
 #include <functional>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -36,9 +37,11 @@ enum class MouseButton { Left, Right, Middle };
 
 class Display {
 public:
-  // Opens a window `width` x `height` points. If it can't (no display, no
-  // OpenGL 3.3), isOpen() is false and error() says why. `visible` false
-  // opens it hidden, for drawing offscreen (tests).
+  // Opens a window `width` x `height` points. If it can't (no display, or
+  // the backend can't draw in it: no OpenGL 3.3, no Metal device), isOpen()
+  // is false and error() says why. `visible` false opens it hidden, for
+  // drawing offscreen: tests, which read its frames back with
+  // Desktop::readPixel.
   Display(int width, int height, const std::string &title, bool visible = true);
   ~Display();
   Display(const Display &) = delete;
@@ -76,9 +79,12 @@ public:
   int pixelWidth() const;
   int pixelHeight() const;
 
+  bool visible() const { return visible_; }
+
   // Shows the frame drawn (Renderer::endFrame calls it): first runs each
-  // drawing added with drawLast (debug_ui's panels), then swaps buffers,
-  // waiting for the screen's refresh
+  // drawing added with drawLast (debug_ui's panels), then has the backend
+  // show it (OpenGL swaps buffers, waiting for the screen's refresh; Metal's
+  // renderer presents it after)
   void present();
   // Adds a drawing for present() to run last; returns a number to stop it
   // with stopDrawingLast (before whatever it draws is gone)
@@ -93,6 +99,11 @@ public:
   // The GLFW window, for desktop libraries that need it (ImGui's backend)
   GLFWwindow *glfw() const { return window_; }
 
+  // What the backend keeps with the window (WindowBackend.hpp: OpenGL's
+  // context state, Metal's layer), for the backend only
+  void *surface() const { return surface_.get(); }
+  void setSurface(std::shared_ptr<void> surface) { surface_ = std::move(surface); }
+
 private:
   static void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
 
@@ -103,7 +114,8 @@ private:
   int lastDrawingId_ = 0;
   bool keyboardTaken_ = false, mouseTaken_ = false;
   bool glfwStarted_ = false; // this window counts towards GLFW staying started
-  bool nudged_ = false;
+  bool visible_ = true;
+  std::shared_ptr<void> surface_;
 };
 
 } // namespace ScratchPadd::Scene

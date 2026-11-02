@@ -57,6 +57,6 @@ cc_binary(
         ":ship_ds_preview",
         "//projects/scratchpadd/basis",
         "//projects/scratchpadd/scene",
-        "//projects/scratchpadd/scene/gl",
+        "//projects/scratchpadd/scene/desktop",
     ],
 )

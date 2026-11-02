@@ -4,25 +4,34 @@
 
 #include <GL/glew.h>
 
-#include <ScratchPadd/Scene/GL/Display.hpp>
+#include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <glm/glm.hpp>
 
+#include <string>
 #include <vector>
 
 namespace ScratchPadd::Scene {
 
-// Compiles and links a vertex and fragment shader; on failure, writes the
-// log to stderr and returns the program anyway (it draws nothing)
-GLuint linkProgram(const char *vertexSource, const char *fragmentSource);
+// Compiles and links a vertex and fragment shader; on failure, puts the log
+// in `error` (or writes it to stderr, without one) and returns the program
+// anyway (it draws nothing)
+GLuint linkProgram(const char *vertexSource, const char *fragmentSource,
+                   std::string *error = nullptr);
+
+// What the OpenGL backend keeps with a window (Display::surface): whether
+// it's been nudged (see Window.cpp), and in a hidden window a copy of the
+// last frame, RGBA from the bottom row (Desktop::readPixel)
+struct WindowSurface {
+  bool nudged = false;
+  int width = 0, height = 0;
+  std::vector<unsigned char> lastFrame;
+};
 
 // Sets up `vao`'s attributes for Scene::Vertex in the bound GL_ARRAY_BUFFER:
 // 0 position, 1 normal, 2 colour (0-1)
 void describeVertices();
-
-// Adds `text`'s triangles (stb_easy_font's rectangles) to `triangles`
-void appendTextTriangles(const Overlay::Text &text, std::vector<Overlay::Vertex> &triangles);
 
 struct Renderer::Backend {
   explicit Backend(Display &display);

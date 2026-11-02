@@ -1,10 +1,9 @@
-// The OpenGL backend, drawing into a hidden window: each test draws a frame
-// and reads pixels back just before it's shown (Display::drawLast runs
-// then). Without a display or OpenGL 3.3 the tests are skipped.
-#include <GL/glew.h>
-
-#include <ScratchPadd/Scene/GL/Desktop.hpp>
-#include <ScratchPadd/Scene/GL/Display.hpp>
+// A desktop backend (built once for each: Renderer_opengl_test,
+// Renderer_metal_test), drawing into a hidden window: each test draws a
+// frame and reads its pixels back (Desktop::readPixel). Without a display,
+// or if the backend can't draw in it, the tests are skipped.
+#include <ScratchPadd/Scene/Desktop/Desktop.hpp>
+#include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <gtest/gtest.h>
@@ -24,7 +23,7 @@ class RendererTest : public testing::Test {
 protected:
   void SetUp() override {
     if (!display.isOpen())
-      GTEST_SKIP() << "no OpenGL window: " << display.error();
+      GTEST_SKIP() << "no window to draw in: " << display.error();
     renderer = std::make_unique<Renderer>(display);
     camera.eye = {0, 0, 5};
     camera.target = {0, 0, 0};
@@ -33,24 +32,17 @@ protected:
   }
 
   // Draws a frame with `draw`, and reads the pixels at `points` (in points
-  // from the top-left) just before it's shown
+  // from the top-left)
   std::vector<Pixel> frame(const std::function<void()> &draw,
                            std::initializer_list<std::array<float, 2>> points) {
-    std::vector<Pixel> pixels;
-    const int reader = display.drawLast([&] {
-      const float scale = static_cast<float>(display.pixelWidth()) / display.width();
-      for (const auto &[x, y] : points) {
-        unsigned char rgba[4] = {};
-        glReadPixels(static_cast<GLint>(x * scale),
-                     static_cast<GLint>(display.pixelHeight() - 1 - y * scale), 1, 1, GL_RGBA,
-                     GL_UNSIGNED_BYTE, rgba);
-        pixels.push_back({rgba[0], rgba[1], rgba[2]});
-      }
-    });
     renderer->beginFrame(camera, environment);
     draw();
     renderer->endFrame();
-    display.stopDrawingLast(reader);
+    std::vector<Pixel> pixels;
+    for (const auto &[x, y] : points) {
+      const Colour c = Desktop::readPixel(*renderer, x, y);
+      pixels.push_back({c.r, c.g, c.b});
+    }
     return pixels;
   }
 

@@ -6,8 +6,8 @@
 
 #include <DataDepRetriever/DataDependencies.hpp>
 #include <ScratchPadd/DebugUi/DebugUi.hpp>
-#include <ScratchPadd/Scene/GL/Desktop.hpp>
-#include <ScratchPadd/Scene/GL/Display.hpp>
+#include <ScratchPadd/Scene/Desktop/Desktop.hpp>
+#include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 
@@ -119,6 +119,9 @@ public:
                          std::make_unique<Scene::Desktop::ShaderPanel>(
                              setup.width, setup.height, readShader(setup.vertexShader),
                              readShader(setup.fragmentShader), setup.shape.data())});
+      if (!panels_.back().shader->ok())
+        spdlog::error("{}'s shaders didn't compile: {}", setup.name,
+                      panels_.back().shader->error());
     }
     push([this] { drawFrame(); }); // start drawing frames
   }
@@ -162,7 +165,7 @@ private:
       panel.shader->render(seconds, mouseX, mouseY, ImGui::IsMouseDown(ImGuiMouseButton_Left),
                            {13, 242, 77});
       // Textures are upside down to ImGui
-      ImGui::Image(static_cast<ImTextureID>(panel.shader->texture()), size, ImVec2(0, 1),
+      ImGui::Image(static_cast<ImTextureID>(panel.shader->imageId()), size, ImVec2(0, 1),
                    ImVec2(1, 0));
       ImGui::End();
       ImGui::PopStyleVar();

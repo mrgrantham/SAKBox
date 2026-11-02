@@ -12,7 +12,7 @@
 #pragma once
 
 #include <ScratchPadd/DebugUi/Theme.hpp>
-#include <ScratchPadd/Scene/GL/Display.hpp>
+#include <ScratchPadd/Scene/Desktop/Display.hpp>
 
 namespace ScratchPadd::DebugUi {
 
