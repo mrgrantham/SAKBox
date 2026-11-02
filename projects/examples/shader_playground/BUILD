@@ -3,6 +3,8 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 filegroup(
     name = "shaders",
     data = glob(["shaders/**"],allow_empty = False),
+    # The Metal backend's test translates them all
+    visibility = ["//projects/scratchpadd/scene/metal:__pkg__"],
 )
 
 cc_binary(

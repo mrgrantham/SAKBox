@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "objc_library")
 
 # OpenGL as each platform links it: macOS frameworks, Linux's libGL
 OPENGL_LINKOPTS = select({
@@ -34,6 +34,21 @@ cc_library(
 )
 
 
+
+# ImGui on Metal, with its metal-cpp API (IMGUI_IMPL_METAL_CPP: MTL::Device and
+# so on), for the scene layer's Metal backend. Objective-C++, macOS only.
+objc_library(
+    name = "imgui_backend_metal",
+    hdrs = ["backends/imgui_impl_metal.h"],
+    # It releases what it makes itself, as ARC wouldn't let it
+    non_arc_srcs = ["backends/imgui_impl_metal.mm"],
+    defines = ["IMGUI_IMPL_METAL_CPP"],
+    includes = ["backends"],
+    sdk_frameworks = ["Metal", "QuartzCore"],
+    target_compatible_with = ["@platforms//os:macos"],
+    visibility = ["//visibility:public"],
+    deps = [":imgui", "@metal-cpp"],
+)
 
 cc_library(
     name = "imgui_backend_sdl3",

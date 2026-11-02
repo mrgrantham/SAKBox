@@ -249,7 +249,7 @@ Every padd has a `logger()` (spdlog) named after the padd. The `PADDLOG_INFO`, `
 
 ## Scene layer
 
-The `scene` package (`ScratchPadd/Scene/Scene.hpp`) draws 3D the same way on every platform: meshes loaded once and drawn by handle, each with a transform and a material, a camera, up to four directional lights, fog, lines, and an overlay of text and rectangles in screen points. Each platform has a backend, chosen when a program is built: OpenGL 3.3 for desktops (`scene/gl`) and the Nintendo DS's 3D hardware (`scene/ds`). Its design is in [`scene/DESIGN.md`](scene/DESIGN.md).
+The `scene` package (`ScratchPadd/Scene/Scene.hpp`) draws 3D the same way on every platform: meshes loaded once and drawn by handle, each with a transform and a material, a camera, up to four directional lights, fog, lines, and an overlay of text and rectangles in screen points. Each platform has a backend, chosen when a program is built: on desktops Metal (`scene/metal`, Macs) or OpenGL 3.3 (`scene/gl`), and the Nintendo DS's 3D hardware (`scene/ds`). Its design is in [`scene/DESIGN.md`](scene/DESIGN.md).
 
 ```cpp
 namespace Scene = ScratchPadd::Scene;
@@ -294,11 +294,12 @@ void drawFrame() {
   consoleDemoInit();        // the bottom screen's console, for printf
   Scene::Renderer renderer(display);
   ```
-- **Desktop-only extras** are in `ScratchPadd/Scene/GL/Desktop.hpp`: vertex snapping to a grid (`Desktop::setVertexSnap`, Precision Flight's render precision), and `Desktop::ShaderPanel`, a Shadertoy-style shader drawn into a texture of its own (`iTime`, `iResolution`, `iMouse`, `uniform_color`) to show in an ImGui window, as the shader playground does. An app that uses them builds only for desktops.
+- **On desktops** an app depends on `//projects/scratchpadd/scene/desktop` and includes `ScratchPadd/Scene/Desktop/Display.hpp`; the build picks the backend. On a Mac that's Metal (written with Apple's metal-cpp), elsewhere OpenGL 3.3. `--//projects/scratchpadd/scene/desktop:backend=opengl` builds a Mac's apps with OpenGL instead (`=metal` and `=auto` are the others). Both draw the same frames: the renderer test checks the same pixels on each. On screen, macOS shows a Metal window's colours as sRGB, converted to the display, and an OpenGL window's unconverted, so on a wide-gamut screen OpenGL's look a little more saturated.
+- **Desktop-only extras** are in `ScratchPadd/Scene/Desktop/Desktop.hpp`, defined by both desktop backends: vertex snapping to a grid (`Desktop::setVertexSnap`, Precision Flight's render precision); `Desktop::ShaderPanel`, a Shadertoy-style GLSL shader drawn into a texture of its own (`iTime`, `iResolution`, `iMouse`, `uniform_color`) to show in an ImGui window (`imageId()`), as the shader playground does, which the Metal backend translates to Metal's shading language when it's loaded (glslang, then SPIRV-Cross; `ok()` and `error()` say if it couldn't); and `Desktop::readPixel`, a hidden window's last frame, for tests. An app that uses them builds only for desktops.
 
 ## Debug UI
 
-The `debug_ui` package puts Dear ImGui on a desktop `Display`, with ScratchPadd's look, for panels, sliders and stats over the scene. It's never compiled for the DS.
+The `debug_ui` package puts Dear ImGui on a desktop `Display`, with ScratchPadd's look, for panels, sliders and stats over the scene, with ImGui's renderer for the build's desktop backend (Metal or OpenGL 3). It's never compiled for the DS.
 
 ```cpp
 ui_ = std::make_unique<ScratchPadd::DebugUi::Ui>(*display_); // after the renderer
@@ -458,7 +459,9 @@ How the builds differ from a desktop's:
 | `//projects/scratchpadd/messages` | The message wrapper (`Message`, `makeMessage`), `Text`, and the control types |
 | `//projects/scratchpadd/utilities` | Logging, `Timer`, `EventTimer` and helpers like `VariantHandler` |
 | `//projects/scratchpadd/scene` | The scene layer's API (`Scene.hpp`): types, meshes made in code, the overlay |
-| `//projects/scratchpadd/scene/gl` | Its OpenGL 3.3 backend: the renderer, `Display` (a GLFW window), the overlay's text (stb_easy_font), and the desktop extras (`Desktop.hpp`) |
+| `//projects/scratchpadd/scene/desktop` | What desktop apps depend on (`:desktop`: the backend the build picks, `:backend` the flag), and what both desktop backends share (`:window`): `Display` (a GLFW window, keyboard and mouse), the desktop extras' API (`Desktop.hpp`) and the overlay's text (stb_easy_font) |
+| `//projects/scratchpadd/scene/gl` | The OpenGL 3.3 backend: the renderer, the extras, and its context in the window |
+| `//projects/scratchpadd/scene/metal` | The Metal backend (Macs): the renderer, the extras, its layer in the window, and GLSL translated to Metal's shading language (`:glsl_to_msl`) |
 | `//projects/scratchpadd/scene/ds` | Its DS backend (libnds' GX): the renderer, `Display` (the top screen), and display lists; sources for DS apps' Makefile builds (`sources`), and the display lists built for tests |
 | `//projects/scratchpadd/debug_ui` | Dear ImGui on a `Display` (`DebugUi.hpp`), the theme (`Theme.hpp`), control panels, and `DisplayPadd` |
 | `//projects/scratchpadd/audio` | `:audio` (`AudioPadd`), `:audio_messages` (what padds send it), `:audio_core` (the engine and instruments, also built for the 3DS), `:audio_device` (playback through the sound device) |
@@ -501,9 +504,10 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `debug_ui:Theme_test` | The compiled-in fonts are TrueType fonts; the theme sets the text and title fonts (different ones), the spacing, and the dark and light palettes |
 | `debug_ui:ControlPanels_test` | A window's control panels: one per padd, updated in place, closed when the padd has no controls left, opened along the bottom or where the window says, and placed only when opened |
 | `scene:Scene_test`, `Scene_fixed_point_test` | Transforms (turns, moves and scales, composed in order), long vectors' lengths and directions, boxes facing outward with each face wound counter-clockwise, the overlay's rectangles and lines as triangles and its text kept as given, at most four lights. The second builds it all with `Scalar` as the DS has it (Q16.16) |
-| `scene/gl:OverlayText_test` | The overlay's text on desktops: triangles where it was put, within its width and line height |
+| `scene/desktop:OverlayText_test` | The overlay's text on desktops: triangles where it was put, within its width and line height |
 | `scene/ds:DisplayList_test`, `DisplayList_fixed_point_test` | The DS's display lists, read back command by command: numbers converted as the DS has them, unlit colours (times the material's) and lit materials, emission and normals, each sent only when it changes, big meshes scaled to fit 4.12, and four commands packed a word |
-| `scene/gl:Renderer_test` | The OpenGL backend drawing into a hidden window, its pixels read back: unlit colours (vertex times material), lighting (ambient plus lights, nothing from behind), translucency blending over what's behind, fog, wireframe, lines, the overlay over the scene, vertex snapping, and `toScreen`. Tagged `display`: it needs a display, so the Linux check builds it but doesn't run it |
+| `scene/desktop:Renderer_opengl_test`, `Renderer_metal_test` | Each desktop backend (the same test, built with each) drawing into a hidden window, its pixels read back (`Desktop::readPixel`): unlit colours (vertex times material), lighting (ambient plus lights, nothing from behind), translucency blending over what's behind, fog, wireframe, lines, the overlay over the scene, vertex snapping, and `toScreen`. Tagged `display`: it needs a display, so the Linux check builds it but doesn't run it |
+| `scene/metal:GlslToMsl_test` | Every shader of the shader playground translated to Metal's shading language and compiled by Metal; loose uniforms found at the offsets Metal gives them; a GLSL mistake reported. Macs only |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations

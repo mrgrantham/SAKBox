@@ -1,25 +1,72 @@
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 # The scene layer on desktops. Apps depend on :desktop, which is the desktop
-# backend the build uses (OpenGL); it brings the window (Display.hpp) and
-# the desktop extras (Desktop.hpp). See ../DESIGN.md.
+# backend the build uses; it brings the window (Display.hpp) and the desktop
+# extras (Desktop.hpp). See ../DESIGN.md.
 cc_library(
     name = "desktop",
     visibility = ["//visibility:public"],
-    deps = ["//projects/scratchpadd/scene/gl"],
+    deps = select({
+        ":metal": ["//projects/scratchpadd/scene/metal"],
+        "//conditions:default": ["//projects/scratchpadd/scene/gl"],
+    }),
+)
+
+# Which desktop backend: auto (Metal on a Mac, OpenGL elsewhere), opengl or
+# metal (Macs only), for the whole build:
+#   bazel run //projects/examples/blender_model --//projects/scratchpadd/scene/desktop:backend=opengl
+string_flag(
+    name = "backend",
+    build_setting_default = "auto",
+    values = [
+        "auto",
+        "metal",
+        "opengl",
+    ],
+)
+
+config_setting(
+    name = "backend_auto",
+    flag_values = {":backend": "auto"},
+)
+
+config_setting(
+    name = "backend_metal",
+    flag_values = {":backend": "metal"},
+)
+
+selects.config_setting_group(
+    name = "auto_on_a_mac",
+    match_all = [
+        ":backend_auto",
+        "@platforms//os:macos",
+    ],
+)
+
+# Whether this build's desktop backend is Metal, for what differs with it
+# (debug_ui's ImGui)
+selects.config_setting_group(
+    name = "metal",
+    match_any = [
+        ":backend_metal",
+        ":auto_on_a_mac",
+    ],
+    visibility = ["//projects/scratchpadd:__subpackages__"],
 )
 
 # What every desktop backend shares, for the backends: the window (GLFW),
 # its keyboard and mouse, and the backend hooks it calls
 # (WindowBackend.hpp); the extras' API (Desktop.hpp), which each backend
-# defines; and the overlay's text (stb_easy_font)
+# defines; and the overlay's text (:overlay_text)
 cc_library(
     name = "window",
-    srcs = [
-        "src/Display.cpp",
-        "src/OverlayText.cpp",
-    ],
-    hdrs = glob(["include/**/*.hpp"]),
+    srcs = ["src/Display.cpp"],
+    hdrs = glob(
+        ["include/**/*.hpp"],
+        exclude = ["include/ScratchPadd/Scene/Desktop/OverlayText.hpp"],
+    ),
     linkopts = select({
         "@platforms//os:windows": [
             "-DEFAULTLIB:user32.lib",
@@ -37,19 +84,32 @@ cc_library(
     strip_include_prefix = "include/",
     visibility = ["//projects/scratchpadd/scene:__subpackages__"],
     deps = [
+        ":overlay_text",
         "//projects/scratchpadd/scene",
         "@glfw",
+    ],
+)
+
+# The overlay's text on desktops: stb_easy_font's letters as triangles,
+# and how wide and tall they are (Overlay::textWidth and lineHeight)
+cc_library(
+    name = "overlay_text",
+    srcs = ["src/OverlayText.cpp"],
+    hdrs = ["include/ScratchPadd/Scene/Desktop/OverlayText.hpp"],
+    strip_include_prefix = "include/",
+    visibility = ["//projects/scratchpadd/scene:__subpackages__"],
+    deps = [
+        "//projects/scratchpadd/scene",
         "@stb",
     ],
 )
 
-# The overlay's text (stb_easy_font) on its own: no window needed
 cc_test(
     name = "OverlayText_test",
     size = "small",
     srcs = ["tests/OverlayText_test.cpp"],
     deps = [
-        ":window",
+        ":overlay_text",
         "@gtest//:gtest_main",
     ],
 )
@@ -69,4 +129,5 @@ cc_test(
     ],
 ) for backend, package, compatible in [
     ("opengl", "gl", []),
+    ("metal", "metal", ["@platforms//os:macos"]),
 ]]

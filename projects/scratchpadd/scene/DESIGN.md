@@ -7,7 +7,7 @@ The design of ScratchPadd's scene layer, reviewed before it was built and built 
 | Area | Decision |
 | --- | --- |
 | API | A small scene layer: meshes and their transforms, a camera, materials, lines, and a 2D overlay for text and panels |
-| Backends | One per platform, chosen when building, with no virtual calls on the DS. OpenGL first, Metal later. The DS after OpenGL. The design leaves room for the 3DS, which isn't built yet. |
+| Backends | One per platform, chosen when building, with no virtual calls on the DS. OpenGL first, then the DS, then Metal (the default on Macs). The design leaves room for the 3DS, which isn't built yet. |
 | Animation | Rigid parts only: each part is a mesh with its own transform (as the ragdoll's bones are). No skinning. |
 | Surfaces on handhelds | Vertex colours and lighting; no textures yet |
 | DS screens | 3D on the top screen; text on the bottom |
@@ -75,7 +75,9 @@ public:
 | Package | What it holds |
 | --- | --- |
 | `//projects/scratchpadd/scene` | `Scene.hpp`, the overlay's font, the shared maths |
-| `//projects/scratchpadd/scene/gl` | The OpenGL 3.3 backend, and `Window` (GLFW) |
+| `//projects/scratchpadd/scene/desktop` | What desktop apps depend on (the backend the build picks) and what desktop backends share: `Display` (GLFW), the extras' API (`Desktop.hpp`), the overlay's text (phase 4) |
+| `//projects/scratchpadd/scene/gl` | The OpenGL 3.3 backend |
+| `//projects/scratchpadd/scene/metal` | The Metal backend, on Macs (phase 4) |
 | `//projects/scratchpadd/scene/ds` | The DS backend (libnds GX): display lists, vertex colours, the overlay; sources handed to DS apps' Makefile builds, as Cyclone's are now |
 | `//projects/scratchpadd/debug_ui` | ImGui, the theme and the control panels, moved out of `graphics`; desktop only |
 | later: `scene/metal`, `scene/3ds` | |
@@ -157,4 +159,10 @@ scene(
    - **Translucent meshes** are drawn farthest first, flushed with manual sorting, each with its own polygon ID (the DS blends a translucent polygon only over another ID's).
    - **Not on the DS yet:** fog (`capabilities().fog` is false), a vertex colour's alpha, and the text's scale.
    - Tests: the display lists read back command by command, with float and Q16.16; the rest checked by screenshots in melonDS (the ragdoll, and the Blender models: lit vertex colours, a translucent rock, lines, labels, and 1,763 polygons against the scene's 1,740 plus its lines and labels, less one wholly off screen), and the overflow message forced once.
-4. **Later:** Metal, then the 3DS once its budgets are measured.
+4. **Metal** *(done)*: [`scene/metal`](metal), written with Apple's metal-cpp, the default desktop backend on a Mac. What it settled:
+   - **What desktops share moved out of the OpenGL backend** into [`scene/desktop`](desktop): the window (`Display`, GLFW), whose backend part is behind `WindowBackend.hpp` (OpenGL: its context and swap; Metal: a `CAMetalLayer` in the window's view, the backend's only Objective-C); the extras' API, `Desktop.hpp`, which each backend defines; and `:desktop`, which apps depend on and which picks the backend: Metal on a Mac, OpenGL elsewhere, or as `--//projects/scratchpadd/scene/desktop:backend=opengl|metal` says. Includes moved from `ScratchPadd/Scene/GL/` to `ScratchPadd/Scene/Desktop/`.
+   - **The Metal backend draws what the OpenGL one does**, with its shaders translated by hand into Metal's shading language: 4x multisampled into the window's own textures, then copied into the layer's drawable. Drawing into its own texture lets ImGui draw over the finished frame (debug_ui has a renderer part for each backend), and lets a hidden window keep its frame, which `Desktop::readPixel` reads. So one renderer test runs on both backends, checking the same pixels.
+   - **Custom shaders stay GLSL.** `ShaderPanel` translates them when they're loaded: glslang compiles GLSL to SPIR-V under Vulkan's rules relaxed, which gathers an OpenGL shader's loose uniforms into one block, and SPIRV-Cross writes Metal from it, flipping the vertex stage's y so textures come out laid out as OpenGL's. The shaders are compiled from source when they load: Xcode's offline Metal compiler isn't needed. glslang and SPIRV-Cross aren't in Bazel's registry; their BUILD files are in `third_party/` (glslang compiled as C++17: C++26 rejects its arithmetic between enum types).
+   - **Colours on screen:** macOS treats the Metal layer's colours as sRGB and converts them to the display; an OpenGL window's aren't converted that way, so on a wide-gamut display OpenGL's look a little more saturated. The frames' pixels are the same.
+   - Tests: the renderer test on each backend; every shader of the shader playground translated and compiled by Metal. Checked on screen: the shader playground, Precision Flight, the Cyclone padds window and the Blender models, all on Metal.
+5. **Later:** the 3DS, once its budgets are measured (on hardware).

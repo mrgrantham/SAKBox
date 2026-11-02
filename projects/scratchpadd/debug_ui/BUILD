@@ -11,8 +11,12 @@ cc_library(
     srcs = [
         "src/ControlPanel.cpp",
         "src/DebugUi.cpp",
+        "src/ImGuiBackend.hpp",
         "src/Theme.cpp",
-    ],
+    ] + select({
+        "//projects/scratchpadd/scene/desktop:metal": ["src/ImGuiMetal.cpp"],
+        "//conditions:default": ["src/ImGuiOpenGl.cpp"],
+    }),
     strip_include_prefix = "include/",
     visibility = ["//visibility:public"],
     deps = [
@@ -24,9 +28,15 @@ cc_library(
         "//projects/scratchpadd/scene/desktop",
         "@imgui",
         "@imgui//:imgui_backend_glfw",
-        "@imgui//:imgui_backend_opengl3",
         "@imgui//:imgui_stdlib",
-    ],
+    ] + select({
+        "//projects/scratchpadd/scene/desktop:metal": [
+            "//projects/scratchpadd/scene/metal",
+            "@imgui//:imgui_backend_metal",
+            "@metal-cpp",
+        ],
+        "//conditions:default": ["@imgui//:imgui_backend_opengl3"],
+    }),
 )
 
 # The theme's fonts, compiled in (see Theme.hpp). Both are under the SIL Open

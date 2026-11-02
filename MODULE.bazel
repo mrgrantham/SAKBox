@@ -21,6 +21,9 @@ bazel_dep(name = "libjpeg_turbo", version = "3.1.3.bcr.6")
 
 # Mesh simplification for the cook tool (//tools/assets), MIT
 bazel_dep(name = "meshoptimizer", version = "1.3.bcr.1")
+# Apple's C++ wrapper for Metal, Foundation and QuartzCore, for the scene
+# layer's Metal backend (//projects/scratchpadd/scene/metal), Apache-2.0
+bazel_dep(name = "metal-cpp", version = "26")
 
 # Libraries built with our own BUILD files in //third_party
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -356,6 +359,28 @@ http_archive(
     sha256 = "84e352092e5cd6aab7f66de62ddb66beb5e6f18d412ca9d12950d7a55bfef25a",
     strip_prefix = "cgltf-1.15",
     url = "https://github.com/jkuhlmann/cgltf/archive/refs/tags/v1.15.tar.gz",
+)
+
+# glslang 16.6.0, Khronos' GLSL compiler, and SPIRV-Cross, which turns its
+# SPIR-V into Metal's shading language: the Metal backend translates custom
+# GLSL shaders (Desktop::ShaderPanel) with them when they're loaded
+# (//projects/scratchpadd/scene/metal). Neither is in the Bazel registry, so
+# their BUILD files are ours. BSD-3-Clause (and others; see their LICENSE
+# files) and Apache-2.0.
+http_archive(
+    name = "glslang",
+    build_file = "//third_party:glslang.BUILD",
+    sha256 = "9c09b901149c729df745057dafa815278aaa101b84d2b6e14f16a42de52f97f2",
+    strip_prefix = "glslang-16.6.0",
+    url = "https://github.com/KhronosGroup/glslang/archive/refs/tags/16.6.0.tar.gz",
+)
+
+http_archive(
+    name = "spirv_cross",
+    build_file = "//third_party:spirv_cross.BUILD",
+    sha256 = "f708982e88b763ef5b0394ed468fc2c3628f68cdab89f2e7a946cd628c04e721",
+    strip_prefix = "SPIRV-Cross-vulkan-sdk-1.4.363.0",
+    url = "https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz",
 )
 
 # Library used in opengl tutorial for textures (//projects/examples/opengl_tutorial)

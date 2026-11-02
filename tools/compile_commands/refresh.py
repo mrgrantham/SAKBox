@@ -19,6 +19,8 @@ them into the format clangd reads:
   here the whole repo is visible, and a stray file there shadows a standard
   header (Bullet's `version` file was found for <version>, when the jumper
   demo used Bullet).
+  Repos meant to be included with <...> from their top folder keep it
+  (ANGLED_REPOS: metal-cpp, glslang, SPIRV-Cross).
 
 Re-run it after adding source files or changing BUILD deps. The generated
 files (compile_commands.json, external, .cache/) are git-ignored.
@@ -60,7 +62,13 @@ def source_file(arguments):
 
 
 # An external repo's top folder, as Bazel names it on the command line
-REPO_ROOT = re.compile(r"(bazel-out/[^/]+/bin/)?external/[^/]+")
+REPO_ROOT = re.compile(r"(bazel-out/[^/]+/bin/)?external/([^/]+)")
+
+# Repos whose headers are meant to be included with <...> from their top
+# folder, which keeps -isystem: metal-cpp (<Metal/Metal.hpp>, as Apple
+# documents it, and as ImGui's Metal backend includes it), glslang
+# (<glslang/Public/ShaderLang.h>) and SPIRV-Cross (<spirv_msl.hpp>)
+ANGLED_REPOS = re.compile(r"metal-cpp\+|\+http_archive\+(glslang|spirv_cross)")
 
 
 def to_clangd_command(arguments, placeholders):
@@ -76,7 +84,8 @@ def to_clangd_command(arguments, placeholders):
     for i, arg in enumerate(rest):
         for placeholder, value in placeholders.items():
             arg = arg.replace(placeholder, value)
-        if arg == "-isystem" and i + 1 < len(rest) and REPO_ROOT.fullmatch(rest[i + 1]):
+        root = REPO_ROOT.fullmatch(rest[i + 1]) if arg == "-isystem" and i + 1 < len(rest) else None
+        if root and not ANGLED_REPOS.fullmatch(root.group(2)):
             arg = "-iquote"  # (see the module docstring)
         fixed.append(arg)
     return {"directory": str(ROOT), "file": file, "arguments": fixed}
