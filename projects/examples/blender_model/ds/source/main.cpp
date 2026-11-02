@@ -61,7 +61,7 @@ int main() {
   environment.addLight({.direction = {-0.5f, -0.8f, -0.6f}, .colour = {220, 215, 205}});
   const Scene::Camera camera{.eye = {0, 1.6f, 6.4f}, .target = {0, -0.2f, 0}, .fieldOfView = 50};
 
-  std::printf("\x1b[1;1HModels from Blender on a DS\n\n");
+  std::printf("\x1b[0;0HModels from Blender on a DS\n\n");
   std::printf("Ship_DS: %lu triangles\n", static_cast<unsigned long>(Assets::shipTriangles));
   std::printf("Rock:    %lu triangles (x2)\n", static_cast<unsigned long>(Assets::rockTriangles));
   std::printf("\nA: wireframe ship  START: quit\n");
@@ -95,11 +95,12 @@ int main() {
     }
     renderer.endFrame();
 
-    // What the last frame drew, when it changes (printing is slow)
+    // What the last frame drew, when it changes (printing is slow). (libnds'
+    // console counts rows and columns from 0)
     const Scene::FrameCounts counts = renderer.lastFrame();
     if (counts.polygons != shownCounts.polygons || counts.vertices != shownCounts.vertices) {
       shownCounts = counts;
-      std::printf("\x1b[8;1H3D a frame (the DS's limit):\x1b[K\n");
+      std::printf("\x1b[8;0H3D a frame (the DS's limit):\x1b[K\n");
       std::printf("%4u polygons (2048)\x1b[K\n", counts.polygons);
       std::printf("%4u vertices (6144)\x1b[K\n", counts.vertices);
     }
