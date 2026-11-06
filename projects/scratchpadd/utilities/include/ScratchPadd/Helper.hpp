@@ -1,11 +1,8 @@
 #pragma once
 
-#ifdef _WIN32
-#define __PRETTY_FUNCTION__ __FUNCSIG__
-#endif
+#include <ScratchPadd/TypeName.hpp>
 
 #include <cstdlib>
-#include <cxxabi.h>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -43,19 +40,8 @@
 
 // #define __CLASS_NAME__ className(__PRETTY_FUNCTION__)
 
-namespace ScratchPadd {
-// The readable name for a mangled type name. abi::__cxa_demangle returns
-// memory from malloc that the caller must free (the old macro leaked it on
-// every call); falls back to the mangled name if demangling fails. A padd's
-// name() using it is called once, when the system initializes the padd.
-inline std::string demangle(const char *mangled) {
-  int status = 0;
-  std::unique_ptr<char, void (*)(void *)> name(
-      abi::__cxa_demangle(mangled, nullptr, nullptr, &status), std::free);
-  return status == 0 && name ? std::string(name.get()) : std::string(mangled);
-}
-} // namespace ScratchPadd
-
+// (A padd's name() using these is called once, when the system initializes
+// the padd.)
 #define DEMANGLE_TYPEID_NAME(x) ::ScratchPadd::demangle(typeid((x)).name())
 
 std::string TypeName(const auto &x) { return DEMANGLE_TYPEID_NAME(x); }

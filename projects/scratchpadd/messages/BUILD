@@ -6,6 +6,7 @@ cc_library(
     visibility = ["//visibility:public"],
     strip_include_prefix = "include/",
     deps = [
+        "//projects/scratchpadd/utilities",
         "@fmt",
         "@spdlog",
     ],

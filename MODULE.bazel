@@ -10,6 +10,11 @@ bazel_dep(name = "rules_foreign_cc", version = "0.16.0")
 bazel_dep(name = "rules_apple", version = "5.3.0", repo_name = "build_bazel_rules_apple")
 bazel_dep(name = "apple_support", version = "2.10.1", repo_name = "build_bazel_apple_support")
 
+# The C++ toolchains Bazel finds on the machine, named in .bazelrc to pick
+# clang-cl on Windows
+cc_configure = use_extension("@rules_cc//cc:extensions.bzl", "cc_configure_extension")
+use_repo(cc_configure, "local_config_cc")
+
 # Libraries from the Bazel Central Registry
 # fmt, spdlog and fmtlog are kept on the same fmt major version (11).
 # fmt 10 does not compile with Apple clang 21 in C++20 mode.
@@ -24,6 +29,12 @@ bazel_dep(name = "meshoptimizer", version = "1.3.bcr.1")
 # Apple's C++ wrapper for Metal, Foundation and QuartzCore, for the scene
 # layer's Metal backend (//projects/scratchpadd/scene/metal), Apache-2.0
 bazel_dep(name = "metal-cpp", version = "26")
+# Windows and OpenGL for the desktop (GLFW, zlib licence) and OpenGL's
+# functions (GLEW, BSD/MIT), built by Bazel on every desktop, Windows too
+# (built with CMake before, which hung on Windows on ARM). On Linux GLFW
+# builds its X11 and Wayland libraries from source as well.
+bazel_dep(name = "glfw", version = "3.4.0.bcr.4")
+bazel_dep(name = "glew", version = "2.3.1.bcr.1")
 
 # Libraries built with our own BUILD files in //third_party
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -235,25 +246,12 @@ http_archive(
 )
 
 new_git_repository(
-    name = "glfw",
-    build_file = "//third_party:glfw.BUILD",
-    remote = "https://github.com/glfw/glfw.git",
-    tag = "3.3.8",
-)
-
-http_archive(
-    name = "glew",
-    build_file = "//third_party:glew.BUILD",
-    sha256 = "a9046a913774395a095edcc0b0ac2d81c3aacca61787b39839b941e9be14e0d4",
-    strip_prefix = "glew-2.2.0",
-    urls = ["https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0.zip"],
-)
-
-new_git_repository(
     name = "backward",
     build_file = "//third_party:backward-cpp.BUILD",
+    # master from 2026-10-23: v1.6 (2021, the last release) has no Windows
+    # on ARM (it reads x86 registers there)
+    commit = "78b2541c9d3c44bc81e2c5f4f34aa3503ac985de",
     remote = "https://github.com/bombela/backward-cpp.git",
-    tag = "v1.6",
 )
 
 http_archive(

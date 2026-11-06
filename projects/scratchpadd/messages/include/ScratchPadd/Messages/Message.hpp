@@ -8,8 +8,8 @@
 // applications define their own types without touching ScratchPadd.
 
 #include <ScratchPadd/Messages/Controls.hpp>
+#include <ScratchPadd/TypeName.hpp>
 #include <cstdlib>
-#include <cxxabi.h>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -39,13 +39,7 @@ public:
   // per call; the arguments of a debug log are built even when debug
   // logging is off.)
   const std::string &typeName() const override {
-    static const std::string name = [] {
-      int status = 0;
-      char *demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
-      std::string readable = status == 0 ? demangled : typeid(T).name();
-      std::free(demangled);
-      return readable;
-    }();
+    static const std::string name = ScratchPadd::typeName<T>();
     return name;
   }
 

@@ -3,7 +3,15 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 cc_library(
     name = "utilities",
     hdrs = glob(["include/**/*.hpp"]),
-    srcs = ["src/Logger.cpp"],
+    srcs = [
+        "src/Logger.cpp",
+        "src/TimerResolution.cpp",
+    ],
+    # (TimerResolution.cpp's timeBeginPeriod, on Windows)
+    linkopts = select({
+        "@platforms//os:windows": ["winmm.lib"],
+        "//conditions:default": [],
+    }),
     strip_include_prefix = "include/",
     visibility = ["//visibility:public"],
     deps = [

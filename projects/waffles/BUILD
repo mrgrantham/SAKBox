@@ -1,8 +1,12 @@
 
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("//tools/windows:defs.bzl", "NOT_ON_WINDOWS")
 
 cc_library(
     name = "WClasses",
+    # POSIX (sockets, threads, unistd.h, alloca.h): not ported to Windows, so
+    # it and the rest of Waffles aren't built there
+    target_compatible_with = NOT_ON_WINDOWS,
     srcs = glob(["src/WClasses/*.cpp",
     ]),
     hdrs = glob([

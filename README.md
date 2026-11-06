@@ -7,12 +7,12 @@ A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the 
 **Prerequisites**
 
 - [Bazelisk](https://github.com/bazelbuild/bazelisk) (recommended), which installs and runs the Bazel version pinned in `.bazelversion` (9.2.0). A plain Bazel 9 install also works.
-- A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), or clang 17+ / gcc 14+ on Linux. Everything builds as C++26 (set in `.bazelrc`). The code under `projects/` also builds with `-pedantic-errors` (no compiler extensions), `-Werror` (no warnings), `-Wsuggest-override` (overriding functions must say `override`) and `-Wnon-virtual-dtor` (a class with virtual functions has a virtual destructor); with Clang, also `-Wsuggest-destructor-override` (destructors too) and `-Wdocumentation` (doc comments must match the code). See [Code conventions](#code-conventions). GCC doesn't have the Clang-only checks and rejects them as unknown options, so `.bazelrc` keeps them in a `clang` config: macOS turns it on itself (it always builds with Clang), and on Linux you add `--config=clang` when building with Clang, for example `bazel build --config=clang //...`. These apply to the repo's own code only: external libraries' headers are included as system headers (`--features=external_include_paths`), so their warnings don't count against it.
-- On Linux, the system packages listed under [Linux](#linux).
+- A compiler that accepts `-std=c++26`: a recent Xcode on macOS (tested with Apple clang 21), clang 17+ / gcc 14+ on Linux, or clang-cl 19+ on Windows. Everything builds as C++26 (set in `.bazelrc`). The code under `projects/` also builds with `-pedantic-errors` (no compiler extensions), `-Werror` (no warnings), `-Wsuggest-override` (overriding functions must say `override`) and `-Wnon-virtual-dtor` (a class with virtual functions has a virtual destructor); with Clang, also `-Wsuggest-destructor-override` (destructors too) and `-Wdocumentation` (doc comments must match the code). See [Code conventions](#code-conventions). GCC doesn't have the Clang-only checks and rejects them as unknown options, so `.bazelrc` keeps them in a `clang` config: macOS turns it on itself (it always builds with Clang), and on Linux you add `--config=clang` when building with Clang, for example `bazel build --config=clang //...`. These apply to the repo's own code only: external libraries' headers are included as system headers (`--features=external_include_paths`), so their warnings don't count against it.
+- On Linux, the system packages listed under [Linux](#linux). On Windows, Visual Studio Build Tools with Clang, Git and Developer Mode (see [Windows](#windows)).
 - Optional, for static analysis and formatting: clang-tidy and clang-format (18 or later, for `.clang-format-ignore`), which Xcode doesn't include. On macOS, `brew install llvm clang-format` (Homebrew keeps LLVM off your `PATH`, so your compiler stays Xcode's); on Linux, your distribution's `clang-tidy` and `clang-format` packages. See [Static analysis](#static-analysis), which also covers the optional pre-commit hook that checks both on each commit (`git config core.hooksPath tools/git_hooks`).
 - For the 3DS and DS apps only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine (see [`tools/devkitpro`](tools/devkitpro/README.md)). Without Docker running, those targets fail with a message saying so. `bazel run` opens them in the Azahar (3DS) or melonDS (DS) emulator, which Bazel downloads and sets up too (see [`tools/azahar`](tools/azahar/README.md) and [`tools/melonds`](tools/melonds/README.md)).
 - For the models from Blender only (`tools/assets`): nothing to install on macOS with Apple silicon or Linux x86-64; Bazel downloads Blender the first time a model is built (see [`tools/blender`](tools/blender/README.md); on Linux it needs the libraries in [Linux](#linux)). Intel Macs and Linux on ARM have no Blender build: point `--action_env=BLENDER` at a Blender, or leave those targets out (they're tagged `blender`).
-- Optional, to check a change on Linux from a Mac: Docker, which [`tools/linux_check`](tools/linux_check/README.md) uses to build and test the repo with GCC or Clang in a Linux container (see [Linux](#linux)); or Parallels Desktop with an Ubuntu VM, which [`tools/vm_check`](tools/vm_check/README.md) uses the same way, also running the tests that open a window.
+- Optional, to check a change on Linux from a Mac: Docker, which [`tools/linux_check`](tools/linux_check/README.md) uses to build and test the repo with GCC or Clang in a Linux container (see [Linux](#linux)); or Parallels Desktop with an Ubuntu or Windows 11 VM, which [`tools/vm_check`](tools/vm_check/README.md) uses the same way, also running the tests that open a window.
 
 All other dependencies are declared in `MODULE.bazel` and downloaded by Bazel on the first build.
 
@@ -198,7 +198,24 @@ sudo apt install libxkbcommon0 libxkbcommon-x11-0 libsm6 libice6 libxrender1 lib
 
 ### Windows
 
-Not supported yet. Most libraries build there in principle, but nothing has been tested, and the OpenCV build (used by the camera example) only handles macOS and Linux library names so far. flexmath's correctly rounded maths (CORE-MATH) uses `__int128`, which MSVC lacks; [its README](projects/flexmath/README.md#portability) says what to do. (Its fixed-point types have portable code for it.)
+Builds with **clang-cl** (Clang with MSVC's command line and libraries), from Visual Studio 2022 Build Tools. Tested on 2026-11-06 on Windows 11 for ARM64, in a Parallels VM: everything below builds, and the tests pass, the window tests too. What it needs:
+
+- Visual Studio 2022 Build Tools with "Desktop development with C++", its ARM64 (or x64) tools and its Clang ("C++ Clang Compiler for Windows"), which brings clang-cl. Bazel finds them; set `BAZEL_VC` and `BAZEL_LLVM` if they're somewhere else.
+- Git for Windows: Bazel runs its build steps' shell commands with Git's bash (set `BAZEL_SH` to its `bash.exe`).
+- Python (for the repo's tools), and Bazelisk.
+- **Developer Mode** on (Settings, System, For developers): it lets an ordinary account make symbolic links, which Bazel's runfiles (the files a test reads) and rules_python's tools are made of.
+- Short paths: Windows' limit is 260 characters, so point Bazel's output somewhere short, `bazel --output_user_root=C:\b test //...`.
+
+`.bazelrc` turns on its `clang_cl` config on Windows: the clang-cl toolchain (`//tools/windows:clang_cl`), the few flags clang-cl spells its own way (`/clang:-std=c++26`, `-Werror=pedantic` in place of `-pedantic-errors`), `M_PI` and the other maths constants (`_USE_MATH_DEFINES`), runfiles, and the Clang-only checks. Code that divides 128-bit integers (flexmath's `FlexPoint`) links Clang's runtime helpers, which lld-link doesn't add itself (`//tools/windows:clang_builtins`).
+
+**Left out on Windows** (`target_compatible_with = NOT_ON_WINDOWS`, from `tools/windows/defs.bzl`; Bazel skips them, and everything that uses them, in `//...`):
+
+- Libraries built with CMake or configure through rules_foreign_cc: SDL2, SDL3, zlib, libpng, OpenCV, openpnp-capture, yaml-cpp, rapidyaml, binutils, elfutils. rules_foreign_cc's Ninja wrapper never returns on Windows on ARM (it starts copies of itself), so their builds hang. GLFW and GLEW, which every desktop window needs, come from the Bazel Central Registry instead, built by Bazel on every platform. The examples using the others (SDL2, PNG, camera, YAML) are left out with them.
+- Waffles, which is POSIX throughout (sockets, threads, `unistd.h`, `alloca.h`).
+- The backtrace example, which calls `execinfo.h`'s `backtrace()` itself.
+- The MIDI input test skips: Windows' MIDI has no virtual ports for it to play on.
+
+To check a change on Windows from a Mac with Parallels, see [`tools/vm_check`](tools/vm_check/README.md): `python3 tools/vm_check/check.py windows`.
 
 ### Floating-point results across platforms
 

@@ -49,16 +49,16 @@ struct Vector3 {
     const Scalar most = largestComponent();
     if (!(most > Scalar(0)))
       return Scalar(0);
-    const Vector3 small{x / most, y / most, z / most};
-    return most * squareRoot(small.dot(small));
+    const Vector3 scaled{x / most, y / most, z / most};
+    return most * squareRoot(scaled.dot(scaled));
   }
   Vector3 normalised() const {
     const Scalar most = largestComponent();
     if (!(most > Scalar(0)))
       return {};
-    const Vector3 small{x / most, y / most, z / most};
-    const Scalar l = squareRoot(small.dot(small));
-    return {small.x / l, small.y / l, small.z / l};
+    const Vector3 scaled{x / most, y / most, z / most};
+    const Scalar l = squareRoot(scaled.dot(scaled));
+    return {scaled.x / l, scaled.y / l, scaled.z / l};
   }
   Scalar largestComponent() const {
     auto size = [](Scalar v) { return v < Scalar(0) ? -v : v; };

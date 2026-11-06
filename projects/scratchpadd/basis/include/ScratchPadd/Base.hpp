@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -88,7 +89,7 @@ public:
   // __CLASS_NAME__ demangles its class name each time.
   const std::string &paddName() const { return name_; }
 
-  ssize_t pendingWorkCount() const { return pendingWork_; }
+  std::ptrdiff_t pendingWorkCount() const { return pendingWork_; }
 
   // How many times the work loop has drained this padd's queue. An idle padd
   // sleeps, so this only grows when work arrives (tests use it).
@@ -440,7 +441,7 @@ private:
   // switched to the system's shared signal instead (useWakeSignal).
   WakeSignal ownSignal_;
   WorkQueue workQueue_{&ownSignal_};
-  std::atomic<ssize_t> pendingWork_{0};
+  std::atomic<std::ptrdiff_t> pendingWork_{0};
   std::atomic<std::uint64_t> workLoopPasses_{0};
   std::condition_variable workCompletionConditionVariable_;
   std::mutex workCompletionMutex_;

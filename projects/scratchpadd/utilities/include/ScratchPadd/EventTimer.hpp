@@ -1,4 +1,5 @@
 #pragma once
+#include <ScratchPadd/TimerResolution.hpp>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -63,6 +64,7 @@ class EventTimer {
     is_active_ = true;
     timer_thread_ = std::thread([this, body] {
       timer_thread_id_ = std::this_thread::get_id();
+      const FineTimerResolution fineTimer; // its waits on time, on Windows
       body();
       is_active_ = false;
     });

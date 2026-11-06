@@ -25,8 +25,11 @@ typedef unsigned long long LONGLONG;
 // assume windows
 
 // Import the high performance timer (c. 4ms).
-#include <mmsystem.h>
+// (windows.h first, in a block of its own so clang-format keeps it first:
+// mmsystem.h uses its types)
 #include <windows.h>
+
+#include <mmsystem.h>
 
 // Hold internal timing data for the performance counter (Windows only).
 static bool qpcFlag;
@@ -55,10 +58,12 @@ unsigned systemTime() {
 unsigned TimingData::getTime() { return systemTime(); }
 
 #if TIMING_WINDOWS
+// The performance counter (x86's rdtsc, in the book's inline assembly, is
+// on no other processor)
 unsigned long systemClock() {
-  __asm {
-    	rdtsc;
-  }
+  LARGE_INTEGER ticks;
+  QueryPerformanceCounter(&ticks);
+  return (unsigned long)ticks.QuadPart;
 }
 #endif
 

@@ -1,4 +1,5 @@
 # load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@//tools/windows:defs.bzl", "NOT_ON_WINDOWS")
 
 # cc_library(
 #     name = "sdl2",
@@ -18,6 +19,9 @@ filegroup(
 # Shows a standard library
 cmake(
     name = "sdl2",
+    # rules_foreign_cc's builds hang on Windows on ARM (its Ninja wrapper
+    # never returns), so this, and what uses it, isn't built on Windows
+    target_compatible_with = NOT_ON_WINDOWS,
     lib_source = ":sources",
     # pass include/version123 to C/C++ provider as include directory
     # out_include_dir = "include/version123",

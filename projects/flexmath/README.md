@@ -276,11 +276,11 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 
 ## Portability
 
-`FlexPoint` needs integers wider than its 64 bits for a moment, in its multiply (the product of two 32.32 values is 128 bits wide before it's shifted back down) and divide (the dividend is shifted up by 32 first, to keep the fraction). `FixedPoint.hpp` uses GCC's and Clang's `__int128` for them where the compiler has it (64-bit targets), and portable versions built from 64-bit arithmetic where it doesn't: 32-bit targets such as the DS and 3DS, and MSVC. `FixedPoint_test` checks the portable versions against `__int128`. Wrapping a value (`Overflow::Wrap`) works in unsigned 64-bit arithmetic, which needs neither. `FlexPoint16` only needs 64-bit integers.
+`FlexPoint` needs integers wider than its 64 bits for a moment, in its multiply (the product of two 32.32 values is 128 bits wide before it's shifted back down) and divide (the dividend is shifted up by 32 first, to keep the fraction). `FixedPoint.hpp` uses GCC's and Clang's `__int128` for them where the compiler has it (64-bit targets), and portable versions built from 64-bit arithmetic where it doesn't: 32-bit targets such as the DS and 3DS, and MSVC. `FixedPoint_test` checks the portable versions against `__int128`. On Windows the repo builds with clang-cl, which has `__int128`; its 128-bit divide calls Clang's runtime helper `__divti3`, which `:flexmath` links on Windows (`//tools/windows:clang_builtins`). Wrapping a value (`Overflow::Wrap`) works in unsigned 64-bit arithmetic, which needs neither. `FlexPoint16` only needs 64-bit integers.
 
 `__int128` isn't standard C++ but an extension; it's declared with `__extension__` so that the build's `-pedantic-errors` allows it (GCC rejects it otherwise; Clang doesn't mind).
 
-CORE-MATH's functions (`:correctly_rounded`) use `unsigned __int128` too, in C, and have no portable fallback: on MSVC they'd need clang-cl (Clang with MSVC's command line, which has `__int128` on 64-bit Windows), or LLVM libc's header-only functions once they're complete (see the [roadmap](#roadmap)). The DS build uses newlib's functions instead.
+CORE-MATH's functions (`:correctly_rounded`) use `unsigned __int128` too, in C, and have no portable fallback: on Windows the repo builds with clang-cl (Clang with MSVC's command line, which has `__int128` on 64-bit Windows), where they pass their tests (Windows 11 on ARM64, 2026-11-06); plain MSVC would need LLVM libc's header-only functions once they're complete (see the [roadmap](#roadmap)). The DS build uses newlib's functions instead.
 
 ## Design notes
 

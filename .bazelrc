@@ -1,14 +1,47 @@
-build --cxxopt='-std=c++26'
+# Flags spelt the same by GCC and Clang (Linux, macOS) and clang-cl
+# (Windows) are set for every platform. The few clang-cl spells its own way
+# are in gcc_and_clang and clang_cl, and each platform takes one of them.
+common --enable_platform_specific_config
+build:linux --config=gcc_and_clang
+build:macos --config=gcc_and_clang
+build:windows --config=clang_cl
+
+build:gcc_and_clang --cxxopt=-std=c++26
 # Floating-point results the same on every platform: no fused multiply-adds
 # (Clang fuses a * b + c by default, GCC in strict ISO mode doesn't, and the
 # fused result is rounded once instead of twice), in every library and in
 # tools that run during the build. See the README's "Floating-point results
 # across platforms".
-build --copt=-ffp-contract=off
-build --host_copt=-ffp-contract=off
+build:gcc_and_clang --copt=-ffp-contract=off
+build:gcc_and_clang --host_copt=-ffp-contract=off
 # Strict ISO C++ for the repo's own code: compiler extensions are errors.
 # External libraries are left alone.
-build --per_file_copt='^projects/.*@-pedantic-errors'
+build:gcc_and_clang --per_file_copt='^projects/.*@-pedantic-errors'
+
+# Windows: Clang's MSVC-compatible driver (clang-cl), with MSVC's libraries
+# (see the README's Windows notes). It takes GCC-style flags it doesn't
+# have a spelling for after /clang:.
+build:clang_cl --extra_execution_platforms=//tools/windows:clang_cl
+build:clang_cl --extra_toolchains=@local_config_cc//:cc-toolchain-arm64_windows-clang-cl
+build:clang_cl --extra_toolchains=@local_config_cc//:cc-toolchain-x64_windows-clang-cl
+# (in place of the toolchain's /std:c++17, which would be reported unused)
+build:clang_cl --features=-default_cpp_std
+build:clang_cl --cxxopt=/clang:-std=c++26
+build:clang_cl --copt=/clang:-ffp-contract=off
+build:clang_cl --host_copt=/clang:-ffp-contract=off
+# (clang-cl hasn't -pedantic-errors, even after /clang:; with -Wpedantic,
+# set for every platform, -Werror=pedantic does the same)
+build:clang_cl --per_file_copt='^projects/.*@-Werror=pedantic'
+# M_PI and the other maths constants, which <cmath> has on Linux and macOS
+# but MSVC's only with this
+build:clang_cl --copt=/D_USE_MATH_DEFINES
+build:clang_cl --host_copt=/D_USE_MATH_DEFINES
+# Runfiles trees (the files a test or tool reads, by path), which Bazel
+# leaves out on Windows unless asked; they're symbolic links, so Windows
+# needs Developer Mode on (see the README)
+build:clang_cl --enable_runfiles
+build:clang_cl --config=clang
+
 # The repo's own code is warning-free; keep it that way.
 build --per_file_copt='^projects/.*@-Werror'
 # Overriding functions must say `override` (see the README's Code
@@ -25,10 +58,10 @@ build --features=external_include_paths
 build --cxxopt='-Wpedantic'
 build --cxxopt='-Werror=return-type'
 
-# Checks only Clang has; GCC rejects them as unknown options. macOS always
-# builds with Clang, so it turns them on itself; on Linux, add
-# --config=clang when building with Clang (see the README's Getting Started).
-common --enable_platform_specific_config
+# Checks only Clang has; GCC rejects them as unknown options. macOS and
+# Windows always build with Clang, so they turn them on themselves; on
+# Linux, add --config=clang when building with Clang (see the README's
+# Getting Started).
 build:macos --config=clang
 # Destructors too must say `override`.
 build:clang --per_file_copt='^projects/.*@-Wsuggest-destructor-override'

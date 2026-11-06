@@ -45,6 +45,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":correctly_rounded",
+        # (FlexPoint's 128-bit divide, on Windows)
+        "//tools/windows:clang_builtins",
         "@fmt",
     ],
 )
