@@ -25,10 +25,12 @@ namespace {
 
 // Each test's keyboard has its own name, so a test can't find the last
 // one's as it goes away, nor another test program's (MIDI ports are shared
-// by every program on the machine, and Bazel runs tests side by side)
+// by every program on the machine, and Bazel runs tests side by side). It's
+// kept short: ALSA cuts port names off at 63 characters, and a cut-off name
+// wouldn't match. The test's line in this file tells the tests apart.
 std::string keyboardName() {
-  return "SAKBox test keyboard " + std::to_string(getpid()) + " " +
-         testing::UnitTest::GetInstance()->current_test_info()->name();
+  return "SAKBox test keyboard " + std::to_string(getpid()) + " line " +
+         std::to_string(testing::UnitTest::GetInstance()->current_test_info()->line());
 }
 
 // Keeps the MidiInput messages it hears

@@ -12,7 +12,7 @@ A Swiss-Army Knife Toolbox: a Bazel monorepo of C++ projects, examples, and the 
 - Optional, for static analysis and formatting: clang-tidy and clang-format (18 or later, for `.clang-format-ignore`), which Xcode doesn't include. On macOS, `brew install llvm clang-format` (Homebrew keeps LLVM off your `PATH`, so your compiler stays Xcode's); on Linux, your distribution's `clang-tidy` and `clang-format` packages. See [Static analysis](#static-analysis), which also covers the optional pre-commit hook that checks both on each commit (`git config core.hooksPath tools/git_hooks`).
 - For the 3DS and DS apps only: Docker (on macOS, `brew install colima docker`, then `colima start`). Its devkitPro toolchain and libraries come from devkitPro's Docker image, pinned by digest in `tools/devkitpro/defs.bzl`; nothing is installed on the machine (see [`tools/devkitpro`](tools/devkitpro/README.md)). Without Docker running, those targets fail with a message saying so. `bazel run` opens them in the Azahar (3DS) or melonDS (DS) emulator, which Bazel downloads and sets up too (see [`tools/azahar`](tools/azahar/README.md) and [`tools/melonds`](tools/melonds/README.md)).
 - For the models from Blender only (`tools/assets`): nothing to install on macOS with Apple silicon or Linux x86-64; Bazel downloads Blender the first time a model is built (see [`tools/blender`](tools/blender/README.md); on Linux it needs the libraries in [Linux](#linux)). Intel Macs and Linux on ARM have no Blender build: point `--action_env=BLENDER` at a Blender, or leave those targets out (they're tagged `blender`).
-- Optional, to check a change on Linux from a Mac: Docker, which [`tools/linux_check`](tools/linux_check/README.md) uses to build and test the repo with GCC or Clang in a Linux container (see [Linux](#linux)).
+- Optional, to check a change on Linux from a Mac: Docker, which [`tools/linux_check`](tools/linux_check/README.md) uses to build and test the repo with GCC or Clang in a Linux container (see [Linux](#linux)); or Parallels Desktop with an Ubuntu VM, which [`tools/vm_check`](tools/vm_check/README.md) uses the same way, also running the tests that open a window.
 
 All other dependencies are declared in `MODULE.bazel` and downloaded by Bazel on the first build.
 
@@ -171,6 +171,12 @@ python3 tools/linux_check/check.py gcc     # or clang
 ```
 
 It builds and tests the repo inside a Linux container and prints Bazel's summary. Give Docker enough memory (Colima: `colima start --memory 8`) or Bazel runs out.
+
+The container has no display or MIDI system, so the tests that open a window are left out and the MIDI input test skips. With Parallels Desktop, [`tools/vm_check`](tools/vm_check/README.md) runs the same build in an Ubuntu VM with a desktop, and those tests run too (tested on 2026-11-05 on Ubuntu 24.04 ARM64, with GCC 14 and Clang 18: everything builds and all the tests pass):
+
+``` bash
+python3 tools/vm_check/check.py ubuntu gcc   # or clang
+```
 
 Building with Clang on Linux yourself, add `--config=clang` (`bazel build --config=clang //...`) for the Clang-only checks (see the prerequisites in [Getting Started](#getting-started)); with GCC, nothing extra is needed. Bazelisk provides Bazel for x86-64 and ARM64 (including 64-bit Raspberry Pi OS). The windowing and OpenGL examples need the X11 and Mesa development packages, and ScratchPadd's MIDI input (RtMidi) needs ALSA's:
 

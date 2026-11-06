@@ -45,16 +45,12 @@ def skipped(x86_64):
 LOG = "/root/.cache/last-run.log"
 
 # Run inside the container: copy the checkout, build and test, keep the log,
-# and print the lines that matter (Bazel's status and summary, tests that
-# didn't pass, Bazel's errors and the compilers')
+# and print the lines that matter (tools/build_summary)
 INSIDE = r"""
 mkdir /src && cd /repo && tar --exclude="./bazel-*" -cf - . | (cd /src && tar xf -) && cd /src
 bazel test --keep_going --curses=no --color=no "$@" > {log} 2>&1
 status=$?
-grep -E "Executed|Build (completed|did NOT)|Build succeeded for|Server terminated" {log}
-grep -E "^//" {log} | grep -v " PASSED" || true
-grep -E "^ERROR:" {log} | cut -c1-240 | sort -u || true
-grep -E "error:" {log} | grep -v "^ERROR:" | cut -c1-240 | sort -u | head -40 || true
+bash tools/build_summary/print_build_summary.sh {log}
 exit $status
 """.format(log=LOG)
 

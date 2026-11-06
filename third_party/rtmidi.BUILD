@@ -18,10 +18,13 @@ cc_library(
         "@platforms//os:linux": ["-lasound", "-lpthread"],
         "@platforms//os:windows": ["winmm.lib"],
     }),
-    # Which MIDI system to use (only RtMidi.cpp reads these)
+    # Which MIDI system to use (only RtMidi.cpp reads these). On ALSA, no
+    # timestamps from a sequencer queue: opening a port starts that queue
+    # asynchronously, and a note sent before it's running is lost (about 1
+    # in 100 MidiInputPadd_test runs). MidiInputPadd doesn't use them.
     local_defines = select({
         "@platforms//os:macos": ["__MACOSX_CORE__"],
-        "@platforms//os:linux": ["__LINUX_ALSA__"],
+        "@platforms//os:linux": ["__LINUX_ALSA__", "AVOID_TIMESTAMPING"],
         "@platforms//os:windows": ["__WINDOWS_MM__"],
     }),
     visibility = ["//visibility:public"],
