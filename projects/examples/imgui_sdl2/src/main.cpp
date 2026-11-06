@@ -7,6 +7,9 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl2.h"
+// Our own main, not SDL's: on Windows SDL otherwise renames main to
+// SDL_main and wants its SDL2main library to call it
+#define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -24,6 +27,7 @@
 // Main code
 int main(int, char **) {
   // Setup SDL
+  SDL_SetMainReady();
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
     printf("Error: %s\n", SDL_GetError());
     return -1;

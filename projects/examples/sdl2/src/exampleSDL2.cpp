@@ -1,8 +1,12 @@
+// Our own main, not SDL's: on Windows SDL otherwise renames main to
+// SDL_main and wants its SDL2main library to call it
+#define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <fmt/core.h>
 #include <iostream>
 
 int main() {
+  SDL_SetMainReady();
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
     fmt::println("Failed to initialize the SDL2 library");
     return -1;

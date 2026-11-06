@@ -8,6 +8,9 @@
 // OpenCV picks the platform's camera API (AVFoundation on macOS, Media
 // Foundation on Windows, V4L2 on Linux) and SDL2 provides the window, so the
 // same code runs on all three.
+// Our own main, not SDL's: on Windows SDL otherwise renames main to
+// SDL_main and wants its SDL2main library to call it
+#define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <fmt/core.h>
 #include <opencv2/core.hpp>
@@ -87,6 +90,8 @@ int main(int argc, char **argv) {
   }
   fmt::println("Camera {}: {}x{}. M toggles mirroring, Q or Escape quits.", cameraIndex, frame.cols,
                frame.rows);
+
+  SDL_SetMainReady();
 
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
     fmt::println(stderr, "Failed to initialize SDL: {}", SDL_GetError());

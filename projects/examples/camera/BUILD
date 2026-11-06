@@ -4,9 +4,10 @@ cc_binary(
     name = "exampleCamera",
     srcs = ["src/exampleCamera.cpp"],
     deps = [
-        "@sdl2",
         "@fmt",
-        # "@openpnp-capture",
-        "@opencv",
+        # Only the OpenCV modules it uses: the core and capturing video
+        "@opencv//:core",
+        "@opencv//:videoio",
+        "@sdl2",
     ],
 )

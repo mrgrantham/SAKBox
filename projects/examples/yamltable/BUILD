@@ -7,7 +7,7 @@ cc_binary(
     deps = [
         "@variadic_table",
         "@rapidyaml",
-        "@yamlcpp",
+        "@yaml-cpp",
         "@fmt",
     ],
 )

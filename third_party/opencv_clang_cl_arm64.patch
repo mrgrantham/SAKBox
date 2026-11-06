@@ -1,0 +1,29 @@
+--- a/opencv.bzl
++++ b/opencv.bzl
+@@ -172,22 +172,22 @@
+         },
+         "neon_dotprod": {
+             "copts": ["-march=armv8.2-a+dotprod"],
+-            "cl_copts": [],
++            "cl_copts": ["/clang:-march=armv8.2-a+dotprod"],
+             "implies": ["neon"],
+         },
+         "neon_fp16": {
+             "copts": ["-march=armv8.2-a+fp16"],
+-            "cl_copts": [],
++            "cl_copts": ["/clang:-march=armv8.2-a+fp16"],
+             "implies": ["neon"],
+         },
+         "neon_bf16": {
+             "copts": ["-march=armv8.2-a+bf16"],
+-            "cl_copts": [],
++            "cl_copts": ["/clang:-march=armv8.2-a+bf16"],
+             "implies": ["neon"],
+         },
+         "sve": {
+             "copts": ["-march=armv8.2-a+sve"],
+-            "cl_copts": [],
++            "cl_copts": ["/clang:-march=armv8.2-a+sve"],
+             "implies": [],
+         }
+     },

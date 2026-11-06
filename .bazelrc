@@ -6,7 +6,12 @@ build:linux --config=gcc_and_clang
 build:macos --config=gcc_and_clang
 build:windows --config=clang_cl
 
-build:gcc_and_clang --cxxopt=-std=c++26
+# C++26 for the repo's own C++, generated sources too, and the tools it
+# builds and runs during the build; libraries build in the standard their
+# own builds give (OpenCV's is C++17, and C++26 rejects some of it). The
+# repo's Objective-C++ (the Metal backend's layer) takes the toolchain's.
+build:gcc_and_clang --per_file_copt='^(bazel-out/[^/]+/bin/)?(projects|tools)/.*\.(cc|cpp|cxx)$@-std=c++26'
+build:gcc_and_clang --host_per_file_copt='^(bazel-out/[^/]+/bin/)?(projects|tools)/.*\.(cc|cpp|cxx)$@-std=c++26'
 # Floating-point results the same on every platform: no fused multiply-adds
 # (Clang fuses a * b + c by default, GCC in strict ISO mode doesn't, and the
 # fused result is rounded once instead of twice), in every library and in
@@ -24,9 +29,10 @@ build:gcc_and_clang --per_file_copt='^projects/.*@-pedantic-errors'
 build:clang_cl --extra_execution_platforms=//tools/windows:clang_cl
 build:clang_cl --extra_toolchains=@local_config_cc//:cc-toolchain-arm64_windows-clang-cl
 build:clang_cl --extra_toolchains=@local_config_cc//:cc-toolchain-x64_windows-clang-cl
-# (in place of the toolchain's /std:c++17, which would be reported unused)
-build:clang_cl --features=-default_cpp_std
-build:clang_cl --cxxopt=/clang:-std=c++26
+# (C++26 for the repo's own C++, as above; the toolchain's /std:c++17,
+# for the libraries, is then reported unused in those files)
+build:clang_cl --per_file_copt='^(bazel-out/[^/]+/bin/)?(projects|tools)/.*\.(cc|cpp|cxx)$@/clang:-std=c++26,-Wno-unused-command-line-argument'
+build:clang_cl --host_per_file_copt='^(bazel-out/[^/]+/bin/)?(projects|tools)/.*\.(cc|cpp|cxx)$@/clang:-std=c++26,-Wno-unused-command-line-argument'
 build:clang_cl --copt=/clang:-ffp-contract=off
 build:clang_cl --host_copt=/clang:-ffp-contract=off
 # (clang-cl hasn't -pedantic-errors, even after /clang:; with -Wpedantic,
