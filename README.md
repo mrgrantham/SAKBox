@@ -210,7 +210,6 @@ Builds with **clang-cl** (Clang with MSVC's command line and libraries), from Vi
 
 **Left out on Windows** (`target_compatible_with = NOT_ON_WINDOWS`, from `tools/windows/defs.bzl`; Bazel skips them, and everything that uses them, in `//...`):
 
-- Waffles, which is POSIX throughout (sockets, threads, `unistd.h`, `alloca.h`).
 - The backtrace example, which calls `execinfo.h`'s `backtrace()` itself.
 - The MIDI input test skips: Windows' MIDI has no virtual ports for it to play on.
 

@@ -26,6 +26,7 @@
 #include <windows.h>
 #include <direct.h>
 #include <float.h>
+#include <signal.h>
 #else
 #define _GNU_SOURCE 1
 #include <fenv.h>
@@ -538,11 +539,17 @@ int WApp::systemExecute(const char* szCommand, bool wait, WPipe* pStdOut, WPipe*
 	saAttr.bInheritHandle = TRUE; // pipe handles are inherited
 	saAttr.lpSecurityDescriptor = NULL;
 
+	// SAKBox: the pipes hold 1 MiB. The caller reads them after the child
+	// has ended, so a child that writes more than they hold waits forever
+	// for room; Windows' default (about 4 KiB, where POSIX's are 64 KiB)
+	// was smaller than waffles_transform's usage text.
+	const DWORD pipeSize = 1 << 20;
+
 	// Create a pipe for stdout
 	HANDLE hChildStdoutRd, hChildStdoutWr;
 	if(pStdOut)
 	{
-		if(!CreatePipe(&hChildStdoutRd, &hChildStdoutWr, &saAttr, 0))
+		if(!CreatePipe(&hChildStdoutRd, &hChildStdoutWr, &saAttr, pipeSize))
 			throw Ex("Failed to create a pipe for the child processes stdout");
 		SetHandleInformation(hChildStdoutRd, HANDLE_FLAG_INHERIT, 0); // Ensure that the read handle to the child process's pipe for stdout is not inherited
 		pStdOut->set(hChildStdoutRd);
@@ -555,7 +562,7 @@ int WApp::systemExecute(const char* szCommand, bool wait, WPipe* pStdOut, WPipe*
 	HANDLE hChildStderrRd, hChildStderrWr;
 	if(pStdErr)
 	{
-		if(!CreatePipe(&hChildStderrRd, &hChildStderrWr, &saAttr, 0))
+		if(!CreatePipe(&hChildStderrRd, &hChildStderrWr, &saAttr, pipeSize))
 			throw Ex("Failed to create a pipe for the child processes stderr");
 		SetHandleInformation(hChildStderrRd, HANDLE_FLAG_INHERIT, 0); // Ensure that the read handle to the child process's pipe for stderr is not inherited
 		pStdErr->set(hChildStderrRd);
@@ -604,11 +611,14 @@ int WApp::systemExecute(const char* szCommand, bool wait, WPipe* pStdOut, WPipe*
 		CloseHandle(hChildStderrWr);
 
 	// Wait for the child process
-	DWORD ret = 0; //piProcInfo.hProcess; // Todo: BUG: Fix this line
+	// SAKBox: until it ends, as on POSIX. It waited 10 seconds at most, and
+	// then took the exit code of a child still running, STILL_ACTIVE (259),
+	// for a failure.
+	DWORD ret = 0;
 	if(wait)
 	{
-		WaitForSingleObject(piProcInfo.hProcess, 10000 /*INFINITE*/);
-		if(!GetExitCodeProcess(piProcInfo.hProcess, &ret))
+		WaitForSingleObject(piProcInfo.hProcess, INFINITE);
+		if(!GetExitCodeProcess(piProcInfo.hProcess, &ret) || ret == STILL_ACTIVE)
 		{
 			CloseHandle(piProcInfo.hProcess);
 			CloseHandle(piProcInfo.hThread);
@@ -667,7 +677,7 @@ void WApp::enableFloatingPointExceptions()
 bool WApp::openFile(const char* szPathOrUrl)
 {
 #ifdef WINDOWS
-	int nRet = (int)ShellExecute(NULL, NULL, szPathOrUrl, NULL, NULL, SW_SHOW);
+	const INT_PTR nRet = reinterpret_cast<INT_PTR>(ShellExecute(NULL, NULL, szPathOrUrl, NULL, NULL, SW_SHOW));
 	return nRet > 32;
 #else
 	// SAKBox: the path or URL is passed as one argument, not through the shell.
@@ -707,7 +717,6 @@ bool WApp::openUrlInBrowser(const char* szUrl)
 
 
 WSignalHandler* g_pSignalHandler = nullptr;
-#ifndef WINDOWS
 void WApp_onSigInt(int n)
 {
 	g_pSignalHandler->onSignal(SIGINT);
@@ -718,11 +727,11 @@ void WApp_onSigTerm(int n)
 	g_pSignalHandler->onSignal(SIGTERM);
 }
 
+#ifdef SIGPIPE
 void WApp_onSigPipe(int n)
 {
 	g_pSignalHandler->onSignal(SIGPIPE);
 }
-
 #endif
 
 WSignalHandler::WSignalHandler()
@@ -731,13 +740,17 @@ WSignalHandler::WSignalHandler()
 		throw Ex("WSignalHandler is not reentrant, so it cannot be nested");
 	g_pSignalHandler = this;
 	m_gotSignal = 0;
-#ifndef WINDOWS
+	// SAKBox: SIGINT and SIGTERM on Windows too (its C library has them);
+	// they were left to end the program there
 	m_prevSigInt = signal(SIGINT, WApp_onSigInt);
 	if(m_prevSigInt == SIG_ERR) m_prevSigInt = SIG_DFL;
 	m_prevSigTerm = signal(SIGTERM, WApp_onSigTerm);
 	if(m_prevSigTerm == SIG_ERR) m_prevSigTerm = SIG_DFL; // SAKBox: these three reset m_prevSigInt
+#ifdef SIGPIPE
 	m_prevSigPipe = signal(SIGPIPE, WApp_onSigPipe);
 	if(m_prevSigPipe == SIG_ERR) m_prevSigPipe = SIG_DFL;
+#else
+	m_prevSigPipe = SIG_DFL;
 	// SAKBox: SIGSEGV is no longer caught. Returning from its handler after a
 	// real segfault re-runs the faulting instruction, which faults again, so a
 	// crashing program spun at full CPU instead of ending.
@@ -746,9 +759,9 @@ WSignalHandler::WSignalHandler()
 
 WSignalHandler::~WSignalHandler()
 {
-#ifndef WINDOWS
 	signal(SIGINT, m_prevSigInt);
 	signal(SIGTERM, m_prevSigTerm);
+#ifdef SIGPIPE
 	signal(SIGPIPE, m_prevSigPipe);
 #endif
 	g_pSignalHandler = nullptr;
@@ -777,7 +790,9 @@ const char* WSignalHandler::to_str(int sig)
 		case SIGINT: return "SIGINT";
 		case SIGSEGV: return "SIGSEGV";
 		case SIGTERM: return "SIGTERM";
+#ifdef SIGPIPE // (not on Windows)
 		case SIGPIPE: return "SIGPIPE";
+#endif
 		default: return "UNRECOGNIZED";
 	}
 }

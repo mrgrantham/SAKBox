@@ -23,11 +23,15 @@
 
 #ifdef WINDOWS
 // Throw out the min and max macros supplied by Microsoft that collide with std::min and std::max
+#ifndef NOMINMAX // (the build may define it already)
 #define NOMINMAX
+#endif
 #undef min
 #undef max
 #include <BaseTsd.h>
 #include <algorithm>
+// POSIX's signed size, which Waffles uses throughout
+typedef SSIZE_T ssize_t;
 #endif
 #include <string>
 #include <sstream>

@@ -637,7 +637,7 @@ protected:
 	virtual BOOL OnWindow(HWND hwnd) { return TRUE; }
 public:
 	CWindowIterator(DWORD nAlloc = 1024);
-	~CWindowIterator();
+	virtual ~CWindowIterator();
 
 	DWORD GetCount() { return m_count; }
 	HWND First();
@@ -652,10 +652,10 @@ class CMainWindowIterator : public CWindowIterator
 {
 protected:
 	DWORD m_pid; // process id
-	virtual BOOL OnWindow(HWND hwnd);
+	BOOL OnWindow(HWND hwnd) override;
 public:
 	CMainWindowIterator(DWORD pid, DWORD nAlloc = 1024);
-	~CMainWindowIterator();
+	~CMainWindowIterator() override;
 };
 
 CWindowIterator::CWindowIterator(DWORD nAlloc)
@@ -734,7 +734,9 @@ void OpenFile(const char* szFilename)
 	sei.lpDirectory = NULL;
 	sei.nShow = SW_SHOW;
 	ShellExecuteEx(&sei);
-	CMainWindowIterator itw((DWORD)sei.hProcess /*pid*/);
+	// (the process's id, which the iterator matches windows by; the old cast
+	// of its handle wasn't one)
+	CMainWindowIterator itw(GetProcessId(sei.hProcess));
 	SetForegroundWindow(itw.First());
 	//ShellExecute(NULL, NULL, szFilename, NULL, NULL, SW_SHOW);
 #else

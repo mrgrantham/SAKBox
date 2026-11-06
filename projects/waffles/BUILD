@@ -1,12 +1,19 @@
 
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/windows:defs.bzl", "NOT_ON_WINDOWS")
 
 cc_library(
     name = "WClasses",
-    # POSIX (sockets, threads, unistd.h, alloca.h): not ported to Windows, so
-    # it and the rest of Waffles aren't built there
-    target_compatible_with = NOT_ON_WINDOWS,
+    # Waffles' own Windows code, under WINDOWS (and WIN32 in places)
+    defines = select({
+        "@platforms//os:windows": ["WINDOWS", "WIN32"],
+        "//conditions:default": [],
+    }),
+    # Its Windows code's libraries: the shell (opening files and URLs, the
+    # user's folders), windows' messages, and sockets (Winsock)
+    linkopts = select({
+        "@platforms//os:windows": ["shell32.lib", "user32.lib", "ws2_32.lib"],
+        "//conditions:default": [],
+    }),
     srcs = glob(["src/WClasses/*.cpp",
     ]),
     hdrs = glob([
@@ -19,6 +26,9 @@ cc_library(
 
 cc_library(
     name = "Gui",
+    # The demos' own main, not SDL's: on Windows SDL otherwise renames main to
+    # SDL_main and wants its SDL2main library to call it
+    defines = ["SDL_MAIN_HANDLED"],
     srcs = glob(["src/gui/*.cpp",
     ]),
     hdrs = glob([

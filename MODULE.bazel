@@ -242,6 +242,10 @@ http_archive(
 http_archive(
     name = "fmtlog",
     build_file = "//third_party:fmtlog.BUILD",
+    # Under MSVC it read x86's time-stamp counter (rdtsc) on any processor:
+    # on Windows on ARM it takes its portable clock instead, as elsewhere
+    patch_args = ["-p1"],
+    patches = ["//third_party:fmtlog_windows_arm64.patch"],
     sha256 = "e7c8b4db16bdab16ab317b05b601f111535726f4cab8b9e13d557a066d673223",
     strip_prefix = "fmtlog-2.3.0",  # built against fmt 11
     url = "https://github.com/MengRao/fmtlog/archive/refs/tags/v2.3.0.zip",

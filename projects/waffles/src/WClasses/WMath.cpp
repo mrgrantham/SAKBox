@@ -334,12 +334,8 @@ double WMath::wilcoxonPValue(int n, double t)
 	// SAKBox: n * (n + 1) / 4.0; with integers the expected value was truncated
 	double z = (t - n * (n + 1) / 4.0) / sqrt(((double)n * ((double)n + 1) * ((double)n + (double)n + 1)) / 24);
 	double alpha;
-#ifdef WINDOWS
-	alpha = 0;
-	throw Ex("Sorry, WMath::ComputeWilcoxonPValue is not implemented for Windows yet");
-#else
+	// SAKBox: on Windows too (erf is standard C++ now; old MSVC lacked it)
 	alpha = 1.0 - erf(-z * M_SQRT1_2);
-#endif
 	return alpha;
 }
 

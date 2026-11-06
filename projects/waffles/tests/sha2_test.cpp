@@ -8,8 +8,10 @@
 #include <cstdio>
 #include <string>
 
+#ifndef WINDOWS
 #include <sys/mman.h>
 #include <unistd.h>
+#endif
 
 namespace {
 std::string hex(const unsigned char *bytes, size_t n) {
@@ -97,6 +99,9 @@ TEST(Sha2Test, Sha512LengthUsesTheWholeByteCount) {
   EXPECT_NE(digestWithCount(1ull << 32, 0), digestWithCount(1ull << 32, 1));
 }
 
+// (POSIX only: it maps memory with mmap, and on Windows unsigned long is
+// 32 bits, too short for the case anyway)
+#ifndef WINDOWS
 // The hash functions take an unsigned long length but kept it in a
 // uint32_t, so 4 GiB + 3 bytes hashed only 3. Testing that with real data
 // would need a 4 GiB buffer, so this gives them one readable page followed
@@ -129,3 +134,4 @@ TEST(Sha2DeathTest, TakesTheWholeLengthPast4GiB) {
       "");
   munmap(mem, 2 * page);
 }
+#endif // !WINDOWS

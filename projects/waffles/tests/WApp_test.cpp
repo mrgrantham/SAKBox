@@ -163,6 +163,18 @@ TEST(SignalHandlerTest, ReportsSigintAndSigterm) {
 // sends the program back to the faulting instruction, which faults again, so
 // a server that crashed spun at full CPU instead of ending (and leaving a
 // crash report). Now a segfault ends the program as usual.
+namespace {
+// How a segfault ends a program: by the signal, or on Windows (which has no
+// signals to die by) with exit code 3
+auto endedBySegfault() {
+#ifdef WINDOWS
+  return testing::ExitedWithCode(3);
+#else
+  return testing::KilledBySignal(SIGSEGV);
+#endif
+}
+} // namespace
+
 TEST(SignalHandlerDeathTest, SegfaultStillEndsTheProgram) {
   EXPECT_EXIT(
       {
@@ -170,5 +182,5 @@ TEST(SignalHandlerDeathTest, SegfaultStillEndsTheProgram) {
         raise(SIGSEGV);
         std::exit(0);
       },
-      testing::KilledBySignal(SIGSEGV), "");
+      endedBySegfault(), "");
 }

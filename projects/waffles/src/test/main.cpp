@@ -93,6 +93,17 @@ typedef void (*TestFunc)();
 
 
 
+// SAKBox: what a tool printed, with Windows' line endings (its text-mode
+// output ends lines with \r\n) as everywhere else's, to compare with
+// expected text
+string textOutput(WPipe& pipe)
+{
+	string text = pipe.read();
+	for(size_t at = text.find("\r\n"); at != string::npos; at = text.find("\r\n", at))
+		text.erase(at, 1);
+	return text;
+}
+
 int sysExec(const char* szAppName, const char* szArgs, WPipe* pStdOut = nullptr, WPipe* pStdErr = nullptr, WPipe* pStdIn = nullptr)
 {
 	string s = szAppName;
@@ -264,7 +275,7 @@ std::string run_dimred_attributeselector(const std::string& dataset, const std::
 	WPipe pipeStdErr;
 	retval = sysExec("waffles_dimred", args.c_str(), &pipeStdOut, &pipeStdErr);
 
-	return pipeStdOut.read() + pipeStdErr.read();
+	return textOutput(pipeStdOut) + textOutput(pipeStdErr);
 }
 
 
@@ -314,7 +325,7 @@ std::string run_transform_keeponlycolumns(const std::string& dataset, const std:
 	WPipe pipeStdErr;
 	retval = sysExec("waffles_transform", args.c_str(), &pipeStdOut, &pipeStdErr);
 
-	return pipeStdOut.read() + pipeStdErr.read();
+	return textOutput(pipeStdOut) + textOutput(pipeStdErr);
 }
 
 void test_transform_keeponly()
@@ -1053,18 +1064,28 @@ static void useBazelTools()
 	const char* tmpDir = getenv("TEST_TMPDIR");
 	if(!srcDir || !tmpDir)
 		return;
+#ifdef WINDOWS
+	const std::string exe = ".exe", separator = ";";
+#else
+	const std::string exe, separator = ":";
+#endif
 	std::filesystem::path bin = std::filesystem::path(tmpDir) / "waffles_tools";
 	std::filesystem::create_directories(bin);
 	for(const char* tool : {"transform", "recommend", "sparse", "learn", "dimred"})
 	{
-		std::filesystem::path target = std::filesystem::path(srcDir) / "_main/projects/waffles" / tool;
-		std::filesystem::path link = bin / (std::string("waffles_") + tool);
+		std::filesystem::path target = std::filesystem::path(srcDir) / "_main/projects/waffles" / (tool + exe);
+		std::filesystem::path link = bin / ("waffles_" + std::string(tool) + exe);
 		std::error_code ignored;
 		std::filesystem::remove(link, ignored);
 		std::filesystem::create_symlink(std::filesystem::absolute(target), link);
 	}
 	const char* path = getenv("PATH");
-	setenv("PATH", (bin.string() + ":" + (path ? path : "/usr/bin:/bin")).c_str(), 1);
+	const std::string newPath = bin.string() + separator + (path ? path : "/usr/bin:/bin");
+#ifdef WINDOWS
+	_putenv_s("PATH", newPath.c_str());
+#else
+	setenv("PATH", newPath.c_str(), 1);
+#endif
 	std::filesystem::current_path(tmpDir);
 }
 

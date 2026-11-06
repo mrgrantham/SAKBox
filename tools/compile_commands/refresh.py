@@ -67,8 +67,9 @@ REPO_ROOT = re.compile(r"(bazel-out/[^/]+/bin/)?external/([^/]+)")
 # Repos whose headers are meant to be included with <...> from their top
 # folder, which keeps -isystem: metal-cpp (<Metal/Metal.hpp>, as Apple
 # documents it, and as ImGui's Metal backend includes it), glslang
-# (<glslang/Public/ShaderLang.h>) and SPIRV-Cross (<spirv_msl.hpp>)
-ANGLED_REPOS = re.compile(r"metal-cpp\+|\+http_archive\+(glslang|spirv_cross)")
+# (<glslang/Public/ShaderLang.h>), SPIRV-Cross (<spirv_msl.hpp>), and the
+# registry's libpng (<png.h>) and zlib (<zlib.h>)
+ANGLED_REPOS = re.compile(r"(metal-cpp|libpng|zlib)\+|\+http_archive\+(glslang|spirv_cross)")
 
 
 def to_clangd_command(arguments, placeholders):

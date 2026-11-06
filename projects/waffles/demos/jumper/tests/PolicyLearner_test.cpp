@@ -17,7 +17,6 @@
 #include <ios>
 #include <memory>
 #include <string>
-#include <unistd.h>
 
 using namespace WClasses;
 

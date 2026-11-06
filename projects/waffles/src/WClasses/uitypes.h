@@ -28,7 +28,9 @@
 #ifndef _UITYPES_H
 #define _UITYPES_H
 
-#if defined __GNU_LIBRARY__
+// (MSVC's C library has inttypes.h too, and clang-cl rejects __int8 and the
+// rest as extensions)
+#if defined __GNU_LIBRARY__ || defined(_MSC_VER)
 #define HAS_INTTYPES_H
 #endif
 

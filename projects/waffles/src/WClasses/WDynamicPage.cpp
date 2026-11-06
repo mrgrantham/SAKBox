@@ -163,20 +163,20 @@ string remove_cr_lf(const char* str)
 	return s;
 }
 
-const char* _strnstr(const char* big, const char* small, size_t len)
+const char* _strnstr(const char* haystack, const char* needle, size_t len)
 {
 	for(size_t i = 0; i < len; i++)
 	{
-		const char* a = big;
-		const char* b = small;
+		const char* a = haystack;
+		const char* b = needle;
 		while(*b != '\0' && *a == *b)
 		{
 			++a;
 			++b;
 		}
 		if(*b == '\0')
-			return big;
-		++big;
+			return haystack;
+		++haystack;
 	}
 	return nullptr;
 }

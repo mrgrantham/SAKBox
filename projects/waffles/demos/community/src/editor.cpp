@@ -21,6 +21,8 @@
 #include <WClasses/WHtml.h>
 #include <WClasses/WText.h>
 #include <WClasses/WTime.h>
+#include <filesystem>
+#include <system_error>
 #include <vector>
 #include "editor.h"
 #include "server.h"
@@ -110,12 +112,8 @@ string goUpOneDirectory(string& dir)
 
 void ensureFolderExists(string& folderName)
 {
-	bool ok;
-#ifdef WINDOWS
-	ok = (mkdir(folderName.c_str()) == 0);
-#else
-	ok = (mkdir(folderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0); // read/write/search permissions for owner and group, and with read/search permissions for others
-#endif
+	std::error_code error;
+	const bool ok = std::filesystem::create_directory(folderName, error);
 	if(!ok)
 	{
 		//throw Ex("Failed to make directory: ", folderName);

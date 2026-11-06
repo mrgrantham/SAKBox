@@ -4,10 +4,14 @@
 #include <WClasses/WHttp.h>
 #include <WClasses/WSocket.h>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#endif
 
 #include <atomic>
 #include <chrono>
@@ -25,6 +29,73 @@
 #include <vector>
 
 using namespace WClasses;
+
+namespace {
+// A client's connection to a test server on this machine, the same on
+// Windows (Winsock) and elsewhere (POSIX sockets)
+class ClientSocket {
+public:
+  // Connects to `port` on 127.0.0.1; `timeoutSeconds` (if not 0) bounds a
+  // waiting receive
+  explicit ClientSocket(int port, int timeoutSeconds = 0)
+      : sock_(::socket(AF_INET, SOCK_STREAM, 0)) {
+    if (timeoutSeconds > 0) {
+#ifdef _WIN32
+      const DWORD timeout = timeoutSeconds * 1000;
+#else
+      const timeval timeout{timeoutSeconds, 0};
+#endif
+      setsockopt(sock_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char *>(&timeout),
+                 sizeof(timeout));
+    }
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(static_cast<unsigned short>(port));
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    connected_ = connect(sock_, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) == 0;
+  }
+  ClientSocket(const ClientSocket &) = delete;
+  ClientSocket &operator=(const ClientSocket &) = delete;
+  ~ClientSocket() { close(); }
+
+  bool connected() const { return connected_; }
+  void send(const std::string &data) {
+    ::send(sock_, data.data(), static_cast<int>(data.size()), 0);
+  }
+  // Bytes received into `buf`: 0 if the server hung up, less than 0 if
+  // there were none (without `wait`, at once)
+  long receive(char *buf, std::size_t size, bool wait) {
+#ifdef _WIN32
+    u_long nonBlocking = wait ? 0 : 1;
+    ioctlsocket(sock_, FIONBIO, &nonBlocking);
+    return recv(sock_, buf, static_cast<int>(size), 0);
+#else
+    return recv(sock_, buf, size, wait ? 0 : MSG_DONTWAIT);
+#endif
+  }
+  // Hangs up with a reset, at once, rather than an orderly close
+  void reset() {
+    const linger now{1, 0};
+    setsockopt(sock_, SOL_SOCKET, SO_LINGER, reinterpret_cast<const char *>(&now), sizeof(now));
+    close();
+  }
+
+private:
+  void close() {
+    if (sock_ == INVALID_SOCKET)
+      return;
+#ifdef _WIN32
+    closesocket(sock_);
+#else
+    ::close(sock_);
+#endif
+    sock_ = INVALID_SOCKET;
+  }
+
+  SOCKET sock_;
+  bool connected_ = false;
+};
+} // namespace
 
 TEST(HttpParamParserTest, ScrubKeepsOnlySafeCharacters) {
   std::string kept;
@@ -146,24 +217,18 @@ struct EchoServer : WHttpServer {
 // Sends a request to the server and returns what comes back: its reply, or
 // "(closed)" if it hung up without one
 std::string send(EchoServer &server, const std::string &request) {
-  int sock = ::socket(AF_INET, SOCK_STREAM, 0);
-  sockaddr_in addr{};
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(server.socket()->port());
-  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-  if (connect(sock, (sockaddr *)&addr, sizeof(addr)) != 0) {
-    close(sock);
+  ClientSocket client(server.socket()->port());
+  if (!client.connected())
     return "(couldn't connect)";
-  }
-  ::send(sock, request.data(), request.size(), 0);
+  client.send(request);
   std::string reply;
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
   while (std::chrono::steady_clock::now() < deadline) {
     server.process();
     char buf[4096];
-    ssize_t n = recv(sock, buf, sizeof(buf), MSG_DONTWAIT);
+    const long n = client.receive(buf, sizeof(buf), false);
     if (n > 0) {
-      reply.append(buf, n);
+      reply.append(buf, static_cast<std::size_t>(n));
       continue;
     }
     const bool closed = n == 0;
@@ -171,9 +236,8 @@ std::string send(EchoServer &server, const std::string &request) {
                          reply.find("posted ") != std::string::npos; // (the body comes last)
     if (closed || replied)
       break;
-    usleep(1000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
-  close(sock);
   return reply.empty() ? "(closed)" : reply;
 }
 } // namespace
@@ -239,29 +303,26 @@ TEST(HttpServerTest, HangsUpOnRequestsThatDontFit) {
 // as a plain std::exception) and carries on.
 TEST(HttpServerTest, SurvivesAClientThatHangsUp) {
   EchoServer server;
-  int sock = ::socket(AF_INET, SOCK_STREAM, 0);
-  sockaddr_in addr{};
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(server.socket()->port());
-  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-  ASSERT_EQ(connect(sock, (sockaddr *)&addr, sizeof(addr)), 0);
-  const std::string request = "GET /big HTTP/1.1\r\n\r\n";
-  ::send(sock, request.data(), request.size(), 0);
-  usleep(50000);
-  linger reset{1, 0}; // close with a reset, at once
-  setsockopt(sock, SOL_SOCKET, SO_LINGER, &reset, sizeof(reset));
-  close(sock);
-  usleep(50000);
+  ClientSocket client(server.socket()->port());
+  ASSERT_TRUE(client.connected());
+  client.send("GET /big HTTP/1.1\r\n\r\n");
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  client.reset();
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
   std::ostringstream log;
   std::streambuf *old = std::cout.rdbuf(log.rdbuf());
   for (int i = 0; i < 20; i++) {
     server.process();
-    usleep(5000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
   std::cout.rdbuf(old);
+#ifndef WINDOWS
+  // (On Windows the reset throws away the request with it, so there's no
+  // reply to fail; the server must still carry on, below.)
   EXPECT_NE(log.str().find("Failed to send GET response: Error sending"), std::string::npos)
       << log.str();
+#endif
   EXPECT_NE(send(server, "GET /ok HTTP/1.1\r\n\r\n").find("got /ok"), std::string::npos);
 }
 
@@ -283,35 +344,25 @@ struct IdleEchoServer : EchoServer {
 
 // Sends a request to a server that's serving on another thread
 std::string fetch(WHttpServer &server, const std::string &url) {
-  int sock = ::socket(AF_INET, SOCK_STREAM, 0);
-  timeval timeout{5, 0};
-  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-  sockaddr_in addr{};
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(server.socket()->port());
-  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-  if (connect(sock, (sockaddr *)&addr, sizeof(addr)) != 0) {
-    close(sock);
+  ClientSocket client(server.socket()->port(), 5);
+  if (!client.connected())
     return "(couldn't connect)";
-  }
-  const std::string request = "GET " + url + " HTTP/1.1\r\n\r\n";
-  ::send(sock, request.data(), request.size(), 0);
+  client.send("GET " + url + " HTTP/1.1\r\n\r\n");
   std::string reply;
   char buf[4096];
   while (reply.find("got ") == std::string::npos) {
-    ssize_t n = recv(sock, buf, sizeof(buf), 0);
+    const long n = client.receive(buf, sizeof(buf), true);
     if (n <= 0)
       break;
-    reply.append(buf, n);
+    reply.append(buf, static_cast<std::size_t>(n));
   }
-  close(sock);
   return reply;
 }
 
 void waitFor(const std::function<bool()> &condition) {
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
   while (!condition() && std::chrono::steady_clock::now() < deadline)
-    usleep(1000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 }
 } // namespace
 
@@ -353,12 +404,15 @@ TEST(HttpServeRequestsTest, OnIdleCanStopServing) {
   EXPECT_LT(server.idleTimes[0], server.idleTimes[2]); // (it sleeps between calls)
 }
 
-// Ctrl-C or kill stop it; SIGPIPE, which means a client hung up, doesn't.
+// Ctrl-C or kill stop it; SIGPIPE, which means a client hung up, doesn't
+// (where there is one: Windows has none).
 TEST(HttpServeRequestsTest, StopsOnSigtermButNotSigpipe) {
   IdleEchoServer server;
   server.whenIdle = [](IdleEchoServer &s) {
+#ifdef SIGPIPE
     if (s.idleCalls == 2)
       raise(SIGPIPE);
+#endif
     if (s.idleCalls == 4)
       raise(SIGTERM);
     if (s.idleCalls == 10)

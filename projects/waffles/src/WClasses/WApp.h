@@ -158,11 +158,11 @@ typedef void (*sighandler_t)(int);
 class WSignalHandler
 {
 public:
-#ifndef WINDOWS
-	sighandler_t m_prevSigInt;
-	sighandler_t m_prevSigTerm;
-	sighandler_t m_prevSigPipe;
-#endif
+	/// A signal's handler (POSIX calls the type sighandler_t; Windows has no name for it)
+	using SignalFunction = void (*)(int);
+	SignalFunction m_prevSigInt;
+	SignalFunction m_prevSigTerm;
+	SignalFunction m_prevSigPipe; // (no SIGPIPE on Windows)
 	int m_gotSignal;
 
 	WSignalHandler();

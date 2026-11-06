@@ -27,7 +27,7 @@
 #include "WDom.h"
 #ifndef WINDOWS
 #include <sys/types.h>
-typedef int64_t __int64;
+typedef int64_t int64_t;
 #endif // not WINDOWS
 
 namespace WClasses
@@ -609,13 +609,13 @@ void WBigInt::multiply(WBigInt* pBigNumber, unsigned int nUInt)
 	for(n = 0; n < pBigNumber->m_nUInts; n++)
 	{
 #ifdef BYTE_ORDER_BIG_ENDIAN
-		__int64 prod = (__int64)pBigNumber->m_pBits[n] * (__int64)nUInt;
-		__int64 rev;
+		int64_t prod = (int64_t)pBigNumber->m_pBits[n] * (int64_t)nUInt;
+		int64_t rev;
 		((unsigned int*)&rev)[0] = ((unsigned int*)&prod)[1];
 		((unsigned int*)&rev)[1] = ((unsigned int*)&prod)[0];
-		*((__int64*)&m_pBits[n]) += rev;
+		*((int64_t*)&m_pBits[n]) += rev;
 #else // BYTE_ORDER_BIG_ENDIAN
-		*((__int64*)&m_pBits[n]) += (__int64)pBigNumber->m_pBits[n] * (__int64)nUInt;
+		*((int64_t*)&m_pBits[n]) += (int64_t)pBigNumber->m_pBits[n] * (int64_t)nUInt;
 #endif // !BYTE_ORDER_BIG_ENDIAN
 	}
 }

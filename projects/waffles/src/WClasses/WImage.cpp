@@ -36,6 +36,10 @@
 #include <sstream>
 #include <cmath>
 #include <memory>
+#ifdef WINDOWS
+// (outside the namespace: Windows' headers declare global names)
+#include <windows.h>
+#endif
 
 namespace WClasses
 {
@@ -43,9 +47,7 @@ using std::vector;
 using std::string;
 
 
-#ifdef WINDOWS
-#include <windows.h>
-#else
+#ifndef WINDOWS
 typedef unsigned int DWORD;
 typedef long LONG;
 typedef short WORD;
