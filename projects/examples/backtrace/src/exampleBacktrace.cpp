@@ -1,8 +1,7 @@
 
 #include "backward/backward.hpp"
 #include "fmt/core.h"
-#include <execinfo.h>
-#include <stdio.h>
+#include <iostream>
 
 void level5() {
   fmt::print("we are deep in this stack!\n");

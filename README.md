@@ -198,7 +198,7 @@ sudo apt install libxkbcommon0 libxkbcommon-x11-0 libsm6 libice6 libxrender1 lib
 
 ### Windows
 
-Builds with **clang-cl** (Clang with MSVC's command line and libraries), from Visual Studio 2022 Build Tools. Tested on 2026-11-06 on Windows 11 for ARM64, in a Parallels VM: everything below builds, and the tests pass, the window tests too. What it needs:
+Builds with **clang-cl** (Clang with MSVC's command line and libraries), from Visual Studio 2022 Build Tools. Tested on 2026-11-06 on Windows 11 for ARM64, in a Parallels VM: everything builds, and the tests pass, the window tests too. What it needs:
 
 - Visual Studio 2022 Build Tools with "Desktop development with C++", its ARM64 (or x64) tools and its Clang ("C++ Clang Compiler for Windows"), which brings clang-cl. Bazel finds them; set `BAZEL_VC` and `BAZEL_LLVM` if they're somewhere else.
 - Git for Windows: Bazel runs its build steps' shell commands with Git's bash (set `BAZEL_SH` to its `bash.exe`).
@@ -208,10 +208,7 @@ Builds with **clang-cl** (Clang with MSVC's command line and libraries), from Vi
 
 `.bazelrc` turns on its `clang_cl` config on Windows: the clang-cl toolchain (`//tools/windows:clang_cl`), the few flags clang-cl spells its own way (`/clang:-std=c++26` for the repo's own code, `-Werror=pedantic` in place of `-pedantic-errors`), `M_PI` and the other maths constants (`_USE_MATH_DEFINES`), runfiles, and the Clang-only checks. Code that divides 128-bit integers (flexmath's `FlexPoint`) links Clang's runtime helpers, which lld-link doesn't add itself (`//tools/windows:clang_builtins`).
 
-**Left out on Windows** (`target_compatible_with = NOT_ON_WINDOWS`, from `tools/windows/defs.bzl`; Bazel skips them, and everything that uses them, in `//...`):
-
-- The backtrace example, which calls `execinfo.h`'s `backtrace()` itself.
-- The MIDI input test skips: Windows' MIDI has no virtual ports for it to play on.
+Everything builds on Windows. The MIDI input test skips there, as Windows' MIDI has no virtual ports for it to play on.
 
 To check a change on Windows from a Mac with Parallels, see [`tools/vm_check`](tools/vm_check/README.md): `python3 tools/vm_check/check.py windows`.
 
