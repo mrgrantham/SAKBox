@@ -39,6 +39,7 @@ cc_library(
     ],
     copts = COOK_COPTS,
     deps = [
+        "//projects/scratchpadd/scene",
         "@cgltf",
         "@meshoptimizer",
     ],

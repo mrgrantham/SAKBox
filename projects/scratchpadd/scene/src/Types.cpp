@@ -59,4 +59,16 @@ Vector3 Transform::applyToDirection(const Vector3 &d) const {
           m[2][0] * d.x + m[2][1] * d.y + m[2][2] * d.z};
 }
 
+Colour Environment::backgroundSeen(Scalar farPlane) const {
+  if (!(fog.density > Scalar(0)))
+    return background;
+  const float fogged =
+      1 - std::exp(-static_cast<float>(fog.density) * static_cast<float>(farPlane));
+  auto mix = [fogged](std::uint8_t from, std::uint8_t to) {
+    return static_cast<std::uint8_t>(std::lround(from + (to - from) * fogged));
+  };
+  return {mix(background.r, fog.colour.r), mix(background.g, fog.colour.g),
+          mix(background.b, fog.colour.b), background.a};
+}
+
 } // namespace ScratchPadd::Scene

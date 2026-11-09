@@ -19,9 +19,11 @@ struct Renderer::Backend {
   struct LoadedMesh {
     bool loaded = false;
     DisplayList::Source source;
-    // Its display lists, packed the first time it's drawn each way: a few,
-    // the oldest dropped first
-    std::vector<std::pair<DisplayList::Variant, std::vector<std::uint32_t>>> lists;
+    // Drawn translucent whatever its material (see hasTranslucentVertices)
+    bool translucent = false;
+    // Its display lists, packed the first time it's drawn each way: a few
+    // ways, the oldest dropped first
+    std::vector<std::pair<DisplayList::Variant, std::vector<DisplayList::Packed>>> lists;
     static constexpr std::size_t kMostLists = 4;
   };
   // A translucent draw, kept until the end of the frame
@@ -32,8 +34,10 @@ struct Renderer::Backend {
     Scalar distance; // from the eye, to draw the farthest first
   };
 
-  const std::vector<std::uint32_t> &listFor(LoadedMesh &mesh, const DisplayList::Variant &variant);
+  const std::vector<DisplayList::Packed> &listsFor(LoadedMesh &mesh,
+                                                   const DisplayList::Variant &variant);
   void drawNow(Mesh mesh, const Transform &where, const Material &material, unsigned polygonId);
+  void setFog(const Fog &fog);
   void drawOverlayShapes(const Overlay &overlay);
   void drawOverlayText(const Overlay &overlay);
 
@@ -44,11 +48,17 @@ struct Renderer::Backend {
   // This frame's
   Camera camera;
   Colour ambient;
-  std::uint32_t lightBits = 0;     // the polygon format's bits for the lights in use
-  float viewProjection[4][4] = {}; // for toScreen, row-major, column vectors
+  std::uint32_t lightBits = 0; // the polygon format's bits for the lights in use
   FrameCounts last;
-  // What the text layer shows, rewritten only when the overlay's text changes
+  // Fog: the polygon format's bit for it (0 without), and the fog and
+  // camera its table was worked out for (only again when they change)
+  std::uint32_t fogBit = 0;
+  Fog fogSet;
+  Scalar fogNear = 0, fogFar = 0;
+  // What the text layer shows, redrawn only when the overlay's text changes,
+  // in main RAM first (VRAM takes no single bytes) and copied in whole
   std::vector<Overlay::Text> textShown;
+  std::vector<std::uint8_t> textPixels;
 };
 
 } // namespace ScratchPadd::Scene

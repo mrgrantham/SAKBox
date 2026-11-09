@@ -229,8 +229,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glBindVertexArray(loaded.vao);
   glDrawElements(GL_TRIANGLES, loaded.indexCount, GL_UNSIGNED_INT, nullptr);
-  counting.polygons += static_cast<unsigned>(loaded.indexCount) / 3;
-  counting.vertices += static_cast<unsigned>(loaded.indexCount);
+  counting += loaded.cost;
   if (material.wireframe)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
@@ -264,6 +263,7 @@ Renderer::~Renderer() = default;
 
 Mesh Renderer::load(const MeshData &mesh) {
   Backend::LoadedMesh loaded;
+  const std::vector<std::uint32_t> indices = triangleList(mesh);
   glGenVertexArrays(1, &loaded.vao);
   glGenBuffers(1, &loaded.vbo);
   glGenBuffers(1, &loaded.ebo);
@@ -273,10 +273,13 @@ Mesh Renderer::load(const MeshData &mesh) {
                mesh.vertices.data(), GL_STATIC_DRAW);
   describeVertices();
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, loaded.ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(mesh.indices.size_bytes()),
-               mesh.indices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+               static_cast<GLsizeiptr>(indices.size() * sizeof(std::uint32_t)), indices.data(),
+               GL_STATIC_DRAW);
   glBindVertexArray(0);
-  loaded.indexCount = static_cast<GLsizei>(mesh.indices.size());
+  loaded.indexCount = static_cast<GLsizei>(indices.size());
+  loaded.translucent = hasTranslucentVertices(mesh);
+  loaded.cost = costOf(mesh);
   backend_->meshes.push_back(loaded);
   return Mesh{static_cast<std::uint32_t>(backend_->meshes.size())};
 }
@@ -297,7 +300,7 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   Backend &b = *backend_;
   const int width = b.display.pixelWidth(), height = b.display.pixelHeight();
   glViewport(0, 0, width, height);
-  const glm::vec3 background = toGlm(environment.background);
+  const glm::vec3 background = toGlm(environment.backgroundSeen(camera.farPlane));
   glClearColor(background.r, background.g, background.b, 1.0f);
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_MULTISAMPLE);
@@ -334,7 +337,9 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
 }
 
 void Renderer::draw(Mesh mesh, const Transform &where, const Material &material) {
-  if (material.alpha < 31) {
+  const auto &meshes = backend_->meshes;
+  if (material.alpha < 31 ||
+      (mesh && mesh.id <= meshes.size() && meshes[mesh.id - 1].translucent)) {
     const glm::vec3 position = toGlm(where.position());
     backend_->later.push_back({mesh, where, material, glm::length(position - backend_->eye)});
     return;

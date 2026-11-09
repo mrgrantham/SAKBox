@@ -42,10 +42,10 @@ Mesh bumpy(int n) {
 
 } // namespace
 
-// A triangle list costs a polygon and three vertices a triangle; a budget of
+// Separate triangles cost a polygon and three vertices each; a budget of
 // 0 is no limit.
 TEST(CookTest, CostsAPolygonAndThreeVerticesATriangle) {
-  const Budget cost = costOf(flat(10)); // 200 triangles
+  const Budget cost = costOf(flat(10), Drawing::triangles); // 200 triangles
   EXPECT_EQ(cost.polygons, 200u);
   EXPECT_EQ(cost.vertices, 600u);
   EXPECT_TRUE(fits(cost, {}));
@@ -58,7 +58,7 @@ TEST(CookTest, CostsAPolygonAndThreeVerticesATriangle) {
 TEST(CookTest, AModelThatFitsIsLeftAsItIs) {
   const Mesh mesh = bumpy(10);
   for (Mode mode : {Mode::fail, Mode::simplify, Mode::simplifyAggressive}) {
-    const Cooked cooked = cook(mesh, {.polygons = 200}, mode);
+    const Cooked cooked = cook(mesh, {.polygons = 200}, mode, Drawing::triangles);
     EXPECT_TRUE(cooked.fitsBudget);
     EXPECT_EQ(cooked.mesh.indices, mesh.indices);
     EXPECT_EQ(cooked.steps, std::vector<std::string>{"as it is"});
@@ -67,7 +67,7 @@ TEST(CookTest, AModelThatFitsIsLeftAsItIs) {
 
 // FAIL changes nothing over budget, and says it doesn't fit.
 TEST(CookTest, FailLeavesItOverBudget) {
-  const Cooked cooked = cook(flat(10), {.polygons = 50}, Mode::fail);
+  const Cooked cooked = cook(flat(10), {.polygons = 50}, Mode::fail, Drawing::triangles);
   EXPECT_FALSE(cooked.fitsBudget);
   EXPECT_EQ(cooked.mesh.triangleCount(), 200u);
 }
@@ -75,7 +75,7 @@ TEST(CookTest, FailLeavesItOverBudget) {
 // SIMPLIFY brings a flat grid within budget without changing its shape, and
 // keeps only the vertices it uses.
 TEST(CookTest, SimplifyFitsWhatItCanWithoutChangingItsLook) {
-  const Cooked cooked = cook(flat(20), {.polygons = 100}, Mode::simplify);
+  const Cooked cooked = cook(flat(20), {.polygons = 100}, Mode::simplify, Drawing::triangles);
   ASSERT_TRUE(cooked.fitsBudget);
   EXPECT_LE(cooked.mesh.triangleCount(), 100u);
   EXPECT_EQ(cooked.steps, std::vector<std::string>{"simplify"});
@@ -92,12 +92,12 @@ TEST(CookTest, SimplifyFitsWhatItCanWithoutChangingItsLook) {
 TEST(CookTest, AggressiveGoesFurtherThanSimplify) {
   const Mesh mesh = bumpy(30); // 1800 triangles
   const Budget budget{.polygons = 20};
-  const Cooked gentle = cook(mesh, budget, Mode::simplify);
+  const Cooked gentle = cook(mesh, budget, Mode::simplify, Drawing::triangles);
   EXPECT_FALSE(gentle.fitsBudget);
   EXPECT_GT(gentle.mesh.triangleCount(), 20u);
   EXPECT_LE(gentle.error, kSimplifyError);
 
-  const Cooked aggressive = cook(mesh, budget, Mode::simplifyAggressive);
+  const Cooked aggressive = cook(mesh, budget, Mode::simplifyAggressive, Drawing::triangles);
   ASSERT_TRUE(aggressive.fitsBudget);
   EXPECT_LE(aggressive.mesh.triangleCount(), 20u);
   EXPECT_GT(aggressive.mesh.triangleCount(), 0u);
@@ -119,12 +119,29 @@ TEST(CookTest, FlatShadedMeshesSimplifyAndStayFlat) {
     faceted.colours.insert(faceted.colours.end(), {1, 1, 1, 1});
     faceted.indices.push_back(static_cast<std::uint32_t>(faceted.indices.size()));
   }
-  const Cooked cooked = cook(faceted, {.polygons = 100}, Mode::simplify);
+  const Cooked cooked = cook(faceted, {.polygons = 100}, Mode::simplify, Drawing::triangles);
   ASSERT_TRUE(cooked.fitsBudget);
   EXPECT_LE(cooked.mesh.triangleCount(), 100u);
   EXPECT_EQ(cooked.mesh.vertexCount(), cooked.mesh.indices.size()); // a vertex a corner
   for (std::size_t v = 0; v < cooked.mesh.vertexCount(); ++v)
     EXPECT_NEAR(std::abs(cooked.mesh.normals[v * 3 + 1]), 1.0f, 1e-5f) << v;
+}
+
+// On the DS, a model is counted as quads and strips: a flat grid's
+// squares are quads, half the polygons, so 200 triangles fit 100.
+// Simplifying aims as high as that allows: a bumpy grid in strips keeps
+// about as many triangles as the budget has polygons, not fewer.
+TEST(CookTest, TheDsCountsQuadsAndStrips) {
+  const Budget flatCost = costOf(flat(10), Drawing::quadsAndStrips);
+  EXPECT_EQ(flatCost.polygons, 100u);
+  EXPECT_EQ(flatCost.vertices, 400u);
+  EXPECT_TRUE(cook(flat(10), {.polygons = 100}, Mode::fail, Drawing::quadsAndStrips).fitsBudget);
+
+  const Budget budget{.polygons = 400, .vertices = 1200};
+  const Cooked cooked = cook(bumpy(30), budget, Mode::simplifyAggressive, Drawing::quadsAndStrips);
+  ASSERT_TRUE(cooked.fitsBudget);
+  EXPECT_TRUE(fits(costOf(cooked.mesh, Drawing::quadsAndStrips), budget));
+  EXPECT_GT(cooked.mesh.triangleCount(), 300u);
 }
 
 TEST(CookTest, ModesByName) {

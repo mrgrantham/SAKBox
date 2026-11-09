@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <functional>
 #include <type_traits>
 
 namespace ScratchPadd::Scene::DisplayList {
@@ -86,46 +87,82 @@ Source prepare(const MeshData &mesh) {
     return static_cast<std::int16_t>(
         std::clamp<std::int32_t>(toFixed(c, 12 - source.scaleShift), -kMostVertex, kMostVertex));
   };
-  source.corners.reserve(mesh.indices.size());
-  for (std::uint32_t index : mesh.indices) {
+  // The mesh's runs, or if it has none (one made in code), the DS's best
+  Primitives built;
+  std::span<const std::uint32_t> indices = mesh.indices;
+  std::span<const Primitive> runs = mesh.primitives;
+  if (runs.empty()) {
+    built = buildPrimitives(mesh);
+    indices = built.indices;
+    runs = built.runs;
+  }
+  source.corners.reserve(indices.size());
+  for (std::uint32_t index : indices) {
     const Vertex &v = mesh.vertices[index];
     source.corners.push_back({coordinate(v.position.x), coordinate(v.position.y),
                               coordinate(v.position.z), packNormal(v.normal), v.colour});
   }
+  std::uint32_t first = 0;
+  for (const Primitive &run : runs) {
+    source.runs.push_back({run.kind, run.alpha, first, run.indexCount});
+    first += run.indexCount;
+  }
   return source;
 }
 
-std::vector<std::uint32_t> pack(const Source &source, const Variant &variant) {
+namespace {
+// One alpha's runs as a display list
+std::vector<std::uint32_t> packAlpha(const Source &source, const Variant &variant,
+                                     std::uint8_t alpha) {
   Packer packer;
-  packer.add(kBegin, {0}); // separate triangles
   bool first = true;
   std::uint16_t colour = 0;
   std::uint32_t normal = 0;
-  for (const Source::Corner &corner : source.corners) {
-    const Colour tinted = multiply(corner.colour, variant.colour);
-    const std::uint16_t thisColour = rgb15(tinted);
-    const bool newColour = first || thisColour != colour;
-    if (variant.lit) {
-      if (newColour) {
-        const std::uint16_t emission = rgb15(multiply(tinted, variant.ambient));
-        packer.add(kDiffuseAmbient, {thisColour}); // no ambient reflection
-        packer.add(kSpecularEmission, {static_cast<std::uint32_t>(emission) << 16});
+  for (const Source::Run &run : source.runs) {
+    if (run.alpha != alpha)
+      continue;
+    packer.add(kBegin, {static_cast<std::uint32_t>(run.kind)});
+    for (std::uint32_t c = run.first; c < run.first + run.count; ++c) {
+      const Source::Corner &corner = source.corners[c];
+      const Colour tinted = multiply(corner.colour, variant.colour);
+      const std::uint16_t thisColour = rgb15(tinted);
+      const bool newColour = first || thisColour != colour;
+      if (variant.lit) {
+        if (newColour) {
+          const std::uint16_t emission = rgb15(multiply(tinted, variant.ambient));
+          packer.add(kDiffuseAmbient, {thisColour}); // no ambient reflection
+          packer.add(kSpecularEmission, {static_cast<std::uint32_t>(emission) << 16});
+        }
+        // A normal is lit when it's sent, with the material as it is then
+        if (newColour || corner.normal != normal)
+          packer.add(kNormal, {corner.normal});
+      } else if (newColour) {
+        packer.add(kColour, {thisColour});
       }
-      // A normal is lit when it's sent, with the material as it is then
-      if (newColour || corner.normal != normal)
-        packer.add(kNormal, {corner.normal});
-    } else if (newColour) {
-      packer.add(kColour, {thisColour});
+      packer.add(kVertex16,
+                 {static_cast<std::uint16_t>(corner.x) |
+                      (static_cast<std::uint32_t>(static_cast<std::uint16_t>(corner.y)) << 16),
+                  static_cast<std::uint16_t>(corner.z)});
+      colour = thisColour;
+      normal = corner.normal;
+      first = false;
     }
-    packer.add(kVertex16,
-               {static_cast<std::uint16_t>(corner.x) |
-                    (static_cast<std::uint32_t>(static_cast<std::uint16_t>(corner.y)) << 16),
-                static_cast<std::uint16_t>(corner.z)});
-    colour = thisColour;
-    normal = corner.normal;
-    first = false;
   }
   return packer.finish();
+}
+} // namespace
+
+std::vector<Packed> pack(const Source &source, const Variant &variant) {
+  std::vector<std::uint8_t> alphas;
+  for (const Source::Run &run : source.runs)
+    if (std::ranges::find(alphas, run.alpha) == alphas.end())
+      alphas.push_back(run.alpha);
+  std::ranges::sort(alphas, std::greater<>());
+  std::vector<Packed> lists;
+  lists.reserve(alphas.size());
+  for (std::uint8_t alpha : alphas)
+    lists.push_back({alpha, packAlpha(source, variant, alpha)});
+  return lists;
 }
 
 } // namespace ScratchPadd::Scene::DisplayList

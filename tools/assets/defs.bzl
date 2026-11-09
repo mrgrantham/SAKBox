@@ -119,7 +119,7 @@ def scene_model(name, src, object, budget = {}, over_budget = {}, namespace = "A
 
     Makes:
       NAME: a cc_library for desktops: NAME.h, with `NAMESPACE::NAME`, a
-        Scene::MeshData, and NAMETriangles and NAMEVertices.
+        Scene::MeshData, and NAMETriangles, NAMEVertices and NAMEPolygons.
       NAME_ds_sources: the DS's version (the same names), for a DS app's
         Makefile build (devkitpro_nds_app's extra_srcs).
       NAME_ds_preview: a cc_library of the DS's version for desktops, in

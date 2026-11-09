@@ -1,6 +1,6 @@
 // MeshData.hpp - a mesh as a renderer loads it, and a builder for meshes
-// made in code. (Meshes from Blender will come cooked by the build; see
-// DESIGN.md.)
+// made in code. (Meshes from Blender come cooked by the build: see
+// tools/assets.)
 #pragma once
 
 #include <ScratchPadd/Scene/Types.hpp>
@@ -23,11 +23,30 @@ struct Vertex {
   Colour colour;
 };
 
-// Indexed triangles: three indices into `vertices` each. A view: whoever
-// made it keeps the data (a MeshBuilder, or the build's cooked arrays).
+// A run of a mesh's indices drawn as one kind of polygon, all with the
+// same alpha: what the DS draws natively (see Primitives.hpp)
+struct Primitive {
+  enum class Kind : std::uint8_t {
+    triangles,     // 3 indices a triangle
+    quads,         // 4 a quad, around it (counter-clockwise from the front)
+    triangleStrip, // 2 more than its triangles: the first is 0 1 2, then
+                   // each new index makes one with the two before it (as
+                   // OpenGL's GL_TRIANGLE_STRIP: every other one reversed)
+  };
+  Kind kind = Kind::triangles;
+  std::uint8_t alpha = 31; // its polygons' (0-31): their corners' average
+  std::uint32_t indexCount = 0;
+  bool operator==(const Primitive &) const = default;
+};
+
+// A mesh: indices into `vertices`, three a triangle; or, with `primitives`,
+// the runs they say, one after another (the build cooks the DS's version of
+// a model that way). A view: whoever made it keeps the data (a MeshBuilder,
+// or the build's cooked arrays).
 struct MeshData {
   std::span<const Vertex> vertices;
   std::span<const std::uint32_t> indices;
+  std::span<const Primitive> primitives;
 };
 
 // Builds a mesh in code from flat-shaded triangles and quads: each face

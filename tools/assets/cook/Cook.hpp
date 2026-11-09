@@ -3,6 +3,8 @@
 // fit when the rule says so (see README.md).
 #pragma once
 
+#include <ScratchPadd/Scene/Primitives.hpp>
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -28,11 +30,22 @@ struct Budget {
   std::uint32_t vertices = 0; // vertices sent to draw it (0: no limit)
 };
 
-// What it costs to draw, as the platform counts it. For now a triangle
-// list: a polygon and three vertices a triangle. (The DS's backend will
-// join triangles into quads and strips, which cost fewer.)
-Budget costOf(const Mesh &mesh);
+// How a platform draws a model, which is what its budget counts
+enum class Drawing {
+  triangles,      // separate triangles: a polygon and 3 vertices each
+  quadsAndStrips, // as the DS: Scene::buildPrimitives' quads, strips and
+                  // triangles (a polygon each; 4 vertices a quad, a strip's
+                  // once each), which its backend draws as cooked
+};
+
+// What it costs to draw, as the platform counts it
+Budget costOf(const Mesh &mesh, Drawing drawing);
 bool fits(const Budget &cost, const Budget &budget);
+
+// The mesh as the scene layer has it (colours as bytes, as the cooked C++
+// gives them), and as the DS draws it
+std::vector<ScratchPadd::Scene::Vertex> sceneVertices(const Mesh &mesh);
+ScratchPadd::Scene::Primitives primitivesOf(const Mesh &mesh);
 
 // What to do with a model over its budget
 enum class Mode {
@@ -58,9 +71,10 @@ struct Cooked {
   bool fitsBudget = true;
 };
 
-// `mesh` fitted to `budget` as `mode` allows: as it is if it fits; if not,
-// simplified step by step until it does (or no step's left). fitsBudget
-// says whether it ended within the budget.
-Cooked cook(const Mesh &mesh, const Budget &budget, Mode mode);
+// `mesh` fitted to `budget`, drawn as `drawing`, as `mode` allows: as it is
+// if it fits; if not, simplified step by step until it does (or no step's
+// left), each step keeping as many triangles as fit. fitsBudget says
+// whether it ended within the budget.
+Cooked cook(const Mesh &mesh, const Budget &budget, Mode mode, Drawing drawing);
 
 } // namespace Cook

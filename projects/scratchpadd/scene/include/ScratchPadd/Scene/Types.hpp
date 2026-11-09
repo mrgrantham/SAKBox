@@ -68,7 +68,8 @@ struct Vector3 {
 };
 
 // A colour, 0-255 a channel. Alpha is how opaque it is (for vertex colours
-// and the overlay; a material's own opacity is Material::alpha).
+// and the overlay; a material's own opacity is Material::alpha). A mesh with
+// a see-through vertex is drawn translucent, whatever its material.
 struct Colour {
   std::uint8_t r = 255, g = 255, b = 255, a = 255;
   bool operator==(const Colour &) const = default;
@@ -118,6 +119,21 @@ struct Light {
   Colour colour;
 };
 
+// What a frame drew, or a mesh costs, as the DS counts it: polygons, and
+// the vertices they take in its vertex RAM (a triangle 3, a quad 4, a strip
+// 2 more than its triangles; see Primitives.hpp). A line is a triangle
+// there. Desktops count the 3D the same way; the DS reads its hardware's
+// counters, which count the overlay's shapes too.
+struct FrameCounts {
+  unsigned polygons = 0, vertices = 0;
+  FrameCounts &operator+=(const FrameCounts &o) {
+    polygons += o.polygons;
+    vertices += o.vertices;
+    return *this;
+  }
+  bool operator==(const FrameCounts &) const = default;
+};
+
 // Fog fades what's far toward `colour`: fogged = 1 - exp(-density x distance)
 struct Fog {
   Colour colour;
@@ -140,6 +156,11 @@ struct Environment {
       lights[lightCount++] = light;
     return *this;
   }
+
+  // The background as seen: fogged as a mesh at the camera's far plane
+  // would be (as the DS's hardware fogs it). With the fog's colour the
+  // background's, as fog usually is, just the background.
+  Colour backgroundSeen(Scalar farPlane) const;
 };
 
 // How a mesh is drawn: the things the DS does in hardware

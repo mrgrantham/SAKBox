@@ -276,7 +276,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   if (!encoder || !solid || !mesh || mesh.id > meshes.size() || !meshes[mesh.id - 1].vertices)
     return;
   const LoadedMesh &loaded = meshes[mesh.id - 1];
-  const bool seeThrough = material.alpha < 31;
+  const bool seeThrough = material.alpha < 31 || loaded.translucent;
   encoder->setRenderPipelineState(seeThrough ? translucent : solid);
   encoder->setDepthStencilState(seeThrough ? depthTest : depthWrite);
   DrawUniforms draw{};
@@ -303,8 +303,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
                                  MTL::IndexTypeUInt32, loaded.indices, 0);
   if (material.wireframe)
     encoder->setTriangleFillMode(MTL::TriangleFillModeFill);
-  counting.polygons += static_cast<unsigned>(loaded.indexCount) / 3;
-  counting.vertices += static_cast<unsigned>(loaded.indexCount);
+  counting += loaded.cost;
 }
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
@@ -331,12 +330,15 @@ Renderer::~Renderer() = default;
 
 Mesh Renderer::load(const MeshData &mesh) {
   Backend::LoadedMesh loaded;
-  if (!mesh.vertices.empty() && !mesh.indices.empty()) {
+  const std::vector<std::uint32_t> indices = triangleList(mesh);
+  if (!mesh.vertices.empty() && !indices.empty()) {
     loaded.vertices = Metal::device()->newBuffer(mesh.vertices.data(), mesh.vertices.size_bytes(),
                                                  MTL::ResourceStorageModeShared);
-    loaded.indices = Metal::device()->newBuffer(mesh.indices.data(), mesh.indices.size_bytes(),
-                                                MTL::ResourceStorageModeShared);
-    loaded.indexCount = mesh.indices.size();
+    loaded.indices = Metal::device()->newBuffer(
+        indices.data(), indices.size() * sizeof(std::uint32_t), MTL::ResourceStorageModeShared);
+    loaded.indexCount = indices.size();
+    loaded.translucent = hasTranslucentVertices(mesh);
+    loaded.cost = costOf(mesh);
   }
   backend_->meshes.push_back(loaded);
   return Mesh{static_cast<std::uint32_t>(backend_->meshes.size())};
@@ -381,7 +383,7 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   colour->setResolveTexture(b.surface.frame);
   colour->setLoadAction(MTL::LoadActionClear);
   colour->setStoreAction(MTL::StoreActionMultisampleResolve);
-  const glm::vec3 background = toGlm(environment.background);
+  const glm::vec3 background = toGlm(environment.backgroundSeen(camera.farPlane));
   colour->setClearColor(MTL::ClearColor::Make(background.r, background.g, background.b, 1.0));
   MTL::RenderPassDepthAttachmentDescriptor *depth = pass->depthAttachment();
   depth->setTexture(b.surface.depth);
@@ -426,7 +428,9 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
 }
 
 void Renderer::draw(Mesh mesh, const Transform &where, const Material &material) {
-  if (material.alpha < 31) {
+  const auto &meshes = backend_->meshes;
+  if (material.alpha < 31 ||
+      (mesh && mesh.id <= meshes.size() && meshes[mesh.id - 1].translucent)) {
     const glm::vec3 position = toGlm(where.position());
     backend_->later.push_back({mesh, where, material, glm::length(position - backend_->eye)});
     return;

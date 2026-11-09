@@ -3,19 +3,17 @@
 namespace ScratchPadd::Scene {
 
 Display::Display() {
-  videoSetMode(MODE_0_3D);
+  // Mode 5: background 0 the 3D, background 3 a bitmap
+  videoSetMode(MODE_5_3D);
   vramSetBankE(VRAM_E_MAIN_BG);
-  // Background 1: 4-bit text, its map at 62 KB and the font's tiles at 0.
-  // Initialising a console makes it the one printf writes to, and
-  // consoleInit(NULL, ...) (as consoleDemoInit does) initialises whichever
-  // is: the one before is put back, so the app's console stays its own.
-  PrintConsole *previous = consoleSelect(&textLayer_);
-  consoleInit(&textLayer_, 1, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
-  consoleSelect(previous);
-  // The text over the 3D (background 0): a layer of lower priority number
-  // is drawn in front
+  // 256 x 256 at a byte a pixel: bank E's 64 KB (the screen shows 192 rows)
+  const int layer = bgInit(3, BgType_Bmp8, BgSize_B8_256x256, 0, 0);
+  textPixels_ = bgGetGfxPtr(layer);
+  dmaFillHalfWords(0, textPixels_, 256 * 256);
+  // The text over the 3D: a layer of lower priority number is drawn in front
+  // (background 0, the 3D, wasn't made by bgInit: its register directly)
   REG_BG0CNT = (REG_BG0CNT & ~3) | BG_PRIORITY(1);
-  REG_BG1CNT = (REG_BG1CNT & ~3) | BG_PRIORITY(0);
+  bgSetPriority(layer, 0);
 }
 
 } // namespace ScratchPadd::Scene

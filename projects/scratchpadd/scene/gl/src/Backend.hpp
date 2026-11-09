@@ -5,6 +5,7 @@
 #include <GL/glew.h>
 
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
+#include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <glm/glm.hpp>
@@ -40,6 +41,9 @@ struct Renderer::Backend {
   struct LoadedMesh {
     GLuint vao = 0, vbo = 0, ebo = 0;
     GLsizei indexCount = 0;
+    // Drawn translucent whatever its material (see hasTranslucentVertices)
+    bool translucent = false;
+    FrameCounts cost; // what it costs the DS (Primitives.hpp), counted a draw
   };
   // A translucent draw, kept until the end of the frame
   struct Later {

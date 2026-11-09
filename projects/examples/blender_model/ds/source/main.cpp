@@ -4,11 +4,13 @@
 // in the .blend, and the rock, simplified by the build to 200 triangles.
 //
 // The ship is lit with its vertex colours; one rock is solid and one
-// translucent; lines mark the floor; each model is labelled (overlay text
-// over a translucent rectangle, placed with toScreen). The bottom screen
-// gives what each frame drew against the DS's limits.
+// translucent; a pane of glass behind them is see-through by its vertex
+// colours' alpha; lines mark the floor; fog fades what's far; each model is
+// labelled (overlay text over a translucent rectangle, placed with
+// toScreen), under a title at twice the size. The bottom screen gives what
+// each frame drew against the DS's limits.
 //
-// A: the ship as a wireframe   START: quit
+// A: the ship as a wireframe   B: fog off and on   START: quit
 #include <nds.h>
 
 #include <ScratchPadd/Scene/DS/Display.hpp>
@@ -50,6 +52,11 @@ int main() {
   Scene::Renderer renderer(display);
 
   const Scene::Mesh ship = renderer.load(Assets::ship), rock = renderer.load(Assets::rock);
+  // A pane of glass, see-through by its vertices' alpha (its material solid)
+  Scene::MeshBuilder paneBuilder;
+  paneBuilder.quad({-3, -1, -2.5f}, {3, -1, -2.5f}, {3, 1.6f, -2.5f}, {-3, 1.6f, -2.5f},
+                   {120, 200, 255, 110});
+  const Scene::Mesh pane = renderer.load(paneBuilder.data());
   std::array<Shown, 3> shown{{
       {ship, {0, 0, 0}, {}, "Ship_DS"},
       {rock, {-2.4f, -0.4f, 0.5f}, {}, "Rock"},
@@ -58,13 +65,20 @@ int main() {
   const std::vector<Scene::Vector3> lines = floorLines();
 
   Scene::Environment environment{.background = {28, 30, 38}, .ambient = {70, 70, 75}};
+  const Scene::Fog fog{.colour = {28, 30, 38}, .density = 0.12f}; // into the background
+  environment.fog = fog;
   environment.addLight({.direction = {-0.5f, -0.8f, -0.6f}, .colour = {220, 215, 205}});
   const Scene::Camera camera{.eye = {0, 1.6f, 6.4f}, .target = {0, -0.2f, 0}, .fieldOfView = 50};
 
   std::printf("\x1b[0;0HModels from Blender on a DS\n\n");
-  std::printf("Ship_DS: %lu triangles\n", static_cast<unsigned long>(Assets::shipTriangles));
-  std::printf("Rock:    %lu triangles (x2)\n", static_cast<unsigned long>(Assets::rockTriangles));
-  std::printf("\nA: wireframe ship  START: quit\n");
+  // (Polygons as the DS draws them: triangles joined into quads and strips)
+  std::printf("Ship_DS: %lu triangles,\n  %lu polygons\n",
+              static_cast<unsigned long>(Assets::shipTriangles),
+              static_cast<unsigned long>(Assets::shipPolygons));
+  std::printf("Rock:    %lu triangles,\n  %lu polygons (x2)\n",
+              static_cast<unsigned long>(Assets::rockTriangles),
+              static_cast<unsigned long>(Assets::rockPolygons));
+  std::printf("\nA: wireframe ship  B: fog\nSTART: quit\n");
 
   Scene::Scalar angle = 0;
   Scene::FrameCounts shownCounts{};
@@ -75,9 +89,13 @@ int main() {
       break;
     if (down & KEY_A)
       shown[0].material.wireframe = !shown[0].material.wireframe;
+    if (down & KEY_B)
+      environment.fog = environment.fog.density > Scene::Scalar(0) ? Scene::Fog{} : fog;
 
     renderer.beginFrame(camera, environment);
     renderer.drawLines(lines, {90, 95, 110});
+    renderer.draw(pane, Scene::Transform::identity(), {.shading = Scene::Material::Shading::unlit});
+    renderer.overlay().text(8, 6, "Hangar", {255, 220, 140}, 2);
     angle += Scene::Scalar(0.02f);
     const Scene::Transform turn = Scene::Transform::rotation({0, 1, 0}, angle);
     for (const Shown &model : shown) {
@@ -85,9 +103,7 @@ int main() {
       float x = 0, y = 0;
       if (renderer.toScreen(model.where + Scene::Vector3{0, -1.1f, 0}, x, y)) {
         const float width = Scene::Overlay::textWidth(model.label);
-        // On the text layer's 8-point cells, so the box fits the text
-        const float left = static_cast<float>(static_cast<int>(x - width / 2) / 8 * 8);
-        const float top = static_cast<float>(static_cast<int>(y) / 8 * 8);
+        const float left = x - width / 2, top = y;
         renderer.overlay().rectangle(left - 2, top - 2, width + 4, Scene::Overlay::lineHeight() + 4,
                                      {0, 0, 0, 150});
         renderer.overlay().text(left, top, model.label, {255, 255, 255});
@@ -100,7 +116,7 @@ int main() {
     const Scene::FrameCounts counts = renderer.lastFrame();
     if (counts.polygons != shownCounts.polygons || counts.vertices != shownCounts.vertices) {
       shownCounts = counts;
-      std::printf("\x1b[8;0H3D a frame (the DS's limit):\x1b[K\n");
+      std::printf("\x1b[11;0H3D a frame (the DS's limit):\x1b[K\n");
       std::printf("%4u polygons (2048)\x1b[K\n", counts.polygons);
       std::printf("%4u vertices (6144)\x1b[K\n", counts.vertices);
     }

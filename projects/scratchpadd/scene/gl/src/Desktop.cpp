@@ -62,10 +62,12 @@ ShaderPanel::ShaderPanel(int width, int height, const std::string &vertexSource,
                mesh.vertices.data(), GL_STATIC_DRAW);
   describeVertices();
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s.ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(mesh.indices.size_bytes()),
-               mesh.indices.data(), GL_STATIC_DRAW);
+  const std::vector<std::uint32_t> indices = triangleList(mesh);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+               static_cast<GLsizeiptr>(indices.size() * sizeof(std::uint32_t)), indices.data(),
+               GL_STATIC_DRAW);
   glBindVertexArray(0);
-  s.indexCount = static_cast<GLsizei>(mesh.indices.size());
+  s.indexCount = static_cast<GLsizei>(indices.size());
 }
 
 ShaderPanel::~ShaderPanel() {

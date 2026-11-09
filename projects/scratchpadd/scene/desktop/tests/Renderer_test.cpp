@@ -4,6 +4,7 @@
 // or if the backend can't draw in it, the tests are skipped.
 #include <ScratchPadd/Scene/Desktop/Desktop.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
+#include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <gtest/gtest.h>
@@ -109,8 +110,34 @@ TEST_F(RendererTest, TranslucentMeshesBlendOverSolidOnes) {
   expectNear(pixels[0], {static_cast<int>(255 * (1 - a)), static_cast<int>(255 * a), 0}, 4);
 }
 
+// A mesh whose vertices are see-through is drawn translucent with a solid
+// material too: blended over what's behind by its vertices' alpha. A
+// mesh cooked for the DS (quads and strips) draws the same triangles.
+TEST_F(RendererTest, SeeThroughVerticesMakeAMeshTranslucent) {
+  const Mesh glass = renderer->load(MeshBuilder().box({}, {1, 1, 1}, {0, 255, 0, 128}).data());
+  const Material unlit{.shading = Material::Shading::unlit};
+  const Material red{.shading = Material::Shading::unlit, .colour = {255, 0, 0}};
+  const auto pixels = frame(
+      [&] {
+        renderer->draw(glass, Transform::translation({0, 0, 1.5f}), unlit); // in front, first
+        renderer->draw(box, Transform::identity(), red);
+      },
+      {{centreX(), centreY()}});
+  const float a = 128 / 255.0f;
+  expectNear(pixels[0], {static_cast<int>(255 * (1 - a)), static_cast<int>(255 * a), 0}, 4);
+
+  MeshBuilder builder;
+  builder.box({}, {1, 1, 1}, {0, 0, 255});
+  const Primitives quads = buildPrimitives(builder.data());
+  const Mesh cooked = renderer->load({builder.data().vertices, quads.indices, quads.runs});
+  const auto blue = frame([&] { renderer->draw(cooked, Transform::identity(), unlit); },
+                          {{centreX(), centreY()}});
+  expectNear(blue[0], {0, 0, 255});
+  EXPECT_EQ(renderer->lastFrame(), (FrameCounts{6, 24})); // counted as the DS draws it
+}
+
 // Fog fades a far mesh almost to the fog's colour, and leaves a near one
-// nearly as it is.
+// nearly as it is; the background is fogged as if at the far plane.
 TEST_F(RendererTest, FogFadesFarMeshes) {
   environment.fog = {.colour = {200, 200, 200}, .density = 0.05f};
   camera.farPlane = 500;
@@ -121,6 +148,11 @@ TEST_F(RendererTest, FogFadesFarMeshes) {
   const auto near =
       frame([&] { renderer->draw(box, Transform::identity(), black); }, {{centreX(), centreY()}});
   EXPECT_LT(near[0][0], 40); // 1 - exp(-0.05 x 4) is about 0.18
+
+  // The background is fogged as at the far plane (as the DS fogs it): here
+  // 500 away, wholly
+  const auto background = frame([] {}, {{5, 5}});
+  expectNear(background[0], {200, 200, 200});
 }
 
 // A wireframe mesh draws only its edges: the middle of its face is

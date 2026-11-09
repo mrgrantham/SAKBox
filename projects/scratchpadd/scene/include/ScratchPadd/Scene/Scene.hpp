@@ -39,15 +39,8 @@ struct Capabilities {
   unsigned lights = Environment::kMostLights;
   // The most polygons a frame can draw, or 0 for no limit (the DS: 2048)
   unsigned polygonsPerFrame = 0;
-  // Whether Environment::fog is drawn (not yet on the DS)
+  // Whether Environment::fog is drawn
   bool fog = true;
-};
-
-// What a frame drew, as the DS counts it: a polygon and three vertices a
-// triangle (a line too, being a triangle there). Desktops count the 3D;
-// the DS reads its hardware's counters, which count the overlay's shapes too.
-struct FrameCounts {
-  unsigned polygons = 0, vertices = 0;
 };
 
 class Renderer {

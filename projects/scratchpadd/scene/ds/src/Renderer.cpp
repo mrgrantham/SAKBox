@@ -1,10 +1,11 @@
 // Scene::Renderer on the DS's 3D hardware (libnds' GX), on the top screen:
-// meshes as display lists (DisplayList.hpp), each drawn with its transform
-// multiplied into the hardware's matrices, lit by its four directional
-// lights; translucent meshes kept to the end of the frame and drawn
-// farthest first; the overlay's shapes as 3D triangles in front of
-// everything and its text on the screen's 2D text layer. A debug build
-// stops with a message if a frame overflows the DS's polygon or vertex RAM.
+// meshes as display lists of quads, strips and triangles (DisplayList.hpp),
+// each drawn with its transform multiplied into the hardware's matrices,
+// lit by its four directional lights, and fogged by the hardware's fog;
+// translucent meshes kept to the end of the frame and drawn farthest first;
+// the overlay's shapes as 3D triangles in front of everything and its text
+// on the screen's 2D bitmap layer. A debug build stops with a message if a
+// frame overflows the DS's polygon or vertex RAM.
 #include "Backend.hpp"
 
 #include <algorithm>
@@ -15,6 +16,10 @@
 #include <iterator>
 #include <string_view>
 
+// libnds' console font (the one its consoles print with): 256 characters,
+// 8 x 8, a byte a row, its lowest bit the leftmost pixel
+extern "C" const std::uint8_t default_font_bin[];
+
 namespace ScratchPadd::Scene {
 
 namespace {
@@ -23,8 +28,8 @@ using Flex::Math::HardwareMathsLock;
 
 // What the DS's polygon and vertex RAM hold a frame (GBATEK)
 constexpr unsigned kMostPolygons = 2048, kMostVertices = 6144;
-// The text layer's size, in 8-point cells
-constexpr int kTextColumns = 32, kTextRows = 24, kCell = 8;
+// The text layer's size, and the font's
+constexpr int kTextWidth = 256, kTextHeight = 192, kGlyph = 8;
 // Overlay points are given to the hardware as 4.12 vertices 64 points to
 // the unit, so the screen (256 x 192) is 4 x 3
 constexpr int kPointsPerUnit = 64;
@@ -32,6 +37,11 @@ constexpr int kPointsPerUnit = 64;
 // each translucent draw takes the next of 1 to 62 (0 is the solid ones', 63
 // the clear plane's)
 constexpr unsigned kFirstTranslucentId = 1, kLastTranslucentId = 62;
+// A polygon format bit libnds doesn't name (GBATEK's POLYGON_ATTR bit 11):
+// translucent pixels set their own depth, rather than keep what's behind
+// them. Fog is by the depth in the buffer, so without it a translucent
+// mesh over the background was fogged as if at the far plane.
+constexpr std::uint32_t kTranslucentSetsDepth = BIT(11);
 
 // A Scalar as the DS's 20.12
 int f32(Scalar value) { return DisplayList::toFixed(value, 12); }
@@ -41,39 +51,21 @@ v10 v10Of(Scalar value) {
   return static_cast<v10>(std::clamp<std::int32_t>(DisplayList::toFixed(value, 9), -512, 511));
 }
 
-// The console colour nearest `colour`: one of libnds' eight, bright or not
-struct ConsoleColour {
-  int number;
-  bool bright;
-};
-ConsoleColour nearestConsoleColour(Colour colour) {
-  static constexpr Colour kColours[16] = {
-      {0, 0, 0},     {128, 0, 0},     {0, 128, 0},     {128, 128, 0},  {0, 0, 128}, {128, 0, 128},
-      {0, 128, 128}, {192, 192, 192}, {128, 128, 128}, {255, 0, 0},    {0, 255, 0}, {255, 255, 0},
-      {0, 0, 255},   {255, 0, 255},   {0, 255, 255},   {255, 255, 255}};
-  int best = 15, bestDistance = 1 << 30;
-  for (int i = 0; i < 16; ++i) {
-    const int dr = colour.r - kColours[i].r, dg = colour.g - kColours[i].g,
-              db = colour.b - kColours[i].b;
-    const int distance = dr * dr + dg * dg + db * db;
-    if (distance < bestDistance) {
-      best = i;
-      bestDistance = distance;
-    }
-  }
-  return {best % 8, best >= 8};
-}
+// A glyph's size in pixels at `scale` (at least 1): the font's 8, scaled
+// and rounded, so text measures whole pixels
+int glyphSize(float scale) { return std::max(1, static_cast<int>(std::lround(kGlyph * scale))); }
 
 bool sameText(const std::vector<Overlay::Text> &a, const std::vector<Overlay::Text> &b) {
   return std::ranges::equal(a, b, [](const Overlay::Text &x, const Overlay::Text &y) {
-    return x.x == y.x && x.y == y.y && x.text == y.text && x.colour == y.colour;
+    return x.x == y.x && x.y == y.y && x.text == y.text && x.colour == y.colour &&
+           x.scale == y.scale;
   });
 }
 
 } // namespace
 
-const std::vector<std::uint32_t> &Renderer::Backend::listFor(LoadedMesh &mesh,
-                                                             const DisplayList::Variant &variant) {
+const std::vector<DisplayList::Packed> &
+Renderer::Backend::listsFor(LoadedMesh &mesh, const DisplayList::Variant &variant) {
   const auto found = std::ranges::find(mesh.lists, variant, [](const auto &l) { return l.first; });
   if (found != mesh.lists.end())
     return found->second;
@@ -89,8 +81,8 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
     return;
   LoadedMesh &loaded = meshes[mesh.id - 1];
   const bool lit = material.shading == Material::Shading::lit;
-  const std::vector<std::uint32_t> &list =
-      listFor(loaded, {lit, material.colour, lit ? ambient : Colour{}});
+  const std::vector<DisplayList::Packed> &lists =
+      listsFor(loaded, {lit, material.colour, lit ? ambient : Colour{}});
 
   // The transform as a turn and a move, multiplied into both the position
   // and the normals' matrices, then its scale (and the mesh's own, see
@@ -114,10 +106,80 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   glPushMatrix();
   glMultMatrix4x3(&matrix);
   glScalef32(scales[0], scales[1], scales[2]);
-  const unsigned alpha = material.wireframe ? 0 : std::min<unsigned>(material.alpha, 31);
-  glPolyFmt(POLY_ALPHA(alpha) | POLY_CULL_NONE | POLY_ID(polygonId) | (lit ? lightBits : 0));
-  glCallList(list.data());
+  // Each list's polygons with its alpha times the material's (a polygon's
+  // format is taken when its list begins them)
+  const unsigned materialAlpha = std::min<unsigned>(material.alpha, 31);
+  const std::uint32_t format = POLY_CULL_NONE | POLY_ID(polygonId) | (lit ? lightBits : 0) | fogBit;
+  for (const DisplayList::Packed &packed : lists) {
+    unsigned alpha = 0; // a wireframe
+    if (!material.wireframe) {
+      alpha = (packed.alpha * materialAlpha + 15) / 31;
+      if (alpha == 0)
+        continue; // wholly see-through (alpha 0 would draw a wireframe)
+    }
+    const bool translucent = alpha > 0 && alpha < 31; // (0: a wireframe, drawn solid)
+    glPolyFmt(POLY_ALPHA(alpha) | format | (translucent ? kTranslucentSetsDepth : 0));
+    glCallList(packed.words.data());
+  }
   glPopMatrix(1);
+}
+
+void Renderer::Backend::setFog(const Fog &fog) {
+  // The background (the rear plane) is fogged too, as at the far plane: a
+  // translucent pixel keeps fog only if what's under it had it (GBATEK), so
+  // without, translucent meshes over the background weren't fogged. Its
+  // flag is bit 15 of libnds' clear colour, which glClearColor keeps.
+  constexpr std::uint32_t kRearPlaneFog = BIT(15);
+  if (!(fog.density > Scalar(0))) {
+    glDisable(GL_FOG);
+    fogBit = 0;
+    GFX_CLEAR_COLOR = glCurClearColor &= ~kRearPlaneFog;
+    return;
+  }
+  glEnable(GL_FOG);
+  fogBit = POLY_FOG;
+  GFX_CLEAR_COLOR = glCurClearColor |= kRearPlaneFog;
+  if (fog.colour == fogSet.colour && fog.density == fogSet.density && camera.nearPlane == fogNear &&
+      camera.farPlane == fogFar)
+    return;
+  fogSet = fog;
+  fogNear = camera.nearPlane;
+  fogFar = camera.farPlane;
+  glFogColor(fog.colour.r >> 3, fog.colour.g >> 3, fog.colour.b >> 3, 31);
+
+  // The DS fogs by depth, as its depth buffer holds it: 0 to 0x7FFF from
+  // the near plane to the far one, z / w of the projection, so most of it
+  // near the eye. Its 32 densities are at depths FOG_OFFSET + step x (n +
+  // 1), step = 0x400 >> FOG_SHIFT, linear between them (GBATEK, "DS 3D
+  // Alpha-Blending and Fog"). They're placed from where the fog starts to
+  // show (1/128) to where it's whole (127/128) or the far plane, as finely
+  // as the shift allows, each the desktops' 1 - exp(-density x distance) at
+  // its depth's distance along the view. (Desktops fog by distance from
+  // the eye, so a little more at the screen's edges.) In float: only when
+  // the fog or the camera's planes change.
+  const float near = static_cast<float>(camera.nearPlane),
+              far = static_cast<float>(camera.farPlane), density = static_cast<float>(fog.density);
+  auto depthAt = [&](float distance) {
+    const float z = (far + near) / (far - near) - 2 * far * near / ((far - near) * distance);
+    return std::clamp(static_cast<int>((z + 1) / 2 * 0x7FFF), 0, 0x7FFF);
+  };
+  auto distanceAt = [&](int depth) {
+    const float z = static_cast<float>(depth) / 0x7FFF * 2 - 1;
+    return 2 * far * near / ((far + near) - z * (far - near));
+  };
+  const int from = depthAt(std::max(near, std::log(128.0f / 127) / density)),
+            to = depthAt(std::min(far, std::log(128.0f) / density));
+  int shift = 10; // the finest: a step of 1
+  while (shift > 0 && from + 32 * (0x400 >> shift) < to)
+    --shift;
+  const int step = 0x400 >> shift, offset = std::max(0, from - step);
+  glFogShift(shift);
+  glFogOffset(offset);
+  for (int n = 0; n < 32; ++n) {
+    const int depth = std::min(offset + step * (n + 1), 0x7FFF);
+    const float fogged = 1 - std::exp(-density * distanceAt(depth));
+    glFogDensity(n, std::clamp(static_cast<int>(std::lround(fogged * 128)), 0, 127));
+  }
 }
 
 void Renderer::Backend::drawOverlayShapes(const Overlay &overlay) {
@@ -165,36 +227,51 @@ void Renderer::Backend::drawOverlayShapes(const Overlay &overlay) {
 
 void Renderer::Backend::drawOverlayText(const Overlay &overlay) {
   if (sameText(overlay.texts(), textShown))
-    return; // printing is slow: only when it changes
-  PrintConsole *previous = consoleSelect(&display.textLayer());
-  std::printf("\x1b[2J");
+    return; // only when it changes
+  // Each colour its own palette entry (0 is see-through), up to 255
+  std::uint16_t *palette = display.textPalette();
+  std::vector<std::uint16_t> colours;
+  std::ranges::fill(textPixels, 0);
   for (const Overlay::Text &text : overlay.texts()) {
-    const int column = static_cast<int>(text.x) / kCell;
-    int row = static_cast<int>(text.y) / kCell;
-    if (column < 0 || column >= kTextColumns - 1)
-      continue;
-    const ConsoleColour colour = nearestConsoleColour(text.colour);
-    std::printf(colour.bright ? "\x1b[3%d;1m" : "\x1b[3%dm", colour.number);
-    std::string_view rest = text.text;
-    while (row < kTextRows) {
-      const std::size_t end = std::min(rest.find('\n'), rest.size());
-      // (Not the last column: writing it moves the cursor to the next
-      // line, and at the bottom scrolls the layer)
-      const int fits = std::min<int>(static_cast<int>(end), kTextColumns - 1 - column);
-      if (row >= 0) // libnds' console counts rows and columns from 0
-        std::printf("\x1b[%d;%dH%.*s", row, column, fits, rest.data());
-      if (end == rest.size())
-        break;
-      rest.remove_prefix(end + 1);
-      ++row;
+    const std::uint16_t colour = DisplayList::rgb15(text.colour);
+    auto found = std::ranges::find(colours, colour);
+    if (found == colours.end()) {
+      if (colours.size() == 255)
+        continue;
+      colours.push_back(colour);
+      found = colours.end() - 1;
     }
-    std::printf("\x1b[39m");
+    const auto entry = static_cast<std::uint8_t>(found - colours.begin() + 1);
+    // Each glyph `size` pixels square, its pixels the font's nearest
+    const int size = glyphSize(text.scale);
+    int left = static_cast<int>(std::lround(text.x)), top = static_cast<int>(std::lround(text.y));
+    int x = left;
+    for (const char c : text.text) {
+      if (c == '\n') {
+        x = left;
+        top += size;
+        continue;
+      }
+      const std::uint8_t *glyph = &default_font_bin[static_cast<std::uint8_t>(c) * kGlyph];
+      for (int py = std::max(0, -top); py < size && top + py < kTextHeight; ++py) {
+        const std::uint8_t row = glyph[py * kGlyph / size];
+        std::uint8_t *line = &textPixels[static_cast<std::size_t>(top + py) * kTextWidth];
+        for (int px = std::max(0, -x); px < size && x + px < kTextWidth; ++px)
+          if (row & (1 << (px * kGlyph / size)))
+            line[x + px] = entry;
+      }
+      x += size;
+    }
   }
-  consoleSelect(previous);
+  for (std::size_t i = 0; i < colours.size(); ++i)
+    palette[i + 1] = colours[i];
+  DC_FlushRange(textPixels.data(), textPixels.size());
+  dmaCopy(textPixels.data(), display.textPixels(), textPixels.size());
   textShown = overlay.texts();
 }
 
 Renderer::Renderer(Display &display) : backend_(std::make_unique<Backend>(display)) {
+  backend_->textPixels.assign(kTextWidth * kTextHeight, 0);
   glInit();
   glEnable(GL_ANTIALIAS);
   glEnable(GL_BLEND);
@@ -208,6 +285,7 @@ Renderer::~Renderer() = default;
 Mesh Renderer::load(const MeshData &mesh) {
   Backend::LoadedMesh loaded;
   loaded.loaded = true;
+  loaded.translucent = hasTranslucentVertices(mesh);
   loaded.source = DisplayList::prepare(mesh);
   backend_->meshes.push_back(std::move(loaded));
   return Mesh{static_cast<std::uint32_t>(backend_->meshes.size())};
@@ -255,11 +333,14 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
             v10Of(direction.y), v10Of(direction.z));
     b.lightBits |= POLY_FORMAT_LIGHT0 << i;
   }
+  b.setFog(environment.fog);
 }
 
 void Renderer::draw(Mesh mesh, const Transform &where, const Material &material) {
   Backend &b = *backend_;
-  if (material.alpha < 31 && !material.wireframe) {
+  const bool translucentMesh =
+      mesh && mesh.id <= b.meshes.size() && b.meshes[mesh.id - 1].translucent;
+  if ((material.alpha < 31 || translucentMesh) && !material.wireframe) {
     b.later.push_back({mesh, where, material, (where.position() - b.camera.eye).length()});
     return;
   }
@@ -282,7 +363,7 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
   };
   glPushMatrix();
   glScalef32(inttof32(1) << shift, inttof32(1) << shift, inttof32(1) << shift);
-  glPolyFmt(POLY_ALPHA(31) | POLY_CULL_NONE | POLY_ID(0));
+  glPolyFmt(POLY_ALPHA(31) | POLY_CULL_NONE | POLY_ID(0) | backend_->fogBit);
   glBegin(GL_TRIANGLES);
   glColor(DisplayList::rgb15(colour));
   // Each a triangle with two corners at the same place, which the DS draws
@@ -373,13 +454,14 @@ bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
 }
 
 Capabilities Renderer::capabilities() const {
-  return {.lights = Environment::kMostLights, .polygonsPerFrame = kMostPolygons, .fog = false};
+  return {.lights = Environment::kMostLights, .polygonsPerFrame = kMostPolygons};
 }
 
 FrameCounts Renderer::lastFrame() const { return backend_->last; }
 
-// The overlay's text on the DS: the text layer's 8-point cells, one size
-float Overlay::textWidth(std::string_view text, float) {
+// The overlay's text on the DS: libnds' 8 x 8 font, each glyph scaled to
+// whole pixels
+float Overlay::textWidth(std::string_view text, float scale) {
   std::size_t widest = 0;
   while (true) {
     const std::size_t end = std::min(text.find('\n'), text.size());
@@ -388,9 +470,9 @@ float Overlay::textWidth(std::string_view text, float) {
       break;
     text.remove_prefix(end + 1);
   }
-  return static_cast<float>(widest * kCell);
+  return static_cast<float>(widest * static_cast<std::size_t>(glyphSize(scale)));
 }
 
-float Overlay::lineHeight(float) { return kCell; }
+float Overlay::lineHeight(float scale) { return static_cast<float>(glyphSize(scale)); }
 
 } // namespace ScratchPadd::Scene

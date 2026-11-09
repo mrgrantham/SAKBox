@@ -7,7 +7,32 @@
 
 namespace Cook {
 
-Budget costOf(const Mesh &mesh) {
+std::vector<ScratchPadd::Scene::Vertex> sceneVertices(const Mesh &mesh) {
+  auto byte = [](float value) {
+    return static_cast<std::uint8_t>(std::lround(std::clamp(value, 0.0f, 1.0f) * 255));
+  };
+  std::vector<ScratchPadd::Scene::Vertex> vertices;
+  vertices.reserve(mesh.vertexCount());
+  for (std::size_t v = 0; v < mesh.vertexCount(); ++v) {
+    const float *p = &mesh.positions[v * 3], *n = &mesh.normals[v * 3], *c = &mesh.colours[v * 4];
+    vertices.push_back(
+        {{p[0], p[1], p[2]}, {n[0], n[1], n[2]}, {byte(c[0]), byte(c[1]), byte(c[2]), byte(c[3])}});
+  }
+  return vertices;
+}
+
+ScratchPadd::Scene::Primitives primitivesOf(const Mesh &mesh) {
+  const std::vector<ScratchPadd::Scene::Vertex> vertices = sceneVertices(mesh);
+  return ScratchPadd::Scene::buildPrimitives({vertices, mesh.indices});
+}
+
+Budget costOf(const Mesh &mesh, Drawing drawing) {
+  if (drawing == Drawing::quadsAndStrips) {
+    const ScratchPadd::Scene::Primitives primitives = primitivesOf(mesh);
+    const ScratchPadd::Scene::FrameCounts cost =
+        ScratchPadd::Scene::costOf(std::span<const ScratchPadd::Scene::Primitive>(primitives.runs));
+    return {.polygons = cost.polygons, .vertices = cost.vertices};
+  }
   const auto triangles = static_cast<std::uint32_t>(mesh.triangleCount());
   return {.polygons = triangles, .vertices = 3 * triangles};
 }
@@ -199,10 +224,10 @@ Mesh flatten(const Mesh &mesh) {
 
 } // namespace
 
-Cooked cook(const Mesh &mesh, const Budget &budget, Mode mode) {
+Cooked cook(const Mesh &mesh, const Budget &budget, Mode mode, Drawing drawing) {
   Cooked cooked{.mesh = mesh, .steps = {"as it is"}};
-  if (fits(costOf(mesh), budget) || mode == Mode::fail) {
-    cooked.fitsBudget = fits(costOf(mesh), budget);
+  if (fits(costOf(mesh, drawing), budget) || mode == Mode::fail) {
+    cooked.fitsBudget = fits(costOf(mesh, drawing), budget);
     return cooked;
   }
   // Each step from the original, rougher than the last, until one fits:
@@ -216,23 +241,48 @@ Cooked cook(const Mesh &mesh, const Budget &budget, Mode mode) {
       {"simplify (sloppy)", true, 1.0f, 0},
   };
   const std::size_t stepCount = mode == Mode::simplify ? 1 : std::size(steps);
-  const std::size_t target = triangleBudget(budget);
   // A flat-shaded mesh is simplified welded, then flat-shaded again
   const bool flat = flatShaded(mesh);
   const Mesh source = flat ? weld(mesh) : mesh;
+  auto attempt = [&](const Step &step, std::size_t targetTriangles, float &error) {
+    Mesh result = compact(source, simplify(source, step, targetTriangles, error));
+    return flat ? flatten(result) : result;
+  };
   cooked.steps.clear();
   for (std::size_t i = 0; i < stepCount; ++i) {
-    float error = 0;
-    std::vector<std::uint32_t> indices = simplify(source, steps[i], target, error);
     cooked.steps.emplace_back(steps[i].name);
+    // Aimed at the budget as triangles first. Quads and strips cost fewer
+    // polygons and vertices than that, so if it fits, aimed higher, by how
+    // far under the budget it came, keeping the most triangles that fit
+    std::size_t target = triangleBudget(budget);
+    float error = 0;
+    Mesh simplified = attempt(steps[i], target, error);
+    Budget cost = costOf(simplified, drawing);
+    cooked.mesh = simplified;
     cooked.error = error;
-    cooked.mesh = compact(source, std::move(indices));
-    if (flat)
-      cooked.mesh = flatten(cooked.mesh);
-    if (fits(costOf(cooked.mesh), budget)) {
-      cooked.fitsBudget = true;
-      return cooked;
+    if (!fits(cost, budget))
+      continue;
+    for (int higher = 0; higher < 3; ++higher) {
+      double room = budget.polygons ? double(budget.polygons) / std::max(1u, cost.polygons) : 1e9;
+      if (budget.vertices)
+        room = std::min(room, double(budget.vertices) / std::max(1u, cost.vertices));
+      const auto next = std::min(static_cast<std::size_t>(double(target) * room),
+                                 mesh.triangleCount() - 1);
+      if (next <= target + target / 50) // within 2%: as good as it gets
+        break;
+      target = next;
+      float nextError = 0;
+      simplified = attempt(steps[i], target, nextError);
+      cost = costOf(simplified, drawing);
+      if (!fits(cost, budget))
+        break;
+      if (simplified.triangleCount() > cooked.mesh.triangleCount()) {
+        cooked.mesh = simplified;
+        cooked.error = nextError;
+      }
     }
+    cooked.fitsBudget = true;
+    return cooked;
   }
   cooked.fitsBudget = false;
   return cooked;

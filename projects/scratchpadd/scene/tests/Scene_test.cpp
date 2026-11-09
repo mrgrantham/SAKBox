@@ -1,12 +1,17 @@
 // The scene layer's shared parts, without a backend: transforms, meshes
 // built in code, and the overlay. Built twice: with Scalar as float, and as
 // the DS has it (Q16.16).
+#include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
+#include <cmath>
 #include <numbers>
 #include <type_traits>
+#include <vector>
 
 using namespace ScratchPadd::Scene;
 
@@ -121,4 +126,110 @@ TEST(EnvironmentTest, KeepsAtMostFourLights) {
   for (int i = 0; i < 6; ++i)
     environment.addLight({});
   EXPECT_EQ(environment.lightCount, Environment::kMostLights);
+}
+
+namespace {
+// A mesh's triangles, each turned to start at its lowest index (keeping
+// its winding), sorted: the same for the same triangles in any order
+std::vector<std::array<std::uint32_t, 3>> triangleSet(std::span<const std::uint32_t> indices) {
+  std::vector<std::array<std::uint32_t, 3>> set;
+  for (std::size_t i = 0; i + 2 < indices.size(); i += 3) {
+    std::array<std::uint32_t, 3> t{indices[i], indices[i + 1], indices[i + 2]};
+    std::ranges::rotate(t, std::ranges::min_element(t));
+    set.push_back(t);
+  }
+  std::ranges::sort(set);
+  return set;
+}
+
+// An n x n grid of squares sharing their vertices, curved as a saddle
+// (height x z), so no two neighbouring triangles are in one plane: strips,
+// not quads
+struct Grid {
+  std::vector<Vertex> vertices;
+  std::vector<std::uint32_t> indices;
+  MeshData data() const { return {vertices, indices}; }
+};
+Grid bumpyGrid(int n) {
+  Grid grid;
+  for (int z = 0; z <= n; ++z)
+    for (int x = 0; x <= n; ++x)
+      grid.vertices.push_back(
+          {{static_cast<float>(x), 0.15f * static_cast<float>(x * z), static_cast<float>(z)},
+           {0, 1, 0},
+           {}});
+  auto at = [n](int x, int z) { return static_cast<std::uint32_t>(z * (n + 1) + x); };
+  for (int z = 0; z < n; ++z)
+    for (int x = 0; x < n; ++x)
+      grid.indices.insert(grid.indices.end(), {at(x, z), at(x, z + 1), at(x + 1, z), at(x + 1, z),
+                                               at(x, z + 1), at(x + 1, z + 1)});
+  return grid;
+}
+} // namespace
+
+// A box's faces become quads: 6 polygons and 24 vertices where 12
+// triangles were 12 and 36; desktops get the same triangles back, winding
+// as they did
+TEST(PrimitivesTest, FlatFacesBecomeQuads) {
+  MeshBuilder builder;
+  builder.box({0, 0, 0}, {1, 2, 3});
+  const Primitives built = buildPrimitives(builder.data());
+  ASSERT_EQ(built.runs.size(), 1u);
+  EXPECT_EQ(built.runs[0], (Primitive{Primitive::Kind::quads, 31, 24}));
+  EXPECT_EQ(costOf(built.runs), (FrameCounts{6, 24}));
+  EXPECT_EQ(costOf(builder.data()), (FrameCounts{6, 24}));
+
+  const MeshData cooked{builder.data().vertices, built.indices, built.runs};
+  EXPECT_EQ(triangleSet(triangleList(cooked)), triangleSet(builder.data().indices));
+}
+
+// A curved surface chains into strips, each triangle once: fewer vertices
+// than separate triangles, the same polygons, and the same triangles back
+TEST(PrimitivesTest, CurvedSurfacesBecomeStrips) {
+  const Grid grid = bumpyGrid(8); // 128 triangles
+  const Primitives built = buildPrimitives(grid.data());
+  const FrameCounts cost = costOf(built.runs);
+  EXPECT_EQ(cost.polygons, 128u);
+  EXPECT_LT(cost.vertices, 128u * 3 / 2); // long strips: near one a triangle
+  EXPECT_TRUE(std::ranges::any_of(
+      built.runs, [](const Primitive &r) { return r.kind == Primitive::Kind::triangleStrip; }));
+  const MeshData cooked{grid.vertices, built.indices, built.runs};
+  EXPECT_EQ(triangleSet(triangleList(cooked)), triangleSet(grid.indices));
+  // The same mesh, the same runs (the cook's count is the DS's)
+  EXPECT_EQ(buildPrimitives(grid.data()).indices, built.indices);
+}
+
+// Quads and strips keep to one alpha, so a polygon's alpha (its corners'
+// average, the DS having one a polygon) is its run's; the most opaque first
+TEST(PrimitivesTest, RunsKeepToOneAlpha) {
+  MeshBuilder builder;
+  builder.quad({0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0}, Colour{255, 255, 255, 64});
+  builder.quad({0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}, Colour{255, 255, 255, 255});
+  const Primitives built = buildPrimitives(builder.data());
+  ASSERT_EQ(built.runs.size(), 2u);
+  EXPECT_EQ(built.runs[0].alpha, 31);
+  EXPECT_EQ(built.runs[1].alpha, 8);
+  EXPECT_TRUE(hasTranslucentVertices(builder.data()));
+  MeshBuilder solid;
+  solid.box({}, {1, 1, 1});
+  EXPECT_FALSE(hasTranslucentVertices(solid.data()));
+
+  EXPECT_EQ(polygonAlpha({.a = 255}, {.a = 255}, {.a = 255}), 31);
+  EXPECT_EQ(polygonAlpha({.a = 0}, {.a = 0}, {.a = 0}), 0);
+  EXPECT_EQ(polygonAlpha({.a = 0}, {.a = 255}, {.a = 128}), 16);
+}
+
+// Two triangles in one plane that would make a concave quad (an arrowhead)
+// stay triangles: the DS draws only convex ones properly
+TEST(PrimitivesTest, ConcavePairsStayTriangles) {
+  const Vertex vertices[] = {{{0, 0, 0}, {0, 0, 1}, {}},
+                             {{2, 0, 0}, {0, 0, 1}, {}},
+                             {{1, 0.5f, 0}, {0, 0, 1}, {}},
+                             {{1, 2, 0}, {0, 0, 1}, {}}};
+  // 0 1 2 and 2 1 3 share the edge 1-2; around them 0 1 3 2, dented at 2
+  const std::uint32_t indices[] = {0, 1, 2, 2, 1, 3};
+  const Primitives built = buildPrimitives({vertices, indices});
+  EXPECT_TRUE(std::ranges::none_of(
+      built.runs, [](const Primitive &r) { return r.kind == Primitive::Kind::quads; }));
+  EXPECT_EQ(costOf(built.runs).polygons, 2u);
 }

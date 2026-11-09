@@ -3,13 +3,14 @@
 // sent to the geometry engine by glCallList. Plain C++ without libnds, so
 // it's tested on desktops too.
 //
-// A mesh is prepared once when loaded (prepare: its corners in the DS's own
-// numbers), then packed for each way it's drawn (pack: lit or unlit, the
-// material's colour and the ambient light, as the DS can't multiply those
-// in while drawing).
+// A mesh is prepared once when loaded (prepare: its quads, strips and
+// triangles, their corners in the DS's own numbers), then packed for each
+// way it's drawn (pack: lit or unlit, the material's colour and the ambient
+// light, as the DS can't multiply those in while drawing).
 #pragma once
 
 #include <ScratchPadd/Scene/MeshData.hpp>
+#include <ScratchPadd/Scene/Primitives.hpp>
 
 #include <cstdint>
 #include <vector>
@@ -23,7 +24,8 @@ enum Command : std::uint8_t {
   kVertex16 = 0x23,         // a vertex, x y z in 4.12 (two words)
   kDiffuseAmbient = 0x30,   // the material's diffuse and ambient colours
   kSpecularEmission = 0x31, // its specular and emission colours
-  kBegin = 0x40,            // starts polygons: 0 separate triangles
+  kBegin = 0x40,            // starts polygons: 0 separate triangles, 1 quads,
+                            // 2 a triangle strip
 };
 
 // The DS's 15-bit colour (5 bits a channel)
@@ -44,14 +46,21 @@ std::int32_t toFixed(Scalar value, int fractionBits);
 // 10 bits each, 1.9 (just under 1 at most)
 std::uint32_t packNormal(const Vector3 &unit);
 
-// A mesh in the DS's numbers: its triangles' corners, three a triangle
+// A mesh in the DS's numbers: its runs (the mesh's own, or
+// buildPrimitives'), each its corners in order
 struct Source {
   struct Corner {
     std::int16_t x, y, z; // 4.12, after dividing by 2^scaleShift
     std::uint32_t normal; // packNormal's
     Colour colour;
   };
+  struct Run {
+    Primitive::Kind kind;
+    std::uint8_t alpha;         // its polygons' (0-31)
+    std::uint32_t first, count; // its corners
+  };
   std::vector<Corner> corners;
+  std::vector<Run> runs;
   // The DS's vertices only reach +-8 (4.12), so a bigger mesh is stored
   // 2^scaleShift times smaller, and drawn scaled back up
   int scaleShift = 0;
@@ -66,12 +75,20 @@ struct Variant {
   bool operator==(const Variant &) const = default;
 };
 
-// The display list for glCallList: its first word is how many follow.
-// Unlit, each corner's colour times the material's. Lit (as desktops
-// light: colour x (ambient + the lights)), each colour change sets the
-// material's diffuse colour to it and its emission to it times the
-// ambient light, and each normal is lit by the polygon's lights. A colour
-// or normal is only sent when it changes.
-std::vector<std::uint32_t> pack(const Source &source, const Variant &variant);
+// A display list for glCallList (its first word is how many follow), and
+// the alpha (0-31) of the polygons in it: the DS sets a polygon's alpha
+// before its list is called, so a list holds one alpha's runs
+struct Packed {
+  std::uint8_t alpha;
+  std::vector<std::uint32_t> words;
+};
+
+// The mesh's display lists, one for each alpha its runs have, the most
+// opaque first. Each run starts its kind of polygon. Unlit, each corner's
+// colour times the material's. Lit (as desktops light: colour x (ambient +
+// the lights)), each colour change sets the material's diffuse colour to it
+// and its emission to it times the ambient light, and each normal is lit by
+// the polygon's lights. A colour or normal is only sent when it changes.
+std::vector<Packed> pack(const Source &source, const Variant &variant);
 
 } // namespace ScratchPadd::Scene::DisplayList

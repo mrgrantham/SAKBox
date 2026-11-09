@@ -3,7 +3,7 @@
 // the renderer draws them at the end of it: the shapes as coloured
 // triangles, then the text over them in the backend's own font
 // (stb_easy_font's, built from small rectangles, on desktops; the DS's 2D
-// text layer, in 8-point cells, on the DS).
+// bitmap layer, in libnds' 8 x 8 font, on the DS).
 #pragma once
 
 #include <ScratchPadd/Scene/Types.hpp>
@@ -28,9 +28,8 @@ public:
     float scale;
   };
 
-  // `text` with its top-left at (x, y), `scale` times its usual size (the
-  // DS's text layer has one size: it ignores `scale`). '\n' starts a new
-  // line.
+  // `text` with its top-left at (x, y), `scale` times its usual size (on
+  // the DS, each glyph scaled to whole pixels). '\n' starts a new line.
   void text(float x, float y, std::string_view text, Colour colour, float scale = 1) {
     texts_.push_back({x, y, std::string(text), colour, scale});
   }

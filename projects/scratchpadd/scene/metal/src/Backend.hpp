@@ -5,6 +5,7 @@
 #include "Surface.hpp"
 
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
+#include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <Metal/Metal.hpp>
@@ -33,6 +34,9 @@ struct Renderer::Backend {
   struct LoadedMesh {
     MTL::Buffer *vertices = nullptr, *indices = nullptr;
     NS::UInteger indexCount = 0;
+    // Drawn translucent whatever its material (see hasTranslucentVertices)
+    bool translucent = false;
+    FrameCounts cost; // what it costs the DS (Primitives.hpp), counted a draw
   };
   // A translucent draw, kept until the end of the frame
   struct Later {

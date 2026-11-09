@@ -65,6 +65,12 @@ std::int16_t vertexX(const Sent &s) { return static_cast<std::int16_t>(s.paramet
 std::int16_t vertexY(const Sent &s) { return static_cast<std::int16_t>(s.parameters[0] >> 16); }
 std::int16_t vertexZ(const Sent &s) { return static_cast<std::int16_t>(s.parameters[1] & 0xFFFF); }
 
+// A mesh's only display list (all its polygons one alpha)
+std::vector<std::uint32_t> onlyList(const std::vector<Packed> &lists) {
+  EXPECT_EQ(lists.size(), 1u);
+  return lists.empty() ? std::vector<std::uint32_t>{} : lists[0].words;
+}
+
 } // namespace
 
 TEST(DisplayListTest, ConvertsNumbersAsTheDsHasThem) {
@@ -80,20 +86,23 @@ TEST(DisplayListTest, ConvertsNumbersAsTheDsHasThem) {
   EXPECT_EQ(multiply({255, 128, 0}, {128, 255, 255}), (Colour{128, 128, 0, 255}));
 }
 
-// An unlit box: separate triangles, a colour only when it changes, and
-// every corner where the mesh has it, in 4.12
+// An unlit box, made in code: its faces joined into quads when it's
+// prepared, a colour only when it changes, and every corner where the mesh
+// has it, in 4.12
 TEST(DisplayListTest, UnlitMeshesSendColoursAndVertices) {
   MeshBuilder builder;
   builder.box({0, 0, 0}, {1, 0.5f, 2}, Colour{255, 0, 0});
   const Source source = prepare(builder.data());
   EXPECT_EQ(source.scaleShift, 0);
-  ASSERT_EQ(source.corners.size(), 36u);
+  ASSERT_EQ(source.corners.size(), 24u); // 6 quads
 
-  const std::vector<Sent> sent = unpack(pack(source, {.lit = false, .colour = {255, 255, 255}}));
+  const std::vector<Sent> sent =
+      unpack(onlyList(pack(source, {.lit = false, .colour = {255, 255, 255}})));
   ASSERT_FALSE(sent.empty());
   EXPECT_EQ(sent[0].command, kBegin);
-  EXPECT_EQ(sent[0].parameters[0], 0u); // separate triangles
-  EXPECT_EQ(count(sent, kVertex16), 36);
+  EXPECT_EQ(sent[0].parameters[0], 1u); // quads
+  EXPECT_EQ(count(sent, kBegin), 1);
+  EXPECT_EQ(count(sent, kVertex16), 24);
   EXPECT_EQ(count(sent, kColour), 1); // one colour, sent once
   EXPECT_EQ(count(sent, kNormal), 0);
   EXPECT_EQ(sent[1].parameters[0], rgb15({255, 0, 0}));
@@ -106,7 +115,8 @@ TEST(DisplayListTest, UnlitMeshesSendColoursAndVertices) {
   }
 
   // The material's colour multiplies the vertex colours
-  const std::vector<Sent> tinted = unpack(pack(source, {.lit = false, .colour = {128, 255, 255}}));
+  const std::vector<Sent> tinted =
+      unpack(onlyList(pack(source, {.lit = false, .colour = {128, 255, 255}})));
   EXPECT_EQ(tinted[1].parameters[0], rgb15({128, 0, 0}));
 }
 
@@ -119,8 +129,8 @@ TEST(DisplayListTest, LitMeshesSendMaterialsAndNormals) {
   builder.quad({0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}, Colour{0, 0, 255});
   const Source source = prepare(builder.data());
   const Variant variant{.lit = true, .colour = {255, 255, 255}, .ambient = {128, 128, 128}};
-  const std::vector<Sent> sent = unpack(pack(source, variant));
-  EXPECT_EQ(count(sent, kVertex16), 12);
+  const std::vector<Sent> sent = unpack(onlyList(pack(source, variant)));
+  EXPECT_EQ(count(sent, kVertex16), 8); // two quads
   EXPECT_EQ(count(sent, kColour), 0);
   EXPECT_EQ(count(sent, kDiffuseAmbient), 2);
   EXPECT_EQ(count(sent, kSpecularEmission), 2);
@@ -154,9 +164,42 @@ TEST(DisplayListTest, BigMeshesAreScaledToFit) {
 TEST(DisplayListTest, PacksFourCommandsAWord) {
   MeshBuilder builder;
   builder.triangle({0, 0, 0}, {1, 0, 0}, {0, 1, 0});
-  const std::vector<std::uint32_t> list = pack(prepare(builder.data()), {.lit = false});
+  const std::vector<std::uint32_t> list = onlyList(pack(prepare(builder.data()), {.lit = false}));
   // BEGIN, COLOR, VTX, VTX | VTX: two command words, 1 + 1 + 2 x 3 parameters
   ASSERT_EQ(list.size(), 1u + 2 + 8);
   EXPECT_EQ(list[1], kBegin | (kColour << 8) | (kVertex16 << 16) | (kVertex16 << 24));
   EXPECT_EQ(list[8], static_cast<std::uint32_t>(kVertex16));
+}
+
+// A cooked mesh's runs are kept as they are: each starts its kind of
+// polygon (a strip here), its corners in order
+TEST(DisplayListTest, CookedRunsAreDrawnAsGiven) {
+  const Vertex vertices[] = {{{0, 0, 0}, {0, 0, 1}, {}},
+                             {{1, 0, 0}, {0, 0, 1}, {}},
+                             {{0, 1, 0}, {0, 0, 1}, {}},
+                             {{1, 1, 0}, {0, 0, 1}, {}}};
+  const std::uint32_t indices[] = {0, 1, 2, 3};
+  const Primitive runs[] = {{Primitive::Kind::triangleStrip, 31, 4}};
+  const Source source = prepare({vertices, indices, runs});
+  ASSERT_EQ(source.runs.size(), 1u);
+  EXPECT_EQ(source.runs[0].kind, Primitive::Kind::triangleStrip);
+  const std::vector<Sent> sent = unpack(onlyList(pack(source, {.lit = false})));
+  EXPECT_EQ(sent[0].parameters[0], 2u); // a triangle strip
+  EXPECT_EQ(count(sent, kVertex16), 4);
+  EXPECT_EQ(vertexX(sent.back()), 4096);
+  EXPECT_EQ(vertexY(sent.back()), 4096);
+}
+
+// Polygons of different alphas go in lists of their own, the most opaque
+// first: the DS sets a polygon's alpha before its list is called
+TEST(DisplayListTest, EachAlphaHasItsOwnList) {
+  MeshBuilder builder;
+  builder.quad({0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0}, Colour{255, 255, 255, 255});
+  builder.quad({0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}, Colour{255, 255, 255, 128});
+  const std::vector<Packed> lists = pack(prepare(builder.data()), {.lit = false});
+  ASSERT_EQ(lists.size(), 2u);
+  EXPECT_EQ(lists[0].alpha, 31);
+  EXPECT_EQ(lists[1].alpha, 16); // 128 of 255, in 32 steps
+  for (const Packed &list : lists)
+    EXPECT_EQ(count(unpack(list.words), kVertex16), 4);
 }

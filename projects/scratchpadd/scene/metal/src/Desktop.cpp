@@ -71,12 +71,13 @@ ShaderPanel::ShaderPanel(int width, int height, const std::string &vertexSource,
   s.texture =
       texture(Metal::kColourFormat, MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
   s.depth = texture(Metal::kDepthFormat, MTL::TextureUsageRenderTarget);
-  if (!mesh.vertices.empty() && !mesh.indices.empty()) {
+  const std::vector<std::uint32_t> indices = triangleList(mesh);
+  if (!mesh.vertices.empty() && !indices.empty()) {
     s.vertices = device->newBuffer(mesh.vertices.data(), mesh.vertices.size_bytes(),
                                    MTL::ResourceStorageModeShared);
-    s.indices = device->newBuffer(mesh.indices.data(), mesh.indices.size_bytes(),
+    s.indices = device->newBuffer(indices.data(), indices.size() * sizeof(std::uint32_t),
                                   MTL::ResourceStorageModeShared);
-    s.indexCount = mesh.indices.size();
+    s.indexCount = indices.size();
   }
 
   // The GLSL as Metal, compiled
