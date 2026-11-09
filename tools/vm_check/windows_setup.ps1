@@ -1,7 +1,8 @@
 # Sets up a Windows 11 ARM64 VM for check.py, as SYSTEM (check.py windows
 # --setup runs it): Git (its bash runs Bazel's shell steps), Python (runs
 # windows_run.py), Bazelisk, Visual Studio 2022 Build Tools with MSVC's
-# ARM64 libraries, the Windows SDK and its Clang (clang-cl), and Developer
+# ARM64 libraries, the Windows SDK and its Clang (clang-cl), Windows MIDI
+# Services' tools (MidiInputPadd_test's loopback keyboard), and Developer
 # Mode (for symbolic links). Running it again skips what's there. The
 # Build Tools take a while (several GB).
 $ErrorActionPreference = 'Stop'
@@ -32,6 +33,12 @@ Install 'Visual Studio Build Tools' `
     '--add', 'Microsoft.VisualStudio.Component.VC.Tools.ARM64',
     '--add', 'Microsoft.VisualStudio.Component.VC.Llvm.Clang',
     '--add', 'Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset')
+# Windows MIDI Services' tools: its console (midi.exe) makes the loopback
+# ports MidiInputPadd_test plays on. The service itself is part of Windows
+# 11 24H2 and later; on older Windows the test skips.
+Install 'Windows MIDI Services tools' 'C:\Program Files\Windows MIDI Services\Tools\midi.exe' `
+  'https://github.com/microsoft/MIDI/releases/download/inbox-preview-13/Windows.MIDI.Services.Tools.0.99.96-preview.13-arm64.exe' `
+  @('/quiet', '/norestart')
 
 # Developer Mode, which lets an ordinary account make symbolic links: Bazel's
 # runfiles (the files a test reads) and rules_python's tools are made of them

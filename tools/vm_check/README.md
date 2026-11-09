@@ -1,6 +1,6 @@
 # VM check
 
-Builds and tests the repo in a [Parallels](https://www.parallels.com) VM on a Mac: Ubuntu ARM64 with GCC or Clang, or Windows 11 ARM64 with clang-cl. On Ubuntu it's like the [Linux check](../linux_check/README.md)'s Docker containers, with two things they lack: a desktop, so the tests that open a window (tagged `display`) run, and a real MIDI system (ALSA's sequencer), so `MidiInputPadd_test` runs instead of skipping. On Windows it's the only check there is (see the top-level README's [Windows](../../README.md#windows) notes).
+Builds and tests the repo in a [Parallels](https://www.parallels.com) VM on a Mac: Ubuntu ARM64 with GCC or Clang, or Windows 11 ARM64 with clang-cl. On Ubuntu it's like the [Linux check](../linux_check/README.md)'s Docker containers, with two things they lack: a desktop, so the tests that open a window (tagged `display`) run, and a real MIDI system (ALSA's sequencer), so `MidiInputPadd_test` runs instead of skipping. On Windows it's the only check there is (see the top-level README's [Windows](../../README.md#windows) notes), and `MidiInputPadd_test` runs there too, on Windows MIDI Services' loopback ports.
 
 | File | What it is |
 | --- | --- |
@@ -24,7 +24,7 @@ Both VMs need **Parallels Tools** installed in them (Parallels offers them when 
 **Windows**
 
 1. **A VM:** Windows 11 for ARM64 (tested with 11 Pro), with you logged in: the build runs as you, in your desktop's session, so the window tests can open windows.
-2. **The tools in it:** `python3 tools/vm_check/check.py windows --setup`. It installs Git for Windows (its bash runs Bazel's shell steps), Python 3.14, Bazelisk 1.25.0 (`C:\tools\bazelisk.exe`), and Visual Studio 2022 Build Tools with MSVC's ARM64 libraries, the Windows SDK and Clang (clang-cl), several GB, so the first `--setup` takes a while. It also turns on **Developer Mode**, which lets an ordinary account make symbolic links: Bazel's runfiles and rules_python's tools are made of them.
+2. **The tools in it:** `python3 tools/vm_check/check.py windows --setup`. It installs Git for Windows (its bash runs Bazel's shell steps), Python 3.14, Bazelisk 1.25.0 (`C:\tools\bazelisk.exe`), Visual Studio 2022 Build Tools with MSVC's ARM64 libraries, the Windows SDK and Clang (clang-cl), several GB, so the first `--setup` takes a while, and [Windows MIDI Services](https://aka.ms/midi)' tools (0.99.96 preview 13), whose console makes the loopback ports `MidiInputPadd_test` plays on. Windows MIDI Services itself comes with Windows 11 24H2 and later; on older Windows the test skips. It also turns on **Developer Mode**, which lets an ordinary account make symbolic links: Bazel's runfiles and rules_python's tools are made of them.
 
 Running `--setup` again is harmless: it skips what's there.
 

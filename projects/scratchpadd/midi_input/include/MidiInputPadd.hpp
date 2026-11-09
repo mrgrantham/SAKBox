@@ -113,6 +113,9 @@ private:
           port->in->setCallback(&MidiInputPadd::received, port.get());
           port->in->ignoreTypes(/*sysex=*/true, /*time=*/true, /*sense=*/true);
           port->in->openPort(i, "ScratchPadd");
+          // Errors from now on are logged, not thrown: closing a port that
+          // was unplugged fails on Windows, in RtMidiIn's destructor
+          port->in->setErrorCallback(&MidiInputPadd::portError, port.get());
           ports_.emplace(name, std::move(port));
           return true;
         }
@@ -131,6 +134,12 @@ private:
       port->padd->push(
           [padd = port->padd, event = *event, name = port->name] { padd->forward(event, name); });
     }
+  }
+
+  // An open port's error (on RtMidi's thread, or the padd's as it closes)
+  static void portError(RtMidiError::Type, const std::string &message, void *data) {
+    auto *port = static_cast<Port *>(data);
+    port->padd->logger().warn("{}: {}: {}", port->padd->paddName(), port->name, message);
   }
 
   void forward(const ScratchPadd::Audio::MidiEvent &event, const std::string &port) {

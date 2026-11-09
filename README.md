@@ -208,7 +208,7 @@ Builds with **clang-cl** (Clang with MSVC's command line and libraries), from Vi
 
 `.bazelrc` turns on its `clang_cl` config on Windows: the clang-cl toolchain (`//tools/windows:clang_cl`), the few flags clang-cl spells its own way (`/clang:-std=c++26` for the repo's own code, `-Werror=pedantic` in place of `-pedantic-errors`), `M_PI` and the other maths constants (`_USE_MATH_DEFINES`), runfiles, and the Clang-only checks. Code that divides 128-bit integers (flexmath's `FlexPoint`) links Clang's runtime helpers, which lld-link doesn't add itself (`//tools/windows:clang_builtins`).
 
-Everything builds on Windows. The MIDI input test skips there, as Windows' MIDI has no virtual ports for it to play on.
+Everything builds on Windows. The MIDI input test plays on a loopback pair made with [Windows MIDI Services](https://aka.ms/midi)' console, which needs Windows 11 24H2 or later and its tools (`tools/vm_check`'s `--setup` installs them); without them it skips.
 
 To check a change on Windows from a Mac with Parallels, see [`tools/vm_check`](tools/vm_check/README.md): `python3 tools/vm_check/check.py windows`.
 
