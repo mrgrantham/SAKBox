@@ -135,6 +135,7 @@ cc_test(
     tags = ["display"],
     target_compatible_with = compatible,
     deps = [
+        "//projects/expected_capabilities",
         "//projects/scratchpadd/scene/" + package,
         "@gtest//:gtest_main",
     ],

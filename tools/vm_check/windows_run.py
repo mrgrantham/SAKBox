@@ -29,6 +29,10 @@ LLVM = VC + r"\Tools\Llvm\ARM64"
 # software renderer, alone. Dozen crashes making a device on Parallels'
 # Direct3D 12 driver.
 DOZEN_DEVICES = "warp"
+# What the VM has, so tests that need it fail instead of skipping without it
+# (projects/expected_capabilities): a window, Vulkan (Dozen) and MIDI
+# (Windows MIDI Services' loopback ports)
+EXPECTED_CAPABILITIES = "display,vulkan,midi"
 # Run by check.py with pythonw, at the user's desktop: no console windows
 # for the programs it runs
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -87,13 +91,14 @@ def main(argv):
         with open(log, "w") as out:
             status = subprocess.run(
                 [BAZELISK, f"--output_user_root={OUTPUT_ROOT}", "test", "--keep_going",
-                 "--curses=no", "--color=no", f"--test_env=DZN_DEBUG={DOZEN_DEVICES}", *rest],
+                 "--curses=no", "--color=no", f"--test_env=DZN_DEBUG={DOZEN_DEVICES}",
+                 f"--test_env=SAKBOX_EXPECT={EXPECTED_CAPABILITIES}", *rest],
                 cwd=work, env=env, stdout=out,
                 stderr=subprocess.STDOUT, creationflags=NO_WINDOW).returncode
         with open(summary, "w") as out:
-            subprocess.run([BASH, pathlib.Path(share, "tools/build_summary/print_build_summary.sh")
-                            .as_posix(), pathlib.Path(log).as_posix()], stdout=out,
-                           creationflags=NO_WINDOW)
+            subprocess.run([sys.executable, pathlib.Path(share,
+                            "tools/build_summary/print_build_summary.py"), log, work],
+                           stdout=out, creationflags=NO_WINDOW)
     finally:
         status_file.write_text(str(status))
 

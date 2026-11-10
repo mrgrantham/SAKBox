@@ -32,6 +32,7 @@ cc_test(
     env = {"TSAN_OPTIONS": "suppressions=projects/scratchpadd/midi_input/tests/tsan_suppressions.txt"},
     deps = [
         ":midi_input",
+        "//projects/expected_capabilities",
         "//projects/scratchpadd/audio",
         "//projects/scratchpadd/basis",
         "@gtest//:gtest_main",

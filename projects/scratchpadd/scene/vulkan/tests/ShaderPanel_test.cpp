@@ -2,6 +2,7 @@
 // with its vertex shader, is compiled, made into a pipeline the device
 // takes, and drawn; a mistake is
 // reported. Skipped where there's no Vulkan.
+#include <ExpectedCapabilities/ExpectedCapabilities.hpp>
 #include <ScratchPadd/Scene/Desktop/Desktop.hpp>
 #include <ScratchPadd/Scene/MeshData.hpp>
 #include <ScratchPadd/Scene/Vulkan/Vulkan.hpp>
@@ -35,7 +36,7 @@ MeshBuilder screen() {
 
 TEST(VulkanShaderPanelTest, EveryPlaygroundShaderMakesAPanel) {
   if (!Vulkan::context())
-    GTEST_SKIP() << "no Vulkan: " << Vulkan::whyNoVulkan();
+    SKIP_OR_FAIL_WITHOUT("vulkan", "no Vulkan: " + Vulkan::whyNoVulkan());
   const std::filesystem::path shaders = std::filesystem::path(std::getenv("TEST_SRCDIR")) /
                                         "_main/projects/examples/shader_playground/shaders";
   const MeshBuilder mesh = screen();
@@ -61,7 +62,7 @@ TEST(VulkanShaderPanelTest, EveryPlaygroundShaderMakesAPanel) {
 
 TEST(VulkanShaderPanelTest, MistakesAreReported) {
   if (!Vulkan::context())
-    GTEST_SKIP() << "no Vulkan: " << Vulkan::whyNoVulkan();
+    SKIP_OR_FAIL_WITHOUT("vulkan", "no Vulkan: " + Vulkan::whyNoVulkan());
   const MeshBuilder mesh = screen();
   Desktop::ShaderPanel panel(16, 16, "#version 330 core\nvoid main() {}",
                              "#version 330 core\nvoid main() { nonsense; }", mesh.data());

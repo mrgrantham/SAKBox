@@ -2,6 +2,7 @@
 // Renderer_metal_test, Renderer_vulkan_test), drawing into a hidden window: each test draws a
 // frame and reads its pixels back (Desktop::readPixel). Without a display,
 // or if the backend can't draw in it, the tests are skipped.
+#include <ExpectedCapabilities/ExpectedCapabilities.hpp>
 #include <ScratchPadd/Scene/Desktop/Desktop.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
@@ -24,7 +25,7 @@ class RendererTest : public testing::Test {
 protected:
   void SetUp() override {
     if (!display.isOpen())
-      GTEST_SKIP() << "no window to draw in: " << display.error();
+      SKIP_OR_FAIL_WITHOUT("display", "no window to draw in: " + display.error());
     renderer = std::make_unique<Renderer>(display);
     camera.eye = {0, 0, 5};
     camera.target = {0, 0, 0};

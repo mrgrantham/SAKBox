@@ -5,6 +5,7 @@
 // Skipped where there's no MIDI system (a Linux container without ALSA's
 // sequencer, say) or, on Windows, no Windows MIDI Services tools.
 #include <AudioPadd.hpp>
+#include <ExpectedCapabilities/ExpectedCapabilities.hpp>
 #include <MidiInputPadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Testing.hpp>
@@ -191,13 +192,15 @@ private:
 
 #else
 
-// A virtual port, which Core MIDI and ALSA let a program open
+// A virtual port, which Core MIDI and ALSA let a program open. (It throws if
+// it can't; isPortOpen() is no sign, as RtMidi never marks a virtual port
+// open.)
 class VirtualKeyboard : public Keyboard {
 public:
   static std::unique_ptr<Keyboard> plugIn() {
     auto keyboard = std::make_unique<VirtualKeyboard>();
     keyboard->out_.openVirtualPort(keyboardName());
-    return keyboard->out_.isPortOpen() ? std::move(keyboard) : nullptr;
+    return keyboard;
   }
 };
 
@@ -274,7 +277,7 @@ bool listening(MidiInputPadd &padd) {
 TEST(MidiInputPaddTest, KeyboardReachesListenersAndTheInstrument) {
   auto keyboard = plugInKeyboard();
   if (!keyboard) {
-    GTEST_SKIP() << "no MIDI keyboard to make here";
+    SKIP_OR_FAIL_WITHOUT("midi", "no MIDI keyboard to make here");
   }
   Running running;
   ASSERT_TRUE(eventually([&] { return listening(running.padd<MidiInputPadd>()); }));
@@ -293,7 +296,7 @@ TEST(MidiInputPaddTest, KeyboardReachesListenersAndTheInstrument) {
 TEST(MidiInputPaddTest, PlayThroughOffAndUnplugging) {
   auto keyboard = plugInKeyboard();
   if (!keyboard) {
-    GTEST_SKIP() << "no MIDI keyboard to make here";
+    SKIP_OR_FAIL_WITHOUT("midi", "no MIDI keyboard to make here");
   }
   Running running;
   auto &input = running.padd<MidiInputPadd>();

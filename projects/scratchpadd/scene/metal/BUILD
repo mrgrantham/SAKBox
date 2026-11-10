@@ -71,6 +71,7 @@ cc_test(
     deps = [
         ":glsl_to_msl",
         ":metal",
+        "//projects/expected_capabilities",
         "@gtest//:gtest_main",
     ],
 )

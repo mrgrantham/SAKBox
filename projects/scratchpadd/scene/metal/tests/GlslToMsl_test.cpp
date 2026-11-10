@@ -1,5 +1,6 @@
 // GLSL 3.30 shaders in Metal's shading language: every shader of the shader
 // playground translates, and Metal compiles what it becomes
+#include <ExpectedCapabilities/ExpectedCapabilities.hpp>
 #include <GlslToMsl.hpp>
 #include <ScratchPadd/Scene/Metal/Metal.hpp>
 
@@ -40,7 +41,7 @@ bool compiles(const std::string &source, std::string &why) {
 
 TEST(GlslToMslTest, EveryPlaygroundShaderTranslatesAndCompiles) {
   if (!device())
-    GTEST_SKIP() << "no Metal device";
+    SKIP_OR_FAIL_WITHOUT("metal", "no Metal device");
   const std::filesystem::path shaders = std::filesystem::path(std::getenv("TEST_SRCDIR")) /
                                         "_main/projects/examples/shader_playground/shaders";
   int translated = 0;

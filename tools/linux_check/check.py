@@ -42,6 +42,10 @@ DEFAULT_TARGETS = ["//..."]
 def skipped(x86_64):
     left_out = "-devkitpro" if x86_64 else "-devkitpro,-blender"
     return [f"--build_tag_filters={left_out}", f"--test_tag_filters={left_out},-display"]
+# What the container has, so tests that need it fail instead of skipping
+# without it (projects/expected_capabilities): Vulkan, Mesa's lavapipe. (No
+# display, and no ALSA sequencer for MIDI.)
+EXPECTED_CAPABILITIES = ["--test_env=SAKBOX_EXPECT=vulkan"]
 LOG = "/root/.cache/last-run.log"
 
 # Run inside the container: copy the checkout, build and test, keep the log,
@@ -50,7 +54,7 @@ INSIDE = r"""
 mkdir /src && cd /repo && tar --exclude="./bazel-*" -cf - . | (cd /src && tar xf -) && cd /src
 bazel test --keep_going --curses=no --color=no "$@" > {log} 2>&1
 status=$?
-bash tools/build_summary/print_build_summary.sh {log}
+python3 tools/build_summary/print_build_summary.py {log}
 exit $status
 """.format(log=LOG)
 
@@ -102,7 +106,8 @@ def main(argv):
             return 1
 
     # Clang-only checks are in the clang config (see .bazelrc)
-    flags = (["--config=clang"] if compiler == "clang" else []) + skipped(x86_64)
+    flags = ((["--config=clang"] if compiler == "clang" else []) + skipped(x86_64)
+             + EXPECTED_CAPABILITIES)
     targets = rest or DEFAULT_TARGETS
     print(f"Building and testing with {compiler}{' on x86-64' if x86_64 else ''}: "
           f"{' '.join(targets)}", flush=True)

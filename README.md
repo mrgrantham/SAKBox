@@ -116,6 +116,12 @@ The build enforces it for everything under `projects/`: `-Wsuggest-override` mak
 
 **Test files are named `<Source>_test.cpp`**, after the file they test and spelled as it is: `FlexReal_test.cpp` tests `FlexReal.hpp`, `WMatrix_test.cpp` tests `WMatrix.h`, `core_test.cpp` tests Cyclone's `core.h`. A test of something that isn't one file (threading, the README's examples) is named after that: `Threading_test.cpp`, `Examples_test.cpp`. Its Bazel target has the same name (`:FlexReal_test`). This is the googletest and Bazel convention; it also sorts a test next to the code it tests. Libraries kept as published (libpng's `pngtest.cpp`, Waffles' own `src/test/`) keep their names.
 
+**A test that needs something a machine may not have skips with `SKIP_OR_FAIL_WITHOUT`**, from [`projects/expected_capabilities`](projects/expected_capabilities/include/ExpectedCapabilities/ExpectedCapabilities.hpp), not `GTEST_SKIP`. Examples are a window, Vulkan, MIDI or a Metal device: `SKIP_OR_FAIL_WITHOUT("display", "no window to draw in: " + display.error())`. Without it the test skips, unless `SAKBOX_EXPECT` (a comma-separated list passed with `--test_env`) names the capability, in which case it fails instead.
+- The checks set `SAKBOX_EXPECT` to what their machines have: `display,vulkan,midi` in both VMs, `vulkan` in the Docker containers.
+- That catches a test skipping where it should run. A skipped test still counts as passed, so Bazel's summary hides it.
+- The names in use are `display`, `vulkan`, `midi` and `metal`. On a Mac, everything is there: `bazel test //... --test_env=SAKBOX_EXPECT=display,vulkan,midi,metal`.
+- Use `GTEST_SKIP` only for what a platform can't do at all, such as `sha2_test`'s 4 GiB length where `unsigned long` is 32 bits.
+
 ## Static analysis
 
 [clang-tidy](https://clang.llvm.org/extra/clang-tidy/) checks the code for likely bugs, avoidable slowness and outdated C++, using the checks chosen (with the reasons for leaving some out) in [`.clang-tidy`](.clang-tidy):
@@ -170,9 +176,9 @@ To repeat the check from macOS (or anywhere with Docker), use [`tools/linux_chec
 python3 tools/linux_check/check.py gcc     # or clang
 ```
 
-It builds and tests the repo inside a Linux container and prints Bazel's summary. Give Docker enough memory (Colima: `colima start --memory 8`) or Bazel runs out.
+It builds and tests the repo inside a Linux container and prints Bazel's summary, including any test cases that skipped inside tests that passed (see [`tools/build_summary`](tools/build_summary/print_build_summary.py)). Give Docker enough memory (Colima: `colima start --memory 8`) or Bazel runs out.
 
-The container has no display or MIDI system, so the tests that open a window are left out and the MIDI input test skips. With Parallels Desktop, [`tools/vm_check`](tools/vm_check/README.md) runs the same build in an Ubuntu VM with a desktop, and those tests run too (tested on 2026-11-05 on Ubuntu 24.04 ARM64, with GCC 14 and Clang 18: everything builds and all the tests pass):
+The container has no display or MIDI system, so the tests that open a window are left out and the MIDI input test skips. It does have Vulkan (Mesa's lavapipe), so a Vulkan test that skips there fails instead (see [`SKIP_OR_FAIL_WITHOUT`](#code-conventions)). With Parallels Desktop, [`tools/vm_check`](tools/vm_check/README.md) runs the same build in an Ubuntu VM with a desktop, and those tests run too (tested on 2026-11-05 on Ubuntu 24.04 ARM64, with GCC 14 and Clang 18: everything builds and all the tests pass):
 
 ``` bash
 python3 tools/vm_check/check.py ubuntu gcc   # or clang

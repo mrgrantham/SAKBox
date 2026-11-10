@@ -26,9 +26,12 @@ case "$compiler" in
   clang) export CC=clang-18 CXX=clang++-18 ;;
 esac
 # The desktop's X server, for the tests that open a window (passed on to
-# them: Bazel gives tests only the environment it's told to)
+# them: Bazel gives tests only the environment it's told to). The VM has a
+# window, Vulkan (Mesa's lavapipe) and MIDI, so tests that need them fail
+# instead of skipping without them (projects/expected_capabilities).
 export DISPLAY=:0 XAUTHORITY="/run/user/$(id -u)/gdm/Xauthority"
 /usr/local/bin/bazelisk test --keep_going --curses=no --color=no \
-  --test_env=DISPLAY --test_env=XAUTHORITY "$@" > "$log" 2>&1
+  --test_env=DISPLAY --test_env=XAUTHORITY --test_env=SAKBOX_EXPECT=display,vulkan,midi \
+  "$@" > "$log" 2>&1
 status=$?
-bash "$share/tools/build_summary/print_build_summary.sh" "$log" > "$work.summary"
+python3 "$share/tools/build_summary/print_build_summary.py" "$log" > "$work.summary"

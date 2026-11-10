@@ -42,7 +42,8 @@ cc_library(
 )
 
 # ShaderPanels on Vulkan: every shader of the shader playground made into a
-# pipeline and drawn. Needs no window; skipped where there's no Vulkan.
+# pipeline and drawn. Needs no window; skipped where there's no Vulkan
+# (see projects/expected_capabilities).
 cc_test(
     name = "ShaderPanel_test",
     size = "small",
@@ -50,6 +51,7 @@ cc_test(
     data = ["//projects/examples/shader_playground:shaders"],
     deps = [
         ":vulkan",
+        "//projects/expected_capabilities",
         "@gtest//:gtest_main",
     ],
 )

@@ -10,7 +10,7 @@ Builds and tests the repo in a [Parallels](https://www.parallels.com) VM on a Ma
 | `windows_setup.ps1` | Installs what the build needs in the Windows VM (`--setup` runs it) |
 | `windows_run.py` | Copies the checkout and runs `bazel test` in the Windows VM |
 
-The summary is the Linux check's: [`tools/build_summary`](../build_summary/print_build_summary.sh) prints Bazel's status, the tests that didn't pass, Bazel's `ERROR:` lines and the compilers' errors.
+The summary is the Linux check's. [`tools/build_summary`](../build_summary/print_build_summary.py) prints Bazel's status, the tests that didn't pass, and the test cases that skipped inside tests that passed, with their reasons, read from each test's `test.xml`. Then it prints Bazel's `ERROR:` lines and the compilers' errors. Both VMs have a window, Vulkan and MIDI, so the check sets `SAKBOX_EXPECT=display,vulkan,midi`. A test that would skip without one of them fails instead (see the top-level README's [Code conventions](../../README.md#code-conventions)).
 
 ## Setup
 
