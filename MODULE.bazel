@@ -28,6 +28,9 @@ bazel_dep(name = "meshoptimizer", version = "1.3.bcr.1")
 # Apple's C++ wrapper for Metal, Foundation and QuartzCore, for the scene
 # layer's Metal backend (//projects/scratchpadd/scene/metal), Apache-2.0
 bazel_dep(name = "metal-cpp", version = "26")
+# Vulkan's headers, for the scene layer's Vulkan backend (functions loaded
+# with volk, below, so nothing links against a Vulkan loader)
+bazel_dep(name = "vulkan_headers", version = "1.4.349")
 # Windows and OpenGL for the desktop (GLFW, zlib licence) and OpenGL's
 # functions (GLEW, BSD/MIT), built by Bazel on every desktop, Windows too
 # (built with CMake before, which hung on Windows on ARM). On Linux GLFW
@@ -299,9 +302,9 @@ http_archive(
 )
 
 # glslang 16.6.0, Khronos' GLSL compiler, and SPIRV-Cross, which turns its
-# SPIR-V into Metal's shading language: the Metal backend translates custom
-# GLSL shaders (Desktop::ShaderPanel) with them when they're loaded
-# (//projects/scratchpadd/scene/metal). Neither is in the Bazel registry, so
+# SPIR-V into Metal's shading language and finds a shader's uniforms: the
+# Metal and Vulkan backends compile GLSL shaders with them when they're
+# loaded (//projects/scratchpadd/scene/spirv). Neither is in the Bazel registry, so
 # their BUILD files are ours. BSD-3-Clause (and others; see their LICENSE
 # files) and Apache-2.0.
 http_archive(
@@ -318,6 +321,28 @@ http_archive(
     sha256 = "f708982e88b763ef5b0394ed468fc2c3628f68cdab89f2e7a946cd628c04e721",
     strip_prefix = "SPIRV-Cross-vulkan-sdk-1.4.363.0",
     url = "https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz",
+)
+
+# volk 1.4.350, which loads Vulkan's functions when the program runs: from
+# the system's Vulkan loader (Linux, Windows) or MoltenVK (Macs), so a
+# program built with the Vulkan backend starts, and says why, where there's
+# no Vulkan. MIT.
+http_archive(
+    name = "volk",
+    build_file = "//third_party:volk.BUILD",
+    sha256 = "e47c6efe5294bb03729a976b385864bba5daf46ec60f0bdea11e1d1446345f9a",
+    strip_prefix = "volk-1.4.350",
+    url = "https://github.com/zeux/volk/archive/refs/tags/1.4.350.tar.gz",
+)
+
+# MoltenVK 1.4.2, Vulkan on Metal, for the Vulkan backend on Macs: its
+# prebuilt library, loaded from the program's runfiles. Apache-2.0.
+http_archive(
+    name = "moltenvk",
+    build_file = "//third_party:moltenvk.BUILD",
+    sha256 = "f95765a6229cb7b915990a2890ce12ebe36a730b021545d3d52ae69ce4c4024e",
+    strip_prefix = "MoltenVK",
+    url = "https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-macos.tar",
 )
 
 # Library used in opengl tutorial for textures (//projects/examples/opengl_tutorial)

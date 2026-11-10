@@ -1,5 +1,5 @@
 // A desktop backend (built once for each: Renderer_opengl_test,
-// Renderer_metal_test), drawing into a hidden window: each test draws a
+// Renderer_metal_test, Renderer_vulkan_test), drawing into a hidden window: each test draws a
 // frame and reads its pixels back (Desktop::readPixel). Without a display,
 // or if the backend can't draw in it, the tests are skipped.
 #include <ScratchPadd/Scene/Desktop/Desktop.hpp>
@@ -166,8 +166,11 @@ TEST_F(RendererTest, WireframeAndLinesDrawEdgesOnly) {
         renderer->draw(box, Transform::translation({0, 0, 0}), wire);
         renderer->drawLines(ends, {0, 255, 255});
       },
-      {{centreX() + 20, centreY() - 20}, {10, centreY()}});
-  expectNear(pixels[0], {0, 0, 40}); // inside the face, off its diagonal
+      {{centreX() + 25, centreY() + 10}, {10, centreY()}});
+  // Inside the face, clear of every edge: 10 pixels from the faces'
+  // diagonals (which cross at the centre) and the line (lavapipe draws
+  // edges a little wider than OpenGL does)
+  expectNear(pixels[0], {0, 0, 40});
   // The line, across the window: 1 pixel wide, so multisampling blends it
   // part way into the background
   EXPECT_LT(pixels[1][0], 20);

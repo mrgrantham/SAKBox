@@ -1,7 +1,7 @@
-// GlslToMsl.hpp - a GLSL 3.30 shader in Metal's shading language: glslang
-// compiles it to SPIR-V, under Vulkan's rules relaxed so a shader written
-// for OpenGL compiles (loose uniforms gathered into one block, locations and
-// bindings given where it has none), and SPIRV-Cross writes that as Metal.
+// GlslToMsl.hpp - a GLSL 3.30 shader in Metal's shading language: compiled
+// to SPIR-V as an OpenGL shader (../../spirv: loose uniforms gathered into
+// one block, locations and bindings given where it has none), which
+// SPIRV-Cross writes as Metal.
 // For Desktop::ShaderPanel; plain C++, tested on its own.
 #pragma once
 

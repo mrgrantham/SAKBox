@@ -15,6 +15,7 @@ cc_library(
         "src/Theme.cpp",
     ] + select({
         "//projects/scratchpadd/scene/desktop:metal": ["src/ImGuiMetal.cpp"],
+        "//projects/scratchpadd/scene/desktop:vulkan": ["src/ImGuiVulkan.cpp"],
         "//conditions:default": ["src/ImGuiOpenGl.cpp"],
     }),
     strip_include_prefix = "include/",
@@ -34,6 +35,10 @@ cc_library(
             "//projects/scratchpadd/scene/metal",
             "@imgui//:imgui_backend_metal",
             "@metal-cpp",
+        ],
+        "//projects/scratchpadd/scene/desktop:vulkan": [
+            "//projects/scratchpadd/scene/vulkan",
+            "@imgui//:imgui_backend_vulkan",
         ],
         "//conditions:default": ["@imgui//:imgui_backend_opengl3"],
     }),

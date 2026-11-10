@@ -1,6 +1,6 @@
 // Display.hpp - a desktop's Display: a GLFW window, set up for the desktop
-// backend the program was built with (OpenGL or Metal), and its keyboard and
-// mouse. Open it on the main thread (macOS insists), in a main-thread padd,
+// backend the program was built with (OpenGL, Metal or Vulkan), and its
+// keyboard and mouse. Open it on the main thread (macOS insists), in a main-thread padd,
 // and draw into it with a Scene::Renderer.
 #pragma once
 
@@ -38,8 +38,8 @@ enum class MouseButton { Left, Right, Middle };
 class Display {
 public:
   // Opens a window `width` x `height` points. If it can't (no display, or
-  // the backend can't draw in it: no OpenGL 3.3, no Metal device), isOpen()
-  // is false and error() says why. `visible` false opens it hidden, for
+  // the backend can't draw in it: no OpenGL 3.3, no Metal device, no
+  // Vulkan), isOpen() is false and error() says why. `visible` false opens it hidden, for
   // drawing offscreen: tests, which read its frames back with
   // Desktop::readPixel.
   Display(int width, int height, const std::string &title, bool visible = true);
@@ -100,7 +100,8 @@ public:
   GLFWwindow *glfw() const { return window_; }
 
   // What the backend keeps with the window (WindowBackend.hpp: OpenGL's
-  // context state, Metal's layer), for the backend only
+  // context state, Metal's layer, Vulkan's surface and swapchain), for the
+  // backend only
   void *surface() const { return surface_.get(); }
   void setSurface(std::shared_ptr<void> surface) { surface_ = std::move(surface); }
 

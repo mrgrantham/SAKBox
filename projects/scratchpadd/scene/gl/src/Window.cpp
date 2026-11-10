@@ -13,6 +13,8 @@ namespace ScratchPadd::Scene::WindowBackend {
 
 const std::string kName = "OpenGL 3.3";
 
+void beforeGlfwStarts() {}
+
 void hint() {
   glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);

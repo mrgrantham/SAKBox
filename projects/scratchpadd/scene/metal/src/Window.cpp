@@ -93,6 +93,8 @@ namespace WindowBackend {
 
 const std::string kName = "Metal";
 
+void beforeGlfwStarts() {}
+
 void hint() { glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); }
 
 std::string attach(Display &display) {

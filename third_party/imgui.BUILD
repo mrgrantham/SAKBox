@@ -50,6 +50,18 @@ objc_library(
     deps = [":imgui", "@metal-cpp"],
 )
 
+# ImGui on Vulkan, with Vulkan's functions from volk (as the scene layer's
+# Vulkan backend loads them)
+cc_library(
+    name = "imgui_backend_vulkan",
+    srcs = ["backends/imgui_impl_vulkan.cpp"],
+    hdrs = ["backends/imgui_impl_vulkan.h"],
+    defines = ["IMGUI_IMPL_VULKAN_USE_VOLK"],
+    strip_include_prefix = "/backends",
+    visibility = ["//visibility:public"],
+    deps = [":imgui", "@volk"],
+)
+
 cc_library(
     name = "imgui_backend_sdl3",
     srcs = ["backends/imgui_impl_sdl3.cpp"],

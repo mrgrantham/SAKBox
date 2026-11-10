@@ -10,13 +10,14 @@ set -euo pipefail
 user="$1"
 
 # GCC 14 and Clang 18 with GCC 14's standard library, as the Docker images
-# have; the X11, Mesa and ALSA packages the top-level README's Linux notes
-# list; Python for the repo's tools; rsync to copy the checkout
+# have; the X11, Mesa, Vulkan and ALSA packages the top-level README's Linux
+# notes list; Python for the repo's tools; rsync to copy the checkout
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq g++-14 clang-18 libstdc++-14-dev \
   libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
   libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev libasound2-dev \
+  libvulkan1 mesa-vulkan-drivers \
   python3 git curl ca-certificates rsync >/dev/null
 
 # Bazelisk, which runs the Bazel version in .bazelversion. Downloaded beside

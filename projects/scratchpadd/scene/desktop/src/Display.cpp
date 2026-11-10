@@ -38,6 +38,8 @@ int openWindows = 0;
 } // namespace
 
 Display::Display(int width, int height, const std::string &title, bool visible) {
+  if (openWindows == 0)
+    WindowBackend::beforeGlfwStarts();
   if (openWindows == 0 && !glfwInit()) {
     error_ = "GLFW couldn't start (no display?)";
     return;

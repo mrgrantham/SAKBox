@@ -394,6 +394,8 @@
     "https://bcr.bazel.build/modules/toml.bzl/0.4.1/source.json": "86a90afd8b43c9b69ad31f5c03998c3adcf4b08175e621addb93e3a38eec538b",
     "https://bcr.bazel.build/modules/upb/0.0.0-20220923-a547704/MODULE.bazel": "7298990c00040a0e2f121f6c32544bab27d4452f80d9ce51349b1a28f3005c43",
     "https://bcr.bazel.build/modules/upb/0.0.0-20230516-61a97ef/MODULE.bazel": "c0df5e35ad55e264160417fd0875932ee3c9dda63d9fccace35ac62f45e1b6f9",
+    "https://bcr.bazel.build/modules/vulkan_headers/1.4.349/MODULE.bazel": "2f45236b9d6b9dd19160901243582fff2d32ddae5a4b93844cb6cfab9613ca97",
+    "https://bcr.bazel.build/modules/vulkan_headers/1.4.349/source.json": "7c210ec89fefb118909330d6abcd9d0ec8db6f415c7c8a3ea9e9637f81faccbb",
     "https://bcr.bazel.build/modules/wayland/1.24.0.bcr.1/MODULE.bazel": "78049d9a0975cdaa3932ec5a78e7026a2e77f2bfe4d976fd709eeb55b10f6c51",
     "https://bcr.bazel.build/modules/wayland/1.24.0.bcr.1/source.json": "af780acbd3fbfe59cac8ad674371535f2a63bd4b5649c2c65b21f9b470942f11",
     "https://bcr.bazel.build/modules/xcb-proto/1.17.0/MODULE.bazel": "13062923a9e615a2f4d284a3f28e467536f7abcfd79d2c04c2acf3837e9da31b",

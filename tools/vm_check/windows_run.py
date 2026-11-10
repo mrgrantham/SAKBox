@@ -24,6 +24,11 @@ OUTPUT_ROOT = r"C:\b"
 # Clang (clang-cl) for ARM64
 VC = r"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC"
 LLVM = VC + r"\Tools\Llvm\ARM64"
+# Which Vulkan devices Dozen (Vulkan on Direct3D 12, from Windows' OpenCL,
+# OpenGL and Vulkan Compatibility Pack) offers the tests: WARP, Direct3D's
+# software renderer, alone. Dozen crashes making a device on Parallels'
+# Direct3D 12 driver.
+DOZEN_DEVICES = "warp"
 # Run by check.py with pythonw, at the user's desktop: no console windows
 # for the programs it runs
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -82,7 +87,8 @@ def main(argv):
         with open(log, "w") as out:
             status = subprocess.run(
                 [BAZELISK, f"--output_user_root={OUTPUT_ROOT}", "test", "--keep_going",
-                 "--curses=no", "--color=no", *rest], cwd=work, env=env, stdout=out,
+                 "--curses=no", "--color=no", f"--test_env=DZN_DEBUG={DOZEN_DEVICES}", *rest],
+                cwd=work, env=env, stdout=out,
                 stderr=subprocess.STDOUT, creationflags=NO_WINDOW).returncode
         with open(summary, "w") as out:
             subprocess.run([BASH, pathlib.Path(share, "tools/build_summary/print_build_summary.sh")

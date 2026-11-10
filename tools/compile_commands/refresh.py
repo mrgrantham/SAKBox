@@ -20,7 +20,7 @@ them into the format clangd reads:
   header (Bullet's `version` file was found for <version>, when the jumper
   demo used Bullet).
   Repos meant to be included with <...> from their top folder keep it
-  (ANGLED_REPOS: metal-cpp, glslang, SPIRV-Cross).
+  (ANGLED_REPOS: metal-cpp, glslang, SPIRV-Cross, volk).
 
 Re-run it after adding source files or changing BUILD deps. The generated
 files (compile_commands.json, external, .cache/) are git-ignored.
@@ -67,9 +67,10 @@ REPO_ROOT = re.compile(r"(bazel-out/[^/]+/bin/)?external/([^/]+)")
 # Repos whose headers are meant to be included with <...> from their top
 # folder, which keeps -isystem: metal-cpp (<Metal/Metal.hpp>, as Apple
 # documents it, and as ImGui's Metal backend includes it), glslang
-# (<glslang/Public/ShaderLang.h>), SPIRV-Cross (<spirv_msl.hpp>), and the
-# registry's libpng (<png.h>) and zlib (<zlib.h>)
-ANGLED_REPOS = re.compile(r"(metal-cpp|libpng|zlib)\+|\+http_archive\+(glslang|spirv_cross)")
+# (<glslang/Public/ShaderLang.h>), SPIRV-Cross (<spirv_msl.hpp>), volk
+# (<volk.h>, as ImGui's Vulkan backend includes it), and the registry's
+# libpng (<png.h>) and zlib (<zlib.h>)
+ANGLED_REPOS = re.compile(r"(metal-cpp|libpng|zlib)\+|\+http_archive\+(glslang|spirv_cross|volk)")
 
 
 def to_clangd_command(arguments, placeholders):

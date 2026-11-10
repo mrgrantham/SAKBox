@@ -10,12 +10,14 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = select({
         ":metal": ["//projects/scratchpadd/scene/metal"],
+        ":vulkan": ["//projects/scratchpadd/scene/vulkan"],
         "//conditions:default": ["//projects/scratchpadd/scene/gl"],
     }),
 )
 
-# Which desktop backend: auto (Metal on a Mac, OpenGL elsewhere), opengl or
-# metal (Macs only), for the whole build:
+# Which desktop backend: auto (Metal on a Mac, OpenGL elsewhere), opengl,
+# metal (Macs only) or vulkan (anywhere: MoltenVK on a Mac), for the whole
+# build:
 #   bazel run //projects/examples/blender_model --//projects/scratchpadd/scene/desktop:backend=opengl
 string_flag(
     name = "backend",
@@ -24,6 +26,7 @@ string_flag(
         "auto",
         "metal",
         "opengl",
+        "vulkan",
     ],
 )
 
@@ -35,6 +38,14 @@ config_setting(
 config_setting(
     name = "backend_metal",
     flag_values = {":backend": "metal"},
+)
+
+# Whether this build's desktop backend is Vulkan, for what differs with it
+# (debug_ui's ImGui)
+config_setting(
+    name = "vulkan",
+    flag_values = {":backend": "vulkan"},
+    visibility = ["//projects/scratchpadd:__subpackages__"],
 )
 
 selects.config_setting_group(
@@ -130,4 +141,5 @@ cc_test(
 ) for backend, package, compatible in [
     ("opengl", "gl", []),
     ("metal", "metal", ["@platforms//os:macos"]),
+    ("vulkan", "vulkan", []),
 ]]

@@ -46,8 +46,8 @@ objc_library(
     deps = ["@glfw"],
 )
 
-# GLSL in Metal's shading language (glslang and SPIRV-Cross), for
-# ShaderPanel
+# GLSL in Metal's shading language (compiled to SPIR-V, then written as
+# Metal by SPIRV-Cross), for ShaderPanel
 cc_library(
     name = "glsl_to_msl",
     srcs = ["src/GlslToMsl.cpp"],
@@ -55,7 +55,7 @@ cc_library(
     strip_include_prefix = "src/",
     target_compatible_with = ["@platforms//os:macos"],
     deps = [
-        "@glslang",
+        "//projects/scratchpadd/scene/spirv:glsl_to_spirv",
         "@spirv_cross",
     ],
 )

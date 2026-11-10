@@ -185,6 +185,12 @@ sudo apt install libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev \
                  libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev libasound2-dev
 ```
 
+The Vulkan backend (`--//projects/scratchpadd/scene/desktop:backend=vulkan`, see [ScratchPadd](projects/scratchpadd/README.md)) loads Vulkan when the program runs, so it builds without these, but runs with Vulkan's loader and a driver. Mesa's drivers include lavapipe, which draws on the CPU where the GPU has no Vulkan driver (as in a VM or a container):
+
+``` bash
+sudo apt install libvulkan1 mesa-vulkan-drivers
+```
+
 `alsa/asoundlib.h: No such file or directory` means `libasound2-dev` is missing.
 
 `Could NOT find OpenGL` means `libgl1-mesa-dev` is missing; `Could NOT find OpenGL (missing: EGL)` means `libegl1-mesa-dev` is. Package names can differ slightly between Ubuntu and Raspberry Pi OS.

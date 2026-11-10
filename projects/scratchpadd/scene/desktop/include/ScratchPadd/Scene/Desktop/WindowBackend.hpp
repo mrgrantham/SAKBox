@@ -1,5 +1,5 @@
 // WindowBackend.hpp - what a desktop backend does for a Display: each
-// backend (OpenGL, Metal) defines these, and the Display calls them. For
+// backend (OpenGL, Metal, Vulkan) defines these, and the Display calls them. For
 // backends only; apps use Display.
 #pragma once
 
@@ -11,6 +11,9 @@ namespace ScratchPadd::Scene::WindowBackend {
 
 // The backend's name, for messages ("OpenGL 3.3", "Metal")
 extern const std::string kName;
+// What the backend needs done before GLFW starts (Vulkan: GLFW told where
+// Vulkan's functions come from)
+void beforeGlfwStarts();
 // GLFW's window hints for the backend, before a window is made
 void hint();
 // Sets up a new window to draw in (display.glfw()), keeping what it needs

@@ -1,6 +1,6 @@
 // ImGuiBackend.hpp - ImGui's platform and renderer backends for the desktop
-// backend the program is built with: GLFW with OpenGL 3 (ImGuiOpenGl.cpp)
-// or with Metal (ImGuiMetal.cpp)
+// backend the program is built with: GLFW with OpenGL 3 (ImGuiOpenGl.cpp),
+// Metal (ImGuiMetal.cpp) or Vulkan (ImGuiVulkan.cpp)
 #pragma once
 
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
