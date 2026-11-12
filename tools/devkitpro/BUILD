@@ -13,7 +13,10 @@ py_library(
 # devkitPro's make, and the CIA, for a 3DS app
 py_binary(
     name = "build_3ds",
-    srcs = ["build_3ds.py"],
+    srcs = [
+        "banner.py",
+        "build_3ds.py",
+    ],
     visibility = ["//visibility:public"],
     deps = [":devkitpro_image"],
 )

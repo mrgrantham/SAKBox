@@ -8,6 +8,7 @@ Builds Nintendo 3DS and DS homebrew with [devkitPro](https://devkitpro.org)'s to
 | `run_in_azahar.sh`, `run_in_melonds.sh` | What `bazel run` runs: opens a 3DS app in Azahar (see [`tools/azahar`](../azahar/README.md)), or a DS app in melonDS (see [`tools/melonds`](../melonds/README.md)) |
 | `build_nds.py` | Builds a DS app inside the image: devkitPro's `make`, which makes the `.nds` |
 | `build_3ds.py` | Builds an app inside the image: devkitPro's `make`, then the CIA (bannertool's banner, makerom) |
+| `banner.py` | Draws a 3DS app's default HOME Menu banner: its title, description and author, from its `Makefile` |
 | `build_cia_tools.py` | Builds makerom and bannertool from source inside the image (the `cia_tools` target) |
 | `devkitpro_image.py` | Runs a script in the image for the two above. Files go in and results come out as tar streams on stdin/stdout, so no folders are shared with the container and nothing it writes ends up owned by root. Python, so it runs the same on every host. |
 
@@ -52,7 +53,7 @@ devkitpro_3ds_app(
 | --- | --- | --- |
 | `unique_id` | The title's ID, `0xF0000`-`0xF7FFF` for homebrew. Two CIAs with the same ID replace each other when installed. | One worked out from the target's label, so each app has its own |
 | `product_code` | Its product code | `CTR-H-` and the last four digits of the ID |
-| `banner_image` | The HOME Menu banner, a 256x128 PNG | A plain blue one |
+| `banner_image` | The HOME Menu banner, a 256x128 PNG, shown on the top screen when the app is selected | The `Makefile`'s `APP_TITLE`, `APP_DESCRIPTION` and `APP_AUTHOR` on blue, so each app can be told apart ([`banner.py`](banner.py), in stb_easy_font's letters) |
 | `banner_sound` | The banner's sound, a WAV of up to 3 seconds | A short chime |
 
 The CIA is unencrypted, made the standard way for homebrew: [makerom](https://github.com/3DSGuy/Project_CTR) (from Project_CTR) builds it from the `.elf` with the settings file (`template.rsf`) and boot logo of [Steveice10's buildtools](https://github.com/Steveice10/buildtools), and [bannertool](https://github.com/diasurgical/bannertool) makes the banner. All three are MIT, pinned in `MODULE.bazel`, and built from source inside the devkitPro image by `//tools/devkitpro:cia_tools` the first time a 3DS app is built (Bazel then caches them), so they run on whatever processor Docker does. bannertool is compiled directly rather than with its own Makefile, which only knows x86 hosts.

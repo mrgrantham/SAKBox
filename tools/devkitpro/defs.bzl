@@ -127,7 +127,7 @@ def _devkitpro_3ds_app_impl(ctx):
     # The CIA: the tools, the standard settings and logo, the banner
     unique_id = _unique_id(ctx)
     makerom, bannertool = ctx.files._cia_tools
-    cia_inputs = [makerom, bannertool, ctx.file._rsf, ctx.file._logo]
+    cia_inputs = [makerom, bannertool, ctx.file._rsf, ctx.file._logo, ctx.file._banner_font]
     args = ctx.actions.args()
     args.add(DEVKITARM_IMAGE)
     args.add(name)
@@ -136,6 +136,7 @@ def _devkitpro_3ds_app_impl(ctx):
     args.add("--bannertool", bannertool)
     args.add("--rsf", ctx.file._rsf)
     args.add("--logo", ctx.file._logo)
+    args.add("--font", ctx.file._banner_font)
     args.add("--unique-id", unique_id)
     args.add("--product-code", ctx.attr.product_code or "CTR-H-" + unique_id[-4:])
     if ctx.file.banner_image:
@@ -187,7 +188,8 @@ _devkitpro_3ds_app = rule(
         "product_code": attr.string(doc = "The CIA's product code (default: CTR-H- and the ID)"),
         "banner_image": attr.label(
             allow_single_file = [".png"],
-            doc = "The HOME Menu banner: a 256x128 PNG (default: a plain one)",
+            doc = "The HOME Menu banner: a 256x128 PNG (default: the Makefile's APP_TITLE, " +
+                  "APP_DESCRIPTION and APP_AUTHOR on blue)",
         ),
         "banner_sound": attr.label(
             allow_single_file = [".wav"],
@@ -196,6 +198,8 @@ _devkitpro_3ds_app = rule(
         "_cia_tools": attr.label(default = "//tools/devkitpro:cia_tools"),
         "_rsf": attr.label(default = "@ctr_buildtools//:3ds/template.rsf", allow_single_file = True),
         "_logo": attr.label(default = "@ctr_buildtools//:3ds/logo.bcma.lz", allow_single_file = True),
+        # The default banner's letters (see banner.py)
+        "_banner_font": attr.label(default = "@stb//:stb_easy_font.h", allow_single_file = True),
         "_launcher": attr.label(
             default = "//tools/devkitpro:run_in_azahar.sh",
             allow_single_file = True,

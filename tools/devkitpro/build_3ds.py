@@ -6,7 +6,11 @@ Usage: build_3ds.py IMAGE NAME OUT_DIR [CIA options] -- [SRC PATH]...
 (each source file, then the path it goes at in the app's folder)
 
 CIA options: --makerom FILE --bannertool FILE --rsf FILE --logo FILE
---unique-id ID --product-code CODE [--banner-image PNG] [--banner-sound WAV]
+--unique-id ID --product-code CODE --font STB_EASY_FONT_H [--banner-image PNG]
+[--banner-sound WAV]
+
+Without --banner-image, the banner shows the Makefile's APP_TITLE,
+APP_DESCRIPTION and APP_AUTHOR (see banner.py).
 """
 
 import argparse
@@ -16,26 +20,11 @@ import shlex
 import struct
 import sys
 import tempfile
-import zlib
 
+import banner
 import devkitpro_image
 
 CIA_FOLDER = "_cia"  # in the app's folder: the CIA tools and their inputs
-
-
-def default_banner_image(path):
-    """A 256x128 PNG for the HOME Menu banner: a blue gradient."""
-    width, height = 256, 128
-    rows = b"".join(
-        b"\x00" + bytes([20 + y // 4, 60 + y // 2, 140 + y // 2]) * width for y in range(height))
-
-    def chunk(kind, data):
-        return (struct.pack(">I", len(data)) + kind + data +
-                struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF))
-
-    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)  # 8-bit RGB
-    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) +
-                     chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
 
 
 def default_banner_sound(path):
@@ -90,7 +79,7 @@ def main(argv):
     parser.add_argument("image")
     parser.add_argument("name")
     parser.add_argument("out_dir")
-    for option in ["makerom", "bannertool", "rsf", "logo", "unique-id", "product-code",
+    for option in ["makerom", "bannertool", "rsf", "logo", "unique-id", "product-code", "font",
                    "banner-image", "banner-sound"]:
         parser.add_argument("--" + option)
     args = parser.parse_args(argv[:split])
@@ -107,7 +96,12 @@ def main(argv):
             sound = args.banner_sound
             if not image:
                 image = pathlib.Path(scratch, "banner.png")
-                default_banner_image(image)
+                makefile = next(source for source, path in files if path == "Makefile")
+                text = banner.makefile_settings(pathlib.Path(makefile).read_text())
+                banner.write_png(banner.image(banner.EasyFont(pathlib.Path(args.font).read_text()),
+                                              text.get("APP_TITLE", name),
+                                              text.get("APP_DESCRIPTION", ""),
+                                              text.get("APP_AUTHOR", "")), image)
             if not sound:
                 sound = pathlib.Path(scratch, "banner.wav")
                 default_banner_sound(sound)

@@ -41,8 +41,8 @@ INCLUDES	:=	include scratchpadd_audio/core/include scratchpadd_audio_3ds/output/
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs
-APP_TITLE	:=	ScratchPadd audio
-APP_DESCRIPTION	:=	Music and sounds through the 3DS's DSP
+APP_TITLE	:=	ScratchPadd audio demo
+APP_DESCRIPTION	:=	Music and sounds through the DSP
 APP_AUTHOR	:=	SAKBox
 #GFXBUILD	:=	$(ROMFS)/gfx
 

@@ -40,6 +40,9 @@ GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs
 #GFXBUILD	:=	$(ROMFS)/gfx
+APP_TITLE	:=	Read controls
+APP_DESCRIPTION	:=	Buttons and the circle pad, as pressed
+APP_AUTHOR	:=	libctru's example
 
 #---------------------------------------------------------------------------------
 # options for code generation

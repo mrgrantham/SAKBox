@@ -1,5 +1,9 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
+# (the 3DS apps' default HOME Menu banner draws its letters: see
+# //tools/devkitpro:banner.py)
+exports_files(["stb_easy_font.h"])
+
 cc_library(
     name = "stb",
     hdrs = glob(["**/*.h"]),
