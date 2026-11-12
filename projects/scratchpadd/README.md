@@ -528,4 +528,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 
 ## Roadmap
 
-1. **A run on real consoles**, 3DS and DS: everything here has run only in the emulators.
+1. **Consoles talking to each other**, for local multiplayer: a link padd that carries chosen messages to the padds on another console, as messages cross threads now. The 3DS has local wireless (libctru's `uds`: one hosts, others find and join), and the DS its own (NiFi, up to 16 consoles with no access point; BlocksDS's dswifi has examples, and devkitPro's needs checking). Each talks only to its own kind (a 3DS joins a DS only running DS software). Best designed around a real game.
+2. **Results sent to the Mac:** apps that measure (the 3DS benchmark, the audio self-test) send their results over the home Wi-Fi to a listener on the Mac when they finish, instead of being fetched with ftpd. The 3DS can; a DS Lite can't join a WPA2 network (DS software has open and WEP only), so DS apps write theirs to the flashcart's SD card instead.
+
+(Done: a run on real consoles, a DS Lite and a New 3DS XL, 2026-11-12: every DS and 3DS app ran, and what they found is in their READMEs.)
