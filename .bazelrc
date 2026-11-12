@@ -69,6 +69,12 @@ build --cxxopt='-Werror=return-type'
 # Linux, add --config=clang when building with Clang (see the README's
 # Getting Started).
 build:macos --config=clang
+
+# On a Mac, the tests that need a window, Vulkan (MoltenVK, which Bazel
+# downloads), MIDI or a Metal device run: one that would skip fails instead
+# (projects/expected_capabilities). For a run without a desktop (over SSH,
+# say), pass --test_env=SAKBOX_EXPECT= (nothing expected).
+test:macos --test_env=SAKBOX_EXPECT=display,vulkan,midi,metal
 # Destructors too must say `override`.
 build:clang --per_file_copt='^projects/.*@-Wsuggest-destructor-override'
 # Doc comments must match the code they describe: a @param naming a

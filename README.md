@@ -118,9 +118,9 @@ The build enforces it for everything under `projects/`: `-Wsuggest-override` mak
 **Test files are named `<Source>_test.cpp`**, after the file they test and spelled as it is: `FlexReal_test.cpp` tests `FlexReal.hpp`, `WMatrix_test.cpp` tests `WMatrix.h`, `core_test.cpp` tests Cyclone's `core.h`. A test of something that isn't one file (threading, the README's examples) is named after that: `Threading_test.cpp`, `Examples_test.cpp`. Its Bazel target has the same name (`:FlexReal_test`). This is the googletest and Bazel convention; it also sorts a test next to the code it tests. Libraries kept as published (libpng's `pngtest.cpp`, Waffles' own `src/test/`) keep their names.
 
 **A test that needs something a machine may not have skips with `SKIP_OR_FAIL_WITHOUT`**, from [`projects/expected_capabilities`](projects/expected_capabilities/include/ExpectedCapabilities/ExpectedCapabilities.hpp), not `GTEST_SKIP`. Examples are a window, Vulkan, MIDI or a Metal device: `SKIP_OR_FAIL_WITHOUT("display", "no window to draw in: " + display.error())`. Without it the test skips, unless `SAKBOX_EXPECT` (a comma-separated list passed with `--test_env`) names the capability, in which case it fails instead.
-- The checks set `SAKBOX_EXPECT` to what their machines have: `display,vulkan,midi` in both VMs, `vulkan` in the Docker containers.
+- The checks set `SAKBOX_EXPECT` to what their machines have: `display,vulkan,midi` in both VMs, `vulkan` in the Docker containers. On a Mac, `.bazelrc` sets `display,vulkan,midi,metal` for every `bazel test`; for a run without a desktop (over SSH, say), pass `--test_env=SAKBOX_EXPECT=` to expect nothing.
 - That catches a test skipping where it should run. A skipped test still counts as passed, so Bazel's summary hides it.
-- The names in use are `display`, `vulkan`, `midi` and `metal`. On a Mac, everything is there: `bazel test //... --test_env=SAKBOX_EXPECT=display,vulkan,midi,metal`.
+- The names in use are `display`, `vulkan`, `midi` and `metal`.
 - Use `GTEST_SKIP` only for what a platform can't do at all, such as `sha2_test`'s 4 GiB length where `unsigned long` is 32 bits.
 
 ## Static analysis
