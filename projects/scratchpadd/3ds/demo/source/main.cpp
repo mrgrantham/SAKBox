@@ -89,7 +89,7 @@ private:
     // The controls on the bottom screen; while they're shown, the buttons
     // are theirs
     const bool wasShown = controls_.visible();
-    controls_.handle(ScratchPadd::HandheldControls::inputFrom(down));
+    controls_.handle(ScratchPadd::HandheldControls::inputFrom(down, hidKeysHeld()));
     consoleSelect(&bottom_);
     if (controls_.visible() != wasShown) {
       std::printf("\x1b[2J");

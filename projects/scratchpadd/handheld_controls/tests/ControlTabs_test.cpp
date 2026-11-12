@@ -49,6 +49,21 @@ struct Panel {
 
 Input press(Input input) { return input; }
 
+// The stylus put down at (column, row) for a frame, then lifted
+void tap(ControlTabs &tabs, int column, int row) {
+  tabs.handle({.touch = {{column, row}}});
+  tabs.handle({});
+}
+
+// The stylus put down at `from`, dragged across the row through `columns`
+// (a frame at each), then lifted
+void swipe(ControlTabs &tabs, std::pair<int, int> from, const std::vector<int> &columns) {
+  tabs.handle({.touch = from});
+  for (int column : columns)
+    tabs.handle({.touch = {{column, from.second}}});
+  tabs.handle({});
+}
+
 } // namespace
 
 // A tab for each padd with controls, in the order they answered; a padd's
@@ -149,14 +164,65 @@ TEST(ControlTabsTest, LaysOutTabsControlsAndHelp) {
 }
 
 // Tapping a tab chooses it; tapping a control's row chooses that control.
+// Holding the stylus down is one touch, not a new one each frame.
 TEST(ControlTabsTest, TouchChoosesTabsAndControls) {
   Panel panel;
-  panel.tabs.handle(press({.touched = {{10, 0}}})); // " Ragdoll " starts at column 7
+  tap(panel.tabs, 10, 0); // " Ragdoll " starts at column 7
   EXPECT_EQ(panel.tabs.tab(), 1u);
-  panel.tabs.handle(press({.touched = {{3, 4}}})); // the third control's row
+  tap(panel.tabs, 3, 4); // the third control's row
   EXPECT_EQ(panel.tabs.row(), 2u);
-  panel.tabs.handle(press({.touched = {{3, 20}}})); // under the list: nothing
+  tap(panel.tabs, 3, 20); // under the list: nothing
   EXPECT_EQ(panel.tabs.row(), 2u);
+  panel.tabs.handle({.touch = {{3, 2}}});
+  panel.tabs.handle({.touch = {{3, 2}}});
+  panel.tabs.handle({.touch = {{3, 3}}}); // held, and slid down a row: still the first
+  EXPECT_EQ(panel.tabs.row(), 0u);
+  EXPECT_TRUE(panel.sent.empty());
+}
+
+// Tapping a boolean's row chooses it and toggles it, as A does; tapping
+// another control's row only chooses it.
+TEST(ControlTabsTest, TappingABooleanTogglesIt) {
+  Panel panel;
+  tap(panel.tabs, 20, 4); // mute (master, music, mute)
+  EXPECT_EQ(panel.tabs.row(), 2u);
+  ASSERT_EQ(panel.sent.size(), 1u);
+  EXPECT_EQ(panel.sent[0].first, "mute");
+  EXPECT_TRUE(std::get<ControlType::Boolean>(panel.sent[0].second).value);
+  EXPECT_EQ(panel.text(4).substr(29), "[x]");
+  tap(panel.tabs, 29, 4);
+  EXPECT_FALSE(std::get<ControlType::Boolean>(panel.sent.back().second).value);
+  tap(panel.tabs, 20, 2); // master: chosen, not changed
+  EXPECT_EQ(panel.tabs.row(), 0u);
+  EXPECT_EQ(panel.sent.size(), 2u);
+  swipe(panel.tabs, {20, 4}, {22, 25}); // swiping a boolean neither steps nor toggles it
+  EXPECT_EQ(panel.sent.size(), 2u);
+}
+
+// Swiping a number's row steps it a step a column the stylus moves, from
+// where it came down, and back again; a ranged number crosses its range in
+// kSwipeSteps columns. A string with allowed values steps through them.
+TEST(ControlTabsTest, SwipingStepsAControl) {
+  Panel panel;
+  swipe(panel.tabs, {10, 3}, {9, 7, 6, 8}); // music, 0.5: down 4 steps of 0.05, back 2
+  const auto music = [&] { return std::get<ControlType::Double>(panel.sent.back().second).value; };
+  EXPECT_EQ(panel.sent.size(), 4u); // one change for each column that moved
+  EXPECT_NEAR(music(), 0.4, 1e-9);
+  EXPECT_EQ(panel.text(3).substr(28), "0.40");
+  swipe(panel.tabs, {10, 3}, {40, 0}); // off the ends: held to its range
+  EXPECT_NEAR(music(), 0.0, 1e-9);
+
+  panel.tabs.handle({.r = true});
+  swipe(panel.tabs, {5, 3}, {6}); // Steps a second: "30" to "60"
+  EXPECT_EQ(std::get<ControlType::String>(panel.sent.back().second).value, "60");
+
+  ControlTabs wide({}, 32, 24);
+  wide.show(snapshotOf("MidiPadd", {{"note", ControlType::Integer(64, {{0, 127}})}}),
+            PaddAddress{});
+  swipe(wide, {10, 2}, {12}); // 2 columns of 127 / 20 (6, as a whole number)
+  EXPECT_NE(wide.lines()[2][0].text.find("76"), std::string::npos);
+  wide.handle({.right = true}); // the D-pad still steps by 1
+  EXPECT_NE(wide.lines()[2][0].text.find("77"), std::string::npos);
 }
 
 // SELECT hides it and shows it again; hidden, it ignores the other buttons.

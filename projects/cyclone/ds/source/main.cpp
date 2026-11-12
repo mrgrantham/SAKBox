@@ -394,7 +394,8 @@ private:
     }
     // While the controls are shown, the buttons are theirs
     const bool wasShown = controls_.visible();
-    controls_.handle(ScratchPadd::HandheldControls::inputFrom(static_cast<std::uint32_t>(down)));
+    controls_.handle(ScratchPadd::HandheldControls::inputFrom(
+        static_cast<std::uint32_t>(down), static_cast<std::uint32_t>(keysHeld())));
     if (controls_.visible() != wasShown) {
       std::printf("\x1b[2J"); // the screen cleared for the other
       if (!controls_.visible())

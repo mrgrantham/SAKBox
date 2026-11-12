@@ -1,7 +1,9 @@
 #include <ScratchPadd/HandheldControls/ControlTabs.hpp>
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
+#include <utility>
 
 namespace ScratchPadd::HandheldControls {
 
@@ -80,8 +82,10 @@ std::size_t ControlTabs::row() const { return tabs_.empty() ? 0 : tabs_[tab_].ro
 bool ControlTabs::handle(const Input &input) {
   if (input.select)
     setVisible(!visible_);
-  if (!visible_ || tabs_.empty())
+  if (!visible_ || tabs_.empty()) {
+    stroke_.reset();
     return dirty_;
+  }
   Tab &tab = tabs_[tab_];
   if (input.l && tab_ > 0) {
     --tab_;
@@ -96,65 +100,103 @@ bool ControlTabs::handle(const Input &input) {
     ++tab.row;
     dirty_ = true;
   } else if (input.left || input.right) {
-    step(input.right ? 1 : -1);
+    step(input.right ? 1 : -1, Pace::Press);
   } else if (input.a) {
     toggle();
   }
-  if (input.touched) {
-    const auto [column, row] = *input.touched;
-    if (row == kTabRow) {
-      const auto spans = tabSpans();
-      for (std::size_t i = 0; i < spans.size(); ++i) {
-        if (column >= spans[i].first && column < spans[i].second && i != tab_) {
-          tab_ = i;
-          dirty_ = true;
-        }
-      }
-    } else if (row >= kFirstListRow && row < rows_ - 1) {
-      Tab &touchedTab = tabs_[tab_];
-      const std::size_t chosen = firstRowShown() + static_cast<std::size_t>(row - kFirstListRow);
-      if (chosen < touchedTab.names.size() && chosen != touchedTab.row) {
-        touchedTab.row = chosen;
-        dirty_ = true;
-      }
-    }
-  }
+  if (input.touch)
+    touchAt(input.touch->first, input.touch->second);
+  else if (stroke_)
+    lift();
   return dirty_;
 }
 
-void ControlTabs::step(int direction) {
+void ControlTabs::touchAt(int column, int row) {
+  if (stroke_) {
+    // A swipe: a step for each column moved since the last, on the control
+    // it came down on (booleans are tapped, not swiped)
+    const int steps = column - stroke_->column;
+    if (steps == 0 || !stroke_->control)
+      return;
+    stroke_->column = column;
+    stroke_->moved = true;
+    const Tab &tab = tabs_[tab_];
+    if (tab.names[tab.row] == *stroke_->control &&
+        !std::holds_alternative<ControlType::Boolean>(
+            tab.controls.controlMap.at(tab.names[tab.row])))
+      step(steps, Pace::Swipe);
+    return;
+  }
+  // The stylus just came down: on a tab, it's chosen; on a row, its control
+  stroke_ = Stroke{.column = column};
+  if (row == kTabRow) {
+    const auto spans = tabSpans();
+    for (std::size_t i = 0; i < spans.size(); ++i) {
+      if (column >= spans[i].first && column < spans[i].second && i != tab_) {
+        tab_ = i;
+        dirty_ = true;
+      }
+    }
+  } else if (row >= kFirstListRow && row < rows_ - 1) {
+    Tab &tab = tabs_[tab_];
+    const std::size_t chosen = firstRowShown() + static_cast<std::size_t>(row - kFirstListRow);
+    if (chosen < tab.names.size()) {
+      if (chosen != tab.row)
+        dirty_ = true;
+      tab.row = chosen;
+      stroke_->control = tab.names[chosen];
+    }
+  }
+}
+
+void ControlTabs::lift() {
+  // A tap (down and up without moving) on a boolean toggles it
+  const std::optional<Stroke> stroke = std::exchange(stroke_, std::nullopt);
+  const Tab &tab = tabs_[tab_];
+  if (stroke && stroke->control && !stroke->moved && tab.names[tab.row] == *stroke->control)
+    toggle();
+}
+
+void ControlTabs::step(int steps, Pace pace) {
   Tab &tab = tabs_[tab_];
   const std::string &name = tab.names[tab.row];
   ControlTypeVariant value = tab.controls.controlMap.at(name);
   bool changed = false;
   if (auto *d = std::get_if<ControlType::Double>(&value)) {
     const double size = d->enforcableRange
-                            ? (d->enforcableRange->second - d->enforcableRange->first) / 20
+                            ? (d->enforcableRange->second - d->enforcableRange->first) / kSwipeSteps
                             : kStepWithoutRange;
-    double next = d->value + direction * size;
+    double next = d->value + steps * size;
     if (d->enforcableRange)
       next = std::clamp(next, d->enforcableRange->first, d->enforcableRange->second);
     changed = next != d->value;
     d->value = next;
   } else if (auto *i = std::get_if<ControlType::Integer>(&value)) {
-    int32_t next = i->value + direction;
+    std::int64_t size = 1;
+    if (pace == Pace::Swipe && i->enforcableRange)
+      size = std::max<std::int64_t>(
+          1, (std::int64_t{i->enforcableRange->second} - i->enforcableRange->first) / kSwipeSteps);
+    std::int64_t next = i->value + steps * size;
     if (i->enforcableRange)
-      next = std::clamp(next, i->enforcableRange->first, i->enforcableRange->second);
+      next = std::clamp<std::int64_t>(next, i->enforcableRange->first, i->enforcableRange->second);
+    next = std::clamp<std::int64_t>(next, INT32_MIN, INT32_MAX);
     changed = next != i->value;
-    i->value = next;
+    i->value = static_cast<int32_t>(next);
   } else if (auto *b = std::get_if<ControlType::Boolean>(&value)) {
-    changed = b->value != (direction > 0);
-    b->value = direction > 0;
+    changed = b->value != (steps > 0);
+    b->value = steps > 0;
   } else if (auto *s = std::get_if<ControlType::String>(&value)) {
     // Through its allowed values, round and round; free text isn't edited
-    if (s->enforcableRange && !s->enforcableRange->empty()) {
+    if (s->enforcableRange && s->enforcableRange->size() > 1) {
       const auto &options = *s->enforcableRange;
       const auto at = std::ranges::find(options, s->value);
       const auto index =
           at == options.end() ? 0 : static_cast<std::ptrdiff_t>(at - options.begin());
       const auto count = static_cast<std::ptrdiff_t>(options.size());
-      s->value = options[static_cast<std::size_t>(((index + direction) % count + count) % count)];
-      changed = options.size() > 1;
+      const std::string next =
+          options[static_cast<std::size_t>(((index + steps) % count + count) % count)];
+      changed = next != s->value;
+      s->value = next;
     }
   }
   if (changed)

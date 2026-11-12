@@ -33,10 +33,11 @@ constexpr int kFirstRow = 0;
 constexpr int kFirstRow = 1;
 #endif
 
-// This frame's input: `down` is the buttons that went down this frame (as
-// libnds' keysDown() or libctru's hidKeysDown() give them), and a touch is
-// read from the touch screen, in 8-pixel text cells
-inline Input inputFrom(std::uint32_t down) {
+// This frame's input: `down` is the buttons that went down this frame and
+// `held` those down now (as libnds' keysDown() and keysHeld(), or libctru's
+// hidKeysDown() and hidKeysHeld(), give them). While the stylus is on the
+// screen, where it is, in 8-pixel text cells.
+inline Input inputFrom(std::uint32_t down, std::uint32_t held) {
   Input input{.up = (down & KEY_UP) != 0,
               .down = (down & KEY_DOWN) != 0,
               .left = (down & KEY_LEFT) != 0,
@@ -45,14 +46,14 @@ inline Input inputFrom(std::uint32_t down) {
               .l = (down & KEY_L) != 0,
               .r = (down & KEY_R) != 0,
               .select = (down & KEY_SELECT) != 0};
-  if (down & KEY_TOUCH) {
+  if (held & KEY_TOUCH) {
     touchPosition touch;
 #if defined(__NDS__)
     touchRead(&touch);
 #else
     hidTouchRead(&touch);
 #endif
-    input.touched = {{touch.px / 8, touch.py / 8}};
+    input.touch = {{touch.px / 8, touch.py / 8}};
   }
   return input;
 }
