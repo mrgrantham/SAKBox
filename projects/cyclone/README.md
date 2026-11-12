@@ -245,19 +245,21 @@ bazel run //projects/cyclone/ds:cyclone-ds-ragdoll   # needs Docker running (too
 
 It builds Cyclone in Q16.16 fixed point: `real` is flexmath's `FlexPoint16` (`CYCLONE_FLEX_POINT16`; see [The number type](#the-number-type)). The DS has no floating-point hardware, so `float`, which it used before, was all done in software by the C library, on a 67 MHz ARM9. Fixed point is integer arithmetic, with the DS's hardware divider and square root unit for division and square roots (`FixedPointNds.hpp` in flexmath, which locks interrupts around each calculation, since the unit's registers are shared; the drawing thread does the same around `gluLookAt`, which uses them too). The snapshots the drawing thread gets are 4.12 vertex coordinates already, a shift from Q16.16, where they used to go through `float`.
 
-**It keeps up with real time, at 30 steps a second, except for a few seconds while the ragdoll lies awake.** When it starts, the app times a few settings (each from a fresh ragdoll, falling, over its first five steps) and shows them; in melonDS, ms a step, before and after the resolver set each contact up once a sub-step (below), and on a DS Lite (2026-11-12):
+**It keeps up with real time, at 30 steps a second, except for a few seconds while the ragdoll lies awake.** When it starts, the app times a few settings (each from a fresh ragdoll, falling, over its first five steps) and shows them; in melonDS, ms a step, before and after the resolver set each contact up once a sub-step (below), and on a DS Lite (2026-11-12, with the resolver in ITCM: below):
 
 | Steps a second | Sub-steps | Resolver sweeps a step (velocity/settle/position; each sub-step's) | `float` | Q16.16 before | Q16.16 | Real time Q16.16 manages | DS Lite, Q16.16 | Real time on a DS Lite |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 60 | 1 | 40/10/10 (Cyclone's own) | 122 | 29.0 | 19.4 | 0.86x | 21.9 | 0.76x |
-| 60 | 2 | 16/4/4; 8/2/2 | 87 | 19.7 | 15.0 | 1.1x | 19.5 | 0.85x |
-| 60 | 4 | 16/4/4; 4/1/1 | 131 | 26.3 | 21.6 | 0.77x | 29.5 | 0.56x |
-| 30 | 2 | 16/4/4; 8/2/2 | 85 | 17.8 | 14.2 | 2.3x | 18.4 | 1.8x |
-| 30 | 4 | 16/4/4; 4/1/1 (what it runs with) | | | 21.1 | 1.6x | 28.6 | 1.2x |
+| 60 | 1 | 40/10/10 (Cyclone's own) | 122 | 29.0 | 19.4 | 0.86x | 20.9 | 0.80x |
+| 60 | 2 | 16/4/4; 8/2/2 | 87 | 19.7 | 15.0 | 1.1x | 17.9 | 0.93x |
+| 60 | 4 | 16/4/4; 4/1/1 | 131 | 26.3 | 21.6 | 0.77x | 27.7 | 0.60x |
+| 30 | 2 | 16/4/4; 8/2/2 | 85 | 17.8 | 14.2 | 2.3x | 16.8 | 2.0x |
+| 30 | 4 | 16/4/4; 4/1/1 (what it runs with) | | | 21.1 | 1.6x | 26.6 | 1.25x |
 
 **The resolver runs from ITCM**, the ARM9's 32 KB of fast instruction memory: Cyclone marks its work each sub-step `[[gnu::hot]]` (`resolveSubStep`, the sweeps, the joints' set-up and the helpers they call, and `RigidBody::integrate`), which GCC and Clang put in sections of their own (`.text.hot.*`), and the DS app's Makefile renames them `.itcm` before linking, which devkitPro's linker script places in ITCM (23 KB of it). Cyclone itself knows nothing of the DS: the attribute is a standard one, and on desktops it only groups and optimises that code.
 
-**A DS Lite is about a third slower than melonDS** at the same step (13% at 60/1, 30-37% with sub-steps), nearly all of it in resolving: a step at 30/4 took 4.2 ms to move the bones, 1.1 to find contacts and 19.6 to resolve them, against melonDS's 3.3, 1.0 and 14.1. The resolver works through the most data, and melonDS doesn't charge for the ARM9's small caches and slow main memory as the hardware does. Falling, the default (30 steps a second in 4 sub-steps) still keeps up, with less to spare. Asleep, a running step took 2 ms and the physics thread was 6% busy, at 1.00x.
+**A DS Lite is about a quarter slower than melonDS** at the same step (8% at 60/1, 18-28% with sub-steps), nearly all of it in resolving: a step at 30/4 takes 4.1 ms to move the bones, 1.1 to find contacts and 17.8 to resolve them, against melonDS's 3.3, 1.0 and 14.1. melonDS doesn't charge for the ARM9's small caches and slow main memory as the hardware does. Running the resolver from ITCM took 5-9% off (30/4 was 28.6 ms, its resolving 19.6); what's left is mostly its data: lying down, the ragdoll's 38 or so contacts take about 9 KB of solver data, more than twice the ARM9's 4 KB data cache, so each sweep reads them again from main memory.
+
+Running, at 30 steps a second in 4 sub-steps: falling, a step takes 32 ms (0.94x real time, with the drawing's share of the ARM9); lying on the ground awake, 63 ms (0.52x), for about 5 s until it falls asleep; asleep, 1-2 ms (the physics thread 3-6% busy, 1.00x).
 
 - **Why 30 steps a second in 4 sub-steps:** at 60 steps a second a falling step (15 ms in 2 sub-steps) and the drawing thread's share of the ARM9 don't fit in a frame, and the ragdoll ran at about half speed. At 30, drawn blended so it moves as smoothly, a falling step takes 21 ms of its 33, and its joints hold as well as at 60 in 2 sub-steps: over 20 pushes in Q16.16 the worst stretch is 0.6 cm, where 2 sub-steps at 30 stretch 5 cm. It's drawn a step behind, 33 ms.
 - **Running, a step takes:** falling, 21 ms (the simulation keeps up); lying on the ground but awake, 45 ms, 0.73x real time, since every bone touches the ground (38 contacts, against about 19 falling); asleep, 1 ms (the physics thread is 2% busy). The ragdoll falls asleep a few seconds after it stops moving (`ragdoll_test`: all 20 pushes within 12 s), and its world then skips its steps (`World::runPhysics`).
