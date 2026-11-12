@@ -464,43 +464,44 @@ private:
     if (controls_.visible()) {
       return; // the panel has the screen; they're drawn when it's hidden
     }
-    std::printf("\x1b[1;1HCyclone's ragdoll on a DS\x1b[K");
+    // (rows from 0; the bottom screen's console is 32 columns by 24 rows)
+    constexpr int columns = ScratchPadd::HandheldControls::usableColumns(32);
+    using ScratchPadd::HandheldControls::printLine;
+    printLine(1, columns, "Cyclone's ragdoll on a DS");
     if (renderer_) {
       const Scene::FrameCounts drawn = renderer_->lastFrame();
-      std::printf("\x1b[2;1H3D: %u polygons, %u vertices\x1b[K", drawn.polygons, drawn.vertices);
+      printLine(2, columns, "3D: %u polygons, %u vertices", drawn.polygons, drawn.vertices);
     }
-    std::printf("\x1b[3;1HPhysics: %d steps a second,\x1b[K", figures_.stepsPerSecond);
-    std::printf("\x1b[4;1H  %d sub-step%s each, %s\x1b[K", figures_.subSteps,
-                figures_.subSteps == 1 ? "" : "s", blend() ? "blended" : "unblended");
+    printLine(3, columns, "Physics: %d steps a second,", figures_.stepsPerSecond);
+    printLine(4, columns, "  %d sub-step%s each, %s", figures_.subSteps,
+              figures_.subSteps == 1 ? "" : "s", blend() ? "blended" : "unblended");
     // (While running, a step's time includes the main thread's, which takes
     // over each frame to draw)
-    std::printf("\x1b[5;1HA step takes %.0f ms (running)\x1b[K", figures_.stepMilliseconds);
-    std::printf("\x1b[6;1HPhysics thread busy: %.0f%%\x1b[K", 100 * figures_.busy);
-    std::printf("\x1b[7;1HSimulation speed: %.2fx\x1b[K", figures_.speed);
-    std::printf("\x1b[8;1HWorst joint stretch: %.2f cm\x1b[K", 100 * figures_.worstStretch);
+    printLine(5, columns, "A step takes %.0f ms (running)", figures_.stepMilliseconds);
+    printLine(6, columns, "Physics thread busy: %.0f%%", 100 * figures_.busy);
+    printLine(7, columns, "Simulation speed: %.2fx", figures_.speed);
+    printLine(8, columns, "Worst joint stretch: %.2f cm", 100 * figures_.worstStretch);
     if (figures_.audio) {
-      std::printf("\x1b[9;1HKnocks played: %u\x1b[K", figures_.knocks);
+      printLine(9, columns, "Knocks played: %u", figures_.knocks);
     } else {
-      std::printf("\x1b[9;1HNo AudioPadd: no sound\x1b[K");
+      printLine(9, columns, "No AudioPadd: no sound");
     }
-    std::printf("\x1b[10;1HA: reset X: sub-steps B: blend\x1b[K");
-    std::printf("\x1b[11;1HY: 30/60 steps SELECT: controls\x1b[K");
-    std::printf("\x1b[12;1HSTART: quit\x1b[K");
-    std::printf("\x1b[13;1HMeasured at start (ms a step):\x1b[K");
-    std::printf("\x1b[14;1Hsteps/s sub sweeps        ms\x1b[K");
+    printLine(10, columns, "A: reset X: sub-steps B: blend");
+    printLine(11, columns, "Y: 30/60 steps SELECT: controls");
+    printLine(12, columns, "START: quit");
+    printLine(13, columns, "Measured at start (ms a step):");
+    printLine(14, columns, "steps/s sub sweeps        ms");
     int row = 15;
     for (const Benchmark::Row &r : benchmark_.rows) {
       if (r.subSteps > 0) {
-        std::printf("\x1b[%d;1H%-7d %-3d %2d/%2d/%2d  %7.1f\x1b[K", row, r.stepsPerSecond,
-                    r.subSteps, r.velocitySweeps, r.settleSweeps, r.positionSweeps,
-                    r.stepMilliseconds);
+        printLine(row, columns, "%-7d %-3d %2d/%2d/%2d  %7.1f", r.stepsPerSecond, r.subSteps,
+                  r.velocitySweeps, r.settleSweeps, r.positionSweeps, r.stepMilliseconds);
       }
       ++row;
     }
-    std::printf("\x1b[%d;1HA step as it runs, ms:\x1b[K", ++row);
-    std::printf("\x1b[%d;1Hmove %.1f find %.1f solve %.1f\x1b[K", ++row,
-                benchmark_.integrateMilliseconds, benchmark_.contactsMilliseconds,
-                benchmark_.resolveMilliseconds);
+    printLine(++row, columns, "A step as it runs, ms:");
+    printLine(++row, columns, "move %.1f find %.1f solve %.1f", benchmark_.integrateMilliseconds,
+              benchmark_.contactsMilliseconds, benchmark_.resolveMilliseconds);
   }
 
   // The last two snapshots, drawn between (see drawRagdoll), and when the

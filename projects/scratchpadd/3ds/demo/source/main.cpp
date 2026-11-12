@@ -30,17 +30,21 @@
 namespace {
 
 using namespace HandheldDemo;
+using ScratchPadd::HandheldControls::printLine;
+
+// The top screen's console is 50 columns by 30 rows, the bottom's 40 by 30
+constexpr int kTopColumns = ScratchPadd::HandheldControls::usableColumns(50);
+constexpr int kBottomColumns = ScratchPadd::HandheldControls::usableColumns(40);
 
 class ScreenPadd : public ScratchPadd::Base {
 public:
   ScreenPadd(ScratchPadd::System *system)
-      : Base(system),
-        controls_(
-            [this](ScratchPadd::PaddAddress owner,
-                   const ScratchPadd::MessageType::ControlChange &change) {
-              sendTo(owner, change);
-            },
-            ScratchPadd::HandheldControls::usableColumns(40), 30) { // the bottom screen's console
+      : Base(system), controls_(
+                          [this](ScratchPadd::PaddAddress owner,
+                                 const ScratchPadd::MessageType::ControlChange &change) {
+                            sendTo(owner, change);
+                          },
+                          kBottomColumns, 30) {
     // Every padd's controls, for the panel SELECT shows
     receive<ScratchPadd::MessageType::ControlSnapshot>(
         [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot,
@@ -69,9 +73,10 @@ public:
   }
 
 private:
-  static constexpr int kStatusRow = 3; // status lines 0-7 go from here
-  static constexpr int kHelpRow = 12;
-  static constexpr int kLogRow = 14;
+  // Rows on the top screen, from 0
+  static constexpr int kStatusRow = 2; // status lines 0-7 go from here
+  static constexpr int kHelpRow = 11;
+  static constexpr int kLogRow = 13;
   static constexpr std::size_t kLogLines = 16;
 
   // One frame, then the next (gspWaitForVBlank paces them at 60 a second)
@@ -114,26 +119,25 @@ private:
     push([this] { frame(); });
   }
 
-  // The title, the status lines (each at its own row), the buttons, then
-  // the log (rows are 1-based; the top screen's console is 50 columns by 30
-  // rows)
+  // On the top screen: the title, the status lines (each at its own row),
+  // the buttons, then the log
   void draw() {
-    std::printf("\x1b[1;1HScratchPadd on a 3DS: padds talking by messages\x1b[K");
+    printLine(0, kTopColumns, "ScratchPadd on a 3DS: padds talking by messages");
     for (const auto &[row, text] : status_) {
-      std::printf("\x1b[%d;1H%.49s\x1b[K", kStatusRow + row, text.c_str());
+      printLine(kStatusRow + row, kTopColumns, "%s", text.c_str());
     }
-    std::printf("\x1b[%d;1HA chime  B knock  X blast  Y tune  START quit\x1b[K", kHelpRow);
-    std::printf("\x1b[%d;1HSELECT controls (bottom screen)\x1b[K", kHelpRow + 1);
+    printLine(kHelpRow, kTopColumns, "A chime  B knock  X blast  Y tune  START quit");
+    printLine(kHelpRow + 1, kTopColumns, "SELECT controls (bottom screen)");
     int row = kLogRow;
     for (const std::string &line : log_) {
-      std::printf("\x1b[%d;1H%.49s\x1b[K", row++, line.c_str());
+      printLine(row++, kTopColumns, "%s", line.c_str());
     }
   }
 
   // While the controls are hidden, the bottom screen says how to show them
   void showControlsHint() {
     consoleSelect(&bottom_);
-    std::printf("\x1b[1;1HSELECT: every padd's controls");
+    printLine(0, kBottomColumns, "SELECT: every padd's controls");
     consoleSelect(&top_);
   }
 

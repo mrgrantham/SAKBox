@@ -1,8 +1,9 @@
 // ConsolePanel.hpp - ControlTabs on a DS or 3DS: its input from the buttons
-// and touch screen, and its lines printed on the current text console (the
-// DS's libnds console, or a 3DS console chosen with consoleSelect). The two
-// consoles take the same escape codes and the keys have the same names, so
-// this is the same on both. Only for the handhelds.
+// and touch screen, and its lines printed on the current text console (a
+// console chosen with consoleSelect, on either). The two consoles take the
+// same escape codes and the keys have the same names, so this is the same on
+// both. Also printLine, for an app's own text on either console. Only for
+// the handhelds.
 #pragma once
 
 #if defined(__NDS__)
@@ -32,6 +33,20 @@ constexpr int kFirstRow = 0;
 #else
 constexpr int kFirstRow = 1;
 #endif
+
+// Prints a line of text at `row` (counted from 0 on both consoles) from the
+// first column, cut to `columns` (usableColumns of the console's width, so
+// it never wraps, or on the bottom row scrolls the screen), and clears the
+// rest of the row. `format` and `args` are printf's.
+template <typename... Args> void printLine(int row, int columns, const char *format, Args... args) {
+  char text[128];
+  if constexpr (sizeof...(Args) == 0) {
+    std::snprintf(text, sizeof text, "%s", format);
+  } else {
+    std::snprintf(text, sizeof text, format, args...);
+  }
+  std::printf("\x1b[%d;%dH%.*s\x1b[K", row + kFirstRow, kFirstRow, columns, text);
+}
 
 // This frame's input: `down` is the buttons that went down this frame and
 // `held` those down now (as libnds' keysDown() and keysHeld(), or libctru's

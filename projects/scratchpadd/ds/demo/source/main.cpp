@@ -10,9 +10,10 @@
 //   AudioPadd      (own thread)  plays them on the DS's hardware sound
 //                  channels (AudioPadd/HardwareChannelsAudioPadd.hpp)
 //
-// A, B and X play a chime, a knock and a blast; Y starts and stops the
-// tune; SELECT shows every padd's controls (AudioPadd's volumes) in place of
-// the text, as tabs (HandheldControls); START quits.
+// The top screen shows what the padds say; the bottom screen (the touch
+// screen) shows every padd's controls (AudioPadd's volumes) as tabs
+// (HandheldControls) once SELECT shows them. A, B and X play a chime, a knock
+// and a blast; Y starts and stops the tune; START quits.
 #include <filesystem.h>
 #include <nds.h>
 
@@ -31,6 +32,14 @@
 namespace {
 
 using namespace HandheldDemo;
+using ScratchPadd::HandheldControls::printLine;
+
+// Both screens' consoles are 32 columns by 24 rows
+constexpr int kColumns = ScratchPadd::HandheldControls::usableColumns(32);
+constexpr int kRows = 24;
+
+// Whether the app's file system started (main sets it, before the padds)
+bool fileSystem = true;
 
 class ScreenPadd : public ScratchPadd::Base {
 public:
@@ -40,7 +49,7 @@ public:
                                  const ScratchPadd::MessageType::ControlChange &change) {
                             sendTo(owner, change);
                           },
-                          ScratchPadd::HandheldControls::usableColumns(32), 24) {
+                          kColumns, kRows) {
     // Every padd's controls, for the panel SELECT shows
     receive<ScratchPadd::MessageType::ControlSnapshot>(
         [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot,
@@ -59,18 +68,30 @@ public:
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 
   void starting() override {
-    consoleDemoInit();
+    // A text console on each screen: the top's for the padds' text, the
+    // bottom's for the controls
+    videoSetMode(MODE_0_2D);
+    videoSetModeSub(MODE_0_2D);
+    vramSetBankA(VRAM_A_MAIN_BG);
+    vramSetBankC(VRAM_C_SUB_BG);
+    consoleInit(&top_, 0, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
+    consoleInit(&bottom_, 0, BgType_Text4bpp, BgSize_T_256x256, 31, 0, false, true);
     status_[0] = "ScreenPadd: main " + threadNumber();
-    controls_.setVisible(false); // the text first; SELECT for the controls
+    if (!fileSystem) {
+      log_.push_back("No file system (nitroFSInit)");
+    }
+    controls_.setVisible(false); // SELECT shows them
+    showControlsHint();
     send(ScratchPadd::MessageType::ControlRequest{});
     push([this] { frame(); });
   }
 
 private:
-  static constexpr int kStatusRow = 3; // status lines 0-7 go from here
+  // Rows on the top screen, from 0
+  static constexpr int kStatusRow = 2; // status lines 0-7 go from here
   static constexpr int kHelpRow = 11;
-  static constexpr int kLogRow = 13;
-  static constexpr std::size_t kLogLines = 11;
+  static constexpr int kLogRow = 14;
+  static constexpr std::size_t kLogLines = kRows - kLogRow;
 
   // One frame, then the next (swiWaitForVBlank paces them at 60 a second)
   void frame() {
@@ -85,44 +106,56 @@ private:
       system_->stop();
       return;
     }
-    // While the controls are shown, the buttons are theirs
+    // The controls on the bottom screen; while they're shown, the buttons
+    // are theirs
     const bool wasShown = controls_.visible();
     controls_.handle(ScratchPadd::HandheldControls::inputFrom(
         static_cast<std::uint32_t>(down), static_cast<std::uint32_t>(keysHeld())));
+    consoleSelect(&bottom_);
     if (controls_.visible() != wasShown) {
-      std::printf("\x1b[2J"); // the screen cleared for the other
+      std::printf("\x1b[2J");
+      if (!controls_.visible()) {
+        showControlsHint();
+      }
     }
-    if (controls_.visible()) {
-      ScratchPadd::HandheldControls::draw(controls_);
-      push([this] { frame(); });
-      return;
-    }
-    static const std::pair<int, const char *> kButtons[] = {
-        {KEY_A, "A"}, {KEY_B, "B"}, {KEY_X, "X"}, {KEY_Y, "Y"}};
-    for (const auto &[key, button] : kButtons) {
-      if ((down & key) && !wasShown) {
-        send(ButtonPressed{button});
+    ScratchPadd::HandheldControls::draw(controls_);
+    consoleSelect(&top_);
+    if (!wasShown && !controls_.visible()) {
+      static const std::pair<int, const char *> kButtons[] = {
+          {KEY_A, "A"}, {KEY_B, "B"}, {KEY_X, "X"}, {KEY_Y, "Y"}};
+      for (const auto &[key, button] : kButtons) {
+        if (down & key) {
+          send(ButtonPressed{button});
+        }
       }
     }
     draw();
     push([this] { frame(); });
   }
 
-  // The title, the status lines (each at its own row), the buttons, then
-  // the log (rows are 1-based; the console is 32 columns by 24 rows)
+  // On the top screen: the title, the status lines (each at its own row),
+  // the buttons, then the log
   void draw() {
-    std::printf("\x1b[1;1HScratchPadd on a DS\x1b[K");
+    printLine(0, kColumns, "ScratchPadd on a DS");
     for (const auto &[row, text] : status_) {
-      std::printf("\x1b[%d;1H%.32s\x1b[K", kStatusRow + row, text.c_str());
+      printLine(kStatusRow + row, kColumns, "%s", text.c_str());
     }
-    std::printf("\x1b[%d;1HA chime B knock X blast Y tune\x1b[K", kHelpRow);
-    std::printf("\x1b[%d;1HSELECT controls  START quit\x1b[K", kHelpRow + 1);
+    printLine(kHelpRow, kColumns, "A chime B knock X blast Y tune");
+    printLine(kHelpRow + 1, kColumns, "SELECT controls  START quit");
     int row = kLogRow;
     for (const std::string &line : log_) {
-      std::printf("\x1b[%d;1H%.32s\x1b[K", row++, line.c_str());
+      printLine(row++, kColumns, "%s", line.c_str());
     }
   }
 
+  // While the controls are hidden, the bottom screen says how to show them
+  void showControlsHint() {
+    consoleSelect(&bottom_);
+    printLine(0, kColumns, "SELECT: every padd's controls");
+    consoleSelect(&top_);
+  }
+
+  PrintConsole top_, bottom_;
   ScratchPadd::HandheldControls::ControlTabs controls_;
   std::map<int, std::string> status_;
   std::deque<std::string> log_;
@@ -135,12 +168,9 @@ int main() {
   // The app's file system (NitroFS), packed into the .nds: AudioPadd reads
   // the sounds and the tune from it (nitro:/...). Without it, they don't load
   // and the log says why.
-  const bool files = nitroFSInit(nullptr);
+  fileSystem = nitroFSInit(nullptr);
   ScratchPadd::SystemImplementation<ScreenPadd, SoundBoardPadd, AudioPadd> system;
   system.instantiate();
-  if (!files) {
-    std::printf("\x1b[23;1HNo file system (nitroFSInit)\x1b[K");
-  }
   system.start(); // returns when ScreenPadd stops it (START)
   return 0;
 }
