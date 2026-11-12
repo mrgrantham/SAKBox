@@ -62,6 +62,7 @@ Small programs under `projects/examples/`, mostly one per library. Run any of th
 | [3DS ScratchPadd demo](projects/scratchpadd/README.md#on-the-nintendo-3ds-and-ds) | `//projects/scratchpadd/3ds/demo:scratchpadd-3ds-demo` | Nintendo 3DS homebrew: padds on their own threads, talking by messages, with AudioPadd playing through the 3DS's DSP (A, B, X play sounds; Y a tune; SELECT shows every padd's controls as tabs on the bottom screen). Built and run like read-controls |
 | [3DS audio demo](projects/scratchpadd/README.md#audio) | `//projects/scratchpadd/audio/3ds/demo:scratchpadd-audio-3ds-demo` | Nintendo 3DS homebrew: ScratchPadd audio through the 3DS's DSP, playing a tune and chimes by itself, with the output's figures on screen. Built and run (`bazel run`) like read-controls |
 | [3DS audio self-test](projects/scratchpadd/README.md#audio) | `//projects/scratchpadd/audio/3ds/selftest:scratchpadd-audio-selftest` | Nintendo 3DS homebrew: runs the ScratchPadd audio core's checks on the 3DS and times a mix, showing the results on screen and writing them to the SD card. Built and run (`bazel run`) like read-controls |
+| [3DS scene benchmark](projects/scratchpadd/scene/3ds_benchmark/README.md) | `//projects/scratchpadd/scene/3ds_benchmark:scene-3ds-benchmark` | Nintendo 3DS homebrew: how many triangles the 3DS's GPU draws a frame at 60 and 30 fps, unlit and lit, small and large, mono and stereo, for the scene layer's 3DS budgets. Results on screen and the SD card. Built like read-controls |
 
 ## Third Party
 
