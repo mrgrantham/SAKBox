@@ -108,14 +108,14 @@ void RigidBody::calculateDerivedData() {
                           transformMatrix);
 }
 
-void RigidBody::integrate(real_duration timeStep) {
+[[gnu::hot]] void RigidBody::integrate(real_duration timeStep) {
   if (!isAwake)
     return;
   integrateWithoutSleep(timeStep);
   updateSleep(timeStep);
 }
 
-void RigidBody::integrateWithoutSleep(real_duration timeStep) {
+[[gnu::hot]] void RigidBody::integrateWithoutSleep(real_duration timeStep) {
   if (!isAwake)
     return;
 

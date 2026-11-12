@@ -126,7 +126,22 @@ DEPENDS	:=	$(OFILES:.o=.d)
 # main targets
 #---------------------------------------------------------------------------------
 $(OUTPUT).nds	: 	$(OUTPUT).elf
-$(OUTPUT).elf	:	$(OFILES)
+$(OUTPUT).elf	:	$(OFILES) hot_in_itcm.stamp
+
+#---------------------------------------------------------------------------------
+# Code marked [[gnu::hot]] (Cyclone's resolver: its work each sub-step) runs
+# from ITCM, the ARM9's 32 KB of fast instruction memory: before linking,
+# each object's hot sections (.text.hot.*) are renamed .itcm, which
+# devkitPro's linker script places there. From main RAM, which is slow to
+# read, the hot code is more than the instruction cache holds.
+#---------------------------------------------------------------------------------
+hot_in_itcm.stamp	:	$(OFILES)
+	@for object in $(OFILES); do \
+		renames=$$($(PREFIX)objdump -h $$object | \
+			awk '$$2 ~ /^\.text\.hot\./ { printf " --rename-section %s=.itcm", $$2 }'); \
+		[ -z "$$renames" ] || $(OBJCOPY) $$renames $$object; \
+	done
+	@touch $@
 
 #---------------------------------------------------------------------------------
 %.o	:	%.bin

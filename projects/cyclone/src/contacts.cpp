@@ -20,6 +20,12 @@
 
 using namespace cyclone;
 
+// The resolver's work each sub-step (resolveSubStep, the sweeps, and the
+// joints' set-up and the helpers they call) is marked [[gnu::hot]]: GCC
+// and Clang optimise it for speed and group it in its own sections
+// (.text.hot.*), where a platform can place it in fast memory. The DS app
+// runs it from the ARM9's ITCM (see ds/Makefile).
+
 // Contact implementation
 
 void Contact::setBodyData(RigidBody *one, RigidBody *two, real friction, real restitution) {
@@ -767,15 +773,15 @@ Vector3 pointVelocity(const Vector3 &offset, const Vector3 &linear, const Vector
 
 // The change in `body`'s linear and angular velocity from `impulse` at
 // `offset` from its centre
-void addImpulse(const RigidBody *body, const Vector3 &offset, const Vector3 &impulse,
-                Vector3 &linear, Vector3 &angular) {
+[[gnu::hot]] void addImpulse(const RigidBody *body, const Vector3 &offset, const Vector3 &impulse,
+                             Vector3 &linear, Vector3 &angular) {
   linear += impulse * body->getInverseMass();
   angular += body->getInverseInertiaTensorWorld().transform(offset % impulse);
 }
 
 // Scales `tangentImpulse` down, if need be, so friction stays within its
 // limit: friction coefficient x push (the friction cone)
-void limitFriction(real tangentImpulse[2], real limit) {
+[[gnu::hot]] void limitFriction(real tangentImpulse[2], real limit) {
   // (Compared squared, so the square root and division are only taken when
   // it's over: most visits it isn't)
   const real squared =
@@ -789,7 +795,8 @@ void limitFriction(real tangentImpulse[2], real limit) {
 
 // Moves `body` as if it had moved with `linear` and `angular` velocity for
 // `duration`
-void moveBy(RigidBody *body, const Vector3 &linear, const Vector3 &angular, real duration) {
+[[gnu::hot]] void moveBy(RigidBody *body, const Vector3 &linear, const Vector3 &angular,
+                         real duration) {
   body->setPosition(body->getPosition() + linear * duration);
   Quaternion orientation;
   body->getOrientation(&orientation);
@@ -896,7 +903,7 @@ void ContactResolver::beginStep(Contact *contacts, unsigned numContacts, real du
   }
 }
 
-void ContactResolver::resolveSubStep(real duration, bool contactsFollowBodies) {
+[[gnu::hot]] void ContactResolver::resolveSubStep(real duration, bool contactsFollowBodies) {
   velocityIterationsUsed = 0;
 
   // Each contact where its bodies are now, if they've moved since it was
@@ -1039,7 +1046,8 @@ void ContactResolver::endStep() {
   sleepInGroups(stepContacts.data(), static_cast<unsigned>(stepContacts.size()), stepJoints);
 }
 
-real ContactResolver::overlapNow(const SolverContact &solverContact, real duration) const {
+[[gnu::hot]] real ContactResolver::overlapNow(const SolverContact &solverContact,
+                                              real duration) const {
   const Vector3 *offset = solverContact.contact->relativeContactPosition;
   Vector3 velocity;
   for (int b = 0; b < 2; b++)
@@ -1051,7 +1059,7 @@ real ContactResolver::overlapNow(const SolverContact &solverContact, real durati
          (velocity * solverContact.normal - solverContact.startNormalVelocity) * duration;
 }
 
-void ContactResolver::sweepVelocities(real SolverContact::*target, unsigned sweeps) {
+[[gnu::hot]] void ContactResolver::sweepVelocities(real SolverContact::*target, unsigned sweeps) {
   // Each visit adjusts a contact's running totals by what it takes to reach
   // its target now, given what the other contacts have done, keeping the
   // totals within their limits: friction first, then the push.
@@ -1116,7 +1124,7 @@ void ContactResolver::sweepVelocities(real SolverContact::*target, unsigned swee
   }
 }
 
-void ContactResolver::removeOverlap(real duration) {
+[[gnu::hot]] void ContactResolver::removeOverlap(real duration) {
   // The overlap left after the move, beyond positionEpsilon, sets a
   // separating speed for each contact to reach on velocities of its own:
   // like the velocity sweeps, but along the normal only. They move the
@@ -1205,8 +1213,8 @@ Vector3 anchorVelocity(const RigidBody *body, const Vector3 &offset) {
 // the velocities each end of `motion` gives (the bodies' own, or the
 // position sweeps')
 template <typename ApplyTo>
-void applyAcrossJoint(RigidBody *const movable[2], const Vector3 offset[2], const Vector3 &impulse,
-                      ApplyTo applyTo) {
+[[gnu::hot]] void applyAcrossJoint(RigidBody *const movable[2], const Vector3 offset[2],
+                                   const Vector3 &impulse, ApplyTo applyTo) {
   for (int end = 0; end < 2; end++)
     if (movable[end]) {
       Vector3 linear, angular;
@@ -1233,8 +1241,8 @@ real cableResponse(RigidBody *const movable[2], const Vector3 offset[2], const V
 // opposite to anchor one, as applyAcrossJoint does, from each end's turn
 // for a unit impulse (cableResponse)
 template <typename ApplyTo>
-void applyAlongCable(RigidBody *const movable[2], const Vector3 &direction,
-                     const Vector3 turnPerImpulse[2], real impulse, ApplyTo applyTo) {
+[[gnu::hot]] void applyAlongCable(RigidBody *const movable[2], const Vector3 &direction,
+                                  const Vector3 turnPerImpulse[2], real impulse, ApplyTo applyTo) {
   for (int end = 0; end < 2; end++)
     if (RigidBody *body = movable[end]) {
       const real signed_ = end == 1 ? impulse : -impulse;
@@ -1242,7 +1250,7 @@ void applyAlongCable(RigidBody *const movable[2], const Vector3 &direction,
     }
 }
 
-void changeVelocity(RigidBody *body, const Vector3 &linear, const Vector3 &angular) {
+[[gnu::hot]] void changeVelocity(RigidBody *body, const Vector3 &linear, const Vector3 &angular) {
   body->addVelocity(linear);
   body->addRotation(angular);
 }
@@ -1271,7 +1279,8 @@ Vector3 ownSpin(const RigidBody *body) { return body->getRotation(); }
 // Applies `twist` (an angular impulse) to body two and the opposite to body
 // one, changing the velocities `applyTo` changes, as applyAcrossJoint does
 template <typename ApplyTo>
-void twistAcrossJoint(RigidBody *const movable[2], const Vector3 &twist, ApplyTo applyTo) {
+[[gnu::hot]] void twistAcrossJoint(RigidBody *const movable[2], const Vector3 &twist,
+                                   ApplyTo applyTo) {
   for (int end = 0; end < 2; end++)
     if (movable[end])
       applyTo(
@@ -1280,7 +1289,7 @@ void twistAcrossJoint(RigidBody *const movable[2], const Vector3 &twist, ApplyTo
 }
 } // namespace
 
-void ContactResolver::setUpJoints(std::span<Joint *const> joints, real duration) {
+[[gnu::hot]] void ContactResolver::setUpJoints(std::span<Joint *const> joints, real duration) {
   solverJoints.clear();
   for (Joint *joint : joints) {
     SolverJoint solverJoint{.joint = joint,
@@ -1342,7 +1351,8 @@ void ContactResolver::setUpJoints(std::span<Joint *const> joints, real duration)
   setUpAngularConstraints(joints, duration);
 }
 
-void ContactResolver::setUpAngularConstraints(std::span<Joint *const> joints, real duration) {
+[[gnu::hot]] void ContactResolver::setUpAngularConstraints(std::span<Joint *const> joints,
+                                                           real duration) {
   using Kind = AngularConstraint::Kind;
   solverAngularConstraints.clear();
   AngularConstraint constraints[Joint::maxAngularConstraints];
@@ -1395,7 +1405,7 @@ void ContactResolver::setUpAngularConstraints(std::span<Joint *const> joints, re
   }
 }
 
-void ContactResolver::sweepJoints() {
+[[gnu::hot]] void ContactResolver::sweepJoints() {
   for (SolverJoint &solverJoint : solverJoints) {
     if (solverJoint.cable) {
       // Pull, never push, until the anchors separate no faster than allowed
@@ -1432,7 +1442,7 @@ void ContactResolver::sweepJoints() {
   }
 }
 
-void ContactResolver::settleJoints(real duration) {
+[[gnu::hot]] void ContactResolver::settleJoints(real duration) {
   // As the settle sweeps do for contacts: a cable the move has pulled taut
   // ends the step no longer stretching
   for (SolverJoint &solverJoint : solverJoints) {
@@ -1459,7 +1469,7 @@ void ContactResolver::settleJoints(real duration) {
   }
 }
 
-void ContactResolver::setJointPositionTargets(real duration) {
+[[gnu::hot]] void ContactResolver::setJointPositionTargets(real duration) {
   // How far apart the anchors are now the bodies have moved, measured
   // where they are (as Box2D's position step does: a spinning body's
   // anchor moves on an arc, which the velocities alone would miss), and how
@@ -1528,7 +1538,7 @@ void ContactResolver::setJointPositionTargets(real duration) {
   }
 }
 
-void ContactResolver::sweepJointPositions() {
+[[gnu::hot]] void ContactResolver::sweepJointPositions() {
   auto moveVelocity = [this](RigidBody *body, const Vector3 &linear, const Vector3 &angular) {
     Motion &motion = slotOf(body).separating;
     motion.linear += linear;
