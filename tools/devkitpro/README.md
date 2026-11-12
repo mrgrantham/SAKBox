@@ -44,7 +44,7 @@ devkitpro_3ds_app(
 `srcs` must include a devkitPro 3DS `Makefile` (the standard template from devkitPro's 3ds examples) with the sources at the paths it expects. The rule builds, in `bazel-bin`:
 
 - `my-app.3dsx`: the app, for the Homebrew Launcher (copy it to the SD card's `/3ds/` folder).
-- `my-app.cia`: the same app as a title to install to the HOME Menu, with [FBI](https://github.com/lifehackerhansol/FBI) on a 3DS with custom firmware, or **File → Install CIA** (or `azahar -i`) in Azahar. It has its own icon (the `.smdh`) and a HOME Menu banner.
+- `my-app.cia`: the same app as a title to install to the HOME Menu, with [FBI](https://github.com/lifehackerhansol/FBI) on a 3DS with custom firmware (over Wi-Fi with [`tools/fbi_install`](../fbi_install/README.md)), or **File → Install CIA** (or `azahar -i`) in Azahar. It has its own icon (the `.smdh`) and a HOME Menu banner.
 - `my-app.smdh` (its title and icon) and `my-app.elf` (with debug symbols).
 
 `app_name` sets a different output name. For the CIA:

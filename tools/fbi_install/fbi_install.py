@@ -1,0 +1,233 @@
+"""Builds 3DS apps and installs them on a 3DS over Wi-Fi, with FBI.
+
+Builds the apps' CIAs with Bazel, serves them from this computer over HTTP,
+and sends their links to FBI's "Receive URLs over the network" (on the
+3DS, FBI: Remote Install > Receive URLs over the network), which downloads
+and installs each. It waits for FBI to listen, so it can be started first;
+ftpd, which listens on the same port (5000), is told apart by its greeting
+and waited out. Exits once FBI has installed them (it closes the connection
+then), saying which it downloaded, or after --wait.
+
+Usage:
+  python3 tools/fbi_install/fbi_install.py --3ds ADDRESS [TARGET ...]
+
+ADDRESS is the 3DS's IP address (shown on FBI's screen), or set
+SAKBOX_3DS. With no targets it installs every 3DS app in the repo (every
+devkitpro_3ds_app). Needs Docker running, as any 3DS build does.
+"""
+
+import argparse
+import functools
+import http.server
+import os
+import pathlib
+import select
+import socket
+import struct
+import subprocess
+import sys
+import threading
+import time
+
+REPO = pathlib.Path(__file__).resolve().parent.parent.parent
+FBI_PORT = 5000  # FBI's "Receive URLs over the network" (and ftpd's)
+GREETING_WAIT = 2.0  # seconds: ftpd greets at once; FBI says nothing
+
+
+def payload(urls):
+    """What FBI reads: the length of the URLs, big-endian, then the URLs, a
+    line each."""
+    text = "\n".join(urls).encode()
+    return struct.pack(">I", len(text)) + text
+
+
+def local_address(remote):
+    """This computer's address on the network that reaches `remote` (no
+    packet is sent)."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+        probe.connect((remote, FBI_PORT))
+        return probe.getsockname()[0]
+
+
+class SocketConnection:
+    """A TCP connection to the 3DS, made by Python."""
+
+    def __init__(self, host, port):
+        self.socket = socket.create_connection((host, port), timeout=3)
+
+    def greeting(self, wait):
+        """What the other end says first, within `wait` seconds (b"" if nothing)."""
+        ready, _, _ = select.select([self.socket], [], [], wait)
+        return self.socket.recv(64) if ready else b""
+
+    def send_and_wait(self, data):
+        """Sends `data`, then waits until the other end closes."""
+        self.socket.sendall(data)
+        self.socket.settimeout(None)
+        while self.socket.recv(64):
+            pass
+
+    def close(self):
+        self.socket.close()
+
+
+class NcConnection:
+    """The same, made by the system's nc: on macOS, Local Network privacy
+    keeps a Python that hasn't been allowed off the local network (it fails
+    with "No route to host"), where nc, part of macOS, is allowed."""
+
+    def __init__(self, host, port):
+        self.process = subprocess.Popen(["/usr/bin/nc", "-G", "3", host, str(port)],
+                                        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL)
+        # nc gives up after 3 s if nothing answers; connected, it stays
+        try:
+            self.process.wait(timeout=3.5)
+            raise ConnectionRefusedError(f"nothing answered on {host}:{port}")
+        except subprocess.TimeoutExpired:
+            pass
+
+    def greeting(self, wait):
+        ready, _, _ = select.select([self.process.stdout], [], [], wait)
+        return os.read(self.process.stdout.fileno(), 64) if ready else b""
+
+    def send_and_wait(self, data):
+        self.process.stdin.write(data)
+        self.process.stdin.flush()
+        # (stdin stays open: macOS's nc would otherwise close the connection)
+        while os.read(self.process.stdout.fileno(), 64):
+            pass
+
+    def close(self):
+        if self.process.poll() is None:
+            self.process.kill()
+            self.process.wait()
+
+
+def connect(host, port):
+    """A connection to host:port, by Python, or by nc where macOS keeps
+    Python off the local network"""
+    try:
+        return SocketConnection(host, port)
+    except OSError as error:
+        blocked = getattr(error, "errno", None) == 65  # EHOSTUNREACH
+        if not (blocked and sys.platform == "darwin" and os.path.exists("/usr/bin/nc")):
+            raise
+        return NcConnection(host, port)
+
+
+def send_to_fbi(host, data, port=FBI_PORT, give_up_at=None, say=print):
+    """Sends `data` to FBI on host:port once it's listening, waiting out
+    ftpd, and returns once FBI has closed the connection (it has installed
+    everything). False if `give_up_at` (a time.monotonic()) passes first."""
+    told = set()
+    while give_up_at is None or time.monotonic() < give_up_at:
+        try:
+            connection = connect(host, port)
+        except OSError:
+            if "waiting" not in told:
+                say(f"Waiting for FBI on {host}: Remote Install > Receive URLs over the network")
+                told.add("waiting")
+            time.sleep(2)
+            continue
+        if connection.greeting(GREETING_WAIT).startswith(b"220"):
+            connection.close()
+            if "ftpd" not in told:
+                say("ftpd is open on the 3DS (it uses FBI's port): close it, then open FBI's "
+                    "Receive URLs over the network")
+                told.add("ftpd")
+            time.sleep(3)
+            continue
+        say("FBI is listening: sending the links (press A on the 3DS to install)")
+        try:
+            connection.send_and_wait(data)
+        finally:
+            connection.close()
+        return True
+    return False
+
+
+class Downloads(http.server.SimpleHTTPRequestHandler):
+    """Serves only the files it's given, by name, and counts each one sent."""
+
+    def __init__(self, *args, files, sent, **kwargs):
+        self.files = files
+        self.sent = sent
+        super().__init__(*args, **kwargs)
+
+    def translate_path(self, path):
+        name = path.lstrip("/").split("?")[0]
+        return str(self.files.get(name, "/nonexistent"))
+
+    def do_GET(self):
+        super().do_GET()
+        name = self.path.lstrip("/")
+        if name in self.files:
+            self.sent.append(name)
+
+    def log_message(self, format, *args):
+        pass  # (main reports what FBI fetched)
+
+
+def serve(files, address):
+    """Serves `files` ({name: path}) on `address`; returns the server (its
+    port is server.server_address[1]) and the list of names sent so far."""
+    sent = []
+    handler = functools.partial(Downloads, files=files, sent=sent)
+    server = http.server.ThreadingHTTPServer((address, 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server, sent
+
+
+def bazel(*args):
+    return subprocess.run(["bazel", *args], cwd=REPO, check=True, capture_output=True,
+                          text=True).stdout
+
+
+def build_cias(targets):
+    """Builds `targets` (every 3DS app if none) and returns their CIAs' paths."""
+    if not targets:
+        targets = bazel("query", 'kind("devkitpro_3ds_app", //...)').split()
+    print(f"Building {' '.join(targets)}", flush=True)
+    subprocess.run(["bazel", "build", *targets], cwd=REPO, check=True)
+    files = bazel("cquery", "--output=files", " + ".join(targets)).split()
+    return [REPO / f for f in files if f.endswith(".cia")]
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--3ds", dest="address", default=os.environ.get("SAKBOX_3DS"),
+                        help="the 3DS's IP address (or set SAKBOX_3DS)")
+    parser.add_argument("--wait", type=float, default=600,
+                        help="how long to wait for FBI, in seconds (default 600)")
+    parser.add_argument("targets", nargs="*", help="3DS apps (default: all of them)")
+    args = parser.parse_args(argv)
+    if not args.address:
+        parser.error("say where the 3DS is: --3ds ADDRESS (FBI's screen shows it)")
+
+    cias = build_cias(args.targets)
+    if not cias:
+        print("No CIAs among those targets", file=sys.stderr)
+        return 1
+    files = {cia.name: cia for cia in cias}
+    address = local_address(args.address)
+    server, sent = serve(files, address)
+    port = server.server_address[1]
+    urls = [f"http://{address}:{port}/{name}" for name in files]
+    print(f"Serving {len(files)} CIA(s) from {address}:{port}", flush=True)
+    try:
+        if not send_to_fbi(args.address, payload(urls),
+                           give_up_at=time.monotonic() + args.wait):
+            print(f"FBI didn't listen within {args.wait:.0f} s", file=sys.stderr)
+            return 1
+    finally:
+        server.shutdown()
+        server.server_close()
+    missing = sorted(set(files) - set(sent))
+    for name in files:
+        print(f"  {'downloaded by FBI' if name in sent else 'not downloaded'}: {name}")
+    return 1 if missing else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
