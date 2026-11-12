@@ -231,6 +231,7 @@ TEST(AudioPaddTest, VolumeControls) {
     ASSERT_TRUE(running.settles());
     running.render(1024); // let the volume ramp there
   };
+  change("previews", ScratchPadd::ControlType::Boolean(false)); // exact levels: no previews
   listener.ask(constantSamples("hum", 48000, 1.0f));
   listener.ask(PlaySound{.name = "hum", .settings = {.loop = true}});
   ASSERT_TRUE(running.settles());
@@ -245,6 +246,32 @@ TEST(AudioPaddTest, VolumeControls) {
   EXPECT_EQ(running.render(16)[0], 0.0f);
   change("mute", ScratchPadd::ControlType::Boolean(false));
   EXPECT_FLOAT_EQ(running.render(16)[0], 0.25f);
+}
+
+// A change from a control panel is heard at its new level: a chord for the
+// music volume, a note for the sounds' and master volumes, a chord for
+// unmuting (muting is silent). Not with previews off.
+TEST(AudioPaddTest, ControlChangesAreHeard) {
+  AudioSystem<Listener> running;
+  auto &listener = running.padd<Listener>();
+  // Changes `name` to `value`, and returns the loudest of what's played next
+  const auto heardAfter = [&](const std::string &name, ScratchPadd::ControlTypeVariant value) {
+    std::this_thread::sleep_for(AudioPaddPreview::kPreviewGap); // the last preview's gap
+    listener.ask(ScratchPadd::MessageType::ControlChange{.controlName = name,
+                                                         .controlTypeValue = std::move(value)});
+    EXPECT_TRUE(running.settles());
+    return loudest(running.render(4800));
+  };
+  EXPECT_EQ(loudest(running.render(4800)), 0.0f); // silent until something changes
+  EXPECT_GT(heardAfter("music", ScratchPadd::ControlType::Double(0.8)), 0.05f);
+  EXPECT_GT(heardAfter("sounds", ScratchPadd::ControlType::Double(0.8)), 0.05f);
+  EXPECT_GT(heardAfter("master", ScratchPadd::ControlType::Double(0.8)), 0.05f);
+  running.render(48000 * 2); // until they've died away
+  EXPECT_LT(heardAfter("mute", ScratchPadd::ControlType::Boolean(true)), 0.001f);
+  EXPECT_GT(heardAfter("mute", ScratchPadd::ControlType::Boolean(false)), 0.05f);
+  running.render(48000 * 2);
+  heardAfter("previews", ScratchPadd::ControlType::Boolean(false));
+  EXPECT_LT(heardAfter("music", ScratchPadd::ControlType::Double(0.5)), 0.001f);
 }
 
 // Stopping: one voice, all music, or everything; each still reported

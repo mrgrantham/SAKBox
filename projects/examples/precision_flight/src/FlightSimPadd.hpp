@@ -54,7 +54,9 @@ public:
     };
   }
 
-  void controlChanged(const std::string &) override { applyControls(); }
+  void controlChanged(const std::string &, const ScratchPadd::ControlTypeVariant &) override {
+    applyControls();
+  }
 
   // For tests
   const FlightSim &sim() const { return sim_; }

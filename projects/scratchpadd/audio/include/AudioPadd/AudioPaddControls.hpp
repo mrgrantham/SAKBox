@@ -1,7 +1,8 @@
 #pragma once
 
 // The controls every AudioPadd has, whichever plays (see AudioPadd.hpp):
-// master, sounds and music volume (0 to 1), and mute.
+// master, sounds and music volume (0 to 1), mute, and previews (whether a
+// change from a control panel is heard: AudioPadd/ControlPreview.hpp).
 
 #include <ScratchPadd/Messages/Controls.hpp>
 
@@ -14,5 +15,6 @@ inline ScratchPadd::ControlValueMap audioPaddControls() {
   return {{"master", volume(1.0)},
           {"sounds", volume(1.0)},
           {"music", volume(1.0)},
-          {"mute", ScratchPadd::ControlType::Boolean(false)}};
+          {"mute", ScratchPadd::ControlType::Boolean(false)},
+          {"previews", ScratchPadd::ControlType::Boolean(true)}};
 }

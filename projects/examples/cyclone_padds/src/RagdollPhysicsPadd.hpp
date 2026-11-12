@@ -67,7 +67,9 @@ public:
     };
   }
 
-  void controlChanged(const std::string &) override { applyControls(); }
+  void controlChanged(const std::string &, const ScratchPadd::ControlTypeVariant &) override {
+    applyControls();
+  }
 
   // Finds AudioPadd, if the system has one, and gives it the knock (made in
   // code, so there's no file to find)

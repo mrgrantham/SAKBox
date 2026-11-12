@@ -36,6 +36,7 @@
 // rate: the hardware doesn't report it), or a MIDI file's.
 
 #include <AudioPadd/AudioPaddControls.hpp>
+#include <AudioPadd/ControlPreview.hpp>
 #include <ScratchPadd/Audio/MadeSounds.hpp>
 #include <ScratchPadd/Audio/MadeSoundsPcm16.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
@@ -147,9 +148,22 @@ public:
 
   std::string name() override { return "AudioPadd"; }
   ScratchPadd::ControlValueMap generateControls() override { return audioPaddControls(); }
-  void controlChanged(const std::string &) override {
+  // The volumes apply to what's playing, and the change is heard at its
+  // new level (AudioPadd/ControlPreview.hpp)
+  void controlChanged(const std::string &name,
+                      const ScratchPadd::ControlTypeVariant &previous) override {
     for (auto &[id, voice] : voices_) {
       apply(voice);
+    }
+    const auto preview = AudioPaddPreview::forChange(name, previous, controlValue(name));
+    if (preview && control<ScratchPadd::ControlType::Boolean>("previews").value &&
+        previewPacer_.start(Clock::now())) {
+      for (const int key : preview->keys) {
+        start(note_, "preview",
+              {.volume = preview->volume,
+               .pitch = std::pow(2.0f, (key - ScratchPadd::Audio::MadeSounds::kNoteKey) / 12.0f)},
+              preview->group, ScratchPadd::PaddAddress());
+      }
     }
   }
 
@@ -492,4 +506,5 @@ private:
   std::optional<Sequence> sequence_;
   ScratchPadd::Audio::VoiceId nextVoice_ = 1;
   Sound note_, knock_; // the instrument
+  AudioPaddPreview::Pacer previewPacer_;
 };

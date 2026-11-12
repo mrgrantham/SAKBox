@@ -99,6 +99,7 @@ cc_library(
     deps = [
         ":audio_core",
         ":audio_device",
+        ":audio_made_sounds",
         ":audio_messages",
         "//projects/scratchpadd/basis",
     ],
@@ -136,6 +137,16 @@ cc_test(
         ":audio_test_helpers",
         "@gtest//:gtest_main",
         "@miniaudio",
+    ],
+)
+
+cc_test(
+    name = "ControlPreview_test",
+    size = "small",
+    srcs = ["tests/ControlPreview_test.cpp"],
+    deps = [
+        ":audio",
+        "@gtest//:gtest_main",
     ],
 )
 

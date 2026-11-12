@@ -119,7 +119,7 @@ public:
             {"Steps a second", ScratchPadd::ControlType::String(
                                    std::to_string(kRunSettings.stepsPerSecond), {{"30", "60"}})}};
   }
-  void controlChanged(const std::string &name) override {
+  void controlChanged(const std::string &name, const ScratchPadd::ControlTypeVariant &) override {
     if (name == "Sub-steps") {
       clock_.setSubSteps(
           static_cast<unsigned>(control<ScratchPadd::ControlType::Integer>(name).value));

@@ -245,18 +245,25 @@ public:
         {"label", Controls::String("hello")},
     };
   }
-  void controlChanged(const std::string &controlName) override {
+  void controlChanged(const std::string &controlName,
+                      const ScratchPadd::ControlTypeVariant &previous) override {
     std::lock_guard<std::mutex> lk(mutex_);
     changed_.push_back(controlName);
+    previous_.push_back(previous);
   }
   std::vector<std::string> changed() {
     std::lock_guard<std::mutex> lk(mutex_);
     return changed_;
   }
+  std::vector<ScratchPadd::ControlTypeVariant> previous() {
+    std::lock_guard<std::mutex> lk(mutex_);
+    return previous_;
+  }
 
 private:
   std::mutex mutex_;
   std::vector<std::string> changed_;
+  std::vector<ScratchPadd::ControlTypeVariant> previous_; // each change's value before
 };
 using OwnerA = OwnerPadd<1>;
 using OwnerB = OwnerPadd<2>;
@@ -481,7 +488,8 @@ TEST(ControlsTest, InvalidChangesAreRejected) {
   EXPECT_EQ(panel.snapshots().size(), 4u);
 }
 
-// Valid changes of every kind apply and each calls controlChanged() once.
+// Valid changes of every kind apply and each calls controlChanged() once,
+// with the value it had before.
 TEST(ControlsTest, ValidChangesOfEveryKindApply) {
   RunningSystem<PanelPadd, OwnerA> running;
   auto &panel = running.padd<PanelPadd>();
@@ -495,6 +503,11 @@ TEST(ControlsTest, ValidChangesOfEveryKindApply) {
   EXPECT_EQ(controlOf<Controls::String>(owner, "mode").value, "hard");
   EXPECT_EQ(controlOf<Controls::String>(owner, "label").value, std::string(500, 'x'));
   EXPECT_EQ(owner.changed(), (std::vector<std::string>{"enabled", "mode", "label"}));
+  const auto previous = owner.previous();
+  ASSERT_EQ(previous.size(), 3u);
+  EXPECT_TRUE(std::get<Controls::Boolean>(previous[0]).value);
+  EXPECT_EQ(std::get<Controls::String>(previous[1]).value, "easy");
+  EXPECT_EQ(std::get<Controls::String>(previous[2]).value, "hello");
 }
 
 // control<C>() reads current values and reports misuse. (Before the padd

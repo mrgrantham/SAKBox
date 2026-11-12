@@ -4,18 +4,23 @@
 // (include AudioPadd.hpp, which picks this or the DS's)
 
 #include <AudioPadd/AudioPaddControls.hpp>
+#include <AudioPadd/ControlPreview.hpp>
 #include <ScratchPadd/Audio/Engine.hpp>
+#include <ScratchPadd/Audio/MadeSounds.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
 #include <ScratchPadd/Base.hpp>
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 // The platform's sound output: the 3DS's DSP there, the sound device
 // (miniaudio) on desktops
@@ -31,7 +36,8 @@ using PlatformAudioOutput = ScratchPadd::Audio::DeviceOutput;
 // in ScratchPadd/Audio/Messages.hpp. The engine mixes on the sound device's
 // own thread; this padd's thread does the slow work (loading files, decoding
 // music ahead) and tells each padd when the voices it started finish.
-// Controls: master, sounds and music volume, and mute.
+// Controls: master, sounds and music volume, and mute; a change from a
+// control panel is heard at its new level (AudioPadd/ControlPreview.hpp).
 class AudioPadd : public ScratchPadd::Base {
 public:
   // What AudioPadd plays through, made when it's constructed: the
@@ -127,7 +133,11 @@ public:
 
   ScratchPadd::ControlValueMap generateControls() override { return audioPaddControls(); }
 
-  void controlChanged(const std::string &) override { applyVolumes(); }
+  void controlChanged(const std::string &name,
+                      const ScratchPadd::ControlTypeVariant &previous) override {
+    applyVolumes();
+    preview(name, previous);
+  }
 
   // Often enough that music decoded ahead never runs dry, and finished
   // voices are reported promptly
@@ -135,6 +145,7 @@ public:
     return std::chrono::milliseconds(20);
   }
   void repeat() override {
+    releasePreviewNotes();
     for (const ScratchPadd::Audio::VoiceId voice : engine_.update()) {
       const auto owner = owners_.find(voice);
       if (owner != owners_.end()) {
@@ -150,6 +161,8 @@ public:
     std::string error;
     if (engine_.start(error)) {
       logger().info("{}: playing at {} Hz", paddName(), engine_.sampleRate());
+      const std::vector<float> note = ScratchPadd::Audio::MadeSounds::note(engine_.sampleRate());
+      engine_.loadSamples(kPreviewNote, note.data(), note.size(), engine_.sampleRate(), 1);
     } else {
       outputError_ = "no sound output: " + error;
       logger().error("{}: {}", paddName(), outputError_);
@@ -158,6 +171,10 @@ public:
   void finishing() override { engine_.stop(); }
 
 private:
+  using Clock = std::chrono::steady_clock;
+  // The note the sounds' previews play, kept among the sounds
+  static constexpr const char *kPreviewNote = "AudioPadd preview note";
+
   struct Owner {
     ScratchPadd::PaddAddress from; // the padd that started the voice
     std::string name;
@@ -198,8 +215,46 @@ private:
     engine_.setGroupVolume(ScratchPadd::Audio::Group::Music, volume("music"));
   }
 
+  // Plays what a change to control `name` sounds like at its new level:
+  // notes among the sounds (the made note, at each key's pitch), or a chord
+  // on the instrument, released after kPreviewLength
+  void preview(const std::string &name, const ScratchPadd::ControlTypeVariant &previous) {
+    using namespace ScratchPadd::Audio;
+    if (!control<ScratchPadd::ControlType::Boolean>("previews").value) {
+      return;
+    }
+    const auto preview = AudioPaddPreview::forChange(name, previous, controlValue(name));
+    if (!preview || !outputError_.empty() || !previewPacer_.start(Clock::now())) {
+      return;
+    }
+    for (const int key : preview->keys) {
+      if (preview->group == Group::Music) {
+        const int velocity = static_cast<int>(preview->volume * 127);
+        engine_.midi(MidiEvent::noteOn(AudioPaddPreview::kChannel, key, velocity));
+        previewNotes_.emplace_back(Clock::now() + AudioPaddPreview::kPreviewLength, key);
+      } else {
+        const float pitch = std::exp2((key - MadeSounds::kNoteKey) / 12.0f);
+        engine_.play(kPreviewNote, {.volume = preview->volume, .pitch = pitch});
+      }
+    }
+  }
+
+  // Releases the instrument's preview notes whose time is up
+  void releasePreviewNotes() {
+    const auto now = Clock::now();
+    std::erase_if(previewNotes_, [&](const std::pair<Clock::time_point, int> &note) {
+      if (now < note.first) {
+        return false;
+      }
+      engine_.midi(ScratchPadd::Audio::MidiEvent::noteOff(AudioPaddPreview::kChannel, note.second));
+      return true;
+    });
+  }
+
   std::unique_ptr<ScratchPadd::Audio::Output> output_;
   ScratchPadd::Audio::Engine engine_;
   std::string outputError_; // set if the output couldn't start
   std::map<ScratchPadd::Audio::VoiceId, Owner> owners_;
+  AudioPaddPreview::Pacer previewPacer_;
+  std::vector<std::pair<Clock::time_point, int>> previewNotes_; // (release at, key)
 };

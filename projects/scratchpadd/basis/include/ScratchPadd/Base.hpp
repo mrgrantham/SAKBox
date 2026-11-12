@@ -11,6 +11,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <stdexcept>
 #include <string>
@@ -67,8 +68,11 @@ public:
     // clamping.
     receive<MessageType::ControlChange>([this](const MessageType::ControlChange &change) {
       logger().info("{} control change: {}", name_, change.controlName);
-      if (updateControl(change)) {
-        controlChanged(change.controlName);
+      const auto existing = controlMap_.find(change.controlName);
+      const std::optional<ControlTypeVariant> previous =
+          existing == controlMap_.end() ? std::nullopt : std::optional(existing->second);
+      if (updateControl(change) && previous) {
+        controlChanged(change.controlName, *previous);
       }
       send(generateControlsSnapshot());
     });
@@ -152,8 +156,9 @@ protected:
   virtual ScratchPadd::ControlValueMap generateControls() = 0;
 
   // Called on the padd's thread after a ControlChange to control `name` has
-  // been applied. Override to react to edits from a control panel.
-  virtual void controlChanged(const std::string &name) {}
+  // been applied: `previous` is its value before (its new one is
+  // controlValue(name)). Override to react to edits from a control panel.
+  virtual void controlChanged(const std::string &name, const ControlTypeVariant &previous) {}
 
   // Any setup where order of for Padds may be necessary
   // Called from primary thread used by System instance before start
@@ -313,6 +318,12 @@ protected:
   template <typename C> const C &control(const std::string &name) const {
     assertOnPaddThread("control");
     return std::get<C>(controlMap_.at(name));
+  }
+  // The same, whatever its type (to compare with controlChanged()'s
+  // `previous`, say)
+  const ControlTypeVariant &controlValue(const std::string &name) const {
+    assertOnPaddThread("controlValue");
+    return controlMap_.at(name);
   }
 
   // Applies the value in `controlChange` to this padd's control, enforcing

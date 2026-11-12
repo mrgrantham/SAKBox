@@ -76,7 +76,8 @@ public:
 
   // Called when a control is edited in DisplayPadd's control panel.
   // Ticking showExtra adds a control, and unticking it removes it again.
-  void controlChanged(const std::string &controlName) override {
+  void controlChanged(const std::string &controlName,
+                      const ScratchPadd::ControlTypeVariant &) override {
     std::visit(
         [&](const auto &control) {
           spdlog::info("{}: control {} is now {}", paddName(), controlName, control.value);
