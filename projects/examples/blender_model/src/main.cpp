@@ -23,7 +23,7 @@ class ModelPadd : public ScratchPadd::Base {
 public:
   ModelPadd(ScratchPadd::System *system) : Base(system) {}
   std::string name() override { return "ModelPadd"; }
-  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::OnMainThread; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 
   void starting() override {

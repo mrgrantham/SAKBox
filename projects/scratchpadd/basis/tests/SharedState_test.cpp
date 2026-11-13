@@ -26,11 +26,11 @@ struct Pose {
 
 // A padd that runs a job on its own thread (where publishState() and
 // currentState() are called) and returns the job's result
-template <ScratchPadd::RunOn Thread, int Id> class JobPadd : public ScratchPadd::Base {
+template <ScratchPadd::Runs Thread, int Id> class JobPadd : public ScratchPadd::Base {
 public:
   JobPadd(ScratchPadd::System *system) : Base(system) {}
   std::string name() override { return "JobPadd" + std::to_string(Id); }
-  ScratchPadd::RunOn runOn() override { return Thread; }
+  ScratchPadd::Runs runs() override { return Thread; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 
   template <typename Job> auto run(Job job) {
@@ -51,9 +51,9 @@ public:
   }
 };
 
-using Publisher = JobPadd<ScratchPadd::RunOn::BackgroundThread, 1>;
-using Reader = JobPadd<ScratchPadd::RunOn::BackgroundThread, 2>;
-using MainReader = JobPadd<ScratchPadd::RunOn::MainThread, 3>;
+using Publisher = JobPadd<ScratchPadd::Runs::Steadily, 1>;
+using Reader = JobPadd<ScratchPadd::Runs::Steadily, 2>;
+using MainReader = JobPadd<ScratchPadd::Runs::OnMainThread, 3>;
 
 // Runs a system on its own thread, standing in for the app's main thread
 template <typename... Padds> class RunningSystem {

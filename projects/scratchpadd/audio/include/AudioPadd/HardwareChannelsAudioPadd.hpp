@@ -147,6 +147,8 @@ public:
   }
 
   std::string name() override { return "AudioPadd"; }
+  // Ahead of the main thread: mixing late is a gap in the sound
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::Urgently; }
   ScratchPadd::ControlValueMap generateControls() override { return audioPaddControls(); }
   // The volumes apply to what's playing, and the change is heard at its
   // new level (AudioPadd/ControlPreview.hpp)

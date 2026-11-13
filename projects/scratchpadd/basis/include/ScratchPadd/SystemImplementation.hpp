@@ -143,6 +143,8 @@ public:
   // padds, then cleanup() for every padd.
   void start() override {
     logger().info("Starting system");
+    // (this is the main thread, which the padds' threads are set next to)
+    Platform::rememberMainThread();
     // Prepare all workers
     std::apply([](auto const &...worker) { (worker->prepareWrapper(), ...); }, workers_);
 

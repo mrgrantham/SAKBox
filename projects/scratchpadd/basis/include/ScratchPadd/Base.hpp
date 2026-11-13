@@ -27,6 +27,7 @@
 #include <ScratchPadd/PaddAddress.hpp>
 #include <ScratchPadd/SharedState.hpp>
 #include <ScratchPadd/System.hpp>
+#include <ScratchPadd/ThreadPriority.hpp>
 #include <ScratchPadd/Threads.hpp>
 #include <ScratchPadd/WorkQueue.hpp>
 
@@ -117,7 +118,8 @@ public:
   void waitForStart() {
     std::unique_lock<std::mutex> lk(scratchPaddMutex_);
     logger().info("Waiting For {} to Start...", name_);
-    scratchPaddConditionVariable_.wait(lk, [this] { return on_.load(); });
+    // (or stopped before it started)
+    scratchPaddConditionVariable_.wait(lk, [this] { return on_.load() || stopRequested_; });
     logger().info("Wait completed for starting {}...", name_);
   }
 
@@ -132,18 +134,19 @@ protected:
   // paddName() after that.
   virtual std::string name() = 0;
 
-  // Which thread this padd's work runs on (see RunOn in Threads.hpp). Read
-  // once, by initialize().
-  //   RunOn::MainThread: the thread that called System::start(), shared
-  //     with the other main-thread padds. Override to return it for work
-  //     that must run there, such as a window on macOS.
-  //   RunOn::BackgroundThread: a thread of its own. Only exists where there
-  //     are threads (SCRATCHPADD_HAS_THREADS); on a platform without them,
-  //     such as the Nintendo DS, returning it doesn't compile.
-  // By default (kDefaultRunOn) a background thread where there are threads,
-  // and the main thread where there aren't, so a padd that doesn't override
-  // this builds everywhere.
-  virtual RunOn runOn() { return kDefaultRunOn; }
+  // How this padd's work runs (see Runs in Threads.hpp). Read once, by
+  // initialize().
+  //   Runs::OnMainThread: in the thread that called System::start(),
+  //     shared with the other main-thread padds. Override to return it for
+  //     work that must run there, such as a window on macOS.
+  //   Runs::Urgently, Steadily, WhenIdle: a thread of its own, ahead of the
+  //     main thread, just behind it, or only when nothing else has work.
+  //     Only exist where there are threads (SCRATCHPADD_HAS_THREADS);
+  //     without them, returning one doesn't compile.
+  // By default (kDefaultRuns) Steadily where there are threads, and on the
+  // main thread where there aren't, so a padd that doesn't override this
+  // builds everywhere.
+  virtual Runs runs() { return kDefaultRuns; }
 
   // Overriding this to return a std::chrono::duration interval will setup
   // the padd to call the repeat() virtual method repeatedly on the interval
@@ -493,6 +496,10 @@ private:
 
   // Read by the work loop and written from other threads (e.g. stop()).
   std::atomic<bool> on_{false};
+  // Set once by stop(), under scratchPaddMutex_: a padd stopped while it was
+  // still starting (another padd stopped the system from its starting(),
+  // say) doesn't then start its timer or turn on_ back on
+  bool stopRequested_{false};
   // The thread the padd runs on while it runs (its own, or the system's
   // main thread), for assertOnPaddThread(); empty before and after
   std::atomic<std::thread::id> ownerThread_;
@@ -515,8 +522,8 @@ private:
                            : 0.0;
   }
   std::string name_{"Unnamed Padd"};
-  // runOn() as read by initialize()
-  bool usesMainThread_{false};
+  // runs() as read by initialize()
+  Runs runs_{kDefaultRuns};
   std::mutex scratchPaddMutex_;
   // Message handlers by message type. Senders read this from their own
   // threads (handles()) while the padd may change it (receive(),
@@ -534,7 +541,7 @@ private:
     name_ = name();
     createLoggerIfNeeded(name_);
     repeatInterval_ = repeatInterval();
-    usesMainThread_ = runOn() == RunOn::MainThread;
+    runs_ = runs();
     controlMap_ = generateControls();
   }
 
@@ -556,6 +563,20 @@ private:
     scratchPaddConditionVariable_.notify_all();
   }
 
+  // The end of starting: the repeat timer, then on_ (as notifyStart), unless
+  // stop() came first, checked under the lock stop() takes to say so
+  void startUnlessStopRequested() {
+    {
+      std::lock_guard<std::mutex> lk(scratchPaddMutex_);
+      if (stopRequested_) {
+        return;
+      }
+      startRepeater();
+      on_ = true;
+    }
+    scratchPaddConditionVariable_.notify_all();
+  }
+
   // These wrappers will allow tracking calls and adding metrics
   // as well as handling any eventual additional internal setup
   // associated with Padd lifecycle
@@ -569,8 +590,7 @@ private:
     logger().info("Starting {}", name_);
     ownerThread_ = std::this_thread::get_id();
     starting();
-    startRepeater();
-    notifyStart();
+    startUnlessStopRequested();
   }
 
   void finishingWrapper() {
@@ -580,15 +600,27 @@ private:
   }
 
   void runIfIndependentThread() {
-    if (!usesMainThread_) {
-      logger().info("Start Independent Thread: {}", name_);
+    if (!usesMainThread()) {
       workerThread_ = std::thread(&Base::run, this);
     }
   }
 
-  // runOn() as read by initialize(); the system uses this to
-  // decide which padds run in its main-thread loop.
-  bool usesMainThread() const { return usesMainThread_; }
+  // Whether runs(), as read by initialize(), is the main thread; the system
+  // uses this to decide which padds run in its main-thread loop.
+  bool usesMainThread() const { return runs_ == Runs::OnMainThread; }
+
+#if SCRATCHPADD_HAS_THREADS
+  // Sets this padd's thread to its priority (runs_), and logs what it got
+  void takeThreadPriority() {
+    const auto priority = runs_ == Runs::Urgently   ? Platform::ThreadPriority::High
+                          : runs_ == Runs::WhenIdle ? Platform::ThreadPriority::Low
+                                                    : Platform::ThreadPriority::Normal;
+    const bool set = Platform::setThisThreadPriority(priority);
+    logger().info("{} has its own thread and runs {}: {}{}", name_, describe(runs_),
+                  Platform::describeThisThreadPriority(),
+                  set ? "" : " (the platform didn't allow the priority it asked for)");
+  }
+#endif
 
   // Makes pushes to this padd wake `signal` instead of the padd's own. The
   // system calls this for main-thread padds, so that a push to any of them
@@ -597,19 +629,19 @@ private:
 
   // Called by the system's main-thread loop, which does the waiting.
   void runIfMainThread() {
-    if (usesMainThread_ && on_) {
+    if (usesMainThread() && on_) {
       processWork();
     }
   }
 
   void startingIfMainThread() {
-    if (usesMainThread_) {
+    if (usesMainThread()) {
       startingWrapper();
     }
   }
 
   void finishingIfMainThread() {
-    if (usesMainThread_) {
+    if (usesMainThread()) {
       finishingWrapper();
     }
   }
@@ -617,6 +649,9 @@ private:
   // The work loop of a padd with its own thread: run whatever is queued,
   // then sleep until more work arrives or the padd is stopped.
   void run() {
+#if SCRATCHPADD_HAS_THREADS
+    takeThreadPriority();
+#endif
     startingWrapper();
     WakeSignal &signal = workQueue_.signal();
     while (on_) {
@@ -658,6 +693,10 @@ private:
 
   void stop() {
     logger().info("Stopping: {}", name_);
+    {
+      std::lock_guard<std::mutex> lk(scratchPaddMutex_);
+      stopRequested_ = true; // (first, so a padd still starting won't start its timer)
+    }
     repeatingTimer_.stop(); // might need to flush the queue
     notifyStop();
     workQueue_.signal().notify(); // wake the work loop so it sees on_ is false

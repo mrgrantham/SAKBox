@@ -397,7 +397,7 @@ public:
   }
   std::string name() override { return "ScreenPadd"; }
   // The frame loop, on the main thread as in devkitPro's examples
-  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::OnMainThread; }
   // Whether bones are drawn blended between steps (B, or the panel)
   ScratchPadd::ControlValueMap generateControls() override {
     return {{"Blend", ScratchPadd::ControlType::Boolean(true)}};

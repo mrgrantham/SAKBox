@@ -30,8 +30,8 @@ public:
   ~FlightDisplayPadd() override;
 
   std::string name() override { return "FlightDisplay"; }
-  ScratchPadd::RunOn runOn() override {
-    return ScratchPadd::RunOn::MainThread;
+  ScratchPadd::Runs runs() override {
+    return ScratchPadd::Runs::OnMainThread;
   } // windowing must be on the main thread
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 

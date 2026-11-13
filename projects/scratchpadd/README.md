@@ -77,7 +77,7 @@ bazel run //projects/scratchpadd/demo
 
 ### Lifecycle
 
-`instantiate()` constructs the padds and then reads their configuration once: `name()`, `repeatInterval()`, `runOn()` and `generateControls()`. Changing what those return later has no effect. In particular `name()` is called once: after that, use `paddName()`, which returns the cached name without calling it again (a `name()` built on `__CLASS_NAME__` demangles the class name on each call). In a padd's constructor, which runs before `instantiate()` reads the name, `paddName()` is still `"Unnamed Padd"`, so call `name()` there. The system itself uses `paddName()`, and a message's type name (`typeName()`, logged by `send()`) is worked out once per type, so sending a message doesn't call either.
+`instantiate()` constructs the padds and then reads their configuration once: `name()`, `repeatInterval()`, `runs()` and `generateControls()`. Changing what those return later has no effect. In particular `name()` is called once: after that, use `paddName()`, which returns the cached name without calling it again (a `name()` built on `__CLASS_NAME__` demangles the class name on each call). In a padd's constructor, which runs before `instantiate()` reads the name, `paddName()` is still `"Unnamed Padd"`, so call `name()` there. The system itself uses `paddName()`, and a message's type name (`typeName()`, logged by `send()`) is worked out once per type, so sending a message doesn't call either.
 
 After that, each padd goes through these hooks. All except the constructor are optional overrides:
 
@@ -95,30 +95,51 @@ Use `prepare()`/`cleanup()` for setup that must happen in order across padds, an
 
 ### Threads
 
-A padd says which thread its work runs on by what its `runOn()` returns, a `ScratchPadd::RunOn` (in `ScratchPadd/Threads.hpp`):
+A padd says how its work runs by what its `runs()` returns, a `ScratchPadd::Runs` (in `ScratchPadd/Threads.hpp`): in the main thread's loop, or on a thread of its own at a priority next to the main thread's.
 
-| `runOn()` returns | The padd runs on |
+| `runs()` returns | The padd runs |
 | --- | --- |
-| `RunOn::BackgroundThread` (the default, where there are threads) | a thread of its own, which processes its work queue: incoming messages and `repeat()` calls, one at a time, in order |
-| `RunOn::MainThread` | the thread that called `start()`. Use this for anything that must run on the main thread, like windowing on macOS. All main-thread padds share one loop: each pass runs every one's queued work, in the order the padds are listed, then sleeps until work is pushed to any of them |
+| `Runs::OnMainThread` | in the thread that called `start()`, at its priority. Use this for anything that must run on the main thread, like windowing on macOS, and a console's screens and buttons. All main-thread padds share one loop: each pass runs every one's queued work, in the order the padds are listed, then sleeps until work is pushed to any of them |
+| `Runs::Urgently` | on a thread of its own, ahead of the main thread: short, time-critical work (`AudioPadd`: mixing late is a gap in the sound) |
+| `Runs::Steadily` (the default, where there are threads) | on a thread of its own, just behind the main thread, so the screens and buttons come first |
+| `Runs::WhenIdle` | on a thread of its own, only when nothing else has work |
+
+A padd with a thread of its own processes its work queue there: incoming messages and `repeat()` calls, one at a time, in order.
 
 ```cpp
 class DisplayPadd : public ScratchPadd::Base {
 public:
-  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; } // windowing
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::OnMainThread; } // windowing
+  ...
+};
+class AudioPadd : public ScratchPadd::Base {
+public:
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::Urgently; }
   ...
 };
 ```
 
-`runOn()` is read once, when the system is built. A padd that doesn't override it gets `kDefaultRunOn`, which suits the platform (below).
+`runs()` is read once, when the system is built. A padd that doesn't override it gets `kDefaultRuns`, which suits the platform (below). A padd on the main thread can't ask for a priority of its own, as it shares the main thread's loop: one enum for both means there's no such combination to write.
+
+**What the priorities do.** Each padd's thread sets its priority as it starts (`ScratchPadd::Platform::setThisThreadPriority`, in `utilities`' `ThreadPriority.hpp`), with the platform's own call, and logs what it got (`AudioPadd has its own thread and runs urgently: user-interactive`). The timer thread behind each `repeat()` runs ahead of the main thread too, so a tick is queued on time.
+
+| | `Urgently` | `Steadily` | `WhenIdle` |
+| --- | --- | --- | --- |
+| DS (calico) | main thread's priority − 1 | main + 1 | main + 2 |
+| 3DS (libctru) | main − 1 | main + 1 | main + 2 |
+| macOS | user-interactive | user-initiated | utility (quality-of-service classes) |
+| Windows | above normal | normal | below normal |
+| Linux | nice −5, which needs privileges: otherwise refused, and the thread stays at 0 | nice 0 | nice 5 |
+
+On a console that decides what runs: a thread runs until it waits, and only a higher one can interrupt it (neither the DS's calico nor the 3DS's kernel shares the CPU between threads of the same priority, and every `std::thread` on a 3DS starts on its application core). Without priorities a busy padd (a ragdoll's physics with many contacts) kept the main thread, and with it the buttons, waiting. `System::start()` reads the main thread's priority, and the others are set next to it. On a desktop it's a hint to a scheduler that shares several cores out anyway, and matters only when they're busy.
 
 **Platforms without threads.** Some C++ libraries are built without threads (for some bare-metal targets, say). `Threads.hpp` works out at compile time whether the C++ library has them, as `SCRATCHPADD_HAS_THREADS` (1 or 0; `ScratchPadd::kHasThreads` in code): 0 where libstdc++ lacks `_GLIBCXX_HAS_GTHREADS` or libc++ has threads turned off, and wherever `SCRATCHPADD_NO_THREADS` is defined. (The 3DS and the DS have threads: see [On the Nintendo 3DS and DS](#on-the-nintendo-3ds-and-ds).) Where it's 0:
 
-- `RunOn::BackgroundThread` doesn't exist, so **a padd whose `runOn()` returns it doesn't compile** (the compiler says `no member named 'BackgroundThread' in 'ScratchPadd::RunOn'`). A padd can't ask for a thread the platform can't give it.
-- `kDefaultRunOn` is `RunOn::MainThread`, so a padd that doesn't override `runOn()` builds and runs on either kind of platform.
-- `RunOnUnthreaded_test` builds with `SCRATCHPADD_NO_THREADS` and checks both. That's as far as it goes: the rest of ScratchPadd (its locks, and the timer threads behind `repeat()`) still uses threads, so ScratchPadd as a whole needs a C++ library with them.
+- `Runs::Urgently`, `Steadily` and `WhenIdle` don't exist, so **a padd whose `runs()` returns one doesn't compile** (the compiler says `no member named 'Steadily' in 'ScratchPadd::Runs'`). A padd can't ask for a thread the platform can't give it.
+- `kDefaultRuns` is `Runs::OnMainThread`, so a padd that doesn't override `runs()` builds and runs on either kind of platform.
+- `RunsUnthreaded_test` builds with `SCRATCHPADD_NO_THREADS` and checks both. That's as far as it goes: the rest of ScratchPadd (its locks, and the timer threads behind `repeat()`) still uses threads, so ScratchPadd as a whole needs a C++ library with them.
 
-`start()` blocks until `stop()` is called. `stop()` only requests shutdown and returns immediately, so it is safe from any thread, including from inside a padd: the demo's `DisplayPadd` calls `system_->stop()` when its window closes. `start()` then shuts down on its own thread, in order: every padd stops (background padds run `finishing()` on their own threads), main-thread padds run `finishing()`, and every padd runs `cleanup()`. `start()` returns once that is done. Tests start the system on a separate thread and call `waitForStart()` to wait until every padd is running.
+`start()` blocks until `stop()` is called. `stop()` only requests shutdown and returns immediately, so it is safe from any thread, including from inside a padd: the demo's `DisplayPadd` calls `system_->stop()` when its window closes. `start()` then shuts down on its own thread, in order: every padd stops (background padds run `finishing()` on their own threads), main-thread padds run `finishing()`, and every padd runs `cleanup()`. `start()` returns once that is done. A padd stopped while it was still starting (another stopped the system from its `starting()`) stays stopped: its `repeat()` timer isn't started and it doesn't turn itself back on. Tests start the system on a separate thread and call `waitForStart()` to wait until every padd is running.
 
 **Padds don't poll.** A padd with nothing to do sleeps, using no CPU, and wakes the moment work is pushed to it: a message, a `repeat()` tick, or `stop()`. Work runs in the order it was pushed, and a job can push more work (to its own padd too). For periodic work use `repeatInterval()`; for work that should run as often as something else allows, such as drawing at the display's refresh rate, have each run `push()` the next one, as `DisplayPadd` does below.
 
@@ -476,7 +497,7 @@ miniaudio (public domain or MIT-0), TinySoundFont (MIT) and stb_vorbis (public d
 
 ## On the Nintendo 3DS and DS
 
-Padds run on both as on desktops, threads and all. devkitPro gives the C++ library real threads on each: libctru's on the 3DS, and calico's on the DS (calico is devkitPro's system library under libnds), so `std::thread`, mutexes and condition variables work and `RunOn::BackgroundThread` is there. The two demos are the same three padds; [`handheld/include/HandheldDemo.hpp`](handheld/include/HandheldDemo.hpp) holds what they share, and each adds a `ScreenPadd` for its own screens and buttons:
+Padds run on both as on desktops, threads and all. devkitPro gives the C++ library real threads on each: libctru's on the 3DS, and calico's on the DS (calico is devkitPro's system library under libnds), so `std::thread`, mutexes and condition variables work and a padd can have a thread of its own, at the priority its `runs()` asks for (on a console it decides what runs: see [Threads](#threads)). The two demos are the same three padds; [`handheld/include/HandheldDemo.hpp`](handheld/include/HandheldDemo.hpp) holds what they share, and each adds a `ScreenPadd` for its own screens and buttons:
 
 | Padd | Runs on | Does |
 | --- | --- | --- |
@@ -571,7 +592,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | --- | --- |
 | `basis:Examples_test` | The examples in this README |
 | `basis:Base_test` | Padd names, and a system starting and stopping |
-| `basis:RunOn_test`, `basis:RunOnUnthreaded_test` | The same test built with threads and without (`SCRATCHPADD_NO_THREADS`): `RunOn::BackgroundThread` exists only with threads, and a padd that doesn't override `runOn()` gets a background thread with threads and runs on `start()`'s thread without |
+| `basis:Runs_test`, `basis:RunsUnthreaded_test` | The same test built with threads and without (`SCRATCHPADD_NO_THREADS`): `Runs::Urgently`, `Steadily` and `WhenIdle` exist only with threads, a padd that doesn't override `runs()` gets a thread of its own with threads and runs on `start()`'s thread without, and each padd's thread has the priority its `Runs` asks for |
 | `basis:Threading_test` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
 | `basis:SharedState_test` | Shared state: a default value at version 0 before anything's published, readers getting the newest with its version and time (on background and main-thread padds), each type and name its own, one publisher each, no half-written value seen while publishing and reading at once on two threads, and calls only on the padd's own thread |
 | `input:Input_test`, `input:GamePadd_test` | The controller: see [`input`](input/README.md#tools-and-tests) |
@@ -598,6 +619,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `scene/metal:GlslToMsl_test` | Every shader of the shader playground translated to Metal's shading language and compiled by Metal; loose uniforms found at the offsets Metal gives them; a GLSL mistake reported. Macs only |
 | `scene/spirv:GlslToSpirv_test` | Every shader of the shader playground compiled to SPIR-V; an OpenGL shader's loose uniforms found at std140's offsets, in the binding asked for; Vulkan GLSL compiled as it is; mistakes reported |
 | `scene/vulkan:ShaderPanel_test` | Every fragment shader of the shader playground, with its vertex shader, made into a `ShaderPanel` the Vulkan device takes, and drawn; a GLSL mistake reported. Needs no window; skipped where there's no Vulkan (it runs on lavapipe in the Linux check) |
+| `utilities:ThreadPriority_test` | Each platform's thread priorities, read back with its own call: macOS's quality-of-service classes, Windows' levels, Linux's nice values (raising one refused without privileges) |
 | `utilities:Logger_test` | The log line: time, level and `[name]` in columns, messages starting in the same column, a long name kept whole |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 

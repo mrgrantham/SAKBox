@@ -1,4 +1,5 @@
 #pragma once
+#include <ScratchPadd/ThreadPriority.hpp>
 #include <ScratchPadd/TimerResolution.hpp>
 #include <algorithm>
 #include <atomic>
@@ -64,6 +65,9 @@ class EventTimer {
     is_active_ = true;
     timer_thread_ = std::thread([this, body] {
       timer_thread_id_ = std::this_thread::get_id();
+      // Ahead of the threads it queues work for, so a tick isn't late behind
+      // their work (on a console, it would wait until they did)
+      Platform::setThisThreadPriority(Platform::ThreadPriority::High);
       const FineTimerResolution fineTimer; // its waits on time, on Windows
       body();
       is_active_ = false;

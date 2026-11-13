@@ -8,6 +8,8 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -17,11 +19,11 @@ namespace {
 
 // A padd that can run a job on whichever thread its work queue is processed
 // on and report back that thread's id.
-template <ScratchPadd::RunOn Thread, int Id> class ThreadPadd : public ScratchPadd::Base {
+template <ScratchPadd::Runs Thread, int Id> class ThreadPadd : public ScratchPadd::Base {
 public:
   ThreadPadd(ScratchPadd::System *system) : Base(system) {}
   std::string name() override { return "ThreadPadd" + std::to_string(Id); }
-  ScratchPadd::RunOn runOn() override { return Thread; }
+  ScratchPadd::Runs runs() override { return Thread; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 
   // Queues a job and returns the id of the thread that ran it.
@@ -34,10 +36,10 @@ public:
   }
 };
 
-using MainA = ThreadPadd<ScratchPadd::RunOn::MainThread, 1>;
-using MainB = ThreadPadd<ScratchPadd::RunOn::MainThread, 2>;
-using BackgroundA = ThreadPadd<ScratchPadd::RunOn::BackgroundThread, 3>;
-using BackgroundB = ThreadPadd<ScratchPadd::RunOn::BackgroundThread, 4>;
+using MainA = ThreadPadd<ScratchPadd::Runs::OnMainThread, 1>;
+using MainB = ThreadPadd<ScratchPadd::Runs::OnMainThread, 2>;
+using BackgroundA = ThreadPadd<ScratchPadd::Runs::Steadily, 3>;
+using BackgroundB = ThreadPadd<ScratchPadd::Runs::Steadily, 4>;
 
 // Runs a system on its own thread, standing in for the app's main thread.
 template <typename... Padds> class RunningSystem {
@@ -66,7 +68,7 @@ public:
 
 } // namespace
 
-// runOn() returning RunOn::MainThread for all padds makes every
+// runs() returning Runs::OnMainThread for all padds makes every
 // padd run in the main thread event loop.
 TEST(ThreadingTest, TestAllMainThread) {
   RunningSystem<MainA, MainB> running;
@@ -76,9 +78,9 @@ TEST(ThreadingTest, TestAllMainThread) {
   EXPECT_EQ(running.padd<MainB>().workThreadId(), mainId);
 }
 
-// runOn() returning RunOn::BackgroundThread for all padds makes each
+// runs() returning Runs::Steadily for all padds makes each
 // padd run on its own background thread.
-TEST(ThreadingTest, TestAllBackgroundThreads) {
+TEST(ThreadingTest, TestAllOwnThreads) {
   RunningSystem<BackgroundA, BackgroundB> running;
   const auto mainId = running.mainThread.get_id();
 
@@ -90,7 +92,7 @@ TEST(ThreadingTest, TestAllBackgroundThreads) {
   EXPECT_NE(a, std::this_thread::get_id());
 }
 
-// runOn() returning different threads for different padds gives
+// runs() returning different threads for different padds gives
 // each padd the correct behavior.
 TEST(ThreadingTest, TestMixedBackgroundAndMainThreads) {
   RunningSystem<MainA, BackgroundA, MainB, BackgroundB> running;
@@ -159,7 +161,7 @@ struct HookLog {
 };
 HookLog hookLog;
 
-template <ScratchPadd::RunOn Thread, int Id> class RecordingPadd : public ThreadPadd<Thread, Id> {
+template <ScratchPadd::Runs Thread, int Id> class RecordingPadd : public ThreadPadd<Thread, Id> {
 public:
   using ThreadPadd<Thread, Id>::ThreadPadd;
   void finishing() override { hookLog.add("finishing", this->name()); }
@@ -167,8 +169,7 @@ public:
 };
 
 // Calls system_->stop() from inside its own repeat().
-template <ScratchPadd::RunOn Thread, int Id>
-class SelfStoppingPadd : public ThreadPadd<Thread, Id> {
+template <ScratchPadd::Runs Thread, int Id> class SelfStoppingPadd : public ThreadPadd<Thread, Id> {
 public:
   using ThreadPadd<Thread, Id>::ThreadPadd;
   std::optional<std::chrono::duration<double>> repeatInterval() override { return 5ms; }
@@ -197,8 +198,8 @@ template <typename... Padds> bool startReturnsAfterSelfStop() {
 // finishing() runs for every padd before any cleanup(); cleanup() runs on the
 // thread that called start(); finishing() runs on each padd's own thread.
 TEST(ThreadingTest, TestShutdownOrder) {
-  using Main = RecordingPadd<ScratchPadd::RunOn::MainThread, 5>;
-  using Background = RecordingPadd<ScratchPadd::RunOn::BackgroundThread, 6>;
+  using Main = RecordingPadd<ScratchPadd::Runs::OnMainThread, 5>;
+  using Background = RecordingPadd<ScratchPadd::Runs::Steadily, 6>;
   hookLog.entries.clear();
   std::thread::id mainId;
   {
@@ -223,13 +224,13 @@ TEST(ThreadingTest, TestShutdownOrder) {
 
 // A padd can stop the system from inside itself, whichever thread it runs on.
 TEST(ThreadingTest, TestStopFromInsideMainThreadPadd) {
-  EXPECT_TRUE((startReturnsAfterSelfStop<SelfStoppingPadd<ScratchPadd::RunOn::MainThread, 7>,
+  EXPECT_TRUE((startReturnsAfterSelfStop<SelfStoppingPadd<ScratchPadd::Runs::OnMainThread, 7>,
                                          BackgroundA>()));
 }
 
 TEST(ThreadingTest, TestStopFromInsideBackgroundPadd) {
-  EXPECT_TRUE((startReturnsAfterSelfStop<SelfStoppingPadd<ScratchPadd::RunOn::BackgroundThread, 8>,
-                                         MainA>()));
+  EXPECT_TRUE(
+      (startReturnsAfterSelfStop<SelfStoppingPadd<ScratchPadd::Runs::Steadily, 8>, MainA>()));
 }
 
 // Padds don't poll: with no work, their loops sleep instead of spinning.
@@ -290,4 +291,38 @@ TEST(ThreadingTest, ConcurrentSendersLoseNothing) {
       EXPECT_EQ(seen[sender][job], job);
     }
   }
+}
+
+namespace {
+
+// Stops the system as soon as it starts
+class StopsAtOncePadd : public ScratchPadd::Base {
+public:
+  StopsAtOncePadd(ScratchPadd::System *system) : Base(system) {}
+  std::string name() override { return "StopsAtOnce"; }
+  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+  void starting() override { system_->stop(); }
+};
+
+// Slow to start, with a repeat(): still in starting() when the system stops
+class SlowStarterPadd : public ScratchPadd::Base {
+public:
+  SlowStarterPadd(ScratchPadd::System *system) : Base(system) {}
+  std::string name() override { return "SlowStarter"; }
+  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+  std::optional<std::chrono::duration<double>> repeatInterval() override { return 10ms; }
+  void starting() override { std::this_thread::sleep_for(200ms); }
+};
+
+} // namespace
+
+// A padd stopped while it's still starting stays stopped: it doesn't turn
+// itself back on (or start its timer) when its starting() returns, which
+// left its thread running and the system's shutdown waiting on it forever.
+TEST(ThreadingTest, StoppedWhileStartingStaysStopped) {
+  ScratchPadd::SystemImplementation<StopsAtOncePadd, SlowStarterPadd> system;
+  system.instantiate();
+  auto finished = std::async(std::launch::async, [&] { system.start(); });
+  ASSERT_EQ(finished.wait_for(5s), std::future_status::ready) << "start() never returned";
+  EXPECT_FALSE(std::get<std::unique_ptr<SlowStarterPadd>>(system.getWorkers())->isRunning());
 }

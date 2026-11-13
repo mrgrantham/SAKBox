@@ -49,7 +49,7 @@ public:
     recordEvents<GatePassed, Crashed, PowerupCollected, WallPhased, GameOver>();
   }
   std::string name() override { return "Driver"; }
-  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::OnMainThread; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 
   // Runs `frames` frames of one simulation step each; returns once they're done.

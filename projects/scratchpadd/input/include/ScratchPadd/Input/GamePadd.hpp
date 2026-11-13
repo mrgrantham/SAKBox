@@ -21,7 +21,7 @@ class GamePadd : public Base {
 public:
   explicit GamePadd(System *system) : Base(system) {}
   std::string name() override { return "GamePadd"; }
-  RunOn runOn() override { return RunOn::MainThread; }
+  Runs runs() override { return Runs::OnMainThread; }
   ControlValueMap generateControls() override { return {}; }
   std::optional<std::chrono::duration<double>> repeatInterval() override {
     return std::chrono::milliseconds(4);

@@ -5,6 +5,7 @@ cc_library(
     hdrs = glob(["include/**/*.hpp"]),
     srcs = [
         "src/Logger.cpp",
+        "src/ThreadPriority.cpp",
         "src/TimerResolution.cpp",
     ],
     # (TimerResolution.cpp's timeBeginPeriod, on Windows)
@@ -17,6 +18,16 @@ cc_library(
     deps = [
         "@fmt",
         "@spdlog",
+    ],
+)
+
+cc_test(
+    name = "ThreadPriority_test",
+    size = "small",
+    srcs = ["tests/ThreadPriority_test.cpp"],
+    deps = [
+        ":utilities",
+        "@gtest//:gtest_main",
     ],
 )
 

@@ -20,7 +20,7 @@ class WindowPadd : public ScratchPadd::Base {
 public:
   WindowPadd(ScratchPadd::System *system) : Base(system) {}
   std::string name() override { return "WindowPadd"; }
-  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::BackgroundThread; }
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::Steadily; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 
   template <typename Job> auto run(Job job) {

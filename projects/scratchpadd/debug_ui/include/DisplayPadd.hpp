@@ -40,7 +40,7 @@ public:
   }
 
   std::string name() override { return __CLASS_NAME__; }
-  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::OnMainThread; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 
   void starting() override {

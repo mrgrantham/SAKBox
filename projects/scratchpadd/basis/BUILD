@@ -53,20 +53,20 @@ cc_test(
   ":basis"],
 )
 
-# RunOn, with threads and without (SCRATCHPADD_NO_THREADS, as for a
-# Nintendo DS): the same test built twice
+# Runs, with threads and without (SCRATCHPADD_NO_THREADS, as for some
+# bare-metal targets): the same test built twice
 cc_test(
-  name = "RunOn_test",
+  name = "Runs_test",
   size = "small",
-  srcs = ["tests/RunOn_test.cpp"],
+  srcs = ["tests/Runs_test.cpp"],
   deps = ["@gtest//:gtest_main",
   ":basis"],
 )
 
 cc_test(
-  name = "RunOnUnthreaded_test",
+  name = "RunsUnthreaded_test",
   size = "small",
-  srcs = ["tests/RunOn_test.cpp"],
+  srcs = ["tests/Runs_test.cpp"],
   local_defines = ["SCRATCHPADD_NO_THREADS"],
   deps = ["@gtest//:gtest_main",
   ":basis"],

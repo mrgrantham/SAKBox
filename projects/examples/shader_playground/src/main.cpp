@@ -86,7 +86,7 @@ class Playground : public ScratchPadd::Base {
 public:
   Playground(ScratchPadd::System *system) : Base(system) {}
 
-  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::OnMainThread; }
   std::string name() override { return __CLASS_NAME__; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 

@@ -29,7 +29,7 @@ public:
   }
 
   std::string name() override { return "FlightSim"; }
-  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::OnMainThread; }
 
   // The precision lab, with today's defaults and ranges.
   ScratchPadd::ControlValueMap generateControls() override {

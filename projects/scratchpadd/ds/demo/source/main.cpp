@@ -73,7 +73,7 @@ public:
   }
   std::string name() override { return "ScreenPadd"; }
   // The frame loop, on the main thread as in devkitPro's examples
-  ScratchPadd::RunOn runOn() override { return ScratchPadd::RunOn::MainThread; }
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::OnMainThread; }
   ScratchPadd::ControlValueMap generateControls() override { return {}; }
 
   void starting() override {
