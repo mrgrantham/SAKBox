@@ -79,6 +79,29 @@ public:
   }
 };
 
+// The shared state example from the README: one padd publishes the
+// controller, another reads it
+struct Gamepad {
+  std::uint32_t held;
+  float stickX, stickY;
+};
+
+class PadReader : public ScratchPadd::Base {
+public:
+  PadReader(ScratchPadd::System *system) : Base(system) {}
+  std::string name() override { return "PadReader"; }
+  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+  void publish(const Gamepad &pad) { publishState(pad); }
+};
+
+class Steerer : public ScratchPadd::Base {
+public:
+  Steerer(ScratchPadd::System *system) : Base(system) {}
+  std::string name() override { return "Steerer"; }
+  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+  ScratchPadd::State<Gamepad> read() { return currentState<Gamepad>(); }
+};
+
 template <typename Condition> bool eventually(Condition condition) {
   const auto deadline = std::chrono::steady_clock::now() + 2s;
   while (!condition()) {
@@ -127,4 +150,20 @@ TEST(ExamplesTest, ControlsHaveDefaultsAndAcceptChanges) {
   change.controlTypeValue = ScratchPadd::ControlType::Boolean(false);
   ScratchPadd::PaddTestAccess::updateControl(mover, change);
   EXPECT_DOUBLE_EQ(mover.speed(), 4.5);
+}
+
+TEST(ExamplesTest, SharedStateIsTheNewestPublished) {
+  ScratchPadd::SystemImplementation<PadReader, Steerer> system;
+  system.instantiate();
+  auto &pads = *std::get<std::unique_ptr<PadReader>>(system.getWorkers());
+  auto &steerer = *std::get<std::unique_ptr<Steerer>>(system.getWorkers());
+
+  // (Not started, so the test's thread may act for both padds.)
+  EXPECT_EQ(steerer.read().version, 0u);
+  pads.publish({.held = 1, .stickX = 0.25f, .stickY = 0});
+  pads.publish({.held = 3, .stickX = -1, .stickY = 0.5f});
+  const ScratchPadd::State<Gamepad> pad = steerer.read();
+  EXPECT_EQ(pad.version, 2u);
+  EXPECT_EQ(pad.value.held, 3u);
+  EXPECT_EQ(pad.value.stickX, -1);
 }

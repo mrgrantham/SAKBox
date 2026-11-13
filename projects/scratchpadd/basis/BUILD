@@ -45,6 +45,14 @@ cc_test(
   ":basis"],
 )
 
+cc_test(
+  name = "SharedState_test",
+  size = "small",
+  srcs = ["tests/SharedState_test.cpp"],
+  deps = ["@gtest//:gtest_main",
+  ":basis"],
+)
+
 # RunOn, with threads and without (SCRATCHPADD_NO_THREADS, as for a
 # Nintendo DS): the same test built twice
 cc_test(

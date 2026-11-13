@@ -2,6 +2,7 @@
 
 #include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/PaddAddress.hpp>
+#include <ScratchPadd/SharedState.hpp>
 
 #include <string_view>
 #include <typeindex>
@@ -27,5 +28,11 @@ public:
   // The padd named `name` (its Base::paddName()), or an empty address
   virtual PaddAddress paddNamed(std::string_view name) = 0;
   virtual bool isRunning() = 0;
+  // The system's shared state (SharedState.hpp), which padds publish and
+  // read through Base::publishState() and currentState()
+  SharedStates &sharedStates() { return sharedStates_; }
+
+private:
+  SharedStates sharedStates_;
 };
 } // namespace ScratchPadd

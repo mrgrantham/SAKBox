@@ -25,6 +25,7 @@
 #include <ScratchPadd/Logger.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/PaddAddress.hpp>
+#include <ScratchPadd/SharedState.hpp>
 #include <ScratchPadd/System.hpp>
 #include <ScratchPadd/Threads.hpp>
 #include <ScratchPadd/WorkQueue.hpp>
@@ -425,6 +426,36 @@ protected:
     return true;
   }
 
+  // --- Shared state (SharedState.hpp) ---
+
+  // Publishes `value` as the current T (the one named `name`, if an app
+  // shares several of one type), for any padd to read with currentState().
+  // One padd publishes each: the first to. Another's publish is refused,
+  // logged the first time, and returns false. Call on the padd's own thread.
+  template <Shareable T> bool publishState(const T &value, std::string_view name = {}) {
+    assertOnPaddThread("publishState");
+    StateSlot &found = stateSlot<T>(name);
+    if (found.publishing == StateSlot::Publishing::unasked) {
+      found.publishing =
+          found.slot->claimFor(this) ? StateSlot::Publishing::yes : StateSlot::Publishing::refused;
+      if (found.publishing == StateSlot::Publishing::refused)
+        logger().error("{}: publishState({}{}{}) refused: another padd publishes it", name_,
+                       typeid(T).name(), name.empty() ? "" : ", ", name);
+    }
+    if (found.publishing == StateSlot::Publishing::refused)
+      return false;
+    static_cast<SharedStateSlot<T> &>(*found.slot).publish(value);
+    return true;
+  }
+
+  // The current T (named `name`), as last published, and its version (0:
+  // never published, so a default T). A copy: keep it as long as you like.
+  // Call on the padd's own thread.
+  template <Shareable T> State<T> currentState(std::string_view name = {}) {
+    assertOnPaddThread("currentState");
+    return static_cast<SharedStateSlot<T> &>(*stateSlot<T>(name).slot).latest();
+  }
+
   // Throws std::logic_error unless called on this padd's own thread (or
   // before it starts, or after it finishes). The methods that change or read
   // a padd's state call it; a padd's own methods that do the same can too.
@@ -440,6 +471,22 @@ protected:
 
 private:
   using Handler = std::function<void(const MessageBase &, PaddAddress from)>;
+
+  // A shared state slot this padd has used, kept so later calls skip the
+  // system's lookup (and its lock); touched only on the padd's own thread
+  struct StateSlot {
+    SharedStateSlotBase *slot = nullptr;
+    enum class Publishing : std::uint8_t { unasked, yes, refused } publishing = Publishing::unasked;
+  };
+  std::unordered_map<SharedStates::Key, StateSlot, SharedStates::KeyHash> stateSlots_;
+
+  template <Shareable T> StateSlot &stateSlot(std::string_view name) {
+    StateSlot &found =
+        stateSlots_[SharedStates::Key{std::type_index(typeid(T)), std::string(name)}];
+    if (!found.slot)
+      found.slot = &system_->sharedStates().slot<T>(name);
+    return found;
+  }
 
   // Read by the work loop and written from other threads (e.g. stop()).
   std::atomic<bool> on_{false};

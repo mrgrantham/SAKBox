@@ -192,6 +192,28 @@ receive<Ping>([this](const Ping &ping, PaddAddress from) { sendTo(from, Pong{pin
 
 The library defines only general-purpose messages in [`messages/include/ScratchPadd/Messages/`](messages/include/ScratchPadd/Messages/): `Text` (a string) and the three control messages below. The demo's `Triangle` (`demo/include/DemoMessages.hpp`) is an example of an app-defined message.
 
+### Shared state
+
+Messages are for things that happen: each is queued and delivered, none lost. Some data is instead a current value, read when it's needed: the controller as a frame starts, the world as the physics last left it. A queue of old values arriving after the frame has begun is the wrong shape for that, so a padd can publish shared state: the latest value of a type, which any padd reads whenever it likes. Nothing queues, and no one is woken.
+
+```cpp
+struct Gamepad { std::uint32_t held; float stickX, stickY; };   // a plain struct
+
+// The publisher, on its own thread
+publishState(Gamepad{...});
+
+// Any reader, on its own thread: a copy of the newest, and its version
+const ScratchPadd::State<Gamepad> pad = currentState<Gamepad>();
+if (pad.version == 0) { /* nothing published yet: pad.value is a default Gamepad */ }
+```
+
+- **Found by its type.** Publishing a `Gamepad` and asking for a `Gamepad` meet in the same place, with nothing to register. An app sharing several of one type names them: `publishState(pose, "ragdoll")`, `currentState<Pose>("ragdoll")`; each type and name is its own state.
+- **A plain struct:** trivially copyable and default-constructible (checked when compiling), copied whole each time it's published or read, so a reader keeps its copy as long as it likes.
+- **Versions** count the publishes: 0 is never published, then one more each time. A reader that compares versions knows whether anything changed since its last read; one that read rarely just gets the newest.
+- **One publisher each:** the first padd to publish a state owns it; another's `publishState` is refused (logged once) and returns `false`.
+- **Both are called on the padd's own thread,** as its controls are. The system owns the states, so they outlive its padds. Each copy in or out is made under a short lock, so a publisher waits at most for one reader's copy; that's cheap for the small structs this is for, and the same code runs on the DS.
+- **Which to use:** a message for something that happens and mustn't be lost (a button pressed for a menu, a sound to load); shared state for a current value read when needed. A padd that sleeps until something arrives can't use shared state, as nothing wakes it: send it messages.
+
 ### Controls
 
 A padd can describe values it wants to be adjustable at runtime by returning them from `generateControls()`:
@@ -525,6 +547,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `basis:Base_test` | Padd names, and a system starting and stopping |
 | `basis:RunOn_test`, `basis:RunOnUnthreaded_test` | The same test built with threads and without (`SCRATCHPADD_NO_THREADS`): `RunOn::BackgroundThread` exists only with threads, and a padd that doesn't override `runOn()` gets a background thread with threads and runs on `start()`'s thread without |
 | `basis:Threading_test` | Padds run on the right threads; shutdown order; stopping from any thread, including inside a padd; idle padds don't spin; work wakes a padd promptly; concurrent senders lose nothing |
+| `basis:SharedState_test` | Shared state: a default value at version 0 before anything's published, readers getting the newest (on background and main-thread padds), each type and name its own, one publisher each, no half-written value seen while publishing and reading at once on two threads, and calls only on the padd's own thread |
 | `messages:Messages_test` | App-defined messages: contents intact, not echoed to the sender, each type to its handler, padds without a handler never queued, `sendIncludeSender()`, one shared object per message, `name()` called once rather than per message, type names worked out once per type, handlers started and stopped while running (including a handler removing or replacing itself, queued messages of a removed type dropped, and senders racing handler changes); `sendTo` (only the named padd, by class and by name, to itself, in order, refused for a missing padd, an empty address or an unhandled type, and four padds sending to one at once from their own threads losing nothing, each in order and with the right sender); the sender (a reply to it, `reply()` reaching only senders that handle the answer, and no sender for a message from outside); broadcasts nobody handles noted once per type; and, when it compiles, that code outside a padd can't call into one |
 | `messages:Controls_test` | The control round trip: requests answered to the panel that asked (all padds, or one sent the request), changes sent straight to their owner and every panel told, unknown padds refused, range clamping, rejected changes, `controlChanged()` (with each change's value before) and `control<C>()`, and a running padd's controls refused from another thread; and an owner's own changes: `setControl()` (by the same rules, telling panels), `addControl()`, `removeControl()` (the last removal empties the panel), and a padd without controls adding one |
 | `audio:AudioCore_test` | The audio core, through `OfflineOutput`: the queues (including two threads at once), exact samples, voices adding up, volumes, balance, pitch, loops, stops and volume changes ramping, the limiter holding sounds that add up past full scale to it and then recovering, finished voices reported once, unloading a sound while it plays, the voice limit (refusing, and stealing the quietest or oldest, never music), files resampled from another rate and channel count, missing files, music streamed frame for frame and looping without a gap, music running dry counted, mixing allocating nothing (and that an allocation there would be counted), and how long a second of 32 voices takes to mix |
