@@ -6,14 +6,12 @@
 #include <ScratchPadd/DebugLog/LogBufferSink.hpp>
 #include <ScratchPadd/DebugLog/LogServer.hpp>
 #elif defined(__NDS__)
+#include <ScratchPadd/DebugLog/CardLog.hpp>
 #include <fat.h>
+#include <spdlog/details/log_msg.h>
 #include <spdlog/sinks/base_sink.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
-#include <algorithm>
-#include <chrono>
-#include <cstdio>
 #include <mutex>
 #endif
 
@@ -24,85 +22,32 @@ struct Session::Platform {
   LogBuffer buffer;
   LogServer server{buffer};
 };
+#elif defined(__NDS__)
+struct Session::Platform {
+  std::unique_ptr<CardLog> log;
+};
 #else
 struct Session::Platform {};
 #endif
 
 #if defined(__NDS__)
 namespace {
-// A log file on the card, synced to it every `syncEvery` lines, and at
-// once for a warning or an error. fflush (all spdlog's file sink does) only
-// reaches libfat's cache, which goes to the card when the file closes, so
-// an app switched off rather than quit left its log empty; fsync writes the
-// cache out. How long the syncs take goes in the log every kSyncsPerReport
-// of them, and when it closes.
-class CardFileSink final : public spdlog::sinks::base_sink<std::mutex> {
+// Every logger's lines, formatted, into the CardLog (which writes them to
+// the card in batches); warnings and errors written at once
+class CardLogSink final : public spdlog::sinks::base_sink<std::mutex> {
 public:
-  CardFileSink(const std::string &path, unsigned syncEvery)
-      : file_(std::fopen(path.c_str(), "w")), syncEvery_(std::max(1u, syncEvery)) {
-    if (!file_)
-      throw spdlog::spdlog_ex("can't write " + path);
-  }
-  ~CardFileSink() override {
-    if (syncs_ % kSyncsPerReport != 0)
-      report();
-    std::fclose(file_);
-  }
-  CardFileSink(const CardFileSink &) = delete;
-  CardFileSink &operator=(const CardFileSink &) = delete;
+  explicit CardLogSink(CardLog &log) : log_(log) {}
 
 protected:
   void sink_it_(const spdlog::details::log_msg &message) override {
     spdlog::memory_buf_t line;
     formatter_->format(message, line);
-    std::fwrite(line.data(), 1, line.size(), file_);
-    if (++unsynced_ >= syncEvery_ || message.level >= spdlog::level::warn)
-      flush_();
+    log_.add(std::string_view(line.data(), line.size()), message.level >= spdlog::level::warn);
   }
-  void flush_() override {
-    if (unsynced_ == 0)
-      return;
-    const auto started = Clock::now();
-    sync();
-    const auto took = Clock::now() - started;
-    unsynced_ = 0;
-    ++syncs_;
-    total_ += took;
-    worst_ = std::max(worst_, took);
-    if (syncs_ % kSyncsPerReport == 0)
-      report();
-  }
+  void flush_() override { log_.write(); }
 
 private:
-  using Clock = std::chrono::steady_clock;
-  using Milliseconds = std::chrono::duration<double, std::milli>;
-  static constexpr unsigned kSyncsPerReport = 16;
-
-  void sync() {
-    std::fflush(file_);
-    ::fsync(::fileno(file_));
-  }
-  // (written straight to the file, not logged: the sink is in use)
-  void report() {
-    if (syncs_ == 0)
-      return;
-    const std::string text = spdlog::fmt_lib::format(
-        "{} card syncs so far, a sync every {}: {:.1f} ms each, {:.1f} ms at worst", syncs_,
-        syncEvery_ == 1 ? std::string("line") : spdlog::fmt_lib::format("{} lines", syncEvery_),
-        Milliseconds(total_).count() / syncs_, Milliseconds(worst_).count());
-    // (formatted as the logged lines are, as the "DebugLog" logger's)
-    spdlog::memory_buf_t line;
-    formatter_->format(spdlog::details::log_msg("DebugLog", spdlog::level::info, text), line);
-    std::fwrite(line.data(), 1, line.size(), file_);
-    sync();
-  }
-
-  std::FILE *file_;
-  unsigned syncEvery_;
-  unsigned unsynced_ = 0;
-  unsigned syncs_ = 0;
-  Clock::duration total_{};
-  Clock::duration worst_{};
+  CardLog &log_;
 };
 } // namespace
 #endif
@@ -126,14 +71,23 @@ Session::Session(const std::string &appName, SessionOptions options)
   }
   ::mkdir("fat:/logs", 0777);
   const std::string path = "fat:/logs/" + appName + ".log";
-  try {
-    auto sink = std::make_shared<CardFileSink>(path, options.cardSyncEvery);
-    sink->set_formatter(Logger::lineFormatter()); // (as the terminal's)
-    Logger::routeTo({sink}, false);
-  } catch (const spdlog::spdlog_ex &e) {
-    where_ = std::string("off: ") + e.what();
+  // (the log's own lines, its figures, formatted as a "DebugLog" logger's)
+  auto formatLine = [formatter = std::shared_ptr<spdlog::formatter>(Logger::lineFormatter())](
+                        std::string_view text) {
+    spdlog::memory_buf_t line;
+    formatter->format(spdlog::details::log_msg("DebugLog", spdlog::level::info, text), line);
+    return std::string(line.data(), line.size());
+  };
+  std::string error;
+  platform_->log = CardLog::open(path, options.cardWriteEvery, formatLine, error);
+  if (!platform_->log) {
+    where_ = "off: " + error;
     return;
   }
+  CardLog::setActive(platform_->log.get()); // (for WriterPadd)
+  auto sink = std::make_shared<CardLogSink>(*platform_->log);
+  sink->set_formatter(Logger::lineFormatter()); // (as the terminal's)
+  Logger::routeTo({sink}, false);
   where_ = path;
 #else
   (void)appName;

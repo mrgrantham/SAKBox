@@ -22,8 +22,12 @@ cc_library(
 
 cc_library(
     name = "debug_log",
-    srcs = ["src/session/Session.cpp"],
+    srcs = [
+        "src/session/CardLog.cpp",
+        "src/session/Session.cpp",
+    ],
     hdrs = [
+        "include/ScratchPadd/DebugLog/CardLog.hpp",
         "include/ScratchPadd/DebugLog/LogBufferSink.hpp",
         "include/ScratchPadd/DebugLog/Session.hpp",
     ],
@@ -33,6 +37,39 @@ cc_library(
         ":log_server",
         "//projects/scratchpadd/utilities",
         "@spdlog",
+    ],
+)
+
+# The padd that writes a DS's debug log (CardLog) when nothing else has work
+cc_library(
+    name = "writer_padd",
+    hdrs = ["include/ScratchPadd/DebugLog/WriterPadd.hpp"],
+    strip_include_prefix = "include/",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":debug_log",
+        "//projects/scratchpadd/basis",
+    ],
+)
+
+cc_test(
+    name = "CardLog_test",
+    size = "small",
+    srcs = ["tests/CardLog_test.cpp"],
+    deps = [
+        ":debug_log",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "WriterPadd_test",
+    size = "small",
+    srcs = ["tests/WriterPadd_test.cpp"],
+    deps = [
+        ":writer_padd",
+        "//projects/scratchpadd/basis",
+        "@gtest//:gtest_main",
     ],
 )
 

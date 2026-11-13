@@ -32,6 +32,7 @@
 #include <ScratchPadd/Audio/MadeSoundsPcm16.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
+#include <ScratchPadd/DebugLog/WriterPadd.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
@@ -587,8 +588,8 @@ int main() {
 #endif
   {
     ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, RagdollPadd,
-                                      AudioPadd>
-        system;
+                                      AudioPadd, ScratchPadd::DebugLog::WriterPadd>
+        system; // (WriterPadd: a debug build's log, written to the card when idle)
     system.instantiate();
     system.start(); // returns when ScreenPadd stops it (START)
   }

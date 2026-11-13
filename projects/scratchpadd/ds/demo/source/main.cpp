@@ -21,6 +21,7 @@
 #include <HandheldDemo.hpp>
 #include <ScratchPadd/AppEnded/AppEnded.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
+#include <ScratchPadd/DebugLog/WriterPadd.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
@@ -190,8 +191,8 @@ int main() {
 #endif
   {
     ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, SoundBoardPadd,
-                                      AudioPadd>
-        system;
+                                      AudioPadd, ScratchPadd::DebugLog::WriterPadd>
+        system; // (WriterPadd: a debug build's log, written to the card when idle)
     system.instantiate();
     system.start(); // returns when ScreenPadd stops it (START)
   }
