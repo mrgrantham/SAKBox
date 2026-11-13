@@ -57,7 +57,7 @@ A system is built from a list of padd types and runs until something calls `stop
 
 ```cpp
 int main() {
-  ScratchPadd::System *system = ScratchPadd::SystemBuilder<Ticker, Printer>();
+  const std::unique_ptr<ScratchPadd::System> system = ScratchPadd::SystemBuilder<Ticker, Printer>();
   system->instantiate(); // constructs every padd
   system->start();       // runs until system->stop() is called
 }
@@ -522,7 +522,7 @@ How the builds differ from a desktop's:
 
 | Bazel target | Contents |
 | --- | --- |
-| `//projects/scratchpadd/basis` | The core: `Base`, `System`, `SystemBuilder`. Depend on this; it includes `messages` and `utilities` |
+| `//projects/scratchpadd/basis` | The core: `Base`, `System`, `SystemBuilder` (which returns the system as a `std::unique_ptr`). Depend on this; it includes `messages` and `utilities` |
 | `//projects/scratchpadd/messages` | The message wrapper (`Message`, `makeMessage`), `Text`, and the control types |
 | `//projects/scratchpadd/utilities` | Logging, `Timer`, `EventTimer` and helpers like `VariantHandler` |
 | `//projects/scratchpadd/scene` | The scene layer's API (`Scene.hpp`): types, meshes made in code, the overlay |

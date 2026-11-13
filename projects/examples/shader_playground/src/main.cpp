@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
   // Makes the BUILD file's data dependencies (the shaders) findable
   DataDepRetriever::ConfigureDependencies(argv[0]);
   backward::SignalHandling signalHandling;
-  ScratchPadd::System *system = ScratchPadd::SystemBuilder<Playground>();
+  const std::unique_ptr<ScratchPadd::System> system = ScratchPadd::SystemBuilder<Playground>();
   system->instantiate();
   system->start();
   return EXIT_SUCCESS;

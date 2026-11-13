@@ -67,9 +67,7 @@ TEST(BaseTest, PaddNamesComeFromClassName) {
 // A system built with SystemBuilder constructs its padds, starts them, and
 // stops cleanly.
 TEST(BaseTest, SystemStartsAndStops) {
-  auto *spsystem =
-      dynamic_cast<ScratchPadd::SystemImplementation<TestSenderPadd, TestReceiverPadd> *>(
-          ScratchPadd::SystemBuilder<TestSenderPadd, TestReceiverPadd>());
+  const auto spsystem = ScratchPadd::SystemBuilder<TestSenderPadd, TestReceiverPadd>();
   spsystem->instantiate();
 
   auto systemThread = std::thread([&] { spsystem->start(); });

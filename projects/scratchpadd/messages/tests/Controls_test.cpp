@@ -83,9 +83,7 @@ TEST(ControlsTest, TestControlRequest) {
 
   using namespace std::chrono_literals;
 
-  auto *spsystem =
-      dynamic_cast<ScratchPadd::SystemImplementation<ControlGeneratorPadd, ControlExposurePadd> *>(
-          ScratchPadd::SystemBuilder<ControlGeneratorPadd, ControlExposurePadd>());
+  const auto spsystem = ScratchPadd::SystemBuilder<ControlGeneratorPadd, ControlExposurePadd>();
 
   // ScratchPadd::Data::ConfigureDependencies(argv[0]);
   SCOPED_METHOD_TIMER();
@@ -126,9 +124,7 @@ TEST(ControlsTest, TestControlRequest) {
 TEST(ControlsTest, TestControlChange) {
   using namespace std::chrono_literals;
 
-  auto *spsystem =
-      dynamic_cast<ScratchPadd::SystemImplementation<ControlGeneratorPadd, ControlExposurePadd> *>(
-          ScratchPadd::SystemBuilder<ControlGeneratorPadd, ControlExposurePadd>());
+  const auto spsystem = ScratchPadd::SystemBuilder<ControlGeneratorPadd, ControlExposurePadd>();
 
   // ScratchPadd::Data::ConfigureDependencies(argv[0]);
   SCOPED_METHOD_TIMER();

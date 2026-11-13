@@ -16,7 +16,8 @@
 // volatile sig_atomic_t flag = 0;
 // void signal_handler(int sig);
 
-ScratchPadd::System *spsystem =
+// (global, for signal_handler)
+const std::unique_ptr<ScratchPadd::System> spsystem =
     ScratchPadd::SystemBuilder<DisplayPadd, StoryPadd, AudioPadd, MidiInputPadd, ShapeLoggerPadd>();
 
 int main(int argc, char **argv) {

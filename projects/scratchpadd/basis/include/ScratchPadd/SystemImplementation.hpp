@@ -10,6 +10,7 @@
 #include <mutex>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <string_view>
@@ -264,7 +265,10 @@ public:
   }
 };
 
-template <typename... Simp> static System *SystemBuilder() {
-  return new SystemImplementation<Simp...>();
+// A system of the padds `Padds`, owned by the caller: keep it as the
+// concrete type (waitForStart(), getWorkers()...) or as a
+// std::unique_ptr<System>, the interface, which it converts to
+template <typename... Padds> std::unique_ptr<SystemImplementation<Padds...>> SystemBuilder() {
+  return std::make_unique<SystemImplementation<Padds...>>();
 }
 } // namespace ScratchPadd
