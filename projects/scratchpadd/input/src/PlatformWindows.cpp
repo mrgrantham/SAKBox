@@ -4,8 +4,12 @@
 #if defined(_WIN32)
 #include <ScratchPadd/Input/Devices.hpp>
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX // (the build may define it)
 #define NOMINMAX
+#endif
 #include <windows.h>
 #include <xinput.h>
 
