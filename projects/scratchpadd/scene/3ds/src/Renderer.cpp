@@ -4,9 +4,9 @@
 // wireframes, the translucent meshes farthest first, then the overlay at
 // the screen's depth. Lighting is per vertex (scene.v.pica), fog per pixel
 // (the GPU's fog table). The GPU draws only triangles, so lines (and a
-// wireframe's edges) are quads a pixel wide, made on the CPU for each eye
-// in clip space. (A geometry shader making them hung a 3DS's GPU, though
-// not Azahar's.)
+// wireframe's edges) are quads, two triangles each, that line.v.pica
+// widens to a pixel on the screen for each eye. (A geometry shader making
+// them hung a 3DS's GPU, though not Azahar's.)
 #include "Backend.hpp"
 
 #include <ScratchPadd/Scene/OverlayText.hpp>
@@ -14,10 +14,12 @@
 
 #include <3ds.h>
 
+#include "line_shbin.h"
 #include "overlay_shbin.h"
 #include "scene_shbin.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -29,11 +31,12 @@ namespace ScratchPadd::Scene {
 namespace {
 
 static_assert(sizeof(Vertex) == 28, "the GPU reads Scene::Vertex as 3 + 3 floats and 4 bytes");
+static_assert(sizeof(Renderer::Backend::LineVertex) == 32,
+              "line.v.pica reads a LineVertex as 3 + 3 floats, 4 bytes and a float");
 static_assert(sizeof(Overlay::Vertex) == 12, "the GPU reads Overlay::Vertex as 2 floats, 4 bytes");
 
 // A frame's lines and overlay at most, in linear memory
-// (a wireframe of 20,000 edges takes 3.4 MB an eye)
-constexpr std::size_t kArenaBytes = 8 << 20;
+constexpr std::size_t kArenaBytes = 1 << 20;
 
 // The vertex shader's inputs from a Scene::Vertex: position, normal, colour
 void describeSceneVertices(C3D_AttrInfo &attributes) {
@@ -123,6 +126,13 @@ Renderer::Backend::Backend(Display &display) : display(display) {
                                   overlay_shbin_size);
   shaderProgramInit(&sceneProgram);
   shaderProgramSetVsh(&sceneProgram, &sceneShaders->DVLE[0]);
+  lineShaders =
+      DVLB_ParseFile(const_cast<u32 *>(reinterpret_cast<const u32 *>(line_shbin)), line_shbin_size);
+  shaderProgramInit(&lineProgram);
+  shaderProgramSetVsh(&lineProgram, &lineShaders->DVLE[0]);
+  lineMvp = static_cast<int>(shaderInstanceGetUniformLocation(lineProgram.vertexShader, "mvp"));
+  lineMaterial =
+      static_cast<int>(shaderInstanceGetUniformLocation(lineProgram.vertexShader, "material"));
   shaderProgramInit(&overlayProgram);
   shaderProgramSetVsh(&overlayProgram, &overlayShaders->DVLE[0]);
 
@@ -138,6 +148,11 @@ Renderer::Backend::Backend(Display &display) : display(display) {
       static_cast<int>(shaderInstanceGetUniformLocation(overlayProgram.vertexShader, "projection"));
 
   describeSceneVertices(sceneAttributes);
+  AttrInfo_Init(&lineAttributes);
+  AttrInfo_AddLoader(&lineAttributes, 0, GPU_FLOAT, 3);         // this end
+  AttrInfo_AddLoader(&lineAttributes, 1, GPU_FLOAT, 3);         // the other
+  AttrInfo_AddLoader(&lineAttributes, 2, GPU_UNSIGNED_BYTE, 4); // colour
+  AttrInfo_AddLoader(&lineAttributes, 3, GPU_FLOAT, 1);         // side
   AttrInfo_Init(&overlayAttributes);
   AttrInfo_AddLoader(&overlayAttributes, 0, GPU_FLOAT, 2);
   AttrInfo_AddLoader(&overlayAttributes, 1, GPU_UNSIGNED_BYTE, 4);
@@ -150,11 +165,14 @@ Renderer::Backend::~Backend() {
   for (LoadedMesh &mesh : meshes) {
     linearFree(mesh.vertices);
     linearFree(mesh.indices);
+    linearFree(mesh.wireframe);
   }
   linearFree(arena.memory);
   shaderProgramFree(&sceneProgram);
+  shaderProgramFree(&lineProgram);
   shaderProgramFree(&overlayProgram);
   DVLB_Free(sceneShaders);
+  DVLB_Free(lineShaders);
   DVLB_Free(overlayShaders);
 }
 
@@ -220,102 +238,99 @@ void Renderer::Backend::drawMesh(const Draw &draw, const C3D_Mtx &viewProjection
     C3D_DrawArrays(GPU_TRIANGLES, 0, mesh.count);
 }
 
-// Lines from ends[0] to ends[1], ends[2] to ends[3], and so on (in clip
-// space), each as a quad a pixel wide on the screen, unlit, in the ends'
-// colours times the material's. A line with an end behind the eye isn't
-// drawn.
-void Renderer::Backend::drawQuads(std::span<const ClipEnd> ends, const Material &material) {
-  const std::size_t lines = ends.size() / 2;
-  if (lines == 0)
+// Lines in turn (six vertices each), placed by `mvp`, unlit in their
+// colours times the material's, widened to a pixel by line.v.pica
+void Renderer::Backend::drawLineVertices(const LineVertex *vertices, int count, const C3D_Mtx &mvp,
+                                         const Material &material) {
+  if (!vertices || count == 0)
     return;
-  auto *vertices = static_cast<Vertex *>(arena.take(lines * 6 * sizeof(Vertex)));
-  if (!vertices)
-    return;
-  // Pixels per unit of x and y over w: the render target is 240 x 400, the
-  // projection turned to fit it
-  constexpr float kPixelsX = 120, kPixelsY = 200;
-  std::size_t written = 0;
-  for (std::size_t l = 0; l < lines; ++l) {
-    const ClipEnd &a = ends[l * 2], &b = ends[l * 2 + 1];
-    if (a.clip.w <= 0 || b.clip.w <= 0)
-      continue;
-    const float ax = a.clip.x / a.clip.w, ay = a.clip.y / a.clip.w, az = a.clip.z / a.clip.w;
-    const float bx = b.clip.x / b.clip.w, by = b.clip.y / b.clip.w, bz = b.clip.z / b.clip.w;
-    // Across the line, half a pixel, in x and y over w
-    const float dx = (bx - ax) * kPixelsX, dy = (by - ay) * kPixelsY;
-    const float length = std::sqrt(dx * dx + dy * dy);
-    const float ox = length > 0 ? -dy / length * 0.5f / kPixelsX : 0.5f / kPixelsX;
-    const float oy = length > 0 ? dx / length * 0.5f / kPixelsY : 0;
-    const auto corner = [&](float x, float y, float z, Colour colour) {
-      vertices[written++] = {{x, y, z}, {0, 0, 1}, colour};
-    };
-    corner(ax + ox, ay + oy, az, a.colour);
-    corner(ax - ox, ay - oy, az, a.colour);
-    corner(bx + ox, by + oy, bz, b.colour);
-    corner(ax - ox, ay - oy, az, a.colour);
-    corner(bx - ox, by - oy, bz, b.colour);
-    corner(bx + ox, by + oy, bz, b.colour);
+  if (bound != &lineProgram) {
+    C3D_BindProgram(&lineProgram);
+    bound = &lineProgram;
   }
-  if (written == 0)
-    return;
-  GSPGPU_FlushDataCache(vertices, written * sizeof(Vertex));
-  useScene();
-  Material unlit = material;
-  unlit.shading = Material::Shading::unlit;
-  C3D_Mtx identity;
-  Mtx_Identity(&identity);
-  setMaterial(unlit, Transform::identity(), identity);
+  C3D_SetAttrInfo(&lineAttributes);
+  C3D_TexEnv *combiner = C3D_GetTexEnv(0);
+  C3D_TexEnvInit(combiner);
+  C3D_TexEnvSrc(combiner, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+  C3D_TexEnvFunc(combiner, C3D_Both, GPU_REPLACE);
+  C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, lineMvp, &mvp);
+  const float alpha = static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f;
+  C3D_FVUnifSet(GPU_VERTEX_SHADER, lineMaterial, channel(material.colour.r),
+                channel(material.colour.g), channel(material.colour.b), alpha);
   C3D_BufInfo buffers;
   BufInfo_Init(&buffers);
-  BufInfo_Add(&buffers, vertices, sizeof(Vertex), 3, 0x210);
+  BufInfo_Add(&buffers, vertices, sizeof(LineVertex), 4, 0x3210);
   C3D_SetBufInfo(&buffers);
-  C3D_DrawArrays(GPU_TRIANGLES, 0, static_cast<int>(written));
+  C3D_DrawArrays(GPU_TRIANGLES, 0, count);
+}
+
+// Writes the line from `a` to `b` as six LineVertex at `out` (two
+// triangles: one side's corners, a and b, then the other's)
+void writeLine(Renderer::Backend::LineVertex *out, const Vector3 &a, const Vector3 &b,
+               Colour colourA, Colour colourB) {
+  using LineVertex = Renderer::Backend::LineVertex;
+  const LineVertex aPlus{a, b, colourA, 1}, aMinus{a, b, colourA, -1};
+  // (seen from b, the line points the other way: its sides swap)
+  const LineVertex bPlus{b, a, colourB, -1}, bMinus{b, a, colourB, 1};
+  out[0] = aPlus;
+  out[1] = bPlus;
+  out[2] = bMinus;
+  out[3] = aPlus;
+  out[4] = bMinus;
+  out[5] = aMinus;
 }
 
 // A mesh's triangles' edges as lines, each once, in its vertex colours
-// times the material's (unlit)
+// times the material's (unlit); made the first time
 void Renderer::Backend::drawWireframe(LoadedMesh &mesh, const C3D_Mtx &mvp,
                                       const Material &material) {
-  if (mesh.edges.empty() && !mesh.triangles.empty()) {
-    for (std::size_t t = 0; t + 2 < mesh.triangles.size(); t += 3) {
+  if (!mesh.wireframe) {
+    // Each triangle's corners (its indices, or the vertices in turn), and
+    // each place an id, so edges in the same place are one
+    const auto corner = [&](std::size_t i) {
+      return mesh.triangles.empty() ? static_cast<std::uint32_t>(i) : mesh.triangles[i];
+    };
+    const std::size_t corners =
+        mesh.triangles.empty() ? static_cast<std::size_t>(mesh.count) : mesh.triangles.size();
+    std::map<std::array<float, 3>, std::uint32_t> places;
+    std::map<std::pair<std::uint32_t, std::uint32_t>, std::pair<std::uint32_t, std::uint32_t>>
+        edges; // (by places: the vertices)
+    const auto placeOf = [&](std::uint32_t v) {
+      const Vector3 &p = mesh.vertices[v].position;
+      return places.try_emplace({p.x, p.y, p.z}, static_cast<std::uint32_t>(places.size()))
+          .first->second;
+    };
+    for (std::size_t t = 0; t + 2 < corners; t += 3) {
       for (std::size_t side = 0; side < 3; ++side) {
-        const auto a = static_cast<std::uint16_t>(mesh.triangles[t + side]);
-        const auto b = static_cast<std::uint16_t>(mesh.triangles[t + (side + 1) % 3]);
-        mesh.edges.emplace_back(std::min(a, b), std::max(a, b));
+        const std::uint32_t a = corner(t + side), b = corner(t + (side + 1) % 3);
+        const std::uint32_t pa = placeOf(a), pb = placeOf(b);
+        edges.try_emplace({std::min(pa, pb), std::max(pa, pb)}, std::make_pair(a, b));
       }
     }
-    std::ranges::sort(mesh.edges);
-    const auto [first, last] = std::ranges::unique(mesh.edges);
-    mesh.edges.erase(first, last);
+    mesh.wireframeVertices = static_cast<int>(edges.size() * 6);
+    mesh.wireframe = static_cast<LineVertex *>(linearAlloc(edges.size() * 6 * sizeof(LineVertex)));
+    if (!mesh.wireframe)
+      return;
+    LineVertex *out = mesh.wireframe;
+    for (const auto &[where, ends] : edges) {
+      const Vertex &a = mesh.vertices[ends.first], &b = mesh.vertices[ends.second];
+      writeLine(out, a.position, b.position, a.colour, b.colour);
+      out += 6;
+    }
+    GSPGPU_FlushDataCache(mesh.wireframe, edges.size() * 6 * sizeof(LineVertex));
     mesh.triangles = {}; // (no longer needed)
   }
-  if (mesh.edges.empty())
-    return; // (a mesh of more than 65,536 vertices: no wireframe)
-  // Each vertex in clip space once, then each edge's ends
-  std::vector<C3D_FVec> clip(static_cast<std::size_t>(mesh.vertexCount));
-  for (std::size_t v = 0; v < clip.size(); ++v) {
-    const Vector3 &p = mesh.vertices[v].position;
-    clip[v] = Mtx_MultiplyFVec4(&mvp, FVec4_New(p.x, p.y, p.z, 1));
-  }
-  clipEnds.clear();
-  for (const auto &[a, b] : mesh.edges) {
-    clipEnds.push_back({clip[a], mesh.vertices[a].colour});
-    clipEnds.push_back({clip[b], mesh.vertices[b].colour});
-  }
-  drawQuads(clipEnds, material);
+  drawLineVertices(mesh.wireframe, mesh.wireframeVertices, mvp, material);
 }
 
 void Renderer::Backend::drawLineBatches(const C3D_Mtx &viewProjection) {
-  Material material;
+  if (!lineVertices)
+    return;
   for (const Lines &batch : lines) {
-    clipEnds.clear();
-    for (std::size_t i = batch.first; i < batch.first + batch.count; ++i) {
-      const Vector3 &p = lineEnds[i];
-      clipEnds.push_back(
-          {Mtx_MultiplyFVec4(&viewProjection, FVec4_New(p.x, p.y, p.z, 1)), Colour{}});
-    }
+    Material material;
     material.colour = batch.colour;
-    drawQuads(clipEnds, material);
+    drawLineVertices(lineVertices + batch.first / 2 * 6, static_cast<int>(batch.count / 2 * 6),
+                     viewProjection, material);
   }
 }
 
@@ -341,11 +356,21 @@ void Renderer::Backend::drawOverlay() {
   C3D_DrawArrays(GPU_TRIANGLES, 0, static_cast<int>(overlayTriangles.size()));
 }
 
-// The frame's overlay triangles copied into linear memory, once for both
-// eyes (nothing if they don't fit)
+// The frame's lines and overlay triangles written into linear memory, once
+// for both eyes (nothing if they don't fit)
 void Renderer::Backend::copyFrameVertices() {
   arena.used = 0; // (the last frame's drawing is done)
   overlayVertices = nullptr;
+  lineVertices = nullptr;
+  if (lineEnds.size() >= 2) {
+    const std::size_t count = lineEnds.size() / 2;
+    lineVertices = static_cast<LineVertex *>(arena.take(count * 6 * sizeof(LineVertex)));
+    if (lineVertices) {
+      for (std::size_t l = 0; l < count; ++l)
+        writeLine(lineVertices + l * 6, lineEnds[l * 2], lineEnds[l * 2 + 1], Colour{}, Colour{});
+      GSPGPU_FlushDataCache(lineVertices, count * 6 * sizeof(LineVertex));
+    }
+  }
   if (!overlayTriangles.empty()) {
     const std::size_t bytes = overlayTriangles.size() * sizeof(Overlay::Vertex);
     overlayVertices = static_cast<Overlay::Vertex *>(arena.take(bytes));
@@ -411,7 +436,6 @@ Mesh Renderer::load(const MeshData &mesh) {
     GSPGPU_FlushDataCache(loaded.indices, indices.size() * sizeof(std::uint16_t));
     loaded.triangles = std::move(indices);
     loaded.count = static_cast<int>(loaded.triangles.size());
-    loaded.vertexCount = static_cast<int>(vertexCount);
   } else {
     // Too many for 16-bit indices: each triangle's vertices in turn
     loaded.vertices = static_cast<Vertex *>(linearAlloc(indices.size() * sizeof(Vertex)));
@@ -435,6 +459,7 @@ void Renderer::unload(Mesh mesh) {
   Backend::LoadedMesh &loaded = backend_->meshes[mesh.id - 1];
   linearFree(loaded.vertices);
   linearFree(loaded.indices);
+  linearFree(loaded.wireframe);
   loaded = {};
 }
 

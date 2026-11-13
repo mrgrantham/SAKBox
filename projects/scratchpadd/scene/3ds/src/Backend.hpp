@@ -9,8 +9,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <span>
-#include <utility>
 #include <vector>
 
 namespace ScratchPadd::Scene {
@@ -21,6 +19,15 @@ struct Renderer::Backend {
   Backend(const Backend &) = delete;
   Backend &operator=(const Backend &) = delete;
 
+  // A line's corner, as line.v.pica takes it: this end, the line's other
+  // end, the colour, and which side of the line it goes (+1 or -1). Six
+  // make a line (two triangles).
+  struct LineVertex {
+    Vector3 end, otherEnd;
+    Colour colour;
+    float side;
+  };
+
   struct LoadedMesh {
     // In linear memory, where the GPU reads: the vertices as Scene::Vertex
     // has them, and the triangles' indices (16-bit) or, for a mesh of more
@@ -29,11 +36,12 @@ struct Renderer::Backend {
     std::uint16_t *indices = nullptr;
     int count = 0; // indices, or vertices drawn in turn
     C3D_BufInfo buffers;
-    // Its triangles' edges, each once, as pairs of indices (for a
-    // wireframe), made the first time it's drawn as one
-    std::vector<std::uint32_t> triangles; // (kept to make them)
-    std::vector<std::pair<std::uint16_t, std::uint16_t>> edges;
-    int vertexCount = 0;
+    // Its wireframe: its triangles' edges, each once (edges in the same
+    // place joined, so a flat-shaded mesh's aren't doubled), as lines in
+    // linear memory, made the first time it's drawn as one
+    std::vector<std::uint32_t> triangles; // (kept to make it)
+    LineVertex *wireframe = nullptr;
+    int wireframeVertices = 0;
     bool translucent = false; // has see-through vertices
     FrameCounts cost;
   };
@@ -57,18 +65,13 @@ struct Renderer::Backend {
     void *take(std::size_t bytes);
   };
 
-  // A line's end: where it is, already in clip space, and its colour
-  struct ClipEnd {
-    C3D_FVec clip;
-    Colour colour;
-  };
-
   void copyFrameVertices();
   void drawEye(C3D_RenderTarget *target, const C3D_Mtx &projection);
   void drawMesh(const Draw &draw, const C3D_Mtx &viewProjection);
   void drawWireframe(LoadedMesh &mesh, const C3D_Mtx &mvp, const Material &material);
   void drawLineBatches(const C3D_Mtx &viewProjection);
-  void drawQuads(std::span<const ClipEnd> ends, const Material &material);
+  void drawLineVertices(const LineVertex *vertices, int count, const C3D_Mtx &mvp,
+                        const Material &material);
   void drawOverlay();
   void setMaterial(const Material &material, const Transform &where, const C3D_Mtx &mvp);
   void useScene();
@@ -76,16 +79,16 @@ struct Renderer::Backend {
   Display &display;
   std::vector<LoadedMesh> meshes; // by Mesh::id - 1
 
-  // The programs, scene.v.pica and overlay.v.pica, and their uniforms'
-  // locations
-  DVLB_s *sceneShaders = nullptr, *overlayShaders = nullptr;
-  shaderProgram_s sceneProgram, overlayProgram;
+  // The programs, scene.v.pica, line.v.pica and overlay.v.pica, and their
+  // uniforms' locations
+  DVLB_s *sceneShaders = nullptr, *lineShaders = nullptr, *overlayShaders = nullptr;
+  shaderProgram_s sceneProgram, lineProgram, overlayProgram;
   struct SceneUniforms {
     int mvp, normalMatrix, material, ambient, lightDirections, lightColours;
   };
   SceneUniforms sceneUniforms;
-  int overlayProjection = -1;
-  C3D_AttrInfo sceneAttributes, overlayAttributes;
+  int lineMvp = -1, lineMaterial = -1, overlayProjection = -1;
+  C3D_AttrInfo sceneAttributes, lineAttributes, overlayAttributes;
   const shaderProgram_s *bound = nullptr;
 
   // This frame's
@@ -97,8 +100,8 @@ struct Renderer::Backend {
   std::vector<Lines> lines;
   std::vector<Overlay::Vertex> overlayTriangles;
   Arena arena;
+  LineVertex *lineVertices = nullptr;         // in the arena: lineEnds, as lines
   Overlay::Vertex *overlayVertices = nullptr; // in the arena
-  std::vector<ClipEnd> clipEnds;              // reused for lines' and wireframes' ends
   C3D_FogLut fog;
   FrameCounts counting, last;
   FrameTimes times;

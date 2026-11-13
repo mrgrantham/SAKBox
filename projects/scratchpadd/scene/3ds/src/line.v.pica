@@ -1,0 +1,72 @@
+; Lines on the 3DS, which draws only triangles: each line is a quad of
+; six vertices (two triangles), each carrying its own end, the line's other
+; end and which side of the line it goes (+1 or -1). Both ends are placed
+; (mvp), and the vertex moved half a pixel that way across the line on the
+; screen, so lines are a pixel wide whatever their distance, for each eye.
+; Unlit: the vertex's colour (bytes, 0-255) times the material's.
+
+.fvec mvp[4], material
+
+.constf consts(0.0, 1.0, 0.00392156862745, 0.000001) ; (1/255; a tiny length)
+; Pixels per unit of the screen's x and y over w (the top screen's render
+; target is 240 x 400, the projection turned to fit it), and half a pixel
+; in those units
+.constf pixels(120.0, 200.0, 0.0, 0.0)
+.constf halfPixel(0.0041666667, 0.0025, 0.0, 0.0)
+.alias  zeros     consts.xxxx
+.alias  ones      consts.yyyy
+.alias  fromBytes consts.zzzz
+.alias  tiny      consts.wwww
+
+.out outpos position
+.out outclr color
+
+.in inpos   v0
+.in inother v1
+.in inclr   v2
+.in inside  v3
+
+.proc main
+	; This end, and the other, in clip space
+	mov r0.xyz, inpos
+	mov r0.w,   ones
+	dp4 r1.x, mvp[0], r0
+	dp4 r1.y, mvp[1], r0
+	dp4 r1.z, mvp[2], r0
+	dp4 r1.w, mvp[3], r0
+	mov r0.xyz, inother
+	mov r0.w,   ones
+	dp4 r2.x, mvp[0], r0
+	dp4 r2.y, mvp[1], r0
+	dp4 r2.z, mvp[2], r0
+	dp4 r2.w, mvp[3], r0
+
+	; Each on the screen (x and y over w)
+	rcp r3.x, r1.w
+	mul r3.xy, r1.xy, r3.xx
+	rcp r4.x, r2.w
+	mul r4.xy, r2.xy, r4.xx
+
+	; Across the line, in pixels, at length 1
+	add r5.xy, r4.xy, -r3.xy
+	mul r5.xy, pixels.xy, r5.xy
+	mov r6.x, -r5.y
+	mov r6.y, r5.x
+	mov r6.zw, zeros
+	dp3 r7.x, r6, r6
+	add r7.x, tiny, r7.x
+	rsq r7.x, r7.x
+	mul r6.xy, r6.xy, r7.xx
+
+	; Half a pixel that way, on this vertex's side, times its w
+	mul r6.xy, halfPixel.xy, r6.xy
+	mul r6.xy, r6.xy, inside.xx
+	mul r6.xy, r6.xy, r1.ww
+	mov r8, r1
+	add r8.xy, r8.xy, r6.xy
+	mov outpos, r8
+
+	mul r9, fromBytes, inclr
+	mul outclr, material, r9
+	end
+.end
