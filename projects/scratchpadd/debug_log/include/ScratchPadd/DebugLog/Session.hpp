@@ -8,13 +8,15 @@
 //
 // Every padd's log (every ScratchPadd logger, at info level and above, or
 // the level given: debug adds a line for every message sent, which costs a
-// console time, and on a DS a write to the card each) then goes where the
-// Mac can read it, instead of the screens:
+// console time, and on a DS a card write each) then goes where the Mac can
+// read it, instead of the screens:
 // - 3DS: kept in memory (the last 64 KB) and served over Wi-Fi on port 5005
 //   (LogServer), for tools/console_log to read, with what came before it
 //   connected.
 // - DS: written to the flashcart's SD card, fat:/logs/APP.log (a DS Lite
-//   can't join a WPA2 network), each line as it's logged.
+//   can't join a WPA2 network), synced to the card (fsync) every
+//   cardSyncEvery lines, and at once for a warning or an error, so a DS
+//   switched off keeps what was synced. The log says how long syncs take.
 // - Desktops: the terminal, as always.
 // Logging goes back to the terminal (and its level back) when it ends.
 #pragma once
@@ -26,10 +28,20 @@
 
 namespace ScratchPadd::DebugLog {
 
+struct SessionOptions {
+  // The lowest level logged
+  spdlog::level::level_enum level = spdlog::level::info;
+  // DS: the log's lines synced to the card every this many (warnings and
+  // errors at once). 1 loses nothing when the DS is switched off or hangs;
+  // more costs fewer card writes, for a chatty log, and can lose the last
+  // few info lines.
+  unsigned cardSyncEvery = 1;
+};
+
 class Session {
 public:
-  explicit Session(const std::string &appName,
-                   spdlog::level::level_enum level = spdlog::level::info);
+  // e.g. Session("my-app", {.level = spdlog::level::debug, .cardSyncEvery = 8})
+  explicit Session(const std::string &appName, SessionOptions options = {});
   ~Session();
   Session(const Session &) = delete;
   Session &operator=(const Session &) = delete;

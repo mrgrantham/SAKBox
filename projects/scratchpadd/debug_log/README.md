@@ -5,7 +5,7 @@ A console's screens are its app's, so ScratchPadd's 3DS and DS apps log nothing 
 | Platform | Where | How to read it |
 | --- | --- | --- |
 | 3DS | Kept in memory (the last 64 KB) and served over Wi-Fi on port 5005 | `python3 tools/console_log/console_log.py --3ds ADDRESS` ([`tools/console_log`](../../../tools/console_log/README.md)): what came before it connected, then each line as it's logged |
-| DS | The flashcart's SD card, `fat:/logs/APP.log`, each line on the card as it's logged (written through libfat's cache with `fsync`, so switching the DS off keeps it), which costs a card write a line (a DS Lite can't join a WPA2 network) | Off the card |
+| DS | The flashcart's SD card, `fat:/logs/APP.log` (a DS Lite can't join a WPA2 network), synced to the card (`fsync`, through libfat's cache) every line, or every `cardSyncEvery` lines, so switching the DS off keeps what was synced | Off the card |
 | Desktops | The terminal, as always | |
 
 The app shows where on its screen ("Log: 192.168.4.25:5005", "Log: fat:/logs/scratchpadd-ds-demo.log", or "Log: off: no SD card"). The ScratchPadd DS and 3DS demos and the Cyclone ragdoll on both do. A release build is unchanged: no log, no network.
@@ -26,7 +26,9 @@ int main() {
 ```
 
 - **Its Makefile** takes the sources (`"//projects/scratchpadd/debug_log:sources": "scratchpadd/debug_log"` in `extra_srcs`, `scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session` in `SOURCES`, `scratchpadd/debug_log/include` in `INCLUDES`), and the debug switch: `CFLAGS += $(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)`, before `CXXFLAGS := $(CFLAGS)`. A debug build runs `make SAKBOX_DEBUG=1` ([`tools/devkitpro`](../../../tools/devkitpro/README.md)). A DS app links `-lfat`.
-- **Level:** info and above, or the level given (`Session("my-app", spdlog::level::debug)`). Debug adds a line for every message a padd sends, which costs a console time to format, and on a DS a write to the card each.
+- **Options** (`SessionOptions`, e.g. `Session("my-app", {.level = spdlog::level::debug, .cardSyncEvery = 8})`):
+  - `level`: info and above by default. Debug adds a line for every message a padd sends, which costs a console time to format, and on a DS a card write each.
+  - `cardSyncEvery` (DS): how many lines between syncs to the card, 1 by default. A sync writes libfat's cache to the card (plain `fflush` only reaches the cache, which reaches the card when the file closes, so a DS switched off kept nothing). 1 loses nothing to a power-off or a hang; more costs fewer card writes for a chatty log, and can lose the last few info lines. Warnings and errors are synced at once either way. Every 16 syncs, and when it closes, the log says what they cost: `[DebugLog] 16 card syncs (every 1 lines): 4.2 ms each, 9.8 ms at worst`.
 - **How:** `Session` routes every ScratchPadd logger (`Logger::routeTo`) to its destination instead of the terminal, which on a console is its screen: loggers made before it as well as after. When it ends, logging goes back to the terminal.
 
 ## Parts
