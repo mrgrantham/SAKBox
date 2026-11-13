@@ -6,12 +6,12 @@
 
 namespace ScratchPadd::Input {
 
-static_assert(NintendoKeys::A == KEY_A && NintendoKeys::B == KEY_B && NintendoKeys::X == KEY_X &&
-              NintendoKeys::Y == KEY_Y && NintendoKeys::L == KEY_L && NintendoKeys::R == KEY_R &&
-              NintendoKeys::ZL == KEY_ZL && NintendoKeys::ZR == KEY_ZR &&
-              NintendoKeys::Start == KEY_START && NintendoKeys::Select == KEY_SELECT &&
-              NintendoKeys::Up == KEY_DUP && NintendoKeys::Down == KEY_DDOWN &&
-              NintendoKeys::Left == KEY_DLEFT && NintendoKeys::Right == KEY_DRIGHT);
+static_assert(NintendoKeys::kA == KEY_A && NintendoKeys::kB == KEY_B && NintendoKeys::kX == KEY_X &&
+              NintendoKeys::kY == KEY_Y && NintendoKeys::kL == KEY_L && NintendoKeys::kR == KEY_R &&
+              NintendoKeys::kZl == KEY_ZL && NintendoKeys::kZr == KEY_ZR &&
+              NintendoKeys::kStart == KEY_START && NintendoKeys::kSelect == KEY_SELECT &&
+              NintendoKeys::kUp == KEY_DUP && NintendoKeys::kDown == KEY_DDOWN &&
+              NintendoKeys::kLeft == KEY_DLEFT && NintendoKeys::kRight == KEY_DRIGHT);
 
 Gamepad readPlatformPad() {
   static const bool isNew = [] {

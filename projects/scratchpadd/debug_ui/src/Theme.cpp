@@ -6,10 +6,10 @@
 
 // The fonts compiled in (see BUILD: embed_file)
 namespace Theme::Fonts {
-extern const unsigned char jostMedium[];
-extern const std::size_t jostMediumSize;
-extern const unsigned char questrial[];
-extern const std::size_t questrialSize;
+extern const unsigned char kJostMedium[];
+extern const std::size_t kJostMediumSize;
+extern const unsigned char kQuestrial[];
+extern const std::size_t kQuestrialSize;
 } // namespace Theme::Fonts
 
 namespace Theme {
@@ -173,7 +173,7 @@ ImFont *addTitleFont() {
       return futura;
     }
   }
-  return addCompiledIn(Fonts::jostMedium, Fonts::jostMediumSize, kTitleSize);
+  return addCompiledIn(Fonts::kJostMedium, Fonts::kJostMediumSize, kTitleSize);
 }
 
 } // namespace
@@ -187,7 +187,7 @@ void apply(Colors colors) {
   setSpacing();
   ImGuiIO &io = ImGui::GetIO();
   io.Fonts->Clear();
-  io.FontDefault = addCompiledIn(Fonts::questrial, Fonts::questrialSize, kTextSize);
+  io.FontDefault = addCompiledIn(Fonts::kQuestrial, Fonts::kQuestrialSize, kTextSize);
   ImGui::GetStyle().FontSizeBase = kTextSize;
   titleFont_ = addTitleFont();
 }

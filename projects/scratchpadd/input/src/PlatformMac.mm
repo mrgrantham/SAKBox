@@ -11,12 +11,12 @@ namespace ScratchPadd::Input {
 
 Gamepad readPlatformPad() {
   @autoreleasepool {
-    static const bool started = [] {
+    static const bool kStarted = [] {
       // (the window, or the terminal, may be the app in front)
       GCController.shouldMonitorBackgroundEvents = YES;
       return true;
     }();
-    (void)started;
+    (void)kStarted;
     if ([NSThread isMainThread])
       CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, true);
 

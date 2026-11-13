@@ -52,7 +52,7 @@ TEST(GlslToMslTest, EveryPlaygroundShaderTranslatesAndCompiles) {
     SCOPED_TRACE(entry.path().filename().string());
     TranslatedShader shader;
     std::string why;
-    ASSERT_TRUE(translate(extension == ".vert" ? Stage::vertex : Stage::fragment,
+    ASSERT_TRUE(translate(extension == ".vert" ? Stage::Vertex : Stage::Fragment,
                           read(entry.path()), shader, why))
         << why;
     EXPECT_FALSE(shader.entryPoint.empty());
@@ -67,7 +67,7 @@ TEST(GlslToMslTest, EveryPlaygroundShaderTranslatesAndCompiles) {
 TEST(GlslToMslTest, UniformsAreFoundAndErrorsReported) {
   TranslatedShader shader;
   std::string why;
-  ASSERT_TRUE(translate(Stage::fragment, R"(#version 330 core
+  ASSERT_TRUE(translate(Stage::Fragment, R"(#version 330 core
 layout(location = 0) out vec4 color;
 uniform float iTime;
 uniform vec2 iResolution;
@@ -84,6 +84,6 @@ void main() { color = uniform_color * iTime + vec4(gl_FragCoord.xy / iResolution
   EXPECT_EQ(shader.uniformSize, 32u);
 
   EXPECT_FALSE(
-      translate(Stage::fragment, "#version 330 core\nvoid main() { nonsense; }", shader, why));
+      translate(Stage::Fragment, "#version 330 core\nvoid main() { nonsense; }", shader, why));
   EXPECT_NE(why.find("nonsense"), std::string::npos) << why;
 }

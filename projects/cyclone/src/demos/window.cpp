@@ -64,13 +64,13 @@ static void typed(GLFWwindow *, unsigned int codepoint) {
 }
 
 static void mouseButton(GLFWwindow *window, int button, int action, int) {
-  int demoButton = button == GLFW_MOUSE_BUTTON_RIGHT    ? MOUSE_RIGHT_BUTTON
-                   : button == GLFW_MOUSE_BUTTON_MIDDLE ? MOUSE_MIDDLE_BUTTON
-                                                        : MOUSE_LEFT_BUTTON;
+  int demoButton = button == GLFW_MOUSE_BUTTON_RIGHT    ? MouseRightButton
+                   : button == GLFW_MOUSE_BUTTON_MIDDLE ? MouseMiddleButton
+                                                        : MouseLeftButton;
   mouseHeld = action == GLFW_PRESS;
   double x, y;
   glfwGetCursorPos(window, &x, &y);
-  app->mouse(demoButton, mouseHeld ? MOUSE_DOWN : MOUSE_UP, (int)x, (int)y);
+  app->mouse(demoButton, mouseHeld ? MouseDown : MouseUp, (int)x, (int)y);
 }
 
 static void mouseMoved(GLFWwindow *, double x, double y) {
@@ -90,8 +90,8 @@ static std::vector<ScriptedInput> scriptedInput;
 
 static void playScriptedInput(const ScriptedInput &scripted) {
   if (scripted.input == "click") {
-    app->mouse(MOUSE_LEFT_BUTTON, MOUSE_DOWN, 0, 0);
-    app->mouse(MOUSE_LEFT_BUTTON, MOUSE_UP, 0, 0);
+    app->mouse(MouseLeftButton, MouseDown, 0, 0);
+    app->mouse(MouseLeftButton, MouseUp, 0, 0);
   } else {
     // Through typed(), as real key presses are (so H works here too)
     for (char key : scripted.input)

@@ -87,7 +87,7 @@ PlatformDemo::PlatformDemo() : MassAggregateApplication(6), rods(nullptr), massP
     particleArray[i].setMass(BASE_MASS);
     particleArray[i].setVelocity(0, 0, 0);
     particleArray[i].setDamping(0.9f);
-    particleArray[i].setAcceleration(cyclone::Vector3::GRAVITY);
+    particleArray[i].setAcceleration(cyclone::Vector3::kGravity);
     particleArray[i].clearAccumulator();
   }
 

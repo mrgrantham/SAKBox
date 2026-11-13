@@ -350,11 +350,11 @@ protected:
    * many iterations of the book's resolver as they've always had
    */
   static cyclone::World::Settings demoWorldSettings(cyclone::real restitution) {
-    constexpr unsigned maxContacts = 256;
-    return {.maxContacts = maxContacts,
+    constexpr unsigned kMaxContacts = 256;
+    return {.maxContacts = kMaxContacts,
             .friction = (cyclone::real)0.9,
             .restitution = restitution,
-            .iterations = maxContacts * 8};
+            .iterations = kMaxContacts * 8};
   }
 
   /** SAKBox: the ground (y = 0), for a world to add. */

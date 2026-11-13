@@ -24,7 +24,7 @@
 #include "shapes.h"
 
 // Mouse buttons and states passed to Application::mouse (GLUT's values)
-enum { MOUSE_LEFT_BUTTON = 0, MOUSE_MIDDLE_BUTTON = 1, MOUSE_RIGHT_BUTTON = 2 };
-enum { MOUSE_DOWN = 0, MOUSE_UP = 1 };
+enum { MouseLeftButton = 0, MouseMiddleButton = 1, MouseRightButton = 2 };
+enum { MouseDown = 0, MouseUp = 1 };
 
 #endif // _OPENGL_HEADERS_

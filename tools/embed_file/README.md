@@ -9,16 +9,16 @@ embed_file(
     name = "questrial",                 # a cc_library: depend on it
     src = "@questrial_font//file",      # any file, here one Bazel downloads
     namespace = "Theme::Fonts",
-    symbol = "questrial",
+    symbol = "kQuestrial",                # a constant: kName, as the repo names them
 )
 ```
 
-The library defines `Theme::Fonts::questrial` (`const unsigned char[]`, the file's bytes, aligned to 4) and `Theme::Fonts::questrialSize` (`const std::size_t`). Declare them where they're used:
+The library defines `Theme::Fonts::kQuestrial` (`const unsigned char[]`, the file's bytes, aligned to 4) and `Theme::Fonts::kQuestrialSize` (`const std::size_t`). Declare them where they're used:
 
 ```cpp
 namespace Theme::Fonts {
-extern const unsigned char questrial[];
-extern const std::size_t questrialSize;
+extern const unsigned char kQuestrial[];
+extern const std::size_t kQuestrialSize;
 }
 ```
 

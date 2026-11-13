@@ -23,11 +23,11 @@ void CollisionPrimitive::calculateInternals() { transform = body->getTransform()
 
 real CollisionPrimitive::boundingRadius() const {
   switch (shape) {
-  case Shape::sphere:
+  case Shape::Sphere:
     return static_cast<const CollisionSphere *>(this)->radius;
-  case Shape::box:
+  case Shape::Box:
     return static_cast<const CollisionBox *>(this)->halfSize.magnitude();
-  case Shape::capsule: {
+  case Shape::Capsule: {
     const auto *capsule = static_cast<const CollisionCapsule *>(this);
     return capsule->radius + capsule->halfLength;
   }
@@ -256,8 +256,8 @@ static inline real penetrationOnAxis(const CollisionBox &one, const CollisionBox
 // Manifolds", GDC 2007: "feature flip-flop"). Box one's faces are tested
 // first, then box two's, then the edge pairs, so faces are preferred over
 // edges, and box one's faces over box two's.
-static constexpr double relativeAxisTolerance = 0.95;
-static constexpr double absoluteAxisTolerance = 0.01;
+static constexpr double kRelativeAxisTolerance = 0.95;
+static constexpr double kAbsoluteAxisTolerance = 0.01;
 
 static inline bool tryAxis(const CollisionBox &one, const CollisionBox &two, Vector3 axis,
                            const Vector3 &toCentre, unsigned index, real collisionMargin,
@@ -280,12 +280,12 @@ static inline bool tryAxis(const CollisionBox &one, const CollisionBox &two, Vec
   // shallower (see relativeAxisTolerance), by a margin scaled to the
   // smaller box. Apart along either, the further apart is taken.
   const real margin =
-      (real)absoluteAxisTolerance * std::min({one.halfSize.x, one.halfSize.y, one.halfSize.z,
-                                              two.halfSize.x, two.halfSize.y, two.halfSize.z});
+      (real)kAbsoluteAxisTolerance * std::min({one.halfSize.x, one.halfSize.y, one.halfSize.z,
+                                               two.halfSize.x, two.halfSize.y, two.halfSize.z});
   const bool clearlyShallower =
       penetration < 0 || smallestPenetration < 0
           ? penetration < smallestPenetration
-          : penetration < (real)relativeAxisTolerance * smallestPenetration - margin;
+          : penetration < (real)kRelativeAxisTolerance * smallestPenetration - margin;
   if (smallestCase == 0xffffff || clearlyShallower) {
     smallestPenetration = penetration;
     smallestCase = index;
@@ -873,7 +873,7 @@ unsigned BoxContactCache::boxAndBox(const CollisionBox &one, const CollisionBox 
     }
   }
 
-  keepCoveringMost(found, maxContactsPerPair);
+  keepCoveringMost(found, kMaxContactsPerPair);
 
   // Keep them all for the next frame, and report as many as there's room
   // for now

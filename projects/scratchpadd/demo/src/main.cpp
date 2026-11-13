@@ -17,7 +17,7 @@
 // void signal_handler(int sig);
 
 // (global, for signal_handler)
-const std::unique_ptr<ScratchPadd::System> spsystem =
+const std::unique_ptr<ScratchPadd::System> kSystem =
     ScratchPadd::SystemBuilder<DisplayPadd, StoryPadd, AudioPadd, MidiInputPadd, ShapeLoggerPadd>();
 
 int main(int argc, char **argv) {
@@ -25,12 +25,12 @@ int main(int argc, char **argv) {
   SCOPED_METHOD_TIMER();
 
   // signal(SIGINT, signal_handler);
-  spsystem->instantiate();
-  spsystem->start();
+  kSystem->instantiate();
+  kSystem->start();
 }
 
 void signal_handler(int sig) { // can be called asynchronously
   spdlog::info("shutting d own");
   // flag = 0; // set flag
-  spsystem->stop();
+  kSystem->stop();
 }

@@ -61,7 +61,7 @@ int main() {
     consoleInit(GFX_BOTTOM, nullptr);
     Scene::Renderer renderer(display);
 
-    const Scene::Mesh ship = renderer.load(Assets::ship), rock = renderer.load(Assets::rock);
+    const Scene::Mesh ship = renderer.load(Assets::kShip), rock = renderer.load(Assets::kRock);
     // A pane of glass, see-through by its vertices' alpha (its material solid)
     Scene::MeshBuilder paneBuilder;
     paneBuilder.quad({-3, -1, -2.5f}, {3, -1, -2.5f}, {3, 1.6f, -2.5f}, {-3, 1.6f, -2.5f},
@@ -84,9 +84,9 @@ int main() {
     Scene::Debug::Panel debugPanel(renderer);
     const auto printIntro = [] {
       std::printf("\x1b[1;1HModels from Blender on a 3DS\n\n");
-      std::printf("Ship: %lu triangles\n", static_cast<unsigned long>(Assets::shipTriangles));
+      std::printf("Ship: %lu triangles\n", static_cast<unsigned long>(Assets::kShipTriangles));
       std::printf("Rock: %lu triangles (x2)\n\n",
-                  static_cast<unsigned long>(Assets::rockTriangles));
+                  static_cast<unsigned long>(Assets::kRockTriangles));
       std::printf("A: wireframe ship  B: fog\n3D slider: stereo  SELECT: debug\nSTART: quit\n");
     };
     printIntro();
@@ -116,7 +116,7 @@ int main() {
       renderer.beginFrame(camera, environment);
       renderer.drawLines(lines, {90, 95, 110});
       renderer.draw(pane, Scene::Transform::identity(),
-                    {.shading = Scene::Material::Shading::unlit});
+                    {.shading = Scene::Material::Shading::Unlit});
       renderer.overlay().text(8, 6, "Hangar", {255, 220, 140}, 2);
       angle += 0.02f;
       const Scene::Transform turn = Scene::Transform::rotation({0, 1, 0}, angle);

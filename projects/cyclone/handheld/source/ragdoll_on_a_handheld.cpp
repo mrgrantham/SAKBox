@@ -512,49 +512,49 @@ private:
       return; // the panel has the screen; they're drawn when it's hidden
     }
     // (rows from 0)
-    constexpr int columns = ScratchPadd::HandheldControls::usableColumns(kConsoleColumns);
+    constexpr int kColumns = ScratchPadd::HandheldControls::usableColumns(kConsoleColumns);
     using ScratchPadd::HandheldControls::printLine;
-    printLine(1, columns, "Cyclone's ragdoll on a %s", kConsole);
+    printLine(1, kColumns, "Cyclone's ragdoll on a %s", kConsole);
     if (renderer_) {
       const Scene::FrameCounts drawn = renderer_->lastFrame();
       const Scene::FrameTimes times = renderer_->lastFrameTimes();
       if (times.gpu > 0) // (the 3DS measures its frames)
-        printLine(2, columns, "3D: %u triangles, GPU %.1f ms", drawn.polygons, times.gpu);
+        printLine(2, kColumns, "3D: %u triangles, GPU %.1f ms", drawn.polygons, times.gpu);
       else
-        printLine(2, columns, "3D: %u polygons, %u vertices", drawn.polygons, drawn.vertices);
+        printLine(2, kColumns, "3D: %u polygons, %u vertices", drawn.polygons, drawn.vertices);
     }
-    printLine(3, columns, "Physics: %d steps a second,", figures_.stepsPerSecond);
-    printLine(4, columns, "  %d sub-step%s each, %s", figures_.subSteps,
+    printLine(3, kColumns, "Physics: %d steps a second,", figures_.stepsPerSecond);
+    printLine(4, kColumns, "  %d sub-step%s each, %s", figures_.subSteps,
               figures_.subSteps == 1 ? "" : "s", blend() ? "blended" : "unblended");
     // (While running, a step's time includes the main thread's, which takes
     // over each frame to draw)
-    printLine(5, columns, "A step takes %.0f ms (running)", figures_.stepMilliseconds);
-    printLine(6, columns, "Physics thread busy: %.0f%%", 100 * figures_.busy);
-    printLine(7, columns, "Simulation speed: %.2fx", figures_.speed);
-    printLine(8, columns, "Worst joint stretch: %.2f cm", 100 * figures_.worstStretch);
+    printLine(5, kColumns, "A step takes %.0f ms (running)", figures_.stepMilliseconds);
+    printLine(6, kColumns, "Physics thread busy: %.0f%%", 100 * figures_.busy);
+    printLine(7, kColumns, "Simulation speed: %.2fx", figures_.speed);
+    printLine(8, kColumns, "Worst joint stretch: %.2f cm", 100 * figures_.worstStretch);
     if (figures_.audio) {
-      printLine(9, columns, "Knocks played: %u", figures_.knocks);
+      printLine(9, kColumns, "Knocks played: %u", figures_.knocks);
     } else {
-      printLine(9, columns, "No AudioPadd: no sound");
+      printLine(9, kColumns, "No AudioPadd: no sound");
     }
-    printLine(10, columns, "A: reset X: sub-steps B: blend");
-    printLine(11, columns, "Y: 30/60 steps SELECT: controls");
-    printLine(12, columns, "START: quit");
-    printLine(13, columns, "Measured at start (ms a step):");
-    printLine(14, columns, "steps/s sub sweeps        ms");
+    printLine(10, kColumns, "A: reset X: sub-steps B: blend");
+    printLine(11, kColumns, "Y: 30/60 steps SELECT: controls");
+    printLine(12, kColumns, "START: quit");
+    printLine(13, kColumns, "Measured at start (ms a step):");
+    printLine(14, kColumns, "steps/s sub sweeps        ms");
     int row = 15;
     for (const Benchmark::Row &r : benchmark_.rows) {
       if (r.subSteps > 0) {
-        printLine(row, columns, "%-7d %-3d %2d/%2d/%2d  %7.1f", r.stepsPerSecond, r.subSteps,
+        printLine(row, kColumns, "%-7d %-3d %2d/%2d/%2d  %7.1f", r.stepsPerSecond, r.subSteps,
                   r.velocitySweeps, r.settleSweeps, r.positionSweeps, r.stepMilliseconds);
       }
       ++row;
     }
-    printLine(++row, columns, "A step as it runs, ms:");
-    printLine(++row, columns, "move %.1f find %.1f solve %.1f", benchmark_.integrateMilliseconds,
+    printLine(++row, kColumns, "A step as it runs, ms:");
+    printLine(++row, kColumns, "move %.1f find %.1f solve %.1f", benchmark_.integrateMilliseconds,
               benchmark_.contactsMilliseconds, benchmark_.resolveMilliseconds);
     if (!logWhere.empty())
-      printLine(++row, columns, "Log: %s", logWhere.c_str());
+      printLine(++row, kColumns, "Log: %s", logWhere.c_str());
   }
 
   // The last two snapshots, drawn between (see drawRagdoll), and when the

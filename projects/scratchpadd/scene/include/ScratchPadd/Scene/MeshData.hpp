@@ -27,13 +27,13 @@ struct Vertex {
 // same alpha: what the DS draws natively (see Primitives.hpp)
 struct Primitive {
   enum class Kind : std::uint8_t {
-    triangles,     // 3 indices a triangle
-    quads,         // 4 a quad, around it (counter-clockwise from the front)
-    triangleStrip, // 2 more than its triangles: the first is 0 1 2, then
+    Triangles,     // 3 indices a triangle
+    Quads,         // 4 a quad, around it (counter-clockwise from the front)
+    TriangleStrip, // 2 more than its triangles: the first is 0 1 2, then
                    // each new index makes one with the two before it (as
                    // OpenGL's GL_TRIANGLE_STRIP: every other one reversed)
   };
-  Kind kind = Kind::triangles;
+  Kind kind = Kind::Triangles;
   std::uint8_t alpha = 31; // its polygons' (0-31): their corners' average
   std::uint32_t indexCount = 0;
   bool operator==(const Primitive &) const = default;

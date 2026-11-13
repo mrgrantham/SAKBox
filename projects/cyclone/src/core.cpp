@@ -14,14 +14,14 @@
 
 using namespace cyclone;
 
-const Vector3 Vector3::GRAVITY = Vector3(0, -9.81, 0);
-const Vector3 Vector3::HIGH_GRAVITY = Vector3(0, -19.62, 0);
-const Vector3 Vector3::UP = Vector3(0, 1, 0);
-const Vector3 Vector3::RIGHT = Vector3(1, 0, 0);
-const Vector3 Vector3::OUT_OF_SCREEN = Vector3(0, 0, 1);
-const Vector3 Vector3::X = Vector3(0, 1, 0);
-const Vector3 Vector3::Y = Vector3(1, 0, 0);
-const Vector3 Vector3::Z = Vector3(0, 0, 1);
+const Vector3 Vector3::kGravity = Vector3(0, -9.81, 0);
+const Vector3 Vector3::kHighGravity = Vector3(0, -19.62, 0);
+const Vector3 Vector3::kUp = Vector3(0, 1, 0);
+const Vector3 Vector3::kRight = Vector3(1, 0, 0);
+const Vector3 Vector3::kOutOfScreen = Vector3(0, 0, 1);
+const Vector3 Vector3::kX = Vector3(0, 1, 0);
+const Vector3 Vector3::kY = Vector3(1, 0, 0);
+const Vector3 Vector3::kZ = Vector3(0, 0, 1);
 
 /*
  * Definition of the sleep epsilon extern.

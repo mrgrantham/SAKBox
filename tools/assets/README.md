@@ -21,7 +21,7 @@ scene(
 
 ```cpp
 #include "rock.h"                             // from :rock (desktops)
-Scene::Mesh rock = renderer.load(Assets::rock);
+Scene::Mesh rock = renderer.load(Assets::kRock);
 ```
 
 ## What the rules make
@@ -30,7 +30,7 @@ Scene::Mesh rock = renderer.load(Assets::rock);
 
 | Target | What it is |
 | --- | --- |
-| `:rock` | A `cc_library` for desktops: `rock.h`, with `Assets::rock` (a `Scene::MeshData`), and `Assets::rockTriangles`, `rockVertices` and `rockPolygons` (polygons as the platform draws it: on the DS, its quads, strips and triangles, which its `MeshData`'s `primitives` give) |
+| `:rock` | A `cc_library` for desktops: `rock.h`, with `Assets::kRock` (a `Scene::MeshData`), and `Assets::kRockTriangles`, `kRockVertices` and `kRockPolygons` (polygons as the platform draws it: on the DS, its quads, strips and triangles, which its `MeshData`'s `primitives` give) |
 | `:rock_ds_sources` | The DS's version, the same names, for a DS app's Makefile build: `rock_ds.h` and `rock_ds.cpp`, given by `devkitpro_nds_app`'s `extra_srcs` (the example's DS app has `"...:rock_ds_sources": "assets"`, and `assets` in its Makefile's `SOURCES` and `INCLUDES`). A DS app in another package needs the rule's `visibility` |
 | `:rock_3ds_sources` | The 3DS's version, the same way, for a 3DS app's Makefile build (`devkitpro_3ds_app`'s `extra_srcs`): `rock_3ds.h` and `rock_3ds.cpp`. Its budget counts triangles (the 3DS draws triangles), against a frame of 45,000 by default (see `scene`) |
 | `:rock_ds_preview` | The DS's version as a `cc_library` for desktops, in `Assets::Ds`, to see what the DS will draw |

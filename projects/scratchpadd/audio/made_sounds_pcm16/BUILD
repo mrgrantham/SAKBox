@@ -28,7 +28,7 @@ genrule(
     name = sound + "_pcm16",
     src = sound + ".pcm16",
     namespace = "ScratchPadd::Audio::MadeSoundsPcm16::Bytes",
-    symbol = sound,
+    symbol = "k" + sound.capitalize(),
 ) for sound in SOUNDS]
 
 cc_library(

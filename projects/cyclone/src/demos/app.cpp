@@ -330,7 +330,7 @@ void RigidBodyApplication::display() {
 
 void RigidBodyApplication::renderResolverMethod() {
   const char *text =
-      getWorld().getResolver().getMethod() == cyclone::ContactResolver::Method::sequentialImpulses
+      getWorld().getResolver().getMethod() == cyclone::ContactResolver::Method::SequentialImpulses
           ? "Resolver: all contacts together"
           : "Resolver: one contact at a time (the book's)";
   const float textWidth = (float)stb_easy_font_width(const_cast<char *>(text));
@@ -430,9 +430,9 @@ void RigidBodyApplication::key(unsigned char key) {
     {
       cyclone::ContactResolver &resolver = getWorld().getResolver();
       resolver.setMethod(resolver.getMethod() ==
-                                 cyclone::ContactResolver::Method::sequentialImpulses
-                             ? cyclone::ContactResolver::Method::oneContactAtATime
-                             : cyclone::ContactResolver::Method::sequentialImpulses);
+                                 cyclone::ContactResolver::Method::SequentialImpulses
+                             ? cyclone::ContactResolver::Method::OneContactAtATime
+                             : cyclone::ContactResolver::Method::SequentialImpulses);
       resolver.forgetWarmStart();
       return;
     }

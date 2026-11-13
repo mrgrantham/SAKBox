@@ -22,7 +22,7 @@ struct TranslatedShader {
   std::map<std::string, std::size_t> uniformOffsets;
 };
 
-enum class Stage { vertex, fragment };
+enum class Stage { Vertex, Fragment };
 
 // `glsl` as Metal, or "" in `error` saying why it couldn't be. The vertex
 // stage's y is flipped, so a texture drawn into is laid out as OpenGL lays

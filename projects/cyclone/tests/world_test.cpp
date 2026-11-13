@@ -13,8 +13,8 @@ using namespace cyclone;
 
 namespace {
 
-constexpr ContactResolver::Method together = ContactResolver::Method::sequentialImpulses;
-constexpr ContactResolver::Method booksResolver = ContactResolver::Method::oneContactAtATime;
+constexpr ContactResolver::Method kTogether = ContactResolver::Method::SequentialImpulses;
+constexpr ContactResolver::Method kBooksResolver = ContactResolver::Method::OneContactAtATime;
 
 // A world of bodies, each with one shape, falling under gravity onto the
 // ground (y = 0)
@@ -40,7 +40,7 @@ struct Scene {
     body.setInertiaTensor(inertia);
     body.setDamping(0.99, 0.8);
     body.setPosition(position);
-    body.setAcceleration(Vector3::GRAVITY);
+    body.setAcceleration(Vector3::kGravity);
     body.setCanSleep(false);
     body.setAwake();
     body.calculateDerivedData();
@@ -169,7 +169,7 @@ TEST(WorldTest, ShapesComeToRest) {
   for (unsigned subSteps : {1u, 4u}) {
     SCOPED_TRACE(testing::Message() << subSteps << " sub-steps");
     Scene scene({.subSteps = subSteps});
-    scene.world.getResolver().setMethod(together);
+    scene.world.getResolver().setMethod(kTogether);
     const RigidBody &sphere = *scene.sphere(Vector3(0, 2, 0), 0.5).body;
     const RigidBody &box = *scene.box(Vector3(3, 2, 0), Vector3(0.5, 0.5, 0.5)).body;
     const RigidBody &onBox = *scene.box(Vector3(3, 3.5, 0), Vector3(0.5, 0.5, 0.5)).body;
@@ -187,7 +187,7 @@ TEST(WorldTest, ShapesComeToRest) {
 // them in each. beforeSubStep is called before each sub-step, with its
 // duration.
 TEST(WorldTest, SubStepsFindContactsOnce) {
-  for (ContactResolver::Method method : {together, booksResolver}) {
+  for (ContactResolver::Method method : {kTogether, kBooksResolver}) {
     Scene scene({.subSteps = 4});
     scene.world.getResolver().setMethod(method);
     scene.sphere(Vector3(0, 0.45, 0), 0.5);
@@ -197,7 +197,7 @@ TEST(WorldTest, SubStepsFindContactsOnce) {
     scene.world.beforeSubStep = [&](real_duration seconds) { subSteps.push_back(seconds); };
     scene.world.startFrame();
     scene.world.runPhysics(1.0 / 60);
-    EXPECT_EQ(counting.calls, method == together ? 1 : 4);
+    EXPECT_EQ(counting.calls, method == kTogether ? 1 : 4);
     ASSERT_EQ(subSteps.size(), 4u);
     EXPECT_NEAR(subSteps[0], 1.0 / 240, 1e-12);
     EXPECT_GT(scene.world.getStepContacts().size(), 0u);
@@ -210,7 +210,7 @@ TEST(WorldTest, SubStepsFindContactsOnce) {
 // the step (see World::Settings::margin), and followed exactly
 TEST(WorldTest, FastFallingBoxLandsWithoutSinking) {
   Scene scene({.subSteps = 4});
-  scene.world.getResolver().setMethod(together);
+  scene.world.getResolver().setMethod(kTogether);
   RigidBody &box = *scene.box(Vector3(0, 1.5, 0), Vector3(0.5, 0.5, 0.5)).body;
   box.setVelocity(0, -20, 0); // a third of a metre a step
   double lowest = 10;

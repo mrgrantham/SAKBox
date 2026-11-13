@@ -36,7 +36,7 @@ TEST(GlslToSpirvTest, EveryPlaygroundShaderCompiles) {
     SCOPED_TRACE(entry.path().filename().string());
     Shader shader;
     std::string why;
-    ASSERT_TRUE(compile(extension == ".vert" ? Stage::vertex : Stage::fragment, Dialect::opengl,
+    ASSERT_TRUE(compile(extension == ".vert" ? Stage::Vertex : Stage::Fragment, Dialect::Opengl,
                         read(entry.path()), shader, why))
         << why;
     ASSERT_FALSE(shader.words.empty());
@@ -50,7 +50,7 @@ TEST(GlslToSpirvTest, EveryPlaygroundShaderCompiles) {
 TEST(GlslToSpirvTest, LooseUniformsAreFound) {
   Shader shader;
   std::string why;
-  ASSERT_TRUE(compile(Stage::fragment, Dialect::opengl, R"(#version 330 core
+  ASSERT_TRUE(compile(Stage::Fragment, Dialect::Opengl, R"(#version 330 core
 layout(location = 0) out vec4 color;
 uniform float iTime;
 uniform vec2 iResolution;
@@ -70,7 +70,7 @@ void main() { color = uniform_color * iTime + vec4(gl_FragCoord.xy / iResolution
   EXPECT_EQ(uniforms.binding, 0u);
 
   // Put where it's asked to be
-  ASSERT_TRUE(compile(Stage::vertex, Dialect::opengl, R"(#version 330 core
+  ASSERT_TRUE(compile(Stage::Vertex, Dialect::Opengl, R"(#version 330 core
 layout(location = 0) in vec3 position;
 uniform float iTime;
 void main() { gl_Position = vec4(position * iTime, 1.0); }
@@ -87,7 +87,7 @@ void main() { gl_Position = vec4(position * iTime, 1.0); }
 TEST(GlslToSpirvTest, VulkanGlslCompilesAndMistakesAreReported) {
   Shader shader;
   std::string why;
-  EXPECT_TRUE(compile(Stage::vertex, Dialect::vulkan, R"(#version 450
+  EXPECT_TRUE(compile(Stage::Vertex, Dialect::Vulkan, R"(#version 450
 layout(set = 0, binding = 0) uniform Frame { mat4 viewProj; } frame;
 layout(location = 0) in vec3 position;
 void main() { gl_Position = frame.viewProj * vec4(position, 1.0); }
@@ -96,10 +96,10 @@ void main() { gl_Position = frame.viewProj * vec4(position, 1.0); }
       << why;
   EXPECT_FALSE(shader.uniforms);
 
-  EXPECT_FALSE(compile(Stage::fragment, Dialect::opengl,
+  EXPECT_FALSE(compile(Stage::Fragment, Dialect::Opengl,
                        "#version 330 core\nvoid main() { nonsense; }", shader, why));
   EXPECT_NE(why.find("nonsense"), std::string::npos) << why;
   // Vulkan's rules, not relaxed: a loose uniform isn't allowed
-  EXPECT_FALSE(compile(Stage::fragment, Dialect::vulkan,
+  EXPECT_FALSE(compile(Stage::Fragment, Dialect::Vulkan,
                        "#version 450\nuniform float t;\nvoid main() {}", shader, why));
 }

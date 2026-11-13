@@ -39,22 +39,22 @@ unsigned collide(const CollisionPrimitive &one, const CollisionPrimitive &two,
   // In the order sphere, box, capsule, so each pair has one case
   if (two.getShape() < one.getShape())
     return collide(two, one, boxContacts, data);
-  if (one.getShape() == Shape::sphere) {
+  if (one.getShape() == Shape::Sphere) {
     const auto &sphere = static_cast<const CollisionSphere &>(one);
     switch (two.getShape()) {
-    case Shape::sphere:
+    case Shape::Sphere:
       return CollisionDetector::sphereAndSphere(sphere, static_cast<const CollisionSphere &>(two),
                                                 &data);
-    case Shape::box:
+    case Shape::Box:
       return CollisionDetector::boxAndSphere(static_cast<const CollisionBox &>(two), sphere, &data);
-    case Shape::capsule:
+    case Shape::Capsule:
       return CollisionDetector::capsuleAndSphere(static_cast<const CollisionCapsule &>(two), sphere,
                                                  &data);
     }
   }
-  if (one.getShape() == Shape::box) {
+  if (one.getShape() == Shape::Box) {
     const auto &box = static_cast<const CollisionBox &>(one);
-    if (two.getShape() == Shape::box)
+    if (two.getShape() == Shape::Box)
       return boxContacts.boxAndBox(box, static_cast<const CollisionBox &>(two), &data);
     return CollisionDetector::capsuleAndBox(static_cast<const CollisionCapsule &>(two), box, &data);
   }
@@ -67,13 +67,13 @@ unsigned collide(const CollisionPrimitive &shape, const CollisionPlane &plane,
                  CollisionData &data) {
   using Shape = CollisionPrimitive::Shape;
   switch (shape.getShape()) {
-  case Shape::sphere:
+  case Shape::Sphere:
     return CollisionDetector::sphereAndHalfSpace(static_cast<const CollisionSphere &>(shape), plane,
                                                  &data);
-  case Shape::box:
+  case Shape::Box:
     return CollisionDetector::boxAndHalfSpace(static_cast<const CollisionBox &>(shape), plane,
                                               &data);
-  case Shape::capsule:
+  case Shape::Capsule:
     return CollisionDetector::capsuleAndHalfSpace(static_cast<const CollisionCapsule &>(shape),
                                                   plane, &data);
   }
@@ -123,7 +123,7 @@ unsigned World::findContacts(real_duration stepDuration) {
   // plane, however far the shape has moved), so a shape falling fast has
   // its contact before it lands.
   const bool followed =
-      aheadOfTheStep && resolver.getMethod() == ContactResolver::Method::sequentialImpulses;
+      aheadOfTheStep && resolver.getMethod() == ContactResolver::Method::SequentialImpulses;
   const real margin = followed ? settings.margin : (real)0;
   auto travel = [&](const CollisionPrimitive &shape) {
     if (!followed)
@@ -235,7 +235,7 @@ void World::runPhysics(real_duration duration) {
     total += millisecondsSince(start);
   };
 
-  if (resolver.getMethod() == ContactResolver::Method::sequentialImpulses) {
+  if (resolver.getMethod() == ContactResolver::Method::SequentialImpulses) {
     // The contacts are found once, after the first sub-step's integration,
     // where the book's loop finds them, and followed through the rest (the
     // book's way of updating contacts as bodies move, section 14.4, as
@@ -288,7 +288,7 @@ void World::runPhysics(real_duration duration) {
 
 void World::removeShape(const CollisionPrimitive *shape) {
   std::erase(shapes, shape);
-  if (shape->getShape() == CollisionPrimitive::Shape::box)
+  if (shape->getShape() == CollisionPrimitive::Shape::Box)
     boxContacts.forget(*static_cast<const CollisionBox *>(shape));
 }
 

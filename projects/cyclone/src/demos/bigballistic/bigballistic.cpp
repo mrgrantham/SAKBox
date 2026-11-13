@@ -181,18 +181,18 @@ class BigBallisticDemo : public RigidBodyApplication {
    * Holds the maximum number of  rounds that can be
    * fired.
    */
-  const static unsigned ammoRounds = 256;
+  const static unsigned kAmmoRounds = 256;
 
   /** Holds the particle data. */
-  AmmoRound ammo[ammoRounds];
+  AmmoRound ammo[kAmmoRounds];
 
   /**
    * Holds the number of boxes in the simulation.
    */
-  const static unsigned boxes = 2;
+  const static unsigned kBoxes = 2;
 
   /** Holds the box data. */
-  Box boxData[boxes];
+  Box boxData[kBoxes];
 
   /** Holds the current shot type. */
   ShotType currentShotType;
@@ -277,7 +277,7 @@ void BigBallisticDemo::initGraphics() {
 
 void BigBallisticDemo::reset() {
   // Make all shots unused
-  for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
+  for (AmmoRound *shot = ammo; shot < ammo + kAmmoRounds; shot++) {
     if (shot->type != UNUSED)
       retire(*shot);
   }
@@ -285,7 +285,7 @@ void BigBallisticDemo::reset() {
 
   // Initialise the box
   cyclone::real z = 20.0f;
-  for (Box *box = boxData; box < boxData + boxes; box++) {
+  for (Box *box = boxData; box < boxData + kBoxes; box++) {
     box->setState(z);
     z += 90.0f;
   }
@@ -296,13 +296,13 @@ const char *BigBallisticDemo::getTitle() { return "Cyclone > Big Ballistic Demo"
 void BigBallisticDemo::fire() {
   // Find the first available round.
   AmmoRound *shot;
-  for (shot = ammo; shot < ammo + ammoRounds; shot++) {
+  for (shot = ammo; shot < ammo + kAmmoRounds; shot++) {
     if (shot->type == UNUSED)
       break;
   }
 
   // If we didn't find a round, then exit - we can't fire.
-  if (shot >= ammo + ammoRounds)
+  if (shot >= ammo + kAmmoRounds)
     return;
 
   // Set the shot
@@ -314,7 +314,7 @@ void BigBallisticDemo::fire() {
 void BigBallisticDemo::contactsFound(std::span<const cyclone::Contact> contacts) {
   // When we get a collision, remove the shot (it only touches boxes)
   for (const cyclone::Contact &contact : contacts) {
-    for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
+    for (AmmoRound *shot = ammo; shot < ammo + kAmmoRounds; shot++) {
       if (shot->type != UNUSED && (contact.body[0] == shot->body || contact.body[1] == shot->body))
         hits.push_back(shot);
     }
@@ -328,7 +328,7 @@ void BigBallisticDemo::afterStep() {
   }
   hits.clear();
 
-  for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
+  for (AmmoRound *shot = ammo; shot < ammo + kAmmoRounds; shot++) {
     if (shot->type != UNUSED) {
       // Check if the particle is now invalid
       if (shot->body->getPosition().y < 0.0f ||
@@ -343,7 +343,7 @@ void BigBallisticDemo::afterStep() {
 }
 
 void BigBallisticDemo::display() {
-  const static GLfloat lightPosition[] = {-1, 1, 0, 0};
+  const static GLfloat kLightPosition[] = {-1, 1, 0, 0};
 
   // Clear the viewport and set the camera direction
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -373,7 +373,7 @@ void BigBallisticDemo::display() {
 
   // Render each particle in turn
   glColor3f(1, 0, 0);
-  for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
+  for (AmmoRound *shot = ammo; shot < ammo + kAmmoRounds; shot++) {
     if (shot->type != UNUSED) {
       shot->render(drawFraction());
     }
@@ -382,11 +382,11 @@ void BigBallisticDemo::display() {
   // Render the box
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_LIGHTING);
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+  glLightfv(GL_LIGHT0, GL_POSITION, kLightPosition);
   glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
   glColor3f(1, 0, 0);
-  for (Box *box = boxData; box < boxData + boxes; box++) {
+  for (Box *box = boxData; box < boxData + kBoxes; box++) {
     box->render(drawFraction());
   }
   glDisable(GL_COLOR_MATERIAL);
@@ -421,7 +421,7 @@ void BigBallisticDemo::display() {
 
 void BigBallisticDemo::mouse(int button, int state, int x, int y) {
   // Fire the current weapon.
-  if (state == MOUSE_DOWN)
+  if (state == MouseDown)
     fire();
 }
 

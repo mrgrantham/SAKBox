@@ -34,11 +34,11 @@ namespace ScratchPadd::Scene::Debug {
 
 // How meshes are coloured
 enum class View : std::uint8_t {
-  normal,        // as usual
-  normals,       // each normal as a colour: x, y, z from -1 to 1 as 0 to 255
-  lighting,      // the light each vertex gets, without its colours
-  vertexColours, // the vertex colours times the material's, unlit
-  overdraw,      // how many times each pixel is drawn: brighter for more
+  Normal,        // as usual
+  Normals,       // each normal as a colour: x, y, z from -1 to 1 as 0 to 255
+  Lighting,      // the light each vertex gets, without its colours
+  VertexColours, // the vertex colours times the material's, unlit
+  Overdraw,      // how many times each pixel is drawn: brighter for more
 };
 const char *nameOf(View view);
 
@@ -48,7 +48,7 @@ struct Settings {
   // Back faces and meshes out of view culled (off: everything drawn, to
   // see what culling saves, or find a mesh wound the wrong way)
   bool culling = true;
-  View view = View::normal;
+  View view = View::Normal;
   // Each frame sends only its first few draws, one more every half second
   // (from one, when it's turned on): the frame that hangs the GPU ends with
   // the draw that does, which the watchdog names

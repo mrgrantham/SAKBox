@@ -4,7 +4,8 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 
 def embed_file(name, src, namespace, symbol, **kwargs):
     """A cc_library defining `namespace::symbol` (the bytes of `src`) and
-    `namespace::symbolSize`. Declare them where they're used:
+    `namespace::symbolSize`: name it as the repo names constants (kQuestrial,
+    making kQuestrialSize). Declare them where they're used:
 
         namespace NAMESPACE {
         extern const unsigned char SYMBOL[];

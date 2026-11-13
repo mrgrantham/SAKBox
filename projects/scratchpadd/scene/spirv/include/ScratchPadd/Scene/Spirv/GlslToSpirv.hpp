@@ -12,7 +12,7 @@
 
 namespace ScratchPadd::Scene::Spirv {
 
-enum class Stage { vertex, fragment };
+enum class Stage { Vertex, Fragment };
 
 // How the GLSL is written:
 // - vulkan: for Vulkan (#version 450, its uniforms in blocks with sets and
@@ -21,7 +21,7 @@ enum class Stage { vertex, fragment };
 //   Vulkan's rules relaxed: its loose uniforms (iTime and so on) are
 //   gathered into one block, and what has no location or binding is given
 //   one
-enum class Dialect { vulkan, opengl };
+enum class Dialect { Vulkan, Opengl };
 
 struct Shader {
   std::vector<std::uint32_t> words; // the SPIR-V

@@ -29,7 +29,7 @@ ScratchPadd::Scene::Primitives primitivesOf(const Mesh &mesh) {
 }
 
 Budget costOf(const Mesh &mesh, Drawing drawing) {
-  if (drawing == Drawing::quadsAndStrips) {
+  if (drawing == Drawing::QuadsAndStrips) {
     const ScratchPadd::Scene::Primitives primitives = primitivesOf(mesh);
     const ScratchPadd::Scene::FrameCounts cost =
         ScratchPadd::Scene::costOf(std::span<const ScratchPadd::Scene::Primitive>(primitives.runs));
@@ -73,21 +73,21 @@ bool fits(const Budget &cost, const Budget &budget) {
 
 std::optional<Mode> modeFromName(const std::string &name) {
   if (name == "FAIL")
-    return Mode::fail;
+    return Mode::Fail;
   if (name == "SIMPLIFY")
-    return Mode::simplify;
+    return Mode::Simplify;
   if (name == "SIMPLIFY_AGGRESSIVE")
-    return Mode::simplifyAggressive;
+    return Mode::SimplifyAggressive;
   return std::nullopt;
 }
 
 const char *nameOf(Mode mode) {
   switch (mode) {
-  case Mode::fail:
+  case Mode::Fail:
     return "FAIL";
-  case Mode::simplify:
+  case Mode::Simplify:
     return "SIMPLIFY";
-  case Mode::simplifyAggressive:
+  case Mode::SimplifyAggressive:
     return "SIMPLIFY_AGGRESSIVE";
   }
   return "?";
@@ -294,7 +294,7 @@ Cooked cook(const Mesh &original, const Budget &budget, Mode mode, Drawing drawi
       cooked.steps.emplace_back("clean up");
   }
   const Mesh mesh = cooked.mesh; // what's simplified from here
-  if (fits(costOf(mesh, drawing), budget) || mode == Mode::fail) {
+  if (fits(costOf(mesh, drawing), budget) || mode == Mode::Fail) {
     cooked.steps.emplace_back("as it is");
     cooked.fitsBudget = fits(costOf(mesh, drawing), budget);
     return cooked;
@@ -309,7 +309,7 @@ Cooked cook(const Mesh &original, const Budget &budget, Mode mode, Drawing drawi
       {"simplify (across seams)", false, 1.0f, meshopt_SimplifyPermissive},
       {"simplify (sloppy)", true, 1.0f, 0},
   };
-  const std::size_t stepCount = mode == Mode::simplify ? 1 : std::size(steps);
+  const std::size_t stepCount = mode == Mode::Simplify ? 1 : std::size(steps);
   // A flat-shaded mesh is simplified welded, then flat-shaded again
   const bool flat = flatShaded(mesh);
   const Mesh source = flat ? weld(mesh) : mesh;

@@ -223,8 +223,8 @@ void RagdollWindowPadd::drawFrame() {
   Scene::Environment environment{.background = kSky, .ambient = {115, 115, 115}};
   environment.addLight({.direction = {-0.4f, -1.0f, -0.3f}, .colour = {140, 140, 140}});
   renderer_->beginFrame(camera, environment);
-  static const std::vector<Scene::Vector3> ground = groundLines();
-  renderer_->drawLines(ground, kGround);
+  static const std::vector<Scene::Vector3> kGroundLines = groundLines();
+  renderer_->drawLines(kGroundLines, kGround);
   if (const RagdollSnapshot *newest = timeline_.newest()) {
     const bool blend = control<ScratchPadd::ControlType::Boolean>("Blend between snapshots").value;
     drawRagdoll(timeline_.bonesAt(time, blend), newest->joints);

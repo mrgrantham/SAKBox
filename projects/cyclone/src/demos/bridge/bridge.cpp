@@ -95,7 +95,7 @@ BridgeDemo::BridgeDemo()
                                  cyclone::real(side) * 2.0f - 1.0f);
     particleArray[i].setVelocity(0, 0, 0);
     particleArray[i].setDamping(0.9f);
-    particleArray[i].setAcceleration(cyclone::Vector3::GRAVITY);
+    particleArray[i].setAcceleration(cyclone::Vector3::kGravity);
     particleArray[i].clearAccumulator();
   }
 

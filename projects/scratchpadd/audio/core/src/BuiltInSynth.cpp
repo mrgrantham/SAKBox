@@ -45,7 +45,7 @@ constexpr Family kFamilyTones[16] = {
 };
 
 // The drum sounds, and which General MIDI drum keys play each
-enum DrumSound { Kick, Snare, Tom, ClosedHat, OpenHat, Crash, Ride, Click, kDrumSounds };
+enum DrumSound { Kick, Snare, Tom, ClosedHat, OpenHat, Crash, Ride, Click, KDrumSounds };
 
 DrumSound drumFor(int key) {
   switch (key) {
@@ -132,7 +132,7 @@ BuiltInSynth::BuiltInSynth(std::uint32_t sampleRate, std::uint32_t maxNotes)
                 .bright = bright,
                 .decayFactor = timeConstant(decay, sampleRate_)};
   };
-  drums_.resize(kDrumSounds);
+  drums_.resize(KDrumSounds);
   drums_[Kick] = drum(160, 45, 0.04f, 1.0f, 0.05f, false, 0.18f);
   drums_[Snare] = drum(220, 180, 0.02f, 0.4f, 0.7f, true, 0.07f);
   drums_[Tom] = drum(160, 100, 0.05f, 0.9f, 0.1f, false, 0.2f); // scaled by key

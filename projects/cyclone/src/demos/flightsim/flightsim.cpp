@@ -120,7 +120,7 @@ FlightSimDemo::FlightSimDemo()
 
   aircraft.setDamping(0.8f, 0.8f);
 
-  aircraft.setAcceleration(cyclone::Vector3::GRAVITY);
+  aircraft.setAcceleration(cyclone::Vector3::kGravity);
   aircraft.calculateDerivedData();
 
   aircraft.setAwake();

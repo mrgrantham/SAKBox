@@ -222,8 +222,8 @@ private:
     clock_.setStepSeconds(1.0 / control<Controls::Integer>("Steps a second").value);
     clock_.setSubSteps(static_cast<unsigned>(control<Controls::Integer>("Sub-steps").value));
     const auto method = control<Controls::String>("Resolver").value == kOneAtATime
-                            ? cyclone::ContactResolver::Method::oneContactAtATime
-                            : cyclone::ContactResolver::Method::sequentialImpulses;
+                            ? cyclone::ContactResolver::Method::OneContactAtATime
+                            : cyclone::ContactResolver::Method::SequentialImpulses;
     cyclone::ContactResolver &resolver = ragdoll_->world.getResolver();
     if (method != resolver.getMethod()) {
       resolver.setMethod(method);

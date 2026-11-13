@@ -34,11 +34,11 @@ public:
       return;
     }
     renderer_ = std::make_unique<Scene::Renderer>(*display_);
-    models_[0] = {renderer_->load(Assets::ship), Assets::shipTriangles, "Ship, desktop"};
-    models_[1] = {renderer_->load(Assets::Ds::ship), Assets::Ds::shipTriangles,
+    models_[0] = {renderer_->load(Assets::kShip), Assets::kShipTriangles, "Ship, desktop"};
+    models_[1] = {renderer_->load(Assets::Ds::kShip), Assets::Ds::kShipTriangles,
                   "Ship, DS (Ship_DS, made in Blender)"};
-    models_[2] = {renderer_->load(Assets::rock), Assets::rockTriangles, "Rock, desktop"};
-    models_[3] = {renderer_->load(Assets::Ds::rock), Assets::Ds::rockTriangles,
+    models_[2] = {renderer_->load(Assets::kRock), Assets::kRockTriangles, "Rock, desktop"};
+    models_[3] = {renderer_->load(Assets::Ds::kRock), Assets::Ds::kRockTriangles,
                   "Rock, DS (simplified by the build)"};
     push([this] { drawFrame(); });
   }

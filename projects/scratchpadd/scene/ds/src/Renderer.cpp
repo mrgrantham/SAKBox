@@ -81,7 +81,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
     return;
   LoadedMesh &loaded = meshes[mesh.id - 1];
   ++draws;
-  const bool lit = material.shading == Material::Shading::lit;
+  const bool lit = material.shading == Material::Shading::Lit;
   const std::vector<DisplayList::Packed> &lists =
       listsFor(loaded, {lit, material.colour, lit ? ambient : Colour{}});
 

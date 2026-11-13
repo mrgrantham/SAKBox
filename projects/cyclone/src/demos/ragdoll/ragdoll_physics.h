@@ -55,7 +55,7 @@ public:
     body->setLinearDamping(0.95f);
     body->setAngularDamping(0.8f);
     body->clearAccumulators();
-    body->setAcceleration(cyclone::Vector3::GRAVITY);
+    body->setAcceleration(cyclone::Vector3::kGravity);
 
     // SAKBox: the book's ragdoll never sleeps; this one does, once it lies
     // still: its bones fall asleep together, as a group joined by joints

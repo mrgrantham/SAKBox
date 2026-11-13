@@ -40,21 +40,21 @@ Gamepad fromNintendo(Kind kind, std::uint32_t held, int circleX, int circleY, in
   using K = NintendoKeys;
   Gamepad pad{.kind = kind, .features = featuresOf(kind)};
   // By position: Nintendo's A is the right button, B the bottom
-  hold(pad, Button::FaceRight, held & K::A);
-  hold(pad, Button::FaceBottom, held & K::B);
-  hold(pad, Button::FaceTop, held & K::X);
-  hold(pad, Button::FaceLeft, held & K::Y);
-  hold(pad, Button::L, held & K::L);
-  hold(pad, Button::R, held & K::R);
-  hold(pad, Button::Start, held & K::Start);
-  hold(pad, Button::Select, held & K::Select);
-  hold(pad, Button::Up, held & K::Up);
-  hold(pad, Button::Down, held & K::Down);
-  hold(pad, Button::Left, held & K::Left);
-  hold(pad, Button::Right, held & K::Right);
+  hold(pad, Button::FaceRight, held & K::kA);
+  hold(pad, Button::FaceBottom, held & K::kB);
+  hold(pad, Button::FaceTop, held & K::kX);
+  hold(pad, Button::FaceLeft, held & K::kY);
+  hold(pad, Button::L, held & K::kL);
+  hold(pad, Button::R, held & K::kR);
+  hold(pad, Button::Start, held & K::kStart);
+  hold(pad, Button::Select, held & K::kSelect);
+  hold(pad, Button::Up, held & K::kUp);
+  hold(pad, Button::Down, held & K::kDown);
+  hold(pad, Button::Left, held & K::kLeft);
+  hold(pad, Button::Right, held & K::kRight);
   if (kind == Kind::NewThreeDs) {
-    hold(pad, Button::ZL, held & K::ZL);
-    hold(pad, Button::ZR, held & K::ZR);
+    hold(pad, Button::ZL, held & K::kZl);
+    hold(pad, Button::ZR, held & K::kZr);
     pad.leftTrigger = pad.isHeld(Button::ZL) ? 65535 : 0;
     pad.rightTrigger = pad.isHeld(Button::ZR) ? 65535 : 0;
   }

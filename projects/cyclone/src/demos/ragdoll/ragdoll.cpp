@@ -118,7 +118,7 @@ void RagdollDemo::initGraphics() {
 }
 
 void RagdollDemo::display() {
-  const static GLfloat lightPosition[] = {0.7f, -1, 0.4f, 0};
+  const static GLfloat kLightPosition[] = {0.7f, -1, 0.4f, 0};
 
   RigidBodyApplication::display();
 
@@ -127,7 +127,7 @@ void RagdollDemo::display() {
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
 
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+  glLightfv(GL_LIGHT0, GL_POSITION, kLightPosition);
   glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
 

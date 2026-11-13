@@ -153,12 +153,12 @@ ShaderPanel::ShaderPanel(int width, int height, const std::string &vertexSource,
   // The GLSL as SPIR-V, each stage's loose uniforms at a binding of its own
   Spirv::Shader vertex, fragment;
   std::string why;
-  if (!Spirv::compile(Spirv::Stage::vertex, Spirv::Dialect::opengl, vertexSource, vertex, why,
+  if (!Spirv::compile(Spirv::Stage::Vertex, Spirv::Dialect::Opengl, vertexSource, vertex, why,
                       kVertexUniforms)) {
     error_ = "vertex shader: " + why;
     return;
   }
-  if (!Spirv::compile(Spirv::Stage::fragment, Spirv::Dialect::opengl, fragmentSource, fragment, why,
+  if (!Spirv::compile(Spirv::Stage::Fragment, Spirv::Dialect::Opengl, fragmentSource, fragment, why,
                       kFragmentUniforms)) {
     error_ = "fragment shader: " + why;
     return;

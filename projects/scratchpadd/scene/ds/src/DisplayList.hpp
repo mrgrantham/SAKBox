@@ -19,12 +19,12 @@ namespace ScratchPadd::Scene::DisplayList {
 
 // The geometry commands used (GBATEK's numbers)
 enum Command : std::uint8_t {
-  kColour = 0x20,           // a vertex colour, RGB15
-  kNormal = 0x21,           // a normal (1.9 x 3), lit with the polygon's lights
-  kVertex16 = 0x23,         // a vertex, x y z in 4.12 (two words)
-  kDiffuseAmbient = 0x30,   // the material's diffuse and ambient colours
-  kSpecularEmission = 0x31, // its specular and emission colours
-  kBegin = 0x40,            // starts polygons: 0 separate triangles, 1 quads,
+  KColour = 0x20,           // a vertex colour, RGB15
+  KNormal = 0x21,           // a normal (1.9 x 3), lit with the polygon's lights
+  KVertex16 = 0x23,         // a vertex, x y z in 4.12 (two words)
+  KDiffuseAmbient = 0x30,   // the material's diffuse and ambient colours
+  KSpecularEmission = 0x31, // its specular and emission colours
+  KBegin = 0x40,            // starts polygons: 0 separate triangles, 1 quads,
                             // 2 a triangle strip
 };
 

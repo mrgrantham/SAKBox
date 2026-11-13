@@ -99,7 +99,7 @@ SailboatDemo::SailboatDemo()
 
   sailboat.setDamping(0.8f, 0.8f);
 
-  sailboat.setAcceleration(cyclone::Vector3::GRAVITY);
+  sailboat.setAcceleration(cyclone::Vector3::kGravity);
   sailboat.calculateDerivedData();
 
   sailboat.setAwake();

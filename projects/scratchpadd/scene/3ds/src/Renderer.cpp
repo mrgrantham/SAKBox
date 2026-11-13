@@ -200,18 +200,18 @@ void Renderer::Backend::useScene() {
     float mix[4] = {1, 0, 0, 0};
     float add = 0;
     switch (debug.settings.view) {
-    case Debug::View::normal:
+    case Debug::View::Normal:
       break;
-    case Debug::View::normals:
+    case Debug::View::Normals:
       mix[0] = 0, mix[1] = 1;
       break;
-    case Debug::View::lighting:
+    case Debug::View::Lighting:
       mix[0] = 0, mix[2] = 1;
       break;
-    case Debug::View::vertexColours:
+    case Debug::View::VertexColours:
       mix[0] = 0, mix[3] = 1;
       break;
-    case Debug::View::overdraw:
+    case Debug::View::Overdraw:
       mix[0] = 0, add = 1.0f / Debug::kOverdrawSteps;
       break;
     }
@@ -230,7 +230,7 @@ void Renderer::Backend::setMaterial(const Material &material, const Transform &w
   const float alpha = static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f;
   C3D_FVUnifSet(GPU_VERTEX_SHADER, u.material, channel(material.colour.r),
                 channel(material.colour.g), channel(material.colour.b), alpha);
-  const bool lit = material.shading == Material::Shading::lit;
+  const bool lit = material.shading == Material::Shading::Lit;
   if (lit) {
     C3D_FVUnifSet(GPU_VERTEX_SHADER, u.ambient, channel(environment.ambient.r),
                   channel(environment.ambient.g), channel(environment.ambient.b), 1);
@@ -436,7 +436,7 @@ void Renderer::Backend::drawEye(C3D_RenderTarget *target, const C3D_Mtx &project
 
   // Fog, by each pixel's depth (exp(-density x distance), as on desktops)
   const Debug::Settings &s = debug.settings;
-  if (environment.fog.density > Scalar(0) && s.fog && s.view == Debug::View::normal) {
+  if (environment.fog.density > Scalar(0) && s.fog && s.view == Debug::View::Normal) {
     FogLut_Exp(&fog, environment.fog.density, 1, camera.nearPlane, camera.farPlane);
     C3D_FogGasMode(GPU_FOG, GPU_PLAIN_DENSITY, false);
     C3D_FogColor(fogColour(environment.fog.colour));
@@ -448,7 +448,7 @@ void Renderer::Backend::drawEye(C3D_RenderTarget *target, const C3D_Mtx &project
 
   // Overdraw (a debug view): every mesh's every pixel adds a step, with no
   // depth test, so the brighter, the more often it was drawn
-  const bool overdraw = s.view == Debug::View::overdraw;
+  const bool overdraw = s.view == Debug::View::Overdraw;
   const auto additive = [] {
     C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ONE, GPU_ONE, GPU_ONE);

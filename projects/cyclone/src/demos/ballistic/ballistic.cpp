@@ -64,10 +64,10 @@ class BallisticDemo : public Application {
    * Holds the maximum number of  rounds that can be
    * fired.
    */
-  const static unsigned ammoRounds = 16;
+  const static unsigned kAmmoRounds = 16;
 
   /** Holds the particle data. */
-  AmmoRound ammo[ammoRounds];
+  AmmoRound ammo[kAmmoRounds];
 
   /** Holds the current shot type. */
   ShotType currentShotType;
@@ -111,7 +111,7 @@ public:
 // Method definitions
 BallisticDemo::BallisticDemo() : currentShotType(LASER) {
   // Make all shots unused
-  for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
+  for (AmmoRound *shot = ammo; shot < ammo + kAmmoRounds; shot++) {
     shot->type = UNUSED;
   }
 }
@@ -121,13 +121,13 @@ const char *BallisticDemo::getTitle() { return "Cyclone > Ballistic Demo"; }
 void BallisticDemo::fire() {
   // Find the first available round.
   AmmoRound *shot;
-  for (shot = ammo; shot < ammo + ammoRounds; shot++) {
+  for (shot = ammo; shot < ammo + kAmmoRounds; shot++) {
     if (shot->type == UNUSED)
       break;
   }
 
   // If we didn't find a round, then exit - we can't fire.
-  if (shot >= ammo + ammoRounds)
+  if (shot >= ammo + kAmmoRounds)
     return;
 
   // Set the properties of the particle
@@ -206,7 +206,7 @@ void BallisticDemo::update() {
 
 void BallisticDemo::step(cyclone::real_duration duration) {
   // Update the physics of each particle in turn
-  for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
+  for (AmmoRound *shot = ammo; shot < ammo + kAmmoRounds; shot++) {
     if (shot->type != UNUSED) {
       // Run the physics, drawn between where it was and where it gets to
       shot->particle.rememberPosition();
@@ -259,7 +259,7 @@ void BallisticDemo::display() {
   glEnd();
 
   // Render each particle in turn
-  for (AmmoRound *shot = ammo; shot < ammo + ammoRounds; shot++) {
+  for (AmmoRound *shot = ammo; shot < ammo + kAmmoRounds; shot++) {
     if (shot->type != UNUSED) {
       shot->render(drawFraction());
     }
@@ -290,7 +290,7 @@ void BallisticDemo::display() {
 
 void BallisticDemo::mouse(int button, int state, int x, int y) {
   // Fire the current weapon.
-  if (state == MOUSE_DOWN)
+  if (state == MouseDown)
     fire();
 }
 

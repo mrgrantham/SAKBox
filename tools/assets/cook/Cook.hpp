@@ -43,8 +43,8 @@ struct Budget {
 
 // How a platform draws a model, which is what its budget counts
 enum class Drawing {
-  triangles,      // separate triangles: a polygon and 3 vertices each
-  quadsAndStrips, // as the DS: Scene::buildPrimitives' quads, strips and
+  Triangles,      // separate triangles: a polygon and 3 vertices each
+  QuadsAndStrips, // as the DS: Scene::buildPrimitives' quads, strips and
                   // triangles (a polygon each; 4 vertices a quad, a strip's
                   // once each), which its backend draws as cooked
 };
@@ -60,10 +60,10 @@ ScratchPadd::Scene::Primitives primitivesOf(const Mesh &mesh);
 
 // What to do with a model over its budget
 enum class Mode {
-  fail,              // stop the build
-  simplify,          // simplify, keeping its look: seams, edges, normals
+  Fail,              // stop the build
+  Simplify,          // simplify, keeping its look: seams, edges, normals
                      // and colours in place, the error capped
-  simplifyAggressive // as simplify, then whatever fits: crossing seams,
+  SimplifyAggressive // as simplify, then whatever fits: crossing seams,
                      // then merging nearby vertices regardless of shape
 };
 std::optional<Mode> modeFromName(const std::string &name); // "FAIL", ...

@@ -166,7 +166,7 @@ struct FireworkRule {
 
     firework->setDamping(damping);
 
-    firework->setAcceleration(cyclone::Vector3::GRAVITY);
+    firework->setAcceleration(cyclone::Vector3::kGravity);
 
     firework->clearAccumulator();
     // SAKBox: drawn from here, not sliding from where this slot's last
@@ -182,19 +182,19 @@ class FireworksDemo : public Application {
   /**
    * Holds the maximum number of fireworks that can be in use.
    */
-  const static unsigned maxFireworks = 1024;
+  const static unsigned kMaxFireworks = 1024;
 
   /** Holds the firework data. */
-  Firework fireworks[maxFireworks];
+  Firework fireworks[kMaxFireworks];
 
   /** Holds the index of the next firework slot to use. */
   unsigned nextFirework;
 
   /** And the number of rules. */
-  const static unsigned ruleCount = 9;
+  const static unsigned kRuleCount = 9;
 
   /** Holds the set of rules. */
-  FireworkRule rules[ruleCount];
+  FireworkRule rules[kRuleCount];
 
   /** Dispatches a firework from the origin. */
   void create(unsigned type, const Firework *parent = nullptr);
@@ -245,7 +245,7 @@ public:
 // Method definitions
 FireworksDemo::FireworksDemo() : nextFirework(0) {
   // Make all shots unused
-  for (Firework *firework = fireworks; firework < fireworks + maxFireworks; firework++) {
+  for (Firework *firework = fireworks; firework < fireworks + kMaxFireworks; firework++) {
     firework->type = 0;
   }
 
@@ -354,7 +354,7 @@ void FireworksDemo::create(unsigned type, const Firework *parent) {
   rule->create(fireworks + nextFirework, parent);
 
   // Increment the index for the next firework
-  nextFirework = (nextFirework + 1) % maxFireworks;
+  nextFirework = (nextFirework + 1) % kMaxFireworks;
 }
 
 void FireworksDemo::create(unsigned type, unsigned number, const Firework *parent) {
@@ -382,7 +382,7 @@ void FireworksDemo::update() {
 }
 
 void FireworksDemo::step(cyclone::real_duration duration) {
-  for (Firework *firework = fireworks; firework < fireworks + maxFireworks; firework++) {
+  for (Firework *firework = fireworks; firework < fireworks + kMaxFireworks; firework++) {
     // Check if we need to process this firework.
     if (firework->type > 0) {
       // Does it need removing?
@@ -412,7 +412,7 @@ void FireworksDemo::step(cyclone::real_duration duration) {
 }
 
 void FireworksDemo::display() {
-  const static cyclone::real size = 0.1f;
+  const static cyclone::real kSize = 0.1f;
 
   // Clear the viewport and set the camera direction
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -421,7 +421,7 @@ void FireworksDemo::display() {
 
   // Render each firework in turn
   glBegin(GL_QUADS);
-  for (Firework *firework = fireworks; firework < fireworks + maxFireworks; firework++) {
+  for (Firework *firework = fireworks; firework < fireworks + kMaxFireworks; firework++) {
     // Check if we need to process this firework.
     if (firework->type > 0) {
       switch (firework->type) {
@@ -455,16 +455,16 @@ void FireworksDemo::display() {
       };
 
       const cyclone::Vector3 pos = firework->getBlendedPosition(drawFraction());
-      glVertex3f(pos.x - size, pos.y - size, pos.z);
-      glVertex3f(pos.x + size, pos.y - size, pos.z);
-      glVertex3f(pos.x + size, pos.y + size, pos.z);
-      glVertex3f(pos.x - size, pos.y + size, pos.z);
+      glVertex3f(pos.x - kSize, pos.y - kSize, pos.z);
+      glVertex3f(pos.x + kSize, pos.y - kSize, pos.z);
+      glVertex3f(pos.x + kSize, pos.y + kSize, pos.z);
+      glVertex3f(pos.x - kSize, pos.y + kSize, pos.z);
 
       // Render the firework's reflection
-      glVertex3f(pos.x - size, -pos.y - size, pos.z);
-      glVertex3f(pos.x + size, -pos.y - size, pos.z);
-      glVertex3f(pos.x + size, -pos.y + size, pos.z);
-      glVertex3f(pos.x - size, -pos.y + size, pos.z);
+      glVertex3f(pos.x - kSize, -pos.y - kSize, pos.z);
+      glVertex3f(pos.x + kSize, -pos.y - kSize, pos.z);
+      glVertex3f(pos.x + kSize, -pos.y + kSize, pos.z);
+      glVertex3f(pos.x - kSize, -pos.y + kSize, pos.z);
     }
   }
   glEnd();

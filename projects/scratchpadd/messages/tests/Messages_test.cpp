@@ -581,38 +581,38 @@ TEST(SenderTest, MessagesFromOutsideHaveNoSender) {
 // each `requires` is false because the member isn't accessible here.
 
 namespace {
-template <typename P> constexpr bool canSend = requires(P &p) { p.send(Ping{}); };
+template <typename P> constexpr bool kCanSend = requires(P &p) { p.send(Ping{}); };
 template <typename P>
-constexpr bool canSendTo = requires(P &p) { p.sendTo(ScratchPadd::PaddAddress(), Ping{}); };
+constexpr bool kCanSendTo = requires(P &p) { p.sendTo(ScratchPadd::PaddAddress(), Ping{}); };
 template <typename P>
-constexpr bool canReply = requires(P &p) { p.reply(ScratchPadd::PaddAddress(), Ping{}); };
-template <typename P> constexpr bool canPush = requires(P &p) { p.push([] {}); };
+constexpr bool kCanReply = requires(P &p) { p.reply(ScratchPadd::PaddAddress(), Ping{}); };
+template <typename P> constexpr bool kCanPush = requires(P &p) { p.push([] {}); };
 template <typename P>
-constexpr bool canDeliver =
+constexpr bool kCanDeliver =
     requires(P &p) { p.deliver(ScratchPadd::makeMessage(Ping{}), ScratchPadd::PaddAddress()); };
 template <typename P>
-constexpr bool canSetControl =
+constexpr bool kCanSetControl =
     requires(P &p) { p.setControl("x", ScratchPadd::ControlType::Boolean(true)); };
 template <typename P>
-constexpr bool canReadControl =
+constexpr bool kCanReadControl =
     requires(P &p) { p.template control<ScratchPadd::ControlType::Boolean>("x"); };
 template <typename P>
-constexpr bool canReceive = requires(P &p) { p.template receive<Ping>([](const Ping &) {}); };
-template <typename P> constexpr bool canStop = requires(P &p) { p.stop(); };
-template <typename P> constexpr bool canReadName = requires(P &p) { p.paddName(); };
-template <typename A> constexpr bool canOpenAddress = requires(A &a) { a.padd_; };
+constexpr bool kCanReceive = requires(P &p) { p.template receive<Ping>([](const Ping &) {}); };
+template <typename P> constexpr bool kCanStop = requires(P &p) { p.stop(); };
+template <typename P> constexpr bool kCanReadName = requires(P &p) { p.paddName(); };
+template <typename A> constexpr bool kCanOpenAddress = requires(A &a) { a.padd_; };
 } // namespace
 
 TEST(EnforcementTest, OutsideCodeCantReachIntoAPadd) {
   using Padd = RecordingPadd<1>;
-  static_assert(canReadName<Padd>, "public state can be read (so the checks below can pass)");
-  static_assert(!canSend<Padd> && !canSendTo<Padd> && !canReply<Padd>,
+  static_assert(kCanReadName<Padd>, "public state can be read (so the checks below can pass)");
+  static_assert(!kCanSend<Padd> && !kCanSendTo<Padd> && !kCanReply<Padd>,
                 "only a padd sends its own messages");
-  static_assert(!canPush<Padd>, "only a padd queues its own work");
-  static_assert(!canDeliver<Padd> && !canStop<Padd>, "only the system runs a padd");
-  static_assert(!canSetControl<Padd> && !canReadControl<Padd>, "a padd's controls are its own");
-  static_assert(!canReceive<Padd>, "only a padd chooses what it receives");
-  static_assert(!canOpenAddress<ScratchPadd::PaddAddress>, "an address can't be opened");
+  static_assert(!kCanPush<Padd>, "only a padd queues its own work");
+  static_assert(!kCanDeliver<Padd> && !kCanStop<Padd>, "only the system runs a padd");
+  static_assert(!kCanSetControl<Padd> && !kCanReadControl<Padd>, "a padd's controls are its own");
+  static_assert(!kCanReceive<Padd>, "only a padd chooses what it receives");
+  static_assert(!kCanOpenAddress<ScratchPadd::PaddAddress>, "an address can't be opened");
   SUCCEED();
 }
 

@@ -15,13 +15,13 @@ namespace {
 // How many parameter words each command used takes
 int parameterCount(std::uint8_t command) {
   switch (command) {
-  case kVertex16:
+  case KVertex16:
     return 2;
-  case kColour:
-  case kNormal:
-  case kDiffuseAmbient:
-  case kSpecularEmission:
-  case kBegin:
+  case KColour:
+  case KNormal:
+  case KDiffuseAmbient:
+  case KSpecularEmission:
+  case KBegin:
     return 1;
   default:
     return 0;
@@ -99,15 +99,15 @@ TEST(DisplayListTest, UnlitMeshesSendColoursAndVertices) {
   const std::vector<Sent> sent =
       unpack(onlyList(pack(source, {.lit = false, .colour = {255, 255, 255}})));
   ASSERT_FALSE(sent.empty());
-  EXPECT_EQ(sent[0].command, kBegin);
+  EXPECT_EQ(sent[0].command, KBegin);
   EXPECT_EQ(sent[0].parameters[0], 1u); // quads
-  EXPECT_EQ(count(sent, kBegin), 1);
-  EXPECT_EQ(count(sent, kVertex16), 24);
-  EXPECT_EQ(count(sent, kColour), 1); // one colour, sent once
-  EXPECT_EQ(count(sent, kNormal), 0);
+  EXPECT_EQ(count(sent, KBegin), 1);
+  EXPECT_EQ(count(sent, KVertex16), 24);
+  EXPECT_EQ(count(sent, KColour), 1); // one colour, sent once
+  EXPECT_EQ(count(sent, KNormal), 0);
   EXPECT_EQ(sent[1].parameters[0], rgb15({255, 0, 0}));
   for (const Sent &s : sent) {
-    if (s.command != kVertex16)
+    if (s.command != KVertex16)
       continue;
     EXPECT_EQ(std::abs(vertexX(s)), 4096);
     EXPECT_EQ(std::abs(vertexY(s)), 2048);
@@ -130,21 +130,21 @@ TEST(DisplayListTest, LitMeshesSendMaterialsAndNormals) {
   const Source source = prepare(builder.data());
   const Variant variant{.lit = true, .colour = {255, 255, 255}, .ambient = {128, 128, 128}};
   const std::vector<Sent> sent = unpack(onlyList(pack(source, variant)));
-  EXPECT_EQ(count(sent, kVertex16), 8); // two quads
-  EXPECT_EQ(count(sent, kColour), 0);
-  EXPECT_EQ(count(sent, kDiffuseAmbient), 2);
-  EXPECT_EQ(count(sent, kSpecularEmission), 2);
-  EXPECT_EQ(count(sent, kNormal), 2); // one a quad: they face the same way, but the colour changed
+  EXPECT_EQ(count(sent, KVertex16), 8); // two quads
+  EXPECT_EQ(count(sent, KColour), 0);
+  EXPECT_EQ(count(sent, KDiffuseAmbient), 2);
+  EXPECT_EQ(count(sent, KSpecularEmission), 2);
+  EXPECT_EQ(count(sent, KNormal), 2); // one a quad: they face the same way, but the colour changed
 
   // In order: the material, its emission, the normal, then the vertices
   ASSERT_GE(sent.size(), 4u);
-  EXPECT_EQ(sent[1].command, kDiffuseAmbient);
+  EXPECT_EQ(sent[1].command, KDiffuseAmbient);
   EXPECT_EQ(sent[1].parameters[0], rgb15({200, 100, 0}));
-  EXPECT_EQ(sent[2].command, kSpecularEmission);
+  EXPECT_EQ(sent[2].command, KSpecularEmission);
   EXPECT_EQ(sent[2].parameters[0] >> 16, rgb15(multiply({200, 100, 0}, {128, 128, 128})));
-  EXPECT_EQ(sent[3].command, kNormal);
+  EXPECT_EQ(sent[3].command, KNormal);
   EXPECT_EQ(sent[3].parameters[0], packNormal({0, 0, 1}));
-  EXPECT_EQ(sent[4].command, kVertex16);
+  EXPECT_EQ(sent[4].command, KVertex16);
 }
 
 // A mesh bigger than 4.12's +-8 is stored smaller by a power of two, which
@@ -167,8 +167,8 @@ TEST(DisplayListTest, PacksFourCommandsAWord) {
   const std::vector<std::uint32_t> list = onlyList(pack(prepare(builder.data()), {.lit = false}));
   // BEGIN, COLOR, VTX, VTX | VTX: two command words, 1 + 1 + 2 x 3 parameters
   ASSERT_EQ(list.size(), 1u + 2 + 8);
-  EXPECT_EQ(list[1], kBegin | (kColour << 8) | (kVertex16 << 16) | (kVertex16 << 24));
-  EXPECT_EQ(list[8], static_cast<std::uint32_t>(kVertex16));
+  EXPECT_EQ(list[1], KBegin | (KColour << 8) | (KVertex16 << 16) | (KVertex16 << 24));
+  EXPECT_EQ(list[8], static_cast<std::uint32_t>(KVertex16));
 }
 
 // A cooked mesh's runs are kept as they are: each starts its kind of
@@ -179,13 +179,13 @@ TEST(DisplayListTest, CookedRunsAreDrawnAsGiven) {
                              {{0, 1, 0}, {0, 0, 1}, {}},
                              {{1, 1, 0}, {0, 0, 1}, {}}};
   const std::uint32_t indices[] = {0, 1, 2, 3};
-  const Primitive runs[] = {{Primitive::Kind::triangleStrip, 31, 4}};
+  const Primitive runs[] = {{Primitive::Kind::TriangleStrip, 31, 4}};
   const Source source = prepare({vertices, indices, runs});
   ASSERT_EQ(source.runs.size(), 1u);
-  EXPECT_EQ(source.runs[0].kind, Primitive::Kind::triangleStrip);
+  EXPECT_EQ(source.runs[0].kind, Primitive::Kind::TriangleStrip);
   const std::vector<Sent> sent = unpack(onlyList(pack(source, {.lit = false})));
   EXPECT_EQ(sent[0].parameters[0], 2u); // a triangle strip
-  EXPECT_EQ(count(sent, kVertex16), 4);
+  EXPECT_EQ(count(sent, KVertex16), 4);
   EXPECT_EQ(vertexX(sent.back()), 4096);
   EXPECT_EQ(vertexY(sent.back()), 4096);
 }
@@ -201,5 +201,5 @@ TEST(DisplayListTest, EachAlphaHasItsOwnList) {
   EXPECT_EQ(lists[0].alpha, 31);
   EXPECT_EQ(lists[1].alpha, 16); // 128 of 255, in 32 steps
   for (const Packed &list : lists)
-    EXPECT_EQ(count(unpack(list.words), kVertex16), 4);
+    EXPECT_EQ(count(unpack(list.words), KVertex16), 4);
 }

@@ -98,10 +98,10 @@ public:
 
   /** Positions the box at a random location. */
   void random(cyclone::Random *random) {
-    const static cyclone::Vector3 minPos(-5, 5, -5);
-    const static cyclone::Vector3 maxPos(5, 10, 5);
+    const static cyclone::Vector3 kMinPos(-5, 5, -5);
+    const static cyclone::Vector3 kMaxPos(5, 10, 5);
     cyclone::Random r;
-    setState(random->randomVector(minPos, maxPos), random->randomQuaternion(),
+    setState(random->randomVector(kMinPos, kMaxPos), random->randomQuaternion(),
              random->randomReal(0.5f, 1.5f), cyclone::Vector3());
   }
 };
@@ -176,13 +176,13 @@ public:
 
   /** Positions the box at a random location. */
   void random(cyclone::Random *random) {
-    const static cyclone::Vector3 minPos(-5, 5, -5);
-    const static cyclone::Vector3 maxPos(5, 10, 5);
-    const static cyclone::Vector3 minSize(0.5f, 0.5f, 0.5f);
-    const static cyclone::Vector3 maxSize(4.5f, 1.5f, 1.5f);
+    const static cyclone::Vector3 kMinPos(-5, 5, -5);
+    const static cyclone::Vector3 kMaxPos(5, 10, 5);
+    const static cyclone::Vector3 kMinSize(0.5f, 0.5f, 0.5f);
+    const static cyclone::Vector3 kMaxSize(4.5f, 1.5f, 1.5f);
 
-    setState(random->randomVector(minPos, maxPos), random->randomQuaternion(),
-             random->randomVector(minSize, maxSize), cyclone::Vector3());
+    setState(random->randomVector(kMinPos, kMaxPos), random->randomQuaternion(),
+             random->randomVector(kMinSize, kMaxSize), cyclone::Vector3());
   }
 };
 
@@ -195,18 +195,18 @@ class ExplosionDemo : public RigidBodyApplication {
   /**
    * Holds the number of boxes in the simulation.
    */
-  const static unsigned boxes = OBJECTS;
+  const static unsigned kBoxes = OBJECTS;
 
   /** Holds the box data. */
-  Box boxData[boxes];
+  Box boxData[kBoxes];
 
   /**
    * Holds the number of balls in the simulation.
    */
-  const static unsigned balls = OBJECTS;
+  const static unsigned kBalls = OBJECTS;
 
   /** Holds the ball data. */
-  Ball ballData[balls];
+  Ball ballData[kBalls];
 
   /** The explosion X sets off, and whether it is still going */
   cyclone::Explosion explosion;
@@ -299,18 +299,18 @@ void ExplosionDemo::reset() {
   box++->setState(cyclone::Vector3(0, 3, 0), cyclone::Quaternion(), cyclone::Vector3(4, 1, 1),
                   cyclone::Vector3(0, 1, 0));
 
-  if (boxes > 1) {
+  if (kBoxes > 1) {
     box++->setState(cyclone::Vector3(0, 4.75, 2), cyclone::Quaternion(1.0, 0.1, 0.05, 0.01),
                     cyclone::Vector3(1, 1, 4), cyclone::Vector3(0, 1, 0));
   }
 
   // Create the random objects
   cyclone::Random random;
-  for (; box < boxData + boxes; box++) {
+  for (; box < boxData + kBoxes; box++) {
     box->random(&random);
   }
 
-  for (Ball *ball = ballData; ball < ballData + balls; ball++) {
+  for (Ball *ball = ballData; ball < ballData + kBalls; ball++) {
     ball->random(&random);
   }
 
@@ -322,9 +322,9 @@ void ExplosionDemo::explode(cyclone::real_duration duration) {
   // The explosion's forces (they wake the bodies they reach)
   if (!exploding)
     return;
-  for (Box *box = boxData; box < boxData + boxes; box++)
+  for (Box *box = boxData; box < boxData + kBoxes; box++)
     explosion.updateForce(box->body, duration);
-  for (Ball *ball = ballData; ball < ballData + balls; ball++)
+  for (Ball *ball = ballData; ball < ballData + kBalls; ball++)
     explosion.updateForce(ball->body, duration);
   explosion.advanceTime(duration);
   exploding = explosion.isActive();
@@ -343,24 +343,24 @@ void ExplosionDemo::initGraphics() {
 }
 
 void ExplosionDemo::display() {
-  const static GLfloat lightPosition[] = {1, -1, 0, 0};
-  const static GLfloat lightPositionMirror[] = {1, 1, 0, 0};
+  const static GLfloat kLightPosition[] = {1, -1, 0, 0};
+  const static GLfloat kLightPositionMirror[] = {1, 1, 0, 0};
 
   // Update the transform matrices of each box in turn
-  for (Box *box = boxData; box < boxData + boxes; box++) {
+  for (Box *box = boxData; box < boxData + kBoxes; box++) {
     box->calculateInternals();
     box->isOverlapping = false;
   }
   // SAKBox: and which overlap another (drawn green)
-  for (Box *box = boxData; box < boxData + boxes; box++) {
-    for (Box *other = box + 1; other < boxData + boxes; other++) {
+  for (Box *box = boxData; box < boxData + kBoxes; box++) {
+    for (Box *other = box + 1; other < boxData + kBoxes; other++) {
       if (cyclone::IntersectionTests::boxAndBox(*box, *other))
         box->isOverlapping = other->isOverlapping = true;
     }
   }
 
   // Update the transform matrices of each ball in turn
-  for (Ball *ball = ballData; ball < ballData + balls; ball++) {
+  for (Ball *ball = ballData; ball < ballData + kBalls; ball++) {
     // Run the physics
     ball->calculateInternals();
   }
@@ -371,15 +371,15 @@ void ExplosionDemo::display() {
   // Render each element in turn as a shadow
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_LIGHTING);
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+  glLightfv(GL_LIGHT0, GL_POSITION, kLightPosition);
   glPushMatrix();
   glMultMatrixf(floorMirror);
   glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
-  for (Box *box = boxData; box < boxData + boxes; box++) {
+  for (Box *box = boxData; box < boxData + kBoxes; box++) {
     box->render(drawFraction());
   }
-  for (Ball *ball = ballData; ball < ballData + balls; ball++) {
+  for (Ball *ball = ballData; ball < ballData + kBalls; ball++) {
     ball->render(drawFraction());
   }
   glPopMatrix();
@@ -422,10 +422,10 @@ void ExplosionDemo::display() {
   glColor4f(0, 0, 0, 0.1f);
   glDisable(GL_DEPTH_TEST);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  for (Box *box = boxData; box < boxData + boxes; box++) {
+  for (Box *box = boxData; box < boxData + kBoxes; box++) {
     box->renderShadow(drawFraction());
   }
-  for (Ball *ball = ballData; ball < ballData + balls; ball++) {
+  for (Ball *ball = ballData; ball < ballData + kBalls; ball++) {
     ball->renderShadow(drawFraction());
   }
   glDisable(GL_BLEND);
@@ -433,13 +433,13 @@ void ExplosionDemo::display() {
   // Render the boxes themselves
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_LIGHTING);
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPositionMirror);
+  glLightfv(GL_LIGHT0, GL_POSITION, kLightPositionMirror);
   glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
-  for (Box *box = boxData; box < boxData + boxes; box++) {
+  for (Box *box = boxData; box < boxData + kBoxes; box++) {
     box->render(drawFraction());
   }
-  for (Ball *ball = ballData; ball < ballData + balls; ball++) {
+  for (Ball *ball = ballData; ball < ballData + kBalls; ball++) {
     ball->render(drawFraction());
   }
   glDisable(GL_COLOR_MATERIAL);
@@ -489,9 +489,9 @@ void ExplosionDemo::key(unsigned char key) {
 
   case 'w':
   case 'W':
-    for (Box *box = boxData; box < boxData + boxes; box++)
+    for (Box *box = boxData; box < boxData + kBoxes; box++)
       box->body->setAwake();
-    for (Ball *ball = ballData; ball < ballData + balls; ball++)
+    for (Ball *ball = ballData; ball < ballData + kBalls; ball++)
       ball->body->setAwake();
     return;
   }

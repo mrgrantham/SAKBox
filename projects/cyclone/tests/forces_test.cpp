@@ -139,7 +139,7 @@ TEST(RigidForceTest, SailboatFloats) {
   inertia.setBlockInertiaTensor(Vector3(2, 1, 1), 100);
   boat.setInertiaTensor(inertia);
   boat.setDamping(0.8, 0.8);
-  boat.setAcceleration(Vector3::GRAVITY);
+  boat.setAcceleration(Vector3::kGravity);
   boat.setCanSleep(false);
   boat.calculateDerivedData();
   Buoyancy buoyancy(Vector3(0, 0.5, 0), 1.0, 3.0, 1.6);

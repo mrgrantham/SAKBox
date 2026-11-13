@@ -93,7 +93,7 @@ TEST(InputTest, DeadZone) {
 // DS's D-pad is its left stick too, the 3DS's circle pad its own.
 TEST(InputTest, NintendoKeys) {
   using K = NintendoKeys;
-  const Gamepad ds = fromNintendo(Kind::Ds, K::A | K::Up | K::Right, 0, 0, 0, 0, {});
+  const Gamepad ds = fromNintendo(Kind::Ds, K::kA | K::kUp | K::kRight, 0, 0, 0, 0, {});
   EXPECT_TRUE(ds.isHeld(Button::FaceRight));
   EXPECT_FALSE(ds.isHeld(Button::FaceBottom));
   EXPECT_TRUE(ds.isHeld(Button::Up));
@@ -102,7 +102,7 @@ TEST(InputTest, NintendoKeys) {
   EXPECT_GT(ds.left.y, 0);
   EXPECT_TRUE(ds.has(Feature::Touch));
 
-  const Gamepad old = fromNintendo(Kind::ThreeDs, K::B | K::ZL, 156, -78, 100, 0, {true, 10, 20});
+  const Gamepad old = fromNintendo(Kind::ThreeDs, K::kB | K::kZl, 156, -78, 100, 0, {true, 10, 20});
   EXPECT_TRUE(old.isHeld(Button::FaceBottom));
   EXPECT_FALSE(old.isHeld(Button::ZL)); // (an old 3DS has no ZL)
   EXPECT_EQ(old.left.x, kStickFull);
@@ -111,7 +111,7 @@ TEST(InputTest, NintendoKeys) {
   EXPECT_TRUE(old.touch.down);
   EXPECT_EQ(old.touch.y, 20);
 
-  const Gamepad n = fromNintendo(Kind::NewThreeDs, K::ZL, 0, 0, 0, 156, {});
+  const Gamepad n = fromNintendo(Kind::NewThreeDs, K::kZl, 0, 0, 0, 156, {});
   EXPECT_TRUE(n.isHeld(Button::ZL));
   EXPECT_EQ(n.leftTrigger, 65535);
   EXPECT_EQ(n.right.y, kStickFull);

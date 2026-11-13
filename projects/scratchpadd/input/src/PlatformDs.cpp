@@ -6,11 +6,11 @@
 
 namespace ScratchPadd::Input {
 
-static_assert(NintendoKeys::A == KEY_A && NintendoKeys::B == KEY_B && NintendoKeys::X == KEY_X &&
-              NintendoKeys::Y == KEY_Y && NintendoKeys::L == KEY_L && NintendoKeys::R == KEY_R &&
-              NintendoKeys::Start == KEY_START && NintendoKeys::Select == KEY_SELECT &&
-              NintendoKeys::Up == KEY_UP && NintendoKeys::Down == KEY_DOWN &&
-              NintendoKeys::Left == KEY_LEFT && NintendoKeys::Right == KEY_RIGHT);
+static_assert(NintendoKeys::kA == KEY_A && NintendoKeys::kB == KEY_B && NintendoKeys::kX == KEY_X &&
+              NintendoKeys::kY == KEY_Y && NintendoKeys::kL == KEY_L && NintendoKeys::kR == KEY_R &&
+              NintendoKeys::kStart == KEY_START && NintendoKeys::kSelect == KEY_SELECT &&
+              NintendoKeys::kUp == KEY_UP && NintendoKeys::kDown == KEY_DOWN &&
+              NintendoKeys::kLeft == KEY_LEFT && NintendoKeys::kRight == KEY_RIGHT);
 
 Gamepad readPlatformPad() {
   scanKeys();

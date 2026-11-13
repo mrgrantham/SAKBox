@@ -60,23 +60,23 @@ struct AngularConstraint {
      * twisting either way, and turns back the `angle` body two has turned
      * off about it. A hinge holds two directions this way.
      */
-    hold,
+    Hold,
 
     /**
      * A one-sided limit, like a contact: the bodies may turn freely about
      * the axis, and up to `angle` (the room left before the limit) the
      * other way. Beyond the limit (`angle` below zero) it turns them back.
      */
-    limit,
+    Limit,
 
     /**
      * Drives the bodies' relative turning about the axis to `speed`, with a
      * twist of at most `maxTorque`.
      */
-    motor,
+    Motor,
   };
 
-  Kind kind = Kind::hold;
+  Kind kind = Kind::Hold;
 
   /** The direction, in world coordinates, of unit length. */
   Vector3 axis;
@@ -388,7 +388,7 @@ public:
      * awake stacks creep sideways and tall ones fall (book sections 15.5
      * and 17.3.1).
      */
-    oneContactAtATime,
+    OneContactAtATime,
     /**
      * Sequential impulses (Catto, "Iterative Dynamics with Temporal
      * Coherence", GDC 2005), which the book outlines in chapter 18. Every
@@ -401,7 +401,7 @@ public:
      * without changing their velocities (split impulses). Awake stacks of
      * ten boxes stand still. See beginStep(), resolveSubStep() and endStep().
      */
-    sequentialImpulses,
+    SequentialImpulses,
   };
 
   /**
@@ -450,7 +450,7 @@ public:
 
 protected:
   /** SAKBox: see setMethod. */
-  Method method = Method::sequentialImpulses;
+  Method method = Method::SequentialImpulses;
 
   /** SAKBox: see setSweeps (a whole step's). */
   unsigned velocitySweeps = 40;
@@ -466,13 +466,13 @@ protected:
    * Bullet's split-impulse m_erp2. Joints are put back together in full
    * (limited by maxCorrection), as Box2D's are.
    */
-  static inline const real overlapCorrection = (real)0.2;
+  static inline const real kOverlapCorrection = (real)0.2;
 
   /**
    * SAKBox: the most a contact point may have moved on its body since the
    * last step and still be taken for the same contact when warm starting.
    */
-  static inline const real warmStartMatchDistance = (real)0.05;
+  static inline const real kWarmStartMatchDistance = (real)0.05;
 
   /**
    * SAKBox: the most the position sweeps move bodies apart, or joints
@@ -480,7 +480,7 @@ protected:
    * overlap or a badly stretched joint is fixed over a few steps rather
    * than with a jump.
    */
-  static inline const real maxCorrection = (real)0.2;
+  static inline const real kMaxCorrection = (real)0.2;
 
   /**
    * SAKBox: the most the position sweeps turn a joint's bodies back in one
@@ -488,8 +488,8 @@ protected:
    * turned back: Box2D's b2_maxAngularCorrection (8 degrees) and
    * b2_angularSlop (2 degrees).
    */
-  static inline const real maxAngularCorrection = (real)0.14;
-  static inline const real angularSlop = (real)0.035;
+  static inline const real kMaxAngularCorrection = (real)0.14;
+  static inline const real kAngularSlop = (real)0.035;
 
   /**
    * SAKBox: one contact as Method::sequentialImpulses works on it.

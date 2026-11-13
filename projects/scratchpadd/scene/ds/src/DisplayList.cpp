@@ -121,7 +121,7 @@ std::vector<std::uint32_t> packAlpha(const Source &source, const Variant &varian
   for (const Source::Run &run : source.runs) {
     if (run.alpha != alpha)
       continue;
-    packer.add(kBegin, {static_cast<std::uint32_t>(run.kind)});
+    packer.add(KBegin, {static_cast<std::uint32_t>(run.kind)});
     for (std::uint32_t c = run.first; c < run.first + run.count; ++c) {
       const Source::Corner &corner = source.corners[c];
       const Colour tinted = multiply(corner.colour, variant.colour);
@@ -130,16 +130,16 @@ std::vector<std::uint32_t> packAlpha(const Source &source, const Variant &varian
       if (variant.lit) {
         if (newColour) {
           const std::uint16_t emission = rgb15(multiply(tinted, variant.ambient));
-          packer.add(kDiffuseAmbient, {thisColour}); // no ambient reflection
-          packer.add(kSpecularEmission, {static_cast<std::uint32_t>(emission) << 16});
+          packer.add(KDiffuseAmbient, {thisColour}); // no ambient reflection
+          packer.add(KSpecularEmission, {static_cast<std::uint32_t>(emission) << 16});
         }
         // A normal is lit when it's sent, with the material as it is then
         if (newColour || corner.normal != normal)
-          packer.add(kNormal, {corner.normal});
+          packer.add(KNormal, {corner.normal});
       } else if (newColour) {
-        packer.add(kColour, {thisColour});
+        packer.add(KColour, {thisColour});
       }
-      packer.add(kVertex16,
+      packer.add(KVertex16,
                  {static_cast<std::uint16_t>(corner.x) |
                       (static_cast<std::uint32_t>(static_cast<std::uint16_t>(corner.y)) << 16),
                   static_cast<std::uint16_t>(corner.z)});

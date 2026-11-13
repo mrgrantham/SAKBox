@@ -49,7 +49,7 @@ public:
     body->setLinearDamping(0.95f);
     body->setAngularDamping(0.8f);
     body->clearAccumulators();
-    body->setAcceleration(cyclone::Vector3::GRAVITY);
+    body->setAcceleration(cyclone::Vector3::kGravity);
     body->setCanSleep(false);
     body->setAwake();
     body->calculateDerivedData();
@@ -145,8 +145,8 @@ void StackDemo::initGraphics() {
 }
 
 void StackDemo::display() {
-  const static GLfloat lightPosition[] = {1, -1, 0, 0};
-  const static GLfloat lightPositionMirror[] = {1, 1, 0, 0};
+  const static GLfloat kLightPosition[] = {1, -1, 0, 0};
+  const static GLfloat kLightPositionMirror[] = {1, 1, 0, 0};
 
   RigidBodyApplication::display();
   // Shrink the scene about the point the camera looks at (5 m up), so the
@@ -159,7 +159,7 @@ void StackDemo::display() {
   // The reflections in the floor
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_LIGHTING);
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+  glLightfv(GL_LIGHT0, GL_POSITION, kLightPosition);
   glPushMatrix();
   glMultMatrixf(floorMirror);
   glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
@@ -193,7 +193,7 @@ void StackDemo::display() {
   // The boxes
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_LIGHTING);
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPositionMirror);
+  glLightfv(GL_LIGHT0, GL_POSITION, kLightPositionMirror);
   glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
   for (const auto &box : boxes)

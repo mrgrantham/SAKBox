@@ -144,7 +144,7 @@ Vector3 Contact::calculateLocalVelocity(unsigned bodyIndex, real duration) {
 }
 
 void Contact::calculateDesiredDeltaVelocity(real duration) {
-  const static real velocityLimit = (real)0.25f;
+  const static real kVelocityLimit = (real)0.25f;
 
   // Calculate the acceleration induced velocity accumulated this frame
   real velocityFromAcc = 0;
@@ -159,7 +159,7 @@ void Contact::calculateDesiredDeltaVelocity(real duration) {
 
   // If the velocity is very slow, limit the restitution
   real thisRestitution = restitution;
-  if (real_abs(contactVelocity.x) < velocityLimit) {
+  if (real_abs(contactVelocity.x) < kVelocityLimit) {
     thisRestitution = (real)0.0f;
   }
 
@@ -523,7 +523,7 @@ void ContactResolver::resolveContacts(Contact *contacts, unsigned numContacts, r
     return;
   bodySlots.clear();
 
-  if (method == Method::sequentialImpulses) {
+  if (method == Method::SequentialImpulses) {
     if (numContacts == 0 && joints.empty())
       return;
     beginStep(contacts, numContacts, duration, 1, joints);
@@ -827,7 +827,7 @@ Vector3 ContactResolver::takeKeptImpulse(const Contact &contact) {
     return Vector3();
   const Vector3 localPoint = contact.body[0]->getPointInLocalSpace(contact.contactPoint);
   KeptImpulse *nearest = nullptr;
-  real nearestDistance = warmStartMatchDistance * warmStartMatchDistance;
+  real nearestDistance = kWarmStartMatchDistance * kWarmStartMatchDistance;
   for (KeptImpulse &candidate : kept) {
     const real distance = (candidate.localPoint - localPoint).squareMagnitude();
     if (!candidate.taken && distance < nearestDistance) {
@@ -1142,8 +1142,8 @@ void ContactResolver::endStep() {
         slotOf(body).separates = true;
     solverContact.targetSeparatingSpeed =
         std::min(std::max(overlapNow(solverContact, duration) - positionEpsilon, (real)0) *
-                     overlapCorrection,
-                 maxCorrection) /
+                     kOverlapCorrection,
+                 kMaxCorrection) /
         duration;
   }
   setJointPositionTargets(duration);
@@ -1355,7 +1355,7 @@ template <typename ApplyTo>
                                                            real duration) {
   using Kind = AngularConstraint::Kind;
   solverAngularConstraints.clear();
-  AngularConstraint constraints[Joint::maxAngularConstraints];
+  AngularConstraint constraints[Joint::kMaxAngularConstraints];
   for (Joint *joint : joints) {
     RigidBody *const movable[2] = {movableBody(joint->body[0]), movableBody(joint->body[1])};
     if (!movable[0] && !movable[1])
@@ -1375,13 +1375,13 @@ template <typename ApplyTo>
       solver.startSpeed = relativeTurning(
           movable, axis, [this](RigidBody *body) { return slotOf(body).start.angular; });
       switch (solver.constraint.kind) {
-      case Kind::hold:
+      case Kind::Hold:
         // No turning about the axis, twisting either way
         solver.targetSpeed = 0;
         solver.minImpulse = -REAL_MAX;
         solver.maxImpulse = REAL_MAX;
         break;
-      case Kind::limit: {
+      case Kind::Limit: {
         // As for a contact: the bodies may turn up to the room the limit
         // left before integrate() moved them, but no further, and the
         // limit only pushes
@@ -1391,7 +1391,7 @@ template <typename ApplyTo>
         solver.maxImpulse = REAL_MAX;
         break;
       }
-      case Kind::motor:
+      case Kind::Motor:
         solver.targetSpeed = solver.constraint.speed;
         solver.maxImpulse = solver.constraint.maxTorque * duration;
         solver.minImpulse = -solver.maxImpulse;
@@ -1459,7 +1459,7 @@ template <typename ApplyTo>
   // And a limit the move has just brought the bodies to ends the step no
   // longer turning into it; one with room left may close it
   for (SolverAngularConstraint &solver : solverAngularConstraints) {
-    if (solver.constraint.kind != AngularConstraint::Kind::limit)
+    if (solver.constraint.kind != AngularConstraint::Kind::Limit)
       continue;
     const real roomNow =
         solver.constraint.angle +
@@ -1497,14 +1497,14 @@ template <typename ApplyTo>
       solverJoint.response = cableResponse(solverJoint.movable, solverJoint.offset,
                                            solverJoint.direction, solverJoint.turnPerImpulse);
       solverJoint.targetSpeed =
-          -std::clamp(length - joint.error, (real)0, maxCorrection) / duration;
+          -std::clamp(length - joint.error, (real)0, kMaxCorrection) / duration;
     } else {
       Matrix3 response = pointResponse(solverJoint.movable[0], solverJoint.offset[0]);
       response += pointResponse(solverJoint.movable[1], solverJoint.offset[1]);
       solverJoint.effectiveMass = response.inverse();
       Vector3 correction = separationNow;
-      if (correction.magnitude() > maxCorrection)
-        correction = correction * (maxCorrection / correction.magnitude());
+      if (correction.magnitude() > kMaxCorrection)
+        correction = correction * (kMaxCorrection / correction.magnitude());
       solverJoint.targetVelocity = correction * ((real)-1 / duration);
     }
   }
@@ -1514,7 +1514,7 @@ template <typename ApplyTo>
   // maxAngularCorrection), a limit all they've gone beyond it past
   // angularSlop; a motor has nothing to correct
   using Kind = AngularConstraint::Kind;
-  AngularConstraint constraintsNow[Joint::maxAngularConstraints];
+  AngularConstraint constraintsNow[Joint::kMaxAngularConstraints];
   const Joint *measured = nullptr;
   unsigned countNow = 0;
   for (SolverAngularConstraint &solver : solverAngularConstraints) {
@@ -1524,16 +1524,16 @@ template <typename ApplyTo>
     }
     solver.positionImpulse = 0;
     solver.positionTargetSpeed = 0;
-    if (solver.index >= countNow || solver.constraint.kind == Kind::motor)
+    if (solver.index >= countNow || solver.constraint.kind == Kind::Motor)
       continue;
     const AngularConstraint &now = constraintsNow[solver.index];
     solver.constraint.axis = now.axis;
     solver.response =
         turnResponse(solver.movable[0], now.axis) + turnResponse(solver.movable[1], now.axis);
     const real correction =
-        solver.constraint.kind == Kind::hold
-            ? -std::clamp(now.angle, -maxAngularCorrection, maxAngularCorrection)
-            : std::min(std::max(-now.angle - angularSlop, (real)0), maxAngularCorrection);
+        solver.constraint.kind == Kind::Hold
+            ? -std::clamp(now.angle, -kMaxAngularCorrection, kMaxAngularCorrection)
+            : std::min(std::max(-now.angle - kAngularSlop, (real)0), kMaxAngularCorrection);
     solver.positionTargetSpeed = correction / duration;
   }
 }
@@ -1572,7 +1572,7 @@ template <typename ApplyTo>
   // bodies back from beyond them
   const auto moveSpin = [this](RigidBody *body) { return slotOf(body).separating.angular; };
   for (SolverAngularConstraint &solver : solverAngularConstraints) {
-    const bool hold = solver.constraint.kind == AngularConstraint::Kind::hold;
+    const bool hold = solver.constraint.kind == AngularConstraint::Kind::Hold;
     if (!hold && solver.positionTargetSpeed <= 0)
       continue;
     const Vector3 &axis = solver.constraint.axis;

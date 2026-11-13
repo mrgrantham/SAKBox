@@ -76,10 +76,10 @@ public:
       out.runs.push_back({kind, alpha, static_cast<std::uint32_t>(run.size())});
     };
     for (const auto &[alpha, group] : groups) {
-      add(Primitive::Kind::quads, alpha, group.quads);
+      add(Primitive::Kind::Quads, alpha, group.quads);
       for (const std::vector<std::uint32_t> &strip : group.strips)
-        add(Primitive::Kind::triangleStrip, alpha, strip);
-      add(Primitive::Kind::triangles, alpha, group.triangles);
+        add(Primitive::Kind::TriangleStrip, alpha, strip);
+      add(Primitive::Kind::Triangles, alpha, group.triangles);
     }
     return out;
   }
@@ -205,13 +205,13 @@ FrameCounts costOf(std::span<const Primitive> runs) {
   FrameCounts cost;
   for (const Primitive &run : runs) {
     switch (run.kind) {
-    case Primitive::Kind::triangles:
+    case Primitive::Kind::Triangles:
       cost += {run.indexCount / 3, run.indexCount / 3 * 3};
       break;
-    case Primitive::Kind::quads:
+    case Primitive::Kind::Quads:
       cost += {run.indexCount / 4, run.indexCount / 4 * 4};
       break;
-    case Primitive::Kind::triangleStrip:
+    case Primitive::Kind::TriangleStrip:
       if (run.indexCount >= 3)
         cost += {run.indexCount - 2, run.indexCount};
       break;
@@ -235,14 +235,14 @@ std::vector<std::uint32_t> triangleList(const MeshData &mesh) {
     const std::span<const std::uint32_t> s = mesh.indices.subspan(at, run.indexCount);
     at += run.indexCount;
     switch (run.kind) {
-    case Primitive::Kind::triangles:
+    case Primitive::Kind::Triangles:
       list.insert(list.end(), s.begin(), s.end());
       break;
-    case Primitive::Kind::quads:
+    case Primitive::Kind::Quads:
       for (std::size_t q = 0; q + 3 < s.size(); q += 4)
         list.insert(list.end(), {s[q], s[q + 1], s[q + 2], s[q], s[q + 2], s[q + 3]});
       break;
-    case Primitive::Kind::triangleStrip:
+    case Primitive::Kind::TriangleStrip:
       for (std::size_t i = 0; i + 2 < s.size(); ++i) {
         if (i % 2 == 0)
           list.insert(list.end(), {s[i], s[i + 1], s[i + 2]});

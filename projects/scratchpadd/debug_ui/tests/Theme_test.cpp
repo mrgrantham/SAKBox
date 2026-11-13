@@ -8,10 +8,10 @@
 #include <cstddef>
 
 namespace Theme::Fonts {
-extern const unsigned char jostMedium[];
-extern const std::size_t jostMediumSize;
-extern const unsigned char questrial[];
-extern const std::size_t questrialSize;
+extern const unsigned char kJostMedium[];
+extern const std::size_t kJostMediumSize;
+extern const unsigned char kQuestrial[];
+extern const std::size_t kQuestrialSize;
 } // namespace Theme::Fonts
 
 namespace {
@@ -30,8 +30,8 @@ protected:
 } // namespace
 
 TEST(ThemeFontsTest, CompiledInFontsAreTrueType) {
-  EXPECT_TRUE(isTrueType(Theme::Fonts::jostMedium, Theme::Fonts::jostMediumSize));
-  EXPECT_TRUE(isTrueType(Theme::Fonts::questrial, Theme::Fonts::questrialSize));
+  EXPECT_TRUE(isTrueType(Theme::Fonts::kJostMedium, Theme::Fonts::kJostMediumSize));
+  EXPECT_TRUE(isTrueType(Theme::Fonts::kQuestrial, Theme::Fonts::kQuestrialSize));
 }
 
 // Text in Questrial, titles in a font of their own, the palette and the

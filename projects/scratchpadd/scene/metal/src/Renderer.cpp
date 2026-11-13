@@ -291,7 +291,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   draw.colour[1] = colour.g;
   draw.colour[2] = colour.b;
   draw.colour[3] = static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f;
-  draw.lit = material.shading == Material::Shading::lit ? 1 : 0;
+  draw.lit = material.shading == Material::Shading::Lit ? 1 : 0;
   draw.worldSnap = worldSnap;
   draw.screenSnap = screenSnap;
   encoder->setVertexBytes(&draw, sizeof(draw), kDrawBuffer);

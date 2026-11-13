@@ -120,20 +120,20 @@ unsigned HingeJoint::getAngularConstraints(AngularConstraint *constraints) const
   const Vector3 turnedOff = axisOne % axisTwo;
   for (const Vector3 &across : {referenceOne, axisOne % referenceOne})
     constraints[count++] = {
-        .kind = AngularConstraint::Kind::hold, .axis = across, .angle = turnedOff * across};
+        .kind = AngularConstraint::Kind::Hold, .axis = across, .angle = turnedOff * across};
 
   // The limits: turning about the axis raises the angle, so away from the
   // lower limit; turning the other way is away from the upper one
   if (limited) {
     const real angle = getAngle();
     constraints[count++] = {
-        .kind = AngularConstraint::Kind::limit, .axis = axisOne, .angle = angle - lowerLimit};
+        .kind = AngularConstraint::Kind::Limit, .axis = axisOne, .angle = angle - lowerLimit};
     constraints[count++] = {
-        .kind = AngularConstraint::Kind::limit, .axis = axisOne * -1, .angle = upperLimit - angle};
+        .kind = AngularConstraint::Kind::Limit, .axis = axisOne * -1, .angle = upperLimit - angle};
   }
 
   if (motorTorque > 0)
-    constraints[count++] = {.kind = AngularConstraint::Kind::motor,
+    constraints[count++] = {.kind = AngularConstraint::Kind::Motor,
                             .axis = axisOne,
                             .speed = motorSpeed,
                             .maxTorque = motorTorque};
@@ -162,7 +162,7 @@ unsigned ConeJoint::getAngularConstraints(AngularConstraint *constraints) const 
   const real sine = tilt.magnitude();
   if (sine <= (real)1e-6)
     return 0;
-  constraints[0] = {.kind = AngularConstraint::Kind::limit,
+  constraints[0] = {.kind = AngularConstraint::Kind::Limit,
                     .axis = tilt * ((real)-1 / sine),
                     .angle = maxAngle - getAngle()};
   return 1;

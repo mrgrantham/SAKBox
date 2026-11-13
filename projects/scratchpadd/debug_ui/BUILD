@@ -52,7 +52,7 @@ embed_file(
     src = "@jost_medium_font//file",
     data = ["@jost_font_license//file"],
     namespace = "Theme::Fonts",
-    symbol = "jostMedium",
+    symbol = "kJostMedium",
 )
 
 embed_file(
@@ -60,7 +60,7 @@ embed_file(
     src = "@questrial_font//file",
     data = ["@questrial_font_license//file"],
     namespace = "Theme::Fonts",
-    symbol = "questrial",
+    symbol = "kQuestrial",
 )
 
 cc_test(

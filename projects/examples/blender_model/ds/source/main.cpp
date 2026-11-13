@@ -53,7 +53,7 @@ int main() {
   consoleDemoInit();      // the bottom screen's console, for printf
   Scene::Renderer renderer(display);
 
-  const Scene::Mesh ship = renderer.load(Assets::ship), rock = renderer.load(Assets::rock);
+  const Scene::Mesh ship = renderer.load(Assets::kShip), rock = renderer.load(Assets::kRock);
   // A pane of glass, see-through by its vertices' alpha (its material solid)
   Scene::MeshBuilder paneBuilder;
   paneBuilder.quad({-3, -1, -2.5f}, {3, -1, -2.5f}, {3, 1.6f, -2.5f}, {-3, 1.6f, -2.5f},
@@ -75,11 +75,11 @@ int main() {
   std::printf("\x1b[0;0HModels from Blender on a DS\n\n");
   // (Polygons as the DS draws them: triangles joined into quads and strips)
   std::printf("Ship_DS: %lu triangles,\n  %lu polygons\n",
-              static_cast<unsigned long>(Assets::shipTriangles),
-              static_cast<unsigned long>(Assets::shipPolygons));
+              static_cast<unsigned long>(Assets::kShipTriangles),
+              static_cast<unsigned long>(Assets::kShipPolygons));
   std::printf("Rock:    %lu triangles,\n  %lu polygons (x2)\n",
-              static_cast<unsigned long>(Assets::rockTriangles),
-              static_cast<unsigned long>(Assets::rockPolygons));
+              static_cast<unsigned long>(Assets::kRockTriangles),
+              static_cast<unsigned long>(Assets::kRockPolygons));
   std::printf("\nA: wireframe ship  B: fog\nSTART: quit\n");
 
   Scene::Scalar angle = 0;
@@ -100,7 +100,7 @@ int main() {
 
     renderer.beginFrame(camera, environment);
     renderer.drawLines(lines, {90, 95, 110});
-    renderer.draw(pane, Scene::Transform::identity(), {.shading = Scene::Material::Shading::unlit});
+    renderer.draw(pane, Scene::Transform::identity(), {.shading = Scene::Material::Shading::Unlit});
     renderer.overlay().text(8, 6, "Hangar", {255, 220, 140}, 2);
     angle += Scene::Scalar(0.02f);
     const Scene::Transform turn = Scene::Transform::rotation({0, 1, 0}, angle);

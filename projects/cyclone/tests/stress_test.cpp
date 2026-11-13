@@ -40,7 +40,7 @@ constexpr double kMostMassRatio = 100; // between particles joined by a rod or c
 // ground (y = 0) and against each other, the World's shapes
 struct Scene {
   World world{World::Settings{.maxContacts = 1024, .friction = 0.6, .restitution = 0.3}};
-  Gravity gravity{Vector3::GRAVITY};
+  Gravity gravity{Vector3::kGravity};
   std::vector<std::unique_ptr<RigidBody>> bodies;
   std::vector<std::unique_ptr<Joint>> joints;
   // (Deques, so adding one moves none)
@@ -179,7 +179,7 @@ namespace {
 // fixed points, some by springs and bungees, all falling onto the ground
 struct ParticleScene {
   ParticleWorld world{1024};
-  ParticleGravity gravity{Vector3::GRAVITY};
+  ParticleGravity gravity{Vector3::kGravity};
   std::vector<std::unique_ptr<Particle>> particles;
   std::vector<std::unique_ptr<ParticleContactGenerator>> links;
   std::vector<std::unique_ptr<ParticleForceGenerator>> springs;
@@ -338,25 +338,25 @@ TEST(StressTest, ParticlesAt20StepsASecond) { EXPECT_EQ(runAllParticles(20), "")
 // The rigid bodies
 
 TEST(StressTest, ResolvingTogetherAt60StepsASecond) {
-  EXPECT_EQ(runAll(ContactResolver::Method::sequentialImpulses, 60), "");
+  EXPECT_EQ(runAll(ContactResolver::Method::SequentialImpulses, 60), "");
 }
 
 TEST(StressTest, ResolvingTogetherAt20StepsASecond) {
-  EXPECT_EQ(runAll(ContactResolver::Method::sequentialImpulses, 20), "");
+  EXPECT_EQ(runAll(ContactResolver::Method::SequentialImpulses, 20), "");
 }
 
 TEST(StressTest, TheBooksResolverAt60StepsASecond) {
-  EXPECT_EQ(runAll(ContactResolver::Method::oneContactAtATime, 60), "");
+  EXPECT_EQ(runAll(ContactResolver::Method::OneContactAtATime, 60), "");
 }
 
 TEST(StressTest, TheBooksResolverAt20StepsASecond) {
-  EXPECT_EQ(runAll(ContactResolver::Method::oneContactAtATime, 20), "");
+  EXPECT_EQ(runAll(ContactResolver::Method::OneContactAtATime, 20), "");
 }
 
 TEST(StressTest, ResolvingTogetherIn4SubSteps) {
-  EXPECT_EQ(runAll(ContactResolver::Method::sequentialImpulses, 20, 4), "");
+  EXPECT_EQ(runAll(ContactResolver::Method::SequentialImpulses, 20, 4), "");
 }
 
 TEST(StressTest, TheBooksResolverIn4SubSteps) {
-  EXPECT_EQ(runAll(ContactResolver::Method::oneContactAtATime, 20, 4), "");
+  EXPECT_EQ(runAll(ContactResolver::Method::OneContactAtATime, 20, 4), "");
 }

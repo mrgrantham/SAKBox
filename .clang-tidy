@@ -18,6 +18,10 @@
 #   random-generator-seed           fixed seeds keep tests and simulations repeatable
 #   implicit-widening-of-multiplication-result  small array indices
 #   performance-no-int-to-ptr       OpenGL's (void *) buffer offsets
+# And the repo's naming rules (the README's Code conventions):
+# enumerators PascalCase (Kind::PlayStation), named constants kName
+# (constexpr, global, static and class constants: kGroups). Not Waffles,
+# which keeps its own style.
 Checks: >
   -*,
   bugprone-*,
@@ -26,6 +30,7 @@ Checks: >
   modernize-use-nullptr,
   modernize-use-bool-literals,
   misc-redundant-expression,
+  readability-identifier-naming,
   -bugprone-throwing-static-initialization,
   -bugprone-easily-swappable-parameters,
   -bugprone-narrowing-conversions,
@@ -44,9 +49,23 @@ Checks: >
   -performance-no-int-to-ptr
 
 # Report problems in the repo's own headers (directly or through Bazel's
-# _virtual_includes), not third-party ones.
-HeaderFilterRegex: 'projects/'
+# _virtual_includes, and the headers the asset cook generates), not
+# third-party ones, nor Waffles' (its own style).
+HeaderFilterRegex: '(projects|tools)/'
+ExcludeHeaderFilterRegex: 'projects/waffles/'
 
 # Homebrew's clang (newer than Xcode's) calls __COUNTER__, used by Catch2's
 # macros, an extension, which -pedantic-errors makes an error.
 ExtraArgs: ['-Wno-c2y-extensions']
+
+CheckOptions:
+  readability-identifier-naming.EnumConstantCase: CamelCase
+  readability-identifier-naming.ScopedEnumConstantCase: CamelCase
+  readability-identifier-naming.ConstexprVariableCase: CamelCase
+  readability-identifier-naming.ConstexprVariablePrefix: k
+  readability-identifier-naming.GlobalConstantCase: CamelCase
+  readability-identifier-naming.GlobalConstantPrefix: k
+  readability-identifier-naming.StaticConstantCase: CamelCase
+  readability-identifier-naming.StaticConstantPrefix: k
+  readability-identifier-naming.ClassConstantCase: CamelCase
+  readability-identifier-naming.ClassConstantPrefix: k

@@ -23,7 +23,7 @@ constexpr double kTolerance = 1e-9;
 // The book's resolver, which these tests pin: one contact at a time
 ContactResolver booksResolver(unsigned iterations) {
   ContactResolver resolver(iterations);
-  resolver.setMethod(ContactResolver::Method::oneContactAtATime);
+  resolver.setMethod(ContactResolver::Method::OneContactAtATime);
   return resolver;
 }
 
@@ -286,7 +286,7 @@ TEST(ParticleWorldTest, DroppedParticleLandsAndRests) {
     SCOPED_TRACE(testing::Message() << "dt " << dt);
     ParticleWorld world(10);
     auto particle = particleAt(Vector3(0, 5, 0));
-    particle->setAcceleration(Vector3::GRAVITY);
+    particle->setAcceleration(Vector3::kGravity);
     particle->setDamping(0.99);
     world.getParticles().push_back(particle.get());
     GroundContacts ground;
@@ -321,8 +321,8 @@ TEST(ParticleWorldTest, RegisteredForcesAreApplied) {
   ParticleWorld world(10);
   auto registered = particleAt(Vector3(0, 100, 0));
   auto builtIn = particleAt(Vector3(0, 100, 0));
-  builtIn->setAcceleration(Vector3::GRAVITY);
-  ParticleGravity gravity(Vector3::GRAVITY);
+  builtIn->setAcceleration(Vector3::kGravity);
+  ParticleGravity gravity(Vector3::kGravity);
   world.getParticles() = {registered.get(), builtIn.get()};
   world.getForceRegistry().add(registered.get(), &gravity);
   for (int i = 0; i < 60; ++i) {
@@ -341,7 +341,7 @@ TEST(ParticleWorldTest, RegisteredForcesAreApplied) {
 TEST(ParticleWorldTest, PendulumKeepsItsLengthAndPeriod) {
   ParticleWorld world(10);
   auto bob = particleAt(Vector3(1, 0, 0));
-  bob->setAcceleration(Vector3::GRAVITY);
+  bob->setAcceleration(Vector3::kGravity);
   ParticleRodConstraint rod;
   rod.particle = bob.get();
   rod.anchor = Vector3(0, 0, 0);
@@ -382,7 +382,7 @@ TEST(ParticleWorldTest, SubStepsAreSmallerSteps) {
     std::unique_ptr<Particle> bob = particleAt(Vector3(1, 0, 0));
     ParticleRodConstraint rod;
     Pendulum() {
-      bob->setAcceleration(Vector3::GRAVITY);
+      bob->setAcceleration(Vector3::kGravity);
       rod.particle = bob.get();
       rod.anchor = Vector3(0, 0, 0);
       rod.length = 1;
@@ -419,7 +419,7 @@ TEST(ParticleWorldTest, SubStepsAreSmallerSteps) {
 TEST(ParticleWorldTest, ParticlesAreDrawnBlendedBetweenSteps) {
   ParticleWorld world(10);
   auto particle = particleAt(Vector3(0, 5, 0));
-  particle->setAcceleration(Vector3::GRAVITY);
+  particle->setAcceleration(Vector3::kGravity);
   world.getParticles().push_back(particle.get());
   EXPECT_EQ(particle->getBlendedPosition(0).y, 5);
   world.startFrame();
@@ -441,12 +441,12 @@ namespace {
 // other: the world's box shapes and plane
 struct BoxWorld {
   World world{World::Settings{.maxContacts = 256, .friction = 0.9, .restitution = 0.1}};
-  Gravity gravity{Vector3::GRAVITY};
+  Gravity gravity{Vector3::kGravity};
   std::vector<std::unique_ptr<RigidBody>> bodies;
   std::deque<CollisionBox> boxes; // (a deque, so adding one moves none)
 
   explicit BoxWorld(const std::vector<Vector3> &positions,
-                    ContactResolver::Method method = ContactResolver::Method::oneContactAtATime) {
+                    ContactResolver::Method method = ContactResolver::Method::OneContactAtATime) {
     world.getResolver().setMethod(method);
     for (const Vector3 &position : positions) {
       bodies.push_back(bodyAt(position));
@@ -680,7 +680,7 @@ TEST(WorldTest, ContactsStopWhenTheArrayIsFull) {
 // Resolving contacts together (ContactResolver::Method::sequentialImpulses)
 
 namespace {
-constexpr ContactResolver::Method together = ContactResolver::Method::sequentialImpulses;
+constexpr ContactResolver::Method kTogether = ContactResolver::Method::SequentialImpulses;
 
 // The farthest any box is from its place in the stack, sideways
 double farthestSideways(const BoxWorld &scene) {
@@ -705,7 +705,7 @@ double fastest(const BoxWorld &scene) {
 TEST(ResolveTogetherTest, AwakeStacksStandStill) {
   for (int height : {3, 5, 8, 10}) {
     SCOPED_TRACE(testing::Message() << height << " boxes");
-    BoxWorld scene(stackOf(height), together);
+    BoxWorld scene(stackOf(height), kTogether);
     EXPECT_LT(scene.run(10), 2.0);
     std::vector<Vector3> settled;
     settled.reserve(scene.bodies.size());
@@ -727,7 +727,7 @@ TEST(ResolveTogetherTest, AwakeStacksStandStill) {
 // where their faces touch from the first frame. (Gathering a corner a
 // frame, ten boxes leant about 15 cm in their first seconds.)
 TEST(ResolveTogetherTest, NewStackDoesntLean) {
-  BoxWorld scene(stackOf(10), together);
+  BoxWorld scene(stackOf(10), kTogether);
   double leant = 0;
   for (int i = 0; i < 120; ++i) {
     scene.run(1.0 / 60);
@@ -747,7 +747,7 @@ TEST(ResolveTogetherTest, BooksResolverDropsTheSameStack) {
 // A box dropped from 3 m lands flat and comes to rest, as with the book's
 // resolver.
 TEST(ResolveTogetherTest, DroppedBoxComesToRest) {
-  BoxWorld scene({Vector3(0, 3, 0)}, together);
+  BoxWorld scene({Vector3(0, 3, 0)}, kTogether);
   EXPECT_LT(scene.run(5), 1.0);
   const RigidBody &box = *scene.bodies[0];
   EXPECT_NEAR(box.getPosition().y, 0.5, 0.005);
@@ -760,7 +760,7 @@ TEST(ResolveTogetherTest, DroppedBoxComesToRest) {
 TEST(ResolveTogetherTest, StacksSleepAndWake) {
   std::vector<Vector3> positions = stackOf(5);
   positions.push_back(Vector3(10, 0.5, 0));
-  BoxWorld scene(positions, together);
+  BoxWorld scene(positions, kTogether);
   letSleep(scene);
   scene.run(5);
   ASSERT_TRUE(allAsleep(scene));
@@ -780,7 +780,7 @@ TEST(ResolveTogetherTest, StacksSleepAndWake) {
 
 // Knocking the bottom box out still drops the one on it.
 TEST(ResolveTogetherTest, KnockingOutTheBottomBoxDropsTheTop) {
-  BoxWorld scene(stackOf(2), together);
+  BoxWorld scene(stackOf(2), kTogether);
   scene.run(2);
   scene.bodies[0]->setVelocity(10, 0, 0);
   scene.run(2);
@@ -790,7 +790,7 @@ TEST(ResolveTogetherTest, KnockingOutTheBottomBoxDropsTheTop) {
 // A box sliding along the ground slows at friction x g, as with one contact
 // at a time: friction is limited by the push at each contact.
 TEST(ResolveTogetherTest, SlidingBoxSlowsAtFrictionTimesG) {
-  BoxWorld scene({Vector3(0, 0.5, 0)}, together);
+  BoxWorld scene({Vector3(0, 0.5, 0)}, kTogether);
   scene.run(0.5);
   scene.bodies[0]->setVelocity(5, 0, 0);
   scene.run(0.2);
@@ -805,12 +805,12 @@ TEST(ResolveTogetherTest, SlidingBoxSlowsAtFrictionTimesG) {
 // book's rule, which the book's resolver follows too).
 TEST(ResolveTogetherTest, BounceKeepsRestitutionTimesSpeed) {
   auto ball = bodyAt(Vector3(0, 3, 0));
-  ball->setAcceleration(Vector3::GRAVITY);
+  ball->setAcceleration(Vector3::kGravity);
   CollisionSphere sphere;
   sphere.body = ball.get();
   sphere.radius = 1;
   ContactResolver resolver(10);
-  resolver.setMethod(together);
+  resolver.setMethod(kTogether);
   Contact contacts[4];
   double landing = 0, leaving = 0;
   for (int step = 0; step < 120 && leaving == 0; ++step) {
@@ -874,7 +874,7 @@ struct Chain {
   std::vector<Joint> joints;
 
   Chain(int count, double slack) {
-    world.getResolver().setMethod(together);
+    world.getResolver().setMethod(kTogether);
     joints.resize(count);
     for (int i = 0; i < count; ++i) {
       links.push_back(bodyAt(Vector3(i + 1.0, 0, 0)));
@@ -882,7 +882,7 @@ struct Chain {
       Matrix3 inertia;
       inertia.setDiagonal(0.01, 0.01, 0.01); // almost a point mass
       link.setInertiaTensor(inertia);
-      link.setAcceleration(Vector3::GRAVITY);
+      link.setAcceleration(Vector3::kGravity);
       link.calculateDerivedData();
       world.getBodies().push_back(&link);
       RigidBody &previous = i == 0 ? *pivot : *links[i - 1];
@@ -987,7 +987,7 @@ TEST(ResolveTogetherTest, SubStepsShareTheStepsSweeps) {
 TEST(ResolveTogetherTest, StacksStandInSubSteps) {
   for (unsigned subSteps : {4u, 8u, 16u}) {
     SCOPED_TRACE(testing::Message() << subSteps << " sub-steps");
-    BoxWorld scene(stackOf(10), together);
+    BoxWorld scene(stackOf(10), kTogether);
     scene.world.setSubSteps(subSteps);
     EXPECT_LT(scene.run(10), 2.0);
     EXPECT_LT(farthestSideways(scene), 0.1);
@@ -1005,10 +1005,10 @@ TEST(JointConstraintTest, ChainStaysJoined) {
 // the slack apart, and then the cable holds it there.
 TEST(JointConstraintTest, CableIsFreeUntilTaut) {
   World world(4);
-  world.getResolver().setMethod(together);
+  world.getResolver().setMethod(kTogether);
   auto pivot = fixedAt(Vector3());
   auto bob = bodyAt(Vector3(0, -0.5, 0));
-  bob->setAcceleration(Vector3::GRAVITY);
+  bob->setAcceleration(Vector3::kGravity);
   world.getBodies().push_back(bob.get());
   Joint cable;
   cable.set(pivot.get(), Vector3(), bob.get(), Vector3(), 2.0);
@@ -1067,12 +1067,12 @@ template <typename JointType> struct Swing {
   JointType joint;
 
   Swing(const Vector3 &bobAt, bool gravity) : bob(bodyAt(bobAt)) {
-    world.getResolver().setMethod(together);
+    world.getResolver().setMethod(kTogether);
     Matrix3 inertia;
     inertia.setDiagonal(0.1, 0.1, 0.1);
     bob->setInertiaTensor(inertia);
     if (gravity)
-      bob->setAcceleration(Vector3::GRAVITY);
+      bob->setAcceleration(Vector3::kGravity);
     bob->calculateDerivedData();
     world.getBodies().push_back(bob.get());
     joint.set(pivot.get(), Vector3(), bob.get(), bobAt * -1, 0);

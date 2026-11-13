@@ -48,7 +48,7 @@ public:
 };
 
 unsigned Platform::addContact(cyclone::ParticleContact *contact, unsigned limit) const {
-  const static cyclone::real restitution = 0.0f;
+  const static cyclone::real kRestitution = 0.0f;
 
   unsigned used = 0;
   for (unsigned i = 0; i < BLOB_COUNT; i++) {
@@ -66,7 +66,7 @@ unsigned Platform::addContact(cyclone::ParticleContact *contact, unsigned limit)
         // We have a collision
         contact->contactNormal = toParticle.unit();
         contact->contactNormal.z = 0;
-        contact->restitution = restitution;
+        contact->restitution = kRestitution;
         contact->particle[0] = particles + i;
         contact->particle[1] = nullptr;
         contact->penetration = BLOB_RADIUS - toParticle.magnitude();
@@ -81,7 +81,7 @@ unsigned Platform::addContact(cyclone::ParticleContact *contact, unsigned limit)
         // We have a collision
         contact->contactNormal = toParticle.unit();
         contact->contactNormal.z = 0;
-        contact->restitution = restitution;
+        contact->restitution = kRestitution;
         contact->particle[0] = particles + i;
         contact->particle[1] = nullptr;
         contact->penetration = BLOB_RADIUS - toParticle.magnitude();
@@ -98,7 +98,7 @@ unsigned Platform::addContact(cyclone::ParticleContact *contact, unsigned limit)
 
         contact->contactNormal = (particles[i].getPosition() - closestPoint).unit();
         contact->contactNormal.z = 0;
-        contact->restitution = restitution;
+        contact->restitution = kRestitution;
         contact->particle[0] = particles + i;
         contact->particle[1] = nullptr;
         contact->penetration = BLOB_RADIUS - real_sqrt(distanceToPlatform);
@@ -297,7 +297,7 @@ BlobDemo::BlobDemo() : world(PLATFORM_COUNT + BLOB_COUNT, PLATFORM_COUNT), xAxis
 
     blobs[i].setVelocity(0, 0, 0);
     blobs[i].setDamping(0.2f);
-    blobs[i].setAcceleration(cyclone::Vector3::GRAVITY * 0.4f);
+    blobs[i].setAcceleration(cyclone::Vector3::kGravity * 0.4f);
     blobs[i].setMass(1.0f);
     blobs[i].clearAccumulator();
 

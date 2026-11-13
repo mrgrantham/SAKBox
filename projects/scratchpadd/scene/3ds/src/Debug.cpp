@@ -32,15 +32,15 @@ void printRow(int row, const char *text) {
 
 const char *nameOf(View view) {
   switch (view) {
-  case View::normal:
+  case View::Normal:
     return "as usual";
-  case View::normals:
+  case View::Normals:
     return "normals";
-  case View::lighting:
+  case View::Lighting:
     return "lighting";
-  case View::vertexColours:
+  case View::VertexColours:
     return "vertex colours";
-  case View::overdraw:
+  case View::Overdraw:
     return "overdraw";
   }
   return "";
@@ -113,50 +113,50 @@ namespace {
 
 // The panel's rows: the settings, in order
 enum Row : int {
-  kMeshes,
-  kTranslucent,
-  kLines,
-  kWireframes,
-  kOverlay,
-  kFog,
-  kStereo,
-  kCulling,
-  kView,
-  kFindHang,
-  kProbe,
-  kRows
+  RowMeshes,
+  RowTranslucent,
+  RowLines,
+  RowWireframes,
+  RowOverlay,
+  RowFog,
+  RowStereo,
+  RowCulling,
+  RowView,
+  RowFindHang,
+  RowProbe,
+  RowCount
 };
 
 bool *flagOf(Settings &s, int row) {
   switch (row) {
-  case kMeshes:
+  case RowMeshes:
     return &s.meshes;
-  case kTranslucent:
+  case RowTranslucent:
     return &s.translucent;
-  case kLines:
+  case RowLines:
     return &s.lines;
-  case kWireframes:
+  case RowWireframes:
     return &s.wireframes;
-  case kOverlay:
+  case RowOverlay:
     return &s.overlay;
-  case kFog:
+  case RowFog:
     return &s.fog;
-  case kStereo:
+  case RowStereo:
     return &s.stereo;
-  case kCulling:
+  case RowCulling:
     return &s.culling;
-  case kFindHang:
+  case RowFindHang:
     return &s.findHang;
-  case kProbe:
+  case RowProbe:
     return &s.probe;
   default:
     return nullptr;
   }
 }
 
-constexpr const char *kRowNames[kRows] = {"Meshes",  "Translucent", "Lines",  "Wireframes",
-                                          "Overlay", "Fog",         "Stereo", "Culling",
-                                          "View",    "Find a hang", "Probe"};
+constexpr const char *kRowNames[RowCount] = {"Meshes",  "Translucent", "Lines",  "Wireframes",
+                                             "Overlay", "Fog",         "Stereo", "Culling",
+                                             "View",    "Find a hang", "Probe"};
 
 } // namespace
 
@@ -170,8 +170,8 @@ void Panel::setVisible(bool visible) {
 
 void Panel::change(int row, int direction) {
   Settings s = settingsOf(renderer_);
-  if (row == kView) {
-    const int views = static_cast<int>(View::overdraw) + 1;
+  if (row == RowView) {
+    const int views = static_cast<int>(View::Overdraw) + 1;
     s.view = static_cast<View>((static_cast<int>(s.view) + direction + views) % views);
   } else if (bool *flag = flagOf(s, row)) {
     *flag = !*flag;
@@ -186,9 +186,9 @@ bool Panel::handle(const Input::Gamepad &before, const Input::Gamepad &now) {
     return false;
   const Input::Edges edges(before, now);
   if (edges.pressed(Button::Up))
-    row_ = (row_ + kRows - 1) % kRows;
+    row_ = (row_ + RowCount - 1) % RowCount;
   if (edges.pressed(Button::Down))
-    row_ = (row_ + 1) % kRows;
+    row_ = (row_ + 1) % RowCount;
   if (edges.pressed(Button::FaceRight) || edges.pressed(Button::Right))
     change(row_, 1);
   if (edges.pressed(Button::Left))
@@ -213,9 +213,9 @@ void Panel::draw() {
   const Settings &s = settingsOf(renderer_);
   char text[64];
   printRow(1, "Scene debug: up/down, A, left/right");
-  for (int row = 0; row < kRows; ++row) {
+  for (int row = 0; row < RowCount; ++row) {
     const bool *flag = flagOf(const_cast<Settings &>(s), row);
-    const char *value = row == kView ? nameOf(s.view) : (*flag ? "[x]" : "[ ]");
+    const char *value = row == RowView ? nameOf(s.view) : (*flag ? "[x]" : "[ ]");
     std::snprintf(text, sizeof text, "%c %-13s %s", row == row_ ? '>' : ' ', kRowNames[row], value);
     printRow(3 + row, text);
   }
@@ -226,15 +226,15 @@ void Panel::draw() {
                   c.r, c.g, c.b);
     printRow(14, text);
     switch (s.view) {
-    case View::normals:
+    case View::Normals:
       std::snprintf(text, sizeof text, "  normal %+.2f %+.2f %+.2f", c.r / 127.5f - 1,
                     c.g / 127.5f - 1, c.b / 127.5f - 1);
       break;
-    case View::lighting:
+    case View::Lighting:
       std::snprintf(text, sizeof text, "  light %.2f %.2f %.2f", c.r / 255.0f, c.g / 255.0f,
                     c.b / 255.0f);
       break;
-    case View::overdraw:
+    case View::Overdraw:
       std::snprintf(text, sizeof text, "  drawn %d times",
                     static_cast<int>(c.r * kOverdrawSteps / 255.0f + 0.5f));
       break;

@@ -222,7 +222,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   const glm::vec3 colour = toGlm(material.colour);
   glUniform4f(uniform.colour, colour.r, colour.g, colour.b,
               static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f);
-  glUniform1i(uniform.lit, material.shading == Material::Shading::lit ? 1 : 0);
+  glUniform1i(uniform.lit, material.shading == Material::Shading::Lit ? 1 : 0);
   glUniform1f(uniform.worldSnap, worldSnap);
   glUniform1f(uniform.screenSnap, screenSnap);
   if (material.wireframe)

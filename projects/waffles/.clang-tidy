@@ -1,0 +1,4 @@
+# Waffles keeps its own style (tabs, its own names), so not the repo's naming
+# rules; the rest of the repo's checks apply
+InheritParentConfig: true
+Checks: '-readability-identifier-naming'

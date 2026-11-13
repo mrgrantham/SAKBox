@@ -35,6 +35,7 @@ DEFAULT_PATHS = [
     "projects/flexmath",
     "projects/scratchpadd",
     "projects/waffles",
+    "tools/assets",
 ]
 
 # Upstream code kept as published, checked by its own project, not ours

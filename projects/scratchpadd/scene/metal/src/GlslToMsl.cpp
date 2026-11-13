@@ -10,8 +10,8 @@ namespace ScratchPadd::Scene::Metal {
 
 bool translate(Stage stage, const std::string &glsl, TranslatedShader &out, std::string &error) {
   Spirv::Shader spirv;
-  if (!Spirv::compile(stage == Stage::vertex ? Spirv::Stage::vertex : Spirv::Stage::fragment,
-                      Spirv::Dialect::opengl, glsl, spirv, error))
+  if (!Spirv::compile(stage == Stage::Vertex ? Spirv::Stage::Vertex : Spirv::Stage::Fragment,
+                      Spirv::Dialect::Opengl, glsl, spirv, error))
     return false;
   try {
     spirv_cross::CompilerMSL msl(std::move(spirv.words));
@@ -20,11 +20,11 @@ bool translate(Stage stage, const std::string &glsl, TranslatedShader &out, std:
     options.set_msl_version(2, 1);
     msl.set_msl_options(options);
     spirv_cross::CompilerGLSL::Options common = msl.get_common_options();
-    common.vertex.flip_vert_y = stage == Stage::vertex;
+    common.vertex.flip_vert_y = stage == Stage::Vertex;
     msl.set_common_options(common);
     out.source = msl.compile();
     const auto model =
-        stage == Stage::vertex ? spv::ExecutionModelVertex : spv::ExecutionModelFragment;
+        stage == Stage::Vertex ? spv::ExecutionModelVertex : spv::ExecutionModelFragment;
     out.entryPoint = msl.get_cleansed_entry_point_name("main", model);
 
     // The loose uniforms' block, at the buffer index Metal gave it

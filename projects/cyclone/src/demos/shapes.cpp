@@ -22,10 +22,10 @@ void solidSphere(double radius, int slices, int stacks) {
 
 void solidCube(double size) {
   // Faces and normals as in GLUT's drawBox
-  static const GLfloat normals[6][3] = {{-1, 0, 0}, {0, 1, 0}, {1, 0, 0},
-                                        {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
-  static const GLint faces[6][4] = {{0, 1, 2, 3}, {3, 2, 6, 7}, {7, 6, 5, 4},
-                                    {4, 5, 1, 0}, {5, 6, 2, 1}, {7, 4, 0, 3}};
+  static const GLfloat kNormals[6][3] = {{-1, 0, 0}, {0, 1, 0}, {1, 0, 0},
+                                         {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+  static const GLint kFaces[6][4] = {{0, 1, 2, 3}, {3, 2, 6, 7}, {7, 6, 5, 4},
+                                     {4, 5, 1, 0}, {5, 6, 2, 1}, {7, 4, 0, 3}};
   const GLfloat h = static_cast<GLfloat>(size / 2);
   GLfloat v[8][3];
   v[0][0] = v[1][0] = v[2][0] = v[3][0] = -h;
@@ -37,9 +37,9 @@ void solidCube(double size) {
 
   glBegin(GL_QUADS);
   for (int i = 5; i >= 0; i--) {
-    glNormal3fv(normals[i]);
+    glNormal3fv(kNormals[i]);
     for (int j = 0; j < 4; j++)
-      glVertex3fv(v[faces[i][j]]);
+      glVertex3fv(v[kFaces[i][j]]);
   }
   glEnd();
 }

@@ -105,6 +105,16 @@ Never `virtual void draw() override;`: an override is already virtual, and the e
 
 The build enforces it for everything under `projects/`: `-Wsuggest-override` makes an unmarked override an error, and with Clang `-Wsuggest-destructor-override` does the same for destructors. clang-tidy's `modernize-use-override` also flags a redundant `virtual` (see [Static analysis](#static-analysis)).
 
+**Names follow these rules**, which clang-tidy checks (`readability-identifier-naming` in `.clang-tidy`; Waffles keeps its own, except SAKBox's tests of it):
+
+| What | Style | Example |
+| --- | --- | --- |
+| Enumerators | PascalCase, no prefix | `Kind::PlayStation`, `Shading::Lit`, `Button::FaceBottom` |
+| Named constants (`constexpr`, and global, static and class constants: fixed for the program's run) | `k` then PascalCase | `kGroups`, `kStickFull`, `Vector3::kGravity`, `Assets::kRock` |
+| Private members | a trailing underscore | `workQueue_` |
+
+An enumerator is always written after its enum's name, so it needs no mark; a constant often stands alone, so the `k` says it's fixed. ALL_CAPS is for macros only (the C++ Core Guidelines, Enum.5 and ES.9): enumerators in capitals collide with libraries' macros, as libnds' and libctru's `KEY_A` or Windows' `ERROR`. Leading underscores are never used: a name starting with an underscore and a capital, or containing two underscores, is reserved for the compiler and standard library everywhere, and one starting with an underscore at global scope. Generated constants follow the rules too: the asset cook's (`Assets::kRockTriangles`) and `embed_file`'s (`symbol = "kQuestrial"`).
+
 **A class with virtual functions has a virtual destructor** (or a protected one, if it's never deleted through the base), as the C++ Core Guidelines (C.35) recommend: otherwise deleting a derived object through a base pointer, or destroying it where only the base is known, skips the derived part. The build's `-Wnon-virtual-dtor` makes a missing one an error under `projects/`, at the class itself. Clang has another check, applied where such an object is destroyed rather than where the class is declared, which only fired on Linux, where GCC's standard library destroys `std::variant` members that way; this one reports it everywhere.
 
 **Doc comments must match the code they describe.** With Clang, the build's `-Wdocumentation` makes it an error (GCC has no such check), under `projects/`, for a Doxygen-style comment (`/** */` or `///`) to name a parameter the function doesn't have, to give a `@return` for a function returning `void`, or to contain broken HTML (write `\<pre\>` for a literal tag). It checks only the comments that exist: it doesn't require one on every function or every parameter, so a sentence saying what a function does and why is enough. When you rename or remove a parameter, update its `@param` too.

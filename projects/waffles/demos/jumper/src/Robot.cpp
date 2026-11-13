@@ -141,7 +141,7 @@ Robot::Robot()
 		}
 		body.setInertiaTensor(inertia);
 		body.setDamping(linearDamping, angularDamping);
-		body.setAcceleration(Vector3::GRAVITY);
+		body.setAcceleration(Vector3::kGravity);
 		body.setCanSleep(false); // its motors keep it going
 	}
 

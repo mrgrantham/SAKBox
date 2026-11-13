@@ -268,7 +268,7 @@ VkImageAspectFlags aspectOf(VkFormat format) {
 } // namespace
 
 const std::string &loadVulkan() {
-  static const std::string why = []() -> std::string {
+  static const std::string kWhy = []() -> std::string {
 #if defined(__APPLE__)
     return loadMoltenVk();
 #else
@@ -277,7 +277,7 @@ const std::string &loadVulkan() {
                : "no Vulkan loader (libvulkan.so.1 on Linux, vulkan-1.dll on Windows)";
 #endif
   }();
-  return why;
+  return kWhy;
 }
 
 const Context *context() { return shared().context.device ? &shared().context : nullptr; }
@@ -493,11 +493,11 @@ VkPipeline makePipeline(const PipelineDescription &d) {
 }
 
 std::span<const VkVertexInputAttributeDescription> vertexAttributes() {
-  static const VkVertexInputAttributeDescription attributes[] = {
+  static const VkVertexInputAttributeDescription kAttributes[] = {
       {0, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<std::uint32_t>(offsetof(Vertex, position))},
       {1, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<std::uint32_t>(offsetof(Vertex, normal))},
       {2, 0, VK_FORMAT_R8G8B8A8_UNORM, static_cast<std::uint32_t>(offsetof(Vertex, colour))}};
-  return attributes;
+  return kAttributes;
 }
 
 } // namespace ScratchPadd::Scene::Vulkan

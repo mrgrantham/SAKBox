@@ -170,8 +170,8 @@ struct Environment {
 
 // How a mesh is drawn: the things the DS does in hardware
 struct Material {
-  enum class Shading { unlit, lit };
-  Shading shading = Shading::lit;
+  enum class Shading { Unlit, Lit };
+  Shading shading = Shading::Lit;
   // Multiplies the mesh's vertex colours
   Colour colour;
   // How opaque, 0-31 as the DS has it: 31 is solid; below that it's

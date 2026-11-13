@@ -34,7 +34,7 @@ struct Transform { Scalar rotation[3][3]; Vector3 position; };   // a rigid part
 
 struct Colour { std::uint8_t r, g, b, a = 255; };
 struct Material {
-  enum class Shading { unlit, lit } shading = Shading::lit;
+  enum class Shading { unlit, lit } shading = Shading::Lit;
   Colour colour;            // multiplies the vertex colours (or is the colour, lit on the DS)
   std::uint8_t alpha = 31;  // 0-31, as the DS has it
   bool wireframe = false;   // only the triangles' edges (the DS: alpha 0)

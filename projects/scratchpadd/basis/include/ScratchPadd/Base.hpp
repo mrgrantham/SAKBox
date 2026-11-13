@@ -202,13 +202,13 @@ protected:
   // type when it's sent, so messages sent before the handler was registered
   // never arrive.
   template <typename T, typename OnMessage> void receive(OnMessage onMessage) {
-    constexpr bool takesSender = std::is_invocable_v<const OnMessage &, const T &, PaddAddress>;
-    static_assert(takesSender || std::is_invocable_v<const OnMessage &, const T &>,
+    constexpr bool kTakesSender = std::is_invocable_v<const OnMessage &, const T &, PaddAddress>;
+    static_assert(kTakesSender || std::is_invocable_v<const OnMessage &, const T &>,
                   "a handler for T takes (const T &) or (const T &, PaddAddress from)");
     auto handler = std::make_shared<const Handler>(
         [onMessage = std::move(onMessage)](const MessageBase &message, PaddAddress from) {
           const T &contents = static_cast<const MessageOf<T> &>(message).value;
-          if constexpr (takesSender) {
+          if constexpr (kTakesSender) {
             onMessage(contents, from);
           } else {
             onMessage(contents);
@@ -700,8 +700,8 @@ private:
 };
 
 inline const std::string &PaddAddress::name() const {
-  static const std::string none = "(no padd)";
-  return padd_ ? padd_->paddName() : none;
+  static const std::string kNone = "(no padd)";
+  return padd_ ? padd_->paddName() : kNone;
 }
 
 } // namespace ScratchPadd

@@ -225,7 +225,7 @@ TEST(PrimitivesTest, FlatFacesBecomeQuads) {
   builder.box({0, 0, 0}, {1, 2, 3});
   const Primitives built = buildPrimitives(builder.data());
   ASSERT_EQ(built.runs.size(), 1u);
-  EXPECT_EQ(built.runs[0], (Primitive{Primitive::Kind::quads, 31, 24}));
+  EXPECT_EQ(built.runs[0], (Primitive{Primitive::Kind::Quads, 31, 24}));
   EXPECT_EQ(costOf(built.runs), (FrameCounts{6, 24}));
   EXPECT_EQ(costOf(builder.data()), (FrameCounts{6, 24}));
 
@@ -242,7 +242,7 @@ TEST(PrimitivesTest, CurvedSurfacesBecomeStrips) {
   EXPECT_EQ(cost.polygons, 128u);
   EXPECT_LT(cost.vertices, 128u * 3 / 2); // long strips: near one a triangle
   EXPECT_TRUE(std::ranges::any_of(
-      built.runs, [](const Primitive &r) { return r.kind == Primitive::Kind::triangleStrip; }));
+      built.runs, [](const Primitive &r) { return r.kind == Primitive::Kind::TriangleStrip; }));
   const MeshData cooked{grid.vertices, built.indices, built.runs};
   EXPECT_EQ(triangleSet(triangleList(cooked)), triangleSet(grid.indices));
   // The same mesh, the same runs (the cook's count is the DS's)
@@ -280,6 +280,6 @@ TEST(PrimitivesTest, ConcavePairsStayTriangles) {
   const std::uint32_t indices[] = {0, 1, 2, 2, 1, 3};
   const Primitives built = buildPrimitives({vertices, indices});
   EXPECT_TRUE(std::ranges::none_of(
-      built.runs, [](const Primitive &r) { return r.kind == Primitive::Kind::quads; }));
+      built.runs, [](const Primitive &r) { return r.kind == Primitive::Kind::Quads; }));
   EXPECT_EQ(costOf(built.runs).polygons, 2u);
 }

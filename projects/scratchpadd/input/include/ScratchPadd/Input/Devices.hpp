@@ -26,10 +26,10 @@ Stick withoutDeadZone(Stick stick, float deadZone);
 // --- Nintendo: the DS's and 3DS's keys (libnds' and libctru's bits) ---
 
 struct NintendoKeys {
-  static constexpr std::uint32_t A = 1u << 0, B = 1u << 1, Select = 1u << 2, Start = 1u << 3,
-                                 Right = 1u << 4, Left = 1u << 5, Up = 1u << 6, Down = 1u << 7,
-                                 R = 1u << 8, L = 1u << 9, X = 1u << 10, Y = 1u << 11,
-                                 ZL = 1u << 14, ZR = 1u << 15; // (ZL, ZR: New 3DS)
+  static constexpr std::uint32_t kA = 1u << 0, kB = 1u << 1, kSelect = 1u << 2, kStart = 1u << 3,
+                                 kRight = 1u << 4, kLeft = 1u << 5, kUp = 1u << 6, kDown = 1u << 7,
+                                 kR = 1u << 8, kL = 1u << 9, kX = 1u << 10, kY = 1u << 11,
+                                 kZl = 1u << 14, kZr = 1u << 15; // (ZL, ZR: New 3DS)
 };
 // `held` the keys down (the D-pad's own bits: the 3DS's KEY_UP also has the
 // circle pad's), `circle` and `cStick` as the 3DS reads them (about -156

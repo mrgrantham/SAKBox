@@ -112,16 +112,16 @@ void FlightSim::spawnSegment() {
 }
 
 void FlightSim::integrateAxis(FlexPoint &p, FlexPoint &v, float input, float lo, float hi) {
-  static const FlexPoint dt = kStepSeconds;
-  static const FlexPoint drag = 4.0;
-  static const FlexPoint maxSpeed = 14.0;
-  v += FlexPoint(70.0 * input) * dt;
-  v -= v * drag * dt;
+  static const FlexPoint kDt = kStepSeconds;
+  static const FlexPoint kDrag = 4.0;
+  static const FlexPoint kMaxSpeed = 14.0;
+  v += FlexPoint(70.0 * input) * kDt;
+  v -= v * kDrag * kDt;
   if (settings.quantizeVelocity) {
     v = flight_.view(v);
   }
-  v = std::clamp(v, -maxSpeed, maxSpeed);
-  p += v * dt;
+  v = std::clamp(v, -kMaxSpeed, kMaxSpeed);
+  p += v * kDt;
   p = flight_.commit(p); // snaps only under the Lossy policy
   if (p < FlexPoint(lo)) {
     p = lo;

@@ -208,7 +208,7 @@ public:
       blocks[i].body->setLinearDamping(tempBody.getLinearDamping());
       blocks[i].body->setAngularDamping(tempBody.getAngularDamping());
       blocks[i].body->setAwake(true);
-      blocks[i].body->setAcceleration(cyclone::Vector3::GRAVITY);
+      blocks[i].body->setAcceleration(cyclone::Vector3::kGravity);
       blocks[i].body->clearAccumulators();
       blocks[i].body->calculateDerivedData();
       // SAKBox: drawn from here, not blended from where this body last was
@@ -293,7 +293,7 @@ FractureDemo::FractureDemo() : RigidBodyApplication() {
   cyclone::Matrix3 it;
   it.setDiagonal(5.0f, 5.0f, 5.0f);
   ball.body->setInertiaTensor(it);
-  ball.body->setAcceleration(cyclone::Vector3::GRAVITY);
+  ball.body->setAcceleration(cyclone::Vector3::kGravity);
 
   ball.body->setCanSleep(false);
   ball.body->setAwake(true);
@@ -341,7 +341,7 @@ void FractureDemo::reset() {
   blocks[0].body->calculateDerivedData();
   blocks[0].calculateInternals();
 
-  blocks[0].body->setAcceleration(cyclone::Vector3::GRAVITY);
+  blocks[0].body->setAcceleration(cyclone::Vector3::kGravity);
   blocks[0].body->setAwake(true);
   blocks[0].body->setCanSleep(true);
 
@@ -377,7 +377,7 @@ void FractureDemo::afterStep() {
 }
 
 void FractureDemo::display() {
-  const static GLfloat lightPosition[] = {0.7f, 1, 0.4f, 0};
+  const static GLfloat kLightPosition[] = {0.7f, 1, 0.4f, 0};
 
   RigidBodyApplication::display();
 
@@ -385,7 +385,7 @@ void FractureDemo::display() {
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
 
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+  glLightfv(GL_LIGHT0, GL_POSITION, kLightPosition);
   glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
 

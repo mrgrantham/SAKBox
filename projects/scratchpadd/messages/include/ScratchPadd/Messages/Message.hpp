@@ -39,8 +39,8 @@ public:
   // per call; the arguments of a debug log are built even when debug
   // logging is off.)
   const std::string &typeName() const override {
-    static const std::string name = ScratchPadd::typeName<T>();
-    return name;
+    static const std::string kName = ScratchPadd::typeName<T>();
+    return kName;
   }
 
   const T value;

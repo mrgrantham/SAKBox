@@ -64,7 +64,7 @@ public:
    * SAKBox: which kind of primitive it is, so World can pick the collision
    * test for each pair.
    */
-  enum class Shape : unsigned char { sphere, box, capsule };
+  enum class Shape : unsigned char { Sphere, Box, Capsule };
   /**
    * This class exists to help the collision detector
    * and intersection routines, so they should have
@@ -134,7 +134,7 @@ protected:
  */
 class CollisionSphere : public CollisionPrimitive {
 public:
-  CollisionSphere() : CollisionPrimitive(Shape::sphere) {}
+  CollisionSphere() : CollisionPrimitive(Shape::Sphere) {}
 
   /**
    * The radius of the sphere.
@@ -169,7 +169,7 @@ public:
  */
 class CollisionBox : public CollisionPrimitive {
 public:
-  CollisionBox() : CollisionPrimitive(Shape::box) {}
+  CollisionBox() : CollisionPrimitive(Shape::Box) {}
 
   /**
    * Holds the half-sizes of the box along each of its local axes.
@@ -190,7 +190,7 @@ public:
  */
 class CollisionCapsule : public CollisionPrimitive {
 public:
-  CollisionCapsule() : CollisionPrimitive(Shape::capsule) {}
+  CollisionCapsule() : CollisionPrimitive(Shape::Capsule) {}
 
   /** The radius of the ends, and of the cylinder between them. */
   real radius;
@@ -451,7 +451,7 @@ public:
    * with fewer: cut to four, as Gregorius suggests for faster solvers,
    * eight awake boxes fell within a second.)
    */
-  static constexpr unsigned maxContactsPerPair = 8;
+  static constexpr unsigned kMaxContactsPerPair = 8;
 
   /**
    * Adds the contacts between the two boxes to the collision data: the

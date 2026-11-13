@@ -68,7 +68,7 @@ void expectNear(const Pixel &actual, const Pixel &expected, int tolerance = 3) {
 // The background fills what nothing covers; an unlit mesh is its vertex
 // colours times its material's colour, exactly.
 TEST_F(RendererTest, UnlitMeshesAreTheirColours) {
-  const Material red{.shading = Material::Shading::unlit, .colour = {255, 0, 0}};
+  const Material red{.shading = Material::Shading::Unlit, .colour = {255, 0, 0}};
   const auto pixels = frame([&] { renderer->draw(box, Transform::identity(), red); },
                             {{centreX(), centreY()}, {5, 5}});
   expectNear(pixels[0], {255, 0, 0});
@@ -99,8 +99,8 @@ TEST_F(RendererTest, LitMeshesAreLitByAmbientAndLights) {
 // A translucent mesh blends over what's behind it by its alpha, even when
 // drawn before it; the solid one behind still shows.
 TEST_F(RendererTest, TranslucentMeshesBlendOverSolidOnes) {
-  const Material green{.shading = Material::Shading::unlit, .colour = {0, 255, 0}, .alpha = 15};
-  const Material red{.shading = Material::Shading::unlit, .colour = {255, 0, 0}};
+  const Material green{.shading = Material::Shading::Unlit, .colour = {0, 255, 0}, .alpha = 15};
+  const Material red{.shading = Material::Shading::Unlit, .colour = {255, 0, 0}};
   const auto pixels = frame(
       [&] {
         renderer->draw(box, Transform::translation({0, 0, 1.5f}), green); // in front, first
@@ -116,8 +116,8 @@ TEST_F(RendererTest, TranslucentMeshesBlendOverSolidOnes) {
 // mesh cooked for the DS (quads and strips) draws the same triangles.
 TEST_F(RendererTest, SeeThroughVerticesMakeAMeshTranslucent) {
   const Mesh glass = renderer->load(MeshBuilder().box({}, {1, 1, 1}, {0, 255, 0, 128}).data());
-  const Material unlit{.shading = Material::Shading::unlit};
-  const Material red{.shading = Material::Shading::unlit, .colour = {255, 0, 0}};
+  const Material unlit{.shading = Material::Shading::Unlit};
+  const Material red{.shading = Material::Shading::Unlit, .colour = {255, 0, 0}};
   const auto pixels = frame(
       [&] {
         renderer->draw(glass, Transform::translation({0, 0, 1.5f}), unlit); // in front, first
@@ -142,7 +142,7 @@ TEST_F(RendererTest, SeeThroughVerticesMakeAMeshTranslucent) {
 TEST_F(RendererTest, FogFadesFarMeshes) {
   environment.fog = {.colour = {200, 200, 200}, .density = 0.05f};
   camera.farPlane = 500;
-  const Material black{.shading = Material::Shading::unlit, .colour = {0, 0, 0}};
+  const Material black{.shading = Material::Shading::Unlit, .colour = {0, 0, 0}};
   const auto far = frame([&] { renderer->draw(box, Transform::translation({0, 0, -200}), black); },
                          {{centreX(), centreY()}});
   EXPECT_GT(far[0][0], 190);
@@ -160,7 +160,7 @@ TEST_F(RendererTest, FogFadesFarMeshes) {
 // background. Lines are drawn in their colour.
 TEST_F(RendererTest, WireframeAndLinesDrawEdgesOnly) {
   const Material wire{
-      .shading = Material::Shading::unlit, .colour = {255, 255, 0}, .wireframe = true};
+      .shading = Material::Shading::Unlit, .colour = {255, 255, 0}, .wireframe = true};
   const Vector3 ends[] = {{-10, 0, 0}, {10, 0, 0}};
   const auto pixels = frame(
       [&] {
@@ -181,7 +181,7 @@ TEST_F(RendererTest, WireframeAndLinesDrawEdgesOnly) {
 
 // The overlay is drawn over the 3D, in points from the top-left.
 TEST_F(RendererTest, OverlayDrawsOverTheScene) {
-  const Material red{.shading = Material::Shading::unlit, .colour = {255, 0, 0}};
+  const Material red{.shading = Material::Shading::Unlit, .colour = {255, 0, 0}};
   const auto pixels = frame(
       [&] {
         renderer->draw(box, Transform::identity(), red);
@@ -197,7 +197,7 @@ TEST_F(RendererTest, OverlayDrawsOverTheScene) {
 // snapped to a 1-unit world grid collapses to nothing.
 TEST_F(RendererTest, VertexSnappingMovesVerticesToTheGrid) {
   const Mesh small = renderer->load(MeshBuilder().box({}, {0.2f, 0.2f, 0.2f}).data());
-  const Material red{.shading = Material::Shading::unlit, .colour = {255, 0, 0}};
+  const Material red{.shading = Material::Shading::Unlit, .colour = {255, 0, 0}};
   const auto pixels = frame(
       [&] {
         Desktop::setVertexSnap(*renderer, 1.0f, 0.0f);
@@ -232,7 +232,7 @@ TEST_F(RendererTest, BackFacesAreCulledUnlessDoubleSided) {
   MeshData both = builder.data();
   both.doubleSided = true;
   const Mesh doubleSidedSquare = renderer->load(both);
-  const Material red{.shading = Material::Shading::unlit, .colour = {255, 0, 0}};
+  const Material red{.shading = Material::Shading::Unlit, .colour = {255, 0, 0}};
   const Transform away = Transform::rotation({0, 1, 0}, 3.14159265f);
   const auto at = [&](Mesh mesh, const Transform &where, const Material &material) {
     return frame([&] { renderer->draw(mesh, where, material); }, {{centreX(), centreY()}})[0];
@@ -248,7 +248,7 @@ TEST_F(RendererTest, BackFacesAreCulledUnlessDoubleSided) {
 // A mesh wholly out of view isn't drawn, and is counted; one partly in
 // view is drawn
 TEST_F(RendererTest, MeshesOutOfViewAreCulled) {
-  const Material red{.shading = Material::Shading::unlit, .colour = {255, 0, 0}};
+  const Material red{.shading = Material::Shading::Unlit, .colour = {255, 0, 0}};
   frame(
       [&] {
         renderer->draw(box, Transform::translation({100, 0, 0}), red);   // far to the right

@@ -1,0 +1,3 @@
+# SAKBox's own tests of Waffles, in the repo's style: its naming rules too
+InheritParentConfig: true
+Checks: 'readability-identifier-naming'

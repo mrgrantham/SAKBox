@@ -152,7 +152,7 @@ glm::mat4 toGlm(const Transform &t) {
 VkShaderModule compiled(Spirv::Stage stage, const char *glsl) {
   Spirv::Shader shader;
   std::string error;
-  if (!Spirv::compile(stage, Spirv::Dialect::vulkan, glsl, shader, error)) {
+  if (!Spirv::compile(stage, Spirv::Dialect::Vulkan, glsl, shader, error)) {
     std::fprintf(stderr, "Vulkan shader error: %s\n", error.c_str());
     return VK_NULL_HANDLE;
   }
@@ -173,10 +173,10 @@ void setColour(DrawConstants &draw, const Colour &colour, float alpha) {
 
 Renderer::Backend::Backend(Display &display)
     : display(display), surface(*static_cast<Vulkan::Surface *>(display.surface())) {
-  sceneVertex = compiled(Spirv::Stage::vertex, kSceneVertex);
-  sceneFragment = compiled(Spirv::Stage::fragment, kSceneFragment);
-  overlayVertex = compiled(Spirv::Stage::vertex, kOverlayVertex);
-  overlayFragment = compiled(Spirv::Stage::fragment, kOverlayFragment);
+  sceneVertex = compiled(Spirv::Stage::Vertex, kSceneVertex);
+  sceneFragment = compiled(Spirv::Stage::Fragment, kSceneFragment);
+  overlayVertex = compiled(Spirv::Stage::Vertex, kOverlayVertex);
+  overlayFragment = compiled(Spirv::Stage::Fragment, kOverlayFragment);
 
   // The scene's layout: Frame as set 0's uniform buffer, Draw pushed
   const VkDescriptorSetLayoutBinding frameBinding{
@@ -255,14 +255,14 @@ Renderer::Backend::Backend(Display &display)
     solidWire = Vulkan::makePipeline(d);
   }
 
-  static const VkVertexInputAttributeDescription overlayAttributes[] = {
+  static const VkVertexInputAttributeDescription kOverlayAttributes[] = {
       {0, 0, VK_FORMAT_R32G32_SFLOAT, static_cast<std::uint32_t>(offsetof(Overlay::Vertex, x))},
       {1, 0, VK_FORMAT_R8G8B8A8_UNORM,
        static_cast<std::uint32_t>(offsetof(Overlay::Vertex, colour))}};
   overlayPipeline = Vulkan::makePipeline({.layout = overlayLayout,
                                           .vertex = overlayVertex,
                                           .fragment = overlayFragment,
-                                          .attributes = overlayAttributes,
+                                          .attributes = kOverlayAttributes,
                                           .stride = sizeof(Overlay::Vertex),
                                           .blend = true,
                                           .depthTest = false,
@@ -328,7 +328,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   const glm::mat4 model = toGlm(where);
   std::memcpy(draw.model, glm::value_ptr(model), sizeof(draw.model));
   setColour(draw, material.colour, static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f);
-  draw.lit = material.shading == Material::Shading::lit ? 1 : 0;
+  draw.lit = material.shading == Material::Shading::Lit ? 1 : 0;
   draw.worldSnap = worldSnap;
   draw.screenSnap = screenSnap;
   vkCmdPushConstants(commands, sceneLayout,

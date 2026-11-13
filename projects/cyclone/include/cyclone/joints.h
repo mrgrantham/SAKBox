@@ -88,7 +88,7 @@ public:
   unsigned addContact(Contact *contact, unsigned limit) const override;
 
   /** SAKBox: the most angular constraints a joint has (a hinge's). */
-  static constexpr unsigned maxAngularConstraints = 5;
+  static constexpr unsigned kMaxAngularConstraints = 5;
 
   /**
    * SAKBox: the limits on how the two bodies turn relative to each other,
@@ -110,7 +110,7 @@ public:
    * starting, as `impulse` is for the anchor). Zero them after moving the
    * bodies by hand.
    */
-  real angularImpulse[maxAngularConstraints] = {};
+  real angularImpulse[kMaxAngularConstraints] = {};
 };
 
 /**

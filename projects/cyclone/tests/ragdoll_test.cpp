@@ -79,12 +79,12 @@ Outcome simulate(Method method, double dt, unsigned seed, bool push = true, doub
 TEST(RagdollTest, CollapsesInPlaceWithoutAPush) {
   for (double dt : {1.0 / 60, 0.05}) {
     SCOPED_TRACE(testing::Message() << "dt " << dt);
-    const Outcome book = simulate(Method::oneContactAtATime, dt, 1, /*push=*/false);
+    const Outcome book = simulate(Method::OneContactAtATime, dt, 1, /*push=*/false);
     EXPECT_LT(std::hypot(book.centre.x, book.centre.z), 1.0);
     EXPECT_LT(book.centre.y, 1.0); // lying down
     EXPECT_LT(book.fastest, 0.5);  // at rest, near enough
 
-    const Outcome together = simulate(Method::sequentialImpulses, dt, 1, /*push=*/false, 10.0);
+    const Outcome together = simulate(Method::SequentialImpulses, dt, 1, /*push=*/false, 10.0);
     EXPECT_LT(std::hypot(together.centre.x, together.centre.z), 1.0);
     EXPECT_LT(together.centre.y, 1.0);
     EXPECT_LT(together.restingSpeed, 0.2);
@@ -98,7 +98,7 @@ TEST(RagdollTest, CollapsesInPlaceWithoutAPush) {
 // for a while before it slumps the rest of the way: two of these runs are
 // still slumping at 4 s, at over 1 m/s, and nearly still by 6 s.
 TEST(RagdollTest, PushKnocksItOverAtAnyFrameRate) {
-  for (Method method : {Method::oneContactAtATime, Method::sequentialImpulses}) {
+  for (Method method : {Method::OneContactAtATime, Method::SequentialImpulses}) {
     for (unsigned seed : {1u, 2u, 3u, 4u, 5u}) {
       for (double dt : {1.0 / 60, 0.05}) {
         SCOPED_TRACE(testing::Message()
@@ -126,11 +126,11 @@ TEST(RagdollTest, ComesToRestWhenResolvedTogether) {
     SCOPED_TRACE(testing::Message() << "dt " << dt);
     double together = 0, book = 0, togetherStretch = 0;
     for (unsigned seed = 1; seed <= 20; ++seed) {
-      const Outcome t = simulate(Method::sequentialImpulses, dt, seed, true, 12.0);
+      const Outcome t = simulate(Method::SequentialImpulses, dt, seed, true, 12.0);
       EXPECT_LT(t.restingSpeed, 0.2) << "seed " << seed;
       together += t.restingSpeed / 20;
       togetherStretch += t.meanStretch / 20;
-      book += simulate(Method::oneContactAtATime, dt, seed, true, 12.0).restingSpeed / 20;
+      book += simulate(Method::OneContactAtATime, dt, seed, true, 12.0).restingSpeed / 20;
     }
     EXPECT_LT(together, 0.04);
     EXPECT_GT(book, 1.5 * together);
@@ -158,10 +158,10 @@ TEST(RagdollTest, SubStepsStretchJointsLess) {
     SCOPED_TRACE(testing::Message() << "dt " << dt);
     double worst[3] = {0, 0, 0}; // with 1, 4 and 2 sub-steps
     for (unsigned seed = 1; seed <= 20; ++seed) {
-      worst[0] = std::max(worst[0], simulate(Method::sequentialImpulses, dt, seed).worstStretch);
+      worst[0] = std::max(worst[0], simulate(Method::SequentialImpulses, dt, seed).worstStretch);
       worst[2] = std::max(
-          worst[2], simulate(Method::sequentialImpulses, dt, seed, true, 4.0, 2).worstStretch);
-      const Outcome o = simulate(Method::sequentialImpulses, dt, seed, true, 14.0, 4);
+          worst[2], simulate(Method::SequentialImpulses, dt, seed, true, 4.0, 2).worstStretch);
+      const Outcome o = simulate(Method::SequentialImpulses, dt, seed, true, 14.0, 4);
       worst[1] = std::max(worst[1], o.worstStretch);
       EXPECT_LT(o.restingSpeed, 0.2) << "seed " << seed;
     }

@@ -295,7 +295,7 @@ void FlightDisplayPadd::drawWorld(float time) {
   r.drawLines(posts, toColour({0.45f, 0.2f, 0.6f}));
 
   const auto unlit = [](glm::vec3 colour, float alpha = 1.0f) {
-    return Scene::Material{.shading = Scene::Material::Shading::unlit,
+    return Scene::Material{.shading = Scene::Material::Shading::Unlit,
                            .colour = toColour(colour),
                            .alpha = static_cast<std::uint8_t>(std::lround(alpha * 31))};
   };

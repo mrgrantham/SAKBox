@@ -112,8 +112,8 @@ TEST(JsonNumberTest, ExponentsAndInvalidNumbers) {
 // with 6 decimal places, so 0.1234567891 came back as 0.123457 and 1e-9
 // as 0.
 namespace {
-const std::vector<double> awkward = {0.1,     1.0 / 3, 1e-9, 1e300, -0.0, 123456.789,
-                                     -2.5e-7, 5e-324,  1.0,  -42.0, 2e20, 0.0};
+const std::vector<double> kAwkward = {0.1,     1.0 / 3, 1e-9, 1e300, -0.0, 123456.789,
+                                      -2.5e-7, 5e-324,  1.0,  -42.0, 2e20, 0.0};
 
 // `value` written by `write` into a document's text, parsed back into `doc`
 WDomNode *throughText(double value, WDom &doc, bool pretty) {
@@ -132,7 +132,7 @@ WDomNode *throughText(double value, WDom &doc, bool pretty) {
 
 TEST(JsonNumberTest, DoublesReadBackExactly) {
   for (bool pretty : {false, true})
-    for (double value : awkward) {
+    for (double value : kAwkward) {
       WDom doc;
       const WDomNode *node = throughText(value, doc, pretty);
       EXPECT_EQ(node->type(), WDomNode::type_double) << value; // even whole numbers

@@ -35,8 +35,8 @@ bool compile(Stage stage, Dialect dialect, const std::string &glsl, Shader &out,
   static std::once_flag started;
   std::call_once(started, [] { glslang::InitializeProcess(); });
 
-  const EShLanguage language = stage == Stage::vertex ? EShLangVertex : EShLangFragment;
-  const bool opengl = dialect == Dialect::opengl;
+  const EShLanguage language = stage == Stage::Vertex ? EShLangVertex : EShLangFragment;
+  const bool opengl = dialect == Dialect::Opengl;
   glslang::TShader shader(language);
   const char *text = glsl.c_str();
   shader.setStrings(&text, 1);

@@ -82,9 +82,9 @@ ShaderPanel::ShaderPanel(int width, int height, const std::string &vertexSource,
 
   // The GLSL as Metal, compiled
   std::string why;
-  if (!Metal::translate(Metal::Stage::vertex, vertexSource, s.vertex, why)) {
+  if (!Metal::translate(Metal::Stage::Vertex, vertexSource, s.vertex, why)) {
     error_ = "vertex shader: " + why;
-  } else if (!Metal::translate(Metal::Stage::fragment, fragmentSource, s.fragment, why)) {
+  } else if (!Metal::translate(Metal::Stage::Fragment, fragmentSource, s.fragment, why)) {
     error_ = "fragment shader: " + why;
   } else {
     MTL::Library *vertexLibrary = Metal::compileLibrary(s.vertex.source, why);
