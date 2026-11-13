@@ -6,7 +6,8 @@
 ; lights' colours to 0. The alpha is the vertex's times the material's
 ; (the ambient's alpha is 1, the lights' 0).
 ;
-; Drawn alone it draws triangles; with scene.g.pica it draws lines.
+; Lines and wireframes come as thin triangles made on the CPU, in clip
+; space, drawn with mvp the identity and unlit.
 
 .fvec mvp[4], normalMatrix[3]
 .fvec material, ambient

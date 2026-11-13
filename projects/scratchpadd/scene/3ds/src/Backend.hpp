@@ -9,6 +9,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
+#include <utility>
 #include <vector>
 
 namespace ScratchPadd::Scene {
@@ -30,8 +32,8 @@ struct Renderer::Backend {
     // Its triangles' edges, each once, as pairs of indices (for a
     // wireframe), made the first time it's drawn as one
     std::vector<std::uint32_t> triangles; // (kept to make them)
-    std::uint16_t *edges = nullptr;
-    int edgeIndices = 0;
+    std::vector<std::pair<std::uint16_t, std::uint16_t>> edges;
+    int vertexCount = 0;
     bool translucent = false; // has see-through vertices
     FrameCounts cost;
   };
@@ -55,26 +57,33 @@ struct Renderer::Backend {
     void *take(std::size_t bytes);
   };
 
+  // A line's end: where it is, already in clip space, and its colour
+  struct ClipEnd {
+    C3D_FVec clip;
+    Colour colour;
+  };
+
   void copyFrameVertices();
   void drawEye(C3D_RenderTarget *target, const C3D_Mtx &projection);
   void drawMesh(const Draw &draw, const C3D_Mtx &viewProjection);
-  void drawWireframe(LoadedMesh &mesh);
+  void drawWireframe(LoadedMesh &mesh, const C3D_Mtx &mvp, const Material &material);
   void drawLineBatches(const C3D_Mtx &viewProjection);
+  void drawQuads(std::span<const ClipEnd> ends, const Material &material);
   void drawOverlay();
   void setMaterial(const Material &material, const Transform &where, const C3D_Mtx &mvp);
-  void useScene(bool lines);
+  void useScene();
 
   Display &display;
   std::vector<LoadedMesh> meshes; // by Mesh::id - 1
 
-  // The programs: scene.v.pica alone (triangles), with scene.g.pica
-  // (lines), and overlay.v.pica; their uniforms' locations
+  // The programs, scene.v.pica and overlay.v.pica, and their uniforms'
+  // locations
   DVLB_s *sceneShaders = nullptr, *overlayShaders = nullptr;
-  shaderProgram_s triangleProgram, lineProgram, overlayProgram;
+  shaderProgram_s sceneProgram, overlayProgram;
   struct SceneUniforms {
     int mvp, normalMatrix, material, ambient, lightDirections, lightColours;
   };
-  SceneUniforms triangleUniforms, lineUniforms;
+  SceneUniforms sceneUniforms;
   int overlayProjection = -1;
   C3D_AttrInfo sceneAttributes, overlayAttributes;
   const shaderProgram_s *bound = nullptr;
@@ -88,8 +97,8 @@ struct Renderer::Backend {
   std::vector<Lines> lines;
   std::vector<Overlay::Vertex> overlayTriangles;
   Arena arena;
-  Vertex *lineVertices = nullptr;             // in the arena
   Overlay::Vertex *overlayVertices = nullptr; // in the arena
+  std::vector<ClipEnd> clipEnds;              // reused for lines' and wireframes' ends
   C3D_FogLut fog;
   FrameCounts counting, last;
   FrameTimes times;
