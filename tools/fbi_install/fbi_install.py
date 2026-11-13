@@ -9,11 +9,13 @@ and waited out. Exits once FBI has installed them (it closes the connection
 then), saying which it downloaded, or after --wait.
 
 Usage:
-  python3 tools/fbi_install/fbi_install.py --3ds ADDRESS [TARGET ...]
+  python3 tools/fbi_install/fbi_install.py --3ds ADDRESS [--debug] [TARGET ...]
 
 ADDRESS is the 3DS's IP address (shown on FBI's screen), or set
 SAKBOX_3DS. With no targets it installs every 3DS app in the repo (every
-devkitpro_3ds_app). Needs Docker running, as any 3DS build does.
+devkitpro_3ds_app). --debug installs debug builds (bazel -c dbg), which
+send their log over Wi-Fi (tools/console_log). Needs Docker running, as any
+3DS build does.
 """
 
 import argparse
@@ -119,13 +121,14 @@ def bazel(*args):
                           text=True).stdout
 
 
-def build_cias(targets):
-    """Builds `targets` (every 3DS app if none) and returns their CIAs' paths."""
+def build_cias(targets, flags=()):
+    """Builds `targets` (every 3DS app if none) with Bazel `flags` and
+    returns their CIAs' paths."""
     if not targets:
         targets = bazel("query", 'kind("devkitpro_3ds_app", //...)').split()
     print(f"Building {' '.join(targets)}", flush=True)
-    subprocess.run(["bazel", "build", *targets], cwd=REPO, check=True)
-    files = bazel("cquery", "--output=files", " + ".join(targets)).split()
+    subprocess.run(["bazel", "build", *flags, *targets], cwd=REPO, check=True)
+    files = bazel("cquery", *flags, "--output=files", " + ".join(targets)).split()
     return [REPO / f for f in files if f.endswith(".cia")]
 
 
@@ -135,12 +138,14 @@ def main(argv):
                         help="the 3DS's IP address (or set SAKBOX_3DS)")
     parser.add_argument("--wait", type=float, default=600,
                         help="how long to wait for FBI, in seconds (default 600)")
+    parser.add_argument("--debug", action="store_true",
+                        help="debug builds (bazel -c dbg): their log comes over Wi-Fi")
     parser.add_argument("targets", nargs="*", help="3DS apps (default: all of them)")
     args = parser.parse_args(argv)
     if not args.address:
         parser.error("say where the 3DS is: --3ds ADDRESS (FBI's screen shows it)")
 
-    cias = build_cias(args.targets)
+    cias = build_cias(args.targets, ["-c", "dbg"] if args.debug else [])
     if not cias:
         print("No CIAs among those targets", file=sys.stderr)
         return 1

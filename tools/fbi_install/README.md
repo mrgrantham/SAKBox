@@ -5,7 +5,10 @@ Builds the repo's 3DS apps and installs them on a 3DS over Wi-Fi, with no SD car
 ```bash
 python3 tools/fbi_install/fbi_install.py --3ds 192.168.4.21          # every 3DS app
 python3 tools/fbi_install/fbi_install.py --3ds 192.168.4.21 //projects/scratchpadd/3ds/demo:scratchpadd-3ds-demo
+python3 tools/fbi_install/fbi_install.py --3ds 192.168.4.21 --debug //projects/scratchpadd/3ds/demo:scratchpadd-3ds-demo
 ```
+
+`--debug` installs debug builds (`bazel build -c dbg`): ScratchPadd's apps then serve their log over Wi-Fi, for [`console_log`](../console_log/README.md). Installed, a debug build replaces the release one (same title ID), and the other way round.
 
 On the 3DS, open FBI's **Remote Install → Receive URLs over the network** (its screen shows the 3DS's address, for `--3ds`; or set `SAKBOX_3DS`), and press A when it asks to install. The tool can be started first: it waits for FBI to listen (10 minutes; `--wait` to change), and exits when FBI has finished, saying which CIAs FBI downloaded. An app installed again replaces itself (each keeps its title ID; see [`tools/devkitpro`](../devkitpro/README.md)).
 
