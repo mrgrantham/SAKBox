@@ -2,8 +2,12 @@
 // desktop uses, built by devkitARM and mixing offline (no sound plays), so
 // each check reads the exact samples. Then a full mix is timed on the 3DS's
 // CPU. Results show on the top screen and are written to
-// sdmc:/scratchpadd-audio-selftest.txt; START exits.
+// sdmc:/scratchpadd-audio-selftest.txt, and served over Wi-Fi once the
+// tests are done (port 5005: read them with tools/console_log); START exits.
 #include <3ds.h>
+
+#include <ScratchPadd/DebugLog/LogBuffer.hpp>
+#include <ScratchPadd/DebugLog/LogServer.hpp>
 
 #include <ScratchPadd/Audio/BuiltInSynth.hpp>
 #include <ScratchPadd/Audio/Engine.hpp>
@@ -30,6 +34,8 @@ constexpr std::uint32_t kRate = 32728;
 int passed = 0;
 int failed = 0;
 FILE *results = nullptr; // the results file on the SD card, if it opened
+// The same, kept to serve over Wi-Fi once the tests are done
+ScratchPadd::DebugLog::LogBuffer served;
 
 // Prints a line on screen in `colour` (an ANSI code, or "" for none) and
 // writes it, without colour, to the results file
@@ -43,6 +49,7 @@ void report(const char *colour, const char *format, ...) {
   if (results) {
     std::fprintf(results, "%s\n", line);
   }
+  served.append(std::string(line) + "\n");
 }
 
 void check(bool ok, const char *what) {
@@ -308,6 +315,12 @@ int main() {
   if (results) {
     std::fclose(results);
   }
+  // Served once the tests are done, so the network can't change the timings
+  ScratchPadd::DebugLog::LogServer server(served);
+  if (server.listening())
+    std::printf("\nResults also at %s (tools/console_log)", server.address().c_str());
+  else
+    std::printf("\nResults not on Wi-Fi: %s", server.error().c_str());
   std::printf("\nPress START to exit.\n");
   while (aptMainLoop()) {
     hidScanInput();

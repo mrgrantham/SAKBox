@@ -26,9 +26,12 @@ public:
   // to the terminal, and wherever routeTo() says
   static std::shared_ptr<spdlog::logger> loggerNamed(const std::string &name);
   // Where every logger writes: `sinks` as well as the terminal, or instead
-  // of it (`terminal` false: on a console, whose screens are the app's).
-  // Loggers made before are changed too. DebugLog::Session calls it.
-  static void routeTo(std::vector<spdlog::sink_ptr> sinks, bool terminal);
+  // of it (`terminal` false: on a console, whose screens are the app's),
+  // each line flushed as it's logged if `flushEveryLine` (a file on a DS,
+  // whose threads can't flush on a timer). Loggers made before are changed
+  // too. DebugLog::Session calls it.
+  static void routeTo(std::vector<spdlog::sink_ptr> sinks, bool terminal,
+                      bool flushEveryLine = false);
   spdlog::logger &logger() const {
     assert(logger_);
     return *logger_;

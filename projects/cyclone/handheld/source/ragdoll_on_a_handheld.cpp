@@ -30,6 +30,7 @@
 #include <AudioPadd.hpp>
 #include <ScratchPadd/Audio/MadeSoundsPcm16.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
+#include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
@@ -57,16 +58,21 @@ namespace {
 
 namespace Scene = ScratchPadd::Scene;
 namespace Input = ScratchPadd::Input;
+
+// Where a debug build's log goes (main sets it), shown under the figures
+std::string logWhere;
 using Clock = std::chrono::steady_clock;
 
 // What differs between the two consoles
 #if defined(__NDS__)
 constexpr const char *kConsole = "DS";
+constexpr const char *kAppName = "cyclone-ds-ragdoll";
 constexpr int kConsoleColumns = 32, kConsoleRows = 24; // the bottom screen's
 bool mainLoop() { return pmMainLoop(); }
 void startBottomScreen() { consoleDemoInit(); } // its console, for printf
 #else
 constexpr const char *kConsole = "3DS";
+constexpr const char *kAppName = "cyclone-3ds-ragdoll";
 constexpr int kConsoleColumns = 40, kConsoleRows = 30;
 bool mainLoop() { return aptMainLoop(); }
 void startBottomScreen() { consoleInit(GFX_BOTTOM, nullptr); }
@@ -547,6 +553,8 @@ private:
     printLine(++row, columns, "A step as it runs, ms:");
     printLine(++row, columns, "move %.1f find %.1f solve %.1f", benchmark_.integrateMilliseconds,
               benchmark_.contactsMilliseconds, benchmark_.resolveMilliseconds);
+    if (!logWhere.empty())
+      printLine(++row, columns, "Log: %s", logWhere.c_str());
   }
 
   // The last two snapshots, drawn between (see drawRagdoll), and when the
@@ -570,6 +578,11 @@ int main() {
   spdlog::set_level(spdlog::level::off); // the screens are for the padds
 #if defined(__3DS__)
   gfxInitDefault(); // (before ScreenPadd's Display)
+#endif
+#if defined(SAKBOX_DEBUG)
+  // A debug build's log: over Wi-Fi on a 3DS, on the SD card on a DS
+  ScratchPadd::DebugLog::Session log(kAppName);
+  logWhere = log.where();
 #endif
   {
     ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, RagdollPadd,

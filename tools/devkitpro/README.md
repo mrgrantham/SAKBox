@@ -47,7 +47,7 @@ devkitpro_3ds_app(
 - `my-app.cia`: the same app as a title to install to the HOME Menu, with [FBI](https://github.com/lifehackerhansol/FBI) on a 3DS with custom firmware (over Wi-Fi with [`tools/fbi_install`](../fbi_install/README.md)), or **File → Install CIA** (or `azahar -i`) in Azahar. It has its own icon (the `.smdh`) and a HOME Menu banner.
 - `my-app.smdh` (its title and icon) and `my-app.elf` (with debug symbols).
 
-`app_name` sets a different output name. For the CIA:
+`app_name` sets a different output name. A debug build (`bazel build -c dbg`) runs `make SAKBOX_DEBUG=1`, which an app's Makefile can turn into `-DSAKBOX_DEBUG` (`CFLAGS += $(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)`): ScratchPadd's apps then send their log off the device ([`debug_log`](../../projects/scratchpadd/debug_log/README.md)). Both kinds of app take it. For the CIA:
 
 | Attribute | What | Default |
 | --- | --- | --- |

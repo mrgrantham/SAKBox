@@ -82,6 +82,7 @@ def main(argv):
     for option in ["makerom", "bannertool", "rsf", "logo", "unique-id", "product-code", "font",
                    "banner-image", "banner-sound"]:
         parser.add_argument("--" + option)
+    parser.add_argument("--debug", action="store_true")  # make with SAKBOX_DEBUG=1
     args = parser.parse_args(argv[:split])
     files = devkitpro_image.pairs(argv[split + 1:])
     if len(files) * 2 != len(argv) - split - 1:
@@ -89,7 +90,8 @@ def main(argv):
     name = args.name
 
     outputs = [f"{name}{ext}" for ext in (".3dsx", ".smdh", ".elf")]
-    commands = [f"make TARGET={shlex.quote(name)} >&2"]
+    commands = [f"make TARGET={shlex.quote(name)}" + (" SAKBOX_DEBUG=1" if args.debug else "") +
+                " >&2"]
     with tempfile.TemporaryDirectory() as scratch:
         if args.makerom:
             image = args.banner_image

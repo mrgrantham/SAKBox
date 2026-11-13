@@ -21,8 +21,8 @@ GAME_SUBTITLE2	:=	SAKBox
 # The app's file system (NitroFS): the BUILD's nitro_files, staged here
 NITRODATA	:=	nitrofiles
 BUILD		:=	build
-SOURCES		:=	source scratchpadd/handheld_controls/src scratchpadd/utilities/src scratchpadd_ds/platform/src scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd_audio_wav/src scratchpadd/input/src
-INCLUDES	:=	include scratchpadd/handheld_controls/include build scratchpadd/basis/include scratchpadd/messages/include scratchpadd/input/include \
+SOURCES		:=	source scratchpadd/handheld_controls/src scratchpadd/utilities/src scratchpadd_ds/platform/src scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd_audio_wav/src scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session
+INCLUDES	:=	include scratchpadd/handheld_controls/include build scratchpadd/basis/include scratchpadd/messages/include scratchpadd/input/include scratchpadd/debug_log/include \
 			scratchpadd/utilities/include scratchpadd/handheld/include scratchpadd_audio_pcm16/include scratchpadd_audio/include \
 			scratchpadd_audio/messages/include scratchpadd_audio/core/include scratchpadd_audio_wav/include third_party \
 			third_party/spdlog/include
@@ -36,6 +36,9 @@ CFLAGS	:=	-g -Wall -O2 -ffunction-sections -fdata-sections\
 			$(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -DARM9
+# A debug build (bazel build -c dbg): see //projects/scratchpadd/debug_log
+CFLAGS	+=	$(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)
+
 # ScratchPadd needs RTTI (each message's type) and exceptions (a control of
 # the wrong type), so unlike devkitPro's template this keeps both
 CXXFLAGS	:= $(CFLAGS) -std=gnu++26

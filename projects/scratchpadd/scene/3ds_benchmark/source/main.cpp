@@ -11,8 +11,12 @@
 // mono or stereo (the top screen drawn for each eye), and on a New 3DS at
 // 268 MHz and with its 804 MHz mode. The results show on the bottom screen
 // and are written to sdmc:/scene-3ds-benchmark.txt, each case's every
-// measurement too. START quits.
+// measurement too, and served over Wi-Fi once it's done (port 5005: read
+// them with tools/console_log). START quits.
 #include <3ds.h>
+
+#include <ScratchPadd/DebugLog/LogBuffer.hpp>
+#include <ScratchPadd/DebugLog/LogServer.hpp>
 #include <citro3d.h>
 
 #include "lit_shbin.h"
@@ -21,8 +25,10 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdarg>
 #include <cstdint>
 #include <cstdio>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -36,6 +42,39 @@ constexpr float kSlowestFrame = 40;               // ms: doubling stops past it
 constexpr int kWarmUpFrames = 3, kMeasuredFrames = 12;
 constexpr std::array<float, 2> kBudgets = {1000.0f / 60, 1000.0f / 30};
 constexpr const char *kResultsPath = "sdmc:/scene-3ds-benchmark.txt";
+
+// The results: written to the SD card as they come, and kept to serve over
+// Wi-Fi when it's done (tools/console_log reads them)
+class Results {
+public:
+  ~Results() {
+    if (file_)
+      std::fclose(file_);
+  }
+  void line(const char *format, ...) {
+    char text[160];
+    std::va_list args;
+    va_start(args, format);
+    std::vsnprintf(text, sizeof text, format, args);
+    va_end(args);
+    if (file_) {
+      std::fprintf(file_, "%s\n", text);
+      std::fflush(file_);
+    }
+    buffer_.append(std::string(text) + "\n");
+  }
+  // Starts serving them; where ("at 192.168.4.25:5005"), or why not
+  std::string serve() {
+    server_.emplace(buffer_);
+    return server_->listening() ? "at " + server_->address() + " (console_log)"
+                                : "not on Wi-Fi: " + server_->error();
+  }
+
+private:
+  std::FILE *file_ = std::fopen(kResultsPath, "w");
+  ScratchPadd::DebugLog::LogBuffer buffer_;
+  std::optional<ScratchPadd::DebugLog::LogServer> server_;
+};
 
 constexpr std::uint32_t kDisplayTransferFlags =
     GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |
@@ -324,10 +363,9 @@ int main() {
   std::printf("\x1b[1mScene 3DS benchmark\x1b[0m (%s 3DS)\n", newThreeDs ? "New" : "Old");
   std::printf("Triangles a frame at 60 and 30 fps\n\n");
   std::printf("case               MHz   60fps 30fps\n");
-  std::FILE *results = std::fopen(kResultsPath, "w");
-  if (results)
-    std::fprintf(results, "Scene 3DS benchmark, on a%s 3DS: %d triangles an object\n\n",
-                 newThreeDs ? " New" : "n Old", kTrianglesEach);
+  Results results;
+  results.line("Scene 3DS benchmark, on a%s 3DS: %d triangles an object\n",
+               newThreeDs ? " New" : "n Old", kTrianglesEach);
 
   Benchmark benchmark;
   bool finished = true;
@@ -345,20 +383,18 @@ int main() {
     std::printf("\x1b[30;1H\x1b[K"); // (the progress line cleared)
     std::printf("\x1b[%d;1H%s %6s %5s %s", static_cast<int>(5 + index), which.name().c_str(),
                 thousands(at60).c_str(), thousands(at30).c_str(), limit60);
-    if (results) {
-      std::fprintf(results, "%s: 60 fps %s, 30 fps %s (limited by the %s)\n", which.name().c_str(),
-                   thousands(at60).c_str(), thousands(at30).c_str(), limit60);
-      for (const Sample &sample : samples)
-        std::fprintf(results, "  %7d triangles: GPU %6.2f ms, CPU %6.2f ms\n",
-                     sample.objects * kTrianglesEach, sample.gpu, sample.cpu);
-      std::fflush(results);
-    }
+    results.line("%s: 60 fps %s, 30 fps %s (limited by the %s)", which.name().c_str(),
+                 thousands(at60).c_str(), thousands(at30).c_str(), limit60);
+    for (const Sample &sample : samples)
+      results.line("  %7d triangles: GPU %6.2f ms, CPU %6.2f ms", sample.objects * kTrianglesEach,
+                   sample.gpu, sample.cpu);
   }
-  if (results)
-    std::fclose(results);
   osSetSpeedupEnable(false);
-  std::printf("\x1b[29;1H%s",
-              finished ? "Done: results on SD card. START quits" : "Stopped. START quits.");
+  // Served once measuring's done, so the network can't change the timings
+  const std::string servedAt = results.serve();
+  std::printf("\x1b[28;1H%s\n%s",
+              finished ? "Done. Results on SD card, and" : "Stopped. Results:", servedAt.c_str());
+  std::printf("\x1b[30;1HSTART quits.");
   while (aptMainLoop()) {
     hidScanInput();
     if (hidKeysDown() & KEY_START)

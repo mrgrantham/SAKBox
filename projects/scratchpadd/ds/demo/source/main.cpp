@@ -19,6 +19,7 @@
 
 #include <AudioPadd.hpp>
 #include <HandheldDemo.hpp>
+#include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
@@ -42,6 +43,9 @@ constexpr int kRows = 24;
 
 // Whether the app's file system started (main sets it, before the padds)
 bool fileSystem = true;
+
+// Where a debug build's log goes (main sets it), for the last status line
+std::string logWhere;
 
 namespace Input = ScratchPadd::Input;
 
@@ -81,6 +85,8 @@ public:
     consoleInit(&top_, 0, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
     consoleInit(&bottom_, 0, BgType_Text4bpp, BgSize_T_256x256, 31, 0, false, true);
     status_[0] = "ScreenPadd: main " + threadNumber();
+    if (!logWhere.empty())
+      status_[7] = "Log: " + logWhere;
     if (!fileSystem) {
       log_.push_back("No file system (nitroFSInit)");
     }
@@ -176,6 +182,11 @@ int main() {
   // the sounds and the tune from it (nitro:/...). Without it, they don't load
   // and the log says why.
   fileSystem = nitroFSInit(nullptr);
+#if defined(SAKBOX_DEBUG)
+  // A debug build's log, on the flashcart's SD card (fat:/logs/...)
+  ScratchPadd::DebugLog::Session log("scratchpadd-ds-demo");
+  logWhere = log.where();
+#endif
   ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, SoundBoardPadd,
                                     AudioPadd>
       system;

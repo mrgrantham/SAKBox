@@ -111,6 +111,12 @@ devkitpro_cia_tools = rule(
     },
 )
 
+def _debug(ctx):
+    """Whether it's a debug build (`bazel build -c dbg`): the app's Makefile
+    then gets SAKBOX_DEBUG=1, which its CFLAGS turn into -DSAKBOX_DEBUG (a
+    debug log off the device: //projects/scratchpadd/debug_log)."""
+    return ctx.var["COMPILATION_MODE"] == "dbg"
+
 def _unique_id(ctx):
     """The CIA's unique ID: as given, or worked out from the target's label,
     in the range 0xF0000-0xF7FFF that homebrew uses."""
@@ -138,6 +144,8 @@ def _devkitpro_3ds_app_impl(ctx):
     args.add("--logo", ctx.file._logo)
     args.add("--font", ctx.file._banner_font)
     args.add("--unique-id", unique_id)
+    if _debug(ctx):
+        args.add("--debug")
     args.add("--product-code", ctx.attr.product_code or "CTR-H-" + unique_id[-4:])
     if ctx.file.banner_image:
         args.add("--banner-image", ctx.file.banner_image)
@@ -238,6 +246,8 @@ def _devkitpro_nds_app_impl(ctx):
     args.add(DEVKITARM_IMAGE)
     args.add(name)
     args.add(outs[0].dirname)
+    if _debug(ctx):
+        args.add("--debug")
     args.add("--")
     for f, path in staged:
         args.add(f)

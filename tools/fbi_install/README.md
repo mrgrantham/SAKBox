@@ -17,6 +17,6 @@ On the 3DS, open FBI's **Remote Install → Receive URLs over the network** (its
 - **ftpd uses FBI's port (5000).** A connection ftpd answers (it greets with `220`) is closed and tried again later, and the tool says to close ftpd. (A connection to FBI that sends nothing makes FBI show "Failed to read payload length", so the tool never connects only to look.)
 - **macOS's Local Network privacy.** A Python that hasn't been allowed onto the local network can't connect to the 3DS ("No route to host"); the tool then connects with macOS's own `/usr/bin/nc`, which is allowed. Serving the files needs no permission. (A Terminal run asks once to allow Python, which also works.)
 
-FBI reads the links as a 4-byte big-endian length, then the URLs, one a line, and closes the connection once it's done. `fbi_install_test` checks the tool against a fake FBI and ftpd on this computer.
+FBI reads the links as a 4-byte big-endian length, then the URLs, one a line, and closes the connection once it's done. `fbi_install_test` checks the tool against a fake FBI and ftpd on this computer. Its connection to the 3DS (through `/usr/bin/nc` where macOS keeps Python off the local network) is [`tools/local_network`](../local_network/local_network.py), shared with [`console_log`](../console_log/README.md).
 
 **QR codes:** FBI's **Scan QR Code** reads one link reliably; a code holding several is too dense for the 3DS's camera. Receiving the links over the network has no such limit.

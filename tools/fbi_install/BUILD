@@ -7,6 +7,7 @@ py_library(
     name = "fbi_install",
     srcs = ["fbi_install.py"],
     imports = ["."],  # imported as `fbi_install`
+    deps = ["//tools/local_network"],
 )
 
 py_test(

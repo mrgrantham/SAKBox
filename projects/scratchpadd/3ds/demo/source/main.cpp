@@ -17,6 +17,7 @@
 
 #include <AudioPadd.hpp>
 #include <HandheldDemo.hpp>
+#include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
@@ -37,6 +38,9 @@ using ScratchPadd::HandheldControls::printLine;
 // The top screen's console is 50 columns by 30 rows, the bottom's 40 by 30
 constexpr int kTopColumns = ScratchPadd::HandheldControls::usableColumns(50);
 constexpr int kBottomColumns = ScratchPadd::HandheldControls::usableColumns(40);
+
+// Where a debug build's log goes (main sets it), for the last status line
+std::string logWhere;
 
 namespace Input = ScratchPadd::Input;
 
@@ -70,6 +74,8 @@ public:
     consoleInit(GFX_BOTTOM, &bottom_);
     consoleInit(GFX_TOP, &top_);
     status_[0] = "ScreenPadd: main thread " + threadNumber();
+    if (!logWhere.empty())
+      status_[7] = "Log: " + logWhere;
     controls_.setVisible(false); // SELECT shows them
     showControlsHint();
     send(ScratchPadd::MessageType::ControlRequest{});
@@ -160,6 +166,11 @@ private:
 int main() {
   gfxInitDefault();
   spdlog::set_level(spdlog::level::off); // the screens are for the padds
+#if defined(SAKBOX_DEBUG)
+  // A debug build's log, served over Wi-Fi (tools/console_log reads it)
+  ScratchPadd::DebugLog::Session log("scratchpadd-3ds-demo");
+  logWhere = log.where();
+#endif
   {
     ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, SoundBoardPadd,
                                       AudioPadd>

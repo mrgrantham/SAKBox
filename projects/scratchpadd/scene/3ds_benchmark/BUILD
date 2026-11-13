@@ -7,4 +7,8 @@ load("//tools/devkitpro:defs.bzl", "devkitpro_3ds_app")
 devkitpro_3ds_app(
     name = "scene-3ds-benchmark",
     srcs = ["Makefile"] + glob(["source/**"]),
+    # Its results served over Wi-Fi when it's done (tools/console_log)
+    extra_srcs = {
+        "//projects/scratchpadd/debug_log:server_sources": "scratchpadd/debug_log",
+    },
 )

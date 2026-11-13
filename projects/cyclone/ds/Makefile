@@ -21,9 +21,9 @@ GAME_SUBTITLE2	:=	SAKBox
 BUILD		:=	build
 # (cyclone/src/demos is the knock chooser, impact_knocks.cpp; the audio
 # directories are AudioPadd's, as in the ScratchPadd DS demo)
-SOURCES		:=	ragdoll/source scratchpadd/handheld_controls/src scratchpadd/scene/src scratchpadd/scene_ds/src cyclone/src cyclone/src/demos scratchpadd/utilities/src scratchpadd_ds/platform/src scratchpadd/input/src \
+SOURCES		:=	ragdoll/source scratchpadd/handheld_controls/src scratchpadd/scene/src scratchpadd/scene_ds/src cyclone/src cyclone/src/demos scratchpadd/utilities/src scratchpadd_ds/platform/src scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session \
 			scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd_audio_wav/src
-INCLUDES	:=	include scratchpadd/handheld_controls/include scratchpadd/scene/include scratchpadd/scene_ds/include build cyclone/include cyclone/src/demos cyclone/src/demos/ragdoll scratchpadd/input/include \
+INCLUDES	:=	include scratchpadd/handheld_controls/include scratchpadd/scene/include scratchpadd/scene_ds/include build cyclone/include cyclone/src/demos cyclone/src/demos/ragdoll scratchpadd/input/include scratchpadd/debug_log/include \
 			scratchpadd/basis/include scratchpadd/messages/include \
 			scratchpadd/utilities/include third_party/spdlog/include flexmath/include \
 			scratchpadd_audio_pcm16/include scratchpadd_audio/include scratchpadd_audio/messages/include \
@@ -45,6 +45,9 @@ CFLAGS	:=	-g -Wall -O2 -ffunction-sections -fdata-sections\
 # fixed point is integer arithmetic, with the DS's hardware divider and
 # square root
 CFLAGS	+=	$(INCLUDE) -DARM9 -DCYCLONE_FLEX_POINT16
+# A debug build (bazel build -c dbg): see //projects/scratchpadd/debug_log
+CFLAGS	+=	$(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)
+
 # ScratchPadd needs RTTI (each message's type) and exceptions (a control of
 # the wrong type), so unlike devkitPro's template this keeps both
 CXXFLAGS	:= $(CFLAGS) -std=gnu++26
@@ -55,7 +58,7 @@ LDFLAGS	=	-specs=ds_arm9.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
-LIBS	:= -lnds9
+LIBS	:= -lfat -lnds9 # libfat: the SD card, for a debug build's log
 
 
 #---------------------------------------------------------------------------------

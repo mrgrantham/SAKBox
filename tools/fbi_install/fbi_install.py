@@ -21,8 +21,6 @@ import functools
 import http.server
 import os
 import pathlib
-import select
-import socket
 import struct
 import subprocess
 import sys
@@ -30,6 +28,9 @@ import threading
 import time
 
 REPO = pathlib.Path(__file__).resolve().parent.parent.parent
+# (run with python3 from the repo, not by Bazel: the shared module by path)
+sys.path.insert(0, str(REPO / "tools" / "local_network"))
+from local_network import connect, local_address  # noqa: E402
 FBI_PORT = 5000  # FBI's "Receive URLs over the network" (and ftpd's)
 GREETING_WAIT = 2.0  # seconds: ftpd greets at once; FBI says nothing
 
@@ -39,81 +40,6 @@ def payload(urls):
     line each."""
     text = "\n".join(urls).encode()
     return struct.pack(">I", len(text)) + text
-
-
-def local_address(remote):
-    """This computer's address on the network that reaches `remote` (no
-    packet is sent)."""
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
-        probe.connect((remote, FBI_PORT))
-        return probe.getsockname()[0]
-
-
-class SocketConnection:
-    """A TCP connection to the 3DS, made by Python."""
-
-    def __init__(self, host, port):
-        self.socket = socket.create_connection((host, port), timeout=3)
-
-    def greeting(self, wait):
-        """What the other end says first, within `wait` seconds (b"" if nothing)."""
-        ready, _, _ = select.select([self.socket], [], [], wait)
-        return self.socket.recv(64) if ready else b""
-
-    def send_and_wait(self, data):
-        """Sends `data`, then waits until the other end closes."""
-        self.socket.sendall(data)
-        self.socket.settimeout(None)
-        while self.socket.recv(64):
-            pass
-
-    def close(self):
-        self.socket.close()
-
-
-class NcConnection:
-    """The same, made by the system's nc: on macOS, Local Network privacy
-    keeps a Python that hasn't been allowed off the local network (it fails
-    with "No route to host"), where nc, part of macOS, is allowed."""
-
-    def __init__(self, host, port):
-        self.process = subprocess.Popen(["/usr/bin/nc", "-G", "3", host, str(port)],
-                                        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                        stderr=subprocess.DEVNULL)
-        # nc gives up after 3 s if nothing answers; connected, it stays
-        try:
-            self.process.wait(timeout=3.5)
-            raise ConnectionRefusedError(f"nothing answered on {host}:{port}")
-        except subprocess.TimeoutExpired:
-            pass
-
-    def greeting(self, wait):
-        ready, _, _ = select.select([self.process.stdout], [], [], wait)
-        return os.read(self.process.stdout.fileno(), 64) if ready else b""
-
-    def send_and_wait(self, data):
-        self.process.stdin.write(data)
-        self.process.stdin.flush()
-        # (stdin stays open: macOS's nc would otherwise close the connection)
-        while os.read(self.process.stdout.fileno(), 64):
-            pass
-
-    def close(self):
-        if self.process.poll() is None:
-            self.process.kill()
-            self.process.wait()
-
-
-def connect(host, port):
-    """A connection to host:port, by Python, or by nc where macOS keeps
-    Python off the local network"""
-    try:
-        return SocketConnection(host, port)
-    except OSError as error:
-        blocked = getattr(error, "errno", None) == 65  # EHOSTUNREACH
-        if not (blocked and sys.platform == "darwin" and os.path.exists("/usr/bin/nc")):
-            raise
-        return NcConnection(host, port)
 
 
 def send_to_fbi(host, data, port=FBI_PORT, give_up_at=None, say=print):
@@ -210,7 +136,7 @@ def main(argv):
         print("No CIAs among those targets", file=sys.stderr)
         return 1
     files = {cia.name: cia for cia in cias}
-    address = local_address(args.address)
+    address = local_address(args.address, FBI_PORT)
     server, sent = serve(files, address)
     port = server.server_address[1]
     urls = [f"http://{address}:{port}/{name}" for name in files]
