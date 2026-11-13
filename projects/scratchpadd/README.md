@@ -283,7 +283,14 @@ The panel only ever holds copies from snapshots, and each owner changes its own 
 
 Every padd has a `logger()` (spdlog) named after the padd. The `PADDLOG_INFO`, `PADDLOG_ERROR`, ... macros log through the current thread's logger, and `PADDLOG_INTERVAL` rate-limits a log line. `ScratchPadd::Timer` measures durations and averages intervals, and `SCOPED_METHOD_TIMER()` logs how long the enclosing function took.
 
-Loggers write to the terminal, and wherever `Logger::routeTo` says, for every logger, made before or after. On a console, whose screens are the app's, a debug build (`bazel build -c dbg`) sends them off the device with a [`debug_log`](debug_log/README.md) session: over Wi-Fi from a 3DS, read on the Mac with [`tools/console_log`](../../tools/console_log/README.md), and to the SD card on a DS.
+Loggers write to the terminal, and wherever `Logger::routeTo` says, for every logger, made before or after. Every line looks the same wherever it goes (`Logger::kLinePattern`, spdlog's pattern language): the time, the level and the logger's name in brackets in columns, so the messages line up:
+
+```
+11:57:35.855 info     [RagdollPadd]        Base() Destroying: RagdollPadd
+11:16:45.758 warning  [scratchpadd]        No padd handles ControlSnapshot ...
+```
+
+`%N` in the pattern is ScratchPadd's own flag, the bracketed name padded as a whole (spdlog's `%-20n` would pad inside the brackets); a name too long for its column is kept whole. On a console, whose screens are the app's, a debug build (`bazel build -c dbg`) sends them off the device with a [`debug_log`](debug_log/README.md) session: over Wi-Fi from a 3DS, read on the Mac with [`tools/console_log`](../../tools/console_log/README.md), and to the SD card on a DS.
 
 ## Scene layer
 
@@ -591,6 +598,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `scene/metal:GlslToMsl_test` | Every shader of the shader playground translated to Metal's shading language and compiled by Metal; loose uniforms found at the offsets Metal gives them; a GLSL mistake reported. Macs only |
 | `scene/spirv:GlslToSpirv_test` | Every shader of the shader playground compiled to SPIR-V; an OpenGL shader's loose uniforms found at std140's offsets, in the binding asked for; Vulkan GLSL compiled as it is; mistakes reported |
 | `scene/vulkan:ShaderPanel_test` | Every fragment shader of the shader playground, with its vertex shader, made into a `ShaderPanel` the Vulkan device takes, and drawn; a GLSL mistake reported. Needs no window; skipped where there's no Vulkan (it runs on lavapipe in the Linux check) |
+| `utilities:Logger_test` | The log line: time, level and `[name]` in columns, messages starting in the same column, a long name kept whole |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations

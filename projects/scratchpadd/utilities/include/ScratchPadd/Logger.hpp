@@ -22,6 +22,15 @@ public:
   // in tests
   void createLoggerIfNeeded(const std::string &name) { logger_ = loggerNamed(name); }
 
+  // How every ScratchPadd log line looks, in the terminal and off a console
+  // (DebugLog::Session): its time, level and [logger] in columns, then the
+  // message. kLinePattern is spdlog's pattern; %N in it is ScratchPadd's,
+  // the logger's name in brackets, padded as a whole:
+  //   11:57:35.855 info     [RagdollPadd]        Base() Destroying: RagdollPadd
+  //   11:16:45.758 warning  [scratchpadd]        No padd handles ...
+  // (%^ and %$ colour the level in a colour terminal; other sinks ignore them)
+  static constexpr const char *kLinePattern = "%H:%M:%S.%e %^%-8l%$ %-20N %v";
+  static std::unique_ptr<spdlog::formatter> lineFormatter();
   // The logger `name`, made (and registered with spdlog) the first time:
   // to the terminal, and wherever routeTo() says
   static std::shared_ptr<spdlog::logger> loggerNamed(const std::string &name);

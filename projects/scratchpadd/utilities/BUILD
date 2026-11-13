@@ -21,6 +21,16 @@ cc_library(
 )
 
 cc_test(
+    name = "Logger_test",
+    size = "small",
+    srcs = ["tests/Logger_test.cpp"],
+    deps = [
+        ":utilities",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "EventTimer_test",
     size = "small",
     srcs = ["tests/EventTimer_test.cpp"],

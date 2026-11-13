@@ -1,10 +1,38 @@
 #include <ScratchPadd/Logger.hpp>
 
+#include <spdlog/pattern_formatter.h>
+
 #include <mutex>
 
 thread_local std::shared_ptr<spdlog::logger> tThreadLogger = nullptr;
 
 namespace {
+
+// %N in a pattern: the logger's name in brackets, padded as a whole
+// ("[GamePadd]" then spaces, where spdlog's %-20n would put the spaces
+// inside the brackets)
+class BracketedNameFlag final : public spdlog::custom_flag_formatter {
+public:
+  void format(const spdlog::details::log_msg &message, const std::tm &,
+              spdlog::memory_buf_t &line) override {
+    const auto &name = message.logger_name;
+    const std::size_t size = name.size() + 2;
+    const std::size_t padding =
+        padinfo_.enabled() && padinfo_.width_ > size ? padinfo_.width_ - size : 0;
+    using Side = spdlog::details::padding_info::pad_side;
+    const std::size_t before = padinfo_.side_ == Side::left     ? padding
+                               : padinfo_.side_ == Side::center ? padding / 2
+                                                                : 0;
+    line.append(std::string(before, ' '));
+    line.push_back('[');
+    line.append(name.data(), name.data() + name.size());
+    line.push_back(']');
+    line.append(std::string(padding - before, ' '));
+  }
+  std::unique_ptr<custom_flag_formatter> clone() const override {
+    return std::make_unique<BracketedNameFlag>();
+  }
+};
 
 // Where loggers write (routeTo), for every logger made
 struct Routes {
@@ -22,8 +50,10 @@ Routes &routes() {
 std::vector<spdlog::sink_ptr> currentSinks(Routes &r) {
   std::vector<spdlog::sink_ptr> sinks;
   if (r.terminal) {
-    if (!r.terminalSink)
+    if (!r.terminalSink) {
       r.terminalSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+      r.terminalSink->set_formatter(ScratchPadd::Logger::lineFormatter());
+    }
     sinks.push_back(r.terminalSink);
   }
   sinks.insert(sinks.end(), r.sinks.begin(), r.sinks.end());
@@ -31,6 +61,12 @@ std::vector<spdlog::sink_ptr> currentSinks(Routes &r) {
 }
 
 } // namespace
+
+std::unique_ptr<spdlog::formatter> ScratchPadd::Logger::lineFormatter() {
+  auto formatter = std::make_unique<spdlog::pattern_formatter>();
+  formatter->add_flag<BracketedNameFlag>('N').set_pattern(kLinePattern);
+  return formatter;
+}
 
 std::shared_ptr<spdlog::logger> ScratchPadd::Logger::loggerNamed(const std::string &name) {
   Routes &r = routes();

@@ -28,13 +28,6 @@ struct Session::Platform {
 struct Session::Platform {};
 #endif
 
-#if defined(__3DS__) || defined(__NDS__)
-namespace {
-// Each line: its time, the padd's logger, the level, the text
-constexpr const char *kPattern = "%H:%M:%S.%e [%n] %l: %v";
-} // namespace
-#endif
-
 #if defined(__NDS__)
 namespace {
 // A log file on the card, synced to it every `syncEvery` lines, and at
@@ -122,7 +115,7 @@ Session::Session(const std::string &appName, SessionOptions options)
     return;
   }
   auto sink = std::make_shared<LogBufferSink>(platform_->buffer);
-  sink->set_pattern(kPattern);
+  sink->set_formatter(Logger::lineFormatter()); // (as the terminal's)
   Logger::routeTo({sink}, false);
   where_ = platform_->server.address();
 #elif defined(__NDS__)
@@ -135,7 +128,7 @@ Session::Session(const std::string &appName, SessionOptions options)
   const std::string path = "fat:/logs/" + appName + ".log";
   try {
     auto sink = std::make_shared<CardFileSink>(path, options.cardSyncEvery);
-    sink->set_pattern(kPattern);
+    sink->set_formatter(Logger::lineFormatter()); // (as the terminal's)
     Logger::routeTo({sink}, false);
   } catch (const spdlog::spdlog_ex &e) {
     where_ = std::string("off: ") + e.what();
