@@ -1,12 +1,14 @@
 // The cook tool (see README.md), run by //tools/assets' rules:
 //
 //   cook model --gltf ship.glb --name ship --object Ship --label //a:ship
-//       --report ship.report.json --counts ship.counts
+//       --report ship.report.json --counts ship.counts [--no-cleanup]
 //       --output PLATFORM NAMESPACE CC H POLYGONS VERTICES MODE ...
 //
 // writes each platform's version of the model as C++ (a Scene::MeshData
-// named `name` in NAMESPACE), simplified to its budget (POLYGONS, VERTICES;
-// 0 is no limit) if MODE allows, and fails if it doesn't fit. And
+// named `name` in NAMESPACE), cleaned up (triangles on flat surfaces
+// merged, losing nothing; not with --no-cleanup), simplified to its budget
+// (POLYGONS, VERTICES; 0 is no limit) if MODE allows, and fails if it
+// doesn't fit. And
 //
 //   cook scene --label //a:hangar --report hangar.report.txt
 //       --limit PLATFORM POLYGONS VERTICES ... --model COUNTS HOW_MANY ...
@@ -140,6 +142,7 @@ void writeCpp(const Cook::Mesh &mesh, const std::string &name, const Output &out
 int cookModel(int argc, char **argv) {
   std::string gltf, name, object, label, reportPath, countsPath;
   std::vector<Output> outputs;
+  bool cleanup = true;
   for (int i = 2; i < argc; ++i) {
     const std::string arg = argv[i];
     auto next = [&]() -> std::string { return i + 1 < argc ? argv[++i] : ""; };
@@ -155,6 +158,8 @@ int cookModel(int argc, char **argv) {
       reportPath = next();
     else if (arg == "--counts")
       countsPath = next();
+    else if (arg == "--no-cleanup")
+      cleanup = false;
     else if (arg == "--output") {
       Output output;
       output.platform = next();
@@ -191,7 +196,7 @@ int cookModel(int argc, char **argv) {
     // if Blender's Backface Culling is ticked; double-sided if it's open
     const Cook::Sides sides = Cook::sidesOf(model->mesh);
     const bool doubleSided = !sides.closed && !model->backfaceCulling;
-    const Cook::Cooked cooked = Cook::cook(model->mesh, output.budget, output.mode, drawing);
+    const Cook::Cooked cooked = Cook::cook(model->mesh, output.budget, output.mode, drawing, cleanup);
     const Cook::Budget before = Cook::costOf(model->mesh, drawing),
                        after = Cook::costOf(cooked.mesh, drawing);
     report << (o ? "," : "") << "\n    \"" << output.platform << "\": {\"object\": \""

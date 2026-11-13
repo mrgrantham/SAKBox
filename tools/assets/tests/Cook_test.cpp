@@ -4,7 +4,10 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cmath>
+#include <string>
+#include <vector>
 
 using namespace Cook;
 
@@ -30,6 +33,10 @@ template <typename Height> Mesh grid(int n, Height height) {
   }
   return mesh;
 }
+
+// For the tests of budgets and simplifying: their flat grids kept as they
+// are (the cleanup would merge them to two triangles first)
+constexpr bool kNoCleanup = false;
 
 Mesh flat(int n) {
   return grid(n, [](float, float) { return 0.0f; });
@@ -79,7 +86,7 @@ TEST(CookTest, CostsAPolygonAndThreeVerticesATriangle) {
 TEST(CookTest, AModelThatFitsIsLeftAsItIs) {
   const Mesh mesh = bumpy(10);
   for (Mode mode : {Mode::fail, Mode::simplify, Mode::simplifyAggressive}) {
-    const Cooked cooked = cook(mesh, {.polygons = 200}, mode, Drawing::triangles);
+    const Cooked cooked = cook(mesh, {.polygons = 200}, mode, Drawing::triangles, kNoCleanup);
     EXPECT_TRUE(cooked.fitsBudget);
     EXPECT_EQ(cooked.mesh.indices, mesh.indices);
     EXPECT_EQ(cooked.steps, std::vector<std::string>{"as it is"});
@@ -88,7 +95,7 @@ TEST(CookTest, AModelThatFitsIsLeftAsItIs) {
 
 // FAIL changes nothing over budget, and says it doesn't fit.
 TEST(CookTest, FailLeavesItOverBudget) {
-  const Cooked cooked = cook(flat(10), {.polygons = 50}, Mode::fail, Drawing::triangles);
+  const Cooked cooked = cook(flat(10), {.polygons = 50}, Mode::fail, Drawing::triangles, kNoCleanup);
   EXPECT_FALSE(cooked.fitsBudget);
   EXPECT_EQ(cooked.mesh.triangleCount(), 200u);
 }
@@ -96,7 +103,7 @@ TEST(CookTest, FailLeavesItOverBudget) {
 // SIMPLIFY brings a flat grid within budget without changing its shape, and
 // keeps only the vertices it uses.
 TEST(CookTest, SimplifyFitsWhatItCanWithoutChangingItsLook) {
-  const Cooked cooked = cook(flat(20), {.polygons = 100}, Mode::simplify, Drawing::triangles);
+  const Cooked cooked = cook(flat(20), {.polygons = 100}, Mode::simplify, Drawing::triangles, kNoCleanup);
   ASSERT_TRUE(cooked.fitsBudget);
   EXPECT_LE(cooked.mesh.triangleCount(), 100u);
   EXPECT_EQ(cooked.steps, std::vector<std::string>{"simplify"});
@@ -140,7 +147,7 @@ TEST(CookTest, FlatShadedMeshesSimplifyAndStayFlat) {
     faceted.colours.insert(faceted.colours.end(), {1, 1, 1, 1});
     faceted.indices.push_back(static_cast<std::uint32_t>(faceted.indices.size()));
   }
-  const Cooked cooked = cook(faceted, {.polygons = 100}, Mode::simplify, Drawing::triangles);
+  const Cooked cooked = cook(faceted, {.polygons = 100}, Mode::simplify, Drawing::triangles, kNoCleanup);
   ASSERT_TRUE(cooked.fitsBudget);
   EXPECT_LE(cooked.mesh.triangleCount(), 100u);
   EXPECT_EQ(cooked.mesh.vertexCount(), cooked.mesh.indices.size()); // a vertex a corner
@@ -156,7 +163,7 @@ TEST(CookTest, TheDsCountsQuadsAndStrips) {
   const Budget flatCost = costOf(flat(10), Drawing::quadsAndStrips);
   EXPECT_EQ(flatCost.polygons, 100u);
   EXPECT_EQ(flatCost.vertices, 400u);
-  EXPECT_TRUE(cook(flat(10), {.polygons = 100}, Mode::fail, Drawing::quadsAndStrips).fitsBudget);
+  EXPECT_TRUE(cook(flat(10), {.polygons = 100}, Mode::fail, Drawing::quadsAndStrips, kNoCleanup).fitsBudget);
 
   const Budget budget{.polygons = 400, .vertices = 1200};
   const Cooked cooked = cook(bumpy(30), budget, Mode::simplifyAggressive, Drawing::quadsAndStrips);
@@ -192,4 +199,92 @@ TEST(CookTest, ModesByName) {
   EXPECT_EQ(modeFromName("SIMPLIFY_AGGRESSIVE"), Mode::simplifyAggressive);
   EXPECT_FALSE(modeFromName("simplify"));
   EXPECT_STREQ(nameOf(Mode::simplifyAggressive), "SIMPLIFY_AGGRESSIVE");
+}
+
+namespace {
+
+// A unit cube flat-shaded, each face cut into `n` x `n` squares, every
+// triangle its own three vertices with its face's normal (as Blender
+// exports a subdivided box with flat shading)
+Mesh subdividedCube(int n) {
+  Mesh mesh;
+  // Each face: a corner and two edges along it, wound counter-clockwise
+  // seen from outside, and its normal
+  const float faces[6][4][3] = {
+      {{0, 0, 1}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}},  {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, 0, -1}},
+      {{1, 0, 1}, {0, 0, -1}, {0, 1, 0}, {1, 0, 0}}, {{0, 0, 0}, {0, 0, 1}, {0, 1, 0}, {-1, 0, 0}},
+      {{0, 1, 1}, {1, 0, 0}, {0, 0, -1}, {0, 1, 0}}, {{0, 0, 0}, {1, 0, 0}, {0, 0, 1}, {0, -1, 0}}};
+  for (const auto &face : faces) {
+    const auto at = [&](float u, float v) {
+      return std::array<float, 3>{face[0][0] + u * face[1][0] + v * face[2][0],
+                                  face[0][1] + u * face[1][1] + v * face[2][1],
+                                  face[0][2] + u * face[1][2] + v * face[2][2]};
+    };
+    const auto corner = [&](const std::array<float, 3> &p) {
+      mesh.positions.insert(mesh.positions.end(), p.begin(), p.end());
+      mesh.normals.insert(mesh.normals.end(), face[3], face[3] + 3);
+      mesh.colours.insert(mesh.colours.end(), {1, 1, 1, 1});
+      mesh.indices.push_back(static_cast<std::uint32_t>(mesh.indices.size()));
+    };
+    for (int i = 0; i < n; ++i)
+      for (int j = 0; j < n; ++j) {
+        const float u0 = float(i) / n, u1 = float(i + 1) / n, v0 = float(j) / n,
+                    v1 = float(j + 1) / n;
+        corner(at(u0, v0)), corner(at(u1, v0)), corner(at(u1, v1));
+        corner(at(u0, v0)), corner(at(u1, v1)), corner(at(u0, v1));
+      }
+  }
+  return mesh;
+}
+
+} // namespace
+
+// The cleanup merges what's flat and the same colour, and nothing else: a
+// flat grid loses nine in ten of its triangles and a flat-shaded subdivided
+// cube more than eight in ten (not all they could: meshoptimizer's own
+// rules, and the error cap its passes share, stop it short of the cube's
+// 12), the cube still closed; a bumpy grid keeps every triangle; two
+// colours keep their edge between them.
+TEST(CookTest, CleanupMergesOnlyWhatsFlat) {
+  EXPECT_LE(cleanedUp(flat(10)).triangleCount(), 200u / 10);
+  EXPECT_EQ(cleanedUp(bumpy(10)).triangleCount(), bumpy(10).triangleCount());
+
+  const Mesh cube = subdividedCube(8);
+  ASSERT_EQ(cube.triangleCount(), 6u * 8 * 8 * 2);
+  const Mesh cleaned = cleanedUp(cube);
+  EXPECT_LE(cleaned.triangleCount(), cube.triangleCount() * 15 / 100);
+  EXPECT_TRUE(sidesOf(cleaned).closed); // no holes
+
+  // Half the grid red: the line between the colours stays
+  Mesh twoColours = flat(10);
+  for (std::size_t v = 0; v < twoColours.vertexCount(); ++v)
+    if (twoColours.positions[v * 3] > 0.5f)
+      twoColours.colours[v * 4 + 1] = 0;
+  const Mesh kept = cleanedUp(twoColours);
+  EXPECT_GT(kept.triangleCount(), cleanedUp(flat(10)).triangleCount());
+  EXPECT_LT(kept.triangleCount(), twoColours.triangleCount());
+  // Its colours are only the two
+  for (std::size_t v = 0; v < kept.vertexCount(); ++v)
+    EXPECT_TRUE(kept.colours[v * 4 + 1] == 0 || kept.colours[v * 4 + 1] == 1);
+}
+
+// cook() cleans up first, for every mode and platform, and says so; with
+// cleanup off a model keeps every triangle (heavy on purpose)
+TEST(CookTest, CookCleansUpUnlessTurnedOff) {
+  const Cooked cleaned = cook(subdividedCube(8), {}, Mode::fail, Drawing::triangles);
+  EXPECT_LE(cleaned.mesh.triangleCount(), 768u * 15 / 100);
+  EXPECT_EQ(cleaned.steps, (std::vector<std::string>{"clean up", "as it is"}));
+
+  const Cooked heavy = cook(subdividedCube(8), {}, Mode::fail, Drawing::triangles, false);
+  EXPECT_EQ(heavy.mesh.triangleCount(), 768u);
+  EXPECT_EQ(heavy.steps, (std::vector<std::string>{"as it is"}));
+
+  // Nothing flat: no cleanup step
+  EXPECT_EQ(cook(bumpy(10), {}, Mode::fail, Drawing::triangles).steps,
+            (std::vector<std::string>{"as it is"}));
+  // Over budget: simplified from the cleaned-up mesh, the cleanup first
+  const Cooked simplified =
+      cook(subdividedCube(8), {.polygons = 10}, Mode::simplifyAggressive, Drawing::triangles);
+  ASSERT_GE(simplified.steps.size(), 2u);
+  EXPECT_EQ(simplified.steps[0], "clean up");
 }

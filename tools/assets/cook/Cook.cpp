@@ -134,6 +134,10 @@ struct Step {
   bool sloppy;
   float maxError;
   unsigned options;
+  // Whether normals count (not for a welded flat-shaded mesh's cleanup:
+  // its normals are averaged where faces meet, and flat-shading it again
+  // makes new ones, so only its shape and colours matter)
+  bool weighNormals = true;
 };
 
 std::vector<std::uint32_t> simplify(const Mesh &mesh, const Step &step, std::size_t targetTriangles,
@@ -153,7 +157,8 @@ std::vector<std::uint32_t> simplify(const Mesh &mesh, const Step &step, std::siz
       std::copy_n(&mesh.normals[v * 3], 3, &attributes[v * 7]);
       std::copy_n(&mesh.colours[v * 4], 4, &attributes[v * 7 + 3]);
     }
-    const float weights[7] = {0.5f, 0.5f, 0.5f, 0.25f, 0.25f, 0.25f, 0.25f};
+    const float normalWeight = step.weighNormals ? 0.5f : 0.0f;
+    const float weights[7] = {normalWeight, normalWeight, normalWeight, 0.25f, 0.25f, 0.25f, 0.25f};
     count = meshopt_simplifyWithAttributes(
         indices.data(), mesh.indices.data(), mesh.indices.size(), mesh.positions.data(),
         mesh.vertexCount(), sizeof(float) * 3, attributes.data(), sizeof(float) * 7, weights, 7,
@@ -253,9 +258,44 @@ Mesh flatten(const Mesh &mesh) {
 
 } // namespace
 
-Cooked cook(const Mesh &mesh, const Budget &budget, Mode mode, Drawing drawing) {
-  Cooked cooked{.mesh = mesh, .steps = {"as it is"}};
+Mesh cleanedUp(const Mesh &mesh) {
+  // Simplified as far as it will go within the tiny error cap: only what's
+  // flat (or straight, along an open edge) and the same colour merges. A
+  // flat-shaded mesh welded first, as for simplifying, then flat-shaded again.
+  const bool flat = flatShaded(mesh);
+  const Step step{"clean up", false, kCleanupError, 0, !flat};
+  const Mesh source = flat ? weld(mesh) : mesh;
+  // Again until nothing more merges (each pass stops where its own order of
+  // merges gets stuck). Each pass's error is from the last pass's mesh, so
+  // they share the cap: each may use what the passes before it left.
+  Mesh result = source;
+  float spent = 0;
+  for (int pass = 0; pass < 8 && spent < kCleanupError; ++pass) {
+    Step remaining = step;
+    remaining.maxError = kCleanupError - spent;
+    float error = 0;
+    Mesh next = compact(result, simplify(result, remaining, 0, error));
+    if (next.triangleCount() >= result.triangleCount())
+      break;
+    result = std::move(next);
+    spent += error;
+  }
+  if (flat)
+    result = flatten(result);
+  return result.triangleCount() < mesh.triangleCount() ? result : mesh;
+}
+
+Cooked cook(const Mesh &original, const Budget &budget, Mode mode, Drawing drawing,
+            bool cleanup) {
+  Cooked cooked{.mesh = original, .steps = {}};
+  if (cleanup) {
+    cooked.mesh = cleanedUp(original);
+    if (cooked.mesh.triangleCount() < original.triangleCount())
+      cooked.steps.emplace_back("clean up");
+  }
+  const Mesh mesh = cooked.mesh; // what's simplified from here
   if (fits(costOf(mesh, drawing), budget) || mode == Mode::fail) {
+    cooked.steps.emplace_back("as it is");
     cooked.fitsBudget = fits(costOf(mesh, drawing), budget);
     return cooked;
   }
@@ -277,7 +317,6 @@ Cooked cook(const Mesh &mesh, const Budget &budget, Mode mode, Drawing drawing) 
     Mesh result = compact(source, simplify(source, step, targetTriangles, error));
     return flat ? flatten(result) : result;
   };
-  cooked.steps.clear();
   for (std::size_t i = 0; i < stepCount; ++i) {
     cooked.steps.emplace_back(steps[i].name);
     // Aimed at the budget as triangles first. Quads and strips cost fewer

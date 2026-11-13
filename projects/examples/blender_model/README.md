@@ -8,7 +8,7 @@ bazel run //projects/examples/blender_model    # downloads Blender the first tim
 
 | Model | Desktop | DS | How the DS's was made |
 | --- | --- | --- | --- |
-| Ship (a small spaceship made of Blender's shapes: hull, canopy, wings, tail fin, engines) | 13,400 triangles | 1,340 | By hand in the `.blend`: `Ship_DS`, a linked duplicate with a Decimate modifier (0.1), the custom property `sak.platform = "ds"` |
+| Ship (a small spaceship made of Blender's shapes: hull, canopy, wings, tail fin, engines) | 13,400 triangles as made; 8,546 after the cook's [cleanup](../../../tools/assets/README.md#cleanup) (its flat wings, fin and engines are subdivided more than their shape needs) | 1,340 | By hand in the `.blend`: `Ship_DS`, a linked duplicate with a Decimate modifier (0.1), the custom property `sak.platform = "ds"` |
 | Rock (a bumpy sphere, flat-shaded) | 5,120 | 200 | By the build: no `Rock_DS`, so the rule's `SIMPLIFY_AGGRESSIVE` simplified it to its 200-polygon budget (`SIMPLIFY`, keeping its look, got it to 396) |
 
 `hangar`, a `scene`, checks that a ship and two rocks fit a DS frame: 1,740 of its 2,048 polygons (`bazel build //projects/examples/blender_model:hangar`; the report is `hangar.scene.txt`). The cooks' reports are in `bazel-bin/projects/examples/blender_model/*.report.json`.
@@ -27,7 +27,7 @@ Its `extra_srcs` take the models' DS sources (`:ship_ds_sources`, `:rock_ds_sour
 
 ## On a 3DS
 
-[`3ds`](3ds/source/main.cpp) draws the same scene on a Nintendo 3DS with the scene layer's 3DS backend, from the versions the build cooked for it: the full ship (13,400 triangles: the 3DS has room for it, so there's no `Ship_3DS`) and the rock (5,120), in stereo while the 3D slider is up. The bottom screen gives each model's triangles and, twice a second, what each frame drew (23,678 triangles in 5 draws: the scene's 23,640 plus the lines' 36) and how long the GPU and CPU took. A shows the ship as a wireframe, B turns the fog off and on; START quits.
+[`3ds`](3ds/source/main.cpp) draws the same scene on a Nintendo 3DS with the scene layer's 3DS backend, from the versions the build cooked for it: the full ship (8,546 triangles once cleaned up: the 3DS has room for it, so there's no `Ship_3DS`) and the rock (5,120), in stereo while the 3D slider is up. The bottom screen gives each model's triangles and, twice a second, what each frame drew (18,824 triangles in 5 draws: the scene's 18,788 plus the lines' 36) and how long the GPU and CPU took. A shows the ship as a wireframe, B turns the fog off and on; START quits.
 
 ```bash
 python3 tools/fbi_install/fbi_install.py --3ds ADDRESS //projects/examples/blender_model/3ds:blender-model-3ds

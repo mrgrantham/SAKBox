@@ -72,11 +72,16 @@ const char *nameOf(Mode mode);
 // The most a simplify step may move the surface, as a share of the model's
 // size, in Mode::simplify
 inline constexpr float kSimplifyError = 0.05f;
+// The cleanup's error cap: a hundredth of a percent of the model's size, so
+// it merges only what's flat (or in a straight line) and the same colour,
+// and the model looks as it did
+inline constexpr float kCleanupError = 0.0001f;
 
 struct Cooked {
   Mesh mesh;
-  // The steps taken, in order: "as it is", "simplify", "simplify (no error
-  // cap)", "simplify (across seams)", "simplify (sloppy)"
+  // The steps taken, in order: "clean up" (if it took any triangles away),
+  // then "as it is", or "simplify", "simplify (no error cap)", "simplify
+  // (across seams)", "simplify (sloppy)"
   std::vector<std::string> steps;
   float error = 0; // the last step's, as a share of the model's size
   bool fitsBudget = true;
@@ -86,6 +91,16 @@ struct Cooked {
 // if it fits; if not, simplified step by step until it does (or no step's
 // left), each step keeping as many triangles as fit. fitsBudget says
 // whether it ended within the budget.
-Cooked cook(const Mesh &mesh, const Budget &budget, Mode mode, Drawing drawing);
+// `mesh` for a platform: first cleaned up (unless `cleanup` is false: a
+// model kept heavy on purpose, to test a device), triangles on flat
+// surfaces merged where nothing would look different; then, if it's over
+// `budget`, what `mode` says
+Cooked cook(const Mesh &mesh, const Budget &budget, Mode mode, Drawing drawing,
+            bool cleanup = true);
+
+// The lossless cleanup alone: `mesh` with the triangles merged that don't
+// change how it looks (the same shape within kCleanupError, the same
+// normals and colours)
+Mesh cleanedUp(const Mesh &mesh);
 
 } // namespace Cook

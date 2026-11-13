@@ -81,6 +81,8 @@ def _scene_model_impl(ctx):
         args = ctx.actions.args()
         args.add_all(["model", "--gltf", glb, "--name", name, "--object", ctx.attr.object])
         args.add_all(["--label", str(ctx.label), "--report", report, "--counts", count])
+        if not ctx.attr.cleanup:
+            args.add("--no-cleanup")
         args.add_all(["--output", platform, ctx.attr.namespace + namespace, cc, h])
         args.add_all([polygons, str(limit.vertices), mode])
         ctx.actions.run(
@@ -112,6 +114,7 @@ _scene_model = rule(
         "namespace": attr.string(default = "Assets"),
         "budget": attr.string_dict(),  # filled in by the macro, as ints
         "over_budget": attr.string_dict(),
+        "cleanup": attr.bool(default = True),
         "_blender": attr.label(default = "//tools/blender:program"),
         "_run_blender": attr.label(default = "//tools/blender:run_blender.sh", allow_single_file = True),
         "_export": attr.label(default = "//tools/assets:export_gltf.py", allow_single_file = True),
@@ -120,7 +123,7 @@ _scene_model = rule(
     },
 )
 
-def scene_model(name, src, object, budget = {}, over_budget = {}, namespace = "Assets", tags = [], **kwargs):
+def scene_model(name, src, object, budget = {}, over_budget = {}, cleanup = True, namespace = "Assets", tags = [], **kwargs):
     """A model from Blender, cooked for each platform.
 
     Makes:
@@ -145,6 +148,10 @@ def scene_model(name, src, object, budget = {}, over_budget = {}, namespace = "A
       over_budget: by platform, what to do over budget: "FAIL" (the
         default), "SIMPLIFY" or "SIMPLIFY_AGGRESSIVE".
         --//tools/assets:over_budget=MODE overrides them all for a build.
+      cleanup: whether each platform's version is cleaned up first
+        (triangles on flat surfaces merged where it looks no different):
+        False keeps every triangle as made, for a model heavy on purpose
+        (to test what a device draws).
       namespace: the C++ namespace for the model.
       tags: added to each target's, with "blender" (the Linux check's ARM64
         runs leave those out: there's no Blender for Linux on ARM).
@@ -158,6 +165,7 @@ def scene_model(name, src, object, budget = {}, over_budget = {}, namespace = "A
         namespace = namespace,
         budget = {platform: str(polygons) for platform, polygons in budget.items()},
         over_budget = over_budget,
+        cleanup = cleanup,
         tags = tags,
         **kwargs
     )

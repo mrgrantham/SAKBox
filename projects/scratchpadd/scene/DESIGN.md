@@ -16,6 +16,7 @@ The design of ScratchPadd's scene layer, reviewed before it was built and built 
 | Assets | `.blend` files, exported by Blender inside the build |
 | Platform versions | One file can hold several versions of a model (`Ship`, `Ship_DS`), told apart by name or a custom property |
 | Budgets | Checked per model, and per scene against everything the scene shows at once |
+| Cleanup | Every model's triangles merged first where nothing would look different (flat, one colour), unless its rule says `cleanup = False` (a model heavy on purpose) |
 | Over budget | `FAIL`, `SIMPLIFY` or `SIMPLIFY_AGGRESSIVE`, per platform, `FAIL` by default; a build flag can override every rule |
 | Culling | Back faces by every GPU (counter-clockwise is the front), unless a mesh or material is double-sided; the cook makes a Blender model double-sided if it isn't closed, unless Backface Culling is ticked on its material. Meshes wholly out of view skipped on the CPU, by bounding sphere, and counted |
 | Run-time detail switching | Not yet: one version of each model per platform, picked when building |
