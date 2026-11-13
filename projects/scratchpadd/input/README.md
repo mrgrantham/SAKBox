@@ -40,7 +40,7 @@ overlay.text(x, y, std::format("{} to jump", pad.labelOf(Input::Button::FaceBott
 | Windows | XInput (`xinput1_4.dll`, part of Windows) | Xbox pads and the many that act as one. PlayStation and Switch pads aren't XInput: on Windows they need Steam or DS4Windows to appear as an Xbox pad. Asking an empty slot takes milliseconds, so empty slots are asked again only once a second |
 | Linux | evdev (`/dev/input/event*`) | The kernel's drivers (xpad, hid-playstation, hid-nintendo) give pads the gamepad buttons by position (`BTN_SOUTH`...), which it reads; new devices are looked for once a second. Reading needs read access to the device: the `input` group (`sudo usermod -aG input $USER`, then log in again) |
 | 3DS | libctru's `hid` | The buttons, circle pad, C-stick and ZL/ZR (a New 3DS's), the touch screen |
-| DS | libnds' keys | The buttons and touch screen; the D-pad is the left stick too |
+| DS | libnds' keys | The buttons and touch screen; the D-pad is the left stick too. Presses are counted by a thread of their own at every screen refresh (below) |
 
 The sticks' dead zone is 10% by default (`Reader::setDeadZone`): a DualShock 4's sticks rest up to 2% off centre. Each platform's device state is made into a `Gamepad` by a plain function (`Devices.hpp`), tested with made-up states on any desktop.
 
@@ -64,6 +64,8 @@ A key pushes its stick all the way, and a diagonal as far as straight; Alt held 
 ## GamePadd
 
 A padd on the main thread (where a Mac finds its pads) that reads the pad every 4 ms and publishes it, with the keyboard laid on if a window publishes one. The main thread is busy drawing until the screen's refresh, so in practice it reads once a frame, just before the next one starts. Readers on any thread call `currentState<Input::Gamepad>()`.
+
+When reads come more than 50 ms apart (three frames: other work kept the main thread from reading), GamePadd logs a warning, at most once every 10 seconds: `Reads were up to 120 ms apart (asked for every 4 ms)`. A button pressed and let go in such a gap would be missed where presses are counted from the reads. On a DS they aren't: a thread of its own, ahead of everything else in the app, wakes at every screen refresh (calico's `threadIrqWait`, as an interrupt handler mustn't lock or call the C library), samples the buttons and counts each press and release, and the Reader takes those counts (`readPlatformPresses`). A tap is seen even when the reads are late, as they were on a DS Lite while a ragdoll's physics kept the main thread waiting (before padds had priorities: see [Threads](../README.md#threads)).
 
 ## Handhelds
 

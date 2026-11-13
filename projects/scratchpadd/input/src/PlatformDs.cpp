@@ -4,7 +4,77 @@
 
 #include <nds.h>
 
+#include <mutex>
+#include <thread>
+
 namespace ScratchPadd::Input {
+
+namespace {
+
+// The buttons, sampled at every screen refresh (60 a second) by a thread of
+// their own, ahead of the others, counting each press and release. GamePadd
+// reads on the main thread, which can be late when it's busy; counted here,
+// a tap between two of its reads is still seen. (Calico's way to act on an
+// interrupt: a thread that waits for it, as an interrupt handler mustn't
+// call the C library or lock.)
+class ButtonSampler {
+public:
+  static ButtonSampler &instance() {
+    static ButtonSampler sampler;
+    return sampler;
+  }
+  void copyCounts(std::array<std::uint16_t, kButtons> &presses,
+                  std::array<std::uint16_t, kButtons> &releases) {
+    std::lock_guard lock(mutex_);
+    presses = presses_;
+    releases = releases_;
+  }
+
+private:
+  ButtonSampler() {
+    // Each of the DS's key bits, as the Button it is
+    for (std::size_t bit = 0; bit < buttonOfBit_.size(); ++bit) {
+      const std::uint32_t buttons = fromNintendo(Kind::Ds, 1u << bit, 0, 0, 0, 0, {}).held;
+      buttonOfBit_[bit] = buttons ? static_cast<int>(__builtin_ctz(buttons)) : -1;
+    }
+    std::thread([this] {
+      // Ahead of everything else the app runs, padds and their timers
+      // included (main - 1): it takes microseconds, 60 times a second
+      threadSetPrio(threadGetSelf(), MAIN_THREAD_PRIO - 2);
+      for (;;) {
+        threadIrqWait(true, IRQ_VBLANK);
+        sample();
+      }
+    }).detach(); // (for the app's life)
+  }
+  void sample() {
+    const unsigned held = keypadGetState();
+    const unsigned changed = held ^ lastHeld_;
+    lastHeld_ = held;
+    if (!changed)
+      return;
+    std::lock_guard lock(mutex_);
+    for (std::size_t bit = 0; bit < buttonOfBit_.size(); ++bit) {
+      if (!(changed >> bit & 1) || buttonOfBit_[bit] < 0)
+        continue;
+      auto &counts = held >> bit & 1 ? presses_ : releases_;
+      ++counts[static_cast<std::size_t>(buttonOfBit_[bit])];
+    }
+  }
+
+  std::array<int, 16> buttonOfBit_{};
+  unsigned lastHeld_ = 0; // (the sampler's thread only)
+  std::mutex mutex_;
+  std::array<std::uint16_t, kButtons> presses_{}, releases_{};
+};
+
+} // namespace
+
+bool readPlatformPresses(std::array<std::uint16_t, kButtons> &presses,
+                         std::array<std::uint16_t, kButtons> &releases) {
+  ButtonSampler::instance().copyCounts(presses, releases);
+  return true;
+}
 
 static_assert(NintendoKeys::kA == KEY_A && NintendoKeys::kB == KEY_B && NintendoKeys::kX == KEY_X &&
               NintendoKeys::kY == KEY_Y && NintendoKeys::kL == KEY_L && NintendoKeys::kR == KEY_R &&

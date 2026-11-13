@@ -21,6 +21,13 @@ std::uint32_t featuresOf(Kind kind) { return profileOf(kind).features; }
 
 } // namespace
 
+#if !defined(__NDS__)
+bool readPlatformPresses(std::array<std::uint16_t, kButtons> &,
+                         std::array<std::uint16_t, kButtons> &) {
+  return false; // (the Reader counts them)
+}
+#endif
+
 Stick stickFrom(float x, float y) { return {toAxis(x), toAxis(y)}; }
 
 Stick withoutDeadZone(Stick stick, float deadZone) {

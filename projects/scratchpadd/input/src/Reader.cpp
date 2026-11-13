@@ -38,6 +38,10 @@ Gamepad Reader::read(const Keyboard *keyboard) {
       ++releases_[b];
   }
   lastHeld_ = pad.held;
+  // (counted by the platform instead, where it does: see readPlatformPresses)
+  if (source_ == readPlatformPad) {
+    readPlatformPresses(presses_, releases_);
+  }
   pad.presses = presses_;
   pad.releases = releases_;
   return pad;

@@ -7,6 +7,7 @@
 
 #include <ScratchPadd/Input/Gamepad.hpp>
 
+#include <array>
 #include <cstdint>
 #include <string_view>
 
@@ -15,6 +16,13 @@ namespace ScratchPadd::Input {
 // The platform's pad now (the most recently used, of several), or
 // Kind::None. Defined by the platform's file; for the Reader.
 Gamepad readPlatformPad();
+
+// Each button's presses and releases so far, where the platform counts them
+// itself rather than the Reader from what it reads: on a DS, a thread of its
+// own samples the buttons at every screen refresh, so a tap between two
+// reads isn't lost when the reads come late. False elsewhere.
+bool readPlatformPresses(std::array<std::uint16_t, kButtons> &presses,
+                         std::array<std::uint16_t, kButtons> &releases);
 
 // A stick from -1..1 floats (y up)
 Stick stickFrom(float x, float y);
