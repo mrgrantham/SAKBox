@@ -4,6 +4,10 @@
 #include <cassert>
 #include <spdlog/spdlog.h>
 
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace ScratchPadd {
 
 class Logger {
@@ -16,12 +20,15 @@ public:
   static std::shared_ptr<spdlog::logger> GetActiveLogger();
   // Handles loggers made once only once for each class. Helpful when running
   // in tests
-  void createLoggerIfNeeded(const std::string &name) {
-    logger_ = spdlog::get(name);
-    if (!logger_) {
-      logger_ = spdlog::stdout_color_mt(name);
-    }
-  }
+  void createLoggerIfNeeded(const std::string &name) { logger_ = loggerNamed(name); }
+
+  // The logger `name`, made (and registered with spdlog) the first time:
+  // to the terminal, and wherever routeTo() says
+  static std::shared_ptr<spdlog::logger> loggerNamed(const std::string &name);
+  // Where every logger writes: `sinks` as well as the terminal, or instead
+  // of it (`terminal` false: on a console, whose screens are the app's).
+  // Loggers made before are changed too. DebugLog::Session calls it.
+  static void routeTo(std::vector<spdlog::sink_ptr> sinks, bool terminal);
   spdlog::logger &logger() const {
     assert(logger_);
     return *logger_;
