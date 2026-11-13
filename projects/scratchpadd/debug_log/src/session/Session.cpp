@@ -93,9 +93,14 @@ private:
   void report() {
     if (syncs_ == 0)
       return;
-    std::fprintf(
-        file_, "[DebugLog] %u card syncs (every %u lines): %.1f ms each, %.1f ms at worst\n",
-        syncs_, syncEvery_, Milliseconds(total_).count() / syncs_, Milliseconds(worst_).count());
+    const std::string text = spdlog::fmt_lib::format(
+        "{} card syncs so far, a sync every {} line{}: {:.1f} ms each, {:.1f} ms at worst", syncs_,
+        syncEvery_, syncEvery_ == 1 ? "" : "s", Milliseconds(total_).count() / syncs_,
+        Milliseconds(worst_).count());
+    // (formatted as the logged lines are, as the "DebugLog" logger's)
+    spdlog::memory_buf_t line;
+    formatter_->format(spdlog::details::log_msg("DebugLog", spdlog::level::info, text), line);
+    std::fwrite(line.data(), 1, line.size(), file_);
     sync();
   }
 
