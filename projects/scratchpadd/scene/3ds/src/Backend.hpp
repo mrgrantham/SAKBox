@@ -126,9 +126,17 @@ struct Renderer::Backend {
     std::atomic<bool> drawing{false};
     std::atomic<std::uint64_t> drawingSince{0};
     Colour probed;
+    // Finding a hang: each frame sends only its first `drawLimit` draws,
+    // one more every half second, so the frame that hangs the GPU ends with
+    // the draw that does it
+    unsigned drawLimit = 1, drawsThisFrame = 0, drawsLastFrame = 0, framesAtLimit = 0;
   } debug;
   std::uint8_t eye = 0; // the eye being drawn (1 left, 2 right)
-  // Records a draw sent to the GPU; finding a hang, sends it and waits
+  // Whether the next draw goes to the GPU (finding a hang, only so many)
+  bool mayDraw() const {
+    return !debug.settings.findHang || debug.drawsThisFrame < debug.drawLimit;
+  }
+  // Records a draw sent to the GPU
   void sent(const char *what, std::size_t index);
 };
 

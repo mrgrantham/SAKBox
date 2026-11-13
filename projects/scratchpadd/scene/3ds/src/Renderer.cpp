@@ -248,6 +248,8 @@ void Renderer::Backend::drawMesh(const Draw &draw, const C3D_Mtx &viewProjection
   LoadedMesh &mesh = meshes[draw.mesh.id - 1];
   C3D_Mtx model = toMatrix(draw.where), mvp;
   Mtx_Multiply(&mvp, &viewProjection, &model);
+  if (!mayDraw())
+    return;
   if (draw.material.wireframe) {
     if (debug.settings.wireframes) {
       drawWireframe(mesh, mvp, draw.material);
@@ -269,11 +271,7 @@ void Renderer::Backend::sent(const char *what, std::size_t index) {
   const unsigned n = debug.stepCount.load(std::memory_order_relaxed);
   debug.steps[n % kSteps] = {what, eye, static_cast<std::uint16_t>(index)};
   debug.stepCount.store(n + 1, std::memory_order_release);
-  if (debug.settings.findHang) {
-    // This draw alone, waited for: if it hangs the GPU, the watchdog names it
-    C3D_FrameSplit(0);
-    gspWaitForP3D();
-  }
+  ++debug.drawsThisFrame;
 }
 
 // Lines in turn (six vertices each), placed by `mvp`, unlit in their
@@ -365,6 +363,8 @@ void Renderer::Backend::drawLineBatches(const C3D_Mtx &viewProjection) {
   if (!lineVertices)
     return;
   for (const Lines &batch : lines) {
+    if (!mayDraw())
+      return;
     Material material;
     material.colour = batch.colour;
     drawLineVertices(lineVertices + batch.first / 2 * 6, static_cast<int>(batch.count / 2 * 6),
@@ -374,7 +374,7 @@ void Renderer::Backend::drawLineBatches(const C3D_Mtx &viewProjection) {
 }
 
 void Renderer::Backend::drawOverlay() {
-  if (!overlayVertices)
+  if (!overlayVertices || !mayDraw())
     return;
   C3D_BindProgram(&overlayProgram);
   bound = &overlayProgram;
@@ -589,6 +589,18 @@ void Renderer::endFrame() {
   const Debug::Settings &debug = b.debug.settings;
   b.debug.drawingSince.store(osGetTime(), std::memory_order_relaxed);
   b.debug.drawing.store(true, std::memory_order_release);
+  // Finding a hang: one more draw a frame every half second (30 frames),
+  // back to one when it's turned on
+  if (debug.findHang) {
+    if (++b.debug.framesAtLimit >= 30 && b.debug.drawLimit <= b.debug.drawsLastFrame) {
+      ++b.debug.drawLimit;
+      b.debug.framesAtLimit = 0;
+    }
+  } else {
+    b.debug.drawLimit = 1;
+    b.debug.framesAtLimit = 0;
+  }
+  b.debug.drawsThisFrame = 0;
   // The probe's cross (a debug setting), over everything
   if (debug.probe) {
     const auto x = static_cast<float>(debug.probeX), y = static_cast<float>(debug.probeY);
@@ -629,6 +641,7 @@ void Renderer::endFrame() {
 
   b.times = {C3D_GetDrawingTime(), C3D_GetProcessingTime()};
   b.last = std::exchange(b.counting, {});
+  b.debug.drawsLastFrame = b.debug.drawsThisFrame;
   overlay_.clear();
   b.debug.drawing.store(false, std::memory_order_release);
 }

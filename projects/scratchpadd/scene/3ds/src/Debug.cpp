@@ -54,6 +54,11 @@ const Settings &settingsOf(const Renderer &renderer) { return renderer.backend()
 
 Colour probed(const Renderer &renderer) { return renderer.backend().debug.probed; }
 
+HangSearch hangSearch(const Renderer &renderer) {
+  const auto &debug = renderer.backend().debug;
+  return {debug.drawLimit, renderer.lastFrame().draws};
+}
+
 Watchdog::Watchdog(Renderer &renderer) : renderer_(renderer), thread_([this] { watch(); }) {}
 
 Watchdog::~Watchdog() {
@@ -84,7 +89,7 @@ void Watchdog::watch() {
     std::snprintf(lines[0], sizeof lines[0], "GPU HUNG: no frame in %llu s",
                   static_cast<unsigned long long>(kHungMilliseconds / 1000));
     std::snprintf(lines[1], sizeof lines[1], "%s",
-                  debug.settings.findHang ? "The last draw sent hung it:"
+                  debug.settings.findHang ? "Finding a hang: the last draw hung it:"
                                           : "Its frame's last draws:");
     for (unsigned i = 0; i < shown; ++i) {
       const auto &step = debug.steps[(count - shown + i) % Renderer::Backend::kSteps];
@@ -240,6 +245,15 @@ void Panel::draw() {
   } else {
     printRow(14, "");
     printRow(15, "");
+  }
+  // How far finding a hang has got
+  if (s.findHang) {
+    const HangSearch search = hangSearch(renderer_);
+    std::snprintf(text, sizeof text, "Finding a hang: sending %u of %u draws",
+                  std::min(search.sending, search.of), search.of);
+    printRow(16, text);
+  } else {
+    printRow(16, "");
   }
   // The last frame
   const FrameCounts counts = renderer_.lastFrame();

@@ -5,7 +5,8 @@
 //   ones, lines, wireframes, the overlay, fog, stereo), how it's coloured
 //   (the view: as usual, the normals, the lighting alone, the vertex colours
 //   alone, or overdraw: how many times each pixel is drawn), finding a hang
-//   (each draw sent and waited for alone, so a hang names it), and a probe
+//   (each frame sends only its first few draws, one more every half second,
+//   so the frame that hangs the GPU ends with the draw that does), and a probe
 //   reading the top screen's pixel under a cross.
 // - Watchdog: a thread that notices the GPU hasn't finished a frame in two
 //   seconds, and says which draws it was sent last, on the bottom screen's
@@ -44,8 +45,9 @@ struct Settings {
   bool meshes = true, translucent = true, lines = true, wireframes = true, overlay = true,
        fog = true, stereo = true;
   View view = View::normal;
-  // Each draw sent to the GPU and waited for alone (slow): if one hangs it,
-  // the watchdog names it, not just its frame
+  // Each frame sends only its first few draws, one more every half second
+  // (from one, when it's turned on): the frame that hangs the GPU ends with
+  // the draw that does, which the watchdog names
   bool findHang = false;
   // A cross on the top screen, the pixel under it read back
   bool probe = false;
@@ -56,6 +58,11 @@ void set(Renderer &renderer, const Settings &settings);
 const Settings &settingsOf(const Renderer &renderer);
 // The top screen's pixel under the probe, as shown a frame or two ago
 Colour probed(const Renderer &renderer);
+// Finding a hang: how many draws a frame are sent now, of how many it has
+struct HangSearch {
+  unsigned sending, of;
+};
+HangSearch hangSearch(const Renderer &renderer);
 // How many times overdraw adds up to full brightness (the view's scale)
 inline constexpr int kOverdrawSteps = 12;
 
