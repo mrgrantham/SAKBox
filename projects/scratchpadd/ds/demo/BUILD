@@ -8,6 +8,7 @@ devkitpro_nds_app(
     name = "scratchpadd-ds-demo",
     srcs = ["Makefile"] + glob(["source/**"]),
     extra_srcs = {
+        "//projects/scratchpadd/input:sources": "scratchpadd/input",
         "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
         "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
         "//projects/scratchpadd/handheld_controls:sources": "scratchpadd/handheld_controls",

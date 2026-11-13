@@ -47,7 +47,7 @@ struct Panel {
   }
 };
 
-Input press(Input input) { return input; }
+PanelInput press(PanelInput input) { return input; }
 
 // The stylus put down at (column, row) for a frame, then lifted
 void tap(ControlTabs &tabs, int column, int row) {
@@ -270,4 +270,25 @@ TEST(ControlTabsTest, DescribesValues) {
   EXPECT_EQ(describe(ControlType::Integer(7)), "7");
   EXPECT_EQ(describe(ControlType::Boolean(true)), "[x]");
   EXPECT_EQ(describe(ControlType::String("abc")), "abc");
+}
+
+// The panel's input from the pad: what was pressed since the last frame's
+// copy (Nintendo's A, the right face button, is the panel's A), and the
+// stylus in 8-pixel text cells while it's down
+TEST(ControlTabsTest, InputFromThePad) {
+  using ScratchPadd::Input::Button;
+  ScratchPadd::Input::Gamepad before, now;
+  now.presses[static_cast<std::size_t>(Button::FaceRight)] = 1;
+  now.presses[static_cast<std::size_t>(Button::Down)] = 2;
+  now.held = ScratchPadd::Input::bitOf(Button::L); // held from before: not a press
+  now.touch = {true, 17, 30};
+  const PanelInput input = panelInputFrom(before, now);
+  EXPECT_TRUE(input.a);
+  EXPECT_TRUE(input.down);
+  EXPECT_FALSE(input.l);
+  EXPECT_FALSE(input.select);
+  EXPECT_EQ(input.touch, std::optional(std::make_pair(2, 3)));
+  EXPECT_FALSE(panelInputFrom(now, now).a); // nothing new
+  now.touch = {};
+  EXPECT_FALSE(panelInputFrom(before, now).touch);
 }

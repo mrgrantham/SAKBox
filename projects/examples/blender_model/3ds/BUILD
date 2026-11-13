@@ -9,6 +9,7 @@ devkitpro_3ds_app(
     name = "blender-model-3ds",
     srcs = ["Makefile"] + glob(["source/**"]),
     extra_srcs = {
+        "//projects/scratchpadd/input:sources": "scratchpadd/input",
         "//projects/examples/blender_model:rock_3ds_sources": "assets",
         "//projects/examples/blender_model:ship_3ds_sources": "assets",
         "//projects/scratchpadd/scene:sources": "scratchpadd/scene",

@@ -93,6 +93,7 @@ cc_library(
     strip_include_prefix = "include/",
     visibility = ["//projects/scratchpadd/scene:__subpackages__"],
     deps = [
+        "//projects/scratchpadd/input",
         "//projects/scratchpadd/scene",
         "//projects/scratchpadd/scene/overlay_text",
         "@glfw",

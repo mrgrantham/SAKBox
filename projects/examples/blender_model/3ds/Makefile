@@ -35,9 +35,9 @@ TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 # The audio core and miniaudio are staged from their own packages by the
 # Bazel rule (extra_srcs in BUILD)
-SOURCES		:=	source scratchpadd/scene/src scratchpadd/scene_3ds/src scratchpadd/overlay_text/src assets
+SOURCES		:=	source scratchpadd/scene/src scratchpadd/scene_3ds/src scratchpadd/overlay_text/src assets scratchpadd/input/src
 DATA		:=	data
-INCLUDES	:=	include scratchpadd/scene/include scratchpadd/scene_3ds/include scratchpadd/overlay_text/include third_party assets
+INCLUDES	:=	include scratchpadd/scene/include scratchpadd/scene_3ds/include scratchpadd/overlay_text/include third_party assets scratchpadd/input/include
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs

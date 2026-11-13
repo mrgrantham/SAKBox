@@ -21,8 +21,8 @@ GAME_SUBTITLE2	:=	SAKBox
 # The app's file system (NitroFS): the BUILD's nitro_files, staged here
 NITRODATA	:=	nitrofiles
 BUILD		:=	build
-SOURCES		:=	source scratchpadd/handheld_controls/src scratchpadd/utilities/src scratchpadd_ds/platform/src scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd_audio_wav/src
-INCLUDES	:=	include scratchpadd/handheld_controls/include build scratchpadd/basis/include scratchpadd/messages/include \
+SOURCES		:=	source scratchpadd/handheld_controls/src scratchpadd/utilities/src scratchpadd_ds/platform/src scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd_audio_wav/src scratchpadd/input/src
+INCLUDES	:=	include scratchpadd/handheld_controls/include build scratchpadd/basis/include scratchpadd/messages/include scratchpadd/input/include \
 			scratchpadd/utilities/include scratchpadd/handheld/include scratchpadd_audio_pcm16/include scratchpadd_audio/include \
 			scratchpadd_audio/messages/include scratchpadd_audio/core/include scratchpadd_audio_wav/include third_party \
 			third_party/spdlog/include

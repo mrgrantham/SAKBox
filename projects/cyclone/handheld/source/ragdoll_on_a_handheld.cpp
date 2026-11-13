@@ -31,6 +31,7 @@
 #include <ScratchPadd/Audio/MadeSoundsPcm16.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
+#include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <cyclone/cyclone.h>
@@ -49,11 +50,13 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
 
 namespace Scene = ScratchPadd::Scene;
+namespace Input = ScratchPadd::Input;
 using Clock = std::chrono::steady_clock;
 
 // What differs between the two consoles
@@ -61,26 +64,16 @@ using Clock = std::chrono::steady_clock;
 constexpr const char *kConsole = "DS";
 constexpr int kConsoleColumns = 32, kConsoleRows = 24; // the bottom screen's
 bool mainLoop() { return pmMainLoop(); }
-std::uint32_t buttonsDown() {
-  scanKeys();
-  return static_cast<std::uint32_t>(keysDown());
-}
-std::uint32_t buttonsHeld() { return static_cast<std::uint32_t>(keysHeld()); }
 void startBottomScreen() { consoleDemoInit(); } // its console, for printf
 #else
 constexpr const char *kConsole = "3DS";
 constexpr int kConsoleColumns = 40, kConsoleRows = 30;
 bool mainLoop() { return aptMainLoop(); }
-std::uint32_t buttonsDown() {
-  hidScanInput();
-  return hidKeysDown();
-}
-std::uint32_t buttonsHeld() { return hidKeysHeld(); }
 void startBottomScreen() { consoleInit(GFX_BOTTOM, nullptr); }
 #endif
 
 struct ButtonPressed {
-  int key = 0; // KEY_* (libnds' and libctru's name them alike)
+  Input::Button button; // by where it is: FaceRight is Nintendo's A
 };
 
 // Each bone's place after a tick, ready to draw: its body's transform,
@@ -128,13 +121,13 @@ public:
   RagdollPadd(ScratchPadd::System *system)
       : Base(system), ragdoll_(std::make_unique<ragdoll::Ragdoll>()) {
     receive<ButtonPressed>([this](const ButtonPressed &pressed) {
-      if (pressed.key == KEY_A) {
+      if (pressed.button == Input::Button::FaceRight) { // A
         reset();
-      } else if (pressed.key == KEY_X) {
+      } else if (pressed.button == Input::Button::FaceTop) { // X
         clock_.setSubSteps(clock_.subSteps() == 4 ? 1 : clock_.subSteps() * 2);
         setControl("Sub-steps",
                    ScratchPadd::ControlType::Integer(static_cast<std::int32_t>(clock_.subSteps())));
-      } else if (pressed.key == KEY_Y) {
+      } else if (pressed.button == Input::Button::FaceLeft) { // Y
         // Half as many steps a second is half the work for each second
         // simulated, with coarser steps (joints stretch more on impact)
         setStepsPerSecond(clock_.stepSeconds() == kSlowStepSeconds ? 60 : 30);
@@ -420,19 +413,24 @@ public:
   }
 
 private:
+  Input::Gamepad lastPad_; // last frame's, for what's pressed since
   void frame() {
     if (!mainLoop()) {
       system_->stop();
       return;
     }
-    const std::uint32_t down = buttonsDown();
-    if (down & KEY_START) {
+    // The pad as GamePadd last read it, and what was pressed since the
+    // last frame
+    const Input::Gamepad pad = currentState<Input::Gamepad>().value;
+    const Input::Edges pressed(lastPad_, pad);
+    const Input::Gamepad before = std::exchange(lastPad_, pad);
+    if (pressed.pressed(Input::Button::Start)) {
       system_->stop();
       return;
     }
     // While the controls are shown, the buttons are theirs
     const bool wasShown = controls_.visible();
-    controls_.handle(ScratchPadd::HandheldControls::inputFrom(down, buttonsHeld()));
+    controls_.handle(ScratchPadd::HandheldControls::panelInputFrom(before, pad));
     if (controls_.visible() != wasShown) {
       std::printf("\x1b[2J"); // the screen cleared for the other
       if (!controls_.visible())
@@ -440,13 +438,14 @@ private:
     }
     ScratchPadd::HandheldControls::draw(controls_);
     if (!wasShown && !controls_.visible()) {
-      if (down & KEY_B) {
+      if (pressed.pressed(Input::Button::FaceBottom)) { // B
         setControl("Blend", ScratchPadd::ControlType::Boolean(!blend()));
         drawFigures();
       }
-      for (const int key : {KEY_A, KEY_X, KEY_Y}) {
-        if (down & key) {
-          send(ButtonPressed{key});
+      for (const Input::Button button :
+           {Input::Button::FaceRight, Input::Button::FaceTop, Input::Button::FaceLeft}) {
+        if (pressed.pressed(button)) {
+          send(ButtonPressed{button});
         }
       }
     }
@@ -573,7 +572,9 @@ int main() {
   gfxInitDefault(); // (before ScreenPadd's Display)
 #endif
   {
-    ScratchPadd::SystemImplementation<ScreenPadd, RagdollPadd, AudioPadd> system;
+    ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, RagdollPadd,
+                                      AudioPadd>
+        system;
     system.instantiate();
     system.start(); // returns when ScreenPadd stops it (START)
   }

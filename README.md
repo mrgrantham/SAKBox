@@ -200,6 +200,8 @@ The Vulkan backend (`--//projects/scratchpadd/scene/desktop:backend=vulkan`, see
 sudo apt install libvulkan1 mesa-vulkan-drivers
 ```
 
+Controllers are read through evdev ([`input`](projects/scratchpadd/input/README.md)), which needs read access to `/dev/input`: be in the `input` group (`sudo usermod -aG input $USER`, then log in again). Windows reads them through XInput, part of Windows, which sees Xbox pads (a PlayStation pad there needs Steam or DS4Windows).
+
 `alsa/asoundlib.h: No such file or directory` means `libasound2-dev` is missing.
 
 `Could NOT find OpenGL` means `libgl1-mesa-dev` is missing; `Could NOT find OpenGL (missing: EGL)` means `libegl1-mesa-dev` is. Package names can differ slightly between Ubuntu and Raspberry Pi OS.

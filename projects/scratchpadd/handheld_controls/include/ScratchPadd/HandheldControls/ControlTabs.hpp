@@ -11,7 +11,9 @@
 #include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/PaddAddress.hpp>
 
+#include <ScratchPadd/Input/Gamepad.hpp>
 #include <cstddef>
+
 #include <functional>
 #include <optional>
 #include <string>
@@ -22,12 +24,17 @@ namespace ScratchPadd::HandheldControls {
 // This frame's presses (each true for the frame it went down), and where
 // the stylus is, in text cells (column, row from 0), every frame it's on
 // the screen
-struct Input {
+struct PanelInput {
   bool up = false, down = false, left = false, right = false;
   bool a = false, l = false, r = false;
   bool select = false; // shows or hides the panel
   std::optional<std::pair<int, int>> touch;
 };
+
+// The panel's input from the pad: what was pressed since `before` (the
+// last frame's copy), and the stylus in 8-pixel text cells. The panel's
+// A is Nintendo's A, the right face button.
+PanelInput panelInputFrom(const Input::Gamepad &before, const Input::Gamepad &now);
 
 // A run of text in one line, highlighted or not (the chosen tab or row)
 struct Segment {
@@ -57,7 +64,7 @@ public:
   // number crosses its range in about kSwipeSteps). SELECT shows or hides it.
   // Returns whether anything shown changed (so it's redrawn only then:
   // formatting numbers is float work, slow on the DS).
-  bool handle(const Input &input);
+  bool handle(const PanelInput &input);
 
   bool visible() const { return visible_; }
   void setVisible(bool visible);

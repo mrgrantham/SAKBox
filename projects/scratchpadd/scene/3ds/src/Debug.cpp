@@ -180,28 +180,25 @@ void Panel::change(int row, int direction) {
   cleared_ = false;
 }
 
-bool Panel::handle(std::uint32_t down, std::uint32_t held) {
-  (void)held;
+bool Panel::handle(const Input::Gamepad &before, const Input::Gamepad &now) {
+  using Input::Button;
   if (!visible_)
     return false;
-  if (down & KEY_UP)
+  const Input::Edges edges(before, now);
+  if (edges.pressed(Button::Up))
     row_ = (row_ + kRows - 1) % kRows;
-  if (down & KEY_DOWN)
+  if (edges.pressed(Button::Down))
     row_ = (row_ + 1) % kRows;
-  if (down & (KEY_A | KEY_RIGHT))
+  if (edges.pressed(Button::FaceRight) || edges.pressed(Button::Right))
     change(row_, 1);
-  if (down & KEY_LEFT)
+  if (edges.pressed(Button::Left))
     change(row_, -1);
-  // The circle pad moves the probe's cross
-  if (settingsOf(renderer_).probe) {
-    circlePosition pad;
-    hidCircleRead(&pad);
-    if (pad.dx * pad.dx + pad.dy * pad.dy > 20 * 20) {
-      Settings s = settingsOf(renderer_);
-      s.probeX = std::clamp(s.probeX + pad.dx / 24, 0, 399);
-      s.probeY = std::clamp(s.probeY - pad.dy / 24, 0, 239);
-      set(renderer_, s);
-    }
+  // The circle pad moves the probe's cross (up to 6 pixels a frame)
+  if (settingsOf(renderer_).probe && (now.left.x != 0 || now.left.y != 0)) {
+    Settings s = settingsOf(renderer_);
+    s.probeX = std::clamp(s.probeX + now.left.x * 6 / Input::kStickFull, 0, 399);
+    s.probeY = std::clamp(s.probeY - now.left.y * 6 / Input::kStickFull, 0, 239);
+    set(renderer_, s);
   }
   return true;
 }

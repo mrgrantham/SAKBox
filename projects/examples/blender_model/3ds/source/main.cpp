@@ -18,6 +18,7 @@
 // sent last, on the bottom screen and in sdmc:/scene-3ds-hang.txt.
 #include <3ds.h>
 
+#include <ScratchPadd/Input/Reader.hpp>
 #include <ScratchPadd/Scene/3DS/Debug.hpp>
 #include <ScratchPadd/Scene/3DS/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
@@ -30,6 +31,7 @@
 #include <vector>
 
 namespace Scene = ScratchPadd::Scene;
+namespace Input = ScratchPadd::Input;
 
 namespace {
 
@@ -91,21 +93,25 @@ int main() {
 
     float angle = 0;
     int frame = 0;
+    Input::Reader reader;
+    Input::Gamepad before = reader.read();
     while (aptMainLoop()) {
-      hidScanInput();
-      const u32 down = hidKeysDown();
-      if (down & KEY_START)
+      // The pad, once a frame, and what was pressed since the last
+      const Input::Gamepad pad = reader.read();
+      const Input::Edges pressed(before, pad);
+      if (pressed.pressed(Input::Button::Start))
         break;
-      if (down & KEY_SELECT) {
+      if (pressed.pressed(Input::Button::Select)) {
         debugPanel.setVisible(!debugPanel.visible());
         if (!debugPanel.visible())
           printIntro();
-      } else if (!debugPanel.handle(down, hidKeysHeld())) {
-        if (down & KEY_A)
+      } else if (!debugPanel.handle(before, pad)) {
+        if (pressed.pressed(Input::Button::FaceRight)) // A
           shown[0].material.wireframe = !shown[0].material.wireframe;
-        if (down & KEY_B)
+        if (pressed.pressed(Input::Button::FaceBottom)) // B
           environment.fog = environment.fog.density > 0 ? Scene::Fog{} : fog;
       }
+      before = pad;
 
       renderer.beginFrame(camera, environment);
       renderer.drawLines(lines, {90, 95, 110});

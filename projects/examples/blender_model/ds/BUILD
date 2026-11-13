@@ -8,6 +8,7 @@ devkitpro_nds_app(
     name = "blender-model-ds",
     srcs = ["Makefile"] + glob(["source/**"]),
     extra_srcs = {
+        "//projects/scratchpadd/input:sources": "scratchpadd/input",
         "//projects/examples/blender_model:rock_ds_sources": "assets",
         "//projects/examples/blender_model:ship_ds_sources": "assets",
         "//projects/flexmath:fixed_point_sources": "flexmath",

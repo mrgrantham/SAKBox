@@ -1,9 +1,8 @@
-// ConsolePanel.hpp - ControlTabs on a DS or 3DS: its input from the buttons
-// and touch screen, and its lines printed on the current text console (a
-// console chosen with consoleSelect, on either). The two consoles take the
-// same escape codes and the keys have the same names, so this is the same on
-// both. Also printLine, for an app's own text on either console. Only for
-// the handhelds.
+// ConsolePanel.hpp - ControlTabs on a DS or 3DS: its lines printed on the
+// current text console (a console chosen with consoleSelect, on either; its
+// input comes from the pad, panelInputFrom in ControlTabs.hpp). The two
+// consoles take the same escape codes, so this is the same on both. Also printLine, for an app's
+// own text on either console. Only for the handhelds.
 #pragma once
 
 #if defined(__NDS__)
@@ -46,31 +45,6 @@ template <typename... Args> void printLine(int row, int columns, const char *for
     std::snprintf(text, sizeof text, format, args...);
   }
   std::printf("\x1b[%d;%dH%.*s\x1b[K", row + kFirstRow, kFirstRow, columns, text);
-}
-
-// This frame's input: `down` is the buttons that went down this frame and
-// `held` those down now (as libnds' keysDown() and keysHeld(), or libctru's
-// hidKeysDown() and hidKeysHeld(), give them). While the stylus is on the
-// screen, where it is, in 8-pixel text cells.
-inline Input inputFrom(std::uint32_t down, std::uint32_t held) {
-  Input input{.up = (down & KEY_UP) != 0,
-              .down = (down & KEY_DOWN) != 0,
-              .left = (down & KEY_LEFT) != 0,
-              .right = (down & KEY_RIGHT) != 0,
-              .a = (down & KEY_A) != 0,
-              .l = (down & KEY_L) != 0,
-              .r = (down & KEY_R) != 0,
-              .select = (down & KEY_SELECT) != 0};
-  if (held & KEY_TOUCH) {
-    touchPosition touch;
-#if defined(__NDS__)
-    touchRead(&touch);
-#else
-    hidTouchRead(&touch);
-#endif
-    input.touch = {{touch.px / 8, touch.py / 8}};
-  }
-  return input;
 }
 
 // Prints `tabs` on the current console from its top row, if it's shown and

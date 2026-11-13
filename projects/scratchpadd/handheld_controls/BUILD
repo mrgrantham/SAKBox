@@ -12,6 +12,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//projects/scratchpadd/basis",
+        "//projects/scratchpadd/input",
         "//projects/scratchpadd/messages",
     ],
 )

@@ -18,6 +18,7 @@
 #include <AudioPadd.hpp>
 #include <HandheldDemo.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
+#include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 
 #include <spdlog/spdlog.h>
@@ -26,6 +27,7 @@
 #include <deque>
 #include <map>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -35,6 +37,8 @@ using ScratchPadd::HandheldControls::printLine;
 // The top screen's console is 50 columns by 30 rows, the bottom's 40 by 30
 constexpr int kTopColumns = ScratchPadd::HandheldControls::usableColumns(50);
 constexpr int kBottomColumns = ScratchPadd::HandheldControls::usableColumns(40);
+
+namespace Input = ScratchPadd::Input;
 
 class ScreenPadd : public ScratchPadd::Base {
 public:
@@ -73,6 +77,7 @@ public:
   }
 
 private:
+  Input::Gamepad lastPad_; // last frame's, for what's pressed since
   // Rows on the top screen, from 0
   static constexpr int kStatusRow = 2; // status lines 0-7 go from here
   static constexpr int kHelpRow = 11;
@@ -85,16 +90,19 @@ private:
       system_->stop();
       return;
     }
-    hidScanInput();
-    const u32 down = hidKeysDown();
-    if (down & KEY_START) {
+    // The pad as GamePadd last read it, and what was pressed since the
+    // last frame
+    const Input::Gamepad pad = currentState<Input::Gamepad>().value;
+    const Input::Edges pressed(lastPad_, pad);
+    const Input::Gamepad before = std::exchange(lastPad_, pad);
+    if (pressed.pressed(Input::Button::Start)) {
       system_->stop();
       return;
     }
     // The controls on the bottom screen; while they're shown, the buttons
     // are theirs
     const bool wasShown = controls_.visible();
-    controls_.handle(ScratchPadd::HandheldControls::inputFrom(down, hidKeysHeld()));
+    controls_.handle(ScratchPadd::HandheldControls::panelInputFrom(before, pad));
     consoleSelect(&bottom_);
     if (controls_.visible() != wasShown) {
       std::printf("\x1b[2J");
@@ -104,11 +112,11 @@ private:
     ScratchPadd::HandheldControls::draw(controls_);
     consoleSelect(&top_);
     if (!wasShown && !controls_.visible()) {
-      static const std::pair<u32, const char *> kButtons[] = {
-          {KEY_A, "A"}, {KEY_B, "B"}, {KEY_X, "X"}, {KEY_Y, "Y"}};
-      for (const auto &[key, button] : kButtons) {
-        if (down & key) {
-          send(ButtonPressed{button});
+      // The face buttons, by the names on a Nintendo pad
+      for (const Input::Button button : {Input::Button::FaceRight, Input::Button::FaceBottom,
+                                         Input::Button::FaceTop, Input::Button::FaceLeft}) {
+        if (pressed.pressed(button)) {
+          send(ButtonPressed{pad.labelOf(button)});
         }
       }
     }
@@ -153,7 +161,9 @@ int main() {
   gfxInitDefault();
   spdlog::set_level(spdlog::level::off); // the screens are for the padds
   {
-    ScratchPadd::SystemImplementation<ScreenPadd, SoundBoardPadd, AudioPadd> system;
+    ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, SoundBoardPadd,
+                                      AudioPadd>
+        system;
     system.instantiate();
     system.start(); // returns when ScreenPadd stops it (START, or the HOME Menu closing it)
   }

@@ -13,6 +13,7 @@
 // A: the ship as a wireframe   B: fog off and on   START: quit
 #include <nds.h>
 
+#include <ScratchPadd/Input/Reader.hpp>
 #include <ScratchPadd/Scene/DS/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
@@ -24,6 +25,7 @@
 #include <vector>
 
 namespace Scene = ScratchPadd::Scene;
+namespace Input = ScratchPadd::Input;
 
 namespace {
 
@@ -82,14 +84,18 @@ int main() {
 
   Scene::Scalar angle = 0;
   Scene::FrameCounts shownCounts{};
+  Input::Reader reader;
+  Input::Gamepad before = reader.read();
   while (pmMainLoop()) {
-    scanKeys();
-    const int down = keysDown();
-    if (down & KEY_START)
+    // The pad, once a frame, and what was pressed since the last
+    const Input::Gamepad pad = reader.read();
+    const Input::Edges pressed(before, pad);
+    before = pad;
+    if (pressed.pressed(Input::Button::Start))
       break;
-    if (down & KEY_A)
+    if (pressed.pressed(Input::Button::FaceRight)) // A
       shown[0].material.wireframe = !shown[0].material.wireframe;
-    if (down & KEY_B)
+    if (pressed.pressed(Input::Button::FaceBottom)) // B
       environment.fog = environment.fog.density > Scene::Scalar(0) ? Scene::Fog{} : fog;
 
     renderer.beginFrame(camera, environment);

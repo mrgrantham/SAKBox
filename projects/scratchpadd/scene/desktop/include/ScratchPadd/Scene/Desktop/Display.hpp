@@ -4,6 +4,7 @@
 // and draw into it with a Scene::Renderer.
 #pragma once
 
+#include <ScratchPadd/Input/Keyboard.hpp>
 #include <ScratchPadd/Scene/Types.hpp>
 
 #include <functional>
@@ -62,6 +63,10 @@ public:
   // Where the cursor is, in points from the top-left
   float cursorX() const;
   float cursorY() const;
+  // The keys down and the cursor, as the input library takes them: the
+  // window's padd publishes it (publishState(display.keyboard())), and
+  // GamePadd lays it onto the pad. No keys while a panel has the keyboard.
+  Input::Keyboard keyboard() const;
   // Whether keys and the mouse are for the app, not a panel on top (set by
   // debug_ui while ImGui wants them)
   bool keyboardForApp() const { return !keyboardTaken_; }

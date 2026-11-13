@@ -89,6 +89,9 @@ private:
     timer_.markInterval();
     display_->pollEvents();
     ui_->newFrame();
+    // The keyboard, for a GamePadd to lay onto the pad (none while ImGui
+    // has it)
+    publishState(display_->keyboard());
 
     const float seconds = static_cast<float>(display_->seconds());
     Scene::Camera camera;

@@ -79,7 +79,23 @@ std::vector<std::string> ControlTabs::tabNames() const {
 
 std::size_t ControlTabs::row() const { return tabs_.empty() ? 0 : tabs_[tab_].row; }
 
-bool ControlTabs::handle(const Input &input) {
+PanelInput panelInputFrom(const Input::Gamepad &before, const Input::Gamepad &now) {
+  using Input::Button;
+  const Input::Edges edges(before, now);
+  PanelInput input{.up = edges.pressed(Button::Up),
+                   .down = edges.pressed(Button::Down),
+                   .left = edges.pressed(Button::Left),
+                   .right = edges.pressed(Button::Right),
+                   .a = edges.pressed(Button::FaceRight),
+                   .l = edges.pressed(Button::L),
+                   .r = edges.pressed(Button::R),
+                   .select = edges.pressed(Button::Select)};
+  if (now.touch.down)
+    input.touch = {{now.touch.x / 8, now.touch.y / 8}};
+  return input;
+}
+
+bool ControlTabs::handle(const PanelInput &input) {
   if (input.select)
     setVisible(!visible_);
   if (!visible_ || tabs_.empty()) {

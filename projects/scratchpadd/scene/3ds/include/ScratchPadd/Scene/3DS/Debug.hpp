@@ -17,12 +17,13 @@
 //   Scene::Debug::Watchdog watchdog(renderer);
 //   Scene::Debug::Panel panel(renderer);
 //   // each frame: if the panel is shown, the buttons are its
-//   if (!panel.handle(hidKeysDown(), hidKeysHeld())) { /* the app's */ }
+//   if (!panel.handle(lastFrame, pad)) { /* the app's */ }   // Input::Gamepads
 //   panel.draw();
 //
 // 3DS only. See the backend's README section and DESIGN.md.
 #pragma once
 
+#include <ScratchPadd/Input/Gamepad.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <atomic>
@@ -91,9 +92,9 @@ class Panel {
 public:
   explicit Panel(Renderer &renderer) : renderer_(renderer) {}
 
-  // This frame's buttons (as hidKeysDown and hidKeysHeld give them);
+  // This frame's pad, and the last frame's copy (what was pressed since);
   // whether the panel took them (it does while it's shown)
-  bool handle(std::uint32_t down, std::uint32_t held);
+  bool handle(const Input::Gamepad &before, const Input::Gamepad &now);
   // Prints the panel on the current console, while it's shown
   void draw();
   bool visible() const { return visible_; }

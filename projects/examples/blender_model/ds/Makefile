@@ -22,8 +22,8 @@ BUILD		:=	build
 # The scene layer and its DS backend, and the models the build cooked for
 # the DS (assets: //projects/examples/blender_model's ship_ds_sources and
 # rock_ds_sources)
-SOURCES		:=	source scratchpadd/scene/src scratchpadd/scene_ds/src assets
-INCLUDES	:=	include build scratchpadd/scene/include scratchpadd/scene_ds/include flexmath/include assets
+SOURCES		:=	source scratchpadd/scene/src scratchpadd/scene_ds/src assets scratchpadd/input/src
+INCLUDES	:=	include build scratchpadd/scene/include scratchpadd/scene_ds/include flexmath/include assets scratchpadd/input/include
 
 #---------------------------------------------------------------------------------
 # options for code generation
