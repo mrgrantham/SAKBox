@@ -80,26 +80,44 @@ class SharedStates {
 public:
   template <Shareable T> SharedStateSlot<T> &slot(std::string_view name) {
     std::lock_guard lock(mutex_);
-    auto &found = slots_[Key{std::type_index(typeid(T)), std::string(name)}];
-    if (!found)
-      found = std::make_unique<SharedStateSlot<T>>();
-    return static_cast<SharedStateSlot<T> &>(*found);
+    auto found = slots_.find(KeyView{typeid(T), name});
+    if (found == slots_.end())
+      found =
+          slots_.emplace(Key{typeid(T), std::string(name)}, std::make_unique<SharedStateSlot<T>>())
+              .first;
+    return static_cast<SharedStateSlot<T> &>(*found->second);
   }
 
+  // A state's type and name: as stored, and as looked up (without making
+  // a string for each lookup)
   struct Key {
     std::type_index type;
     std::string name;
-    bool operator==(const Key &) const = default;
+  };
+  struct KeyView {
+    std::type_index type;
+    std::string_view name;
   };
   struct KeyHash {
-    std::size_t operator()(const Key &key) const {
-      return key.type.hash_code() ^ (std::hash<std::string>{}(key.name) * 31);
+    using is_transparent = void;
+    std::size_t operator()(const KeyView &key) const {
+      return key.type.hash_code() ^ (std::hash<std::string_view>{}(key.name) * 31);
+    }
+    std::size_t operator()(const Key &key) const { return (*this)(KeyView{key.type, key.name}); }
+  };
+  struct KeyEqual {
+    using is_transparent = void;
+    static KeyView view(const Key &key) { return {key.type, key.name}; }
+    static KeyView view(const KeyView &key) { return key; }
+    template <typename A, typename B> bool operator()(const A &a, const B &b) const {
+      return view(a).type == view(b).type && view(a).name == view(b).name;
     }
   };
+  template <typename Value> using Map = std::unordered_map<Key, Value, KeyHash, KeyEqual>;
 
 private:
   std::mutex mutex_;
-  std::unordered_map<Key, std::unique_ptr<SharedStateSlotBase>, KeyHash> slots_;
+  Map<std::unique_ptr<SharedStateSlotBase>> slots_;
 };
 
 } // namespace ScratchPadd

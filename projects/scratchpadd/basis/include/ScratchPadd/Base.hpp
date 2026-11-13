@@ -435,14 +435,14 @@ protected:
   template <Shareable T> bool publishState(const T &value, std::string_view name = {}) {
     assertOnPaddThread("publishState");
     StateSlot &found = stateSlot<T>(name);
-    if (found.publishing == StateSlot::Publishing::unasked) {
+    if (found.publishing == StateSlot::Publishing::Unasked) {
       found.publishing =
-          found.slot->claimFor(this) ? StateSlot::Publishing::yes : StateSlot::Publishing::refused;
-      if (found.publishing == StateSlot::Publishing::refused)
+          found.slot->claimFor(this) ? StateSlot::Publishing::Yes : StateSlot::Publishing::Refused;
+      if (found.publishing == StateSlot::Publishing::Refused)
         logger().error("{}: publishState({}{}{}) refused: another padd publishes it", name_,
-                       typeid(T).name(), name.empty() ? "" : ", ", name);
+                       typeName<T>(), name.empty() ? "" : ", ", name);
     }
-    if (found.publishing == StateSlot::Publishing::refused)
+    if (found.publishing == StateSlot::Publishing::Refused)
       return false;
     static_cast<SharedStateSlot<T> &>(*found.slot).publish(value);
     return true;
@@ -476,16 +476,18 @@ private:
   // system's lookup (and its lock); touched only on the padd's own thread
   struct StateSlot {
     SharedStateSlotBase *slot = nullptr;
-    enum class Publishing : std::uint8_t { unasked, yes, refused } publishing = Publishing::unasked;
+    enum class Publishing : std::uint8_t { Unasked, Yes, Refused } publishing = Publishing::Unasked;
   };
-  std::unordered_map<SharedStates::Key, StateSlot, SharedStates::KeyHash> stateSlots_;
+  SharedStates::Map<StateSlot> stateSlots_;
 
   template <Shareable T> StateSlot &stateSlot(std::string_view name) {
-    StateSlot &found =
-        stateSlots_[SharedStates::Key{std::type_index(typeid(T)), std::string(name)}];
-    if (!found.slot)
-      found.slot = &system_->sharedStates().slot<T>(name);
-    return found;
+    auto found = stateSlots_.find(SharedStates::KeyView{typeid(T), name});
+    if (found == stateSlots_.end())
+      found = stateSlots_
+                  .emplace(SharedStates::Key{typeid(T), std::string(name)},
+                           StateSlot{.slot = &system_->sharedStates().slot<T>(name)})
+                  .first;
+    return found->second;
   }
 
   // Read by the work loop and written from other threads (e.g. stop()).
