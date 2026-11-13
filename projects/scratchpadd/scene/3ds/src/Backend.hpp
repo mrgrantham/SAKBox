@@ -2,11 +2,15 @@
 // the backend)
 #pragma once
 
+#include <ScratchPadd/Scene/3DS/Debug.hpp>
 #include <ScratchPadd/Scene/3DS/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <citro3d.h>
 
+#include <array>
+#include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -84,7 +88,7 @@ struct Renderer::Backend {
   DVLB_s *sceneShaders = nullptr, *lineShaders = nullptr, *overlayShaders = nullptr;
   shaderProgram_s sceneProgram, lineProgram, overlayProgram;
   struct SceneUniforms {
-    int mvp, normalMatrix, material, ambient, lightDirections, lightColours;
+    int mvp, normalMatrix, material, ambient, lightDirections, lightColours, debugMix, debugAdd;
   };
   SceneUniforms sceneUniforms;
   int lineMvp = -1, lineMaterial = -1, overlayProjection = -1;
@@ -105,6 +109,27 @@ struct Renderer::Backend {
   C3D_FogLut fog;
   FrameCounts counting, last;
   FrameTimes times;
+
+  // Debug mode (Debug.hpp): its settings, the draws the GPU was sent (for
+  // the watchdog), and the probe's reading
+  struct Step {
+    const char *what = ""; // (a literal)
+    std::uint8_t eye = 0;
+    std::uint16_t index = 0;
+  };
+  static constexpr std::size_t kSteps = 32; // the last ones kept
+  struct DebugState {
+    Debug::Settings settings;
+    std::array<Step, kSteps> steps{};
+    std::atomic<unsigned> stepCount{0};
+    // Whether endFrame is drawing, and since when (ms of the system tick)
+    std::atomic<bool> drawing{false};
+    std::atomic<std::uint64_t> drawingSince{0};
+    Colour probed;
+  } debug;
+  std::uint8_t eye = 0; // the eye being drawn (1 left, 2 right)
+  // Records a draw sent to the GPU; finding a hang, sends it and waits
+  void sent(const char *what, std::size_t index);
 };
 
 } // namespace ScratchPadd::Scene

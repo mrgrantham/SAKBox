@@ -11,11 +11,16 @@
 .fvec mvp[4], normalMatrix[3]
 .fvec material, ambient
 .fvec lightDirections[4], lightColours[4] ; (each direction: towards the light)
+; The debug views (Debug.hpp): how much of the usual colour, the normal (as
+; a colour), the light and the vertex colour make the output, and a colour
+; added (overdraw's); as usual (1, 0, 0, 0) and nothing added
+.fvec debugMix, debugAdd
 
 .constf consts(0.0, 1.0, 0.00392156862745, 0.0) ; (1/255)
 .alias  zeros     consts.xxxx
 .alias  ones      consts.yyyy
 .alias  fromBytes consts.zzzz
+.constf halves(0.5, 0.5, 0.5, 1.0)
 
 .out outpos position
 .out outclr color
@@ -62,6 +67,20 @@
 
 	mul r6, fromBytes, inclr
 	mul r6, material, r6
-	mul outclr, r3, r6
+	mul r7, r3, r6
+
+	; As the debug view says: the usual colour (r7), the normal as a colour
+	; (r10: each from -1 to 1 as 0 to 1, alpha 1), the light (r3) and the
+	; vertex colour (r6)
+	mul r10, halves, r1
+	add r10, halves, r10
+	mul r11, debugMix.xxxx, r7
+	mul r12, debugMix.yyyy, r10
+	add r11, r11, r12
+	mul r12, debugMix.zzzz, r3
+	add r11, r11, r12
+	mul r12, debugMix.wwww, r6
+	add r11, r11, r12
+	add outclr, debugAdd, r11
 	end
 .end

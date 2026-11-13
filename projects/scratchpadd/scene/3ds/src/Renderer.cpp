@@ -140,8 +140,9 @@ Renderer::Backend::Backend(Display &display) : display(display) {
     const auto at = [&](const char *name) {
       return static_cast<int>(shaderInstanceGetUniformLocation(program.vertexShader, name));
     };
-    return SceneUniforms{at("mvp"),     at("normalMatrix"),    at("material"),
-                         at("ambient"), at("lightDirections"), at("lightColours")};
+    return SceneUniforms{at("mvp"),      at("normalMatrix"),    at("material"),
+                         at("ambient"),  at("lightDirections"), at("lightColours"),
+                         at("debugMix"), at("debugAdd")};
   };
   sceneUniforms = locate(sceneProgram);
   overlayProjection =
@@ -194,6 +195,28 @@ void Renderer::Backend::useScene() {
     const Vector3 towards = on ? (-environment.lights[i].direction).normalised() : Vector3{};
     C3D_FVUnifSet(GPU_VERTEX_SHADER, sceneUniforms.lightDirections + static_cast<int>(i), towards.x,
                   towards.y, towards.z, 0);
+    // The debug view: what the output is made of (usual, normal, light,
+    // vertex colour), and overdraw's step added
+    float mix[4] = {1, 0, 0, 0};
+    float add = 0;
+    switch (debug.settings.view) {
+    case Debug::View::normal:
+      break;
+    case Debug::View::normals:
+      mix[0] = 0, mix[1] = 1;
+      break;
+    case Debug::View::lighting:
+      mix[0] = 0, mix[2] = 1;
+      break;
+    case Debug::View::vertexColours:
+      mix[0] = 0, mix[3] = 1;
+      break;
+    case Debug::View::overdraw:
+      mix[0] = 0, add = 1.0f / Debug::kOverdrawSteps;
+      break;
+    }
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, sceneUniforms.debugMix, mix[0], mix[1], mix[2], mix[3]);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, sceneUniforms.debugAdd, add, add, add, add > 0 ? 1 : 0);
   }
 }
 
@@ -226,7 +249,10 @@ void Renderer::Backend::drawMesh(const Draw &draw, const C3D_Mtx &viewProjection
   C3D_Mtx model = toMatrix(draw.where), mvp;
   Mtx_Multiply(&mvp, &viewProjection, &model);
   if (draw.material.wireframe) {
-    drawWireframe(mesh, mvp, draw.material);
+    if (debug.settings.wireframes) {
+      drawWireframe(mesh, mvp, draw.material);
+      sent("wireframe of mesh", draw.mesh.id);
+    }
     return;
   }
   useScene();
@@ -236,6 +262,18 @@ void Renderer::Backend::drawMesh(const Draw &draw, const C3D_Mtx &viewProjection
     C3D_DrawElements(GPU_TRIANGLES, mesh.count, C3D_UNSIGNED_SHORT, mesh.indices);
   else
     C3D_DrawArrays(GPU_TRIANGLES, 0, mesh.count);
+  sent("mesh", draw.mesh.id);
+}
+
+void Renderer::Backend::sent(const char *what, std::size_t index) {
+  const unsigned n = debug.stepCount.load(std::memory_order_relaxed);
+  debug.steps[n % kSteps] = {what, eye, static_cast<std::uint16_t>(index)};
+  debug.stepCount.store(n + 1, std::memory_order_release);
+  if (debug.settings.findHang) {
+    // This draw alone, waited for: if it hangs the GPU, the watchdog names it
+    C3D_FrameSplit(0);
+    gspWaitForP3D();
+  }
 }
 
 // Lines in turn (six vertices each), placed by `mvp`, unlit in their
@@ -331,6 +369,7 @@ void Renderer::Backend::drawLineBatches(const C3D_Mtx &viewProjection) {
     material.colour = batch.colour;
     drawLineVertices(lineVertices + batch.first / 2 * 6, static_cast<int>(batch.count / 2 * 6),
                      viewProjection, material);
+    sent("lines", static_cast<std::size_t>(&batch - lines.data()));
   }
 }
 
@@ -354,6 +393,7 @@ void Renderer::Backend::drawOverlay() {
   C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
                  GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
   C3D_DrawArrays(GPU_TRIANGLES, 0, static_cast<int>(overlayTriangles.size()));
+  sent("overlay", 0);
 }
 
 // The frame's lines and overlay triangles written into linear memory, once
@@ -389,7 +429,8 @@ void Renderer::Backend::drawEye(C3D_RenderTarget *target, const C3D_Mtx &project
   Mtx_Multiply(&viewProjection, &projection, &view);
 
   // Fog, by each pixel's depth (exp(-density x distance), as on desktops)
-  if (environment.fog.density > Scalar(0)) {
+  const Debug::Settings &s = debug.settings;
+  if (environment.fog.density > Scalar(0) && s.fog && s.view == Debug::View::normal) {
     FogLut_Exp(&fog, environment.fog.density, 1, camera.nearPlane, camera.farPlane);
     C3D_FogGasMode(GPU_FOG, GPU_PLAIN_DENSITY, false);
     C3D_FogColor(fogColour(environment.fog.colour));
@@ -399,22 +440,40 @@ void Renderer::Backend::drawEye(C3D_RenderTarget *target, const C3D_Mtx &project
   }
   C3D_CullFace(GPU_CULL_NONE);
 
+  // Overdraw (a debug view): every mesh's every pixel adds a step, with no
+  // depth test, so the brighter, the more often it was drawn
+  const bool overdraw = s.view == Debug::View::overdraw;
+  const auto additive = [] {
+    C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ONE, GPU_ONE, GPU_ONE);
+  };
+
   // Solid meshes and lines
-  C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
-  C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-  for (const Draw &draw : solid)
-    drawMesh(draw, viewProjection);
-  drawLineBatches(viewProjection);
+  if (overdraw) {
+    additive();
+  } else {
+    C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+  }
+  if (s.meshes)
+    for (const Draw &draw : solid)
+      drawMesh(draw, viewProjection);
+  if (s.lines && !overdraw)
+    drawLineBatches(viewProjection);
 
   // Translucent ones, farthest first, blending over what's behind them
   // without hiding what's drawn after
-  C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
-  C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-                 GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-  for (const Draw &draw : later)
-    drawMesh(draw, viewProjection);
+  if (!overdraw) {
+    C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+                   GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+  }
+  if (s.translucent)
+    for (const Draw &draw : later)
+      drawMesh(draw, viewProjection);
 
-  drawOverlay();
+  if (s.overlay)
+    drawOverlay();
 }
 
 Renderer::Renderer(Display &display) : backend_(std::make_unique<Backend>(display)) {}
@@ -527,6 +586,17 @@ void Renderer::endFrame() {
   std::ranges::stable_sort(b.later, [](const Backend::Draw &x, const Backend::Draw &y) {
     return x.distance > y.distance;
   });
+  const Debug::Settings &debug = b.debug.settings;
+  b.debug.drawingSince.store(osGetTime(), std::memory_order_relaxed);
+  b.debug.drawing.store(true, std::memory_order_release);
+  // The probe's cross (a debug setting), over everything
+  if (debug.probe) {
+    const auto x = static_cast<float>(debug.probeX), y = static_cast<float>(debug.probeY);
+    overlay_.rectangle(x - 6, y, 4, 1, {255, 0, 255});
+    overlay_.rectangle(x + 3, y, 4, 1, {255, 0, 255});
+    overlay_.rectangle(x, y - 6, 1, 4, {255, 0, 255});
+    overlay_.rectangle(x, y + 3, 1, 4, {255, 0, 255});
+  }
   // The overlay's shapes, then its text over them, as triangles
   b.overlayTriangles.assign(overlay_.triangles().begin(), overlay_.triangles().end());
   for (const Overlay::Text &text : overlay_.texts())
@@ -534,18 +604,33 @@ void Renderer::endFrame() {
 
   // Each eye apart by the slider (a third of it, as devkitPro's examples
   // have it), or one with it down
-  const float separation = osGet3DSliderState() / 3;
+  const float separation = debug.stereo ? osGet3DSliderState() / 3 : 0;
   C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
   b.copyFrameVertices();
   b.bound = nullptr;
+  b.eye = 1;
   b.drawEye(b.display.left(), projectionFor(b.camera, -separation));
-  if (separation > 0)
+  if (separation > 0) {
+    b.eye = 2;
     b.drawEye(b.display.right(), projectionFor(b.camera, separation));
+  }
   C3D_FrameEnd(0);
+
+  // The probe: the pixel under the cross, from the frame the screen shows
+  // now or the one before (the top screen's framebuffer is turned: 240
+  // pixels a column, from the bottom, 3 bytes a pixel, blue first)
+  if (debug.probe) {
+    u16 height = 0, width = 0; // (as the framebuffer is laid out: 240 x 400)
+    const u8 *pixels = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &height, &width);
+    const int x = std::clamp(debug.probeX, 0, 399), y = std::clamp(debug.probeY, 0, 239);
+    const u8 *pixel = pixels + (static_cast<std::size_t>(x) * 240 + (239 - y)) * 3;
+    b.debug.probed = {pixel[2], pixel[1], pixel[0]};
+  }
 
   b.times = {C3D_GetDrawingTime(), C3D_GetProcessingTime()};
   b.last = std::exchange(b.counting, {});
   overlay_.clear();
+  b.debug.drawing.store(false, std::memory_order_release);
 }
 
 Capabilities Renderer::capabilities() const { return {}; }

@@ -11,9 +11,14 @@
 // toScreen), under a title at twice the size. The bottom screen gives what
 // each frame drew and how long it took.
 //
-// A: the ship as a wireframe   B: fog off and on   START: quit
+// A: the ship as a wireframe   B: fog off and on   SELECT: the scene layer's
+// debug panel (ScratchPadd/Scene/3DS/Debug.hpp)   START: quit
+//
+// A watchdog runs all along: if the GPU hangs, it says which draws it was
+// sent last, on the bottom screen and in sdmc:/scene-3ds-hang.txt.
 #include <3ds.h>
 
+#include <ScratchPadd/Scene/3DS/Debug.hpp>
 #include <ScratchPadd/Scene/3DS/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
@@ -73,10 +78,16 @@ int main() {
     environment.addLight({.direction = {-0.5f, -0.8f, -0.6f}, .colour = {220, 215, 205}});
     const Scene::Camera camera{.eye = {0, 1.6f, 6.4f}, .target = {0, -0.2f, 0}, .fieldOfView = 40};
 
-    std::printf("\x1b[1;1HModels from Blender on a 3DS\n\n");
-    std::printf("Ship: %lu triangles\n", static_cast<unsigned long>(Assets::shipTriangles));
-    std::printf("Rock: %lu triangles (x2)\n\n", static_cast<unsigned long>(Assets::rockTriangles));
-    std::printf("A: wireframe ship  B: fog\n3D slider: stereo  START: quit\n");
+    Scene::Debug::Watchdog watchdog(renderer);
+    Scene::Debug::Panel debugPanel(renderer);
+    const auto printIntro = [] {
+      std::printf("\x1b[1;1HModels from Blender on a 3DS\n\n");
+      std::printf("Ship: %lu triangles\n", static_cast<unsigned long>(Assets::shipTriangles));
+      std::printf("Rock: %lu triangles (x2)\n\n",
+                  static_cast<unsigned long>(Assets::rockTriangles));
+      std::printf("A: wireframe ship  B: fog\n3D slider: stereo  SELECT: debug\nSTART: quit\n");
+    };
+    printIntro();
 
     float angle = 0;
     int frame = 0;
@@ -85,10 +96,16 @@ int main() {
       const u32 down = hidKeysDown();
       if (down & KEY_START)
         break;
-      if (down & KEY_A)
-        shown[0].material.wireframe = !shown[0].material.wireframe;
-      if (down & KEY_B)
-        environment.fog = environment.fog.density > 0 ? Scene::Fog{} : fog;
+      if (down & KEY_SELECT) {
+        debugPanel.setVisible(!debugPanel.visible());
+        if (!debugPanel.visible())
+          printIntro();
+      } else if (!debugPanel.handle(down, hidKeysHeld())) {
+        if (down & KEY_A)
+          shown[0].material.wireframe = !shown[0].material.wireframe;
+        if (down & KEY_B)
+          environment.fog = environment.fog.density > 0 ? Scene::Fog{} : fog;
+      }
 
       renderer.beginFrame(camera, environment);
       renderer.drawLines(lines, {90, 95, 110});
@@ -111,11 +128,12 @@ int main() {
       }
       renderer.endFrame();
 
+      debugPanel.draw();
       // What the last frame drew and how long it took, twice a second
-      if (++frame % 30 == 0) {
+      if (++frame % 30 == 0 && !debugPanel.visible()) {
         const Scene::FrameCounts counts = renderer.lastFrame();
         const Scene::FrameTimes times = renderer.lastFrameTimes();
-        std::printf("\x1b[10;1H3D a frame:\x1b[K\n");
+        std::printf("\x1b[11;1H3D a frame:\x1b[K\n");
         std::printf("%6u triangles (build limit 45000)\x1b[K\n", counts.polygons);
         std::printf("%6u draws\x1b[K\n", counts.draws);
         std::printf("GPU %5.2f ms, CPU %5.2f ms\x1b[K\n", times.gpu, times.cpu);
