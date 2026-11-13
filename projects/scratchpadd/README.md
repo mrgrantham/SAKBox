@@ -497,7 +497,7 @@ miniaudio (public domain or MIT-0), TinySoundFont (MIT) and stb_vorbis (public d
 
 ## On the Nintendo 3DS and DS
 
-Padds run on both as on desktops, threads and all. devkitPro gives the C++ library real threads on each: libctru's on the 3DS, and calico's on the DS (calico is devkitPro's system library under libnds), so `std::thread`, mutexes and condition variables work and a padd can have a thread of its own, at the priority its `runs()` asks for (on a console it decides what runs: see [Threads](#threads)). The two demos are the same three padds; [`handheld/include/HandheldDemo.hpp`](handheld/include/HandheldDemo.hpp) holds what they share, and each adds a `ScreenPadd` for its own screens and buttons:
+Padds run on both as on desktops, threads and all. devkitPro gives the C++ library real threads on each: libctru's on the 3DS, and calico's on the DS (calico is devkitPro's system library under libnds), so `std::thread`, mutexes and condition variables work and a padd can have a thread of its own, at the priority its `runs()` asks for (on a console it decides what runs: see [Threads](#threads)). Two things don't work on the DS: a timed wait (`condition_variable::wait_for` returns at once, so `EventTimer` sleeps in slices there), and `std::thread::detach()`, which ends the app (melonDS powers off; a DS Lite with an R4 hung on a white screen), so keep a thread and join it. The two demos are the same three padds; [`handheld/include/HandheldDemo.hpp`](handheld/include/HandheldDemo.hpp) holds what they share, and each adds a `ScreenPadd` for its own screens and buttons:
 
 | Padd | Runs on | Does |
 | --- | --- | --- |

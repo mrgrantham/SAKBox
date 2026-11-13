@@ -4,6 +4,7 @@
 
 #include <nds.h>
 
+#include <atomic>
 #include <mutex>
 #include <thread>
 
@@ -37,16 +38,26 @@ private:
       const std::uint32_t buttons = fromNintendo(Kind::Ds, 1u << bit, 0, 0, 0, 0, {}).held;
       buttonOfBit_[bit] = buttons ? static_cast<int>(__builtin_ctz(buttons)) : -1;
     }
-    std::thread([this] {
+    // (kept, not detached: on a DS, std::thread::detach() ends the app;
+    // melonDS powered off and a DS Lite hung, 2026-11-13)
+    thread_ = std::thread([this] {
       // Ahead of everything else the app runs, padds and their timers
       // included (main - 1): it takes microseconds, 60 times a second
       threadSetPrio(threadGetSelf(), MAIN_THREAD_PRIO - 2);
-      for (;;) {
+      while (!stopping_) {
         threadIrqWait(true, IRQ_VBLANK);
         sample();
       }
-    }).detach(); // (for the app's life)
+    });
   }
+  // (when the app ends: within a frame)
+  ~ButtonSampler() {
+    stopping_ = true;
+    thread_.join();
+  }
+  ButtonSampler(const ButtonSampler &) = delete;
+  ButtonSampler &operator=(const ButtonSampler &) = delete;
+
   void sample() {
     const unsigned held = keypadGetState();
     const unsigned changed = held ^ lastHeld_;
@@ -62,6 +73,8 @@ private:
     }
   }
 
+  std::atomic<bool> stopping_{false};
+  std::thread thread_;
   std::array<int, 16> buttonOfBit_{};
   unsigned lastHeld_ = 0; // (the sampler's thread only)
   std::mutex mutex_;
