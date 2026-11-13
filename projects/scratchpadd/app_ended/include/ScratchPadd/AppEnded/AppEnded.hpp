@@ -8,10 +8,11 @@
 //
 // - DS: both screens cleared, the title and the message on the top one, and
 //   what a button does on the bottom; it waits for a button (START, which
-//   quit, let go first), then switches the DS off, or goes back to the
-//   menu that started the app if that menu left a way back (calico's jump
-//   target). Without this, a DS app that returned from main left its last
-//   frame on the screens.
+//   quit, let go first), then switches the DS off. Without this, a DS app
+//   that returned from main left its last frame on the screens.
+//   Leaving::BackToMenu goes back to the menu that started the app instead,
+//   where that menu left calico a way back (a jump target). Not the
+//   default: an R4's loader leaves one that hangs (a DS Lite, 2026-11-13).
 // - 3DS: nothing; the app returns to the HOME Menu.
 // A debug build's log (DebugLog::Session) says which way a DS goes.
 
@@ -29,12 +30,15 @@
 namespace ScratchPadd::AppEnded {
 
 #if defined(__NDS__)
-inline void show(std::string_view title, std::string_view message = {}) {
+inline void show(std::string_view title, std::string_view message = {},
+                 Leaving wanted = Leaving::SwitchOff) {
   constexpr int kColumns = 32, kRows = 24;
-  const Leaving leaving = pmHasResetJumpTarget() ? Leaving::BackToMenu : Leaving::SwitchOff;
-  PADDLOG_INFO("Ended: a button {}", leaving == Leaving::BackToMenu
-                                         ? "goes back to the menu (calico has a jump target)"
-                                         : "switches the DS off");
+  const bool canGoBack = pmHasResetJumpTarget();
+  const Leaving leaving =
+      wanted == Leaving::BackToMenu && canGoBack ? Leaving::BackToMenu : Leaving::SwitchOff;
+  PADDLOG_INFO("Ended: a button {} (calico {} a jump target)",
+               leaving == Leaving::BackToMenu ? "goes back to the menu" : "switches the DS off",
+               canGoBack ? "has" : "hasn't");
 
   // Text on both screens and nothing else (the app's 3D and backgrounds
   // gone), the main engine on top
@@ -73,13 +77,13 @@ inline void show(std::string_view title, std::string_view message = {}) {
       break;
     letGo = letGo || !held;
   }
-  // (Returning from main then goes back to the menu, or with nowhere to
-  // go, calico switches the DS off; switching off here makes sure)
+  // (Returning from main then goes back to the menu. Switching off here
+  // rather than leaving it to calico, which would use the jump target.)
   if (leaving == Leaving::SwitchOff)
     systemShutDown();
 }
 #else
-inline void show(std::string_view, std::string_view = {}) {}
+inline void show(std::string_view, std::string_view = {}, Leaving = Leaving::SwitchOff) {}
 #endif
 
 } // namespace ScratchPadd::AppEnded
