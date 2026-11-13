@@ -8,7 +8,8 @@
 //
 // - DS: both screens cleared, the title and the message on the top one, and
 //   what a button does on the bottom; it waits for a button (START, which
-//   quit, let go first), then switches the DS off. Without this, a DS app
+//   quit, let go first), then returns, and main returning switches the DS
+//   off. So call it last. Without this, a DS app
 //   that returned from main left its last frame on the screens.
 //   Leaving::BackToMenu goes back to the menu that started the app instead,
 //   where that menu left calico a way back (a jump target). Not the
@@ -77,10 +78,11 @@ inline void show(std::string_view title, std::string_view message = {},
       break;
     letGo = letGo || !held;
   }
-  // (Returning from main then goes back to the menu. Switching off here
-  // rather than leaving it to calico, which would use the jump target.)
+  // Returning from main then switches the DS off: with no jump target,
+  // that's what calico does. (libnds' systemShutDown does nothing under
+  // calico, which masks out the power-off bit it sets.)
   if (leaving == Leaving::SwitchOff)
-    systemShutDown();
+    pmClearResetJumpTarget();
 }
 #else
 inline void show(std::string_view, std::string_view = {}, Leaving = Leaving::SwitchOff) {}
