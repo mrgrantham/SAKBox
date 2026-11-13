@@ -259,6 +259,10 @@ void Renderer::Backend::drawMesh(const Draw &draw, const C3D_Mtx &viewProjection
   }
   useScene();
   setMaterial(draw.material, draw.where, mvp);
+  // Back faces culled (counter-clockwise is the front), unless either side
+  // shows: a double-sided mesh or material
+  const bool cull = !mesh.doubleSided && !draw.material.doubleSided && debug.settings.culling;
+  C3D_CullFace(cull ? GPU_CULL_BACK_CCW : GPU_CULL_NONE);
   C3D_SetBufInfo(&mesh.buffers);
   if (mesh.indices)
     C3D_DrawElements(GPU_TRIANGLES, mesh.count, C3D_UNSIGNED_SHORT, mesh.indices);
@@ -285,6 +289,7 @@ void Renderer::Backend::drawLineVertices(const LineVertex *vertices, int count, 
     bound = &lineProgram;
   }
   C3D_SetAttrInfo(&lineAttributes);
+  C3D_CullFace(GPU_CULL_NONE); // (a line's quad faces either way)
   C3D_TexEnv *combiner = C3D_GetTexEnv(0);
   C3D_TexEnvInit(combiner);
   C3D_TexEnvSrc(combiner, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
@@ -379,6 +384,7 @@ void Renderer::Backend::drawOverlay() {
   C3D_BindProgram(&overlayProgram);
   bound = &overlayProgram;
   C3D_SetAttrInfo(&overlayAttributes);
+  C3D_CullFace(GPU_CULL_NONE);
   C3D_BufInfo buffers;
   BufInfo_Init(&buffers);
   BufInfo_Add(&buffers, overlayVertices, sizeof(Overlay::Vertex), 2, 0x10);
@@ -506,6 +512,8 @@ Mesh Renderer::load(const MeshData &mesh) {
   BufInfo_Init(&loaded.buffers);
   BufInfo_Add(&loaded.buffers, loaded.vertices, sizeof(Vertex), 3, 0x210);
   loaded.translucent = hasTranslucentVertices(mesh);
+  loaded.bounds = boundsOf(mesh);
+  loaded.doubleSided = mesh.doubleSided;
   const unsigned triangles = static_cast<unsigned>(loaded.count / 3);
   loaded.cost = {triangles, triangles * 3, 0};
   backend_->meshes.push_back(std::move(loaded));
@@ -529,6 +537,9 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   Mtx_LookAt(&b.view, FVec3_New(camera.eye.x, camera.eye.y, camera.eye.z),
              FVec3_New(camera.target.x, camera.target.y, camera.target.z),
              FVec3_New(camera.up.x, camera.up.y, camera.up.z), false);
+  // What the camera sees, its sides moved out a little: in stereo each eye
+  // sees a little further to its side
+  b.frustum.emplace(camera, static_cast<float>(b.display.width()) / b.display.height(), 1.15f);
   b.solid.clear();
   b.later.clear();
   b.lineEnds.clear();
@@ -542,6 +553,11 @@ void Renderer::draw(Mesh mesh, const Transform &where, const Material &material)
   if (!mesh || mesh.id > b.meshes.size() || !b.meshes[mesh.id - 1].vertices)
     return;
   const Backend::LoadedMesh &loaded = b.meshes[mesh.id - 1];
+  // Wholly out of view: not drawn (Culling.hpp)
+  if (b.debug.settings.culling && b.frustum->outside(loaded.bounds, where)) {
+    ++b.counting.culled;
+    return;
+  }
   const float distance = (where.position() - b.camera.eye).length();
   if (material.alpha < 31 || loaded.translucent)
     b.later.push_back({mesh, where, material, distance});

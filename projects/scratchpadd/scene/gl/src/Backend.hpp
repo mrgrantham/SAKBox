@@ -4,12 +4,14 @@
 
 #include <GL/glew.h>
 
+#include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <glm/glm.hpp>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -44,6 +46,8 @@ struct Renderer::Backend {
     // Drawn translucent whatever its material (see hasTranslucentVertices)
     bool translucent = false;
     FrameCounts cost; // what it costs the DS (Primitives.hpp), counted a draw
+    Bounds bounds;    // for frustum culling (Culling.hpp)
+    bool doubleSided = false;
   };
   // A translucent draw, kept until the end of the frame
   struct Later {
@@ -73,6 +77,7 @@ struct Renderer::Backend {
 
   glm::vec3 eye{0.0f};
   glm::mat4 viewProj{1.0f}; // this frame's
+  std::optional<Frustum> frustum;
   // Desktop.hpp's vertex snapping, for the rest of the frame
   float worldSnap = 0, screenSnap = 0;
 };

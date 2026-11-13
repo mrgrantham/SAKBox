@@ -34,6 +34,9 @@ check simplify 1 "SIMPLIFY_AGGRESSIVE goes further" model SIMPLIFY
 check aggressive 0 "" model SIMPLIFY_AGGRESSIVE
 check aggressive_fits 0 "rockTriangles = 200" cat "$out/SIMPLIFY_AGGRESSIVE.h"
 check report 0 '"fits": true' cat "$out/SIMPLIFY_AGGRESSIVE.json"
+# The rock is closed: its back faces are culled
+check report_sides 0 '"closed": true' cat "$out/SIMPLIFY_AGGRESSIVE.json"
+check culled 0 ", false}" cat "$out/SIMPLIFY_AGGRESSIVE.cpp"
 check desktop 0 "rockTriangles = 5120" sh -c "\"$cook\" model --gltf \"$glb\" --name rock --object Rock \
   --output desktop Assets \"$out/d.cpp\" \"$out/d.h\" 0 0 FAIL && cat \"$out/d.h\""
 check missing 1 "no object named Nothing" "$cook" model --gltf "$glb" --name x --object Nothing \

@@ -24,6 +24,17 @@ struct Mesh {
   std::size_t triangleCount() const { return indices.size() / 3; }
 };
 
+// Whether a mesh is closed: every edge shared by exactly two triangles,
+// edges matched by where their ends are (so a flat-shaded mesh, each
+// triangle with its own vertices, is closed if its surface is). A closed
+// mesh never shows its triangles' backs from outside, so they're culled;
+// an open one (a plane, a pane, a fin of one sheet) is drawn double-sided.
+struct Sides {
+  bool closed = false;
+  std::size_t openEdges = 0; // edges on only one triangle, or on more than two
+};
+Sides sidesOf(const Mesh &mesh);
+
 // What a platform can draw, and what a model may use of it
 struct Budget {
   std::uint32_t polygons = 0; // 0: no limit

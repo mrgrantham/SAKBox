@@ -9,6 +9,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
     name = "scene" + suffix,
     hdrs = glob(["include/**/*.hpp"]),
     srcs = [
+        "src/Culling.cpp",
         "src/MeshBuilder.cpp",
         "src/Overlay.cpp",
         "src/Primitives.cpp",

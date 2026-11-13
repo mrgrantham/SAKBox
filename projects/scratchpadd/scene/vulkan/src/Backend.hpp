@@ -4,6 +4,7 @@
 
 #include "Surface.hpp"
 
+#include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
@@ -11,6 +12,7 @@
 #include <glm/glm.hpp>
 
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace ScratchPadd::Scene {
@@ -25,6 +27,8 @@ struct Renderer::Backend {
     // Drawn translucent whatever its material (see hasTranslucentVertices)
     bool translucent = false;
     FrameCounts cost; // what it costs the DS (Primitives.hpp), counted a draw
+    Bounds bounds;    // for frustum culling (Culling.hpp)
+    bool doubleSided = false;
   };
   // A translucent draw, kept until the end of the frame
   struct Later {
@@ -50,8 +54,10 @@ struct Renderer::Backend {
                  overlayVertex = VK_NULL_HANDLE, overlayFragment = VK_NULL_HANDLE;
   VkDescriptorSetLayout frameLayout = VK_NULL_HANDLE;
   VkPipelineLayout sceneLayout = VK_NULL_HANDLE, overlayLayout = VK_NULL_HANDLE;
-  // Solid and translucent, each filled or as a wireframe; lines; the overlay
-  VkPipeline solid = VK_NULL_HANDLE, translucent = VK_NULL_HANDLE, solidWire = VK_NULL_HANDLE,
+  // Solid and translucent, each filled (both sides, or the back culled) or
+  // as a wireframe; lines; the overlay
+  VkPipeline solid = VK_NULL_HANDLE, translucent = VK_NULL_HANDLE, solidCulled = VK_NULL_HANDLE,
+             translucentCulled = VK_NULL_HANDLE, solidWire = VK_NULL_HANDLE,
              translucentWire = VK_NULL_HANDLE, lines = VK_NULL_HANDLE,
              overlayPipeline = VK_NULL_HANDLE;
   VkDescriptorPool descriptors = VK_NULL_HANDLE;
@@ -70,6 +76,7 @@ struct Renderer::Backend {
   bool recording = false;
   glm::vec3 eye{0.0f};
   glm::mat4 viewProj{1.0f};
+  std::optional<Frustum> frustum; // this frame's
   // The uniforms each draw shares (the shaders' Frame), and Desktop.hpp's
   // vertex snapping, for the rest of the frame
   struct FrameUniforms {

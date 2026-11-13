@@ -40,6 +40,27 @@ Mesh bumpy(int n) {
   return grid(n, [](float x, float z) { return 0.3f * std::sin(40 * x) * std::cos(37 * z); });
 }
 
+// A unit cube flat-shaded: each face its own four vertices, wound
+// counter-clockwise seen from outside
+Mesh cube() {
+  Mesh mesh;
+  const float faces[6][4][3] = {
+      {{0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}}, {{1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0}},
+      {{1, 0, 1}, {1, 0, 0}, {1, 1, 0}, {1, 1, 1}}, {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0}},
+      {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}}, {{0, 0, 0}, {1, 0, 0}, {1, 0, 1}, {0, 0, 1}}};
+  for (const auto &face : faces) {
+    const auto first = static_cast<std::uint32_t>(mesh.vertexCount());
+    for (const auto &corner : face) {
+      mesh.positions.insert(mesh.positions.end(), corner, corner + 3);
+      mesh.normals.insert(mesh.normals.end(), {0, 0, 0});
+      mesh.colours.insert(mesh.colours.end(), {1, 1, 1, 1});
+    }
+    mesh.indices.insert(mesh.indices.end(),
+                        {first, first + 1, first + 2, first, first + 2, first + 3});
+  }
+  return mesh;
+}
+
 } // namespace
 
 // Separate triangles cost a polygon and three vertices each; a budget of
@@ -142,6 +163,27 @@ TEST(CookTest, TheDsCountsQuadsAndStrips) {
   ASSERT_TRUE(cooked.fitsBudget);
   EXPECT_TRUE(fits(costOf(cooked.mesh, Drawing::quadsAndStrips), budget));
   EXPECT_GT(cooked.mesh.triangleCount(), 300u);
+}
+
+// A closed mesh (its edges matched by where they are, so a flat-shaded
+// cube is closed) is culled; an open one, a sheet, is drawn double-sided.
+// Its open edges: a grid's rim, a cube missing a face's four.
+TEST(CookTest, ClosedMeshesHaveNoOpenEdges) {
+  const Sides cubeSides = sidesOf(cube());
+  EXPECT_TRUE(cubeSides.closed);
+  EXPECT_EQ(cubeSides.openEdges, 0u);
+
+  const Sides sheet = sidesOf(flat(4));
+  EXPECT_FALSE(sheet.closed);
+  EXPECT_EQ(sheet.openEdges, 16u);
+
+  Mesh opened = cube();
+  opened.indices.resize(opened.indices.size() - 6);
+  const Sides box = sidesOf(opened);
+  EXPECT_FALSE(box.closed);
+  EXPECT_EQ(box.openEdges, 4u);
+
+  EXPECT_FALSE(sidesOf(Mesh{}).closed);
 }
 
 TEST(CookTest, ModesByName) {

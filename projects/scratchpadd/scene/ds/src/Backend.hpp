@@ -4,9 +4,11 @@
 
 #include "DisplayList.hpp"
 
+#include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/DS/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,6 +23,8 @@ struct Renderer::Backend {
     DisplayList::Source source;
     // Drawn translucent whatever its material (see hasTranslucentVertices)
     bool translucent = false;
+    Bounds bounds; // for frustum culling (Culling.hpp)
+    bool doubleSided = false;
     // Its display lists, packed the first time it's drawn each way: a few
     // ways, the oldest dropped first
     std::vector<std::pair<DisplayList::Variant, std::vector<DisplayList::Packed>>> lists;
@@ -50,7 +54,8 @@ struct Renderer::Backend {
   Colour ambient;
   std::uint32_t lightBits = 0; // the polygon format's bits for the lights in use
   FrameCounts last;
-  unsigned draws = 0; // this frame's so far
+  unsigned draws = 0, culled = 0; // this frame's so far
+  std::optional<Frustum> frustum; // this frame's
   // Fog: the polygon format's bit for it (0 without), and the fog and
   // camera its table was worked out for (only again when they change)
   std::uint32_t fogBit = 0;

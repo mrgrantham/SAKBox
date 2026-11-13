@@ -3,7 +3,9 @@
 #include <meshoptimizer.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <map>
 
 namespace Cook {
 
@@ -35,6 +37,33 @@ Budget costOf(const Mesh &mesh, Drawing drawing) {
   }
   const auto triangles = static_cast<std::uint32_t>(mesh.triangleCount());
   return {.polygons = triangles, .vertices = 3 * triangles};
+}
+
+Sides sidesOf(const Mesh &mesh) {
+  // Each vertex's place, numbered (vertices in the same place share one)
+  std::map<std::array<float, 3>, std::uint32_t> places;
+  std::vector<std::uint32_t> placeOf(mesh.vertexCount());
+  for (std::size_t v = 0; v < mesh.vertexCount(); ++v) {
+    const std::array<float, 3> p{mesh.positions[v * 3], mesh.positions[v * 3 + 1],
+                                 mesh.positions[v * 3 + 2]};
+    placeOf[v] = places.try_emplace(p, static_cast<std::uint32_t>(places.size())).first->second;
+  }
+  // How many triangles each edge (between two places) is on
+  std::map<std::pair<std::uint32_t, std::uint32_t>, int> edges;
+  for (std::size_t t = 0; t + 2 < mesh.indices.size(); t += 3) {
+    for (std::size_t side = 0; side < 3; ++side) {
+      const std::uint32_t a = placeOf[mesh.indices[t + side]];
+      const std::uint32_t b = placeOf[mesh.indices[t + (side + 1) % 3]];
+      if (a != b)
+        ++edges[{std::min(a, b), std::max(a, b)}];
+    }
+  }
+  Sides sides;
+  for (const auto &[edge, triangles] : edges)
+    if (triangles != 2)
+      ++sides.openEdges;
+  sides.closed = !edges.empty() && sides.openEdges == 0;
+  return sides;
 }
 
 bool fits(const Budget &cost, const Budget &budget) {
@@ -266,8 +295,8 @@ Cooked cook(const Mesh &mesh, const Budget &budget, Mode mode, Drawing drawing) 
       double room = budget.polygons ? double(budget.polygons) / std::max(1u, cost.polygons) : 1e9;
       if (budget.vertices)
         room = std::min(room, double(budget.vertices) / std::max(1u, cost.vertices));
-      const auto next = std::min(static_cast<std::size_t>(double(target) * room),
-                                 mesh.triangleCount() - 1);
+      const auto next =
+          std::min(static_cast<std::size_t>(double(target) * room), mesh.triangleCount() - 1);
       if (next <= target + target / 50) // within 2%: as good as it gets
         break;
       target = next;

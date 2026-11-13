@@ -49,8 +49,11 @@ Scene::MeshBuilder shipMesh() {
       .triangle(nose, right, bottom)
       .triangle(left, bottom, tail)
       .triangle(bottom, right, tail)
+      // Each fin a sheet: a triangle facing each way (back faces are culled)
       .triangle(top, tail, finLeft)
-      .triangle(top, finRight, tail);
+      .triangle(top, finLeft, tail)
+      .triangle(top, finRight, tail)
+      .triangle(top, tail, finRight);
   return ship;
 }
 

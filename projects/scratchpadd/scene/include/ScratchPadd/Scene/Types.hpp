@@ -125,13 +125,15 @@ struct Light {
 // there. Desktops count the 3D the same way; the DS reads its hardware's
 // counters, which count the overlay's shapes too. The 3DS draws triangles,
 // so it counts triangles (3 vertices each). `draws` is the frame's draws
-// (each mesh drawn, and each drawLines), which cost the CPU time on the 3DS.
+// (each mesh drawn, and each drawLines), which cost the CPU time on the 3DS;
+// `culled` the meshes not drawn as they were wholly out of view (Culling.hpp).
 struct FrameCounts {
-  unsigned polygons = 0, vertices = 0, draws = 0;
+  unsigned polygons = 0, vertices = 0, draws = 0, culled = 0;
   FrameCounts &operator+=(const FrameCounts &o) {
     polygons += o.polygons;
     vertices += o.vertices;
     draws += o.draws;
+    culled += o.culled;
     return *this;
   }
   bool operator==(const FrameCounts &) const = default;
@@ -177,6 +179,9 @@ struct Material {
   std::uint8_t alpha = 31;
   // Only the edges of its triangles
   bool wireframe = false;
+  // Both sides of its triangles drawn, though its mesh culls its back faces
+  // (MeshData::doubleSided)
+  bool doubleSided = false;
 };
 
 } // namespace ScratchPadd::Scene

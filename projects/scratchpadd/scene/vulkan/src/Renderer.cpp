@@ -235,12 +235,18 @@ Renderer::Backend::Backend(Display &display)
                                 .stride = sizeof(Vertex),
                                 .samples = Vulkan::frameSamples()};
   solid = Vulkan::makePipeline(d);
+  d.cullBack = true;
+  solidCulled = Vulkan::makePipeline(d);
+  d.cullBack = false;
   d.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
   lines = Vulkan::makePipeline(d);
   d.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   d.blend = true;
   d.depthWrite = false;
   translucent = Vulkan::makePipeline(d);
+  d.cullBack = true;
+  translucentCulled = Vulkan::makePipeline(d);
+  d.cullBack = false;
   if (Vulkan::wireframes()) {
     d.polygonMode = VK_POLYGON_MODE_LINE;
     translucentWire = Vulkan::makePipeline(d);
@@ -273,8 +279,8 @@ Renderer::Backend::~Backend() {
   for (Vulkan::Buffer &buffer : frameBuffers)
     Vulkan::destroy(buffer);
   Vulkan::destroy(frameUniformBuffer);
-  for (VkPipeline pipeline :
-       {solid, translucent, solidWire, translucentWire, lines, overlayPipeline})
+  for (VkPipeline pipeline : {solid, translucent, solidCulled, translucentCulled, solidWire,
+                              translucentWire, lines, overlayPipeline})
     if (pipeline)
       vkDestroyPipeline(device(), pipeline, nullptr);
   for (VkShaderModule module : {sceneVertex, sceneFragment, overlayVertex, overlayFragment})
@@ -309,7 +315,11 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
     return;
   const LoadedMesh &loaded = meshes[mesh.id - 1];
   const bool seeThrough = material.alpha < 31 || loaded.translucent;
-  VkPipeline pipeline = seeThrough ? translucent : solid;
+  // Back faces culled unless either side shows (a double-sided mesh or
+  // material, or a wireframe, below)
+  const bool cull = !loaded.doubleSided && !material.doubleSided;
+  VkPipeline pipeline =
+      seeThrough ? (cull ? translucentCulled : translucent) : (cull ? solidCulled : solid);
   if (material.wireframe && solidWire)
     pipeline = seeThrough ? translucentWire : solidWire;
   VkCommandBuffer commands = surface.commands;
@@ -366,6 +376,8 @@ Mesh Renderer::load(const MeshData &mesh) {
     loaded.indexCount = static_cast<std::uint32_t>(indices.size());
     loaded.translucent = hasTranslucentVertices(mesh);
     loaded.cost = costOf(mesh);
+    loaded.bounds = boundsOf(mesh);
+    loaded.doubleSided = mesh.doubleSided;
   }
   backend_->meshes.push_back(loaded);
   return Mesh{static_cast<std::uint32_t>(backend_->meshes.size())};
@@ -407,6 +419,7 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
       glm::radians(camera.fieldOfView), static_cast<float>(s.width) / static_cast<float>(s.height),
       camera.nearPlane, camera.farPlane);
   b.viewProj = projection * view;
+  b.frustum.emplace(camera, static_cast<float>(s.width) / static_cast<float>(s.height));
   Backend::FrameUniforms f{};
   std::memcpy(f.viewProj, glm::value_ptr(b.viewProj), sizeof(f.viewProj));
   f.viewport[0] = static_cast<float>(s.width);
@@ -496,6 +509,12 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
 
 void Renderer::draw(Mesh mesh, const Transform &where, const Material &material) {
   const auto &meshes = backend_->meshes;
+  // Wholly out of view: not drawn (Culling.hpp)
+  if (mesh && mesh.id <= meshes.size() && backend_->frustum &&
+      backend_->frustum->outside(meshes[mesh.id - 1].bounds, where)) {
+    ++backend_->counting.culled;
+    return;
+  }
   if (material.alpha < 31 ||
       (mesh && mesh.id <= meshes.size() && meshes[mesh.id - 1].translucent)) {
     const glm::vec3 position = toGlm(where.position());

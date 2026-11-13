@@ -47,6 +47,13 @@ struct MeshData {
   std::span<const Vertex> vertices;
   std::span<const std::uint32_t> indices;
   std::span<const Primitive> primitives;
+  // Whether its triangles' backs are drawn too. A closed mesh (a box, a
+  // rock) never shows its backs from outside, so the GPU skips them
+  // (back-face culling, counter-clockwise is the front); an open one (a
+  // plane, a pane, a fin of one sheet) needs both sides. The build decides
+  // for models from Blender (tools/assets); MeshBuilder's are culled, and a
+  // Material can draw both sides anyway.
+  bool doubleSided = false;
 };
 
 // Builds a mesh in code from flat-shaded triangles and quads: each face

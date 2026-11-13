@@ -110,7 +110,12 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   // Each list's polygons with its alpha times the material's (a polygon's
   // format is taken when its list begins them)
   const unsigned materialAlpha = std::min<unsigned>(material.alpha, 31);
-  const std::uint32_t format = POLY_CULL_NONE | POLY_ID(polygonId) | (lit ? lightBits : 0) | fogBit;
+  // Back faces culled (counter-clockwise is the front), unless either side
+  // shows: a double-sided mesh or material, or a wireframe. A culled
+  // polygon takes none of the DS's 2048.
+  const bool cull = !loaded.doubleSided && !material.doubleSided && !material.wireframe;
+  const std::uint32_t format = (cull ? POLY_CULL_BACK : POLY_CULL_NONE) | POLY_ID(polygonId) |
+                               (lit ? lightBits : 0) | fogBit;
   for (const DisplayList::Packed &packed : lists) {
     unsigned alpha = 0; // a wireframe
     if (!material.wireframe) {
@@ -288,6 +293,8 @@ Mesh Renderer::load(const MeshData &mesh) {
   loaded.loaded = true;
   loaded.translucent = hasTranslucentVertices(mesh);
   loaded.source = DisplayList::prepare(mesh);
+  loaded.bounds = boundsOf(mesh);
+  loaded.doubleSided = mesh.doubleSided;
   backend_->meshes.push_back(std::move(loaded));
   return Mesh{static_cast<std::uint32_t>(backend_->meshes.size())};
 }
@@ -300,6 +307,7 @@ void Renderer::unload(Mesh mesh) {
 void Renderer::beginFrame(const Camera &camera, const Environment &environment) {
   Backend &b = *backend_;
   b.camera = camera;
+  b.frustum.emplace(camera, Scalar(b.display.width()) / Scalar(b.display.height()));
   b.ambient = environment.ambient;
   b.later.clear();
   overlay_.clear();
@@ -339,6 +347,12 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
 
 void Renderer::draw(Mesh mesh, const Transform &where, const Material &material) {
   Backend &b = *backend_;
+  // Wholly out of view: not drawn, its vertices not sent (Culling.hpp)
+  if (mesh && mesh.id <= b.meshes.size() && b.frustum &&
+      b.frustum->outside(b.meshes[mesh.id - 1].bounds, where)) {
+    ++b.culled;
+    return;
+  }
   const bool translucentMesh =
       mesh && mesh.id <= b.meshes.size() && b.meshes[mesh.id - 1].translucent;
   if ((material.alpha < 31 || translucentMesh) && !material.wireframe) {
@@ -403,7 +417,8 @@ void Renderer::endFrame() {
   while (GFX_BUSY) {
   }
   b.last = {static_cast<unsigned>(GFX_POLYGON_RAM_USAGE),
-            static_cast<unsigned>(GFX_VERTEX_RAM_USAGE), std::exchange(b.draws, 0)};
+            static_cast<unsigned>(GFX_VERTEX_RAM_USAGE), std::exchange(b.draws, 0),
+            std::exchange(b.culled, 0)};
   const bool overflowed = (GFX_CONTROL & BIT(13)) != 0;
   if (overflowed)
     GFX_CONTROL |= BIT(13); // acknowledged

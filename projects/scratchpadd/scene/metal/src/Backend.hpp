@@ -4,6 +4,7 @@
 
 #include "Surface.hpp"
 
+#include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
@@ -12,6 +13,7 @@
 
 #include <glm/glm.hpp>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -37,6 +39,8 @@ struct Renderer::Backend {
     // Drawn translucent whatever its material (see hasTranslucentVertices)
     bool translucent = false;
     FrameCounts cost; // what it costs the DS (Primitives.hpp), counted a draw
+    Bounds bounds;    // for frustum culling (Culling.hpp)
+    bool doubleSided = false;
   };
   // A translucent draw, kept until the end of the frame
   struct Later {
@@ -66,6 +70,7 @@ struct Renderer::Backend {
   std::vector<MTL::Buffer *> buffers; // frameBuffer's, released when it's drawn
   glm::vec3 eye{0.0f};
   glm::mat4 viewProj{1.0f};
+  std::optional<Frustum> frustum; // this frame's
   // The uniforms each draw shares (the shaders' Frame), and Desktop.hpp's
   // vertex snapping, for the rest of the frame
   struct FrameUniforms {

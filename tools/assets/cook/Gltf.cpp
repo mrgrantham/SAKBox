@@ -158,11 +158,17 @@ std::optional<Model> readModel(const std::string &path, const std::string &objec
   }
 
   Model model{.object = chosen->name};
+  model.backfaceCulling = chosen->mesh->primitives_count > 0;
   for (cgltf_size p = 0; p < chosen->mesh->primitives_count; ++p) {
-    if (!append(chosen->mesh->primitives[p], model.mesh, error)) {
+    const cgltf_primitive &primitive = chosen->mesh->primitives[p];
+    if (!append(primitive, model.mesh, error)) {
       error.insert(0, model.object + ": ");
       return std::nullopt;
     }
+    // (Blender writes doubleSided unless Backface Culling is ticked; a
+    // primitive with no material has neither)
+    if (!primitive.material || primitive.material->double_sided)
+      model.backfaceCulling = false;
   }
   return model;
 }

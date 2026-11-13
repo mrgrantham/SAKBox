@@ -81,7 +81,7 @@ std::string floatLiteral(float value) {
 // as constants. For the DS, its indices are its quads, strips and
 // triangles, which MeshData's primitives give.
 void writeCpp(const Cook::Mesh &mesh, const std::string &name, const Output &output,
-              const std::string &source) {
+              const std::string &source, bool doubleSided) {
   const Cook::Drawing drawing = drawingOn(output.platform);
   ScratchPadd::Scene::Primitives primitives;
   if (drawing == Cook::Drawing::quadsAndStrips)
@@ -112,8 +112,7 @@ void writeCpp(const Cook::Mesh &mesh, const std::string &name, const Output &out
     const ScratchPadd::Scene::Colour &c = v.colour;
     cc << "    {{" << floatLiteral(p.x) << ", " << floatLiteral(p.y) << ", " << floatLiteral(p.z)
        << "}, {" << floatLiteral(n.x) << ", " << floatLiteral(n.y) << ", " << floatLiteral(n.z)
-       << "}, {" << int(c.r) << ", " << int(c.g) << ", " << int(c.b) << ", " << int(c.a)
-       << "}},\n";
+       << "}, {" << int(c.r) << ", " << int(c.g) << ", " << int(c.b) << ", " << int(c.a) << "}},\n";
   }
   cc << "};\nconstexpr std::uint32_t kIndices[] = {";
   for (std::size_t i = 0; i < primitives.indices.size(); ++i)
@@ -130,7 +129,10 @@ void writeCpp(const Cook::Mesh &mesh, const std::string &name, const Output &out
          << static_cast<int>(run.alpha) << ", " << run.indexCount << "},\n";
     cc << "};\n";
     meshArrays += ", kPrimitives";
+  } else {
+    meshArrays += ", {}";
   }
+  meshArrays += doubleSided ? ", true" : ", false";
   cc << "} // namespace\n\nconst ScratchPadd::Scene::MeshData " << name << "{" << meshArrays
      << "};\n} // namespace " << output.nameSpace << "\n";
 }
@@ -185,6 +187,10 @@ int cookModel(int argc, char **argv) {
       return 1;
     }
     const Cook::Drawing drawing = drawingOn(output.platform);
+    // Culled if it's closed (its shape as made, before any simplifying), or
+    // if Blender's Backface Culling is ticked; double-sided if it's open
+    const Cook::Sides sides = Cook::sidesOf(model->mesh);
+    const bool doubleSided = !sides.closed && !model->backfaceCulling;
     const Cook::Cooked cooked = Cook::cook(model->mesh, output.budget, output.mode, drawing);
     const Cook::Budget before = Cook::costOf(model->mesh, drawing),
                        after = Cook::costOf(cooked.mesh, drawing);
@@ -195,8 +201,12 @@ int cookModel(int argc, char **argv) {
            << "}, \"before\": {\"polygons\": " << before.polygons
            << ", \"vertices\": " << before.vertices
            << "}, \"after\": {\"polygons\": " << after.polygons
-           << ", \"vertices\": " << after.vertices << "}, \"error\": " << cooked.error
-           << ", \"steps\": [";
+           << ", \"vertices\": " << after.vertices
+           << "}, \"sides\": {\"closed\": " << (sides.closed ? "true" : "false")
+           << ", \"openEdges\": " << sides.openEdges
+           << ", \"backfaceCulling\": " << (model->backfaceCulling ? "true" : "false")
+           << ", \"doubleSided\": " << (doubleSided ? "true" : "false")
+           << "}, \"error\": " << cooked.error << ", \"steps\": [";
     for (std::size_t s = 0; s < cooked.steps.size(); ++s)
       report << (s ? ", " : "") << '"' << cooked.steps[s] << '"';
     report << "], \"fits\": " << (cooked.fitsBudget ? "true" : "false") << "}";
@@ -227,7 +237,7 @@ int cookModel(int argc, char **argv) {
       }
       continue;
     }
-    writeCpp(cooked.mesh, name, output, label + " (object " + model->object + ")");
+    writeCpp(cooked.mesh, name, output, label + " (object " + model->object + ")", doubleSided);
   }
   report << "\n  }\n}\n";
   if (!reportPath.empty())

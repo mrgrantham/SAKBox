@@ -72,6 +72,9 @@ struct PipelineDescription {
   std::uint32_t stride = 0; // of binding 0's vertices
   VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
+  // Back faces culled (counter-clockwise is the front: the flipped
+  // viewport keeps OpenGL's sense of it)
+  bool cullBack = false;
   bool blend = false; // as OpenGL's glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
   bool depthTest = true, depthWrite = true;
   VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;

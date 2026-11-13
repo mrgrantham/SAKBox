@@ -227,8 +227,13 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   glUniform1f(uniform.screenSnap, screenSnap);
   if (material.wireframe)
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  // Back faces culled (counter-clockwise is the front), unless either side
+  // shows: a double-sided mesh or material, or a wireframe
+  if (!loaded.doubleSided && !material.doubleSided && !material.wireframe)
+    glEnable(GL_CULL_FACE);
   glBindVertexArray(loaded.vao);
   glDrawElements(GL_TRIANGLES, loaded.indexCount, GL_UNSIGNED_INT, nullptr);
+  glDisable(GL_CULL_FACE);
   counting += loaded.cost;
   ++counting.draws;
   if (material.wireframe)
@@ -281,6 +286,8 @@ Mesh Renderer::load(const MeshData &mesh) {
   loaded.indexCount = static_cast<GLsizei>(indices.size());
   loaded.translucent = hasTranslucentVertices(mesh);
   loaded.cost = costOf(mesh);
+  loaded.bounds = boundsOf(mesh);
+  loaded.doubleSided = mesh.doubleSided;
   backend_->meshes.push_back(loaded);
   return Mesh{static_cast<std::uint32_t>(backend_->meshes.size())};
 }
@@ -316,6 +323,7 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
                        static_cast<float>(width) / static_cast<float>(std::max(height, 1)),
                        camera.nearPlane, camera.farPlane);
   b.viewProj = projection * view;
+  b.frustum.emplace(camera, static_cast<float>(width) / static_cast<float>(std::max(height, 1)));
   glUniformMatrix4fv(b.uniform.viewProj, 1, GL_FALSE, glm::value_ptr(b.viewProj));
   glUniform2f(b.uniform.viewport, static_cast<float>(width), static_cast<float>(height));
   const glm::vec3 ambient = toGlm(environment.ambient);
@@ -339,6 +347,12 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
 
 void Renderer::draw(Mesh mesh, const Transform &where, const Material &material) {
   const auto &meshes = backend_->meshes;
+  // Wholly out of view: not drawn (Culling.hpp)
+  if (mesh && mesh.id <= meshes.size() && backend_->frustum &&
+      backend_->frustum->outside(meshes[mesh.id - 1].bounds, where)) {
+    ++backend_->counting.culled;
+    return;
+  }
   if (material.alpha < 31 ||
       (mesh && mesh.id <= meshes.size() && meshes[mesh.id - 1].translucent)) {
     const glm::vec3 position = toGlm(where.position());

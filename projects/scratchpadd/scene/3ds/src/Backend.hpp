@@ -4,6 +4,7 @@
 
 #include <ScratchPadd/Scene/3DS/Debug.hpp>
 #include <ScratchPadd/Scene/3DS/Display.hpp>
+#include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <citro3d.h>
@@ -13,6 +14,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace ScratchPadd::Scene {
@@ -48,6 +50,8 @@ struct Renderer::Backend {
     int wireframeVertices = 0;
     bool translucent = false; // has see-through vertices
     FrameCounts cost;
+    Bounds bounds; // for frustum culling (Culling.hpp)
+    bool doubleSided = false;
   };
   // A draw, kept until the end of the frame: each eye draws them all
   struct Draw {
@@ -99,6 +103,7 @@ struct Renderer::Backend {
   Camera camera;
   Environment environment;
   C3D_Mtx view;
+  std::optional<Frustum> frustum;
   std::vector<Draw> solid, later;
   std::vector<Vector3> lineEnds;
   std::vector<Lines> lines;

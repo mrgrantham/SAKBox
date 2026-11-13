@@ -120,6 +120,7 @@ enum Row : int {
   kOverlay,
   kFog,
   kStereo,
+  kCulling,
   kView,
   kFindHang,
   kProbe,
@@ -142,6 +143,8 @@ bool *flagOf(Settings &s, int row) {
     return &s.fog;
   case kStereo:
     return &s.stereo;
+  case kCulling:
+    return &s.culling;
   case kFindHang:
     return &s.findHang;
   case kProbe:
@@ -151,9 +154,9 @@ bool *flagOf(Settings &s, int row) {
   }
 }
 
-constexpr const char *kRowNames[kRows] = {"Meshes",      "Translucent", "Lines",  "Wireframes",
-                                          "Overlay",     "Fog",         "Stereo", "View",
-                                          "Find a hang", "Probe"};
+constexpr const char *kRowNames[kRows] = {"Meshes",  "Translucent", "Lines",  "Wireframes",
+                                          "Overlay", "Fog",         "Stereo", "Culling",
+                                          "View",    "Find a hang", "Probe"};
 
 } // namespace
 
@@ -258,7 +261,8 @@ void Panel::draw() {
   // The last frame
   const FrameCounts counts = renderer_.lastFrame();
   const FrameTimes times = renderer_.lastFrameTimes();
-  std::snprintf(text, sizeof text, "%u triangles, %u draws", counts.polygons, counts.draws);
+  std::snprintf(text, sizeof text, "%u triangles, %u draws, %u culled", counts.polygons,
+                counts.draws, counts.culled);
   printRow(17, text);
   std::snprintf(text, sizeof text, "GPU %.2f ms, CPU %.2f ms", times.gpu, times.cpu);
   printRow(18, text);

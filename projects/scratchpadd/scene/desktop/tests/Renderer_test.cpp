@@ -221,3 +221,43 @@ TEST_F(RendererTest, ToScreenMatchesWhereThingsAreDrawn) {
   EXPECT_FALSE(renderer->toScreen({0, 0, 10}, x, y));
   renderer->endFrame();
 }
+
+// A mesh's triangles are drawn from the front (counter-clockwise) only,
+// unless the mesh or the material is double-sided: a square turned to face
+// away isn't drawn.
+TEST_F(RendererTest, BackFacesAreCulledUnlessDoubleSided) {
+  MeshBuilder builder;
+  builder.quad({-1, -1, 0}, {1, -1, 0}, {1, 1, 0}, {-1, 1, 0}); // facing +z, the camera
+  const Mesh square = renderer->load(builder.data());
+  MeshData both = builder.data();
+  both.doubleSided = true;
+  const Mesh doubleSidedSquare = renderer->load(both);
+  const Material red{.shading = Material::Shading::unlit, .colour = {255, 0, 0}};
+  const Transform away = Transform::rotation({0, 1, 0}, 3.14159265f);
+  const auto at = [&](Mesh mesh, const Transform &where, const Material &material) {
+    return frame([&] { renderer->draw(mesh, where, material); }, {{centreX(), centreY()}})[0];
+  };
+  expectNear(at(square, Transform::identity(), red), {255, 0, 0});
+  expectNear(at(square, away, red), {0, 0, 40}); // its back: culled
+  Material doubleSidedRed = red;
+  doubleSidedRed.doubleSided = true;
+  expectNear(at(square, away, doubleSidedRed), {255, 0, 0});
+  expectNear(at(doubleSidedSquare, away, red), {255, 0, 0});
+}
+
+// A mesh wholly out of view isn't drawn, and is counted; one partly in
+// view is drawn
+TEST_F(RendererTest, MeshesOutOfViewAreCulled) {
+  const Material red{.shading = Material::Shading::unlit, .colour = {255, 0, 0}};
+  frame(
+      [&] {
+        renderer->draw(box, Transform::translation({100, 0, 0}), red);   // far to the right
+        renderer->draw(box, Transform::translation({0, 0, 20}), red);    // behind the eye
+        renderer->draw(box, Transform::translation({-3.3f, 0, 0}), red); // over the left edge
+      },
+      {});
+  const FrameCounts drawn = renderer->lastFrame();
+  EXPECT_EQ(drawn.culled, 2u);
+  EXPECT_EQ(drawn.draws, 1u);
+  EXPECT_EQ(drawn.polygons, 6u); // the one box: 6 quads, as the DS counts them
+}

@@ -17,6 +17,7 @@ The design of ScratchPadd's scene layer, reviewed before it was built and built 
 | Platform versions | One file can hold several versions of a model (`Ship`, `Ship_DS`), told apart by name or a custom property |
 | Budgets | Checked per model, and per scene against everything the scene shows at once |
 | Over budget | `FAIL`, `SIMPLIFY` or `SIMPLIFY_AGGRESSIVE`, per platform, `FAIL` by default; a build flag can override every rule |
+| Culling | Back faces by every GPU (counter-clockwise is the front), unless a mesh or material is double-sided; the cook makes a Blender model double-sided if it isn't closed, unless Backface Culling is ticked on its material. Meshes wholly out of view skipped on the CPU, by bounding sphere, and counted |
 | Run-time detail switching | Not yet: one version of each model per platform, picked when building |
 
 ## The API
@@ -36,6 +37,7 @@ struct Material {
   Colour colour;            // multiplies the vertex colours (or is the colour, lit on the DS)
   std::uint8_t alpha = 31;  // 0-31, as the DS has it
   bool wireframe = false;   // only the triangles' edges (the DS: alpha 0)
+  bool doubleSided = false; // back faces drawn too (otherwise culled)
 };
 struct Light { Vector3 direction; Colour colour; };   // directional; up to 4
 struct Camera { Vector3 eye, target, up; float fieldOfView, near, far; };
@@ -64,6 +66,7 @@ public:
 - **The materials are what the DS can do in hardware:** unlit or lit with up to 4 directional lights, a colour, alpha in 32 steps, and wireframe; the environment adds fog. Desktops draw them all with one built-in shader. Outlines (the DS's edge marking) and toon shading can come later, the same way.
 - **The DS can't take floats cheaply,** having no floating-point hardware. So `Scalar` is Q16.16 there, which is what Cyclone already runs in on the DS, and float on desktops. An app computes its transforms in `Scalar`. The ragdoll's bones go straight in, with no conversion. *For review:* an alternative is one fixed type everywhere, but desktop code would then pay for fixed point it doesn't need.
 - **The backend is a build-time choice.** `Renderer`'s methods are defined in each backend's own `.cpp`, and its state is a `Renderer::Backend` each backend defines, behind a pointer. A program links one backend's library (the DS's Makefile build will get the DS's). Nothing is virtual, so the DS pays nothing to dispatch; the pointer costs one allocation, when the renderer is made.
+- **Culling is the backend's.** Each GPU culls back faces (the DS and 3DS in hardware too), so seeing a mesh from behind is the exception, asked for with `doubleSided`; a closed mesh, as most are, needs nothing. Each backend checks a draw's bounding sphere against the camera's frustum (`Culling.hpp`, shared, in `Scalar`, so the DS does it in fixed point) and skips it if it's wholly outside: on the DS that saves the display list's polygons and vertices from its frame's budget, which the hardware counts even for what it clips.
 - **Capabilities, not assumptions.** `capabilities()` says what a backend can't do, e.g. a polygon limit, so a shared app can check for it.
 - **Lines** count against the DS's polygon budget: the DS draws each as a triangle with two corners in the same place.
 - **The overlay** is bitmap text and filled rectangles, in screen points. On the DS its shapes are drawn as 3D triangles on the top screen and its text on a 2D text layer over them (phase 3); text on the bottom screen stays the DS console, as now.

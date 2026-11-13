@@ -2,7 +2,7 @@
 // hardware, where a shader can't log and a hung GPU says nothing:
 //
 // - Settings: what's drawn (each part can be left out: meshes, translucent
-//   ones, lines, wireframes, the overlay, fog, stereo), how it's coloured
+//   ones, lines, wireframes, the overlay, fog, stereo, and culling), how it's coloured
 //   (the view: as usual, the normals, the lighting alone, the vertex colours
 //   alone, or overdraw: how many times each pixel is drawn), finding a hang
 //   (each frame sends only its first few draws, one more every half second,
@@ -44,6 +44,9 @@ const char *nameOf(View view);
 struct Settings {
   bool meshes = true, translucent = true, lines = true, wireframes = true, overlay = true,
        fog = true, stereo = true;
+  // Back faces and meshes out of view culled (off: everything drawn, to
+  // see what culling saves, or find a mesh wound the wrong way)
+  bool culling = true;
   View view = View::normal;
   // Each frame sends only its first few draws, one more every half second
   // (from one, when it's turned on): the frame that hangs the GPU ends with

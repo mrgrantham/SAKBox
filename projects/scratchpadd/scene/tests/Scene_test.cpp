@@ -1,6 +1,7 @@
 // The scene layer's shared parts, without a backend: transforms, meshes
 // built in code, and the overlay. Built twice: with Scalar as float, and as
 // the DS has it (Q16.16).
+#include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
@@ -81,6 +82,55 @@ TEST(MeshBuilderTest, BoxesFaceOutward) {
     EXPECT_GT((a.position - Vector3{1, 2, 3}).dot(a.normal), 0) << "triangle " << i / 3;
     EXPECT_EQ(a.colour, (Colour{10, 20, 30}));
   }
+}
+
+// A mesh's bounding sphere is about the middle of its box and reaches
+// its furthest vertex.
+TEST(CullingTest, BoundsHoldEveryVertex) {
+  MeshBuilder builder;
+  builder.box({1, 2, 3}, {0.5f, 1, 2}, Colour{});
+  const MeshData mesh = builder.data();
+  const Bounds bounds = boundsOf(mesh);
+  expectNear(bounds.centre, {1, 2, 3});
+  Scalar furthest = 0;
+  for (const Vertex &v : mesh.vertices) {
+    const Scalar distance = (v.position - bounds.centre).length();
+    EXPECT_LE(distance, bounds.radius + Scalar(kTolerance));
+    furthest = std::max(furthest, distance);
+  }
+  EXPECT_NEAR(bounds.radius, furthest, kTolerance);
+  EXPECT_EQ(boundsOf(MeshData{}).radius, 0);
+}
+
+// The default camera, at z = 5 looking down -z, 60 degrees tall, square:
+// a unit sphere is outside only when wholly past a side, behind the eye,
+// nearer than the near plane or beyond the far one; partly in is drawn.
+TEST(CullingTest, FrustumKeepsWhatTheCameraSees) {
+  const Camera camera;
+  const Frustum frustum(camera, 1);
+  const Bounds unit{{0, 0, 0}, 1};
+  const auto outsideAt = [&](const Vector3 &at) {
+    return frustum.outside(unit, Transform::translation(at));
+  };
+  EXPECT_FALSE(outsideAt({0, 0, 0}));   // in the middle
+  EXPECT_FALSE(outsideAt({0, 0, -90})); // far, before the far plane
+  EXPECT_TRUE(outsideAt({0, 0, -100})); // beyond it
+  EXPECT_TRUE(outsideAt({0, 0, 10}));   // behind the eye
+  EXPECT_TRUE(outsideAt({10, 0, 0}));   // off to the right
+  EXPECT_TRUE(outsideAt({-10, 0, 0}));  // the left
+  EXPECT_TRUE(outsideAt({0, 10, 0}));   // above
+  EXPECT_TRUE(outsideAt({0, -10, 0}));  // below
+  // At z = 0 the view's edge is 5 tan 30 = 2.89 from the middle: a unit
+  // sphere at 3.5 straddles it, at 4.5 is past it
+  EXPECT_FALSE(outsideAt({3.5f, 0, 0}));
+  EXPECT_TRUE(outsideAt({4.5f, 0, 0}));
+  // A scaled sphere is as big as its largest scale
+  EXPECT_FALSE(
+      frustum.outside(unit, Transform::translation({4.5f, 0, 0}) * Transform::scaling({1, 1, 3})));
+  // Twice as wide (an aspect of 2), or widened, the side moves out
+  EXPECT_FALSE(Frustum(camera, 2).outside(unit, Transform::translation({4.5f, 0, 0})));
+  EXPECT_FALSE(Frustum(camera, 1, 2).outside(unit, Transform::translation({4.5f, 0, 0})));
+  EXPECT_TRUE(Frustum(camera, 2).outside(unit, Transform::translation({0, 4.5f, 0})));
 }
 
 // Rectangles are two triangles; text is kept as it was given, for the

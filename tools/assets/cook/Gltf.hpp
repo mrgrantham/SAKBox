@@ -11,6 +11,10 @@ namespace Cook {
 struct Model {
   Mesh mesh;
   std::string object; // the object it came from (Ship, or Ship_DS)
+  // Whether every material on it has Blender's Backface Culling ticked
+  // (glTF's doubleSided false, set explicitly), which culls it however
+  // it's shaped
+  bool backfaceCulling = false;
 };
 
 // The version of `object` for `platform` ("desktop", "ds") in the glTF at

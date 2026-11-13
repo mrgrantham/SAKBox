@@ -434,11 +434,12 @@ VkPipeline makePipeline(const PipelineDescription &d) {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
       .viewportCount = 1,
       .scissorCount = 1};
-  // Both sides drawn, as the other backends draw them
+  // Both sides drawn, or the back culled
   const VkPipelineRasterizationStateCreateInfo rasterization{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
       .polygonMode = d.polygonMode,
-      .cullMode = VK_CULL_MODE_NONE,
+      .cullMode =
+          static_cast<VkCullModeFlags>(d.cullBack ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE),
       .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
       .lineWidth = 1.0f};
   const VkPipelineMultisampleStateCreateInfo multisample{
