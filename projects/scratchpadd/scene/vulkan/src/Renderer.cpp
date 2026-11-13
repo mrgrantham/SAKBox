@@ -7,7 +7,7 @@
 // Vulkan's GLSL, compiled when the renderer's made.
 #include "Backend.hpp"
 
-#include <ScratchPadd/Scene/Desktop/OverlayText.hpp>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 #include <ScratchPadd/Scene/Spirv/GlslToSpirv.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -329,6 +329,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   vkCmdBindIndexBuffer(commands, loaded.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
   vkCmdDrawIndexed(commands, loaded.indexCount, 1, 0, 0, 0);
   counting += loaded.cost;
+  ++counting.draws;
 }
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
@@ -529,6 +530,7 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
   vkCmdDraw(commands, static_cast<std::uint32_t>(count), 1, 0, 0);
   b.counting.polygons += static_cast<unsigned>(count / 2);
   b.counting.vertices += static_cast<unsigned>(count / 2 * 3);
+  ++b.counting.draws;
 }
 
 void Renderer::endFrame() {
@@ -649,5 +651,7 @@ bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
 Capabilities Renderer::capabilities() const { return {}; }
 
 FrameCounts Renderer::lastFrame() const { return backend_->last; }
+
+FrameTimes Renderer::lastFrameTimes() const { return {}; } // (not measured here)
 
 } // namespace ScratchPadd::Scene

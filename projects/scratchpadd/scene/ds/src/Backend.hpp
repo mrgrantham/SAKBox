@@ -50,6 +50,7 @@ struct Renderer::Backend {
   Colour ambient;
   std::uint32_t lightBits = 0; // the polygon format's bits for the lights in use
   FrameCounts last;
+  unsigned draws = 0; // this frame's so far
   // Fog: the polygon format's bit for it (0 without), and the fog and
   // camera its table was worked out for (only again when they change)
   std::uint32_t fogBit = 0;

@@ -6,7 +6,7 @@
 // (Surface.hpp), then shown.
 #include "Backend.hpp"
 
-#include <ScratchPadd/Scene/Desktop/OverlayText.hpp>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -304,6 +304,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   if (material.wireframe)
     encoder->setTriangleFillMode(MTL::TriangleFillModeFill);
   counting += loaded.cost;
+  ++counting.draws;
 }
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
@@ -468,6 +469,7 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
   b.encoder->drawPrimitives(MTL::PrimitiveTypeLine, NS::UInteger(0), count);
   b.counting.polygons += static_cast<unsigned>(count / 2);
   b.counting.vertices += static_cast<unsigned>(count / 2 * 3);
+  ++b.counting.draws;
 }
 
 void Renderer::endFrame() {
@@ -537,5 +539,7 @@ bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
 Capabilities Renderer::capabilities() const { return {}; }
 
 FrameCounts Renderer::lastFrame() const { return backend_->last; }
+
+FrameTimes Renderer::lastFrameTimes() const { return {}; } // (not measured here)
 
 } // namespace ScratchPadd::Scene

@@ -7,7 +7,7 @@ The design of ScratchPadd's scene layer, reviewed before it was built and built 
 | Area | Decision |
 | --- | --- |
 | API | A small scene layer: meshes and their transforms, a camera, materials, lines, and a 2D overlay for text and panels |
-| Backends | One per platform, chosen when building, with no virtual calls on the DS. OpenGL first, then the DS, then Metal (the default on Macs), then Vulkan (chosen with a build flag). The design leaves room for the 3DS, which isn't built yet. |
+| Backends | One per platform, chosen when building, with no virtual calls on the DS. OpenGL first, then the DS, then Metal (the default on Macs), then Vulkan (chosen with a build flag), then the 3DS. |
 | Animation | Rigid parts only: each part is a mesh with its own transform (as the ragdoll's bones are). No skinning. |
 | Surfaces on handhelds | Vertex colours and lighting; no textures yet |
 | DS screens | 3D on the top screen; text on the bottom |
@@ -82,7 +82,8 @@ public:
 | `//projects/scratchpadd/scene/spirv` | GLSL compiled to SPIR-V, for the Metal and Vulkan backends (phase 5) |
 | `//projects/scratchpadd/scene/ds` | The DS backend (libnds GX): display lists, vertex colours, the overlay; sources handed to DS apps' Makefile builds, as Cyclone's are now |
 | `//projects/scratchpadd/debug_ui` | ImGui, the theme and the control panels, moved out of `graphics`; desktop only |
-| later: `scene/3ds` | |
+| `//projects/scratchpadd/scene/3ds` | The 3DS backend (citro3d), on the top screen, in stereo with the 3D slider (phase 6) |
+| `//projects/scratchpadd/scene/overlay_text` | The overlay's text (stb_easy_font's letters as triangles), shared by desktops and the 3DS (phase 6) |
 
 `graphics` goes away once its users have moved: the ScratchPadd demo and `DisplayPadd`, the shader playground (through `Desktop.hpp`), the Cyclone padds window, and Precision Flight's display. Each of the last three sets up its own GLFW window, OpenGL and ImGui today. The Cyclone desktop demos (fixed-function OpenGL through their own framework) move later, and separately.
 
@@ -176,4 +177,13 @@ scene(
    - **Colours on screen:** the swapchain is the frame's format (BGRA8) in plain sRGB, as the other backends show theirs. MoltenVK also offers it in linear and wide-gamut colour spaces, which lightened the frame until the backend asked for sRGB by name.
    - Tested on three drivers: MoltenVK on the Mac's GPU, Mesa's lavapipe (Vulkan on the CPU) in the Ubuntu VM and the Linux check's containers, and Mesa's Dozen (Vulkan on Direct3D 12, in Windows' compatibility pack) on WARP, Direct3D's software renderer, in the Windows VM. Dozen crashes making a device on Parallels' Direct3D 12 driver, so the Windows VM check gives tests WARP alone (`DZN_DEBUG=warp`).
    - Tests: the renderer test on Vulkan (the same pixels as the other backends); every shader of the shader playground made into a `ShaderPanel` and drawn; GLSL to SPIR-V on its own. Checked on screen: the shader playground, Precision Flight, the Cyclone padds window, the ScratchPadd demo and the Blender models on the Mac, and the shader playground on Ubuntu's and Windows' desktops.
-6. **Later:** the 3DS, once its budgets are measured (on hardware): [`3ds_benchmark`](3ds_benchmark/README.md) measured them on a New 3DS XL (2026-11-12). Its budgets are pixels and draws more than triangles: about 95k lit triangles a frame at 60 fps when small, but about 1.7 million lit pixels, and about 15 µs of CPU a draw at 268 MHz; stereo halves each.
+6. **The 3DS** *(done)*: [`scene/3ds`](3ds), with citro3d, once its budgets were measured on hardware: [`3ds_benchmark`](3ds_benchmark/README.md) measured them on a New 3DS XL (2026-11-12). Its budgets are pixels and draws more than triangles: about 95k lit triangles a frame at 60 fps when small, but about 1.7 million lit pixels, and about 15 µs of CPU a draw at 268 MHz; stereo halves each. What it settled:
+   - **Lighting per vertex,** in the vertex shader, as the DS lights: the GPU's fragment lighting, per pixel, halved the pixels a frame could fill. Flat-shaded models look as on desktops; smooth ones are Gouraud-shaded. One vertex shader draws lit and unlit (unlit sets the ambient light to 1 and the lights' colours to 0).
+   - **Stereo, following the 3D slider:** draws are kept during the frame and drawn at its end, once for each eye (`Mtx_PerspStereoTilt`, the eyes a third of the slider apart, the camera's target at the screen's depth); the overlay at the screen's depth. Mono with the slider down, costing nothing more.
+   - **Lines and wireframes by a geometry shader:** the GPU draws only triangles, so `scene.g.pica` makes each line's ends a quad a pixel wide on the screen. A wireframe draws a mesh's edges, each once, found the first time it's drawn as one (as 16-bit index pairs the GPU reads).
+   - **Fog per pixel,** the GPU's fog table built with `FogLut_Exp`: `exp(-density x depth)`, the desktops' formula along the view, as the DS fogs.
+   - **The overlay's text is stb_easy_font's**, as on desktops: its code moved from the desktop package to [`overlay_text`](overlay_text), shared. Drawn without multisampling it showed that the buffer given stb_easy_font was sized by its average, about 4 quads a character, which dropped strokes from short words of busy letters ("Rock" lost its k's upright); it's now sized for the most, 11.
+   - **Budgets:** the build's `scene` rule checks a scene's models against 45,000 triangles a frame on the 3DS (lit, stereo, 60 fps, small triangles); models have `_3ds` versions (`Ship_3DS` or `sak.platform = "3ds"`, else the desktop's). Pixels and draws only show when drawing, so `Renderer::lastFrame()` gained `draws` (every backend counts them) and `lastFrameTimes()` the GPU's and CPU's time (measured on the 3DS).
+   - **`Scalar` is `float` on the 3DS**, which has floating-point hardware, and Cyclone runs in `float` there.
+   - The Cyclone ragdoll and the Blender example run on it: the ragdoll is one app for the DS and the 3DS ([`cyclone/handheld`](../../cyclone/handheld)).
+   - Tests: the shared text's buffer for busy letters; the renderer test counts draws on every desktop backend. The backend itself runs only on a 3DS: checked in Azahar (its frames, not its timing) and on a New 3DS XL.

@@ -80,6 +80,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   if (!mesh || mesh.id > meshes.size() || !meshes[mesh.id - 1].loaded)
     return;
   LoadedMesh &loaded = meshes[mesh.id - 1];
+  ++draws;
   const bool lit = material.shading == Material::Shading::lit;
   const std::vector<DisplayList::Packed> &lists =
       listsFor(loaded, {lit, material.colour, lit ? ambient : Colour{}});
@@ -350,6 +351,7 @@ void Renderer::draw(Mesh mesh, const Transform &where, const Material &material)
 void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
   if (ends.size() < 2)
     return;
+  ++backend_->draws;
   // In the world, scaled down by a power of two to fit 4.12, as meshes are
   std::int32_t furthest = 0;
   for (const Vector3 &end : ends)
@@ -401,7 +403,7 @@ void Renderer::endFrame() {
   while (GFX_BUSY) {
   }
   b.last = {static_cast<unsigned>(GFX_POLYGON_RAM_USAGE),
-            static_cast<unsigned>(GFX_VERTEX_RAM_USAGE)};
+            static_cast<unsigned>(GFX_VERTEX_RAM_USAGE), std::exchange(b.draws, 0)};
   const bool overflowed = (GFX_CONTROL & BIT(13)) != 0;
   if (overflowed)
     GFX_CONTROL |= BIT(13); // acknowledged
@@ -458,6 +460,8 @@ Capabilities Renderer::capabilities() const {
 }
 
 FrameCounts Renderer::lastFrame() const { return backend_->last; }
+
+FrameTimes Renderer::lastFrameTimes() const { return {}; } // (not measured here)
 
 // The overlay's text on the DS: libnds' 8 x 8 font, each glyph scaled to
 // whole pixels

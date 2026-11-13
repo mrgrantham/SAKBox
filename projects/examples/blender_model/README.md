@@ -25,4 +25,15 @@ bazel run //projects/examples/blender_model/ds:blender-model-ds   # needs Docker
 
 Its `extra_srcs` take the models' DS sources (`:ship_ds_sources`, `:rock_ds_sources`, which the two rules make visible to this package's subpackages) into `assets`, with the scene layer's sources and its DS backend's.
 
+## On a 3DS
+
+[`3ds`](3ds/source/main.cpp) draws the same scene on a Nintendo 3DS with the scene layer's 3DS backend, from the versions the build cooked for it: the full ship (13,400 triangles: the 3DS has room for it, so there's no `Ship_3DS`) and the rock (5,120), in stereo while the 3D slider is up. The bottom screen gives each model's triangles and, twice a second, what each frame drew (23,678 triangles in 5 draws: the scene's 23,640 plus the lines' 36) and how long the GPU and CPU took. A shows the ship as a wireframe, B turns the fog off and on; START quits.
+
+```bash
+python3 tools/fbi_install/fbi_install.py --3ds ADDRESS //projects/examples/blender_model/3ds:blender-model-3ds
+bazel run //projects/examples/blender_model/3ds:blender-model-3ds   # opens Azahar
+```
+
+Its `extra_srcs` take the models' 3DS sources (`:ship_3ds_sources`, `:rock_3ds_sources`) into `assets`, with the scene layer's sources, its 3DS backend's, and the overlay's text (and stb_easy_font.h).
+
 The binaries and the models are tagged `blender`: the Linux check builds them on x86-64 only, as blender.org has no Blender for Linux on ARM (and leaves the DS app out anyway, as it does every DS app: it needs Docker).

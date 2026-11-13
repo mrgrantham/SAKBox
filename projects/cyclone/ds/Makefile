@@ -21,7 +21,7 @@ GAME_SUBTITLE2	:=	SAKBox
 BUILD		:=	build
 # (cyclone/src/demos is the knock chooser, impact_knocks.cpp; the audio
 # directories are AudioPadd's, as in the ScratchPadd DS demo)
-SOURCES		:=	source scratchpadd/handheld_controls/src scratchpadd/scene/src scratchpadd/scene_ds/src cyclone/src cyclone/src/demos scratchpadd/utilities/src scratchpadd_ds/platform/src \
+SOURCES		:=	ragdoll/source scratchpadd/handheld_controls/src scratchpadd/scene/src scratchpadd/scene_ds/src cyclone/src cyclone/src/demos scratchpadd/utilities/src scratchpadd_ds/platform/src \
 			scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd_audio_wav/src
 INCLUDES	:=	include scratchpadd/handheld_controls/include scratchpadd/scene/include scratchpadd/scene_ds/include build cyclone/include cyclone/src/demos cyclone/src/demos/ragdoll \
 			scratchpadd/basis/include scratchpadd/messages/include \

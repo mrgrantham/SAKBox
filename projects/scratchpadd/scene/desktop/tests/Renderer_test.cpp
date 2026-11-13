@@ -134,7 +134,7 @@ TEST_F(RendererTest, SeeThroughVerticesMakeAMeshTranslucent) {
   const auto blue = frame([&] { renderer->draw(cooked, Transform::identity(), unlit); },
                           {{centreX(), centreY()}});
   expectNear(blue[0], {0, 0, 255});
-  EXPECT_EQ(renderer->lastFrame(), (FrameCounts{6, 24})); // counted as the DS draws it
+  EXPECT_EQ(renderer->lastFrame(), (FrameCounts{6, 24, 1})); // counted as the DS draws it, one draw
 }
 
 // Fog fades a far mesh almost to the fog's colour, and leaves a near one

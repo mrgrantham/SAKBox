@@ -7,8 +7,9 @@ load("//tools/devkitpro:defs.bzl", "devkitpro_nds_app")
 # //tools/devkitpro); `bazel run` opens it in melonDS.
 devkitpro_nds_app(
     name = "cyclone-ds-ragdoll",
-    srcs = ["Makefile"] + glob(["source/**"]),
+    srcs = ["Makefile"],
     extra_srcs = {
+        "//projects/cyclone/handheld:sources": "ragdoll",
         "//projects/cyclone:sources": "cyclone",
         "//projects/flexmath:fixed_point_sources": "flexmath",
         "//projects/scratchpadd/basis:sources": "scratchpadd/basis",

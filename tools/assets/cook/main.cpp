@@ -17,6 +17,7 @@
 #include "Gltf.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -37,6 +38,14 @@ struct Output {
 int usage(const char *problem) {
   std::fprintf(stderr, "cook: %s (see tools/assets/cook/main.cpp)\n", problem);
   return 2;
+}
+
+// The platform's name in capitals, as an object made for it is named
+// (Ship_DS, Ship_3DS)
+std::string upperCase(std::string platform) {
+  for (char &c : platform)
+    c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+  return platform;
 }
 
 // How the platform's name reads in a message
@@ -208,8 +217,7 @@ int cookModel(int argc, char **argv) {
             stderr,
             "  To fit it: over_budget = {\"%s\": \"SIMPLIFY\"} (or \"SIMPLIFY_AGGRESSIVE\"), "
             "an object made for it named %s_%s in the .blend, or a bigger budget.\n",
-            output.platform.c_str(), object.c_str(),
-            output.platform == "ds" ? "DS" : output.platform.c_str());
+            output.platform.c_str(), object.c_str(), upperCase(output.platform).c_str());
       } else {
         std::fprintf(stderr, "  %s got it to that (%s, error %.3f of its size)%s.\n",
                      Cook::nameOf(output.mode), cooked.steps.back().c_str(), cooked.error,
@@ -278,8 +286,12 @@ int checkScene(int argc, char **argv) {
     const bool over = !Cook::fits(total, limit);
     failed = failed || over;
     report << displayName(platform) << ": " << total.polygons << " of " << limit.polygons
-           << " polygons, " << total.vertices << " of " << limit.vertices << " vertices"
-           << (over ? " (OVER)" : "") << "\n";
+           << " polygons, " << total.vertices << " of ";
+    if (limit.vertices)
+      report << limit.vertices;
+    else
+      report << "any number of";
+    report << " vertices" << (over ? " (OVER)" : "") << "\n";
     auto &byCost = parts[platform];
     std::ranges::sort(byCost, std::greater<>());
     for (const auto &[polygons, model] : byCost)

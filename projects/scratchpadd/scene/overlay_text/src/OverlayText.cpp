@@ -1,7 +1,8 @@
-#include <ScratchPadd/Scene/Desktop/OverlayText.hpp>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 
 #include <stb/stb_easy_font.h>
 
+#include <cstddef>
 #include <string>
 #include <string_view>
 
@@ -15,13 +16,18 @@ struct EasyFontVertex {
 };
 // stb_easy_font's line height, in points
 constexpr float kLineHeight = 12;
+// The most quads stb_easy_font makes a character (X's 11, counted from its
+// tables): it stops at the end of its buffer, dropping the rest, so a short
+// text of busy letters given its average (about 270 bytes, 4 quads) lost
+// strokes ("Rock" needs 19 quads)
+constexpr std::size_t kMostQuadsPerCharacter = 11;
 } // namespace
 
 void appendTextTriangles(const Overlay::Text &text, std::vector<Overlay::Vertex> &triangles) {
-  // stb_easy_font wants a writable, terminated string, and room for about
-  // 270 bytes of vertices a character
+  // stb_easy_font wants a writable, terminated string, and room for every
+  // quad it makes (4 vertices each)
   std::string copy(text.text);
-  std::vector<EasyFontVertex> quads(copy.size() * 270 / sizeof(EasyFontVertex) + 4);
+  std::vector<EasyFontVertex> quads(copy.size() * kMostQuadsPerCharacter * 4);
   unsigned char rgba[4] = {text.colour.r, text.colour.g, text.colour.b, text.colour.a};
   const int count = stb_easy_font_print(0, 0, copy.data(), rgba, quads.data(),
                                         static_cast<int>(quads.size() * sizeof(EasyFontVertex)));

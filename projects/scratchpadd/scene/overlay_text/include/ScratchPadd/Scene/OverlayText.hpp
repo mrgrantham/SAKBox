@@ -1,6 +1,6 @@
-// OverlayText.hpp - the overlay's text on desktops: stb_easy_font's
-// letters, built from small rectangles, so a backend draws them as it draws
-// the overlay's shapes, with no font texture. For backends.
+// OverlayText.hpp - the overlay's text on desktops and the 3DS:
+// stb_easy_font's letters, built from small rectangles, so a backend draws
+// them as it draws the overlay's shapes, with no font texture. For backends.
 #pragma once
 
 #include <ScratchPadd/Scene/Overlay.hpp>

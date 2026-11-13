@@ -1,9 +1,11 @@
 // The overlay's text on desktops (stb_easy_font), without a window
-#include <ScratchPadd/Scene/Desktop/OverlayText.hpp>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <string>
+#include <vector>
 
 using namespace ScratchPadd::Scene;
 
@@ -27,4 +29,19 @@ TEST(OverlayTextTest, TextBecomesTrianglesWhereItWasPut) {
   EXPECT_FLOAT_EQ(Overlay::textWidth("Hi", 2), 2 * Overlay::textWidth("Hi"));
   EXPECT_GT(Overlay::textWidth("Hello"), Overlay::textWidth("Hi"));
   EXPECT_FLOAT_EQ(Overlay::lineHeight(2), 2 * Overlay::lineHeight());
+}
+
+// A short text of the busiest letters keeps every stroke: each letter's
+// quads (two triangles each) are as many alone as in a longer text. (The
+// buffer was once sized by stb_easy_font's average, and "Rock" lost its k's
+// upright.)
+TEST(OverlayTextTest, BusyLettersKeepEveryStroke) {
+  const auto triangleCount = [](const std::string &text) {
+    std::vector<Overlay::Vertex> triangles;
+    appendTextTriangles({0, 0, text, Colour{}, 1}, triangles);
+    return triangles.size() / 3;
+  };
+  for (const char *letter : {"X", "k", "W", "M", "#", "@"})
+    EXPECT_EQ(triangleCount(std::string(4, letter[0])), 4 * triangleCount(letter)) << letter;
+  EXPECT_EQ(triangleCount("Rock"), 19u * 2);
 }

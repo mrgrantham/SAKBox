@@ -4,5 +4,8 @@
 filegroup(
     name = "ndsp_output_sources",
     srcs = glob(["include/**", "src/**"]),
-    visibility = ["//projects/scratchpadd:__subpackages__"],
+    visibility = [
+        "//projects/cyclone/3ds:__pkg__",  # the ragdoll on a 3DS
+        "//projects/scratchpadd:__subpackages__",
+    ],
 )

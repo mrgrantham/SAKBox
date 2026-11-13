@@ -4,7 +4,7 @@
 // overlay drawn last, in screen points.
 #include "Backend.hpp"
 
-#include <ScratchPadd/Scene/Desktop/OverlayText.hpp>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -230,6 +230,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   glBindVertexArray(loaded.vao);
   glDrawElements(GL_TRIANGLES, loaded.indexCount, GL_UNSIGNED_INT, nullptr);
   counting += loaded.cost;
+  ++counting.draws;
   if (material.wireframe)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
@@ -371,6 +372,7 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
   glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(vertices.size() / 2 * 2));
   b.counting.polygons += static_cast<unsigned>(vertices.size() / 2);
   b.counting.vertices += static_cast<unsigned>(vertices.size() / 2 * 3);
+  ++b.counting.draws;
 }
 
 void Renderer::endFrame() {
@@ -409,5 +411,7 @@ bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
 Capabilities Renderer::capabilities() const { return {}; }
 
 FrameCounts Renderer::lastFrame() const { return backend_->last; }
+
+FrameTimes Renderer::lastFrameTimes() const { return {}; } // (not measured here)
 
 } // namespace ScratchPadd::Scene

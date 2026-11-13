@@ -123,12 +123,15 @@ struct Light {
 // the vertices they take in its vertex RAM (a triangle 3, a quad 4, a strip
 // 2 more than its triangles; see Primitives.hpp). A line is a triangle
 // there. Desktops count the 3D the same way; the DS reads its hardware's
-// counters, which count the overlay's shapes too.
+// counters, which count the overlay's shapes too. The 3DS draws triangles,
+// so it counts triangles (3 vertices each). `draws` is the frame's draws
+// (each mesh drawn, and each drawLines), which cost the CPU time on the 3DS.
 struct FrameCounts {
-  unsigned polygons = 0, vertices = 0;
+  unsigned polygons = 0, vertices = 0, draws = 0;
   FrameCounts &operator+=(const FrameCounts &o) {
     polygons += o.polygons;
     vertices += o.vertices;
+    draws += o.draws;
     return *this;
   }
   bool operator==(const FrameCounts &) const = default;

@@ -32,10 +32,11 @@ Scene::Mesh rock = renderer.load(Assets::rock);
 | --- | --- |
 | `:rock` | A `cc_library` for desktops: `rock.h`, with `Assets::rock` (a `Scene::MeshData`), and `Assets::rockTriangles`, `rockVertices` and `rockPolygons` (polygons as the platform draws it: on the DS, its quads, strips and triangles, which its `MeshData`'s `primitives` give) |
 | `:rock_ds_sources` | The DS's version, the same names, for a DS app's Makefile build: `rock_ds.h` and `rock_ds.cpp`, given by `devkitpro_nds_app`'s `extra_srcs` (the example's DS app has `"...:rock_ds_sources": "assets"`, and `assets` in its Makefile's `SOURCES` and `INCLUDES`). A DS app in another package needs the rule's `visibility` |
+| `:rock_3ds_sources` | The 3DS's version, the same way, for a 3DS app's Makefile build (`devkitpro_3ds_app`'s `extra_srcs`): `rock_3ds.h` and `rock_3ds.cpp`. Its budget counts triangles (the 3DS draws triangles), against a frame of 45,000 by default (see `scene`) |
 | `:rock_ds_preview` | The DS's version as a `cc_library` for desktops, in `Assets::Ds`, to see what the DS will draw |
 | `:rock_cooked` | The files; its `report` output group has a report a platform (`rock_ds.report.json`): the object used, the mode, the budget, the polygons and vertices before and after, the steps taken and the error |
 
-`scene` adds up what its models cost a frame on the DS, each times how many are shown at once, and fails if it's over the DS's 2048 polygons or 6144 vertices. Its output, `hangar.scene.txt`, gives each platform's total and the costliest models. It's also a validation output, so anything depending on the scene checks it.
+`scene` adds up what its models cost a frame on the DS and the 3DS, each times how many are shown at once, and fails if it's over the DS's 2048 polygons or 6144 vertices, or the 3DS's 45,000 triangles (about what a New 3DS draws lit at 60 fps in stereo, measured by [`scene/3ds_benchmark`](../../projects/scratchpadd/scene/3ds_benchmark/README.md); large triangles fill fewer, which only drawing shows). Its output, `hangar.scene.txt`, gives each platform's total and the costliest models. It's also a validation output, so anything depending on the scene checks it.
 
 ## A model's versions
 

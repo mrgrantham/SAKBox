@@ -1,0 +1,67 @@
+; The scene layer's 3D on the 3DS: each vertex placed (mvp: the projection,
+; view and the mesh's transform), and lit per vertex, as the DS lights:
+; its colour (bytes, 0-255) times the material's colour times the ambient
+; light plus each directional light's colour times how much the normal
+; faces it. Unlit, the renderer sets the ambient light to 1 and the
+; lights' colours to 0. The alpha is the vertex's times the material's
+; (the ambient's alpha is 1, the lights' 0).
+;
+; Drawn alone it draws triangles; with scene.g.pica it draws lines.
+
+.fvec mvp[4], normalMatrix[3]
+.fvec material, ambient
+.fvec lightDirections[4], lightColours[4] ; (each direction: towards the light)
+
+.constf consts(0.0, 1.0, 0.00392156862745, 0.0) ; (1/255)
+.alias  zeros     consts.xxxx
+.alias  ones      consts.yyyy
+.alias  fromBytes consts.zzzz
+
+.out outpos position
+.out outclr color
+
+.in inpos v0
+.in innrm v1
+.in inclr v2
+
+.proc main
+	mov r0.xyz, inpos
+	mov r0.w,   ones
+	dp4 outpos.x, mvp[0], r0
+	dp4 outpos.y, mvp[1], r0
+	dp4 outpos.z, mvp[2], r0
+	dp4 outpos.w, mvp[3], r0
+
+	; The normal in the world, at length 1
+	dp3 r1.x, normalMatrix[0], innrm
+	dp3 r1.y, normalMatrix[1], innrm
+	dp3 r1.z, normalMatrix[2], innrm
+	mov r1.w, zeros
+	dp3 r2.x, r1, r1
+	rsq r2.x, r2.x
+	mul r1.xyz, r1.xyz, r2.xxxx
+
+	; The light it gets
+	mov r3, ambient
+	dp3 r4.x, lightDirections[0], r1
+	max r4.x, zeros, r4.x
+	mul r5, lightColours[0], r4.xxxx
+	add r3, r3, r5
+	dp3 r4.x, lightDirections[1], r1
+	max r4.x, zeros, r4.x
+	mul r5, lightColours[1], r4.xxxx
+	add r3, r3, r5
+	dp3 r4.x, lightDirections[2], r1
+	max r4.x, zeros, r4.x
+	mul r5, lightColours[2], r4.xxxx
+	add r3, r3, r5
+	dp3 r4.x, lightDirections[3], r1
+	max r4.x, zeros, r4.x
+	mul r5, lightColours[3], r4.xxxx
+	add r3, r3, r5
+
+	mul r6, fromBytes, inclr
+	mul r6, material, r6
+	mul outclr, r3, r6
+	end
+.end

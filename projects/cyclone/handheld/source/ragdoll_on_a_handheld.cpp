@@ -1,26 +1,36 @@
-// Cyclone's ragdoll on a Nintendo DS, in padds.
+// Cyclone's ragdoll on a Nintendo DS or 3DS, in padds: one app, built for
+// each (../ds, ../3ds), the few differences between them in #if blocks.
 //
 //   ScreenPadd  (main thread) draws the ragdoll on the top screen with
-//               ScratchPadd's scene layer (its DS backend: the DS's 3D
-//               hardware), from RagdollPadd's snapshots, and the physics'
-//               figures on the bottom screen; sends the buttons
+//               ScratchPadd's scene layer (its DS backend, on the DS's 3D
+//               hardware; or its 3DS backend, with citro3d, in stereo while
+//               the 3D slider is up), from RagdollPadd's snapshots, and the
+//               physics' figures on the bottom screen; sends the buttons
 //   RagdollPadd (own thread)  steps the ragdoll (ragdoll_physics.h, as in
 //               Cyclone's demo) in fixed steps and sub-steps (FixedSteps),
 //               timing each step, and sends AudioPadd a knock for each hit
 //               (ImpactKnocks, as the demos choose them)
-//   AudioPadd   (own thread)  plays the knocks on the DS's hardware sound
-//               channels (AudioPadd/HardwareChannelsAudioPadd.hpp)
+//   AudioPadd   (own thread)  plays the knocks: on the DS's hardware sound
+//               channels, on the 3DS through its DSP (AudioPadd.hpp picks)
+//
+// Cyclone runs in Q16.16 on the DS (no floating-point hardware), and in
+// float on the 3DS, as the scene layer's Scalar does on each.
 //
 // A: reset (a new shove)   X: 1, 2 or 4 sub-steps   Y: 30 or 60 steps a second
 // B: blend drawing between steps   SELECT: every padd's controls, as tabs, in
 // place of the figures (HandheldControls)   START: quit
+#if defined(__NDS__)
+#include <ScratchPadd/Scene/DS/Display.hpp>
 #include <nds.h>
+#else
+#include <3ds.h>
+#include <ScratchPadd/Scene/3DS/Display.hpp>
+#endif
 
 #include <AudioPadd.hpp>
 #include <ScratchPadd/Audio/MadeSoundsPcm16.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
-#include <ScratchPadd/Scene/DS/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <cyclone/cyclone.h>
@@ -46,14 +56,37 @@ namespace {
 namespace Scene = ScratchPadd::Scene;
 using Clock = std::chrono::steady_clock;
 
+// What differs between the two consoles
+#if defined(__NDS__)
+constexpr const char *kConsole = "DS";
+constexpr int kConsoleColumns = 32, kConsoleRows = 24; // the bottom screen's
+bool mainLoop() { return pmMainLoop(); }
+std::uint32_t buttonsDown() {
+  scanKeys();
+  return static_cast<std::uint32_t>(keysDown());
+}
+std::uint32_t buttonsHeld() { return static_cast<std::uint32_t>(keysHeld()); }
+void startBottomScreen() { consoleDemoInit(); } // its console, for printf
+#else
+constexpr const char *kConsole = "3DS";
+constexpr int kConsoleColumns = 40, kConsoleRows = 30;
+bool mainLoop() { return aptMainLoop(); }
+std::uint32_t buttonsDown() {
+  hidScanInput();
+  return hidKeysDown();
+}
+std::uint32_t buttonsHeld() { return hidKeysHeld(); }
+void startBottomScreen() { consoleInit(GFX_BOTTOM, nullptr); }
+#endif
+
 struct ButtonPressed {
-  int key = 0; // libnds' KEY_*
+  int key = 0; // KEY_* (libnds' and libctru's name them alike)
 };
 
 // Each bone's place after a tick, ready to draw: its body's transform,
-// scaled to the bone's size (the bones are one box mesh, 2 m a side). Cyclone
-// runs in Q16.16 here, as the scene layer does on the DS, so they go
-// straight in.
+// scaled to the bone's size (the bones are one box mesh, 2 m a side).
+// Cyclone's number type is the scene layer's on each console (Q16.16 on the
+// DS, float on the 3DS), so they go straight in.
 struct BonesSnapshot {
   std::array<Scene::Transform, ragdoll::kBones> bones{};
   // The step length (µs), for drawing between this snapshot and the last;
@@ -203,14 +236,19 @@ private:
   struct Settings {
     unsigned stepsPerSecond, subSteps, velocitySweeps, settleSweeps, positionSweeps;
   };
-  // It runs 30 steps a second, drawn blended between them (ScreenPadd), in
-  // 4 sub-steps: at 60 a falling step (15 ms in 2 sub-steps) and the
-  // drawing don't fit in a frame, while at 30 a step in 4 takes 21 ms of
-  // its 33, and joints hold as well as at 60 in 2 (they stretch 0.6 cm at
-  // most over 20 pushes; 5 cm in 2 sub-steps). Cyclone's own sweeps (40,
-  // 10, 10 a step) suit desktops; on the DS they're what the time goes on,
-  // so it takes 16, 4, 4 (4, 1, 1 in each sub-step; Box2D v3 takes one)
+  // On the DS it runs 30 steps a second, drawn blended between them
+  // (ScreenPadd), in 4 sub-steps: at 60 a falling step (15 ms in 2
+  // sub-steps) and the drawing don't fit in a frame, while at 30 a step in 4
+  // takes 21 ms of its 33, and joints hold as well as at 60 in 2 (they
+  // stretch 0.6 cm at most over 20 pushes; 5 cm in 2 sub-steps). Cyclone's
+  // own sweeps (40, 10, 10 a step) suit desktops; on the DS they're what the
+  // time goes on, so it takes 16, 4, 4 (4, 1, 1 in each sub-step; Box2D v3
+  // takes one). The 3DS has floating-point hardware: 60 steps a second.
+#if defined(__NDS__)
   static constexpr Settings kRunSettings{30, 4, 16, 4, 4};
+#else
+  static constexpr Settings kRunSettings{60, 4, 16, 4, 4};
+#endif
   // 30 steps a second; Y switches between it and FixedSteps' 60
   static constexpr double kSlowStepSeconds = 1.0 / 30;
   static constexpr Settings kMeasured[] = {{60, 1, 40, 10, 10},
@@ -327,12 +365,13 @@ private:
 class ScreenPadd : public ScratchPadd::Base {
 public:
   ScreenPadd(ScratchPadd::System *system)
-      : Base(system), controls_(
-                          [this](ScratchPadd::PaddAddress owner,
-                                 const ScratchPadd::MessageType::ControlChange &change) {
-                            sendTo(owner, change);
-                          },
-                          ScratchPadd::HandheldControls::usableColumns(32), 24) {
+      : Base(system),
+        controls_(
+            [this](ScratchPadd::PaddAddress owner,
+                   const ScratchPadd::MessageType::ControlChange &change) {
+              sendTo(owner, change);
+            },
+            ScratchPadd::HandheldControls::usableColumns(kConsoleColumns), kConsoleRows) {
     // Every padd's controls (this one's too), for the panel SELECT shows
     receive<ScratchPadd::MessageType::ControlSnapshot>(
         [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot,
@@ -366,7 +405,7 @@ public:
 
   void starting() override {
     display_.emplace(); // the top screen
-    consoleDemoInit();  // the bottom screen's console, for printf
+    startBottomScreen();
     renderer_.emplace(*display_);
     // A box 2 m a side, scaled to each bone, and the ground: a sand square,
     // 16 m across
@@ -382,20 +421,18 @@ public:
 
 private:
   void frame() {
-    if (!pmMainLoop()) {
+    if (!mainLoop()) {
       system_->stop();
       return;
     }
-    scanKeys();
-    const int down = keysDown();
+    const std::uint32_t down = buttonsDown();
     if (down & KEY_START) {
       system_->stop();
       return;
     }
     // While the controls are shown, the buttons are theirs
     const bool wasShown = controls_.visible();
-    controls_.handle(ScratchPadd::HandheldControls::inputFrom(
-        static_cast<std::uint32_t>(down), static_cast<std::uint32_t>(keysHeld())));
+    controls_.handle(ScratchPadd::HandheldControls::inputFrom(down, buttonsHeld()));
     if (controls_.visible() != wasShown) {
       std::printf("\x1b[2J"); // the screen cleared for the other
       if (!controls_.visible())
@@ -407,7 +444,7 @@ private:
         setControl("Blend", ScratchPadd::ControlType::Boolean(!blend()));
         drawFigures();
       }
-      for (int key : {KEY_A, KEY_X, KEY_Y}) {
+      for (const int key : {KEY_A, KEY_X, KEY_Y}) {
         if (down & key) {
           send(ButtonPressed{key});
         }
@@ -441,9 +478,14 @@ private:
     if (blend() && latest_.stepMicroseconds > 0) {
       const auto since =
           std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - latestArrived_);
-      // In Q16.16 directly: integer arithmetic, no float work
+#if defined(__NDS__)
+      // In Q16.16 directly: integer arithmetic, no float work on the DS
       fraction = Scene::Scalar::fromFixed(static_cast<std::int32_t>(
           std::min<long long>(since.count() * 65536 / latest_.stepMicroseconds, 65536)));
+#else
+      fraction = std::min(
+          static_cast<float>(since.count()) / static_cast<float>(latest_.stepMicroseconds), 1.0f);
+#endif
     }
     const Scene::Material bone{.colour = {235, 160, 150}};
     for (unsigned b = 0; b < ragdoll::kBones; ++b) {
@@ -464,13 +506,17 @@ private:
     if (controls_.visible()) {
       return; // the panel has the screen; they're drawn when it's hidden
     }
-    // (rows from 0; the bottom screen's console is 32 columns by 24 rows)
-    constexpr int columns = ScratchPadd::HandheldControls::usableColumns(32);
+    // (rows from 0)
+    constexpr int columns = ScratchPadd::HandheldControls::usableColumns(kConsoleColumns);
     using ScratchPadd::HandheldControls::printLine;
-    printLine(1, columns, "Cyclone's ragdoll on a DS");
+    printLine(1, columns, "Cyclone's ragdoll on a %s", kConsole);
     if (renderer_) {
       const Scene::FrameCounts drawn = renderer_->lastFrame();
-      printLine(2, columns, "3D: %u polygons, %u vertices", drawn.polygons, drawn.vertices);
+      const Scene::FrameTimes times = renderer_->lastFrameTimes();
+      if (times.gpu > 0) // (the 3DS measures its frames)
+        printLine(2, columns, "3D: %u triangles, GPU %.1f ms", drawn.polygons, times.gpu);
+      else
+        printLine(2, columns, "3D: %u polygons, %u vertices", drawn.polygons, drawn.vertices);
     }
     printLine(3, columns, "Physics: %d steps a second,", figures_.stepsPerSecond);
     printLine(4, columns, "  %d sub-step%s each, %s", figures_.subSteps,
@@ -523,8 +569,16 @@ private:
 
 int main() {
   spdlog::set_level(spdlog::level::off); // the screens are for the padds
-  ScratchPadd::SystemImplementation<ScreenPadd, RagdollPadd, AudioPadd> system;
-  system.instantiate();
-  system.start(); // returns when ScreenPadd stops it (START)
+#if defined(__3DS__)
+  gfxInitDefault(); // (before ScreenPadd's Display)
+#endif
+  {
+    ScratchPadd::SystemImplementation<ScreenPadd, RagdollPadd, AudioPadd> system;
+    system.instantiate();
+    system.start(); // returns when ScreenPadd stops it (START)
+  }
+#if defined(__3DS__)
+  gfxExit();
+#endif
   return 0;
 }

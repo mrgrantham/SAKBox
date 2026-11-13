@@ -70,14 +70,12 @@ selects.config_setting_group(
 # What every desktop backend shares, for the backends: the window (GLFW),
 # its keyboard and mouse, and the backend hooks it calls
 # (WindowBackend.hpp); the extras' API (Desktop.hpp), which each backend
-# defines; and the overlay's text (:overlay_text)
+# defines; and the overlay's text (//projects/scratchpadd/scene/overlay_text,
+# shared with the 3DS)
 cc_library(
     name = "window",
     srcs = ["src/Display.cpp"],
-    hdrs = glob(
-        ["include/**/*.hpp"],
-        exclude = ["include/ScratchPadd/Scene/Desktop/OverlayText.hpp"],
-    ),
+    hdrs = glob(["include/**/*.hpp"]),
     linkopts = select({
         "@platforms//os:windows": [
             "-DEFAULTLIB:user32.lib",
@@ -95,33 +93,9 @@ cc_library(
     strip_include_prefix = "include/",
     visibility = ["//projects/scratchpadd/scene:__subpackages__"],
     deps = [
-        ":overlay_text",
         "//projects/scratchpadd/scene",
+        "//projects/scratchpadd/scene/overlay_text",
         "@glfw",
-    ],
-)
-
-# The overlay's text on desktops: stb_easy_font's letters as triangles,
-# and how wide and tall they are (Overlay::textWidth and lineHeight)
-cc_library(
-    name = "overlay_text",
-    srcs = ["src/OverlayText.cpp"],
-    hdrs = ["include/ScratchPadd/Scene/Desktop/OverlayText.hpp"],
-    strip_include_prefix = "include/",
-    visibility = ["//projects/scratchpadd/scene:__subpackages__"],
-    deps = [
-        "//projects/scratchpadd/scene",
-        "@stb",
-    ],
-)
-
-cc_test(
-    name = "OverlayText_test",
-    size = "small",
-    srcs = ["tests/OverlayText_test.cpp"],
-    deps = [
-        ":overlay_text",
-        "@gtest//:gtest_main",
     ],
 )
 

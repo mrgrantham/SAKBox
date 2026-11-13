@@ -1,10 +1,10 @@
 """Models from Blender for ScratchPadd's scene layer (see README.md).
 
 scene_model exports a .blend with Blender (//tools/blender), then cooks it
-for each platform: the desktop's version as it is, the DS's checked against
-its budget and simplified to fit if the rule says so, each as C++ (a
-Scene::MeshData). scene adds up what the models it lists cost a frame on the
-DS, and fails the build if it's over.
+for each platform: the desktop's version as it is, the DS's and the 3DS's
+checked against their budgets and simplified to fit if the rule says so,
+each as C++ (a Scene::MeshData). scene adds up what the models it lists cost
+a frame on the DS and the 3DS, and fails the build if it's over.
 """
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
@@ -16,10 +16,15 @@ ModelInfo = provider(
 )
 
 # What each platform draws a frame at most (0: no limit). The DS's are its
-# hardware's: 2048 polygons and 6144 vertices a frame (GBATEK).
+# hardware's: 2048 polygons and 6144 vertices a frame (GBATEK). The 3DS's
+# GPU has no fixed limit, only its speed: 45,000 triangles is about what a
+# New 3DS draws lit at 60 fps in stereo, a few pixels each (measured with
+# //projects/scratchpadd/scene/3ds_benchmark); large ones fill fewer, which
+# only drawing shows (Renderer::lastFrameTimes).
 FRAME_LIMITS = {
     "desktop": struct(polygons = 0, vertices = 0),
     "ds": struct(polygons = 2048, vertices = 6144),
+    "3ds": struct(polygons = 45000, vertices = 0),
 }
 
 _MODES = ["FAIL", "SIMPLIFY", "SIMPLIFY_AGGRESSIVE"]
@@ -29,6 +34,7 @@ _OUTPUTS = [
     ("desktop", "", ""),
     ("ds", "_ds", ""),
     ("ds", "_ds_preview", "::Ds"),
+    ("3ds", "_3ds", ""),
 ]
 
 def _scene_model_impl(ctx):
@@ -124,15 +130,18 @@ def scene_model(name, src, object, budget = {}, over_budget = {}, namespace = "A
         Makefile build (devkitpro_nds_app's extra_srcs).
       NAME_ds_preview: a cc_library of the DS's version for desktops, in
         NAMESPACE::Ds, to see what the DS draws.
+      NAME_3ds_sources: the 3DS's version (the same names), for a 3DS app's
+        Makefile build (devkitpro_3ds_app's extra_srcs).
       NAME_cooked: the files, and the report (output group "report").
 
     Args:
       name: the model's name, in C++ too.
       src: the .blend.
       object: the object in it to use (its platform versions are found
-        beside it: OBJECT_DS, or sak.platform = "ds").
-      budget: polygons a platform's version may use, by platform ("ds");
-        its frame limit if not given.
+        beside it: OBJECT_DS or OBJECT_3DS, or sak.platform = "ds" or
+        "3ds").
+      budget: polygons a platform's version may use, by platform ("ds",
+        "3ds": the 3DS counts triangles); its frame limit if not given.
       over_budget: by platform, what to do over budget: "FAIL" (the
         default), "SIMPLIFY" or "SIMPLIFY_AGGRESSIVE".
         --//tools/assets:over_budget=MODE overrides them all for a build.
@@ -152,7 +161,7 @@ def scene_model(name, src, object, budget = {}, over_budget = {}, namespace = "A
         tags = tags,
         **kwargs
     )
-    for group, label in [("srcs", "srcs"), ("hdrs", "hdrs"), ("ds_srcs", "ds_srcs"), ("ds_hdrs", "ds_hdrs"), ("ds_preview_srcs", "ds_preview_srcs"), ("ds_preview_hdrs", "ds_preview_hdrs")]:
+    for group, label in [("srcs", "srcs"), ("hdrs", "hdrs"), ("ds_srcs", "ds_srcs"), ("ds_hdrs", "ds_hdrs"), ("ds_preview_srcs", "ds_preview_srcs"), ("ds_preview_hdrs", "ds_preview_hdrs"), ("3ds_srcs", "3ds_srcs"), ("3ds_hdrs", "3ds_hdrs")]:
         native.filegroup(name = name + "_" + label, srcs = [":" + name + "_cooked"], output_group = group, tags = tags, **kwargs)
     for library, prefix in [(name, ""), (name + "_ds_preview", "ds_preview_")]:
         cc_library(
@@ -164,12 +173,13 @@ def scene_model(name, src, object, budget = {}, over_budget = {}, namespace = "A
             tags = tags,
             **kwargs
         )
-    native.filegroup(
-        name = name + "_ds_sources",
-        srcs = [":" + name + "_ds_srcs", ":" + name + "_ds_hdrs"],
-        tags = tags,
-        **kwargs
-    )
+    for platform in ["ds", "3ds"]:
+        native.filegroup(
+            name = name + "_" + platform + "_sources",
+            srcs = [":" + name + "_" + platform + "_srcs", ":" + name + "_" + platform + "_hdrs"],
+            tags = tags,
+            **kwargs
+        )
 
 def _scene_impl(ctx):
     report = ctx.actions.declare_file(ctx.label.name + ".scene.txt")
@@ -209,7 +219,7 @@ def scene(name, models, tags = [], **kwargs):
 
     Building it (or anything that depends on it) fails if the models, each
     times how many are shown at once, cost more than a frame on the DS can
-    draw (2048 polygons, 6144 vertices). Its output is a report of each
+    draw (2048 polygons, 6144 vertices), or the 3DS (45,000 triangles). Its output is a report of each
     platform's total and the costliest models.
 
     Args:
