@@ -16,6 +16,7 @@ devkitpro_nds_app(
         "//projects/flexmath:fixed_point_sources": "flexmath",
         "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
         "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
+        "//projects/scratchpadd/app_ended:sources": "scratchpadd/app_ended",
         "//projects/scratchpadd/handheld_controls:sources": "scratchpadd/handheld_controls",
         "//projects/scratchpadd/scene:sources": "scratchpadd/scene",
         "//projects/scratchpadd/scene/ds:sources": "scratchpadd/scene_ds",

@@ -28,6 +28,7 @@
 #endif
 
 #include <AudioPadd.hpp>
+#include <ScratchPadd/AppEnded/AppEnded.hpp>
 #include <ScratchPadd/Audio/MadeSoundsPcm16.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
@@ -591,6 +592,7 @@ int main() {
     system.instantiate();
     system.start(); // returns when ScreenPadd stops it (START)
   }
+  ScratchPadd::AppEnded::show("Cyclone ragdoll");
 #if defined(__3DS__)
   gfxExit();
 #endif

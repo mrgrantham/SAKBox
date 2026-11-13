@@ -12,6 +12,7 @@ devkitpro_nds_app(
         "//projects/scratchpadd/input:sources": "scratchpadd/input",
         "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
         "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
+        "//projects/scratchpadd/app_ended:sources": "scratchpadd/app_ended",
         "//projects/scratchpadd/handheld_controls:sources": "scratchpadd/handheld_controls",
         "//projects/scratchpadd/utilities:sources": "scratchpadd/utilities",
         "//projects/scratchpadd/ds/platform:sources": "scratchpadd_ds/platform",

@@ -22,7 +22,7 @@ GAME_SUBTITLE2	:=	SAKBox
 NITRODATA	:=	nitrofiles
 BUILD		:=	build
 SOURCES		:=	source scratchpadd/handheld_controls/src scratchpadd/utilities/src scratchpadd_ds/platform/src scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd_audio_wav/src scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session
-INCLUDES	:=	include scratchpadd/handheld_controls/include build scratchpadd/basis/include scratchpadd/messages/include scratchpadd/input/include scratchpadd/debug_log/include \
+INCLUDES	:=	include scratchpadd/app_ended/include scratchpadd/handheld_controls/include build scratchpadd/basis/include scratchpadd/messages/include scratchpadd/input/include scratchpadd/debug_log/include \
 			scratchpadd/utilities/include scratchpadd/handheld/include scratchpadd_audio_pcm16/include scratchpadd_audio/include \
 			scratchpadd_audio/messages/include scratchpadd_audio/core/include scratchpadd_audio_wav/include third_party \
 			third_party/spdlog/include

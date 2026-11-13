@@ -23,7 +23,7 @@ BUILD		:=	build
 # directories are AudioPadd's, as in the ScratchPadd DS demo)
 SOURCES		:=	ragdoll/source scratchpadd/handheld_controls/src scratchpadd/scene/src scratchpadd/scene_ds/src cyclone/src cyclone/src/demos scratchpadd/utilities/src scratchpadd_ds/platform/src scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session \
 			scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd_audio_wav/src
-INCLUDES	:=	include scratchpadd/handheld_controls/include scratchpadd/scene/include scratchpadd/scene_ds/include build cyclone/include cyclone/src/demos cyclone/src/demos/ragdoll scratchpadd/input/include scratchpadd/debug_log/include \
+INCLUDES	:=	include scratchpadd/app_ended/include scratchpadd/handheld_controls/include scratchpadd/scene/include scratchpadd/scene_ds/include build cyclone/include cyclone/src/demos cyclone/src/demos/ragdoll scratchpadd/input/include scratchpadd/debug_log/include \
 			scratchpadd/basis/include scratchpadd/messages/include \
 			scratchpadd/utilities/include third_party/spdlog/include flexmath/include \
 			scratchpadd_audio_pcm16/include scratchpadd_audio/include scratchpadd_audio/messages/include \

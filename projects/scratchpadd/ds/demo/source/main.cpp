@@ -19,6 +19,7 @@
 
 #include <AudioPadd.hpp>
 #include <HandheldDemo.hpp>
+#include <ScratchPadd/AppEnded/AppEnded.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
@@ -187,10 +188,13 @@ int main() {
   ScratchPadd::DebugLog::Session log("scratchpadd-ds-demo");
   logWhere = log.where();
 #endif
-  ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, SoundBoardPadd,
-                                    AudioPadd>
-      system;
-  system.instantiate();
-  system.start(); // returns when ScreenPadd stops it (START)
+  {
+    ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, SoundBoardPadd,
+                                      AudioPadd>
+        system;
+    system.instantiate();
+    system.start(); // returns when ScreenPadd stops it (START)
+  }
+  ScratchPadd::AppEnded::show("ScratchPadd demo");
   return 0;
 }

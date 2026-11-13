@@ -38,7 +38,7 @@ BUILD		:=	build
 SOURCES		:=	ragdoll/source scratchpadd/handheld_controls/src scratchpadd/utilities/src scratchpadd_audio/core/src scratchpadd_audio_3ds/output/src third_party/miniaudio scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session \
 			scratchpadd/scene/src scratchpadd/scene_3ds/src scratchpadd/overlay_text/src cyclone/src cyclone/src/demos
 DATA		:=	data
-INCLUDES	:=	include scratchpadd/handheld_controls/include scratchpadd/basis/include scratchpadd/messages/include scratchpadd/utilities/include scratchpadd_audio_pcm16/include scratchpadd/input/include scratchpadd/debug_log/include \
+INCLUDES	:=	include scratchpadd/app_ended/include scratchpadd/handheld_controls/include scratchpadd/basis/include scratchpadd/messages/include scratchpadd/utilities/include scratchpadd_audio_pcm16/include scratchpadd/input/include scratchpadd/debug_log/include \
 			scratchpadd/scene/include scratchpadd/scene_3ds/include scratchpadd/overlay_text/include cyclone/include cyclone/src/demos cyclone/src/demos/ragdoll \
 			scratchpadd_audio/include scratchpadd_audio/messages/include scratchpadd_audio/core/include \
 			scratchpadd_audio_3ds/output/include third_party third_party/spdlog/include
