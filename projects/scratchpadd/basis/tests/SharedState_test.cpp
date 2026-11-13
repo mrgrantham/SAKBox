@@ -77,8 +77,9 @@ public:
 
 } // namespace
 
-// Nothing published yet: a default value at version 0. Each publish is one
-// more version, and a reader gets the newest, however many it missed.
+// Nothing published yet: a default value at version 0, never published.
+// Each publish is one more version, stamped with when, and a reader gets
+// the newest, however many it missed.
 TEST(SharedStateTest, ReadersGetTheNewestValue) {
   RunningSystem<Publisher, Reader, MainReader> running;
   auto &publisher = running.padd<Publisher>();
@@ -87,6 +88,8 @@ TEST(SharedStateTest, ReadersGetTheNewestValue) {
   const auto before = reader.run([](Reader &r) { return r.current<Pad>(); });
   EXPECT_EQ(before.version, 0u);
   EXPECT_EQ(before.value.buttons, 0);
+  EXPECT_EQ(before.published, std::chrono::steady_clock::time_point{});
+  const auto start = std::chrono::steady_clock::now();
 
   publisher.run([](Publisher &p) {
     for (int i = 1; i <= 3; ++i)
@@ -97,6 +100,13 @@ TEST(SharedStateTest, ReadersGetTheNewestValue) {
   EXPECT_EQ(after.version, 3u);
   EXPECT_EQ(after.value.buttons, 3);
   EXPECT_EQ(after.value.stick, 1.5f);
+  EXPECT_GE(after.published, start);
+  EXPECT_LE(after.published, std::chrono::steady_clock::now());
+  // Taken apart, as the README has it
+  const auto [pad, version, published] = after;
+  EXPECT_EQ(pad.buttons, 3);
+  EXPECT_EQ(version, 3u);
+  EXPECT_EQ(published, after.published);
   // A main-thread padd reads the same
   const auto onMain =
       running.padd<MainReader>().run([](MainReader &r) { return r.current<Pad>(); });

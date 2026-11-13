@@ -13,6 +13,7 @@
 // slots, so they outlive its padds.
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -27,11 +28,15 @@ namespace ScratchPadd {
 
 class Base;
 
-// A copy of a shared value, and its version: 0 if it was never published,
-// then one more each time it is
+// A copy of a shared value, its version (0 if it was never published, then
+// one more each time it is: compare versions to tell if it changed), and
+// when it was published (for working out how old it is, or blending two)
+//
+//   const auto [pad, version, published] = currentState<Gamepad>();
 template <typename T> struct State {
   T value{};
   std::uint64_t version = 0;
+  std::chrono::steady_clock::time_point published{};
 };
 
 // What may be shared: a plain struct, copied whole each publish and read
@@ -58,14 +63,17 @@ protected:
   const Base *publisher_ = nullptr;
 };
 
+// (Base's publishState() and currentState() write and read it)
 template <Shareable T> class SharedStateSlot : public SharedStateSlotBase {
 public:
-  void publish(const T &value) {
+  void write(const T &value) {
+    const auto now = std::chrono::steady_clock::now(); // (outside the lock)
     std::lock_guard lock(mutex_);
     state_.value = value;
     ++state_.version;
+    state_.published = now;
   }
-  State<T> latest() {
+  State<T> read() {
     std::lock_guard lock(mutex_);
     return state_;
   }

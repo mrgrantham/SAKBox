@@ -444,16 +444,17 @@ protected:
     }
     if (found.publishing == StateSlot::Publishing::Refused)
       return false;
-    static_cast<SharedStateSlot<T> &>(*found.slot).publish(value);
+    static_cast<SharedStateSlot<T> &>(*found.slot).write(value);
     return true;
   }
 
-  // The current T (named `name`), as last published, and its version (0:
-  // never published, so a default T). A copy: keep it as long as you like.
+  // The current T (named `name`), as last published, with its version (0:
+  // never published, so a default T) and when it was published. A copy:
+  // keep it as long as you like.
   // Call on the padd's own thread.
   template <Shareable T> State<T> currentState(std::string_view name = {}) {
     assertOnPaddThread("currentState");
-    return static_cast<SharedStateSlot<T> &>(*stateSlot<T>(name).slot).latest();
+    return static_cast<SharedStateSlot<T> &>(*stateSlot<T>(name).slot).read();
   }
 
   // Throws std::logic_error unless called on this padd's own thread (or

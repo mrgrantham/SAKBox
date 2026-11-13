@@ -162,8 +162,9 @@ TEST(ExamplesTest, SharedStateIsTheNewestPublished) {
   EXPECT_EQ(steerer.read().version, 0u);
   pads.publish({.held = 1, .stickX = 0.25f, .stickY = 0});
   pads.publish({.held = 3, .stickX = -1, .stickY = 0.5f});
-  const ScratchPadd::State<Gamepad> pad = steerer.read();
-  EXPECT_EQ(pad.version, 2u);
-  EXPECT_EQ(pad.value.held, 3u);
-  EXPECT_EQ(pad.value.stickX, -1);
+  const auto [pad, version, published] = steerer.read();
+  EXPECT_EQ(version, 2u);
+  EXPECT_EQ(pad.held, 3u);
+  EXPECT_EQ(pad.stickX, -1);
+  EXPECT_NE(published, std::chrono::steady_clock::time_point{});
 }
