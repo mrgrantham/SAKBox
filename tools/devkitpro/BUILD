@@ -1,5 +1,6 @@
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
+load("@rules_python//python:py_test.bzl", "py_test")
 load(":defs.bzl", "devkitpro_cia_tools")
 
 # Runs scripts inside the pinned devkitPro image (see defs.bzl). Python, so
@@ -10,15 +11,31 @@ py_library(
     imports = ["."],  # imported as `devkitpro_image`
 )
 
+# A console app's default icon and banner, drawn in stb_easy_font's letters
+py_library(
+    name = "app_images",
+    srcs = ["app_images.py"],
+    imports = ["."],  # imported as `app_images`
+)
+
+py_test(
+    name = "app_images_test",
+    size = "small",
+    srcs = ["app_images_test.py"],
+    args = ["$(rootpath @stb//:stb_easy_font.h)"],
+    data = ["@stb//:stb_easy_font.h"],
+    deps = [":app_images"],
+)
+
 # devkitPro's make, and the CIA, for a 3DS app
 py_binary(
     name = "build_3ds",
-    srcs = [
-        "banner.py",
-        "build_3ds.py",
-    ],
+    srcs = ["build_3ds.py"],
     visibility = ["//visibility:public"],
-    deps = [":devkitpro_image"],
+    deps = [
+        ":app_images",
+        ":devkitpro_image",
+    ],
 )
 
 # devkitPro's make, for a DS app
@@ -26,7 +43,10 @@ py_binary(
     name = "build_nds",
     srcs = ["build_nds.py"],
     visibility = ["//visibility:public"],
-    deps = [":devkitpro_image"],
+    deps = [
+        ":app_images",
+        ":devkitpro_image",
+    ],
 )
 
 py_binary(

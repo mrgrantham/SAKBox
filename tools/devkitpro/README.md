@@ -8,7 +8,7 @@ Builds Nintendo 3DS and DS homebrew with [devkitPro](https://devkitpro.org)'s to
 | `run_in_azahar.sh`, `run_in_melonds.sh` | What `bazel run` runs: opens a 3DS app in Azahar (see [`tools/azahar`](../azahar/README.md)), or a DS app in melonDS (see [`tools/melonds`](../melonds/README.md)) |
 | `build_nds.py` | Builds a DS app inside the image: devkitPro's `make`, which makes the `.nds` |
 | `build_3ds.py` | Builds an app inside the image: devkitPro's `make`, then the CIA (bannertool's banner, makerom) |
-| `banner.py` | Draws a 3DS app's default HOME Menu banner: its title, description and author, from its `Makefile` |
+| `app_images.py` | Draws an app's default icon (the first two letters of its `Makefile`'s title, in a colour of its own) and a 3DS app's default HOME Menu banner (its title, description and author). `app_images_test` checks them |
 | `build_cia_tools.py` | Builds makerom and bannertool from source inside the image (the `cia_tools` target) |
 | `devkitpro_image.py` | Runs a script in the image for the two above. Files go in and results come out as tar streams on stdin/stdout, so no folders are shared with the container and nothing it writes ends up owned by root. Python, so it runs the same on every host. |
 
@@ -47,13 +47,20 @@ devkitpro_3ds_app(
 - `my-app.cia`: the same app as a title to install to the HOME Menu, with [FBI](https://github.com/lifehackerhansol/FBI) on a 3DS with custom firmware (over Wi-Fi with [`tools/fbi_install`](../fbi_install/README.md)), or **File → Install CIA** (or `azahar -i`) in Azahar. It has its own icon (the `.smdh`) and a HOME Menu banner.
 - `my-app.smdh` (its title and icon) and `my-app.elf` (with debug symbols).
 
-`app_name` sets a different output name. A debug build (`bazel build -c dbg`) runs `make SAKBOX_DEBUG=1`, which an app's Makefile can turn into `-DSAKBOX_DEBUG` (`CFLAGS += $(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)`): ScratchPadd's apps then send their log off the device ([`debug_log`](../../projects/scratchpadd/debug_log/README.md)). Both kinds of app take it. For the CIA:
+`app_name` sets a different output name. Each app has its own icon, so apps can be told apart in a menu:
+
+| Attribute | What | Default |
+| --- | --- | --- |
+| `icon` | The app's icon: for a 3DS app a 48x48 PNG (on the HOME Menu and in the Homebrew Launcher), for a DS app a 32x32 BMP of 16 colours at most (in a flash card's menu) | The first two letters of the `Makefile`'s title (`APP_TITLE`, or a DS app's `GAME_TITLE`), "Blender Demo" giving "Bl", on dark in a colour from the title ([`app_images.py`](app_images.py), in stb_easy_font's letters) |
+| `icon_letters` | The default icon's letters, for apps whose titles start alike (the ScratchPadd audio demo's are "Au") | The title's first two |
+
+Either replaces the `Makefile`'s own (`ICON`, `GAME_ICON`, or an `icon.png` beside it). A debug build (`bazel build -c dbg`) runs `make SAKBOX_DEBUG=1`, which an app's Makefile can turn into `-DSAKBOX_DEBUG` (`CFLAGS += $(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)`): ScratchPadd's apps then send their log off the device ([`debug_log`](../../projects/scratchpadd/debug_log/README.md)). Both kinds of app take it. For the CIA:
 
 | Attribute | What | Default |
 | --- | --- | --- |
 | `unique_id` | The title's ID, `0xF0000`-`0xF7FFF` for homebrew. Two CIAs with the same ID replace each other when installed. | One worked out from the target's label, so each app has its own |
 | `product_code` | Its product code | `CTR-H-` and the last four digits of the ID |
-| `banner_image` | The HOME Menu banner, a 256x128 PNG, shown on the top screen when the app is selected | The `Makefile`'s `APP_TITLE`, `APP_DESCRIPTION` and `APP_AUTHOR` on blue, so each app can be told apart ([`banner.py`](banner.py), in stb_easy_font's letters) |
+| `banner_image` | The HOME Menu banner, a 256x128 PNG, shown on the top screen when the app is selected | The `Makefile`'s `APP_TITLE`, `APP_DESCRIPTION` and `APP_AUTHOR` on blue, so each app can be told apart ([`app_images.py`](app_images.py)) |
 | `banner_sound` | The banner's sound, a WAV of up to 3 seconds | A short chime |
 
 The CIA is unencrypted, made the standard way for homebrew: [makerom](https://github.com/3DSGuy/Project_CTR) (from Project_CTR) builds it from the `.elf` with the settings file (`template.rsf`) and boot logo of [Steveice10's buildtools](https://github.com/Steveice10/buildtools), and [bannertool](https://github.com/diasurgical/bannertool) makes the banner. All three are MIT, pinned in `MODULE.bazel`, and built from source inside the devkitPro image by `//tools/devkitpro:cia_tools` the first time a 3DS app is built (Bazel then caches them), so they run on whatever processor Docker does. bannertool is compiled directly rather than with its own Makefile, which only knows x86 hosts.

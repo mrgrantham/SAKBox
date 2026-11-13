@@ -2,32 +2,63 @@
 pinned devkitARM image: the .nds (to run on a DS, from a flash card, or in an
 emulator) and its .elf.
 
-Usage: build_nds.py IMAGE NAME OUT_DIR [--debug] -- [SRC PATH]...
+Usage: build_nds.py IMAGE NAME OUT_DIR --font STB_EASY_FONT_H [--icon BMP]
+[--icon-letters TEXT] [--debug] -- [SRC PATH]...
 (each source file, then the path it goes at in the app's folder; --debug
 runs make with SAKBOX_DEBUG=1)
+
+Without --icon, the icon is --icon-letters (default: the first two of the
+Makefile's GAME_TITLE; see app_images.py).
 """
 
+import argparse
+import pathlib
 import shlex
 import sys
+import tempfile
 
+import app_images
 import devkitpro_image
+
+ICON = "_icon/icon.bmp"  # in the app's folder: the icon, for make's GAME_ICON
+ICON_SIZE = 32
 
 
 def main(argv):
     if "--" not in argv:
         sys.exit(__doc__)
     split = argv.index("--")
-    debug = argv[3:split] == ["--debug"]
-    if split != 3 + debug:
-        sys.exit(__doc__)
-    image, name, out_dir = argv[:3]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("image")
+    parser.add_argument("name")
+    parser.add_argument("out_dir")
+    for option in ["font", "icon", "icon-letters"]:
+        parser.add_argument("--" + option)
+    parser.add_argument("--debug", action="store_true")  # make with SAKBOX_DEBUG=1
+    args = parser.parse_args(argv[:split])
     files = devkitpro_image.pairs(argv[split + 1:])
     if len(files) * 2 != len(argv) - split - 1:
         sys.exit(__doc__)
+    name = args.name
+
     outputs = [f"{name}{ext}" for ext in (".nds", ".elf")]
-    script = (f"make TARGET={shlex.quote(name)}" + (" SAKBOX_DEBUG=1" if debug else "") + " >&2 && "
+    # (GAME_ICON is a path from where make runs: the app's folder, $(CURDIR))
+    script = (f"make TARGET={shlex.quote(name)} GAME_ICON=$PWD/{ICON}" +
+              (" SAKBOX_DEBUG=1" if args.debug else "") + " >&2 && "
               "tar -c " + " ".join(shlex.quote(o) for o in outputs))
-    devkitpro_image.run(image, files, script, outputs, out_dir, "The devkitPro build")
+    with tempfile.TemporaryDirectory() as scratch:
+        icon = args.icon
+        if not icon:
+            makefile = next(source for source, path in files if path == "Makefile")
+            title = app_images.makefile_settings(pathlib.Path(makefile).read_text(),
+                                                 ("GAME_TITLE",)).get("GAME_TITLE", name)
+            icon = pathlib.Path(scratch, "icon.bmp")
+            letters = args.icon_letters or app_images.icon_letters(title)
+            font = app_images.EasyFont(pathlib.Path(args.font).read_text())
+            app_images.write_bmp(app_images.icon(font, letters, ICON_SIZE, title), icon)
+        files.append((str(icon), ICON))
+        devkitpro_image.run(args.image, files, script, outputs, args.out_dir,
+                            "The devkitPro build")
 
 
 if __name__ == "__main__":

@@ -72,6 +72,36 @@ _SOURCE_ATTRS = {
     "app_name": attr.string(doc = "Output name (default: the target name)"),
 }
 
+def _icon_attrs(extension, size, shown):
+    """The icon attributes of a console app whose icon is a `size` x `size`
+    image file with `extension`, shown `shown`."""
+    return {
+        "icon": attr.label(
+            allow_single_file = [extension],
+            doc = "The app's icon, %s: a %dx%d %s (default: `icon_letters`, drawn by " % (shown, size, size, extension) +
+                  "app_images.py)",
+        ),
+        "icon_letters": attr.string(
+            doc = "The letters on the default icon (default: the first two of the " +
+                  "Makefile's title). Apps whose titles start alike can set it to tell " +
+                  "them apart; each also gets a colour of its own from its title.",
+        ),
+        # The letters of the default icon and banner (see app_images.py)
+        "_letters_font": attr.label(default = "@stb//:stb_easy_font.h", allow_single_file = True),
+    }
+
+def _icon_args(ctx, args):
+    """Adds the app's icon, or the letters for its default one, to the build
+    script's `args`; returns the files that needs."""
+    args.add("--font", ctx.file._letters_font)
+    inputs = [ctx.file._letters_font]
+    if ctx.file.icon:
+        args.add("--icon", ctx.file.icon)
+        inputs.append(ctx.file.icon)
+    if ctx.attr.icon_letters:
+        args.add("--icon-letters", ctx.attr.icon_letters)
+    return inputs
+
 def _devkitpro_cia_tools_impl(ctx):
     outs = [ctx.actions.declare_file(tool) for tool in ["makerom", "bannertool"]]
     args = ctx.actions.args()
@@ -133,16 +163,16 @@ def _devkitpro_3ds_app_impl(ctx):
     # The CIA: the tools, the standard settings and logo, the banner
     unique_id = _unique_id(ctx)
     makerom, bannertool = ctx.files._cia_tools
-    cia_inputs = [makerom, bannertool, ctx.file._rsf, ctx.file._logo, ctx.file._banner_font]
+    cia_inputs = [makerom, bannertool, ctx.file._rsf, ctx.file._logo]
     args = ctx.actions.args()
     args.add(DEVKITARM_IMAGE)
     args.add(name)
     args.add(outs[0].dirname)
+    cia_inputs += _icon_args(ctx, args)
     args.add("--makerom", makerom)
     args.add("--bannertool", bannertool)
     args.add("--rsf", ctx.file._rsf)
     args.add("--logo", ctx.file._logo)
-    args.add("--font", ctx.file._banner_font)
     args.add("--unique-id", unique_id)
     if _debug(ctx):
         args.add("--debug")
@@ -187,7 +217,7 @@ _devkitpro_3ds_app = rule(
           "sources at the paths it expects (source/, include/, ...). " +
           "`bazel run` opens it in the Azahar emulator.",
     executable = True,
-    attrs = _SOURCE_ATTRS | {
+    attrs = _SOURCE_ATTRS | _icon_attrs(".png", 48, "on the HOME Menu") | {
         "unique_id": attr.string(
             doc = "The CIA's unique ID, 0xF0000-0xF7FFF for homebrew (default: " +
                   "one worked out from the target's label). Two CIAs with the same " +
@@ -206,8 +236,6 @@ _devkitpro_3ds_app = rule(
         "_cia_tools": attr.label(default = "//tools/devkitpro:cia_tools"),
         "_rsf": attr.label(default = "@ctr_buildtools//:3ds/template.rsf", allow_single_file = True),
         "_logo": attr.label(default = "@ctr_buildtools//:3ds/logo.bcma.lz", allow_single_file = True),
-        # The default banner's letters (see banner.py)
-        "_banner_font": attr.label(default = "@stb//:stb_easy_font.h", allow_single_file = True),
         "_launcher": attr.label(
             default = "//tools/devkitpro:run_in_azahar.sh",
             allow_single_file = True,
@@ -246,6 +274,7 @@ def _devkitpro_nds_app_impl(ctx):
     args.add(DEVKITARM_IMAGE)
     args.add(name)
     args.add(outs[0].dirname)
+    icon_inputs = _icon_args(ctx, args)
     if _debug(ctx):
         args.add("--debug")
     args.add("--")
@@ -255,7 +284,7 @@ def _devkitpro_nds_app_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._build,
         arguments = [args],
-        inputs = [f for f, _ in staged],
+        inputs = [f for f, _ in staged] + icon_inputs,
         outputs = outs,
         mnemonic = "DevkitProNds",
         progress_message = "Building DS app %{label} with devkitPro",
@@ -282,7 +311,7 @@ _devkitpro_nds_app = rule(
           "at the paths it expects (source/, include/, ...). `bazel run` " +
           "opens it in the melonDS emulator.",
     executable = True,
-    attrs = _SOURCE_ATTRS | {
+    attrs = _SOURCE_ATTRS | _icon_attrs(".bmp", 32, "in a flash card's menu (16 colours)") | {
         "nitro_files": attr.label_keyed_string_dict(
             allow_files = True,
             doc = "Files for the app's file system (NitroFS, packed into the " +

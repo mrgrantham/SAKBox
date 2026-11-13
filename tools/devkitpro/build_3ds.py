@@ -2,15 +2,17 @@
 devkitARM image: the .3dsx (for the Homebrew Launcher), its .smdh and .elf,
 and, given the CIA tools, a .cia (installed to the HOME Menu).
 
-Usage: build_3ds.py IMAGE NAME OUT_DIR [CIA options] -- [SRC PATH]...
-(each source file, then the path it goes at in the app's folder)
+Usage: build_3ds.py IMAGE NAME OUT_DIR --font STB_EASY_FONT_H [--icon PNG]
+[--icon-letters TEXT] [--debug] [CIA options] -- [SRC PATH]...
+(each source file, then the path it goes at in the app's folder; --debug
+runs make with SAKBOX_DEBUG=1)
 
 CIA options: --makerom FILE --bannertool FILE --rsf FILE --logo FILE
---unique-id ID --product-code CODE --font STB_EASY_FONT_H [--banner-image PNG]
-[--banner-sound WAV]
+--unique-id ID --product-code CODE [--banner-image PNG] [--banner-sound WAV]
 
-Without --banner-image, the banner shows the Makefile's APP_TITLE,
-APP_DESCRIPTION and APP_AUTHOR (see banner.py).
+Without --icon, the icon is --icon-letters (default: the first two of the
+Makefile's APP_TITLE); without --banner-image, the banner shows APP_TITLE,
+APP_DESCRIPTION and APP_AUTHOR (see app_images.py).
 """
 
 import argparse
@@ -21,10 +23,12 @@ import struct
 import sys
 import tempfile
 
-import banner
+import app_images
 import devkitpro_image
 
 CIA_FOLDER = "_cia"  # in the app's folder: the CIA tools and their inputs
+ICON = "_icon/icon.png"  # in the app's folder: the icon, for make's ICON
+ICON_SIZE = 48
 
 
 def default_banner_sound(path):
@@ -80,7 +84,7 @@ def main(argv):
     parser.add_argument("name")
     parser.add_argument("out_dir")
     for option in ["makerom", "bannertool", "rsf", "logo", "unique-id", "product-code", "font",
-                   "banner-image", "banner-sound"]:
+                   "banner-image", "banner-sound", "icon", "icon-letters"]:
         parser.add_argument("--" + option)
     parser.add_argument("--debug", action="store_true")  # make with SAKBOX_DEBUG=1
     args = parser.parse_args(argv[:split])
@@ -90,20 +94,27 @@ def main(argv):
     name = args.name
 
     outputs = [f"{name}{ext}" for ext in (".3dsx", ".smdh", ".elf")]
-    commands = [f"make TARGET={shlex.quote(name)}" + (" SAKBOX_DEBUG=1" if args.debug else "") +
-                " >&2"]
+    commands = [f"make TARGET={shlex.quote(name)} ICON={ICON}" +
+                (" SAKBOX_DEBUG=1" if args.debug else "") + " >&2"]
+    font = app_images.EasyFont(pathlib.Path(args.font).read_text())
+    makefile = next(source for source, path in files if path == "Makefile")
+    text = app_images.makefile_settings(pathlib.Path(makefile).read_text())
+    title = text.get("APP_TITLE", name)
     with tempfile.TemporaryDirectory() as scratch:
+        icon = args.icon
+        if not icon:
+            icon = pathlib.Path(scratch, "icon.png")
+            letters = args.icon_letters or app_images.icon_letters(title)
+            app_images.write_png(app_images.icon(font, letters, ICON_SIZE, title), icon)
+        files.append((str(icon), ICON))
         if args.makerom:
             image = args.banner_image
             sound = args.banner_sound
             if not image:
                 image = pathlib.Path(scratch, "banner.png")
-                makefile = next(source for source, path in files if path == "Makefile")
-                text = banner.makefile_settings(pathlib.Path(makefile).read_text())
-                banner.write_png(banner.image(banner.EasyFont(pathlib.Path(args.font).read_text()),
-                                              text.get("APP_TITLE", name),
-                                              text.get("APP_DESCRIPTION", ""),
-                                              text.get("APP_AUTHOR", "")), image)
+                app_images.write_png(app_images.banner(font, title,
+                                                       text.get("APP_DESCRIPTION", ""),
+                                                       text.get("APP_AUTHOR", "")), image)
             if not sound:
                 sound = pathlib.Path(scratch, "banner.wav")
                 default_banner_sound(sound)

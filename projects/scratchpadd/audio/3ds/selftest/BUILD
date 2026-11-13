@@ -8,6 +8,8 @@ load("//tools/devkitpro:defs.bzl", "devkitpro_3ds_app")
 devkitpro_3ds_app(
     name = "scratchpadd-audio-selftest",
     srcs = ["Makefile"] + glob(["source/**"]),
+    # (the other ScratchPadd 3DS apps' titles also start "Sc")
+    icon_letters = "St",
     extra_srcs = {
         "//projects/scratchpadd/debug_log:server_sources": "scratchpadd/debug_log",
         "//projects/scratchpadd/audio:audio_core_sources": "scratchpadd_audio",

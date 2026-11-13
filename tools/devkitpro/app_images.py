@@ -1,17 +1,22 @@
-"""The default HOME Menu banner of a 3DS app: a 256x128 PNG, a blue gradient
-with the app's title, description and author on it, so each app can be told
-apart on the top screen when it's selected.
+"""The default pictures of a console app, so each can be told apart:
+- a 3DS app's HOME Menu banner: a 256x128 PNG, a blue gradient with the
+  app's title, description and author on it (on the top screen when it's
+  selected);
+- its icon: the title's first two letters, in a colour of the app's own,
+  on dark (a 3DS app's, 48x48, on the HOME Menu; a DS app's, 32x32, in a
+  flash card's menu).
 
 The letters are stb_easy_font's (the font the desktop overlay draws with):
 each is a few horizontal and vertical strokes, read from the tables in
 stb_easy_font.h and drawn as filled rectangles, scaled up.
 """
 
+import colorsys
 import re
 import struct
 import zlib
 
-WIDTH, HEIGHT = 256, 128
+WIDTH, HEIGHT = 256, 128  # the banner's
 MARGIN = 10
 LINE_GAP = 4
 # stb_easy_font's letters are 7 points tall, set in 12-point lines (a
@@ -108,7 +113,7 @@ def height(lines):
     return sum(LETTER_HEIGHT * scale + LINE_GAP for _, scale, _ in lines) - LINE_GAP
 
 
-def image(font, title, description="", author=""):
+def banner(font, title, description="", author=""):
     """The banner's pixels: rows of (r, g, b), the lines centred."""
     pixels = [[(20 + y // 4, 60 + y // 2, 140 + y // 2)] * WIDTH for y in range(HEIGHT)]
     lines = layout(font, title, description, author)
@@ -120,6 +125,39 @@ def image(font, title, description="", author=""):
             for row in range(top + y * scale, min(HEIGHT, top + (y + h) * scale)):
                 pixels[row][x0:x1] = [colour] * max(0, x1 - x0)
         top += LETTER_HEIGHT * scale + LINE_GAP
+    return pixels
+
+
+def icon_letters(title):
+    """An icon's default letters: the title's first two letters or digits
+    ("Models from Blender": "Mo")."""
+    return "".join(c for c in title if c.isalnum())[:2]
+
+
+def _colour(hue, saturation, value):
+    return tuple(round(channel * 255) for channel in colorsys.hsv_to_rgb(hue, saturation, value))
+
+
+def icon(font, letters, size, title):
+    """An icon's pixels, size x size: `letters` as large as fit, and a
+    border, in a bright colour picked from `title` (so apps with the same
+    letters still differ), on a dark shade of it. Two colours, so a DS
+    icon (16 at most) can have them too."""
+    hue = (zlib.crc32(title.encode()) % 360) / 360
+    bright, dark = _colour(hue, 0.75, 1.0), _colour(hue, 0.6, 0.16)
+    border = max(1, size // 24)
+    pixels = [[bright if min(x, y, size - 1 - x, size - 1 - y) < border else dark
+               for x in range(size)] for y in range(size)]
+    room = size - 6 * border
+    width = max(1, font.width(letters))
+    scale = max(1, min(room // width, room // LETTER_HEIGHT))
+    left = (size - width * scale) // 2
+    # (centred on the capitals' 7 points, below which only descenders go)
+    top = (size - 7 * scale) // 2
+    for x, y, w, h in font.rectangles(letters):
+        x0, x1 = max(0, left + x * scale), min(size, left + (x + w) * scale)
+        for row in range(max(0, top + y * scale), min(size, top + (y + h) * scale)):
+            pixels[row][x0:x1] = [bright] * max(0, x1 - x0)
     return pixels
 
 
@@ -137,10 +175,37 @@ def write_png(pixels, path):
                      chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
 
 
-def makefile_settings(makefile_text):
-    """APP_TITLE, APP_DESCRIPTION and APP_AUTHOR from a devkitPro Makefile."""
+def write_bmp(pixels, path):
+    """Writes rows of (r, g, b) as an 8-bit BMP with a 16-colour palette,
+    the kind devkitPro's ndstool takes for a DS icon (its default icon is
+    one). Palette entry 0 is unused: on a DS it's transparent."""
+    palette = [(0, 0, 0)]
+    for row in pixels:
+        for pixel in row:
+            if pixel not in palette:
+                palette.append(pixel)
+    if len(palette) > 16:
+        raise ValueError(f"{len(palette) - 1} colours: a DS icon has 15 at most")
+    palette += [(0, 0, 0)] * (16 - len(palette))
+    width, height = len(pixels[0]), len(pixels)
+    stride = (width + 3) // 4 * 4
+    # (rows bottom up, each padded to 4 bytes; the palette's entries b, g, r, 0)
+    rows = b"".join(bytes(palette.index(pixel) for pixel in row) + bytes(stride - width)
+                    for row in reversed(pixels))
+    colours = b"".join(bytes((b, g, r, 0)) for r, g, b in palette)
+    offset = 14 + 40 + len(colours)
+    path.write_bytes(b"BM" + struct.pack("<IHHI", offset + len(rows), 0, 0, offset) +
+                     struct.pack("<IiiHHIIiiII", 40, width, height, 1, 8, 0, len(rows),
+                                 2835, 2835, 16, 0) +
+                     colours + rows)
+
+
+def makefile_settings(makefile_text,
+                      keys=("APP_TITLE", "APP_DESCRIPTION", "APP_AUTHOR")):
+    """Settings from a devkitPro Makefile: by default a 3DS app's
+    APP_TITLE, APP_DESCRIPTION and APP_AUTHOR (a DS app's is GAME_TITLE)."""
     settings = {}
-    for key in ("APP_TITLE", "APP_DESCRIPTION", "APP_AUTHOR"):
+    for key in keys:
         found = re.search(rf"^{key}\s*:?=\s*(.*?)\s*$", makefile_text, re.M)
         if found:
             settings[key] = found.group(1)
