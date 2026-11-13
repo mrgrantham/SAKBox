@@ -53,13 +53,13 @@ std::string readUntil(int s, std::size_t length) {
 
 TEST(LogServerTest, ServesWhatsKeptThenEachLine) {
   LogBuffer buffer;
-  constexpr std::uint16_t kTestPort = 15005; // (not the real port, in use or not)
-  LogServer server(buffer, kTestPort);
+  LogServer server(buffer, 0); // any free port (tests may run side by side)
   ASSERT_TRUE(server.listening()) << server.error();
-  EXPECT_EQ(server.address(), "localhost:15005");
+  ASSERT_NE(server.port(), 0);
+  EXPECT_EQ(server.address(), "localhost:" + std::to_string(server.port()));
 
   buffer.append("before\n");
-  const int reader = connectTo(kTestPort);
+  const int reader = connectTo(server.port());
   ASSERT_GE(reader, 0);
   EXPECT_EQ(readUntil(reader, 7), "before\n");
   buffer.append("after\n");
@@ -70,7 +70,7 @@ TEST(LogServerTest, ServesWhatsKeptThenEachLine) {
   std::string all;
   const auto deadline = std::chrono::steady_clock::now() + 3s;
   while (all.empty() && std::chrono::steady_clock::now() < deadline) {
-    const int next = connectTo(kTestPort);
+    const int next = connectTo(server.port());
     if (next >= 0) {
       all = readUntil(next, 13);
       ::close(next);
@@ -81,9 +81,9 @@ TEST(LogServerTest, ServesWhatsKeptThenEachLine) {
 
 TEST(LogServerTest, SaysWhyItCantListen) {
   LogBuffer buffer;
-  LogServer first(buffer, 15006);
+  LogServer first(buffer, 0);
   ASSERT_TRUE(first.listening());
-  LogServer second(buffer, 15006); // the port taken
+  LogServer second(buffer, first.port()); // the port taken
   EXPECT_FALSE(second.listening());
-  EXPECT_NE(second.error().find("15006"), std::string::npos);
+  EXPECT_NE(second.error().find(std::to_string(first.port())), std::string::npos);
 }

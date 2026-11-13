@@ -84,11 +84,13 @@ class FbiInstallTest(unittest.TestCase):
                                                 say=said.append))
         self.assertEqual(three_ds.urls, urls)
         self.assertEqual(three_ds.downloaded, [b"first", b"second"])
-        self.assertEqual(sorted(sent), ["one.cia", "two.cia"])
         self.assertTrue(any("ftpd" in line for line in said))
         with self.assertRaises(urllib.error.HTTPError) as refused:  # only the CIAs given
             urllib.request.urlopen(f"http://127.0.0.1:{port}/fbi_install.py")
         refused.exception.close()
+        server.shutdown()
+        server.server_close()  # (waits for the counting, as main does)
+        self.assertEqual(sorted(sent), ["one.cia", "two.cia"])
 
     def test_gives_up_when_nothing_listens(self):
         with socket.create_server(("127.0.0.1", 0)) as taken:

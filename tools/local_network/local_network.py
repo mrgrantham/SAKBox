@@ -33,11 +33,14 @@ class SocketConnection:
 
     def read(self, wait):
         """What arrives within `wait` seconds (b"" if nothing); None once the
-        other end has closed."""
+        other end has closed, or reset the connection (an app quitting can)."""
         ready, _, _ = select.select([self.socket], [], [], wait)
         if not ready:
             return b""
-        data = self.socket.recv(4096)
+        try:
+            data = self.socket.recv(4096)
+        except ConnectionResetError:
+            return None
         return data or None
 
     def send_and_wait(self, data):

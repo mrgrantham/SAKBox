@@ -81,6 +81,9 @@ LogServer::LogServer(LogBuffer &buffer, std::uint16_t port) : buffer_(buffer), p
     socket_ = -1;
     return;
   }
+  socklen_t size = sizeof at; // the port it got, if asked for any (0)
+  if (::getsockname(socket_, reinterpret_cast<sockaddr *>(&at), &size) == 0)
+    port_ = ntohs(at.sin_port);
   thread_ = std::thread([this] { serve(); });
 }
 

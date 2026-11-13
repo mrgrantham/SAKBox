@@ -18,6 +18,7 @@ public:
   // The port it listens on (FBI and ftpd use 5000)
   static constexpr std::uint16_t kPort = 5005;
 
+  // Port 0 means any free one; port() then says which
   explicit LogServer(LogBuffer &buffer, std::uint16_t port = kPort);
   ~LogServer();
   LogServer(const LogServer &) = delete;

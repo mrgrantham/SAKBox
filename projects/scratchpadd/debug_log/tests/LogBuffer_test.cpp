@@ -66,5 +66,7 @@ TEST(LogBufferTest, LoggersRoutedToIt) {
   ScratchPadd::Logger::routeTo({}, true);
   earlier->info("not routed");
   std::uint64_t position = 0;
-  EXPECT_EQ(buffer.readFrom(position), "[MadeEarlier] from before\n[MadeAfter] from after\n");
+  const std::string eol = spdlog::details::os::default_eol; // "\r\n" on Windows
+  EXPECT_EQ(buffer.readFrom(position),
+            "[MadeEarlier] from before" + eol + "[MadeAfter] from after" + eol);
 }

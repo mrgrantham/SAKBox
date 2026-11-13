@@ -95,12 +95,21 @@ class Downloads(http.server.SimpleHTTPRequestHandler):
         pass  # (main reports what FBI fetched)
 
 
+class DownloadServer(http.server.ThreadingHTTPServer):
+    """Waits, on server_close, for downloads still being sent: a file is
+    counted once it's all written, which can be after FBI has read it all
+    and moved on."""
+
+    daemon_threads = False
+
+
 def serve(files, address):
     """Serves `files` ({name: path}) on `address`; returns the server (its
-    port is server.server_address[1]) and the list of names sent so far."""
+    port is server.server_address[1]) and the list of names sent so far,
+    complete once server.server_close() returns."""
     sent = []
     handler = functools.partial(Downloads, files=files, sent=sent)
-    server = http.server.ThreadingHTTPServer((address, 0), handler)
+    server = DownloadServer((address, 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server, sent
 
