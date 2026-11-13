@@ -5,7 +5,7 @@ A console's screens are its app's, so ScratchPadd's 3DS and DS apps log nothing 
 | Platform | Where | How to read it |
 | --- | --- | --- |
 | 3DS | Kept in memory (the last 64 KB) and served over Wi-Fi on port 5005 | `python3 tools/console_log/console_log.py --3ds ADDRESS` ([`tools/console_log`](../../../tools/console_log/README.md)): what came before it connected, then each line as it's logged |
-| DS | The flashcart's SD card, `fat:/logs/APP.log`, each line as it's logged (a DS Lite can't join a WPA2 network) | Off the card |
+| DS | The flashcart's SD card, `fat:/logs/APP.log`, each line on the card as it's logged (written through libfat's cache with `fsync`, so switching the DS off keeps it), which costs a card write a line (a DS Lite can't join a WPA2 network) | Off the card |
 | Desktops | The terminal, as always | |
 
 The app shows where on its screen ("Log: 192.168.4.25:5005", "Log: fat:/logs/scratchpadd-ds-demo.log", or "Log: off: no SD card"). The ScratchPadd DS and 3DS demos and the Cyclone ragdoll on both do. A release build is unchanged: no log, no network.
