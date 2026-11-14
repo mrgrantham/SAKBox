@@ -103,14 +103,25 @@ Quality measure(int stepsPerSecond, int subSteps, int shoves, double seconds) {
 int main(int argc, char **argv) {
   int shoves = 20;
   double seconds = 12;
-  for (int i = 1; i + 1 < argc; i += 2) {
+  const auto usage = [] {
+    std::fprintf(stderr, "usage: ragdoll_sweep [--shoves N] [--seconds S]\n");
+    return 2;
+  };
+  for (int i = 1; i < argc; i += 2) {
+    if (i + 1 >= argc)
+      return usage();
+    char *end = nullptr;
     if (std::strcmp(argv[i], "--shoves") == 0) {
-      shoves = std::max(1, std::atoi(argv[i + 1]));
+      const long value = std::strtol(argv[i + 1], &end, 10);
+      if (*end != '\0' || value < 1)
+        return usage();
+      shoves = static_cast<int>(value);
     } else if (std::strcmp(argv[i], "--seconds") == 0) {
-      seconds = std::max(1.0, std::atof(argv[i + 1]));
+      seconds = std::strtod(argv[i + 1], &end);
+      if (*end != '\0' || seconds < 1)
+        return usage();
     } else {
-      std::fprintf(stderr, "usage: ragdoll_sweep [--shoves N] [--seconds S]\n");
-      return 2;
+      return usage();
     }
   }
   std::printf("Ragdoll sweep: %d shoves, %.0f s each (or until asleep), sweeps 16/4/4\n\n", shoves,

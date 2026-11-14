@@ -101,6 +101,7 @@ TEST(PhysicsSweepTest, RanksKeepingUpThenFramesThenDelay) {
       run({60, 8, 30}, 0.8, 0.0),        // too slow, but closer
   });
   std::vector<int> order;
+  order.reserve(results.size());
   for (const Result &result : results)
     order.push_back(result.setting.stepsPerSecond * 100 + result.setting.subSteps * 10 +
                     result.setting.framesPerSecond / 30);
