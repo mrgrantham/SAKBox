@@ -75,6 +75,14 @@ def cia_commands(name, args):
     ]
 
 
+def make_defines(defines):
+    """`make`'s SAKBOX_DEFINES for `defines` (NAME or NAME=VALUE): -DNAME for
+    each, which the app's Makefile adds to its CFLAGS. Nothing for none."""
+    if not defines:
+        return ""
+    return " SAKBOX_DEFINES=" + shlex.quote(" ".join("-D" + define for define in defines))
+
+
 def main(argv):
     if "--" not in argv:
         sys.exit(__doc__)
@@ -87,6 +95,8 @@ def main(argv):
                    "banner-image", "banner-sound", "icon", "icon-letters"]:
         parser.add_argument("--" + option)
     parser.add_argument("--debug", action="store_true")  # make with SAKBOX_DEBUG=1
+    # NAME or NAME=VALUE, each made -DNAME in SAKBOX_DEFINES for make
+    parser.add_argument("--define", action="append", default=[])
     args = parser.parse_args(argv[:split])
     files = devkitpro_image.pairs(argv[split + 1:])
     if len(files) * 2 != len(argv) - split - 1:
@@ -95,7 +105,7 @@ def main(argv):
 
     outputs = [f"{name}{ext}" for ext in (".3dsx", ".smdh", ".elf")]
     commands = [f"make TARGET={shlex.quote(name)} ICON={ICON}" +
-                (" SAKBOX_DEBUG=1" if args.debug else "") + " >&2"]
+                (" SAKBOX_DEBUG=1" if args.debug else "") + make_defines(args.define) + " >&2"]
     font = app_images.EasyFont(pathlib.Path(args.font).read_text())
     makefile = next(source for source, path in files if path == "Makefile")
     text = app_images.makefile_settings(pathlib.Path(makefile).read_text())

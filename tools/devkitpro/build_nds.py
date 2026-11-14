@@ -24,6 +24,14 @@ ICON = "_icon/icon.bmp"  # in the app's folder: the icon, for make's GAME_ICON
 ICON_SIZE = 32
 
 
+def make_defines(defines):
+    """`make`'s SAKBOX_DEFINES for `defines` (NAME or NAME=VALUE): -DNAME for
+    each, which the app's Makefile adds to its CFLAGS. Nothing for none."""
+    if not defines:
+        return ""
+    return " SAKBOX_DEFINES=" + shlex.quote(" ".join("-D" + define for define in defines))
+
+
 def main(argv):
     if "--" not in argv:
         sys.exit(__doc__)
@@ -35,6 +43,8 @@ def main(argv):
     for option in ["font", "icon", "icon-letters"]:
         parser.add_argument("--" + option)
     parser.add_argument("--debug", action="store_true")  # make with SAKBOX_DEBUG=1
+    # NAME or NAME=VALUE, each made -DNAME in SAKBOX_DEFINES for make
+    parser.add_argument("--define", action="append", default=[])
     args = parser.parse_args(argv[:split])
     files = devkitpro_image.pairs(argv[split + 1:])
     if len(files) * 2 != len(argv) - split - 1:
@@ -44,7 +54,7 @@ def main(argv):
     outputs = [f"{name}{ext}" for ext in (".nds", ".elf")]
     # (GAME_ICON is a path from where make runs: the app's folder, $(CURDIR))
     script = (f"make TARGET={shlex.quote(name)} GAME_ICON=$PWD/{ICON}" +
-              (" SAKBOX_DEBUG=1" if args.debug else "") + " >&2 && "
+              (" SAKBOX_DEBUG=1" if args.debug else "") + make_defines(args.define) + " >&2 && "
               "tar -c " + " ".join(shlex.quote(o) for o in outputs))
     with tempfile.TemporaryDirectory() as scratch:
         icon = args.icon

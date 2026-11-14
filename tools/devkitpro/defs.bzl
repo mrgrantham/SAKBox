@@ -70,6 +70,13 @@ _SOURCE_ATTRS = {
               "\"third_party/miniaudio\"}.",
     ),
     "app_name": attr.string(doc = "Output name (default: the target name)"),
+    "defines": attr.string_list(
+        doc = "Preprocessor macros for the app's code (NAME or NAME=VALUE): " +
+              "its Makefile gets them as SAKBOX_DEFINES, `-DNAME ...`, which " +
+              "it adds to its CFLAGS (`CFLAGS += $(SAKBOX_DEFINES)`). One " +
+              "source can then build two apps, e.g. the Cyclone ragdoll and " +
+              "its sweep.",
+    ),
 }
 
 def _icon_attrs(extension, size, shown):
@@ -141,6 +148,14 @@ devkitpro_cia_tools = rule(
     },
 )
 
+def _make_args(ctx, args):
+    """What the app's `make` gets besides its sources: whether it's a debug
+    build, and the target's `defines`."""
+    if _debug(ctx):
+        args.add("--debug")
+    for define in ctx.attr.defines:
+        args.add("--define", define)
+
 def _debug(ctx):
     """Whether it's a debug build (`bazel build -c dbg`): the app's Makefile
     then gets SAKBOX_DEBUG=1, which its CFLAGS turn into -DSAKBOX_DEBUG (a
@@ -174,8 +189,7 @@ def _devkitpro_3ds_app_impl(ctx):
     args.add("--rsf", ctx.file._rsf)
     args.add("--logo", ctx.file._logo)
     args.add("--unique-id", unique_id)
-    if _debug(ctx):
-        args.add("--debug")
+    _make_args(ctx, args)
     args.add("--product-code", ctx.attr.product_code or "CTR-H-" + unique_id[-4:])
     if ctx.file.banner_image:
         args.add("--banner-image", ctx.file.banner_image)
@@ -275,8 +289,7 @@ def _devkitpro_nds_app_impl(ctx):
     args.add(name)
     args.add(outs[0].dirname)
     icon_inputs = _icon_args(ctx, args)
-    if _debug(ctx):
-        args.add("--debug")
+    _make_args(ctx, args)
     args.add("--")
     for f, path in staged:
         args.add(f)
