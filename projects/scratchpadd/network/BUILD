@@ -12,6 +12,7 @@ cc_library(
         "src/Sockets.cpp",
     ],
     hdrs = [
+        "include/ScratchPadd/Network/FrameService.hpp",
         "include/ScratchPadd/Network/LineService.hpp",
         "include/ScratchPadd/Network/Loop.hpp",
         "include/ScratchPadd/Network/Service.hpp",
@@ -31,6 +32,7 @@ cc_library(
 cc_library(
     name = "network_padd",
     hdrs = [
+        "include/ScratchPadd/Network/BridgePadd.hpp",
         "include/ScratchPadd/Network/NetworkPadd.hpp",
         "include/ScratchPadd/Network/RemoteControlsPadd.hpp",
     ],
@@ -46,6 +48,17 @@ cc_test(
     name = "RemoteControls_test",
     size = "small",
     srcs = ["tests/RemoteControls_test.cpp"],
+    deps = [
+        ":network_padd",
+        "//projects/scratchpadd/basis",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "Bridge_test",
+    size = "small",
+    srcs = ["tests/Bridge_test.cpp"],
     deps = [
         ":network_padd",
         "//projects/scratchpadd/basis",
