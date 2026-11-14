@@ -59,6 +59,10 @@ CFLAGS	+=	$(INCLUDE) -D__3DS__
 # miniaudio decodes and converts only: the 3DS's own DSP plays (ndsp), and
 # there are no shared libraries to load
 
+# The build's defines (//tools/devkitpro: the app's name and title, and a
+# target's `defines`)
+CFLAGS	+=	$(SAKBOX_DEFINES)
+
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++26
 
 ASFLAGS	:=	-g $(ARCH)

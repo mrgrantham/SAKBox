@@ -10,11 +10,30 @@ owned by the container's user.
 import io
 import os
 import pathlib
+import shlex
 import shutil
 import subprocess
 import sys
 import tarfile
 
+
+
+def c_string(text):
+    """`text` as a C string literal."""
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def make_defines(defines, name, title):
+    """`make`'s SAKBOX_DEFINES: -D for the app's name and title
+    (SCRATCHPADD_APP_NAME and SCRATCHPADD_APP_TITLE, for ScratchPadd's
+    AppInfo) and for each of `defines` (NAME or NAME=VALUE). The app's
+    Makefile adds them to its CFLAGS, and make's recipes pass those through
+    a shell, so each is quoted for it, and the whole again for make's own
+    command line."""
+    all_defines = [f"SCRATCHPADD_APP_NAME={c_string(name)}",
+                   f"SCRATCHPADD_APP_TITLE={c_string(title)}"] + list(defines)
+    flags = " ".join(shlex.quote("-D" + define) for define in all_defines)
+    return " SAKBOX_DEFINES=" + shlex.quote(flags)
 
 def find_docker():
     # Bazel runs actions with a minimal PATH, which may not include where

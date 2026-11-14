@@ -24,14 +24,6 @@ ICON = "_icon/icon.bmp"  # in the app's folder: the icon, for make's GAME_ICON
 ICON_SIZE = 32
 
 
-def make_defines(defines):
-    """`make`'s SAKBOX_DEFINES for `defines` (NAME or NAME=VALUE): -DNAME for
-    each, which the app's Makefile adds to its CFLAGS. Nothing for none."""
-    if not defines:
-        return ""
-    return " SAKBOX_DEFINES=" + shlex.quote(" ".join("-D" + define for define in defines))
-
-
 def main(argv):
     if "--" not in argv:
         sys.exit(__doc__)
@@ -51,17 +43,17 @@ def main(argv):
         sys.exit(__doc__)
     name = args.name
 
+    makefile = next(source for source, path in files if path == "Makefile")
+    title = app_images.makefile_settings(pathlib.Path(makefile).read_text(),
+                                         ("GAME_TITLE",)).get("GAME_TITLE", name)
     outputs = [f"{name}{ext}" for ext in (".nds", ".elf")]
     # (GAME_ICON is a path from where make runs: the app's folder, $(CURDIR))
     script = (f"make TARGET={shlex.quote(name)} GAME_ICON=$PWD/{ICON}" +
-              (" SAKBOX_DEBUG=1" if args.debug else "") + make_defines(args.define) + " >&2 && "
+              (" SAKBOX_DEBUG=1" if args.debug else "") + devkitpro_image.make_defines(args.define, name, title) + " >&2 && "
               "tar -c " + " ".join(shlex.quote(o) for o in outputs))
     with tempfile.TemporaryDirectory() as scratch:
         icon = args.icon
         if not icon:
-            makefile = next(source for source, path in files if path == "Makefile")
-            title = app_images.makefile_settings(pathlib.Path(makefile).read_text(),
-                                                 ("GAME_TITLE",)).get("GAME_TITLE", name)
             icon = pathlib.Path(scratch, "icon.bmp")
             letters = args.icon_letters or app_images.icon_letters(title)
             font = app_images.EasyFont(pathlib.Path(args.font).read_text())

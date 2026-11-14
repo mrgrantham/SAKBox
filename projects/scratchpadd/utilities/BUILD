@@ -4,6 +4,7 @@ cc_library(
     name = "utilities",
     hdrs = glob(["include/**/*.hpp"]),
     srcs = [
+        "src/AppInfo.cpp",
         "src/Logger.cpp",
         "src/ThreadPriority.cpp",
         "src/TimerResolution.cpp",
@@ -18,6 +19,16 @@ cc_library(
     deps = [
         "@fmt",
         "@spdlog",
+    ],
+)
+
+cc_test(
+    name = "AppInfo_test",
+    size = "small",
+    srcs = ["tests/AppInfo_test.cpp"],
+    deps = [
+        ":utilities",
+        "@gtest//:gtest_main",
     ],
 )
 

@@ -75,14 +75,6 @@ def cia_commands(name, args):
     ]
 
 
-def make_defines(defines):
-    """`make`'s SAKBOX_DEFINES for `defines` (NAME or NAME=VALUE): -DNAME for
-    each, which the app's Makefile adds to its CFLAGS. Nothing for none."""
-    if not defines:
-        return ""
-    return " SAKBOX_DEFINES=" + shlex.quote(" ".join("-D" + define for define in defines))
-
-
 def main(argv):
     if "--" not in argv:
         sys.exit(__doc__)
@@ -104,12 +96,13 @@ def main(argv):
     name = args.name
 
     outputs = [f"{name}{ext}" for ext in (".3dsx", ".smdh", ".elf")]
-    commands = [f"make TARGET={shlex.quote(name)} ICON={ICON}" +
-                (" SAKBOX_DEBUG=1" if args.debug else "") + make_defines(args.define) + " >&2"]
     font = app_images.EasyFont(pathlib.Path(args.font).read_text())
     makefile = next(source for source, path in files if path == "Makefile")
     text = app_images.makefile_settings(pathlib.Path(makefile).read_text())
     title = text.get("APP_TITLE", name)
+    commands = [f"make TARGET={shlex.quote(name)} ICON={ICON}" +
+                (" SAKBOX_DEBUG=1" if args.debug else "") +
+                devkitpro_image.make_defines(args.define, name, title) + " >&2"]
     with tempfile.TemporaryDirectory() as scratch:
         icon = args.icon
         if not icon:

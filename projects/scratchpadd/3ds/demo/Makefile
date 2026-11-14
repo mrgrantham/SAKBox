@@ -67,6 +67,10 @@ CFLAGS	+=	$(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)
 
 # ScratchPadd needs RTTI (each message's type) and exceptions (a control of
 # the wrong type), so unlike devkitPro's template this keeps both
+# The build's defines (//tools/devkitpro: the app's name and title, and a
+# target's `defines`)
+CFLAGS	+=	$(SAKBOX_DEFINES)
+
 CXXFLAGS	:= $(CFLAGS) -std=gnu++26
 
 ASFLAGS	:=	-g $(ARCH)

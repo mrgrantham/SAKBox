@@ -37,6 +37,10 @@ CFLAGS	:=	-g -Wall -O2 -ffunction-sections -fdata-sections\
 			$(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -DARM9
+# The build's defines (//tools/devkitpro: the app's name and title, and a
+# target's `defines`)
+CFLAGS	+=	$(SAKBOX_DEFINES)
+
 CXXFLAGS	:= $(CFLAGS) -std=gnu++26 -fno-rtti -fno-exceptions
 
 ASFLAGS	:=	-g $(ARCH)

@@ -60,6 +60,10 @@ CFLAGS	+=	$(INCLUDE) -D__3DS__
 # there are no shared libraries to load
 CFLAGS	+=	-DMA_NO_DEVICE_IO -DMA_NO_THREADING -DMA_NO_RUNTIME_LINKING
 
+# The build's defines (//tools/devkitpro: the app's name and title, and a
+# target's `defines`)
+CFLAGS	+=	$(SAKBOX_DEFINES)
+
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++20
 
 ASFLAGS	:=	-g $(ARCH)

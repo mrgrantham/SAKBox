@@ -11,6 +11,13 @@ py_library(
     imports = ["."],  # imported as `devkitpro_image`
 )
 
+py_test(
+    name = "devkitpro_image_test",
+    size = "small",
+    srcs = ["devkitpro_image_test.py"],
+    deps = [":devkitpro_image"],
+)
+
 # A console app's default icon and banner, drawn in stb_easy_font's letters
 py_library(
     name = "app_images",
