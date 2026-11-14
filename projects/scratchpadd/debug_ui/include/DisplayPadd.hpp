@@ -25,7 +25,7 @@
 class DisplayPadd : public ScratchPadd::Base {
 public:
   DisplayPadd(ScratchPadd::System *system)
-      : Base(system), panels_([this](ScratchPadd::PaddAddress owner,
+      : Base(system), panels_([this](ScratchPadd::PaddAddress owner, const std::string &,
                                      const ScratchPadd::MessageType::ControlChange &change) {
           sendTo(owner, change);
         }) {

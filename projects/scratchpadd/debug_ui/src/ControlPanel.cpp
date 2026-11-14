@@ -150,8 +150,8 @@ void ControlPanels::show(const MessageType::ControlSnapshot &snapshot, PaddAddre
   }
   auto panel = std::make_unique<ControlPanel>();
   panel->setControls(snapshot);
-  panel->setOnChange(
-      [this, owner](const MessageType::ControlChange &change) { send_(owner, change); });
+  panel->setOnChange([this, owner, padd = snapshot.paddName](
+                         const MessageType::ControlChange &change) { send_(owner, padd, change); });
   tabs_.push_back({snapshot.paddName, std::move(panel)});
 }
 

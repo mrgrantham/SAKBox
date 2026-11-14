@@ -21,7 +21,8 @@ MessageType::ControlSnapshot snapshotOf(const std::string &padd, ControlValueMap
 } // namespace
 
 TEST(ControlPanelsTest, ATabPerPaddInTheOrderTheyAnswered) {
-  DebugUi::ControlPanels panels([](PaddAddress, const MessageType::ControlChange &) {});
+  DebugUi::ControlPanels panels(
+      [](PaddAddress, const std::string &, const MessageType::ControlChange &) {});
   panels.show(snapshotOf("Physics", {{"Steps", ControlType::Integer(60)}}), PaddAddress{});
   panels.show(snapshotOf("About", {{"App", ControlType::Info("demo")}}), PaddAddress{});
   panels.show(snapshotOf("Audio", {{"Volume", ControlType::Double(0.5)}}), PaddAddress{});
@@ -41,11 +42,12 @@ TEST(ControlPanelsTest, TabsLabelledWithoutPaddAndTheWindowPlaced) {
   EXPECT_EQ(DebugUi::ControlPanels::tabLabel("About"), "About");
   EXPECT_EQ(DebugUi::ControlPanels::tabLabel("Padd"), "Padd"); // (not to nothing)
 
-  const DebugUi::ControlPanels bottomLeft([](PaddAddress, const MessageType::ControlChange &) {});
+  const DebugUi::ControlPanels bottomLeft(
+      [](PaddAddress, const std::string &, const MessageType::ControlChange &) {});
   EXPECT_EQ(bottomLeft.placement().x, 0.0f);
   EXPECT_EQ(bottomLeft.placement().y, 1.0f);
-  const DebugUi::ControlPanels topRight([](PaddAddress, const MessageType::ControlChange &) {},
-                                        ImVec2(1, 0));
+  const DebugUi::ControlPanels topRight(
+      [](PaddAddress, const std::string &, const MessageType::ControlChange &) {}, ImVec2(1, 0));
   EXPECT_EQ(topRight.placement().x, 1.0f);
   EXPECT_EQ(topRight.placement().y, 0.0f);
 }

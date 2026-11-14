@@ -60,7 +60,7 @@ glm::vec3 pointOn(const BoneSnapshot &bone, glm::vec3 point) {
 RagdollWindowPadd::RagdollWindowPadd(ScratchPadd::System *system)
     : Base(system),
       panels_(
-          [this](ScratchPadd::PaddAddress owner,
+          [this](ScratchPadd::PaddAddress owner, const std::string &,
                  const ScratchPadd::MessageType::ControlChange &change) { sendTo(owner, change); },
           // The controls at the top right (the physics', this window's and
           // AudioPadd's, as tabs)

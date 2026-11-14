@@ -115,7 +115,7 @@ void drawGate(Scene::Renderer &r, Scene::Mesh cube, const Obstacle &o, glm::vec3
 FlightDisplayPadd::FlightDisplayPadd(ScratchPadd::System *system)
     : Base(system),
       panels_(
-          [this](ScratchPadd::PaddAddress owner,
+          [this](ScratchPadd::PaddAddress owner, const std::string &,
                  const ScratchPadd::MessageType::ControlChange &change) { sendTo(owner, change); },
           // The controls (the precision lab, AudioPadd's volumes, as tabs)
           // top-right, clear of the HUD at top-left

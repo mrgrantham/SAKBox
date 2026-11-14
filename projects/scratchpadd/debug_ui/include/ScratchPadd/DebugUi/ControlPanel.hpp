@@ -50,8 +50,11 @@ private:
 // came from.
 class ControlPanels {
 public:
-  // Sends `change` to `owner` (the padd's own sendTo)
-  using Send = std::function<void(PaddAddress owner, const MessageType::ControlChange &change)>;
+  // Sends `change` to the padd named `paddName`: `owner`, its address in this
+  // system (the window padd's own sendTo), or, for a padd on another device
+  // (the remote controls app, whose owner is empty), by name
+  using Send = std::function<void(PaddAddress owner, const std::string &paddName,
+                                  const MessageType::ControlChange &change)>;
 
   // `placement`: where the window first opens, as a fraction of the
   // display: (0, 1), the default, is the bottom-left corner, (1, 0) the
