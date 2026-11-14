@@ -61,6 +61,7 @@ private:
   void wake() const;
   void applyRequests();
   void open(Attached &attached);
+  void connected(Attached &attached, Socket socket);
   void letGo(Attached &attached);
 
   Socket waker_;

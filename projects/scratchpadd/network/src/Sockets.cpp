@@ -160,7 +160,8 @@ Socket Socket::listenTcp(std::uint16_t port, std::string &error) {
   return socket;
 }
 
-Socket Socket::connectTcp(const std::string &host, std::uint16_t port, std::string &error) {
+Socket Socket::connectTcp(const std::string &host, std::uint16_t port, std::string &error,
+                          bool *pending) {
   if (!start(error))
     return {};
   sockaddr_in at = addressOf(0, port);
@@ -185,12 +186,52 @@ Socket Socket::connectTcp(const std::string &host, std::uint16_t port, std::stri
   int yes = 1;
   ::setsockopt(socket.handle_, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof yes);
 #endif
-  if (::connect(native(socket.handle_), reinterpret_cast<sockaddr *>(&at), sizeof at) != 0) {
-    error = host + ":" + std::to_string(port) + ": " + describeError(lastError());
+  // Started without waiting (a refused connection takes Windows 2 s to give
+  // up on, an unreachable address longer, and the loop mustn't wait), then
+  // waited for here only if the caller wants that
+  socket.setNonBlocking();
+  const std::string where = host + ":" + std::to_string(port);
+  if (::connect(native(socket.handle_), reinterpret_cast<sockaddr *>(&at), sizeof at) == 0) {
+    if (pending)
+      *pending = false;
+    return socket;
+  }
+#if defined(_WIN32)
+  const bool started = lastError() == WSAEWOULDBLOCK;
+#else
+  const bool started = lastError() == EINPROGRESS;
+#endif
+  if (!started) {
+    error = where + ": " + describeError(lastError());
     return {};
   }
-  socket.setNonBlocking();
+  if (pending) {
+    *pending = true;
+    return socket;
+  }
+  std::vector<bool> readable, writable;
+  if (!waitForAny({socket.handle_}, {true}, kConnectWait, readable, writable) ||
+      !(readable[0] || writable[0])) {
+    error = where + ": no answer";
+    return {};
+  }
+  std::string why;
+  if (!socket.finishConnecting(why)) {
+    error = where + ": " + why;
+    return {};
+  }
   return socket;
+}
+
+bool Socket::finishConnecting(std::string &error) const {
+  int failure = 0;
+  Length size = sizeof failure;
+  if (::getsockopt(native(handle_), SOL_SOCKET, SO_ERROR, reinterpret_cast<char *>(&failure),
+                   &size) != 0)
+    failure = lastError();
+  if (failure != 0)
+    error = describeError(failure);
+  return failure == 0;
 }
 
 Socket Socket::loopbackUdp(std::string &error) {

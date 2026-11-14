@@ -51,8 +51,17 @@ public:
   // A TCP socket listening on `port` (0: any free one, port() says which),
   // on every address; or an invalid one, with `error`
   static Socket listenTcp(std::uint16_t port, std::string &error);
-  // A TCP connection to `host` (a dotted address or a name) on `port`
-  static Socket connectTcp(const std::string &host, std::uint16_t port, std::string &error);
+  // A TCP connection to `host` (a dotted address or a name) on `port`. With
+  // `pending`, it doesn't wait: the connection is started, and *pending says
+  // whether it's still on its way (the socket becomes writable when it's
+  // made or has failed: then finishConnecting()). Without, it waits for it
+  // (up to kConnectWait).
+  static Socket connectTcp(const std::string &host, std::uint16_t port, std::string &error,
+                           bool *pending = nullptr);
+  static constexpr int kConnectWait = 5000; // ms
+  // A started connection that's become writable: whether it was made, or
+  // `error` why not
+  bool finishConnecting(std::string &error) const;
   // A UDP socket on 127.0.0.1, any free port: something to poke a poll()
   // with (Waker)
   static Socket loopbackUdp(std::string &error);

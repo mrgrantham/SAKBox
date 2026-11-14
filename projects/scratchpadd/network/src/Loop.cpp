@@ -19,6 +19,7 @@ struct Loop::Attached {
   Service *service;
   Service::Endpoint endpoint;
   Socket listening;                                // (listening services)
+  Socket connecting;                               // (connecting services: on its way)
   std::vector<std::unique_ptr<Open>> open;         // its connections
   std::chrono::steady_clock::time_point retryAt{}; // (connecting services)
   std::string state;
@@ -93,14 +94,26 @@ void Loop::open(Attached &attached) {
     attached.state = attached.listening.valid() ? "listening" : error;
     return;
   }
-  // An outgoing connection: tried now, and again every kRetry until it
-  // connects (the other side may not be there yet)
-  attached.retryAt = std::chrono::steady_clock::now() + kRetry;
-  Socket socket = Socket::connectTcp(attached.endpoint.host, attached.endpoint.port, error);
+  // An outgoing connection: started now, waited for with the other sockets
+  // (connected()), and tried again kRetry after it fails (the other side
+  // may not be there yet)
+  bool pending = false;
+  Socket socket =
+      Socket::connectTcp(attached.endpoint.host, attached.endpoint.port, error, &pending);
   if (!socket.valid()) {
     attached.state = "not connected: " + error;
+    attached.retryAt = std::chrono::steady_clock::now() + kRetry;
     return;
   }
+  if (pending) {
+    attached.state = "connecting";
+    attached.connecting = std::move(socket);
+    return;
+  }
+  connected(attached, std::move(socket));
+}
+
+void Loop::connected(Attached &attached, Socket socket) {
   attached.state = "connected";
   auto open = std::make_unique<Open>(Open{std::move(socket), Connection(nextConnection_++)});
   attached.service->connected(open->connection);
@@ -112,6 +125,7 @@ void Loop::letGo(Attached &attached) {
     attached.service->disconnected(open->connection);
   attached.open.clear();
   attached.listening.close();
+  attached.connecting.close();
   attached.service->detach();
 }
 
@@ -153,7 +167,8 @@ void Loop::run() {
     applyRequests();
     const auto now = std::chrono::steady_clock::now();
     for (auto &attached : attached_) {
-      if (!attached->listens() && attached->open.empty() && now >= attached->retryAt)
+      if (!attached->listens() && attached->open.empty() && !attached->connecting.valid() &&
+          now >= attached->retryAt)
         open(*attached); // (connecting again)
       for (auto &open : attached->open)
         attached->service->pump(open->connection); // anything new to send
@@ -167,6 +182,10 @@ void Loop::run() {
       if (attached->listening.valid()) {
         sockets.push_back(attached->listening.handle());
         wantWrite.push_back(false);
+      }
+      if (attached->connecting.valid()) { // (writable once made, or failed)
+        sockets.push_back(attached->connecting.handle());
+        wantWrite.push_back(true);
       }
       for (auto &open : attached->open) {
         sockets.push_back(open->socket.handle());
@@ -187,6 +206,19 @@ void Loop::run() {
       Service &service = *attached->service;
       // (those accepted below weren't polled: they're read from next pass)
       const std::size_t polled = attached->open.size();
+      if (attached->connecting.valid()) {
+        const std::size_t index = at++;
+        if (readable[index] || writable[index]) {
+          std::string error;
+          Socket socket = std::move(attached->connecting);
+          if (socket.finishConnecting(error)) {
+            connected(*attached, std::move(socket));
+          } else {
+            attached->state = "not connected: " + error;
+            attached->retryAt = std::chrono::steady_clock::now() + kRetry;
+          }
+        }
+      }
       if (attached->listening.valid()) {
         if (readable[at++]) {
           for (Socket socket = attached->listening.accept(); socket.valid();

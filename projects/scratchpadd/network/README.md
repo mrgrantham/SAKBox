@@ -29,7 +29,7 @@ It's built in layers, so the uses still to come fit (see the [roadmap](#roadmap)
    - every connection;
    - a **wake socket**, a loopback UDP socket a service pokes from any other thread when it has something new to send.
 
-   Waking that way, the loop never polls on a timer for work. It still wakes once a second, to retry outgoing connections and update its figures. An outgoing connection that can't connect (the other side isn't there yet) is tried again every 2 s. `detach()` returns once the loop has let go of a service, so the service can then be destroyed. The loop is plain C++, tested without padds.
+   Waking that way, the loop never polls on a timer for work. It still wakes once a second, to retry outgoing connections and update its figures. An outgoing connection is started without waiting and waited for with the other sockets, so the loop never stalls on one. Windows takes 2 s to give up on a refused connection, and an unreachable address takes longer anywhere. One that fails (the other side isn't there yet) is tried again 2 s after it fails. `detach()` returns once the loop has let go of a service, so the service can then be destroyed. The loop is plain C++, tested without padds.
 3. **Services** (`Service.hpp`) are what an app does over the network. Each says where it listens or connects (`endpoint()`) and reacts on the loop's thread:
    - `connected()` and `disconnected()`;
    - `received()`, for each connection's bytes;
