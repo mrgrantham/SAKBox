@@ -157,8 +157,10 @@ void ControlTabs::touchAt(int column, int row) {
     }
   } else if (row >= kFirstListRow && row < rows_ - 1) {
     Tab &tab = tabs_[tab_];
-    const std::size_t chosen = firstRowShown() + static_cast<std::size_t>(row - kFirstListRow);
-    if (chosen < tab.names.size()) {
+    const std::vector<ListRow> rows = listRows(tab);
+    const std::size_t at = firstRowShown() + static_cast<std::size_t>(row - kFirstListRow);
+    if (at < rows.size()) {
+      const std::size_t chosen = rows[at].control;
       if (chosen != tab.row)
         dirty_ = true;
       tab.row = chosen;
@@ -277,10 +279,51 @@ Line ControlTabs::tabRow() const {
   return line;
 }
 
+std::vector<ControlTabs::ListRow> ControlTabs::listRows(const Tab &tab) const {
+  std::vector<ListRow> rows;
+  const auto width = static_cast<std::size_t>(columns_);
+  constexpr std::size_t kMarker = 2, kIndent = 4; // "> ", and wrapped text's
+  for (std::size_t index = 0; index < tab.names.size(); ++index) {
+    const std::string &name = tab.names[index];
+    const ControlTypeVariant &control = tab.controls.controlMap.at(name);
+    const std::string value = describe(control);
+    if (std::holds_alternative<ControlType::Info>(control) &&
+        kMarker + name.size() + 1 + value.size() > width && width > kIndent) {
+      rows.push_back({index, true, name.substr(0, width - kMarker)});
+      for (std::size_t at = 0; at < value.size(); at += width - kIndent)
+        rows.push_back({index, false,
+                        std::string(kIndent - kMarker, ' ') + value.substr(at, width - kIndent)});
+      continue;
+    }
+    // "name ....... value", the value at the right
+    const std::size_t room = width > value.size() + 3 ? width - value.size() - 3 : 0;
+    std::string text = name.substr(0, room);
+    const std::size_t used = kMarker + text.size() + value.size();
+    text.append(width > used ? width - used : 1, ' ');
+    text += value;
+    rows.push_back({index, true, std::move(text)});
+  }
+  return rows;
+}
+
 std::size_t ControlTabs::firstRowShown() const {
   const auto shown = static_cast<std::size_t>(std::max(rows_ - kRowsBesidesList, 1));
+  if (tabs_.empty())
+    return 0;
+  const std::vector<ListRow> rows = listRows(tabs_[tab_]);
   const std::size_t chosen = row();
-  return chosen < shown ? 0 : chosen - shown + 1;
+  std::size_t first = 0, last = 0;
+  bool found = false;
+  for (std::size_t r = 0; r < rows.size(); ++r) {
+    if (rows[r].control != chosen)
+      continue;
+    if (!found)
+      first = r;
+    last = r;
+    found = true;
+  }
+  const std::size_t top = last < shown ? 0 : last - shown + 1;
+  return std::min(top, first);
 }
 
 std::vector<Line> ControlTabs::lines() {
@@ -292,19 +335,16 @@ std::vector<Line> ControlTabs::lines() {
   } else {
     lines[kTabRow] = tabRow();
     const Tab &tab = tabs_[tab_];
+    const std::vector<ListRow> rows = listRows(tab);
     const std::size_t first = firstRowShown();
     for (int r = kFirstListRow; r < rows_ - 1; ++r) {
-      const std::size_t index = first + static_cast<std::size_t>(r - kFirstListRow);
-      if (index >= tab.names.size())
+      const std::size_t at = first + static_cast<std::size_t>(r - kFirstListRow);
+      if (at >= rows.size())
         break;
-      const std::string &name = tab.names[index];
-      const std::string value = describe(tab.controls.controlMap.at(name));
-      // "> name ....... value", the value at the right
-      const std::size_t room = width > value.size() + 3 ? width - value.size() - 3 : 0;
-      std::string text = (index == tab.row ? "> " : "  ") + name.substr(0, room);
-      text.append(width > text.size() + value.size() ? width - text.size() - value.size() : 1, ' ');
-      text += value;
-      lines[static_cast<std::size_t>(r)] = {{text.substr(0, width), index == tab.row}};
+      const ListRow &row = rows[at];
+      const bool chosen = row.control == tab.row;
+      const std::string text = (chosen && row.first ? "> " : "  ") + row.text;
+      lines[static_cast<std::size_t>(r)] = {{text.substr(0, width), chosen}};
     }
   }
   lines[1] = {{std::string(width, '-')}};

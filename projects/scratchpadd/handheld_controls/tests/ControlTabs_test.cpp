@@ -270,6 +270,65 @@ TEST(ControlTabsTest, DescribesValues) {
   EXPECT_EQ(describe(ControlType::Integer(7)), "7");
   EXPECT_EQ(describe(ControlType::Boolean(true)), "[x]");
   EXPECT_EQ(describe(ControlType::String("abc")), "abc");
+  EXPECT_EQ(describe(ControlType::Info("logs/app.log")), "logs/app.log");
+}
+
+// Information too long for its row (an Info control: a log's path) gets
+// its name on one row and its text wrapped on the rows below, indented;
+// short information sits at the right like any value. Choosing it (up and
+// down, or a tap on any of its rows) marks its first row, and stepping it
+// changes nothing.
+TEST(ControlTabsTest, LongInformationWrapsOntoTheRowsBelow) {
+  std::vector<std::string> sent;
+  ControlTabs tabs(
+      [&](PaddAddress, const MessageType::ControlChange &change) {
+        sent.push_back(change.controlName);
+      },
+      32, 24);
+  const std::string path = "fat:/data/cyclone-ds-ragdoll/logs/cyclone-ds-ragdoll.log"; // 56
+  tabs.show(snapshotOf("StoragePadd", {{"a log", ControlType::Info(path)},
+                                       {"b syncs", ControlType::Info("16")},
+                                       {"c batch", ControlType::Integer(1, {{1, 256}})}}),
+            PaddAddress{});
+  auto text = [&](int row) {
+    std::string joined;
+    const std::vector<Line> lines = tabs.lines();
+    for (const Segment &segment : lines[static_cast<size_t>(row)])
+      joined += segment.text;
+    return joined;
+  };
+  EXPECT_EQ(text(2), "> a log");
+  EXPECT_EQ(text(3), "    " + path.substr(0, 28));
+  EXPECT_EQ(text(4), "    " + path.substr(28));
+  EXPECT_EQ(text(5).substr(0, 9), "  b syncs");
+  EXPECT_EQ(text(5).substr(30), "16");
+  EXPECT_EQ(text(6).substr(0, 9), "  c batch");
+
+  tabs.handle({.right = true}); // information: nothing to step
+  EXPECT_TRUE(sent.empty());
+  tabs.handle({.down = true});
+  EXPECT_EQ(tabs.row(), 1u);
+  EXPECT_EQ(text(5).substr(0, 9), "> b syncs");
+  tap(tabs, 6, 4); // the log's second wrapped row
+  EXPECT_EQ(tabs.row(), 0u);
+  tap(tabs, 6, 6);
+  EXPECT_EQ(tabs.row(), 2u);
+}
+
+// A chosen control whose text wraps is scrolled into view whole
+TEST(ControlTabsTest, ScrollsToShowAllOfWrappedInformation) {
+  ControlTabs tabs({}, 32, 8); // 5 rows for controls
+  ControlValueMap controls;
+  for (char c = 'a'; c <= 'e'; ++c)
+    controls.emplace(std::string("control ") + c, ControlType::Integer(0));
+  controls.emplace("z info", ControlType::Info(std::string(56, 'x'))); // 3 rows: name, 2 of text
+  tabs.show(snapshotOf("First", controls), PaddAddress{});
+  for (int i = 0; i < 5; ++i)
+    tabs.handle({.down = true});
+  ASSERT_EQ(tabs.row(), 5u);
+  const std::vector<Line> lines = tabs.lines();
+  EXPECT_EQ(lines[4][0].text, "> z info");
+  EXPECT_EQ(lines[6][0].text, "    " + std::string(28, 'x'));
 }
 
 // The panel's input from the pad: what was pressed since the last frame's

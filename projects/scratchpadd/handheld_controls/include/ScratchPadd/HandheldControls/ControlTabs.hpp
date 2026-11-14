@@ -115,6 +115,17 @@ private:
   Line tabRow() const;
   // The tabs' columns, as tabRow() lays them out, for taps
   std::vector<std::pair<int, int>> tabSpans() const;
+  // The list laid out a row a line, unscrolled: each control's row, "name
+  // ..... value", or for information too long for one (an Info control), its
+  // name and then its text wrapped onto the rows below
+  struct ListRow {
+    std::size_t control; // which of the tab's names
+    bool first;          // its first row (the one marked when chosen)
+    std::string text;    // without the marker
+  };
+  std::vector<ListRow> listRows(const Tab &tab) const;
+  // The list row at the top of the screen: far enough down to show all of
+  // the chosen control's rows
   std::size_t firstRowShown() const;
 
   Send send_;
