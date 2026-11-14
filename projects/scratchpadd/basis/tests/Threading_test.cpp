@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
 #include <future>
 #include <memory>
@@ -325,4 +326,48 @@ TEST(ThreadingTest, StoppedWhileStartingStaysStopped) {
   auto finished = std::async(std::launch::async, [&] { system.start(); });
   ASSERT_EQ(finished.wait_for(5s), std::future_status::ready) << "start() never returned";
   EXPECT_FALSE(std::get<std::unique_ptr<SlowStarterPadd>>(system.getWorkers())->isRunning());
+}
+
+namespace {
+
+// Its repeat() takes 40 ms, eight times its 5 ms interval: a padd that
+// can't keep up, as the DS ragdoll's physics couldn't while it lay awake
+class SlowRepeaterPadd : public ScratchPadd::Base {
+public:
+  SlowRepeaterPadd(ScratchPadd::System *system) : Base(system) {}
+  std::string name() override { return "SlowRepeater"; }
+  ScratchPadd::Runs runs() override { return ScratchPadd::Runs::Steadily; }
+  ScratchPadd::ControlValueMap generateControls() override { return {}; }
+  std::optional<std::chrono::duration<double>> repeatInterval() override { return 5ms; }
+  void repeat() override {
+    ++repeats;
+    std::this_thread::sleep_for(40ms);
+  }
+  std::atomic<int> repeats{0};
+  // Queues a job and returns how long it waited to run
+  std::chrono::steady_clock::duration waitForAJob() {
+    const auto queued = std::chrono::steady_clock::now();
+    auto promise = std::make_shared<std::promise<std::chrono::steady_clock::time_point>>();
+    auto ran = promise->get_future();
+    push([promise] { promise->set_value(std::chrono::steady_clock::now()); });
+    EXPECT_EQ(ran.wait_for(5s), std::future_status::ready) << "the job never ran";
+    return ran.valid() ? ran.get() - queued : std::chrono::steady_clock::duration::max();
+  }
+};
+
+} // namespace
+
+// A padd slower than its repeat interval has at most one repeat() waiting:
+// ticks while one waits are dropped, not queued. Queued, they piled up
+// behind the slow repeat() (eight a repeat here), and a message (the DS
+// ragdoll's A button) waited behind all of them, longer the longer it ran.
+TEST(ThreadingTest, ASlowRepeatDoesNotBuildABacklog) {
+  RunningSystem<SlowRepeaterPadd> running;
+  auto &padd = running.padd<SlowRepeaterPadd>();
+  std::this_thread::sleep_for(400ms);
+  EXPECT_LE(padd.pendingWorkCount(), 2); // the repeat() running, and one waiting
+  // Behind at most the repeat() running and one waiting
+  EXPECT_LT(padd.waitForAJob(), 150ms);
+  // And it still repeats as often as it can
+  EXPECT_GE(padd.repeats.load(), 8);
 }

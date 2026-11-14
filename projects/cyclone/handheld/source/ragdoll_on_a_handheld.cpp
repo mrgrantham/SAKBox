@@ -47,6 +47,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <memory>
@@ -204,20 +205,48 @@ public:
     lastTick_ = secondStart_ = Clock::now();
   }
 
+  // Works out the steps due, and queues the first. Each step is a job of
+  // its own (stepDue), queued behind whatever came meanwhile, so a button
+  // waits for at most one step, not all those due (three, when it's behind,
+  // and a step lying on the ground in 8 sub-steps took 140 ms on a DS Lite)
   void repeat() override {
     const auto now = Clock::now();
     const unsigned steps = clock_.stepsFor(std::chrono::duration<double>(now - lastTick_).count());
     lastTick_ = now;
-    for (unsigned i = 0; i < steps; ++i) {
-      const auto started = Clock::now();
-      step();
-      stepping_ += Clock::now() - started;
-      ++stepsTaken_;
+    // No more due than one call can give (FixedSteps::kLongestFrame), so a
+    // ragdoll that can't keep up slows down instead of falling ever further
+    // behind
+    const auto mostDue =
+        static_cast<unsigned>(std::ceil(FixedSteps::kLongestFrame / clock_.stepSeconds()));
+    stepsDue_ = std::min(stepsDue_ + steps, std::max(mostDue, 1u));
+    queueStepIfDue();
+    reportEachSecond();
+  }
+
+private:
+  unsigned stepsDue_ = 0;
+  bool stepQueued_ = false;
+  void queueStepIfDue() {
+    if (stepsDue_ > 0 && !stepQueued_) {
+      stepQueued_ = true;
+      push([this] { stepDue(); });
     }
-    if (steps > 0) {
-      send(snapshot());
+  }
+  void stepDue() {
+    stepQueued_ = false;
+    if (stepsDue_ == 0) {
+      return;
     }
+    --stepsDue_;
+    const auto started = Clock::now();
+    step();
+    stepping_ += Clock::now() - started;
+    ++stepsTaken_;
+    send(snapshot());
     playKnocks();
+    queueStepIfDue();
+  }
+  void reportEachSecond() {
     const auto second = Clock::now() - secondStart_;
     if (second >= std::chrono::seconds(1)) {
       const double seconds = std::chrono::duration<double>(second).count();
@@ -241,7 +270,6 @@ public:
     }
   }
 
-private:
   // Sub-steps, and the resolver's velocity, settle and position sweeps a
   // step (shared among its sub-steps; see ContactResolver::setSweeps)
   struct Settings {

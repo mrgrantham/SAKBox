@@ -511,6 +511,8 @@ private:
   WorkQueue workQueue_{&ownSignal_};
   std::atomic<std::ptrdiff_t> pendingWork_{0};
   std::atomic<std::uint64_t> workLoopPasses_{0};
+  // Whether a repeat() is queued and not yet started (startRepeater)
+  std::atomic<bool> repeatWaiting_{false};
   std::condition_variable workCompletionConditionVariable_;
   std::mutex workCompletionMutex_;
   std::condition_variable scratchPaddConditionVariable_;
@@ -681,11 +683,26 @@ private:
   // can implement the repeat() method and set a repeat interval.
   // A lambda for the repeating work will be added to the work queue
   // and processed immediately.
+  //
+  // At most one repeat() waits in the queue: a tick while one is waiting is
+  // dropped. A padd whose repeat() takes longer than its interval then
+  // repeats as often as it can, instead of piling up ticks that the
+  // messages sent to it wait behind (more of them the longer it runs). The
+  // flag is cleared as the repeat() starts, so a tick during it queues the
+  // next one.
   void startRepeater() {
     if (repeatInterval_) {
       logger().info("repeat() interval set to {}ms for {}", repeatIntervalMilliseconds(), name_);
-      repeatingTimer_.startRepeatingEvent([this] { push([this] { repeat(); }); },
-                                          repeatInterval_.value());
+      repeatingTimer_.startRepeatingEvent(
+          [this] {
+            if (!repeatWaiting_.exchange(true)) {
+              push([this] {
+                repeatWaiting_ = false;
+                repeat();
+              });
+            }
+          },
+          repeatInterval_.value());
     } else {
       logger().info("No repeat() interval set for: {}", name_);
     }
