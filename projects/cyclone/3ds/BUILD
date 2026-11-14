@@ -4,6 +4,7 @@ load("//tools/devkitpro:defs.bzl", "devkitpro_3ds_app")
 RAGDOLL_SOURCES = {
     "//projects/scratchpadd/debug_log:sources": "scratchpadd/debug_log",
     "//projects/scratchpadd/storage:sources": "scratchpadd/storage",
+    "//projects/scratchpadd/network:sources": "scratchpadd/network",
     "//projects/scratchpadd/input:sources": "scratchpadd/input",
     "//projects/cyclone/handheld:sources": "ragdoll",
     "//projects/cyclone:sources": "cyclone",

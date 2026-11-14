@@ -16,8 +16,8 @@
 // And besides the file:
 // - desktops: the terminal, as always;
 // - 3DS: kept in memory (the last 64 KB) and served over Wi-Fi on port 5005
-//   (LogServer), for tools/console_log to read, with what came before it
-//   connected;
+//   by NetworkPadd (a Network::StreamService), for tools/console_log to
+//   read, with what came before it connected; the app lists a NetworkPadd;
 // - DS: only the file (a DS Lite can't join a WPA2 network).
 // Logging goes back to the terminal (and its level back) when it ends.
 #pragma once
@@ -26,6 +26,7 @@
 
 #include <spdlog/common.h>
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -51,6 +52,9 @@ struct SessionOptions {
 
 class Session {
 public:
+  // The 3DS's log's port (FBI and ftpd use 5000)
+  static constexpr std::uint16_t kLogPort = 5005;
+
   // e.g. Session({.level = spdlog::level::debug, .writeEvery = 8})
   explicit Session(const SessionOptions &options = {});
   ~Session();

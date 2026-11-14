@@ -31,6 +31,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":log_server",
+        "//projects/scratchpadd/network",  # (the 3DS's log served over Wi-Fi)
         "//projects/scratchpadd/storage",
         "//projects/scratchpadd/utilities",
         "@spdlog",

@@ -23,11 +23,12 @@ TEST(ControlsTextTest, ASnapshotOfEveryKindComesBackTheSame) {
       }};
   const std::string line = Text::snapshot(sent);
   EXPECT_EQ(line.find('\n'), std::string::npos); // one line
-  const auto got = Text::decode(line);
-  ASSERT_TRUE(got);
-  ASSERT_EQ(got->kind, Text::Decoded::Kind::Snapshot);
-  const auto &controls = got->snapshot.controlMap;
-  EXPECT_EQ(got->snapshot.paddName, "RagdollPadd");
+  const auto decoded = Text::decode(line);
+  ASSERT_TRUE(decoded);
+  const Text::Decoded got = decoded.value_or(Text::Decoded{});
+  ASSERT_EQ(got.kind, Text::Decoded::Kind::Snapshot);
+  const auto &controls = got.snapshot.controlMap;
+  EXPECT_EQ(got.snapshot.paddName, "RagdollPadd");
   ASSERT_EQ(controls.size(), sent.controlMap.size());
   EXPECT_EQ(std::get<ControlType::Double>(controls.at("Volume")).value, 0.1); // exactly
   EXPECT_EQ(std::get<ControlType::Double>(controls.at("Volume")).enforcableRange,
@@ -48,17 +49,19 @@ TEST(ControlsTextTest, ASnapshotOfEveryKindComesBackTheSame) {
 }
 
 TEST(ControlsTextTest, AChangeAndARequest) {
-  const auto change = Text::decode(Text::change(
+  const auto decodedChange = Text::decode(Text::change(
       "AudioPadd", {.controlName = "master", .controlTypeValue = ControlType::Double(0.25)}));
-  ASSERT_TRUE(change);
-  ASSERT_EQ(change->kind, Text::Decoded::Kind::Change);
-  EXPECT_EQ(change->paddName, "AudioPadd");
-  EXPECT_EQ(change->change.controlName, "master");
-  EXPECT_EQ(std::get<ControlType::Double>(change->change.controlTypeValue).value, 0.25);
+  ASSERT_TRUE(decodedChange);
+  const Text::Decoded change = decodedChange.value_or(Text::Decoded{});
+  ASSERT_EQ(change.kind, Text::Decoded::Kind::Change);
+  EXPECT_EQ(change.paddName, "AudioPadd");
+  EXPECT_EQ(change.change.controlName, "master");
+  EXPECT_EQ(std::get<ControlType::Double>(change.change.controlTypeValue).value, 0.25);
 
   const auto request = Text::decode(Text::request());
   ASSERT_TRUE(request);
-  EXPECT_EQ(request->kind, Text::Decoded::Kind::Request);
+  EXPECT_EQ(request.value_or(Text::Decoded{.kind = Text::Decoded::Kind::Change}).kind,
+            Text::Decoded::Kind::Request);
 }
 
 TEST(ControlsTextTest, LinesThatArentMessagesAreRefused) {

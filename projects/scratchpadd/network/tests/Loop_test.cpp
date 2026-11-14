@@ -108,7 +108,7 @@ TEST(LoopTest, LinesBothWaysAndAConnectionWaitingForItsListener) {
   std::vector<std::string> atServer, atClient;
   Network::LineService *serverPtr = nullptr;
   Network::LineService server("server", {.port = port},
-                              {.onLine = [&](std::uint32_t from, std::string line) {
+                              {.onLine = [&](std::uint32_t from, const std::string &line) {
                                 {
                                   std::lock_guard lock(mutex);
                                   atServer.push_back(line);
@@ -122,7 +122,7 @@ TEST(LoopTest, LinesBothWaysAndAConnectionWaitingForItsListener) {
 
   Network::LineService client("client", {.host = "127.0.0.1", .port = port},
                               {.onLine =
-                                   [&](std::uint32_t, std::string line) {
+                                   [&](std::uint32_t, const std::string &line) {
                                      std::lock_guard lock(mutex);
                                      atClient.push_back(line);
                                    },

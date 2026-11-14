@@ -5,7 +5,7 @@ An app opens a log `Session` in `main`, before its padds start. Every ScratchPad
 | Platform | Besides the file | Log folder | How to read it |
 | --- | --- | --- | --- |
 | Desktops | The terminal, as always | `~/Library/Logs/<app>/` on a Mac, `$XDG_STATE_HOME/<app>/` on Linux, `%LOCALAPPDATA%\<app>\logs\` on Windows | The terminal, or the file |
-| 3DS | Kept in memory (the last 64 KB) and served over Wi-Fi on port 5005 | `sdmc:/3ds/<app>/logs/` | `python3 tools/console_log/console_log.py --3ds ADDRESS` ([`tools/console_log`](../../../tools/console_log/README.md)): what came before it connected, then each line as it's logged. Or the file, off the SD card |
+| 3DS | Kept in memory (the last 64 KB) and served over Wi-Fi on port 5005 by [`NetworkPadd`](../network/README.md) (a `StreamService`), while the padds run; the app lists a `NetworkPadd` | `sdmc:/3ds/<app>/logs/` | `python3 tools/console_log/console_log.py --3ds ADDRESS` ([`tools/console_log`](../../../tools/console_log/README.md)): what came before it connected, then each line as it's logged. Or the file, off the SD card |
 | DS | Nothing (a DS Lite can't join a WPA2 network) | `fat:/data/<app>/logs/` | Off the flashcart's card |
 
 The folders are [storage's](../storage/README.md#where-an-apps-files-go). The app's name is its BUILD target's (`AppInfo`), so `cyclone-ds-ragdoll` logs to `fat:/data/cyclone-ds-ragdoll/logs/cyclone-ds-ragdoll.log`. The first line says which app and build wrote it: `Cyclone ragdoll (cyclone-ds-ragdoll, debug build): logging to ...`.

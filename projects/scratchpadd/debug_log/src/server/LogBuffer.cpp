@@ -3,8 +3,10 @@
 namespace ScratchPadd::DebugLog {
 
 void LogBuffer::append(std::string_view text) {
+  std::function<void()> onAppend;
   {
     std::lock_guard lock(mutex_);
+    onAppend = onAppend_;
     text_.append(text);
     if (text_.size() > capacity_) {
       // A quarter dropped at a time (not a little every line), at a line's
@@ -17,6 +19,13 @@ void LogBuffer::append(std::string_view text) {
     }
   }
   appended_.notify_all();
+  if (onAppend)
+    onAppend();
+}
+
+void LogBuffer::setOnAppend(std::function<void()> onAppend) {
+  std::lock_guard lock(mutex_);
+  onAppend_ = std::move(onAppend);
 }
 
 std::string LogBuffer::readFrom(std::uint64_t &position, std::chrono::milliseconds wait) {

@@ -1,7 +1,8 @@
 """Reads a 3DS app's debug log over Wi-Fi, as it's logged.
 
 A debug build (bazel build -c dbg) of a 3DS app with a DebugLog::Session
-serves its log on port 5005 (//projects/scratchpadd/debug_log); this
+and a NetworkPadd serves its log on port 5005 (//projects/scratchpadd/debug_log,
+//projects/scratchpadd/network); this
 connects, prints what the app kept from before, then each line as it comes,
 and saves it all with --save. It waits for the app to start, and for it
 again when it quits (Ctrl-C to stop), or stops with --once.
@@ -24,7 +25,7 @@ REPO = pathlib.Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO / "tools" / "local_network"))
 from local_network import connect  # noqa: E402
 
-LOG_PORT = 5005  # DebugLog::LogServer::kPort
+LOG_PORT = 5005  # DebugLog::Session::kLogPort (and DebugLog::LogServer::kPort)
 
 
 def read_log(host, port, write, say=print, once=False, give_up_at=None, retry=2.0):

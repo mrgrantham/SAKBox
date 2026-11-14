@@ -40,6 +40,10 @@
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#if defined(__3DS__)
+#include <ScratchPadd/Network/NetworkPadd.hpp>
+#include <ScratchPadd/Network/RemoteControlsPadd.hpp>
+#endif
 #include <ScratchPadd/Storage/StoragePadd.hpp>
 #include <cyclone/cyclone.h>
 #include <fixed_steps.h>
@@ -834,6 +838,15 @@ private:
 
 } // namespace
 
+// The 3DS's networking: its log over Wi-Fi (NetworkPadd) and its controls
+// from the Mac (RemoteControlsPadd, for the remote controls app). A DS
+// Lite can't join a WPA2 network: none on the DS.
+#if defined(__3DS__)
+#define NETWORK_PADDS , ScratchPadd::Network::NetworkPadd, ScratchPadd::Network::RemoteControlsPadd
+#else
+#define NETWORK_PADDS
+#endif
+
 int main() {
   spdlog::set_level(spdlog::level::off); // the screens are for the padds
 #if defined(__3DS__)
@@ -847,7 +860,7 @@ int main() {
   {
     ScratchPadd::SystemImplementation<ScratchPadd::AboutPadd, ScratchPadd::Input::GamePadd,
                                       ScreenPadd, RagdollPadd, AudioPadd,
-                                      ScratchPadd::Storage::StoragePadd>
+                                      ScratchPadd::Storage::StoragePadd NETWORK_PADDS>
         system; // (StoragePadd: a debug build's log, written to the card when idle)
     system.instantiate();
     system.start(); // returns when ScreenPadd stops it (START)

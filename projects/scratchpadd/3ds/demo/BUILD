@@ -9,6 +9,7 @@ devkitpro_3ds_app(
     extra_srcs = {
         "//projects/scratchpadd/debug_log:sources": "scratchpadd/debug_log",
         "//projects/scratchpadd/storage:sources": "scratchpadd/storage",
+        "//projects/scratchpadd/network:sources": "scratchpadd/network",
         "//projects/scratchpadd/input:sources": "scratchpadd/input",
         "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
         "//projects/scratchpadd/messages:sources": "scratchpadd/messages",

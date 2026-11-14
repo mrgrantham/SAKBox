@@ -45,6 +45,12 @@ public:
     wake();
   }
 
+  // Whether anyone's connected (to skip making lines nobody would get)
+  bool hasConnections() const {
+    std::lock_guard lock(mutex_);
+    return !connections_.empty();
+  }
+
   void connected(Connection &connection) override {
     {
       std::lock_guard lock(mutex_);
@@ -115,7 +121,7 @@ private:
   std::string name_;
   Endpoint endpoint_;
   Handlers handlers_;
-  std::mutex mutex_; // the queue and the connections
+  mutable std::mutex mutex_; // the queue and the connections
   std::vector<Queued> queued_;
   std::vector<std::uint32_t> connections_;
   std::unordered_map<std::uint32_t, std::string> partial_; // (the loop's thread)

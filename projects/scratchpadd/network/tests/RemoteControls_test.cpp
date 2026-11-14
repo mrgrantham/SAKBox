@@ -95,7 +95,7 @@ TEST(RemoteControlsTest, ControlsFromAfar) {
     return latest;
   };
   ASSERT_TRUE(eventually([&] { return speedSent().has_value(); }, Network::Loop::kRetry + 3s));
-  EXPECT_EQ(*speedSent(), 1.0);
+  EXPECT_EQ(speedSent().value_or(-1), 1.0);
 
   // A change from afar: made, and its new snapshot sent back
   client.send(Text::change(

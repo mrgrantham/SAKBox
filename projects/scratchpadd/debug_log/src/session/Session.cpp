@@ -12,7 +12,9 @@
 
 #if defined(__3DS__)
 #include <ScratchPadd/DebugLog/LogBufferSink.hpp>
-#include <ScratchPadd/DebugLog/LogServer.hpp>
+#include <ScratchPadd/Network/Service.hpp>
+#include <ScratchPadd/Network/Sockets.hpp>
+#include <ScratchPadd/Network/StreamService.hpp>
 #endif
 
 namespace ScratchPadd::DebugLog {
@@ -20,8 +22,9 @@ namespace ScratchPadd::DebugLog {
 struct Session::Platform {
   std::unique_ptr<Storage::AppendFile> file;
 #if defined(__3DS__)
+  // The last 64 KB, served by NetworkPadd to whoever connects to port 5005
   LogBuffer buffer;
-  LogServer server{buffer};
+  std::unique_ptr<Network::StreamService> stream;
 #endif
 };
 
@@ -77,11 +80,18 @@ Session::Session(const SessionOptions &options) : platform_(std::make_unique<Pla
   }
 
 #if defined(__3DS__)
-  if (platform_->server.listening()) {
-    sinks.push_back(std::make_shared<LogBufferSink>(platform_->buffer));
-    where_ = platform_->server.address() + (platform_->file ? ", " + path : "");
+  std::string networkError;
+  if (Network::start(networkError)) {
+    LogBuffer &buffer = platform_->buffer;
+    platform_->stream = std::make_unique<Network::StreamService>(
+        "log", kLogPort, [&buffer](std::uint64_t &position) { return buffer.readFrom(position); });
+    buffer.setOnAppend([stream = platform_->stream.get()] { stream->wake(); });
+    Network::services().add(platform_->stream.get()); // (for NetworkPadd)
+    sinks.push_back(std::make_shared<LogBufferSink>(buffer));
+    const std::string address = Network::deviceAddress() + ":" + std::to_string(kLogPort);
+    where_ = platform_->file ? address + ", " + path : address;
   } else if (!platform_->file) {
-    where_ += "; " + platform_->server.error();
+    where_ += "; " + networkError;
   }
 #endif
   for (const spdlog::sink_ptr &sink : sinks)
@@ -103,6 +113,12 @@ Session::~Session() {
   Logger::routeTo({}, true);
   if (platform_->file)
     Storage::sources().remove(platform_->file.get()); // (StoragePadd lets go first)
+#if defined(__3DS__)
+  if (platform_->stream) {
+    Network::services().remove(platform_->stream.get()); // (NetworkPadd lets go first)
+    platform_->buffer.setOnAppend(nullptr);
+  }
+#endif
 }
 
 std::string Session::file() const { return platform_->file ? platform_->file->path() : ""; }

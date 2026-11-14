@@ -38,8 +38,11 @@ public:
                                     }}) {
     // Every padd's controls: the answers to its requests, and each change a
     // padd sends every panel
+    // (made into text only while someone's connected: formatting numbers
+    // costs a console time)
     receive<MessageType::ControlSnapshot>([this](const MessageType::ControlSnapshot &snapshot) {
-      service_.send(ControlsText::snapshot(snapshot));
+      if (service_.hasConnections())
+        service_.send(ControlsText::snapshot(snapshot));
     });
   }
   std::string name() override { return "RemoteControlsPadd"; }

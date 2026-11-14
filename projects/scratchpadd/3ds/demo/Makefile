@@ -35,9 +35,9 @@ TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 # The audio core and miniaudio are staged from their own packages by the
 # Bazel rule (extra_srcs in BUILD)
-SOURCES		:=	source scratchpadd/handheld_controls/src scratchpadd/utilities/src scratchpadd/storage/src scratchpadd_audio/core/src scratchpadd_audio_3ds/output/src third_party/miniaudio scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session
+SOURCES		:=	source scratchpadd/handheld_controls/src scratchpadd/utilities/src scratchpadd/storage/src scratchpadd/network/src scratchpadd_audio/core/src scratchpadd_audio_3ds/output/src third_party/miniaudio scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session
 DATA		:=	data
-INCLUDES	:=	include scratchpadd/handheld_controls/include scratchpadd/basis/include scratchpadd/messages/include scratchpadd/utilities/include scratchpadd/handheld/include scratchpadd_audio_pcm16/include scratchpadd/input/include scratchpadd/debug_log/include scratchpadd/storage/include \
+INCLUDES	:=	include scratchpadd/handheld_controls/include scratchpadd/basis/include scratchpadd/messages/include scratchpadd/utilities/include scratchpadd/handheld/include scratchpadd_audio_pcm16/include scratchpadd/input/include scratchpadd/debug_log/include scratchpadd/storage/include scratchpadd/network/include \
 			scratchpadd_audio/include scratchpadd_audio/messages/include scratchpadd_audio/core/include \
 			scratchpadd_audio_3ds/output/include third_party third_party/spdlog/include
 GRAPHICS	:=	gfx

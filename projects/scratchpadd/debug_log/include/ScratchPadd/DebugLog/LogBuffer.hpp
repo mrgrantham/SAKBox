@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -28,6 +29,9 @@ public:
                        std::chrono::milliseconds wait = std::chrono::milliseconds(0));
   // How many characters have been appended, ever
   std::uint64_t end() const;
+  // Called (on the appending thread, outside the buffer's lock) after each
+  // append: a StreamService's wake(), so its loop sends what's new
+  void setOnAppend(std::function<void()> onAppend);
 
 private:
   mutable std::mutex mutex_;
@@ -35,6 +39,7 @@ private:
   std::size_t capacity_;
   std::string text_;          // what's kept
   std::uint64_t dropped_ = 0; // characters dropped from its front
+  std::function<void()> onAppend_;
 };
 
 } // namespace ScratchPadd::DebugLog
