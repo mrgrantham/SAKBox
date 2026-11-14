@@ -72,12 +72,18 @@ constexpr const char *kAppName = "cyclone-ds-ragdoll";
 constexpr int kConsoleColumns = 32, kConsoleRows = 24; // the bottom screen's
 bool mainLoop() { return pmMainLoop(); }
 void startBottomScreen() { consoleDemoInit(); } // its console, for printf
+void waitForRefresh() { swiWaitForVBlank(); }
+// Drawn every other refresh: the physics runs 30 steps a second, and drawing
+// at 60 took the ARM9 time it needs (a step at the start, 57 ms against 47)
+constexpr int kDefaultFramesPerSecond = 30;
 #else
 constexpr const char *kConsole = "3DS";
 constexpr const char *kAppName = "cyclone-3ds-ragdoll";
 constexpr int kConsoleColumns = 40, kConsoleRows = 30;
 bool mainLoop() { return aptMainLoop(); }
 void startBottomScreen() { consoleInit(GFX_BOTTOM, nullptr); }
+void waitForRefresh() { gspWaitForVBlank(); }
+constexpr int kDefaultFramesPerSecond = 60;
 #endif
 
 struct ButtonPressed {
@@ -183,7 +189,9 @@ public:
   // Times a few settings first (a few seconds), then runs with the cheap one,
   // hearing its hits (not while timing, so the figures are the physics')
   void starting() override {
-    send(benchmark());
+    const Benchmark measured = benchmark();
+    logBenchmark(measured);
+    send(measured);
     useSettings(kRunSettings);
     reset();
     // The camera looks from (3, 2.2) across the ground: 36 degrees around
@@ -213,18 +221,20 @@ public:
     const auto second = Clock::now() - secondStart_;
     if (second >= std::chrono::seconds(1)) {
       const double seconds = std::chrono::duration<double>(second).count();
-      send(PhysicsFigures{.stepsPerSecond = static_cast<int>(std::lround(1 / clock_.stepSeconds())),
-                          .subSteps = static_cast<int>(clock_.subSteps()),
-                          .stepMilliseconds =
-                              stepsTaken_
-                                  ? std::chrono::duration<double, std::milli>(stepping_).count() /
-                                        stepsTaken_
-                                  : 0,
-                          .busy = std::chrono::duration<double>(stepping_).count() / seconds,
-                          .speed = stepsTaken_ * clock_.stepSeconds() / seconds,
-                          .worstStretch = worstStretch_,
-                          .knocks = knocksSent_,
-                          .audio = static_cast<bool>(audio_)});
+      const PhysicsFigures figures{
+          .stepsPerSecond = static_cast<int>(std::lround(1 / clock_.stepSeconds())),
+          .subSteps = static_cast<int>(clock_.subSteps()),
+          .stepMilliseconds =
+              stepsTaken_
+                  ? std::chrono::duration<double, std::milli>(stepping_).count() / stepsTaken_
+                  : 0,
+          .busy = std::chrono::duration<double>(stepping_).count() / seconds,
+          .speed = stepsTaken_ * clock_.stepSeconds() / seconds,
+          .worstStretch = worstStretch_,
+          .knocks = knocksSent_,
+          .audio = static_cast<bool>(audio_)};
+      logFigures(figures);
+      send(figures);
       secondStart_ = Clock::now();
       stepping_ = {};
       stepsTaken_ = 0;
@@ -264,6 +274,28 @@ private:
     clock_.setSubSteps(settings.subSteps);
     ragdoll_->world.getResolver().setSweeps(settings.velocitySweeps, settings.settleSweeps,
                                             settings.positionSweeps);
+  }
+
+  // Logged (a debug build's log: on the SD card on a DS, over Wi-Fi on a
+  // 3DS), so a run's figures can be read afterwards, not just watched
+  void logBenchmark(const Benchmark &measured) {
+    for (const Benchmark::Row &row : measured.rows) {
+      if (row.subSteps > 0) {
+        logger().info(
+            "Measured at start: {} steps/s, {} sub-steps, sweeps {}/{}/{}: {:.1f} ms a step",
+            row.stepsPerSecond, row.subSteps, row.velocitySweeps, row.settleSweeps,
+            row.positionSweeps, row.stepMilliseconds);
+      }
+    }
+    logger().info("A step as it runs: move {:.1f} ms, find {:.1f} ms, solve {:.1f} ms",
+                  measured.integrateMilliseconds, measured.contactsMilliseconds,
+                  measured.resolveMilliseconds);
+  }
+  void logFigures(const PhysicsFigures &figures) {
+    logger().info("{} steps/s, {} sub-steps: a step {:.1f} ms, {:.0f}% busy, speed {:.2f}x, "
+                  "worst stretch {:.2f} cm, {} knocks",
+                  figures.stepsPerSecond, figures.subSteps, figures.stepMilliseconds,
+                  100 * figures.busy, figures.speed, 100 * figures.worstStretch, figures.knocks);
   }
 
   Benchmark benchmark() {
@@ -401,7 +433,9 @@ public:
   ScratchPadd::Runs runs() override { return ScratchPadd::Runs::OnMainThread; }
   // Whether bones are drawn blended between steps (B, or the panel)
   ScratchPadd::ControlValueMap generateControls() override {
-    return {{"Blend", ScratchPadd::ControlType::Boolean(true)}};
+    return {{"Blend", ScratchPadd::ControlType::Boolean(true)},
+            {"Frames a second", ScratchPadd::ControlType::String(
+                                    std::to_string(kDefaultFramesPerSecond), {{"30", "60"}})}};
   }
 
   void starting() override {
@@ -456,6 +490,12 @@ private:
           send(ButtonPressed{button});
         }
       }
+    }
+    // At 30 frames a second, every other refresh is let go by, its time
+    // left to the physics (the main thread outranks the physics' thread,
+    // so each frame drawn comes out of the physics' time)
+    if (framesPerSecond() == 30) {
+      waitForRefresh();
     }
     drawRagdoll();
     push([this] { frame(); });
@@ -528,23 +568,24 @@ private:
     printLine(3, kColumns, "Physics: %d steps a second,", figures_.stepsPerSecond);
     printLine(4, kColumns, "  %d sub-step%s each, %s", figures_.subSteps,
               figures_.subSteps == 1 ? "" : "s", blend() ? "blended" : "unblended");
+    printLine(5, kColumns, "Drawn %d frames a second", framesPerSecond());
     // (While running, a step's time includes the main thread's, which takes
     // over each frame to draw)
-    printLine(5, kColumns, "A step takes %.0f ms (running)", figures_.stepMilliseconds);
-    printLine(6, kColumns, "Physics thread busy: %.0f%%", 100 * figures_.busy);
-    printLine(7, kColumns, "Simulation speed: %.2fx", figures_.speed);
-    printLine(8, kColumns, "Worst joint stretch: %.2f cm", 100 * figures_.worstStretch);
+    printLine(6, kColumns, "A step takes %.0f ms (running)", figures_.stepMilliseconds);
+    printLine(7, kColumns, "Physics thread busy: %.0f%%", 100 * figures_.busy);
+    printLine(8, kColumns, "Simulation speed: %.2fx", figures_.speed);
+    printLine(9, kColumns, "Worst joint stretch: %.2f cm", 100 * figures_.worstStretch);
     if (figures_.audio) {
-      printLine(9, kColumns, "Knocks played: %u", figures_.knocks);
+      printLine(10, kColumns, "Knocks played: %u", figures_.knocks);
     } else {
-      printLine(9, kColumns, "No AudioPadd: no sound");
+      printLine(10, kColumns, "No AudioPadd: no sound");
     }
-    printLine(10, kColumns, "A: reset X: sub-steps B: blend");
-    printLine(11, kColumns, "Y: 30/60 steps SELECT: controls");
-    printLine(12, kColumns, "START: quit");
-    printLine(13, kColumns, "Measured at start (ms a step):");
-    printLine(14, kColumns, "steps/s sub sweeps        ms");
-    int row = 15;
+    printLine(11, kColumns, "A: reset X: sub-steps B: blend");
+    printLine(12, kColumns, "Y: 30/60 steps SELECT: controls");
+    printLine(13, kColumns, "START: quit");
+    printLine(14, kColumns, "Measured at start (ms a step):");
+    printLine(15, kColumns, "steps/s sub sweeps        ms");
+    int row = 16;
     for (const Benchmark::Row &r : benchmark_.rows) {
       if (r.subSteps > 0) {
         printLine(row, kColumns, "%-7d %-3d %2d/%2d/%2d  %7.1f", r.stepsPerSecond, r.subSteps,
@@ -552,7 +593,7 @@ private:
       }
       ++row;
     }
-    printLine(++row, kColumns, "A step as it runs, ms:");
+    printLine(row, kColumns, "A step as it runs, ms:"); // (row 23 is the last)
     printLine(++row, kColumns, "move %.1f find %.1f solve %.1f", benchmark_.integrateMilliseconds,
               benchmark_.contactsMilliseconds, benchmark_.resolveMilliseconds);
     if (!logWhere.empty())
@@ -569,6 +610,9 @@ private:
   std::optional<Scene::Renderer> renderer_;
   Scene::Mesh box_, ground_;
   bool blend() const { return control<ScratchPadd::ControlType::Boolean>("Blend").value; }
+  int framesPerSecond() const {
+    return control<ScratchPadd::ControlType::String>("Frames a second").value == "30" ? 30 : 60;
+  }
   ScratchPadd::HandheldControls::ControlTabs controls_;
   PhysicsFigures figures_;
   Benchmark benchmark_;

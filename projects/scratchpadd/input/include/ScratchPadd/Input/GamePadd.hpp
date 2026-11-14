@@ -7,6 +7,10 @@
 //
 // It reads every 4 ms, but the main thread is busy drawing until the
 // screen's refresh, so in practice once a frame, just before the next one.
+// On a DS it reads every 16 ms, about once a frame: a thread of its own
+// counts the presses at every refresh (PlatformDs.cpp), so reading more
+// often catches nothing more, and each read is the main thread's time,
+// which comes out of the other padds' (it outranks them).
 #pragma once
 
 #include <ScratchPadd/Base.hpp>
@@ -33,7 +37,11 @@ protected:
   Reader &reader() { return reader_; }
 
 private:
+#if defined(__NDS__)
+  static constexpr auto kReadEvery = std::chrono::milliseconds(16);
+#else
   static constexpr auto kReadEvery = std::chrono::milliseconds(4);
+#endif
   using Clock = std::chrono::steady_clock;
   // Reads further apart than this are logged (at most once per kLateReport):
   // three frames, when the main thread was kept from reading by other work
