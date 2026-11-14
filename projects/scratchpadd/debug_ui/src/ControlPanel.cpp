@@ -5,7 +5,9 @@
 #include <algorithm>
 #include <cstdint>
 #include <imgui_stdlib.h>
+#include <string>
 #include <type_traits>
+#include <vector>
 
 static_assert(std::is_same_v<int32_t, int>, "ImGui's integer widgets take int*");
 
@@ -19,6 +21,51 @@ void ControlPanel::setControls(const MessageType::ControlSnapshot &controls) {
   }
   std::sort(names_.begin(), names_.end());
 }
+
+namespace {
+
+// `text`'s lines, each split at its tabs
+std::vector<std::vector<std::string>> cellsOf(const std::string &text) {
+  std::vector<std::vector<std::string>> rows;
+  for (std::size_t start = 0; start <= text.size();) {
+    const std::size_t end = std::min(text.find('\n', start), text.size());
+    const std::string line = text.substr(start, end - start);
+    std::vector<std::string> cells;
+    for (std::size_t cell = 0; cell <= line.size();) {
+      const std::size_t tab = std::min(line.find('\t', cell), line.size());
+      cells.push_back(line.substr(cell, tab - cell));
+      cell = tab + 1;
+    }
+    rows.push_back(std::move(cells));
+    start = end + 1;
+  }
+  return rows;
+}
+
+// Information in lines of tab-separated columns, as a table under its name
+void drawTable(const char *name, const std::string &text) {
+  const auto rows = cellsOf(text);
+  std::size_t columns = 0;
+  for (const auto &cells : rows)
+    columns = std::max(columns, cells.size());
+  ImGui::TextUnformatted(name);
+  if (columns == 0 || !ImGui::BeginTable(name, static_cast<int>(columns),
+                                         ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit))
+    return;
+  for (std::size_t c = 0; c < columns; ++c)
+    ImGui::TableSetupColumn(c < rows[0].size() ? rows[0][c].c_str() : "");
+  ImGui::TableHeadersRow();
+  for (std::size_t r = 1; r < rows.size(); ++r) {
+    ImGui::TableNextRow();
+    for (std::size_t c = 0; c < rows[r].size(); ++c) {
+      ImGui::TableSetColumnIndex(static_cast<int>(c));
+      ImGui::TextUnformatted(rows[r][c].c_str());
+    }
+  }
+  ImGui::EndTable();
+}
+
+} // namespace
 
 void ControlPanel::draw() {
   if (placement_) {
@@ -58,7 +105,12 @@ void ControlPanel::draw() {
             },
             [&](Controls::Boolean &value) { return ImGui::Checkbox(label, &value.value); },
             [&](Controls::Info &value) {
-              ImGui::LabelText(label, "%s", value.value.c_str()); // shown, not edited
+              // Shown, not edited: as a table if it's lines of tab-separated
+              // columns (the first line its header), otherwise as text
+              if (value.value.find('\t') != std::string::npos)
+                drawTable(label, value.value);
+              else
+                ImGui::LabelText(label, "%s", value.value.c_str());
               return false;
             },
             [&](Controls::String &value) {

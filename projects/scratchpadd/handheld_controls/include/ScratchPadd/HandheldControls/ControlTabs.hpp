@@ -36,10 +36,16 @@ struct PanelInput {
 // A is Nintendo's A, the right face button.
 PanelInput panelInputFrom(const Input::Gamepad &before, const Input::Gamepad &now);
 
-// A run of text in one line, highlighted or not (the chosen tab or row)
+// What a run of text shows, so they can be told apart (ConsolePanel's
+// colours): a control that can be changed, information (an Info control,
+// which can't), or the rest (tabs, the help)
+enum class Shows { Other, Setting, Information };
+
+// A run of text in one line, highlighted (the chosen tab or row) or not
 struct Segment {
   std::string text;
   bool highlighted = false;
+  Shows shows = Shows::Other;
 };
 using Line = std::vector<Segment>;
 
@@ -116,12 +122,14 @@ private:
   // The tabs' columns, as tabRow() lays them out, for taps
   std::vector<std::pair<int, int>> tabSpans() const;
   // The list laid out a row a line, unscrolled: each control's row, "name
-  // ..... value", or for information too long for one (an Info control), its
-  // name and then its text wrapped onto the rows below
+  // ..... value", or for information too long for one or in several lines
+  // (an Info control), its name and then its text on the rows below,
+  // wrapped; information in lines of columns (tab-separated) as a table
   struct ListRow {
     std::size_t control; // which of the tab's names
     bool first;          // its first row (the one marked when chosen)
     std::string text;    // without the marker
+    Shows shows;         // a setting or information
   };
   std::vector<ListRow> listRows(const Tab &tab) const;
   // The list row at the top of the screen: far enough down to show all of

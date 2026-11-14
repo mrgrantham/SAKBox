@@ -84,8 +84,6 @@ TEST(ControlTabsTest, ATabForEachPaddWithControls) {
 // remembered for each tab.
 TEST(ControlTabsTest, ButtonsChooseTabsAndControls) {
   Panel panel;
-  panel.tabs.handle(press({.l = true}));
-  EXPECT_EQ(panel.tabs.tab(), 0u);
   panel.tabs.handle(press({.down = true}));
   panel.tabs.handle(press({.down = true}));
   EXPECT_EQ(panel.tabs.row(), 2u);
@@ -94,10 +92,12 @@ TEST(ControlTabsTest, ButtonsChooseTabsAndControls) {
   panel.tabs.handle(press({.r = true}));
   EXPECT_EQ(panel.tabs.tab(), 1u);
   EXPECT_EQ(panel.tabs.row(), 0u);
+  // The shoulder buttons go round: past the last tab the first, and back
   panel.tabs.handle(press({.r = true}));
-  EXPECT_EQ(panel.tabs.tab(), 1u);
+  EXPECT_EQ(panel.tabs.tab(), 0u);
+  EXPECT_EQ(panel.tabs.row(), 2u); // (each tab keeps its row)
   panel.tabs.handle(press({.l = true}));
-  EXPECT_EQ(panel.tabs.row(), 2u);
+  EXPECT_EQ(panel.tabs.tab(), 1u);
 }
 
 // Left and right step a number through its range (a twentieth at a time,
@@ -350,4 +350,37 @@ TEST(ControlTabsTest, InputFromThePad) {
   EXPECT_FALSE(panelInputFrom(now, now).a); // nothing new
   now.touch = {};
   EXPECT_FALSE(panelInputFrom(before, now).touch);
+}
+
+// Each row says what it shows, for its colour: settings (controls that can
+// be changed), information (Info controls, wrapped rows included), or the
+// rest (the tabs, the help)
+TEST(ControlTabsTest, RowsSayWhetherTheyCanBeChanged) {
+  ControlTabs tabs({}, 32, 24);
+  tabs.show(snapshotOf("Padd", {{"a info", ControlType::Info(std::string(40, 'x'))},
+                                {"b volume", ControlType::Double(0.5, {{0.0, 1.0}})}}),
+            PaddAddress{});
+  const std::vector<Line> lines = tabs.lines();
+  EXPECT_EQ(lines[0][0].shows, Shows::Other); // the tab
+  EXPECT_EQ(lines[2][0].shows, Shows::Information);
+  EXPECT_TRUE(lines[2][0].highlighted);
+  EXPECT_EQ(lines[3][0].shows, Shows::Information); // its wrapped text
+  EXPECT_EQ(lines[4][0].shows, Shows::Information);
+  EXPECT_EQ(lines[5][0].shows, Shows::Setting);
+  EXPECT_FALSE(lines[5][0].highlighted);
+  EXPECT_EQ(lines[23][0].shows, Shows::Other); // the help
+}
+
+// Information in lines of tab-separated columns is a table: the name on its
+// row, then each line below, the columns lined up
+TEST(ControlTabsTest, InformationInColumnsIsATable) {
+  ControlTabs tabs({}, 32, 24);
+  tabs.show(snapshotOf("About", {{"Padds", ControlType::Info("Padd\tRuns\nGamePadd\tOnMainThread\n"
+                                                             "RagdollPadd\tSteadily")}}),
+            PaddAddress{});
+  auto text = [&](int row) { return tabs.lines()[static_cast<size_t>(row)][0].text; };
+  EXPECT_EQ(text(2), "> Padds");
+  EXPECT_EQ(text(3), "    Padd        Runs");
+  EXPECT_EQ(text(4), "    GamePadd    OnMainThread");
+  EXPECT_EQ(text(5), "    RagdollPadd Steadily");
 }

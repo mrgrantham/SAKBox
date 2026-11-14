@@ -1,7 +1,8 @@
 // AboutPadd.hpp - the app's About tab on a controls panel: its title, name,
-// build and platform (AppInfo), and each padd and how it runs, as Info
-// controls (shown, not edited). It does nothing else, on the main thread (no
-// thread of its own for that).
+// build and platform (AppInfo), and a table of each padd and how it runs
+// (its Runs), as Info controls (shown, not edited; the table in lines of
+// tab-separated columns, which panels show as a table). It does nothing else, on the main thread
+// (no thread of its own for that).
 //
 //   ScratchPadd::SystemImplementation<ScratchPadd::AboutPadd, GamePadd, ...> system;
 //
@@ -27,10 +28,14 @@ public:
             {"Build", ControlType::Info(app.build)},
             {"Platform", ControlType::Info(app.platform)}};
   }
-  // Each padd, once they're all set up: "Padd RagdollPadd   steadily"
+  // The padds, once they're all set up, in a table:
+  //   Padd         Runs
+  //   RagdollPadd  Steadily
   void starting() override {
+    std::string table = "Padd\tRuns";
     for (const PaddAddress &padd : system_->padds())
-      addControl("Padd " + padd.name(), ControlType::Info(describe(padd.howItRuns())));
+      table += "\n" + padd.name() + "\t" + nameOf(padd.howItRuns());
+    addControl("Padds", ControlType::Info(std::move(table)));
   }
 };
 

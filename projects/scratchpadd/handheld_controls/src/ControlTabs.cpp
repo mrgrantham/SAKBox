@@ -105,11 +105,9 @@ bool ControlTabs::handle(const PanelInput &input) {
     return dirty_;
   }
   Tab &tab = tabs_[tab_];
-  if (input.l && tab_ > 0) {
-    --tab_;
-    dirty_ = true;
-  } else if (input.r && tab_ + 1 < tabs_.size()) {
-    ++tab_;
+  if ((input.l || input.r) && tabs_.size() > 1) {
+    // Round and round: past the last tab, the first, and back
+    tab_ = input.r ? (tab_ + 1) % tabs_.size() : (tab_ + tabs_.size() - 1) % tabs_.size();
     dirty_ = true;
   } else if (input.up && tab.row > 0) {
     --tab.row;
@@ -279,6 +277,47 @@ Line ControlTabs::tabRow() const {
   return line;
 }
 
+namespace {
+
+// Information's lines, a table's columns lined up (each as wide as its
+// widest cell, a space between)
+std::vector<std::string> informationLines(const std::string &text) {
+  std::vector<std::vector<std::string>> rows;
+  std::size_t start = 0;
+  while (start <= text.size()) {
+    const std::size_t end = std::min(text.find('\n', start), text.size());
+    std::vector<std::string> cells;
+    const std::string line = text.substr(start, end - start);
+    std::size_t cell = 0;
+    while (cell <= line.size()) {
+      const std::size_t tab = std::min(line.find('\t', cell), line.size());
+      cells.push_back(line.substr(cell, tab - cell));
+      cell = tab + 1;
+    }
+    rows.push_back(std::move(cells));
+    start = end + 1;
+  }
+  std::vector<std::size_t> widths;
+  for (const auto &cells : rows)
+    for (std::size_t c = 0; c + 1 < cells.size(); ++c) {
+      widths.resize(std::max(widths.size(), c + 1));
+      widths[c] = std::max(widths[c], cells[c].size());
+    }
+  std::vector<std::string> lines;
+  for (const auto &cells : rows) {
+    std::string line;
+    for (std::size_t c = 0; c < cells.size(); ++c) {
+      line += cells[c];
+      if (c + 1 < cells.size())
+        line.append(widths[c] - cells[c].size() + 1, ' ');
+    }
+    lines.push_back(std::move(line));
+  }
+  return lines;
+}
+
+} // namespace
+
 std::vector<ControlTabs::ListRow> ControlTabs::listRows(const Tab &tab) const {
   std::vector<ListRow> rows;
   const auto width = static_cast<std::size_t>(columns_);
@@ -286,13 +325,20 @@ std::vector<ControlTabs::ListRow> ControlTabs::listRows(const Tab &tab) const {
   for (std::size_t index = 0; index < tab.names.size(); ++index) {
     const std::string &name = tab.names[index];
     const ControlTypeVariant &control = tab.controls.controlMap.at(name);
+    const bool information = std::holds_alternative<ControlType::Info>(control);
     const std::string value = describe(control);
-    if (std::holds_alternative<ControlType::Info>(control) &&
-        kMarker + name.size() + 1 + value.size() > width && width > kIndent) {
-      rows.push_back({index, true, name.substr(0, width - kMarker)});
-      for (std::size_t at = 0; at < value.size(); at += width - kIndent)
-        rows.push_back({index, false,
-                        std::string(kIndent - kMarker, ' ') + value.substr(at, width - kIndent)});
+    if (information && width > kIndent &&
+        (kMarker + name.size() + 1 + value.size() > width ||
+         value.find('\n') != std::string::npos)) {
+      rows.push_back({index, true, name.substr(0, width - kMarker), Shows::Information});
+      for (const std::string &line : informationLines(value)) {
+        if (line.empty())
+          rows.push_back({index, false, "", Shows::Information});
+        for (std::size_t at = 0; at < line.size(); at += width - kIndent)
+          rows.push_back({index, false,
+                          std::string(kIndent - kMarker, ' ') + line.substr(at, width - kIndent),
+                          Shows::Information});
+      }
       continue;
     }
     // "name ....... value", the value at the right
@@ -301,7 +347,8 @@ std::vector<ControlTabs::ListRow> ControlTabs::listRows(const Tab &tab) const {
     const std::size_t used = kMarker + text.size() + value.size();
     text.append(width > used ? width - used : 1, ' ');
     text += value;
-    rows.push_back({index, true, std::move(text)});
+    rows.push_back(
+        {index, true, std::move(text), information ? Shows::Information : Shows::Setting});
   }
   return rows;
 }
@@ -344,7 +391,7 @@ std::vector<Line> ControlTabs::lines() {
       const ListRow &row = rows[at];
       const bool chosen = row.control == tab.row;
       const std::string text = (chosen && row.first ? "> " : "  ") + row.text;
-      lines[static_cast<std::size_t>(r)] = {{text.substr(0, width), chosen}};
+      lines[static_cast<std::size_t>(r)] = {{text.substr(0, width), chosen, row.shows}};
     }
   }
   lines[1] = {{std::string(width, '-')}};

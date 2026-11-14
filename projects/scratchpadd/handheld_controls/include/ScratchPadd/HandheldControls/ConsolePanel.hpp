@@ -48,8 +48,10 @@ template <typename... Args> void printLine(int row, int columns, const char *for
 }
 
 // Prints `tabs` on the current console from its top row, if it's shown and
-// changed since last printed: the chosen tab and control in bright yellow.
-// Returns whether it printed.
+// changed since last printed. Controls that can be changed are green, and
+// information (Info controls) the console's own colour; chosen, a control
+// is bright yellow and information bright cyan, as is the chosen tab
+// yellow. Returns whether it printed.
 inline bool draw(ControlTabs &tabs) {
   if (!tabs.visible() || !tabs.dirty())
     return false;
@@ -57,9 +59,13 @@ inline bool draw(ControlTabs &tabs) {
   for (const Line &line : tabs.lines()) {
     std::printf("\x1b[%d;%dH", row++, kFirstRow);
     for (const Segment &segment : line) {
-      // Bright yellow, then the default colour (39: libnds' console has no
-      // 0, reset)
-      std::printf(segment.highlighted ? "\x1b[33;1m%s\x1b[39m" : "%s", segment.text.c_str());
+      // (39: back to the default colour; libnds' console has no 0, reset)
+      const bool information = segment.shows == Shows::Information;
+      const char *colour = segment.highlighted && information ? "\x1b[36;1m" // bright cyan
+                           : segment.highlighted              ? "\x1b[33;1m" // bright yellow
+                           : segment.shows == Shows::Setting  ? "\x1b[32m"   // green
+                                                              : "";
+      std::printf(*colour ? "%s%s\x1b[39;22m" : "%s%s", colour, segment.text.c_str());
     }
     std::printf("\x1b[K"); // the rest of the row cleared
   }

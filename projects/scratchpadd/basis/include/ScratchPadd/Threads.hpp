@@ -67,6 +67,23 @@ inline constexpr Runs kDefaultRuns =
     Runs::OnMainThread;
 #endif
 
+// The enumerator's name ("Steadily"), for tables
+inline const char *nameOf(Runs runs) {
+  switch (runs) {
+  case Runs::OnMainThread:
+    return "OnMainThread";
+#if SCRATCHPADD_HAS_THREADS
+  case Runs::Urgently:
+    return "Urgently";
+  case Runs::Steadily:
+    return "Steadily";
+  case Runs::WhenIdle:
+    return "WhenIdle";
+#endif
+  }
+  return "?";
+}
+
 // How a padd runs, in words, for logs ("steadily")
 inline const char *describe(Runs runs) {
   switch (runs) {
