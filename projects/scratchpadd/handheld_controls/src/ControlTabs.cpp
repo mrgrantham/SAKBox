@@ -34,6 +34,8 @@ std::string describe(const ControlTypeVariant &value) {
     return std::to_string(i->value);
   if (const auto *b = std::get_if<ControlType::Boolean>(&value))
     return b->value ? "[x]" : "[ ]";
+  if (const auto *info = std::get_if<ControlType::Info>(&value))
+    return info->value;
   return std::get<ControlType::String>(value).value;
 }
 

@@ -44,10 +44,20 @@ struct String {
       : value(std::move(initialValue)), enforcableRange(std::move(range)) {}
 };
 
+// Information for a panel to show, not to edit: text the padd writes
+// (setControl) and keeps up to date, such as where its log is going or what
+// its card writes cost. Panels display it as it is; a change sent from a
+// panel is refused.
+struct Info {
+  std::string value;
+  Info(std::string text = {}) : value(std::move(text)) {}
+};
+
 } // namespace ControlType
 #define ControlTypes                                                                               \
   ScratchPadd::ControlType::Double, ScratchPadd::ControlType::Integer,                             \
-      ScratchPadd::ControlType::Boolean, ScratchPadd::ControlType::String
+      ScratchPadd::ControlType::Boolean, ScratchPadd::ControlType::String,                         \
+      ScratchPadd::ControlType::Info
 using ControlTypeVariant = std::variant<ControlTypes>;
 using ControlValueMap = std::unordered_map<std::string, ControlTypeVariant>;
 using ControlRefMap = std::unordered_map<std::string, ControlTypeVariant>;

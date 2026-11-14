@@ -683,3 +683,43 @@ TEST(ControlsTest, APanelSeesItsOwnChange) {
     EXPECT_DOUBLE_EQ(std::get<Controls::Double>(snapshots[0].controlMap.at("zoom")).value, 2.0);
   }
 }
+
+namespace {
+
+// Has an Info control: where its log is going, say, which only it writes
+class InfoOwnerPadd : public ScratchPadd::Base {
+public:
+  InfoOwnerPadd(ScratchPadd::System *system) : Base(system) {}
+  std::string name() override { return "InfoOwner"; }
+  ScratchPadd::ControlValueMap generateControls() override {
+    return {{"Log", Controls::Info("fat:/data/app/logs/app.log")}};
+  }
+  // Its own change, made on its thread
+  void moveLog(const std::string &where) {
+    ScratchPadd::onPaddThread(
+        *this, [&](InfoOwnerPadd &padd) { return padd.setControl("Log", Controls::Info(where)); });
+  }
+};
+
+std::string logIn(const ControlSnapshot &snapshot) {
+  return std::get<Controls::Info>(snapshot.controlMap.at("Log")).value;
+}
+
+} // namespace
+
+// An Info control is shown on panels but only its padd changes it: a panel's
+// change is refused (and the panel told the value it holds), while the
+// padd's own setControl() goes through to every panel
+TEST(ControlsTest, InfoIsShownButOnlyItsPaddChangesIt) {
+  RunningSystem<PanelPadd, InfoOwnerPadd> running;
+  auto &panel = running.padd<PanelPadd>();
+  EXPECT_TRUE(panel.change("InfoOwner", "Log", Controls::Info("somewhere else")));
+  ASSERT_TRUE(running.settles());
+  ASSERT_EQ(panel.snapshots().size(), 1u);
+  EXPECT_EQ(logIn(panel.snapshots().back()), "fat:/data/app/logs/app.log");
+
+  running.padd<InfoOwnerPadd>().moveLog("fat:/data/app/logs/app.1.log");
+  ASSERT_TRUE(running.settles());
+  ASSERT_EQ(panel.snapshots().size(), 2u);
+  EXPECT_EQ(logIn(panel.snapshots().back()), "fat:/data/app/logs/app.1.log");
+}

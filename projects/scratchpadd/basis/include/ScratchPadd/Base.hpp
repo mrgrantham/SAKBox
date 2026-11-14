@@ -73,7 +73,7 @@ public:
       const auto existing = controlMap_.find(change.controlName);
       const std::optional<ControlTypeVariant> previous =
           existing == controlMap_.end() ? std::nullopt : std::optional(existing->second);
-      if (updateControl(change) && previous) {
+      if (updateControl(change, /*byOwner=*/false) && previous) {
         controlChanged(change.controlName, *previous);
       }
       sendControlsSnapshot();
@@ -339,11 +339,19 @@ protected:
   // be one of its allowed values, and the type must match. Only the value is
   // copied, so a change can't alter a control's range. Returns true if the
   // change was applied.
-  bool updateControl(const ScratchPadd::MessageType::ControlChange &controlChange) {
+  // `byOwner` is false for a change sent from a panel, which can't change
+  // an Info control (only its padd writes it).
+  bool updateControl(const ScratchPadd::MessageType::ControlChange &controlChange,
+                     bool byOwner = true) {
     assertOnPaddThread("updateControl");
     auto control = controlMap_.find(controlChange.controlName);
     if (control == controlMap_.end()) {
       logger().error("No control named {}", controlChange.controlName);
+      return false;
+    }
+    if (!byOwner && std::holds_alternative<ControlType::Info>(control->second)) {
+      logger().warn("In {}, {} is information, not to be changed from a panel", name_,
+                    controlChange.controlName);
       return false;
     }
     if (!VariantsHoldSameType(controlChange.controlTypeValue, control->second)) {
@@ -378,6 +386,10 @@ protected:
             },
             [&](ControlType::Boolean &current) {
               current.value = std::get<ControlType::Boolean>(incoming).value;
+              return true;
+            },
+            [&](ControlType::Info &current) {
+              current.value = std::get<ControlType::Info>(incoming).value;
               return true;
             },
             [&](ControlType::String &current) {

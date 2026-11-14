@@ -57,6 +57,10 @@ void ControlPanel::draw() {
               return ImGui::InputInt(label, &value.value);
             },
             [&](Controls::Boolean &value) { return ImGui::Checkbox(label, &value.value); },
+            [&](Controls::Info &value) {
+              ImGui::LabelText(label, "%s", value.value.c_str()); // shown, not edited
+              return false;
+            },
             [&](Controls::String &value) {
               if (!value.enforcableRange) {
                 return ImGui::InputText(label, &value.value); // grows as needed
