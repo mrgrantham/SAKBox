@@ -372,7 +372,7 @@ TEST(ControlTabsTest, RowsSayWhetherTheyCanBeChanged) {
 }
 
 // Information in lines of tab-separated columns is a table: the name on its
-// row, then each line below, the columns lined up
+// row, then the table below, ruled, its first line the header
 TEST(ControlTabsTest, InformationInColumnsIsATable) {
   ControlTabs tabs({}, 32, 24);
   tabs.show(snapshotOf("About", {{"Padds", ControlType::Info("Padd\tRuns\nGamePadd\tOnMainThread\n"
@@ -380,7 +380,21 @@ TEST(ControlTabsTest, InformationInColumnsIsATable) {
             PaddAddress{});
   auto text = [&](int row) { return tabs.lines()[static_cast<size_t>(row)][0].text; };
   EXPECT_EQ(text(2), "> Padds");
-  EXPECT_EQ(text(3), "    Padd        Runs");
-  EXPECT_EQ(text(4), "    GamePadd    OnMainThread");
-  EXPECT_EQ(text(5), "    RagdollPadd Steadily");
+  EXPECT_EQ(text(3), "    Padd        | Runs");
+  EXPECT_EQ(text(4), "    ------------+-------------");
+  EXPECT_EQ(text(5), "    GamePadd    | OnMainThread");
+  EXPECT_EQ(text(6), "    RagdollPadd | Steadily");
+}
+
+// A table too wide to rule in the panel's width has its columns lined up
+// with a space between instead
+TEST(ControlTabsTest, ATableTooWideToRuleIsSpaced) {
+  ControlTabs tabs({}, 32, 24); // 28 columns for a table, after its indent
+  tabs.show(snapshotOf("About", {{"Wide", ControlType::Info("Name\tLonger heading here\n"
+                                                            "SomePaddName\tvalue")}}),
+            PaddAddress{});
+  auto text = [&](int row) { return tabs.lines()[static_cast<size_t>(row)][0].text; };
+  EXPECT_EQ(text(3), "    Name         Longer heading ");
+  EXPECT_EQ(text(4), "    here"); // (wrapped: it didn't fit even so)
+  EXPECT_EQ(text(5), "    SomePaddName value");
 }

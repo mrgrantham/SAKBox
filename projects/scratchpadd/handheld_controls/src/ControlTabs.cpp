@@ -279,9 +279,14 @@ Line ControlTabs::tabRow() const {
 
 namespace {
 
-// Information's lines, a table's columns lined up (each as wide as its
-// widest cell, a space between)
-std::vector<std::string> informationLines(const std::string &text) {
+// Information's lines. Lines of tab-separated columns are a table, the
+// first line its header: ruled, as text allows,
+//   Padd        | Runs
+//   ------------+-------------
+//   RagdollPadd | Steadily
+// or, too wide for `width` that way, its columns lined up with a space
+// between
+std::vector<std::string> informationLines(const std::string &text, std::size_t width) {
   std::vector<std::vector<std::string>> rows;
   std::size_t start = 0;
   while (start <= text.size()) {
@@ -297,21 +302,38 @@ std::vector<std::string> informationLines(const std::string &text) {
     rows.push_back(std::move(cells));
     start = end + 1;
   }
-  std::vector<std::size_t> widths;
+  std::size_t columns = 0;
   for (const auto &cells : rows)
-    for (std::size_t c = 0; c + 1 < cells.size(); ++c) {
-      widths.resize(std::max(widths.size(), c + 1));
+    columns = std::max(columns, cells.size());
+  std::vector<std::size_t> widths(columns, 0);
+  for (const auto &cells : rows)
+    for (std::size_t c = 0; c < cells.size(); ++c)
       widths[c] = std::max(widths[c], cells[c].size());
-    }
+  std::size_t ruledWidth = 0;
+  for (const std::size_t w : widths)
+    ruledWidth += w;
+  ruledWidth += columns > 0 ? 3 * (columns - 1) : 0; // " | " between
+  const bool ruled = columns > 1 && rows.size() > 1 && ruledWidth <= width;
+
   std::vector<std::string> lines;
-  for (const auto &cells : rows) {
+  for (std::size_t r = 0; r < rows.size(); ++r) {
+    const auto &cells = rows[r];
     std::string line;
     for (std::size_t c = 0; c < cells.size(); ++c) {
       line += cells[c];
-      if (c + 1 < cells.size())
-        line.append(widths[c] - cells[c].size() + 1, ' ');
+      if (c + 1 < cells.size()) {
+        line.append(widths[c] - cells[c].size(), ' ');
+        line += ruled ? " | " : " ";
+      }
     }
     lines.push_back(std::move(line));
+    if (ruled && r == 0) { // the rule under the header
+      std::string rule;
+      for (std::size_t c = 0; c < columns; ++c)
+        rule += std::string(widths[c] + (c == 0 ? 1 : 2), '-') + (c + 1 < columns ? "+" : "");
+      rule.pop_back(); // (the last column's rule one short: no trailing space to match)
+      lines.push_back(std::move(rule));
+    }
   }
   return lines;
 }
@@ -331,7 +353,7 @@ std::vector<ControlTabs::ListRow> ControlTabs::listRows(const Tab &tab) const {
         (kMarker + name.size() + 1 + value.size() > width ||
          value.find('\n') != std::string::npos)) {
       rows.push_back({index, true, name.substr(0, width - kMarker), Shows::Information});
-      for (const std::string &line : informationLines(value)) {
+      for (const std::string &line : informationLines(value, width - kIndent)) {
         if (line.empty())
           rows.push_back({index, false, "", Shows::Information});
         for (std::size_t at = 0; at < line.size(); at += width - kIndent)
