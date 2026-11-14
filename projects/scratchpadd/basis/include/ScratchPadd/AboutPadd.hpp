@@ -28,14 +28,15 @@ public:
             {"Build", ControlType::Info(app.build)},
             {"Platform", ControlType::Info(app.platform)}};
   }
-  // The padds, once they're all set up, in a table:
+  // The padds, once they're all set up, in a table, "Running padds" (last
+  // on the tab, its rows in the order the system lists them):
   //   Padd         Runs
   //   RagdollPadd  Steadily
   void starting() override {
     std::string table = "Padd\tRuns";
     for (const PaddAddress &padd : system_->padds())
       table += "\n" + padd.name() + "\t" + nameOf(padd.howItRuns());
-    addControl("Padds", ControlType::Info(std::move(table)));
+    addControl("Running padds", ControlType::Info(std::move(table)));
   }
 };
 

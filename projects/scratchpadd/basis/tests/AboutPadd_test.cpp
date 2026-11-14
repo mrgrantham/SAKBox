@@ -33,7 +33,7 @@ TEST(AboutPaddTest, ShowsTheAppAndHowEachPaddRuns) {
   EXPECT_EQ(info("App name"), "AboutPadd_test");
   EXPECT_EQ(info("App"), "AboutPadd_test"); // (no title given: the name)
   EXPECT_FALSE(info("Platform").empty());
-  EXPECT_EQ(info("Padds"), "Padd\tRuns\nAbout\tOnMainThread\nWorker\tWhenIdle");
+  EXPECT_EQ(info("Running padds"), "Padd\tRuns\nAbout\tOnMainThread\nWorker\tWhenIdle");
   EXPECT_EQ(system.padds().size(), 2u);
   system.stop();
   running.join();
