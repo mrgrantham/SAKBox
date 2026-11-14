@@ -29,8 +29,13 @@ public:
   Runs runs() override { return Runs::OnMainThread; }
   ControlValueMap generateControls() override { return {}; }
   std::optional<std::chrono::duration<double>> repeatInterval() override { return kReadEvery; }
+  // (The first read isn't timed against: the main thread's other padds
+  // start between it and the next, a DS app's screens taking a second)
   void starting() override { read(); }
-  void repeat() override { read(); }
+  void repeat() override {
+    noteGap();
+    read();
+  }
 
 protected:
   // The reader, to change its key map or dead zone in a padd made from this
@@ -56,7 +61,6 @@ private:
   static constexpr auto kLateReport = std::chrono::seconds(10);
 
   void read() {
-    noteGap();
     const State<Keyboard> keyboard = currentState<Keyboard>();
     publishState(reader_.read(keyboard.version ? &keyboard.value : nullptr));
   }
@@ -69,7 +73,8 @@ private:
       longestGap_ = std::max(longestGap_, now - lastRead_);
     }
     lastRead_ = now;
-    if (longestGap_ > kLateGap && now - lastReport_ > kLateReport) {
+    if (longestGap_ > kLateGap && (!reported_ || now - lastReport_ > kLateReport)) {
+      reported_ = true;
       logger().warn("Reads were up to {:.0f} ms apart (asked for every {:.0f} ms)",
                     std::chrono::duration<double, std::milli>(longestGap_).count(),
                     std::chrono::duration<double, std::milli>(kReadEvery).count());
@@ -80,6 +85,7 @@ private:
 
   Reader reader_;
   Clock::time_point lastRead_{}, lastReport_{};
+  bool reported_ = false; // (a DS's clock starts at 0: lastReport_ can't stand for "never")
   Clock::duration longestGap_{};
 };
 
