@@ -68,16 +68,6 @@ void drawTable(const char *name, const std::string &text) {
 } // namespace
 
 void ControlPanel::draw() {
-  if (placement_) {
-    // Keep a 10 px margin from the window edge the panel is placed against
-    const ImVec2 display = ImGui::GetIO().DisplaySize;
-    const ImVec2 position(10 + placement_->x * (display.x - 20),
-                          10 + placement_->y * (display.y - 20));
-    ImGui::SetNextWindowPos(position, ImGuiCond_FirstUseEver, *placement_);
-  }
-  // Sized to fit its controls, so labels aren't cut off and nothing scrolls
-  Theme::beginWindow(controls_.paddName.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-
   // Not `using namespace`: macOS headers define their own Boolean type
   namespace Controls = ScratchPadd::ControlType;
   for (const std::string &controlName : names_) {
@@ -141,39 +131,68 @@ void ControlPanel::draw() {
           MessageType::ControlChange{.controlName = controlName, .controlTypeValue = control});
     }
   }
-  ImGui::End();
 }
 
-ControlPanels::ControlPanels(Send send, Placement placement)
-    : send_(std::move(send)), placement_(std::move(placement)) {}
+ControlPanels::ControlPanels(Send send, ImVec2 placement)
+    : send_(std::move(send)), placement_(placement) {}
 
 void ControlPanels::show(const MessageType::ControlSnapshot &snapshot, PaddAddress owner) {
-  auto existing = panels_.find(snapshot.paddName);
+  auto existing = std::ranges::find_if(
+      tabs_, [&](const Tab &tab) { return tab.paddName == snapshot.paddName; });
   if (snapshot.controlMap.empty()) {
-    if (existing != panels_.end())
-      panels_.erase(existing);
+    if (existing != tabs_.end())
+      tabs_.erase(existing);
     return;
   }
-  if (existing != panels_.end()) {
-    existing->second->setControls(snapshot);
+  if (existing != tabs_.end()) {
+    existing->panel->setControls(snapshot);
     return;
   }
   auto panel = std::make_unique<ControlPanel>();
   panel->setControls(snapshot);
   panel->setOnChange(
       [this, owner](const MessageType::ControlChange &change) { send_(owner, change); });
-  panel->setInitialPlacement(placement_(snapshot.paddName, opened_++));
-  panels_[snapshot.paddName] = std::move(panel);
+  tabs_.push_back({snapshot.paddName, std::move(panel)});
 }
 
 void ControlPanels::draw() {
-  for (auto &[name, panel] : panels_)
-    panel->draw();
+  if (tabs_.empty())
+    return;
+  // Kept a 10 px margin from the display's edge it's placed against
+  const ImVec2 display = ImGui::GetIO().DisplaySize;
+  ImGui::SetNextWindowPos(
+      ImVec2(10 + placement_.x * (display.x - 20), 10 + placement_.y * (display.y - 20)),
+      ImGuiCond_FirstUseEver, placement_);
+  // Sized to fit the chosen tab's controls, so labels aren't cut off and
+  // nothing scrolls
+  const bool shown = Theme::beginWindow("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+  if (shown && ImGui::BeginTabBar("padds", ImGuiTabBarFlags_Reorderable |
+                                               ImGuiTabBarFlags_FittingPolicyScroll)) {
+    for (Tab &tab : tabs_) {
+      // (the label shown, the padd's whole name its ID)
+      const std::string label = tabLabel(tab.paddName) + "###" + tab.paddName;
+      if (ImGui::BeginTabItem(label.c_str())) {
+        tab.panel->draw();
+        ImGui::EndTabItem();
+      }
+    }
+    ImGui::EndTabBar();
+  }
+  ImGui::End();
 }
 
-ImVec2 ControlPanels::alongTheBottom(const std::string &, std::size_t index) {
-  constexpr ImVec2 kSpots[] = {{0.0f, 1.0f}, {0.5f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}};
-  return kSpots[index % std::size(kSpots)];
+std::vector<std::string> ControlPanels::tabNames() const {
+  std::vector<std::string> names;
+  names.reserve(tabs_.size());
+  for (const Tab &tab : tabs_)
+    names.push_back(tab.paddName);
+  return names;
+}
+
+std::string ControlPanels::tabLabel(const std::string &paddName) {
+  if (paddName.size() > 4 && paddName.ends_with("Padd"))
+    return paddName.substr(0, paddName.size() - 4);
+  return paddName;
 }
 
 } // namespace ScratchPadd::DebugUi

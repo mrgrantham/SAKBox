@@ -62,11 +62,9 @@ RagdollWindowPadd::RagdollWindowPadd(ScratchPadd::System *system)
       panels_(
           [this](ScratchPadd::PaddAddress owner,
                  const ScratchPadd::MessageType::ControlChange &change) { sendTo(owner, change); },
-          // Down the right side: the physics, then this window's own, then
-          // the rest (AudioPadd's volumes)
-          [this](const std::string &padd, std::size_t) {
-            return ImVec2(1, padd == "RagdollPhysics" ? 0.0f : padd == name() ? 0.45f : 0.7f);
-          }) {
+          // The controls at the top right (the physics', this window's and
+          // AudioPadd's, as tabs)
+          ImVec2(1, 0)) {
   receive<RagdollSnapshot>([this](const RagdollSnapshot &snapshot) {
     // Draw a tick and a step behind the physics, so there's a snapshot on
     // each side to blend between

@@ -117,12 +117,9 @@ FlightDisplayPadd::FlightDisplayPadd(ScratchPadd::System *system)
       panels_(
           [this](ScratchPadd::PaddAddress owner,
                  const ScratchPadd::MessageType::ControlChange &change) { sendTo(owner, change); },
-          // The precision lab top-right, clear of the HUD at top-left; any
-          // other padd's panel (AudioPadd's volumes) bottom-right, clear of
-          // the lab
-          [](const std::string &padd, std::size_t) {
-            return padd == "FlightSim" ? ImVec2(1, 0) : ImVec2(1, 1);
-          }) {
+          // The controls (the precision lab, AudioPadd's volumes, as tabs)
+          // top-right, clear of the HUD at top-left
+          ImVec2(1, 0)) {
   receive<WorldSnapshot>([this](const WorldSnapshot &world) { drawFrame(world); });
   receive<ScratchPadd::MessageType::ControlSnapshot>(
       [this](const ScratchPadd::MessageType::ControlSnapshot &snapshot,
