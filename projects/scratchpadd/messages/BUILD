@@ -24,6 +24,16 @@ cc_test(
 )
 
 cc_test(
+    name = "ControlsText_test",
+    size = "small",
+    srcs = ["tests/ControlsText_test.cpp"],
+    deps = [
+        ":messages",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
   name = "Messages_test",
   size = "small",
   srcs = ["tests/Messages_test.cpp"],
