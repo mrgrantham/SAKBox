@@ -34,8 +34,11 @@ public:
   };
   // How long an outgoing connection waits before trying again
   static constexpr std::chrono::seconds kRetry{2};
+  // How often it looks for work without a wake socket to be woken by
+  static constexpr std::chrono::milliseconds kWithoutWaker{50};
 
-  Loop();
+  // `wakeSocket` false: none, as where one can't be made (tests)
+  explicit Loop(bool wakeSocket = true);
   ~Loop(); // stop()
   Loop(const Loop &) = delete;
   Loop &operator=(const Loop &) = delete;
@@ -53,6 +56,9 @@ public:
   void detach(Service *service);
 
   std::vector<ServiceState> states() const;
+  // Why it has no wake socket ("" if it has one): then it looks for work
+  // every kWithoutWaker instead of being woken
+  const std::string &wakerProblem() const { return wakerProblem_; }
 
 private:
   struct Attached;
@@ -64,7 +70,9 @@ private:
   void connected(Attached &attached, Socket socket);
   void letGo(Attached &attached);
 
+  bool wakeSocket_;
   Socket waker_;
+  std::string wakerProblem_;
   std::thread thread_;
   std::atomic<bool> stopping_{false};
   std::uint32_t nextConnection_ = 1;

@@ -146,3 +146,24 @@ TEST(LoopTest, LinesBothWaysAndAConnectionWaitingForItsListener) {
   EXPECT_EQ(atServer, (std::vector<std::string>{"hello", "two\\tparts"}));
   EXPECT_EQ(atClient, (std::vector<std::string>{"echo hello", "echo two\\tparts"}));
 }
+
+// Without a wake socket (a device where one can't be made), the loop still
+// serves: it looks for work every kWithoutWaker instead of being woken
+TEST(LoopTest, StreamsWithoutAWakeSocket) {
+  Text log;
+  log.append("one\n");
+  Network::StreamService stream("log", 0, [&](std::uint64_t &p) { return log.from(p); });
+  Network::Loop loop(/*wakeSocket=*/false);
+  std::string error;
+  ASSERT_TRUE(loop.start(error)) << error;
+  EXPECT_FALSE(loop.wakerProblem().empty());
+  loop.attach(&stream);
+  const std::uint16_t port = portOf(loop, "log");
+  ASSERT_NE(port, 0);
+  Network::Socket reader = Network::Socket::connectTcp("127.0.0.1", port, error);
+  ASSERT_TRUE(reader.valid()) << error;
+  EXPECT_EQ(readFor(reader, 300ms), "one\n");
+  log.append("two\n");
+  stream.wake(); // (nothing to poke: found on the next look)
+  EXPECT_EQ(readFor(reader, 300ms), "two\n");
+}

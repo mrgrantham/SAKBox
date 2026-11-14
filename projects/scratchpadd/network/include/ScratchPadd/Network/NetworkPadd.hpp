@@ -42,6 +42,11 @@ public:
       return;
     }
     setControl(kAddress, ControlType::Info(deviceAddress()));
+    if (!loop_.wakerProblem().empty()) {
+      addControl(kWaking, ControlType::Info("every 50 ms (" + loop_.wakerProblem() + ")"));
+      logger().warn("The network loop has no wake socket ({}): it looks for work every 50 ms",
+                    loop_.wakerProblem());
+    }
     // (on the registering thread: the loop takes it from there; a removed
     // one is let go of before remove() returns)
     services().listen([this](Service *added, Service *removed) {
@@ -75,6 +80,7 @@ public:
 
 private:
   static constexpr const char *kAddress = "Address";
+  static constexpr const char *kWaking = "Woken"; // (shown only without a wake socket)
   Loop loop_;
 };
 

@@ -62,9 +62,12 @@ public:
   // A started connection that's become writable: whether it was made, or
   // `error` why not
   bool finishConnecting(std::string &error) const;
-  // A UDP socket on 127.0.0.1, any free port: something to poke a poll()
-  // with (Waker)
-  static Socket loopbackUdp(std::string &error);
+  // A UDP socket this device can send to itself, to wake a poll() with
+  // (poke()): on 127.0.0.1 where there's a loopback, any free port; on a
+  // 3DS, which has none (binding 127.0.0.1 is "Invalid argument" there), on
+  // its own address, the first free port from kWakePorts
+  static Socket wakeUdp(std::string &error);
+  static constexpr std::uint16_t kWakePorts = 5100; // (to 5199)
 
   bool valid() const { return handle_ != kNone; }
   Handle handle() const { return handle_; }
@@ -81,7 +84,7 @@ public:
   // (wouldBlock() says which)
   long receive(std::span<char> into) const;
   static bool wouldBlock();
-  // Sends to its own port (a loopback UDP socket's poke)
+  // Sends a byte to its own port (a wake socket's poke)
   void poke() const;
   // Doesn't wait: send and receive return at once
   void setNonBlocking() const;

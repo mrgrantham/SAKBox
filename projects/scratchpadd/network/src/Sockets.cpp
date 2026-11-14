@@ -234,14 +234,29 @@ bool Socket::finishConnecting(std::string &error) const {
   return failure == 0;
 }
 
-Socket Socket::loopbackUdp(std::string &error) {
+Socket Socket::wakeUdp(std::string &error) {
   if (!start(error))
     return {};
   Socket socket(static_cast<Handle>(::socket(AF_INET, SOCK_DGRAM, 0)));
+  if (!socket.valid()) {
+    error = "no wake socket: " + describeError(lastError());
+    return {};
+  }
+#if defined(__3DS__)
+  // Its own address (it has no loopback), and a port of its own choosing
+  // (it may not pick one)
+  bool bound = false;
+  for (std::uint16_t port = kWakePorts; port < kWakePorts + 100 && !bound; ++port) {
+    sockaddr_in at = addressOf(INADDR_ANY, port);
+    bound = ::bind(native(socket.handle_), reinterpret_cast<sockaddr *>(&at), sizeof at) == 0;
+  }
+#else
   sockaddr_in at = addressOf(INADDR_LOOPBACK, 0);
-  if (!socket.valid() ||
-      ::bind(native(socket.handle_), reinterpret_cast<sockaddr *>(&at), sizeof at) != 0) {
-    error = "no loopback socket: " + describeError(lastError());
+  const bool bound =
+      ::bind(native(socket.handle_), reinterpret_cast<sockaddr *>(&at), sizeof at) == 0;
+#endif
+  if (!bound) {
+    error = "no wake socket: " + describeError(lastError());
     return {};
   }
   socket.setNonBlocking();
@@ -293,7 +308,12 @@ bool Socket::wouldBlock() {
 }
 
 void Socket::poke() const {
+#if defined(__3DS__)
+  sockaddr_in at = addressOf(0, port());
+  at.sin_addr.s_addr = static_cast<in_addr_t>(gethostid()); // (its own, in network order)
+#else
   sockaddr_in at = addressOf(INADDR_LOOPBACK, port());
+#endif
   const char byte = 1;
   ::sendto(native(handle_), &byte, 1, 0, reinterpret_cast<sockaddr *>(&at), sizeof at);
 }

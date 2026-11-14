@@ -27,7 +27,7 @@ It's built in layers, so the uses still to come fit (see the [roadmap](#roadmap)
 2. **The loop** (`Loop`): one thread waiting (`poll`, or `WSAPoll` on Windows) on:
    - each service's listening socket or outgoing connection;
    - every connection;
-   - a **wake socket**, a loopback UDP socket a service pokes from any other thread when it has something new to send.
+   - a **wake socket**, a UDP socket a service pokes from any other thread when it has something new to send. It's on 127.0.0.1 where there's a loopback. A real 3DS has none (binding 127.0.0.1 there is "Invalid argument", which Azahar, on the Mac's network, didn't show), so on a 3DS it's on the device's own address, on the first free port from 5100. Where none can be made at all, the loop still runs, looking for work every 50 ms instead of being woken, and NetworkPadd's tab says so ("Woken: every 50 ms").
 
    Waking that way, the loop never polls on a timer for work. It still wakes once a second, to retry outgoing connections and update its figures. An outgoing connection is started without waiting and waited for with the other sockets, so the loop never stalls on one. Windows takes 2 s to give up on a refused connection, and an unreachable address takes longer anywhere. One that fails (the other side isn't there yet) is tried again 2 s after it fails. `detach()` returns once the loop has let go of a service, so the service can then be destroyed. The loop is plain C++, tested without padds.
 3. **Services** (`Service.hpp`) are what an app does over the network. Each says where it listens or connects (`endpoint()`) and reacts on the loop's thread:

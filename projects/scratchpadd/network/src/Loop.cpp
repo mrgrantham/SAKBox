@@ -27,15 +27,22 @@ struct Loop::Attached {
   bool listens() const { return endpoint.host.empty(); }
 };
 
-Loop::Loop() = default;
+Loop::Loop(bool wakeSocket) : wakeSocket_(wakeSocket) {}
 Loop::~Loop() { stop(); }
 
 bool Loop::start(std::string &error) {
   if (running())
     return true;
-  waker_ = Socket::loopbackUdp(error);
-  if (!waker_.valid())
+  if (!Network::start(error))
     return false;
+  // (without a wake socket it still runs, looking for work every
+  // kWithoutWaker instead of being woken)
+  std::string why;
+  if (wakeSocket_)
+    waker_ = Socket::wakeUdp(why);
+  else
+    why = "none asked for";
+  wakerProblem_ = waker_.valid() ? "" : why;
   stopping_ = false;
   thread_ = std::thread([this] { run(); });
   return true;
@@ -176,8 +183,13 @@ void Loop::run() {
 
     // Every socket: the waker first, then each service's listening socket
     // and connections
-    std::vector<Socket::Handle> sockets{waker_.handle()};
-    std::vector<bool> wantWrite{false};
+    // (the waker first, if there is one)
+    std::vector<Socket::Handle> sockets;
+    std::vector<bool> wantWrite;
+    if (waker_.valid()) {
+      sockets.push_back(waker_.handle());
+      wantWrite.push_back(false);
+    }
     for (auto &attached : attached_) {
       if (attached->listening.valid()) {
         sockets.push_back(attached->listening.handle());
@@ -193,15 +205,20 @@ void Loop::run() {
       }
     }
     std::vector<bool> readable, writable;
-    // (a second at most: outgoing connections are retried, and the states
-    // kept up to date)
-    if (!waitForAny(sockets, wantWrite, 1000, readable, writable))
+    // A second at most (outgoing connections are retried, and the states
+    // kept up to date); without a waker, kWithoutWaker, to see new work
+    const int wait = waker_.valid() ? 1000 : static_cast<int>(kWithoutWaker.count());
+    if (sockets.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(wait)); // (WSAPoll takes no empty list)
       continue;
-    if (readable[0])
+    }
+    if (!waitForAny(sockets, wantWrite, wait, readable, writable))
+      continue;
+    std::size_t at = 0;
+    if (waker_.valid() && readable[at++])
       while (waker_.receive(chunk) > 0) {
       } // (the pokes drained)
 
-    std::size_t at = 1;
     for (auto &attached : attached_) {
       Service &service = *attached->service;
       // (those accepted below weren't polled: they're read from next pass)
@@ -303,7 +320,7 @@ void Loop::run() {
 
 namespace ScratchPadd::Network {
 struct Loop::Attached {};
-Loop::Loop() = default;
+Loop::Loop(bool wakeSocket) : wakeSocket_(wakeSocket) {}
 Loop::~Loop() = default;
 bool Loop::start(std::string &error) {
   error = "no network on a DS";
