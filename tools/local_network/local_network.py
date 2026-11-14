@@ -44,10 +44,14 @@ class SocketConnection:
         return data or None
 
     def send_and_wait(self, data):
-        """Sends `data`, then waits until the other end closes."""
+        """Sends `data`, then waits until the other end closes, or resets the
+        connection: FBI resets it when it has finished installing."""
         self.socket.sendall(data)
         self.socket.settimeout(None)
-        while self.socket.recv(64):
+        try:
+            while self.socket.recv(64):
+                pass
+        except ConnectionResetError:
             pass
 
     def close(self):
