@@ -5,7 +5,7 @@
 //   3DS       sdmc:/3ds/<app>/                       logs: sdmc:/3ds/<app>/logs/
 //   macOS     ~/Library/Application Support/<app>/   logs: ~/Library/Logs/<app>/
 //   Linux     $XDG_DATA_HOME/<app>/ (~/.local/share)  logs: $XDG_STATE_HOME/<app>/ (~/.local/state)
-//   Windows   %LOCALAPPDATA%\<app>\                  logs: %LOCALAPPDATA%\<app>\logs\
+//   Windows   %LOCALAPPDATA%\<app>\                  logs: %LOCALAPPDATA%\<app>\logs
 //
 // Paths end in a separator. Nothing is made until it's used (makeFolder);
 // on a DS, ready() starts the card first.

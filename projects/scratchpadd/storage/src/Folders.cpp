@@ -33,9 +33,10 @@ std::string environmentOr(const char *name, const std::string &fallback) {
 }
 #endif
 
-std::string slashed(std::string path) {
+// `path` ending in a separator: `separator` if it has none
+std::string slashed(std::string path, char separator = '/') {
   if (!path.empty() && path.back() != '/' && path.back() != '\\')
-    path += '/';
+    path += separator;
   return path;
 }
 
@@ -52,7 +53,7 @@ Folders Folders::forApp(const AppInfo &app) {
   return {.files = home + "/Library/Application Support/" + name + "/",
           .logs = home + "/Library/Logs/" + name + "/"};
 #elif defined(_WIN32)
-  const std::string local = slashed(environmentOr("LOCALAPPDATA", "\\AppData\\Local"));
+  const std::string local = slashed(environmentOr("LOCALAPPDATA", "\\AppData\\Local"), '\\');
   return {.files = local + name + "\\", .logs = local + name + "\\logs\\"};
 #else
   return {.files = slashed(environmentOr("XDG_DATA_HOME", "/.local/share")) + name + "/",
