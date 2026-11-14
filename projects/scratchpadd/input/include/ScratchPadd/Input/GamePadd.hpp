@@ -44,8 +44,15 @@ private:
 #endif
   using Clock = std::chrono::steady_clock;
   // Reads further apart than this are logged (at most once per kLateReport):
-  // three frames, when the main thread was kept from reading by other work
+  // three frames, when the main thread was kept from reading by other work.
+  // On a DS, three frames at 30 a second (an app drawing every other
+  // refresh, as the Cyclone ragdoll does, reads once a frame, 33 to 50 ms
+  // apart)
+#if defined(__NDS__)
+  static constexpr auto kLateGap = std::chrono::milliseconds(100);
+#else
   static constexpr auto kLateGap = std::chrono::milliseconds(50);
+#endif
   static constexpr auto kLateReport = std::chrono::seconds(10);
 
   void read() {
