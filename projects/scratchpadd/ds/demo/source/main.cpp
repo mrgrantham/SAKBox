@@ -19,12 +19,13 @@
 
 #include <AudioPadd.hpp>
 #include <HandheldDemo.hpp>
+#include <ScratchPadd/AboutPadd.hpp>
 #include <ScratchPadd/AppEnded/AppEnded.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
-#include <ScratchPadd/DebugLog/WriterPadd.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Storage/StoragePadd.hpp>
 
 #include <spdlog/spdlog.h>
 
@@ -185,17 +186,18 @@ int main() {
   // and the log says why.
   fileSystem = nitroFSInit(nullptr);
 #if defined(SAKBOX_DEBUG)
-  // A debug build's log, on the flashcart's SD card (fat:/logs/...)
-  ScratchPadd::DebugLog::Session log("scratchpadd-ds-demo");
+  // A debug build's log, on the flashcart's SD card (fat:/data/scratchpadd-ds-demo/logs/)
+  ScratchPadd::DebugLog::Session log;
   logWhere = log.where();
 #endif
   {
-    ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, SoundBoardPadd,
-                                      AudioPadd, ScratchPadd::DebugLog::WriterPadd>
-        system; // (WriterPadd: a debug build's log, written to the card when idle)
+    ScratchPadd::SystemImplementation<ScratchPadd::AboutPadd, ScratchPadd::Input::GamePadd,
+                                      ScreenPadd, SoundBoardPadd, AudioPadd,
+                                      ScratchPadd::Storage::StoragePadd>
+        system; // (StoragePadd: a debug build's log, written to the card when idle)
     system.instantiate();
     system.start(); // returns when ScreenPadd stops it (START)
   }
-  ScratchPadd::AppEnded::show("ScratchPadd demo");
+  ScratchPadd::AppEnded::show(); // ("<its title> has ended.")
   return 0;
 }

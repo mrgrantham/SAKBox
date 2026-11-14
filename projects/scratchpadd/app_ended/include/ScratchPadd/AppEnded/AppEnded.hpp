@@ -3,8 +3,10 @@
 // AppEnded.hpp - what a handheld app does once it has ended: at the end of
 // main, after its padds have stopped,
 //
-//   ScratchPadd::AppEnded::show("Cyclone ragdoll");          // "... has ended."
-//   ScratchPadd::AppEnded::show("Cyclone ragdoll", "Saved."); // its own words
+//   ScratchPadd::AppEnded::show();         // "Cyclone ragdoll has ended."
+//   ScratchPadd::AppEnded::show("Saved."); // its own words
+//
+// The title is the app's (AppInfo: its Makefile's title, given by its build).
 //
 // - DS: both screens cleared, the title and the message on the top one, and
 //   what a button does on the bottom; it waits for a button (START, which
@@ -18,6 +20,7 @@
 // A debug build's log (DebugLog::Session) says which way a DS goes.
 
 #include <ScratchPadd/AppEnded/EndedText.hpp>
+#include <ScratchPadd/AppInfo.hpp>
 
 #include <string_view>
 
@@ -31,8 +34,8 @@
 namespace ScratchPadd::AppEnded {
 
 #if defined(__NDS__)
-inline void show(std::string_view title, std::string_view message = {},
-                 Leaving wanted = Leaving::SwitchOff) {
+inline void show(std::string_view message = {}, Leaving wanted = Leaving::SwitchOff) {
+  const std::string &title = AppInfo::current().title;
   constexpr int kColumns = 32, kRows = 24;
   const bool canGoBack = pmHasResetJumpTarget();
   const Leaving leaving =
@@ -85,7 +88,7 @@ inline void show(std::string_view title, std::string_view message = {},
     pmClearResetJumpTarget();
 }
 #else
-inline void show(std::string_view, std::string_view = {}, Leaving = Leaving::SwitchOff) {}
+inline void show(std::string_view = {}, Leaving = Leaving::SwitchOff) {}
 #endif
 
 } // namespace ScratchPadd::AppEnded

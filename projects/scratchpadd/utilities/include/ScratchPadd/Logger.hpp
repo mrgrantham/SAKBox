@@ -38,6 +38,10 @@ public:
   // of it (`terminal` false: on a console, whose screens are the app's).
   // Loggers made before are changed too. DebugLog::Session calls it.
   static void routeTo(std::vector<spdlog::sink_ptr> sinks, bool terminal);
+  // The lowest level the terminal shows, of what the loggers pass (their
+  // level, spdlog::set_level): an app can log info to a file and show only
+  // warnings in its terminal. All of it until set.
+  static void setTerminalLevel(spdlog::level::level_enum level);
   spdlog::logger &logger() const {
     assert(logger_);
     return *logger_;

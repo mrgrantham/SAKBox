@@ -24,6 +24,8 @@ cc_binary(
         "@fluidr3_mono_soundfont_license//file",
     ],
     deps = [
+        "//projects/scratchpadd/debug_log",
+        "//projects/scratchpadd/storage:storage_padd",
         "//projects/scratchpadd/basis:basis",
         "@backward",
         "//projects/scratchpadd/debug_ui",

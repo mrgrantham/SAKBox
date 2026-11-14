@@ -29,7 +29,9 @@
 
 #include <AudioPadd.hpp>
 
+#include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Storage/StoragePadd.hpp>
 
 #include <spdlog/spdlog.h>
 
@@ -42,12 +44,13 @@ int main(int argc, char **argv) {
       FlightOptions::autopilot = true;
     }
   }
-  spdlog::set_level(spdlog::level::warn); // keep the terminal for game events
+  // The log in a file; the terminal kept for game events (warnings)
+  ScratchPadd::DebugLog::Session log({.terminalLevel = spdlog::level::warn});
 
   // The simulation is listed before the display so each frame draws the
   // snapshot answering that frame's input (both run on this thread).
   ScratchPadd::SystemImplementation<FlightSimPadd, FlightDisplayPadd, EventLogPadd, FlightSoundPadd,
-                                    AudioPadd>
+                                    AudioPadd, ScratchPadd::Storage::StoragePadd>
       system;
   system.instantiate();
   system.start(); // returns when the window closes

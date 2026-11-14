@@ -15,6 +15,8 @@ cc_binary(
     name = "shader_playground",
         srcs = ["src/main.cpp"],
         deps = [
+        "//projects/scratchpadd/debug_log",
+        "//projects/scratchpadd/storage:storage_padd",
         "//projects/scratchpadd/basis:basis",
         "//projects/data_dep_retriever",
         "//projects/scratchpadd/debug_ui",

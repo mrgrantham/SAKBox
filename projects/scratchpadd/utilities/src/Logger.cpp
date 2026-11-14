@@ -40,6 +40,7 @@ struct Routes {
   std::vector<spdlog::sink_ptr> sinks;
   bool terminal = true;
   spdlog::sink_ptr terminalSink;
+  spdlog::level::level_enum terminalLevel = spdlog::level::trace; // (all the loggers pass)
 };
 Routes &routes() {
   static Routes r;
@@ -54,6 +55,7 @@ std::vector<spdlog::sink_ptr> currentSinks(Routes &r) {
       r.terminalSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
       r.terminalSink->set_formatter(ScratchPadd::Logger::lineFormatter());
     }
+    r.terminalSink->set_level(r.terminalLevel);
     sinks.push_back(r.terminalSink);
   }
   sinks.insert(sinks.end(), r.sinks.begin(), r.sinks.end());
@@ -90,6 +92,14 @@ void ScratchPadd::Logger::routeTo(std::vector<spdlog::sink_ptr> sinks, bool term
   r.terminal = terminal;
   const auto now = currentSinks(r);
   spdlog::apply_all([&](const std::shared_ptr<spdlog::logger> &logger) { logger->sinks() = now; });
+}
+
+void ScratchPadd::Logger::setTerminalLevel(spdlog::level::level_enum level) {
+  Routes &r = routes();
+  std::lock_guard lock(r.mutex);
+  r.terminalLevel = level;
+  if (r.terminalSink)
+    r.terminalSink->set_level(level);
 }
 
 std::shared_ptr<spdlog::logger> ScratchPadd::Logger::GetGlobalLogger() {

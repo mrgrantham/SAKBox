@@ -1,11 +1,11 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
-# A debug build's log off the device (see README.md):
+# An app's log, kept where it can be read afterwards (see README.md):
 # - :log_server, a log kept in memory (LogBuffer) and served over the
 #   network (LogServer), plain C++ for any program;
-# - :debug_log, the Session an app opens: every ScratchPadd logger served
-#   over Wi-Fi from a 3DS (read by tools/console_log), written to the SD card
-#   on a DS, the terminal on desktops.
+# - :debug_log, the Session an app opens: every ScratchPadd logger to a file
+#   in the app's log folder (a Storage source), and besides, served over
+#   Wi-Fi from a 3DS (read by tools/console_log) or the terminal on desktops.
 cc_library(
     name = "log_server",
     srcs = ["src/server/LogBuffer.cpp"] + select({
@@ -22,12 +22,8 @@ cc_library(
 
 cc_library(
     name = "debug_log",
-    srcs = [
-        "src/session/CardLog.cpp",
-        "src/session/Session.cpp",
-    ],
+    srcs = ["src/session/Session.cpp"],
     hdrs = [
-        "include/ScratchPadd/DebugLog/CardLog.hpp",
         "include/ScratchPadd/DebugLog/LogBufferSink.hpp",
         "include/ScratchPadd/DebugLog/Session.hpp",
     ],
@@ -35,40 +31,19 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":log_server",
+        "//projects/scratchpadd/storage",
         "//projects/scratchpadd/utilities",
         "@spdlog",
     ],
 )
 
-# The padd that writes a DS's debug log (CardLog) when nothing else has work
-cc_library(
-    name = "writer_padd",
-    hdrs = ["include/ScratchPadd/DebugLog/WriterPadd.hpp"],
-    strip_include_prefix = "include/",
-    visibility = ["//visibility:public"],
+cc_test(
+    name = "Session_test",
+    size = "small",
+    srcs = ["tests/Session_test.cpp"],
     deps = [
         ":debug_log",
-        "//projects/scratchpadd/basis",
-    ],
-)
-
-cc_test(
-    name = "CardLog_test",
-    size = "small",
-    srcs = ["tests/CardLog_test.cpp"],
-    deps = [
-        ":debug_log",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "WriterPadd_test",
-    size = "small",
-    srcs = ["tests/WriterPadd_test.cpp"],
-    deps = [
-        ":writer_padd",
-        "//projects/scratchpadd/basis",
+        "//projects/scratchpadd/storage",
         "@gtest//:gtest_main",
     ],
 )

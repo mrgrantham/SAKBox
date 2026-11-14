@@ -2,9 +2,11 @@
 // draw it, beside the DS's version of it. The ship's DS version was made by
 // hand in Blender (Ship_DS, a Decimate modifier on a linked duplicate); the
 // rock's was simplified by the build to its budget (SIMPLIFY_AGGRESSIVE).
+#include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Storage/StoragePadd.hpp>
 
 #include "rock.h"
 #include "rock_ds_preview.h"
@@ -95,7 +97,8 @@ private:
 };
 
 int main() {
-  ScratchPadd::SystemImplementation<ModelPadd> system;
+  ScratchPadd::DebugLog::Session log; // (the terminal and a file)
+  ScratchPadd::SystemImplementation<ModelPadd, ScratchPadd::Storage::StoragePadd> system;
   system.instantiate();
   system.start(); // returns when the window closes
   return 0;

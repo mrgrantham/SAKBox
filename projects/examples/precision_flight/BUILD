@@ -42,6 +42,8 @@ cc_binary(
         "src/main.cpp",
     ],
     deps = [
+        "//projects/scratchpadd/debug_log",
+        "//projects/scratchpadd/storage:storage_padd",
         ":flight_padds",
         "//projects/scratchpadd/audio",
         "//projects/scratchpadd/debug_ui",

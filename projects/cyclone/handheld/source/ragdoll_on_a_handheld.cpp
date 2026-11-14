@@ -31,15 +31,16 @@
 
 #include "physics_sweep.h" // (beside this file)
 #include <AudioPadd.hpp>
+#include <ScratchPadd/AboutPadd.hpp>
 #include <ScratchPadd/AppEnded/AppEnded.hpp>
 #include <ScratchPadd/Audio/MadeSoundsPcm16.hpp>
 #include <ScratchPadd/Audio/Messages.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
-#include <ScratchPadd/DebugLog/WriterPadd.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Storage/StoragePadd.hpp>
 #include <cyclone/cyclone.h>
 #include <fixed_steps.h>
 #include <impact_knocks.h>
@@ -81,7 +82,6 @@ constexpr bool kSweepAtStart = false;
 // What differs between the two consoles
 #if defined(__NDS__)
 constexpr const char *kConsole = "DS";
-constexpr const char *kAppName = kSweepAtStart ? "cyclone-ds-ragdoll-sweep" : "cyclone-ds-ragdoll";
 constexpr int kConsoleColumns = 32, kConsoleRows = 24; // the bottom screen's
 bool mainLoop() { return pmMainLoop(); }
 void startBottomScreen() { consoleDemoInit(); } // its console, for printf
@@ -91,8 +91,6 @@ void waitForRefresh() { swiWaitForVBlank(); }
 constexpr int kDefaultFramesPerSecond = 30;
 #else
 constexpr const char *kConsole = "3DS";
-constexpr const char *kAppName =
-    kSweepAtStart ? "cyclone-3ds-ragdoll-sweep" : "cyclone-3ds-ragdoll";
 constexpr int kConsoleColumns = 40, kConsoleRows = 30;
 bool mainLoop() { return aptMainLoop(); }
 void startBottomScreen() { consoleInit(GFX_BOTTOM, nullptr); }
@@ -843,17 +841,18 @@ int main() {
 #endif
 #if defined(SAKBOX_DEBUG)
   // A debug build's log: over Wi-Fi on a 3DS, on the SD card on a DS
-  ScratchPadd::DebugLog::Session log(kAppName);
+  ScratchPadd::DebugLog::Session log; // (its file named after the app: AppInfo)
   logWhere = log.where();
 #endif
   {
-    ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, RagdollPadd,
-                                      AudioPadd, ScratchPadd::DebugLog::WriterPadd>
-        system; // (WriterPadd: a debug build's log, written to the card when idle)
+    ScratchPadd::SystemImplementation<ScratchPadd::AboutPadd, ScratchPadd::Input::GamePadd,
+                                      ScreenPadd, RagdollPadd, AudioPadd,
+                                      ScratchPadd::Storage::StoragePadd>
+        system; // (StoragePadd: a debug build's log, written to the card when idle)
     system.instantiate();
     system.start(); // returns when ScreenPadd stops it (START)
   }
-  ScratchPadd::AppEnded::show("Cyclone ragdoll");
+  ScratchPadd::AppEnded::show(); // ("<its title> has ended.")
 #if defined(__3DS__)
   gfxExit();
 #endif

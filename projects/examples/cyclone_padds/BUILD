@@ -37,6 +37,8 @@ cc_binary(
         "src/main.cpp",
     ],
     deps = [
+        "//projects/scratchpadd/debug_log",
+        "//projects/scratchpadd/storage:storage_padd",
         ":ragdoll_messages",
         ":ragdoll_physics_padd",
         "//projects/scratchpadd/audio",

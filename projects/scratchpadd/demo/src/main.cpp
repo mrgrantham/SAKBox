@@ -1,4 +1,7 @@
+#include <ScratchPadd/AboutPadd.hpp>
+#include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Storage/StoragePadd.hpp>
 
 // Worker Padds used in system
 #include <AudioPadd.hpp>
@@ -18,10 +21,13 @@
 
 // (global, for signal_handler)
 const std::unique_ptr<ScratchPadd::System> kSystem =
-    ScratchPadd::SystemBuilder<DisplayPadd, StoryPadd, AudioPadd, MidiInputPadd, ShapeLoggerPadd>();
+    ScratchPadd::SystemBuilder<ScratchPadd::AboutPadd, DisplayPadd, StoryPadd, AudioPadd,
+                               MidiInputPadd, ShapeLoggerPadd, ScratchPadd::Storage::StoragePadd>();
 
 int main(int argc, char **argv) {
   DataDepRetriever::ConfigureDependencies(argv[0]);
+  // The log, in the terminal and a file (StoragePadd writes it when idle)
+  ScratchPadd::DebugLog::Session log;
   SCOPED_METHOD_TIMER();
 
   // signal(SIGINT, signal_handler);

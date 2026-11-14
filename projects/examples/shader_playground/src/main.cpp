@@ -5,11 +5,13 @@
 #include "backward/backward.hpp"
 
 #include <DataDepRetriever/DataDependencies.hpp>
+#include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/DebugUi/DebugUi.hpp>
 #include <ScratchPadd/Scene/Desktop/Desktop.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Storage/StoragePadd.hpp>
 
 #include "imgui.h"
 #include <spdlog/spdlog.h>
@@ -184,7 +186,9 @@ int main(int argc, char **argv) {
   // Makes the BUILD file's data dependencies (the shaders) findable
   DataDepRetriever::ConfigureDependencies(argv[0]);
   backward::SignalHandling signalHandling;
-  const std::unique_ptr<ScratchPadd::System> system = ScratchPadd::SystemBuilder<Playground>();
+  ScratchPadd::DebugLog::Session log; // (the terminal and a file)
+  const std::unique_ptr<ScratchPadd::System> system =
+      ScratchPadd::SystemBuilder<Playground, ScratchPadd::Storage::StoragePadd>();
   system->instantiate();
   system->start();
   return EXIT_SUCCESS;

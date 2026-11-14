@@ -3,6 +3,7 @@ load("//tools/devkitpro:defs.bzl", "devkitpro_nds_app")
 # The app's sources, shared by the ragdoll and its sweep
 RAGDOLL_SOURCES = {
     "//projects/scratchpadd/debug_log:sources": "scratchpadd/debug_log",
+    "//projects/scratchpadd/storage:sources": "scratchpadd/storage",
     "//projects/scratchpadd/input:sources": "scratchpadd/input",
     "//projects/cyclone/handheld:sources": "ragdoll",
     "//projects/cyclone:sources": "cyclone",

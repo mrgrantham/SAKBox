@@ -51,6 +51,8 @@ cc_binary(
     data = [":hangar"],
     tags = ["blender"],
     deps = [
+        "//projects/scratchpadd/debug_log",
+        "//projects/scratchpadd/storage:storage_padd",
         ":rock",
         ":rock_ds_preview",
         ":ship",

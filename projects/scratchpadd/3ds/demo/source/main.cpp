@@ -17,10 +17,12 @@
 
 #include <AudioPadd.hpp>
 #include <HandheldDemo.hpp>
+#include <ScratchPadd/AboutPadd.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
+#include <ScratchPadd/Storage/StoragePadd.hpp>
 
 #include <spdlog/spdlog.h>
 
@@ -167,14 +169,15 @@ int main() {
   gfxInitDefault();
   spdlog::set_level(spdlog::level::off); // the screens are for the padds
 #if defined(SAKBOX_DEBUG)
-  // A debug build's log, served over Wi-Fi (tools/console_log reads it)
-  ScratchPadd::DebugLog::Session log("scratchpadd-3ds-demo");
+  // A debug build's log, on the SD card and served over Wi-Fi (tools/console_log reads it)
+  ScratchPadd::DebugLog::Session log;
   logWhere = log.where();
 #endif
   {
-    ScratchPadd::SystemImplementation<ScratchPadd::Input::GamePadd, ScreenPadd, SoundBoardPadd,
-                                      AudioPadd>
-        system;
+    ScratchPadd::SystemImplementation<ScratchPadd::AboutPadd, ScratchPadd::Input::GamePadd,
+                                      ScreenPadd, SoundBoardPadd, AudioPadd,
+                                      ScratchPadd::Storage::StoragePadd>
+        system; // (StoragePadd: a debug build's log, written to the SD card when idle)
     system.instantiate();
     system.start(); // returns when ScreenPadd stops it (START, or the HOME Menu closing it)
   }
