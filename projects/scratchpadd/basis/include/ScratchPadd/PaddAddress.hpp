@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ScratchPadd/Threads.hpp>
+
 #include <string>
 
 namespace ScratchPadd {
@@ -25,6 +27,8 @@ public:
 
   // The padd's name (Base::paddName()), or "(no padd)" for an empty address
   const std::string &name() const;
+  // How the padd runs (Base::runs(), as it took it when it was set up)
+  Runs howItRuns() const;
 
 private:
   explicit PaddAddress(Base *padd) : padd_(padd) {}

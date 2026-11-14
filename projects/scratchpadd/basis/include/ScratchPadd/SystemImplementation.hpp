@@ -261,6 +261,13 @@ public:
     return found == paddsByType_.end() ? PaddAddress() : PaddAddress(found->second);
   }
 
+  std::vector<PaddAddress> padds() override {
+    std::vector<PaddAddress> all;
+    std::apply([&](auto const &...worker) { (all.push_back(PaddAddress(worker.get())), ...); },
+               workers_);
+    return all;
+  }
+
   PaddAddress paddNamed(std::string_view name) override {
     auto found = paddsByName_.find(name);
     return found == paddsByName_.end() ? PaddAddress() : PaddAddress(found->second);

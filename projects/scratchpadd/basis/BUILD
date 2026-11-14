@@ -20,6 +20,16 @@ cc_library(
 
 
 cc_test(
+    name = "AboutPadd_test",
+    size = "small",
+    srcs = ["tests/AboutPadd_test.cpp"],
+    deps = [
+        ":basis",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
   name = "Base_test",
   size = "small",
   srcs = ["tests/Base_test.cpp"],

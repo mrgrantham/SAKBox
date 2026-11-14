@@ -48,6 +48,7 @@ using namespace std::chrono_literals;
 class Base : public Logger {
   template <typename... Workers> friend class SystemImplementation;
   friend struct PaddTestAccess;
+  friend class PaddAddress; // (howItRuns)
 
 public:
   Base(System *system) : system_(system) {
@@ -782,5 +783,7 @@ inline const std::string &PaddAddress::name() const {
   static const std::string kNone = "(no padd)";
   return padd_ ? padd_->paddName() : kNone;
 }
+
+inline Runs PaddAddress::howItRuns() const { return padd_ ? padd_->runs_ : kDefaultRuns; }
 
 } // namespace ScratchPadd

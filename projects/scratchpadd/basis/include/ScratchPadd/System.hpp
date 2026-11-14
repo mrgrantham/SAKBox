@@ -6,6 +6,7 @@
 
 #include <string_view>
 #include <typeindex>
+#include <vector>
 
 namespace ScratchPadd {
 class Base;
@@ -27,6 +28,9 @@ public:
   virtual PaddAddress paddOfType(std::type_index type) = 0;
   // The padd named `name` (its Base::paddName()), or an empty address
   virtual PaddAddress paddNamed(std::string_view name) = 0;
+  // Every padd, in the order the system lists them (none until
+  // instantiate())
+  virtual std::vector<PaddAddress> padds() { return {}; }
   virtual bool isRunning() = 0;
   // The system's shared state (SharedState.hpp), which padds publish and
   // read through Base::publishState() and currentState()
