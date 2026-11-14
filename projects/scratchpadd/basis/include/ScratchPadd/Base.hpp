@@ -426,6 +426,13 @@ protected:
     return true;
   }
 
+  // Whether this padd has control `name` (controls come and go: addControl,
+  // removeControl)
+  bool hasControl(const std::string &name) const {
+    assertOnPaddThread("hasControl");
+    return controlMap_.contains(name);
+  }
+
   // Adds control `name`, or replaces the one with that name (its range
   // too), and gives it a panel if it's this padd's first.
   void addControl(const std::string &name, ControlTypeVariant control) {
