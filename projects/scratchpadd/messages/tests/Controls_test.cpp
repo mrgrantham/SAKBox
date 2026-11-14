@@ -314,6 +314,14 @@ private:
 };
 using PanelPadd = PanelPaddOf<1>;
 using OtherPanelPadd = PanelPaddOf<2>;
+// A panel with a control of its own, as a handheld's screen padd has
+class PanelWithControlsPadd : public PanelPaddOf<3> {
+public:
+  using PanelPaddOf<3>::PanelPaddOf;
+  ScratchPadd::ControlValueMap generateControls() override {
+    return {{"zoom", Controls::Double(1.0, std::make_pair(0.5, 4.0))}};
+  }
+};
 
 template <typename... Padds> class RunningSystem {
 public:
@@ -658,4 +666,20 @@ TEST(ControlUpdateTest, PaddWithoutControlsCanAddOne) {
   ASSERT_EQ(snapshots.size(), 1u);
   EXPECT_EQ(snapshots[0].paddName, "NoControls");
   EXPECT_TRUE(hasControl(snapshots[0], "on"));
+}
+
+// A panel shows its own controls too: changing one, it hears its new
+// snapshot like every other panel. (It used to be sent to every padd but
+// its own, so a DS screen padd's panel never showed its own change, and with
+// no other panel the snapshot was dropped with a warning.)
+TEST(ControlsTest, APanelSeesItsOwnChange) {
+  RunningSystem<PanelWithControlsPadd, OtherPanelPadd> running;
+  auto &panel = running.padd<PanelWithControlsPadd>();
+  EXPECT_TRUE(panel.change("Panel3", "zoom", Controls::Double(2.0)));
+  ASSERT_TRUE(running.settles());
+  for (const auto &snapshots : {panel.snapshots(), running.padd<OtherPanelPadd>().snapshots()}) {
+    ASSERT_EQ(snapshots.size(), 1u);
+    EXPECT_EQ(snapshots[0].paddName, "Panel3");
+    EXPECT_DOUBLE_EQ(std::get<Controls::Double>(snapshots[0].controlMap.at("zoom")).value, 2.0);
+  }
 }

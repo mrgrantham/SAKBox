@@ -61,7 +61,7 @@ public:
           if (from) {
             sendTo(from, generateControlsSnapshot());
           } else {
-            send(generateControlsSnapshot());
+            sendControlsSnapshot();
           }
         });
     // A change is sent straight to the padd whose control it is. The padd
@@ -76,7 +76,7 @@ public:
       if (updateControl(change) && previous) {
         controlChanged(change.controlName, *previous);
       }
-      send(generateControlsSnapshot());
+      sendControlsSnapshot();
     });
   }
 
@@ -314,6 +314,10 @@ protected:
     assertOnPaddThread("generateControlsSnapshot");
     return ScratchPadd::MessageType::ControlSnapshot{.paddName = name_, .controlMap = controlMap_};
   }
+  // To every panel, this padd's own included: a padd that shows panels
+  // (a handheld's screen, say) shows its own controls too, and with send()
+  // it never heard when they changed
+  void sendControlsSnapshot() { sendIncludeSender(generateControlsSnapshot()); }
 
   // This padd's control `name`, as control type C (e.g.
   // control<ControlType::Double>("speed").value). Throws std::out_of_range for
@@ -406,7 +410,7 @@ protected:
                                                   .controlTypeValue = std::move(value)})) {
       return false;
     }
-    send(generateControlsSnapshot());
+    sendControlsSnapshot();
     return true;
   }
 
@@ -415,7 +419,7 @@ protected:
   void addControl(const std::string &name, ControlTypeVariant control) {
     assertOnPaddThread("addControl");
     controlMap_.insert_or_assign(name, std::move(control));
-    send(generateControlsSnapshot());
+    sendControlsSnapshot();
   }
 
   // Removes control `name`. Removing the last one sends an empty snapshot,
@@ -425,7 +429,7 @@ protected:
     if (controlMap_.erase(name) == 0) {
       return false;
     }
-    send(generateControlsSnapshot());
+    sendControlsSnapshot();
     return true;
   }
 
