@@ -224,6 +224,25 @@ cc_binary(
     ],
 )
 
+# Every setting of the handheld ragdoll's sweep (steps a second and
+# sub-steps), over many shoves, without a window: how well each holds the
+# ragdoll together and lets it rest (see src/demos/ragdoll/ragdoll_sweep.cpp)
+cc_binary(
+    name = "ragdoll_sweep",
+    srcs = ["src/demos/ragdoll/ragdoll_sweep.cpp"],
+    deps = [
+        ":ragdoll_physics",
+        "//projects/cyclone/handheld:physics_sweep",
+    ],
+)
+
+# ... in the DS's Q16.16, whatever :real is set to
+real_binary(
+    name = "ragdoll_sweep_flex_point16",
+    real = "flex_point16",
+    target = ":ragdoll_sweep",
+)
+
 cc_binary(
     name = "sailboat",
     srcs = ["src/demos/sailboat/sailboat.cpp", "src/demos/main.cpp"],

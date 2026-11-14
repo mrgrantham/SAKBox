@@ -69,6 +69,7 @@ CFLAGS	+=	-DMA_NO_DEVICE_IO -DMA_NO_THREADING -DMA_NO_RUNTIME_LINKING
 
 # A debug build (bazel build -c dbg): see //projects/scratchpadd/debug_log
 CFLAGS	+=	$(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)
+CFLAGS	+=	$(SAKBOX_DEFINES)
 
 # ScratchPadd needs RTTI (each message's type) and exceptions (a control of
 # the wrong type), so unlike devkitPro's template this keeps both

@@ -237,7 +237,7 @@ Every demo's physics runs in **fixed steps** of 1/60 s (`FixedSteps`, `src/demos
 
 ## On the Nintendo DS
 
-[`ds`](ds) runs the ragdoll (the same `ragdoll_physics.h` as the demo) on a Nintendo DS, in [ScratchPadd](../scratchpadd/README.md#on-the-nintendo-3ds-and-ds) padds: `RagdollPadd` steps it on its own thread in fixed steps and sub-steps (`FixedSteps`), timing each step, and `ScreenPadd` draws it on the top screen with ScratchPadd's [scene layer](../scratchpadd/README.md#scene-layer) (its DS backend, on the DS's 3D hardware), with the figures on the bottom one: the bones are one box mesh, each drawn with its body's transform scaled to its size, lit by one light. It runs 30 steps a second in 4 sub-steps, drawn blended between steps: `ScreenPadd` keeps the last two snapshots and draws each bone that far from its last place to its latest, each number of its transform blended in Q16.16, with no float work (B turns it off; a reset's snapshot isn't blended from the pose before). The bottom screen also shows what each frame drew (146 polygons and 443 vertices of the DS's 2048 and 6144). A resets it with a new shove, X changes the sub-steps (1, 2, 4), and Y switches between 30 and 60 steps a second. SELECT shows every padd's controls on the bottom screen as tabs, in place of the figures ([ScratchPadd's handheld panel](../scratchpadd/README.md#on-the-nintendo-3ds-and-ds)): the ragdoll's sub-steps (1 to 8) and steps a second, the screen's blending, and AudioPadd's volumes. X, Y and B change the same controls, so the panel always shows what's in use. It's drawn 30 frames a second on the DS, at every other refresh (the panel's "Frames a second" control on the screen's tab switches to 60; the 3DS draws 60): the main thread outranks the physics' thread (see [ScratchPadd's threads](../scratchpadd/README.md#threads)), so every frame drawn comes out of the physics' time, and at 60 frames a step at the start took 57 ms in melonDS, against 47 at 30. The physics only takes 30 steps a second, and the blending draws between them, so 60 frames a second showed no more of it. `RagdollPadd` takes each step due as a job of its own, queued behind whatever came meanwhile, so a button (A, X, Y) waits for at most one step: taking all the steps due in one `repeat()`, while the ragdoll lay awake and the physics fell behind, A waited up to three, and the ticks queued behind them made it seconds (see [ScratchPadd's threads](../scratchpadd/README.md#threads)). SELECT never waited: the screen's padd handles it. A debug build logs the timings at the start and each second's figures (`RagdollPadd`'s lines: a step's time, how busy, the speed, the worst stretch), on the SD card on a DS and over Wi-Fi on a 3DS ([debug log](../scratchpadd/debug_log/README.md)). It knocks as bones hit, as the demos do: `RagdollPadd` hears the world's contacts (`ImpactKnocks`, from when the timing at the start is done) and sends AudioPadd, which plays on the DS's 16 hardware sound channels, a `PlaySound` for each knock; the knock is made in code and rendered when the app is built (`MadeSoundsPcm16`), so the DS does no float work to make it. The bottom screen counts the knocks played. Hearing the hits adds about 1 ms to a step.
+[`ds`](ds) runs the ragdoll (the same `ragdoll_physics.h` as the demo) on a Nintendo DS, in [ScratchPadd](../scratchpadd/README.md#on-the-nintendo-3ds-and-ds) padds: `RagdollPadd` steps it on its own thread in fixed steps and sub-steps (`FixedSteps`), timing each step, and `ScreenPadd` draws it on the top screen with ScratchPadd's [scene layer](../scratchpadd/README.md#scene-layer) (its DS backend, on the DS's 3D hardware), with the figures on the bottom one: the bones are one box mesh, each drawn with its body's transform scaled to its size, lit by one light. It runs 30 steps a second in 4 sub-steps, drawn blended between steps: `ScreenPadd` keeps the last two snapshots and draws each bone that far from its last place to its latest, each number of its transform blended in Q16.16, with no float work (B turns it off; a reset's snapshot isn't blended from the pose before). The bottom screen also shows what each frame drew (146 polygons and 443 vertices of the DS's 2048 and 6144). A resets it with a new shove, X changes the sub-steps (1, 2, 4, 8), Y the steps a second (10, 15, 20, 30, 60), and R runs [the sweep](#the-sweep-which-settings-keep-up), every setting in turn. SELECT shows every padd's controls on the bottom screen as tabs, in place of the figures ([ScratchPadd's handheld panel](../scratchpadd/README.md#on-the-nintendo-3ds-and-ds)): the ragdoll's sub-steps (1 to 8) and steps a second (10 to 60), the screen's blending, and AudioPadd's volumes. X, Y and B change the same controls, so the panel always shows what's in use. It's drawn 30 frames a second on the DS, at every other refresh (the panel's "Frames a second" control on the screen's tab switches to 60; the 3DS draws 60): the main thread outranks the physics' thread (see [ScratchPadd's threads](../scratchpadd/README.md#threads)), so every frame drawn comes out of the physics' time, and at 60 frames a step at the start took 57 ms in melonDS, against 47 at 30. The physics only takes 30 steps a second, and the blending draws between them, so 60 frames a second showed no more of it. `RagdollPadd` takes each step due as a job of its own, queued behind whatever came meanwhile, so a button (A, X, Y) waits for at most one step: taking all the steps due in one `repeat()`, while the ragdoll lay awake and the physics fell behind, A waited up to three, and the ticks queued behind them made it seconds (see [ScratchPadd's threads](../scratchpadd/README.md#threads)). SELECT never waited: the screen's padd handles it. A debug build logs the timings at the start and each second's figures (`RagdollPadd`'s lines: a step's time, how busy, the speed, the worst stretch), on the SD card on a DS and over Wi-Fi on a 3DS ([debug log](../scratchpadd/debug_log/README.md)). It knocks as bones hit, as the demos do: `RagdollPadd` hears the world's contacts (`ImpactKnocks`, from when the timing at the start is done) and sends AudioPadd, which plays on the DS's 16 hardware sound channels, a `PlaySound` for each knock; the knock is made in code and rendered when the app is built (`MadeSoundsPcm16`), so the DS does no float work to make it. The bottom screen counts the knocks played. Hearing the hits adds about 1 ms to a step.
 
 ```bash
 bazel run //projects/cyclone/ds:cyclone-ds-ragdoll   # needs Docker running (tools/devkitpro); opens melonDS
@@ -270,6 +270,55 @@ Running, at 30 steps a second in 4 sub-steps: falling, a step takes 32 ms (0.94x
 - The figures on the bottom screen are written only when they change, about once a second: formatting numbers is float work, and the main thread's time comes out of the physics'. Writing them each frame made the physics 25% slower.
 
 Measured in melonDS, not on a console.
+
+### The sweep: which settings keep up
+
+R in the app runs the **sweep** ([`physics_sweep.h`](handheld/source/physics_sweep.h)): the ragdoll from the same shove with every combination of 10, 15, 20, 30 and 60 steps a second, 1, 2, 4 and 8 sub-steps, and 30 and 60 frames a second, each for 5 s simulated (or 10 s, if it can't keep up), then ranks them. The bottom screen shows the best five, and the log has every run and the ranking, a line each: a step's time, how busy the physics was, the speed and the slowest second's, the frames drawn, the worst stretch, and how far behind the screen is (a step, drawn blended between the last two, and a frame). R again stops it and ranks what it has. `cyclone-ds-ragdoll-sweep` (and `cyclone-3ds-ragdoll-sweep`) is the same app with the sweep starting by itself, so it runs unattended, in an emulator or on a console: in a debug build (`-c dbg`), its log is `logs/cyclone-ds-ragdoll-sweep.log`. A run takes about 7 minutes.
+
+**What ranks first:** settings that keep up (every second of the run, at least 0.95 s simulated), draw their frames (95% of them) and hold the joints (none stretched more than 1 cm); among those, more frames a second, then less delay, then less busy. Then the rest, those that keep up first, then the closest to keeping up.
+
+In melonDS (2026-11-13; a DS Lite runs about a quarter slower), the best, and the settings around them:
+
+| Steps/s, sub-steps, frames/s | A step | Busy | Slowest second | Worst stretch | Behind | |
+| --- | --- | --- | --- | --- | --- | --- |
+| 15, 4, 60 | 40 ms | 60% | 0.99x | 0.98 cm | 83 ms | good |
+| 10, 8, 60 | 69 ms | 68% | 0.96x | 0.59 cm | 117 ms | good |
+| 15, 4, 30 | 36 ms | 55% | 1.00x | 0.98 cm | 100 ms | good |
+| 10, 4, 30 | 38 ms | 38% | 0.99x | 4.8 cm | 133 ms | joints stretch |
+| 20, 4, 30 | 39 ms | 76% | 0.94x | 0.06 cm | 83 ms | doesn't keep up |
+| 30, 4, 30 (what it runs with) | 38 ms | 91% | 0.69x | 0.26 cm | 67 ms | doesn't keep up |
+| 60, 2, 60 | 31 ms | 96% | 0.39x | 0.19 cm | 33 ms | doesn't keep up |
+
+- **On the DS a sub-step costs about 6 ms**, on top of about 14 ms a step for the resolver's sweeps (shared among the sub-steps): a step takes about 20 ms in 1 sub-step, 29 in 2, 38 in 4 and 62-69 in 8. On a Mac sub-steps cost little more than whole steps (below); on the DS, setting each sub-step up (integrating the bones, preparing the contacts) is a good part of it.
+- **Fewer steps, drawn blended, look as smooth**, but the screen is further behind: a step and a frame, 83 ms at 15 steps and 60 frames a second, against 67 at 30 and 30.
+- 60 frames a second against 30 costs a step about 4 ms (the drawing comes out of the physics' time).
+
+**The quality, on a Mac:** [`ragdoll_sweep`](src/demos/ragdoll/ragdoll_sweep.cpp) runs the same steps and sub-steps in the DS's Q16.16, with its sweeps (16/4/4), over 20 shoves of up to 12 s each, without a window, in seconds: how far the joints stretch (the DS's sweep sees one shove), how still the ragdoll is before it sleeps, and when it falls asleep. `bazel run -c opt //projects/cyclone:ragdoll_sweep_flex_point16` (`-- --shoves N --seconds S`). On an M-series Mac (2026-11-13):
+
+| Steps/s | Sub-steps | Worst stretch (cm) | Mean worst (cm) | Resting speed (cm/s) | Asleep, mean (s) | Asleep, worst (s) | Never asleep | Mac ms/s |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 10 | 1 | 144.32 | 116.99 | 5.15 | 7.9 | 9.9 | 0 | 0.3 |
+| 10 | 2 | 45.46 | 23.92 | 1.96 | 7.0 | 8.4 | 0 | 0.3 |
+| 10 | 4 | 6.58 | 3.28 | 0.75 | 6.9 | 7.8 | 0 | 0.3 |
+| 10 | 8 | 1.55 | 0.45 | 0.60 | 6.8 | 7.8 | 0 | 0.5 |
+| 15 | 1 | 99.59 | 68.82 | 2.11 | 7.1 | 8.7 | 0 | 0.3 |
+| 15 | 2 | 23.19 | 10.16 | 0.68 | 6.8 | 8.0 | 0 | 0.4 |
+| 15 | 4 | 3.01 | 1.10 | 1.03 | 6.8 | 8.6 | 0 | 0.5 |
+| 15 | 8 | 1.28 | 0.26 | 1.30 | 6.9 | 9.9 | 0 | 0.7 |
+| 20 | 1 | 75.26 | 41.94 | 0.68 | 6.8 | 7.8 | 0 | 0.4 |
+| 20 | 2 | 7.24 | 3.44 | 1.24 | 6.6 | 7.6 | 0 | 0.5 |
+| 20 | 4 | 2.16 | 0.41 | 0.80 | 6.7 | 7.6 | 0 | 0.6 |
+| 20 | 8 | 0.36 | 0.10 | 1.58 | 6.7 | 7.7 | 0 | 0.9 |
+| 30 | 1 | 31.03 | 19.98 | 0.57 | 6.9 | 8.0 | 0 | 0.6 |
+| 30 | 2 | 5.21 | 1.08 | 0.63 | 6.6 | 7.6 | 0 | 0.7 |
+| 30 | 4 | 0.61 | 0.15 | 0.95 | 6.4 | 7.4 | 0 | 0.9 |
+| 30 | 8 | 0.13 | 0.05 | 1.87 | 6.5 | 7.4 | 0 | 1.3 |
+| 60 | 1 | 6.62 | 2.22 | 0.54 | 6.6 | 8.6 | 0 | 1.1 |
+| 60 | 2 | 0.21 | 0.07 | 1.98 | 6.7 | 8.9 | 0 | 1.4 |
+| 60 | 4 | 0.21 | 0.04 | 3.18 | 6.7 | 9.1 | 0 | 1.8 |
+| 60 | 8 | 0.04 | 0.02 | 3.49 | 6.8 | 10.5 | 0 | 2.8 |
+
+Every setting lets the ragdoll fall asleep in about 7 s. What sub-steps buy is joints that hold: at 15 steps a second, 4 sub-steps stretch a joint up to 3 cm (1.1 on average), 8 up to 1.3; at 10, 8 hold to 1.5 cm. (The resting speed is the last second before it fell asleep, so a few cm/s is the ragdoll settling, not jitter.)
 
 ## On the Nintendo 3DS
 
@@ -353,6 +402,7 @@ Changes inside the code are marked with `SAKBox:` comments.
 | `random_test` | The random number generator: repeatable from a seed; reals, integers, vectors and orientations spread evenly over their ranges; asking for an integer below 0 is an error |
 | `impact_sounds_test` | The demos' sounds and knocks, heard through an offline output: a hit knocks and resting doesn't (particles' contacts too, a cable snapping taut among them), a pair knocks at most once in its repeat time, only the hardest six hits a frame knock (also over a frame of several steps, where a pair hit in more than one knocks once), turned off nothing plays, and a hit sounds on the side of the screen it happened (the camera turned either way); a loop playing until stopped, silent while sound is off and back when it's on; nothing playing while off |
 | `fixed_steps_test` | The demos' physics clock: one step a frame at 60 Hz despite 16 and 17 ms frames; 60 steps a second at 144, 120, 30 and 20 Hz; a 2 s stall counting as 0.1 s; changing the step length as it runs (240 steps a second, time not yet stepped carried over); sub-steps splitting the step, starting at 4 and between 1 and 16; how far into the next step the time is, to draw between steps |
+| `physics_sweep_test` (`handheld/`) | The handheld sweep's bookkeeping: every combination swept, fewest steps first; a run ending once it has simulated its seconds, or after its real seconds if it can't keep up; one slow second being not keeping up; stopping keeping the runs done; ranking keeping up with joints held first, then more frames a second, then less delay, the rest closest to keeping up first |
 | `ragdoll_test_flex_point16`, `ragdoll_test_flex_point` | `ragdoll_test` in Q16.16 (as the DS runs it) and Q32.32 fixed point, with the same expectations |
 | `flex_test` | The flex build: `FlexReal` as `real`, precision snapping in the engine, and that time steps and drag stay at full precision (stochastic rounding keeps drag unbiased) |
 

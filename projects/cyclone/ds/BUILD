@@ -1,5 +1,28 @@
 load("//tools/devkitpro:defs.bzl", "devkitpro_nds_app")
 
+# The app's sources, shared by the ragdoll and its sweep
+RAGDOLL_SOURCES = {
+    "//projects/scratchpadd/debug_log:sources": "scratchpadd/debug_log",
+    "//projects/scratchpadd/input:sources": "scratchpadd/input",
+    "//projects/cyclone/handheld:sources": "ragdoll",
+    "//projects/cyclone:sources": "cyclone",
+    "//projects/flexmath:fixed_point_sources": "flexmath",
+    "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
+    "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
+    "//projects/scratchpadd/app_ended:sources": "scratchpadd/app_ended",
+    "//projects/scratchpadd/handheld_controls:sources": "scratchpadd/handheld_controls",
+    "//projects/scratchpadd/scene:sources": "scratchpadd/scene",
+    "//projects/scratchpadd/scene/ds:sources": "scratchpadd/scene_ds",
+    "//projects/scratchpadd/utilities:sources": "scratchpadd/utilities",
+    "//projects/scratchpadd/ds/platform:sources": "scratchpadd_ds/platform",
+    "//projects/scratchpadd/audio/made_sounds_pcm16:sources": "scratchpadd_audio_pcm16",
+    "//projects/scratchpadd/audio:audio_padd_sources": "scratchpadd_audio",
+    "//projects/scratchpadd/audio:audio_core_without_engine_sources": "scratchpadd_audio",
+    "//projects/scratchpadd/audio/wav_reader:sources": "scratchpadd_audio_wav",
+    "@tinysoundfont//:sources": "third_party/tinysoundfont",
+    "@spdlog//:sources": "third_party/spdlog",
+}
+
 # Cyclone's ragdoll on a Nintendo DS, in padds: the physics on its own
 # thread, timed, drawn with ScratchPadd's scene layer (its DS backend), and
 # knocking as it hits
@@ -8,25 +31,16 @@ load("//tools/devkitpro:defs.bzl", "devkitpro_nds_app")
 devkitpro_nds_app(
     name = "cyclone-ds-ragdoll",
     srcs = ["Makefile"],
-    extra_srcs = {
-        "//projects/scratchpadd/debug_log:sources": "scratchpadd/debug_log",
-        "//projects/scratchpadd/input:sources": "scratchpadd/input",
-        "//projects/cyclone/handheld:sources": "ragdoll",
-        "//projects/cyclone:sources": "cyclone",
-        "//projects/flexmath:fixed_point_sources": "flexmath",
-        "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
-        "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
-        "//projects/scratchpadd/app_ended:sources": "scratchpadd/app_ended",
-        "//projects/scratchpadd/handheld_controls:sources": "scratchpadd/handheld_controls",
-        "//projects/scratchpadd/scene:sources": "scratchpadd/scene",
-        "//projects/scratchpadd/scene/ds:sources": "scratchpadd/scene_ds",
-        "//projects/scratchpadd/utilities:sources": "scratchpadd/utilities",
-        "//projects/scratchpadd/ds/platform:sources": "scratchpadd_ds/platform",
-        "//projects/scratchpadd/audio/made_sounds_pcm16:sources": "scratchpadd_audio_pcm16",
-        "//projects/scratchpadd/audio:audio_padd_sources": "scratchpadd_audio",
-        "//projects/scratchpadd/audio:audio_core_without_engine_sources": "scratchpadd_audio",
-        "//projects/scratchpadd/audio/wav_reader:sources": "scratchpadd_audio_wav",
-        "@tinysoundfont//:sources": "third_party/tinysoundfont",
-        "@spdlog//:sources": "third_party/spdlog",
-    },
+    extra_srcs = RAGDOLL_SOURCES,
+)
+
+# The same app with its sweep starting by itself (R in the app; see
+# ../handheld/source/physics_sweep.h): every setting from the same shove,
+# logged and ranked, unattended. Its log is cyclone-ds-ragdoll-sweep.log.
+devkitpro_nds_app(
+    name = "cyclone-ds-ragdoll-sweep",
+    srcs = ["Makefile"],
+    defines = ["RAGDOLL_SWEEP_AT_START"],
+    extra_srcs = RAGDOLL_SOURCES,
+    icon_letters = "Sw",
 )

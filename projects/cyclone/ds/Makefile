@@ -47,6 +47,7 @@ CFLAGS	:=	-g -Wall -O2 -ffunction-sections -fdata-sections\
 CFLAGS	+=	$(INCLUDE) -DARM9 -DCYCLONE_FLEX_POINT16
 # A debug build (bazel build -c dbg): see //projects/scratchpadd/debug_log
 CFLAGS	+=	$(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)
+CFLAGS	+=	$(SAKBOX_DEFINES)
 
 # ScratchPadd needs RTTI (each message's type) and exceptions (a control of
 # the wrong type), so unlike devkitPro's template this keeps both
