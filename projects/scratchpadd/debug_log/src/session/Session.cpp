@@ -47,15 +47,15 @@ private:
 
 // The file's own lines (its figures) formatted as a "Storage" logger's
 std::string storageLine(std::string_view text) {
-  static const std::shared_ptr<spdlog::formatter> formatter(Logger::lineFormatter());
+  static const std::shared_ptr<spdlog::formatter> kFormatter(Logger::lineFormatter());
   spdlog::memory_buf_t line;
-  formatter->format(spdlog::details::log_msg("Storage", spdlog::level::info, text), line);
+  kFormatter->format(spdlog::details::log_msg("Storage", spdlog::level::info, text), line);
   return std::string(line.data(), line.size());
 }
 
 } // namespace
 
-Session::Session(SessionOptions options) : platform_(std::make_unique<Platform>()) {
+Session::Session(const SessionOptions &options) : platform_(std::make_unique<Platform>()) {
   const AppInfo &app = AppInfo::current();
   const Storage::Folders folders = options.folders.value_or(Storage::Folders::forApp(app));
   std::vector<spdlog::sink_ptr> sinks;

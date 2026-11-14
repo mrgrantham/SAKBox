@@ -70,8 +70,8 @@ AppInfo find() {
 } // namespace
 
 const AppInfo &AppInfo::current() {
-  static const AppInfo app = find();
-  return app;
+  static const AppInfo kApp = find();
+  return kApp;
 }
 
 } // namespace ScratchPadd

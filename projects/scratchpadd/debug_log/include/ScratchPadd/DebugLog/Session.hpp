@@ -52,7 +52,7 @@ struct SessionOptions {
 class Session {
 public:
   // e.g. Session({.level = spdlog::level::debug, .writeEvery = 8})
-  explicit Session(SessionOptions options = {});
+  explicit Session(const SessionOptions &options = {});
   ~Session();
   Session(const Session &) = delete;
   Session &operator=(const Session &) = delete;
