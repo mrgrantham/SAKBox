@@ -312,16 +312,17 @@ private:
   struct Settings {
     unsigned stepsPerSecond, subSteps, velocitySweeps, settleSweeps, positionSweeps;
   };
-  // On the DS it runs 30 steps a second, drawn blended between them
-  // (ScreenPadd), in 4 sub-steps: at 60 a falling step (15 ms in 2
-  // sub-steps) and the drawing don't fit in a frame, while at 30 a step in 4
-  // takes 21 ms of its 33, and joints hold as well as at 60 in 2 (they
-  // stretch 0.6 cm at most over 20 pushes; 5 cm in 2 sub-steps). Cyclone's
-  // own sweeps (40, 10, 10 a step) suit desktops; on the DS they're what the
-  // time goes on, so it takes 16, 4, 4 (4, 1, 1 in each sub-step; Box2D v3
-  // takes one). The 3DS has floating-point hardware: 60 steps a second.
+  // On the DS it runs 15 steps a second in 4 sub-steps, drawn blended
+  // between them (ScreenPadd) at 30 frames a second: of the sweep's 40
+  // settings (R; physics_sweep.h), the only one a DS Lite kept up with while
+  // the ragdoll lay awake with its joints held (a step 52 ms, 78% busy; 30
+  // steps in 4 fell to 0.48x). It's drawn 100 ms behind (a step and a
+  // frame). Cyclone's own sweeps (40, 10, 10 a step) suit desktops; on the
+  // DS they're what the time goes on, so it takes 16, 4, 4 (4, 1, 1 in each
+  // sub-step; Box2D v3 takes one). The 3DS has floating-point hardware: 60
+  // steps a second.
 #if defined(__NDS__)
-  static constexpr Settings kRunSettings{30, 4, 16, 4, 4};
+  static constexpr Settings kRunSettings{15, 4, 16, 4, 4};
 #else
   static constexpr Settings kRunSettings{60, 4, 16, 4, 4};
 #endif
