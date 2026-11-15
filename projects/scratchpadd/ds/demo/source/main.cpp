@@ -24,6 +24,7 @@
 #include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
+#include <ScratchPadd/MessageStatsPadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Storage/StoragePadd.hpp>
 
@@ -191,8 +192,9 @@ int main() {
   logWhere = log.where();
 #endif
   {
-    ScratchPadd::SystemImplementation<ScratchPadd::AboutPadd, ScratchPadd::Input::GamePadd,
-                                      ScreenPadd, SoundBoardPadd, AudioPadd,
+    ScratchPadd::SystemImplementation<ScratchPadd::AboutPadd, ScratchPadd::MessageStatsPadd,
+                                      ScratchPadd::Input::GamePadd, ScreenPadd, SoundBoardPadd,
+                                      AudioPadd,
                                       ScratchPadd::Storage::StoragePadd>
         system; // (StoragePadd: a debug build's log, written to the card when idle)
     system.instantiate();

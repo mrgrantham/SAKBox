@@ -21,6 +21,7 @@
 #include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
+#include <ScratchPadd/MessageStatsPadd.hpp>
 #include <ScratchPadd/Network/NetworkPadd.hpp>
 #include <ScratchPadd/Network/RemoteControlsPadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
@@ -176,10 +177,11 @@ int main() {
   logWhere = log.where();
 #endif
   {
-    ScratchPadd::SystemImplementation<
-        ScratchPadd::AboutPadd, ScratchPadd::Input::GamePadd, ScreenPadd, SoundBoardPadd, AudioPadd,
-        ScratchPadd::Storage::StoragePadd, ScratchPadd::Network::NetworkPadd,
-        ScratchPadd::Network::RemoteControlsPadd>
+    ScratchPadd::SystemImplementation<ScratchPadd::AboutPadd, ScratchPadd::MessageStatsPadd,
+                                      ScratchPadd::Input::GamePadd, ScreenPadd, SoundBoardPadd,
+                                      AudioPadd, ScratchPadd::Storage::StoragePadd,
+                                      ScratchPadd::Network::NetworkPadd,
+                                      ScratchPadd::Network::RemoteControlsPadd>
         system; // (StoragePadd: a debug build's log on the SD card; NetworkPadd: it over
                 // Wi-Fi, and RemoteControlsPadd: the controls from the Mac)
     system.instantiate();

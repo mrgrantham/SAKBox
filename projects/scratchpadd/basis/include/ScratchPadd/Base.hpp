@@ -234,6 +234,7 @@ protected:
   // Sends `message` to every other padd that handles its type.
   void send(Message message) {
     logger().debug("send({}) from {}", message->typeName(), name_);
+    countSent(*message);
     system_->send(this, std::move(message));
   }
 
@@ -242,7 +243,10 @@ protected:
   template <typename T> void send(T contents) { send(makeMessage(std::move(contents))); }
 
   // Sends `message` to every padd that handles its type, including this one.
-  void sendIncludeSender(Message message) { system_->sendIncludeSender(this, std::move(message)); }
+  void sendIncludeSender(Message message) {
+    countSent(*message);
+    system_->sendIncludeSender(this, std::move(message));
+  }
 
   // Sends `contents` to every padd that handles its type, including this one.
   template <typename T> void sendIncludeSender(T contents) {
@@ -253,6 +257,7 @@ protected:
   // other. Returns false, sending nothing, if `to` is empty or that padd has
   // no handler for the message's type; both are logged as errors.
   bool sendTo(PaddAddress to, const Message &message) {
+    countSent(*message);
     if (!to) {
       logger().error("{}: sendTo({}) to no padd", name_, message->typeName());
       return false;
@@ -275,7 +280,11 @@ protected:
   // answer isn't an error: whether to hear it is up to the asker. Returns
   // whether it was sent.
   template <typename T> bool reply(PaddAddress to, T contents) {
-    return to && to.padd_->enqueue(makeMessage(std::move(contents)), address());
+    if (!to)
+      return false;
+    Message message = makeMessage(std::move(contents));
+    countSent(*message);
+    return to.padd_->enqueue(message, address());
   }
 
   // Sends `contents` to the padd of class Padd (each class appears once in a
@@ -759,13 +768,21 @@ private:
     if (!handles(message->type())) {
       return false;
     }
-    push([this, message, from] { deliver(message, from); });
+    MessageStats *stats =
+        system_ && system_->messageStats().enabled() ? &system_->messageStats() : nullptr;
+    // (when it was queued, while counting, for how long it waits)
+    const MessageStats::Clock::time_point queuedAt =
+        stats ? MessageStats::Clock::now() : MessageStats::Clock::time_point{};
+    push([this, message, from, queuedAt] { deliver(message, from, queuedAt); });
+    if (stats)
+      stats->queued(message->type(), message->typeName(), name_, pendingWork_.load());
     return true;
   }
 
   // Runs this padd's current handler for `message`, if it still has one.
   // Called on the padd's thread by the work queue.
-  void deliver(const Message &message, PaddAddress from) {
+  void deliver(const Message &message, PaddAddress from,
+               MessageStats::Clock::time_point queuedAt = {}) {
     std::shared_ptr<const Handler> handler;
     {
       std::shared_lock lock(handlersMutex_);
@@ -775,7 +792,22 @@ private:
       }
       handler = found->second;
     }
+    MessageStats *stats =
+        system_ && system_->messageStats().enabled() ? &system_->messageStats() : nullptr;
+    const MessageStats::Clock::time_point began =
+        stats ? MessageStats::Clock::now() : MessageStats::Clock::time_point{};
     (*handler)(*message, from);
+    if (stats)
+      stats->handled(name_, MessageStats::Clock::now() - began,
+                     queuedAt == MessageStats::Clock::time_point{} ? MessageStats::Clock::duration{}
+                                                                   : began - queuedAt);
+  }
+
+  // Counts a message sent, while the system's MessageStats is on
+  void countSent(const MessageBase &message) {
+    if (system_ && system_->messageStats().enabled())
+      system_->messageStats().sent(message.type(), message.typeName(), message.size(),
+                                   message.triviallyCopyable());
   }
 };
 

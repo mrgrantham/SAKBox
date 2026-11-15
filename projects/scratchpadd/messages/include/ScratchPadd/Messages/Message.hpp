@@ -28,6 +28,10 @@ public:
   virtual std::type_index type() const = 0;
   // The contents' type name, for logging. Worked out once per type.
   virtual const std::string &typeName() const = 0;
+  // The contents' size and whether they're trivially copyable, for the
+  // message statistics (which types would suit a stream)
+  virtual std::size_t size() const = 0;
+  virtual bool triviallyCopyable() const = 0;
 };
 
 // A message holding a T.
@@ -42,6 +46,8 @@ public:
     static const std::string kName = ScratchPadd::typeName<T>();
     return kName;
   }
+  std::size_t size() const override { return sizeof(T); }
+  bool triviallyCopyable() const override { return std::is_trivially_copyable_v<T>; }
 
   const T value;
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ScratchPadd/MessageStats.hpp>
 #include <ScratchPadd/Messages/Message.hpp>
 #include <ScratchPadd/PaddAddress.hpp>
 #include <ScratchPadd/SharedState.hpp>
@@ -35,8 +36,12 @@ public:
   // The system's shared state (SharedState.hpp), which padds publish and
   // read through Base::publishState() and currentState()
   SharedStates &sharedStates() { return sharedStates_; }
+  // What the system's messages cost (MessageStats.hpp): off until turned on,
+  // as MessageStatsPadd does
+  MessageStats &messageStats() { return messageStats_; }
 
 private:
   SharedStates sharedStates_;
+  MessageStats messageStats_;
 };
 } // namespace ScratchPadd

@@ -38,6 +38,7 @@
 #include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
+#include <ScratchPadd/MessageStatsPadd.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #if defined(__3DS__)
@@ -858,8 +859,9 @@ int main() {
   logWhere = log.where();
 #endif
   {
-    ScratchPadd::SystemImplementation<ScratchPadd::AboutPadd, ScratchPadd::Input::GamePadd,
-                                      ScreenPadd, RagdollPadd, AudioPadd,
+    ScratchPadd::SystemImplementation<ScratchPadd::AboutPadd, ScratchPadd::MessageStatsPadd,
+                                      ScratchPadd::Input::GamePadd, ScreenPadd, RagdollPadd,
+                                      AudioPadd,
                                       ScratchPadd::Storage::StoragePadd NETWORK_PADDS>
         system; // (StoragePadd: a debug build's log, written to the card when idle)
     system.instantiate();
