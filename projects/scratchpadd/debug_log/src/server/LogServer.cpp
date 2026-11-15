@@ -1,139 +1,53 @@
-#if !defined(_WIN32) && !defined(__NDS__)
+// LogServer: a LogBuffer streamed by the network library (see LogServer.hpp)
+#if !defined(__NDS__)
 #include <ScratchPadd/DebugLog/LogServer.hpp>
+#include <ScratchPadd/Network/Sockets.hpp>
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <poll.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#if defined(__3DS__)
-#include <3ds.h>
-
-#include <cstdlib>
-#include <malloc.h>
-#endif
-
-#include <cerrno>
-#include <cstring>
+#include <chrono>
+#include <thread>
 
 namespace ScratchPadd::DebugLog {
 
 namespace {
 
-#if defined(__3DS__)
-// The 3DS's network (soc), started once for the app's life: it needs a
-// buffer of its own, page-aligned
-bool startNetwork(std::string &error) {
-  static const Result started = [] {
-    constexpr std::size_t kSize = 0x100000;
-    void *buffer = memalign(0x1000, kSize);
-    return buffer ? socInit(static_cast<u32 *>(buffer), kSize) : -1;
-  }();
-  if (R_FAILED(started))
-    error = "no network (Wi-Fi off?)";
-  return R_SUCCEEDED(started);
-}
-#else
-bool startNetwork(std::string &) { return true; }
-#endif
-
-// Sends all of `text`, or returns false (the reader's gone)
-bool sendAll(int socket, const std::string &text) {
-#if defined(MSG_NOSIGNAL)
-  constexpr int kFlags = MSG_NOSIGNAL; // (a closed reader is an error, not a signal)
-#else
-  constexpr int kFlags = 0;
-#endif
-  std::size_t sent = 0;
-  while (sent < text.size()) {
-    const auto n = ::send(socket, text.data() + sent, text.size() - sent, kFlags);
-    if (n <= 0)
-      return false;
-    sent += static_cast<std::size_t>(n);
-  }
-  return true;
-}
+// How long the constructor waits for the loop to open the port
+constexpr std::chrono::seconds kOpenWait{3};
 
 } // namespace
 
-LogServer::LogServer(LogBuffer &buffer, std::uint16_t port) : buffer_(buffer), port_(port) {
-  if (!startNetwork(error_))
+LogServer::LogServer(LogBuffer &buffer, std::uint16_t port)
+    : buffer_(buffer), port_(port), stream_("log", port, [&buffer](std::uint64_t &position) {
+        return buffer.readFrom(position);
+      }) {
+  if (!loop_.start(error_)) // (starts the network too: the 3DS's soc, Winsock)
     return;
-  socket_ = ::socket(AF_INET, SOCK_STREAM, 0);
-  if (socket_ < 0) {
-    error_ = std::string("no socket: ") + std::strerror(errno);
-    return;
+  buffer_.setOnAppend([this] { stream_.wake(); }); // new text: the loop sends it
+  loop_.attach(&stream_);
+
+  // The loop opens the port on its own thread: wait to hear how that went
+  const auto giveUp = std::chrono::steady_clock::now() + kOpenWait;
+  while (std::chrono::steady_clock::now() < giveUp) {
+    for (const Network::Loop::ServiceState &state : loop_.states()) {
+      if (state.name != "log" || state.state.empty())
+        continue;
+      if (state.state == "listening")
+        port_ = state.port;
+      else
+        error_ = "port " + std::to_string(port) + ": " + state.state;
+      return;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
-  int yes = 1;
-  ::setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-#if defined(SO_NOSIGPIPE)
-  ::setsockopt(socket_, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof yes);
-#endif
-  sockaddr_in at{};
-  at.sin_family = AF_INET;
-  at.sin_port = htons(port_);
-  at.sin_addr.s_addr = htonl(INADDR_ANY);
-  if (::bind(socket_, reinterpret_cast<sockaddr *>(&at), sizeof at) < 0 ||
-      ::listen(socket_, 1) < 0) {
-    error_ = "port " + std::to_string(port_) + ": " + std::strerror(errno);
-    ::close(socket_);
-    socket_ = -1;
-    return;
-  }
-  socklen_t size = sizeof at; // the port it got, if asked for any (0)
-  if (::getsockname(socket_, reinterpret_cast<sockaddr *>(&at), &size) == 0)
-    port_ = ntohs(at.sin_port);
-  thread_ = std::thread([this] { serve(); });
+  error_ = "port " + std::to_string(port) + ": didn't open in time";
 }
 
 LogServer::~LogServer() {
-  stopping_ = true;
-  if (thread_.joinable())
-    thread_.join();
-  if (socket_ >= 0)
-    ::close(socket_);
+  buffer_.setOnAppend(nullptr);
+  loop_.stop();
 }
 
 std::string LogServer::address() const {
-#if defined(__3DS__)
-  in_addr ip{};
-  ip.s_addr = static_cast<in_addr_t>(gethostid()); // (the 3DS's, in network order)
-  return std::string(inet_ntoa(ip)) + ":" + std::to_string(port_);
-#else
-  return "localhost:" + std::to_string(port_);
-#endif
-}
-
-void LogServer::serve() {
-  while (!stopping_) {
-    // A reader, checking every quarter second whether to stop
-    pollfd waiting{socket_, POLLIN, 0};
-    if (::poll(&waiting, 1, 250) <= 0)
-      continue;
-    const int reader = ::accept(socket_, nullptr, nullptr);
-    if (reader < 0)
-      continue;
-#if defined(SO_NOSIGPIPE)
-    int yes = 1;
-    ::setsockopt(reader, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof yes);
-#endif
-    // What's kept, then each line as it comes, until the reader goes
-    std::uint64_t position = 0;
-    while (!stopping_) {
-      const std::string text = buffer_.readFrom(position, std::chrono::milliseconds(250));
-      if (!text.empty() && !sendAll(reader, text))
-        break;
-      // Gone? (readable with nothing to read: closed)
-      pollfd closed{reader, POLLIN, 0};
-      if (::poll(&closed, 1, 0) > 0) {
-        char discard[64];
-        if (::recv(reader, discard, sizeof discard, 0) <= 0)
-          break;
-      }
-    }
-    ::close(reader);
-  }
+  return Network::deviceAddress() + ":" + std::to_string(port_);
 }
 
 } // namespace ScratchPadd::DebugLog

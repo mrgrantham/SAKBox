@@ -12,6 +12,7 @@ devkitpro_3ds_app(
     icon_letters = "St",
     extra_srcs = {
         "//projects/scratchpadd/debug_log:server_sources": "scratchpadd/debug_log",
+        "//projects/scratchpadd/network:sources": "scratchpadd/network",
         "//projects/scratchpadd/audio:audio_core_sources": "scratchpadd_audio",
         "//projects/scratchpadd/audio:midi_test_data": "scratchpadd_audio",
         "@miniaudio//:sources": "third_party/miniaudio",

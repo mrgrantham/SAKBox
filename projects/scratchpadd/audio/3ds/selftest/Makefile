@@ -35,9 +35,9 @@ TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 # The audio core and miniaudio are staged from their own packages by the
 # Bazel rule (extra_srcs in BUILD)
-SOURCES		:=	source scratchpadd_audio/core/src third_party/miniaudio scratchpadd/debug_log/src/server
+SOURCES		:=	source scratchpadd_audio/core/src third_party/miniaudio scratchpadd/debug_log/src/server scratchpadd/network/src
 DATA		:=	data
-INCLUDES	:=	include scratchpadd_audio/core/include scratchpadd_audio/tests third_party scratchpadd/debug_log/include
+INCLUDES	:=	include scratchpadd_audio/core/include scratchpadd_audio/tests third_party scratchpadd/debug_log/include scratchpadd/network/include
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs

@@ -12,5 +12,6 @@ devkitpro_3ds_app(
     # Its results served over Wi-Fi when it's done (tools/console_log)
     extra_srcs = {
         "//projects/scratchpadd/debug_log:server_sources": "scratchpadd/debug_log",
+        "//projects/scratchpadd/network:sources": "scratchpadd/network",
     },
 )

@@ -2,22 +2,24 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 # An app's log, kept where it can be read afterwards (see README.md):
 # - :log_server, a log kept in memory (LogBuffer) and served over the
-#   network (LogServer), plain C++ for any program;
+#   network (LogServer, the network library's text stream on a loop of its
+#   own), for a program without padds;
 # - :debug_log, the Session an app opens: every ScratchPadd logger to a file
 #   in the app's log folder (a Storage source), and besides, served over
 #   Wi-Fi from a 3DS (read by tools/console_log) or the terminal on desktops.
 cc_library(
     name = "log_server",
-    srcs = ["src/server/LogBuffer.cpp"] + select({
-        "@platforms//os:windows": [],  # (no POSIX sockets: LogBuffer only)
-        "//conditions:default": ["src/server/LogServer.cpp"],
-    }),
+    srcs = [
+        "src/server/LogBuffer.cpp",
+        "src/server/LogServer.cpp",
+    ],
     hdrs = [
         "include/ScratchPadd/DebugLog/LogBuffer.hpp",
         "include/ScratchPadd/DebugLog/LogServer.hpp",
     ],
     strip_include_prefix = "include/",
     visibility = ["//visibility:public"],
+    deps = ["//projects/scratchpadd/network"],
 )
 
 cc_library(
@@ -60,17 +62,14 @@ cc_test(
     ],
 )
 
-# The server on this machine's localhost (not Windows: no POSIX sockets)
+# The server on this machine
 cc_test(
     name = "LogServer_test",
     size = "small",
     srcs = ["tests/LogServer_test.cpp"],
-    target_compatible_with = select({
-        "@platforms//os:windows": ["@platforms//:incompatible"],
-        "//conditions:default": [],
-    }),
     deps = [
         ":log_server",
+        "//projects/scratchpadd/network",
         "@gtest//:gtest_main",
     ],
 )
@@ -90,5 +89,6 @@ filegroup(
         "include/ScratchPadd/DebugLog/LogBuffer.hpp",
         "include/ScratchPadd/DebugLog/LogServer.hpp",
     ] + glob(["src/server/**"]),
+    # (and the network library's, //projects/scratchpadd/network:sources)
     visibility = ["//visibility:public"],
 )

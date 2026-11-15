@@ -51,13 +51,13 @@ int main() {
 
 | Target | What |
 | --- | --- |
-| `:log_server` | `LogBuffer` (a log kept in memory, the oldest lines dropped past its capacity, read from where each reader left off) and `LogServer` (a `LogBuffer` served to whoever connects to its port, one at a time: what's kept, then each line as it comes). Plain C++, no ScratchPadd or spdlog; on a 3DS it starts the network itself. Not on Windows or a DS. The 3DS benchmark and the audio self-test use them to serve their results once they're done (`:server_sources`) |
+| `:log_server` | `LogBuffer` (a log kept in memory, the oldest lines dropped past its capacity, read from where each reader left off) and `LogServer` (a `LogBuffer` served to whoever connects to its port, several readers at once: what's kept, then each line as it comes), for a program without padds. `LogServer` is the [network library](../network/README.md)'s `StreamService` on a `Network::Loop` of its own, so it serves wherever that library runs (macOS, Linux, Windows, the 3DS; not a DS), the same way an app's `Session` serves through `NetworkPadd`. No padds or spdlog. The 3DS benchmark and the audio self-test use them to serve their results once they're done (`:server_sources`, with `//projects/scratchpadd/network:sources`) |
 | `:debug_log` | `Session` and `LogBufferSink` (an spdlog sink into a `LogBuffer`) |
 
 | Test | Covers |
 | --- | --- |
 | `Session_test` | On a desktop: every logger's lines in a file named after the app in the log folder, warnings included; the file registered as a storage source while the session lasts; the next run starting afresh with the last kept beside it; served by default in a debug build, on the next free port when 5005 is taken, and a reader (NetworkPadd's loop) getting what came before and then each line |
 | `LogBuffer_test` | Readers getting what's new since their last read, the oldest whole lines dropped, a reader waiting for the next line, and every ScratchPadd logger routed into it and back |
-| `LogServer_test` | On localhost: a reader getting what's kept and then each line, the next reader getting it all, and a port in use reported. Not on Windows |
+| `LogServer_test` | On this machine: a reader getting what's kept and then each line, a second reader at the same time getting it all, and a port in use reported |
 
 Checked in melonDS (the Cyclone ragdoll's log in `fat:/data/cyclone-ds-ragdoll/logs/`, written by StoragePadd), in Azahar (the 3DS demo's both at `sdmc:/3ds/scratchpadd-3ds-demo/logs/` and over Wi-Fi), and on a Mac (`~/Library/Logs/cyclone_padds/`, with the terminal showing only warnings; and the ScratchPadd demo's log read with `tools/console_log --address 127.0.0.1`).
