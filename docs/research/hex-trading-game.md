@@ -60,6 +60,10 @@ These replace the first proposal below where they differ. The reasoning behind s
   - Kinds for a first deck of 15 to 20: settlement (stations on 3 kinds of planet; 2 gas giants; 2 colonies; a core planet), exploration (5 badges; a kept zone find; stations on opposite sides), neighbours (sharing 2 planets; a station next to an alien station) and economy (6 resources in hand; a colony on a 6 or 8).
   - **Balanced with the bots' numbers:** for each card, how often it's kept when offered, met, and held by the winner. A card that's nearly always kept, or wins far more than others, gets a harder goal or fewer points, one at a time, and each change is reported with the numbers behind it.
 - **Debug builds record games:** the starting board and every move, so real games can be analysed like the simulations.
+- **Since (2026-11-15), from Fullerton's *Game Design Workshop*** ([reading notes](game-design-reading.md#applied-to-the-hex-game)):
+  - **Turn order:** the bots measure each seat's win rate; if the first seat wins too often, later seats start with an extra resource (like Go's komi).
+  - **At most 3 ships in play per player,** like three ship pieces of your colour in the box.
+  - **What's left to explore,** three settings, decided by play and simulation: A (the default), each kind of tile's count printed; B, the mix listed in the rules, all of it used; C, more tiles in the box than slots, the extras put back unseen, so the odds are rough and each galaxy differs. The bots show what each does (game length, lead changes, whether early explorers win more); recorded real games show which is fun.
 
 ## Why this game suits the DS
 

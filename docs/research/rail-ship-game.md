@@ -26,6 +26,10 @@ Status: research, for review. The name and the concept are still open. This sets
 - **Bosses:** a carrier with shield generators, a gate with turrets, and a large ship running ahead, one for each stage. **Enemy levels:** patrolling, tracking, swarming, desperate.
 - **One meter:** skimming close fills the technique meter, dodges spend it, and what's left multiplies the score.
 - **First design settled** (2026-11-14). Next, when building starts: a first playable space course.
+- **Since (2026-11-15), from Fullerton's *Game Design Workshop*** ([reading notes](game-design-reading.md#applied-to-infinifly)):
+  - **Enemy aim:** enemies fire inside a cone around the ship that narrows with each difficulty step, one number per step to tune.
+  - **Always passable:** the course is made in chunks ahead of the ship, and each chunk is checked on a coarse grid across the corridor (which cells the ship can reach, slice by slice, given how far it steers between slices). A chunk with no way through is made again from the next number in its stream. The tests check thousands of seeds on the Mac.
+  - **Routes:** usually two or three, a wide safe one and a narrower one with pickups and near misses; now and then a one-route squeeze as a peak of tension, then a breather. Difficulty narrows the routes and adds enemies rather than removing the choices. The passable check counts the routes, so the generator can aim for them.
 
 ## The idea
 
