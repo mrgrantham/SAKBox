@@ -12,7 +12,7 @@ These replace the first proposal below where they differ. The reasoning behind s
 - **Theme:** space. **The twist is exploration:** a tile's resource and its dice number are hidden until it's explored. Reveals are public, so a discovery becomes a sought-after destination.
 - **Tile ideas:** asteroid belts (minerals), lush planets (food), and more to choose. Alien stations, hidden on the map and found by exploring, offer fixed-rate trades.
 - **Production:** two six-sided dice. Victory points are separate from resources and can't be spent. Hidden victory points (secret contracts) are to be worked out together.
-- **Building:** leaning towards corners and edges (stations at corners, lanes along edges), details open. Exploring: a lane reaching an unknown tile reveals and claims it; survey ships reveal tiles from a distance (publicly), starting a race to claim them.
+- **Building:** stations sit on whole planets, not corners or edges, and there are no lanes (both replaced by the rules under *The rules since round 11* below).
 - **The start:** known home systems; placement still open.
 - **Trading:** player to player, plus fixed rates at alien stations.
 - **Players and length:** 2 to 4, at most an hour with four.
@@ -39,6 +39,27 @@ These replace the first proposal below where they differ. The reasoning behind s
   - **Set-up:** shuffled planet tiles face down on the slots, numbers hidden; shuffled zone tiles face down in the zone; the homes face up.
 - **Home planets:** no dice number. Each gives its owner 1 resource of their choice at the start of their turn, a floor so nobody is left with nothing. Identical homes in the base game; a draft of starting spots as a variant.
 - **First design settled** (2026-11-14). The numbers (board size, the zone's mix, points to win) get tuned once the rules engine and bots can play it.
+
+### The rules since round 11 (2026-11-14)
+
+- **Resources:** minerals (asteroid belts), food (lush planets), fuel (gas giants), water (ice moons) and crystals (nebulae).
+- **Stations sit on a whole planet.** On this board a corner or edge touches at most one planet, so placing on corners would collect from the same single planet with extra rules. Up to **2 stations on a planet**, one per player: each planet tile has two printed docking spots.
+- **No lanes.** They did nothing (Schell's elegance lens).
+- **Ships stand on hexes** and move to any of the six neighbouring hexes, so a ship can leave a planet in any direction. A new ship is placed on a planet where its owner has a station (the home counts). A ship moves up to 3 hexes a turn for free; 1 fuel boosts it 2 hexes further that turn. Landing to settle or flip a tile ends its move. Ships pass freely through hexes holding other ships; only the blockade ship blocks.
+- **The deep-space zone's inner six** move to the board's six corners, to try in play: an early, cheap gamble two hexes from the homes, while the middle stays worth the trip.
+- **Points:** a station is 1, a colony (an upgraded station, collecting double) is 2; 3 explorer badges trade for 1; contracts as below; 10 to win. **Core Control:** 2 points to whoever has the most stations on the starred core planets (the slots nearest the centre). It needs at least 2 core stations to claim, a tie keeps it with the holder, and it passes only when someone overtakes (stations are never removed).
+- **Costs, a first proposal for the bots to tune:**
+  - ship: 1 minerals and 1 fuel;
+  - station: settling uses up the ship, plus 1 food and 1 water;
+  - colony: 2 food and 2 minerals;
+  - contract card: 1 crystal, 1 water and 1 food.
+- **Contracts:**
+  - Dealt 2 at the start, keep 1 face down. Buying one: draw 2, keep 1. No limit on how many you hold.
+  - Each card is one goal and its points (1 to 3, by difficulty). A goal only ever checks what's on the board or in your tokens at that moment, never something that happened earlier, so no one keeps a record at a real table.
+  - On your turn you can reveal a contract whose goal is true; it scores at once and stays scored. So a player can hold a met contract and reveal it on the turn it takes them to 10.
+  - Kinds for a first deck of 15 to 20: settlement (stations on 3 kinds of planet; 2 gas giants; 2 colonies; a core planet), exploration (5 badges; a kept zone find; stations on opposite sides), neighbours (sharing 2 planets; a station next to an alien station) and economy (6 resources in hand; a colony on a 6 or 8).
+  - **Balanced with the bots' numbers:** for each card, how often it's kept when offered, met, and held by the winner. A card that's nearly always kept, or wins far more than others, gets a harder goal or fewer points, one at a time, and each change is reported with the numbers behind it.
+- **Debug builds record games:** the starting board and every move, so real games can be analysed like the simulations.
 
 ## Why this game suits the DS
 

@@ -12,6 +12,7 @@ Status: reference. What the game design books in our collection say, gathered fo
 | Schell, *The Art of Game Design: A Book of Lenses*, 2nd ed. (2015) | Ch. 10 (flow), 13 (balance lenses), 16 (interest curves), in part | Practical lenses |
 | Koster, *A Theory of Fun for Game Design* (2nd ed., and the talk slides) | Ch. 3, in part | Fun as learning |
 | Yannakakis and Togelius, *Artificial Intelligence and Games*, 2nd ed. (2024) | Ch. 4 (playing games: MCTS, hidden information), ch. 7 (procedural content generation), in part | Bots and generated content |
+| Fullerton, *Game Design Workshop: A Playcentric Approach*, 5th ed. (2024) | Ch. 5 (system dynamics: information, control, feedback), 10 (balance), 11 (player choices, fun killers) | Designing, prototyping, playtesting and balancing |
 
 **Not read yet:** Millington's *AI for Games* (the folder copy is a DjVu file, and a preview PDF is there too) and the *Game AI Pro* preview. They're for later, when we build the bots. Millington's physics book is Cyclone's reference, not a design book.
 
@@ -86,6 +87,21 @@ Status: reference. What the game design books in our collection say, gathered fo
 - **Experience-driven generation** shapes content to what the player experiences; Left 4 Dead's "director" is the example. Be careful with it: the dynamic difficulty adjustment caution above applies.
 - **MCTS** suits board games with dice, many possible moves and hidden information. Its variant for hidden information is **ISMCTS** (information set MCTS). Bots also serve as playtesters: simulate thousands of games to tune the game's length and fairness.
 
+### Balancing in practice (Fullerton ch. 5, 10 and 11)
+
+- **Four things to balance:** the *variables* (costs, payouts, board size, lives), the *dynamics* (what happens when the rules run: loops, dominant objects, dominant strategies), the *starting positions* (fairness, including who goes first), and *skill* (matching challenge to the player).
+- **Reinforcing loops:** an early lead that buys more lead ends games early. Remedies: a small, temporary bonus rather than a lasting one, a price for holding a strong position, chance, or letting trailing players gang up. But near the end, *let the scales tip*: a sweeping finish feels good to the winner and is quick for the losers. Don't drag out an ending.
+- **Dominant objects and strategies:** no option should be best everywhere; give each a strength and a matching weakness. A *favourite* strategy that experts like but that can be countered isn't dominant.
+- **Who goes first:** make the first move weak (chess), compensate later players (Go's komi), let the second player swap (the pie rule), make the game long enough that the first move hardly matters, or add chance.
+- **Method:** keep subsystems separate, so a change shows its effect; give each part one purpose (strip parts out until the game breaks, to find the ones that do nothing); change **one thing at a time**; keep every variable in a table the game reads, so variants can be swapped while testing.
+- **Kinds of decision:** avoid *hollow* (no consequence), *obvious* (no real choice) and *uninformed* (arbitrary) ones; aim for *informed*, *weighted* (a cost either way), *immediate* and *long-term* ones. Dilemmas with no optimal answer (the prisoner's dilemma: temptation > reward > punishment > sucker) make the best moments. Let the importance of decisions rise towards the end.
+- **Rewards:** useful ones (towards winning) count most. Unpredictable rewards (a random schedule) hold attention for repetitive actions; for big choices, let players see and anticipate the consequences. Recognition by other players is a strong reward: show achievements as they happen.
+- **Information:** open (calculation), hidden (bluff and reading people), mixed, or changing during play (fog of war). Which one decides what kind of thinking a game asks for.
+- **Fun killers:** micromanagement (many small decisions that add up to one: merge them, or automate them); stagnation (repetition, or a balance of power where everyone always stops the leader); insurmountable obstacles (watch new players get stuck, and help just enough); arbitrary events (disasters with no defence feel like cheating); a predetermined path.
+- **Skill:** set a high-water mark with expert players and a low-water mark with novices, and tune to the middle; or adjust as the player plays (Tetris speeds up with the score). A tuning variable for an opponent: Asteroids' small saucer fires at random inside a window a few degrees either side of the player, and the window narrows as the score rises.
+- **Tuning for drama** (Stone Librande's *Us vs. It* exercise): tune an opponent so it is beaten at the most dramatic moment, by iterating, never by playing badly on purpose.
+- **Playtesting:** fresh testers for usability, data gathering, and rapid iterative testing (fix and retest between sessions).
+
 ## Applied to Infinifly
 
 - **The feelings it's for:** sensation (speed, the Tron look), challenge, and some discovery (a new course each seed). It's a race with one player, made social by ghosts and scores.
@@ -95,6 +111,14 @@ Status: reference. What the game design books in our collection say, gathered fo
 - **The course:** constructive generation with checks built in (always a way through), from a seed, so ghost races are fair.
 - **Interest curve per run:** a fast, exciting first ten seconds (the hook), then rising peaks, with enemy waves as the peaks.
 - **Triangularity:** near misses and risky pickups pay more.
+- **From Fullerton:**
+  - The technique meter is a *weighted decision*: spend it on a dodge now or keep the score multiplier.
+  - **Enemy aim as a tuning variable:** enemies fire inside a cone around the ship that narrows with each difficulty step (Asteroids' saucer). One number per step, easy to tune.
+  - **Tune to the middle:** set the difficulty curve between an expert's run (the high-water mark) and a newcomer's (the low-water mark).
+  - **No insurmountable obstacles:** the course generator checks that every chunk can be passed at the ship's speed, for every seed, in the tests.
+  - **Avoid stagnation:** each stage changes the kind of action, not only its speed, and shows progress (distance, the next difficulty step).
+  - **Bosses tuned for drama:** iterate until a good run beats a boss with little health to spare.
+  - **Recognition:** near misses and technique called out on screen as they happen; ghosts and seeded races for comparing with friends.
 
 ## Applied to the hex game
 
@@ -108,3 +132,11 @@ Status: reference. What the game design books in our collection say, gathered fo
 - **Length:** use the 2d6 model and bots playing thousands of games to tune it to under an hour for four players.
 - **Bots:** ISMCTS, since the game has dice and hidden tiles.
 - **The map:** generate-and-test, checking that each starting system's expected production is equal.
+- **From Fullerton:**
+  - **Reinforcing loop:** stations give resources that buy stations. The balancing pieces: the blockade ship on a 7, hidden contracts (a lead isn't visible), and Core Control passing to whoever overtakes. At the end, contracts revealed together let the scales tip quickly instead of dragging out.
+  - **Who goes first:** identical homes make positions symmetrical except for turn order, which matters for the race to the core and the corner finds. The bots measure each seat's win rate; if the first seat wins too often, later seats start with an extra resource (like Go's komi).
+  - **Informed, not uninformed, exploring:** the counts of each kind of tile (and the zone's half finds, half nothing) are printed, so flipping a tile is a gamble with known odds rather than an arbitrary pick.
+  - **Weighted decisions:** settle (the ship is used up) or fly on to find more; contracts (draw 2, keep 1) pull each player somewhere different.
+  - **Micromanagement:** moving many ships each turn on a small screen becomes a chore; a limit on ships each player has in play would keep turns short.
+  - **Tuning:** every cost and payout in one rules table that the game and the bots read; variants swapped without code changes; one change at a time, each reported with the numbers behind it.
+  - **Arbitrary events:** no random disasters without a defence; the blockade is moved by a player, on a roll everyone can see coming.
