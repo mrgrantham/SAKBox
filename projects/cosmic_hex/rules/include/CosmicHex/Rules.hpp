@@ -70,7 +70,10 @@ struct Settings {
   int alienRate = 3; // at the zone's alien station, with a station or ship next to it
   int stationPays = 1;
   int colonyPays = 2;
-  int startResources = 1;               // of each, at the start
+  int startResources = 1; // of each, at the start
+  // Extra resources by turn order (the 1st player's, the 2nd's...), to make
+  // up for going later: given in turn, minerals, food, fuel, water, crystals
+  std::array<int, kMaxPlayers> seatBonus{0, 0, 0, 0};
   bool zoneCorners = true;              // the zone's inner six at the board's corners
   Resources planetTiles{3, 3, 3, 3, 3}; // how many of each kind
   std::vector<int> numbers{2, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 11, 12};

@@ -285,11 +285,11 @@ std::string settingsText(const Settings &s) {
       << " badges=" << s.badgesPerPoint << " ruins=" << s.ruinsBadges
       << " salvage=" << s.salvageResources << " bank=" << s.bankRate << " alien=" << s.alienRate
       << " pays=" << s.stationPays << "," << s.colonyPays << " start=" << s.startResources
-      << " corners=" << (s.zoneCorners ? 1 : 0) << " tiles=" << joined(s.planetTiles)
-      << " numbers=" << joined(s.numbers) << " finds=" << joined(s.finds)
-      << " ship=" << joined(s.shipCost) << " station=" << joined(s.stationCost)
-      << " colony=" << joined(s.colonyCost) << " contract=" << joined(s.contractCost)
-      << " corehexes=";
+      << " bonus=" << joined(s.seatBonus) << " corners=" << (s.zoneCorners ? 1 : 0)
+      << " tiles=" << joined(s.planetTiles) << " numbers=" << joined(s.numbers)
+      << " finds=" << joined(s.finds) << " ship=" << joined(s.shipCost)
+      << " station=" << joined(s.stationCost) << " colony=" << joined(s.colonyCost)
+      << " contract=" << joined(s.contractCost) << " corehexes=";
   std::vector<int> core;
   for (Hex hex : s.coreHexes) {
     core.push_back(hex.q);
@@ -351,6 +351,8 @@ std::optional<Settings> readSettings(std::string_view line) {
     else if (key == "pays" && v.size() == 2) {
       s.stationPays = v[0];
       s.colonyPays = v[1];
+    } else if (key == "bonus" && v.size() == kMaxPlayers) {
+      std::copy(v.begin(), v.end(), s.seatBonus.begin());
     } else if (key == "start")
       s.startResources = v[0];
     else if (key == "corners")
@@ -421,6 +423,12 @@ State newGame(int players, const Settings &settings, int first) {
   for (int p = 0; p < players; ++p) {
     state.ships.push_back(Ship{p, kHomes[static_cast<std::size_t>(p)], false});
     state.player[static_cast<std::size_t>(p)].resources.fill(settings.startResources);
+  }
+  for (int order = 0; order < players; ++order) {
+    Resources &resources =
+        state.player[static_cast<std::size_t>((first + order) % players)].resources;
+    for (int i = 0; i < settings.seatBonus[static_cast<std::size_t>(order)]; ++i)
+      ++resources[static_cast<std::size_t>(i % kResources)];
   }
   state.kindsLeft = settings.planetTiles;
   state.numbersLeft = settings.numbers;

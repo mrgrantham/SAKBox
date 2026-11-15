@@ -115,6 +115,21 @@ TEST(RulesTest, AnyoneCanGoFirst) {
   EXPECT_EQ(again.value_or(State{}), state);
 }
 
+// A start bonus goes by turn order, not by home: with player 2 first, the
+// bonus for the 2nd to play goes to player 3
+TEST(RulesTest, AStartBonusByTurnOrder) {
+  Settings settings;
+  settings.seatBonus = {0, 1, 2, 3};
+  const State state = newGame(4, settings, 2);
+  EXPECT_EQ(state.player[2].resources, (Resources{1, 1, 1, 1, 1})); // 1st to play
+  EXPECT_EQ(state.player[3].resources, (Resources{2, 1, 1, 1, 1})); // 2nd
+  EXPECT_EQ(state.player[0].resources, (Resources{2, 2, 1, 1, 1})); // 3rd
+  EXPECT_EQ(state.player[1].resources, (Resources{2, 2, 2, 1, 1})); // 4th
+  const auto again = Game::readState(Game::writeState(state));
+  ASSERT_TRUE(again.has_value());
+  EXPECT_EQ(again.value_or(State{}).settings.seatBonus, settings.seatBonus);
+}
+
 TEST(RulesTest, ATurn) {
   State state = newGame(2);
   ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, static_cast<int>(Resource::Water)}));

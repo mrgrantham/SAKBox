@@ -32,9 +32,13 @@ struct Options {
   int rolloutDepth = 60;
   int maxRounds = 200;
   std::uint64_t seed = 1;
-  std::string logs;           // a folder to write each game's log to, if given
-  std::string csv;            // a file to write one line a game to, if given
-  bool randomFirst = false;   // a random player goes first, rather than player 1
+  std::string logs;                         // a folder to write each game's log to, if given
+  std::string csv;                          // a file to write one line a game to, if given
+  bool randomFirst = false;                 // a random player goes first, rather than player 1
+  std::array<int, kMaxPlayers> seatBonus{}; // extra start resources by turn order
+  int empty = 6;              // empty tiles of the zone's 12 (the rest finds, shared out)
+  int strongIterations = 0;   // a stronger bot, thinking this much, at one home in turn
+  std::string variant;        // a label for the CSV
   std::string core = "seven"; // the core planets: seven (the centre and the six around it) or three
 };
 
@@ -75,6 +79,19 @@ Options parse(int argc, char **argv) {
       options.core = value;
     else if (flag == "--first")
       options.randomFirst = std::string_view(value) == "random";
+    else if (flag == "--seat-bonus") {
+      std::string_view rest = value;
+      for (int i = 0; i < kMaxPlayers && !rest.empty(); ++i) {
+        const std::size_t comma = rest.find(',');
+        options.seatBonus[static_cast<std::size_t>(i)] = number<int>(flag, rest.substr(0, comma));
+        rest.remove_prefix(comma == std::string_view::npos ? rest.size() : comma + 1);
+      }
+    } else if (flag == "--empty")
+      options.empty = number<int>(flag, value);
+    else if (flag == "--strong")
+      options.strongIterations = number<int>(flag, value);
+    else if (flag == "--variant")
+      options.variant = value;
     else {
       std::fprintf(stderr, "unknown flag %s\n", argv[i]);
       std::exit(2);
@@ -111,7 +128,8 @@ int main(int argc, char **argv) {
   std::ofstream csv;
   if (!options.csv.empty()) {
     csv.open(options.csv);
-    csv << "seed,players,iterations,first,winner,rounds,actions,points1,points2,points3,points4,"
+    csv << "variant,seed,players,iterations,first,strong,winner,rounds,actions,points1,points2,"
+           "points3,points4,"
            "stations,colonies,core,badges,contracts\n";
   }
 
@@ -122,6 +140,14 @@ int main(int argc, char **argv) {
     Settings settings;
     if (options.core == "three")
       settings.coreHexes = {{0, 0}, {1, -2}, {-1, 2}};
+    settings.seatBonus = options.seatBonus;
+    // Fewer empty zone tiles: the rest are finds, given in turn to salvage,
+    // ruins, salvage, ruins... (the alien station and the pirates stay one each)
+    settings.finds = {options.empty, 0, 0, 1, 1};
+    for (int i = 0; i < 12 - options.empty - 2; ++i)
+      ++settings.finds[static_cast<std::size_t>(1 + i % 2)];
+    // The stronger bot (if any) at a different home each game, in turn
+    const int strong = options.strongIterations > 0 ? g % options.players : -1;
     const int first = options.randomFirst ? static_cast<int>(seed.stream("first").below(
                                                 static_cast<std::uint32_t>(options.players)))
                                           : 0;
@@ -134,6 +160,10 @@ int main(int argc, char **argv) {
     };
     std::vector<std::function<Action(const State &)>> players(
         static_cast<std::size_t>(options.players), choose);
+    if (strong >= 0)
+      players[static_cast<std::size_t>(strong)] = [&](const State &state) {
+        return bot.choose(state, bots, {.iterations = options.strongIterations});
+      };
     // Played turn by turn, so a game that drags on can be stopped at a round
     while (!Game::isOver(play.state()) && play.state().round <= options.maxRounds)
       GameBots::playMatch<Game>(play, players, dealer, 1);
@@ -154,8 +184,9 @@ int main(int argc, char **argv) {
     if (csv.is_open()) {
       // One line a game: the winner's seat counted from 1 (0: unfinished),
       // everyone's points, and where the winner's came from
-      csv << seed.code() << "," << options.players << "," << options.iterations << "," << first + 1
-          << "," << end.winner + 1 << "," << end.round << "," << play.log().actions.size();
+      csv << options.variant << "," << seed.code() << "," << options.players << ","
+          << options.iterations << "," << first + 1 << "," << strong + 1 << "," << end.winner + 1
+          << "," << end.round << "," << play.log().actions.size();
       for (int p = 0; p < kMaxPlayers; ++p)
         csv << "," << (p < options.players ? points(end, p) : 0);
       const Sources s = end.winner >= 0 ? sourcesOf(end, end.winner) : Sources{};
