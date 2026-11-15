@@ -21,7 +21,10 @@ cc_library(
     ]),
     visibility = ["//visibility:public"],
     strip_include_prefix = "src",
-    deps = ["@libstemmer"], # WStemmer
+    deps = [
+        "@libstemmer", # WStemmer
+        "//projects/seeded_random", # WRandXoshiro128
+    ],
 )
 
 cc_library(

@@ -43,7 +43,10 @@ REAL_DEPS = select({
     ":real_flex_point": ["//projects/flexmath"],
     ":real_flex_point16": ["//projects/flexmath"],
     "//conditions:default": [],
-}) + ["//projects/flexmath:correctly_rounded"]
+}) + [
+    "//projects/flexmath:correctly_rounded",
+    "//projects/seeded_random",  # Random's generator
+]
 
 # The engine, with the real type the build picks (:real)
 cc_library(

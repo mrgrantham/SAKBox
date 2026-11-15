@@ -1,6 +1,7 @@
 // WRand: random deviates.
 #include <gtest/gtest.h>
 
+#include <SeededRandom/Seed.hpp>
 #include <WClasses/WRand.h>
 
 #include <algorithm>
@@ -88,4 +89,43 @@ TEST(RandGeneratorTest, WorksWithTheStandardLibrary) {
   for (int i = 0; i < 10000; i++)
     sum += normal(rand);
   EXPECT_NEAR(sum / 10000, 10.0, 0.1);
+}
+
+// WRandXoshiro128 draws from SeededRandom's generator: each next() is two of
+// its 32-bit draws, high then low, so it matches the generator exactly
+TEST(RandXoshiroTest, DrawsFromTheSeededGenerator) {
+  WRandXoshiro128 rand(42);
+  SeededRandom::Generator generator(42);
+  for (int i = 0; i < 100; i++) {
+    const uint64_t high = generator.next();
+    EXPECT_EQ(rand.next(), (high << 32) | generator.next()) << i;
+  }
+}
+
+// A game's named stream can drive it, and copyState carries the generator
+TEST(RandXoshiroTest, StreamsAndCopiedState) {
+  const SeededRandom::Seed seed(12345);
+  WRandXoshiro128 a(seed.stream("bots")), b(seed.stream("bots")), c(1);
+  for (int i = 0; i < 10; i++)
+    EXPECT_EQ(a.next(), b.next());
+  c.copyState(a);
+  for (int i = 0; i < 10; i++)
+    EXPECT_EQ(c.next(), a.next());
+  c.setSeed(7);
+  WRandXoshiro128 d(7);
+  EXPECT_EQ(c.next(), d.next());
+}
+
+// WRand's own methods work on it, the same for the same seed
+TEST(RandXoshiroTest, WRandsMethodsWork) {
+  WRandXoshiro128 a(3), b(3);
+  double sum = 0;
+  for (int i = 0; i < 10000; i++) {
+    const double value = a.uniform();
+    ASSERT_GE(value, 0.0);
+    ASSERT_LT(value, 1.0);
+    EXPECT_EQ(value, b.uniform());
+    sum += value;
+  }
+  EXPECT_NEAR(sum / 10000, 0.5, 0.02);
 }

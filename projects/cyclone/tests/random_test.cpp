@@ -4,6 +4,8 @@
 
 #include <cyclone/random.h>
 
+#include <SeededRandom/Seed.hpp>
+
 #include <set>
 
 using namespace cyclone;
@@ -21,6 +23,25 @@ TEST(RandomTest, TheSameSeedGivesTheSameSequence) {
     differsFromOtherSeed = differsFromOtherSeed || bits != c.randomBits();
   }
   EXPECT_TRUE(differsFromOtherSeed);
+}
+
+// SAKBox: the numbers are SeededRandom's generator's, from the same seed,
+// so Cyclone's randomness is the same on every platform
+TEST(RandomTest, DrawsFromTheSeededGenerator) {
+  Random random(42);
+  SeededRandom::Generator generator(42);
+  for (int i = 0; i < 100; ++i)
+    EXPECT_EQ(random.randomBits(), generator.next());
+}
+
+// A game can hand Cyclone one of its named streams, and save where it's up to
+TEST(RandomTest, CarriesOnFromAGamesStream) {
+  const SeededRandom::Seed seed(12345);
+  Random random(seed.stream("debris"));
+  SeededRandom::Generator same = seed.stream("debris");
+  for (int i = 0; i < 10; ++i)
+    EXPECT_EQ(random.randomBits(), same.next());
+  EXPECT_EQ(random.generator().state(), same.state());
 }
 
 // Reals fall in [0, 1), spread evenly: about a tenth in each tenth.

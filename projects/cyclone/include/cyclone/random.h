@@ -20,26 +20,22 @@
 
 #include "core.h"
 
+#include <SeededRandom/Generator.hpp>
+
 namespace cyclone {
 
 /**
  * Keeps track of one random stream: i.e. a seed and its output.
  * This is used to get random numbers. Rather than a funcion, this
  * allows there to be several streams of repeatable random numbers
- * at the same time. Uses the RandRotB algorithm.
+ * at the same time.
+ *
+ * SAKBox: built on SeededRandom's generator (xoshiro128**), the same
+ * numbers on every platform, in place of upstream's RandRotB. A game can
+ * hand Cyclone one of its named streams (Random(seed.stream("debris"))).
  */
 class Random {
 public:
-  /**
-   * left bitwise rotation
-   */
-
-  unsigned rotl(unsigned n, unsigned r);
-  /**
-   * right bitwise rotation
-   */
-  unsigned rotr(unsigned n, unsigned r);
-
   /**
    * Creates a new random number stream with a seed based on
    * timing data.
@@ -52,9 +48,22 @@ public:
   Random(unsigned seed);
 
   /**
-   * Sets the seed value for the random stream.
+   * SAKBox: a stream that carries on from the given generator, such as
+   * one of a game's named streams.
+   */
+  explicit Random(const SeededRandom::Generator &generator);
+
+  /**
+   * Sets the seed value for the random stream. (A seed of 0 seeds it
+   * from the clock instead.)
    */
   void seed(unsigned seed);
+
+  /**
+   * SAKBox: the generator underneath, for saving its state or drawing
+   * with SeededRandom's own methods (between, shuffle, ...).
+   */
+  SeededRandom::Generator &generator() { return generator_; }
 
   /**
    * Returns the next random bitstring from the stream. This is
@@ -79,8 +88,7 @@ public:
 
   /**
    * Returns a random integer less than the given value, which must be
-   * positive. (Lower results are very slightly more likely when the limit
-   * doesn't divide 2^32: for a limit of a million, 0.02% more likely.)
+   * positive. (SAKBox: every result equally likely.)
    */
   unsigned randomInt(unsigned max);
 
@@ -124,11 +132,9 @@ public:
   Quaternion randomQuaternion();
 
 private:
-  // Internal mechanics
-  int p1, p2;
-  unsigned buffer[17];
+  SeededRandom::Generator generator_;
 };
 
 } // namespace cyclone
 
-#endif // CYCLONE_BODY_H
+#endif // CYCLONE_RANDOM_H

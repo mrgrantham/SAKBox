@@ -10,80 +10,38 @@
  * software licence.
  */
 
-#include <bit>
 #include <cassert>
-#include <cstdint>
-#include <cstdlib>
 #include <ctime>
 #include <cyclone/random.h>
 
 using namespace cyclone;
 
-Random::Random() { seed(0); }
+// SAKBox: the numbers come from SeededRandom's generator (xoshiro128**),
+// the same on every platform, in place of upstream's RandRotB (a 17-word
+// buffer filled by a linear congruential generator). Sequences from a given
+// seed are new; nothing in SAKBox kept upstream's.
 
-Random::Random(unsigned seed) { Random::seed(seed); }
+Random::Random() : generator_(0) { seed(0); }
+
+Random::Random(unsigned seed) : generator_(0) { Random::seed(seed); }
+
+Random::Random(const SeededRandom::Generator &generator) : generator_(generator) {}
 
 void Random::seed(unsigned s) {
   if (s == 0) {
     s = (unsigned)clock();
   }
-
-  // Fill the buffer with some basic random numbers
-  for (unsigned i = 0; i < 17; i++) {
-    // Simple linear congruential generator
-    // SAKBox: an unsigned constant; as a (signed) long the product overflowed.
-    // Same results, since only the low 32 bits are kept.
-    s = s * 2891336453u + 1;
-    buffer[i] = s;
-  }
-
-  // Initialize pointers into the buffer
-  p1 = 0;
-  p2 = 10;
+  generator_ = SeededRandom::Generator(s);
 }
 
-unsigned Random::rotl(unsigned n, unsigned r) { return (n << r) | (n >> (32 - r)); }
+unsigned Random::randomBits() { return generator_.next(); }
 
-unsigned Random::rotr(unsigned n, unsigned r) { return (n >> r) | (n << (32 - r)); }
-
-unsigned Random::randomBits() {
-  unsigned result;
-
-  // Rotate the buffer and store it back to itself
-  result = buffer[p1] = rotl(buffer[p2], 13) + rotl(buffer[p1], 9);
-
-  // Rotate pointers
-  if (--p1 < 0)
-    p1 = 16;
-  if (--p2 < 0)
-    p2 = 16;
-
-  // Return result
-  return result;
-}
-
-// SAKBox: the bits are reinterpreted with std::bit_cast, not by writing one
-// member of a union and reading another (undefined behaviour in C++). The
-// results are the same.
+// SAKBox: [0, 1) with all the bits the type holds: 24 for a float, 53 for a
+// double (which the fixed-point types round from).
 #ifdef SINGLE_PRECISION
-real Random::randomReal() {
-  // Get the random number
-  unsigned bits = randomBits();
-
-  // Fix the ieee sign and exponent bits (so that the size of the result
-  // is 1-2) and use the bits to create the fraction part of the float.
-  return std::bit_cast<float>((bits >> 9) | 0x3f800000u) - 1.0f;
-}
+real Random::randomReal() { return generator_.unitFloat(); }
 #else
-real Random::randomReal() {
-  // Get the random number
-  unsigned bits = randomBits();
-
-  // Fix the ieee sign and exponent bits (so that the size of the result
-  // is 1-2) and use the bits, shifted to the top of the 52-bit fraction,
-  // to create the fraction part of the double.
-  return std::bit_cast<double>(0x3FF0000000000000ull | (std::uint64_t{bits} << 20)) - 1.0;
-}
+real Random::randomReal() { return generator_.unitDouble(); }
 #endif
 
 real Random::randomReal(real min, real max) { return randomReal() * (max - min) + min; }
@@ -91,9 +49,10 @@ real Random::randomReal(real min, real max) { return randomReal() * (max - min) 
 real Random::randomReal(real scale) { return randomReal() * scale; }
 
 unsigned Random::randomInt(unsigned max) {
-  // SAKBox: there's no integer below 0 to return (it divided by zero)
+  // SAKBox: there's no integer below 0 to return (it divided by zero); and
+  // every result is equally likely (it was randomBits() % max)
   assert(max > 0);
-  return randomBits() % max;
+  return generator_.below(max);
 }
 
 real Random::randomBinomial(real scale) { return (randomReal() - randomReal()) * scale; }

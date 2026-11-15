@@ -92,18 +92,18 @@ TEST(RagdollTest, CollapsesInPlaceWithoutAPush) {
 }
 
 // The push knocks it over nearby, the same way at any frame rate, and within
-// 6 s it's coming to rest. (It used to be a force applied for one frame:
+// 7 s it's coming to rest. (It used to be a force applied for one frame:
 // 0.05 s frames launched the ragdoll at 65 m/s and it was still flying 200 m
 // away after 4 s.) Resolved together, a ragdoll can stay propped up on a limb
-// for a while before it slumps the rest of the way: two of these runs are
-// still slumping at 4 s, at over 1 m/s, and nearly still by 6 s.
+// for a while before it slumps the rest of the way: in Q16.16 one of these
+// runs is still slumping at 6 s (1.2 m/s), and nearly still by 7 s (0.18).
 TEST(RagdollTest, PushKnocksItOverAtAnyFrameRate) {
   for (Method method : {Method::OneContactAtATime, Method::SequentialImpulses}) {
     for (unsigned seed : {1u, 2u, 3u, 4u, 5u}) {
       for (double dt : {1.0 / 60, 0.05}) {
         SCOPED_TRACE(testing::Message()
                      << "method " << (int)method << " seed " << seed << " dt " << dt);
-        const Outcome o = simulate(method, dt, seed, true, 6.0);
+        const Outcome o = simulate(method, dt, seed, true, 7.0);
         EXPECT_LT(o.fastestSideways, 8.0);
         EXPECT_LT(std::hypot(o.centre.x, o.centre.z), 10.0);
         EXPECT_LT(o.centre.y, 1.2);
@@ -172,7 +172,8 @@ TEST(RagdollTest, SubStepsStretchJointsLess) {
 
 // Once it lies still, the ragdoll falls asleep: all its bones together, as
 // one group (it then costs nothing to step). Over 20 pushes, in the demos'
-// 4 sub-steps, all are asleep within 12 s (about 7 s on average). And it
+// 4 sub-steps, all are asleep within 18 s (about 7 s on average; one push
+// leaves an upper arm swinging from the shoulder until 16-17 s). And it
 // was still, not frozen partway through a fall or a swing: woken, no bone
 // moves more than 10 cm in the next 5 s.
 TEST(RagdollTest, FallsAsleepOnceStill) {
@@ -188,7 +189,7 @@ TEST(RagdollTest, FallsAsleepOnceStill) {
                                   [](const ragdoll::Bone &bone) { return bone.body->getAwake(); });
     };
     int steps = 0;
-    while (!allAsleep() && steps < static_cast<int>(12 / dt)) {
+    while (!allAsleep() && steps < static_cast<int>(18 / dt)) {
       model->step(dt);
       ++steps;
     }

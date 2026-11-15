@@ -82,6 +82,7 @@
 #include <stdint.h>
 #include <limits>
 #include <vector>
+#include <SeededRandom/Generator.hpp>
 
 namespace WClasses
 {
@@ -464,6 +465,59 @@ public:
 };
 
 
+
+/// SAKBox: a WRand on SeededRandom's generator (xoshiro128**), the one
+/// SAKBox's games and Cyclone use: the same numbers on every platform, and
+/// a seed made from a game's seed (SeededRandom::Seed) or a saved state.
+/// WRand's methods (uniform, normal, shuffle, ...) all draw from next(), so
+/// they work unchanged. WRand itself stays the default, so results recorded
+/// with it (Waffles' tests and learners) keep their values.
+class WRandXoshiro128 : public WRand
+{
+	using WRand::next;
+private:
+	SeededRandom::Generator m_generator;
+
+public:
+	/// A generator from a seed; the same seed gives the same numbers
+	WRandXoshiro128(uint64_t seed) : WRand(seed), m_generator(seed)
+	{
+	}
+
+	/// Carries on from another generator, such as one of a game's named
+	/// streams (seed.stream("bots"))
+	WRandXoshiro128(const SeededRandom::Generator& generator) : WRand(0), m_generator(generator)
+	{
+	}
+
+	~WRandXoshiro128() override {}
+
+	/// Sets the seed
+	void setSeed(uint64_t seed) override
+	{
+		WRand::setSeed(seed);
+		m_generator = SeededRandom::Generator(seed);
+	}
+
+	/// Copies the state of another WRandXoshiro128 (or, from a plain WRand,
+	/// only WRand's own state, which this class doesn't draw from)
+	void copyState(const WRand& copyMyState) override
+	{
+		WRand::copyState(copyMyState);
+		if(const WRandXoshiro128* that = dynamic_cast<const WRandXoshiro128*>(&copyMyState))
+			m_generator = that->m_generator;
+	}
+
+	/// The next 64 random bits: two of the generator's 32-bit draws
+	uint64_t next() override
+	{
+		const uint64_t high = m_generator.next();
+		return (high << 32) | m_generator.next();
+	}
+
+	/// The generator underneath, for saving its state
+	const SeededRandom::Generator& generator() const { return m_generator; }
+};
 
 } // namespace WClasses
 

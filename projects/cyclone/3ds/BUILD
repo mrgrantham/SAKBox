@@ -8,6 +8,7 @@ RAGDOLL_SOURCES = {
     "//projects/scratchpadd/input:sources": "scratchpadd/input",
     "//projects/cyclone/handheld:sources": "ragdoll",
     "//projects/cyclone:sources": "cyclone",
+    "//projects/seeded_random:sources": "seeded_random",
     "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
     "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
     "//projects/scratchpadd/app_ended:sources": "scratchpadd/app_ended",

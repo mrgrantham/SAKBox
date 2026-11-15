@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <deque>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -34,7 +35,7 @@ constexpr int kScenes = 200;
 constexpr double kSeconds = 10;
 constexpr double kFastestSane = 1000;  // m/s: shots start at up to 100
 constexpr double kFarthestSane = 1e4;  // m
-constexpr double kMostMassRatio = 100; // between particles joined by a rod or cable
+constexpr double kMostMassRatio = 100; // joined bodies; what a particle carries by rods and cables
 
 // A random scene, the same for the same seed: boxes and spheres on the
 // ground (y = 0) and against each other, the World's shapes
@@ -102,7 +103,11 @@ struct Scene {
       for (unsigned i = 0; i < pairs; ++i) {
         RigidBody *a = bodies[random.randomInt(bodies.size())].get();
         RigidBody *b = bodies[random.randomInt(bodies.size())].get();
-        if (a == b)
+        // Only bodies within 100 times each other's mass: a joint between
+        // a 0.1 kg box and a 300 kg one is more than an iterative resolver
+        // can hold (see Known limitations in the README)
+        const double ratio = a->getMass() / b->getMass();
+        if (a == b || ratio > kMostMassRatio || ratio < 1 / kMostMassRatio)
           continue;
         auto joint = std::make_unique<Joint>();
         joint->set(a, random.randomVector(0.3), b, random.randomVector(0.3),
@@ -212,16 +217,25 @@ struct ParticleScene {
       return (a->getPosition() - b->getPosition()).magnitude();
     };
     const unsigned joins = random.randomInt(2 * count);
+    // The mass each particle carries by rods and cables to other particles
+    std::map<const Particle *, double> carried;
     for (unsigned i = 0; i < joins; ++i) {
       Particle *a = any(), *b = any();
-      // Rods and cables only between particles within 100 times each
-      // other's mass: a heavy particle hanging from a much lighter one is
-      // more than an iterative resolver can hold (see Known limitations in
-      // the README)
-      const double ratio = a->getMass() / b->getMass();
-      if (a == b || ratio > kMostMassRatio || ratio < 1 / kMostMassRatio)
+      const unsigned kind = random.randomInt(5);
+      if (a == b)
         continue;
-      switch (random.randomInt(5)) {
+      // Rods and cables only while each end carries at most 100 times its
+      // own mass in all: a light particle holding up much heavier ones,
+      // whether one or several, is more than an iterative resolver can hold
+      // (see Known limitations in the README)
+      if (kind <= 1 && (carried[a] + b->getMass() > kMostMassRatio * a->getMass() ||
+                        carried[b] + a->getMass() > kMostMassRatio * b->getMass()))
+        continue;
+      if (kind <= 1) {
+        carried[a] += b->getMass();
+        carried[b] += a->getMass();
+      }
+      switch (kind) {
       case 0: { // a rod, as long as they're apart now
         auto rod = std::make_unique<ParticleRod>();
         rod->particle[0] = a;
