@@ -21,7 +21,11 @@ Status: research, for review. The name and the concept are still open. This sets
 - **Photo mode:** in a later version.
 - **Difficulty bands** each end at a guarded objective with a boss or extra defences, then a breather.
 - **A technique meter** fills while skimming close to obstacles. Proposed: dodges spend it, and what's left multiplies the score.
-- **Still open:** steering (corridor recommended), the bottom screens (a top-down map and menus to start), the bosses, and the enemy behaviour levels (patrolling, tracking, swarming, desperate).
+- **Steering:** a free corridor around the rail. The ship speeds up while a direction is held, so the DS Lite's D-pad works.
+- **Bottom screen:** during play, a top-down map of the course ahead, health and the score; on pause, the menu.
+- **Bosses:** a carrier with shield generators, a gate with turrets, and a large ship running ahead, one for each stage. **Enemy levels:** patrolling, tracking, swarming, desperate.
+- **One meter:** skimming close fills the technique meter, dodges spend it, and what's left multiplies the score.
+- **First design settled** (2026-11-14). Next, when building starts: a first playable space course.
 
 ## The idea
 

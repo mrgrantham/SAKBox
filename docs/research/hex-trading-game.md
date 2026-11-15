@@ -27,7 +27,14 @@ These replace the first proposal below where they differ. The reasoning behind s
   - Rare tiles in the base game: alien stations (2-for-1 trades) and ancient ruins (2 badges). Wormholes come later, as a variant.
   - Contracts: a deck of cards; each player is dealt 2 and keeps 1 secretly, and more can be bought.
   - 10 points to win, to be tuned with bots.
-- **Still open:** placement at the start, and the final numbers.
+- **Decided since:**
+  - explorer badges (3 for a point);
+  - 10 points to win;
+  - ruins and alien stations as the rare tiles, wormholes dropped. Stations are general (3 for 1) or specialist (2 for 1, their own resource); the bank is 4 for 1;
+  - contracts all secret, dealt 2 and keep 1.
+- **Still open, with options on the roadmap page:**
+  - the board. My recommendation is planets on even slots with space tiles between, which flip too and sometimes hold small finds: salvage, comets, nebulae, a pirate hideout. About 61 hexes, to tune with bots;
+  - the start: identical known home planets with nothing to place, or a draft of starting spots.
 
 ## Why this game suits the DS
 
