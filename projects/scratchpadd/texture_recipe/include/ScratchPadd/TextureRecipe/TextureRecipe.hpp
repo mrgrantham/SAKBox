@@ -15,13 +15,20 @@
 // same recipe draws the same pixels on every platform.
 //
 // Formats:
-//   Rgba8    4 bytes a pixel, edges smoothed (16 samples a pixel)
-//   Indexed  1 byte a pixel: 0 transparent, then the recipe's colours (1 is
-//            its first), sharp edges (the pixel's centre decides). A recipe's
-//            few colours are its palette exactly, so a DS's 16-colour
-//            textures need recipes of 15 colours or fewer.
+//   Rgba8       4 bytes a pixel, any colours, edges smoothed (16 samples a pixel)
+//   Palette256  1 byte a pixel into `palette`: [0] transparent, then up to 255
+//               colours; sharp edges (the pixel's centre decides)
+//   Palette16   the same with up to 15 colours (a DS's 4-bit textures; still a
+//               byte a pixel here, packed when it goes to the hardware)
+// The palette is made for each drawing: its own colours, exactly, if they
+// fit. If they don't, colours no pixel uses are dropped, then the closest
+// are merged (each pair's distance weighted by how many pixels would change)
+// until they fit, and the reduction is logged as a loud error and kept in
+// `Image::reduction`. The same recipe then draws in full on a desktop and as
+// near as fits on a DS, with nothing changed in the drawing.
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <string>
@@ -61,18 +68,33 @@ inline constexpr int kUnitsPerDrawingUnit = 16;
 // A recipe from its text, or what's wrong with it ("line 4: ...")
 std::expected<Recipe, std::string> read(std::string_view text);
 
-enum class Format : std::uint8_t { Rgba8, Indexed };
+enum class Format : std::uint8_t { Rgba8, Palette256, Palette16 };
+
+// How many colours a format's palette holds besides transparent (0: no palette)
+constexpr std::size_t paletteLimit(Format format) {
+  return format == Format::Palette256 ? 255 : format == Format::Palette16 ? 15 : 0;
+}
+
+// What making a palette did to a drawing's colours
+struct Reduction {
+  int coloursUsed = 0; // the recipe's colours, less any unused when it didn't fit
+  int coloursKept = 0; // in the palette, after merging
+  int worstShift = 0;  // the most any colour moved in one channel, of 255
+  bool reduced() const { return coloursKept < coloursUsed; }
+};
 
 struct Image {
   int width = 0, height = 0;
   Format format = Format::Rgba8;
   std::vector<std::uint8_t> pixels; // rows top to bottom: 4 bytes a pixel, or 1
-  std::vector<Colour> palette;      // Indexed: [0] transparent, then the recipe's colours
+  std::vector<Colour> palette;      // palette formats: [0] transparent, then the colours
+  Reduction reduction;              // palette formats
 
   Colour at(int x, int y) const; // a pixel's colour, either format
 };
 
-// The recipe drawn into a width x height image, the drawing stretched to fill it
-Image draw(const Recipe &recipe, int width, int height, Format format);
+// The recipe drawn into a width x height image, the drawing stretched to fill
+// it. `name` is for the log, if its colours have to be reduced.
+Image draw(const Recipe &recipe, int width, int height, Format format, std::string_view name = {});
 
 } // namespace ScratchPadd::TextureRecipe

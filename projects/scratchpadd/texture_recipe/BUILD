@@ -10,12 +10,16 @@ cc_library(
     hdrs = ["include/ScratchPadd/TextureRecipe/TextureRecipe.hpp"],
     strip_include_prefix = "include/",
     visibility = ["//visibility:public"],
+    deps = ["//projects/scratchpadd/utilities"],
 )
 
 # SVG to recipe, run by the texture_recipe rule (texture_recipe.bzl)
 py_binary(
     name = "svg_to_recipe",
-    srcs = ["tools/svg_to_recipe.py"],
+    srcs = [
+        "tools/css_colours.py",
+        "tools/svg_to_recipe.py",
+    ],
     visibility = ["//visibility:public"],
 )
 

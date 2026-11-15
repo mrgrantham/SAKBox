@@ -12,8 +12,13 @@ so a drawing never quietly loses a part):
   <g>, <rect>, <circle>, <ellipse>, <line>, <polyline>, <polygon>, <path>
   path commands M L H V C S Q T Z, absolute and relative (not arcs, A)
   fill, stroke, stroke-width, opacity, fill-opacity, stroke-opacity, fill-rule,
-  as attributes or in style=""; colours #rgb, #rrggbb, rgb(r,g,b) and a few names
+  as attributes or in style=""; colours as #rgb, #rgba, #rrggbb, #rrggbbaa,
+  rgb(), rgba(), hsl(), hsla() (numbers or percentages) and the 148 CSS names
   transform: translate, scale, rotate, matrix (nested in groups)
+A recipe with more colours than a DS's palettes hold (15 or 255) is fine: a
+palette format merges the closest colours when it draws. It's warned about
+here too, so the merging is seen when the drawing is made.
+
 Strokes become filled outlines here (each segment a band, round joins and
 caps), so a device only ever fills.
 
@@ -27,21 +32,18 @@ as integers, so a DS draws it without floating point):
 """
 
 import math
+import os
 import re
 import sys
 import xml.etree.ElementTree as ET
 
+# (beside this file; Bazel's runner doesn't put its folder on the path)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from css_colours import NAMES  # noqa: E402
+
 SCALE = 16  # recipe units per drawing unit
 CURVE_STEPS = 16  # straight lines a curve becomes
 ROUND_STEPS = 16  # sides of a round join or cap
-
-NAMED = {
-    "black": (0, 0, 0), "white": (255, 255, 255), "red": (255, 0, 0), "green": (0, 128, 0),
-    "lime": (0, 255, 0), "blue": (0, 0, 255), "yellow": (255, 255, 0), "cyan": (0, 255, 255),
-    "magenta": (255, 0, 255), "orange": (255, 165, 0), "purple": (128, 0, 128), "gray": (128, 128, 128),
-    "grey": (128, 128, 128), "navy": (0, 0, 128), "teal": (0, 128, 128), "maroon": (128, 0, 0),
-}
-
 
 class RecipeError(Exception):
     pass
@@ -51,21 +53,56 @@ def tag(element):
     return element.tag.split("}")[-1]
 
 
+def channel(text, scale):
+    """A number, or a percentage of `scale`, clamped to 0..scale"""
+    text = text.strip()
+    value = float(text[:-1]) * scale / 100 if text.endswith("%") else float(text)
+    return max(0.0, min(float(scale), value))
+
+
+def alpha(text):
+    text = text.strip()
+    return channel(text, 100) / 100 if text.endswith("%") else max(0.0, min(1.0, float(text)))
+
+
+def hsl_to_rgb(h, s, l):
+    def part(n):
+        k = (n + h / 30) % 12
+        a = s * min(l, 1 - l)
+        return round(255 * (l - a * max(-1, min(k - 3, 9 - k, 1))))
+    return part(0), part(8), part(4)
+
+
 def parse_colour(text):
+    """(r, g, b, alpha 0..1), or None for no colour"""
     text = text.strip().lower()
     if text in ("none", "transparent"):
         return None
     if text.startswith("#"):
         h = text[1:]
-        if len(h) == 3:
-            return tuple(int(c * 2, 16) for c in h)
-        if len(h) == 6:
-            return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
-    m = re.fullmatch(r"rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)", text)
+        if len(h) in (3, 4) and all(c in "0123456789abcdef" for c in h):
+            v = [int(c * 2, 16) for c in h]
+            return (v[0], v[1], v[2], v[3] / 255 if len(v) == 4 else 1.0)
+        if len(h) in (6, 8) and all(c in "0123456789abcdef" for c in h):
+            v = [int(h[i:i + 2], 16) for i in range(0, len(h), 2)]
+            return (v[0], v[1], v[2], v[3] / 255 if len(v) == 4 else 1.0)
+    m = re.fullmatch(r"(rgba?|hsla?)\(([^)]*)\)", text)
     if m:
-        return tuple(min(255, int(v)) for v in m.groups())
-    if text in NAMED:
-        return NAMED[text]
+        # Commas, or spaces with an optional "/ alpha"
+        parts = [p for p in re.split(r"[\s,/]+", m.group(2).strip()) if p]
+        if len(parts) in (3, 4):
+            try:
+                a = alpha(parts[3]) if len(parts) == 4 else 1.0
+                if m.group(1).startswith("rgb"):
+                    r, g, b = (round(channel(p, 255)) for p in parts[:3])
+                else:
+                    hue = float(parts[0].removesuffix("deg")) % 360
+                    r, g, b = hsl_to_rgb(hue, channel(parts[1], 100) / 100, channel(parts[2], 100) / 100)
+                return (r, g, b, a)
+            except ValueError:
+                pass
+    if text in NAMES:
+        return NAMES[text] + (1.0,)
     raise RecipeError(f"a colour I can't read: {text!r}")
 
 
@@ -280,10 +317,11 @@ def shapes_of(element, transform, style):
 
 
 def colour_with_opacity(text, opacity):
-    rgb = parse_colour(text)
-    if rgb is None:
+    colour = parse_colour(text)
+    if colour is None:
         return None
-    return rgb + (round(255 * max(0.0, min(1.0, opacity))),)
+    r, g, b, a = colour
+    return (r, g, b, round(255 * a * max(0.0, min(1.0, opacity))))
 
 
 def walk(element, transform, style, out):
@@ -353,6 +391,11 @@ def main(argv):
         return 1
     with open(argv[2], "w") as f:
         f.write(recipe)
+    colours = sum(1 for line in recipe.splitlines() if line.startswith("colour "))
+    for limit, name in ((15, "Palette16"), (255, "Palette256")):
+        if colours > limit:
+            print(f"WARNING: {argv[1]} has {colours} colours: drawn as {name} (up to {limit}), the closest "
+                  f"will be merged. Rgba8 keeps them all.", file=sys.stderr)
     return 0
 
 

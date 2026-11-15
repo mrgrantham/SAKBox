@@ -32,6 +32,34 @@ class ConvertTest(unittest.TestCase):
         self.assertEqual(lines(text, "colour"), ["colour 0 0 255 0 255", "colour 1 255 255 255 128"])
         self.assertEqual(len(lines(text, "fill")), 3)
 
+    def test_every_css_colour_form(self):
+        cases = {
+            "chartreuse": "127 255 0 255", "RebeccaPurple": "102 51 153 255", "#f008": "255 0 0 136",
+            "#00ff0080": "0 255 0 128", "rgba(0, 0, 255, 0.5)": "0 0 255 128",
+            "rgb(100% 0% 0% / 50%)": "255 0 0 128", "hsl(120, 100%, 50%)": "0 255 0 255",
+            "hsla(240deg 100% 50% / 0.25)": "0 0 255 64",
+        }
+        for written, expected in cases.items():
+            with self.subTest(written):
+                text = recipe(f'<rect width="1" height="1" fill="{written}"/>')
+                self.assertEqual(lines(text, "colour"), [f"colour 0 {expected}"])
+
+    def test_many_colours_warned_about(self):
+        import contextlib
+        import io
+        import tempfile
+        rects = "".join(f'<rect x="{i}" width="1" height="1" fill="rgb({i * 10},0,0)"/>' for i in range(20))
+        with tempfile.TemporaryDirectory() as folder:
+            svg = os.path.join(folder, "many.svg")
+            with open(svg, "w") as f:
+                f.write(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 1">{rects}</svg>')
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                self.assertEqual(svg_to_recipe.main(["svg_to_recipe.py", svg, os.path.join(folder, "out")]), 0)
+        self.assertIn("WARNING", err.getvalue())
+        self.assertIn("20 colours: drawn as Palette16", err.getvalue())
+        self.assertNotIn("Palette256", err.getvalue())
+
     def test_transforms_nest(self):
         text = recipe('<g transform="translate(2 3)"><g transform="scale(2)"><rect width="1" height="1"/></g></g>')
         self.assertEqual(lines(text, "contour"), ["contour 32 48 64 48 64 80 32 80"])
@@ -73,7 +101,7 @@ class ConvertTest(unittest.TestCase):
         with self.assertRaises(svg_to_recipe.RecipeError):
             recipe('<text>hello</text>')
         with self.assertRaises(svg_to_recipe.RecipeError):
-            recipe('<rect width="1" height="1" fill="chartreuse"/>')
+            recipe('<rect width="1" height="1" fill="notacolour"/>')
         with self.assertRaises(svg_to_recipe.RecipeError):
             svg_to_recipe.convert('<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>')
 

@@ -591,7 +591,7 @@ How the builds differ from a desktop's:
 | `//projects/scratchpadd/ds/platform` | What ScratchPadd needs on the DS that devkitPro lacks: `std::atomic`'s functions and a clock |
 | `//projects/scratchpadd/audio/made_sounds_pcm16` | The sounds made in code, rendered when the program is built, as 16-bit samples (`MadeSoundsPcm16.hpp`) |
 | `//projects/scratchpadd/midi_input` | `MidiInputPadd` (MIDI keyboards and controllers, desktops) and `:midi_input_messages` |
-| `//projects/scratchpadd/texture_recipe` | Textures drawn on the device from SVG drawings: the build turns a drawing into a recipe of filled outlines (`texture_recipe()` in `texture_recipe.bzl`), and `TextureRecipe::draw` draws it into pixels at any size, in RGBA or a palette, with integers only: see [`texture_recipe`](texture_recipe/README.md) |
+| `//projects/scratchpadd/texture_recipe` | Textures drawn on the device from SVG drawings: the build turns a drawing into a recipe of filled outlines (`texture_recipe()` in `texture_recipe.bzl`), and `TextureRecipe::draw` draws it into pixels at any size, in RGBA or a palette of its own (closest colours merged, loudly, when they don't fit), with integers only: see [`texture_recipe`](texture_recipe/README.md) |
 | `//projects/scratchpadd/demo` | The demo app |
 
 ## Building and Testing
