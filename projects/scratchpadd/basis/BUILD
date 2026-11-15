@@ -99,3 +99,12 @@ filegroup(
     srcs = glob(["include/**"]),
     visibility = ["//visibility:public"],
 )
+
+# What a message costs: round trips, bursts by payload size (and payloads
+# that allocate), broadcasts to 1, 4 and 8 padds. bazel run -c opt (see
+# the ScratchPadd README's message performance notes)
+cc_binary(
+    name = "message_benchmark",
+    srcs = ["benchmarks/MessageBenchmark.cpp"],
+    deps = [":basis"],
+)
