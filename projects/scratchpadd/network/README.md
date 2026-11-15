@@ -118,7 +118,7 @@ These are the next branches, each built on the layers above:
 
 1. **Finding hosts by broadcast:** a host announces itself by UDP, and joiners list the hosts they hear (a "join game" screen), so nobody types an address.
 2. **UDP "latest wins" delivery,** for messages sent many times a second, where a lost one is simply replaced by the next (the ship game's ghosts).
-3. **Local wireless on the DS (NiFi):** consoles together with no router, as another transport under the bridge, with a game not caring which carries it. It stays on devkitPro: our own ARM7 program and an ARM9 library, building on calico's wireless driver, whose local wireless mode is still empty ([the plan](../../../docs/research/hex-trading-game.md#decided-so-far-from-the-roadmap-page-2026-11-14)). The 3DS's own `uds` comes later.
+3. **Local wireless on the DS (NiFi):** consoles together with no router, as another transport under the bridge, with a game not caring which carries it. It stays on devkitPro: our own ARM7 program and an ARM9 library, building on calico's wireless driver, whose local wireless mode is still empty ([the plan](../../cosmic_hex/design.md#decided-so-far-from-the-roadmap-page-2026-11-14)). The 3DS's own `uds` comes later.
 
 ## Parts
 

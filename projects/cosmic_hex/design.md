@@ -1,4 +1,4 @@
-# A multiplayer hex-tile trading game on the DS: research and design
+# Cosmic Hex: design
 
 Status: research, for review.
 
@@ -6,7 +6,7 @@ Status: research, for review.
 
 ## Decided so far (from the roadmap page, 2026-11-14)
 
-These replace the first proposal below where they differ. The reasoning behind several of them is in the [reading notes](game-design-reading.md#applied-to-the-hex-game).
+These replace the first proposal below where they differ. The reasoning behind several of them is in the [reading notes](../../docs/research/game-design-reading.md#applied-to-the-hex-game).
 
 - **Working title:** Cosmic Hex. "Hexoplanet" is taken by an existing game.
 - **Theme:** space. **The twist is exploration:** a tile's resource and its dice number are hidden until it's explored. Reveals are public, so a discovery becomes a sought-after destination.
@@ -60,10 +60,25 @@ These replace the first proposal below where they differ. The reasoning behind s
   - Kinds for a first deck of 15 to 20: settlement (stations on 3 kinds of planet; 2 gas giants; 2 colonies; a core planet), exploration (5 badges; a kept zone find; stations on opposite sides), neighbours (sharing 2 planets; a station next to an alien station) and economy (6 resources in hand; a colony on a 6 or 8).
   - **Balanced with the bots' numbers:** for each card, how often it's kept when offered, met, and held by the winner. A card that's nearly always kept, or wins far more than others, gets a harder goal or fewer points, one at a time, and each change is reported with the numbers behind it.
 - **Debug builds record games:** the starting board and every move, so real games can be analysed like the simulations.
-- **Since (2026-11-15), from Fullerton's *Game Design Workshop*** ([reading notes](game-design-reading.md#applied-to-the-hex-game)):
+- **Since (2026-11-15), from Fullerton's *Game Design Workshop*** ([reading notes](../../docs/research/game-design-reading.md#applied-to-the-hex-game)):
   - **Turn order:** the bots measure each seat's win rate; if the first seat wins too often, later seats start with an extra resource (like Go's komi).
   - **At most 3 ships in play per player,** like three ship pieces of your colour in the box.
   - **What's left to explore,** three settings, decided by play and simulation: A (the default), each kind of tile's count printed; B, the mix listed in the rules, all of it used; C, more tiles in the box than slots, the extras put back unseen, so the odds are rough and each galaxy differs. The bots show what each does (game length, lead changes, whether early explorers win more); recorded real games show which is fun.
+
+### The rules engine's first version (2026-11-15)
+
+The draft from the roadmap page's round 26, agreed as a good start; every number is in the rules engine's `Settings` for the bots to tune ([rules](rules), [simulating](README.md#simulating)).
+
+- **The board:** a hexagon of radius 4 (61 hexes). The 19 planet slots are every third hex: the centre, and 6 each at distances 2, 3 and 4. The 4 homes are on the outer ring, opposite pairs first (so a two-player game faces off). The core planets are the 7 slots within 2 of the centre (the round-26 draft said 3, but the centre and the six around it are equally near). The zone: 12 face-down tiles, the six at distance 2 and, with the corners variant, six at the board's corners.
+- **Planet tiles:** 3 of each kind (asteroid belt: minerals; lush planet: food; gas giant: fuel; ice moon: water; nebula: crystals). **Number tokens:** 2, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 11, 12 (no 7). Both are drawn when a ship turns a planet over.
+- **Zone tiles:** 6 nothing, 2 salvage (2 resources of your choice), 2 ancient ruins (2 badges), 1 alien station (a trading post, 3 for 1, for a player with a station or ship next to it), 1 pirate hideout (1 random resource from each other player). Salvage, ruins and the hideout count as a kept find. Whether 6 empty tiles is too many is for the simulations to show.
+- **The start:** a station at your home (1 point), 1 ship there, and 1 of each resource. Turn order is random.
+- **A turn:** your home gives 1 resource of your choice; the dealer rolls two dice; on a 7 you move the blockade ship to a turned-over planet (no production there) and take a random resource from a player with a station on it; otherwise every turned-over planet with the number pays each station on it 1 (a colony 2). Then, in any order: trade, build, move, settle, contracts, badges; then end the turn.
+- **Moving:** each ship once a turn, up to 3 hexes, or 5 for 1 fuel; through other ships, but not through a face-down tile or the blockade's planet. Onto a face-down tile: it's turned over, the ship stops, and you earn a badge. A new ship moves from the next turn.
+- **Building:** a ship (1 minerals, 1 fuel) on a planet where you have a station, at most 3 in play; a station (the ship, 1 food, 1 water) on a turned-over planet with a free dock, at most 2 a planet and one each; a colony (2 minerals, 2 food); a contract (1 crystal, 1 water, 1 food; draw 2, keep 1).
+- **Trading:** the bank 4 for 1; the zone's alien station 3 for 1 nearby. **No trades between players in the first version** (the bots can't negotiate yet): they come later with simple trade rules, and the simulations will compare. The specialist stations (2 for 1) agreed earlier aren't placed anywhere in this draft yet.
+- **Points:** stations 1, colonies 2, Core Control 2, every 3 badges cashed 1, revealed contracts their value; 10 on your own turn wins. A first deck of 17 contracts is in the rules engine.
+- **Ideas for a second version or another mode** (your round-26 comment, tabled for now): planet clusters of 1, 2 or 3 planets with travel and building along the edges, and dead planets that produce nothing but can still hold a station.
 
 ## Why this game suits the DS
 
@@ -91,7 +106,7 @@ The two screens:
 ## Multiplayer: how it would work
 
 - **The host's DS holds the true game state.** It's authoritative: the others send what they want to do (`BuildOutpost{sector}`, `OfferTrade{...}`), the host checks it's legal, applies it, and tells everyone what happened. Private things, such as cards drawn, go only to the player they belong to.
-- That's the message bridge ([network README](../../projects/scratchpadd/network/README.md#the-message-bridge)), with one addition already among its open questions: **sending to one device**, not all, and knowing which device a message came from.
+- That's the message bridge ([network README](../scratchpadd/network/README.md#the-message-bridge)), with one addition already among its open questions: **sending to one device**, not all, and knowing which device a message came from.
 - **The transport is the open question.** The bridge runs over the network today (TCP, by IP address), which a DS Lite can't join (WPA2). The DS needs **local wireless** ("NiFi"):
   - **BlocksDS's DSWifi has it**, added in version 1.8.0 (February 2025) ([changelog](https://blocksds.skylyrac.net/docs/changelog/), [local multiplayer guide](https://blocksds.skylyrac.net/docs/dswifi/md_documentation_2local__multiplayer__mode.html), [API](https://blocksds.skylyrac.net/dswifi/group__dswifi9__mp.html)). One DS hosts (as an access point) and up to 15 join. The host sends a frame each round, and each client's reply comes back in the same exchange: `Wifi_MultiplayerHostMode`, `Wifi_MultiplayerClientMode`, `Wifi_MultiplayerHostCmdTxFrame`, and handlers for the packets. Packet sizes are fixed when it starts. It works in DS mode only, not in the DSi's own mode. There are examples (`examples/dswifi/local_multiplayer`, `multiplayer_packets`).
   - **SAKBox builds DS apps with devkitPro** (calico and libnds), and **it has no local multiplayer** (checked 2026-11-14 in the pinned `devkitpro/devkitarm` image). Its `dswifi9.h` has only access-point networking (`Wifi_InitDefault`, `Wifi_AutoConnect`, `Wifi_AssocStatus`, `Wifi_GetIP`), and calico's ARM7 wireless drivers (`ntrwifi.h`, `twlwifi.h`) only scan. There's no host or client mode and no raw frame sending.

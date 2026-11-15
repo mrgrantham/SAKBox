@@ -1,6 +1,6 @@
 # Game design reading: takeaways for our games
 
-Status: reference. What the game design books in our collection say, gathered for designing [Infinifly](rail-ship-game.md) (the endless on-rails ship game) and the [hex-tile trading game](hex-trading-game.md), and to cite while we work on them. Each takeaway names its source, so we can go back to the chapter.
+Status: reference. What the game design books in our collection say, gathered for designing [Infinifly](rail-ship-game.md) (the endless on-rails ship game) and the [hex-tile trading game](../../projects/cosmic_hex/design.md) (Cosmic Hex), and to cite while we work on them. Each takeaway names its source, so we can go back to the chapter.
 
 ## What was read
 
