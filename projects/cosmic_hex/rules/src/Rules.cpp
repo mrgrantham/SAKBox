@@ -546,12 +546,14 @@ const std::vector<Contract> &contracts() {
       {"Two colonies", 2, [](const State &s, int p) { return colonies(s, p) >= 2; }},
       {"A station on a core planet", 1,
        [](const State &s, int p) { return coreStationsOf(s, p) >= 1; }},
-      {"5 explorer badges earned", 2,
+      // (5 badges and one find were scored by about 80% of those who kept
+      // them, in 2,400 four-player games: nearly free points)
+      {"6 explorer badges earned", 2,
        [](const State &s, int p) {
-         return s.player[static_cast<std::size_t>(p)].badgesEarned >= 5;
+         return s.player[static_cast<std::size_t>(p)].badgesEarned >= 6;
        }},
-      {"A find kept from the zone", 1,
-       [](const State &s, int p) { return s.player[static_cast<std::size_t>(p)].findsKept >= 1; }},
+      {"Two finds kept from the zone", 1,
+       [](const State &s, int p) { return s.player[static_cast<std::size_t>(p)].findsKept >= 2; }},
       {"Stations on opposite sides of the board", 3,
        [](const State &s, int p) {
          for (const Planet &a : s.planets) {
