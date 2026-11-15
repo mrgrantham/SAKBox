@@ -33,6 +33,7 @@ struct Options {
   int maxRounds = 200;
   std::uint64_t seed = 1;
   std::string logs; // a folder to write each game's log to, if given
+  std::string csv;  // a file to write one line a game to, if given
 };
 
 // A flag's number, or a clear stop if it isn't one
@@ -66,6 +67,8 @@ Options parse(int argc, char **argv) {
       options.seed = number<std::uint64_t>(flag, value);
     else if (flag == "--logs")
       options.logs = value;
+    else if (flag == "--csv")
+      options.csv = value;
     else {
       std::fprintf(stderr, "unknown flag %s\n", argv[i]);
       std::exit(2);
@@ -99,6 +102,12 @@ int main(int argc, char **argv) {
   int finished = 0, totalRounds = 0, totalActions = 0;
   Sources winnerPoints;
   const auto started = std::chrono::steady_clock::now();
+  std::ofstream csv;
+  if (!options.csv.empty()) {
+    csv.open(options.csv);
+    csv << "seed,players,iterations,winner,rounds,actions,points1,points2,points3,points4,"
+           "stations,colonies,core,badges,contracts\n";
+  }
 
   for (int g = 0; g < options.games; ++g) {
     const SeededRandom::Seed seed =
@@ -128,6 +137,17 @@ int main(int argc, char **argv) {
       winnerPoints.core += s.core;
       winnerPoints.badges += s.badges;
       winnerPoints.contracts += s.contracts;
+    }
+    if (csv.is_open()) {
+      // One line a game: the winner's seat counted from 1 (0: unfinished),
+      // everyone's points, and where the winner's came from
+      csv << seed.code() << "," << options.players << "," << options.iterations << ","
+          << end.winner + 1 << "," << end.round << "," << play.log().actions.size();
+      for (int p = 0; p < kMaxPlayers; ++p)
+        csv << "," << (p < options.players ? points(end, p) : 0);
+      const Sources s = end.winner >= 0 ? sourcesOf(end, end.winner) : Sources{};
+      csv << "," << s.stations << "," << s.colonies << "," << s.core << "," << s.badges << ","
+          << s.contracts << "\n";
     }
     if (!options.logs.empty()) {
       std::ofstream file(options.logs + "/game_" + std::to_string(g) + ".log");

@@ -34,7 +34,7 @@ Two choices make the rules simple to reason about:
 bazel run -c opt //projects/cosmic_hex/simulate -- --games 200 --players 4 --iterations 100
 ```
 
-It reports how often each seat wins (turn order's advantage), how many rounds a game lasts, where the winners' points came from (stations, colonies, Core Control, badges, contracts), and how many games didn't finish. Flags: `--games`, `--players` (2-4), `--iterations` (the bots' thinking: simulated games a move), `--rollout` (how far each of those runs before it's judged), `--max-rounds` (where an unfinished game is stopped), `--seed`, and `--logs FOLDER` to keep every game's action log for replaying or study. Each game's seed is in its log's header.
+It reports how often each seat wins (turn order's advantage), how many rounds a game lasts, where the winners' points came from (stations, colonies, Core Control, badges, contracts), and how many games didn't finish. Flags: `--games`, `--players` (2-4), `--iterations` (the bots' thinking: simulated games a move), `--rollout` (how far each of those runs before it's judged), `--max-rounds` (where an unfinished game is stopped), `--seed`, `--logs FOLDER` to keep every game's action log for replaying or study, and `--csv FILE` for one line a game (its seed, the winner's seat, rounds, actions, everyone's points, and where the winner's came from), to combine runs and analyse them. Every game has its own seed, made from `--seed` and the game's number (so runs with different `--seed`s never repeat a game); it's in the game's log header and its CSV line.
 
 ## Tests
 
