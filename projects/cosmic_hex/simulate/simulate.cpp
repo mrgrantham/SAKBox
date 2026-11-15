@@ -34,7 +34,8 @@ struct Options {
   std::uint64_t seed = 1;
   std::string logs;                         // a folder to write each game's log to, if given
   std::string csv;                          // a file to write one line a game to, if given
-  bool evenHomes = false;                   // three players' homes a third of the way round
+  int catchUpBelow = 0, catchUpGap = 0;     // catching up (Settings)
+  bool skipFirst = false;                   // the first player skips their first income
   bool randomFirst = false;                 // a random player goes first, rather than player 1
   std::array<int, kMaxPlayers> seatBonus{}; // extra start resources by turn order
   int empty = 6;              // empty tiles of the zone's 12 (the rest finds, shared out)
@@ -78,8 +79,12 @@ Options parse(int argc, char **argv) {
       options.csv = value;
     else if (flag == "--core")
       options.core = value;
-    else if (flag == "--homes")
-      options.evenHomes = std::string_view(value) == "even";
+    else if (flag == "--catch-up-below")
+      options.catchUpBelow = number<int>(flag, value);
+    else if (flag == "--catch-up-gap")
+      options.catchUpGap = number<int>(flag, value);
+    else if (flag == "--skip-first")
+      options.skipFirst = std::string_view(value) == "yes";
     else if (flag == "--first")
       options.randomFirst = std::string_view(value) == "random";
     else if (flag == "--seat-bonus") {
@@ -104,6 +109,64 @@ Options parse(int argc, char **argv) {
 }
 
 // Where a player's points came from
+// What happened in a game, from its log: how much the blockade did (moves to
+// a planet, thefts, resources its planets didn't pay), how often a player
+// took a catching-up resource, and each contract's story (dealt, kept,
+// revealed, revealed by the winner)
+struct GameStats {
+  int blockades = 0, thefts = 0, denied = 0, caughtUp = 0;
+  std::vector<std::array<int, 4>> contracts =
+      std::vector<std::array<int, 4>>(CosmicHex::contracts().size());
+};
+GameStats statsOf(const ActionLog::Log<Game> &log) {
+  GameStats stats;
+  State state = log.start;
+  std::vector<int> revealedBy(stats.contracts.size(), -1);
+  for (const Action &action : log.actions) {
+    switch (action.kind) {
+    case Action::Kind::ChooseHome:
+      if (state.homeIncomeLeft > 1)
+        ++stats.caughtUp;
+      break;
+    case Action::Kind::Roll:
+      if (action.a + action.b != 7 && state.blockade >= 0) {
+        const Planet &planet = state.planets[static_cast<std::size_t>(state.blockade)];
+        if (planet.number == action.a + action.b) {
+          for (int d = 0; d < kDocks; ++d) {
+            if (planet.docks[static_cast<std::size_t>(d)] >= 0)
+              stats.denied += planet.colony[static_cast<std::size_t>(d)]
+                                  ? state.settings.colonyPays
+                                  : state.settings.stationPays;
+          }
+        }
+      }
+      break;
+    case Action::Kind::MoveBlockade:
+      stats.blockades += action.a >= 0;
+      stats.thefts += action.b >= 0;
+      break;
+    case Action::Kind::DealContracts:
+      ++stats.contracts[static_cast<std::size_t>(action.a)][0];
+      if (action.b >= 0)
+        ++stats.contracts[static_cast<std::size_t>(action.b)][0];
+      break;
+    case Action::Kind::KeepContract:
+      ++stats.contracts[static_cast<std::size_t>(action.a)][1];
+      break;
+    case Action::Kind::RevealContract:
+      ++stats.contracts[static_cast<std::size_t>(action.a)][2];
+      revealedBy[static_cast<std::size_t>(action.a)] = state.turn;
+      break;
+    default:
+      break;
+    }
+    Game::apply(state, action);
+  }
+  for (std::size_t id = 0; id < revealedBy.size(); ++id)
+    stats.contracts[id][3] += revealedBy[id] >= 0 && revealedBy[id] == state.winner;
+  return stats;
+}
+
 struct Sources {
   int stations = 0, colonies = 0, core = 0, badges = 0, contracts = 0;
 };
@@ -128,12 +191,13 @@ int main(int argc, char **argv) {
   int finished = 0, totalRounds = 0, totalActions = 0;
   Sources winnerPoints;
   const auto started = std::chrono::steady_clock::now();
+  std::vector<std::array<int, 4>> contractTotals(contracts().size());
   std::ofstream csv;
   if (!options.csv.empty()) {
     csv.open(options.csv);
     csv << "variant,seed,players,iterations,first,strong,winner,rounds,actions,points1,points2,"
            "points3,points4,"
-           "stations,colonies,core,badges,contracts\n";
+           "stations,colonies,core,badges,contracts,blockades,thefts,denied,caughtup\n";
   }
 
   for (int g = 0; g < options.games; ++g) {
@@ -144,12 +208,9 @@ int main(int argc, char **argv) {
     if (options.core == "three")
       settings.coreHexes = {{0, 0}, {1, -2}, {-1, 2}};
     settings.seatBonus = options.seatBonus;
-    if (options.evenHomes && options.players == 3) {
-      // (16 planets: a 4th asteroid belt and a second 10)
-      settings.homeHexes = {{4, -2}, {-2, -2}, {-2, 4}};
-      settings.planetTiles[0] = 4;
-      settings.numbers.push_back(10);
-    }
+    settings.catchUpBelow = options.catchUpBelow;
+    settings.catchUpGap = options.catchUpGap;
+    settings.firstSkipsIncome = options.skipFirst;
     // Fewer empty zone tiles: the rest are finds, given in turn to salvage,
     // ruins, salvage, ruins... (the alien station and the pirates stay one each)
     settings.finds = {options.empty, 0, 0, 1, 1};
@@ -199,8 +260,15 @@ int main(int argc, char **argv) {
       for (int p = 0; p < kMaxPlayers; ++p)
         csv << "," << (p < options.players ? points(end, p) : 0);
       const Sources s = end.winner >= 0 ? sourcesOf(end, end.winner) : Sources{};
+      const GameStats stats = statsOf(play.log());
       csv << "," << s.stations << "," << s.colonies << "," << s.core << "," << s.badges << ","
-          << s.contracts << "\n";
+          << s.contracts << "," << stats.blockades << "," << stats.thefts << "," << stats.denied
+          << "," << stats.caughtUp << "\n";
+      for (std::size_t id = 0; id < stats.contracts.size(); ++id) {
+        for (int k = 0; k < 4; ++k)
+          contractTotals[id][static_cast<std::size_t>(k)] +=
+              stats.contracts[id][static_cast<std::size_t>(k)];
+      }
     }
     if (!options.logs.empty()) {
       std::ofstream file(options.logs + "/game_" + std::to_string(g) + ".log");
@@ -212,6 +280,18 @@ int main(int argc, char **argv) {
                  end.round);
   }
 
+  if (!options.csv.empty()) {
+    // Each contract: how often dealt, kept, revealed, and revealed by the
+    // game's winner, over the run
+    std::ofstream totals(options.csv + ".contracts.csv");
+    totals << "id,name,points,dealt,kept,revealed,winner_revealed\n";
+    for (std::size_t id = 0; id < contractTotals.size(); ++id) {
+      totals << id << ",\"" << contracts()[id].name << "\"," << contracts()[id].points;
+      for (int count : contractTotals[id])
+        totals << "," << count;
+      totals << "\n";
+    }
+  }
   const double seconds =
       std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
   std::printf("%d games, %d players, ISMCTS %d iterations (%.1f s, %.2f s a game)\n", options.games,

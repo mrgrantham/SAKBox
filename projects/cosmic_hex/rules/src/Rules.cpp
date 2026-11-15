@@ -213,12 +213,28 @@ bool removeOne(std::vector<int> &from, int value) {
   return true;
 }
 
+// How many resources a player takes from their home at the start of their
+// turn: 1, and 1 more if they're behind (Settings::catchUpBelow, catchUpGap)
+int homeIncomeFor(const State &state, int player) {
+  const Settings &settings = state.settings;
+  const int mine = points(state, player);
+  int leader = 0;
+  for (int p = 0; p < state.players; ++p) {
+    if (p != player)
+      leader = std::max(leader, points(state, p));
+  }
+  const bool behind = (settings.catchUpBelow > 0 && mine < settings.catchUpBelow) ||
+                      (settings.catchUpGap > 0 && leader - mine >= settings.catchUpGap);
+  return behind ? 2 : 1;
+}
+
 void endTurn(State &state) {
   state.turn = (state.turn + 1) % state.players;
   if (state.turn == 0)
     ++state.round;
   for (Ship &ship : state.ships)
     ship.moved = false;
+  state.homeIncomeLeft = homeIncomeFor(state, state.turn);
   state.phase = Phase::HomeIncome;
 }
 
@@ -301,7 +317,9 @@ std::string settingsText(const Settings &s) {
     homeList.push_back(hex.q);
     homeList.push_back(hex.r);
   }
-  out << joined(homeList);
+  out << joined(homeList) << " extratiles=" << joined(s.extraTiles)
+      << " extranumbers=" << joined(s.extraNumbers) << " catchup=" << s.catchUpBelow << ","
+      << s.catchUpGap << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0);
   return out.str();
 }
 
@@ -321,6 +339,19 @@ std::optional<Settings> readSettings(std::string_view line) {
       return std::nullopt;
     const std::string_view key = field.substr(0, eq);
     const auto values = intList(field.substr(eq + 1));
+    if (values && (key == "extratiles" || key == "extranumbers")) {
+      (key == "extratiles" ? s.extraTiles : s.extraNumbers) = *values;
+      continue;
+    }
+    if (values && key == "catchup" && values->size() == 2) {
+      s.catchUpBelow = (*values)[0];
+      s.catchUpGap = (*values)[1];
+      continue;
+    }
+    if (values && key == "skipfirst" && values->size() == 1) {
+      s.firstSkipsIncome = (*values)[0] != 0;
+      continue;
+    }
     if (values && key == "homes" && values->size() % 2 == 0) {
       s.homeHexes.clear();
       for (std::size_t i = 0; i < values->size(); i += 2)
@@ -401,8 +432,16 @@ State newGame(int players, const Settings &settings, int first) {
   State state;
   state.settings = settings;
   state.players = players;
+  // Spread evenly for the number of players, unless the settings name them
+  static const std::array<std::vector<Hex>, kMaxPlayers + 1> kEvenHomes = {{
+      {},
+      {},
+      {{4, -2}, {-4, 2}},
+      {{4, -2}, {-2, -2}, {-2, 4}},
+      {kHomes.begin(), kHomes.end()},
+  }};
   const std::vector<Hex> homes = settings.homeHexes.empty()
-                                     ? std::vector<Hex>(kHomes.begin(), kHomes.end())
+                                     ? kEvenHomes[static_cast<std::size_t>(players)]
                                      : settings.homeHexes;
   assert(static_cast<int>(homes.size()) >= players);
   assert(first >= 0 && first < players);
@@ -448,6 +487,20 @@ State newGame(int players, const Settings &settings, int first) {
   }
   state.kindsLeft = settings.planetTiles;
   state.numbersLeft = settings.numbers;
+  // Planets beyond the tiles given (fewer homes than four): the extras, in turn
+  const int planets = static_cast<int>(std::count_if(state.planets.begin(), state.planets.end(),
+                                                     [](const Planet &p) { return !p.flipped; }));
+  for (int extra = 0; std::accumulate(state.kindsLeft.begin(), state.kindsLeft.end(), 0) < planets;
+       ++extra) {
+    assert(!settings.extraTiles.empty() && !settings.extraNumbers.empty());
+    ++state.kindsLeft[static_cast<std::size_t>(
+        settings.extraTiles[static_cast<std::size_t>(extra) % settings.extraTiles.size()])];
+    state.numbersLeft.push_back(
+        settings.extraNumbers[static_cast<std::size_t>(extra) % settings.extraNumbers.size()]);
+  }
+  state.homeIncomeLeft = settings.firstSkipsIncome ? 0 : homeIncomeFor(state, first);
+  if (state.homeIncomeLeft == 0)
+    state.phase = Phase::RollDraw;
   state.findsLeft = settings.finds;
   state.deck.resize(contracts().size());
   std::iota(state.deck.begin(), state.deck.end(), 0);
@@ -722,7 +775,8 @@ bool Game::apply(State &state, const Action &action) {
   case Phase::HomeIncome:
     if (action.kind == Kind::ChooseHome && action.a >= 0 && action.a < kResources) {
       ++me.resources[static_cast<std::size_t>(action.a)];
-      state.phase = Phase::RollDraw;
+      if (--state.homeIncomeLeft <= 0)
+        state.phase = Phase::RollDraw;
       done = true;
     }
     break;
@@ -1081,8 +1135,8 @@ std::string Game::writeState(const State &state) {
   out << "blockade=" << state.blockade << " core=" << state.coreHolder << " winner=" << state.winner
       << " roll=" << state.lastRoll << " pending=" << state.pendingPlanet << ","
       << state.pendingSite << " victims=" << joined(state.victims)
-      << " salvage=" << state.salvageLeft << " offered=" << state.offered[0] << ","
-      << state.offered[1] << "\n";
+      << " salvage=" << state.salvageLeft << " income=" << state.homeIncomeLeft
+      << " offered=" << state.offered[0] << "," << state.offered[1] << "\n";
   return out.str();
 }
 

@@ -61,11 +61,24 @@ struct Settings {
   int coreRadius = 2; // planet slots this close to the centre are core planets...
   std::vector<Hex>
       coreHexes; // ...unless these name them (the round-28 option B: {0,0}, {1,-2}, {-1,2})
-  // The homes, player by player, when not the usual four (opposite pairs on
-  // the edge): the round-31 proposal for three players, evenly spread, is
-  // {4,-2}, {-2,-2}, {-2,4}. Slots that aren't homes hold planets, so their
-  // tiles and numbers must add up.
+  // The homes, player by player, instead of the usual layout for the number
+  // of players (spread evenly round the edge: two opposite; three a third of
+  // the way round; four in opposite pairs). Edge slots that aren't homes
+  // hold planets, with extraTiles and extraNumbers added for them.
   std::vector<Hex> homeHexes;
+  // Tiles and numbers for planets beyond planetTiles' and numbers' (fewer
+  // homes than four leave more planet slots), used in turn
+  std::vector<int> extraTiles{0, 1};    // an asteroid belt, a lush planet
+  std::vector<int> extraNumbers{10, 3}; // (evening up 4 and 10, then 3 and 11)
+  // Catching up (as in some of the genre's games): a player behind takes one
+  // more resource of their choice with their home's income: when they have
+  // fewer than catchUpBelow points, or are catchUpGap or more behind the
+  // leader (0: off)
+  int catchUpBelow = 0;
+  int catchUpGap = 0;
+  // The first player goes without their home's income on their first turn
+  // (half a resource's worth of making up for going first)
+  bool firstSkipsIncome = false;
   int coreStationsForControl = 2;
   int coreControlPoints = 2;
   int badgesPerPoint = 3;
@@ -168,6 +181,7 @@ struct State {
   int pendingPlanet = -1, pendingSite = -1; // being turned over
   std::vector<int> victims;                 // still to be stolen from (the blockade, the pirates)
   int salvageLeft = 0;
+  int homeIncomeLeft = 1;             // resources still to take from the home this turn
   std::array<int, 2> offered{-1, -1}; // contracts dealt, to keep one of
   bool operator==(const State &) const = default;
 };

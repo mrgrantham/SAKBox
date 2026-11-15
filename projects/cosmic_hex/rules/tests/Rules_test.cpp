@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <set>
 
 using namespace CosmicHex;
 using Kind = Action::Kind;
@@ -150,6 +151,62 @@ TEST(RulesTest, HomesCanBeNamed) {
   EXPECT_EQ(again.value_or(State{}).settings.homeHexes, settings.homeHexes);
 }
 
+// Homes are spread evenly for any number of players, and every planet slot
+// that isn't a home has a tile and a number to draw
+TEST(RulesTest, HomesSpreadEvenlyForEachCount) {
+  for (int players = 2; players <= 4; ++players) {
+    const State state = newGame(players);
+    int homes = 0, faceDown = 0;
+    for (const Planet &planet : state.planets) {
+      homes += planet.homeOf >= 0;
+      faceDown += !planet.flipped;
+      EXPECT_FALSE(planet.flipped && planet.homeOf < 0) << "an empty home";
+    }
+    EXPECT_EQ(homes, players);
+    EXPECT_EQ(faceDown, 19 - players);
+    int tiles = 0;
+    for (int n : state.kindsLeft)
+      tiles += n;
+    EXPECT_EQ(tiles, faceDown);
+    EXPECT_EQ(static_cast<int>(state.numbersLeft.size()), faceDown);
+    // Every pair of homes the same distance apart as every other (the even spacing)
+    std::set<int> gaps;
+    for (int a = 0; a < players; ++a)
+      gaps.insert(HexGrid::distance(state.ships[static_cast<std::size_t>(a)].at,
+                                    state.ships[static_cast<std::size_t>((a + 1) % players)].at));
+    EXPECT_LE(gaps.size(), players == 4 ? 2u : 1u);
+  }
+}
+
+// A player behind takes an extra resource with their home's income
+TEST(RulesTest, CatchingUp) {
+  Settings settings;
+  settings.catchUpGap = 2;
+  State state = newGame(2, settings);
+  EXPECT_EQ(state.homeIncomeLeft, 1); // level at the start
+  state.player[0].badgePoints = 2;    // player 0 two ahead
+  Game::apply(state, {Kind::ChooseHome, 0});
+  Game::apply(state, {Kind::Roll, 1, 2});
+  Game::apply(state, {Kind::EndTurn});
+  EXPECT_EQ(state.homeIncomeLeft, 2); // player 1, behind
+  ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 1}));
+  EXPECT_EQ(state.phase, Phase::HomeIncome);
+  ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 2}));
+  EXPECT_EQ(state.phase, Phase::RollDraw);
+  EXPECT_EQ(state.player[1].resources, (Resources{1, 2, 2, 1, 1}));
+}
+
+TEST(RulesTest, TheFirstPlayerCanSkipTheirFirstIncome) {
+  Settings settings;
+  settings.firstSkipsIncome = true;
+  const State state = newGame(2, settings, 1);
+  EXPECT_EQ(state.phase, Phase::RollDraw);
+  EXPECT_EQ(state.player[1].resources, (Resources{1, 1, 1, 1, 1}));
+  const auto again = Game::readState(Game::writeState(state));
+  ASSERT_TRUE(again.has_value());
+  EXPECT_EQ(again.value_or(State{}), state);
+}
+
 TEST(RulesTest, ATurn) {
   State state = newGame(2);
   ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, static_cast<int>(Resource::Water)}));
@@ -264,6 +321,7 @@ TEST(RulesTest, MovingAndTurningTilesOver) {
   ASSERT_TRUE(Game::apply(state, {Kind::Move, 0, faceDownPlanet.q, faceDownPlanet.r}));
   EXPECT_EQ(state.phase, Phase::PlanetDraw);
   EXPECT_FALSE(has(Game::legalActions(state), {Kind::EndTurn}));
+  const std::size_t numbersBefore = state.numbersLeft.size();
   ASSERT_TRUE(Game::apply(state, {Kind::RevealPlanet, static_cast<int>(PlanetKind::Nebula), 6}));
   const Planet &planet =
       state.planets[static_cast<std::size_t>(planetIndex(state, faceDownPlanet))];
@@ -272,7 +330,7 @@ TEST(RulesTest, MovingAndTurningTilesOver) {
   EXPECT_EQ(planet.number, 6);
   EXPECT_EQ(state.player[0].badges, 1);
   EXPECT_EQ(state.kindsLeft[static_cast<std::size_t>(PlanetKind::Nebula)], 2);
-  EXPECT_EQ(state.numbersLeft.size(), 14u);
+  EXPECT_EQ(state.numbersLeft.size(), numbersBefore - 1);
   // The ship has moved this turn
   EXPECT_FALSE(hasKind(Game::legalActions(state), Kind::Move));
 }
