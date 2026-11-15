@@ -235,6 +235,10 @@ if (version == 0) { /* nothing published yet: pad is a default Gamepad */ }
 - **Both are called on the padd's own thread,** as its controls are: a background padd's thread, or, for a main-thread padd, the main thread. The system owns the states, so they outlive its padds. Each copy in or out is made under a short lock, so a publisher waits at most for one reader's copy; that's cheap for the small structs this is for, and the same code runs on the DS.
 - **Which to use:** a message for something that happens and mustn't be lost (a button pressed for a menu, a sound to load); shared state for a current value read when needed. A padd that sleeps until something arrives can't use shared state, as nothing wakes it: send it messages.
 
+### Device profile
+
+[`device_profile`](device_profile/README.md) says what this device is and can do, and how an app should run on it (its scene, physics, texture and audio budgets, and its controllers), in one place instead of an `#if` in each app: `currentProfile()` anywhere, and `DeviceProfilePadd` for a debug build's Profile tab that adjusts and saves it.
+
 ### Controllers
 
 [`input`](input/README.md) reads the controller on every platform into one struct, `Input::Gamepad`: GameController on a Mac, XInput on Windows, evdev on Linux, the 3DS's and DS's own buttons, with a desktop's keyboard laid on. Add `Input::GamePadd` to the system and it publishes the pad as shared state; any padd reads it as its frame starts:
@@ -608,6 +612,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `basis:SharedState_test` | Shared state: a default value at version 0 before anything's published, readers getting the newest with its version and time (on background and main-thread padds), each type and name its own, one publisher each, no half-written value seen while publishing and reading at once on two threads, and calls only on the padd's own thread |
 | `input:Input_test`, `input:GamePadd_test` | The controller: see [`input`](input/README.md#tools-and-tests) |
 | `app_ended:EndedText_test` | What an ended handheld app shows: the title, "has ended." or the app's message, and what a button does, wrapped at spaces to the screen's width |
+| `device_profile:DeviceProfile_test`, `device_profile:DeviceProfilePadd_test` | The device profile, built in and adjusted: see [`device_profile`](device_profile/README.md#tests) |
 | `debug_log:Session_test`, `debug_log:LogBuffer_test`, `debug_log:LogServer_test` | The log in a file, kept, and served: see [`debug_log`](debug_log/README.md#parts) |
 | `storage:Folders_test`, `storage:Files_test`, `storage:AppendFile_test`, `storage:StoragePadd_test` | Folders, whole-file saves, files written in batches, and StoragePadd: see [`storage`](storage/README.md#parts) |
 | `network:Loop_test`, `network:Bridge_test`, `network:RemoteControls_test`, `messages:ControlsText_test` | The network loop's services on localhost, remote controls in a running system, and control messages as text: see [`network`](network/README.md#parts) |
