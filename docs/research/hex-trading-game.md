@@ -4,6 +4,24 @@ Status: research, for review.
 
 **Not a clone:** I won't build a copy of an existing board game: its name, rules as a package, art or look, even renamed. The hex-tile resource-and-trading genre is open to everyone, though: a map of hexes, resources produced and spent, building out from a start, and trading between players. So this is an original game in that genre, with its own theme, rules and look, designed together. Everything below about rules is a first proposal to change.
 
+## Decided so far (from the roadmap page, 2026-11-14)
+
+These replace the first proposal below where they differ. The reasoning behind several of them is in the [reading notes](game-design-reading.md#applied-to-the-hex-game).
+
+- **Working title:** Cosmic Hex. "Hexoplanet" is taken by an existing game.
+- **Theme:** space. **The twist is exploration:** a tile's resource and its dice number are hidden until it's explored. Reveals are public, so a discovery becomes a sought-after destination.
+- **Tile ideas:** asteroid belts (minerals), lush planets (food), and more to choose. Alien stations, hidden on the map and found by exploring, offer fixed-rate trades.
+- **Production:** two six-sided dice. Victory points are separate from resources and can't be spent. Hidden victory points (secret contracts) are to be worked out together.
+- **Building:** leaning towards corners and edges (stations at corners, lanes along edges), details open. Exploring: a lane reaching an unknown tile reveals and claims it; survey ships reveal tiles from a distance (publicly), starting a race to claim them.
+- **The start:** known home systems; placement still open.
+- **Trading:** player to player, plus fixed rates at alien stations.
+- **Players and length:** 2 to 4, at most an hour with four.
+- **Order of work:** rules engine and bots first on the Mac, then Mac and 3DS over Wi-Fi with the bridge, then a DS each over local wireless.
+- **Toolchain:** stay on devkitPro, with **no BlocksDS**: its cooperative threads would make the DS port work differently from every other platform. Calico has an unimplemented `WlMgrMode_LocalComms` mode and raw packet send and receive. The plan is our own ARM7 program plus an ARM9 library, offered to devkitPro once it works. This replaces the toolchain table below.
+- **Cross-play:** wanted if possible. The Mac can't use DS local wireless, and a DS Lite only joins open or WEP Wi-Fi, so cross-play would go over a dedicated open game network.
+- **colonist.io:** a reference for online play only (lobby, bots, turn timer, offering trades), not for rules.
+- **Still open:** the explorer's reward, a pirate or blockade piece, the kinds of rare tile, the contracts, and placement.
+
 ## Why this game suits the DS
 
 - **Each player's hand is private.** With a DS each, cards and resources stay on your own bottom screen while the shared board is on the top, which a single screen can't do.

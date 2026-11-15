@@ -2,6 +2,25 @@
 
 Status: research, for review. The name and the concept are still open. This sets out a design to react to.
 
+## Decided so far (from the roadmap page, 2026-11-14)
+
+- **Working title:** Infinifly. The ship starts as three pyramids (a body and two wings), until a Blender model replaces it.
+- **Level types:** space (rings, debris) and terrain (valleys, canyons) are separate level types.
+- **Order of work:** space with dodging and collecting, then terrain (after Cyclone's heightfield, on its own branch), then shooting, then ghost races.
+- **Runs:**
+  - Endless until the health bar is empty.
+  - Restoring pickups can be switched on or off per level.
+  - Difficulty steps up at timed intervals, as a sawtooth: each step is followed by a breather, not a steady climb ([reading notes](game-design-reading.md#applied-to-infinifly)).
+  - Each step adds something new to learn, including new behaviour from existing enemies: they grow more desperate, as if protecting something ahead.
+- **Shooting:** small obstacles, and enemy ships that fire back.
+- **Score:**
+  - One headline score, shown live and used for ghosts and high scores.
+  - All the stats are tracked and shown after the run: distance, pickups, things shot, near misses, time alive, highest difficulty reached, enemies defeated.
+  - Risk earns points: a timed dodge against incoming fire, and flying close to obstacles.
+- **Ghost races:** against your own runs and friends' runs.
+- **Photo mode:** in a later version.
+- **Still open:** steering (corridor recommended), the bottom screens (a top-down map and menus to start), the dodge and close-flying mechanics, and the enemy behaviour levels.
+
 ## The idea
 
 A ship flies along an endless, procedurally made course: over terrain, between obstacles, through gates. It's on rails: the course carries it forward, and the player steers it within a corridor around the rail, up, down, left and right, to dodge, collect and score. Runs last until a crash. The look is untextured and Tron-like: dark ground, glowing edges, vertex colours, fog hiding the far distance, and toon bands and outlines ([toon-shading.md](toon-shading.md)). It runs on the Mac, the 3DS (in stereo) and the DS, and Cyclone does all of its collision.
