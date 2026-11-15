@@ -32,9 +32,13 @@ These replace the first proposal below where they differ. The reasoning behind s
   - 10 points to win;
   - ruins and alien stations as the rare tiles, wormholes dropped. Stations are general (3 for 1) or specialist (2 for 1, their own resource); the bank is 4 for 1;
   - contracts all secret, dealt 2 and keep 1.
-- **Still open, with options on the roadmap page:**
-  - the board. My recommendation is planets on even slots with space tiles between, which flip too and sometimes hold small finds: salvage, comets, nebulae, a pirate hideout. About 61 hexes, to tune with bots;
-  - the start: identical known home planets with nothing to place, or a draft of starting spots.
+- **The board (decided 2026-11-14):** about 61 hexes, a hexagon five from centre to edge.
+  - **Planets:** 19 planet slots, evenly spaced (every third hex), four of them identical home planets at even spacing on the edge.
+  - **Deep-space zone:** the 12 space hexes within two of the centre get face-down tiles, half finds (salvage, comets, a nebula, the pirate hideout) and half nothing. No zone tile touches a home.
+  - **Open space:** the rest, with no tiles.
+  - **Set-up:** shuffled planet tiles face down on the slots, numbers hidden; shuffled zone tiles face down in the zone; the homes face up.
+- **Home planets:** no dice number. Each gives its owner 1 resource of their choice at the start of their turn, a floor so nobody is left with nothing. Identical homes in the base game; a draft of starting spots as a variant.
+- **First design settled** (2026-11-14). The numbers (board size, the zone's mix, points to win) get tuned once the rules engine and bots can play it.
 
 ## Why this game suits the DS
 
