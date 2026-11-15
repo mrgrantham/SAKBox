@@ -130,6 +130,26 @@ TEST(RulesTest, AStartBonusByTurnOrder) {
   EXPECT_EQ(again.value_or(State{}).settings.seatBonus, settings.seatBonus);
 }
 
+// Three players' homes can be spread evenly; the other slots hold planets
+TEST(RulesTest, HomesCanBeNamed) {
+  Settings settings;
+  settings.homeHexes = {{4, -2}, {-2, -2}, {-2, 4}};
+  settings.planetTiles[0] = 4;
+  settings.numbers.push_back(10);
+  const State state = newGame(3, settings);
+  int homes = 0, faceDown = 0;
+  for (const Planet &planet : state.planets) {
+    homes += planet.homeOf >= 0;
+    faceDown += !planet.flipped;
+  }
+  EXPECT_EQ(homes, 3);
+  EXPECT_EQ(faceDown, 16);
+  EXPECT_EQ(state.ships[2].at, (Hex{-2, 4}));
+  const auto again = Game::readState(Game::writeState(state));
+  ASSERT_TRUE(again.has_value());
+  EXPECT_EQ(again.value_or(State{}).settings.homeHexes, settings.homeHexes);
+}
+
 TEST(RulesTest, ATurn) {
   State state = newGame(2);
   ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, static_cast<int>(Resource::Water)}));

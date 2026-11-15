@@ -295,7 +295,13 @@ std::string settingsText(const Settings &s) {
     core.push_back(hex.q);
     core.push_back(hex.r);
   }
-  out << joined(core);
+  out << joined(core) << " homes=";
+  std::vector<int> homeList;
+  for (Hex hex : s.homeHexes) {
+    homeList.push_back(hex.q);
+    homeList.push_back(hex.r);
+  }
+  out << joined(homeList);
   return out.str();
 }
 
@@ -315,6 +321,12 @@ std::optional<Settings> readSettings(std::string_view line) {
       return std::nullopt;
     const std::string_view key = field.substr(0, eq);
     const auto values = intList(field.substr(eq + 1));
+    if (values && key == "homes" && values->size() % 2 == 0) {
+      s.homeHexes.clear();
+      for (std::size_t i = 0; i < values->size(); i += 2)
+        s.homeHexes.push_back(Hex{(*values)[i], (*values)[i + 1]});
+      continue;
+    }
     if (values && key == "corehexes" && values->size() % 2 == 0) {
       s.coreHexes.clear();
       for (std::size_t i = 0; i < values->size(); i += 2)
@@ -389,6 +401,10 @@ State newGame(int players, const Settings &settings, int first) {
   State state;
   state.settings = settings;
   state.players = players;
+  const std::vector<Hex> homes = settings.homeHexes.empty()
+                                     ? std::vector<Hex>(kHomes.begin(), kHomes.end())
+                                     : settings.homeHexes;
+  assert(static_cast<int>(homes.size()) >= players);
   assert(first >= 0 && first < players);
   state.turn = first;
   for (Hex hex : HexGrid::spiral(Hex{}, kBoardRadius)) {
@@ -400,8 +416,8 @@ State newGame(int players, const Settings &settings, int first) {
                         ? length <= settings.coreRadius
                         : std::find(settings.coreHexes.begin(), settings.coreHexes.end(), hex) !=
                               settings.coreHexes.end();
-      for (int p = 0; p < kMaxPlayers; ++p) {
-        if (kHomes[static_cast<std::size_t>(p)] == hex) {
+      for (int p = 0; p < static_cast<int>(homes.size()); ++p) {
+        if (homes[static_cast<std::size_t>(p)] == hex) {
           planet.flipped = true;
           planet.kind = PlanetKind::Home;
           if (p < players) {
@@ -421,7 +437,7 @@ State newGame(int players, const Settings &settings, int first) {
   // Unused homes (fewer than 4 players) stay empty home planets: nobody's,
   // producing nothing, and not settleable
   for (int p = 0; p < players; ++p) {
-    state.ships.push_back(Ship{p, kHomes[static_cast<std::size_t>(p)], false});
+    state.ships.push_back(Ship{p, homes[static_cast<std::size_t>(p)], false});
     state.player[static_cast<std::size_t>(p)].resources.fill(settings.startResources);
   }
   for (int order = 0; order < players; ++order) {

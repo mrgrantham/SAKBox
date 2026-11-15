@@ -34,6 +34,7 @@ struct Options {
   std::uint64_t seed = 1;
   std::string logs;                         // a folder to write each game's log to, if given
   std::string csv;                          // a file to write one line a game to, if given
+  bool evenHomes = false;                   // three players' homes a third of the way round
   bool randomFirst = false;                 // a random player goes first, rather than player 1
   std::array<int, kMaxPlayers> seatBonus{}; // extra start resources by turn order
   int empty = 6;              // empty tiles of the zone's 12 (the rest finds, shared out)
@@ -77,6 +78,8 @@ Options parse(int argc, char **argv) {
       options.csv = value;
     else if (flag == "--core")
       options.core = value;
+    else if (flag == "--homes")
+      options.evenHomes = std::string_view(value) == "even";
     else if (flag == "--first")
       options.randomFirst = std::string_view(value) == "random";
     else if (flag == "--seat-bonus") {
@@ -141,6 +144,12 @@ int main(int argc, char **argv) {
     if (options.core == "three")
       settings.coreHexes = {{0, 0}, {1, -2}, {-1, 2}};
     settings.seatBonus = options.seatBonus;
+    if (options.evenHomes && options.players == 3) {
+      // (16 planets: a 4th asteroid belt and a second 10)
+      settings.homeHexes = {{4, -2}, {-2, -2}, {-2, 4}};
+      settings.planetTiles[0] = 4;
+      settings.numbers.push_back(10);
+    }
     // Fewer empty zone tiles: the rest are finds, given in turn to salvage,
     // ruins, salvage, ruins... (the alien station and the pirates stay one each)
     settings.finds = {options.empty, 0, 0, 1, 1};

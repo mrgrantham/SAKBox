@@ -61,6 +61,11 @@ struct Settings {
   int coreRadius = 2; // planet slots this close to the centre are core planets...
   std::vector<Hex>
       coreHexes; // ...unless these name them (the round-28 option B: {0,0}, {1,-2}, {-1,2})
+  // The homes, player by player, when not the usual four (opposite pairs on
+  // the edge): the round-31 proposal for three players, evenly spread, is
+  // {4,-2}, {-2,-2}, {-2,4}. Slots that aren't homes hold planets, so their
+  // tiles and numbers must add up.
+  std::vector<Hex> homeHexes;
   int coreStationsForControl = 2;
   int coreControlPoints = 2;
   int badgesPerPoint = 3;
