@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>An example tile face: an ice moon with craters and a ring</title>
+  <!-- the background -->
+  <rect x="0" y="0" width="64" height="64" fill="#0b1a2e"/>
+  <!-- the moon, with two craters -->
+  <circle cx="32" cy="32" r="20" fill="#cfe8ff"/>
+  <g transform="translate(32 32)">
+    <circle cx="-7" cy="-5" r="5" fill="#9cc4ec"/>
+    <ellipse cx="8" cy="6" rx="4" ry="3" fill="#9cc4ec"/>
+  </g>
+  <!-- a ring round it: a curved band with a hole (even-odd) -->
+  <path fill="#5fd3f3" fill-rule="evenodd"
+        d="M 4 34 C 4 26 60 26 60 34 C 60 42 4 42 4 34 Z M 10 34 C 10 30 54 30 54 34 C 54 38 10 38 10 34 Z"/>
+  <!-- a glowing outline, stroked -->
+  <polygon points="32,2 61,18 61,46 32,62 3,46 3,18" fill="none" stroke="#5fd3f3" stroke-width="2"/>
+</svg>

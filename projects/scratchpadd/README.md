@@ -591,6 +591,7 @@ How the builds differ from a desktop's:
 | `//projects/scratchpadd/ds/platform` | What ScratchPadd needs on the DS that devkitPro lacks: `std::atomic`'s functions and a clock |
 | `//projects/scratchpadd/audio/made_sounds_pcm16` | The sounds made in code, rendered when the program is built, as 16-bit samples (`MadeSoundsPcm16.hpp`) |
 | `//projects/scratchpadd/midi_input` | `MidiInputPadd` (MIDI keyboards and controllers, desktops) and `:midi_input_messages` |
+| `//projects/scratchpadd/texture_recipe` | Textures drawn on the device from SVG drawings: the build turns a drawing into a recipe of filled outlines (`texture_recipe()` in `texture_recipe.bzl`), and `TextureRecipe::draw` draws it into pixels at any size, in RGBA or a palette, with integers only: see [`texture_recipe`](texture_recipe/README.md) |
 | `//projects/scratchpadd/demo` | The demo app |
 
 ## Building and Testing
@@ -641,6 +642,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `scene/vulkan:ShaderPanel_test` | Every fragment shader of the shader playground, with its vertex shader, made into a `ShaderPanel` the Vulkan device takes, and drawn; a GLSL mistake reported. Needs no window; skipped where there's no Vulkan (it runs on lavapipe in the Linux check) |
 | `utilities:ThreadPriority_test` | Each platform's thread priorities, read back with its own call: macOS's quality-of-service classes, Windows' levels, Linux's nice values (raising one refused without privileges) |
 | `utilities:Logger_test` | The log line: time, level and `[name]` in columns, messages starting in the same column, a long name kept whole |
+| `texture_recipe:svg_to_recipe_test`, `texture_recipe:TextureRecipe_test` | SVG drawings converted, and recipes read and drawn: see [`texture_recipe`](texture_recipe/README.md#tests) |
 | `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
 
 ## Known Limitations
