@@ -58,34 +58,67 @@ public:
 };
 ScratchPadd::SystemImplementation<..., NetworkPadd, GameBridge> system;
 
-send(Network::BridgeHost{});                                  // on one device
-send(Network::BridgeJoin{.address = "192.168.4.45"});        // on the others; BridgeLeave{} to stop
+send(Network::BridgeHost{});                                  // on one device: it makes a join code
+send(Network::BridgeJoin{.address = "192.168.4.45", .code = "K7QM"});  // on the others; BridgeLeave{} to stop
+```
+
+**Seats** say who sent a message, and who to send one to:
+
+```cpp
+receive<Network::From<Move>>([this](const Network::From<Move> &move) {
+  apply(move.seat, move.message);                             // any Move, and the seat it came from
+});
+send(Network::To<Hand>{.seat = 3, .message = hand});         // a Hand for seat 3 only
+const Network::BridgeState bridge = currentState<Network::BridgeState>().value;
+bridge.seat;  bridge.taken(2);  bridge.players();             // this device's seat, and who's in
 ```
 
 - **One device hosts and the others join it** (a star, on port 5007). The host passes each joiner's messages on to the others, so every device gets every carried message, and none gets its own back.
+- **Seats:** the host gives each device a seat. The host is seat 1, and the others get 2 to 16 in the order they join. A device that drops out and comes back asks for its old seat, and gets it if it's still free.
+  - **Who sent it:** every carried message also arrives as `From<T>`, with the seat it came from. The sender gets `From<T>` for its own messages too, so a host's rules padd hears every player the same way, its own player included. Off a game, the seat is `kNoSeat`.
+  - **Send to one:** `To<T>` sends a carried message to one seat only: private cards, or one player's turn. From a joiner to another joiner, it goes through the host. A device's own seat sends it to its own padds.
+  - **Who's in:** `BridgeState` has this device's seat and the seats taken. It's published as shared state, and it's also sent as a message whenever it changes, so a padd can react to a player joining or leaving.
+  - **The host decides seats:** it reads each message's sender from the connection it arrived on, not from what the message says, so a device can't pose as another seat.
+- **Join code:** when hosting, the bridge makes a four-character code from letters and digits that can't be misread (no O and 0, no I and 1). It shows the code on its tab, and refuses any device that doesn't bring it, telling that device why ("wrong code", "the game is full", "another version of the bridge"). `BridgeHost{.code = "..."}` sets the code; `BridgeHost{.code = ""}` lets anyone join (tests, or a trusted network). The code decides who joins; the traffic itself isn't encrypted.
 - **How it hooks in:** the bridge handles each carried type like any other padd. A padd's `send()` skips the sender, so when the bridge re-sends a message that arrived, it doesn't receive it again, and nothing loops.
 - **Byte for byte:** a trivially copyable message must be laid out the same on every device. That means fixed-width types (`std::int32_t`, `float`) and no pointers or `std::size_t`, which are 4 bytes on a console and 8 on a Mac. Its size travels with it, and one of another size is dropped with a warning, rather than read wrongly. Anything else (strings, vectors) takes an encode and a decode function.
-- **On the wire:** a `FrameService`. Frames are length-prefixed binary: a kind byte, the type's name, then its bytes. TCP, so every message arrives, in order.
-- **Its tab:** what it's doing (hosting, joining, joined), its port and how many devices it's linked to. Mode and Address controls host and join from a panel, so `remote_controls` can link two consoles. Its state is shared too: `currentState<BridgeState>()` gives the role and the number linked.
-- Checked by `Bridge_test`: three systems linked on localhost, messages from the host to both joiners and from a joiner to the host and on to the other, a message with its own encoding, and one of another size dropped. It also ran 10 times under ThreadSanitizer. Not yet on consoles.
+- **On the wire:** a `FrameService`. Frames are length-prefixed binary, and each starts with a kind byte:
+  - a message: its sender's seat, the seat it's for (or all), the type's name, then its bytes;
+  - a joiner's hello: the protocol version, the seat it had, and the code;
+  - the host's answers: a welcome with the joiner's seat, or a refusal with the reason (after which the host closes the connection);
+  - the seats taken, sent by the host whenever they change.
 
-### Questions still open
+  It runs over TCP, so every message arrives, in order.
+- **Its tab:** what it's doing ("hosting on port 5007, code K7QM, 3 seated", "seat 2 of 3", or "refused: wrong code"). The Mode, Address and Code controls host and join from a panel, so `remote_controls` can link two consoles; a host shows its code in Code.
+- Checked by `Bridge_test`:
+  - three systems linked on localhost: messages from the host to both joiners, and from a joiner to the host and on to the other;
+  - a message with its own encoding, and one of another size dropped;
+  - seats given out, and the same on every device;
+  - `From<T>` with the sender's seat, the sender's own included;
+  - `To<T>` from the host, to the host, and from one joiner to another;
+  - a wrong code refused;
+  - a device that leaves and rejoins getting its seat back.
 
-These are the choices I made by default, to review:
+  It ran 10 times normally and 10 times under ThreadSanitizer. Not yet on consoles.
 
-1. **Topology:** a star through the host, simple and enough for a few devices, against each device linked to every other (mesh), which has no single host to lose. A game with a host player suits the star.
-2. **Reliable only, or also fast?** Everything goes by TCP: every message, in order, but a lost packet holds the rest up. Positions sent many times a second would rather go by UDP, where a lost one is simply replaced by the next. Should carried types say which they want (`carry<Move>("move", Delivery::Latest)`)?
-3. **Finding a host** without typing its address: the host announcing itself by UDP broadcast, and joiners listing the hosts they hear (a "join game" screen on a console).
-4. **Who sent it:** messages arrive as if sent locally. Should a handler be able to ask which device a message came from (a player number), and send to one device rather than all?
-5. **Names:** `BridgePadd` and `carry<T>()`; `LinkPadd` or `share<T>()` are alternatives.
-6. **The DS:** it can't join the network, so DS multiplayer needs local wireless (NiFi), a transport of its own under the same bridge. That's the next item below.
+### Decisions
+
+Settled on the roadmap page (2026-11-14):
+
+1. **Topology:** a star through the host. The host seeing all traffic is fine for games among friends.
+2. **Names:** `BridgePadd` and `carry<T>()`, kept: "share" would be confused with ScratchPadd's shared state.
+3. **Who sent it, and sending to one:** seats, `From<T>` and `To<T>` (above).
+4. **Joining securely:** a join code that the host shows and joiners type. Typing works everywhere, since the DS Lite has no camera; QR codes could be an extra on the 3DS later.
+
+Still to build, in this order (see the roadmap below): finding hosts by broadcast, then UDP "latest wins" delivery for messages sent many times a second (`carry<Move>("move", Delivery::Latest)`), then the DS's local wireless as a transport under the same bridge.
 
 ## Roadmap
 
 These are the next branches, each built on the layers above:
 
-1. **The bridge's next steps** (see its questions above): UDP for fast, replaceable messages, and finding hosts by broadcast.
-2. **Local wireless:** the 3DS's `uds` and the DS's NiFi, consoles together with no router. They aren't IP at all, so they would be another transport under the bridge, with the bridge and a game not caring which carries them.
+1. **Finding hosts by broadcast:** a host announces itself by UDP, and joiners list the hosts they hear (a "join game" screen), so nobody types an address.
+2. **UDP "latest wins" delivery,** for messages sent many times a second, where a lost one is simply replaced by the next (the ship game's ghosts).
+3. **Local wireless on the DS (NiFi):** consoles together with no router, as another transport under the bridge, with a game not caring which carries it. It stays on devkitPro: our own ARM7 program and an ARM9 library, building on calico's wireless driver, whose local wireless mode is still empty ([the plan](../../../docs/research/hex-trading-game.md#decided-so-far-from-the-roadmap-page-2026-11-14)). The 3DS's own `uds` comes later.
 
 ## Parts
 
@@ -98,7 +131,7 @@ These are the next branches, each built on the layers above:
 | Test | Covers |
 | --- | --- |
 | `Loop_test` | On localhost, without padds: a stream served to readers from the start and as it grows, two readers at once, and letting go of it closing its connections; lines both ways between two loops, a connecting service waiting for its listener and connecting on its next try |
-| `Bridge_test` | Three systems linked on localhost (one NetworkPadd running the network for all): carried messages from the host to those that joined, from one that joined to the host and on to the other, never back to the sender; a message with its own encoding; one of another size dropped |
+| `Bridge_test` | Three systems linked on localhost (one NetworkPadd running the network for all): carried messages from the host to those that joined, from one that joined to the host and on to the other, never back to the sender; a message with its own encoding; one of another size dropped; seats given out and seen the same everywhere; `From<T>` with the sender's seat; `To<T>` to one seat, through the host between joiners; a wrong join code refused; a returning device getting its seat back |
 | `RemoteControls_test` | In a running system, with a client on localhost: connecting bringing every padd's controls, a change sent from afar made by its padd and its new snapshot sent back, and NetworkPadd's tab showing the service and its client |
 | `messages:ControlsText_test` | Every kind of control through a snapshot line and back exactly (ranges, choices, text with tabs, newlines and backslashes); a change and a request; lines that aren't messages refused |
 

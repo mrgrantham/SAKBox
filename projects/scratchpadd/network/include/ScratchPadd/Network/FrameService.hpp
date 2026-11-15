@@ -4,7 +4,8 @@
 // hold anything; one received whole is handed to `onFrame` on the network
 // loop's thread. send() queues a frame from any thread: to one connection,
 // to every connection, or to every connection but one (a host passing a
-// frame on from the device that sent it).
+// frame on from the device that sent it). sendThenClose() sends one
+// connection a last frame (a bridge refusing a device: why) and closes it.
 #pragma once
 
 #include <ScratchPadd/Network/Service.hpp>
@@ -40,19 +41,10 @@ public:
   // From any thread: `frame` to `to` (kNone: every connection), but not to
   // `except`. Dropped if there's no one to send it to.
   void send(std::string_view frame, std::uint32_t to = kNone, std::uint32_t except = kNone) {
-    {
-      std::lock_guard lock(mutex_);
-      if (to == kNone && connections_.size() <= (except == kNone ? 0u : 1u))
-        return;
-      std::string bytes(4, '\0');
-      const auto length = static_cast<std::uint32_t>(frame.size());
-      for (int i = 0; i < 4; ++i)
-        bytes[static_cast<std::size_t>(i)] = static_cast<char>((length >> (8 * i)) & 0xff);
-      bytes.append(frame);
-      queued_.push_back({to, except, std::move(bytes), {}});
-    }
-    wake();
+    queue(frame, to, except, false);
   }
+  // From any thread: `frame` to `to` only, which is then closed (once it's sent)
+  void sendThenClose(std::string_view frame, std::uint32_t to) { queue(frame, to, kNone, true); }
   std::size_t connections() const {
     std::lock_guard lock(mutex_);
     return connections_.size();
@@ -99,6 +91,8 @@ public:
       if (forThis && !sentAlready) {
         connection.send(queued.bytes);
         queued.sentTo.push_back(id);
+        if (queued.thenClose)
+          connection.close(); // (after what's queued, this frame too)
       }
       if (!done(queued))
         kept.push_back(std::move(queued));
@@ -121,7 +115,22 @@ private:
     std::uint32_t to, except;
     std::string bytes;
     std::vector<std::uint32_t> sentTo;
+    bool thenClose = false;
   };
+  void queue(std::string_view frame, std::uint32_t to, std::uint32_t except, bool thenClose) {
+    {
+      std::lock_guard lock(mutex_);
+      if (to == kNone && connections_.size() <= (except == kNone ? 0u : 1u))
+        return;
+      std::string bytes(4, '\0');
+      const auto length = static_cast<std::uint32_t>(frame.size());
+      for (int i = 0; i < 4; ++i)
+        bytes[static_cast<std::size_t>(i)] = static_cast<char>((length >> (8 * i)) & 0xff);
+      bytes.append(frame);
+      queued_.push_back({to, except, std::move(bytes), {}, thenClose});
+    }
+    wake();
+  }
   // Whether every connection it's for has it (under the lock)
   bool done(const Queued &queued) const {
     if (queued.to != kNone)
