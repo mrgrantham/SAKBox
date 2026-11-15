@@ -10,7 +10,7 @@
 
 #include <mutex>
 
-#if defined(__3DS__)
+#if !defined(__NDS__)
 #include <ScratchPadd/DebugLog/LogBufferSink.hpp>
 #include <ScratchPadd/Network/Service.hpp>
 #include <ScratchPadd/Network/Sockets.hpp>
@@ -21,8 +21,9 @@ namespace ScratchPadd::DebugLog {
 
 struct Session::Platform {
   std::unique_ptr<Storage::AppendFile> file;
-#if defined(__3DS__)
-  // The last 64 KB, served by NetworkPadd to whoever connects to port 5005
+#if !defined(__NDS__)
+  // The last 64 KB, served by NetworkPadd to whoever connects to its port
+  // (the 3DS always; desktops in a debug build, or when asked)
   LogBuffer buffer;
   std::unique_ptr<Network::StreamService> stream;
 #endif
@@ -56,6 +57,26 @@ std::string storageLine(std::string_view text) {
   return std::string(line.data(), line.size());
 }
 
+#if !defined(__NDS__) && !defined(__3DS__)
+// A desktop's port: the first free one from kLogPort, so several apps can
+// each serve their log at once, skipping RemoteControlsPadd's 5006 (0 if
+// none of the kLogPorts is free). It's
+// checked by listening and closing again, so another program could take it
+// in between; the log then says so, as NetworkPadd reports the port in use.
+std::uint16_t freeLogPort() {
+  for (std::uint16_t port = Session::kLogPort; port <= Session::kLogPort + Session::kLogPorts;
+       ++port) {
+    if (port == Session::kSkippedPort)
+      continue;
+    std::string error;
+    Network::Socket probe = Network::Socket::listenTcp(port, error);
+    if (probe.valid())
+      return port; // (closed as it goes)
+  }
+  return 0;
+}
+#endif
+
 } // namespace
 
 Session::Session(const SessionOptions &options) : platform_(std::make_unique<Platform>()) {
@@ -80,19 +101,29 @@ Session::Session(const SessionOptions &options) : platform_(std::make_unique<Pla
   }
 
 #if defined(__3DS__)
+  const bool serve = true;
+  const std::uint16_t port = kLogPort;
+#elif !defined(__NDS__)
+  const bool serve = options.serve.value_or(kServeByDefault);
+  const std::uint16_t port = serve ? freeLogPort() : 0;
+#endif
+#if !defined(__NDS__)
   std::string networkError;
-  if (Network::start(networkError)) {
+  if (serve && port == 0) {
+    networkError = "no free port from " + std::to_string(kLogPort);
+  } else if (serve && Network::start(networkError)) {
     LogBuffer &buffer = platform_->buffer;
     platform_->stream = std::make_unique<Network::StreamService>(
-        "log", kLogPort, [&buffer](std::uint64_t &position) { return buffer.readFrom(position); });
+        "log", port, [&buffer](std::uint64_t &position) { return buffer.readFrom(position); });
     buffer.setOnAppend([stream = platform_->stream.get()] { stream->wake(); });
     Network::services().add(platform_->stream.get()); // (for NetworkPadd)
     sinks.push_back(std::make_shared<LogBufferSink>(buffer));
-    const std::string address = Network::deviceAddress() + ":" + std::to_string(kLogPort);
+    const std::string address = Network::deviceAddress() + ":" + std::to_string(port);
+    servedAt_ = address;
     where_ = platform_->file ? address + ", " + path : address;
-  } else if (!platform_->file) {
-    where_ += "; " + networkError;
   }
+  if (serve && !platform_->stream && !networkError.empty())
+    where_ += "; not served: " + networkError;
 #endif
   for (const spdlog::sink_ptr &sink : sinks)
     sink->set_formatter(Logger::lineFormatter()); // (as the terminal's)
@@ -113,7 +144,7 @@ Session::~Session() {
   Logger::routeTo({}, true);
   if (platform_->file)
     Storage::sources().remove(platform_->file.get()); // (StoragePadd lets go first)
-#if defined(__3DS__)
+#if !defined(__NDS__)
   if (platform_->stream) {
     Network::services().remove(platform_->stream.get()); // (NetworkPadd lets go first)
     platform_->buffer.setOnAppend(nullptr);

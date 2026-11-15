@@ -44,6 +44,7 @@ cc_test(
     srcs = ["tests/Session_test.cpp"],
     deps = [
         ":debug_log",
+        "//projects/scratchpadd/network",  # (reading the served log)
         "//projects/scratchpadd/storage",
         "@gtest//:gtest_main",
     ],

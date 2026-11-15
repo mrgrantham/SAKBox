@@ -25,6 +25,7 @@ cc_binary(
     ],
     deps = [
         "//projects/scratchpadd/debug_log",
+        "//projects/scratchpadd/network:network_padd",  # (serves a debug build's log)
         "//projects/scratchpadd/storage:storage_padd",
         "//projects/scratchpadd/basis:basis",
         "@backward",

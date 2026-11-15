@@ -30,6 +30,7 @@
 #include <AudioPadd.hpp>
 
 #include <ScratchPadd/DebugLog/Session.hpp>
+#include <ScratchPadd/Network/NetworkPadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Storage/StoragePadd.hpp>
 
@@ -50,7 +51,8 @@ int main(int argc, char **argv) {
   // The simulation is listed before the display so each frame draws the
   // snapshot answering that frame's input (both run on this thread).
   ScratchPadd::SystemImplementation<FlightSimPadd, FlightDisplayPadd, EventLogPadd, FlightSoundPadd,
-                                    AudioPadd, ScratchPadd::Storage::StoragePadd>
+                                    AudioPadd, ScratchPadd::Storage::StoragePadd,
+                                    ScratchPadd::Network::NetworkPadd>
       system;
   system.instantiate();
   system.start(); // returns when the window closes

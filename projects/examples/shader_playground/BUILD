@@ -16,6 +16,7 @@ cc_binary(
         srcs = ["src/main.cpp"],
         deps = [
         "//projects/scratchpadd/debug_log",
+        "//projects/scratchpadd/network:network_padd",  # (serves a debug build's log)
         "//projects/scratchpadd/storage:storage_padd",
         "//projects/scratchpadd/basis:basis",
         "//projects/data_dep_retriever",

@@ -95,6 +95,17 @@ TEST(LoopTest, StreamsToEachReaderFromTheStartAndAsItGrows) {
   EXPECT_TRUE(eventually([&] { return first.receive(chunk) == 0; }));
 }
 
+// A port another socket listens on is refused, on every platform (on
+// Windows, SO_REUSEADDR used to let a second listener take it)
+TEST(LoopTest, APortInUseIsRefused) {
+  std::string error;
+  Network::Socket first = Network::Socket::listenTcp(0, error);
+  ASSERT_TRUE(first.valid()) << error;
+  Network::Socket second = Network::Socket::listenTcp(first.port(), error);
+  EXPECT_FALSE(second.valid());
+  EXPECT_NE(error.find(std::to_string(first.port())), std::string::npos) << error;
+}
+
 TEST(LoopTest, LinesBothWaysAndAConnectionWaitingForItsListener) {
   // A free port, for the server to listen on once the client is waiting
   std::string error;

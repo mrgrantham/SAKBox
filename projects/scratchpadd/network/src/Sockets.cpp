@@ -145,8 +145,18 @@ Socket Socket::listenTcp(std::uint16_t port, std::string &error) {
     return {};
   }
   int yes = 1;
+#if defined(_WIN32)
+  // On Windows SO_REUSEADDR would let this take a port another socket is
+  // already listening on; SO_EXCLUSIVEADDRUSE refuses that (and Windows
+  // reuses a port whose last connection is still closing anyway)
+  ::setsockopt(native(socket.handle_), SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
+               reinterpret_cast<const char *>(&yes), sizeof yes);
+#else
+  // Reuse a port whose last connection is still closing (TIME_WAIT); a
+  // port another socket listens on is still refused
   ::setsockopt(native(socket.handle_), SOL_SOCKET, SO_REUSEADDR,
                reinterpret_cast<const char *>(&yes), sizeof yes);
+#endif
 #if defined(SO_NOSIGPIPE)
   ::setsockopt(socket.handle_, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof yes);
 #endif

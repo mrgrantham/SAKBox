@@ -14,7 +14,9 @@
 // thread, when nothing else has work, in batches of writeEvery lines;
 // warnings and errors, and lines that waited 2 s, are written at once.
 // And besides the file:
-// - desktops: the terminal, as always;
+// - desktops: the terminal, as always; and in a debug build (or with
+//   `serve`), served over the network as the 3DS's is, on the first free
+//   port from 5005, when the app lists a NetworkPadd;
 // - 3DS: kept in memory (the last 64 KB) and served over Wi-Fi on port 5005
 //   by NetworkPadd (a Network::StreamService), for tools/console_log to
 //   read, with what came before it connected; the app lists a NetworkPadd;
@@ -48,12 +50,28 @@ struct SessionOptions {
   unsigned keepRuns = 5;
   // Where the log file goes: the app's own folders unless given (tests)
   std::optional<Storage::Folders> folders;
+  // Desktops: also serve the log over the network, as a 3DS does (the last
+  // 64 KB, then each line), when the app lists a NetworkPadd. On in a debug
+  // build unless given (kServeByDefault); a 3DS always serves, a DS can't.
+  std::optional<bool> serve;
 };
+
+// Whether a desktop serves its log unless told: in a debug build
+// (-c dbg, or any build without NDEBUG)
+#if defined(SAKBOX_DEBUG) || !defined(NDEBUG)
+inline constexpr bool kServeByDefault = true;
+#else
+inline constexpr bool kServeByDefault = false;
+#endif
 
 class Session {
 public:
-  // The 3DS's log's port (FBI and ftpd use 5000)
+  // The log's port (FBI and ftpd use 5000); a desktop takes the first free
+  // one of kLogPorts from it, so several apps can serve at once: 5005, then
+  // 5007 to 5015, skipping 5006, RemoteControlsPadd's (network's kPort)
   static constexpr std::uint16_t kLogPort = 5005;
+  static constexpr std::uint16_t kLogPorts = 10;
+  static constexpr std::uint16_t kSkippedPort = 5006;
 
   // e.g. Session({.level = spdlog::level::debug, .writeEvery = 8})
   explicit Session(const SessionOptions &options = {});
@@ -61,9 +79,11 @@ public:
   Session(const Session &) = delete;
   Session &operator=(const Session &) = delete;
 
-  // Where the log is going: its file, and on a 3DS its address and port; or
-  // why not ("off: no SD card")
+  // Where the log is going: its file, and where it's served (a 3DS, or a
+  // desktop's debug build); or why not ("off: no SD card")
   const std::string &where() const { return where_; }
+  // Where it's served ("192.168.4.25:5007"), or "" if it isn't
+  const std::string &servedAt() const { return servedAt_; }
   // The log file's path ("" without one)
   std::string file() const;
 
@@ -71,6 +91,7 @@ private:
   struct Platform;
   std::unique_ptr<Platform> platform_;
   std::string where_;
+  std::string servedAt_;
 };
 
 } // namespace ScratchPadd::DebugLog

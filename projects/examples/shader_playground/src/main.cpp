@@ -7,6 +7,7 @@
 #include <DataDepRetriever/DataDependencies.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/DebugUi/DebugUi.hpp>
+#include <ScratchPadd/Network/NetworkPadd.hpp>
 #include <ScratchPadd/Scene/Desktop/Desktop.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
@@ -188,7 +189,8 @@ int main(int argc, char **argv) {
   backward::SignalHandling signalHandling;
   ScratchPadd::DebugLog::Session log; // (the terminal and a file)
   const std::unique_ptr<ScratchPadd::System> system =
-      ScratchPadd::SystemBuilder<Playground, ScratchPadd::Storage::StoragePadd>();
+      ScratchPadd::SystemBuilder<Playground, ScratchPadd::Storage::StoragePadd,
+                                 ScratchPadd::Network::NetworkPadd>();
   system->instantiate();
   system->start();
   return EXIT_SUCCESS;

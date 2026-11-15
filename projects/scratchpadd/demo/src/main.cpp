@@ -1,6 +1,7 @@
 #include <ScratchPadd/AboutPadd.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/MessageStatsPadd.hpp>
+#include <ScratchPadd/Network/NetworkPadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Storage/StoragePadd.hpp>
 
@@ -24,7 +25,8 @@
 const std::unique_ptr<ScratchPadd::System> kSystem =
     ScratchPadd::SystemBuilder<ScratchPadd::AboutPadd, ScratchPadd::MessageStatsPadd, DisplayPadd,
                                StoryPadd, AudioPadd, MidiInputPadd, ShapeLoggerPadd,
-                               ScratchPadd::Storage::StoragePadd>();
+                               ScratchPadd::Storage::StoragePadd,
+                               ScratchPadd::Network::NetworkPadd>();
 
 int main(int argc, char **argv) {
   DataDepRetriever::ConfigureDependencies(argv[0]);

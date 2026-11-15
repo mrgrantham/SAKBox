@@ -1,10 +1,11 @@
 # console_log: a 3DS app's log, on the Mac
 
-Reads what a 3DS app serves on port 5005 ([`debug_log`](../../projects/scratchpadd/debug_log/README.md)): a debug build's log (`bazel build -c dbg`; served by the app's [`NetworkPadd`](../../projects/scratchpadd/network/README.md)), or the 3DS benchmark's and the audio self-test's results once they finish. It prints what the app kept from before it connected, then each line as it comes.
+Reads what a 3DS app serves on port 5005 ([`debug_log`](../../projects/scratchpadd/debug_log/README.md)): a debug build's log (`bazel build -c dbg`; served by the app's [`NetworkPadd`](../../projects/scratchpadd/network/README.md)), or the 3DS benchmark's and the audio self-test's results once they finish. A desktop app's debug build serves its log too, on the first free port from 5005: `--address HOST --port PORT`, the port its log's first line names. It prints what the app kept from before it connected, then each line as it comes.
 
 ```bash
 python3 tools/console_log/console_log.py --3ds 192.168.4.25                 # the address the app shows
 python3 tools/console_log/console_log.py --3ds 192.168.4.25 --save run.log  # and keep it
+python3 tools/console_log/console_log.py --address 127.0.0.1 --port 5007  # a second desktop app on this machine
 SAKBOX_3DS=192.168.4.25 python3 tools/console_log/console_log.py --once     # until the app quits
 ```
 

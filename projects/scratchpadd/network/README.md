@@ -24,7 +24,7 @@ The ScratchPadd 3DS demo and the Cyclone 3DS ragdoll list both padds. A DS has n
 
 It's built in layers, so the uses still to come fit (see the [roadmap](#roadmap)):
 
-1. **Sockets** (`Sockets.hpp`): TCP and UDP the same on every platform. That's POSIX on macOS and Linux, Winsock on Windows, and soc on the 3DS, which `Network::start()` gives its own buffer. `deviceAddress()` gives the address others reach this device on.
+1. **Sockets** (`Sockets.hpp`): TCP and UDP the same on every platform. That's POSIX on macOS and Linux, Winsock on Windows, and soc on the 3DS, which `Network::start()` gives its own buffer. A port another socket listens on is refused everywhere: on Windows a listener sets `SO_EXCLUSIVEADDRUSE`, since `SO_REUSEADDR` there would let it take a port in use (found when two desktop apps' logs both got 5005); elsewhere `SO_REUSEADDR` only reuses a port whose last connection is still closing. `deviceAddress()` gives the address others reach this device on.
 2. **The loop** (`Loop`): one thread waiting (`poll`, or `WSAPoll` on Windows) on:
    - each service's listening socket or outgoing connection;
    - every connection;

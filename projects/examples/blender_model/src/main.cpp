@@ -3,6 +3,7 @@
 // hand in Blender (Ship_DS, a Decimate modifier on a linked duplicate); the
 // rock's was simplified by the build to its budget (SIMPLIFY_AGGRESSIVE).
 #include <ScratchPadd/DebugLog/Session.hpp>
+#include <ScratchPadd/Network/NetworkPadd.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
@@ -98,7 +99,9 @@ private:
 
 int main() {
   ScratchPadd::DebugLog::Session log; // (the terminal and a file)
-  ScratchPadd::SystemImplementation<ModelPadd, ScratchPadd::Storage::StoragePadd> system;
+  ScratchPadd::SystemImplementation<ModelPadd, ScratchPadd::Storage::StoragePadd,
+                                    ScratchPadd::Network::NetworkPadd>
+      system;
   system.instantiate();
   system.start(); // returns when the window closes
   return 0;

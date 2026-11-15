@@ -38,6 +38,7 @@ cc_binary(
     ],
     deps = [
         "//projects/scratchpadd/debug_log",
+        "//projects/scratchpadd/network:network_padd",  # (serves a debug build's log)
         "//projects/scratchpadd/storage:storage_padd",
         ":ragdoll_messages",
         ":ragdoll_physics_padd",

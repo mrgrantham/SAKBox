@@ -14,6 +14,7 @@
 #include <AudioPadd.hpp>
 
 #include <ScratchPadd/DebugLog/Session.hpp>
+#include <ScratchPadd/Network/NetworkPadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Storage/StoragePadd.hpp>
 
@@ -22,9 +23,9 @@
 int main() {
   // The log in a file, the terminal showing only warnings
   ScratchPadd::DebugLog::Session log({.terminalLevel = spdlog::level::warn});
-  ScratchPadd::SystemImplementation<CyclonePadds::RagdollPhysicsPadd,
-                                    CyclonePadds::RagdollWindowPadd, AudioPadd,
-                                    ScratchPadd::Storage::StoragePadd>
+  ScratchPadd::SystemImplementation<
+      CyclonePadds::RagdollPhysicsPadd, CyclonePadds::RagdollWindowPadd, AudioPadd,
+      ScratchPadd::Storage::StoragePadd, ScratchPadd::Network::NetworkPadd>
       system;
   system.instantiate();
   system.start(); // returns when the window closes

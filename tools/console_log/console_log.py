@@ -1,17 +1,24 @@
-"""Reads a 3DS app's debug log over Wi-Fi, as it's logged.
+"""Reads an app's debug log over the network, as it's logged: a 3DS's, or a
+desktop app's.
 
 A debug build (bazel build -c dbg) of a 3DS app with a DebugLog::Session
-and a NetworkPadd serves its log on port 5005 (//projects/scratchpadd/debug_log,
-//projects/scratchpadd/network); this
-connects, prints what the app kept from before, then each line as it comes,
-and saves it all with --save. It waits for the app to start, and for it
-again when it quits (Ctrl-C to stop), or stops with --once.
+and a NetworkPadd serves its log on port 5005; a desktop app's debug build
+(any build without NDEBUG) does too, on the first free port from 5005, so
+several can serve at once (//projects/scratchpadd/debug_log,
+//projects/scratchpadd/network). This connects, prints what the app kept
+from before, then each line as it comes, and saves it all with --save. It
+waits for the app to start, and for it again when it quits (Ctrl-C to
+stop), or stops with --once.
 
 Usage:
   python3 tools/console_log/console_log.py --3ds ADDRESS [--save FILE] [--once]
+  python3 tools/console_log/console_log.py --address HOST [--port PORT] ...
 
 ADDRESS is the 3DS's IP address (the app shows it, "Log: ADDRESS:5005"),
-or set SAKBOX_3DS, as tools/fbi_install takes it.
+or set SAKBOX_3DS, as tools/fbi_install takes it. For a desktop app, HOST
+is the machine it runs on (127.0.0.1 on this one) and PORT the one its
+log's first line names ("logging to 192.168.4.20:5007, ..."), 5005 for the
+first app.
 """
 
 import argparse
@@ -60,15 +67,15 @@ def read_log(host, port, write, say=print, once=False, give_up_at=None, retry=2.
 
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--3ds", dest="address", default=os.environ.get("SAKBOX_3DS"),
-                        help="the 3DS's IP address (or set SAKBOX_3DS)")
+    parser.add_argument("--3ds", "--address", dest="address", default=os.environ.get("SAKBOX_3DS"),
+                        help="the 3DS's IP address (or set SAKBOX_3DS), or a desktop app's machine")
     parser.add_argument("--port", type=int, default=LOG_PORT)
     parser.add_argument("--save", help="also write the log to this file")
     parser.add_argument("--once", action="store_true",
                         help="stop when the app quits, rather than waiting for it again")
     args = parser.parse_args(argv)
     if not args.address:
-        parser.error("the 3DS's address: --3ds ADDRESS, or set SAKBOX_3DS")
+        parser.error("the app's address: --3ds ADDRESS (or set SAKBOX_3DS), or --address HOST")
     saved = open(args.save, "ab") if args.save else None
 
     def write(data):

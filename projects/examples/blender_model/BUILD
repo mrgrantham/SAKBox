@@ -52,6 +52,7 @@ cc_binary(
     tags = ["blender"],
     deps = [
         "//projects/scratchpadd/debug_log",
+        "//projects/scratchpadd/network:network_padd",  # (serves a debug build's log)
         "//projects/scratchpadd/storage:storage_padd",
         ":rock",
         ":rock_ds_preview",
