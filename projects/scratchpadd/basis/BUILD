@@ -108,3 +108,18 @@ cc_binary(
     srcs = ["benchmarks/MessageBenchmark.cpp"],
     deps = [":basis"],
 )
+
+# How much having many padds costs on this device: the same work shared
+# among 1 to 32 padds, how late a 2 ms repeat() comes with 0 to 32 padds
+# busy (at the default priority and Urgently), and what idle padds cost to
+# start, in memory and in CPU. bazel run -c opt (see the ScratchPadd
+# README's padd count notes)
+cc_binary(
+    name = "padd_contention_benchmark",
+    srcs = ["benchmarks/ContentionBenchmark.cpp"],
+    linkopts = select({
+        "@platforms//os:windows": ["psapi.lib"],
+        "//conditions:default": [],
+    }),
+    deps = [":basis"],
+)
