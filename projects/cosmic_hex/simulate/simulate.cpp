@@ -32,8 +32,9 @@ struct Options {
   int rolloutDepth = 60;
   int maxRounds = 200;
   std::uint64_t seed = 1;
-  std::string logs; // a folder to write each game's log to, if given
-  std::string csv;  // a file to write one line a game to, if given
+  std::string logs;           // a folder to write each game's log to, if given
+  std::string csv;            // a file to write one line a game to, if given
+  std::string core = "seven"; // the core planets: seven (the centre and the six around it) or three
 };
 
 // A flag's number, or a clear stop if it isn't one
@@ -69,6 +70,8 @@ Options parse(int argc, char **argv) {
       options.logs = value;
     else if (flag == "--csv")
       options.csv = value;
+    else if (flag == "--core")
+      options.core = value;
     else {
       std::fprintf(stderr, "unknown flag %s\n", argv[i]);
       std::exit(2);
@@ -113,9 +116,13 @@ int main(int argc, char **argv) {
     const SeededRandom::Seed seed =
         SeededRandom::Seed::mixedFrom(options.seed * 1000003 + static_cast<std::uint64_t>(g));
     SeededRandom::Generator dealer = seed.stream("dealer"), bots = seed.stream("bots");
-    ActionLog::Play<Game> play(newGame(options.players));
+    Settings settings;
+    if (options.core == "three")
+      settings.coreHexes = {{0, 0}, {1, -2}, {-1, 2}};
+    ActionLog::Play<Game> play(newGame(options.players, settings));
     play.addMeta("seed", seed.code());
     play.addMeta("bots", "ismcts " + std::to_string(options.iterations));
+    play.addMeta("core", options.core);
     const auto choose = [&](const State &state) {
       return bot.choose(state, bots, {.iterations = options.iterations});
     };

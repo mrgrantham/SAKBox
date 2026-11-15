@@ -58,7 +58,9 @@ struct Settings {
   int maxShips = 3;
   int shipMove = 3;   // hexes a ship moves a turn, free
   int boostMove = 2;  // more, for 1 fuel
-  int coreRadius = 2; // planet slots this close to the centre are core planets
+  int coreRadius = 2; // planet slots this close to the centre are core planets...
+  std::vector<Hex>
+      coreHexes; // ...unless these name them (the round-28 option B: {0,0}, {1,-2}, {-1,2})
   int coreStationsForControl = 2;
   int coreControlPoints = 2;
   int badgesPerPoint = 3;

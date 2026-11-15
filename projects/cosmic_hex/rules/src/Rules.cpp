@@ -288,7 +288,14 @@ std::string settingsText(const Settings &s) {
       << " corners=" << (s.zoneCorners ? 1 : 0) << " tiles=" << joined(s.planetTiles)
       << " numbers=" << joined(s.numbers) << " finds=" << joined(s.finds)
       << " ship=" << joined(s.shipCost) << " station=" << joined(s.stationCost)
-      << " colony=" << joined(s.colonyCost) << " contract=" << joined(s.contractCost);
+      << " colony=" << joined(s.colonyCost) << " contract=" << joined(s.contractCost)
+      << " corehexes=";
+  std::vector<int> core;
+  for (Hex hex : s.coreHexes) {
+    core.push_back(hex.q);
+    core.push_back(hex.r);
+  }
+  out << joined(core);
   return out.str();
 }
 
@@ -308,6 +315,12 @@ std::optional<Settings> readSettings(std::string_view line) {
       return std::nullopt;
     const std::string_view key = field.substr(0, eq);
     const auto values = intList(field.substr(eq + 1));
+    if (values && key == "corehexes" && values->size() % 2 == 0) {
+      s.coreHexes.clear();
+      for (std::size_t i = 0; i < values->size(); i += 2)
+        s.coreHexes.push_back(Hex{(*values)[i], (*values)[i + 1]});
+      continue;
+    }
     if (!values || values->empty())
       return std::nullopt;
     const std::vector<int> &v = *values;
@@ -379,7 +392,10 @@ State newGame(int players, const Settings &settings) {
     if (isSlot(hex)) {
       Planet planet;
       planet.hex = hex;
-      planet.core = length <= settings.coreRadius;
+      planet.core = settings.coreHexes.empty()
+                        ? length <= settings.coreRadius
+                        : std::find(settings.coreHexes.begin(), settings.coreHexes.end(), hex) !=
+                              settings.coreHexes.end();
       for (int p = 0; p < kMaxPlayers; ++p) {
         if (kHomes[static_cast<std::size_t>(p)] == hex) {
           planet.flipped = true;

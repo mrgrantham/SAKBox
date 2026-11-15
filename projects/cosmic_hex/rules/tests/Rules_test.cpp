@@ -78,6 +78,21 @@ TEST(RulesTest, TheBoard) {
   EXPECT_EQ(state.numbersLeft.size(), 15u);
 }
 
+// The core can be named instead of the 7 within 2 of the centre (round
+// 28's option B: the centre and one opposite pair)
+TEST(RulesTest, ASmallerCore) {
+  Settings settings;
+  settings.coreHexes = {{0, 0}, {1, -2}, {-1, 2}};
+  const State state = newGame(4, settings);
+  int core = 0;
+  for (const Planet &planet : state.planets)
+    core += planet.core;
+  EXPECT_EQ(core, 3);
+  const auto again = Game::readState(Game::writeState(state));
+  ASSERT_TRUE(again.has_value());
+  EXPECT_EQ(again.value_or(State{}).settings.coreHexes, settings.coreHexes);
+}
+
 TEST(RulesTest, TheStart) {
   const State state = newGame(3);
   for (int p = 0; p < 3; ++p) {
