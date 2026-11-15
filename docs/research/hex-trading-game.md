@@ -20,7 +20,14 @@ These replace the first proposal below where they differ. The reasoning behind s
 - **Toolchain:** stay on devkitPro, with **no BlocksDS**: its cooperative threads would make the DS port work differently from every other platform. Calico has an unimplemented `WlMgrMode_LocalComms` mode and raw packet send and receive. The plan is our own ARM7 program plus an ARM9 library, offered to devkitPro once it works. This replaces the toolchain table below.
 - **Cross-play:** wanted if possible. The Mac can't use DS local wireless, and a DS Lite only joins open or WEP Wi-Fi, so cross-play would go over a dedicated open game network.
 - **colonist.io:** a reference for online play only (lobby, bots, turn timer, offering trades), not for rules.
-- **Still open:** the explorer's reward, a pirate or blockade piece, the kinds of rare tile, the contracts, and placement.
+- **Design rule:** approachable for new players, and every rule must work as a physical board game (tiles, tokens, cards, no hidden maths). The screens can help, but the rules mustn't need them.
+- **Ships only** (no survey ships). A **blockade** ship (the embargo) moves on a roll of 7: its tile stops producing, and its mover takes a card from a player there.
+- **Proposed, awaiting confirmation:**
+  - A ship moving onto an unexplored tile flips it and earns an explorer badge. Its owner then chooses to settle there (the ship becomes a station) or fly on. 3 badges trade for 1 victory point.
+  - Rare tiles in the base game: alien stations (2-for-1 trades) and ancient ruins (2 badges). Wormholes come later, as a variant.
+  - Contracts: a deck of cards; each player is dealt 2 and keeps 1 secretly, and more can be bought.
+  - 10 points to win, to be tuned with bots.
+- **Still open:** placement at the start, and the final numbers.
 
 ## Why this game suits the DS
 

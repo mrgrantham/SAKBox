@@ -19,7 +19,9 @@ Status: research, for review. The name and the concept are still open. This sets
   - Risk earns points: a timed dodge against incoming fire, and flying close to obstacles.
 - **Ghost races:** against your own runs and friends' runs.
 - **Photo mode:** in a later version.
-- **Still open:** steering (corridor recommended), the bottom screens (a top-down map and menus to start), the dodge and close-flying mechanics, and the enemy behaviour levels.
+- **Difficulty bands** each end at a guarded objective with a boss or extra defences, then a breather.
+- **A technique meter** fills while skimming close to obstacles. Proposed: dodges spend it, and what's left multiplies the score.
+- **Still open:** steering (corridor recommended), the bottom screens (a top-down map and menus to start), the bosses, and the enemy behaviour levels (patrolling, tracking, swarming, desperate).
 
 ## The idea
 
