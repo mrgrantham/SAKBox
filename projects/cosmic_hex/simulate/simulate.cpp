@@ -205,8 +205,13 @@ int main(int argc, char **argv) {
         SeededRandom::Seed::mixedFrom(options.seed * 1000003 + static_cast<std::uint64_t>(g));
     SeededRandom::Generator dealer = seed.stream("dealer"), bots = seed.stream("bots");
     Settings settings;
+    // The smaller core: the centre and planets matching the homes' symmetry
+    // (an opposite pair for two and four players; for three, the three a
+    // third of the way round from each other, each 2 hexes from a home)
     if (options.core == "three")
-      settings.coreHexes = {{0, 0}, {1, -2}, {-1, 2}};
+      settings.coreHexes = options.players == 3
+                               ? std::vector<Hex>{{0, 0}, {2, -1}, {-1, -1}, {-1, 2}}
+                               : std::vector<Hex>{{0, 0}, {1, -2}, {-1, 2}};
     settings.seatBonus = options.seatBonus;
     settings.catchUpBelow = options.catchUpBelow;
     settings.catchUpGap = options.catchUpGap;
