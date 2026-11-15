@@ -6,6 +6,7 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test", "objc_libra
 cc_library(
     name = "input",
     srcs = [
+        "src/Actions.cpp",
         "src/Devices.cpp",
         "src/Gamepad.cpp",
         "src/Keyboard.cpp",
@@ -16,6 +17,7 @@ cc_library(
         "//conditions:default": [],
     }),
     hdrs = [
+        "include/ScratchPadd/Input/Actions.hpp",
         "include/ScratchPadd/Input/Devices.hpp",
         "include/ScratchPadd/Input/Gamepad.hpp",
         "include/ScratchPadd/Input/Keyboard.hpp",
@@ -67,6 +69,16 @@ cc_test(
     name = "Input_test",
     size = "small",
     srcs = ["tests/Input_test.cpp"],
+    deps = [
+        ":input",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "Actions_test",
+    size = "small",
+    srcs = ["tests/Actions_test.cpp"],
     deps = [
         ":input",
         "@gtest//:gtest_main",

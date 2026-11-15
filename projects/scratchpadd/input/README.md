@@ -16,6 +16,28 @@ overlay.text(x, y, std::format("{} to jump", pad.labelOf(Input::Button::FaceBott
 //   "A" on an Xbox pad, "Cross" on a PlayStation pad, "B" on a 3DS, "K" on the keyboard
 ```
 
+## Actions
+
+A game names its own controls ("steer", "boost", "confirm") and binds them to each kind of pad, instead of asking about buttons (`Actions.hpp`, in `:input`):
+
+- **The actions:** an enum, listed once with a name (shown and saved) and a kind: a **button** (pressed, held, released) or an **axis** (-1 to 1). `ActionSet::inOrder()` checks the list matches the enum.
+- **Bindings:** up to two per action, for each `Kind` of pad, from a function the game writes. A binding is a button, a **pair** of buttons as an axis (a DS Lite steers with its D-pad), one direction of a **stick**, or a **trigger** (a button from halfway). Two bindings add together, so the stick and the D-pad both steer.
+- **`ActionReader`**, once a frame with the `Gamepad`: `held`, `pressed` and `released` (a press that came and went between frames still counts, as with `Edges`), `value<T>()` for an axis (float, or the DS's fixed point), and `prompt()`, the first binding as the pad in hand calls it ("A", "Cross", "K", "Left stick").
+- **Remapping:** `setBindings(kind, bindings)` for one kind of pad, taking effect at once; `resetBindings` goes back to the defaults. `bindingsText` and `bindingsFromText` save and read them, one line an action (`steer stick:left:x pair:left:right`). Reading starts from the defaults, so an action the saved text doesn't name keeps its default, and a line for an action the game no longer has is skipped.
+- **Touch** isn't an action: touch screens are the touch UI's (later). Touch standing in for a stick, in some cases, is an idea for then.
+
+```cpp
+enum class Ship { Steer, Boost };
+constexpr Input::ActionSet<Ship, 2> kShip{{{{Ship::Steer, "steer", Input::ActionKind::Axis},
+                                            {Ship::Boost, "boost", Input::ActionKind::Button}}}};
+Input::ActionReader<Ship, 2> controls(kShip, shipDefaults);   // shipDefaults(Input::Kind) -> Input::Bindings<2>
+controls.update(pad);
+float steer = controls.value<float>(Ship::Steer);
+if (controls.pressed(Ship::Boost)) boost();
+```
+
+Still to come: a panel in the controls window to remap them, saved with the app's settings.
+
 ## The Gamepad
 
 | Part | What it holds |
@@ -78,4 +100,5 @@ The 3DS and DS apps take `:sources` into their Makefile builds (`"//projects/scr
 | Test | Covers |
 | --- | --- |
 | `Input_test` | Labels following the pad, presses counted for every reader (between reads, across the counts wrapping), the dead zone, and each platform's device state as a Gamepad: the DS's and 3DS's keys, GameController, XInput and evdev; the keyboard through the standard map (diagonals, half strength, the mouse, a pad's own stick first) |
+| `Actions_test` | A game's actions named and in order; buttons pressed, held and released, a quick tap between reads still counted; axes from a stick, a button pair, or both added and kept within -1..1; a DS's own bindings; triggers and sticks as buttons from halfway; prompts following the pad; a remap taking effect at once for its kind of pad only; bindings as text, and saved bindings surviving the game gaining or losing actions |
 | `GamePadd_test` | GamePadd in a running system publishing the pad, with a window padd's keyboard laid on |
