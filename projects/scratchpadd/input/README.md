@@ -36,7 +36,16 @@ float steer = controls.value<float>(Ship::Steer);
 if (controls.pressed(Ship::Boost)) boost();
 ```
 
-Still to come: a panel in the controls window to remap them, saved with the app's settings.
+**Remapping in the controls window: `ActionBindingsPadd`** (`:action_bindings_padd`). A game lists one, made for its actions, beside `GamePadd`:
+
+```cpp
+using ShipBindings = Input::ActionBindingsPadd<Ship, 2, kShip, shipDefaults>;   // in the system's list
+controls.use(currentState<Input::SharedBindings<Ship, 2>>().value);            // the game's padd, once a frame
+```
+
+- **Its tab**, for the pad in hand: each action's two bindings as a choice from a list (`steer 1`, `steer 2`), named as that pad names them ("A", "Cross", "Left stick across", "LB/RB", "none"), offering only what the pad has (no right stick on a DS); "Reset to defaults"; and which pad, remapped or not. The lists are ordinary string controls, so remapping works in the desktop window, a console's own panel and the remote controls app alike. When another kind of pad is picked up, the tab changes to it.
+- **Kept per kind of pad**, in the app's files as `controls.txt`: a `[xbox]` line, then that pad's bindings, for each kind remapped. It's saved by StoragePadd when the app has one (on its thread, when nothing else has work), or straight away when it doesn't, and read back when the app starts.
+- **Shared** as `SharedBindings<Action, N>` (the bindings in use, the kind, and whether they're remapped), one type per game's action enum, which the game's `ActionReader::use()` takes.
 
 ## The Gamepad
 
@@ -101,4 +110,5 @@ The 3DS and DS apps take `:sources` into their Makefile builds (`"//projects/scr
 | --- | --- |
 | `Input_test` | Labels following the pad, presses counted for every reader (between reads, across the counts wrapping), the dead zone, and each platform's device state as a Gamepad: the DS's and 3DS's keys, GameController, XInput and evdev; the keyboard through the standard map (diagonals, half strength, the mouse, a pad's own stick first) |
 | `Actions_test` | A game's actions named and in order; buttons pressed, held and released, a quick tap between reads still counted; axes from a stick, a button pair, or both added and kept within -1..1; a DS's own bindings; triggers and sticks as buttons from halfway; prompts following the pad; a remap taking effect at once for its kind of pad only; bindings as text, and saved bindings surviving the game gaining or losing actions |
+| `ActionBindingsPadd_test` | In a running system with an Xbox pad: the defaults published; a choice from a panel remapping an action, published at once and saved to `controls.txt` as a `[xbox]` section; a new system starting with the remap; the choices following the pad (no right stick on a DS); the settings file read back as written. Also ran 5 times under ThreadSanitizer |
 | `GamePadd_test` | GamePadd in a running system publishing the pad, with a window padd's keyboard laid on |

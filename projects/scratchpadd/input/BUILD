@@ -75,6 +75,32 @@ cc_test(
     ],
 )
 
+# ActionBindingsPadd: remapping a game's actions in the controls window,
+# saved in the app's files
+cc_library(
+    name = "action_bindings_padd",
+    hdrs = ["include/ScratchPadd/Input/ActionBindingsPadd.hpp"],
+    strip_include_prefix = "include/",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":input",
+        "//projects/scratchpadd/basis",
+        "//projects/scratchpadd/storage",
+        "//projects/scratchpadd/storage:storage_padd",  # (SaveFile)
+    ],
+)
+
+cc_test(
+    name = "ActionBindingsPadd_test",
+    size = "small",
+    srcs = ["tests/ActionBindingsPadd_test.cpp"],
+    deps = [
+        ":action_bindings_padd",
+        "//projects/scratchpadd/basis",
+        "@gtest//:gtest_main",
+    ],
+)
+
 cc_test(
     name = "Actions_test",
     size = "small",

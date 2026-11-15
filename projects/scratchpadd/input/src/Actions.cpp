@@ -152,4 +152,98 @@ std::string promptOf(const Binding &binding, const Gamepad &pad) {
   return "-";
 }
 
+// ---------------------------------------------------------------------------
+// Remapping
+
+namespace {
+constexpr std::array<std::string_view, 9> kKindNames = {
+    "none", "keyboard", "xbox", "playstation", "switch_pro", "ds", "3ds", "new_3ds", "other"};
+} // namespace
+
+std::string_view kindName(Kind kind) { return kKindNames[static_cast<std::size_t>(kind)]; }
+
+std::optional<Kind> kindNamed(std::string_view name) {
+  for (std::size_t i = 0; i < kKindNames.size(); ++i) {
+    if (kKindNames[i] == name)
+      return static_cast<Kind>(i);
+  }
+  return std::nullopt;
+}
+
+std::vector<std::pair<std::string, Binding>> bindingChoices(ActionKind kind, const Gamepad &pad) {
+  std::vector<std::pair<std::string, Binding>> out{{"none", Binding{}}};
+  const auto label = [&](Button b) { return std::string(pad.labelOf(b)); };
+  const bool rightStick = pad.has(Feature::RightStick) || pad.kind == Kind::Keyboard;
+  const bool zButtons = pad.has(Feature::ZButtons) || pad.kind == Kind::Keyboard;
+  if (kind == ActionKind::Button) {
+    for (std::size_t i = 0; i < kButtons; ++i) {
+      const Button b = static_cast<Button>(i);
+      if ((b == Button::ZL || b == Button::ZR) && !zButtons)
+        continue;
+      if ((b == Button::LeftStickClick || b == Button::RightStickClick) &&
+          !pad.has(Feature::StickClicks))
+        continue;
+      out.emplace_back(label(b), Binding::of(b));
+    }
+    if (pad.has(Feature::AnalogTriggers)) {
+      out.emplace_back(label(Button::ZL) + " (halfway)", Binding::trigger(Side::Left));
+      out.emplace_back(label(Button::ZR) + " (halfway)", Binding::trigger(Side::Right));
+    }
+    return out;
+  }
+  // An axis: stick directions (either way round), and pairs of buttons
+  for (Side side : {Side::Left, Side::Right}) {
+    if (side == Side::Right && !rightStick)
+      continue;
+    const std::string stick = side == Side::Left ? "Left stick" : "Right stick";
+    out.emplace_back(stick + " across", Binding::stick(side, Direction::X));
+    out.emplace_back(stick + " across, turned round", Binding::stick(side, Direction::X, true));
+    out.emplace_back(stick + " up/down", Binding::stick(side, Direction::Y));
+    out.emplace_back(stick + " up/down, turned round", Binding::stick(side, Direction::Y, true));
+  }
+  const std::pair<Button, Button> pairs[] = {{Button::Left, Button::Right},
+                                             {Button::Down, Button::Up},
+                                             {Button::L, Button::R},
+                                             {Button::ZL, Button::ZR},
+                                             {Button::FaceLeft, Button::FaceRight},
+                                             {Button::FaceBottom, Button::FaceTop}};
+  for (const auto &[negative, positive] : pairs) {
+    if (negative == Button::ZL && !zButtons)
+      continue;
+    out.emplace_back(label(negative) + "/" + label(positive), Binding::pair(negative, positive));
+  }
+  if (pad.has(Feature::AnalogTriggers)) {
+    out.emplace_back(label(Button::ZL) + " (gradual)", Binding::trigger(Side::Left));
+    out.emplace_back(label(Button::ZR) + " (gradual)", Binding::trigger(Side::Right));
+  }
+  return out;
+}
+
+std::string remapsText(const std::map<Kind, std::string> &perKind) {
+  std::string out;
+  for (const auto &[kind, lines] : perKind) {
+    ((out += '[') += kindName(kind)) += "]\n";
+    out += lines;
+  }
+  return out;
+}
+
+std::map<Kind, std::string> remapsFromText(std::string_view text) {
+  std::map<Kind, std::string> out;
+  std::optional<Kind> kind;
+  while (!text.empty()) {
+    const std::size_t end = text.find('\n');
+    const std::string_view line = text.substr(0, end);
+    text.remove_prefix(end == std::string_view::npos ? text.size() : end + 1);
+    if (line.size() > 2 && line.front() == '[' && line.back() == ']') {
+      kind = kindNamed(line.substr(1, line.size() - 2));
+      if (kind)
+        out[*kind];
+    } else if (kind && !line.empty()) {
+      (out[*kind] += line) += '\n';
+    }
+  }
+  return out;
+}
+
 } // namespace ScratchPadd::Input

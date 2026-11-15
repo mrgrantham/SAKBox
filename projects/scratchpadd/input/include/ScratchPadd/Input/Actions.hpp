@@ -45,6 +45,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace ScratchPadd::Input {
@@ -184,6 +185,30 @@ Bindings<N> bindingsFromText(const ActionSet<Action, N> &set, std::string_view t
 }
 
 // ---------------------------------------------------------------------------
+// Remapping (ActionBindingsPadd shows these in the controls window)
+
+// The bindings in use for the pad in hand, as shared state (one type per
+// game's action enum, so two games' don't mix): ActionBindingsPadd
+// publishes it, a game's ActionReader use()s it
+template <typename Action, std::size_t N> struct SharedBindings {
+  Kind kind = Kind::None;
+  bool remapped = false; // false: the game's defaults
+  Bindings<N> bindings;
+};
+
+// A kind of pad's name in the settings file ("xbox", "3ds")
+std::string_view kindName(Kind kind);
+std::optional<Kind> kindNamed(std::string_view name);
+// Every binding that makes sense for an action of this kind on this pad,
+// each with its label there ("A", "Left stick across", "LB/RB"); the first
+// is "none"
+std::vector<std::pair<std::string, Binding>> bindingChoices(ActionKind kind, const Gamepad &pad);
+// Remaps for several kinds of pad, as the settings file: a "[kind]" line,
+// then that pad's bindingsText, for each
+std::string remapsText(const std::map<Kind, std::string> &perKind);
+std::map<Kind, std::string> remapsFromText(std::string_view text);
+
+// ---------------------------------------------------------------------------
 // Reading the actions
 
 // A binding's value from -1 to 1 (0 to 1 for a button or trigger)
@@ -219,6 +244,16 @@ public:
     return found != overrides_.end() ? found->second : defaults_(kind);
   }
   const std::map<Kind, Bindings<N>> &remapped() const { return overrides_; }
+  // Takes the remap ActionBindingsPadd publishes (the defaults when it
+  // isn't remapped), once a frame: currentState<SharedBindings<...>>().value
+  void use(const SharedBindings<Action, N> &shared) {
+    if (shared.kind == Kind::None)
+      return; // (nothing published yet)
+    if (shared.remapped)
+      setBindings(shared.kind, shared.bindings);
+    else if (overrides_.contains(shared.kind))
+      resetBindings(shared.kind);
+  }
 
   // Once a frame, with the pad as it is now
   void update(const Gamepad &pad) {
