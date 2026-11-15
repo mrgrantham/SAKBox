@@ -37,25 +37,25 @@ class EventTimer {
   // inside the event without touching timer_thread_ from that thread.
   std::atomic<std::thread::id> timer_thread_id_;
 
-  // Sleeps for `duration` unless stop() is called first. Returns true if the
-  // full duration elapsed.
-  template <typename Duration> bool sleepUnlessStopped(Duration duration) {
+  using Clock = std::chrono::steady_clock;
+
+  // Sleeps until `when` unless stop() is called first. Returns true if
+  // `when` came.
+  bool sleepUntilUnlessStopped(Clock::time_point when) {
 #if SCRATCHPADD_TIMER_SLEEPS_IN_SLICES
     // How long stop() can take to be noticed
     constexpr std::chrono::milliseconds kSlice{5};
-    const auto until = std::chrono::steady_clock::now() +
-                       std::chrono::ceil<std::chrono::steady_clock::duration>(duration);
     while (!should_stop_) {
-      const auto left = until - std::chrono::steady_clock::now();
-      if (left <= std::chrono::steady_clock::duration::zero()) {
+      const auto left = when - Clock::now();
+      if (left <= Clock::duration::zero()) {
         return true;
       }
-      std::this_thread::sleep_for(std::min<std::chrono::steady_clock::duration>(left, kSlice));
+      std::this_thread::sleep_for(std::min<Clock::duration>(left, kSlice));
     }
     return false;
 #else
     std::unique_lock<std::mutex> lk(mutex_);
-    return !stop_condition_variable_.wait_for(lk, duration, [this] { return should_stop_.load(); });
+    return !stop_condition_variable_.wait_until(lk, when, [this] { return should_stop_.load(); });
 #endif
   }
 
@@ -80,18 +80,33 @@ public:
   EventTimer &operator=(const EventTimer &) = delete;
   ~EventTimer() { stop(); }
 
+  // Runs `event` every `interval_between_events`, on a fixed timeline: the
+  // n-th time at start + n intervals. So a tick that comes late (the thread
+  // woke late, or the event took a while) doesn't make the ones after it
+  // later, and the rate asked for is the rate it runs at. If it falls a whole
+  // interval behind (the device was busy), it skips the ticks it missed
+  // rather than running them in a burst.
   template <typename Event, typename Duration>
   void startRepeatingEvent(const Event &event, Duration interval_between_events) {
+    const auto interval = std::max<Clock::duration>(
+        std::chrono::ceil<Clock::duration>(interval_between_events), Clock::duration{1});
     startThread([=, this] {
-      while (sleepUnlessStopped(interval_between_events)) {
+      auto next = Clock::now() + interval;
+      while (sleepUntilUnlessStopped(next)) {
         event();
+        next += interval;
+        const auto now = Clock::now();
+        while (next <= now) {
+          next += interval; // (missed: skipped)
+        }
       }
     });
   }
 
   template <typename Event> void startTimedEvent(const Event &event, int delay_until_event) {
+    const auto when = Clock::now() + std::chrono::milliseconds(delay_until_event);
     startThread([=, this] {
-      if (sleepUnlessStopped(std::chrono::milliseconds(delay_until_event))) {
+      if (sleepUntilUnlessStopped(when)) {
         event();
       }
     });

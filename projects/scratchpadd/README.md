@@ -86,7 +86,7 @@ After that, each padd goes through these hooks. All except the constructor are o
 | constructor | `instantiate()` | the thread calling `instantiate()` |
 | `prepare()` | start of `start()`, before any padd thread exists | the thread calling `start()` |
 | `starting()` | when the padd's work loop starts | the padd's thread |
-| `repeat()` | every `repeatInterval()`, if set | the padd's thread |
+| `repeat()` | every `repeatInterval()`, if set, on a fixed timeline: the n-th tick is due n intervals after the start, so a late one doesn't make the next later, and ticks missed while the device was busy are skipped rather than run in a burst | the padd's thread |
 | `receive<T>()` handlers | for each message of type T | the padd's thread |
 | `finishing()` | when the padd's work loop ends | the padd's thread |
 | `cleanup()` | at shutdown, after every padd's `finishing()` | the thread calling `start()` |
@@ -643,7 +643,7 @@ Each test file is named after what it tests, as `<Source>_test.cpp` (see the top
 | `utilities:ThreadPriority_test` | Each platform's thread priorities, read back with its own call: macOS's quality-of-service classes, Windows' levels, Linux's nice values (raising one refused without privileges) |
 | `utilities:Logger_test` | The log line: time, level and `[name]` in columns, messages starting in the same column, a long name kept whole |
 | `texture_recipe:svg_to_recipe_test`, `texture_recipe:TextureRecipe_test` | SVG drawings converted, and recipes read and drawn: see [`texture_recipe`](texture_recipe/README.md#tests) |
-| `utilities:EventTimer_test` | Repeating and one-shot timers, stopping |
+| `utilities:EventTimer_test` | Repeating and one-shot timers, stopping; a repeat running at the rate asked for (2 ms: 250 ticks in half a second, not the 166 a timer that counted each interval from the last tick gave on macOS), and ticks a slow event ran over skipped |
 
 ## Known Limitations
 
