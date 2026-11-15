@@ -34,6 +34,7 @@ struct Options {
   std::uint64_t seed = 1;
   std::string logs;           // a folder to write each game's log to, if given
   std::string csv;            // a file to write one line a game to, if given
+  bool randomFirst = false;   // a random player goes first, rather than player 1
   std::string core = "seven"; // the core planets: seven (the centre and the six around it) or three
 };
 
@@ -72,6 +73,8 @@ Options parse(int argc, char **argv) {
       options.csv = value;
     else if (flag == "--core")
       options.core = value;
+    else if (flag == "--first")
+      options.randomFirst = std::string_view(value) == "random";
     else {
       std::fprintf(stderr, "unknown flag %s\n", argv[i]);
       std::exit(2);
@@ -108,7 +111,7 @@ int main(int argc, char **argv) {
   std::ofstream csv;
   if (!options.csv.empty()) {
     csv.open(options.csv);
-    csv << "seed,players,iterations,winner,rounds,actions,points1,points2,points3,points4,"
+    csv << "seed,players,iterations,first,winner,rounds,actions,points1,points2,points3,points4,"
            "stations,colonies,core,badges,contracts\n";
   }
 
@@ -119,7 +122,10 @@ int main(int argc, char **argv) {
     Settings settings;
     if (options.core == "three")
       settings.coreHexes = {{0, 0}, {1, -2}, {-1, 2}};
-    ActionLog::Play<Game> play(newGame(options.players, settings));
+    const int first = options.randomFirst ? static_cast<int>(seed.stream("first").below(
+                                                static_cast<std::uint32_t>(options.players)))
+                                          : 0;
+    ActionLog::Play<Game> play(newGame(options.players, settings, first));
     play.addMeta("seed", seed.code());
     play.addMeta("bots", "ismcts " + std::to_string(options.iterations));
     play.addMeta("core", options.core);
@@ -148,8 +154,8 @@ int main(int argc, char **argv) {
     if (csv.is_open()) {
       // One line a game: the winner's seat counted from 1 (0: unfinished),
       // everyone's points, and where the winner's came from
-      csv << seed.code() << "," << options.players << "," << options.iterations << ","
-          << end.winner + 1 << "," << end.round << "," << play.log().actions.size();
+      csv << seed.code() << "," << options.players << "," << options.iterations << "," << first + 1
+          << "," << end.winner + 1 << "," << end.round << "," << play.log().actions.size();
       for (int p = 0; p < kMaxPlayers; ++p)
         csv << "," << (p < options.players ? points(end, p) : 0);
       const Sources s = end.winner >= 0 ? sourcesOf(end, end.winner) : Sources{};

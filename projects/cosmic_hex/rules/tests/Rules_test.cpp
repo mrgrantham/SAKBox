@@ -104,6 +104,17 @@ TEST(RulesTest, TheStart) {
   EXPECT_EQ(Game::legalActions(state).size(), 5u); // the home's resource
 }
 
+// Any player can go first, each keeping their home; the start reads back
+TEST(RulesTest, AnyoneCanGoFirst) {
+  const State state = newGame(4, {}, 2);
+  EXPECT_EQ(state.turn, 2);
+  EXPECT_EQ(Game::currentPlayer(state), 2);
+  EXPECT_EQ(state.ships[2].at, newGame(4).ships[2].at); // the same home
+  const auto again = Game::readState(Game::writeState(state));
+  ASSERT_TRUE(again.has_value());
+  EXPECT_EQ(again.value_or(State{}), state);
+}
+
 TEST(RulesTest, ATurn) {
   State state = newGame(2);
   ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, static_cast<int>(Resource::Water)}));

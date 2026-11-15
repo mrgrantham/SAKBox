@@ -382,11 +382,13 @@ std::optional<Settings> readSettings(std::string_view line) {
 // ---------------------------------------------------------------------------
 // Setting up
 
-State newGame(int players, const Settings &settings) {
+State newGame(int players, const Settings &settings, int first) {
   assert(players >= 2 && players <= kMaxPlayers);
   State state;
   state.settings = settings;
   state.players = players;
+  assert(first >= 0 && first < players);
+  state.turn = first;
   for (Hex hex : HexGrid::spiral(Hex{}, kBoardRadius)) {
     const int length = HexGrid::length(hex);
     if (isSlot(hex)) {
@@ -1070,13 +1072,16 @@ std::optional<State> Game::readState(std::string_view text) {
   if (first.size() < 2 || first[0] != "players")
     return std::nullopt;
   const auto players = toInt(first[1]);
+  const auto turn =
+      first.size() >= 4 && first[2] == "turn" ? toInt(first[3]) : std::optional<int>(0);
   const std::size_t secondEnd = text.find('\n', firstEnd + 1);
-  if (!players || *players < 2 || *players > kMaxPlayers || secondEnd == std::string_view::npos)
+  if (!players || *players < 2 || *players > kMaxPlayers || !turn || *turn < 0 ||
+      *turn >= *players || secondEnd == std::string_view::npos)
     return std::nullopt;
   const auto settings = readSettings(text.substr(firstEnd + 1, secondEnd - firstEnd - 1));
   if (!settings)
     return std::nullopt;
-  State state = newGame(*players, *settings);
+  State state = newGame(*players, *settings, *turn);
   if (writeState(state) != text)
     return std::nullopt;
   return state;

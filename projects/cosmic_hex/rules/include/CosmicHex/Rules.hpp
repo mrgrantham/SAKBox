@@ -165,8 +165,10 @@ struct State {
 };
 
 // A new game for 2 to 4 players: the board laid out, homes face up with a
-// station each, a ship at each home, and the starting resources.
-State newGame(int players, const Settings &settings = {});
+// station each, a ship at each home, and the starting resources. Player
+// `first` takes the first turn (each player's home is the same whoever goes
+// first, so a simulation can tell turn order and home apart).
+State newGame(int players, const Settings &settings = {}, int first = 0);
 
 // ---------------------------------------------------------------------------
 // The actions
