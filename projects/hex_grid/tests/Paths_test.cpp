@@ -14,11 +14,11 @@ using HexGrid::Hex;
 TEST(PathsTest, ReachableOnAnOpenBoard) {
   const HexGrid::HexagonMap<bool> board(5);
   const auto open = [&](Hex hex) { return board.contains(hex); };
-  const std::vector<HexGrid::Reach> reach = HexGrid::reachable(Hex{}, 3, open);
+  const std::vector<HexGrid::Reach<Hex>> reach = HexGrid::reachable(Hex{}, 3, open);
   EXPECT_EQ(reach.size(), 37u);
-  EXPECT_EQ(reach.front(), (HexGrid::Reach{Hex{}, 0}));
-  for (const HexGrid::Reach &r : reach)
-    EXPECT_EQ(r.steps, HexGrid::distance(Hex{}, r.hex));
+  EXPECT_EQ(reach.front(), (HexGrid::Reach<Hex>{Hex{}, 0}));
+  for (const HexGrid::Reach<Hex> &r : reach)
+    EXPECT_EQ(r.steps, HexGrid::distance(Hex{}, r.place));
   for (std::size_t i = 1; i < reach.size(); ++i)
     EXPECT_LE(reach[i - 1].steps, reach[i].steps);
 }
@@ -40,8 +40,8 @@ TEST(PathsTest, WallsAreWalkedAround) {
   }
   // Three steps aren't enough to get round
   bool farSide = false;
-  for (const HexGrid::Reach &r : HexGrid::reachable(Hex{0, 0}, 2, open))
-    farSide = farSide || r.hex == Hex{2, 0};
+  for (const HexGrid::Reach<Hex> &r : HexGrid::reachable(Hex{0, 0}, 2, open))
+    farSide = farSide || r.place == Hex{2, 0};
   EXPECT_FALSE(farSide);
 }
 
@@ -69,4 +69,25 @@ TEST(PathsTest, Repeatable) {
   const auto all = [](Hex hex) { return HexGrid::length(hex) <= 5; };
   EXPECT_EQ(HexGrid::shortestPath(Hex{-3, 1}, Hex{3, -2}, all),
             HexGrid::shortestPath(Hex{-3, 1}, Hex{3, -2}, all));
+}
+
+// Moving along edges, corner to corner: halfway round one hex is 3 edges,
+// and one step reaches the three corners next to the start.
+TEST(PathsTest, AlongEdgesCornerToCorner) {
+  const std::vector<Hex> board = HexGrid::spiral(Hex{}, 2);
+  const auto onBoard = [&](HexGrid::Corner c) {
+    for (Hex hex : HexGrid::hexesTouching(c))
+      if (HexGrid::length(hex) <= 2)
+        return true;
+    return false;
+  };
+  const HexGrid::Corner from = HexGrid::corner(Hex{}, 0), to = HexGrid::corner(Hex{}, 3);
+  const std::vector<HexGrid::Corner> way = HexGrid::shortestPath(from, to, onBoard);
+  ASSERT_EQ(way.size(), 4u);
+  for (std::size_t i = 1; i < way.size(); ++i) {
+    EXPECT_TRUE(HexGrid::edgeBetween(way[i - 1], way[i]).has_value());
+  }
+  const auto reach = HexGrid::reachable(from, 1, onBoard);
+  EXPECT_EQ(reach.size(), 4u);
+  EXPECT_EQ(reach.front(), (HexGrid::Reach<HexGrid::Corner>{from, 0}));
 }

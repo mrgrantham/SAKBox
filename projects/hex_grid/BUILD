@@ -1,12 +1,13 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 # Hex grid maths: coordinates, neighbours, distances, rings, lines, rotation,
-# a hexagon-shaped board, paths, and where hexes are on screen (see
+# corners and edges, a hexagon-shaped board, paths, and where hexes are on screen (see
 # README.md). Header-only, with no dependencies, so the consoles' Makefile
 # builds take it as it is.
 cc_library(
     name = "hex_grid",
     hdrs = [
+        "include/HexGrid/CornersAndEdges.hpp",
         "include/HexGrid/Hex.hpp",
         "include/HexGrid/HexagonMap.hpp",
         "include/HexGrid/Layout.hpp",
@@ -32,6 +33,7 @@ filegroup(
         "@gtest//:gtest_main",
     ],
 ) for test in [
+    "CornersAndEdges_test",
     "Hex_test",
     "HexagonMap_test",
     "Layout_test",

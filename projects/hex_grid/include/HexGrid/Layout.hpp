@@ -4,11 +4,13 @@
 //   HexGrid::Layout layout{HexGrid::Orientation::PointyTop, {12, 12}, {128, 96}};
 //   HexGrid::Point centre = layout.centre({2, -1});
 //   HexGrid::Hex touched = layout.hexAt({touch.px, touch.py});
+//   HexGrid::Point spot = layout.point(HexGrid::corner({2, -1}, 0));
 //
 // This part uses floating point: it's for drawing and input, which needn't
 // be the same to the last bit everywhere. The game's rules stay on Hex.
 #pragma once
 
+#include <HexGrid/CornersAndEdges.hpp>
 #include <HexGrid/Hex.hpp>
 
 #include <array>
@@ -49,6 +51,18 @@ struct Layout {
       out[i] = {c.x + size.x * std::cos(angle), c.y + size.y * std::sin(angle)};
     }
     return out;
+  }
+
+  // Where a corner is (from CornersAndEdges.hpp): the middle of the three
+  // hexes' centres, which is the point they share whatever the orientation.
+  Point point(Corner corner) const {
+    Point sum{};
+    for (Hex hex : hexesTouching(corner)) {
+      const Point c = centre(hex);
+      sum.x += c.x;
+      sum.y += c.y;
+    }
+    return {sum.x / 3, sum.y / 3};
   }
 
   // The hex a point falls in.
