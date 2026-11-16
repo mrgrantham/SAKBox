@@ -216,7 +216,9 @@ std::expected<Recipe, std::string> read(std::string_view text) {
   };
   while (!text.empty()) {
     const std::size_t end = text.find('\n');
-    const std::string_view line = text.substr(0, end);
+    std::string_view line = text.substr(0, end);
+    if (line.ends_with('\r'))
+      line.remove_suffix(1); // (Windows line endings, as git may check a file out there)
     text.remove_prefix(end == std::string_view::npos ? text.size() : end + 1);
     ++lineNumber;
     const std::vector<std::string_view> w = words(line);

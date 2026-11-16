@@ -30,7 +30,9 @@
 #include <mach/mach.h>
 #include <sys/resource.h>
 #elif defined(_WIN32)
+#ifndef NOMINMAX // (the toolchain may define it already)
 #define NOMINMAX
+#endif
 #include <psapi.h>
 #include <windows.h>
 #else

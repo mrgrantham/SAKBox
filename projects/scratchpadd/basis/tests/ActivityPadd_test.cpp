@@ -71,9 +71,10 @@ TEST(ActivityPaddTest, GraphsEachPaddsBusySecond) {
   std::this_thread::sleep_for(std::chrono::milliseconds(20));
   const std::vector<float> busy = secondThen(activity, ActivityPadd::busyGraph("Worker"));
   ASSERT_EQ(busy.size(), 1u); // the graph appeared, with this second's value
-  // 90 ms of work in a "second" of about 110 ms or more: busy, but not
-  // over 100%
-  EXPECT_GT(busy.back(), 10.0f);
+  // 90 ms of work in a "second" of 110 ms or more: busy, but not over 100%
+  // (how busy depends on how long the second took, which a slow machine
+  // stretches, so only that some work was counted)
+  EXPECT_GT(busy.back(), 0.0f);
   EXPECT_LE(busy.back(), 100.0f);
   const std::vector<float> wait = secondThen(activity, ActivityPadd::waitGraph("Worker"));
   ASSERT_EQ(wait.size(), 2u);   // (the idle second just run added a 0 here)

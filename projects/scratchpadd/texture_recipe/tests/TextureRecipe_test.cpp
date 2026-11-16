@@ -224,3 +224,14 @@ TEST(TextureRecipeTest, MergingFavoursWhatCoversMore) {
   EXPECT_EQ(image.at(30, 0), (TR::Colour{0, 255, 0, 255}));
   EXPECT_EQ(image.at(64, 0), (TR::Colour{0, 255, 0, 255}));
 }
+
+// A recipe with Windows line endings (as git may check one out there) reads
+// the same as with Unix ones
+TEST(TextureRecipeTest, WindowsLineEndingsReadTheSame) {
+  const auto unixEndings = ScratchPadd::TextureRecipe::read("recipe 1\nsize 4 4\n");
+  const auto windowsEndings = ScratchPadd::TextureRecipe::read("recipe 1\r\nsize 4 4\r\n");
+  ASSERT_TRUE(unixEndings.has_value()) << unixEndings.error();
+  ASSERT_TRUE(windowsEndings.has_value()) << windowsEndings.error();
+  EXPECT_EQ(windowsEndings->width, 4);
+  EXPECT_EQ(windowsEndings->height, unixEndings->height);
+}
