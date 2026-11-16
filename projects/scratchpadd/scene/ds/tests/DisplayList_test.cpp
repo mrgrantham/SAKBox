@@ -225,8 +225,9 @@ TEST(DisplayListTest, ToonColoursComeFromATexture) {
   for (const Sent &s : sent) {
     if (s.command == KTexCoord)
       coordinates.push_back(s.parameters[0]);
-    if (s.command == KDiffuseAmbient) // (lit as white)
+    if (s.command == KDiffuseAmbient) { // (lit as white)
       EXPECT_EQ(s.parameters[0], rgb15({255, 255, 255}));
+    }
   }
   EXPECT_EQ(coordinates, (std::vector<std::uint32_t>{8 | (8 << 16), (16 + 8) | (8 << 16)}));
 
