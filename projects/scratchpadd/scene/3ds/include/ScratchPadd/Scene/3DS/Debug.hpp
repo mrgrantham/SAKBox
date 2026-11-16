@@ -48,6 +48,10 @@ struct Settings {
   // Back faces and meshes out of view culled (off: everything drawn, to
   // see what culling saves, or find a mesh wound the wrong way)
   bool culling = true;
+  // Toon shading's bands worked out at every pixel, by the GPU's fragment
+  // lighting (toon.v.pica); off: at each vertex, as scene.v.pica did first
+  // (blurred across a triangle whose corners' light differs)
+  bool perPixelToon = true;
   View view = View::Normal;
   // Each frame sends only its first few draws, one more every half second
   // (from one, when it's turned on): the frame that hangs the GPU ends with

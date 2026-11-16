@@ -121,6 +121,7 @@ enum Row : int {
   RowFog,
   RowStereo,
   RowCulling,
+  RowPerPixelToon,
   RowView,
   RowFindHang,
   RowProbe,
@@ -145,6 +146,8 @@ bool *flagOf(Settings &s, int row) {
     return &s.stereo;
   case RowCulling:
     return &s.culling;
+  case RowPerPixelToon:
+    return &s.perPixelToon;
   case RowFindHang:
     return &s.findHang;
   case RowProbe:
@@ -154,9 +157,9 @@ bool *flagOf(Settings &s, int row) {
   }
 }
 
-constexpr const char *kRowNames[RowCount] = {"Meshes",  "Translucent", "Lines",  "Wireframes",
-                                             "Overlay", "Fog",         "Stereo", "Culling",
-                                             "View",    "Find a hang", "Probe"};
+constexpr const char *kRowNames[RowCount] = {
+    "Meshes", "Translucent", "Lines",          "Wireframes", "Overlay",     "Fog",
+    "Stereo", "Culling",     "Per-pixel toon", "View",       "Find a hang", "Probe"};
 
 } // namespace
 

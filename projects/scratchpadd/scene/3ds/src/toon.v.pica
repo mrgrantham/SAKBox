@@ -1,0 +1,72 @@
+; Toon shading per pixel on the 3DS (Material::Shading::Toon, with the
+; debug panel's "per-pixel toon" on, the default): each vertex placed (mvp),
+; its colour (bytes, 0-255) times the material's, and its normal, in the
+; world, for the GPU's fragment lighting, which steps the light by a lookup
+; table at every pixel (Renderer.cpp, useToon). The fragment lighting takes
+; the normal as a quaternion turning +z onto it, worked out as devkitPro's
+; "lenny" example does; it also takes the direction to the eye, which the
+; toon table doesn't use (it steps by the angle between normal and light),
+; so it's given as +z.
+;
+; scene.v.pica is the rest: unlit, smooth lighting, toon bands per vertex,
+; outlines' hulls, the debug views.
+
+.fvec mvp[4], normalMatrix[3]
+.fvec material
+
+.constf consts(0.0, 1.0, 0.00392156862745, 0.5) ; (1/255)
+.alias  zeros     consts.xxxx
+.alias  ones      consts.yyyy
+.alias  fromBytes consts.zzzz
+.alias  half      consts.wwww
+
+.out outpos position
+.out outclr color
+.out outview view
+.out outnq normalquat
+
+.in inpos v0
+.in innrm v1
+.in inclr v2
+
+.proc main
+	mov r0.xyz, inpos
+	mov r0.w,   ones
+	dp4 outpos.x, mvp[0], r0
+	dp4 outpos.y, mvp[1], r0
+	dp4 outpos.z, mvp[2], r0
+	dp4 outpos.w, mvp[3], r0
+
+	; Its colour: the vertex's times the material's
+	mul r6, fromBytes, inclr
+	mul outclr, material, r6
+
+	; The direction to the eye (unused by the toon table): +z
+	mov outview, consts.xxyx
+
+	; The normal in the world, at length 1
+	dp3 r14.x, normalMatrix[0], innrm
+	dp3 r14.y, normalMatrix[1], innrm
+	dp3 r14.z, normalMatrix[2], innrm
+	mov r14.w, zeros
+	dp3 r6.x, r14, r14
+	rsq r6.x, r6.x
+	mul r14.xyz, r14.xyz, r6.x
+
+	; As a quaternion turning +z onto it (a normal straight down -z, the
+	; degenerate case, keeps the identity)
+	mov r0, consts.yxxx
+	add r4, ones, r14.z
+	mul r4, half, r4
+	cmp zeros, ge, ge, r4.x
+	rsq r4, r4.x
+	mul r5, half, r14
+	jmpc cmp.x, degenerate
+
+	rcp r0.z, r4.x
+	mul r0.xy, r5, r4
+
+degenerate:
+	mov outnq, r0
+	end
+.end

@@ -82,7 +82,13 @@ struct Renderer::Backend {
   void copyFrameVertices();
   void drawEye(C3D_RenderTarget *target, const C3D_Mtx &projection);
   void drawMesh(const Draw &draw, const C3D_Mtx &viewProjection);
-  void drawOutline(LoadedMesh &mesh, const Draw &draw);
+  void drawOutline(LoadedMesh &mesh, const Draw &draw, const C3D_Mtx &mvp);
+  // Toon shading per pixel (toon.v.pica and the GPU's fragment lighting):
+  // the program, the frame's lights, the band table, the combiner
+  void useToon(const Material &material, const Transform &where, const C3D_Mtx &mvp);
+  // The combiner passing each vertex's colour through, without fragment
+  // lighting (every draw but useToon's)
+  void plainColours();
   void drawWireframe(LoadedMesh &mesh, const C3D_Mtx &mvp, const Material &material);
   void drawLineBatches(const C3D_Mtx &viewProjection);
   void drawLineVertices(const LineVertex *vertices, int count, const C3D_Mtx &mvp,
@@ -97,7 +103,20 @@ struct Renderer::Backend {
 
   // The programs, scene.v.pica, line.v.pica and overlay.v.pica, and their
   // uniforms' locations
-  DVLB_s *sceneShaders = nullptr, *lineShaders = nullptr, *overlayShaders = nullptr;
+  DVLB_s *sceneShaders = nullptr, *lineShaders = nullptr, *overlayShaders = nullptr,
+         *toonShaders = nullptr;
+  // Toon shading per pixel: its program and uniforms; the light environment
+  // (each light's colour as its specular, which the band table steps by the
+  // angle between the normal and the light; the ambient light as is); the
+  // table, made for this many bands
+  shaderProgram_s toonProgram;
+  struct {
+    int mvp, normalMatrix, material;
+  } toonUniforms{};
+  C3D_LightEnv toonLights;
+  std::array<C3D_Light, Environment::kMostLights> toonLight;
+  C3D_LightLut toonTable;
+  int toonTableBands = 0;
   shaderProgram_s sceneProgram, lineProgram, overlayProgram;
   struct SceneUniforms {
     int mvp, normalMatrix, material, ambient, lightDirections, lightColours, debugMix, debugAdd,

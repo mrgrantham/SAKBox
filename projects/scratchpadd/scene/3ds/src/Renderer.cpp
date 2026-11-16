@@ -17,6 +17,7 @@
 #include "line_shbin.h"
 #include "overlay_shbin.h"
 #include "scene_shbin.h"
+#include "toon_shbin.h"
 
 #include <algorithm>
 #include <array>
@@ -109,6 +110,13 @@ C3D_Mtx projectionFor(const Camera &camera, float separation) {
   return p;
 }
 
+// Toon shading's band table for the GPU's fragment lighting: how much of a
+// light shows by the cosine of its angle to the normal (-1 to 1), as
+// Types.hpp's toonStep, none facing away
+float toonTableAt(float cosine, float bands) {
+  return cosine <= 0 ? 0.0f : toonStep(cosine, static_cast<int>(bands));
+}
+
 } // namespace
 
 void *Renderer::Backend::Arena::take(std::size_t bytes) {
@@ -135,6 +143,29 @@ Renderer::Backend::Backend(Display &display) : display(display) {
       static_cast<int>(shaderInstanceGetUniformLocation(lineProgram.vertexShader, "material"));
   shaderProgramInit(&overlayProgram);
   shaderProgramSetVsh(&overlayProgram, &overlayShaders->DVLE[0]);
+  toonShaders =
+      DVLB_ParseFile(const_cast<u32 *>(reinterpret_cast<const u32 *>(toon_shbin)), toon_shbin_size);
+  shaderProgramInit(&toonProgram);
+  shaderProgramSetVsh(&toonProgram, &toonShaders->DVLE[0]);
+  const auto toonAt = [&](const char *name) {
+    return static_cast<int>(shaderInstanceGetUniformLocation(toonProgram.vertexShader, name));
+  };
+  toonUniforms = {toonAt("mvp"), toonAt("normalMatrix"), toonAt("material")};
+  // The light environment: materials reflect the ambient light as is and
+  // each light through its specular term (stepped by the band table), with
+  // no smooth diffuse term
+  C3D_LightEnvInit(&toonLights);
+  const C3D_Material reflects{.ambient = {1, 1, 1},
+                              .diffuse = {0, 0, 0},
+                              .specular0 = {1, 1, 1},
+                              .specular1 = {},
+                              .emission = {}};
+  C3D_LightEnvMaterial(&toonLights, &reflects);
+  for (C3D_Light &light : toonLight) {
+    C3D_LightInit(&light, &toonLights);
+    C3D_LightDiffuse(&light, 0, 0, 0);
+    C3D_LightEnable(&light, false);
+  }
 
   const auto locate = [](const shaderProgram_s &program) {
     const auto at = [&](const char *name) {
@@ -174,9 +205,11 @@ Renderer::Backend::~Backend() {
   shaderProgramFree(&sceneProgram);
   shaderProgramFree(&lineProgram);
   shaderProgramFree(&overlayProgram);
+  shaderProgramFree(&toonProgram);
   DVLB_Free(sceneShaders);
   DVLB_Free(lineShaders);
   DVLB_Free(overlayShaders);
+  DVLB_Free(toonShaders);
 }
 
 // The scene's program, its vertices, the combiner passing the vertex
@@ -188,10 +221,7 @@ void Renderer::Backend::useScene() {
     bound = &sceneProgram;
   }
   C3D_SetAttrInfo(&sceneAttributes);
-  C3D_TexEnv *combiner = C3D_GetTexEnv(0);
-  C3D_TexEnvInit(combiner);
-  C3D_TexEnvSrc(combiner, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-  C3D_TexEnvFunc(combiner, C3D_Both, GPU_REPLACE);
+  plainColours();
   for (unsigned i = 0; i < Environment::kMostLights; ++i) {
     const bool on = i < environment.lightCount;
     const Vector3 towards = on ? (-environment.lights[i].direction).normalised() : Vector3{};
@@ -273,8 +303,15 @@ void Renderer::Backend::drawMesh(const Draw &draw, const C3D_Mtx &viewProjection
     }
     return;
   }
-  useScene();
-  setMaterial(draw.material, draw.where, mvp);
+  // Toon per pixel, unless the debug panel says otherwise (or shows a debug
+  // view, which the vertex shader draws)
+  if (draw.material.shading == Material::Shading::Toon && debug.settings.perPixelToon &&
+      debug.settings.view == Debug::View::Normal) {
+    useToon(draw.material, draw.where, mvp);
+  } else {
+    useScene();
+    setMaterial(draw.material, draw.where, mvp);
+  }
   // Back faces culled (counter-clockwise is the front), unless either side
   // shows: a double-sided mesh or material
   const bool cull = !mesh.doubleSided && !draw.material.doubleSided && debug.settings.culling;
@@ -286,7 +323,69 @@ void Renderer::Backend::drawMesh(const Draw &draw, const C3D_Mtx &viewProjection
     C3D_DrawArrays(GPU_TRIANGLES, 0, mesh.count);
   sent("mesh", draw.mesh.id);
   if (draw.material.outline)
-    drawOutline(mesh, draw);
+    drawOutline(mesh, draw, mvp);
+}
+
+void Renderer::Backend::plainColours() {
+  C3D_LightEnvBind(nullptr);
+  C3D_TexEnv *combiner = C3D_GetTexEnv(0);
+  C3D_TexEnvInit(combiner);
+  C3D_TexEnvSrc(combiner, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+  C3D_TexEnvFunc(combiner, C3D_Both, GPU_REPLACE);
+  C3D_TexEnvInit(C3D_GetTexEnv(1)); // (passes the first stage's on)
+}
+
+void Renderer::Backend::useToon(const Material &material, const Transform &where,
+                                const C3D_Mtx &mvp) {
+  if (bound != &toonProgram) {
+    C3D_BindProgram(&toonProgram);
+    bound = &toonProgram;
+  }
+  C3D_SetAttrInfo(&sceneAttributes);
+  // The frame's lights: the ambient, and each light's colour, towards it
+  // (w 0: a direction), in the world as the normals are
+  C3D_LightEnvAmbient(&toonLights, channel(environment.ambient.r), channel(environment.ambient.g),
+                      channel(environment.ambient.b));
+  for (unsigned i = 0; i < toonLight.size(); ++i) {
+    C3D_Light &light = toonLight[i];
+    const bool on = i < environment.lightCount;
+    C3D_LightEnable(&light, on);
+    if (!on)
+      continue;
+    const Light &l = environment.lights[i];
+    C3D_LightSpecular0(&light, channel(l.colour.r), channel(l.colour.g), channel(l.colour.b));
+    const Vector3 towards = (-l.direction).normalised();
+    C3D_FVec position = FVec4_New(towards.x, towards.y, towards.z, 0);
+    C3D_LightPosition(&light, &position);
+  }
+  // The band table, made again when the bands change
+  const int bands = toonBandsFor(material, environment);
+  if (bands != toonTableBands) {
+    LightLut_FromFunc(&toonTable, toonTableAt, static_cast<float>(bands), true);
+    C3D_LightEnvLut(&toonLights, GPU_LUT_D0, GPU_LUTINPUT_LN, true, &toonTable);
+    toonTableBands = bands;
+  }
+  C3D_LightEnvBind(&toonLights);
+  // The combiner: the lighting (ambient and the stepped lights) times the
+  // vertex's colour; its alpha the vertex's
+  C3D_TexEnv *lighting = C3D_GetTexEnv(0);
+  C3D_TexEnvInit(lighting);
+  C3D_TexEnvSrc(lighting, C3D_RGB, GPU_FRAGMENT_PRIMARY_COLOR, GPU_FRAGMENT_SECONDARY_COLOR,
+                GPU_PRIMARY_COLOR);
+  C3D_TexEnvFunc(lighting, C3D_RGB, GPU_ADD);
+  C3D_TexEnvSrc(lighting, C3D_Alpha, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+  C3D_TexEnvFunc(lighting, C3D_Alpha, GPU_REPLACE);
+  C3D_TexEnv *colour = C3D_GetTexEnv(1);
+  C3D_TexEnvInit(colour);
+  C3D_TexEnvSrc(colour, C3D_RGB, GPU_PREVIOUS, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+  C3D_TexEnvFunc(colour, C3D_RGB, GPU_MODULATE);
+  // The uniforms: where, the normals' turn, the material's colour and alpha
+  C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, toonUniforms.mvp, &mvp);
+  const C3D_Mtx normals = normalMatrix(where);
+  C3D_FVUnifMtx3x4(GPU_VERTEX_SHADER, toonUniforms.normalMatrix, &normals);
+  const float alpha = static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f;
+  C3D_FVUnifSet(GPU_VERTEX_SHADER, toonUniforms.material, channel(material.colour.r),
+                channel(material.colour.g), channel(material.colour.b), alpha);
 }
 
 // The inverted hull: the mesh again, pushed out along its shared normals,
@@ -294,7 +393,10 @@ void Renderer::Backend::drawMesh(const Draw &draw, const C3D_Mtx &viewProjection
 // (the shader's debug inputs give it: none of the usual colour, the
 // outline's added). Made the first time it's needed: it doubles the mesh's
 // vertices in linear memory.
-void Renderer::Backend::drawOutline(LoadedMesh &mesh, const Draw &draw) {
+void Renderer::Backend::drawOutline(LoadedMesh &mesh, const Draw &draw, const C3D_Mtx &mvp) {
+  // (with the scene's program: the mesh may have been drawn with toon's)
+  useScene();
+  setMaterial(draw.material, draw.where, mvp);
   if (!mesh.hull) {
     const std::vector<Vertex> hull =
         outlineHullVertices({mesh.vertices, static_cast<std::size_t>(mesh.vertexCount)});
@@ -351,10 +453,7 @@ void Renderer::Backend::drawLineVertices(const LineVertex *vertices, int count, 
   }
   C3D_SetAttrInfo(&lineAttributes);
   C3D_CullFace(GPU_CULL_NONE); // (a line's quad faces either way)
-  C3D_TexEnv *combiner = C3D_GetTexEnv(0);
-  C3D_TexEnvInit(combiner);
-  C3D_TexEnvSrc(combiner, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-  C3D_TexEnvFunc(combiner, C3D_Both, GPU_REPLACE);
+  plainColours();
   C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, lineMvp, &mvp);
   const float alpha = static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f;
   C3D_FVUnifSet(GPU_VERTEX_SHADER, lineMaterial, channel(material.colour.r),
@@ -445,6 +544,7 @@ void Renderer::Backend::drawOverlay() {
   C3D_BindProgram(&overlayProgram);
   bound = &overlayProgram;
   C3D_SetAttrInfo(&overlayAttributes);
+  plainColours();
   C3D_CullFace(GPU_CULL_NONE);
   C3D_BufInfo buffers;
   BufInfo_Init(&buffers);
