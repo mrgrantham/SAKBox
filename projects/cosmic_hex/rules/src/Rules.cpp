@@ -120,6 +120,66 @@ std::unordered_map<int, int> cornerMovesFor(const State &state, const Ship &ship
   return cornersWithin(ship.corner, settings.shipMove + (canBoost ? settings.boostMove : 0));
 }
 
+// ---- The piles of planets' kinds and numbers (Settings::fitPiles)
+
+// The numbers for `count` planets in the genre's mix: each of 3 to 11 (not
+// 7) twice as often as 2 and 12 (Catan's 18: one each of 2 and 12, two of
+// the rest), shared out by largest remainder, the middle numbers first on
+// a tie
+std::vector<int> numbersFor(int count) {
+  constexpr std::array<int, 10> kOrder{6, 8, 5, 9, 4, 10, 3, 11, 2, 12}; // (ties: earlier first)
+  const auto weight = [](int number) { return number == 2 || number == 12 ? 1 : 2; };
+  constexpr int kTotalWeight = 18;
+  std::array<int, 10> counts{};
+  std::array<double, 10> remainders{};
+  int dealt = 0;
+  for (std::size_t i = 0; i < kOrder.size(); ++i) {
+    const double share = static_cast<double>(count) * weight(kOrder[i]) / kTotalWeight;
+    counts[i] = static_cast<int>(share);
+    remainders[i] = share - counts[i];
+    dealt += counts[i];
+  }
+  while (dealt < count) {
+    std::size_t best = 0;
+    for (std::size_t i = 1; i < kOrder.size(); ++i)
+      if (remainders[i] > remainders[best] + 1e-9)
+        best = i;
+    ++counts[best];
+    remainders[best] = -1;
+    ++dealt;
+  }
+  std::vector<int> out;
+  for (std::size_t i = 0; i < kOrder.size(); ++i)
+    out.insert(out.end(), static_cast<std::size_t>(counts[i]), kOrder[i]);
+  std::sort(out.begin(), out.end());
+  return out;
+}
+
+// The kinds for `count` planets: as even as can be, the extras one each to
+// the kinds in order
+Resources kindsFor(int count) {
+  Resources kinds{};
+  for (int i = 0; i < count; ++i)
+    ++kinds[static_cast<std::size_t>(i % kResources)];
+  return kinds;
+}
+
+// Whether a face-up planet next to this one has a 6 or an 8 (the red-number
+// rule: Settings::redNumbersApart)
+bool redNumberNextTo(const State &state, int planet) {
+  const Hex hex = state.planets[static_cast<std::size_t>(planet)].hex;
+  for (const Planet &other : state.planets)
+    if (other.flipped && HexGrid::distance(other.hex, hex) == 1 &&
+        (other.number == 6 || other.number == 8))
+      return true;
+  return false;
+}
+bool isRed(int number) { return number == 6 || number == 8; }
+bool pileHasOtherThanRed(const State &state) {
+  return std::any_of(state.numbersLeft.begin(), state.numbersLeft.end(),
+                     [](int n) { return !isRed(n); });
+}
+
 // The player's home colony (the first station they placed), or -1
 int homeColonyOf(const State &state, int player) {
   for (std::size_t i = 0; i < state.stations.size(); ++i)
@@ -524,7 +584,8 @@ std::string settingsText(const Settings &s) {
     zoneList.push_back(hex.r);
   }
   out << joined(zoneList) << " edges=" << (s.corners ? 1 : 0) << "," << s.startShipReach << ","
-      << (s.deepSpaceStart ? 1 : 0);
+      << (s.deepSpaceStart ? 1 : 0) << " piles=" << (s.fitPiles ? 1 : 0) << ","
+      << (s.redNumbersApart ? 1 : 0);
   return out.str();
 }
 
@@ -581,6 +642,11 @@ std::optional<Settings> readSettings(std::string_view line) {
       s.planetHexes.clear();
       for (std::size_t i = 0; i < values->size(); i += 2)
         s.planetHexes.push_back(Hex{(*values)[i], (*values)[i + 1]});
+      continue;
+    }
+    if (values && key == "piles" && values->size() == 2) {
+      s.fitPiles = (*values)[0] != 0;
+      s.redNumbersApart = (*values)[1] != 0;
       continue;
     }
     if (values && key == "edges" && values->size() == 3) {
@@ -743,12 +809,21 @@ State newGame(int players, const Settings &settings, int first) {
   state.kindsLeft = settings.planetTiles;
   state.moonsLeft = settings.moons;
   state.numbersLeft = settings.numbers;
+  if (settings.fitPiles) {
+    // A kind and a number for every face-down planet that isn't a moon
+    const int faceDown = static_cast<int>(std::count_if(
+        state.planets.begin(), state.planets.end(), [](const Planet &p) { return !p.flipped; }));
+    const int resourcePlanets = std::max(0, faceDown - settings.moons);
+    state.kindsLeft = kindsFor(resourcePlanets);
+    state.numbersLeft = numbersFor(resourcePlanets);
+  }
   // Planets beyond the tiles given (fewer homes than four): the extras, in turn
   const int planets = static_cast<int>(std::count_if(state.planets.begin(), state.planets.end(),
                                                      [](const Planet &p) { return !p.flipped; }));
   for (int extra = 0;
+       !settings.fitPiles &&
        std::accumulate(state.kindsLeft.begin(), state.kindsLeft.end(), 0) + state.moonsLeft <
-       planets;
+           planets;
        ++extra) {
     assert(!settings.extraTiles.empty() && !settings.extraNumbers.empty());
     ++state.kindsLeft[static_cast<std::size_t>(
@@ -1362,6 +1437,10 @@ bool Game::apply(State &state, const Action &action) {
         break;
       --state.moonsLeft;
     } else {
+      // (the red-number rule: no 6 or 8 by a face-up 6 or 8, while there's another)
+      if (state.settings.redNumbersApart && isRed(action.b) &&
+          redNumberNextTo(state, state.pendingPlanet) && pileHasOtherThanRed(state))
+        break;
       if (action.a < 0 || action.a >= kResources ||
           state.kindsLeft[static_cast<std::size_t>(action.a)] <= 0 ||
           !removeOne(state.numbersLeft, action.b))
@@ -1646,8 +1725,13 @@ Action Game::dealerAction(const State &state, SeededRandom::Generator &random) {
     const int drawn = weighted(pile);
     if (drawn == kResources)
       return {Kind::RevealPlanet, static_cast<int>(PlanetKind::Moon), 0};
-    const int number =
-        state.numbersLeft[random.below(static_cast<std::uint32_t>(state.numbersLeft.size()))];
+    // A number from the pile (by the red-number rule, not a 6 or 8 by a
+    // face-up 6 or 8 while there's another)
+    std::vector<int> allowed = state.numbersLeft;
+    if (state.settings.redNumbersApart && redNumberNextTo(state, state.pendingPlanet) &&
+        pileHasOtherThanRed(state))
+      allowed.erase(std::remove_if(allowed.begin(), allowed.end(), isRed), allowed.end());
+    const int number = allowed[random.below(static_cast<std::uint32_t>(allowed.size()))];
     return {Kind::RevealPlanet, drawn, number};
   }
   case Phase::ZoneDraw:

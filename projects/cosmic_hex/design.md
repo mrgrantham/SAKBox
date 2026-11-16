@@ -92,6 +92,8 @@ Agreed with the user, to be built as a setting beside today's rules (stations on
 - **Ships are built only at colonies**, as Starfarers builds them at spaceports. (Round 46.)
 - **The start:** each player's home colony on a corner of their home planet, chosen in snake order (1, 2, 3, 4), then each player's ship placed in reverse order (4, 3, 2, 1) on any corner within 3 edges of their colony, the colony's own included. Placing turns nothing over. (Rounds 47 to 49.)
 - **The blockade** sits on a planet: stations touching it get nothing from it, and whoever moves it steals from a player with a station touching it. **Core Control** counts stations touching core planets; **the alien station** trades 3 for 1 with a station or ship touching it. (Round 46 plan; not objected to.)
+- **The piles of kinds and numbers fit the board** (round 55): a kind and a number for every face-down planet that isn't a moon, the numbers in the genre's mix (2 and 12 half as common as the rest; Catan's own 18 for 18 planets), the kinds even. Before, the piles were made for the first board's 15 planets, so smaller layouts never dealt some, and bigger ones added 10s, 3s, asteroid belts and lush planets over and over.
+- **The red-number rule** (round 55): a 6 or 8 isn't dealt next to a face-up 6 or 8 while the pile has another number.
 - **Layouts:** the round-45 boards (layouts/layouts.txt), each kind of system the same number of moves from every home; finds beside the small systems as the first way of drawing players outward (round 45), then moons mostly in threes or better numbers on small systems, then a Charter for lone planets.
 
 ## Changes since (roadmap rounds 41 to 44)

@@ -9,6 +9,8 @@
 
 #include <gtest/gtest.h>
 
+#include <numeric>
+
 #include <algorithm>
 #include <set>
 
@@ -736,4 +738,77 @@ TEST(RulesTest, ALayoutNamesTheZone) {
   const auto read = Game::readState(Game::writeState(state));
   ASSERT_TRUE(read.has_value());
   EXPECT_EQ(read.value_or(State{}).settings.zoneHexes, settings.zoneHexes);
+}
+
+// The piles fit the board: a kind and a number for every face-down planet
+// that isn't a moon, the numbers in the genre's mix (Catan's own 18 for 18
+// planets), the kinds even
+TEST(RulesTest, ThePilesFitTheBoard) {
+  Settings settings;
+  // 18 planets besides the homes: a ring of 12 and six more
+  for (Hex hex : HexGrid::ring(Hex{}, 2))
+    settings.planetHexes.push_back(hex);
+  for (Hex hex : {Hex{4, -4}, Hex{-4, 4}, Hex{0, 4}, Hex{0, -4}, Hex{4, 0}, Hex{-4, 0}})
+    settings.planetHexes.push_back(hex);
+  State state = newGame(4, settings);
+  EXPECT_EQ(state.numbersLeft,
+            (std::vector<int>{2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12}));
+  EXPECT_EQ(state.kindsLeft, (Resources{4, 4, 4, 3, 3}));
+  // With 2 moons: 16 kinds and numbers, 2 and 12 still the rarest
+  settings.moons = 2;
+  state = newGame(4, settings);
+  EXPECT_EQ(state.numbersLeft.size(), 16u);
+  EXPECT_EQ(std::accumulate(state.kindsLeft.begin(), state.kindsLeft.end(), 0), 16);
+  const auto count = [&](int n) {
+    return std::count(state.numbersLeft.begin(), state.numbersLeft.end(), n);
+  };
+  EXPECT_LE(count(2), count(6));
+  EXPECT_LE(count(12), count(8));
+  // Off: the piles as given
+  settings.fitPiles = false;
+  settings.moons = 0;
+  state = newGame(4, settings);
+  EXPECT_EQ(state.numbersLeft.size(), 18u); // (the 15 and three extras)
+  EXPECT_EQ(state.numbersLeft[15], 10);
+}
+
+// The red-number rule: no 6 or 8 dealt by a face-up 6 or 8 while the pile
+// has another number
+TEST(RulesTest, RedNumbersStayApart) {
+  State state = atMain();
+  // Two neighbouring planets: one face up on 6, the other being turned over
+  int up = -1, down = -1;
+  for (std::size_t a = 0; a < state.planets.size() && down < 0; ++a)
+    for (std::size_t b = 0; b < state.planets.size(); ++b)
+      if (HexGrid::distance(state.planets[a].hex, state.planets[b].hex) == 1 &&
+          state.planets[a].homeOf < 0 && state.planets[b].homeOf < 0) {
+        up = static_cast<int>(a);
+        down = static_cast<int>(b);
+        break;
+      }
+  if (up < 0) {
+    // (no neighbouring planets on this board: put one next to another)
+    state.planets.push_back(state.planets[0]);
+    state.planets.back().hex = state.planets[0].hex + HexGrid::direction(0);
+    up = 0;
+    down = static_cast<int>(state.planets.size()) - 1;
+  }
+  state.planets[static_cast<std::size_t>(up)].flipped = true;
+  state.planets[static_cast<std::size_t>(up)].number = 6;
+  state.planets[static_cast<std::size_t>(down)].flipped = false;
+  state.pendingPlanet = down;
+  state.phase = Phase::PlanetDraw;
+  state.kindsLeft = {5, 0, 0, 0, 0};
+  state.numbersLeft = {6, 8, 4};
+  SeededRandom::Generator random(3);
+  for (int i = 0; i < 50; ++i)
+    EXPECT_EQ(Game::dealerAction(state, random).b, 4);
+  EXPECT_FALSE(Game::apply(state, {Kind::RevealPlanet, 0, 8}));
+  ASSERT_TRUE(Game::apply(state, {Kind::RevealPlanet, 0, 4}));
+  // Only reds left: then a red it is
+  state.pendingPlanet = down;
+  state.planets[static_cast<std::size_t>(down)].flipped = false;
+  state.phase = Phase::PlanetDraw;
+  state.numbersLeft = {6, 8};
+  EXPECT_TRUE(Game::apply(state, {Kind::RevealPlanet, 0, 8}));
 }

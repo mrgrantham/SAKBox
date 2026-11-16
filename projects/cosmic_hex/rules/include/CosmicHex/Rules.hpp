@@ -85,6 +85,15 @@ struct Settings {
   // so the last to play chooses first; and the finds the ship's corner
   // touches turn over, as where a move ends.
   bool deepSpaceStart = false;
+  // The piles of planet kinds and numbers made for the board's planets
+  // (round 55): numbers in the genre's mix (2 and 12 half as common as the
+  // others; Catan's own 18 for 18 planets), kinds shared evenly, one of
+  // each for every face-down planet that isn't a moon. Off: planetTiles and
+  // numbers as given, with extraTiles and extraNumbers for planets beyond.
+  bool fitPiles = true;
+  // The genre's red-number rule (round 55): a 6 or 8 isn't dealt to a planet
+  // next to a face-up 6 or 8 while the pile has another number
+  bool redNumbersApart = true;
   int maxShips = 3;
   int shipMove = 3;   // hexes a ship moves a turn, free
   int boostMove = 2;  // more, for 1 fuel
