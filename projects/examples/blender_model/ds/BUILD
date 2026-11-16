@@ -10,6 +10,13 @@ devkitpro_nds_app(
     extra_srcs = {
         "//projects/examples/blender_model:look": "look",
         "//projects/scratchpadd/input:sources": "scratchpadd/input",
+        # (a debug build's log: //projects/scratchpadd/debug_log)
+        "//projects/scratchpadd/debug_log:sources": "scratchpadd/debug_log",
+        "//projects/scratchpadd/storage:sources": "scratchpadd/storage",
+        "//projects/scratchpadd/utilities:sources": "scratchpadd/utilities",
+        "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
+        "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
+        "@spdlog//:sources": "third_party/spdlog",
         "//projects/examples/blender_model:rock_ds_sources": "assets",
         "//projects/examples/blender_model:ship_ds_sources": "assets",
         "//projects/flexmath:fixed_point_sources": "flexmath",

@@ -22,8 +22,11 @@ BUILD		:=	build
 # The scene layer and its DS backend, and the models the build cooked for
 # the DS (assets: //projects/examples/blender_model's ship_ds_sources and
 # rock_ds_sources)
-SOURCES		:=	source scratchpadd/scene/src scratchpadd/scene_ds/src scratchpadd/scene_ds/screenshot assets scratchpadd/input/src
-INCLUDES	:=	include build scratchpadd/scene/include scratchpadd/scene_ds/include flexmath/include assets scratchpadd/input/include look/src
+SOURCES		:=	source scratchpadd/scene/src scratchpadd/scene_ds/src scratchpadd/scene_ds/screenshot assets scratchpadd/input/src \
+			scratchpadd/utilities/src scratchpadd/storage/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session
+INCLUDES	:=	include build scratchpadd/scene/include scratchpadd/scene_ds/include flexmath/include assets scratchpadd/input/include look/src \
+			scratchpadd/debug_log/include scratchpadd/storage/include scratchpadd/basis/include scratchpadd/messages/include \
+			scratchpadd/utilities/include third_party/spdlog/include
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -37,11 +40,14 @@ CFLAGS	:=	-g -Wall -O2 -ffunction-sections -fdata-sections\
 			$(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -DARM9
+# A debug build (bazel build -c dbg): its log, see //projects/scratchpadd/debug_log
+CFLAGS	+=	$(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)
 # The build's defines (//tools/devkitpro: the app's name and title, and a
 # target's `defines`)
 CFLAGS	+=	$(SAKBOX_DEFINES)
 
-CXXFLAGS	:= $(CFLAGS) -std=gnu++26 -fno-rtti -fno-exceptions
+# (ScratchPadd's logging, as its padds, needs RTTI and exceptions)
+CXXFLAGS	:= $(CFLAGS) -std=gnu++26
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=ds_arm9.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
@@ -49,7 +55,7 @@ LDFLAGS	=	-specs=ds_arm9.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
-LIBS	:= -lfat -lnds9
+LIBS	:= -lfat -lnds9 # libfat: the SD card (screenshots, a debug build's log)
 
 
 #---------------------------------------------------------------------------------

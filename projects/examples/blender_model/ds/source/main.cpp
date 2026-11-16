@@ -16,10 +16,9 @@
 // to the SD card (fat:/data/blender-model-ds/screenshots/)   START: quit
 #include <nds.h>
 
-#include <fat.h>
-#include <sys/stat.h>
-
+#include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/Input/Reader.hpp>
+#include <ScratchPadd/Logger.hpp>
 #include <ScratchPadd/Scene/DS/Display.hpp>
 #include <ScratchPadd/Scene/DS/Screenshot.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
@@ -31,6 +30,7 @@
 #include <array>
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -56,33 +56,23 @@ std::vector<Scene::Vector3> floorLines() {
   return ends;
 }
 
-// Quitting, step by step, in a file on the SD card (to find where START
-// hangs on a DS Lite: the bottom screen goes dark too soon to read): each
-// line appended and the file closed again, so what's written survives a
-// hang
-const char *const kQuitLog = "fat:/data/blender-model-ds/quit_log.txt";
-bool cardReady = false;
-void logQuitting(const char *stage) {
-  if (!cardReady)
-    return;
-  if (std::FILE *file = std::fopen(kQuitLog, "a")) {
-    std::fprintf(file, "%s\n", stage);
-    std::fclose(file);
-  }
-}
-
 } // namespace
 
 int main() {
-  // The card, from the start (not while quitting), and the log's first line
-  cardReady = fatInitDefault();
-  if (cardReady) {
-    mkdir("fat:/data", 0777);
-    mkdir("fat:/data/blender-model-ds", 0777);
-  }
-  logQuitting("--- started");
-  // (the C++ exit handlers run after main returns, before libnds powers off)
-  std::atexit([] { logQuitting("exit handlers: the last step before powering off"); });
+#if defined(SAKBOX_DEBUG)
+  // The app's log (a debug build, bazel build -c dbg), fat:/data/blender-model-ds/logs/
+  // (ScratchPadd/DebugLog/Session.hpp): static, so it outlives the exit
+  // handlers, which log the last step too
+  static ScratchPadd::DebugLog::Session log;
+#endif
+  // Quitting, step by step (to find where START hangs on a DS Lite: the
+  // bottom screen goes dark too soon to read), each line written at once
+  const std::shared_ptr<spdlog::logger> quitting = ScratchPadd::Logger::loggerNamed("Quitting");
+  quitting->info("started");
+  std::atexit([] {
+    ScratchPadd::Logger::loggerNamed("Quitting")
+        ->info("exit handlers: the last step before libnds powers off");
+  });
   // The app in a scope of its own, so what it holds (the renderer, the
   // display) closes before the DS powers off, each stage shown on the
   // bottom screen: if quitting ever hangs, the last line says where
@@ -198,11 +188,11 @@ int main() {
       }
     }
     std::printf("\x1b[21;0HLeaving the main loop\x1b[K\n");
-    logQuitting("left the main loop");
+    quitting->info("left the main loop");
     std::printf("\x1b[22;0HClosing the renderer\x1b[K\n");
   }
-  logQuitting("closed the renderer and display");
+  quitting->info("closed the renderer and display");
   std::printf("\x1b[23;0HPowering off\x1b[K");
-  logQuitting("returning from main");
+  quitting->info("returning from main");
   return 0;
 }

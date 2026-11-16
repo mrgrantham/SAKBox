@@ -12,6 +12,8 @@ The folders are [storage's](../storage/README.md#where-an-apps-files-go). The ap
 
 The desktop apps open a session in every build. The console apps do so in a **debug build** (`bazel build -c dbg`), and show where on their screen. A release build on a console logs nothing: the screens are the app's, and a log costs a console time.
 
+**All logging goes through here:** an app's logs, diagnostics included, are written with ScratchPadd's loggers into this `Session` (and so through [storage's](../storage/README.md) `AppendFile` and `StoragePadd`), on every platform, rather than to files of their own. A case this can't handle yet is a reason to extend it, planned for every app, not to work around it.
+
 ## In an app
 
 ```cpp
