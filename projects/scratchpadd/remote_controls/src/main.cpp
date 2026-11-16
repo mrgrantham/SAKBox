@@ -24,11 +24,14 @@
 #include <cstdlib>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace {
 
-// Where to connect (main sets it from the command line)
+// Where to connect, and the tab to open on (main sets them from the
+// command line)
 std::string gHost = "127.0.0.1";
+std::string gOpenTab;
 std::uint16_t gPort = ScratchPadd::Network::RemoteControlsPadd::kPort;
 
 namespace ControlsText = ScratchPadd::ControlsText;
@@ -59,7 +62,10 @@ public:
         panels_([this](ScratchPadd::PaddAddress, const std::string &padd,
                        const ScratchPadd::MessageType::ControlChange &change) {
           link_.send(ControlsText::change(padd, change));
-        }) {}
+        }) {
+    if (!gOpenTab.empty())
+      panels_.openOn(gOpenTab);
+  }
 
   std::string name() override { return "RemoteWindow"; }
   ScratchPadd::Runs runs() override { return ScratchPadd::Runs::OnMainThread; }
@@ -125,10 +131,18 @@ private:
 } // namespace
 
 int main(int argc, char **argv) {
-  if (argc > 1)
-    gHost = argv[1];
-  if (argc > 2)
-    gPort = static_cast<std::uint16_t>(std::strtoul(argv[2], nullptr, 10));
+  // [HOST [PORT]] [--tab PADD]: where, and a padd's tab to open on
+  std::vector<std::string> where;
+  for (int i = 1; i < argc; ++i) {
+    if (std::string(argv[i]) == "--tab" && i + 1 < argc)
+      gOpenTab = argv[++i];
+    else
+      where.emplace_back(argv[i]);
+  }
+  if (!where.empty())
+    gHost = where[0];
+  if (where.size() > 1)
+    gPort = static_cast<std::uint16_t>(std::strtoul(where[1].c_str(), nullptr, 10));
   ScratchPadd::DebugLog::Session log; // (the terminal and a file)
   ScratchPadd::SystemImplementation<RemoteWindowPadd, ScratchPadd::Network::NetworkPadd> system;
   system.instantiate();

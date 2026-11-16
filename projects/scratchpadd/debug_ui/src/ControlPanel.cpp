@@ -186,20 +186,31 @@ void ControlPanels::draw() {
       ImVec2(10 + placement_.x * (display.x - 20), 10 + placement_.y * (display.y - 20)),
       ImGuiCond_FirstUseEver, placement_);
   // Sized to fit the chosen tab's controls, so labels aren't cut off and
-  // nothing scrolls
+  // nothing scrolls, but never taller than the display (a tab of many
+  // graphs scrolls instead of running off the screen)
+  ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, display.y - 20));
   const bool shown = Theme::beginWindow("Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
   if (shown && ImGui::BeginTabBar("padds", ImGuiTabBarFlags_Reorderable |
                                                ImGuiTabBarFlags_FittingPolicyScroll)) {
     for (Tab &tab : tabs_) {
       // (the label shown, the padd's whole name its ID)
       const std::string label = tabLabel(tab.paddName) + "###" + tab.paddName;
-      if (ImGui::BeginTabItem(label.c_str())) {
+      // (chosen once, if asked to open on it)
+      const bool open = !openOn_.empty() && tab.paddName == openOn_;
+      if (open)
+        openOn_.clear();
+      if (ImGui::BeginTabItem(label.c_str(), nullptr, open ? ImGuiTabItemFlags_SetSelected : 0)) {
         tab.panel->draw();
         ImGui::EndTabItem();
       }
     }
     ImGui::EndTabBar();
   }
+  // Grown past the display's bottom (a taller tab chosen): moved up to fit,
+  // wherever the user had put it
+  const ImVec2 at = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
+  if (at.y + size.y > display.y - 10)
+    ImGui::SetWindowPos(ImVec2(at.x, std::max(10.0f, display.y - 10 - size.y)));
   ImGui::End();
 }
 

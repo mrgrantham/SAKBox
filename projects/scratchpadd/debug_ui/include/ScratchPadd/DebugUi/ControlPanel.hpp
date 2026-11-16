@@ -72,6 +72,9 @@ public:
   // The tabs' padd names, in order
   std::vector<std::string> tabNames() const;
   ImVec2 placement() const { return placement_; }
+  // Chooses padd `paddName`'s tab when it's next drawn (now if it's there,
+  // or as soon as its controls arrive): to open a window on a tab
+  void openOn(const std::string &paddName) { openOn_ = paddName; }
 
   // A tab's label: the padd's name without "Padd" ("RagdollPadd" ->
   // "Ragdoll"), as the handheld panel shows it
@@ -85,6 +88,7 @@ private:
   Send send_;
   ImVec2 placement_;
   std::vector<Tab> tabs_; // in the order the padds first answered
+  std::string openOn_;    // a tab to choose once it's drawn (empty: none)
 };
 
 } // namespace ScratchPadd::DebugUi
