@@ -7,14 +7,19 @@
 //              to see how far a ship gets in a turn (and with fuel); in Edit,
 //              click a hex to make it a planet, a find or empty, and save the
 //              result as a new layout
-//   charts     the batch's results as its games come in
+//              (its Layout tab); its Replay tab plays a game back, from the
+//              batch or from a log file
+//   charts     the batch's results as its games come in (Charts), and its
+//              games as a list to pick one to watch (Games)
 //
 // It hands one game at a time to each SimulationPadd and the next as each
 // reports back, and writes every game to a CSV file (the simulator's
-// columns) under balance_lab_runs/.
+// columns) under balance_lab_runs/, and each game's action log beside it
+// (a folder a batch) for replays.
 #pragma once
 
 #include "LabLayouts.hpp"
+#include "ReplayView.hpp"
 #include "SimulationPadd.hpp"
 #include "Tally.hpp"
 
@@ -44,6 +49,10 @@ public:
     startRunning() = runAtStart;
     startChoosing() = choosing;
   }
+  // A game's log to open in the Replay tab at the start, at this action
+  static void replayAtStart(std::string logFile, int atAction) {
+    startReplay() = {std::move(logFile), atAction};
+  }
 
   explicit LabWindowPadd(ScratchPadd::System *system);
 
@@ -66,12 +75,22 @@ private:
     static bool choosing = false;
     return choosing;
   }
+  static std::pair<std::string, int> &startReplay() {
+    static std::pair<std::string, int> replay;
+    return replay;
+  }
 
   void drawFrame();
   void drawSettings();
   void drawLayoutChooser();
-  void drawBoardView();
+  void drawLayoutView();
+  void drawReplayTab();
   void drawCharts();
+  void drawGames();
+
+  // Watching a game: one of the batch's (its index in results_), or a log file
+  void watch(std::size_t result);
+  void openLogFile();
 
   // Every layout from the repo's layouts file and the lab's own (saved ones)
   void loadLayouts();
@@ -115,7 +134,14 @@ private:
   Tally tally_;
   std::ofstream csv_;
   std::string csvPath_;
-  std::string problem_; // what went wrong starting the last batch, if anything
+  std::string problem_;                    // what went wrong starting the last batch, if anything
+  std::vector<Batch::GameResult> results_; // the batch's games, as they finish
+  std::string logsFolder_;                 // where each game's action log is written
+
+  ReplayView replay_;
+  bool showReplay_ = false; // bring the Replay tab forward (next frame)
+  std::string openPath_;    // a log file to open
+  std::string openMessage_; // what opening it did
 
   std::unique_ptr<ScratchPadd::Scene::Display> display_;
   std::unique_ptr<ScratchPadd::Scene::Renderer> renderer_;

@@ -1,20 +1,26 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
 
-# Cosmic Hex's balance lab, step 1 (see README.md): a batch's settings, bot
-# games played eight at once, and the results as charts while they come in.
+# Cosmic Hex's balance lab (see README.md): a batch's settings, bot games
+# played eight at once, the results as charts while they come in, and any
+# game watched again, step by step.
 #   bazel run -c opt //projects/cosmic_hex/balance_lab
 cc_binary(
     name = "balance_lab",
     srcs = [
+        "src/BoardDrawing.hpp",
+        "src/GameReplay.hpp",
         "src/LabLayouts.hpp",
         "src/LabWindowPadd.cpp",
         "src/LabWindowPadd.hpp",
+        "src/ReplayView.cpp",
+        "src/ReplayView.hpp",
         "src/SimulationPadd.hpp",
         "src/Tally.hpp",
         "src/main.cpp",
     ],
     data = ["//projects/cosmic_hex/layouts:layouts.txt"],
     deps = [
+        "//projects/action_log",
         "//projects/cosmic_hex/simulate:batch",
         "//projects/hex_grid",
         "//projects/scratchpadd/basis",
@@ -51,6 +57,21 @@ cc_test(
         "tests/Tally_test.cpp",
     ],
     deps = [
+        "//projects/cosmic_hex/simulate:batch",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "GameReplay_test",
+    size = "small",
+    srcs = [
+        "src/GameReplay.hpp",
+        "tests/GameReplay_test.cpp",
+    ],
+    data = ["//projects/cosmic_hex/layouts:layouts.txt"],
+    deps = [
+        "//projects/action_log",
         "//projects/cosmic_hex/simulate:batch",
         "@gtest//:gtest_main",
     ],

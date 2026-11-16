@@ -1,12 +1,14 @@
-// balance_lab: Cosmic Hex's balance lab, step 1 (roadmap round 35): choose a
+// balance_lab: Cosmic Hex's balance lab (roadmap round 35): choose a
 // layout and the rules' settings, run a batch of bot games (eight at once,
 // one per SimulationPadd), and watch the results fill in as charts: wins by
 // turn position and by home against a fair share, how long games last, and
 // where stations end up. Every game is saved as it finishes, a CSV line as
-// the simulator writes them, under balance_lab_runs/.
+// the simulator writes them and its action log, under balance_lab_runs/; any
+// game can be watched again, step by step (the Replay tab).
 //
 //   bazel run -c opt //projects/cosmic_hex/balance_lab
-//   bazel run -c opt //projects/cosmic_hex/balance_lab -- --layout R2 --edges yes --games 200 --run
+//   bazel run -c opt //projects/cosmic_hex/balance_lab -- --layout R2 --games 200 --run
+//   bazel run -c opt //projects/cosmic_hex/balance_lab -- --replay game_0001.log --at 120
 #include "LabWindowPadd.hpp"
 #include "SimulationPadd.hpp"
 
@@ -40,6 +42,8 @@ struct StartWith {
   CosmicHex::Batch::Options options;
   bool run = false;
   bool choose = false; // the layouts' thumbnails open
+  std::string replay;  // a game's log to watch
+  int at = 0;          // from this action
 };
 StartWith parse(int argc, char **argv) {
   StartWith start;
@@ -79,6 +83,10 @@ StartWith parse(int argc, char **argv) {
       o.iterations = number(flag, value);
     else if (flag == "--players")
       o.players = number(flag, value);
+    else if (flag == "--replay")
+      start.replay = value;
+    else if (flag == "--at")
+      start.at = number(flag, value);
     else {
       std::fprintf(stderr, "unknown flag %s\n", argv[i - 1]);
       std::exit(2);
@@ -92,6 +100,7 @@ StartWith parse(int argc, char **argv) {
 int main(int argc, char **argv) {
   const StartWith start = parse(argc, argv);
   LabWindowPadd::startWith(start.options, start.run, start.choose);
+  LabWindowPadd::replayAtStart(start.replay, start.at);
   ScratchPadd::DebugLog::Session log; // (the terminal and a file)
   ScratchPadd::SystemImplementation<LabWindowPadd, SimulationPadd<0>, SimulationPadd<1>,
                                     SimulationPadd<2>, SimulationPadd<3>, SimulationPadd<4>,

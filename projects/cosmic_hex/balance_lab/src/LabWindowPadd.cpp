@@ -1,5 +1,7 @@
 #include "LabWindowPadd.hpp"
 
+#include "BoardDrawing.hpp"
+
 #include <HexGrid/Layout.hpp>
 #include <HexGrid/Paths.hpp>
 
@@ -10,9 +12,11 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
+#include <sstream>
 #include <utility>
 
 namespace CosmicHex::Lab {
@@ -46,35 +50,7 @@ std::string timestamp() {
   return text;
 }
 
-// ---- Drawing a board (with ImGui's draw list) ----
-
-// The board's colours (the user's choice, round 55): planets light green,
-// finds a lighter shade of empty space (unexplored space, not a place)
-constexpr ImU32 kSpace = IM_COL32(24, 34, 55, 255);
-constexpr ImU32 kGrid = IM_COL32(38, 52, 79, 255);
-constexpr ImU32 kPlanet = IM_COL32(140, 214, 150, 255);
-constexpr ImU32 kHome = IM_COL32(240, 180, 90, 255);
-constexpr ImU32 kFind = IM_COL32(56, 74, 106, 255);
-constexpr ImU32 kText = IM_COL32(226, 232, 244, 255);
-constexpr ImU32 kDark = IM_COL32(20, 20, 20, 255);
-constexpr ImU32 kEmptyCorner = IM_COL32(149, 163, 190, 200);
-constexpr ImU32 kReach = IM_COL32(95, 212, 232, 255);
-constexpr ImU32 kFuel = IM_COL32(232, 135, 95, 255);
-
-ImVec2 toImVec(HexGrid::Point p) { return {p.x, p.y}; }
-
-// Where a board of hexes `size` pixels across (centre to corner) sits, its
-// centre at `centre`
-HexGrid::Layout boardLayout(ImVec2 centre, float size) {
-  return HexGrid::Layout{HexGrid::Orientation::PointyTop, {size, size}, {centre.x, centre.y}};
-}
-
-bool onBoard(Corner corner) {
-  for (Hex hex : HexGrid::hexesTouching(corner))
-    if (HexGrid::length(hex) <= kBoardRadius)
-      return true;
-  return false;
-}
+// ---- Drawing a layout ----
 
 // A corner touching no planet or home (a deep-space start's place)
 bool emptySpace(const LabLayout &layout, Corner corner) {
@@ -101,24 +77,16 @@ void drawBoard(ImDrawList *draw, const HexGrid::Layout &at, const LabLayout &lay
                        : kind == HexKind::Planet ? kPlanet
                        : kind == HexKind::Find   ? kFind
                                                  : kSpace;
-    std::array<ImVec2, 6> points{};
-    const auto corners = at.corners(hex);
-    for (std::size_t i = 0; i < 6; ++i)
-      points[i] = toImVec(corners[i]);
-    draw->AddConvexPolyFilled(points.data(), 6, fill);
-    draw->AddPolyline(points.data(), 6, kGrid, ImDrawFlags_Closed, 1.0f);
+    drawHex(draw, at, hex, fill);
     if (!marks.letters || size < 9)
       continue;
     const char *letter = kind == HexKind::Home     ? "H"
                          : kind == HexKind::Planet ? (hex == Hex{} ? "*" : "P")
                          : kind == HexKind::Find   ? "F"
                                                    : nullptr;
-    if (letter) {
-      const ImVec2 c = toImVec(at.centre(hex));
-      const ImVec2 textSize = ImGui::CalcTextSize(letter);
-      draw->AddText(ImVec2(c.x - textSize.x / 2, c.y - textSize.y / 2),
-                    kind == HexKind::Home || kind == HexKind::Planet ? kDark : kText, letter);
-    }
+    if (letter)
+      centredText(draw, toImVec(at.centre(hex)),
+                  kind == HexKind::Home || kind == HexKind::Planet ? kDark : kText, letter);
   }
   if (marks.emptyCorners) {
     for (Corner corner : HexGrid::everyCorner(HexGrid::spiral(Hex{}, kBoardRadius)))
@@ -137,8 +105,7 @@ bool boardButton(const char *id, const LabLayout &layout, float side, bool chose
   if (chosen || ImGui::IsItemHovered())
     draw->AddRect(corner, ImVec2(corner.x + side, corner.y + side), chosen ? kReach : kGrid, 4.0f,
                   0, 2.0f);
-  // A radius-4 board is about 16 hex sizes across
-  const float size = side / 16.5f;
+  const float size = side / kBoardAcross;
   drawBoard(draw, boardLayout(ImVec2(corner.x + side / 2, corner.y + side / 2), size), layout,
             {.letters = false});
   return clicked;
@@ -197,6 +164,12 @@ void LabWindowPadd::starting() {
                                    [&](const LabLayout &l) { return l.name == options_.layout; });
   chooseLayout(chosen == layouts_.end() ? 0 : static_cast<int>(chosen - layouts_.begin()));
   choosing_ = startChoosing();
+  if (!startReplay().first.empty()) {
+    openPath_ = startReplay().first;
+    openLogFile();
+    replay_.goTo(static_cast<std::size_t>(std::max(startReplay().second, 0)));
+    showReplay_ = true;
+  }
   if (runAtStart_)
     runBatch();
   push([this] { drawFrame(); });
@@ -321,6 +294,10 @@ void LabWindowPadd::runBatch() {
   csvPath_ = (runsFolder() / (timestamp() + "-" + batchOptions_.variant + ".csv")).string();
   csv_ = std::ofstream(csvPath_);
   csv_ << Batch::csvHeader();
+  // Each game's action log, in a folder named as the CSV is
+  results_.clear();
+  logsFolder_ = csvPath_.substr(0, csvPath_.size() - 4);
+  std::filesystem::create_directories(logsFolder_, error);
   running_ = true;
   for (ScratchPadd::PaddAddress worker : workers_)
     handOut(worker);
@@ -338,6 +315,10 @@ void LabWindowPadd::played(const GamePlayed &game, ScratchPadd::PaddAddress work
   if (game.batch == batch_) {
     tally_.add(game.result);
     csv_ << Batch::csvLine(batchOptions_, game.result) << std::flush;
+    char name[32];
+    std::snprintf(name, sizeof name, "game_%04d.log", game.result.game + 1);
+    std::ofstream(std::filesystem::path(logsFolder_) / name) << ActionLog::write(game.result.log);
+    results_.push_back(game.result);
   }
   handOut(worker);
   if (running_ && nextGame_ >= batchOptions_.games && inFlight_ == 0)
@@ -368,11 +349,34 @@ void LabWindowPadd::drawFrame() {
   ImGui::EndChild();
   ImGui::SameLine();
   ImGui::BeginChild("board", ImVec2(560, 0), ImGuiChildFlags_Borders);
-  drawBoardView();
+  if (ImGui::BeginTabBar("boardTabs")) {
+    if (ImGui::BeginTabItem("Layout")) {
+      drawLayoutView();
+      ImGui::EndTabItem();
+    }
+    const ImGuiTabItemFlags replayFlags = showReplay_ ? ImGuiTabItemFlags_SetSelected : 0;
+    showReplay_ = false;
+    if (ImGui::BeginTabItem("Replay", nullptr, replayFlags)) {
+      drawReplayTab();
+      ImGui::EndTabItem();
+    }
+    ImGui::EndTabBar();
+  }
   ImGui::EndChild();
   ImGui::SameLine();
   ImGui::BeginChild("charts", ImVec2(0, 0));
-  drawCharts();
+  if (ImGui::BeginTabBar("resultTabs")) {
+    if (ImGui::BeginTabItem("Charts")) {
+      drawCharts();
+      ImGui::EndTabItem();
+    }
+    const std::string games = "Games (" + std::to_string(results_.size()) + ")###games";
+    if (ImGui::BeginTabItem(games.c_str())) {
+      drawGames();
+      ImGui::EndTabItem();
+    }
+    ImGui::EndTabBar();
+  }
   ImGui::EndChild();
   ImGui::End();
   if (choosing_)
@@ -473,7 +477,7 @@ void LabWindowPadd::drawLayoutChooser() {
   ImGui::End();
 }
 
-void LabWindowPadd::drawBoardView() {
+void LabWindowPadd::drawLayoutView() {
   ImGui::Checkbox("Edit planets and finds", &editing_);
   ImGui::SameLine();
   ImGui::TextDisabled(editing_ ? "click a hex: empty, planet, find, empty"
@@ -483,7 +487,7 @@ void LabWindowPadd::drawBoardView() {
   const ImVec2 origin = ImGui::GetCursorScreenPos();
   ImGui::InvisibleButton("##board", ImVec2(side, side));
   const bool clicked = ImGui::IsItemClicked();
-  const float size = side / 16.5f;
+  const float size = side / kBoardAcross;
   const HexGrid::Layout at = boardLayout(ImVec2(origin.x + side / 2, origin.y + side / 2), size);
   ImDrawList *draw = ImGui::GetWindowDrawList();
   drawBoard(draw, at, edited_, {.letters = true, .emptyCorners = options_.deepSpace});
@@ -556,6 +560,128 @@ void LabWindowPadd::drawBoardView() {
   ImGui::EndDisabled();
   if (!saveMessage_.empty())
     ImGui::TextWrapped("%s", saveMessage_.c_str());
+}
+
+// ---- Replays ----
+
+void LabWindowPadd::watch(std::size_t result) {
+  const Batch::GameResult &game = results_[result];
+  std::string title = "Game " + std::to_string(game.game + 1) + " of " + batchOptions_.variant;
+  title += game.winner >= 0 ? ": Player " + std::to_string(game.winner + 1) + " won in round " +
+                                  std::to_string(game.rounds)
+                            : ": unfinished";
+  replay_.show(GameReplay::of(game.log), std::move(title));
+  showReplay_ = true;
+}
+
+void LabWindowPadd::openLogFile() {
+  std::ifstream file(openPath_);
+  if (!file) {
+    openMessage_ = "Couldn't open " + openPath_;
+    return;
+  }
+  std::stringstream text;
+  text << file.rdbuf();
+  auto replay = GameReplay::fromText(text.str());
+  if (!replay) {
+    openMessage_ = "Not a Cosmic Hex log (" + replay.error() + ")";
+    return;
+  }
+  openMessage_.clear();
+  replay_.show(std::move(*replay), std::filesystem::path(openPath_).filename().string());
+}
+
+void LabWindowPadd::drawReplayTab() {
+  // Opening a log file: the lab's own (in balance_lab_runs/), the
+  // simulator's --logs, and later a real game's
+  ImGui::PushItemWidth(330);
+  ImGui::InputTextWithHint("##open", "a log file's path", &openPath_);
+  ImGui::PopItemWidth();
+  ImGui::SameLine();
+  if (ImGui::Button("Open"))
+    openLogFile();
+  if (!openMessage_.empty())
+    ImGui::TextWrapped("%s", openMessage_.c_str());
+  ImGui::Separator();
+  if (replay_.empty()) {
+    ImGui::TextWrapped("Pick a game in the Games tab (right) to watch it here, once a batch has "
+                       "played some, or open a log file.");
+    return;
+  }
+  replay_.draw(ImGui::GetContentRegionAvail().x);
+}
+
+void LabWindowPadd::drawGames() {
+  if (results_.empty()) {
+    ImGui::TextUnformatted("The batch's games appear here as they finish: pick one to watch it.");
+    return;
+  }
+  ImGui::TextWrapped("Each game's log is saved in %s", logsFolder_.c_str());
+  constexpr ImGuiTableFlags kFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
+                                     ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Sortable;
+  if (!ImGui::BeginTable("games", 6, kFlags))
+    return;
+  ImGui::TableSetupScrollFreeze(0, 1);
+  ImGui::TableSetupColumn("Game", ImGuiTableColumnFlags_DefaultSort);
+  ImGui::TableSetupColumn("Winner");
+  ImGui::TableSetupColumn("Went");
+  ImGui::TableSetupColumn("Rounds");
+  ImGui::TableSetupColumn("Points", ImGuiTableColumnFlags_NoSort);
+  ImGui::TableSetupColumn("", ImGuiTableColumnFlags_NoSort);
+  ImGui::TableHeadersRow();
+  // The order the table's sorted in (by game, winner, turn order or rounds)
+  std::vector<std::size_t> order(results_.size());
+  for (std::size_t i = 0; i < order.size(); ++i)
+    order[i] = i;
+  const auto turnOf = [&](const Batch::GameResult &g) {
+    return g.winner < 0 ? 9 : (g.winner - g.first + batchOptions_.players) % batchOptions_.players;
+  };
+  if (const ImGuiTableSortSpecs *sort = ImGui::TableGetSortSpecs(); sort && sort->SpecsCount > 0) {
+    const ImGuiTableColumnSortSpecs &spec = sort->Specs[0];
+    const auto key = [&](const Batch::GameResult &g) {
+      switch (spec.ColumnIndex) {
+      case 1:
+        return g.winner < 0 ? 9 : g.winner;
+      case 2:
+        return turnOf(g);
+      case 3:
+        return g.rounds;
+      default:
+        return g.game;
+      }
+    };
+    std::stable_sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
+      const int ka = key(results_[a]), kb = key(results_[b]);
+      return spec.SortDirection == ImGuiSortDirection_Descending ? ka > kb : ka < kb;
+    });
+  }
+  static constexpr std::array<const char *, 4> kOrder = {"1st", "2nd", "3rd", "4th"};
+  for (std::size_t i : order) {
+    const Batch::GameResult &game = results_[i];
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    ImGui::Text("%d", game.game + 1);
+    ImGui::TableNextColumn();
+    if (game.winner >= 0)
+      ImGui::Text("Player %d", game.winner + 1);
+    else
+      ImGui::TextDisabled("unfinished");
+    ImGui::TableNextColumn();
+    ImGui::TextUnformatted(game.winner >= 0 ? kOrder[static_cast<std::size_t>(turnOf(game))] : "");
+    ImGui::TableNextColumn();
+    ImGui::Text("%d", game.rounds);
+    ImGui::TableNextColumn();
+    std::string points;
+    for (int p = 0; p < batchOptions_.players; ++p)
+      points += (p ? " " : "") + std::to_string(game.points[static_cast<std::size_t>(p)]);
+    ImGui::TextUnformatted(points.c_str());
+    ImGui::TableNextColumn();
+    ImGui::PushID(static_cast<int>(i));
+    if (ImGui::SmallButton("Watch"))
+      watch(i);
+    ImGui::PopID();
+  }
+  ImGui::EndTable();
 }
 
 void LabWindowPadd::drawCharts() {
