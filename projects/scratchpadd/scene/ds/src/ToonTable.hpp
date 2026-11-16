@@ -5,11 +5,11 @@
 // picks one of the table's 32 colours. The table is one for the whole frame
 // (so the DS uses Environment::toonBands for every toon mesh, not a
 // material's own), and how it's used is too (Environment::dsToonTable).
-// Without a texture (ours have none) the pixel is the table's colour, not
-// the mesh's: in Shades as it is, in Highlights added to itself (GBATEK's
-// formulas with a white texture; seen in melonDS). So toon meshes are drawn
-// lit as white (the red part is then how much light they get) in the
-// table's greys: a few bands, dark to light, every toon mesh alike.
+// The pixel is the texture's colour (toon meshes get one of their colours:
+// DisplayList.hpp) times the table's in Shades, or the texture's times the
+// lit colour plus the table's in Highlights (GBATEK, "DS 3D Texture
+// Blending"). Toon meshes are lit as white, so the red part is how much
+// light they get, and the table's greys are the bands.
 #pragma once
 
 #include <ScratchPadd/Scene/Types.hpp>

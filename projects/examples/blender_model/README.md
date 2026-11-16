@@ -13,7 +13,7 @@ bazel run //projects/examples/blender_model    # downloads Blender the first tim
 
 `hangar`, a `scene`, checks that a ship and two rocks fit a DS frame: 1,740 of its 2,048 polygons (`bazel build //projects/examples/blender_model:hangar`; the report is `hangar.scene.txt`). The cooks' reports are in `bazel-bin/projects/examples/blender_model/*.report.json`.
 
-**Toon shading and outlines** (the scene layer's, [`../../scratchpadd/scene/DESIGN.md`](../../scratchpadd/scene/DESIGN.md)) switch while it runs, the same on all three ([`src/Look.hpp`](src/Look.hpp)): the models start in toon shading with 3 bands and outlines. On the desktop T switches toon shading and smooth lighting, O the outlines, B the bands (2 to 5); on the DS and 3DS X, Y and R do, and on the DS L switches its toon table between highlights and shades (on the DS toon models are drawn in the table's greys, not their own colours: its hardware does that to untextured polygons).
+**Toon shading and outlines** (the scene layer's, [`../../scratchpadd/scene/DESIGN.md`](../../scratchpadd/scene/DESIGN.md)) switch while it runs, the same on all three ([`src/Look.hpp`](src/Look.hpp)): the models start in toon shading with 3 bands and outlines. On the desktop T switches toon shading and smooth lighting, O the outlines, B the bands (2 to 5); on the DS and 3DS X, Y and R do, and on the DS L switches its toon table between shades (each colour in bands, dark to full, as on the desktop) and highlights (the colours lit smoothly, the bands' light added).
 
 `models/make_models.py` made `models.blend`, as an artist might: `blender --background --factory-startup --python models/make_models.py -- models/models.blend`.
 

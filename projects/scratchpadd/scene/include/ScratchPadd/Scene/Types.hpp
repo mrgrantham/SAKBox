@@ -156,11 +156,11 @@ struct Outline {
 };
 
 // How the DS draws toon bands (its hardware has one table of them for the
-// whole frame, picked by the red part of each lit colour; other platforms
-// ignore it). Untextured, as our meshes are, the DS draws a toon mesh in
-// the table's colours either way, not its own (seen in melonDS):
-//   Shades      the table's colours as they are: a few greys, dark to light
-//   Highlights  the table's colours brightened (the hardware adds them twice)
+// whole frame, picked by how much light a polygon gets; other platforms
+// ignore it). A toon mesh's colours come from a small texture of them
+// (ds/src/DisplayList.hpp), which the table's band then shades:
+//   Shades      the colour times the band's grey, dark to full: as desktops
+//   Highlights  the colour lit smoothly, the band's light added on top
 enum class DsToonTable : std::uint8_t { Shades, Highlights };
 
 // What a frame is drawn in: the background, the lights (as the DS has, at
@@ -177,7 +177,7 @@ struct Environment {
   // lit, unless a material has its own count (2 to 8)
   std::uint8_t toonBands = 3;
   Outline outline;
-  DsToonTable dsToonTable = DsToonTable::Highlights;
+  DsToonTable dsToonTable = DsToonTable::Shades;
 
   Environment &addLight(const Light &light) {
     if (lightCount < kMostLights)

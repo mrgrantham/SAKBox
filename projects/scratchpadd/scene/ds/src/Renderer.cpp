@@ -51,6 +51,17 @@ constexpr std::uint32_t kTranslucentSetsDepth = BIT(11);
 // go by ID / 8: all set to the outline's.
 constexpr unsigned kFirstOutlineId = 8, kLastOutlineId = 55;
 constexpr unsigned kClearId = 63, kClearIdWithOutlines = 0;
+// Toon shading's textures (DisplayList::textureFor) live in VRAM bank B,
+// mapped as texture slot 0, 128 bytes each (8 x 8 direct colours), handed
+// out in turn (a mesh unloaded doesn't give its back; the bank holds 1,024)
+constexpr std::uint32_t kTextureBank = 128 * 1024;
+constexpr std::uint32_t kTextureBytes = DisplayList::kTexels * 2;
+// TEXIMAGE_PARAM (GBATEK, "DS 3D Texture Attributes"): the texture's VRAM
+// offset in 8-byte steps, its width and height (8 << n: 0), its format (7:
+// direct colour), its coordinates as given (no transformation)
+constexpr std::uint32_t textureParameter(std::uint32_t offset) {
+  return (offset >> 3) | (0u << 20) | (0u << 23) | (7u << 26);
+}
 
 // A Scalar as the DS's 20.12
 int f32(Scalar value) { return DisplayList::toFixed(value, 12); }
@@ -92,11 +103,13 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   ++draws;
   const bool lit = material.shading != Material::Shading::Unlit;
   const bool toon = material.shading == Material::Shading::Toon;
-  // Toon: lit as white, so the light picks the table's shade (the DS draws
-  // an untextured toon mesh in the table's colours: ToonTable.hpp)
-  const Colour colour = toon ? Colour{255, 255, 255} : material.colour;
+  // Toon: its colours from its texture (the DS draws an untextured toon
+  // mesh in the table's colours: ToonTable.hpp), lit as white so the light
+  // picks the table's band
+  const std::uint32_t texture = toon ? textureFor(loaded, material.colour) : 0;
+  GFX_TEX_FORMAT = texture;
   const std::vector<DisplayList::Packed> &lists =
-      listsFor(loaded, {lit, colour, lit ? ambient : Colour{}});
+      listsFor(loaded, {lit, material.colour, lit ? ambient : Colour{}, texture != 0});
 
   // The transform as a turn and a move, multiplied into both the position
   // and the normals' matrices, then its scale (and the mesh's own, see
@@ -141,6 +154,24 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
     glCallList(packed.words.data());
   }
   glPopMatrix(1);
+}
+
+std::uint32_t Renderer::Backend::textureFor(LoadedMesh &mesh, Colour colour) {
+  for (const auto &[made, parameter] : mesh.textures)
+    if (made == colour)
+      return parameter;
+  if (nextTextureOffset + kTextureBytes > kTextureBank)
+    return 0; // (the bank's full: drawn in the toon table's colours)
+  const std::vector<std::uint16_t> texels = DisplayList::textureFor(mesh.source, colour);
+  // Written with the bank mapped to the CPU, then mapped back (a frame being
+  // drawn as it's written may show this mesh untextured for that frame)
+  vramSetBankB(VRAM_B_LCD);
+  std::copy(texels.begin(), texels.end(), VRAM_B + nextTextureOffset / 2);
+  vramSetBankB(VRAM_B_TEXTURE_SLOT0);
+  const std::uint32_t parameter = textureParameter(nextTextureOffset);
+  nextTextureOffset += kTextureBytes;
+  mesh.textures.emplace_back(colour, parameter);
+  return parameter;
 }
 
 void Renderer::Backend::setFog(const Fog &fog) {
@@ -222,6 +253,7 @@ void Renderer::Backend::drawOverlayShapes(const Overlay &overlay) {
         std::clamp(static_cast<int>(points * (4096 / kPointsPerUnit)), -32767, 32767));
   };
   const int count = static_cast<int>(triangles.size() / 3);
+  GFX_TEX_FORMAT = 0; // (untextured)
   unsigned translucentId = kFirstTranslucentId;
   for (int t = 0; t < count; ++t) {
     const Overlay::Vertex *corner = &triangles[static_cast<std::size_t>(t) * 3];
@@ -295,6 +327,10 @@ Renderer::Renderer(Display &display) : backend_(std::make_unique<Backend>(displa
   glEnable(GL_ANTIALIAS);
   glEnable(GL_BLEND);
   glClearPolyID(kClearId);
+  // Toon shading's textures: bank B, and texture mapping on (a draw without
+  // one sets none)
+  vramSetBankB(VRAM_B_TEXTURE_SLOT0);
+  glEnable(GL_TEXTURE_2D);
   glClearDepth(GL_MAX_DEPTH);
   glViewport(0, 0, 255, 191);
 }
@@ -416,6 +452,7 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
   };
   glPushMatrix();
   glScalef32(inttof32(1) << shift, inttof32(1) << shift, inttof32(1) << shift);
+  GFX_TEX_FORMAT = 0; // (untextured)
   glPolyFmt(POLY_ALPHA(31) | POLY_CULL_NONE | POLY_ID(0) | backend_->fogBit);
   glBegin(GL_TRIANGLES);
   glColor(DisplayList::rgb15(colour));

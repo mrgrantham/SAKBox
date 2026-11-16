@@ -18,6 +18,7 @@ int parameterCount(std::uint8_t command) {
   case KVertex16:
     return 2;
   case KColour:
+  case KTexCoord:
   case KNormal:
   case KDiffuseAmbient:
   case KSpecularEmission:
@@ -202,4 +203,50 @@ TEST(DisplayListTest, EachAlphaHasItsOwnList) {
   EXPECT_EQ(lists[1].alpha, 16); // 128 of 255, in 32 steps
   for (const Packed &list : lists)
     EXPECT_EQ(count(unpack(list.words), KVertex16), 4);
+}
+
+// Toon shading's colours from a texture: the mesh's distinct colours are its
+// palette, each corner points at the middle of its colour's texel, the
+// vertices are lit as white, and the texture is the palette times the
+// material's colour
+TEST(DisplayListTest, ToonColoursComeFromATexture) {
+  MeshBuilder builder;
+  builder.box({0, 0, 0}, {1, 1, 1}, Colour{255, 0, 0});
+  builder.box({3, 0, 0}, {1, 1, 1}, Colour{0, 0, 255});
+  const Source source = prepare(builder.data());
+  ASSERT_EQ(source.palette.size(), 2u);
+  EXPECT_EQ(source.palette[0], (Colour{255, 0, 0, 255}));
+  EXPECT_EQ(source.palette[1], (Colour{0, 0, 255, 255}));
+
+  const std::vector<Sent> sent = unpack(onlyList(pack(
+      source, {.lit = true, .colour = {255, 255, 255}, .ambient = {0, 0, 0}, .textured = true})));
+  // Two texels used, each sent once as the boxes' corners come in turn
+  std::vector<std::uint32_t> coordinates;
+  for (const Sent &s : sent) {
+    if (s.command == KTexCoord)
+      coordinates.push_back(s.parameters[0]);
+    if (s.command == KDiffuseAmbient) // (lit as white)
+      EXPECT_EQ(s.parameters[0], rgb15({255, 255, 255}));
+  }
+  EXPECT_EQ(coordinates, (std::vector<std::uint32_t>{8 | (8 << 16), (16 + 8) | (8 << 16)}));
+
+  const std::vector<std::uint16_t> texture = textureFor(source, {255, 128, 255});
+  ASSERT_EQ(texture.size(), static_cast<std::size_t>(kTexels));
+  EXPECT_EQ(texture[0], rgb15({255, 0, 0}) | 0x8000);
+  EXPECT_EQ(texture[1], rgb15({0, 0, 255}) | 0x8000);
+  EXPECT_EQ(texture[2], 0x8000); // (unused: black)
+}
+
+// More colours than texels: the rest share the nearest
+TEST(DisplayListTest, APaletteHoldsAtMostItsTexels) {
+  MeshBuilder builder;
+  for (int i = 0; i < kTexels + 6; ++i)
+    builder.triangle({0, 0, 0}, {1, 0, 0}, {0, 1, 0},
+                     Colour{static_cast<std::uint8_t>(i % 8 * 32),
+                            static_cast<std::uint8_t>(i / 8 % 8 * 32),
+                            static_cast<std::uint8_t>(i / 64 * 32)}); // (distinct in 15 bits)
+  const Source source = prepare(builder.data());
+  EXPECT_EQ(source.palette.size(), static_cast<std::size_t>(kTexels));
+  for (const Source::Corner &corner : source.corners)
+    EXPECT_LT(corner.texel, kTexels);
 }

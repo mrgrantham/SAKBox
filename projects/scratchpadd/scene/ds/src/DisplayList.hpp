@@ -7,6 +7,11 @@
 // triangles, their corners in the DS's own numbers), then packed for each
 // way it's drawn (pack: lit or unlit, the material's colour and the ambient
 // light, as the DS can't multiply those in while drawing).
+//
+// Toon shading takes its colours from a texture (the DS draws an untextured
+// toon polygon in its toon table's colours, not its own): each mesh's
+// distinct colours are a palette, an 8 x 8 texture of them (textureFor),
+// each corner pointing at its colour's texel.
 #pragma once
 
 #include <ScratchPadd/Scene/MeshData.hpp>
@@ -20,6 +25,7 @@ namespace ScratchPadd::Scene::DisplayList {
 // The geometry commands used (GBATEK's numbers)
 enum Command : std::uint8_t {
   KColour = 0x20,           // a vertex colour, RGB15
+  KTexCoord = 0x22,         // a texture coordinate, s and t in 12.4 texels
   KNormal = 0x21,           // a normal (1.9 x 3), lit with the polygon's lights
   KVertex16 = 0x23,         // a vertex, x y z in 4.12 (two words)
   KDiffuseAmbient = 0x30,   // the material's diffuse and ambient colours
@@ -53,6 +59,7 @@ struct Source {
     std::int16_t x, y, z; // 4.12, after dividing by 2^scaleShift
     std::uint32_t normal; // packNormal's
     Colour colour;
+    std::uint8_t texel; // its colour's place in `palette`
   };
   struct Run {
     Primitive::Kind kind;
@@ -61,17 +68,30 @@ struct Source {
   };
   std::vector<Corner> corners;
   std::vector<Run> runs;
+  // Its distinct colours (as the DS has them: 15-bit), for toon shading's
+  // texture: at most kTexels, any more given the nearest one
+  std::vector<Colour> palette;
   // The DS's vertices only reach +-8 (4.12), so a bigger mesh is stored
   // 2^scaleShift times smaller, and drawn scaled back up
   int scaleShift = 0;
 };
 Source prepare(const MeshData &mesh);
 
+// Toon shading's texture: 8 x 8 texels (the DS's smallest), each a colour
+inline constexpr int kTextureSide = 8, kTexels = kTextureSide * kTextureSide;
+// A mesh's palette times the material's colour as the texture's texels,
+// 15-bit with the top bit set (opaque), rows from the top
+std::vector<std::uint16_t> textureFor(const Source &source, Colour material);
+
 // How a mesh is drawn, as far as its display list goes
 struct Variant {
   bool lit = true;
   Colour colour;  // the material's: it multiplies the vertex colours
   Colour ambient; // the environment's (lit only)
+  // Toon shading: the colours from the mesh's texture (textureFor), each
+  // corner its texel's coordinate, and lit as white, so the light picks the
+  // toon table's band and the texture its colour
+  bool textured = false;
   bool operator==(const Variant &) const = default;
 };
 

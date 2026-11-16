@@ -31,6 +31,9 @@ struct Renderer::Backend {
     // ways, the oldest dropped first
     std::vector<std::pair<DisplayList::Variant, std::vector<DisplayList::Packed>>> lists;
     static constexpr std::size_t kMostLists = 4;
+    // Toon shading's textures, one for each material colour it's been drawn
+    // in: the colour, and the texture's TEXIMAGE_PARAM
+    std::vector<std::pair<Colour, std::uint32_t>> textures;
   };
   // A translucent draw, kept until the end of the frame
   struct Later {
@@ -44,6 +47,9 @@ struct Renderer::Backend {
                                                    const DisplayList::Variant &variant);
   void drawNow(Mesh mesh, const Transform &where, const Material &material, unsigned polygonId);
   void setFog(const Fog &fog);
+  // Toon shading's texture for `mesh` in the material's `colour`, made the
+  // first time (TEXIMAGE_PARAM's value, or 0 if there's no room)
+  std::uint32_t textureFor(LoadedMesh &mesh, Colour colour);
   void drawOverlayShapes(const Overlay &overlay);
   void drawOverlayText(const Overlay &overlay);
 
@@ -68,6 +74,8 @@ struct Renderer::Backend {
   // Outlines: whether this frame has any, and the next outlined mesh's ID
   bool outlining = false;
   unsigned nextOutlineId = 0;
+  // Where the next toon texture goes in VRAM bank B, in bytes
+  std::uint32_t nextTextureOffset = 0;
   Fog fogSet;
   Scalar fogNear = 0, fogFar = 0;
   // What the text layer shows, redrawn only when the overlay's text changes,

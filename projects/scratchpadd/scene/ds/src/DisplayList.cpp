@@ -73,6 +73,35 @@ std::uint32_t packNormal(const Vector3 &unit) {
   return component(unit.x) | (component(unit.y) << 10) | (component(unit.z) << 20);
 }
 
+namespace {
+// A colour's place in `palette` (as the DS has it, 15-bit, alpha aside),
+// added if it isn't there and there's room, or else the nearest
+std::uint8_t texelFor(std::vector<Colour> &palette, Colour colour) {
+  const auto five = [](std::uint8_t c) { return c >> 3; };
+  int best = 0, bestDistance = 1 << 30;
+  for (std::size_t i = 0; i < palette.size(); ++i) {
+    const int dr = five(palette[i].r) - five(colour.r), dg = five(palette[i].g) - five(colour.g),
+              db = five(palette[i].b) - five(colour.b);
+    const int distance = dr * dr + dg * dg + db * db;
+    if (distance < bestDistance) {
+      best = static_cast<int>(i);
+      bestDistance = distance;
+    }
+  }
+  if (bestDistance == 0 || palette.size() == static_cast<std::size_t>(kTexels))
+    return static_cast<std::uint8_t>(best);
+  palette.push_back({colour.r, colour.g, colour.b, 255});
+  return static_cast<std::uint8_t>(palette.size() - 1);
+}
+} // namespace
+
+std::vector<std::uint16_t> textureFor(const Source &source, Colour material) {
+  std::vector<std::uint16_t> texels(kTexels, 0x8000);
+  for (std::size_t i = 0; i < source.palette.size(); ++i)
+    texels[i] = static_cast<std::uint16_t>(rgb15(multiply(source.palette[i], material)) | 0x8000);
+  return texels;
+}
+
 Source prepare(const MeshData &mesh) {
   Source source;
   // The furthest a vertex is from the origin along any axis, in 4.12
@@ -100,7 +129,8 @@ Source prepare(const MeshData &mesh) {
   for (std::uint32_t index : indices) {
     const Vertex &v = mesh.vertices[index];
     source.corners.push_back({coordinate(v.position.x), coordinate(v.position.y),
-                              coordinate(v.position.z), packNormal(v.normal), v.colour});
+                              coordinate(v.position.z), packNormal(v.normal), v.colour,
+                              texelFor(source.palette, v.colour)});
   }
   std::uint32_t first = 0;
   for (const Primitive &run : runs) {
@@ -118,13 +148,16 @@ std::vector<std::uint32_t> packAlpha(const Source &source, const Variant &varian
   bool first = true;
   std::uint16_t colour = 0;
   std::uint32_t normal = 0;
+  int texel = -1;
   for (const Source::Run &run : source.runs) {
     if (run.alpha != alpha)
       continue;
     packer.add(KBegin, {static_cast<std::uint32_t>(run.kind)});
     for (std::uint32_t c = run.first; c < run.first + run.count; ++c) {
       const Source::Corner &corner = source.corners[c];
-      const Colour tinted = multiply(corner.colour, variant.colour);
+      // (textured: the colour's in the texture, the vertex lit as white)
+      const Colour tinted = variant.textured ? Colour{255, 255, 255, corner.colour.a}
+                                             : multiply(corner.colour, variant.colour);
       const std::uint16_t thisColour = rgb15(tinted);
       const bool newColour = first || thisColour != colour;
       if (variant.lit) {
@@ -138,6 +171,14 @@ std::vector<std::uint32_t> packAlpha(const Source &source, const Variant &varian
           packer.add(KNormal, {corner.normal});
       } else if (newColour) {
         packer.add(KColour, {thisColour});
+      }
+      if (variant.textured && corner.texel != texel) {
+        // The middle of its texel, in 12.4
+        const int s = (corner.texel % kTextureSide) * 16 + 8,
+                  t = (corner.texel / kTextureSide) * 16 + 8;
+        packer.add(KTexCoord,
+                   {static_cast<std::uint32_t>(s) | (static_cast<std::uint32_t>(t) << 16)});
+        texel = corner.texel;
       }
       packer.add(KVertex16,
                  {static_cast<std::uint16_t>(corner.x) |

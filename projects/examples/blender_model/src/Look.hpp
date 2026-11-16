@@ -15,7 +15,7 @@ struct Settings {
   bool toon = true;
   bool outlines = true;
   int bands = 3;
-  Scene::DsToonTable dsTable = Scene::DsToonTable::Highlights;
+  Scene::DsToonTable dsTable = Scene::DsToonTable::Shades;
 
   void nextBands() { bands = bands >= 5 ? 2 : bands + 1; }
   void switchDsTable() {
