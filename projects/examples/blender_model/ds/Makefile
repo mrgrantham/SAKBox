@@ -22,7 +22,7 @@ BUILD		:=	build
 # The scene layer and its DS backend, and the models the build cooked for
 # the DS (assets: //projects/examples/blender_model's ship_ds_sources and
 # rock_ds_sources)
-SOURCES		:=	source scratchpadd/scene/src scratchpadd/scene_ds/src assets scratchpadd/input/src
+SOURCES		:=	source scratchpadd/scene/src scratchpadd/scene_ds/src scratchpadd/scene_ds/screenshot assets scratchpadd/input/src
 INCLUDES	:=	include build scratchpadd/scene/include scratchpadd/scene_ds/include flexmath/include assets scratchpadd/input/include look/src
 
 #---------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ LDFLAGS	=	-specs=ds_arm9.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
-LIBS	:= -lnds9
+LIBS	:= -lfat -lnds9
 
 
 #---------------------------------------------------------------------------------

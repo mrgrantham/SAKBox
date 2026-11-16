@@ -12,11 +12,13 @@
 //
 // A: the ship as a wireframe   B: fog off and on   X: toon shading or
 // smooth   Y: outlines   R: toon's bands (2 to 5)   L: the toon table's
-// Highlights or Shades (ScratchPadd/Scene/Types.hpp)   START: quit
+// Highlights or Shades (ScratchPadd/Scene/Types.hpp)   SELECT: a screenshot
+// to the SD card (fat:/data/blender-model-ds/screenshots/)   START: quit
 #include <nds.h>
 
 #include <ScratchPadd/Input/Reader.hpp>
 #include <ScratchPadd/Scene/DS/Display.hpp>
+#include <ScratchPadd/Scene/DS/Screenshot.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include "Look.hpp"
@@ -25,6 +27,7 @@
 
 #include <array>
 #include <cstdio>
+#include <string>
 #include <vector>
 
 namespace Scene = ScratchPadd::Scene;
@@ -84,7 +87,7 @@ int main() {
               static_cast<unsigned long>(Assets::kRockTriangles),
               static_cast<unsigned long>(Assets::kRockPolygons));
   std::printf("\nA: wireframe ship  B: fog\nX: toon  Y: outlines  R: bands\nL: highlights/shades\n"
-              "START: quit\n");
+              "SELECT: screenshot  START: quit\n");
   Look::Settings look;
   Look::Settings lookShown;
   lookShown.bands = 0; // (printed the first frame)
@@ -113,6 +116,7 @@ int main() {
     if (pressed.pressed(Input::Button::L))
       look.switchDsTable();
     look.apply(environment);
+    const bool screenshot = pressed.pressed(Input::Button::Select);
 
     renderer.beginFrame(camera, environment);
     renderer.drawLines(lines, {90, 95, 110});
@@ -133,6 +137,12 @@ int main() {
       }
     }
     renderer.endFrame();
+    if (screenshot) {
+      std::string error;
+      const std::string path =
+          Scene::saveScreenshot("fat:/data/blender-model-ds/screenshots/", error);
+      std::printf("\x1b[19;0H%s\x1b[K\n", path.empty() ? error.c_str() : path.c_str());
+    }
 
     // What the last frame drew, when it changes (printing is slow). (libnds'
     // console counts rows and columns from 0)
