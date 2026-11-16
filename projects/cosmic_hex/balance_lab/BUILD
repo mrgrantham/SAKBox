@@ -6,6 +6,7 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
 cc_binary(
     name = "balance_lab",
     srcs = [
+        "src/LabLayouts.hpp",
         "src/LabWindowPadd.cpp",
         "src/LabWindowPadd.hpp",
         "src/SimulationPadd.hpp",
@@ -15,13 +16,30 @@ cc_binary(
     data = ["//projects/cosmic_hex/layouts:layouts.txt"],
     deps = [
         "//projects/cosmic_hex/simulate:batch",
+        "//projects/hex_grid",
         "//projects/scratchpadd/basis",
         "//projects/scratchpadd/debug_log",
         "//projects/scratchpadd/debug_ui",
         "//projects/scratchpadd/scene",
         "//projects/scratchpadd/scene/desktop",
         "@imgui",
+        "@imgui//:imgui_stdlib",
         "@implot",
+    ],
+)
+
+cc_test(
+    name = "LabLayouts_test",
+    size = "small",
+    srcs = [
+        "src/LabLayouts.hpp",
+        "tests/LabLayouts_test.cpp",
+    ],
+    data = ["//projects/cosmic_hex/layouts:layouts.txt"],
+    deps = [
+        "//projects/cosmic_hex/simulate:batch",
+        "//projects/hex_grid",
+        "@gtest//:gtest_main",
     ],
 )
 

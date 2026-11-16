@@ -50,6 +50,7 @@ std::optional<std::string> readLayout(Options &options) {
       const std::string_view key = field.substr(0, eq), value = field.substr(eq + 1);
       std::vector<Hex> *into = key == "homes"                               ? &options.homes
                                : key == "planets"                           ? &options.planets
+                               : key == "zone"                              ? &options.zone
                                : key == "small_finds" && options.smallFinds ? &options.zone
                                                                             : nullptr;
       if (!into)

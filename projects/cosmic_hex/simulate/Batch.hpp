@@ -67,8 +67,8 @@ struct Options {
 std::optional<std::vector<Hex>> hexesFrom(std::string_view text);
 
 // Reads options.layout from options.layoutsFile (a line a layout: its name,
-// then homes=, planets= and small_finds=, each q,r pairs) into the options'
-// homes, planets and, with smallFinds, zone. Returns what went wrong, if
+// then homes=, planets=, zone= and small_finds=, each q,r pairs) into the
+// options' homes, planets and zone (small_finds with smallFinds). Returns what went wrong, if
 // anything.
 std::optional<std::string> readLayout(Options &options);
 // The layouts' names in a layouts file, in its order

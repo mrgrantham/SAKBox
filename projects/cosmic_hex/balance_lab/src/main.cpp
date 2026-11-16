@@ -39,6 +39,7 @@ int number(std::string_view flag, std::string_view text) {
 struct StartWith {
   CosmicHex::Batch::Options options;
   bool run = false;
+  bool choose = false; // the layouts' thumbnails open
 };
 StartWith parse(int argc, char **argv) {
   StartWith start;
@@ -52,6 +53,10 @@ StartWith parse(int argc, char **argv) {
     const std::string_view flag = argv[i];
     if (flag == "--run") {
       start.run = true;
+      continue;
+    }
+    if (flag == "--choose") {
+      start.choose = true;
       continue;
     }
     if (i + 1 >= argc) {
@@ -85,7 +90,7 @@ StartWith parse(int argc, char **argv) {
 
 int main(int argc, char **argv) {
   const StartWith start = parse(argc, argv);
-  LabWindowPadd::startWith(start.options, start.run);
+  LabWindowPadd::startWith(start.options, start.run, start.choose);
   ScratchPadd::DebugLog::Session log; // (the terminal and a file)
   ScratchPadd::SystemImplementation<LabWindowPadd, SimulationPadd<0>, SimulationPadd<1>,
                                     SimulationPadd<2>, SimulationPadd<3>, SimulationPadd<4>,
