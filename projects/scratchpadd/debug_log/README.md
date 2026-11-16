@@ -34,7 +34,7 @@ int main() {
 ```
 
 - **A console app's Makefile** takes the sources:
-  - in `extra_srcs`: `"//projects/scratchpadd/debug_log:sources": "scratchpadd/debug_log"` and `"//projects/scratchpadd/storage:sources": "scratchpadd/storage"`;
+  - in `extra_srcs`: `"//projects/scratchpadd/debug_log:sources": "scratchpadd/debug_log"` and `"//projects/scratchpadd/storage:sources": "scratchpadd/storage"`, and on a DS `"//projects/scratchpadd/ds/platform:sources": "scratchpadd_ds/platform"` with `scratchpadd_ds/platform/src` in `SOURCES` (std::chrono's clock: without it a DS's log times are garbage, so storage won't link without it);
   - in `SOURCES`: `scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session scratchpadd/storage/src`;
   - in `INCLUDES`: `scratchpadd/debug_log/include scratchpadd/storage/include`.
 

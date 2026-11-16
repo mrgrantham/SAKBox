@@ -21,6 +21,10 @@
 
 #include <calico/system/tick.h>
 
+// A marker that this clock is linked in: storage reads it on a DS, so an app
+// using it without this file fails to link (rather than logging garbage times)
+const int scratchpadd_ds_clock = 1;
+
 #include <errno.h>
 #include <stdint.h>
 #include <sys/time.h>

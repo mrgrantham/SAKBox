@@ -18,6 +18,8 @@ devkitpro_nds_app(
         "//projects/scratchpadd/basis:sources": "scratchpadd/basis",
         "//projects/scratchpadd/messages:sources": "scratchpadd/messages",
         "@spdlog//:sources": "third_party/spdlog",
+        # (std::chrono's clock on a DS, which the log needs)
+        "//projects/scratchpadd/ds/platform:sources": "scratchpadd_ds/platform",
         "//projects/examples/blender_model:rock_ds_sources": "assets",
         "//projects/examples/blender_model:ship_ds_sources": "assets",
         "//projects/flexmath:fixed_point_sources": "flexmath",

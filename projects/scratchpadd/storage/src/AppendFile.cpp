@@ -6,6 +6,15 @@
 #include <cstdio>
 #include <utility>
 
+#if defined(__NDS__)
+// std::chrono's clocks on a DS come from the DS platform layer's
+// clock_gettime (//projects/scratchpadd/ds/platform, src/clock.c): without
+// it they read garbage, and a log's times and its syncs' costs were
+// nonsense. Its marker is read here, so an app that leaves it out fails to
+// link instead.
+extern "C" const int scratchpadd_ds_clock;
+#endif
+
 namespace ScratchPadd::Storage {
 
 namespace {
@@ -51,7 +60,11 @@ std::unique_ptr<AppendFile> AppendFile::open(const std::string &path, Options op
 
 AppendFile::AppendFile(std::FILE *file, std::string path, Options options)
     : writeEvery_(std::max(1u, options.writeEvery)), file_(file), path_(std::move(path)),
-      name_(std::move(options.name)), formatLine_(std::move(options.formatLine)) {}
+      name_(std::move(options.name)), formatLine_(std::move(options.formatLine)) {
+#if defined(__NDS__)
+  static_cast<void>(*static_cast<const volatile int *>(&scratchpadd_ds_clock)); // (see the top)
+#endif
+}
 
 AppendFile::~AppendFile() {
   detach();
