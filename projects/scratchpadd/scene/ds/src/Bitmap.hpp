@@ -40,9 +40,12 @@ inline std::vector<std::uint8_t> bmpFromRgb15(std::span<const std::uint16_t> pix
   put32(34, static_cast<std::uint32_t>(imageBytes));
   // The rows, bottom first, each pixel blue, green, red
   for (int y = 0; y < height; ++y) {
-    std::uint8_t *row = &out[static_cast<std::size_t>(kHeaderBytes + (height - 1 - y) * rowBytes)];
+    std::uint8_t *row =
+        &out[static_cast<std::size_t>(kHeaderBytes) +
+             static_cast<std::size_t>(height - 1 - y) * static_cast<std::size_t>(rowBytes)];
     for (int x = 0; x < width; ++x) {
-      const std::uint16_t c = pixels[static_cast<std::size_t>(y * width + x)];
+      const std::uint16_t c = pixels[static_cast<std::size_t>(y) * static_cast<std::size_t>(width) +
+                                     static_cast<std::size_t>(x)];
       row[x * 3 + 0] = channel8((c >> 10) & 31);
       row[x * 3 + 1] = channel8((c >> 5) & 31);
       row[x * 3 + 2] = channel8(c & 31);
