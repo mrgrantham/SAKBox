@@ -36,7 +36,11 @@ std::filesystem::path savedLayoutsFile() {
 std::string timestamp() {
   const std::time_t now = std::time(nullptr);
   std::tm local{};
+#if defined(_WIN32)
+  localtime_s(&local, &now); // (Windows' thread-safe localtime, its arguments the other way round)
+#else
   localtime_r(&now, &local);
+#endif
   char text[32];
   std::strftime(text, sizeof text, "%Y%m%d-%H%M%S", &local);
   return text;
