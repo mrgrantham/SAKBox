@@ -1,19 +1,27 @@
-// MessageStats.hpp - what a system's messages cost, for finding what's
-// busy before optimising anything (see the README's message performance
-// notes). Per message type: how many were sent, and how many jobs they made
-// (one for each padd that received one), its size and whether it's
-// trivially copyable. Per padd: how many it handled, how long its handlers
-// took in all and at most, its deepest queue, and the longest a message
-// waited in it.
+// MessageStats.hpp - what a system's messages and padds cost, for finding
+// what's busy before optimising anything (see the README's message
+// performance notes).
 //
-// Every system has one (System::messageStats()). It's off until something
-// turns it on, which MessageStatsPadd does, and off it costs one atomic load
-// per message. On, every count takes a lock, so it's for debug builds.
+// Per message type: how many were sent, and how many jobs they made (one
+// for each padd that received one), its size and whether it's trivially
+// copyable. Per padd: every job it ran, by kind (message handlers, its
+// repeat(), and other work it pushed for itself), each kind's count, time
+// in all and longest run; its deepest queue; and the longest a job waited
+// to start.
 //
-//   system.messageStats().setEnabled(true);
+// Every system has one (System::messageStats()). Anything that wants the
+// numbers makes a Reader, and each reader has counts of its own: one can
+// take them every 5 seconds for a tab while another takes them every
+// second for a graph, and neither resets the other's. Counting is on while
+// any reader exists; with none it costs one atomic load per message and
+// job. On, every count takes a lock, so it's for debug builds and tools.
+//
+//   MessageStats::Reader reader(system.messageStats());   // counting from now
 //   ...
-//   MessageStats::Snapshot since = system.messageStats().take(); // and start again
+//   MessageStats::Snapshot recent = reader.take();  // since the last take, and again
 #pragma once
+
+#include <ScratchPadd/WorkQueue.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -39,104 +47,151 @@ public:
     std::size_t size = 0;       // sizeof the contents
     bool triviallyCopyable = false;
   };
+  // One kind of job a padd ran (JobKind): how many, and how long they took
+  struct JobCounts {
+    std::uint64_t count = 0;
+    Clock::duration busy{};    // in all
+    Clock::duration longest{}; // the longest single run
+  };
   struct PaddCounts {
     std::string name;
-    std::uint64_t handled = 0;       // messages its handlers ran for
-    Clock::duration busy{};          // in its handlers, in all
-    Clock::duration longest{};       // its longest handler run
+    JobCounts messages;              // its handlers, run for messages
+    JobCounts repeats;               // its repeat(), on its timer
+    JobCounts pushed;                // other work it queued for itself
     std::ptrdiff_t deepestQueue = 0; // the most jobs waiting for it at once
-    Clock::duration longestWait{};   // the longest a message waited to be handled
+    Clock::duration longestWait{};   // the longest a job waited to start
+
+    // Every kind together
+    Clock::duration busy() const { return messages.busy + repeats.busy + pushed.busy; }
+    Clock::duration longest() const {
+      return std::max({messages.longest, repeats.longest, pushed.longest});
+    }
+    std::uint64_t jobs() const { return messages.count + repeats.count + pushed.count; }
   };
   // Counts over `over`: types busiest first (by jobs), padds busiest first
-  // (by time in handlers)
+  // (by time running jobs)
   struct Snapshot {
     Clock::duration over{};
     std::vector<TypeCounts> types;
     std::vector<PaddCounts> padds;
   };
 
-  bool enabled() const { return enabled_.load(std::memory_order_relaxed); }
-  // Turning it on starts the counts again from now
-  void setEnabled(bool on) {
-    std::lock_guard lock(mutex_);
-    if (on && !enabled_.load(std::memory_order_relaxed))
-      clear();
-    enabled_.store(on, std::memory_order_relaxed);
-  }
+  // Someone reading the counts. Counting starts for it when it's made, and
+  // its take() gives the counts since its last take() and starts its own
+  // again, whatever other readers do. Make and use it on one thread.
+  class Reader {
+  public:
+    explicit Reader(MessageStats &stats) : stats_(stats), id_(stats.addReader()) {}
+    ~Reader() { stats_.removeReader(id_); }
+    Reader(const Reader &) = delete;
+    Reader &operator=(const Reader &) = delete;
 
-  // A message was sent (Base calls these; they do nothing while off)
+    Snapshot take() { return stats_.take(id_); }
+
+  private:
+    MessageStats &stats_;
+    int id_;
+  };
+
+  // Whether anyone is reading, so there's anything to count
+  bool counting() const { return counting_.load(std::memory_order_relaxed); }
+
+  // What happened (Base calls these; they do nothing while no one reads)
+
+  // A message was sent
   void sent(std::type_index type, const std::string &typeName, std::size_t size,
             bool triviallyCopyable) {
-    if (!enabled())
+    if (!counting())
       return;
     std::lock_guard lock(mutex_);
-    TypeCounts &counts = typeCounts(type, typeName);
-    ++counts.messages;
-    counts.size = size;
-    counts.triviallyCopyable = triviallyCopyable;
+    for (auto &[id, counts] : readers_) {
+      TypeCounts &typeCounts = counts.type(type, typeName);
+      ++typeCounts.messages;
+      typeCounts.size = size;
+      typeCounts.triviallyCopyable = triviallyCopyable;
+    }
   }
-  // A job for one, queued for `padd`, which now has `waiting` jobs queued
+  // A message's job was queued for `padd`, which now has `waiting` jobs
   void queued(std::type_index type, const std::string &typeName, const std::string &padd,
               std::ptrdiff_t waiting) {
-    if (!enabled())
+    if (!counting())
       return;
     std::lock_guard lock(mutex_);
-    ++typeCounts(type, typeName).jobs;
-    PaddCounts &counts = paddCounts(padd);
-    counts.deepestQueue = std::max(counts.deepestQueue, waiting);
+    for (auto &[id, counts] : readers_) {
+      ++counts.type(type, typeName).jobs;
+      PaddCounts &paddCounts = counts.padd(padd);
+      paddCounts.deepestQueue = std::max(paddCounts.deepestQueue, waiting);
+    }
   }
-  // `padd` ran a handler, taking `took`, for a message that had waited `waited`
-  void handled(const std::string &padd, Clock::duration took, Clock::duration waited) {
-    if (!enabled())
+  // `padd` ran a job of `kind`, taking `took`, after it waited `waited`
+  void ran(const std::string &padd, JobKind kind, Clock::duration took, Clock::duration waited) {
+    if (!counting())
       return;
     std::lock_guard lock(mutex_);
-    PaddCounts &counts = paddCounts(padd);
-    ++counts.handled;
-    counts.busy += took;
-    counts.longest = std::max(counts.longest, took);
-    counts.longestWait = std::max(counts.longestWait, waited);
-  }
-
-  // The counts since the last take() (or since it was turned on), and a
-  // fresh start
-  Snapshot take() {
-    std::lock_guard lock(mutex_);
-    Snapshot snapshot;
-    snapshot.over = Clock::now() - since_;
-    for (const auto &[type, counts] : types_)
-      snapshot.types.push_back(counts);
-    for (const auto &[name, counts] : padds_)
-      snapshot.padds.push_back(counts);
-    std::ranges::stable_sort(snapshot.types, std::ranges::greater{}, &TypeCounts::jobs);
-    std::ranges::stable_sort(snapshot.padds, std::ranges::greater{}, &PaddCounts::busy);
-    clear();
-    return snapshot;
+    for (auto &[id, counts] : readers_) {
+      PaddCounts &paddCounts = counts.padd(padd);
+      JobCounts &job = kind == JobKind::Message  ? paddCounts.messages
+                       : kind == JobKind::Repeat ? paddCounts.repeats
+                                                 : paddCounts.pushed;
+      ++job.count;
+      job.busy += took;
+      job.longest = std::max(job.longest, took);
+      paddCounts.longestWait = std::max(paddCounts.longestWait, waited);
+    }
   }
 
 private:
-  void clear() {
-    types_.clear();
-    padds_.clear();
-    since_ = Clock::now();
+  // One reader's counts since its last take()
+  struct Counts {
+    Clock::time_point since = Clock::now();
+    std::map<std::type_index, TypeCounts> types;
+    std::map<std::string, PaddCounts> padds;
+
+    TypeCounts &type(std::type_index type, const std::string &typeName) {
+      TypeCounts &counts = types[type];
+      if (counts.name.empty())
+        counts.name = typeName;
+      return counts;
+    }
+    PaddCounts &padd(const std::string &name) {
+      PaddCounts &counts = padds[name];
+      if (counts.name.empty())
+        counts.name = name;
+      return counts;
+    }
+  };
+
+  int addReader() {
+    std::lock_guard lock(mutex_);
+    const int id = nextReader_++;
+    readers_[id] = Counts{};
+    counting_.store(true, std::memory_order_relaxed);
+    return id;
   }
-  TypeCounts &typeCounts(std::type_index type, const std::string &typeName) {
-    TypeCounts &counts = types_[type];
-    if (counts.name.empty())
-      counts.name = typeName;
-    return counts;
+  void removeReader(int id) {
+    std::lock_guard lock(mutex_);
+    readers_.erase(id);
+    counting_.store(!readers_.empty(), std::memory_order_relaxed);
   }
-  PaddCounts &paddCounts(const std::string &padd) {
-    PaddCounts &counts = padds_[padd];
-    if (counts.name.empty())
-      counts.name = padd;
-    return counts;
+  Snapshot take(int id) {
+    std::lock_guard lock(mutex_);
+    Counts &counts = readers_.at(id);
+    Snapshot snapshot;
+    snapshot.over = Clock::now() - counts.since;
+    for (const auto &[type, typeCounts] : counts.types)
+      snapshot.types.push_back(typeCounts);
+    for (const auto &[name, paddCounts] : counts.padds)
+      snapshot.padds.push_back(paddCounts);
+    std::ranges::stable_sort(snapshot.types, std::ranges::greater{}, &TypeCounts::jobs);
+    std::ranges::stable_sort(snapshot.padds, std::ranges::greater{}, &PaddCounts::busy);
+    counts = Counts{};
+    return snapshot;
   }
 
-  std::atomic<bool> enabled_{false};
+  std::atomic<bool> counting_{false};
   std::mutex mutex_; // the rest
-  Clock::time_point since_ = Clock::now();
-  std::map<std::type_index, TypeCounts> types_;
-  std::map<std::string, PaddCounts> padds_;
+  std::map<int, Counts> readers_;
+  int nextReader_ = 0;
 };
 
 } // namespace ScratchPadd

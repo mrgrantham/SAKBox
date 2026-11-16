@@ -310,10 +310,7 @@ protected:
   // Queues `job` to run on this padd's thread and wakes it, e.g. to queue
   // the next frame of drawing. Safe from any thread. (Protected: a padd can
   // queue work for itself, not for another.)
-  void push(WorkQueue::Job job) {
-    pendingWork_++;
-    workQueue_.push(std::move(job));
-  }
+  void push(std::function<void()> job) { queue(std::move(job), JobKind::Pushed); }
 
   // --- Controls ---
 
@@ -699,17 +696,42 @@ private:
     finishingWrapper();
   }
 
+  // Queues a job of `kind`, noting when, while MessageStats is counting
+  void queue(std::function<void()> job, JobKind kind) {
+    pendingWork_++;
+    const bool counting = system_ && system_->messageStats().counting();
+    workQueue_.push({std::move(job), kind,
+                     counting ? MessageStats::Clock::now() : MessageStats::Clock::time_point{}});
+  }
+
   // Runs every job queued so far, oldest first. Jobs taken after the padd
   // has been stopped are discarded rather than run.
   void processWork() {
     for (WorkQueue::Job &job : workQueue_.takeAll()) {
       if (on_) {
-        job();
+        runJob(job);
       }
       pendingWork_--;
     }
     ++workLoopPasses_;
     workCompletionConditionVariable_.notify_all();
+  }
+
+  // Runs one job, timing it while MessageStats is counting: how long it
+  // took, and how long it waited since it was queued
+  void runJob(WorkQueue::Job &job) {
+    MessageStats *stats =
+        system_ && system_->messageStats().counting() ? &system_->messageStats() : nullptr;
+    if (!stats) {
+      job.run();
+      return;
+    }
+    const MessageStats::Clock::time_point began = MessageStats::Clock::now();
+    job.run();
+    const MessageStats::Clock::duration waited = job.queuedAt == MessageStats::Clock::time_point{}
+                                                     ? MessageStats::Clock::duration{}
+                                                     : began - job.queuedAt;
+    stats->ran(name_, job.kind, MessageStats::Clock::now() - began, waited);
   }
 
   // If you want some method to repeat at a regular interval, you
@@ -729,10 +751,12 @@ private:
       repeatingTimer_.startRepeatingEvent(
           [this] {
             if (!repeatWaiting_.exchange(true)) {
-              push([this] {
-                repeatWaiting_ = false;
-                repeat();
-              });
+              queue(
+                  [this] {
+                    repeatWaiting_ = false;
+                    repeat();
+                  },
+                  JobKind::Repeat);
             }
           },
           repeatInterval_.value());
@@ -768,21 +792,16 @@ private:
     if (!handles(message->type())) {
       return false;
     }
-    MessageStats *stats =
-        system_ && system_->messageStats().enabled() ? &system_->messageStats() : nullptr;
-    // (when it was queued, while counting, for how long it waits)
-    const MessageStats::Clock::time_point queuedAt =
-        stats ? MessageStats::Clock::now() : MessageStats::Clock::time_point{};
-    push([this, message, from, queuedAt] { deliver(message, from, queuedAt); });
-    if (stats)
-      stats->queued(message->type(), message->typeName(), name_, pendingWork_.load());
+    queue([this, message, from] { deliver(message, from); }, JobKind::Message);
+    if (system_ && system_->messageStats().counting())
+      system_->messageStats().queued(message->type(), message->typeName(), name_,
+                                     pendingWork_.load());
     return true;
   }
 
   // Runs this padd's current handler for `message`, if it still has one.
-  // Called on the padd's thread by the work queue.
-  void deliver(const Message &message, PaddAddress from,
-               MessageStats::Clock::time_point queuedAt = {}) {
+  // Called on the padd's thread by the work queue (which times it).
+  void deliver(const Message &message, PaddAddress from) {
     std::shared_ptr<const Handler> handler;
     {
       std::shared_lock lock(handlersMutex_);
@@ -792,20 +811,12 @@ private:
       }
       handler = found->second;
     }
-    MessageStats *stats =
-        system_ && system_->messageStats().enabled() ? &system_->messageStats() : nullptr;
-    const MessageStats::Clock::time_point began =
-        stats ? MessageStats::Clock::now() : MessageStats::Clock::time_point{};
     (*handler)(*message, from);
-    if (stats)
-      stats->handled(name_, MessageStats::Clock::now() - began,
-                     queuedAt == MessageStats::Clock::time_point{} ? MessageStats::Clock::duration{}
-                                                                   : began - queuedAt);
   }
 
   // Counts a message sent, while the system's MessageStats is on
   void countSent(const MessageBase &message) {
-    if (system_ && system_->messageStats().enabled())
+    if (system_ && system_->messageStats().counting())
       system_->messageStats().sent(message.type(), message.typeName(), message.size(),
                                    message.triviallyCopyable());
   }

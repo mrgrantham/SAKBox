@@ -1,9 +1,10 @@
-// MessageStats: what a system's messages cost. Off until turned on (nothing
-// counted); on, messages and jobs by type (a message reaching two padds is
-// one message, two jobs), sendTo and reply counted too, and each padd's
-// handled count, time and deepest queue. MessageStatsPadd turns it on by
-// being listed, its Counting switch turns it off and on, and its tab shows
-// the busiest types and padds as tables.
+// MessageStats: what a system's messages and padds cost. Nothing counted
+// until someone reads; then messages and jobs by type (a message reaching
+// two padds is one message, two jobs), sendTo and reply counted too, and
+// every job each padd runs (handlers, repeat(), pushed work), with its time
+// and deepest queue. Each reader keeps its own counts. MessageStatsPadd
+// reads by being listed, its Counting switch turns it off and on, and its
+// tab shows the busiest types and padds as tables.
 #include <ScratchPadd/MessageStatsPadd.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Testing.hpp>
@@ -11,6 +12,8 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <chrono>
+#include <optional>
 #include <string>
 #include <thread>
 
@@ -79,24 +82,38 @@ const MessageStats::PaddCounts *paddNamed(const MessageStats::Snapshot &s,
 
 } // namespace
 
-TEST(MessageStatsTest, CountsNothingUntilTurnedOn) {
+// A padd that repeats every 5 ms, for counting repeat() runs
+class RepeatingPadd : public SenderPadd {
+public:
+  using SenderPadd::SenderPadd;
+  std::string name() override { return "Repeating"; }
+  std::optional<std::chrono::duration<double>> repeatInterval() override {
+    return std::chrono::milliseconds(5);
+  }
+  void repeat() override {}
+};
+
+TEST(MessageStatsTest, CountsNothingUntilSomeoneReads) {
   Running<PongCounterPadd, ListenerPadd<1>> app;
+  EXPECT_FALSE(app.system.messageStats().counting());
   for (int i = 0; i < 5; ++i)
     ScratchPadd::PaddTestAccess::send(app.padd<PongCounterPadd>(), Ping{i});
   app.settle();
-  const MessageStats::Snapshot snapshot = app.system.messageStats().take();
+  MessageStats::Reader reader(app.system.messageStats()); // (from now)
+  EXPECT_TRUE(app.system.messageStats().counting());
+  const MessageStats::Snapshot snapshot = reader.take();
   EXPECT_TRUE(snapshot.types.empty());
   EXPECT_TRUE(snapshot.padds.empty());
 }
 
 TEST(MessageStatsTest, CountsMessagesJobsAndPadds) {
   Running<PongCounterPadd, ListenerPadd<1>, ListenerPadd<2>> app;
-  app.system.messageStats().setEnabled(true);
+  MessageStats::Reader reader(app.system.messageStats());
   for (int i = 0; i < 10; ++i)
     ScratchPadd::PaddTestAccess::send(app.padd<PongCounterPadd>(), Ping{i});
   app.settle();
   app.settle(); // (the replies)
-  const MessageStats::Snapshot snapshot = app.system.messageStats().take();
+  const MessageStats::Snapshot snapshot = reader.take();
   const MessageStats::TypeCounts *ping = typeNamed(snapshot, "Ping");
   ASSERT_NE(ping, nullptr);
   EXPECT_EQ(ping->messages, 10u); // one message each...
@@ -110,23 +127,70 @@ TEST(MessageStatsTest, CountsMessagesJobsAndPadds) {
   EXPECT_TRUE(ping->triviallyCopyable);
   const MessageStats::PaddCounts *listener = paddNamed(snapshot, "Listener1");
   ASSERT_NE(listener, nullptr);
-  EXPECT_EQ(listener->handled, 10u);
+  EXPECT_EQ(listener->messages.count, 10u);
+  EXPECT_EQ(listener->jobs(), 10u);
   EXPECT_GE(listener->deepestQueue, 1);
-  EXPECT_GE(listener->longest.count(), 0);
+  EXPECT_GE(listener->longest().count(), 0);
   EXPECT_GT(snapshot.over.count(), 0);
   // take() starts again
-  EXPECT_TRUE(app.system.messageStats().take().types.empty());
+  EXPECT_TRUE(reader.take().types.empty());
+}
+
+// Two readers, taking at different times, each get the counts since their
+// own last take; and counting stops when the last reader goes.
+TEST(MessageStatsTest, EachReaderHasItsOwnCounts) {
+  Running<PongCounterPadd, ListenerPadd<1>> app;
+  const auto pings = [&](const MessageStats::Snapshot &snapshot) {
+    const MessageStats::TypeCounts *ping = typeNamed(snapshot, "Ping");
+    return ping ? ping->messages : 0u;
+  };
+  const auto sendPings = [&](int count) {
+    for (int i = 0; i < count; ++i)
+      ScratchPadd::PaddTestAccess::send(app.padd<PongCounterPadd>(), Ping{i});
+    app.settle();
+  };
+  {
+    MessageStats::Reader often(app.system.messageStats());
+    MessageStats::Reader seldom(app.system.messageStats());
+    sendPings(5);
+    EXPECT_EQ(pings(often.take()), 5u);
+    sendPings(3);
+    EXPECT_EQ(pings(often.take()), 3u);
+    EXPECT_EQ(pings(seldom.take()), 8u); // (the other's takes didn't reset it)
+  }
+  EXPECT_FALSE(app.system.messageStats().counting());
+}
+
+// Every job a padd runs is counted by kind: its repeat() on the timer, and
+// work it pushed for itself, with the time each took.
+TEST(MessageStatsTest, CountsRepeatAndPushedJobs) {
+  Running<RepeatingPadd> app;
+  MessageStats::Reader reader(app.system.messageStats());
+  RepeatingPadd &padd = app.padd<RepeatingPadd>();
+  ScratchPadd::PaddTestAccess::push(
+      padd, [] { std::this_thread::sleep_for(std::chrono::milliseconds(3)); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(60));
+  app.settle();
+  const MessageStats::Snapshot snapshot = reader.take();
+  const MessageStats::PaddCounts *counts = paddNamed(snapshot, "Repeating");
+  ASSERT_NE(counts, nullptr);
+  EXPECT_GE(counts->repeats.count, 3u); // (every 5 ms for 60 ms: about 12)
+  EXPECT_EQ(counts->pushed.count, 1u);
+  EXPECT_GE(counts->pushed.busy, std::chrono::milliseconds(3));
+  EXPECT_GE(counts->pushed.longest, std::chrono::milliseconds(3));
+  EXPECT_EQ(counts->messages.count, 0u);
+  EXPECT_EQ(counts->busy(), counts->repeats.busy + counts->pushed.busy);
 }
 
 TEST(MessageStatsTest, CountsSendTo) {
   Running<PongCounterPadd, ListenerPadd<1>, ListenerPadd<2>> app;
-  app.system.messageStats().setEnabled(true);
+  MessageStats::Reader reader(app.system.messageStats());
   PongCounterPadd &sender = app.padd<PongCounterPadd>();
   ScratchPadd::PaddTestAccess::sendTo(
       sender, ScratchPadd::PaddTestAccess::addressOf<ListenerPadd<2>>(sender), Ping{});
   app.settle();
   app.settle();
-  const MessageStats::Snapshot snapshot = app.system.messageStats().take();
+  const MessageStats::Snapshot snapshot = reader.take();
   const MessageStats::TypeCounts *ping = typeNamed(snapshot, "Ping");
   ASSERT_NE(ping, nullptr);
   EXPECT_EQ(ping->messages, 1u);
@@ -136,7 +200,7 @@ TEST(MessageStatsTest, CountsSendTo) {
 
 TEST(MessageStatsPaddTest, TurnsCountingOnAndShowsTables) {
   Running<ScratchPadd::MessageStatsPadd, PongCounterPadd, ListenerPadd<1>> app;
-  EXPECT_TRUE(app.system.messageStats().enabled()); // (by being listed)
+  EXPECT_TRUE(app.system.messageStats().counting()); // (by being listed)
   for (int i = 0; i < 3; ++i)
     ScratchPadd::PaddTestAccess::send(app.padd<PongCounterPadd>(), Ping{i});
   app.settle();
@@ -164,13 +228,13 @@ TEST(MessageStatsPaddTest, TurnsCountingOnAndShowsTables) {
       ScratchPadd::MessageType::ControlChange{
           .controlName = "Counting", .controlTypeValue = ScratchPadd::ControlType::Boolean(false)});
   app.settle();
-  EXPECT_FALSE(app.system.messageStats().enabled());
+  EXPECT_FALSE(app.system.messageStats().counting());
   ScratchPadd::PaddTestAccess::sendTo(
       panel, toStats,
       ScratchPadd::MessageType::ControlChange{
           .controlName = "Counting", .controlTypeValue = ScratchPadd::ControlType::Boolean(true)});
   app.settle();
-  EXPECT_TRUE(app.system.messageStats().enabled());
+  EXPECT_TRUE(app.system.messageStats().counting());
 }
 
 TEST(MessageStatsPaddTest, MarksBusyTypesAsCandidates) {

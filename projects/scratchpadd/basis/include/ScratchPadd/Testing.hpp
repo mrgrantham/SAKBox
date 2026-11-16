@@ -32,7 +32,7 @@ struct PaddTestAccess {
   static bool handles(const Base &padd, std::type_index type) { return padd.handles(type); }
 
   // Queues `job` on the padd's thread
-  static void push(Base &padd, WorkQueue::Job job) { padd.push(std::move(job)); }
+  static void push(Base &padd, std::function<void()> job) { padd.push(std::move(job)); }
 
   // A padd's lifecycle, for tests that run one without a system
   static void initialize(Base &padd) { padd.initialize(); }

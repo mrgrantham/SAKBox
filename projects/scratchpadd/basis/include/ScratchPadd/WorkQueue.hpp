@@ -7,6 +7,7 @@
 // loop, so their queues share one WakeSignal, and a push to any of them wakes
 // that loop.
 
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
@@ -51,9 +52,23 @@ private:
 };
 
 // A first-in, first-out queue of jobs, safe to push to from any thread.
+// What a queued job is for, so MessageStats can count each kind.
+enum class JobKind {
+  Message, // a message for one of the padd's handlers
+  Repeat,  // the padd's repeat(), on its timer
+  Pushed,  // other work the padd queued for itself (Base::push)
+};
+
 class WorkQueue {
 public:
-  using Job = std::function<void()>;
+  using Clock = std::chrono::steady_clock;
+  struct Job {
+    std::function<void()> run;
+    JobKind kind = JobKind::Pushed;
+    // When it was queued, if MessageStats was counting then (for how long
+    // it waited); otherwise left at the clock's start
+    Clock::time_point queuedAt{};
+  };
 
   explicit WorkQueue(WakeSignal *signal) : signal_(signal) {}
 
