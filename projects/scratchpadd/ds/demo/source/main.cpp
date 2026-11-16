@@ -89,6 +89,9 @@ public:
     vramSetBankC(VRAM_C_SUB_BG);
     consoleInit(&top_, 0, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
     consoleInit(&bottom_, 0, BgType_Text4bpp, BgSize_T_256x256, 31, 0, false, true);
+    // The panel's graphs (the Activity tab's) in pixels under its text
+    graphs_.start(bottom_);
+    controls_.setPixelGraphs(true);
     status_[0] = "ScreenPadd: main " + threadNumber();
     if (!logWhere.empty())
       status_[7] = "Log: " + logWhere;
@@ -96,6 +99,12 @@ public:
       log_.push_back("No file system (nitroFSInit)");
     }
     controls_.setVisible(false); // SELECT shows them
+#if defined(SAKBOX_OPEN_ACTIVITY)
+    // (the -activity build: the panel open on the Activity tab from the
+    // start, to see its graphs in an emulator without pressing anything)
+    controls_.setVisible(true);
+    controls_.openOn("Activity");
+#endif
     showControlsHint();
     send(ScratchPadd::MessageType::ControlRequest{});
     push([this] { frame(); });
@@ -136,7 +145,7 @@ private:
         showControlsHint();
       }
     }
-    ScratchPadd::HandheldControls::draw(controls_);
+    ScratchPadd::HandheldControls::draw(controls_, graphs_);
     consoleSelect(&top_);
     if (!wasShown && !controls_.visible()) {
       // The face buttons, by the names on a Nintendo pad
@@ -174,6 +183,7 @@ private:
   }
 
   PrintConsole top_, bottom_;
+  ScratchPadd::HandheldControls::GraphPixels graphs_;
   ScratchPadd::HandheldControls::ControlTabs controls_;
   std::map<int, std::string> status_;
   std::deque<std::string> log_;

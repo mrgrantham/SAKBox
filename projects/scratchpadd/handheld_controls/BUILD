@@ -2,11 +2,14 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 # Every padd's controls on a DS's or 3DS's text screen, as tabs (see
 # ControlTabs.hpp): the shared part, built and tested on desktops too, and
-# ConsolePanel.hpp, its input and printing on the handhelds, which their
+# ConsolePanel.hpp, its input, printing and pixel graphs on the handhelds, which their
 # Makefile builds take from :sources.
 cc_library(
     name = "handheld_controls",
-    hdrs = ["include/ScratchPadd/HandheldControls/ControlTabs.hpp"],
+    hdrs = [
+        "include/ScratchPadd/HandheldControls/ControlTabs.hpp",
+        "include/ScratchPadd/HandheldControls/GraphPlot.hpp",
+    ],
     srcs = ["src/ControlTabs.cpp"],
     strip_include_prefix = "include/",
     visibility = ["//visibility:public"],
@@ -32,6 +35,16 @@ cc_test(
     name = "ControlTabs_test",
     size = "small",
     srcs = ["tests/ControlTabs_test.cpp"],
+    deps = [
+        ":handheld_controls",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "GraphPlot_test",
+    size = "small",
+    srcs = ["tests/GraphPlot_test.cpp"],
     deps = [
         ":handheld_controls",
         "@gtest//:gtest_main",

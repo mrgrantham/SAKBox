@@ -88,7 +88,12 @@ void ControlTabs::show(const MessageType::ControlSnapshot &snapshot, PaddAddress
     }
     return;
   }
-  Tab &tab = existing != tabs_.end() ? *existing : tabs_.emplace_back();
+  const bool isNew = existing == tabs_.end();
+  Tab &tab = isNew ? tabs_.emplace_back() : *existing;
+  if (isNew && openOn_ == snapshot.paddName) {
+    tab_ = tabs_.size() - 1;
+    openOn_.reset();
+  }
   tab.controls = snapshot;
   tab.owner = owner;
   tab.names.clear();
@@ -102,6 +107,23 @@ void ControlTabs::setVisible(bool visible) {
   if (visible != visible_)
     dirty_ = true;
   visible_ = visible;
+}
+
+void ControlTabs::setPixelGraphs(bool on) {
+  if (on != pixelGraphs_)
+    dirty_ = true;
+  pixelGraphs_ = on;
+}
+
+void ControlTabs::openOn(const std::string &paddName) {
+  auto found = std::ranges::find_if(
+      tabs_, [&](const Tab &tab) { return tab.controls.paddName == paddName; });
+  if (found == tabs_.end()) {
+    openOn_ = paddName;
+    return;
+  }
+  tab_ = static_cast<std::size_t>(found - tabs_.begin());
+  dirty_ = true;
 }
 
 std::vector<std::string> ControlTabs::tabNames() const {
@@ -380,8 +402,22 @@ std::vector<ControlTabs::ListRow> ControlTabs::listRows(const Tab &tab) const {
   for (std::size_t index = 0; index < tab.names.size(); ++index) {
     const std::string &name = tab.names[index];
     const ControlTypeVariant &control = tab.controls.controlMap.at(name);
-    const bool information = std::holds_alternative<ControlType::Info>(control) ||
-                             std::holds_alternative<ControlType::Graph>(control);
+    const auto *graph = std::get_if<ControlType::Graph>(&control);
+    const bool information = std::holds_alternative<ControlType::Info>(control) || graph;
+    if (graph && pixelGraphs_) {
+      // Its name and latest value, then empty rows for its pixels
+      char latest[32];
+      std::snprintf(latest, sizeof latest, "%.3g", static_cast<double>(graph->latest()));
+      const std::string value = latest + graph->unit;
+      const std::size_t room = width > value.size() + 3 ? width - value.size() - 3 : 0;
+      std::string text = name.substr(0, room);
+      const std::size_t used = kMarker + text.size() + value.size();
+      text.append(width > used ? width - used : 1, ' ');
+      rows.push_back({index, true, text + value, Shows::Information});
+      for (int r = 0; r < kGraphRows; ++r)
+        rows.push_back({index, false, "", Shows::Graph});
+      continue;
+    }
     const std::string value = describe(control);
     if (information && width > kIndent &&
         (kMarker + name.size() + 1 + value.size() > width ||
@@ -431,6 +467,7 @@ std::size_t ControlTabs::firstRowShown() const {
 
 std::vector<Line> ControlTabs::lines() {
   dirty_ = false;
+  graphAreas_.clear();
   std::vector<Line> lines(static_cast<std::size_t>(rows_));
   const auto width = static_cast<std::size_t>(columns_);
   if (tabs_.empty()) {
@@ -445,6 +482,23 @@ std::vector<Line> ControlTabs::lines() {
       if (at >= rows.size())
         break;
       const ListRow &row = rows[at];
+      if (row.shows == Shows::Graph) {
+        // One more row of this graph's area, or the first of a new one
+        if (!graphAreas_.empty() && graphAreas_.back().row + graphAreas_.back().rows == r &&
+            rows[at - 1].shows == Shows::Graph && rows[at - 1].control == row.control) {
+          ++graphAreas_.back().rows;
+        } else {
+          const std::string &name = tab.names[row.control];
+          graphAreas_.push_back(
+              {.row = r,
+               .rows = 1,
+               .column = 2,
+               .columns = columns_ - 2,
+               .graph = std::get<ControlType::Graph>(tab.controls.controlMap.at(name))});
+        }
+        lines[static_cast<std::size_t>(r)] = {{"", false, Shows::Graph}};
+        continue;
+      }
       const bool chosen = row.control == tab.row;
       const std::string text = (chosen && row.first ? "> " : "  ") + row.text;
       lines[static_cast<std::size_t>(r)] = {{text.substr(0, width), chosen, row.shows}};

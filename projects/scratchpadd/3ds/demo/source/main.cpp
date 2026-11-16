@@ -78,11 +78,20 @@ public:
 
   void starting() override {
     consoleInit(GFX_BOTTOM, &bottom_);
+    // The panel's graphs (the Activity tab's) in pixels under its text
+    graphs_.start(bottom_);
+    controls_.setPixelGraphs(true);
     consoleInit(GFX_TOP, &top_);
     status_[0] = "ScreenPadd: main thread " + threadNumber();
     if (!logWhere.empty())
       status_[7] = "Log: " + logWhere;
     controls_.setVisible(false); // SELECT shows them
+#if defined(SAKBOX_OPEN_ACTIVITY)
+    // (the -activity build: the panel open on the Activity tab from the
+    // start, to see its graphs in an emulator without pressing anything)
+    controls_.setVisible(true);
+    controls_.openOn("Activity");
+#endif
     showControlsHint();
     send(ScratchPadd::MessageType::ControlRequest{});
     push([this] { frame(); });
@@ -121,7 +130,7 @@ private:
       if (!controls_.visible())
         showControlsHint();
     }
-    ScratchPadd::HandheldControls::draw(controls_);
+    ScratchPadd::HandheldControls::draw(controls_, graphs_);
     consoleSelect(&top_);
     if (!wasShown && !controls_.visible()) {
       // The face buttons, by the names on a Nintendo pad
@@ -162,6 +171,7 @@ private:
   }
 
   PrintConsole top_, bottom_;
+  ScratchPadd::HandheldControls::GraphPixels graphs_;
   ScratchPadd::HandheldControls::ControlTabs controls_;
   std::map<int, std::string> status_;
   std::deque<std::string> log_;

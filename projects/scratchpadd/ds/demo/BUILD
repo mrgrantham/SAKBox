@@ -4,8 +4,12 @@ load("//tools/devkitpro:defs.bzl", "devkitpro_nds_app")
 # by messages, with AudioPadd playing on the DS's hardware sound channels.
 # Needs Docker running (see //tools/devkitpro); `bazel run` opens it in
 # melonDS.
-devkitpro_nds_app(
-    name = "scratchpadd-ds-demo",
+# Two builds of one source: the demo, and its -activity build, which opens
+# the bottom screen's panel on the Activity tab from the start (to see its
+# pixel graphs in an emulator without pressing anything)
+[devkitpro_nds_app(
+
+    name = name,
     srcs = ["Makefile"] + glob(["source/**"]),
     extra_srcs = {
         "//projects/scratchpadd/debug_log:sources": "scratchpadd/debug_log",
@@ -27,4 +31,8 @@ devkitpro_nds_app(
     },
     # Its file system (NitroFS): nitro:/sounds/*.wav and nitro:/music/tune.mid
     nitro_files = {"//projects/scratchpadd/handheld:demo_files": ""},
-)
+    defines = defines,
+) for name, defines in [
+    ("scratchpadd-ds-demo", []),
+    ("scratchpadd-ds-demo-activity", ["SAKBOX_OPEN_ACTIVITY"]),
+]]

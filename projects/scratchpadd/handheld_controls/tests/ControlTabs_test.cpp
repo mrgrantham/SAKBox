@@ -414,3 +414,70 @@ TEST(ControlTabsTest, ATableTooWideToRuleIsSpaced) {
   EXPECT_EQ(text(4), "    here"); // (wrapped: it didn't fit even so)
   EXPECT_EQ(text(5), "    SomePaddName value");
 }
+
+// With graphs in pixels, a graph's row has its name and latest value, and
+// the kGraphRows rows below are left empty for its pixels; graphAreas()
+// says where, cut at the bottom of the list
+TEST(ControlTabsTest, PixelGraphsLeaveRowsAndSayWhere) {
+  ControlTabs tabs({}, 32, 12); // (room for 9 rows of list: rows 2 to 10)
+  ControlType::Graph busy(60, ControlType::Graph::Style::Bars, {{0.0f, 100.0f}}, "%");
+  busy.add(12.5f);
+  ControlType::Graph wait(60);
+  wait.add(3.0f);
+  tabs.show(snapshotOf("Activity",
+                       {{"a busy", busy}, {"b wait", wait}, {"c note", ControlType::Info("x")}}),
+            PaddAddress{});
+  tabs.setPixelGraphs(true);
+  const std::vector<Line> lines = tabs.lines();
+  EXPECT_EQ(lines[2][0].text.substr(0, 8), "> a busy");
+  EXPECT_EQ(lines[2][0].text.substr(lines[2][0].text.size() - 5), "12.5%");
+  for (int r = 3; r <= 5; ++r)
+    EXPECT_EQ(lines[static_cast<std::size_t>(r)][0].shows, Shows::Graph);
+  EXPECT_EQ(lines[6][0].text.substr(0, 8), "  b wait");
+  const std::vector<GraphArea> &areas = tabs.graphAreas();
+  ASSERT_EQ(areas.size(), 2u);
+  EXPECT_EQ(areas[0].row, 3);
+  EXPECT_EQ(areas[0].rows, ControlTabs::kGraphRows);
+  EXPECT_EQ(areas[0].column, 2);
+  EXPECT_EQ(areas[0].columns, 30);
+  EXPECT_EQ(areas[0].graph.values, busy.values);
+  EXPECT_EQ(areas[1].row, 7);
+  EXPECT_EQ(areas[1].rows, 3); // rows 7 to 9; the note is on row 10
+  EXPECT_EQ(lines[10][0].text.substr(0, 8), "  c note");
+
+  // Off again: one line each, a sparkline, and no areas
+  tabs.setPixelGraphs(false);
+  EXPECT_TRUE(tabs.dirty());
+  const std::vector<Line> text = tabs.lines();
+  EXPECT_NE(text[2][0].text.find("12.5% ["), std::string::npos);
+  EXPECT_EQ(text[3][0].text.substr(0, 8), "  b wait");
+  EXPECT_TRUE(tabs.graphAreas().empty());
+}
+
+// A graph cut by the bottom of the list has an area of only the rows shown
+TEST(ControlTabsTest, AGraphAreaIsCutAtTheListsBottom) {
+  ControlTabs tabs({}, 32, 7); // (rows 2 to 5 for the list)
+  ControlType::Graph graph(60);
+  graph.add(1.0f);
+  tabs.show(snapshotOf("Activity", {{"a", ControlType::Info("x")}, {"b", graph}}), PaddAddress{});
+  tabs.setPixelGraphs(true);
+  tabs.lines();
+  ASSERT_EQ(tabs.graphAreas().size(), 1u);
+  EXPECT_EQ(tabs.graphAreas()[0].row, 4);
+  EXPECT_EQ(tabs.graphAreas()[0].rows, 2); // rows 4 and 5 of its 3
+}
+
+// openOn() chooses a padd's tab now if it's there, or when it arrives
+TEST(ControlTabsTest, OpensOnATab) {
+  Panel panel;
+  panel.tabs.openOn("RagdollPadd");
+  EXPECT_EQ(panel.tabs.tab(), 1u);
+  panel.tabs.openOn("Activity"); // not there yet
+  EXPECT_EQ(panel.tabs.tab(), 1u);
+  panel.tabs.show(snapshotOf("About", {{"x", ControlType::Info("y")}}), PaddAddress{});
+  EXPECT_EQ(panel.tabs.tab(), 1u); // (another padd's tab: still waiting)
+  panel.tabs.show(snapshotOf("Activity", {{"x", ControlType::Graph()}}), PaddAddress{});
+  EXPECT_EQ(panel.tabs.tabNames()[panel.tabs.tab()], "Activity");
+  panel.tabs.show(snapshotOf("Late", {{"x", ControlType::Info("y")}}), PaddAddress{});
+  EXPECT_EQ(panel.tabs.tabNames()[panel.tabs.tab()], "Activity"); // (only once)
+}

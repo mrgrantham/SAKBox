@@ -3,8 +3,12 @@ load("//tools/devkitpro:defs.bzl", "devkitpro_3ds_app")
 # ScratchPadd on a Nintendo 3DS: padds on their own threads, talking by
 # messages, with AudioPadd playing through the 3DS's DSP. Needs Docker
 # running (see //tools/devkitpro); `bazel run` opens it in Azahar.
-devkitpro_3ds_app(
-    name = "scratchpadd-3ds-demo",
+# Two builds of one source: the demo, and its -activity build, which opens
+# the bottom screen's panel on the Activity tab from the start (to see its
+# pixel graphs in an emulator without pressing anything)
+[devkitpro_3ds_app(
+
+    name = name,
     srcs = ["Makefile"] + glob(["source/**"]),
     extra_srcs = {
         "//projects/scratchpadd/debug_log:sources": "scratchpadd/debug_log",
@@ -24,4 +28,8 @@ devkitpro_3ds_app(
         "@tinysoundfont//:sources": "third_party/tinysoundfont",
         "@spdlog//:sources": "third_party/spdlog",
     },
-)
+    defines = defines,
+) for name, defines in [
+    ("scratchpadd-3ds-demo", []),
+    ("scratchpadd-3ds-demo-activity", ["SAKBOX_OPEN_ACTIVITY"]),
+]]

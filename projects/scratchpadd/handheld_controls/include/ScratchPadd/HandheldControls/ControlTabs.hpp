@@ -38,8 +38,17 @@ PanelInput panelInputFrom(const Input::Gamepad &before, const Input::Gamepad &no
 
 // What a run of text shows, so they can be told apart (ConsolePanel's
 // colours): a control that can be changed, information (an Info control,
-// which can't), or the rest (tabs, the help)
-enum class Shows { Other, Setting, Information };
+// which can't), rows left empty for a graph's pixels, or the rest (tabs,
+// the help)
+enum class Shows { Other, Setting, Information, Graph };
+
+// Where a graph is drawn in pixels, in text cells: from `row` (counted
+// from the screen's top, as lines() are) for `rows` rows, and from
+// `column` for `columns` columns (8 pixels a cell), with the graph to draw
+struct GraphArea {
+  int row = 0, rows = 0, column = 0, columns = 0;
+  ControlType::Graph graph;
+};
 
 // A run of text in one line, highlighted (the chosen tab or row) or not
 struct Segment {
@@ -74,6 +83,22 @@ public:
 
   bool visible() const { return visible_; }
   void setVisible(bool visible);
+
+  // Graphs in pixels, for a screen that can draw them (ConsolePanel.hpp's
+  // GraphPixels does on the DS and 3DS): each Graph control's row (its name
+  // and latest value) is followed by kGraphRows empty rows for its pixels,
+  // and graphAreas() says where they are. Off (the default), a graph is
+  // one line of text: its latest value and a sparkline of characters.
+  static constexpr int kGraphRows = 3;
+  void setPixelGraphs(bool on);
+  bool pixelGraphs() const { return pixelGraphs_; }
+  // Where the graphs are, as the last lines() laid them out (only those on
+  // the screen, cut at the list's bottom)
+  const std::vector<GraphArea> &graphAreas() const { return graphAreas_; }
+
+  // Chooses the tab of padd `paddName`: now if it's there, otherwise as
+  // soon as its padd's controls arrive (to open an app on a tab)
+  void openOn(const std::string &paddName);
   // Whether it needs drawing (it changed since the last lines() taken)
   bool dirty() const { return dirty_; }
 
@@ -143,6 +168,9 @@ private:
   bool visible_ = true;
   bool dirty_ = true;
   std::optional<Stroke> stroke_; // while the stylus is down
+  bool pixelGraphs_ = false;
+  std::vector<GraphArea> graphAreas_; // (laid out by lines())
+  std::optional<std::string> openOn_; // a tab to choose once it's there
 };
 
 // A control's value as the panel shows it: numbers to a few places,
