@@ -6,6 +6,7 @@
 //
 //   bazel run -c opt //projects/cosmic_hex/simulate -- --games 100 --players 4 --iterations 200
 //   ... --logs /tmp/games        (one action log per game)
+#include <CosmicHex/BotStyles.hpp>
 #include <CosmicHex/Rules.hpp>
 
 #include <ActionLog/ActionLog.hpp>
@@ -48,6 +49,7 @@ struct Options {
   std::vector<Hex> homes;     // and its homes (empty: the usual ones)
   int dead = 0;               // dead planets among the face-down ones
   int win = 0;                // points to win (0: the rules' default)
+  std::vector<BotStyle> styles; // the players' styles, turned round a seat each game
 };
 
 // A flag's number, or a clear stop if it isn't one
@@ -135,7 +137,19 @@ Options parse(int argc, char **argv) {
       options.dead = number<int>(flag, value);
     else if (flag == "--win")
       options.win = number<int>(flag, value);
-    else {
+    else if (flag == "--styles") {
+      std::string_view rest = value;
+      while (!rest.empty()) {
+        const std::size_t comma = rest.find(',');
+        const auto style = botStyleNamed(rest.substr(0, comma));
+        if (!style) {
+          std::fprintf(stderr, "--styles takes plain, saver, rusher and explorer\n");
+          std::exit(2);
+        }
+        options.styles.push_back(*style);
+        rest.remove_prefix(comma == std::string_view::npos ? rest.size() : comma + 1);
+      }
+    } else {
       std::fprintf(stderr, "unknown flag %s\n", argv[i]);
       std::exit(2);
     }
@@ -237,6 +251,13 @@ Sources sourcesOf(const State &state, int player) {
 int main(int argc, char **argv) {
   const Options options = parse(argc, argv);
   GameBots::Ismcts<Game> bot({.rolloutDepth = options.rolloutDepth});
+  // A bot for each style, the same search with its own rollouts
+  std::array<GameBots::Ismcts<Game>, kBotStyleNames.size()> styledBots;
+  for (std::size_t i = 0; i < styledBots.size(); ++i)
+    styledBots[i] =
+        GameBots::Ismcts<Game>({.rolloutDepth = options.rolloutDepth,
+                                .rolloutWeight = rolloutWeightFor(static_cast<BotStyle>(i))});
+  std::array<int, kBotStyleNames.size()> styleGames{}, styleWins{};
   std::array<int, kMaxPlayers> wins{};
   int finished = 0, totalRounds = 0, totalActions = 0;
   Sources winnerPoints;
@@ -248,7 +269,7 @@ int main(int argc, char **argv) {
     csv << "variant,seed,players,iterations,first,strong,winner,rounds,actions,points1,points2,"
            "points3,points4,"
            "stations,colonies,core,badges,contracts,blockades,thefts,denied,caughtup,discarded,"
-           "embargo,enforcers\n";
+           "embargo,enforcers,styles\n";
   }
 
   for (int g = 0; g < options.games; ++g) {
@@ -296,6 +317,21 @@ int main(int argc, char **argv) {
       players[static_cast<std::size_t>(strong)] = [&](const State &state) {
         return bot.choose(state, bots, {.iterations = options.strongIterations});
       };
+    // Styles: player p plays styles[(p + g) % count], so each style plays
+    // from every home and turn position in turn
+    std::vector<BotStyle> styleOf(static_cast<std::size_t>(options.players), BotStyle::Plain);
+    if (!options.styles.empty()) {
+      for (int p = 0; p < options.players; ++p) {
+        const BotStyle style =
+            options.styles[static_cast<std::size_t>(p + g) % options.styles.size()];
+        styleOf[static_cast<std::size_t>(p)] = style;
+        ++styleGames[static_cast<std::size_t>(style)];
+        players[static_cast<std::size_t>(p)] = [&, style](const State &state) {
+          return styledBots[static_cast<std::size_t>(style)].choose(
+              state, bots, {.iterations = options.iterations});
+        };
+      }
+    }
     // Played turn by turn, so a game that drags on can be stopped at a round
     while (!Game::isOver(play.state()) && play.state().round <= options.maxRounds)
       GameBots::playMatch<Game>(play, players, dealer, 1);
@@ -304,6 +340,8 @@ int main(int argc, char **argv) {
     totalActions += static_cast<int>(play.log().actions.size());
     if (end.winner >= 0) {
       ++finished;
+      if (!options.styles.empty())
+        ++styleWins[static_cast<std::size_t>(styleOf[static_cast<std::size_t>(end.winner)])];
       ++wins[static_cast<std::size_t>(end.winner)];
       totalRounds += end.round;
       const Sources s = sourcesOf(end, end.winner);
@@ -326,7 +364,10 @@ int main(int argc, char **argv) {
       csv << "," << s.stations << "," << s.colonies << "," << s.core << "," << s.badges << ","
           << s.contracts << "," << stats.blockades << "," << stats.thefts << "," << stats.denied
           << "," << stats.caughtUp << "," << stats.discarded << "," << s.embargo << ","
-          << stats.enforcers << "\n";
+          << stats.enforcers << ",";
+      for (int p = 0; p < options.players; ++p)
+        csv << (p ? ";" : "") << nameOf(styleOf[static_cast<std::size_t>(p)]);
+      csv << "\n";
       for (std::size_t id = 0; id < stats.contracts.size(); ++id) {
         for (int k = 0; k < 4; ++k)
           contractTotals[id][static_cast<std::size_t>(k)] +=
@@ -378,5 +419,15 @@ int main(int argc, char **argv) {
       static_cast<double>(winnerPoints.core) / finished,
       static_cast<double>(winnerPoints.badges) / finished,
       static_cast<double>(winnerPoints.contracts) / finished);
+  if (!options.styles.empty()) {
+    // How often each style won the games it played (a fair share is one in
+    // the number of players)
+    std::printf("wins by style:");
+    for (std::size_t i = 0; i < styleGames.size(); ++i)
+      if (styleGames[i] > 0)
+        std::printf("  %s: %.1f%% of %d", std::string(kBotStyleNames[i]).c_str(),
+                    100.0 * styleWins[i] / styleGames[i], styleGames[i]);
+    std::printf("\n");
+  }
   return 0;
 }

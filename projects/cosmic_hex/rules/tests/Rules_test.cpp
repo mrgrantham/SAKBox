@@ -1,6 +1,7 @@
 // Cosmic Hex's rules: the board, a turn, production, the blockade, moving
 // and turning tiles over, settling, colonies, Core Control, contracts,
 // winning, hidden contracts, and the text the action log keeps.
+#include <CosmicHex/BotStyles.hpp>
 #include <CosmicHex/Rules.hpp>
 
 #include <GameBots/Bots.hpp>
@@ -706,4 +707,17 @@ TEST(RulesTest, TheDealerDrawsDeadPlanets) {
   }
   EXPECT_GT(dead, 150);
   EXPECT_LT(dead, 250);
+}
+
+// Bot styles: named and read back; each leans its moves its own way
+TEST(BotStylesTest, NamesAndLeanings) {
+  for (BotStyle style : {BotStyle::Plain, BotStyle::Saver, BotStyle::Rusher, BotStyle::Explorer})
+    EXPECT_EQ(botStyleNamed(nameOf(style)), std::make_optional(style));
+  EXPECT_FALSE(botStyleNamed("hoarder").has_value());
+  const Action endTurn{Kind::EndTurn}, ship{Kind::BuildShip}, move{Kind::Move};
+  EXPECT_GT(styleWeight(BotStyle::Saver, endTurn), styleWeight(BotStyle::Saver, ship));
+  EXPECT_GT(styleWeight(BotStyle::Rusher, ship), styleWeight(BotStyle::Rusher, endTurn));
+  EXPECT_GT(styleWeight(BotStyle::Explorer, move), styleWeight(BotStyle::Explorer, endTurn));
+  EXPECT_FALSE(rolloutWeightFor(BotStyle::Plain)); // (plain: the usual random rollouts)
+  EXPECT_TRUE(rolloutWeightFor(BotStyle::Saver));
 }

@@ -71,10 +71,18 @@ public:
     // Out of 100: how often it plays its second-best move instead of its
     // best, so an easy bot makes mistakes the way people do
     unsigned mistakePercent = 0;
+    // A style: how likely each of the bot's own moves is in its rollouts,
+    // weighed against the others (0 or more; empty: all equally likely).
+    // Millington's AI for Games (3rd ed., 9.5.1) asks for playouts "a
+    // little more accurate than choosing moves purely at random"; a bot
+    // that imagines itself saving, rushing or exploring finds the moves
+    // that suit doing so, and plays more that way. The other players'
+    // rollout moves stay random.
+    std::function<double(const State &, const Action &)> rolloutWeight;
   };
 
   Ismcts() = default;
-  explicit Ismcts(Settings settings) : settings_(settings) {}
+  explicit Ismcts(Settings settings) : settings_(std::move(settings)) {}
 
   // The move it chooses for whoever's turn it is in `state` (not the
   // dealer's).
@@ -92,7 +100,7 @@ public:
     for (int done = 0; done < budget.iterations; ++done) {
       if (done > 0 && budget.outOfTime && budget.outOfTime())
         break;
-      simulate(tree, G::determinize(state, me, random), random);
+      simulate(tree, G::determinize(state, me, random), random, me);
     }
 
     // The most tried of the root's moves is the best (the most robust
@@ -147,7 +155,8 @@ private:
   // tree by the best-looking moves (selection), one new move (expansion),
   // random moves to the end (the rollout), then the result back up the
   // moves taken (backpropagation).
-  void simulate(std::vector<Node> &tree, State state, SeededRandom::Generator &random) const {
+  void simulate(std::vector<Node> &tree, State state, SeededRandom::Generator &random,
+                int me) const {
     int node = 0;
     bool expanded = false;
     while (!expanded && !G::isOver(state)) {
@@ -202,13 +211,17 @@ private:
       node = best;
     }
 
-    // The rest of the game, at random
+    // The rest of the game, at random (the bot's own moves in its style,
+    // if it has one)
     for (int depth = 0; depth < settings_.rolloutDepth && !G::isOver(state); ++depth) {
-      if (G::currentPlayer(state) == kDealer) {
+      const int player = G::currentPlayer(state);
+      if (player == kDealer) {
         G::apply(state, G::dealerAction(state, random));
       } else {
         const std::vector<Action> legal = G::legalActions(state);
-        G::apply(state, legal[random.below(static_cast<std::uint32_t>(legal.size()))]);
+        const bool styled = player == me && settings_.rolloutWeight;
+        G::apply(state, styled ? weightedPick(state, legal, random)
+                               : legal[random.below(static_cast<std::uint32_t>(legal.size()))]);
       }
     }
 
@@ -219,6 +232,29 @@ private:
       if (n.mover != kDealer)
         n.reward += resultFor(state, n.mover);
     }
+  }
+
+  // One of `legal`, each as likely as its rolloutWeight (all equally if
+  // they're all 0)
+  Action weightedPick(const State &state, const std::vector<Action> &legal,
+                      SeededRandom::Generator &random) const {
+    std::vector<double> weights;
+    weights.reserve(legal.size());
+    double total = 0;
+    for (const Action &action : legal) {
+      const double weight = std::max(0.0, settings_.rolloutWeight(state, action));
+      weights.push_back(weight);
+      total += weight;
+    }
+    if (total <= 0)
+      return legal[random.below(static_cast<std::uint32_t>(legal.size()))];
+    double pick = random.unitDouble() * total;
+    for (std::size_t i = 0; i < legal.size(); ++i) {
+      if (pick < weights[i])
+        return legal[i];
+      pick -= weights[i];
+    }
+    return legal.back();
   }
 
   Settings settings_;

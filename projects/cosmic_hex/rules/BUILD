@@ -5,7 +5,10 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 cc_library(
     name = "rules",
     srcs = ["src/Rules.cpp"],
-    hdrs = ["include/CosmicHex/Rules.hpp"],
+    hdrs = [
+        "include/CosmicHex/BotStyles.hpp",
+        "include/CosmicHex/Rules.hpp",
+    ],
     strip_include_prefix = "include/",
     visibility = ["//projects/cosmic_hex:__subpackages__"],
     deps = [

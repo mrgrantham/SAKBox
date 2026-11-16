@@ -45,6 +45,7 @@ Optionally, `estimate(state, player)` judges an unfinished game (0 to 1), for si
 - `Budget{.iterations, .outOfTime}`: how many simulated games, and an optional check (between games) that stops it early. On the DS this is a check against the timer, so a move takes a second or two.
 - `Settings::exploration` (0.7): how much it tries little-known moves against ones that have done well.
 - `Settings::rolloutDepth` (400): where simulated games are cut off.
+- `Settings::rolloutWeight` (empty): a style: how likely each of the bot's own moves is in its rollouts (0 or more, against the others). Millington's *AI for Games* (3rd ed., 9.5.1) asks for playouts "a little more accurate than choosing moves purely at random"; a bot that imagines itself playing a certain way finds the moves that suit it. Other players' rollout moves stay random, and all-zero weights count as all equal.
 - `Settings::mistakePercent` (0): how often, out of 100, it plays its second-best move instead of its best. **Difficulty is thinking time plus mistakes:** more simulated games play better, and easy bots now and then pick the second-best move, the way a person would (Fullerton, *Game Design Workshop*: computer players should play like people, mistakes included).
 
 Everything a bot does comes from the generator it's given, so the same state, generator and budget give the same move on every platform. A time limit can cut a search short at different points on different machines.

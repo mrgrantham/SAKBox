@@ -85,7 +85,8 @@ The draft from the roadmap page's round 26, agreed as a good start; every number
 - **12 points to win** (was 10), agreed in round 41 for testing.
 - **Board layouts as a setting:** `Settings::planetHexes` names the planets (besides the homes), so the rules can be played on cluster boards. Round 44 offers 36 layouts on today's 61-hex board (clusters of 3, 2 and 1, never touching each other, the core or a home; homes on the edge or on four corners).
 - **Dead planets** (round 42): `Settings::deadPlanets` of the face-down planets turn out dead: turning one over earns a badge as usual, it has no resource and no number, and it can hold a station (a point). The blockade doesn't start on one.
-- Still to build: snake order for a free second station, bot styles (playouts leaning to saving, rushing or exploring), and corners and edges (building on corners, moving along edges).
+- **Bot styles** (round 41): plain, saver, rusher and explorer, the same search with the bot's own rollout moves leaning one way (`BotStyles.hpp`), to test the rules (the Imperial Tithe especially) against different players.
+- Still to build: snake order for a free second station, and corners and edges (building on corners, moving along edges).
 
 ## Changes since (roadmap rounds 33 to 37, 2026-11-15)
 

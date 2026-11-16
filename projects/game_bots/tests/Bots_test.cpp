@@ -187,3 +187,32 @@ TEST(BotsTest, MatchesAreRecordedAndReplay) {
   EXPECT_TRUE(again.ok());
   EXPECT_EQ(again.state, play.state());
 }
+
+// A style (rolloutWeight) leans only the bot's own moves in its rollouts:
+// it's asked about the bot's moves alone; it doesn't stop the bot taking a
+// win; and weights that are all 0 are the same as none
+TEST(BotsTest, AStyleLeansOnlyTheBotsOwnRolloutMoves) {
+  const TicTacToe::State state = board("XOOX....." /* X to play */);
+  int asked = 0, askedForOthers = 0;
+  GameBots::Ismcts<TicTacToe> styled(
+      {.rolloutWeight = [&](const TicTacToe::State &s, const int &move) {
+        ++asked;
+        if (TicTacToe::currentPlayer(s) != 0)
+          ++askedForOthers;
+        return move == 8 ? 50.0 : 1.0; // (fond of the far corner)
+      }});
+  SeededRandom::Generator random(2);
+  EXPECT_EQ(styled.choose(state, random, {.iterations = 2000}), 6); // still takes the win
+  EXPECT_GT(asked, 0);
+  EXPECT_EQ(askedForOthers, 0);
+
+  GameBots::Ismcts<TicTacToe> plain;
+  GameBots::Ismcts<TicTacToe> allZero(
+      {.rolloutWeight = [](const TicTacToe::State &, const int &) { return 0.0; }});
+  for (unsigned seed = 1; seed <= 10; ++seed) {
+    SeededRandom::Generator a(seed), b(seed);
+    const TicTacToe::State opening = board(".........");
+    EXPECT_EQ(plain.choose(opening, a, {.iterations = 300}),
+              allZero.choose(opening, b, {.iterations = 300}));
+  }
+}
