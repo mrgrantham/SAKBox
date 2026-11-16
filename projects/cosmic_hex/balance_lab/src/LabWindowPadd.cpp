@@ -48,12 +48,13 @@ std::string timestamp() {
 
 // ---- Drawing a board (with ImGui's draw list) ----
 
-// The board's colours: as the roadmap page draws boards
+// The board's colours (the user's choice, round 55): planets light green,
+// finds a lighter shade of empty space (unexplored space, not a place)
 constexpr ImU32 kSpace = IM_COL32(24, 34, 55, 255);
 constexpr ImU32 kGrid = IM_COL32(38, 52, 79, 255);
-constexpr ImU32 kPlanet = IM_COL32(52, 120, 140, 255);
+constexpr ImU32 kPlanet = IM_COL32(140, 214, 150, 255);
 constexpr ImU32 kHome = IM_COL32(240, 180, 90, 255);
-constexpr ImU32 kFind = IM_COL32(120, 64, 58, 255);
+constexpr ImU32 kFind = IM_COL32(56, 74, 106, 255);
 constexpr ImU32 kText = IM_COL32(226, 232, 244, 255);
 constexpr ImU32 kDark = IM_COL32(20, 20, 20, 255);
 constexpr ImU32 kEmptyCorner = IM_COL32(149, 163, 190, 200);
@@ -116,7 +117,7 @@ void drawBoard(ImDrawList *draw, const HexGrid::Layout &at, const LabLayout &lay
       const ImVec2 c = toImVec(at.centre(hex));
       const ImVec2 textSize = ImGui::CalcTextSize(letter);
       draw->AddText(ImVec2(c.x - textSize.x / 2, c.y - textSize.y / 2),
-                    kind == HexKind::Home ? kDark : kText, letter);
+                    kind == HexKind::Home || kind == HexKind::Planet ? kDark : kText, letter);
     }
   }
   if (marks.emptyCorners) {
