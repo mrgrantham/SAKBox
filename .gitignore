@@ -19,3 +19,6 @@ imgui.ini
 
 # What bazel run //projects/scratchpadd/audio:render_instrument_samples writes
 .audio-samples/
+
+# The balance lab's results (projects/cosmic_hex/balance_lab)
+balance_lab_runs/
