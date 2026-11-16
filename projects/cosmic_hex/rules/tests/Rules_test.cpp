@@ -645,34 +645,34 @@ TEST(RulesTest, ALayoutNamesThePlanets) {
   EXPECT_EQ(read.value_or(State{}).settings.planetHexes, settings.planetHexes);
 }
 
-// A dead planet: drawn from the pile like the others, with no number; it
+// A moon: drawn from the pile like the others, with no number; it
 // still earns a badge, can hold a station, and never pays
-TEST(RulesTest, DeadPlanets) {
+TEST(RulesTest, Moons) {
   Settings settings;
-  settings.deadPlanets = 2;
+  settings.moons = 2;
   State state = newGame(4, settings);
-  EXPECT_EQ(state.deadLeft, 2);
+  EXPECT_EQ(state.moonsLeft, 2);
   const auto read = Game::readState(Game::writeState(state));
   ASSERT_TRUE(read.has_value());
-  EXPECT_EQ(read.value_or(State{}).settings.deadPlanets, 2);
+  EXPECT_EQ(read.value_or(State{}).settings.moons, 2);
 
   state = atMain();
-  state.deadLeft = 1;
+  state.moonsLeft = 1;
   const int planet = 0; // (any face-down planet)
   ASSERT_FALSE(state.planets[planet].flipped);
   state.pendingPlanet = planet;
   state.phase = Phase::PlanetDraw;
   const int badges = state.player[0].badgesEarned;
-  // A dead planet with a number is refused
-  EXPECT_FALSE(Game::apply(state, {Kind::RevealPlanet, static_cast<int>(PlanetKind::Dead), 6}));
-  ASSERT_TRUE(Game::apply(state, {Kind::RevealPlanet, static_cast<int>(PlanetKind::Dead), 0}));
-  EXPECT_EQ(state.planets[planet].kind, PlanetKind::Dead);
-  EXPECT_EQ(state.deadLeft, 0);
+  // A moon with a number is refused
+  EXPECT_FALSE(Game::apply(state, {Kind::RevealPlanet, static_cast<int>(PlanetKind::Moon), 6}));
+  ASSERT_TRUE(Game::apply(state, {Kind::RevealPlanet, static_cast<int>(PlanetKind::Moon), 0}));
+  EXPECT_EQ(state.planets[planet].kind, PlanetKind::Moon);
+  EXPECT_EQ(state.moonsLeft, 0);
   EXPECT_EQ(state.player[0].badgesEarned, badges + 1);
   // None left: refused
   state.pendingPlanet = 1;
   state.phase = Phase::PlanetDraw;
-  EXPECT_FALSE(Game::apply(state, {Kind::RevealPlanet, static_cast<int>(PlanetKind::Dead), 0}));
+  EXPECT_FALSE(Game::apply(state, {Kind::RevealPlanet, static_cast<int>(PlanetKind::Moon), 0}));
   // A station on it pays nothing, whatever's rolled
   state.planets[planet].docks[0] = 1;
   const Resources before = state.player[1].resources;
@@ -689,24 +689,24 @@ TEST(RulesTest, DeadPlanets) {
             std::make_optional(Action{Kind::RevealPlanet, 6, 0}));
 }
 
-// The dealer draws dead planets from the pile in proportion
-TEST(RulesTest, TheDealerDrawsDeadPlanets) {
+// The dealer draws moons from the pile in proportion
+TEST(RulesTest, TheDealerDrawsMoons) {
   State state = atMain();
   state.kindsLeft = {1, 0, 0, 0, 0};
-  state.deadLeft = 1;
+  state.moonsLeft = 1;
   state.pendingPlanet = 0;
   state.phase = Phase::PlanetDraw;
   SeededRandom::Generator random(7);
-  int dead = 0;
+  int moons = 0;
   for (int i = 0; i < 400; ++i) {
     const Action drawn = Game::dealerAction(state, random);
-    if (drawn.a == static_cast<int>(PlanetKind::Dead)) {
-      ++dead;
+    if (drawn.a == static_cast<int>(PlanetKind::Moon)) {
+      ++moons;
       EXPECT_EQ(drawn.b, 0);
     }
   }
-  EXPECT_GT(dead, 150);
-  EXPECT_LT(dead, 250);
+  EXPECT_GT(moons, 150);
+  EXPECT_LT(moons, 250);
 }
 
 // Bot styles: named and read back; each leans its moves its own way
