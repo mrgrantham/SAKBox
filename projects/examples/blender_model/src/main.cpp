@@ -4,6 +4,7 @@
 // rock's was simplified by the build to its budget (SIMPLIFY_AGGRESSIVE).
 //
 // T: toon shading or smooth   O: outlines   B: toon's bands (2 to 5)
+// E: outlines as an inverted hull or found on the screen (edges and creases)
 #include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/Network/NetworkPadd.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
@@ -75,6 +76,8 @@ private:
       look_.outlines = !look_.outlines;
     if (display_->keyPressed(Scene::keyFor('b')))
       look_.nextBands();
+    if (display_->keyPressed(Scene::keyFor('e')))
+      look_.screenEdges = !look_.screenEdges;
     const float seconds = static_cast<float>(display_->seconds());
     Scene::Environment environment{.background = {28, 30, 38}, .ambient = {70, 70, 75}};
     environment.addLight({.direction = {-0.5f, -0.8f, -0.6f}, .colour = {220, 215, 205}});
@@ -101,8 +104,9 @@ private:
     char looks[64];
     look_.describe(looks, sizeof looks);
     renderer_->overlay().text(16, 16, looks, {230, 225, 215}, 1.5f);
-    renderer_->overlay().text(16, 40, "T: toon or smooth   O: outlines   B: bands", {150, 150, 160},
-                              1.2f);
+    renderer_->overlay().text(
+        16, 40, "T: toon or smooth   O: outlines   B: bands   E: hull or screen edges",
+        {150, 150, 160}, 1.2f);
     renderer_->endFrame();
     push([this] { drawFrame(); });
   }

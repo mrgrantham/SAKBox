@@ -306,3 +306,34 @@ TEST_F(RendererTest, OutlinesRingTheShape) {
   const auto own = frame([&] { renderer->draw(box, Transform::identity(), outlined); }, points);
   expectNear(own[1], {0, 255, 0});
 }
+
+// Screen-space outlines: lines where the depth steps (around the shape) and
+// where the surface turns (a crease between two faces), only on outlined
+// meshes; the faces themselves unchanged
+TEST_F(RendererTest, ScreenSpaceOutlinesFindEdgesAndCreases) {
+  environment.outline = {
+      .colour = {255, 255, 0}, .style = Outline::Style::ScreenSpace, .pixels = 2};
+  const Material plain{.shading = Material::Shading::Unlit, .colour = {255, 0, 0}};
+  Material outlined = plain;
+  outlined.outline = true;
+  // The box's front face reaches about 52 points right of the centre
+  const std::initializer_list<std::array<float, 2>> silhouette = {
+      {centreX(), centreY()}, {centreX() + 52, centreY()}, {centreX() + 70, centreY()}};
+  const auto without =
+      frame([&] { renderer->draw(box, Transform::identity(), plain); }, silhouette);
+  expectNear(without[0], {255, 0, 0});
+  EXPECT_LT(without[1][1], 100); // (at the box's edge: no yellow line without an outline)
+  expectNear(without[2], {0, 0, 40});
+  const auto with =
+      frame([&] { renderer->draw(box, Transform::identity(), outlined); }, silhouette);
+  expectNear(with[0], {255, 0, 0});
+  expectNear(with[1], {255, 255, 0});
+  expectNear(with[2], {0, 0, 40});
+
+  // Turned an eighth about y: two faces meet at a crease down the middle
+  const Transform turned = Transform::rotation({0, 1, 0}, 0.785398f);
+  const auto crease = frame([&] { renderer->draw(box, turned, outlined); },
+                            {{centreX(), centreY()}, {centreX() - 25, centreY()}});
+  expectNear(crease[0], {255, 255, 0});
+  expectNear(crease[1], {255, 0, 0});
+}

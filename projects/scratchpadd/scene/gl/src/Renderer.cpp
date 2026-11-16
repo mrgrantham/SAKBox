@@ -64,6 +64,7 @@ uniform vec4 uColour; // the material's: colour, and alpha 0-1
 uniform bool uLit;
 uniform int uToonBands;     // lit in this many bands (toon shading), or 0: smoothly
 uniform bool uOutlinePass;  // an outline's hull: the colour alone
+uniform float uOutlined;    // screen-space outlines: 1 for a mesh that has one (in the normals' alpha)
 uniform vec3 uAmbient;
 uniform int uLightCount;
 uniform vec3 uLightDirections[4];
@@ -71,9 +72,13 @@ uniform vec3 uLightColours[4];
 uniform vec3 uFogColour;
 uniform float uFogDensity;
 
-out vec4 fragmentColour;
+layout(location = 0) out vec4 fragmentColour;
+// Screen-space outlines' second target: the surface's direction (0-1), and
+// whether this mesh is outlined (ignored when drawing straight to the window)
+layout(location = 1) out vec4 fragmentNormal;
 
 void main() {
+  fragmentNormal = vec4(normalize(vNormal) * 0.5 + 0.5, uOutlined);
   vec3 colour = uOutlinePass ? uColour.rgb : vColour.rgb * uColour.rgb;
   if (uLit) {
     vec3 n = normalize(vNormal);
@@ -88,6 +93,60 @@ void main() {
   }
   float fog = clamp(1.0 - exp(-uFogDensity * vDistance), 0.0, 1.0);
   fragmentColour = vec4(mix(colour, uFogColour, fog), vColour.a * uColour.a);
+}
+)";
+
+// Screen-space outlines: the frame (colour, normals, depth) drawn to the
+// window, with the outline's colour wherever a pixel a few away (`uPixels`)
+// is much nearer or farther, or faces a different way, and either is on an
+// outlined mesh; the line fogged as the scene is, at the nearer distance
+const char *kEdgeVertexShader = R"(#version 330 core
+out vec2 vUv;
+void main() {
+  // One triangle covering the screen
+  vec2 corner = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  vUv = corner;
+  gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
+}
+)";
+
+const char *kEdgeFragmentShader = R"(#version 330 core
+in vec2 vUv;
+uniform sampler2D uColour, uNormals, uDepth;
+uniform vec2 uTexel;     // a pixel, in texture coordinates
+uniform float uPixels;   // the line's thickness
+uniform vec3 uLine, uFogColour;
+uniform float uFogDensity, uNear, uFar;
+out vec4 fragmentColour;
+
+// How far from the eye, along the view, from the depth buffer's 0-1
+float distanceAt(vec2 uv) {
+  float z = texture(uDepth, uv).r * 2.0 - 1.0;
+  return 2.0 * uNear * uFar / (uFar + uNear - z * (uFar - uNear));
+}
+
+void main() {
+  vec3 colour = texture(uColour, vUv).rgb;
+  vec4 here = texture(uNormals, vUv);
+  float distance = distanceAt(vUv), nearest = distance;
+  bool edge = false;
+  vec2 steps[4] = vec2[](vec2(1.0, 0.0), vec2(-1.0, 0.0), vec2(0.0, 1.0), vec2(0.0, -1.0));
+  for (int i = 0; i < 4; ++i) {
+    vec2 uv = vUv + steps[i] * uTexel * uPixels;
+    vec4 there = texture(uNormals, uv);
+    if (max(here.a, there.a) < 0.5)
+      continue; // (neither outlined)
+    float thereDistance = distanceAt(uv);
+    bool step = abs(thereDistance - distance) > 0.05 * min(thereDistance, distance);
+    bool crease = dot(here.xyz * 2.0 - 1.0, there.xyz * 2.0 - 1.0) < 0.85; // (about 30 degrees)
+    if (step || crease) {
+      edge = true;
+      nearest = min(nearest, thereDistance);
+    }
+  }
+  float fog = clamp(1.0 - exp(-uFogDensity * nearest), 0.0, 1.0);
+  vec3 line = mix(uLine, uFogColour, fog);
+  fragmentColour = vec4(edge ? line : colour, 1.0);
 }
 )";
 
@@ -177,11 +236,13 @@ void describeVertices() {
 Renderer::Backend::Backend(Display &display) : display(display) {
   program = linkProgram(kVertexShader, kFragmentShader);
   auto at = [this](const char *name) { return glGetUniformLocation(program, name); };
-  uniform = {at("uModel"),      at("uNormalMatrix"), at("uViewProj"),        at("uWorldSnap"),
-             at("uScreenSnap"), at("uViewport"),     at("uColour"),          at("uLit"),
-             at("uAmbient"),    at("uLightCount"),   at("uLightDirections"), at("uLightColours"),
-             at("uFogColour"),  at("uFogDensity"),   at("uExtrude"),         at("uToonBands"),
-             at("uOutlinePass")};
+  uniform = {at("uModel"),       at("uNormalMatrix"), at("uViewProj"),        at("uWorldSnap"),
+             at("uScreenSnap"),  at("uViewport"),     at("uColour"),          at("uLit"),
+             at("uAmbient"),     at("uLightCount"),   at("uLightDirections"), at("uLightColours"),
+             at("uFogColour"),   at("uFogDensity"),   at("uExtrude"),         at("uToonBands"),
+             at("uOutlinePass"), at("uOutlined")};
+  edgeProgram = linkProgram(kEdgeVertexShader, kEdgeFragmentShader);
+  glGenVertexArrays(1, &edgeVao); // (the edge pass's triangle needs no vertices, but a VAO)
 
   glGenVertexArrays(1, &lineVao);
   glGenBuffers(1, &lineVbo);
@@ -221,6 +282,12 @@ Renderer::Backend::~Backend() {
   glDeleteBuffers(1, &overlayVbo);
   glDeleteProgram(program);
   glDeleteProgram(overlayProgram);
+  glDeleteProgram(edgeProgram);
+  glDeleteVertexArrays(1, &edgeVao);
+  if (edgeFramebuffer) {
+    glDeleteFramebuffers(1, &edgeFramebuffer);
+    glDeleteTextures(3, edgeTextures);
+  }
 }
 
 void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Material &material) {
@@ -235,6 +302,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   glUniform4f(uniform.colour, colour.r, colour.g, colour.b,
               static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f);
   glUniform1i(uniform.lit, material.shading == Material::Shading::Unlit ? 0 : 1);
+  glUniform1f(uniform.outlined, material.outline ? 1.0f : 0.0f);
   glUniform1i(uniform.toonBands, material.shading == Material::Shading::Toon
                                      ? toonBandsFor(material, environment)
                                      : 0);
@@ -253,7 +321,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   ++counting.draws;
   if (material.wireframe)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  else if (material.outline)
+  else if (material.outline && environment.outline.style == Outline::Style::Hull)
     drawOutline(loaded, material);
 }
 
@@ -276,6 +344,67 @@ void Renderer::Backend::drawOutline(const LoadedMesh &loaded, const Material &ma
   glUniform1f(uniform.extrude, 0);
   counting += loaded.cost;
   ++counting.draws;
+}
+
+// The offscreen target for screen-space outlines, made (or remade) at the
+// window's size, bound for drawing to both colour targets
+void Renderer::Backend::useEdgeTarget(int width, int height) {
+  if (!edgeFramebuffer || width != edgeWidth || height != edgeHeight) {
+    if (edgeFramebuffer) {
+      glDeleteFramebuffers(1, &edgeFramebuffer);
+      glDeleteTextures(3, edgeTextures);
+    }
+    glGenFramebuffers(1, &edgeFramebuffer);
+    glGenTextures(3, edgeTextures);
+    const GLenum formats[3][3] = {{GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE},
+                                  {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE},
+                                  {GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT}};
+    glBindFramebuffer(GL_FRAMEBUFFER, edgeFramebuffer);
+    for (int i = 0; i < 3; ++i) {
+      glBindTexture(GL_TEXTURE_2D, edgeTextures[i]);
+      glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(formats[i][0]), width, height, 0,
+                   formats[i][1], formats[i][2], nullptr);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, i < 2 ? GL_COLOR_ATTACHMENT0 + i : GL_DEPTH_ATTACHMENT,
+                             GL_TEXTURE_2D, edgeTextures[i], 0);
+    }
+    edgeWidth = width;
+    edgeHeight = height;
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, edgeFramebuffer);
+  const GLenum both[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+  glDrawBuffers(2, both);
+}
+
+// The edge pass: the offscreen frame to the window, with its outlines
+void Renderer::Backend::drawEdges() {
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glDisable(GL_DEPTH_TEST);
+  glUseProgram(edgeProgram);
+  const char *samplers[3] = {"uColour", "uNormals", "uDepth"};
+  for (int i = 0; i < 3; ++i) {
+    glActiveTexture(GL_TEXTURE0 + i);
+    glBindTexture(GL_TEXTURE_2D, edgeTextures[i]);
+    glUniform1i(glGetUniformLocation(edgeProgram, samplers[i]), i);
+  }
+  glActiveTexture(GL_TEXTURE0);
+  const auto at = [this](const char *name) { return glGetUniformLocation(edgeProgram, name); };
+  glUniform2f(at("uTexel"), 1.0f / static_cast<float>(edgeWidth),
+              1.0f / static_cast<float>(edgeHeight));
+  glUniform1f(at("uPixels"), static_cast<float>(std::max<int>(environment.outline.pixels, 1)));
+  const glm::vec3 line = toGlm(environment.outline.colour), fog = toGlm(environment.fog.colour);
+  glUniform3f(at("uLine"), line.r, line.g, line.b);
+  glUniform3f(at("uFogColour"), fog.r, fog.g, fog.b);
+  glUniform1f(at("uFogDensity"), environment.fog.density);
+  glUniform1f(at("uNear"), camera.nearPlane);
+  glUniform1f(at("uFar"), camera.farPlane);
+  glBindVertexArray(edgeVao);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
+  glUseProgram(program);
+  glEnable(GL_DEPTH_TEST);
 }
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
@@ -359,11 +488,24 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   const int width = b.display.pixelWidth(), height = b.display.pixelHeight();
   glViewport(0, 0, width, height);
   const glm::vec3 background = toGlm(environment.backgroundSeen(camera.farPlane));
-  glClearColor(background.r, background.g, background.b, 1.0f);
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_MULTISAMPLE);
   glDepthMask(GL_TRUE);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  // Screen-space outlines: drawn into the offscreen target (colour,
+  // normals, depth), the edges found in endFrame
+  b.screenEdges = environment.outline.style == Outline::Style::ScreenSpace;
+  if (b.screenEdges) {
+    b.useEdgeTarget(width, height);
+    const GLfloat colour[] = {background.r, background.g, background.b, 1.0f};
+    const GLfloat noSurface[] = {0.5f, 0.5f, 0.5f, 0.0f}; // (no direction, not outlined)
+    glClearBufferfv(GL_COLOR, 0, colour);
+    glClearBufferfv(GL_COLOR, 1, noSurface);
+    glClear(GL_DEPTH_BUFFER_BIT);
+  } else {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClearColor(background.r, background.g, background.b, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  }
 
   glUseProgram(b.program);
   b.eye = toGlm(camera.eye);
@@ -390,6 +532,7 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   glUniform3f(b.uniform.fogColour, fog.r, fog.g, fog.b);
   glUniform1f(b.uniform.fogDensity, environment.fog.density);
   b.environment = environment;
+  b.camera = camera;
   b.worldSnap = b.screenSnap = 0;
   b.later.clear();
   b.counting = {};
@@ -452,12 +595,18 @@ void Renderer::endFrame() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
+    if (b.screenEdges)
+      glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE,
+                   GL_FALSE); // (see-through: no surface of its own)
     for (const Backend::Later &item : b.later)
       b.drawNow(item.mesh, item.where, item.material);
+    glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
     b.later.clear();
   }
+  if (b.screenEdges)
+    b.drawEdges();
   b.drawOverlay(overlay_);
   overlay_.clear();
   glBindVertexArray(0);

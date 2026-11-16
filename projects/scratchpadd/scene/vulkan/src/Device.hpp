@@ -83,6 +83,10 @@ struct PipelineDescription {
   VkColorComponentFlags colourMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
   VkFormat depthFormat = kDepthFormat;
+  // A second colour target (screen-space outlines' surfaces), or none; and
+  // whether it's written (see-through meshes leave it)
+  VkFormat secondFormat = VK_FORMAT_UNDEFINED;
+  bool secondWritten = true;
 };
 VkPipeline makePipeline(const PipelineDescription &description);
 

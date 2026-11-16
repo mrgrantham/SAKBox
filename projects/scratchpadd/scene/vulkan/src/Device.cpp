@@ -422,9 +422,10 @@ VkPipeline makePipeline(const PipelineDescription &d) {
        .pName = "main"}};
   const VkVertexInputBindingDescription binding{
       .binding = 0, .stride = d.stride, .inputRate = VK_VERTEX_INPUT_RATE_VERTEX};
+  // (no stride: no vertices, as a full-screen pass's triangle made in its shader)
   const VkPipelineVertexInputStateCreateInfo input{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-      .vertexBindingDescriptionCount = 1,
+      .vertexBindingDescriptionCount = d.stride ? 1u : 0u,
       .pVertexBindingDescriptions = &binding,
       .vertexAttributeDescriptionCount = static_cast<std::uint32_t>(d.attributes.size()),
       .pVertexAttributeDescriptions = d.attributes.data()};
@@ -460,20 +461,29 @@ VkPipeline makePipeline(const PipelineDescription &d) {
       .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
       .alphaBlendOp = VK_BLEND_OP_ADD,
       .colorWriteMask = d.colourMask};
+  const bool second = d.secondFormat != VK_FORMAT_UNDEFINED;
+  const VkPipelineColorBlendAttachmentState blends[2] = {
+      blend,
+      {.blendEnable = VK_FALSE,
+       .colorWriteMask =
+           d.secondWritten
+               ? VkColorComponentFlags{VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+               : VkColorComponentFlags{0}}};
   const VkPipelineColorBlendStateCreateInfo blending{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-      .attachmentCount = 1,
-      .pAttachments = &blend};
+      .attachmentCount = second ? 2u : 1u,
+      .pAttachments = blends};
   const std::array<VkDynamicState, 2> dynamic{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
   const VkPipelineDynamicStateCreateInfo dynamicState{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
       .dynamicStateCount = static_cast<std::uint32_t>(dynamic.size()),
       .pDynamicStates = dynamic.data()};
-  const VkFormat colourFormat = kColourFormat;
+  const VkFormat colourFormats[2] = {kColourFormat, d.secondFormat};
   const VkPipelineRenderingCreateInfo rendering{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-      .colorAttachmentCount = 1,
-      .pColorAttachmentFormats = &colourFormat,
+      .colorAttachmentCount = second ? 2u : 1u,
+      .pColorAttachmentFormats = colourFormats,
       .depthAttachmentFormat = d.depthFormat};
   const VkGraphicsPipelineCreateInfo info{.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
                                           .pNext = &rendering,

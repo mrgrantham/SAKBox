@@ -47,7 +47,8 @@ layout(push_constant) uniform Draw {
   int toonBands;    // lit in this many bands (toon shading), or 0: smoothly
   float extrude;    // an outline's hull: pushed out this far along the normals (0: not one)
   int outlinePass;  // an outline's hull: the colour alone
-  vec2 pad;
+  float outlined;   // screen-space outlines: 1 for a mesh that has one
+  float pad;
 } draw;
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
@@ -97,13 +98,22 @@ layout(push_constant) uniform Draw {
   int toonBands;
   float extrude;
   int outlinePass;
-  vec2 pad;
+  float outlined;
+  float pad;
 } draw;
 layout(location = 0) in vec3 vNormal;
 layout(location = 1) in vec4 vColour;
 layout(location = 2) in float vDistance;
 layout(location = 0) out vec4 outColour;
+#ifdef WITH_SURFACE
+// Screen-space outlines' second target: the surface's direction, and its
+// distance from the eye, negative where the mesh isn't outlined
+layout(location = 1) out vec4 outSurface;
+#endif
 void main() {
+#ifdef WITH_SURFACE
+  outSurface = vec4(normalize(vNormal), draw.outlined > 0.5 ? vDistance : -vDistance);
+#endif
   vec3 colour = draw.outlinePass != 0 ? draw.colour.rgb : vColour.rgb * draw.colour.rgb;
   if (draw.lit != 0) {
     vec3 n = normalize(vNormal);
@@ -118,6 +128,52 @@ void main() {
   }
   float fog = clamp(1.0 - exp(-frame.fogDensity * vDistance), 0.0, 1.0);
   outColour = vec4(mix(colour, frame.fogColour.rgb, fog), vColour.a * draw.colour.a);
+}
+)";
+
+// The edge pass for screen-space outlines (as the OpenGL and Metal
+// backends'): one triangle over the screen; the frame with the outline's
+// colour wherever a pixel a few away is much nearer or farther, or faces a
+// different way, and either is on an outlined mesh, fogged at the nearer
+const char *kEdgeVertex = R"(#version 450
+layout(location = 0) out vec2 uv;
+void main() {
+  vec2 corner = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+  uv = vec2(corner.x, 1.0 - corner.y); // (the viewport's flipped)
+  gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
+}
+)";
+
+const char *kEdgeFragment = R"(#version 450
+layout(set = 0, binding = 0) uniform sampler2D colourImage;
+layout(set = 0, binding = 1) uniform sampler2D surfaces;
+layout(push_constant) uniform Edges {
+  vec4 line, fogColour;
+  vec2 texel;
+  float pixels, fogDensity;
+} edges;
+layout(location = 0) in vec2 uv;
+layout(location = 0) out vec4 outColour;
+void main() {
+  vec4 here = texture(surfaces, uv);
+  float distance = here.w == 0.0 ? 1e9 : abs(here.w), nearest = distance;
+  bool edge = false;
+  vec2 steps[4] = vec2[](vec2(1.0, 0.0), vec2(-1.0, 0.0), vec2(0.0, 1.0), vec2(0.0, -1.0));
+  for (int i = 0; i < 4; ++i) {
+    vec4 there = texture(surfaces, uv + steps[i] * edges.texel * edges.pixels);
+    if (here.w <= 0.0 && there.w <= 0.0)
+      continue; // (neither outlined)
+    float thereDistance = there.w == 0.0 ? 1e9 : abs(there.w);
+    bool step = abs(thereDistance - distance) > 0.05 * min(thereDistance, distance);
+    bool crease = dot(here.xyz, there.xyz) < 0.85; // (about 30 degrees)
+    if (step || crease) {
+      edge = true;
+      nearest = min(nearest, thereDistance);
+    }
+  }
+  float fog = clamp(1.0 - exp(-edges.fogDensity * nearest), 0.0, 1.0);
+  vec3 line = mix(edges.line.rgb, edges.fogColour.rgb, fog);
+  outColour = vec4(edge ? line : texture(colourImage, uv).rgb, 1.0);
 }
 )";
 
@@ -148,8 +204,57 @@ struct DrawConstants {
   int toonBands;
   float extrude;
   int outlinePass;
-  float pad[2];
+  float outlined;
+  float pad;
 };
+
+// The edge pass's push constants (the shader's Edges)
+struct EdgeConstants {
+  float line[4], fogColour[4];
+  float texel[2];
+  float pixels, fogDensity;
+};
+// Screen-space outlines' surfaces: a direction and a distance a pixel
+constexpr VkFormat kSurfaceFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+
+// The scene's pipelines from `d` (its shaders and layout): solid and
+// translucent, filled (both sides, or the back culled), outlines' hulls
+// (fronts culled), wireframes where the device draws them, and lines; with
+// screen-space outlines' second target if `d` has one (see-through meshes
+// leaving it)
+Renderer::Backend::ScenePipelines makeScenePipelines(Vulkan::PipelineDescription d) {
+  Renderer::Backend::ScenePipelines p;
+  p.solid = Vulkan::makePipeline(d);
+  d.cullBack = true;
+  p.solidCulled = Vulkan::makePipeline(d);
+  d.cullBack = false;
+  d.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+  p.lines = Vulkan::makePipeline(d);
+  d.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  d.blend = true;
+  d.depthWrite = false;
+  d.secondWritten = false;
+  p.translucent = Vulkan::makePipeline(d);
+  d.cullBack = true;
+  p.translucentCulled = Vulkan::makePipeline(d);
+  d.cullBack = false;
+  d.cullFront = true;
+  p.translucentHull = Vulkan::makePipeline(d);
+  d.blend = false;
+  d.depthWrite = true;
+  d.secondWritten = true;
+  p.solidHull = Vulkan::makePipeline(d);
+  d.cullFront = false;
+  if (Vulkan::wireframes()) {
+    d.polygonMode = VK_POLYGON_MODE_LINE;
+    p.solidWire = Vulkan::makePipeline(d);
+    d.blend = true;
+    d.depthWrite = false;
+    d.secondWritten = false;
+    p.translucentWire = Vulkan::makePipeline(d);
+  }
+  return p;
+}
 
 // The smallest buffer frameBytes makes
 constexpr VkDeviceSize kFrameBufferSize = 256 * 1024;
@@ -191,6 +296,12 @@ Renderer::Backend::Backend(Display &display)
     : display(display), surface(*static_cast<Vulkan::Surface *>(display.surface())) {
   sceneVertex = compiled(Spirv::Stage::Vertex, kSceneVertex);
   sceneFragment = compiled(Spirv::Stage::Fragment, kSceneFragment);
+  // (the same, writing screen-space outlines' surfaces too)
+  std::string surfaceSource = kSceneFragment;
+  surfaceSource.insert(surfaceSource.find('\n') + 1, "#define WITH_SURFACE\n");
+  sceneFragmentWithSurface = compiled(Spirv::Stage::Fragment, surfaceSource.c_str());
+  edgeVertex = compiled(Spirv::Stage::Vertex, kEdgeVertex);
+  edgeFragment = compiled(Spirv::Stage::Fragment, kEdgeFragment);
   overlayVertex = compiled(Spirv::Stage::Vertex, kOverlayVertex);
   overlayFragment = compiled(Spirv::Stage::Fragment, kOverlayFragment);
 
@@ -250,34 +361,11 @@ Renderer::Backend::Backend(Display &display)
                                 .attributes = Vulkan::vertexAttributes(),
                                 .stride = sizeof(Vertex),
                                 .samples = Vulkan::frameSamples()};
-  solid = Vulkan::makePipeline(d);
-  d.cullBack = true;
-  solidCulled = Vulkan::makePipeline(d);
-  d.cullBack = false;
-  d.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-  lines = Vulkan::makePipeline(d);
-  d.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-  d.blend = true;
-  d.depthWrite = false;
-  translucent = Vulkan::makePipeline(d);
-  d.cullBack = true;
-  translucentCulled = Vulkan::makePipeline(d);
-  d.cullBack = false;
-  d.cullFront = true; // (outlines' hulls)
-  translucentHull = Vulkan::makePipeline(d);
-  d.blend = false;
-  d.depthWrite = true;
-  solidHull = Vulkan::makePipeline(d);
-  d.blend = true;
-  d.depthWrite = false;
-  d.cullFront = false;
-  if (Vulkan::wireframes()) {
-    d.polygonMode = VK_POLYGON_MODE_LINE;
-    translucentWire = Vulkan::makePipeline(d);
-    d.blend = false;
-    d.depthWrite = true;
-    solidWire = Vulkan::makePipeline(d);
-  }
+  plain = makeScenePipelines(d);
+  d.fragment = sceneFragmentWithSurface;
+  d.secondFormat = kSurfaceFormat;
+  withSurface = makeScenePipelines(d);
+  makeEdgePipeline();
 
   static const VkVertexInputAttributeDescription kOverlayAttributes[] = {
       {0, 0, VK_FORMAT_R32G32_SFLOAT, static_cast<std::uint32_t>(offsetof(Overlay::Vertex, x))},
@@ -304,10 +392,26 @@ Renderer::Backend::~Backend() {
   for (Vulkan::Buffer &buffer : frameBuffers)
     Vulkan::destroy(buffer);
   Vulkan::destroy(frameUniformBuffer);
-  for (VkPipeline pipeline : {solid, translucent, solidCulled, translucentCulled, solidHull,
-                              translucentHull, solidWire, translucentWire, lines, overlayPipeline})
+  for (const ScenePipelines &set : {plain, withSurface})
+    for (VkPipeline pipeline : set.all())
+      if (pipeline)
+        vkDestroyPipeline(device(), pipeline, nullptr);
+  for (VkPipeline pipeline : {overlayPipeline, edgePipeline})
     if (pipeline)
       vkDestroyPipeline(device(), pipeline, nullptr);
+  for (Vulkan::Image *image : {&edgeColour, &surfaces, &surfaceSamples})
+    Vulkan::destroy(*image);
+  if (edgeSampler)
+    vkDestroySampler(device(), edgeSampler, nullptr);
+  if (edgeDescriptors)
+    vkDestroyDescriptorPool(device(), edgeDescriptors, nullptr);
+  if (edgeLayout)
+    vkDestroyPipelineLayout(device(), edgeLayout, nullptr);
+  if (edgeSetLayout)
+    vkDestroyDescriptorSetLayout(device(), edgeSetLayout, nullptr);
+  for (VkShaderModule module : {sceneFragmentWithSurface, edgeVertex, edgeFragment})
+    if (module)
+      vkDestroyShaderModule(device(), module, nullptr);
   for (VkShaderModule module : {sceneVertex, sceneFragment, overlayVertex, overlayFragment})
     if (module)
       vkDestroyShaderModule(device(), module, nullptr);
@@ -335,7 +439,7 @@ Renderer::Backend::Slice Renderer::Backend::frameBytes(const void *bytes, std::s
 }
 
 void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Material &material) {
-  if (!recording || !solid || !mesh || mesh.id > meshes.size() ||
+  if (!recording || !plain.solid || !mesh || mesh.id > meshes.size() ||
       !meshes[mesh.id - 1].vertices.buffer)
     return;
   const LoadedMesh &loaded = meshes[mesh.id - 1];
@@ -343,10 +447,11 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   // Back faces culled unless either side shows (a double-sided mesh or
   // material, or a wireframe, below)
   const bool cull = !loaded.doubleSided && !material.doubleSided;
+  const ScenePipelines &p = scene();
   VkPipeline pipeline =
-      seeThrough ? (cull ? translucentCulled : translucent) : (cull ? solidCulled : solid);
-  if (material.wireframe && solidWire)
-    pipeline = seeThrough ? translucentWire : solidWire;
+      seeThrough ? (cull ? p.translucentCulled : p.translucent) : (cull ? p.solidCulled : p.solid);
+  if (material.wireframe && p.solidWire)
+    pipeline = seeThrough ? p.translucentWire : p.solidWire;
   VkCommandBuffer commands = surface.commands;
   vkCmdBindPipeline(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
   DrawConstants draw{};
@@ -356,6 +461,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   draw.lit = material.shading == Material::Shading::Unlit ? 0 : 1;
   draw.toonBands =
       material.shading == Material::Shading::Toon ? toonBandsFor(material, environment) : 0;
+  draw.outlined = material.outline ? 1.0f : 0.0f;
   draw.worldSnap = worldSnap;
   draw.screenSnap = screenSnap;
   vkCmdPushConstants(commands, sceneLayout,
@@ -369,9 +475,10 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   ++counting.draws;
   // The outline: the inverted hull, the mesh again pushed out along its
   // shared normals, front faces culled so only the rim shows, one colour
-  if (material.outline && !material.wireframe && loaded.hullVertices.buffer) {
+  if (material.outline && !material.wireframe && loaded.hullVertices.buffer &&
+      environment.outline.style == Outline::Style::Hull) {
     vkCmdBindPipeline(commands, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                      seeThrough ? translucentHull : solidHull);
+                      seeThrough ? p.translucentHull : p.solidHull);
     setColour(draw, material.outlineColour.value_or(environment.outline.colour), draw.colour[3]);
     draw.lit = 0;
     draw.outlinePass = 1;
@@ -384,6 +491,152 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
     counting += loaded.cost;
     ++counting.draws;
   }
+}
+
+// The edge pass's pipeline: its images (the frame's colour and the
+// surfaces) as a descriptor set, read with a nearest sampler; its uniforms
+// pushed; no vertices
+void Renderer::Backend::makeEdgePipeline() {
+  if (!edgeVertex || !edgeFragment)
+    return;
+  const VkDescriptorSetLayoutBinding bindings[2] = {
+      {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+      {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
+  const VkDescriptorSetLayoutCreateInfo setLayout{
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = 2,
+      .pBindings = bindings};
+  vkCreateDescriptorSetLayout(device(), &setLayout, nullptr, &edgeSetLayout);
+  const VkPushConstantRange constants{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(EdgeConstants)};
+  const VkPipelineLayoutCreateInfo layout{.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+                                          .setLayoutCount = 1,
+                                          .pSetLayouts = &edgeSetLayout,
+                                          .pushConstantRangeCount = 1,
+                                          .pPushConstantRanges = &constants};
+  vkCreatePipelineLayout(device(), &layout, nullptr, &edgeLayout);
+  const VkDescriptorPoolSize poolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2};
+  const VkDescriptorPoolCreateInfo pool{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                                        .maxSets = 1,
+                                        .poolSizeCount = 1,
+                                        .pPoolSizes = &poolSize};
+  vkCreateDescriptorPool(device(), &pool, nullptr, &edgeDescriptors);
+  const VkDescriptorSetAllocateInfo allocate{.sType =
+                                                 VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                                             .descriptorPool = edgeDescriptors,
+                                             .descriptorSetCount = 1,
+                                             .pSetLayouts = &edgeSetLayout};
+  vkAllocateDescriptorSets(device(), &allocate, &edgeSet);
+  const VkSamplerCreateInfo sampler{.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                                    .magFilter = VK_FILTER_NEAREST,
+                                    .minFilter = VK_FILTER_NEAREST,
+                                    .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                    .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                    .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
+  vkCreateSampler(device(), &sampler, nullptr, &edgeSampler);
+  edgePipeline = Vulkan::makePipeline({.layout = edgeLayout,
+                                       .vertex = edgeVertex,
+                                       .fragment = edgeFragment,
+                                       .stride = 0,
+                                       .depthTest = false,
+                                       .depthWrite = false,
+                                       .samples = Vulkan::frameSamples()});
+}
+
+// Screen-space outlines' images at the frame's size (the descriptor set
+// pointed at them)
+void Renderer::Backend::makeEdgeImages(int width, int height) {
+  if (edgeColour.image && width == edgeWidth && height == edgeHeight)
+    return;
+  vkQueueWaitIdle(Vulkan::context()->queue); // (a frame being drawn may use them)
+  for (Vulkan::Image *image : {&edgeColour, &surfaces, &surfaceSamples})
+    Vulkan::destroy(*image);
+  const auto w = static_cast<std::uint32_t>(width), h = static_cast<std::uint32_t>(height);
+  const VkImageUsageFlags readable =
+      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+  edgeColour = Vulkan::makeImage(w, h, Vulkan::kColourFormat, VK_SAMPLE_COUNT_1_BIT, readable);
+  surfaces = Vulkan::makeImage(w, h, kSurfaceFormat, VK_SAMPLE_COUNT_1_BIT, readable);
+  if (Vulkan::frameSamples() != VK_SAMPLE_COUNT_1_BIT)
+    surfaceSamples = Vulkan::makeImage(w, h, kSurfaceFormat, Vulkan::frameSamples(),
+                                       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+  edgeWidth = width;
+  edgeHeight = height;
+  const VkDescriptorImageInfo images[2] = {
+      {edgeSampler, edgeColour.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+      {edgeSampler, surfaces.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
+  VkWriteDescriptorSet writes[2];
+  for (std::uint32_t i = 0; i < 2; ++i)
+    writes[i] = {.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                 .dstSet = edgeSet,
+                 .dstBinding = i,
+                 .descriptorCount = 1,
+                 .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                 .pImageInfo = &images[i]};
+  vkUpdateDescriptorSets(device(), 2, writes, 0, nullptr);
+}
+
+// The edge pass: the scene's drawing ends, its images become readable, and
+// a new one draws the frame with its outlines into the frame as usual (the
+// overlay then goes over it)
+void Renderer::Backend::drawEdges() {
+  VkCommandBuffer commands = surface.commands;
+  Vulkan::endRendering(commands);
+  const Vulkan::Use drawn{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT};
+  const Vulkan::Use read{VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT};
+  Vulkan::transition(commands, edgeColour.image, Vulkan::kColourFormat, drawn, read);
+  Vulkan::transition(commands, surfaces.image, kSurfaceFormat, drawn, read);
+  const bool multisampled = surface.samples.image != VK_NULL_HANDLE;
+  VkRenderingAttachmentInfo colour{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                                   .imageView = surface.frame.view,
+                                   .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                   .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                   .storeOp = VK_ATTACHMENT_STORE_OP_STORE};
+  if (multisampled) {
+    colour.imageView = surface.samples.view;
+    colour.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+    colour.resolveImageView = surface.frame.view;
+    colour.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colour.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  }
+  VkRenderingAttachmentInfo depth{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                                  .imageView = surface.depth.view,
+                                  .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                                  .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                  .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE};
+  depth.clearValue.depthStencil = {1.0f, 0};
+  const VkExtent2D extent{static_cast<std::uint32_t>(surface.width),
+                          static_cast<std::uint32_t>(surface.height)};
+  const VkRenderingInfo rendering{.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+                                  .renderArea = {{0, 0}, extent},
+                                  .layerCount = 1,
+                                  .colorAttachmentCount = 1,
+                                  .pColorAttachments = &colour,
+                                  .pDepthAttachment = &depth};
+  Vulkan::beginRendering(commands, rendering);
+  const VkViewport viewport{0,
+                            static_cast<float>(surface.height),
+                            static_cast<float>(surface.width),
+                            -static_cast<float>(surface.height),
+                            0.0f,
+                            1.0f};
+  const VkRect2D scissor{{0, 0}, extent};
+  vkCmdSetViewport(commands, 0, 1, &viewport);
+  vkCmdSetScissor(commands, 0, 1, &scissor);
+  vkCmdBindPipeline(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, edgePipeline);
+  vkCmdBindDescriptorSets(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, edgeLayout, 0, 1, &edgeSet, 0,
+                          nullptr);
+  EdgeConstants e{};
+  const glm::vec3 line = toGlm(environment.outline.colour), fog = toGlm(environment.fog.colour);
+  e.line[0] = line.r, e.line[1] = line.g, e.line[2] = line.b;
+  e.fogColour[0] = fog.r, e.fogColour[1] = fog.g, e.fogColour[2] = fog.b;
+  e.texel[0] = 1.0f / static_cast<float>(edgeWidth);
+  e.texel[1] = 1.0f / static_cast<float>(edgeHeight);
+  e.pixels = static_cast<float>(std::max<int>(environment.outline.pixels, 1));
+  e.fogDensity = environment.fog.density;
+  vkCmdPushConstants(commands, edgeLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(e), &e);
+  vkCmdDraw(commands, 3, 1, 0, 0);
 }
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
@@ -506,6 +759,18 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   if (multisampled)
     Vulkan::transition(s.commands, s.samples.image, Vulkan::kColourFormat, undefined, colourTarget);
   Vulkan::transition(s.commands, s.frame.image, Vulkan::kColourFormat, undefined, colourTarget);
+  // Screen-space outlines: the frame drawn into images of their own (with
+  // the surfaces), the edges found in endFrame
+  b.screenEdges = environment.outline.style == Outline::Style::ScreenSpace && b.edgePipeline;
+  if (b.screenEdges) {
+    b.makeEdgeImages(s.width, s.height);
+    Vulkan::transition(s.commands, b.edgeColour.image, Vulkan::kColourFormat, undefined,
+                       colourTarget);
+    Vulkan::transition(s.commands, b.surfaces.image, kSurfaceFormat, undefined, colourTarget);
+    if (multisampled)
+      Vulkan::transition(s.commands, b.surfaceSamples.image, kSurfaceFormat, undefined,
+                         colourTarget);
+  }
   Vulkan::transition(
       s.commands, s.depth.image, Vulkan::kDepthFormat, undefined,
       {VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
@@ -527,6 +792,26 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
     colour.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     colour.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   }
+  // (screen-space outlines: the frame into its own image, the surfaces too)
+  VkRenderingAttachmentInfo surface{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                                    .imageView = b.surfaces.view,
+                                    .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                    .storeOp = VK_ATTACHMENT_STORE_OP_STORE};
+  surface.clearValue.color = {{0.0f, 0.0f, 0.0f, 0.0f}}; // (no surface)
+  if (b.screenEdges) {
+    if (multisampled) {
+      colour.resolveImageView = b.edgeColour.view;
+      surface.imageView = b.surfaceSamples.view;
+      surface.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+      surface.resolveImageView = b.surfaces.view;
+      surface.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      surface.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    } else {
+      colour.imageView = b.edgeColour.view;
+    }
+  }
+  const VkRenderingAttachmentInfo colours[2] = {colour, surface};
   VkRenderingAttachmentInfo depth{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                                   .imageView = s.depth.view,
                                   .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
@@ -538,8 +823,8 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   const VkRenderingInfo rendering{.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
                                   .renderArea = {{0, 0}, extent},
                                   .layerCount = 1,
-                                  .colorAttachmentCount = 1,
-                                  .pColorAttachments = &colour,
+                                  .colorAttachmentCount = b.screenEdges ? 2u : 1u,
+                                  .pColorAttachments = colours,
                                   .pDepthAttachment = &depth};
   Vulkan::beginRendering(s.commands, rendering);
   // Flipped (y from the bottom), so clip space's y is up as in OpenGL
@@ -576,7 +861,7 @@ void Renderer::draw(Mesh mesh, const Transform &where, const Material &material)
 
 void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
   Backend &b = *backend_;
-  if (ends.size() < 2 || !b.recording || !b.lines)
+  if (ends.size() < 2 || !b.recording || !b.scene().lines)
     return;
   std::vector<Vertex> vertices;
   vertices.reserve(ends.size());
@@ -584,7 +869,7 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
     vertices.push_back({end, {0, 1, 0}, Colour{}});
   const std::size_t count = vertices.size() / 2 * 2;
   VkCommandBuffer commands = b.surface.commands;
-  vkCmdBindPipeline(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, b.lines);
+  vkCmdBindPipeline(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, b.scene().lines);
   DrawConstants draw{};
   const glm::mat4 identity(1.0f);
   std::memcpy(draw.model, glm::value_ptr(identity), sizeof(draw.model));
@@ -615,6 +900,8 @@ void Renderer::endFrame() {
   for (const Backend::Later &item : b.later)
     b.drawNow(item.mesh, item.where, item.material);
   b.later.clear();
+  if (b.screenEdges)
+    b.drawEdges();
   b.drawOverlay(overlay_);
   overlay_.clear();
   Vulkan::endRendering(s.commands);

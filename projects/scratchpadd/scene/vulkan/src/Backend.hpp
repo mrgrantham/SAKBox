@@ -12,6 +12,7 @@
 
 #include <glm/glm.hpp>
 
+#include <array>
 #include <cstddef>
 #include <optional>
 #include <vector>
@@ -56,13 +57,41 @@ struct Renderer::Backend {
                  overlayVertex = VK_NULL_HANDLE, overlayFragment = VK_NULL_HANDLE;
   VkDescriptorSetLayout frameLayout = VK_NULL_HANDLE;
   VkPipelineLayout sceneLayout = VK_NULL_HANDLE, overlayLayout = VK_NULL_HANDLE;
-  // Solid and translucent, each filled (both sides, or the back culled) or
-  // as a wireframe; lines; the overlay
-  VkPipeline solid = VK_NULL_HANDLE, translucent = VK_NULL_HANDLE, solidCulled = VK_NULL_HANDLE,
-             translucentCulled = VK_NULL_HANDLE, solidWire = VK_NULL_HANDLE,
-             translucentWire = VK_NULL_HANDLE, lines = VK_NULL_HANDLE, solidHull = VK_NULL_HANDLE,
-             translucentHull = VK_NULL_HANDLE, // (fronts culled)
-      overlayPipeline = VK_NULL_HANDLE;
+  // The scene's pipelines (makeScenePipelines): solid and translucent, each
+  // filled (both sides, or the back culled), an outline's hull (fronts
+  // culled) or a wireframe; lines
+  struct ScenePipelines {
+    VkPipeline solid = VK_NULL_HANDLE, translucent = VK_NULL_HANDLE, solidCulled = VK_NULL_HANDLE,
+               translucentCulled = VK_NULL_HANDLE, solidHull = VK_NULL_HANDLE,
+               translucentHull = VK_NULL_HANDLE, solidWire = VK_NULL_HANDLE,
+               translucentWire = VK_NULL_HANDLE, lines = VK_NULL_HANDLE;
+    std::array<VkPipeline, 9> all() const {
+      return {solid,     translucent,     solidCulled, translucentCulled,
+              solidHull, translucentHull, solidWire,   translucentWire,
+              lines};
+    }
+  };
+  // Drawing to the frame, or with screen-space outlines' surfaces too
+  ScenePipelines plain, withSurface;
+  const ScenePipelines &scene() const { return screenEdges ? withSurface : plain; }
+  VkPipeline overlayPipeline = VK_NULL_HANDLE;
+  // Screen-space outlines: the shaders, the edge pass's pipeline (its layout
+  // and the images' descriptor set), and its images at the frame's size:
+  // the frame's colour and the surfaces (resolved), the surfaces' samples
+  VkShaderModule sceneFragmentWithSurface = VK_NULL_HANDLE, edgeVertex = VK_NULL_HANDLE,
+                 edgeFragment = VK_NULL_HANDLE;
+  VkDescriptorSetLayout edgeSetLayout = VK_NULL_HANDLE;
+  VkPipelineLayout edgeLayout = VK_NULL_HANDLE;
+  VkPipeline edgePipeline = VK_NULL_HANDLE;
+  VkDescriptorPool edgeDescriptors = VK_NULL_HANDLE;
+  VkDescriptorSet edgeSet = VK_NULL_HANDLE;
+  VkSampler edgeSampler = VK_NULL_HANDLE;
+  Vulkan::Image edgeColour, surfaces, surfaceSamples;
+  int edgeWidth = 0, edgeHeight = 0;
+  bool screenEdges = false; // this frame
+  void makeEdgePipeline();
+  void makeEdgeImages(int width, int height);
+  void drawEdges();
   VkDescriptorPool descriptors = VK_NULL_HANDLE;
   VkDescriptorSet frameSet = VK_NULL_HANDLE;
   Vulkan::Buffer frameUniformBuffer; // FrameUniforms, written each frame

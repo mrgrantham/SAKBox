@@ -61,6 +61,8 @@ struct Renderer::Backend {
 
   void drawNow(Mesh mesh, const Transform &where, const Material &material);
   void drawOutline(const LoadedMesh &loaded, const Material &material);
+  void useEdgeTarget(int width, int height);
+  void drawEdges();
   void drawOverlay(const Overlay &overlay);
 
   Display &display;
@@ -73,13 +75,20 @@ struct Renderer::Backend {
   struct {
     GLint model, normalMatrix, viewProj, worldSnap, screenSnap, viewport, colour, lit, ambient,
         lightCount, lightDirections, lightColours, fogColour, fogDensity, extrude, toonBands,
-        outlinePass;
+        outlinePass, outlined;
   } uniform{};
   GLuint lineVao = 0, lineVbo = 0;
   GLuint overlayProgram = 0, overlayVao = 0, overlayVbo = 0;
   GLint overlayScreen = -1;
 
   Environment environment; // this frame's (toon bands, outlines)
+  Camera camera;           // this frame's (the edge pass's distances)
+  // Screen-space outlines: whether this frame has them, the offscreen
+  // target (colour, normals, depth textures) and its size, the edge pass
+  bool screenEdges = false;
+  GLuint edgeFramebuffer = 0, edgeTextures[3] = {0, 0, 0};
+  int edgeWidth = 0, edgeHeight = 0;
+  GLuint edgeProgram = 0, edgeVao = 0;
   glm::vec3 eye{0.0f};
   glm::mat4 viewProj{1.0f}; // this frame's
   std::optional<Frustum> frustum;

@@ -15,6 +15,8 @@ struct Settings {
   bool toon = true;
   bool outlines = true;
   int bands = 3;
+  // Outlines found on the screen (desktops), not the inverted hull
+  bool screenEdges = false;
   Scene::DsToonTable dsTable = Scene::DsToonTable::Shades;
 
   void nextBands() { bands = bands >= 5 ? 2 : bands + 1; }
@@ -33,6 +35,8 @@ struct Settings {
   void apply(Scene::Environment &environment) const {
     environment.toonBands = static_cast<std::uint8_t>(bands);
     environment.dsToonTable = dsTable;
+    environment.outline.style =
+        screenEdges ? Scene::Outline::Style::ScreenSpace : Scene::Outline::Style::Hull;
   }
 
   // "Toon, 3 bands, outlines", for a line of text
@@ -43,7 +47,7 @@ struct Settings {
                           : bands == 4 ? "4 bands"
                                        : "5 bands")
                        : "",
-                  outlines ? ", outlines" : "");
+                  outlines ? (screenEdges ? ", screen-space outlines" : ", outlines") : "");
   }
 };
 

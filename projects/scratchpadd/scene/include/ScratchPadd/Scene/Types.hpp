@@ -146,13 +146,22 @@ struct Fog {
   Scalar density = 0; // 0: none
 };
 
-// Outlines: a dark line around a shape (Material::outline). On desktops and
-// the 3DS, an inverted hull: the mesh again, `width` larger along its
-// normals (world units), its front faces culled, so only its rim shows; on
-// the DS, its hardware's edge marking (1 pixel, whatever the width).
+// Outlines: a dark line around a shape (Material::outline), drawn one of
+// two ways on desktops (the 3DS always draws a hull; the DS its hardware's
+// edge marking, 1 pixel, whatever the style):
+//   Hull         the mesh again, `width` larger along its normals (world
+//                units), its front faces culled, so only its rim shows
+//   ScreenSpace  lines found on the screen once the frame's drawn, `pixels`
+//                thick, wherever the depth steps or the surface turns
+//                sharply: around the shape and along its creases too
+//                (desktops; elsewhere a hull). The frame is drawn into an
+//                offscreen target first, without the window's anti-aliasing.
 struct Outline {
+  enum class Style : std::uint8_t { Hull, ScreenSpace };
   Colour colour{12, 12, 20};
   Scalar width = 0.03f;
+  Style style = Style::Hull;
+  std::uint8_t pixels = 2;
 };
 
 // How the DS draws toon bands (its hardware has one table of them for the

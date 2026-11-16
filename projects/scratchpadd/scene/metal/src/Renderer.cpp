@@ -51,7 +51,8 @@ struct Draw {
   int toonBands;          // lit in this many bands (toon shading), or 0: smoothly
   float extrude;          // an outline's hull: pushed out this far along the normals (0: not one)
   int outlinePass;        // an outline's hull: the colour alone
-  float2 pad;
+  float outlined;         // screen-space outlines: 1 for a mesh that has one
+  float pad;
 };
 
 struct VertexIn {
@@ -90,8 +91,7 @@ vertex VertexOut sceneVertex(VertexIn in [[stage_in]], constant Frame &frame [[b
   return out;
 }
 
-fragment float4 sceneFragment(VertexOut in [[stage_in]], constant Frame &frame [[buffer(1)]],
-                              constant Draw &draw [[buffer(2)]]) {
+float4 shade(VertexOut in, constant Frame &frame, constant Draw &draw) {
   float3 colour = draw.outlinePass != 0 ? draw.colour.rgb : in.colour.rgb * draw.colour.rgb;
   if (draw.lit != 0) {
     float3 n = normalize(in.normal);
@@ -106,6 +106,70 @@ fragment float4 sceneFragment(VertexOut in [[stage_in]], constant Frame &frame [
   }
   float fog = clamp(1.0 - exp(-frame.fogDensity * in.distance), 0.0, 1.0);
   return float4(mix(colour, frame.fogColour.rgb, fog), in.colour.a * draw.colour.a);
+}
+
+fragment float4 sceneFragment(VertexOut in [[stage_in]], constant Frame &frame [[buffer(1)]],
+                              constant Draw &draw [[buffer(2)]]) {
+  return shade(in, frame, draw);
+}
+
+// Screen-space outlines' frames: the colour, and the surface: its direction
+// and its distance from the eye, negative where the mesh isn't outlined
+struct WithSurface {
+  float4 colour [[color(0)]];
+  float4 surface [[color(1)]];
+};
+fragment WithSurface sceneFragmentWithSurface(VertexOut in [[stage_in]],
+                                              constant Frame &frame [[buffer(1)]],
+                                              constant Draw &draw [[buffer(2)]]) {
+  WithSurface out;
+  out.colour = shade(in, frame, draw);
+  out.surface = float4(normalize(in.normal), draw.outlined > 0.5 ? in.distance : -in.distance);
+  return out;
+}
+
+// The edge pass: the frame with the outline's colour wherever a pixel a few
+// away is much nearer or farther, or faces a different way, and either is on
+// an outlined mesh (as the OpenGL backend's), fogged at the nearer distance
+struct EdgeOut {
+  float4 position [[position]];
+  float2 uv;
+};
+vertex EdgeOut edgeVertex(uint id [[vertex_id]]) {
+  float2 corner = float2((id << 1) & 2, id & 2);
+  EdgeOut out;
+  out.position = float4(corner * 2.0 - 1.0, 0.0, 1.0);
+  out.uv = float2(corner.x, 1.0 - corner.y);
+  return out;
+}
+struct Edges {
+  float4 line, fogColour;
+  float2 texel;
+  float pixels, fogDensity;
+};
+fragment float4 edgeFragment(EdgeOut in [[stage_in]], texture2d<float> colour [[texture(0)]],
+                             texture2d<float> surfaces [[texture(1)]],
+                             constant Edges &edges [[buffer(0)]]) {
+  constexpr sampler nearest(filter::nearest, address::clamp_to_edge);
+  float4 here = surfaces.sample(nearest, in.uv);
+  float distance = here.w == 0.0 ? 1e9 : abs(here.w), nearestDistance = distance;
+  bool edge = false;
+  const float2 steps[4] = {float2(1, 0), float2(-1, 0), float2(0, 1), float2(0, -1)};
+  for (int i = 0; i < 4; ++i) {
+    float4 there = surfaces.sample(nearest, in.uv + steps[i] * edges.texel * edges.pixels);
+    if (here.w <= 0.0 && there.w <= 0.0)
+      continue; // (neither outlined)
+    float thereDistance = there.w == 0.0 ? 1e9 : abs(there.w);
+    bool step = abs(thereDistance - distance) > 0.05 * min(thereDistance, distance);
+    bool crease = dot(here.xyz, there.xyz) < 0.85; // (about 30 degrees)
+    if (step || crease) {
+      edge = true;
+      nearestDistance = min(nearestDistance, thereDistance);
+    }
+  }
+  float fog = clamp(1.0 - exp(-edges.fogDensity * nearestDistance), 0.0, 1.0);
+  float3 line = mix(edges.line.rgb, edges.fogColour.rgb, fog);
+  return float4(edge ? line : colour.sample(nearest, in.uv).rgb, 1.0);
 }
 
 struct OverlayIn {
@@ -141,8 +205,17 @@ struct DrawUniforms {
   int toonBands;
   float extrude;
   int outlinePass;
-  float pad[2];
+  float outlined;
+  float pad;
 };
+
+// The edge pass's uniforms (the shaders' Edges)
+struct EdgeUniforms {
+  float line[4], fogColour[4];
+  float texel[2];
+  float pixels, fogDensity;
+};
+constexpr MTL::PixelFormat kSurfaceFormat = MTL::PixelFormatRGBA16Float;
 
 glm::vec3 toGlm(const Vector3 &v) { return {v.x, v.y, v.z}; }
 glm::vec3 toGlm(const Colour &c) { return glm::vec3(c.r, c.g, c.b) / 255.0f; }
@@ -159,13 +232,14 @@ NS::String *string(const char *text) { return NS::String::string(text, NS::UTF8S
 
 MTL::RenderPipelineState *makePipeline(MTL::Library *library, const char *vertex,
                                        const char *fragment, MTL::VertexDescriptor *layout,
-                                       bool blend) {
+                                       bool blend, bool withSurface = false) {
   MTL::RenderPipelineDescriptor *d = MTL::RenderPipelineDescriptor::alloc()->init();
   MTL::Function *vertexFunction = library->newFunction(string(vertex));
   MTL::Function *fragmentFunction = library->newFunction(string(fragment));
   d->setVertexFunction(vertexFunction);
   d->setFragmentFunction(fragmentFunction);
-  d->setVertexDescriptor(layout);
+  if (layout)
+    d->setVertexDescriptor(layout);
   d->setRasterSampleCount(Metal::kSamples);
   d->setDepthAttachmentPixelFormat(Metal::kDepthFormat);
   MTL::RenderPipelineColorAttachmentDescriptor *colour = d->colorAttachments()->object(0);
@@ -177,6 +251,13 @@ MTL::RenderPipelineState *makePipeline(MTL::Library *library, const char *vertex
     colour->setSourceAlphaBlendFactor(MTL::BlendFactorSourceAlpha);
     colour->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
     colour->setDestinationAlphaBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+  }
+  if (withSurface) {
+    // Screen-space outlines' second target (see-through meshes leave it)
+    MTL::RenderPipelineColorAttachmentDescriptor *surface = d->colorAttachments()->object(1);
+    surface->setPixelFormat(kSurfaceFormat);
+    if (blend)
+      surface->setWriteMask(MTL::ColorWriteMaskNone);
   }
   NS::Error *error = nullptr;
   MTL::RenderPipelineState *pipeline = Metal::device()->newRenderPipelineState(d, &error);
@@ -238,6 +319,11 @@ Renderer::Backend::Backend(Display &display)
     MTL::VertexDescriptor *sceneLayout = Metal::vertexLayout(kVerticesBuffer);
     solid = makePipeline(library, "sceneVertex", "sceneFragment", sceneLayout, false);
     translucent = makePipeline(library, "sceneVertex", "sceneFragment", sceneLayout, true);
+    solidWithSurface =
+        makePipeline(library, "sceneVertex", "sceneFragmentWithSurface", sceneLayout, false, true);
+    translucentWithSurface =
+        makePipeline(library, "sceneVertex", "sceneFragmentWithSurface", sceneLayout, true, true);
+    edgePipeline = makePipeline(library, "edgeVertex", "edgeFragment", nullptr, false);
     MTL::VertexDescriptor *overlayLayout = MTL::VertexDescriptor::vertexDescriptor();
     MTL::VertexAttributeDescriptor *point = overlayLayout->attributes()->object(0);
     point->setFormat(MTL::VertexFormatFloat2);
@@ -275,7 +361,11 @@ Renderer::Backend::~Backend() {
   for (NS::Object *object :
        {static_cast<NS::Object *>(solid), static_cast<NS::Object *>(translucent),
         static_cast<NS::Object *>(overlayPipeline), static_cast<NS::Object *>(depthWrite),
-        static_cast<NS::Object *>(depthTest), static_cast<NS::Object *>(noDepth)})
+        static_cast<NS::Object *>(depthTest), static_cast<NS::Object *>(noDepth),
+        static_cast<NS::Object *>(solidWithSurface),
+        static_cast<NS::Object *>(translucentWithSurface), static_cast<NS::Object *>(edgePipeline),
+        static_cast<NS::Object *>(edgeColour), static_cast<NS::Object *>(surfaces),
+        static_cast<NS::Object *>(surfaceSamples)})
     if (object)
       object->release();
 }
@@ -291,7 +381,10 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
     return;
   const LoadedMesh &loaded = meshes[mesh.id - 1];
   const bool seeThrough = material.alpha < 31 || loaded.translucent;
-  encoder->setRenderPipelineState(seeThrough ? translucent : solid);
+  if (screenEdges)
+    encoder->setRenderPipelineState(seeThrough ? translucentWithSurface : solidWithSurface);
+  else
+    encoder->setRenderPipelineState(seeThrough ? translucent : solid);
   encoder->setDepthStencilState(seeThrough ? depthTest : depthWrite);
   DrawUniforms draw{};
   const glm::mat4 model = toGlm(where);
@@ -308,6 +401,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   draw.lit = material.shading == Material::Shading::Unlit ? 0 : 1;
   draw.toonBands =
       material.shading == Material::Shading::Toon ? toonBandsFor(material, environment) : 0;
+  draw.outlined = material.outline ? 1.0f : 0.0f;
   draw.worldSnap = worldSnap;
   draw.screenSnap = screenSnap;
   encoder->setVertexBytes(&draw, sizeof(draw), kDrawBuffer);
@@ -330,7 +424,8 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   ++counting.draws;
   // The outline: the inverted hull, the mesh again pushed out along its
   // shared normals, front faces culled so only the rim shows, one colour
-  if (material.outline && !material.wireframe && loaded.hullVertices) {
+  if (material.outline && !material.wireframe && loaded.hullVertices &&
+      environment.outline.style == Outline::Style::Hull) {
     const glm::vec3 line = toGlm(material.outlineColour.value_or(environment.outline.colour));
     draw.colour[0] = line.r;
     draw.colour[1] = line.g;
@@ -349,6 +444,67 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
     counting += loaded.cost;
     ++counting.draws;
   }
+}
+
+// Screen-space outlines' textures at the frame's size: the frame's colour
+// and the surfaces (resolved), and the surfaces' multisampled target
+void Renderer::Backend::makeEdgeTextures(int width, int height) {
+  if (edgeColour && static_cast<int>(edgeColour->width()) == width &&
+      static_cast<int>(edgeColour->height()) == height)
+    return;
+  for (MTL::Texture *t : {edgeColour, surfaces, surfaceSamples})
+    if (t)
+      t->release();
+  const auto make = [&](MTL::PixelFormat format, bool multisampled) {
+    MTL::TextureDescriptor *d = MTL::TextureDescriptor::texture2DDescriptor(
+        format, static_cast<NS::UInteger>(width), static_cast<NS::UInteger>(height), false);
+    d->setStorageMode(MTL::StorageModePrivate);
+    d->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
+    if (multisampled) {
+      d->setTextureType(MTL::TextureType2DMultisample);
+      d->setSampleCount(Metal::kSamples);
+      d->setUsage(MTL::TextureUsageRenderTarget);
+    }
+    return Metal::device()->newTexture(d);
+  };
+  edgeColour = make(Metal::kColourFormat, false);
+  surfaces = make(kSurfaceFormat, false);
+  surfaceSamples = make(kSurfaceFormat, true);
+}
+
+// The edge pass: the scene's pass ends, and a new one draws the frame with
+// its outlines into the frame's samples, resolved into the frame as usual
+// (the overlay then goes over it in the same pass)
+void Renderer::Backend::drawEdges() {
+  encoder->endEncoding();
+  encoder->release();
+  MTL::RenderPassDescriptor *pass = MTL::RenderPassDescriptor::renderPassDescriptor();
+  MTL::RenderPassColorAttachmentDescriptor *colour = pass->colorAttachments()->object(0);
+  colour->setTexture(surface.samples);
+  colour->setResolveTexture(surface.frame);
+  colour->setLoadAction(MTL::LoadActionDontCare);
+  colour->setStoreAction(MTL::StoreActionMultisampleResolve);
+  MTL::RenderPassDepthAttachmentDescriptor *depth = pass->depthAttachment();
+  depth->setTexture(surface.depth);
+  depth->setLoadAction(MTL::LoadActionClear);
+  depth->setStoreAction(MTL::StoreActionDontCare);
+  encoder = commands->renderCommandEncoder(pass)->retain();
+  if (!edgePipeline)
+    return;
+  encoder->setRenderPipelineState(edgePipeline);
+  encoder->setDepthStencilState(noDepth);
+  EdgeUniforms u{};
+  const glm::vec3 line = toGlm(environment.outline.colour), fog = toGlm(environment.fog.colour);
+  u.line[0] = line.r, u.line[1] = line.g, u.line[2] = line.b;
+  u.fogColour[0] = fog.r, u.fogColour[1] = fog.g, u.fogColour[2] = fog.b;
+  u.texel[0] = 1.0f / static_cast<float>(edgeColour->width());
+  u.texel[1] = 1.0f / static_cast<float>(edgeColour->height());
+  u.pixels = static_cast<float>(std::max<int>(environment.outline.pixels, 1));
+  u.fogDensity = environment.fog.density;
+  encoder->setFragmentBytes(&u, sizeof(u), 0);
+  encoder->setFragmentTexture(edgeColour, 0);
+  encoder->setFragmentTexture(surfaces, 1);
+  encoder->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(3));
 }
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
@@ -433,7 +589,21 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   MTL::RenderPassDescriptor *pass = MTL::RenderPassDescriptor::renderPassDescriptor();
   MTL::RenderPassColorAttachmentDescriptor *colour = pass->colorAttachments()->object(0);
   colour->setTexture(b.surface.samples);
-  colour->setResolveTexture(b.surface.frame);
+  // Screen-space outlines: the frame resolved into a texture of its own for
+  // the edge pass (endFrame), with the surfaces' as the second target
+  b.screenEdges = environment.outline.style == Outline::Style::ScreenSpace;
+  if (b.screenEdges) {
+    b.makeEdgeTextures(width, height);
+    colour->setResolveTexture(b.edgeColour);
+    MTL::RenderPassColorAttachmentDescriptor *surface = pass->colorAttachments()->object(1);
+    surface->setTexture(b.surfaceSamples);
+    surface->setResolveTexture(b.surfaces);
+    surface->setLoadAction(MTL::LoadActionClear);
+    surface->setStoreAction(MTL::StoreActionMultisampleResolve);
+    surface->setClearColor(MTL::ClearColor::Make(0, 0, 0, 0)); // (no surface)
+  } else {
+    colour->setResolveTexture(b.surface.frame);
+  }
   colour->setLoadAction(MTL::LoadActionClear);
   colour->setStoreAction(MTL::StoreActionMultisampleResolve);
   const glm::vec3 background = toGlm(environment.backgroundSeen(camera.farPlane));
@@ -544,6 +714,8 @@ void Renderer::endFrame() {
   for (const Backend::Later &item : b.later)
     b.drawNow(item.mesh, item.where, item.material);
   b.later.clear();
+  if (b.screenEdges)
+    b.drawEdges();
   b.drawOverlay(overlay_);
   overlay_.clear();
   b.encoder->endEncoding();

@@ -60,6 +60,14 @@ struct Renderer::Backend {
   Display &display;
   Metal::Surface &surface;
   MTL::RenderPipelineState *solid = nullptr, *translucent = nullptr, *overlayPipeline = nullptr;
+  // Screen-space outlines: the scene's pipelines with the surfaces' second
+  // target, the edge pass's, and its textures (made at the frame's size)
+  MTL::RenderPipelineState *solidWithSurface = nullptr, *translucentWithSurface = nullptr,
+                           *edgePipeline = nullptr;
+  MTL::Texture *edgeColour = nullptr, *surfaces = nullptr, *surfaceSamples = nullptr;
+  bool screenEdges = false; // this frame
+  void makeEdgeTextures(int width, int height);
+  void drawEdges();
   MTL::DepthStencilState *depthWrite = nullptr, *depthTest = nullptr, *noDepth = nullptr;
   std::vector<LoadedMesh> meshes; // by Mesh::id - 1; unloaded ones have no vertices
   std::vector<Later> later;
