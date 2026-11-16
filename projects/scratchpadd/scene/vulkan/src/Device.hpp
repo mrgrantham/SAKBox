@@ -75,6 +75,8 @@ struct PipelineDescription {
   // Back faces culled (counter-clockwise is the front: the flipped
   // viewport keeps OpenGL's sense of it)
   bool cullBack = false;
+  // Front faces culled instead (an outline's inverted hull)
+  bool cullFront = false;
   bool blend = false; // as OpenGL's glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
   bool depthTest = true, depthWrite = true;
   VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;

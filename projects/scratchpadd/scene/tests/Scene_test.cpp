@@ -2,6 +2,7 @@
 // built in code, and the overlay. Built twice: with Scalar as float, and as
 // the DS has it (Q16.16).
 #include <ScratchPadd/Scene/Culling.hpp>
+#include <ScratchPadd/Scene/OutlineHull.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
@@ -282,4 +283,39 @@ TEST(PrimitivesTest, ConcavePairsStayTriangles) {
   EXPECT_TRUE(std::ranges::none_of(
       built.runs, [](const Primitive &r) { return r.kind == Primitive::Kind::Quads; }));
   EXPECT_EQ(costOf(built.runs).polygons, 2u);
+}
+
+// A box's outline hull: every vertex's normal points out of its corner (the
+// average of the three faces' there), so the hull pushed out stays closed
+TEST(OutlineHullTest, CornersShareOneNormal) {
+  MeshBuilder builder;
+  builder.box({}, {1, 1, 1});
+  const MeshData box = builder.data();
+  const std::vector<Vertex> hull = outlineHullVertices(box.vertices);
+  ASSERT_EQ(hull.size(), box.vertices.size());
+  const Scalar third = squareRoot(Scalar(1) / Scalar(3));
+  for (std::size_t i = 0; i < hull.size(); ++i) {
+    const Vector3 corner = box.vertices[i].position;
+    EXPECT_EQ(hull[i].position, corner);
+    expectNear(hull[i].normal, corner * third); // (the corner is at +-1, +-1, +-1)
+  }
+}
+
+// Toon shading's steps: as many as bands, none for the darkest, all for the
+// brightest
+TEST(ToonTest, LightComesInSteps) {
+  EXPECT_EQ(toonStep(0.0f, 3), 0.0f);
+  EXPECT_EQ(toonStep(0.3f, 3), 0.0f);
+  EXPECT_EQ(toonStep(0.4f, 3), 0.5f);
+  EXPECT_EQ(toonStep(0.6f, 3), 0.5f);
+  EXPECT_EQ(toonStep(0.7f, 3), 1.0f);
+  EXPECT_EQ(toonStep(1.0f, 3), 1.0f);
+  EXPECT_EQ(toonStep(0.49f, 2), 0.0f);
+  EXPECT_EQ(toonStep(0.5f, 2), 1.0f);
+  // A material's own count, or the environment's, kept to 2-8
+  Environment environment;
+  EXPECT_EQ(toonBandsFor({}, environment), 3);
+  EXPECT_EQ(toonBandsFor({.toonBands = 5}, environment), 5);
+  environment.toonBands = 12;
+  EXPECT_EQ(toonBandsFor({}, environment), 8);
 }

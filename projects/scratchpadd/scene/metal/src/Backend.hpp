@@ -6,6 +6,7 @@
 
 #include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
+#include <ScratchPadd/Scene/OutlineHull.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
@@ -35,6 +36,7 @@ struct Renderer::Backend {
 
   struct LoadedMesh {
     MTL::Buffer *vertices = nullptr, *indices = nullptr;
+    MTL::Buffer *hullVertices = nullptr; // its outline's hull (OutlineHull.hpp)
     NS::UInteger indexCount = 0;
     // Drawn translucent whatever its material (see hasTranslucentVertices)
     bool translucent = false;
@@ -68,6 +70,7 @@ struct Renderer::Backend {
   MTL::CommandBuffer *commands = nullptr; // the last one's, until this one begins
   MTL::RenderCommandEncoder *encoder = nullptr;
   std::vector<MTL::Buffer *> buffers; // frameBuffer's, released when it's drawn
+  Environment environment;            // this frame's (toon bands, outlines)
   glm::vec3 eye{0.0f};
   glm::mat4 viewProj{1.0f};
   std::optional<Frustum> frustum; // this frame's

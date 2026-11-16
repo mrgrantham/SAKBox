@@ -30,6 +30,7 @@ uniform mat4 uViewProj;
 uniform float uWorldSnap;  // world grid vertices snap to (0: off)
 uniform float uScreenSnap; // pixel grid vertices snap to (0: off)
 uniform vec2 uViewport;
+uniform float uExtrude;    // an outline's hull: pushed out this far along the normals (0: not one)
 
 out vec3 vNormal;
 out vec4 vColour;
@@ -37,6 +38,8 @@ out float vDistance;
 
 void main() {
   vec4 world = uModel * vec4(aPosition, 1.0);
+  if (uExtrude > 0.0)
+    world.xyz += normalize(uNormalMatrix * aNormal) * uExtrude;
   if (uWorldSnap > 0.0)
     world.xyz = floor(world.xyz / uWorldSnap + 0.5) * uWorldSnap;
   vec4 clip = uViewProj * world;
@@ -59,6 +62,8 @@ in float vDistance;
 
 uniform vec4 uColour; // the material's: colour, and alpha 0-1
 uniform bool uLit;
+uniform int uToonBands;     // lit in this many bands (toon shading), or 0: smoothly
+uniform bool uOutlinePass;  // an outline's hull: the colour alone
 uniform vec3 uAmbient;
 uniform int uLightCount;
 uniform vec3 uLightDirections[4];
@@ -69,12 +74,16 @@ uniform float uFogDensity;
 out vec4 fragmentColour;
 
 void main() {
-  vec3 colour = vColour.rgb * uColour.rgb;
+  vec3 colour = uOutlinePass ? uColour.rgb : vColour.rgb * uColour.rgb;
   if (uLit) {
     vec3 n = normalize(vNormal);
     vec3 light = uAmbient;
-    for (int i = 0; i < uLightCount; ++i)
-      light += uLightColours[i] * max(dot(n, -uLightDirections[i]), 0.0);
+    for (int i = 0; i < uLightCount; ++i) {
+      float lit = max(dot(n, -uLightDirections[i]), 0.0);
+      if (uToonBands > 1) // (as Types.hpp's toonStep)
+        lit = clamp(floor(lit * float(uToonBands)) / float(uToonBands - 1), 0.0, 1.0);
+      light += uLightColours[i] * lit;
+    }
     colour *= light;
   }
   float fog = clamp(1.0 - exp(-uFogDensity * vDistance), 0.0, 1.0);
@@ -171,7 +180,8 @@ Renderer::Backend::Backend(Display &display) : display(display) {
   uniform = {at("uModel"),      at("uNormalMatrix"), at("uViewProj"),        at("uWorldSnap"),
              at("uScreenSnap"), at("uViewport"),     at("uColour"),          at("uLit"),
              at("uAmbient"),    at("uLightCount"),   at("uLightDirections"), at("uLightColours"),
-             at("uFogColour"),  at("uFogDensity")};
+             at("uFogColour"),  at("uFogDensity"),   at("uExtrude"),         at("uToonBands"),
+             at("uOutlinePass")};
 
   glGenVertexArrays(1, &lineVao);
   glGenBuffers(1, &lineVbo);
@@ -201,6 +211,8 @@ Renderer::Backend::~Backend() {
       glDeleteVertexArrays(1, &mesh.vao);
       glDeleteBuffers(1, &mesh.vbo);
       glDeleteBuffers(1, &mesh.ebo);
+      glDeleteVertexArrays(1, &mesh.hullVao);
+      glDeleteBuffers(1, &mesh.hullVbo);
     }
   }
   glDeleteVertexArrays(1, &lineVao);
@@ -222,7 +234,10 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   const glm::vec3 colour = toGlm(material.colour);
   glUniform4f(uniform.colour, colour.r, colour.g, colour.b,
               static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f);
-  glUniform1i(uniform.lit, material.shading == Material::Shading::Lit ? 1 : 0);
+  glUniform1i(uniform.lit, material.shading == Material::Shading::Unlit ? 0 : 1);
+  glUniform1i(uniform.toonBands, material.shading == Material::Shading::Toon
+                                     ? toonBandsFor(material, environment)
+                                     : 0);
   glUniform1f(uniform.worldSnap, worldSnap);
   glUniform1f(uniform.screenSnap, screenSnap);
   if (material.wireframe)
@@ -238,6 +253,29 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   ++counting.draws;
   if (material.wireframe)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  else if (material.outline)
+    drawOutline(loaded, material);
+}
+
+// The inverted hull: the mesh again, pushed out along its shared normals,
+// its front faces culled so only the rim around it shows, in one colour
+void Renderer::Backend::drawOutline(const LoadedMesh &loaded, const Material &material) {
+  const glm::vec3 colour = toGlm(material.outlineColour.value_or(environment.outline.colour));
+  glUniform4f(uniform.colour, colour.r, colour.g, colour.b,
+              static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f);
+  glUniform1i(uniform.lit, 0);
+  glUniform1i(uniform.outlinePass, 1);
+  glUniform1f(uniform.extrude, environment.outline.width);
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_FRONT);
+  glBindVertexArray(loaded.hullVao);
+  glDrawElements(GL_TRIANGLES, loaded.indexCount, GL_UNSIGNED_INT, nullptr);
+  glCullFace(GL_BACK);
+  glDisable(GL_CULL_FACE);
+  glUniform1i(uniform.outlinePass, 0);
+  glUniform1f(uniform.extrude, 0);
+  counting += loaded.cost;
+  ++counting.draws;
 }
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
@@ -282,6 +320,16 @@ Mesh Renderer::load(const MeshData &mesh) {
   glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                static_cast<GLsizeiptr>(indices.size() * sizeof(std::uint32_t)), indices.data(),
                GL_STATIC_DRAW);
+  // Its outline's hull: the same indices, the normals shared (OutlineHull.hpp)
+  const std::vector<Vertex> hull = outlineHullVertices(mesh.vertices);
+  glGenVertexArrays(1, &loaded.hullVao);
+  glGenBuffers(1, &loaded.hullVbo);
+  glBindVertexArray(loaded.hullVao);
+  glBindBuffer(GL_ARRAY_BUFFER, loaded.hullVbo);
+  glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(hull.size() * sizeof(Vertex)), hull.data(),
+               GL_STATIC_DRAW);
+  describeVertices();
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, loaded.ebo);
   glBindVertexArray(0);
   loaded.indexCount = static_cast<GLsizei>(indices.size());
   loaded.translucent = hasTranslucentVertices(mesh);
@@ -301,6 +349,8 @@ void Renderer::unload(Mesh mesh) {
   glDeleteVertexArrays(1, &loaded.vao);
   glDeleteBuffers(1, &loaded.vbo);
   glDeleteBuffers(1, &loaded.ebo);
+  glDeleteVertexArrays(1, &loaded.hullVao);
+  glDeleteBuffers(1, &loaded.hullVbo);
   loaded = {};
 }
 
@@ -339,6 +389,7 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   const glm::vec3 fog = toGlm(environment.fog.colour);
   glUniform3f(b.uniform.fogColour, fog.r, fog.g, fog.b);
   glUniform1f(b.uniform.fogDensity, environment.fog.density);
+  b.environment = environment;
   b.worldSnap = b.screenSnap = 0;
   b.later.clear();
   b.counting = {};
@@ -381,6 +432,7 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
   const glm::vec3 c = toGlm(colour);
   glUniform4f(b.uniform.colour, c.r, c.g, c.b, colour.a / 255.0f);
   glUniform1i(b.uniform.lit, 0);
+  glUniform1i(b.uniform.toonBands, 0);
   glUniform1f(b.uniform.worldSnap, b.worldSnap);
   glUniform1f(b.uniform.screenSnap, b.screenSnap);
   glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(vertices.size() / 2 * 2));

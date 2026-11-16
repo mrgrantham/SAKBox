@@ -6,6 +6,7 @@
 
 #include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
+#include <ScratchPadd/Scene/OutlineHull.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
@@ -23,6 +24,7 @@ struct Renderer::Backend {
 
   struct LoadedMesh {
     Vulkan::Buffer vertices, indices;
+    Vulkan::Buffer hullVertices; // its outline's hull (OutlineHull.hpp)
     std::uint32_t indexCount = 0;
     // Drawn translucent whatever its material (see hasTranslucentVertices)
     bool translucent = false;
@@ -58,8 +60,9 @@ struct Renderer::Backend {
   // as a wireframe; lines; the overlay
   VkPipeline solid = VK_NULL_HANDLE, translucent = VK_NULL_HANDLE, solidCulled = VK_NULL_HANDLE,
              translucentCulled = VK_NULL_HANDLE, solidWire = VK_NULL_HANDLE,
-             translucentWire = VK_NULL_HANDLE, lines = VK_NULL_HANDLE,
-             overlayPipeline = VK_NULL_HANDLE;
+             translucentWire = VK_NULL_HANDLE, lines = VK_NULL_HANDLE, solidHull = VK_NULL_HANDLE,
+             translucentHull = VK_NULL_HANDLE, // (fronts culled)
+      overlayPipeline = VK_NULL_HANDLE;
   VkDescriptorPool descriptors = VK_NULL_HANDLE;
   VkDescriptorSet frameSet = VK_NULL_HANDLE;
   Vulkan::Buffer frameUniformBuffer; // FrameUniforms, written each frame
@@ -74,6 +77,7 @@ struct Renderer::Backend {
 
   // This frame's
   bool recording = false;
+  Environment environment; // (toon bands, outlines)
   glm::vec3 eye{0.0f};
   glm::mat4 viewProj{1.0f};
   std::optional<Frustum> frustum; // this frame's

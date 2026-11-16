@@ -48,7 +48,10 @@ struct Draw {
   float worldSnap;        // world grid vertices snap to (0: off)
   float screenSnap;       // pixel grid vertices snap to (0: off)
   int lit;
-  float pad;
+  int toonBands;          // lit in this many bands (toon shading), or 0: smoothly
+  float extrude;          // an outline's hull: pushed out this far along the normals (0: not one)
+  int outlinePass;        // an outline's hull: the colour alone
+  float2 pad;
 };
 
 struct VertexIn {
@@ -67,6 +70,10 @@ struct VertexOut {
 vertex VertexOut sceneVertex(VertexIn in [[stage_in]], constant Frame &frame [[buffer(1)]],
                              constant Draw &draw [[buffer(2)]]) {
   float4 world = draw.model * float4(in.position, 1.0);
+  float3x3 normalMatrix = float3x3(draw.normalMatrix[0].xyz, draw.normalMatrix[1].xyz,
+                                   draw.normalMatrix[2].xyz);
+  if (draw.extrude > 0.0)
+    world.xyz += normalize(normalMatrix * in.normal) * draw.extrude;
   if (draw.worldSnap > 0.0)
     world.xyz = floor(world.xyz / draw.worldSnap + 0.5) * draw.worldSnap;
   float4 clip = frame.viewProj * world;
@@ -77,8 +84,7 @@ vertex VertexOut sceneVertex(VertexIn in [[stage_in]], constant Frame &frame [[b
   }
   VertexOut out;
   out.position = clip;
-  out.normal = float3x3(draw.normalMatrix[0].xyz, draw.normalMatrix[1].xyz,
-                        draw.normalMatrix[2].xyz) * in.normal;
+  out.normal = normalMatrix * in.normal;
   out.colour = in.colour;
   out.distance = clip.w;
   return out;
@@ -86,12 +92,16 @@ vertex VertexOut sceneVertex(VertexIn in [[stage_in]], constant Frame &frame [[b
 
 fragment float4 sceneFragment(VertexOut in [[stage_in]], constant Frame &frame [[buffer(1)]],
                               constant Draw &draw [[buffer(2)]]) {
-  float3 colour = in.colour.rgb * draw.colour.rgb;
+  float3 colour = draw.outlinePass != 0 ? draw.colour.rgb : in.colour.rgb * draw.colour.rgb;
   if (draw.lit != 0) {
     float3 n = normalize(in.normal);
     float3 light = frame.ambient.rgb;
-    for (int i = 0; i < frame.lightCount; ++i)
-      light += frame.lightColours[i].rgb * max(dot(n, -frame.lightDirections[i].xyz), 0.0);
+    for (int i = 0; i < frame.lightCount; ++i) {
+      float lit = max(dot(n, -frame.lightDirections[i].xyz), 0.0);
+      if (draw.toonBands > 1) // (as Types.hpp's toonStep)
+        lit = clamp(floor(lit * float(draw.toonBands)) / float(draw.toonBands - 1), 0.0, 1.0);
+      light += frame.lightColours[i].rgb * lit;
+    }
     colour *= light;
   }
   float fog = clamp(1.0 - exp(-frame.fogDensity * in.distance), 0.0, 1.0);
@@ -128,7 +138,10 @@ struct DrawUniforms {
   float colour[4];
   float worldSnap, screenSnap;
   int lit;
-  float pad;
+  int toonBands;
+  float extrude;
+  int outlinePass;
+  float pad[2];
 };
 
 glm::vec3 toGlm(const Vector3 &v) { return {v.x, v.y, v.z}; }
@@ -256,6 +269,7 @@ Renderer::Backend::~Backend() {
     if (mesh.vertices) {
       mesh.vertices->release();
       mesh.indices->release();
+      mesh.hullVertices->release();
     }
   }
   for (NS::Object *object :
@@ -291,7 +305,9 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   draw.colour[1] = colour.g;
   draw.colour[2] = colour.b;
   draw.colour[3] = static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f;
-  draw.lit = material.shading == Material::Shading::Lit ? 1 : 0;
+  draw.lit = material.shading == Material::Shading::Unlit ? 0 : 1;
+  draw.toonBands =
+      material.shading == Material::Shading::Toon ? toonBandsFor(material, environment) : 0;
   draw.worldSnap = worldSnap;
   draw.screenSnap = screenSnap;
   encoder->setVertexBytes(&draw, sizeof(draw), kDrawBuffer);
@@ -312,6 +328,27 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
     encoder->setTriangleFillMode(MTL::TriangleFillModeFill);
   counting += loaded.cost;
   ++counting.draws;
+  // The outline: the inverted hull, the mesh again pushed out along its
+  // shared normals, front faces culled so only the rim shows, one colour
+  if (material.outline && !material.wireframe && loaded.hullVertices) {
+    const glm::vec3 line = toGlm(material.outlineColour.value_or(environment.outline.colour));
+    draw.colour[0] = line.r;
+    draw.colour[1] = line.g;
+    draw.colour[2] = line.b;
+    draw.lit = 0;
+    draw.outlinePass = 1;
+    draw.extrude = environment.outline.width;
+    encoder->setVertexBytes(&draw, sizeof(draw), kDrawBuffer);
+    encoder->setFragmentBytes(&draw, sizeof(draw), kDrawBuffer);
+    encoder->setVertexBuffer(loaded.hullVertices, 0, kVerticesBuffer);
+    encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
+    encoder->setCullMode(MTL::CullModeFront);
+    encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, loaded.indexCount,
+                                   MTL::IndexTypeUInt32, loaded.indices, 0);
+    encoder->setCullMode(MTL::CullModeNone);
+    counting += loaded.cost;
+    ++counting.draws;
+  }
 }
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
@@ -345,6 +382,10 @@ Mesh Renderer::load(const MeshData &mesh) {
     loaded.indices = Metal::device()->newBuffer(
         indices.data(), indices.size() * sizeof(std::uint32_t), MTL::ResourceStorageModeShared);
     loaded.indexCount = indices.size();
+    // Its outline's hull: the same indices, the normals shared (OutlineHull.hpp)
+    const std::vector<Vertex> hull = outlineHullVertices(mesh.vertices);
+    loaded.hullVertices = Metal::device()->newBuffer(hull.data(), hull.size() * sizeof(Vertex),
+                                                     MTL::ResourceStorageModeShared);
     loaded.translucent = hasTranslucentVertices(mesh);
     loaded.cost = costOf(mesh);
     loaded.bounds = boundsOf(mesh);
@@ -365,6 +406,7 @@ void Renderer::unload(Mesh mesh) {
     backend_->commands->waitUntilCompleted();
   loaded.vertices->release();
   loaded.indices->release();
+  loaded.hullVertices->release();
   loaded = {};
 }
 
@@ -381,6 +423,7 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   b.buffers.clear();
   b.later.clear();
   b.counting = {};
+  b.environment = environment;
   b.worldSnap = b.screenSnap = 0;
   overlay_.clear();
 

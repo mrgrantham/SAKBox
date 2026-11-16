@@ -438,8 +438,9 @@ VkPipeline makePipeline(const PipelineDescription &d) {
   const VkPipelineRasterizationStateCreateInfo rasterization{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
       .polygonMode = d.polygonMode,
-      .cullMode =
-          static_cast<VkCullModeFlags>(d.cullBack ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE),
+      .cullMode = static_cast<VkCullModeFlags>(d.cullBack    ? VK_CULL_MODE_BACK_BIT
+                                               : d.cullFront ? VK_CULL_MODE_FRONT_BIT
+                                                             : VK_CULL_MODE_NONE),
       .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
       .lineWidth = 1.0f};
   const VkPipelineMultisampleStateCreateInfo multisample{

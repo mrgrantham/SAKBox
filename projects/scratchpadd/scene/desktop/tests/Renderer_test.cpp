@@ -261,3 +261,48 @@ TEST_F(RendererTest, MeshesOutOfViewAreCulled) {
   EXPECT_EQ(drawn.draws, 1u);
   EXPECT_EQ(drawn.polygons, 6u); // the one box: 6 quads, as the DS counts them
 }
+
+// Toon shading: a light lets through only steps of itself. With 3 bands, a
+// face the light falls on at cosine 0.6 (smoothly 0.6 of it) gets half.
+TEST_F(RendererTest, ToonShadingLightsInBands) {
+  environment.ambient = {40, 40, 40};
+  environment.addLight({.direction = {0.8f, 0, -0.6f}, .colour = {200, 200, 200}});
+  const auto smooth =
+      frame([&] { renderer->draw(box, Transform::identity(), {}); }, {{centreX(), centreY()}});
+  expectNear(smooth[0], {160, 160, 160}); // 40 + 200 x 0.6
+  const Material toon{.shading = Material::Shading::Toon};
+  const auto banded =
+      frame([&] { renderer->draw(box, Transform::identity(), toon); }, {{centreX(), centreY()}});
+  expectNear(banded[0], {140, 140, 140}); // 40 + 200 x 0.5
+  // With 2 bands, 0.6 is the lit one: all of it
+  const auto two = frame(
+      [&] {
+        renderer->draw(box, Transform::identity(),
+                       {.shading = Material::Shading::Toon, .toonBands = 2});
+      },
+      {{centreX(), centreY()}});
+  expectNear(two[0], {240, 240, 240});
+}
+
+// An outline: a rim in the outline's colour just outside the mesh, none
+// without it; the mesh itself unchanged
+TEST_F(RendererTest, OutlinesRingTheShape) {
+  environment.outline = {.colour = {255, 255, 0}, .width = 0.2f};
+  const Material plain{.shading = Material::Shading::Unlit, .colour = {255, 0, 0}};
+  Material outlined = plain;
+  outlined.outline = true;
+  // The box's front face reaches about 52 points right of the centre; its
+  // outline about 8 more
+  const std::initializer_list<std::array<float, 2>> points = {{centreX(), centreY()},
+                                                              {centreX() + 56, centreY()}};
+  const auto without = frame([&] { renderer->draw(box, Transform::identity(), plain); }, points);
+  expectNear(without[0], {255, 0, 0});
+  expectNear(without[1], {0, 0, 40});
+  const auto with = frame([&] { renderer->draw(box, Transform::identity(), outlined); }, points);
+  expectNear(with[0], {255, 0, 0});
+  expectNear(with[1], {255, 255, 0});
+  // A material's own colour
+  outlined.outlineColour = Colour{0, 255, 0};
+  const auto own = frame([&] { renderer->draw(box, Transform::identity(), outlined); }, points);
+  expectNear(own[1], {0, 255, 0});
+}

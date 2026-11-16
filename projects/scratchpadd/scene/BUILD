@@ -11,6 +11,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
     srcs = [
         "src/Culling.cpp",
         "src/MeshBuilder.cpp",
+        "src/OutlineHull.cpp",
         "src/Overlay.cpp",
         "src/Primitives.cpp",
         "src/Types.cpp",

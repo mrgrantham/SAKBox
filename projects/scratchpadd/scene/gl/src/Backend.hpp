@@ -6,6 +6,7 @@
 
 #include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
+#include <ScratchPadd/Scene/OutlineHull.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
@@ -42,6 +43,7 @@ struct Renderer::Backend {
 
   struct LoadedMesh {
     GLuint vao = 0, vbo = 0, ebo = 0;
+    GLuint hullVao = 0, hullVbo = 0; // its outline's hull (shares ebo)
     GLsizei indexCount = 0;
     // Drawn translucent whatever its material (see hasTranslucentVertices)
     bool translucent = false;
@@ -58,6 +60,7 @@ struct Renderer::Backend {
   };
 
   void drawNow(Mesh mesh, const Transform &where, const Material &material);
+  void drawOutline(const LoadedMesh &loaded, const Material &material);
   void drawOverlay(const Overlay &overlay);
 
   Display &display;
@@ -69,12 +72,14 @@ struct Renderer::Backend {
   GLuint program = 0;
   struct {
     GLint model, normalMatrix, viewProj, worldSnap, screenSnap, viewport, colour, lit, ambient,
-        lightCount, lightDirections, lightColours, fogColour, fogDensity;
+        lightCount, lightDirections, lightColours, fogColour, fogDensity, extrude, toonBands,
+        outlinePass;
   } uniform{};
   GLuint lineVao = 0, lineVbo = 0;
   GLuint overlayProgram = 0, overlayVao = 0, overlayVbo = 0;
   GLint overlayScreen = -1;
 
+  Environment environment; // this frame's (toon bands, outlines)
   glm::vec3 eye{0.0f};
   glm::mat4 viewProj{1.0f}; // this frame's
   std::optional<Frustum> frustum;

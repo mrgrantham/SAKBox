@@ -44,7 +44,10 @@ layout(push_constant) uniform Draw {
   float worldSnap;  // world grid vertices snap to (0: off)
   float screenSnap; // pixel grid vertices snap to (0: off)
   int lit;
-  float pad;
+  int toonBands;    // lit in this many bands (toon shading), or 0: smoothly
+  float extrude;    // an outline's hull: pushed out this far along the normals (0: not one)
+  int outlinePass;  // an outline's hull: the colour alone
+  vec2 pad;
 } draw;
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
@@ -54,6 +57,9 @@ layout(location = 1) out vec4 vColour;
 layout(location = 2) out float vDistance;
 void main() {
   vec4 world = draw.model * vec4(position, 1.0);
+  mat3 normalMatrix = transpose(inverse(mat3(draw.model)));
+  if (draw.extrude > 0.0)
+    world.xyz += normalize(normalMatrix * normal) * draw.extrude;
   if (draw.worldSnap > 0.0)
     world.xyz = floor(world.xyz / draw.worldSnap + 0.5) * draw.worldSnap;
   vec4 clip = frame.viewProj * world;
@@ -63,7 +69,7 @@ void main() {
     clip.xy = (pixel / frame.viewport * 2.0 - 1.0) * clip.w;
   }
   gl_Position = clip;
-  vNormal = transpose(inverse(mat3(draw.model))) * normal;
+  vNormal = normalMatrix * normal;
   vColour = colour;
   vDistance = clip.w;
 }
@@ -88,19 +94,26 @@ layout(push_constant) uniform Draw {
   float worldSnap;
   float screenSnap;
   int lit;
-  float pad;
+  int toonBands;
+  float extrude;
+  int outlinePass;
+  vec2 pad;
 } draw;
 layout(location = 0) in vec3 vNormal;
 layout(location = 1) in vec4 vColour;
 layout(location = 2) in float vDistance;
 layout(location = 0) out vec4 outColour;
 void main() {
-  vec3 colour = vColour.rgb * draw.colour.rgb;
+  vec3 colour = draw.outlinePass != 0 ? draw.colour.rgb : vColour.rgb * draw.colour.rgb;
   if (draw.lit != 0) {
     vec3 n = normalize(vNormal);
     vec3 light = frame.ambient.rgb;
-    for (int i = 0; i < frame.lightCount; ++i)
-      light += frame.lightColours[i].rgb * max(dot(n, -frame.lightDirections[i].xyz), 0.0);
+    for (int i = 0; i < frame.lightCount; ++i) {
+      float lit = max(dot(n, -frame.lightDirections[i].xyz), 0.0);
+      if (draw.toonBands > 1) // (as Types.hpp's toonStep)
+        lit = clamp(floor(lit * float(draw.toonBands)) / float(draw.toonBands - 1), 0.0, 1.0);
+      light += frame.lightColours[i].rgb * lit;
+    }
     colour *= light;
   }
   float fog = clamp(1.0 - exp(-frame.fogDensity * vDistance), 0.0, 1.0);
@@ -132,7 +145,10 @@ struct DrawConstants {
   float colour[4];
   float worldSnap, screenSnap;
   int lit;
-  float pad;
+  int toonBands;
+  float extrude;
+  int outlinePass;
+  float pad[2];
 };
 
 // The smallest buffer frameBytes makes
@@ -247,6 +263,14 @@ Renderer::Backend::Backend(Display &display)
   d.cullBack = true;
   translucentCulled = Vulkan::makePipeline(d);
   d.cullBack = false;
+  d.cullFront = true; // (outlines' hulls)
+  translucentHull = Vulkan::makePipeline(d);
+  d.blend = false;
+  d.depthWrite = true;
+  solidHull = Vulkan::makePipeline(d);
+  d.blend = true;
+  d.depthWrite = false;
+  d.cullFront = false;
   if (Vulkan::wireframes()) {
     d.polygonMode = VK_POLYGON_MODE_LINE;
     translucentWire = Vulkan::makePipeline(d);
@@ -275,12 +299,13 @@ Renderer::Backend::~Backend() {
   for (LoadedMesh &mesh : meshes) {
     Vulkan::destroy(mesh.vertices);
     Vulkan::destroy(mesh.indices);
+    Vulkan::destroy(mesh.hullVertices);
   }
   for (Vulkan::Buffer &buffer : frameBuffers)
     Vulkan::destroy(buffer);
   Vulkan::destroy(frameUniformBuffer);
-  for (VkPipeline pipeline : {solid, translucent, solidCulled, translucentCulled, solidWire,
-                              translucentWire, lines, overlayPipeline})
+  for (VkPipeline pipeline : {solid, translucent, solidCulled, translucentCulled, solidHull,
+                              translucentHull, solidWire, translucentWire, lines, overlayPipeline})
     if (pipeline)
       vkDestroyPipeline(device(), pipeline, nullptr);
   for (VkShaderModule module : {sceneVertex, sceneFragment, overlayVertex, overlayFragment})
@@ -328,7 +353,9 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   const glm::mat4 model = toGlm(where);
   std::memcpy(draw.model, glm::value_ptr(model), sizeof(draw.model));
   setColour(draw, material.colour, static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f);
-  draw.lit = material.shading == Material::Shading::Lit ? 1 : 0;
+  draw.lit = material.shading == Material::Shading::Unlit ? 0 : 1;
+  draw.toonBands =
+      material.shading == Material::Shading::Toon ? toonBandsFor(material, environment) : 0;
   draw.worldSnap = worldSnap;
   draw.screenSnap = screenSnap;
   vkCmdPushConstants(commands, sceneLayout,
@@ -340,6 +367,23 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   vkCmdDrawIndexed(commands, loaded.indexCount, 1, 0, 0, 0);
   counting += loaded.cost;
   ++counting.draws;
+  // The outline: the inverted hull, the mesh again pushed out along its
+  // shared normals, front faces culled so only the rim shows, one colour
+  if (material.outline && !material.wireframe && loaded.hullVertices.buffer) {
+    vkCmdBindPipeline(commands, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      seeThrough ? translucentHull : solidHull);
+    setColour(draw, material.outlineColour.value_or(environment.outline.colour), draw.colour[3]);
+    draw.lit = 0;
+    draw.outlinePass = 1;
+    draw.extrude = environment.outline.width;
+    vkCmdPushConstants(commands, sceneLayout,
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(draw),
+                       &draw);
+    vkCmdBindVertexBuffers(commands, 0, 1, &loaded.hullVertices.buffer, &start);
+    vkCmdDrawIndexed(commands, loaded.indexCount, 1, 0, 0, 0);
+    counting += loaded.cost;
+    ++counting.draws;
+  }
 }
 
 void Renderer::Backend::drawOverlay(const Overlay &overlay) {
@@ -374,6 +418,10 @@ Mesh Renderer::load(const MeshData &mesh) {
     loaded.indices = Vulkan::makeBuffer(indices.size() * sizeof(std::uint32_t),
                                         VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices.data());
     loaded.indexCount = static_cast<std::uint32_t>(indices.size());
+    // Its outline's hull: the same indices, the normals shared (OutlineHull.hpp)
+    const std::vector<Vertex> hull = outlineHullVertices(mesh.vertices);
+    loaded.hullVertices = Vulkan::makeBuffer(hull.size() * sizeof(Vertex),
+                                             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, hull.data());
     loaded.translucent = hasTranslucentVertices(mesh);
     loaded.cost = costOf(mesh);
     loaded.bounds = boundsOf(mesh);
@@ -393,6 +441,7 @@ void Renderer::unload(Mesh mesh) {
   vkQueueWaitIdle(Vulkan::context()->queue);
   Vulkan::destroy(loaded.vertices);
   Vulkan::destroy(loaded.indices);
+  Vulkan::destroy(loaded.hullVertices);
   loaded = {};
 }
 
@@ -406,6 +455,7 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   b.frameBufferUsed = 0;
   b.later.clear();
   b.counting = {};
+  b.environment = environment;
   b.worldSnap = b.screenSnap = 0;
   overlay_.clear();
 

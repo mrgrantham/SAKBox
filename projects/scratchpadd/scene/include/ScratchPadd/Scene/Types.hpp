@@ -6,6 +6,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <optional>
 
 #if defined(__NDS__) || defined(SCRATCHPADD_SCENE_FIXED_POINT)
 #include <FixedPoint.hpp>
@@ -145,6 +146,23 @@ struct Fog {
   Scalar density = 0; // 0: none
 };
 
+// Outlines: a dark line around a shape (Material::outline). On desktops and
+// the 3DS, an inverted hull: the mesh again, `width` larger along its
+// normals (world units), its front faces culled, so only its rim shows; on
+// the DS, its hardware's edge marking (1 pixel, whatever the width).
+struct Outline {
+  Colour colour{12, 12, 20};
+  Scalar width = 0.03f;
+};
+
+// How the DS draws toon bands (its hardware has one table of them for the
+// whole frame; other platforms ignore it):
+//   Shades      the table holds the bands' colours, replacing the mesh's own:
+//               every toon mesh shares them (a drawn, comic-book look)
+//   Highlights  the table's bands are added to each mesh's colour: they keep
+//               their colours, lit in bands (brighter rather than darker)
+enum class DsToonTable : std::uint8_t { Shades, Highlights };
+
 // What a frame is drawn in: the background, the lights (as the DS has, at
 // most four), the ambient light lit materials get anyway, and fog
 struct Environment {
@@ -155,6 +173,11 @@ struct Environment {
   std::array<Light, kMostLights> lights{};
   unsigned lightCount = 0;
   Fog fog;
+  // Toon shading's bands of light (Material::Shading::Toon), dark to fully
+  // lit, unless a material has its own count (2 to 8)
+  std::uint8_t toonBands = 3;
+  Outline outline;
+  DsToonTable dsToonTable = DsToonTable::Highlights;
 
   Environment &addLight(const Light &light) {
     if (lightCount < kMostLights)
@@ -170,7 +193,10 @@ struct Environment {
 
 // How a mesh is drawn: the things the DS does in hardware
 struct Material {
-  enum class Shading { Unlit, Lit };
+  // Unlit: its colours as they are. Lit: by the ambient light and the
+  // lights, smoothly. Toon: lit in a few hard bands (Environment::toonBands,
+  // or the material's own toonBands)
+  enum class Shading { Unlit, Lit, Toon };
   Shading shading = Shading::Lit;
   // Multiplies the mesh's vertex colours
   Colour colour;
@@ -182,6 +208,27 @@ struct Material {
   // Both sides of its triangles drawn, though its mesh culls its back faces
   // (MeshData::doubleSided)
   bool doubleSided = false;
+  // Toon shading's bands for this mesh (2 to 8), or 0 for the environment's
+  std::uint8_t toonBands = 0;
+  // A line around its shape (see Outline), in the environment's colour
+  // unless it has its own
+  bool outline = false;
+  std::optional<Colour> outlineColour;
 };
+
+// The bands toon shading uses for `material` in `environment` (2 to 8)
+inline int toonBandsFor(const Material &material, const Environment &environment) {
+  const int bands = material.toonBands != 0 ? material.toonBands : environment.toonBands;
+  return bands < 2 ? 2 : (bands > 8 ? 8 : bands);
+}
+
+// How much of a light toon shading lets through, given how much smooth
+// lighting would (0-1: the light's cosine on the surface): the same number
+// of steps as bands, the darkest none, the brightest all of it.
+//   3 bands: under 1/3 none, then a half, from 2/3 all
+inline float toonStep(float lit, int bands) {
+  const float step = std::floor(lit * static_cast<float>(bands)) / static_cast<float>(bands - 1);
+  return step < 0.0f ? 0.0f : (step > 1.0f ? 1.0f : step);
+}
 
 } // namespace ScratchPadd::Scene
