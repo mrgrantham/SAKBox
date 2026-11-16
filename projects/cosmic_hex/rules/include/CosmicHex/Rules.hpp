@@ -19,6 +19,7 @@
 #pragma once
 
 #include <GameBots/BotGame.hpp>
+#include <HexGrid/CornersAndEdges.hpp>
 #include <HexGrid/Hex.hpp>
 #include <SeededRandom/Generator.hpp>
 
@@ -31,6 +32,7 @@
 
 namespace CosmicHex {
 
+using HexGrid::Corner;
 using HexGrid::Hex;
 
 // ---------------------------------------------------------------------------
@@ -67,6 +69,16 @@ inline constexpr int kDocks = 2; // stations a planet can hold, one per player
 
 struct Settings {
   int winPoints = 12; // (10 until round 41)
+  // Corners and edges (agreed in rounds 39 to 50; design.md): stations and
+  // colonies on corners, each earning from every planet it touches, none on
+  // a corner next to another; ships on corners, moving along edges
+  // (shipMove edges, boostMove more for fuel); a planet or zone tile turns
+  // over when a ship ends its move on one of its corners; ships built only
+  // at colonies; each player starts with a colony on a corner of their home
+  // planet and a ship, placed in snake order. Off: today's rules (stations
+  // docked on planets, ships moving hex to hex).
+  bool corners = false;
+  int startShipReach = 3; // (corners) edges from the home colony a starting ship may stand
   int maxShips = 3;
   int shipMove = 3;   // hexes a ship moves a turn, free
   int boostMove = 2;  // more, for 1 fuel
@@ -165,9 +177,19 @@ struct ZoneSite {
 
 struct Ship {
   int owner = 0;
-  Hex at;
+  Hex at;             // (hexes) where it is
   bool moved = false; // this turn
+  Corner corner{};    // (corners) where it stands
   bool operator==(const Ship &) const = default;
+};
+
+// (corners) A station or colony on a corner, earning from every planet it
+// touches
+struct Station {
+  Corner at;
+  int owner = 0;
+  bool colony = false;
+  bool operator==(const Station &) const = default;
 };
 
 struct Player {
@@ -196,6 +218,8 @@ enum class Phase : std::uint8_t {
   ContractDraw, // the dealer deals 2 contracts
   KeepContract, // the player keeps one
   Over,
+  PlaceColony, // (corners) the start: each player's home colony, in turn order
+  PlaceShip,   // (corners) then each player's ship, in reverse order
 };
 
 struct State {
@@ -207,6 +231,10 @@ struct State {
   std::vector<Planet> planets; // in board order (ring by ring from the centre)
   std::vector<ZoneSite> zone;
   std::vector<Ship> ships;
+  std::vector<Station> stations; // (corners)
+  int first = 0;                 // who took the first turn
+  int setupStep = 0;             // (corners) how many setup placements are done
+  std::vector<Hex> turning;      // (corners) planets and tiles still to turn over this move
   std::array<Player, kMaxPlayers> player{};
   // What's left to draw
   Resources kindsLeft{};
@@ -245,13 +273,13 @@ struct Action {
     MoveBlockade, // a: the planet (-1 if none is flipped), b: who to steal from (-1: nobody)
     Steal,        // dealer: a: the resource taken
     Trade,        // a: give (bankRate or alienRate of it), b: get 1
-    BuildShip,    // a: the planet
-    Move,         // a: the ship, b, c: q, r of where to
+    BuildShip,    // a: the planet (corners: the colony, its index in stations)
+    Move,         // a: the ship, b, c: q, r of where to (corners: b the corner)
     RevealPlanet, // dealer: a: the kind, b: the number
     RevealFind,   // dealer: a: the find
     TakeSalvage,  // a: the resource
     Settle,       // a: the ship
-    BuildColony,  // a: the planet
+    BuildColony,  // a: the planet (corners: the station)
     BuyContract,
     DealContracts,  // dealer: a, b: the contracts (b -1 if only one was left)
     KeepContract,   // a: the contract
@@ -259,6 +287,8 @@ struct Action {
     PlayEnforcer,   // then MoveBlockade, as on a 7
     CashBadges,
     EndTurn,
+    PlaceColony, // (corners) a: the corner (its number in boardCorners())
+    PlaceShip,   // (corners) a: the corner
   };
   Kind kind = Kind::EndTurn;
   int a = 0, b = 0, c = 0;
@@ -280,6 +310,14 @@ struct Contract {
   bool (*met)(const State &, int player);
 };
 const std::vector<Contract> &contracts();
+
+// ---------------------------------------------------------------------------
+// Corners (Settings::corners): every corner of the board, in a fixed order,
+// so an action can name one by its number. (A Move then takes the ship and
+// the corner's number; BuildShip and BuildColony take a station's index.)
+
+const std::vector<Corner> &boardCorners();
+int cornerNumber(Corner corner); // -1 if it isn't on the board
 
 // ---------------------------------------------------------------------------
 // Scoring

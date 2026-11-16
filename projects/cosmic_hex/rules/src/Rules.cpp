@@ -3,6 +3,8 @@
 // log writes. See Rules.hpp and ../../design.md.
 #include <CosmicHex/Rules.hpp>
 
+#include <HexGrid/Paths.hpp>
+
 #include <HexGrid/HexagonMap.hpp>
 
 #include <algorithm>
@@ -28,9 +30,10 @@ constexpr std::array<std::string_view, 7> kKindNames = {
     "asteroid_belt", "lush_planet", "gas_giant", "ice_moon", "nebula", "home", "moon"};
 constexpr std::array<std::string_view, kFinds> kFindNames = {"nothing", "salvage", "ruins",
                                                              "alien_station", "pirate_hideout"};
-constexpr std::array<std::string_view, 11> kPhaseNames = {
-    "home_income", "roll_draw", "blockade",      "steal_draw", "main", "planet_draw",
-    "zone_draw",   "salvage",   "contract_draw", "keep",       "over"};
+constexpr std::array<std::string_view, 13> kPhaseNames = {
+    "home_income", "roll_draw",    "blockade",  "steal_draw",    "main",
+    "planet_draw", "zone_draw",    "salvage",   "contract_draw", "keep",
+    "over",        "place_colony", "place_ship"};
 
 bool isSlot(Hex hex) { return ((hex.q - hex.r) % 3 + 3) % 3 == 0; }
 
@@ -64,6 +67,74 @@ int siteAt(const State &state, Hex hex) {
   return -1;
 }
 
+// ---- Corners and edges (Settings::corners)
+
+bool onBoard(Corner corner) {
+  for (Hex hex : HexGrid::hexesTouching(corner))
+    if (HexGrid::length(hex) <= kBoardRadius)
+      return true;
+  return false;
+}
+
+bool touches(Corner corner, Hex hex) {
+  const auto touching = HexGrid::hexesTouching(corner);
+  return std::find(touching.begin(), touching.end(), hex) != touching.end();
+}
+
+// The station on `corner`, or -1
+int stationAt(const State &state, Corner corner) {
+  for (std::size_t i = 0; i < state.stations.size(); ++i)
+    if (state.stations[i].at == corner)
+      return static_cast<int>(i);
+  return -1;
+}
+
+// The distance rule: no station on the corner, nor on any corner an edge away
+bool cornerFree(const State &state, Corner corner) {
+  if (stationAt(state, corner) >= 0)
+    return false;
+  for (Corner next : HexGrid::neighbours(corner))
+    if (stationAt(state, next) >= 0)
+      return false;
+  return true;
+}
+
+// Every corner within `steps` edges of `from`, with the fewest edges to each
+std::unordered_map<int, int> cornersWithin(Corner from, int steps) {
+  std::unordered_map<int, int> out;
+  for (const HexGrid::Reach<Corner> &reach :
+       HexGrid::reachable(from, steps, [](Corner c) { return onBoard(c); })) {
+    if (reach.place != from)
+      out.emplace(cornerNumber(reach.place), reach.steps);
+  }
+  return out;
+}
+
+// Where a ship can move this turn (corner numbers, with the edges to each):
+// shipMove edges, and boostMove more for 1 fuel. Ships pass anything; only
+// where a move ends matters (discovery).
+std::unordered_map<int, int> cornerMovesFor(const State &state, const Ship &ship) {
+  const Settings &settings = state.settings;
+  const bool canBoost = state.player[static_cast<std::size_t>(ship.owner)]
+                            .resources[static_cast<std::size_t>(Resource::Fuel)] >= 1;
+  return cornersWithin(ship.corner, settings.shipMove + (canBoost ? settings.boostMove : 0));
+}
+
+// The player's home colony (the first station they placed), or -1
+int homeColonyOf(const State &state, int player) {
+  for (std::size_t i = 0; i < state.stations.size(); ++i)
+    if (state.stations[i].owner == player && state.stations[i].colony)
+      return static_cast<int>(i);
+  return -1;
+}
+
+// The player whose setup placement is next: colonies in turn order from the
+// first player, then ships in reverse (snake order)
+int setupPlayer(const State &state) {
+  const int n = state.players, step = state.setupStep;
+  return step < n ? (state.first + step) % n : (state.first + 2 * n - 1 - step) % n;
+}
+
 bool dockedAt(const Planet &planet, int player) {
   return planet.docks[0] == player || planet.docks[1] == player;
 }
@@ -79,15 +150,59 @@ bool settleable(const Planet &planet) {
   return planet.flipped && planet.homeOf < 0 && planet.kind != PlanetKind::Home;
 }
 
+// Whether the player has a station on the planet (docked, or on a corner
+// touching it), or a colony
+bool hasStationOn(const State &state, const Planet &planet, int player) {
+  if (!state.settings.corners)
+    return dockedAt(planet, player);
+  for (const Station &station : state.stations)
+    if (station.owner == player && touches(station.at, planet.hex))
+      return true;
+  return false;
+}
+bool hasColonyOn(const State &state, const Planet &planet, int player) {
+  if (!state.settings.corners) {
+    for (int d = 0; d < kDocks; ++d)
+      if (planet.docks[static_cast<std::size_t>(d)] == player &&
+          planet.colony[static_cast<std::size_t>(d)])
+        return true;
+    return false;
+  }
+  for (const Station &station : state.stations)
+    if (station.owner == player && station.colony && touches(station.at, planet.hex))
+      return true;
+  return false;
+}
+// The players with stations on the planet, each once
+std::vector<int> ownersOn(const State &state, const Planet &planet) {
+  std::vector<int> out;
+  for (int p = 0; p < state.players; ++p)
+    if (hasStationOn(state, planet, p))
+      out.push_back(p);
+  return out;
+}
+
 int shipsOf(const State &state, int player) {
   return static_cast<int>(std::count_if(state.ships.begin(), state.ships.end(),
                                         [&](const Ship &s) { return s.owner == player; }));
 }
 
+// Stations on core planets (with corners: stations touching one)
 int coreStationsOf(const State &state, int player) {
   int count = 0;
-  for (const Planet &planet : state.planets)
-    count += planet.core && dockedAt(planet, player);
+  if (!state.settings.corners) {
+    for (const Planet &planet : state.planets)
+      count += planet.core && dockedAt(planet, player);
+    return count;
+  }
+  for (const Station &station : state.stations) {
+    if (station.owner != player)
+      continue;
+    const bool onCore =
+        std::any_of(state.planets.begin(), state.planets.end(),
+                    [&](const Planet &p) { return p.core && touches(station.at, p.hex); });
+    count += onCore;
+  }
   return count;
 }
 
@@ -97,6 +212,16 @@ bool alienStationNear(const State &state, int player) {
   for (const ZoneSite &site : state.zone) {
     if (!site.flipped || site.find != Find::AlienStation)
       continue;
+    if (state.settings.corners) {
+      // a station or ship on one of its corners
+      for (const Station &station : state.stations)
+        if (station.owner == player && touches(station.at, site.hex))
+          return true;
+      for (const Ship &ship : state.ships)
+        if (ship.owner == player && touches(ship.corner, site.hex))
+          return true;
+      continue;
+    }
     for (const Planet &planet : state.planets) {
       if (dockedAt(planet, player) && HexGrid::distance(planet.hex, site.hex) <= 1)
         return true;
@@ -154,6 +279,23 @@ std::unordered_map<Hex, int> movesFor(const State &state, const Ship &ship) {
 }
 
 void produce(State &state, int roll) {
+  if (state.settings.corners) {
+    // Each station from every planet it touches
+    for (const Station &station : state.stations) {
+      for (Hex hex : HexGrid::hexesTouching(station.at)) {
+        const int at = planetAt(state, hex);
+        if (at < 0 || at == state.blockade)
+          continue;
+        const Planet &planet = state.planets[static_cast<std::size_t>(at)];
+        if (!planet.flipped || !givesResources(planet.kind) || planet.number != roll)
+          continue;
+        state.player[static_cast<std::size_t>(station.owner)]
+            .resources[static_cast<std::size_t>(planet.kind)] +=
+            station.colony ? state.settings.colonyPays : state.settings.stationPays;
+      }
+    }
+    return;
+  }
   for (std::size_t i = 0; i < state.planets.size(); ++i) {
     const Planet &planet = state.planets[i];
     if (!planet.flipped || !givesResources(planet.kind) || planet.number != roll ||
@@ -205,6 +347,12 @@ std::vector<int> blockadeVictims(const State &state, int planet) {
   std::vector<int> out;
   if (planet < 0)
     return out;
+  if (state.settings.corners) {
+    for (int owner : ownersOn(state, state.planets[static_cast<std::size_t>(planet)]))
+      if (owner != state.turn && total(state.player[static_cast<std::size_t>(owner)].resources) > 0)
+        out.push_back(owner);
+    return out;
+  }
   for (int d = 0; d < kDocks; ++d) {
     const int owner =
         state.planets[static_cast<std::size_t>(planet)].docks[static_cast<std::size_t>(d)];
@@ -375,7 +523,7 @@ std::string settingsText(const Settings &s) {
     zoneList.push_back(hex.q);
     zoneList.push_back(hex.r);
   }
-  out << joined(zoneList);
+  out << joined(zoneList) << " edges=" << (s.corners ? 1 : 0) << "," << s.startShipReach;
   return out.str();
 }
 
@@ -432,6 +580,11 @@ std::optional<Settings> readSettings(std::string_view line) {
       s.planetHexes.clear();
       for (std::size_t i = 0; i < values->size(); i += 2)
         s.planetHexes.push_back(Hex{(*values)[i], (*values)[i + 1]});
+      continue;
+    }
+    if (values && key == "edges" && values->size() == 2) {
+      s.corners = (*values)[0] != 0;
+      s.startShipReach = (*values)[1];
       continue;
     }
     if (values && key == "zone" && values->size() % 2 == 0) {
@@ -532,6 +685,7 @@ State newGame(int players, const Settings &settings, int first) {
   assert(static_cast<int>(homes.size()) >= players);
   assert(first >= 0 && first < players);
   state.turn = first;
+  state.first = first;
   // The planets: the layout's, or one every third hex; and the homes
   const auto isPlanet = [&](Hex hex) {
     const auto named = [hex](const std::vector<Hex> &list) {
@@ -555,7 +709,8 @@ State newGame(int players, const Settings &settings, int first) {
           planet.kind = PlanetKind::Home;
           if (p < players) {
             planet.homeOf = p;
-            planet.docks[0] = p;
+            if (!settings.corners)
+              planet.docks[0] = p; // (with corners, a home colony is placed at the start)
           }
         }
       }
@@ -573,7 +728,8 @@ State newGame(int players, const Settings &settings, int first) {
   // Unused homes (fewer than 4 players) stay empty home planets: nobody's,
   // producing nothing, and not settleable
   for (int p = 0; p < players; ++p) {
-    state.ships.push_back(Ship{p, homes[static_cast<std::size_t>(p)], false});
+    if (!settings.corners) // (with corners, ships are placed at the start)
+      state.ships.push_back(Ship{p, homes[static_cast<std::size_t>(p)], false});
     state.player[static_cast<std::size_t>(p)].resources.fill(settings.startResources);
   }
   for (int order = 0; order < players; ++order) {
@@ -604,6 +760,11 @@ State newGame(int players, const Settings &settings, int first) {
   state.findsLeft = settings.finds;
   state.deck = settings.charters;
   state.deck.insert(state.deck.end(), static_cast<std::size_t>(settings.enforcers), kEnforcerCard);
+  if (settings.corners) {
+    // The start: home colonies, then ships, placed in snake order
+    state.phase = Phase::PlaceColony;
+    state.turn = setupPlayer(state);
+  }
   return state;
 }
 
@@ -615,7 +776,7 @@ namespace {
 std::array<int, kResources> stationKinds(const State &state, int player) {
   std::array<int, kResources> count{};
   for (const Planet &planet : state.planets) {
-    if (planet.homeOf < 0 && givesResources(planet.kind) && dockedAt(planet, player))
+    if (planet.homeOf < 0 && givesResources(planet.kind) && hasStationOn(state, planet, player))
       ++count[static_cast<std::size_t>(planet.kind)];
   }
   return count;
@@ -624,8 +785,15 @@ int kindsCovered(const State &state, int player) {
   const auto kinds = stationKinds(state, player);
   return static_cast<int>(std::count_if(kinds.begin(), kinds.end(), [](int n) { return n > 0; }));
 }
+// Colonies built (the home colony left out)
 int colonies(const State &state, int player) {
   int count = 0;
+  if (state.settings.corners) {
+    for (std::size_t i = 0; i < state.stations.size(); ++i)
+      count += state.stations[i].owner == player && state.stations[i].colony &&
+               static_cast<int>(i) != homeColonyOf(state, player);
+    return count;
+  }
   for (const Planet &planet : state.planets) {
     for (int d = 0; d < kDocks; ++d)
       count += planet.docks[static_cast<std::size_t>(d)] == player &&
@@ -637,6 +805,18 @@ template <PlanetKind kKind> bool twoOf(const State &state, int player) {
   return stationKinds(state, player)[static_cast<std::size_t>(kKind)] >= 2;
 }
 } // namespace
+
+const std::vector<Corner> &boardCorners() {
+  static const std::vector<Corner> kCorners =
+      HexGrid::everyCorner(HexGrid::spiral(Hex{}, kBoardRadius));
+  return kCorners;
+}
+
+int cornerNumber(Corner corner) {
+  const std::vector<Corner> &all = boardCorners();
+  const auto found = std::lower_bound(all.begin(), all.end(), corner);
+  return found != all.end() && *found == corner ? static_cast<int>(found - all.begin()) : -1;
+}
 
 const std::vector<Contract> &contracts() {
   static const std::vector<Contract> kContracts = {
@@ -658,7 +838,8 @@ const std::vector<Contract> &contracts() {
        [](const State &s, int p) {
          for (const Planet &a : s.planets) {
            for (const Planet &b : s.planets) {
-             if (dockedAt(a, p) && dockedAt(b, p) && HexGrid::distance(a.hex, b.hex) >= 6)
+             if (hasStationOn(s, a, p) && hasStationOn(s, b, p) &&
+                 HexGrid::distance(a.hex, b.hex) >= 6)
                return true;
            }
          }
@@ -668,7 +849,7 @@ const std::vector<Contract> &contracts() {
        [](const State &s, int p) {
          int shared = 0;
          for (const Planet &planet : s.planets)
-           shared += dockedAt(planet, p) && planet.docks[0] >= 0 && planet.docks[1] >= 0;
+           shared += hasStationOn(s, planet, p) && ownersOn(s, planet).size() >= 2;
          return shared >= 2;
        }},
       {"A station next to the alien station", 1,
@@ -676,6 +857,12 @@ const std::vector<Contract> &contracts() {
          for (const ZoneSite &site : s.zone) {
            if (!site.flipped || site.find != Find::AlienStation)
              continue;
+           if (s.settings.corners) {
+             for (const Station &station : s.stations)
+               if (station.owner == p && touches(station.at, site.hex))
+                 return true;
+             continue;
+           }
            for (const Planet &planet : s.planets) {
              if (dockedAt(planet, p) && HexGrid::distance(planet.hex, site.hex) <= 1)
                return true;
@@ -690,12 +877,9 @@ const std::vector<Contract> &contracts() {
       {"A colony on a planet numbered 6 or 8", 2,
        [](const State &s, int p) {
          for (const Planet &planet : s.planets) {
-           for (int d = 0; d < kDocks; ++d) {
-             if (planet.docks[static_cast<std::size_t>(d)] == p &&
-                 planet.colony[static_cast<std::size_t>(d)] &&
-                 (planet.number == 6 || planet.number == 8))
-               return true;
-           }
+           if (planet.homeOf < 0 && (planet.number == 6 || planet.number == 8) &&
+               hasColonyOn(s, planet, p))
+             return true;
          }
          return false;
        }},
@@ -723,6 +907,11 @@ const std::vector<Contract> &contracts() {
 
 int stationsOf(const State &state, int player) {
   int count = 0;
+  if (state.settings.corners) {
+    for (const Station &station : state.stations)
+      count += station.owner == player;
+    return count;
+  }
   for (const Planet &planet : state.planets)
     count += dockedAt(planet, player);
   return count;
@@ -731,6 +920,8 @@ int stationsOf(const State &state, int player) {
 int points(const State &state, int player) {
   const Player &p = state.player[static_cast<std::size_t>(player)];
   int total = stationsOf(state, player) + colonies(state, player); // a colony is 2 in all
+  if (state.settings.corners && homeColonyOf(state, player) >= 0)
+    ++total; // (the home colony: 2, as any colony)
   if (state.coreHolder == player)
     total += state.settings.coreControlPoints;
   if (state.embargoHolder == player)
@@ -758,10 +949,200 @@ int Game::currentPlayer(const State &state) {
 }
 
 namespace {
+
+// After a setup placement: the next player's, or the first turn
+void nextSetupStep(State &state) {
+  ++state.setupStep;
+  const int n = state.players;
+  if (state.setupStep < 2 * n) {
+    state.phase = state.setupStep < n ? Phase::PlaceColony : Phase::PlaceShip;
+    state.turn = setupPlayer(state);
+    return;
+  }
+  state.turn = state.first;
+  state.homeIncomeLeft = state.settings.firstSkipsIncome ? 0 : homeIncomeFor(state, state.first);
+  state.phase = state.homeIncomeLeft == 0 ? Phase::RollDraw : Phase::HomeIncome;
+}
+
+// The corners a player may put their home colony on: corners of their home
+// planet, free under the distance rule
+std::vector<int> colonyPlaces(const State &state, int player) {
+  std::vector<int> out;
+  for (const Planet &planet : state.planets) {
+    if (planet.homeOf != player)
+      continue;
+    for (Corner corner : HexGrid::corners(planet.hex))
+      if (onBoard(corner) && cornerFree(state, corner))
+        out.push_back(cornerNumber(corner));
+  }
+  std::sort(out.begin(), out.end());
+  return out;
+}
+
+// The corners a player may put their starting ship on: their home colony's,
+// or any within startShipReach edges of it
+std::vector<int> shipPlaces(const State &state, int player) {
+  const int home = homeColonyOf(state, player);
+  if (home < 0)
+    return {};
+  const Corner at = state.stations[static_cast<std::size_t>(home)].at;
+  std::vector<int> out{cornerNumber(at)};
+  for (const auto &[corner, steps] : cornersWithin(at, state.settings.startShipReach)) {
+    (void)steps;
+    out.push_back(corner);
+  }
+  std::sort(out.begin(), out.end());
+  return out;
+}
+
+// (corners) Turns over the next planet or zone tile the ship's stop touches,
+// if any is left face down: the dealer draws it, and this is called again
+// once the turn is back in its main part
+void turnNextOver(State &state) {
+  while (!state.turning.empty()) {
+    const Hex hex = state.turning.front();
+    state.turning.erase(state.turning.begin());
+    const int planet = planetAt(state, hex);
+    if (planet >= 0 && !state.planets[static_cast<std::size_t>(planet)].flipped) {
+      state.pendingPlanet = planet;
+      state.phase = Phase::PlanetDraw;
+      return;
+    }
+    const int site = siteAt(state, hex);
+    if (site >= 0 && !state.zone[static_cast<std::size_t>(site)].flipped) {
+      state.pendingSite = site;
+      state.phase = Phase::ZoneDraw;
+      return;
+    }
+  }
+}
+
+// The main part of a turn with corners: building ships at colonies, moving
+// along edges, settling on corners, upgrading stations. Returns whether it
+// was done, or nothing if the action isn't one of these (the rest work the
+// same with either rules).
+std::optional<bool> applyMainOnCorners(State &state, const Action &action) {
+  using Kind = Action::Kind;
+  Player &me = current(state);
+  const Settings &settings = state.settings;
+  const auto station = [&](int index) -> Station * {
+    if (index < 0 || index >= static_cast<int>(state.stations.size()))
+      return nullptr;
+    Station &found = state.stations[static_cast<std::size_t>(index)];
+    return found.owner == state.turn ? &found : nullptr;
+  };
+  switch (action.kind) {
+  case Kind::BuildShip: {
+    const Station *colony = station(action.a);
+    if (!colony || !colony->colony || shipsOf(state, state.turn) >= settings.maxShips ||
+        !canAfford(me.resources, settings.shipCost))
+      return false;
+    pay(me.resources, settings.shipCost);
+    state.ships.push_back(Ship{state.turn, Hex{}, true, colony->at}); // moves from next turn
+    return true;
+  }
+  case Kind::Move: {
+    if (action.a < 0 || action.a >= static_cast<int>(state.ships.size()))
+      return false;
+    Ship &ship = state.ships[static_cast<std::size_t>(action.a)];
+    if (ship.owner != state.turn || ship.moved)
+      return false;
+    const auto moves = cornerMovesFor(state, ship);
+    const auto found = moves.find(action.b);
+    if (found == moves.end())
+      return false;
+    if (found->second > settings.shipMove)
+      --me.resources[static_cast<std::size_t>(Resource::Fuel)]; // the boost
+    ship.corner = boardCorners()[static_cast<std::size_t>(action.b)];
+    ship.moved = true;
+    // Where it stops, what it touches turns over
+    for (Hex hex : HexGrid::hexesTouching(ship.corner))
+      state.turning.push_back(hex);
+    turnNextOver(state);
+    return true;
+  }
+  case Kind::Settle: {
+    if (action.a < 0 || action.a >= static_cast<int>(state.ships.size()))
+      return false;
+    const Ship ship = state.ships[static_cast<std::size_t>(action.a)];
+    if (ship.owner != state.turn || !cornerFree(state, ship.corner) ||
+        !canAfford(me.resources, settings.stationCost))
+      return false;
+    // A station must touch a planet it can be built by (turned over, not a home)
+    const bool byAPlanet =
+        std::any_of(state.planets.begin(), state.planets.end(),
+                    [&](const Planet &p) { return settleable(p) && touches(ship.corner, p.hex); });
+    if (!byAPlanet)
+      return false;
+    pay(me.resources, settings.stationCost);
+    state.ships.erase(state.ships.begin() + action.a);
+    state.stations.push_back(Station{ship.corner, state.turn, false});
+    updateCoreControl(state, state.turn);
+    return true;
+  }
+  case Kind::BuildColony: {
+    Station *mine = station(action.a);
+    if (!mine || mine->colony || !canAfford(me.resources, settings.colonyCost))
+      return false;
+    pay(me.resources, settings.colonyCost);
+    mine->colony = true;
+    return true;
+  }
+  default:
+    return std::nullopt;
+  }
+}
+
+// (corners) The main part of a turn's moves for ships and stations: a ship
+// at each colony, each ship's moves along edges and settling, each station's
+// upgrade to a colony
+void cornerActions(const State &state, std::vector<Action> &out) {
+  using Kind = Action::Kind;
+  const Player &me = state.player[static_cast<std::size_t>(state.turn)];
+  const Settings &settings = state.settings;
+  if (shipsOf(state, state.turn) < settings.maxShips &&
+      canAfford(me.resources, settings.shipCost)) {
+    for (std::size_t i = 0; i < state.stations.size(); ++i)
+      if (state.stations[i].owner == state.turn && state.stations[i].colony)
+        out.push_back({Kind::BuildShip, static_cast<int>(i)});
+  }
+  for (std::size_t i = 0; i < state.ships.size(); ++i) {
+    const Ship &ship = state.ships[i];
+    if (ship.owner != state.turn)
+      continue;
+    if (!ship.moved) {
+      const auto reachable = cornerMovesFor(state, ship);
+      std::vector<int> corners;
+      for (const auto &[corner, steps] : reachable) {
+        (void)steps;
+        corners.push_back(corner);
+      }
+      std::sort(corners.begin(), corners.end()); // a fixed order, whatever the hash map's
+      for (int corner : corners)
+        out.push_back({Kind::Move, static_cast<int>(i), corner});
+    }
+    const bool byAPlanet =
+        std::any_of(state.planets.begin(), state.planets.end(),
+                    [&](const Planet &p) { return settleable(p) && touches(ship.corner, p.hex); });
+    if (byAPlanet && cornerFree(state, ship.corner) &&
+        canAfford(me.resources, settings.stationCost))
+      out.push_back({Kind::Settle, static_cast<int>(i)});
+  }
+  if (canAfford(me.resources, settings.colonyCost)) {
+    for (std::size_t i = 0; i < state.stations.size(); ++i)
+      if (state.stations[i].owner == state.turn && !state.stations[i].colony)
+        out.push_back({Kind::BuildColony, static_cast<int>(i)});
+  }
+}
+
 bool applyMain(State &state, const Action &action) {
   using Kind = Action::Kind;
   Player &me = current(state);
   const Settings &settings = state.settings;
+  if (settings.corners) {
+    if (const std::optional<bool> done = applyMainOnCorners(state, action))
+      return *done;
+  }
   switch (action.kind) {
   case Kind::Trade: {
     if (action.a < 0 || action.a >= kResources || action.b < 0 || action.b >= kResources ||
@@ -1056,7 +1437,32 @@ bool Game::apply(State &state, const Action &action) {
     break;
   case Phase::Over:
     break;
+  case Phase::PlaceColony: {
+    const std::vector<int> places = colonyPlaces(state, state.turn);
+    if (action.kind != Kind::PlaceColony ||
+        std::find(places.begin(), places.end(), action.a) == places.end())
+      break;
+    state.stations.push_back(
+        Station{boardCorners()[static_cast<std::size_t>(action.a)], state.turn, true});
+    nextSetupStep(state);
+    done = true;
+    break;
   }
+  case Phase::PlaceShip: {
+    const std::vector<int> places = shipPlaces(state, state.turn);
+    if (action.kind != Kind::PlaceShip ||
+        std::find(places.begin(), places.end(), action.a) == places.end())
+      break;
+    state.ships.push_back(
+        Ship{state.turn, Hex{}, false, boardCorners()[static_cast<std::size_t>(action.a)]});
+    nextSetupStep(state);
+    done = true;
+    break;
+  }
+  }
+  // (corners) more to turn over where a ship stopped
+  if (done && state.phase == Phase::Main && !state.turning.empty())
+    turnNextOver(state);
   if (done && state.phase != Phase::HomeIncome &&
       points(state, state.turn) >= state.settings.winPoints) {
     state.winner = state.turn;
@@ -1097,6 +1503,14 @@ std::vector<Action> Game::legalActions(const State &state) {
         out.push_back({Kind::KeepContract, id});
     }
     break;
+  case Phase::PlaceColony:
+    for (int corner : colonyPlaces(state, state.turn))
+      out.push_back({Kind::PlaceColony, corner});
+    break;
+  case Phase::PlaceShip:
+    for (int corner : shipPlaces(state, state.turn))
+      out.push_back({Kind::PlaceShip, corner});
+    break;
   case Phase::Main: {
     out.push_back({Kind::EndTurn});
     const int rate = tradeRate(state, state.turn);
@@ -1108,14 +1522,17 @@ std::vector<Action> Game::legalActions(const State &state) {
           out.push_back({Kind::Trade, give, get});
       }
     }
-    if (shipsOf(state, state.turn) < settings.maxShips &&
-        canAfford(me.resources, settings.shipCost)) {
+    if (settings.corners) {
+      cornerActions(state, out);
+    } else if (shipsOf(state, state.turn) < settings.maxShips &&
+               canAfford(me.resources, settings.shipCost)) {
       for (std::size_t i = 0; i < state.planets.size(); ++i) {
         if (dockedAt(state.planets[i], state.turn))
           out.push_back({Kind::BuildShip, static_cast<int>(i)});
       }
     }
-    for (std::size_t i = 0; i < state.ships.size(); ++i) {
+    // (with corners, cornerActions gave the ships' and stations' moves)
+    for (std::size_t i = 0; !settings.corners && i < state.ships.size(); ++i) {
       const Ship &ship = state.ships[i];
       if (ship.owner != state.turn)
         continue;
@@ -1136,7 +1553,7 @@ std::vector<Action> Game::legalActions(const State &state) {
           out.push_back({Kind::Settle, static_cast<int>(i)});
       }
     }
-    if (canAfford(me.resources, settings.colonyCost)) {
+    if (!settings.corners && canAfford(me.resources, settings.colonyCost)) {
       for (std::size_t i = 0; i < state.planets.size(); ++i) {
         const Planet &planet = state.planets[i];
         if (planet.homeOf >= 0 || planet.kind == PlanetKind::Home)
@@ -1265,7 +1682,13 @@ std::string Game::writeState(const State &state) {
     out << "zone " << hexText(z.hex) << " "
         << (z.flipped ? kFindNames[static_cast<std::size_t>(z.find)] : "?") << "\n";
   for (const Ship &s : state.ships)
-    out << "ship " << s.owner << " " << hexText(s.at) << (s.moved ? " moved" : "") << "\n";
+    out << "ship " << s.owner << " "
+        << (state.settings.corners ? "corner " + std::to_string(cornerNumber(s.corner))
+                                   : hexText(s.at))
+        << (s.moved ? " moved" : "") << "\n";
+  for (const Station &s : state.stations)
+    out << "station " << s.owner << " corner " << cornerNumber(s.at) << (s.colony ? " colony" : "")
+        << "\n";
   for (int i = 0; i < state.players; ++i) {
     const Player &p = state.player[static_cast<std::size_t>(i)];
     out << "player " << i << " resources=" << joined(p.resources) << " badges=" << p.badges << ","
@@ -1282,7 +1705,7 @@ std::string Game::writeState(const State &state) {
       << " pending=" << state.pendingPlanet << "," << state.pendingSite
       << " victims=" << joined(state.victims) << " salvage=" << state.salvageLeft
       << " income=" << state.homeIncomeLeft << " offered=" << state.offered[0] << ","
-      << state.offered[1] << "\n";
+      << state.offered[1] << " first=" << state.first << " setup=" << state.setupStep << "\n";
   return out.str();
 }
 
@@ -1355,6 +1778,10 @@ std::string Game::writeAction(const Action &action) {
     return "badges";
   case Kind::EndTurn:
     return "end";
+  case Kind::PlaceColony:
+    return "place_colony " + n(action.a);
+  case Kind::PlaceShip:
+    return "place_ship " + n(action.a);
   }
   return "?";
 }
@@ -1396,6 +1823,10 @@ std::optional<Action> Game::readAction(std::string_view text) {
       return std::nullopt;
     if (verb == "ship")
       return make(Kind::BuildShip, *v);
+    if (verb == "place_colony")
+      return make(Kind::PlaceColony, *v);
+    if (verb == "place_ship")
+      return make(Kind::PlaceShip, *v);
     if (verb == "settle")
       return make(Kind::Settle, *v);
     if (verb == "colony")

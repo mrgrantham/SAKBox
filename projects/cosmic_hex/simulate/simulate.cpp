@@ -54,6 +54,8 @@ struct Options {
   bool smallFinds = false;      // the layout's finds beside its small systems (--finds small)
   int win = 0;                  // points to win (0: the rules' default)
   std::vector<BotStyle> styles; // the players' styles, turned round a seat each game
+  bool edges = false;           // corners and edges (Settings::corners)
+  int move = 0, boost = 0;      // a ship's move and its fuel boost (0: the default for the rules)
 };
 
 // A flag's number, or a clear stop if it isn't one
@@ -170,6 +172,12 @@ Options parse(int argc, char **argv) {
       options.planets = hexes(flag, value);
     else if (flag == "--homes")
       options.homes = hexes(flag, value);
+    else if (flag == "--edges")
+      options.edges = std::string_view(value) == "yes";
+    else if (flag == "--move")
+      options.move = number<int>(flag, value);
+    else if (flag == "--boost")
+      options.boost = number<int>(flag, value);
     else if (flag == "--layout")
       options.layout = value;
     else if (flag == "--layouts")
@@ -235,7 +243,14 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
       }
       if (action.a + action.b != 7 && state.blockade >= 0) {
         const Planet &planet = state.planets[static_cast<std::size_t>(state.blockade)];
-        if (planet.number == action.a + action.b) {
+        if (planet.number == action.a + action.b && state.settings.corners) {
+          // (corners) every station touching it
+          for (const Station &station : state.stations)
+            for (Hex hex : HexGrid::hexesTouching(station.at))
+              if (hex == planet.hex)
+                stats.denied +=
+                    station.colony ? state.settings.colonyPays : state.settings.stationPays;
+        } else if (planet.number == action.a + action.b) {
           for (int d = 0; d < kDocks; ++d) {
             if (planet.docks[static_cast<std::size_t>(d)] >= 0)
               stats.denied += planet.colony[static_cast<std::size_t>(d)]
@@ -281,6 +296,30 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
 // planets next to each other form one system (a single, a pair, a three)
 std::array<int, 3> stationsBySystem(const State &state) {
   std::array<int, 3> counts{};
+  // Each planet's system size: it and the planets reached through neighbours
+  const auto systemSize = [&](Hex start) {
+    std::vector<Hex> system{start};
+    for (std::size_t i = 0; i < system.size(); ++i)
+      for (const Planet &other : state.planets)
+        if (other.homeOf < 0 && other.kind != PlanetKind::Home &&
+            HexGrid::distance(other.hex, system[i]) == 1 &&
+            std::find(system.begin(), system.end(), other.hex) == system.end())
+          system.push_back(other.hex);
+    return std::min<std::size_t>(system.size(), 3);
+  };
+  if (state.settings.corners) {
+    // A station counts for the biggest system it touches (homes left out)
+    for (const Station &station : state.stations) {
+      std::size_t biggest = 0;
+      for (Hex hex : HexGrid::hexesTouching(station.at))
+        for (const Planet &planet : state.planets)
+          if (planet.hex == hex && planet.homeOf < 0 && planet.kind != PlanetKind::Home)
+            biggest = std::max(biggest, systemSize(hex));
+      if (biggest > 0)
+        ++counts[biggest - 1];
+    }
+    return counts;
+  }
   for (const Planet &planet : state.planets) {
     if (planet.homeOf >= 0 || planet.kind == PlanetKind::Home)
       continue;
@@ -359,6 +398,17 @@ int main(int argc, char **argv) {
     settings.homeHexes = options.homes;
     settings.moons = options.moons;
     settings.zoneHexes = options.zone;
+    // Corners and edges: ships move 2 edges, 1 more for fuel (round 50),
+    // unless --move and --boost say otherwise
+    settings.corners = options.edges;
+    if (options.edges) {
+      settings.shipMove = 2;
+      settings.boostMove = 1;
+    }
+    if (options.move > 0)
+      settings.shipMove = options.move;
+    if (options.boost > 0)
+      settings.boostMove = options.boost;
     if (options.win > 0)
       settings.winPoints = options.win;
     settings.catchUpBelow = options.catchUpBelow;

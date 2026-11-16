@@ -27,3 +27,12 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "Corners_test",
+    srcs = ["tests/Corners_test.cpp"],
+    deps = [
+        ":rules",
+        "@gtest//:gtest_main",
+    ],
+)
