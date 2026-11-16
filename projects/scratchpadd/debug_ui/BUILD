@@ -30,6 +30,7 @@ cc_library(
         "@imgui",
         "@imgui//:imgui_backend_glfw",
         "@imgui//:imgui_stdlib",
+        "@implot",
     ] + select({
         "//projects/scratchpadd/scene/desktop:metal": [
             "//projects/scratchpadd/scene/metal",
@@ -70,6 +71,7 @@ cc_test(
     deps = [
         ":debug_ui",
         "@gtest//:gtest_main",
+        "@implot",
     ],
 )
 

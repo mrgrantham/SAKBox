@@ -3,12 +3,14 @@
 #include "ImGuiBackend.hpp"
 
 #include "imgui.h"
+#include "implot.h"
 
 namespace ScratchPadd::DebugUi {
 
 Ui::Ui(Scene::Display &display, Theme::Colors colors) : display_(display) {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
+  ImPlot::CreateContext(); // (the panels' graphs)
   Theme::apply(colors);
   ImGui::GetIO().IniFilename = nullptr; // don't write imgui.ini into the working directory
   ImGuiBackend::start(display);
@@ -24,6 +26,7 @@ Ui::Ui(Scene::Display &display, Theme::Colors colors) : display_(display) {
 Ui::~Ui() {
   display_.stopDrawingLast(drawing_);
   ImGuiBackend::stop();
+  ImPlot::DestroyContext();
   ImGui::DestroyContext();
 }
 

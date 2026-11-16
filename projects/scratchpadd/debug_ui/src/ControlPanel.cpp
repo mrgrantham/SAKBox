@@ -2,6 +2,7 @@
 #include <ScratchPadd/DebugUi/Theme.hpp>
 #include <ScratchPadd/Helper.hpp>
 
+#include "implot.h"
 #include <algorithm>
 #include <cfloat>
 #include <cstdint>
@@ -67,20 +68,36 @@ void drawTable(const char *name, const std::string &text) {
   ImGui::EndTable();
 }
 
-// A graph: its values as a line or bars, the latest written over it, and
-// its name beside, like the other controls
+// A graph, with ImPlot: its values as a line or bars on a scale with
+// ticks, oldest at the left, the x axis as long as the graph keeps (so a new
+// graph fills in from the left), and hovering shows a value. Its name and
+// latest value beside, like the other controls.
 void drawGraph(const char *name, const ControlType::Graph &graph) {
-  char latest[48];
-  std::snprintf(latest, sizeof latest, "%.3g%s", static_cast<double>(graph.latest()),
-                graph.unit.c_str());
-  const float low = graph.range ? graph.range->first : FLT_MAX; // (FLT_MAX: fit the values)
-  const float high = graph.range ? graph.range->second : FLT_MAX;
-  const ImVec2 size(0, 60);
+  char title[160];
+  std::snprintf(title, sizeof title, "%s: %.3g%s###%s", name, static_cast<double>(graph.latest()),
+                graph.unit.c_str(), name);
+  const ImPlotFlags plotFlags = ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect |
+                                ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText;
+  if (!ImPlot::BeginPlot(title, ImVec2(ImGui::CalcItemWidth(), 110), plotFlags))
+    return;
+  // x: the values' places, no labels; y: the graph's range, or fitted
+  ImPlot::SetupAxes(nullptr, graph.unit.c_str(), ImPlotAxisFlags_NoTickLabels,
+                    graph.range ? ImPlotAxisFlags_None : ImPlotAxisFlags_AutoFit);
+  ImPlot::SetupAxisLimits(ImAxis_X1, -0.5, static_cast<double>(graph.length) - 0.5,
+                          ImPlotCond_Always);
+  if (graph.range)
+    ImPlot::SetupAxisLimits(ImAxis_Y1, graph.range->first, graph.range->second, ImPlotCond_Always);
+  // In the theme's plot colour (ImGui's histogram colour, which Theme sets)
+  ImPlotSpec spec;
+  spec.LineColor = ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram);
+  spec.FillColor = spec.LineColor;
+  spec.LineWeight = 1.5f;
   const int count = static_cast<int>(graph.values.size());
   if (graph.style == ControlType::Graph::Style::Bars)
-    ImGui::PlotHistogram(name, graph.values.data(), count, 0, latest, low, high, size);
+    ImPlot::PlotBars(name, graph.values.data(), count, 0.7, 0.0, spec);
   else
-    ImGui::PlotLines(name, graph.values.data(), count, 0, latest, low, high, size);
+    ImPlot::PlotLine(name, graph.values.data(), count, 1.0, 0.0, spec);
+  ImPlot::EndPlot();
 }
 
 } // namespace

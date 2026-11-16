@@ -4,6 +4,7 @@
 // bottom left unless told otherwise.
 #include <ScratchPadd/DebugUi/ControlPanel.hpp>
 
+#include "implot.h"
 #include <gtest/gtest.h>
 
 #include <string>
@@ -57,6 +58,7 @@ TEST(ControlPanelsTest, TabsLabelledWithoutPaddAndTheWindowPlaced) {
 // shown), and drawing a graph changes nothing
 TEST(ControlPanelTest, DrawsEveryKindOfControlGraphsIncluded) {
   ImGui::CreateContext();
+  ImPlot::CreateContext();
   ImGuiIO &io = ImGui::GetIO();
   io.DisplaySize = ImVec2(800, 600);
   unsigned char *pixels = nullptr;
@@ -90,5 +92,6 @@ TEST(ControlPanelTest, DrawsEveryKindOfControlGraphsIncluded) {
   EXPECT_EQ(changes, 0);
   EXPECT_EQ(std::get<ControlType::Graph>(panel.controls().controlMap.at("Busy")).values,
             bars.values);
+  ImPlot::DestroyContext();
   ImGui::DestroyContext();
 }

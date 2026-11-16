@@ -261,6 +261,16 @@ http_archive(
     urls = ["https://github.com/ocornut/imgui/archive/refs/tags/v1.93.0.zip"],
 )
 
+# ImPlot (MIT): plots for ImGui, for the desktop panels' graphs
+# (ControlType::Graph) and the balance lab
+http_archive(
+    name = "implot",
+    build_file = "//third_party:implot.BUILD",
+    sha256 = "4eb45050f0cd47fc04037b5e32cad447b0aef4b10b2ffd4b25f4ec31ef0b6a92",
+    strip_prefix = "implot-1.1",
+    urls = ["https://github.com/epezent/implot/archive/refs/tags/v1.1.zip"],
+)
+
 new_git_repository(
     name = "backward",
     build_file = "//third_party:backward-cpp.BUILD",
