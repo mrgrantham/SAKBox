@@ -24,7 +24,7 @@ BUILD		:=	build
 # rock_ds_sources)
 SOURCES		:=	source scratchpadd/scene/src scratchpadd/scene_ds/src scratchpadd/scene_ds/screenshot assets scratchpadd/input/src \
 			scratchpadd/utilities/src scratchpadd/storage/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session
-INCLUDES	:=	include build scratchpadd/scene/include scratchpadd/scene_ds/include flexmath/include assets scratchpadd/input/include look/src \
+INCLUDES	:=	include build scratchpadd/scene/include scratchpadd/scene_ds/include flexmath/include assets scratchpadd/input/include look/src scratchpadd/app_ended/include \
 			scratchpadd/debug_log/include scratchpadd/storage/include scratchpadd/basis/include scratchpadd/messages/include \
 			scratchpadd/utilities/include third_party/spdlog/include
 

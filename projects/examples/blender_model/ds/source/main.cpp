@@ -16,6 +16,7 @@
 // to the SD card (fat:/data/blender-model-ds/screenshots/)   START: quit
 #include <nds.h>
 
+#include <ScratchPadd/AppEnded/AppEnded.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/Input/Reader.hpp>
 #include <ScratchPadd/Logger.hpp>
@@ -74,8 +75,7 @@ int main() {
         ->info("exit handlers: the last step before libnds powers off");
   });
   // The app in a scope of its own, so what it holds (the renderer, the
-  // display) closes before the DS powers off, each stage shown on the
-  // bottom screen: if quitting ever hangs, the last line says where
+  // display) is closed before the ended screen
   {
     Scene::Display display; // the top screen
     consoleDemoInit();      // the bottom screen's console, for printf
@@ -187,12 +187,13 @@ int main() {
                                                                : "Table: highlights");
       }
     }
-    std::printf("\x1b[21;0HLeaving the main loop\x1b[K\n");
     quitting->info("left the main loop");
-    std::printf("\x1b[22;0HClosing the renderer\x1b[K\n");
   }
   quitting->info("closed the renderer and display");
-  std::printf("\x1b[23;0HPowering off\x1b[K");
+  // "Models from Blender has ended.", until a button: then main returns and
+  // the DS switches off (a DS app that just returns leaves its last frame
+  // on the screens: ScratchPadd/AppEnded/AppEnded.hpp)
+  ScratchPadd::AppEnded::show();
   quitting->info("returning from main");
   return 0;
 }
