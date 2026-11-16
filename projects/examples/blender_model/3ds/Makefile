@@ -37,7 +37,7 @@ BUILD		:=	build
 # Bazel rule (extra_srcs in BUILD)
 SOURCES		:=	source scratchpadd/scene/src scratchpadd/scene_3ds/src scratchpadd/overlay_text/src assets scratchpadd/input/src
 DATA		:=	data
-INCLUDES	:=	include scratchpadd/scene/include scratchpadd/scene_3ds/include scratchpadd/overlay_text/include third_party assets scratchpadd/input/include
+INCLUDES	:=	include scratchpadd/scene/include scratchpadd/scene_3ds/include scratchpadd/overlay_text/include third_party assets scratchpadd/input/include look/src
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs

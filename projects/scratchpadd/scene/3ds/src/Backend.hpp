@@ -5,6 +5,7 @@
 #include <ScratchPadd/Scene/3DS/Debug.hpp>
 #include <ScratchPadd/Scene/3DS/Display.hpp>
 #include <ScratchPadd/Scene/Culling.hpp>
+#include <ScratchPadd/Scene/OutlineHull.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <citro3d.h>
@@ -40,7 +41,8 @@ struct Renderer::Backend {
     // than 65,536 vertices, the triangles' vertices in turn
     Vertex *vertices = nullptr;
     std::uint16_t *indices = nullptr;
-    int count = 0; // indices, or vertices drawn in turn
+    int count = 0;       // indices, or vertices drawn in turn
+    int vertexCount = 0; // in `vertices`
     C3D_BufInfo buffers;
     // Its wireframe: its triangles' edges, each once (edges in the same
     // place joined, so a flat-shaded mesh's aren't doubled), as lines in
@@ -48,6 +50,10 @@ struct Renderer::Backend {
     std::vector<std::uint32_t> triangles; // (kept to make it)
     LineVertex *wireframe = nullptr;
     int wireframeVertices = 0;
+    // Its outline's hull (OutlineHull.hpp), made the first time it's drawn
+    // with an outline
+    Vertex *hull = nullptr;
+    C3D_BufInfo hullBuffers;
     bool translucent = false; // has see-through vertices
     FrameCounts cost;
     Bounds bounds; // for frustum culling (Culling.hpp)
@@ -76,6 +82,7 @@ struct Renderer::Backend {
   void copyFrameVertices();
   void drawEye(C3D_RenderTarget *target, const C3D_Mtx &projection);
   void drawMesh(const Draw &draw, const C3D_Mtx &viewProjection);
+  void drawOutline(LoadedMesh &mesh, const Draw &draw);
   void drawWireframe(LoadedMesh &mesh, const C3D_Mtx &mvp, const Material &material);
   void drawLineBatches(const C3D_Mtx &viewProjection);
   void drawLineVertices(const LineVertex *vertices, int count, const C3D_Mtx &mvp,
@@ -83,6 +90,7 @@ struct Renderer::Backend {
   void drawOverlay();
   void setMaterial(const Material &material, const Transform &where, const C3D_Mtx &mvp);
   void useScene();
+  void setDebugView();
 
   Display &display;
   std::vector<LoadedMesh> meshes; // by Mesh::id - 1
@@ -92,7 +100,8 @@ struct Renderer::Backend {
   DVLB_s *sceneShaders = nullptr, *lineShaders = nullptr, *overlayShaders = nullptr;
   shaderProgram_s sceneProgram, lineProgram, overlayProgram;
   struct SceneUniforms {
-    int mvp, normalMatrix, material, ambient, lightDirections, lightColours, debugMix, debugAdd;
+    int mvp, normalMatrix, material, ambient, lightDirections, lightColours, debugMix, debugAdd,
+        toon, extrude;
   };
   SceneUniforms sceneUniforms;
   int lineMvp = -1, lineMaterial = -1, overlayProjection = -1;

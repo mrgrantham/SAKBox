@@ -45,9 +45,20 @@ scene(
 )
 
 # Each model as desktops draw it, beside the DS's version (_ds_preview)
+# The look switched while it runs (toon shading, outlines), shared with the
+# DS's and 3DS's builds (staged into theirs as look/src)
+filegroup(
+    name = "look",
+    srcs = ["src/Look.hpp"],
+    visibility = ["//projects/examples/blender_model:__subpackages__"],
+)
+
 cc_binary(
     name = "blender_model",
-    srcs = ["src/main.cpp"],
+    srcs = [
+        "src/Look.hpp",
+        "src/main.cpp",
+    ],
     data = [":hangar"],
     tags = ["blender"],
     deps = [

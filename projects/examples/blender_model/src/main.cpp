@@ -2,6 +2,8 @@
 // draw it, beside the DS's version of it. The ship's DS version was made by
 // hand in Blender (Ship_DS, a Decimate modifier on a linked duplicate); the
 // rock's was simplified by the build to its budget (SIMPLIFY_AGGRESSIVE).
+//
+// T: toon shading or smooth   O: outlines   B: toon's bands (2 to 5)
 #include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/Network/NetworkPadd.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
@@ -9,6 +11,7 @@
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Storage/StoragePadd.hpp>
 
+#include "Look.hpp"
 #include "rock.h"
 #include "rock_ds_preview.h"
 #include "ship.h"
@@ -66,9 +69,16 @@ private:
     display_->pollEvents();
     if (display_->keyDown(Scene::Key::Escape))
       display_->close();
+    if (display_->keyPressed(Scene::keyFor('t')))
+      look_.toon = !look_.toon;
+    if (display_->keyPressed(Scene::keyFor('o')))
+      look_.outlines = !look_.outlines;
+    if (display_->keyPressed(Scene::keyFor('b')))
+      look_.nextBands();
     const float seconds = static_cast<float>(display_->seconds());
     Scene::Environment environment{.background = {28, 30, 38}, .ambient = {70, 70, 75}};
     environment.addLight({.direction = {-0.5f, -0.8f, -0.6f}, .colour = {220, 215, 205}});
+    look_.apply(environment);
     renderer_->beginFrame({.eye = {0, 0.5f, 7.5f}, .target = {0, 0, 0}, .fieldOfView = 45},
                           environment);
     // The desktop's on the left, the DS's on the right; ships above, rocks below
@@ -78,7 +88,7 @@ private:
                       Scene::Transform::translation(where) *
                           Scene::Transform::rotation({0, 1, 0}, seconds * 0.5f) *
                           Scene::Transform::scaling({0.9f, 0.9f, 0.9f}),
-                      {});
+                      look_.material({}));
       float x = 0, y = 0;
       if (renderer_->toScreen(where + Scene::Vector3{0, -1.0f, 0}, x, y)) {
         char text[96];
@@ -88,6 +98,11 @@ private:
                                   {230, 225, 215}, 1.5f);
       }
     }
+    char looks[64];
+    look_.describe(looks, sizeof looks);
+    renderer_->overlay().text(16, 16, looks, {230, 225, 215}, 1.5f);
+    renderer_->overlay().text(16, 40, "T: toon or smooth   O: outlines   B: bands", {150, 150, 160},
+                              1.2f);
     renderer_->endFrame();
     push([this] { drawFrame(); });
   }
@@ -95,6 +110,7 @@ private:
   std::unique_ptr<Scene::Display> display_;
   std::unique_ptr<Scene::Renderer> renderer_;
   Shown models_[4];
+  Look::Settings look_;
 };
 
 int main() {

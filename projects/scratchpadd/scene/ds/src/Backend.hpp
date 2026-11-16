@@ -8,6 +8,8 @@
 #include <ScratchPadd/Scene/DS/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
+#include <array>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <utility>
@@ -59,6 +61,13 @@ struct Renderer::Backend {
   // Fog: the polygon format's bit for it (0 without), and the fog and
   // camera its table was worked out for (only again when they change)
   std::uint32_t fogBit = 0;
+  // Toon shading's table this frame (ToonTable.hpp), and what's in the
+  // hardware's (only written again when it changes)
+  DsToonTable toonTable = DsToonTable::Highlights;
+  std::array<std::uint16_t, 32> toonTableSet{};
+  // Outlines: whether this frame has any, and the next outlined mesh's ID
+  bool outlining = false;
+  unsigned nextOutlineId = 0;
   Fog fogSet;
   Scalar fogNear = 0, fogFar = 0;
   // What the text layer shows, redrawn only when the overlay's text changes,

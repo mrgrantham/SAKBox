@@ -142,7 +142,8 @@ Renderer::Backend::Backend(Display &display) : display(display) {
     };
     return SceneUniforms{at("mvp"),      at("normalMatrix"),    at("material"),
                          at("ambient"),  at("lightDirections"), at("lightColours"),
-                         at("debugMix"), at("debugAdd")};
+                         at("debugMix"), at("debugAdd"),        at("toon"),
+                         at("extrude")};
   };
   sceneUniforms = locate(sceneProgram);
   overlayProjection =
@@ -167,6 +168,7 @@ Renderer::Backend::~Backend() {
     linearFree(mesh.vertices);
     linearFree(mesh.indices);
     linearFree(mesh.wireframe);
+    linearFree(mesh.hull);
   }
   linearFree(arena.memory);
   shaderProgramFree(&sceneProgram);
@@ -195,8 +197,14 @@ void Renderer::Backend::useScene() {
     const Vector3 towards = on ? (-environment.lights[i].direction).normalised() : Vector3{};
     C3D_FVUnifSet(GPU_VERTEX_SHADER, sceneUniforms.lightDirections + static_cast<int>(i), towards.x,
                   towards.y, towards.z, 0);
-    // The debug view: what the output is made of (usual, normal, light,
-    // vertex colour), and overdraw's step added
+  }
+  setDebugView();
+}
+
+// The debug view: what the output is made of (usual, normal, light, vertex
+// colour), and overdraw's step added
+void Renderer::Backend::setDebugView() {
+  {
     float mix[4] = {1, 0, 0, 0};
     float add = 0;
     switch (debug.settings.view) {
@@ -230,7 +238,15 @@ void Renderer::Backend::setMaterial(const Material &material, const Transform &w
   const float alpha = static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f;
   C3D_FVUnifSet(GPU_VERTEX_SHADER, u.material, channel(material.colour.r),
                 channel(material.colour.g), channel(material.colour.b), alpha);
-  const bool lit = material.shading == Material::Shading::Lit;
+  const bool lit = material.shading != Material::Shading::Unlit;
+  // Toon shading: each light let through in steps (scene.v.pica's toonStep)
+  if (material.shading == Material::Shading::Toon) {
+    const int bands = toonBandsFor(material, environment);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u.toon, static_cast<float>(bands), 1.0f / (bands - 1), 1, 0);
+  } else {
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u.toon, 1, 1, 0, 1);
+  }
+  C3D_FVUnifSet(GPU_VERTEX_SHADER, u.extrude, 0, 0, 0, 0);
   if (lit) {
     C3D_FVUnifSet(GPU_VERTEX_SHADER, u.ambient, channel(environment.ambient.r),
                   channel(environment.ambient.g), channel(environment.ambient.b), 1);
@@ -269,6 +285,51 @@ void Renderer::Backend::drawMesh(const Draw &draw, const C3D_Mtx &viewProjection
   else
     C3D_DrawArrays(GPU_TRIANGLES, 0, mesh.count);
   sent("mesh", draw.mesh.id);
+  if (draw.material.outline)
+    drawOutline(mesh, draw);
+}
+
+// The inverted hull: the mesh again, pushed out along its shared normals,
+// its front faces culled so only the rim around it shows, in one colour
+// (the shader's debug inputs give it: none of the usual colour, the
+// outline's added). Made the first time it's needed: it doubles the mesh's
+// vertices in linear memory.
+void Renderer::Backend::drawOutline(LoadedMesh &mesh, const Draw &draw) {
+  if (!mesh.hull) {
+    const std::vector<Vertex> hull =
+        outlineHullVertices({mesh.vertices, static_cast<std::size_t>(mesh.vertexCount)});
+    mesh.hull = static_cast<Vertex *>(linearAlloc(hull.size() * sizeof(Vertex)));
+    if (!mesh.hull)
+      return;
+    std::memcpy(mesh.hull, hull.data(), hull.size() * sizeof(Vertex));
+    GSPGPU_FlushDataCache(mesh.hull, hull.size() * sizeof(Vertex));
+    BufInfo_Init(&mesh.hullBuffers);
+    BufInfo_Add(&mesh.hullBuffers, mesh.hull, sizeof(Vertex), 3, 0x210);
+  }
+  // Its width in the mesh's own units: the world's, over the transform's
+  // average scale
+  Scalar scale = 0;
+  for (int column = 0; column < 3; ++column)
+    scale =
+        scale +
+        Vector3{draw.where.m[0][column], draw.where.m[1][column], draw.where.m[2][column]}.length();
+  scale = scale / 3;
+  const float width = scale > 0 ? environment.outline.width / scale : 0;
+  const Colour colour = draw.material.outlineColour.value_or(environment.outline.colour);
+  const float alpha = static_cast<float>(std::min<int>(draw.material.alpha, 31)) / 31.0f;
+  C3D_FVUnifSet(GPU_VERTEX_SHADER, sceneUniforms.extrude, width, 0, 0, 0);
+  C3D_FVUnifSet(GPU_VERTEX_SHADER, sceneUniforms.debugMix, 0, 0, 0, 0);
+  C3D_FVUnifSet(GPU_VERTEX_SHADER, sceneUniforms.debugAdd, channel(colour.r), channel(colour.g),
+                channel(colour.b), alpha);
+  C3D_CullFace(GPU_CULL_FRONT_CCW);
+  C3D_SetBufInfo(&mesh.hullBuffers);
+  if (mesh.indices)
+    C3D_DrawElements(GPU_TRIANGLES, mesh.count, C3D_UNSIGNED_SHORT, mesh.indices);
+  else
+    C3D_DrawArrays(GPU_TRIANGLES, 0, mesh.count);
+  sent("outline of mesh", draw.mesh.id);
+  C3D_FVUnifSet(GPU_VERTEX_SHADER, sceneUniforms.extrude, 0, 0, 0, 0);
+  setDebugView();
 }
 
 void Renderer::Backend::sent(const char *what, std::size_t index) {
@@ -501,6 +562,7 @@ Mesh Renderer::load(const MeshData &mesh) {
     GSPGPU_FlushDataCache(loaded.indices, indices.size() * sizeof(std::uint16_t));
     loaded.triangles = std::move(indices);
     loaded.count = static_cast<int>(loaded.triangles.size());
+    loaded.vertexCount = static_cast<int>(vertexCount);
   } else {
     // Too many for 16-bit indices: each triangle's vertices in turn
     loaded.vertices = static_cast<Vertex *>(linearAlloc(indices.size() * sizeof(Vertex)));
@@ -508,6 +570,7 @@ Mesh Renderer::load(const MeshData &mesh) {
       loaded.vertices[i] = mesh.vertices[indices[i]];
     GSPGPU_FlushDataCache(loaded.vertices, indices.size() * sizeof(Vertex));
     loaded.count = static_cast<int>(indices.size());
+    loaded.vertexCount = loaded.count;
   }
   BufInfo_Init(&loaded.buffers);
   BufInfo_Add(&loaded.buffers, loaded.vertices, sizeof(Vertex), 3, 0x210);
@@ -527,6 +590,7 @@ void Renderer::unload(Mesh mesh) {
   linearFree(loaded.vertices);
   linearFree(loaded.indices);
   linearFree(loaded.wireframe);
+  linearFree(loaded.hull);
   loaded = {};
 }
 

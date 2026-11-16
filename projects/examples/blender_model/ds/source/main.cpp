@@ -10,13 +10,16 @@
 // toScreen), under a title at twice the size. The bottom screen gives what
 // each frame drew against the DS's limits.
 //
-// A: the ship as a wireframe   B: fog off and on   START: quit
+// A: the ship as a wireframe   B: fog off and on   X: toon shading or
+// smooth   Y: outlines   R: toon's bands (2 to 5)   L: the toon table's
+// Highlights or Shades (ScratchPadd/Scene/Types.hpp)   START: quit
 #include <nds.h>
 
 #include <ScratchPadd/Input/Reader.hpp>
 #include <ScratchPadd/Scene/DS/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
+#include "Look.hpp"
 #include "rock_ds.h"
 #include "ship_ds.h"
 
@@ -80,7 +83,11 @@ int main() {
   std::printf("Rock:    %lu triangles,\n  %lu polygons (x2)\n",
               static_cast<unsigned long>(Assets::kRockTriangles),
               static_cast<unsigned long>(Assets::kRockPolygons));
-  std::printf("\nA: wireframe ship  B: fog\nSTART: quit\n");
+  std::printf("\nA: wireframe ship  B: fog\nX: toon  Y: outlines  R: bands\nL: highlights/shades\n"
+              "START: quit\n");
+  Look::Settings look;
+  Look::Settings lookShown;
+  lookShown.bands = 0; // (printed the first frame)
 
   Scene::Scalar angle = 0;
   Scene::FrameCounts shownCounts{};
@@ -97,6 +104,15 @@ int main() {
       shown[0].material.wireframe = !shown[0].material.wireframe;
     if (pressed.pressed(Input::Button::FaceBottom)) // B
       environment.fog = environment.fog.density > Scene::Scalar(0) ? Scene::Fog{} : fog;
+    if (pressed.pressed(Input::Button::FaceTop)) // X
+      look.toon = !look.toon;
+    if (pressed.pressed(Input::Button::FaceLeft)) // Y
+      look.outlines = !look.outlines;
+    if (pressed.pressed(Input::Button::R))
+      look.nextBands();
+    if (pressed.pressed(Input::Button::L))
+      look.switchDsTable();
+    look.apply(environment);
 
     renderer.beginFrame(camera, environment);
     renderer.drawLines(lines, {90, 95, 110});
@@ -105,7 +121,8 @@ int main() {
     angle += Scene::Scalar(0.02f);
     const Scene::Transform turn = Scene::Transform::rotation({0, 1, 0}, angle);
     for (const Shown &model : shown) {
-      renderer.draw(model.mesh, Scene::Transform::translation(model.where) * turn, model.material);
+      renderer.draw(model.mesh, Scene::Transform::translation(model.where) * turn,
+                    look.material(model.material));
       float x = 0, y = 0;
       if (renderer.toScreen(model.where + Scene::Vector3{0, -1.1f, 0}, x, y)) {
         const float width = Scene::Overlay::textWidth(model.label);
@@ -125,6 +142,15 @@ int main() {
       std::printf("\x1b[11;0H3D a frame (the DS's limit):\x1b[K\n");
       std::printf("%4u polygons (2048)\x1b[K\n", counts.polygons);
       std::printf("%4u vertices (6144)\x1b[K\n", counts.vertices);
+    }
+    if (look.toon != lookShown.toon || look.outlines != lookShown.outlines ||
+        look.bands != lookShown.bands || look.dsTable != lookShown.dsTable) {
+      lookShown = look;
+      char looks[64];
+      look.describe(looks, sizeof looks);
+      std::printf("\x1b[16;0H%s\x1b[K\n%s\x1b[K\n", looks,
+                  look.dsTable == Scene::DsToonTable::Shades ? "Table: shades"
+                                                             : "Table: highlights");
     }
   }
   return 0;

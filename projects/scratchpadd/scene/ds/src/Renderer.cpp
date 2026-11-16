@@ -7,6 +7,7 @@
 // on the screen's 2D bitmap layer. A debug build stops with a message if a
 // frame overflows the DS's polygon or vertex RAM.
 #include "Backend.hpp"
+#include "ToonTable.hpp"
 
 #include <algorithm>
 #include <array>
@@ -42,6 +43,14 @@ constexpr unsigned kFirstTranslucentId = 1, kLastTranslucentId = 62;
 // them. Fog is by the depth in the buffer, so without it a translucent
 // mesh over the background was fogged as if at the far plane.
 constexpr std::uint32_t kTranslucentSetsDepth = BIT(11);
+// Outlines are the DS's edge marking: a line on a solid polygon's pixels
+// where the one beside it has a different polygon ID (GBATEK). So each
+// outlined mesh takes its own ID, 8 to 55 in turn; meshes without one keep
+// 0, and so does the clear plane in a frame with outlines (otherwise every
+// mesh would be outlined against the background). Edge marking's colours
+// go by ID / 8: all set to the outline's.
+constexpr unsigned kFirstOutlineId = 8, kLastOutlineId = 55;
+constexpr unsigned kClearId = 63, kClearIdWithOutlines = 0;
 
 // A Scalar as the DS's 20.12
 int f32(Scalar value) { return DisplayList::toFixed(value, 12); }
@@ -81,9 +90,14 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
     return;
   LoadedMesh &loaded = meshes[mesh.id - 1];
   ++draws;
-  const bool lit = material.shading == Material::Shading::Lit;
+  const bool lit = material.shading != Material::Shading::Unlit;
+  const bool toon = material.shading == Material::Shading::Toon;
+  // Toon with the Shades table: lit as white, so the light picks the shade
+  // (ToonTable.hpp)
+  const Colour colour =
+      toon && toonTable == DsToonTable::Shades ? Colour{255, 255, 255} : material.colour;
   const std::vector<DisplayList::Packed> &lists =
-      listsFor(loaded, {lit, material.colour, lit ? ambient : Colour{}});
+      listsFor(loaded, {lit, colour, lit ? ambient : Colour{}});
 
   // The transform as a turn and a move, multiplied into both the position
   // and the normals' matrices, then its scale (and the mesh's own, see
@@ -115,7 +129,7 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   // polygon takes none of the DS's 2048.
   const bool cull = !loaded.doubleSided && !material.doubleSided && !material.wireframe;
   const std::uint32_t format = (cull ? POLY_CULL_BACK : POLY_CULL_NONE) | POLY_ID(polygonId) |
-                               (lit ? lightBits : 0) | fogBit;
+                               (lit ? lightBits : 0) | (toon ? POLY_TOON_HIGHLIGHT : 0) | fogBit;
   for (const DisplayList::Packed &packed : lists) {
     unsigned alpha = 0; // a wireframe
     if (!material.wireframe) {
@@ -281,7 +295,7 @@ Renderer::Renderer(Display &display) : backend_(std::make_unique<Backend>(displa
   glInit();
   glEnable(GL_ANTIALIAS);
   glEnable(GL_BLEND);
-  glClearPolyID(63);
+  glClearPolyID(kClearId);
   glClearDepth(GL_MAX_DEPTH);
   glViewport(0, 0, 255, 191);
 }
@@ -343,6 +357,23 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
     b.lightBits |= POLY_FORMAT_LIGHT0 << i;
   }
   b.setFog(environment.fog);
+
+  // Toon shading's table, and how it's used (ToonTable.hpp): one for the frame
+  b.toonTable = environment.dsToonTable;
+  if (b.toonTable == DsToonTable::Highlights)
+    glEnable(GL_TOON_HIGHLIGHT);
+  else
+    glDisable(GL_TOON_HIGHLIGHT);
+  const auto table = DisplayList::toonTable(environment.dsToonTable, environment.toonBands);
+  if (table != b.toonTableSet) {
+    glSetToonTable(table.data());
+    b.toonTableSet = table;
+  }
+  // Outlines' colour (edge marking's eight), and none yet this frame
+  for (int i = 0; i < 8; ++i)
+    glSetOutlineColor(i, DisplayList::rgb15(environment.outline.colour));
+  b.outlining = false;
+  b.nextOutlineId = kFirstOutlineId;
 }
 
 void Renderer::draw(Mesh mesh, const Transform &where, const Material &material) {
@@ -359,7 +390,14 @@ void Renderer::draw(Mesh mesh, const Transform &where, const Material &material)
     b.later.push_back({mesh, where, material, (where.position() - b.camera.eye).length()});
     return;
   }
-  b.drawNow(mesh, where, material, 0);
+  // An outlined mesh takes its own polygon ID, so edge marking rings it
+  unsigned id = 0;
+  if (material.outline && !material.wireframe) {
+    id = b.nextOutlineId;
+    b.nextOutlineId = id == kLastOutlineId ? kFirstOutlineId : id + 1;
+    b.outlining = true;
+  }
+  b.drawNow(mesh, where, material, id);
 }
 
 void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
@@ -411,6 +449,15 @@ void Renderer::endFrame() {
   b.drawOverlayShapes(overlay_);
   b.drawOverlayText(overlay_);
   overlay_.clear();
+  // Edge marking only in frames with outlines (it also misbehaves with
+  // translucent polygons that set depth, as ours do: GBATEK)
+  if (b.outlining) {
+    glClearPolyID(kClearIdWithOutlines);
+    glEnable(GL_OUTLINE);
+  } else {
+    glClearPolyID(kClearId);
+    glDisable(GL_OUTLINE);
+  }
 
   // What the frame used of the polygon and vertex RAM, once the geometry
   // engine has taken in all of it

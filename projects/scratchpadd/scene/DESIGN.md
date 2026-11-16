@@ -34,11 +34,14 @@ struct Transform { Scalar rotation[3][3]; Vector3 position; };   // a rigid part
 
 struct Colour { std::uint8_t r, g, b, a = 255; };
 struct Material {
-  enum class Shading { unlit, lit } shading = Shading::Lit;
+  enum class Shading { unlit, lit, toon } shading = Shading::Lit;
   Colour colour;            // multiplies the vertex colours (or is the colour, lit on the DS)
   std::uint8_t alpha = 31;  // 0-31, as the DS has it
   bool wireframe = false;   // only the triangles' edges (the DS: alpha 0)
   bool doubleSided = false; // back faces drawn too (otherwise culled)
+  std::uint8_t toonBands = 0;  // toon's bands (0: the environment's)
+  bool outline = false;        // a line around its shape
+  std::optional<Colour> outlineColour;  // (else the environment's)
 };
 struct Light { Vector3 direction; Colour colour; };   // directional; up to 4
 struct Camera { Vector3 eye, target, up; float fieldOfView, near, far; };
@@ -64,7 +67,8 @@ public:
 ```
 
 - **Retained meshes, frames drawn fresh.** Meshes are uploaded once and drawn by handle, so the DS can keep each as a display list and a desktop as a vertex buffer. Everything else is drawn each frame, so the API keeps no scene graph to sync.
-- **The materials are what the DS can do in hardware:** unlit or lit with up to 4 directional lights, a colour, alpha in 32 steps, and wireframe; the environment adds fog. Desktops draw them all with one built-in shader. Outlines (the DS's edge marking) and toon shading can come later, the same way.
+- **The materials are what the DS can do in hardware:** unlit or lit with up to 4 directional lights, a colour, alpha in 32 steps, and wireframe; the environment adds fog. Desktops draw them all with one built-in shader.
+- **Toon shading and outlines, native on each platform** (roadmap: the toon round). `Shading::Toon` lets each light through only in steps, as many as the bands (`Environment::toonBands`, 3, or a material's own `toonBands`; `toonStep` in `Types.hpp`): on desktops in the fragment shader, on the 3DS in its vertex shader (crisp on flat-shaded meshes, whose faces have one normal; the per-pixel fragment-lighting table is the next step), and on the DS with its hardware toon table (`ds/src/ToonTable.hpp`). The DS's table is one for the frame, indexed by the red part of the lit colour: with `DsToonTable::Shades` the table's greys replace every toon mesh's colour (lit as white, so the light picks the shade); with `Highlights` (the default) meshes keep their colours and get the table's light added, so the bands follow their red. So the DS uses the environment's band count for every toon mesh. `Material::outline` draws a line around the shape: on desktops and the 3DS an inverted hull (the mesh again, `Environment::outline.width` larger along normals shared where vertices meet, `OutlineHull.hpp`, so a flat-shaded mesh's hull stays closed; its front faces culled, in the outline's colour), which draws the mesh twice (the 3DS makes the hull the first time a mesh is outlined, doubling its vertices in linear memory, so outlines are for key objects there); on the DS its edge marking, a pixel wide, in the environment's colour, where a solid outlined mesh (each takes its own polygon ID, 8 to 55) meets something else, switched on only in frames with outlines (it misbehaves with translucent polygons that set depth). Screen-space edges on desktops, which would also mark creases, are a later step.
 - **The DS can't take floats cheaply,** having no floating-point hardware. So `Scalar` is Q16.16 there, which is what Cyclone already runs in on the DS, and float on desktops. An app computes its transforms in `Scalar`. The ragdoll's bones go straight in, with no conversion. *For review:* an alternative is one fixed type everywhere, but desktop code would then pay for fixed point it doesn't need.
 - **The backend is a build-time choice.** `Renderer`'s methods are defined in each backend's own `.cpp`, and its state is a `Renderer::Backend` each backend defines, behind a pointer. A program links one backend's library (the DS's Makefile build will get the DS's). Nothing is virtual, so the DS pays nothing to dispatch; the pointer costs one allocation, when the renderer is made.
 - **Culling is the backend's.** Each GPU culls back faces (the DS and 3DS in hardware too), so seeing a mesh from behind is the exception, asked for with `doubleSided`; a closed mesh, as most are, needs nothing. Each backend checks a draw's bounding sphere against the camera's frustum (`Culling.hpp`, shared, in `Scalar`, so the DS does it in fixed point) and skips it if it's wholly outside: on the DS that saves the display list's polygons and vertices from its frame's budget, which the hardware counts even for what it clips.

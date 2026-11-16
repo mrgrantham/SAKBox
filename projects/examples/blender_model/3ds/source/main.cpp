@@ -11,8 +11,9 @@
 // toScreen), under a title at twice the size. The bottom screen gives what
 // each frame drew and how long it took.
 //
-// A: the ship as a wireframe   B: fog off and on   SELECT: the scene layer's
-// debug panel (ScratchPadd/Scene/3DS/Debug.hpp)   START: quit
+// A: the ship as a wireframe   B: fog off and on   X: toon shading or
+// smooth   Y: outlines   R: toon's bands (2 to 5)   SELECT: the scene
+// layer's debug panel (ScratchPadd/Scene/3DS/Debug.hpp)   START: quit
 //
 // A watchdog runs all along: if the GPU hangs, it says which draws it was
 // sent last, on the bottom screen and in sdmc:/scene-3ds-hang.txt.
@@ -23,6 +24,7 @@
 #include <ScratchPadd/Scene/3DS/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
+#include "Look.hpp"
 #include "rock_3ds.h"
 #include "ship_3ds.h"
 
@@ -87,8 +89,10 @@ int main() {
       std::printf("Ship: %lu triangles\n", static_cast<unsigned long>(Assets::kShipTriangles));
       std::printf("Rock: %lu triangles (x2)\n\n",
                   static_cast<unsigned long>(Assets::kRockTriangles));
-      std::printf("A: wireframe ship  B: fog\n3D slider: stereo  SELECT: debug\nSTART: quit\n");
+      std::printf("A: wireframe ship  B: fog\nX: toon  Y: outlines  R: bands\n"
+                  "3D slider: stereo  SELECT: debug\nSTART: quit\n");
     };
+    Look::Settings look;
     printIntro();
 
     float angle = 0;
@@ -110,7 +114,14 @@ int main() {
           shown[0].material.wireframe = !shown[0].material.wireframe;
         if (pressed.pressed(Input::Button::FaceBottom)) // B
           environment.fog = environment.fog.density > 0 ? Scene::Fog{} : fog;
+        if (pressed.pressed(Input::Button::FaceTop)) // X
+          look.toon = !look.toon;
+        if (pressed.pressed(Input::Button::FaceLeft)) // Y
+          look.outlines = !look.outlines;
+        if (pressed.pressed(Input::Button::R))
+          look.nextBands();
       }
+      look.apply(environment);
       before = pad;
 
       renderer.beginFrame(camera, environment);
@@ -122,7 +133,7 @@ int main() {
       const Scene::Transform turn = Scene::Transform::rotation({0, 1, 0}, angle);
       for (const Shown &model : shown) {
         renderer.draw(model.mesh, Scene::Transform::translation(model.where) * turn,
-                      model.material);
+                      look.material(model.material));
         float x = 0, y = 0;
         if (renderer.toScreen(model.where + Scene::Vector3{0, -1.1f, 0}, x, y)) {
           const float width = Scene::Overlay::textWidth(model.label);
@@ -144,6 +155,9 @@ int main() {
         std::printf("%6u draws\x1b[K\n", counts.draws);
         std::printf("GPU %5.2f ms, CPU %5.2f ms\x1b[K\n", times.gpu, times.cpu);
         std::printf("Stereo: %s\x1b[K\n", osGet3DSliderState() > 0 ? "on" : "off");
+        char looks[64];
+        look.describe(looks, sizeof looks);
+        std::printf("%s\x1b[K\n", looks);
       }
     }
   }

@@ -19,7 +19,10 @@ filegroup(
 [cc_library(
     name = "display_list" + suffix,
     srcs = ["src/DisplayList.cpp"],
-    hdrs = ["src/DisplayList.hpp"],
+    hdrs = [
+        "src/DisplayList.hpp",
+        "src/ToonTable.hpp",
+    ],
     strip_include_prefix = "src/",
     deps = ["//projects/scratchpadd/scene:scene" + suffix],
 ) for suffix in ["", "_fixed_point"]]
@@ -33,3 +36,13 @@ filegroup(
         "@gtest//:gtest_main",
     ],
 ) for suffix in ["", "_fixed_point"]]
+
+cc_test(
+    name = "ToonTable_test",
+    size = "small",
+    srcs = ["tests/ToonTable_test.cpp"],
+    deps = [
+        ":display_list",
+        "@gtest//:gtest_main",
+    ],
+)
