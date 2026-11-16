@@ -721,3 +721,19 @@ TEST(BotStylesTest, NamesAndLeanings) {
   EXPECT_FALSE(rolloutWeightFor(BotStyle::Plain)); // (plain: the usual random rollouts)
   EXPECT_TRUE(rolloutWeightFor(BotStyle::Saver));
 }
+
+// A layout can name where the zone's finds are (beside the small systems,
+// say), and it reads back
+TEST(RulesTest, ALayoutNamesTheZone) {
+  Settings settings;
+  settings.zoneHexes = {{3, -1}, {-3, 1}, {2, 0}, {-2, 0}}; // (none a planet)
+  const State state = newGame(4, settings);
+  ASSERT_EQ(state.zone.size(), 4u);
+  for (const ZoneSite &site : state.zone) {
+    EXPECT_NE(std::find(settings.zoneHexes.begin(), settings.zoneHexes.end(), site.hex),
+              settings.zoneHexes.end());
+  }
+  const auto read = Game::readState(Game::writeState(state));
+  ASSERT_TRUE(read.has_value());
+  EXPECT_EQ(read.value_or(State{}).settings.zoneHexes, settings.zoneHexes);
+}

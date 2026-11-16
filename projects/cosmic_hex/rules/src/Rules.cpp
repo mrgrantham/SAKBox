@@ -369,7 +369,13 @@ std::string settingsText(const Settings &s) {
     planetList.push_back(hex.q);
     planetList.push_back(hex.r);
   }
-  out << joined(planetList);
+  out << joined(planetList) << " zone=";
+  std::vector<int> zoneList;
+  for (Hex hex : s.zoneHexes) {
+    zoneList.push_back(hex.q);
+    zoneList.push_back(hex.r);
+  }
+  out << joined(zoneList);
   return out.str();
 }
 
@@ -426,6 +432,12 @@ std::optional<Settings> readSettings(std::string_view line) {
       s.planetHexes.clear();
       for (std::size_t i = 0; i < values->size(); i += 2)
         s.planetHexes.push_back(Hex{(*values)[i], (*values)[i + 1]});
+      continue;
+    }
+    if (values && key == "zone" && values->size() % 2 == 0) {
+      s.zoneHexes.clear();
+      for (std::size_t i = 0; i < values->size(); i += 2)
+        s.zoneHexes.push_back(Hex{(*values)[i], (*values)[i + 1]});
       continue;
     }
     if (values && key == "moons" && values->size() == 1) {
@@ -551,7 +563,10 @@ State newGame(int players, const Settings &settings, int first) {
       continue;
     }
     const bool corner = length == kBoardRadius && (hex.q == 0 || hex.r == 0 || hex.s() == 0);
-    const bool inZone = settings.zoneCorners ? (length == 2 || corner) : length <= 2;
+    const bool inZone = !settings.zoneHexes.empty()
+                            ? std::find(settings.zoneHexes.begin(), settings.zoneHexes.end(),
+                                        hex) != settings.zoneHexes.end()
+                            : (settings.zoneCorners ? (length == 2 || corner) : length <= 2);
     if (inZone)
       state.zone.push_back(ZoneSite{hex, false, Find::Nothing});
   }

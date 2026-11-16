@@ -48,6 +48,7 @@ struct Options {
   std::vector<Hex> planets;   // a layout's planets (empty: one every third hex)
   std::vector<Hex> homes;     // and its homes (empty: the usual ones)
   int moons = 0;              // moons among the face-down planets
+  std::vector<Hex> zone;      // where the finds are (empty: the usual places)
   int win = 0;                // points to win (0: the rules' default)
   std::vector<BotStyle> styles; // the players' styles, turned round a seat each game
 };
@@ -133,6 +134,8 @@ Options parse(int argc, char **argv) {
       options.planets = hexes(flag, value);
     else if (flag == "--homes")
       options.homes = hexes(flag, value);
+    else if (flag == "--zone")
+      options.zone = hexes(flag, value);
     else if (flag == "--moons")
       options.moons = number<int>(flag, value);
     else if (flag == "--win")
@@ -288,6 +291,7 @@ int main(int argc, char **argv) {
     settings.planetHexes = options.planets;
     settings.homeHexes = options.homes;
     settings.moons = options.moons;
+    settings.zoneHexes = options.zone;
     if (options.win > 0)
       settings.winPoints = options.win;
     settings.catchUpBelow = options.catchUpBelow;

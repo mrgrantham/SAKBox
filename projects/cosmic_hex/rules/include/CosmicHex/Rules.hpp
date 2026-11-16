@@ -85,6 +85,11 @@ struct Settings {
   // How many of the face-down planets turn out moons (drawn like the other
   // kinds, from the same pile)
   int moons = 0;
+  // Where the deep-space zone's face-down tiles (the finds) are, if a
+  // layout names them, such as round 45's finds beside the small systems;
+  // otherwise the 12 hexes 2 from the centre, or with zoneCorners the inner
+  // six moved to the board's corners. Planets are left out.
+  std::vector<Hex> zoneHexes;
   // Tiles and numbers for planets beyond planetTiles' and numbers' (fewer
   // homes than four leave more planet slots), used in turn
   std::vector<int> extraTiles{0, 1};    // an asteroid belt, a lush planet
