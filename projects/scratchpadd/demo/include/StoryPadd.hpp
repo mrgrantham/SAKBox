@@ -80,7 +80,9 @@ public:
                       const ScratchPadd::ControlTypeVariant &) override {
     std::visit(
         [&](const auto &control) {
-          spdlog::info("{}: control {} is now {}", paddName(), controlName, control.value);
+          // (every kind of control with a single value; a Graph has a history)
+          if constexpr (requires { control.value; })
+            spdlog::info("{}: control {} is now {}", paddName(), controlName, control.value);
         },
         generateControlsSnapshot().controlMap.at(controlName));
     if (controlName == "showExtra") {

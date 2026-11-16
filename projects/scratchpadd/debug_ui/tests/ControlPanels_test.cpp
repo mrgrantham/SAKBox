@@ -51,3 +51,44 @@ TEST(ControlPanelsTest, TabsLabelledWithoutPaddAndTheWindowPlaced) {
   EXPECT_EQ(topRight.placement().x, 1.0f);
   EXPECT_EQ(topRight.placement().y, 0.0f);
 }
+
+// A panel draws every kind of control, graphs as lines and bars included,
+// in a frame of ImGui with no window behind it (the drawing is made, not
+// shown), and drawing a graph changes nothing
+TEST(ControlPanelTest, DrawsEveryKindOfControlGraphsIncluded) {
+  ImGui::CreateContext();
+  ImGuiIO &io = ImGui::GetIO();
+  io.DisplaySize = ImVec2(800, 600);
+  unsigned char *pixels = nullptr;
+  int width = 0, height = 0;
+  io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height); // (builds the font)
+
+  ControlType::Graph line(60, ControlType::Graph::Style::Line, std::nullopt, " ms");
+  ControlType::Graph bars(60, ControlType::Graph::Style::Bars, {{0.0f, 100.0f}}, "%");
+  for (int i = 0; i < 30; ++i) {
+    line.add(static_cast<float>(i % 7));
+    bars.add(static_cast<float>(i * 3));
+  }
+  DebugUi::ControlPanel panel;
+  int changes = 0;
+  panel.setOnChange([&](const MessageType::ControlChange &) { ++changes; });
+  panel.setControls(snapshotOf("Activity", {{"Frame time", line},
+                                            {"Busy", bars},
+                                            {"Empty graph", ControlType::Graph()},
+                                            {"Note", ControlType::Info("a\tb\n1\t2")},
+                                            {"Steps", ControlType::Integer(4)}}));
+  // (two frames: ImGui measures a new window on its first, drawing nothing)
+  for (int frame = 0; frame < 2; ++frame) {
+    io.DeltaTime = 1.0f / 60;
+    ImGui::NewFrame();
+    ImGui::Begin("Controls");
+    panel.draw();
+    ImGui::End();
+    ImGui::Render();
+  }
+  EXPECT_GT(ImGui::GetDrawData()->TotalVtxCount, 0);
+  EXPECT_EQ(changes, 0);
+  EXPECT_EQ(std::get<ControlType::Graph>(panel.controls().controlMap.at("Busy")).values,
+            bars.values);
+  ImGui::DestroyContext();
+}

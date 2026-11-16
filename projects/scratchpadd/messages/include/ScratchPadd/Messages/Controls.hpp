@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -53,11 +54,46 @@ struct Info {
   Info(std::string text = {}) : value(std::move(text)) {}
 };
 
+// A short history of a number, for a panel to draw as a graph: a padd adds
+// a value each time it measures one (Base::addToGraph), the graph keeps the
+// latest `length` of them, and panels draw them as a line or as bars, with
+// the latest value written beside. Shown, not edited, like Info: a change
+// sent from a panel is refused.
+//
+//   {"Busy", ControlType::Graph(60, ControlType::Graph::Style::Bars, {{0, 100}}, "%")}
+struct Graph {
+  enum class Style { Line, Bars };
+
+  std::vector<float> values; // oldest first
+  std::size_t length = 60;   // the most it keeps
+  Style style = Style::Line;
+  // The scale: fixed (0 to 100 for a percentage, say), or with none, from
+  // the lowest value shown to the highest
+  std::optional<std::pair<float, float>> range;
+  std::string unit; // written after a number: "%", " ms"
+
+  Graph(std::size_t keep = 60, Style drawn = Style::Line,
+        std::optional<std::pair<float, float>> scale = std::nullopt, std::string unitText = {})
+      : length(keep), style(drawn), range(std::move(scale)), unit(std::move(unitText)) {}
+
+  // Adds the newest value, dropping the oldest once there are `length`
+  void add(float value) {
+    values.push_back(value);
+    keepLatest();
+  }
+  // Drops the oldest values beyond `length`
+  void keepLatest() {
+    if (values.size() > length)
+      values.erase(values.begin(), values.end() - static_cast<std::ptrdiff_t>(length));
+  }
+  float latest() const { return values.empty() ? 0.0f : values.back(); }
+};
+
 } // namespace ControlType
 #define ControlTypes                                                                               \
   ScratchPadd::ControlType::Double, ScratchPadd::ControlType::Integer,                             \
       ScratchPadd::ControlType::Boolean, ScratchPadd::ControlType::String,                         \
-      ScratchPadd::ControlType::Info
+      ScratchPadd::ControlType::Info, ScratchPadd::ControlType::Graph
 using ControlTypeVariant = std::variant<ControlTypes>;
 using ControlValueMap = std::unordered_map<std::string, ControlTypeVariant>;
 using ControlRefMap = std::unordered_map<std::string, ControlTypeVariant>;

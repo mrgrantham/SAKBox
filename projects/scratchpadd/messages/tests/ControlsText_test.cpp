@@ -1,5 +1,5 @@
-// The control messages as lines of text: every kind of control through a
-// snapshot and back, a change and a request, text with tabs, newlines and
+// The control messages as lines of text: every kind of control (graphs
+// too) through a snapshot and back, a change and a request, text with tabs, newlines and
 // backslashes surviving, and lines that aren't messages refused.
 #include <ScratchPadd/Messages/ControlsText.hpp>
 
@@ -9,6 +9,8 @@ using namespace ScratchPadd;
 namespace Text = ScratchPadd::ControlsText;
 
 TEST(ControlsTextTest, ASnapshotOfEveryKindComesBackTheSame) {
+  ControlType::Graph graph(4, ControlType::Graph::Style::Bars, {{0.0f, 100.0f}}, " %\t");
+  graph.values = {12.5f, 0.1f, 100.0f};
   MessageType::ControlSnapshot sent{
       .paddName = "RagdollPadd",
       .controlMap = {
@@ -20,6 +22,8 @@ TEST(ControlsTextTest, ASnapshotOfEveryKindComesBackTheSame) {
           {"Steps a second", ControlType::String("15", std::vector<std::string>{"10", "15", "30"})},
           {"Name", ControlType::String("free\ttext")},
           {"Running padds", ControlType::Info("Padd\tRuns\nGamePadd\tOnMainThread\n\\end")},
+          {"Busy", graph},
+          {"Frame time", ControlType::Graph(30)},
       }};
   const std::string line = Text::snapshot(sent);
   EXPECT_EQ(line.find('\n'), std::string::npos); // one line
@@ -46,6 +50,16 @@ TEST(ControlsTextTest, ASnapshotOfEveryKindComesBackTheSame) {
   EXPECT_FALSE(std::get<ControlType::String>(controls.at("Name")).enforcableRange);
   EXPECT_EQ(std::get<ControlType::Info>(controls.at("Running padds")).value,
             "Padd\tRuns\nGamePadd\tOnMainThread\n\\end");
+  const auto &busy = std::get<ControlType::Graph>(controls.at("Busy"));
+  EXPECT_EQ(busy.values, graph.values); // (floats written in full: exactly)
+  EXPECT_EQ(busy.length, 4u);
+  EXPECT_EQ(busy.style, ControlType::Graph::Style::Bars);
+  EXPECT_EQ(busy.range, graph.range);
+  EXPECT_EQ(busy.unit, " %\t");
+  const auto &frames = std::get<ControlType::Graph>(controls.at("Frame time"));
+  EXPECT_TRUE(frames.values.empty());
+  EXPECT_EQ(frames.style, ControlType::Graph::Style::Line);
+  EXPECT_FALSE(frames.range);
 }
 
 TEST(ControlsTextTest, AChangeAndARequest) {

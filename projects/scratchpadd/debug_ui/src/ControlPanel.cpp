@@ -3,7 +3,9 @@
 #include <ScratchPadd/Helper.hpp>
 
 #include <algorithm>
+#include <cfloat>
 #include <cstdint>
+#include <cstdio>
 #include <imgui_stdlib.h>
 #include <string>
 #include <type_traits>
@@ -65,6 +67,22 @@ void drawTable(const char *name, const std::string &text) {
   ImGui::EndTable();
 }
 
+// A graph: its values as a line or bars, the latest written over it, and
+// its name beside, like the other controls
+void drawGraph(const char *name, const ControlType::Graph &graph) {
+  char latest[48];
+  std::snprintf(latest, sizeof latest, "%.3g%s", static_cast<double>(graph.latest()),
+                graph.unit.c_str());
+  const float low = graph.range ? graph.range->first : FLT_MAX; // (FLT_MAX: fit the values)
+  const float high = graph.range ? graph.range->second : FLT_MAX;
+  const ImVec2 size(0, 60);
+  const int count = static_cast<int>(graph.values.size());
+  if (graph.style == ControlType::Graph::Style::Bars)
+    ImGui::PlotHistogram(name, graph.values.data(), count, 0, latest, low, high, size);
+  else
+    ImGui::PlotLines(name, graph.values.data(), count, 0, latest, low, high, size);
+}
+
 } // namespace
 
 void ControlPanel::draw() {
@@ -101,6 +119,10 @@ void ControlPanel::draw() {
                 drawTable(label, value.value);
               else
                 ImGui::LabelText(label, "%s", value.value.c_str());
+              return false;
+            },
+            [&](Controls::Graph &value) {
+              drawGraph(label, value);
               return false;
             },
             [&](Controls::String &value) {

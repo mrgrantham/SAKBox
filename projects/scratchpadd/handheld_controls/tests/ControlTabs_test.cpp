@@ -273,6 +273,22 @@ TEST(ControlTabsTest, DescribesValues) {
   EXPECT_EQ(describe(ControlType::Info("logs/app.log")), "logs/app.log");
 }
 
+// A graph: its latest value and unit, then its last 12 values as a line of
+// characters from low (" ") to high ("#"), on its scale or, with none, the
+// values' own
+TEST(ControlTabsTest, DescribesAGraphAsASparkline) {
+  ControlType::Graph percent(60, ControlType::Graph::Style::Bars, {{0.0f, 100.0f}}, "%");
+  for (float value : {0.0f, 50.0f, 100.0f})
+    percent.add(value);
+  EXPECT_EQ(describe(percent), "100% [ =#]");
+  ControlType::Graph fitted(60);
+  for (int i = 0; i < 20; ++i)
+    fitted.add(static_cast<float>(i));
+  // (8 to 19 shown, fitted: 8 the lowest level, 19 the highest)
+  EXPECT_EQ(describe(fitted), "19 [ ..:--==+**#]");
+  EXPECT_EQ(describe(ControlType::Graph()), "0 []");
+}
+
 // Information too long for its row (an Info control: a log's path) gets
 // its name on one row and its text wrapped on the rows below, indented;
 // short information sits at the right like any value. Choosing it (up and

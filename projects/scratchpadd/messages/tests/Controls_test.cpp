@@ -723,3 +723,55 @@ TEST(ControlsTest, InfoIsShownButOnlyItsPaddChangesIt) {
   ASSERT_EQ(panel.snapshots().size(), 2u);
   EXPECT_EQ(logIn(panel.snapshots().back()), "fat:/data/app/logs/app.1.log");
 }
+
+namespace {
+
+// Has a Graph control: how busy it's been, keeping the last 3 values
+class GraphOwnerPadd : public ScratchPadd::Base {
+public:
+  GraphOwnerPadd(ScratchPadd::System *system) : Base(system) {}
+  std::string name() override { return "GraphOwner"; }
+  ScratchPadd::ControlValueMap generateControls() override {
+    return {{"Busy", Controls::Graph(3, Controls::Graph::Style::Bars, {{0.0f, 100.0f}}, "%")}};
+  }
+  // Its own measurement, added on its thread
+  bool measured(float value, const std::string &graph = "Busy") {
+    return ScratchPadd::onPaddThread(
+        *this, [&](GraphOwnerPadd &padd) { return padd.addToGraph(graph, value); });
+  }
+};
+
+std::vector<float> busyIn(const ControlSnapshot &snapshot) {
+  return std::get<Controls::Graph>(snapshot.controlMap.at("Busy")).values;
+}
+
+} // namespace
+
+// A Graph keeps its latest values (as many as its length) and every panel
+// is sent each one; like Info, a panel can't change it, and only its values
+// change (its length, style, scale and unit stay as the padd made them)
+TEST(ControlsTest, AGraphKeepsItsLatestValuesAndOnlyItsPaddAddsThem) {
+  RunningSystem<PanelPadd, GraphOwnerPadd> running;
+  auto &owner = running.padd<GraphOwnerPadd>();
+  auto &panel = running.padd<PanelPadd>();
+  for (float value : {10.0f, 20.0f, 30.0f, 40.0f})
+    EXPECT_TRUE(owner.measured(value));
+  ASSERT_TRUE(running.settles());
+  ASSERT_EQ(panel.snapshots().size(), 4u);
+  EXPECT_EQ(busyIn(panel.snapshots().back()), (std::vector<float>{20.0f, 30.0f, 40.0f}));
+  const std::vector<ControlSnapshot> snapshots = panel.snapshots();
+  const auto &graph = std::get<Controls::Graph>(snapshots.back().controlMap.at("Busy"));
+  EXPECT_EQ(graph.latest(), 40.0f);
+  EXPECT_EQ(graph.style, Controls::Graph::Style::Bars);
+  EXPECT_EQ(graph.unit, "%");
+
+  // A panel's change is refused, and the panel told what it holds
+  Controls::Graph forged(3);
+  forged.values = {99.0f};
+  EXPECT_TRUE(panel.change("GraphOwner", "Busy", forged));
+  ASSERT_TRUE(running.settles());
+  EXPECT_EQ(busyIn(panel.snapshots().back()), (std::vector<float>{20.0f, 30.0f, 40.0f}));
+
+  // Not a graph: refused
+  EXPECT_FALSE(owner.measured(1.0f, "Nothing"));
+}

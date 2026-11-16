@@ -10,6 +10,9 @@
 //   D value hasRange low high     a Double      I value hasRange low high   an Integer
 //   B value (0 or 1)              a Boolean     N text                      Info
 //   S text count choice...        a String (count 0: free text)
+//   G style length hasRange low high unit count value...
+//                                 a Graph (style L for a line, B for bars;
+//                                 its values oldest first)
 // Text in a field has \\, a tab and a newline escaped (\\\\, \\t, \\n), so
 // an Info table's lines and columns survive it. Numbers are written in full
 // (17 significant digits), so a Double comes back the same.
@@ -95,6 +98,17 @@ inline std::string fieldsOf(const ControlTypeVariant &control) {
   } else if (const auto *info = std::get_if<ControlType::Info>(&control)) {
     field("N");
     field(escaped(info->value));
+  } else if (const auto *graph = std::get_if<ControlType::Graph>(&control)) {
+    field("G");
+    field(graph->style == ControlType::Graph::Style::Bars ? "B" : "L");
+    field(std::to_string(graph->length));
+    field(graph->range ? "1" : "0");
+    field(number(graph->range ? graph->range->first : 0));
+    field(number(graph->range ? graph->range->second : 0));
+    field(escaped(graph->unit));
+    field(std::to_string(graph->values.size()));
+    for (const float value : graph->values)
+      field(number(value));
   } else {
     const auto &s = std::get<ControlType::String>(control);
     field("S");
@@ -147,6 +161,27 @@ inline std::optional<ControlTypeVariant> controlFrom(const std::vector<std::stri
     if (!text)
       return std::nullopt;
     return ControlType::Info(unescaped(*text));
+  }
+  if (*kind == "G") {
+    const auto style = next(), length = next(), ranged = next(), low = next(), high = next(),
+               unit = next(), count = next();
+    if (!count)
+      return std::nullopt;
+    ControlType::Graph graph(std::strtoul(length->c_str(), nullptr, 10),
+                             *style == "B" ? ControlType::Graph::Style::Bars
+                                           : ControlType::Graph::Style::Line,
+                             std::nullopt, unescaped(*unit));
+    if (*ranged == "1")
+      graph.range =
+          std::make_pair(std::strtof(low->c_str(), nullptr), std::strtof(high->c_str(), nullptr));
+    const long values = std::strtol(count->c_str(), nullptr, 10);
+    for (long v = 0; v < values; ++v) {
+      const auto value = next();
+      if (!value)
+        return std::nullopt;
+      graph.values.push_back(std::strtof(value->c_str(), nullptr));
+    }
+    return graph;
   }
   if (*kind == "S") {
     const auto text = next(), count = next();

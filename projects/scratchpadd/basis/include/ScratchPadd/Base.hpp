@@ -347,7 +347,7 @@ protected:
   // copied, so a change can't alter a control's range. Returns true if the
   // change was applied.
   // `byOwner` is false for a change sent from a panel, which can't change
-  // an Info control (only its padd writes it).
+  // an Info or Graph control (only its padd writes them).
   bool updateControl(const ScratchPadd::MessageType::ControlChange &controlChange,
                      bool byOwner = true) {
     assertOnPaddThread("updateControl");
@@ -356,7 +356,8 @@ protected:
       logger().error("No control named {}", controlChange.controlName);
       return false;
     }
-    if (!byOwner && std::holds_alternative<ControlType::Info>(control->second)) {
+    if (!byOwner && (std::holds_alternative<ControlType::Info>(control->second) ||
+                     std::holds_alternative<ControlType::Graph>(control->second))) {
       logger().warn("In {}, {} is information, not to be changed from a panel", name_,
                     controlChange.controlName);
       return false;
@@ -399,6 +400,12 @@ protected:
               current.value = std::get<ControlType::Info>(incoming).value;
               return true;
             },
+            [&](ControlType::Graph &current) {
+              // (its values; its length, style, scale and unit stay)
+              current.values = std::get<ControlType::Graph>(incoming).values;
+              current.keepLatest();
+              return true;
+            },
             [&](ControlType::String &current) {
               const std::string &value = std::get<ControlType::String>(incoming).value;
               if (current.enforcableRange &&
@@ -429,6 +436,23 @@ protected:
                                                   .controlTypeValue = std::move(value)})) {
       return false;
     }
+    sendControlsSnapshot();
+    return true;
+  }
+
+  // Adds `value` to Graph control `name` as its newest (dropping its oldest
+  // beyond its length), and sends the snapshot, so panels draw it. Returns
+  // false if there's no Graph control of that name.
+  bool addToGraph(const std::string &name, float value) {
+    assertOnPaddThread("addToGraph");
+    auto found = controlMap_.find(name);
+    auto *graph =
+        found == controlMap_.end() ? nullptr : std::get_if<ControlType::Graph>(&found->second);
+    if (!graph) {
+      logger().error("In {}, no graph named {}", name_, name);
+      return false;
+    }
+    graph->add(value);
     sendControlsSnapshot();
     return true;
   }

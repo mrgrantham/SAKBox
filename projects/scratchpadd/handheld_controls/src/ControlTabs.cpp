@@ -1,6 +1,7 @@
 #include <ScratchPadd/HandheldControls/ControlTabs.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <utility>
@@ -24,6 +25,33 @@ std::string tabLabel(const std::string &paddName, bool chosen) {
 
 } // namespace
 
+namespace {
+
+// The latest values of a graph as one character each, low to high:
+// " .:-=+*#" (the consoles' fonts are ASCII). Scaled to the graph's range,
+// or to the values shown if it has none.
+std::string sparkline(const ControlType::Graph &graph, std::size_t width) {
+  static constexpr char kLevels[] = " .:-=+*#";
+  constexpr int kTop = sizeof(kLevels) - 2; // the last level's index
+  const std::size_t shown = std::min(width, graph.values.size());
+  const auto first = graph.values.end() - static_cast<std::ptrdiff_t>(shown);
+  float low = graph.range ? graph.range->first : 0, high = graph.range ? graph.range->second : 0;
+  if (!graph.range && shown > 0) {
+    const auto [least, most] = std::minmax_element(first, graph.values.end());
+    low = *least;
+    high = *most;
+  }
+  std::string line;
+  for (auto value = first; value != graph.values.end(); ++value) {
+    const float share = high > low ? (*value - low) / (high - low) : 0.5f;
+    const int level = std::clamp(static_cast<int>(std::lround(share * kTop)), 0, kTop);
+    line += kLevels[level];
+  }
+  return line;
+}
+
+} // namespace
+
 std::string describe(const ControlTypeVariant &value) {
   char text[32];
   if (const auto *d = std::get_if<ControlType::Double>(&value)) {
@@ -36,6 +64,11 @@ std::string describe(const ControlTypeVariant &value) {
     return b->value ? "[x]" : "[ ]";
   if (const auto *info = std::get_if<ControlType::Info>(&value))
     return info->value;
+  if (const auto *graph = std::get_if<ControlType::Graph>(&value)) {
+    // "12% [ .:-=+*#]": the latest, then the last 12 as a sparkline
+    std::snprintf(text, sizeof text, "%.3g", static_cast<double>(graph->latest()));
+    return text + graph->unit + " [" + sparkline(*graph, 12) + "]";
+  }
   return std::get<ControlType::String>(value).value;
 }
 
@@ -347,7 +380,8 @@ std::vector<ControlTabs::ListRow> ControlTabs::listRows(const Tab &tab) const {
   for (std::size_t index = 0; index < tab.names.size(); ++index) {
     const std::string &name = tab.names[index];
     const ControlTypeVariant &control = tab.controls.controlMap.at(name);
-    const bool information = std::holds_alternative<ControlType::Info>(control);
+    const bool information = std::holds_alternative<ControlType::Info>(control) ||
+                             std::holds_alternative<ControlType::Graph>(control);
     const std::string value = describe(control);
     if (information && width > kIndent &&
         (kMarker + name.size() + 1 + value.size() > width ||
