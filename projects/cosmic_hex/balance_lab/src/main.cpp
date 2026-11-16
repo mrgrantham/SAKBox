@@ -49,6 +49,7 @@ StartWith parse(int argc, char **argv) {
   o.randomFirst = true;
   o.catchUpBelow = 5; // (the agreed boost below 5 points)
   o.layout = "R2";
+  o.edges = true; // (corners and edges: the rules being tested; the user's default)
   for (int i = 1; i < argc; ++i) {
     const std::string_view flag = argv[i];
     if (flag == "--run") {
@@ -69,7 +70,7 @@ StartWith parse(int argc, char **argv) {
     else if (flag == "--layouts")
       o.layoutsFile = value;
     else if (flag == "--edges")
-      o.edges = value == "yes";
+      o.edges = value != "no";
     else if (flag == "--finds")
       o.smallFinds = value == "small";
     else if (flag == "--games")

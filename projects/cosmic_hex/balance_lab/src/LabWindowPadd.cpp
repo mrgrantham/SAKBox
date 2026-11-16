@@ -191,6 +191,7 @@ void LabWindowPadd::starting() {
   [this]<std::size_t... I>(std::index_sequence<I...>) {
     (workers_.push_back(addressOf<SimulationPadd<static_cast<int>(I)>>()), ...);
   }(std::make_index_sequence<kSimulations>{});
+  showRealValues();
   loadLayouts();
   const auto chosen = std::find_if(layouts_.begin(), layouts_.end(),
                                    [&](const LabLayout &l) { return l.name == options_.layout; });
@@ -279,16 +280,24 @@ void LabWindowPadd::saveLayout() {
   saveMessage_ = "Saved as " + saved.name + " (in " + saved.file + ")";
 }
 
-int LabWindowPadd::shipMove() const {
-  if (options_.move > 0)
-    return options_.move;
-  return options_.edges ? 2 : Settings{}.shipMove;
+// The rules' own move and boost: 2 edges and 1 more with corners and
+// edges, Settings' hexes without
+int LabWindowPadd::defaultMove(bool edges) { return edges ? 2 : Settings{}.shipMove; }
+int LabWindowPadd::defaultBoost(bool edges) { return edges ? 1 : Settings{}.boostMove; }
+
+// Every setting shows the number the games will use (no 0 for "the rules'
+// own"): the move and boost for the rules chosen, points to win
+void LabWindowPadd::showRealValues() {
+  if (options_.move <= 0)
+    options_.move = defaultMove(options_.edges);
+  if (options_.boost <= 0)
+    options_.boost = defaultBoost(options_.edges);
+  if (options_.win <= 0)
+    options_.win = Settings{}.winPoints;
 }
-int LabWindowPadd::boostMove() const {
-  if (options_.boost > 0)
-    return options_.boost;
-  return options_.edges ? 1 : Settings{}.boostMove;
-}
+
+int LabWindowPadd::shipMove() const { return options_.move; }
+int LabWindowPadd::boostMove() const { return options_.boost; }
 
 // ---- Batches ----
 
@@ -393,22 +402,32 @@ void LabWindowPadd::drawSettings() {
   ImGui::Separator();
   // Labels on the left, the fields a fixed width, so nothing's cut off
   ImGui::PushItemWidth(140);
-  ImGui::Checkbox("Corners and edges", &options_.edges);
+  const bool wasEdges = options_.edges;
+  if (ImGui::Checkbox("Corners and edges", &options_.edges)) {
+    // The move and boost follow the rules, unless they'd been changed
+    if (options_.move == defaultMove(wasEdges))
+      options_.move = defaultMove(options_.edges);
+    if (options_.boost == defaultBoost(wasEdges))
+      options_.boost = defaultBoost(options_.edges);
+  }
   ImGui::Checkbox("Deep-space start", &options_.deepSpace);
   if (ImGui::Checkbox("Finds beside small systems", &options_.smallFinds) && !changed_)
     chooseLayout(layoutChoice_); // (its finds from the file)
   ImGui::SliderInt("Players", &options_.players, 3, 4);
   ImGui::InputInt("Games", &options_.games, 50, 200);
   ImGui::InputInt("Bot thinking", &options_.iterations, 50, 200);
-  ImGui::InputInt("Points to win (0: 12)", &options_.win);
-  ImGui::InputInt("Ship move (0: rules')", &options_.move);
-  ImGui::InputInt("Fuel boost (0: rules')", &options_.boost);
+  ImGui::InputInt("Points to win", &options_.win);
+  ImGui::InputInt(options_.edges ? "Ship move (edges)" : "Ship move (hexes)", &options_.move);
+  ImGui::InputInt(options_.edges ? "Fuel boost (edges)" : "Fuel boost (hexes)", &options_.boost);
   ImGui::InputInt("Boost below points", &options_.catchUpBelow);
   ImGui::InputInt("Imperial Tithe over", &options_.discardOver);
   ImGui::InputInt("Moons", &options_.moons);
   ImGui::PopItemWidth();
   options_.games = std::max(options_.games, 1);
   options_.iterations = std::max(options_.iterations, 1);
+  options_.win = std::max(options_.win, 1);
+  options_.move = std::max(options_.move, 1);
+  options_.boost = std::max(options_.boost, 0);
   ImGui::EndDisabled();
   ImGui::Separator();
   if (!running_) {

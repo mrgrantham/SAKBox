@@ -86,9 +86,12 @@ private:
   void played(const GamePlayed &game, ScratchPadd::PaddAddress worker);
 
   // A ship's move along edges (or hexes, without corners) and its fuel
-  // boost, as the settings make them
+  // boost, as the settings make them, and the rules' own for each
   int shipMove() const;
   int boostMove() const;
+  static int defaultMove(bool edges);
+  static int defaultBoost(bool edges);
+  void showRealValues();
 
   Batch::Options options_;      // as the settings show them
   Batch::Options batchOptions_; // the running batch's
