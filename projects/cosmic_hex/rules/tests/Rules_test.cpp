@@ -196,6 +196,32 @@ TEST(RulesTest, CatchingUp) {
   EXPECT_EQ(state.player[1].resources, (Resources{1, 2, 2, 1, 1}));
 }
 
+// On a 7, a player over the hand limit gives back half, from what they hold
+// most of; a player at the limit keeps everything
+TEST(RulesTest, AHandLimitOnASeven) {
+  Settings settings;
+  settings.discardOver = 7;
+  State state = newGame(2, settings);
+  state.player[0].resources = {5, 2, 1, 1, 1};            // 10 (with the home's 1 to come)
+  state.player[1].resources = {3, 1, 1, 1, 1};            // 7: at the limit
+  ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 4})); // a crystal: 11
+  ASSERT_TRUE(Game::apply(state, {Kind::Roll, 3, 4}));
+  EXPECT_EQ(state.phase, Phase::Blockade);
+  // 11 held, {5, 2, 1, 1, 2}: 5 given back, one at a time from the most:
+  // minerals to 2, then the first of the tied 2s each time
+  EXPECT_EQ(state.player[0].resources, (Resources{1, 1, 1, 1, 2}));
+  EXPECT_EQ(state.player[1].resources, (Resources{3, 1, 1, 1, 1}));
+}
+
+TEST(RulesTest, AHandLimitIsKeptInTheLog) {
+  Settings settings;
+  settings.discardOver = 7;
+  const State state = newGame(2, settings);
+  const auto again = Game::readState(Game::writeState(state));
+  ASSERT_TRUE(again.has_value());
+  EXPECT_EQ(again.value_or(State{}).settings.discardOver, 7);
+}
+
 TEST(RulesTest, TheFirstPlayerCanSkipTheirFirstIncome) {
   Settings settings;
   settings.firstSkipsIncome = true;

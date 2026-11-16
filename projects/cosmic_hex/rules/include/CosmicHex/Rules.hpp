@@ -79,6 +79,11 @@ struct Settings {
   // The first player goes without their home's income on their first turn
   // (half a resource's worth of making up for going first)
   bool firstSkipsIncome = false;
+  // A hand limit: on a roll of 7, a player holding more than this many
+  // resources gives back half of them (rounded down), the ones they hold most
+  // of first (0: off). It's decided by the rules, not chosen, so the bots
+  // need no new moves.
+  int discardOver = 0;
   int coreStationsForControl = 2;
   int coreControlPoints = 2;
   int badgesPerPoint = 3;

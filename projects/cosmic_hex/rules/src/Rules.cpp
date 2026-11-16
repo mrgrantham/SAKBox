@@ -182,6 +182,24 @@ void earnBadges(State &state, int count) {
   current(state).badgesEarned += count;
 }
 
+// The hand limit (Settings::discardOver): on a 7, each player holding more
+// than the limit gives back half, one at a time from whichever resource they
+// hold most of (the lowest-numbered of a tie)
+void discardOverLimit(State &state) {
+  const int limit = state.settings.discardOver;
+  if (limit <= 0)
+    return;
+  for (Player &player : state.player) {
+    const int held = total(player.resources);
+    if (held <= limit)
+      continue;
+    for (int give = held / 2; give > 0; --give) {
+      const auto most = std::max_element(player.resources.begin(), player.resources.end());
+      --*most;
+    }
+  }
+}
+
 std::vector<int> blockadeVictims(const State &state, int planet) {
   std::vector<int> out;
   if (planet < 0)
@@ -319,7 +337,8 @@ std::string settingsText(const Settings &s) {
   }
   out << joined(homeList) << " extratiles=" << joined(s.extraTiles)
       << " extranumbers=" << joined(s.extraNumbers) << " catchup=" << s.catchUpBelow << ","
-      << s.catchUpGap << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0);
+      << s.catchUpGap << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0)
+      << " discardover=" << s.discardOver;
   return out.str();
 }
 
@@ -350,6 +369,10 @@ std::optional<Settings> readSettings(std::string_view line) {
     }
     if (values && key == "skipfirst" && values->size() == 1) {
       s.firstSkipsIncome = (*values)[0] != 0;
+      continue;
+    }
+    if (values && key == "discardover" && values->size() == 1) {
+      s.discardOver = (*values)[0];
       continue;
     }
     if (values && key == "homes" && values->size() % 2 == 0) {
@@ -787,6 +810,7 @@ bool Game::apply(State &state, const Action &action) {
         action.b <= 6) {
       state.lastRoll = action.a + action.b;
       if (state.lastRoll == 7) {
+        discardOverLimit(state);
         state.phase = Phase::Blockade;
       } else {
         produce(state, state.lastRoll);

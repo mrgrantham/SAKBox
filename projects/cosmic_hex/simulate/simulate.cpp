@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <numeric>
 #include <string>
 #include <string_view>
 
@@ -35,6 +36,7 @@ struct Options {
   std::string logs;                         // a folder to write each game's log to, if given
   std::string csv;                          // a file to write one line a game to, if given
   int catchUpBelow = 0, catchUpGap = 0;     // catching up (Settings)
+  int discardOver = 0;                      // the hand limit on a 7 (Settings)
   bool skipFirst = false;                   // the first player skips their first income
   bool randomFirst = false;                 // a random player goes first, rather than player 1
   std::array<int, kMaxPlayers> seatBonus{}; // extra start resources by turn order
@@ -83,6 +85,8 @@ Options parse(int argc, char **argv) {
       options.catchUpBelow = number<int>(flag, value);
     else if (flag == "--catch-up-gap")
       options.catchUpGap = number<int>(flag, value);
+    else if (flag == "--discard-over")
+      options.discardOver = number<int>(flag, value);
     else if (flag == "--skip-first")
       options.skipFirst = std::string_view(value) == "yes";
     else if (flag == "--first")
@@ -114,7 +118,7 @@ Options parse(int argc, char **argv) {
 // took a catching-up resource, and each contract's story (dealt, kept,
 // revealed, revealed by the winner)
 struct GameStats {
-  int blockades = 0, thefts = 0, denied = 0, caughtUp = 0;
+  int blockades = 0, thefts = 0, denied = 0, caughtUp = 0, discarded = 0;
   std::vector<std::array<int, 4>> contracts =
       std::vector<std::array<int, 4>>(CosmicHex::contracts().size());
 };
@@ -129,6 +133,13 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
         ++stats.caughtUp;
       break;
     case Action::Kind::Roll:
+      if (action.a + action.b == 7 && state.settings.discardOver > 0) {
+        for (const CosmicHex::Player &player : state.player) {
+          const int held = std::accumulate(player.resources.begin(), player.resources.end(), 0);
+          if (held > state.settings.discardOver)
+            stats.discarded += held / 2;
+        }
+      }
       if (action.a + action.b != 7 && state.blockade >= 0) {
         const Planet &planet = state.planets[static_cast<std::size_t>(state.blockade)];
         if (planet.number == action.a + action.b) {
@@ -197,7 +208,7 @@ int main(int argc, char **argv) {
     csv.open(options.csv);
     csv << "variant,seed,players,iterations,first,strong,winner,rounds,actions,points1,points2,"
            "points3,points4,"
-           "stations,colonies,core,badges,contracts,blockades,thefts,denied,caughtup\n";
+           "stations,colonies,core,badges,contracts,blockades,thefts,denied,caughtup,discarded\n";
   }
 
   for (int g = 0; g < options.games; ++g) {
@@ -215,6 +226,7 @@ int main(int argc, char **argv) {
     settings.seatBonus = options.seatBonus;
     settings.catchUpBelow = options.catchUpBelow;
     settings.catchUpGap = options.catchUpGap;
+    settings.discardOver = options.discardOver;
     settings.firstSkipsIncome = options.skipFirst;
     // Fewer empty zone tiles: the rest are finds, given in turn to salvage,
     // ruins, salvage, ruins... (the alien station and the pirates stay one each)
@@ -268,7 +280,7 @@ int main(int argc, char **argv) {
       const GameStats stats = statsOf(play.log());
       csv << "," << s.stations << "," << s.colonies << "," << s.core << "," << s.badges << ","
           << s.contracts << "," << stats.blockades << "," << stats.thefts << "," << stats.denied
-          << "," << stats.caughtUp << "\n";
+          << "," << stats.caughtUp << "," << stats.discarded << "\n";
       for (std::size_t id = 0; id < stats.contracts.size(); ++id) {
         for (int k = 0; k < 4; ++k)
           contractTotals[id][static_cast<std::size_t>(k)] +=
