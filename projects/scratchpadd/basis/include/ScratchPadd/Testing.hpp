@@ -44,6 +44,9 @@ struct PaddTestAccess {
   template <typename C> static const C &control(const Base &padd, const std::string &name) {
     return padd.control<C>(name);
   }
+  static bool hasControl(const Base &padd, const std::string &name) {
+    return padd.hasControl(name);
+  }
   static MessageType::ControlSnapshot snapshot(const Base &padd) {
     return padd.generateControlsSnapshot();
   }

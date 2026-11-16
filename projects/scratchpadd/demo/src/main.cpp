@@ -1,4 +1,5 @@
 #include <ScratchPadd/AboutPadd.hpp>
+#include <ScratchPadd/ActivityPadd.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
 #include <ScratchPadd/MessageStatsPadd.hpp>
 #include <ScratchPadd/Network/NetworkPadd.hpp>
@@ -23,9 +24,9 @@
 
 // (global, for signal_handler)
 const std::unique_ptr<ScratchPadd::System> kSystem =
-    ScratchPadd::SystemBuilder<ScratchPadd::AboutPadd, ScratchPadd::MessageStatsPadd, DisplayPadd,
-                               StoryPadd, AudioPadd, MidiInputPadd, ShapeLoggerPadd,
-                               ScratchPadd::Storage::StoragePadd,
+    ScratchPadd::SystemBuilder<ScratchPadd::AboutPadd, ScratchPadd::MessageStatsPadd,
+                               ScratchPadd::ActivityPadd, DisplayPadd, StoryPadd, AudioPadd,
+                               MidiInputPadd, ShapeLoggerPadd, ScratchPadd::Storage::StoragePadd,
                                ScratchPadd::Network::NetworkPadd>();
 
 int main(int argc, char **argv) {

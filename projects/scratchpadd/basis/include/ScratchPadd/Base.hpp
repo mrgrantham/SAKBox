@@ -445,16 +445,21 @@ protected:
   // false if there's no Graph control of that name.
   bool addToGraph(const std::string &name, float value) {
     assertOnPaddThread("addToGraph");
-    auto found = controlMap_.find(name);
-    auto *graph =
-        found == controlMap_.end() ? nullptr : std::get_if<ControlType::Graph>(&found->second);
-    if (!graph) {
-      logger().error("In {}, no graph named {}", name_, name);
+    if (!appendToGraph(name, value))
       return false;
-    }
-    graph->add(value);
     sendControlsSnapshot();
     return true;
+  }
+  // The same for several graphs at once (each name with its value), sending
+  // one snapshot for them all. Returns false if any isn't a Graph control
+  // (the others are still added).
+  bool addToGraphs(const std::vector<std::pair<std::string, float>> &values) {
+    assertOnPaddThread("addToGraphs");
+    bool all = true;
+    for (const auto &[name, value] : values)
+      all = appendToGraph(name, value) && all;
+    sendControlsSnapshot();
+    return all;
   }
 
   // Whether this padd has control `name` (controls come and go: addControl,
@@ -469,6 +474,15 @@ protected:
   void addControl(const std::string &name, ControlTypeVariant control) {
     assertOnPaddThread("addControl");
     controlMap_.insert_or_assign(name, std::move(control));
+    sendControlsSnapshot();
+  }
+
+  // Adds several controls (or replaces those with the same names), sending
+  // one snapshot for them all.
+  void addControls(const ControlValueMap &controls) {
+    assertOnPaddThread("addControls");
+    for (const auto &[name, control] : controls)
+      controlMap_.insert_or_assign(name, control);
     sendControlsSnapshot();
   }
 
@@ -739,6 +753,19 @@ private:
     }
     ++workLoopPasses_;
     workCompletionConditionVariable_.notify_all();
+  }
+
+  // Adds `value` to Graph control `name`, without sending a snapshot
+  bool appendToGraph(const std::string &name, float value) {
+    auto found = controlMap_.find(name);
+    auto *graph =
+        found == controlMap_.end() ? nullptr : std::get_if<ControlType::Graph>(&found->second);
+    if (!graph) {
+      logger().error("In {}, no graph named {}", name_, name);
+      return false;
+    }
+    graph->add(value);
+    return true;
   }
 
   // Runs one job, timing it while MessageStats is counting: how long it
