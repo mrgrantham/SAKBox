@@ -80,7 +80,21 @@ The draft from the roadmap page's round 26, agreed as a good start; every number
 - **Points:** stations 1, colonies 2, Core Control 2, every 3 badges cashed 1, revealed contracts their value; 10 on your own turn wins. A first deck of 17 contracts is in the rules engine.
 - **Ideas for a second version or another mode** (your round-26 comment, tabled for now): planet clusters of 1, 2 or 3 planets with travel and building along the edges, and dead planets that produce nothing but can still hold a station.
 
-### Changes since (roadmap rounds 41 to 44)
+### Corners and edges (roadmap rounds 39 to 50): the rules being built
+
+Agreed with the user, to be built as a setting beside today's rules (stations on planets, ships hex to hex) so both can be compared on the same layouts:
+
+- **Stations and colonies on corners**, where three hexes meet. A station earns from every planet it touches: 1 from each face-up planet whose number is rolled, a colony 2. Moons give nothing. (Round 45.)
+- **The distance rule:** no station or colony on a corner next to another (an edge away). (Round 45.)
+- **Ships stand on corners and move along edges**, a corner a step: **2 edges a turn, 1 more for a fuel** (rounds 46 and 50; tuned in the runs).
+- **Discovery when a move ends:** when a ship ends its move on a corner of a face-down planet or zone tile, it turns over (a badge, as now). Passing by turns nothing over. (Round 47.)
+- **Settling:** a ship on a free corner (no station on it or next to it) builds a station there, paying as now; the ship is used up.
+- **Ships are built only at colonies**, as Starfarers builds them at spaceports. (Round 46.)
+- **The start:** each player's home colony on a corner of their home planet, chosen in snake order (1, 2, 3, 4), then each player's ship placed in reverse order (4, 3, 2, 1) on any corner within 3 edges of their colony, the colony's own included. Placing turns nothing over. (Rounds 47 to 49.)
+- **The blockade** sits on a planet: stations touching it get nothing from it, and whoever moves it steals from a player with a station touching it. **Core Control** counts stations touching core planets; **the alien station** trades 3 for 1 with a station or ship touching it. (Round 46 plan; not objected to.)
+- **Layouts:** the round-45 boards (layouts/layouts.txt), each kind of system the same number of moves from every home; finds beside the small systems as the first way of drawing players outward (round 45), then moons mostly in threes or better numbers on small systems, then a Charter for lone planets.
+
+## Changes since (roadmap rounds 41 to 44)
 
 - **12 points to win** (was 10), agreed in round 41 for testing.
 - **Board layouts as a setting:** `Settings::planetHexes` names the planets (besides the homes), so the rules can be played on cluster boards. Round 44 offers 36 layouts on today's 61-hex board (clusters of 3, 2 and 1, never touching each other, the core or a home; homes on the edge or on four corners).
