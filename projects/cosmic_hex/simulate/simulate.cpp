@@ -119,6 +119,7 @@ Options parse(int argc, char **argv) {
 // revealed, revealed by the winner)
 struct GameStats {
   int blockades = 0, thefts = 0, denied = 0, caughtUp = 0, discarded = 0;
+  int enforcers = 0; // played
   std::vector<std::array<int, 4>> contracts =
       std::vector<std::array<int, 4>>(CosmicHex::contracts().size());
 };
@@ -157,11 +158,17 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
       stats.thefts += action.b >= 0;
       break;
     case Action::Kind::DealContracts:
-      ++stats.contracts[static_cast<std::size_t>(action.a)][0];
-      if (action.b >= 0)
+      if (action.a != kEnforcerCard)
+        ++stats.contracts[static_cast<std::size_t>(action.a)][0];
+      if (action.b >= 0 && action.b != kEnforcerCard)
         ++stats.contracts[static_cast<std::size_t>(action.b)][0];
       break;
+    case Action::Kind::PlayEnforcer:
+      ++stats.enforcers;
+      break;
     case Action::Kind::KeepContract:
+      if (action.a == kEnforcerCard)
+        break;
       ++stats.contracts[static_cast<std::size_t>(action.a)][1];
       break;
     case Action::Kind::RevealContract:
@@ -179,17 +186,18 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
 }
 
 struct Sources {
-  int stations = 0, colonies = 0, core = 0, badges = 0, contracts = 0;
+  int stations = 0, colonies = 0, core = 0, embargo = 0, badges = 0, contracts = 0;
 };
 Sources sourcesOf(const State &state, int player) {
   Sources s;
   const int all = stationsOf(state, player);
   s.stations = all;
   s.core = state.coreHolder == player ? state.settings.coreControlPoints : 0;
+  s.embargo = state.embargoHolder == player ? state.settings.embargoPoints : 0;
   s.badges = state.player[static_cast<std::size_t>(player)].badgePoints;
   for (int id : state.player[static_cast<std::size_t>(player)].revealed)
     s.contracts += contracts()[static_cast<std::size_t>(id)].points;
-  s.colonies = points(state, player) - s.stations - s.core - s.badges - s.contracts;
+  s.colonies = points(state, player) - s.stations - s.core - s.embargo - s.badges - s.contracts;
   return s;
 }
 
@@ -208,7 +216,8 @@ int main(int argc, char **argv) {
     csv.open(options.csv);
     csv << "variant,seed,players,iterations,first,strong,winner,rounds,actions,points1,points2,"
            "points3,points4,"
-           "stations,colonies,core,badges,contracts,blockades,thefts,denied,caughtup,discarded\n";
+           "stations,colonies,core,badges,contracts,blockades,thefts,denied,caughtup,discarded,"
+           "embargo,enforcers\n";
   }
 
   for (int g = 0; g < options.games; ++g) {
@@ -280,7 +289,8 @@ int main(int argc, char **argv) {
       const GameStats stats = statsOf(play.log());
       csv << "," << s.stations << "," << s.colonies << "," << s.core << "," << s.badges << ","
           << s.contracts << "," << stats.blockades << "," << stats.thefts << "," << stats.denied
-          << "," << stats.caughtUp << "," << stats.discarded << "\n";
+          << "," << stats.caughtUp << "," << stats.discarded << "," << s.embargo << ","
+          << stats.enforcers << "\n";
       for (std::size_t id = 0; id < stats.contracts.size(); ++id) {
         for (int k = 0; k < 4; ++k)
           contractTotals[id][static_cast<std::size_t>(k)] +=

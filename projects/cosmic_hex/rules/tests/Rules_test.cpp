@@ -222,6 +222,73 @@ TEST(RulesTest, AHandLimitIsKeptInTheLog) {
   EXPECT_EQ(again.value_or(State{}).settings.discardOver, 7);
 }
 
+// The agreed deck: 25 cards, 14 Enforcers and 11 Charters
+TEST(RulesTest, TheDeck) {
+  const State state = newGame(4);
+  EXPECT_EQ(state.deck.size(), 25u);
+  EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kEnforcerCard), 14);
+}
+
+namespace {
+bool canPlay(const State &state) {
+  const auto legal = Game::legalActions(state);
+  return std::find(legal.begin(), legal.end(), Action{Action::Kind::PlayEnforcer}) != legal.end();
+}
+// Player 0's turn, in its main part (a roll of 3: nothing pays)
+State mainPartOfATurn() {
+  State state = newGame(3);
+  Game::apply(state, {Action::Kind::ChooseHome, 0});
+  Game::apply(state, {Action::Kind::Roll, 1, 2});
+  return state;
+}
+} // namespace
+
+// An Enforcer bought this turn waits for the next; then it moves the
+// blockade and steals, as on a 7, one a turn
+TEST(RulesTest, AnEnforcer) {
+  State state = mainPartOfATurn();
+  state.player[0].resources = {0, 1, 0, 1, 1}; // a card's cost: food, water, crystals
+  ASSERT_TRUE(Game::apply(state, {Kind::BuyContract}));
+  ASSERT_TRUE(Game::apply(state, {Kind::DealContracts, kEnforcerCard, kEnforcerCard}));
+  ASSERT_TRUE(Game::apply(state, {Kind::KeepContract, kEnforcerCard}));
+  EXPECT_FALSE(canPlay(state)); // bought this turn
+  EXPECT_FALSE(Game::apply(state, {Kind::PlayEnforcer}));
+
+  state.player[0].enforcersNew = 0; // as at the start of their next turn
+  ASSERT_TRUE(canPlay(state));
+  ASSERT_TRUE(Game::apply(state, {Kind::PlayEnforcer}));
+  EXPECT_EQ(state.phase, Phase::Blockade);
+  EXPECT_EQ(state.player[0].enforcersPlayed, 1);
+  EXPECT_EQ(
+      std::count(state.player[0].contracts.begin(), state.player[0].contracts.end(), kEnforcerCard),
+      0);
+}
+
+TEST(RulesTest, OneEnforcerATurn) {
+  State state = mainPartOfATurn();
+  state.player[0].contracts = {kEnforcerCard, kEnforcerCard};
+  ASSERT_TRUE(Game::apply(state, {Kind::PlayEnforcer}));
+  // No planet is turned over yet, so the blockade has nowhere to go and
+  // there's no one to steal from: straight back to the main part
+  ASSERT_TRUE(Game::apply(state, {Kind::MoveBlockade, -1, -1}));
+  EXPECT_EQ(state.phase, Phase::Main);
+  EXPECT_FALSE(canPlay(state));
+}
+
+// The Galactic Embargo: 3 Enforcers played claim it (2 points); a tie
+// keeps it; more takes it
+TEST(RulesTest, TheGalacticEmbargo) {
+  State state = mainPartOfATurn();
+  const int before = points(state, 0);
+  state.player[0].enforcersPlayed = 2;
+  state.player[0].contracts = {kEnforcerCard};
+  ASSERT_TRUE(Game::apply(state, {Kind::PlayEnforcer}));
+  EXPECT_EQ(state.embargoHolder, 0);
+  EXPECT_EQ(points(state, 0), before + 2);
+  state.player[1].enforcersPlayed = 3; // a tie: still player 0's
+  EXPECT_EQ(state.embargoHolder, 0);
+}
+
 TEST(RulesTest, TheFirstPlayerCanSkipTheirFirstIncome) {
   Settings settings;
   settings.firstSkipsIncome = true;

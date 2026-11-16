@@ -80,6 +80,14 @@ The draft from the roadmap page's round 26, agreed as a good start; every number
 - **Points:** stations 1, colonies 2, Core Control 2, every 3 badges cashed 1, revealed contracts their value; 10 on your own turn wins. A first deck of 17 contracts is in the rules engine.
 - **Ideas for a second version or another mode** (your round-26 comment, tabled for now): planet clusters of 1, 2 or 3 planets with travel and building along the edges, and dead planets that produce nothing but can still hold a station.
 
+### Changes since (roadmap rounds 33 to 37, 2026-11-15)
+
+- **Three and four players** for now; two players becomes a later variant with its own fixes (it's harder to balance: every steal hits your only rival, and turn order counts for more).
+- **Charters:** the contracts' name. The deck is **25 cards, as the genre's best-known game has: 11 Charters and 14 Enforcers**, bought as before (1 crystal, 1 water, 1 food; draw 2, keep 1). The two easy Charters were made harder (6 badges, not 5; two finds, not one); the five "stations on 2 of one kind" merged into one, "stations on 2 planets of the same kind"; "all 5 kinds" became "4 kinds" (3 points); "three ships" and "sharing 2 planets" left out.
+- **Enforcers:** played on your turn (one a turn, not the turn it's bought) to move the blockade and steal, as on a 7. **The Galactic Embargo:** a bonus like Core Control, 2 points to whoever has played the most Enforcers, at least 3, passing on overtaking. (Names still open to change.)
+- **The Imperial Tithe** (being tested): on a 7, anyone holding more than 7 resources gives back half, from what they hold most of.
+- **Catching up** (being tested): "below N points", an extra resource from your home while you have fewer than N, as a young home world with plenty untapped; with uneven starts for turn order.
+
 ## Why this game suits the DS
 
 - **Each player's hand is private.** With a DS each, cards and resources stay on your own bottom screen while the shared board is on the top, which a single screen can't do.

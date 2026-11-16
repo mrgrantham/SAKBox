@@ -246,7 +246,29 @@ int homeIncomeFor(const State &state, int player) {
   return behind ? 2 : 1;
 }
 
+// An Enforcer can be played in the main part of your turn, one a turn, but
+// not one bought this turn
+bool canPlayEnforcer(const State &state) {
+  const Player &me = state.player[static_cast<std::size_t>(state.turn)];
+  const auto held = std::count(me.contracts.begin(), me.contracts.end(), kEnforcerCard);
+  return state.phase == Phase::Main && !state.cardPlayed && held > me.enforcersNew;
+}
+
+// The Galactic Embargo: to whoever has played the most Enforcers, at least
+// embargoEnforcers; a tie keeps it with its holder
+void updateEmbargo(State &state, int player) {
+  const auto played = [&](int p) {
+    return state.player[static_cast<std::size_t>(p)].enforcersPlayed;
+  };
+  if (played(player) < state.settings.embargoEnforcers || state.embargoHolder == player)
+    return;
+  if (state.embargoHolder < 0 || played(player) > played(state.embargoHolder))
+    state.embargoHolder = player;
+}
+
 void endTurn(State &state) {
+  state.player[static_cast<std::size_t>(state.turn)].enforcersNew = 0;
+  state.cardPlayed = false;
   state.turn = (state.turn + 1) % state.players;
   if (state.turn == 0)
     ++state.round;
@@ -338,7 +360,8 @@ std::string settingsText(const Settings &s) {
   out << joined(homeList) << " extratiles=" << joined(s.extraTiles)
       << " extranumbers=" << joined(s.extraNumbers) << " catchup=" << s.catchUpBelow << ","
       << s.catchUpGap << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0)
-      << " discardover=" << s.discardOver;
+      << " discardover=" << s.discardOver << " charters=" << joined(s.charters)
+      << " enforcers=" << s.enforcers << "," << s.embargoEnforcers << "," << s.embargoPoints;
   return out.str();
 }
 
@@ -369,6 +392,16 @@ std::optional<Settings> readSettings(std::string_view line) {
     }
     if (values && key == "skipfirst" && values->size() == 1) {
       s.firstSkipsIncome = (*values)[0] != 0;
+      continue;
+    }
+    if (values && key == "charters") {
+      s.charters = *values;
+      continue;
+    }
+    if (values && key == "enforcers" && values->size() == 3) {
+      s.enforcers = (*values)[0];
+      s.embargoEnforcers = (*values)[1];
+      s.embargoPoints = (*values)[2];
       continue;
     }
     if (values && key == "discardover" && values->size() == 1) {
@@ -525,8 +558,8 @@ State newGame(int players, const Settings &settings, int first) {
   if (state.homeIncomeLeft == 0)
     state.phase = Phase::RollDraw;
   state.findsLeft = settings.finds;
-  state.deck.resize(contracts().size());
-  std::iota(state.deck.begin(), state.deck.end(), 0);
+  state.deck = settings.charters;
+  state.deck.insert(state.deck.end(), static_cast<std::size_t>(settings.enforcers), kEnforcerCard);
   return state;
 }
 
@@ -629,6 +662,14 @@ const std::vector<Contract> &contracts() {
        [](const State &s, int p) { return kindsCovered(s, p) >= 5; }},
       {"Stations on 2 asteroid belts", 1, twoOf<PlanetKind::AsteroidBelt>},
       {"Stations on 2 lush planets", 1, twoOf<PlanetKind::LushPlanet>},
+      // Round 37: the five above merged into one, and 5 kinds made 4
+      {"Stations on 2 planets of the same kind", 1,
+       [](const State &s, int p) {
+         const auto kinds = stationKinds(s, p);
+         return std::ranges::any_of(kinds, [](int n) { return n >= 2; });
+       }},
+      {"Stations on 4 kinds of planet", 3,
+       [](const State &s, int p) { return kindsCovered(s, p) >= 4; }},
   };
   return kContracts;
 }
@@ -648,6 +689,8 @@ int points(const State &state, int player) {
   int total = stationsOf(state, player) + colonies(state, player); // a colony is 2 in all
   if (state.coreHolder == player)
     total += state.settings.coreControlPoints;
+  if (state.embargoHolder == player)
+    total += state.settings.embargoPoints;
   total += p.badgePoints;
   for (int id : p.revealed)
     total += contracts()[static_cast<std::size_t>(id)].points;
@@ -768,11 +811,21 @@ bool applyMain(State &state, const Action &action) {
     return true;
   case Kind::RevealContract: {
     const auto held = std::find(me.contracts.begin(), me.contracts.end(), action.a);
-    if (held == me.contracts.end() ||
+    if (held == me.contracts.end() || action.a == kEnforcerCard ||
         !contracts()[static_cast<std::size_t>(action.a)].met(state, state.turn))
       return false;
     me.contracts.erase(held);
     me.revealed.push_back(action.a);
+    return true;
+  }
+  case Kind::PlayEnforcer: {
+    if (!canPlayEnforcer(state))
+      return false;
+    me.contracts.erase(std::find(me.contracts.begin(), me.contracts.end(), kEnforcerCard));
+    ++me.enforcersPlayed;
+    state.cardPlayed = true;
+    updateEmbargo(state, state.turn);
+    state.phase = Phase::Blockade; // then as on a 7: move it, and steal
     return true;
   }
   case Kind::CashBadges:
@@ -921,7 +974,7 @@ bool Game::apply(State &state, const Action &action) {
     }
     break;
   case Phase::ContractDraw: {
-    if (action.kind != Kind::DealContracts || action.a == action.b)
+    if (action.kind != Kind::DealContracts || (action.a == action.b && action.a != kEnforcerCard))
       break;
     std::vector<int> deck = state.deck;
     if (!removeOne(deck, action.a))
@@ -938,6 +991,8 @@ bool Game::apply(State &state, const Action &action) {
     if (action.kind == Kind::KeepContract && action.a >= 0 &&
         (action.a == state.offered[0] || action.a == state.offered[1])) {
       me.contracts.push_back(action.a);
+      if (action.a == kEnforcerCard)
+        ++me.enforcersNew;
       const int other = action.a == state.offered[0] ? state.offered[1] : state.offered[0];
       if (other >= 0)
         state.deck.push_back(other); // back under the deck
@@ -1043,9 +1098,11 @@ std::vector<Action> Game::legalActions(const State &state) {
     if (!state.deck.empty() && canAfford(me.resources, settings.contractCost))
       out.push_back({Kind::BuyContract});
     for (int id : me.contracts) {
-      if (contracts()[static_cast<std::size_t>(id)].met(state, state.turn))
+      if (id != kEnforcerCard && contracts()[static_cast<std::size_t>(id)].met(state, state.turn))
         out.push_back({Kind::RevealContract, id});
     }
+    if (canPlayEnforcer(state))
+      out.push_back({Kind::PlayEnforcer});
     if (me.badges >= settings.badgesPerPoint)
       out.push_back({Kind::CashBadges});
     break;
@@ -1154,15 +1211,18 @@ std::string Game::writeState(const State &state) {
     const Player &p = state.player[static_cast<std::size_t>(i)];
     out << "player " << i << " resources=" << joined(p.resources) << " badges=" << p.badges << ","
         << p.badgesEarned << "," << p.badgePoints << " finds=" << p.findsKept
-        << " contracts=" << joined(p.contracts) << " revealed=" << joined(p.revealed) << "\n";
+        << " contracts=" << joined(p.contracts) << " revealed=" << joined(p.revealed)
+        << " enforcers=" << p.enforcersPlayed << "," << p.enforcersNew << "\n";
   }
   out << "left kinds=" << joined(state.kindsLeft) << " numbers=" << joined(state.numbersLeft)
       << " finds=" << joined(state.findsLeft) << " deck=" << joined(state.deck) << "\n";
-  out << "blockade=" << state.blockade << " core=" << state.coreHolder << " winner=" << state.winner
-      << " roll=" << state.lastRoll << " pending=" << state.pendingPlanet << ","
-      << state.pendingSite << " victims=" << joined(state.victims)
-      << " salvage=" << state.salvageLeft << " income=" << state.homeIncomeLeft
-      << " offered=" << state.offered[0] << "," << state.offered[1] << "\n";
+  out << "blockade=" << state.blockade << " core=" << state.coreHolder
+      << " embargo=" << state.embargoHolder << "," << (state.cardPlayed ? 1 : 0)
+      << " winner=" << state.winner << " roll=" << state.lastRoll
+      << " pending=" << state.pendingPlanet << "," << state.pendingSite
+      << " victims=" << joined(state.victims) << " salvage=" << state.salvageLeft
+      << " income=" << state.homeIncomeLeft << " offered=" << state.offered[0] << ","
+      << state.offered[1] << "\n";
   return out.str();
 }
 
@@ -1229,6 +1289,8 @@ std::string Game::writeAction(const Action &action) {
     return "keep " + n(action.a);
   case Kind::RevealContract:
     return "reveal " + n(action.a);
+  case Kind::PlayEnforcer:
+    return "enforcer";
   case Kind::CashBadges:
     return "badges";
   case Kind::EndTurn:
@@ -1251,6 +1313,8 @@ std::optional<Action> Game::readAction(std::string_view text) {
       return make(Kind::BuyContract);
     if (verb == "badges")
       return make(Kind::CashBadges);
+    if (verb == "enforcer")
+      return make(Kind::PlayEnforcer);
     if (verb == "end")
       return make(Kind::EndTurn);
     return std::nullopt;

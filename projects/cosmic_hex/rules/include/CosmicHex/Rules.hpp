@@ -83,7 +83,16 @@ struct Settings {
   // resources gives back half of them (rounded down), the ones they hold most
   // of first (0: off). It's decided by the rules, not chosen, so the bots
   // need no new moves.
-  int discardOver = 0;
+  int discardOver = 0; // (named the Imperial Tithe)
+  // The card deck: these Charters (ids into contracts()) and this many
+  // Enforcers. The agreed deck (round 37): 25 cards, as the genre's best-known
+  // game has, 14 Enforcers and 11 Charters.
+  std::vector<int> charters{6, 18, 4, 0, 10, 2, 5, 3, 9, 8, 17};
+  int enforcers = 14;
+  // The Galactic Embargo: a bonus like Core Control, held by whoever has
+  // played the most Enforcers, at least this many; it passes on overtaking
+  int embargoEnforcers = 3;
+  int embargoPoints = 2;
   int coreStationsForControl = 2;
   int coreControlPoints = 2;
   int badgesPerPoint = 3;
@@ -143,8 +152,10 @@ struct Player {
   int badgesEarned = 0;       // all ever earned
   int badgePoints = 0;        // points from cashed badges
   int findsKept = 0;          // zone finds taken (salvage, ruins, the pirate hideout)
-  std::vector<int> contracts; // held, hidden from the others
-  std::vector<int> revealed;  // scored
+  std::vector<int> contracts; // cards held, hidden from the others (Charters and Enforcers)
+  std::vector<int> revealed;  // Charters scored
+  int enforcersPlayed = 0;    // for the Galactic Embargo
+  int enforcersNew = 0;       // bought this turn: not playable until the next
   bool operator==(const Player &) const = default;
 };
 
@@ -179,8 +190,10 @@ struct State {
   std::array<int, kFinds> findsLeft{};
   std::vector<int> deck; // contract ids
   // The rest
-  int blockade = -1;   // the planet the blockade ship is on, or -1
-  int coreHolder = -1; // who holds Core Control, or -1
+  int blockade = -1;       // the planet the blockade ship is on, or -1
+  int coreHolder = -1;     // who holds Core Control, or -1
+  int embargoHolder = -1;  // who holds the Galactic Embargo, or -1
+  bool cardPlayed = false; // an Enforcer played this turn (one a turn)
   int winner = -1;
   int lastRoll = 0;
   int pendingPlanet = -1, pendingSite = -1; // being turned over
@@ -218,6 +231,7 @@ struct Action {
     DealContracts,  // dealer: a, b: the contracts (b -1 if only one was left)
     KeepContract,   // a: the contract
     RevealContract, // a: the contract
+    PlayEnforcer,   // then MoveBlockade, as on a 7
     CashBadges,
     EndTurn,
   };
@@ -229,6 +243,11 @@ struct Action {
 // ---------------------------------------------------------------------------
 // Contracts: secret goals, each checked against the board and the player's
 // tokens when it's revealed
+
+// The card id of an Enforcer in a deck or hand (Charters are their index in
+// contracts()). Played on your turn, from the turn after it's bought: the
+// blockade moves and the player steals, as on a 7.
+inline constexpr int kEnforcerCard = 99;
 
 struct Contract {
   std::string_view name;
