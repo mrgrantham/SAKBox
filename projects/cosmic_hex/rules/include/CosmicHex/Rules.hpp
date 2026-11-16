@@ -40,8 +40,20 @@ inline constexpr int kResources = 5;
 enum class Resource : std::uint8_t { Minerals, Food, Fuel, Water, Crystals };
 using Resources = std::array<int, kResources>;
 
-// A planet's kind; kinds 0-4 each give the resource with the same number
-enum class PlanetKind : std::uint8_t { AsteroidBelt, LushPlanet, GasGiant, IceMoon, Nebula, Home };
+// A planet's kind; kinds 0-4 each give the resource with the same number.
+// A dead planet gives nothing (no resource, no number), but turning it over
+// still earns a badge, and it can hold a station (round 42).
+enum class PlanetKind : std::uint8_t {
+  AsteroidBelt,
+  LushPlanet,
+  GasGiant,
+  IceMoon,
+  Nebula,
+  Home,
+  Dead
+};
+// Whether planets of this kind give a resource
+constexpr bool givesResources(PlanetKind kind) { return kind < PlanetKind::Home; }
 
 // What a face-down tile in the deep-space zone turns out to be
 enum class Find : std::uint8_t { Nothing, Salvage, Ruins, AlienStation, PirateHideout };
@@ -54,7 +66,7 @@ inline constexpr int kDocks = 2; // stations a planet can hold, one per player
 // The numbers, all in one table (the design doc's defaults; the bots tune them)
 
 struct Settings {
-  int winPoints = 10;
+  int winPoints = 12; // (10 until round 41)
   int maxShips = 3;
   int shipMove = 3;   // hexes a ship moves a turn, free
   int boostMove = 2;  // more, for 1 fuel
@@ -66,6 +78,13 @@ struct Settings {
   // the way round; four in opposite pairs). Edge slots that aren't homes
   // hold planets, with extraTiles and extraNumbers added for them.
   std::vector<Hex> homeHexes;
+  // The planets (besides the homes), if a layout names them, such as round
+  // 44's cluster boards; otherwise one every third hex. Hexes off the board
+  // are ignored, and the deep-space zone's sites leave out planets.
+  std::vector<Hex> planetHexes;
+  // How many of the face-down planets turn out dead (drawn like the other
+  // kinds, from the same pile)
+  int deadPlanets = 0;
   // Tiles and numbers for planets beyond planetTiles' and numbers' (fewer
   // homes than four leave more planet slots), used in turn
   std::vector<int> extraTiles{0, 1};    // an asteroid belt, a lush planet
@@ -186,6 +205,7 @@ struct State {
   std::array<Player, kMaxPlayers> player{};
   // What's left to draw
   Resources kindsLeft{};
+  int deadLeft = 0; // dead planets still face down
   std::vector<int> numbersLeft;
   std::array<int, kFinds> findsLeft{};
   std::vector<int> deck; // contract ids

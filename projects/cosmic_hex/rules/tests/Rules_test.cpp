@@ -536,11 +536,11 @@ TEST(RulesTest, ZoneFinds) {
   EXPECT_EQ(pirates.player[0].resources[0], 3); // 1, the home's 1, and 1 stolen
 }
 
-TEST(RulesTest, TenPointsOnYourTurnWins) {
+TEST(RulesTest, TwelvePointsOnYourTurnWins) {
   State state = atMain();
-  state.player[0].badgePoints = 8;
+  state.player[0].badgePoints = 10;
   state.player[0].badges = 3;
-  ASSERT_TRUE(Game::apply(state, {Kind::CashBadges})); // 1 + 9 = 10
+  ASSERT_TRUE(Game::apply(state, {Kind::CashBadges})); // the home's 1 + 11 = 12
   EXPECT_EQ(state.winner, 0);
   EXPECT_TRUE(Game::isOver(state));
   EXPECT_TRUE(Game::legalActions(state).empty());
@@ -620,4 +620,90 @@ TEST(RulesTest, BotsPlayAWholeGame) {
   const ActionLog::Replay<Game> replay = ActionLog::replay(log.value_or(ActionLog::Log<Game>{}));
   EXPECT_TRUE(replay.ok());
   EXPECT_EQ(replay.state, play.state());
+}
+
+// A layout names the planets (round 44's cluster boards): exactly those and
+// the homes, in board order; the zone's sites leave them out; and a layout
+// reads back from its settings line
+TEST(RulesTest, ALayoutNamesThePlanets) {
+  Settings settings;
+  settings.planetHexes = {{0, 0}, {1, -3}, {2, -3}, {1, -2}, {-1, 3}, {-2, 3}, {-1, 2}};
+  const State state = newGame(4, settings);
+  ASSERT_EQ(state.planets.size(), 7u + 4u); // and the four homes
+  for (const Planet &planet : state.planets) {
+    const bool named = std::find(settings.planetHexes.begin(), settings.planetHexes.end(),
+                                 planet.hex) != settings.planetHexes.end();
+    EXPECT_TRUE(named || planet.homeOf >= 0);
+  }
+  for (const ZoneSite &site : state.zone) {
+    EXPECT_EQ(std::find(settings.planetHexes.begin(), settings.planetHexes.end(), site.hex),
+              settings.planetHexes.end());
+  }
+  const auto read = Game::readState(Game::writeState(state));
+  ASSERT_TRUE(read.has_value());
+  EXPECT_EQ(read.value_or(State{}).settings.planetHexes, settings.planetHexes);
+}
+
+// A dead planet: drawn from the pile like the others, with no number; it
+// still earns a badge, can hold a station, and never pays
+TEST(RulesTest, DeadPlanets) {
+  Settings settings;
+  settings.deadPlanets = 2;
+  State state = newGame(4, settings);
+  EXPECT_EQ(state.deadLeft, 2);
+  const auto read = Game::readState(Game::writeState(state));
+  ASSERT_TRUE(read.has_value());
+  EXPECT_EQ(read.value_or(State{}).settings.deadPlanets, 2);
+
+  state = atMain();
+  state.deadLeft = 1;
+  const int planet = 0; // (any face-down planet)
+  ASSERT_FALSE(state.planets[planet].flipped);
+  state.pendingPlanet = planet;
+  state.phase = Phase::PlanetDraw;
+  const int badges = state.player[0].badgesEarned;
+  // A dead planet with a number is refused
+  EXPECT_FALSE(Game::apply(state, {Kind::RevealPlanet, static_cast<int>(PlanetKind::Dead), 6}));
+  ASSERT_TRUE(Game::apply(state, {Kind::RevealPlanet, static_cast<int>(PlanetKind::Dead), 0}));
+  EXPECT_EQ(state.planets[planet].kind, PlanetKind::Dead);
+  EXPECT_EQ(state.deadLeft, 0);
+  EXPECT_EQ(state.player[0].badgesEarned, badges + 1);
+  // None left: refused
+  state.pendingPlanet = 1;
+  state.phase = Phase::PlanetDraw;
+  EXPECT_FALSE(Game::apply(state, {Kind::RevealPlanet, static_cast<int>(PlanetKind::Dead), 0}));
+  // A station on it pays nothing, whatever's rolled
+  state.planets[planet].docks[0] = 1;
+  const Resources before = state.player[1].resources;
+  for (int roll = 2; roll <= 12; ++roll) {
+    if (roll == 7)
+      continue; // (the blockade)
+    state.phase = Phase::RollDraw;
+    ASSERT_TRUE(
+        Game::apply(state, {Kind::Roll, roll <= 6 ? 1 : 6, roll <= 6 ? roll - 1 : roll - 6}));
+  }
+  EXPECT_EQ(state.player[1].resources, before);
+  // The action reads back
+  EXPECT_EQ(Game::readAction(Game::writeAction({Kind::RevealPlanet, 6, 0})),
+            std::make_optional(Action{Kind::RevealPlanet, 6, 0}));
+}
+
+// The dealer draws dead planets from the pile in proportion
+TEST(RulesTest, TheDealerDrawsDeadPlanets) {
+  State state = atMain();
+  state.kindsLeft = {1, 0, 0, 0, 0};
+  state.deadLeft = 1;
+  state.pendingPlanet = 0;
+  state.phase = Phase::PlanetDraw;
+  SeededRandom::Generator random(7);
+  int dead = 0;
+  for (int i = 0; i < 400; ++i) {
+    const Action drawn = Game::dealerAction(state, random);
+    if (drawn.a == static_cast<int>(PlanetKind::Dead)) {
+      ++dead;
+      EXPECT_EQ(drawn.b, 0);
+    }
+  }
+  EXPECT_GT(dead, 150);
+  EXPECT_LT(dead, 250);
 }

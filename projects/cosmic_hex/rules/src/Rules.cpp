@@ -24,8 +24,8 @@ constexpr std::array<Hex, kMaxPlayers> kHomes = {{{4, -2}, {-4, 2}, {2, 2}, {-2,
 
 constexpr std::array<std::string_view, kResources> kResourceNames = {"minerals", "food", "fuel",
                                                                      "water", "crystals"};
-constexpr std::array<std::string_view, 6> kKindNames = {"asteroid_belt", "lush_planet", "gas_giant",
-                                                        "ice_moon",      "nebula",      "home"};
+constexpr std::array<std::string_view, 7> kKindNames = {
+    "asteroid_belt", "lush_planet", "gas_giant", "ice_moon", "nebula", "home", "dead"};
 constexpr std::array<std::string_view, kFinds> kFindNames = {"nothing", "salvage", "ruins",
                                                              "alien_station", "pirate_hideout"};
 constexpr std::array<std::string_view, 11> kPhaseNames = {
@@ -156,7 +156,8 @@ std::unordered_map<Hex, int> movesFor(const State &state, const Ship &ship) {
 void produce(State &state, int roll) {
   for (std::size_t i = 0; i < state.planets.size(); ++i) {
     const Planet &planet = state.planets[i];
-    if (!planet.flipped || planet.number != roll || static_cast<int>(i) == state.blockade)
+    if (!planet.flipped || !givesResources(planet.kind) || planet.number != roll ||
+        static_cast<int>(i) == state.blockade)
       continue;
     for (int d = 0; d < kDocks; ++d) {
       const int owner = planet.docks[static_cast<std::size_t>(d)];
@@ -361,7 +362,14 @@ std::string settingsText(const Settings &s) {
       << " extranumbers=" << joined(s.extraNumbers) << " catchup=" << s.catchUpBelow << ","
       << s.catchUpGap << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0)
       << " discardover=" << s.discardOver << " charters=" << joined(s.charters)
-      << " enforcers=" << s.enforcers << "," << s.embargoEnforcers << "," << s.embargoPoints;
+      << " enforcers=" << s.enforcers << "," << s.embargoEnforcers << "," << s.embargoPoints
+      << " dead=" << s.deadPlanets << " planets=";
+  std::vector<int> planetList;
+  for (Hex hex : s.planetHexes) {
+    planetList.push_back(hex.q);
+    planetList.push_back(hex.r);
+  }
+  out << joined(planetList);
   return out.str();
 }
 
@@ -412,6 +420,16 @@ std::optional<Settings> readSettings(std::string_view line) {
       s.homeHexes.clear();
       for (std::size_t i = 0; i < values->size(); i += 2)
         s.homeHexes.push_back(Hex{(*values)[i], (*values)[i + 1]});
+      continue;
+    }
+    if (values && key == "planets" && values->size() % 2 == 0) {
+      s.planetHexes.clear();
+      for (std::size_t i = 0; i < values->size(); i += 2)
+        s.planetHexes.push_back(Hex{(*values)[i], (*values)[i + 1]});
+      continue;
+    }
+    if (values && key == "dead" && values->size() == 1) {
+      s.deadPlanets = (*values)[0];
       continue;
     }
     if (values && key == "corehexes" && values->size() % 2 == 0) {
@@ -502,9 +520,17 @@ State newGame(int players, const Settings &settings, int first) {
   assert(static_cast<int>(homes.size()) >= players);
   assert(first >= 0 && first < players);
   state.turn = first;
+  // The planets: the layout's, or one every third hex; and the homes
+  const auto isPlanet = [&](Hex hex) {
+    const auto named = [hex](const std::vector<Hex> &list) {
+      return std::find(list.begin(), list.end(), hex) != list.end();
+    };
+    return named(homes) ||
+           (settings.planetHexes.empty() ? isSlot(hex) : named(settings.planetHexes));
+  };
   for (Hex hex : HexGrid::spiral(Hex{}, kBoardRadius)) {
     const int length = HexGrid::length(hex);
-    if (isSlot(hex)) {
+    if (isPlanet(hex)) {
       Planet planet;
       planet.hex = hex;
       planet.core = settings.coreHexes.empty()
@@ -542,11 +568,14 @@ State newGame(int players, const Settings &settings, int first) {
       ++resources[static_cast<std::size_t>(i % kResources)];
   }
   state.kindsLeft = settings.planetTiles;
+  state.deadLeft = settings.deadPlanets;
   state.numbersLeft = settings.numbers;
   // Planets beyond the tiles given (fewer homes than four): the extras, in turn
   const int planets = static_cast<int>(std::count_if(state.planets.begin(), state.planets.end(),
                                                      [](const Planet &p) { return !p.flipped; }));
-  for (int extra = 0; std::accumulate(state.kindsLeft.begin(), state.kindsLeft.end(), 0) < planets;
+  for (int extra = 0;
+       std::accumulate(state.kindsLeft.begin(), state.kindsLeft.end(), 0) + state.deadLeft <
+       planets;
        ++extra) {
     assert(!settings.extraTiles.empty() && !settings.extraNumbers.empty());
     ++state.kindsLeft[static_cast<std::size_t>(
@@ -571,7 +600,7 @@ namespace {
 std::array<int, kResources> stationKinds(const State &state, int player) {
   std::array<int, kResources> count{};
   for (const Planet &planet : state.planets) {
-    if (planet.homeOf < 0 && planet.kind != PlanetKind::Home && dockedAt(planet, player))
+    if (planet.homeOf < 0 && givesResources(planet.kind) && dockedAt(planet, player))
       ++count[static_cast<std::size_t>(planet.kind)];
   }
   return count;
@@ -913,11 +942,20 @@ bool Game::apply(State &state, const Action &action) {
     done = applyMain(state, action);
     break;
   case Phase::PlanetDraw: {
-    if (action.kind != Kind::RevealPlanet || action.a < 0 || action.a >= kResources ||
-        state.kindsLeft[static_cast<std::size_t>(action.a)] <= 0 ||
-        !removeOne(state.numbersLeft, action.b))
+    if (action.kind != Kind::RevealPlanet)
       break;
-    --state.kindsLeft[static_cast<std::size_t>(action.a)];
+    if (action.a == static_cast<int>(PlanetKind::Dead)) {
+      // A dead planet: no number
+      if (state.deadLeft <= 0 || action.b != 0)
+        break;
+      --state.deadLeft;
+    } else {
+      if (action.a < 0 || action.a >= kResources ||
+          state.kindsLeft[static_cast<std::size_t>(action.a)] <= 0 ||
+          !removeOne(state.numbersLeft, action.b))
+        break;
+      --state.kindsLeft[static_cast<std::size_t>(action.a)];
+    }
     Planet &planet = state.planets[static_cast<std::size_t>(state.pendingPlanet)];
     planet.flipped = true;
     planet.kind = static_cast<PlanetKind>(action.a);
@@ -1136,10 +1174,16 @@ Action Game::dealerAction(const State &state, SeededRandom::Generator &random) {
     return {Kind::Steal,
             weighted(state.player[static_cast<std::size_t>(state.victims.front())].resources)};
   case Phase::PlanetDraw: {
-    const int kind = weighted(state.kindsLeft);
+    // From the pile: the five kinds, then the dead planets
+    std::array<int, kResources + 1> pile{};
+    std::copy(state.kindsLeft.begin(), state.kindsLeft.end(), pile.begin());
+    pile[kResources] = state.deadLeft;
+    const int drawn = weighted(pile);
+    if (drawn == kResources)
+      return {Kind::RevealPlanet, static_cast<int>(PlanetKind::Dead), 0};
     const int number =
         state.numbersLeft[random.below(static_cast<std::uint32_t>(state.numbersLeft.size()))];
-    return {Kind::RevealPlanet, kind, number};
+    return {Kind::RevealPlanet, drawn, number};
   }
   case Phase::ZoneDraw:
     return {Kind::RevealFind, weighted(state.findsLeft)};
@@ -1214,8 +1258,9 @@ std::string Game::writeState(const State &state) {
         << " contracts=" << joined(p.contracts) << " revealed=" << joined(p.revealed)
         << " enforcers=" << p.enforcersPlayed << "," << p.enforcersNew << "\n";
   }
-  out << "left kinds=" << joined(state.kindsLeft) << " numbers=" << joined(state.numbersLeft)
-      << " finds=" << joined(state.findsLeft) << " deck=" << joined(state.deck) << "\n";
+  out << "left kinds=" << joined(state.kindsLeft) << " dead=" << state.deadLeft
+      << " numbers=" << joined(state.numbersLeft) << " finds=" << joined(state.findsLeft)
+      << " deck=" << joined(state.deck) << "\n";
   out << "blockade=" << state.blockade << " core=" << state.coreHolder
       << " embargo=" << state.embargoHolder << "," << (state.cardPlayed ? 1 : 0)
       << " winner=" << state.winner << " roll=" << state.lastRoll
@@ -1354,8 +1399,9 @@ std::optional<Action> Game::readAction(std::string_view text) {
     if (verb == "planet") {
       const int kind = indexOf(kKindNames, w[1]);
       const auto number = num(w[2]);
-      return kind >= 0 && kind < kResources && number ? make(Kind::RevealPlanet, kind, *number)
-                                                      : std::nullopt;
+      const bool known =
+          (kind >= 0 && kind < kResources) || kind == static_cast<int>(PlanetKind::Dead);
+      return known && number ? make(Kind::RevealPlanet, kind, *number) : std::nullopt;
     }
     if (verb == "move") {
       const auto ship = num(w[1]);

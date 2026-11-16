@@ -44,6 +44,10 @@ struct Options {
   int strongIterations = 0;   // a stronger bot, thinking this much, at one home in turn
   std::string variant;        // a label for the CSV
   std::string core = "seven"; // the core planets: seven (the centre and the six around it) or three
+  std::vector<Hex> planets;   // a layout's planets (empty: one every third hex)
+  std::vector<Hex> homes;     // and its homes (empty: the usual ones)
+  int dead = 0;               // dead planets among the face-down ones
+  int win = 0;                // points to win (0: the rules' default)
 };
 
 // A flag's number, or a clear stop if it isn't one
@@ -55,6 +59,25 @@ template <typename T> T number(std::string_view flag, std::string_view value) {
                  flag.data(), static_cast<int>(value.size()), value.data());
     std::exit(2);
   }
+  return out;
+}
+
+// "q,r,q,r,...": hexes, or a clear stop if it isn't
+std::vector<Hex> hexes(std::string_view flag, std::string_view value) {
+  std::vector<int> numbers;
+  while (!value.empty()) {
+    const std::size_t comma = value.find(',');
+    numbers.push_back(number<int>(flag, value.substr(0, comma)));
+    value.remove_prefix(comma == std::string_view::npos ? value.size() : comma + 1);
+  }
+  if (numbers.size() % 2 != 0) {
+    std::fprintf(stderr, "%.*s needs pairs of numbers (q,r,q,r...)\n",
+                 static_cast<int>(flag.size()), flag.data());
+    std::exit(2);
+  }
+  std::vector<Hex> out;
+  for (std::size_t i = 0; i < numbers.size(); i += 2)
+    out.push_back(Hex{numbers[i], numbers[i + 1]});
   return out;
 }
 
@@ -104,6 +127,14 @@ Options parse(int argc, char **argv) {
       options.strongIterations = number<int>(flag, value);
     else if (flag == "--variant")
       options.variant = value;
+    else if (flag == "--planets")
+      options.planets = hexes(flag, value);
+    else if (flag == "--homes")
+      options.homes = hexes(flag, value);
+    else if (flag == "--dead")
+      options.dead = number<int>(flag, value);
+    else if (flag == "--win")
+      options.win = number<int>(flag, value);
     else {
       std::fprintf(stderr, "unknown flag %s\n", argv[i]);
       std::exit(2);
@@ -233,6 +264,11 @@ int main(int argc, char **argv) {
                                ? std::vector<Hex>{{0, 0}, {2, -1}, {-1, -1}, {-1, 2}}
                                : std::vector<Hex>{{0, 0}, {1, -2}, {-1, 2}};
     settings.seatBonus = options.seatBonus;
+    settings.planetHexes = options.planets;
+    settings.homeHexes = options.homes;
+    settings.deadPlanets = options.dead;
+    if (options.win > 0)
+      settings.winPoints = options.win;
     settings.catchUpBelow = options.catchUpBelow;
     settings.catchUpGap = options.catchUpGap;
     settings.discardOver = options.discardOver;

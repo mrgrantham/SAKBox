@@ -80,7 +80,14 @@ The draft from the roadmap page's round 26, agreed as a good start; every number
 - **Points:** stations 1, colonies 2, Core Control 2, every 3 badges cashed 1, revealed contracts their value; 10 on your own turn wins. A first deck of 17 contracts is in the rules engine.
 - **Ideas for a second version or another mode** (your round-26 comment, tabled for now): planet clusters of 1, 2 or 3 planets with travel and building along the edges, and dead planets that produce nothing but can still hold a station.
 
-### Changes since (roadmap rounds 33 to 37, 2026-11-15)
+### Changes since (roadmap rounds 41 to 44)
+
+- **12 points to win** (was 10), agreed in round 41 for testing.
+- **Board layouts as a setting:** `Settings::planetHexes` names the planets (besides the homes), so the rules can be played on cluster boards. Round 44 offers 36 layouts on today's 61-hex board (clusters of 3, 2 and 1, never touching each other, the core or a home; homes on the edge or on four corners).
+- **Dead planets** (round 42): `Settings::deadPlanets` of the face-down planets turn out dead: turning one over earns a badge as usual, it has no resource and no number, and it can hold a station (a point). The blockade doesn't start on one.
+- Still to build: snake order for a free second station, bot styles (playouts leaning to saving, rushing or exploring), and corners and edges (building on corners, moving along edges).
+
+## Changes since (roadmap rounds 33 to 37, 2026-11-15)
 
 - **Three and four players** for now; two players becomes a later variant with its own fixes (it's harder to balance: every steal hits your only rival, and turn order counts for more).
 - **Charters:** the contracts' name. The deck is **25 cards, as the genre's best-known game has: 11 Charters and 14 Enforcers**, bought as before (1 crystal, 1 water, 1 food; draw 2, keep 1). The two easy Charters were made harder (6 badges, not 5; two finds, not one); the five "stations on 2 of one kind" merged into one, "stations on 2 planets of the same kind"; "all 5 kinds" became "4 kinds" (3 points); "three ships" and "sharing 2 planets" left out.
