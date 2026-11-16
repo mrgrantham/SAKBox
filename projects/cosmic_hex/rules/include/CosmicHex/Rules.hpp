@@ -79,6 +79,12 @@ struct Settings {
   // docked on planets, ships moving hex to hex).
   bool corners = false;
   int startShipReach = 3; // (corners) edges from the home colony a starting ship may stand
+  // (corners) The first deep-space mission (round 52, the user's idea): the
+  // starting ship goes on any corner that touches no planet, anywhere on the
+  // board, rather than near home; ships are still placed in reverse order,
+  // so the last to play chooses first; and the finds the ship's corner
+  // touches turn over, as where a move ends.
+  bool deepSpaceStart = false;
   int maxShips = 3;
   int shipMove = 3;   // hexes a ship moves a turn, free
   int boostMove = 2;  // more, for 1 fuel
@@ -235,6 +241,7 @@ struct State {
   int first = 0;                 // who took the first turn
   int setupStep = 0;             // (corners) how many setup placements are done
   std::vector<Hex> turning;      // (corners) planets and tiles still to turn over this move
+  bool placingShip = false;      // (corners) a starting ship's finds being turned over
   std::array<Player, kMaxPlayers> player{};
   // What's left to draw
   Resources kindsLeft{};

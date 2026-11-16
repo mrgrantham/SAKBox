@@ -60,6 +60,7 @@ struct Options {
   std::vector<BotStyle> styles; // the players' styles, turned round a seat each game
   bool edges = false;           // corners and edges (Settings::corners)
   int move = 0, boost = 0;      // a ship's move and its fuel boost (0: the default for the rules)
+  bool deepSpace = false;       // (edges) the starting ship anywhere touching no planet
 };
 
 // "q,r,q,r,...": hexes, or nothing if the text isn't pairs of numbers

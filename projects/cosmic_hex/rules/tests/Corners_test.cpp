@@ -314,3 +314,46 @@ TEST(CornersTest, BotsPlayWholeGames) {
     EXPECT_TRUE(Game::isOver(state)) << "seed " << seed;
   }
 }
+
+// The first deep-space mission: a starting ship on any corner touching no
+// planet, anywhere, ships still placed in reverse order; the finds it lands
+// by turn over (each a badge), then the setup goes on
+TEST(CornersTest, ADeepSpaceStart) {
+  Settings settings = cornerSettings();
+  settings.deepSpaceStart = true;
+  State state = newGame(4, settings, 0);
+  for (int i = 0; i < 4; ++i)
+    ASSERT_TRUE(Game::apply(state, Game::legalActions(state).front())); // the colonies
+  ASSERT_EQ(state.phase, Phase::PlaceShip);
+  EXPECT_EQ(state.turn, 3); // the last to play places first
+  const std::vector<Action> places = Game::legalActions(state);
+  for (const Action &place : places) {
+    for (Hex hex : HexGrid::hexesTouching(boardCorners()[static_cast<std::size_t>(place.a)]))
+      for (const Planet &planet : state.planets)
+        EXPECT_NE(planet.hex, hex); // touching no planet, homes included
+  }
+  // One by a zone tile: it turns over, and the next player places after
+  int byAFind = -1;
+  for (const Action &place : places)
+    for (Hex hex : HexGrid::hexesTouching(boardCorners()[static_cast<std::size_t>(place.a)]))
+      for (const ZoneSite &site : state.zone)
+        if (site.hex == hex && byAFind < 0)
+          byAFind = place.a;
+  ASSERT_GE(byAFind, 0);
+  ASSERT_TRUE(Game::apply(state, {Kind::PlaceShip, byAFind}));
+  EXPECT_EQ(state.phase, Phase::ZoneDraw);
+  ASSERT_TRUE(Game::apply(state, {Kind::RevealFind, static_cast<int>(Find::Nothing)}));
+  // (more finds by the same corner turn over too; then the setup goes on)
+  while (state.phase == Phase::ZoneDraw)
+    ASSERT_TRUE(Game::apply(state, {Kind::RevealFind, static_cast<int>(Find::Nothing)}));
+  EXPECT_EQ(state.phase, Phase::PlaceShip);
+  EXPECT_EQ(state.turn, 2);
+  EXPECT_GE(state.player[3].badgesEarned, 1);
+  // A corner already taken by a ship is refused
+  EXPECT_FALSE(Game::apply(state, {Kind::PlaceShip, byAFind}));
+  // The text reads back
+  State start = newGame(4, settings, 1);
+  const auto read = Game::readState(Game::writeState(start));
+  ASSERT_TRUE(read.has_value());
+  EXPECT_TRUE(read.value_or(State{}).settings.deepSpaceStart);
+}

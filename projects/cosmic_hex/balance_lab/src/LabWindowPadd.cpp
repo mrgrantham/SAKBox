@@ -104,7 +104,8 @@ void LabWindowPadd::runBatch() {
       return;
     }
   }
-  batchOptions_.variant = (batchOptions_.edges ? "edges_" : "") + batchOptions_.layout +
+  batchOptions_.variant = std::string(batchOptions_.edges ? "edges_" : "") +
+                          (batchOptions_.deepSpace ? "deep_" : "") + batchOptions_.layout +
                           (batchOptions_.smallFinds ? "_small" : "");
   ++batch_;
   nextGame_ = 0;
@@ -183,6 +184,7 @@ void LabWindowPadd::drawSettings() {
     }
   }
   ImGui::Checkbox("Corners and edges", &options_.edges);
+  ImGui::Checkbox("Deep-space start", &options_.deepSpace);
   ImGui::Checkbox("Finds beside small systems", &options_.smallFinds);
   ImGui::SliderInt("Players", &options_.players, 3, 4);
   ImGui::InputInt("Games", &options_.games, 50, 200);

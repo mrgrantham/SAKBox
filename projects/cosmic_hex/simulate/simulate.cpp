@@ -106,6 +106,8 @@ Options parse(int argc, char **argv) {
       options.homes = hexes(flag, value);
     else if (flag == "--edges")
       options.edges = std::string_view(value) == "yes";
+    else if (flag == "--start")
+      options.deepSpace = std::string_view(value) == "deep-space";
     else if (flag == "--move")
       options.move = number<int>(flag, value);
     else if (flag == "--boost")

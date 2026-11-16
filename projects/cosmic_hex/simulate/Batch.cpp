@@ -91,6 +91,7 @@ Settings settingsFor(const Options &options) {
   // Corners and edges: ships move 2 edges, 1 more for fuel (round 50),
   // unless --move and --boost say otherwise
   settings.corners = options.edges;
+  settings.deepSpaceStart = options.deepSpace;
   if (options.edges) {
     settings.shipMove = 2;
     settings.boostMove = 1;

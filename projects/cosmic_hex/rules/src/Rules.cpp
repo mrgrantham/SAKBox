@@ -523,7 +523,8 @@ std::string settingsText(const Settings &s) {
     zoneList.push_back(hex.q);
     zoneList.push_back(hex.r);
   }
-  out << joined(zoneList) << " edges=" << (s.corners ? 1 : 0) << "," << s.startShipReach;
+  out << joined(zoneList) << " edges=" << (s.corners ? 1 : 0) << "," << s.startShipReach << ","
+      << (s.deepSpaceStart ? 1 : 0);
   return out.str();
 }
 
@@ -582,9 +583,10 @@ std::optional<Settings> readSettings(std::string_view line) {
         s.planetHexes.push_back(Hex{(*values)[i], (*values)[i + 1]});
       continue;
     }
-    if (values && key == "edges" && values->size() == 2) {
+    if (values && key == "edges" && values->size() == 3) {
       s.corners = (*values)[0] != 0;
       s.startShipReach = (*values)[1];
+      s.deepSpaceStart = (*values)[2] != 0;
       continue;
     }
     if (values && key == "zone" && values->size() % 2 == 0) {
@@ -982,6 +984,20 @@ std::vector<int> colonyPlaces(const State &state, int player) {
 // The corners a player may put their starting ship on: their home colony's,
 // or any within startShipReach edges of it
 std::vector<int> shipPlaces(const State &state, int player) {
+  if (state.settings.deepSpaceStart) {
+    // Any corner touching no planet (homes included), with no ship already
+    std::vector<int> out;
+    for (Corner corner : boardCorners()) {
+      bool byAPlanet = false;
+      for (Hex hex : HexGrid::hexesTouching(corner))
+        byAPlanet = byAPlanet || planetAt(state, hex) >= 0;
+      const bool taken = std::any_of(state.ships.begin(), state.ships.end(),
+                                     [&](const Ship &ship) { return ship.corner == corner; });
+      if (!byAPlanet && !taken)
+        out.push_back(cornerNumber(corner));
+    }
+    return out;
+  }
   const int home = homeColonyOf(state, player);
   if (home < 0)
     return {};
@@ -1453,16 +1469,33 @@ bool Game::apply(State &state, const Action &action) {
     if (action.kind != Kind::PlaceShip ||
         std::find(places.begin(), places.end(), action.a) == places.end())
       break;
-    state.ships.push_back(
-        Ship{state.turn, Hex{}, false, boardCorners()[static_cast<std::size_t>(action.a)]});
-    nextSetupStep(state);
+    const Corner at = boardCorners()[static_cast<std::size_t>(action.a)];
+    state.ships.push_back(Ship{state.turn, Hex{}, false, at});
     done = true;
+    if (state.settings.deepSpaceStart) {
+      // The finds it lands by turn over first (the setup goes on after)
+      for (Hex hex : HexGrid::hexesTouching(at))
+        state.turning.push_back(hex);
+      state.placingShip = true;
+      turnNextOver(state);
+      if (state.phase == Phase::PlaceShip) { // (nothing to turn over)
+        state.placingShip = false;
+        nextSetupStep(state);
+      }
+      break;
+    }
+    nextSetupStep(state);
     break;
   }
   }
   // (corners) more to turn over where a ship stopped
   if (done && state.phase == Phase::Main && !state.turning.empty())
     turnNextOver(state);
+  // (corners) a starting ship's finds all turned over: the setup goes on
+  if (done && state.placingShip && state.phase == Phase::Main && state.turning.empty()) {
+    state.placingShip = false;
+    nextSetupStep(state);
+  }
   if (done && state.phase != Phase::HomeIncome &&
       points(state, state.turn) >= state.settings.winPoints) {
     state.winner = state.turn;
@@ -1705,7 +1738,8 @@ std::string Game::writeState(const State &state) {
       << " pending=" << state.pendingPlanet << "," << state.pendingSite
       << " victims=" << joined(state.victims) << " salvage=" << state.salvageLeft
       << " income=" << state.homeIncomeLeft << " offered=" << state.offered[0] << ","
-      << state.offered[1] << " first=" << state.first << " setup=" << state.setupStep << "\n";
+      << state.offered[1] << " first=" << state.first << " setup=" << state.setupStep
+      << (state.placingShip ? " placing" : "") << "\n";
   return out.str();
 }
 
