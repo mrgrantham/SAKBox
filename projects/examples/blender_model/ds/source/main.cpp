@@ -55,113 +55,123 @@ std::vector<Scene::Vector3> floorLines() {
 } // namespace
 
 int main() {
-  Scene::Display display; // the top screen
-  consoleDemoInit();      // the bottom screen's console, for printf
-  Scene::Renderer renderer(display);
+  // The app in a scope of its own, so what it holds (the renderer, the
+  // display) closes before the DS powers off, each stage shown on the
+  // bottom screen: if quitting ever hangs, the last line says where
+  {
+    Scene::Display display; // the top screen
+    consoleDemoInit();      // the bottom screen's console, for printf
+    Scene::Renderer renderer(display);
 
-  const Scene::Mesh ship = renderer.load(Assets::kShip), rock = renderer.load(Assets::kRock);
-  // A pane of glass, see-through by its vertices' alpha (its material solid)
-  Scene::MeshBuilder paneBuilder;
-  paneBuilder.quad({-3, -1, -2.5f}, {3, -1, -2.5f}, {3, 1.6f, -2.5f}, {-3, 1.6f, -2.5f},
-                   {120, 200, 255, 110});
-  const Scene::Mesh pane = renderer.load(paneBuilder.data());
-  std::array<Shown, 3> shown{{
-      {ship, {0, 0, 0}, {}, "Ship_DS"},
-      {rock, {-2.4f, -0.4f, 0.5f}, {}, "Rock"},
-      {rock, {2.4f, -0.4f, 0.5f}, {.alpha = 14}, "Alpha 14/31"},
-  }};
-  const std::vector<Scene::Vector3> lines = floorLines();
+    const Scene::Mesh ship = renderer.load(Assets::kShip), rock = renderer.load(Assets::kRock);
+    // A pane of glass, see-through by its vertices' alpha (its material solid)
+    Scene::MeshBuilder paneBuilder;
+    paneBuilder.quad({-3, -1, -2.5f}, {3, -1, -2.5f}, {3, 1.6f, -2.5f}, {-3, 1.6f, -2.5f},
+                     {120, 200, 255, 110});
+    const Scene::Mesh pane = renderer.load(paneBuilder.data());
+    std::array<Shown, 3> shown{{
+        {ship, {0, 0, 0}, {}, "Ship_DS"},
+        {rock, {-2.4f, -0.4f, 0.5f}, {}, "Rock"},
+        {rock, {2.4f, -0.4f, 0.5f}, {.alpha = 14}, "Alpha 14/31"},
+    }};
+    const std::vector<Scene::Vector3> lines = floorLines();
 
-  Scene::Environment environment{.background = {28, 30, 38}, .ambient = {70, 70, 75}};
-  const Scene::Fog fog{.colour = {28, 30, 38}, .density = 0.12f}; // into the background
-  environment.fog = fog;
-  environment.addLight({.direction = {-0.5f, -0.8f, -0.6f}, .colour = {220, 215, 205}});
-  const Scene::Camera camera{.eye = {0, 1.6f, 6.4f}, .target = {0, -0.2f, 0}, .fieldOfView = 50};
+    Scene::Environment environment{.background = {28, 30, 38}, .ambient = {70, 70, 75}};
+    const Scene::Fog fog{.colour = {28, 30, 38}, .density = 0.12f}; // into the background
+    environment.fog = fog;
+    environment.addLight({.direction = {-0.5f, -0.8f, -0.6f}, .colour = {220, 215, 205}});
+    const Scene::Camera camera{.eye = {0, 1.6f, 6.4f}, .target = {0, -0.2f, 0}, .fieldOfView = 50};
 
-  std::printf("\x1b[0;0HModels from Blender on a DS\n\n");
-  // (Polygons as the DS draws them: triangles joined into quads and strips)
-  std::printf("Ship_DS: %lu triangles,\n  %lu polygons\n",
-              static_cast<unsigned long>(Assets::kShipTriangles),
-              static_cast<unsigned long>(Assets::kShipPolygons));
-  std::printf("Rock:    %lu triangles,\n  %lu polygons (x2)\n",
-              static_cast<unsigned long>(Assets::kRockTriangles),
-              static_cast<unsigned long>(Assets::kRockPolygons));
-  std::printf("\nA: wireframe ship  B: fog\nX: toon  Y: outlines  R: bands\nL: highlights/shades\n"
-              "SELECT: screenshot  START: quit\n");
-  Look::Settings look;
-  Look::Settings lookShown;
-  lookShown.bands = 0; // (printed the first frame)
+    std::printf("\x1b[0;0HModels from Blender on a DS\n\n");
+    // (Polygons as the DS draws them: triangles joined into quads and strips)
+    std::printf("Ship_DS: %lu triangles,\n  %lu polygons\n",
+                static_cast<unsigned long>(Assets::kShipTriangles),
+                static_cast<unsigned long>(Assets::kShipPolygons));
+    std::printf("Rock:    %lu triangles,\n  %lu polygons (x2)\n",
+                static_cast<unsigned long>(Assets::kRockTriangles),
+                static_cast<unsigned long>(Assets::kRockPolygons));
+    std::printf(
+        "\nA: wireframe ship  B: fog\nX: toon  Y: outlines  R: bands\nL: highlights/shades\n"
+        "SELECT: screenshot  START: quit\n");
+    Look::Settings look;
+    Look::Settings lookShown;
+    lookShown.bands = 0; // (printed the first frame)
 
-  Scene::Scalar angle = 0;
-  Scene::FrameCounts shownCounts{};
-  Input::Reader reader;
-  Input::Gamepad before = reader.read();
-  while (pmMainLoop()) {
-    // The pad, once a frame, and what was pressed since the last
-    const Input::Gamepad pad = reader.read();
-    const Input::Edges pressed(before, pad);
-    before = pad;
-    if (pressed.pressed(Input::Button::Start))
-      break;
-    if (pressed.pressed(Input::Button::FaceRight)) // A
-      shown[0].material.wireframe = !shown[0].material.wireframe;
-    if (pressed.pressed(Input::Button::FaceBottom)) // B
-      environment.fog = environment.fog.density > Scene::Scalar(0) ? Scene::Fog{} : fog;
-    if (pressed.pressed(Input::Button::FaceTop)) // X
-      look.toon = !look.toon;
-    if (pressed.pressed(Input::Button::FaceLeft)) // Y
-      look.outlines = !look.outlines;
-    if (pressed.pressed(Input::Button::R))
-      look.nextBands();
-    if (pressed.pressed(Input::Button::L))
-      look.switchDsTable();
-    look.apply(environment);
-    const bool screenshot = pressed.pressed(Input::Button::Select);
+    Scene::Scalar angle = 0;
+    Scene::FrameCounts shownCounts{};
+    Input::Reader reader;
+    Input::Gamepad before = reader.read();
+    while (pmMainLoop()) {
+      // The pad, once a frame, and what was pressed since the last
+      const Input::Gamepad pad = reader.read();
+      const Input::Edges pressed(before, pad);
+      before = pad;
+      if (pressed.pressed(Input::Button::Start))
+        break;
+      if (pressed.pressed(Input::Button::FaceRight)) // A
+        shown[0].material.wireframe = !shown[0].material.wireframe;
+      if (pressed.pressed(Input::Button::FaceBottom)) // B
+        environment.fog = environment.fog.density > Scene::Scalar(0) ? Scene::Fog{} : fog;
+      if (pressed.pressed(Input::Button::FaceTop)) // X
+        look.toon = !look.toon;
+      if (pressed.pressed(Input::Button::FaceLeft)) // Y
+        look.outlines = !look.outlines;
+      if (pressed.pressed(Input::Button::R))
+        look.nextBands();
+      if (pressed.pressed(Input::Button::L))
+        look.switchDsTable();
+      look.apply(environment);
+      const bool screenshot = pressed.pressed(Input::Button::Select);
 
-    renderer.beginFrame(camera, environment);
-    renderer.drawLines(lines, {90, 95, 110});
-    renderer.draw(pane, Scene::Transform::identity(), {.shading = Scene::Material::Shading::Unlit});
-    renderer.overlay().text(8, 6, "Hangar", {255, 220, 140}, 2);
-    angle += Scene::Scalar(0.02f);
-    const Scene::Transform turn = Scene::Transform::rotation({0, 1, 0}, angle);
-    for (const Shown &model : shown) {
-      renderer.draw(model.mesh, Scene::Transform::translation(model.where) * turn,
-                    look.material(model.material));
-      float x = 0, y = 0;
-      if (renderer.toScreen(model.where + Scene::Vector3{0, -1.1f, 0}, x, y)) {
-        const float width = Scene::Overlay::textWidth(model.label);
-        const float left = x - width / 2, top = y;
-        renderer.overlay().rectangle(left - 2, top - 2, width + 4, Scene::Overlay::lineHeight() + 4,
-                                     {0, 0, 0, 150});
-        renderer.overlay().text(left, top, model.label, {255, 255, 255});
+      renderer.beginFrame(camera, environment);
+      renderer.drawLines(lines, {90, 95, 110});
+      renderer.draw(pane, Scene::Transform::identity(),
+                    {.shading = Scene::Material::Shading::Unlit});
+      renderer.overlay().text(8, 6, "Hangar", {255, 220, 140}, 2);
+      angle += Scene::Scalar(0.02f);
+      const Scene::Transform turn = Scene::Transform::rotation({0, 1, 0}, angle);
+      for (const Shown &model : shown) {
+        renderer.draw(model.mesh, Scene::Transform::translation(model.where) * turn,
+                      look.material(model.material));
+        float x = 0, y = 0;
+        if (renderer.toScreen(model.where + Scene::Vector3{0, -1.1f, 0}, x, y)) {
+          const float width = Scene::Overlay::textWidth(model.label);
+          const float left = x - width / 2, top = y;
+          renderer.overlay().rectangle(left - 2, top - 2, width + 4,
+                                       Scene::Overlay::lineHeight() + 4, {0, 0, 0, 150});
+          renderer.overlay().text(left, top, model.label, {255, 255, 255});
+        }
+      }
+      renderer.endFrame();
+      if (screenshot) {
+        std::string error;
+        const std::string path =
+            Scene::saveScreenshot("fat:/data/blender-model-ds/screenshots/", error);
+        std::printf("\x1b[19;0H%s\x1b[K\n", path.empty() ? error.c_str() : path.c_str());
+      }
+
+      // What the last frame drew, when it changes (printing is slow). (libnds'
+      // console counts rows and columns from 0)
+      const Scene::FrameCounts counts = renderer.lastFrame();
+      if (counts.polygons != shownCounts.polygons || counts.vertices != shownCounts.vertices) {
+        shownCounts = counts;
+        std::printf("\x1b[11;0H3D a frame (the DS's limit):\x1b[K\n");
+        std::printf("%4u polygons (2048)\x1b[K\n", counts.polygons);
+        std::printf("%4u vertices (6144)\x1b[K\n", counts.vertices);
+      }
+      if (look.toon != lookShown.toon || look.outlines != lookShown.outlines ||
+          look.bands != lookShown.bands || look.dsTable != lookShown.dsTable) {
+        lookShown = look;
+        char looks[64];
+        look.describe(looks, sizeof looks);
+        std::printf("\x1b[16;0H%s\x1b[K\n%s\x1b[K\n", looks,
+                    look.dsTable == Scene::DsToonTable::Shades ? "Table: shades"
+                                                               : "Table: highlights");
       }
     }
-    renderer.endFrame();
-    if (screenshot) {
-      std::string error;
-      const std::string path =
-          Scene::saveScreenshot("fat:/data/blender-model-ds/screenshots/", error);
-      std::printf("\x1b[19;0H%s\x1b[K\n", path.empty() ? error.c_str() : path.c_str());
-    }
-
-    // What the last frame drew, when it changes (printing is slow). (libnds'
-    // console counts rows and columns from 0)
-    const Scene::FrameCounts counts = renderer.lastFrame();
-    if (counts.polygons != shownCounts.polygons || counts.vertices != shownCounts.vertices) {
-      shownCounts = counts;
-      std::printf("\x1b[11;0H3D a frame (the DS's limit):\x1b[K\n");
-      std::printf("%4u polygons (2048)\x1b[K\n", counts.polygons);
-      std::printf("%4u vertices (6144)\x1b[K\n", counts.vertices);
-    }
-    if (look.toon != lookShown.toon || look.outlines != lookShown.outlines ||
-        look.bands != lookShown.bands || look.dsTable != lookShown.dsTable) {
-      lookShown = look;
-      char looks[64];
-      look.describe(looks, sizeof looks);
-      std::printf("\x1b[16;0H%s\x1b[K\n%s\x1b[K\n", looks,
-                  look.dsTable == Scene::DsToonTable::Shades ? "Table: shades"
-                                                             : "Table: highlights");
-    }
+    std::printf("\x1b[21;0HLeaving the main loop\x1b[K\n");
+    std::printf("\x1b[22;0HClosing the renderer\x1b[K\n");
   }
+  std::printf("\x1b[23;0HPowering off\x1b[K");
   return 0;
 }
