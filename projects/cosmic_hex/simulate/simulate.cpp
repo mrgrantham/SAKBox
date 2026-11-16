@@ -49,7 +49,10 @@ struct Options {
   std::vector<Hex> homes;     // and its homes (empty: the usual ones)
   int moons = 0;              // moons among the face-down planets
   std::vector<Hex> zone;      // where the finds are (empty: the usual places)
-  int win = 0;                // points to win (0: the rules' default)
+  std::string layout;         // a layout's name in the layouts file (--layout)
+  std::string layoutsFile = "projects/cosmic_hex/layouts/layouts.txt";
+  bool smallFinds = false;      // the layout's finds beside its small systems (--finds small)
+  int win = 0;                  // points to win (0: the rules' default)
   std::vector<BotStyle> styles; // the players' styles, turned round a seat each game
 };
 
@@ -82,6 +85,39 @@ std::vector<Hex> hexes(std::string_view flag, std::string_view value) {
   for (std::size_t i = 0; i < numbers.size(); i += 2)
     out.push_back(Hex{numbers[i], numbers[i + 1]});
   return out;
+}
+
+// Reads layout `name` from `file` (layouts.txt: a line a layout, its name
+// then homes=, planets= and small_finds=, each q,r pairs) into `options`'
+// homes, planets and, if asked, zone; or stops clearly
+void readLayout(Options &options) {
+  std::ifstream file(options.layoutsFile);
+  if (!file) {
+    std::fprintf(stderr, "can't read %s (run from the repo's top folder, or give --layouts)\n",
+                 options.layoutsFile.c_str());
+    std::exit(2);
+  }
+  for (std::string line; std::getline(file, line);) {
+    if (line.empty() || line[0] == '#' || !line.starts_with(options.layout + " "))
+      continue;
+    std::string_view rest = std::string_view(line).substr(options.layout.size() + 1);
+    while (!rest.empty()) {
+      const std::size_t space = rest.find(' ');
+      const std::string_view field = rest.substr(0, space);
+      rest.remove_prefix(space == std::string_view::npos ? rest.size() : space + 1);
+      const std::size_t eq = field.find('=');
+      const std::string_view key = field.substr(0, eq), value = field.substr(eq + 1);
+      if (key == "homes")
+        options.homes = hexes("homes", value);
+      else if (key == "planets")
+        options.planets = hexes("planets", value);
+      else if (key == "small_finds" && options.smallFinds)
+        options.zone = hexes("small_finds", value);
+    }
+    return;
+  }
+  std::fprintf(stderr, "no layout %s in %s\n", options.layout.c_str(), options.layoutsFile.c_str());
+  std::exit(2);
 }
 
 Options parse(int argc, char **argv) {
@@ -134,6 +170,12 @@ Options parse(int argc, char **argv) {
       options.planets = hexes(flag, value);
     else if (flag == "--homes")
       options.homes = hexes(flag, value);
+    else if (flag == "--layout")
+      options.layout = value;
+    else if (flag == "--layouts")
+      options.layoutsFile = value;
+    else if (flag == "--finds")
+      options.smallFinds = std::string_view(value) == "small";
     else if (flag == "--zone")
       options.zone = hexes(flag, value);
     else if (flag == "--moons")
@@ -157,6 +199,8 @@ Options parse(int argc, char **argv) {
       std::exit(2);
     }
   }
+  if (!options.layout.empty())
+    readLayout(options);
   return options;
 }
 
