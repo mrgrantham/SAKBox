@@ -233,6 +233,29 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
   return stats;
 }
 
+// Stations (homes left out) by the size of the system their planet is in:
+// planets next to each other form one system (a single, a pair, a three)
+std::array<int, 3> stationsBySystem(const State &state) {
+  std::array<int, 3> counts{};
+  for (const Planet &planet : state.planets) {
+    if (planet.homeOf >= 0 || planet.kind == PlanetKind::Home)
+      continue;
+    // The size of its system: it and the planets reached through neighbours
+    std::vector<Hex> system{planet.hex};
+    for (std::size_t i = 0; i < system.size(); ++i)
+      for (const Planet &other : state.planets)
+        if (other.homeOf < 0 && other.kind != PlanetKind::Home &&
+            HexGrid::distance(other.hex, system[i]) == 1 &&
+            std::find(system.begin(), system.end(), other.hex) == system.end())
+          system.push_back(other.hex);
+    const std::size_t size = std::min<std::size_t>(system.size(), 3);
+    for (int dock : planet.docks)
+      if (dock >= 0)
+        ++counts[size - 1];
+  }
+  return counts;
+}
+
 struct Sources {
   int stations = 0, colonies = 0, core = 0, embargo = 0, badges = 0, contracts = 0;
 };
@@ -272,7 +295,7 @@ int main(int argc, char **argv) {
     csv << "variant,seed,players,iterations,first,strong,winner,rounds,actions,points1,points2,"
            "points3,points4,"
            "stations,colonies,core,badges,contracts,blockades,thefts,denied,caughtup,discarded,"
-           "embargo,enforcers,styles\n";
+           "embargo,enforcers,styles,on_singles,on_pairs,on_threes,badges_all\n";
   }
 
   for (int g = 0; g < options.games; ++g) {
@@ -371,7 +394,12 @@ int main(int argc, char **argv) {
           << stats.enforcers << ",";
       for (int p = 0; p < options.players; ++p)
         csv << (p ? ";" : "") << nameOf(styleOf[static_cast<std::size_t>(p)]);
-      csv << "\n";
+      const std::array<int, 3> bySystem = stationsBySystem(end);
+      int badgesAll = 0;
+      for (int p = 0; p < options.players; ++p)
+        badgesAll += end.player[static_cast<std::size_t>(p)].badgesEarned;
+      csv << "," << bySystem[0] << "," << bySystem[1] << "," << bySystem[2] << "," << badgesAll
+          << "\n";
       for (std::size_t id = 0; id < stats.contracts.size(); ++id) {
         for (int k = 0; k < 4; ++k)
           contractTotals[id][static_cast<std::size_t>(k)] +=
