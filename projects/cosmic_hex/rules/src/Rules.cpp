@@ -835,6 +835,15 @@ State newGame(int players, const Settings &settings, int first) {
   if (state.homeIncomeLeft == 0)
     state.phase = Phase::RollDraw;
   state.findsLeft = settings.finds;
+  // A find for every site in the zone: a layout that leaves more of the
+  // usual places empty than there are finds gets "nothing" tiles for the
+  // rest, so the special finds stay as they are. (Without, the dealer had
+  // nothing to draw for the last sites, and the game never ended.) Fewer
+  // sites than finds is as before: some are never drawn.
+  const int finds = std::accumulate(state.findsLeft.begin(), state.findsLeft.end(), 0);
+  const int sites = static_cast<int>(state.zone.size());
+  if (finds < sites)
+    state.findsLeft[static_cast<std::size_t>(Find::Nothing)] += sites - finds;
   state.deck = settings.charters;
   state.deck.insert(state.deck.end(), static_cast<std::size_t>(settings.enforcers), kEnforcerCard);
   if (settings.corners) {

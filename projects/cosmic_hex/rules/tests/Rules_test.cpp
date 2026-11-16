@@ -812,3 +812,17 @@ TEST(RulesTest, RedNumbersStayApart) {
   state.numbersLeft = {6, 8};
   EXPECT_TRUE(Game::apply(state, {Kind::RevealPlanet, 0, 8}));
 }
+
+// A layout leaving more of the zone's usual places empty than there are
+// finds (no planet at the centre) gets "nothing" for the rest: every site
+// has a find to draw, and the special ones are as many as ever
+TEST(RulesTest, EveryZoneSiteHasAFind) {
+  Settings settings;
+  settings.planetHexes = {Hex{3, -1}, Hex{-3, 1}, Hex{1, 2}, Hex{-1, -2}};
+  const State state = newGame(4, settings);
+  const int finds = std::accumulate(state.findsLeft.begin(), state.findsLeft.end(), 0);
+  ASSERT_GT(state.zone.size(), 12u); // (the usual 12 finds wouldn't do)
+  EXPECT_EQ(finds, static_cast<int>(state.zone.size()));
+  for (std::size_t kind = 1; kind < state.findsLeft.size(); ++kind)
+    EXPECT_EQ(state.findsLeft[kind], settings.finds[kind]);
+}
