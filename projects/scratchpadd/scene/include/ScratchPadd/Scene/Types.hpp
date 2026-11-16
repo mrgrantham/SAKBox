@@ -156,11 +156,11 @@ struct Outline {
 };
 
 // How the DS draws toon bands (its hardware has one table of them for the
-// whole frame; other platforms ignore it):
-//   Shades      the table holds the bands' colours, replacing the mesh's own:
-//               every toon mesh shares them (a drawn, comic-book look)
-//   Highlights  the table's bands are added to each mesh's colour: they keep
-//               their colours, lit in bands (brighter rather than darker)
+// whole frame, picked by the red part of each lit colour; other platforms
+// ignore it). Untextured, as our meshes are, the DS draws a toon mesh in
+// the table's colours either way, not its own (seen in melonDS):
+//   Shades      the table's colours as they are: a few greys, dark to light
+//   Highlights  the table's colours brightened (the hardware adds them twice)
 enum class DsToonTable : std::uint8_t { Shades, Highlights };
 
 // What a frame is drawn in: the background, the lights (as the DS has, at

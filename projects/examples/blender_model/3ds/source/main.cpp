@@ -80,6 +80,7 @@ int main() {
     const Scene::Fog fog{.colour = {28, 30, 38}, .density = 0.12f}; // into the background
     environment.fog = fog;
     environment.addLight({.direction = {-0.5f, -0.8f, -0.6f}, .colour = {220, 215, 205}});
+    environment.outline.width = 0.06f; // (a few pixels on the 3DS's 240-line screen)
     const Scene::Camera camera{.eye = {0, 1.6f, 6.4f}, .target = {0, -0.2f, 0}, .fieldOfView = 40};
 
     Scene::Debug::Watchdog watchdog(renderer);

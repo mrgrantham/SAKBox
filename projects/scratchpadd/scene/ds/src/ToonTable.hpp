@@ -4,16 +4,12 @@
 // A toon polygon is lit as usual, and the red part of its lit colour (0-31)
 // picks one of the table's 32 colours. The table is one for the whole frame
 // (so the DS uses Environment::toonBands for every toon mesh, not a
-// material's own), and how it's used is too (Environment::dsToonTable):
-//
-//   Shades      the pixel is the table's colour. The mesh is lit as white,
-//               so the red part is how much light it gets, and the table
-//               turns that into a few greys: every toon mesh drawn in them,
-//               its own colours gone.
-//   Highlights  the pixel is the lit colour plus the table's. The mesh keeps
-//               its colours, with a band of extra light added where its
-//               lit red part is high: so the bands follow its red, and a
-//               mesh with little red gets few of them.
+// material's own), and how it's used is too (Environment::dsToonTable).
+// Without a texture (ours have none) the pixel is the table's colour, not
+// the mesh's: in Shades as it is, in Highlights added to itself (GBATEK's
+// formulas with a white texture; seen in melonDS). So toon meshes are drawn
+// lit as white (the red part is then how much light they get) in the
+// table's greys: a few bands, dark to light, every toon mesh alike.
 #pragma once
 
 #include <ScratchPadd/Scene/Types.hpp>

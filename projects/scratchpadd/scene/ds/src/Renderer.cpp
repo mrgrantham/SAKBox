@@ -92,10 +92,9 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   ++draws;
   const bool lit = material.shading != Material::Shading::Unlit;
   const bool toon = material.shading == Material::Shading::Toon;
-  // Toon with the Shades table: lit as white, so the light picks the shade
-  // (ToonTable.hpp)
-  const Colour colour =
-      toon && toonTable == DsToonTable::Shades ? Colour{255, 255, 255} : material.colour;
+  // Toon: lit as white, so the light picks the table's shade (the DS draws
+  // an untextured toon mesh in the table's colours: ToonTable.hpp)
+  const Colour colour = toon ? Colour{255, 255, 255} : material.colour;
   const std::vector<DisplayList::Packed> &lists =
       listsFor(loaded, {lit, colour, lit ? ambient : Colour{}});
 
@@ -450,13 +449,16 @@ void Renderer::endFrame() {
   b.drawOverlayText(overlay_);
   overlay_.clear();
   // Edge marking only in frames with outlines (it also misbehaves with
-  // translucent polygons that set depth, as ours do: GBATEK)
+  // translucent polygons that set depth, as ours do: GBATEK), and then
+  // without anti-aliasing, which would draw the outlines half see-through
   if (b.outlining) {
     glClearPolyID(kClearIdWithOutlines);
     glEnable(GL_OUTLINE);
+    glDisable(GL_ANTIALIAS);
   } else {
     glClearPolyID(kClearId);
     glDisable(GL_OUTLINE);
+    glEnable(GL_ANTIALIAS);
   }
 
   // What the frame used of the polygon and vertex RAM, once the geometry
