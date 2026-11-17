@@ -1118,10 +1118,11 @@ Settings agreedRules(const Board &board) {
   s.homeDie = true;
   s.exhaustHomesAt = 5;
   s.discardOver = 7; // the Imperial Tithe (round 69)
-  // Free stations (round 72): a ship becomes a station at no cost, and
-  // carries the station's old cost instead: minerals, fuel, food and water
+  // Free stations (round 72): a ship becomes a station at no cost; the ship
+  // costs minerals, fuel and water (round 74: costs down, the quickest fair
+  // game measured, about 13 rounds)
   s.stationCost = {0, 0, 0, 0, 0};
-  s.shipCost = {1, 1, 1, 1, 0};
+  s.shipCost = {1, 0, 1, 1, 0};
   s.playerTrading = true; // (round 57)
   return s;
 }

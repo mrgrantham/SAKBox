@@ -54,9 +54,9 @@ struct Options {
   int outposts = 2; // alien outposts among them (round 60: two)
   // Costs instead of the rules' (round 61: free stations, and a ship
   // costing one more), and how common each kind of planet is (round 62)
-  // (The defaults: free stations, the ship carrying their cost, round 72)
+  // (The defaults: free stations, round 72; the ship minerals, fuel, water, round 74)
   std::optional<Resources> stationCost = Resources{0, 0, 0, 0, 0};
-  std::optional<Resources> shipCost = Resources{1, 1, 1, 1, 0};
+  std::optional<Resources> shipCost = Resources{1, 0, 1, 1, 0};
   Resources kindWeights{1, 1, 1, 1, 1};
   // The exhausted home, at this many points (0: off), its kind drawn rather
   // than chosen
