@@ -60,9 +60,10 @@ def box(size, location, rotation=(0, 0, 0)):
 
 
 parts = []
-# The pedestal: two steps, the foot at z = 0
-parts.append(coloured(cylinder(0.9, 0.2, (0, 0, 0.1)), "#2b3a5c"))
-parts.append(coloured(cylinder(0.62, 0.15, (0, 0, 0.275)), "#4a6290"))
+# The pedestal: two hexagonal steps (round 90, the user's: hexagons, for
+# the game's name), the foot at z = 0
+parts.append(coloured(cylinder(0.9, 0.2, (0, 0, 0.1), vertices=6), "#2b3a5c"))
+parts.append(coloured(cylinder(0.62, 0.15, (0, 0, 0.275), vertices=6), "#4a6290"))
 # The rod: thin and rectangular, up from the pedestal's middle
 parts.append(coloured(box((0.07, 0.22, 0.95), (0, 0, 0.35 + 0.475)), "#9aa4b4"))
 

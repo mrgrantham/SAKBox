@@ -434,53 +434,29 @@ private:
                      static_cast<float>(tray_.offset())),
           {.shading = Scene::Material::Shading::Lit});
     }
-    // Once they've settled, the roll in big words over them, going with
-    // them as the container's pulled away (round 89)
+    // Once they've settled, the roll in big words in the middle of the
+    // screen on a hexagon (round 90, the user's), going with the glass as
+    // it's pulled away (its middle, wherever the glass has got to)
     if (dice_ == DiceStage::Rolling)
       return;
-    // Above the higher of the two (so the words don't cover a die), kept on
-    // the screen when the dice rest near an edge
-    float x = 0, top = static_cast<float>(kTopHeight), bottom = 0;
-    int seen = 0;
-    for (int d = 0; d < 2; ++d) {
-      const cyclone::Vector3 at = tray_.position(d);
-      const auto where =
-          onScreen(camera, static_cast<float>(kTopWidth), static_cast<float>(kTopHeight),
-                   glass.apply({toFloat(at.x) - static_cast<float>(tray_.offset()), toFloat(at.y),
-                                toFloat(at.z)}));
-      if (!where)
-        continue;
-      x += (*where)[0];
-      top = std::min(top, (*where)[1]);
-      bottom = std::max(bottom, (*where)[1]);
-      ++seen;
-    }
-    if (seen == 0)
+    const auto middle =
+        onScreen(camera, static_cast<float>(kTopWidth), static_cast<float>(kTopHeight),
+                 glass.apply({-static_cast<float>(tray_.offset()), 0, 0}));
+    if (!middle)
       return;
-    x /= static_cast<float>(seen);
     const auto [first, second] = rolled_;
     char total[8], pair[16];
     std::snprintf(total, sizeof total, "%d", first + second);
     std::snprintf(pair, sizeof pair, "%d + %d", first, second);
     Scene::Overlay &overlay = renderer_->overlay();
     const float big = kTopWidth >= 400 ? 5 : 4; // (the 3DS's wider screen: bigger)
-    const float tall = 7 * big + 14;            // (the total and the pair under it)
-    // Above the higher die, or, with no room there below the scores (4
-    // lines from 16), below the lower one
-    constexpr float kBelowScores = 60, kGap = 36;
-    const float above = top - tall - kGap;
-    const float y = above >= kBelowScores
-                        ? above
-                        : std::min(bottom + kGap, static_cast<float>(kTopHeight) - tall - 16);
-    const float half = 3 * big * static_cast<float>(std::strlen(total));
-    const float pull = static_cast<float>(tray_.offset()) > 0 ? 0 : 1; // (sliding: let it go)
-    const float cx =
-        pull > 0 ? std::clamp(x, half + 4, static_cast<float>(kTopWidth) - half - 4) : x;
-    // (on a dark panel, so the words show over a white die too)
-    const float wide = std::max(2 * half, 3 * 1.5f * 2 * static_cast<float>(std::strlen(pair)));
-    overlay.rectangle(cx - wide / 2 - 6, y - 5, wide + 12, tall + 6, {12, 18, 30, 200});
-    overlay.text(cx - half, y, total, {255, 214, 90}, big);
-    overlay.text(cx - 3 * 1.5f * static_cast<float>(std::strlen(pair)), y + 7 * big + 4, pair,
+    const float radius = kTopWidth >= 400 ? 50.0f : 42.0f;
+    const float x = (*middle)[0], y = (*middle)[1];
+    overlay.hexagon(x, y, radius + 3, {255, 214, 90, 255}); // (an amber edge)
+    overlay.hexagon(x, y, radius, {12, 18, 30, 230});
+    overlay.text(x - Scene::Overlay::textWidth(total, big) / 2,
+                 y - Scene::Overlay::lineHeight(big) / 2 - 6, total, {255, 214, 90}, big);
+    overlay.text(x - Scene::Overlay::textWidth(pair, 1.5f) / 2, y + radius / 2 - 4, pair,
                  {226, 232, 244}, 1.5f);
   }
 

@@ -38,6 +38,12 @@ public:
   static float textWidth(std::string_view text, float scale = 1);
   static float lineHeight(float scale = 1);
   void rectangle(float x, float y, float width, float height, Colour colour);
+  // A triangle with its corners at (x0, y0), (x1, y1) and (x2, y2)
+  void triangle(float x0, float y0, float x1, float y1, float x2, float y2, Colour colour);
+  // A regular hexagon centred on (x, y), `radius` points from its middle to
+  // each corner, its corners left and right (flat top and bottom) or, with
+  // pointyTop, up and down
+  void hexagon(float x, float y, float radius, Colour colour, bool pointyTop = false);
   // A line `thickness` points wide from (x0, y0) to (x1, y1). With
   // Renderer::toScreen, it draws 3D lines over everything (a ragdoll's
   // joints through its bones).

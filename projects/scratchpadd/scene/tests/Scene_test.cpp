@@ -319,3 +319,31 @@ TEST(ToonTest, LightComesInSteps) {
   environment.toonBands = 12;
   EXPECT_EQ(toonBandsFor({}, environment), 8);
 }
+
+// A hexagon is six triangles from its middle, its corners on the radius
+// (flat top: corners left and right; pointy: up and down)
+TEST(OverlayTest, HexagonsAreSixTrianglesRound) {
+  Overlay overlay;
+  overlay.hexagon(100, 50, 20, {1, 2, 3, 255});
+  ASSERT_EQ(overlay.triangles().size(), 18u);
+  float right = 0, top = 1000;
+  for (std::size_t i = 0; i < 18; i += 3) {
+    const Overlay::Vertex &middle = overlay.triangles()[i];
+    EXPECT_FLOAT_EQ(middle.x, 100);
+    EXPECT_FLOAT_EQ(middle.y, 50);
+    for (std::size_t k = 1; k < 3; ++k) {
+      const Overlay::Vertex &c = overlay.triangles()[i + k];
+      EXPECT_NEAR(std::hypot(c.x - 100, c.y - 50), 20, 1e-3);
+      right = std::max(right, c.x);
+      top = std::min(top, c.y);
+    }
+  }
+  EXPECT_NEAR(right, 120, 1e-3);                         // (a corner on the right)
+  EXPECT_NEAR(top, 50 - 20 * std::sqrt(3.0f) / 2, 1e-3); // (a flat top)
+  Overlay pointy;
+  pointy.hexagon(0, 0, 10, {}, true);
+  float highest = 0;
+  for (const Overlay::Vertex &v : pointy.triangles())
+    highest = std::min(highest, v.y);
+  EXPECT_NEAR(highest, -10, 1e-3); // (a corner at the top)
+}
