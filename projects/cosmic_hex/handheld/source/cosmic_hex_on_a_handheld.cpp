@@ -520,10 +520,18 @@ private:
     const float x = (*middle)[0], y = (*middle)[1];
     overlay.hexagon(x, y, radius + 3, {255, 214, 90, 255}); // (an amber edge)
     overlay.hexagon(x, y, radius, {12, 18, 30, 230});
-    overlay.text(x - Scene::Overlay::textWidth(total, big) / 2,
-                 y - Scene::Overlay::lineHeight(big) / 2 - 6, total, {255, 214, 90}, big);
-    overlay.text(x - Scene::Overlay::textWidth(pair, 1.5f) / 2, y + radius / 2 - 4, pair,
-                 {226, 232, 244}, 1.5f);
+    // Centred on the hexagon (round 90, the user's): across, by the letters'
+    // own width (textWidth counts the gap after the last letter, a point at
+    // the scale), and down, the total's middle a little above the centre and
+    // the two dice under it, by the letters' height (7 points at the scale)
+    constexpr float kLetterHeight = 7, kSmall = 1.5f;
+    const auto across = [&](const char *text, float scale) {
+      return x - (Scene::Overlay::textWidth(text, scale) - scale) / 2;
+    };
+    const float totalTop = y - kLetterHeight * big / 2 - 8;
+    overlay.text(across(total, big), totalTop, total, {255, 214, 90}, big);
+    overlay.text(across(pair, kSmall), totalTop + kLetterHeight * big + 8, pair, {226, 232, 244},
+                 kSmall);
   }
 
   // The board from above and in front, turned by L and R (looking a little
