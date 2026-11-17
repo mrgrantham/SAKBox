@@ -74,8 +74,8 @@ TradeNeeds tradeNeedsOf(const State &state, int player) {
   }};
   TradeNeeds needs;
   for (const auto &[usable, cost] : builds) {
-    if (!usable)
-      continue;
+    if (!usable || total(cost) == 0)
+      continue; // (a free build, such as a free station: nothing to trade for)
     const Resources shortfall = shortOf(have, cost);
     if (total(shortfall) == 0)
       return needs; // (they can build something now: no need to trade)

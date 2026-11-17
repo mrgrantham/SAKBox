@@ -1117,7 +1117,11 @@ Settings agreedRules(const Board &board) {
   s.catchUpBelow = 5;
   s.homeDie = true;
   s.exhaustHomesAt = 5;
-  s.discardOver = 7;      // the Imperial Tithe (round 69)
+  s.discardOver = 7; // the Imperial Tithe (round 69)
+  // Free stations (round 72): a ship becomes a station at no cost, and
+  // carries the station's old cost instead: minerals, fuel, food and water
+  s.stationCost = {0, 0, 0, 0, 0};
+  s.shipCost = {1, 1, 1, 1, 0};
   s.playerTrading = true; // (round 57)
   return s;
 }

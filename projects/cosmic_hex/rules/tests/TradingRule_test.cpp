@@ -63,3 +63,16 @@ TEST(TradingRuleTest, AcceptsWhatHelpsButNotTheNearlyWon) {
   state.settings.winPoints = points(state, 0) + 1;
   EXPECT_EQ(tradingRuleMove(state).kind, Kind::DeclineTrade);
 }
+
+// A free build (round 72's free stations) is nothing to trade for: the next
+// build the rule looks at is one that costs something
+TEST(TradingRuleTest, AFreeBuildIsNothingToTradeFor) {
+  State state = trading();
+  state.settings.stationCost = {0, 0, 0, 0, 0};
+  state.settings.shipCost = {1, 1, 1, 1, 0};
+  state.ships.push_back(Ship{0, Hex{}, false, boardCorners()[0]}); // (a ship: a station's free)
+  state.player[0].resources = {1, 1, 1, 0, 0};                     // a ship but for water
+  const TradeNeeds needs = tradeNeedsOf(state, 0);
+  ASSERT_TRUE(needs.wantsSomething);
+  EXPECT_EQ(needs.shortfall, (Resources{0, 0, 0, 1, 0}));
+}
