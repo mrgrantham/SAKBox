@@ -38,10 +38,15 @@ struct Options {
   int rolloutDepth = 60;
   int maxRounds = 200;
   std::uint64_t seed = 1;
-  std::string logs;                         // a folder to write each game's log to, if given
-  std::string csv;                          // a file to write one line a game to, if given
-  int catchUpBelow = 0, catchUpGap = 0;     // catching up (Settings)
-  int discardOver = 0;                      // the hand limit on a 7 (Settings)
+  std::string logs; // a folder to write each game's log to, if given
+  std::string csv;  // a file to write one line a game to, if given
+  // The defaults are the rules as agreed (round 70), each with a flag to
+  // turn it off: corners and edges, the deep-space start, the home's income
+  // 2 a turn below 5 points on the home die and the home flipping at 5 (the
+  // hybrid), the Imperial Tithe at 7, trading between players, finds beside
+  // the small systems
+  int catchUpBelow = 5, catchUpGap = 0;     // catching up (Settings)
+  int discardOver = 7;                      // the Imperial Tithe on a 7 (Settings; 0: off)
   bool skipFirst = false;                   // the first player skips their first income
   bool randomFirst = false;                 // a random player goes first, rather than player 1
   std::array<int, kMaxPlayers> seatBonus{}; // extra start resources by turn order
@@ -53,12 +58,12 @@ struct Options {
   Resources kindWeights{1, 1, 1, 1, 1};
   // The exhausted home, at this many points (0: off), its kind drawn rather
   // than chosen
-  int exhaustHomesAt = 0;
+  int exhaustHomesAt = 5;
   bool exhaustedKindRandom = false;
   // The home's income in steps by points ({from, a turn}, round 67); empty:
   // the catch-up rule
   std::vector<std::array<int, 2>> homeIncomeSteps;
-  bool homeDie = false;       // the home's resources rolled on the home die (round 66's hybrid)
+  bool homeDie = true;        // the home's resources rolled on the home die (round 66's hybrid)
   bool finishRound = false;   // play out the round when someone reaches the points to win
   bool trading = true;        // trading between players (round 57), the bots by the trading rule
   int cartelTake = 0;         // the Interstellar Cartel takes all (0), or up to this many from each
@@ -76,9 +81,9 @@ struct Options {
   bool smallFinds = true;
   int win = 0;                  // points to win (0: the rules' default)
   std::vector<BotStyle> styles; // the players' styles, turned round a seat each game
-  bool edges = false;           // corners and edges (Settings::corners)
+  bool edges = true;            // corners and edges (Settings::corners)
   int move = 0, boost = 0;      // a ship's move and its fuel boost (0: the default for the rules)
-  bool deepSpace = false;       // (edges) the starting ship anywhere touching no planet
+  bool deepSpace = true;        // (edges) the starting ship anywhere touching no planet
 };
 
 // "q,r,q,r,...": hexes, or nothing if the text isn't pairs of numbers
