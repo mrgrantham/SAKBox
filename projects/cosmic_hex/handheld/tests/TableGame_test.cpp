@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 using namespace CosmicHex;
 using namespace CosmicHex::Handheld;
 
@@ -46,7 +48,7 @@ TEST(TableGameTest, APersonCanPlayAWholeGame) {
     int personMoves = 0;
     for (int moves = 0; !game.over() && moves < 40000; ++moves) {
       if (game.waitingForPerson()) {
-        const std::vector<Action> legal = Game::legalActions(game.state());
+        const std::vector<Action> legal = game.personMoves();
         ASSERT_FALSE(legal.empty()) << "a person with no move, seed " << seed;
         // (mostly ending the turn early would stall a game: pick at random)
         ASSERT_TRUE(game.play(legal[choose.below(static_cast<std::uint32_t>(legal.size()))]));
@@ -58,4 +60,32 @@ TEST(TableGameTest, APersonCanPlayAWholeGame) {
     EXPECT_TRUE(game.over()) << "seed " << seed;
     EXPECT_GT(personMoves, 10);
   }
+}
+
+// In their trading step a person is offered the plain trades: one of what
+// they hold for one of another (two for one where they can), as offers to
+// anyone, which the rules take
+TEST(TableGameTest, APersonCanOfferTrades) {
+  TableGame game(
+      {.seats = {Seat::Person, Seat::Bot, Seat::Bot, Seat::Bot}, .botIterations = 8, .seed = 21});
+  for (int steps = 0; steps < 20000 && !game.over(); ++steps) {
+    if (game.waitingForPerson() && game.state().phase == Phase::Trading) {
+      const std::vector<Action> offered = game.personMoves();
+      const auto offer = std::find_if(offered.begin(), offered.end(), [](const Action &a) {
+        return a.kind == Action::Kind::OfferTrade;
+      });
+      if (offer == offered.end()) { // (nothing to give yet)
+        ASSERT_TRUE(game.play({Action::Kind::EndTrading}));
+      } else {
+        ASSERT_TRUE(game.play(*offer));
+        EXPECT_EQ(game.state().phase, Phase::TradeReply);
+        return;
+      }
+    } else if (game.waitingForPerson()) {
+      ASSERT_TRUE(game.play(game.personMoves().back()));
+    } else {
+      ASSERT_TRUE(game.step().has_value());
+    }
+  }
+  ADD_FAILURE() << "never had anything to offer";
 }

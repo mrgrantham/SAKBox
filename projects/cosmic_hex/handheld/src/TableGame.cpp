@@ -55,11 +55,32 @@ std::optional<Action> TableGame::step() {
   return move;
 }
 
+std::vector<Action> TableGame::personMoves() const {
+  std::vector<Action> moves = Game::legalActions(state());
+  if (state().phase != Phase::Trading)
+    return moves;
+  const Resources &have = state().player[static_cast<std::size_t>(state().turn)].resources;
+  for (int giving = 1; giving <= 2; ++giving)
+    for (int give = 0; give < kResources; ++give) {
+      if (have[static_cast<std::size_t>(give)] < giving)
+        continue;
+      for (int get = 0; get < kResources; ++get) {
+        if (get == give)
+          continue;
+        Resources gives{}, gets{};
+        gives[static_cast<std::size_t>(give)] = giving;
+        gets[static_cast<std::size_t>(get)] = 1;
+        moves.push_back({Action::Kind::OfferTrade, bundleOf(gives), bundleOf(gets), -1});
+      }
+    }
+  return moves;
+}
+
 bool TableGame::play(const Action &move) {
   if (!waitingForPerson())
     return false;
-  const std::vector<Action> legal = Game::legalActions(state());
-  if (std::find(legal.begin(), legal.end(), move) == legal.end())
+  const std::vector<Action> allowed = personMoves();
+  if (std::find(allowed.begin(), allowed.end(), move) == allowed.end())
     return false;
   const State before = state();
   if (!play_.play(move))

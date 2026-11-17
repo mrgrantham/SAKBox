@@ -56,7 +56,13 @@ public:
   // person's move or the game is over
   std::optional<Action> step();
 
-  // A person's move: false if it isn't theirs to make or isn't legal
+  // The moves a person can make now: the rules' legal moves, and in their
+  // trading step the plain offers to anyone (one of a resource they hold
+  // for one of another, and two for one where they can), which the rules'
+  // own list leaves out (offers are too many for the bots' search)
+  std::vector<Action> personMoves() const;
+
+  // A person's move: false if it isn't theirs to make or isn't allowed
   bool play(const Action &move);
 
   // Every move so far, in words ("Player 2 builds a station."), oldest first

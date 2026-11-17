@@ -171,7 +171,7 @@ private:
                            .paused = paused_};
     if (game_->waitingForPerson()) {
       snapshot.yourMove = true;
-      snapshot.moves = CosmicHex::Game::legalActions(game_->state());
+      snapshot.moves = game_->personMoves();
       for (const CosmicHex::Action &move : snapshot.moves)
         snapshot.moveText.push_back(CosmicHex::describe(game_->state(), move));
     }
