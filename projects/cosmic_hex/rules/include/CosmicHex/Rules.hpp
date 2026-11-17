@@ -167,6 +167,14 @@ struct Settings {
   // gives you all of it, or with cartelTake up to that many each
   int cartels = 2;
   int cartelTake = 0; // (0: all of it)
+  // Trading between players (round 57): after the roll is dealt with
+  // (production, or the blockade on a 7) and before anything else in the
+  // turn, the player whose turn it is may offer any resources for any
+  // resources, to everyone or to one player; each in turn accepts,
+  // declines or counters once, and the offerer accepts or declines a
+  // counter. No limit on offers. (Off here so the rules' tests keep today's
+  // turn; the simulator and the lab turn it on.)
+  bool playerTrading = false;
   // The Galactic Embargo: a bonus like Core Control, held by whoever has
   // played the most Enforcers, at least this many; it passes on overtaking
   int embargoEnforcers = 3;
@@ -273,6 +281,25 @@ enum class Phase : std::uint8_t {
   PlaceColony,    // (corners) the start: each player's home colony, in turn order
   PlaceShip,      // (corners) then each player's ship, in reverse order
   HomeNumberDraw, // the dealer draws an exhausted home's number
+  Trading,        // (playerTrading) the player may offer trades, or end trading
+  TradeReply,     // another player answers the offer: accept, decline, counter
+  TradeCounter,   // the offerer answers a counter-offer
+};
+
+// Some resources as one number (to fit an action): each resource's count,
+// 0 to 15, in 4 bits, minerals lowest
+int bundleOf(const Resources &resources);
+Resources resourcesOf(int bundle);
+
+// An offer between players (Settings::playerTrading): the offerer's `give`
+// for the other's `get` (bundles); `to` one player, or -1 for anyone in
+// turn; who's answering it; and a counter-offer, if one's been made (what
+// the answerer would give and get)
+struct TradeOffer {
+  int give = 0, get = 0, to = -1;
+  int replier = -1;
+  int counterGive = 0, counterGet = 0;
+  bool operator==(const TradeOffer &) const = default;
 };
 
 struct State {
@@ -308,6 +335,11 @@ struct State {
   int salvageLeft = 0;
   int homeIncomeLeft = 1;             // resources still to take from the home this turn
   std::array<int, 2> offered{-1, -1}; // contracts dealt, to keep one of
+  // Trading between players this turn: whether it's over, the offer being
+  // answered, and the offers made (give, get), so a bot makes each once
+  bool tradingDone = false;
+  TradeOffer offer;
+  std::vector<std::array<int, 2>> offersMade;
   bool operator==(const State &) const = default;
 };
 
@@ -342,6 +374,11 @@ struct Action {
     PlayCartel,     // a: the resource named
     CashBadges,
     EndTurn,
+    OfferTrade,  // a: what you give, b: what you get (bundles), c: to whom (-1: anyone)
+    AcceptTrade, // (the answerer, or the offerer answering a counter)
+    DeclineTrade,
+    CounterTrade, // the answerer: a: what they'd give, b: what they'd get (bundles)
+    EndTrading,
     PlaceColony, // (corners) a: the corner (its number in boardCorners())
     PlaceShip,   // (corners) a: the corner
     NumberHome,  // dealer: a: an exhausted home's number, b: its kind if drawn (else -1)

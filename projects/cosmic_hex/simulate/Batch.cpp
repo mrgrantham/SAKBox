@@ -1,6 +1,8 @@
 // Batch.cpp - see Batch.hpp
 #include "Batch.hpp"
 
+#include <CosmicHex/TradingRule.hpp>
+
 #include <SeededRandom/Seed.hpp>
 
 #include <algorithm>
@@ -119,6 +121,7 @@ Settings settingsFor(const Options &options) {
   settings.kindWeights = options.kindWeights;
   settings.exhaustHomesAt = options.exhaustHomesAt;
   settings.cartelTake = options.cartelTake;
+  settings.playerTrading = options.trading;
   settings.exhaustedKindRandom = options.exhaustedKindRandom;
   return settings;
 }
@@ -299,6 +302,13 @@ GameResult playGame(const Options &options, int game, const Bots &bots) {
       };
     }
   }
+  // Trading between players: every bot by the trading rule (TradingRule.hpp)
+  for (auto &player : players)
+    player = [search = player](const State &state) {
+      const bool trading = state.phase == Phase::Trading || state.phase == Phase::TradeReply ||
+                           state.phase == Phase::TradeCounter;
+      return trading ? tradingRuleMove(state) : search(state);
+    };
   // Played turn by turn, so a game that drags on can be stopped at a round
   while (!Game::isOver(play.state()) && play.state().round <= options.maxRounds)
     GameBots::playMatch<Game>(play, players, dealer, 1);

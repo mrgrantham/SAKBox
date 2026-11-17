@@ -174,6 +174,27 @@ inline std::string describe(const State &before, const Action &action) {
     return who + " places their home colony.";
   case Kind::PlaceShip:
     return who + " places their starting ship.";
+  case Kind::OfferTrade: {
+    const Resources give = resourcesOf(action.a), get = resourcesOf(action.b);
+    const auto list = [&](const Resources &r) {
+      std::string text;
+      for (int i = 0; i < kResources; ++i)
+        if (r[static_cast<std::size_t>(i)] > 0)
+          text += (text.empty() ? "" : ", ") + std::to_string(r[static_cast<std::size_t>(i)]) +
+                  " " + resource(i);
+      return text;
+    };
+    return who + " offers " + list(give) + " for " + list(get) +
+           (action.c >= 0 ? " to Player " + std::to_string(action.c + 1) + "." : " to anyone.");
+  }
+  case Kind::AcceptTrade:
+    return who + " accepts the trade.";
+  case Kind::DeclineTrade:
+    return who + " declines the trade.";
+  case Kind::CounterTrade:
+    return who + " makes a counter-offer.";
+  case Kind::EndTrading:
+    return who + " is done trading.";
   case Kind::NumberHome:
     return "An exhausted home world becomes a planet, on " + std::to_string(action.a) + ".";
   }

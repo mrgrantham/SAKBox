@@ -882,3 +882,48 @@ TEST(RulesTest, ACharterIsRevealedOnce) {
   for (const Action &action : Game::legalActions(state))
     EXPECT_FALSE(action.kind == Action::Kind::RevealContract);
 }
+
+// Trading between players (round 57): after the roll, before the rest of
+// the turn, offers to anyone in turn or to one player; accept, decline or
+// counter; then the main part
+TEST(RulesTest, TradingBetweenPlayers) {
+  Settings settings;
+  settings.playerTrading = true;
+  State state = newGame(3, settings);
+  ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 0}));
+  ASSERT_TRUE(Game::apply(state, {Kind::Roll, 1, 2}));
+  ASSERT_EQ(state.phase, Phase::Trading);
+  state.player[0].resources = {3, 0, 0, 0, 0};
+  state.player[1].resources = {0, 0, 0, 0, 0};
+  state.player[2].resources = {0, 2, 0, 0, 0};
+  const int twoMinerals = bundleOf({2, 0, 0, 0, 0}), oneFood = bundleOf({0, 1, 0, 0, 0});
+  EXPECT_FALSE(Game::apply(state, {Kind::OfferTrade, bundleOf({4, 0, 0, 0, 0}), oneFood, -1}));
+  // To anyone: player 2 (no food) can only decline; player 3 accepts
+  ASSERT_TRUE(Game::apply(state, {Kind::OfferTrade, twoMinerals, oneFood, -1}));
+  EXPECT_EQ(Game::currentPlayer(state), 1);
+  EXPECT_FALSE(Game::apply(state, {Kind::AcceptTrade}));
+  ASSERT_TRUE(Game::apply(state, {Kind::DeclineTrade}));
+  EXPECT_EQ(Game::currentPlayer(state), 2);
+  ASSERT_TRUE(Game::apply(state, {Kind::AcceptTrade}));
+  EXPECT_EQ(state.phase, Phase::Trading);
+  EXPECT_EQ(state.player[0].resources, (Resources{1, 1, 0, 0, 0}));
+  EXPECT_EQ(state.player[2].resources, (Resources{2, 1, 0, 0, 0}));
+  // A counter: player 3 would give 1 food for 1 mineral; player 1 takes it
+  ASSERT_TRUE(Game::apply(
+      state, {Kind::OfferTrade, bundleOf({1, 0, 0, 0, 0}), bundleOf({0, 0, 1, 0, 0}), 2}));
+  ASSERT_TRUE(Game::apply(state, {Kind::CounterTrade, oneFood, bundleOf({1, 0, 0, 0, 0})}));
+  EXPECT_EQ(state.phase, Phase::TradeCounter);
+  EXPECT_EQ(Game::currentPlayer(state), 0);
+  ASSERT_TRUE(Game::apply(state, {Kind::AcceptTrade}));
+  EXPECT_EQ(state.player[0].resources, (Resources{0, 2, 0, 0, 0}));
+  EXPECT_EQ(state.player[2].resources, (Resources{3, 0, 0, 0, 0}));
+  // Done: the main part, and no trading back
+  ASSERT_TRUE(Game::apply(state, {Kind::EndTrading}));
+  EXPECT_EQ(state.phase, Phase::Main);
+  EXPECT_FALSE(Game::apply(state, {Kind::OfferTrade, oneFood, twoMinerals, -1}));
+  // Each action reads back from its text
+  for (const Action &action :
+       {Action{Kind::OfferTrade, twoMinerals, oneFood, -1}, Action{Kind::CounterTrade, 1, 2},
+        Action{Kind::AcceptTrade}, Action{Kind::DeclineTrade}, Action{Kind::EndTrading}})
+    EXPECT_EQ(Game::readAction(Game::writeAction(action)), action);
+}

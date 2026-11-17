@@ -53,8 +53,9 @@ struct Options {
   Resources kindWeights{1, 1, 1, 1, 1};
   bool exhaustedKindRandom = false; // (its kind drawn, not chosen)
   int exhaustHomesAt = 0;
-  int cartelTake = 0; // the Interstellar Cartel takes all (0), or up to this many from each // the
-                      // exhausted home, at this many points (0: off)
+  bool trading = true; // trading between players (round 57), the bots by the trading rule
+  int cartelTake = 0;  // the Interstellar Cartel takes all (0), or up to this many from each // the
+                       // exhausted home, at this many points (0: off)
   int strongIterations = 0;   // a stronger bot, thinking this much, at one home in turn
   std::string variant;        // a label for the CSV
   std::string core = "seven"; // the core planets: seven (the centre and the six around it) or three

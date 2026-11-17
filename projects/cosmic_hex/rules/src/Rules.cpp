@@ -515,6 +515,135 @@ int homeIncomeFor(const State &state, int player) {
 
 // An Enforcer can be played in the main part of your turn, one a turn, but
 // not one bought this turn
+// ---- Trading between players (Settings::playerTrading)
+
+// After the roll's dealt with: trading first, if it's on and not done
+void afterTheRoll(State &state) {
+  state.phase = state.settings.playerTrading && !state.tradingDone ? Phase::Trading : Phase::Main;
+}
+
+bool holds(const Resources &have, const Resources &needed) {
+  for (std::size_t i = 0; i < have.size(); ++i)
+    if (have[i] < needed[i])
+      return false;
+  return true;
+}
+
+bool anything(const Resources &resources) {
+  return std::any_of(resources.begin(), resources.end(), [](int n) { return n > 0; });
+}
+
+// `from` gives `give` to `to`, and gets `get` back
+void swapResources(State &state, int from, int to, const Resources &give, const Resources &get) {
+  Resources &a = state.player[static_cast<std::size_t>(from)].resources;
+  Resources &b = state.player[static_cast<std::size_t>(to)].resources;
+  for (std::size_t i = 0; i < a.size(); ++i) {
+    a[i] += get[i] - give[i];
+    b[i] += give[i] - get[i];
+  }
+}
+
+// The next player to answer an offer to anyone after `after`, or -1
+int nextReplier(const State &state, int after) {
+  if (state.offer.to >= 0)
+    return -1;
+  for (int step = 1; step < state.players; ++step) {
+    const int p = (after + step) % state.players;
+    if (p == state.turn)
+      return -1; // (round to the offerer: everyone's answered)
+    return p;
+  }
+  return -1;
+}
+
+// The offer's answered (taken or not): back to trading
+void offerDone(State &state) {
+  state.offer = TradeOffer{};
+  state.phase = Phase::Trading;
+}
+
+bool applyTrading(State &state, const Action &action) {
+  using Kind = Action::Kind;
+  switch (state.phase) {
+  case Phase::Trading:
+    if (action.kind == Kind::EndTrading) {
+      state.tradingDone = true;
+      state.phase = Phase::Main;
+      return true;
+    }
+    if (action.kind == Kind::OfferTrade) {
+      const Resources give = resourcesOf(action.a), get = resourcesOf(action.b);
+      const bool toSomeone = action.c >= 0 && action.c < state.players && action.c != state.turn;
+      if (!anything(give) || !anything(get) || (action.c != -1 && !toSomeone) ||
+          !holds(state.player[static_cast<std::size_t>(state.turn)].resources, give))
+        return false;
+      state.offer = TradeOffer{action.a, action.b, action.c, -1, 0, 0};
+      state.offer.replier = toSomeone ? action.c : (state.turn + 1) % state.players;
+      state.offersMade.push_back({action.a, action.b});
+      state.phase = Phase::TradeReply;
+      return true;
+    }
+    return false;
+  case Phase::TradeReply: {
+    const int replier = state.offer.replier;
+    const Resources give = resourcesOf(state.offer.give), get = resourcesOf(state.offer.get);
+    if (action.kind == Kind::AcceptTrade) {
+      if (!holds(state.player[static_cast<std::size_t>(replier)].resources, get))
+        return false;
+      swapResources(state, state.turn, replier, give, get);
+      offerDone(state);
+      return true;
+    }
+    if (action.kind == Kind::DeclineTrade) {
+      const int next = nextReplier(state, replier);
+      if (next < 0)
+        offerDone(state);
+      else
+        state.offer.replier = next;
+      return true;
+    }
+    if (action.kind == Kind::CounterTrade) {
+      const Resources theyGive = resourcesOf(action.a), theyGet = resourcesOf(action.b);
+      if (!anything(theyGive) || !anything(theyGet) ||
+          !holds(state.player[static_cast<std::size_t>(replier)].resources, theyGive))
+        return false;
+      state.offer.counterGive = action.a;
+      state.offer.counterGet = action.b;
+      state.phase = Phase::TradeCounter;
+      return true;
+    }
+    return false;
+  }
+  case Phase::TradeCounter: {
+    const int replier = state.offer.replier;
+    if (action.kind == Kind::AcceptTrade) {
+      const Resources theyGive = resourcesOf(state.offer.counterGive),
+                      theyGet = resourcesOf(state.offer.counterGet);
+      if (!holds(state.player[static_cast<std::size_t>(state.turn)].resources, theyGet))
+        return false;
+      swapResources(state, state.turn, replier, theyGet, theyGive);
+      offerDone(state);
+      return true;
+    }
+    if (action.kind == Kind::DeclineTrade) {
+      // (on to the next answerer, as a declined offer)
+      state.offer.counterGive = state.offer.counterGet = 0;
+      const int next = nextReplier(state, replier);
+      if (next < 0) {
+        offerDone(state);
+      } else {
+        state.offer.replier = next;
+        state.phase = Phase::TradeReply;
+      }
+      return true;
+    }
+    return false;
+  }
+  default:
+    return false;
+  }
+}
+
 bool canPlayCartel(const State &state) {
   const Player &me = state.player[static_cast<std::size_t>(state.turn)];
   const auto held = std::count(me.contracts.begin(), me.contracts.end(), kCartelCard);
@@ -543,6 +672,8 @@ void endTurn(State &state) {
   state.player[static_cast<std::size_t>(state.turn)].enforcersNew = 0;
   state.player[static_cast<std::size_t>(state.turn)].cartelsNew = 0;
   state.cardPlayed = false;
+  state.tradingDone = false;
+  state.offersMade.clear();
   state.turn = (state.turn + 1) % state.players;
   if (state.turn == 0)
     ++state.round;
@@ -984,6 +1115,20 @@ int cornerNumber(Corner corner) {
   return found != all.end() && *found == corner ? static_cast<int>(found - all.begin()) : -1;
 }
 
+int bundleOf(const Resources &resources) {
+  int bundle = 0;
+  for (std::size_t i = 0; i < resources.size(); ++i)
+    bundle |= std::clamp(resources[i], 0, 15) << (4 * i);
+  return bundle;
+}
+
+Resources resourcesOf(int bundle) {
+  Resources out{};
+  for (std::size_t i = 0; i < out.size(); ++i)
+    out[i] = (bundle >> (4 * i)) & 15;
+  return out;
+}
+
 bool isCharter(int card) { return card >= 0 && card < static_cast<int>(contracts().size()); }
 
 const std::vector<Contract> &contracts() {
@@ -1121,6 +1266,8 @@ int Game::currentPlayer(const State &state) {
   case Phase::ContractDraw:
   case Phase::HomeNumberDraw:
     return GameBots::kDealer;
+  case Phase::TradeReply:
+    return state.offer.replier;
   default:
     return state.turn;
   }
@@ -1532,7 +1679,7 @@ bool Game::apply(State &state, const Action &action) {
         state.phase = Phase::Blockade;
       } else {
         produce(state, state.lastRoll);
-        state.phase = Phase::Main;
+        afterTheRoll(state);
       }
       done = true;
     }
@@ -1554,7 +1701,7 @@ bool Game::apply(State &state, const Action &action) {
       state.victims = {action.b};
       state.phase = Phase::StealDraw;
     } else {
-      state.phase = Phase::Main;
+      afterTheRoll(state); // (on a 7; after an Enforcer, trading's done)
     }
     done = true;
     break;
@@ -1570,12 +1717,17 @@ bool Game::apply(State &state, const Action &action) {
     ++me.resources[static_cast<std::size_t>(action.a)];
     state.victims.erase(state.victims.begin());
     if (state.victims.empty())
-      state.phase = Phase::Main;
+      afterTheRoll(state);
     done = true;
     break;
   }
   case Phase::Main:
     done = applyMain(state, action);
+    break;
+  case Phase::Trading:
+  case Phase::TradeReply:
+  case Phase::TradeCounter:
+    done = applyTrading(state, action);
     break;
   case Phase::PlanetDraw: {
     if (action.kind != Kind::RevealPlanet)
@@ -1773,6 +1925,23 @@ std::vector<Action> Game::legalActions(const State &state) {
   case Phase::PlaceShip:
     for (int corner : shipPlaces(state, state.turn))
       out.push_back({Kind::PlaceShip, corner});
+    break;
+  // Trading: the search sees only ending it and answering yes or no (the
+  // offers and counters, too many to search, come from the trading rule:
+  // TradingRule.hpp)
+  case Phase::Trading:
+    out.push_back({Kind::EndTrading});
+    break;
+  case Phase::TradeReply:
+    if (holds(state.player[static_cast<std::size_t>(state.offer.replier)].resources,
+              resourcesOf(state.offer.get)))
+      out.push_back({Kind::AcceptTrade});
+    out.push_back({Kind::DeclineTrade});
+    break;
+  case Phase::TradeCounter:
+    if (holds(me.resources, resourcesOf(state.offer.counterGet)))
+      out.push_back({Kind::AcceptTrade});
+    out.push_back({Kind::DeclineTrade});
     break;
   case Phase::Main: {
     out.push_back({Kind::EndTurn});
@@ -1994,6 +2163,12 @@ std::string Game::writeState(const State &state) {
       << " income=" << state.homeIncomeLeft << " offered=" << state.offered[0] << ","
       << state.offered[1] << " first=" << state.first << " setup=" << state.setupStep
       << (state.placingShip ? " placing" : "") << "\n";
+  out << "trading=" << (state.tradingDone ? 1 : 0) << " offer=" << state.offer.give << ","
+      << state.offer.get << "," << state.offer.to << "," << state.offer.replier << ","
+      << state.offer.counterGive << "," << state.offer.counterGet << " made=";
+  for (const auto &made : state.offersMade)
+    out << made[0] << ":" << made[1] << ";";
+  out << "\n";
   return out.str();
 }
 
@@ -2072,6 +2247,16 @@ std::string Game::writeAction(const Action &action) {
     return "place_colony " + n(action.a);
   case Kind::PlaceShip:
     return "place_ship " + n(action.a);
+  case Kind::OfferTrade:
+    return "offer " + n(action.a) + " " + n(action.b) + " " + n(action.c);
+  case Kind::AcceptTrade:
+    return "accept";
+  case Kind::DeclineTrade:
+    return "decline";
+  case Kind::CounterTrade:
+    return "counter " + n(action.a) + " " + n(action.b);
+  case Kind::EndTrading:
+    return "end_trading";
   case Kind::NumberHome:
     return "number_home " + n(action.a) + " " + n(action.b);
   }
@@ -2096,6 +2281,12 @@ std::optional<Action> Game::readAction(std::string_view text) {
       return make(Kind::PlayEnforcer);
     if (verb == "end")
       return make(Kind::EndTurn);
+    if (verb == "accept")
+      return make(Kind::AcceptTrade);
+    if (verb == "decline")
+      return make(Kind::DeclineTrade);
+    if (verb == "end_trading")
+      return make(Kind::EndTrading);
     return std::nullopt;
   }
   if (w.size() == 2) {
@@ -2131,6 +2322,10 @@ std::optional<Action> Game::readAction(std::string_view text) {
       return make(Kind::RevealContract, *v);
     return std::nullopt;
   }
+  if (w.size() == 4 && verb == "offer") {
+    const auto give = num(w[1]), get = num(w[2]), to = num(w[3]);
+    return give && get && to ? make(Kind::OfferTrade, *give, *get, *to) : std::nullopt;
+  }
   if (w.size() == 3) {
     if (verb == "trade") {
       const int give = res(w[1]), get = res(w[2]);
@@ -2158,6 +2353,8 @@ std::optional<Action> Game::readAction(std::string_view text) {
       return make(Kind::Roll, *a, *b);
     if (verb == "number_home")
       return make(Kind::NumberHome, *a, *b);
+    if (verb == "counter")
+      return make(Kind::CounterTrade, *a, *b);
     if (verb == "blockade")
       return make(Kind::MoveBlockade, *a, *b);
     if (verb == "deal")
