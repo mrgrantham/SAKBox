@@ -225,14 +225,15 @@ TEST(RulesTest, AHandLimitIsKeptInTheLog) {
   EXPECT_EQ(again.value_or(State{}).settings.discardOver, 7);
 }
 
-// Round 61's deck: 3 of each Charter (two kinds so far), 10 Enforcers and 2
+// The deck (rounds 61 and 63): one of each Charter, 10 Enforcers and 2
 // Interstellar Cartels
 TEST(RulesTest, TheDeck) {
   const State state = newGame(4);
-  EXPECT_EQ(state.deck.size(), 18u);
+  EXPECT_EQ(state.deck.size(), 15u);
   EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kEnforcerCard), 10);
   EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kCartelCard), 2);
-  EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), 0), 3);
+  for (int charter : {0, 19, kDeepSpaceRelay})
+    EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), charter), 1);
 }
 
 namespace {

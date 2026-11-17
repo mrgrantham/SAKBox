@@ -67,6 +67,11 @@ inline constexpr int kDocks = 2; // stations a planet can hold, one per player
 // ---------------------------------------------------------------------------
 // The numbers, all in one table (the design doc's defaults; the bots tune them)
 
+// The Deep-space relay Charter's id (round 63): its holder may build one
+// station on a corner touching no planet and no alien outpost, which scores
+// 2 (the point is the station's; the card itself scores nothing)
+inline constexpr int kDeepSpaceRelay = 20;
+
 struct Settings {
   int winPoints = 12; // (10 until round 41)
   // Corners and edges (agreed in rounds 39 to 50; design.md): stations and
@@ -155,11 +160,11 @@ struct Settings {
   // Enforcers. The agreed deck (round 37): 25 cards, as the genre's best-known
   // game has, 14 Enforcers and 11 Charters.
   //
-  // Round 61's deck (five card types: Enforcers, Interstellar Cartels and
-  // three kinds of Charter): 3 of each Charter, 10 Enforcers, 2 Cartels.
-  // The third Charter, Deep-space relay, waits on a rule (round 63). A
-  // player can't reveal a Charter they've revealed already.
-  std::vector<int> charters{0, 0, 0, 19, 19, 19};
+  // The deck (rounds 61 and 63; five card types): one of each of three
+  // Charters (stations on 3 kinds of planet, Homesteader, Deep-space relay),
+  // and copies only of the cards that act by themselves: 10 Enforcers and 2
+  // Interstellar Cartels. (A player can't reveal a Charter twice.)
+  std::vector<int> charters{0, 19, kDeepSpaceRelay};
   int enforcers = 10;
   // The Interstellar Cartel (round 60, the user's idea, as the genre's
   // monopoly card): played in the main part of your turn (one card a turn,

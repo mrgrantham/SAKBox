@@ -500,3 +500,51 @@ TEST(CornersTest, AnExhaustedHomesKindCanBeDrawn) {
   EXPECT_EQ(home->kind, PlanetKind::Nebula);
   EXPECT_EQ(home->number, 5);
 }
+
+// Deep-space relay (round 63): only a holder of its Charter may build a
+// station touching no planet and no outpost, one; the Charter's then met
+TEST(CornersTest, ADeepSpaceRelay) {
+  State state = atMain();
+  // A corner touching nothing (no planet, home, or outpost)
+  std::optional<Corner> empty;
+  for (Corner corner : boardCorners()) {
+    if (planetsAt(state, corner) == 0) {
+      bool byOutpost = false;
+      for (const ZoneSite &site : state.zone)
+        byOutpost = byOutpost || (site.flipped && site.find == Find::AlienStation &&
+                                  std::find(HexGrid::hexesTouching(corner).begin(),
+                                            HexGrid::hexesTouching(corner).end(),
+                                            site.hex) != HexGrid::hexesTouching(corner).end());
+      if (!byOutpost) {
+        empty = corner;
+        break;
+      }
+    }
+  }
+  if (!empty) {
+    ADD_FAILURE() << "no empty corner";
+    return;
+  }
+  const int mine = firstShipOf(state, 0);
+  state.ships[static_cast<std::size_t>(mine)].corner = *empty;
+  state.player[0].resources = {5, 5, 5, 5, 5};
+  EXPECT_FALSE(Game::apply(state, {Kind::Settle, mine})); // (without the Charter)
+  state.player[0].contracts = {kDeepSpaceRelay};
+  const int before = points(state, 0);
+  ASSERT_TRUE(Game::apply(state, {Kind::Settle, mine}));
+  EXPECT_EQ(points(state, 0), before + 2); // (the relay's station: 2)
+  EXPECT_TRUE(contracts()[kDeepSpaceRelay].met(state, 0));
+  // A second one: refused
+  state.ships.push_back(Ship{0, Hex{}, false, *empty});
+  for (Corner corner : boardCorners())
+    if (corner != *empty && planetsAt(state, corner) == 0) {
+      bool next = false;
+      for (Corner n : HexGrid::neighbours(*empty))
+        next = next || n == corner;
+      if (!next) {
+        state.ships.back().corner = corner;
+        break;
+      }
+    }
+  EXPECT_FALSE(Game::apply(state, {Kind::Settle, static_cast<int>(state.ships.size()) - 1}));
+}

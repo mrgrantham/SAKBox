@@ -301,6 +301,35 @@ bool byASettleablePlanet(const State &state, Corner corner) {
                      [&](const Planet &p) { return settleable(p) && touches(corner, p.hex); });
 }
 
+// A Deep-space relay's place: touching no planet (homes included) and no
+// alien outpost
+bool isRelaySpot(const State &state, Corner corner) {
+  const bool byAnyPlanet = std::any_of(state.planets.begin(), state.planets.end(),
+                                       [&](const Planet &p) { return touches(corner, p.hex); });
+  return !byAnyPlanet && !byAnOutpost(state, corner);
+}
+
+// Whether the player may build a Deep-space relay: holding its Charter
+// (revealed or not) and without one yet
+bool mayBuildRelay(const State &state, int player) {
+  const Player &me = state.player[static_cast<std::size_t>(player)];
+  const auto in = [](const std::vector<int> &cards) {
+    return std::find(cards.begin(), cards.end(), kDeepSpaceRelay) != cards.end();
+  };
+  const bool holds = in(me.contracts) || in(me.revealed); // (revealed or not)
+  const bool hasOne =
+      std::any_of(state.stations.begin(), state.stations.end(),
+                  [&](const Station &s) { return s.owner == player && isRelaySpot(state, s.at); });
+  return holds && !hasOne;
+}
+
+// Where a ship can become a station: by a planet, an outpost, or for a
+// relay's holder anywhere
+bool canStandAt(const State &state, int player, Corner corner) {
+  return byASettleablePlanet(state, corner) || byAnOutpost(state, corner) ||
+         (isRelaySpot(state, corner) && mayBuildRelay(state, player));
+}
+
 // (corners) The best alien rate the player has: alienStationRate with a
 // station by an outpost, alienRate with a ship, or 0 with neither
 int alienRateOf(const State &state, int player) {
@@ -1220,6 +1249,15 @@ const std::vector<Contract> &contracts() {
              return true;
          return false;
        }},
+      // (20) Round 63: a station touching no planet and no outpost, which
+      // only a holder of this Charter may build (one). Its point is on the
+      // station (2, see points()), not the card: easier to keep track of
+      {"Deep-space relay: a station touching no planet and no alien outpost", 0,
+       [](const State &s, int p) {
+         return std::any_of(s.stations.begin(), s.stations.end(), [&](const Station &st) {
+           return st.owner == p && isRelaySpot(s, st.at);
+         });
+       }},
   };
   return kContracts;
 }
@@ -1249,6 +1287,11 @@ int points(const State &state, int player) {
   if (state.embargoHolder == player)
     total += state.settings.embargoPoints;
   total += p.badgePoints;
+  // A Deep-space relay's station: 2 (round 63)
+  total += static_cast<int>(
+      std::count_if(state.stations.begin(), state.stations.end(), [&](const Station &s) {
+        return s.owner == player && state.settings.corners && isRelaySpot(state, s.at);
+      }));
   for (int id : p.revealed)
     total += contracts()[static_cast<std::size_t>(id)].points;
   return total;
@@ -1409,7 +1452,7 @@ std::optional<bool> applyMainOnCorners(State &state, const Action &action) {
       return false;
     // A station must touch a planet it can be built by (turned over, not a
     // home), or an alien outpost
-    if (!byASettleablePlanet(state, ship.corner) && !byAnOutpost(state, ship.corner))
+    if (!canStandAt(state, state.turn, ship.corner))
       return false;
     pay(me.resources, settings.stationCost);
     state.ships.erase(state.ships.begin() + action.a);
@@ -1462,8 +1505,7 @@ void cornerActions(const State &state, std::vector<Action> &out) {
         out.push_back({Kind::Move, static_cast<int>(i), corner});
     }
     // (as the rules check: by a planet or an alien outpost)
-    const bool canStand =
-        byASettleablePlanet(state, ship.corner) || byAnOutpost(state, ship.corner);
+    const bool canStand = canStandAt(state, state.turn, ship.corner);
     if (canStand && cornerFree(state, ship.corner) && canAfford(me.resources, settings.stationCost))
       out.push_back({Kind::Settle, static_cast<int>(i)});
   }
