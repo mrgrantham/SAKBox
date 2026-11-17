@@ -1,0 +1,34 @@
+// The board's pieces: hexes and corners where the hex grid puts them, and
+// meshes with something in them
+#include <CosmicHex/Handheld/BoardPieces.hpp>
+
+#include <gtest/gtest.h>
+
+#include <cmath>
+
+using namespace CosmicHex;
+using namespace CosmicHex::Handheld;
+
+TEST(BoardPiecesTest, HexesAndCornersSitOnTheTable) {
+  const auto o = BoardPieces::centre({0, 0});
+  EXPECT_FLOAT_EQ(static_cast<float>(o.x), 0);
+  EXPECT_FLOAT_EQ(static_cast<float>(o.y), 0);
+  // A neighbour is sqrt(3) away; a corner 1 from each hex it touches
+  const auto n = BoardPieces::centre({1, 0});
+  EXPECT_NEAR(std::hypot(static_cast<float>(n.x), static_cast<float>(n.z)), std::sqrt(3.0f), 1e-4);
+  const Corner corner{{0, 0}, 0};
+  for (Hex hex : HexGrid::hexesTouching(corner)) {
+    const auto c = BoardPieces::centre(hex), p = BoardPieces::at(corner);
+    EXPECT_NEAR(std::hypot(static_cast<float>(c.x - p.x), static_cast<float>(c.z - p.z)), 1, 1e-4);
+  }
+}
+
+TEST(BoardPiecesTest, ThePiecesHaveShape) {
+  const BoardPieces pieces;
+  EXPECT_EQ(pieces.hexTile.triangleCount(), 6u);
+  EXPECT_GT(pieces.station.triangleCount(), 0u);
+  EXPECT_GT(pieces.colony.triangleCount(), 0u);
+  EXPECT_EQ(pieces.ship.triangleCount(), 4u);
+  EXPECT_EQ(pieces.highlight.triangleCount(), 12u);
+  EXPECT_NE(BoardColours::ofPlayer(0), BoardColours::ofPlayer(1));
+}
