@@ -36,7 +36,7 @@ BUILD		:=	build
 # The sources are staged from their own packages by the Bazel rule
 # (extra_srcs in BUILD): the game (rules, the handheld game and its app),
 # its libraries, and ScratchPadd's
-SOURCES		:=	cosmic_hex/handheld/source cosmic_hex/handheld/src cosmic_hex/dice/src cyclone/src assets scratchpadd/title_scene/src cosmic_hex/rules/src cosmic_hex/art/src cosmic_hex/art scratchpadd/texture_recipe/src \
+SOURCES		:=	cosmic_hex/handheld/source cosmic_hex/handheld/src cosmic_hex/dice/src cyclone/src assets scratchpadd/title_scene/src scratchpadd/memory_stats/src cosmic_hex/rules/src cosmic_hex/art/src cosmic_hex/art scratchpadd/texture_recipe/src \
 			scratchpadd/handheld_controls/src scratchpadd/utilities/src scratchpadd/storage/src scratchpadd/network/src \
 			scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session \
 			scratchpadd/scene/src scratchpadd/scene_3ds/src scratchpadd/overlay_text/src

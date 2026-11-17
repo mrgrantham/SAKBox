@@ -1,0 +1,80 @@
+// CountingAllocator.cpp - the global new and delete, replaced so that
+// MemoryStats (ScratchPadd/MemoryStats.hpp) can count allocations: each
+// goes to malloc as before, and its size (as the allocator gave it) is
+// counted while anything reads the counts. An app gets this by linking the
+// library //projects/scratchpadd/memory_stats:counting_allocator (or, on a
+// console, by building this file); without it nothing is counted.
+#include <ScratchPadd/MemoryStats.hpp>
+
+#include <cstdlib>
+#include <new>
+
+#if defined(__APPLE__)
+#include <malloc/malloc.h>
+#elif defined(_WIN32)
+#include <malloc.h>
+#else
+#include <malloc.h>
+#endif
+
+namespace {
+namespace MS = ScratchPadd::MemoryStats;
+
+// The bytes the allocator gave for `p` (at least what was asked for)
+std::size_t sizeOf(void *p) {
+#if defined(__APPLE__)
+  return malloc_size(p);
+#elif defined(_WIN32)
+  return _msize(p);
+#else
+  return malloc_usable_size(p);
+#endif
+}
+
+// Said once, before main: the counting allocator is in this app
+const bool kLinked = [] {
+  MS::markLinked();
+  return true;
+}();
+
+void *allocate(std::size_t bytes) {
+  void *p = std::malloc(bytes == 0 ? 1 : bytes);
+  if (!p)
+    throw std::bad_alloc();
+  if (MS::counting()) // (the size only asked for while counting)
+    MS::allocated(sizeOf(p));
+  return p;
+}
+
+void *allocateNoThrow(std::size_t bytes) noexcept {
+  void *p = std::malloc(bytes == 0 ? 1 : bytes);
+  if (p && MS::counting())
+    MS::allocated(sizeOf(p));
+  return p;
+}
+
+void release(void *p) noexcept {
+  if (!p)
+    return;
+  if (MS::counting())
+    MS::freed(sizeOf(p));
+  std::free(p);
+}
+} // namespace
+
+// (aligned new and delete are left as the library's own: nothing in
+// ScratchPadd's apps over-aligns, and their memory isn't counted)
+void *operator new(std::size_t bytes) { return allocate(bytes); }
+void *operator new[](std::size_t bytes) { return allocate(bytes); }
+void *operator new(std::size_t bytes, const std::nothrow_t &) noexcept {
+  return allocateNoThrow(bytes);
+}
+void *operator new[](std::size_t bytes, const std::nothrow_t &) noexcept {
+  return allocateNoThrow(bytes);
+}
+void operator delete(void *p) noexcept { release(p); }
+void operator delete[](void *p) noexcept { release(p); }
+void operator delete(void *p, std::size_t) noexcept { release(p); }
+void operator delete[](void *p, std::size_t) noexcept { release(p); }
+void operator delete(void *p, const std::nothrow_t &) noexcept { release(p); }
+void operator delete[](void *p, const std::nothrow_t &) noexcept { release(p); }

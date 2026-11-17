@@ -40,6 +40,7 @@
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
 #include <ScratchPadd/GameClock.hpp>
+#include <ScratchPadd/MemoryStats.hpp>
 #include <ScratchPadd/TitleScene/TitleScene.hpp>
 // The title screen's rocket, as the build cooked it for this console
 #if defined(__NDS__)
@@ -331,6 +332,7 @@ private:
     if (bottomDirty_)
       drawBottom();
     throwDice();
+    measureMemory();
     // Before a game, and once one's won, the title scene; otherwise the board
     if (kTitleScene && (mode_ == Mode::Choosing || (latest_ && latest_->state.winner >= 0))) {
       drawTitle();
@@ -361,6 +363,40 @@ private:
       overlay.text(kTopWidth / 2.0f - 50, kTopHeight - 16, "START: quit", {200, 208, 222});
     }
     renderer_->endFrame();
+  }
+
+  // Memory (round 89: measuring before optimising, Gregory 10.9): with the
+  // counting allocator in the build, every 2 seconds the heap and the
+  // allocations a second, logged (a debug build's log) and, in the -watch
+  // builds, shown on the top screen
+  void measureMemory() {
+    if (!ScratchPadd::MemoryStats::linked())
+      return;
+    if (!memory_) {
+      memory_.emplace();
+      memoryAt_ = Clock::now();
+      return;
+    }
+    const double seconds = std::chrono::duration<double>(Clock::now() - memoryAt_).count();
+    if (seconds < 2)
+      return;
+    memoryAt_ = Clock::now();
+    const ScratchPadd::MemoryStats::Snapshot counts = memory_->take();
+    const ScratchPadd::MemoryStats::Heap heap = ScratchPadd::MemoryStats::heap();
+    char line[96];
+    std::snprintf(line, sizeof line, "%zuK used %zuK free/%zu %.0f/s", heap.inUse / 1024,
+                  heap.free / 1024, heap.freeChunks,
+                  static_cast<double>(counts.all.allocations) / seconds);
+    memoryLine_ = line;
+    std::string busiest;
+    for (std::size_t i = 0; i < counts.padds.size() && i < 3; ++i) {
+      char padd[48];
+      std::snprintf(padd, sizeof padd, " %s %.0f/s", counts.padds[i].name.c_str(),
+                    static_cast<double>(counts.padds[i].counts.allocations) / seconds);
+      busiest += padd;
+    }
+    spdlog::info("memory: {};{}", memoryLine_, busiest);
+    memoryBusiest_ = busiest;
   }
 
   // The dice (round 87): when the game waits for them, they're thrown into
@@ -582,6 +618,11 @@ private:
                     r[2], r[3], r[4]);
       overlay.text(4, 16 + 10 * static_cast<float>(p), line, BoardColours::ofPlayer(p));
     }
+    // (the -watch builds: memory, measured, above the last move)
+    if (kWatchAtStart && !memoryLine_.empty())
+      overlay.text(4, kTopHeight - 26, memoryLine_.substr(0, kCharsPerLine), {120, 220, 160});
+    if (kWatchAtStart && !memoryBusiest_.empty())
+      overlay.text(4, kTopHeight - 38, memoryBusiest_.substr(0, kCharsPerLine), {120, 220, 160});
     if (!latest_->lastMoves.empty())
       overlay.text(4, kTopHeight - 14, latest_->lastMoves.back().substr(0, kCharsPerLine),
                    {200, 208, 222});
@@ -788,6 +829,10 @@ private:
   Scene::Mesh hexTile_, numberChip_, station_, colony_, ship_, stars_, gaps_, highlight_;
   std::array<Scene::Texture, CosmicHex::Art::kFaces> faces_{};
   std::array<Scene::Texture, CosmicHex::Art::kHighestChip + 1> chips_{}; // (by number)
+  // Memory, measured (with the counting allocator in the build)
+  std::optional<ScratchPadd::MemoryStats::Reader> memory_;
+  Clock::time_point memoryAt_;
+  std::string memoryLine_, memoryBusiest_;
   // The title scene
   std::optional<ScratchPadd::TitleScene::TitleScene> title_;
   Clock::time_point titleStarted_;

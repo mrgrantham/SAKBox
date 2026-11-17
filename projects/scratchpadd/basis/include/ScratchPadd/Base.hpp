@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ScratchPadd/EventTimer.hpp>
+#include <ScratchPadd/MemoryStats.hpp>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -586,6 +587,7 @@ private:
   std::condition_variable scratchPaddConditionVariable_;
   std::unordered_map<std::string, ControlTypeVariant> controlMap_;
   std::optional<std::chrono::duration<double>> repeatInterval_{std::nullopt};
+  int memorySlot_ = -1; // (MemoryStats: whose allocations its jobs are; given out on its first job)
   // The repeat interval in milliseconds, for logs (0 if none)
   double repeatIntervalMilliseconds() const {
     return repeatInterval_ ? std::chrono::duration<double, std::milli>(*repeatInterval_).count()
@@ -771,6 +773,10 @@ private:
   // Runs one job, timing it while MessageStats is counting: how long it
   // took, and how long it waited since it was queued
   void runJob(WorkQueue::Job &job) {
+    // (this padd's, any memory the job allocates: MemoryStats.hpp)
+    if (memorySlot_ < 0)
+      memorySlot_ = MemoryStats::slotFor(name());
+    const MemoryStats::Owner owner(memorySlot_);
     MessageStats *stats =
         system_ && system_->messageStats().counting() ? &system_->messageStats() : nullptr;
     if (!stats) {
