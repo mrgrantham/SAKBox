@@ -16,12 +16,33 @@ namespace {
 constexpr int kRadius = 4; // (the rules' board)
 
 bool onBoard(Hex hex) { return HexGrid::length(hex) <= kRadius; }
-Hex mirrored(Hex hex) { return Hex{-hex.q, -hex.r}; }
 
 std::vector<Hex> homesOf(HomePlaces places) {
-  if (places == HomePlaces::Edge)
+  switch (places) {
+  case HomePlaces::Edge:
     return {{4, -2}, {-4, 2}, {2, 2}, {-2, -2}};
-  return {{4, -4}, {-4, 4}, {4, 0}, {-4, 0}};
+  case HomePlaces::Corners:
+    return {{4, -4}, {-4, 4}, {4, 0}, {-4, 0}};
+  case HomePlaces::Three:
+    return {{4, -2}, {-2, -2}, {-2, 4}};
+  }
+  return {};
+}
+
+// How many times the board repeats round the centre: twice (turned half
+// round) for four homes, three times for three; once without symmetry
+int symmetryOrder(const SolverSpec &spec) {
+  if (!spec.symmetric)
+    return 1;
+  return spec.homes == HomePlaces::Three ? 3 : 2;
+}
+
+// A hex's copies round the board (itself not included)
+std::vector<Hex> copiesOf(Hex hex, int order) {
+  std::vector<Hex> out;
+  for (int k = 1; k < order; ++k)
+    out.push_back(HexGrid::rotated(hex, k * 6 / order));
+  return out;
 }
 
 bool contains(const std::vector<Hex> &hexes, Hex hex) {
@@ -106,8 +127,8 @@ int planetMoves(Hex planet, const std::vector<int> &moves) {
   return d;
 }
 
-// Tries to place `count` clusters of `size`, in mirrored pairs when
-// symmetric; false if there's no room
+// Tries to place `count` clusters of `size`, each with its copies round the
+// board when symmetric; false if there's no room
 bool placeClusters(Board &board, int size, int count, const SolverSpec &spec,
                    SeededRandom::Generator &random) {
   const std::vector<Hex> hexes = HexGrid::spiral(Hex{}, kRadius);
@@ -118,25 +139,26 @@ bool placeClusters(Board &board, int size, int count, const SolverSpec &spec,
       const std::vector<Hex> cluster = clusterShape(at, size, static_cast<int>(random.below(6)));
       if (!fits(board, cluster, spec.clustersApart))
         continue;
-      if (spec.symmetric) {
-        std::vector<Hex> mirror;
-        mirror.reserve(cluster.size());
+      // The cluster and its copies round the board, each fitting beside
+      // the ones placed before it
+      const int order = symmetryOrder(spec);
+      Board trial = board;
+      trial.planets.insert(trial.planets.end(), cluster.begin(), cluster.end());
+      trial.clusters.push_back(cluster);
+      bool allFit = true;
+      for (int k = 1; k < order && allFit; ++k) {
+        std::vector<Hex> copy;
+        copy.reserve(cluster.size());
         for (Hex hex : cluster)
-          mirror.push_back(mirrored(hex));
-        Board withFirst = board;
-        withFirst.planets.insert(withFirst.planets.end(), cluster.begin(), cluster.end());
-        if (!fits(withFirst, mirror, spec.clustersApart))
-          continue;
-        board = withFirst;
-        board.clusters.push_back(cluster);
-        board.planets.insert(board.planets.end(), mirror.begin(), mirror.end());
-        board.clusters.push_back(mirror);
-        placed += 2;
-      } else {
-        board.planets.insert(board.planets.end(), cluster.begin(), cluster.end());
-        board.clusters.push_back(cluster);
-        placed += 1;
+          copy.push_back(HexGrid::rotated(hex, k * 6 / order));
+        allFit = fits(trial, copy, spec.clustersApart);
+        trial.planets.insert(trial.planets.end(), copy.begin(), copy.end());
+        trial.clusters.push_back(copy);
       }
+      if (!allFit)
+        continue;
+      board = trial;
+      placed += order;
       done = true;
     }
     if (!done)
@@ -145,15 +167,15 @@ bool placeClusters(Board &board, int size, int count, const SolverSpec &spec,
   return true;
 }
 
-// A count within a bound (even when placed in mirrored pairs), at random,
+// A count within a bound (a multiple of the symmetry's copies), at random,
 // kept to what a board could hold
-int countWithin(const Bound &bound, bool symmetric, int most, SeededRandom::Generator &random) {
+int countWithin(const Bound &bound, int order, int most, SeededRandom::Generator &random) {
   const int floor = std::max(0, bound.floor), ceiling = std::min(bound.ceiling, most);
   if (ceiling < floor)
     return -1;
   std::vector<int> choices;
   for (int n = floor; n <= ceiling; ++n)
-    if (!symmetric || n % 2 == 0)
+    if (n % order == 0)
       choices.push_back(n);
   if (choices.empty())
     return -1;
@@ -166,9 +188,10 @@ std::optional<SolvedLayout> attempt(const SolverSpec &spec, SeededRandom::Genera
   board.homes = homesOf(spec.homes);
   if (spec.core)
     board.planets.push_back(Hex{0, 0});
-  const int threes = countWithin(spec.threes, spec.symmetric, 6, random);
-  const int pairs = countWithin(spec.pairs, spec.symmetric, 8, random);
-  const int singles = countWithin(spec.singles, spec.symmetric, 12, random);
+  const int order = symmetryOrder(spec);
+  const int threes = countWithin(spec.threes, order, 6, random);
+  const int pairs = countWithin(spec.pairs, order, 9, random);
+  const int singles = countWithin(spec.singles, order, 12, random);
   if (threes < 0 || pairs < 0 || singles < 0)
     return std::nullopt;
   // Bigger clusters first, while there's room
@@ -178,7 +201,7 @@ std::optional<SolvedLayout> attempt(const SolverSpec &spec, SeededRandom::Genera
     return std::nullopt;
 
   // The finds: empty hexes not beside a home (nor beside clusters of the
-  // menu's size and up), in mirrored pairs when symmetric
+  // menu's size and up), each with its copies round the board when symmetric
   std::vector<Hex> spots;
   for (Hex hex : HexGrid::spiral(Hex{}, kRadius)) {
     if (contains(board.taken(), hex) || touchesAny(hex, board.homes))
@@ -191,19 +214,23 @@ std::optional<SolvedLayout> attempt(const SolverSpec &spec, SeededRandom::Genera
     if (!nearBig)
       spots.push_back(hex);
   }
-  const int finds = countWithin(spec.finds, spec.symmetric, static_cast<int>(spots.size()), random);
+  const int finds = countWithin(spec.finds, order, static_cast<int>(spots.size()), random);
   if (finds < 0)
     return std::nullopt;
-  while (static_cast<int>(board.finds.size()) < finds) {
+  for (int tries = 0; static_cast<int>(board.finds.size()) < finds; ++tries) {
+    if (tries > 2000)
+      return std::nullopt; // (no room for that many, as the copies need)
     const Hex hex = spots[random.below(static_cast<std::uint32_t>(spots.size()))];
     if (contains(board.finds, hex))
       continue;
-    if (spec.symmetric) {
-      if (!contains(spots, mirrored(hex)) || mirrored(hex) == hex)
-        continue;
-      board.finds.push_back(mirrored(hex));
-    }
+    const std::vector<Hex> copies = copiesOf(hex, order);
+    const bool copiesFree = std::all_of(copies.begin(), copies.end(), [&](Hex c) {
+      return c != hex && contains(spots, c) && !contains(board.finds, c);
+    });
+    if (!copiesFree)
+      continue;
     board.finds.push_back(hex);
+    board.finds.insert(board.finds.end(), copies.begin(), copies.end());
   }
 
   // From each home: the nearest clusters, the planets in reach, the access

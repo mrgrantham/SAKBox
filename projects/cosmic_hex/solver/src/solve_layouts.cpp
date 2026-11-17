@@ -6,7 +6,8 @@
 //   bazel run -c opt //projects/cosmic_hex/solver:solve_layouts -- --threes 2 --away 3 --farther
 //   yes
 //
-// Flags: --homes edge|corners, --singles A-B, --pairs A-B, --threes A-B,
+// Flags: --homes edge|corners|three (three: for three players), --singles A-B, --pairs A-B,
+// --threes A-B,
 // --finds A-B (each a value or a floor-ceiling range), --away N (finds never
 // touch clusters of N or more; 0: anywhere), --farther yes (threes farther
 // from every home than pairs and singles), --nearest-single, --nearest-pair,
@@ -51,7 +52,9 @@ int main(int argc, char **argv) {
   for (int i = 1; i + 1 < argc; i += 2) {
     const std::string_view flag = argv[i], value = argv[i + 1];
     if (flag == "--homes")
-      spec.homes = value == "corners" ? HomePlaces::Corners : HomePlaces::Edge;
+      spec.homes = value == "corners" ? HomePlaces::Corners
+                   : value == "three" ? HomePlaces::Three
+                                      : HomePlaces::Edge;
     else if (flag == "--singles")
       spec.singles = boundOf(value);
     else if (flag == "--pairs")

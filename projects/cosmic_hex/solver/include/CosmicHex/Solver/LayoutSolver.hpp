@@ -35,16 +35,19 @@ struct Bound {
   bool holds(int n) const { return n >= floor && n <= ceiling; }
 };
 
-// Where the four homes are: on the board's edge midway along four sides (the
-// R layouts), or at four of its corners (the S layouts)
-enum class HomePlaces : std::uint8_t { Edge, Corners };
+// Where the homes are: four on the board's edge midway along four sides
+// (the R layouts), four at its corners (the S layouts), or three on the
+// edge a third of a turn apart (for three players, as the rules' own)
+enum class HomePlaces : std::uint8_t { Edge, Corners, Three };
 
 struct SolverSpec {
   HomePlaces homes = HomePlaces::Edge;
   // How many clusters of each size (1, 2 and 3 planets), besides the core
   Bound singles = Bound{2, 6}, pairs = Bound{1, 4}, threes = Bound{1, 2};
-  bool core = true;          // a planet at the centre
-  bool symmetric = true;     // the same seen from opposite homes (turned half round)
+  bool core = true; // a planet at the centre
+  // The same seen from every home: turned half round with four homes, a
+  // third of a turn with three
+  bool symmetric = true;
   bool clustersApart = true; // clusters never touch each other, the core or a home
   Bound finds = Bound{6, 12};
 

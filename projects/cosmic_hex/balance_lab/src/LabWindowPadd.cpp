@@ -614,9 +614,10 @@ void LabWindowPadd::drawSolverTab() {
   ImGui::TextWrapped("Boards made to order: each count kept to a value (floor = ceiling) or "
                      "between a floor and a ceiling, and the constraints below. Ranked by how "
                      "equal every home's access to planets is.");
-  int homes = spec.homes == Solver::HomePlaces::Edge ? 0 : 1;
-  if (ImGui::Combo("Homes", &homes, "On the edge (as R)\0On the corners (as S)\0"))
-    spec.homes = homes == 0 ? Solver::HomePlaces::Edge : Solver::HomePlaces::Corners;
+  int homes = static_cast<int>(spec.homes);
+  if (ImGui::Combo("Homes", &homes,
+                   "Four on the edge (as R)\0Four on the corners (as S)\0Three on the edge\0"))
+    spec.homes = static_cast<Solver::HomePlaces>(homes);
   const auto bound = [](const char *name, Solver::Bound &b) {
     int both[2] = {b.floor, std::min(b.ceiling, 99)};
     if (ImGui::InputInt2(name, both)) {

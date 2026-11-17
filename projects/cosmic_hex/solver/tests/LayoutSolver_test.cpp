@@ -57,3 +57,24 @@ TEST(LayoutSolverTest, LayoutsMeetTheirSpec) {
     EXPECT_FALSE(layoutLine(l, "T1").empty());
   }
 }
+
+// Three homes (three players): the board repeats every third of a turn
+TEST(LayoutSolverTest, ThreeHomesRepeatByThirds) {
+  SolverSpec spec;
+  spec.homes = HomePlaces::Three;
+  spec.threes = Bound{0, 3};
+  spec.pairs = Bound{0, 3};
+  spec.singles = Bound{3, 9};
+  spec.finds = Bound{3, 9};
+  spec.attempts = 3000;
+  const auto layouts = solve(spec);
+  ASSERT_FALSE(layouts.empty());
+  for (const SolvedLayout &l : layouts) {
+    EXPECT_EQ(l.homes.size(), 3u);
+    for (Hex p : l.planets)
+      EXPECT_TRUE(has(l.planets, HexGrid::rotated(p, 2)));
+    for (Hex f : l.finds)
+      EXPECT_TRUE(has(l.finds, HexGrid::rotated(f, 2)));
+    EXPECT_EQ(l.clusters[0] % 3, 0);
+  }
+}
