@@ -64,6 +64,10 @@ StartWith parse(int argc, char **argv) {
       start.choose = true;
       continue;
     }
+    if (flag == "--solve") { // (the layout solver's tab, having solved once)
+      LabWindowPadd::solveAtStart();
+      continue;
+    }
     if (i + 1 >= argc) {
       std::fprintf(stderr, "%s needs a value\n", argv[i]);
       std::exit(2);

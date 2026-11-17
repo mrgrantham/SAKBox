@@ -173,6 +173,10 @@ void LabWindowPadd::starting() {
   }
   if (runAtStart_)
     runBatch();
+  if (startSolving()) {
+    solveLayouts();
+    showSolver_ = true;
+  }
   push([this] { drawFrame(); });
 }
 
@@ -351,8 +355,16 @@ void LabWindowPadd::drawFrame() {
   ImGui::SameLine();
   ImGui::BeginChild("board", ImVec2(560, 0), ImGuiChildFlags_Borders);
   if (ImGui::BeginTabBar("boardTabs")) {
-    if (ImGui::BeginTabItem("Layout")) {
+    const ImGuiTabItemFlags layoutFlags = showLayout_ ? ImGuiTabItemFlags_SetSelected : 0;
+    showLayout_ = false;
+    if (ImGui::BeginTabItem("Layout", nullptr, layoutFlags)) {
       drawLayoutView();
+      ImGui::EndTabItem();
+    }
+    const ImGuiTabItemFlags solverFlags = showSolver_ ? ImGuiTabItemFlags_SetSelected : 0;
+    showSolver_ = false;
+    if (ImGui::BeginTabItem("Solver", nullptr, solverFlags)) {
+      drawSolverTab();
       ImGui::EndTabItem();
     }
     const ImGuiTabItemFlags replayFlags = showReplay_ ? ImGuiTabItemFlags_SetSelected : 0;
@@ -593,6 +605,79 @@ void LabWindowPadd::drawLayoutView() {
 }
 
 // ---- Replays ----
+
+// The layout solver (Solver/LayoutSolver.hpp): what to keep and how much,
+// the menu's constraints, then the boards it finds, the most equal access
+// first; choosing one makes it the lab's layout, to save and simulate
+void LabWindowPadd::drawSolverTab() {
+  Solver::SolverSpec &spec = solverSpec_;
+  ImGui::TextWrapped("Boards made to order: each count kept to a value (floor = ceiling) or "
+                     "between a floor and a ceiling, and the constraints below. Ranked by how "
+                     "equal every home's access to planets is.");
+  int homes = spec.homes == Solver::HomePlaces::Edge ? 0 : 1;
+  if (ImGui::Combo("Homes", &homes, "On the edge (as R)\0On the corners (as S)\0"))
+    spec.homes = homes == 0 ? Solver::HomePlaces::Edge : Solver::HomePlaces::Corners;
+  const auto bound = [](const char *name, Solver::Bound &b) {
+    int both[2] = {b.floor, std::min(b.ceiling, 99)};
+    if (ImGui::InputInt2(name, both)) {
+      b.floor = std::max(0, both[0]);
+      b.ceiling = std::max(b.floor, both[1]);
+    }
+  };
+  bound("Singles (floor, ceiling)", spec.singles);
+  bound("Pairs (floor, ceiling)", spec.pairs);
+  bound("Threes (floor, ceiling)", spec.threes);
+  bound("Finds (floor, ceiling)", spec.finds);
+  ImGui::Checkbox("A planet at the centre", &spec.core);
+  ImGui::Checkbox("The same from opposite homes", &spec.symmetric);
+  ImGui::Checkbox("Clusters never touch", &spec.clustersApart);
+  ImGui::SeparatorText("Constraints");
+  ImGui::InputInt("Finds never touch clusters of (0: anywhere)", &solverAway_);
+  ImGui::Checkbox("Threes farther from every home than pairs and singles",
+                  &spec.threesFartherThanSmaller);
+  ImGui::InputInt("Attempts", &spec.attempts, 1000, 10000);
+  spec.attempts = std::clamp(spec.attempts, 100, 500000);
+  if (ImGui::Button("Solve"))
+    solveLayouts();
+  ImGui::SameLine();
+  ImGui::Text("%zu found", solved_.size());
+  // The boards, four a row, each with its access spread; click to choose
+  constexpr float kSide = 118;
+  for (std::size_t i = 0; i < solved_.size(); ++i) {
+    if (i % 4 != 0)
+      ImGui::SameLine();
+    ImGui::BeginGroup();
+    const std::string id = "solved" + std::to_string(i);
+    if (boardButton(id.c_str(), solved_[i], kSide, false)) {
+      edited_ = solved_[i];
+      edited_.file.clear();
+      saveName_ = edited_.name;
+      saveMessage_ = "From the solver: save it to keep it";
+      changed_ = true;
+      showLayout_ = true;
+    }
+    const auto &c = solvedFigures_[i].clusters;
+    ImGui::Text("%d/%d/%d  spread %.3f", c[0], c[1], c[2], solvedFigures_[i].accessSpread);
+    ImGui::EndGroup();
+  }
+}
+
+void LabWindowPadd::solveLayouts() {
+  Solver::SolverSpec &spec = solverSpec_;
+  spec.findsAwayFromClustersOf = solverAway_ > 0 ? std::optional<int>(solverAway_) : std::nullopt;
+  ++spec.seed; // (each solve searches afresh)
+  solvedFigures_ = Solver::solve(spec);
+  solved_.clear();
+  for (std::size_t i = 0; i < solvedFigures_.size(); ++i) {
+    const Solver::SolvedLayout &found = solvedFigures_[i];
+    LabLayout layout;
+    layout.name = "Solved" + std::to_string(i + 1);
+    layout.homes = found.homes;
+    layout.planets = found.planets;
+    layout.zone = found.finds;
+    solved_.push_back(std::move(layout));
+  }
+}
 
 void LabWindowPadd::watch(std::size_t result) {
   const Batch::GameResult &game = results_[result];

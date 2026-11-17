@@ -22,6 +22,7 @@ cc_binary(
     deps = [
         "//projects/action_log",
         "//projects/cosmic_hex/simulate:batch",
+        "//projects/cosmic_hex/solver",
         "//projects/hex_grid",
         "//projects/scratchpadd/basis",
         "//projects/scratchpadd/debug_log",

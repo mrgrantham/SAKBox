@@ -24,3 +24,8 @@ Next steps (not built): suggestions; real games in the replays once the game is 
 | --- | --- |
 | `LabLayouts_test` | The repo's layouts read; a hex cycled (empty, planet, find, empty) with homes left alone; the usual finds' places; empty-space corners; a layout written, read back, and read by the batch |
 | `Tally_test` | Wins counted by turn position (from who went first) and by home, shares, the fair share's margin, rounds and stations by system |
+
+## The layout solver's tab
+
+Beside the Layout tab, **Solver** runs the layout solver (`../solver`): homes on the edge or the corners, how many singles, pairs, threes and finds (each a floor and a ceiling; the same for an exact count), whether there's a planet at the centre, whether the board is the same from opposite homes and clusters never touch, and the menu of constraints (finds never touching clusters of N or more; threes farther from every home than pairs and singles). **Solve** shows the boards found, the most equal access first, with their singles/pairs/threes and access spread; clicking one makes it the lab's layout, to save and simulate as any other. `--solve` opens the tab having solved once.
+

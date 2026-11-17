@@ -23,6 +23,7 @@
 #include "SimulationPadd.hpp"
 #include "Tally.hpp"
 
+#include <CosmicHex/Solver/LayoutSolver.hpp>
 #include <ScratchPadd/DebugUi/DebugUi.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
@@ -49,6 +50,8 @@ public:
     startRunning() = runAtStart;
     startChoosing() = choosing;
   }
+  // The solver's tab open at the start, having solved once (--solve)
+  static void solveAtStart() { startSolving() = true; }
   // A game's log to open in the Replay tab at the start, at this action
   static void replayAtStart(std::string logFile, int atAction) {
     startReplay() = {std::move(logFile), atAction};
@@ -75,6 +78,10 @@ private:
     static bool choosing = false;
     return choosing;
   }
+  static bool &startSolving() {
+    static bool solving = false;
+    return solving;
+  }
   static std::pair<std::string, int> &startReplay() {
     static std::pair<std::string, int> replay;
     return replay;
@@ -84,6 +91,8 @@ private:
   void drawSettings();
   void drawLayoutChooser();
   void drawLayoutView();
+  void drawSolverTab();
+  void solveLayouts(); // the solver run with the tab's spec
   void drawReplayTab();
   void drawCharts();
   void drawGames();
@@ -125,6 +134,14 @@ private:
   std::string saveMessage_;         // what the last save did
   std::optional<Corner> reachFrom_; // where a ship's reach is shown from
   bool choosing_ = false;           // the layouts' thumbnails are open
+  // The layout solver's tab: its spec as the controls show it, and what it
+  // found (as layouts to show and choose, and the solver's own figures)
+  Solver::SolverSpec solverSpec_;
+  int solverAway_ = 3; // finds never touch clusters of this many (0: anywhere)
+  std::vector<LabLayout> solved_;
+  std::vector<Solver::SolvedLayout> solvedFigures_;
+  bool showLayout_ = false; // a solved layout was chosen: show its tab
+  bool showSolver_ = false; // (--solve) the solver's tab, once
 
   std::vector<ScratchPadd::PaddAddress> workers_;
   int batch_ = 0;    // the batch's number (results from an older one are dropped)
