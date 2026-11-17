@@ -77,15 +77,15 @@ TEST(DicePiecesTest, ADieTurnsAsItsQuaternion) {
 TEST(DicePiecesTest, PointsOnTheScreen) {
   const Scene::Camera camera{.eye = {0, 9.5f, 9.5f}, .target = {0, 0, 1.2f}, .fieldOfView = 50};
   const Scene::Transform glass = glassFrame(camera, 400.0f / 240, 10, 6);
-  const auto middle = onScreen(camera, 400, 240, glass.apply({0, 0, 0}));
-  ASSERT_TRUE(middle.has_value());
-  EXPECT_NEAR((*middle)[0], 200, 0.5f);
-  EXPECT_NEAR((*middle)[1], 120, 0.5f);
-  const auto right = onScreen(camera, 400, 240, glass.apply({5, 0, 0}));
-  ASSERT_TRUE(right.has_value());
-  EXPECT_NEAR((*right)[0], 200 + 0.82f * 200, 2); // (the glass's floor: 82% of the width)
-  const auto top = onScreen(camera, 400, 240, glass.apply({0, 0, -3}));
-  ASSERT_TRUE(top.has_value());
-  EXPECT_LT((*top)[1], 120);
+  // (off the screen if missing: the checks below then fail)
+  constexpr std::array<float, 2> kMissing{-1000, -1000};
+  const auto middle = onScreen(camera, 400, 240, glass.apply({0, 0, 0})).value_or(kMissing);
+  EXPECT_NEAR(middle[0], 200, 0.5f);
+  EXPECT_NEAR(middle[1], 120, 0.5f);
+  const auto right = onScreen(camera, 400, 240, glass.apply({5, 0, 0})).value_or(kMissing);
+  EXPECT_NEAR(right[0], 200 + 0.82f * 200, 2); // (the glass's floor: 82% of the width)
+  const auto top = onScreen(camera, 400, 240, glass.apply({0, 0, -3})).value_or(kMissing);
+  EXPECT_LT(top[1], 120);
+  EXPECT_GT(top[1], 0);
   EXPECT_FALSE(onScreen(camera, 400, 240, camera.eye * 2 - camera.target).has_value());
 }
