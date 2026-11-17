@@ -68,8 +68,8 @@ inline constexpr int kDocks = 2; // stations a planet can hold, one per player
 // The numbers, all in one table (the design doc's defaults; the bots tune them)
 
 // The Deep-space relay Charter's id (round 63): its holder may build one
-// station on a corner touching no planet and no alien outpost, which scores
-// 2 (the point is the station's; the card itself scores nothing)
+// station on a corner touching no planet and no alien outpost; the station
+// scores 1 as any does, the card nothing (round 77)
 inline constexpr int kDeepSpaceRelay = 20;
 
 struct Settings {

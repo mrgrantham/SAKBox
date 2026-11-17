@@ -1412,8 +1412,8 @@ const std::vector<Contract> &contracts() {
          return false;
        }},
       // (20) Round 63: a station touching no planet and no outpost, which
-      // only a holder of this Charter may build (one). Its point is on the
-      // station (2, see points()), not the card: easier to keep track of
+      // only a holder of this Charter may build (one). The station scores 1
+      // as any; the card nothing (round 77)
       {"Deep-space relay: a station touching no planet and no alien outpost", 0,
        [](const State &s, int p) {
          return std::any_of(s.stations.begin(), s.stations.end(), [&](const Station &st) {
@@ -1449,11 +1449,6 @@ int points(const State &state, int player) {
   if (state.embargoHolder == player)
     total += state.settings.embargoPoints;
   total += p.badgePoints;
-  // A Deep-space relay's station: 2 (round 63)
-  total += static_cast<int>(
-      std::count_if(state.stations.begin(), state.stations.end(), [&](const Station &s) {
-        return s.owner == player && state.settings.corners && isRelaySpot(state, s.at);
-      }));
   for (int id : p.revealed)
     total += contracts()[static_cast<std::size_t>(id)].points;
   return total;

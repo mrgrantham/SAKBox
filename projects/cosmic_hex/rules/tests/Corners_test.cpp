@@ -532,7 +532,7 @@ TEST(CornersTest, ADeepSpaceRelay) {
   state.player[0].contracts = {kDeepSpaceRelay};
   const int before = points(state, 0);
   ASSERT_TRUE(Game::apply(state, {Kind::Settle, mine}));
-  EXPECT_EQ(points(state, 0), before + 2); // (the relay's station: 2)
+  EXPECT_EQ(points(state, 0), before + 1); // (the relay's station: 1, as any; round 77)
   EXPECT_TRUE(contracts()[kDeepSpaceRelay].met(state, 0));
   // A second one: refused
   state.ships.push_back(Ship{0, Hex{}, false, *empty});
