@@ -23,6 +23,7 @@ Next steps (not built): suggestions; real games in the replays once the game is 
 | Test | What it checks |
 | --- | --- |
 | `LabLayouts_test` | The repo's layouts read; a hex cycled (empty, planet, find, empty) with homes left alone; the usual finds' places; empty-space corners; a layout written, read back, and read by the batch |
+| `BoardProving_test` | Proving the solver's boards: chi-squares from wins by turn position and by home, each board screened and the fair ones played deep |
 | `Tally_test` | Wins counted by turn position (from who went first) and by home, shares, the fair share's margin, rounds and stations by system |
 
 ## The layout solver's tab
