@@ -1,6 +1,7 @@
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 
 #include <HexGrid/Layout.hpp>
+#include <SeededRandom/Generator.hpp>
 
 #include <array>
 #include <cmath>
@@ -67,6 +68,18 @@ BoardPieces::BoardPieces() {
       right{-0.3f, 0.15f, 0.26f}, top{-0.18f, 0.36f, 0};
   ship.triangle(nose, left, top).triangle(nose, top, right).triangle(left, right, top);
   ship.triangle(nose, right, left);
+  // Stars: about 160 across a disc 22 wide, 1 below the table, faint and
+  // a little bluish, in a few brightnesses
+  SeededRandom::Generator random(0x57A25);
+  for (int i = 0; i < 160; ++i) {
+    const float angle = static_cast<float>(random.below(3600)) / 3600.0f * 6.2831853f;
+    const float radius = 3 + static_cast<float>(random.below(1900)) / 100.0f;
+    const float x = radius * std::cos(angle), z = radius * std::sin(angle), size = 0.035f;
+    const auto level = static_cast<std::uint8_t>(90 + random.below(80));
+    const Scene::Colour colour{level, level, static_cast<std::uint8_t>(level + 20)};
+    stars.quad({x - size, -1, z + size}, {x + size, -1, z + size}, {x + size, -1, z - size},
+               {x - size, -1, z - size}, colour);
+  }
 }
 
 Scene::Vector3 BoardPieces::centre(Hex hex) { return onTable(kLayout.centre(hex)); }

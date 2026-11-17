@@ -38,9 +38,9 @@ It reports how often each seat wins (turn order's advantage), how many rounds a 
 
 ## On the 3DS
 
-`bazel run //projects/cosmic_hex/3ds:cosmic-hex-3ds` builds the 3DS app (Docker must be running: see `tools/devkitpro`) and opens it in Azahar; `tools/fbi_install` installs it on a 3DS. The first build plays four bots against each other under the agreed rules on R3, a new game each time: the board in 3D on the top screen (stereo with the 3D slider), each player's points and resources and the last moves in words on the bottom screen. A pauses or goes on, L and R turn the board, START quits.
+`bazel run //projects/cosmic_hex/3ds:cosmic-hex-3ds` builds the 3DS app (Docker must be running: see `tools/devkitpro`) and opens it in Azahar; `tools/fbi_install` installs it on a 3DS. The first build plays four bots against each other under the agreed rules on R3, a new game each time: the board in 3D on the top screen (stereo with the 3D slider), each player's points and resources and the last moves in words on the bottom screen. Ships slide from corner to corner and planets and finds flip over when explored (`BoardMotion`), over a sparse starfield. A pauses or goes on, L and R turn the board, START quits.
 
-The app is `handheld/source/cosmic_hex_on_a_handheld.cpp`. What it plays and draws is in `handheld/` and tested on the Mac (`TableGame`: seats for people and bots, the dealer, the action log, each move in words; `BoardPieces`: where hexes and corners are, and the pieces' meshes and colours). The rules it plays are the rules library's `agreedRules()`, which the simulator's defaults are tested to match.
+The app is `handheld/source/cosmic_hex_on_a_handheld.cpp`. What it plays and draws is in `handheld/` and tested on the Mac (`TableGame`: seats for people and bots, the dealer, the action log, each move in words; `BoardPieces`: where hexes and corners are, and the pieces' meshes and colours; `BoardMotion`: what moved between two moves, part way). The rules it plays are the rules library's `agreedRules()`, which the simulator's defaults are tested to match.
 
 ## Tests
 

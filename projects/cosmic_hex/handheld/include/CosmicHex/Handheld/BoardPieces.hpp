@@ -24,7 +24,9 @@ struct BoardColours {
   static constexpr Scene::Colour kSpace{24, 34, 55};
   static constexpr Scene::Colour kFaceDown{140, 214, 150}; // the lab's planets
   static constexpr Scene::Colour kHome{240, 180, 90};
-  static constexpr Scene::Colour kZone{56, 74, 106}; // the lab's finds
+  static constexpr Scene::Colour kZone{56, 74, 106};     // the lab's finds
+  static constexpr Scene::Colour kFound{84, 102, 136};   // a find turned over
+  static constexpr Scene::Colour kOutpost{70, 200, 190}; // an alien outpost found
   static constexpr Scene::Colour kBlockade{30, 30, 34};
   static Scene::Colour ofKind(PlanetKind kind);
   static Scene::Colour ofPlayer(int player);
@@ -39,6 +41,9 @@ struct BoardPieces {
   Scene::MeshBuilder colony;    // a taller box with a roof
   Scene::MeshBuilder ship;      // a dart, pointing along +x
   Scene::MeshBuilder highlight; // a thin ring round a hex, for what's chosen
+  // A sparse, dim starfield below the board (round 72, the user's): small
+  // squares scattered wide, drawn unlit, the same every game
+  Scene::MeshBuilder stars;
 
   // Where things are, on the table
   static Scene::Vector3 centre(Hex hex);

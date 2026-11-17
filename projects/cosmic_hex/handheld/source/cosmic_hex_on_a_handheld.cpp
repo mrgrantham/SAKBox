@@ -17,6 +17,7 @@
 #include <3ds.h>
 #include <ScratchPadd/Scene/3DS/Display.hpp>
 
+#include <CosmicHex/Handheld/BoardMotion.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
 
@@ -49,8 +50,10 @@ using Clock = std::chrono::steady_clock;
 
 constexpr int kConsoleColumns = 40, kConsoleRows = 30; // the bottom screen's
 // How long each move stays on screen before the next, so a game can be
-// watched (the dealer's draws go straight on)
-constexpr double kSecondsAMove = 0.5;
+// watched (the dealer's draws go straight on), and how long its slide or
+// flip takes
+constexpr double kSecondsAMove = 0.6;
+constexpr double kSecondsAnimating = 0.35;
 
 // The game as it stands (TablePadd to ScreenPadd), after each move
 struct TableSnapshot {
@@ -119,6 +122,10 @@ class ScreenPadd : public ScratchPadd::Base {
 public:
   ScreenPadd(ScratchPadd::System *system) : Base(system) {
     receive<TableSnapshot>([this](const TableSnapshot &snapshot) {
+      // What moved since the last, animated from now
+      if (latest_)
+        motion_ = BoardMotion(latest_->state, snapshot.state);
+      motionStarted_ = Clock::now();
       latest_ = snapshot;
       drawText();
     });
@@ -136,6 +143,7 @@ public:
     station_ = renderer_->load(pieces.station.data());
     colony_ = renderer_->load(pieces.colony.data());
     ship_ = renderer_->load(pieces.ship.data());
+    stars_ = renderer_->load(pieces.stars.data());
     push([this] { frame(); });
   }
 
@@ -182,10 +190,29 @@ private:
       return environment;
     }();
     renderer_->beginFrame(camera, kEnvironment);
+    renderer_->draw(stars_, Scene::Transform::identity(),
+                    {.shading = Scene::Material::Shading::Unlit});
     if (latest_) {
       const State &state = latest_->state;
+      // How far through the latest move's animation (0 to 1)
+      const float t = static_cast<float>(
+          std::chrono::duration<double>(Clock::now() - motionStarted_).count() / kSecondsAnimating);
       const auto toon = [](Scene::Colour colour) {
         return Scene::Material{.shading = Scene::Material::Shading::Toon, .colour = colour};
+      };
+      // A tile turning over: lifted a little, its face down side first, then
+      // its face up, about the axis across the screen
+      const auto drawTile = [&](CosmicHex::Hex hex, std::optional<float> turn, Scene::Colour down,
+                                Scene::Colour up) {
+        if (!turn) {
+          renderer_->draw(hexTile_, BoardPieces::onHex(hex), toon(up));
+          return;
+        }
+        const float half = 1.5707963f;
+        const bool upSide = *turn > half;
+        const auto lift = Scene::Transform::translation({0, 0.6f * std::sin(*turn), 0});
+        const auto spin = Scene::Transform::rotation({1, 0, 0}, upSide ? *turn - 2 * half : *turn);
+        renderer_->draw(hexTile_, BoardPieces::onHex(hex) * lift * spin, toon(upSide ? up : down));
       };
       // The planets, face down or by kind, and the homes
       for (std::size_t i = 0; i < state.planets.size(); ++i) {
@@ -193,18 +220,24 @@ private:
         const Scene::Colour colour = planet.homeOf >= 0 ? BoardColours::kHome
                                      : planet.flipped   ? BoardColours::ofKind(planet.kind)
                                                         : BoardColours::kFaceDown;
-        renderer_->draw(hexTile_, BoardPieces::onHex(planet.hex), toon(colour));
+        drawTile(planet.hex, motion_.planetTurn(i, t), BoardColours::kFaceDown, colour);
       }
-      // The deep-space zone's sites still face down
-      for (const CosmicHex::ZoneSite &site : state.zone)
-        if (!site.flipped)
-          renderer_->draw(hexTile_, BoardPieces::onHex(site.hex), toon(BoardColours::kZone));
+      // The deep-space zone's sites: face down, or what was found there
+      for (std::size_t i = 0; i < state.zone.size(); ++i) {
+        const CosmicHex::ZoneSite &site = state.zone[i];
+        const Scene::Colour found = site.find == CosmicHex::Find::AlienStation
+                                        ? BoardColours::kOutpost
+                                        : BoardColours::kFound;
+        drawTile(site.hex, motion_.siteTurn(i, t), BoardColours::kZone,
+                 site.flipped ? found : BoardColours::kZone);
+      }
       for (const CosmicHex::Station &station : state.stations)
         renderer_->draw(station.colony ? colony_ : station_, BoardPieces::onCorner(station.at),
                         toon(BoardColours::ofPlayer(station.owner)));
-      for (const CosmicHex::Ship &ship : state.ships)
-        renderer_->draw(ship_, BoardPieces::onCorner(ship.corner),
-                        toon(BoardColours::ofPlayer(ship.owner)));
+      // Ships, sliding from where they were
+      for (std::size_t i = 0; i < state.ships.size(); ++i)
+        renderer_->draw(ship_, Scene::Transform::translation(motion_.shipAt(i, t)),
+                        toon(BoardColours::ofPlayer(state.ships[i].owner)));
       if (state.blockade >= 0)
         renderer_->draw(
             ship_, BoardPieces::onHex(state.planets[static_cast<std::size_t>(state.blockade)].hex),
@@ -243,8 +276,10 @@ private:
 
   std::optional<Scene::Display> display_;
   std::optional<Scene::Renderer> renderer_;
-  Scene::Mesh hexTile_, station_, colony_, ship_;
+  Scene::Mesh hexTile_, station_, colony_, ship_, stars_;
   std::optional<TableSnapshot> latest_;
+  BoardMotion motion_;
+  Clock::time_point motionStarted_;
   Input::Gamepad lastPad_;
   float turn_ = 0;
 };
