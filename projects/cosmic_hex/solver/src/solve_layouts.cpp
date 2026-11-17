@@ -13,7 +13,8 @@
 // from every home than pairs and singles), --nearest-single, --nearest-pair,
 // --nearest-three A-B (from every home, in ship moves), --reach-moves D
 // --in-reach A-B (every home has A to B planets within D moves), --attempts
-// N, --keep N, --seed N, --name PREFIX.
+// N, --same-near D (every home the same planets within each distance up to
+// D moves; 0: off), --keep N, --seed N, --name PREFIX.
 #include <CosmicHex/Solver/LayoutSolver.hpp>
 
 #include <charconv>
@@ -78,6 +79,8 @@ int main(int argc, char **argv) {
       spec.reachMoves = number(value);
     else if (flag == "--in-reach")
       spec.planetsInReach = boundOf(value);
+    else if (flag == "--same-near")
+      spec.sameNearPlanetsWithin = number(value);
     else if (flag == "--attempts")
       spec.attempts = number(value);
     else if (flag == "--keep")

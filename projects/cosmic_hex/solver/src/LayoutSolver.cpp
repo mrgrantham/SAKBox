@@ -251,10 +251,18 @@ std::optional<SolvedLayout> attempt(const SolverSpec &spec, SeededRandom::Genera
       return std::nullopt;
     double access = 0;
     int inReach = 0;
+    std::vector<int> near(static_cast<std::size_t>(std::max(spec.sameNearPlanetsWithin, 0)) + 1, 0);
     for (Hex planet : board.planets) {
       const int d = planetMoves(planet, moves);
       access += 1.0 / (1.0 + d);
       inReach += d <= spec.reachMoves;
+      for (int within = 1; within <= spec.sameNearPlanetsWithin; ++within)
+        near[static_cast<std::size_t>(within)] += d <= within;
+    }
+    if (spec.sameNearPlanetsWithin > 0) {
+      if (!out.near.empty() && out.near.front() != near)
+        return std::nullopt; // (a home with more or fewer planets near it)
+      out.near.push_back(near);
     }
     if (!spec.planetsInReach.holds(inReach))
       return std::nullopt;

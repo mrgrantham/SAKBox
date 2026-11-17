@@ -78,3 +78,19 @@ TEST(LayoutSolverTest, ThreeHomesRepeatByThirds) {
     EXPECT_EQ(l.clusters[0] % 3, 0);
   }
 }
+
+// Round 83: every home with the same number of planets within each
+// distance up to 3 moves
+TEST(LayoutSolverTest, SameNearPlanetsFromEveryHome) {
+  SolverSpec spec;
+  spec.homes = HomePlaces::Corners;
+  spec.sameNearPlanetsWithin = 3;
+  spec.attempts = 4000;
+  const auto layouts = solve(spec);
+  ASSERT_FALSE(layouts.empty());
+  for (const SolvedLayout &l : layouts) {
+    ASSERT_EQ(l.near.size(), l.homes.size());
+    for (const auto &counts : l.near)
+      EXPECT_EQ(counts, l.near.front());
+  }
+}

@@ -643,6 +643,9 @@ void LabWindowPadd::drawSolverTab() {
   ImGui::InputInt("Planets within this many moves", &spec.reachMoves);
   spec.reachMoves = std::clamp(spec.reachMoves, 1, 20);
   bound("...how many (floor, ceiling)", spec.planetsInReach);
+  ImGui::InputInt("Same planets near every home, within (moves; 0: off)",
+                  &spec.sameNearPlanetsWithin);
+  spec.sameNearPlanetsWithin = std::clamp(spec.sameNearPlanetsWithin, 0, 6);
   ImGui::InputInt("Attempts", &spec.attempts, 1000, 10000);
   spec.attempts = std::clamp(spec.attempts, 100, 500000);
   if (ImGui::Button("Solve"))

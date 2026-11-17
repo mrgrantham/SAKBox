@@ -63,6 +63,12 @@ struct SolverSpec {
   // Every home has at least this many planets within this many ship moves
   int reachMoves = 4;
   Bound planetsInReach = Bound::atLeast(0);
+  // Every home has the same number of planets within each distance up to
+  // this many ship moves (0: off). Round 83's finding: of the solver's
+  // boards, the one with equal access overall but a planet fewer within 2
+  // moves for two homes was the most unfair (those homes won 20% to the
+  // others' 29%); every fair board had equal counts near every home
+  int sameNearPlanetsWithin = 0;
 
   // The search
   int attempts = 20000;
@@ -79,6 +85,8 @@ struct SolvedLayout {
   // the spread between the best and worst served home (the ranking)
   std::vector<double> access;
   double accessSpread = 0;
+  // (sameNearPlanetsWithin) each home's planets within 1, 2, ... moves
+  std::vector<std::vector<int>> near;
 };
 
 // The layouts found, the most equal first
