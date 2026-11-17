@@ -71,3 +71,7 @@ The app is `handheld/source/cosmic_hex_on_a_handheld.cpp`. What it plays and dra
 - the other players' contracts hidden from a bot;
 - the text of the starting state and of every action;
 - two bots playing a whole game to a winner, whose action log replays exactly.
+
+## Dice
+
+`dice/` throws the two dice in Cyclone (round 87): the top screen is a glass container (a floor, walls at the screen's edges, a lid), two dice are thrown in from the left and the faces they settle on are the roll; then the container is pulled off the screen, the dice still simulated and sliding on its floor. A seed decides the throw, so the same seed throws the same on the same machine. `bazel run -c opt //projects/cosmic_hex/dice:dice_fairness -- 20000` throws them many times and checks each face comes up a sixth of the time and the sums match two fair dice (chi-square); `dice_fairness_float` and `dice_fairness_flex_point16` do the same in the 3DS's float and the DS's 16.16 fixed point.
