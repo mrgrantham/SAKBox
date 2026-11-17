@@ -988,32 +988,55 @@ TEST(RulesTest, HomeIncomeSteps) {
 }
 
 // Finish the round (round 69): reaching the points to win plays out the
-// round; then the most points wins, a tie to the later in turn order
+// round; then the most points wins; a tie, the most stations and colonies
+// (round 75); still tied, a shared win
 TEST(RulesTest, FinishTheRound) {
+  const auto playOut = [](State &state, int tiedPlayer, int extraStations) {
+    // Player 1 reaches the points to win by cashing badges
+    state.player[0].badges = state.settings.badgesPerPoint;
+    state.player[0].badgePoints += state.settings.winPoints - points(state, 0) - 1;
+    EXPECT_TRUE(Game::apply(state, {Kind::CashBadges}));
+    EXPECT_TRUE(state.finalRound);
+    EXPECT_FALSE(Game::isOver(state)); // (players 2 and 3 still play)
+    EXPECT_TRUE(Game::apply(state, {Kind::EndTurn}));
+    // Another draws level on points, with more stations or not
+    // (docked on planets: this test plays without corners)
+    for (Planet &planet : state.planets) {
+      if (extraStations > 0 && planet.homeOf < 0 && planet.docks[0] < 0) {
+        planet.docks[0] = tiedPlayer;
+        --extraStations;
+      }
+    }
+    state.player[static_cast<std::size_t>(tiedPlayer)].badgePoints +=
+        points(state, 0) - points(state, tiedPlayer);
+    for (int turn = 1; turn < 3 && !Game::isOver(state); ++turn) {
+      if (state.phase == Phase::HomeIncome) {
+        EXPECT_TRUE(Game::apply(state, {Kind::ChooseHome, 0}));
+      }
+      EXPECT_EQ(state.phase, Phase::RollDraw);
+      EXPECT_TRUE(Game::apply(state, {Kind::Roll, 1, 2}));
+      EXPECT_TRUE(Game::apply(state, {Kind::EndTurn}));
+    }
+  };
   Settings settings;
   settings.finishRound = true;
-  State state = newGame(3, settings);
-  ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 0}));
-  ASSERT_TRUE(Game::apply(state, {Kind::Roll, 1, 2}));
-  ASSERT_EQ(state.turn, 0);
-  // Player 1 reaches the points to win by cashing badges
-  state.player[0].badges = state.settings.badgesPerPoint;
-  state.player[0].badgePoints += state.settings.winPoints - points(state, 0) - 1;
-  ASSERT_TRUE(Game::apply(state, {Kind::CashBadges}));
-  EXPECT_TRUE(state.finalRound);
-  EXPECT_FALSE(Game::isOver(state)); // (players 2 and 3 still play)
-  ASSERT_TRUE(Game::apply(state, {Kind::EndTurn}));
-  // Player 3 draws level by the end of the round: theirs, the later
-  state.player[2].badgePoints += points(state, 0) - points(state, 2);
-  for (int turn = 1; turn < 3; ++turn) {
-    if (state.phase == Phase::HomeIncome) {
-      ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 0}));
-    }
-    ASSERT_EQ(state.phase, Phase::RollDraw);
-    ASSERT_TRUE(Game::apply(state, {Kind::Roll, 1, 2}));
-    ASSERT_FALSE(Game::isOver(state));
-    ASSERT_TRUE(Game::apply(state, {Kind::EndTurn}));
-  }
-  ASSERT_TRUE(Game::isOver(state));
-  EXPECT_EQ(state.winner, 2);
+  const auto started = [&] {
+    State state = newGame(3, settings);
+    EXPECT_TRUE(Game::apply(state, {Kind::ChooseHome, 0}));
+    EXPECT_TRUE(Game::apply(state, {Kind::Roll, 1, 2}));
+    EXPECT_EQ(state.turn, 0);
+    return state;
+  };
+  // Level on points and stations: a shared win
+  State shared = started();
+  playOut(shared, 2, 0);
+  ASSERT_TRUE(Game::isOver(shared));
+  EXPECT_EQ(shared.winners, (std::vector<int>{0, 2}));
+  EXPECT_EQ(shared.winner, 0);
+  // Level on points, more stations: theirs alone
+  State stations = started();
+  playOut(stations, 2, 2);
+  ASSERT_TRUE(Game::isOver(stations));
+  EXPECT_EQ(stations.winners, (std::vector<int>{2}));
+  EXPECT_EQ(stations.winner, 2);
 }

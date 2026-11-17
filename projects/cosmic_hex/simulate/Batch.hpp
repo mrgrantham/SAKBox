@@ -147,10 +147,11 @@ struct Bots {
 // One game and what came of it
 struct GameResult {
   int game = 0;
-  std::string seed; // its seed's code
-  int first = 0;    // who went first (from 0)
-  int strong = -1;  // who had the stronger bot, or -1
-  int winner = -1;  // or -1 if it was stopped unfinished
+  std::string seed;       // its seed's code
+  int first = 0;          // who went first (from 0)
+  int strong = -1;        // who had the stronger bot, or -1
+  int winner = -1;        // or -1 if it was stopped unfinished
+  bool sharedWin = false; // (a tie after the round: the winner one of those sharing it)
   int rounds = 0;
   int actions = 0;
   std::array<int, kMaxPlayers> points{};

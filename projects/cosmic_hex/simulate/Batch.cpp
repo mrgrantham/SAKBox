@@ -387,7 +387,14 @@ GameResult playGame(const Options &options, int game, const Bots &bots) {
     GameBots::playMatch<Game>(play, players, dealer, 1);
 
   const State &end = play.state();
-  result.winner = end.winner;
+  // A shared win (round 75) counted as one of its winners, drawn at random,
+  // so the seats' win shares stay fair (the rules name the first in turn
+  // order)
+  result.winner = end.winners.size() > 1
+                      ? end.winners[seed.stream("shared win")
+                                        .below(static_cast<std::uint32_t>(end.winners.size()))]
+                      : end.winner;
+  result.sharedWin = end.winners.size() > 1;
   result.rounds = end.round;
   result.actions = static_cast<int>(play.log().actions.size());
   for (int p = 0; p < options.players; ++p) {

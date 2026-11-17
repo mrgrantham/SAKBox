@@ -765,14 +765,19 @@ void endTurn(State &state) {
     ++state.round;
   // (finishRound) the round played out: the most points wins, a tie going to
   // the later in turn order
+  // (finishRound) the round played out: the most points wins; a tie, the
+  // most stations and colonies on the board; still tied, a shared win
   if (state.finalRound && state.turn == state.first) {
-    int best = -1;
+    const auto standing = [&](int p) { return std::pair{points(state, p), stationsOf(state, p)}; };
+    std::pair<int, int> best{-1, -1};
+    for (int p = 0; p < state.players; ++p)
+      best = std::max(best, standing(p));
     for (int step = 0; step < state.players; ++step) {
       const int p = (state.first + step) % state.players;
-      if (best < 0 || points(state, p) >= points(state, best))
-        best = p;
+      if (standing(p) == best)
+        state.winners.push_back(p);
     }
-    state.winner = best;
+    state.winner = state.winners.front();
     state.phase = Phase::Over;
     return;
   }
@@ -2395,12 +2400,12 @@ std::string Game::writeState(const State &state) {
       << " deck=" << joined(state.deck) << "\n";
   out << "blockade=" << state.blockade << " core=" << state.coreHolder
       << " embargo=" << state.embargoHolder << "," << (state.cardPlayed ? 1 : 0)
-      << " winner=" << state.winner << " roll=" << state.lastRoll
-      << " pending=" << state.pendingPlanet << "," << state.pendingSite
-      << " victims=" << joined(state.victims) << " salvage=" << state.salvageLeft
-      << " income=" << state.homeIncomeLeft << " offered=" << state.offered[0] << ","
-      << state.offered[1] << " first=" << state.first << " setup=" << state.setupStep
-      << (state.placingShip ? " placing" : "") << "\n";
+      << " winner=" << state.winner << " winners=" << joined(state.winners)
+      << " roll=" << state.lastRoll << " pending=" << state.pendingPlanet << ","
+      << state.pendingSite << " victims=" << joined(state.victims)
+      << " salvage=" << state.salvageLeft << " income=" << state.homeIncomeLeft
+      << " offered=" << state.offered[0] << "," << state.offered[1] << " first=" << state.first
+      << " setup=" << state.setupStep << (state.placingShip ? " placing" : "") << "\n";
   out << "final=" << (state.finalRound ? 1 : 0) << " trading=" << (state.tradingDone ? 1 : 0)
       << " offer=" << state.offer.give << "," << state.offer.get << "," << state.offer.to << ","
       << state.offer.replier << "," << state.offer.counterGive << "," << state.offer.counterGet

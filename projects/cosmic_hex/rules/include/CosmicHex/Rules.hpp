@@ -360,6 +360,10 @@ struct State {
   int embargoHolder = -1;  // who holds the Galactic Embargo, or -1
   bool cardPlayed = false; // an Enforcer played this turn (one a turn)
   int winner = -1;
+  // Everyone who shares the win (round 75: finishing the round, a tie on
+  // points goes to the most stations and colonies, then is shared); the
+  // winner is the first of them in turn order
+  std::vector<int> winners;
   bool finalRound = false; // (Settings::finishRound) someone has reached winPoints
   int lastRoll = 0;
   int pendingPlanet = -1, pendingSite = -1; // being turned over
