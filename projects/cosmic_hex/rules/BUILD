@@ -5,11 +5,13 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 cc_library(
     name = "rules",
     srcs = [
+        "src/Describe.cpp",
         "src/Rules.cpp",
         "src/TradingRule.cpp",
     ],
     hdrs = [
         "include/CosmicHex/BotStyles.hpp",
+        "include/CosmicHex/Describe.hpp",
         "include/CosmicHex/Rules.hpp",
         "include/CosmicHex/TradingRule.hpp",
     ],
@@ -21,6 +23,19 @@ cc_library(
         "//projects/hex_grid",
         "//projects/seeded_random",
     ],
+)
+
+# The sources, for a 3DS or DS build (devkitPro's Makefile builds, given
+# these by extra_srcs, with action_log's, game_bots', hex_grid's and
+# seeded_random's; add rules/include to the Makefile's INCLUDES and rules/src
+# to its SOURCES)
+filegroup(
+    name = "sources",
+    srcs = glob([
+        "include/**",
+        "src/**",
+    ]),
+    visibility = ["//visibility:public"],
 )
 
 cc_test(
