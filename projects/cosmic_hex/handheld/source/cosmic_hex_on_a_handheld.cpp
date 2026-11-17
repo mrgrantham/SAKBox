@@ -13,16 +13,21 @@
 //              and the bots' moves, one at a time, paced so they can be
 //              watched, and sends ScreenPadd each new state
 //
-// The first build (round 71): four bots, to watch it run and time the bots.
-// A: pause or go on   L/R: turn the board   X/Y: zoom the bottom board in
+// At the start: A to play against three bots (you're player 1), B to watch
+// four. On your move, the moves you can make are listed on the top screen:
+// touch the board to list those at a spot, up and down to choose, A to make
+// it, B to list them all again. Watching: A pauses or goes on.
+// L/R: turn the board   X/Y: zoom the bottom board in
 // and out   touch: select a hex (drag: move the board when zoomed)   START: quit
 #include <3ds.h>
 #include <ScratchPadd/Scene/3DS/Display.hpp>
 
 #include <CosmicHex/Art.hpp>
+#include <CosmicHex/Describe.hpp>
 #include <CosmicHex/Handheld/BoardMotion.hpp>
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/MoveSpots.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
 
 #include <ScratchPadd/AboutPadd.hpp>
@@ -58,24 +63,45 @@ using Clock = std::chrono::steady_clock;
 constexpr double kSecondsAMove = 0.6;
 constexpr double kSecondsAnimating = 0.35;
 
-// The game as it stands (TablePadd to ScreenPadd), after each move
+// The game as it stands (TablePadd to ScreenPadd), after each move; and on
+// a person's move, the moves they can make, each in words
 struct TableSnapshot {
   State state;
   std::vector<std::string> lastMoves; // the newest last
   double lastThinkSeconds = 0;        // the last bot move's search
   bool paused = false;
+  bool yourMove = false;
+  std::vector<CosmicHex::Action> moves;
+  std::vector<std::string> moveText;
 };
 
-// A (ScreenPadd to TablePadd): pause or go on
+// ScreenPadd to TablePadd: start a game (you against three bots, or four
+// bots to watch); pause or go on (watching); the move you chose
+struct StartGame {
+  bool withPerson = false;
+};
 struct TogglePause {};
+struct PlayMove {
+  CosmicHex::Action move;
+};
 
 class TablePadd : public ScratchPadd::Base {
 public:
-  TablePadd(ScratchPadd::System *system)
-      : Base(system), game_(TableSettings{.botIterations = 40, .seed = startingSeed()}) {
+  TablePadd(ScratchPadd::System *system) : Base(system) {
+    receive<StartGame>([this](const StartGame &start) {
+      TableSettings settings{.botIterations = 40, .seed = startingSeed()};
+      if (start.withPerson)
+        settings.seats[0] = Seat::Person; // (you're player 1)
+      game_.emplace(settings);
+      sendSnapshot();
+    });
     receive<TogglePause>([this](const TogglePause &) {
       paused_ = !paused_;
       sendSnapshot();
+    });
+    receive<PlayMove>([this](const PlayMove &chosen) {
+      if (game_ && game_->play(chosen.move))
+        sendSnapshot();
     });
   }
   std::string name() override { return "TablePadd"; }
@@ -83,16 +109,15 @@ public:
   std::optional<std::chrono::duration<double>> repeatInterval() override {
     return std::chrono::duration<double>(kSecondsAMove);
   }
-  void starting() override { sendSnapshot(); }
   void repeat() override {
-    if (paused_ || game_.over())
+    if (!game_ || paused_ || game_->over() || game_->waitingForPerson())
       return;
     // The dealer's draws straight through; then one player's move
     for (;;) {
-      const bool dealer = CosmicHex::Game::currentPlayer(game_.state()) == GameBots::kDealer;
+      const bool dealer = CosmicHex::Game::currentPlayer(game_->state()) == GameBots::kDealer;
       const auto started = Clock::now();
-      if (!game_.step())
-        break; // (over, or a bug: the game stops where it is)
+      if (!game_->step())
+        break; // (over, a person's move, or a bug: the game waits)
       if (!dealer) {
         lastThinkSeconds_ = std::chrono::duration<double>(Clock::now() - started).count();
         break;
@@ -102,21 +127,28 @@ public:
   }
 
 private:
-  // A new game each time the app starts: the seed from the clock
+  // A new game each time: the seed from the clock
   static std::uint64_t startingSeed() {
     return static_cast<std::uint64_t>(Clock::now().time_since_epoch().count());
   }
   void sendSnapshot() {
-    const auto &history = game_.history();
+    const auto &history = game_->history();
     const std::size_t shown = std::min<std::size_t>(history.size(), 8);
-    send(TableSnapshot{.state = game_.state(),
-                       .lastMoves = std::vector<std::string>(
-                           history.end() - static_cast<long>(shown), history.end()),
-                       .lastThinkSeconds = lastThinkSeconds_,
-                       .paused = paused_});
+    TableSnapshot snapshot{.state = game_->state(),
+                           .lastMoves = std::vector<std::string>(
+                               history.end() - static_cast<long>(shown), history.end()),
+                           .lastThinkSeconds = lastThinkSeconds_,
+                           .paused = paused_};
+    if (game_->waitingForPerson()) {
+      snapshot.yourMove = true;
+      snapshot.moves = CosmicHex::Game::legalActions(game_->state());
+      for (const CosmicHex::Action &move : snapshot.moves)
+        snapshot.moveText.push_back(CosmicHex::describe(game_->state(), move));
+    }
+    send(std::move(snapshot));
   }
 
-  TableGame game_;
+  std::optional<TableGame> game_;
   bool paused_ = false;
   double lastThinkSeconds_ = 0;
 };
@@ -177,8 +209,7 @@ private:
       system_->stop();
       return;
     }
-    if (pressed.pressed(Input::Button::FaceRight)) // A
-      send(TogglePause{});
+    handleButtons(pressed);
     // X and Y zoom the bottom board in and out
     if (pressed.pressed(Input::Button::FaceTop)) {
       picture_->setZoom(picture_->zoom() + 1);
@@ -284,12 +315,19 @@ private:
   // The bottom screen: each player's points and resources, and the last
   // moves in words (written when a move comes, not each frame)
   // Over the top screen: the round, each player's points and resources in
-  // their colour, and the last move in words
+  // their colour, and the last move in words; before a game, the choice; on
+  // your move, the moves you can make
   void drawText() {
+    Scene::Overlay &overlay = renderer_->overlay();
+    if (mode_ == Mode::Choosing) {
+      overlay.text(150, 90, "Cosmic Hex", {226, 232, 244}, 2);
+      overlay.text(110, 130, "A: play against three bots", {255, 214, 90});
+      overlay.text(110, 145, "B: watch four bots play", {200, 208, 222});
+      return;
+    }
     if (!latest_)
       return;
     const State &state = latest_->state;
-    Scene::Overlay &overlay = renderer_->overlay();
     char line[64];
     std::snprintf(line, sizeof line, "Round %d%s", state.round,
                   latest_->paused ? "  (paused: A)" : "");
@@ -303,10 +341,64 @@ private:
     }
     if (!latest_->lastMoves.empty())
       overlay.text(4, 226, latest_->lastMoves.back(), {200, 208, 222});
+    if (mode_ == Mode::Playing && latest_->yourMove)
+      drawMoves(overlay);
     if (state.winner >= 0) {
       std::snprintf(line, sizeof line, "Player %d wins!  START: quit", state.winner + 1);
       overlay.text(130, 110, line, {255, 214, 90}, 1.5f);
     }
+  }
+
+  // The buttons. Before a game: A to play against three bots, B to watch
+  // four. Watching: A pauses or goes on. Playing, on your move: up and down
+  // choose from the list (the moves at the touched spot, or all of them), A
+  // makes it, B shows them all again
+  void handleButtons(const Input::Edges &pressed) {
+    using Input::Button;
+    if (mode_ == Mode::Choosing) {
+      if (pressed.pressed(Button::FaceRight) || pressed.pressed(Button::FaceBottom)) {
+        const bool play = pressed.pressed(Button::FaceRight);
+        mode_ = play ? Mode::Playing : Mode::Watching;
+        send(StartGame{.withPerson = play});
+      }
+      return;
+    }
+    if (mode_ == Mode::Watching) {
+      if (pressed.pressed(Button::FaceRight))
+        send(TogglePause{});
+      return;
+    }
+    if (!latest_ || !latest_->yourMove)
+      return;
+    const std::vector<std::size_t> shown = movesShown();
+    if (pressed.pressed(Button::Down) && cursor_ + 1 < shown.size())
+      ++cursor_;
+    if (pressed.pressed(Button::Up) && cursor_ > 0)
+      --cursor_;
+    if (pressed.pressed(Button::FaceBottom)) {
+      selected_.reset();
+      cursor_ = 0;
+      bottomDirty_ = true;
+    }
+    if (pressed.pressed(Button::FaceRight) && cursor_ < shown.size()) {
+      send(PlayMove{latest_->moves[shown[cursor_]]});
+      latest_->yourMove = false; // (until the game says it's yours again)
+      selected_.reset();
+      cursor_ = 0;
+      bottomDirty_ = true;
+    }
+  }
+
+  // The moves listed on your move: those at the touched spot, or all of
+  // them (their places in the snapshot's list)
+  std::vector<std::size_t> movesShown() const {
+    std::vector<std::size_t> shown;
+    if (!latest_)
+      return shown;
+    for (std::size_t i = 0; i < latest_->moves.size(); ++i)
+      if (!selected_ || concerns(latest_->state, latest_->moves[i], *selected_))
+        shown.push_back(i);
+    return shown;
   }
 
   // A touch: a tap selects the hex (and corner) under it; a drag moves the
@@ -326,9 +418,34 @@ private:
       touchLast_ = {touch.x, touch.y};
     } else if (touchWasDown_ && !dragged_) {
       selected_ = picture_->at(touchStart_[0], touchStart_[1]);
+      cursor_ = 0;
       bottomDirty_ = true;
     }
     touchWasDown_ = touch.down;
+  }
+
+  // Your moves, under the scores: a window of the list round the cursor,
+  // the chosen one highlighted
+  void drawMoves(Scene::Overlay &overlay) {
+    const std::vector<std::size_t> shown = movesShown();
+    overlay.rectangle(0, 60, 400, 156, {12, 18, 30, 210});
+    const char *heading =
+        selected_ ? "Your moves here (B: all moves)" : "Your moves (touch the board to narrow)";
+    overlay.text(6, 64, heading, {255, 214, 90});
+    if (shown.empty()) {
+      overlay.text(6, 80, "None here: touch elsewhere, or B for all", {200, 208, 222});
+      return;
+    }
+    constexpr std::size_t kLines = 12;
+    const std::size_t first = cursor_ >= kLines ? cursor_ - kLines + 1 : 0;
+    for (std::size_t line = 0; line < kLines && first + line < shown.size(); ++line) {
+      const std::size_t i = first + line;
+      std::string text = (i == cursor_ ? "> " : "  ") + latest_->moveText[shown[i]];
+      if (text.size() > 64)
+        text = text.substr(0, 62) + "..";
+      overlay.text(6, 78 + 11 * static_cast<float>(line), text,
+                   i == cursor_ ? Scene::Colour{255, 214, 90} : Scene::Colour{200, 208, 222});
+    }
   }
 
   // The bottom screen: the board drawn flat, the selection marked, copied
@@ -386,6 +503,10 @@ private:
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};
   std::optional<BoardPicture::Spot> selected_;
+  // Before a game, watching one, or playing in one; the list's cursor
+  enum class Mode : std::uint8_t { Choosing, Watching, Playing };
+  Mode mode_ = Mode::Choosing;
+  std::size_t cursor_ = 0;
 };
 
 } // namespace

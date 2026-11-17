@@ -10,12 +10,14 @@ cc_library(
         "src/BoardMotion.cpp",
         "src/BoardPicture.cpp",
         "src/BoardPieces.cpp",
+        "src/MoveSpots.cpp",
         "src/TableGame.cpp",
     ],
     hdrs = [
         "include/CosmicHex/Handheld/BoardMotion.hpp",
         "include/CosmicHex/Handheld/BoardPicture.hpp",
         "include/CosmicHex/Handheld/BoardPieces.hpp",
+        "include/CosmicHex/Handheld/MoveSpots.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",
     ],
     strip_include_prefix = "include/",
@@ -77,6 +79,16 @@ cc_test(
     name = "BoardPicture_test",
     size = "small",
     srcs = ["tests/BoardPicture_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "MoveSpots_test",
+    size = "small",
+    srcs = ["tests/MoveSpots_test.cpp"],
     deps = [
         ":handheld",
         "@gtest//:gtest_main",
