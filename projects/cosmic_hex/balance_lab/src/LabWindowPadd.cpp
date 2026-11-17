@@ -177,6 +177,7 @@ void LabWindowPadd::starting() {
     solveLayouts();
     showSolver_ = true;
     if (startProving() > 0 && !solved_.empty()) {
+      boardsToProve_ = startProving(); // (as the field shows it)
       gamesBeforeProving_ = options_.games;
       proving_.start(
           std::min<std::size_t>(static_cast<std::size_t>(startProving()), solved_.size()),
