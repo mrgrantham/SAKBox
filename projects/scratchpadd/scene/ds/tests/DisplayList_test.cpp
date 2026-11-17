@@ -266,8 +266,9 @@ TEST(DisplayListTest, ImageTexturesSendTheirCoordinates) {
   for (const Sent &s : sent) {
     if (s.command == KTexCoord)
       coordinates.push_back(s.parameters[0]);
-    if (s.command == KColour)
+    if (s.command == KColour) {
       EXPECT_EQ(s.parameters[0], rgb15({255, 255, 255})); // (white: the image's colours)
+    }
   }
   ASSERT_FALSE(coordinates.empty());
   // (0, 1) is the image's bottom left: s 0, t 16 texels; (1, 0) its top
