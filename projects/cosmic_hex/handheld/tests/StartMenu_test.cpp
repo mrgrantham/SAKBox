@@ -73,7 +73,7 @@ TEST(StartMenuTest, ButtonsMoveAndChange) {
 }
 
 TEST(StartMenuTest, TouchesChangeRowsAndStart) {
-  for (const auto [w, h] : {std::pair{320, 240}, std::pair{256, 192}}) {
+  for (const auto &[w, h] : {std::pair{320, 240}, std::pair{256, 192}}) {
     StartMenu menu;
     auto [x, y] = middleOf(menu, Row::Board, +1, Outcome::None, w, h);
     EXPECT_EQ(menu.touch(x, y, w, h), Outcome::None);

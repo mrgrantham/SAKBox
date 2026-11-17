@@ -548,7 +548,7 @@ private:
       // change it, A starts what's chosen, B watches
       using Key = StartMenu::Key;
       StartMenu::Outcome outcome = StartMenu::Outcome::None;
-      for (const auto [button, key] :
+      for (const auto &[button, key] :
            {std::pair{Button::Up, Key::Up}, std::pair{Button::Down, Key::Down},
             std::pair{Button::Left, Key::Left}, std::pair{Button::Right, Key::Right},
             std::pair{Button::FaceRight, Key::Confirm}, std::pair{Button::FaceBottom, Key::Back}})

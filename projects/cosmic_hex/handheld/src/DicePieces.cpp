@@ -46,7 +46,7 @@ DicePieces::DicePieces() {
   };
   for (const Face &face : faces) {
     const Scene::Vector3 middle = face.normal * 0.502f; // (a hair above the face)
-    for (const auto [across, down] : pipsOf(face.number)) {
+    for (const auto &[across, down] : pipsOf(face.number)) {
       const Scene::Vector3 c = middle + face.u * (kPipSpread * static_cast<float>(across)) +
                                face.v * (kPipSpread * static_cast<float>(down));
       const Scene::Vector3 u = face.u * kPipHalf, v = face.v * kPipHalf;
