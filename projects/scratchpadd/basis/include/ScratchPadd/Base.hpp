@@ -775,7 +775,7 @@ private:
   void runJob(WorkQueue::Job &job) {
     // (this padd's, any memory the job allocates: MemoryStats.hpp)
     if (memorySlot_ < 0)
-      memorySlot_ = MemoryStats::slotFor(name());
+      memorySlot_ = MemoryStats::slotFor(name_); // (the name as read once: name_)
     const MemoryStats::Owner owner(memorySlot_);
     MessageStats *stats =
         system_ && system_->messageStats().counting() ? &system_->messageStats() : nullptr;
