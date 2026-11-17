@@ -137,6 +137,11 @@ struct Settings {
   // leader (0: off)
   int catchUpBelow = 0;
   int catchUpGap = 0;
+  // Or the home's income in steps by points (round 67, after Starfarers'
+  // reserve pile: 2 a turn, then 1, then none): each step is {from this
+  // many points, this many a turn}, in order; the last one reached counts.
+  // Set, it takes the place of catchUpBelow and catchUpGap
+  std::vector<std::array<int, 2>> homeIncomeSteps;
   // The exhausted home (rounds 60 to 62, the user's idea): on a player's
   // first turn with exhaustHomesAt points or more, the resource they choose
   // from their home is its last: the home becomes a planet of that kind,

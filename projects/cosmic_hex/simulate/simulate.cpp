@@ -124,7 +124,21 @@ Options parse(int argc, char **argv) {
       options.kindWeights = five(flag, value);
     else if (flag == "--exhaust")
       options.exhaustHomesAt = number<int>(flag, value);
-    else if (flag == "--home-die")
+    else if (flag == "--home-steps") { // from,amount,from,amount... (0,2,5,1)
+      std::string_view rest = value;
+      std::vector<int> numbers;
+      while (!rest.empty()) {
+        const std::size_t comma = rest.find(',');
+        numbers.push_back(number<int>(flag, rest.substr(0, comma)));
+        rest.remove_prefix(comma == std::string_view::npos ? rest.size() : comma + 1);
+      }
+      if (numbers.size() % 2 != 0) {
+        std::fprintf(stderr, "--home-steps needs pairs: from,amount (0,2,5,1)\n");
+        std::exit(2);
+      }
+      for (std::size_t i = 0; i < numbers.size(); i += 2)
+        options.homeIncomeSteps.push_back({numbers[i], numbers[i + 1]});
+    } else if (flag == "--home-die")
       options.homeDie = std::string_view(value) == "yes";
     else if (flag == "--trading")
       options.trading = std::string_view(value) != "no";

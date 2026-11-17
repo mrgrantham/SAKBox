@@ -433,6 +433,14 @@ void LabWindowPadd::drawSettings() {
   ImGui::InputInt("Cartel takes (0: all)", &options_.cartelTake);
   ImGui::Checkbox("Trading between players", &options_.trading);
   ImGui::Checkbox("Home income on the home die", &options_.homeDie);
+  // Starfarers' middle step (round 67): 2 a turn, then 1 from this many
+  // points (0: off, the catch-up rule)
+  int middleFrom = options_.homeIncomeSteps.size() == 2 ? options_.homeIncomeSteps[1][0] : 0;
+  if (ImGui::InputInt("Home: 1 a turn from (points; 0: off)", &middleFrom)) {
+    options_.homeIncomeSteps.clear();
+    if (middleFrom > 0)
+      options_.homeIncomeSteps = {{0, 2}, {middleFrom, 1}};
+  }
   // Round 61: free stations, and the ship costing a food more with them
   bool freeStations = options_.stationCost.has_value();
   if (ImGui::Checkbox("Free stations", &freeStations))

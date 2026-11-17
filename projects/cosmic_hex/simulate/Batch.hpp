@@ -53,6 +53,9 @@ struct Options {
   Resources kindWeights{1, 1, 1, 1, 1};
   bool exhaustedKindRandom = false; // (its kind drawn, not chosen)
   int exhaustHomesAt = 0;
+  // The home's income in steps by points ({from, a turn}, round 67); empty:
+  // the catch-up rule
+  std::vector<std::array<int, 2>> homeIncomeSteps;
   bool homeDie = false; // the home's resources rolled on the home die (round 66's hybrid)
   bool trading = true;  // trading between players (round 57), the bots by the trading rule
   int cartelTake = 0; // the Interstellar Cartel takes all (0), or up to this many from each // the

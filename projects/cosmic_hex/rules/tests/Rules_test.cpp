@@ -968,3 +968,18 @@ TEST(RulesTest, TheHomeDie) {
   EXPECT_EQ(Game::readAction(Game::writeAction({Kind::RollHomeDie, 5})),
             (Action{Kind::RollHomeDie, 5}));
 }
+
+// The home's income in steps (round 67, after Starfarers): 2 a turn below
+// the second step's points, then 1; and the steps read back from the text
+TEST(RulesTest, HomeIncomeSteps) {
+  Settings settings;
+  settings.homeIncomeSteps = {{0, 2}, {3, 1}};
+  const State early = newGame(3, settings); // (the home station: 1 point)
+  EXPECT_EQ(early.homeIncomeLeft, 2);
+  settings.homeIncomeSteps = {{0, 2}, {1, 1}};
+  const State later = newGame(3, settings);
+  EXPECT_EQ(later.homeIncomeLeft, 1);
+  const auto back = Game::readState(Game::writeState(later));
+  ASSERT_TRUE(back.has_value());
+  EXPECT_EQ(back->settings.homeIncomeSteps, settings.homeIncomeSteps);
+}

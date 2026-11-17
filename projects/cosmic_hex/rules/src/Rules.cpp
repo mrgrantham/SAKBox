@@ -542,6 +542,13 @@ int homeIncomeFor(const State &state, int player) {
   if (!hasHome)
     return 0;
   const int mine = points(state, player);
+  if (!settings.homeIncomeSteps.empty()) {
+    int income = 1;
+    for (const auto &[from, amount] : settings.homeIncomeSteps)
+      if (mine >= from)
+        income = amount;
+    return income;
+  }
   int leader = 0;
   for (int p = 0; p < state.players; ++p) {
     if (p != player)
@@ -552,8 +559,6 @@ int homeIncomeFor(const State &state, int player) {
   return behind ? 2 : 1;
 }
 
-// An Enforcer can be played in the main part of your turn, one a turn, but
-// not one bought this turn
 // ---- Trading between players (Settings::playerTrading)
 
 // After the roll's dealt with: trading first, if it's on and not done
@@ -780,6 +785,16 @@ std::optional<std::vector<int>> intList(std::string_view text) {
 
 std::string hexText(Hex hex) { return std::to_string(hex.q) + "," + std::to_string(hex.r); }
 
+// The home's income steps as one list (from, amount, from, amount...), and back
+std::vector<int> flatSteps(const std::vector<std::array<int, 2>> &steps) {
+  std::vector<int> out;
+  for (const auto &[from, amount] : steps) {
+    out.push_back(from);
+    out.push_back(amount);
+  }
+  return out;
+}
+
 std::string settingsText(const Settings &s) {
   std::ostringstream out;
   out << "settings win=" << s.winPoints << " ships=" << s.maxShips << " move=" << s.shipMove
@@ -808,12 +823,12 @@ std::string settingsText(const Settings &s) {
   }
   out << joined(homeList) << " extratiles=" << joined(s.extraTiles)
       << " extranumbers=" << joined(s.extraNumbers) << " catchup=" << s.catchUpBelow << ","
-      << s.catchUpGap << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0)
-      << " discardover=" << s.discardOver << " charters=" << joined(s.charters)
-      << " enforcers=" << s.enforcers << "," << s.embargoEnforcers << "," << s.embargoPoints
-      << " cartels=" << s.cartels << "," << s.cartelTake << " homedie=" << (s.homeDie ? 1 : 0)
-      << " shipyards=" << s.shipyards << " supply=" << s.supplyDrops << " moons=" << s.moons
-      << " planets=";
+      << s.catchUpGap << " homesteps=" << joined(flatSteps(s.homeIncomeSteps))
+      << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0) << " discardover=" << s.discardOver
+      << " charters=" << joined(s.charters) << " enforcers=" << s.enforcers << ","
+      << s.embargoEnforcers << "," << s.embargoPoints << " cartels=" << s.cartels << ","
+      << s.cartelTake << " homedie=" << (s.homeDie ? 1 : 0) << " shipyards=" << s.shipyards
+      << " supply=" << s.supplyDrops << " moons=" << s.moons << " planets=";
   std::vector<int> planetList;
   for (Hex hex : s.planetHexes) {
     planetList.push_back(hex.q);
@@ -849,6 +864,11 @@ std::optional<Settings> readSettings(std::string_view line) {
     const auto values = intList(field.substr(eq + 1));
     if (values && (key == "extratiles" || key == "extranumbers")) {
       (key == "extratiles" ? s.extraTiles : s.extraNumbers) = *values;
+      continue;
+    }
+    if (values && key == "homesteps" && values->size() % 2 == 0) {
+      for (std::size_t i = 0; i < values->size(); i += 2)
+        s.homeIncomeSteps.push_back({(*values)[i], (*values)[i + 1]});
       continue;
     }
     if (values && key == "catchup" && values->size() == 2) {
