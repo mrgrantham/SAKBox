@@ -5,6 +5,8 @@ SOURCES = {
     "//projects/cosmic_hex/handheld:sources": "cosmic_hex/handheld",
     "//projects/cosmic_hex/rules:sources": "cosmic_hex/rules",
     "//projects/cosmic_hex/dice:sources": "cosmic_hex/dice",
+    "//projects/cosmic_hex/models:rocket_3ds_sources": "assets",
+    "//projects/scratchpadd/title_scene:sources": "scratchpadd/title_scene",
     "//projects/cyclone:sources": "cyclone",
     "//projects/cosmic_hex/art:sources": "cosmic_hex/art",
     "//projects/scratchpadd/texture_recipe:sources": "scratchpadd/texture_recipe",
@@ -35,6 +37,7 @@ SOURCES = {
 # installs it on a 3DS.
 devkitpro_3ds_app(
     name = "cosmic-hex-3ds",
+    tags = ["blender"],  # (the title screen's rocket: tools/assets)
     srcs = ["Makefile"],
     extra_srcs = SOURCES,
     icon_letters = "CH",
@@ -44,6 +47,7 @@ devkitpro_3ds_app(
 # unattended runs in an emulator or on a console
 devkitpro_3ds_app(
     name = "cosmic-hex-3ds-watch",
+    tags = ["blender"],  # (the title screen's rocket: tools/assets)
     srcs = ["Makefile"],
     defines = ["COSMIC_HEX_WATCH_AT_START"],
     extra_srcs = SOURCES,

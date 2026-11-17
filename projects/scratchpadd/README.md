@@ -596,6 +596,7 @@ How the builds differ from a desktop's:
 | `//projects/scratchpadd/audio/made_sounds_pcm16` | The sounds made in code, rendered when the program is built, as 16-bit samples (`MadeSoundsPcm16.hpp`) |
 | `//projects/scratchpadd/midi_input` | `MidiInputPadd` (MIDI keyboards and controllers, desktops) and `:midi_input_messages` |
 | `//projects/scratchpadd/texture_recipe` | Textures drawn on the device from SVG drawings: the build turns a drawing into a recipe of filled outlines (`texture_recipe()` in `texture_recipe.bzl`), and `TextureRecipe::draw` draws it into pixels at any size, in RGBA or a palette of its own (closest colours merged, loudly, when they don't fit), with integers only: see [`texture_recipe`](texture_recipe/README.md) |
+| `//projects/scratchpadd/title_scene` | A game's title screen in 3D (`TitleScene.hpp`): its title in blocky letters (stb_easy_font's strokes as boxes, outlined), a model turning on its pedestal behind it, and a starfield turning slowly, drawn within a frame the game begins, so it can be shown at the start and again later; sources for console builds (`sources`, with `stb_easy_font.h`). Cosmic Hex's consoles use it with their rocket |
 | `//projects/scratchpadd/demo` | The demo app |
 
 ## Building and Testing

@@ -39,6 +39,13 @@
 #include <CosmicHex/Handheld/MoveSpots.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
+#include <ScratchPadd/TitleScene/TitleScene.hpp>
+// The title screen's rocket, as the build cooked it for this console
+#if defined(__NDS__)
+#include "rocket_ds.h"
+#else
+#include "rocket_3ds.h"
+#endif
 
 #include <ScratchPadd/AboutPadd.hpp>
 #include <ScratchPadd/AppEnded/AppEnded.hpp>
@@ -72,13 +79,19 @@ constexpr bool kWatchAtStart = true;
 #else
 constexpr bool kWatchAtStart = false;
 #endif
+
+// The title screen: the 3D scene (round 87), or the plain text title
+// (false). Which one a player sees, and how it's chosen, is an open
+// question on the roadmap page (round 87); the scene for now
+constexpr bool kTitleScene = true;
 #if defined(__NDS__)
 constexpr int kTopWidth = 256, kTopHeight = 192, kBottomWidth = 256, kBottomHeight = 192;
 constexpr std::size_t kCharsPerLine = 31;
 constexpr float kLineHeight = 10;
 constexpr int kBotIterations = 200;
 bool mainLoop() { return pmMainLoop(); }
-constexpr int kFaceSize = 32; // (the faces' textures: VRAM bank B is small)
+constexpr int kFaceSize = 32;    // (the faces' textures: VRAM bank B is small)
+constexpr int kTitleStars = 110; // (two polygons each, of the DS's 2048)
 #else
 constexpr int kTopWidth = 400, kTopHeight = 240, kBottomWidth = 320, kBottomHeight = 240;
 constexpr std::size_t kCharsPerLine = 64;
@@ -86,6 +99,7 @@ constexpr float kLineHeight = 11;
 constexpr int kBotIterations = 400; // (the simulations' bots)
 bool mainLoop() { return aptMainLoop(); }
 constexpr int kFaceSize = 64;
+constexpr int kTitleStars = 260;
 #endif
 namespace Input = ScratchPadd::Input;
 using CosmicHex::State;
@@ -266,6 +280,14 @@ public:
     stars_ = renderer_->load(pieces.stars.data());
     highlight_ = renderer_->load(pieces.highlight.data());
     die_ = renderer_->load(DicePieces().die.data());
+    // The title scene (round 87): the 3D title, the rocket, the night sky
+    // (fewer stars on the DS: each is two of its 2048 polygons)
+    title_.emplace(*renderer_, Assets::kRocket,
+                   ScratchPadd::TitleScene::Settings{.title = "COSMIC HEX",
+                                                     .aspect = static_cast<float>(kTopWidth) /
+                                                               static_cast<float>(kTopHeight),
+                                                     .stars = kTitleStars});
+    titleStarted_ = Clock::now();
     loadFaces();
     // The build that watches by itself (COSMIC_HEX_WATCH_AT_START: the
     // -watch apps), for unattended runs in an emulator or on a console
@@ -303,6 +325,12 @@ private:
     if (bottomDirty_)
       drawBottom();
     throwDice();
+    // Before a game, and once one's won, the title scene; otherwise the board
+    if (kTitleScene && (mode_ == Mode::Choosing || (latest_ && latest_->state.winner >= 0))) {
+      drawTitle();
+      push([this] { frame(); });
+      return;
+    }
     // L and R turn the board while held
     if (pad.isHeld(Input::Button::L))
       turn_ -= 0.02f;
@@ -310,6 +338,23 @@ private:
       turn_ += 0.02f;
     drawBoard();
     push([this] { frame(); });
+  }
+
+  // The title scene, turning; its words over it: before a game nothing (the
+  // menu's below), after one who won
+  void drawTitle() {
+    renderer_->beginFrame(title_->camera(), title_->environment());
+    title_->draw(
+        *renderer_,
+        static_cast<float>(std::chrono::duration<double>(Clock::now() - titleStarted_).count()));
+    if (mode_ != Mode::Choosing && latest_) {
+      char line[64];
+      std::snprintf(line, sizeof line, "Player %d wins!", latest_->state.winner + 1);
+      Scene::Overlay &overlay = renderer_->overlay();
+      overlay.text(kTopWidth / 2.0f - 70, kTopHeight - 40, line, {255, 214, 90}, 2);
+      overlay.text(kTopWidth / 2.0f - 50, kTopHeight - 16, "START: quit", {200, 208, 222});
+    }
+    renderer_->endFrame();
   }
 
   // The dice (round 87): when the game waits for them, they're thrown into
@@ -462,7 +507,8 @@ private:
   void drawText() {
     Scene::Overlay &overlay = renderer_->overlay();
     if (mode_ == Mode::Choosing) {
-      // The title; the menu is on the touch screen (StartMenu, round 87)
+      // The text title (when the 3D scene is off); the menu is on the touch
+      // screen (StartMenu, round 87)
       overlay.text(kTopWidth / 2.0f - 70, kTopHeight / 2.0f - 20, "Cosmic Hex", {226, 232, 244}, 2);
       return;
     }
@@ -686,6 +732,9 @@ private:
   Scene::Mesh hexTile_, numberChip_, station_, colony_, ship_, stars_, gaps_, highlight_;
   std::array<Scene::Texture, CosmicHex::Art::kFaces> faces_{};
   std::array<Scene::Texture, CosmicHex::Art::kHighestChip + 1> chips_{}; // (by number)
+  // The title scene
+  std::optional<ScratchPadd::TitleScene::TitleScene> title_;
+  Clock::time_point titleStarted_;
   // The physics dice
   enum class DiceStage : std::uint8_t { Idle, Rolling, Showing, Pulling };
   static constexpr int kFramesShowingDice = 45; // (about three quarters of a second)
