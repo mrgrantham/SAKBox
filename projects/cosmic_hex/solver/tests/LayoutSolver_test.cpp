@@ -94,3 +94,31 @@ TEST(LayoutSolverTest, SameNearPlanetsFromEveryHome) {
       EXPECT_EQ(counts, l.near.front());
   }
 }
+
+// Round 89: clusters of four (a diamond: four hexes, each touching at least
+// two of the others), with finds kept off threes and fours
+TEST(LayoutSolverTest, FoursAreDiamondsAndFindsKeepOff) {
+  SolverSpec spec;
+  spec.homes = HomePlaces::Corners;
+  spec.fours = Bound::exactly(2);
+  spec.threes = Bound{0, 2};
+  spec.findsAwayFromClustersOf = 3;
+  spec.attempts = 4000;
+  const auto layouts = solve(spec);
+  ASSERT_FALSE(layouts.empty());
+  for (const SolvedLayout &l : layouts) {
+    EXPECT_EQ(l.clusters[3], 2);
+    // Every find touches no planet of a cluster of 3 or 4: count each
+    // planet's planet neighbours to find its cluster's size, roughly (a
+    // planet in a three or four touches at least one other)
+    for (Hex find : l.finds)
+      for (Hex n : HexGrid::neighbours(find)) {
+        if (!has(l.planets, n))
+          continue;
+        int touching = 0;
+        for (Hex m : HexGrid::neighbours(n))
+          touching += has(l.planets, m) ? 1 : 0;
+        EXPECT_LT(touching, 2) << "a find beside a big cluster";
+      }
+  }
+}

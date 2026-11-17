@@ -64,6 +64,8 @@ std::vector<Hex> clusterShape(Hex at, int size, int turn) {
     out.push_back(HexGrid::neighbour(at, turn));
   if (size >= 3)
     out.push_back(HexGrid::neighbour(at, turn + 1));
+  if (size >= 4) // (the hex touching all three: a diamond)
+    out.push_back(HexGrid::neighbour(HexGrid::neighbour(at, turn), turn + 1));
   return out;
 }
 
@@ -99,10 +101,10 @@ int clusterSizeAt(const Board &board, Hex hex) {
   return 1;
 }
 
-// Each home's nearest single, pair and three, in ship moves (a cluster's
-// distance: its nearest planet's)
-std::array<int, 3> nearestClusters(const Board &board, const std::vector<int> &moves) {
-  std::array<int, 3> nearest{1000, 1000, 1000};
+// Each home's nearest single, pair, three and four, in ship moves (a
+// cluster's distance: its nearest planet's)
+std::array<int, 4> nearestClusters(const Board &board, const std::vector<int> &moves) {
+  std::array<int, 4> nearest{1000, 1000, 1000, 1000};
   for (const auto &cluster : board.clusters) {
     int d = 1000;
     for (Hex hex : cluster)
@@ -111,7 +113,7 @@ std::array<int, 3> nearestClusters(const Board &board, const std::vector<int> &m
         if (n >= 0 && moves[static_cast<std::size_t>(n)] >= 0)
           d = std::min(d, moves[static_cast<std::size_t>(n)]);
       }
-    const auto size = static_cast<std::size_t>(std::min<std::size_t>(cluster.size(), 3) - 1);
+    const auto size = static_cast<std::size_t>(std::min<std::size_t>(cluster.size(), 4) - 1);
     nearest[size] = std::min(nearest[size], d);
   }
   return nearest;
@@ -189,13 +191,15 @@ std::optional<SolvedLayout> attempt(const SolverSpec &spec, SeededRandom::Genera
   if (spec.core)
     board.planets.push_back(Hex{0, 0});
   const int order = symmetryOrder(spec);
+  const int fours = countWithin(spec.fours, order, 4, random);
   const int threes = countWithin(spec.threes, order, 6, random);
   const int pairs = countWithin(spec.pairs, order, 9, random);
   const int singles = countWithin(spec.singles, order, 12, random);
-  if (threes < 0 || pairs < 0 || singles < 0)
+  if (fours < 0 || threes < 0 || pairs < 0 || singles < 0)
     return std::nullopt;
   // Bigger clusters first, while there's room
-  if (!placeClusters(board, 3, threes, spec, random) ||
+  if (!placeClusters(board, 4, fours, spec, random) ||
+      !placeClusters(board, 3, threes, spec, random) ||
       !placeClusters(board, 2, pairs, spec, random) ||
       !placeClusters(board, 1, singles, spec, random))
     return std::nullopt;
@@ -239,16 +243,17 @@ std::optional<SolvedLayout> attempt(const SolverSpec &spec, SeededRandom::Genera
   out.planets = board.planets;
   out.finds = board.finds;
   for (const auto &cluster : board.clusters)
-    ++out.clusters[std::min<std::size_t>(cluster.size(), 3) - 1];
+    ++out.clusters[std::min<std::size_t>(cluster.size(), 4) - 1];
   for (Hex home : board.homes) {
     const std::vector<int> moves = shipMovesFrom(home);
-    const std::array<int, 3> nearest = nearestClusters(board, moves);
-    for (std::size_t i = 0; i < 3; ++i)
+    const std::array<int, 4> nearest = nearestClusters(board, moves);
+    for (std::size_t i = 0; i < 4; ++i)
       if (out.clusters[i] > 0 && !spec.nearestFromEveryHome[i].holds(nearest[i]))
         return std::nullopt;
-    if (spec.threesFartherThanSmaller && out.clusters[2] > 0 &&
-        (nearest[2] <= nearest[0] || nearest[2] <= nearest[1]))
-      return std::nullopt;
+    if (spec.threesFartherThanSmaller)
+      for (std::size_t big : {std::size_t{2}, std::size_t{3}})
+        if (out.clusters[big] > 0 && (nearest[big] <= nearest[0] || nearest[big] <= nearest[1]))
+          return std::nullopt;
     double access = 0;
     int inReach = 0;
     std::vector<int> near(static_cast<std::size_t>(std::max(spec.sameNearPlanetsWithin, 0)) + 1, 0);
@@ -335,9 +340,10 @@ std::string layoutLine(const SolvedLayout &layout, const std::string &name) {
     return out.str();
   };
   std::ostringstream line;
-  const std::array<int, 3> reach =
-      layout.nearest.empty() ? std::array<int, 3>{} : layout.nearest[0];
+  const std::array<int, 4> reach =
+      layout.nearest.empty() ? std::array<int, 4>{} : layout.nearest[0];
   line << name << " reach=" << reach[0] << "," << reach[1] << "," << reach[2]
+       << (layout.clusters[3] > 0 ? "," + std::to_string(reach[3]) : std::string())
        << " homes=" << list(layout.homes) << " planets=" << list(layout.planets);
   if (!layout.finds.empty())
     line << " small_finds=" << list(layout.finds);

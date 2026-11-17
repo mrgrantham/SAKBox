@@ -42,8 +42,9 @@ enum class HomePlaces : std::uint8_t { Edge, Corners, Three };
 
 struct SolverSpec {
   HomePlaces homes = HomePlaces::Edge;
-  // How many clusters of each size (1, 2 and 3 planets), besides the core
-  Bound singles = Bound{2, 6}, pairs = Bound{1, 4}, threes = Bound{1, 2};
+  // How many clusters of each size (1, 2, 3 and 4 planets), besides the
+  // core; a four is a compact diamond (round 89, the user's: to try)
+  Bound singles = Bound{2, 6}, pairs = Bound{1, 4}, threes = Bound{1, 2}, fours = Bound{0, 0};
   bool core = true; // a planet at the centre
   // The same seen from every home: turned half round with four homes, a
   // third of a turn with three
@@ -55,11 +56,12 @@ struct SolverSpec {
   // Finds never touch a cluster of this many planets or more (3: no find
   // beside a three); none: anywhere empty
   std::optional<int> findsAwayFromClustersOf = 3;
-  // From every home, the nearest three is farther than its nearest pair and
-  // its nearest single
+  // From every home, the nearest three (and four) is farther than its
+  // nearest pair and its nearest single
   bool threesFartherThanSmaller = false;
-  // From every home, the nearest single, pair and three within these ship moves
-  std::array<Bound, 3> nearestFromEveryHome{};
+  // From every home, the nearest single, pair, three and four within these
+  // ship moves
+  std::array<Bound, 4> nearestFromEveryHome{};
   // Every home has at least this many planets within this many ship moves
   int reachMoves = 4;
   Bound planetsInReach = Bound::atLeast(0);
@@ -78,9 +80,9 @@ struct SolverSpec {
 
 struct SolvedLayout {
   std::vector<Hex> homes, planets, finds; // planets: the core included
-  std::array<int, 3> clusters{};          // singles, pairs, threes
-  // Each home's nearest single, pair and three, in ship moves
-  std::vector<std::array<int, 3>> nearest;
+  std::array<int, 4> clusters{};          // singles, pairs, threes, fours
+  // Each home's nearest single, pair, three and four, in ship moves
+  std::vector<std::array<int, 4>> nearest;
   // Each home's access (planets weighted by nearness: 1 / (1 + moves)), and
   // the spread between the best and worst served home (the ranking)
   std::vector<double> access;

@@ -7,7 +7,7 @@
 //   yes
 //
 // Flags: --homes edge|corners|three (three: for three players), --singles A-B, --pairs A-B,
-// --threes A-B,
+// --threes A-B, --fours A-B (clusters of four, a diamond; --nearest-four A-B),
 // --finds A-B (each a value or a floor-ceiling range), --away N (finds never
 // touch clusters of N or more; 0: anywhere), --farther yes (threes farther
 // from every home than pairs and singles), --nearest-single, --nearest-pair,
@@ -62,6 +62,8 @@ int main(int argc, char **argv) {
       spec.pairs = boundOf(value);
     else if (flag == "--threes")
       spec.threes = boundOf(value);
+    else if (flag == "--fours")
+      spec.fours = boundOf(value);
     else if (flag == "--finds")
       spec.finds = boundOf(value);
     else if (flag == "--away") {
@@ -75,6 +77,8 @@ int main(int argc, char **argv) {
       spec.nearestFromEveryHome[1] = boundOf(value);
     else if (flag == "--nearest-three")
       spec.nearestFromEveryHome[2] = boundOf(value);
+    else if (flag == "--nearest-four")
+      spec.nearestFromEveryHome[3] = boundOf(value);
     else if (flag == "--reach-moves")
       spec.reachMoves = number(value);
     else if (flag == "--in-reach")
@@ -97,10 +101,11 @@ int main(int argc, char **argv) {
   const auto layouts = solve(spec);
   for (std::size_t i = 0; i < layouts.size(); ++i) {
     const SolvedLayout &l = layouts[i];
-    std::printf("# access spread %.3f; singles %d, pairs %d, threes %d; nearest from each home:",
-                l.accessSpread, l.clusters[0], l.clusters[1], l.clusters[2]);
+    std::printf("# access spread %.3f; singles %d, pairs %d, threes %d, fours %d; nearest from "
+                "each home:",
+                l.accessSpread, l.clusters[0], l.clusters[1], l.clusters[2], l.clusters[3]);
     for (const auto &n : l.nearest)
-      std::printf(" %d/%d/%d", n[0], n[1], n[2]);
+      std::printf(" %d/%d/%d/%d", n[0], n[1], n[2], n[3]);
     std::printf("; access:");
     for (double a : l.access)
       std::printf(" %.3f", a);

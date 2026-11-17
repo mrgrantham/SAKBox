@@ -657,6 +657,7 @@ void LabWindowPadd::drawSolverTab() {
   bound("Singles (floor, ceiling)", spec.singles);
   bound("Pairs (floor, ceiling)", spec.pairs);
   bound("Threes (floor, ceiling)", spec.threes);
+  bound("Fours (floor, ceiling)", spec.fours);
   bound("Finds (floor, ceiling)", spec.finds);
   ImGui::Checkbox("A planet at the centre", &spec.core);
   ImGui::Checkbox("The same from opposite homes", &spec.symmetric);
@@ -669,6 +670,7 @@ void LabWindowPadd::drawSolverTab() {
   bound("Nearest single (floor, ceiling)", spec.nearestFromEveryHome[0]);
   bound("Nearest pair (floor, ceiling)", spec.nearestFromEveryHome[1]);
   bound("Nearest three (floor, ceiling)", spec.nearestFromEveryHome[2]);
+  bound("Nearest four (floor, ceiling)", spec.nearestFromEveryHome[3]);
   ImGui::InputInt("Planets within this many moves", &spec.reachMoves);
   spec.reachMoves = std::clamp(spec.reachMoves, 1, 20);
   bound("...how many (floor, ceiling)", spec.planetsInReach);
@@ -726,7 +728,7 @@ void LabWindowPadd::drawSolverTab() {
       showLayout_ = true;
     }
     const auto &c = solvedFigures_[i].clusters;
-    ImGui::Text("%d/%d/%d  spread %.3f", c[0], c[1], c[2], solvedFigures_[i].accessSpread);
+    ImGui::Text("%d/%d/%d/%d  spread %.3f", c[0], c[1], c[2], c[3], solvedFigures_[i].accessSpread);
     // Its proving so far: each run's chi-squares, green if fair, red if not
     if (i < proving_.results().size()) {
       const BoardProving::Result &result = proving_.results()[i];
