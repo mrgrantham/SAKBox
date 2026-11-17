@@ -8,6 +8,8 @@ cc_binary(
     name = "balance_lab",
     srcs = [
         "src/BoardDrawing.hpp",
+        "src/BoardProving.cpp",
+        "src/BoardProving.hpp",
         "src/GameReplay.hpp",
         "src/LabLayouts.hpp",
         "src/LabWindowPadd.cpp",
@@ -46,6 +48,20 @@ cc_test(
     deps = [
         "//projects/cosmic_hex/simulate:batch",
         "//projects/hex_grid",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "BoardProving_test",
+    size = "small",
+    srcs = [
+        "src/BoardProving.cpp",
+        "src/BoardProving.hpp",
+        "tests/BoardProving_test.cpp",
+    ],
+    deps = [
+        "//projects/cosmic_hex/simulate:batch",
         "@gtest//:gtest_main",
     ],
 )

@@ -176,6 +176,13 @@ void LabWindowPadd::starting() {
   if (startSolving()) {
     solveLayouts();
     showSolver_ = true;
+    if (startProving() > 0 && !solved_.empty()) {
+      gamesBeforeProving_ = options_.games;
+      proving_.start(
+          std::min<std::size_t>(static_cast<std::size_t>(startProving()), solved_.size()),
+          options_.players);
+      proveNext();
+    }
   }
   push([this] { drawFrame(); });
 }
@@ -326,8 +333,29 @@ void LabWindowPadd::played(const GamePlayed &game, ScratchPadd::PaddAddress work
     results_.push_back(game.result);
   }
   handOut(worker);
-  if (running_ && nextGame_ >= batchOptions_.games && inFlight_ == 0)
+  if (running_ && nextGame_ >= batchOptions_.games && inFlight_ == 0) {
     running_ = false; // all played
+    // A board being proved: its fairness kept, and the next run started
+    if (provingRun_) {
+      proving_.finished(*provingRun_, fairnessOf(results_, batchOptions_.players));
+      provingRun_.reset();
+      proveNext();
+    }
+  }
+}
+
+void LabWindowPadd::proveNext() {
+  const auto run = proving_.next();
+  if (!run || run->board >= solved_.size()) {
+    options_.games = gamesBeforeProving_; // (all proved: the settings as they were)
+    return;
+  }
+  edited_ = solved_[run->board];
+  edited_.file.clear();
+  changed_ = false;
+  options_.games = run->games;
+  provingRun_ = run;
+  runBatch();
 }
 
 // ---- The window ----
@@ -648,10 +676,39 @@ void LabWindowPadd::drawSolverTab() {
   spec.sameNearPlanetsWithin = std::clamp(spec.sameNearPlanetsWithin, 0, 6);
   ImGui::InputInt("Attempts", &spec.attempts, 1000, 10000);
   spec.attempts = std::clamp(spec.attempts, 100, 500000);
+  ImGui::BeginDisabled(proving_.busy()); // (a new solve would replace the boards being played)
   if (ImGui::Button("Solve"))
     solveLayouts();
+  ImGui::EndDisabled();
   ImGui::SameLine();
   ImGui::Text("%zu found", solved_.size());
+  // Proving them: the first few played, the fair ones again for longer
+  ImGui::SeparatorText("Prove them by playing");
+  ImGui::SetNextItemWidth(90);
+  ImGui::InputInt("boards", &boardsToProve_);
+  boardsToProve_ = std::clamp(boardsToProve_, 1, 24);
+  ImGui::SameLine();
+  ImGui::BeginDisabled(solved_.empty() || running_ || proving_.busy());
+  if (ImGui::Button("Prove")) {
+    gamesBeforeProving_ = options_.games;
+    proving_.start(std::min<std::size_t>(static_cast<std::size_t>(boardsToProve_), solved_.size()),
+                   options_.players);
+    proveNext();
+  }
+  ImGui::EndDisabled();
+  if (proving_.busy()) {
+    ImGui::SameLine();
+    if (ImGui::Button("Stop proving")) {
+      proving_.stop();
+      stopBatch();
+      provingRun_.reset();
+      options_.games = gamesBeforeProving_;
+    }
+  }
+  ImGui::TextWrapped("Each plays %d games; one fair by both turn position and home (chi-square "
+                     "under %.2f) plays %d more, as a few hundred games flatter a board.",
+                     BoardProving::kScreenGames, fairLine(options_.players),
+                     BoardProving::kDeepGames);
   // The boards, four a row, each with its access spread; click to choose
   constexpr float kSide = 118;
   for (std::size_t i = 0; i < solved_.size(); ++i) {
@@ -669,6 +726,24 @@ void LabWindowPadd::drawSolverTab() {
     }
     const auto &c = solvedFigures_[i].clusters;
     ImGui::Text("%d/%d/%d  spread %.3f", c[0], c[1], c[2], solvedFigures_[i].accessSpread);
+    // Its proving so far: each run's chi-squares, green if fair, red if not
+    if (i < proving_.results().size()) {
+      const BoardProving::Result &result = proving_.results()[i];
+      const auto line = [&](const std::optional<Fairness> &fairness, int games) {
+        if (!fairness)
+          return;
+        const bool fair = fairness->fair(proving_.players());
+        ImGui::TextColored(fair ? ImVec4(0.45f, 0.85f, 0.5f, 1) : ImVec4(0.95f, 0.45f, 0.4f, 1),
+                           "%d: turn %.1f home %.1f", games, fairness->turnChi, fairness->homeChi);
+      };
+      line(result.screen, BoardProving::kScreenGames);
+      line(result.deep, BoardProving::kDeepGames);
+      if (result.queued && !(provingRun_ && provingRun_->board == i) && !result.screen)
+        ImGui::TextDisabled("queued");
+      if (provingRun_ && provingRun_->board == i)
+        ImGui::TextDisabled("playing %d of %d", static_cast<int>(results_.size()),
+                            provingRun_->games);
+    }
     ImGui::EndGroup();
   }
 }

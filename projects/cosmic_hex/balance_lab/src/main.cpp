@@ -83,6 +83,8 @@ StartWith parse(int argc, char **argv) {
       o.smallFinds = value != "usual";
     else if (flag == "--games")
       o.games = number(flag, value);
+    else if (flag == "--prove") // (solve, then prove this many boards by playing them)
+      LabWindowPadd::proveAtStart(number(flag, value));
     else if (flag == "--iterations")
       o.iterations = number(flag, value);
     else if (flag == "--players")

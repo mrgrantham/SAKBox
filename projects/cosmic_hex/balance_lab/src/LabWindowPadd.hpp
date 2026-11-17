@@ -18,6 +18,7 @@
 // (a folder a batch) for replays.
 #pragma once
 
+#include "BoardProving.hpp"
 #include "LabLayouts.hpp"
 #include "ReplayView.hpp"
 #include "SimulationPadd.hpp"
@@ -52,6 +53,11 @@ public:
   }
   // The solver's tab open at the start, having solved once (--solve)
   static void solveAtStart() { startSolving() = true; }
+  // ...and then proves this many of them by playing them (--prove N)
+  static void proveAtStart(int boards) {
+    startSolving() = true;
+    startProving() = boards;
+  }
   // A game's log to open in the Replay tab at the start, at this action
   static void replayAtStart(std::string logFile, int atAction) {
     startReplay() = {std::move(logFile), atAction};
@@ -82,6 +88,10 @@ private:
     static bool solving = false;
     return solving;
   }
+  static int &startProving() {
+    static int boards = 0;
+    return boards;
+  }
   static std::pair<std::string, int> &startReplay() {
     static std::pair<std::string, int> replay;
     return replay;
@@ -93,6 +103,8 @@ private:
   void drawLayoutView();
   void drawSolverTab();
   void solveLayouts(); // the solver run with the tab's spec
+  // Proving the solved boards (BoardProving): the next run started, if any
+  void proveNext();
   void drawReplayTab();
   void drawCharts();
   void drawGames();
@@ -142,6 +154,11 @@ private:
   std::vector<Solver::SolvedLayout> solvedFigures_;
   bool showLayout_ = false; // a solved layout was chosen: show its tab
   bool showSolver_ = false; // (--solve) the solver's tab, once
+  // Playing the solved boards to see which are fair (round 87)
+  BoardProving proving_;
+  std::optional<BoardProving::Run> provingRun_; // the batch running for it, if one is
+  int boardsToProve_ = 6;
+  int gamesBeforeProving_ = 0; // (the settings' games, given back after)
 
   std::vector<ScratchPadd::PaddAddress> workers_;
   int batch_ = 0;    // the batch's number (results from an older one are dropped)
