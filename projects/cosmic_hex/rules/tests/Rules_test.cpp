@@ -225,11 +225,14 @@ TEST(RulesTest, AHandLimitIsKeptInTheLog) {
   EXPECT_EQ(again.value_or(State{}).settings.discardOver, 7);
 }
 
-// The agreed deck: 25 cards, 14 Enforcers and 11 Charters
+// Round 61's deck: 3 of each Charter (two kinds so far), 10 Enforcers and 2
+// Interstellar Cartels
 TEST(RulesTest, TheDeck) {
   const State state = newGame(4);
-  EXPECT_EQ(state.deck.size(), 25u);
-  EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kEnforcerCard), 14);
+  EXPECT_EQ(state.deck.size(), 18u);
+  EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kEnforcerCard), 10);
+  EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kCartelCard), 2);
+  EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), 0), 3);
 }
 
 namespace {
@@ -484,6 +487,7 @@ TEST(RulesTest, Contracts) {
   state.player[0].resources = {0, 1, 0, 1, 1};
   ASSERT_TRUE(Game::apply(state, {Kind::BuyContract}));
   EXPECT_EQ(Game::currentPlayer(state), GameBots::kDealer);
+  state.deck = {9, 4, kEnforcerCard}; // (Charters 9 and 4 aren't in today's deck)
   const std::size_t deckBefore = state.deck.size();
   // Contract 9: "6 resources in hand"
   ASSERT_TRUE(Game::apply(state, {Kind::DealContracts, 9, 4}));
@@ -837,4 +841,44 @@ TEST(RulesTest, ThePlanetMixFollowsItsWeights) {
   settings.kindWeights = {1, 1, 2, 1, 1};
   const State state = newGame(4, settings);
   EXPECT_EQ(state.kindsLeft, (Resources{3, 3, 6, 3, 3})); // (18 planets)
+}
+
+// The Interstellar Cartel: name a resource and the others give you all of
+// it (or with cartelTake, up to that many each); one card a turn
+TEST(RulesTest, TheInterstellarCartel) {
+  for (int take : {0, 2}) {
+    Settings settings;
+    settings.cartelTake = take;
+    State state = newGame(3, settings);
+    state.phase = Phase::Main;
+    state.turn = 0;
+    state.player[0].contracts = {kCartelCard};
+    state.player[0].resources = {0, 0, 0, 0, 0};
+    state.player[1].resources = {0, 5, 0, 0, 0};
+    state.player[2].resources = {0, 1, 0, 0, 0};
+    const auto legal = Game::legalActions(state);
+    EXPECT_NE(std::find(legal.begin(), legal.end(), Action{Action::Kind::PlayCartel, 1}),
+              legal.end());
+    ASSERT_TRUE(Game::apply(state, {Action::Kind::PlayCartel, 1}));
+    EXPECT_EQ(state.player[0].resources[1], take == 0 ? 6 : 3);
+    EXPECT_EQ(state.player[1].resources[1], take == 0 ? 0 : 3);
+    EXPECT_EQ(state.player[2].resources[1], 0);
+    EXPECT_TRUE(state.player[0].contracts.empty());
+    // (one card a turn)
+    state.player[0].contracts = {kCartelCard};
+    EXPECT_FALSE(Game::apply(state, {Action::Kind::PlayCartel, 1}));
+  }
+}
+
+// Two copies of a Charter: revealed once only
+TEST(RulesTest, ACharterIsRevealedOnce) {
+  State state = newGame(2);
+  state.phase = Phase::Main;
+  state.turn = 0;
+  state.player[0].contracts = {9, 9}; // (6 resources in hand)
+  state.player[0].resources = {2, 2, 2, 0, 0};
+  ASSERT_TRUE(Game::apply(state, {Action::Kind::RevealContract, 9}));
+  EXPECT_FALSE(Game::apply(state, {Action::Kind::RevealContract, 9}));
+  for (const Action &action : Game::legalActions(state))
+    EXPECT_FALSE(action.kind == Action::Kind::RevealContract);
 }

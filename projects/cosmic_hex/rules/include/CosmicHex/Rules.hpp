@@ -154,8 +154,19 @@ struct Settings {
   // The card deck: these Charters (ids into contracts()) and this many
   // Enforcers. The agreed deck (round 37): 25 cards, as the genre's best-known
   // game has, 14 Enforcers and 11 Charters.
-  std::vector<int> charters{6, 18, 4, 0, 10, 2, 5, 3, 9, 8, 17};
-  int enforcers = 14;
+  //
+  // Round 61's deck (five card types: Enforcers, Interstellar Cartels and
+  // three kinds of Charter): 3 of each Charter, 10 Enforcers, 2 Cartels.
+  // The third Charter, Deep-space relay, waits on a rule (round 63). A
+  // player can't reveal a Charter they've revealed already.
+  std::vector<int> charters{0, 0, 0, 19, 19, 19};
+  int enforcers = 10;
+  // The Interstellar Cartel (round 60, the user's idea, as the genre's
+  // monopoly card): played in the main part of your turn (one card a turn,
+  // not one bought this turn), name a resource, and every other player
+  // gives you all of it, or with cartelTake up to that many each
+  int cartels = 2;
+  int cartelTake = 0; // (0: all of it)
   // The Galactic Embargo: a bonus like Core Control, held by whoever has
   // played the most Enforcers, at least this many; it passes on overtaking
   int embargoEnforcers = 3;
@@ -242,6 +253,7 @@ struct Player {
   std::vector<int> revealed;  // Charters scored
   int enforcersPlayed = 0;    // for the Galactic Embargo
   int enforcersNew = 0;       // bought this turn: not playable until the next
+  int cartelsNew = 0;         // (the same for Interstellar Cartels)
   bool operator==(const Player &) const = default;
 };
 
@@ -327,6 +339,7 @@ struct Action {
     KeepContract,   // a: the contract
     RevealContract, // a: the contract
     PlayEnforcer,   // then MoveBlockade, as on a 7
+    PlayCartel,     // a: the resource named
     CashBadges,
     EndTurn,
     PlaceColony, // (corners) a: the corner (its number in boardCorners())
@@ -346,6 +359,10 @@ struct Action {
 // contracts()). Played on your turn, from the turn after it's bought: the
 // blockade moves and the player steals, as on a 7.
 inline constexpr int kEnforcerCard = 99;
+// An Interstellar Cartel's card id (Settings::cartels)
+inline constexpr int kCartelCard = 98;
+// Whether a card id is a Charter (an index into contracts())
+bool isCharter(int card);
 
 struct Contract {
   std::string_view name;

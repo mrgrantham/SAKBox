@@ -118,6 +118,7 @@ Settings settingsFor(const Options &options) {
     settings.shipCost = *options.shipCost;
   settings.kindWeights = options.kindWeights;
   settings.exhaustHomesAt = options.exhaustHomesAt;
+  settings.cartelTake = options.cartelTake;
   settings.exhaustedKindRandom = options.exhaustedKindRandom;
   return settings;
 }
@@ -163,19 +164,23 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
       stats.blockades += action.a >= 0;
       stats.thefts += action.b >= 0;
       break;
+    // (Charters only: the table has a row for each, and an Enforcer's or a
+    // Cartel's id is past its end)
     case Action::Kind::DealContracts:
-      if (action.a != kEnforcerCard)
+      if (isCharter(action.a))
         ++stats.contracts[static_cast<std::size_t>(action.a)][0];
-      if (action.b >= 0 && action.b != kEnforcerCard)
+      if (isCharter(action.b))
         ++stats.contracts[static_cast<std::size_t>(action.b)][0];
       break;
     case Action::Kind::PlayEnforcer:
       ++stats.enforcers;
       break;
+    case Action::Kind::PlayCartel:
+      ++stats.cartels;
+      break;
     case Action::Kind::KeepContract:
-      if (action.a == kEnforcerCard)
-        break;
-      ++stats.contracts[static_cast<std::size_t>(action.a)][1];
+      if (isCharter(action.a))
+        ++stats.contracts[static_cast<std::size_t>(action.a)][1];
       break;
     case Action::Kind::RevealContract:
       ++stats.contracts[static_cast<std::size_t>(action.a)][2];

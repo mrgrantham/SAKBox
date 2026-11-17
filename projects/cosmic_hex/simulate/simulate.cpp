@@ -124,6 +124,8 @@ Options parse(int argc, char **argv) {
       options.kindWeights = five(flag, value);
     else if (flag == "--exhaust")
       options.exhaustHomesAt = number<int>(flag, value);
+    else if (flag == "--cartel")
+      options.cartelTake = std::string_view(value) == "all" ? 0 : number<int>(flag, value);
     else if (flag == "--exhaust-kind")
       options.exhaustedKindRandom = std::string_view(value) == "random";
     else if (flag == "--strong")

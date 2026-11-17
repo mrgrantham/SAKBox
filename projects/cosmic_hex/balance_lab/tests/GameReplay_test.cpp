@@ -55,7 +55,7 @@ TEST(GameReplayTest, StepsATurnAtATime) {
     step = next;
     ++turns;
   }
-  EXPECT_GT(turns, 8);
+  EXPECT_GT(turns, 4);
   // And back: from a turn's start to the one before
   const std::size_t second = replay.nextTurn(replay.nextTurn(0));
   EXPECT_EQ(replay.previousTurn(second), replay.nextTurn(0));

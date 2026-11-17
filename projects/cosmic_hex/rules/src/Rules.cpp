@@ -515,6 +515,12 @@ int homeIncomeFor(const State &state, int player) {
 
 // An Enforcer can be played in the main part of your turn, one a turn, but
 // not one bought this turn
+bool canPlayCartel(const State &state) {
+  const Player &me = state.player[static_cast<std::size_t>(state.turn)];
+  const auto held = std::count(me.contracts.begin(), me.contracts.end(), kCartelCard);
+  return state.phase == Phase::Main && !state.cardPlayed && held > me.cartelsNew;
+}
+
 bool canPlayEnforcer(const State &state) {
   const Player &me = state.player[static_cast<std::size_t>(state.turn)];
   const auto held = std::count(me.contracts.begin(), me.contracts.end(), kEnforcerCard);
@@ -535,6 +541,7 @@ void updateEmbargo(State &state, int player) {
 
 void endTurn(State &state) {
   state.player[static_cast<std::size_t>(state.turn)].enforcersNew = 0;
+  state.player[static_cast<std::size_t>(state.turn)].cartelsNew = 0;
   state.cardPlayed = false;
   state.turn = (state.turn + 1) % state.players;
   if (state.turn == 0)
@@ -631,7 +638,7 @@ std::string settingsText(const Settings &s) {
       << s.catchUpGap << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0)
       << " discardover=" << s.discardOver << " charters=" << joined(s.charters)
       << " enforcers=" << s.enforcers << "," << s.embargoEnforcers << "," << s.embargoPoints
-      << " moons=" << s.moons << " planets=";
+      << " cartels=" << s.cartels << "," << s.cartelTake << " moons=" << s.moons << " planets=";
   std::vector<int> planetList;
   for (Hex hex : s.planetHexes) {
     planetList.push_back(hex.q);
@@ -686,6 +693,11 @@ std::optional<Settings> readSettings(std::string_view line) {
       s.enforcers = (*values)[0];
       s.embargoEnforcers = (*values)[1];
       s.embargoPoints = (*values)[2];
+      continue;
+    }
+    if (values && key == "cartels" && values->size() == 2) {
+      s.cartels = (*values)[0];
+      s.cartelTake = (*values)[1];
       continue;
     }
     if (values && key == "discardover" && values->size() == 1) {
@@ -913,6 +925,7 @@ State newGame(int players, const Settings &settings, int first) {
     state.findsLeft[static_cast<std::size_t>(Find::Nothing)] += sites - finds;
   state.deck = settings.charters;
   state.deck.insert(state.deck.end(), static_cast<std::size_t>(settings.enforcers), kEnforcerCard);
+  state.deck.insert(state.deck.end(), static_cast<std::size_t>(settings.cartels), kCartelCard);
   if (settings.corners) {
     // The start: home colonies, then ships, placed in snake order
     state.phase = Phase::PlaceColony;
@@ -970,6 +983,8 @@ int cornerNumber(Corner corner) {
   const auto found = std::lower_bound(all.begin(), all.end(), corner);
   return found != all.end() && *found == corner ? static_cast<int>(found - all.begin()) : -1;
 }
+
+bool isCharter(int card) { return card >= 0 && card < static_cast<int>(contracts().size()); }
 
 const std::vector<Contract> &contracts() {
   static const std::vector<Contract> kContracts = {
@@ -1051,6 +1066,15 @@ const std::vector<Contract> &contracts() {
        }},
       {"Stations on 4 kinds of planet", 3,
        [](const State &s, int p) { return kindsCovered(s, p) >= 4; }},
+      // (19) Round 61: a station or colony by another player's exhausted
+      // home world (Settings::exhaustHomesAt)
+      {"Homesteader: a station on another player's exhausted home world", 2,
+       [](const State &s, int p) {
+         for (const Planet &planet : s.planets)
+           if (planet.formerHomeOf >= 0 && planet.formerHomeOf != p && hasStationOn(s, planet, p))
+             return true;
+         return false;
+       }},
   };
   return kContracts;
 }
@@ -1405,7 +1429,9 @@ bool applyMain(State &state, const Action &action) {
     return true;
   case Kind::RevealContract: {
     const auto held = std::find(me.contracts.begin(), me.contracts.end(), action.a);
-    if (held == me.contracts.end() || action.a == kEnforcerCard ||
+    // (a Charter, not one revealed already, met now)
+    if (held == me.contracts.end() || !isCharter(action.a) ||
+        std::find(me.revealed.begin(), me.revealed.end(), action.a) != me.revealed.end() ||
         !contracts()[static_cast<std::size_t>(action.a)].met(state, state.turn))
       return false;
     me.contracts.erase(held);
@@ -1420,6 +1446,22 @@ bool applyMain(State &state, const Action &action) {
     state.cardPlayed = true;
     updateEmbargo(state, state.turn);
     state.phase = Phase::Blockade; // then as on a 7: move it, and steal
+    return true;
+  }
+  case Kind::PlayCartel: {
+    if (!canPlayCartel(state) || action.a < 0 || action.a >= kResources)
+      return false;
+    me.contracts.erase(std::find(me.contracts.begin(), me.contracts.end(), kCartelCard));
+    state.cardPlayed = true;
+    const auto r = static_cast<std::size_t>(action.a);
+    for (int p = 0; p < state.players; ++p) {
+      if (p == state.turn)
+        continue;
+      int &theirs = state.player[static_cast<std::size_t>(p)].resources[r];
+      const int taken = settings.cartelTake > 0 ? std::min(theirs, settings.cartelTake) : theirs;
+      theirs -= taken;
+      me.resources[r] += taken;
+    }
     return true;
   }
   case Kind::CashBadges:
@@ -1610,7 +1652,7 @@ bool Game::apply(State &state, const Action &action) {
     }
     break;
   case Phase::ContractDraw: {
-    if (action.kind != Kind::DealContracts || (action.a == action.b && action.a != kEnforcerCard))
+    if (action.kind != Kind::DealContracts) // (two the same only if the deck holds two)
       break;
     std::vector<int> deck = state.deck;
     if (!removeOne(deck, action.a))
@@ -1629,6 +1671,8 @@ bool Game::apply(State &state, const Action &action) {
       me.contracts.push_back(action.a);
       if (action.a == kEnforcerCard)
         ++me.enforcersNew;
+      if (action.a == kCartelCard)
+        ++me.cartelsNew;
       const int other = action.a == state.offered[0] ? state.offered[1] : state.offered[0];
       if (other >= 0)
         state.deck.push_back(other); // back under the deck
@@ -1787,9 +1831,18 @@ std::vector<Action> Game::legalActions(const State &state) {
     if (!state.deck.empty() && canAfford(me.resources, settings.contractCost))
       out.push_back({Kind::BuyContract});
     for (int id : me.contracts) {
-      if (id != kEnforcerCard && contracts()[static_cast<std::size_t>(id)].met(state, state.turn))
+      const bool revealed =
+          std::find(me.revealed.begin(), me.revealed.end(), id) != me.revealed.end();
+      const bool offered = std::any_of(out.begin(), out.end(), [&](const Action &a) {
+        return a.kind == Kind::RevealContract && a.a == id;
+      });
+      if (isCharter(id) && !revealed && !offered &&
+          contracts()[static_cast<std::size_t>(id)].met(state, state.turn))
         out.push_back({Kind::RevealContract, id});
     }
+    if (canPlayCartel(state))
+      for (int r = 0; r < kResources; ++r)
+        out.push_back({Kind::PlayCartel, r});
     if (canPlayEnforcer(state))
       out.push_back({Kind::PlayEnforcer});
     if (me.badges >= settings.badgesPerPoint)
@@ -1927,7 +1980,8 @@ std::string Game::writeState(const State &state) {
     out << "player " << i << " resources=" << joined(p.resources) << " badges=" << p.badges << ","
         << p.badgesEarned << "," << p.badgePoints << " finds=" << p.findsKept
         << " contracts=" << joined(p.contracts) << " revealed=" << joined(p.revealed)
-        << " enforcers=" << p.enforcersPlayed << "," << p.enforcersNew << "\n";
+        << " enforcers=" << p.enforcersPlayed << "," << p.enforcersNew
+        << " cartels=" << p.cartelsNew << "\n";
   }
   out << "left kinds=" << joined(state.kindsLeft) << " moons=" << state.moonsLeft
       << " numbers=" << joined(state.numbersLeft) << " finds=" << joined(state.findsLeft)
@@ -2008,6 +2062,8 @@ std::string Game::writeAction(const Action &action) {
     return "reveal " + n(action.a);
   case Kind::PlayEnforcer:
     return "enforcer";
+  case Kind::PlayCartel:
+    return "cartel " + res(action.a);
   case Kind::CashBadges:
     return "badges";
   case Kind::EndTurn:
@@ -2050,6 +2106,8 @@ std::optional<Action> Game::readAction(std::string_view text) {
       return make(Kind::Steal, r);
     if (verb == "salvage" && r >= 0)
       return make(Kind::TakeSalvage, r);
+    if (verb == "cartel" && r >= 0)
+      return make(Kind::PlayCartel, r);
     if (verb == "find") {
       const int f = indexOf(kFindNames, w[1]);
       return f >= 0 ? make(Kind::RevealFind, f) : std::nullopt;

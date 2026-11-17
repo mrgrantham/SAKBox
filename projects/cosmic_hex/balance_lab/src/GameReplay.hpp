@@ -164,6 +164,8 @@ inline std::string describe(const State &before, const Action &action) {
   }
   case Kind::PlayEnforcer:
     return who + " plays an Enforcer.";
+  case Kind::PlayCartel:
+    return who + " plays an Interstellar Cartel: everyone's " + resource(action.a) + ".";
   case Kind::CashBadges:
     return who + " cashes in badges.";
   case Kind::EndTurn:
