@@ -367,14 +367,31 @@ private:
       tray_.throwDice(latest_->diceSeed);
       thrownSeed_ = latest_->diceSeed;
       dice_ = DiceStage::Rolling;
+      diceOwed_ = 0;
+      lastDiceTime_ = Clock::now();
     }
     if (dice_ == DiceStage::Idle)
       return;
-    tray_.step(1.0 / 60);
+    // Fixed steps of kDiceStep, as many as real time has passed (Gregory,
+    // Game Engine Architecture 8.5: integrators want a constant step; Doom's
+    // tics, Black Book 5.4): the same throw whatever the frame rate (the DS
+    // runs 41 to 60), at most kMostDiceSteps a frame so a stall slows the
+    // dice rather than snowballing
+    const auto now = Clock::now();
+    diceOwed_ += std::chrono::duration<double>(now - lastDiceTime_).count();
+    lastDiceTime_ = now;
+    int steps = 0;
+    for (; diceOwed_ >= kDiceStep && steps < kMostDiceSteps; ++steps) {
+      tray_.step(kDiceStep);
+      diceOwed_ -= kDiceStep;
+    }
+    if (steps == kMostDiceSteps)
+      diceOwed_ = 0; // (behind: let it go)
     if (dice_ == DiceStage::Rolling && tray_.settled()) {
       dice_ = DiceStage::Showing;
-      shownFrames_ = 0;
-    } else if (dice_ == DiceStage::Showing && ++shownFrames_ >= kFramesShowingDice) {
+      shownSeconds_ = 0;
+    } else if (dice_ == DiceStage::Showing &&
+               (shownSeconds_ += steps * kDiceStep) >= kSecondsShowingDice) {
       const auto [first, second] = tray_.faces();
       send(DiceRolled{first, second});
       tray_.startPull();
@@ -737,12 +754,15 @@ private:
   Clock::time_point titleStarted_;
   // The physics dice
   enum class DiceStage : std::uint8_t { Idle, Rolling, Showing, Pulling };
-  static constexpr int kFramesShowingDice = 45; // (about three quarters of a second)
+  static constexpr double kSecondsShowingDice = 0.75;
+  static constexpr double kDiceStep = 1.0 / 60; // (the tray's fixed step)
+  static constexpr int kMostDiceSteps = 4;
   Dice::DiceTray tray_;
   Scene::Mesh die_;
   DiceStage dice_ = DiceStage::Idle;
   std::uint64_t thrownSeed_ = 0;
-  int shownFrames_ = 0;
+  double shownSeconds_ = 0, diceOwed_ = 0;
+  Clock::time_point lastDiceTime_;
   std::optional<TableSnapshot> latest_;
   BoardMotion motion_;
   Clock::time_point motionStarted_;
