@@ -389,7 +389,10 @@ TEST(CornersTest, AlienOutposts) {
     if (planets > 0 && !byPlanet)
       byPlanet = corner;
   }
-  ASSERT_TRUE(bare.has_value());
+  if (!bare) {
+    ADD_FAILURE() << "no corner of the outpost touches no planet";
+    return;
+  }
   const int mine = firstShipOf(state, 0);
   state.ships[static_cast<std::size_t>(mine)].corner = *bare;
   // A ship there: 3 minerals for 1 food
