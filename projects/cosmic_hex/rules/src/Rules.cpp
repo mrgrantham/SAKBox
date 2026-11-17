@@ -1077,6 +1077,51 @@ std::optional<Settings> readSettings(std::string_view line) {
 // ---------------------------------------------------------------------------
 // Setting up
 
+Board boardR3() {
+  return {
+      .homes = {{4, -2}, {-4, 2}, {2, 2}, {-2, -2}},
+      .planets = {{0, 0},
+                  {-4, 0},
+                  {-4, 4},
+                  {-2, 0},
+                  {-2, 3},
+                  {-2, 4},
+                  {-1, -1},
+                  {-1, 3},
+                  {0, -4},
+                  {0, 4},
+                  {1, -3},
+                  {1, 1},
+                  {2, -4},
+                  {2, -3},
+                  {2, 0},
+                  {4, -4},
+                  {4, 0}},
+      .zone = {{-3, 0}, {3, 0}, {-2, 1}, {2, -1}, {-1, 0}, {1, 0}, {0, -1}, {0, 1}},
+  };
+}
+
+Settings agreedRules(const Board &board) {
+  Settings s;
+  s.homeHexes = board.homes;
+  s.planetHexes = board.planets;
+  s.zoneHexes = board.zone;
+  // Corners and edges, ships moving 2 edges and 1 more for a fuel, and the
+  // first deep-space mission (rounds 39 to 52)
+  s.corners = true;
+  s.deepSpaceStart = true;
+  s.shipMove = 2;
+  s.boostMove = 1;
+  // The hybrid home income (rounds 60 to 69): 2 a turn below 5 points, on
+  // the home die; at 5 the home flips to a planet
+  s.catchUpBelow = 5;
+  s.homeDie = true;
+  s.exhaustHomesAt = 5;
+  s.discardOver = 7;      // the Imperial Tithe (round 69)
+  s.playerTrading = true; // (round 57)
+  return s;
+}
+
 State newGame(int players, const Settings &settings, int first) {
   assert(players >= 2 && players <= kMaxPlayers);
   State state;

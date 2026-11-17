@@ -381,6 +381,21 @@ struct State {
 // first, so a simulation can tell turn order and home apart).
 State newGame(int players, const Settings &settings = {}, int first = 0);
 
+// A board: where the homes, the planets and the deep-space zone's sites are
+// (corners and edges' layouts, as in layouts/layouts.txt)
+struct Board {
+  std::vector<Hex> homes, planets, zone;
+};
+// R3, one of the fairest layouts the simulations found (round 64), with its
+// finds beside the small systems
+Board boardR3();
+
+// The rules as agreed (the design doc's, round 70), on a board. Settings'
+// own defaults are older rules the tests are written against; this is what
+// a real game plays (the consoles), and the simulator's defaults are checked
+// to give the same (AgreedRules_test)
+Settings agreedRules(const Board &board);
+
 // ---------------------------------------------------------------------------
 // The actions
 

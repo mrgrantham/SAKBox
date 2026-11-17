@@ -76,3 +76,14 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "AgreedRules_test",
+    size = "small",
+    srcs = ["tests/AgreedRules_test.cpp"],
+    data = ["//projects/cosmic_hex/layouts:layouts.txt"],
+    deps = [
+        "//projects/cosmic_hex/simulate:batch",
+        "@gtest//:gtest_main",
+    ],
+)
