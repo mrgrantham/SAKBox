@@ -497,6 +497,11 @@ bool removeOne(std::vector<int> &from, int value) {
 // turn: 1, and 1 more if they're behind (Settings::catchUpBelow, catchUpGap)
 int homeIncomeFor(const State &state, int player) {
   const Settings &settings = state.settings;
+  // An exhausted home gives nothing of its own (it pays by the dice)
+  const bool hasHome = std::any_of(state.planets.begin(), state.planets.end(),
+                                   [&](const Planet &p) { return p.homeOf == player; });
+  if (!hasHome)
+    return 0;
   const int mine = points(state, player);
   int leader = 0;
   for (int p = 0; p < state.players; ++p) {
@@ -537,7 +542,7 @@ void endTurn(State &state) {
   for (Ship &ship : state.ships)
     ship.moved = false;
   state.homeIncomeLeft = homeIncomeFor(state, state.turn);
-  state.phase = Phase::HomeIncome;
+  state.phase = state.homeIncomeLeft > 0 ? Phase::HomeIncome : Phase::RollDraw;
 }
 
 // ---- Text helpers
@@ -607,7 +612,8 @@ std::string settingsText(const Settings &s) {
       << " corners=" << (s.zoneCorners ? 1 : 0) << " tiles=" << joined(s.planetTiles)
       << " numbers=" << joined(s.numbers) << " finds=" << joined(s.finds)
       << " ship=" << joined(s.shipCost) << " station=" << joined(s.stationCost)
-      << " kinds=" << joined(s.kindWeights) << " colony=" << joined(s.colonyCost)
+      << " kinds=" << joined(s.kindWeights) << " exhaust=" << s.exhaustHomesAt << ","
+      << (s.exhaustedKindRandom ? 1 : 0) << " colony=" << joined(s.colonyCost)
       << " contract=" << joined(s.contractCost) << " corehexes=";
   std::vector<int> core;
   for (Hex hex : s.coreHexes) {
@@ -775,7 +781,10 @@ std::optional<Settings> readSettings(std::string_view line) {
       ok = five(v, s.stationCost);
     else if (key == "kinds")
       ok = five(v, s.kindWeights);
-    else if (key == "colony")
+    else if (key == "exhaust") {
+      s.exhaustHomesAt = v[0];
+      s.exhaustedKindRandom = v.size() >= 2 && v[1] != 0;
+    } else if (key == "colony")
       ok = five(v, s.colonyCost);
     else if (key == "contract")
       ok = five(v, s.contractCost);
@@ -1086,6 +1095,7 @@ int Game::currentPlayer(const State &state) {
   case Phase::PlanetDraw:
   case Phase::ZoneDraw:
   case Phase::ContractDraw:
+  case Phase::HomeNumberDraw:
     return GameBots::kDealer;
   default:
     return state.turn;
@@ -1437,8 +1447,37 @@ bool Game::apply(State &state, const Action &action) {
   case Phase::HomeIncome:
     if (action.kind == Kind::ChooseHome && action.a >= 0 && action.a < kResources) {
       ++me.resources[static_cast<std::size_t>(action.a)];
-      if (--state.homeIncomeLeft <= 0)
-        state.phase = Phase::RollDraw;
+      --state.homeIncomeLeft;
+      state.phase = state.homeIncomeLeft > 0 ? Phase::HomeIncome : Phase::RollDraw;
+      // The exhausted home: at exhaustHomesAt points, this was its last
+      // resource; it becomes a planet of that kind, its number drawn next
+      const auto home = std::find_if(state.planets.begin(), state.planets.end(),
+                                     [&](const Planet &p) { return p.homeOf == state.turn; });
+      if (state.settings.exhaustHomesAt > 0 && home != state.planets.end() &&
+          points(state, state.turn) >= state.settings.exhaustHomesAt) {
+        home->kind = static_cast<PlanetKind>(action.a);
+        home->formerHomeOf = state.turn;
+        home->homeOf = -1;
+        state.homeIncomeLeft = 0;
+        state.pendingPlanet = static_cast<int>(home - state.planets.begin());
+        state.phase = Phase::HomeNumberDraw;
+      }
+      done = true;
+    }
+    break;
+  case Phase::HomeNumberDraw:
+    if (action.kind == Kind::NumberHome &&
+        std::find(state.settings.exhaustedNumbers.begin(), state.settings.exhaustedNumbers.end(),
+                  action.a) != state.settings.exhaustedNumbers.end()) {
+      Planet &home = state.planets[static_cast<std::size_t>(state.pendingPlanet)];
+      if (state.settings.exhaustedKindRandom) {
+        if (action.b < 0 || action.b >= kResources)
+          break;
+        home.kind = static_cast<PlanetKind>(action.b);
+      }
+      home.number = action.a;
+      state.pendingPlanet = -1;
+      state.phase = Phase::RollDraw;
       done = true;
     }
     break;
@@ -1804,6 +1843,14 @@ Action Game::dealerAction(const State &state, SeededRandom::Generator &random) {
   }
   case Phase::ZoneDraw:
     return {Kind::RevealFind, weighted(state.findsLeft)};
+  case Phase::HomeNumberDraw: {
+    const std::vector<int> &numbers = state.settings.exhaustedNumbers;
+    const int number = numbers[random.below(static_cast<std::uint32_t>(numbers.size()))];
+    const int kind = state.settings.exhaustedKindRandom
+                         ? static_cast<int>(random.below(static_cast<std::uint32_t>(kResources)))
+                         : -1;
+    return {Kind::NumberHome, number, kind};
+  }
   case Phase::ContractDraw: {
     std::vector<int> deck = state.deck;
     random.shuffle(deck.begin(), deck.end());
@@ -1860,8 +1907,9 @@ std::string Game::writeState(const State &state) {
   for (const Planet &p : state.planets) {
     out << "planet " << hexText(p.hex) << " "
         << (p.flipped ? kKindNames[static_cast<std::size_t>(p.kind)] : "?") << " " << p.number
-        << (p.core ? " core" : "") << " home=" << p.homeOf << " docks=" << p.docks[0] << ","
-        << p.docks[1] << " colony=" << p.colony[0] << "," << p.colony[1] << "\n";
+        << (p.core ? " core" : "") << " home=" << p.homeOf << " former=" << p.formerHomeOf
+        << " docks=" << p.docks[0] << "," << p.docks[1] << " colony=" << p.colony[0] << ","
+        << p.colony[1] << "\n";
   }
   for (const ZoneSite &z : state.zone)
     out << "zone " << hexText(z.hex) << " "
@@ -1968,6 +2016,8 @@ std::string Game::writeAction(const Action &action) {
     return "place_colony " + n(action.a);
   case Kind::PlaceShip:
     return "place_ship " + n(action.a);
+  case Kind::NumberHome:
+    return "number_home " + n(action.a) + " " + n(action.b);
   }
   return "?";
 }
@@ -2048,6 +2098,8 @@ std::optional<Action> Game::readAction(std::string_view text) {
       return std::nullopt;
     if (verb == "roll")
       return make(Kind::Roll, *a, *b);
+    if (verb == "number_home")
+      return make(Kind::NumberHome, *a, *b);
     if (verb == "blockade")
       return make(Kind::MoveBlockade, *a, *b);
     if (verb == "deal")

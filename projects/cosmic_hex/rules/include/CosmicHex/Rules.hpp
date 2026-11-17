@@ -132,6 +132,17 @@ struct Settings {
   // leader (0: off)
   int catchUpBelow = 0;
   int catchUpGap = 0;
+  // The exhausted home (rounds 60 to 62, the user's idea): on a player's
+  // first turn with exhaustHomesAt points or more, the resource they choose
+  // from their home is its last: the home becomes a planet of that kind,
+  // with a number drawn from exhaustedNumbers, paying every station on it
+  // (its owner's too) by the dice, and open to anyone to build by (the
+  // distance rule as everywhere); its 1 a turn stops (0: off)
+  int exhaustHomesAt = 0;
+  std::vector<int> exhaustedNumbers{4, 5, 9, 10};
+  // Its kind drawn at random (an equal chance of each, as a die would)
+  // instead of the resource chosen (after round 62: simulated both ways)
+  bool exhaustedKindRandom = false;
   // The first player goes without their home's income on their first turn
   // (half a resource's worth of making up for going first)
   bool firstSkipsIncome = false;
@@ -191,6 +202,7 @@ struct Planet {
   int number = 0;                     // its dice number once flipped (0: none)
   bool core = false;
   int homeOf = -1;                       // the player whose home it is, or -1
+  int formerHomeOf = -1;                 // whose home it was, if it's an exhausted home
   std::array<int, kDocks> docks{-1, -1}; // the players with stations here
   std::array<bool, kDocks> colony{false, false};
   bool operator==(const Planet &) const = default;
@@ -246,8 +258,9 @@ enum class Phase : std::uint8_t {
   ContractDraw, // the dealer deals 2 contracts
   KeepContract, // the player keeps one
   Over,
-  PlaceColony, // (corners) the start: each player's home colony, in turn order
-  PlaceShip,   // (corners) then each player's ship, in reverse order
+  PlaceColony,    // (corners) the start: each player's home colony, in turn order
+  PlaceShip,      // (corners) then each player's ship, in reverse order
+  HomeNumberDraw, // the dealer draws an exhausted home's number
 };
 
 struct State {
@@ -318,6 +331,7 @@ struct Action {
     EndTurn,
     PlaceColony, // (corners) a: the corner (its number in boardCorners())
     PlaceShip,   // (corners) a: the corner
+    NumberHome,  // dealer: a: an exhausted home's number, b: its kind if drawn (else -1)
   };
   Kind kind = Kind::EndTurn;
   int a = 0, b = 0, c = 0;

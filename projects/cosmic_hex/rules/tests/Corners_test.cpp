@@ -413,3 +413,87 @@ TEST(CornersTest, AlienOutposts) {
         Game::apply(state, {Kind::BuildColony, static_cast<int>(state.stations.size()) - 1}));
   }
 }
+
+// The exhausted home (rounds 60 to 62): at 5 points, the resource chosen is
+// the home's last: it becomes a planet of that kind with a number from 4, 5,
+// 9 and 10, paying by the dice; its 1 a turn stops
+TEST(CornersTest, AnExhaustedHomeBecomesAPlanet) {
+  State state = atMain();
+  state.settings.exhaustHomesAt = 5;
+  state.phase = Phase::HomeIncome;
+  state.homeIncomeLeft = 1;
+  // Below 5 points: an ordinary turn's income
+  ASSERT_LT(points(state, 0), 5);
+  ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 2}));
+  EXPECT_EQ(state.phase, Phase::RollDraw);
+  // At 5 points (stations to make them up)
+  int needed = 5 - points(state, 0);
+  for (Corner corner : boardCorners()) {
+    if (needed <= 0)
+      break;
+    const auto taken = [&](Corner c) {
+      return std::any_of(state.stations.begin(), state.stations.end(),
+                         [&](const Station &st) { return st.at == c; });
+    };
+    bool free = !taken(corner);
+    for (Corner next : HexGrid::neighbours(corner))
+      free = free && !taken(next);
+    if (planetsAt(state, corner) > 0 && free) {
+      state.stations.push_back(Station{corner, 0, false});
+      --needed;
+    }
+  }
+  ASSERT_GE(points(state, 0), 5);
+  state.phase = Phase::HomeIncome;
+  state.homeIncomeLeft = 1;
+  const auto home = std::find_if(state.planets.begin(), state.planets.end(),
+                                 [](const Planet &p) { return p.homeOf == 0; });
+  ASSERT_NE(home, state.planets.end());
+  const auto index = static_cast<std::size_t>(home - state.planets.begin());
+  const int fuel = state.player[0].resources[2];
+  ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 2})); // fuel: a gas giant from now on
+  EXPECT_EQ(state.player[0].resources[2], fuel + 1);      // (its last)
+  EXPECT_EQ(state.phase, Phase::HomeNumberDraw);
+  EXPECT_EQ(Game::currentPlayer(state), GameBots::kDealer);
+  EXPECT_FALSE(Game::apply(state, {Kind::NumberHome, 6, -1})); // (not one of 4, 5, 9, 10)
+  ASSERT_TRUE(Game::apply(state, {Kind::NumberHome, 9, -1}));
+  const Planet &planet = state.planets[index];
+  EXPECT_EQ(planet.kind, PlanetKind::GasGiant);
+  EXPECT_EQ(planet.number, 9);
+  EXPECT_EQ(planet.homeOf, -1);
+  EXPECT_EQ(planet.formerHomeOf, 0);
+  EXPECT_EQ(state.phase, Phase::RollDraw);
+  // From now on no home income: player 0's next turn starts at the roll
+  state.phase = Phase::Main;
+  ASSERT_TRUE(Game::apply(state, {Kind::EndTurn}));
+  SeededRandom::Generator random(5);
+  for (int guard = 0; guard < 500 && state.turn != 0; ++guard) {
+    const Action next = Game::currentPlayer(state) == GameBots::kDealer
+                            ? Game::dealerAction(state, random)
+                        : state.phase == Phase::Main ? Action{Kind::EndTurn}
+                                                     : Game::legalActions(state).front();
+    ASSERT_TRUE(Game::apply(state, next));
+  }
+  ASSERT_EQ(state.turn, 0);
+  EXPECT_EQ(state.phase, Phase::RollDraw);
+}
+
+// Or its kind drawn at random, whatever was chosen
+TEST(CornersTest, AnExhaustedHomesKindCanBeDrawn) {
+  State state = atMain();
+  state.settings.exhaustHomesAt = 1;
+  state.settings.exhaustedKindRandom = true;
+  state.stations.push_back(Station{cornerTouching(state, 2), 0, false}); // (a point at least)
+  ASSERT_GE(points(state, 0), 1);
+  state.phase = Phase::HomeIncome;
+  state.homeIncomeLeft = 1;
+  ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 2}));
+  ASSERT_EQ(state.phase, Phase::HomeNumberDraw);
+  EXPECT_FALSE(Game::apply(state, {Kind::NumberHome, 5, -1})); // (a kind must be drawn)
+  ASSERT_TRUE(Game::apply(state, {Kind::NumberHome, 5, 4}));
+  const auto home = std::find_if(state.planets.begin(), state.planets.end(),
+                                 [](const Planet &p) { return p.formerHomeOf == 0; });
+  ASSERT_NE(home, state.planets.end());
+  EXPECT_EQ(home->kind, PlanetKind::Nebula);
+  EXPECT_EQ(home->number, 5);
+}

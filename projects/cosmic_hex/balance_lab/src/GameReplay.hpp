@@ -172,6 +172,8 @@ inline std::string describe(const State &before, const Action &action) {
     return who + " places their home colony.";
   case Kind::PlaceShip:
     return who + " places their starting ship.";
+  case Kind::NumberHome:
+    return "An exhausted home world becomes a planet, on " + std::to_string(action.a) + ".";
   }
   return who + " acts.";
 }

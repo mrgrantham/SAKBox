@@ -117,6 +117,8 @@ Settings settingsFor(const Options &options) {
   if (options.shipCost)
     settings.shipCost = *options.shipCost;
   settings.kindWeights = options.kindWeights;
+  settings.exhaustHomesAt = options.exhaustHomesAt;
+  settings.exhaustedKindRandom = options.exhaustedKindRandom;
   return settings;
 }
 

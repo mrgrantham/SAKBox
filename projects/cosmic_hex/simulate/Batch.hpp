@@ -51,8 +51,10 @@ struct Options {
   // costing one more), and how common each kind of planet is (round 62)
   std::optional<Resources> stationCost, shipCost;
   Resources kindWeights{1, 1, 1, 1, 1};
-  int strongIterations = 0;   // a stronger bot, thinking this much, at one home in turn
-  std::string variant;        // a label for the CSV
+  bool exhaustedKindRandom = false; // (its kind drawn, not chosen)
+  int exhaustHomesAt = 0;           // the exhausted home, at this many points (0: off)
+  int strongIterations = 0;         // a stronger bot, thinking this much, at one home in turn
+  std::string variant;              // a label for the CSV
   std::string core = "seven"; // the core planets: seven (the centre and the six around it) or three
   std::vector<Hex> planets;   // a layout's planets (empty: one every third hex)
   std::vector<Hex> homes;     // and its homes (empty: the usual ones)

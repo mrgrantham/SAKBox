@@ -428,6 +428,8 @@ void LabWindowPadd::drawSettings() {
   ImGui::InputInt("Imperial Tithe over", &options_.discardOver);
   ImGui::InputInt("Moons", &options_.moons);
   ImGui::InputInt("Alien outposts", &options_.outposts);
+  ImGui::InputInt("Homes exhaust at (0: never)", &options_.exhaustHomesAt);
+  ImGui::Checkbox("Exhausted home's kind random", &options_.exhaustedKindRandom);
   // Round 61: free stations, and the ship costing a food more with them
   bool freeStations = options_.stationCost.has_value();
   if (ImGui::Checkbox("Free stations", &freeStations))
