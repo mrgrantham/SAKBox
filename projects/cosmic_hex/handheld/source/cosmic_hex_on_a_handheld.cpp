@@ -90,8 +90,14 @@ constexpr bool kWatchAtStart = false;
 // question on the roadmap page (round 87); the scene for now
 constexpr bool kTitleScene = true;
 
-// The bots' frame arena (round 90), and none if 0
+// The bots' frame arena (round 90), and none if 0. One simulated game held
+// up to about 75 KB (64-bit, in the test); the DS has under 200 KB free, so
+// it takes less (a game that outgrows the arena carries on from the heap)
+#if defined(__NDS__)
+constexpr std::size_t kFrameArenaBytes = 64 * 1024;
+#else
 constexpr std::size_t kFrameArenaBytes = 128 * 1024;
+#endif
 #if defined(__NDS__)
 constexpr int kTopWidth = 256, kTopHeight = 192, kBottomWidth = 256, kBottomHeight = 192;
 constexpr std::size_t kCharsPerLine = 31;
@@ -554,22 +560,62 @@ private:
                          .nearPlane = 1,
                          .farPlane = 60};
   }
-  static const Scene::Environment &boardEnvironment() {
-    static const Scene::Environment kEnvironment = [] {
-      Scene::Environment environment;
-      environment.background = BoardColours::kSpace;
-      environment.ambient = {120, 120, 130};
-      environment.addLight({.direction = {-0.4f, -1, -0.5f}, .colour = {200, 200, 190}});
-      return environment;
-    }();
-    return kEnvironment;
+  // The board's light: the game's (a lamp above and to one side, toon
+  // bands), or, `flat` of the way to it, bright and even (the setup's: the
+  // board seen from above looks like the flat map; round 90, the user's)
+  static Scene::Environment boardEnvironment(float flat = 0) {
+    const auto mix = [&](float game, float even) { return game + (even - game) * flat; };
+    Scene::Environment environment;
+    environment.background = BoardColours::kSpace;
+    environment.ambient = {static_cast<std::uint8_t>(mix(120, 235)),
+                           static_cast<std::uint8_t>(mix(120, 235)),
+                           static_cast<std::uint8_t>(mix(130, 235))};
+    const float lamp = 1 - flat;
+    environment.addLight(
+        {.direction = {-0.4f, -1, -0.5f},
+         .colour = {static_cast<std::uint8_t>(200 * lamp), static_cast<std::uint8_t>(200 * lamp),
+                    static_cast<std::uint8_t>(190 * lamp)}});
+    return environment;
+  }
+
+  // The board from straight above, all of it on the screen (the setup's
+  // view, like the flat map; up the screen is away from the game's camera)
+  static Scene::Camera topDownCamera() {
+    return Scene::Camera{.eye = {0, 18, 0.01f},
+                         .target = {0, 0, 0},
+                         .up = {0, 0, -1},
+                         .fieldOfView = 50,
+                         .nearPlane = 1,
+                         .farPlane = 60};
+  }
+
+  // How far the board has come down from above to the game's view since the
+  // game started (0 to 1, on the dice's curve: slideAcross), or 1 once there
+  float descent() const {
+    if (!descentStarted_)
+      return 1;
+    return slideAcross(
+        static_cast<float>(std::chrono::duration<double>(Clock::now() - *descentStarted_).count()));
+  }
+  static Scene::Camera between(const Scene::Camera &from, const Scene::Camera &to, float t) {
+    Scene::Camera out = to;
+    out.eye = from.eye + (to.eye - from.eye) * t;
+    out.target = from.target + (to.target - from.target) * t;
+    out.up = (from.up + (to.up - from.up) * t).normalised();
+    return out;
   }
 
   // The game's board (or none yet), with the dice, the words over it and the
   // selection
   void drawBoard(const State *shown) {
-    const Scene::Camera camera = boardCamera();
-    renderer_->beginFrame(camera, boardEnvironment());
+    // (coming down from above at the start of a game: round 90, the user's)
+    const float down = descent();
+    if (down >= 1)
+      descentStarted_.reset();
+    const Scene::Camera camera = between(topDownCamera(), boardCamera(), down);
+    renderer_->beginFrame(camera, boardEnvironment(1 - down));
+    if (!shown && descentStarted_)
+      shown = &preview_; // (the game's first state on its way: the same board)
     renderer_->draw(stars_, Scene::Transform::identity(),
                     {.shading = Scene::Material::Shading::Unlit});
     if (shown) {
@@ -589,8 +635,8 @@ private:
   // a change of board, the old one slides out and the new one in, on the
   // dice's curve (slideAcross), the way the arrow pointed
   void drawSetup() {
-    const Scene::Camera camera = boardCamera();
-    renderer_->beginFrame(camera, boardEnvironment());
+    const Scene::Camera camera = topDownCamera();
+    renderer_->beginFrame(camera, boardEnvironment(1));
     renderer_->draw(stars_, Scene::Transform::identity(),
                     {.shading = Scene::Material::Shading::Unlit});
     const float through =
@@ -906,6 +952,20 @@ private:
         picture_->mark(*selected_);
       drawn = &picture_->pixels();
     }
+    // Fading from the menu to the map, as the board comes down
+    const float down = descent();
+    if (down < 1 && !fadeFrom_.empty() && fadeFrom_.size() == drawn->size()) {
+      faded_.resize(drawn->size());
+      for (std::size_t i = 0; i < faded_.size(); ++i) {
+        const Scene::Colour a = fadeFrom_[i], b = (*drawn)[i];
+        const auto mix = [&](std::uint8_t x, std::uint8_t y) {
+          return static_cast<std::uint8_t>(x + (y - x) * down);
+        };
+        faded_[i] = {mix(a.r, b.r), mix(a.g, b.g), mix(a.b, b.b), 255};
+      }
+      drawn = &faded_;
+      bottomDirty_ = true; // (and again next frame, until it's done)
+    }
     const auto &pixels = *drawn;
 #if defined(__NDS__)
     // 256 a row (the bitmap is 256 wide), 15-bit colours with bit 15 set
@@ -1018,6 +1078,9 @@ private:
   // the top screen, turning slowly)
   State preview_ = previewOf(menu_);
   State previewBefore_ = preview_; // (the board sliding out)
+  // The start of a game: the board coming down, the bottom screen fading
+  std::optional<Clock::time_point> descentStarted_;
+  std::vector<Scene::Colour> fadeFrom_, faded_;
   bool sliding_ = false;
   int slideWay_ = 1; // (+1: right was pressed, the new board comes in from the right)
   Clock::time_point slideStarted_;
@@ -1104,6 +1167,12 @@ private:
   }
 
   void startGame() {
+    // (from the setup: the board comes down to the game's view, and the
+    // bottom screen fades from the menu to the map)
+    if (flow_.screen() == ScreenFlow::Screen::Game) {
+      descentStarted_ = Clock::now();
+      fadeFrom_ = menuPicture_.pixels();
+    }
     const bool play = !menu_.watching();
     mode_ = play ? Mode::Playing : Mode::Watching;
     latest_.reset();
