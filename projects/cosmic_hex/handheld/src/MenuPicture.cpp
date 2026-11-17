@@ -90,7 +90,7 @@ void MenuPicture::draw(const StartMenu &menu) {
   for (const StartMenu::Button &button : buttons) {
     const bool chosen =
         menu.focus() == button.row &&
-        (button.step != 0 || (button.starts == StartMenu::Outcome::Watch) == menu.watchChosen());
+        (button.step != 0 || (button.starts == StartMenu::Outcome::Back) == menu.backChosen());
     if (button.step != 0) {
       fillRect(button.x, button.y, button.width, button.height, kButton);
       outline(button.x, button.y, button.width, button.height, chosen ? kChosen : kEdge);
@@ -98,13 +98,13 @@ void MenuPicture::draw(const StartMenu &menu) {
            scale * 1.4f, chosen ? kChosen : kWords);
       continue;
     }
-    const bool play = button.starts == StartMenu::Outcome::Play;
-    fillRect(button.x, button.y, button.width, button.height, play ? kPlay : kWatch);
+    const bool start = button.starts == StartMenu::Outcome::Start;
+    fillRect(button.x, button.y, button.width, button.height, start ? kPlay : kWatch);
     if (chosen) {
       outline(button.x, button.y, button.width, button.height, kChosen);
       outline(button.x + 1, button.y + 1, button.width - 2, button.height - 2, kChosen);
     }
-    text(play ? "Play" : "Watch", button.x, button.y, button.width, button.height, scale * 1.6f,
+    text(start ? "Start" : "Back", button.x, button.y, button.width, button.height, scale * 1.6f,
          chosen ? kChosen : kWords);
   }
   // Each row's label (left) and value (between its arrows)
@@ -119,6 +119,24 @@ void MenuPicture::draw(const StartMenu &menu) {
     const float fits = (area.width - 14) / textWidth(value);
     text(value, area.x, area.y, area.width, area.height, std::min(scale, fits),
          chosen ? kChosen : kWords);
+  }
+}
+
+void MenuPicture::draw(const ButtonMenu &menu) {
+  std::fill(pixels_.begin(), pixels_.end(), kBackground);
+  const float scale = width_ >= 300 ? 1.6f : 1.2f;
+  const auto buttons = menu.buttons(width_, height_);
+  for (std::size_t i = 0; i < buttons.size(); ++i) {
+    const ButtonMenu::Button &b = buttons[i];
+    const bool chosen = menu.focus() == i;
+    fillRect(b.x, b.y, b.width, b.height, i == 0 ? kPlay : kButton);
+    if (chosen) {
+      outline(b.x, b.y, b.width, b.height, kChosen);
+      outline(b.x + 1, b.y + 1, b.width - 2, b.height - 2, kChosen);
+    } else {
+      outline(b.x, b.y, b.width, b.height, kEdge);
+    }
+    text(menu.labels()[i], b.x, b.y, b.width, b.height, scale, chosen ? kChosen : kWords);
   }
 }
 

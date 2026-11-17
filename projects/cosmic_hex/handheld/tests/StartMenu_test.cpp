@@ -62,15 +62,20 @@ TEST(StartMenuTest, ButtonsMoveAndChange) {
   menu.press(Key::Right);
   EXPECT_EQ(menu.seatBonus(), (std::array<int, kMaxPlayers>{}));
   EXPECT_EQ(menu.value(Row::SeatBonus), "none for this board");
-  menu.press(Key::Down); // (the last row: Play or Watch)
+  menu.press(Key::Down); // (the mode: you play, or watch)
+  EXPECT_EQ(menu.focus(), Row::Mode);
+  EXPECT_FALSE(menu.watching());
+  menu.press(Key::Right);
+  EXPECT_TRUE(menu.watching());
+  menu.press(Key::Down); // (the last row: Start or Back)
   EXPECT_EQ(menu.focus(), Row::Start);
   menu.press(Key::Right);
-  EXPECT_TRUE(menu.watchChosen());
-  EXPECT_EQ(menu.press(Key::Confirm), Outcome::Watch);
+  EXPECT_TRUE(menu.backChosen());
+  EXPECT_EQ(menu.press(Key::Confirm), Outcome::Back);
   menu.press(Key::Down); // (round to the top)
   EXPECT_EQ(menu.focus(), Row::Players);
-  EXPECT_EQ(menu.press(Key::Confirm), Outcome::Play); // (A plays from any other row)
-  EXPECT_EQ(menu.press(Key::Back), Outcome::Watch);   // (B watches)
+  EXPECT_EQ(menu.press(Key::Confirm), Outcome::Start); // (A starts from any other row)
+  EXPECT_EQ(menu.press(Key::Back), Outcome::Back);     // (B goes back)
   // Back to four players: R3 again
   menu.press(Key::Left);
   EXPECT_EQ(menu.players(), 4);
@@ -84,10 +89,10 @@ TEST(StartMenuTest, TouchesChangeRowsAndStart) {
     EXPECT_EQ(menu.touch(x, y, w, h), Outcome::None);
     EXPECT_EQ(menu.boardName(), "S5");
     EXPECT_EQ(menu.focus(), Row::Board);
-    std::tie(x, y) = middleOf(menu, Row::Start, 0, Outcome::Watch, w, h);
-    EXPECT_EQ(menu.touch(x, y, w, h), Outcome::Watch);
-    std::tie(x, y) = middleOf(menu, Row::Start, 0, Outcome::Play, w, h);
-    EXPECT_EQ(menu.touch(x, y, w, h), Outcome::Play);
+    std::tie(x, y) = middleOf(menu, Row::Start, 0, Outcome::Back, w, h);
+    EXPECT_EQ(menu.touch(x, y, w, h), Outcome::Back);
+    std::tie(x, y) = middleOf(menu, Row::Start, 0, Outcome::Start, w, h);
+    EXPECT_EQ(menu.touch(x, y, w, h), Outcome::Start);
     EXPECT_EQ(menu.touch(0, 0, w, h), Outcome::None); // (a margin: nothing)
     // Every button on the screen, none overlapping another
     const auto buttons = menu.buttons(w, h);
@@ -114,7 +119,7 @@ TEST(StartMenuTest, ThePictureDraws) {
   writeOut(big, "menu_3ds.ppm");
   writeOut(small, "menu_ds.ppm");
   menu.press(Key::Right);
-  for (int i = 0; i < 4; ++i)
+  for (int i = 0; i < 5; ++i)
     menu.press(Key::Down);
   big.draw(menu);
   writeOut(big, "menu_3ds_three_players.ppm");

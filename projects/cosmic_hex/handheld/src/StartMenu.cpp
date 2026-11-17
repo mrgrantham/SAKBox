@@ -3,7 +3,7 @@
 namespace CosmicHex::Handheld {
 
 namespace {
-constexpr int kRows = 5;
+constexpr int kRows = 6;
 // The layout, as parts of the screen: a margin, each row's height, and the
 // arrows' width
 constexpr float kMargin = 0.05f;
@@ -28,6 +28,8 @@ std::string StartMenu::label(Row row) const {
     return "End";
   case Row::SeatBonus:
     return "Bonus";
+  case Row::Mode:
+    return "Mode";
   case Row::Start:
     return "";
   }
@@ -46,6 +48,8 @@ std::string StartMenu::value(Row row) const {
     if (!boards_[board_].hasSeatBonus())
       return "none for this board";
     return seatBonus_ ? "later seats +1" : "off";
+  case Row::Mode:
+    return watching_ ? "watch the bots" : "you play";
   case Row::Start:
     return "";
   }
@@ -71,8 +75,11 @@ void StartMenu::change(Row row, int step) {
     if (boards_[board_].hasSeatBonus())
       seatBonus_ = !seatBonus_;
     break;
+  case Row::Mode:
+    watching_ = !watching_;
+    break;
   case Row::Start:
-    watch_ = !watch_;
+    back_ = !back_;
     break;
   }
 }
@@ -91,9 +98,9 @@ StartMenu::Outcome StartMenu::press(Key key) {
     change(focus_, key == Key::Right ? 1 : -1);
     return Outcome::None;
   case Key::Confirm:
-    return focus_ == Row::Start && watch_ ? Outcome::Watch : Outcome::Play;
+    return focus_ == Row::Start && back_ ? Outcome::Back : Outcome::Start;
   case Key::Back:
-    return Outcome::Watch;
+    return Outcome::Back;
   }
   return Outcome::None;
 }
@@ -112,8 +119,8 @@ std::vector<StartMenu::Button> StartMenu::buttons(int width, int height) const {
   }
   const float y = h * kMargin + rowHeight * (kRows - 1) + rowHeight * 0.15f;
   const float half = (right - left) / 2;
-  out.push_back({Row::Start, 0, Outcome::Play, left, y, half - w * 0.02f, rowHeight * 0.75f});
-  out.push_back({Row::Start, 0, Outcome::Watch, left + half + w * 0.02f, y, half - w * 0.02f,
+  out.push_back({Row::Start, 0, Outcome::Start, left, y, half - w * 0.02f, rowHeight * 0.75f});
+  out.push_back({Row::Start, 0, Outcome::Back, left + half + w * 0.02f, y, half - w * 0.02f,
                  rowHeight * 0.75f});
   return out;
 }
@@ -138,7 +145,7 @@ StartMenu::Outcome StartMenu::touch(int x, int y, int width, int height) {
       change(button.row, button.step);
       return Outcome::None;
     }
-    watch_ = button.starts == Outcome::Watch;
+    back_ = button.starts == Outcome::Back;
     return button.starts;
   }
   return Outcome::None;

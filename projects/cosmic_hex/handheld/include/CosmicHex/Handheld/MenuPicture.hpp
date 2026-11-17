@@ -8,6 +8,7 @@
 //   picture.pixels()  // RGBA, rows from the top
 #pragma once
 
+#include <CosmicHex/Handheld/ButtonMenu.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 
 #include <ScratchPadd/Scene/Types.hpp>
@@ -25,6 +26,7 @@ public:
   int height() const { return height_; }
 
   void draw(const StartMenu &menu);
+  void draw(const ButtonMenu &menu); // (the title's and the pause menu's buttons)
   const std::vector<ScratchPadd::Scene::Colour> &pixels() const { return pixels_; }
 
 private:

@@ -1,17 +1,18 @@
-// StartMenu.hpp - the start screen's menu (round 87, layout C): on the touch
-// screen as buttons, worked by touch or by the console's buttons. Rows, top
-// to bottom:
+// StartMenu.hpp - the game's settings (round 87's layout C; since round 90
+// its own screen, after the title's Play): on the touch screen as buttons,
+// worked by touch or by the console's buttons. Rows, top to bottom:
 //
 //   Players  < 4 >                 4: you and three bots; 3: you and two
 //   Board    < R3 >                boardChoices(players), the default first
 //   End      < finish the round >  or the first to the target wins
 //   Bonus    < off >               the board's seat bonus, if it has one (R3)
-//   [ Play ]  [ Watch ]
+//   Mode     < you play >          or watch the bots play
+//   [ Start ]  [ Back ]
 //
 // Up and down move between rows; left and right change a row's value (or,
-// on the last row, choose Play or Watch); A starts what's chosen on the last
-// row, and plays from any other; B watches. A touch on a row's arrows
-// changes it, on Play or Watch starts it.
+// on the last row, choose Start or Back); A starts the game from any row
+// (or, on the last row, does what's chosen); B goes back. A touch on a
+// row's arrows changes it, on Start or Back does it.
 //
 //   StartMenu menu;
 //   if (menu.press(StartMenu::Key::Confirm) == StartMenu::Outcome::Play) ...
@@ -29,9 +30,9 @@ namespace CosmicHex::Handheld {
 
 class StartMenu {
 public:
-  enum class Row : std::uint8_t { Players, Board, End, SeatBonus, Start };
+  enum class Row : std::uint8_t { Players, Board, End, SeatBonus, Mode, Start };
   enum class Key : std::uint8_t { Up, Down, Left, Right, Confirm, Back };
-  enum class Outcome : std::uint8_t { None, Play, Watch };
+  enum class Outcome : std::uint8_t { None, Start, Back };
 
   StartMenu();
 
@@ -44,7 +45,8 @@ public:
   // The board's seat bonus, if it has one and it's chosen; else all 0
   std::array<int, kMaxPlayers> seatBonus() const;
   Row focus() const { return focus_; }
-  bool watchChosen() const { return watch_; } // (on the last row: Watch, not Play)
+  bool backChosen() const { return back_; }   // (on the last row: Back, not Start)
+  bool watching() const { return watching_; } // (Mode: watch the bots, not play)
 
   // A row's words: its label and its value as shown ("4: you and three bots")
   std::string label(Row row) const;
@@ -54,7 +56,7 @@ public:
   Outcome press(Key key);
 
   // The touch screen's buttons on a screen this size: each row's arrows
-  // (step -1 and +1) and the Play and Watch buttons (step 0)
+  // (step -1 and +1) and the Start and Back buttons (step 0)
   struct Button {
     Row row;
     int step; // -1: the left arrow, +1: the right, 0: Play or Watch
@@ -79,7 +81,8 @@ private:
   bool finishRound_ = true;
   bool seatBonus_ = false; // (off unless chosen: round 89)
   Row focus_ = Row::Players;
-  bool watch_ = false;
+  bool back_ = false;     // (the last row's choice)
+  bool watching_ = false; // (Mode)
 };
 
 } // namespace CosmicHex::Handheld

@@ -34,9 +34,11 @@
 #include <CosmicHex/Handheld/BoardMotion.hpp>
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/ButtonMenu.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
+#include <CosmicHex/Handheld/ScreenFlow.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
 #include <ScratchPadd/GameClock.hpp>
@@ -143,6 +145,12 @@ struct StartGame {
   std::array<int, CosmicHex::kMaxPlayers> seatBonus{}; // (the board's, if chosen)
 };
 struct TogglePause {};
+// The pause menu holds the game (true) or lets it go on (false); leaving a
+// game stops it (round 90)
+struct SetHold {
+  bool on;
+};
+struct StopGame {};
 struct DiceRolled {
   int first, second; // (the faces the dice settled on)
 };
@@ -165,12 +173,23 @@ public:
       settings.seatBonus = start.seatBonus;
       settings.physicsDice = true; // (thrown on the top screen; round 87)
       seed_ = settings.seed;
+      paused_ = false;
       game_.emplace(settings);
       sendSnapshot();
     });
     receive<TogglePause>([this](const TogglePause &) {
       paused_ = !paused_;
-      sendSnapshot();
+      if (game_)
+        sendSnapshot();
+    });
+    receive<SetHold>([this](const SetHold &hold) {
+      paused_ = hold.on;
+      if (game_)
+        sendSnapshot();
+    });
+    receive<StopGame>([this](const StopGame &) {
+      game_.reset();
+      paused_ = false;
     });
     receive<DiceRolled>([this](const DiceRolled &dice) {
       if (game_ && game_->rollDice(dice.first, dice.second))
@@ -248,15 +267,9 @@ public:
       motionStarted_ = gameClock_.seconds();
       latest_ = snapshot;
       bottomDirty_ = true;
-      // The gaps between the tiles, once: the board's tiles don't move
-      if (!gaps_ && renderer_) {
-        std::vector<CosmicHex::Hex> tiles;
-        for (const CosmicHex::Planet &planet : snapshot.state.planets)
-          tiles.push_back(planet.hex);
-        for (const CosmicHex::ZoneSite &site : snapshot.state.zone)
-          tiles.push_back(site.hex);
-        gaps_ = renderer_->load(BoardPieces::gapsUnder(tiles).data());
-      }
+      // Someone won: the title again, with who (ScreenFlow's Won)
+      if (snapshot.state.winner >= 0)
+        apply(flow_.on(ScreenFlow::Event::GameWon));
     });
   }
   std::string name() override { return "ScreenPadd"; }
@@ -299,8 +312,11 @@ public:
     // The build that watches by itself (COSMIC_HEX_WATCH_AT_START: the
     // -watch apps), for unattended runs in an emulator or on a console
     if (kWatchAtStart) {
-      mode_ = Mode::Watching;
-      send(StartGame{.withPerson = false});
+      for (int i = 0; i < 4; ++i) // (down to the Mode row: watch)
+        menu_.press(StartMenu::Key::Down);
+      menu_.press(StartMenu::Key::Right);
+      apply(flow_.on(ScreenFlow::Event::Play));
+      apply(flow_.on(ScreenFlow::Event::Start));
     }
     push([this] { frame(); });
   }
@@ -314,7 +330,14 @@ private:
     const Input::Gamepad pad = currentState<Input::Gamepad>().value;
     const Input::Edges pressed(lastPad_, pad);
     lastPad_ = pad;
+    // START: the pause menu in a game (and out of it again)
     if (pressed.pressed(Input::Button::Start)) {
+      if (flow_.screen() == ScreenFlow::Screen::Game)
+        apply(flow_.on(ScreenFlow::Event::Pause));
+      else if (flow_.screen() == ScreenFlow::Screen::Paused)
+        apply(flow_.on(ScreenFlow::Event::Resume));
+    }
+    if (quitting_) {
       system_->stop();
       return;
     }
@@ -333,8 +356,10 @@ private:
       drawBottom();
     throwDice();
     measureMemory();
-    // Before a game, and once one's won, the title scene; otherwise the board
-    if (kTitleScene && (mode_ == Mode::Choosing || (latest_ && latest_->state.winner >= 0))) {
+    // The top screen: the title scene (the title, and once a game's won);
+    // the board chosen, turning slowly (setup); or the game's board
+    const ScreenFlow::Screen screen = flow_.screen();
+    if (kTitleScene && (screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Won)) {
       drawTitle();
       push([this] { frame(); });
       return;
@@ -344,7 +369,12 @@ private:
       turn_ -= 0.02f;
     if (pad.isHeld(Input::Button::R))
       turn_ += 0.02f;
-    drawBoard();
+    if (screen == ScreenFlow::Screen::Setup) {
+      turn_ += 0.004f;
+      drawBoard(&preview_);
+    } else {
+      drawBoard(latest_ ? &latest_->state : nullptr);
+    }
     push([this] { frame(); });
   }
 
@@ -355,12 +385,12 @@ private:
     title_->draw(
         *renderer_,
         static_cast<float>(std::chrono::duration<double>(Clock::now() - titleStarted_).count()));
-    if (mode_ != Mode::Choosing && latest_) {
+    if (flow_.screen() == ScreenFlow::Screen::Won && latest_) {
       char line[64];
       std::snprintf(line, sizeof line, "Player %d wins!", latest_->state.winner + 1);
       Scene::Overlay &overlay = renderer_->overlay();
       overlay.text(kTopWidth / 2.0f - 70, kTopHeight - 40, line, {255, 214, 90}, 2);
-      overlay.text(kTopWidth / 2.0f - 50, kTopHeight - 16, "START: quit", {200, 208, 222});
+      overlay.text(kTopWidth / 2.0f - 60, kTopHeight - 16, "A: to the title", {200, 208, 222});
     }
     renderer_->endFrame();
   }
@@ -498,7 +528,7 @@ private:
 
   // The board from above and in front, turned by L and R (looking a little
   // in front of the centre, so the near hexes stay on screen)
-  void drawBoard() {
+  void drawBoard(const State *shown) {
     const float distance = 9.5f, height = 9.5f;
     const Scene::Camera camera{
         .eye = {distance * std::sin(turn_), height, distance * std::cos(turn_)},
@@ -517,13 +547,16 @@ private:
     renderer_->beginFrame(camera, kEnvironment);
     renderer_->draw(stars_, Scene::Transform::identity(),
                     {.shading = Scene::Material::Shading::Unlit});
-    // A dim, see-through grey in the gaps between the tiles (round 80: dimmer)
+    // A dim, see-through grey in the gaps between the tiles (round 80: dimmer),
+    // made again when the board changes (another game, or the setup's choice)
+    if (shown)
+      updateGaps(*shown);
     if (gaps_)
       renderer_->draw(
           gaps_, Scene::Transform::identity(),
           {.shading = Scene::Material::Shading::Unlit, .colour = {150, 160, 180}, .alpha = 4});
-    if (latest_) {
-      const State &state = latest_->state;
+    if (shown) {
+      const State &state = *shown;
       // How far through the latest move's animation (0 to 1)
       const float t =
           static_cast<float>((gameClock_.seconds() - motionStarted_) / kSecondsAnimating);
@@ -582,8 +615,10 @@ private:
             ship_, BoardPieces::onHex(state.planets[static_cast<std::size_t>(state.blockade)].hex),
             toon(BoardColours::kBlockade));
     }
-    drawDice(camera);
-    drawText();
+    if (flow_.screen() != ScreenFlow::Screen::Setup) {
+      drawDice(camera);
+      drawText();
+    }
     // The selected hex, ringed on the 3D board too
     if (selected_)
       renderer_->draw(highlight_, BoardPieces::onHex(selected_->hex),
@@ -598,18 +633,14 @@ private:
   // your move, the moves you can make
   void drawText() {
     Scene::Overlay &overlay = renderer_->overlay();
-    if (mode_ == Mode::Choosing) {
-      // The text title (when the 3D scene is off); the menu is on the touch
-      // screen (StartMenu, round 87)
-      overlay.text(kTopWidth / 2.0f - 70, kTopHeight / 2.0f - 20, "Cosmic Hex", {226, 232, 244}, 2);
-      return;
-    }
     if (!latest_)
       return;
     const State &state = latest_->state;
     char line[64];
     std::snprintf(line, sizeof line, "Round %d%s", state.round,
-                  latest_->paused ? "  (paused: A)" : "");
+                  flow_.screen() == ScreenFlow::Screen::Paused ? "  (paused)"
+                  : latest_->paused                            ? "  (paused: A)"
+                                                               : "");
     overlay.text(4, 4, line, {226, 232, 244});
     for (int p = 0; p < state.players; ++p) {
       const auto &r = state.player[static_cast<std::size_t>(p)].resources;
@@ -629,20 +660,36 @@ private:
     if (mode_ == Mode::Playing && latest_->yourMove)
       drawMoves(overlay);
     if (state.winner >= 0) {
-      std::snprintf(line, sizeof line, "Player %d wins!  START: quit", state.winner + 1);
-      overlay.text(kTopWidth / 2.0f - 90, kTopHeight / 2.0f - 10, line, {255, 214, 90}, 1.5f);
+      std::snprintf(line, sizeof line, "Player %d wins!", state.winner + 1);
+      overlay.text(kTopWidth / 2.0f - 60, kTopHeight / 2.0f - 10, line, {255, 214, 90}, 1.5f);
     }
   }
 
-  // The buttons. Before a game: A to play against three bots, B to watch
-  // four. Watching: A pauses or goes on. Playing, on your move: up and down
-  // choose from the list (the moves at the touched spot, or all of them), A
-  // makes it, B shows them all again
+  // The buttons, by screen (ScreenFlow): the title's and the pause menu's
+  // buttons (up, down, A), the setup's menu (StartMenu: up, down, left,
+  // right, A to start, B back), any button once a game's won; in a game,
+  // watching: A pauses or goes on; playing, on your move: up and down choose
+  // from the list (the moves at the touched spot, or all of them), A makes
+  // it, B shows them all again
   void handleButtons(const Input::Edges &pressed) {
     using Input::Button;
-    if (mode_ == Mode::Choosing) {
-      // The menu (StartMenu): up and down choose a row, left and right
-      // change it, A starts what's chosen, B watches
+    switch (flow_.screen()) {
+    case ScreenFlow::Screen::Title:
+    case ScreenFlow::Screen::Paused: {
+      ButtonMenu &menu = flow_.screen() == ScreenFlow::Screen::Title ? titleMenu_ : pauseMenu_;
+      std::optional<std::size_t> chosen;
+      for (const auto &[button, key] : {std::pair{Button::Up, ButtonMenu::Key::Up},
+                                        std::pair{Button::Down, ButtonMenu::Key::Down},
+                                        std::pair{Button::FaceRight, ButtonMenu::Key::Confirm}})
+        if (pressed.pressed(button)) {
+          chosen = menu.press(key);
+          bottomDirty_ = true;
+        }
+      if (chosen)
+        choose(*chosen);
+      return;
+    }
+    case ScreenFlow::Screen::Setup: {
       using Key = StartMenu::Key;
       StartMenu::Outcome outcome = StartMenu::Outcome::None;
       for (const auto &[button, key] :
@@ -652,9 +699,17 @@ private:
         if (pressed.pressed(button) && outcome == StartMenu::Outcome::None) {
           outcome = menu_.press(key);
           bottomDirty_ = true;
+          updatePreview();
         }
-      start(outcome);
+      setupOutcome(outcome);
       return;
+    }
+    case ScreenFlow::Screen::Won:
+      if (pressed.pressed(Button::FaceRight) || pressed.pressed(Button::FaceBottom))
+        apply(flow_.on(ScreenFlow::Event::Continue));
+      return;
+    case ScreenFlow::Screen::Game:
+      break;
     }
     if (mode_ == Mode::Watching) {
       if (pressed.pressed(Button::FaceRight))
@@ -697,10 +752,20 @@ private:
   // A touch: a tap selects the hex (and corner) under it; a drag moves the
   // board, when it's zoomed in
   void handleTouch(const Input::Touch &touch) {
-    if (mode_ == Mode::Choosing) {
-      // (a tap, when the stylus comes down)
+    const ScreenFlow::Screen screen = flow_.screen();
+    if (screen != ScreenFlow::Screen::Game) {
+      // (a tap, when the stylus comes down: the screen's menu)
       if (touch.down && !touchWasDown_) {
-        start(menu_.touch(touch.x, touch.y, kBottomWidth, kBottomHeight));
+        if (screen == ScreenFlow::Screen::Setup) {
+          setupOutcome(menu_.touch(touch.x, touch.y, kBottomWidth, kBottomHeight));
+          updatePreview();
+        } else if (screen == ScreenFlow::Screen::Won) {
+          apply(flow_.on(ScreenFlow::Event::Continue));
+        } else {
+          ButtonMenu &menu = screen == ScreenFlow::Screen::Title ? titleMenu_ : pauseMenu_;
+          if (const auto chosen = menu.touch(touch.x, touch.y, kBottomWidth, kBottomHeight))
+            choose(*chosen);
+        }
         bottomDirty_ = true;
       }
       touchWasDown_ = touch.down;
@@ -756,7 +821,11 @@ private:
   void drawBottom() {
     bottomDirty_ = false;
     const std::vector<Scene::Colour> *drawn = nullptr;
-    if (mode_ == Mode::Choosing) {
+    const ScreenFlow::Screen screen = flow_.screen();
+    if (screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Paused) {
+      menuPicture_.draw(screen == ScreenFlow::Screen::Title ? titleMenu_ : pauseMenu_);
+      drawn = &menuPicture_.pixels();
+    } else if (screen == ScreenFlow::Screen::Setup) {
       menuPicture_.draw(menu_);
       drawn = &menuPicture_.pixels();
     } else {
@@ -865,18 +934,94 @@ private:
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};
   std::optional<BoardPicture::Spot> selected_;
-  // Before a game, watching one, or playing in one; the list's cursor
-  enum class Mode : std::uint8_t { Choosing, Watching, Playing };
-  Mode mode_ = Mode::Choosing;
-  // Before a game: the menu, on the touch screen (round 87)
+  // Which screen (round 90: ScreenFlow); in a game, watching or playing
+  ScreenFlow flow_;
+  enum class Mode : std::uint8_t { Watching, Playing };
+  Mode mode_ = Mode::Watching;
+  bool quitting_ = false;
+  // The title's and the pause menu's buttons, and the setup's menu
+  ButtonMenu titleMenu_{{"Play", "Quit"}};
+  ButtonMenu pauseMenu_{{"Resume", "Restart", "Title", "Quit"}};
   StartMenu menu_;
   MenuPicture menuPicture_{kBottomWidth, kBottomHeight};
-  // Starts a game as the menu has it, if the menu says to
-  void start(StartMenu::Outcome outcome) {
-    if (outcome == StartMenu::Outcome::None)
+  // The board the setup has chosen, as a game would start on it (shown on
+  // the top screen, turning slowly)
+  State preview_ = previewOf(menu_);
+  std::vector<CosmicHex::Hex> gapsTiles_; // (the tiles gaps_ was made for)
+
+  static State previewOf(const StartMenu &menu) {
+    TableSettings settings{.players = menu.players(), .board = menu.boardItself()};
+    return CosmicHex::newGame(settings.players, rulesFor(settings));
+  }
+  void updatePreview() { preview_ = previewOf(menu_); }
+
+  // The gaps between a state's tiles, made again when its tiles aren't the
+  // ones they were made for
+  void updateGaps(const State &state) {
+    std::vector<CosmicHex::Hex> tiles;
+    for (const CosmicHex::Planet &planet : state.planets)
+      tiles.push_back(planet.hex);
+    for (const CosmicHex::ZoneSite &site : state.zone)
+      tiles.push_back(site.hex);
+    if (tiles == gapsTiles_ && gaps_)
       return;
-    const bool play = outcome == StartMenu::Outcome::Play;
+    if (gaps_)
+      renderer_->unload(gaps_);
+    gaps_ = renderer_->load(BoardPieces::gapsUnder(tiles).data());
+    gapsTiles_ = std::move(tiles);
+  }
+
+  // A button on the title (Play, Quit) or the pause menu (Resume, Restart,
+  // Title, Quit) chosen
+  void choose(std::size_t button) {
+    using Event = ScreenFlow::Event;
+    if (flow_.screen() == ScreenFlow::Screen::Title) {
+      apply(flow_.on(button == 0 ? Event::Play : Event::Quit));
+      updatePreview();
+      return;
+    }
+    static constexpr std::array<Event, 4> kPause{Event::Resume, Event::Restart, Event::ToTitle,
+                                                 Event::Quit};
+    if (button < kPause.size())
+      apply(flow_.on(kPause[button]));
+  }
+
+  // The setup's menu: Start or Back
+  void setupOutcome(StartMenu::Outcome outcome) {
+    if (outcome == StartMenu::Outcome::Start)
+      apply(flow_.on(ScreenFlow::Event::Start));
+    else if (outcome == StartMenu::Outcome::Back)
+      apply(flow_.on(ScreenFlow::Event::Back));
+  }
+
+  // What a step of the flow asks for: stop the game, start one (as the setup
+  // has it), hold or release it, or end the app
+  void apply(const ScreenFlow::Step &step) {
+    if (step.changed)
+      bottomDirty_ = true;
+    if (step.quit)
+      quitting_ = true;
+    if (step.stopGame) {
+      send(StopGame{});
+      latest_.reset();
+      motion_ = BoardMotion();
+      dice_ = DiceStage::Idle;
+      selected_.reset();
+      cursor_ = 0;
+    }
+    if (step.startGame)
+      startGame();
+    if (step.holdChanged)
+      send(SetHold{step.holdGame});
+    if (step.changed)
+      pauseMenu_.setFocus(0);
+  }
+
+  void startGame() {
+    const bool play = !menu_.watching();
     mode_ = play ? Mode::Playing : Mode::Watching;
+    latest_.reset();
+    dice_ = DiceStage::Idle;
     bottomDirty_ = true;
     send(StartGame{.withPerson = play,
                    .players = menu_.players(),
