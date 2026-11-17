@@ -12,6 +12,7 @@
 #include <charconv>
 #include <deque>
 #include <numeric>
+#include <span>
 #include <sstream>
 #include <unordered_map>
 #include <utility>
@@ -1141,8 +1142,14 @@ std::optional<Board> boardFromLine(std::string_view line) {
   return board;
 }
 
-std::vector<NamedBoard> boardChoices() {
+std::vector<NamedBoard> boardChoices(int players) {
   // (copied from layouts/layouts.txt; AgreedRules_test checks they match)
+  static constexpr std::array<std::string_view, 2> kThreePlayerLines{
+      "T4 homes=4,-2,-2,-2,-2,4 planets=0,0,0,2,-1,2,2,-2,2,-1,-2,0,-1,-1,-4,4,4,0,0,-4,4,-4,-4,0,0"
+      ",4 small_finds=-4,1,1,3,3,-4,0,-3,-3,3,3,0,0,-2,-2,2,2,0",
+      "T5 homes=4,-2,-2,-2,-2,4 planets=0,0,-3,1,-3,0,1,2,0,3,2,-3,3,-3,0,-4,-4,4,4,0,2,0,0,-2,-2,2"
+      " small_finds=1,0,0,-1,-1,1,3,1,1,-4,-4,3",
+  };
   static constexpr std::array<std::string_view, 6> kLines{
       "R3 homes=4,-2,-4,2,2,2,-2,-2 planets=0,0,-4,0,-4,4,-2,0,-2,3,-2,4,-1,-1,-1,3,0,-4,0,4,1,-3,"
       "1,1,2,-4,2,-3,2,0,4,-4,4,0 small_finds=-3,0,3,0,-2,1,2,-1,-1,0,1,0,0,-1,0,1",
@@ -1158,7 +1165,9 @@ std::vector<NamedBoard> boardChoices() {
       ",2,2,-2,-1,-2,-2,-4,2,4,-2 small_finds=1,-1,-1,1,-1,2,1,-2,-3,1,3,-1",
   };
   std::vector<NamedBoard> out;
-  for (std::string_view line : kLines) {
+  const auto lines = players == 3 ? std::span<const std::string_view>(kThreePlayerLines)
+                                  : std::span<const std::string_view>(kLines);
+  for (std::string_view line : lines) {
     const auto board = boardFromLine(line);
     assert(board.has_value());
     out.push_back({std::string(line.substr(0, line.find(' '))), *board});

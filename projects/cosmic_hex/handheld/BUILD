@@ -10,14 +10,18 @@ cc_library(
         "src/BoardMotion.cpp",
         "src/BoardPicture.cpp",
         "src/BoardPieces.cpp",
+        "src/MenuPicture.cpp",
         "src/MoveSpots.cpp",
+        "src/StartMenu.cpp",
         "src/TableGame.cpp",
     ],
     hdrs = [
         "include/CosmicHex/Handheld/BoardMotion.hpp",
         "include/CosmicHex/Handheld/BoardPicture.hpp",
         "include/CosmicHex/Handheld/BoardPieces.hpp",
+        "include/CosmicHex/Handheld/MenuPicture.hpp",
         "include/CosmicHex/Handheld/MoveSpots.hpp",
+        "include/CosmicHex/Handheld/StartMenu.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",
     ],
     strip_include_prefix = "include/",
@@ -29,6 +33,7 @@ cc_library(
         "//projects/game_bots",
         "//projects/hex_grid",
         "//projects/scratchpadd/scene",
+        "@stb",
         "//projects/scratchpadd/texture_recipe",
         "//projects/seeded_random",
     ],
@@ -89,6 +94,16 @@ cc_test(
     name = "MoveSpots_test",
     size = "small",
     srcs = ["tests/MoveSpots_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "StartMenu_test",
+    size = "small",
+    srcs = ["tests/StartMenu_test.cpp"],
     deps = [
         ":handheld",
         "@gtest//:gtest_main",

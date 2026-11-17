@@ -409,14 +409,15 @@ inline constexpr int kThreePlayerWinPoints = 10;
 // fields are for people reading the file); nullopt if a field isn't q,r pairs
 std::optional<Board> boardFromLine(std::string_view line);
 
-// The boards a game offers (round 85): R3, the default, then the others
-// fair by turn and by home at 1,800 games. Their lines are the layouts
-// file's (AgreedRules_test checks they still match)
+// The boards a game offers for this many players, the default first: for
+// four (round 85), R3 then the others fair by turn and by home at 1,800
+// games; for three (round 87), T4 then T5, both fair at 1,800 games. Their
+// lines are the layouts file's (AgreedRules_test checks they still match)
 struct NamedBoard {
   std::string name;
   Board board;
 };
-std::vector<NamedBoard> boardChoices();
+std::vector<NamedBoard> boardChoices(int players = 4);
 
 // ---------------------------------------------------------------------------
 // The actions

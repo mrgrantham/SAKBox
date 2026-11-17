@@ -44,7 +44,16 @@ TEST(AgreedRulesTest, TheBoardChoicesAreTheLayoutsFiles) {
   ASSERT_FALSE(choices.empty());
   EXPECT_EQ(choices.front().name, "R3");
   EXPECT_TRUE(choices.front().board == boardR3());
-  for (const NamedBoard &choice : choices) {
+  // Three players: T4 first (the default), then T5; three homes each
+  const auto three = boardChoices(3);
+  ASSERT_EQ(three.size(), 2u);
+  EXPECT_EQ(three.front().name, "T4");
+  for (const NamedBoard &choice : three) {
+    EXPECT_EQ(choice.board.homes.size(), 3u) << choice.name;
+  }
+  std::vector<NamedBoard> all = choices;
+  all.insert(all.end(), three.begin(), three.end());
+  for (const NamedBoard &choice : all) {
     std::ifstream file("projects/cosmic_hex/layouts/layouts.txt");
     std::optional<Board> fromFile;
     for (std::string line; std::getline(file, line);) {

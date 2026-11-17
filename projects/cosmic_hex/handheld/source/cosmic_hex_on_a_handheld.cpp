@@ -33,7 +33,9 @@
 #include <CosmicHex/Handheld/BoardMotion.hpp>
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
+#include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
 
 #include <ScratchPadd/AboutPadd.hpp>
@@ -84,8 +86,6 @@ bool mainLoop() { return aptMainLoop(); }
 constexpr int kFaceSize = 64;
 #endif
 namespace Input = ScratchPadd::Input;
-using CosmicHex::boardChoices;
-using CosmicHex::NamedBoard;
 using CosmicHex::State;
 using namespace CosmicHex::Handheld;
 using Clock = std::chrono::steady_clock;
@@ -113,7 +113,8 @@ struct TableSnapshot {
 // go on (watching); the move you chose
 struct StartGame {
   bool withPerson = false;
-  std::size_t board = 0;   // (in boardChoices(): R3 first)
+  int players = 4;
+  CosmicHex::Board board = CosmicHex::boardR3(); // (a StartMenu choice)
   bool finishRound = true; // (the round played out, or the first to the target wins)
 };
 struct TogglePause {};
@@ -130,8 +131,8 @@ public:
           .botIterations = kBotIterations, .botSeconds = 0.8, .seed = startingSeed()};
       if (start.withPerson)
         settings.seats[0] = Seat::Person; // (you're player 1)
-      const std::vector<NamedBoard> boards = boardChoices();
-      settings.board = boards[std::min(start.board, boards.size() - 1)].board;
+      settings.players = start.players;
+      settings.board = start.board;
       settings.finishRound = start.finishRound;
       game_.emplace(settings);
       sendSnapshot();
@@ -389,22 +390,8 @@ private:
   void drawText() {
     Scene::Overlay &overlay = renderer_->overlay();
     if (mode_ == Mode::Choosing) {
-      const float left = kTopWidth / 2.0f - 100;
-      const float top = kTopHeight / 2.0f - 40;
-      overlay.text(left + 30, top, "Cosmic Hex", {226, 232, 244}, 2);
-      // The two settings, the chosen row marked; left and right change it
-      const std::array<std::string, 2> rows{
-          "Board: < " + boardNames_[boardChoice_] + (boardChoice_ == 0 ? " (default)" : "") + " >",
-          std::string("End: < ") + (finishRound_ ? "finish the round" : "first to the target") +
-              " >"};
-      for (std::size_t row = 0; row < rows.size(); ++row) {
-        const bool chosen = row == menuRow_;
-        overlay.text(left, top + 34 + 12 * static_cast<float>(row),
-                     (chosen ? "> " : "  ") + rows[row],
-                     chosen ? Scene::Colour{255, 214, 90} : Scene::Colour{200, 208, 222});
-      }
-      overlay.text(left, top + 66, "A: play against three bots", {255, 214, 90});
-      overlay.text(left, top + 78, "B: watch four bots play", {200, 208, 222});
+      // The title; the menu is on the touch screen (StartMenu, round 87)
+      overlay.text(kTopWidth / 2.0f - 70, kTopHeight / 2.0f - 20, "Cosmic Hex", {226, 232, 244}, 2);
       return;
     }
     if (!latest_)
@@ -439,21 +426,19 @@ private:
   void handleButtons(const Input::Edges &pressed) {
     using Input::Button;
     if (mode_ == Mode::Choosing) {
-      // Up and down: the board or the play style; left and right: change it
-      if (pressed.pressed(Button::Up) || pressed.pressed(Button::Down))
-        menuRow_ = 1 - menuRow_;
-      const int step = pressed.pressed(Button::Right) ? 1 : pressed.pressed(Button::Left) ? -1 : 0;
-      if (step != 0 && menuRow_ == 0) {
-        const std::size_t count = boardNames_.size();
-        boardChoice_ = step > 0 ? (boardChoice_ + 1) % count : (boardChoice_ + count - 1) % count;
-      } else if (step != 0) {
-        finishRound_ = !finishRound_;
-      }
-      if (pressed.pressed(Button::FaceRight) || pressed.pressed(Button::FaceBottom)) {
-        const bool play = pressed.pressed(Button::FaceRight);
-        mode_ = play ? Mode::Playing : Mode::Watching;
-        send(StartGame{.withPerson = play, .board = boardChoice_, .finishRound = finishRound_});
-      }
+      // The menu (StartMenu): up and down choose a row, left and right
+      // change it, A starts what's chosen, B watches
+      using Key = StartMenu::Key;
+      StartMenu::Outcome outcome = StartMenu::Outcome::None;
+      for (const auto [button, key] :
+           {std::pair{Button::Up, Key::Up}, std::pair{Button::Down, Key::Down},
+            std::pair{Button::Left, Key::Left}, std::pair{Button::Right, Key::Right},
+            std::pair{Button::FaceRight, Key::Confirm}, std::pair{Button::FaceBottom, Key::Back}})
+        if (pressed.pressed(button) && outcome == StartMenu::Outcome::None) {
+          outcome = menu_.press(key);
+          bottomDirty_ = true;
+        }
+      start(outcome);
       return;
     }
     if (mode_ == Mode::Watching) {
@@ -497,6 +482,15 @@ private:
   // A touch: a tap selects the hex (and corner) under it; a drag moves the
   // board, when it's zoomed in
   void handleTouch(const Input::Touch &touch) {
+    if (mode_ == Mode::Choosing) {
+      // (a tap, when the stylus comes down)
+      if (touch.down && !touchWasDown_) {
+        start(menu_.touch(touch.x, touch.y, kBottomWidth, kBottomHeight));
+        bottomDirty_ = true;
+      }
+      touchWasDown_ = touch.down;
+      return;
+    }
     if (touch.down && !touchWasDown_) {
       touchStart_ = touchLast_ = {touch.x, touch.y};
       dragged_ = false;
@@ -546,12 +540,19 @@ private:
   // left: the screen is turned on its side; three bytes a pixel, B G R)
   void drawBottom() {
     bottomDirty_ = false;
-    if (!latest_)
-      return;
-    picture_->draw(latest_->state);
-    if (selected_)
-      picture_->mark(*selected_);
-    const auto &pixels = picture_->pixels();
+    const std::vector<Scene::Colour> *drawn = nullptr;
+    if (mode_ == Mode::Choosing) {
+      menuPicture_.draw(menu_);
+      drawn = &menuPicture_.pixels();
+    } else {
+      if (!latest_)
+        return;
+      picture_->draw(latest_->state);
+      if (selected_)
+        picture_->mark(*selected_);
+      drawn = &picture_->pixels();
+    }
+    const auto &pixels = *drawn;
 #if defined(__NDS__)
     // 256 a row (the bitmap is 256 wide), 15-bit colours with bit 15 set
     for (int y = 0; y < kBottomHeight; ++y)
@@ -629,16 +630,21 @@ private:
   // Before a game, watching one, or playing in one; the list's cursor
   enum class Mode : std::uint8_t { Choosing, Watching, Playing };
   Mode mode_ = Mode::Choosing;
-  // Before a game: the board and play style chosen, and which row is
-  std::vector<std::string> boardNames_ = [] {
-    std::vector<std::string> names;
-    for (const NamedBoard &board : boardChoices())
-      names.push_back(board.name);
-    return names;
-  }();
-  std::size_t boardChoice_ = 0;
-  bool finishRound_ = true;
-  std::size_t menuRow_ = 0;
+  // Before a game: the menu, on the touch screen (round 87)
+  StartMenu menu_;
+  MenuPicture menuPicture_{kBottomWidth, kBottomHeight};
+  // Starts a game as the menu has it, if the menu says to
+  void start(StartMenu::Outcome outcome) {
+    if (outcome == StartMenu::Outcome::None)
+      return;
+    const bool play = outcome == StartMenu::Outcome::Play;
+    mode_ = play ? Mode::Playing : Mode::Watching;
+    bottomDirty_ = true;
+    send(StartGame{.withPerson = play,
+                   .players = menu_.players(),
+                   .board = menu_.boardItself(),
+                   .finishRound = menu_.finishRound()});
+  }
   std::size_t cursor_ = 0;
 };
 
