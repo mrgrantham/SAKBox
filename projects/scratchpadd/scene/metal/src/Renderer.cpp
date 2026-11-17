@@ -52,19 +52,21 @@ struct Draw {
   float extrude;          // an outline's hull: pushed out this far along the normals (0: not one)
   int outlinePass;        // an outline's hull: the colour alone
   float outlined;         // screen-space outlines: 1 for a mesh that has one
-  float pad;
+  int textured;           // the material's texture multiplies its colour
 };
 
 struct VertexIn {
   float3 position [[attribute(0)]];
   float3 normal [[attribute(1)]];
   float4 colour [[attribute(2)]];
+  float2 uv [[attribute(3)]];
 };
 
 struct VertexOut {
   float4 position [[position]];
   float3 normal;
   float4 colour;
+  float2 uv;
   float distance;
 };
 
@@ -87,12 +89,15 @@ vertex VertexOut sceneVertex(VertexIn in [[stage_in]], constant Frame &frame [[b
   out.position = clip;
   out.normal = normalMatrix * in.normal;
   out.colour = in.colour;
+  out.uv = in.uv;
   out.distance = clip.w;
   return out;
 }
 
-float4 shade(VertexOut in, constant Frame &frame, constant Draw &draw) {
-  float3 colour = draw.outlinePass != 0 ? draw.colour.rgb : in.colour.rgb * draw.colour.rgb;
+float4 shade(VertexOut in, constant Frame &frame, constant Draw &draw, texture2d<float> image) {
+  constexpr sampler smooth(filter::linear, mip_filter::linear, address::clamp_to_edge);
+  float4 texel = draw.textured != 0 && draw.outlinePass == 0 ? image.sample(smooth, in.uv) : float4(1.0);
+  float3 colour = draw.outlinePass != 0 ? draw.colour.rgb : in.colour.rgb * draw.colour.rgb * texel.rgb;
   if (draw.lit != 0) {
     float3 n = normalize(in.normal);
     float3 light = frame.ambient.rgb;
@@ -105,12 +110,13 @@ float4 shade(VertexOut in, constant Frame &frame, constant Draw &draw) {
     colour *= light;
   }
   float fog = clamp(1.0 - exp(-frame.fogDensity * in.distance), 0.0, 1.0);
-  return float4(mix(colour, frame.fogColour.rgb, fog), in.colour.a * draw.colour.a);
+  return float4(mix(colour, frame.fogColour.rgb, fog), in.colour.a * draw.colour.a * texel.a);
 }
 
 fragment float4 sceneFragment(VertexOut in [[stage_in]], constant Frame &frame [[buffer(1)]],
-                              constant Draw &draw [[buffer(2)]]) {
-  return shade(in, frame, draw);
+                              constant Draw &draw [[buffer(2)]],
+                              texture2d<float> image [[texture(0)]]) {
+  return shade(in, frame, draw, image);
 }
 
 // Screen-space outlines' frames: the colour, and the surface: its direction
@@ -121,9 +127,10 @@ struct WithSurface {
 };
 fragment WithSurface sceneFragmentWithSurface(VertexOut in [[stage_in]],
                                               constant Frame &frame [[buffer(1)]],
-                                              constant Draw &draw [[buffer(2)]]) {
+                                              constant Draw &draw [[buffer(2)]],
+                                              texture2d<float> image [[texture(0)]]) {
   WithSurface out;
-  out.colour = shade(in, frame, draw);
+  out.colour = shade(in, frame, draw, image);
   out.surface = float4(normalize(in.normal), draw.outlined > 0.5 ? in.distance : -in.distance);
   return out;
 }
@@ -206,7 +213,7 @@ struct DrawUniforms {
   float extrude;
   int outlinePass;
   float outlined;
-  float pad;
+  int textured;
 };
 
 // The edge pass's uniforms (the shaders' Edges)
@@ -302,15 +309,44 @@ MTL::VertexDescriptor *vertexLayout(NS::UInteger buffer) {
   attribute(0, MTL::VertexFormatFloat3, offsetof(Vertex, position));
   attribute(1, MTL::VertexFormatFloat3, offsetof(Vertex, normal));
   attribute(2, MTL::VertexFormatUChar4Normalized, offsetof(Vertex, colour));
+  attribute(3, MTL::VertexFormatFloat2, offsetof(Vertex, uv));
   layout->layouts()->object(buffer)->setStride(sizeof(Vertex));
   return layout;
 }
 
 } // namespace Metal
 
+namespace {
+// A texture of `image` (RGBA, rows from the top), with its mipmaps made by
+// the GPU, as the OpenGL backend's
+MTL::Texture *textureOf(const TextureImage &image) {
+  MTL::TextureDescriptor *describe = MTL::TextureDescriptor::texture2DDescriptor(
+      MTL::PixelFormatRGBA8Unorm, static_cast<NS::UInteger>(image.width),
+      static_cast<NS::UInteger>(image.height), true);
+  describe->setUsage(MTL::TextureUsageShaderRead);
+  MTL::Texture *texture = Metal::device()->newTexture(describe);
+  texture->replaceRegion(MTL::Region(0, 0, static_cast<NS::UInteger>(image.width),
+                                     static_cast<NS::UInteger>(image.height)),
+                         0, image.pixels.data(), static_cast<NS::UInteger>(image.width) * 4);
+  if (texture->mipmapLevelCount() > 1) {
+    MTL::CommandBuffer *commands = Metal::queue()->commandBuffer();
+    MTL::BlitCommandEncoder *blit = commands->blitCommandEncoder();
+    blit->generateMipmaps(texture);
+    blit->endEncoding();
+    commands->commit();
+    commands->waitUntilCompleted();
+  }
+  return texture;
+}
+} // namespace
+
 Renderer::Backend::Backend(Display &display)
     : display(display), surface(*static_cast<Metal::Surface *>(display.surface())) {
   NS::AutoreleasePool *pool = NS::AutoreleasePool::alloc()->init();
+  if (Metal::device()) {
+    const Colour white;
+    blank = textureOf(TextureImage{1, 1, std::span<const Colour>(&white, 1)});
+  }
   std::string error;
   MTL::Library *library = Metal::compileLibrary(kShaders, error);
   if (!library) {
@@ -351,6 +387,11 @@ Renderer::Backend::~Backend() {
   }
   for (MTL::Buffer *buffer : buffers)
     buffer->release();
+  for (MTL::Texture *texture : textures)
+    if (texture)
+      texture->release();
+  if (blank)
+    blank->release();
   for (const LoadedMesh &mesh : meshes) {
     if (mesh.vertices) {
       mesh.vertices->release();
@@ -404,6 +445,15 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   draw.outlined = material.outline ? 1.0f : 0.0f;
   draw.worldSnap = worldSnap;
   draw.screenSnap = screenSnap;
+  // Its texture (a 1 x 1 white one stands in for none, so the shader always
+  // has one to sample)
+  MTL::Texture *image = blank;
+  if (material.texture && material.texture.id <= textures.size() &&
+      textures[material.texture.id - 1]) {
+    image = textures[material.texture.id - 1];
+    draw.textured = 1;
+  }
+  encoder->setFragmentTexture(image, 0);
   encoder->setVertexBytes(&draw, sizeof(draw), kDrawBuffer);
   encoder->setFragmentBytes(&draw, sizeof(draw), kDrawBuffer);
   encoder->setVertexBuffer(loaded.vertices, 0, kVerticesBuffer);
@@ -551,6 +601,27 @@ Mesh Renderer::load(const MeshData &mesh) {
   return Mesh{static_cast<std::uint32_t>(backend_->meshes.size())};
 }
 
+Texture Renderer::load(const TextureImage &image) {
+  if (image.width <= 0 || image.height <= 0 ||
+      image.pixels.size() <
+          static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
+    return {};
+  backend_->textures.push_back(textureOf(image));
+  return {static_cast<std::uint32_t>(backend_->textures.size())};
+}
+
+void Renderer::unload(Texture texture) {
+  if (!texture || texture.id > backend_->textures.size())
+    return;
+  MTL::Texture *&loaded = backend_->textures[texture.id - 1];
+  if (!loaded)
+    return;
+  if (backend_->commands) // (a frame still being drawn may use it)
+    backend_->commands->waitUntilCompleted();
+  loaded->release();
+  loaded = nullptr;
+}
+
 void Renderer::unload(Mesh mesh) {
   if (!mesh || mesh.id > backend_->meshes.size())
     return;
@@ -693,6 +764,7 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
   draw.screenSnap = b.screenSnap;
   b.encoder->setVertexBytes(&draw, sizeof(draw), kDrawBuffer);
   b.encoder->setFragmentBytes(&draw, sizeof(draw), kDrawBuffer);
+  b.encoder->setFragmentTexture(b.blank, 0); // (lines aren't textured)
   b.encoder->setVertexBuffer(b.frameBuffer(vertices.data(), vertices.size() * sizeof(Vertex)), 0,
                              kVerticesBuffer);
   b.encoder->drawPrimitives(MTL::PrimitiveTypeLine, NS::UInteger(0), count);

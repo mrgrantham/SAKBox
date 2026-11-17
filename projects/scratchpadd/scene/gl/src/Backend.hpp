@@ -67,6 +67,7 @@ struct Renderer::Backend {
 
   Display &display;
   std::vector<LoadedMesh> meshes; // by Mesh::id - 1; unloaded ones have vao 0
+  std::vector<GLuint> textures;   // by Texture::id - 1; unloaded ones are 0
   std::vector<Later> later;
   FrameCounts counting, last;                    // this frame's so far; the last one's
   std::vector<Overlay::Vertex> overlayTriangles; // reused each frame
@@ -75,7 +76,7 @@ struct Renderer::Backend {
   struct {
     GLint model, normalMatrix, viewProj, worldSnap, screenSnap, viewport, colour, lit, ambient,
         lightCount, lightDirections, lightColours, fogColour, fogDensity, extrude, toonBands,
-        outlinePass, outlined;
+        outlinePass, outlined, textured, texture;
   } uniform{};
   GLuint lineVao = 0, lineVbo = 0;
   GLuint overlayProgram = 0, overlayVao = 0, overlayVbo = 0;

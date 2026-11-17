@@ -59,6 +59,10 @@ public:
   // Uploads a mesh to draw by handle; `mesh`'s data can go afterwards
   Mesh load(const MeshData &mesh);
   void unload(Mesh mesh);
+  // Uploads an image for materials to show (Material::texture); its pixels
+  // can go afterwards. No texture if the backend can't take its size
+  Texture load(const TextureImage &image);
+  void unload(Texture texture);
 
   // Starts a frame: clears it to the environment's background
   void beginFrame(const Camera &camera, const Environment &environment);

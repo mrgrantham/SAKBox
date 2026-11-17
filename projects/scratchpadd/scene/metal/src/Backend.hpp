@@ -26,7 +26,7 @@ namespace Metal {
 // doesn't compile
 MTL::Library *compileLibrary(const std::string &source, std::string &error);
 // The vertex layout of Scene::Vertex: attribute 0 position, 1 normal (float3),
-// 2 colour (four bytes, 0-1), in `buffer`
+// 2 colour (four bytes, 0-1), 3 texture coordinates (float2), in `buffer`
 MTL::VertexDescriptor *vertexLayout(NS::UInteger buffer);
 } // namespace Metal
 
@@ -69,7 +69,9 @@ struct Renderer::Backend {
   void makeEdgeTextures(int width, int height);
   void drawEdges();
   MTL::DepthStencilState *depthWrite = nullptr, *depthTest = nullptr, *noDepth = nullptr;
-  std::vector<LoadedMesh> meshes; // by Mesh::id - 1; unloaded ones have no vertices
+  std::vector<LoadedMesh> meshes;       // by Mesh::id - 1; unloaded ones have no vertices
+  std::vector<MTL::Texture *> textures; // by Texture::id - 1; unloaded ones are null
+  MTL::Texture *blank = nullptr;        // 1 x 1 white, for materials without one
   std::vector<Later> later;
   FrameCounts counting, last;                    // this frame's so far; the last one's
   std::vector<Overlay::Vertex> overlayTriangles; // reused each frame

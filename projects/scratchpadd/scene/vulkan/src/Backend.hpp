@@ -94,6 +94,20 @@ struct Renderer::Backend {
   void drawEdges();
   VkDescriptorPool descriptors = VK_NULL_HANDLE;
   VkDescriptorSet frameSet = VK_NULL_HANDLE;
+  // Materials' textures (set 1 of the scene's layout): each one's image and
+  // set, by Texture::id - 1 (unloaded ones have no set), and a 1 x 1 white
+  // one for materials without
+  static constexpr std::uint32_t kMostTextures = 256;
+  struct LoadedTexture {
+    Vulkan::Image image;
+    VkDescriptorSet set = VK_NULL_HANDLE;
+  };
+  LoadedTexture makeLoadedTexture(int width, int height, const Colour *pixels);
+  VkDescriptorSetLayout textureLayout = VK_NULL_HANDLE;
+  VkDescriptorPool texturePool = VK_NULL_HANDLE;
+  VkSampler textureSampler = VK_NULL_HANDLE;
+  std::vector<LoadedTexture> textures;
+  LoadedTexture blank;
   Vulkan::Buffer frameUniformBuffer; // FrameUniforms, written each frame
   std::vector<LoadedMesh> meshes;    // by Mesh::id - 1; unloaded ones have no vertices
   std::vector<Later> later;

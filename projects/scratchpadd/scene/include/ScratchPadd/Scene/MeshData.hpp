@@ -5,6 +5,7 @@
 
 #include <ScratchPadd/Scene/Types.hpp>
 
+#include <array>
 #include <cstdint>
 #include <span>
 #include <vector>
@@ -21,6 +22,7 @@ namespace ScratchPadd::Scene {
 struct Vertex {
   Vector3 position, normal;
   Colour colour;
+  TexCoord uv; // where it is on a textured material's image
 };
 
 // A run of a mesh's indices drawn as one kind of polygon, all with the
@@ -60,11 +62,13 @@ struct MeshData {
 // gets its own vertices, with the face's normal, so edges stay sharp.
 class MeshBuilder {
 public:
-  // A triangle, counter-clockwise seen from the front
-  MeshBuilder &triangle(const Vector3 &a, const Vector3 &b, const Vector3 &c, Colour colour = {});
+  // A triangle, counter-clockwise seen from the front (with where each
+  // corner is on a texture, for a textured material)
+  MeshBuilder &triangle(const Vector3 &a, const Vector3 &b, const Vector3 &c, Colour colour = {},
+                        const std::array<TexCoord, 3> &uvs = {});
   // A quad, a b c d counter-clockwise seen from the front (as two triangles)
   MeshBuilder &quad(const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &d,
-                    Colour colour = {});
+                    Colour colour = {}, const std::array<TexCoord, 4> &uvs = {});
   // A box centred on `centre`, `halfSize` from it along each axis
   MeshBuilder &box(const Vector3 &centre, const Vector3 &halfSize, Colour colour = {});
 

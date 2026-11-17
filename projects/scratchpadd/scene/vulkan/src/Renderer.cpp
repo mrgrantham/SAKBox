@@ -48,14 +48,16 @@ layout(push_constant) uniform Draw {
   float extrude;    // an outline's hull: pushed out this far along the normals (0: not one)
   int outlinePass;  // an outline's hull: the colour alone
   float outlined;   // screen-space outlines: 1 for a mesh that has one
-  float pad;
+  int textured;     // the material's texture multiplies its colour
 } draw;
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec4 colour;
+layout(location = 3) in vec2 uv;
 layout(location = 0) out vec3 vNormal;
 layout(location = 1) out vec4 vColour;
 layout(location = 2) out float vDistance;
+layout(location = 3) out vec2 vTexCoord;
 void main() {
   vec4 world = draw.model * vec4(position, 1.0);
   mat3 normalMatrix = transpose(inverse(mat3(draw.model)));
@@ -73,6 +75,7 @@ void main() {
   vNormal = normalMatrix * normal;
   vColour = colour;
   vDistance = clip.w;
+  vTexCoord = uv;
 }
 )";
 
@@ -99,11 +102,14 @@ layout(push_constant) uniform Draw {
   float extrude;
   int outlinePass;
   float outlined;
-  float pad;
+  int textured;
 } draw;
 layout(location = 0) in vec3 vNormal;
 layout(location = 1) in vec4 vColour;
 layout(location = 2) in float vDistance;
+layout(location = 3) in vec2 vTexCoord;
+// The material's texture (set 1; a 1 x 1 white one when it has none)
+layout(set = 1, binding = 0) uniform sampler2D image;
 layout(location = 0) out vec4 outColour;
 #ifdef WITH_SURFACE
 // Screen-space outlines' second target: the surface's direction, and its
@@ -114,7 +120,8 @@ void main() {
 #ifdef WITH_SURFACE
   outSurface = vec4(normalize(vNormal), draw.outlined > 0.5 ? vDistance : -vDistance);
 #endif
-  vec3 colour = draw.outlinePass != 0 ? draw.colour.rgb : vColour.rgb * draw.colour.rgb;
+  vec4 texel = draw.textured != 0 && draw.outlinePass == 0 ? texture(image, vTexCoord) : vec4(1.0);
+  vec3 colour = draw.outlinePass != 0 ? draw.colour.rgb : vColour.rgb * draw.colour.rgb * texel.rgb;
   if (draw.lit != 0) {
     vec3 n = normalize(vNormal);
     vec3 light = frame.ambient.rgb;
@@ -127,7 +134,7 @@ void main() {
     colour *= light;
   }
   float fog = clamp(1.0 - exp(-frame.fogDensity * vDistance), 0.0, 1.0);
-  outColour = vec4(mix(colour, frame.fogColour.rgb, fog), vColour.a * draw.colour.a);
+  outColour = vec4(mix(colour, frame.fogColour.rgb, fog), vColour.a * draw.colour.a * texel.a);
 }
 )";
 
@@ -205,7 +212,7 @@ struct DrawConstants {
   float extrude;
   int outlinePass;
   float outlined;
-  float pad;
+  int textured;
 };
 
 // The edge pass's push constants (the shader's Edges)
@@ -292,6 +299,33 @@ void setColour(DrawConstants &draw, const Colour &colour, float alpha) {
 
 } // namespace
 
+// A texture's image and its set (set 1 of the scene's layout)
+Renderer::Backend::LoadedTexture Renderer::Backend::makeLoadedTexture(int width, int height,
+                                                                      const Colour *pixels) {
+  LoadedTexture loaded;
+  loaded.image = Vulkan::makeTexture(static_cast<std::uint32_t>(width),
+                                     static_cast<std::uint32_t>(height), pixels);
+  const VkDescriptorSetAllocateInfo allocate{.sType =
+                                                 VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                                             .descriptorPool = texturePool,
+                                             .descriptorSetCount = 1,
+                                             .pSetLayouts = &textureLayout};
+  if (vkAllocateDescriptorSets(device(), &allocate, &loaded.set) != VK_SUCCESS) {
+    Vulkan::destroy(loaded.image);
+    return {};
+  }
+  const VkDescriptorImageInfo info{textureSampler, loaded.image.view,
+                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+  const VkWriteDescriptorSet write{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                   .dstSet = loaded.set,
+                                   .dstBinding = 0,
+                                   .descriptorCount = 1,
+                                   .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                   .pImageInfo = &info};
+  vkUpdateDescriptorSets(device(), 1, &write, 0, nullptr);
+  return loaded;
+}
+
 Renderer::Backend::Backend(Display &display)
     : display(display), surface(*static_cast<Vulkan::Surface *>(display.surface())) {
   sceneVertex = compiled(Spirv::Stage::Vertex, kSceneVertex);
@@ -316,11 +350,23 @@ Renderer::Backend::Backend(Display &display)
       .bindingCount = 1,
       .pBindings = &frameBinding};
   vkCreateDescriptorSetLayout(device(), &setLayout, nullptr, &frameLayout);
+  // ... and the material's texture as set 1's sampled image
+  const VkDescriptorSetLayoutBinding textureBinding{.binding = 0,
+                                                    .descriptorType =
+                                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                    .descriptorCount = 1,
+                                                    .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT};
+  const VkDescriptorSetLayoutCreateInfo textureSetLayout{
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = 1,
+      .pBindings = &textureBinding};
+  vkCreateDescriptorSetLayout(device(), &textureSetLayout, nullptr, &textureLayout);
+  const VkDescriptorSetLayout sceneSets[2] = {frameLayout, textureLayout};
   const VkPushConstantRange drawRange{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                                       sizeof(DrawConstants)};
   const VkPipelineLayoutCreateInfo scene{.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-                                         .setLayoutCount = 1,
-                                         .pSetLayouts = &frameLayout,
+                                         .setLayoutCount = 2,
+                                         .pSetLayouts = sceneSets,
                                          .pushConstantRangeCount = 1,
                                          .pPushConstantRanges = &drawRange};
   vkCreatePipelineLayout(device(), &scene, nullptr, &sceneLayout);
@@ -352,6 +398,30 @@ Renderer::Backend::Backend(Display &display)
                                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                    .pBufferInfo = &bufferInfo};
   vkUpdateDescriptorSets(device(), 1, &write, 0, nullptr);
+  // Textures' sets (one each, kMostTextures at most), their sampler, and
+  // the blank one for materials without a texture
+  const VkDescriptorPoolSize texturePoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             kMostTextures + 1};
+  const VkDescriptorPoolCreateInfo texturePoolInfo{
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+      .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+      .maxSets = kMostTextures + 1,
+      .poolSizeCount = 1,
+      .pPoolSizes = &texturePoolSize};
+  vkCreateDescriptorPool(device(), &texturePoolInfo, nullptr, &texturePool);
+  const VkSamplerCreateInfo smooth{.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                                   .magFilter = VK_FILTER_LINEAR,
+                                   .minFilter = VK_FILTER_LINEAR,
+                                   .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                                   .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                   .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                   .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                   .maxLod = VK_LOD_CLAMP_NONE};
+  vkCreateSampler(device(), &smooth, nullptr, &textureSampler);
+  if (Vulkan::context()) {
+    const Colour white;
+    blank = makeLoadedTexture(1, 1, &white);
+  }
 
   if (!sceneVertex || !sceneFragment || !overlayVertex || !overlayFragment)
     return;
@@ -415,6 +485,15 @@ Renderer::Backend::~Backend() {
   for (VkShaderModule module : {sceneVertex, sceneFragment, overlayVertex, overlayFragment})
     if (module)
       vkDestroyShaderModule(device(), module, nullptr);
+  for (LoadedTexture &texture : textures)
+    Vulkan::destroy(texture.image);
+  Vulkan::destroy(blank.image);
+  if (texturePool)
+    vkDestroyDescriptorPool(device(), texturePool, nullptr);
+  if (textureSampler)
+    vkDestroySampler(device(), textureSampler, nullptr);
+  if (textureLayout)
+    vkDestroyDescriptorSetLayout(device(), textureLayout, nullptr);
   vkDestroyDescriptorPool(device(), descriptors, nullptr);
   vkDestroyPipelineLayout(device(), sceneLayout, nullptr);
   vkDestroyPipelineLayout(device(), overlayLayout, nullptr);
@@ -464,6 +543,15 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   draw.outlined = material.outline ? 1.0f : 0.0f;
   draw.worldSnap = worldSnap;
   draw.screenSnap = screenSnap;
+  // Its texture as set 1 (the blank one when it has none)
+  VkDescriptorSet image = blank.set;
+  if (material.texture && material.texture.id <= textures.size() &&
+      textures[material.texture.id - 1].set) {
+    image = textures[material.texture.id - 1].set;
+    draw.textured = 1;
+  }
+  vkCmdBindDescriptorSets(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, sceneLayout, 1, 1, &image, 0,
+                          nullptr);
   vkCmdPushConstants(commands, sceneLayout,
                      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(draw),
                      &draw);
@@ -684,6 +772,32 @@ Mesh Renderer::load(const MeshData &mesh) {
   return Mesh{static_cast<std::uint32_t>(backend_->meshes.size())};
 }
 
+Texture Renderer::load(const TextureImage &image) {
+  if (image.width <= 0 || image.height <= 0 ||
+      backend_->textures.size() >= Backend::kMostTextures ||
+      image.pixels.size() <
+          static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
+    return {};
+  Backend::LoadedTexture loaded =
+      backend_->makeLoadedTexture(image.width, image.height, image.pixels.data());
+  if (!loaded.set)
+    return {};
+  backend_->textures.push_back(loaded);
+  return {static_cast<std::uint32_t>(backend_->textures.size())};
+}
+
+void Renderer::unload(Texture texture) {
+  if (!texture || texture.id > backend_->textures.size())
+    return;
+  Backend::LoadedTexture &loaded = backend_->textures[texture.id - 1];
+  if (!loaded.set)
+    return;
+  vkQueueWaitIdle(Vulkan::context()->queue); // (a frame being drawn may use it)
+  vkFreeDescriptorSets(device(), backend_->texturePool, 1, &loaded.set);
+  Vulkan::destroy(loaded.image);
+  loaded = {};
+}
+
 void Renderer::unload(Mesh mesh) {
   if (!mesh || mesh.id > backend_->meshes.size())
     return;
@@ -837,8 +951,9 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   const VkRect2D scissor{{0, 0}, extent};
   vkCmdSetViewport(s.commands, 0, 1, &viewport);
   vkCmdSetScissor(s.commands, 0, 1, &scissor);
-  vkCmdBindDescriptorSets(s.commands, VK_PIPELINE_BIND_POINT_GRAPHICS, b.sceneLayout, 0, 1,
-                          &b.frameSet, 0, nullptr);
+  const VkDescriptorSet sets[2] = {b.frameSet, b.blank.set}; // (lines aren't textured)
+  vkCmdBindDescriptorSets(s.commands, VK_PIPELINE_BIND_POINT_GRAPHICS, b.sceneLayout, 0, 2, sets, 0,
+                          nullptr);
   b.recording = true;
 }
 

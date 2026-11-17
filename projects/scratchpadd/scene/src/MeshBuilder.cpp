@@ -3,22 +3,25 @@
 namespace ScratchPadd::Scene {
 
 MeshBuilder &MeshBuilder::triangle(const Vector3 &a, const Vector3 &b, const Vector3 &c,
-                                   Colour colour) {
+                                   Colour colour, const std::array<TexCoord, 3> &uvs) {
   const Vector3 normal = (b - a).cross(c - a).normalised();
   const auto first = static_cast<std::uint32_t>(vertices_.size());
-  for (const Vector3 &corner : {a, b, c}) {
-    vertices_.push_back({corner, normal, colour});
+  const std::array<Vector3, 3> corners = {a, b, c};
+  for (std::size_t i = 0; i < corners.size(); ++i) {
+    vertices_.push_back({corners[i], normal, colour, uvs[i]});
   }
   indices_.insert(indices_.end(), {first, first + 1, first + 2});
   return *this;
 }
 
 MeshBuilder &MeshBuilder::quad(const Vector3 &a, const Vector3 &b, const Vector3 &c,
-                               const Vector3 &d, Colour colour) {
+                               const Vector3 &d, Colour colour,
+                               const std::array<TexCoord, 4> &uvs) {
   const Vector3 normal = (b - a).cross(c - a).normalised();
   const auto first = static_cast<std::uint32_t>(vertices_.size());
-  for (const Vector3 &corner : {a, b, c, d}) {
-    vertices_.push_back({corner, normal, colour});
+  const std::array<Vector3, 4> corners = {a, b, c, d};
+  for (std::size_t i = 0; i < corners.size(); ++i) {
+    vertices_.push_back({corners[i], normal, colour, uvs[i]});
   }
   indices_.insert(indices_.end(), {first, first + 1, first + 2, first, first + 2, first + 3});
   return *this;

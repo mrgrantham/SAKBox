@@ -31,7 +31,8 @@ namespace ScratchPadd::Scene {
 
 namespace {
 
-static_assert(sizeof(Vertex) == 28, "the GPU reads Scene::Vertex as 3 + 3 floats and 4 bytes");
+static_assert(sizeof(Vertex) == 36,
+              "the GPU reads Scene::Vertex as 3 + 3 floats, 4 bytes and 2 floats");
 static_assert(sizeof(Renderer::Backend::LineVertex) == 32,
               "line.v.pica reads a LineVertex as 3 + 3 floats, 4 bytes and a float");
 static_assert(sizeof(Overlay::Vertex) == 12, "the GPU reads Overlay::Vertex as 2 floats, 4 bytes");
@@ -39,12 +40,58 @@ static_assert(sizeof(Overlay::Vertex) == 12, "the GPU reads Overlay::Vertex as 2
 // A frame's lines and overlay at most, in linear memory
 constexpr std::size_t kArenaBytes = 1 << 20;
 
-// The vertex shader's inputs from a Scene::Vertex: position, normal, colour
+// The vertex shader's inputs from a Scene::Vertex: position, normal, colour,
+// texture coordinates
 void describeSceneVertices(C3D_AttrInfo &attributes) {
   AttrInfo_Init(&attributes);
   AttrInfo_AddLoader(&attributes, 0, GPU_FLOAT, 3);
   AttrInfo_AddLoader(&attributes, 1, GPU_FLOAT, 3);
   AttrInfo_AddLoader(&attributes, 2, GPU_UNSIGNED_BYTE, 4);
+  AttrInfo_AddLoader(&attributes, 3, GPU_FLOAT, 2);
+}
+
+// An image's pixels in the GPU's order for a GPU_RGBA8 texture: 8 x 8
+// tiles, rows of tiles from the image's first row (so texture coordinate v
+// 0 is its top, as Scene's), each tile's pixels in Morton order, each pixel
+// as bytes A, B, G, R
+void tilePixels(const Colour *pixels, int width, int height, std::uint8_t *out) {
+  for (int y = 0; y < height; ++y)
+    for (int x = 0; x < width; ++x) {
+      const int tile = (y / 8) * (width / 8) + x / 8;
+      const int tx = x % 8, ty = y % 8;
+      const int inTile = (tx & 1) | ((ty & 1) << 1) | ((tx & 2) << 1) | ((ty & 2) << 2) |
+                         ((tx & 4) << 2) | ((ty & 4) << 3);
+      std::uint8_t *at = out + (static_cast<std::size_t>(tile) * 64 + inTile) * 4;
+      const Colour &c = pixels[static_cast<std::size_t>(y) * width + x];
+      at[0] = c.a;
+      at[1] = c.b;
+      at[2] = c.g;
+      at[3] = c.r;
+    }
+}
+
+// The next mipmap level of an image: each pixel the average of four
+std::vector<Colour> halved(const std::vector<Colour> &image, int width, int height) {
+  const int w = std::max(width / 2, 1), h = std::max(height / 2, 1);
+  std::vector<Colour> out(static_cast<std::size_t>(w) * h);
+  for (int y = 0; y < h; ++y)
+    for (int x = 0; x < w; ++x) {
+      int sum[4] = {0, 0, 0, 0};
+      for (int dy = 0; dy < 2; ++dy)
+        for (int dx = 0; dx < 2; ++dx) {
+          const Colour &c =
+              image[static_cast<std::size_t>(std::min(y * 2 + dy, height - 1)) * width +
+                    std::min(x * 2 + dx, width - 1)];
+          sum[0] += c.r;
+          sum[1] += c.g;
+          sum[2] += c.b;
+          sum[3] += c.a;
+        }
+      out[static_cast<std::size_t>(y) * w + x] = {
+          static_cast<std::uint8_t>(sum[0] / 4), static_cast<std::uint8_t>(sum[1] / 4),
+          static_cast<std::uint8_t>(sum[2] / 4), static_cast<std::uint8_t>(sum[3] / 4)};
+    }
+  return out;
 }
 
 // A transform as citro3d's 4 x 4 matrix
@@ -195,6 +242,9 @@ Renderer::Backend::Backend(Display &display) : display(display) {
 }
 
 Renderer::Backend::~Backend() {
+  for (std::optional<C3D_Tex> &texture : textures)
+    if (texture)
+      C3D_TexDelete(&*texture);
   for (LoadedMesh &mesh : meshes) {
     linearFree(mesh.vertices);
     linearFree(mesh.indices);
@@ -311,6 +361,7 @@ void Renderer::Backend::drawMesh(const Draw &draw, const C3D_Mtx &viewProjection
   } else {
     useScene();
     setMaterial(draw.material, draw.where, mvp);
+    useTexture(&draw.material);
   }
   // Back faces culled (counter-clockwise is the front), unless either side
   // shows: a double-sided mesh or material
@@ -333,6 +384,20 @@ void Renderer::Backend::plainColours() {
   C3D_TexEnvSrc(combiner, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
   C3D_TexEnvFunc(combiner, C3D_Both, GPU_REPLACE);
   C3D_TexEnvInit(C3D_GetTexEnv(1)); // (passes the first stage's on)
+  useTexture(nullptr);
+}
+
+// The combiner's third stage: what came before times the material's
+// texture (colour and alpha), or passed on as it is without one
+void Renderer::Backend::useTexture(const Material *material) {
+  C3D_TexEnv *stage = C3D_GetTexEnv(2);
+  C3D_TexEnvInit(stage);
+  if (!material || !material->texture || material->texture.id > textures.size() ||
+      !textures[material->texture.id - 1])
+    return;
+  C3D_TexBind(0, &*textures[material->texture.id - 1]);
+  C3D_TexEnvSrc(stage, C3D_Both, GPU_PREVIOUS, GPU_TEXTURE0, GPU_PRIMARY_COLOR);
+  C3D_TexEnvFunc(stage, C3D_Both, GPU_MODULATE);
 }
 
 void Renderer::Backend::useToon(const Material &material, const Transform &where,
@@ -379,6 +444,7 @@ void Renderer::Backend::useToon(const Material &material, const Transform &where
   C3D_TexEnvInit(colour);
   C3D_TexEnvSrc(colour, C3D_RGB, GPU_PREVIOUS, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
   C3D_TexEnvFunc(colour, C3D_RGB, GPU_MODULATE);
+  useTexture(&material);
   // The uniforms: where, the normals' turn, the material's colour and alpha
   C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, toonUniforms.mvp, &mvp);
   const C3D_Mtx normals = normalMatrix(where);
@@ -406,7 +472,7 @@ void Renderer::Backend::drawOutline(LoadedMesh &mesh, const Draw &draw, const C3
     std::memcpy(mesh.hull, hull.data(), hull.size() * sizeof(Vertex));
     GSPGPU_FlushDataCache(mesh.hull, hull.size() * sizeof(Vertex));
     BufInfo_Init(&mesh.hullBuffers);
-    BufInfo_Add(&mesh.hullBuffers, mesh.hull, sizeof(Vertex), 3, 0x210);
+    BufInfo_Add(&mesh.hullBuffers, mesh.hull, sizeof(Vertex), 4, 0x3210);
   }
   // Its width in the mesh's own units: the world's, over the transform's
   // average scale
@@ -673,7 +739,7 @@ Mesh Renderer::load(const MeshData &mesh) {
     loaded.vertexCount = loaded.count;
   }
   BufInfo_Init(&loaded.buffers);
-  BufInfo_Add(&loaded.buffers, loaded.vertices, sizeof(Vertex), 3, 0x210);
+  BufInfo_Add(&loaded.buffers, loaded.vertices, sizeof(Vertex), 4, 0x3210);
   loaded.translucent = hasTranslucentVertices(mesh);
   loaded.bounds = boundsOf(mesh);
   loaded.doubleSided = mesh.doubleSided;
@@ -681,6 +747,54 @@ Mesh Renderer::load(const MeshData &mesh) {
   loaded.cost = {triangles, triangles * 3, 0};
   backend_->meshes.push_back(std::move(loaded));
   return Mesh{static_cast<std::uint32_t>(backend_->meshes.size())};
+}
+
+Texture Renderer::load(const TextureImage &image) {
+  // The GPU's textures are 8 to 1024 a side, in powers of two
+  const auto fits = [](int side) { return side >= 8 && side <= 1024 && (side & (side - 1)) == 0; };
+  if (!fits(image.width) || !fits(image.height) ||
+      image.pixels.size() <
+          static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
+    return {};
+  // Its mipmap levels down to 8 a side (the smallest tile), each tiled and
+  // loaded in turn
+  int levels = 1;
+  while ((image.width >> levels) >= 8 && (image.height >> levels) >= 8)
+    ++levels;
+  C3D_Tex texture;
+  const bool made = levels > 1 ? C3D_TexInitMipmap(&texture, static_cast<u16>(image.width),
+                                                   static_cast<u16>(image.height), GPU_RGBA8)
+                               : C3D_TexInit(&texture, static_cast<u16>(image.width),
+                                             static_cast<u16>(image.height), GPU_RGBA8);
+  if (!made)
+    return {};
+  texture.maxLevel = static_cast<u8>(levels - 1);
+  std::vector<Colour> level(image.pixels.begin(), image.pixels.end());
+  int width = image.width, height = image.height;
+  std::vector<std::uint8_t> tiled;
+  for (int i = 0; i < levels; ++i) {
+    tiled.assign(static_cast<std::size_t>(width) * height * 4, 0);
+    tilePixels(level.data(), width, height, tiled.data());
+    C3D_TexLoadImage(&texture, tiled.data(), GPU_TEXFACE_2D, i);
+    if (i + 1 < levels) {
+      level = halved(level, width, height);
+      width /= 2;
+      height /= 2;
+    }
+  }
+  C3D_TexSetFilter(&texture, GPU_LINEAR, GPU_LINEAR);
+  C3D_TexSetFilterMipmap(&texture, GPU_LINEAR);
+  C3D_TexSetWrap(&texture, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+  backend_->textures.push_back(texture);
+  return {static_cast<std::uint32_t>(backend_->textures.size())};
+}
+
+void Renderer::unload(Texture texture) {
+  if (!texture || texture.id > backend_->textures.size() || !backend_->textures[texture.id - 1])
+    return;
+  C3D_FrameSync(); // (a frame being drawn may use it)
+  C3D_TexDelete(&*backend_->textures[texture.id - 1]);
+  backend_->textures[texture.id - 1].reset();
 }
 
 void Renderer::unload(Mesh mesh) {

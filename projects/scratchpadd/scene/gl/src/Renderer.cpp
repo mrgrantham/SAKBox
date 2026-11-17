@@ -23,6 +23,7 @@ const char *kVertexShader = R"(#version 330 core
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec4 aColour;
+layout(location = 3) in vec2 aTexCoord;
 
 uniform mat4 uModel;
 uniform mat3 uNormalMatrix;
@@ -34,6 +35,7 @@ uniform float uExtrude;    // an outline's hull: pushed out this far along the n
 
 out vec3 vNormal;
 out vec4 vColour;
+out vec2 vTexCoord;
 out float vDistance;
 
 void main() {
@@ -51,6 +53,7 @@ void main() {
   gl_Position = clip;
   vNormal = uNormalMatrix * aNormal;
   vColour = aColour;
+  vTexCoord = aTexCoord;
   vDistance = clip.w;
 }
 )";
@@ -58,6 +61,9 @@ void main() {
 const char *kFragmentShader = R"(#version 330 core
 in vec3 vNormal;
 in vec4 vColour;
+in vec2 vTexCoord;
+uniform bool uTextured;      // the material's texture multiplies its colour
+uniform sampler2D uTexture;
 in float vDistance;
 
 uniform vec4 uColour; // the material's: colour, and alpha 0-1
@@ -79,7 +85,8 @@ layout(location = 1) out vec4 fragmentNormal;
 
 void main() {
   fragmentNormal = vec4(normalize(vNormal) * 0.5 + 0.5, uOutlined);
-  vec3 colour = uOutlinePass ? uColour.rgb : vColour.rgb * uColour.rgb;
+  vec4 texel = uTextured && !uOutlinePass ? texture(uTexture, vTexCoord) : vec4(1.0);
+  vec3 colour = uOutlinePass ? uColour.rgb : vColour.rgb * uColour.rgb * texel.rgb;
   if (uLit) {
     vec3 n = normalize(vNormal);
     vec3 light = uAmbient;
@@ -92,7 +99,7 @@ void main() {
     colour *= light;
   }
   float fog = clamp(1.0 - exp(-uFogDensity * vDistance), 0.0, 1.0);
-  fragmentColour = vec4(mix(colour, uFogColour, fog), vColour.a * uColour.a);
+  fragmentColour = vec4(mix(colour, uFogColour, fog), vColour.a * uColour.a * texel.a);
 }
 )";
 
@@ -231,6 +238,9 @@ void describeVertices() {
   glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride,
                         reinterpret_cast<void *>(offsetof(Vertex, colour)));
   glEnableVertexAttribArray(2);
+  glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, stride,
+                        reinterpret_cast<void *>(offsetof(Vertex, uv)));
+  glEnableVertexAttribArray(3);
 }
 
 Renderer::Backend::Backend(Display &display) : display(display) {
@@ -240,7 +250,7 @@ Renderer::Backend::Backend(Display &display) : display(display) {
              at("uScreenSnap"),  at("uViewport"),     at("uColour"),          at("uLit"),
              at("uAmbient"),     at("uLightCount"),   at("uLightDirections"), at("uLightColours"),
              at("uFogColour"),   at("uFogDensity"),   at("uExtrude"),         at("uToonBands"),
-             at("uOutlinePass"), at("uOutlined")};
+             at("uOutlinePass"), at("uOutlined"),     at("uTextured"),        at("uTexture")};
   edgeProgram = linkProgram(kEdgeVertexShader, kEdgeFragmentShader);
   glGenVertexArrays(1, &edgeVao); // (the edge pass's triangle needs no vertices, but a VAO)
 
@@ -267,6 +277,9 @@ Renderer::Backend::Backend(Display &display) : display(display) {
 }
 
 Renderer::Backend::~Backend() {
+  for (GLuint texture : textures)
+    if (texture)
+      glDeleteTextures(1, &texture);
   for (const LoadedMesh &mesh : meshes) {
     if (mesh.vao) {
       glDeleteVertexArrays(1, &mesh.vao);
@@ -303,6 +316,15 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
               static_cast<float>(std::min<int>(material.alpha, 31)) / 31.0f);
   glUniform1i(uniform.lit, material.shading == Material::Shading::Unlit ? 0 : 1);
   glUniform1f(uniform.outlined, material.outline ? 1.0f : 0.0f);
+  // Its texture, on unit 0 (the edge pass binds its own afterwards)
+  const bool textured = material.texture && material.texture.id <= textures.size() &&
+                        textures[material.texture.id - 1];
+  glUniform1i(uniform.textured, textured ? 1 : 0);
+  if (textured) {
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, textures[material.texture.id - 1]);
+    glUniform1i(uniform.texture, 0);
+  }
   glUniform1i(uniform.toonBands, material.shading == Material::Shading::Toon
                                      ? toonBandsFor(material, environment)
                                      : 0);
@@ -467,6 +489,37 @@ Mesh Renderer::load(const MeshData &mesh) {
   loaded.doubleSided = mesh.doubleSided;
   backend_->meshes.push_back(loaded);
   return Mesh{static_cast<std::uint32_t>(backend_->meshes.size())};
+}
+
+Texture Renderer::load(const TextureImage &image) {
+  if (image.width <= 0 || image.height <= 0 ||
+      image.pixels.size() <
+          static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
+    return {};
+  GLuint texture = 0;
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  // Rows from the top, as the image has them: texture coordinate v 0 is
+  // its first row
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+               image.pixels.data());
+  glGenerateMipmap(GL_TEXTURE_2D);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  backend_->textures.push_back(texture);
+  return {static_cast<std::uint32_t>(backend_->textures.size())};
+}
+
+void Renderer::unload(Texture texture) {
+  if (!texture || texture.id > backend_->textures.size())
+    return;
+  GLuint &loaded = backend_->textures[texture.id - 1];
+  if (loaded)
+    glDeleteTextures(1, &loaded);
+  loaded = 0;
 }
 
 void Renderer::unload(Mesh mesh) {

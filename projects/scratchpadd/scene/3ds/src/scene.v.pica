@@ -33,10 +33,12 @@
 
 .out outpos position
 .out outclr color
+.out outtex texcoord0
 
 .in inpos v0
 .in innrm v1
 .in inclr v2
+.in intex v3
 
 ; r4.x, a light's share (0-1), as toon shading has it: stepped if toon is on
 ; (a uniform can only be an instruction's first source, so they come first)
@@ -51,6 +53,7 @@
 .end
 
 .proc main
+	mov outtex, intex
 	mul r0.xyz, extrude.xxxx, innrm
 	add r0.xyz, inpos, r0
 	mov r0.w,   ones

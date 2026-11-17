@@ -35,6 +35,11 @@ struct Renderer::Backend {
     float side;
   };
 
+  // Materials' textures, by Texture::id - 1 (unloaded ones empty)
+  std::vector<std::optional<C3D_Tex>> textures;
+  // The combiner's texture stage for `material` (none: passed on)
+  void useTexture(const Material *material);
+
   struct LoadedMesh {
     // In linear memory, where the GPU reads: the vertices as Scene::Vertex
     // has them, and the triangles' indices (16-bit) or, for a mesh of more

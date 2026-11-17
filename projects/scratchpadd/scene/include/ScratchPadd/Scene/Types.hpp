@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <optional>
+#include <span>
 
 #if defined(__NDS__) || defined(SCRATCHPADD_SCENE_FIXED_POINT)
 #include <FixedPoint.hpp>
@@ -200,6 +201,29 @@ struct Environment {
   Colour backgroundSeen(Scalar farPlane) const;
 };
 
+// A loaded texture, used by handle (Renderer::load(TextureImage)). 0 is
+// no texture.
+struct Texture {
+  std::uint32_t id = 0;
+  explicit operator bool() const { return id != 0; }
+  bool operator==(const Texture &) const = default;
+};
+
+// An image to make a texture from: `width` x `height` colours, rows from
+// the top (a texture recipe's RGBA pixels, say). Sides that are powers of
+// two (8 to 1024) work everywhere; the 3DS and the DS need them.
+struct TextureImage {
+  int width = 0, height = 0;
+  std::span<const Colour> pixels;
+};
+
+// Where a vertex sits on its material's texture: (0, 0) the image's top
+// left, (1, 1) its bottom right
+struct TexCoord {
+  Scalar u = 0, v = 0;
+  bool operator==(const TexCoord &) const = default;
+};
+
 // How a mesh is drawn: the things the DS does in hardware
 struct Material {
   // Unlit: its colours as they are. Lit: by the ambient light and the
@@ -209,6 +233,9 @@ struct Material {
   Shading shading = Shading::Lit;
   // Multiplies the mesh's vertex colours
   Colour colour;
+  // An image on it, by its vertices' texture coordinates, multiplying its
+  // colours too (and its alpha, the texture's); none: plain colours
+  Texture texture;
   // How opaque, 0-31 as the DS has it: 31 is solid; below that it's
   // drawn after everything solid, farthest first
   std::uint8_t alpha = 31;

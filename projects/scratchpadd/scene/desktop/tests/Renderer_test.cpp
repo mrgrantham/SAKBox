@@ -337,3 +337,43 @@ TEST_F(RendererTest, ScreenSpaceOutlinesFindEdgesAndCreases) {
   expectNear(crease[0], {255, 255, 0});
   expectNear(crease[1], {255, 0, 0});
 }
+
+// A textured material shows its image where its vertices' texture
+// coordinates put it ((0, 0) the image's top left), times its colours
+TEST_F(RendererTest, TexturesShowTheirImage) {
+  // 8 x 8: red top left, green top right, blue bottom left, white bottom right
+  std::vector<Colour> pixels(64);
+  for (std::size_t y = 0; y < 8; ++y)
+    for (std::size_t x = 0; x < 8; ++x)
+      pixels[y * 8 + x] = x < 4   ? (y < 4 ? Colour{255, 0, 0} : Colour{0, 0, 255})
+                          : y < 4 ? Colour{0, 255, 0}
+                                  : Colour{255, 255, 255};
+  const Texture texture = renderer->load(TextureImage{8, 8, pixels});
+  ASSERT_TRUE(texture);
+  // A square facing the camera, its top left corner the image's top left
+  const Mesh square =
+      renderer->load(MeshBuilder()
+                         .quad({-2, -2, 0}, {2, -2, 0}, {2, 2, 0}, {-2, 2, 0}, {},
+                               {TexCoord{0, 1}, TexCoord{1, 1}, TexCoord{1, 0}, TexCoord{0, 0}})
+                         .data());
+  std::array<std::array<float, 2>, 4> at{};
+  const std::array<Vector3, 4> quarters = {Vector3{-1, 1, 0}, Vector3{1, 1, 0}, Vector3{-1, -1, 0},
+                                           Vector3{1, -1, 0}};
+  renderer->beginFrame(camera, environment); // (toScreen needs a frame's camera)
+  for (std::size_t i = 0; i < quarters.size(); ++i)
+    ASSERT_TRUE(renderer->toScreen(quarters[i], at[i][0], at[i][1]));
+  renderer->endFrame();
+  const Material material{.shading = Material::Shading::Unlit, .texture = texture};
+  const auto shown = frame([&] { renderer->draw(square, Transform::identity(), material); },
+                           {at[0], at[1], at[2], at[3]});
+  expectNear(shown[0], {255, 0, 0});
+  expectNear(shown[1], {0, 255, 0});
+  expectNear(shown[2], {0, 0, 255});
+  expectNear(shown[3], {255, 255, 255});
+  // Times the material's colour
+  const Material dim{
+      .shading = Material::Shading::Unlit, .colour = {128, 128, 128}, .texture = texture};
+  const auto dimmed = frame([&] { renderer->draw(square, Transform::identity(), dim); }, {at[3]});
+  expectNear(dimmed[0], {128, 128, 128});
+  renderer->unload(texture);
+}

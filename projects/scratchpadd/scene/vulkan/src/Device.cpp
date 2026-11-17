@@ -377,6 +377,105 @@ void transition(VkCommandBuffer commands, VkImage image, VkFormat format, const 
   vkCmdPipelineBarrier(commands, from.stages, to.stages, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
+Image makeTexture(std::uint32_t width, std::uint32_t height, const void *pixels) {
+  constexpr VkFormat kFormat = VK_FORMAT_R8G8B8A8_UNORM;
+  std::uint32_t levels = 1;
+  while ((std::max(width, height) >> levels) > 0)
+    ++levels;
+  Image t;
+  const VkImageCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+                               .imageType = VK_IMAGE_TYPE_2D,
+                               .format = kFormat,
+                               .extent = {width, height, 1},
+                               .mipLevels = levels,
+                               .arrayLayers = 1,
+                               .samples = VK_SAMPLE_COUNT_1_BIT,
+                               .tiling = VK_IMAGE_TILING_OPTIMAL,
+                               .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                                        VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                        VK_IMAGE_USAGE_SAMPLED_BIT,
+                               .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                               .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
+  vkCreateImage(device().device, &info, nullptr, &t.image);
+  VkMemoryRequirements needs;
+  vkGetImageMemoryRequirements(device().device, t.image, &needs);
+  t.memory = allocate(needs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  vkBindImageMemory(device().device, t.image, t.memory, 0);
+  const VkImageViewCreateInfo view{
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image = t.image,
+      .viewType = VK_IMAGE_VIEW_TYPE_2D,
+      .format = kFormat,
+      .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, levels, 0, 1}};
+  vkCreateImageView(device().device, &view, nullptr, &t.view);
+
+  // The pixels into level 0 through a staging buffer, then each level
+  // blitted from the one before, halving; all left ready to sample
+  Buffer staging =
+      makeBuffer(VkDeviceSize{width} * height * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, pixels);
+  const auto barrier = [&](VkCommandBuffer commands, std::uint32_t level, VkImageLayout from,
+                           VkImageLayout to, VkAccessFlags fromAccess, VkAccessFlags toAccess,
+                           VkPipelineStageFlags fromStage, VkPipelineStageFlags toStage) {
+    const VkImageMemoryBarrier b{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                                 .srcAccessMask = fromAccess,
+                                 .dstAccessMask = toAccess,
+                                 .oldLayout = from,
+                                 .newLayout = to,
+                                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                 .image = t.image,
+                                 .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, level, 1, 0, 1}};
+    vkCmdPipelineBarrier(commands, fromStage, toStage, 0, 0, nullptr, 0, nullptr, 1, &b);
+  };
+  VkCommandBuffer commands = makeCommandBuffer();
+  const VkCommandBufferBeginInfo begin{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                       .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+  vkBeginCommandBuffer(commands, &begin);
+  for (std::uint32_t level = 0; level < levels; ++level)
+    barrier(commands, level, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT);
+  const VkBufferImageCopy copy{.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+                               .imageExtent = {width, height, 1}};
+  vkCmdCopyBufferToImage(commands, staging.buffer, t.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                         &copy);
+  auto w = static_cast<std::int32_t>(width), h = static_cast<std::int32_t>(height);
+  for (std::uint32_t level = 1; level < levels; ++level) {
+    barrier(commands, level - 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT);
+    const std::int32_t halfW = std::max(w / 2, 1), halfH = std::max(h / 2, 1);
+    const VkImageBlit blit{.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, level - 1, 0, 1},
+                           .srcOffsets = {{0, 0, 0}, {w, h, 1}},
+                           .dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, level, 0, 1},
+                           .dstOffsets = {{0, 0, 0}, {halfW, halfH, 1}}};
+    vkCmdBlitImage(commands, t.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, t.image,
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+    barrier(commands, level - 1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT,
+            VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    w = halfW;
+    h = halfH;
+  }
+  barrier(commands, levels - 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT,
+          VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+  vkEndCommandBuffer(commands);
+  const VkSubmitInfo submit{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                            .commandBufferCount = 1,
+                            .pCommandBuffers = &commands};
+  VkFence done = makeFence(false);
+  vkQueueSubmit(context()->queue, 1, &submit, done);
+  vkWaitForFences(device().device, 1, &done, VK_TRUE, UINT64_MAX);
+  vkDestroyFence(device().device, done, nullptr);
+  freeCommandBuffer(commands);
+  destroy(staging);
+  return t;
+}
+
 VkCommandBuffer makeCommandBuffer() {
   const VkCommandBufferAllocateInfo info{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
                                          .commandPool = shared().pool,
@@ -507,7 +606,8 @@ std::span<const VkVertexInputAttributeDescription> vertexAttributes() {
   static const VkVertexInputAttributeDescription kAttributes[] = {
       {0, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<std::uint32_t>(offsetof(Vertex, position))},
       {1, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<std::uint32_t>(offsetof(Vertex, normal))},
-      {2, 0, VK_FORMAT_R8G8B8A8_UNORM, static_cast<std::uint32_t>(offsetof(Vertex, colour))}};
+      {2, 0, VK_FORMAT_R8G8B8A8_UNORM, static_cast<std::uint32_t>(offsetof(Vertex, colour))},
+      {3, 0, VK_FORMAT_R32G32_SFLOAT, static_cast<std::uint32_t>(offsetof(Vertex, uv))}};
   return kAttributes;
 }
 

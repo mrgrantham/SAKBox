@@ -44,6 +44,9 @@ struct Image {
 Image makeImage(std::uint32_t width, std::uint32_t height, VkFormat format,
                 VkSampleCountFlagBits samples, VkImageUsageFlags usage);
 void destroy(Image &image);
+// A texture of `pixels` (RGBA, rows from the top), with its mipmaps, ready
+// for shaders to sample (as the other backends' textures)
+Image makeTexture(std::uint32_t width, std::uint32_t height, const void *pixels);
 
 // A barrier taking `image` from one layout to another, after the work in
 // `from`'s stages and access, before the work in `to`'s
@@ -91,7 +94,7 @@ struct PipelineDescription {
 VkPipeline makePipeline(const PipelineDescription &description);
 
 // The layout of Scene::Vertex: location 0 position, 1 normal (float3), 2
-// colour (four bytes, 0-1)
+// colour (four bytes, 0-1), 3 texture coordinates (float2)
 std::span<const VkVertexInputAttributeDescription> vertexAttributes();
 
 } // namespace ScratchPadd::Scene::Vulkan
