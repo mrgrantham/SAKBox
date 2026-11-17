@@ -675,4 +675,5 @@ TEST(CornersTest, NoBoostInTheFirstRound) {
 // Round 89: no Core Control in the agreed rules: nobody holds it
 TEST(CornersTest, NoCoreControlInTheAgreedRules) {
   EXPECT_EQ(agreedRules(boardR3()).coreControlPoints, 0);
+  EXPECT_FALSE(agreedRules(boardR3()).firstRoundBoost); // (round 90: no boost the first round)
 }

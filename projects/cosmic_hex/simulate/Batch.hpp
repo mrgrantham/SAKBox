@@ -65,11 +65,11 @@ struct Options {
   // The home's income in steps by points ({from, a turn}, round 67); empty:
   // the catch-up rule
   std::vector<std::array<int, 2>> homeIncomeSteps;
-  bool homeDie = true;         // the home's resources rolled on the home die (round 66's hybrid)
-  bool finishRound = true;     // play out the round when someone reaches the points to win
-  bool coreControl = false;    // Core Control's points (off: round 89)
-  bool firstRoundBoost = true; // fuel boosts in the first round (round 89's question)
-  bool trading = true;         // trading between players (round 57), the bots by the trading rule
+  bool homeDie = true;          // the home's resources rolled on the home die (round 66's hybrid)
+  bool finishRound = true;      // play out the round when someone reaches the points to win
+  bool coreControl = false;     // Core Control's points (off: round 89)
+  bool firstRoundBoost = false; // fuel boosts in the first round (off: the agreed rule, round 90)
+  bool trading = true;          // trading between players (round 57), the bots by the trading rule
   int cartelTake = 0;         // the Interstellar Cartel takes all (0), or up to this many from each
   int strongIterations = 0;   // a stronger bot, thinking this much, at one home in turn
   std::string variant;        // a label for the CSV

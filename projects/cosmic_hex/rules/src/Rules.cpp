@@ -1218,6 +1218,10 @@ Settings agreedRules(const Board &board, int players) {
   // No Core Control (round 89, the user's: it no longer made sense; any
   // cluster, or none, may use the centre)
   s.coreControlPoints = 0;
+  // No fuel boost in the first round (round 90, the user's): a ship
+  // starting in empty space can't reach a three's centre before the others
+  // move; with no Core Control, it makes R3 fair (1,800 games)
+  s.firstRoundBoost = false;
   return s;
 }
 
