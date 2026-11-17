@@ -7,7 +7,9 @@
 //   yes
 //
 // Flags: --homes edge|corners|three (three: for three players), --singles A-B, --pairs A-B,
-// --threes A-B, --fours A-B (clusters of four, a diamond; --nearest-four A-B),
+// --centre lone|free (a lone planet at the centre, or the centre free for
+// any cluster or none: the default), --threes A-B, --fours A-B (clusters of four, a diamond;
+// --nearest-four A-B),
 // --finds A-B (each a value or a floor-ceiling range), --away N (finds never
 // touch clusters of N or more; 0: anywhere), --farther yes (threes farther
 // from every home than pairs and singles), --nearest-single, --nearest-pair,
@@ -64,6 +66,8 @@ int main(int argc, char **argv) {
       spec.threes = boundOf(value);
     else if (flag == "--fours")
       spec.fours = boundOf(value);
+    else if (flag == "--centre") // (lone: a planet alone at the centre; free: any cluster or none)
+      spec.core = value == "lone";
     else if (flag == "--finds")
       spec.finds = boundOf(value);
     else if (flag == "--away") {

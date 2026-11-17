@@ -45,7 +45,9 @@ struct SolverSpec {
   // How many clusters of each size (1, 2, 3 and 4 planets), besides the
   // core; a four is a compact diamond (round 89, the user's: to try)
   Bound singles = Bound{2, 6}, pairs = Bound{1, 4}, threes = Bound{1, 2}, fours = Bound{0, 0};
-  bool core = true; // a planet at the centre
+  // A lone planet at the centre. Off (round 89, the user's): the centre is
+  // like any other hex, free for any cluster to cover, or to stay empty
+  bool core = false;
   // The same seen from every home: turned half round with four homes, a
   // third of a turn with three
   bool symmetric = true;

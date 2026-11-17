@@ -97,6 +97,10 @@ struct Settings {
   // so the last to play chooses first; and the finds the ship's corner
   // touches turn over, as where a move ends.
   bool deepSpaceStart = false;
+  // (corners) Fuel boosts the first round (round 89, the user's question:
+  // without, a ship starting in empty space can't reach a three's centre
+  // corner, 3 edges away, before the others have moved)
+  bool firstRoundBoost = true;
   // The piles of planet kinds and numbers made for the board's planets
   // (round 55): numbers in the genre's mix (2 and 12 half as common as the
   // others; Catan's own 18 for 18 planets), kinds shared evenly, one of
@@ -211,7 +215,7 @@ struct Settings {
   int embargoEnforcers = 3;
   int embargoPoints = 2;
   int coreStationsForControl = 2;
-  int coreControlPoints = 2;
+  int coreControlPoints = 2; // (0: no Core Control at all; the agreed rules', round 89)
   int badgesPerPoint = 3;
   int ruinsBadges = 2;
   int salvageResources = 2;

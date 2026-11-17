@@ -157,7 +157,8 @@ std::unordered_map<int, int> cornersWithin(Corner from, int steps) {
 std::unordered_map<int, int> cornerMovesFor(const State &state, const Ship &ship) {
   const Settings &settings = state.settings;
   const bool canBoost = state.player[static_cast<std::size_t>(ship.owner)]
-                            .resources[static_cast<std::size_t>(Resource::Fuel)] >= 1;
+                                .resources[static_cast<std::size_t>(Resource::Fuel)] >= 1 &&
+                        (settings.firstRoundBoost || state.round > 1);
   return cornersWithin(ship.corner, settings.shipMove + (canBoost ? settings.boostMove : 0));
 }
 
@@ -501,6 +502,8 @@ void produce(State &state, int roll) {
 }
 
 void updateCoreControl(State &state, int player) {
+  if (state.settings.coreControlPoints <= 0)
+    return; // (no Core Control in these rules: nobody holds it)
   const int mine = coreStationsOf(state, player);
   if (mine < state.settings.coreStationsForControl || state.coreHolder == player)
     return;
@@ -906,8 +909,8 @@ std::string settingsText(const Settings &s) {
     zoneList.push_back(hex.r);
   }
   out << joined(zoneList) << " edges=" << (s.corners ? 1 : 0) << "," << s.startShipReach << ","
-      << (s.deepSpaceStart ? 1 : 0) << " piles=" << (s.fitPiles ? 1 : 0) << ","
-      << (s.redNumbersApart ? 1 : 0);
+      << (s.deepSpaceStart ? 1 : 0) << " firstboost=" << (s.firstRoundBoost ? 1 : 0)
+      << " piles=" << (s.fitPiles ? 1 : 0) << "," << (s.redNumbersApart ? 1 : 0);
   return out.str();
 }
 
@@ -1001,6 +1004,10 @@ std::optional<Settings> readSettings(std::string_view line) {
       s.corners = (*values)[0] != 0;
       s.startShipReach = (*values)[1];
       s.deepSpaceStart = (*values)[2] != 0;
+      continue;
+    }
+    if (values && key == "firstboost" && values->size() == 1) {
+      s.firstRoundBoost = (*values)[0] != 0;
       continue;
     }
     if (values && key == "zone" && values->size() % 2 == 0) {
@@ -1208,6 +1215,9 @@ Settings agreedRules(const Board &board, int players) {
   s.stationCost = {0, 0, 0, 0, 0};
   s.shipCost = {1, 0, 1, 1, 0};
   s.playerTrading = true; // (round 57)
+  // No Core Control (round 89, the user's: it no longer made sense; any
+  // cluster, or none, may use the centre)
+  s.coreControlPoints = 0;
   return s;
 }
 

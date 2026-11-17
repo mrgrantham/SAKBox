@@ -659,7 +659,9 @@ void LabWindowPadd::drawSolverTab() {
   bound("Threes (floor, ceiling)", spec.threes);
   bound("Fours (floor, ceiling)", spec.fours);
   bound("Finds (floor, ceiling)", spec.finds);
-  ImGui::Checkbox("A planet at the centre", &spec.core);
+  ImGui::Checkbox("A lone planet at the centre", &spec.core);
+  ImGui::SameLine();
+  ImGui::TextDisabled("(off: the centre is free for any cluster, or empty)");
   ImGui::Checkbox("The same from opposite homes", &spec.symmetric);
   ImGui::Checkbox("Clusters never touch", &spec.clustersApart);
   ImGui::SeparatorText("Constraints");

@@ -126,6 +126,9 @@ Settings settingsFor(const Options &options) {
   settings.playerTrading = options.trading;
   settings.homeDie = options.homeDie;
   settings.finishRound = options.finishRound;
+  if (!options.coreControl)
+    settings.coreControlPoints = 0;
+  settings.firstRoundBoost = options.firstRoundBoost;
   settings.homeIncomeSteps = options.homeIncomeSteps;
   settings.exhaustedKindRandom = options.exhaustedKindRandom;
   return settings;

@@ -650,3 +650,29 @@ TEST(CornersTest, ARelayBesideAFind) {
   // but not the relay
   EXPECT_EQ(settle(true, Find::AlienStation), std::pair(true, false));
 }
+
+// Round 89: with firstRoundBoost off, a ship can't use fuel in the first
+// round (fewer places to go than with it), and can from the second
+TEST(CornersTest, NoBoostInTheFirstRound) {
+  State state = atMain();
+  const int mine = firstShipOf(state, state.turn);
+  ASSERT_GE(mine, 0);
+  state.player[static_cast<std::size_t>(state.turn)].resources = {5, 5, 5, 5, 5};
+  const auto placesToGo = [&](State s, bool firstRoundBoost, int round) {
+    s.settings.firstRoundBoost = firstRoundBoost;
+    s.round = round;
+    std::size_t count = 0;
+    for (const Action &action : Game::legalActions(s))
+      count += action.kind == Kind::Move && action.a == mine ? 1 : 0;
+    return count;
+  };
+  const std::size_t withBoost = placesToGo(state, true, 1);
+  ASSERT_GT(withBoost, 0u);
+  EXPECT_LT(placesToGo(state, false, 1), withBoost); // (the first round: no boost)
+  EXPECT_EQ(placesToGo(state, false, 2), withBoost); // (later: as before)
+}
+
+// Round 89: no Core Control in the agreed rules: nobody holds it
+TEST(CornersTest, NoCoreControlInTheAgreedRules) {
+  EXPECT_EQ(agreedRules(boardR3()).coreControlPoints, 0);
+}
