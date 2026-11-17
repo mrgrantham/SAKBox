@@ -787,6 +787,8 @@ void LabWindowPadd::drawCharts() {
         fixed(tally_.sevens > 0 ? 100.0 * tally_.sevensWithDiscards / tally_.sevens : 0.0) + "%");
     row("Enforcers played", "", fixed(tally_.enforcers / games));
     row("Interstellar Cartels played", "", fixed(tally_.cartels / games));
+    row("Shipyard Surplus played", "", fixed(tally_.shipyards / games));
+    row("Supply drops played", "", fixed(tally_.supplyDrops / games));
     for (std::size_t i = 0; i < Tally::kTradeNames.size(); ++i)
       row(Tally::kTradeNames[i], fixed(tally_.winnerTrades[i] / wins),
           fixed(tally_.everyoneTrades[i] / (games * tally_.players)));

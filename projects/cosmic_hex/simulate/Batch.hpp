@@ -97,7 +97,9 @@ Settings settingsFor(const Options &options);
 struct GameStats {
   int blockades = 0, thefts = 0, denied = 0, caughtUp = 0, discarded = 0;
   int enforcers = 0;
-  int cartels = 0; // Interstellar Cartels played
+  int cartels = 0;     // Interstellar Cartels played
+  int shipyards = 0;   // Shipyard Surplus played
+  int supplyDrops = 0; // Supply drops played
   // Round 61's statistics, player by player: trades at the bank, at an alien
   // outpost by ship and by station, with other players (and the resources
   // that changed hands in them), and offers made

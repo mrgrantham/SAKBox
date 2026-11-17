@@ -225,13 +225,15 @@ TEST(RulesTest, AHandLimitIsKeptInTheLog) {
   EXPECT_EQ(again.value_or(State{}).settings.discardOver, 7);
 }
 
-// The deck (rounds 61 and 63): one of each Charter, 10 Enforcers and 2
-// Interstellar Cartels
+// The deck (rounds 61, 63 and 65): one of each Charter, 14 Enforcers, 2
+// Interstellar Cartels, 2 Shipyard Surplus and 2 Supply drops
 TEST(RulesTest, TheDeck) {
   const State state = newGame(4);
-  EXPECT_EQ(state.deck.size(), 15u);
-  EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kEnforcerCard), 10);
+  EXPECT_EQ(state.deck.size(), 23u);
+  EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kEnforcerCard), 14);
   EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kCartelCard), 2);
+  EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kShipyardCard), 2);
+  EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kSupplyDropCard), 2);
   for (int charter : {0, 19, kDeepSpaceRelay})
     EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), charter), 1);
 }
@@ -261,7 +263,7 @@ TEST(RulesTest, AnEnforcer) {
   EXPECT_FALSE(canPlay(state)); // bought this turn
   EXPECT_FALSE(Game::apply(state, {Kind::PlayEnforcer}));
 
-  state.player[0].enforcersNew = 0; // as at the start of their next turn
+  state.player[0].boughtThisTurn.clear(); // as at the start of their next turn
   ASSERT_TRUE(canPlay(state));
   ASSERT_TRUE(Game::apply(state, {Kind::PlayEnforcer}));
   EXPECT_EQ(state.phase, Phase::Blockade);
@@ -927,4 +929,16 @@ TEST(RulesTest, TradingBetweenPlayers) {
        {Action{Kind::OfferTrade, twoMinerals, oneFood, -1}, Action{Kind::CounterTrade, 1, 2},
         Action{Kind::AcceptTrade}, Action{Kind::DeclineTrade}, Action{Kind::EndTrading}})
     EXPECT_EQ(Game::readAction(Game::writeAction(action)), action);
+}
+
+// A Supply drop (round 65): any 2 resources from the bank, one card a turn
+TEST(RulesTest, ASupplyDrop) {
+  State state = atMain();
+  state.player[0].resources = {0, 0, 0, 0, 0};
+  state.player[0].contracts = {kSupplyDropCard};
+  ASSERT_TRUE(Game::apply(state, {Kind::PlaySupplyDrop, 2, 2}));
+  EXPECT_EQ(state.player[0].resources, (Resources{0, 0, 2, 0, 0}));
+  EXPECT_TRUE(state.player[0].contracts.empty());
+  EXPECT_EQ(Game::readAction(Game::writeAction({Kind::PlaySupplyDrop, 1, 4})),
+            (Action{Kind::PlaySupplyDrop, 1, 4}));
 }

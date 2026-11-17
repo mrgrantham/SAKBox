@@ -160,18 +160,27 @@ struct Settings {
   // Enforcers. The agreed deck (round 37): 25 cards, as the genre's best-known
   // game has, 14 Enforcers and 11 Charters.
   //
-  // The deck (rounds 61 and 63; five card types): one of each of three
-  // Charters (stations on 3 kinds of planet, Homesteader, Deep-space relay),
-  // and copies only of the cards that act by themselves: 10 Enforcers and 2
-  // Interstellar Cartels. (A player can't reveal a Charter twice.)
+  // The deck (rounds 61, 63 and 65; 23 cards, close to the genre's 25): one
+  // of each of three Charters (stations on 3 kinds of planet, Homesteader,
+  // Deep-space relay), and copies only of the cards that act by themselves:
+  // 14 Enforcers, 2 Interstellar Cartels, 2 Shipyard Surplus and 2 Supply
+  // drops. (A player can't reveal a Charter twice.)
   std::vector<int> charters{0, 19, kDeepSpaceRelay};
-  int enforcers = 10;
+  int enforcers = 14;
   // The Interstellar Cartel (round 60, the user's idea, as the genre's
   // monopoly card): played in the main part of your turn (one card a turn,
   // not one bought this turn), name a resource, and every other player
   // gives you all of it, or with cartelTake up to that many each
   int cartels = 2;
   int cartelTake = 0; // (0: all of it)
+  // Shipyard Surplus (round 65, the user's idea, as the genre's road
+  // building): played as you build a ship, a second comes free at the same
+  // colony (room for both under the ship limit, or keep the card). "Under
+  // budget, ahead of schedule."
+  int shipyards = 2;
+  // Supply drop (round 65, as the genre's year of plenty): any 2 resources
+  // from the bank
+  int supplyDrops = 2;
   // Trading between players (round 57): after the roll is dealt with
   // (production, or the blockade on a 7) and before anything else in the
   // turn, the player whose turn it is may offer any resources for any
@@ -265,8 +274,8 @@ struct Player {
   std::vector<int> contracts; // cards held, hidden from the others (Charters and Enforcers)
   std::vector<int> revealed;  // Charters scored
   int enforcersPlayed = 0;    // for the Galactic Embargo
-  int enforcersNew = 0;       // bought this turn: not playable until the next
-  int cartelsNew = 0;         // (the same for Interstellar Cartels)
+  // Action cards bought this turn (ids), not playable until the next
+  std::vector<int> boughtThisTurn;
   bool operator==(const Player &) const = default;
 };
 
@@ -377,6 +386,8 @@ struct Action {
     RevealContract, // a: the contract
     PlayEnforcer,   // then MoveBlockade, as on a 7
     PlayCartel,     // a: the resource named
+    PlayShipyard,   // a: the colony (as BuildShip): two ships for one
+    PlaySupplyDrop, // a, b: the two resources taken
     CashBadges,
     EndTurn,
     OfferTrade,  // a: what you give, b: what you get (bundles), c: to whom (-1: anyone)
@@ -403,6 +414,9 @@ struct Action {
 inline constexpr int kEnforcerCard = 99;
 // An Interstellar Cartel's card id (Settings::cartels)
 inline constexpr int kCartelCard = 98;
+// Shipyard Surplus's and the Supply drop's card ids (round 65)
+inline constexpr int kShipyardCard = 97;
+inline constexpr int kSupplyDropCard = 96;
 // Whether a card id is a Charter (an index into contracts())
 bool isCharter(int card);
 

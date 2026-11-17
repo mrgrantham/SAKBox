@@ -164,6 +164,10 @@ inline std::string describe(const State &before, const Action &action) {
   }
   case Kind::PlayEnforcer:
     return who + " plays an Enforcer.";
+  case Kind::PlayShipyard:
+    return who + " plays Shipyard Surplus: two ships for one.";
+  case Kind::PlaySupplyDrop:
+    return who + " plays a Supply drop: " + resource(action.a) + " and " + resource(action.b) + ".";
   case Kind::PlayCartel:
     return who + " plays an Interstellar Cartel: everyone's " + resource(action.a) + ".";
   case Kind::CashBadges:

@@ -673,16 +673,20 @@ bool applyTrading(State &state, const Action &action) {
   }
 }
 
-bool canPlayCartel(const State &state) {
+// Whether the player whose turn it is may play an action card: one card a
+// turn, in the main part, and not one bought this turn
+bool canPlayCard(const State &state, int card) {
   const Player &me = state.player[static_cast<std::size_t>(state.turn)];
-  const auto held = std::count(me.contracts.begin(), me.contracts.end(), kCartelCard);
-  return state.phase == Phase::Main && !state.cardPlayed && held > me.cartelsNew;
+  const auto held = std::count(me.contracts.begin(), me.contracts.end(), card);
+  const auto bought = std::count(me.boughtThisTurn.begin(), me.boughtThisTurn.end(), card);
+  return state.phase == Phase::Main && !state.cardPlayed && held > bought;
 }
 
-bool canPlayEnforcer(const State &state) {
-  const Player &me = state.player[static_cast<std::size_t>(state.turn)];
-  const auto held = std::count(me.contracts.begin(), me.contracts.end(), kEnforcerCard);
-  return state.phase == Phase::Main && !state.cardPlayed && held > me.enforcersNew;
+// The card's gone from the hand, and the turn's card is played
+void playCard(State &state, int card) {
+  Player &me = state.player[static_cast<std::size_t>(state.turn)];
+  me.contracts.erase(std::find(me.contracts.begin(), me.contracts.end(), card));
+  state.cardPlayed = true;
 }
 
 // The Galactic Embargo: to whoever has played the most Enforcers, at least
@@ -698,8 +702,7 @@ void updateEmbargo(State &state, int player) {
 }
 
 void endTurn(State &state) {
-  state.player[static_cast<std::size_t>(state.turn)].enforcersNew = 0;
-  state.player[static_cast<std::size_t>(state.turn)].cartelsNew = 0;
+  state.player[static_cast<std::size_t>(state.turn)].boughtThisTurn.clear();
   state.cardPlayed = false;
   state.tradingDone = false;
   state.offersMade.clear();
@@ -798,7 +801,8 @@ std::string settingsText(const Settings &s) {
       << s.catchUpGap << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0)
       << " discardover=" << s.discardOver << " charters=" << joined(s.charters)
       << " enforcers=" << s.enforcers << "," << s.embargoEnforcers << "," << s.embargoPoints
-      << " cartels=" << s.cartels << "," << s.cartelTake << " moons=" << s.moons << " planets=";
+      << " cartels=" << s.cartels << "," << s.cartelTake << " shipyards=" << s.shipyards
+      << " supply=" << s.supplyDrops << " moons=" << s.moons << " planets=";
   std::vector<int> planetList;
   for (Hex hex : s.planetHexes) {
     planetList.push_back(hex.q);
@@ -858,6 +862,14 @@ std::optional<Settings> readSettings(std::string_view line) {
     if (values && key == "cartels" && values->size() == 2) {
       s.cartels = (*values)[0];
       s.cartelTake = (*values)[1];
+      continue;
+    }
+    if (values && key == "shipyards" && values->size() == 1) {
+      s.shipyards = (*values)[0];
+      continue;
+    }
+    if (values && key == "supply" && values->size() == 1) {
+      s.supplyDrops = (*values)[0];
       continue;
     }
     if (values && key == "discardover" && values->size() == 1) {
@@ -1086,6 +1098,9 @@ State newGame(int players, const Settings &settings, int first) {
   state.deck = settings.charters;
   state.deck.insert(state.deck.end(), static_cast<std::size_t>(settings.enforcers), kEnforcerCard);
   state.deck.insert(state.deck.end(), static_cast<std::size_t>(settings.cartels), kCartelCard);
+  state.deck.insert(state.deck.end(), static_cast<std::size_t>(settings.shipyards), kShipyardCard);
+  state.deck.insert(state.deck.end(), static_cast<std::size_t>(settings.supplyDrops),
+                    kSupplyDropCard);
   if (settings.corners) {
     // The start: home colonies, then ships, placed in snake order
     state.phase = Phase::PlaceColony;
@@ -1414,13 +1429,21 @@ std::optional<bool> applyMainOnCorners(State &state, const Action &action) {
     return found.owner == state.turn ? &found : nullptr;
   };
   switch (action.kind) {
-  case Kind::BuildShip: {
+  case Kind::BuildShip:
+  case Kind::PlayShipyard: {
+    // (Shipyard Surplus: a second ship free, so room for two)
+    const bool surplus = action.kind == Kind::PlayShipyard;
+    const int building = surplus ? 2 : 1;
     const Station *colony = station(action.a);
-    if (!colony || !colony->colony || shipsOf(state, state.turn) >= settings.maxShips ||
-        !canAfford(me.resources, settings.shipCost))
+    if (!colony || !colony->colony || shipsOf(state, state.turn) + building > settings.maxShips ||
+        !canAfford(me.resources, settings.shipCost) ||
+        (surplus && !canPlayCard(state, kShipyardCard)))
       return false;
+    if (surplus)
+      playCard(state, kShipyardCard);
     pay(me.resources, settings.shipCost);
-    state.ships.push_back(Ship{state.turn, Hex{}, true, colony->at}); // moves from next turn
+    for (int i = 0; i < building; ++i)
+      state.ships.push_back(Ship{state.turn, Hex{}, true, colony->at}); // moves from next turn
     return true;
   }
   case Kind::Move: {
@@ -1485,9 +1508,14 @@ void cornerActions(const State &state, std::vector<Action> &out) {
   const Settings &settings = state.settings;
   if (shipsOf(state, state.turn) < settings.maxShips &&
       canAfford(me.resources, settings.shipCost)) {
+    const bool surplus =
+        shipsOf(state, state.turn) + 2 <= settings.maxShips && canPlayCard(state, kShipyardCard);
     for (std::size_t i = 0; i < state.stations.size(); ++i)
-      if (state.stations[i].owner == state.turn && state.stations[i].colony)
+      if (state.stations[i].owner == state.turn && state.stations[i].colony) {
         out.push_back({Kind::BuildShip, static_cast<int>(i)});
+        if (surplus)
+          out.push_back({Kind::PlayShipyard, static_cast<int>(i)});
+      }
   }
   for (std::size_t i = 0; i < state.ships.size(); ++i) {
     const Ship &ship = state.ships[i];
@@ -1628,20 +1656,27 @@ bool applyMain(State &state, const Action &action) {
     return true;
   }
   case Kind::PlayEnforcer: {
-    if (!canPlayEnforcer(state))
+    if (!canPlayCard(state, kEnforcerCard))
       return false;
-    me.contracts.erase(std::find(me.contracts.begin(), me.contracts.end(), kEnforcerCard));
+    playCard(state, kEnforcerCard);
     ++me.enforcersPlayed;
-    state.cardPlayed = true;
     updateEmbargo(state, state.turn);
     state.phase = Phase::Blockade; // then as on a 7: move it, and steal
     return true;
   }
-  case Kind::PlayCartel: {
-    if (!canPlayCartel(state) || action.a < 0 || action.a >= kResources)
+  case Kind::PlaySupplyDrop: {
+    if (!canPlayCard(state, kSupplyDropCard) || action.a < 0 || action.a >= kResources ||
+        action.b < 0 || action.b >= kResources)
       return false;
-    me.contracts.erase(std::find(me.contracts.begin(), me.contracts.end(), kCartelCard));
-    state.cardPlayed = true;
+    playCard(state, kSupplyDropCard);
+    ++me.resources[static_cast<std::size_t>(action.a)];
+    ++me.resources[static_cast<std::size_t>(action.b)];
+    return true;
+  }
+  case Kind::PlayCartel: {
+    if (!canPlayCard(state, kCartelCard) || action.a < 0 || action.a >= kResources)
+      return false;
+    playCard(state, kCartelCard);
     const auto r = static_cast<std::size_t>(action.a);
     for (int p = 0; p < state.players; ++p) {
       if (p == state.turn)
@@ -1863,10 +1898,8 @@ bool Game::apply(State &state, const Action &action) {
     if (action.kind == Kind::KeepContract && action.a >= 0 &&
         (action.a == state.offered[0] || action.a == state.offered[1])) {
       me.contracts.push_back(action.a);
-      if (action.a == kEnforcerCard)
-        ++me.enforcersNew;
-      if (action.a == kCartelCard)
-        ++me.cartelsNew;
+      if (!isCharter(action.a))
+        me.boughtThisTurn.push_back(action.a); // (an action card: playable from next turn)
       const int other = action.a == state.offered[0] ? state.offered[1] : state.offered[0];
       if (other >= 0)
         state.deck.push_back(other); // back under the deck
@@ -2051,10 +2084,14 @@ std::vector<Action> Game::legalActions(const State &state) {
           contracts()[static_cast<std::size_t>(id)].met(state, state.turn))
         out.push_back({Kind::RevealContract, id});
     }
-    if (canPlayCartel(state))
+    if (canPlayCard(state, kCartelCard))
       for (int r = 0; r < kResources; ++r)
         out.push_back({Kind::PlayCartel, r});
-    if (canPlayEnforcer(state))
+    if (canPlayCard(state, kSupplyDropCard))
+      for (int a = 0; a < kResources; ++a)
+        for (int b = a; b < kResources; ++b)
+          out.push_back({Kind::PlaySupplyDrop, a, b});
+    if (canPlayCard(state, kEnforcerCard))
       out.push_back({Kind::PlayEnforcer});
     if (me.badges >= settings.badgesPerPoint)
       out.push_back({Kind::CashBadges});
@@ -2191,8 +2228,7 @@ std::string Game::writeState(const State &state) {
     out << "player " << i << " resources=" << joined(p.resources) << " badges=" << p.badges << ","
         << p.badgesEarned << "," << p.badgePoints << " finds=" << p.findsKept
         << " contracts=" << joined(p.contracts) << " revealed=" << joined(p.revealed)
-        << " enforcers=" << p.enforcersPlayed << "," << p.enforcersNew
-        << " cartels=" << p.cartelsNew << "\n";
+        << " enforcers=" << p.enforcersPlayed << " new=" << joined(p.boughtThisTurn) << "\n";
   }
   out << "left kinds=" << joined(state.kindsLeft) << " moons=" << state.moonsLeft
       << " numbers=" << joined(state.numbersLeft) << " finds=" << joined(state.findsLeft)
@@ -2279,6 +2315,10 @@ std::string Game::writeAction(const Action &action) {
     return "reveal " + n(action.a);
   case Kind::PlayEnforcer:
     return "enforcer";
+  case Kind::PlayShipyard:
+    return "shipyard " + n(action.a);
+  case Kind::PlaySupplyDrop:
+    return "supply " + res(action.a) + " " + res(action.b);
   case Kind::PlayCartel:
     return "cartel " + res(action.a);
   case Kind::CashBadges:
@@ -2350,6 +2390,8 @@ std::optional<Action> Game::readAction(std::string_view text) {
       return std::nullopt;
     if (verb == "ship")
       return make(Kind::BuildShip, *v);
+    if (verb == "shipyard")
+      return make(Kind::PlayShipyard, *v);
     if (verb == "place_colony")
       return make(Kind::PlaceColony, *v);
     if (verb == "place_ship")
@@ -2369,6 +2411,10 @@ std::optional<Action> Game::readAction(std::string_view text) {
     return give && get && to ? make(Kind::OfferTrade, *give, *get, *to) : std::nullopt;
   }
   if (w.size() == 3) {
+    if (verb == "supply") {
+      const int a = res(w[1]), b = res(w[2]);
+      return a >= 0 && b >= 0 ? make(Kind::PlaySupplyDrop, a, b) : std::nullopt;
+    }
     if (verb == "trade") {
       const int give = res(w[1]), get = res(w[2]);
       return give >= 0 && get >= 0 ? make(Kind::Trade, give, get) : std::nullopt;

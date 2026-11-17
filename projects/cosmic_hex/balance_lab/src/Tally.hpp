@@ -38,7 +38,7 @@ struct Tally {
                                                               "Resources traded with players",
                                                               "Offers made"};
   double leadChanges = 0, leadTakenRound = 0, comeback = 0, sevens = 0, sevensWithDiscards = 0;
-  double enforcers = 0, cartels = 0;
+  double enforcers = 0, cartels = 0, shipyards = 0, supplyDrops = 0;
   std::array<double, 6> winnerTrades{}, everyoneTrades{};
 
   void add(const Batch::GameResult &result) {
@@ -48,6 +48,8 @@ struct Tally {
     sevensWithDiscards += stats.sevensWithDiscards;
     enforcers += stats.enforcers;
     cartels += stats.cartels;
+    shipyards += stats.shipyards;
+    supplyDrops += stats.supplyDrops;
     leadChanges += stats.leadChanges;
     const std::array<const std::array<int, kMaxPlayers> *, 6> perPlayer = {
         &stats.bankTrades,   &stats.shipOutpostTrades, &stats.stationOutpostTrades,

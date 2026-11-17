@@ -548,3 +548,44 @@ TEST(CornersTest, ADeepSpaceRelay) {
     }
   EXPECT_FALSE(Game::apply(state, {Kind::Settle, static_cast<int>(state.ships.size()) - 1}));
 }
+
+// Shipyard Surplus (round 65): built with a ship, a second comes free at the
+// same colony; it needs room for both, and can't be played the turn it's
+// bought
+namespace {
+int shipsOwned(const State &state, int player) {
+  return static_cast<int>(std::count_if(state.ships.begin(), state.ships.end(),
+                                        [&](const Ship &ship) { return ship.owner == player; }));
+}
+} // namespace
+
+TEST(CornersTest, ShipyardSurplus) {
+  State state = atMain();
+  state.ships.clear();
+  state.stations.push_back(Station{cornerTouching(state, 2), 0, true});
+  const int colony = static_cast<int>(state.stations.size()) - 1;
+  state.player[0].contracts = {kShipyardCard};
+  state.player[0].boughtThisTurn = {kShipyardCard};
+  EXPECT_FALSE(Game::apply(state, {Kind::PlayShipyard, colony})); // (bought this turn)
+  state.player[0].boughtThisTurn.clear();
+  const Resources before = state.player[0].resources;
+  ASSERT_TRUE(Game::apply(state, {Kind::PlayShipyard, colony}));
+  EXPECT_EQ(shipsOwned(state, 0), 2);
+  Resources paid = before;
+  for (std::size_t i = 0; i < paid.size(); ++i)
+    paid[i] -= state.settings.shipCost[i];
+  EXPECT_EQ(state.player[0].resources, paid); // (one ship's cost)
+  EXPECT_TRUE(state.player[0].contracts.empty());
+  // With room for only one more: the card is kept, not played
+  State full = atMain();
+  full.stations.push_back(Station{cornerTouching(full, 2), 0, true});
+  full.player[0].contracts = {kShipyardCard};
+  while (shipsOwned(full, 0) < full.settings.maxShips - 1)
+    full.ships.push_back(Ship{0, Hex{}, false, full.stations.back().at});
+  const int there = static_cast<int>(full.stations.size()) - 1;
+  for (const Action &action : Game::legalActions(full))
+    EXPECT_NE(action.kind, Kind::PlayShipyard);
+  EXPECT_FALSE(Game::apply(full, {Kind::PlayShipyard, there}));
+  EXPECT_EQ(Game::readAction(Game::writeAction({Kind::PlayShipyard, 3})),
+            (Action{Kind::PlayShipyard, 3}));
+}

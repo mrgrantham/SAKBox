@@ -188,6 +188,12 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
     case Action::Kind::PlayCartel:
       ++stats.cartels;
       break;
+    case Action::Kind::PlayShipyard:
+      ++stats.shipyards;
+      break;
+    case Action::Kind::PlaySupplyDrop:
+      ++stats.supplyDrops;
+      break;
     case Action::Kind::Trade: {
       // By how many it took: the bank's rate, or an outpost's by ship or station
       const auto me = static_cast<std::size_t>(state.turn);
@@ -401,7 +407,8 @@ std::string csvHeader() {
          // (round 61) the game's, then the winner's and everyone's together
          "cartels,lead_changes,lead_taken_round,comeback,sevens,sevens_discarding,"
          "w_bank,w_ship_outpost,w_station_outpost,w_player_trades,w_traded,w_offers,"
-         "all_bank,all_ship_outpost,all_station_outpost,all_player_trades,all_traded,all_offers\n";
+         "all_bank,all_ship_outpost,all_station_outpost,all_player_trades,all_traded,all_offers,"
+         "shipyards,supply_drops\n";
 }
 
 std::string csvLine(const Options &options, const GameResult &result) {
@@ -432,7 +439,7 @@ std::string csvLine(const Options &options, const GameResult &result) {
     csv << "," << (result.winner >= 0 ? (*counts)[static_cast<std::size_t>(result.winner)] : 0);
   for (const auto *counts : perPlayer) // (everyone's)
     csv << "," << std::accumulate(counts->begin(), counts->end(), 0);
-  csv << "\n";
+  csv << "," << stats.shipyards << "," << stats.supplyDrops << "\n";
   return csv.str();
 }
 
