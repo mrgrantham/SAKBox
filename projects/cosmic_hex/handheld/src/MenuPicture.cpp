@@ -108,7 +108,7 @@ void MenuPicture::draw(const StartMenu &menu) {
          chosen ? kChosen : kWords);
   }
   // Each row's label (left) and value (between its arrows)
-  for (int r = 0; r < 3; ++r) {
+  for (int r = 0; r < static_cast<int>(StartMenu::Row::Start); ++r) {
     const auto row = static_cast<StartMenu::Row>(r);
     const StartMenu::Area area = menu.valueArea(row, width_, height_);
     const bool chosen = menu.focus() == row;

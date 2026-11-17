@@ -1170,7 +1170,14 @@ std::vector<NamedBoard> boardChoices(int players) {
   for (std::string_view line : lines) {
     const auto board = boardFromLine(line);
     assert(board.has_value());
-    out.push_back({std::string(line.substr(0, line.find(' '))), *board});
+    out.push_back({std::string(line.substr(0, line.find(' '))), *board, {}});
+  }
+  // R3 leans to the first player under today's rules; one more resource to
+  // start for the last two evens its turn order (round 88: chi-square 15.0
+  // to 2.0). A choice when setting up (round 89), off unless chosen
+  for (NamedBoard &choice : out) {
+    if (choice.name == "R3")
+      choice.seatBonus = {0, 0, 1, 1};
   }
   return out;
 }

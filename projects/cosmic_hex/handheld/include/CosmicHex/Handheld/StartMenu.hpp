@@ -5,6 +5,7 @@
 //   Players  < 4 >                 4: you and three bots; 3: you and two
 //   Board    < R3 >                boardChoices(players), the default first
 //   End      < finish the round >  or the first to the target wins
+//   Bonus    < off >               the board's seat bonus, if it has one (R3)
 //   [ Play ]  [ Watch ]
 //
 // Up and down move between rows; left and right change a row's value (or,
@@ -19,6 +20,7 @@
 
 #include <CosmicHex/Rules.hpp>
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -27,7 +29,7 @@ namespace CosmicHex::Handheld {
 
 class StartMenu {
 public:
-  enum class Row : std::uint8_t { Players, Board, End, Start };
+  enum class Row : std::uint8_t { Players, Board, End, SeatBonus, Start };
   enum class Key : std::uint8_t { Up, Down, Left, Right, Confirm, Back };
   enum class Outcome : std::uint8_t { None, Play, Watch };
 
@@ -39,6 +41,8 @@ public:
   const std::string &boardName() const { return boards_[board_].name; }
   const Board &boardItself() const { return boards_[board_].board; }
   bool finishRound() const { return finishRound_; }
+  // The board's seat bonus, if it has one and it's chosen; else all 0
+  std::array<int, kMaxPlayers> seatBonus() const;
   Row focus() const { return focus_; }
   bool watchChosen() const { return watch_; } // (on the last row: Watch, not Play)
 
@@ -73,6 +77,7 @@ private:
   std::vector<NamedBoard> boards_;
   std::size_t board_ = 0;
   bool finishRound_ = true;
+  bool seatBonus_ = false; // (off unless chosen: round 89)
   Row focus_ = Row::Players;
   bool watch_ = false;
 };

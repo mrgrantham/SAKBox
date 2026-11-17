@@ -137,6 +137,7 @@ struct StartGame {
   int players = 4;
   CosmicHex::Board board = CosmicHex::boardR3(); // (a StartMenu choice)
   bool finishRound = true; // (the round played out, or the first to the target wins)
+  std::array<int, CosmicHex::kMaxPlayers> seatBonus{}; // (the board's, if chosen)
 };
 struct TogglePause {};
 struct DiceRolled {
@@ -158,6 +159,7 @@ public:
       settings.players = start.players;
       settings.board = start.board;
       settings.finishRound = start.finishRound;
+      settings.seatBonus = start.seatBonus;
       settings.physicsDice = true; // (thrown on the top screen; round 87)
       seed_ = settings.seed;
       game_.emplace(settings);
@@ -792,7 +794,8 @@ private:
     send(StartGame{.withPerson = play,
                    .players = menu_.players(),
                    .board = menu_.boardItself(),
-                   .finishRound = menu_.finishRound()});
+                   .finishRound = menu_.finishRound(),
+                   .seatBonus = menu_.seatBonus()});
   }
   std::size_t cursor_ = 0;
 };

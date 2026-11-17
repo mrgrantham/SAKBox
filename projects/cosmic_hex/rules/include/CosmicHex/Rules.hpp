@@ -23,6 +23,7 @@
 #include <HexGrid/Hex.hpp>
 #include <SeededRandom/Generator.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -416,6 +417,12 @@ std::optional<Board> boardFromLine(std::string_view line);
 struct NamedBoard {
   std::string name;
   Board board;
+  // Extra start resources by turn position that even the board's turn order
+  // out, offered as a choice (round 89: R3's 0,0,1,1); all 0 for none
+  std::array<int, kMaxPlayers> seatBonus{};
+  bool hasSeatBonus() const {
+    return std::any_of(seatBonus.begin(), seatBonus.end(), [](int b) { return b > 0; });
+  }
 };
 std::vector<NamedBoard> boardChoices(int players = 4);
 

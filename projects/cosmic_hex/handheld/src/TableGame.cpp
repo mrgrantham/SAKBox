@@ -22,6 +22,7 @@ bool trading(const State &state) {
 Settings rulesFor(const TableSettings &settings) {
   Settings rules = agreedRules(settings.board, settings.players);
   rules.finishRound = settings.finishRound;
+  rules.seatBonus = settings.seatBonus;
   return rules;
 }
 

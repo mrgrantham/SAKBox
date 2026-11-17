@@ -57,6 +57,11 @@ TEST(StartMenuTest, ButtonsMoveAndChange) {
   menu.press(Key::Down);
   menu.press(Key::Left);
   EXPECT_FALSE(menu.finishRound());
+  menu.press(Key::Down); // (the seat bonus: T4 has none)
+  EXPECT_EQ(menu.focus(), Row::SeatBonus);
+  menu.press(Key::Right);
+  EXPECT_EQ(menu.seatBonus(), (std::array<int, kMaxPlayers>{}));
+  EXPECT_EQ(menu.value(Row::SeatBonus), "none for this board");
   menu.press(Key::Down); // (the last row: Play or Watch)
   EXPECT_EQ(menu.focus(), Row::Start);
   menu.press(Key::Right);
@@ -109,9 +114,8 @@ TEST(StartMenuTest, ThePictureDraws) {
   writeOut(big, "menu_3ds.ppm");
   writeOut(small, "menu_ds.ppm");
   menu.press(Key::Right);
-  menu.press(Key::Down);
-  menu.press(Key::Down);
-  menu.press(Key::Down);
+  for (int i = 0; i < 4; ++i)
+    menu.press(Key::Down);
   big.draw(menu);
   writeOut(big, "menu_3ds_three_players.ppm");
   // Something's drawn in the chosen colour (the focused row's words)
@@ -119,4 +123,25 @@ TEST(StartMenuTest, ThePictureDraws) {
   for (const auto &c : big.pixels())
     amber = amber || (c.r == 255 && c.g == 214 && c.b == 90);
   EXPECT_TRUE(amber);
+}
+
+// Round 89: R3's seat bonus, a choice, off unless chosen; a board without
+// one has none to choose
+TEST(StartMenuTest, R3sSeatBonusIsAChoice) {
+  StartMenu menu;
+  EXPECT_EQ(menu.boardName(), "R3");
+  EXPECT_EQ(menu.seatBonus(), (std::array<int, kMaxPlayers>{})); // (off at first)
+  for (int i = 0; i < 3; ++i)
+    menu.press(Key::Down);
+  ASSERT_EQ(menu.focus(), Row::SeatBonus);
+  EXPECT_EQ(menu.value(Row::SeatBonus), "off");
+  menu.press(Key::Right);
+  EXPECT_EQ(menu.seatBonus(), (std::array<int, kMaxPlayers>{0, 0, 1, 1}));
+  // Another board: none, whatever was chosen
+  menu.press(Key::Up);
+  menu.press(Key::Up);
+  menu.press(Key::Right); // (S5)
+  EXPECT_EQ(menu.boardName(), "S5");
+  EXPECT_EQ(menu.seatBonus(), (std::array<int, kMaxPlayers>{}));
+  EXPECT_EQ(menu.value(Row::SeatBonus), "none for this board");
 }

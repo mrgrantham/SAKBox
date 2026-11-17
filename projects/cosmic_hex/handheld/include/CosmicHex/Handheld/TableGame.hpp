@@ -46,6 +46,8 @@ struct TableSettings {
   // The play style (round 85): the round played out once someone reaches
   // the target (the agreed rule), or the first to reach it wins at once
   bool finishRound = true;
+  // Extra start resources by turn position (a board's seat bonus, if chosen)
+  std::array<int, kMaxPlayers> seatBonus{};
   // Physics dice (round 87): the roll is thrown on screen (dice/DiceTray)
   // and given back with rollDice(); off, the dealer rolls at random
   bool physicsDice = false;

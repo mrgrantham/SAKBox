@@ -3,7 +3,7 @@
 namespace CosmicHex::Handheld {
 
 namespace {
-constexpr int kRows = 4;
+constexpr int kRows = 5;
 // The layout, as parts of the screen: a margin, each row's height, and the
 // arrows' width
 constexpr float kMargin = 0.05f;
@@ -11,6 +11,12 @@ constexpr float kArrow = 0.11f;
 } // namespace
 
 StartMenu::StartMenu() : boards_(boardChoices(players_)) {}
+
+std::array<int, kMaxPlayers> StartMenu::seatBonus() const {
+  if (seatBonus_ && boards_[board_].hasSeatBonus())
+    return boards_[board_].seatBonus;
+  return {};
+}
 
 std::string StartMenu::label(Row row) const {
   switch (row) {
@@ -20,6 +26,8 @@ std::string StartMenu::label(Row row) const {
     return "Board";
   case Row::End:
     return "End";
+  case Row::SeatBonus:
+    return "Bonus";
   case Row::Start:
     return "";
   }
@@ -34,6 +42,10 @@ std::string StartMenu::value(Row row) const {
     return boardName() + (board_ == 0 ? " (default)" : "");
   case Row::End:
     return finishRound_ ? "finish the round" : "first to the target";
+  case Row::SeatBonus:
+    if (!boards_[board_].hasSeatBonus())
+      return "none for this board";
+    return seatBonus_ ? "later seats +1" : "off";
   case Row::Start:
     return "";
   }
@@ -54,6 +66,10 @@ void StartMenu::change(Row row, int step) {
   }
   case Row::End:
     finishRound_ = !finishRound_;
+    break;
+  case Row::SeatBonus:
+    if (boards_[board_].hasSeatBonus())
+      seatBonus_ = !seatBonus_;
     break;
   case Row::Start:
     watch_ = !watch_;
