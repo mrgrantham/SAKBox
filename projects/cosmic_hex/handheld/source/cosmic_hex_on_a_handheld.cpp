@@ -17,6 +17,7 @@
 #include <3ds.h>
 #include <ScratchPadd/Scene/3DS/Display.hpp>
 
+#include <CosmicHex/Art.hpp>
 #include <CosmicHex/Handheld/BoardMotion.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
@@ -29,6 +30,7 @@
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
 #include <ScratchPadd/Storage/StoragePadd.hpp>
+#include <ScratchPadd/TextureRecipe/TextureRecipe.hpp>
 
 #include <spdlog/spdlog.h>
 
@@ -144,6 +146,7 @@ public:
     colony_ = renderer_->load(pieces.colony.data());
     ship_ = renderer_->load(pieces.ship.data());
     stars_ = renderer_->load(pieces.stars.data());
+    loadFaces();
     push([this] { frame(); });
   }
 
@@ -202,35 +205,31 @@ private:
       };
       // A tile turning over: lifted a little, its face down side first, then
       // its face up, about the axis across the screen
-      const auto drawTile = [&](CosmicHex::Hex hex, std::optional<float> turn, Scene::Colour down,
-                                Scene::Colour up) {
+      // A tile with its face (Art.hpp); turning over, lifted a little,
+      // its face-down side first, then its face, about the axis across
+      const auto drawTile = [&](CosmicHex::Hex hex, std::optional<float> turn,
+                                CosmicHex::Art::Face down, CosmicHex::Art::Face up) {
+        const auto showing = [&](CosmicHex::Art::Face face) {
+          return Scene::Material{.shading = Scene::Material::Shading::Toon,
+                                 .texture = faces_[static_cast<std::size_t>(face)]};
+        };
         if (!turn) {
-          renderer_->draw(hexTile_, BoardPieces::onHex(hex), toon(up));
+          renderer_->draw(hexTile_, BoardPieces::onHex(hex), showing(up));
           return;
         }
         const float half = 1.5707963f;
         const bool upSide = *turn > half;
         const auto lift = Scene::Transform::translation({0, 0.6f * std::sin(*turn), 0});
         const auto spin = Scene::Transform::rotation({1, 0, 0}, upSide ? *turn - 2 * half : *turn);
-        renderer_->draw(hexTile_, BoardPieces::onHex(hex) * lift * spin, toon(upSide ? up : down));
+        renderer_->draw(hexTile_, BoardPieces::onHex(hex) * lift * spin,
+                        showing(upSide ? up : down));
       };
-      // The planets, face down or by kind, and the homes
-      for (std::size_t i = 0; i < state.planets.size(); ++i) {
-        const CosmicHex::Planet &planet = state.planets[i];
-        const Scene::Colour colour = planet.homeOf >= 0 ? BoardColours::kHome
-                                     : planet.flipped   ? BoardColours::ofKind(planet.kind)
-                                                        : BoardColours::kFaceDown;
-        drawTile(planet.hex, motion_.planetTurn(i, t), BoardColours::kFaceDown, colour);
-      }
-      // The deep-space zone's sites: face down, or what was found there
-      for (std::size_t i = 0; i < state.zone.size(); ++i) {
-        const CosmicHex::ZoneSite &site = state.zone[i];
-        const Scene::Colour found = site.find == CosmicHex::Find::AlienStation
-                                        ? BoardColours::kOutpost
-                                        : BoardColours::kFound;
-        drawTile(site.hex, motion_.siteTurn(i, t), BoardColours::kZone,
-                 site.flipped ? found : BoardColours::kZone);
-      }
+      for (std::size_t i = 0; i < state.planets.size(); ++i)
+        drawTile(state.planets[i].hex, motion_.planetTurn(i, t),
+                 CosmicHex::Art::Face::PlanetFaceDown, faceOf(state.planets[i]));
+      for (std::size_t i = 0; i < state.zone.size(); ++i)
+        drawTile(state.zone[i].hex, motion_.siteTurn(i, t), CosmicHex::Art::Face::FindFaceDown,
+                 faceOf(state.zone[i]));
       for (const CosmicHex::Station &station : state.stations)
         renderer_->draw(station.colony ? colony_ : station_, BoardPieces::onCorner(station.at),
                         toon(BoardColours::ofPlayer(station.owner)));
@@ -276,7 +275,25 @@ private:
 
   std::optional<Scene::Display> display_;
   std::optional<Scene::Renderer> renderer_;
+  // Each tile face (Art.hpp) drawn into a 64 x 64 texture from its recipe,
+  // once, when the game starts
+  void loadFaces() {
+    namespace TR = ScratchPadd::TextureRecipe;
+    for (int i = 0; i < CosmicHex::Art::kFaces; ++i) {
+      const auto recipe = TR::read(CosmicHex::Art::recipeOf(static_cast<CosmicHex::Art::Face>(i)));
+      if (!recipe)
+        continue; // (the tile shows white: a broken recipe, tested against on the Mac)
+      const TR::Image image = TR::draw(*recipe, 64, 64, TR::Format::Rgba8);
+      std::vector<Scene::Colour> pixels(64 * 64);
+      for (std::size_t p = 0; p < pixels.size(); ++p)
+        pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
+                     image.pixels[p * 4 + 3]};
+      faces_[static_cast<std::size_t>(i)] = renderer_->load(Scene::TextureImage{64, 64, pixels});
+    }
+  }
+
   Scene::Mesh hexTile_, station_, colony_, ship_, stars_;
+  std::array<Scene::Texture, CosmicHex::Art::kFaces> faces_{};
   std::optional<TableSnapshot> latest_;
   BoardMotion motion_;
   Clock::time_point motionStarted_;

@@ -11,6 +11,8 @@ devkitpro_3ds_app(
     extra_srcs = {
         "//projects/cosmic_hex/handheld:sources": "cosmic_hex/handheld",
         "//projects/cosmic_hex/rules:sources": "cosmic_hex/rules",
+        "//projects/cosmic_hex/art:sources": "cosmic_hex/art",
+        "//projects/scratchpadd/texture_recipe:sources": "scratchpadd/texture_recipe",
         "//projects/action_log:sources": "action_log",
         "//projects/game_bots:sources": "game_bots",
         "//projects/hex_grid:sources": "hex_grid",

@@ -20,6 +20,7 @@ cc_library(
     visibility = ["//projects/cosmic_hex:__subpackages__"],
     deps = [
         "//projects/action_log",
+        "//projects/cosmic_hex/art",
         "//projects/cosmic_hex/rules",
         "//projects/game_bots",
         "//projects/hex_grid",

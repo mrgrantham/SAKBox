@@ -32,3 +32,23 @@ TEST(BoardPiecesTest, ThePiecesHaveShape) {
   EXPECT_EQ(pieces.highlight.triangleCount(), 12u);
   EXPECT_NE(BoardColours::ofPlayer(0), BoardColours::ofPlayer(1));
 }
+
+// Each tile shows the face for what it is: face down until explored, then
+// its kind; a home, and an exhausted home by what it now gives
+TEST(BoardPiecesTest, TilesShowTheirFaces) {
+  Planet planet;
+  EXPECT_EQ(faceOf(planet), Art::Face::PlanetFaceDown);
+  planet.flipped = true;
+  planet.kind = PlanetKind::GasGiant;
+  EXPECT_EQ(faceOf(planet), Art::Face::PlanetFuel);
+  planet.formerHomeOf = 2;
+  EXPECT_EQ(faceOf(planet), Art::Face::HomeExhaustedFuel);
+  Planet home;
+  home.homeOf = 0;
+  EXPECT_EQ(faceOf(home), Art::Face::Home);
+  ZoneSite site;
+  EXPECT_EQ(faceOf(site), Art::Face::FindFaceDown);
+  site.flipped = true;
+  site.find = Find::AlienStation;
+  EXPECT_EQ(faceOf(site), Art::Face::FindOutpost);
+}

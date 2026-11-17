@@ -9,6 +9,7 @@
 //   Transform at = BoardPieces::onHex(planet.hex); // where to draw it
 #pragma once
 
+#include <CosmicHex/Art.hpp>
 #include <CosmicHex/Rules.hpp>
 
 #include <ScratchPadd/Scene/MeshData.hpp>
@@ -32,11 +33,17 @@ struct BoardColours {
   static Scene::Colour ofPlayer(int player);
 };
 
+// The face a tile shows (round 75's designs): a planet face down or by its
+// kind, a home, an exhausted home by what it gives; a find face down or what
+// was found
+Art::Face faceOf(const Planet &planet);
+Art::Face faceOf(const ZoneSite &site);
+
 // The pieces' meshes, each centred on its own place, 1 unit to a hex's
 // corner-to-centre
 struct BoardPieces {
   BoardPieces();
-  Scene::MeshBuilder hexTile;   // a flat hexagon, white (coloured by the material)
+  Scene::MeshBuilder hexTile;   // a flat hexagon, its face (Art.hpp) on it by texture
   Scene::MeshBuilder station;   // a small box
   Scene::MeshBuilder colony;    // a taller box with a roof
   Scene::MeshBuilder ship;      // a dart, pointing along +x

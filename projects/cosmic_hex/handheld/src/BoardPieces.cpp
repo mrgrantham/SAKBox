@@ -53,8 +53,14 @@ BoardPieces::BoardPieces() {
   for (int i = 0; i < 6; ++i) {
     const auto a = corners[static_cast<std::size_t>(i)],
                b = corners[static_cast<std::size_t>((i + 1) % 6)];
+    // Each corner where the tile's face (Art.hpp) has it: the hex, 47% of
+    // the square from its centre to a corner, v down the board (+z)
+    const auto uv = [](HexGrid::Point p) {
+      return Scene::TexCoord{0.5f + p.x * 0.47f, 0.5f + p.y * 0.47f};
+    };
     hexTile.triangle(middle, onTable({b.x * 0.94f, b.y * 0.94f}),
-                     onTable({a.x * 0.94f, a.y * 0.94f}));
+                     onTable({a.x * 0.94f, a.y * 0.94f}), {},
+                     {Scene::TexCoord{0.5f, 0.5f}, uv(b), uv(a)});
     // and its rim, a thin ring for the chosen hex
     highlight.quad(
         onTable({a.x * 0.98f, a.y * 0.98f}, 0.02f), onTable({b.x * 0.98f, b.y * 0.98f}, 0.02f),
@@ -80,6 +86,51 @@ BoardPieces::BoardPieces() {
     stars.quad({x - size, -1, z + size}, {x + size, -1, z + size}, {x + size, -1, z - size},
                {x - size, -1, z - size}, colour);
   }
+}
+
+Art::Face faceOf(const Planet &planet) {
+  using Art::Face;
+  if (planet.homeOf >= 0)
+    return Face::Home;
+  if (!planet.flipped)
+    return Face::PlanetFaceDown;
+  const bool exhausted = planet.formerHomeOf >= 0;
+  switch (planet.kind) {
+  case PlanetKind::AsteroidBelt:
+    return exhausted ? Face::HomeExhaustedMinerals : Face::PlanetMinerals;
+  case PlanetKind::LushPlanet:
+    return exhausted ? Face::HomeExhaustedFood : Face::PlanetFood;
+  case PlanetKind::GasGiant:
+    return exhausted ? Face::HomeExhaustedFuel : Face::PlanetFuel;
+  case PlanetKind::IceMoon:
+    return exhausted ? Face::HomeExhaustedWater : Face::PlanetWater;
+  case PlanetKind::Nebula:
+    return exhausted ? Face::HomeExhaustedCrystals : Face::PlanetCrystals;
+  case PlanetKind::Moon:
+    return Face::PlanetMoon;
+  case PlanetKind::Home:
+    return Face::Home;
+  }
+  return Face::PlanetFaceDown;
+}
+
+Art::Face faceOf(const ZoneSite &site) {
+  using Art::Face;
+  if (!site.flipped)
+    return Face::FindFaceDown;
+  switch (site.find) {
+  case Find::Salvage:
+    return Face::FindSalvage;
+  case Find::Ruins:
+    return Face::FindRuins;
+  case Find::AlienStation:
+    return Face::FindOutpost;
+  case Find::PirateHideout:
+    return Face::FindPirates;
+  case Find::Nothing:
+    return Face::FindNothing;
+  }
+  return Face::FindNothing;
 }
 
 Scene::Vector3 BoardPieces::centre(Hex hex) { return onTable(kLayout.centre(hex)); }
