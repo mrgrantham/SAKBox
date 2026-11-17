@@ -8,11 +8,13 @@ cc_library(
     name = "handheld",
     srcs = [
         "src/BoardMotion.cpp",
+        "src/BoardPicture.cpp",
         "src/BoardPieces.cpp",
         "src/TableGame.cpp",
     ],
     hdrs = [
         "include/CosmicHex/Handheld/BoardMotion.hpp",
+        "include/CosmicHex/Handheld/BoardPicture.hpp",
         "include/CosmicHex/Handheld/BoardPieces.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",
     ],
@@ -25,6 +27,7 @@ cc_library(
         "//projects/game_bots",
         "//projects/hex_grid",
         "//projects/scratchpadd/scene",
+        "//projects/scratchpadd/texture_recipe",
         "//projects/seeded_random",
     ],
 )
@@ -64,6 +67,16 @@ cc_test(
     name = "BoardMotion_test",
     size = "small",
     srcs = ["tests/BoardMotion_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "BoardPicture_test",
+    size = "small",
+    srcs = ["tests/BoardPicture_test.cpp"],
     deps = [
         ":handheld",
         "@gtest//:gtest_main",

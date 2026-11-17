@@ -4,28 +4,30 @@
 //
 //   ScreenPadd (main thread)  draws the board on the top screen with the
 //              scene layer (3DS backend, in stereo while the 3D slider is
-//              up): hexes in the lab's colours, stations, colonies, ships
-//              and the blockade in the players' colours, toon shaded; and on
-//              the bottom screen's console each player's points and
-//              resources and the last moves in words
+//              up): the tiles' faces (art/), stations, colonies, ships
+//              and the blockade in the players' colours, toon shaded, with
+//              the round, points, resources and the last move over it; and
+//              the board drawn flat on the bottom screen (BoardPicture), to
+//              touch and zoom
 //   TablePadd  (own thread)  plays the game (TableGame): the dealer's draws
 //              and the bots' moves, one at a time, paced so they can be
 //              watched, and sends ScreenPadd each new state
 //
 // The first build (round 71): four bots, to watch it run and time the bots.
-// A: pause or go on   L/R: turn the board   START: quit
+// A: pause or go on   L/R: turn the board   X/Y: zoom the bottom board in
+// and out   touch: select a hex (drag: move the board when zoomed)   START: quit
 #include <3ds.h>
 #include <ScratchPadd/Scene/3DS/Display.hpp>
 
 #include <CosmicHex/Art.hpp>
 #include <CosmicHex/Handheld/BoardMotion.hpp>
+#include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
 
 #include <ScratchPadd/AboutPadd.hpp>
 #include <ScratchPadd/AppEnded/AppEnded.hpp>
 #include <ScratchPadd/DebugLog/Session.hpp>
-#include <ScratchPadd/HandheldControls/ConsolePanel.hpp>
 #include <ScratchPadd/Input/GamePadd.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 #include <ScratchPadd/ScratchPadd.hpp>
@@ -50,7 +52,6 @@ using CosmicHex::State;
 using namespace CosmicHex::Handheld;
 using Clock = std::chrono::steady_clock;
 
-constexpr int kConsoleColumns = 40, kConsoleRows = 30; // the bottom screen's
 // How long each move stays on screen before the next, so a game can be
 // watched (the dealer's draws go straight on), and how long its slide or
 // flip takes
@@ -129,6 +130,7 @@ public:
         motion_ = BoardMotion(latest_->state, snapshot.state);
       motionStarted_ = Clock::now();
       latest_ = snapshot;
+      bottomDirty_ = true;
       // The gaps between the tiles, once: the board's tiles don't move
       if (!gaps_ && renderer_) {
         std::vector<CosmicHex::Hex> tiles;
@@ -138,7 +140,6 @@ public:
           tiles.push_back(site.hex);
         gaps_ = renderer_->load(BoardPieces::gapsUnder(tiles).data());
       }
-      drawText();
     });
   }
   std::string name() override { return "ScreenPadd"; }
@@ -147,7 +148,10 @@ public:
 
   void starting() override {
     display_.emplace(); // the top screen
-    consoleInit(GFX_BOTTOM, nullptr);
+    // The bottom screen: the flat board (BoardPicture), written straight
+    // into its one framebuffer when it changes
+    gfxSetDoubleBuffering(GFX_BOTTOM, false);
+    picture_.emplace(320, 240);
     renderer_.emplace(*display_);
     const BoardPieces pieces;
     hexTile_ = renderer_->load(pieces.hexTile.data());
@@ -155,6 +159,7 @@ public:
     colony_ = renderer_->load(pieces.colony.data());
     ship_ = renderer_->load(pieces.ship.data());
     stars_ = renderer_->load(pieces.stars.data());
+    highlight_ = renderer_->load(pieces.highlight.data());
     loadFaces();
     push([this] { frame(); });
   }
@@ -174,6 +179,18 @@ private:
     }
     if (pressed.pressed(Input::Button::FaceRight)) // A
       send(TogglePause{});
+    // X and Y zoom the bottom board in and out
+    if (pressed.pressed(Input::Button::FaceTop)) {
+      picture_->setZoom(picture_->zoom() + 1);
+      bottomDirty_ = true;
+    }
+    if (pressed.pressed(Input::Button::FaceLeft)) {
+      picture_->setZoom(picture_->zoom() - 1);
+      bottomDirty_ = true;
+    }
+    handleTouch(pad.touch);
+    if (bottomDirty_)
+      drawBottom();
     // L and R turn the board while held
     if (pad.isHeld(Input::Button::L))
       turn_ -= 0.02f;
@@ -256,35 +273,86 @@ private:
             ship_, BoardPieces::onHex(state.planets[static_cast<std::size_t>(state.blockade)].hex),
             toon(BoardColours::kBlockade));
     }
+    drawText();
+    // The selected hex, ringed on the 3D board too
+    if (selected_)
+      renderer_->draw(highlight_, BoardPieces::onHex(selected_->hex),
+                      {.shading = Scene::Material::Shading::Unlit, .colour = {255, 214, 90}});
     renderer_->endFrame(); // waits for the screen's refresh
   }
 
   // The bottom screen: each player's points and resources, and the last
   // moves in words (written when a move comes, not each frame)
+  // Over the top screen: the round, each player's points and resources in
+  // their colour, and the last move in words
   void drawText() {
     if (!latest_)
       return;
-    using ScratchPadd::HandheldControls::printLine;
-    constexpr int kColumns = kConsoleColumns;
     const State &state = latest_->state;
-    std::printf("\x1b[2J");
-    printLine(0, kColumns, "Cosmic Hex  round %d%s", state.round,
-              latest_->paused ? "  (paused: A)" : "");
+    Scene::Overlay &overlay = renderer_->overlay();
+    char line[64];
+    std::snprintf(line, sizeof line, "Round %d%s", state.round,
+                  latest_->paused ? "  (paused: A)" : "");
+    overlay.text(4, 4, line, {226, 232, 244});
     for (int p = 0; p < state.players; ++p) {
       const auto &r = state.player[static_cast<std::size_t>(p)].resources;
-      printLine(2 + p, kColumns, "P%d %2d pts  M%d F%d U%d W%d C%d%s", p + 1,
-                CosmicHex::points(state, p), r[0], r[1], r[2], r[3], r[4],
-                state.turn == p ? "  <" : "");
+      std::snprintf(line, sizeof line, "%sP%d %2d  M%d F%d U%d W%d C%d",
+                    state.turn == p ? ">" : " ", p + 1, CosmicHex::points(state, p), r[0], r[1],
+                    r[2], r[3], r[4]);
+      overlay.text(4, 16 + 10 * static_cast<float>(p), line, BoardColours::ofPlayer(p));
     }
-    printLine(7, kColumns, "Bot's last think: %.2f s", latest_->lastThinkSeconds);
-    int row = 9;
-    for (const std::string &move : latest_->lastMoves) {
-      // Each move on its own line or two
-      for (std::size_t at = 0; at < move.size() && row < kConsoleRows - 1; at += kColumns - 1)
-        printLine(row++, kColumns, "%s", move.substr(at, kColumns - 1).c_str());
+    if (!latest_->lastMoves.empty())
+      overlay.text(4, 226, latest_->lastMoves.back(), {200, 208, 222});
+    if (state.winner >= 0) {
+      std::snprintf(line, sizeof line, "Player %d wins!  START: quit", state.winner + 1);
+      overlay.text(130, 110, line, {255, 214, 90}, 1.5f);
     }
-    if (state.winner >= 0)
-      printLine(kConsoleRows - 1, kColumns, "Player %d wins! START: quit", state.winner + 1);
+  }
+
+  // A touch: a tap selects the hex (and corner) under it; a drag moves the
+  // board, when it's zoomed in
+  void handleTouch(const Input::Touch &touch) {
+    if (touch.down && !touchWasDown_) {
+      touchStart_ = touchLast_ = {touch.x, touch.y};
+      dragged_ = false;
+    } else if (touch.down) {
+      const int dx = touch.x - touchLast_[0], dy = touch.y - touchLast_[1];
+      if (std::abs(touch.x - touchStart_[0]) + std::abs(touch.y - touchStart_[1]) > 6)
+        dragged_ = true;
+      if (dragged_ && (dx != 0 || dy != 0)) {
+        picture_->pan(static_cast<float>(dx), static_cast<float>(dy));
+        bottomDirty_ = true;
+      }
+      touchLast_ = {touch.x, touch.y};
+    } else if (touchWasDown_ && !dragged_) {
+      selected_ = picture_->at(touchStart_[0], touchStart_[1]);
+      bottomDirty_ = true;
+    }
+    touchWasDown_ = touch.down;
+  }
+
+  // The bottom screen: the board drawn flat, the selection marked, copied
+  // into its framebuffer (240 x 320, a column at a time from the bottom
+  // left: the screen is turned on its side; three bytes a pixel, B G R)
+  void drawBottom() {
+    bottomDirty_ = false;
+    if (!latest_)
+      return;
+    picture_->draw(latest_->state);
+    if (selected_)
+      picture_->mark(*selected_);
+    u16 w = 0, h = 0;
+    std::uint8_t *frame = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
+    const auto &pixels = picture_->pixels();
+    for (int y = 0; y < 240; ++y)
+      for (int x = 0; x < 320; ++x) {
+        const Scene::Colour c = pixels[static_cast<std::size_t>(y * 320 + x)];
+        std::uint8_t *at = frame + (static_cast<std::size_t>(x) * 240 + (239 - y)) * 3;
+        at[0] = c.b;
+        at[1] = c.g;
+        at[2] = c.r;
+      }
+    gfxFlushBuffers();
   }
 
   std::optional<Scene::Display> display_;
@@ -306,13 +374,18 @@ private:
     }
   }
 
-  Scene::Mesh hexTile_, station_, colony_, ship_, stars_, gaps_;
+  Scene::Mesh hexTile_, station_, colony_, ship_, stars_, gaps_, highlight_;
   std::array<Scene::Texture, CosmicHex::Art::kFaces> faces_{};
   std::optional<TableSnapshot> latest_;
   BoardMotion motion_;
   Clock::time_point motionStarted_;
   Input::Gamepad lastPad_;
   float turn_ = 0;
+  // The bottom board, its touch and what's selected on it
+  std::optional<BoardPicture> picture_;
+  bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
+  std::array<int, 2> touchStart_{}, touchLast_{};
+  std::optional<BoardPicture::Spot> selected_;
 };
 
 } // namespace
