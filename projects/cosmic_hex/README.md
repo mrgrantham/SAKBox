@@ -47,6 +47,10 @@ The app is `handheld/source/cosmic_hex_on_a_handheld.cpp`. What it plays and dra
 
 `bazel run //projects/cosmic_hex/ds:cosmic-hex-ds` builds the DS app and opens it in melonDS: the same game and app as the 3DS's (one source, `handheld/source/cosmic_hex_on_a_handheld.cpp`, the differences in `#if` blocks), its bots thinking less (no floating-point hardware), the tiles' faces as 32-pixel textures (the DS's VRAM is small), and the flat board on the bottom screen (256 x 192, a 16-bit bitmap in VRAM bank C). On both consoles, the `-watch` builds (`cosmic-hex-ds-watch`, `cosmic-hex-3ds-watch`) start watching four bots by themselves, for unattended runs.
 
+## The layout solver
+
+`bazel run -c opt //projects/cosmic_hex/solver:solve_layouts -- --threes 2 --away 3 --farther yes` searches for boards that meet the constraints you set and prints the best as lines of a layouts file (add them to `layouts/layouts.txt` and simulate with `--layout NAME`). Counts of singles, pairs, threes and finds are each a value or a floor-ceiling range (`--threes 2`, `--pairs 1-3`); homes on the edge (as the R layouts) or the corners (`--homes corners`, as the S); clusters never touch each other, the core or a home, and the board is the same seen from opposite homes. The menu so far: `--away N` (finds never touch a cluster of N or more), `--farther yes` (from every home, the nearest three is farther than the nearest pair and single). Distances are a ship's moves along edges from a home's corners. Results come ranked by how equal every home's access to planets is (planets weighted by 1 / (1 + moves)). The library is `solver/` (`LayoutSolver.hpp`), tested on its own.
+
 ## Tests
 
 `bazel test //projects/cosmic_hex/...`
