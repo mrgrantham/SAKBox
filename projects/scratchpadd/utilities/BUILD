@@ -62,6 +62,16 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "GameClock_test",
+    size = "small",
+    srcs = ["tests/GameClock_test.cpp"],
+    deps = [
+        ":utilities",
+        "@gtest//:gtest_main",
+    ],
+)
+
 # The sources, for builds outside Bazel's C++ rules (the 3DS and DS apps,
 # staged into devkitPro's Makefiles; see //tools/devkitpro)
 filegroup(

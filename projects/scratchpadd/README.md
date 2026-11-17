@@ -570,7 +570,7 @@ How the builds differ from a desktop's:
 | --- | --- |
 | `//projects/scratchpadd/basis` | The core: `Base`, `System`, `SystemBuilder` (which returns the system as a `std::unique_ptr`), `AboutPadd`, and `MessageStats` with `MessageStatsPadd`. Depend on this; it includes `messages` and `utilities` |
 | `//projects/scratchpadd/messages` | The message wrapper (`Message`, `makeMessage`), `Text`, and the control types |
-| `//projects/scratchpadd/utilities` | Logging, `AppInfo` (the app's name, title, build and platform, given by its build: a console app's devkitPro build defines its name and title, elsewhere it's the executable's), `Timer`, `EventTimer` and helpers like `VariantHandler` |
+| `//projects/scratchpadd/utilities` | Logging, `GameClock` (a game's own time, apart from real time: it pauses and runs at a rate), `AppInfo` (the app's name, title, build and platform, given by its build: a console app's devkitPro build defines its name and title, elsewhere it's the executable's), `Timer`, `EventTimer` and helpers like `VariantHandler` |
 | `//projects/scratchpadd/scene` | The scene layer's API (`Scene.hpp`): types, meshes made in code, the overlay |
 | `//projects/scratchpadd/scene/desktop` | What desktop apps depend on (`:desktop`: the backend the build picks, `:backend` the flag), and what every desktop backend shares (`:window`): `Display` (a GLFW window, keyboard and mouse), the desktop extras' API (`Desktop.hpp`) and the overlay's text (stb_easy_font) |
 | `//projects/scratchpadd/scene/gl` | The OpenGL 3.3 backend: the renderer, the extras, and its context in the window |

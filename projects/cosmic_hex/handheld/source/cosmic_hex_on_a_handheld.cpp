@@ -39,6 +39,7 @@
 #include <CosmicHex/Handheld/MoveSpots.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
+#include <ScratchPadd/GameClock.hpp>
 #include <ScratchPadd/TitleScene/TitleScene.hpp>
 // The title screen's rocket, as the build cooked it for this console
 #if defined(__NDS__)
@@ -241,7 +242,9 @@ public:
       // What moved since the last, animated from now
       if (latest_)
         motion_ = BoardMotion(latest_->state, snapshot.state);
-      motionStarted_ = Clock::now();
+      // (pausing the game pauses its clock, so its animations and dice stop too)
+      gameClock_.setPaused(snapshot.paused);
+      motionStarted_ = gameClock_.seconds();
       latest_ = snapshot;
       bottomDirty_ = true;
       // The gaps between the tiles, once: the board's tiles don't move
@@ -371,7 +374,7 @@ private:
       thrownSeed_ = latest_->diceSeed;
       dice_ = DiceStage::Rolling;
       diceOwed_ = 0;
-      lastDiceTime_ = Clock::now();
+      lastDiceTime_ = thrownAt_ = gameClock_.seconds();
     }
     if (dice_ == DiceStage::Idle)
       return;
@@ -380,8 +383,8 @@ private:
     // tics, Black Book 5.4): the same throw whatever the frame rate (the DS
     // runs 41 to 60), at most kMostDiceSteps a frame so a stall slows the
     // dice rather than snowballing
-    const auto now = Clock::now();
-    diceOwed_ += std::chrono::duration<double>(now - lastDiceTime_).count();
+    const double now = gameClock_.seconds();
+    diceOwed_ += now - lastDiceTime_;
     lastDiceTime_ = now;
     int steps = 0;
     for (; diceOwed_ >= kDiceStep && steps < kMostDiceSteps; ++steps) {
@@ -390,6 +393,14 @@ private:
     }
     if (steps == kMostDiceSteps)
       diceOwed_ = 0; // (behind: let it go)
+    // A watchdog (White, Making Embedded Systems, "Watchdog"): dice still
+    // moving after kMostSecondsRolling are thrown again (the next seed), so
+    // a roll can't hold the game up (none of 60,000 test throws needed it)
+    if (dice_ == DiceStage::Rolling && !tray_.settled() && now - thrownAt_ > kMostSecondsRolling) {
+      tray_.throwDice(++thrownSeed_);
+      thrownAt_ = now;
+      return;
+    }
     if (dice_ == DiceStage::Rolling && tray_.settled()) {
       dice_ = DiceStage::Showing;
       shownSeconds_ = 0;
@@ -502,8 +513,8 @@ private:
     if (latest_) {
       const State &state = latest_->state;
       // How far through the latest move's animation (0 to 1)
-      const float t = static_cast<float>(
-          std::chrono::duration<double>(Clock::now() - motionStarted_).count() / kSecondsAnimating);
+      const float t =
+          static_cast<float>((gameClock_.seconds() - motionStarted_) / kSecondsAnimating);
       const auto toon = [](Scene::Colour colour) {
         return Scene::Material{.shading = Scene::Material::Shading::Toon, .colour = colour};
       };
@@ -814,11 +825,15 @@ private:
   DiceStage dice_ = DiceStage::Idle;
   std::uint64_t thrownSeed_ = 0;
   double shownSeconds_ = 0, diceOwed_ = 0;
-  std::pair<int, int> rolled_{}; // (what they settled on, shown over them)
-  Clock::time_point lastDiceTime_;
+  std::pair<int, int> rolled_{};           // (what they settled on, shown over them)
+  double lastDiceTime_ = 0, thrownAt_ = 0; // (game seconds)
+  static constexpr double kMostSecondsRolling = 8;
   std::optional<TableSnapshot> latest_;
   BoardMotion motion_;
-  Clock::time_point motionStarted_;
+  // The game's own time (Gregory 8.4): moves animate and dice roll on it,
+  // and it stops while a watched game is paused
+  ScratchPadd::GameClock gameClock_;
+  double motionStarted_ = 0;
   Input::Gamepad lastPad_;
   float turn_ = 0;
   // The bottom board, its touch and what's selected on it
