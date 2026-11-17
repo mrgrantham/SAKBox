@@ -117,7 +117,7 @@ Options parse(int argc, char **argv) {
     else if (flag == "--layouts")
       options.layoutsFile = value;
     else if (flag == "--finds")
-      options.smallFinds = std::string_view(value) == "small";
+      options.smallFinds = std::string_view(value) != "usual";
     else if (flag == "--zone")
       options.zone = hexes(flag, value);
     else if (flag == "--moons")

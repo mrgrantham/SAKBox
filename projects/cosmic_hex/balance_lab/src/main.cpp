@@ -76,7 +76,7 @@ StartWith parse(int argc, char **argv) {
     else if (flag == "--edges")
       o.edges = value != "no";
     else if (flag == "--finds")
-      o.smallFinds = value == "small";
+      o.smallFinds = value != "usual";
     else if (flag == "--games")
       o.games = number(flag, value);
     else if (flag == "--iterations")

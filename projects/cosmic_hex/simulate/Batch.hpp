@@ -55,7 +55,9 @@ struct Options {
   std::vector<Hex> zone;      // where the finds are (empty: the usual places)
   std::string layout;         // a layout's name in the layouts file
   std::string layoutsFile = "projects/cosmic_hex/layouts/layouts.txt";
-  bool smallFinds = false;      // the layout's finds beside its small systems
+  // The layout's finds beside its small systems (the rule from round 58; a
+  // layout without that list keeps the usual places)
+  bool smallFinds = true;
   int win = 0;                  // points to win (0: the rules' default)
   std::vector<BotStyle> styles; // the players' styles, turned round a seat each game
   bool edges = false;           // corners and edges (Settings::corners)

@@ -266,6 +266,35 @@ int coreStationsOf(const State &state, int player) {
   return count;
 }
 
+// Whether a turned-over alien outpost (the zone's alien station) has a
+// corner here
+bool byAnOutpost(const State &state, Corner corner) {
+  return std::any_of(state.zone.begin(), state.zone.end(), [&](const ZoneSite &site) {
+    return site.flipped && site.find == Find::AlienStation && touches(corner, site.hex);
+  });
+}
+
+// Whether a planet a station can be built by (turned over, not a home) has
+// a corner here
+bool byASettleablePlanet(const State &state, Corner corner) {
+  return std::any_of(state.planets.begin(), state.planets.end(),
+                     [&](const Planet &p) { return settleable(p) && touches(corner, p.hex); });
+}
+
+// (corners) The best alien rate the player has: alienStationRate with a
+// station by an outpost, alienRate with a ship, or 0 with neither
+int alienRateOf(const State &state, int player) {
+  int best = 0;
+  for (const Station &station : state.stations)
+    if (station.owner == player && byAnOutpost(state, station.at))
+      best = state.settings.alienStationRate;
+  if (best == 0)
+    for (const Ship &ship : state.ships)
+      if (ship.owner == player && byAnOutpost(state, ship.corner))
+        best = state.settings.alienRate;
+  return best;
+}
+
 // Whether the zone's alien station is next to one of the player's stations
 // or ships, so they can trade there
 bool alienStationNear(const State &state, int player) {
@@ -295,6 +324,10 @@ bool alienStationNear(const State &state, int player) {
 }
 
 int tradeRate(const State &state, int player) {
+  if (state.settings.corners) {
+    const int alien = alienRateOf(state, player);
+    return alien > 0 ? std::min(alien, state.settings.bankRate) : state.settings.bankRate;
+  }
   return alienStationNear(state, player)
              ? std::min(state.settings.alienRate, state.settings.bankRate)
              : state.settings.bankRate;
@@ -549,12 +582,13 @@ std::string settingsText(const Settings &s) {
       << " control=" << s.coreStationsForControl << "," << s.coreControlPoints
       << " badges=" << s.badgesPerPoint << " ruins=" << s.ruinsBadges
       << " salvage=" << s.salvageResources << " bank=" << s.bankRate << " alien=" << s.alienRate
-      << " pays=" << s.stationPays << "," << s.colonyPays << " start=" << s.startResources
-      << " bonus=" << joined(s.seatBonus) << " corners=" << (s.zoneCorners ? 1 : 0)
-      << " tiles=" << joined(s.planetTiles) << " numbers=" << joined(s.numbers)
-      << " finds=" << joined(s.finds) << " ship=" << joined(s.shipCost)
-      << " station=" << joined(s.stationCost) << " colony=" << joined(s.colonyCost)
-      << " contract=" << joined(s.contractCost) << " corehexes=";
+      << "," << s.alienStationRate << " pays=" << s.stationPays << "," << s.colonyPays
+      << " start=" << s.startResources << " bonus=" << joined(s.seatBonus)
+      << " corners=" << (s.zoneCorners ? 1 : 0) << " tiles=" << joined(s.planetTiles)
+      << " numbers=" << joined(s.numbers) << " finds=" << joined(s.finds)
+      << " ship=" << joined(s.shipCost) << " station=" << joined(s.stationCost)
+      << " colony=" << joined(s.colonyCost) << " contract=" << joined(s.contractCost)
+      << " corehexes=";
   std::vector<int> core;
   for (Hex hex : s.coreHexes) {
     core.push_back(hex.q);
@@ -696,9 +730,11 @@ std::optional<Settings> readSettings(std::string_view line) {
       s.salvageResources = v[0];
     else if (key == "bank")
       s.bankRate = v[0];
-    else if (key == "alien")
+    else if (key == "alien") {
       s.alienRate = v[0];
-    else if (key == "pays" && v.size() == 2) {
+      if (v.size() >= 2)
+        s.alienStationRate = v[1];
+    } else if (key == "pays" && v.size() == 2) {
       s.stationPays = v[0];
       s.colonyPays = v[1];
     } else if (key == "bonus" && v.size() == kMaxPlayers) {
@@ -1168,11 +1204,9 @@ std::optional<bool> applyMainOnCorners(State &state, const Action &action) {
     if (ship.owner != state.turn || !cornerFree(state, ship.corner) ||
         !canAfford(me.resources, settings.stationCost))
       return false;
-    // A station must touch a planet it can be built by (turned over, not a home)
-    const bool byAPlanet =
-        std::any_of(state.planets.begin(), state.planets.end(),
-                    [&](const Planet &p) { return settleable(p) && touches(ship.corner, p.hex); });
-    if (!byAPlanet)
+    // A station must touch a planet it can be built by (turned over, not a
+    // home), or an alien outpost
+    if (!byASettleablePlanet(state, ship.corner) && !byAnOutpost(state, ship.corner))
       return false;
     pay(me.resources, settings.stationCost);
     state.ships.erase(state.ships.begin() + action.a);
@@ -1182,7 +1216,10 @@ std::optional<bool> applyMainOnCorners(State &state, const Action &action) {
   }
   case Kind::BuildColony: {
     Station *mine = station(action.a);
-    if (!mine || mine->colony || !canAfford(me.resources, settings.colonyCost))
+    // (a station only by an outpost can't become a colony: a colony pays
+    // double from its planets, and it has none)
+    if (!mine || mine->colony || !canAfford(me.resources, settings.colonyCost) ||
+        !byASettleablePlanet(state, mine->at))
       return false;
     pay(me.resources, settings.colonyCost);
     mine->colony = true;
@@ -1221,16 +1258,16 @@ void cornerActions(const State &state, std::vector<Action> &out) {
       for (int corner : corners)
         out.push_back({Kind::Move, static_cast<int>(i), corner});
     }
-    const bool byAPlanet =
-        std::any_of(state.planets.begin(), state.planets.end(),
-                    [&](const Planet &p) { return settleable(p) && touches(ship.corner, p.hex); });
-    if (byAPlanet && cornerFree(state, ship.corner) &&
-        canAfford(me.resources, settings.stationCost))
+    // (as the rules check: by a planet or an alien outpost)
+    const bool canStand =
+        byASettleablePlanet(state, ship.corner) || byAnOutpost(state, ship.corner);
+    if (canStand && cornerFree(state, ship.corner) && canAfford(me.resources, settings.stationCost))
       out.push_back({Kind::Settle, static_cast<int>(i)});
   }
   if (canAfford(me.resources, settings.colonyCost)) {
     for (std::size_t i = 0; i < state.stations.size(); ++i)
-      if (state.stations[i].owner == state.turn && !state.stations[i].colony)
+      if (state.stations[i].owner == state.turn && !state.stations[i].colony &&
+          byASettleablePlanet(state, state.stations[i].at))
         out.push_back({Kind::BuildColony, static_cast<int>(i)});
   }
 }

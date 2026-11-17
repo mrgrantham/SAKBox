@@ -12,6 +12,8 @@
 
 #include <gtest/gtest.h>
 
+#include <optional>
+
 #include <algorithm>
 #include <set>
 
@@ -356,4 +358,58 @@ TEST(CornersTest, ADeepSpaceStart) {
   const auto read = Game::readState(Game::writeState(start));
   ASSERT_TRUE(read.has_value());
   EXPECT_TRUE(read.value_or(State{}).settings.deepSpaceStart);
+}
+
+namespace {
+// How many planets (and homes) a corner touches
+int planetsAt(const State &state, Corner corner) {
+  int count = 0;
+  for (Hex hex : HexGrid::hexesTouching(corner))
+    for (const Planet &planet : state.planets)
+      count += planet.hex == hex;
+  return count;
+}
+} // namespace
+
+// The alien outposts (rounds 58 to 60): a ship by one trades 3 for 1, a
+// station 2 for 1; a station may stand by an outpost with no planet beside
+// it, but becomes a colony only if it touches a planet too
+TEST(CornersTest, AlienOutposts) {
+  State state = atMain();
+  ASSERT_FALSE(state.zone.empty());
+  ZoneSite &outpost = state.zone.front();
+  outpost.flipped = true;
+  outpost.find = Find::AlienStation;
+  // Its corners: one touching no planet, one touching a planet
+  std::optional<Corner> bare, byPlanet;
+  for (Corner corner : HexGrid::corners(outpost.hex)) {
+    const int planets = planetsAt(state, corner);
+    if (planets == 0 && !bare)
+      bare = corner;
+    if (planets > 0 && !byPlanet)
+      byPlanet = corner;
+  }
+  ASSERT_TRUE(bare.has_value());
+  const int mine = firstShipOf(state, 0);
+  state.ships[static_cast<std::size_t>(mine)].corner = *bare;
+  // A ship there: 3 minerals for 1 food
+  state.player[0].resources = {6, 0, 0, 2, 0};
+  ASSERT_TRUE(Game::apply(state, {Kind::Trade, 0, 1}));
+  EXPECT_EQ(state.player[0].resources[0], 3);
+  // A station there (no planet beside it): 2 for 1, and no colony
+  state.player[0].resources = {6, 2, 0, 2, 0};
+  ASSERT_TRUE(Game::apply(state, {Kind::Settle, mine}));
+  const int station = static_cast<int>(state.stations.size()) - 1;
+  ASSERT_TRUE(Game::apply(state, {Kind::Trade, 0, 2}));
+  EXPECT_EQ(state.player[0].resources[0], 4);
+  state.player[0].resources = {5, 5, 5, 5, 5};
+  EXPECT_FALSE(Game::apply(state, {Kind::BuildColony, station}));
+  for (const Action &action : Game::legalActions(state))
+    EXPECT_FALSE(action.kind == Kind::BuildColony && action.a == station);
+  // A station by the outpost and a planet may become a colony
+  if (byPlanet && byPlanet != bare && !HexGrid::neighbours(*byPlanet).empty()) {
+    state.stations.push_back(Station{*byPlanet, 0, false});
+    EXPECT_TRUE(
+        Game::apply(state, {Kind::BuildColony, static_cast<int>(state.stations.size()) - 1}));
+  }
 }

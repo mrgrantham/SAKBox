@@ -149,8 +149,14 @@ struct Settings {
   int badgesPerPoint = 3;
   int ruinsBadges = 2;
   int salvageResources = 2;
-  int bankRate = 4;  // give this many of one resource for 1 of another
-  int alienRate = 3; // at the zone's alien station, with a station or ship next to it
+  int bankRate = 4; // give this many of one resource for 1 of another
+  // The alien outposts (the zone's alien stations; rounds 58 to 60): trade
+  // there at alienRate for 1 with a ship on one of an outpost's corners, at
+  // alienStationRate with a station on one. A station may stand by an
+  // outpost though it touches no planet, but becomes a colony only if it
+  // touches a planet too.
+  int alienRate = 3;
+  int alienStationRate = 2;
   int stationPays = 1;
   int colonyPays = 2;
   int startResources = 1; // of each, at the start
@@ -160,11 +166,13 @@ struct Settings {
   bool zoneCorners = true;              // the zone's inner six at the board's corners
   Resources planetTiles{3, 3, 3, 3, 3}; // how many of each kind
   std::vector<int> numbers{2, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 11, 12};
-  std::array<int, kFinds> finds{6, 2, 2, 1, 1}; // nothing, salvage, ruins, alien, pirate
-  Resources shipCost{1, 0, 1, 0, 0};            // minerals, fuel
-  Resources stationCost{0, 1, 0, 1, 0};         // food, water (and the ship)
-  Resources colonyCost{2, 2, 0, 0, 0};          // minerals, food
-  Resources contractCost{0, 1, 0, 1, 1};        // food, water, crystals
+  // Nothing, salvage, ruins, alien outposts, pirate hideout (the second
+  // outpost in place of a 'nothing', round 60)
+  std::array<int, kFinds> finds{5, 2, 2, 2, 1};
+  Resources shipCost{1, 0, 1, 0, 0};     // minerals, fuel
+  Resources stationCost{0, 1, 0, 1, 0};  // food, water (and the ship)
+  Resources colonyCost{2, 2, 0, 0, 0};   // minerals, food
+  Resources contractCost{0, 1, 0, 1, 1}; // food, water, crystals
   bool operator==(const Settings &) const = default;
 };
 
