@@ -31,6 +31,12 @@ Colour blend(Colour under, Colour over) {
 
 float distance(HexGrid::Point a, HexGrid::Point b) { return std::hypot(a.x - b.x, a.y - b.y); }
 
+// A pixel's place in rows of `width`
+std::size_t indexOf(int x, int y, int width) {
+  return static_cast<std::size_t>(y) * static_cast<std::size_t>(width) +
+         static_cast<std::size_t>(x);
+}
+
 } // namespace
 
 BoardPicture::BoardPicture(int width, int height)
@@ -101,10 +107,10 @@ void BoardPicture::blendFace(Art::Face face, HexGrid::Point centre) {
       const int sx = left + x;
       if (sx < 0 || sx >= width_)
         continue;
-      const Colour over = sprite[static_cast<std::size_t>(y * facesSize_ + x)];
+      const Colour over = sprite[indexOf(x, y, facesSize_)];
       if (over.a == 0)
         continue;
-      Colour &under = pixels_[static_cast<std::size_t>(sy * width_ + sx)];
+      Colour &under = pixels_[indexOf(sx, sy, width_)];
       under = blend(under, over);
     }
   }
@@ -117,7 +123,7 @@ void BoardPicture::fillRect(float x, float y, float w, float h, Colour colour) {
             y1 = std::min(height_, static_cast<int>(std::lround(y + h)));
   for (int py = y0; py < y1; ++py)
     for (int px = x0; px < x1; ++px)
-      pixels_[static_cast<std::size_t>(py * width_ + px)] = colour;
+      pixels_[indexOf(px, py, width_)] = colour;
 }
 
 void BoardPicture::fillTriangle(HexGrid::Point a, HexGrid::Point b, HexGrid::Point c,
@@ -134,7 +140,7 @@ void BoardPicture::fillTriangle(HexGrid::Point a, HexGrid::Point b, HexGrid::Poi
       const float x = static_cast<float>(px) + 0.5f, y = static_cast<float>(py) + 0.5f;
       const float s0 = side(a, b, x, y), s1 = side(b, c, x, y), s2 = side(c, a, x, y);
       if ((s0 >= 0 && s1 >= 0 && s2 >= 0) || (s0 <= 0 && s1 <= 0 && s2 <= 0))
-        pixels_[static_cast<std::size_t>(py * width_ + px)] = colour;
+        pixels_[indexOf(px, py, width_)] = colour;
     }
 }
 
