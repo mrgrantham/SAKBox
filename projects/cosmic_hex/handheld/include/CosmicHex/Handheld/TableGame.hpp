@@ -37,6 +37,10 @@ struct TableSettings {
   // How hard the bots think: simulated games a move (the Mac's batches use
   // 400; a console far fewer, to answer in about a second)
   int botIterations = 40;
+  // Or by time: a bot thinks up to this many seconds a move (and at most
+  // botIterations, which a fast machine reaches first); 0: by iterations
+  // alone (the Mac's tests, which must play the same every run)
+  double botSeconds = 0;
   std::uint64_t seed = 1;
   Board board = boardR3();
 };

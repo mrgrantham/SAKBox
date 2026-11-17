@@ -6,6 +6,7 @@
 #include <SeededRandom/Seed.hpp>
 
 #include <algorithm>
+#include <chrono>
 
 namespace CosmicHex::Handheld {
 
@@ -44,10 +45,17 @@ std::optional<Action> TableGame::step() {
   const bool dealer = Game::currentPlayer(now) == GameBots::kDealer;
   // The dealer draws; a bot trades by the trading rule and otherwise
   // searches, as the simulator's bots do
-  const Action move = dealer ? Game::dealerAction(now, dealer_)
-                      : trading(now)
-                          ? tradingRuleMove(now)
-                          : ismcts_.choose(now, bots_, {.iterations = settings_.botIterations});
+  // (by time, if set: up to botSeconds, at most botIterations)
+  GameBots::Budget budget{.iterations = settings_.botIterations};
+  if (settings_.botSeconds > 0) {
+    const auto until = std::chrono::steady_clock::now() +
+                       std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                           std::chrono::duration<double>(settings_.botSeconds));
+    budget.outOfTime = [until] { return std::chrono::steady_clock::now() >= until; };
+  }
+  const Action move = dealer         ? Game::dealerAction(now, dealer_)
+                      : trading(now) ? tradingRuleMove(now)
+                                     : ismcts_.choose(now, bots_, budget);
   const State before = now;
   if (!play_.play(move))
     return std::nullopt; // (a bug in the rules or a bot: the game stops there)

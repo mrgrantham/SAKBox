@@ -71,14 +71,14 @@ constexpr bool kWatchAtStart = false;
 constexpr int kTopWidth = 256, kTopHeight = 192, kBottomWidth = 256, kBottomHeight = 192;
 constexpr std::size_t kCharsPerLine = 31;
 constexpr float kLineHeight = 10;
-constexpr int kBotIterations = 15;
+constexpr int kBotIterations = 200;
 bool mainLoop() { return pmMainLoop(); }
 constexpr int kFaceSize = 32; // (the faces' textures: VRAM bank B is small)
 #else
 constexpr int kTopWidth = 400, kTopHeight = 240, kBottomWidth = 320, kBottomHeight = 240;
 constexpr std::size_t kCharsPerLine = 64;
 constexpr float kLineHeight = 11;
-constexpr int kBotIterations = 40;
+constexpr int kBotIterations = 400; // (the simulations' bots)
 bool mainLoop() { return aptMainLoop(); }
 constexpr int kFaceSize = 64;
 #endif
@@ -119,7 +119,9 @@ class TablePadd : public ScratchPadd::Base {
 public:
   TablePadd(ScratchPadd::System *system) : Base(system) {
     receive<StartGame>([this](const StartGame &start) {
-      TableSettings settings{.botIterations = kBotIterations, .seed = startingSeed()};
+      // Bots think up to 0.8 seconds a move (and at most kBotIterations)
+      TableSettings settings{
+          .botIterations = kBotIterations, .botSeconds = 0.8, .seed = startingSeed()};
       if (start.withPerson)
         settings.seats[0] = Seat::Person; // (you're player 1)
       game_.emplace(settings);
