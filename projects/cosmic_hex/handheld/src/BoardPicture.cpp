@@ -147,6 +147,12 @@ void BoardPicture::fillTriangle(HexGrid::Point a, HexGrid::Point b, HexGrid::Poi
 void BoardPicture::draw(const State &state) {
   ensureFaces();
   std::fill(pixels_.begin(), pixels_.end(), BoardColours::kSpace);
+  // The grid: every hex of the board outlined (round 81: easy to see, to
+  // plan paths along the edges, in empty space too)
+  constexpr Colour kGrid{58, 74, 104, 255};
+  for (const Hex hex : HexGrid::spiral(Hex{0, 0}, 4))
+    for (int i = 0; i < 6; ++i) // (shared edges drawn twice, the same)
+      line(where(HexGrid::corner(hex, i)), where(HexGrid::corner(hex, i + 1)), 1, kGrid);
   // The tiles' faces
   for (const Planet &planet : state.planets)
     blendFace(faceOf(planet), where(planet.hex));
