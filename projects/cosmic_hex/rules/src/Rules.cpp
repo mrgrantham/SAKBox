@@ -1117,7 +1117,8 @@ Settings agreedRules(const Board &board) {
   s.catchUpBelow = 5;
   s.homeDie = true;
   s.exhaustHomesAt = 5;
-  s.discardOver = 7; // the Imperial Tithe (round 69)
+  s.discardOver = 7;    // the Imperial Tithe (round 69)
+  s.finishRound = true; // the round played out at 12 (round 73)
   // Free stations (round 72): a ship becomes a station at no cost; the ship
   // costs minerals, fuel and water (round 74: costs down, the quickest fair
   // game measured, about 13 rounds)

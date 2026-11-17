@@ -66,7 +66,7 @@ struct Options {
   // the catch-up rule
   std::vector<std::array<int, 2>> homeIncomeSteps;
   bool homeDie = true;        // the home's resources rolled on the home die (round 66's hybrid)
-  bool finishRound = false;   // play out the round when someone reaches the points to win
+  bool finishRound = true;    // play out the round when someone reaches the points to win
   bool trading = true;        // trading between players (round 57), the bots by the trading rule
   int cartelTake = 0;         // the Interstellar Cartel takes all (0), or up to this many from each
   int strongIterations = 0;   // a stronger bot, thinking this much, at one home in turn
