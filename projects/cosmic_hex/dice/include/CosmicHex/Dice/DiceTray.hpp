@@ -35,7 +35,7 @@ public:
   static constexpr double kWidth = 10;     // across the screen (x)
   static constexpr double kDepth = 6;      // up the screen (z): 5:3, as the 3DS's top screen
   static constexpr double kHeight = 4;     // the lid's height
-  static constexpr double kDieSize = 1;    // a die's edge
+  static constexpr double kDieSize = 1.2;  // a die's edge (round 89: a little bigger)
   static constexpr double kFriction = 0.4; // the glass floor and walls
   static constexpr double kBounce = 0.35;  // restitution: how much a die bounces back
 

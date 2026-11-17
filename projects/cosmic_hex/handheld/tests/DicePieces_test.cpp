@@ -9,10 +9,26 @@
 
 using namespace CosmicHex::Handheld;
 
-TEST(DicePiecesTest, ADieHasItsPips) {
-  const DicePieces pieces;
-  // The box's 12 triangles and 21 pips of 2
-  EXPECT_EQ(pieces.die.triangleCount(), 12u + 21u * 2u);
+TEST(DicePiecesTest, ADieHasItsPipsAndRoundedCorners) {
+  const DicePieces pieces(1.2f);
+  // The chamfered cube's 44 triangles and 21 pips of 2
+  EXPECT_EQ(pieces.die.triangleCount(), 44u + 21u * 2u);
+  // Every triangle faces out (its winding's normal away from the middle),
+  // and nothing reaches past the die's half-size
+  const Scene::MeshData data = pieces.die.data();
+  for (std::size_t i = 0; i + 2 < data.indices.size(); i += 3) {
+    const Scene::Vector3 a = data.vertices[data.indices[i]].position,
+                         b = data.vertices[data.indices[i + 1]].position,
+                         c = data.vertices[data.indices[i + 2]].position;
+    const Scene::Vector3 normal = (b - a).cross(c - a);
+    const Scene::Vector3 middle = (a + b + c) * (1.0f / 3);
+    EXPECT_GT(normal.dot(middle), 0) << "triangle " << i / 3;
+    for (const Scene::Vector3 &p : {a, b, c}) {
+      EXPECT_LE(std::abs(p.x), 0.61f);
+      EXPECT_LE(std::abs(p.y), 0.61f);
+      EXPECT_LE(std::abs(p.z), 0.61f);
+    }
+  }
 }
 
 TEST(DicePiecesTest, TheGlassFillsTheScreen) {
@@ -53,4 +69,23 @@ TEST(DicePiecesTest, ADieTurnsAsItsQuaternion) {
   EXPECT_NEAR(x.x, 0, 1e-5);
   EXPECT_NEAR(t.position().x, 0.5f, 1e-5); // (moved half a unit left by the pull)
   EXPECT_NEAR(t.position().y, 2, 1e-5);
+}
+
+// Round 89: where the dice show on the screen, for the roll's words: the
+// glass's middle in the screen's middle, its right edge to the right,
+// nothing behind the camera
+TEST(DicePiecesTest, PointsOnTheScreen) {
+  const Scene::Camera camera{.eye = {0, 9.5f, 9.5f}, .target = {0, 0, 1.2f}, .fieldOfView = 50};
+  const Scene::Transform glass = glassFrame(camera, 400.0f / 240, 10, 6);
+  const auto middle = onScreen(camera, 400, 240, glass.apply({0, 0, 0}));
+  ASSERT_TRUE(middle.has_value());
+  EXPECT_NEAR((*middle)[0], 200, 0.5f);
+  EXPECT_NEAR((*middle)[1], 120, 0.5f);
+  const auto right = onScreen(camera, 400, 240, glass.apply({5, 0, 0}));
+  ASSERT_TRUE(right.has_value());
+  EXPECT_NEAR((*right)[0], 200 + 0.82f * 200, 2); // (the glass's floor: 82% of the width)
+  const auto top = onScreen(camera, 400, 240, glass.apply({0, 0, -3}));
+  ASSERT_TRUE(top.has_value());
+  EXPECT_LT((*top)[1], 120);
+  EXPECT_FALSE(onScreen(camera, 400, 240, camera.eye * 2 - camera.target).has_value());
 }

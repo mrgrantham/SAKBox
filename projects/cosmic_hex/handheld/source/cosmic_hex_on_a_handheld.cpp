@@ -62,6 +62,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <optional>
 #include <string>
 #include <utility>
@@ -281,7 +282,7 @@ public:
     ship_ = renderer_->load(pieces.ship.data());
     stars_ = renderer_->load(pieces.stars.data());
     highlight_ = renderer_->load(pieces.highlight.data());
-    die_ = renderer_->load(DicePieces().die.data());
+    die_ = renderer_->load(DicePieces(static_cast<float>(Dice::DiceTray::kDieSize)).die.data());
     // The title scene (round 87): the 3D title, the rocket, the night sky
     // (fewer stars on the DS: each is two of its 2048 polygons)
     title_.emplace(*renderer_, Assets::kRocket,
@@ -392,6 +393,7 @@ private:
     if (dice_ == DiceStage::Rolling && tray_.settled()) {
       dice_ = DiceStage::Showing;
       shownSeconds_ = 0;
+      rolled_ = tray_.faces();
     } else if (dice_ == DiceStage::Showing &&
                (shownSeconds_ += steps * kDiceStep) >= kSecondsShowingDice) {
       const auto [first, second] = tray_.faces();
@@ -421,6 +423,54 @@ private:
                      static_cast<float>(tray_.offset())),
           {.shading = Scene::Material::Shading::Lit});
     }
+    // Once they've settled, the roll in big words over them, going with
+    // them as the container's pulled away (round 89)
+    if (dice_ == DiceStage::Rolling)
+      return;
+    // Above the higher of the two (so the words don't cover a die), kept on
+    // the screen when the dice rest near an edge
+    float x = 0, top = static_cast<float>(kTopHeight), bottom = 0;
+    int seen = 0;
+    for (int d = 0; d < 2; ++d) {
+      const cyclone::Vector3 at = tray_.position(d);
+      const auto where =
+          onScreen(camera, static_cast<float>(kTopWidth), static_cast<float>(kTopHeight),
+                   glass.apply({toFloat(at.x) - static_cast<float>(tray_.offset()), toFloat(at.y),
+                                toFloat(at.z)}));
+      if (!where)
+        continue;
+      x += (*where)[0];
+      top = std::min(top, (*where)[1]);
+      bottom = std::max(bottom, (*where)[1]);
+      ++seen;
+    }
+    if (seen == 0)
+      return;
+    x /= static_cast<float>(seen);
+    const auto [first, second] = rolled_;
+    char total[8], pair[16];
+    std::snprintf(total, sizeof total, "%d", first + second);
+    std::snprintf(pair, sizeof pair, "%d + %d", first, second);
+    Scene::Overlay &overlay = renderer_->overlay();
+    const float big = kTopWidth >= 400 ? 5 : 4; // (the 3DS's wider screen: bigger)
+    const float tall = 7 * big + 14;            // (the total and the pair under it)
+    // Above the higher die, or, with no room there below the scores (4
+    // lines from 16), below the lower one
+    constexpr float kBelowScores = 60, kGap = 36;
+    const float above = top - tall - kGap;
+    const float y = above >= kBelowScores
+                        ? above
+                        : std::min(bottom + kGap, static_cast<float>(kTopHeight) - tall - 16);
+    const float half = 3 * big * static_cast<float>(std::strlen(total));
+    const float pull = static_cast<float>(tray_.offset()) > 0 ? 0 : 1; // (sliding: let it go)
+    const float cx =
+        pull > 0 ? std::clamp(x, half + 4, static_cast<float>(kTopWidth) - half - 4) : x;
+    // (on a dark panel, so the words show over a white die too)
+    const float wide = std::max(2 * half, 3 * 1.5f * 2 * static_cast<float>(std::strlen(pair)));
+    overlay.rectangle(cx - wide / 2 - 6, y - 5, wide + 12, tall + 6, {12, 18, 30, 200});
+    overlay.text(cx - half, y, total, {255, 214, 90}, big);
+    overlay.text(cx - 3 * 1.5f * static_cast<float>(std::strlen(pair)), y + 7 * big + 4, pair,
+                 {226, 232, 244}, 1.5f);
   }
 
   // The board from above and in front, turned by L and R (looking a little
@@ -764,6 +814,7 @@ private:
   DiceStage dice_ = DiceStage::Idle;
   std::uint64_t thrownSeed_ = 0;
   double shownSeconds_ = 0, diceOwed_ = 0;
+  std::pair<int, int> rolled_{}; // (what they settled on, shown over them)
   Clock::time_point lastDiceTime_;
   std::optional<TableSnapshot> latest_;
   BoardMotion motion_;

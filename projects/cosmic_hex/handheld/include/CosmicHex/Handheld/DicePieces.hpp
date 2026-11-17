@@ -13,14 +13,16 @@
 #include <ScratchPadd/Scene/Types.hpp>
 
 #include <array>
+#include <optional>
 
 namespace CosmicHex::Handheld {
 
 namespace Scene = ScratchPadd::Scene;
 
 struct DicePieces {
-  DicePieces();
-  // A die 1 across, centred: +x shows 1, -x 6, +y 2, -y 5, +z 3, -z 4
+  explicit DicePieces(float size = 1);
+  // A die `size` across, centred, its corners rounded off: +x shows 1, -x 6,
+  // +y 2, -y 5, +z 3, -z 4
   Scene::MeshBuilder die;
 };
 
@@ -30,6 +32,13 @@ struct DicePieces {
 // fills the screen (of this width over height)
 Scene::Transform glassFrame(const Scene::Camera &camera, float aspect, float width, float depth,
                             float distance = 6);
+
+// Where a point in the world shows on a screen `width` by `height` pixels
+// seen from `camera` (pixels from the top left), or nothing if it's behind
+// the camera: for words over the dice (round 89: the roll, sliding off with
+// them)
+std::optional<std::array<float, 2>> onScreen(const Scene::Camera &camera, float width, float height,
+                                             const Scene::Vector3 &world);
 
 // A die in the container: at `position`, turned by the quaternion `turn`
 // (w, x, y, z), the container moved `offset` to the left (the pull)
