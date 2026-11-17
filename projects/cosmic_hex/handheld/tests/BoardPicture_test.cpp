@@ -109,7 +109,8 @@ TEST(BoardPictureTest, TurnedOverPlanetsShowTheirNumberChips) {
     const auto at = whole.where(planet.hex);
     const int x = static_cast<int>(std::lround(at.x));
     const int y = static_cast<int>(std::lround(at.y + (kChipDown - 0.75f * kChipRadius) * size));
-    const auto colour = whole.pixels()[static_cast<std::size_t>(y * 320 + x)];
+    const auto colour =
+        whole.pixels()[(static_cast<std::size_t>(y) * 320) + static_cast<std::size_t>(x)];
     EXPECT_GT(colour.r, 200) << "planet at " << planet.hex.q << "," << planet.hex.r;
     ++checked;
   }
