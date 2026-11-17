@@ -35,6 +35,7 @@ cc_library(
     deps = [
         "//projects/action_log",
         "//projects/cosmic_hex/art",
+        "//projects/cosmic_hex/dice",
         "//projects/cosmic_hex/rules",
         "//projects/game_bots",
         "//projects/hex_grid",

@@ -89,3 +89,23 @@ TEST(DicePiecesTest, PointsOnTheScreen) {
   EXPECT_GT(top[1], 0);
   EXPECT_FALSE(onScreen(camera, 400, 240, camera.eye * 2 - camera.target).has_value());
 }
+
+// Round 90: a slide on the dice's curve: from 0 to 1, halfway at half the
+// time, speeding up then slowing (each half the same curve), and still
+// moving at the glass's pace (one screen width in a second or two)
+TEST(DicePiecesTest, SlidesOnTheDicesCurve) {
+  const float total = slideSeconds();
+  EXPECT_GT(total, 0.8f);
+  EXPECT_LT(total, 2.0f);
+  EXPECT_FLOAT_EQ(slideAcross(0), 0);
+  EXPECT_FLOAT_EQ(slideAcross(total), 1);
+  EXPECT_NEAR(slideAcross(total / 2), 0.5f, 1e-5);
+  EXPECT_NEAR(slideAcross(total / 4), 1 - slideAcross(total * 3 / 4), 1e-5); // (mirrored)
+  EXPECT_LT(slideAcross(total / 4), 0.25f); // (speeding up: a quarter of the time, less of the way)
+  float last = 0;
+  for (int i = 1; i <= 20; ++i) {
+    const float now = slideAcross(total * static_cast<float>(i) / 20);
+    EXPECT_GE(now, last);
+    last = now;
+  }
+}

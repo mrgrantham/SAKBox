@@ -13,7 +13,6 @@ using cyclone::Vector3;
 constexpr real kGravity = -9.81 * 2; // (a die 1 unit across is about 2 cm: heavier feel)
 constexpr double kStillSpeed = 0.05; // barely moving: slower than this...
 constexpr double kStillFor = 0.5;    // ...for this long
-constexpr double kPullAcceleration = 30;
 
 cyclone::CollisionPlane plane(Vector3 direction, real offset) {
   cyclone::CollisionPlane p;
@@ -90,11 +89,12 @@ void DiceTray::step(double seconds) {
     // The container speeds off to the left: in its frame, the dice feel
     // pushed the other way (as you do when a car pulls away), and the
     // floor's friction drags them along with it
-    pullSpeed_ += kPullAcceleration * seconds;
+    pullSpeed_ += DiceTray::kPullAcceleration * seconds;
     offset_ += pullSpeed_ * seconds;
     for (Die &die : dice_) {
       die.rigid.setAwake();
-      die.rigid.addForce(Vector3(static_cast<real>(kPullAcceleration * die.rigid.getMass()), 0, 0));
+      die.rigid.addForce(
+          Vector3(static_cast<real>(DiceTray::kPullAcceleration * die.rigid.getMass()), 0, 0));
     }
   }
   world_.runPhysics(static_cast<real>(seconds));

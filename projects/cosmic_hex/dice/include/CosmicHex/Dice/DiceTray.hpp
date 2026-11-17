@@ -38,6 +38,9 @@ public:
   static constexpr double kDieSize = 1.2;  // a die's edge (round 89: a little bigger)
   static constexpr double kFriction = 0.4; // the glass floor and walls
   static constexpr double kBounce = 0.35;  // restitution: how much a die bounces back
+  // How fast the glass speeds up as it's pulled away (units a second, a
+  // second); the setup's boards slide on the same curve (round 90)
+  static constexpr double kPullAcceleration = 30;
 
   DiceTray();
   // (the dice's shapes point at their own bodies: a tray stays where it's made)

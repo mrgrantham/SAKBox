@@ -1,5 +1,7 @@
 #include <CosmicHex/Handheld/DicePieces.hpp>
 
+#include <CosmicHex/Dice/DiceTray.hpp>
+
 #include <cmath>
 #include <utility>
 #include <vector>
@@ -8,7 +10,6 @@ namespace CosmicHex::Handheld {
 
 namespace {
 constexpr Scene::Colour kDie{212, 214, 218}; // (round 89: a little greyer)
-constexpr float kGlassShare = 0.82f;         // (of the screen, the glass's floor; see glassFrame)
 constexpr float kRound = 0.12f;              // how much of a corner is cut off, rounding it
 constexpr Scene::Colour kPip{30, 30, 40};
 constexpr float kPipHalf = 0.075f;  // a pip's half-width
@@ -142,6 +143,29 @@ std::optional<std::array<float, 2>> onScreen(const Scene::Camera &camera, float 
   const float across = d.dot(right) / (ahead * halfTall * (width / height));
   const float along = d.dot(up) / (ahead * halfTall);
   return std::array<float, 2>{(across + 1) / 2 * width, (1 - along) / 2 * height};
+}
+
+namespace {
+// The pull's acceleration in screen widths a second, a second: the glass's
+// units, the glass kGlassShare of the screen across
+float pullScreens() {
+  return static_cast<float>(Dice::DiceTray::kPullAcceleration / Dice::DiceTray::kWidth) *
+         kGlassShare;
+}
+} // namespace
+
+float slideSeconds() { return 2 * std::sqrt(1 / pullScreens()); } // (half the way each)
+
+float slideAcross(float seconds) {
+  const float half = slideSeconds() / 2, a = pullScreens();
+  if (seconds <= 0)
+    return 0;
+  if (seconds >= 2 * half)
+    return 1;
+  if (seconds < half)
+    return a * seconds * seconds / 2; // speeding up
+  const float left = 2 * half - seconds;
+  return 1 - a * left * left / 2; // slowing to stop
 }
 
 Scene::Transform dieOnGlass(const Scene::Transform &glass, const Scene::Vector3 &position,

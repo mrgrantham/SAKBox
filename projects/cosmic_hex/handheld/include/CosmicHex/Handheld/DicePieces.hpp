@@ -40,6 +40,18 @@ Scene::Transform glassFrame(const Scene::Camera &camera, float aspect, float wid
 std::optional<std::array<float, 2>> onScreen(const Scene::Camera &camera, float width, float height,
                                              const Scene::Vector3 &world);
 
+// How much of the screen's width the glass's floor fills (a die's top is
+// nearer the camera than the floor, so looks bigger: room for it at the edge)
+inline constexpr float kGlassShare = 0.82f;
+
+// A slide across the screen on the dice's curve (round 90, the user's: the
+// setup's boards, switched): speeding up as the glass does when it's pulled
+// away (DiceTray::kPullAcceleration, the glass kGlassShare of the screen),
+// then slowing the same way to stop. How far through (0 to 1) after
+// `seconds`, and how long it takes
+float slideAcross(float seconds);
+float slideSeconds();
+
 // A die in the container: at `position`, turned by the quaternion `turn`
 // (w, x, y, z), the container moved `offset` to the left (the pull)
 Scene::Transform dieOnGlass(const Scene::Transform &glass, const Scene::Vector3 &position,

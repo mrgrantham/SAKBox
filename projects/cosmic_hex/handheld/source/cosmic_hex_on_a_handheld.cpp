@@ -370,8 +370,7 @@ private:
     if (pad.isHeld(Input::Button::R))
       turn_ += 0.02f;
     if (screen == ScreenFlow::Screen::Setup) {
-      turn_ += 0.004f;
-      drawBoard(&preview_);
+      drawSetup();
     } else {
       drawBoard(latest_ ? &latest_->state : nullptr);
     }
@@ -536,15 +535,18 @@ private:
 
   // The board from above and in front, turned by L and R (looking a little
   // in front of the centre, so the near hexes stay on screen)
-  void drawBoard(const State *shown) {
+  // The board's camera: from above and in front, turned by L and R (looking
+  // a little in front of the centre, so the near hexes stay on screen)
+  Scene::Camera boardCamera() const {
     const float distance = 9.5f, height = 9.5f;
-    const Scene::Camera camera{
-        .eye = {distance * std::sin(turn_), height, distance * std::cos(turn_)},
-        .target = {1.2f * std::sin(turn_), 0, 1.2f * std::cos(turn_)},
-        .up = {0, 1, 0},
-        .fieldOfView = 50,
-        .nearPlane = 1,
-        .farPlane = 60};
+    return Scene::Camera{.eye = {distance * std::sin(turn_), height, distance * std::cos(turn_)},
+                         .target = {1.2f * std::sin(turn_), 0, 1.2f * std::cos(turn_)},
+                         .up = {0, 1, 0},
+                         .fieldOfView = 50,
+                         .nearPlane = 1,
+                         .farPlane = 60};
+  }
+  static const Scene::Environment &boardEnvironment() {
     static const Scene::Environment kEnvironment = [] {
       Scene::Environment environment;
       environment.background = BoardColours::kSpace;
@@ -552,86 +554,130 @@ private:
       environment.addLight({.direction = {-0.4f, -1, -0.5f}, .colour = {200, 200, 190}});
       return environment;
     }();
-    renderer_->beginFrame(camera, kEnvironment);
+    return kEnvironment;
+  }
+
+  // The game's board (or none yet), with the dice, the words over it and the
+  // selection
+  void drawBoard(const State *shown) {
+    const Scene::Camera camera = boardCamera();
+    renderer_->beginFrame(camera, boardEnvironment());
     renderer_->draw(stars_, Scene::Transform::identity(),
                     {.shading = Scene::Material::Shading::Unlit});
-    // A dim, see-through grey in the gaps between the tiles (round 80: dimmer),
-    // made again when the board changes (another game, or the setup's choice)
-    if (shown)
-      updateGaps(*shown);
-    if (gaps_)
-      renderer_->draw(
-          gaps_, Scene::Transform::identity(),
-          {.shading = Scene::Material::Shading::Unlit, .colour = {150, 160, 180}, .alpha = 4});
     if (shown) {
-      const State &state = *shown;
-      // How far through the latest move's animation (0 to 1)
-      const float t =
-          static_cast<float>((gameClock_.seconds() - motionStarted_) / kSecondsAnimating);
-      const auto toon = [](Scene::Colour colour) {
-        return Scene::Material{.shading = Scene::Material::Shading::Toon, .colour = colour};
-      };
-      // A tile turning over: lifted a little, its face down side first, then
-      // its face up, about the axis across the screen
-      // A tile with its face (Art.hpp); turning over, lifted a little,
-      // its face-down side first, then its face, about the axis across
-      const auto drawTile = [&](CosmicHex::Hex hex, std::optional<float> turn,
-                                CosmicHex::Art::Face down, CosmicHex::Art::Face up) {
-        const auto showing = [&](CosmicHex::Art::Face face) {
-          // (a face that didn't load: its colour)
-          if (!faces_[static_cast<std::size_t>(face)])
-            return Scene::Material{.shading = Scene::Material::Shading::Toon,
-                                   .colour = BoardColours::ofFace(face)};
-          return Scene::Material{.shading = Scene::Material::Shading::Toon,
-                                 .texture = faces_[static_cast<std::size_t>(face)]};
-        };
-        if (!turn) {
-          renderer_->draw(hexTile_, BoardPieces::onHex(hex), showing(up));
-          return;
-        }
-        const float half = 1.5707963f;
-        const bool upSide = *turn > half;
-        const auto lift = Scene::Transform::translation({0, 0.6f * std::sin(*turn), 0});
-        const auto spin = Scene::Transform::rotation({1, 0, 0}, upSide ? *turn - 2 * half : *turn);
-        renderer_->draw(hexTile_, BoardPieces::onHex(hex) * lift * spin,
-                        showing(upSide ? up : down));
-      };
-      for (std::size_t i = 0; i < state.planets.size(); ++i) {
-        const auto turn = motion_.planetTurn(i, t);
-        drawTile(state.planets[i].hex, turn, CosmicHex::Art::Face::PlanetFaceDown,
-                 faceOf(state.planets[i]));
-        // its number chip (round 87), once it's lying face up
-        const int number = chipOf(state.planets[i]);
-        const Scene::Texture chip = chips_[static_cast<std::size_t>(number)];
-        if (number > 0 && !turn && chip)
-          renderer_->draw(
-              numberChip_, BoardPieces::onHex(state.planets[i].hex),
-              Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = chip});
-      }
-      for (std::size_t i = 0; i < state.zone.size(); ++i)
-        drawTile(state.zone[i].hex, motion_.siteTurn(i, t), CosmicHex::Art::Face::FindFaceDown,
-                 faceOf(state.zone[i]));
-      for (const CosmicHex::Station &station : state.stations)
-        renderer_->draw(station.colony ? colony_ : station_, BoardPieces::onCorner(station.at),
-                        toon(BoardColours::ofPlayer(station.owner)));
-      // Ships, sliding from where they were
-      for (std::size_t i = 0; i < state.ships.size(); ++i)
-        renderer_->draw(ship_, Scene::Transform::translation(motion_.shipAt(i, t)),
-                        toon(BoardColours::ofPlayer(state.ships[i].owner)));
-      if (state.blockade >= 0)
-        renderer_->draw(
-            ship_, BoardPieces::onHex(state.planets[static_cast<std::size_t>(state.blockade)].hex),
-            toon(BoardColours::kBlockade));
+      drawGaps(*shown, Scene::Transform::identity());
+      drawPieces(*shown, Scene::Transform::identity());
     }
-    if (flow_.screen() != ScreenFlow::Screen::Setup) {
-      drawDice(camera);
-      drawText();
-    }
+    drawDice(camera);
+    drawText();
     // The selected hex, ringed on the 3D board too
     if (selected_)
       renderer_->draw(highlight_, BoardPieces::onHex(selected_->hex),
                       {.shading = Scene::Material::Shading::Unlit, .colour = {255, 214, 90}});
     renderer_->endFrame(); // waits for the screen's refresh
+  }
+
+  // The setup's board, still (round 90, the user's: turning didn't help); on
+  // a change of board, the old one slides out and the new one in, on the
+  // dice's curve (slideAcross), the way the arrow pointed
+  void drawSetup() {
+    const Scene::Camera camera = boardCamera();
+    renderer_->beginFrame(camera, boardEnvironment());
+    renderer_->draw(stars_, Scene::Transform::identity(),
+                    {.shading = Scene::Material::Shading::Unlit});
+    const float through =
+        sliding_ ? slideAcross(static_cast<float>(
+                       std::chrono::duration<double>(Clock::now() - slideStarted_).count()))
+                 : 1;
+    if (through >= 1)
+      sliding_ = false;
+    if (!sliding_) {
+      drawGaps(preview_, Scene::Transform::identity());
+      drawPieces(preview_, Scene::Transform::identity());
+    } else {
+      // One screen's width at the board's distance, across the screen
+      const Scene::Vector3 forward = (camera.target - camera.eye).normalised();
+      const Scene::Vector3 right = forward.cross(camera.up).normalised();
+      const float away = (camera.target - camera.eye).length();
+      const float wide = 2 * away * std::tan(camera.fieldOfView * 3.14159265f / 360) *
+                         static_cast<float>(kTopWidth) / static_cast<float>(kTopHeight);
+      const float sign = static_cast<float>(slideWay_); // (+1: the new one comes from the right)
+      drawPieces(previewBefore_, Scene::Transform::translation(right * (-sign * through * wide)));
+      drawPieces(preview_, Scene::Transform::translation(right * (sign * (1 - through) * wide)));
+    }
+    renderer_->endFrame();
+  }
+
+  // A dim, see-through grey in the gaps between the tiles (round 80: dimmer),
+  // made again when the board changes (another game, or the setup's choice)
+  void drawGaps(const State &state, const Scene::Transform &placement) {
+    updateGaps(state);
+    if (gaps_)
+      renderer_->draw(
+          gaps_, placement,
+          {.shading = Scene::Material::Shading::Unlit, .colour = {150, 160, 180}, .alpha = 4});
+  }
+
+  // A board's tiles, chips, stations and ships, placed by `placement`
+  void drawPieces(const State &state, const Scene::Transform &placement) {
+    // How far through the latest move's animation (0 to 1)
+    const float t = static_cast<float>((gameClock_.seconds() - motionStarted_) / kSecondsAnimating);
+    const auto toon = [](Scene::Colour colour) {
+      return Scene::Material{.shading = Scene::Material::Shading::Toon, .colour = colour};
+    };
+    // A tile turning over: lifted a little, its face down side first, then
+    // its face up, about the axis across the screen
+    // A tile with its face (Art.hpp); turning over, lifted a little,
+    // its face-down side first, then its face, about the axis across
+    const auto drawTile = [&](CosmicHex::Hex hex, std::optional<float> turn,
+                              CosmicHex::Art::Face down, CosmicHex::Art::Face up) {
+      const auto showing = [&](CosmicHex::Art::Face face) {
+        // (a face that didn't load: its colour)
+        if (!faces_[static_cast<std::size_t>(face)])
+          return Scene::Material{.shading = Scene::Material::Shading::Toon,
+                                 .colour = BoardColours::ofFace(face)};
+        return Scene::Material{.shading = Scene::Material::Shading::Toon,
+                               .texture = faces_[static_cast<std::size_t>(face)]};
+      };
+      if (!turn) {
+        renderer_->draw(hexTile_, placement * BoardPieces::onHex(hex), showing(up));
+        return;
+      }
+      const float half = 1.5707963f;
+      const bool upSide = *turn > half;
+      const auto lift = Scene::Transform::translation({0, 0.6f * std::sin(*turn), 0});
+      const auto spin = Scene::Transform::rotation({1, 0, 0}, upSide ? *turn - 2 * half : *turn);
+      renderer_->draw(hexTile_, placement * BoardPieces::onHex(hex) * lift * spin,
+                      showing(upSide ? up : down));
+    };
+    for (std::size_t i = 0; i < state.planets.size(); ++i) {
+      const auto turn = motion_.planetTurn(i, t);
+      drawTile(state.planets[i].hex, turn, CosmicHex::Art::Face::PlanetFaceDown,
+               faceOf(state.planets[i]));
+      // its number chip (round 87), once it's lying face up
+      const int number = chipOf(state.planets[i]);
+      const Scene::Texture chip = chips_[static_cast<std::size_t>(number)];
+      if (number > 0 && !turn && chip)
+        renderer_->draw(
+            numberChip_, placement * BoardPieces::onHex(state.planets[i].hex),
+            Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = chip});
+    }
+    for (std::size_t i = 0; i < state.zone.size(); ++i)
+      drawTile(state.zone[i].hex, motion_.siteTurn(i, t), CosmicHex::Art::Face::FindFaceDown,
+               faceOf(state.zone[i]));
+    for (const CosmicHex::Station &station : state.stations)
+      renderer_->draw(station.colony ? colony_ : station_,
+                      placement * BoardPieces::onCorner(station.at),
+                      toon(BoardColours::ofPlayer(station.owner)));
+    // Ships, sliding from where they were
+    for (std::size_t i = 0; i < state.ships.size(); ++i)
+      renderer_->draw(ship_, placement * Scene::Transform::translation(motion_.shipAt(i, t)),
+                      toon(BoardColours::ofPlayer(state.ships[i].owner)));
+    if (state.blockade >= 0)
+      renderer_->draw(ship_,
+                      placement * BoardPieces::onHex(
+                                      state.planets[static_cast<std::size_t>(state.blockade)].hex),
+                      toon(BoardColours::kBlockade));
   }
 
   // The bottom screen: each player's points and resources, and the last
@@ -705,6 +751,8 @@ private:
             std::pair{Button::Left, Key::Left}, std::pair{Button::Right, Key::Right},
             std::pair{Button::FaceRight, Key::Confirm}, std::pair{Button::FaceBottom, Key::Back}})
         if (pressed.pressed(button) && outcome == StartMenu::Outcome::None) {
+          if (key == Key::Left || key == Key::Right)
+            slideWay_ = key == Key::Right ? 1 : -1;
           outcome = menu_.press(key);
           bottomDirty_ = true;
           updatePreview();
@@ -765,6 +813,7 @@ private:
       // (a tap, when the stylus comes down: the screen's menu)
       if (touch.down && !touchWasDown_) {
         if (screen == ScreenFlow::Screen::Setup) {
+          slideWay_ = touch.x > kBottomWidth / 2 ? 1 : -1; // (the right arrow, or the left)
           setupOutcome(menu_.touch(touch.x, touch.y, kBottomWidth, kBottomHeight));
           updatePreview();
         } else if (screen == ScreenFlow::Screen::Won) {
@@ -955,13 +1004,29 @@ private:
   // The board the setup has chosen, as a game would start on it (shown on
   // the top screen, turning slowly)
   State preview_ = previewOf(menu_);
+  State previewBefore_ = preview_; // (the board sliding out)
+  bool sliding_ = false;
+  int slideWay_ = 1; // (+1: right was pressed, the new board comes in from the right)
+  Clock::time_point slideStarted_;
   std::vector<CosmicHex::Hex> gapsTiles_; // (the tiles gaps_ was made for)
 
   static State previewOf(const StartMenu &menu) {
     TableSettings settings{.players = menu.players(), .board = menu.boardItself()};
     return CosmicHex::newGame(settings.players, rulesFor(settings));
   }
-  void updatePreview() { preview_ = previewOf(menu_); }
+  // The preview, made again; a slide when its board changed (the old one
+  // out, the new one in, the way the arrow pointed: slideWay_)
+  void updatePreview() {
+    State next = previewOf(menu_);
+    const bool changed = next.settings.homeHexes != preview_.settings.homeHexes ||
+                         next.settings.planetHexes != preview_.settings.planetHexes;
+    if (changed && flow_.screen() == ScreenFlow::Screen::Setup) {
+      previewBefore_ = preview_;
+      sliding_ = true;
+      slideStarted_ = Clock::now();
+    }
+    preview_ = std::move(next);
+  }
 
   // The gaps between a state's tiles, made again when its tiles aren't the
   // ones they were made for
