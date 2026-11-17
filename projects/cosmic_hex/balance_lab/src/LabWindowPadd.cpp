@@ -756,6 +756,42 @@ void LabWindowPadd::drawCharts() {
     ImPlot::PlotBars("points", average.data(), kSources, 0.6);
     ImPlot::EndPlot();
   }
+  // Round 61's statistics: the game's flow, and trading, the winner's
+  // beside the average player's
+  if (tally_.finished > 0 &&
+      ImGui::BeginTable("flow", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+    ImGui::TableSetupColumn("A game");
+    ImGui::TableSetupColumn("The winner");
+    ImGui::TableSetupColumn("A player, on average");
+    ImGui::TableHeadersRow();
+    const double games = tally_.games, wins = tally_.finished;
+    const auto row = [](const char *name, const std::string &winner, const std::string &everyone) {
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::TextUnformatted(name);
+      ImGui::TableNextColumn();
+      ImGui::TextUnformatted(winner.c_str());
+      ImGui::TableNextColumn();
+      ImGui::TextUnformatted(everyone.c_str());
+    };
+    const auto fixed = [](double v) {
+      char text[32];
+      std::snprintf(text, sizeof text, "%.1f", v);
+      return std::string(text);
+    };
+    row("Lead changes", "", fixed(tally_.leadChanges / games));
+    row("Round the winner took the lead for good", fixed(tally_.leadTakenRound / wins), "");
+    row("Most the winner was behind (points)", fixed(tally_.comeback / wins), "");
+    row("7s rolled", "", fixed(tally_.sevens / games));
+    row("7s that cost someone resources (the Tithe)", "",
+        fixed(tally_.sevens > 0 ? 100.0 * tally_.sevensWithDiscards / tally_.sevens : 0.0) + "%");
+    row("Enforcers played", "", fixed(tally_.enforcers / games));
+    row("Interstellar Cartels played", "", fixed(tally_.cartels / games));
+    for (std::size_t i = 0; i < Tally::kTradeNames.size(); ++i)
+      row(Tally::kTradeNames[i], fixed(tally_.winnerTrades[i] / wins),
+          fixed(tally_.everyoneTrades[i] / (games * tally_.players)));
+    ImGui::EndTable();
+  }
   if (ImPlot::BeginPlot("Stations at the end (a game)", ImVec2(-1, 190),
                         ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect | ImPlotFlags_NoLegend)) {
     static const char *kSystems[] = {"singles", "pairs", "threes"};

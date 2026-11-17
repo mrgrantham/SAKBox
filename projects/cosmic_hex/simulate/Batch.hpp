@@ -98,6 +98,15 @@ struct GameStats {
   int blockades = 0, thefts = 0, denied = 0, caughtUp = 0, discarded = 0;
   int enforcers = 0;
   int cartels = 0; // Interstellar Cartels played
+  // Round 61's statistics, player by player: trades at the bank, at an alien
+  // outpost by ship and by station, with other players (and the resources
+  // that changed hands in them), and offers made
+  std::array<int, kMaxPlayers> bankTrades{}, shipOutpostTrades{}, stationOutpostTrades{},
+      playerTrades{}, resourcesTraded{}, offersMade{};
+  // And the game's: how often the lead changed hands (at turns' ends), the
+  // round the winner took it for good, the most the winner was behind, 7s
+  // rolled, and 7s on which the Imperial Tithe took someone's resources
+  int leadChanges = 0, leadTakenRound = 0, comeback = 0, sevens = 0, sevensWithDiscards = 0;
   std::vector<std::array<int, 4>> contracts =
       std::vector<std::array<int, 4>>(CosmicHex::contracts().size());
 };

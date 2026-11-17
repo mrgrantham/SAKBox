@@ -27,15 +27,45 @@ struct Tally {
                                                                "Badges",   "Charters", "Embargo"};
   std::array<double, 6> winnerPoints{};
   std::array<int, 6> winsWithSource{};
+  // Round 61's statistics, added up: the games' (lead changes, the round
+  // the winner took the lead for good, the most they were behind, 7s and
+  // 7s that cost someone resources, cards played), and trades, the
+  // winners' and everyone's (kTradeNames' order)
+  static constexpr std::array<const char *, 6> kTradeNames = {"Bank trades",
+                                                              "Alien trades by ship",
+                                                              "Alien trades by station",
+                                                              "Trades with other players",
+                                                              "Resources traded with players",
+                                                              "Offers made"};
+  double leadChanges = 0, leadTakenRound = 0, comeback = 0, sevens = 0, sevensWithDiscards = 0;
+  double enforcers = 0, cartels = 0;
+  std::array<double, 6> winnerTrades{}, everyoneTrades{};
 
   void add(const Batch::GameResult &result) {
     ++games;
+    const Batch::GameStats &stats = result.stats;
+    sevens += stats.sevens;
+    sevensWithDiscards += stats.sevensWithDiscards;
+    enforcers += stats.enforcers;
+    cartels += stats.cartels;
+    leadChanges += stats.leadChanges;
+    const std::array<const std::array<int, kMaxPlayers> *, 6> perPlayer = {
+        &stats.bankTrades,   &stats.shipOutpostTrades, &stats.stationOutpostTrades,
+        &stats.playerTrades, &stats.resourcesTraded,   &stats.offersMade};
+    for (std::size_t i = 0; i < perPlayer.size(); ++i) {
+      for (int count : *perPlayer[i])
+        everyoneTrades[i] += count;
+      if (result.winner >= 0)
+        winnerTrades[i] += (*perPlayer[i])[static_cast<std::size_t>(result.winner)];
+    }
     for (std::size_t i = 0; i < 3; ++i)
       stationsBySystem[i] += result.bySystem[i];
     badges += result.badgesAll;
     if (result.winner < 0)
       return;
     ++finished;
+    leadTakenRound += stats.leadTakenRound;
+    comeback += stats.comeback;
     const Batch::Sources &s = result.winnerSources;
     const std::array<int, 6> points = {s.stations, s.colonies,  s.core,
                                        s.badges,   s.contracts, s.embargo};

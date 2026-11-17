@@ -130,6 +130,8 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
   GameStats stats;
   State state = log.start;
   std::vector<int> revealedBy(stats.contracts.size(), -1);
+  // Points at each turn's end, to follow the lead
+  std::vector<std::pair<int, std::array<int, kMaxPlayers>>> turnEnds; // (round, points)
   for (const Action &action : log.actions) {
     switch (action.kind) {
     case Action::Kind::ChooseHome:
@@ -137,12 +139,17 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
         ++stats.caughtUp;
       break;
     case Action::Kind::Roll:
-      if (action.a + action.b == 7 && state.settings.discardOver > 0) {
+      if (action.a + action.b == 7) {
+        ++stats.sevens;
+        bool someoneDiscarded = false;
         for (const CosmicHex::Player &player : state.player) {
           const int held = std::accumulate(player.resources.begin(), player.resources.end(), 0);
-          if (held > state.settings.discardOver)
+          if (state.settings.discardOver > 0 && held > state.settings.discardOver) {
             stats.discarded += held / 2;
+            someoneDiscarded = true;
+          }
         }
+        stats.sevensWithDiscards += someoneDiscarded;
       }
       if (action.a + action.b != 7 && state.blockade >= 0) {
         const Planet &planet = state.planets[static_cast<std::size_t>(state.blockade)];
@@ -181,6 +188,39 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
     case Action::Kind::PlayCartel:
       ++stats.cartels;
       break;
+    case Action::Kind::Trade: {
+      // By how many it took: the bank's rate, or an outpost's by ship or station
+      const auto me = static_cast<std::size_t>(state.turn);
+      const int held = state.player[me].resources[static_cast<std::size_t>(action.a)];
+      State after = state;
+      if (Game::apply(after, action)) {
+        const int given = held - after.player[me].resources[static_cast<std::size_t>(action.a)];
+        const Settings &s = state.settings;
+        if (given == s.alienStationRate && s.alienStationRate < s.bankRate)
+          ++stats.stationOutpostTrades[me];
+        else if (given == s.alienRate && s.alienRate < s.bankRate)
+          ++stats.shipOutpostTrades[me];
+        else
+          ++stats.bankTrades[me];
+      }
+      break;
+    }
+    case Action::Kind::OfferTrade:
+      ++stats.offersMade[static_cast<std::size_t>(state.turn)];
+      break;
+    case Action::Kind::AcceptTrade:
+      if (state.phase == Phase::TradeReply || state.phase == Phase::TradeCounter) {
+        const bool counter = state.phase == Phase::TradeCounter;
+        const Resources give = resourcesOf(counter ? state.offer.counterGive : state.offer.give),
+                        get = resourcesOf(counter ? state.offer.counterGet : state.offer.get);
+        const int moved = std::accumulate(give.begin(), give.end(), 0) +
+                          std::accumulate(get.begin(), get.end(), 0);
+        for (int p : {state.turn, state.offer.replier}) {
+          ++stats.playerTrades[static_cast<std::size_t>(p)];
+          stats.resourcesTraded[static_cast<std::size_t>(p)] += moved;
+        }
+      }
+      break;
     case Action::Kind::KeepContract:
       if (isCharter(action.a))
         ++stats.contracts[static_cast<std::size_t>(action.a)][1];
@@ -193,6 +233,30 @@ GameStats statsOf(const ActionLog::Log<Game> &log) {
       break;
     }
     Game::apply(state, action);
+    if (action.kind == Action::Kind::EndTurn || Game::isOver(state)) {
+      std::array<int, kMaxPlayers> now{};
+      for (int p = 0; p < state.players; ++p)
+        now[static_cast<std::size_t>(p)] = points(state, p);
+      turnEnds.emplace_back(state.round, now);
+    }
+  }
+  // The lead: whoever has the most points alone at a turn's end (a tie
+  // keeps it with its holder)
+  int leader = -1;
+  for (const auto &[round, now] : turnEnds) {
+    const auto best = std::max_element(now.begin(), now.begin() + state.players);
+    const bool alone = std::count(now.begin(), now.begin() + state.players, *best) == 1;
+    const int top = static_cast<int>(best - now.begin());
+    if (alone && top != leader) {
+      if (leader >= 0)
+        ++stats.leadChanges;
+      leader = top;
+      if (top == state.winner)
+        stats.leadTakenRound = round;
+    }
+    if (state.winner >= 0)
+      stats.comeback =
+          std::max(stats.comeback, *best - now[static_cast<std::size_t>(state.winner)]);
   }
   for (std::size_t id = 0; id < revealedBy.size(); ++id)
     stats.contracts[id][3] += revealedBy[id] >= 0 && revealedBy[id] == state.winner;
@@ -333,7 +397,11 @@ std::string csvHeader() {
   return "variant,seed,players,iterations,first,strong,winner,rounds,actions,points1,points2,"
          "points3,points4,"
          "stations,colonies,core,badges,contracts,blockades,thefts,denied,caughtup,discarded,"
-         "embargo,enforcers,styles,on_singles,on_pairs,on_threes,badges_all\n";
+         "embargo,enforcers,styles,on_singles,on_pairs,on_threes,badges_all,"
+         // (round 61) the game's, then the winner's and everyone's together
+         "cartels,lead_changes,lead_taken_round,comeback,sevens,sevens_discarding,"
+         "w_bank,w_ship_outpost,w_station_outpost,w_player_trades,w_traded,w_offers,"
+         "all_bank,all_ship_outpost,all_station_outpost,all_player_trades,all_traded,all_offers\n";
 }
 
 std::string csvLine(const Options &options, const GameResult &result) {
@@ -354,7 +422,17 @@ std::string csvLine(const Options &options, const GameResult &result) {
   for (std::size_t p = 0; p < result.styles.size(); ++p)
     csv << (p ? ";" : "") << nameOf(result.styles[p]);
   csv << "," << result.bySystem[0] << "," << result.bySystem[1] << "," << result.bySystem[2] << ","
-      << result.badgesAll << "\n";
+      << result.badgesAll;
+  csv << "," << stats.cartels << "," << stats.leadChanges << "," << stats.leadTakenRound << ","
+      << stats.comeback << "," << stats.sevens << "," << stats.sevensWithDiscards;
+  const std::array<const std::array<int, kMaxPlayers> *, 6> perPlayer = {
+      &stats.bankTrades,   &stats.shipOutpostTrades, &stats.stationOutpostTrades,
+      &stats.playerTrades, &stats.resourcesTraded,   &stats.offersMade};
+  for (const auto *counts : perPlayer) // (the winner's)
+    csv << "," << (result.winner >= 0 ? (*counts)[static_cast<std::size_t>(result.winner)] : 0);
+  for (const auto *counts : perPlayer) // (everyone's)
+    csv << "," << std::accumulate(counts->begin(), counts->end(), 0);
+  csv << "\n";
   return csv.str();
 }
 

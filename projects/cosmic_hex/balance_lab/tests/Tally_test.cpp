@@ -63,3 +63,23 @@ TEST(TallyTest, AddsUpWinnersPointsBySource) {
   EXPECT_EQ(tally.winnerPoints, (std::array<double, 6>{9, 6, 2, 5, 2, 0}));
   EXPECT_EQ(tally.winsWithSource, (std::array<int, 6>{2, 2, 1, 2, 1, 0}));
 }
+
+// Round 61's statistics added up: the game's, and trades, the winner's and
+// everyone's
+TEST(TallyTest, AddsUpTheGamesFlowAndTrades) {
+  Tally tally;
+  GameResult game = won(1, 0, 10);
+  game.stats.leadChanges = 3;
+  game.stats.leadTakenRound = 8;
+  game.stats.comeback = 2;
+  game.stats.sevens = 5;
+  game.stats.sevensWithDiscards = 1;
+  game.stats.playerTrades = {1, 2, 0, 1};
+  tally.add(game);
+  EXPECT_DOUBLE_EQ(tally.leadChanges, 3);
+  EXPECT_DOUBLE_EQ(tally.leadTakenRound, 8);
+  EXPECT_DOUBLE_EQ(tally.comeback, 2);
+  EXPECT_DOUBLE_EQ(tally.sevensWithDiscards, 1);
+  EXPECT_DOUBLE_EQ(tally.winnerTrades[3], 2);   // (the winner's trades with players)
+  EXPECT_DOUBLE_EQ(tally.everyoneTrades[3], 4); // (everyone's)
+}
