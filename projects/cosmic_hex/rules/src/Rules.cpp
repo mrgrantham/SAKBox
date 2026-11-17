@@ -30,10 +30,49 @@ constexpr std::array<std::string_view, 7> kKindNames = {
     "asteroid_belt", "lush_planet", "gas_giant", "ice_moon", "nebula", "home", "moon"};
 constexpr std::array<std::string_view, kFinds> kFindNames = {"nothing", "salvage", "ruins",
                                                              "alien_station", "pirate_hideout"};
-constexpr std::array<std::string_view, 13> kPhaseNames = {
-    "home_income", "roll_draw",    "blockade",  "steal_draw",    "main",
-    "planet_draw", "zone_draw",    "salvage",   "contract_draw", "keep",
-    "over",        "place_colony", "place_ship"};
+// A phase's name in the state's text (a switch, so a new phase without a
+// name is a compiler warning rather than a read past a table's end)
+std::string_view phaseName(Phase phase) {
+  switch (phase) {
+  case Phase::HomeIncome:
+    return "home_income";
+  case Phase::HomeDieDraw:
+    return "home_die_draw";
+  case Phase::RollDraw:
+    return "roll_draw";
+  case Phase::Blockade:
+    return "blockade";
+  case Phase::StealDraw:
+    return "steal_draw";
+  case Phase::Main:
+    return "main";
+  case Phase::PlanetDraw:
+    return "planet_draw";
+  case Phase::ZoneDraw:
+    return "zone_draw";
+  case Phase::Salvage:
+    return "salvage";
+  case Phase::ContractDraw:
+    return "contract_draw";
+  case Phase::KeepContract:
+    return "keep";
+  case Phase::Over:
+    return "over";
+  case Phase::PlaceColony:
+    return "place_colony";
+  case Phase::PlaceShip:
+    return "place_ship";
+  case Phase::HomeNumberDraw:
+    return "home_number_draw";
+  case Phase::Trading:
+    return "trading";
+  case Phase::TradeReply:
+    return "trade_reply";
+  case Phase::TradeCounter:
+    return "trade_counter";
+  }
+  return "?";
+}
 
 bool isSlot(Hex hex) { return ((hex.q - hex.r) % 3 + 3) % 3 == 0; }
 
@@ -2273,7 +2312,7 @@ double Game::estimate(const State &state, int player) {
 std::string Game::writeState(const State &state) {
   std::ostringstream out;
   out << "players " << state.players << " turn " << state.turn << " round " << state.round
-      << " phase " << kPhaseNames[static_cast<std::size_t>(state.phase)] << "\n";
+      << " phase " << phaseName(state.phase) << "\n";
   out << settingsText(state.settings) << "\n";
   for (const Planet &p : state.planets) {
     out << "planet " << hexText(p.hex) << " "

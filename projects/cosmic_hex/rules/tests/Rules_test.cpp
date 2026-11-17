@@ -1006,8 +1006,9 @@ TEST(RulesTest, FinishTheRound) {
   // Player 3 draws level by the end of the round: theirs, the later
   state.player[2].badgePoints += points(state, 0) - points(state, 2);
   for (int turn = 1; turn < 3; ++turn) {
-    if (state.phase == Phase::HomeIncome)
+    if (state.phase == Phase::HomeIncome) {
       ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 0}));
+    }
     ASSERT_EQ(state.phase, Phase::RollDraw);
     ASSERT_TRUE(Game::apply(state, {Kind::Roll, 1, 2}));
     ASSERT_FALSE(Game::isOver(state));
