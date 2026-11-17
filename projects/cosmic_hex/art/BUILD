@@ -140,6 +140,17 @@ texture_recipe(
     symbol = "kPlanetWater",
 )
 
+# The planets' number chips (round 87): a number on a round chip with a dot
+# for each way two dice make it; the SVGs are written by make_number_chips.py
+CHIP_NUMBERS = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12]
+
+[texture_recipe(
+    name = "number_%d" % n,
+    svg = "number_%d.svg" % n,
+    namespace = "CosmicHex::Art::Recipes",
+    symbol = "kNumber%d" % n,
+) for n in CHIP_NUMBERS]
+
 cc_library(
     name = "art",
     srcs = ["src/Art.cpp"],
@@ -166,7 +177,7 @@ cc_library(
         ":planet_minerals",
         ":planet_moon",
         ":planet_water",
-    ],
+    ] + [":number_%d" % n for n in CHIP_NUMBERS],
 )
 
 # The sources, for the consoles' Makefile builds: Art.cpp and the recipes'
@@ -195,7 +206,7 @@ filegroup(
         ":planet_minerals_source",
         ":planet_moon_source",
         ":planet_water_source",
-    ],
+    ] + [":number_%d_source" % n for n in CHIP_NUMBERS],
     visibility = ["//visibility:public"],
 )
 

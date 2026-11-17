@@ -104,6 +104,28 @@ BoardPieces::BoardPieces() {
         onTable({a.x * 0.98f, a.y * 0.98f}, 0.02f), onTable({b.x * 0.98f, b.y * 0.98f}, 0.02f),
         onTable({b.x * 0.86f, b.y * 0.86f}, 0.02f), onTable({a.x * 0.86f, a.y * 0.86f}, 0.02f));
   }
+  // The number chip: a square just above the tile, kChipDown towards the
+  // viewer, its four corners turning the same way as the tile's (so it faces
+  // up as the tile does), the chip's texture across it
+  {
+    const HexGrid::Point centre{0, kChipDown};
+    const float pi = 3.14159265f;
+    std::array<HexGrid::Point, 4> square{};
+    for (std::size_t k = 0; k < 4; ++k) {
+      const float angle = pi / 4 + pi / 2 * static_cast<float>(k);
+      square[k] = {centre.x + kChipRadius * std::sqrt(2.0f) * std::cos(angle),
+                   centre.y + kChipRadius * std::sqrt(2.0f) * std::sin(angle)};
+    }
+    const auto uv = [&](HexGrid::Point p) {
+      return Scene::TexCoord{0.5f + (p.x - centre.x) / (2 * kChipRadius),
+                             0.5f + (p.y - centre.y) / (2 * kChipRadius)};
+    };
+    for (std::size_t k = 0; k < 4; ++k) {
+      const auto a = square[k], b = square[(k + 1) % 4];
+      numberChip.triangle(onTable(centre, 0.015f), onTable(b, 0.015f), onTable(a, 0.015f), {},
+                          {uv(centre), uv(b), uv(a)});
+    }
+  }
   station.box({0, 0.2f, 0}, {0.2f, 0.2f, 0.2f});
   colony.box({0, 0.3f, 0}, {0.24f, 0.3f, 0.24f});
   colony.box({0, 0.68f, 0}, {0.12f, 0.08f, 0.12f});
@@ -150,6 +172,12 @@ Art::Face faceOf(const Planet &planet) {
     return Face::Home;
   }
   return Face::PlanetFaceDown;
+}
+
+int chipOf(const Planet &planet) {
+  if (!planet.flipped || planet.kind == PlanetKind::Moon || planet.kind == PlanetKind::Home)
+    return 0;
+  return Art::chipRecipeOf(planet.number).empty() ? 0 : planet.number;
 }
 
 Art::Face faceOf(const ZoneSite &site) {

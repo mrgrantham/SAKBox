@@ -65,6 +65,8 @@ private:
   float hexSize() const; // centre to corner, in pixels, at this zoom
   void ensureFaces();    // each face drawn at this zoom's size
   void blendFace(Art::Face face, HexGrid::Point centre);
+  void blendSprite(const std::vector<ScratchPadd::Scene::Colour> &sprite, int size,
+                   HexGrid::Point centre);
   void fillRect(float x, float y, float w, float h, ScratchPadd::Scene::Colour colour);
   void line(HexGrid::Point a, HexGrid::Point b, float thickness, ScratchPadd::Scene::Colour colour);
   void fillTriangle(HexGrid::Point a, HexGrid::Point b, HexGrid::Point c,
@@ -77,6 +79,9 @@ private:
   // Each face as a square of pixels at facesSize_ a side (RGBA)
   int facesSize_ = 0;
   std::array<std::vector<ScratchPadd::Scene::Colour>, Art::kFaces> faces_;
+  // Each number chip (indexed by its number), chipsSize_ a side
+  int chipsSize_ = 0;
+  std::array<std::vector<ScratchPadd::Scene::Colour>, Art::kHighestChip + 1> chips_;
 };
 
 } // namespace CosmicHex::Handheld

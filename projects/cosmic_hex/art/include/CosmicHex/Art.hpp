@@ -43,4 +43,11 @@ inline constexpr int kFaces = 19;
 // The face's recipe (its text, as TextureRecipe::read takes it)
 std::string_view recipeOf(Face face);
 
+// A planet's number chip (round 87): the number on a round chip, a dot for
+// each way two dice make it; 2 to 12 but 7 (no planet has one). The chip's
+// recipe, or empty for a number without one
+inline constexpr int kLowestChip = 2;
+inline constexpr int kHighestChip = 12;
+std::string_view chipRecipeOf(int number);
+
 } // namespace CosmicHex::Art

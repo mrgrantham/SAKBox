@@ -42,15 +42,25 @@ struct BoardColours {
 Art::Face faceOf(const Planet &planet);
 Art::Face faceOf(const ZoneSite &site);
 
+// The number chip a tile shows (round 87): a turned-over planet's number, or
+// 0 for none (face down, a moon, a home not yet exhausted)
+int chipOf(const Planet &planet);
+
+// Where a tile's number chip sits, as a part of the hex (1 to a corner):
+// over the lower part of the face, towards the viewer, and how big
+inline constexpr float kChipDown = 0.42f;
+inline constexpr float kChipRadius = 0.3f;
+
 // The pieces' meshes, each centred on its own place, 1 unit to a hex's
 // corner-to-centre
 struct BoardPieces {
   BoardPieces();
-  Scene::MeshBuilder hexTile;   // a flat hexagon, its face (Art.hpp) on it by texture
-  Scene::MeshBuilder station;   // a small box
-  Scene::MeshBuilder colony;    // a taller box with a roof
-  Scene::MeshBuilder ship;      // a dart, pointing along +x
-  Scene::MeshBuilder highlight; // a thin ring round a hex, for what's chosen
+  Scene::MeshBuilder hexTile;    // a flat hexagon, its face (Art.hpp) on it by texture
+  Scene::MeshBuilder numberChip; // a small square over a tile's lower part, its chip by texture
+  Scene::MeshBuilder station;    // a small box
+  Scene::MeshBuilder colony;     // a taller box with a roof
+  Scene::MeshBuilder ship;       // a dart, pointing along +x
+  Scene::MeshBuilder highlight;  // a thin ring round a hex, for what's chosen
   // A sparse, dim starfield below the board (round 72, the user's): small
   // squares scattered wide, drawn unlit, the same every game
   Scene::MeshBuilder stars;

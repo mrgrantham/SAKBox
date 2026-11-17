@@ -24,3 +24,22 @@ TEST(ArtTest, EveryFaceDraws) {
     EXPECT_EQ(image.at(0, 0).a, 0) << "face " << i;
   }
 }
+
+// Every number chip but 7 draws: a round chip (its centre's top cream, its
+// square's corner see-through); 7 and numbers off the dice have none
+TEST(ArtTest, EveryNumberChipDraws) {
+  for (int n = Art::kLowestChip; n <= Art::kHighestChip; ++n) {
+    if (n == 7) {
+      EXPECT_TRUE(Art::chipRecipeOf(n).empty());
+      continue;
+    }
+    const auto recipe = TR::read(Art::chipRecipeOf(n));
+    ASSERT_TRUE(recipe.has_value()) << "chip " << n << ": " << recipe.error();
+    const TR::Image image = TR::draw(*recipe, 64, 64, TR::Format::Rgba8);
+    const auto top = image.at(32, 8); // (above the digits: the chip)
+    EXPECT_EQ(top.r, 0xf2) << "chip " << n;
+    EXPECT_EQ(image.at(0, 0).a, 0) << "chip " << n;
+  }
+  EXPECT_TRUE(Art::chipRecipeOf(1).empty());
+  EXPECT_TRUE(Art::chipRecipeOf(13).empty());
+}

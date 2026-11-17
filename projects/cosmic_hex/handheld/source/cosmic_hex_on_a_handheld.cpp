@@ -236,6 +236,7 @@ public:
     renderer_.emplace(*display_);
     const BoardPieces pieces;
     hexTile_ = renderer_->load(pieces.hexTile.data());
+    numberChip_ = renderer_->load(pieces.numberChip.data());
     station_ = renderer_->load(pieces.station.data());
     colony_ = renderer_->load(pieces.colony.data());
     ship_ = renderer_->load(pieces.ship.data());
@@ -345,9 +346,18 @@ private:
         renderer_->draw(hexTile_, BoardPieces::onHex(hex) * lift * spin,
                         showing(upSide ? up : down));
       };
-      for (std::size_t i = 0; i < state.planets.size(); ++i)
-        drawTile(state.planets[i].hex, motion_.planetTurn(i, t),
-                 CosmicHex::Art::Face::PlanetFaceDown, faceOf(state.planets[i]));
+      for (std::size_t i = 0; i < state.planets.size(); ++i) {
+        const auto turn = motion_.planetTurn(i, t);
+        drawTile(state.planets[i].hex, turn, CosmicHex::Art::Face::PlanetFaceDown,
+                 faceOf(state.planets[i]));
+        // its number chip (round 87), once it's lying face up
+        const int number = chipOf(state.planets[i]);
+        const Scene::Texture chip = chips_[static_cast<std::size_t>(number)];
+        if (number > 0 && !turn && chip)
+          renderer_->draw(
+              numberChip_, BoardPieces::onHex(state.planets[i].hex),
+              Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = chip});
+      }
       for (std::size_t i = 0; i < state.zone.size(); ++i)
         drawTile(state.zone[i].hex, motion_.siteTurn(i, t), CosmicHex::Art::Face::FindFaceDown,
                  faceOf(state.zone[i]));
@@ -583,10 +593,26 @@ private:
       faces_[static_cast<std::size_t>(i)] =
           renderer_->load(Scene::TextureImage{kFaceSize, kFaceSize, pixels});
     }
+    // and the number chips (round 87), half a face's size
+    constexpr int kChipSize = kFaceSize / 2;
+    for (int n = CosmicHex::Art::kLowestChip; n <= CosmicHex::Art::kHighestChip; ++n) {
+      const auto text = CosmicHex::Art::chipRecipeOf(n);
+      const auto recipe = TR::read(text);
+      if (text.empty() || !recipe)
+        continue;
+      const TR::Image image = TR::draw(*recipe, kChipSize, kChipSize, TR::Format::Rgba8);
+      std::vector<Scene::Colour> pixels(static_cast<std::size_t>(kChipSize * kChipSize));
+      for (std::size_t p = 0; p < pixels.size(); ++p)
+        pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
+                     image.pixels[p * 4 + 3]};
+      chips_[static_cast<std::size_t>(n)] =
+          renderer_->load(Scene::TextureImage{kChipSize, kChipSize, pixels});
+    }
   }
 
-  Scene::Mesh hexTile_, station_, colony_, ship_, stars_, gaps_, highlight_;
+  Scene::Mesh hexTile_, numberChip_, station_, colony_, ship_, stars_, gaps_, highlight_;
   std::array<Scene::Texture, CosmicHex::Art::kFaces> faces_{};
+  std::array<Scene::Texture, CosmicHex::Art::kHighestChip + 1> chips_{}; // (by number)
   std::optional<TableSnapshot> latest_;
   BoardMotion motion_;
   Clock::time_point motionStarted_;

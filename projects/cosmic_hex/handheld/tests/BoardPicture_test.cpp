@@ -2,6 +2,7 @@
 // hex (and a corner, close to one), zooming and panning kept in bounds. The
 // picture is also written out (bazel's test outputs) to look at.
 #include <CosmicHex/Handheld/BoardPicture.hpp>
+#include <CosmicHex/Handheld/BoardPieces.hpp>
 
 #include <gtest/gtest.h>
 
@@ -75,4 +76,47 @@ TEST(BoardPictureTest, ZoomingEnlargesAndPanningStaysInBounds) {
   writeOut(picture, "board_zoom2_panned.ppm");
   picture.setZoom(1); // back to the whole board, centred
   EXPECT_FLOAT_EQ(picture.where(Hex{0, 0}).x, 160);
+}
+
+// Round 87: a turned-over planet shows its number chip over its face's
+// lower part (cream at the chip's top); a face-down one doesn't
+TEST(BoardPictureTest, TurnedOverPlanetsShowTheirNumberChips) {
+  State state = aGame();
+  int number = 2;
+  for (Planet &planet : state.planets) {
+    if (planet.homeOf >= 0) // (the homes: no number)
+      continue;
+    planet.flipped = true;
+    planet.kind = PlanetKind::AsteroidBelt;
+    planet.number = number;
+    number = number == 6 ? 8 : number == 12 ? 2 : number + 1;
+  }
+  BoardPicture picture(320, 240);
+  picture.setZoom(3);
+  picture.draw(state);
+  writeOut(picture, "board_chips_zoom3.ppm");
+  BoardPicture whole(320, 240);
+  whole.draw(state);
+  writeOut(whole, "board_chips_zoom1.ppm");
+  // A hex's size (centre to corner) from two neighbours' centres
+  const auto a = whole.where(Hex{0, 0}), b = whole.where(Hex{1, 0});
+  const float size = std::hypot(b.x - a.x, b.y - a.y) / std::sqrt(3.0f);
+  // Every turned-over planet: just inside its chip's top, cream
+  int checked = 0;
+  for (const Planet &planet : state.planets) {
+    if (chipOf(planet) == 0)
+      continue;
+    const auto at = whole.where(planet.hex);
+    const int x = static_cast<int>(std::lround(at.x));
+    const int y = static_cast<int>(std::lround(at.y + (kChipDown - 0.75f * kChipRadius) * size));
+    const auto colour = whole.pixels()[static_cast<std::size_t>(y * 320 + x)];
+    EXPECT_GT(colour.r, 200) << "planet at " << planet.hex.q << "," << planet.hex.r;
+    ++checked;
+  }
+  EXPECT_GT(checked, 10);
+  // Face down again: no chips
+  for (Planet &planet : state.planets)
+    planet.flipped = planet.homeOf >= 0;
+  for (const Planet &planet : state.planets)
+    EXPECT_EQ(chipOf(planet), 0);
 }

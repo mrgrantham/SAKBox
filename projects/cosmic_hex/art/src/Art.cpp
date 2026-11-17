@@ -43,6 +43,26 @@ extern const unsigned char kFindOutpost[];
 extern const std::size_t kFindOutpostSize;
 extern const unsigned char kFindPirates[];
 extern const std::size_t kFindPiratesSize;
+extern const unsigned char kNumber2[];
+extern const std::size_t kNumber2Size;
+extern const unsigned char kNumber3[];
+extern const std::size_t kNumber3Size;
+extern const unsigned char kNumber4[];
+extern const std::size_t kNumber4Size;
+extern const unsigned char kNumber5[];
+extern const std::size_t kNumber5Size;
+extern const unsigned char kNumber6[];
+extern const std::size_t kNumber6Size;
+extern const unsigned char kNumber8[];
+extern const std::size_t kNumber8Size;
+extern const unsigned char kNumber9[];
+extern const std::size_t kNumber9Size;
+extern const unsigned char kNumber10[];
+extern const std::size_t kNumber10Size;
+extern const unsigned char kNumber11[];
+extern const std::size_t kNumber11Size;
+extern const unsigned char kNumber12[];
+extern const std::size_t kNumber12Size;
 } // namespace Recipes
 
 std::string_view recipeOf(Face face) {
@@ -90,6 +110,36 @@ std::string_view recipeOf(Face face) {
     return text(Recipes::kFindPirates, Recipes::kFindPiratesSize);
   }
   return {};
+}
+
+std::string_view chipRecipeOf(int number) {
+  const auto text = [](const unsigned char *bytes, std::size_t size) {
+    return std::string_view(reinterpret_cast<const char *>(bytes), size);
+  };
+  switch (number) {
+  case 2:
+    return text(Recipes::kNumber2, Recipes::kNumber2Size);
+  case 3:
+    return text(Recipes::kNumber3, Recipes::kNumber3Size);
+  case 4:
+    return text(Recipes::kNumber4, Recipes::kNumber4Size);
+  case 5:
+    return text(Recipes::kNumber5, Recipes::kNumber5Size);
+  case 6:
+    return text(Recipes::kNumber6, Recipes::kNumber6Size);
+  case 8:
+    return text(Recipes::kNumber8, Recipes::kNumber8Size);
+  case 9:
+    return text(Recipes::kNumber9, Recipes::kNumber9Size);
+  case 10:
+    return text(Recipes::kNumber10, Recipes::kNumber10Size);
+  case 11:
+    return text(Recipes::kNumber11, Recipes::kNumber11Size);
+  case 12:
+    return text(Recipes::kNumber12, Recipes::kNumber12Size);
+  default:
+    return {}; // (a 7, or not a dice number)
+  }
 }
 
 } // namespace CosmicHex::Art

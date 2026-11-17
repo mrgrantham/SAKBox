@@ -81,6 +81,20 @@ void BoardPicture::ensureFaces() {
   if (size == facesSize_)
     return;
   facesSize_ = size;
+  // The number chips, as big on the hex as on the 3D board's tiles
+  chipsSize_ = std::max(4, static_cast<int>(std::lround(2 * kChipRadius * hexSize())));
+  for (int n = Art::kLowestChip; n <= Art::kHighestChip; ++n) {
+    std::vector<Colour> &chip = chips_[static_cast<std::size_t>(n)];
+    chip.clear();
+    const auto recipe = TR::read(Art::chipRecipeOf(n));
+    if (Art::chipRecipeOf(n).empty() || !recipe)
+      continue;
+    const TR::Image image = TR::draw(*recipe, chipsSize_, chipsSize_, TR::Format::Rgba8);
+    chip.resize(static_cast<std::size_t>(chipsSize_) * static_cast<std::size_t>(chipsSize_));
+    for (std::size_t p = 0; p < chip.size(); ++p)
+      chip[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
+                 image.pixels[p * 4 + 3]};
+  }
   for (int i = 0; i < Art::kFaces; ++i) {
     std::vector<Colour> &face = faces_[static_cast<std::size_t>(i)];
     face.assign(static_cast<std::size_t>(size) * static_cast<std::size_t>(size),
@@ -96,18 +110,23 @@ void BoardPicture::ensureFaces() {
 }
 
 void BoardPicture::blendFace(Art::Face face, HexGrid::Point centre) {
-  const std::vector<Colour> &sprite = faces_[static_cast<std::size_t>(face)];
-  const int left = static_cast<int>(std::lround(centre.x)) - facesSize_ / 2;
-  const int top = static_cast<int>(std::lround(centre.y)) - facesSize_ / 2;
-  for (int y = 0; y < facesSize_; ++y) {
+  blendSprite(faces_[static_cast<std::size_t>(face)], facesSize_, centre);
+}
+
+void BoardPicture::blendSprite(const std::vector<Colour> &sprite, int size, HexGrid::Point centre) {
+  if (sprite.empty())
+    return;
+  const int left = static_cast<int>(std::lround(centre.x)) - size / 2;
+  const int top = static_cast<int>(std::lround(centre.y)) - size / 2;
+  for (int y = 0; y < size; ++y) {
     const int sy = top + y;
     if (sy < 0 || sy >= height_)
       continue;
-    for (int x = 0; x < facesSize_; ++x) {
+    for (int x = 0; x < size; ++x) {
       const int sx = left + x;
       if (sx < 0 || sx >= width_)
         continue;
-      const Colour over = sprite[indexOf(x, y, facesSize_)];
+      const Colour over = sprite[indexOf(x, y, size)];
       if (over.a == 0)
         continue;
       Colour &under = pixels_[indexOf(sx, sy, width_)];
@@ -154,8 +173,15 @@ void BoardPicture::draw(const State &state) {
     for (int i = 0; i < 6; ++i) // (shared edges drawn twice, the same)
       line(where(HexGrid::corner(hex, i)), where(HexGrid::corner(hex, i + 1)), 1, kGrid);
   // The tiles' faces
-  for (const Planet &planet : state.planets)
+  for (const Planet &planet : state.planets) {
     blendFace(faceOf(planet), where(planet.hex));
+    // its number chip, over the face's lower part (round 87)
+    if (const int number = chipOf(planet); number > 0) {
+      HexGrid::Point at = where(planet.hex);
+      at.y += kChipDown * hexSize();
+      blendSprite(chips_[static_cast<std::size_t>(number)], chipsSize_, at);
+    }
+  }
   for (const ZoneSite &site : state.zone)
     blendFace(faceOf(site), where(site.hex));
   // Stations (a colony bigger, with a dark middle), on their corners
