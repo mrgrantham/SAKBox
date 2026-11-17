@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <cstdlib>
 #include <fstream>
 
@@ -21,8 +22,8 @@ void writeOut(const BoardPicture &picture, const char *name) {
     return;
   std::ofstream file(std::string(folder) + "/" + name, std::ios::binary);
   file << "P6\n" << picture.width() << " " << picture.height() << "\n255\n";
-  for (const auto &c : picture.pixels())
-    file << c.r << c.g << c.b;
+  for (const auto &c : picture.pixels()) // (the bytes themselves: PPM's binary form)
+    file.put(static_cast<char>(c.r)).put(static_cast<char>(c.g)).put(static_cast<char>(c.b));
 }
 } // namespace
 
@@ -47,7 +48,8 @@ TEST(BoardPictureTest, TheWholeBoardFitsAndTouchesFindTheirHex) {
   // A touch on a corner finds it
   const Corner corner = HexGrid::corner(state.planets[0].hex, 2);
   const auto there = picture.where(corner);
-  const auto spot = picture.at(static_cast<int>(there.x + 0.5f), static_cast<int>(there.y + 0.5f));
+  const auto spot =
+      picture.at(static_cast<int>(std::lround(there.x)), static_cast<int>(std::lround(there.y)));
   ASSERT_TRUE(spot.has_value());
   if (spot && spot->corner) {
     EXPECT_EQ(cornerNumber(*spot->corner), cornerNumber(corner));
