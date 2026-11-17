@@ -45,7 +45,12 @@ struct Options {
   bool skipFirst = false;                   // the first player skips their first income
   bool randomFirst = false;                 // a random player goes first, rather than player 1
   std::array<int, kMaxPlayers> seatBonus{}; // extra start resources by turn order
-  int empty = 6;              // empty tiles of the zone's 12 (the rest finds, shared out)
+  int empty = 5;    // empty tiles of the zone's 12 (the rest finds, shared out)
+  int outposts = 2; // alien outposts among them (round 60: two)
+  // Costs instead of the rules' (round 61: free stations, and a ship
+  // costing one more), and how common each kind of planet is (round 62)
+  std::optional<Resources> stationCost, shipCost;
+  Resources kindWeights{1, 1, 1, 1, 1};
   int strongIterations = 0;   // a stronger bot, thinking this much, at one home in turn
   std::string variant;        // a label for the CSV
   std::string core = "seven"; // the core planets: seven (the centre and the six around it) or three

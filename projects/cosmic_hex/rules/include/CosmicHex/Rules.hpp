@@ -94,6 +94,11 @@ struct Settings {
   // The genre's red-number rule (round 55): a 6 or 8 isn't dealt to a planet
   // next to a face-up 6 or 8 while the pile has another number
   bool redNumbersApart = true;
+  // How common each kind of planet is in the pile that fits the board
+  // (fitPiles), as weights: asteroid belts, lush planets, gas giants, ice
+  // moons, nebulae. Even by default; round 62 tries gas giants twice as
+  // common (more fuel, so ships move more).
+  Resources kindWeights{1, 1, 1, 1, 1};
   int maxShips = 3;
   int shipMove = 3;   // hexes a ship moves a turn, free
   int boostMove = 2;  // more, for 1 fuel

@@ -826,3 +826,15 @@ TEST(RulesTest, EveryZoneSiteHasAFind) {
   for (std::size_t kind = 1; kind < state.findsLeft.size(); ++kind)
     EXPECT_EQ(state.findsLeft[kind], settings.finds[kind]);
 }
+
+// The planet mix as weights (round 62): gas giants twice as common
+TEST(RulesTest, ThePlanetMixFollowsItsWeights) {
+  Settings settings;
+  for (Hex hex : HexGrid::ring(Hex{}, 2))
+    settings.planetHexes.push_back(hex);
+  for (Hex hex : {Hex{4, -4}, Hex{-4, 4}, Hex{0, 4}, Hex{0, -4}, Hex{4, 0}, Hex{-4, 0}})
+    settings.planetHexes.push_back(hex);
+  settings.kindWeights = {1, 1, 2, 1, 1};
+  const State state = newGame(4, settings);
+  EXPECT_EQ(state.kindsLeft, (Resources{3, 3, 6, 3, 3})); // (18 planets)
+}

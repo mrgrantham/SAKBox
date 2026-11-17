@@ -43,6 +43,24 @@ template <typename T> T number(std::string_view flag, std::string_view value) {
   return out;
 }
 
+// Five numbers, one a resource ("1,0,1,0,0": minerals, food, fuel, water,
+// crystals), or a clear stop if it isn't
+Resources five(std::string_view flag, std::string_view value) {
+  Resources out{};
+  std::string_view rest = value;
+  for (std::size_t i = 0; i < out.size(); ++i) {
+    const std::size_t comma = rest.find(',');
+    if (rest.empty() || (comma == std::string_view::npos) != (i + 1 == out.size())) {
+      std::fprintf(stderr, "%.*s needs five numbers, one a resource (1,0,1,0,0)\n",
+                   static_cast<int>(flag.size()), flag.data());
+      std::exit(2);
+    }
+    out[i] = number<int>(flag, rest.substr(0, comma));
+    rest.remove_prefix(comma == std::string_view::npos ? rest.size() : comma + 1);
+  }
+  return out;
+}
+
 // "q,r,q,r,...": hexes, or a clear stop if it isn't
 std::vector<Hex> hexes(std::string_view flag, std::string_view value) {
   const auto out = Batch::hexesFrom(value);
@@ -96,6 +114,14 @@ Options parse(int argc, char **argv) {
       }
     } else if (flag == "--empty")
       options.empty = number<int>(flag, value);
+    else if (flag == "--outposts")
+      options.outposts = number<int>(flag, value);
+    else if (flag == "--station-cost")
+      options.stationCost = five(flag, value);
+    else if (flag == "--ship-cost")
+      options.shipCost = five(flag, value);
+    else if (flag == "--kinds")
+      options.kindWeights = five(flag, value);
     else if (flag == "--strong")
       options.strongIterations = number<int>(flag, value);
     else if (flag == "--variant")

@@ -427,12 +427,27 @@ void LabWindowPadd::drawSettings() {
   ImGui::InputInt("Boost below points", &options_.catchUpBelow);
   ImGui::InputInt("Imperial Tithe over", &options_.discardOver);
   ImGui::InputInt("Moons", &options_.moons);
+  ImGui::InputInt("Alien outposts", &options_.outposts);
+  // Round 61: free stations, and the ship costing a food more with them
+  bool freeStations = options_.stationCost.has_value();
+  if (ImGui::Checkbox("Free stations", &freeStations))
+    options_.stationCost = freeStations ? std::optional<Resources>(Resources{}) : std::nullopt;
+  bool dearerShip = options_.shipCost.has_value();
+  if (ImGui::Checkbox("Ship costs a food more", &dearerShip))
+    options_.shipCost =
+        dearerShip ? std::optional<Resources>(Resources{1, 1, 1, 0, 0}) : std::nullopt;
+  // Round 62: how common each kind of planet is
+  ImGui::InputScalarN("Planet mix (min, food, fuel, water, cry)", ImGuiDataType_S32,
+                      options_.kindWeights.data(), kResources);
   ImGui::PopItemWidth();
   options_.games = std::max(options_.games, 1);
   options_.iterations = std::max(options_.iterations, 1);
   options_.win = std::max(options_.win, 1);
   options_.move = std::max(options_.move, 1);
   options_.boost = std::max(options_.boost, 0);
+  options_.outposts = std::clamp(options_.outposts, 0, 12 - options_.empty - 1);
+  for (int &weight : options_.kindWeights)
+    weight = std::max(weight, 0);
   ImGui::EndDisabled();
   ImGui::Separator();
   if (!running_) {

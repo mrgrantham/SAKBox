@@ -157,10 +157,30 @@ std::vector<int> numbersFor(int count) {
 
 // The kinds for `count` planets: as even as can be, the extras one each to
 // the kinds in order
-Resources kindsFor(int count) {
+// The kinds for `count` planets, shared by `weights` (largest remainder,
+// earlier kinds first on a tie): even weights share them as evenly as can be
+Resources kindsFor(int count, const Resources &weights) {
+  const int total = std::accumulate(weights.begin(), weights.end(), 0);
   Resources kinds{};
-  for (int i = 0; i < count; ++i)
-    ++kinds[static_cast<std::size_t>(i % kResources)];
+  if (total <= 0)
+    return kinds;
+  std::array<double, kResources> remainders{};
+  int dealt = 0;
+  for (std::size_t i = 0; i < kinds.size(); ++i) {
+    const double share = static_cast<double>(count) * weights[i] / total;
+    kinds[i] = static_cast<int>(share);
+    remainders[i] = share - kinds[i];
+    dealt += kinds[i];
+  }
+  while (dealt < count) {
+    std::size_t best = 0;
+    for (std::size_t i = 1; i < kinds.size(); ++i)
+      if (remainders[i] > remainders[best] + 1e-9)
+        best = i;
+    ++kinds[best];
+    remainders[best] = -1;
+    ++dealt;
+  }
   return kinds;
 }
 
@@ -587,8 +607,8 @@ std::string settingsText(const Settings &s) {
       << " corners=" << (s.zoneCorners ? 1 : 0) << " tiles=" << joined(s.planetTiles)
       << " numbers=" << joined(s.numbers) << " finds=" << joined(s.finds)
       << " ship=" << joined(s.shipCost) << " station=" << joined(s.stationCost)
-      << " colony=" << joined(s.colonyCost) << " contract=" << joined(s.contractCost)
-      << " corehexes=";
+      << " kinds=" << joined(s.kindWeights) << " colony=" << joined(s.colonyCost)
+      << " contract=" << joined(s.contractCost) << " corehexes=";
   std::vector<int> core;
   for (Hex hex : s.coreHexes) {
     core.push_back(hex.q);
@@ -753,6 +773,8 @@ std::optional<Settings> readSettings(std::string_view line) {
       ok = five(v, s.shipCost);
     else if (key == "station")
       ok = five(v, s.stationCost);
+    else if (key == "kinds")
+      ok = five(v, s.kindWeights);
     else if (key == "colony")
       ok = five(v, s.colonyCost);
     else if (key == "contract")
@@ -850,7 +872,7 @@ State newGame(int players, const Settings &settings, int first) {
     const int faceDown = static_cast<int>(std::count_if(
         state.planets.begin(), state.planets.end(), [](const Planet &p) { return !p.flipped; }));
     const int resourcePlanets = std::max(0, faceDown - settings.moons);
-    state.kindsLeft = kindsFor(resourcePlanets);
+    state.kindsLeft = kindsFor(resourcePlanets, settings.kindWeights);
     state.numbersLeft = numbersFor(resourcePlanets);
   }
   // Planets beyond the tiles given (fewer homes than four): the extras, in turn

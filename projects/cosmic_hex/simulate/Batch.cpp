@@ -107,11 +107,16 @@ Settings settingsFor(const Options &options) {
   settings.catchUpGap = options.catchUpGap;
   settings.discardOver = options.discardOver;
   settings.firstSkipsIncome = options.skipFirst;
-  // Fewer empty zone tiles: the rest are finds, given in turn to salvage,
-  // ruins, salvage, ruins... (the alien station and the pirates stay one each)
-  settings.finds = {options.empty, 0, 0, 1, 1};
-  for (int i = 0; i < 12 - options.empty - 2; ++i)
+  // The zone's 12: the empty ones, the outposts and the pirates, and the
+  // rest given in turn to salvage, ruins, salvage, ruins...
+  settings.finds = {options.empty, 0, 0, options.outposts, 1};
+  for (int i = 0; i < 12 - options.empty - options.outposts - 1; ++i)
     ++settings.finds[static_cast<std::size_t>(1 + i % 2)];
+  if (options.stationCost)
+    settings.stationCost = *options.stationCost;
+  if (options.shipCost)
+    settings.shipCost = *options.shipCost;
+  settings.kindWeights = options.kindWeights;
   return settings;
 }
 
