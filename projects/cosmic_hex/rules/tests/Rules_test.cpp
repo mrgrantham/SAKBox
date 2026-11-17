@@ -980,6 +980,9 @@ TEST(RulesTest, HomeIncomeSteps) {
   const State later = newGame(3, settings);
   EXPECT_EQ(later.homeIncomeLeft, 1);
   const auto back = Game::readState(Game::writeState(later));
-  ASSERT_TRUE(back.has_value());
+  if (!back) {
+    ADD_FAILURE() << "the state doesn't read back";
+    return;
+  }
   EXPECT_EQ(back->settings.homeIncomeSteps, settings.homeIncomeSteps);
 }
