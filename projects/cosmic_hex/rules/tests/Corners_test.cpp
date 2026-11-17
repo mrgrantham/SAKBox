@@ -12,6 +12,8 @@
 
 #include <gtest/gtest.h>
 
+#include <utility>
+
 #include <optional>
 
 #include <algorithm>
@@ -501,21 +503,36 @@ TEST(CornersTest, AnExhaustedHomesKindCanBeDrawn) {
   EXPECT_EQ(home->number, 5);
 }
 
+namespace {
+bool touchesHex(Corner corner, Hex hex) {
+  const auto hexes = HexGrid::hexesTouching(corner);
+  return std::find(hexes.begin(), hexes.end(), hex) != hexes.end();
+}
+// No station on the corner or next to it (the distance rule)
+bool clearOfStations(const State &state, Corner corner) {
+  for (const Station &station : state.stations) {
+    if (station.at == corner)
+      return false;
+    for (Corner next : HexGrid::neighbours(corner))
+      if (station.at == next)
+        return false;
+  }
+  return true;
+}
+} // namespace
+
 // Deep-space relay (round 63): only a holder of its Charter may build a
 // station touching no planet and no outpost, one; the Charter's then met
 TEST(CornersTest, ADeepSpaceRelay) {
   State state = atMain();
-  // A corner touching nothing (no planet, home, or outpost)
+  // A corner touching nothing (no planet, home, or find)
   std::optional<Corner> empty;
   for (Corner corner : boardCorners()) {
-    if (planetsAt(state, corner) == 0) {
-      bool byOutpost = false;
+    if (planetsAt(state, corner) == 0 && clearOfStations(state, corner)) {
+      bool byAFind = false;
       for (const ZoneSite &site : state.zone)
-        byOutpost = byOutpost || (site.flipped && site.find == Find::AlienStation &&
-                                  std::find(HexGrid::hexesTouching(corner).begin(),
-                                            HexGrid::hexesTouching(corner).end(),
-                                            site.hex) != HexGrid::hexesTouching(corner).end());
-      if (!byOutpost) {
+        byAFind = byAFind || touchesHex(corner, site.hex);
+      if (!byAFind) {
         empty = corner;
         break;
       }
@@ -588,4 +605,48 @@ TEST(CornersTest, ShipyardSurplus) {
   EXPECT_FALSE(Game::apply(full, {Kind::PlayShipyard, there}));
   EXPECT_EQ(Game::readAction(Game::writeAction({Kind::PlayShipyard, 3})),
             (Action{Kind::PlayShipyard, 3}));
+}
+
+// Round 85: a relay may touch a find only once it's turned over, and never
+// an alien outpost
+TEST(CornersTest, ARelayBesideAFind) {
+  State state = atMain();
+  // A corner touching one find and no planet, and the find
+  std::optional<Corner> spot;
+  std::size_t find = 0;
+  for (Corner corner : boardCorners()) {
+    if (planetsAt(state, corner) != 0 || !clearOfStations(state, corner))
+      continue;
+    int finds = 0;
+    for (std::size_t i = 0; i < state.zone.size(); ++i)
+      if (touchesHex(corner, state.zone[i].hex)) {
+        ++finds;
+        find = i;
+      }
+    if (finds == 1) {
+      spot = corner;
+      break;
+    }
+  }
+  if (!spot) {
+    ADD_FAILURE() << "no corner by one find alone";
+    return;
+  }
+  const int mine = firstShipOf(state, 0);
+  state.ships[static_cast<std::size_t>(mine)].corner = *spot;
+  state.player[0].contracts = {kDeepSpaceRelay};
+  // Whether the ship can settle there, and whether the station's a relay
+  const auto settle = [&](bool flipped, Find what) {
+    State trial = state;
+    trial.zone[find].flipped = flipped;
+    trial.zone[find].find = what;
+    const bool settled = Game::apply(trial, {Kind::Settle, mine});
+    return std::pair{settled, settled && contracts()[kDeepSpaceRelay].met(trial, 0)};
+  };
+  EXPECT_EQ(settle(false, Find::Nothing), std::pair(false, false));      // (face down)
+  EXPECT_EQ(settle(false, Find::AlienStation), std::pair(false, false)); // (face down)
+  EXPECT_EQ(settle(true, Find::Nothing), std::pair(true, true)); // (turned over: empty space)
+  // Turned over, an outpost: a station by the outpost, as anyone may build,
+  // but not the relay
+  EXPECT_EQ(settle(true, Find::AlienStation), std::pair(true, false));
 }

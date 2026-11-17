@@ -14,6 +14,7 @@
 #include <numeric>
 #include <sstream>
 #include <unordered_map>
+#include <utility>
 
 namespace CosmicHex {
 
@@ -340,12 +341,17 @@ bool byASettleablePlanet(const State &state, Corner corner) {
                      [&](const Planet &p) { return settleable(p) && touches(corner, p.hex); });
 }
 
-// A Deep-space relay's place: touching no planet (homes included) and no
-// alien outpost
+// A Deep-space relay's place: touching no planet (homes included), and no
+// find unless it's turned over and isn't an alien outpost (round 85)
 bool isRelaySpot(const State &state, Corner corner) {
   const bool byAnyPlanet = std::any_of(state.planets.begin(), state.planets.end(),
                                        [&](const Planet &p) { return touches(corner, p.hex); });
-  return !byAnyPlanet && !byAnOutpost(state, corner);
+  const bool byAFindNotAllowed =
+      std::any_of(state.zone.begin(), state.zone.end(), [&](const ZoneSite &site) {
+        const bool allowed = site.flipped && site.find != Find::AlienStation;
+        return !allowed && touches(corner, site.hex);
+      });
+  return !byAnyPlanet && !byAFindNotAllowed;
 }
 
 // Whether the player may build a Deep-space relay: holding its Charter
@@ -1106,8 +1112,64 @@ Board boardR3() {
   };
 }
 
-Settings agreedRules(const Board &board) {
+std::optional<Board> boardFromLine(std::string_view line) {
+  Board board;
+  bool first = true; // (the layout's name)
+  while (!line.empty()) {
+    const std::size_t space = line.find(' ');
+    const std::string_view field = line.substr(0, space);
+    line.remove_prefix(space == std::string_view::npos ? line.size() : space + 1);
+    if (std::exchange(first, false))
+      continue;
+    const std::size_t eq = field.find('=');
+    if (eq == std::string_view::npos)
+      continue;
+    const std::string_view key = field.substr(0, eq);
+    std::vector<Hex> *into = key == "homes"                          ? &board.homes
+                             : key == "planets"                      ? &board.planets
+                             : key == "zone" || key == "small_finds" ? &board.zone
+                                                                     : nullptr;
+    if (!into)
+      continue; // (reach= and such, for people reading the file)
+    const auto values = intList(field.substr(eq + 1));
+    if (!values || values->size() % 2 != 0)
+      return std::nullopt;
+    into->clear();
+    for (std::size_t i = 0; i < values->size(); i += 2)
+      into->push_back(Hex{(*values)[i], (*values)[i + 1]});
+  }
+  return board;
+}
+
+std::vector<NamedBoard> boardChoices() {
+  // (copied from layouts/layouts.txt; AgreedRules_test checks they match)
+  static constexpr std::array<std::string_view, 6> kLines{
+      "R3 homes=4,-2,-4,2,2,2,-2,-2 planets=0,0,-4,0,-4,4,-2,0,-2,3,-2,4,-1,-1,-1,3,0,-4,0,4,1,-3,"
+      "1,1,2,-4,2,-3,2,0,4,-4,4,0 small_finds=-3,0,3,0,-2,1,2,-1,-1,0,1,0,0,-1,0,1",
+      "S5 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,-4,2,-3,1,-2,-1,-2,3,-2,4,-1,-2,-1,-1,-1,3,0,-4,0,"
+      "4,1,-3,1,1,1,2,2,-4,2,-3,2,1,3,-1,4,-2 small_finds=-3,2,3,-2,-2,1,2,-1",
+      "K6 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,-4,2,-3,1,-3,2,-2,-1,-2,4,-1,-3,-1,3,1,-3,1,3,2,-4,"
+      "2,1,3,-2,3,-1,4,-2",
+      "K10 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,-4,2,-3,1,-3,2,-2,-2,-2,3,-1,-1,-1,3,0,-4,0,4,1,-3,"
+      "1,1,2,-3,2,2,3,-2,3,-1,4,-2",
+      "K14 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,-4,2,-3,1,-3,2,-2,-2,-2,-1,-2,3,-2,4,0,-3,0,-2,0,2,"
+      "0,3,2,-4,2,-3,2,1,2,2,3,-2,3,-1,4,-2",
+      "WS2 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,0,3,-1,4,0,4,0,-3,1,-4,0,-4,2,-3,2,-2,-2,3,-2,2,2,1"
+      ",2,2,-2,-1,-2,-2,-4,2,4,-2 small_finds=1,-1,-1,1,-1,2,1,-2,-3,1,3,-1",
+  };
+  std::vector<NamedBoard> out;
+  for (std::string_view line : kLines) {
+    const auto board = boardFromLine(line);
+    assert(board.has_value());
+    out.push_back({std::string(line.substr(0, line.find(' '))), *board});
+  }
+  return out;
+}
+
+Settings agreedRules(const Board &board, int players) {
   Settings s;
+  if (players == 3)
+    s.winPoints = kThreePlayerWinPoints; // (round 85)
   s.homeHexes = board.homes;
   s.planetHexes = board.planets;
   s.zoneHexes = board.zone;

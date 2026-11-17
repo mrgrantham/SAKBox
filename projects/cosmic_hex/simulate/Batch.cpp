@@ -105,6 +105,8 @@ Settings settingsFor(const Options &options) {
     settings.boostMove = options.boost;
   if (options.win > 0)
     settings.winPoints = options.win;
+  else if (options.players == 3)
+    settings.winPoints = kThreePlayerWinPoints; // (the agreed rules' for three; round 85)
   settings.catchUpBelow = options.catchUpBelow;
   settings.catchUpGap = options.catchUpGap;
   settings.discardOver = options.discardOver;

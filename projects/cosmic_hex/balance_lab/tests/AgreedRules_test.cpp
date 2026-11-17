@@ -6,6 +6,9 @@
 
 #include <gtest/gtest.h>
 
+#include <fstream>
+#include <string>
+
 using namespace CosmicHex;
 
 TEST(AgreedRulesTest, TheSimulatorsDefaultsAreTheAgreedRules) {
@@ -23,4 +26,31 @@ TEST(AgreedRulesTest, TheSimulatorsDefaultsAreTheAgreedRules) {
     return text.substr(at, text.find('\n', at) - at);
   };
   EXPECT_EQ(settingsLine(simulated), settingsLine(agreed));
+}
+
+// Three players: 10 points to win (round 85), the same in both
+TEST(AgreedRulesTest, ThreePlayersPlayToTen) {
+  Batch::Options options;
+  options.players = 3;
+  EXPECT_EQ(Batch::settingsFor(options).winPoints, kThreePlayerWinPoints);
+  EXPECT_EQ(agreedRules(boardR3(), 3).winPoints, kThreePlayerWinPoints);
+  EXPECT_EQ(agreedRules(boardR3()).winPoints, 12);
+}
+
+// The boards a game offers are the layouts file's, R3 first and equal to
+// boardR3()
+TEST(AgreedRulesTest, TheBoardChoicesAreTheLayoutsFiles) {
+  const auto choices = boardChoices();
+  ASSERT_FALSE(choices.empty());
+  EXPECT_EQ(choices.front().name, "R3");
+  EXPECT_TRUE(choices.front().board == boardR3());
+  for (const NamedBoard &choice : choices) {
+    std::ifstream file("projects/cosmic_hex/layouts/layouts.txt");
+    std::optional<Board> fromFile;
+    for (std::string line; std::getline(file, line);)
+      if (line.starts_with(choice.name + " "))
+        fromFile = boardFromLine(line);
+    ASSERT_TRUE(fromFile.has_value()) << choice.name;
+    EXPECT_TRUE(*fromFile == choice.board) << choice.name;
+  }
 }

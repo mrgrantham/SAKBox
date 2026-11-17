@@ -388,7 +388,8 @@ State newGame(int players, const Settings &settings = {}, int first = 0);
 // A board: where the homes, the planets and the deep-space zone's sites are
 // (corners and edges' layouts, as in layouts/layouts.txt)
 struct Board {
-  std::vector<Hex> homes, planets, zone;
+  std::vector<Hex> homes, planets, zone; // (zone empty: the finds' usual places)
+  bool operator==(const Board &) const = default;
 };
 // R3, one of the fairest layouts the simulations found (round 64), with its
 // finds beside the small systems
@@ -398,7 +399,24 @@ Board boardR3();
 // own defaults are older rules the tests are written against; this is what
 // a real game plays (the consoles), and the simulator's defaults are checked
 // to give the same (AgreedRules_test)
-Settings agreedRules(const Board &board);
+// With three players the target is 10 points (round 85: games as long as
+// four players' at 12)
+Settings agreedRules(const Board &board, int players = 4);
+inline constexpr int kThreePlayerWinPoints = 10;
+
+// A board from a line of the layouts file ("R3 homes=4,-2,... planets=...
+// small_finds=..."; zone= or small_finds= is where the finds go; other
+// fields are for people reading the file); nullopt if a field isn't q,r pairs
+std::optional<Board> boardFromLine(std::string_view line);
+
+// The boards a game offers (round 85): R3, the default, then the others
+// fair by turn and by home at 1,800 games. Their lines are the layouts
+// file's (AgreedRules_test checks they still match)
+struct NamedBoard {
+  std::string name;
+  Board board;
+};
+std::vector<NamedBoard> boardChoices();
 
 // ---------------------------------------------------------------------------
 // The actions
