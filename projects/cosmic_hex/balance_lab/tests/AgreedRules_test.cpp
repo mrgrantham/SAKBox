@@ -47,10 +47,11 @@ TEST(AgreedRulesTest, TheBoardChoicesAreTheLayoutsFiles) {
   for (const NamedBoard &choice : choices) {
     std::ifstream file("projects/cosmic_hex/layouts/layouts.txt");
     std::optional<Board> fromFile;
-    for (std::string line; std::getline(file, line);)
+    for (std::string line; std::getline(file, line);) {
       if (line.starts_with(choice.name + " "))
         fromFile = boardFromLine(line);
-    ASSERT_TRUE(fromFile.has_value()) << choice.name;
-    EXPECT_TRUE(*fromFile == choice.board) << choice.name;
+    }
+    // (equal to the choice's board, and found: an empty optional never is)
+    EXPECT_TRUE(fromFile == choice.board) << choice.name;
   }
 }
