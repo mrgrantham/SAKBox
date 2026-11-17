@@ -68,7 +68,8 @@ std::optional<Action> TableGame::step() {
   // The dealer draws; a bot trades by the trading rule and otherwise
   // searches, as the simulator's bots do
   // (by time, if set: up to botSeconds, at most botIterations)
-  GameBots::Budget budget{.iterations = settings_.botIterations};
+  GameBots::Budget budget{.iterations = settings_.botIterations,
+                          .frameArenaBytes = settings_.frameArenaBytes};
   if (settings_.botSeconds > 0) {
     const auto until = std::chrono::steady_clock::now() +
                        std::chrono::duration_cast<std::chrono::steady_clock::duration>(

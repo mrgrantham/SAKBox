@@ -83,3 +83,7 @@ A DS or 3DS app built with devkitPro's Makefiles: add `"//projects/game_bots:sou
 ```sh
 bazel test //projects/game_bots/...
 ```
+
+## Memory
+
+`Budget::frameArenaBytes` runs each simulated game in a frame arena (`ScratchPadd/FrameArena.hpp`, round 90): its copy of the state and its move lists come from one block, given back after each game, and the search tree grows outside it. It takes effect only with ScratchPadd's counting allocator linked (as Cosmic Hex's console apps do); the moves chosen are the same either way. On a 3DS the search's allocations fell from about 59,000 a second to about 40, and a bot plays about 2.4 times as many games in its 0.8 seconds (Azahar). `lastIterations()` and `lastArenaPeak()` say how many games the last move played and the most one held (about 75 KB in Cosmic Hex).

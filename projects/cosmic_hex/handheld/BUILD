@@ -136,3 +136,15 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "TableGameArena_test",
+    size = "medium",
+    srcs = ["tests/TableGameArena_test.cpp"],
+    deps = [
+        ":handheld",
+        "//projects/scratchpadd/basis",
+        "//projects/scratchpadd/memory_stats:counting_allocator",
+        "@gtest//:gtest_main",
+    ],
+)

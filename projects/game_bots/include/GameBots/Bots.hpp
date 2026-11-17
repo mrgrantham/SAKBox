@@ -22,6 +22,7 @@
 #pragma once
 
 #include <GameBots/BotGame.hpp>
+#include <ScratchPadd/FrameArena.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -30,6 +31,7 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -41,6 +43,11 @@ namespace GameBots {
 struct Budget {
   int iterations = 1000;
   std::function<bool()> outOfTime;
+  // Each simulated game's copies and lists from a frame arena of this many
+  // bytes, reset after each game (ScratchPadd/FrameArena.hpp; round 90: the
+  // search was 59,000 allocations a second on a 3DS). It takes effect only
+  // with the counting allocator linked; 0: none
+  std::size_t frameArenaBytes = 0;
 };
 
 template <BotGame G> class RandomBot {
@@ -97,11 +104,26 @@ public:
     // The root: no move led to it, so its action is a placeholder that's
     // never read (only children's actions are)
     std::vector<Node> tree{Node{legal.front(), kDealer, -1, {}, 0, 0, 1}};
-    for (int done = 0; done < budget.iterations; ++done) {
+    std::optional<ScratchPadd::FrameArena> arena;
+    if (budget.frameArenaBytes > 0)
+      arena.emplace(budget.frameArenaBytes);
+    int done = 0;
+    for (; done < budget.iterations; ++done) {
       if (done > 0 && budget.outOfTime && budget.outOfTime())
         break;
-      simulate(tree, G::determinize(state, me, random), random, me);
+      {
+        // (the game's copy of the state, its move lists: one frame's; the
+        // tree's growth is kept out of it, in addChild)
+        std::optional<ScratchPadd::InFrameArena> frame;
+        if (arena)
+          frame.emplace(*arena);
+        simulate(tree, G::determinize(state, me, random), random, me);
+      }
+      if (arena)
+        arena->reset();
     }
+    lastIterations_ = done;
+    lastArenaPeak_ = arena ? arena->peak() : 0;
 
     // The most tried of the root's moves is the best (the most robust
     // choice); the second most tried is the "mistake"
@@ -145,6 +167,7 @@ private:
   }
 
   static int addChild(std::vector<Node> &tree, int node, const Action &action, int mover) {
+    const ScratchPadd::OutOfFrameArena keep; // (the tree outlives each simulated game)
     tree.push_back(Node{action, mover, node, {}, 0, 0, 1});
     const int child = static_cast<int>(tree.size()) - 1;
     tree[static_cast<std::size_t>(node)].children.push_back(child);
@@ -258,6 +281,16 @@ private:
   }
 
   Settings settings_;
+  // The last choose()'s simulated games, and the most its frame arena held
+  // in one (for measuring)
+  mutable int lastIterations_ = 0;
+  mutable std::size_t lastArenaPeak_ = 0;
+
+public:
+  int lastIterations() const { return lastIterations_; }
+  std::size_t lastArenaPeak() const { return lastArenaPeak_; }
+
+private:
 };
 
 // Plays a whole game: each player's turn asks their chooser (any callable

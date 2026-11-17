@@ -41,6 +41,10 @@ struct TableSettings {
   // botIterations, which a fast machine reaches first); 0: by iterations
   // alone (the Mac's tests, which must play the same every run)
   double botSeconds = 0;
+  // Each simulated game in a frame arena of this many bytes (round 90:
+  // GameBots' Budget::frameArenaBytes; with the counting allocator linked,
+  // as on the consoles); 0: none
+  std::size_t frameArenaBytes = 0;
   std::uint64_t seed = 1;
   Board board = boardR3(); // (a choice from boardChoices())
   // The play style (round 85): the round played out once someone reaches
@@ -95,6 +99,13 @@ private:
   ActionLog::Play<Game> play_;
   SeededRandom::Generator dealer_, bots_;
   GameBots::Ismcts<Game> ismcts_;
+
+public:
+  // The last bot move's simulated games, and the most its arena held in one
+  int lastBotIterations() const { return ismcts_.lastIterations(); }
+  std::size_t lastArenaPeak() const { return ismcts_.lastArenaPeak(); }
+
+private:
   std::vector<std::string> history_;
 };
 

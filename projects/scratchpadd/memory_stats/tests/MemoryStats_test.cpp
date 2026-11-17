@@ -2,6 +2,7 @@
 // allocations counted only while something reads, put down to the slot
 // marked on the thread (as Base marks a padd's jobs), each reader its own
 // counts, and the heap's own figures where the platform gives them
+#include <ScratchPadd/FrameArena.hpp>
 #include <ScratchPadd/MemoryStats.hpp>
 
 #include <gtest/gtest.h>
@@ -95,4 +96,39 @@ TEST(MemoryStatsTest, TheHeapsOwnFigures) {
 #else
   (void)heap;
 #endif
+}
+
+// The frame arena (round 90): in a frame, allocations come from the arena
+// (not the heap: not counted), deleting them does nothing, OutOfFrameArena
+// goes to the heap, a full arena falls back to the heap, and reset() gives
+// the whole frame back
+TEST(FrameArenaTest, AFramesAllocationsComeFromTheArena) {
+  ScratchPadd::FrameArena arena(64 * 1024);
+  MS::Reader reader;
+  std::unique_ptr<std::vector<int>> kept;
+  {
+    ScratchPadd::InFrameArena frame(arena);
+    auto inFrame = std::make_unique<std::vector<int>>(100);
+    EXPECT_TRUE(arena.owns(inFrame.get()));
+    EXPECT_TRUE(arena.owns(inFrame->data()));
+    {
+      ScratchPadd::OutOfFrameArena keep;
+      kept = std::make_unique<std::vector<int>>(100);
+    }
+    EXPECT_FALSE(arena.owns(kept.get()));
+    // Too big for what's left: from the heap
+    auto big = std::make_unique<std::vector<char>>(100 * 1024);
+    EXPECT_FALSE(arena.owns(big->data()));
+  } // (the frame's own deleted here: nothing to free)
+  const MS::Snapshot counts = reader.take();
+  EXPECT_LE(counts.all.allocations, 4u); // (the kept two and the big one: not the frame's)
+  EXPECT_GE(arena.allocations(), 2u);
+  EXPECT_GT(arena.peak(), 400u);
+  arena.reset();
+  {
+    ScratchPadd::InFrameArena frame(arena);
+    auto again = std::make_unique<int>(7);
+    EXPECT_TRUE(arena.owns(again.get())); // (the block reused)
+  }
+  kept.reset(); // (heap memory, freed as ever)
 }

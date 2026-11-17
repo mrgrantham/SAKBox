@@ -9,7 +9,10 @@ cc_library(
     srcs = ["src/CountingAllocator.cpp"],
     alwayslink = True,  # (nothing names it: its new and delete replace the library's)
     visibility = ["//visibility:public"],
-    deps = ["//projects/scratchpadd/basis"],
+    deps = [
+        "//projects/scratchpadd/basis",
+        "//projects/scratchpadd/frame_arena",
+    ],
 )
 
 cc_test(
@@ -19,6 +22,7 @@ cc_test(
     deps = [
         ":counting_allocator",
         "//projects/scratchpadd/basis",
+        "//projects/scratchpadd/frame_arena",
         "@gtest//:gtest_main",
     ],
 )

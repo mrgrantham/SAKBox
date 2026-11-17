@@ -41,7 +41,7 @@ SOURCES		:=	cosmic_hex/handheld/source cosmic_hex/handheld/src cosmic_hex/dice/s
 			scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session \
 			scratchpadd/scene/src scratchpadd/scene_3ds/src scratchpadd/overlay_text/src
 DATA		:=	data
-INCLUDES	:=	include cosmic_hex/handheld/include cosmic_hex/dice/include cyclone/include assets scratchpadd/title_scene/include cosmic_hex/rules/include cosmic_hex/art/include scratchpadd/texture_recipe/include action_log/include game_bots/include hex_grid/include seeded_random/include \
+INCLUDES	:=	include cosmic_hex/handheld/include cosmic_hex/dice/include cyclone/include assets scratchpadd/title_scene/include scratchpadd/frame_arena/include cosmic_hex/rules/include cosmic_hex/art/include scratchpadd/texture_recipe/include action_log/include game_bots/include hex_grid/include seeded_random/include \
 			scratchpadd/app_ended/include scratchpadd/handheld_controls/include scratchpadd/basis/include scratchpadd/messages/include scratchpadd/utilities/include \
 			scratchpadd/input/include scratchpadd/debug_log/include scratchpadd/storage/include scratchpadd/network/include \
 			scratchpadd/scene/include scratchpadd/scene_3ds/include scratchpadd/overlay_text/include \

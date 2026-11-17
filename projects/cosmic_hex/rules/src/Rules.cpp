@@ -2708,4 +2708,12 @@ std::optional<Action> Game::readAction(std::string_view text) {
   return std::nullopt;
 }
 
+namespace {
+// The rules' tables made when the program starts, not the first time a
+// rule asks: a bot's search runs each simulated game in a frame arena
+// (ScratchPadd/FrameArena.hpp), and a table first made in one would point at
+// memory reused by the next game
+const bool kTablesMade = (static_cast<void>(boardCorners()), static_cast<void>(contracts()), true);
+} // namespace
+
 } // namespace CosmicHex

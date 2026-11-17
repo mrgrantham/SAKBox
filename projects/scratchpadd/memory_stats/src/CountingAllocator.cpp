@@ -1,9 +1,11 @@
 // CountingAllocator.cpp - the global new and delete, replaced so that
-// MemoryStats (ScratchPadd/MemoryStats.hpp) can count allocations: each
-// goes to malloc as before, and its size (as the allocator gave it) is
-// counted while anything reads the counts. An app gets this by linking the
-// library //projects/scratchpadd/memory_stats:counting_allocator (or, on a
-// console, by building this file); without it nothing is counted.
+// MemoryStats (ScratchPadd/MemoryStats.hpp) can count allocations, and so a
+// thread can allocate from a frame arena (ScratchPadd/FrameArena.hpp) while
+// it has one in use: otherwise each goes to malloc as before, and its size (as the allocator gave
+// it) is counted while anything reads the counts. An app gets this by linking the library
+// //projects/scratchpadd/memory_stats:counting_allocator (or, on a console, by building this file);
+// without it nothing is counted.
+#include <ScratchPadd/FrameArena.hpp>
 #include <ScratchPadd/MemoryStats.hpp>
 
 #include <cstdlib>
@@ -38,6 +40,9 @@ const bool kLinked = [] {
 }();
 
 void *allocate(std::size_t bytes) {
+  // (a frame arena in use on this thread: from it, if it has room)
+  if (void *p = ScratchPadd::frameAllocate(bytes == 0 ? 1 : bytes))
+    return p;
   void *p = std::malloc(bytes == 0 ? 1 : bytes);
   if (!p)
     throw std::bad_alloc();
@@ -47,6 +52,8 @@ void *allocate(std::size_t bytes) {
 }
 
 void *allocateNoThrow(std::size_t bytes) noexcept {
+  if (void *p = ScratchPadd::frameAllocate(bytes == 0 ? 1 : bytes))
+    return p;
   void *p = std::malloc(bytes == 0 ? 1 : bytes);
   if (p && MS::counting())
     MS::allocated(sizeOf(p));
@@ -54,7 +61,7 @@ void *allocateNoThrow(std::size_t bytes) noexcept {
 }
 
 void release(void *p) noexcept {
-  if (!p)
+  if (!p || ScratchPadd::frameOwns(p)) // (arena memory: given back at its reset)
     return;
   if (MS::counting())
     MS::freed(sizeOf(p));

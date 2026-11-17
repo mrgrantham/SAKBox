@@ -8,6 +8,7 @@ SOURCES = {
     "//projects/cosmic_hex/models:rocket_3ds_sources": "assets",
     "//projects/scratchpadd/title_scene:sources": "scratchpadd/title_scene",
     "//projects/scratchpadd/memory_stats:sources": "scratchpadd/memory_stats",
+    "//projects/scratchpadd/frame_arena:sources": "scratchpadd/frame_arena",
     "//projects/cyclone:sources": "cyclone",
     "//projects/cosmic_hex/art:sources": "cosmic_hex/art",
     "//projects/scratchpadd/texture_recipe:sources": "scratchpadd/texture_recipe",

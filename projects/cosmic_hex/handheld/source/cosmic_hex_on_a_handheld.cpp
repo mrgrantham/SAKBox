@@ -89,6 +89,9 @@ constexpr bool kWatchAtStart = false;
 // (false). Which one a player sees, and how it's chosen, is an open
 // question on the roadmap page (round 87); the scene for now
 constexpr bool kTitleScene = true;
+
+// The bots' frame arena (round 90), and none if 0
+constexpr std::size_t kFrameArenaBytes = 128 * 1024;
 #if defined(__NDS__)
 constexpr int kTopWidth = 256, kTopHeight = 192, kBottomWidth = 256, kBottomHeight = 192;
 constexpr std::size_t kCharsPerLine = 31;
@@ -132,6 +135,7 @@ struct TableSnapshot {
   // this seed (a new one each roll) and sends back what they show
   bool waitingForDice = false;
   std::uint64_t diceSeed = 0;
+  int botGames = 0; // (the last bot move's simulated games, for measuring)
 };
 
 // ScreenPadd to TablePadd: start a game (you against three bots, or four
@@ -172,6 +176,9 @@ public:
       settings.finishRound = start.finishRound;
       settings.seatBonus = start.seatBonus;
       settings.physicsDice = true; // (thrown on the top screen; round 87)
+      // Each simulated game in a frame arena (round 90: the search made
+      // 59,000 allocations a second; one game holds up to about 75 KB)
+      settings.frameArenaBytes = kFrameArenaBytes;
       seed_ = settings.seed;
       paused_ = false;
       game_.emplace(settings);
@@ -234,7 +241,8 @@ private:
                            .lastMoves = std::vector<std::string>(
                                history.end() - static_cast<long>(shown), history.end()),
                            .lastThinkSeconds = lastThinkSeconds_,
-                           .paused = paused_};
+                           .paused = paused_,
+                           .botGames = game_->lastBotIterations()};
     if (game_->waitingForDice()) {
       snapshot.waitingForDice = true;
       // (the game's seed and how far it's got: the same game throws the same)
@@ -706,6 +714,11 @@ private:
     // (the -watch builds: memory, measured, above the last move)
     if (kWatchAtStart && !memoryLine_.empty())
       overlay.text(4, kTopHeight - 26, memoryLine_.substr(0, kCharsPerLine), {120, 220, 160});
+    if (kWatchAtStart && latest_->botGames > 0) {
+      char games[32];
+      std::snprintf(games, sizeof games, "bot: %d games a move", latest_->botGames);
+      overlay.text(4, kTopHeight - 50, games, {120, 220, 160});
+    }
     if (kWatchAtStart && !memoryBusiest_.empty())
       overlay.text(4, kTopHeight - 38, memoryBusiest_.substr(0, kCharsPerLine), {120, 220, 160});
     if (!latest_->lastMoves.empty())

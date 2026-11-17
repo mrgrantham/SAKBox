@@ -13,6 +13,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//projects/action_log",
+        "//projects/scratchpadd/frame_arena",
         "//projects/seeded_random",
     ],
 )
