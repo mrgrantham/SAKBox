@@ -524,6 +524,16 @@ bool removeOne(std::vector<int> &from, int value) {
 
 // How many resources a player takes from their home at the start of their
 // turn: 1, and 1 more if they're behind (Settings::catchUpBelow, catchUpGap)
+int homeIncomeFor(const State &state, int player);
+
+// The home's income starts (or goes on): rolled on the home die, or chosen;
+// none left, the roll
+void nextHomeIncome(State &state) {
+  state.phase = state.homeIncomeLeft <= 0 ? Phase::RollDraw
+                : state.settings.homeDie  ? Phase::HomeDieDraw
+                                          : Phase::HomeIncome;
+}
+
 int homeIncomeFor(const State &state, int player) {
   const Settings &settings = state.settings;
   // An exhausted home gives nothing of its own (it pays by the dice)
@@ -712,7 +722,7 @@ void endTurn(State &state) {
   for (Ship &ship : state.ships)
     ship.moved = false;
   state.homeIncomeLeft = homeIncomeFor(state, state.turn);
-  state.phase = state.homeIncomeLeft > 0 ? Phase::HomeIncome : Phase::RollDraw;
+  nextHomeIncome(state);
 }
 
 // ---- Text helpers
@@ -801,8 +811,9 @@ std::string settingsText(const Settings &s) {
       << s.catchUpGap << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0)
       << " discardover=" << s.discardOver << " charters=" << joined(s.charters)
       << " enforcers=" << s.enforcers << "," << s.embargoEnforcers << "," << s.embargoPoints
-      << " cartels=" << s.cartels << "," << s.cartelTake << " shipyards=" << s.shipyards
-      << " supply=" << s.supplyDrops << " moons=" << s.moons << " planets=";
+      << " cartels=" << s.cartels << "," << s.cartelTake << " homedie=" << (s.homeDie ? 1 : 0)
+      << " shipyards=" << s.shipyards << " supply=" << s.supplyDrops << " moons=" << s.moons
+      << " planets=";
   std::vector<int> planetList;
   for (Hex hex : s.planetHexes) {
     planetList.push_back(hex.q);
@@ -862,6 +873,10 @@ std::optional<Settings> readSettings(std::string_view line) {
     if (values && key == "cartels" && values->size() == 2) {
       s.cartels = (*values)[0];
       s.cartelTake = (*values)[1];
+      continue;
+    }
+    if (values && key == "homedie" && values->size() == 1) {
+      s.homeDie = (*values)[0] != 0;
       continue;
     }
     if (values && key == "shipyards" && values->size() == 1) {
@@ -1083,8 +1098,7 @@ State newGame(int players, const Settings &settings, int first) {
         settings.extraNumbers[static_cast<std::size_t>(extra) % settings.extraNumbers.size()]);
   }
   state.homeIncomeLeft = settings.firstSkipsIncome ? 0 : homeIncomeFor(state, first);
-  if (state.homeIncomeLeft == 0)
-    state.phase = Phase::RollDraw;
+  nextHomeIncome(state);
   state.findsLeft = settings.finds;
   // A find for every site in the zone: a layout that leaves more of the
   // usual places empty than there are finds gets "nothing" tiles for the
@@ -1323,6 +1337,7 @@ int Game::currentPlayer(const State &state) {
   case Phase::ZoneDraw:
   case Phase::ContractDraw:
   case Phase::HomeNumberDraw:
+  case Phase::HomeDieDraw:
     return GameBots::kDealer;
   case Phase::TradeReply:
     return state.offer.replier;
@@ -1344,7 +1359,7 @@ void nextSetupStep(State &state) {
   }
   state.turn = state.first;
   state.homeIncomeLeft = state.settings.firstSkipsIncome ? 0 : homeIncomeFor(state, state.first);
-  state.phase = state.homeIncomeLeft == 0 ? Phase::RollDraw : Phase::HomeIncome;
+  nextHomeIncome(state);
 }
 
 // The corners a player may put their home colony on: corners of their home
@@ -1710,11 +1725,22 @@ bool Game::apply(State &state, const Action &action) {
   Player &me = current(state);
   bool done = false;
   switch (state.phase) {
+  case Phase::HomeDieDraw:
   case Phase::HomeIncome:
-    if (action.kind == Kind::ChooseHome && action.a >= 0 && action.a < kResources) {
+    // The home's resource: chosen, or rolled on the home die (where its
+    // sixth face, "your choice", hands the choice to the player)
+    if (state.phase == Phase::HomeDieDraw && action.kind == Kind::RollHomeDie &&
+        action.a == kResources) {
+      state.phase = Phase::HomeIncome;
+      done = true;
+      break;
+    }
+    if ((state.phase == Phase::HomeIncome ? action.kind == Kind::ChooseHome
+                                          : action.kind == Kind::RollHomeDie) &&
+        action.a >= 0 && action.a < kResources) {
       ++me.resources[static_cast<std::size_t>(action.a)];
       --state.homeIncomeLeft;
-      state.phase = state.homeIncomeLeft > 0 ? Phase::HomeIncome : Phase::RollDraw;
+      nextHomeIncome(state);
       // The exhausted home: at exhaustHomesAt points, this was its last
       // resource; it becomes a planet of that kind, its number drawn next
       const auto home = std::find_if(state.planets.begin(), state.planets.end(),
@@ -1953,7 +1979,7 @@ bool Game::apply(State &state, const Action &action) {
     state.placingShip = false;
     nextSetupStep(state);
   }
-  if (done && state.phase != Phase::HomeIncome &&
+  if (done && state.phase != Phase::HomeIncome && state.phase != Phase::HomeDieDraw &&
       points(state, state.turn) >= state.settings.winPoints) {
     state.winner = state.turn;
     state.phase = Phase::Over;
@@ -2144,6 +2170,8 @@ Action Game::dealerAction(const State &state, SeededRandom::Generator &random) {
   }
   case Phase::ZoneDraw:
     return {Kind::RevealFind, weighted(state.findsLeft)};
+  case Phase::HomeDieDraw:
+    return {Kind::RollHomeDie, static_cast<int>(random.below(kResources + 1))};
   case Phase::HomeNumberDraw: {
     const std::vector<int> &numbers = state.settings.exhaustedNumbers;
     const int number = numbers[random.below(static_cast<std::uint32_t>(numbers.size()))];
@@ -2317,6 +2345,8 @@ std::string Game::writeAction(const Action &action) {
     return "enforcer";
   case Kind::PlayShipyard:
     return "shipyard " + n(action.a);
+  case Kind::RollHomeDie:
+    return "home_die " + n(action.a);
   case Kind::PlaySupplyDrop:
     return "supply " + res(action.a) + " " + res(action.b);
   case Kind::PlayCartel:
@@ -2392,6 +2422,8 @@ std::optional<Action> Game::readAction(std::string_view text) {
       return make(Kind::BuildShip, *v);
     if (verb == "shipyard")
       return make(Kind::PlayShipyard, *v);
+    if (verb == "home_die")
+      return make(Kind::RollHomeDie, *v);
     if (verb == "place_colony")
       return make(Kind::PlaceColony, *v);
     if (verb == "place_ship")

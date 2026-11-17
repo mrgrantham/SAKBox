@@ -122,6 +122,7 @@ Settings settingsFor(const Options &options) {
   settings.exhaustHomesAt = options.exhaustHomesAt;
   settings.cartelTake = options.cartelTake;
   settings.playerTrading = options.trading;
+  settings.homeDie = options.homeDie;
   settings.exhaustedKindRandom = options.exhaustedKindRandom;
   return settings;
 }

@@ -124,6 +124,8 @@ Options parse(int argc, char **argv) {
       options.kindWeights = five(flag, value);
     else if (flag == "--exhaust")
       options.exhaustHomesAt = number<int>(flag, value);
+    else if (flag == "--home-die")
+      options.homeDie = std::string_view(value) == "yes";
     else if (flag == "--trading")
       options.trading = std::string_view(value) != "no";
     else if (flag == "--cartel")

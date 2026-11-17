@@ -164,6 +164,9 @@ inline std::string describe(const State &before, const Action &action) {
   }
   case Kind::PlayEnforcer:
     return who + " plays an Enforcer.";
+  case Kind::RollHomeDie:
+    return action.a < kResources ? "The home die gives " + resource(action.a) + "."
+                                 : "The home die: the player's choice.";
   case Kind::PlayShipyard:
     return who + " plays Shipyard Surplus: two ships for one.";
   case Kind::PlaySupplyDrop:

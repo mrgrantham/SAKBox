@@ -432,6 +432,7 @@ void LabWindowPadd::drawSettings() {
   ImGui::Checkbox("Exhausted home's kind random", &options_.exhaustedKindRandom);
   ImGui::InputInt("Cartel takes (0: all)", &options_.cartelTake);
   ImGui::Checkbox("Trading between players", &options_.trading);
+  ImGui::Checkbox("Home income on the home die", &options_.homeDie);
   // Round 61: free stations, and the ship costing a food more with them
   bool freeStations = options_.stationCost.has_value();
   if (ImGui::Checkbox("Free stations", &freeStations))

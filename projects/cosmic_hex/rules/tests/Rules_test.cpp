@@ -942,3 +942,29 @@ TEST(RulesTest, ASupplyDrop) {
   EXPECT_EQ(Game::readAction(Game::writeAction({Kind::PlaySupplyDrop, 1, 4})),
             (Action{Kind::PlaySupplyDrop, 1, 4}));
 }
+
+// The home die (round 66, the hybrid): each of the home's resources is
+// rolled, faces 0 to 4 a resource, the sixth the player's choice; then the
+// roll as usual
+TEST(RulesTest, TheHomeDie) {
+  Settings settings;
+  settings.homeDie = true;
+  settings.catchUpBelow = 5; // (2 a turn while behind)
+  State state = newGame(3, settings);
+  ASSERT_EQ(state.homeIncomeLeft, 2);
+  ASSERT_EQ(state.phase, Phase::HomeDieDraw);
+  EXPECT_EQ(Game::currentPlayer(state), GameBots::kDealer);
+  EXPECT_FALSE(Game::apply(state, {Kind::ChooseHome, 0})); // (rolled, not chosen)
+  const Resources before = state.player[0].resources;
+  ASSERT_TRUE(Game::apply(state, {Kind::RollHomeDie, 2}));
+  EXPECT_EQ(state.player[0].resources[2], before[2] + 1);
+  ASSERT_EQ(state.phase, Phase::HomeDieDraw);
+  ASSERT_TRUE(Game::apply(state, {Kind::RollHomeDie, kResources})); // "your choice"
+  ASSERT_EQ(state.phase, Phase::HomeIncome);
+  EXPECT_FALSE(Game::apply(state, {Kind::RollHomeDie, 1}));
+  ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 4}));
+  EXPECT_EQ(state.player[0].resources[4], before[4] + 1);
+  EXPECT_EQ(state.phase, Phase::RollDraw);
+  EXPECT_EQ(Game::readAction(Game::writeAction({Kind::RollHomeDie, 5})),
+            (Action{Kind::RollHomeDie, 5}));
+}

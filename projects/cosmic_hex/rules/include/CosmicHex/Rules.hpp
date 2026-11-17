@@ -178,6 +178,11 @@ struct Settings {
   // colony (room for both under the ship limit, or keep the card). "Under
   // budget, ahead of schedule."
   int shipyards = 2;
+  // The home die (round 66, the hybrid): each resource from the home is
+  // rolled on a six-sided die, one face for each resource and the sixth
+  // "your choice", rather than chosen (and the exhausted home, if on, flips
+  // as before). Off: chosen, as before
+  bool homeDie = false;
   // Supply drop (round 65, as the genre's year of plenty): any 2 resources
   // from the bank
   int supplyDrops = 2;
@@ -282,6 +287,7 @@ struct Player {
 // Where in a turn the game is. Phases ending in "Draw" are the dealer's.
 enum class Phase : std::uint8_t {
   HomeIncome,   // the player picks their home's resource
+  HomeDieDraw,  // (Settings::homeDie) the dealer rolls the home die
   RollDraw,     // the dealer rolls
   Blockade,     // a 7: the player moves the blockade ship
   StealDraw,    // the dealer picks which resource is taken
@@ -369,6 +375,7 @@ State newGame(int players, const Settings &settings = {}, int first = 0);
 struct Action {
   enum class Kind : std::uint8_t {
     ChooseHome,   // a: the resource
+    RollHomeDie,  // (the dealer) a: the face, 0 to 4 a resource, 5 the player's choice
     Roll,         // dealer: a, b: the dice
     MoveBlockade, // a: the planet (-1 if none is flipped), b: who to steal from (-1: nobody)
     Steal,        // dealer: a: the resource taken
