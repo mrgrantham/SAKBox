@@ -48,6 +48,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <optional>
@@ -83,6 +84,8 @@ bool mainLoop() { return aptMainLoop(); }
 constexpr int kFaceSize = 64;
 #endif
 namespace Input = ScratchPadd::Input;
+using CosmicHex::boardChoices;
+using CosmicHex::NamedBoard;
 using CosmicHex::State;
 using namespace CosmicHex::Handheld;
 using Clock = std::chrono::steady_clock;
@@ -106,9 +109,12 @@ struct TableSnapshot {
 };
 
 // ScreenPadd to TablePadd: start a game (you against three bots, or four
-// bots to watch); pause or go on (watching); the move you chose
+// bots to watch, on a board from boardChoices() and a play style); pause or
+// go on (watching); the move you chose
 struct StartGame {
   bool withPerson = false;
+  std::size_t board = 0;   // (in boardChoices(): R3 first)
+  bool finishRound = true; // (the round played out, or the first to the target wins)
 };
 struct TogglePause {};
 struct PlayMove {
@@ -124,6 +130,9 @@ public:
           .botIterations = kBotIterations, .botSeconds = 0.8, .seed = startingSeed()};
       if (start.withPerson)
         settings.seats[0] = Seat::Person; // (you're player 1)
+      const std::vector<NamedBoard> boards = boardChoices();
+      settings.board = boards[std::min(start.board, boards.size() - 1)].board;
+      settings.finishRound = start.finishRound;
       game_.emplace(settings);
       sendSnapshot();
     });
@@ -371,9 +380,21 @@ private:
     Scene::Overlay &overlay = renderer_->overlay();
     if (mode_ == Mode::Choosing) {
       const float left = kTopWidth / 2.0f - 100;
-      overlay.text(left + 30, kTopHeight / 2.0f - 30, "Cosmic Hex", {226, 232, 244}, 2);
-      overlay.text(left, kTopHeight / 2.0f + 10, "A: play against three bots", {255, 214, 90});
-      overlay.text(left, kTopHeight / 2.0f + 22, "B: watch four bots play", {200, 208, 222});
+      const float top = kTopHeight / 2.0f - 40;
+      overlay.text(left + 30, top, "Cosmic Hex", {226, 232, 244}, 2);
+      // The two settings, the chosen row marked; left and right change it
+      const std::array<std::string, 2> rows{
+          "Board: < " + boardNames_[boardChoice_] + (boardChoice_ == 0 ? " (default)" : "") + " >",
+          std::string("End: < ") + (finishRound_ ? "finish the round" : "first to the target") +
+              " >"};
+      for (std::size_t row = 0; row < rows.size(); ++row) {
+        const bool chosen = row == menuRow_;
+        overlay.text(left, top + 34 + 12 * static_cast<float>(row),
+                     (chosen ? "> " : "  ") + rows[row],
+                     chosen ? Scene::Colour{255, 214, 90} : Scene::Colour{200, 208, 222});
+      }
+      overlay.text(left, top + 66, "A: play against three bots", {255, 214, 90});
+      overlay.text(left, top + 78, "B: watch four bots play", {200, 208, 222});
       return;
     }
     if (!latest_)
@@ -408,10 +429,20 @@ private:
   void handleButtons(const Input::Edges &pressed) {
     using Input::Button;
     if (mode_ == Mode::Choosing) {
+      // Up and down: the board or the play style; left and right: change it
+      if (pressed.pressed(Button::Up) || pressed.pressed(Button::Down))
+        menuRow_ = 1 - menuRow_;
+      const int step = pressed.pressed(Button::Right) ? 1 : pressed.pressed(Button::Left) ? -1 : 0;
+      if (step != 0 && menuRow_ == 0) {
+        const std::size_t count = boardNames_.size();
+        boardChoice_ = step > 0 ? (boardChoice_ + 1) % count : (boardChoice_ + count - 1) % count;
+      } else if (step != 0) {
+        finishRound_ = !finishRound_;
+      }
       if (pressed.pressed(Button::FaceRight) || pressed.pressed(Button::FaceBottom)) {
         const bool play = pressed.pressed(Button::FaceRight);
         mode_ = play ? Mode::Playing : Mode::Watching;
-        send(StartGame{.withPerson = play});
+        send(StartGame{.withPerson = play, .board = boardChoice_, .finishRound = finishRound_});
       }
       return;
     }
@@ -572,6 +603,16 @@ private:
   // Before a game, watching one, or playing in one; the list's cursor
   enum class Mode : std::uint8_t { Choosing, Watching, Playing };
   Mode mode_ = Mode::Choosing;
+  // Before a game: the board and play style chosen, and which row is
+  std::vector<std::string> boardNames_ = [] {
+    std::vector<std::string> names;
+    for (const NamedBoard &board : boardChoices())
+      names.push_back(board.name);
+    return names;
+  }();
+  std::size_t boardChoice_ = 0;
+  bool finishRound_ = true;
+  std::size_t menuRow_ = 0;
   std::size_t cursor_ = 0;
 };
 

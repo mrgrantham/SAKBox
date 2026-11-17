@@ -19,9 +19,15 @@ bool trading(const State &state) {
 
 } // namespace
 
+Settings rulesFor(const TableSettings &settings) {
+  Settings rules = agreedRules(settings.board, settings.players);
+  rules.finishRound = settings.finishRound;
+  return rules;
+}
+
 TableGame::TableGame(const TableSettings &settings)
     : settings_(settings),
-      play_(newGame(settings.players, agreedRules(settings.board),
+      play_(newGame(settings.players, rulesFor(settings),
                     static_cast<int>(SeededRandom::Seed::mixedFrom(settings.seed)
                                          .stream("first")
                                          .below(static_cast<std::uint32_t>(settings.players))))),

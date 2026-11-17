@@ -42,8 +42,14 @@ struct TableSettings {
   // alone (the Mac's tests, which must play the same every run)
   double botSeconds = 0;
   std::uint64_t seed = 1;
-  Board board = boardR3();
+  Board board = boardR3(); // (a choice from boardChoices())
+  // The play style (round 85): the round played out once someone reaches
+  // the target (the agreed rule), or the first to reach it wins at once
+  bool finishRound = true;
 };
+
+// The agreed rules for a table: its board, players and play style
+Settings rulesFor(const TableSettings &settings);
 
 class TableGame {
 public:

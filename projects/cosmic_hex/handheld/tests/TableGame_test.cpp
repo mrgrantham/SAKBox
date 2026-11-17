@@ -89,3 +89,24 @@ TEST(TableGameTest, APersonCanOfferTrades) {
   }
   ADD_FAILURE() << "never had anything to offer";
 }
+
+// A table's rules (round 85): the agreed rules on its board, with its play
+// style; every board on offer plays a game through
+TEST(TableGameTest, EveryBoardAndPlayStylePlays) {
+  for (const NamedBoard &choice : boardChoices()) {
+    for (bool finishRound : {true, false}) {
+      TableSettings settings{
+          .botIterations = 5, .seed = 9, .board = choice.board, .finishRound = finishRound};
+      EXPECT_EQ(rulesFor(settings).finishRound, finishRound);
+      TableGame game(settings);
+      EXPECT_EQ(game.state().settings.homeHexes, choice.board.homes) << choice.name;
+      for (int moves = 0; moves < 20000 && !game.over(); ++moves) {
+        if (!game.step()) {
+          ADD_FAILURE() << choice.name << ": stuck";
+          break;
+        }
+      }
+      EXPECT_TRUE(game.over()) << choice.name;
+    }
+  }
+}
