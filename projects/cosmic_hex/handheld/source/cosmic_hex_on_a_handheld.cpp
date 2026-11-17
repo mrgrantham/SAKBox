@@ -129,6 +129,15 @@ public:
         motion_ = BoardMotion(latest_->state, snapshot.state);
       motionStarted_ = Clock::now();
       latest_ = snapshot;
+      // The gaps between the tiles, once: the board's tiles don't move
+      if (!gaps_ && renderer_) {
+        std::vector<CosmicHex::Hex> tiles;
+        for (const CosmicHex::Planet &planet : snapshot.state.planets)
+          tiles.push_back(planet.hex);
+        for (const CosmicHex::ZoneSite &site : snapshot.state.zone)
+          tiles.push_back(site.hex);
+        gaps_ = renderer_->load(BoardPieces::gapsUnder(tiles).data());
+      }
       drawText();
     });
   }
@@ -195,6 +204,11 @@ private:
     renderer_->beginFrame(camera, kEnvironment);
     renderer_->draw(stars_, Scene::Transform::identity(),
                     {.shading = Scene::Material::Shading::Unlit});
+    // A very light, see-through grey in the gaps between the tiles
+    if (gaps_)
+      renderer_->draw(
+          gaps_, Scene::Transform::identity(),
+          {.shading = Scene::Material::Shading::Unlit, .colour = {205, 212, 225}, .alpha = 9});
     if (latest_) {
       const State &state = latest_->state;
       // How far through the latest move's animation (0 to 1)
@@ -292,7 +306,7 @@ private:
     }
   }
 
-  Scene::Mesh hexTile_, station_, colony_, ship_, stars_;
+  Scene::Mesh hexTile_, station_, colony_, ship_, stars_, gaps_;
   std::array<Scene::Texture, CosmicHex::Art::kFaces> faces_{};
   std::optional<TableSnapshot> latest_;
   BoardMotion motion_;

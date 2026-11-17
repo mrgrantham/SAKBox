@@ -139,6 +139,18 @@ Scene::Vector3 BoardPieces::at(Corner corner) { return onTable(kLayout.point(cor
 
 Scene::Transform BoardPieces::onHex(Hex hex) { return Scene::Transform::translation(centre(hex)); }
 
+Scene::MeshBuilder BoardPieces::gapsUnder(const std::vector<Hex> &tiles) {
+  Scene::MeshBuilder gaps;
+  for (Hex hex : tiles) {
+    const auto corners = kLayout.corners(hex);
+    const Scene::Vector3 middle = onTable(kLayout.centre(hex), -0.01f);
+    for (int i = 0; i < 6; ++i)
+      gaps.triangle(middle, onTable(corners[static_cast<std::size_t>((i + 1) % 6)], -0.01f),
+                    onTable(corners[static_cast<std::size_t>(i)], -0.01f));
+  }
+  return gaps;
+}
+
 Scene::Transform BoardPieces::onCorner(Corner corner) {
   return Scene::Transform::translation(at(corner));
 }

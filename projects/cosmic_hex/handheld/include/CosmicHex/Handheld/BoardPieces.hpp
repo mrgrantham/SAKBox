@@ -57,6 +57,11 @@ struct BoardPieces {
   static Scene::Vector3 at(Corner corner);
   static Scene::Transform onHex(Hex hex);
   static Scene::Transform onCorner(Corner corner);
+
+  // The gaps between the tiles (round 79, the user's): a full-size hexagon
+  // under each tile, a hair below it, so the 6% each tile is inset shows as
+  // a thin line; one mesh for the board, drawn light grey and translucent
+  static Scene::MeshBuilder gapsUnder(const std::vector<Hex> &tiles);
 };
 
 } // namespace CosmicHex::Handheld
