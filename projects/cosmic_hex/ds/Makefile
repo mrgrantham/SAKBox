@@ -21,11 +21,11 @@ GAME_SUBTITLE2	:=	SAKBox
 BUILD		:=	build
 # The sources are staged from their own packages by the Bazel rule
 # (extra_srcs in BUILD), as the 3DS's (../3ds) with the DS's scene backend
-SOURCES		:=	cosmic_hex/handheld/source cosmic_hex/handheld/src cosmic_hex/rules/src cosmic_hex/art/src cosmic_hex/art scratchpadd/texture_recipe/src \
+SOURCES		:=	cosmic_hex/handheld/source cosmic_hex/handheld/src cosmic_hex/dice/src cyclone/src cosmic_hex/rules/src cosmic_hex/art/src cosmic_hex/art scratchpadd/texture_recipe/src \
 			scratchpadd/handheld_controls/src scratchpadd/utilities/src scratchpadd/storage/src scratchpadd_ds/platform/src \
 			scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session \
 			scratchpadd/scene/src scratchpadd/scene_ds/src
-INCLUDES	:=	include build cosmic_hex/handheld/include cosmic_hex/rules/include cosmic_hex/art/include scratchpadd/texture_recipe/include \
+INCLUDES	:=	include build cosmic_hex/handheld/include cosmic_hex/dice/include cyclone/include cosmic_hex/rules/include cosmic_hex/art/include scratchpadd/texture_recipe/include \
 			action_log/include game_bots/include hex_grid/include seeded_random/include flexmath/include \
 			scratchpadd/app_ended/include scratchpadd/handheld_controls/include scratchpadd/basis/include scratchpadd/messages/include scratchpadd/utilities/include \
 			scratchpadd/input/include scratchpadd/debug_log/include scratchpadd/storage/include \
@@ -43,16 +43,17 @@ ARCH	:=	-march=armv5te -mtune=arm946e-s -marm
 CFLAGS	:=	-g -Wall -O2 -ffunction-sections -fdata-sections\
 			$(ARCH)
 
-# Cyclone in Q16.16 fixed point (flexmath's FlexPoint16, see precision.h):
-# the DS has no floating-point hardware, so float was all done in software;
-# fixed point is integer arithmetic, with the DS's hardware divider and
-# square root
 CFLAGS	+=	$(INCLUDE) -DARM9
 # A debug build (bazel build -c dbg): see //projects/scratchpadd/debug_log
 CFLAGS	+=	$(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)
 # The build's defines (//tools/devkitpro: the app's name and title, and a
 # target's `defines`)
 CFLAGS	+=	$(SAKBOX_DEFINES)
+# Cyclone (the physics dice) in Q16.16 fixed point (flexmath's FlexPoint16,
+# see precision.h), as the DS ragdoll: the DS has no floating-point
+# hardware, so float was all done in software; fixed point is integer
+# arithmetic, with the DS's hardware divider and square root
+CFLAGS	+=	-DCYCLONE_FLEX_POINT16
 
 # ScratchPadd needs RTTI (each message's type) and exceptions (a control of
 # the wrong type), so unlike devkitPro's template this keeps both

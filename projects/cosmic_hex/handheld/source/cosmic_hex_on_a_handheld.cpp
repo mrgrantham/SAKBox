@@ -30,9 +30,11 @@
 
 #include <CosmicHex/Art.hpp>
 #include <CosmicHex/Describe.hpp>
+#include <CosmicHex/Dice/DiceTray.hpp>
 #include <CosmicHex/Handheld/BoardMotion.hpp>
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
@@ -87,6 +89,7 @@ constexpr int kFaceSize = 64;
 #endif
 namespace Input = ScratchPadd::Input;
 using CosmicHex::State;
+namespace Dice = CosmicHex::Dice;
 using namespace CosmicHex::Handheld;
 using Clock = std::chrono::steady_clock;
 
@@ -106,6 +109,10 @@ struct TableSnapshot {
   bool yourMove = false;
   std::vector<CosmicHex::Action> moves;
   std::vector<std::string> moveText;
+  // The game waits for the dice (round 87): the screen throws them with
+  // this seed (a new one each roll) and sends back what they show
+  bool waitingForDice = false;
+  std::uint64_t diceSeed = 0;
 };
 
 // ScreenPadd to TablePadd: start a game (you against three bots, or four
@@ -118,6 +125,9 @@ struct StartGame {
   bool finishRound = true; // (the round played out, or the first to the target wins)
 };
 struct TogglePause {};
+struct DiceRolled {
+  int first, second; // (the faces the dice settled on)
+};
 struct PlayMove {
   CosmicHex::Action move;
 };
@@ -134,12 +144,18 @@ public:
       settings.players = start.players;
       settings.board = start.board;
       settings.finishRound = start.finishRound;
+      settings.physicsDice = true; // (thrown on the top screen; round 87)
+      seed_ = settings.seed;
       game_.emplace(settings);
       sendSnapshot();
     });
     receive<TogglePause>([this](const TogglePause &) {
       paused_ = !paused_;
       sendSnapshot();
+    });
+    receive<DiceRolled>([this](const DiceRolled &dice) {
+      if (game_ && game_->rollDice(dice.first, dice.second))
+        sendSnapshot();
     });
     receive<PlayMove>([this](const PlayMove &chosen) {
       if (game_ && game_->play(chosen.move))
@@ -181,6 +197,11 @@ private:
                                history.end() - static_cast<long>(shown), history.end()),
                            .lastThinkSeconds = lastThinkSeconds_,
                            .paused = paused_};
+    if (game_->waitingForDice()) {
+      snapshot.waitingForDice = true;
+      // (the game's seed and how far it's got: the same game throws the same)
+      snapshot.diceSeed = seed_ * 1000003u + history.size();
+    }
     if (game_->waitingForPerson()) {
       snapshot.yourMove = true;
       snapshot.moves = game_->personMoves();
@@ -191,6 +212,7 @@ private:
   }
 
   std::optional<TableGame> game_;
+  std::uint64_t seed_ = 0;
   bool paused_ = false;
   double lastThinkSeconds_ = 0;
 };
@@ -243,6 +265,7 @@ public:
     ship_ = renderer_->load(pieces.ship.data());
     stars_ = renderer_->load(pieces.stars.data());
     highlight_ = renderer_->load(pieces.highlight.data());
+    die_ = renderer_->load(DicePieces().die.data());
     loadFaces();
     // The build that watches by itself (COSMIC_HEX_WATCH_AT_START: the
     // -watch apps), for unattended runs in an emulator or on a console
@@ -279,6 +302,7 @@ private:
     handleTouch(pad.touch);
     if (bottomDirty_)
       drawBottom();
+    throwDice();
     // L and R turn the board while held
     if (pad.isHeld(Input::Button::L))
       turn_ -= 0.02f;
@@ -286,6 +310,53 @@ private:
       turn_ += 0.02f;
     drawBoard();
     push([this] { frame(); });
+  }
+
+  // The dice (round 87): when the game waits for them, they're thrown into
+  // the glass container (DiceTray), stepped once a frame until they settle,
+  // shown for a moment, their faces sent to the table, and the container
+  // pulled off the screen
+  void throwDice() {
+    if (dice_ == DiceStage::Idle && latest_ && latest_->waitingForDice &&
+        latest_->diceSeed != thrownSeed_) {
+      tray_.throwDice(latest_->diceSeed);
+      thrownSeed_ = latest_->diceSeed;
+      dice_ = DiceStage::Rolling;
+    }
+    if (dice_ == DiceStage::Idle)
+      return;
+    tray_.step(1.0 / 60);
+    if (dice_ == DiceStage::Rolling && tray_.settled()) {
+      dice_ = DiceStage::Showing;
+      shownFrames_ = 0;
+    } else if (dice_ == DiceStage::Showing && ++shownFrames_ >= kFramesShowingDice) {
+      const auto [first, second] = tray_.faces();
+      send(DiceRolled{first, second});
+      tray_.startPull();
+      dice_ = DiceStage::Pulling;
+    } else if (dice_ == DiceStage::Pulling && tray_.offScreen()) {
+      dice_ = DiceStage::Idle;
+    }
+  }
+
+  // The dice on the glass, in front of the board
+  void drawDice(const Scene::Camera &camera) {
+    if (dice_ == DiceStage::Idle)
+      return;
+    const auto toFloat = [](cyclone::real r) { return static_cast<float>(static_cast<double>(r)); };
+    const Scene::Transform glass = glassFrame(
+        camera, static_cast<float>(kTopWidth) / static_cast<float>(kTopHeight),
+        static_cast<float>(Dice::DiceTray::kWidth), static_cast<float>(Dice::DiceTray::kDepth));
+    for (int d = 0; d < 2; ++d) {
+      const cyclone::Vector3 at = tray_.position(d);
+      const cyclone::Quaternion turn = tray_.orientation(d);
+      renderer_->draw(
+          die_,
+          dieOnGlass(glass, {toFloat(at.x), toFloat(at.y), toFloat(at.z)},
+                     {toFloat(turn.r), toFloat(turn.i), toFloat(turn.j), toFloat(turn.k)},
+                     static_cast<float>(tray_.offset())),
+          {.shading = Scene::Material::Shading::Lit});
+    }
   }
 
   // The board from above and in front, turned by L and R (looking a little
@@ -374,6 +445,7 @@ private:
             ship_, BoardPieces::onHex(state.planets[static_cast<std::size_t>(state.blockade)].hex),
             toon(BoardColours::kBlockade));
     }
+    drawDice(camera);
     drawText();
     // The selected hex, ringed on the 3D board too
     if (selected_)
@@ -614,6 +686,14 @@ private:
   Scene::Mesh hexTile_, numberChip_, station_, colony_, ship_, stars_, gaps_, highlight_;
   std::array<Scene::Texture, CosmicHex::Art::kFaces> faces_{};
   std::array<Scene::Texture, CosmicHex::Art::kHighestChip + 1> chips_{}; // (by number)
+  // The physics dice
+  enum class DiceStage : std::uint8_t { Idle, Rolling, Showing, Pulling };
+  static constexpr int kFramesShowingDice = 45; // (about three quarters of a second)
+  Dice::DiceTray tray_;
+  Scene::Mesh die_;
+  DiceStage dice_ = DiceStage::Idle;
+  std::uint64_t thrownSeed_ = 0;
+  int shownFrames_ = 0;
   std::optional<TableSnapshot> latest_;
   BoardMotion motion_;
   Clock::time_point motionStarted_;

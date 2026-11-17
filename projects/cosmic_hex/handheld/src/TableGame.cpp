@@ -44,8 +44,23 @@ bool TableGame::waitingForPerson() const {
          settings_.seats[static_cast<std::size_t>(who)] == Seat::Person;
 }
 
+bool TableGame::waitingForDice() const {
+  return settings_.physicsDice && !over() && state().phase == Phase::RollDraw;
+}
+
+bool TableGame::rollDice(int first, int second) {
+  if (!waitingForDice())
+    return false;
+  const Action roll{Action::Kind::Roll, first, second};
+  const State before = state();
+  if (!play_.play(roll))
+    return false;
+  record(before, roll);
+  return true;
+}
+
 std::optional<Action> TableGame::step() {
-  if (over() || waitingForPerson())
+  if (over() || waitingForPerson() || waitingForDice())
     return std::nullopt;
   const State &now = state();
   const bool dealer = Game::currentPlayer(now) == GameBots::kDealer;

@@ -10,6 +10,7 @@ cc_library(
         "src/BoardMotion.cpp",
         "src/BoardPicture.cpp",
         "src/BoardPieces.cpp",
+        "src/DicePieces.cpp",
         "src/MenuPicture.cpp",
         "src/MoveSpots.cpp",
         "src/StartMenu.cpp",
@@ -19,6 +20,7 @@ cc_library(
         "include/CosmicHex/Handheld/BoardMotion.hpp",
         "include/CosmicHex/Handheld/BoardPicture.hpp",
         "include/CosmicHex/Handheld/BoardPieces.hpp",
+        "include/CosmicHex/Handheld/DicePieces.hpp",
         "include/CosmicHex/Handheld/MenuPicture.hpp",
         "include/CosmicHex/Handheld/MoveSpots.hpp",
         "include/CosmicHex/Handheld/StartMenu.hpp",
@@ -104,6 +106,16 @@ cc_test(
     name = "StartMenu_test",
     size = "small",
     srcs = ["tests/StartMenu_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "DicePieces_test",
+    size = "small",
+    srcs = ["tests/DicePieces_test.cpp"],
     deps = [
         ":handheld",
         "@gtest//:gtest_main",

@@ -4,6 +4,8 @@ load("//tools/devkitpro:defs.bzl", "devkitpro_nds_app")
 SOURCES = {
     "//projects/cosmic_hex/handheld:sources": "cosmic_hex/handheld",
     "//projects/cosmic_hex/rules:sources": "cosmic_hex/rules",
+    "//projects/cosmic_hex/dice:sources": "cosmic_hex/dice",
+    "//projects/cyclone:sources": "cyclone",
     "//projects/cosmic_hex/art:sources": "cosmic_hex/art",
     "//projects/scratchpadd/texture_recipe:sources": "scratchpadd/texture_recipe",
     "//projects/action_log:sources": "action_log",

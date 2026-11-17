@@ -46,6 +46,9 @@ struct TableSettings {
   // The play style (round 85): the round played out once someone reaches
   // the target (the agreed rule), or the first to reach it wins at once
   bool finishRound = true;
+  // Physics dice (round 87): the roll is thrown on screen (dice/DiceTray)
+  // and given back with rollDice(); off, the dealer rolls at random
+  bool physicsDice = false;
 };
 
 // The agreed rules for a table: its board, players and play style
@@ -61,6 +64,11 @@ public:
 
   // Whether it's a person's move (theirs is the current player)
   bool waitingForPerson() const;
+  // Whether the game waits for the dice to be thrown (physicsDice)
+  bool waitingForDice() const;
+  // The dice's faces once they've settled (1 to 6 each): false if the game
+  // isn't waiting for them
+  bool rollDice(int first, int second);
 
   // The dealer's or a bot's move, made: what it was, or nothing if it's a
   // person's move or the game is over

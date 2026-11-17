@@ -110,3 +110,29 @@ TEST(TableGameTest, EveryBoardAndPlayStylePlays) {
     }
   }
 }
+
+// Physics dice (round 87): the game stops at each roll until the dice are
+// given, and plays them; a whole game goes through with dice from outside
+TEST(TableGameTest, PhysicsDiceWaitForTheThrow) {
+  TableGame game(TableSettings{.botIterations = 5, .seed = 3, .physicsDice = true});
+  int rolls = 0, given = 0;
+  for (int moves = 0; moves < 20000 && !game.over(); ++moves) {
+    if (game.waitingForDice()) {
+      EXPECT_FALSE(game.step().has_value()); // (nothing moves until they're thrown)
+      EXPECT_FALSE(game.rollDice(0, 3));     // (not a face)
+      const int a = 1 + (given % 6), b = 1 + ((given / 6) % 6);
+      ASSERT_TRUE(game.rollDice(a, b));
+      ++given;
+      EXPECT_EQ(game.state().lastRoll, a + b);
+      ++rolls;
+      continue;
+    }
+    if (!game.step()) {
+      ADD_FAILURE() << "stuck";
+      break;
+    }
+  }
+  EXPECT_TRUE(game.over());
+  EXPECT_GT(rolls, 10);
+  EXPECT_FALSE(game.rollDice(3, 4)); // (over: not waiting)
+}
