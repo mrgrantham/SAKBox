@@ -635,6 +635,13 @@ void LabWindowPadd::drawSolverTab() {
   ImGui::InputInt("Finds never touch clusters of (0: anywhere)", &solverAway_);
   ImGui::Checkbox("Threes farther from every home than pairs and singles",
                   &spec.threesFartherThanSmaller);
+  ImGui::TextUnformatted("From every home, in ship moves:");
+  bound("Nearest single (floor, ceiling)", spec.nearestFromEveryHome[0]);
+  bound("Nearest pair (floor, ceiling)", spec.nearestFromEveryHome[1]);
+  bound("Nearest three (floor, ceiling)", spec.nearestFromEveryHome[2]);
+  ImGui::InputInt("Planets within this many moves", &spec.reachMoves);
+  spec.reachMoves = std::clamp(spec.reachMoves, 1, 20);
+  bound("...how many (floor, ceiling)", spec.planetsInReach);
   ImGui::InputInt("Attempts", &spec.attempts, 1000, 10000);
   spec.attempts = std::clamp(spec.attempts, 100, 500000);
   if (ImGui::Button("Solve"))

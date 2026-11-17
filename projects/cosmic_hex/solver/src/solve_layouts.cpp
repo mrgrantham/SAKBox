@@ -9,8 +9,10 @@
 // Flags: --homes edge|corners, --singles A-B, --pairs A-B, --threes A-B,
 // --finds A-B (each a value or a floor-ceiling range), --away N (finds never
 // touch clusters of N or more; 0: anywhere), --farther yes (threes farther
-// from every home than pairs and singles), --attempts N, --keep N, --seed N,
-// --name PREFIX.
+// from every home than pairs and singles), --nearest-single, --nearest-pair,
+// --nearest-three A-B (from every home, in ship moves), --reach-moves D
+// --in-reach A-B (every home has A to B planets within D moves), --attempts
+// N, --keep N, --seed N, --name PREFIX.
 #include <CosmicHex/Solver/LayoutSolver.hpp>
 
 #include <charconv>
@@ -63,6 +65,16 @@ int main(int argc, char **argv) {
       spec.findsAwayFromClustersOf = n > 0 ? std::optional<int>(n) : std::nullopt;
     } else if (flag == "--farther")
       spec.threesFartherThanSmaller = value == "yes";
+    else if (flag == "--nearest-single")
+      spec.nearestFromEveryHome[0] = boundOf(value);
+    else if (flag == "--nearest-pair")
+      spec.nearestFromEveryHome[1] = boundOf(value);
+    else if (flag == "--nearest-three")
+      spec.nearestFromEveryHome[2] = boundOf(value);
+    else if (flag == "--reach-moves")
+      spec.reachMoves = number(value);
+    else if (flag == "--in-reach")
+      spec.planetsInReach = boundOf(value);
     else if (flag == "--attempts")
       spec.attempts = number(value);
     else if (flag == "--keep")
