@@ -79,6 +79,26 @@ class ConvertTest(unittest.TestCase):
         self.assertEqual(len(points) // 2, 1 + svg_to_recipe.CURVE_STEPS)  # the start, then the flattened curve
         self.assertEqual(points[-2:], ["160", "0"])
 
+    def test_arcs(self):
+        # A half circle from (0, 5) to (10, 5), radius 5, centre (5, 5): every
+        # point 5 from the centre (80 sixteenths), the end exact, and the
+        # sweep flag choosing the half above or below
+        def points(d):
+            numbers = [int(n) for n in lines(recipe(f'<path d="{d}"/>'), "contour")[0].split()[1:]]
+            return list(zip(numbers[0::2], numbers[1::2]))
+
+        below = points("M0 5 A 5 5 0 0 0 10 5 Z")
+        above = points("M0 5 A 5 5 0 0 1 10 5 Z")
+        for x, y in below + above:
+            self.assertAlmostEqual(((x - 80) ** 2 + (y - 80) ** 2) ** 0.5, 80, delta=1.5)
+        self.assertEqual(below[-1], (160, 80))
+        self.assertGreater(max(y for _, y in below), 150)  # (y down: sweep 0 here goes through the bottom)
+        self.assertLess(min(y for _, y in above), 10)
+        # Two quarter turns: 16 pieces each
+        self.assertEqual(len(below), 1 + 2 * svg_to_recipe.CURVE_STEPS)
+        # Relative, and radii too small stretched to reach
+        self.assertEqual(points("M0 5 a 1 1 0 0 1 10 0 Z")[-1], (160, 80))
+
     def test_even_odd_holes(self):
         text = recipe('<path fill-rule="evenodd" d="M0 0 H10 V10 H0 Z M3 3 H7 V7 H3 Z"/>')
         self.assertEqual(lines(text, "fill"), ["fill 0 evenodd"])
@@ -96,8 +116,6 @@ class ConvertTest(unittest.TestCase):
         self.assertEqual(lines(recipe('<rect width="1" height="1" fill="none"/>'), "fill"), [])
 
     def test_what_it_cannot_draw_is_refused(self):
-        with self.assertRaises(svg_to_recipe.RecipeError):
-            recipe('<path d="M0 0 A 5 5 0 0 1 10 10"/>')
         with self.assertRaises(svg_to_recipe.RecipeError):
             recipe('<text>hello</text>')
         with self.assertRaises(svg_to_recipe.RecipeError):

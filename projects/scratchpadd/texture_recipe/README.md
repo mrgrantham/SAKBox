@@ -100,8 +100,8 @@ there anyway.
 The converter (`tools/svg_to_recipe.py`) reads:
 
 - `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon` and `path`
-  (`M L H V C S Q T Z`, absolute and relative; curves are flattened into 16
-  straight pieces);
+  (`M L H V C S Q T A Z`, absolute and relative; curves are flattened into
+  16 straight pieces, arcs into 16 for each quarter turn);
 - `g` with `transform` (`translate`, `scale`, `rotate`, `matrix`), nested;
 - `fill`, `stroke`, `stroke-width`, `opacity`, `fill-opacity`,
   `stroke-opacity` and `fill-rule`, as attributes or in `style`;
@@ -111,10 +111,9 @@ The converter (`tools/svg_to_recipe.py`) reads:
 
 Strokes become filled outlines (a band along each segment and a round piece
 at each joint), so a stroke drawn over a fill keeps the drawing's look.
-Anything else, such as arcs (`A`), text, gradients, images or a misspelt
-colour, **fails the build** with what and where, rather than drawing
-something different. Arcs aren't read yet: draw them as curves (`C`)
-instead. The drawing needs a `viewBox`; its units become the recipe's, in
+Anything else, such as text, gradients, images or a misspelt colour,
+**fails the build** with what and where, rather than drawing something
+different. The drawing needs a `viewBox`; its units become the recipe's, in
 sixteenths.
 
 ## The recipe format

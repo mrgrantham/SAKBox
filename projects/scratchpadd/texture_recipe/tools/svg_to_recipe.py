@@ -10,7 +10,7 @@ What it reads (enough for flat, drawn textures; anything else is an error,
 so a drawing never quietly loses a part):
   <svg> with a viewBox (or width and height)
   <g>, <rect>, <circle>, <ellipse>, <line>, <polyline>, <polygon>, <path>
-  path commands M L H V C S Q T Z, absolute and relative (not arcs, A)
+  path commands M L H V C S Q T A Z, absolute and relative
   fill, stroke, stroke-width, opacity, fill-opacity, stroke-opacity, fill-rule,
   as attributes or in style=""; colours as #rgb, #rgba, #rrggbb, #rrggbbaa,
   rgb(), rgba(), hsl(), hsla() (numbers or percentages) and the 148 CSS names
@@ -156,6 +156,50 @@ def ellipse_points(cx, cy, rx, ry):
     return [(cx + rx * math.cos(2 * math.pi * i / 64), cy + ry * math.sin(2 * math.pi * i / 64)) for i in range(64)]
 
 
+def arc_points(x1, y1, rx, ry, rotation, large, sweep, x2, y2):
+    """An elliptical arc's points after its start, as SVG draws it (its
+    endpoints to its centre: the SVG specification's appendix B.2.4),
+    flattened into CURVE_STEPS pieces for each quarter turn or less"""
+    if (x1, y1) == (x2, y2):
+        return []
+    if rx == 0 or ry == 0:
+        return [(x2, y2)]
+    rx, ry = abs(rx), abs(ry)
+    phi = math.radians(rotation)
+    cos_phi, sin_phi = math.cos(phi), math.sin(phi)
+    dx, dy = (x1 - x2) / 2, (y1 - y2) / 2
+    x1p, y1p = cos_phi * dx + sin_phi * dy, -sin_phi * dx + cos_phi * dy
+    # Radii too small to reach are scaled up just enough
+    grow = (x1p / rx) ** 2 + (y1p / ry) ** 2
+    if grow > 1:
+        rx, ry = rx * math.sqrt(grow), ry * math.sqrt(grow)
+    top = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p
+    bottom = rx * rx * y1p * y1p + ry * ry * x1p * x1p
+    factor = math.sqrt(max(0.0, top / bottom)) * (-1 if large == sweep else 1)
+    cxp, cyp = factor * rx * y1p / ry, -factor * ry * x1p / rx
+    cx = cos_phi * cxp - sin_phi * cyp + (x1 + x2) / 2
+    cy = sin_phi * cxp + cos_phi * cyp + (y1 + y2) / 2
+
+    def angle(ux, uy, vx, vy):
+        a = math.atan2(ux * vy - uy * vx, ux * vx + uy * vy)
+        return a
+
+    start = angle(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry)
+    delta = angle((x1p - cxp) / rx, (y1p - cyp) / ry, (-x1p - cxp) / rx, (-y1p - cyp) / ry)
+    if not sweep and delta > 0:
+        delta -= 2 * math.pi
+    elif sweep and delta < 0:
+        delta += 2 * math.pi
+    steps = max(1, math.ceil(abs(delta) / (math.pi / 2))) * CURVE_STEPS
+    points = []
+    for s in range(1, steps + 1):
+        a = start + delta * s / steps
+        ex, ey = rx * math.cos(a), ry * math.sin(a)
+        points.append((cos_phi * ex - sin_phi * ey + cx, sin_phi * ex + cos_phi * ey + cy))
+    points[-1] = (x2, y2)  # (exactly where the path goes on from)
+    return points
+
+
 def path_subpaths(d):
     """A path's subpaths: (points, closed)"""
     tokens = re.findall(r"[MmLlHhVvCcSsQqTtZzAa]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?", d)
@@ -187,7 +231,14 @@ def path_subpaths(d):
         relative = command.islower()
         c = command.upper()
         if c == "A":
-            raise RecipeError("arcs (A) aren't supported: draw them as curves")
+            rx, ry, rotation, large, sweep = number(), number(), number(), number(), number()
+            ex, ey = number(), number()
+            if relative:
+                ex, ey = x + ex, y + ey
+            points += arc_points(x, y, rx, ry, rotation, large != 0, sweep != 0, ex, ey)
+            x, y = ex, ey
+            last_control = None
+            continue
         if c == "Z":
             closed = True
             x, y = start
