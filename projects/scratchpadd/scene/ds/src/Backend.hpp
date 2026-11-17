@@ -35,6 +35,15 @@ struct Renderer::Backend {
     // in: the colour, and the texture's TEXIMAGE_PARAM
     std::vector<std::pair<Colour, std::uint32_t>> textures;
   };
+  // Materials' textures (Renderer::load(TextureImage)), by Texture::id - 1:
+  // each one's TEXIMAGE_PARAM (0: unloaded, or no room) and size, in VRAM
+  // bank B after toon shading's
+  struct LoadedImage {
+    std::uint32_t parameter = 0;
+    int width = 0, height = 0;
+  };
+  std::vector<LoadedImage> images;
+
   // A translucent draw, kept until the end of the frame
   struct Later {
     Mesh mesh;

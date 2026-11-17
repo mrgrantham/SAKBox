@@ -73,15 +73,14 @@ constexpr std::size_t kCharsPerLine = 31;
 constexpr float kLineHeight = 10;
 constexpr int kBotIterations = 15;
 bool mainLoop() { return pmMainLoop(); }
-// The DS has no textures in the scene layer yet: tiles in their face's colour
-constexpr bool kTexturedTiles = false;
+constexpr int kFaceSize = 32; // (the faces' textures: VRAM bank B is small)
 #else
 constexpr int kTopWidth = 400, kTopHeight = 240, kBottomWidth = 320, kBottomHeight = 240;
 constexpr std::size_t kCharsPerLine = 64;
 constexpr float kLineHeight = 11;
 constexpr int kBotIterations = 40;
 bool mainLoop() { return aptMainLoop(); }
-constexpr bool kTexturedTiles = true;
+constexpr int kFaceSize = 64;
 #endif
 namespace Input = ScratchPadd::Input;
 using CosmicHex::State;
@@ -231,8 +230,7 @@ public:
     ship_ = renderer_->load(pieces.ship.data());
     stars_ = renderer_->load(pieces.stars.data());
     highlight_ = renderer_->load(pieces.highlight.data());
-    if (kTexturedTiles)
-      loadFaces();
+    loadFaces();
     // The build that watches by itself (COSMIC_HEX_WATCH_AT_START: the
     // -watch apps), for unattended runs in an emulator or on a console
     if (kWatchAtStart) {
@@ -318,7 +316,8 @@ private:
       const auto drawTile = [&](CosmicHex::Hex hex, std::optional<float> turn,
                                 CosmicHex::Art::Face down, CosmicHex::Art::Face up) {
         const auto showing = [&](CosmicHex::Art::Face face) {
-          if (!kTexturedTiles)
+          // (a face that didn't load: its colour)
+          if (!faces_[static_cast<std::size_t>(face)])
             return Scene::Material{.shading = Scene::Material::Shading::Toon,
                                    .colour = BoardColours::ofFace(face)};
           return Scene::Material{.shading = Scene::Material::Shading::Toon,
@@ -535,7 +534,7 @@ private:
 
   std::optional<Scene::Display> display_;
   std::optional<Scene::Renderer> renderer_;
-  // Each tile face (Art.hpp) drawn into a 64 x 64 texture from its recipe,
+  // Each tile face (Art.hpp) drawn into a texture from its recipe (kFaceSize a side),
   // once, when the game starts
   void loadFaces() {
     namespace TR = ScratchPadd::TextureRecipe;
@@ -543,12 +542,13 @@ private:
       const auto recipe = TR::read(CosmicHex::Art::recipeOf(static_cast<CosmicHex::Art::Face>(i)));
       if (!recipe)
         continue; // (the tile shows white: a broken recipe, tested against on the Mac)
-      const TR::Image image = TR::draw(*recipe, 64, 64, TR::Format::Rgba8);
-      std::vector<Scene::Colour> pixels(64 * 64);
+      const TR::Image image = TR::draw(*recipe, kFaceSize, kFaceSize, TR::Format::Rgba8);
+      std::vector<Scene::Colour> pixels(static_cast<std::size_t>(kFaceSize * kFaceSize));
       for (std::size_t p = 0; p < pixels.size(); ++p)
         pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
                      image.pixels[p * 4 + 3]};
-      faces_[static_cast<std::size_t>(i)] = renderer_->load(Scene::TextureImage{64, 64, pixels});
+      faces_[static_cast<std::size_t>(i)] =
+          renderer_->load(Scene::TextureImage{kFaceSize, kFaceSize, pixels});
     }
   }
 

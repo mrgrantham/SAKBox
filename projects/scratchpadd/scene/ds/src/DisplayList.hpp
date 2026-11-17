@@ -60,6 +60,8 @@ struct Source {
     std::uint32_t normal; // packNormal's
     Colour colour;
     std::uint8_t texel; // its colour's place in `palette`
+    // Where it is on an image texture (Vertex::uv), in 1/4096ths
+    std::int32_t u = 0, v = 0;
   };
   struct Run {
     Primitive::Kind kind;
@@ -92,6 +94,10 @@ struct Variant {
   // corner its texel's coordinate, and lit as white, so the light picks the
   // toon table's band and the texture its colour
   bool textured = false;
+  // An image texture (Material::texture) instead, this many texels across
+  // and down: each corner its Vertex::uv's texel, lit as white, the image
+  // giving the colours (0: none)
+  int imageWidth = 0, imageHeight = 0;
   bool operator==(const Variant &) const = default;
 };
 

@@ -45,7 +45,7 @@ The app is `handheld/source/cosmic_hex_on_a_handheld.cpp`. What it plays and dra
 
 ## On the DS
 
-`bazel run //projects/cosmic_hex/ds:cosmic-hex-ds` builds the DS app and opens it in melonDS: the same game and app as the 3DS's (one source, `handheld/source/cosmic_hex_on_a_handheld.cpp`, the differences in `#if` blocks), its bots thinking less (no floating-point hardware), the 3D board's tiles in their face's colour (the scene layer has no textures on the DS yet), and the flat board on the bottom screen (256 x 192, a 16-bit bitmap in VRAM bank C). On both consoles, the `-watch` builds (`cosmic-hex-ds-watch`, `cosmic-hex-3ds-watch`) start watching four bots by themselves, for unattended runs.
+`bazel run //projects/cosmic_hex/ds:cosmic-hex-ds` builds the DS app and opens it in melonDS: the same game and app as the 3DS's (one source, `handheld/source/cosmic_hex_on_a_handheld.cpp`, the differences in `#if` blocks), its bots thinking less (no floating-point hardware), the tiles' faces as 32-pixel textures (the DS's VRAM is small), and the flat board on the bottom screen (256 x 192, a 16-bit bitmap in VRAM bank C). On both consoles, the `-watch` builds (`cosmic-hex-ds-watch`, `cosmic-hex-3ds-watch`) start watching four bots by themselves, for unattended runs.
 
 ## Tests
 

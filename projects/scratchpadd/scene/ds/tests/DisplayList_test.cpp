@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <vector>
 
@@ -250,4 +251,30 @@ TEST(DisplayListTest, APaletteHoldsAtMostItsTexels) {
   EXPECT_EQ(source.palette.size(), static_cast<std::size_t>(kTexels));
   for (const Source::Corner &corner : source.corners)
     EXPECT_LT(corner.texel, kTexels);
+}
+
+// An image texture: each corner sends its Vertex::uv as texels of the
+// image's size (12.4), the colours white (the image gives them)
+TEST(DisplayListTest, ImageTexturesSendTheirCoordinates) {
+  MeshBuilder builder;
+  builder.quad({0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0}, {200, 100, 50},
+               {TexCoord{0, 1}, TexCoord{1, 1}, TexCoord{1, 0}, TexCoord{0, 0}});
+  const Source source = prepare(builder.data());
+  const auto sent =
+      unpack(onlyList(pack(source, {.lit = false, .imageWidth = 32, .imageHeight = 16})));
+  std::vector<std::uint32_t> coordinates;
+  for (const Sent &s : sent) {
+    if (s.command == KTexCoord)
+      coordinates.push_back(s.parameters[0]);
+    if (s.command == KColour)
+      EXPECT_EQ(s.parameters[0], rgb15({255, 255, 255})); // (white: the image's colours)
+  }
+  ASSERT_FALSE(coordinates.empty());
+  // (0, 1) is the image's bottom left: s 0, t 16 texels; (1, 0) its top
+  // right: s 32, t 0 (each x 16: 12.4). The DS's quad may start anywhere
+  const auto has = [&](std::uint32_t c) {
+    return std::find(coordinates.begin(), coordinates.end(), c) != coordinates.end();
+  };
+  EXPECT_TRUE(has(0u | ((16u * 16u) << 16)));
+  EXPECT_TRUE(has(32u * 16u));
 }

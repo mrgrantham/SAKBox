@@ -59,8 +59,18 @@ constexpr std::uint32_t kTextureBytes = DisplayList::kTexels * 2;
 // TEXIMAGE_PARAM (GBATEK, "DS 3D Texture Attributes"): the texture's VRAM
 // offset in 8-byte steps, its width and height (8 << n: 0), its format (7:
 // direct colour), its coordinates as given (no transformation)
-constexpr std::uint32_t textureParameter(std::uint32_t offset) {
-  return (offset >> 3) | (0u << 20) | (0u << 23) | (7u << 26);
+constexpr std::uint32_t textureParameter(std::uint32_t offset, std::uint32_t widthCode = 0,
+                                         std::uint32_t heightCode = 0) {
+  return (offset >> 3) | (widthCode << 20) | (heightCode << 23) | (7u << 26);
+}
+
+// A side the DS's textures can have (8 to 1024, a power of two) as its
+// TEXIMAGE_PARAM code (8 << code), or -1
+int sideCode(int side) {
+  for (int code = 0; code <= 7; ++code)
+    if (side == (8 << code))
+      return code;
+  return -1;
 }
 
 // A Scalar as the DS's 20.12
@@ -106,10 +116,22 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   // Toon: its colours from its texture (the DS draws an untextured toon
   // mesh in the table's colours: ToonTable.hpp), lit as white so the light
   // picks the table's band
-  const std::uint32_t texture = toon ? textureFor(loaded, material.colour) : 0;
+  // An image texture instead, when the material has one: its colours from
+  // the image, each corner where its uv puts it
+  const LoadedImage *image = material.texture && material.texture.id <= images.size() &&
+                                     images[material.texture.id - 1].parameter
+                                 ? &images[material.texture.id - 1]
+                                 : nullptr;
+  const std::uint32_t texture =
+      image ? image->parameter : (toon ? textureFor(loaded, material.colour) : 0);
   GFX_TEX_FORMAT = texture;
   const std::vector<DisplayList::Packed> &lists =
-      listsFor(loaded, {lit, material.colour, lit ? ambient : Colour{}, texture != 0});
+      listsFor(loaded, {.lit = lit,
+                        .colour = material.colour,
+                        .ambient = lit ? ambient : Colour{},
+                        .textured = !image && texture != 0,
+                        .imageWidth = image ? image->width : 0,
+                        .imageHeight = image ? image->height : 0});
 
   // The transform as a turn and a move, multiplied into both the position
   // and the normals' matrices, then its scale (and the mesh's own, see
@@ -346,6 +368,35 @@ Mesh Renderer::load(const MeshData &mesh) {
   loaded.doubleSided = mesh.doubleSided;
   backend_->meshes.push_back(std::move(loaded));
   return Mesh{static_cast<std::uint32_t>(backend_->meshes.size())};
+}
+
+Texture Renderer::load(const TextureImage &image) {
+  const int widthCode = sideCode(image.width), heightCode = sideCode(image.height);
+  const auto bytes = static_cast<std::uint32_t>(image.width * image.height * 2);
+  if (widthCode < 0 || heightCode < 0 ||
+      image.pixels.size() < static_cast<std::size_t>(image.width * image.height) ||
+      backend_->nextTextureOffset + bytes > kTextureBank)
+    return {};
+  // Direct colour: 15 bits, the top bit opaque (more than half alpha)
+  vramSetBankB(VRAM_B_LCD);
+  std::uint16_t *to = VRAM_B + backend_->nextTextureOffset / 2;
+  for (std::size_t i = 0; i < static_cast<std::size_t>(image.width * image.height); ++i) {
+    const Colour c = image.pixels[i];
+    to[i] = static_cast<std::uint16_t>(DisplayList::rgb15(c) | (c.a >= 128 ? 0x8000 : 0));
+  }
+  vramSetBankB(VRAM_B_TEXTURE_SLOT0);
+  backend_->images.push_back(
+      {textureParameter(backend_->nextTextureOffset, static_cast<std::uint32_t>(widthCode),
+                        static_cast<std::uint32_t>(heightCode)),
+       image.width, image.height});
+  backend_->nextTextureOffset += bytes;
+  return {static_cast<std::uint32_t>(backend_->images.size())};
+}
+
+// (Its bank space isn't given back: the bank is handed out in turn)
+void Renderer::unload(Texture texture) {
+  if (texture && texture.id <= backend_->images.size())
+    backend_->images[texture.id - 1].parameter = 0;
 }
 
 void Renderer::unload(Mesh mesh) {

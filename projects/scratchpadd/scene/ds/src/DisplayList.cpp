@@ -130,7 +130,8 @@ Source prepare(const MeshData &mesh) {
     const Vertex &v = mesh.vertices[index];
     source.corners.push_back({coordinate(v.position.x), coordinate(v.position.y),
                               coordinate(v.position.z), packNormal(v.normal), v.colour,
-                              texelFor(source.palette, v.colour)});
+                              texelFor(source.palette, v.colour), toFixed(v.uv.u, 12),
+                              toFixed(v.uv.v, 12)});
   }
   std::uint32_t first = 0;
   for (const Primitive &run : runs) {
@@ -149,6 +150,8 @@ std::vector<std::uint32_t> packAlpha(const Source &source, const Variant &varian
   std::uint16_t colour = 0;
   std::uint32_t normal = 0;
   int texel = -1;
+  std::uint32_t lastCoordinate = 0xFFFFFFFF;
+  const bool image = variant.imageWidth > 0 && variant.imageHeight > 0;
   for (const Source::Run &run : source.runs) {
     if (run.alpha != alpha)
       continue;
@@ -156,8 +159,8 @@ std::vector<std::uint32_t> packAlpha(const Source &source, const Variant &varian
     for (std::uint32_t c = run.first; c < run.first + run.count; ++c) {
       const Source::Corner &corner = source.corners[c];
       // (textured: the colour's in the texture, the vertex lit as white)
-      const Colour tinted = variant.textured ? Colour{255, 255, 255, corner.colour.a}
-                                             : multiply(corner.colour, variant.colour);
+      const Colour tinted = variant.textured || image ? Colour{255, 255, 255, corner.colour.a}
+                                                      : multiply(corner.colour, variant.colour);
       const std::uint16_t thisColour = rgb15(tinted);
       const bool newColour = first || thisColour != colour;
       if (variant.lit) {
@@ -172,7 +175,18 @@ std::vector<std::uint32_t> packAlpha(const Source &source, const Variant &varian
       } else if (newColour) {
         packer.add(KColour, {thisColour});
       }
-      if (variant.textured && corner.texel != texel) {
+      if (image) {
+        // Its place on the image, in texels as 12.4 (the image's top left 0)
+        const auto texels = [](std::int32_t fraction, int side) {
+          return static_cast<std::uint32_t>(static_cast<std::uint16_t>(
+              static_cast<std::int16_t>((static_cast<std::int64_t>(fraction) * side * 16) >> 12)));
+        };
+        const std::uint32_t coordinate =
+            texels(corner.u, variant.imageWidth) | (texels(corner.v, variant.imageHeight) << 16);
+        if (coordinate != lastCoordinate)
+          packer.add(KTexCoord, {coordinate});
+        lastCoordinate = coordinate;
+      } else if (variant.textured && corner.texel != texel) {
         // The middle of its texel, in 12.4
         const int s = (corner.texel % kTextureSide) * 16 + 8,
                   t = (corner.texel / kTextureSide) * 16 + 8;
