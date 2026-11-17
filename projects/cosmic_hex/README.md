@@ -42,6 +42,11 @@ It reports how often each seat wins (turn order's advantage), how many rounds a 
 
 The app is `handheld/source/cosmic_hex_on_a_handheld.cpp`. What it plays and draws is in `handheld/` and tested on the Mac (`TableGame`: seats for people and bots, the dealer, the action log, each move in words; `BoardPieces`: where hexes and corners are, and the pieces' meshes and colours; `BoardMotion`: what moved between two moves, part way). The rules it plays are the rules library's `agreedRules()`, which the simulator's defaults are tested to match.
 
+
+## On the DS
+
+`bazel run //projects/cosmic_hex/ds:cosmic-hex-ds` builds the DS app and opens it in melonDS: the same game and app as the 3DS's (one source, `handheld/source/cosmic_hex_on_a_handheld.cpp`, the differences in `#if` blocks), its bots thinking less (no floating-point hardware), the 3D board's tiles in their face's colour (the scene layer has no textures on the DS yet), and the flat board on the bottom screen (256 x 192, a 16-bit bitmap in VRAM bank C). On both consoles, the `-watch` builds (`cosmic-hex-ds-watch`, `cosmic-hex-3ds-watch`) start watching four bots by themselves, for unattended runs.
+
 ## Tests
 
 `bazel test //projects/cosmic_hex/...`

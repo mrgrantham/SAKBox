@@ -1,4 +1,5 @@
-// Cosmic Hex on a Nintendo 3DS, in padds: the agreed rules (the rules
+// Cosmic Hex on a Nintendo 3DS or DS, in padds (one app, built for each:
+// ../3ds, ../ds; the few differences in #if blocks): the agreed rules (the rules
 // library's agreedRules, on R3), the bots as the simulator plays them,
 // fewer iterations a move.
 //
@@ -19,8 +20,13 @@
 // it, B to list them all again. Watching: A pauses or goes on.
 // L/R: turn the board   X/Y: zoom the bottom board in
 // and out   touch: select a hex (drag: move the board when zoomed)   START: quit
+#if defined(__NDS__)
+#include <ScratchPadd/Scene/DS/Display.hpp>
+#include <nds.h>
+#else
 #include <3ds.h>
 #include <ScratchPadd/Scene/3DS/Display.hpp>
+#endif
 
 #include <CosmicHex/Art.hpp>
 #include <CosmicHex/Describe.hpp>
@@ -52,6 +58,31 @@
 namespace {
 
 namespace Scene = ScratchPadd::Scene;
+
+// What differs between the two consoles: the screens' sizes, how much text
+// fits a line, how hard the bots think (the DS's ARM9 has no floating-point
+// hardware), and the main loop
+#if defined(COSMIC_HEX_WATCH_AT_START)
+constexpr bool kWatchAtStart = true;
+#else
+constexpr bool kWatchAtStart = false;
+#endif
+#if defined(__NDS__)
+constexpr int kTopWidth = 256, kTopHeight = 192, kBottomWidth = 256, kBottomHeight = 192;
+constexpr std::size_t kCharsPerLine = 31;
+constexpr float kLineHeight = 10;
+constexpr int kBotIterations = 15;
+bool mainLoop() { return pmMainLoop(); }
+// The DS has no textures in the scene layer yet: tiles in their face's colour
+constexpr bool kTexturedTiles = false;
+#else
+constexpr int kTopWidth = 400, kTopHeight = 240, kBottomWidth = 320, kBottomHeight = 240;
+constexpr std::size_t kCharsPerLine = 64;
+constexpr float kLineHeight = 11;
+constexpr int kBotIterations = 40;
+bool mainLoop() { return aptMainLoop(); }
+constexpr bool kTexturedTiles = true;
+#endif
 namespace Input = ScratchPadd::Input;
 using CosmicHex::State;
 using namespace CosmicHex::Handheld;
@@ -89,7 +120,7 @@ class TablePadd : public ScratchPadd::Base {
 public:
   TablePadd(ScratchPadd::System *system) : Base(system) {
     receive<StartGame>([this](const StartGame &start) {
-      TableSettings settings{.botIterations = 40, .seed = startingSeed()};
+      TableSettings settings{.botIterations = kBotIterations, .seed = startingSeed()};
       if (start.withPerson)
         settings.seats[0] = Seat::Person; // (you're player 1)
       game_.emplace(settings);
@@ -180,10 +211,18 @@ public:
 
   void starting() override {
     display_.emplace(); // the top screen
-    // The bottom screen: the flat board (BoardPicture), written straight
-    // into its one framebuffer when it changes
+                        // The bottom screen: the flat board (BoardPicture), written straight
+                        // into its one framebuffer when it changes
+#if defined(__NDS__)
+    // The DS's bottom screen: a 16-bit bitmap in VRAM bank C (the scene layer
+    // has B, D and E)
+    videoSetModeSub(MODE_5_2D);
+    vramSetBankC(VRAM_C_SUB_BG);
+    bottomPixels_ = bgGetGfxPtr(bgInitSub(3, BgType_Bmp16, BgSize_B16_256x256, 0, 0));
+#else
     gfxSetDoubleBuffering(GFX_BOTTOM, false);
-    picture_.emplace(320, 240);
+#endif
+    picture_.emplace(kBottomWidth, kBottomHeight);
     renderer_.emplace(*display_);
     const BoardPieces pieces;
     hexTile_ = renderer_->load(pieces.hexTile.data());
@@ -192,13 +231,20 @@ public:
     ship_ = renderer_->load(pieces.ship.data());
     stars_ = renderer_->load(pieces.stars.data());
     highlight_ = renderer_->load(pieces.highlight.data());
-    loadFaces();
+    if (kTexturedTiles)
+      loadFaces();
+    // The build that watches by itself (COSMIC_HEX_WATCH_AT_START: the
+    // -watch apps), for unattended runs in an emulator or on a console
+    if (kWatchAtStart) {
+      mode_ = Mode::Watching;
+      send(StartGame{.withPerson = false});
+    }
     push([this] { frame(); });
   }
 
 private:
   void frame() {
-    if (!aptMainLoop()) {
+    if (!mainLoop()) {
       system_->stop();
       return;
     }
@@ -272,6 +318,9 @@ private:
       const auto drawTile = [&](CosmicHex::Hex hex, std::optional<float> turn,
                                 CosmicHex::Art::Face down, CosmicHex::Art::Face up) {
         const auto showing = [&](CosmicHex::Art::Face face) {
+          if (!kTexturedTiles)
+            return Scene::Material{.shading = Scene::Material::Shading::Toon,
+                                   .colour = BoardColours::ofFace(face)};
           return Scene::Material{.shading = Scene::Material::Shading::Toon,
                                  .texture = faces_[static_cast<std::size_t>(face)]};
         };
@@ -320,9 +369,10 @@ private:
   void drawText() {
     Scene::Overlay &overlay = renderer_->overlay();
     if (mode_ == Mode::Choosing) {
-      overlay.text(150, 90, "Cosmic Hex", {226, 232, 244}, 2);
-      overlay.text(110, 130, "A: play against three bots", {255, 214, 90});
-      overlay.text(110, 145, "B: watch four bots play", {200, 208, 222});
+      const float left = kTopWidth / 2.0f - 100;
+      overlay.text(left + 30, kTopHeight / 2.0f - 30, "Cosmic Hex", {226, 232, 244}, 2);
+      overlay.text(left, kTopHeight / 2.0f + 10, "A: play against three bots", {255, 214, 90});
+      overlay.text(left, kTopHeight / 2.0f + 22, "B: watch four bots play", {200, 208, 222});
       return;
     }
     if (!latest_)
@@ -340,12 +390,13 @@ private:
       overlay.text(4, 16 + 10 * static_cast<float>(p), line, BoardColours::ofPlayer(p));
     }
     if (!latest_->lastMoves.empty())
-      overlay.text(4, 226, latest_->lastMoves.back(), {200, 208, 222});
+      overlay.text(4, kTopHeight - 14, latest_->lastMoves.back().substr(0, kCharsPerLine),
+                   {200, 208, 222});
     if (mode_ == Mode::Playing && latest_->yourMove)
       drawMoves(overlay);
     if (state.winner >= 0) {
       std::snprintf(line, sizeof line, "Player %d wins!  START: quit", state.winner + 1);
-      overlay.text(130, 110, line, {255, 214, 90}, 1.5f);
+      overlay.text(kTopWidth / 2.0f - 90, kTopHeight / 2.0f - 10, line, {255, 214, 90}, 1.5f);
     }
   }
 
@@ -428,7 +479,7 @@ private:
   // the chosen one highlighted
   void drawMoves(Scene::Overlay &overlay) {
     const std::vector<std::size_t> shown = movesShown();
-    overlay.rectangle(0, 60, 400, 156, {12, 18, 30, 210});
+    overlay.rectangle(0, 60, kTopWidth, kTopHeight - 76, {12, 18, 30, 210});
     const char *heading =
         selected_ ? "Your moves here (B: all moves)" : "Your moves (touch the board to narrow)";
     overlay.text(6, 64, heading, {255, 214, 90});
@@ -436,14 +487,14 @@ private:
       overlay.text(6, 80, "None here: touch elsewhere, or B for all", {200, 208, 222});
       return;
     }
-    constexpr std::size_t kLines = 12;
+    const auto kLines = static_cast<std::size_t>((kTopHeight - 96) / kLineHeight);
     const std::size_t first = cursor_ >= kLines ? cursor_ - kLines + 1 : 0;
     for (std::size_t line = 0; line < kLines && first + line < shown.size(); ++line) {
       const std::size_t i = first + line;
       std::string text = (i == cursor_ ? "> " : "  ") + latest_->moveText[shown[i]];
-      if (text.size() > 64)
-        text = text.substr(0, 62) + "..";
-      overlay.text(6, 78 + 11 * static_cast<float>(line), text,
+      if (text.size() > kCharsPerLine)
+        text = text.substr(0, kCharsPerLine - 2) + "..";
+      overlay.text(6, 78 + kLineHeight * static_cast<float>(line), text,
                    i == cursor_ ? Scene::Colour{255, 214, 90} : Scene::Colour{200, 208, 222});
     }
   }
@@ -458,9 +509,18 @@ private:
     picture_->draw(latest_->state);
     if (selected_)
       picture_->mark(*selected_);
+    const auto &pixels = picture_->pixels();
+#if defined(__NDS__)
+    // 256 a row (the bitmap is 256 wide), 15-bit colours with bit 15 set
+    for (int y = 0; y < kBottomHeight; ++y)
+      for (int x = 0; x < kBottomWidth; ++x) {
+        const Scene::Colour c = pixels[static_cast<std::size_t>(y * kBottomWidth + x)];
+        bottomPixels_[y * 256 + x] =
+            static_cast<u16>(RGB15(c.r >> 3, c.g >> 3, c.b >> 3) | BIT(15));
+      }
+#else
     u16 w = 0, h = 0;
     std::uint8_t *frame = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
-    const auto &pixels = picture_->pixels();
     for (int y = 0; y < 240; ++y)
       for (int x = 0; x < 320; ++x) {
         const Scene::Colour c = pixels[static_cast<std::size_t>(y * 320 + x)];
@@ -470,6 +530,7 @@ private:
         at[2] = c.r;
       }
     gfxFlushBuffers();
+#endif
   }
 
   std::optional<Scene::Display> display_;
@@ -500,6 +561,9 @@ private:
   float turn_ = 0;
   // The bottom board, its touch and what's selected on it
   std::optional<BoardPicture> picture_;
+#if defined(__NDS__)
+  u16 *bottomPixels_ = nullptr; // (the bottom screen's bitmap)
+#endif
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};
   std::optional<BoardPicture::Spot> selected_;
@@ -513,7 +577,9 @@ private:
 
 int main() {
   spdlog::set_level(spdlog::level::off); // the screens are for the padds
-  gfxInitDefault();                      // (before ScreenPadd's Display)
+#if !defined(__NDS__)
+  gfxInitDefault(); // (before ScreenPadd's Display)
+#endif
 #if defined(SAKBOX_DEBUG)
   ScratchPadd::DebugLog::Session log; // a debug build's log, over Wi-Fi
 #endif
@@ -525,6 +591,8 @@ int main() {
     system.start(); // returns when ScreenPadd stops it (START)
   }
   ScratchPadd::AppEnded::show(); // ("<its title> has ended.")
+#if !defined(__NDS__)
   gfxExit();
+#endif
   return 0;
 }

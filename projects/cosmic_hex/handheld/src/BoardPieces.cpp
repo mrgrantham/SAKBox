@@ -46,6 +46,44 @@ Scene::Colour BoardColours::ofPlayer(int player) {
   return kPlayers[static_cast<std::size_t>(player) % kPlayers.size()];
 }
 
+Scene::Colour BoardColours::ofFace(Art::Face face) {
+  using Art::Face;
+  switch (face) {
+  case Face::PlanetMinerals:
+    return ofKind(PlanetKind::AsteroidBelt);
+  case Face::PlanetFood:
+    return ofKind(PlanetKind::LushPlanet);
+  case Face::PlanetFuel:
+    return ofKind(PlanetKind::GasGiant);
+  case Face::PlanetWater:
+    return ofKind(PlanetKind::IceMoon);
+  case Face::PlanetCrystals:
+    return ofKind(PlanetKind::Nebula);
+  case Face::PlanetMoon:
+    return ofKind(PlanetKind::Moon);
+  case Face::Home:
+    return {47, 143, 216}; // (its ocean blue)
+  case Face::HomeExhaustedMinerals:
+  case Face::HomeExhaustedFood:
+  case Face::HomeExhaustedFuel:
+  case Face::HomeExhaustedWater:
+  case Face::HomeExhaustedCrystals:
+    return {142, 152, 166}; // (its metal grey)
+  case Face::FindOutpost:
+    return kOutpost;
+  case Face::FindSalvage:
+  case Face::FindRuins:
+  case Face::FindPirates:
+  case Face::FindNothing:
+    return kFound;
+  case Face::PlanetFaceDown:
+    return kFaceDown;
+  case Face::FindFaceDown:
+    return kZone;
+  }
+  return kFaceDown;
+}
+
 BoardPieces::BoardPieces() {
   // A hexagon a little inside its hex, so the space between shows as a grid
   const auto corners = kLayout.corners(Hex{0, 0});

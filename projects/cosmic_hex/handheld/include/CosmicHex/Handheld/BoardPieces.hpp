@@ -31,6 +31,9 @@ struct BoardColours {
   static constexpr Scene::Colour kBlockade{30, 30, 34};
   static Scene::Colour ofKind(PlanetKind kind);
   static Scene::Colour ofPlayer(int player);
+  // A tile face's main colour, where tiles can't show their faces (the DS,
+  // until the scene layer has textures there)
+  static Scene::Colour ofFace(Art::Face face);
 };
 
 // The face a tile shows (round 75's designs): a planet face down or by its
