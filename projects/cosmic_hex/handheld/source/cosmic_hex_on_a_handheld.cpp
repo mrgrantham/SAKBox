@@ -204,11 +204,11 @@ private:
     renderer_->beginFrame(camera, kEnvironment);
     renderer_->draw(stars_, Scene::Transform::identity(),
                     {.shading = Scene::Material::Shading::Unlit});
-    // A very light, see-through grey in the gaps between the tiles
+    // A dim, see-through grey in the gaps between the tiles (round 80: dimmer)
     if (gaps_)
       renderer_->draw(
           gaps_, Scene::Transform::identity(),
-          {.shading = Scene::Material::Shading::Unlit, .colour = {205, 212, 225}, .alpha = 9});
+          {.shading = Scene::Material::Shading::Unlit, .colour = {150, 160, 180}, .alpha = 4});
     if (latest_) {
       const State &state = latest_->state;
       // How far through the latest move's animation (0 to 1)
