@@ -1,6 +1,7 @@
 // Tally.hpp - a batch's results added up as its games come in, for the
 // balance lab's charts: wins by turn position and by home (with the margin
-// of a fair share), how long games last, and where stations end up.
+// of a fair share), how long games last, where stations end up, and where
+// the winners' points came from.
 #pragma once
 
 #include "../../simulate/Batch.hpp"
@@ -20,6 +21,12 @@ struct Tally {
   std::vector<int> gamesByRounds;            // [r]: games won in round r
   std::array<double, 3> stationsBySystem{};  // at the end, in all: singles, pairs, threes
   double badges = 0;                         // earned, in all
+  // Where winners' points came from: in all (points), and in how many wins
+  // each kind gave any. In the order of kSourceNames.
+  static constexpr std::array<const char *, 6> kSourceNames = {"Stations", "Colonies", "Core",
+                                                               "Badges",   "Charters", "Embargo"};
+  std::array<double, 6> winnerPoints{};
+  std::array<int, 6> winsWithSource{};
 
   void add(const Batch::GameResult &result) {
     ++games;
@@ -29,6 +36,13 @@ struct Tally {
     if (result.winner < 0)
       return;
     ++finished;
+    const Batch::Sources &s = result.winnerSources;
+    const std::array<int, 6> points = {s.stations, s.colonies,  s.core,
+                                       s.badges,   s.contracts, s.embargo};
+    for (std::size_t i = 0; i < points.size(); ++i) {
+      winnerPoints[i] += points[i];
+      winsWithSource[i] += points[i] > 0;
+    }
     ++winsByHome[static_cast<std::size_t>(result.winner)];
     ++winsByTurn[static_cast<std::size_t>((result.winner - result.first + players) % players)];
     if (gamesByRounds.size() <= static_cast<std::size_t>(result.rounds))

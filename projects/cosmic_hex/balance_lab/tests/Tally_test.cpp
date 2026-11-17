@@ -48,3 +48,18 @@ TEST(TallyTest, AFairShareAndItsMargin) {
     tally.add(won(i % 4, 0, 10));
   EXPECT_NEAR(tally.margin(), 4.2, 0.05); // 1.96 x sqrt(0.25 x 0.75 / 400)
 }
+
+// Where the winners' points came from: in all, and in how many wins
+TEST(TallyTest, AddsUpWinnersPointsBySource) {
+  Tally tally;
+  GameResult a = won(0, 0, 10), b = won(1, 0, 10);
+  a.winnerSources = {
+      .stations = 4, .colonies = 4, .core = 2, .embargo = 0, .badges = 2, .contracts = 0};
+  b.winnerSources = {
+      .stations = 5, .colonies = 2, .core = 0, .embargo = 0, .badges = 3, .contracts = 2};
+  tally.add(a);
+  tally.add(b);
+  // Stations, Colonies, Core Control, Badges, Charters, Embargo
+  EXPECT_EQ(tally.winnerPoints, (std::array<double, 6>{9, 6, 2, 5, 2, 0}));
+  EXPECT_EQ(tally.winsWithSource, (std::array<int, 6>{2, 2, 1, 2, 1, 0}));
+}

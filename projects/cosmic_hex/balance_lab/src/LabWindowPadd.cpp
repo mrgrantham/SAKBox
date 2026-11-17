@@ -17,6 +17,7 @@
 #include <ctime>
 #include <filesystem>
 #include <sstream>
+#include <string>
 #include <utility>
 
 namespace CosmicHex::Lab {
@@ -710,6 +711,30 @@ void LabWindowPadd::drawCharts() {
     ImPlot::SetupAxes("rounds", "games", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
     std::vector<double> counts(tally_.gamesByRounds.begin(), tally_.gamesByRounds.end());
     ImPlot::PlotBars("games", counts.data(), static_cast<int>(counts.size()), 0.8);
+    ImPlot::EndPlot();
+  }
+  // Where the winners' points came from: on average a win (bars), and how
+  // often each kind gave any (the labels)
+  if (tally_.finished > 0 &&
+      ImPlot::BeginPlot("Winners' points by source: a win's average (in: % of wins with any)",
+                        ImVec2(-1, 210),
+                        ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect | ImPlotFlags_NoLegend)) {
+    constexpr int kSources = static_cast<int>(Tally::kSourceNames.size());
+    static std::array<std::string, kSources> labels;
+    std::array<const char *, kSources> names{};
+    std::array<double, kSources> average{};
+    for (std::size_t i = 0; i < Tally::kSourceNames.size(); ++i) {
+      average[i] = tally_.winnerPoints[i] / tally_.finished;
+      labels[i] =
+          std::string(Tally::kSourceNames[i]) + "\nin " +
+          std::to_string(static_cast<int>(std::lround(tally_.share(tally_.winsWithSource[i])))) +
+          "%";
+      names[i] = labels[i].c_str();
+    }
+    ImPlot::SetupAxes(nullptr, "points a win", ImPlotAxisFlags_None, ImPlotAxisFlags_AutoFit);
+    ImPlot::SetupAxisTicks(ImAxis_X1, 0, kSources - 1, kSources, names.data());
+    ImPlot::SetupAxisLimits(ImAxis_X1, -0.6, kSources - 0.4, ImPlotCond_Always);
+    ImPlot::PlotBars("points", average.data(), kSources, 0.6);
     ImPlot::EndPlot();
   }
   if (ImPlot::BeginPlot("Stations at the end (a game)", ImVec2(-1, 190),
