@@ -123,6 +123,7 @@ Settings settingsFor(const Options &options) {
   settings.cartelTake = options.cartelTake;
   settings.playerTrading = options.trading;
   settings.homeDie = options.homeDie;
+  settings.finishRound = options.finishRound;
   settings.homeIncomeSteps = options.homeIncomeSteps;
   settings.exhaustedKindRandom = options.exhaustedKindRandom;
   return settings;

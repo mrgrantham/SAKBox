@@ -433,6 +433,7 @@ void LabWindowPadd::drawSettings() {
   ImGui::InputInt("Cartel takes (0: all)", &options_.cartelTake);
   ImGui::Checkbox("Trading between players", &options_.trading);
   ImGui::Checkbox("Home income on the home die", &options_.homeDie);
+  ImGui::Checkbox("Finish the round at the winning points", &options_.finishRound);
   // Starfarers' middle step (round 67): 2 a turn, then 1 from this many
   // points (0: off, the catch-up rule)
   int middleFrom = options_.homeIncomeSteps.size() == 2 ? options_.homeIncomeSteps[1][0] : 0;

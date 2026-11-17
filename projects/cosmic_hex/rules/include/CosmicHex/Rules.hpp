@@ -74,6 +74,12 @@ inline constexpr int kDeepSpaceRelay = 20;
 
 struct Settings {
   int winPoints = 12; // (10 until round 41)
+  // Finish the round (round 69, for turn order): reaching winPoints doesn't
+  // end the game at once; the round is played out so everyone has had as
+  // many turns, and the most points wins (a tie: the later in turn order,
+  // who had the less time ahead). Off: the first to winPoints on their own
+  // turn wins
+  bool finishRound = false;
   // Corners and edges (agreed in rounds 39 to 50; design.md): stations and
   // colonies on corners, each earning from every planet it touches, none on
   // a corner next to another; ships on corners, moving along edges
@@ -354,6 +360,7 @@ struct State {
   int embargoHolder = -1;  // who holds the Galactic Embargo, or -1
   bool cardPlayed = false; // an Enforcer played this turn (one a turn)
   int winner = -1;
+  bool finalRound = false; // (Settings::finishRound) someone has reached winPoints
   int lastRoll = 0;
   int pendingPlanet = -1, pendingSite = -1; // being turned over
   std::vector<int> victims;                 // still to be stolen from (the blockade, the pirates)

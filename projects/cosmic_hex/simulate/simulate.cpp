@@ -138,7 +138,9 @@ Options parse(int argc, char **argv) {
       }
       for (std::size_t i = 0; i < numbers.size(); i += 2)
         options.homeIncomeSteps.push_back({numbers[i], numbers[i + 1]});
-    } else if (flag == "--home-die")
+    } else if (flag == "--finish-round")
+      options.finishRound = std::string_view(value) == "yes";
+    else if (flag == "--home-die")
       options.homeDie = std::string_view(value) == "yes";
     else if (flag == "--trading")
       options.trading = std::string_view(value) != "no";

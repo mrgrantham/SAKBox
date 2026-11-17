@@ -986,3 +986,33 @@ TEST(RulesTest, HomeIncomeSteps) {
   }
   EXPECT_EQ(back->settings.homeIncomeSteps, settings.homeIncomeSteps);
 }
+
+// Finish the round (round 69): reaching the points to win plays out the
+// round; then the most points wins, a tie to the later in turn order
+TEST(RulesTest, FinishTheRound) {
+  Settings settings;
+  settings.finishRound = true;
+  State state = newGame(3, settings);
+  ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 0}));
+  ASSERT_TRUE(Game::apply(state, {Kind::Roll, 1, 2}));
+  ASSERT_EQ(state.turn, 0);
+  // Player 1 reaches the points to win by cashing badges
+  state.player[0].badges = state.settings.badgesPerPoint;
+  state.player[0].badgePoints += state.settings.winPoints - points(state, 0) - 1;
+  ASSERT_TRUE(Game::apply(state, {Kind::CashBadges}));
+  EXPECT_TRUE(state.finalRound);
+  EXPECT_FALSE(Game::isOver(state)); // (players 2 and 3 still play)
+  ASSERT_TRUE(Game::apply(state, {Kind::EndTurn}));
+  // Player 3 draws level by the end of the round: theirs, the later
+  state.player[2].badgePoints += points(state, 0) - points(state, 2);
+  for (int turn = 1; turn < 3; ++turn) {
+    if (state.phase == Phase::HomeIncome)
+      ASSERT_TRUE(Game::apply(state, {Kind::ChooseHome, 0}));
+    ASSERT_EQ(state.phase, Phase::RollDraw);
+    ASSERT_TRUE(Game::apply(state, {Kind::Roll, 1, 2}));
+    ASSERT_FALSE(Game::isOver(state));
+    ASSERT_TRUE(Game::apply(state, {Kind::EndTurn}));
+  }
+  ASSERT_TRUE(Game::isOver(state));
+  EXPECT_EQ(state.winner, 2);
+}

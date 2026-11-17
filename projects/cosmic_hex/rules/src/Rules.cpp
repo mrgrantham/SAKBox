@@ -724,6 +724,19 @@ void endTurn(State &state) {
   state.turn = (state.turn + 1) % state.players;
   if (state.turn == 0)
     ++state.round;
+  // (finishRound) the round played out: the most points wins, a tie going to
+  // the later in turn order
+  if (state.finalRound && state.turn == state.first) {
+    int best = -1;
+    for (int step = 0; step < state.players; ++step) {
+      const int p = (state.first + step) % state.players;
+      if (best < 0 || points(state, p) >= points(state, best))
+        best = p;
+    }
+    state.winner = best;
+    state.phase = Phase::Over;
+    return;
+  }
   for (Ship &ship : state.ships)
     ship.moved = false;
   state.homeIncomeLeft = homeIncomeFor(state, state.turn);
@@ -827,7 +840,8 @@ std::string settingsText(const Settings &s) {
       << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0) << " discardover=" << s.discardOver
       << " charters=" << joined(s.charters) << " enforcers=" << s.enforcers << ","
       << s.embargoEnforcers << "," << s.embargoPoints << " cartels=" << s.cartels << ","
-      << s.cartelTake << " homedie=" << (s.homeDie ? 1 : 0) << " shipyards=" << s.shipyards
+      << s.cartelTake << " finishround=" << (s.finishRound ? 1 : 0)
+      << " homedie=" << (s.homeDie ? 1 : 0) << " shipyards=" << s.shipyards
       << " supply=" << s.supplyDrops << " moons=" << s.moons << " planets=";
   std::vector<int> planetList;
   for (Hex hex : s.planetHexes) {
@@ -893,6 +907,10 @@ std::optional<Settings> readSettings(std::string_view line) {
     if (values && key == "cartels" && values->size() == 2) {
       s.cartels = (*values)[0];
       s.cartelTake = (*values)[1];
+      continue;
+    }
+    if (values && key == "finishround" && values->size() == 1) {
+      s.finishRound = (*values)[0] != 0;
       continue;
     }
     if (values && key == "homedie" && values->size() == 1) {
@@ -2001,8 +2019,12 @@ bool Game::apply(State &state, const Action &action) {
   }
   if (done && state.phase != Phase::HomeIncome && state.phase != Phase::HomeDieDraw &&
       points(state, state.turn) >= state.settings.winPoints) {
-    state.winner = state.turn;
-    state.phase = Phase::Over;
+    if (state.settings.finishRound) {
+      state.finalRound = true; // (the game ends when the round does)
+    } else {
+      state.winner = state.turn;
+      state.phase = Phase::Over;
+    }
   }
   return done;
 }
@@ -2289,9 +2311,10 @@ std::string Game::writeState(const State &state) {
       << " income=" << state.homeIncomeLeft << " offered=" << state.offered[0] << ","
       << state.offered[1] << " first=" << state.first << " setup=" << state.setupStep
       << (state.placingShip ? " placing" : "") << "\n";
-  out << "trading=" << (state.tradingDone ? 1 : 0) << " offer=" << state.offer.give << ","
-      << state.offer.get << "," << state.offer.to << "," << state.offer.replier << ","
-      << state.offer.counterGive << "," << state.offer.counterGet << " made=";
+  out << "final=" << (state.finalRound ? 1 : 0) << " trading=" << (state.tradingDone ? 1 : 0)
+      << " offer=" << state.offer.give << "," << state.offer.get << "," << state.offer.to << ","
+      << state.offer.replier << "," << state.offer.counterGive << "," << state.offer.counterGet
+      << " made=";
   for (const auto &made : state.offersMade)
     out << made[0] << ":" << made[1] << ";";
   out << "\n";
