@@ -279,3 +279,31 @@ TEST(DisplayListTest, ImageTexturesSendTheirCoordinates) {
   EXPECT_TRUE(has(0u | ((16u * 16u) << 16)));
   EXPECT_TRUE(has(32u * 16u));
 }
+
+// The overlay's triangles' depths (round 92, the user's: the roll's hexagon
+// lost a slice, as one step apart the DS's depth buffer rounded neighbouring
+// triangles together, and a see-through one over an opaque one failed the
+// depth test; melonDS showed it too, and 16 steps apart it was gone): each
+// nearer than the one before, at least kOverlayDepthStep apart for any
+// frame's worth of triangles, in a 16-bit number's range and off the near
+// plane
+TEST(DisplayListTest, OverlayTrianglesAreFarEnoughApartForTheDepthBuffer) {
+  using DisplayList::kOverlayDepthStep;
+  using DisplayList::overlayDepth;
+  for (const int count : {1, 2, 12, 100, 1000, 1999}) {
+    for (int t = 0; t < count; ++t) {
+      const int depth = overlayDepth(t, count);
+      EXPECT_LT(depth, 0) << t << " of " << count; // (in front of the camera)
+      EXPECT_GE(depth, -32768) << t << " of " << count;
+      if (t > 0) {
+        EXPECT_GE(depth - overlayDepth(t - 1, count), kOverlayDepthStep) << t << " of " << count;
+      }
+    }
+  }
+  // Even more than a frame can draw (the DS: 2048 polygons) stays in range,
+  // each still nearer than the last
+  for (int t = 1; t < 5000; ++t) {
+    EXPECT_GT(overlayDepth(t, 5000), overlayDepth(t - 1, 5000));
+    EXPECT_GE(overlayDepth(t - 1, 5000), -32768);
+  }
+}

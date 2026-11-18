@@ -17,6 +17,7 @@
 #include <ScratchPadd/Scene/MeshData.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <vector>
 
@@ -33,6 +34,20 @@ enum Command : std::uint8_t {
   KBegin = 0x40,            // starts polygons: 0 separate triangles, 1 quads,
                             // 2 a triangle strip
 };
+
+// The depth of the overlay's triangle `index` of `count` (in the 4.12 units
+// of its orthographic projection, 0 the near plane): each a step nearer than
+// the one before, so later shapes are drawn over earlier ones. The step is
+// kOverlayDepthStep, fewer only when a frame has so many triangles that the
+// depths would leave a 16-bit number's range (round 92, the user's: one step
+// apart, the depth buffer rounded neighbours together, and see-through
+// triangles over opaque ones failed the depth test: the roll's hexagon lost
+// a slice, a square its fill).
+constexpr int kOverlayDepthStep = 16;
+constexpr std::int16_t overlayDepth(int index, int count) {
+  const int step = std::clamp(32000 / (count + 1), 1, kOverlayDepthStep);
+  return static_cast<std::int16_t>(-(count - index) * step);
+}
 
 // The DS's 15-bit colour (5 bits a channel)
 constexpr std::uint16_t rgb15(Colour c) {
