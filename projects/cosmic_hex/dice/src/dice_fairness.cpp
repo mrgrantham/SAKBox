@@ -4,7 +4,9 @@
 // two fair dice, by chi-square; how long throws take to settle; and how many
 // never do.
 //
-//   bazel run -c opt //projects/cosmic_hex/dice:dice_fairness -- 20000
+//   bazel run -c opt //projects/cosmic_hex/dice:dice_fairness -- 20000 [30]
+//   (the second number: physics steps a second, 60 unless given; the DS
+//   steps at 30, round 92)
 //   (dice_fairness_float and dice_fairness_flex_point16: the same in float,
 //   and in the DS's 16.16 fixed point)
 #include <CosmicHex/Dice/DiceTray.hpp>
@@ -23,7 +25,12 @@ int main(int argc, char **argv) {
     const std::string_view text = argv[1];
     std::from_chars(text.data(), text.data() + text.size(), throws);
   }
-  constexpr double kStep = 1.0 / 60;
+  int stepsASecond = 60;
+  if (argc > 2) {
+    const std::string_view text = argv[2];
+    std::from_chars(text.data(), text.data() + text.size(), stepsASecond);
+  }
+  const double kStep = 1.0 / stepsASecond;
   constexpr double kGiveUp = 20; // seconds: a throw still moving then is counted as stuck
   std::array<long, 7> faces{};
   std::array<long, 13> sums{};
@@ -50,7 +57,8 @@ int main(int argc, char **argv) {
   }
   const long settled = throws - stuck;
   double chiFaces = 0;
-  std::printf("throws %d, settled %ld, stuck %ld\n", throws, settled, stuck);
+  std::printf("throws %d at %d steps a second, settled %ld, stuck %ld\n", throws, stepsASecond,
+              settled, stuck);
   std::printf("faces:");
   for (int f = 1; f <= 6; ++f) {
     const double expected = 2.0 * static_cast<double>(settled) / 6;

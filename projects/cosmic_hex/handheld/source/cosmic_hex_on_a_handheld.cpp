@@ -1127,8 +1127,17 @@ private:
   // The physics dice
   enum class DiceStage : std::uint8_t { Idle, Rolling, Showing, Pulling };
   static constexpr double kSecondsShowingDice = 0.75;
-  static constexpr double kDiceStep = 1.0 / 60; // (the tray's fixed step)
+  // The tray's fixed step: 30 a second on the DS (round 92: a step took
+  // about 10 ms there, so 60 a second couldn't keep up; the throws are as
+  // fair at 30, dice_fairness_flex_point16 over 20,000), 60 elsewhere. The
+  // step decides the throw, so a seed lands differently on the DS.
+#if defined(__NDS__)
+  static constexpr double kDiceStep = 1.0 / 30;
+  static constexpr int kMostDiceSteps = 2;
+#else
+  static constexpr double kDiceStep = 1.0 / 60;
   static constexpr int kMostDiceSteps = 4;
+#endif
   Dice::DiceTray tray_;
   Scene::Mesh die_;
   DiceStage dice_ = DiceStage::Idle;
