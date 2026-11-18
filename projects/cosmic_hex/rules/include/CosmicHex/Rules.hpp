@@ -214,6 +214,9 @@ struct Settings {
   // played the most Enforcers, at least this many; it passes on overtaking
   int embargoEnforcers = 3;
   int embargoPoints = 2;
+  // What the Deep-space relay Charter itself scores once revealed, on top
+  // of its station's 1 (round 77: nothing; round 96, the user's idea: 1)
+  int relayPoints = 0;
   int coreStationsForControl = 2;
   int coreControlPoints = 2; // (0: no Core Control at all; the agreed rules', round 89)
   int badgesPerPoint = 3;
@@ -506,6 +509,9 @@ struct Contract {
   bool (*met)(const State &, int player);
 };
 const std::vector<Contract> &contracts();
+// What Charter `id` scores once revealed, under `settings` (the relay's is
+// a setting: Settings::relayPoints)
+int charterPoints(const Settings &settings, int id);
 
 // ---------------------------------------------------------------------------
 // Corners (Settings::corners): every corner of the board, in a fixed order,

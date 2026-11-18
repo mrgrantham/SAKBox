@@ -714,3 +714,17 @@ TEST(CornersTest, NoCoreControlInTheAgreedRules) {
   EXPECT_EQ(agreedRules(boardR3()).coreControlPoints, 0);
   EXPECT_FALSE(agreedRules(boardR3()).firstRoundBoost); // (round 90: no boost the first round)
 }
+
+// The relay Charter scores its own points (Settings::relayPoints, round 96)
+// on top of its station's, once revealed; the other Charters their table's
+TEST(CornersTest, TheRelayScoresItsSetting) {
+  Settings settings;
+  EXPECT_EQ(charterPoints(settings, kDeepSpaceRelay), 0);
+  settings.relayPoints = 1;
+  EXPECT_EQ(charterPoints(settings, kDeepSpaceRelay), 1);
+  EXPECT_EQ(charterPoints(settings, 0), contracts()[0].points);
+  State state = atMain();
+  const int before = points(state, 0);
+  state.player[0].revealed.push_back(kDeepSpaceRelay);
+  EXPECT_EQ(points(state, 0), before + state.settings.relayPoints);
+}

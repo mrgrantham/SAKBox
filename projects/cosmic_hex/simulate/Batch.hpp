@@ -89,6 +89,7 @@ struct Options {
   // layout without that list keeps the usual places)
   bool smallFinds = true;
   int win = 0;                  // points to win (0: the rules' default)
+  int relayPoints = -1;         // the relay Charter's own points (-1: the rules')
   std::vector<BotStyle> styles; // the players' styles, turned round a seat each game
   bool edges = true;            // corners and edges (Settings::corners)
   int move = 0, boost = 0;      // a ship's move and its fuel boost (0: the default for the rules)

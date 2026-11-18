@@ -182,6 +182,8 @@ Options parse(int argc, char **argv) {
       options.moons = number<int>(flag, value);
     else if (flag == "--win")
       options.win = number<int>(flag, value);
+    else if (flag == "--relay-points")
+      options.relayPoints = number<int>(flag, value);
     else if (flag == "--styles") {
       std::string_view rest = value;
       while (!rest.empty()) {
@@ -269,7 +271,8 @@ int main(int argc, char **argv) {
     std::ofstream totals(options.csv + ".contracts.csv");
     totals << "id,name,points,dealt,kept,revealed,winner_revealed\n";
     for (std::size_t id = 0; id < contractTotals.size(); ++id) {
-      totals << id << ",\"" << contracts()[id].name << "\"," << contracts()[id].points;
+      totals << id << ",\"" << contracts()[id].name << "\","
+             << charterPoints(Settings{}, static_cast<int>(id));
       for (int count : contractTotals[id])
         totals << "," << count;
       totals << "\n";

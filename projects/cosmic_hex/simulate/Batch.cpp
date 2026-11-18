@@ -105,6 +105,8 @@ Settings settingsFor(const Options &options) {
     settings.boostMove = options.boost;
   if (options.win > 0)
     settings.winPoints = options.win;
+  if (options.relayPoints >= 0)
+    settings.relayPoints = options.relayPoints;
   else if (options.players == 3)
     settings.winPoints = kThreePlayerWinPoints; // (the agreed rules' for three; round 85)
   settings.catchUpBelow = options.catchUpBelow;
@@ -330,7 +332,7 @@ Sources sourcesOf(const State &state, int player) {
   s.embargo = state.embargoHolder == player ? state.settings.embargoPoints : 0;
   s.badges = state.player[static_cast<std::size_t>(player)].badgePoints;
   for (int id : state.player[static_cast<std::size_t>(player)].revealed)
-    s.contracts += contracts()[static_cast<std::size_t>(id)].points;
+    s.contracts += charterPoints(state.settings, id);
   s.colonies = points(state, player) - s.stations - s.core - s.embargo - s.badges - s.contracts;
   return s;
 }

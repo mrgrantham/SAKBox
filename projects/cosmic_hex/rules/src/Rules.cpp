@@ -1654,6 +1654,11 @@ const std::vector<Contract> &contracts() {
   return kContracts;
 }
 
+int charterPoints(const Settings &settings, int id) {
+  return id == kDeepSpaceRelay ? settings.relayPoints
+                               : contracts()[static_cast<std::size_t>(id)].points;
+}
+
 // ---------------------------------------------------------------------------
 // Scoring
 
@@ -1686,7 +1691,7 @@ int stationsOf(const State &state, int player) {
     total += state.settings.embargoPoints;
   total += p.badgePoints;
   for (int id : p.revealed)
-    total += contracts()[static_cast<std::size_t>(id)].points;
+    total += charterPoints(state.settings, id);
   return total;
 }
 
