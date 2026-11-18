@@ -36,16 +36,13 @@ BUILD		:=	build
 # The sources are staged from their own packages by the Bazel rule
 # (extra_srcs in BUILD): the game (rules, the handheld game and its app),
 # its libraries, and ScratchPadd's
-SOURCES		:=	cosmic_hex/handheld/source cosmic_hex/handheld/src scratchpadd/motion/src cosmic_hex/dice/src cyclone/src assets scratchpadd/title_scene/src scratchpadd/memory_stats/src cosmic_hex/rules/src cosmic_hex/art/src cosmic_hex/art scratchpadd/texture_recipe/src \
-			scratchpadd/handheld_controls/src scratchpadd/utilities/src scratchpadd/storage/src scratchpadd/network/src \
-			scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session \
-			scratchpadd/scene/src scratchpadd/scene_3ds/src scratchpadd/overlay_text/src
+# The libraries' folders come from the Bazel rule (SAKBOX_SOURCES and
+# SAKBOX_INCLUDES: every staged folder with sources, every staged include
+# folder; round 100), so a library added in BUILD needs nothing here.
+# Cyclone's demos are staged with it but aren't part of this app.
+SOURCES		:=	$(filter-out cyclone/src/demos,$(SAKBOX_SOURCES))
 DATA		:=	data
-INCLUDES	:=	include cosmic_hex/handheld/include cosmic_hex/dice/include cyclone/include assets scratchpadd/title_scene/include scratchpadd/frame_arena/include scratchpadd/motion/include cosmic_hex/rules/include cosmic_hex/art/include scratchpadd/texture_recipe/include flexmath/include action_log/include game_bots/include hex_grid/include seeded_random/include \
-			scratchpadd/app_ended/include scratchpadd/handheld_controls/include scratchpadd/basis/include scratchpadd/messages/include scratchpadd/utilities/include \
-			scratchpadd/input/include scratchpadd/debug_log/include scratchpadd/storage/include scratchpadd/network/include \
-			scratchpadd/scene/include scratchpadd/scene_3ds/include scratchpadd/overlay_text/include \
-			third_party third_party/spdlog/include
+INCLUDES	:=	include assets third_party $(SAKBOX_INCLUDES)
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 APP_TITLE	:=	Cosmic Hex

@@ -49,7 +49,8 @@ def main(argv):
     outputs = [f"{name}{ext}" for ext in (".nds", ".elf")]
     # (GAME_ICON is a path from where make runs: the app's folder, $(CURDIR))
     script = (f"make TARGET={shlex.quote(name)} GAME_ICON=$PWD/{ICON}" +
-              (" SAKBOX_DEBUG=1" if args.debug else "") + devkitpro_image.make_defines(args.define, name, title) + " >&2 && "
+              (" SAKBOX_DEBUG=1" if args.debug else "") + devkitpro_image.make_defines(args.define, name, title) +
+              devkitpro_image.staged_folders([path for _, path in files]) + " >&2 && "
               "tar -c " + " ".join(shlex.quote(o) for o in outputs))
     with tempfile.TemporaryDirectory() as scratch:
         icon = args.icon

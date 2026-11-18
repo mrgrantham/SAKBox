@@ -96,6 +96,26 @@ def run(image, files, script, outputs, out_dir, what):
             out.chmod(0o755 if member.mode & 0o111 else 0o644)
 
 
+SOURCE_SUFFIXES = (".c", ".cpp", ".s")
+
+
+def staged_folders(paths):
+    """make's SAKBOX_SOURCES and SAKBOX_INCLUDES (round 100, the user's
+    choice A): every folder of the staged app holding source files, and
+    every staged folder called "include", so an app's Makefile needn't list
+    each library's folders again (they come from its Bazel sources). Only
+    staged folders: the app's own files at its top level are left to it."""
+    sources = sorted({str(pathlib.PurePosixPath(p).parent) for p in paths
+                      if p.endswith(SOURCE_SUFFIXES) and "/" in p})
+    includes = set()
+    for p in paths:
+        parts = pathlib.PurePosixPath(p).parts
+        if "include" in parts[:-1]:
+            includes.add("/".join(parts[:parts.index("include") + 1]))
+    return (" SAKBOX_SOURCES=" + shlex.quote(" ".join(sources)) +
+            " SAKBOX_INCLUDES=" + shlex.quote(" ".join(sorted(includes))))
+
+
 def pairs(values):
     """[a1, b1, a2, b2, ...] as [(a1, b1), (a2, b2), ...]"""
     return list(zip(values[0::2], values[1::2]))

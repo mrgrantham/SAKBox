@@ -102,7 +102,8 @@ def main(argv):
     title = text.get("APP_TITLE", name)
     commands = [f"make TARGET={shlex.quote(name)} ICON={ICON}" +
                 (" SAKBOX_DEBUG=1" if args.debug else "") +
-                devkitpro_image.make_defines(args.define, name, title) + " >&2"]
+                devkitpro_image.make_defines(args.define, name, title) +
+                devkitpro_image.staged_folders([path for _, path in files]) + " >&2"]
     with tempfile.TemporaryDirectory() as scratch:
         icon = args.icon
         if not icon:

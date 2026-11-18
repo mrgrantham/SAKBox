@@ -35,5 +35,21 @@ class MakeDefinesTest(unittest.TestCase):
         self.assertEqual(flags[2:], ["-DRAGDOLL_SWEEP_AT_START", "-DLEVEL=2"])
 
 
+class StagedFoldersTest(unittest.TestCase):
+    # (round 100: the Makefiles' SOURCES and INCLUDES from what's staged)
+    def test_folders_with_sources_and_include_folders(self):
+        made = devkitpro_image.staged_folders([
+            "Makefile", "main.cpp",                      # the app's own: left to it
+            "cosmic_hex/rules/src/Rules.cpp", "cosmic_hex/rules/src/Detail.hpp",
+            "cosmic_hex/rules/include/CosmicHex/Rules.hpp",
+            "scratchpadd/debug_log/src/server/Server.cpp",
+            "flexmath/include/Flex/Math.hpp",            # headers only: no sources folder
+            "assets/rocket.cpp", "art/kTile.s"])
+        sources = shlex.split(made.split(" SAKBOX_INCLUDES=")[0].split("SAKBOX_SOURCES=")[1])[0].split()
+        includes = shlex.split(made.split(" SAKBOX_INCLUDES=")[1])[0].split()
+        self.assertEqual(sources, ["art", "assets", "cosmic_hex/rules/src", "scratchpadd/debug_log/src/server"])
+        self.assertEqual(includes, ["cosmic_hex/rules/include", "flexmath/include"])
+
+
 if __name__ == "__main__":
     unittest.main()
