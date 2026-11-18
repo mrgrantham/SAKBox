@@ -6,6 +6,8 @@
 namespace CosmicHex::Art {
 
 namespace Recipes {
+extern const unsigned char kCardBack[];
+extern const std::size_t kCardBackSize;
 extern const unsigned char kCardWordsText[];
 extern const std::size_t kCardWordsTextSize;
 extern const unsigned char kIconRoll[];
@@ -285,5 +287,9 @@ const std::array<CardWords, kCards> &allWords() {
 } // namespace
 
 CardWords wordsOf(Card card) { return allWords()[static_cast<std::size_t>(card)]; }
+
+std::string_view cardBackRecipe() {
+  return {reinterpret_cast<const char *>(Recipes::kCardBack), Recipes::kCardBackSize};
+}
 
 } // namespace CosmicHex::Art

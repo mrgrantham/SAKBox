@@ -77,6 +77,8 @@ enum class Card : std::uint8_t {
 };
 inline constexpr int kCards = 12;
 std::string_view cardRecipeOf(Card card);
+// Every card's back (cards/back.svg: round 99's design C), the same shape
+std::string_view cardBackRecipe();
 
 // A card's areas, in its drawing's units (63 x 88, a playing card's shape)
 struct CardArea {

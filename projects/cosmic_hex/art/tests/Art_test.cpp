@@ -102,3 +102,12 @@ TEST(ArtTest, EveryCardsWordsFit) {
     EXPECT_LE(Scene::wrapText(words.words, wordsWidth, width).size(), 7u) << Art::fileOf(card);
   }
 }
+
+// The cards' back draws: dark, its rounded corner see-through
+TEST(ArtTest, TheCardBackDraws) {
+  const auto recipe = TR::read(Art::cardBackRecipe());
+  ASSERT_TRUE(recipe.has_value()) << recipe.error();
+  const TR::Image image = TR::draw(*recipe, 63, 88, TR::Format::Rgba8);
+  EXPECT_EQ(image.at(0, 0).a, 0);
+  EXPECT_EQ(image.at(8, 10).r, 0x14); // (the dark ground, inside the edge)
+}

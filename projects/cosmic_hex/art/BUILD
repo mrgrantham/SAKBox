@@ -174,6 +174,15 @@ CARDS = ["resource_minerals", "resource_food", "resource_fuel", "resource_water"
     symbol = "kCard" + "".join([word.capitalize() for word in name.split("_")]),
 ) for name in CARDS]
 
+# A card's back (round 99, the user's choice C: rings of hexagons in amber
+# and blue), for cards face down: the other players' hands, the deck
+texture_recipe(
+    name = "card_back",
+    svg = "cards/back.svg",
+    namespace = "CosmicHex::Art::Recipes",
+    symbol = "kCardBack",
+)
+
 # The cards' words, edited as text (round 97): Art.hpp's wordsOf reads them
 embed_file(
     name = "card_words",
@@ -209,7 +218,7 @@ cc_library(
         ":planet_moon",
         ":planet_water",
     ] + [":number_%d" % n for n in CHIP_NUMBERS] +
-    [":icon_" + name for name in ICONS] + [":card_" + name for name in CARDS] + [":card_words"],
+    [":icon_" + name for name in ICONS] + [":card_" + name for name in CARDS] + [":card_words", ":card_back"],
 )
 
 # The sources, for the consoles' Makefile builds: Art.cpp and the recipes'
@@ -240,7 +249,7 @@ filegroup(
         ":planet_water_source",
     ] + [":number_%d_source" % n for n in CHIP_NUMBERS] +
     [":icon_%s_source" % name for name in ICONS] + [":card_%s_source" % name for name in CARDS] +
-    [":card_words_source"],
+    [":card_words_source", ":card_back_source"],
     visibility = ["//visibility:public"],
 )
 
