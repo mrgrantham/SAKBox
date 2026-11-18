@@ -95,6 +95,15 @@ constexpr bool kWatchAtStart = false;
 // question on the roadmap page (round 87); the scene for now
 constexpr bool kTitleScene = true;
 
+// An unchanged top screen isn't drawn again (topIsStill): on the DS, whose
+// 3D hardware shows the last frame by itself; elsewhere (the 3DS has a GPU
+// of its own, and its frames must be sent) it's drawn as ever
+#if defined(__NDS__)
+constexpr bool kHoldStillFrames = true;
+#else
+constexpr bool kHoldStillFrames = false;
+#endif
+
 // The bots' frame arena (round 90), and none if 0. One simulated game held
 // up to about 75 KB (64-bit, in the test); the DS has under 200 KB free, so
 // it takes less (a game that outgrows the arena carries on from the heap)
@@ -298,6 +307,7 @@ public:
       gameClock_.setPaused(snapshot.paused);
       motionStarted_ = gameClock_.seconds();
       latest_ = snapshot;
+      ++snapshots_; // (the top screen has something new to show)
       bottomDirty_ = true;
       // Someone won: the title again, with who (ScreenFlow's Won)
       if (snapshot.state.winner >= 0)
@@ -422,8 +432,21 @@ private:
       turn_ += 0.02f;
     if (screen == ScreenFlow::Screen::Setup) {
       drawSetup();
+    } else if (kHoldStillFrames && topIsStill()) {
+      // Nothing on the top screen has changed: send nothing and let the
+      // DS's 3D hardware show the last frame again, which it does by itself
+      // from what it was last sent (GBATEK: the rendering engine draws its
+      // polygon memory every frame; only a new flush changes it). The time
+      // goes to the bots' thread while this waits (round 92: on a DS,
+      // drawing an unchanged board each frame left them 4% of the CPU)
+      auto timing = profile_.time(kProfileWait);
+      waitForTheRefresh();
     } else {
       drawBoard(latest_ ? &latest_->state : nullptr);
+      drawnSnapshots_ = snapshots_;
+      drawnTurn_ = turn_;
+      drawnSelection_ = selected_ ? std::optional<HexGrid::Hex>(selected_->hex) : std::nullopt;
+      drawnAt_ = Clock::now();
     }
     drawing.reset();
     profile_.frameEnded();
@@ -1127,6 +1150,30 @@ private:
   ScratchPadd::FrameProfile profile_{"btm", "out", "dice", "top", "wait"};
   std::string profileLine_;
 
+  // Whether the top screen would look as it did when last drawn: a game's
+  // board, nothing new from the table, nothing moving (the pieces, the
+  // dice, the board coming down), the camera and the selection the same.
+  // (The -watch builds redraw once a second, for their measurements.)
+  bool topIsStill() const {
+    if (flow_.screen() != ScreenFlow::Screen::Game || !latest_ || descentStarted_ ||
+        dice_ != DiceStage::Idle)
+      return false;
+    if (gameClock_.seconds() - motionStarted_ < kSecondsAnimating)
+      return false; // (pieces still moving)
+    const std::optional<HexGrid::Hex> selection =
+        selected_ ? std::optional<HexGrid::Hex>(selected_->hex) : std::nullopt;
+    if (snapshots_ != drawnSnapshots_ || turn_ != drawnTurn_ || selection != drawnSelection_)
+      return false;
+    return !kWatchAtStart || Clock::now() - drawnAt_ < std::chrono::seconds(1);
+  }
+
+  // Waits for the screen's refresh without drawing (the last frame stays)
+  static void waitForTheRefresh() {
+#if defined(__NDS__)
+    swiWaitForVBlank();
+#endif
+  }
+
   bool onAMenuScreen() const {
     const ScreenFlow::Screen screen = flow_.screen();
     return screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Setup;
@@ -1186,6 +1233,12 @@ private:
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};
   std::optional<BoardPicture::Spot> selected_;
+  // What the top screen last showed (topIsStill): the table's snapshots
+  // drawn, the camera's turn and the selected hex, and when
+  std::uint64_t snapshots_ = 0, drawnSnapshots_ = 0;
+  float drawnTurn_ = 0;
+  std::optional<HexGrid::Hex> drawnSelection_;
+  Clock::time_point drawnAt_{};
   // Which screen (round 90: ScreenFlow); in a game, watching or playing
   ScreenFlow flow_;
   enum class Mode : std::uint8_t { Watching, Playing };
