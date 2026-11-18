@@ -26,6 +26,7 @@ SOURCES = {
     "//projects/scratchpadd/handheld_controls:sources": "scratchpadd/handheld_controls",
     "//projects/scratchpadd/scene:sources": "scratchpadd/scene",
     "//projects/scratchpadd/scene/ds:sources": "scratchpadd/scene_ds",
+    "//projects/scratchpadd/scene/overlay_text:sources": "scratchpadd/overlay_text",
     "@stb//:stb_easy_font.h": "third_party/stb",
     "//projects/scratchpadd/utilities:sources": "scratchpadd/utilities",
     "//projects/scratchpadd/ds/platform:sources": "scratchpadd_ds/platform",

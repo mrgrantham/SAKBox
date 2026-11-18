@@ -4,10 +4,12 @@
 // lit by its four directional lights, and fogged by the hardware's fog;
 // translucent meshes kept to the end of the frame and drawn farthest first;
 // the overlay's shapes as 3D triangles in front of everything and its text
-// on the screen's 2D bitmap layer. A debug build stops with a message if a
-// frame overflows the DS's polygon or vertex RAM.
+// on the screen's 2D bitmap layer (stb_easy_font's letters). A debug build stops with a message if
+// a frame overflows the DS's polygon or vertex RAM.
 #include "Backend.hpp"
 #include "ToonTable.hpp"
+
+#include <ScratchPadd/Scene/OverlayText.hpp>
 
 #include <algorithm>
 #include <array>
@@ -17,10 +19,6 @@
 #include <iterator>
 #include <string_view>
 
-// libnds' console font (the one its consoles print with): 256 characters,
-// 8 x 8, a byte a row, its lowest bit the leftmost pixel
-extern "C" const std::uint8_t default_font_bin[];
-
 namespace ScratchPadd::Scene {
 
 namespace {
@@ -29,8 +27,8 @@ using Flex::Math::HardwareMathsLock;
 
 // What the DS's polygon and vertex RAM hold a frame (GBATEK)
 constexpr unsigned kMostPolygons = 2048, kMostVertices = 6144;
-// The text layer's size, and the font's
-constexpr int kTextWidth = 256, kTextHeight = 192, kGlyph = 8;
+// The text layer's size
+constexpr int kTextWidth = 256, kTextHeight = 192;
 // Overlay points are given to the hardware as 4.12 vertices 64 points to
 // the unit, so the screen (256 x 192) is 4 x 3
 constexpr int kPointsPerUnit = 64;
@@ -80,10 +78,6 @@ int f32(Scalar value) { return DisplayList::toFixed(value, 12); }
 v10 v10Of(Scalar value) {
   return static_cast<v10>(std::clamp<std::int32_t>(DisplayList::toFixed(value, 9), -512, 511));
 }
-
-// A glyph's size in pixels at `scale` (at least 1): the font's 8, scaled
-// and rounded, so text measures whole pixels
-int glyphSize(float scale) { return std::max(1, static_cast<int>(std::lround(kGlyph * scale))); }
 
 bool sameText(const std::vector<Overlay::Text> &a, const std::vector<Overlay::Text> &b) {
   return std::ranges::equal(a, b, [](const Overlay::Text &x, const Overlay::Text &y) {
@@ -304,9 +298,11 @@ void Renderer::Backend::drawOverlayText(const Overlay &overlay) {
   if (sameText(overlay.texts(), textShown))
     return; // only when it changes
   // Each colour its own palette entry (0 is see-through), up to 255
-  std::uint16_t *palette = display.textPalette();
-  std::vector<std::uint16_t> colours;
+  std::vector<std::uint16_t> &colours = textColours;
+  colours.clear();
   std::ranges::fill(textPixels, 0);
+  textRowsFrom = kTextHeight;
+  textRowsTo = 0;
   for (const Overlay::Text &text : overlay.texts()) {
     const std::uint16_t colour = DisplayList::rgb15(text.colour);
     auto found = std::ranges::find(colours, colour);
@@ -317,32 +313,45 @@ void Renderer::Backend::drawOverlayText(const Overlay &overlay) {
       found = colours.end() - 1;
     }
     const auto entry = static_cast<std::uint8_t>(found - colours.begin() + 1);
-    // Each glyph `size` pixels square, its pixels the font's nearest
-    const int size = glyphSize(text.scale);
-    int left = static_cast<int>(std::lround(text.x)), top = static_cast<int>(std::lround(text.y));
-    int x = left;
-    for (const char c : text.text) {
-      if (c == '\n') {
-        x = left;
-        top += size;
-        continue;
+    // stb_easy_font's letters (OverlayText.hpp, as the 3DS and desktops
+    // draw them; round 96), each rectangle filled to whole pixels, at least
+    // one each way
+    for (const TextRectangle &r : textRectangles(text)) {
+      const int x0 = static_cast<int>(std::lround(r.x)), y0 = static_cast<int>(std::lround(r.y));
+      const int x1 = std::max(x0 + 1, static_cast<int>(std::lround(r.x + r.width)));
+      const int y1 = std::max(y0 + 1, static_cast<int>(std::lround(r.y + r.height)));
+      textRowsFrom = std::min(textRowsFrom, std::max(0, y0));
+      textRowsTo = std::max(textRowsTo, std::min(y1, kTextHeight));
+      for (int y = std::max(0, y0); y < std::min(y1, kTextHeight); ++y) {
+        std::uint8_t *line = &textPixels[static_cast<std::size_t>(y) * kTextWidth];
+        for (int x = std::max(0, x0); x < std::min(x1, kTextWidth); ++x)
+          line[x] = entry;
       }
-      const std::uint8_t *glyph = &default_font_bin[static_cast<std::uint8_t>(c) * kGlyph];
-      for (int py = std::max(0, -top); py < size && top + py < kTextHeight; ++py) {
-        const std::uint8_t row = glyph[py * kGlyph / size];
-        std::uint8_t *line = &textPixels[static_cast<std::size_t>(top + py) * kTextWidth];
-        for (int px = std::max(0, -x); px < size && x + px < kTextWidth; ++px)
-          if (row & (1 << (px * kGlyph / size)))
-            line[x + px] = entry;
-      }
-      x += size;
     }
   }
-  for (std::size_t i = 0; i < colours.size(); ++i)
-    palette[i + 1] = colours[i];
-  DC_FlushRange(textPixels.data(), textPixels.size());
-  dmaCopy(textPixels.data(), display.textPixels(), textPixels.size());
   textShown = overlay.texts();
+  textWaiting = true;
+}
+
+void Renderer::Backend::showText() {
+  if (!textWaiting)
+    return;
+  textWaiting = false;
+  std::uint16_t *palette = display.textPalette();
+  for (std::size_t i = 0; i < textColours.size(); ++i)
+    palette[i + 1] = textColours[i];
+  // Only the rows the text covers now or did before: a few lines, so the
+  // copy is done in the vertical blank rather than torn across the picture
+  const int from = std::min(textRowsFrom, shownRowsFrom);
+  const int to = std::max(textRowsTo, shownRowsTo);
+  shownRowsFrom = textRowsFrom;
+  shownRowsTo = textRowsTo;
+  if (from >= to)
+    return;
+  const std::size_t start = static_cast<std::size_t>(from) * kTextWidth;
+  const std::size_t bytes = static_cast<std::size_t>(to - from) * kTextWidth;
+  DC_FlushRange(textPixels.data() + start, bytes);
+  dmaCopy(textPixels.data() + start, display.textPixels() + start / 2, bytes);
 }
 
 Renderer::Renderer(Display &display) : backend_(std::make_unique<Backend>(display)) {
@@ -575,6 +584,8 @@ void Renderer::endFrame() {
 
   glFlush(GL_TRANS_MANUALSORT);
   swiWaitForVBlank();
+  // (the frame's 3D shows from this refresh: its text with it)
+  b.showText();
 }
 
 bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
@@ -622,20 +633,6 @@ FrameCounts Renderer::lastFrame() const { return backend_->last; }
 
 FrameTimes Renderer::lastFrameTimes() const { return {}; } // (not measured here)
 
-// The overlay's text on the DS: libnds' 8 x 8 font, each glyph scaled to
-// whole pixels
-float Overlay::textWidth(std::string_view text, float scale) {
-  std::size_t widest = 0;
-  while (true) {
-    const std::size_t end = std::min(text.find('\n'), text.size());
-    widest = std::max(widest, end);
-    if (end == text.size())
-      break;
-    text.remove_prefix(end + 1);
-  }
-  return static_cast<float>(widest * static_cast<std::size_t>(glyphSize(scale)));
-}
-
-float Overlay::lineHeight(float scale) { return static_cast<float>(glyphSize(scale)); }
+// (Overlay::textWidth and lineHeight: stb_easy_font's, in OverlayText.cpp)
 
 } // namespace ScratchPadd::Scene

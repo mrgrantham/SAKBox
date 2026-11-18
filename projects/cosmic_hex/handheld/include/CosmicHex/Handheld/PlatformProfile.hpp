@@ -55,7 +55,7 @@ inline constexpr PlatformProfile kDsProfile{
     .topHeight = 192,
     .bottomWidth = 256,
     .bottomHeight = 192,
-    .charsPerLine = 31,
+    .charsPerLine = 41, // (stb_easy_font, about 6 pixels a letter at most: round 96)
     .lineHeight = 10,
     .botIterations = 200,
     .botArithmetic = TableSettings::Arithmetic::FixedPoint,

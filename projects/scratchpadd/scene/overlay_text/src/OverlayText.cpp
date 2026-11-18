@@ -23,21 +23,30 @@ constexpr float kLineHeight = 12;
 constexpr std::size_t kMostQuadsPerCharacter = 11;
 } // namespace
 
-void appendTextTriangles(const Overlay::Text &text, std::vector<Overlay::Vertex> &triangles) {
+std::vector<TextRectangle> textRectangles(const Overlay::Text &text) {
   // stb_easy_font wants a writable, terminated string, and room for every
-  // quad it makes (4 vertices each)
+  // quad it makes (4 vertices each: top left, top right, bottom right,
+  // bottom left)
   std::string copy(text.text);
   std::vector<EasyFontVertex> quads(copy.size() * kMostQuadsPerCharacter * 4);
-  unsigned char rgba[4] = {text.colour.r, text.colour.g, text.colour.b, text.colour.a};
-  const int count = stb_easy_font_print(0, 0, copy.data(), rgba, quads.data(),
+  const int count = stb_easy_font_print(0, 0, copy.data(), nullptr, quads.data(),
                                         static_cast<int>(quads.size() * sizeof(EasyFontVertex)));
+  std::vector<TextRectangle> out;
+  out.reserve(static_cast<std::size_t>(count));
   for (int q = 0; q < count; ++q) {
     const EasyFontVertex *corner = &quads[static_cast<size_t>(q) * 4];
-    auto at = [&](int i) {
-      return Overlay::Vertex{text.x + corner[i].x * text.scale, text.y + corner[i].y * text.scale,
-                             text.colour};
-    };
-    triangles.insert(triangles.end(), {at(0), at(1), at(2), at(0), at(2), at(3)});
+    out.push_back({text.x + corner[0].x * text.scale, text.y + corner[0].y * text.scale,
+                   (corner[2].x - corner[0].x) * text.scale,
+                   (corner[2].y - corner[0].y) * text.scale});
+  }
+  return out;
+}
+
+void appendTextTriangles(const Overlay::Text &text, std::vector<Overlay::Vertex> &triangles) {
+  for (const TextRectangle &r : textRectangles(text)) {
+    const Overlay::Vertex a{r.x, r.y, text.colour}, b{r.x + r.width, r.y, text.colour},
+        c{r.x + r.width, r.y + r.height, text.colour}, d{r.x, r.y + r.height, text.colour};
+    triangles.insert(triangles.end(), {a, b, c, a, c, d});
   }
 }
 

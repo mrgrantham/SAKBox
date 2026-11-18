@@ -1,8 +1,8 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
-# The overlay's text on desktops and the 3DS: stb_easy_font's letters as
-# triangles, and how wide and tall they are (Overlay::textWidth and
-# lineHeight). The DS draws its text on a 2D layer instead.
+# The overlay's text on every platform: stb_easy_font's letters as
+# rectangles (the DS fills them into its 2D text layer) or triangles, and how
+# wide and tall they are (Overlay::textWidth and lineHeight).
 cc_library(
     name = "overlay_text",
     srcs = ["src/OverlayText.cpp"],
@@ -15,7 +15,7 @@ cc_library(
     ],
 )
 
-# The sources, for the 3DS's Makefile builds (with stb_easy_font.h)
+# The sources, for the consoles' Makefile builds (with stb_easy_font.h)
 filegroup(
     name = "sources",
     srcs = glob([

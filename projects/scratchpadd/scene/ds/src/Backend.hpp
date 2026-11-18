@@ -90,9 +90,18 @@ struct Renderer::Backend {
   Fog fogSet;
   Scalar fogNear = 0, fogFar = 0;
   // What the text layer shows, redrawn only when the overlay's text changes,
-  // in main RAM first (VRAM takes no single bytes) and copied in whole
+  // in main RAM first (VRAM takes no single bytes). It goes to the screen at
+  // the refresh the frame's 3D does (showText, after the frame's swap), so
+  // text moving with the 3D keeps with it (round 96: the roll's numbers ran
+  // ahead of their hexagon): its colours and the rows that changed (those
+  // it covers now or covered before), [from, to)
   std::vector<Overlay::Text> textShown;
   std::vector<std::uint8_t> textPixels;
+  std::vector<std::uint16_t> textColours;
+  bool textWaiting = false;
+  int textRowsFrom = 0, textRowsTo = 0;   // the rows the new text covers
+  int shownRowsFrom = 0, shownRowsTo = 0; // the rows the text on the screen covers
+  void showText();
 };
 
 } // namespace ScratchPadd::Scene

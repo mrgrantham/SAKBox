@@ -16,6 +16,7 @@ cc_library(
         "src/DicePieces.cpp",
         "src/MenuPicture.cpp",
         "src/MoveSpots.cpp",
+        "src/PointsBars.cpp",
         "src/ScreenFlow.cpp",
         "src/StartMenu.cpp",
         "src/TableGame.cpp",
@@ -30,6 +31,7 @@ cc_library(
         "include/CosmicHex/Handheld/DicePieces.hpp",
         "include/CosmicHex/Handheld/MenuPicture.hpp",
         "include/CosmicHex/Handheld/MoveSpots.hpp",
+        "include/CosmicHex/Handheld/PointsBars.hpp",
         "include/CosmicHex/Handheld/PlatformProfile.hpp",
         "include/CosmicHex/Handheld/RecipePixels.hpp",
         "include/CosmicHex/Handheld/ScreenFlow.hpp",
@@ -184,6 +186,16 @@ cc_test(
         ":handheld",
         "//projects/game_bots",
         "//projects/seeded_random",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "PointsBars_test",
+    size = "small",
+    srcs = ["tests/PointsBars_test.cpp"],
+    deps = [
+        ":handheld",
         "@gtest//:gtest_main",
     ],
 )

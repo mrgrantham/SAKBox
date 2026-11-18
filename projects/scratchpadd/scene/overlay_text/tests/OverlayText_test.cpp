@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -44,4 +45,30 @@ TEST(OverlayTextTest, BusyLettersKeepEveryStroke) {
   for (const char *letter : {"X", "k", "W", "M", "#", "@"})
     EXPECT_EQ(triangleCount(std::string(4, letter[0])), 4 * triangleCount(letter)) << letter;
   EXPECT_EQ(triangleCount("Rock"), 19u * 2);
+}
+
+// The letters as rectangles (what the DS fills into its text layer): on
+// whole points at scale 1, placed where the text was put, within its width
+// and line height, and the same rectangles the triangles are made of
+TEST(OverlayTextTest, LettersAreRectanglesOnWholePoints) {
+  const Overlay::Text text{10, 20, "Fuel", Colour{255, 255, 255}, 1};
+  const std::vector<TextRectangle> rectangles = textRectangles(text);
+  ASSERT_FALSE(rectangles.empty());
+  for (const TextRectangle &r : rectangles) {
+    EXPECT_EQ(r.x, std::floor(r.x));
+    EXPECT_EQ(r.y, std::floor(r.y));
+    EXPECT_GT(r.width, 0);
+    EXPECT_GT(r.height, 0);
+    EXPECT_GE(r.x, 10);
+    EXPECT_GE(r.y, 20);
+    EXPECT_LE(r.x + r.width, 10 + Overlay::textWidth("Fuel"));
+    EXPECT_LE(r.y + r.height, 20 + Overlay::lineHeight());
+  }
+  std::vector<Overlay::Vertex> triangles;
+  appendTextTriangles(text, triangles);
+  EXPECT_EQ(triangles.size(), rectangles.size() * 6);
+  // A new line starts a line height lower
+  const auto two = textRectangles({0, 0, "a\na", Colour{}, 1});
+  const auto lowest = std::ranges::max(two, {}, &TextRectangle::y);
+  EXPECT_GE(lowest.y, Overlay::lineHeight());
 }

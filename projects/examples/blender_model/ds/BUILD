@@ -25,6 +25,8 @@ devkitpro_nds_app(
         "//projects/flexmath:fixed_point_sources": "flexmath",
         "//projects/scratchpadd/scene:sources": "scratchpadd/scene",
         "//projects/scratchpadd/scene/ds:sources": "scratchpadd/scene_ds",
+        "//projects/scratchpadd/scene/overlay_text:sources": "scratchpadd/overlay_text",
+        "@stb//:stb_easy_font.h": "third_party/stb",
         "//projects/scratchpadd/scene/ds:screenshot_sources": "scratchpadd/scene_ds",
     },
     tags = ["blender"],

@@ -40,6 +40,7 @@
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
 #include <CosmicHex/Handheld/PlatformProfile.hpp>
+#include <CosmicHex/Handheld/PointsBars.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 #include <CosmicHex/Handheld/ScreenFlow.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
@@ -47,6 +48,7 @@
 #include <ScratchPadd/FrameProfile.hpp>
 #include <ScratchPadd/GameClock.hpp>
 #include <ScratchPadd/MemoryStats.hpp>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 #include <ScratchPadd/TitleScene/TitleScene.hpp>
 // The title screen's rocket, as the build cooked it for this console
 #if defined(__NDS__)
@@ -559,23 +561,43 @@ private:
     std::snprintf(total, sizeof total, "%d", first + second);
     std::snprintf(pair, sizeof pair, "%d + %d", first, second);
     Scene::Overlay &overlay = renderer_->overlay();
-    const float big = kTopWidth >= 400 ? 5 : 4; // (the 3DS's wider screen: bigger)
+    // (round 96, the user's: a little smaller, so the words sit well inside)
+    const float big = kTopWidth >= 400 ? 4 : 3; // (the 3DS's wider screen: bigger)
+    const float small = kTopWidth >= 400 ? 1.5f : 1;
     const float radius = kTopWidth >= 400 ? 50.0f : 42.0f;
     const float x = (*middle)[0], y = (*middle)[1];
+    // Both solid: a see-through hexagon's six triangles were blended twice
+    // along the edges they share, which showed as dark lines (round 96)
     overlay.hexagon(x, y, radius + 3, {255, 214, 90, 255}); // (an amber edge)
-    overlay.hexagon(x, y, radius, {12, 18, 30, 230});
-    // Centred on the hexagon (round 90, the user's): across, by the letters'
-    // own width (textWidth counts the gap after the last letter, a point at
-    // the scale), and down, the total's middle a little above the centre and
-    // the two dice under it, by the letters' height (7 points at the scale)
-    constexpr float kLetterHeight = 7, kSmall = 1.5f;
-    const auto across = [&](const char *text, float scale) {
-      return x - (Scene::Overlay::textWidth(text, scale) - scale) / 2;
-    };
-    const float totalTop = y - kLetterHeight * big / 2 - 8;
-    overlay.text(across(total, big), totalTop, total, {255, 214, 90}, big);
-    overlay.text(across(pair, kSmall), totalTop + kLetterHeight * big + 8, pair, {226, 232, 244},
-                 kSmall);
+    overlay.hexagon(x, y, radius, {12, 18, 30, 255});
+    // The total over the two dice, the two lines together centred on the
+    // hexagon by their letters' own pixels (the font's rectangles), not the
+    // spacing round them (round 96: still a little off)
+    const Ink totalInk = inkOf(total, big), pairInk = inkOf(pair, small);
+    constexpr float kGap = 6;
+    const float height = totalInk.height + kGap + pairInk.height;
+    const float top = y - height / 2;
+    overlay.text(x - totalInk.width / 2 - totalInk.left, top - totalInk.top, total, {255, 214, 90},
+                 big);
+    overlay.text(x - pairInk.width / 2 - pairInk.left, top + totalInk.height + kGap - pairInk.top,
+                 pair, {226, 232, 244}, small);
+  }
+
+  // Where a text's letters' pixels are, from its own top left, at `scale`
+  struct Ink {
+    float left, top, width, height;
+  };
+  static Ink inkOf(const char *text, float scale) {
+    float left = 1e9f, top = 1e9f, right = -1e9f, bottom = -1e9f;
+    for (const Scene::TextRectangle &r : Scene::textRectangles({0, 0, text, {}, scale})) {
+      left = std::min(left, r.x);
+      top = std::min(top, r.y);
+      right = std::max(right, r.x + r.width);
+      bottom = std::max(bottom, r.y + r.height);
+    }
+    if (left > right)
+      return {0, 0, 0, 0};
+    return {left, top, right - left, bottom - top};
   }
 
   // The board's light: the game's (a lamp above and to one side, toon
@@ -764,14 +786,11 @@ private:
                   flow_.screen() == ScreenFlow::Screen::Paused ? "  (paused)"
                   : latest_->paused                            ? "  (paused: A)"
                                                                : "");
-    overlay.text(4, 4, line, {226, 232, 244});
-    for (int p = 0; p < state.players; ++p) {
-      const auto &r = state.player[static_cast<std::size_t>(p)].resources;
-      std::snprintf(line, sizeof line, "%sP%d %2d  M%d F%d U%d W%d C%d",
-                    state.turn == p ? ">" : " ", p + 1, CosmicHex::points(state, p), r[0], r[1],
-                    r[2], r[3], r[4]);
-      overlay.text(4, 16 + 10 * static_cast<float>(p), line, BoardColours::ofPlayer(p));
-    }
+    // Each player's points as a row of dashes (round 96), the turn's row
+    // outlined; the round under them, at the left
+    for (const PointsBars::Bar &bar : PointsBars::of(state, kTopWidth))
+      overlay.rectangle(bar.x, bar.y, bar.width, bar.height, bar.colour);
+    overlay.text(4, PointsBars::bottom(state.players) + 3, line, {226, 232, 244});
     // (the -watch builds: memory, measured, above the last move)
     if (kWatchAtStart && !memoryLine_.empty())
       overlay.text(4, kTopHeight - 26, memoryLine_.substr(0, kCharsPerLine), {120, 220, 160});
