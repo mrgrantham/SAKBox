@@ -9,6 +9,7 @@ cc_library(
     srcs = [
         "src/BoardMotion.cpp",
         "src/BoardPicture.cpp",
+        "src/RecipePixels.cpp",
         "src/BoardPieces.cpp",
         "src/ButtonMenu.cpp",
         "src/DicePieces.cpp",
@@ -27,6 +28,7 @@ cc_library(
         "include/CosmicHex/Handheld/MenuPicture.hpp",
         "include/CosmicHex/Handheld/MoveSpots.hpp",
         "include/CosmicHex/Handheld/PlatformProfile.hpp",
+        "include/CosmicHex/Handheld/RecipePixels.hpp",
         "include/CosmicHex/Handheld/ScreenFlow.hpp",
         "include/CosmicHex/Handheld/StartMenu.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",

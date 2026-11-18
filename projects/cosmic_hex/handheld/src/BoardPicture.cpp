@@ -1,6 +1,7 @@
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/RecipePixels.hpp>
 
 #include <ScratchPadd/TextureRecipe/TextureRecipe.hpp>
 
@@ -129,21 +130,6 @@ void BoardPicture::startFaces() {
   nextToPrepare_ = 0;
 }
 
-namespace {
-// A recipe drawn as RGBA pixels, `size` a side (none if it's missing or broken)
-std::vector<Colour> drawRecipe(std::string_view text, int size, TR::Smoothing smoothing) {
-  const auto recipe = TR::read(text);
-  if (text.empty() || !recipe)
-    return {};
-  const TR::Image image = TR::draw(*recipe, size, size, TR::Format::Rgba8, {}, smoothing);
-  std::vector<Colour> pixels(static_cast<std::size_t>(size) * static_cast<std::size_t>(size));
-  for (std::size_t p = 0; p < pixels.size(); ++p)
-    pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
-                 image.pixels[p * 4 + 3]};
-  return pixels;
-}
-} // namespace
-
 bool BoardPicture::prepare() {
   startFaces();
   constexpr int kChips = Art::kHighestChip - Art::kLowestChip + 1;
@@ -152,7 +138,7 @@ bool BoardPicture::prepare() {
   const int next = nextToPrepare_++;
   if (next < Art::kFaces) {
     std::vector<Colour> face =
-        drawRecipe(Art::recipeOf(static_cast<Art::Face>(next)), facesSize_, smoothing_);
+        recipePixels(Art::recipeOf(static_cast<Art::Face>(next)), facesSize_, smoothing_);
     // (a broken recipe: a see-through square, tested against on the Mac)
     if (face.empty())
       face.assign(static_cast<std::size_t>(facesSize_) * static_cast<std::size_t>(facesSize_),
@@ -161,7 +147,7 @@ bool BoardPicture::prepare() {
   } else {
     const int number = Art::kLowestChip + (next - Art::kFaces);
     chips_[static_cast<std::size_t>(number)] =
-        drawRecipe(Art::chipRecipeOf(number), chipsSize_, smoothing_);
+        recipePixels(Art::chipRecipeOf(number), chipsSize_, smoothing_);
   }
   return nextToPrepare_ >= Art::kFaces + kChips;
 }

@@ -39,6 +39,7 @@
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
 #include <CosmicHex/Handheld/PlatformProfile.hpp>
+#include <CosmicHex/Handheld/RecipePixels.hpp>
 #include <CosmicHex/Handheld/ScreenFlow.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
@@ -111,6 +112,10 @@ using CosmicHex::State;
 namespace Dice = CosmicHex::Dice;
 using namespace CosmicHex::Handheld;
 using Clock = std::chrono::steady_clock;
+// The seconds since `start`
+double secondsSince(Clock::time_point start) {
+  return std::chrono::duration<double>(Clock::now() - start).count();
+}
 
 // How long each move stays on screen before the next, so a game can be
 // watched (the dealer's draws go straight on), and how long its slide or
@@ -222,7 +227,7 @@ public:
       if (!game_->step())
         break; // (over, a person's move, or a bug: the game waits)
       if (!dealer) {
-        lastThinkSeconds_ = std::chrono::duration<double>(Clock::now() - started).count();
+        lastThinkSeconds_ = secondsSince(started);
         break;
       }
     }
@@ -417,9 +422,7 @@ private:
   // menu's below), after one who won
   void drawTitle() {
     renderer_->beginFrame(title_->camera(), title_->environment());
-    title_->draw(
-        *renderer_,
-        static_cast<float>(std::chrono::duration<double>(Clock::now() - titleStarted_).count()));
+    title_->draw(*renderer_, static_cast<float>(secondsSince(titleStarted_)));
     if (flow_.screen() == ScreenFlow::Screen::Won && latest_) {
       char line[64];
       std::snprintf(line, sizeof line, "Player %d wins!", latest_->state.winner + 1);
@@ -446,7 +449,7 @@ private:
       memoryAt_ = Clock::now();
       return;
     }
-    const double seconds = std::chrono::duration<double>(Clock::now() - memoryAt_).count();
+    const double seconds = secondsSince(memoryAt_);
     if (seconds < 2)
       return;
     memoryAt_ = Clock::now();
@@ -620,8 +623,7 @@ private:
   float descent() const {
     if (!descentStarted_)
       return 1;
-    return slideAcross(
-        static_cast<float>(std::chrono::duration<double>(Clock::now() - *descentStarted_).count()));
+    return slideAcross(static_cast<float>(secondsSince(*descentStarted_)));
   }
   static Scene::Camera between(const Scene::Camera &from, const Scene::Camera &to, float t) {
     Scene::Camera out = to;
@@ -670,9 +672,7 @@ private:
     renderer_->draw(stars_, Scene::Transform::identity(),
                     {.shading = Scene::Material::Shading::Unlit});
     const float through =
-        sliding_ ? slideAcross(static_cast<float>(
-                       std::chrono::duration<double>(Clock::now() - slideStarted_).count()))
-                 : 1;
+        sliding_ ? slideAcross(static_cast<float>(secondsSince(slideStarted_))) : 1;
     if (through >= 1)
       sliding_ = false;
     if (!sliding_) {
@@ -1044,33 +1044,22 @@ private:
   // Each tile face (Art.hpp) drawn into a texture from its recipe (kFaceSize a side),
   // once, when the game starts
   void loadFaces() {
-    namespace TR = ScratchPadd::TextureRecipe;
     for (int i = 0; i < CosmicHex::Art::kFaces; ++i) {
-      const auto recipe = TR::read(CosmicHex::Art::recipeOf(static_cast<CosmicHex::Art::Face>(i)));
-      if (!recipe)
+      const std::vector<Scene::Colour> pixels =
+          recipePixels(CosmicHex::Art::recipeOf(static_cast<CosmicHex::Art::Face>(i)), kFaceSize,
+                       kThisPlatform.recipeSmoothing);
+      if (pixels.empty())
         continue; // (the tile shows white: a broken recipe, tested against on the Mac)
-      const TR::Image image = TR::draw(*recipe, kFaceSize, kFaceSize, TR::Format::Rgba8, {},
-                                       kThisPlatform.recipeSmoothing);
-      std::vector<Scene::Colour> pixels(static_cast<std::size_t>(kFaceSize * kFaceSize));
-      for (std::size_t p = 0; p < pixels.size(); ++p)
-        pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
-                     image.pixels[p * 4 + 3]};
       faces_[static_cast<std::size_t>(i)] =
           renderer_->load(Scene::TextureImage{kFaceSize, kFaceSize, pixels});
     }
     // and the number chips (round 87), half a face's size
     constexpr int kChipSize = kFaceSize / 2;
     for (int n = CosmicHex::Art::kLowestChip; n <= CosmicHex::Art::kHighestChip; ++n) {
-      const auto text = CosmicHex::Art::chipRecipeOf(n);
-      const auto recipe = TR::read(text);
-      if (text.empty() || !recipe)
+      const std::vector<Scene::Colour> pixels =
+          recipePixels(CosmicHex::Art::chipRecipeOf(n), kChipSize, kThisPlatform.recipeSmoothing);
+      if (pixels.empty())
         continue;
-      const TR::Image image = TR::draw(*recipe, kChipSize, kChipSize, TR::Format::Rgba8, {},
-                                       kThisPlatform.recipeSmoothing);
-      std::vector<Scene::Colour> pixels(static_cast<std::size_t>(kChipSize * kChipSize));
-      for (std::size_t p = 0; p < pixels.size(); ++p)
-        pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
-                     image.pixels[p * 4 + 3]};
       chips_[static_cast<std::size_t>(n)] =
           renderer_->load(Scene::TextureImage{kChipSize, kChipSize, pixels});
     }
