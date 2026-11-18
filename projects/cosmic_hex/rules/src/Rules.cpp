@@ -140,21 +140,59 @@ bool cornerFree(const State &state, Corner corner) {
   return true;
 }
 
-// Every corner within `steps` edges of `from`, with the fewest edges to each
-std::unordered_map<int, int> cornersWithin(Corner from, int steps) {
-  std::unordered_map<int, int> out;
-  for (const HexGrid::Reach<Corner> &reach :
-       HexGrid::reachable(from, steps, [](Corner c) { return onBoard(c); })) {
-    if (reach.place != from)
-      out.emplace(cornerNumber(reach.place), reach.steps);
+// A corner (its number) and the fewest edges to it
+struct CornerReach {
+  std::int16_t corner;
+  std::int16_t steps;
+};
+
+// Ships pass anything, so which corners one can reach depends only on the
+// board's shape. For each corner, every other within kReachTabled edges,
+// nearest first (then by number): worked out once, at start (round 92: the
+// search this replaces, with its hash map, was the bots' largest cost)
+constexpr int kReachTabled = 5; // (a move and its boost: 3 + 2; a starting ship's 3)
+const std::vector<std::vector<CornerReach>> &cornerReachTable() {
+  static const std::vector<std::vector<CornerReach>> kTable = [] {
+    const std::vector<Corner> &all = boardCorners();
+    std::vector<std::vector<CornerReach>> table(all.size());
+    for (std::size_t i = 0; i < all.size(); ++i) {
+      for (const HexGrid::Reach<Corner> &reach :
+           HexGrid::reachable(all[i], kReachTabled, [](Corner c) { return onBoard(c); }))
+        if (reach.place != all[i])
+          table[i].push_back({static_cast<std::int16_t>(cornerNumber(reach.place)),
+                              static_cast<std::int16_t>(reach.steps)});
+      std::sort(table[i].begin(), table[i].end(), [](CornerReach a, CornerReach b) {
+        return a.steps != b.steps ? a.steps < b.steps : a.corner < b.corner;
+      });
+    }
+    return table;
+  }();
+  return kTable;
+}
+
+// Every corner within `steps` edges of `from`, with the fewest edges to
+// each, nearest first: from the table, or searched for beyond its reach
+std::vector<CornerReach> cornersWithin(Corner from, int steps) {
+  if (steps <= kReachTabled) {
+    const std::vector<CornerReach> &all =
+        cornerReachTable()[static_cast<std::size_t>(cornerNumber(from))];
+    const auto end = std::partition_point(all.begin(), all.end(),
+                                          [steps](CornerReach r) { return r.steps <= steps; });
+    return {all.begin(), end};
   }
+  std::vector<CornerReach> out;
+  for (const HexGrid::Reach<Corner> &reach :
+       HexGrid::reachable(from, steps, [](Corner c) { return onBoard(c); }))
+    if (reach.place != from)
+      out.push_back({static_cast<std::int16_t>(cornerNumber(reach.place)),
+                     static_cast<std::int16_t>(reach.steps)});
   return out;
 }
 
 // Where a ship can move this turn (corner numbers, with the edges to each):
 // shipMove edges, and boostMove more for 1 fuel. Ships pass anything; only
 // where a move ends matters (discovery).
-std::unordered_map<int, int> cornerMovesFor(const State &state, const Ship &ship) {
+std::vector<CornerReach> cornerMovesFor(const State &state, const Ship &ship) {
   const Settings &settings = state.settings;
   const bool canBoost = state.player[static_cast<std::size_t>(ship.owner)]
                                 .resources[static_cast<std::size_t>(Resource::Fuel)] >= 1 &&
@@ -295,6 +333,14 @@ bool hasColonyOn(const State &state, const Planet &planet, int player) {
       return true;
   return false;
 }
+// How many players have stations on the planet (without listing them)
+int ownerCount(const State &state, const Planet &planet) {
+  int count = 0;
+  for (int p = 0; p < state.players; ++p)
+    count += hasStationOn(state, planet, p);
+  return count;
+}
+
 // The players with stations on the planet, each once
 std::vector<int> ownersOn(const State &state, const Planet &planet) {
   std::vector<int> out;
@@ -380,6 +426,13 @@ bool canStandAt(const State &state, int player, Corner corner) {
 // (corners) The best alien rate the player has: alienStationRate with a
 // station by an outpost, alienRate with a ship, or 0 with neither
 int alienRateOf(const State &state, int player) {
+  // (no turned-over outpost, usually: nothing to look for; round 92)
+  const bool anyOutpost =
+      std::any_of(state.zone.begin(), state.zone.end(), [](const ZoneSite &site) {
+        return site.flipped && site.find == Find::AlienStation;
+      });
+  if (!anyOutpost)
+    return 0;
   int best = 0;
   for (const Station &station : state.stations)
     if (station.owner == player && byAnOutpost(state, station.at))
@@ -469,14 +522,16 @@ std::unordered_map<Hex, int> movesFor(const State &state, const Ship &ship) {
 
 void produce(State &state, int roll) {
   if (state.settings.corners) {
-    // Each station from every planet it touches
-    for (const Station &station : state.stations) {
-      for (Hex hex : HexGrid::hexesTouching(station.at)) {
-        const int at = planetAt(state, hex);
-        if (at < 0 || at == state.blockade)
-          continue;
-        const Planet &planet = state.planets[static_cast<std::size_t>(at)];
-        if (!planet.flipped || !givesResources(planet.kind) || planet.number != roll)
+    // Each planet showing the roll pays every station touching it (from
+    // the planets' side: two or three of them, rather than every station's
+    // hexes looked up among every planet; round 92)
+    for (std::size_t i = 0; i < state.planets.size(); ++i) {
+      const Planet &planet = state.planets[i];
+      if (!planet.flipped || !givesResources(planet.kind) || planet.number != roll ||
+          static_cast<int>(i) == state.blockade)
+        continue;
+      for (const Station &station : state.stations) {
+        if (!touches(station.at, planet.hex))
           continue;
         state.player[static_cast<std::size_t>(station.owner)]
             .resources[static_cast<std::size_t>(planet.kind)] +=
@@ -1369,9 +1424,10 @@ int kindsCovered(const State &state, int player) {
 int colonies(const State &state, int player) {
   int count = 0;
   if (state.settings.corners) {
+    const int home = homeColonyOf(state, player); // (once, not a search a station)
     for (std::size_t i = 0; i < state.stations.size(); ++i)
       count += state.stations[i].owner == player && state.stations[i].colony &&
-               static_cast<int>(i) != homeColonyOf(state, player);
+               static_cast<int>(i) != home;
     return count;
   }
   for (const Planet &planet : state.planets) {
@@ -1445,7 +1501,7 @@ const std::vector<Contract> &contracts() {
        [](const State &s, int p) {
          int shared = 0;
          for (const Planet &planet : s.planets)
-           shared += hasStationOn(s, planet, p) && ownersOn(s, planet).size() >= 2;
+           shared += hasStationOn(s, planet, p) && ownerCount(s, planet) >= 2;
          return shared >= 2;
        }},
       {"A station next to the alien station", 1,
@@ -1601,16 +1657,23 @@ std::vector<int> colonyPlaces(const State &state, int player) {
 // or any within startShipReach edges of it
 std::vector<int> shipPlaces(const State &state, int player) {
   if (state.settings.deepSpaceStart) {
-    // Any corner touching no planet (homes included), with no ship already
+    // Any corner touching no planet (homes included), with no ship already:
+    // the planets' corners marked first (six each, rather than every
+    // corner's hexes looked up among the planets; round 92)
+    const std::vector<Corner> &all = boardCorners();
+    std::vector<bool> byAPlanet(all.size(), false);
+    for (const Planet &planet : state.planets)
+      for (int i = 0; i < 6; ++i)
+        if (const int number = cornerNumber(HexGrid::corner(planet.hex, i)); number >= 0)
+          byAPlanet[static_cast<std::size_t>(number)] = true;
     std::vector<int> out;
-    for (Corner corner : boardCorners()) {
-      bool byAPlanet = false;
-      for (Hex hex : HexGrid::hexesTouching(corner))
-        byAPlanet = byAPlanet || planetAt(state, hex) >= 0;
+    for (std::size_t number = 0; number < all.size(); ++number) {
+      if (byAPlanet[number])
+        continue;
       const bool taken = std::any_of(state.ships.begin(), state.ships.end(),
-                                     [&](const Ship &ship) { return ship.corner == corner; });
-      if (!byAPlanet && !taken)
-        out.push_back(cornerNumber(corner));
+                                     [&](const Ship &ship) { return ship.corner == all[number]; });
+      if (!taken)
+        out.push_back(static_cast<int>(number));
     }
     return out;
   }
@@ -1619,10 +1682,8 @@ std::vector<int> shipPlaces(const State &state, int player) {
     return {};
   const Corner at = state.stations[static_cast<std::size_t>(home)].at;
   std::vector<int> out{cornerNumber(at)};
-  for (const auto &[corner, steps] : cornersWithin(at, state.settings.startShipReach)) {
-    (void)steps;
-    out.push_back(corner);
-  }
+  for (const CornerReach &reach : cornersWithin(at, state.settings.startShipReach))
+    out.push_back(reach.corner);
   std::sort(out.begin(), out.end());
   return out;
 }
@@ -1688,10 +1749,11 @@ std::optional<bool> applyMainOnCorners(State &state, const Action &action) {
     if (ship.owner != state.turn || ship.moved)
       return false;
     const auto moves = cornerMovesFor(state, ship);
-    const auto found = moves.find(action.b);
+    const auto found = std::find_if(moves.begin(), moves.end(),
+                                    [&](CornerReach r) { return r.corner == action.b; });
     if (found == moves.end())
       return false;
-    if (found->second > settings.shipMove)
+    if (found->steps > settings.shipMove)
       --me.resources[static_cast<std::size_t>(Resource::Fuel)]; // the boost
     ship.corner = boardCorners()[static_cast<std::size_t>(action.b)];
     ship.moved = true;
@@ -1759,11 +1821,9 @@ void cornerActions(const State &state, std::vector<Action> &out) {
     if (!ship.moved) {
       const auto reachable = cornerMovesFor(state, ship);
       std::vector<int> corners;
-      for (const auto &[corner, steps] : reachable) {
-        (void)steps;
-        corners.push_back(corner);
-      }
-      std::sort(corners.begin(), corners.end()); // a fixed order, whatever the hash map's
+      for (const CornerReach &reach : reachable)
+        corners.push_back(reach.corner);
+      std::sort(corners.begin(), corners.end()); // (by number, as the moves are listed)
       for (int corner : corners)
         out.push_back({Kind::Move, static_cast<int>(i), corner});
     }
@@ -2713,7 +2773,8 @@ namespace {
 // rule asks: a bot's search runs each simulated game in a frame arena
 // (ScratchPadd/FrameArena.hpp), and a table first made in one would point at
 // memory reused by the next game
-const bool kTablesMade = (static_cast<void>(boardCorners()), static_cast<void>(contracts()), true);
+const bool kTablesMade = (static_cast<void>(boardCorners()), static_cast<void>(contracts()),
+                          static_cast<void>(cornerReachTable()), true);
 } // namespace
 
 } // namespace CosmicHex

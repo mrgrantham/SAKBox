@@ -164,12 +164,30 @@ inline std::uint64_t squareRoot(std::uint64_t value) {
 // __int128, which the DS's 32-bit compiler doesn't have)
 #include <FixedPointNds.hpp>
 #else
+#if defined(__3DS__)
+// The 3DS: no CORE-MATH either (it needs __int128, which the 3DS's 32-bit
+// compiler doesn't have), so newlib's sin, pow and the rest, as on the DS;
+// its divide and square root are the portable ones below (round 92: the
+// bots' fixed-point scores brought FixedPoint to the 3DS)
+#include <cmath>
+
+namespace Flex::Math::detail::Transcendental {
+inline double sin(double x) { return std::sin(x); }
+inline double cos(double x) { return std::cos(x); }
+inline double exp(double x) { return std::exp(x); }
+inline double pow(double x, double y) { return std::pow(x, y); }
+inline double atan2(double y, double x) { return std::atan2(y, x); }
+} // namespace Flex::Math::detail::Transcendental
+
+namespace Flex::Math::detail {
+#else
 #include <CorrectlyRounded.hpp>
 
 namespace Flex::Math::detail {
 // sin, cos, exp, pow and atan2 for the functions below: correctly rounded,
 // so the same everywhere
 namespace Transcendental = CorrectlyRounded;
+#endif
 
 inline std::int32_t divideShifted(std::int32_t a, int shift, std::int32_t b) {
   return static_cast<std::int32_t>((static_cast<std::int64_t>(a) << shift) / b);

@@ -216,3 +216,62 @@ TEST(BotsTest, AStyleLeansOnlyTheBotsOwnRolloutMoves) {
               allZero.choose(opening, b, {.iterations = 300}));
   }
 }
+
+// Scoring in fixed point (Arithmetic::FixedPoint, round 92: for the DS) finds
+// the same win and block, never loses to random play, and beats it at chance
+namespace {
+using Fixed = GameBots::Ismcts<TicTacToe>::Settings::Arithmetic;
+} // namespace
+
+TEST(BotsTest, FixedPointScoringPlaysAsWell) {
+  {
+    GameBots::Ismcts<TicTacToe> bot({.arithmetic = Fixed::FixedPoint});
+    SeededRandom::Generator random(2);
+    EXPECT_EQ(bot.choose(board("XOOX....."), random, {.iterations = 2000}), 6);
+  }
+  {
+    GameBots::Ismcts<TicTacToe> bot({.arithmetic = Fixed::FixedPoint});
+    SeededRandom::Generator random(3);
+    EXPECT_EQ(bot.choose(board("XO..X...."), random, {.iterations = 2000}), 8);
+  }
+  for (unsigned seed = 1; seed <= 20; ++seed) {
+    const int botSide = static_cast<int>(seed % 2);
+    SeededRandom::Seed s(seed);
+    SeededRandom::Generator botRandom = s.stream("bot"), otherRandom = s.stream("other"),
+                            dealer = s.stream("dealer");
+    GameBots::Ismcts<TicTacToe> bot({.arithmetic = Fixed::FixedPoint});
+    GameBots::RandomBot<TicTacToe> other;
+    std::vector<std::function<int(const TicTacToe::State &)>> players(2);
+    players[static_cast<std::size_t>(botSide)] = [&](const TicTacToe::State &state) {
+      return bot.choose(state, botRandom, {.iterations = 1000});
+    };
+    players[static_cast<std::size_t>(1 - botSide)] = [&](const TicTacToe::State &state) {
+      return other.choose(state, otherRandom);
+    };
+    ActionLog::Play<TicTacToe> play(TicTacToe::State{});
+    GameBots::playMatch(play, players, dealer);
+    EXPECT_NE(winnerOf(play), 1 - botSide) << "seed " << seed;
+  }
+  int botWins = 0;
+  constexpr int kGames = 40;
+  for (unsigned seed = 1; seed <= kGames; ++seed) {
+    const int botSide = static_cast<int>(seed % 2);
+    SeededRandom::Seed s(seed);
+    SeededRandom::Generator botRandom = s.stream("bot"), otherRandom = s.stream("other"),
+                            dealer = s.stream("dealer");
+    GameBots::Ismcts<DiceRace> bot(
+        {.arithmetic = GameBots::Ismcts<DiceRace>::Settings::Arithmetic::FixedPoint});
+    GameBots::RandomBot<DiceRace> other;
+    std::vector<std::function<DiceRace::Action(const DiceRace::State &)>> players(2);
+    players[static_cast<std::size_t>(botSide)] = [&](const DiceRace::State &state) {
+      return bot.choose(state, botRandom, {.iterations = 300});
+    };
+    players[static_cast<std::size_t>(1 - botSide)] = [&](const DiceRace::State &state) {
+      return other.choose(state, otherRandom);
+    };
+    ActionLog::Play<DiceRace> play(DiceRace::State{});
+    GameBots::playMatch(play, players, dealer);
+    botWins += winnerOf(play) == botSide;
+  }
+  EXPECT_GE(botWins, kGames * 3 / 4) << botWins << " of " << kGames;
+}

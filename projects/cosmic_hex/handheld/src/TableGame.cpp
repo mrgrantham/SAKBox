@@ -34,7 +34,7 @@ TableGame::TableGame(const TableSettings &settings)
                                          .below(static_cast<std::uint32_t>(settings.players))))),
       dealer_(SeededRandom::Seed::mixedFrom(settings.seed).stream("dealer")),
       bots_(SeededRandom::Seed::mixedFrom(settings.seed).stream("bots")),
-      ismcts_({.rolloutDepth = 60}) {
+      ismcts_({.rolloutDepth = 60, .arithmetic = settings_.botArithmetic}) {
   play_.addMeta("seed", SeededRandom::Seed::mixedFrom(settings.seed).code());
   play_.addMeta("bots", "ismcts " + std::to_string(settings.botIterations));
 }
@@ -70,6 +70,10 @@ std::optional<Action> TableGame::step() {
   // (by time, if set: up to botSeconds, at most botIterations)
   GameBots::Budget budget{.iterations = settings_.botIterations,
                           .frameArenaBytes = settings_.frameArenaBytes};
+  if (settings_.measureSearch && !dealer) {
+    lastSearch_ = {};
+    budget.times = &lastSearch_;
+  }
   if (settings_.botSeconds > 0) {
     const auto until = std::chrono::steady_clock::now() +
                        std::chrono::duration_cast<std::chrono::steady_clock::duration>(

@@ -45,6 +45,12 @@ struct TableSettings {
   // GameBots' Budget::frameArenaBytes; with the counting allocator linked,
   // as on the consoles); 0: none
   std::size_t frameArenaBytes = 0;
+  // Time the bots' searches by phase (lastSearch(); round 92, for measuring)
+  bool measureSearch = false;
+  // How the bots score moves while searching (GameBots' Arithmetic: fixed
+  // point is quicker without floating-point hardware, as on the DS; round 92)
+  using Arithmetic = GameBots::Ismcts<Game>::Settings::Arithmetic;
+  Arithmetic botArithmetic = Arithmetic::Double;
   std::uint64_t seed = 1;
   Board board = boardR3(); // (a choice from boardChoices())
   // The play style (round 85): the round played out once someone reaches
@@ -99,11 +105,14 @@ private:
   ActionLog::Play<Game> play_;
   SeededRandom::Generator dealer_, bots_;
   GameBots::Ismcts<Game> ismcts_;
+  GameBots::SearchTimes lastSearch_;
 
 public:
   // The last bot move's simulated games, and the most its arena held in one
   int lastBotIterations() const { return ismcts_.lastIterations(); }
   std::size_t lastArenaPeak() const { return ismcts_.lastArenaPeak(); }
+  // Where the last bot move's search spent its time (with measureSearch)
+  const GameBots::SearchTimes &lastSearch() const { return lastSearch_; }
 
 private:
   std::vector<std::string> history_;

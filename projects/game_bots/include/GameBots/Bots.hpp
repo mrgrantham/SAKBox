@@ -21,11 +21,14 @@
 // a time limit cuts the search short, which depends on the machine).
 #pragma once
 
+#include <FixedPoint.hpp>
 #include <GameBots/BotGame.hpp>
 #include <ScratchPadd/FrameArena.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -40,6 +43,41 @@ namespace GameBots {
 // How long a bot may think: at most `iterations` simulated games, and it
 // stops early once `outOfTime()` says so (checked between games; the DS
 // passes a check against its timer, so a move takes a second or two).
+// Where a search's time went, when Budget::times points at one (round 92:
+// measuring the DS's bots): microseconds summed over the move, by phase
+struct SearchTimes {
+  std::int64_t guessing = 0;   // G::determinize: a guess at what's hidden, and its copy
+  std::int64_t descending = 0; // down the tree: selection and expansion, their move lists
+  std::int64_t listing = 0;    // rollouts: legal moves listed (and the dealer's drawn)
+  std::int64_t applying = 0;   // rollouts: moves applied
+  std::int64_t judging = 0;    // the results (G::score or G::estimate), backed up the tree
+  std::int64_t rolloutActions = 0;
+  int games = 0;
+};
+
+namespace detail {
+// Adds the time it lives to *total (if there is one), in microseconds
+class Stopwatch {
+public:
+  explicit Stopwatch(std::int64_t *total)
+      : total_(total),
+        start_(total ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{}) {
+  }
+  ~Stopwatch() {
+    if (total_)
+      *total_ += std::chrono::duration_cast<std::chrono::microseconds>(
+                     std::chrono::steady_clock::now() - start_)
+                     .count();
+  }
+  Stopwatch(const Stopwatch &) = delete;
+  Stopwatch &operator=(const Stopwatch &) = delete;
+
+private:
+  std::int64_t *total_;
+  std::chrono::steady_clock::time_point start_;
+};
+} // namespace detail
+
 struct Budget {
   int iterations = 1000;
   std::function<bool()> outOfTime;
@@ -48,6 +86,9 @@ struct Budget {
   // search was 59,000 allocations a second on a 3DS). It takes effect only
   // with the counting allocator linked; 0: none
   std::size_t frameArenaBytes = 0;
+  // Where the time went, added to this if given (costs two clock reads a
+  // phase: for measuring)
+  SearchTimes *times = nullptr;
 };
 
 template <BotGame G> class RandomBot {
@@ -86,10 +127,20 @@ public:
     // that suit doing so, and plays more that way. The other players'
     // rollout moves stay random.
     std::function<double(const State &, const Action &)> rolloutWeight;
+    // How it scores moves while searching: in double, or in 16.16 fixed
+    // point (flexmath's FlexPoint16, its divide and square root on the DS's
+    // hardware; round 92). Without floating-point hardware, as on the DS,
+    // each double score is a log, a square root and two divisions in
+    // software. The two can choose differently when scores are close.
+    enum class Arithmetic : std::uint8_t { Double, FixedPoint };
+    Arithmetic arithmetic = Arithmetic::Double;
   };
 
-  Ismcts() = default;
-  explicit Ismcts(Settings settings) : settings_(std::move(settings)) {}
+  Ismcts() : explorationFixed_(settings_.exploration) { logs_.reserve(kLogsReserved); }
+  explicit Ismcts(Settings settings)
+      : settings_(std::move(settings)), explorationFixed_(settings_.exploration) {
+    logs_.reserve(kLogsReserved);
+  }
 
   // The move it chooses for whoever's turn it is in `state` (not the
   // dealer's).
@@ -117,7 +168,14 @@ public:
         std::optional<ScratchPadd::InFrameArena> frame;
         if (arena)
           frame.emplace(*arena);
-        simulate(tree, G::determinize(state, me, random), random, me);
+        std::optional<State> guess;
+        {
+          detail::Stopwatch watch(budget.times ? &budget.times->guessing : nullptr);
+          guess.emplace(G::determinize(state, me, random));
+        }
+        simulate(tree, std::move(*guess), random, me, budget.times);
+        if (budget.times)
+          ++budget.times->games;
       }
       if (arena)
         arena->reset();
@@ -142,10 +200,11 @@ private:
     int mover = kDealer; // who made it
     int parent = -1;
     std::vector<int> children;
-    double reward = 0;    // the total result, for `mover`, of games through here
-    int visits = 0;       // games through here
-    int availability = 1; // games in which this move was allowed (ISMCTS's
-                          // replacement for the parent's visits in UCB1)
+    double reward = 0;                   // the total result, for `mover`, of games through here
+    int visits = 0;                      // games through here
+    int availability = 1;                // games in which this move was allowed (ISMCTS's
+                                         // replacement for the parent's visits in UCB1)
+    Flex::Math::FlexPoint16 rewardFixed; // (reward, in fixed point: Arithmetic::FixedPoint)
   };
 
   // The result of a (possibly cut-off) game for a player
@@ -178,10 +237,12 @@ private:
   // tree by the best-looking moves (selection), one new move (expansion),
   // random moves to the end (the rollout), then the result back up the
   // moves taken (backpropagation).
-  void simulate(std::vector<Node> &tree, State state, SeededRandom::Generator &random,
-                int me) const {
+  void simulate(std::vector<Node> &tree, State state, SeededRandom::Generator &random, int me,
+                SearchTimes *times) const {
     int node = 0;
     bool expanded = false;
+    std::optional<detail::Stopwatch> descending;
+    descending.emplace(times ? &times->descending : nullptr);
     while (!expanded && !G::isOver(state)) {
       const int player = G::currentPlayer(state);
       if (player == kDealer) {
@@ -216,45 +277,120 @@ private:
         continue;
       }
       // All tried: the one with the best upper confidence bound
-      int best = -1;
-      double bestScore = -std::numeric_limits<double>::infinity();
-      for (const Action &action : legal) {
-        const int child = childFor(tree, node, action);
-        const Node &c = tree[static_cast<std::size_t>(child)];
-        const double score =
-            c.reward / c.visits +
-            settings_.exploration * std::sqrt(std::log(static_cast<double>(c.availability)) /
-                                              static_cast<double>(c.visits));
-        if (score > bestScore) {
-          bestScore = score;
-          best = child;
-        }
-      }
+      const int best = settings_.arithmetic == Settings::Arithmetic::FixedPoint
+                           ? bestFixed(tree, node, legal)
+                           : bestDouble(tree, node, legal);
       G::apply(state, tree[static_cast<std::size_t>(best)].action);
       node = best;
     }
+
+    descending.reset();
 
     // The rest of the game, at random (the bot's own moves in its style,
     // if it has one)
     for (int depth = 0; depth < settings_.rolloutDepth && !G::isOver(state); ++depth) {
       const int player = G::currentPlayer(state);
-      if (player == kDealer) {
-        G::apply(state, G::dealerAction(state, random));
-      } else {
-        const std::vector<Action> legal = G::legalActions(state);
-        const bool styled = player == me && settings_.rolloutWeight;
-        G::apply(state, styled ? weightedPick(state, legal, random)
-                               : legal[random.below(static_cast<std::uint32_t>(legal.size()))]);
+      std::optional<Action> chosen;
+      {
+        detail::Stopwatch watch(times ? &times->listing : nullptr);
+        if (player == kDealer) {
+          chosen.emplace(G::dealerAction(state, random));
+        } else {
+          const std::vector<Action> legal = G::legalActions(state);
+          const bool styled = player == me && settings_.rolloutWeight;
+          chosen.emplace(styled ? weightedPick(state, legal, random)
+                                : legal[random.below(static_cast<std::uint32_t>(legal.size()))]);
+        }
       }
+      detail::Stopwatch watch(times ? &times->applying : nullptr);
+      G::apply(state, *chosen);
+      if (times)
+        ++times->rolloutActions;
     }
+    detail::Stopwatch judging(times ? &times->judging : nullptr);
 
-    // Each move gets the result for the player who made it
+    // Each move gets the result for the player who made it: worked out once
+    // a player (it's the same at every move of theirs; round 92: an
+    // estimate adds up every player's points, and was asked once a move)
+    std::array<double, kResultsKept> results{};
+    std::array<bool, kResultsKept> known{};
+    const auto resultOf = [&](int player) {
+      if (player < 0 || player >= kResultsKept)
+        return resultFor(state, player);
+      const auto at = static_cast<std::size_t>(player);
+      if (!known[at]) {
+        results[at] = resultFor(state, player);
+        known[at] = true;
+      }
+      return results[at];
+    };
     for (int at = node; at >= 0; at = tree[static_cast<std::size_t>(at)].parent) {
       Node &n = tree[static_cast<std::size_t>(at)];
       ++n.visits;
-      if (n.mover != kDealer)
-        n.reward += resultFor(state, n.mover);
+      if (n.mover == kDealer)
+        continue;
+      const double result = resultOf(n.mover);
+      if (settings_.arithmetic == Settings::Arithmetic::FixedPoint)
+        n.rewardFixed += Flex::Math::FlexPoint16(result);
+      else
+        n.reward += result;
     }
+  }
+
+  // UCB1 (Kocsis and Szepesvari; ISMCTS's availability in place of the
+  // parent's visits): a move's average result, plus a bonus for being little
+  // tried. The child of `node` with the highest, in double...
+  int bestDouble(const std::vector<Node> &tree, int node, const std::vector<Action> &legal) const {
+    int best = -1;
+    double bestScore = -std::numeric_limits<double>::infinity();
+    for (const Action &action : legal) {
+      const int child = childFor(tree, node, action);
+      const Node &c = tree[static_cast<std::size_t>(child)];
+      const double score =
+          c.reward / c.visits +
+          settings_.exploration * std::sqrt(std::log(static_cast<double>(c.availability)) /
+                                            static_cast<double>(c.visits));
+      if (score > bestScore) {
+        bestScore = score;
+        best = child;
+      }
+    }
+    return best;
+  }
+
+  // ...and in 16.16 fixed point: divisions and square roots on the DS's
+  // hardware, the logarithms from a table filled once each (logOf)
+  int bestFixed(const std::vector<Node> &tree, int node, const std::vector<Action> &legal) const {
+    using Flex::Math::FlexPoint16;
+    int best = -1;
+    FlexPoint16 bestScore = FlexPoint16::lowest();
+    for (const Action &action : legal) {
+      const int child = childFor(tree, node, action);
+      const Node &c = tree[static_cast<std::size_t>(child)];
+      const FlexPoint16 visits(c.visits);
+      const FlexPoint16 score =
+          c.rewardFixed / visits +
+          explorationFixed_ * Flex::Math::flex_sqrt(logOf(c.availability) / visits);
+      if (best < 0 || score > bestScore) {
+        bestScore = score;
+        best = child;
+      }
+    }
+    return best;
+  }
+
+  // ln(n) in fixed point, worked out once for each n (in double, slow on the
+  // DS, but n only grows to the number of games a move)
+  Flex::Math::FlexPoint16 logOf(int n) const {
+    const auto at = static_cast<std::size_t>(n);
+    if (at >= logs_.size()) {
+      const ScratchPadd::OutOfFrameArena keep; // (the table outlives each simulated game)
+      const std::size_t from = logs_.size();
+      logs_.resize(at + 1);
+      for (std::size_t k = from; k <= at; ++k)
+        logs_[k] = Flex::Math::FlexPoint16(k == 0 ? 0.0 : std::log(static_cast<double>(k)));
+    }
+    return logs_[at];
   }
 
   // One of `legal`, each as likely as its rolloutWeight (all equally if
@@ -281,6 +417,12 @@ private:
   }
 
   Settings settings_;
+  Flex::Math::FlexPoint16 explorationFixed_; // (settings_.exploration, converted once)
+  // (logOf's table: room for as many games a move as the consoles' bots
+  // play, made once, 2 KB; it grows if a search goes further)
+  static constexpr std::size_t kLogsReserved = 512;
+  static constexpr int kResultsKept = 8; // (players whose results are kept a game)
+  mutable std::vector<Flex::Math::FlexPoint16> logs_;
   // The last choose()'s simulated games, and the most its frame arena held
   // in one (for measuring)
   mutable int lastIterations_ = 0;

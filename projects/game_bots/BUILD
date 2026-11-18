@@ -13,6 +13,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//projects/action_log",
+        # (FlexPoint16: Arithmetic::FixedPoint's scores)
+        "//projects/flexmath",
         "//projects/scratchpadd/frame_arena",
         "//projects/seeded_random",
     ],

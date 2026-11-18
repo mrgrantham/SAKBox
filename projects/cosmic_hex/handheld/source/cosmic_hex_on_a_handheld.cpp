@@ -100,9 +100,13 @@ constexpr std::size_t kFrameArenaBytes = 64 * 1024;
 // on the DS (a quarter of the work; its faces are about 30 pixels), 4 x 4
 // elsewhere (round 92)
 constexpr auto kRecipeSmoothing = ScratchPadd::TextureRecipe::Smoothing::Coarse;
+// How the bots score moves: in fixed point on the DS, which has no
+// floating-point hardware (round 92)
+constexpr auto kBotArithmetic = CosmicHex::Handheld::TableSettings::Arithmetic::FixedPoint;
 #else
 constexpr std::size_t kFrameArenaBytes = 128 * 1024;
 constexpr auto kRecipeSmoothing = ScratchPadd::TextureRecipe::Smoothing::Fine;
+constexpr auto kBotArithmetic = CosmicHex::Handheld::TableSettings::Arithmetic::Double;
 #endif
 #if defined(__NDS__)
 constexpr int kTopWidth = 256, kTopHeight = 192, kBottomWidth = 256, kBottomHeight = 192;
@@ -147,7 +151,8 @@ struct TableSnapshot {
   // this seed (a new one each roll) and sends back what they show
   bool waitingForDice = false;
   std::uint64_t diceSeed = 0;
-  int botGames = 0; // (the last bot move's simulated games, for measuring)
+  int botGames = 0;                // (the last bot move's simulated games, for measuring)
+  GameBots::SearchTimes botSearch; // (and where its time went)
 };
 
 // ScreenPadd to TablePadd: start a game (you against three bots, or four
@@ -191,6 +196,8 @@ public:
       // Each simulated game in a frame arena (round 90: the search made
       // 59,000 allocations a second; one game holds up to about 75 KB)
       settings.frameArenaBytes = kFrameArenaBytes;
+      settings.botArithmetic = kBotArithmetic;
+      settings.measureSearch = kWatchAtStart; // (the -watch builds show it)
       seed_ = settings.seed;
       paused_ = false;
       game_.emplace(settings);
@@ -254,7 +261,8 @@ private:
                                history.end() - static_cast<long>(shown), history.end()),
                            .lastThinkSeconds = lastThinkSeconds_,
                            .paused = paused_,
-                           .botGames = game_->lastBotIterations()};
+                           .botGames = game_->lastBotIterations(),
+                           .botSearch = game_->lastSearch()};
     if (game_->waitingForDice()) {
       snapshot.waitingForDice = true;
       // (the game's seed and how far it's got: the same game throws the same)
@@ -803,6 +811,19 @@ private:
       char games[32];
       std::snprintf(games, sizeof games, "bot: %d games a move", latest_->botGames);
       overlay.text(4, kTopHeight - 50, games, {120, 220, 160});
+      // Where its time went, in ms: guessing, the tree, listing and
+      // applying rollout moves, judging; and rollout moves a game
+      const GameBots::SearchTimes &t = latest_->botSearch;
+      if (t.games > 0) {
+        char where[64];
+        std::snprintf(
+            where, sizeof where, "g%lld t%lld l%lld a%lld j%lld m%lld",
+            static_cast<long long>(t.guessing / 1000), static_cast<long long>(t.descending / 1000),
+            static_cast<long long>(t.listing / 1000), static_cast<long long>(t.applying / 1000),
+            static_cast<long long>(t.judging / 1000),
+            static_cast<long long>(t.rolloutActions / t.games));
+        overlay.text(4, kTopHeight - 98, where, {120, 220, 160});
+      }
     }
     if (kWatchAtStart && !memoryBusiest_.empty())
       overlay.text(4, kTopHeight - 38, memoryBusiest_.substr(0, kCharsPerLine), {120, 220, 160});
