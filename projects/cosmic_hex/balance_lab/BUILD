@@ -24,6 +24,8 @@ cc_binary(
     deps = [
         "//projects/action_log",
         "//projects/cosmic_hex/simulate:batch",
+        # (new and delete through it: the bots' frame arena takes effect)
+        "//projects/scratchpadd/memory_stats:counting_allocator",
         "//projects/cosmic_hex/solver",
         "//projects/hex_grid",
         "//projects/scratchpadd/basis",

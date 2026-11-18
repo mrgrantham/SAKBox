@@ -360,11 +360,15 @@ GameResult playGame(const Options &options, int game, const Bots &bots) {
   play.addMeta("core", options.core);
   std::vector<std::function<Action(const State &)>> players(
       static_cast<std::size_t>(options.players), [&](const State &state) {
-        return bots.plain.choose(state, random, {.iterations = options.iterations});
+        return bots.plain.choose(
+            state, random,
+            {.iterations = options.iterations, .frameArenaBytes = options.frameArenaBytes});
       });
   if (result.strong >= 0)
     players[static_cast<std::size_t>(result.strong)] = [&](const State &state) {
-      return bots.plain.choose(state, random, {.iterations = options.strongIterations});
+      return bots.plain.choose(
+          state, random,
+          {.iterations = options.strongIterations, .frameArenaBytes = options.frameArenaBytes});
     };
   // Styles: player p plays styles[(p + game) % count], so each style plays
   // from every home and turn position in turn
@@ -376,7 +380,8 @@ GameResult playGame(const Options &options, int game, const Bots &bots) {
       result.styles[static_cast<std::size_t>(p)] = style;
       players[static_cast<std::size_t>(p)] = [&, style](const State &state) {
         return bots.styled[static_cast<std::size_t>(style)].choose(
-            state, random, {.iterations = options.iterations});
+            state, random,
+            {.iterations = options.iterations, .frameArenaBytes = options.frameArenaBytes});
       };
     }
   }

@@ -81,6 +81,10 @@ Options parse(int argc, char **argv) {
       options.games = number<int>(flag, value);
     else if (flag == "--players")
       options.players = number<int>(flag, value);
+    else if (flag == "--arena")
+      options.frameArenaBytes = number<std::size_t>(flag, value) * 1024;
+    else if (flag == "--arena") // (KB: the bots' frame arena, round 92)
+      options.frameArenaBytes = static_cast<std::size_t>(number<int>(flag, value)) * 1024;
     else if (flag == "--iterations")
       options.iterations = number<int>(flag, value);
     else if (flag == "--rollout")

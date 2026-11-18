@@ -70,7 +70,12 @@ struct Options {
   bool coreControl = false;     // Core Control's points (off: round 89)
   bool firstRoundBoost = false; // fuel boosts in the first round (off: the agreed rule, round 90)
   bool trading = true;          // trading between players (round 57), the bots by the trading rule
-  int cartelTake = 0;         // the Interstellar Cartel takes all (0), or up to this many from each
+  int cartelTake = 0; // the Interstellar Cartel takes all (0), or up to this many from each
+  // Each simulated game in the bots' search in a frame arena of this many
+  // bytes (GameBots' Budget::frameArenaBytes; the simulator links the
+  // counting allocator, so it takes effect: 18% faster on a Mac, round 92;
+  // the same games); 0: none (--arena 0)
+  std::size_t frameArenaBytes = 128 * 1024;
   int strongIterations = 0;   // a stronger bot, thinking this much, at one home in turn
   std::string variant;        // a label for the CSV
   std::string core = "seven"; // the core planets: seven (the centre and the six around it) or three

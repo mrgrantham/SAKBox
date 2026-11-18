@@ -22,6 +22,8 @@ cc_binary(
     srcs = ["simulate.cpp"],
     deps = [
         ":batch",
+        # (new and delete through it, so --arena takes effect)
+        "//projects/scratchpadd/memory_stats:counting_allocator",
         "//projects/action_log",
         "//projects/cosmic_hex/rules",
         "//projects/game_bots",
