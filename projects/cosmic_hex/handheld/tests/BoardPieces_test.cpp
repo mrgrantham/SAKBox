@@ -29,7 +29,8 @@ TEST(BoardPiecesTest, ThePiecesHaveShape) {
   EXPECT_GT(pieces.station.triangleCount(), 0u);
   EXPECT_GT(pieces.colony.triangleCount(), 0u);
   EXPECT_EQ(pieces.ship.triangleCount(), 4u);
-  EXPECT_EQ(pieces.highlight.triangleCount(), 12u);
+  EXPECT_EQ(pieces.hexRing.triangleCount(), 12u);
+  EXPECT_EQ(pieces.cornerRing.triangleCount(), 12u);
   EXPECT_NE(BoardColours::ofPlayer(0), BoardColours::ofPlayer(1));
 }
 

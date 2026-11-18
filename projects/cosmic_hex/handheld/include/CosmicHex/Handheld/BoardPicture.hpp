@@ -4,12 +4,12 @@
 // the same SVG drawings as the 3D board's (Art.hpp), drawn at the hexes'
 // size; the pieces are simple shapes in the players' colours. It zooms (the
 // whole board, or closer, moved about by dragging) and says what a touch is
-// on: a hex, or a corner of one.
+// on: the corner nearest it, and the hex it's in.
 //
 //   BoardPicture picture(320, 240);       // the 3DS's bottom screen
 //   picture.draw(state);
 //   picture.pixels()                      // RGBA, rows from the top
-//   picture.at(touchX, touchY)            // the hex and corner touched
+//   picture.at(touchX, touchY)            // the corner (and hex) touched
 //
 // No console here: the app copies the pixels to its screen.
 #pragma once
@@ -57,16 +57,19 @@ public:
   void draw(const State &state);
   const std::vector<ScratchPadd::Scene::Colour> &pixels() const { return pixels_; }
 
-  // What's under a touch at (x, y): the hex, and the corner of it when the
-  // touch is close to one; nothing off the board
+  // What's under a touch at (x, y): the hex it's in, and that hex's corner
+  // nearest it (round 93, the user's: a touch picks a corner, where the
+  // pieces go, not a whole tile); nothing off the board
   struct Spot {
     Hex hex;
-    std::optional<Corner> corner;
+    Corner corner;
+    bool operator==(const Spot &) const = default;
   };
   std::optional<Spot> at(int x, int y) const;
-  // Marks a spot over the drawn board (after draw): its hex outlined, and
-  // its corner as a dot, in the highlight's colour
-  void mark(const Spot &spot);
+  // Marks a corner over the drawn board (after draw) as a dot, or a hex as
+  // an outline (the blockade goes on a hex), in the highlight's colour
+  void markCorner(Corner corner);
+  void markHex(Hex hex);
 
   // Where a hex's centre or a corner is on the screen, in pixels
   HexGrid::Point where(Hex hex) const;

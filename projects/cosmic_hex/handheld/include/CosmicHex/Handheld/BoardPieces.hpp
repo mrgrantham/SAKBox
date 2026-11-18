@@ -55,8 +55,8 @@ inline constexpr float kChipRadius = 0.3f;
 // between the tiles (round 79, the user's)
 inline constexpr float kTileInset = 0.94f;
 
-// How far the thin layers sit above their tile: the number chip, and the ring
-// round the chosen hex. Enough that the DS's coarse depth buffer keeps them
+// How far the thin layers sit above their tile: the number chip, and the
+// rings marking the chosen corner or hex. Enough that the DS's coarse depth buffer keeps them
 // in front from anywhere the board's cameras see them (BoardView.hpp;
 // round 92: at 0.015 and 0.02 they could lose triangles to the tile)
 inline constexpr float kChipLift = 0.04f;
@@ -71,7 +71,8 @@ struct BoardPieces {
   Scene::MeshBuilder station;    // a small box
   Scene::MeshBuilder colony;     // a taller box with a roof
   Scene::MeshBuilder ship;       // a dart, pointing along +x
-  Scene::MeshBuilder highlight;  // a thin ring round a hex, for what's chosen
+  Scene::MeshBuilder hexRing;    // a thin ring round a hex, for the blockade's chosen hex
+  Scene::MeshBuilder cornerRing; // a small ring round a corner, for the touched corner
   // A sparse, dim starfield below the board (round 72, the user's): small
   // squares scattered wide, drawn unlit, the same every game
   Scene::MeshBuilder stars;

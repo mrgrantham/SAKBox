@@ -22,8 +22,8 @@ struct MoveSpot {
 };
 MoveSpot spotOf(const State &state, const Action &move);
 
-// Whether `move` happens at `touched`: at its corner, or, for a touch on a
-// hex away from its corners, at one of the hex's corners or on the hex
+// Whether `move` happens at `touched`: at its corner, or on its hex (the
+// blockade's)
 bool concerns(const State &state, const Action &move, const BoardPicture::Spot &touched);
 
 } // namespace CosmicHex::Handheld

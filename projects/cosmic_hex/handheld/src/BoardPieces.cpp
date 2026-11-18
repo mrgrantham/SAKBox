@@ -101,10 +101,24 @@ BoardPieces::BoardPieces() {
                      onTable({a.x * kTileInset, a.y * kTileInset}), {},
                      {Scene::TexCoord{0.5f, 0.5f}, uv(b), uv(a)});
     // and its rim, a thin ring for the chosen hex
-    highlight.quad(onTable({a.x * 0.98f, a.y * 0.98f}, kRingLift),
-                   onTable({b.x * 0.98f, b.y * 0.98f}, kRingLift),
-                   onTable({b.x * 0.86f, b.y * 0.86f}, kRingLift),
-                   onTable({a.x * 0.86f, a.y * 0.86f}, kRingLift));
+    hexRing.quad(onTable({a.x * 0.98f, a.y * 0.98f}, kRingLift),
+                 onTable({b.x * 0.98f, b.y * 0.98f}, kRingLift),
+                 onTable({b.x * 0.86f, b.y * 0.86f}, kRingLift),
+                 onTable({a.x * 0.86f, a.y * 0.86f}, kRingLift));
+  }
+  // A small hexagonal ring round a corner, at the rings' height (round 93,
+  // the user's: a touch marks the corner, not the tile)
+  {
+    constexpr float kOuter = 0.24f, kInner = 0.15f;
+    const auto corners = kLayout.corners(Hex{});
+    for (int i = 0; i < 6; ++i) {
+      const auto a = corners[static_cast<std::size_t>(i)],
+                 b = corners[static_cast<std::size_t>((i + 1) % 6)];
+      cornerRing.quad(onTable({a.x * kOuter, a.y * kOuter}, kRingLift),
+                      onTable({b.x * kOuter, b.y * kOuter}, kRingLift),
+                      onTable({b.x * kInner, b.y * kInner}, kRingLift),
+                      onTable({a.x * kInner, a.y * kInner}, kRingLift));
+    }
   }
   // The number chip: a square just above the tile (kChipLift), kChipDown towards the
   // viewer, its four corners turning the same way as the tile's (so it faces

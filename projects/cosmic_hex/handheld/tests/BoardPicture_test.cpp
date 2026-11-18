@@ -43,19 +43,23 @@ TEST(BoardPictureTest, TheWholeBoardFitsAndTouchesFindTheirHex) {
     ASSERT_TRUE(spot.has_value());
     if (spot) {
       EXPECT_EQ(spot->hex, planet.hex);
-      EXPECT_FALSE(spot->corner.has_value()); // (the middle, far from corners)
     }
   }
-  // A touch on a corner finds it
-  const Corner corner = HexGrid::corner(state.planets[0].hex, 2);
-  const auto there = picture.where(corner);
-  const auto spot =
-      picture.at(static_cast<int>(std::lround(there.x)), static_cast<int>(std::lround(there.y)));
-  ASSERT_TRUE(spot.has_value());
-  if (spot && spot->corner) {
-    EXPECT_EQ(cornerNumber(*spot->corner), cornerNumber(corner));
-  } else {
-    ADD_FAILURE() << "no corner found";
+  // A touch anywhere picks the corner nearest it (round 93): on a corner,
+  // and a little way in from each of a hex's corners towards its middle
+  const Hex hex = state.planets[0].hex;
+  const HexGrid::Point middle = picture.where(hex);
+  for (int i = 0; i < 6; ++i) {
+    const Corner corner = HexGrid::corner(hex, i);
+    const HexGrid::Point c = picture.where(corner);
+    for (const float in : {0.0f, 0.4f}) {
+      const auto spot = picture.at(static_cast<int>(std::lround(c.x + (middle.x - c.x) * in)),
+                                   static_cast<int>(std::lround(c.y + (middle.y - c.y) * in)));
+      ASSERT_TRUE(spot.has_value());
+      if (spot) {
+        EXPECT_EQ(cornerNumber(spot->corner), cornerNumber(corner)) << "corner " << i << ", " << in;
+      }
+    }
   }
   // Off the board: nothing
   EXPECT_FALSE(picture.at(2, 2).has_value());

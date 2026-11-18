@@ -61,15 +61,9 @@ MoveSpot spotOf(const State &state, const Action &move) {
 
 bool concerns(const State &state, const Action &move, const BoardPicture::Spot &touched) {
   const MoveSpot spot = spotOf(state, move);
-  if (touched.corner)
-    return std::find(spot.corners.begin(), spot.corners.end(), *touched.corner) !=
-           spot.corners.end();
-  if (spot.hex && *spot.hex == touched.hex)
-    return true;
-  return std::any_of(spot.corners.begin(), spot.corners.end(), [&](const Corner &c) {
-    const auto hexes = HexGrid::hexesTouching(c);
-    return std::find(hexes.begin(), hexes.end(), touched.hex) != hexes.end();
-  });
+  if (spot.hex)
+    return *spot.hex == touched.hex;
+  return std::find(spot.corners.begin(), spot.corners.end(), touched.corner) != spot.corners.end();
 }
 
 } // namespace CosmicHex::Handheld

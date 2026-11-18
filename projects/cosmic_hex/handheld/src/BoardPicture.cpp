@@ -278,16 +278,19 @@ void BoardPicture::line(HexGrid::Point a, HexGrid::Point b, int thickness, Colou
   forEachLinePixel(a, b, thickness, [&](int x, int y) { pixels_[indexOf(x, y, width_)] = colour; });
 }
 
-void BoardPicture::mark(const Spot &spot) {
-  constexpr Colour kHighlight{255, 214, 90, 255};
+namespace {
+constexpr Colour kHighlight{255, 214, 90, 255};
+}
+
+void BoardPicture::markCorner(Corner corner) {
+  const HexGrid::Point at = where(corner);
+  const float r = 0.2f * hexSize();
+  fillRect(at.x - r, at.y - r, 2 * r, 2 * r, kHighlight);
+}
+
+void BoardPicture::markHex(Hex hex) {
   for (int i = 0; i < 6; ++i)
-    line(where(HexGrid::corner(spot.hex, i)), where(HexGrid::corner(spot.hex, i + 1)), 2,
-         kHighlight);
-  if (spot.corner) {
-    const HexGrid::Point at = where(*spot.corner);
-    const float r = 0.2f * hexSize();
-    fillRect(at.x - r, at.y - r, 2 * r, 2 * r, kHighlight);
-  }
+    line(where(HexGrid::corner(hex, i)), where(HexGrid::corner(hex, i + 1)), 2, kHighlight);
 }
 
 std::optional<BoardPicture::Spot> BoardPicture::at(int x, int y) const {
@@ -295,10 +298,10 @@ std::optional<BoardPicture::Spot> BoardPicture::at(int x, int y) const {
   const Hex hex = layout().hexAt(touch);
   if (HexGrid::length(hex) > 4)
     return std::nullopt;
-  // A corner when the touch is within a third of a hex of it
-  std::optional<Corner> nearest;
-  float best = hexSize() / 3;
-  for (int i = 0; i < 6; ++i) {
+  // The hex's corner nearest the touch
+  Corner nearest = HexGrid::corner(hex, 0);
+  float best = distance(touch, where(nearest));
+  for (int i = 1; i < 6; ++i) {
     const Corner corner = HexGrid::corner(hex, i);
     const float d = distance(touch, where(corner));
     if (d < best) {

@@ -306,7 +306,8 @@ public:
     colony_ = renderer_->load(pieces.colony.data());
     ship_ = renderer_->load(pieces.ship.data());
     stars_ = renderer_->load(pieces.stars.data());
-    highlight_ = renderer_->load(pieces.highlight.data());
+    hexRing_ = renderer_->load(pieces.hexRing.data());
+    cornerRing_ = renderer_->load(pieces.cornerRing.data());
     die_ = renderer_->load(DicePieces(static_cast<float>(Dice::DiceTray::kDieSize)).die.data());
     // The title scene (round 87): the 3D title, the rocket, the night sky
     // (fewer stars on the DS: each is two of its 2048 polygons)
@@ -411,7 +412,7 @@ private:
       drawBoard(latest_ ? &latest_->state : nullptr);
       drawnSnapshots_ = snapshots_;
       drawnTurn_ = turn_;
-      drawnSelection_ = selected_ ? std::optional<HexGrid::Hex>(selected_->hex) : std::nullopt;
+      drawnSelection_ = selected_;
       drawnAt_ = Clock::now();
     }
     drawing.reset();
@@ -621,10 +622,15 @@ private:
     }
     drawDice(camera);
     drawText();
-    // The selected hex, ringed on the 3D board too
-    if (selected_)
-      renderer_->draw(highlight_, BoardPieces::onHex(selected_->hex),
-                      {.shading = Scene::Material::Shading::Unlit, .colour = {255, 214, 90}});
+    // The touched corner (or the blockade's hex), ringed on the 3D board too
+    if (selected_) {
+      const Scene::Material marked{.shading = Scene::Material::Shading::Unlit,
+                                   .colour = {255, 214, 90}};
+      if (choosingAHex())
+        renderer_->draw(hexRing_, BoardPieces::onHex(selected_->hex), marked);
+      else
+        renderer_->draw(cornerRing_, BoardPieces::onCorner(selected_->corner), marked);
+    }
     showProfile();
     {
       auto timing = profile_.time(kProfileWait);
@@ -873,6 +879,11 @@ private:
     }
   }
 
+  // Whether your move is on a hex (the blockade's, after a 7), not a corner
+  bool choosingAHex() const {
+    return latest_ && latest_->yourMove && latest_->state.phase == CosmicHex::Phase::Blockade;
+  }
+
   // The moves listed on your move: those at the touched spot, or all of
   // them (their places in the snapshot's list)
   std::vector<std::size_t> movesShown() const {
@@ -885,7 +896,7 @@ private:
     return shown;
   }
 
-  // A touch: a tap selects the hex (and corner) under it; a drag moves the
+  // A touch: a tap selects the corner (and hex) under it; a drag moves the
   // board, when it's zoomed in
   void handleTouch(const Input::Touch &touch) {
     const ScreenFlow::Screen screen = flow_.screen();
@@ -972,8 +983,10 @@ private:
       // fade: round 92)
       if (!fading_) {
         picture_->draw(latest_->state);
-        if (selected_)
-          picture_->mark(*selected_);
+        if (selected_ && choosingAHex())
+          picture_->markHex(selected_->hex);
+        else if (selected_)
+          picture_->markCorner(selected_->corner);
       }
       drawn = &picture_->pixels();
     }
@@ -1040,7 +1053,7 @@ private:
     }
   }
 
-  Scene::Mesh hexTile_, numberChip_, station_, colony_, ship_, stars_, gaps_, highlight_;
+  Scene::Mesh hexTile_, numberChip_, station_, colony_, ship_, stars_, gaps_, hexRing_, cornerRing_;
   std::array<Scene::Texture, CosmicHex::Art::kFaces> faces_{};
   std::array<Scene::Texture, CosmicHex::Art::kHighestChip + 1> chips_{}; // (by number)
   // Memory, measured (with the counting allocator in the build)
@@ -1064,9 +1077,7 @@ private:
       return false;
     if (gameClock_.seconds() - motionStarted_ < kSecondsAnimating)
       return false; // (pieces still moving)
-    const std::optional<HexGrid::Hex> selection =
-        selected_ ? std::optional<HexGrid::Hex>(selected_->hex) : std::nullopt;
-    if (snapshots_ != drawnSnapshots_ || turn_ != drawnTurn_ || selection != drawnSelection_)
+    if (snapshots_ != drawnSnapshots_ || turn_ != drawnTurn_ || selected_ != drawnSelection_)
       return false;
     return !kWatchAtStart || Clock::now() - drawnAt_ < std::chrono::seconds(1);
   }
@@ -1118,10 +1129,10 @@ private:
   std::array<int, 2> touchStart_{}, touchLast_{};
   std::optional<BoardPicture::Spot> selected_;
   // What the top screen last showed (topIsStill): the table's snapshots
-  // drawn, the camera's turn and the selected hex, and when
+  // drawn, the camera's turn and the selected spot, and when
   std::uint64_t snapshots_ = 0, drawnSnapshots_ = 0;
   float drawnTurn_ = 0;
-  std::optional<HexGrid::Hex> drawnSelection_;
+  std::optional<BoardPicture::Spot> drawnSelection_;
   Clock::time_point drawnAt_{};
   // Which screen (round 90: ScreenFlow); in a game, watching or playing
   ScreenFlow flow_;
