@@ -230,9 +230,10 @@ struct Settings {
   int coreControlPoints = 2; // (0: no Core Control at all; the agreed rules', round 89)
   int badgesPerPoint = 3;
   // Badges cashed in as soon as there are enough, rather than when their
-  // holder chooses (round 98, the user's question: is holding them back a
-  // good strategy or bad design? Off: the agreed rule, held until cashed)
-  bool autoCashBadges = false;
+  // holder chooses (round 99, agreed: holding them back was nearly always
+  // the same choice, a tap to forget, and changed the bots' games by 0.3
+  // rounds in 1,800; off: held until cashed, as before)
+  bool autoCashBadges = true;
   int ruinsBadges = 2;
   int salvageResources = 2;
   int bankRate = 4; // give this many of one resource for 1 of another

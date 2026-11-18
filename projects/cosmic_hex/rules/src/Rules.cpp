@@ -2564,7 +2564,7 @@ std::vector<Action> Game::legalActions(const State &state) {
           out.push_back({Kind::PlaySupplyDrop, a, b});
     if (canPlayCard(state, kEnforcerCard))
       out.push_back({Kind::PlayEnforcer});
-    if (me.badges >= settings.badgesPerPoint)
+    if (!settings.autoCashBadges && me.badges >= settings.badgesPerPoint)
       out.push_back({Kind::CashBadges});
     break;
   }

@@ -23,7 +23,7 @@ These replace the first proposal below where they differ. The reasoning behind s
 - **Design rule:** approachable for new players, and every rule must work as a physical board game (tiles, tokens, cards, no hidden maths). The screens can help, but the rules mustn't need them.
 - **Ships only** (no survey ships). A **blockade** ship (the embargo) moves on a roll of 7: its tile stops producing, and its mover takes a card from a player there.
 - **Proposed, awaiting confirmation:**
-  - A ship moving onto an unexplored tile flips it and earns an explorer badge. Its owner then chooses to settle there (the ship becomes a station) or fly on. 3 badges trade for 1 victory point.
+  - A ship moving onto an unexplored tile flips it and earns an explorer badge. Its owner then chooses to settle there (the ship becomes a station) or fly on. 3 badges trade for 1 victory point, at once (round 99, the user's: holding them back was nearly always the same choice and a tap to forget; over 1,800 games it changed the bots' games by 0.3 rounds).
   - Rare tiles in the base game: alien stations (2-for-1 trades) and ancient ruins (2 badges). Wormholes come later, as a variant.
   - Contracts: a deck of cards; each player is dealt 2 and keeps 1 secretly, and more can be bought.
   - 10 points to win, to be tuned with bots.

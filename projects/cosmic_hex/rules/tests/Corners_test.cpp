@@ -798,15 +798,20 @@ TEST(CornersTest, ImperialDominion) {
   EXPECT_EQ(state.dominionHolder, -1);
 }
 
-// Badges cashed at once (Settings::autoCashBadges, round 98's question):
-// three become a point as soon as they're there, and there's nothing to
-// choose; held, as agreed, they wait for CashBadges
+// Badges cashed at once (Settings::autoCashBadges, agreed in round 99):
+// three become a point as soon as they're there, with nothing to choose;
+// held (the rule before), they wait for CashBadges
 TEST(CornersTest, BadgesCashedAtOnceWhenThatsTheRule) {
   State state = atMain();
   state.player[0].badges = 3;
-  const auto legal = Game::legalActions(state);
-  EXPECT_NE(std::find(legal.begin(), legal.end(), Action{Kind::CashBadges}), legal.end());
-  state.settings.autoCashBadges = true;
+  EXPECT_TRUE(state.settings.autoCashBadges);
+  const auto has = [](const std::vector<Action> &moves) {
+    return std::find(moves.begin(), moves.end(), Action{Kind::CashBadges}) != moves.end();
+  };
+  EXPECT_FALSE(has(Game::legalActions(state)));
+  State held = state;
+  held.settings.autoCashBadges = false;
+  EXPECT_TRUE(has(Game::legalActions(held)));
   const int before = points(state, 0);
   ASSERT_TRUE(Game::apply(state, Game::legalActions(state).back()));
   EXPECT_EQ(state.player[0].badges, 0);
