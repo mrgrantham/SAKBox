@@ -425,7 +425,8 @@ std::optional<Board> boardFromLine(std::string_view line);
 
 // The boards a game offers for this many players, the default first: for
 // four (round 85), R3 then the others fair by turn and by home at 1,800
-// games; for three (round 87), T4 then T5, both fair at 1,800 games. Their
+// games, the four-cluster boards last (round 92: fair, games longer); for
+// three (round 87), T4 then T5, both fair at 1,800 games. Their
 // lines are the layouts file's (AgreedRules_test checks they still match)
 struct NamedBoard {
   std::string name;
@@ -433,6 +434,8 @@ struct NamedBoard {
   // Extra start resources by turn position that even the board's turn order
   // out, offered as a choice (round 89: R3's 0,0,1,1); all 0 for none
   std::array<int, kMaxPlayers> seatBonus{};
+  // Something a player should know when choosing it ("" for nothing)
+  std::string note;
   bool hasSeatBonus() const {
     return std::any_of(seatBonus.begin(), seatBonus.end(), [](int b) { return b > 0; });
   }

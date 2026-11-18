@@ -1269,7 +1269,7 @@ std::vector<NamedBoard> boardChoices(int players) {
       "T5 homes=4,-2,-2,-2,-2,4 planets=0,0,-3,1,-3,0,1,2,0,3,2,-3,3,-3,0,-4,-4,4,4,0,2,0,0,-2,-2,2"
       " small_finds=1,0,0,-1,-1,1,3,1,1,-4,-4,3",
   };
-  static constexpr std::array<std::string_view, 6> kLines{
+  static constexpr std::array<std::string_view, 9> kLines{
       "R3 homes=4,-2,-4,2,2,2,-2,-2 planets=0,0,-4,0,-4,4,-2,0,-2,3,-2,4,-1,-1,-1,3,0,-4,0,4,1,-3,"
       "1,1,2,-4,2,-3,2,0,4,-4,4,0 small_finds=-3,0,3,0,-2,1,2,-1,-1,0,1,0,0,-1,0,1",
       "S5 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,-4,2,-3,1,-2,-1,-2,3,-2,4,-1,-2,-1,-1,-1,3,0,-4,0,"
@@ -1282,6 +1282,12 @@ std::vector<NamedBoard> boardChoices(int players) {
       "0,3,2,-4,2,-3,2,1,2,2,3,-2,3,-1,4,-2",
       "WS2 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,0,3,-1,4,0,4,0,-3,1,-4,0,-4,2,-3,2,-2,-2,3,-2,2,2,1"
       ",2,2,-2,-1,-2,-2,-4,2,4,-2 small_finds=1,-1,-1,1,-1,2,1,-2,-3,1,3,-1",
+      "FR1 homes=4,-2,-4,2,2,2,-2,-2 planets=0,0,1,-2,2,-3,1,-3,2,-4,-1,2,-2,3,-1,3,-2,4,-3,0,-2,"
+      "0,3,0,2,0,4,-4,-4,4,0,-4,0,4 small_finds=-1,-1,1,1,-2,1,2,-1,-1,0,1,0",
+      "FR3 homes=4,-2,-4,2,2,2,-2,-2 planets=0,0,-2,4,-1,3,-2,3,-1,2,2,-4,1,-3,2,-3,1,-2,4,0,3,0,"
+      "-4,0,-3,0,-4,4,4,-4,0,-4,0,4 small_finds=-1,0,1,0,2,-1,-2,1,-2,0,2,0",
+      "FS1 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,4,-2,3,-2,3,-1,2,-1,-4,2,-3,2,-3,1,-2,1,-1,2,-2,3"
+      ",1,-2,2,-3,-1,-1,-2,-1,1,1,2,1,0,-4,0,4 small_finds=1,-3,-1,3,1,2,-1,-2,0,-3,0,3,2,-4,-2,4",
   };
   std::vector<NamedBoard> out;
   const auto lines = players == 3 ? std::span<const std::string_view>(kThreePlayerLines)
@@ -1289,7 +1295,7 @@ std::vector<NamedBoard> boardChoices(int players) {
   for (std::string_view line : lines) {
     const auto board = boardFromLine(line);
     assert(board.has_value());
-    out.push_back({std::string(line.substr(0, line.find(' '))), *board, {}});
+    out.push_back({std::string(line.substr(0, line.find(' '))), *board, {}, ""});
   }
   // R3 leans to the first player under today's rules; one more resource to
   // start for the last two evens its turn order (round 88: chi-square 15.0
@@ -1297,6 +1303,11 @@ std::vector<NamedBoard> boardChoices(int players) {
   for (NamedBoard &choice : out) {
     if (choice.name == "R3")
       choice.seatBonus = {0, 0, 1, 1};
+    // The four-cluster boards: fair, but their games run longer (round 92:
+    // about 18 rounds, where the others take 15 to 16); said beside them
+    // (round 92, the user's)
+    if (choice.name.starts_with("FR") || choice.name.starts_with("FS"))
+      choice.note = "longer games: about 18 rounds";
   }
   return out;
 }

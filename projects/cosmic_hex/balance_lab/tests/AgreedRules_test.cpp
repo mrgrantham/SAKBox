@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 #include <fstream>
 #include <string>
 
@@ -51,6 +53,13 @@ TEST(AgreedRulesTest, TheBoardChoicesAreTheLayoutsFiles) {
   for (const NamedBoard &choice : three) {
     EXPECT_EQ(choice.board.homes.size(), 3u) << choice.name;
   }
+  // The four-cluster boards are offered too, each saying its games run
+  // longer (round 92, the user's); the others say nothing
+  for (const NamedBoard &choice : choices) {
+    const bool fours = choice.name.starts_with("FR") || choice.name.starts_with("FS");
+    EXPECT_EQ(choice.note.empty(), !fours) << choice.name;
+  }
+  EXPECT_EQ(std::ranges::count_if(choices, [](const NamedBoard &c) { return !c.note.empty(); }), 3);
   std::vector<NamedBoard> all = choices;
   all.insert(all.end(), three.begin(), three.end());
   for (const NamedBoard &choice : all) {

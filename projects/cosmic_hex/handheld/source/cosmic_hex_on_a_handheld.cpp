@@ -658,6 +658,12 @@ private:
       drawPieces(previewBefore_, Scene::Transform::translation(right * (-sign * through * wide)));
       drawPieces(preview_, Scene::Transform::translation(right * (sign * (1 - through) * wide)));
     }
+    // The board's name over it, and anything to know about it (round 92,
+    // the user's: the four-cluster boards' longer games)
+    Scene::Overlay &overlay = renderer_->overlay();
+    overlay.text(4, 4, menu_.boardName(), {226, 232, 244});
+    if (!menu_.boardNote().empty())
+      overlay.text(4, 16, menu_.boardNote().substr(0, kCharsPerLine), {255, 214, 90});
     showProfile();
     {
       auto timing = profile_.time(kProfileWait);

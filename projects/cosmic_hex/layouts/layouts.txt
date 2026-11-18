@@ -85,3 +85,9 @@ WS2 reach=2,1,4 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,0,3,-1,4,0,4,0,-3,1,-4,0,-4
 # Round 83: three-player boards from the solver (--homes three), for three players
 T4 reach=2,1,1000 homes=4,-2,-2,-2,-2,4 planets=0,0,0,2,-1,2,2,-2,2,-1,-2,0,-1,-1,-4,4,4,0,0,-4,4,-4,-4,0,0,4 small_finds=-4,1,1,3,3,-4,0,-3,-3,3,3,0,0,-2,-2,2,2,0
 T5 reach=2,1,1000 homes=4,-2,-2,-2,-2,4 planets=0,0,-3,1,-3,0,1,2,0,3,2,-3,3,-3,0,-4,-4,4,4,0,2,0,0,-2,-2,2 small_finds=1,0,0,-1,-1,1,3,1,1,-4,-4,3
+# Round 90: four-cluster boards (two clusters of four planets) from the solver;
+# round 92: fair by turn and by home at 1,800 games each under the agreed
+# rules (no Core Control, no first-round boost), games about 17 to 18 rounds
+FR1 reach=2,1,1000,3 homes=4,-2,-4,2,2,2,-2,-2 planets=0,0,1,-2,2,-3,1,-3,2,-4,-1,2,-2,3,-1,3,-2,4,-3,0,-2,0,3,0,2,0,4,-4,-4,4,0,-4,0,4 small_finds=-1,-1,1,1,-2,1,2,-1,-1,0,1,0
+FR3 reach=2,1,1000,3 homes=4,-2,-4,2,2,2,-2,-2 planets=0,0,-2,4,-1,3,-2,3,-1,2,2,-4,1,-3,2,-3,1,-2,4,0,3,0,-4,0,-3,0,-4,4,4,-4,0,-4,0,4 small_finds=-1,0,1,0,2,-1,-2,1,-2,0,2,0
+FS1 reach=6,1,1000,1 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,4,-2,3,-2,3,-1,2,-1,-4,2,-3,2,-3,1,-2,1,-1,2,-2,3,1,-2,2,-3,-1,-1,-2,-1,1,1,2,1,0,-4,0,4 small_finds=1,-3,-1,3,1,2,-1,-2,0,-3,0,3,2,-4,-2,4

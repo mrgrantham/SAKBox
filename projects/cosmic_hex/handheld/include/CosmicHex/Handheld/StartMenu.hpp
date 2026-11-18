@@ -41,6 +41,8 @@ public:
   std::size_t board() const { return board_; } // (in boardChoices(players()))
   const std::string &boardName() const { return boards_[board_].name; }
   const Board &boardItself() const { return boards_[board_].board; }
+  // What to know about the board, shown beside it ("" for nothing)
+  const std::string &boardNote() const { return boards_[board_].note; }
   bool finishRound() const { return finishRound_; }
   // The board's seat bonus, if it has one and it's chosen; else all 0
   std::array<int, kMaxPlayers> seatBonus() const;
