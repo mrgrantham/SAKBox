@@ -38,6 +38,7 @@
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
+#include <CosmicHex/Handheld/PlatformProfile.hpp>
 #include <CosmicHex/Handheld/ScreenFlow.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
@@ -62,6 +63,8 @@
 #include <ScratchPadd/TextureRecipe/TextureRecipe.hpp>
 
 #include <spdlog/spdlog.h>
+
+#include "ConsoleHardware.hpp"
 
 #if defined(COSMIC_HEX_BENCH)
 #include "CosmicHexBench.hpp"
@@ -95,49 +98,14 @@ constexpr bool kWatchAtStart = false;
 // question on the roadmap page (round 87); the scene for now
 constexpr bool kTitleScene = true;
 
-// An unchanged top screen isn't drawn again (topIsStill): on the DS, whose
-// 3D hardware shows the last frame by itself; elsewhere (the 3DS has a GPU
-// of its own, and its frames must be sent) it's drawn as ever
-#if defined(__NDS__)
-constexpr bool kHoldStillFrames = true;
-#else
-constexpr bool kHoldStillFrames = false;
-#endif
-
-// The bots' frame arena (round 90), and none if 0. One simulated game held
-// up to about 75 KB (64-bit, in the test); the DS has under 200 KB free, so
-// it takes less (a game that outgrows the arena carries on from the heap)
-#if defined(__NDS__)
-constexpr std::size_t kFrameArenaBytes = 64 * 1024;
-// How smooth the tile faces drawn from recipes are: 2 x 2 samples a pixel
-// on the DS (a quarter of the work; its faces are about 30 pixels), 4 x 4
-// elsewhere (round 92)
-constexpr auto kRecipeSmoothing = ScratchPadd::TextureRecipe::Smoothing::Coarse;
-// How the bots score moves: in fixed point on the DS, which has no
-// floating-point hardware (round 92)
-constexpr auto kBotArithmetic = CosmicHex::Handheld::TableSettings::Arithmetic::FixedPoint;
-#else
-constexpr std::size_t kFrameArenaBytes = 128 * 1024;
-constexpr auto kRecipeSmoothing = ScratchPadd::TextureRecipe::Smoothing::Fine;
-constexpr auto kBotArithmetic = CosmicHex::Handheld::TableSettings::Arithmetic::Double;
-#endif
-#if defined(__NDS__)
-constexpr int kTopWidth = 256, kTopHeight = 192, kBottomWidth = 256, kBottomHeight = 192;
-constexpr std::size_t kCharsPerLine = 31;
-constexpr float kLineHeight = 10;
-constexpr int kBotIterations = 200;
-bool mainLoop() { return pmMainLoop(); }
-constexpr int kFaceSize = 32;    // (the faces' textures: VRAM bank B is small)
-constexpr int kTitleStars = 110; // (two polygons each, of the DS's 2048)
-#else
-constexpr int kTopWidth = 400, kTopHeight = 240, kBottomWidth = 320, kBottomHeight = 240;
-constexpr std::size_t kCharsPerLine = 64;
-constexpr float kLineHeight = 11;
-constexpr int kBotIterations = 400; // (the simulations' bots)
-bool mainLoop() { return aptMainLoop(); }
-constexpr int kFaceSize = 64;
-constexpr int kTitleStars = 260;
-#endif
+// What this console does differently (PlatformProfile.hpp), under the names
+// the app uses
+using CosmicHex::Handheld::kThisPlatform;
+constexpr int kTopWidth = kThisPlatform.topWidth, kTopHeight = kThisPlatform.topHeight;
+constexpr int kBottomWidth = kThisPlatform.bottomWidth, kBottomHeight = kThisPlatform.bottomHeight;
+constexpr std::size_t kCharsPerLine = kThisPlatform.charsPerLine;
+constexpr float kLineHeight = kThisPlatform.lineHeight;
+constexpr int kFaceSize = kThisPlatform.faceSize;
 namespace Input = ScratchPadd::Input;
 using CosmicHex::State;
 namespace Dice = CosmicHex::Dice;
@@ -196,9 +164,9 @@ class TablePadd : public ScratchPadd::Base {
 public:
   TablePadd(ScratchPadd::System *system) : Base(system) {
     receive<StartGame>([this](const StartGame &start) {
-      // Bots think up to 0.8 seconds a move (and at most kBotIterations)
+      // Bots think up to 0.8 seconds a move (and at most PlatformProfile::botIterations)
       TableSettings settings{
-          .botIterations = kBotIterations, .botSeconds = 0.8, .seed = startingSeed()};
+          .botIterations = kThisPlatform.botIterations, .botSeconds = 0.8, .seed = startingSeed()};
       if (start.withPerson)
         settings.seats[0] = Seat::Person; // (you're player 1)
       settings.players = start.players;
@@ -208,8 +176,8 @@ public:
       settings.physicsDice = true; // (thrown on the top screen; round 87)
       // Each simulated game in a frame arena (round 90: the search made
       // 59,000 allocations a second; one game holds up to about 75 KB)
-      settings.frameArenaBytes = kFrameArenaBytes;
-      settings.botArithmetic = kBotArithmetic;
+      settings.frameArenaBytes = kThisPlatform.frameArenaBytes;
+      settings.botArithmetic = kThisPlatform.botArithmetic;
       settings.measureSearch = kWatchAtStart; // (the -watch builds show it)
       seed_ = settings.seed;
       paused_ = false;
@@ -322,16 +290,8 @@ public:
     display_.emplace(); // the top screen
                         // The bottom screen: the flat board (BoardPicture), written straight
                         // into its one framebuffer when it changes
-#if defined(__NDS__)
-    // The DS's bottom screen: a 16-bit bitmap in VRAM bank C (the scene layer
-    // has B, D and E)
-    videoSetModeSub(MODE_5_2D);
-    vramSetBankC(VRAM_C_SUB_BG);
-    bottomPixels_ = bgGetGfxPtr(bgInitSub(3, BgType_Bmp16, BgSize_B16_256x256, 0, 0));
-#else
-    gfxSetDoubleBuffering(GFX_BOTTOM, false);
-#endif
-    picture_.emplace(kBottomWidth, kBottomHeight, kRecipeSmoothing);
+    bottom_.emplace();
+    picture_.emplace(kBottomWidth, kBottomHeight, kThisPlatform.recipeSmoothing);
     renderer_.emplace(*display_);
     const BoardPieces pieces;
     hexTile_ = renderer_->load(pieces.hexTile.data());
@@ -348,7 +308,7 @@ public:
                    ScratchPadd::TitleScene::Settings{.title = "COSMIC HEX",
                                                      .aspect = static_cast<float>(kTopWidth) /
                                                                static_cast<float>(kTopHeight),
-                                                     .stars = kTitleStars});
+                                                     .stars = kThisPlatform.titleStars});
     titleStarted_ = Clock::now();
     loadFaces();
     // The build that watches by itself (COSMIC_HEX_WATCH_AT_START: the
@@ -365,7 +325,7 @@ public:
 
 private:
   void frame() {
-    if (!mainLoop()) {
+    if (!ConsoleHardware::keepRunning()) {
       system_->stop();
       return;
     }
@@ -432,7 +392,7 @@ private:
       turn_ += 0.02f;
     if (screen == ScreenFlow::Screen::Setup) {
       drawSetup();
-    } else if (kHoldStillFrames && topIsStill()) {
+    } else if (kThisPlatform.holdStillFrames && topIsStill()) {
       // Nothing on the top screen has changed: send nothing and let the
       // DS's 3D hardware show the last frame again, which it does by itself
       // from what it was last sent (GBATEK: the rendering engine draws its
@@ -440,7 +400,7 @@ private:
       // goes to the bots' thread while this waits (round 92: on a DS,
       // drawing an unchanged board each frame left them 4% of the CPU)
       auto timing = profile_.time(kProfileWait);
-      waitForTheRefresh();
+      ConsoleHardware::waitForTheRefresh();
     } else {
       drawBoard(latest_ ? &latest_->state : nullptr);
       drawnSnapshots_ = snapshots_;
@@ -523,20 +483,20 @@ private:
     }
     if (dice_ == DiceStage::Idle)
       return;
-    // Fixed steps of kDiceStep, as many as real time has passed (Gregory,
+    // Fixed steps of PlatformProfile::diceStep, as many as real time has passed (Gregory,
     // Game Engine Architecture 8.5: integrators want a constant step; Doom's
     // tics, Black Book 5.4): the same throw whatever the frame rate (the DS
-    // runs 41 to 60), at most kMostDiceSteps a frame so a stall slows the
+    // runs 41 to 60), at most mostDiceSteps a frame so a stall slows the
     // dice rather than snowballing
     const double now = gameClock_.seconds();
     diceOwed_ += now - lastDiceTime_;
     lastDiceTime_ = now;
     int steps = 0;
-    for (; diceOwed_ >= kDiceStep && steps < kMostDiceSteps; ++steps) {
-      tray_.step(kDiceStep);
-      diceOwed_ -= kDiceStep;
+    for (; diceOwed_ >= kThisPlatform.diceStep && steps < kThisPlatform.mostDiceSteps; ++steps) {
+      tray_.step(kThisPlatform.diceStep);
+      diceOwed_ -= kThisPlatform.diceStep;
     }
-    if (steps == kMostDiceSteps)
+    if (steps == kThisPlatform.mostDiceSteps)
       diceOwed_ = 0; // (behind: let it go)
     // A watchdog (White, Making Embedded Systems, "Watchdog"): dice still
     // moving after kMostSecondsRolling are thrown again (the next seed), so
@@ -551,7 +511,7 @@ private:
       shownSeconds_ = 0;
       rolled_ = tray_.faces();
     } else if (dice_ == DiceStage::Showing &&
-               (shownSeconds_ += steps * kDiceStep) >= kSecondsShowingDice) {
+               (shownSeconds_ += steps * kThisPlatform.diceStep) >= kSecondsShowingDice) {
       const auto [first, second] = tray_.faces();
       send(DiceRolled{first, second});
       tray_.startPull();
@@ -1076,27 +1036,7 @@ private:
               static_cast<std::uint8_t>(a.g + (((b.g - a.g) * weight) >> 8)),
               static_cast<std::uint8_t>(a.b + (((b.b - a.b) * weight) >> 8)), 255};
     };
-#if defined(__NDS__)
-    // 256 a row (the bitmap is 256 wide), 15-bit colours with bit 15 set
-    for (int y = 0; y < kBottomHeight; ++y)
-      for (int x = 0; x < kBottomWidth; ++x) {
-        const Scene::Colour c = colourAt(static_cast<std::size_t>(y * kBottomWidth + x));
-        bottomPixels_[y * 256 + x] =
-            static_cast<u16>(RGB15(c.r >> 3, c.g >> 3, c.b >> 3) | BIT(15));
-      }
-#else
-    u16 w = 0, h = 0;
-    std::uint8_t *frame = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
-    for (int y = 0; y < 240; ++y)
-      for (int x = 0; x < 320; ++x) {
-        const Scene::Colour c = colourAt(static_cast<std::size_t>(y * 320 + x));
-        std::uint8_t *at = frame + (static_cast<std::size_t>(x) * 240 + (239 - y)) * 3;
-        at[0] = c.b;
-        at[1] = c.g;
-        at[2] = c.r;
-      }
-    gfxFlushBuffers();
-#endif
+    bottom_->present(kBottomWidth, kBottomHeight, colourAt);
   }
 
   std::optional<Scene::Display> display_;
@@ -1109,8 +1049,8 @@ private:
       const auto recipe = TR::read(CosmicHex::Art::recipeOf(static_cast<CosmicHex::Art::Face>(i)));
       if (!recipe)
         continue; // (the tile shows white: a broken recipe, tested against on the Mac)
-      const TR::Image image =
-          TR::draw(*recipe, kFaceSize, kFaceSize, TR::Format::Rgba8, {}, kRecipeSmoothing);
+      const TR::Image image = TR::draw(*recipe, kFaceSize, kFaceSize, TR::Format::Rgba8, {},
+                                       kThisPlatform.recipeSmoothing);
       std::vector<Scene::Colour> pixels(static_cast<std::size_t>(kFaceSize * kFaceSize));
       for (std::size_t p = 0; p < pixels.size(); ++p)
         pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
@@ -1125,8 +1065,8 @@ private:
       const auto recipe = TR::read(text);
       if (text.empty() || !recipe)
         continue;
-      const TR::Image image =
-          TR::draw(*recipe, kChipSize, kChipSize, TR::Format::Rgba8, {}, kRecipeSmoothing);
+      const TR::Image image = TR::draw(*recipe, kChipSize, kChipSize, TR::Format::Rgba8, {},
+                                       kThisPlatform.recipeSmoothing);
       std::vector<Scene::Colour> pixels(static_cast<std::size_t>(kChipSize * kChipSize));
       for (std::size_t p = 0; p < pixels.size(); ++p)
         pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
@@ -1167,13 +1107,6 @@ private:
     return !kWatchAtStart || Clock::now() - drawnAt_ < std::chrono::seconds(1);
   }
 
-  // Waits for the screen's refresh without drawing (the last frame stays)
-  static void waitForTheRefresh() {
-#if defined(__NDS__)
-    swiWaitForVBlank();
-#endif
-  }
-
   bool onAMenuScreen() const {
     const ScreenFlow::Screen screen = flow_.screen();
     return screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Setup;
@@ -1198,17 +1131,6 @@ private:
   // The physics dice
   enum class DiceStage : std::uint8_t { Idle, Rolling, Showing, Pulling };
   static constexpr double kSecondsShowingDice = 0.75;
-  // The tray's fixed step: 30 a second on the DS (round 92: a step took
-  // about 10 ms there, so 60 a second couldn't keep up; the throws are as
-  // fair at 30, dice_fairness_flex_point16 over 20,000), 60 elsewhere. The
-  // step decides the throw, so a seed lands differently on the DS.
-#if defined(__NDS__)
-  static constexpr double kDiceStep = 1.0 / 30;
-  static constexpr int kMostDiceSteps = 2;
-#else
-  static constexpr double kDiceStep = 1.0 / 60;
-  static constexpr int kMostDiceSteps = 4;
-#endif
   Dice::DiceTray tray_;
   Scene::Mesh die_;
   DiceStage dice_ = DiceStage::Idle;
@@ -1227,9 +1149,7 @@ private:
   float turn_ = 0;
   // The bottom board, its touch and what's selected on it
   std::optional<BoardPicture> picture_;
-#if defined(__NDS__)
-  u16 *bottomPixels_ = nullptr; // (the bottom screen's bitmap)
-#endif
+  std::optional<ConsoleHardware::BottomScreen> bottom_;
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};
   std::optional<BoardPicture::Spot> selected_;
@@ -1373,13 +1293,11 @@ int main() {
   // running, then wait to be switched off
   consoleDemoInit();
   CosmicHexBench::run();
-  while (pmMainLoop())
-    swiWaitForVBlank();
+  while (ConsoleHardware::keepRunning())
+    ConsoleHardware::waitForTheRefresh();
   return 0;
 #endif
-#if !defined(__NDS__)
-  gfxInitDefault(); // (before ScreenPadd's Display)
-#endif
+  const ConsoleHardware::Graphics graphics; // (before ScreenPadd's Display)
 #if defined(SAKBOX_DEBUG)
   ScratchPadd::DebugLog::Session log; // a debug build's log, over Wi-Fi
 #endif
@@ -1391,8 +1309,5 @@ int main() {
     system.start(); // returns when ScreenPadd stops it (START)
   }
   ScratchPadd::AppEnded::show(); // ("<its title> has ended.")
-#if !defined(__NDS__)
-  gfxExit();
-#endif
   return 0;
 }

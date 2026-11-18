@@ -26,6 +26,7 @@ cc_library(
         "include/CosmicHex/Handheld/DicePieces.hpp",
         "include/CosmicHex/Handheld/MenuPicture.hpp",
         "include/CosmicHex/Handheld/MoveSpots.hpp",
+        "include/CosmicHex/Handheld/PlatformProfile.hpp",
         "include/CosmicHex/Handheld/ScreenFlow.hpp",
         "include/CosmicHex/Handheld/StartMenu.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",
@@ -145,6 +146,16 @@ cc_test(
         ":handheld",
         "//projects/scratchpadd/basis",
         "//projects/scratchpadd/memory_stats:counting_allocator",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "PlatformProfile_test",
+    size = "small",
+    srcs = ["tests/PlatformProfile_test.cpp"],
+    deps = [
+        ":handheld",
         "@gtest//:gtest_main",
     ],
 )
