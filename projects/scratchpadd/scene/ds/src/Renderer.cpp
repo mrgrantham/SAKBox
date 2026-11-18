@@ -289,7 +289,14 @@ void Renderer::Backend::drawOverlayShapes(const Overlay &overlay) {
     }
     glPolyFmt(POLY_ALPHA(alpha) | POLY_CULL_NONE | POLY_ID(id));
     glBegin(GL_TRIANGLES);
-    const auto z = static_cast<v16>(-(count - t));
+    // Each a depth step nearer than the last: 16 of v16's, not 1 (round 92,
+    // the user's: the roll's hexagon was missing a slice, and a square's
+    // see-through fill over an opaque one vanished: one step apart, the
+    // depth buffer rounded them together and the later, see-through one
+    // failed the depth test). Fewer if a frame had so many triangles the
+    // depths would leave v16's range.
+    const int step = std::clamp(32000 / (count + 1), 1, 16);
+    const auto z = static_cast<v16>(-(count - t) * step);
     for (int k = 0; k < 3; ++k) {
       glColor(DisplayList::rgb15(corner[k].colour));
       glVertex3v16(coordinate(corner[k].x), coordinate(corner[k].y), z);
