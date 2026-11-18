@@ -137,6 +137,15 @@ Settings settingsFor(const Options &options) {
   settings.firstRoundBoost = options.firstRoundBoost;
   settings.homeIncomeSteps = options.homeIncomeSteps;
   settings.exhaustedKindRandom = options.exhaustedKindRandom;
+  // (--setting: each as the logs write it, appended so it wins)
+  for (const std::string &field : options.settings) {
+    const auto changed = settingsFromLine(settingsLine(settings) + " " + field);
+    if (!changed) {
+      std::fprintf(stderr, "--setting %s: not a setting the rules read\n", field.c_str());
+      std::exit(2);
+    }
+    settings = *changed;
+  }
   return settings;
 }
 

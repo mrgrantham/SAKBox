@@ -177,11 +177,13 @@ struct Settings {
   // game has, 14 Enforcers and 11 Charters.
   //
   // The deck (rounds 61, 63 and 65; 23 cards, close to the genre's 25): one
-  // of each of three Charters (stations on 3 kinds of planet, Occupier,
+  // of each of three Charters (stations on 3 planets of one kind, Occupier,
   // Deep-space relay), and copies only of the cards that act by themselves:
   // 14 Enforcers, 2 Interstellar Cartels, 2 Shipyard Surplus and 2 Supply
   // drops. (A player can't reveal a Charter twice.)
-  std::vector<int> charters{0, 19, kDeepSpaceRelay};
+  // (round 98, the user's: stations on 3 planets of one kind, 21, in place of
+  // 3 kinds, 0, which 88 to 91% of its keepers met anyway)
+  std::vector<int> charters{21, 19, kDeepSpaceRelay};
   int enforcers = 14;
   // The Interstellar Cartel (round 60, the user's idea, as the genre's
   // monopoly card): played in the main part of your turn (one card a turn,
@@ -227,6 +229,10 @@ struct Settings {
   int coreStationsForControl = 2;
   int coreControlPoints = 2; // (0: no Core Control at all; the agreed rules', round 89)
   int badgesPerPoint = 3;
+  // Badges cashed in as soon as there are enough, rather than when their
+  // holder chooses (round 98, the user's question: is holding them back a
+  // good strategy or bad design? Off: the agreed rule, held until cashed)
+  bool autoCashBadges = false;
   int ruinsBadges = 2;
   int salvageResources = 2;
   int bankRate = 4; // give this many of one resource for 1 of another
@@ -520,6 +526,13 @@ const std::vector<Contract> &contracts();
 // What Charter `id` scores once revealed, under `settings` (the relay's is
 // a setting: Settings::relayPoints)
 int charterPoints(const Settings &settings, int id);
+
+// The settings as one line of text ("settings key=values ..."), as the
+// action logs keep them, and read back: nothing if a field is wrong. A
+// field repeated later in the line wins, so appending "key=values" changes
+// one setting (the simulator's --setting)
+std::string settingsLine(const Settings &settings);
+std::optional<Settings> settingsFromLine(std::string_view line);
 
 // ---------------------------------------------------------------------------
 // Corners (Settings::corners): every corner of the board, in a fixed order,

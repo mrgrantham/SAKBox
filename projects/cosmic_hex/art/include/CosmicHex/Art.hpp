@@ -71,7 +71,7 @@ enum class Card : std::uint8_t {
   InterstellarCartel,
   ShipyardSurplus,
   SupplyDrop,
-  CharterThreeKinds,
+  CharterThreeOfAKind,
   CharterOccupier,
   CharterDeepSpaceRelay,
 };

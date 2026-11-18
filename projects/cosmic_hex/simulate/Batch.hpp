@@ -89,10 +89,12 @@ struct Options {
   // The layout's finds beside its small systems (the rule from round 58; a
   // layout without that list keeps the usual places)
   bool smallFinds = true;
-  int win = 0;                  // points to win (0: the rules' default)
-  int relayPoints = -1;         // the relay Charter's own points (-1: the rules')
-  int dominionPoints = -1;      // Imperial Dominion's points (-1: the rules'; 0: none)
-  std::vector<int> charters;    // the Charters in the deck (empty: the rules')
+  int win = 0;               // points to win (0: the rules' default)
+  int relayPoints = -1;      // the relay Charter's own points (-1: the rules')
+  int dominionPoints = -1;   // Imperial Dominion's points (-1: the rules'; 0: none)
+  std::vector<int> charters; // the Charters in the deck (empty: the rules')
+  // Any settings, as the logs write them ("enforcers=14,3,0"), applied last
+  std::vector<std::string> settings;
   std::vector<BotStyle> styles; // the players' styles, turned round a seat each game
   bool edges = true;            // corners and edges (Settings::corners)
   int move = 0, boost = 0;      // a ship's move and its fuel boost (0: the default for the rules)

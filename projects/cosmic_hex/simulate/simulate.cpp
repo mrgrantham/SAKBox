@@ -186,6 +186,8 @@ Options parse(int argc, char **argv) {
       options.win = number<int>(flag, value);
     else if (flag == "--relay-points")
       options.relayPoints = number<int>(flag, value);
+    else if (flag == "--setting")
+      options.settings.emplace_back(value);
     else if (flag == "--dominion")
       options.dominionPoints = number<int>(flag, value);
     else if (flag == "--charters") {

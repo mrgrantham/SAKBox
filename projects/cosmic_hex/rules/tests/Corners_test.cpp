@@ -797,3 +797,18 @@ TEST(CornersTest, ImperialDominion) {
   // Its owner's own former home doesn't count
   EXPECT_EQ(state.dominionHolder, -1);
 }
+
+// Badges cashed at once (Settings::autoCashBadges, round 98's question):
+// three become a point as soon as they're there, and there's nothing to
+// choose; held, as agreed, they wait for CashBadges
+TEST(CornersTest, BadgesCashedAtOnceWhenThatsTheRule) {
+  State state = atMain();
+  state.player[0].badges = 3;
+  const auto legal = Game::legalActions(state);
+  EXPECT_NE(std::find(legal.begin(), legal.end(), Action{Kind::CashBadges}), legal.end());
+  state.settings.autoCashBadges = true;
+  const int before = points(state, 0);
+  ASSERT_TRUE(Game::apply(state, Game::legalActions(state).back()));
+  EXPECT_EQ(state.player[0].badges, 0);
+  EXPECT_EQ(points(state, 0), before + 1);
+}

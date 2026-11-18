@@ -1048,10 +1048,11 @@ std::string settingsText(const Settings &s) {
       << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0) << " discardover=" << s.discardOver
       << " charters=" << joined(s.charters) << " enforcers=" << s.enforcers << ","
       << s.embargoEnforcers << "," << s.embargoPoints << " cartels=" << s.cartels << ","
-      << s.cartelTake << " relay=" << s.relayPoints << " dominion=" << s.dominionPoints << ","
-      << s.dominionColonies << " finishround=" << (s.finishRound ? 1 : 0)
-      << " homedie=" << (s.homeDie ? 1 : 0) << " shipyards=" << s.shipyards
-      << " supply=" << s.supplyDrops << " moons=" << s.moons << " planets=";
+      << s.cartelTake << " autocash=" << (s.autoCashBadges ? 1 : 0) << " relay=" << s.relayPoints
+      << " dominion=" << s.dominionPoints << "," << s.dominionColonies
+      << " finishround=" << (s.finishRound ? 1 : 0) << " homedie=" << (s.homeDie ? 1 : 0)
+      << " shipyards=" << s.shipyards << " supply=" << s.supplyDrops << " moons=" << s.moons
+      << " planets=";
   std::vector<int> planetList;
   for (Hex hex : s.planetHexes) {
     planetList.push_back(hex.q);
@@ -1116,6 +1117,10 @@ std::optional<Settings> readSettings(std::string_view line) {
     if (values && key == "cartels" && values->size() == 2) {
       s.cartels = (*values)[0];
       s.cartelTake = (*values)[1];
+      continue;
+    }
+    if (values && key == "autocash" && values->size() == 1) {
+      s.autoCashBadges = (*values)[0] != 0;
       continue;
     }
     if (values && key == "relay" && values->size() == 1) {
@@ -1256,6 +1261,9 @@ std::optional<Settings> readSettings(std::string_view line) {
 }
 
 } // namespace
+
+std::string settingsLine(const Settings &settings) { return settingsText(settings); }
+std::optional<Settings> settingsFromLine(std::string_view line) { return readSettings(line); }
 
 // ---------------------------------------------------------------------------
 // Setting up
@@ -2394,6 +2402,13 @@ bool Game::apply(State &state, const Action &action) {
     break;
   }
   }
+  // Badges cashed at once, when that's the rule (Settings::autoCashBadges)
+  if (done && state.settings.autoCashBadges)
+    for (Player &player : state.player)
+      while (player.badges >= state.settings.badgesPerPoint) {
+        player.badges -= state.settings.badgesPerPoint;
+        ++player.badgePoints;
+      }
   // (corners) more to turn over where a ship stopped
   if (done && state.phase == Phase::Main && !state.turning.empty())
     turnNextOver(state);

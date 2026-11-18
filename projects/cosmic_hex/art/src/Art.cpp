@@ -38,8 +38,8 @@ extern const unsigned char kCardShipyardSurplus[];
 extern const std::size_t kCardShipyardSurplusSize;
 extern const unsigned char kCardSupplyDrop[];
 extern const std::size_t kCardSupplyDropSize;
-extern const unsigned char kCardCharterThreeKinds[];
-extern const std::size_t kCardCharterThreeKindsSize;
+extern const unsigned char kCardCharterThreeOfAKind[];
+extern const std::size_t kCardCharterThreeOfAKindSize;
 extern const unsigned char kCardCharterOccupier[];
 extern const std::size_t kCardCharterOccupierSize;
 extern const unsigned char kCardCharterDeepSpaceRelay[];
@@ -225,8 +225,8 @@ std::string_view cardRecipeOf(Card which) {
     return text(Recipes::kCardShipyardSurplus, Recipes::kCardShipyardSurplusSize);
   case Card::SupplyDrop:
     return text(Recipes::kCardSupplyDrop, Recipes::kCardSupplyDropSize);
-  case Card::CharterThreeKinds:
-    return text(Recipes::kCardCharterThreeKinds, Recipes::kCardCharterThreeKindsSize);
+  case Card::CharterThreeOfAKind:
+    return text(Recipes::kCardCharterThreeOfAKind, Recipes::kCardCharterThreeOfAKindSize);
   case Card::CharterOccupier:
     return text(Recipes::kCardCharterOccupier, Recipes::kCardCharterOccupierSize);
   case Card::CharterDeepSpaceRelay:
@@ -237,10 +237,10 @@ std::string_view cardRecipeOf(Card which) {
 
 std::string_view fileOf(Card card) {
   static constexpr std::array<std::string_view, kCards> kFiles{
-      "resource_minerals",   "resource_food",     "resource_fuel",
-      "resource_water",      "resource_crystals", "enforcer",
-      "interstellar_cartel", "shipyard_surplus",  "supply_drop",
-      "charter_three_kinds", "charter_occupier",  "charter_deep_space_relay"};
+      "resource_minerals",       "resource_food",     "resource_fuel",
+      "resource_water",          "resource_crystals", "enforcer",
+      "interstellar_cartel",     "shipyard_surplus",  "supply_drop",
+      "charter_three_of_a_kind", "charter_occupier",  "charter_deep_space_relay"};
   return kFiles[static_cast<std::size_t>(card)];
 }
 

@@ -234,7 +234,7 @@ TEST(RulesTest, TheDeck) {
   EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kCartelCard), 2);
   EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kShipyardCard), 2);
   EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), kSupplyDropCard), 2);
-  for (int charter : {0, 19, kDeepSpaceRelay})
+  for (int charter : {21, 19, kDeepSpaceRelay})
     EXPECT_EQ(std::count(state.deck.begin(), state.deck.end(), charter), 1);
 }
 
