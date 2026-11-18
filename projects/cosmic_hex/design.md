@@ -86,7 +86,7 @@ Agreed with the user, to be built as a setting beside today's rules (stations on
 
 - **Stations and colonies on corners**, where three hexes meet. A station earns from every planet it touches: 1 from each face-up planet whose number is rolled, a colony 2. Moons give nothing. (Round 45.)
 - **The distance rule:** no station or colony on a corner next to another (an edge away). (Round 45.)
-- **Ships stand on corners and move along edges**, a corner a step: **2 edges a turn, 1 more for a fuel** (rounds 46 and 50; tuned in the runs).
+- **Ships stand on corners and move along edges**, a corner a step: **2 edges a turn, 1 more for a fuel** (rounds 46 and 50; tuned in the runs). A ship passes anything, but **can't end its move on a corner taken by a station, a colony or another ship** (round 95; a new ship starts on its colony's corner, as before). Over 1,800 games on R3 it changed almost nothing: seats 22 to 27% (23 to 27% before), 17.1 rounds a game (17.3).
 - **Discovery when a move ends:** when a ship ends its move on a corner of a face-down planet or zone tile, it turns over (a badge, as now). Passing by turns nothing over. (Round 47.)
 - **Settling:** a ship on a free corner (no station on it or next to it) builds a station there, paying as now; the ship is used up.
 - **Ships are built only at colonies**, as Starfarers builds them at spaceports. (Round 46.)

@@ -188,6 +188,43 @@ TEST(CornersTest, ShipsMoveAlongEdges) {
   }
 }
 
+// A ship can't end its move where a station, a colony or another ship is
+// (round 95, the user's); it can pass them
+TEST(CornersTest, ShipsDontEndOnTakenCorners) {
+  State state = atMain();
+  const int mine = firstShipOf(state, 0);
+  Ship &ship = state.ships[static_cast<std::size_t>(mine)];
+  ship.moved = false;
+  state.player[0].resources[static_cast<std::size_t>(Resource::Fuel)] = 1;
+  const auto movesTo = [&](const State &s) {
+    std::set<int> to;
+    for (const Action &action : Game::legalActions(s))
+      if (action.kind == Kind::Move && action.a == mine)
+        to.insert(action.b);
+    return to;
+  };
+  const std::set<int> before = movesTo(state);
+  ASSERT_GE(before.size(), 3u);
+  // Another player's ship on one corner it could reach, their station on
+  // another, and the player's own second ship on a third
+  auto it = before.begin();
+  const int shipCorner = *it++, stationCorner = *it++, ownCorner = *it++;
+  State taken = state;
+  taken.ships.push_back(
+      Ship{1, Hex{}, false, boardCorners()[static_cast<std::size_t>(shipCorner)]});
+  taken.stations.push_back(
+      Station{boardCorners()[static_cast<std::size_t>(stationCorner)], 1, false});
+  taken.ships.push_back(Ship{0, Hex{}, true, boardCorners()[static_cast<std::size_t>(ownCorner)]});
+  const std::set<int> after = movesTo(taken);
+  EXPECT_FALSE(after.contains(shipCorner));
+  EXPECT_FALSE(after.contains(stationCorner));
+  EXPECT_FALSE(after.contains(ownCorner));
+  EXPECT_EQ(after.size(), before.size() - 3);
+  // And the rules refuse it when asked directly
+  State tried = taken;
+  EXPECT_FALSE(Game::apply(tried, {Kind::Move, mine, shipCorner}));
+}
+
 // Where a move ends, every face-down planet and tile it touches turns over,
 // one after another; passing by turns nothing over
 TEST(CornersTest, PlanetsTurnOverWhereAMoveEnds) {

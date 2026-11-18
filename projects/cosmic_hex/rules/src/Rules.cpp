@@ -228,13 +228,26 @@ std::vector<CornerReach> cornersWithin(Corner from, int steps) {
 
 // Where a ship can move this turn (corner numbers, with the edges to each):
 // shipMove edges, and boostMove more for 1 fuel. Ships pass anything; only
-// where a move ends matters (discovery).
+// where a move ends matters (discovery). It can't end on a corner taken by
+// a station, a colony or another ship (round 95, the user's)
 std::vector<CornerReach> cornerMovesFor(const State &state, const Ship &ship) {
   const Settings &settings = state.settings;
   const bool canBoost = state.player[static_cast<std::size_t>(ship.owner)]
                                 .resources[static_cast<std::size_t>(Resource::Fuel)] >= 1 &&
                         (settings.firstRoundBoost || state.round > 1);
-  return cornersWithin(ship.corner, settings.shipMove + (canBoost ? settings.boostMove : 0));
+  std::vector<CornerReach> moves =
+      cornersWithin(ship.corner, settings.shipMove + (canBoost ? settings.boostMove : 0));
+  // The taken corners, by number (a few dozen at most)
+  std::vector<std::int16_t> taken;
+  for (const Station &station : state.stations)
+    taken.push_back(static_cast<std::int16_t>(cornerNumber(station.at)));
+  for (const Ship &other : state.ships)
+    if (&other != &ship)
+      taken.push_back(static_cast<std::int16_t>(cornerNumber(other.corner)));
+  std::erase_if(moves, [&](CornerReach reach) {
+    return std::find(taken.begin(), taken.end(), reach.corner) != taken.end();
+  });
+  return moves;
 }
 
 // ---- The piles of planets' kinds and numbers (Settings::fitPiles)
