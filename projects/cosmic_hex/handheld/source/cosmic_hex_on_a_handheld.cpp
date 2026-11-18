@@ -63,6 +63,10 @@
 
 #include <spdlog/spdlog.h>
 
+#if defined(COSMIC_HEX_BENCH)
+#include "CosmicHexBench.hpp"
+#endif
+
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -811,16 +815,15 @@ private:
       char games[32];
       std::snprintf(games, sizeof games, "bot: %d games a move", latest_->botGames);
       overlay.text(4, kTopHeight - 50, games, {120, 220, 160});
-      // Where its time went, in ms: guessing, the tree, listing and
-      // applying rollout moves, judging; and rollout moves a game
+      // Where its time went, in ms: guessing, the tree, the rollouts,
+      // judging; and rollout moves a game
       const GameBots::SearchTimes &t = latest_->botSearch;
       if (t.games > 0) {
         char where[64];
         std::snprintf(
-            where, sizeof where, "g%lld t%lld l%lld a%lld j%lld m%lld",
+            where, sizeof where, "g%lld t%lld r%lld j%lld m%lld",
             static_cast<long long>(t.guessing / 1000), static_cast<long long>(t.descending / 1000),
-            static_cast<long long>(t.listing / 1000), static_cast<long long>(t.applying / 1000),
-            static_cast<long long>(t.judging / 1000),
+            static_cast<long long>(t.rollingOut / 1000), static_cast<long long>(t.judging / 1000),
             static_cast<long long>(t.rolloutActions / t.games));
         overlay.text(4, kTopHeight - 98, where, {120, 220, 160});
       }
@@ -1312,6 +1315,15 @@ private:
 
 int main() {
   spdlog::set_level(spdlog::level::off); // the screens are for the padds
+#if defined(COSMIC_HEX_BENCH) && defined(__NDS__)
+  // The -bench build: its timings on the bottom screen, nothing else
+  // running, then wait to be switched off
+  consoleDemoInit();
+  CosmicHexBench::run();
+  while (pmMainLoop())
+    swiWaitForVBlank();
+  return 0;
+#endif
 #if !defined(__NDS__)
   gfxInitDefault(); // (before ScreenPadd's Display)
 #endif

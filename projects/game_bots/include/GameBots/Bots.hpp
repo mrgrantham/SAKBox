@@ -48,9 +48,11 @@ namespace GameBots {
 struct SearchTimes {
   std::int64_t guessing = 0;   // G::determinize: a guess at what's hidden, and its copy
   std::int64_t descending = 0; // down the tree: selection and expansion, their move lists
-  std::int64_t listing = 0;    // rollouts: legal moves listed (and the dealer's drawn)
-  std::int64_t applying = 0;   // rollouts: moves applied
-  std::int64_t judging = 0;    // the results (G::score or G::estimate), backed up the tree
+  // The rollouts: moves listed and applied, timed as a whole (a clock read
+  // costs about 13 microseconds on a DS: timing each move more than doubled
+  // a simulated game's time; round 92)
+  std::int64_t rollingOut = 0;
+  std::int64_t judging = 0; // the results (G::score or G::estimate), backed up the tree
   std::int64_t rolloutActions = 0;
   int games = 0;
 };
@@ -288,25 +290,22 @@ private:
 
     // The rest of the game, at random (the bot's own moves in its style,
     // if it has one)
+    std::optional<detail::Stopwatch> rollingOut;
+    rollingOut.emplace(times ? &times->rollingOut : nullptr);
     for (int depth = 0; depth < settings_.rolloutDepth && !G::isOver(state); ++depth) {
       const int player = G::currentPlayer(state);
-      std::optional<Action> chosen;
-      {
-        detail::Stopwatch watch(times ? &times->listing : nullptr);
-        if (player == kDealer) {
-          chosen.emplace(G::dealerAction(state, random));
-        } else {
-          const std::vector<Action> legal = G::legalActions(state);
-          const bool styled = player == me && settings_.rolloutWeight;
-          chosen.emplace(styled ? weightedPick(state, legal, random)
-                                : legal[random.below(static_cast<std::uint32_t>(legal.size()))]);
-        }
+      if (player == kDealer) {
+        G::apply(state, G::dealerAction(state, random));
+      } else {
+        const std::vector<Action> legal = G::legalActions(state);
+        const bool styled = player == me && settings_.rolloutWeight;
+        G::apply(state, styled ? weightedPick(state, legal, random)
+                               : legal[random.below(static_cast<std::uint32_t>(legal.size()))]);
       }
-      detail::Stopwatch watch(times ? &times->applying : nullptr);
-      G::apply(state, *chosen);
       if (times)
         ++times->rolloutActions;
     }
+    rollingOut.reset();
     detail::Stopwatch judging(times ? &times->judging : nullptr);
 
     // Each move gets the result for the player who made it: worked out once

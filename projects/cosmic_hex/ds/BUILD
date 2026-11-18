@@ -44,6 +44,18 @@ devkitpro_nds_app(
     extra_srcs = SOURCES,
 )
 
+# The bots' parts timed on their own (COSMIC_HEX_BENCH: CosmicHexBench.hpp),
+# a table on the screen to compare melonDS with a DS (round 92: the
+# emulator showed the bots about five times as fast as a DS)
+devkitpro_nds_app(
+    name = "cosmic-hex-ds-bench",
+    tags = ["blender"],  # (the title screen's rocket: tools/assets)
+    srcs = ["Makefile"],
+    defines = ["COSMIC_HEX_BENCH"],
+    extra_srcs = SOURCES,
+    icon_letters = "CB",
+)
+
 # The same app watching four bots by itself (COSMIC_HEX_WATCH_AT_START), for
 # unattended runs in an emulator or on a console
 devkitpro_nds_app(
