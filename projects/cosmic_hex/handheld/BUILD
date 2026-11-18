@@ -41,6 +41,7 @@ cc_library(
     strip_include_prefix = "include/",
     visibility = ["//projects/cosmic_hex:__subpackages__"],
     deps = [
+        "//projects/scratchpadd/motion",
         "//projects/action_log",
         "//projects/cosmic_hex/art",
         "//projects/cosmic_hex/dice",

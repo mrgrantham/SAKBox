@@ -1,5 +1,7 @@
 #include <CosmicHex/Handheld/DicePieces.hpp>
 
+#include <ScratchPadd/Motion/Motion.hpp>
+
 #include <CosmicHex/Dice/DiceTray.hpp>
 
 #include <cmath>
@@ -157,15 +159,9 @@ float pullScreens() {
 float slideSeconds() { return 2 * std::sqrt(1 / pullScreens()); } // (half the way each)
 
 float slideAcross(float seconds) {
-  const float half = slideSeconds() / 2, a = pullScreens();
-  if (seconds <= 0)
-    return 0;
-  if (seconds >= 2 * half)
-    return 1;
-  if (seconds < half)
-    return a * seconds * seconds / 2; // speeding up
-  const float left = 2 * half - seconds;
-  return 1 - a * left * left / 2; // slowing to stop
+  // (the Motion library's Pull: half the time speeding up, half slowing; at
+  // the glass's acceleration it's slideSeconds() long)
+  return ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::Pull, seconds / slideSeconds());
 }
 
 Scene::Transform dieOnGlass(const Scene::Transform &glass, const Scene::Vector3 &position,
