@@ -89,9 +89,9 @@ TEST(LayoutSolverTest, SameNearPlanetsFromEveryHome) {
   const auto layouts = solve(spec);
   ASSERT_FALSE(layouts.empty());
   for (const SolvedLayout &l : layouts) {
-    ASSERT_EQ(l.near.size(), l.homes.size());
-    for (const auto &counts : l.near)
-      EXPECT_EQ(counts, l.near.front());
+    ASSERT_EQ(l.planetsNear.size(), l.homes.size());
+    for (const auto &counts : l.planetsNear)
+      EXPECT_EQ(counts, l.planetsNear.front());
   }
 }
 

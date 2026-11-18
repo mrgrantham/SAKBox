@@ -90,7 +90,7 @@ struct SolvedLayout {
   std::vector<double> access;
   double accessSpread = 0;
   // (sameNearPlanetsWithin) each home's planets within 1, 2, ... moves
-  std::vector<std::vector<int>> near;
+  std::vector<std::vector<int>> planetsNear; // (not "near": a macro in Windows' headers)
 };
 
 // The layouts found, the most equal first
