@@ -6,6 +6,7 @@
 // bitmap layer, in libnds' 8 x 8 font, on the DS).
 #pragma once
 
+#include <ScratchPadd/Scene/TextWrap.hpp>
 #include <ScratchPadd/Scene/Types.hpp>
 
 #include <string>
@@ -37,6 +38,16 @@ public:
   // tall a line is: the backend's font (each backend defines them)
   static float textWidth(std::string_view text, float scale = 1);
   static float lineHeight(float scale = 1);
+  // `text` wrapped to `width` points (wrapText, in the backend's font), its
+  // top-left at (x, y); says how tall it came out
+  float paragraph(float x, float y, float width, std::string_view text, Colour colour,
+                  float scale = 1) {
+    const std::vector<std::string> lines =
+        wrapText(text, width, [scale](std::string_view line) { return textWidth(line, scale); });
+    for (std::size_t i = 0; i < lines.size(); ++i)
+      this->text(x, y + lineHeight(scale) * static_cast<float>(i), lines[i], colour, scale);
+    return lineHeight(scale) * static_cast<float>(lines.size());
+  }
   void rectangle(float x, float y, float width, float height, Colour colour);
   // A triangle with its corners at (x0, y0), (x1, y1) and (x2, y2)
   void triangle(float x0, float y0, float x1, float y1, float x2, float y2, Colour colour);

@@ -5,6 +5,7 @@
 #include <ScratchPadd/Scene/OutlineHull.hpp>
 #include <ScratchPadd/Scene/Primitives.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
+#include <ScratchPadd/Scene/TextWrap.hpp>
 
 #include <gtest/gtest.h>
 
@@ -346,4 +347,29 @@ TEST(OverlayTest, HexagonsAreSixTrianglesRound) {
   for (const Overlay::Vertex &v : pointy.triangles())
     highest = std::min(highest, v.y);
   EXPECT_NEAR(highest, -10, 1e-3); // (a corner at the top)
+}
+
+// Text wraps at the spaces to fit a width (round 93): here 1 a letter, as
+// a fixed-width font measures it
+namespace {
+float oneALetter(std::string_view text) { return static_cast<float>(text.size()); }
+} // namespace
+
+TEST(TextWrapTest, WordsGoOnALineWhileTheyFit) {
+  using Lines = std::vector<std::string>;
+  EXPECT_EQ(ScratchPadd::Scene::wrapText("Take 2 Fuel from the bank", 11, oneALetter),
+            (Lines{"Take 2 Fuel", "from the", "bank"}));
+  // Exactly the width fits; runs of spaces count as one
+  EXPECT_EQ(ScratchPadd::Scene::wrapText("ab  cd", 5, oneALetter), (Lines{"ab cd"}));
+  EXPECT_EQ(ScratchPadd::Scene::wrapText("", 5, oneALetter), (Lines{""}));
+}
+
+TEST(TextWrapTest, NewLinesAreKeptAndLongWordsBroken) {
+  using Lines = std::vector<std::string>;
+  EXPECT_EQ(ScratchPadd::Scene::wrapText("Enforcer\n\nMove the ship", 8, oneALetter),
+            (Lines{"Enforcer", "", "Move the", "ship"}));
+  EXPECT_EQ(ScratchPadd::Scene::wrapText("go Interstellar", 5, oneALetter),
+            (Lines{"go", "Inter", "stell", "ar"}));
+  // Even a line too narrow for one letter gets one a line, so it ends
+  EXPECT_EQ(ScratchPadd::Scene::wrapText("abc", 0.5f, oneALetter), (Lines{"a", "b", "c"}));
 }
