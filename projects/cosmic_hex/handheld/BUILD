@@ -11,6 +11,7 @@ cc_library(
         "src/BoardPicture.cpp",
         "src/RecipePixels.cpp",
         "src/BoardPieces.cpp",
+        "src/BuildMenu.cpp",
         "src/ButtonMenu.cpp",
         "src/DicePieces.cpp",
         "src/MenuPicture.cpp",
@@ -24,6 +25,7 @@ cc_library(
         "include/CosmicHex/Handheld/BoardPicture.hpp",
         "include/CosmicHex/Handheld/BoardPieces.hpp",
         "include/CosmicHex/Handheld/BoardView.hpp",
+        "include/CosmicHex/Handheld/BuildMenu.hpp",
         "include/CosmicHex/Handheld/ButtonMenu.hpp",
         "include/CosmicHex/Handheld/DicePieces.hpp",
         "include/CosmicHex/Handheld/MenuPicture.hpp",
@@ -170,6 +172,18 @@ cc_test(
     deps = [
         ":handheld",
         "//projects/scratchpadd/scene/ds:display_list",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "BuildMenu_test",
+    size = "small",
+    srcs = ["tests/BuildMenu_test.cpp"],
+    deps = [
+        ":handheld",
+        "//projects/game_bots",
+        "//projects/seeded_random",
         "@gtest//:gtest_main",
     ],
 )
