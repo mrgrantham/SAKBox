@@ -23,6 +23,7 @@ cc_library(
         "include/CosmicHex/Handheld/BoardMotion.hpp",
         "include/CosmicHex/Handheld/BoardPicture.hpp",
         "include/CosmicHex/Handheld/BoardPieces.hpp",
+        "include/CosmicHex/Handheld/BoardView.hpp",
         "include/CosmicHex/Handheld/ButtonMenu.hpp",
         "include/CosmicHex/Handheld/DicePieces.hpp",
         "include/CosmicHex/Handheld/MenuPicture.hpp",
@@ -158,6 +159,17 @@ cc_test(
     srcs = ["tests/PlatformProfile_test.cpp"],
     deps = [
         ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "BoardView_test",
+    size = "small",
+    srcs = ["tests/BoardView_test.cpp"],
+    deps = [
+        ":handheld",
+        "//projects/scratchpadd/scene/ds:display_list",
         "@gtest//:gtest_main",
     ],
 )

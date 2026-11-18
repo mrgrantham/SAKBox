@@ -48,6 +48,27 @@ constexpr std::int16_t overlayDepth(int index, int count) {
   const int step = std::clamp(32000 / (count + 1), 1, kOverlayDepthStep);
   return static_cast<std::int16_t>(-(count - index) * step);
 }
+// The overlay's orthographic projection reaches this far, in world units
+// (its 4.12 depths: 16 x 4096 of them across the depth buffer's range)
+constexpr int kOverlayFar = 16;
+
+// The DS's depth buffer (GBATEK, "DS 3D Rendering": Z-buffering keeps
+// z / w times 0x4000, about 15 bits across the near to far range, the rest
+// of its 24 bits zero): how many of its steps lie between two points
+// `nearer` and `farther` ahead of a perspective camera (their distances
+// along its view, not to its eye). A perspective projection spends most
+// steps near the camera, so far away a small gap rounds to the same depth.
+inline double zBufferSteps(double nearPlane, double farPlane, double nearer, double farther) {
+  const auto depth = [&](double ahead) {
+    return -2 * farPlane * nearPlane / ((farPlane - nearPlane) * ahead) * 0x4000;
+  };
+  return depth(farther) - depth(nearer);
+}
+// The fewest steps that keep a shape in front of the one just under it, a
+// see-through one over an opaque one included (round 92: 8, the overlay's
+// kOverlayDepthStep, drew whole; half a step lost slices, and the board's
+// 1 to 2 steps lost tile triangles to the grid under them)
+constexpr double kSafeDepthSteps = 8;
 
 // The DS's 15-bit colour (5 bits a channel)
 constexpr std::uint16_t rgb15(Colour c) {

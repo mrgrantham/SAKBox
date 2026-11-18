@@ -34,6 +34,7 @@
 #include <CosmicHex/Handheld/BoardMotion.hpp>
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/BoardView.hpp>
 #include <CosmicHex/Handheld/ButtonMenu.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
@@ -576,19 +577,6 @@ private:
                  kSmall);
   }
 
-  // The board from above and in front, turned by L and R (looking a little
-  // in front of the centre, so the near hexes stay on screen)
-  // The board's camera: from above and in front, turned by L and R (looking
-  // a little in front of the centre, so the near hexes stay on screen)
-  Scene::Camera boardCamera() const {
-    const float distance = 9.5f, height = 9.5f;
-    return Scene::Camera{.eye = {distance * std::sin(turn_), height, distance * std::cos(turn_)},
-                         .target = {1.2f * std::sin(turn_), 0, 1.2f * std::cos(turn_)},
-                         .up = {0, 1, 0},
-                         .fieldOfView = 50,
-                         .nearPlane = 1,
-                         .farPlane = 60};
-  }
   // The board's light: the game's (a lamp above and to one side, toon
   // bands), or, `flat` of the way to it, bright and even (the setup's: the
   // board seen from above looks like the flat map; round 90, the user's)
@@ -607,17 +595,6 @@ private:
     return environment;
   }
 
-  // The board from straight above, all of it on the screen (the setup's
-  // view, like the flat map; up the screen is away from the game's camera)
-  static Scene::Camera topDownCamera() {
-    return Scene::Camera{.eye = {0, 18, 0.01f},
-                         .target = {0, 0, 0},
-                         .up = {0, 0, -1},
-                         .fieldOfView = 50,
-                         .nearPlane = 1,
-                         .farPlane = 60};
-  }
-
   // How far the board has come down from above to the game's view since the
   // game started (0 to 1, on the dice's curve: slideAcross), or 1 once there
   float descent() const {
@@ -625,14 +602,6 @@ private:
       return 1;
     return slideAcross(static_cast<float>(secondsSince(*descentStarted_)));
   }
-  static Scene::Camera between(const Scene::Camera &from, const Scene::Camera &to, float t) {
-    Scene::Camera out = to;
-    out.eye = from.eye + (to.eye - from.eye) * t;
-    out.target = from.target + (to.target - from.target) * t;
-    out.up = (from.up + (to.up - from.up) * t).normalised();
-    return out;
-  }
-
   // The game's board (or none yet), with the dice, the words over it and the
   // selection
   void drawBoard(const State *shown) {
@@ -640,7 +609,7 @@ private:
     const float down = descent();
     if (down >= 1)
       descentStarted_.reset();
-    const Scene::Camera camera = between(topDownCamera(), boardCamera(), down);
+    const Scene::Camera camera = cameraBetween(topDownCamera(), gameCamera(turn_), down);
     renderer_->beginFrame(camera, boardEnvironment(1 - down));
     if (!shown && descentStarted_)
       shown = &preview_; // (the game's first state on its way: the same board)
@@ -1201,7 +1170,7 @@ private:
       return;
     if (gaps_)
       renderer_->unload(gaps_);
-    gaps_ = renderer_->load(BoardPieces::gapsUnder(tiles).data());
+    gaps_ = renderer_->load(BoardPieces::gapsBetween(tiles).data());
     gapsTiles_ = std::move(tiles);
   }
 

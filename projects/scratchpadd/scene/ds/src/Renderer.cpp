@@ -266,7 +266,8 @@ void Renderer::Backend::drawOverlayShapes(const Overlay &overlay) {
   {
     HardwareMathsLock lock; // the divider
     glOrthof32(0, inttof32(display.width()) / kPointsPerUnit,
-               inttof32(display.height()) / kPointsPerUnit, 0, 0, inttof32(16));
+               inttof32(display.height()) / kPointsPerUnit, 0, 0,
+               inttof32(DisplayList::kOverlayFar));
   }
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();

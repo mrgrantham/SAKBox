@@ -35,6 +35,9 @@ filegroup(
         "src/ToonTable.hpp",
     ],
     strip_include_prefix = "src/",
+    # (the Cosmic Hex handheld's tests check its board's layers against the
+    # depth buffer's model)
+    visibility = ["//visibility:public"],
     deps = ["//projects/scratchpadd/scene:scene" + suffix],
 ) for suffix in ["", "_fixed_point"]]
 

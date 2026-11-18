@@ -93,18 +93,20 @@ BoardPieces::BoardPieces() {
                b = corners[static_cast<std::size_t>((i + 1) % 6)];
     // Each corner where the tile's face (Art.hpp) has it: the hex, 47% of
     // the square from its centre to a corner, v down the board (+z)
+    // (kTileInset of the hex: the rest is the grid's, gapsBetween)
     const auto uv = [](HexGrid::Point p) {
       return Scene::TexCoord{0.5f + p.x * 0.47f, 0.5f + p.y * 0.47f};
     };
-    hexTile.triangle(middle, onTable({b.x * 0.94f, b.y * 0.94f}),
-                     onTable({a.x * 0.94f, a.y * 0.94f}), {},
+    hexTile.triangle(middle, onTable({b.x * kTileInset, b.y * kTileInset}),
+                     onTable({a.x * kTileInset, a.y * kTileInset}), {},
                      {Scene::TexCoord{0.5f, 0.5f}, uv(b), uv(a)});
     // and its rim, a thin ring for the chosen hex
-    highlight.quad(
-        onTable({a.x * 0.98f, a.y * 0.98f}, 0.02f), onTable({b.x * 0.98f, b.y * 0.98f}, 0.02f),
-        onTable({b.x * 0.86f, b.y * 0.86f}, 0.02f), onTable({a.x * 0.86f, a.y * 0.86f}, 0.02f));
+    highlight.quad(onTable({a.x * 0.98f, a.y * 0.98f}, kRingLift),
+                   onTable({b.x * 0.98f, b.y * 0.98f}, kRingLift),
+                   onTable({b.x * 0.86f, b.y * 0.86f}, kRingLift),
+                   onTable({a.x * 0.86f, a.y * 0.86f}, kRingLift));
   }
-  // The number chip: a square just above the tile, kChipDown towards the
+  // The number chip: a square just above the tile (kChipLift), kChipDown towards the
   // viewer, its four corners turning the same way as the tile's (so it faces
   // up as the tile does), the chip's texture across it
   {
@@ -122,8 +124,8 @@ BoardPieces::BoardPieces() {
     };
     for (std::size_t k = 0; k < 4; ++k) {
       const auto a = square[k], b = square[(k + 1) % 4];
-      numberChip.triangle(onTable(centre, 0.015f), onTable(b, 0.015f), onTable(a, 0.015f), {},
-                          {uv(centre), uv(b), uv(a)});
+      numberChip.triangle(onTable(centre, kChipLift), onTable(b, kChipLift), onTable(a, kChipLift),
+                          {}, {uv(centre), uv(b), uv(a)});
     }
   }
   station.box({0, 0.2f, 0}, {0.2f, 0.2f, 0.2f});
@@ -205,14 +207,22 @@ Scene::Vector3 BoardPieces::at(Corner corner) { return onTable(kLayout.point(cor
 
 Scene::Transform BoardPieces::onHex(Hex hex) { return Scene::Transform::translation(centre(hex)); }
 
-Scene::MeshBuilder BoardPieces::gapsUnder(const std::vector<Hex> &tiles) {
+Scene::MeshBuilder BoardPieces::gapsBetween(const std::vector<Hex> &tiles) {
   Scene::MeshBuilder gaps;
   for (Hex hex : tiles) {
     const auto corners = kLayout.corners(hex);
-    const Scene::Vector3 middle = onTable(kLayout.centre(hex), -0.01f);
-    for (int i = 0; i < 6; ++i)
-      gaps.triangle(middle, onTable(corners[static_cast<std::size_t>((i + 1) % 6)], -0.01f),
-                    onTable(corners[static_cast<std::size_t>(i)], -0.01f));
+    const HexGrid::Point middle = kLayout.centre(hex);
+    // A corner `share` of the way out from the hex's centre
+    const auto out = [&](int i, float share) {
+      const HexGrid::Point corner = corners[static_cast<std::size_t>(i % 6)];
+      return onTable(
+          {middle.x + (corner.x - middle.x) * share, middle.y + (corner.y - middle.y) * share});
+    };
+    // Each side's strip, turned the same way as the tiles' triangles
+    for (int i = 0; i < 6; ++i) {
+      gaps.triangle(out(i, kTileInset), out(i + 1, 1), out(i, 1));
+      gaps.triangle(out(i, kTileInset), out(i + 1, kTileInset), out(i + 1, 1));
+    }
   }
   return gaps;
 }

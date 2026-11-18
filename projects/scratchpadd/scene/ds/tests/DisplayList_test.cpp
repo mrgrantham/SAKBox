@@ -307,3 +307,16 @@ TEST(DisplayListTest, OverlayTrianglesAreFarEnoughApartForTheDepthBuffer) {
     EXPECT_GE(overlayDepth(t - 1, 5000), -32768);
   }
 }
+
+// The depth buffer's model: the whole range from the near plane to the far
+// is 2 x 0x4000 steps, a perspective camera spends most of them close to it,
+// and the overlay's spacing is the safe margin (kOverlayDepthStep of its
+// 4.12 units over its kOverlayFar range: 8 steps)
+TEST(DisplayListTest, TheDepthBuffersModelSpendsItsStepsNearTheCamera) {
+  using DisplayList::zBufferSteps;
+  EXPECT_NEAR(zBufferSteps(1, 60, 1, 60), 2 * 0x4000, 1e-6);
+  EXPECT_GT(zBufferSteps(1, 60, 2, 2.1), 10 * zBufferSteps(1, 60, 20, 20.1));
+  const double overlaySteps =
+      2.0 * 0x4000 * DisplayList::kOverlayDepthStep / (DisplayList::kOverlayFar * 4096.0);
+  EXPECT_DOUBLE_EQ(overlaySteps, DisplayList::kSafeDepthSteps);
+}
