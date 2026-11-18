@@ -77,6 +77,7 @@ struct Options {
   // the same games); 0: none (--arena 0)
   std::size_t frameArenaBytes = 128 * 1024;
   int strongIterations = 0;   // a stronger bot, thinking this much, at one home in turn
+  bool randomOthers = false;  // the other players choose any legal move at random (round 97)
   std::string variant;        // a label for the CSV
   std::string core = "seven"; // the core planets: seven (the centre and the six around it) or three
   std::vector<Hex> planets;   // a layout's planets (empty: one every third hex)
@@ -90,6 +91,8 @@ struct Options {
   bool smallFinds = true;
   int win = 0;                  // points to win (0: the rules' default)
   int relayPoints = -1;         // the relay Charter's own points (-1: the rules')
+  int dominionPoints = -1;      // Imperial Dominion's points (-1: the rules'; 0: none)
+  std::vector<int> charters;    // the Charters in the deck (empty: the rules')
   std::vector<BotStyle> styles; // the players' styles, turned round a seat each game
   bool edges = true;            // corners and edges (Settings::corners)
   int move = 0, boost = 0;      // a ship's move and its fuel boost (0: the default for the rules)
@@ -137,7 +140,7 @@ GameStats statsOf(const ActionLog::Log<Game> &log);
 
 // Where a player's points came from
 struct Sources {
-  int stations = 0, colonies = 0, core = 0, embargo = 0, badges = 0, contracts = 0;
+  int stations = 0, colonies = 0, core = 0, embargo = 0, dominion = 0, badges = 0, contracts = 0;
 };
 Sources sourcesOf(const State &state, int player);
 

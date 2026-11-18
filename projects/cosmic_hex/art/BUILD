@@ -164,7 +164,7 @@ ICONS = ["roll", "build", "trade", "show_resources", "cards", "end_turn"]
 
 # The cards' art (round 75's designs, round 94: no words, which the game
 # writes over them, and a title band for two lines), one for each card
-CARDS = ["resource_minerals", "resource_food", "resource_fuel", "resource_water", "resource_crystals", "enforcer", "interstellar_cartel", "shipyard_surplus", "supply_drop", "charter_three_kinds", "charter_homesteader", "charter_deep_space_relay"]
+CARDS = ["resource_minerals", "resource_food", "resource_fuel", "resource_water", "resource_crystals", "enforcer", "interstellar_cartel", "shipyard_surplus", "supply_drop", "charter_three_kinds", "charter_occupier", "charter_deep_space_relay"]
 
 [texture_recipe(
     name = "card_" + name,

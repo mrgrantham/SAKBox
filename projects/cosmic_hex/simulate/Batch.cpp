@@ -107,6 +107,10 @@ Settings settingsFor(const Options &options) {
     settings.winPoints = options.win;
   if (options.relayPoints >= 0)
     settings.relayPoints = options.relayPoints;
+  if (options.dominionPoints >= 0)
+    settings.dominionPoints = options.dominionPoints;
+  if (!options.charters.empty())
+    settings.charters = options.charters;
   else if (options.players == 3)
     settings.winPoints = kThreePlayerWinPoints; // (the agreed rules' for three; round 85)
   settings.catchUpBelow = options.catchUpBelow;
@@ -333,7 +337,9 @@ Sources sourcesOf(const State &state, int player) {
   s.badges = state.player[static_cast<std::size_t>(player)].badgePoints;
   for (int id : state.player[static_cast<std::size_t>(player)].revealed)
     s.contracts += charterPoints(state.settings, id);
-  s.colonies = points(state, player) - s.stations - s.core - s.embargo - s.badges - s.contracts;
+  s.dominion = state.dominionHolder == player ? state.settings.dominionPoints : 0;
+  s.colonies =
+      points(state, player) - s.stations - s.core - s.embargo - s.dominion - s.badges - s.contracts;
   return s;
 }
 
@@ -366,6 +372,13 @@ GameResult playGame(const Options &options, int game, const Bots &bots) {
             state, random,
             {.iterations = options.iterations, .frameArenaBytes = options.frameArenaBytes});
       });
+  // (round 97: does thinking beat chance? the others pick any legal move)
+  if (options.randomOthers)
+    for (auto &player : players)
+      player = [&](const State &state) {
+        const std::vector<Action> moves = Game::legalActions(state);
+        return moves[random.below(static_cast<std::uint32_t>(moves.size()))];
+      };
   if (result.strong >= 0)
     players[static_cast<std::size_t>(result.strong)] = [&](const State &state) {
       return bots.plain.choose(

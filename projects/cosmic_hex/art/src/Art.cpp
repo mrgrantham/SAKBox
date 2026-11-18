@@ -37,8 +37,8 @@ extern const unsigned char kCardSupplyDrop[];
 extern const std::size_t kCardSupplyDropSize;
 extern const unsigned char kCardCharterThreeKinds[];
 extern const std::size_t kCardCharterThreeKindsSize;
-extern const unsigned char kCardCharterHomesteader[];
-extern const std::size_t kCardCharterHomesteaderSize;
+extern const unsigned char kCardCharterOccupier[];
+extern const std::size_t kCardCharterOccupierSize;
 extern const unsigned char kCardCharterDeepSpaceRelay[];
 extern const std::size_t kCardCharterDeepSpaceRelaySize;
 extern const unsigned char kPlanetFaceDown[];
@@ -224,8 +224,8 @@ std::string_view cardRecipeOf(Card which) {
     return text(Recipes::kCardSupplyDrop, Recipes::kCardSupplyDropSize);
   case Card::CharterThreeKinds:
     return text(Recipes::kCardCharterThreeKinds, Recipes::kCardCharterThreeKindsSize);
-  case Card::CharterHomesteader:
-    return text(Recipes::kCardCharterHomesteader, Recipes::kCardCharterHomesteaderSize);
+  case Card::CharterOccupier:
+    return text(Recipes::kCardCharterOccupier, Recipes::kCardCharterOccupierSize);
   case Card::CharterDeepSpaceRelay:
     return text(Recipes::kCardCharterDeepSpaceRelay, Recipes::kCardCharterDeepSpaceRelaySize);
   }

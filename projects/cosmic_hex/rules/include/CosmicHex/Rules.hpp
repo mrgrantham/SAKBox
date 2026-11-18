@@ -177,7 +177,7 @@ struct Settings {
   // game has, 14 Enforcers and 11 Charters.
   //
   // The deck (rounds 61, 63 and 65; 23 cards, close to the genre's 25): one
-  // of each of three Charters (stations on 3 kinds of planet, Homesteader,
+  // of each of three Charters (stations on 3 kinds of planet, Occupier,
   // Deep-space relay), and copies only of the cards that act by themselves:
   // 14 Enforcers, 2 Interstellar Cartels, 2 Shipyard Surplus and 2 Supply
   // drops. (A player can't reveal a Charter twice.)
@@ -215,8 +215,15 @@ struct Settings {
   int embargoEnforcers = 3;
   int embargoPoints = 2;
   // What the Deep-space relay Charter itself scores once revealed, on top
-  // of its station's 1 (round 77: nothing; round 96, the user's idea: 1)
-  int relayPoints = 0;
+  // of its station's 1 (round 77: nothing; round 97, the user's: 1, which
+  // made it a goal players chase without tilting the seats)
+  int relayPoints = 1;
+  // Imperial Dominion (round 97, the user's idea; off until tried): a bonus
+  // like the Embargo, to whoever has the most colonies on other players'
+  // former homes (Settings::exhaustHomesAt), at least dominionColonies;
+  // it passes on overtaking. 0 points: no Dominion
+  int dominionPoints = 0;
+  int dominionColonies = 1;
   int coreStationsForControl = 2;
   int coreControlPoints = 2; // (0: no Core Control at all; the agreed rules', round 89)
   int badgesPerPoint = 3;
@@ -366,6 +373,7 @@ struct State {
   int blockade = -1;       // the planet the blockade ship is on, or -1
   int coreHolder = -1;     // who holds Core Control, or -1
   int embargoHolder = -1;  // who holds the Galactic Embargo, or -1
+  int dominionHolder = -1; // who holds Imperial Dominion (Settings::dominionPoints), or -1
   bool cardPlayed = false; // an Enforcer played this turn (one a turn)
   int winner = -1;
   // Everyone who shares the win (round 75: finishing the round, a tie on

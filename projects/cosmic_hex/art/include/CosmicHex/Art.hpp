@@ -72,7 +72,7 @@ enum class Card : std::uint8_t {
   ShipyardSurplus,
   SupplyDrop,
   CharterThreeKinds,
-  CharterHomesteader,
+  CharterOccupier,
   CharterDeepSpaceRelay,
 };
 inline constexpr int kCards = 12;

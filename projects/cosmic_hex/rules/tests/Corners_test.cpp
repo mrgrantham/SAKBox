@@ -715,16 +715,85 @@ TEST(CornersTest, NoCoreControlInTheAgreedRules) {
   EXPECT_FALSE(agreedRules(boardR3()).firstRoundBoost); // (round 90: no boost the first round)
 }
 
-// The relay Charter scores its own points (Settings::relayPoints, round 96)
-// on top of its station's, once revealed; the other Charters their table's
+// The relay Charter scores its own points (Settings::relayPoints: 1 since
+// round 97) on top of its station's, once revealed; the other Charters their
+// table's
 TEST(CornersTest, TheRelayScoresItsSetting) {
   Settings settings;
-  EXPECT_EQ(charterPoints(settings, kDeepSpaceRelay), 0);
-  settings.relayPoints = 1;
   EXPECT_EQ(charterPoints(settings, kDeepSpaceRelay), 1);
+  settings.relayPoints = 0;
+  EXPECT_EQ(charterPoints(settings, kDeepSpaceRelay), 0);
   EXPECT_EQ(charterPoints(settings, 0), contracts()[0].points);
   State state = atMain();
   const int before = points(state, 0);
   state.player[0].revealed.push_back(kDeepSpaceRelay);
   EXPECT_EQ(points(state, 0), before + state.settings.relayPoints);
+}
+
+// "Stations on 3 planets of one kind" (round 97, simulated in place of 3
+// kinds): met with three of one kind, not with three different kinds
+TEST(CornersTest, ThreeOfOneKind) {
+  const Contract &threeOfAKind = contracts().at(21);
+  State state = atMain();
+  state.stations.clear();
+  std::vector<std::size_t> gasGiants, others;
+  for (std::size_t i = 0; i < state.planets.size(); ++i) {
+    const PlanetKind kind = state.planets[i].kind;
+    if (state.planets[i].homeOf >= 0 || kind == PlanetKind::Home || kind == PlanetKind::Moon)
+      continue;
+    (kind == PlanetKind::GasGiant ? gasGiants : others).push_back(i);
+  }
+  ASSERT_GE(gasGiants.size(), 3u);
+  // A station on a corner of `planet` that touches no other planet
+  const auto stationBy = [&](std::size_t planet) {
+    for (int i = 0; i < 6; ++i) {
+      const Corner corner = HexGrid::corner(state.planets[planet].hex, i);
+      const auto touching = HexGrid::hexesTouching(corner);
+      const bool alone =
+          std::none_of(state.planets.begin(), state.planets.end(), [&](const Planet &other) {
+            return &other != &state.planets[planet] &&
+                   std::find(touching.begin(), touching.end(), other.hex) != touching.end();
+          });
+      if (alone) {
+        state.stations.push_back(Station{corner, 0, false});
+        return;
+      }
+    }
+    ADD_FAILURE() << "no corner of planet " << planet << " alone";
+  };
+  stationBy(gasGiants[0]);
+  stationBy(gasGiants[1]);
+  EXPECT_FALSE(threeOfAKind.met(state, 0));
+  stationBy(gasGiants[2]);
+  EXPECT_TRUE(threeOfAKind.met(state, 0));
+}
+
+// Imperial Dominion (round 97, off by default): whoever has the most
+// colonies on other players' former homes, at least one, taken by
+// overtaking; none at all with its points 0
+TEST(CornersTest, ImperialDominion) {
+  State state = atMain();
+  EXPECT_EQ(state.settings.dominionPoints, 0);
+  state.settings.dominionPoints = 2;
+  // Player 1's home, exhausted; a colony of player 0's on it
+  Planet *home = nullptr;
+  for (Planet &planet : state.planets)
+    if (planet.homeOf == 1)
+      home = &planet;
+  ASSERT_NE(home, nullptr);
+  home->formerHomeOf = 1;
+  home->homeOf = -1;
+  home->kind = PlanetKind::GasGiant;
+  state.stations.push_back(Station{HexGrid::corner(home->hex, 3), 0, false});
+  const int before = points(state, 0);
+  state.player[0].resources = {9, 9, 9, 9, 9};
+  state.turn = 0;
+  const int colony = static_cast<int>(state.stations.size()) - 1;
+  State built = state;
+  if (Game::apply(built, {Kind::BuildColony, colony})) {
+    EXPECT_EQ(built.dominionHolder, 0);
+    EXPECT_EQ(points(built, 0), before + 1 + 2); // (the colony's extra point and Dominion's)
+  }
+  // Its owner's own former home doesn't count
+  EXPECT_EQ(state.dominionHolder, -1);
 }

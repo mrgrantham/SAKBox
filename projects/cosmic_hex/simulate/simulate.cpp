@@ -156,6 +156,8 @@ Options parse(int argc, char **argv) {
       options.exhaustedKindRandom = std::string_view(value) == "random";
     else if (flag == "--strong")
       options.strongIterations = number<int>(flag, value);
+    else if (flag == "--others")
+      options.randomOthers = std::string_view(value) == "random";
     else if (flag == "--variant")
       options.variant = value;
     else if (flag == "--planets")
@@ -184,7 +186,16 @@ Options parse(int argc, char **argv) {
       options.win = number<int>(flag, value);
     else if (flag == "--relay-points")
       options.relayPoints = number<int>(flag, value);
-    else if (flag == "--styles") {
+    else if (flag == "--dominion")
+      options.dominionPoints = number<int>(flag, value);
+    else if (flag == "--charters") {
+      std::string_view rest = value;
+      while (!rest.empty()) {
+        const std::size_t comma = rest.find(',');
+        options.charters.push_back(number<int>(flag, rest.substr(0, comma)));
+        rest.remove_prefix(comma == std::string_view::npos ? rest.size() : comma + 1);
+      }
+    } else if (flag == "--styles") {
       std::string_view rest = value;
       while (!rest.empty()) {
         const std::size_t comma = rest.find(',');
@@ -245,6 +256,7 @@ int main(int argc, char **argv) {
       winnerPoints.stations += s.stations;
       winnerPoints.colonies += s.colonies;
       winnerPoints.core += s.core;
+      winnerPoints.dominion += s.dominion;
       winnerPoints.badges += s.badges;
       winnerPoints.contracts += s.contracts;
     }
@@ -293,14 +305,14 @@ int main(int argc, char **argv) {
   std::printf("\nrounds a game: %.1f on average; actions a game: %.0f\n",
               static_cast<double>(totalRounds) / finished,
               static_cast<double>(totalActions) / options.games);
-  std::printf(
-      "winners' points, on average: stations %.1f, colonies %.1f, Core Control %.1f, badges %.1f, "
-      "contracts %.1f\n",
-      static_cast<double>(winnerPoints.stations) / finished,
-      static_cast<double>(winnerPoints.colonies) / finished,
-      static_cast<double>(winnerPoints.core) / finished,
-      static_cast<double>(winnerPoints.badges) / finished,
-      static_cast<double>(winnerPoints.contracts) / finished);
+  std::printf("winners' points, on average: stations %.1f, colonies %.1f, Core Control %.1f, "
+              "Imperial Dominion %.1f, badges %.1f, contracts %.1f\n",
+              static_cast<double>(winnerPoints.stations) / finished,
+              static_cast<double>(winnerPoints.colonies) / finished,
+              static_cast<double>(winnerPoints.core) / finished,
+              static_cast<double>(winnerPoints.dominion) / finished,
+              static_cast<double>(winnerPoints.badges) / finished,
+              static_cast<double>(winnerPoints.contracts) / finished);
   if (!options.styles.empty()) {
     // How often each style won the games it played (a fair share is one in
     // the number of players)

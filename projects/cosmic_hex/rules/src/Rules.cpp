@@ -890,6 +890,35 @@ void updateEmbargo(State &state, int player) {
     state.embargoHolder = player;
 }
 
+// Imperial Dominion: to whoever has the most colonies on other players'
+// former homes, at least dominionColonies; a tie keeps it with its holder.
+// (After a colony is built or a home is exhausted: the only times it
+// changes)
+int coloniesOnFormerHomes(const State &state, int player) {
+  int count = 0;
+  for (const Station &station : state.stations) {
+    if (station.owner != player || !station.colony)
+      continue;
+    count += std::any_of(state.planets.begin(), state.planets.end(), [&](const Planet &planet) {
+      return planet.formerHomeOf >= 0 && planet.formerHomeOf != player &&
+             touches(station.at, planet.hex);
+    });
+  }
+  return count;
+}
+void updateDominion(State &state) {
+  if (state.settings.dominionPoints <= 0)
+    return;
+  for (int p = 0; p < state.players; ++p) {
+    if (p == state.dominionHolder)
+      continue;
+    const int mine = coloniesOnFormerHomes(state, p);
+    if (mine >= state.settings.dominionColonies &&
+        (state.dominionHolder < 0 || mine > coloniesOnFormerHomes(state, state.dominionHolder)))
+      state.dominionHolder = p;
+  }
+}
+
 void endTurn(State &state) {
   state.player[static_cast<std::size_t>(state.turn)].boughtThisTurn.clear();
   state.cardPlayed = false;
@@ -1019,7 +1048,8 @@ std::string settingsText(const Settings &s) {
       << " skipfirst=" << (s.firstSkipsIncome ? 1 : 0) << " discardover=" << s.discardOver
       << " charters=" << joined(s.charters) << " enforcers=" << s.enforcers << ","
       << s.embargoEnforcers << "," << s.embargoPoints << " cartels=" << s.cartels << ","
-      << s.cartelTake << " finishround=" << (s.finishRound ? 1 : 0)
+      << s.cartelTake << " relay=" << s.relayPoints << " dominion=" << s.dominionPoints << ","
+      << s.dominionColonies << " finishround=" << (s.finishRound ? 1 : 0)
       << " homedie=" << (s.homeDie ? 1 : 0) << " shipyards=" << s.shipyards
       << " supply=" << s.supplyDrops << " moons=" << s.moons << " planets=";
   std::vector<int> planetList;
@@ -1086,6 +1116,15 @@ std::optional<Settings> readSettings(std::string_view line) {
     if (values && key == "cartels" && values->size() == 2) {
       s.cartels = (*values)[0];
       s.cartelTake = (*values)[1];
+      continue;
+    }
+    if (values && key == "relay" && values->size() == 1) {
+      s.relayPoints = (*values)[0];
+      continue;
+    }
+    if (values && key == "dominion" && values->size() == 2) {
+      s.dominionPoints = (*values)[0];
+      s.dominionColonies = (*values)[1];
       continue;
     }
     if (values && key == "finishround" && values->size() == 1) {
@@ -1634,7 +1673,7 @@ const std::vector<Contract> &contracts() {
        [](const State &s, int p) { return kindsCovered(s, p) >= 4; }},
       // (19) Round 61: a station or colony by another player's exhausted
       // home world (Settings::exhaustHomesAt)
-      {"Homesteader: a station on another player's exhausted home world", 2,
+      {"Occupier: a station on another player's exhausted home world", 2,
        [](const State &s, int p) {
          for (const Planet &planet : s.planets)
            if (planet.formerHomeOf >= 0 && planet.formerHomeOf != p && hasStationOn(s, planet, p))
@@ -1649,6 +1688,13 @@ const std::vector<Contract> &contracts() {
          return std::any_of(s.stations.begin(), s.stations.end(), [&](const Station &st) {
            return st.owner == p && isRelaySpot(s, st.at);
          });
+       }},
+      // (21) Round 97: in place of "3 kinds" (met by 88 to 91% of those who
+      // kept it, being what everyone does anyway), its opposite: lean on one
+      {"Stations on 3 planets of one kind", 2,
+       [](const State &s, int p) {
+         const auto kinds = stationKinds(s, p);
+         return *std::max_element(kinds.begin(), kinds.end()) >= 3;
        }},
   };
   return kContracts;
@@ -1689,6 +1735,8 @@ int stationsOf(const State &state, int player) {
     total += state.settings.coreControlPoints;
   if (state.embargoHolder == player)
     total += state.settings.embargoPoints;
+  if (state.dominionHolder == player)
+    total += state.settings.dominionPoints;
   total += p.badgePoints;
   for (int id : p.revealed)
     total += charterPoints(state.settings, id);
@@ -1882,6 +1930,7 @@ std::optional<bool> applyMainOnCorners(State &state, const Action &action) {
       return false;
     pay(me.resources, settings.colonyCost);
     mine->colony = true;
+    updateDominion(state);
     return true;
   }
   default:
@@ -2123,6 +2172,7 @@ bool Game::apply(State &state, const Action &action) {
         home->kind = static_cast<PlanetKind>(action.a);
         home->formerHomeOf = state.turn;
         home->homeOf = -1;
+        updateDominion(state);
         state.homeIncomeLeft = 0;
         state.pendingPlanet = static_cast<int>(home - state.planets.begin());
         state.phase = Phase::HomeNumberDraw;
@@ -2643,12 +2693,13 @@ std::string Game::writeState(const State &state) {
       << " deck=" << joined(state.deck) << "\n";
   out << "blockade=" << state.blockade << " core=" << state.coreHolder
       << " embargo=" << state.embargoHolder << "," << (state.cardPlayed ? 1 : 0)
-      << " winner=" << state.winner << " winners=" << joined(state.winners)
-      << " roll=" << state.lastRoll << " pending=" << state.pendingPlanet << ","
-      << state.pendingSite << " victims=" << joined(state.victims)
-      << " salvage=" << state.salvageLeft << " income=" << state.homeIncomeLeft
-      << " offered=" << state.offered[0] << "," << state.offered[1] << " first=" << state.first
-      << " setup=" << state.setupStep << (state.placingShip ? " placing" : "") << "\n";
+      << " dominion=" << state.dominionHolder << " winner=" << state.winner
+      << " winners=" << joined(state.winners) << " roll=" << state.lastRoll
+      << " pending=" << state.pendingPlanet << "," << state.pendingSite
+      << " victims=" << joined(state.victims) << " salvage=" << state.salvageLeft
+      << " income=" << state.homeIncomeLeft << " offered=" << state.offered[0] << ","
+      << state.offered[1] << " first=" << state.first << " setup=" << state.setupStep
+      << (state.placingShip ? " placing" : "") << "\n";
   out << "final=" << (state.finalRound ? 1 : 0) << " trading=" << (state.tradingDone ? 1 : 0)
       << " offer=" << state.offer.give << "," << state.offer.get << "," << state.offer.to << ","
       << state.offer.replier << "," << state.offer.counterGive << "," << state.offer.counterGet
