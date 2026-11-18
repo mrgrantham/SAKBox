@@ -13,6 +13,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <cstring>
 #include <vector>
 
 namespace CosmicHexBench {
@@ -51,6 +52,17 @@ inline void run() {
     for (int i = 0; i < 1000; ++i)
       sink += Clock::now().time_since_epoch().count() & 1;
     std::printf("clock read    %lld ns  (%lld)\n", micros(start), sink & 1);
+  }
+  // Copying plain memory, a block at a time (how big a State that copies
+  // without allocating can afford to be)
+  for (const std::size_t bytes : {std::size_t{4096}, std::size_t{16384}}) {
+    std::vector<unsigned char> from(bytes, 1), to(bytes, 0);
+    const Clock::time_point start = Clock::now();
+    for (int i = 0; i < 100; ++i) {
+      std::memcpy(to.data(), from.data(), bytes);
+      from[static_cast<std::size_t>(i)] = to[bytes - 1]; // (so it isn't optimised away)
+    }
+    std::printf("copy %2zu KB    %lld us\n", bytes / 1024, micros(start) / 100);
   }
   // A game partway: the setup and some turns, played at random
   SeededRandom::Generator random(92);
