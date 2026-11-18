@@ -381,6 +381,15 @@ struct State {
   bool tradingDone = false;
   TradeOffer offer;
   std::vector<std::array<int, 2>> offersMade;
+  // Which planet and which zone tile is on each hex (their indexes, -1 for
+  // none), so the rules look them up rather than search the lists (round
+  // 92: the bots' search was mostly such searches). Made by newGame (the
+  // planets and tiles never move), on a grid of the board's hexes
+  // (kHexGridSide square round the centre); a State put together by hand
+  // has none (hexesIndexed false), and the rules search as before.
+  static constexpr int kHexGridSide = 9; // (the board's radius is 4)
+  std::array<std::int8_t, kHexGridSide * kHexGridSide> planetOnHex{}, siteOnHex{};
+  bool hexesIndexed = false;
   bool operator==(const State &) const = default;
 };
 

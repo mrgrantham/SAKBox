@@ -22,6 +22,11 @@ namespace CosmicHex {
 namespace {
 
 constexpr int kBoardRadius = 4;
+
+// Functions marked [[gnu::hot]] are the small ones the bots' move listing
+// calls in its loops (round 92, measured): the DS build puts them in ITCM,
+// its 32 KB of fast instruction memory (the Makefile's hot_in_itcm step, as
+// for Cyclone's resolver); elsewhere it's only a hint to the compiler
 // The homes: slots on the outer ring, evenly spread (players 0 and 1 face
 // each other, so a two-player game uses opposite homes)
 constexpr std::array<Hex, kMaxPlayers> kHomes = {{{4, -2}, {-4, 2}, {2, 2}, {-2, -2}}};
@@ -93,19 +98,51 @@ int total(const Resources &have) { return std::accumulate(have.begin(), have.end
 
 Player &current(State &state) { return state.player[static_cast<std::size_t>(state.turn)]; }
 
-int planetAt(const State &state, Hex hex) {
+// A hex's place in State's hex index (planetOnHex, siteOnHex), or -1 off it
+[[gnu::hot]] int hexCell(Hex hex) {
+  constexpr int kSide = State::kHexGridSide, kMiddle = kSide / 2;
+  const int column = hex.q + kMiddle, row = hex.r + kMiddle;
+  if (column < 0 || column >= kSide || row < 0 || row >= kSide)
+    return -1;
+  return row * kSide + column;
+}
+
+// The planet (or zone tile) on a hex, or -1: from the index newGame makes,
+// or found in the list in a State without one
+[[gnu::hot]] int planetAt(const State &state, Hex hex) {
+  if (state.hexesIndexed) {
+    const int cell = hexCell(hex);
+    return cell < 0 ? -1 : state.planetOnHex[static_cast<std::size_t>(cell)];
+  }
   for (std::size_t i = 0; i < state.planets.size(); ++i) {
     if (state.planets[i].hex == hex)
       return static_cast<int>(i);
   }
   return -1;
 }
-int siteAt(const State &state, Hex hex) {
+[[gnu::hot]] int siteAt(const State &state, Hex hex) {
+  if (state.hexesIndexed) {
+    const int cell = hexCell(hex);
+    return cell < 0 ? -1 : state.siteOnHex[static_cast<std::size_t>(cell)];
+  }
   for (std::size_t i = 0; i < state.zone.size(); ++i) {
     if (state.zone[i].hex == hex)
       return static_cast<int>(i);
   }
   return -1;
+}
+
+// Fills State's hex index from its planets and zone tiles
+void indexHexes(State &state) {
+  state.planetOnHex.fill(-1);
+  state.siteOnHex.fill(-1);
+  for (std::size_t i = 0; i < state.planets.size(); ++i)
+    if (const int cell = hexCell(state.planets[i].hex); cell >= 0)
+      state.planetOnHex[static_cast<std::size_t>(cell)] = static_cast<std::int8_t>(i);
+  for (std::size_t i = 0; i < state.zone.size(); ++i)
+    if (const int cell = hexCell(state.zone[i].hex); cell >= 0)
+      state.siteOnHex[static_cast<std::size_t>(cell)] = static_cast<std::int8_t>(i);
+  state.hexesIndexed = true;
 }
 
 // ---- Corners and edges (Settings::corners)
@@ -117,13 +154,13 @@ bool onBoard(Corner corner) {
   return false;
 }
 
-bool touches(Corner corner, Hex hex) {
+[[gnu::hot]] bool touches(Corner corner, Hex hex) {
   const auto touching = HexGrid::hexesTouching(corner);
   return std::find(touching.begin(), touching.end(), hex) != touching.end();
 }
 
 // The station on `corner`, or -1
-int stationAt(const State &state, Corner corner) {
+[[gnu::hot]] int stationAt(const State &state, Corner corner) {
   for (std::size_t i = 0; i < state.stations.size(); ++i)
     if (state.stations[i].at == corner)
       return static_cast<int>(i);
@@ -131,7 +168,7 @@ int stationAt(const State &state, Corner corner) {
 }
 
 // The distance rule: no station on the corner, nor on any corner an edge away
-bool cornerFree(const State &state, Corner corner) {
+[[gnu::hot]] bool cornerFree(const State &state, Corner corner) {
   if (stationAt(state, corner) >= 0)
     return false;
   for (Corner next : HexGrid::neighbours(corner))
@@ -306,7 +343,7 @@ int freeDock(const Planet &planet) {
   return -1;
 }
 // A planet a station can be built on: turned over, and not a home
-bool settleable(const Planet &planet) {
+[[gnu::hot]] bool settleable(const Planet &planet) {
   return planet.flipped && planet.homeOf < 0 && planet.kind != PlanetKind::Home;
 }
 
@@ -341,15 +378,6 @@ int ownerCount(const State &state, const Planet &planet) {
   return count;
 }
 
-// The players with stations on the planet, each once
-std::vector<int> ownersOn(const State &state, const Planet &planet) {
-  std::vector<int> out;
-  for (int p = 0; p < state.players; ++p)
-    if (hasStationOn(state, planet, p))
-      out.push_back(p);
-  return out;
-}
-
 int shipsOf(const State &state, int player) {
   return static_cast<int>(std::count_if(state.ships.begin(), state.ships.end(),
                                         [&](const Ship &s) { return s.owner == player; }));
@@ -376,30 +404,40 @@ int coreStationsOf(const State &state, int player) {
 
 // Whether a turned-over alien outpost (the zone's alien station) has a
 // corner here
-bool byAnOutpost(const State &state, Corner corner) {
-  return std::any_of(state.zone.begin(), state.zone.end(), [&](const ZoneSite &site) {
-    return site.flipped && site.find == Find::AlienStation && touches(corner, site.hex);
-  });
+[[gnu::hot]] bool byAnOutpost(const State &state, Corner corner) {
+  for (Hex hex : HexGrid::hexesTouching(corner))
+    if (const int site = siteAt(state, hex); site >= 0) {
+      const ZoneSite &find = state.zone[static_cast<std::size_t>(site)];
+      if (find.flipped && find.find == Find::AlienStation)
+        return true;
+    }
+  return false;
 }
 
 // Whether a planet a station can be built by (turned over, not a home) has
 // a corner here
-bool byASettleablePlanet(const State &state, Corner corner) {
-  return std::any_of(state.planets.begin(), state.planets.end(),
-                     [&](const Planet &p) { return settleable(p) && touches(corner, p.hex); });
+[[gnu::hot]] bool byASettleablePlanet(const State &state, Corner corner) {
+  for (Hex hex : HexGrid::hexesTouching(corner))
+    if (const int planet = planetAt(state, hex);
+        planet >= 0 && settleable(state.planets[static_cast<std::size_t>(planet)]))
+      return true;
+  return false;
 }
 
 // A Deep-space relay's place: touching no planet (homes included), and no
 // find unless it's turned over and isn't an alien outpost (round 85)
-bool isRelaySpot(const State &state, Corner corner) {
-  const bool byAnyPlanet = std::any_of(state.planets.begin(), state.planets.end(),
-                                       [&](const Planet &p) { return touches(corner, p.hex); });
-  const bool byAFindNotAllowed =
-      std::any_of(state.zone.begin(), state.zone.end(), [&](const ZoneSite &site) {
-        const bool allowed = site.flipped && site.find != Find::AlienStation;
-        return !allowed && touches(corner, site.hex);
-      });
-  return !byAnyPlanet && !byAFindNotAllowed;
+[[gnu::hot]] bool isRelaySpot(const State &state, Corner corner) {
+  // (what's on the corner's three hexes, looked up: round 92)
+  for (Hex hex : HexGrid::hexesTouching(corner)) {
+    if (planetAt(state, hex) >= 0)
+      return false; // by a planet
+    if (const int site = siteAt(state, hex); site >= 0) {
+      const ZoneSite &find = state.zone[static_cast<std::size_t>(site)];
+      if (!find.flipped || find.find == Find::AlienStation)
+        return false; // by a find that isn't allowed
+    }
+  }
+  return true;
 }
 
 // Whether the player may build a Deep-space relay: holding its Charter
@@ -418,7 +456,7 @@ bool mayBuildRelay(const State &state, int player) {
 
 // Where a ship can become a station: by a planet, an outpost, or for a
 // relay's holder anywhere
-bool canStandAt(const State &state, int player, Corner corner) {
+[[gnu::hot]] bool canStandAt(const State &state, int player, Corner corner) {
   return byASettleablePlanet(state, corner) || byAnOutpost(state, corner) ||
          (isRelaySpot(state, corner) && mayBuildRelay(state, player));
 }
@@ -589,13 +627,32 @@ void discardOverLimit(State &state) {
   }
 }
 
-std::vector<int> blockadeVictims(const State &state, int planet) {
+// (corners) Which players have stations on each planet: bit p for player
+// p, in one pass over the stations (round 92: asked planet by planet, player
+// by player, the blockade's moves were the bots' largest cost)
+std::vector<std::uint8_t> planetOwners(const State &state) {
+  std::vector<std::uint8_t> owners(state.planets.size(), 0);
+  for (const Station &station : state.stations)
+    for (Hex hex : HexGrid::hexesTouching(station.at))
+      if (const int planet = planetAt(state, hex); planet >= 0)
+        owners[static_cast<std::size_t>(planet)] |= static_cast<std::uint8_t>(1u << station.owner);
+  return owners;
+}
+
+// Who the blockade on `planet` would steal from: owners of stations on it
+// (or docks) with something to steal, but not whoever moves it. `owners`:
+// planetOwners, if already worked out
+std::vector<int> blockadeVictims(const State &state, int planet,
+                                 const std::vector<std::uint8_t> *owners = nullptr) {
   std::vector<int> out;
   if (planet < 0)
     return out;
   if (state.settings.corners) {
-    for (int owner : ownersOn(state, state.planets[static_cast<std::size_t>(planet)]))
-      if (owner != state.turn && total(state.player[static_cast<std::size_t>(owner)].resources) > 0)
+    const std::uint8_t on = owners ? (*owners)[static_cast<std::size_t>(planet)]
+                                   : planetOwners(state)[static_cast<std::size_t>(planet)];
+    for (int owner = 0; owner < state.players; ++owner)
+      if (((on >> owner) & 1) != 0 && owner != state.turn &&
+          total(state.player[static_cast<std::size_t>(owner)].resources) > 0)
         out.push_back(owner);
     return out;
   }
@@ -1400,6 +1457,7 @@ State newGame(int players, const Settings &settings, int first) {
     state.phase = Phase::PlaceColony;
     state.turn = setupPlayer(state);
   }
+  indexHexes(state);
   return state;
 }
 
@@ -1448,7 +1506,7 @@ const std::vector<Corner> &boardCorners() {
   return kCorners;
 }
 
-int cornerNumber(Corner corner) {
+[[gnu::hot]] int cornerNumber(Corner corner) {
   const std::vector<Corner> &all = boardCorners();
   const auto found = std::lower_bound(all.begin(), all.end(), corner);
   return found != all.end() && *found == corner ? static_cast<int>(found - all.begin()) : -1;
@@ -1587,11 +1645,17 @@ int stationsOf(const State &state, int player) {
   return count;
 }
 
-int points(const State &state, int player) {
+[[gnu::hot]] int points(const State &state, int player) {
   const Player &p = state.player[static_cast<std::size_t>(player)];
-  int total = stationsOf(state, player) + colonies(state, player); // a colony is 2 in all
-  if (state.settings.corners && homeColonyOf(state, player) >= 0)
-    ++total; // (the home colony: 2, as any colony)
+  int total = 0;
+  if (state.settings.corners) {
+    // A station 1, a colony 2, the home colony too: one pass (round 92)
+    for (const Station &station : state.stations)
+      if (station.owner == player)
+        total += station.colony ? 2 : 1;
+  } else {
+    total = stationsOf(state, player) + colonies(state, player); // a colony is 2 in all
+  }
   if (state.coreHolder == player)
     total += state.settings.coreControlPoints;
   if (state.embargoHolder == player)
@@ -2288,8 +2352,11 @@ std::vector<Action> Game::legalActions(const State &state) {
     const std::vector<int> targets = blockadeTargets(state);
     if (targets.empty())
       out.push_back({Kind::MoveBlockade, -1, -1});
+    const std::vector<std::uint8_t> owners =
+        state.settings.corners ? planetOwners(state) : std::vector<std::uint8_t>{};
     for (int planet : targets) {
-      const std::vector<int> victims = blockadeVictims(state, planet);
+      const std::vector<int> victims =
+          blockadeVictims(state, planet, state.settings.corners ? &owners : nullptr);
       if (victims.empty())
         out.push_back({Kind::MoveBlockade, planet, -1});
       for (int victim : victims)
