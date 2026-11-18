@@ -2,6 +2,7 @@
 // square's centre-left edge, the space colour's own, and nothing outside it
 #include <CosmicHex/Art.hpp>
 
+#include <ScratchPadd/Scene/OverlayText.hpp>
 #include <ScratchPadd/TextureRecipe/TextureRecipe.hpp>
 
 #include <gtest/gtest.h>
@@ -80,5 +81,24 @@ TEST(ArtTest, EveryCardDrawsInItsAreas) {
     const auto words = at(image, Art::kCardWords.x + 1, Art::kCardWords.y + 1);
     EXPECT_EQ(words.r, 0xf4) << "card " << i;
     EXPECT_EQ(image.at(0, 0).a, 0) << "card " << i;
+  }
+}
+
+// Every card's words (cards/cards.txt) are there and fit, in the font every
+// console draws (stb_easy_font): the short title on a small card (46
+// pixels), the words on the cards screen's big card (round 95's A1: 160
+// pixels tall, so its words area is 92 pixels wide less a margin, 7 lines)
+TEST(ArtTest, EveryCardsWordsFit) {
+  namespace Scene = ScratchPadd::Scene;
+  const auto width = [](std::string_view text) { return Scene::Overlay::textWidth(text); };
+  constexpr float kBigCard = 160, kMargin = 4;
+  const float wordsWidth = Art::kCardWords.width * kBigCard / Art::kCardHeight - kMargin;
+  for (int i = 0; i < Art::kCards; ++i) {
+    const auto card = static_cast<Art::Card>(i);
+    const Art::CardWords words = Art::wordsOf(card);
+    EXPECT_FALSE(words.title.empty()) << Art::fileOf(card);
+    EXPECT_FALSE(words.words.empty()) << Art::fileOf(card);
+    EXPECT_LE(width(words.shortTitle), 46) << Art::fileOf(card);
+    EXPECT_LE(Scene::wrapText(words.words, wordsWidth, width).size(), 7u) << Art::fileOf(card);
   }
 }

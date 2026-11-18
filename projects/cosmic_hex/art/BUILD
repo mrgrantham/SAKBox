@@ -1,5 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//projects/scratchpadd/texture_recipe:texture_recipe.bzl", "texture_recipe")
+load("//tools/embed_file:embed_file.bzl", "embed_file")
 
 # Cosmic Hex's tile faces, drawn as SVG (the designs agreed in rounds 75 to
 # 79): planets face down and by kind, the home world's two sides (its city
@@ -173,6 +174,14 @@ CARDS = ["resource_minerals", "resource_food", "resource_fuel", "resource_water"
     symbol = "kCard" + "".join([word.capitalize() for word in name.split("_")]),
 ) for name in CARDS]
 
+# The cards' words, edited as text (round 97): Art.hpp's wordsOf reads them
+embed_file(
+    name = "card_words",
+    src = "cards/cards.txt",
+    namespace = "CosmicHex::Art::Recipes",
+    symbol = "kCardWordsText",
+)
+
 cc_library(
     name = "art",
     srcs = ["src/Art.cpp"],
@@ -200,7 +209,7 @@ cc_library(
         ":planet_moon",
         ":planet_water",
     ] + [":number_%d" % n for n in CHIP_NUMBERS] +
-    [":icon_" + name for name in ICONS] + [":card_" + name for name in CARDS],
+    [":icon_" + name for name in ICONS] + [":card_" + name for name in CARDS] + [":card_words"],
 )
 
 # The sources, for the consoles' Makefile builds: Art.cpp and the recipes'
@@ -230,7 +239,8 @@ filegroup(
         ":planet_moon_source",
         ":planet_water_source",
     ] + [":number_%d_source" % n for n in CHIP_NUMBERS] +
-    [":icon_%s_source" % name for name in ICONS] + [":card_%s_source" % name for name in CARDS],
+    [":icon_%s_source" % name for name in ICONS] + [":card_%s_source" % name for name in CARDS] +
+    [":card_words_source"],
     visibility = ["//visibility:public"],
 )
 
@@ -240,6 +250,7 @@ cc_test(
     srcs = ["tests/Art_test.cpp"],
     deps = [
         ":art",
+        "//projects/scratchpadd/scene/overlay_text",
         "//projects/scratchpadd/texture_recipe",
         "@gtest//:gtest_main",
     ],

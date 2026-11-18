@@ -1,10 +1,13 @@
 #include <CosmicHex/Art.hpp>
 
+#include <array>
 #include <cstddef>
 
 namespace CosmicHex::Art {
 
 namespace Recipes {
+extern const unsigned char kCardWordsText[];
+extern const std::size_t kCardWordsTextSize;
 extern const unsigned char kIconRoll[];
 extern const std::size_t kIconRollSize;
 extern const unsigned char kIconBuild[];
@@ -231,5 +234,56 @@ std::string_view cardRecipeOf(Card which) {
   }
   return {};
 }
+
+std::string_view fileOf(Card card) {
+  static constexpr std::array<std::string_view, kCards> kFiles{
+      "resource_minerals",   "resource_food",     "resource_fuel",
+      "resource_water",      "resource_crystals", "enforcer",
+      "interstellar_cartel", "shipyard_surplus",  "supply_drop",
+      "charter_three_kinds", "charter_occupier",  "charter_deep_space_relay"};
+  return kFiles[static_cast<std::size_t>(card)];
+}
+
+namespace {
+
+std::string_view trimmed(std::string_view text) {
+  while (!text.empty() && text.front() == ' ')
+    text.remove_prefix(1);
+  while (!text.empty() && (text.back() == ' ' || text.back() == '\r'))
+    text.remove_suffix(1);
+  return text;
+}
+
+// Every card's words, read from cards.txt once ("file | title | short |
+// words" a line; '#' lines and blank ones skipped)
+const std::array<CardWords, kCards> &allWords() {
+  static const std::array<CardWords, kCards> kWords = [] {
+    std::array<CardWords, kCards> out{};
+    std::string_view text(reinterpret_cast<const char *>(Recipes::kCardWordsText),
+                          Recipes::kCardWordsTextSize);
+    while (!text.empty()) {
+      const std::size_t end = std::min(text.find('\n'), text.size());
+      std::string_view line = text.substr(0, end);
+      text.remove_prefix(std::min(end + 1, text.size()));
+      if (trimmed(line).empty() || trimmed(line).front() == '#')
+        continue;
+      std::array<std::string_view, 4> fields{};
+      for (std::size_t f = 0; f < fields.size(); ++f) {
+        const std::size_t bar = f + 1 < fields.size() ? line.find('|') : line.size();
+        fields[f] = trimmed(line.substr(0, bar));
+        line.remove_prefix(std::min(bar + 1, line.size()));
+      }
+      for (int c = 0; c < kCards; ++c)
+        if (fileOf(static_cast<Card>(c)) == fields[0])
+          out[static_cast<std::size_t>(c)] = {fields[1], fields[2], fields[3]};
+    }
+    return out;
+  }();
+  return kWords;
+}
+
+} // namespace
+
+CardWords wordsOf(Card card) { return allWords()[static_cast<std::size_t>(card)]; }
 
 } // namespace CosmicHex::Art

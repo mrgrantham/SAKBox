@@ -8,7 +8,7 @@ cc_library(
     srcs = ["src/OverlayText.cpp"],
     hdrs = ["include/ScratchPadd/Scene/OverlayText.hpp"],
     strip_include_prefix = "include/",
-    visibility = ["//projects/scratchpadd/scene:__subpackages__"],
+    visibility = ["//visibility:public"],
     deps = [
         "//projects/scratchpadd/scene",
         "@stb",

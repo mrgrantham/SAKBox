@@ -1,0 +1,18 @@
+# The cards' words (round 97): the game writes them over the drawings in
+# this folder. One card a line: its drawing's file name, its title, its
+# short title (on small cards: 46 pixels at most), and what it does (on the
+# big card: 7 lines at most). Edit freely; Art_test checks they fit.
+#
+# file | title | short title | words
+resource_minerals | Minerals | Minerals | From asteroid belts. For ships and colonies.
+resource_food | Food | Food | From lush planets. For colonies and cards.
+resource_fuel | Fuel | Fuel | From gas giants. For ships; 1 moves a ship a corner further.
+resource_water | Water | Water | From ice moons. For ships and cards.
+resource_crystals | Crystals | Crystals | From nebulas. For cards.
+enforcer | Enforcer | Enforcer | Move the blockade and steal 1 resource. Most played (3+): the Embargo.
+interstellar_cartel | Interstellar Cartel | Cartel | Name a resource: every other player gives you all of theirs.
+shipyard_surplus | Shipyard Surplus | Surplus | Build a ship and a second comes free at the same colony.
+supply_drop | Supply Drop | Supply | Take any 2 resources from the bank.
+charter_three_kinds | Charter | Charter | Stations on 3 kinds of planet: 2 points, shown when true.
+charter_occupier | Charter: Occupier | Charter | A station on another player's used-up home: 2 points, shown when true.
+charter_deep_space_relay | Charter: Deep-space Relay | Charter | Build one station touching no planet. It scores 1, and this card 1 more.

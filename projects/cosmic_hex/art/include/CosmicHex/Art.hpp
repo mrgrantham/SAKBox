@@ -87,4 +87,14 @@ inline constexpr CardArea kCardTitle{3, 3, 57, 16}; // the title band
 inline constexpr CardArea kCardArt{3, 21, 57, 30};  // the picture (a small card shows down to here)
 inline constexpr CardArea kCardWords{5, 54, 53, 31}; // what it does
 
+// A card's words (round 97: cards/cards.txt, embedded by the build, so
+// they're edited as text): its title, its short title for small cards, and
+// what it does
+struct CardWords {
+  std::string_view title, shortTitle, words;
+};
+CardWords wordsOf(Card card);
+// The card's drawing's file name in cards/, without ".svg"
+std::string_view fileOf(Card card);
+
 } // namespace CosmicHex::Art
