@@ -43,3 +43,42 @@ TEST(ArtTest, EveryNumberChipDraws) {
   EXPECT_TRUE(Art::chipRecipeOf(1).empty());
   EXPECT_TRUE(Art::chipRecipeOf(13).empty());
 }
+
+// Every icon draws: something in its middle, its square's corner
+// see-through (the button's own colour shows round it)
+TEST(ArtTest, EveryIconDraws) {
+  for (int i = 0; i < Art::kIcons; ++i) {
+    const auto recipe = TR::read(Art::iconRecipeOf(static_cast<Art::Icon>(i)));
+    ASSERT_TRUE(recipe.has_value()) << "icon " << i << ": " << recipe.error();
+    const TR::Image image = TR::draw(*recipe, 32, 32, TR::Format::Rgba8);
+    EXPECT_EQ(image.at(0, 0).a, 0) << "icon " << i;
+    int drawn = 0;
+    for (int y = 8; y < 24; ++y)
+      for (int x = 8; x < 24; ++x)
+        drawn += image.at(x, y).a > 0 ? 1 : 0;
+    EXPECT_GT(drawn, 20) << "icon " << i;
+  }
+}
+
+// Every card draws, as the areas say: its title band in a colour of its
+// own, not the card's cream; the art's dark panel; the cream where its words
+// go; and its rounded corner see-through
+TEST(ArtTest, EveryCardDrawsInItsAreas) {
+  const auto at = [](const TR::Image &image, float x, float y) {
+    return image.at(static_cast<int>(x / Art::kCardWidth * static_cast<float>(image.width)),
+                    static_cast<int>(y / Art::kCardHeight * static_cast<float>(image.height)));
+  };
+  for (int i = 0; i < Art::kCards; ++i) {
+    const auto recipe = TR::read(Art::cardRecipeOf(static_cast<Art::Card>(i)));
+    ASSERT_TRUE(recipe.has_value()) << "card " << i << ": " << recipe.error();
+    const TR::Image image = TR::draw(*recipe, 126, 176, TR::Format::Rgba8);
+    const auto band =
+        at(image, Art::kCardTitle.x + 2, Art::kCardTitle.y + Art::kCardTitle.height / 2);
+    EXPECT_NE(band.r, 0xf4) << "card " << i;
+    const auto art = at(image, Art::kCardArt.x + 2, Art::kCardArt.y + 2);
+    EXPECT_EQ(art.r, 0x18) << "card " << i;
+    const auto words = at(image, Art::kCardWords.x + 1, Art::kCardWords.y + 1);
+    EXPECT_EQ(words.r, 0xf4) << "card " << i;
+    EXPECT_EQ(image.at(0, 0).a, 0) << "card " << i;
+  }
+}

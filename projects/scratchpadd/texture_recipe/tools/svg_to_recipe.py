@@ -352,7 +352,21 @@ def shapes_of(element, transform, style):
     f = lambda k, d=0.0: float(a.get(k, d))
     if t == "rect":
         x, y, w, h = f("x"), f("y"), f("width"), f("height")
-        return [([(x, y), (x + w, y), (x + w, y + h), (x, y + h)], True)]
+        # Rounded corners (SVG's rules: ry is rx when not given, and the other
+        # way round; neither more than half the side), each a quarter of an
+        # ellipse in 16 pieces, as an arc's quarter turn is
+        rx, ry = a.get("rx"), a.get("ry")
+        rx, ry = float(rx if rx is not None else (ry or 0)), float(ry if ry is not None else (rx or 0))
+        rx, ry = min(max(rx, 0.0), w / 2), min(max(ry, 0.0), h / 2)
+        if rx == 0 or ry == 0:
+            return [([(x, y), (x + w, y), (x + w, y + h), (x, y + h)], True)]
+        points = []
+        for cx, cy, start in ((x + w - rx, y + ry, -90), (x + w - rx, y + h - ry, 0),
+                              (x + rx, y + h - ry, 90), (x + rx, y + ry, 180)):
+            for i in range(17):
+                angle = math.radians(start + 90 * i / 16)
+                points.append((cx + rx * math.cos(angle), cy + ry * math.sin(angle)))
+        return [(points, True)]
     if t == "circle":
         return [(ellipse_points(f("cx"), f("cy"), f("r"), f("r")), True)]
     if t == "ellipse":

@@ -17,6 +17,12 @@ def lines(text, kind):
     return [line for line in text.splitlines() if line.startswith(kind + " ")]
 
 
+def outline_points(text):
+    """The first outline's x and y values, in 1/16ths"""
+    numbers = [int(n) for n in lines(text, "contour")[0].split()[1:]]
+    return numbers[0::2], numbers[1::2]
+
+
 class ConvertTest(unittest.TestCase):
     def test_a_rectangle(self):
         text = recipe('<rect x="1" y="2" width="3" height="4" fill="#ff0000"/>')
@@ -25,6 +31,21 @@ class ConvertTest(unittest.TestCase):
         self.assertEqual(lines(text, "fill"), ["fill 0 nonzero"])
         # In 1/16ths of a unit
         self.assertEqual(lines(text, "contour"), ["contour 16 32 64 32 64 96 16 96"])
+
+    def test_rounded_rectangles(self):
+        # (round 94: rx was dropped, and the cards' corners came out square)
+        text = recipe('<rect width="10" height="6" rx="2" fill="#ff0000"/>')
+        xs, ys = outline_points(text)
+        self.assertEqual(len(xs), 68)  # 4 corners, 17 points each
+        self.assertEqual((min(xs), max(xs), min(ys), max(ys)), (0, 160, 0, 96))
+        # No point in the corner's square outside the quarter circle
+        for x, y in zip(xs, ys):
+            if x < 32 and y < 32:
+                self.assertLessEqual(((32 - x) ** 2 + (32 - y) ** 2) ** 0.5, 32.75)  # (32, as each point rounds to a 16th)
+        # ry alone, and rx too big for the side
+        self.assertEqual(len(outline_points(recipe('<rect width="4" height="4" ry="1"/>'))[0]), 68)
+        self.assertEqual(len(outline_points(recipe('<rect width="4" height="2" rx="9"/>'))[0]), 68)
+        self.assertEqual(len(outline_points(recipe('<rect width="4" height="2" rx="0"/>'))[0]), 4)
 
     def test_colours_are_shared_and_opacity_kept(self):
         text = recipe('<rect width="1" height="1" fill="#0f0"/><circle cx="5" cy="5" r="2" fill="rgb(0,255,0)"/>'

@@ -50,4 +50,41 @@ inline constexpr int kLowestChip = 2;
 inline constexpr int kHighestChip = 12;
 std::string_view chipRecipeOf(int number);
 
+// The board screen's buttons' icons (round 94: icons/*.svg, to swap for
+// other drawings), each on a transparent square, drawn on its button
+enum class Icon : std::uint8_t { Roll, Build, Trade, ShowResources, Cards, EndTurn };
+inline constexpr int kIcons = 6;
+std::string_view iconRecipeOf(Icon icon);
+
+// The cards (round 75's designs: cards/*.svg). Each drawing is the card
+// without its words: its frame, the title band in the card's colour and the
+// art. The game writes the title and the card's words over it, in the areas
+// below (round 94: titles centred, up to two lines, the same band on every
+// card), so a new drawing keeps to them.
+enum class Card : std::uint8_t {
+  Minerals,
+  Food,
+  Fuel,
+  Water,
+  Crystals,
+  Enforcer,
+  InterstellarCartel,
+  ShipyardSurplus,
+  SupplyDrop,
+  CharterThreeKinds,
+  CharterHomesteader,
+  CharterDeepSpaceRelay,
+};
+inline constexpr int kCards = 12;
+std::string_view cardRecipeOf(Card card);
+
+// A card's areas, in its drawing's units (63 x 88, a playing card's shape)
+struct CardArea {
+  float x, y, width, height;
+};
+inline constexpr float kCardWidth = 63, kCardHeight = 88;
+inline constexpr CardArea kCardTitle{3, 3, 57, 16}; // the title band
+inline constexpr CardArea kCardArt{3, 21, 57, 30};  // the picture (a small card shows down to here)
+inline constexpr CardArea kCardWords{5, 54, 53, 31}; // what it does
+
 } // namespace CosmicHex::Art

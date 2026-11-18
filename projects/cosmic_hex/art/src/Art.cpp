@@ -5,6 +5,42 @@
 namespace CosmicHex::Art {
 
 namespace Recipes {
+extern const unsigned char kIconRoll[];
+extern const std::size_t kIconRollSize;
+extern const unsigned char kIconBuild[];
+extern const std::size_t kIconBuildSize;
+extern const unsigned char kIconTrade[];
+extern const std::size_t kIconTradeSize;
+extern const unsigned char kIconShowResources[];
+extern const std::size_t kIconShowResourcesSize;
+extern const unsigned char kIconCards[];
+extern const std::size_t kIconCardsSize;
+extern const unsigned char kIconEndTurn[];
+extern const std::size_t kIconEndTurnSize;
+extern const unsigned char kCardResourceMinerals[];
+extern const std::size_t kCardResourceMineralsSize;
+extern const unsigned char kCardResourceFood[];
+extern const std::size_t kCardResourceFoodSize;
+extern const unsigned char kCardResourceFuel[];
+extern const std::size_t kCardResourceFuelSize;
+extern const unsigned char kCardResourceWater[];
+extern const std::size_t kCardResourceWaterSize;
+extern const unsigned char kCardResourceCrystals[];
+extern const std::size_t kCardResourceCrystalsSize;
+extern const unsigned char kCardEnforcer[];
+extern const std::size_t kCardEnforcerSize;
+extern const unsigned char kCardInterstellarCartel[];
+extern const std::size_t kCardInterstellarCartelSize;
+extern const unsigned char kCardShipyardSurplus[];
+extern const std::size_t kCardShipyardSurplusSize;
+extern const unsigned char kCardSupplyDrop[];
+extern const std::size_t kCardSupplyDropSize;
+extern const unsigned char kCardCharterThreeKinds[];
+extern const std::size_t kCardCharterThreeKindsSize;
+extern const unsigned char kCardCharterHomesteader[];
+extern const std::size_t kCardCharterHomesteaderSize;
+extern const unsigned char kCardCharterDeepSpaceRelay[];
+extern const std::size_t kCardCharterDeepSpaceRelaySize;
 extern const unsigned char kPlanetFaceDown[];
 extern const std::size_t kPlanetFaceDownSize;
 extern const unsigned char kPlanetMinerals[];
@@ -140,6 +176,60 @@ std::string_view chipRecipeOf(int number) {
   default:
     return {}; // (a 7, or not a dice number)
   }
+}
+
+std::string_view iconRecipeOf(Icon which) {
+  const auto text = [](const unsigned char *bytes, std::size_t size) {
+    return std::string_view(reinterpret_cast<const char *>(bytes), size);
+  };
+  switch (which) {
+  case Icon::Roll:
+    return text(Recipes::kIconRoll, Recipes::kIconRollSize);
+  case Icon::Build:
+    return text(Recipes::kIconBuild, Recipes::kIconBuildSize);
+  case Icon::Trade:
+    return text(Recipes::kIconTrade, Recipes::kIconTradeSize);
+  case Icon::ShowResources:
+    return text(Recipes::kIconShowResources, Recipes::kIconShowResourcesSize);
+  case Icon::Cards:
+    return text(Recipes::kIconCards, Recipes::kIconCardsSize);
+  case Icon::EndTurn:
+    return text(Recipes::kIconEndTurn, Recipes::kIconEndTurnSize);
+  }
+  return {};
+}
+
+std::string_view cardRecipeOf(Card which) {
+  const auto text = [](const unsigned char *bytes, std::size_t size) {
+    return std::string_view(reinterpret_cast<const char *>(bytes), size);
+  };
+  switch (which) {
+  case Card::Minerals:
+    return text(Recipes::kCardResourceMinerals, Recipes::kCardResourceMineralsSize);
+  case Card::Food:
+    return text(Recipes::kCardResourceFood, Recipes::kCardResourceFoodSize);
+  case Card::Fuel:
+    return text(Recipes::kCardResourceFuel, Recipes::kCardResourceFuelSize);
+  case Card::Water:
+    return text(Recipes::kCardResourceWater, Recipes::kCardResourceWaterSize);
+  case Card::Crystals:
+    return text(Recipes::kCardResourceCrystals, Recipes::kCardResourceCrystalsSize);
+  case Card::Enforcer:
+    return text(Recipes::kCardEnforcer, Recipes::kCardEnforcerSize);
+  case Card::InterstellarCartel:
+    return text(Recipes::kCardInterstellarCartel, Recipes::kCardInterstellarCartelSize);
+  case Card::ShipyardSurplus:
+    return text(Recipes::kCardShipyardSurplus, Recipes::kCardShipyardSurplusSize);
+  case Card::SupplyDrop:
+    return text(Recipes::kCardSupplyDrop, Recipes::kCardSupplyDropSize);
+  case Card::CharterThreeKinds:
+    return text(Recipes::kCardCharterThreeKinds, Recipes::kCardCharterThreeKindsSize);
+  case Card::CharterHomesteader:
+    return text(Recipes::kCardCharterHomesteader, Recipes::kCardCharterHomesteaderSize);
+  case Card::CharterDeepSpaceRelay:
+    return text(Recipes::kCardCharterDeepSpaceRelay, Recipes::kCardCharterDeepSpaceRelaySize);
+  }
+  return {};
 }
 
 } // namespace CosmicHex::Art

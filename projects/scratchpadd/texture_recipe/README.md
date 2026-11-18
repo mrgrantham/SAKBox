@@ -99,9 +99,10 @@ there anyway.
 
 The converter (`tools/svg_to_recipe.py`) reads:
 
-- `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon` and `path`
-  (`M L H V C S Q T A Z`, absolute and relative; curves are flattened into
-  16 straight pieces, arcs into 16 for each quarter turn);
+- `rect` (with rounded corners: `rx` and `ry`, as SVG has them), `circle`,
+  `ellipse`, `line`, `polyline`, `polygon` and `path` (`M L H V C S Q T A Z`,
+  absolute and relative; curves are flattened into 16 straight pieces, arcs
+  and rounded corners into 16 for each quarter turn);
 - `g` with `transform` (`translate`, `scale`, `rotate`, `matrix`), nested;
 - `fill`, `stroke`, `stroke-width`, `opacity`, `fill-opacity`,
   `stroke-opacity` and `fill-rule`, as attributes or in `style`;
