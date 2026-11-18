@@ -46,6 +46,9 @@ CFLAGS	:=	-g -Wall -O2 -ffunction-sections -fdata-sections\
 CFLAGS	+=	$(INCLUDE) -DARM9
 # A debug build (bazel build -c dbg): see //projects/scratchpadd/debug_log
 CFLAGS	+=	$(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)
+# Release builds without asserts (BlocksDS, "Optimizing code": define
+# NDEBUG; round 92)
+CFLAGS	+=	$(if $(SAKBOX_DEBUG),,-DNDEBUG)
 # The build's defines (//tools/devkitpro: the app's name and title, and a
 # target's `defines`)
 CFLAGS	+=	$(SAKBOX_DEFINES)

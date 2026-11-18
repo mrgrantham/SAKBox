@@ -12,6 +12,8 @@ SOURCES = {
     "//projects/cyclone:sources": "cyclone",
     "//projects/cosmic_hex/art:sources": "cosmic_hex/art",
     "//projects/scratchpadd/texture_recipe:sources": "scratchpadd/texture_recipe",
+    # (IntegerDivide.hpp, which the recipe drawer uses)
+    "//projects/flexmath:fixed_point_sources": "flexmath",
     "//projects/action_log:sources": "action_log",
     "//projects/game_bots:sources": "game_bots",
     "//projects/hex_grid:sources": "hex_grid",

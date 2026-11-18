@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string_view>
 
 namespace CosmicHex::Handheld {
 
@@ -20,11 +21,18 @@ namespace TR = ScratchPadd::TextureRecipe;
 // 9 x sqrt(3) hex sizes wide and 14 tall (with a little margin)
 constexpr float kBoardWide = 9 * 1.7320508f + 0.4f, kBoardTall = 14.4f;
 
-// `over` on `under` by over's alpha
+// `over` on `under` by over's alpha. Without dividing (round 92): the DS's
+// ARM9 has no divide instruction, so each "/ 255" was a library call, three
+// a pixel, and blending the tiles' faces took most of a redraw's 125 to 260
+// ms. x / 255 is (x + 1 + (x >> 8)) >> 8 for 0 <= x <= 255 * 255, exactly
+// (Blinn, "Three Wrongs Make a Right"); opaque pixels are copied.
 Colour blend(Colour under, Colour over) {
   const int a = over.a;
+  if (a == 255)
+    return over;
   const auto mix = [a](int u, int o) {
-    return static_cast<std::uint8_t>((o * a + u * (255 - a)) / 255);
+    const int x = o * a + u * (255 - a);
+    return static_cast<std::uint8_t>((x + 1 + (x >> 8)) >> 8);
   };
   return {mix(under.r, over.r), mix(under.g, over.g), mix(under.b, over.b), 255};
 }
@@ -39,8 +47,39 @@ std::size_t indexOf(int x, int y, int width) {
 
 } // namespace
 
-BoardPicture::BoardPicture(int width, int height)
-    : width_(width), height_(height),
+// Each pixel (on the picture) of a line `thickness` pixels wide from a to b,
+// in whole pixels a step at a time along the longer axis (Bresenham's
+// line): no floating point a pixel, which the DS does in software
+template <typename Plot>
+void BoardPicture::forEachLinePixel(HexGrid::Point a, HexGrid::Point b, int thickness,
+                                    Plot plot) const {
+  int x0 = static_cast<int>(std::lround(a.x)), y0 = static_cast<int>(std::lround(a.y));
+  const int x1 = static_cast<int>(std::lround(b.x)), y1 = static_cast<int>(std::lround(b.y));
+  const int dx = std::abs(x1 - x0), dy = -std::abs(y1 - y0);
+  const int stepX = x0 < x1 ? 1 : -1, stepY = y0 < y1 ? 1 : -1;
+  const int before = (thickness - 1) / 2; // (a thick line's pixels left of and above the middle)
+  int error = dx + dy;
+  for (;;) {
+    for (int py = y0 - before; py < y0 - before + thickness; ++py)
+      for (int px = x0 - before; px < x0 - before + thickness; ++px)
+        if (px >= 0 && px < width_ && py >= 0 && py < height_)
+          plot(px, py);
+    if (x0 == x1 && y0 == y1)
+      break;
+    const int twice = 2 * error;
+    if (twice >= dy) {
+      error += dy;
+      x0 += stepX;
+    }
+    if (twice <= dx) {
+      error += dx;
+      y0 += stepY;
+    }
+  }
+}
+
+BoardPicture::BoardPicture(int width, int height, ScratchPadd::TextureRecipe::Smoothing smoothing)
+    : width_(width), height_(height), smoothing_(smoothing),
       pixels_(static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {}
 
 void BoardPicture::setZoom(int zoom) {
@@ -75,7 +114,7 @@ HexGrid::Layout BoardPicture::layout() const {
 HexGrid::Point BoardPicture::where(Hex hex) const { return layout().centre(hex); }
 HexGrid::Point BoardPicture::where(Corner corner) const { return layout().point(corner); }
 
-void BoardPicture::ensureFaces() {
+void BoardPicture::startFaces() {
   // A face's square: the hex is 47% of it from centre to corner (Art.hpp)
   const int size = static_cast<int>(std::ceil(hexSize() / 0.47f));
   if (size == facesSize_)
@@ -83,30 +122,48 @@ void BoardPicture::ensureFaces() {
   facesSize_ = size;
   // The number chips, as big on the hex as on the 3D board's tiles
   chipsSize_ = std::max(4, static_cast<int>(std::lround(2 * kChipRadius * hexSize())));
-  for (int n = Art::kLowestChip; n <= Art::kHighestChip; ++n) {
-    std::vector<Colour> &chip = chips_[static_cast<std::size_t>(n)];
+  for (auto &face : faces_)
+    face.clear();
+  for (auto &chip : chips_)
     chip.clear();
-    const auto recipe = TR::read(Art::chipRecipeOf(n));
-    if (Art::chipRecipeOf(n).empty() || !recipe)
-      continue;
-    const TR::Image image = TR::draw(*recipe, chipsSize_, chipsSize_, TR::Format::Rgba8);
-    chip.resize(static_cast<std::size_t>(chipsSize_) * static_cast<std::size_t>(chipsSize_));
-    for (std::size_t p = 0; p < chip.size(); ++p)
-      chip[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
+  nextToPrepare_ = 0;
+}
+
+namespace {
+// A recipe drawn as RGBA pixels, `size` a side (none if it's missing or broken)
+std::vector<Colour> drawRecipe(std::string_view text, int size, TR::Smoothing smoothing) {
+  const auto recipe = TR::read(text);
+  if (text.empty() || !recipe)
+    return {};
+  const TR::Image image = TR::draw(*recipe, size, size, TR::Format::Rgba8, {}, smoothing);
+  std::vector<Colour> pixels(static_cast<std::size_t>(size) * static_cast<std::size_t>(size));
+  for (std::size_t p = 0; p < pixels.size(); ++p)
+    pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
                  image.pixels[p * 4 + 3]};
+  return pixels;
+}
+} // namespace
+
+bool BoardPicture::prepare() {
+  startFaces();
+  constexpr int kChips = Art::kHighestChip - Art::kLowestChip + 1;
+  if (nextToPrepare_ >= Art::kFaces + kChips)
+    return true;
+  const int next = nextToPrepare_++;
+  if (next < Art::kFaces) {
+    std::vector<Colour> face =
+        drawRecipe(Art::recipeOf(static_cast<Art::Face>(next)), facesSize_, smoothing_);
+    // (a broken recipe: a see-through square, tested against on the Mac)
+    if (face.empty())
+      face.assign(static_cast<std::size_t>(facesSize_) * static_cast<std::size_t>(facesSize_),
+                  Colour{0, 0, 0, 0});
+    faces_[static_cast<std::size_t>(next)] = std::move(face);
+  } else {
+    const int number = Art::kLowestChip + (next - Art::kFaces);
+    chips_[static_cast<std::size_t>(number)] =
+        drawRecipe(Art::chipRecipeOf(number), chipsSize_, smoothing_);
   }
-  for (int i = 0; i < Art::kFaces; ++i) {
-    std::vector<Colour> &face = faces_[static_cast<std::size_t>(i)];
-    face.assign(static_cast<std::size_t>(size) * static_cast<std::size_t>(size),
-                Colour{0, 0, 0, 0});
-    const auto recipe = TR::read(Art::recipeOf(static_cast<Art::Face>(i)));
-    if (!recipe)
-      continue;
-    const TR::Image image = TR::draw(*recipe, size, size, TR::Format::Rgba8);
-    for (std::size_t p = 0; p < face.size(); ++p)
-      face[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
-                 image.pixels[p * 4 + 3]};
-  }
+  return nextToPrepare_ >= Art::kFaces + kChips;
 }
 
 void BoardPicture::blendFace(Art::Face face, HexGrid::Point centre) {
@@ -163,15 +220,31 @@ void BoardPicture::fillTriangle(HexGrid::Point a, HexGrid::Point b, HexGrid::Poi
     }
 }
 
+void BoardPicture::buildGrid() {
+  if (zoom_ == gridZoom_ && offset_.x == gridOffset_.x && offset_.y == gridOffset_.y &&
+      !gridPixels_.empty())
+    return;
+  gridZoom_ = zoom_;
+  gridOffset_ = offset_;
+  gridPixels_.clear();
+  for (const Hex hex : HexGrid::spiral(Hex{0, 0}, 4))
+    for (int i = 0; i < 6; ++i) // (shared edges twice: the same pixels)
+      forEachLinePixel(where(HexGrid::corner(hex, i)), where(HexGrid::corner(hex, i + 1)), 1,
+                       [&](int x, int y) {
+                         gridPixels_.push_back(static_cast<std::uint32_t>(indexOf(x, y, width_)));
+                       });
+}
+
 void BoardPicture::draw(const State &state) {
-  ensureFaces();
+  while (!prepare()) {
+  }
   std::fill(pixels_.begin(), pixels_.end(), BoardColours::kSpace);
   // The grid: every hex of the board outlined (round 81: easy to see, to
   // plan paths along the edges, in empty space too)
   constexpr Colour kGrid{58, 74, 104, 255};
-  for (const Hex hex : HexGrid::spiral(Hex{0, 0}, 4))
-    for (int i = 0; i < 6; ++i) // (shared edges drawn twice, the same)
-      line(where(HexGrid::corner(hex, i)), where(HexGrid::corner(hex, i + 1)), 1, kGrid);
+  buildGrid();
+  for (const std::uint32_t pixel : gridPixels_)
+    pixels_[pixel] = kGrid;
   // The tiles' faces
   for (const Planet &planet : state.planets) {
     blendFace(faceOf(planet), where(planet.hex));
@@ -215,14 +288,8 @@ void BoardPicture::draw(const State &state) {
   }
 }
 
-void BoardPicture::line(HexGrid::Point a, HexGrid::Point b, float thickness, Colour colour) {
-  const float length = distance(a, b);
-  const int steps = std::max(1, static_cast<int>(length));
-  for (int i = 0; i <= steps; ++i) {
-    const float t = static_cast<float>(i) / static_cast<float>(steps);
-    fillRect(a.x + (b.x - a.x) * t - thickness / 2, a.y + (b.y - a.y) * t - thickness / 2,
-             thickness, thickness, colour);
-  }
+void BoardPicture::line(HexGrid::Point a, HexGrid::Point b, int thickness, Colour colour) {
+  forEachLinePixel(a, b, thickness, [&](int x, int y) { pixels_[indexOf(x, y, width_)] = colour; });
 }
 
 void BoardPicture::mark(const Spot &spot) {

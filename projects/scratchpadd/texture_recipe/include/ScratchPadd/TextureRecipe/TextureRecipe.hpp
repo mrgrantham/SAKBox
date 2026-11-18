@@ -93,8 +93,14 @@ struct Image {
   Colour at(int x, int y) const; // a pixel's colour, either format
 };
 
+// How smooth Rgba8's edges are: Fine takes 4 x 4 samples a pixel, Coarse 2
+// x 2, a quarter of the work, for a slow device's small pictures (the DS's
+// map: round 92). The palette formats take 1 either way.
+enum class Smoothing : std::uint8_t { Fine, Coarse };
+
 // The recipe drawn into a width x height image, the drawing stretched to fill
 // it. `name` is for the log, if its colours have to be reduced.
-Image draw(const Recipe &recipe, int width, int height, Format format, std::string_view name = {});
+Image draw(const Recipe &recipe, int width, int height, Format format, std::string_view name = {},
+           Smoothing smoothing = Smoothing::Fine);
 
 } // namespace ScratchPadd::TextureRecipe

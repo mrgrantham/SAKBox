@@ -121,3 +121,18 @@ TEST(BoardPictureTest, TurnedOverPlanetsShowTheirNumberChips) {
   for (const Planet &planet : state.planets)
     EXPECT_EQ(chipOf(planet), 0);
 }
+
+// Preparing the faces a step at a time (round 92: in spare frames, so the
+// DS's first map doesn't stall) draws the same picture as drawing at once
+TEST(BoardPictureTest, PreparingAheadDrawsTheSamePicture) {
+  const State state = aGame();
+  BoardPicture atOnce(256, 192), ahead(256, 192);
+  int steps = 0;
+  while (!ahead.prepare())
+    ++steps;
+  EXPECT_GT(steps, 10);         // (one face or chip a step)
+  EXPECT_TRUE(ahead.prepare()); // (and done)
+  atOnce.draw(state);
+  ahead.draw(state);
+  EXPECT_EQ(atOnce.pixels(), ahead.pixels());
+}

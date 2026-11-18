@@ -275,8 +275,8 @@ void Renderer::Backend::drawOverlayShapes(const Overlay &overlay) {
         std::clamp(static_cast<int>(points * (4096 / kPointsPerUnit)), -32767, 32767));
   };
   const int count = static_cast<int>(triangles.size() / 3);
-  GFX_TEX_FORMAT = 0; // (untextured)
-  unsigned translucentId = kFirstTranslucentId;
+  GFX_TEX_FORMAT = 0;                          // (untextured)
+  unsigned &translucentId = nextTranslucentId; // (after the frame's translucent meshes')
   for (int t = 0; t < count; ++t) {
     const Overlay::Vertex *corner = &triangles[static_cast<std::size_t>(t) * 3];
     const unsigned alpha = corner[0].colour.a >> 3;
@@ -527,8 +527,13 @@ void Renderer::endFrame() {
   std::ranges::stable_sort(b.later, [](const Backend::Later &x, const Backend::Later &y) {
     return x.distance > y.distance;
   });
-  unsigned id = kFirstTranslucentId;
+  // (one count for the frame, meshes then the overlay's shapes: a
+  // translucent polygon isn't drawn over a translucent one with the same
+  // ID, so the overlay's mustn't reuse the meshes' IDs; round 92, the roll's
+  // hexagon missing two triangles over the dice's glass)
+  b.nextTranslucentId = kFirstTranslucentId;
   for (const Backend::Later &item : b.later) {
+    unsigned &id = b.nextTranslucentId;
     b.drawNow(item.mesh, item.where, item.material, id);
     id = id == kLastTranslucentId ? kFirstTranslucentId : id + 1;
   }

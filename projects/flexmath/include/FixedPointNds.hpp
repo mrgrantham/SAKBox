@@ -19,44 +19,18 @@
 
 #pragma once
 
+#include <IntegerDivide.hpp>
 #include <calico/arm/common.h>
 #include <cmath>
 #include <cstdint>
 #include <nds/arm9/math.h>
 
-namespace Flex::Math {
-
-// Interrupts locked for as long as it exists: around a calculation on the
-// divider or square root unit, here and in code that calls libnds's maths
-// on another thread (see the top)
-class HardwareMathsLock {
-public:
-  HardwareMathsLock() : state_(armIrqLockByPsr()) {}
-  ~HardwareMathsLock() { armIrqUnlockByPsr(state_); }
-  HardwareMathsLock(const HardwareMathsLock &) = delete;
-  HardwareMathsLock &operator=(const HardwareMathsLock &) = delete;
-
-private:
-  ArmIrqState state_;
-};
-
-} // namespace Flex::Math
-
 namespace Flex::Math::detail {
 
-// a x 2^shift / b, truncating toward zero: a 64 / 32-bit division
+// a x 2^shift / b, truncating toward zero: on the divider (IntegerDivideNds.hpp)
 inline std::int32_t divideShifted(std::int32_t a, int shift, std::int32_t b) {
-  HardwareMathsLock lock;
-  REG_DIVCNT = DIV_64_32;
-  while (REG_DIVCNT & DIV_BUSY) {
-  }
-  REG_DIV_NUMER = static_cast<std::int64_t>(a) << shift;
-  REG_DIV_DENOM_L = b;
-  while (REG_DIVCNT & DIV_BUSY) {
-  }
-  return REG_DIV_RESULT_L;
+  return static_cast<std::int32_t>(divide64(static_cast<std::int64_t>(a) << shift, b).quotient);
 }
-
 // The square root of a 64-bit value, rounded down
 inline std::int32_t squareRoot32(std::uint64_t value) {
   HardwareMathsLock lock;

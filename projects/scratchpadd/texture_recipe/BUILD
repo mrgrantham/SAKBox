@@ -10,7 +10,11 @@ cc_library(
     hdrs = ["include/ScratchPadd/TextureRecipe/TextureRecipe.hpp"],
     strip_include_prefix = "include/",
     visibility = ["//visibility:public"],
-    deps = ["//projects/scratchpadd/utilities"],
+    deps = [
+        # (its divisions on the DS's hardware divider)
+        "//projects/flexmath:integer_divide",
+        "//projects/scratchpadd/utilities",
+    ],
 )
 
 # SVG to recipe, run by the texture_recipe rule (texture_recipe.bzl)

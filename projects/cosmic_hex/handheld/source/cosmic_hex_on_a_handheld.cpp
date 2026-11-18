@@ -41,6 +41,7 @@
 #include <CosmicHex/Handheld/ScreenFlow.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
+#include <ScratchPadd/FrameProfile.hpp>
 #include <ScratchPadd/GameClock.hpp>
 #include <ScratchPadd/MemoryStats.hpp>
 #include <ScratchPadd/TitleScene/TitleScene.hpp>
@@ -95,8 +96,13 @@ constexpr bool kTitleScene = true;
 // it takes less (a game that outgrows the arena carries on from the heap)
 #if defined(__NDS__)
 constexpr std::size_t kFrameArenaBytes = 64 * 1024;
+// How smooth the tile faces drawn from recipes are: 2 x 2 samples a pixel
+// on the DS (a quarter of the work; its faces are about 30 pixels), 4 x 4
+// elsewhere (round 92)
+constexpr auto kRecipeSmoothing = ScratchPadd::TextureRecipe::Smoothing::Coarse;
 #else
 constexpr std::size_t kFrameArenaBytes = 128 * 1024;
+constexpr auto kRecipeSmoothing = ScratchPadd::TextureRecipe::Smoothing::Fine;
 #endif
 #if defined(__NDS__)
 constexpr int kTopWidth = 256, kTopHeight = 192, kBottomWidth = 256, kBottomHeight = 192;
@@ -303,7 +309,7 @@ public:
 #else
     gfxSetDoubleBuffering(GFX_BOTTOM, false);
 #endif
-    picture_.emplace(kBottomWidth, kBottomHeight);
+    picture_.emplace(kBottomWidth, kBottomHeight, kRecipeSmoothing);
     renderer_.emplace(*display_);
     const BoardPieces pieces;
     hexTile_ = renderer_->load(pieces.hexTile.data());
@@ -366,15 +372,34 @@ private:
       bottomDirty_ = true;
     }
     handleTouch(pad.touch);
-    if (bottomDirty_)
+    profile_.frameStarted();
+    if (bottomDirty_) {
+      auto timing = profile_.time(kProfileBottom);
       drawBottom();
-    throwDice();
+    }
+    {
+      auto timing = profile_.time(kProfileDice);
+      throwDice();
+    }
     measureMemory();
+    // The map's tile faces, drawn from their recipes one a frame while
+    // there's nothing else to do (the title, the setup), so the first map
+    // of a game doesn't stall for seconds on the DS (round 92)
+    if (onAMenuScreen()) {
+      auto timing = profile_.time(kProfileBottom);
+      picture_->prepare();
+    }
+    // (the top screen's drawing, its wait for the refresh included; ended
+    // with the frame: drawTop's scope)
+    auto drawing = std::optional<ScratchPadd::FrameProfile::Timing>();
+    drawing.emplace(profile_, kProfileTop);
     // The top screen: the title scene (the title, and once a game's won);
     // the board chosen, turning slowly (setup); or the game's board
     const ScreenFlow::Screen screen = flow_.screen();
     if (kTitleScene && (screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Won)) {
       drawTitle();
+      drawing.reset();
+      profile_.frameEnded();
       push([this] { frame(); });
       return;
     }
@@ -388,6 +413,8 @@ private:
     } else {
       drawBoard(latest_ ? &latest_->state : nullptr);
     }
+    drawing.reset();
+    profile_.frameEnded();
     push([this] { frame(); });
   }
 
@@ -405,7 +432,11 @@ private:
       overlay.text(kTopWidth / 2.0f - 70, kTopHeight - 40, line, {255, 214, 90}, 2);
       overlay.text(kTopWidth / 2.0f - 60, kTopHeight - 16, "A: to the title", {200, 208, 222});
     }
-    renderer_->endFrame();
+    showProfile();
+    {
+      auto timing = profile_.time(kProfileWait);
+      renderer_->endFrame();
+    }
   }
 
   // Memory (round 89: measuring before optimising, Gregory 10.9): with the
@@ -628,7 +659,11 @@ private:
     if (selected_)
       renderer_->draw(highlight_, BoardPieces::onHex(selected_->hex),
                       {.shading = Scene::Material::Shading::Unlit, .colour = {255, 214, 90}});
-    renderer_->endFrame(); // waits for the screen's refresh
+    showProfile();
+    {
+      auto timing = profile_.time(kProfileWait);
+      renderer_->endFrame(); // waits for the screen's refresh
+    }
   }
 
   // The setup's board, still (round 90, the user's: turning didn't help); on
@@ -659,7 +694,11 @@ private:
       drawPieces(previewBefore_, Scene::Transform::translation(right * (-sign * through * wide)));
       drawPieces(preview_, Scene::Transform::translation(right * (sign * (1 - through) * wide)));
     }
-    renderer_->endFrame();
+    showProfile();
+    {
+      auto timing = profile_.time(kProfileWait);
+      renderer_->endFrame();
+    }
   }
 
   // A dim, see-through grey in the gaps between the tiles (round 80: dimmer),
@@ -947,31 +986,54 @@ private:
     } else {
       if (!latest_)
         return;
-      picture_->draw(latest_->state);
-      if (selected_)
-        picture_->mark(*selected_);
+      // (the map drawn when the game changes, not again each frame of the
+      // fade: round 92)
+      if (!fading_) {
+        picture_->draw(latest_->state);
+        if (selected_)
+          picture_->mark(*selected_);
+      }
       drawn = &picture_->pixels();
     }
-    // Fading from the menu to the map, as the board comes down
+    // Fading from the menu to the map as the board comes down: the setup
+    // menu's picture (menuPicture_, not drawn again in a game) and the map,
+    // mixed as they go to the screen, in whole numbers (no floating point
+    // and no buffers of their own: the DS has neither the hardware nor the
+    // memory; round 92)
     const float down = descent();
-    if (down < 1 && !fadeFrom_.empty() && fadeFrom_.size() == drawn->size()) {
-      faded_.resize(drawn->size());
-      for (std::size_t i = 0; i < faded_.size(); ++i) {
-        const Scene::Colour a = fadeFrom_[i], b = (*drawn)[i];
-        const auto mix = [&](std::uint8_t x, std::uint8_t y) {
-          return static_cast<std::uint8_t>(x + (y - x) * down);
-        };
-        faded_[i] = {mix(a.r, b.r), mix(a.g, b.g), mix(a.b, b.b), 255};
-      }
-      drawn = &faded_;
+    const std::vector<Scene::Colour> *from = nullptr;
+    int weight = 256; // (of the map, out of 256)
+    if (fadeFromMenu_ && down < 1 && menuPicture_.pixels().size() == drawn->size()) {
+      from = &menuPicture_.pixels();
+      weight = static_cast<int>(down * 256);
       bottomDirty_ = true; // (and again next frame, until it's done)
+    } else if (fadeFromMenu_ && down >= 1) {
+      fadeFromMenu_ = false;
+      bottomDirty_ = true; // (once more: the map as the game is now)
     }
+    fading_ = from != nullptr;
     const auto &pixels = *drawn;
+    auto copying = profile_.time(kProfileOut); // (the picture to the screen)
+    // A pixel's colour on its way to the screen: the picture's, or mid-fade
+    // the menu's moved `weight` / 256 of the way to it. (Plain arithmetic on
+    // the bytes: as a lambda a pixel this took 120 ms a frame on the DS,
+    // the copy alone 2 to 6; round 92)
+    const Scene::Colour *to = pixels.data();
+    const Scene::Colour *mixFrom = from ? from->data() : nullptr;
+    const auto colourAt = [to, mixFrom, weight](std::size_t i) -> Scene::Colour {
+      const Scene::Colour b = to[i];
+      if (!mixFrom)
+        return b;
+      const Scene::Colour a = mixFrom[i];
+      return {static_cast<std::uint8_t>(a.r + (((b.r - a.r) * weight) >> 8)),
+              static_cast<std::uint8_t>(a.g + (((b.g - a.g) * weight) >> 8)),
+              static_cast<std::uint8_t>(a.b + (((b.b - a.b) * weight) >> 8)), 255};
+    };
 #if defined(__NDS__)
     // 256 a row (the bitmap is 256 wide), 15-bit colours with bit 15 set
     for (int y = 0; y < kBottomHeight; ++y)
       for (int x = 0; x < kBottomWidth; ++x) {
-        const Scene::Colour c = pixels[static_cast<std::size_t>(y * kBottomWidth + x)];
+        const Scene::Colour c = colourAt(static_cast<std::size_t>(y * kBottomWidth + x));
         bottomPixels_[y * 256 + x] =
             static_cast<u16>(RGB15(c.r >> 3, c.g >> 3, c.b >> 3) | BIT(15));
       }
@@ -980,7 +1042,7 @@ private:
     std::uint8_t *frame = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
     for (int y = 0; y < 240; ++y)
       for (int x = 0; x < 320; ++x) {
-        const Scene::Colour c = pixels[static_cast<std::size_t>(y * 320 + x)];
+        const Scene::Colour c = colourAt(static_cast<std::size_t>(y * 320 + x));
         std::uint8_t *at = frame + (static_cast<std::size_t>(x) * 240 + (239 - y)) * 3;
         at[0] = c.b;
         at[1] = c.g;
@@ -1000,7 +1062,8 @@ private:
       const auto recipe = TR::read(CosmicHex::Art::recipeOf(static_cast<CosmicHex::Art::Face>(i)));
       if (!recipe)
         continue; // (the tile shows white: a broken recipe, tested against on the Mac)
-      const TR::Image image = TR::draw(*recipe, kFaceSize, kFaceSize, TR::Format::Rgba8);
+      const TR::Image image =
+          TR::draw(*recipe, kFaceSize, kFaceSize, TR::Format::Rgba8, {}, kRecipeSmoothing);
       std::vector<Scene::Colour> pixels(static_cast<std::size_t>(kFaceSize * kFaceSize));
       for (std::size_t p = 0; p < pixels.size(); ++p)
         pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
@@ -1015,7 +1078,8 @@ private:
       const auto recipe = TR::read(text);
       if (text.empty() || !recipe)
         continue;
-      const TR::Image image = TR::draw(*recipe, kChipSize, kChipSize, TR::Format::Rgba8);
+      const TR::Image image =
+          TR::draw(*recipe, kChipSize, kChipSize, TR::Format::Rgba8, {}, kRecipeSmoothing);
       std::vector<Scene::Colour> pixels(static_cast<std::size_t>(kChipSize * kChipSize));
       for (std::size_t p = 0; p < pixels.size(); ++p)
         pixels[p] = {image.pixels[p * 4], image.pixels[p * 4 + 1], image.pixels[p * 4 + 2],
@@ -1032,6 +1096,31 @@ private:
   std::optional<ScratchPadd::MemoryStats::Reader> memory_;
   Clock::time_point memoryAt_;
   std::string memoryLine_, memoryBusiest_;
+  // Where each frame's time goes (round 92: the DS's stutter), shown on
+  // the -watch builds: the bottom screen, the dice, the top screen (its
+  // wait for the refresh included), and that wait
+  enum : std::size_t { kProfileBottom, kProfileOut, kProfileDice, kProfileTop, kProfileWait };
+  ScratchPadd::FrameProfile profile_{"btm", "out", "dice", "top", "wait"};
+  std::string profileLine_;
+
+  bool onAMenuScreen() const {
+    const ScreenFlow::Screen screen = flow_.screen();
+    return screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Setup;
+  }
+
+  void showProfile() {
+    if (!kWatchAtStart)
+      return;
+    if (profile_.secondDone()) {
+      profileLine_ = profile_.line();
+      spdlog::info("frames: {}", profileLine_);
+    }
+    // (two lines where the screen's narrow)
+    for (std::size_t from = 0, row = 0; from < profileLine_.size() && row < 2;
+         from += kCharsPerLine, ++row)
+      renderer_->overlay().text(4, kTopHeight - 74 + 12 * static_cast<float>(row),
+                                profileLine_.substr(from, kCharsPerLine), {240, 200, 120});
+  }
   // The title scene
   std::optional<ScratchPadd::TitleScene::TitleScene> title_;
   Clock::time_point titleStarted_;
@@ -1080,7 +1169,8 @@ private:
   State previewBefore_ = preview_; // (the board sliding out)
   // The start of a game: the board coming down, the bottom screen fading
   std::optional<Clock::time_point> descentStarted_;
-  std::vector<Scene::Colour> fadeFrom_, faded_;
+  bool fadeFromMenu_ = false; // (the bottom screen fading from the setup's menu)
+  bool fading_ = false;       // (mid-fade: the map already drawn)
   bool sliding_ = false;
   int slideWay_ = 1; // (+1: right was pressed, the new board comes in from the right)
   Clock::time_point slideStarted_;
@@ -1171,7 +1261,8 @@ private:
     // bottom screen fades from the menu to the map)
     if (flow_.screen() == ScreenFlow::Screen::Game) {
       descentStarted_ = Clock::now();
-      fadeFrom_ = menuPicture_.pixels();
+      fadeFromMenu_ = true;
+      fading_ = false; // (the map drawn once, at the fade's first frame)
     }
     const bool play = !menu_.watching();
     mode_ = play ? Mode::Playing : Mode::Watching;

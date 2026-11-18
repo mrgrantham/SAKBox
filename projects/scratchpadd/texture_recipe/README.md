@@ -116,6 +116,17 @@ Anything else, such as text, gradients, images or a misspelt colour,
 different. The drawing needs a `viewBox`; its units become the recipe's, in
 sixteenths.
 
+## Speed on slow devices
+
+Drawing is fixed point (16.16) throughout, and arranged for a DS (round 92):
+
+- `Smoothing::Coarse` takes 2 x 2 samples a pixel instead of 4 x 4: a quarter of the work, for small pictures on a slow device (Cosmic Hex's DS map).
+- Points within a quarter of a sample of the last one kept are left out, so the work follows the size drawn, not the recipe's detail (a number chip has 1,600 points).
+- Each row looks only at the edges spanning it (an active edge list), and each edge's crossing is stepped from row to row rather than divided anew.
+- The divisions left go through flexmath's `IntegerDivide.hpp`, on the DS's hardware divider; outlines are read straight from their lines.
+
+On a DS (melonDS) the slowest recipe went from about 195 ms to 60 (20 to read, 39 to draw), with every drawing the same, bit for bit, as before the changes on all platforms.
+
 ## The recipe format
 
 Plain text, one item a line:

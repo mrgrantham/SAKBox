@@ -10,6 +10,8 @@
 #include <ScratchPadd/Logger.hpp>
 #include <ScratchPadd/TextureRecipe/TextureRecipe.hpp>
 
+#include <IntegerDivide.hpp>
+
 #include <algorithm>
 #include <charconv>
 #include <cstdlib>
@@ -43,6 +45,35 @@ template <typename Int> bool number(std::string_view text, Int &out) {
 struct Edge {
   std::int64_t x0, y0, x1, y1; // sample space, 16.16, y0 < y1
   int direction;               // +1 drawn downwards, -1 upwards
+  // Where it crosses the current row's centre, stepped a row at a time
+  // (round 92: no division a row; the DS's ARM9 has no divide instruction):
+  // the crossing is x0 + |x1 - x0| x (centre - y0) / (y1 - y0), its quotient
+  // and remainder kept and stepped by a row's share, signed as x1 - x0
+  bool started = false;
+  std::int64_t quotient = 0, remainder = 0, stepQuotient = 0, stepRemainder = 0;
+
+  std::int64_t crossingAt(std::int64_t centre) {
+    const std::int64_t dx = x1 - x0, dy = y1 - y0, across = dx < 0 ? -dx : dx;
+    if (!started) {
+      started = true;
+      // (on the DS's hardware divider: Flex::Math's IntegerDivide.hpp)
+      const auto start = Flex::Math::divide64(across * (centre - y0), dy);
+      quotient = start.quotient;
+      remainder = start.remainder;
+      const auto step = Flex::Math::divide64(across << 16, dy); // (rows are 1 << 16 apart)
+      stepQuotient = step.quotient;
+      stepRemainder = step.remainder;
+    } else {
+      quotient += stepQuotient;
+      remainder += stepRemainder;
+      if (remainder >= dy) {
+        remainder -= dy;
+        ++quotient;
+      }
+    }
+    // (the same as x0 + dx x (centre - y0) / dy, which rounds towards 0)
+    return x0 + (dx < 0 ? -quotient : quotient);
+  }
 };
 
 struct Crossing {
@@ -221,6 +252,38 @@ std::expected<Recipe, std::string> read(std::string_view text) {
       line.remove_suffix(1); // (Windows line endings, as git may check a file out there)
     text.remove_prefix(end == std::string_view::npos ? text.size() : end + 1);
     ++lineNumber;
+    // An outline's points, read straight from the line (round 92: a line
+    // can hold 3,000 numbers, and splitting it into words first, the list
+    // growing as it went, was most of a recipe's reading time on the DS)
+    if (line.starts_with("contour ")) {
+      if (recipe.fills.empty())
+        return fail("an outline before any fill");
+      std::string_view rest = line.substr(std::string_view("contour ").size());
+      std::vector<Point> points;
+      points.reserve(static_cast<std::size_t>(std::count(rest.begin(), rest.end(), ' ')) / 2 + 1);
+      std::int32_t value = 0, x = 0;
+      bool haveX = false;
+      const char *at = rest.data(), *end = rest.data() + rest.size();
+      while (at != end) {
+        if (*at == ' ') {
+          ++at;
+          continue;
+        }
+        const auto [next, error] = std::from_chars(at, end, value);
+        if (error != std::errc{} || (next != end && *next != ' '))
+          return fail("an outline's points aren't numbers");
+        at = next;
+        if (haveX)
+          points.push_back({x, value});
+        else
+          x = value;
+        haveX = !haveX;
+      }
+      if (haveX || points.size() < 3)
+        return fail("an outline needs three points or more");
+      recipe.fills.back().contours.push_back(std::move(points));
+      continue;
+    }
     const std::vector<std::string_view> w = words(line);
     if (w.empty())
       continue;
@@ -285,13 +348,16 @@ Colour Image::at(int x, int y) const {
   return {pixels[4 * i], pixels[4 * i + 1], pixels[4 * i + 2], pixels[4 * i + 3]};
 }
 
-Image draw(const Recipe &recipe, int width, int height, Format format, std::string_view name) {
+Image draw(const Recipe &recipe, int width, int height, Format format, std::string_view name,
+           Smoothing smoothing) {
   Image image;
   image.width = width;
   image.height = height;
   image.format = format;
   const bool rgba = format == Format::Rgba8;
-  const int samples = rgba ? 4 : 1; // a side
+  // (samples = 1 << samplesShift a side: shifts, not divisions)
+  const int samplesShift = !rgba ? 0 : smoothing == Smoothing::Fine ? 2 : 1;
+  const int samples = 1 << samplesShift;
   const std::size_t pixelCount = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
   image.pixels.assign(pixelCount * (rgba ? 4 : 1), 0);
   // Palette formats: each pixel's recipe colour + 1 (0 transparent), until
@@ -302,37 +368,58 @@ Image draw(const Recipe &recipe, int width, int height, Format format, std::stri
   const std::int64_t unitsWide = std::int64_t{recipe.width} * kUnitsPerDrawingUnit,
                      unitsHigh = std::int64_t{recipe.height} * kUnitsPerDrawingUnit;
   const auto sampleX = [&](std::int32_t x) {
-    return (std::int64_t{x} * sampleWidth << 16) / unitsWide;
+    return Flex::Math::divide64(std::int64_t{x} * sampleWidth << 16, unitsWide).quotient;
   };
   const auto sampleY = [&](std::int32_t y) {
-    return (std::int64_t{y} * sampleHeight << 16) / unitsHigh;
+    return Flex::Math::divide64(std::int64_t{y} * sampleHeight << 16, unitsHigh).quotient;
   };
 
   std::vector<std::uint16_t> coverage(pixelCount);
   std::vector<Edge> edges;
   std::vector<Crossing> crossings;
+  std::vector<Edge *> active;
+  std::vector<std::pair<std::int64_t, std::int64_t>> placed; // (a contour's points, sample space)
+  constexpr std::int64_t kQuarterSample = 1 << 14;           // (16.16)
   for (const Fill &fill : recipe.fills) {
     edges.clear();
     for (const std::vector<Point> &contour : fill.contours) {
-      for (std::size_t i = 0; i < contour.size(); ++i) {
-        const Point a = contour[i], b = contour[(i + 1) % contour.size()];
-        const std::int64_t ax = sampleX(a.x), ay = sampleY(a.y), bx = sampleX(b.x),
-                           by = sampleY(b.y);
+      // The contour's points in sample space, each once, leaving out any
+      // within a quarter of a sample of the last one kept: detail finer
+      // than the picture can show, which only costs time (round 92: a
+      // number chip has 1,600 points, drawn 15 pixels across on the DS)
+      placed.clear();
+      for (const Point &point : contour) {
+        const std::int64_t x = sampleX(point.x), y = sampleY(point.y);
+        if (!placed.empty() && std::abs(x - placed.back().first) < kQuarterSample &&
+            std::abs(y - placed.back().second) < kQuarterSample)
+          continue;
+        placed.emplace_back(x, y);
+      }
+      for (std::size_t i = 0; i < placed.size(); ++i) {
+        const auto [ax, ay] = placed[i];
+        const auto [bx, by] = placed[(i + 1) % placed.size()];
         if (ay == by)
           continue; // flat: never crossed by a row's centre
         edges.push_back(ay < by ? Edge{ax, ay, bx, by, 1} : Edge{bx, by, ax, ay, -1});
       }
     }
     std::fill(coverage.begin(), coverage.end(), 0);
+    // Only the edges spanning a row are looked at (an active edge list,
+    // Foley et al. 3.6: round 92; a recipe has 1,500 points or more, and
+    // checking every edge each row took 0.1 s a face on the DS): the edges
+    // by their tops, taken in as the rows reach them, let go below them
+    std::sort(edges.begin(), edges.end(), [](const Edge &a, const Edge &b) { return a.y0 < b.y0; });
+    std::size_t nextEdge = 0;
+    active.clear();
     for (int row = 0; row < sampleHeight; ++row) {
       const std::int64_t centre = (std::int64_t{row} << 16) + (1 << 15);
+      for (; nextEdge < edges.size() && edges[nextEdge].y0 <= centre; ++nextEdge)
+        if (centre < edges[nextEdge].y1) // (one between two rows' centres is never crossed)
+          active.push_back(&edges[nextEdge]);
+      std::erase_if(active, [centre](const Edge *e) { return centre >= e->y1; });
       crossings.clear();
-      for (const Edge &e : edges) {
-        if (centre < e.y0 || centre >= e.y1)
-          continue;
-        const std::int64_t x = e.x0 + (e.x1 - e.x0) * (centre - e.y0) / (e.y1 - e.y0);
-        crossings.push_back({x, e.direction});
-      }
+      for (Edge *e : active)
+        crossings.push_back({e->crossingAt(centre), e->direction});
       std::sort(crossings.begin(), crossings.end(),
                 [](const Crossing &a, const Crossing &b) { return a.x < b.x; });
       int winding = 0;
@@ -347,15 +434,14 @@ Image draw(const Recipe &recipe, int width, int height, Format format, std::stri
         for (std::int64_t column = std::max<std::int64_t>(from, 0);
              column < std::min<std::int64_t>(to, sampleWidth); ++column) {
           const std::size_t pixel =
-              static_cast<std::size_t>(row / samples) * static_cast<std::size_t>(width) +
-              static_cast<std::size_t>(column / samples);
+              static_cast<std::size_t>(row >> samplesShift) * static_cast<std::size_t>(width) +
+              static_cast<std::size_t>(column >> samplesShift);
           ++coverage[pixel];
         }
       }
     }
     // Laid over what's there, by coverage
     const Colour colour = recipe.colours[static_cast<std::size_t>(fill.colour)];
-    const unsigned full = static_cast<unsigned>(samples * samples);
     for (std::size_t p = 0; p < pixelCount; ++p) {
       if (coverage[p] == 0)
         continue;
@@ -365,12 +451,26 @@ Image draw(const Recipe &recipe, int width, int height, Format format, std::stri
       }
       std::uint8_t *dst = &image.pixels[4 * p];
       // Source over, in 0..255 with coverage: alpha = colour.a x covered/full
-      const unsigned alpha = colour.a * coverage[p] / full;
+      // (full is 1 << 2 x samplesShift: a shift; and / 255 is a constant,
+      // which the compiler makes a multiply)
+      const unsigned alpha = (colour.a * coverage[p]) >> (2 * samplesShift);
       const unsigned outAlpha = alpha + dst[3] * (255 - alpha) / 255;
       if (outAlpha == 0)
         continue;
+      if (dst[3] == 0 || alpha == 255) {
+        // (nothing under it, or nothing showing through: its own colour, as
+        // the division below gives, without dividing)
+        dst[0] = colour.r;
+        dst[1] = colour.g;
+        dst[2] = colour.b;
+        dst[3] = static_cast<std::uint8_t>(outAlpha);
+        continue;
+      }
       const auto mix = [&](std::uint8_t s, std::uint8_t d) {
-        return static_cast<std::uint8_t>((s * alpha + d * dst[3] * (255 - alpha) / 255) / outAlpha);
+        const auto numerator =
+            static_cast<std::int32_t>(s * alpha + d * dst[3] * (255 - alpha) / 255);
+        return static_cast<std::uint8_t>(
+            Flex::Math::divide32(numerator, static_cast<std::int32_t>(outAlpha)).quotient);
       };
       dst[0] = mix(colour.r, dst[0]);
       dst[1] = mix(colour.g, dst[1]);

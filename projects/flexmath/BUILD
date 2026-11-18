@@ -9,8 +9,34 @@ filegroup(
         "include/FixedPoint.hpp",
         "include/FixedPointNds.hpp",
         "include/FlexPrecision.hpp",
+        "include/IntegerDivide.hpp",
+        "include/IntegerDivideNds.hpp",
     ],
     visibility = ["//visibility:public"],
+)
+
+# Whole-number division, quotient and remainder, on each platform's fastest
+# divider (the DS's hardware one; IntegerDivide.hpp). Header-only, no
+# dependencies. For console builds, its headers are in fixed_point_sources
+# (add flexmath/include to the Makefile's INCLUDES).
+cc_library(
+    name = "integer_divide",
+    hdrs = [
+        "include/IntegerDivide.hpp",
+        "include/IntegerDivideNds.hpp",
+    ],
+    strip_include_prefix = "include/",
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "IntegerDivide_test",
+    size = "small",
+    srcs = ["tests/IntegerDivide_test.cpp"],
+    deps = [
+        ":integer_divide",
+        "@gtest//:gtest_main",
+    ],
 )
 
 # Maths functions that give the same result on every platform (CORE-MATH's,

@@ -83,6 +83,8 @@ struct Renderer::Backend {
   // Outlines: whether this frame has any, and the next outlined mesh's ID
   bool outlining = false;
   unsigned nextOutlineId = 0;
+  // The next translucent polygon ID: meshes then the overlay (one count a frame)
+  unsigned nextTranslucentId = 1;
   // Where the next toon texture goes in VRAM bank B, in bytes
   std::uint32_t nextTextureOffset = 0;
   Fog fogSet;
