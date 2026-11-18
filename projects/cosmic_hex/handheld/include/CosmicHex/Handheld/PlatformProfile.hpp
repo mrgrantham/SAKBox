@@ -78,7 +78,7 @@ inline constexpr PlatformProfile kThreeDsProfile{
     .bottomHeight = 240,
     .charsPerLine = 64,
     .lineHeight = 11,
-    .botIterations = 400, // (the simulations' bots)
+    .botIterations = 450, // (round 91, the user's: they reached 400 every move)
     .botArithmetic = TableSettings::Arithmetic::Double,
     .frameArenaBytes = 128 * 1024,
     .faceSize = 64,
