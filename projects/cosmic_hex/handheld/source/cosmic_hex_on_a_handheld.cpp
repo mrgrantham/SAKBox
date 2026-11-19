@@ -780,14 +780,16 @@ private:
       drawGaps(*shown, Scene::Transform::identity());
       drawPieces(*shown, Scene::Transform::identity());
     }
-    drawDice(camera);
+    // (behind another player's view, the dice wait unseen: the game's held)
+    if (!showingPlayer())
+      drawDice(camera);
     drawInfo(camera);
     // (who goes first in place of the usual words: on a DS words are on a
     // layer over every shape, so they'd show through it)
     if (firstRollShownAt_)
       drawFirstRoll(renderer_->overlay());
     else if (showingPlayer())
-      drawOtherPlayer(renderer_->overlay());
+      drawOtherPlayer(renderer_->overlay(), camera);
     else
       drawText();
     // The touched corner (or the blockade's hex), ringed on the 3D board too
@@ -1622,6 +1624,19 @@ private:
       cardPictures_[static_cast<std::size_t>(c)] =
           load(static_cast<CosmicHex::Art::Card>(c), cardWidth_, uMax, vMax);
     pictureSquare_ = renderer_->load(pictureSquare(uMax, vMax).data());
+    // The two backs, whole cards (the planets for resource cards, the rings
+    // for action cards: the agreed designs), for cards held face down
+    for (const CosmicHex::Art::CardBack design :
+         {CosmicHex::Art::CardBack::Rings, CosmicHex::Art::CardBack::Planets}) {
+      const auto whole = recipePixels(CosmicHex::Art::cardBackRecipe(design), cardWidth_,
+                                      cardWidth_ * 88 / 63, kThisPlatform.recipeSmoothing);
+      if (whole.empty())
+        continue;
+      const PaddedPicture picture = padded(whole, cardWidth_, cardWidth_ * 88 / 63);
+      backPictures_[static_cast<std::size_t>(design)] =
+          renderer_->load(Scene::TextureImage{picture.width, picture.height, picture.pixels});
+      backSquare_ = renderer_->load(pictureSquare(picture.uMax, picture.vMax).data());
+    }
   }
 
   void loadFaces() {
@@ -1705,7 +1720,7 @@ private:
   // sliding down from the top (and back up): their name and points, their
   // cards face down, badges, ships, stations and colonies, the planets
   // their stations touch with each one's number, their revealed Charters
-  void drawOtherPlayer(Scene::Overlay &overlay) {
+  void drawOtherPlayer(Scene::Overlay &overlay, const Scene::Camera &camera) {
     if (!latest_ || shownPlayer_ < 0)
       return;
     const PlayerView view = viewOf(latest_->state, shownPlayer_);
@@ -1717,7 +1732,13 @@ private:
     const float down = infoClosingAt_ ? 1 - moved : moved;
     const float top = -static_cast<float>(kTopHeight) * (1 - down);
     const Scene::Colour colour = BoardColours::ofPlayer(view.player);
-    overlay.rectangle(0, top, kTopWidth, kTopHeight, {12, 18, 32, 245});
+    const auto screenW = static_cast<float>(kTopWidth), screenH = static_cast<float>(kTopHeight);
+    // The panel: a dark, slightly see-through backdrop in 3D, behind the
+    // cards' pictures (the overlay's shapes would cover them)
+    renderer_->draw(
+        pictureSquare_,
+        onScreenAt(camera, screenW, screenH, 0, top, screenW, screenH, kPictureDistance * 1.2f),
+        {.shading = Scene::Material::Shading::Unlit, .colour = {12, 18, 32}, .alpha = 29});
     overlay.rectangle(3 * k, top + 3 * k, kTopWidth - 6 * k, 1, colour);
     overlay.rectangle(3 * k, top + kTopHeight - 4 * k, kTopWidth - 6 * k, 1, colour);
     // Name and points
@@ -1725,30 +1746,38 @@ private:
     overlay.text(10 * k, top + 32 * k,
                  std::to_string(view.points) + (view.points == 1 ? " point" : " points"),
                  Palette::kWords, k);
-    // Their cards, face down: a small back for each (up to 10), the count
-    const auto backs = [&](float x, float y, int count, std::string_view label) {
+    // Their cards, face down, in the agreed backs: a fan of up to 10, the
+    // count beside it
+    const auto backs = [&](float x, float y, int count, std::string_view label,
+                           CosmicHex::Art::CardBack design) {
       overlay.text(x, y, label, Palette::kDimWords, k);
-      for (int i = 0; i < std::min(count, 10); ++i)
-        overlay.rectangle(x + static_cast<float>(i) * 5 * k, y + 12 * k, 11 * k, 15 * k,
-                          i == std::min(count, 10) - 1 ? Scene::Colour{60, 74, 110, 255}
-                                                       : Scene::Colour{44, 56, 86, 255});
-      overlay.text(x + (static_cast<float>(std::min(count, 10)) * 5 + 14) * k, y + 16 * k,
+      const float w = 24 * k, h = w * 88 / 63;
+      const int shown = std::min(count, 8);
+      for (int i = 0; i < shown; ++i)
+        if (backSquare_ && backPictures_[static_cast<std::size_t>(design)])
+          renderer_->draw(backSquare_,
+                          onScreenAt(camera, screenW, screenH, x + static_cast<float>(i) * 7 * k,
+                                     y + 11 * k, w, h,
+                                     kPictureDistance * (1 - 0.002f * static_cast<float>(i))),
+                          {.shading = Scene::Material::Shading::Unlit,
+                           .texture = backPictures_[static_cast<std::size_t>(design)]});
+      overlay.text(x + static_cast<float>(std::max(shown, 1) - 1) * 7 * k + w + 4 * k, y + 22 * k,
                    std::to_string(count), Palette::kWords, k);
     };
-    backs(84 * k, top + 10 * k, view.resourceCards, "RESOURCES");
-    backs(180 * k, top + 10 * k, view.actionCards, "CARDS");
+    backs(84 * k, top + 10 * k, view.resourceCards, "RESOURCES", CosmicHex::Art::kResourceBack);
+    backs(178 * k, top + 10 * k, view.actionCards, "CARDS", CosmicHex::Art::kActionBack);
     // Badges, ships, stations, colonies
     char line[64];
     std::snprintf(line, sizeof line, "badges %d   ships %d   stations %d   colonies %d",
                   view.badges, view.ships, view.stations, view.colonies);
-    overlay.text(10 * k, top + 52 * k, line, Palette::kSoftWords, k);
+    overlay.text(10 * k, top + 64 * k, line, Palette::kSoftWords, k);
     // Their planets: a hexagon each in its kind's colour, its number on it
-    overlay.text(10 * k, top + 70 * k, "PLANETS", Palette::kDimWords, k);
+    overlay.text(10 * k, top + 82 * k, "PLANETS", Palette::kDimWords, k);
     if (view.planets.empty())
-      overlay.text(64 * k, top + 70 * k, "none yet", Palette::kDimWords, k);
+      overlay.text(64 * k, top + 82 * k, "none yet", Palette::kDimWords, k);
     for (std::size_t i = 0; i < view.planets.size() && i < 16; ++i) {
       const float x = (22 + 26 * static_cast<float>(i % 8)) * k;
-      const float y = top + (98 + 28 * static_cast<float>(i / 8)) * k;
+      const float y = top + (108 + 28 * static_cast<float>(i / 8)) * k;
       const PlayerView::Planet &planet = view.planets[i];
       overlay.hexagon(x, y, 12 * k, BoardColours::ofKind(planet.kind), true);
       if (planet.colony)
@@ -1870,6 +1899,9 @@ private:
       profileLine_ = start + profile_.line();
       spdlog::info("frames: {}", profileLine_);
     }
+    // (not over a view that fills the screen: its words would be lost)
+    if (firstRollShownAt_ || shownInfo_ == BottomScreen::Info::Player)
+      return;
     // (three lines where the screen's narrow)
     for (std::size_t from = 0, row = 0; from < profileLine_.size() && row < 4;
          from += kCharsPerLine, ++row)
@@ -1917,7 +1949,8 @@ private:
   std::array<Scene::Texture, CosmicHex::Art::kCards> cardPictures_{};
   std::array<Scene::Texture, CosmicHex::kResources> resourcePictures_{};
   std::array<Scene::Colour, CosmicHex::kResources> resourceBands_{};
-  Scene::Mesh pictureSquare_, resourceSquare_;
+  Scene::Mesh pictureSquare_, resourceSquare_, backSquare_;
+  std::array<Scene::Texture, 2> backPictures_{}; // (by Art::CardBack)
   int cardWidth_ = 32, resourceWidth_ = 44;
   static constexpr float kPileStep = 5; // (pixels between a pile's cards: their bands show)
   std::optional<ConsoleScreens::BottomScreen> bottom_;
