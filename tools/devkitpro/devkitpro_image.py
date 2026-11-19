@@ -100,7 +100,7 @@ SOURCE_SUFFIXES = (".c", ".cpp", ".s")
 
 
 def staged_folders(paths):
-    """make's SAKBOX_SOURCES and SAKBOX_INCLUDES (round 100, the user's
+    """make's SAKBOX_SOURCES and SAKBOX_INCLUDES (the user's
     choice A): every folder of the staged app holding source files, and
     every staged folder called "include", so an app's Makefile needn't list
     each library's folders again (they come from its Bazel sources). Only

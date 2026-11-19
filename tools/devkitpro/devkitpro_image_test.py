@@ -36,7 +36,7 @@ class MakeDefinesTest(unittest.TestCase):
 
 
 class StagedFoldersTest(unittest.TestCase):
-    # (round 100: the Makefiles' SOURCES and INCLUDES from what's staged)
+    # (the Makefiles' SOURCES and INCLUDES from what's staged)
     def test_folders_with_sources_and_include_folders(self):
         made = devkitpro_image.staged_folders([
             "Makefile", "main.cpp",                      # the app's own: left to it
