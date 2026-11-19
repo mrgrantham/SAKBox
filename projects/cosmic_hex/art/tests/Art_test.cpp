@@ -103,11 +103,13 @@ TEST(ArtTest, EveryCardsWordsFit) {
   }
 }
 
-// The cards' back draws: dark, its rounded corner see-through
-TEST(ArtTest, TheCardBackDraws) {
-  const auto recipe = TR::read(Art::cardBackRecipe());
-  ASSERT_TRUE(recipe.has_value()) << recipe.error();
-  const TR::Image image = TR::draw(*recipe, 63, 88, TR::Format::Rgba8);
-  EXPECT_EQ(image.at(0, 0).a, 0);
-  EXPECT_EQ(image.at(8, 10).r, 0x14); // (the dark ground, inside the edge)
+// Both card backs draw: dark, their rounded corners see-through
+TEST(ArtTest, TheCardBacksDraw) {
+  for (Art::CardBack design : {Art::CardBack::Rings, Art::CardBack::Planets}) {
+    const auto recipe = TR::read(Art::cardBackRecipe(design));
+    ASSERT_TRUE(recipe.has_value()) << recipe.error();
+    const TR::Image image = TR::draw(*recipe, 63, 88, TR::Format::Rgba8);
+    EXPECT_EQ(image.at(0, 0).a, 0);
+    EXPECT_EQ(image.at(20, 80).g, 0x1c); // (the dark ground, inside the edge, clear of stars)
+  }
 }
