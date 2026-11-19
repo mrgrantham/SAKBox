@@ -38,6 +38,18 @@ public:
   // tall a line is: the backend's font (each backend defines them)
   static float textWidth(std::string_view text, float scale = 1);
   static float lineHeight(float scale = 1);
+  // Where a text's letters' own pixels are, from its top left, at `scale`:
+  // narrower than textWidth and lineHeight, which count the space round
+  // the letters (round 100: numbers centred by those sat off centre)
+  struct Ink {
+    float left = 0, top = 0, width = 0, height = 0;
+  };
+  static Ink inkOf(std::string_view text, float scale = 1);
+  // `text` with its letters' pixels centred on (x, y)
+  void textCentred(float x, float y, std::string_view text, Colour colour, float scale = 1) {
+    const Ink ink = inkOf(text, scale);
+    this->text(x - ink.left - ink.width / 2, y - ink.top - ink.height / 2, text, colour, scale);
+  }
   // `text` wrapped to `width` points (wrapText, in the backend's font), its
   // top-left at (x, y); says how tall it came out
   float paragraph(float x, float y, float width, std::string_view text, Colour colour,

@@ -48,7 +48,6 @@
 #include <ScratchPadd/FrameProfile.hpp>
 #include <ScratchPadd/GameClock.hpp>
 #include <ScratchPadd/MemoryStats.hpp>
-#include <ScratchPadd/Scene/OverlayText.hpp>
 #include <ScratchPadd/TitleScene/TitleScene.hpp>
 // The title screen's rocket, as the build cooked it for this console
 #if defined(__NDS__)
@@ -571,33 +570,13 @@ private:
     overlay.hexagon(x, y, radius + 3, {255, 214, 90, 255}); // (an amber edge)
     overlay.hexagon(x, y, radius, {12, 18, 30, 255});
     // The total over the two dice, the two lines together centred on the
-    // hexagon by their letters' own pixels (the font's rectangles), not the
-    // spacing round them (round 96: still a little off)
-    const Ink totalInk = inkOf(total, big), pairInk = inkOf(pair, small);
+    // hexagon by their letters' own pixels (Overlay::textCentred; round 96)
+    const auto totalInk = Scene::Overlay::inkOf(total, big),
+               pairInk = Scene::Overlay::inkOf(pair, small);
     constexpr float kGap = 6;
     const float height = totalInk.height + kGap + pairInk.height;
-    const float top = y - height / 2;
-    overlay.text(x - totalInk.width / 2 - totalInk.left, top - totalInk.top, total, {255, 214, 90},
-                 big);
-    overlay.text(x - pairInk.width / 2 - pairInk.left, top + totalInk.height + kGap - pairInk.top,
-                 pair, {226, 232, 244}, small);
-  }
-
-  // Where a text's letters' pixels are, from its own top left, at `scale`
-  struct Ink {
-    float left, top, width, height;
-  };
-  static Ink inkOf(const char *text, float scale) {
-    float left = 1e9f, top = 1e9f, right = -1e9f, bottom = -1e9f;
-    for (const Scene::TextRectangle &r : Scene::textRectangles({0, 0, text, {}, scale})) {
-      left = std::min(left, r.x);
-      top = std::min(top, r.y);
-      right = std::max(right, r.x + r.width);
-      bottom = std::max(bottom, r.y + r.height);
-    }
-    if (left > right)
-      return {0, 0, 0, 0};
-    return {left, top, right - left, bottom - top};
+    overlay.textCentred(x, y - height / 2 + totalInk.height / 2, total, {255, 214, 90}, big);
+    overlay.textCentred(x, y + height / 2 - pairInk.height / 2, pair, {226, 232, 244}, small);
   }
 
   // The board's light: the game's (a lamp above and to one side, toon

@@ -2,6 +2,7 @@
 
 #include <stb/stb_easy_font.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -56,5 +57,20 @@ float Overlay::textWidth(std::string_view text, float scale) {
 }
 
 float Overlay::lineHeight(float scale) { return kLineHeight * scale; }
+
+Overlay::Ink Overlay::inkOf(std::string_view text, float scale) {
+  const std::vector<TextRectangle> rectangles =
+      textRectangles({0, 0, std::string(text), {}, scale});
+  if (rectangles.empty())
+    return {};
+  float left = rectangles[0].x, top = rectangles[0].y, right = left, bottom = top;
+  for (const TextRectangle &r : rectangles) {
+    left = std::min(left, r.x);
+    top = std::min(top, r.y);
+    right = std::max(right, r.x + r.width);
+    bottom = std::max(bottom, r.y + r.height);
+  }
+  return {left, top, right - left, bottom - top};
+}
 
 } // namespace ScratchPadd::Scene

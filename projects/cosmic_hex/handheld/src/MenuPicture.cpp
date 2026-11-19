@@ -1,6 +1,6 @@
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 
-#include <stb/stb_easy_font.h>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -16,40 +16,10 @@ constexpr Colour kChosen{255, 214, 90, 255};
 constexpr Colour kWords{200, 208, 222, 255};
 constexpr Colour kPlay{42, 90, 58, 255};
 constexpr Colour kWatch{42, 58, 90, 255};
-constexpr float kLetterHeight = 7; // (stb_easy_font's capitals, unscaled)
+namespace Scene = ScratchPadd::Scene;
 
-// A letter's rectangle, unscaled (stb_easy_font draws each letter as a few)
-struct Rect {
-  float x0, y0, x1, y1;
-};
-
-// stb_easy_font's rectangles for a line, unscaled, from (0, 0)
-std::vector<Rect> letterRects(const std::string &text) {
-  // (its vertices: x, y, z and a colour, 16 bytes; 4 a rectangle, at most
-  // 11 rectangles a letter, as OverlayText counts)
-  struct Vertex {
-    float x, y, z;
-    unsigned char colour[4];
-  };
-  std::string copy = text;
-  std::vector<Vertex> vertices((copy.size() + 1) * 11 * 4);
-  const int count = stb_easy_font_print(0, 0, copy.data(), nullptr, vertices.data(),
-                                        static_cast<int>(vertices.size() * sizeof(Vertex)));
-  std::vector<Rect> out;
-  for (int q = 0; q < count; ++q) {
-    const Vertex *v = &vertices[static_cast<std::size_t>(q) * 4];
-    out.push_back({v[0].x, v[0].y, v[2].x, v[2].y});
-  }
-  return out;
-}
-
-// A line's width, unscaled
-float textWidth(const std::string &text) {
-  float right = 0;
-  for (const Rect &r : letterRects(text))
-    right = std::max(right, r.x1);
-  return right;
-}
+// A line's letters' own width, unscaled
+float textWidth(const std::string &text) { return Scene::Overlay::inkOf(text).width; }
 } // namespace
 
 MenuPicture::MenuPicture(int width, int height)
@@ -76,11 +46,13 @@ void MenuPicture::outline(float x, float y, float w, float h, Colour colour) {
 
 void MenuPicture::text(const std::string &words, float x, float y, float w, float h, float scale,
                        Colour colour, bool centred) {
-  const float left = centred ? x + (w - textWidth(words) * scale) / 2 : x;
-  const float top = y + (h - kLetterHeight * scale) / 2;
-  for (const Rect &r : letterRects(words))
-    fillRect(left + r.x0 * scale, top + r.y0 * scale, std::max(1.0f, (r.x1 - r.x0) * scale),
-             std::max(1.0f, (r.y1 - r.y0) * scale), colour);
+  // Centred by the letters' own pixels (Overlay::inkOf, as the overlay's
+  // textCentred: round 100), down always and across when asked
+  const Scene::Overlay::Ink ink = Scene::Overlay::inkOf(words, scale);
+  const float left = centred ? x + (w - ink.width) / 2 - ink.left : x;
+  const float top = y + (h - ink.height) / 2 - ink.top;
+  for (const Scene::TextRectangle &r : Scene::textRectangles({left, top, words, colour, scale}))
+    fillRect(r.x, r.y, std::max(1.0f, r.width), std::max(1.0f, r.height), colour);
 }
 
 void MenuPicture::draw(const StartMenu &menu) {

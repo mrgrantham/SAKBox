@@ -72,3 +72,26 @@ TEST(OverlayTextTest, LettersAreRectanglesOnWholePoints) {
   const auto lowest = std::ranges::max(two, {}, &TextRectangle::y);
   EXPECT_GE(lowest.y, Overlay::lineHeight());
 }
+
+// A text's ink (its letters' own pixels) sits inside its width and line
+// height; centring by it puts the letters' middle where it was asked
+// (round 100: centring by the width left numbers off centre)
+TEST(OverlayTextTest, CentredByItsInk) {
+  const Overlay::Ink ink = Overlay::inkOf("7", 3);
+  EXPECT_GT(ink.width, 0);
+  EXPECT_GT(ink.height, 0);
+  EXPECT_LE(ink.left + ink.width, Overlay::textWidth("7", 3));
+  EXPECT_LE(ink.top + ink.height, Overlay::lineHeight(3));
+  Overlay overlay;
+  overlay.textCentred(100, 50, "7", Colour{255, 255, 255}, 3);
+  float left = 1e9f, right = -1e9f, top = 1e9f, bottom = -1e9f;
+  for (const TextRectangle &r : textRectangles(overlay.texts().at(0))) {
+    left = std::min(left, r.x);
+    right = std::max(right, r.x + r.width);
+    top = std::min(top, r.y);
+    bottom = std::max(bottom, r.y + r.height);
+  }
+  EXPECT_FLOAT_EQ((left + right) / 2, 100);
+  EXPECT_FLOAT_EQ((top + bottom) / 2, 50);
+  EXPECT_EQ(Overlay::inkOf("").width, 0);
+}
