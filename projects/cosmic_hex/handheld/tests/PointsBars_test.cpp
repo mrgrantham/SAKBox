@@ -67,3 +67,14 @@ TEST(PointsBarsTest, TheTurnsRowIsOutlinedApart) {
   }
   EXPECT_GE(PointsBars::bottom(4), row(3).y + row(3).height);
 }
+
+// The outline moving between rows: at a row's number it's round that row;
+// half way, half way between
+TEST(PointsBarsTest, TheOutlineMovesBetweenRows) {
+  const State state = newGame(4, agreedRules(boardR3()));
+  const auto top = [&](float row) { return PointsBars::of(state, 256, row).front().y; };
+  const float first = PointsBars::of(state, 256).front().y;
+  EXPECT_FLOAT_EQ(top(static_cast<float>(state.turn)), first);
+  EXPECT_FLOAT_EQ(top(1.5f), (top(1) + top(2)) / 2);
+  EXPECT_GT(top(2), top(1));
+}

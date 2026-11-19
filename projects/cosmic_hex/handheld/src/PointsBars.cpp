@@ -5,7 +5,7 @@
 
 namespace CosmicHex::Handheld::PointsBars {
 
-std::vector<Bar> of(const State &state, int screenWidth) {
+std::vector<Bar> of(const State &state, int screenWidth, std::optional<float> outlineRow) {
   const int target = state.settings.winPoints;
   const float width =
       static_cast<float>(target) * kDashWidth + static_cast<float>(target - 1) * kDashGap;
@@ -17,7 +17,8 @@ std::vector<Bar> of(const State &state, int screenWidth) {
   // The outline: a pixel clear of its row all round, inside the gap between
   // rows
   if (state.turn >= 0 && state.turn < state.players) {
-    const float x = left - 1 - kOutline, y = rowTop(state.turn) - 1 - kOutline;
+    const float row = outlineRow.value_or(static_cast<float>(state.turn));
+    const float x = left - 1 - kOutline, y = kTop + row * (kRowHeight + kRowGap) - 1 - kOutline;
     const float w = width + 2 + 2 * kOutline, h = kRowHeight + 2 + 2 * kOutline;
     bars.push_back({x, y, w, kOutline, kOutlineColour});
     bars.push_back({x, y + h - kOutline, w, kOutline, kOutlineColour});

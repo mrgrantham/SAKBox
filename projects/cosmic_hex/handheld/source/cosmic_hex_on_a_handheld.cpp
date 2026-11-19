@@ -129,6 +129,8 @@ constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 // question on the roadmap page; the scene for now
 // How long the title takes to fade in from black, once the start's work
 // is done
+// The points bars' outline moving to the next player's row
+constexpr float kSecondsOutline = 0.35f;
 // The two cards dealt after buying: each thrown in, then turned over
 constexpr float kSecondsCardThrow = 0.45f, kSecondsCardTurn = 0.4f;
 // How long the other players' view takes to slide down (or up)
@@ -354,6 +356,11 @@ public:
           keepDealtAt_ = Clock::now();
         else if (!keeping)
           keepDealtAt_.reset();
+      }
+      // A new turn: the points bars' outline moves to its row
+      if (latest_ && snapshot.state.turn != latest_->state.turn) {
+        outlineFrom_ = latest_->state.turn;
+        outlineMovedAt_ = Clock::now();
       }
       // (pausing the game pauses its clock, so its animations and dice stop too)
       gameClock_.setPaused(snapshot.paused);
@@ -980,7 +987,19 @@ private:
     char line[64];
     // Each player's points as a row of dashes, the turn's row
     // outlined
-    for (const PointsBars::Bar &bar : PointsBars::of(state, kTopWidth))
+    // (the turn's outline easing from the last turn's row to this one)
+    std::optional<float> outlineRow;
+    if (outlineMovedAt_) {
+      const float moved = ScratchPadd::Motion::along(
+          ScratchPadd::Motion::Curve::EaseInOut,
+          static_cast<float>(secondsSince(*outlineMovedAt_)) / kSecondsOutline);
+      if (moved >= 1)
+        outlineMovedAt_.reset();
+      else
+        outlineRow = static_cast<float>(outlineFrom_) +
+                     (static_cast<float>(state.turn) - static_cast<float>(outlineFrom_)) * moved;
+    }
+    for (const PointsBars::Bar &bar : PointsBars::of(state, kTopWidth, outlineRow))
       overlay.rectangle(bar.x, bar.y, bar.width, bar.height, bar.colour);
     drawCorners(overlay, state);
     // (the -watch builds: memory, measured, above the last move)
@@ -1971,7 +1990,7 @@ private:
       return false; // (pieces still moving, or a number chip dropping)
     if (banner_.showing(gameClock_.seconds()))
       return false; // (the turn's banner moving)
-    if (shownInfo_ != BottomScreen::Info::None || infoClosingAt_ || keepDealtAt_)
+    if (shownInfo_ != BottomScreen::Info::None || infoClosingAt_ || keepDealtAt_ || outlineMovedAt_)
       return false; // (an info view or dealt cards: they come in or go)
     if (snapshots_ != drawnSnapshots_ || turn_ != drawnTurn_ || selected_ != drawnSelection_)
       return false;
@@ -2044,7 +2063,9 @@ private:
   std::optional<Clock::time_point> infoClosingAt_;            // (an info view going off)
   BottomScreen::Info closingInfo_ = BottomScreen::Info::None; // (which)
   int shownPlayer_ = -1; // (the other players' view: whose, kept while it goes off)
-  std::optional<Clock::time_point> keepDealtAt_; // (your two cards dealt: since)
+  std::optional<Clock::time_point> keepDealtAt_;    // (your two cards dealt: since)
+  std::optional<Clock::time_point> outlineMovedAt_; // (the turn's outline moving: since)
+  int outlineFrom_ = 0;                             // (from this player's row)
   bool heldForInfo_ = false;
   std::array<Scene::Texture, CosmicHex::Art::kCards> cardPictures_{};
   std::array<Scene::Texture, CosmicHex::kResources> resourcePictures_{};

@@ -14,6 +14,7 @@
 
 #include <ScratchPadd/Scene/Types.hpp>
 
+#include <optional>
 #include <vector>
 
 namespace CosmicHex::Handheld::PointsBars {
@@ -35,8 +36,11 @@ struct Bar {
 
 // The rectangles for `state` on a screen `screenWidth` wide: the outline's
 // four sides first, then the dashes (a player past the target shows the
-// target's worth)
-std::vector<Bar> of(const State &state, int screenWidth);
+// target's worth). The outline is round the turn's row, or at `outlineRow`
+// when given: a row, or part way between two, as it moves from one
+// player's row to the next when a turn ends (the user's)
+std::vector<Bar> of(const State &state, int screenWidth,
+                    std::optional<float> outlineRow = std::nullopt);
 
 // How far down the screen they reach, for what goes under them
 float bottom(int players);
