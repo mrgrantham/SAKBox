@@ -73,6 +73,8 @@ Box resourceBox(int width, int r, int cardWidth, int cardHeight) {
           static_cast<float>(cardHeight)};
 }
 
+constexpr int kMostCardsShown = 16;
+
 std::string_view nameOfPlayer(int player) {
   static constexpr std::array<std::string_view, kMaxPlayers> kNames{"P1", "P2", "P3", "P4"};
   return kNames[static_cast<std::size_t>(player)];
@@ -175,7 +177,7 @@ std::optional<Touch> buildTouch(int width, std::size_t rows, int x, int y) {
 
 void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
                    const std::vector<Resource> &picked, const Resources &held, bool canGoBack,
-                   CardSprites &cards) {
+                   CardSprites &cards, int focus) {
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
   canvas.text(8 * k, 8 * k, choice.title, kWords);
@@ -193,6 +195,8 @@ void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
                      kChosen, 2);
     canvas.textCentred(box.x + box.w / 2, box.y + box.h + 9 * k,
                        std::to_string(held[static_cast<std::size_t>(r)]) + " held", kDim);
+    if (r == focus)
+      canvas.fillRect(box.x + 4 * k, box.y + box.h + 16 * k, box.w - 8 * k, 2 * k, kWords);
   }
   if (canGoBack)
     button(canvas, backBox(canvas.width()), "Back", kRow, kEdge);
@@ -213,7 +217,7 @@ std::optional<Touch> resourcesTouch(int width, int x, int y) {
   return std::nullopt;
 }
 
-void drawPlayers(Canvas &canvas, const Pickers::PlayerChoice &choice, int chosen,
+void drawPlayers(Canvas &canvas, const Pickers::PlayerChoice &choice, int chosen, int chosenCard,
                  Art::CardBack backs, CardSprites &cards) {
   const float k = scaleOf(canvas);
   canvas.clear(kBackground);
@@ -245,20 +249,35 @@ void drawPlayers(Canvas &canvas, const Pickers::PlayerChoice &choice, int chosen
                 {playerColour.r, playerColour.g, playerColour.b, 255}, 1.5f);
     canvas.text(box.x + 8 * k, box.y + 32 * k,
                 std::to_string(option.cards) + (option.cards == 1 ? " card" : " cards"), kWords);
-    for (int c = 0; c < std::min(option.cards, 16); ++c)
-      canvas.blend(half, bw, bh, static_cast<int>(box.x + 72 * k + static_cast<float>(c) * 9 * k),
-                   static_cast<int>(box.y + (box.h - static_cast<float>(bh)) / 2));
+    const int shown = std::min(option.cards, kMostCardsShown);
+    for (int c = 0; c < shown; ++c) {
+      const bool up = isChosen && c == chosenCard;
+      const float cx = box.x + 72 * k + static_cast<float>(c) * 9 * k;
+      const float cy = box.y + (box.h - static_cast<float>(bh)) / 2 - (up ? 7 * k : 0);
+      canvas.blend(half, bw, bh, static_cast<int>(cx), static_cast<int>(cy));
+      if (up)
+        canvas.outline(cx - 1, cy - 1, static_cast<float>(bw) + 2, static_cast<float>(bh) + 2,
+                       kChosen);
+    }
   }
-  if (chosen >= 0)
+  if (chosen >= 0 && chosenCard >= 0)
     button(canvas, confirmBox(canvas.width()), "Steal", kConfirm, kConfirmEdge);
 }
 
 std::optional<Touch> playersTouch(int width, std::size_t players, int x, int y) {
   if (confirmBox(width).contains(x, y))
     return Touch{Touch::What::Confirm};
-  for (std::size_t i = 0; i < players; ++i)
-    if (playerRowBox(width, i).contains(x, y))
-      return Touch{Touch::What::Item, static_cast<int>(i)};
+  const float k = scaleOf(width);
+  for (std::size_t i = 0; i < players; ++i) {
+    const Box box = playerRowBox(width, i);
+    if (!box.contains(x, y))
+      continue;
+    // The card under the touch: the last whose left edge is left of it
+    // (they overlap, each 9 pixels on from the last)
+    const float along = (static_cast<float>(x) - (box.x + 72 * k)) / (9 * k);
+    const int card = along < 0 ? 0 : static_cast<int>(along);
+    return Touch{Touch::What::Item, static_cast<int>(i), card};
+  }
   return std::nullopt;
 }
 

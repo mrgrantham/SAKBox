@@ -147,3 +147,31 @@ TEST(BottomScreenTest, TouchAShipThenWhereItGoes) {
     EXPECT_EQ(moved.play->b, move->b);
   }
 }
+
+// The D-pad, A and B on a choosing screen (round 101's question): the home's
+// pay picked with Right, Right, A and taken with A; B leaves the build screen
+TEST(BottomScreenTest, TheButtonsWorkTheChoosingScreens) {
+  const State state = playUntil([](const State &s) {
+    return s.phase == Phase::HomeIncome && Game::currentPlayer(s) != GameBots::kDealer;
+  });
+  ASSERT_EQ(state.phase, Phase::HomeIncome);
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, Game::legalActions(state), true);
+  using Key = BottomScreen::Key;
+  screen.press(Key::Right);
+  screen.press(Key::Right);
+  EXPECT_FALSE(screen.press(Key::Confirm).play.has_value()); // (picked)
+  const auto taken = screen.press(Key::Confirm);
+  ASSERT_TRUE(taken.play.has_value());
+  if (taken.play) {
+    EXPECT_EQ(taken.play->a, static_cast<int>(Resource::Fuel));
+  }
+  // On the board the buttons are the app's
+  EXPECT_FALSE(screen.press(Key::Down).used);
+  const State main = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  screen.update(main, Game::legalActions(main), true);
+  screen.tap(240, 10, std::nullopt);
+  ASSERT_EQ(screen.mode(), Mode::Build);
+  EXPECT_TRUE(screen.press(Key::Back).used);
+  EXPECT_EQ(screen.mode(), Mode::Board);
+}

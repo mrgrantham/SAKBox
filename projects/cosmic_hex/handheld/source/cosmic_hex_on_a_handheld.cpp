@@ -955,6 +955,36 @@ private:
     }
     if (!latest_ || !latest_->yourMove)
       return;
+    // A choosing screen open on the bottom: its buttons (BottomScreen::press:
+    // the D-pad moves, A picks then confirms, B goes back)
+    if (bottomScreen_) {
+      using Key = BottomScreen::Key;
+      std::optional<Key> key;
+      if (pressed.pressed(Button::Up))
+        key = Key::Up;
+      else if (pressed.pressed(Button::Down))
+        key = Key::Down;
+      else if (pressed.pressed(Button::Left))
+        key = Key::Left;
+      else if (pressed.pressed(Button::Right))
+        key = Key::Right;
+      else if (pressed.pressed(Button::FaceRight))
+        key = Key::Confirm;
+      else if (pressed.pressed(Button::FaceBottom))
+        key = Key::Back;
+      if (key) {
+        const BottomScreen::Outcome outcome = bottomScreen_->press(*key);
+        if (outcome.play) {
+          send(PlayMove{*outcome.play});
+          latest_->yourMove = false;
+          selected_.reset();
+        }
+        if (outcome.used) {
+          bottomDirty_ = true;
+          return;
+        }
+      }
+    }
     const std::vector<std::size_t> shown = movesShown();
     if (pressed.pressed(Button::Down) && cursor_ + 1 < shown.size())
       ++cursor_;

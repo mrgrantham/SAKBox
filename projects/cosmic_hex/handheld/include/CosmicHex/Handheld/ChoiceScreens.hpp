@@ -51,6 +51,7 @@ namespace ChoiceScreens {
 struct Touch {
   enum class What { Item, Back, Confirm } what;
   int item = -1;
+  int card = -1; // (the player picker: which of their cards)
 };
 
 // The build screen: a row each (Ship, Station, Colony, Card) with its cost
@@ -63,14 +64,17 @@ std::optional<Touch> buildTouch(int width, std::size_t rows, int x, int y);
 // The resource picker: the five resource cards with how many you hold
 // under each, those picked outlined (a resource picked twice, twice);
 // Take once enough are picked, Back when it can be left
+// (`focus`: the D-pad's card, underlined; -1 for none)
 void drawResources(Canvas &canvas, const Pickers::ResourceChoice &choice,
                    const std::vector<Resource> &picked, const Resources &held, bool canGoBack,
-                   CardSprites &cards);
+                   CardSprites &cards, int focus = -1);
 std::optional<Touch> resourcesTouch(int width, int x, int y);
 
 // The player picker: a row for each player the rules allow, their name in
-// their colour and their cards face down; Steal once one is chosen
-void drawPlayers(Canvas &canvas, const Pickers::PlayerChoice &choice, int chosen,
+// their colour and their cards face down; the card tapped slides up (round
+// 101, the user's: for the feel of picking one; which resource it is stays
+// the rules' draw) and Steal shows
+void drawPlayers(Canvas &canvas, const Pickers::PlayerChoice &choice, int chosen, int chosenCard,
                  Art::CardBack backs, CardSprites &cards);
 std::optional<Touch> playersTouch(int width, std::size_t players, int x, int y);
 

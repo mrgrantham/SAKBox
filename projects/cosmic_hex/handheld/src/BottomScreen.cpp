@@ -133,6 +133,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
           if (auto choice = Pickers::stealChoiceOf(state_, legal_, static_cast<int>(p))) {
             players_ = std::move(choice);
             playerChosen_ = -1;
+            cardChosen_ = -1;
             mode_ = Mode::Players;
             return {std::nullopt, true};
           }
@@ -189,7 +190,85 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
       return {std::nullopt, true};
     if (touch->what == What::Item) {
       playerChosen_ = touch->item;
-    } else if (touch->what == What::Confirm && playerChosen_ >= 0) {
+      const int cards = players_->options[static_cast<std::size_t>(playerChosen_)].cards;
+      cardChosen_ = std::clamp(touch->card, 0, std::max(0, std::min(cards, 16) - 1));
+    } else if (touch->what == What::Confirm && playerChosen_ >= 0 && cardChosen_ >= 0) {
+      mode_ = Mode::Board;
+      return {players_->options[static_cast<std::size_t>(playerChosen_)].action, true};
+    }
+    return {std::nullopt, true};
+  }
+  }
+  return {};
+}
+
+BottomScreen::Outcome BottomScreen::press(Key key) {
+  const auto step = [](int at, int by, int count) {
+    return count <= 0 ? -1 : std::clamp(at + by, 0, count - 1);
+  };
+  switch (mode_) {
+  case Mode::Board:
+    return {};
+  case Mode::Placing:
+    if (key != Key::Back)
+      return {};
+    mode_ = Mode::Board;
+    return {std::nullopt, true};
+  case Mode::Build: {
+    const int count = static_cast<int>(rows_.size());
+    if (key == Key::Up || key == Key::Down) {
+      buildChosen_ = buildChosen_ < 0 ? 0 : step(buildChosen_, key == Key::Up ? -1 : 1, count);
+    } else if (key == Key::Back) {
+      mode_ = Mode::Board;
+    } else if (key == Key::Confirm && buildChosen_ < 0) {
+      buildChosen_ = 0;
+    } else if (key == Key::Confirm) {
+      // (as touching Build: the same outcome)
+      const float k = static_cast<float>(width_) / 256;
+      return tap(static_cast<int>(220 * k), static_cast<int>(178 * k), std::nullopt);
+    }
+    return {std::nullopt, true};
+  }
+  case Mode::Resources: {
+    if (!resources_)
+      return {std::nullopt, true};
+    if (key == Key::Left || key == Key::Right) {
+      resourceFocus_ = step(resourceFocus_, key == Key::Left ? -1 : 1, kResources);
+    } else if (key == Key::Back && resourcesCanGoBack_) {
+      mode_ = Mode::Board;
+    } else if (key == Key::Confirm) {
+      // A picks the card in focus; once enough are picked, A takes them
+      if (static_cast<int>(picked_.size()) == resources_->howMany) {
+        if (const auto action = resources_->actionFor(picked_)) {
+          mode_ = Mode::Board;
+          return {*action, true};
+        }
+      }
+      const auto resource = static_cast<Resource>(resourceFocus_);
+      if (resources_->offers(resource)) {
+        if (static_cast<int>(picked_.size()) >= resources_->howMany)
+          picked_.clear();
+        picked_.push_back(resource);
+      }
+    }
+    return {std::nullopt, true};
+  }
+  case Mode::Players: {
+    if (!players_)
+      return {std::nullopt, true};
+    const int count = static_cast<int>(players_->options.size());
+    if (playerChosen_ < 0) {
+      playerChosen_ = 0;
+      cardChosen_ = 0;
+    }
+    const int cards =
+        std::max(1, std::min(players_->options[static_cast<std::size_t>(playerChosen_)].cards, 16));
+    if (key == Key::Up || key == Key::Down) {
+      playerChosen_ = step(playerChosen_, key == Key::Up ? -1 : 1, count);
+      cardChosen_ = 0;
+    } else if (key == Key::Left || key == Key::Right) {
+      cardChosen_ = step(cardChosen_, key == Key::Left ? -1 : 1, cards);
+    } else if (key == Key::Confirm) {
       mode_ = Mode::Board;
       return {players_->options[static_cast<std::size_t>(playerChosen_)].action, true};
     }
@@ -226,11 +305,12 @@ void BottomScreen::draw(Canvas &canvas, const std::vector<Canvas::Colour> &board
     if (resources_)
       ChoiceScreens::drawResources(canvas, *resources_, picked_,
                                    state_.player[static_cast<std::size_t>(state_.turn)].resources,
-                                   resourcesCanGoBack_, cards_);
+                                   resourcesCanGoBack_, cards_, resourceFocus_);
     return;
   case Mode::Players:
     if (players_)
-      ChoiceScreens::drawPlayers(canvas, *players_, playerChosen_, Art::CardBack::Rings, cards_);
+      ChoiceScreens::drawPlayers(canvas, *players_, playerChosen_, cardChosen_,
+                                 Art::CardBack::Rings, cards_);
     return;
   case Mode::Board:
   case Mode::Placing:

@@ -109,7 +109,7 @@ TEST(ChoiceScreensTest, ThePlayerPicker) {
       3, {{1, 5, {Action::Kind::MoveBlockade, 3, 1}}, {3, 9, {Action::Kind::MoveBlockade, 3, 3}}}};
   Canvas canvas(256, 192);
   CardSprites cards(256);
-  ChoiceScreens::drawPlayers(canvas, choice, 0, Art::CardBack::Rings, cards);
+  ChoiceScreens::drawPlayers(canvas, choice, 0, 2, Art::CardBack::Rings, cards);
   writeOut(canvas, "players_256.ppm");
   const auto first = ChoiceScreens::playersTouch(canvas.width(), 2, 128, 60);
   const auto second = ChoiceScreens::playersTouch(canvas.width(), 2, 128, 120);
@@ -117,5 +117,11 @@ TEST(ChoiceScreensTest, ThePlayerPicker) {
   if (first && second) {
     EXPECT_EQ(first->item, 0);
     EXPECT_EQ(second->item, 1);
+  }
+  // Which card: each 9 pixels on from the last, from 80 across
+  const auto third = ChoiceScreens::playersTouch(canvas.width(), 2, 80 + 2 * 9 + 3, 60);
+  ASSERT_TRUE(third.has_value());
+  if (third) {
+    EXPECT_EQ(third->card, 2);
   }
 }

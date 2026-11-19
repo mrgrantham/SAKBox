@@ -48,6 +48,13 @@ public:
   // A tap at (x, y), with the board's spot under it in the board modes
   Outcome tap(int x, int y, const std::optional<BoardPicture::Spot> &spot);
 
+  // The buttons on a choosing screen (round 101, the user's question: the
+  // D-pad moves between its rows, cards or players, A picks and then
+  // confirms, B goes back). On the board they're the app's (its list of
+  // moves), except B, which puts down what's being placed
+  enum class Key { Up, Down, Left, Right, Confirm, Back };
+  Outcome press(Key key);
+
   Mode mode() const { return mode_; }
   // In Placing: the corners where the chosen build, or the ship touched,
   // may go, to be marked
@@ -82,7 +89,8 @@ private:
   std::vector<Resource> picked_;
   bool resourcesCanGoBack_ = false;
   std::optional<Pickers::PlayerChoice> players_;
-  int playerChosen_ = -1;
+  int playerChosen_ = -1, cardChosen_ = -1;
+  int resourceFocus_ = 0; // (the D-pad's card on the resource picker)
   std::string message_;
   std::optional<BoardButtons::Button> flash_;
   CardSprites cards_;
