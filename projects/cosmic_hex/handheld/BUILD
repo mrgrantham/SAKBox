@@ -19,6 +19,7 @@ cc_library(
         "src/ChoiceScreens.cpp",
         "src/ButtonMenu.cpp",
         "src/DicePieces.cpp",
+        "src/Discovery.cpp",
         "src/MenuPicture.cpp",
         "src/MoveSpots.cpp",
         "src/OtherPlayers.cpp",
@@ -44,6 +45,7 @@ cc_library(
         "include/CosmicHex/Handheld/ChoiceScreens.hpp",
         "include/CosmicHex/Handheld/ButtonMenu.hpp",
         "include/CosmicHex/Handheld/DicePieces.hpp",
+        "include/CosmicHex/Handheld/Discovery.hpp",
         "include/CosmicHex/Handheld/MenuPicture.hpp",
         "include/CosmicHex/Handheld/MoveSpots.hpp",
         "include/CosmicHex/Handheld/Pickers.hpp",
@@ -305,6 +307,16 @@ cc_test(
     name = "TradeRoom_test",
     size = "small",
     srcs = ["tests/TradeRoom_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "Discovery_test",
+    size = "small",
+    srcs = ["tests/Discovery_test.cpp"],
     deps = [
         ":handheld",
         "@gtest//:gtest_main",

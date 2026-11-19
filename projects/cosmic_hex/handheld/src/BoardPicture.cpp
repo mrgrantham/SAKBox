@@ -216,6 +216,8 @@ namespace {
 constexpr Colour kGrid{58, 74, 104, 255};
 constexpr Colour kHighlight = Palette::kHighlight;
 constexpr Colour kDark{10, 14, 24, 255};
+// A face fading in: in this many steps (each drawn once)
+constexpr int kRevealSteps = 8;
 
 int rounded(float v) { return static_cast<int>(std::lround(v)); }
 
@@ -259,7 +261,8 @@ void BoardPicture::blendSpriteOf(const std::vector<Colour> &own, const std::vect
     const int from = (y - area.y) * wholeSize / ownSize;
     for (int x = std::max(area.x, clip_.x); x < std::min(area.x + ownSize, clip_.x + clip_.width);
          ++x) {
-      const Colour over = whole[indexOf((x - area.x) * wholeSize / ownSize, from, wholeSize)];
+      Colour over = whole[indexOf((x - area.x) * wholeSize / ownSize, from, wholeSize)];
+      over.a = static_cast<std::uint8_t>(over.a * fade_ / 255);
       if (over.a == 0)
         continue;
       Colour &under = pixels_[indexOf(x, y, width_)];
@@ -275,7 +278,8 @@ void BoardPicture::blendSprite(const std::vector<Colour> &sprite, int size, HexG
   for (int y = std::max(area.y, clip_.y); y < std::min(area.y + size, clip_.y + clip_.height); ++y)
     for (int x = std::max(area.x, clip_.x); x < std::min(area.x + size, clip_.x + clip_.width);
          ++x) {
-      const Colour over = sprite[indexOf(x - area.x, y - area.y, size)];
+      Colour over = sprite[indexOf(x - area.x, y - area.y, size)];
+      over.a = static_cast<std::uint8_t>(over.a * fade_ / 255);
       if (over.a == 0)
         continue;
       Colour &under = pixels_[indexOf(x, y, width_)];
@@ -375,11 +379,28 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
         zoom_ == 1 || (zoomedFaces && !zoomed_.faces[static_cast<std::size_t>(face)].empty());
     return std::array<std::int16_t, 2>{static_cast<std::int16_t>(face), sharp};
   };
+  // A tile turned over, still being shown on the top screen: face down,
+  // then its face fading in (eight steps: each a look of its own)
+  const auto revealStep = [&](Hex hex) {
+    if (!marks.revealing || marks.revealing->hex != hex)
+      return kRevealSteps;
+    return static_cast<int>(std::clamp(marks.revealing->shown, 0.0f, 1.0f) * kRevealSteps);
+  };
+  const auto pushFace = [&](Hex hex, Art::Face down, Art::Face face, Area area) {
+    const int step = revealStep(hex);
+    if (step < kRevealSteps)
+      out.push_back({Piece::Kind::Face, on(hex), faceLook(down), area});
+    if (step > 0) {
+      auto look = faceLook(face);
+      look[1] = static_cast<std::int16_t>(look[1] + 2 * (step % kRevealSteps)); // (0: opaque)
+      out.push_back({Piece::Kind::Face, on(hex), look, area});
+    }
+  };
   for (const Planet &planet : state.planets) {
     const HexGrid::Point centre = where(planet.hex);
-    out.push_back({Piece::Kind::Face, on(planet.hex), faceLook(faceOf(planet)),
-                   spriteArea(centre, facesSize())});
-    if (const int number = chipOf(planet); number > 0) {
+    pushFace(planet.hex, Art::Face::PlanetFaceDown, faceOf(planet),
+             spriteArea(centre, facesSize()));
+    if (const int number = chipOf(planet); number > 0 && revealStep(planet.hex) == kRevealSteps) {
       const bool sharp =
           zoom_ == 1 || (zoomedChips && !zoomed_.chips[static_cast<std::size_t>(number)].empty());
       out.push_back({Piece::Kind::Chip,
@@ -389,8 +410,8 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
     }
   }
   for (const ZoneSite &site : state.zone)
-    out.push_back({Piece::Kind::Face, on(site.hex), faceLook(faceOf(site)),
-                   spriteArea(where(site.hex), facesSize())});
+    pushFace(site.hex, Art::Face::FindFaceDown, faceOf(site),
+             spriteArea(where(site.hex), facesSize()));
   for (const Station &station : state.stations) {
     const HexGrid::Point c = where(station.at);
     const float half = station.colony ? 0.26f * s : 0.18f * s;
@@ -461,11 +482,15 @@ void BoardPicture::drawPiece(const Piece &piece) {
   switch (piece.kind) {
   case Piece::Kind::Face: {
     const auto face = static_cast<std::size_t>(piece.look[0]);
+    // (fading in: listPieces' step, 0 for opaque)
+    const int step = piece.look[1] / 2;
+    fade_ = static_cast<std::uint8_t>(step == 0 ? 255 : 255 * step / kRevealSteps);
     if (zoom_ == 1)
       blendSprite(whole_.faces[face], whole_.facesSize, where(hex));
     else
       blendSpriteOf(zoomed_.facesSize == facesSize() ? zoomed_.faces[face] : kNoSprite,
                     whole_.faces[face], facesSize(), whole_.facesSize, where(hex));
+    fade_ = 255;
     break;
   }
   case Piece::Kind::Chip: {

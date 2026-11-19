@@ -97,6 +97,14 @@ public:
       bool ship = false; // (else a colony)
     };
     std::optional<Preview> preview;
+    // A tile just turned over that the map doesn't show yet: face down
+    // (shown 0), its face fading in over it (to 1, as it is); the top
+    // screen shows it turning over first (Discovery)
+    struct Revealing {
+      Hex hex;
+      float shown = 0;
+    };
+    std::optional<Revealing> revealing;
   };
   // An area of the picture, in pixels
   struct Area {
@@ -157,6 +165,7 @@ private:
   void drawArea(Area area);
   static Area triangleArea(HexGrid::Point a, HexGrid::Point b, HexGrid::Point c);
 
+  std::uint8_t fade_ = 255; // (blendSprite's opacity: a face fading in)
   void blendSprite(const std::vector<ScratchPadd::Scene::Colour> &sprite, int size,
                    HexGrid::Point centre);
   void fillRect(float x, float y, float w, float h, ScratchPadd::Scene::Colour colour);

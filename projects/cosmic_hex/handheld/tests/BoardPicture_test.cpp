@@ -249,3 +249,36 @@ TEST(BoardPictureTest, ZoomingStopsWithinTheBudget) {
   threeDs.setZoomBudget(kThreeDsProfile.boardZoomBytes);
   EXPECT_EQ(threeDs.mostZoom(), BoardPicture::kMostZoom);
 }
+
+// A tile turned over while the top screen shows it (Discovery): face down
+// until then, the same picture as before it turned; half way, between; at
+// the end, the same as it is
+TEST(BoardPictureTest, ATileTurnedOverFadesIn) {
+  const State before = aGame();
+  State after = before;
+  std::size_t i = 0;
+  while (after.planets[i].flipped || after.planets[i].homeOf >= 0)
+    ++i;
+  after.planets[i].flipped = true;
+  after.planets[i].kind = PlanetKind::GasGiant;
+  after.planets[i].number = 6;
+  const Hex hex = after.planets[i].hex;
+  const auto drawn = [](const State &state, std::optional<float> shown) {
+    BoardPicture picture(256, 192);
+    BoardPicture::Marks marks;
+    if (shown)
+      marks.revealing = BoardPicture::Marks::Revealing{.hex = Hex{0, 0}, .shown = *shown};
+    picture.draw(state, marks);
+    return picture.pixels();
+  };
+  const auto drawnRevealing = [&](float shown) {
+    BoardPicture picture(256, 192);
+    picture.draw(after, {.revealing = BoardPicture::Marks::Revealing{.hex = hex, .shown = shown}});
+    return picture.pixels();
+  };
+  EXPECT_EQ(drawnRevealing(0), drawn(before, std::nullopt));
+  EXPECT_EQ(drawnRevealing(1), drawn(after, std::nullopt));
+  const auto half = drawnRevealing(0.5f);
+  EXPECT_NE(half, drawn(before, std::nullopt));
+  EXPECT_NE(half, drawn(after, std::nullopt));
+}
