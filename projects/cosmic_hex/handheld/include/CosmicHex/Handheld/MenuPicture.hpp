@@ -10,9 +10,11 @@
 
 #include <CosmicHex/Handheld/ButtonMenu.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
+#include <ScratchPadd/Canvas/Canvas.hpp>
 
 #include <ScratchPadd/Scene/Types.hpp>
 
+#include <span>
 #include <string>
 #include <vector>
 
@@ -27,17 +29,15 @@ public:
 
   void draw(const StartMenu &menu);
   void draw(const ButtonMenu &menu); // (the title's and the pause menu's buttons)
-  const std::vector<ScratchPadd::Scene::Colour> &pixels() const { return pixels_; }
+  std::span<const ScratchPadd::Scene::Colour> pixels() const { return canvas_.pixels(); }
 
 private:
-  void fillRect(float x, float y, float w, float h, ScratchPadd::Scene::Colour colour);
-  void outline(float x, float y, float w, float h, ScratchPadd::Scene::Colour colour);
   // `text` centred in a box, or from its left when `centred` is false
   void text(const std::string &text, float x, float y, float w, float h, float scale,
             ScratchPadd::Scene::Colour colour, bool centred = true);
 
   int width_, height_;
-  std::vector<ScratchPadd::Scene::Colour> pixels_;
+  ScratchPadd::Canvas canvas_;
 };
 
 } // namespace CosmicHex::Handheld

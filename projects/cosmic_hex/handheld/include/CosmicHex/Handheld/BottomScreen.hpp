@@ -21,6 +21,8 @@
 #include <CosmicHex/Handheld/BuildMenu.hpp>
 #include <CosmicHex/Handheld/ChoiceScreens.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
+
+#include <ScratchPadd/Buttons/Buttons.hpp>
 #include <ScratchPadd/Canvas/Canvas.hpp>
 
 #include <array>
@@ -78,8 +80,8 @@ public:
   // nothing gave no sign they'd landed): the button flashes and a short
   // message says what's happening or why not. The app clears it after a
   // moment (clearFeedback), and redraws
-  const std::string &message() const { return message_; }
-  bool showingFeedback() const { return !message_.empty() || flash_.has_value(); }
+  const std::string &message() const { return buttons_.message(); }
+  bool showingFeedback() const { return buttons_.showingFeedback(); }
   void clearFeedback();
 
   // Whether a choosing screen covers the board (else the board shows, with
@@ -119,8 +121,10 @@ private:
   int playerChosen_ = -1, cardChosen_ = -1;
   int resourceFocus_ = 0; // (the D-pad's card on the resource picker)
   Info info_ = Info::None;
-  std::string message_;
-  std::optional<BoardButtons::Button> flash_;
+  // The board's buttons (ScratchPadd's Buttons: placed by BoardButtons'
+  // layout, their flash and message when tapped)
+  ScratchPadd::Buttons::Panel buttons_;
+  void layOutButtons(); // (buttons_ from the layout, for the situation now)
   CardSprites cards_;
   std::array<std::vector<Canvas::Colour>, Art::kIcons> icons_;
   int iconSize_ = 0;

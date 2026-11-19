@@ -1216,8 +1216,12 @@ private:
   // it, B shows them all again
   void handleButtons(const Input::Edges &pressed, bool zooming = false) {
     using Input::Button;
+    // Confirm and Back by the pad's own convention (Input's menu roles: on
+    // a DS and 3DS, A and B)
+    const Button confirm = lastPad_.buttonFor(Input::Role::Confirm);
+    const Button back = lastPad_.buttonFor(Input::Role::Back);
     // (A: on from who goes first)
-    if (firstRollShownAt_ && pressed.pressed(Button::FaceRight)) {
+    if (firstRollShownAt_ && pressed.pressed(confirm)) {
       endFirstRoll();
       return;
     }
@@ -1228,7 +1232,7 @@ private:
       std::optional<std::size_t> chosen;
       for (const auto &[button, key] : {std::pair{Button::Up, ButtonMenu::Key::Up},
                                         std::pair{Button::Down, ButtonMenu::Key::Down},
-                                        std::pair{Button::FaceRight, ButtonMenu::Key::Confirm}})
+                                        std::pair{confirm, ButtonMenu::Key::Confirm}})
         if (pressed.pressed(button)) {
           chosen = menu.press(key);
           bottomDirty_ = true;
@@ -1243,7 +1247,7 @@ private:
       for (const auto &[button, key] :
            {std::pair{Button::Up, Key::Up}, std::pair{Button::Down, Key::Down},
             std::pair{Button::Left, Key::Left}, std::pair{Button::Right, Key::Right},
-            std::pair{Button::FaceRight, Key::Confirm}, std::pair{Button::FaceBottom, Key::Back}})
+            std::pair{confirm, Key::Confirm}, std::pair{back, Key::Back}})
         if (pressed.pressed(button) && outcome == StartMenu::Outcome::None) {
           if (key == Key::Left || key == Key::Right)
             slideWay_ = key == Key::Right ? 1 : -1;
@@ -1255,19 +1259,19 @@ private:
       return;
     }
     case ScreenFlow::Screen::Won:
-      if (pressed.pressed(Button::FaceRight) || pressed.pressed(Button::FaceBottom))
+      if (pressed.pressed(confirm) || pressed.pressed(back))
         apply(flow_.on(ScreenFlow::Event::Continue));
       return;
     case ScreenFlow::Screen::Game:
       break;
     }
     if (mode_ == Mode::Watching) {
-      if (pressed.pressed(Button::FaceRight))
+      if (pressed.pressed(confirm))
         send(TogglePause{});
       return;
     }
     // A throws your dice when your roll waits (as Roll does)
-    if (latest_ && yourRollWaits(*latest_) && pressed.pressed(Button::FaceRight)) {
+    if (latest_ && yourRollWaits(*latest_) && pressed.pressed(confirm)) {
       rollAsked_ = true;
       return;
     }
@@ -1286,9 +1290,9 @@ private:
         key = Key::Left;
       else if (pressed.pressed(Button::Right) || (!zooming && pressed.pressed(Button::R)))
         key = Key::Right;
-      else if (pressed.pressed(Button::FaceRight))
+      else if (pressed.pressed(confirm))
         key = Key::Confirm;
-      else if (pressed.pressed(Button::FaceBottom))
+      else if (pressed.pressed(back))
         key = Key::Back;
       if (key) {
         const BottomScreen::Outcome outcome = bottomScreen_->press(*key);
@@ -1308,12 +1312,12 @@ private:
       ++cursor_;
     if (pressed.pressed(Button::Up) && cursor_ > 0)
       --cursor_;
-    if (pressed.pressed(Button::FaceBottom)) {
+    if (pressed.pressed(back)) {
       selected_.reset();
       cursor_ = 0;
       bottomDirty_ = true;
     }
-    if (pressed.pressed(Button::FaceRight) && cursor_ < shown.size()) {
+    if (pressed.pressed(confirm) && cursor_ < shown.size()) {
       send(PlayMove{latest_->moves[shown[cursor_]]});
       latest_->yourMove = false; // (until the game says it's yours again)
       selected_.reset();
@@ -1515,19 +1519,19 @@ private:
     // and no buffers of their own: the DS has neither the hardware nor the
     // memory)
     const float down = descent();
-    const std::vector<Scene::Colour> *from = nullptr;
+    std::optional<std::span<const Scene::Colour>> from;
     int weight = 256; // (of the map, out of 256)
     if (fadeFromMenu_ && down < 1 && menuPicture_.pixels().size() == drawn.size()) {
-      from = &menuPicture_.pixels();
+      from = menuPicture_.pixels();
       weight = static_cast<int>(down * 256);
       bottomDirty_ = true; // (and again next frame, until it's done)
     } else if (fadeFromMenu_ && down >= 1) {
       fadeFromMenu_ = false;
       bottomDirty_ = true; // (once more: the map as the game is now)
     }
-    fading_ = from != nullptr;
+    fading_ = from.has_value();
     // The title fading in from black (the menu below it too)
-    const bool fromBlack = !from && onAMenuScreen() && titleFadedIn() < 1;
+    const bool fromBlack = !from.has_value() && onAMenuScreen() && titleFadedIn() < 1;
     if (fromBlack) {
       weight = static_cast<int>(titleFadedIn() * 256);
       bottomDirty_ = true; // (and again next frame, until it's done)

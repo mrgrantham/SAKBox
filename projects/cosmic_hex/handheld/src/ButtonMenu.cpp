@@ -36,16 +36,30 @@ std::vector<ButtonMenu::Button> ButtonMenu::buttons(int width, int height) const
 }
 
 std::optional<std::size_t> ButtonMenu::touch(int x, int y, int width, int height) {
-  const std::vector<Button> all = buttons(width, height);
-  const float fx = static_cast<float>(x), fy = static_cast<float>(y);
-  for (std::size_t i = 0; i < all.size(); ++i) {
-    const Button &b = all[i];
-    if (fx >= b.x && fx < b.x + b.width && fy >= b.y && fy < b.y + b.height) {
-      focus_ = i;
-      return i;
-    }
+  const std::optional<int> touched = panel(width, height, std::nullopt).at(x, y);
+  if (!touched)
+    return std::nullopt;
+  focus_ = static_cast<std::size_t>(*touched);
+  return focus_;
+}
+
+ScratchPadd::Buttons::Panel
+ButtonMenu::panel(int width, int height,
+                  std::optional<ScratchPadd::Buttons::Colour> firstFace) const {
+  std::vector<ScratchPadd::Buttons::Button> out;
+  const std::vector<Button> places = buttons(width, height);
+  for (std::size_t i = 0; i < places.size(); ++i) {
+    const Button &b = places[i];
+    out.push_back({.id = static_cast<int>(i),
+                   .area = {b.x, b.y, b.width, b.height},
+                   .label = labels_[i],
+                   .face = i == 0 ? firstFace : std::nullopt});
   }
-  return std::nullopt;
+  ScratchPadd::Buttons::Panel panel;
+  panel.set(std::move(out));
+  if (!labels_.empty())
+    panel.setFocus(static_cast<int>(focus_));
+  return panel;
 }
 
 } // namespace CosmicHex::Handheld

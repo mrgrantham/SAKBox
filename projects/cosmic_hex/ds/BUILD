@@ -10,6 +10,7 @@ SOURCES = {
     "//projects/scratchpadd/memory_stats:sources": "scratchpadd/memory_stats",
     "//projects/scratchpadd/frame_arena:sources": "scratchpadd/frame_arena",
     "//projects/scratchpadd/motion:sources": "scratchpadd/motion",
+    "//projects/scratchpadd/buttons:sources": "scratchpadd/buttons",
     "//projects/scratchpadd/canvas:sources": "scratchpadd/canvas",
     "//projects/scratchpadd/startup_splash:sources": "scratchpadd/startup_splash",
     "//projects/scratchpadd/console_screens:sources": "scratchpadd/console_screens",

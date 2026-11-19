@@ -244,3 +244,26 @@ TEST(InputTest, Keyboard) {
   EXPECT_EQ(reader.read().kind, Kind::None);
   EXPECT_STREQ(nameOf(Key::LeftShift), "Left Shift");
 }
+
+// Menu roles: Nintendo's pads confirm on the right and go back on the
+// bottom; Xbox's, PlayStation's and the keyboard the other way; the options
+// are left and top on all; the swap turns Confirm and Back round; and the
+// prompt names the pad's own button
+TEST(InputTest, MenuRolesFollowEachPadsConvention) {
+  for (const Kind kind : {Kind::Ds, Kind::ThreeDs, Kind::NewThreeDs, Kind::SwitchPro}) {
+    EXPECT_EQ(buttonFor(Role::Confirm, kind), Button::FaceRight);
+    EXPECT_EQ(buttonFor(Role::Back, kind), Button::FaceBottom);
+  }
+  for (const Kind kind : {Kind::Xbox, Kind::PlayStation, Kind::Keyboard, Kind::Other}) {
+    EXPECT_EQ(buttonFor(Role::Confirm, kind), Button::FaceBottom);
+    EXPECT_EQ(buttonFor(Role::Back, kind), Button::FaceRight);
+  }
+  EXPECT_EQ(buttonFor(Role::Option1, Kind::Xbox), Button::FaceLeft);
+  EXPECT_EQ(buttonFor(Role::Option2, Kind::Ds), Button::FaceTop);
+  EXPECT_EQ(buttonFor(Role::Confirm, Kind::PlayStation, true), Button::FaceRight);
+  Gamepad pad;
+  pad.kind = Kind::Ds;
+  EXPECT_STREQ(pad.labelOf(pad.buttonFor(Role::Confirm)), "A");
+  pad.kind = Kind::PlayStation;
+  EXPECT_STREQ(pad.labelOf(pad.buttonFor(Role::Confirm)), "Cross");
+}

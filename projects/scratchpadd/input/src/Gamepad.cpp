@@ -1,5 +1,7 @@
 #include <ScratchPadd/Input/Gamepad.hpp>
 
+#include <utility>
+
 namespace ScratchPadd::Input {
 
 namespace {
@@ -87,6 +89,27 @@ const char *labelOf(Button button, Kind kind) {
 }
 
 const char *Gamepad::labelOf(Button button) const { return Input::labelOf(button, kind); }
+
+Button buttonFor(Role role, Kind kind, bool swapConfirmBack) {
+  // (Nintendo's pads confirm on the right; the rest on the bottom)
+  const bool nintendo = kind == Kind::SwitchPro || kind == Kind::Ds || kind == Kind::ThreeDs ||
+                        kind == Kind::NewThreeDs;
+  Button confirm = nintendo ? Button::FaceRight : Button::FaceBottom;
+  Button back = nintendo ? Button::FaceBottom : Button::FaceRight;
+  if (swapConfirmBack)
+    std::swap(confirm, back);
+  switch (role) {
+  case Role::Confirm:
+    return confirm;
+  case Role::Back:
+    return back;
+  case Role::Option1:
+    return Button::FaceLeft;
+  case Role::Option2:
+    return Button::FaceTop;
+  }
+  return confirm;
+}
 
 Edges::Edges(const Gamepad &before, const Gamepad &now) {
   for (std::size_t b = 0; b < kButtons; ++b) {

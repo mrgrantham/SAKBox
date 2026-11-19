@@ -83,56 +83,54 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   switch (mode_) {
   case Mode::Board:
   case Mode::Placing: {
-    const auto buttons = BoardButtons::layout(width_, height_, situation_);
     // Any button, usable or not: it flashes, and says why when it can't
-    for (const BoardButtons::Place &place : buttons) {
-      if (static_cast<float>(x) < place.x || static_cast<float>(x) >= place.x + place.size ||
-          static_cast<float>(y) < place.y || static_cast<float>(y) >= place.y + place.size)
-        continue;
-      flash_ = place.button;
-      switch (place.button) {
+    layOutButtons();
+    if (const std::optional<int> touched = buttons_.at(x, y)) {
+      const auto button = static_cast<BoardButtons::Button>(*touched);
+      const bool usable = buttons_.find(*touched)->usable;
+      buttons_.flash(*touched);
+      switch (button) {
       case BoardButtons::Button::Build:
         if (yourMove_) {
           mode_ = Mode::Build;
           buildChosen_ = -1;
-          message_.clear();
+          buttons_.say({});
         } else {
-          message_ = "Build: on your turn";
+          buttons_.say("Build: on your turn");
         }
         break;
       case BoardButtons::Button::EndTurn:
         if (startPlacing_) {
           if (!startPlacement_) {
-            message_ = "Touch a marked corner first";
+            buttons_.say("Touch a marked corner first");
             break;
           }
           const Action placed = *startPlacement_;
           startPlacement_.reset();
-          message_.clear();
+          buttons_.say({});
           return {placed, true};
         }
         for (const Action &a : legal_)
           if (a.kind == Kind::EndTurn || a.kind == Kind::EndTrading) {
-            message_.clear();
+            buttons_.say({});
             return {a, true};
           }
         break;
       case BoardButtons::Button::Trade:
-        message_ =
-            place.usable ? "Trade: its screen is next to be built" : "Trade: after your roll";
+        buttons_.say(usable ? "Trade: its screen is next to be built" : "Trade: after your roll");
         break;
       case BoardButtons::Button::ShowResources:
         info_ = info_ == Info::Resources ? Info::None : Info::Resources;
-        message_.clear();
+        buttons_.say({});
         break;
       case BoardButtons::Button::OtherPlayers:
-        message_ = "Other players: not built yet";
+        buttons_.say("Other players: not built yet");
         break;
       case BoardButtons::Button::Cards:
-        message_ = "Cards: not built yet";
+        buttons_.say("Cards: not built yet");
         break;
       case BoardButtons::Button::Roll:
-        message_.clear();
+        buttons_.say({});
         return {std::nullopt, true, true};
       }
       return {std::nullopt, true};
@@ -149,7 +147,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
             else
               startPlacement_ = a;
             situation_.placeChosen = startPlacement_.has_value();
-            message_.clear();
+            buttons_.say({});
             return {std::nullopt, true};
           }
         }
@@ -178,7 +176,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
       if (!moves.empty()) {
         placing_ = std::move(moves);
         mode_ = Mode::Placing;
-        message_.clear();
+        buttons_.say({});
         return {std::nullopt, true};
       }
     }
@@ -346,9 +344,39 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
   return {};
 }
 
-void BottomScreen::clearFeedback() {
-  message_.clear();
-  flash_.reset();
+void BottomScreen::clearFeedback() { buttons_.clearFeedback(); }
+
+void BottomScreen::layOutButtons() {
+  std::vector<ScratchPadd::Buttons::Button> buttons;
+  for (const BoardButtons::Place &place : BoardButtons::layout(width_, height_, situation_)) {
+    // Its icon (art/icons), drawn at the button's size the first time
+    const int icon = static_cast<int>(BoardButtons::iconOf(place.button));
+    const int inner = static_cast<int>(place.size) - 4;
+    if (iconSize_ != inner) {
+      for (auto &sprite : icons_)
+        sprite.clear();
+      iconSize_ = inner;
+    }
+    auto &sprite = icons_[static_cast<std::size_t>(icon)];
+    if (sprite.empty())
+      sprite = recipePixels(Art::iconRecipeOf(static_cast<Art::Icon>(icon)), inner);
+    const bool roll = place.button == BoardButtons::Button::Roll; // (Roll stands out)
+    buttons.push_back({.id = static_cast<int>(place.button),
+                       .area = {place.x, place.y, place.size, place.size},
+                       .icon = &sprite,
+                       .iconSize = inner,
+                       .usable = place.usable,
+                       .face = roll ? std::optional(kRollButton) : std::nullopt,
+                       .edge = roll ? std::optional(kRollEdge) : std::nullopt});
+  }
+  buttons_.set(std::move(buttons));
+  // (a tapped button's message in a band at the bottom; while placing, the
+  // placing's band shows it)
+  const float k = static_cast<float>(width_) / 256;
+  buttons_.setMessageArea(mode_ == Mode::Board ? std::optional(ScratchPadd::Buttons::Area{
+                                                     30 * k, static_cast<float>(height_) - 18 * k,
+                                                     static_cast<float>(width_) - 60 * k, 14 * k})
+                                               : std::nullopt);
 }
 
 std::vector<Corner> BottomScreen::placingCorners() const {
@@ -387,36 +415,14 @@ void BottomScreen::draw(Canvas &canvas) {
 }
 
 void BottomScreen::drawOverBoard(Canvas &canvas) {
-  // The buttons over the board
-  for (const BoardButtons::Place &place : BoardButtons::layout(width_, height_, situation_)) {
-    const bool roll = place.button == BoardButtons::Button::Roll;
-    canvas.fillRect(place.x, place.y, place.size, place.size, roll ? kRollButton : kButton);
-    canvas.outline(place.x, place.y, place.size, place.size, roll ? kRollEdge : kButtonEdge);
-    const int icon = static_cast<int>(BoardButtons::iconOf(place.button));
-    const int inner = static_cast<int>(place.size) - 4;
-    if (iconSize_ != inner) {
-      for (auto &sprite : icons_)
-        sprite.clear();
-      iconSize_ = inner;
-    }
-    auto &sprite = icons_[static_cast<std::size_t>(icon)];
-    if (sprite.empty())
-      sprite = recipePixels(Art::iconRecipeOf(static_cast<Art::Icon>(icon)), inner);
-    canvas.blend(sprite, inner, inner, static_cast<int>(place.x) + 2, static_cast<int>(place.y) + 2,
-                 place.usable ? 1.0f : 0.35f);
-    if (flash_ == place.button)
-      canvas.outline(place.x - 1, place.y - 1, place.size + 2, place.size + 2, kHint, 2);
-  }
-  // A tapped button's message, in a band at the bottom
-  if (!message_.empty() && mode_ == Mode::Board) {
-    const float k = static_cast<float>(width_) / 256;
-    canvas.fillRect(30 * k, static_cast<float>(height_) - 18 * k,
-                    static_cast<float>(width_) - 60 * k, 14 * k, kHintBand);
-    canvas.outline(30 * k, static_cast<float>(height_) - 18 * k,
-                   static_cast<float>(width_) - 60 * k, 14 * k, kHint);
-    canvas.textCentred(static_cast<float>(width_) / 2, static_cast<float>(height_) - 11 * k,
-                       message_, kHint);
-  }
+  // The buttons over the board, and a tapped one's message
+  layOutButtons();
+  buttons_.draw(canvas, {.face = kButton,
+                         .edge = kButtonEdge,
+                         .flash = kHint,
+                         .band = kHintBand,
+                         .message = kHint,
+                         .dimmed = 0.35f});
   if (mode_ == Mode::Placing) {
     const float k = static_cast<float>(width_) / 256;
     // (between the bottom corners' buttons, Roll's and End Turn's)
@@ -427,8 +433,8 @@ void BottomScreen::drawOverBoard(Canvas &canvas) {
       hint = startPlacement_ ? "End Turn: place your colony" : "Home colony: touch a corner";
     else if (startPlacing_)
       hint = startPlacement_ ? "End Turn: place your ship" : "Your ship: touch a corner";
-    if (!message_.empty())
-      hint = message_.c_str(); // (a tapped button's message, in the band's place)
+    if (!buttons_.message().empty())
+      hint = buttons_.message().c_str(); // (a tapped button's message, in the band's place)
     canvas.textCentred(static_cast<float>(width_) / 2, static_cast<float>(height_) - 8 * k, hint,
                        kHint);
   }
@@ -446,7 +452,7 @@ std::vector<BoardPicture::Area> BottomScreen::overBoardAreas() const {
   for (const BoardButtons::Place &place : BoardButtons::layout(width_, height_, situation_))
     out.push_back(area(place.x, place.y, place.size, place.size));
   const float k = static_cast<float>(width_) / 256;
-  if (!message_.empty() && mode_ == Mode::Board)
+  if (!buttons_.message().empty() && mode_ == Mode::Board)
     out.push_back(area(30 * k, static_cast<float>(height_) - 18 * k,
                        static_cast<float>(width_) - 60 * k, 14 * k));
   if (mode_ == Mode::Placing)

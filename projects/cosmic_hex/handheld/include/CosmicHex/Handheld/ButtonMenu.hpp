@@ -7,6 +7,8 @@
 //   if (auto chosen = pause.press(ButtonMenu::Key::Confirm)) ... // its index
 #pragma once
 
+#include <ScratchPadd/Buttons/Buttons.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -35,6 +37,11 @@ public:
   std::vector<Button> buttons(int width, int height) const;
   // A touch at (x, y): the button touched, chosen
   std::optional<std::size_t> touch(int x, int y, int width, int height);
+  // Its buttons as a panel (ScratchPadd's Buttons), each's id its index,
+  // the focus on the focused one; the first's face `firstFace` if given
+  // (the title's Play, the pause menu's Resume), to draw
+  ScratchPadd::Buttons::Panel panel(int width, int height,
+                                    std::optional<ScratchPadd::Buttons::Colour> firstFace) const;
 
 private:
   std::vector<std::string> labels_;

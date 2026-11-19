@@ -81,6 +81,23 @@ struct Touch {
   std::int16_t x = 0, y = 0;
 };
 
+// What a button does in a menu, whatever the pad: Confirm (choose, go on),
+// Back (cancel, go back), and two more for a menu's own (Option1, Option2).
+// Which button plays each is the pad's convention, not its position:
+// Nintendo's Confirm is the right face button (A) and Back the bottom (B);
+// Xbox's and PlayStation's Confirm is the bottom (A, Cross) and Back the
+// right (B, Circle). Option1 is the left face button and Option2 the top on
+// all of them. Gameplay keeps to positions (Button) or the game's own
+// actions (Actions.hpp); menus and their prompts use roles.
+//
+//   if (edges.pressed(Input::buttonFor(Input::Role::Back, pad.kind))) close();
+//   text("{} to confirm", pad.labelOf(Input::buttonFor(Input::Role::Confirm, pad.kind)));
+enum class Role : std::uint8_t { Confirm, Back, Option1, Option2 };
+// The button that plays `role` on `kind`; `swapConfirmBack` the other way
+// round (as older Japanese PlayStation games, or a player's choice). The
+// keyboard follows Xbox's
+Button buttonFor(Role role, Kind kind, bool swapConfirmBack = false);
+
 struct Gamepad {
   Kind kind = Kind::None;
   std::uint32_t features = 0; // Feature bits
@@ -99,6 +116,8 @@ struct Gamepad {
   bool has(Feature feature) const { return (features & static_cast<std::uint32_t>(feature)) != 0; }
   // What `button` is called on this pad ("A", "Cross", "LB", "K"...)
   const char *labelOf(Button button) const;
+  // The button that plays a menu role on this pad (buttonFor)
+  Button buttonFor(Role role) const { return Input::buttonFor(role, kind); }
 };
 
 // What a kind of pad has and calls its buttons

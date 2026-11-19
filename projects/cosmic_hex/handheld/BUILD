@@ -56,6 +56,7 @@ cc_library(
     strip_include_prefix = "include/",
     visibility = ["//projects/cosmic_hex:__subpackages__"],
     deps = [
+        "//projects/scratchpadd/buttons",
         "//projects/scratchpadd/canvas",
         "//projects/scratchpadd/scene/overlay_text",
         "//projects/scratchpadd/motion",
