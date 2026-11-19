@@ -146,6 +146,7 @@ private:
               bool yourRollWaits);
   void closeOthers(); // (the other players' Back: the board again)
   CardSprites cards_;
+  CardSprites bigCards_; // (the cards screens': bigger, four a row)
   std::array<std::vector<Canvas::Colour>, Art::kIcons> icons_;
   int iconSize_ = 0;
 };

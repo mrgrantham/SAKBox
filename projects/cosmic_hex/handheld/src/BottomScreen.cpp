@@ -19,7 +19,8 @@ constexpr Colour kHintBand{10, 15, 26, 255};
 constexpr Colour kHint = Palette::kHighlight;
 } // namespace
 
-BottomScreen::BottomScreen(int width, int height) : width_(width), height_(height), cards_(width) {}
+BottomScreen::BottomScreen(int width, int height)
+    : width_(width), height_(height), cards_(width), bigCards_(width, kCardsScreenWidth) {}
 
 void BottomScreen::update(const State &state, const std::vector<Action> &legal, bool yourMove,
                           bool yourRollWaits) {
@@ -561,11 +562,11 @@ void BottomScreen::draw(Canvas &canvas) {
                                  cards_);
     return;
   case Mode::Cards:
-    ChoiceScreens::drawCards(canvas, held_, heldChosen_, cards_);
+    ChoiceScreens::drawCards(canvas, held_, heldChosen_, bigCards_);
     return;
   case Mode::Keep:
     if (keep_)
-      ChoiceScreens::drawKeep(canvas, *keep_, keepChosen_, cards_);
+      ChoiceScreens::drawKeep(canvas, *keep_, keepChosen_, bigCards_);
     return;
   case Mode::Others:
     ChoiceScreens::drawOthers(canvas, others_, othersChosen_);

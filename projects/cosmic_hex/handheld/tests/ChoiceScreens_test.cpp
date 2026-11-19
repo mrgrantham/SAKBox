@@ -150,7 +150,7 @@ TEST(ChoiceScreensTest, TheCardsScreens) {
                                     .playable = true}};
   for (const int w : {256, 320}) {
     Canvas canvas(w, w * 3 / 4);
-    CardSprites sprites(w);
+    CardSprites sprites(w, kCardsScreenWidth);
     ChoiceScreens::drawCards(canvas, held, 0, sprites);
     writeOut(canvas, "cards_" + std::to_string(w) + ".ppm");
     ChoiceScreens::drawCards(canvas, held, 2, sprites);

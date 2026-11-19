@@ -28,7 +28,10 @@ using ScratchPadd::Canvas; // (ScratchPadd/Canvas)
 // a second or so: prepare() draws one at a time, in spare frames)
 class CardSprites {
 public:
-  explicit CardSprites(int screenWidth);
+  // `widthOnADs`: a card's width on a DS's 256-wide screen (in proportion
+  // on wider ones): 48 for the pickers' five across, 56 for the cards
+  // screens' four, their titles roomier
+  explicit CardSprites(int screenWidth, int widthOnADs = 48);
   // A small card: the drawing down to its picture's foot, its short title
   // in the band (dark letters on a light band), `width` x height()
   const std::vector<Canvas::Colour> &small(Art::Card card);
@@ -45,6 +48,9 @@ private:
   std::array<std::vector<Canvas::Colour>, Art::kCards> small_;
   std::array<std::vector<Canvas::Colour>, 2> backs_;
 };
+
+// The cards screens' cards' width on a DS (CardSprites)
+inline constexpr int kCardsScreenWidth = 56;
 
 namespace ChoiceScreens {
 

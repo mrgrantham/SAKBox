@@ -86,8 +86,9 @@ std::string_view nameOfPlayer(int player) {
 }
 } // namespace
 
-CardSprites::CardSprites(int screenWidth)
-    : width_(static_cast<int>(std::lround(48.0f * static_cast<float>(screenWidth) / 256.0f))),
+CardSprites::CardSprites(int screenWidth, int widthOnADs)
+    : width_(static_cast<int>(
+          std::lround(static_cast<float>(widthOnADs) * static_cast<float>(screenWidth) / 256.0f))),
       height_(width_ * 52 / 63), backHeight_(width_ * 88 / 63) {}
 
 const std::vector<Canvas::Colour> &CardSprites::small(Art::Card card) {
@@ -349,7 +350,7 @@ std::optional<Touch> cardsTouch(int width, std::size_t cards, int x, int y) {
     return Touch{Touch::What::Back};
   if (confirmBox(width).contains(x, y))
     return Touch{Touch::What::Confirm};
-  const CardSprites sizes(width);
+  const CardSprites sizes(width, kCardsScreenWidth);
   for (std::size_t i = 0; i < cards && i < 8; ++i)
     if (cardBox(width, sizes.width(), sizes.height(), i, cards).contains(x, y))
       return Touch{Touch::What::Item, static_cast<int>(i)};
@@ -381,7 +382,7 @@ void drawKeep(Canvas &canvas, const KeepChoice &choice, int chosen, CardSprites 
 std::optional<Touch> keepTouch(int width, std::size_t cards, int x, int y) {
   if (confirmBox(width).contains(x, y))
     return Touch{Touch::What::Confirm};
-  const CardSprites sizes(width);
+  const CardSprites sizes(width, kCardsScreenWidth);
   for (std::size_t i = 0; i < cards; ++i)
     if (cardBox(width, sizes.width(), sizes.height(), i, cards).contains(x, y))
       return Touch{Touch::What::Item, static_cast<int>(i)};
