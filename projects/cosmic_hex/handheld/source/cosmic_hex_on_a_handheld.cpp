@@ -869,10 +869,10 @@ private:
     }
     if (kWatchAtStart && !memoryBusiest_.empty())
       overlay.text(4, kTopHeight - 38, memoryBusiest_.substr(0, kCharsPerLine), {120, 220, 160});
-    if (!latest_->lastMoves.empty())
+    if (!latest_->lastMoves.empty() && shownInfo_ == BottomScreen::Info::None)
       overlay.text(4, kTopHeight - 14, latest_->lastMoves.back().substr(0, kCharsPerLine),
                    {200, 208, 222});
-    if (mode_ == Mode::Playing && latest_->yourMove)
+    if (mode_ == Mode::Playing && latest_->yourMove && shownInfo_ == BottomScreen::Info::None)
       drawMoves(overlay);
     drawInfoWords(overlay, state);
     drawBanner(overlay);
@@ -996,12 +996,15 @@ private:
       const int held = player.resources[static_cast<std::size_t>(r)];
       const PilePlace place = pilePlace(r);
       const float top = place.y - static_cast<float>(std::max(1, std::min(held, 5)) - 1) * 3 * k;
-      const auto words =
-          std::string(
-              CosmicHex::Art::wordsOf(cardOf(static_cast<CosmicHex::Resource>(r))).shortTitle) +
-          " " + std::to_string(held);
-      overlay.textCentred(place.x + static_cast<float>(cardWidth_) / 2, top - 7 * k, words,
-                          held == 0 ? Scene::Colour{120, 128, 145} : Scene::Colour{226, 232, 244});
+      const std::string_view title =
+          CosmicHex::Art::wordsOf(cardOf(static_cast<CosmicHex::Resource>(r))).shortTitle;
+      const Scene::Colour words =
+          held == 0 ? Scene::Colour{120, 128, 145} : Scene::Colour{226, 232, 244};
+      // The title above the pile, how many on its top card's picture
+      overlay.textCentred(place.x + static_cast<float>(cardWidth_) / 2, top - 7 * k, title, words);
+      overlay.textCentred(place.x + static_cast<float>(cardWidth_) / 2,
+                          top + static_cast<float>(cardHeight_) * 0.62f, std::to_string(held),
+                          words, kTopWidth >= 400 ? 2.0f : 1.5f);
     }
   }
 
