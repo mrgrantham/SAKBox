@@ -154,6 +154,9 @@ struct StartGame {
   CosmicHex::Board board = CosmicHex::boardR3(); // (a StartMenu choice)
   bool finishRound = true; // (the round played out, or the first to the target wins)
   std::array<int, CosmicHex::kMaxPlayers> seatBonus{}; // (the board's, if chosen)
+  // Held until the screen lets it go (SetHold off): the board coming down
+  // from the setup first, so no move is made before it's in view (round 101)
+  bool held = false;
 };
 struct TogglePause {};
 // The pause menu holds the game (true) or lets it go on (false); leaving a
@@ -189,7 +192,7 @@ public:
       settings.botArithmetic = kThisPlatform.botArithmetic;
       settings.measureSearch = kWatchAtStart; // (the -watch builds show it)
       seed_ = settings.seed;
-      paused_ = false;
+      paused_ = start.held;
       game_.emplace(settings);
       sendSnapshot();
     });
@@ -620,8 +623,12 @@ private:
   void drawBoard(const State *shown) {
     // (coming down from above at the start of a game: round 90, the user's)
     const float down = descent();
-    if (down >= 1)
+    if (down >= 1 && descentStarted_) {
       descentStarted_.reset();
+      // (down: the game goes on, unless the pause menu is up)
+      if (flow_.screen() == ScreenFlow::Screen::Game)
+        send(SetHold{false});
+    }
     const Scene::Camera camera = cameraBetween(topDownCamera(), gameCamera(turn_), down);
     renderer_->beginFrame(camera, boardEnvironment(1 - down));
     if (!shown && descentStarted_)
@@ -1291,7 +1298,8 @@ private:
                    .players = menu_.players(),
                    .board = menu_.boardItself(),
                    .finishRound = menu_.finishRound(),
-                   .seatBonus = menu_.seatBonus()});
+                   .seatBonus = menu_.seatBonus(),
+                   .held = descentStarted_.has_value()});
   }
   std::size_t cursor_ = 0;
 };
