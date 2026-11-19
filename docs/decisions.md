@@ -12,7 +12,7 @@ What was chosen. **Why:** the reasons. **Not:** the alternatives turned down, an
 ## Cosmic Hex: the game
 
 **Starting placement: choose your home and your colony's corner** (2026-11-19)
-Who goes first is shown as a roll of a die each, highest first. Then, in turn order, each player picks one of the board's homeworlds and a corner of it for their home colony; then the ships, in the reverse order. Placing is by touch: what you touch is shown there, and Place (End Turn's button) puts it down. **Why:** a setup you can see and choose reads as fair (Characteristics of Games, ch. 5); the reverse order for ships is the catch-up for placing last. **Not:** colony and ship in one turn (loses the catch-up), homes fixed by seat (the user wanted the choice).
+Who goes first is shown as a roll of a die each, highest first. Then, in turn order, each player picks one of the board's homeworlds and a corner of it for their home colony; then the ships, in the reverse order. Placing is by touch: what you touch is shown there, and Place (End Turn's button) puts it down. **Why:** a setup you can see and choose reads as fair (Characteristics of Games, ch. 5); the reverse order for ships is the catch-up for placing last. **Not:** colony and ship in one turn (loses the catch-up), homes fixed by seat (the user wanted the choice). Simulated at 1,800 games: on R3 choosing homes evened the seats (25, 26, 25, 25%; chi-square 1.0) where fixed homes leaned (22 to 27%; 7.9); T4 with three players stays fair (31, 33, 36%; 5.6).
 
 **The splash: words and a small mark** (2026-11-19)
 "Vibe Coding by James / presents" with two turquoise hexagons, fading in and out while the start's work runs. **Why:** the start draws every picture before the title (so the title runs smoothly) and takes about 5 s on a DS; something to watch makes it feel shorter. **Not:** words alone.
@@ -36,6 +36,9 @@ Stations on 3 planets of one kind, Occupier, and the Deep-space relay (1 point o
 **Why:** leaders at 300 and 900 games mostly regressed. Clusters of planets never touch each other or a home; boards are radius 4.
 
 ## Platform: ScratchPadd and the consoles
+
+**Colours named by role** (2026-11-19)
+Cosmic Hex's `Palette.hpp`: the accent (turquoise: what's always there and whose turn), the highlight (amber: moments and choices), the words, and the players'. **Why:** the same colour had been written out in a dozen places.
 
 **No "round N" tags in READMEs or comments** (2026-11-19)
 Comments keep the reason and the measurement instead. **Why:** a round number means nothing without the roadmap page open. **Not:** keeping the whole conversation in the repository; git history and the roadmap page hold it.
