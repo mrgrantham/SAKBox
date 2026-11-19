@@ -52,8 +52,8 @@ std::string_view chipRecipeOf(int number);
 
 // The board screen's buttons' icons (round 94: icons/*.svg, to swap for
 // other drawings), each on a transparent square, drawn on its button
-enum class Icon : std::uint8_t { Roll, Build, Trade, ShowResources, Cards, EndTurn };
-inline constexpr int kIcons = 6;
+enum class Icon : std::uint8_t { Roll, Build, Trade, ShowResources, Cards, EndTurn, OtherPlayers };
+inline constexpr int kIcons = 7;
 std::string_view iconRecipeOf(Icon icon);
 
 // The cards (round 75's designs: cards/*.svg). Each drawing is the card

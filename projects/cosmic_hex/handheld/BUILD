@@ -7,30 +7,36 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 cc_library(
     name = "handheld",
     srcs = [
+        "src/BoardButtons.cpp",
         "src/BoardMotion.cpp",
         "src/BoardPicture.cpp",
         "src/RecipePixels.cpp",
         "src/BoardPieces.cpp",
         "src/BuildMenu.cpp",
+        "src/Canvas.cpp",
         "src/ButtonMenu.cpp",
         "src/DicePieces.cpp",
         "src/MenuPicture.cpp",
         "src/MoveSpots.cpp",
+        "src/Pickers.cpp",
         "src/PointsBars.cpp",
         "src/ScreenFlow.cpp",
         "src/StartMenu.cpp",
         "src/TableGame.cpp",
     ],
     hdrs = [
+        "include/CosmicHex/Handheld/BoardButtons.hpp",
         "include/CosmicHex/Handheld/BoardMotion.hpp",
         "include/CosmicHex/Handheld/BoardPicture.hpp",
         "include/CosmicHex/Handheld/BoardPieces.hpp",
         "include/CosmicHex/Handheld/BoardView.hpp",
         "include/CosmicHex/Handheld/BuildMenu.hpp",
+        "include/CosmicHex/Handheld/Canvas.hpp",
         "include/CosmicHex/Handheld/ButtonMenu.hpp",
         "include/CosmicHex/Handheld/DicePieces.hpp",
         "include/CosmicHex/Handheld/MenuPicture.hpp",
         "include/CosmicHex/Handheld/MoveSpots.hpp",
+        "include/CosmicHex/Handheld/Pickers.hpp",
         "include/CosmicHex/Handheld/PointsBars.hpp",
         "include/CosmicHex/Handheld/PlatformProfile.hpp",
         "include/CosmicHex/Handheld/RecipePixels.hpp",
@@ -198,6 +204,18 @@ cc_test(
     srcs = ["tests/PointsBars_test.cpp"],
     deps = [
         ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "Pickers_test",
+    size = "small",
+    srcs = ["tests/Pickers_test.cpp"],
+    deps = [
+        ":handheld",
+        "//projects/game_bots",
+        "//projects/seeded_random",
         "@gtest//:gtest_main",
     ],
 )

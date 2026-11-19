@@ -17,5 +17,9 @@ namespace CosmicHex::Handheld {
 std::vector<ScratchPadd::Scene::Colour> recipePixels(
     std::string_view recipe, int size,
     ScratchPadd::TextureRecipe::Smoothing smoothing = ScratchPadd::TextureRecipe::Smoothing::Fine);
+// The same `width` x `height` (a card's 63 x 88 shape, say)
+std::vector<ScratchPadd::Scene::Colour> recipePixels(
+    std::string_view recipe, int width, int height,
+    ScratchPadd::TextureRecipe::Smoothing smoothing = ScratchPadd::TextureRecipe::Smoothing::Fine);
 
 } // namespace CosmicHex::Handheld
