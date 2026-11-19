@@ -12,8 +12,10 @@ cc_library(
         "src/BoardPicture.cpp",
         "src/RecipePixels.cpp",
         "src/BoardPieces.cpp",
+        "src/BottomScreen.cpp",
         "src/BuildMenu.cpp",
         "src/Canvas.cpp",
+        "src/ChoiceScreens.cpp",
         "src/ButtonMenu.cpp",
         "src/DicePieces.cpp",
         "src/MenuPicture.cpp",
@@ -29,9 +31,11 @@ cc_library(
         "include/CosmicHex/Handheld/BoardMotion.hpp",
         "include/CosmicHex/Handheld/BoardPicture.hpp",
         "include/CosmicHex/Handheld/BoardPieces.hpp",
+        "include/CosmicHex/Handheld/BottomScreen.hpp",
         "include/CosmicHex/Handheld/BoardView.hpp",
         "include/CosmicHex/Handheld/BuildMenu.hpp",
         "include/CosmicHex/Handheld/Canvas.hpp",
+        "include/CosmicHex/Handheld/ChoiceScreens.hpp",
         "include/CosmicHex/Handheld/ButtonMenu.hpp",
         "include/CosmicHex/Handheld/DicePieces.hpp",
         "include/CosmicHex/Handheld/MenuPicture.hpp",
@@ -212,6 +216,30 @@ cc_test(
     name = "Pickers_test",
     size = "small",
     srcs = ["tests/Pickers_test.cpp"],
+    deps = [
+        ":handheld",
+        "//projects/game_bots",
+        "//projects/seeded_random",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ChoiceScreens_test",
+    size = "small",
+    srcs = ["tests/ChoiceScreens_test.cpp"],
+    deps = [
+        ":handheld",
+        "//projects/game_bots",
+        "//projects/seeded_random",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "BottomScreen_test",
+    size = "small",
+    srcs = ["tests/BottomScreen_test.cpp"],
     deps = [
         ":handheld",
         "//projects/game_bots",

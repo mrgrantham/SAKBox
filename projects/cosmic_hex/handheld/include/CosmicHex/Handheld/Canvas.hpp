@@ -28,6 +28,8 @@ public:
   Colour at(int x, int y) const;
 
   void clear(Colour colour);
+  // Another picture of the same size, as it is (nothing if it isn't)
+  void copy(const std::vector<Colour> &pixels);
   void fillRect(float x, float y, float w, float h, Colour colour);
   void outline(float x, float y, float w, float h, Colour colour, float thickness = 1);
   // Words from their top left, or with their letters' pixels centred on

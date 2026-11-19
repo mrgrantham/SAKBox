@@ -35,7 +35,9 @@
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/BoardView.hpp>
+#include <CosmicHex/Handheld/BottomScreen.hpp>
 #include <CosmicHex/Handheld/ButtonMenu.hpp>
+#include <CosmicHex/Handheld/Canvas.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
@@ -284,6 +286,11 @@ public:
       latest_ = snapshot;
       ++snapshots_; // (the top screen has something new to show)
       bottomDirty_ = true;
+      // The bottom screen's buttons and choosing screens follow the game
+      // (BottomScreen: the resource picker opens by itself, and so on)
+      if (bottomScreen_)
+        bottomScreen_->update(snapshot.state, snapshot.moves,
+                              mode_ == Mode::Playing && snapshot.yourMove);
       // Someone won: the title again, with who (ScreenFlow's Won)
       if (snapshot.state.winner >= 0)
         apply(flow_.on(ScreenFlow::Event::GameWon));
@@ -299,6 +306,8 @@ public:
                         // into its one framebuffer when it changes
     bottom_.emplace();
     picture_.emplace(kBottomWidth, kBottomHeight, kThisPlatform.recipeSmoothing);
+    bottomScreen_.emplace(kBottomWidth, kBottomHeight);
+    bottomCanvas_.emplace(kBottomWidth, kBottomHeight);
     renderer_.emplace(*display_);
     const BoardPieces pieces;
     hexTile_ = renderer_->load(pieces.hexTile.data());
@@ -377,7 +386,9 @@ private:
     // of a game doesn't stall for seconds on the DS (round 92)
     if (onAMenuScreen()) {
       auto timing = profile_.time(kProfileBottom);
-      picture_->prepare();
+      // (then the bottom screen's cards and icons, one a frame too)
+      if (picture_->prepare() && bottomScreen_)
+        bottomScreen_->prepare();
     }
     // (the top screen's drawing, its wait for the refresh included; ended
     // with the frame: drawTop's scope)
@@ -922,7 +933,9 @@ private:
       dragged_ = false;
     } else if (touch.down) {
       const int dx = touch.x - touchLast_[0], dy = touch.y - touchLast_[1];
-      if (std::abs(touch.x - touchStart_[0]) + std::abs(touch.y - touchStart_[1]) > 6)
+      // (dragging moves the board only while the board is showing)
+      if (std::abs(touch.x - touchStart_[0]) + std::abs(touch.y - touchStart_[1]) > 6 &&
+          onTheBoard())
         dragged_ = true;
       if (dragged_ && (dx != 0 || dy != 0)) {
         picture_->pan(static_cast<float>(dx), static_cast<float>(dy));
@@ -930,11 +943,30 @@ private:
       }
       touchLast_ = {touch.x, touch.y};
     } else if (touchWasDown_ && !dragged_) {
-      selected_ = picture_->at(touchStart_[0], touchStart_[1]);
+      const auto spot = picture_->at(touchStart_[0], touchStart_[1]);
+      // The bottom screen's first: its buttons, its choosing screens, a
+      // place for what's being built; what it doesn't use selects a corner
+      const BottomScreen::Outcome outcome =
+          bottomScreen_ ? bottomScreen_->tap(touchStart_[0], touchStart_[1],
+                                             onTheBoard() ? spot : std::nullopt)
+                        : BottomScreen::Outcome{};
+      if (outcome.play && latest_ && latest_->yourMove) {
+        send(PlayMove{*outcome.play});
+        latest_->yourMove = false; // (until the game says it's yours again)
+        selected_.reset();
+      } else if (!outcome.used) {
+        selected_ = spot;
+      }
       cursor_ = 0;
       bottomDirty_ = true;
     }
     touchWasDown_ = touch.down;
+  }
+
+  // Whether the bottom screen shows the board (rather than a choosing screen)
+  bool onTheBoard() const {
+    return !bottomScreen_ || bottomScreen_->mode() == BottomScreen::Mode::Board ||
+           bottomScreen_->mode() == BottomScreen::Mode::Placing;
   }
 
   // Your moves, under the scores: a window of the list round the cursor,
@@ -985,8 +1017,13 @@ private:
           picture_->markHex(selected_->hex);
         else if (selected_)
           picture_->markCorner(selected_->corner);
+        // (where what's being built may go: each place marked)
+        for (const CosmicHex::Corner &corner : bottomScreen_->placingCorners())
+          picture_->markCorner(corner);
+        // The board with its buttons, or a choosing screen in its place
+        bottomScreen_->draw(*bottomCanvas_, picture_->pixels());
       }
-      drawn = &picture_->pixels();
+      drawn = &bottomCanvas_->pixels();
     }
     // Fading from the menu to the map as the board comes down: the setup
     // menu's picture (menuPicture_, not drawn again in a game) and the map,
@@ -1122,6 +1159,8 @@ private:
   float turn_ = 0;
   // The bottom board, its touch and what's selected on it
   std::optional<BoardPicture> picture_;
+  std::optional<BottomScreen> bottomScreen_; // (its buttons and choosing screens: round 101)
+  std::optional<Canvas> bottomCanvas_;
   std::optional<ConsoleHardware::BottomScreen> bottom_;
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};

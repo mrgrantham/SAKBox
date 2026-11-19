@@ -1,0 +1,79 @@
+// BottomScreen.hpp - what the bottom screen shows in a game and what a tap
+// on it does (round 101): the board with its buttons; the build screen;
+// the resource and player pickers; and the board again, its corners marked,
+// while you choose where something goes. It decides from the rules' legal
+// moves, so it has no rules of its own; the app draws what it says and
+// sends the moves it makes.
+//
+//   screen.update(state, legal, yourMove);         // each new snapshot
+//   const auto outcome = screen.tap(x, y, spotUnderTheTap);
+//   if (outcome.play) send(*outcome.play);
+//   screen.draw(canvas, boardPixels);              // when it's to be redrawn
+//
+// Taps it doesn't use (on the board, away from a button, when nothing's
+// being placed) are the app's: selecting a corner to list its moves.
+#pragma once
+
+#include <CosmicHex/Handheld/BoardButtons.hpp>
+#include <CosmicHex/Handheld/BoardPicture.hpp>
+#include <CosmicHex/Handheld/BuildMenu.hpp>
+#include <CosmicHex/Handheld/Canvas.hpp>
+#include <CosmicHex/Handheld/ChoiceScreens.hpp>
+#include <CosmicHex/Handheld/Pickers.hpp>
+
+#include <array>
+#include <optional>
+#include <vector>
+
+namespace CosmicHex::Handheld {
+
+class BottomScreen {
+public:
+  enum class Mode { Board, Build, Resources, Players, Placing };
+
+  BottomScreen(int width, int height);
+
+  // A new look at the game: the screen follows it (the resource picker
+  // opens by itself when the move is a choice of resources; any other
+  // screen closes when it isn't your move)
+  void update(const State &state, const std::vector<Action> &legal, bool yourMove);
+
+  struct Outcome {
+    std::optional<Action> play; // a move to make
+    bool used = false;          // the tap was this screen's (else the app's)
+  };
+  // A tap at (x, y), with the board's spot under it in the board modes
+  Outcome tap(int x, int y, const std::optional<BoardPicture::Spot> &spot);
+
+  Mode mode() const { return mode_; }
+  // In Placing: the corners where the chosen build may go, to be marked
+  std::vector<Corner> placingCorners() const;
+
+  // Draws the screen onto `canvas`: in the board modes over `board` (the
+  // map's pixels, the canvas's size), with the buttons
+  void draw(Canvas &canvas, const std::vector<Canvas::Colour> &board);
+  // Draws one of its pictures (cards, icons) not yet drawn, for spare
+  // frames; whether they're all ready
+  bool prepare();
+
+private:
+  int width_, height_;
+  Mode mode_ = Mode::Board;
+  State state_;
+  std::vector<Action> legal_;
+  bool yourMove_ = false;
+  BoardButtons::Situation situation_;
+  std::vector<BuildRow> rows_;
+  int buildChosen_ = -1;
+  std::vector<Action> placing_; // (Placing: the chosen build's actions)
+  std::optional<Pickers::ResourceChoice> resources_;
+  std::vector<Resource> picked_;
+  bool resourcesCanGoBack_ = false;
+  std::optional<Pickers::PlayerChoice> players_;
+  int playerChosen_ = -1;
+  CardSprites cards_;
+  std::array<std::vector<Canvas::Colour>, Art::kIcons> icons_;
+  int iconSize_ = 0;
+};
+
+} // namespace CosmicHex::Handheld

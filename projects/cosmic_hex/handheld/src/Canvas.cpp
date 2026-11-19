@@ -21,6 +21,11 @@ Canvas::Colour Canvas::at(int x, int y) const {
 
 void Canvas::clear(Colour colour) { std::fill(pixels_.begin(), pixels_.end(), colour); }
 
+void Canvas::copy(const std::vector<Colour> &pixels) {
+  if (pixels.size() == pixels_.size())
+    std::copy(pixels.begin(), pixels.end(), pixels_.begin());
+}
+
 void Canvas::fillRect(float x, float y, float w, float h, Colour colour) {
   const int x0 = std::max(0, static_cast<int>(std::lround(x)));
   const int y0 = std::max(0, static_cast<int>(std::lround(y)));
