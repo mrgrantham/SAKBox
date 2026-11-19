@@ -115,45 +115,104 @@ HexGrid::Layout BoardPicture::layout() const {
 HexGrid::Point BoardPicture::where(Hex hex) const { return layout().centre(hex); }
 HexGrid::Point BoardPicture::where(Corner corner) const { return layout().point(corner); }
 
-void BoardPicture::startFaces() {
+int BoardPicture::facesSize() const {
   // A face's square: the hex is 47% of it from centre to corner (Art.hpp)
-  const int size = static_cast<int>(std::ceil(hexSize() / 0.47f));
-  if (size == facesSize_)
-    return;
-  facesSize_ = size;
+  return static_cast<int>(std::ceil(hexSize() / 0.47f));
+}
+int BoardPicture::chipsSize() const {
   // The number chips, as big on the hex as on the 3D board's tiles
-  chipsSize_ = std::max(4, static_cast<int>(std::lround(2 * kChipRadius * hexSize())));
-  for (auto &face : faces_)
+  return std::max(4, static_cast<int>(std::lround(2 * kChipRadius * hexSize())));
+}
+
+void BoardPicture::Sprites::startAt(int faceSize, int chipSize) {
+  if (faceSize == facesSize && chipSize == chipsSize)
+    return;
+  facesSize = faceSize;
+  chipsSize = chipSize;
+  for (auto &face : faces)
     face.clear();
-  for (auto &chip : chips_)
+  for (auto &chip : chips)
     chip.clear();
-  nextToPrepare_ = 0;
+  next = 0;
+}
+
+bool BoardPicture::Sprites::done() const {
+  constexpr int kChips = Art::kHighestChip - Art::kLowestChip + 1;
+  return next >= Art::kFaces + kChips;
+}
+
+void BoardPicture::Sprites::drawNext(ScratchPadd::TextureRecipe::Smoothing smoothing) {
+  if (done())
+    return;
+  const int which = next++;
+  if (which < Art::kFaces) {
+    std::vector<Colour> face =
+        recipePixels(Art::recipeOf(static_cast<Art::Face>(which)), facesSize, smoothing);
+    // (a broken recipe: a see-through square, tested against on the Mac)
+    if (face.empty())
+      face.assign(static_cast<std::size_t>(facesSize) * static_cast<std::size_t>(facesSize),
+                  Colour{0, 0, 0, 0});
+    faces[static_cast<std::size_t>(which)] = std::move(face);
+  } else {
+    const int number = Art::kLowestChip + (which - Art::kFaces);
+    chips[static_cast<std::size_t>(number)] =
+        recipePixels(Art::chipRecipeOf(number), chipsSize, smoothing);
+  }
 }
 
 bool BoardPicture::prepare() {
-  startFaces();
-  constexpr int kChips = Art::kHighestChip - Art::kLowestChip + 1;
-  if (nextToPrepare_ >= Art::kFaces + kChips)
-    return true;
-  const int next = nextToPrepare_++;
-  if (next < Art::kFaces) {
-    std::vector<Colour> face =
-        recipePixels(Art::recipeOf(static_cast<Art::Face>(next)), facesSize_, smoothing_);
-    // (a broken recipe: a see-through square, tested against on the Mac)
-    if (face.empty())
-      face.assign(static_cast<std::size_t>(facesSize_) * static_cast<std::size_t>(facesSize_),
-                  Colour{0, 0, 0, 0});
-    faces_[static_cast<std::size_t>(next)] = std::move(face);
-  } else {
-    const int number = Art::kLowestChip + (next - Art::kFaces);
-    chips_[static_cast<std::size_t>(number)] =
-        recipePixels(Art::chipRecipeOf(number), chipsSize_, smoothing_);
+  // The whole board's first (zoom 1, kept); then this zoom's, if it isn't 1
+  if (whole_.facesSize == 0) {
+    const int keep = zoom_;
+    zoom_ = 1;
+    whole_.startAt(facesSize(), chipsSize());
+    zoom_ = keep;
   }
-  return nextToPrepare_ >= Art::kFaces + kChips;
+  if (!whole_.done()) {
+    whole_.drawNext(smoothing_);
+    return false;
+  }
+  if (zoom_ == 1)
+    return true;
+  zoomed_.startAt(facesSize(), chipsSize());
+  zoomed_.drawNext(smoothing_);
+  return zoomed_.done();
+}
+
+bool BoardPicture::ready() const {
+  return whole_.done() && (zoom_ == 1 || (zoomed_.facesSize == facesSize() && zoomed_.done()));
 }
 
 void BoardPicture::blendFace(Art::Face face, HexGrid::Point centre) {
-  blendSprite(faces_[static_cast<std::size_t>(face)], facesSize_, centre);
+  const auto f = static_cast<std::size_t>(face);
+  if (zoom_ == 1)
+    blendSprite(whole_.faces[f], whole_.facesSize, centre);
+  else
+    blendSpriteOf(zoomed_.facesSize == facesSize() ? zoomed_.faces[f] : std::vector<Colour>{},
+                  whole_.faces[f], facesSize(), whole_.facesSize, centre);
+}
+
+void BoardPicture::blendSpriteOf(const std::vector<Colour> &own, const std::vector<Colour> &whole,
+                                 int ownSize, int wholeSize, HexGrid::Point centre) {
+  if (!own.empty()) {
+    blendSprite(own, ownSize, centre);
+    return;
+  }
+  if (whole.empty())
+    return;
+  // The whole board's, scaled up: each pixel its nearest (whole numbers)
+  const int left = static_cast<int>(std::lround(centre.x)) - ownSize / 2;
+  const int top = static_cast<int>(std::lround(centre.y)) - ownSize / 2;
+  for (int y = std::max(0, -top); y < ownSize && top + y < height_; ++y) {
+    const int from = y * wholeSize / ownSize;
+    for (int x = std::max(0, -left); x < ownSize && left + x < width_; ++x) {
+      const Colour over = whole[indexOf(x * wholeSize / ownSize, from, wholeSize)];
+      if (over.a == 0)
+        continue;
+      Colour &under = pixels_[indexOf(left + x, top + y, width_)];
+      under = blend(under, over);
+    }
+  }
 }
 
 void BoardPicture::blendSprite(const std::vector<Colour> &sprite, int size, HexGrid::Point centre) {
@@ -222,8 +281,9 @@ void BoardPicture::buildGrid() {
 }
 
 void BoardPicture::draw(const State &state) {
-  while (!prepare()) {
-  }
+  // (the whole board's faces at least: they're what the rest falls back on)
+  while (!whole_.done())
+    prepare();
   std::fill(pixels_.begin(), pixels_.end(), BoardColours::kSpace);
   // The grid: every hex of the board outlined (round 81: easy to see, to
   // plan paths along the edges, in empty space too)
@@ -238,7 +298,12 @@ void BoardPicture::draw(const State &state) {
     if (const int number = chipOf(planet); number > 0) {
       HexGrid::Point at = where(planet.hex);
       at.y += kChipDown * hexSize();
-      blendSprite(chips_[static_cast<std::size_t>(number)], chipsSize_, at);
+      const auto n = static_cast<std::size_t>(number);
+      if (zoom_ == 1)
+        blendSprite(whole_.chips[n], whole_.chipsSize, at);
+      else
+        blendSpriteOf(zoomed_.chipsSize == chipsSize() ? zoomed_.chips[n] : std::vector<Colour>{},
+                      whole_.chips[n], chipsSize(), whole_.chipsSize, at);
     }
   }
   for (const ZoneSite &site : state.zone)

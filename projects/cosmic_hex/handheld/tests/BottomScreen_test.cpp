@@ -98,9 +98,9 @@ TEST(BottomScreenTest, TheBoardsOwnTapsAndOthersTurns) {
   screen.tap(240, 10, std::nullopt);
   EXPECT_EQ(screen.mode(), Mode::Board);
   // Drawn: the board's pixels with the buttons over them
-  Canvas canvas(kWidth, kHeight);
   std::vector<Canvas::Colour> board(static_cast<std::size_t>(kWidth * kHeight), {24, 32, 48, 255});
-  screen.draw(canvas, board);
+  Canvas canvas = Canvas::over(board, kWidth, kHeight);
+  screen.drawOverBoard(canvas);
   EXPECT_EQ(canvas.at(128, 96).b, 48);
   EXPECT_NE(canvas.at(4, 4).b, 48); // (Show resources' button)
 }
@@ -119,9 +119,9 @@ TEST(BottomScreenTest, ButtonsAlwaysAnswer) {
   screen.tap(10, 36, std::nullopt); // the other players
   EXPECT_FALSE(screen.message().empty());
   // Drawn: the message's band at the bottom
-  Canvas canvas(kWidth, kHeight);
   std::vector<Canvas::Colour> board(static_cast<std::size_t>(kWidth * kHeight), {24, 32, 48, 255});
-  screen.draw(canvas, board);
+  Canvas canvas = Canvas::over(board, kWidth, kHeight);
+  screen.drawOverBoard(canvas);
   EXPECT_NE(canvas.at(128, kHeight - 11).b, 48);
 }
 

@@ -10,36 +10,58 @@
 namespace ScratchPadd::Scene {
 
 namespace {
-// One of stb_easy_font's vertices: x, y, z and a colour, 16 bytes
-struct EasyFontVertex {
-  float x, y, z;
-  unsigned char colour[4];
-};
 // stb_easy_font's line height, in points
 constexpr float kLineHeight = 12;
-// The most quads stb_easy_font makes a character (X's 11, counted from its
-// tables): it stops at the end of its buffer, dropping the rest, so a short
-// text of busy letters given its average (about 270 bytes, 4 quads) lost
-// strokes ("Rock" needs 19 quads)
-constexpr std::size_t kMostQuadsPerCharacter = 11;
 } // namespace
 
-std::vector<TextRectangle> textRectangles(const Overlay::Text &text) {
-  // stb_easy_font wants a writable, terminated string, and room for every
-  // quad it makes (4 vertices each: top left, top right, bottom right,
-  // bottom left)
-  std::string copy(text.text);
-  std::vector<EasyFontVertex> quads(copy.size() * kMostQuadsPerCharacter * 4);
-  const int count = stb_easy_font_print(0, 0, copy.data(), nullptr, quads.data(),
-                                        static_cast<int>(quads.size() * sizeof(EasyFontVertex)));
-  std::vector<TextRectangle> out;
-  out.reserve(static_cast<std::size_t>(count));
-  for (int q = 0; q < count; ++q) {
-    const EasyFontVertex *corner = &quads[static_cast<size_t>(q) * 4];
-    out.push_back({text.x + corner[0].x * text.scale, text.y + corner[0].y * text.scale,
-                   (corner[2].x - corner[0].x) * text.scale,
-                   (corner[2].y - corner[0].y) * text.scale});
+void fontRectangles(std::string_view text, std::vector<FontRectangle> &out) {
+  // stb_easy_font_print's walk through its tables, in whole numbers (its
+  // own is in floats, into a vertex buffer): each character's horizontal
+  // then vertical strokes, a byte each (length in the low 3 bits, a step
+  // right in bit 3, the row in the top 4), then its advance
+  out.clear();
+  int x = 0, y = 0;
+  for (const char ch : text) {
+    if (ch == '\n') {
+      y += static_cast<int>(kLineHeight);
+      x = 0;
+      continue;
+    }
+    if (ch < ' ' || ch > '~')
+      continue;
+    const auto c = static_cast<std::size_t>(ch - 32);
+    const unsigned advance = stb_easy_font_charinfo[c].advance;
+    const int top = (advance & 16) != 0 ? y + 1 : y;
+    const auto strokes = [&](const unsigned char *segs, int count, bool vertical) {
+      int at = x;
+      for (int i = 0; i < count; ++i) {
+        const int length = segs[i] & 7;
+        at += (segs[i] >> 3) & 1;
+        if (length == 0)
+          continue;
+        const int row = top + (segs[i] >> 4);
+        out.push_back({static_cast<std::int16_t>(at), static_cast<std::int16_t>(row),
+                       static_cast<std::int16_t>(vertical ? 1 : length),
+                       static_cast<std::int16_t>(vertical ? length : 1)});
+      }
+    };
+    const int hFrom = stb_easy_font_charinfo[c].h_seg, vFrom = stb_easy_font_charinfo[c].v_seg;
+    strokes(&stb_easy_font_hseg[hFrom], stb_easy_font_charinfo[c + 1].h_seg - hFrom, false);
+    strokes(&stb_easy_font_vseg[vFrom], stb_easy_font_charinfo[c + 1].v_seg - vFrom, true);
+    x += static_cast<int>(advance & 15);
   }
+}
+
+std::vector<TextRectangle> textRectangles(const Overlay::Text &text) {
+  std::vector<FontRectangle> strokes;
+  fontRectangles(text.text, strokes);
+  std::vector<TextRectangle> out;
+  out.reserve(strokes.size());
+  for (const FontRectangle &r : strokes)
+    out.push_back({text.x + static_cast<float>(r.x) * text.scale,
+                   text.y + static_cast<float>(r.y) * text.scale,
+                   static_cast<float>(r.width) * text.scale,
+                   static_cast<float>(r.height) * text.scale});
   return out;
 }
 

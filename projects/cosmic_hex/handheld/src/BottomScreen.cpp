@@ -298,7 +298,7 @@ std::vector<Corner> BottomScreen::placingCorners() const {
   return out;
 }
 
-void BottomScreen::draw(Canvas &canvas, const std::vector<Canvas::Colour> &board) {
+void BottomScreen::draw(Canvas &canvas) {
   switch (mode_) {
   case Mode::Build:
     ChoiceScreens::drawBuild(canvas, rows_, buildChosen_);
@@ -318,8 +318,10 @@ void BottomScreen::draw(Canvas &canvas, const std::vector<Canvas::Colour> &board
   case Mode::Placing:
     break;
   }
-  // The board, then its buttons over it
-  canvas.copy(board);
+}
+
+void BottomScreen::drawOverBoard(Canvas &canvas) {
+  // The buttons over the board
   for (const BoardButtons::Place &place : BoardButtons::layout(width_, height_, situation_)) {
     const bool roll = place.button == BoardButtons::Button::Roll;
     canvas.fillRect(place.x, place.y, place.size, place.size, roll ? kRollButton : kButton);

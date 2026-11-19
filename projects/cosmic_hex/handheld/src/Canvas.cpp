@@ -12,7 +12,31 @@ namespace Scene = ScratchPadd::Scene;
 
 Canvas::Canvas(int width, int height)
     : width_(width), height_(height),
-      pixels_(static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {}
+      owned_(static_cast<std::size_t>(width) * static_cast<std::size_t>(height)), pixels_(owned_) {}
+
+Canvas Canvas::over(std::span<Colour> pixels, int width, int height) {
+  Canvas canvas;
+  canvas.width_ = width;
+  canvas.height_ = height;
+  canvas.pixels_ = pixels.first(
+      std::min(pixels.size(), static_cast<std::size_t>(width) * static_cast<std::size_t>(height)));
+  return canvas;
+}
+
+// (a copy owns its pixels when the original did, else draws over the same)
+Canvas::Canvas(const Canvas &other)
+    : width_(other.width_), height_(other.height_), owned_(other.owned_),
+      pixels_(other.owned_.empty() ? other.pixels_ : std::span<Colour>(owned_)) {}
+
+Canvas &Canvas::operator=(const Canvas &other) {
+  if (this != &other) {
+    width_ = other.width_;
+    height_ = other.height_;
+    owned_ = other.owned_;
+    pixels_ = other.owned_.empty() ? other.pixels_ : std::span<Colour>(owned_);
+  }
+  return *this;
+}
 
 Canvas::Colour Canvas::at(int x, int y) const {
   return pixels_[static_cast<std::size_t>(y) * static_cast<std::size_t>(width_) +
@@ -21,7 +45,7 @@ Canvas::Colour Canvas::at(int x, int y) const {
 
 void Canvas::clear(Colour colour) { std::fill(pixels_.begin(), pixels_.end(), colour); }
 
-void Canvas::copy(const std::vector<Colour> &pixels) {
+void Canvas::copy(std::span<const Colour> pixels) {
   if (pixels.size() == pixels_.size())
     std::copy(pixels.begin(), pixels.end(), pixels_.begin());
 }

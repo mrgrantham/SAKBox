@@ -140,3 +140,32 @@ TEST(BoardPictureTest, PreparingAheadDrawsTheSamePicture) {
   ahead.draw(state);
   EXPECT_EQ(atOnce.pixels(), ahead.pixels());
 }
+
+// Zooming shows at once (round 105): just after setZoom, before any face is
+// drawn at the new size, the map shows the whole board's faces scaled up
+// (a planet's middle isn't the empty space's colour); it's ready, sharp,
+// once prepare() has drawn this zoom's
+TEST(BoardPictureTest, ZoomingShowsAtOnceThenSharpens) {
+  const State state = aGame();
+  BoardPicture picture(320, 240);
+  picture.draw(state);
+  EXPECT_TRUE(picture.ready());
+  picture.setZoom(2);
+  EXPECT_FALSE(picture.ready());
+  picture.draw(state);
+  // The stand-in: nearly the same as the sharp picture drawn after (most
+  // pixels within a little of it), only blockier
+  const std::vector<ScratchPadd::Scene::Colour> standIn = picture.pixels();
+  int frames = 0;
+  while (!picture.prepare())
+    ++frames;
+  EXPECT_TRUE(picture.ready());
+  EXPECT_GT(frames, 10); // (a face or chip a frame)
+  picture.draw(state);
+  int close = 0;
+  for (std::size_t p = 0; p < standIn.size(); ++p) {
+    const auto &a = standIn[p], &b = picture.pixels()[p];
+    close += std::abs(a.r - b.r) < 48 && std::abs(a.g - b.g) < 48 && std::abs(a.b - b.b) < 48;
+  }
+  EXPECT_GT(close, static_cast<int>(standIn.size() * 9 / 10));
+}

@@ -457,6 +457,12 @@ private:
       // (then the bottom screen's cards and icons, one a frame too)
       if (picture_->prepare() && bottomScreen_)
         bottomScreen_->prepare();
+    } else if (flow_.screen() == ScreenFlow::Screen::Game && !picture_->ready()) {
+      // Zoomed in or out: the map shows the whole board's faces scaled at
+      // once, and sharpens a face a frame (round 105)
+      auto timing = profile_.time(kProfileBottom);
+      picture_->prepare();
+      bottomDirty_ = true;
     }
     // (the top screen's drawing, its wait for the refresh included; ended
     // with the frame: drawTop's scope)
@@ -715,6 +721,7 @@ private:
     renderer_->draw(stars_, Scene::Transform::identity(),
                     {.shading = Scene::Material::Shading::Unlit});
     if (shown) {
+      auto timing = profile_.time(kProfilePieces);
       drawGaps(*shown, Scene::Transform::identity());
       drawPieces(*shown, Scene::Transform::identity());
     }
@@ -735,6 +742,13 @@ private:
       auto timing = profile_.time(kProfileWait);
       renderer_->endFrame(); // waits for the screen's refresh
     }
+    const Scene::FrameTimes times = renderer_->lastFrameTimes();
+    const auto spent = [](float milliseconds) {
+      return std::chrono::duration_cast<ScratchPadd::FrameProfile::Clock::duration>(
+          std::chrono::duration<float, std::milli>(milliseconds));
+    };
+    profile_.add(kProfileRenderer, spent(times.cpu));
+    profile_.add(kProfileOverlay, spent(times.overlay));
   }
 
   // The setup's board, still (round 90, the user's: turning didn't help); on
@@ -897,7 +911,7 @@ private:
             static_cast<long long>(t.guessing / 1000), static_cast<long long>(t.descending / 1000),
             static_cast<long long>(t.rollingOut / 1000), static_cast<long long>(t.judging / 1000),
             static_cast<long long>(t.rolloutActions / t.games));
-        overlay.text(4, kTopHeight - 98, where, {120, 220, 160});
+        overlay.text(4, kTopHeight - 122, where, {120, 220, 160});
       }
     }
     if (kWatchAtStart && !memoryBusiest_.empty())
@@ -1336,32 +1350,39 @@ private:
   // left: the screen is turned on its side; three bytes a pixel, B G R)
   void drawBottom() {
     bottomDirty_ = false;
-    const std::vector<Scene::Colour> *drawn = nullptr;
+    std::span<const Scene::Colour> drawn;
     const ScreenFlow::Screen screen = flow_.screen();
     if (screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Paused) {
       menuPicture_.draw(screen == ScreenFlow::Screen::Title ? titleMenu_ : pauseMenu_);
-      drawn = &menuPicture_.pixels();
+      drawn = menuPicture_.pixels();
     } else if (screen == ScreenFlow::Screen::Setup) {
       menuPicture_.draw(menu_);
-      drawn = &menuPicture_.pixels();
+      drawn = menuPicture_.pixels();
     } else {
       if (!latest_)
         return;
       // (the map drawn when the game changes, not again each frame of the
       // fade: round 92)
-      if (!fading_) {
-        picture_->draw(latest_->state);
-        if (selected_ && choosingAHex())
-          picture_->markHex(selected_->hex);
-        else if (selected_)
-          picture_->markCorner(selected_->corner);
-        // (where what's being built may go: each place marked)
-        for (const CosmicHex::Corner &corner : bottomScreen_->placingCorners())
-          picture_->markCorner(corner);
-        // The board with its buttons, or a choosing screen in its place
-        bottomScreen_->draw(*bottomCanvas_, picture_->pixels());
+      // A choosing screen in the board's place, or the board with its
+      // buttons drawn straight onto it (no copy of the map: round 105)
+      if (bottomScreen_->coversBoard()) {
+        bottomScreen_->draw(*bottomCanvas_);
+        drawn = bottomCanvas_->pixels();
+      } else {
+        if (!fading_) {
+          picture_->draw(latest_->state);
+          if (selected_ && choosingAHex())
+            picture_->markHex(selected_->hex);
+          else if (selected_)
+            picture_->markCorner(selected_->corner);
+          // (where what's being built may go: each place marked)
+          for (const CosmicHex::Corner &corner : bottomScreen_->placingCorners())
+            picture_->markCorner(corner);
+          Canvas board = Canvas::over(picture_->pixelsToDrawOver(), kBottomWidth, kBottomHeight);
+          bottomScreen_->drawOverBoard(board);
+        }
+        drawn = picture_->pixels();
       }
-      drawn = &bottomCanvas_->pixels();
     }
     // Fading from the menu to the map as the board comes down: the setup
     // menu's picture (menuPicture_, not drawn again in a game) and the map,
@@ -1371,7 +1392,7 @@ private:
     const float down = descent();
     const std::vector<Scene::Colour> *from = nullptr;
     int weight = 256; // (of the map, out of 256)
-    if (fadeFromMenu_ && down < 1 && menuPicture_.pixels().size() == drawn->size()) {
+    if (fadeFromMenu_ && down < 1 && menuPicture_.pixels().size() == drawn.size()) {
       from = &menuPicture_.pixels();
       weight = static_cast<int>(down * 256);
       bottomDirty_ = true; // (and again next frame, until it's done)
@@ -1380,7 +1401,7 @@ private:
       bottomDirty_ = true; // (once more: the map as the game is now)
     }
     fading_ = from != nullptr;
-    const auto &pixels = *drawn;
+    const std::span<const Scene::Colour> pixels = drawn;
     auto copying = profile_.time(kProfileOut); // (the picture to the screen)
     // A pixel's colour on its way to the screen: the picture's, or mid-fade
     // the menu's moved `weight` / 256 of the way to it. (Plain arithmetic on
@@ -1474,8 +1495,19 @@ private:
   // Where each frame's time goes (round 92: the DS's stutter), shown on
   // the -watch builds: the bottom screen, the dice, the top screen (its
   // wait for the refresh included), and that wait
-  enum : std::size_t { kProfileBottom, kProfileOut, kProfileDice, kProfileTop, kProfileWait };
-  ScratchPadd::FrameProfile profile_{"btm", "out", "dice", "top", "wait"};
+  // (and, round 105, the board's pieces, and the renderer's own CPU time
+  // and its overlay's, from Scene::FrameTimes)
+  enum : std::size_t {
+    kProfileBottom,
+    kProfileOut,
+    kProfileDice,
+    kProfileTop,
+    kProfileWait,
+    kProfilePieces,
+    kProfileRenderer,
+    kProfileOverlay
+  };
+  ScratchPadd::FrameProfile profile_{"btm", "out", "dice", "top", "wait", "pcs", "3d", "ovl"};
   std::string profileLine_;
 
   // Whether the top screen would look as it did when last drawn: a game's
@@ -1509,10 +1541,10 @@ private:
       profileLine_ = profile_.line();
       spdlog::info("frames: {}", profileLine_);
     }
-    // (two lines where the screen's narrow)
-    for (std::size_t from = 0, row = 0; from < profileLine_.size() && row < 2;
+    // (three lines where the screen's narrow)
+    for (std::size_t from = 0, row = 0; from < profileLine_.size() && row < 3;
          from += kCharsPerLine, ++row)
-      renderer_->overlay().text(4, kTopHeight - 74 + 12 * static_cast<float>(row),
+      renderer_->overlay().text(4, kTopHeight - 110 + 12 * static_cast<float>(row),
                                 profileLine_.substr(from, kCharsPerLine), {240, 200, 120});
   }
   // The title scene

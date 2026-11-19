@@ -29,7 +29,7 @@ namespace ScratchPadd {
 
 class FrameProfile {
 public:
-  static constexpr std::size_t kMostSections = 6;
+  static constexpr std::size_t kMostSections = 8;
   using Clock = std::chrono::steady_clock;
 
   // The sections' short names (at most kMostSections; more are ignored)
@@ -109,7 +109,7 @@ private:
   };
 
   void makeLine(double seconds) {
-    char text[160];
+    char text[224];
     int used = std::snprintf(text, sizeof text, "%.0ffps", static_cast<double>(frames_) / seconds);
     for (std::size_t i = 0; i < count_ && used > 0 && used < static_cast<int>(sizeof text); ++i) {
       const auto ms = [](Clock::duration d) {

@@ -6,9 +6,11 @@
 
 #include <ScratchPadd/Scene/Culling.hpp>
 #include <ScratchPadd/Scene/DS/Display.hpp>
+#include <ScratchPadd/Scene/OverlayText.hpp>
 #include <ScratchPadd/Scene/Scene.hpp>
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -71,6 +73,9 @@ struct Renderer::Backend {
   Colour ambient;
   std::uint32_t lightBits = 0; // the polygon format's bits for the lights in use
   FrameCounts last;
+  // The frame's CPU time (FrameTimes): when it began, and the last's
+  std::chrono::steady_clock::time_point began;
+  FrameTimes times;
   unsigned draws = 0, culled = 0; // this frame's so far
   std::optional<Frustum> frustum; // this frame's
   // Fog: the polygon format's bit for it (0 without), and the fog and
@@ -99,6 +104,7 @@ struct Renderer::Backend {
   std::vector<std::uint8_t> textPixels;
   std::vector<std::uint16_t> textColours;
   bool textWaiting = false;
+  std::vector<FontRectangle> textStrokes; // (each text's, reused)
   int textRowsFrom = 0, textRowsTo = 0;   // the rows the new text covers
   int shownRowsFrom = 0, shownRowsTo = 0; // the rows the text on the screen covers
   void showText();

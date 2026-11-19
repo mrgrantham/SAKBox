@@ -32,5 +32,6 @@ cc_test(
     deps = [
         ":overlay_text",
         "@gtest//:gtest_main",
+        "@stb",  # (stb_easy_font_print, to check fontRectangles against)
     ],
 )

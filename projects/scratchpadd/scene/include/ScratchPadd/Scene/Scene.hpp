@@ -34,10 +34,12 @@ struct Mesh {
   explicit operator bool() const { return id != 0; }
 };
 
-// How long a frame took to draw, in milliseconds: the GPU's time, and the
-// CPU's in drawing it (see Renderer::lastFrameTimes)
+// How long a frame took to draw, in milliseconds: the GPU's time; the
+// CPU's in drawing it, from beginFrame to endFrame without its wait for
+// the refresh; and of that, the overlay's (its shapes and text: drawn by
+// the CPU on the DS). See Renderer::lastFrameTimes
 struct FrameTimes {
-  float gpu = 0, cpu = 0;
+  float gpu = 0, cpu = 0, overlay = 0;
 };
 
 // What a backend can and can't do, for code shared between platforms
@@ -82,7 +84,8 @@ public:
   // What the last frame drew
   FrameCounts lastFrame() const;
   // How long it took, where the backend can measure it (the 3DS: its GPU's
-  // and its CPU's time, from citro3d); zero elsewhere
+  // and its CPU's time, from citro3d; the DS: its CPU's and the overlay's,
+  // round 105); zero elsewhere
   FrameTimes lastFrameTimes() const;
 
   // The backend's own state, for its extras (on desktops, Desktop.hpp)

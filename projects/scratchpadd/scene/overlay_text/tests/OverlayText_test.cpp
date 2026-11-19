@@ -1,5 +1,6 @@
 // The overlay's text on desktops (stb_easy_font), without a window
 #include <ScratchPadd/Scene/OverlayText.hpp>
+#include <stb/stb_easy_font.h>
 
 #include <gtest/gtest.h>
 
@@ -94,4 +95,32 @@ TEST(OverlayTextTest, CentredByItsInk) {
   EXPECT_FLOAT_EQ((left + right) / 2, 100);
   EXPECT_FLOAT_EQ((top + bottom) / 2, 50);
   EXPECT_EQ(Overlay::inkOf("").width, 0);
+}
+
+// The whole-number walk (fontRectangles, round 105) makes exactly what
+// stb_easy_font_print does, for every character it has, over two lines
+TEST(OverlayTextTest, FontRectanglesMatchStbEasyFont) {
+  std::string all;
+  for (char c = ' '; c <= '~'; ++c)
+    all += c;
+  all += "\nRock 12 + 7";
+  std::vector<ScratchPadd::Scene::FontRectangle> ours;
+  ScratchPadd::Scene::fontRectangles(all, ours);
+  struct Vertex {
+    float x, y, z;
+    unsigned char colour[4];
+  };
+  std::vector<Vertex> quads(all.size() * 11 * 4);
+  std::string copy = all;
+  const int count = stb_easy_font_print(0, 0, copy.data(), nullptr, quads.data(),
+                                        static_cast<int>(quads.size() * sizeof(Vertex)));
+  ASSERT_EQ(static_cast<int>(ours.size()), count);
+  for (int q = 0; q < count; ++q) {
+    const Vertex *corner = &quads[static_cast<std::size_t>(q) * 4];
+    const auto &r = ours[static_cast<std::size_t>(q)];
+    EXPECT_EQ(r.x, corner[0].x) << q;
+    EXPECT_EQ(r.y, corner[0].y) << q;
+    EXPECT_EQ(r.width, corner[2].x - corner[0].x) << q;
+    EXPECT_EQ(r.height, corner[2].y - corner[0].y) << q;
+  }
 }

@@ -24,6 +24,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <vector>
 
 namespace CosmicHex::Handheld {
@@ -46,16 +47,24 @@ public:
   // keeping some of it in view
   void pan(float dx, float dy);
 
-  // Draws one of the tile faces or number chips this zoom needs, if one's
-  // left, and says whether they're all ready. Each is drawn from its recipe
-  // (about a tenth of a second on a DS, nearly 3 s for all of them), so an
-  // app calls this in spare frames before the first draw (round 92: the
-  // DS's first map stalled the start of a game); draw() finishes any left.
+  // Draws one of the tile faces or number chips, if one's left, and says
+  // whether they're all ready. Each is drawn from its recipe (about a tenth
+  // of a second on a DS, nearly 3 s for all of them), so an app calls this
+  // in spare frames: first the whole board's (zoom 1, kept for good; round
+  // 92: the DS's first map stalled the start of a game, so draw() finishes
+  // those), then the current zoom's. Until a zoom's own are drawn, draw()
+  // shows the whole board's scaled up, so zooming is at once and sharpens
+  // as they come (round 105: it took seconds, every face drawn first)
   bool prepare();
+  // Whether every face and chip at this zoom is drawn sharp
+  bool ready() const;
 
   // The board as `state` has it, into pixels()
   void draw(const State &state);
   const std::vector<ScratchPadd::Scene::Colour> &pixels() const { return pixels_; }
+  // The same, to draw over (the bottom screen's buttons, onto the map
+  // itself: Canvas::over)
+  std::span<ScratchPadd::Scene::Colour> pixelsToDrawOver() { return pixels_; }
 
   // What's under a touch at (x, y): the hex it's in, and that hex's corner
   // nearest it (round 93, the user's: a touch picks a corner, where the
@@ -78,8 +87,8 @@ public:
 private:
   HexGrid::Layout layout() const;
   float hexSize() const; // centre to corner, in pixels, at this zoom
-  void startFaces();     // (the faces' and chips' sizes for this zoom, none drawn yet)
-  void buildGrid();      // (gridPixels_ for this zoom and pan)
+
+  void buildGrid(); // (gridPixels_ for this zoom and pan)
   void blendFace(Art::Face face, HexGrid::Point centre);
   void blendSprite(const std::vector<ScratchPadd::Scene::Colour> &sprite, int size,
                    HexGrid::Point centre);
@@ -95,14 +104,27 @@ private:
   int zoom_ = 1;
   HexGrid::Point offset_{}; // the board moved by panning, in pixels
   std::vector<ScratchPadd::Scene::Colour> pixels_;
-  // Each face as a square of pixels at facesSize_ a side (RGBA)
-  int facesSize_ = 0;
-  std::array<std::vector<ScratchPadd::Scene::Colour>, Art::kFaces> faces_;
-  // Each number chip (indexed by its number), chipsSize_ a side
-  int chipsSize_ = 0;
-  std::array<std::vector<ScratchPadd::Scene::Colour>, Art::kHighestChip + 1> chips_;
-  // The next face (then chip) prepare() draws: faces first, then chips
-  int nextToPrepare_ = 0;
+  // A set of the faces and chips at one size: each face a square of pixels
+  // facesSize a side (RGBA), each chip (indexed by its number) chipsSize
+  struct Sprites {
+    int facesSize = 0, chipsSize = 0;
+    std::array<std::vector<ScratchPadd::Scene::Colour>, Art::kFaces> faces;
+    std::array<std::vector<ScratchPadd::Scene::Colour>, Art::kHighestChip + 1> chips;
+    int next = 0; // the next to draw: faces first, then chips
+    bool done() const;
+    // Draws the next; whether that was the last
+    void drawNext(ScratchPadd::TextureRecipe::Smoothing smoothing);
+    void startAt(int faceSize, int chipSize);
+  };
+  Sprites whole_;  // (at zoom 1, kept)
+  Sprites zoomed_; // (at the current zoom, when it's not 1)
+  int facesSize() const;
+  int chipsSize() const;
+  // A face or chip at this zoom: its own when drawn, else the whole
+  // board's, scaled up as it's blended
+  void blendSpriteOf(const std::vector<ScratchPadd::Scene::Colour> &own,
+                     const std::vector<ScratchPadd::Scene::Colour> &whole, int ownSize,
+                     int wholeSize, HexGrid::Point centre);
   // The grid's pixels (indexes into pixels_), worked out once for a zoom
   // and pan rather than its 360 edges drawn each time (round 92)
   std::vector<std::uint32_t> gridPixels_;

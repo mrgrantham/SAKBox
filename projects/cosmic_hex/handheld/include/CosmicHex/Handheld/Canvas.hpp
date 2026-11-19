@@ -12,6 +12,7 @@
 
 #include <ScratchPadd/Scene/Types.hpp>
 
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -20,16 +21,27 @@ namespace CosmicHex::Handheld {
 class Canvas {
 public:
   using Colour = ScratchPadd::Scene::Colour;
+  // A picture of its own, `width` x `height`
   Canvas(int width, int height);
+  // Drawing over pixels it doesn't own (another picture's, the same size),
+  // so a picture drawn by something else needn't be copied to be drawn on
+  // (round 105: the board's buttons drawn straight onto the map, not onto a
+  // copy of it, 196 KB a redraw on a DS)
+  static Canvas over(std::span<Colour> pixels, int width, int height);
+
+  Canvas(const Canvas &other);
+  Canvas &operator=(const Canvas &other);
+  Canvas(Canvas &&) noexcept = default;
+  Canvas &operator=(Canvas &&) noexcept = default;
 
   int width() const { return width_; }
   int height() const { return height_; }
-  const std::vector<Colour> &pixels() const { return pixels_; }
+  std::span<const Colour> pixels() const { return pixels_; }
   Colour at(int x, int y) const;
 
   void clear(Colour colour);
   // Another picture of the same size, as it is (nothing if it isn't)
-  void copy(const std::vector<Colour> &pixels);
+  void copy(std::span<const Colour> pixels);
   void fillRect(float x, float y, float w, float h, Colour colour);
   void outline(float x, float y, float w, float h, Colour colour, float thickness = 1);
   // Words from their top left, or with their letters' pixels centred on
@@ -41,8 +53,10 @@ public:
   void blend(const std::vector<Colour> &sprite, int w, int h, int x, int y, float opacity = 1);
 
 private:
-  int width_, height_;
-  std::vector<Colour> pixels_;
+  Canvas() = default;
+  int width_ = 0, height_ = 0;
+  std::vector<Colour> owned_; // (empty when drawing over another's)
+  std::span<Colour> pixels_;  // what's drawn on: owned_'s, or another's
 };
 
 } // namespace CosmicHex::Handheld

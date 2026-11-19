@@ -324,7 +324,12 @@ void Renderer::Backend::drawOverlayText(const Overlay &overlay) {
   // Each colour its own palette entry (0 is see-through), up to 255
   std::vector<std::uint16_t> &colours = textColours;
   colours.clear();
-  std::ranges::fill(textPixels, 0);
+  // Only the rows the last text covered need clearing: the rest are clear
+  // already (round 105: not the whole 48 KB each time the text changes, as
+  // it does every frame of a moving banner)
+  if (textRowsTo > textRowsFrom)
+    std::fill(textPixels.begin() + static_cast<std::ptrdiff_t>(textRowsFrom) * kTextWidth,
+              textPixels.begin() + static_cast<std::ptrdiff_t>(textRowsTo) * kTextWidth, 0);
   textRowsFrom = kTextHeight;
   textRowsTo = 0;
   for (const Overlay::Text &text : overlay.texts()) {
@@ -339,11 +344,18 @@ void Renderer::Backend::drawOverlayText(const Overlay &overlay) {
     const auto entry = static_cast<std::uint8_t>(found - colours.begin() + 1);
     // stb_easy_font's letters (OverlayText.hpp, as the 3DS and desktops
     // draw them; round 96), each rectangle filled to whole pixels, at least
-    // one each way
-    for (const TextRectangle &r : textRectangles(text)) {
-      const int x0 = static_cast<int>(std::lround(r.x)), y0 = static_cast<int>(std::lround(r.y));
-      const int x1 = std::max(x0 + 1, static_cast<int>(std::lround(r.x + r.width)));
-      const int y1 = std::max(y0 + 1, static_cast<int>(std::lround(r.y + r.height)));
+    // one each way. Placed in 16.16 fixed point, three floats a text rather
+    // than a dozen a stroke (no floating point hardware here: round 105,
+    // the text took up to 40 ms a frame)
+    fontRectangles(text.text, textStrokes);
+    constexpr int kOne = 1 << 16;
+    const auto fixed = [](float value) { return static_cast<int>(std::lround(value * kOne)); };
+    const int left = fixed(text.x), top = fixed(text.y), scale = fixed(text.scale);
+    const auto pixel = [](int at) { return (at + kOne / 2) >> 16; }; // (rounded)
+    for (const FontRectangle &r : textStrokes) {
+      const int x0 = pixel(left + r.x * scale), y0 = pixel(top + r.y * scale);
+      const int x1 = std::max(x0 + 1, pixel(left + (r.x + r.width) * scale));
+      const int y1 = std::max(y0 + 1, pixel(top + (r.y + r.height) * scale));
       textRowsFrom = std::min(textRowsFrom, std::max(0, y0));
       textRowsTo = std::max(textRowsTo, std::min(y1, kTextHeight));
       for (int y = std::max(0, y0); y < std::min(y1, kTextHeight); ++y) {
@@ -441,6 +453,7 @@ void Renderer::unload(Mesh mesh) {
 
 void Renderer::beginFrame(const Camera &camera, const Environment &environment) {
   Backend &b = *backend_;
+  b.began = std::chrono::steady_clock::now();
   b.camera = camera;
   b.frustum.emplace(camera, Scalar(b.display.width()) / Scalar(b.display.height()));
   b.ambient = environment.ambient;
@@ -573,9 +586,15 @@ void Renderer::endFrame() {
     id = id == kLastTranslucentId ? kFirstTranslucentId : id + 1;
   }
   b.later.clear();
+  using Clock = std::chrono::steady_clock;
+  const auto milliseconds = [](Clock::duration d) {
+    return std::chrono::duration<float, std::milli>(d).count();
+  };
+  const Clock::time_point overlayFrom = Clock::now();
   b.drawOverlayShapes(overlay_);
   b.drawOverlayText(overlay_);
   overlay_.clear();
+  const Clock::time_point overlayTo = Clock::now();
   // Edge marking only in frames with outlines (it also misbehaves with
   // translucent polygons that set depth, as ours do: GBATEK), and then
   // without anti-aliasing, which would draw the outlines half see-through
@@ -607,9 +626,15 @@ void Renderer::endFrame() {
           b.last.polygons, kMostPolygons, b.last.vertices, kMostVertices);
 
   glFlush(GL_TRANS_MANUALSORT);
+  const Clock::time_point flushed = Clock::now();
   swiWaitForVBlank();
   // (the frame's 3D shows from this refresh: its text with it)
+  const Clock::time_point refreshed = Clock::now();
   b.showText();
+  const Clock::duration shown = Clock::now() - refreshed;
+  b.times = {.gpu = 0,
+             .cpu = milliseconds(flushed - b.began + shown),
+             .overlay = milliseconds(overlayTo - overlayFrom + shown)};
 }
 
 bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
@@ -655,7 +680,7 @@ Capabilities Renderer::capabilities() const {
 
 FrameCounts Renderer::lastFrame() const { return backend_->last; }
 
-FrameTimes Renderer::lastFrameTimes() const { return {}; } // (not measured here)
+FrameTimes Renderer::lastFrameTimes() const { return backend_->times; }
 
 // (Overlay::textWidth and lineHeight: stb_easy_font's, in OverlayText.cpp)
 

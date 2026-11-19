@@ -76,9 +76,16 @@ public:
   bool showingFeedback() const { return !message_.empty() || flash_.has_value(); }
   void clearFeedback();
 
-  // Draws the screen onto `canvas`: in the board modes over `board` (the
-  // map's pixels, the canvas's size), with the buttons
-  void draw(Canvas &canvas, const std::vector<Canvas::Colour> &board);
+  // Whether a choosing screen covers the board (else the board shows, with
+  // the buttons over it)
+  bool coversBoard() const {
+    return mode_ == Mode::Build || mode_ == Mode::Resources || mode_ == Mode::Players;
+  }
+  // The choosing screen, onto `canvas`, when one covers the board
+  void draw(Canvas &canvas);
+  // The buttons, and a tapped button's message, over the board's own
+  // pixels (Canvas::over: no copy of the map)
+  void drawOverBoard(Canvas &board);
   // Draws one of its pictures (cards, icons) not yet drawn, for spare
   // frames; whether they're all ready
   bool prepare();

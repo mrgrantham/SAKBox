@@ -7,6 +7,8 @@
 
 #include <ScratchPadd/Scene/Overlay.hpp>
 
+#include <cstdint>
+#include <string_view>
 #include <vector>
 
 namespace ScratchPadd::Scene {
@@ -17,6 +19,18 @@ struct TextRectangle {
 };
 // `text`'s letters as rectangles ('\n' starting a new line)
 std::vector<TextRectangle> textRectangles(const Overlay::Text &text);
+
+// A letter's stroke in the font's own units, before it's scaled and placed:
+// whole numbers, the text starting at (0, 0). For a backend without floating
+// point hardware (the DS: round 105, its text took up to 40 ms a frame in
+// soft floats), which places them in whole numbers itself
+struct FontRectangle {
+  std::int16_t x, y, width, height;
+};
+// `text`'s strokes into `out` (cleared first; kept by the caller, so no
+// allocation once it's grown). Characters the font hasn't (outside ' ' to
+// '~') are left out, taking no room
+void fontRectangles(std::string_view text, std::vector<FontRectangle> &out);
 
 // Adds `text`'s triangles to `triangles`
 void appendTextTriangles(const Overlay::Text &text, std::vector<Overlay::Vertex> &triangles);
