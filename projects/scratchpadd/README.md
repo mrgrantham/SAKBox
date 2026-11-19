@@ -564,6 +564,21 @@ How the builds differ from a desktop's:
   - `PlayMidi`: a MIDI file, one at a time, on the instrument above. Its notes are played by AudioPadd's `repeat()`, every 10 ms, so each may be up to 10 ms late. `pitch` is its speed, and `loop` starts it over. (MP3 and FLAC aren't read: decoding them in software would take the CPU the app needs.)
 - **The app is small enough:** the demo's `.nds` is about 900 KB with its files (about 50 KB of them), of the DS's 4 MB.
 
+### Performance on the consoles
+
+What makes code fast on a DS (and a 3DS) is mostly what it avoids. Each rule here was measured (rounds 92 and 105, with `FrameProfile` in melonDS and on hardware), and each is written where it's used, with why; this is the list in one place.
+
+| The DS hasn't... | So | Where |
+| --- | --- | --- |
+| floating-point hardware: every `float` sum is a library call | maths in whole numbers or fixed point: the scene's `Scalar` is flexmath's Q16.16 on the DS; text strokes are placed in 16.16 (`fontRectangles`, the DS renderer's text layer); triangles are filled in 1/256ths of a pixel; places that never change are worked out once (Cosmic Hex's `BoardPieces` keeps each hex's centre and corners) | `scene/include/.../Types.hpp`, `overlay_text`, `scene/ds/src/Renderer.cpp`, Cosmic Hex's `BoardPicture` and `BoardPieces` |
+| a divide instruction | the hardware divider and square-root unit (flexmath's `FixedPointNds.hpp`), and fewer divides: a vector squared directly when its numbers are in range, a length worked out once, no divides for an unscaled mesh | flexmath, `Vector3::length`, the DS renderer's `drawNow` |
+| fast main memory | pixels moved as words, not bytes (`Scene::Colour` is word-aligned), two pixels to a store when copying to the screen (`ConsoleScreens`); nothing drawn or copied that hasn't changed (the 3D's last frame shown again by itself, the text layer's changed rows, Cosmic Hex's map redrawn only where pieces changed) | `Scene::Colour`, `console_screens`, Cosmic Hex's `BoardPicture` |
+| much memory (4 MB, about 130 KB free in a Cosmic Hex game) | no buffer a frame: reused lists (`thread_local` in `appendTextTriangles`), a frame arena for the bots, drawing over another picture rather than copying it (`Canvas::over`) | `overlay_text`, `frame_arena`, `canvas` |
+| a second CPU core for the app | the bots think while the screen waits for its refresh; work that would stall a frame is done before it's needed (Cosmic Hex draws every picture from its recipe at the start, then fades the title in) | Cosmic Hex's app (`starting()`) |
+| time to spare in physics | the contacts' sweeps stop once nothing changes (Cyclone's `sweepTolerance`) and the dice step 30 times a second | Cyclone, Cosmic Hex's `DiceTray` and `PlatformProfile` |
+
+Hot functions are marked `[[gnu::hot]]`, which the DS builds put in ITCM, its fast instruction memory. The 3DS has floating-point hardware and more memory, so most of these matter less there, but the same code runs on both.
+
 ## Packages
 
 | Bazel target | Contents |
