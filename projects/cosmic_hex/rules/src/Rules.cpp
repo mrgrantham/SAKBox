@@ -1267,6 +1267,8 @@ std::optional<Settings> readSettings(std::string_view line) {
 
 } // namespace
 
+int tradeRateOf(const State &state, int player) { return tradeRate(state, player); }
+
 std::string settingsLine(const Settings &settings) { return settingsText(settings); }
 std::optional<Settings> settingsFromLine(std::string_view line) { return readSettings(line); }
 

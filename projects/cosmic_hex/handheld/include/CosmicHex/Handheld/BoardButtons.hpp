@@ -16,7 +16,7 @@
 
 namespace CosmicHex::Handheld::BoardButtons {
 
-enum class Button { ShowResources, OtherPlayers, Build, Trade, Cards, Roll, EndTurn };
+enum class Button { ShowResources, OtherPlayers, Build, Trade, Cards, Roll, EndTurn, MoveList };
 
 // What the buttons depend on: whether it's your move, and what you can do
 struct Situation {
@@ -28,6 +28,9 @@ struct Situation {
   // The start's placing (your home colony, then your ship): End Turn places
   // what's been touched, usable once something has
   bool placing = false, placeChosen = false;
+  // Debug builds: the list of moves on the top screen, a button to turn
+  // it on and off (under Other players)
+  bool moveListButton = false;
 };
 // The situation from the game: the player to move's legal actions, and
 // whether the dice wait for you to throw them (the user's: your

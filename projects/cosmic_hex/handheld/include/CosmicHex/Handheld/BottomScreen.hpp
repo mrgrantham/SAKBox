@@ -23,6 +23,7 @@
 #include <CosmicHex/Handheld/ChoiceScreens.hpp>
 #include <CosmicHex/Handheld/OtherPlayers.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
+#include <CosmicHex/Handheld/TradeRoom.hpp>
 
 #include <ScratchPadd/Buttons/Buttons.hpp>
 #include <ScratchPadd/Canvas/Canvas.hpp>
@@ -38,7 +39,7 @@ using ScratchPadd::Canvas; // (ScratchPadd/Canvas)
 
 class BottomScreen {
 public:
-  enum class Mode { Board, Build, Resources, Players, Placing, Cards, Keep, Others };
+  enum class Mode { Board, Build, Resources, Players, Placing, Cards, Keep, Others, Trade };
 
   BottomScreen(int width, int height);
 
@@ -78,6 +79,15 @@ public:
   // After buying, which of the two dealt is chosen (-1: none yet), for the
   // top screen to mark it too
   int keepChosen() const { return mode_ == Mode::Keep ? keepChosen_ : -1; }
+  // Debug builds: the move list button (BoardButtons::Button::MoveList),
+  // and whether the list of moves shows (off at first)
+  void setMoveListButton(bool shown) { moveListButton_ = shown; }
+  bool showingMoveList() const { return moveListButton_ && moveList_; }
+  // A move to make next, once the rules allow it (the trade room's bank
+  // trade after ending the turn's offers to players): taken once
+  std::optional<Action> nextQueued();
+  // The trade room, for the top screen to say the deal
+  const TradeRoom &trade() const { return trade_; }
   // In Placing: the corners where the chosen build, or the ship touched,
   // may go, to be marked
   std::vector<Corner> placingCorners() const;
@@ -99,7 +109,8 @@ public:
   // the buttons over it)
   bool coversBoard() const {
     return mode_ == Mode::Build || mode_ == Mode::Resources || mode_ == Mode::Players ||
-           mode_ == Mode::Cards || mode_ == Mode::Keep || mode_ == Mode::Others;
+           mode_ == Mode::Cards || mode_ == Mode::Keep || mode_ == Mode::Others ||
+           mode_ == Mode::Trade;
   }
   // The choosing screen, onto `canvas`, when one covers the board
   void draw(Canvas &canvas);
@@ -136,7 +147,10 @@ private:
   int heldChosen_ = -1;
   std::optional<KeepChoice> keep_; // (after buying: the two to keep one of)
   int keepChosen_ = -1;
-  std::vector<PlayerView> others_; // (the other players' tabs)
+  bool moveListButton_ = false, moveList_ = false; // (debug builds' list of moves)
+  TradeRoom trade_;                                // (the trade room)
+  std::vector<Action> queued_;                     // (its moves still to make)
+  std::vector<PlayerView> others_;                 // (the other players' tabs)
   int othersChosen_ = -1;
   Info info_ = Info::None;
   // The board's buttons (ScratchPadd's Buttons: placed by BoardButtons'
@@ -147,7 +161,8 @@ private:
   // (update's work: the screen following the game)
   void follow(const State &state, const std::vector<Action> &legal, bool yourMove,
               bool yourRollWaits);
-  void closeOthers(); // (the other players' Back: the board again)
+  void closeOthers();     // (the other players' Back: the board again)
+  Outcome confirmTrade(); // (the trade room's Trade, Offer or Accept)
   CardSprites cards_;
   CardSprites bigCards_; // (the cards screens': bigger, four a row)
   std::array<std::vector<Canvas::Colour>, Art::kIcons> icons_;

@@ -39,12 +39,14 @@ void BottomScreen::follow(const State &state, const std::vector<Action> &legal, 
   legal_ = legal;
   yourMove_ = yourMove;
   situation_ = BoardButtons::situationOf(state, legal, yourMove, yourRollWaits);
+  situation_.moveListButton = moveListButton_;
   // (before the roll too: each row then says it waits for the roll)
   rows_ = yourMove ? buildRows(state) : std::vector<BuildRow>{};
   // (the other players, as everyone sees them: from player 1, yours)
   others_.clear();
   for (const int p : othersOf(state, 0))
     others_.push_back(viewOf(state, p));
+  trade_.update(state, legal, yourMove);
   // (your cards: player 1's, the one you play; on your move the turn's)
   held_ = heldCards(state, legal, yourMove ? state.turn : 0, yourMove);
   if (heldChosen_ >= static_cast<int>(held_.size()))
@@ -56,6 +58,12 @@ void BottomScreen::follow(const State &state, const std::vector<Action> &legal, 
       mode_ = Mode::Board;
     startPlacing_ = false;
     startPlacement_.reset();
+    return;
+  }
+  // An offer to you, or a counter to yours: the trade room, by itself, to
+  // answer it
+  if (trade_.answering()) {
+    mode_ = Mode::Trade;
     return;
   }
   // A choice of resources the rules ask for now: the picker, by itself
@@ -151,7 +159,12 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
           }
         break;
       case BoardButtons::Button::Trade:
-        buttons_.say(usable ? "Trade: its screen is next to be built" : "Trade: after your roll");
+        if (usable) {
+          mode_ = Mode::Trade;
+          buttons_.say({});
+        } else {
+          buttons_.say(yourMove_ ? "Trade: after your roll" : "Trade: on your turn");
+        }
         break;
       case BoardButtons::Button::ShowResources:
         info_ = info_ == Info::Resources ? Info::None : Info::Resources;
@@ -173,6 +186,10 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
           mode_ = Mode::Cards;
           buttons_.say({});
         }
+        break;
+      case BoardButtons::Button::MoveList:
+        moveList_ = !moveList_;
+        buttons_.say(moveList_ ? "Move list: on (debug)" : "Move list: off");
         break;
       case BoardButtons::Button::Roll:
         buttons_.say({});
@@ -309,6 +326,35 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
       return useChosenCard();
     return {std::nullopt, true};
   }
+  case Mode::Trade: {
+    using TradeWhat = ChoiceScreens::TradeTouch::What;
+    const auto touch = ChoiceScreens::tradeTouch(width_, trade_, x, y);
+    if (!touch)
+      return {std::nullopt, true};
+    switch (touch->what) {
+    case TradeWhat::Partner:
+      // (a closed one says why)
+      if (trade_.open(touch->partner))
+        trade_.choosePartner(touch->partner);
+      break;
+    case TradeWhat::Add:
+      trade_.add(touch->side, touch->resource);
+      break;
+    case TradeWhat::Remove:
+      trade_.remove(touch->side, touch->resource);
+      break;
+    case TradeWhat::Back:
+      mode_ = Mode::Board;
+      break;
+    case TradeWhat::Confirm:
+      return confirmTrade();
+    case TradeWhat::Decline:
+      if (const auto decline = trade_.decline())
+        return {decline, true};
+      break;
+    }
+    return {std::nullopt, true};
+  }
   case Mode::Others: {
     const auto touch = ChoiceScreens::othersTouch(width_, others_, x, y);
     if (touch && touch->what == What::Item)
@@ -330,6 +376,29 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   }
   }
   return {};
+}
+
+BottomScreen::Outcome BottomScreen::confirmTrade() {
+  if (trade_.answering()) {
+    if (const auto accept = trade_.accept())
+      return {accept, true};
+    return {std::nullopt, true};
+  }
+  std::vector<Action> moves = trade_.moves();
+  if (moves.empty())
+    return {std::nullopt, true};
+  // (the first now, the rest once the rules allow them: nextQueued)
+  const Action first = moves.front();
+  queued_.assign(moves.begin() + 1, moves.end());
+  return {first, true};
+}
+
+std::optional<Action> BottomScreen::nextQueued() {
+  if (queued_.empty() || std::find(legal_.begin(), legal_.end(), queued_.front()) == legal_.end())
+    return std::nullopt;
+  const Action next = queued_.front();
+  queued_.erase(queued_.begin());
+  return next;
 }
 
 void BottomScreen::closeOthers() {
@@ -469,6 +538,25 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
     }
     return {std::nullopt, true};
   }
+  case Mode::Trade: {
+    // (left and right through the open tabs; A trades or accepts; B back)
+    if (key == Key::Confirm)
+      return confirmTrade();
+    if (key == Key::Back && !trade_.answering()) {
+      mode_ = Mode::Board;
+    } else if ((key == Key::Left || key == Key::Right) && !trade_.answering()) {
+      std::vector<int> open;
+      for (const int p : trade_.partners())
+        if (trade_.open(p))
+          open.push_back(p);
+      const auto at = std::find(open.begin(), open.end(), trade_.partner());
+      const int i = at == open.end() ? 0 : static_cast<int>(at - open.begin());
+      if (!open.empty())
+        trade_.choosePartner(open[static_cast<std::size_t>(
+            step(i, key == Key::Left ? -1 : 1, static_cast<int>(open.size())))]);
+    }
+    return {std::nullopt, true};
+  }
   case Mode::Others: {
     // (left and right through the tabs; B back)
     if (key == Key::Back) {
@@ -570,6 +658,9 @@ void BottomScreen::draw(Canvas &canvas) {
     return;
   case Mode::Others:
     ChoiceScreens::drawOthers(canvas, others_, othersChosen_);
+    return;
+  case Mode::Trade:
+    ChoiceScreens::drawTrade(canvas, trade_, cards_);
     return;
   case Mode::Board:
   case Mode::Placing:

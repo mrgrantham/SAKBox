@@ -552,6 +552,9 @@ int cornerNumber(Corner corner); // -1 if it isn't on the board
 // Scoring
 
 int points(const State &state, int player);
+// How many of one resource `player` gives the bank for 1 of another now:
+// the bank's rate, or an outpost's when they've a ship or station by one
+int tradeRateOf(const State &state, int player);
 int stationsOf(const State &state, int player); // the home included
 
 // ---------------------------------------------------------------------------

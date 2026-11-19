@@ -366,6 +366,13 @@ public:
       if (bottomScreen_)
         bottomScreen_->update(snapshot.state, snapshot.moves,
                               mode_ == Mode::Playing && snapshot.yourMove, yourRollWaits(snapshot));
+      // (a move the bottom screen queued, once the rules allow it: a bank
+      // trade after ending the turn's offers to players)
+      if (bottomScreen_ && mode_ == Mode::Playing && snapshot.yourMove)
+        if (const auto next = bottomScreen_->nextQueued()) {
+          send(PlayMove{*next});
+          latest_->yourMove = false;
+        }
       // Someone won: the title again, with who (ScreenFlow's Won)
       if (snapshot.state.winner >= 0)
         apply(flow_.on(ScreenFlow::Event::GameWon));
@@ -383,6 +390,10 @@ public:
     bottom_.emplace();
     picture_.emplace(kBottomWidth, kBottomHeight, kThisPlatform.recipeSmoothing);
     bottomScreen_.emplace(kBottomWidth, kBottomHeight);
+#if !defined(NDEBUG)
+    // (debug builds: the list of moves, behind a button, off at first)
+    bottomScreen_->setMoveListButton(true);
+#endif
     bottomCanvas_.emplace(kBottomWidth, kBottomHeight);
     renderer_.emplace(*display_);
     const BoardPieces pieces;
@@ -997,8 +1008,9 @@ private:
     if (!latest_->lastMoves.empty() && shownInfo_ == BottomScreen::Info::None && !infoClosingAt_)
       overlay.text(4, kTopHeight - 14, latest_->lastMoves.back().substr(0, kCharsPerLine),
                    Palette::kSoftWords);
+    // (the list of moves: debug builds only, when turned on)
     if (mode_ == Mode::Playing && latest_->yourMove && shownInfo_ == BottomScreen::Info::None &&
-        !infoClosingAt_)
+        !infoClosingAt_ && bottomScreen_ && bottomScreen_->showingMoveList())
       drawMoves(overlay);
     drawInfoWords(overlay, state);
     drawBanner(overlay);
@@ -1331,6 +1343,9 @@ private:
         }
       }
     }
+    // The list of moves' keys, only while it shows (debug builds)
+    if (!bottomScreen_ || !bottomScreen_->showingMoveList())
+      return;
     const std::vector<std::size_t> shown = movesShown();
     if (pressed.pressed(Button::Down) && cursor_ + 1 < shown.size())
       ++cursor_;

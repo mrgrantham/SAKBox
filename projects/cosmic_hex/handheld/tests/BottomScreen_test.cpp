@@ -339,3 +339,46 @@ TEST(BottomScreenTest, TheOtherPlayersTabsStayOpenUntilBack) {
   EXPECT_EQ(screen.info(), BottomScreen::Info::None);
   EXPECT_NE(screen.mode(), Mode::Others);
 }
+
+// The trade room: Trade opens it on your trading; a bank trade touched in
+// (a kind given, a kind got) and Trade ends the turn's offers to players,
+// then (once the rules allow it) makes the trade
+TEST(BottomScreenTest, TheTradeRoomMakesABankTrade) {
+  State state = newGame(4, agreedRules(boardR3(), 4), 0);
+  SeededRandom::Generator random(41);
+  for (int guard = 0; guard < 4000; ++guard) {
+    if (state.phase == Phase::Trading && state.turn == 0 && state.round > 2)
+      break;
+    Game::apply(state, Game::currentPlayer(state) == GameBots::kDealer
+                           ? Game::dealerAction(state, random)
+                           : Game::legalActions(state).front());
+  }
+  ASSERT_EQ(state.phase, Phase::Trading);
+  state.player[0].resources = {6, 0, 0, 0, 0};
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, Game::legalActions(state), true);
+  for (const auto &place : BoardButtons::layout(
+           kWidth, kHeight, BoardButtons::situationOf(state, Game::legalActions(state), true)))
+    if (place.button == BoardButtons::Button::Trade)
+      screen.tap(static_cast<int>(place.x + place.size / 2),
+                 static_cast<int>(place.y + place.size / 2), std::nullopt);
+  ASSERT_EQ(screen.mode(), Mode::Trade);
+  // Minerals given (the first card of the give row), Food got (the second
+  // of the get row): the cards' middles
+  screen.tap(6 + 24, 34 + 20, std::nullopt);
+  screen.tap(6 + 49 + 24, 102 + 20, std::nullopt);
+  const auto first = screen.press(BottomScreen::Key::Confirm);
+  ASSERT_TRUE(first.play.has_value());
+  if (first.play) {
+    EXPECT_EQ(first.play->kind, Kind::EndTrading);
+    ASSERT_TRUE(Game::apply(state, *first.play));
+  }
+  screen.update(state, Game::legalActions(state), true);
+  const auto next = screen.nextQueued();
+  ASSERT_TRUE(next.has_value());
+  if (next) {
+    EXPECT_EQ(next->kind, Kind::Trade);
+    EXPECT_TRUE(Game::apply(state, *next));
+    EXPECT_EQ(state.player[0].resources[1], 1);
+  }
+}

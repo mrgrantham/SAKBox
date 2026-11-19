@@ -18,7 +18,8 @@ Situation situationOf(const State &state, const std::vector<Action> &legal, bool
   if (!yourMove)
     return s;
   s.canEndTurn = has({Kind::EndTurn, Kind::EndTrading});
-  s.canTrade = has({Kind::Trade, Kind::OfferTrade});
+  // (with the bank, or with players while the turn's offers are open)
+  s.canTrade = has({Kind::Trade, Kind::OfferTrade, Kind::EndTrading});
   const Player &me = state.player[static_cast<std::size_t>(state.turn)];
   s.holdsCards = !me.contracts.empty();
   return s;
@@ -37,6 +38,8 @@ std::vector<Place> layout(int width, int height, const Situation &s) {
       {Button::Trade, right, edge + step, size, s.canTrade},
       {Button::Cards, right, edge + 2 * step, size, s.holdsCards},
   };
+  if (s.moveListButton)
+    out.push_back({Button::MoveList, edge, edge + 2 * step, size, true});
   if (s.canRoll)
     out.push_back({Button::Roll, edge, bottom, size, true});
   if (s.canEndTurn || s.placing)
@@ -58,6 +61,8 @@ Art::Icon iconOf(Button button) {
     return Art::Icon::ShowResources;
   case Button::OtherPlayers:
     return Art::Icon::OtherPlayers;
+  case Button::MoveList:
+    return Art::Icon::MoveList;
   case Button::Build:
     return Art::Icon::Build;
   case Button::Trade:

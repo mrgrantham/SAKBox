@@ -170,3 +170,26 @@ TEST(ChoiceScreensTest, TheCardsScreens) {
     writeOut(canvas, "keep_" + std::to_string(w) + ".ppm");
   }
 }
+
+// The trade room drawn: the bank's tab with a trade picked, and answering
+// an offer (pictures in the test's outputs)
+TEST(ChoiceScreensTest, TheTradeRoom) {
+  State state = newGame(4, agreedRules(boardR3(), 4), 0);
+  state.player[0].resources = {5, 1, 2, 0, 1};
+  state.phase = Phase::Trading;
+  TradeRoom room;
+  room.update(state, Game::legalActions(state), true);
+  room.add(TradeRoom::Side::Give, Resource::Minerals);
+  room.add(TradeRoom::Side::Get, Resource::Food);
+  Canvas canvas(256, 192);
+  CardSprites cards(256);
+  ChoiceScreens::drawTrade(canvas, room, cards);
+  writeOut(canvas, "trade_bank_256.ppm");
+  room.choosePartner(2);
+  room.add(TradeRoom::Side::Give, Resource::Fuel);
+  room.add(TradeRoom::Side::Give, Resource::Fuel);
+  room.add(TradeRoom::Side::Get, Resource::Water);
+  ChoiceScreens::drawTrade(canvas, room, cards);
+  writeOut(canvas, "trade_player_256.ppm");
+  EXPECT_TRUE(ChoiceScreens::tradeTouch(256, room, 20, 10).has_value()); // (a tab)
+}

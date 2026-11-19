@@ -26,6 +26,8 @@ extern const unsigned char kIconEndTurn[];
 extern const std::size_t kIconEndTurnSize;
 extern const unsigned char kIconOtherPlayers[];
 extern const std::size_t kIconOtherPlayersSize;
+extern const unsigned char kIconMoveList[];
+extern const std::size_t kIconMoveListSize;
 extern const unsigned char kCardResourceMinerals[];
 extern const std::size_t kCardResourceMineralsSize;
 extern const unsigned char kCardResourceFood[];
@@ -206,6 +208,8 @@ std::string_view iconRecipeOf(Icon which) {
     return text(Recipes::kIconEndTurn, Recipes::kIconEndTurnSize);
   case Icon::OtherPlayers:
     return text(Recipes::kIconOtherPlayers, Recipes::kIconOtherPlayersSize);
+  case Icon::MoveList:
+    return text(Recipes::kIconMoveList, Recipes::kIconMoveListSize);
   }
   return {};
 }

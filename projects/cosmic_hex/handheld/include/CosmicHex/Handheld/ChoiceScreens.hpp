@@ -13,6 +13,7 @@
 #include <CosmicHex/Handheld/CardChoices.hpp>
 #include <CosmicHex/Handheld/OtherPlayers.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
+#include <CosmicHex/Handheld/TradeRoom.hpp>
 #include <ScratchPadd/Canvas/Canvas.hpp>
 
 #include <array>
@@ -105,6 +106,21 @@ std::optional<Touch> keepTouch(int width, std::size_t cards, int x, int y);
 // Back. A touch on a tab is that player (Touch::item is the player)
 void drawOthers(Canvas &canvas, const std::vector<PlayerView> &others, int chosen);
 std::optional<Touch> othersTouch(int width, const std::vector<PlayerView> &others, int x, int y);
+
+// The trade room: a tab for each partner (the bank, then the players; a
+// closed one greyed), your cards to give on top (a touch adds one, the
+// minus under it takes one back; "of 4" is what you hold), the cards to get
+// below, Back, the deal in words, and Trade (the bank) or Offer (a
+// player) when it can be made. Answering an offer: what they give and
+// want, a counter's changes outlined in amber, Decline and Accept
+void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards);
+struct TradeTouch {
+  enum class What { Partner, Add, Remove, Back, Confirm, Decline } what;
+  int partner = 0;                              // (Partner)
+  TradeRoom::Side side = TradeRoom::Side::Give; // (Add, Remove)
+  Resource resource = Resource::Minerals;       // (Add, Remove)
+};
+std::optional<TradeTouch> tradeTouch(int width, const TradeRoom &room, int x, int y);
 
 } // namespace ChoiceScreens
 

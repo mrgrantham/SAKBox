@@ -143,8 +143,13 @@ std::vector<Action> TableGame::personMoves() const {
 bool TableGame::play(const Action &move) {
   if (!waitingForPerson())
     return false;
+  // (an offer or a counter-offer of any cards: too many to list, so the
+  // rules themselves say whether it can be made; anything else must be
+  // one of the moves listed)
+  const bool offering =
+      move.kind == Action::Kind::OfferTrade || move.kind == Action::Kind::CounterTrade;
   const std::vector<Action> allowed = personMoves();
-  if (std::find(allowed.begin(), allowed.end(), move) == allowed.end())
+  if (!offering && std::find(allowed.begin(), allowed.end(), move) == allowed.end())
     return false;
   const State before = state();
   if (!play_.play(move))

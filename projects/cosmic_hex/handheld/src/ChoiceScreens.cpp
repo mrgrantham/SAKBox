@@ -442,6 +442,144 @@ std::optional<Touch> othersTouch(int width, const std::vector<PlayerView> &other
   return std::nullopt;
 }
 
+namespace {
+// The trade room's partner tabs, a panel (ScratchPadd's Buttons) across
+// the top, each's id its partner
+ScratchPadd::Buttons::Panel tradeTabs(int width, const TradeRoom &room) {
+  const float k = scaleOf(width);
+  const std::vector<int> partners = room.partners();
+  const float w =
+      (static_cast<float>(width) - 8 * k - 3 * k * static_cast<float>(partners.size() - 1)) /
+      static_cast<float>(partners.size());
+  std::vector<ScratchPadd::Buttons::Button> tabs;
+  for (std::size_t i = 0; i < partners.size(); ++i) {
+    const int p = partners[i];
+    tabs.push_back({.id = p,
+                    .area = {4 * k + static_cast<float>(i) * (w + 3 * k), 2 * k, w, 18 * k},
+                    .label = p == TradeRoom::kBank ? "Bank" : "P" + std::to_string(p + 1),
+                    .usable = room.open(p),
+                    .face = p == room.partner() ? std::optional(kConfirm) : std::nullopt,
+                    .edge = p == room.partner() ? std::optional(kConfirmEdge) : std::nullopt});
+  }
+  ScratchPadd::Buttons::Panel panel;
+  panel.set(std::move(tabs));
+  return panel;
+}
+// A row of the five resources' cards: where card r is, and its minus
+Box tradeCard(int width, float y, int r) {
+  const float k = scaleOf(width);
+  const CardSprites sizes(width);
+  return {(6 + 49 * static_cast<float>(r)) * k, y, static_cast<float>(sizes.width()),
+          static_cast<float>(sizes.height())};
+}
+Box tradeMinus(int width, float y, int r) {
+  const float k = scaleOf(width);
+  const Box card = tradeCard(width, y, r);
+  return {card.x, card.y + card.h + 2 * k, 16 * k, 12 * k};
+}
+float giveRow(int width) { return 34 * scaleOf(width); }
+float getRow(int width) { return 102 * scaleOf(width); }
+Box declineBox(int width) {
+  const float k = scaleOf(width);
+  return {100 * k, 168 * k, 56 * k, 21 * k};
+}
+} // namespace
+
+void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards) {
+  const float k = scaleOf(canvas);
+  canvas.clear(kBackground);
+  const int width = canvas.width();
+  const bool answering = room.answering();
+  if (!answering)
+    tradeTabs(width, room)
+        .draw(canvas,
+              {.face = kRow, .edge = kEdge, .words = kWords, .labelScale = 1, .dimmed = 0.45f});
+  else
+    canvas.textCentred(
+        static_cast<float>(width) / 2, 11 * k,
+        "P" + std::to_string(room.from() + 1) +
+            (room.changed().empty() ? " offers you a trade" : " answers with a counter"),
+        kChosen);
+  const auto row = [&](float y, const Resources &counts, std::string_view label, bool minus,
+                       bool showHeld) {
+    canvas.text(6 * k, y - 10 * k, label, kDim);
+    for (int r = 0; r < kResources; ++r) {
+      const Box box = tradeCard(width, y, r);
+      const int n = counts[static_cast<std::size_t>(r)];
+      canvas.blend(cards.small(cardOf(static_cast<Resource>(r))), cards.width(), cards.height(),
+                   static_cast<int>(box.x), static_cast<int>(box.y), n > 0 ? 1.0f : 0.45f);
+      if (n > 0) {
+        // (how many in a badge at the card's foot, clear of its picture)
+        canvas.outline(box.x - 1, box.y - 1, box.w + 2, box.h + 2, kWords);
+        canvas.fillRect(box.x + box.w - 13 * k, box.y + box.h - 11 * k, 13 * k, 11 * k,
+                        Colour{12, 16, 28, 255});
+        canvas.textCentred(box.x + box.w - 6.5f * k, box.y + box.h - 5.5f * k, std::to_string(n),
+                           kWords);
+      }
+      if (answering && std::find(room.changed().begin(), room.changed().end(),
+                                 static_cast<Resource>(r)) != room.changed().end())
+        canvas.outline(box.x - 2, box.y - 2, box.w + 4, box.h + 4, kChosen, 2);
+      if (minus) {
+        const Box m = tradeMinus(width, y, r);
+        canvas.fillRect(m.x, m.y, m.w, m.h, kRow);
+        canvas.outline(m.x, m.y, m.w, m.h, kEdge);
+        canvas.textCentred(m.x + m.w / 2, m.y + m.h / 2, "-", kWords);
+      }
+      if (showHeld)
+        canvas.textCentred(box.x + box.w - 10 * k, box.y + box.h + 8 * k,
+                           "of " + std::to_string(room.held()[static_cast<std::size_t>(r)]), kDim);
+    }
+  };
+  if (answering) {
+    row(giveRow(width), room.theyGive(), "THEY GIVE YOU", false, false);
+    row(getRow(width), room.theyWant(), "THEY WANT FROM YOU", false, false);
+    button(canvas, declineBox(width), "Decline", Colour{74, 32, 32, 255}, kCannot);
+    if (room.accept())
+      button(canvas, confirmBox(width), "Accept", kConfirm, kConfirmEdge);
+    else
+      canvas.textCentred(224 * k, 178 * k, "can't afford", kCannot);
+    return;
+  }
+  const bool bank = room.partner() == TradeRoom::kBank;
+  row(giveRow(width), room.give(), bank ? "YOU GIVE (touch a kind)" : "YOU GIVE (touch to add)",
+      !bank, true);
+  row(getRow(width), room.get(), bank ? "YOU GET" : "YOU ASK FOR", !bank, false);
+  button(canvas, backBox(width), "Back", kRow, kEdge);
+  // The deal, or why not, between the buttons
+  const std::string why = room.whyNot();
+  canvas.textCentred(static_cast<float>(width) / 2, 160 * k, room.deal(), kWords);
+  if (!why.empty())
+    canvas.textCentred(static_cast<float>(width) / 2, 180 * k, why, kCannot);
+  else
+    button(canvas, confirmBox(width), bank ? "Trade" : "Offer", kConfirm, kConfirmEdge);
+}
+
+std::optional<TradeTouch> tradeTouch(int width, const TradeRoom &room, int x, int y) {
+  using What = TradeTouch::What;
+  if (room.answering()) {
+    if (declineBox(width).contains(x, y))
+      return TradeTouch{What::Decline};
+    if (confirmBox(width).contains(x, y))
+      return TradeTouch{What::Confirm};
+    return std::nullopt;
+  }
+  if (const std::optional<int> partner = tradeTabs(width, room).at(x, y))
+    return TradeTouch{What::Partner, *partner};
+  if (backBox(width).contains(x, y))
+    return TradeTouch{What::Back};
+  if (confirmBox(width).contains(x, y))
+    return TradeTouch{What::Confirm};
+  for (const auto &[side, rowY] : {std::pair{TradeRoom::Side::Give, giveRow(width)},
+                                   std::pair{TradeRoom::Side::Get, getRow(width)}})
+    for (int r = 0; r < kResources; ++r) {
+      if (tradeMinus(width, rowY, r).contains(x, y))
+        return TradeTouch{What::Remove, 0, side, static_cast<Resource>(r)};
+      if (tradeCard(width, rowY, r).contains(x, y))
+        return TradeTouch{What::Add, 0, side, static_cast<Resource>(r)};
+    }
+  return std::nullopt;
+}
+
 } // namespace ChoiceScreens
 
 } // namespace CosmicHex::Handheld

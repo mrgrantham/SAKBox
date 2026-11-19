@@ -28,6 +28,7 @@ cc_library(
         "src/ScreenPictures.cpp",
         "src/StartMenu.cpp",
         "src/TableGame.cpp",
+        "src/TradeRoom.cpp",
         "src/TurnBanner.cpp",
     ],
     hdrs = [
@@ -55,6 +56,7 @@ cc_library(
         "include/CosmicHex/Handheld/ScreenPictures.hpp",
         "include/CosmicHex/Handheld/StartMenu.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",
+        "include/CosmicHex/Handheld/TradeRoom.hpp",
         "include/CosmicHex/Handheld/TurnBanner.hpp",
     ],
     strip_include_prefix = "include/",
@@ -293,6 +295,16 @@ cc_test(
     name = "OtherPlayers_test",
     size = "small",
     srcs = ["tests/OtherPlayers_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "TradeRoom_test",
+    size = "small",
+    srcs = ["tests/TradeRoom_test.cpp"],
     deps = [
         ":handheld",
         "@gtest//:gtest_main",
