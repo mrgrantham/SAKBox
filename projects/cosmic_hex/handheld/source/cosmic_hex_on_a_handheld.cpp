@@ -1957,7 +1957,14 @@ private:
       overlay.rectangle(cx, y + pictureH, cw, cardH - pictureH, {236, 232, 220, 255});
       if (turned >= 1) {
         const CosmicHex::Art::CardWords words = CosmicHex::Art::wordsOf(card);
-        overlay.textCentred(x + w / 2, y + w * 13 / 63, words.shortTitle, {24, 24, 30}, k);
+        // (the title white, centred on the label band, 3 to 19 of the
+        // card's 88 units, as large as fits its width: the user's)
+        float titleScale = 2 * k;
+        while (titleScale > k &&
+               Scene::Overlay::textWidth(words.shortTitle, titleScale) > w * 54 / 63)
+          titleScale -= 0.25f * k;
+        overlay.textCentred(x + w / 2, y + w * 11 / 63, words.shortTitle, Palette::kWords,
+                            titleScale);
         // (wrapped by the width the letters take as drawn, spacing included)
         const auto lines = Scene::wrapText(words.words, w - 8 * k, [k](std::string_view line) {
           return Scene::Overlay::textWidth(line, k);
