@@ -76,6 +76,7 @@
 #include <spdlog/spdlog.h>
 
 #include <ScratchPadd/ConsoleScreens/ConsoleScreens.hpp>
+#include <ScratchPadd/StartupSplash/StartupSplash.hpp>
 
 #if defined(COSMIC_HEX_BENCH)
 #include "CosmicHexBench.hpp"
@@ -389,12 +390,22 @@ public:
     // frame during the title, up to a tenth of a second each on a DS, they
     // made the rocket stutter for its first turn). The map's faces first:
     // the top screen's are made from them where they're no smaller.
-    while (!picture_->prepare()) {
-    }
-    while (!bottomScreen_->prepare()) {
-    }
-    loadFaces();
-    loadCardPictures();
+    // (behind a splash, fading in and out while it runs)
+    ScratchPadd::StartupSplash splash(*renderer_, {.width = kTopWidth,
+                                                   .height = kTopHeight,
+                                                   .title = "Vibe Coding by James",
+                                                   .subtitle = "presents",
+                                                   .words = Palette::kWords,
+                                                   .softWords = Palette::kDimWords,
+                                                   .markColour = Palette::kAccent});
+    splash.run([this] {
+      while (!picture_->prepare()) {
+      }
+      while (!bottomScreen_->prepare()) {
+      }
+      loadFaces();
+      loadCardPictures();
+    });
     titleStarted_ = Clock::now();
     // (how long the start took, shown on the -watch builds)
     startSeconds_ = secondsSince(startedAt);

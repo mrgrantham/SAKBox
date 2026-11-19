@@ -11,6 +11,7 @@ SOURCES = {
     "//projects/scratchpadd/frame_arena:sources": "scratchpadd/frame_arena",
     "//projects/scratchpadd/motion:sources": "scratchpadd/motion",
     "//projects/scratchpadd/canvas:sources": "scratchpadd/canvas",
+    "//projects/scratchpadd/startup_splash:sources": "scratchpadd/startup_splash",
     "//projects/scratchpadd/console_screens:sources": "scratchpadd/console_screens",
     "//projects/cyclone:sources": "cyclone",
     "//projects/cosmic_hex/art:sources": "cosmic_hex/art",
