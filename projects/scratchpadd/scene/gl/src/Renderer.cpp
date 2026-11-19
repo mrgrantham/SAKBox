@@ -513,6 +513,19 @@ Texture Renderer::load(const TextureImage &image) {
   return {static_cast<std::uint32_t>(backend_->textures.size())};
 }
 
+bool Renderer::replace(Texture texture, const TextureImage &image) {
+  if (!texture || texture.id > backend_->textures.size() || !backend_->textures[texture.id - 1] ||
+      image.pixels.size() <
+          static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height))
+    return false;
+  glBindTexture(GL_TEXTURE_2D, backend_->textures[texture.id - 1]);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+               image.pixels.data());
+  glGenerateMipmap(GL_TEXTURE_2D);
+  return true;
+}
+
 void Renderer::unload(Texture texture) {
   if (!texture || texture.id > backend_->textures.size())
     return;

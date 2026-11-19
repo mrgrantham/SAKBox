@@ -65,6 +65,11 @@ public:
   // can go afterwards. No texture if the backend can't take its size
   Texture load(const TextureImage &image);
   void unload(Texture texture);
+  // `texture`'s picture changed to `image`, the same size, in its place: a
+  // texture reused for pictures that come and go (a close-up), as a DS
+  // can't give texture memory back. False if it couldn't be (another size,
+  // or no such texture)
+  bool replace(Texture texture, const TextureImage &image);
 
   // Starts a frame: clears it to the environment's background
   void beginFrame(const Camera &camera, const Environment &environment);

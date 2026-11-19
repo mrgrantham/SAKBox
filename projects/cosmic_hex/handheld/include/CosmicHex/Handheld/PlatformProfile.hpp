@@ -43,6 +43,10 @@ struct PlatformProfile {
   // (BoardPicture::setZoomBudget): the DS's zoom 2 takes about 240 KB,
   // its zoom 3 about 530 KB, more than it has
   std::size_t boardZoomBytes;
+  // Close-ups: a picture shown big for a moment (a discovered tile, the
+  // two cards dealt) drawn again at this many pixels across, when it's
+  // shown, into textures kept for it (Renderer::replace)
+  int closeUpSize;
 
   // The dice's physics: its fixed step (each proved fair by
   // dice_fairness over 20,000 throws at it), and the most steps a frame may
@@ -69,6 +73,7 @@ inline constexpr PlatformProfile kDsProfile{
     .titleStars = 110, // (two polygons each, of the DS's 2048)
     .holdStillFrames = true,
     .boardZoomBytes = 320 * 1024,
+    .closeUpSize = 64, // (8 KB each: three fit in the texture memory left)
     .diceStep = 1.0 / 30,
     .mostDiceSteps = 2,
 };
@@ -91,6 +96,7 @@ inline constexpr PlatformProfile kThreeDsProfile{
     .titleStars = 260,
     .holdStillFrames = false,
     .boardZoomBytes = 8 * 1024 * 1024,
+    .closeUpSize = 128,
     .diceStep = 1.0 / 60,
     .mostDiceSteps = 4,
 };

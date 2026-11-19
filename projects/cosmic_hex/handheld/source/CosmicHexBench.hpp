@@ -7,6 +7,8 @@
 // console, to compare line by line.
 #pragma once
 
+#include <CosmicHex/Art.hpp>
+#include <CosmicHex/Handheld/RecipePixels.hpp>
 #include <CosmicHex/Rules.hpp>
 #include <GameBots/Bots.hpp>
 #include <SeededRandom/Generator.hpp>
@@ -95,6 +97,22 @@ inline void run() {
     for (int i = 0; i < 1000; ++i)
       step(state, random, middle);
     std::printf("rollout step  %lld us\n", micros(start) / 1000);
+  }
+  // Drawing a picture from its recipe, as the DS does (Coarse), at the
+  // size it's drawn now and twice that: a tile face (a planet) and an
+  // action card, for close-ups drawn when they're shown
+  for (const int side : {32, 64}) {
+    const Clock::time_point start = Clock::now();
+    const auto face = CosmicHex::Handheld::recipePixels(
+        CosmicHex::Art::recipeOf(CosmicHex::Art::Face::PlanetFuel), side, side,
+        ScratchPadd::TextureRecipe::Smoothing::Coarse);
+    const long long faceUs = micros(start);
+    const Clock::time_point cardStart = Clock::now();
+    const auto card = CosmicHex::Handheld::recipePixels(
+        CosmicHex::Art::cardRecipeOf(CosmicHex::Art::Card::InterstellarCartel), side,
+        side * 88 / 63, ScratchPadd::TextureRecipe::Smoothing::Coarse);
+    std::printf("face %d %lld ms card %lld ms (%zu)\n", side, faceUs / 1000,
+                micros(cardStart) / 1000, (face.size() + card.size()) & 1);
   }
   // The search: 20 simulated games from the middle, without and with its
   // per-phase timing (the -watch builds time each phase)

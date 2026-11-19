@@ -377,3 +377,27 @@ TEST_F(RendererTest, TexturesShowTheirImage) {
   expectNear(dimmed[0], {128, 128, 128});
   renderer->unload(texture);
 }
+
+// A texture's picture replaced (a close-up reused): draws show the new
+// one, under the same handle
+TEST_F(RendererTest, AReplacedTextureShowsItsNewPicture) {
+  const Texture texture =
+      renderer->load(TextureImage{8, 8, std::vector<Colour>(64, Colour{255, 0, 0})});
+  ASSERT_TRUE(texture);
+  const Mesh square =
+      renderer->load(MeshBuilder()
+                         .quad({-2, -2, 0}, {2, -2, 0}, {2, 2, 0}, {-2, 2, 0}, {},
+                               {TexCoord{0, 1}, TexCoord{1, 1}, TexCoord{1, 0}, TexCoord{0, 0}})
+                         .data());
+  std::array<float, 2> middle{};
+  renderer->beginFrame(camera, environment);
+  ASSERT_TRUE(renderer->toScreen({0, 0, 0}, middle[0], middle[1]));
+  renderer->endFrame();
+  const Material material{.shading = Material::Shading::Unlit, .texture = texture};
+  const auto draw = [&] { renderer->draw(square, Transform::identity(), material); };
+  expectNear(frame(draw, {middle})[0], {255, 0, 0});
+  ASSERT_TRUE(
+      renderer->replace(texture, TextureImage{8, 8, std::vector<Colour>(64, Colour{0, 0, 255})}));
+  expectNear(frame(draw, {middle})[0], {0, 0, 255});
+  EXPECT_FALSE(renderer->replace(Texture{}, TextureImage{8, 8, std::vector<Colour>(64)}));
+}

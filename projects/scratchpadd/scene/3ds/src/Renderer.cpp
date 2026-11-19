@@ -789,6 +789,19 @@ Texture Renderer::load(const TextureImage &image) {
   return {static_cast<std::uint32_t>(backend_->textures.size())};
 }
 
+bool Renderer::replace(Texture texture, const TextureImage &image) {
+  if (!texture || texture.id > backend_->textures.size() || !backend_->textures[texture.id - 1])
+    return false;
+  // (made as a new texture, then moved into this one's place)
+  const Texture made = load(image);
+  if (!made)
+    return false;
+  unload(texture);
+  backend_->textures[texture.id - 1] = backend_->textures[made.id - 1];
+  backend_->textures.pop_back(); // (made was the last)
+  return true;
+}
+
 void Renderer::unload(Texture texture) {
   if (!texture || texture.id > backend_->textures.size() || !backend_->textures[texture.id - 1])
     return;

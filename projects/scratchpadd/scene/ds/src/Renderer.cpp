@@ -445,6 +445,25 @@ Texture Renderer::load(const TextureImage &image) {
   return {static_cast<std::uint32_t>(backend_->images.size())};
 }
 
+bool Renderer::replace(Texture texture, const TextureImage &image) {
+  if (!texture || texture.id > backend_->images.size())
+    return false;
+  const auto &loaded = backend_->images[texture.id - 1];
+  if (loaded.parameter == 0 || loaded.width != image.width || loaded.height != image.height ||
+      image.pixels.size() < static_cast<std::size_t>(image.width * image.height))
+    return false;
+  // (where it is in the bank: the parameter's offset, in 8-byte steps)
+  const std::uint32_t offset = (loaded.parameter & 0xFFFF) * 8;
+  vramSetBankB(VRAM_B_LCD);
+  std::uint16_t *to = VRAM_B + offset / 2;
+  for (std::size_t i = 0; i < static_cast<std::size_t>(image.width * image.height); ++i) {
+    const Colour c = image.pixels[i];
+    to[i] = static_cast<std::uint16_t>(DisplayList::rgb15(c) | (c.a >= 128 ? 0x8000 : 0));
+  }
+  vramSetBankB(VRAM_B_TEXTURE_SLOT0);
+  return true;
+}
+
 // (Its bank space isn't given back: the bank is handed out in turn)
 void Renderer::unload(Texture texture) {
   if (texture && texture.id <= backend_->images.size())

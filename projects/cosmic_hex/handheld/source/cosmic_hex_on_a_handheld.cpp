@@ -548,6 +548,15 @@ private:
     }
     measureMemory();
     updateDiscovery();
+    // The two cards dealt, drawn sharp before they're thrown in (on a DS
+    // about a quarter of a second, while the screen is still)
+    if (keepDealtAt_ && latest_) {
+      if (const auto choice = keepChoiceOf(latest_->state, latest_->moves);
+          choice && choice->cards != closeUpCardsShow_) {
+        closeUpCards(choice->cards);
+        keepDealtAt_ = Clock::now();
+      }
+    }
     // (the map's faces at the whole board's size, and the bottom screen's
     // pictures, are drawn at the start: starting())
     if (flow_.screen() == ScreenFlow::Screen::Game && !picture_->ready()) {
@@ -1722,6 +1731,16 @@ private:
       cardPictures_[static_cast<std::size_t>(c)] =
           load(static_cast<CosmicHex::Art::Card>(c), cardWidth_, uMax, vMax);
     pictureSquare_ = renderer_->load(pictureSquare(uMax, vMax).data());
+    // The close-ups' textures, blank until one's shown (closeUpTile and
+    // closeUpCards draw into them)
+    const int size = kThisPlatform.closeUpSize;
+    const Scene::TextureImage blank{
+        size, size, std::vector<Scene::Colour>(static_cast<std::size_t>(size * size))};
+    closeUpFace_ = renderer_->load(blank);
+    for (Scene::Texture &card : closeUpCards_)
+      card = renderer_->load(blank);
+    closeUpCardSquare_ = renderer_->load(
+        pictureSquare(1, static_cast<float>(size * 52 / 63) / static_cast<float>(size)).data());
     // The two backs, whole cards (the planets for resource cards, the rings
     // for action cards: the agreed designs), for cards held face down
     for (const CosmicHex::Art::CardBack design :
@@ -1805,6 +1824,29 @@ private:
   // screen outlined. The pictures are the cards' textures, larger; the
   // words are the overlay's, sharp at any size (full-size textures of the
   // cards wouldn't fit beside the tile faces in the DS's texture memory)
+  // A close-up's picture drawn into its texture (PlatformProfile::closeUpSize)
+  void closeUpTile(CosmicHex::Art::Face face) {
+    const int size = kThisPlatform.closeUpSize;
+    const auto pixels =
+        recipePixels(CosmicHex::Art::recipeOf(face), size, kThisPlatform.recipeSmoothing);
+    closeUpFaceShows_ = face;
+    if (pixels.empty() || !renderer_->replace(closeUpFace_, {size, size, pixels}))
+      closeUpFaceShows_.reset(); // (the usual face, then)
+  }
+  void closeUpCards(const std::vector<CosmicHex::Art::Card> &cards) {
+    const int size = kThisPlatform.closeUpSize, height = size * 52 / 63;
+    closeUpCardsShow_ = cards;
+    for (std::size_t i = 0; i < cards.size() && i < closeUpCards_.size(); ++i) {
+      const auto whole = recipePixels(CosmicHex::Art::cardRecipeOf(cards[i]), size, size * 88 / 63,
+                                      kThisPlatform.recipeSmoothing);
+      std::vector<Scene::Colour> square(static_cast<std::size_t>(size * size));
+      if (!whole.empty())
+        std::copy(whole.begin(), whole.begin() + size * height, square.begin());
+      if (whole.empty() || !renderer_->replace(closeUpCards_[i], {size, size, square}))
+        closeUpCardsShow_.clear(); // (the usual pictures, then)
+    }
+  }
+
   // The discovery showing (Discovery): where it is, once the ship's slide
   // is done
   std::optional<Discovery::Moment> discoveryMoment() const {
@@ -1838,6 +1880,12 @@ private:
   void updateDiscovery() {
     if (discoveries_.empty() || !discoveryAt_ || Clock::now() < *discoveryAt_)
       return;
+    // Its face drawn sharp first (about 45 ms on a DS at 64), while
+    // nothing moves: the ship's slide is done, the lift not begun
+    if (closeUpFaceShows_ != discoveries_.front().face) {
+      closeUpTile(discoveries_.front().face);
+      discoveryAt_ = Clock::now();
+    }
     if (!heldForDiscovery_ && latest_ && !latest_->paused) {
       send(SetHold{true});
       heldForDiscovery_ = true;
@@ -1910,7 +1958,9 @@ private:
     const bool faceUp = turn > half;
     const auto spin = Scene::Transform::rotation({1, 0, 0}, faceUp ? turn - 2 * half : turn);
     const CosmicHex::Art::Face face = faceUp ? found.face : found.faceDown;
-    const Scene::Texture texture = faces_[static_cast<std::size_t>(face)];
+    const Scene::Texture texture = closeUpFaceShows_ == face && closeUpFace_
+                                       ? closeUpFace_
+                                       : faces_[static_cast<std::size_t>(face)];
     renderer_->draw(
         hexTile_, pose * spin,
         texture ? Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = texture}
@@ -1973,9 +2023,13 @@ private:
       }
       const auto card = choice->cards[i];
       const float cw = w * across, cx = x + w * (1 - across) / 2;
-      renderer_->draw(pictureSquare_, onScreenAt(camera, screenW, screenH, cx, y, cw, pictureH),
-                      {.shading = Scene::Material::Shading::Unlit,
-                       .texture = cardPictures_[static_cast<std::size_t>(card)]});
+      const bool sharp =
+          closeUpCardsShow_ == choice->cards && i < closeUpCards_.size() && closeUpCardSquare_;
+      renderer_->draw(
+          sharp ? closeUpCardSquare_ : pictureSquare_,
+          onScreenAt(camera, screenW, screenH, cx, y, cw, pictureH),
+          {.shading = Scene::Material::Shading::Unlit,
+           .texture = sharp ? closeUpCards_[i] : cardPictures_[static_cast<std::size_t>(card)]});
       // The card's body under its picture, and once flat, its words
       overlay.rectangle(cx, y + pictureH, cw, cardH - pictureH, {236, 232, 220, 255});
       if (turned >= 1) {
@@ -2293,6 +2347,14 @@ private:
   bool heldForDiscovery_ = false;
   bool youPaused_ = false;               // (watching: paused with A, so the PAUSED band shows)
   std::vector<CosmicHex::Hex> shownBig_; // (shown big since the last move: no flip)
+  // Close-ups (PlatformProfile::closeUpSize): a discovered tile's face and
+  // the two cards dealt, drawn sharp when they're shown, into textures
+  // loaded once and reused
+  Scene::Texture closeUpFace_;
+  std::optional<CosmicHex::Art::Face> closeUpFaceShows_;
+  std::array<Scene::Texture, 2> closeUpCards_{};
+  std::vector<CosmicHex::Art::Card> closeUpCardsShow_;
+  Scene::Mesh closeUpCardSquare_;
   std::array<Scene::Texture, CosmicHex::Art::kCards> cardPictures_{};
   std::array<Scene::Texture, CosmicHex::kResources> resourcePictures_{};
   std::array<Scene::Colour, CosmicHex::kResources> resourceBands_{};
