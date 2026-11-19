@@ -122,6 +122,10 @@ constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 // The title screen: the 3D scene (round 87), or the plain text title
 // (false). Which one a player sees, and how it's chosen, is an open
 // question on the roadmap page (round 87); the scene for now
+// How long the title takes to fade in from black, once the start's work
+// is done (round 105)
+constexpr double kSecondsTitleFadeIn = 0.6;
+
 constexpr bool kTitleScene = true;
 
 // What this console does differently (PlatformProfile.hpp), under the names
@@ -341,6 +345,7 @@ public:
   ScratchPadd::Runs runs() override { return ScratchPadd::Runs::OnMainThread; }
 
   void starting() override {
+    const Clock::time_point startedAt = Clock::now();
     display_.emplace(); // the top screen
                         // The bottom screen: the flat board (BoardPicture), written straight
                         // into its one framebuffer when it changes
@@ -366,9 +371,22 @@ public:
                                                      .aspect = static_cast<float>(kTopWidth) /
                                                                static_cast<float>(kTopHeight),
                                                      .stars = kThisPlatform.titleStars});
-    titleStarted_ = Clock::now();
+    // Everything drawn from recipes for the game ahead (the map's tile
+    // faces and number chips, the bottom screen's cards and icons, the top
+    // screen's faces, chips and cards), now, while the screens are dark,
+    // then the title fades in (round 105, the user's: drawn a picture a
+    // frame during the title, up to a tenth of a second each on a DS, they
+    // made the rocket stutter for its first turn). The map's faces first:
+    // the top screen's are made from them where they're no smaller.
+    while (!picture_->prepare()) {
+    }
+    while (!bottomScreen_->prepare()) {
+    }
     loadFaces();
     loadCardPictures();
+    titleStarted_ = Clock::now();
+    // (how long the start took, shown on the -watch builds: round 105)
+    startSeconds_ = secondsSince(startedAt);
     // The build that watches by itself (COSMIC_HEX_WATCH_AT_START: the
     // -watch apps), for unattended runs in an emulator or on a console
     if (kWatchAtStart) {
@@ -449,15 +467,9 @@ private:
       throwDice();
     }
     measureMemory();
-    // The map's tile faces, drawn from their recipes one a frame while
-    // there's nothing else to do (the title, the setup), so the first map
-    // of a game doesn't stall for seconds on the DS (round 92)
-    if (onAMenuScreen()) {
-      auto timing = profile_.time(kProfileBottom);
-      // (then the bottom screen's cards and icons, one a frame too)
-      if (picture_->prepare() && bottomScreen_)
-        bottomScreen_->prepare();
-    } else if (flow_.screen() == ScreenFlow::Screen::Game && !picture_->ready()) {
+    // (the map's faces at the whole board's size, and the bottom screen's
+    // pictures, are drawn at the start: starting())
+    if (flow_.screen() == ScreenFlow::Screen::Game && !picture_->ready()) {
       // Zoomed in or out: the map shows the whole board's faces scaled at
       // once, and sharpens a face a frame (round 105)
       auto timing = profile_.time(kProfileBottom);
@@ -507,6 +519,11 @@ private:
   void drawTitle() {
     renderer_->beginFrame(title_->camera(), title_->environment());
     title_->draw(*renderer_, static_cast<float>(secondsSince(titleStarted_)));
+    // Fading in from black, once the start's work is done
+    if (const float in = titleFadedIn(); in < 1)
+      renderer_->overlay().rectangle(
+          0, 0, kTopWidth, kTopHeight,
+          {0, 0, 0, static_cast<std::uint8_t>(std::lround((1 - in) * 255))});
     if (flow_.screen() == ScreenFlow::Screen::Won && latest_) {
       char line[64];
       std::snprintf(line, sizeof line, "Player %d wins!", latest_->state.winner + 1);
@@ -1408,6 +1425,12 @@ private:
       bottomDirty_ = true; // (once more: the map as the game is now)
     }
     fading_ = from != nullptr;
+    // The title fading in from black (the menu below it too)
+    const bool fromBlack = !from && onAMenuScreen() && titleFadedIn() < 1;
+    if (fromBlack) {
+      weight = static_cast<int>(titleFadedIn() * 256);
+      bottomDirty_ = true; // (and again next frame, until it's done)
+    }
     const std::span<const Scene::Colour> pixels = drawn;
     auto copying = profile_.time(kProfileOut); // (the picture to the screen)
     // A pixel's colour on its way to the screen: the picture's, or mid-fade
@@ -1416,14 +1439,16 @@ private:
     // the copy alone 2 to 6; round 92)
     const Scene::Colour *to = pixels.data();
     const Scene::Colour *mixFrom = from ? from->data() : nullptr;
-    if (!mixFrom) {
+    if (!mixFrom && !fromBlack) {
       bottom_->present(kBottomWidth, kBottomHeight, to); // (as it is: the quick copy)
       return;
     }
     const auto colourAt = [to, mixFrom, weight](std::size_t i) -> Scene::Colour {
       const Scene::Colour b = to[i];
-      if (!mixFrom)
-        return b;
+      if (!mixFrom) // (from black)
+        return {static_cast<std::uint8_t>((b.r * weight) >> 8),
+                static_cast<std::uint8_t>((b.g * weight) >> 8),
+                static_cast<std::uint8_t>((b.b * weight) >> 8), 255};
       const Scene::Colour a = mixFrom[i];
       return {static_cast<std::uint8_t>(a.r + (((b.r - a.r) * weight) >> 8)),
               static_cast<std::uint8_t>(a.g + (((b.g - a.g) * weight) >> 8)),
@@ -1476,9 +1501,14 @@ private:
 
   void loadFaces() {
     for (int i = 0; i < CosmicHex::Art::kFaces; ++i) {
+      const auto face = static_cast<CosmicHex::Art::Face>(i);
+      // The map's, shrunk, when it's no smaller (the DS: 35 pixels to 32,
+      // round 105: half the start's drawing); else from its recipe
       const std::vector<Scene::Colour> pixels =
-          recipePixels(CosmicHex::Art::recipeOf(static_cast<CosmicHex::Art::Face>(i)), kFaceSize,
-                       kThisPlatform.recipeSmoothing);
+          picture_->wholeFaceSize() >= kFaceSize
+              ? shrunk(picture_->wholeFace(face), picture_->wholeFaceSize(), kFaceSize)
+              : recipePixels(CosmicHex::Art::recipeOf(face), kFaceSize,
+                             kThisPlatform.recipeSmoothing);
       if (pixels.empty())
         continue; // (the tile shows white: a broken recipe, tested against on the Mac)
       faces_[static_cast<std::size_t>(i)] =
@@ -1524,6 +1554,7 @@ private:
   ScratchPadd::FrameProfile profile_{"btm", "out", "dice", "top", "wait",
                                      "pcs", "3d",  "ovl",  "map", "btn"};
   std::string profileLine_;
+  double startSeconds_ = 0; // (the start's work: starting())
 
   // Whether the top screen would look as it did when last drawn: a game's
   // board, nothing new from the table, nothing moving (the pieces, the
@@ -1544,6 +1575,12 @@ private:
     return !kWatchAtStart || Clock::now() - drawnAt_ < std::chrono::seconds(1);
   }
 
+  // How far the title has faded in from black, 0 to 1, over
+  // kSecondsTitleFadeIn from when the start's work was done
+  float titleFadedIn() const {
+    return std::min(1.0f, static_cast<float>(secondsSince(titleStarted_) / kSecondsTitleFadeIn));
+  }
+
   bool onAMenuScreen() const {
     const ScreenFlow::Screen screen = flow_.screen();
     return screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Setup;
@@ -1553,7 +1590,9 @@ private:
     if (!kWatchAtStart)
       return;
     if (profile_.secondDone()) {
-      profileLine_ = profile_.line();
+      char start[24];
+      std::snprintf(start, sizeof start, "start %.1fs ", startSeconds_);
+      profileLine_ = start + profile_.line();
       spdlog::info("frames: {}", profileLine_);
     }
     // (three lines where the screen's narrow)

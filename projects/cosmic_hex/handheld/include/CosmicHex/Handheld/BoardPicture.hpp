@@ -58,6 +58,13 @@ public:
   bool prepare();
   // Whether every face and chip at this zoom is drawn sharp
   bool ready() const;
+  // A tile face as the whole board shows it (zoom 1), once prepare() has
+  // drawn it, wholeFaceSize() a side; for other pictures of the same face
+  // to be made from, rather than drawn from its recipe again (round 105)
+  const std::vector<ScratchPadd::Scene::Colour> &wholeFace(Art::Face face) const {
+    return whole_.faces[static_cast<std::size_t>(face)];
+  }
+  int wholeFaceSize() const { return whole_.facesSize; }
 
   // The board as `state` has it, into pixels()
   void draw(const State &state);

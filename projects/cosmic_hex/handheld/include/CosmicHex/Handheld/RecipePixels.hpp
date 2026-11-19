@@ -22,4 +22,11 @@ std::vector<ScratchPadd::Scene::Colour> recipePixels(
     std::string_view recipe, int width, int height,
     ScratchPadd::TextureRecipe::Smoothing smoothing = ScratchPadd::TextureRecipe::Smoothing::Fine);
 
+// A square picture `from` pixels a side made `to` a side (no bigger), each
+// pixel the average of those it covers, weighted by how opaque they are (so
+// see-through pixels don't darken an edge): for a picture already drawn at
+// one size wanted at a smaller one, quicker than its recipe (round 105)
+std::vector<ScratchPadd::Scene::Colour>
+shrunk(const std::vector<ScratchPadd::Scene::Colour> &pixels, int from, int to);
+
 } // namespace CosmicHex::Handheld
