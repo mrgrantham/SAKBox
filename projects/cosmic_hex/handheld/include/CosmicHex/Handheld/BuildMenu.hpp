@@ -28,6 +28,10 @@ struct BuildRow {
   std::string note;
   // The rules' actions that build it (where each one would go), when it can
   std::vector<Action> actions;
+  // Whether building it first ends the turn's offers to players (the rules
+  // allow building only once they're over: the build screen offers it
+  // during them all the same)
+  bool endsTrading = false;
 };
 
 // The rows for the player whose turn it is, Ship, Station, Colony, Card

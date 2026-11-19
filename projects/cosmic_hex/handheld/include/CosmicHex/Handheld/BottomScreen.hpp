@@ -134,8 +134,11 @@ private:
   BoardButtons::Situation situation_;
   std::vector<BuildRow> rows_;
   int buildChosen_ = -1;
-  std::vector<Action> placing_; // (Placing: the chosen build's actions)
-  bool startPlacing_ = false;   // (Placing: the start's, touch then End Turn)
+  std::vector<Action> placing_;     // (Placing: the chosen build's actions)
+  bool placingEndsTrading_ = false; // (and building ends the turn's offers first)
+  // A build's move: at once, or after ending the turn's offers to players
+  Outcome build(const Action &action, bool endsTrading);
+  bool startPlacing_ = false; // (Placing: the start's, touch then End Turn)
   std::optional<Action> startPlacement_;
   std::optional<Pickers::ResourceChoice> resources_;
   std::vector<Resource> picked_;

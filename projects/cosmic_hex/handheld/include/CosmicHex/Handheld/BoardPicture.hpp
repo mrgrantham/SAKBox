@@ -70,6 +70,12 @@ public:
   bool prepare();
   // Whether every face and chip at this zoom is drawn sharp
   bool ready() const;
+  // The most memory a zoom's sharp faces and chips may take, in bytes:
+  // zooming stops at the closest zoom within it (mostZoom). On a DS, zoom
+  // 3's take about 530 KB and the game ran out of memory and stopped
+  void setZoomBudget(std::size_t bytes);
+  // The closest zoom there is: kMostZoom, or less within the budget
+  int mostZoom() const;
   // A tile face as the whole board shows it (zoom 1), once prepare() has
   // drawn it, wholeFaceSize() a side; for other pictures of the same face
   // to be made from, rather than drawn from its recipe again
@@ -129,6 +135,7 @@ public:
 private:
   HexGrid::Layout layout() const;
   float hexSize() const; // centre to corner, in pixels, at this zoom
+  float hexSizeAt(int zoom) const;
 
   void buildGrid(); // (gridPixels_ for this zoom and pan)
 
@@ -176,10 +183,14 @@ private:
     void drawNext(ScratchPadd::TextureRecipe::Smoothing smoothing);
     void startAt(int faceSize, int chipSize);
   };
-  Sprites whole_;  // (at zoom 1, kept)
-  Sprites zoomed_; // (at the current zoom, when it's not 1)
+  Sprites whole_;                                         // (at zoom 1, kept)
+  std::size_t zoomBudget_ = static_cast<std::size_t>(-1); // (setZoomBudget)
+  std::size_t zoomBytes(int zoom) const;                  // (a zoom's sharp faces and chips)
+  Sprites zoomed_;                                        // (at the current zoom, when it's not 1)
   int facesSize() const;
+  int facesSizeAt(int zoom) const;
   int chipsSize() const;
+  int chipsSizeAt(int zoom) const;
   // A face or chip at this zoom: its own when drawn, else the whole
   // board's, scaled up as it's blended
   void blendSpriteOf(const std::vector<ScratchPadd::Scene::Colour> &own,

@@ -112,7 +112,8 @@ void BottomScreen::follow(const State &state, const std::vector<Action> &legal, 
     mode_ = Mode::Board;
   }
   // Placing what was chosen: only while those moves are still the rules'
-  if (mode_ == Mode::Placing &&
+  // (or will be, once the turn's offers to players end)
+  if (mode_ == Mode::Placing && !placingEndsTrading_ &&
       std::none_of(placing_.begin(), placing_.end(), [&](const Action &a) {
         return std::find(legal.begin(), legal.end(), a) != legal.end();
       }))
@@ -222,7 +223,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
           const MoveSpot where = spotOf(state_, a);
           if (!where.corners.empty() && where.corners.back() == spot->corner) {
             mode_ = Mode::Board;
-            return {a, true};
+            return build(a, placingEndsTrading_);
           }
         }
       mode_ = Mode::Board;
@@ -237,6 +238,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
           moves.push_back(a);
       if (!moves.empty()) {
         placing_ = std::move(moves);
+        placingEndsTrading_ = false; // (a ship's move: not a build)
         mode_ = Mode::Placing;
         buttons_.say({});
         return {std::nullopt, true};
@@ -268,10 +270,11 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
       const BuildRow &row = rows_[static_cast<std::size_t>(buildChosen_)];
       if (row.canBuild && row.actions.size() == 1) {
         mode_ = Mode::Board;
-        return {row.actions.front(), true};
+        return build(row.actions.front(), row.endsTrading);
       }
       if (row.canBuild) {
         placing_ = row.actions; // (more than one place: chosen on the board)
+        placingEndsTrading_ = row.endsTrading;
         mode_ = Mode::Placing;
       }
     }
@@ -376,6 +379,16 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   }
   }
   return {};
+}
+
+BottomScreen::Outcome BottomScreen::build(const Action &action, bool endsTrading) {
+  placingEndsTrading_ = false;
+  if (!endsTrading)
+    return {action, true};
+  // (the turn's offers to players end first; the build once that's done:
+  // nextQueued)
+  queued_ = {action};
+  return {Action{Action::Kind::EndTrading}, true};
 }
 
 BottomScreen::Outcome BottomScreen::confirmTrade() {

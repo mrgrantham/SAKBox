@@ -39,6 +39,10 @@ struct PlatformProfile {
   ScratchPadd::TextureRecipe::Smoothing recipeSmoothing;
   int titleStars;
   bool holdStillFrames;
+  // The most memory the bottom board's sharp tiles may take zoomed in
+  // (BoardPicture::setZoomBudget): the DS's zoom 2 takes about 240 KB,
+  // its zoom 3 about 530 KB, more than it has
+  std::size_t boardZoomBytes;
 
   // The dice's physics: its fixed step (each proved fair by
   // dice_fairness over 20,000 throws at it), and the most steps a frame may
@@ -64,6 +68,7 @@ inline constexpr PlatformProfile kDsProfile{
     .recipeSmoothing = ScratchPadd::TextureRecipe::Smoothing::Coarse,
     .titleStars = 110, // (two polygons each, of the DS's 2048)
     .holdStillFrames = true,
+    .boardZoomBytes = 320 * 1024,
     .diceStep = 1.0 / 30,
     .mostDiceSteps = 2,
 };
@@ -85,6 +90,7 @@ inline constexpr PlatformProfile kThreeDsProfile{
     .recipeSmoothing = ScratchPadd::TextureRecipe::Smoothing::Fine,
     .titleStars = 260,
     .holdStillFrames = false,
+    .boardZoomBytes = 8 * 1024 * 1024,
     .diceStep = 1.0 / 60,
     .mostDiceSteps = 4,
 };

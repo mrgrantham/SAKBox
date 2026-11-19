@@ -109,13 +109,20 @@ const char *nameOf(Buildable what) {
   return "";
 }
 
-std::vector<BuildRow> buildRows(const State &state) {
+std::vector<BuildRow> buildRows(const State &given) {
+  // While the turn's offers to players are open: the rows as they'll be
+  // once they're over (building ends them first: BuildRow::endsTrading)
+  const bool trading = given.phase == Phase::Trading;
+  State afterTrading = given;
+  if (trading)
+    Game::apply(afterTrading, Action{Action::Kind::EndTrading});
+  const State &state = trading ? afterTrading : given;
   const std::vector<Action> legal = Game::legalActions(state);
   const Resources &held = state.player[static_cast<std::size_t>(state.turn)].resources;
   std::vector<BuildRow> rows;
   for (const Buildable what :
        {Buildable::Ship, Buildable::Station, Buildable::Colony, Buildable::Card}) {
-    BuildRow row{.what = what, .cost = costOf(state.settings, what)};
+    BuildRow row{.what = what, .cost = costOf(state.settings, what), .endsTrading = trading};
     row.actions = actionsOf(legal, what);
     row.canBuild = !row.actions.empty();
     if (row.canBuild) {

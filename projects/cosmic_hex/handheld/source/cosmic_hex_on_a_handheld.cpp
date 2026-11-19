@@ -396,6 +396,7 @@ public:
                         // into its one framebuffer when it changes
     bottom_.emplace();
     picture_.emplace(kBottomWidth, kBottomHeight, kThisPlatform.recipeSmoothing);
+    picture_->setZoomBudget(kThisPlatform.boardZoomBytes);
     bottomScreen_.emplace(kBottomWidth, kBottomHeight);
 #if !defined(NDEBUG)
     // (debug builds: the list of moves, behind a button, off at first)

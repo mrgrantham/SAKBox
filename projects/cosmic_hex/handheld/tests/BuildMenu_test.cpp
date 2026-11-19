@@ -94,3 +94,31 @@ TEST(BuildMenuTest, NothingBeforeTheRollsDone) {
     EXPECT_EQ(row.note, "not until your roll's done");
   }
 }
+
+// While the turn's offers to players are open (the user found "not until
+// your roll's done" there, a ship on a corner and the cards to build): the
+// rows are as they'll be once the offers end, and building ends them first
+TEST(BuildMenuTest, DuringTheTurnsTradingBuildingEndsItFirst) {
+  State state = newGame(4, agreedRules(boardR3(), 4));
+  SeededRandom::Generator random(11);
+  for (int guard = 0; guard < 4000 && state.phase != Phase::Trading; ++guard) {
+    const Action next = Game::currentPlayer(state) == GameBots::kDealer
+                            ? Game::dealerAction(state, random)
+                            : Game::legalActions(state).front();
+    ASSERT_TRUE(Game::apply(state, next));
+  }
+  ASSERT_EQ(state.phase, Phase::Trading);
+  cardsOf(state) = {9, 9, 9, 9, 9};
+  State ended = state;
+  ASSERT_TRUE(Game::apply(ended, Action{Action::Kind::EndTrading}));
+  const auto during = buildRows(state), after = buildRows(ended);
+  bool any = false;
+  for (std::size_t i = 0; i < during.size(); ++i) {
+    EXPECT_EQ(during[i].canBuild, after[i].canBuild) << nameOf(during[i].what);
+    EXPECT_EQ(during[i].note, after[i].note) << nameOf(during[i].what);
+    EXPECT_TRUE(during[i].endsTrading);
+    EXPECT_FALSE(after[i].endsTrading);
+    any = any || during[i].canBuild;
+  }
+  EXPECT_TRUE(any);
+}

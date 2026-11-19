@@ -3,6 +3,7 @@
 // picture is also written out (bazel's test outputs) to look at.
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/PlatformProfile.hpp>
 #include <GameBots/Bots.hpp>
 #include <SeededRandom/Generator.hpp>
 
@@ -232,4 +233,19 @@ TEST(BoardPictureTest, DrawingWhatChangedMatchesDrawingItAll) {
     EXPECT_GT(compared, 50);
     EXPECT_GT(small, compared / 2); // (most draws changed less than half the picture)
   }
+}
+
+// Zooming stops at the closest zoom whose sharp tiles fit the budget: a
+// DS's bottom screen has zoom 2 (about 240 KB) and not 3 (about 530 KB)
+TEST(BoardPictureTest, ZoomingStopsWithinTheBudget) {
+  BoardPicture picture(256, 192);
+  EXPECT_EQ(picture.mostZoom(), BoardPicture::kMostZoom);
+  picture.setZoomBudget(kDsProfile.boardZoomBytes);
+  EXPECT_EQ(picture.mostZoom(), 2);
+  picture.setZoom(3);
+  EXPECT_EQ(picture.zoom(), 2);
+  picture.setZoomBudget(kThreeDsProfile.boardZoomBytes);
+  BoardPicture threeDs(320, 240);
+  threeDs.setZoomBudget(kThreeDsProfile.boardZoomBytes);
+  EXPECT_EQ(threeDs.mostZoom(), BoardPicture::kMostZoom);
 }

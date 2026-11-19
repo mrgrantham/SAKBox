@@ -86,7 +86,7 @@ BoardPicture::BoardPicture(int width, int height, ScratchPadd::TextureRecipe::Sm
       pixels_(static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {}
 
 void BoardPicture::setZoom(int zoom) {
-  zoom_ = std::clamp(zoom, 1, kMostZoom);
+  zoom_ = std::clamp(zoom, 1, mostZoom());
   if (zoom_ == 1)
     offset_ = {}; // (the whole board, centred)
   pan(0, 0);      // (kept in view)
@@ -101,10 +101,11 @@ void BoardPicture::pan(float dx, float dy) {
   offset_.y = std::clamp(offset_.y + dy, -limitY, limitY);
 }
 
-float BoardPicture::hexSize() const {
+float BoardPicture::hexSize() const { return hexSizeAt(zoom_); }
+float BoardPicture::hexSizeAt(int zoom) const {
   const float fit =
       std::min(static_cast<float>(width_) / kBoardWide, static_cast<float>(height_) / kBoardTall);
-  return std::floor(fit) * static_cast<float>(zoom_);
+  return std::floor(fit) * static_cast<float>(zoom);
 }
 
 HexGrid::Layout BoardPicture::layout() const {
@@ -117,13 +118,15 @@ HexGrid::Layout BoardPicture::layout() const {
 HexGrid::Point BoardPicture::where(Hex hex) const { return layout().centre(hex); }
 HexGrid::Point BoardPicture::where(Corner corner) const { return layout().point(corner); }
 
-int BoardPicture::facesSize() const {
+int BoardPicture::facesSize() const { return facesSizeAt(zoom_); }
+int BoardPicture::chipsSize() const { return chipsSizeAt(zoom_); }
+int BoardPicture::facesSizeAt(int zoom) const {
   // A face's square: the hex is 47% of it from centre to corner (Art.hpp)
-  return static_cast<int>(std::ceil(hexSize() / 0.47f));
+  return static_cast<int>(std::ceil(hexSizeAt(zoom) / 0.47f));
 }
-int BoardPicture::chipsSize() const {
+int BoardPicture::chipsSizeAt(int zoom) const {
   // The number chips, as big on the hex as on the 3D board's tiles
-  return std::max(4, static_cast<int>(std::lround(2 * kChipRadius * hexSize())));
+  return std::max(4, static_cast<int>(std::lround(2 * kChipRadius * hexSizeAt(zoom))));
 }
 
 void BoardPicture::Sprites::startAt(int faceSize, int chipSize) {
@@ -183,6 +186,26 @@ bool BoardPicture::prepare() {
 
 bool BoardPicture::ready() const {
   return whole_.done() && (zoom_ == 1 || (zoomed_.facesSize == facesSize() && zoomed_.done()));
+}
+
+std::size_t BoardPicture::zoomBytes(int zoom) const {
+  constexpr std::size_t kChips = Art::kHighestChip - Art::kLowestChip + 1;
+  const auto square = [](int side) {
+    return static_cast<std::size_t>(side) * static_cast<std::size_t>(side) * sizeof(Colour);
+  };
+  return square(facesSizeAt(zoom)) * Art::kFaces + square(chipsSizeAt(zoom)) * kChips;
+}
+
+int BoardPicture::mostZoom() const {
+  int most = kMostZoom;
+  while (most > 1 && zoomBytes(most) > zoomBudget_)
+    --most;
+  return most;
+}
+
+void BoardPicture::setZoomBudget(std::size_t bytes) {
+  zoomBudget_ = bytes;
+  setZoom(zoom_);
 }
 
 // ---------------------------------------------------------------------------
