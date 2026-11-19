@@ -309,8 +309,8 @@ void BottomScreen::draw(Canvas &canvas, const std::vector<Canvas::Colour> &board
     return;
   case Mode::Players:
     if (players_)
-      ChoiceScreens::drawPlayers(canvas, *players_, playerChosen_, cardChosen_,
-                                 Art::CardBack::Rings, cards_);
+      ChoiceScreens::drawPlayers(canvas, *players_, playerChosen_, cardChosen_, Art::kResourceBack,
+                                 cards_);
     return;
   case Mode::Board:
   case Mode::Placing:
