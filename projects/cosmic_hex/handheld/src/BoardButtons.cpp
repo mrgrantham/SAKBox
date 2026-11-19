@@ -4,7 +4,8 @@
 
 namespace CosmicHex::Handheld::BoardButtons {
 
-Situation situationOf(const State &state, const std::vector<Action> &legal, bool yourMove) {
+Situation situationOf(const State &state, const std::vector<Action> &legal, bool yourMove,
+                      bool yourRollWaits) {
   using Kind = Action::Kind;
   const auto has = [&](std::initializer_list<Kind> kinds) {
     return std::any_of(legal.begin(), legal.end(), [&](const Action &a) {
@@ -13,11 +14,9 @@ Situation situationOf(const State &state, const std::vector<Action> &legal, bool
   };
   Situation s;
   s.yourMove = yourMove;
+  s.canRoll = yourRollWaits;
   if (!yourMove)
     return s;
-  // (the roll is the dealer's in the rules: the app throws the dice when
-  // the player's turn reaches it)
-  s.canRoll = state.phase == Phase::RollDraw;
   s.canEndTurn = has({Kind::EndTurn, Kind::EndTrading});
   s.canTrade = has({Kind::Trade, Kind::OfferTrade});
   const Player &me = state.player[static_cast<std::size_t>(state.turn)];

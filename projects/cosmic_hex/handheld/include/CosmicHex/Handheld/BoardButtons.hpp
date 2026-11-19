@@ -26,8 +26,11 @@ struct Situation {
   bool canTrade = false;   // the bank, an outpost or the players
   bool holdsCards = false; // any action cards or Charters
 };
-// The situation from the game: the player to move's legal actions
-Situation situationOf(const State &state, const std::vector<Action> &legal, bool yourMove);
+// The situation from the game: the player to move's legal actions, and
+// whether the dice wait for you to throw them (round 104, the user's: your
+// roll is yours to make; the rules have the dealer roll, so the app says)
+Situation situationOf(const State &state, const std::vector<Action> &legal, bool yourMove,
+                      bool yourRollWaits = false);
 
 struct Place {
   Button button;

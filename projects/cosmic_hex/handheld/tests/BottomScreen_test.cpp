@@ -189,3 +189,16 @@ TEST(BottomScreenTest, ShowResourcesAnyTime) {
   screen.tap(10, 10, std::nullopt);
   EXPECT_EQ(screen.info(), BottomScreen::Info::None);
 }
+
+// Your roll waits for you (round 104): Roll shows only then, and a tap on
+// it says to throw the dice
+TEST(BottomScreenTest, RollWhenYourRollWaits) {
+  const State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, Game::legalActions(state), false, false);
+  EXPECT_FALSE(screen.tap(10, 178, std::nullopt).roll);
+  screen.update(state, Game::legalActions(state), false, true);
+  const auto rolled = screen.tap(10, 178, std::nullopt);
+  EXPECT_TRUE(rolled.roll);
+  EXPECT_TRUE(rolled.used);
+}

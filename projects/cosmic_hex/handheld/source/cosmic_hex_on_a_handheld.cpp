@@ -330,7 +330,7 @@ public:
       // (BottomScreen: the resource picker opens by itself, and so on)
       if (bottomScreen_)
         bottomScreen_->update(snapshot.state, snapshot.moves,
-                              mode_ == Mode::Playing && snapshot.yourMove);
+                              mode_ == Mode::Playing && snapshot.yourMove, yourRollWaits(snapshot));
       // Someone won: the title again, with who (ScreenFlow's Won)
       if (snapshot.state.winner >= 0)
         apply(flow_.on(ScreenFlow::Event::GameWon));
@@ -553,9 +553,27 @@ private:
   // the glass container (DiceTray), stepped once a frame until they settle,
   // shown for a moment, their faces sent to the table, and the container
   // pulled off the screen
+  // Whether the dice wait for you to throw them: your turn's roll, when
+  // you're playing (round 104, the user's: never thrown for you)
+  bool yourRollWaits(const TableSnapshot &snapshot) const {
+    return mode_ == Mode::Playing && snapshot.waitingForDice && snapshot.state.turn == 0 &&
+           snapshot.diceSeed != thrownSeed_;
+  }
+
   void throwDice() {
+    // Yours when you say (Roll, or A); a bot's once its turn's banner has
+    // gone (round 104, the user's)
+    const bool ready =
+        latest_ && (yourRollWaits(*latest_) ? rollAsked_ : !banner_.showing(gameClock_.seconds()));
     if (dice_ == DiceStage::Idle && latest_ && latest_->waitingForDice &&
-        latest_->diceSeed != thrownSeed_) {
+        latest_->diceSeed != thrownSeed_ && ready) {
+      rollAsked_ = false;
+      // (Roll's button goes once they're thrown)
+      if (bottomScreen_) {
+        bottomScreen_->update(latest_->state, latest_->moves,
+                              mode_ == Mode::Playing && latest_->yourMove, false);
+        bottomDirty_ = true;
+      }
       tray_.throwDice(latest_->diceSeed);
       thrownSeed_ = latest_->diceSeed;
       dice_ = DiceStage::Rolling;
@@ -1016,21 +1034,29 @@ private:
     const auto &player = state.player[static_cast<std::size_t>(infoPlayer(state))];
     const float k = static_cast<float>(kTopWidth) / 256.0f;
     const float u = static_cast<float>(resourceWidth_) / CosmicHex::Art::kCardWidth;
+    int order = 0; // (the cards come in one after another, as drawInfo has them)
     for (int r = 0; r < CosmicHex::kResources; ++r) {
       const int held = player.resources[static_cast<std::size_t>(r)];
       const int shown = std::max(1, std::min(held, 5));
       const PilePlace place = pilePlace(r);
       const float top = place.y - static_cast<float>(shown - 1) * kPileStep * k;
       const float middle = place.x + static_cast<float>(resourceWidth_) / 2;
-      // The title in the top card's band, dark on a light band (as the
-      // cards are drawn); faint when there are none
+      // The front card: the lowest, at the pile's foot (those under it
+      // show above it), coming in last of its pile; its title moves with it
+      order += shown;
+      const float in = cardArrived(order - 1);
+      const float front = place.y + (1 - in) * (static_cast<float>(kTopHeight) - place.y + 4);
+      // The title in the front card's band, dark on a light band (as the
+      // cards are drawn); faint when there are none (round 104: it was
+      // on the card at the back, too high)
       const Scene::Colour band = resourceBands_[static_cast<std::size_t>(r)];
       const float light = 0.2126f * band.r + 0.7152f * band.g + 0.0722f * band.b;
       const Scene::Colour ink = held == 0     ? Scene::Colour{120, 128, 145}
                                 : light > 140 ? Scene::Colour{16, 20, 30}
                                               : Scene::Colour{242, 245, 251};
       overlay.textCentred(
-          middle, top + (CosmicHex::Art::kCardTitle.y + CosmicHex::Art::kCardTitle.height / 2) * u,
+          middle,
+          front + (CosmicHex::Art::kCardTitle.y + CosmicHex::Art::kCardTitle.height / 2) * u,
           CosmicHex::Art::wordsOf(cardOf(static_cast<CosmicHex::Resource>(r))).shortTitle, ink);
       // Past five, how many in a badge centred above the pile (round 103)
       if (held > 5) {
@@ -1124,6 +1150,11 @@ private:
     if (mode_ == Mode::Watching) {
       if (pressed.pressed(Button::FaceRight))
         send(TogglePause{});
+      return;
+    }
+    // A throws your dice when your roll waits (as Roll does)
+    if (latest_ && yourRollWaits(*latest_) && pressed.pressed(Button::FaceRight)) {
+      rollAsked_ = true;
       return;
     }
     if (!latest_ || !latest_->yourMove)
@@ -1239,6 +1270,8 @@ private:
           bottomScreen_ ? bottomScreen_->tap(touchStart_[0], touchStart_[1],
                                              onTheBoard() ? spot : std::nullopt)
                         : BottomScreen::Outcome{};
+      if (outcome.roll && latest_ && yourRollWaits(*latest_))
+        rollAsked_ = true;
       if (outcome.play && latest_ && latest_->yourMove) {
         send(PlayMove{*outcome.play});
         latest_->yourMove = false; // (until the game says it's yours again)
@@ -1509,6 +1542,7 @@ private:
   std::optional<BottomScreen> bottomScreen_; // (its buttons and choosing screens: round 101)
   std::optional<Canvas> bottomCanvas_;
   std::optional<Clock::time_point> feedbackSince_;
+  bool rollAsked_ = false;                     // (you've said to throw the dice: Roll or A)
   Clock::time_point startedAt_ = Clock::now(); // (the scripted taps' times)
   TurnBanner banner_{static_cast<float>(kTopWidth)};
   // The info views (Show resources): which is shown, since when, and

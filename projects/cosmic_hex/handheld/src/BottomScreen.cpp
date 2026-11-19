@@ -19,11 +19,12 @@ constexpr Colour kHint{255, 214, 90, 255};
 
 BottomScreen::BottomScreen(int width, int height) : width_(width), height_(height), cards_(width) {}
 
-void BottomScreen::update(const State &state, const std::vector<Action> &legal, bool yourMove) {
+void BottomScreen::update(const State &state, const std::vector<Action> &legal, bool yourMove,
+                          bool yourRollWaits) {
   state_ = state;
   legal_ = legal;
   yourMove_ = yourMove;
-  situation_ = BoardButtons::situationOf(state, legal, yourMove);
+  situation_ = BoardButtons::situationOf(state, legal, yourMove, yourRollWaits);
   // (before the roll too: each row then says it waits for the roll)
   rows_ = yourMove ? buildRows(state) : std::vector<BuildRow>{};
   if (!yourMove) {
@@ -95,8 +96,8 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
         message_ = "Cards: not built yet";
         break;
       case BoardButtons::Button::Roll:
-        message_ = "The dice are thrown for you, for now";
-        break;
+        message_.clear();
+        return {std::nullopt, true, true};
       }
       return {std::nullopt, true};
     }

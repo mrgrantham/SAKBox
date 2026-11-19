@@ -39,11 +39,13 @@ public:
   // A new look at the game: the screen follows it (the resource picker
   // opens by itself when the move is a choice of resources; any other
   // screen closes when it isn't your move)
-  void update(const State &state, const std::vector<Action> &legal, bool yourMove);
+  void update(const State &state, const std::vector<Action> &legal, bool yourMove,
+              bool yourRollWaits = false);
 
   struct Outcome {
     std::optional<Action> play; // a move to make
     bool used = false;          // the tap was this screen's (else the app's)
+    bool roll = false;          // throw the dice (Roll, when your roll waits)
   };
   // A tap at (x, y), with the board's spot under it in the board modes
   Outcome tap(int x, int y, const std::optional<BoardPicture::Spot> &spot);
