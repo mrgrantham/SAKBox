@@ -310,7 +310,7 @@ void cardWords(Canvas &canvas, float y, std::string_view title, std::string_view
                      k >= 1.2f ? 1.5f : 1);
   const auto lines = ScratchPadd::Scene::wrapText(
       words, static_cast<float>(canvas.width()) - 24 * k,
-      [](std::string_view line) { return ScratchPadd::Scene::Overlay::inkOf(line).width; });
+      [](std::string_view line) { return ScratchPadd::Scene::Overlay::textWidth(line); });
   for (std::size_t l = 0; l < lines.size() && l < 3; ++l)
     canvas.textCentred(static_cast<float>(canvas.width()) / 2,
                        y + (14 + 11 * static_cast<float>(l)) * k, lines[l], colour);

@@ -38,6 +38,7 @@
 #include <CosmicHex/Handheld/BoardView.hpp>
 #include <CosmicHex/Handheld/BottomScreen.hpp>
 #include <CosmicHex/Handheld/ButtonMenu.hpp>
+#include <CosmicHex/Handheld/CardChoices.hpp>
 #include <CosmicHex/Handheld/CardsHeld.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
@@ -77,6 +78,7 @@
 #include <spdlog/spdlog.h>
 
 #include <ScratchPadd/ConsoleScreens/ConsoleScreens.hpp>
+#include <ScratchPadd/Scene/TextWrap.hpp>
 #include <ScratchPadd/StartupSplash/StartupSplash.hpp>
 
 #if defined(COSMIC_HEX_BENCH)
@@ -127,6 +129,8 @@ constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 // question on the roadmap page; the scene for now
 // How long the title takes to fade in from black, once the start's work
 // is done
+// The two cards dealt after buying: each thrown in, then turned over
+constexpr float kSecondsCardThrow = 0.45f, kSecondsCardTurn = 0.4f;
 // How long the other players' view takes to slide down (or up)
 constexpr float kSecondsPanel = 0.3f;
 // How long who goes first is shown at the start (A goes on sooner)
@@ -341,6 +345,15 @@ public:
         banner_.start(gameClock_.seconds(),
                       yours ? "YOUR TURN" : "P" + std::to_string(turn + 1) + "'S TURN",
                       yours ? "roll the dice" : "thinking...", BoardColours::ofPlayer(turn));
+      }
+      // Your two cards dealt after buying: thrown onto the top screen
+      {
+        const bool keeping = mode_ == Mode::Playing && snapshot.yourMove &&
+                             snapshot.state.phase == CosmicHex::Phase::KeepContract;
+        if (keeping && !keepDealtAt_)
+          keepDealtAt_ = Clock::now();
+        else if (!keeping)
+          keepDealtAt_.reset();
       }
       // (pausing the game pauses its clock, so its animations and dice stop too)
       gameClock_.setPaused(snapshot.paused);
@@ -790,6 +803,8 @@ private:
       drawFirstRoll(renderer_->overlay());
     else if (showingPlayer())
       drawOtherPlayer(renderer_->overlay(), camera);
+    else if (keepDealtAt_)
+      drawDealtCards(renderer_->overlay(), camera);
     else
       drawText();
     // The touched corner (or the blockade's hex), ringed on the 3D board too
@@ -1700,6 +1715,75 @@ private:
   // board, nothing new from the table, nothing moving (the pieces, the
   // dice, the board coming down), the camera and the selection the same.
   // (The -watch builds redraw once a second, for their measurements.)
+  // After buying, the two cards dealt (the user's): thrown onto the top
+  // screen face down, one after the other, then turned over one after the
+  // other (each narrowing to nothing, its back showing, then widening, its
+  // front), their words on them once turned; the one chosen on the bottom
+  // screen outlined. The pictures are the cards' textures, larger; the
+  // words are the overlay's, sharp at any size (full-size textures of the
+  // cards wouldn't fit beside the tile faces in the DS's texture memory)
+  void drawDealtCards(Scene::Overlay &overlay, const Scene::Camera &camera) {
+    if (!latest_ || !pictureSquare_)
+      return;
+    const auto choice = keepChoiceOf(latest_->state, latest_->moves);
+    if (!choice)
+      return;
+    const float k = static_cast<float>(kTopWidth) / 256;
+    const auto screenW = static_cast<float>(kTopWidth), screenH = static_cast<float>(kTopHeight);
+    const float since = static_cast<float>(secondsSince(*keepDealtAt_));
+    const float w = 100 * k, pictureH = w * 52 / 63, cardH = w * 88 / 63, gap = 16 * k;
+    const auto count = static_cast<float>(choice->cards.size());
+    const float left = (screenW - (count * w + (count - 1) * gap)) / 2, top = 8 * k;
+    const int chosen = bottomScreen_ ? bottomScreen_->keepChosen() : -1;
+    overlay.textCentred(screenW / 2, screenH - 6 * k, "Keep one: touch it below",
+                        Palette::kDimWords, k);
+    for (std::size_t i = 0; i < choice->cards.size(); ++i) {
+      const auto n = static_cast<float>(i);
+      // Thrown in from the bottom left, eased to its place
+      const float flown = ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseOut,
+                                                     (since - 0.15f * n) / kSecondsCardThrow);
+      const float homeX = left + n * (w + gap);
+      const float x = -w + (homeX + w) * flown, y = screenH + (top - screenH) * flown;
+      // Then turned over: its width through |cos|, the back until halfway
+      const float turned =
+          std::clamp((since - kSecondsCardThrow - 0.2f - 0.35f * n) / kSecondsCardTurn, 0.0f, 1.0f);
+      const float across = std::abs(std::cos(turned * 3.14159265f));
+      const bool front = turned >= 0.5f;
+      if (!front) {
+        renderer_->draw(
+            backSquare_,
+            onScreenAt(camera, screenW, screenH, x + w * (1 - across) / 2, y, w * across, cardH),
+            {.shading = Scene::Material::Shading::Unlit,
+             .texture = backPictures_[static_cast<std::size_t>(CosmicHex::Art::kActionBack)]});
+        continue;
+      }
+      const auto card = choice->cards[i];
+      const float cw = w * across, cx = x + w * (1 - across) / 2;
+      renderer_->draw(pictureSquare_, onScreenAt(camera, screenW, screenH, cx, y, cw, pictureH),
+                      {.shading = Scene::Material::Shading::Unlit,
+                       .texture = cardPictures_[static_cast<std::size_t>(card)]});
+      // The card's body under its picture, and once flat, its words
+      overlay.rectangle(cx, y + pictureH, cw, cardH - pictureH, {236, 232, 220, 255});
+      if (turned >= 1) {
+        const CosmicHex::Art::CardWords words = CosmicHex::Art::wordsOf(card);
+        overlay.textCentred(x + w / 2, y + w * 13 / 63, words.shortTitle, {24, 24, 30}, k);
+        // (wrapped by the width the letters take as drawn, spacing included)
+        const auto lines = Scene::wrapText(words.words, w - 8 * k, [k](std::string_view line) {
+          return Scene::Overlay::textWidth(line, k);
+        });
+        for (std::size_t l = 0; l < lines.size() && l < 6; ++l)
+          overlay.text(x + 4 * k, y + pictureH + (3 + 9 * static_cast<float>(l)) * k, lines[l],
+                       {40, 40, 48}, k);
+        if (static_cast<int>(i) == chosen) {
+          overlay.rectangle(x - 3 * k, y - 3 * k, w + 6 * k, 2 * k, Palette::kHighlight);
+          overlay.rectangle(x - 3 * k, y + cardH + k, w + 6 * k, 2 * k, Palette::kHighlight);
+          overlay.rectangle(x - 3 * k, y - 3 * k, 2 * k, cardH + 6 * k, Palette::kHighlight);
+          overlay.rectangle(x + w + k, y - 3 * k, 2 * k, cardH + 6 * k, Palette::kHighlight);
+        }
+      }
+    }
+  }
+
   // Another player's view on the top screen (the other players' tabs):
   // open, or still sliding back up
   bool showingPlayer() {
@@ -1872,8 +1956,8 @@ private:
       return false; // (pieces still moving, or a number chip dropping)
     if (banner_.showing(gameClock_.seconds()))
       return false; // (the turn's banner moving)
-    if (shownInfo_ != BottomScreen::Info::None || infoClosingAt_)
-      return false; // (an info view: its cards come in or go, and the game is held anyway)
+    if (shownInfo_ != BottomScreen::Info::None || infoClosingAt_ || keepDealtAt_)
+      return false; // (an info view or dealt cards: they come in or go)
     if (snapshots_ != drawnSnapshots_ || turn_ != drawnTurn_ || selected_ != drawnSelection_)
       return false;
     return !kWatchAtStart || Clock::now() - drawnAt_ < std::chrono::seconds(1);
@@ -1900,7 +1984,7 @@ private:
       spdlog::info("frames: {}", profileLine_);
     }
     // (not over a view that fills the screen: its words would be lost)
-    if (firstRollShownAt_ || shownInfo_ == BottomScreen::Info::Player)
+    if (firstRollShownAt_ || shownInfo_ == BottomScreen::Info::Player || keepDealtAt_)
       return;
     // (three lines where the screen's narrow)
     for (std::size_t from = 0, row = 0; from < profileLine_.size() && row < 4;
@@ -1945,6 +2029,7 @@ private:
   std::optional<Clock::time_point> infoClosingAt_;            // (an info view going off)
   BottomScreen::Info closingInfo_ = BottomScreen::Info::None; // (which)
   int shownPlayer_ = -1; // (the other players' view: whose, kept while it goes off)
+  std::optional<Clock::time_point> keepDealtAt_; // (your two cards dealt: since)
   bool heldForInfo_ = false;
   std::array<Scene::Texture, CosmicHex::Art::kCards> cardPictures_{};
   std::array<Scene::Texture, CosmicHex::kResources> resourcePictures_{};

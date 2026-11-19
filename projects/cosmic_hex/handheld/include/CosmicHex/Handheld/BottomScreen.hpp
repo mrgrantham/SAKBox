@@ -75,6 +75,9 @@ public:
     return info_ == Info::Player && mode_ != Mode::Others ? Info::None : info_;
   }
   int infoPlayer() const { return othersChosen_; }
+  // After buying, which of the two dealt is chosen (-1: none yet), for the
+  // top screen to mark it too
+  int keepChosen() const { return mode_ == Mode::Keep ? keepChosen_ : -1; }
   // In Placing: the corners where the chosen build, or the ship touched,
   // may go, to be marked
   std::vector<Corner> placingCorners() const;
