@@ -458,8 +458,8 @@ ScratchPadd::Buttons::Panel tradeTabs(int width, const TradeRoom &room) {
                     .area = {4 * k + static_cast<float>(i) * (w + 3 * k), 2 * k, w, 18 * k},
                     .label = p == TradeRoom::kBank ? "Bank" : "P" + std::to_string(p + 1),
                     .usable = room.open(p),
-                    .face = p == room.partner() ? std::optional(kConfirm) : std::nullopt,
-                    .edge = p == room.partner() ? std::optional(kConfirmEdge) : std::nullopt});
+                    // (the chosen tab in the palette's colour for what you've chosen)
+                    .edge = p == room.partner() ? std::optional(kChosen) : std::nullopt});
   }
   ScratchPadd::Buttons::Panel panel;
   panel.set(std::move(tabs));
@@ -475,10 +475,13 @@ Box tradeCard(int width, float y, int r) {
 Box tradeMinus(int width, float y, int r) {
   const float k = scaleOf(width);
   const Box card = tradeCard(width, y, r);
-  return {card.x, card.y + card.h + 2 * k, 16 * k, 12 * k};
+  // (at the card's right, clear of how many you hold at its left)
+  return {card.x + card.w - 15 * k, card.y + card.h + 2 * k, 13 * k, 12 * k};
 }
-float giveRow(int width) { return 34 * scaleOf(width); }
-float getRow(int width) { return 102 * scaleOf(width); }
+// (yours, what you give, on the lower row, nearer you, as a hand of cards
+// is held: the user's)
+float giveRow(int width) { return 102 * scaleOf(width); }
+float getRow(int width) { return 34 * scaleOf(width); }
 Box declineBox(int width) {
   const float k = scaleOf(width);
   return {100 * k, 168 * k, 56 * k, 21 * k};
@@ -510,7 +513,7 @@ void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards) {
                    static_cast<int>(box.x), static_cast<int>(box.y), n > 0 ? 1.0f : 0.45f);
       if (n > 0) {
         // (how many in a badge at the card's foot, clear of its picture)
-        canvas.outline(box.x - 1, box.y - 1, box.w + 2, box.h + 2, kWords);
+        canvas.outline(box.x - 1, box.y - 1, box.w + 2, box.h + 2, kChosen, 2);
         canvas.fillRect(box.x + box.w - 13 * k, box.y + box.h - 11 * k, 13 * k, 11 * k,
                         Colour{12, 16, 28, 255});
         canvas.textCentred(box.x + box.w - 6.5f * k, box.y + box.h - 5.5f * k, std::to_string(n),
@@ -518,7 +521,7 @@ void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards) {
       }
       if (answering && std::find(room.changed().begin(), room.changed().end(),
                                  static_cast<Resource>(r)) != room.changed().end())
-        canvas.outline(box.x - 2, box.y - 2, box.w + 4, box.h + 4, kChosen, 2);
+        canvas.outline(box.x - 3, box.y - 3, box.w + 6, box.h + 6, kChosen);
       if (minus) {
         const Box m = tradeMinus(width, y, r);
         canvas.fillRect(m.x, m.y, m.w, m.h, kRow);
@@ -526,8 +529,9 @@ void drawTrade(Canvas &canvas, const TradeRoom &room, CardSprites &cards) {
         canvas.textCentred(m.x + m.w / 2, m.y + m.h / 2, "-", kWords);
       }
       if (showHeld)
-        canvas.textCentred(box.x + box.w - 10 * k, box.y + box.h + 8 * k,
-                           "of " + std::to_string(room.held()[static_cast<std::size_t>(r)]), kDim);
+        // (at the card's left, clear of the minus at its right)
+        canvas.text(box.x + 3 * k, box.y + box.h + 4 * k,
+                    "of " + std::to_string(room.held()[static_cast<std::size_t>(r)]), kDim);
     }
   };
   if (answering) {

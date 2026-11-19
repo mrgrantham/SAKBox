@@ -363,10 +363,10 @@ TEST(BottomScreenTest, TheTradeRoomMakesABankTrade) {
       screen.tap(static_cast<int>(place.x + place.size / 2),
                  static_cast<int>(place.y + place.size / 2), std::nullopt);
   ASSERT_EQ(screen.mode(), Mode::Trade);
-  // Minerals given (the first card of the give row), Food got (the second
-  // of the get row): the cards' middles
-  screen.tap(6 + 24, 34 + 20, std::nullopt);
-  screen.tap(6 + 49 + 24, 102 + 20, std::nullopt);
+  // Minerals given (the first card of the give row, the lower), Food got
+  // (the second of the get row, the upper): the cards' middles
+  screen.tap(6 + 24, 102 + 20, std::nullopt);
+  screen.tap(6 + 49 + 24, 34 + 20, std::nullopt);
   const auto first = screen.press(BottomScreen::Key::Confirm);
   ASSERT_TRUE(first.play.has_value());
   if (first.play) {
