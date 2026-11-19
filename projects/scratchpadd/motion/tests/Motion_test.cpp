@@ -89,3 +89,15 @@ TEST(MotionTest, FixedStepsCatchUpButNotWithoutLimit) {
   EXPECT_EQ(physics.due(5.0, 4), 4);
   EXPECT_LE(physics.due(5.1, 4), 1);
 }
+
+// Gentle: from none to all, half way at the middle, and softer than
+// EaseInOut at both ends
+TEST(MotionTest, GentleIsSofterAtBothEnds) {
+  using ScratchPadd::Motion::along;
+  using ScratchPadd::Motion::Curve;
+  EXPECT_FLOAT_EQ(along(Curve::Gentle, 0), 0);
+  EXPECT_FLOAT_EQ(along(Curve::Gentle, 1), 1);
+  EXPECT_NEAR(along(Curve::Gentle, 0.5f), 0.5f, 1e-6f);
+  EXPECT_LT(along(Curve::Gentle, 0.1f), along(Curve::EaseInOut, 0.1f));
+  EXPECT_GT(along(Curve::Gentle, 0.9f), along(Curve::EaseInOut, 0.9f));
+}

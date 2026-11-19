@@ -32,13 +32,16 @@ namespace ScratchPadd::Motion {
 //   EaseIn     starting slowly, speeding up (t squared)
 //   EaseOut    starting fast, slowing to stop
 //   EaseInOut  slow, fast, slow (smoothstep: 3t^2 - 2t^3)
+//   Gentle     the same, softer at both ends (smootherstep: 6t^5 - 15t^4 +
+//              10t^3, no jolt starting or stopping; Cosmic Hex's tiles
+//              lifting off the board and back)
 //   Pull       speeding up evenly to the middle, then slowing the same way:
 //              two parabolas, the curve of something pulled at a constant
 //              acceleration then braked (Cosmic Hex's dice glass)
 //   Settle     fast, past the end by about a tenth, and back to settle: a
 //              piece dropped into place ("ease out back"; Cosmic Hex's
 //              number chips). The one curve that goes past 1
-enum class Curve { Linear, EaseIn, EaseOut, EaseInOut, Pull, Settle };
+enum class Curve { Linear, EaseIn, EaseOut, EaseInOut, Gentle, Pull, Settle };
 float along(Curve curve, float t);
 
 // A value carried from `from` to `to`, starting at `start` (seconds, on

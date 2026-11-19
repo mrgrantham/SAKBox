@@ -112,12 +112,14 @@ std::vector<Found> between(const State &before, const State &after) {
 Moment at(float seconds) {
   using ScratchPadd::Motion::along;
   using ScratchPadd::Motion::Curve;
-  constexpr float kChipFrom = kSecondsTurn;
-  constexpr float kShrinkFrom = kChipFrom + kSecondsChip + kSecondsHold;
-  constexpr float kFadeFrom = kShrinkFrom + kSecondsShrink;
-  return {.turn = along(Curve::EaseInOut, part(seconds, 0, kSecondsTurn)),
+  constexpr float kTurnFrom = kSecondsUp;
+  constexpr float kChipFrom = kTurnFrom + kSecondsTurn;
+  constexpr float kDownFrom = kChipFrom + kSecondsChip + kSecondsHold;
+  constexpr float kFadeFrom = kDownFrom + kSecondsDown;
+  return {.up = along(Curve::Gentle, part(seconds, 0, kSecondsUp)),
+          .turn = along(Curve::Gentle, part(seconds, kTurnFrom, kSecondsTurn)),
           .chip = along(Curve::Settle, part(seconds, kChipFrom, kSecondsChip)),
-          .shrink = along(Curve::EaseInOut, part(seconds, kShrinkFrom, kSecondsShrink)),
+          .down = along(Curve::Gentle, part(seconds, kDownFrom, kSecondsDown)),
           .fade = part(seconds, kFadeFrom, kSecondsFade),
           .done = seconds >= kSeconds};
 }

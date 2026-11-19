@@ -42,20 +42,22 @@ TEST(DiscoveryTest, AFindTurnedOver) {
   EXPECT_EQ(found[0].gives, "+" + std::to_string(after.settings.ruinsBadges + 1) + " badges");
 }
 
-// The parts in order: turned, the token dropped, held, shrunk; only then
-// does the bottom screen's tile fade in
+// The parts in order: lifted, turned, the token dropped, held, back down
+// flat; only then does the bottom screen's tile fade in
 TEST(DiscoveryTest, TheBottomScreenWaitsForTheTop) {
   using namespace Discovery;
-  EXPECT_FLOAT_EQ(at(0).turn, 0);
-  EXPECT_FLOAT_EQ(at(kSecondsTurn).turn, 1);
-  EXPECT_FLOAT_EQ(at(kSecondsTurn).chip, 0);
-  const float shrinkEnds = kSecondsTurn + kSecondsChip + kSecondsHold + kSecondsShrink;
-  EXPECT_FLOAT_EQ(at(shrinkEnds - kSecondsShrink).shrink, 0);
-  for (float s = 0; s < shrinkEnds; s += 0.05f) {
+  EXPECT_FLOAT_EQ(at(0).lifted(), 0);
+  EXPECT_FLOAT_EQ(at(kSecondsUp).lifted(), 1);
+  EXPECT_FLOAT_EQ(at(kSecondsUp).turn, 0); // (face down while it lifts)
+  EXPECT_FLOAT_EQ(at(kSecondsUp + kSecondsTurn).turn, 1);
+  EXPECT_FLOAT_EQ(at(kSecondsUp + kSecondsTurn).chip, 0);
+  const float downEnds = kSeconds - kSecondsFade;
+  EXPECT_FLOAT_EQ(at(downEnds - kSecondsDown).lifted(), 1);
+  for (float s = 0; s < downEnds; s += 0.05f) {
     EXPECT_FLOAT_EQ(at(s).fade, 0) << s;
   }
-  EXPECT_FLOAT_EQ(at(shrinkEnds).shrink, 1);
-  EXPECT_GT(at(shrinkEnds + kSecondsFade / 2).fade, 0);
+  EXPECT_NEAR(at(downEnds).lifted(), 0, 1e-5f); // (flat in its place)
+  EXPECT_GT(at(downEnds + kSecondsFade / 2).fade, 0);
   EXPECT_FLOAT_EQ(at(kSeconds).fade, 1);
   EXPECT_FALSE(at(kSeconds - 0.01f).done);
   EXPECT_TRUE(at(kSeconds).done);

@@ -15,6 +15,8 @@ float along(Curve curve, float t) {
     return 1 - (1 - t) * (1 - t);
   case Curve::EaseInOut:
     return t * t * (3 - 2 * t);
+  case Curve::Gentle:
+    return t * t * t * (t * (6 * t - 15) + 10);
   case Curve::Pull:
     // (each half a parabola reaching the middle at half the time)
     return t < 0.5f ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t);

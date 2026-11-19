@@ -951,8 +951,9 @@ private:
       // back, then simply face up: Discovery)
       const CosmicHex::Hex hex = state.planets[i].hex;
       if (stillDiscovering(hex)) {
-        drawTile(hex, std::nullopt, CosmicHex::Art::Face::PlanetFaceDown,
-                 CosmicHex::Art::Face::PlanetFaceDown);
+        if (!flying(hex))
+          drawTile(hex, std::nullopt, CosmicHex::Art::Face::PlanetFaceDown,
+                   CosmicHex::Art::Face::PlanetFaceDown);
         continue;
       }
       const bool shownBig = wasShownBig(hex);
@@ -980,10 +981,11 @@ private:
     }
     for (std::size_t i = 0; i < state.zone.size(); ++i) {
       const CosmicHex::Hex hex = state.zone[i].hex;
-      if (stillDiscovering(hex))
-        drawTile(hex, std::nullopt, CosmicHex::Art::Face::FindFaceDown,
-                 CosmicHex::Art::Face::FindFaceDown);
-      else
+      if (stillDiscovering(hex)) {
+        if (!flying(hex))
+          drawTile(hex, std::nullopt, CosmicHex::Art::Face::FindFaceDown,
+                   CosmicHex::Art::Face::FindFaceDown);
+      } else
         drawTile(hex, wasShownBig(hex) ? std::nullopt : motion_.siteTurn(i, t),
                  CosmicHex::Art::Face::FindFaceDown, faceOf(state.zone[i]));
     }
@@ -1811,15 +1813,21 @@ private:
     return Discovery::at(static_cast<float>(secondsSince(*discoveryAt_)));
   }
   // Whether a tile is turned over but not yet back in its place on the top
-  // board (the one showing, until it's shrunk back, or one waiting)
+  // board: the one showing, until it's back down, or one waiting
   bool stillDiscovering(CosmicHex::Hex hex) const {
     for (std::size_t i = 0; i < discoveries_.size(); ++i) {
       if (discoveries_[i].hex != hex)
         continue;
       const auto moment = i == 0 ? discoveryMoment() : std::nullopt;
-      return !moment || moment->shrink < 1;
+      return !moment || moment->down < 1;
     }
     return false;
+  }
+  // Whether it's off the board, flying (drawDiscovery draws it, not the
+  // board)
+  bool flying(CosmicHex::Hex hex) const {
+    const auto moment = discoveryMoment();
+    return moment && discoveries_.front().hex == hex && moment->down < 1;
   }
   bool wasShownBig(CosmicHex::Hex hex) const {
     return std::find(shownBig_.begin(), shownBig_.end(), hex) != shownBig_.end() ||
@@ -1852,63 +1860,78 @@ private:
         send(SetHold{false});
     }
   }
-  // The tile turned over, big in the middle of the top screen: turning
-  // over, its number token dropping on, its name and what it gives; then
-  // shrinking back into its place on the board
+  // The tile turned over, the board's own 3D tile: lifted off its place
+  // and flown up to face you, face down; turned over; its number token
+  // dropped on from above; held, its name and what it gives written above
+  // and below; then flown back down to lie flat where it was
   void drawDiscovery(Scene::Overlay &overlay, const Scene::Camera &camera) {
     const auto moment = discoveryMoment();
-    if (!moment || !pictureSquare_)
+    if (!moment)
       return;
     const Discovery::Found &found = discoveries_.front();
     const float k = static_cast<float>(kTopWidth) / 256;
     const auto screenW = static_cast<float>(kTopWidth), screenH = static_cast<float>(kTopHeight);
-    const float bigSize = 104 * k, bigX = screenW / 2, bigY = screenH / 2 + 4 * k;
-    // Where it goes back to: its hex on the board, as big as the tile there
-    float toX = bigX, toY = bigY, toSize = 0;
-    float cornerX = 0, cornerY = 0, oppositeX = 0, oppositeY = 0;
-    if (renderer_->toScreen(BoardPieces::centre(found.hex), toX, toY) &&
-        renderer_->toScreen(BoardPieces::at({found.hex, 0}), cornerX, cornerY) &&
-        renderer_->toScreen(BoardPieces::at({found.hex, 3}), oppositeX, oppositeY))
-      toSize = std::hypot(cornerX - oppositeX, cornerY - oppositeY) / 2 / 0.47f;
-    const float s = moment->shrink;
-    const float x = bigX + (toX - bigX) * s, y = bigY + (toY - bigY) * s;
-    const float size = bigSize + (toSize - bigSize) * s;
-    // A dim backdrop behind it, fading as it shrinks back
-    if (s < 1)
+    const float lifted = moment->lifted();
+    // A dim backdrop behind it while it faces you: in as it turns over,
+    // gone early on its way back (the tile passes through its plane on the
+    // way up and down, so not then)
+    const float dim = moment->turn * std::max(0.0f, 1 - 4 * moment->down);
+    if (dim > 0 && pictureSquare_)
       renderer_->draw(
           pictureSquare_,
           onScreenAt(camera, screenW, screenH, 0, 0, screenW, screenH, kPictureDistance * 1.2f),
           {.shading = Scene::Material::Shading::Unlit,
            .colour = {8, 12, 22},
-           .alpha = static_cast<std::uint8_t>(24 * (1 - s))});
-    // Turning over: its width through |cos|, face down until halfway
-    const float across = std::abs(std::cos(moment->turn * 3.14159265f));
-    const CosmicHex::Art::Face face = moment->turn >= 0.5f ? found.face : found.faceDown;
-    if (const Scene::Texture texture = faces_[static_cast<std::size_t>(face)])
-      renderer_->draw(pictureSquare_,
-                      onScreenAt(camera, screenW, screenH, x - size * across / 2, y - size / 2,
-                                 size * across, size),
-                      {.shading = Scene::Material::Shading::Unlit, .texture = texture});
-    // Its number token dropping on, with a small bounce (Settle)
-    if (found.number > 0 && moment->turn >= 1 && chips_[static_cast<std::size_t>(found.number)]) {
-      const float chip = size * 0.36f;
-      const float drop = (1 - moment->chip) * -60 * k * (1 - s);
-      renderer_->draw(pictureSquare_,
-                      onScreenAt(camera, screenW, screenH, x - chip / 2,
-                                 y + size * 0.16f - chip / 2 + drop, chip, chip,
-                                 kPictureDistance * 0.9f),
-                      {.shading = Scene::Material::Shading::Unlit,
-                       .texture = chips_[static_cast<std::size_t>(found.number)]});
+           .alpha = static_cast<std::uint8_t>(24 * dim)});
+    // On the board: where it lies, flat (its x, y and z the world's)
+    const Scene::Vector3 onBoard = BoardPieces::centre(found.hex);
+    const float radius = (BoardPieces::at({found.hex, 0}) - onBoard).length();
+    // Facing you: in front of the camera, as tall as about 55% of the
+    // screen, its face towards you, its top up the screen
+    const Scene::Vector3 forward = (camera.target - camera.eye).normalised();
+    const Scene::Vector3 right = forward.cross(camera.up).normalised();
+    const Scene::Vector3 screenUp = right.cross(forward);
+    const float distance =
+        2 * radius / (0.55f * 2 * std::tan(camera.fieldOfView * 3.14159265f / 360));
+    const Scene::Vector3 facing = camera.eye + forward * distance;
+    // Between: its position and axes carried from one to the other (the
+    // axes made square again: Gram-Schmidt)
+    const auto between = [lifted](const Scene::Vector3 &a, const Scene::Vector3 &b) {
+      return a + (b - a) * lifted;
+    };
+    const Scene::Vector3 y = between({0, 1, 0}, forward * -1).normalised();
+    Scene::Vector3 z = between({0, 0, 1}, screenUp * -1);
+    z = (z - y * z.dot(y)).normalised();
+    const Scene::Vector3 x = y.cross(z);
+    const Scene::Transform pose = Scene::Transform::fromAxes(x, y, z, between(onBoard, facing));
+    // Turning over about its x axis, as on the board: face down until half
+    // way
+    const float half = 1.5707963f, turn = moment->turn * 2 * half;
+    const bool faceUp = turn > half;
+    const auto spin = Scene::Transform::rotation({1, 0, 0}, faceUp ? turn - 2 * half : turn);
+    const CosmicHex::Art::Face face = faceUp ? found.face : found.faceDown;
+    const Scene::Texture texture = faces_[static_cast<std::size_t>(face)];
+    renderer_->draw(
+        hexTile_, pose * spin,
+        texture ? Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = texture}
+                : Scene::Material{.shading = Scene::Material::Shading::Toon,
+                                  .colour = BoardColours::ofFace(face)});
+    // Its number token, dropped on from above once it's face up (from up
+    // the screen while it faces you), riding it back down
+    const Scene::Texture chip = chips_[static_cast<std::size_t>(found.number)];
+    if (found.number > 0 && moment->turn >= 1 && chip) {
+      const float drop = (1 - moment->chip) * 2.5f * radius;
+      renderer_->draw(numberChip_, pose * Scene::Transform::translation({0, 0, -drop}),
+                      Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = chip});
     }
-    // Its words, while it's big
-    if (s <= 0) {
+    // Its words, while it faces you
+    if (lifted > 0.98f) {
       overlay.textCentred(screenW / 2, 10 * k, "P" + std::to_string(found.by + 1) + " discovers",
                           BoardColours::ofPlayer(found.by), k);
       if (moment->turn >= 1) {
-        overlay.textCentred(screenW / 2, bigY - bigSize / 2 - 12 * k, found.name, Palette::kWords,
-                            2 * k);
-        overlay.textCentred(screenW / 2, bigY + bigSize / 2 + 8 * k, found.gives,
-                            Palette::kSoftWords, 1.5f * k);
+        overlay.textCentred(screenW / 2, screenH / 2 - 66 * k, found.name, Palette::kWords, 2 * k);
+        overlay.textCentred(screenW / 2, screenH / 2 + 64 * k, found.gives, Palette::kSoftWords,
+                            1.5f * k);
       }
     }
   }
