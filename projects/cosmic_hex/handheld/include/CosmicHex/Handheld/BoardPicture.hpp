@@ -7,9 +7,21 @@
 // on: the corner nearest it, and the hex it's in.
 //
 //   BoardPicture picture(320, 240);       // the 3DS's bottom screen
-//   picture.draw(state);
+//   picture.draw(state, {.corners = {selected}});
 //   picture.pixels()                      // RGBA, rows from the top
+//   picture.changed()                     // the areas that draw changed
 //   picture.at(touchX, touchY)            // the corner (and hex) touched
+//
+// A draw changes only what has changed since the last (round 106): each
+// piece (a tile's face, a chip, a station, a ship, the blockade, a mark) is
+// listed with what it looks like and the area it covers; the areas where a
+// piece has gone, come or changed are drawn again from scratch (space, the
+// grid, every piece over them, in order), and the rest of the picture is
+// left as it is. So after a move only a few small areas are drawn, and the
+// picture is always the same as drawing it all (BoardPicture_test checks
+// that over whole games). Something else drawn over the picture (the
+// bottom screen's buttons) asks for its area to be drawn again first
+// (redrawNext).
 //
 // No console here: the app copies the pixels to its screen.
 #pragma once
@@ -66,8 +78,28 @@ public:
   }
   int wholeFaceSize() const { return whole_.facesSize; }
 
-  // The board as `state` has it, into pixels()
-  void draw(const State &state);
+  // What's marked over the board, in the highlight's colour: a hex outlined
+  // (the blockade goes on a hex), and corners as dots
+  struct Marks {
+    std::optional<Hex> hex;
+    std::vector<Corner> corners;
+  };
+  // An area of the picture, in pixels
+  struct Area {
+    int x = 0, y = 0, width = 0, height = 0;
+    auto operator<=>(const Area &) const = default;
+  };
+
+  // The board as `state` has it, with `marks`, into pixels(): only the
+  // areas that changed since the last draw (all of it the first time, or
+  // when zoomed or moved), which changed() then gives
+  void draw(const State &state, const Marks &marks = {});
+  const std::vector<Area> &changed() const { return changed_; }
+  // `area` drawn again by the next draw, whatever changes: where something
+  // else has drawn over the picture, or is about to
+  void redrawNext(Area area);
+  // All of it drawn again by the next draw
+  void redrawAll();
   const std::vector<ScratchPadd::Scene::Colour> &pixels() const { return pixels_; }
   // The same, to draw over (the bottom screen's buttons, onto the map
   // itself: Canvas::over)
@@ -82,11 +114,6 @@ public:
     bool operator==(const Spot &) const = default;
   };
   std::optional<Spot> at(int x, int y) const;
-  // Marks a corner over the drawn board (after draw) as a dot, or a hex as
-  // an outline (the blockade goes on a hex), in the highlight's colour
-  void markCorner(Corner corner);
-  void markHex(Hex hex);
-
   // Where a hex's centre or a corner is on the screen, in pixels
   HexGrid::Point where(Hex hex) const;
   HexGrid::Point where(Corner corner) const;
@@ -96,7 +123,25 @@ private:
   float hexSize() const; // centre to corner, in pixels, at this zoom
 
   void buildGrid(); // (gridPixels_ for this zoom and pan)
-  void blendFace(Art::Face face, HexGrid::Point centre);
+
+  // One thing drawn on the board: what it is, where (a hex, and a corner's
+  // index), what it looks like (a face and whether it's sharp, a chip's
+  // number, a player and whether a colony), and the pixels it can touch
+  struct Piece {
+    enum class Kind : std::uint8_t { Face, Chip, Station, Ship, Blockade, MarkHex, MarkCorner };
+    Kind kind;
+    std::array<std::int16_t, 3> place;
+    std::array<std::int16_t, 2> look;
+    Area area;
+    auto operator<=>(const Piece &) const = default;
+  };
+  // Everything drawn for `state` and `marks`, in the order it's drawn
+  void listPieces(const State &state, const Marks &marks, std::vector<Piece> &out) const;
+  void drawPiece(const Piece &piece);
+  // `area` drawn from scratch: space, the grid, the pieces over it
+  void drawArea(Area area);
+  static Area triangleArea(HexGrid::Point a, HexGrid::Point b, HexGrid::Point c);
+
   void blendSprite(const std::vector<ScratchPadd::Scene::Colour> &sprite, int size,
                    HexGrid::Point centre);
   void fillRect(float x, float y, float w, float h, ScratchPadd::Scene::Colour colour);
@@ -132,6 +177,21 @@ private:
   void blendSpriteOf(const std::vector<ScratchPadd::Scene::Colour> &own,
                      const std::vector<ScratchPadd::Scene::Colour> &whole, int ownSize,
                      int wholeSize, HexGrid::Point centre);
+  // What's drawn, and was last time (compared, to find what changed)
+  std::vector<Piece> pieces_, drawnPieces_;
+  // Seen as last drawn: zoom and pan (none: all of it drawn next)
+  struct View {
+    int zoom;
+    float x, y;
+    bool operator==(const View &) const = default;
+  };
+  std::optional<View> drawnView_;
+  std::vector<Area> waiting_; // (redrawNext's, for the next draw)
+  std::vector<Area> changed_; // (the last draw's)
+  // More separate areas than this are drawn as one round them all
+  static constexpr std::size_t kMostAreas = 12;
+  Area clip_; // where the drawing functions draw
+  inline static const std::vector<ScratchPadd::Scene::Colour> kNoSprite{};
   // The grid's pixels (indexes into pixels_), worked out once for a zoom
   // and pan rather than its 360 edges drawn each time (round 92)
   std::vector<std::uint32_t> gridPixels_;

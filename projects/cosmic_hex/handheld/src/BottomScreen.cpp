@@ -3,6 +3,7 @@
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 
 #include <algorithm>
+#include <cmath>
 
 namespace CosmicHex::Handheld {
 
@@ -358,6 +359,27 @@ void BottomScreen::drawOverBoard(Canvas &canvas) {
     canvas.textCentred(static_cast<float>(width_) / 2, static_cast<float>(height_) - 8 * k,
                        "Where to? Touch a marked corner", kHint);
   }
+}
+
+std::vector<BoardPicture::Area> BottomScreen::overBoardAreas() const {
+  // (each a pixel or two bigger all round: a flashing button's outline is
+  // outside it, and the rounding of fractional sizes)
+  const auto area = [](float x, float y, float w, float h) {
+    const int x0 = static_cast<int>(std::floor(x)) - 2, y0 = static_cast<int>(std::floor(y)) - 2;
+    return BoardPicture::Area{x0, y0, static_cast<int>(std::ceil(x + w)) + 2 - x0,
+                              static_cast<int>(std::ceil(y + h)) + 2 - y0};
+  };
+  std::vector<BoardPicture::Area> out;
+  for (const BoardButtons::Place &place : BoardButtons::layout(width_, height_, situation_))
+    out.push_back(area(place.x, place.y, place.size, place.size));
+  const float k = static_cast<float>(width_) / 256;
+  if (!message_.empty() && mode_ == Mode::Board)
+    out.push_back(area(30 * k, static_cast<float>(height_) - 18 * k,
+                       static_cast<float>(width_) - 60 * k, 14 * k));
+  if (mode_ == Mode::Placing)
+    out.push_back(
+        area(0, static_cast<float>(height_) - 16 * k, static_cast<float>(width_), 16 * k));
+  return out;
 }
 
 bool BottomScreen::prepare() {

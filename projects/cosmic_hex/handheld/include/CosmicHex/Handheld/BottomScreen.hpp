@@ -88,6 +88,10 @@ public:
   // The buttons, and a tapped button's message, over the board's own
   // pixels (Canvas::over: no copy of the map)
   void drawOverBoard(Canvas &board);
+  // The areas drawOverBoard draws on now: the map under them is drawn
+  // again before they are (BoardPicture::redrawNext), now and after they
+  // change, so each is drawn over the map once (round 106)
+  std::vector<BoardPicture::Area> overBoardAreas() const;
   // Draws one of its pictures (cards, icons) not yet drawn, for spare
   // frames; whether they're all ready
   bool prepare();

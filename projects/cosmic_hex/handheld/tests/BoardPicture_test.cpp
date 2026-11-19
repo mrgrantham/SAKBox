@@ -3,6 +3,8 @@
 // picture is also written out (bazel's test outputs) to look at.
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <GameBots/Bots.hpp>
+#include <SeededRandom/Generator.hpp>
 
 #include <gtest/gtest.h>
 
@@ -168,4 +170,66 @@ TEST(BoardPictureTest, ZoomingShowsAtOnceThenSharpens) {
     close += std::abs(a.r - b.r) < 48 && std::abs(a.g - b.g) < 48 && std::abs(a.b - b.b) < 48;
   }
   EXPECT_GT(close, static_cast<int>(standIn.size() * 9 / 10));
+}
+
+// Drawing only what changed (round 106) gives the same picture as drawing
+// it all, pixel for pixel: through two whole games of bots' moves, with
+// marks coming and going, the zoom changing (and its faces sharpening),
+// panning, and areas drawn over (as the buttons are) asked for again
+TEST(BoardPictureTest, DrawingWhatChangedMatchesDrawingItAll) {
+  for (const std::uint64_t seed : {3u, 17u}) {
+    State state = newGame(4, agreedRules(boardR3(), 4));
+    SeededRandom::Generator random(seed);
+    BoardPicture kept(256, 192), fresh(256, 192);
+    int compared = 0, small = 0;
+    for (int step = 0; step < 3000 && state.winner < 0; ++step) {
+      const auto legal = Game::legalActions(state);
+      Game::apply(state, Game::currentPlayer(state) == GameBots::kDealer
+                             ? Game::dealerAction(state, random)
+                             : legal[random.below(static_cast<std::uint32_t>(legal.size()))]);
+      if (step % 4 != 0)
+        continue;
+      BoardPicture::Marks marks;
+      if (step % 3 == 0 && !state.stations.empty())
+        marks.corners.push_back(state.stations.back().at);
+      if (step % 5 == 0 && !state.planets.empty())
+        marks.hex = state.planets[static_cast<std::size_t>(step / 5) % state.planets.size()].hex;
+      if (step % 140 == 0) {
+        kept.setZoom(1 + (step / 140) % 3);
+        kept.pan(static_cast<float>(step % 30) - 15, 0);
+      }
+      if (step % 11 == 0)
+        for (int i = 0; i < 6; ++i)
+          kept.prepare(); // (a zoomed face or two sharpening now and then)
+      if (step % 13 == 0) {
+        // Something drawn over the picture, then its area asked for again
+        auto pixels = kept.pixelsToDrawOver();
+        for (int y = 170; y < 190; ++y)
+          for (int x = 4; x < 26; ++x)
+            pixels[static_cast<std::size_t>(y * 256 + x)] = {255, 0, 255, 255};
+        kept.redrawNext({4, 170, 22, 20});
+      }
+      kept.draw(state, marks);
+      // The same from scratch: a new picture, at the same zoom and pan
+      fresh = BoardPicture(256, 192);
+      fresh.setZoom(kept.zoom());
+      fresh.pan(kept.where(Hex{0, 0}).x - fresh.where(Hex{0, 0}).x,
+                kept.where(Hex{0, 0}).y - fresh.where(Hex{0, 0}).y);
+      // (compared once the zoom's faces are all sharp: part way, the fresh
+      // picture couldn't stand in the same ones)
+      if (!kept.ready())
+        continue;
+      while (!fresh.prepare()) {
+      }
+      fresh.draw(state, marks);
+      ++compared;
+      int area = 0;
+      for (const auto &a : kept.changed())
+        area += a.width * a.height;
+      small += area < 256 * 192 / 2;
+      ASSERT_EQ(kept.pixels(), fresh.pixels()) << "seed " << seed << ", step " << step;
+    }
+    EXPECT_GT(compared, 50);
+    EXPECT_GT(small, compared / 2); // (most draws changed less than half the picture)
+  }
 }

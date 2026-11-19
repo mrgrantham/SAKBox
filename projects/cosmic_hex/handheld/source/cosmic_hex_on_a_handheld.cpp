@@ -1372,6 +1372,7 @@ private:
   void drawBottom() {
     bottomDirty_ = false;
     std::span<const Scene::Colour> drawn;
+    bool showingMap = false; // (the map, rather than a menu or a choosing screen)
     const ScreenFlow::Screen screen = flow_.screen();
     if (screen == ScreenFlow::Screen::Title || screen == ScreenFlow::Screen::Paused) {
       menuPicture_.draw(screen == ScreenFlow::Screen::Title ? titleMenu_ : pauseMenu_);
@@ -1391,22 +1392,33 @@ private:
         drawn = bottomCanvas_->pixels();
       } else {
         if (!fading_) {
+          // The touched corner (or the blockade's hex), and where what's
+          // being built may go
+          BoardPicture::Marks marks;
+          if (selected_ && choosingAHex())
+            marks.hex = selected_->hex;
+          else if (selected_)
+            marks.corners.push_back(selected_->corner);
+          for (const CosmicHex::Corner &corner : bottomScreen_->placingCorners())
+            marks.corners.push_back(corner);
+          // The map under the buttons, where they were and are, drawn
+          // again, so they're drawn over it once (round 106: the map's
+          // draw changes only what's changed)
+          for (const BoardPicture::Area &area : overBoardAreas_)
+            picture_->redrawNext(area);
+          overBoardAreas_ = bottomScreen_->overBoardAreas();
+          for (const BoardPicture::Area &area : overBoardAreas_)
+            picture_->redrawNext(area);
           {
             auto timing = profile_.time(kProfileMap);
-            picture_->draw(latest_->state);
+            picture_->draw(latest_->state, marks);
           }
-          if (selected_ && choosingAHex())
-            picture_->markHex(selected_->hex);
-          else if (selected_)
-            picture_->markCorner(selected_->corner);
-          // (where what's being built may go: each place marked)
-          for (const CosmicHex::Corner &corner : bottomScreen_->placingCorners())
-            picture_->markCorner(corner);
           auto timing = profile_.time(kProfileButtons);
           Canvas board = Canvas::over(picture_->pixelsToDrawOver(), kBottomWidth, kBottomHeight);
           bottomScreen_->drawOverBoard(board);
         }
         drawn = picture_->pixels();
+        showingMap = true;
       }
     }
     // Fading from the menu to the map as the board comes down: the setup
@@ -1440,8 +1452,21 @@ private:
     // the copy alone 2 to 6; round 92)
     const Scene::Colour *to = pixels.data();
     const Scene::Colour *mixFrom = from ? from->data() : nullptr;
+    // (the map shown again: only its rows that changed; else all of it)
+    const bool mapAgain = showingMap && screenShowsMap_;
+    screenShowsMap_ = showingMap && !mixFrom && !fromBlack;
     if (!mixFrom && !fromBlack) {
-      bottom_->present(kBottomWidth, kBottomHeight, to); // (as it is: the quick copy)
+      if (!mapAgain) {
+        bottom_->present(kBottomWidth, kBottomHeight, to); // (as it is: the quick copy)
+        return;
+      }
+      int fromRow = kBottomHeight, toRow = 0;
+      for (const BoardPicture::Area &area : picture_->changed()) {
+        fromRow = std::min(fromRow, area.y);
+        toRow = std::max(toRow, area.y + area.height);
+      }
+      if (fromRow < toRow)
+        bottom_->present(kBottomWidth, kBottomHeight, to, fromRow, toRow);
       return;
     }
     const auto colourAt = [to, mixFrom, weight](std::size_t i) -> Scene::Colour {
@@ -1670,7 +1695,12 @@ private:
   // The start of a game: the board coming down, the bottom screen fading
   std::optional<Clock::time_point> descentStarted_;
   bool fadeFromMenu_ = false; // (the bottom screen fading from the setup's menu)
-  bool fading_ = false;       // (mid-fade: the map already drawn)
+  // What the buttons cover on the map, as last drawn; and whether the
+  // bottom screen shows the map as last drawn (so only what changes needs
+  // copying to it)
+  std::vector<BoardPicture::Area> overBoardAreas_;
+  bool screenShowsMap_ = false;
+  bool fading_ = false; // (mid-fade: the map already drawn)
   bool sliding_ = false;
   int slideWay_ = 1; // (+1: right was pressed, the new board comes in from the right)
   Clock::time_point slideStarted_;
