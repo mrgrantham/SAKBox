@@ -410,6 +410,25 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
     out.push_back(
         {Piece::Kind::MarkCorner, at(corner), {0, 0}, rectArea(c.x - r, c.y - r, 2 * r, 2 * r)});
   }
+  if (marks.preview) {
+    // (as the piece itself will be, drawn last)
+    const HexGrid::Point c = where(marks.preview->corner);
+    const auto owner = static_cast<std::int16_t>(marks.preview->owner);
+    if (marks.preview->ship) {
+      const float r = 0.3f * s;
+      out.push_back({Piece::Kind::Ship,
+                     at(marks.preview->corner),
+                     {owner, 0},
+                     triangleArea({c.x, c.y - r - 1}, {c.x - r - 1, c.y + r + 1},
+                                  {c.x + r + 1, c.y + r + 1})});
+    } else {
+      const float half = 0.26f * s;
+      out.push_back({Piece::Kind::Station,
+                     at(marks.preview->corner),
+                     {owner, 1},
+                     rectArea(c.x - half - 1, c.y - half - 1, 2 * half + 2, 2 * half + 2)});
+    }
+  }
 }
 
 void BoardPicture::drawPiece(const Piece &piece) {

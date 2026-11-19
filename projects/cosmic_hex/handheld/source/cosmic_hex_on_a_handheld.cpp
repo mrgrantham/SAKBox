@@ -125,6 +125,8 @@ constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 // question on the roadmap page; the scene for now
 // How long the title takes to fade in from black, once the start's work
 // is done
+// How long who goes first is shown at the start (A goes on sooner)
+constexpr double kSecondsFirstRoll = 4.0;
 constexpr double kSecondsTitleFadeIn = 0.6;
 
 constexpr bool kTitleScene = true;
@@ -172,8 +174,9 @@ struct TableSnapshot {
   // this seed (a new one each roll) and sends back what they show
   bool waitingForDice = false;
   std::uint64_t diceSeed = 0;
-  int botGames = 0;                // (the last bot move's simulated games, for measuring)
-  GameBots::SearchTimes botSearch; // (and where its time went)
+  CosmicHex::Handheld::FirstRoll firstRoll; // (the dice that chose who goes first)
+  int botGames = 0;                         // (the last bot move's simulated games, for measuring)
+  GameBots::SearchTimes botSearch;          // (and where its time went)
 };
 
 // ScreenPadd to TablePadd: start a game (you against three bots, or four
@@ -285,6 +288,7 @@ private:
                                history.end() - static_cast<long>(shown), history.end()),
                            .lastThinkSeconds = lastThinkSeconds_,
                            .paused = paused_,
+                           .firstRoll = game_->firstRoll(),
                            .botGames = game_->lastBotIterations(),
                            .botSearch = game_->lastSearch()};
     if (game_->waitingForDice()) {
@@ -318,6 +322,11 @@ public:
       const CosmicHex::Phase phase = snapshot.state.phase;
       const bool placing =
           phase == CosmicHex::Phase::PlaceColony || phase == CosmicHex::Phase::PlaceShip;
+      // (the start's placing: whose it is and what, once who goes first is
+      // shown)
+      if (placing && !firstRollShownAt_ && !descentStarted_ &&
+          (!latest_ || snapshot.state.turn != latest_->state.turn || phase != latest_->state.phase))
+        startPlacingBanner(snapshot.state);
       if (latest_ && snapshot.state.turn != latest_->state.turn && !placing &&
           snapshot.state.winner < 0) {
         const int turn = snapshot.state.turn;
@@ -460,6 +469,8 @@ private:
       }
     }
     profile_.frameStarted();
+    if (firstRollShownAt_ && secondsSince(*firstRollShownAt_) > kSecondsFirstRoll)
+      endFirstRoll();
     if (bottomDirty_) {
       auto timing = profile_.time(kProfileBottom);
       drawBottom();
@@ -729,9 +740,9 @@ private:
     const float down = descent();
     if (down >= 1 && descentStarted_) {
       descentStarted_.reset();
-      // (down: the game goes on, unless the pause menu is up)
+      // (down: who goes first, shown, the game still held; then it goes on)
       if (flow_.screen() == ScreenFlow::Screen::Game)
-        send(SetHold{false});
+        firstRollShownAt_ = Clock::now(); // (real time: the game's clock is held)
     }
     const Scene::Camera camera = cameraBetween(topDownCamera(), gameCamera(turn_), down);
     renderer_->beginFrame(camera, boardEnvironment(1 - down));
@@ -746,7 +757,12 @@ private:
     }
     drawDice(camera);
     drawInfo(camera);
-    drawText();
+    // (who goes first in place of the usual words: on a DS words are on a
+    // layer over every shape, so they'd show through it)
+    if (firstRollShownAt_)
+      drawFirstRoll(renderer_->overlay());
+    else
+      drawText();
     // The touched corner (or the blockade's hex), ringed on the 3D board too
     if (selected_) {
       const Scene::Material marked{.shading = Scene::Material::Shading::Unlit,
@@ -1146,6 +1162,11 @@ private:
   // it, B shows them all again
   void handleButtons(const Input::Edges &pressed, bool zooming = false) {
     using Input::Button;
+    // (A: on from who goes first)
+    if (firstRollShownAt_ && pressed.pressed(Button::FaceRight)) {
+      endFirstRoll();
+      return;
+    }
     switch (flow_.screen()) {
     case ScreenFlow::Screen::Title:
     case ScreenFlow::Screen::Paused: {
@@ -1403,8 +1424,17 @@ private:
             marks.hex = selected_->hex;
           else if (selected_)
             marks.corners.push_back(selected_->corner);
+          // (and at the start, what's been touched, shown as the piece)
+          const std::optional<CosmicHex::Action> chosen = bottomScreen_->startPlacement();
+          std::optional<CosmicHex::Corner> chosenAt;
+          if (chosen)
+            chosenAt = CosmicHex::boardCorners()[static_cast<std::size_t>(chosen->a)];
           for (const CosmicHex::Corner &corner : bottomScreen_->placingCorners())
-            marks.corners.push_back(corner);
+            if (corner != chosenAt)
+              marks.corners.push_back(corner);
+          if (chosen)
+            marks.preview = BoardPicture::Marks::Preview{
+                *chosenAt, latest_->state.turn, chosen->kind == CosmicHex::Action::Kind::PlaceShip};
           // The map under the buttons, where they were and are, drawn
           // again, so they're drawn over it once (the map's
           // draw changes only what's changed)
@@ -1590,9 +1620,80 @@ private:
   // board, nothing new from the table, nothing moving (the pieces, the
   // dice, the board coming down), the camera and the selection the same.
   // (The -watch builds redraw once a second, for their measurements.)
+  // The start's banner: what's being placed and by whom
+  void startPlacingBanner(const State &state) {
+    const bool ship = state.phase == CosmicHex::Phase::PlaceShip;
+    const int turn = state.turn;
+    if (mode_ == Mode::Playing && turn == 0)
+      banner_.start(gameClock_.seconds(), ship ? "YOUR SHIP" : "YOUR HOME COLONY",
+                    ship ? "touch a corner in open space, then End Turn"
+                         : "touch a corner of a home, then End Turn",
+                    BoardColours::ofPlayer(turn));
+    else
+      banner_.start(gameClock_.seconds(),
+                    "P" + std::to_string(turn + 1) + (ship ? " PLACES A SHIP" : " CHOOSES A HOME"),
+                    "thinking...", BoardColours::ofPlayer(turn));
+  }
+
+  // Who goes first, over the board at the start (each player's die, those
+  // tied rolling again), for kSecondsFirstRoll or until A; then the game
+  // goes on
+  void endFirstRoll() {
+    firstRollShownAt_.reset();
+    if (flow_.screen() == ScreenFlow::Screen::Game)
+      send(SetHold{false});
+    if (latest_)
+      startPlacingBanner(latest_->state);
+  }
+  void drawFirstRoll(Scene::Overlay &overlay) {
+    if (!latest_ || latest_->firstRoll.rounds.empty())
+      return;
+    const CosmicHex::Handheld::FirstRoll &roll = latest_->firstRoll;
+    const float k = static_cast<float>(kTopWidth) / 256;
+    overlay.rectangle(0, 0, kTopWidth, kTopHeight, {10, 15, 26, 240});
+    overlay.textCentred(kTopWidth / 2.0f, 16 * k, "WHO GOES FIRST", Palette::kWords, 2 * k);
+    const int players = static_cast<int>(roll.rounds.front().size());
+    const float gap = 58 * k;
+    const float left = kTopWidth / 2.0f - gap * static_cast<float>(players - 1) / 2;
+    // Each player's name, then a row of dice a round: the first round's
+    // big, a later round's (only those tied for the highest) smaller
+    for (int p = 0; p < players; ++p)
+      overlay.textCentred(left + gap * static_cast<float>(p), 36 * k, "P" + std::to_string(p + 1),
+                          Palette::player(p), 1.5f * k);
+    float y = 46 * k;
+    for (std::size_t r = 0; r < roll.rounds.size() && r < 3; ++r) {
+      const float size = (r == 0 ? 30 : 22) * k;
+      for (int p = 0; p < players; ++p) {
+        const int face = roll.rounds[r][static_cast<std::size_t>(p)];
+        if (face == 0)
+          continue;
+        const float x = left + gap * static_cast<float>(p);
+        const bool winner = r + 1 == roll.rounds.size() && p == roll.first;
+        overlay.rectangle(x - size / 2 - 2, y - 2, size + 4, size + 4,
+                          winner ? Palette::kHighlight : Palette::player(p));
+        overlay.rectangle(x - size / 2, y, size, size, {242, 242, 242, 255});
+        overlay.textCentred(x, y + size / 2, std::to_string(face), {30, 30, 36},
+                            (r == 0 ? 2 : 1.5f) * k);
+      }
+      y += size + 8 * k;
+    }
+    // Then the order: the homes from the first, the ships back again
+    std::string homes = "Homes: ", ships = "Ships: ";
+    for (int i = 0; i < players; ++i) {
+      homes += " P" + std::to_string((roll.first + i) % players + 1);
+      ships += " P" + std::to_string((roll.first + players - 1 - i) % players + 1);
+    }
+    y += 6 * k;
+    overlay.textCentred(kTopWidth / 2.0f, y,
+                        "P" + std::to_string(roll.first + 1) + " rolled highest: goes first",
+                        Palette::kHighlight, k);
+    overlay.textCentred(kTopWidth / 2.0f, y + 14 * k, homes, Palette::kWords, k);
+    overlay.textCentred(kTopWidth / 2.0f, y + 26 * k, ships + " (back again)", Palette::kWords, k);
+  }
+
   bool topIsStill() const {
     if (flow_.screen() != ScreenFlow::Screen::Game || !latest_ || descentStarted_ ||
-        dice_ != DiceStage::Idle)
+        dice_ != DiceStage::Idle || firstRollShownAt_)
       return false;
     if (gameClock_.seconds() - motionStarted_ < kSecondsAnimating + kSecondsChipDrop)
       return false; // (pieces still moving, or a number chip dropping)
@@ -1699,6 +1800,7 @@ private:
   // The start of a game: the board coming down, the bottom screen fading
   std::optional<Clock::time_point> descentStarted_;
   bool fadeFromMenu_ = false; // (the bottom screen fading from the setup's menu)
+  std::optional<Clock::time_point> firstRollShownAt_; // (who goes first, on the screen since)
   // What the buttons cover on the map, as last drawn; and whether the
   // bottom screen shows the map as last drawn (so only what changes needs
   // copying to it)

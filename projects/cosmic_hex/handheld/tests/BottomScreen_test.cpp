@@ -202,3 +202,47 @@ TEST(BottomScreenTest, RollWhenYourRollWaits) {
   EXPECT_TRUE(rolled.roll);
   EXPECT_TRUE(rolled.used);
 }
+
+// The start's placing: every place marked; a touch chooses (nothing played
+// yet), End Turn places it; B takes the choice back, and End Turn then only
+// says to touch a corner first
+TEST(BottomScreenTest, AtTheStartATouchChoosesAndEndTurnPlaces) {
+  State state = newGame(4, agreedRules(boardR3(), 4));
+  ASSERT_EQ(state.phase, Phase::PlaceColony);
+  const std::vector<Action> legal = Game::legalActions(state);
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, legal, true);
+  EXPECT_EQ(screen.mode(), Mode::Placing);
+  EXPECT_EQ(screen.placingCorners().size(), legal.size());
+  const auto endTurn = [&] {
+    for (const auto &place : BoardButtons::layout(
+             kWidth, kHeight, BoardButtons::Situation{.yourMove = true, .placing = true}))
+      if (place.button == BoardButtons::Button::EndTurn)
+        return place;
+    ADD_FAILURE() << "no End Turn while placing";
+    return BoardButtons::Place{};
+  }();
+  const auto tapEndTurn = [&] {
+    return screen.tap(static_cast<int>(endTurn.x + endTurn.size / 2),
+                      static_cast<int>(endTurn.y + endTurn.size / 2), std::nullopt);
+  };
+  // End Turn before a touch: nothing placed
+  EXPECT_FALSE(tapEndTurn().play.has_value());
+  EXPECT_FALSE(screen.message().empty());
+  // A touch on a marked corner: chosen, not played
+  const Corner corner = boardCorners()[static_cast<std::size_t>(legal[2].a)];
+  const auto touched = screen.tap(128, 96, BoardPicture::Spot{corner.hex, corner});
+  EXPECT_FALSE(touched.play.has_value());
+  ASSERT_TRUE(screen.startPlacement().has_value());
+  EXPECT_EQ(*screen.startPlacement(), legal[2]);
+  // B takes it back; touched again, End Turn places it
+  screen.press(BottomScreen::Key::Back);
+  EXPECT_FALSE(screen.startPlacement().has_value());
+  screen.tap(128, 96, BoardPicture::Spot{corner.hex, corner});
+  const auto placed = tapEndTurn();
+  ASSERT_TRUE(placed.play.has_value());
+  if (placed.play) {
+    EXPECT_EQ(*placed.play, legal[2]);
+  }
+  EXPECT_FALSE(screen.startPlacement().has_value());
+}

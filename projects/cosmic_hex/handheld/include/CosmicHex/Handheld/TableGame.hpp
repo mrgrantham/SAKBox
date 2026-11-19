@@ -65,11 +65,22 @@ struct TableSettings {
 // The agreed rules for a table: its board, players and play style
 Settings rulesFor(const TableSettings &settings);
 
+// Who goes first: each player rolls a die, and those tied for the highest
+// roll again until one is highest. `rounds` holds each round's rolls by
+// player (0: not rolling that round), for the start of a game to show
+struct FirstRoll {
+  int first = 0;
+  std::vector<std::vector<int>> rounds;
+};
+FirstRoll rollForFirst(SeededRandom::Generator &random, int players);
+
 class TableGame {
 public:
   explicit TableGame(const TableSettings &settings);
 
   const State &state() const { return play_.state(); }
+  // The roll that chose who goes first
+  const FirstRoll &firstRoll() const { return firstRoll_; }
   const ActionLog::Log<Game> &log() const { return play_.log(); }
   bool over() const { return Game::isOver(state()); }
 
@@ -101,6 +112,7 @@ private:
   void record(const State &before, const Action &move);
 
   TableSettings settings_;
+  FirstRoll firstRoll_; // (before play_: it says who goes first)
   ActionLog::Play<Game> play_;
   SeededRandom::Generator dealer_, bots_;
   GameBots::Ismcts<Game> ismcts_;

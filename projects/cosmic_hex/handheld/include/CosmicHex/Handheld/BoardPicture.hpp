@@ -83,6 +83,14 @@ public:
   struct Marks {
     std::optional<Hex> hex;
     std::vector<Corner> corners;
+    // A piece shown where it would go, before it's placed (the start's
+    // home colony or ship), over everything
+    struct Preview {
+      Corner corner;
+      int owner = 0;
+      bool ship = false; // (else a colony)
+    };
+    std::optional<Preview> preview;
   };
   // An area of the picture, in pixels
   struct Area {

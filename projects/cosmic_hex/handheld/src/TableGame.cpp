@@ -26,12 +26,41 @@ Settings rulesFor(const TableSettings &settings) {
   return rules;
 }
 
+FirstRoll rollForFirst(SeededRandom::Generator &random, int players) {
+  FirstRoll roll;
+  std::vector<bool> rolling(static_cast<std::size_t>(players), true);
+  for (;;) {
+    std::vector<int> round(static_cast<std::size_t>(players), 0);
+    int highest = 0;
+    for (int p = 0; p < players; ++p)
+      if (rolling[static_cast<std::size_t>(p)]) {
+        round[static_cast<std::size_t>(p)] = 1 + static_cast<int>(random.below(6));
+        highest = std::max(highest, round[static_cast<std::size_t>(p)]);
+      }
+    roll.rounds.push_back(round);
+    int atHighest = 0;
+    for (int p = 0; p < players; ++p) {
+      rolling[static_cast<std::size_t>(p)] = round[static_cast<std::size_t>(p)] == highest;
+      if (rolling[static_cast<std::size_t>(p)]) {
+        ++atHighest;
+        roll.first = p;
+      }
+    }
+    if (atHighest == 1)
+      return roll;
+  }
+}
+
+namespace {
+FirstRoll firstRollOf(const TableSettings &settings) {
+  SeededRandom::Generator random = SeededRandom::Seed::mixedFrom(settings.seed).stream("first");
+  return rollForFirst(random, settings.players);
+}
+} // namespace
+
 TableGame::TableGame(const TableSettings &settings)
-    : settings_(settings),
-      play_(newGame(settings.players, rulesFor(settings),
-                    static_cast<int>(SeededRandom::Seed::mixedFrom(settings.seed)
-                                         .stream("first")
-                                         .below(static_cast<std::uint32_t>(settings.players))))),
+    : settings_(settings), firstRoll_(firstRollOf(settings)),
+      play_(newGame(settings.players, rulesFor(settings), firstRoll_.first)),
       dealer_(SeededRandom::Seed::mixedFrom(settings.seed).stream("dealer")),
       bots_(SeededRandom::Seed::mixedFrom(settings.seed).stream("bots")),
       ismcts_({.rolloutDepth = 60, .arithmetic = settings_.botArithmetic}) {

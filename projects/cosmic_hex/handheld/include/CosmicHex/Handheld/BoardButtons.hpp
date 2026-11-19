@@ -25,6 +25,9 @@ struct Situation {
   bool canEndTurn = false; // the rules would take EndTurn (or EndTrading)
   bool canTrade = false;   // the bank, an outpost or the players
   bool holdsCards = false; // any action cards or Charters
+  // The start's placing (your home colony, then your ship): End Turn places
+  // what's been touched, usable once something has
+  bool placing = false, placeChosen = false;
 };
 // The situation from the game: the player to move's legal actions, and
 // whether the dice wait for you to throw them (the user's: your

@@ -39,8 +39,8 @@ std::vector<Place> layout(int width, int height, const Situation &s) {
   };
   if (s.canRoll)
     out.push_back({Button::Roll, edge, bottom, size, true});
-  if (s.canEndTurn)
-    out.push_back({Button::EndTurn, right, bottom, size, true});
+  if (s.canEndTurn || s.placing)
+    out.push_back({Button::EndTurn, right, bottom, size, s.canEndTurn || s.placeChosen});
   return out;
 }
 

@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <set>
 
 using namespace CosmicHex;
 using namespace CosmicHex::Handheld;
@@ -135,4 +136,35 @@ TEST(TableGameTest, PhysicsDiceWaitForTheThrow) {
   EXPECT_TRUE(game.over());
   EXPECT_GT(rolls, 10);
   EXPECT_FALSE(game.rollDice(3, 4)); // (over: not waiting)
+}
+
+// Who goes first (rollForFirst): the one rolling highest, those tied
+// rolling again; the game starts with them; every player can be first
+TEST(TableGameTest, TheHighestRollGoesFirst) {
+  std::set<int> firsts;
+  for (std::uint64_t seed = 1; seed <= 200; ++seed) {
+    SeededRandom::Generator random(seed);
+    const FirstRoll roll = rollForFirst(random, 4);
+    ASSERT_FALSE(roll.rounds.empty());
+    const std::vector<int> &last = roll.rounds.back();
+    for (int p = 0; p < 4; ++p) {
+      if (p != roll.first) {
+        EXPECT_LT(last[static_cast<std::size_t>(p)], last[static_cast<std::size_t>(roll.first)]);
+      }
+    }
+    // Only those tied for the highest roll again
+    for (std::size_t r = 1; r < roll.rounds.size(); ++r) {
+      const auto &before = roll.rounds[r - 1];
+      const int top = *std::max_element(before.begin(), before.end());
+      for (std::size_t p = 0; p < 4; ++p) {
+        EXPECT_EQ(roll.rounds[r][p] > 0, before[p] == top);
+      }
+    }
+    firsts.insert(roll.first);
+  }
+  EXPECT_EQ(firsts.size(), 4u);
+  TableSettings settings;
+  settings.seed = 5;
+  const TableGame game(settings);
+  EXPECT_EQ(game.state().first, game.firstRoll().first);
 }

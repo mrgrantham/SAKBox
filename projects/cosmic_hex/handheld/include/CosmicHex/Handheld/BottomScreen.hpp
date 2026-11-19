@@ -68,6 +68,11 @@ public:
   // In Placing: the corners where the chosen build, or the ship touched,
   // may go, to be marked
   std::vector<Corner> placingCorners() const;
+  // At the start (placing your home colony, then your ship), what's been
+  // touched and End Turn would place, to show there; nothing before a touch.
+  // Touching another place moves it, touching it again (or B) takes it back,
+  // and End Turn (or A) places it
+  std::optional<Action> startPlacement() const { return startPlacement_; }
 
   // Feedback for a tap on a button (the user's: taps that did
   // nothing gave no sign they'd landed): the button flashes and a short
@@ -105,6 +110,8 @@ private:
   std::vector<BuildRow> rows_;
   int buildChosen_ = -1;
   std::vector<Action> placing_; // (Placing: the chosen build's actions)
+  bool startPlacing_ = false;   // (Placing: the start's, touch then End Turn)
+  std::optional<Action> startPlacement_;
   std::optional<Pickers::ResourceChoice> resources_;
   std::vector<Resource> picked_;
   bool resourcesCanGoBack_ = false;
