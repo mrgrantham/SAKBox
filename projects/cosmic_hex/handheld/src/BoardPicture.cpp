@@ -1,4 +1,5 @@
 #include <CosmicHex/Handheld/BoardPicture.hpp>
+#include <CosmicHex/Handheld/Palette.hpp>
 
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
@@ -190,7 +191,7 @@ bool BoardPicture::ready() const {
 
 namespace {
 constexpr Colour kGrid{58, 74, 104, 255};
-constexpr Colour kHighlight{255, 214, 90, 255};
+constexpr Colour kHighlight = Palette::kHighlight;
 constexpr Colour kDark{10, 14, 24, 255};
 
 int rounded(float v) { return static_cast<int>(std::lround(v)); }

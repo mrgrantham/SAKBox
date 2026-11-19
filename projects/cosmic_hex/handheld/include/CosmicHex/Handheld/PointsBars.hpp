@@ -9,6 +9,7 @@
 //     overlay.rectangle(bar.x, bar.y, bar.width, bar.height, bar.colour);
 #pragma once
 
+#include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Rules.hpp>
 
 #include <ScratchPadd/Scene/Types.hpp>
@@ -24,7 +25,7 @@ inline constexpr float kTop = 6;
 // The outline round the row whose turn it is: 1 pixel, turquoise (the
 // players are red, blue, white and yellow)
 inline constexpr float kOutline = 1;
-inline constexpr ScratchPadd::Scene::Colour kOutlineColour{64, 224, 208};
+inline constexpr ScratchPadd::Scene::Colour kOutlineColour = Palette::kAccent;
 inline constexpr ScratchPadd::Scene::Colour kStillToWin{90, 100, 120};
 
 struct Bar {

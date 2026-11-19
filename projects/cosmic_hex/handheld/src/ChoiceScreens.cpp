@@ -1,5 +1,6 @@
 #include <CosmicHex/Handheld/BoardPieces.hpp>
 #include <CosmicHex/Handheld/ChoiceScreens.hpp>
+#include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 
 #include <algorithm>
@@ -14,8 +15,8 @@ constexpr Colour kBackground{16, 24, 42, 255};
 constexpr Colour kRow{29, 42, 69, 255};
 constexpr Colour kRowChosen{52, 72, 112, 255};
 constexpr Colour kEdge{90, 107, 140, 255};
-constexpr Colour kChosen{255, 214, 90, 255};
-constexpr Colour kWords{226, 232, 244, 255};
+constexpr Colour kChosen = Palette::kHighlight;
+constexpr Colour kWords = Palette::kWords;
 constexpr Colour kDim{138, 148, 168, 255};
 constexpr Colour kCannot{255, 128, 120, 255};
 constexpr Colour kConfirm{42, 90, 58, 255};

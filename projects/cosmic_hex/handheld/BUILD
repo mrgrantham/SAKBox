@@ -43,6 +43,7 @@ cc_library(
         "include/CosmicHex/Handheld/MenuPicture.hpp",
         "include/CosmicHex/Handheld/MoveSpots.hpp",
         "include/CosmicHex/Handheld/Pickers.hpp",
+        "include/CosmicHex/Handheld/Palette.hpp",
         "include/CosmicHex/Handheld/PointsBars.hpp",
         "include/CosmicHex/Handheld/PlatformProfile.hpp",
         "include/CosmicHex/Handheld/RecipePixels.hpp",

@@ -1,5 +1,6 @@
 #include <CosmicHex/Handheld/BottomScreen.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
+#include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 
 #include <algorithm>
@@ -15,7 +16,7 @@ constexpr Colour kButtonEdge{58, 74, 106, 255};
 constexpr Colour kRollButton{32, 51, 74, 255};
 constexpr Colour kRollEdge{106, 168, 255, 255};
 constexpr Colour kHintBand{10, 15, 26, 255};
-constexpr Colour kHint{255, 214, 90, 255};
+constexpr Colour kHint = Palette::kHighlight;
 } // namespace
 
 BottomScreen::BottomScreen(int width, int height) : width_(width), height_(height), cards_(width) {}

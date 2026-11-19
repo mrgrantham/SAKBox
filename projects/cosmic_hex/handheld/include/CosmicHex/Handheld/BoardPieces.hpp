@@ -10,6 +10,7 @@
 #pragma once
 
 #include <CosmicHex/Art.hpp>
+#include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Rules.hpp>
 
 #include <ScratchPadd/Scene/MeshData.hpp>
@@ -22,7 +23,7 @@ namespace Scene = ScratchPadd::Scene;
 // Colours: space and the lab's, planets by kind once turned over, players'
 // pieces each in their own
 struct BoardColours {
-  static constexpr Scene::Colour kSpace{24, 34, 55};
+  static constexpr Scene::Colour kSpace = Palette::kSpace;
   static constexpr Scene::Colour kFaceDown{140, 214, 150}; // the lab's planets
   static constexpr Scene::Colour kHome{240, 180, 90};
   static constexpr Scene::Colour kZone{56, 74, 106};     // the lab's finds

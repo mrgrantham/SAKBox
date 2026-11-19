@@ -39,12 +39,7 @@ Scene::Colour BoardColours::ofKind(PlanetKind kind) {
   return kFaceDown;
 }
 
-Scene::Colour BoardColours::ofPlayer(int player) {
-  static constexpr std::array<Scene::Colour, kMaxPlayers> kPlayers = {
-      Scene::Colour{235, 70, 70}, Scene::Colour{70, 140, 245}, Scene::Colour{245, 245, 245},
-      Scene::Colour{250, 200, 40}};
-  return kPlayers[static_cast<std::size_t>(player) % kPlayers.size()];
-}
+Scene::Colour BoardColours::ofPlayer(int player) { return Palette::player(player); }
 
 Scene::Colour BoardColours::ofFace(Art::Face face) {
   using Art::Face;

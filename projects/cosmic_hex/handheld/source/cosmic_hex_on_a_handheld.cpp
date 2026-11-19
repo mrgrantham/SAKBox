@@ -42,6 +42,7 @@
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
+#include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/PlatformProfile.hpp>
 #include <CosmicHex/Handheld/PointsBars.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
@@ -529,8 +530,8 @@ private:
       char line[64];
       std::snprintf(line, sizeof line, "Player %d wins!", latest_->state.winner + 1);
       Scene::Overlay &overlay = renderer_->overlay();
-      overlay.text(kTopWidth / 2.0f - 70, kTopHeight - 40, line, {255, 214, 90}, 2);
-      overlay.text(kTopWidth / 2.0f - 60, kTopHeight - 16, "A: to the title", {200, 208, 222});
+      overlay.text(kTopWidth / 2.0f - 70, kTopHeight - 40, line, Palette::kHighlight, 2);
+      overlay.text(kTopWidth / 2.0f - 60, kTopHeight - 16, "A: to the title", Palette::kSoftWords);
     }
     showProfile();
     {
@@ -684,7 +685,7 @@ private:
     const float x = (*middle)[0], y = (*middle)[1];
     // Both solid: a see-through hexagon's six triangles were blended twice
     // along the edges they share, which showed as dark lines
-    overlay.hexagon(x, y, radius + 3, {255, 214, 90, 255}); // (an amber edge)
+    overlay.hexagon(x, y, radius + 3, Palette::kHighlight); // (an amber edge)
     overlay.hexagon(x, y, radius, {12, 18, 30, 255});
     // The total over the two dice, the two lines together centred on the
     // hexagon by their letters' own pixels (Overlay::textCentred)
@@ -692,8 +693,8 @@ private:
                pairInk = Scene::Overlay::inkOf(pair, small);
     constexpr float kGap = 6;
     const float height = totalInk.height + kGap + pairInk.height;
-    overlay.textCentred(x, y - height / 2 + totalInk.height / 2, total, {255, 214, 90}, big);
-    overlay.textCentred(x, y + height / 2 - pairInk.height / 2, pair, {226, 232, 244}, small);
+    overlay.textCentred(x, y - height / 2 + totalInk.height / 2, total, Palette::kHighlight, big);
+    overlay.textCentred(x, y + height / 2 - pairInk.height / 2, pair, Palette::kWords, small);
   }
 
   // The board's light: the game's (a lamp above and to one side, toon
@@ -749,7 +750,7 @@ private:
     // The touched corner (or the blockade's hex), ringed on the 3D board too
     if (selected_) {
       const Scene::Material marked{.shading = Scene::Material::Shading::Unlit,
-                                   .colour = {255, 214, 90}};
+                                   .colour = Palette::kHighlight};
       if (choosingAHex())
         renderer_->draw(hexRing_, BoardPieces::onHex(selected_->hex), marked);
       else
@@ -802,9 +803,9 @@ private:
     // The board's name over it, and anything to know about it (// the user's: the four-cluster
     // boards' longer games)
     Scene::Overlay &overlay = renderer_->overlay();
-    overlay.text(4, 4, menu_.boardName(), {226, 232, 244});
+    overlay.text(4, 4, menu_.boardName(), Palette::kWords);
     if (!menu_.boardNote().empty())
-      overlay.text(4, 16, menu_.boardNote().substr(0, kCharsPerLine), {255, 214, 90});
+      overlay.text(4, 16, menu_.boardNote().substr(0, kCharsPerLine), Palette::kHighlight);
     showProfile();
     {
       auto timing = profile_.time(kProfileWait);
@@ -914,7 +915,7 @@ private:
     if (flow_.screen() == ScreenFlow::Screen::Paused || latest_->paused)
       overlay.text(4, PointsBars::bottom(state.players) + 34,
                    flow_.screen() == ScreenFlow::Screen::Paused ? "paused" : "paused: A",
-                   {226, 232, 244});
+                   Palette::kWords);
     // (the -watch builds: memory, measured, above the last move)
     if (kWatchAtStart && !memoryLine_.empty())
       overlay.text(4, kTopHeight - 26, memoryLine_.substr(0, kCharsPerLine), {120, 220, 160});
@@ -939,14 +940,14 @@ private:
       overlay.text(4, kTopHeight - 38, memoryBusiest_.substr(0, kCharsPerLine), {120, 220, 160});
     if (!latest_->lastMoves.empty() && shownInfo_ == BottomScreen::Info::None)
       overlay.text(4, kTopHeight - 14, latest_->lastMoves.back().substr(0, kCharsPerLine),
-                   {200, 208, 222});
+                   Palette::kSoftWords);
     if (mode_ == Mode::Playing && latest_->yourMove && shownInfo_ == BottomScreen::Info::None)
       drawMoves(overlay);
     drawInfoWords(overlay, state);
     drawBanner(overlay);
     if (state.winner >= 0) {
       std::snprintf(line, sizeof line, "Player %d wins!", state.winner + 1);
-      overlay.text(kTopWidth / 2.0f - 60, kTopHeight / 2.0f - 10, line, {255, 214, 90}, 1.5f);
+      overlay.text(kTopWidth / 2.0f - 60, kTopHeight / 2.0f - 10, line, Palette::kHighlight, 1.5f);
     }
   }
 
@@ -956,8 +957,9 @@ private:
   // one at once), the player's own when playing, the turn's when watching
   void drawCorners(Scene::Overlay &overlay, const State &state) {
     const float k = static_cast<float>(kTopWidth) / 256.0f;
-    constexpr Scene::Colour kTurquoise{64, 224, 208}, kWhite{226, 232, 244}, kDim{138, 148, 168},
-        kAmber{255, 214, 90}, kEmpty{90, 100, 120};
+    constexpr Scene::Colour kTurquoise = Palette::kAccent, kWhite = Palette::kWords,
+                            kDim = Palette::kDimWords, kAmber = Palette::kHighlight,
+                            kEmpty{90, 100, 120};
     const auto hexagonEdge = [&](float x, float y, float r, Scene::Colour colour) {
       for (int i = 0; i < 6; ++i) {
         const float a = 3.14159265f / 6 + static_cast<float>(i) * 3.14159265f / 3;
@@ -1098,7 +1100,7 @@ private:
         const std::string count = std::to_string(held);
         const float bw = 14 * k, bh = 10 * k, by = top - 13 * k;
         overlay.rectangle(middle - bw / 2, by, bw, bh, {58, 74, 106});
-        overlay.textCentred(middle, by + bh / 2, count, {226, 232, 244});
+        overlay.textCentred(middle, by + bh / 2, count, Palette::kWords);
       }
     }
     // The action cards' short titles, under each
@@ -1109,7 +1111,7 @@ private:
       const float x =
           (static_cast<float>(kTopWidth) - total) / 2 + static_cast<float>(i) * (w + gap);
       overlay.textCentred(x + w / 2, 44 * k + h + 6 * k,
-                          CosmicHex::Art::wordsOf(actions[i]).shortTitle, {226, 232, 244});
+                          CosmicHex::Art::wordsOf(actions[i]).shortTitle, Palette::kWords);
     }
   }
 
@@ -1127,8 +1129,10 @@ private:
     overlay.rectangle(0, y, static_cast<float>(kTopWidth), h, {12, 20, 36, alpha(225)});
     overlay.rectangle(0, y, static_cast<float>(kTopWidth), h,
                       {look->colour.r, look->colour.g, look->colour.b, alpha(80)});
-    overlay.rectangle(0, y, static_cast<float>(kTopWidth), 1, {64, 224, 208, alpha(255)});
-    overlay.rectangle(0, y + h - 1, static_cast<float>(kTopWidth), 1, {64, 224, 208, alpha(255)});
+    overlay.rectangle(0, y, static_cast<float>(kTopWidth), 1,
+                      Palette::withAlpha(Palette::kAccent, alpha(255)));
+    overlay.rectangle(0, y + h - 1, static_cast<float>(kTopWidth), 1,
+                      Palette::withAlpha(Palette::kAccent, alpha(255)));
     overlay.textCentred(look->wordsX, y + 11 * k, look->title, {240, 244, 250},
                         kTopWidth >= 400 ? 2.0f : 1.5f);
     overlay.textCentred(look->wordsX, y + 24 * k, look->note, {170, 180, 198});
@@ -1349,9 +1353,9 @@ private:
     overlay.rectangle(0, 60, kTopWidth, kTopHeight - 76, {12, 18, 30, 210});
     const char *heading =
         selected_ ? "Your moves here (B: all moves)" : "Your moves (touch the board to narrow)";
-    overlay.text(6, 64, heading, {255, 214, 90});
+    overlay.text(6, 64, heading, Palette::kHighlight);
     if (shown.empty()) {
-      overlay.text(6, 80, "None here: touch elsewhere, or B for all", {200, 208, 222});
+      overlay.text(6, 80, "None here: touch elsewhere, or B for all", Palette::kSoftWords);
       return;
     }
     const auto kLines = static_cast<std::size_t>((kTopHeight - 96) / kLineHeight);
@@ -1362,7 +1366,7 @@ private:
       if (text.size() > kCharsPerLine)
         text = text.substr(0, kCharsPerLine - 2) + "..";
       overlay.text(6, 78 + kLineHeight * static_cast<float>(line), text,
-                   i == cursor_ ? Scene::Colour{255, 214, 90} : Scene::Colour{200, 208, 222});
+                   i == cursor_ ? Palette::kHighlight : Palette::kSoftWords);
     }
   }
 

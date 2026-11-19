@@ -1,4 +1,5 @@
 #include <CosmicHex/Handheld/MenuPicture.hpp>
+#include <CosmicHex/Handheld/Palette.hpp>
 
 #include <ScratchPadd/Scene/OverlayText.hpp>
 
@@ -12,8 +13,8 @@ using Colour = ScratchPadd::Scene::Colour;
 constexpr Colour kBackground{16, 24, 42, 255};
 constexpr Colour kButton{29, 42, 69, 255};
 constexpr Colour kEdge{90, 107, 140, 255};
-constexpr Colour kChosen{255, 214, 90, 255};
-constexpr Colour kWords{200, 208, 222, 255};
+constexpr Colour kChosen = Palette::kHighlight;
+constexpr Colour kWords = Palette::kSoftWords;
 constexpr Colour kPlay{42, 90, 58, 255};
 constexpr Colour kWatch{42, 58, 90, 255};
 namespace Scene = ScratchPadd::Scene;
