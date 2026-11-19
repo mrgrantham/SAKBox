@@ -125,3 +125,48 @@ TEST(ChoiceScreensTest, ThePlayerPicker) {
     EXPECT_EQ(third->card, 2);
   }
 }
+
+// The cards screen: four cards, the chosen one's words under them and Play
+// (a touch on each card finds it; Back and Play at the foot); a Charter not
+// met yet says so; and the keep screen's two cards
+TEST(ChoiceScreensTest, TheCardsScreens) {
+  const std::vector<HeldCard> held{{.contract = 99,
+                                    .card = Art::Card::Enforcer,
+                                    .kind = Action::Kind::PlayEnforcer,
+                                    .playable = true},
+                                   {.contract = 1,
+                                    .card = Art::Card::SupplyDrop,
+                                    .kind = Action::Kind::PlaySupplyDrop,
+                                    .playable = true},
+                                   {.contract = 2,
+                                    .card = Art::Card::CharterOccupier,
+                                    .charter = true,
+                                    .kind = Action::Kind::RevealContract,
+                                    .playable = false,
+                                    .why = "Not met yet"},
+                                   {.contract = 3,
+                                    .card = Art::Card::ShipyardSurplus,
+                                    .kind = Action::Kind::PlayShipyard,
+                                    .playable = true}};
+  for (const int w : {256, 320}) {
+    Canvas canvas(w, w * 3 / 4);
+    CardSprites sprites(w);
+    ChoiceScreens::drawCards(canvas, held, 0, sprites);
+    writeOut(canvas, "cards_" + std::to_string(w) + ".ppm");
+    ChoiceScreens::drawCards(canvas, held, 2, sprites);
+    writeOut(canvas, "cards_charter_" + std::to_string(w) + ".ppm");
+    // Each card is found where it's drawn, in turn
+    int found = 0;
+    for (int y = 0; y < w * 3 / 4; y += 2)
+      for (int x = 0; x < w; x += 2)
+        if (const auto t = ChoiceScreens::cardsTouch(w, held.size(), x, y);
+            t && t->what == What::Item && t->item == found)
+          ++found;
+    EXPECT_EQ(found, 4);
+    const KeepChoice keep{
+        .cards = {Art::Card::InterstellarCartel, Art::Card::CharterDeepSpaceRelay},
+        .actions = {Action{Action::Kind::KeepContract, 5}, Action{Action::Kind::KeepContract, 6}}};
+    ChoiceScreens::drawKeep(canvas, keep, 1, sprites);
+    writeOut(canvas, "keep_" + std::to_string(w) + ".ppm");
+  }
+}

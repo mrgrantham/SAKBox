@@ -246,3 +246,70 @@ TEST(BottomScreenTest, AtTheStartATouchChoosesAndEndTurnPlaces) {
   }
   EXPECT_FALSE(screen.startPlacement().has_value());
 }
+
+namespace {
+// A game played until `until`, buying a card whenever one can be bought
+State playBuying(bool (*until)(const State &)) {
+  State state = newGame(4, agreedRules(boardR3(), 4));
+  SeededRandom::Generator random(23);
+  for (int guard = 0; guard < 6000 && !until(state) && state.winner < 0; ++guard) {
+    if (Game::currentPlayer(state) == GameBots::kDealer) {
+      Game::apply(state, Game::dealerAction(state, random));
+      continue;
+    }
+    const std::vector<Action> legal = Game::legalActions(state);
+    const auto buy = std::find_if(legal.begin(), legal.end(),
+                                  [](const Action &a) { return a.kind == Kind::BuyContract; });
+    Game::apply(state, buy != legal.end() ? *buy : legal.front());
+  }
+  return state;
+}
+} // namespace
+
+// After buying: the two cards dealt open by themselves; choosing one and
+// Keep keeps it
+TEST(BottomScreenTest, AfterBuyingOneOfTwoIsKept) {
+  const State state = playBuying([](const State &s) { return s.phase == Phase::KeepContract; });
+  ASSERT_EQ(state.phase, Phase::KeepContract);
+  const std::vector<Action> legal = Game::legalActions(state);
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, legal, true);
+  EXPECT_EQ(screen.mode(), Mode::Keep);
+  EXPECT_FALSE(screen.press(BottomScreen::Key::Confirm).play.has_value()); // (none chosen)
+  screen.press(BottomScreen::Key::Right);
+  const auto kept = screen.press(BottomScreen::Key::Confirm);
+  ASSERT_TRUE(kept.play.has_value());
+  if (kept.play) {
+    EXPECT_EQ(kept.play->kind, Kind::KeepContract);
+  }
+}
+
+// The cards screen: Cards opens it; a card chosen and Play plays it (an
+// Enforcer here, given to the player)
+TEST(BottomScreenTest, TheCardsScreenPlaysACard) {
+  State state = playUntil([](const State &s) {
+    return s.phase == Phase::Main && Game::currentPlayer(s) != GameBots::kDealer;
+  });
+  ASSERT_EQ(state.phase, Phase::Main);
+  state.player[static_cast<std::size_t>(state.turn)].contracts.push_back(kEnforcerCard);
+  const std::vector<Action> legal = Game::legalActions(state);
+  const bool playable = std::any_of(legal.begin(), legal.end(),
+                                    [](const Action &a) { return a.kind == Kind::PlayEnforcer; });
+  ASSERT_TRUE(playable) << "an Enforcer should be playable in the main part of a turn";
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, legal, true);
+  BoardButtons::Situation situation = BoardButtons::situationOf(state, legal, true);
+  for (const auto &place : BoardButtons::layout(kWidth, kHeight, situation))
+    if (place.button == BoardButtons::Button::Cards)
+      screen.tap(static_cast<int>(place.x + place.size / 2),
+                 static_cast<int>(place.y + place.size / 2), std::nullopt);
+  EXPECT_EQ(screen.mode(), Mode::Cards);
+  screen.press(BottomScreen::Key::Right); // (the first card)
+  const auto played = screen.press(BottomScreen::Key::Confirm);
+  EXPECT_EQ(played.play.has_value(), playable);
+  if (played.play) {
+    EXPECT_EQ(played.play->kind, Kind::PlayEnforcer);
+  }
+  screen.press(BottomScreen::Key::Back);
+  EXPECT_EQ(screen.mode(), Mode::Board);
+}

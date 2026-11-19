@@ -3,6 +3,9 @@
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 
+#include <ScratchPadd/Scene/Overlay.hpp>
+#include <ScratchPadd/Scene/TextWrap.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -279,6 +282,108 @@ std::optional<Touch> playersTouch(int width, std::size_t players, int x, int y) 
     const int card = along < 0 ? 0 : static_cast<int>(along);
     return Touch{Touch::What::Item, static_cast<int>(i), card};
   }
+  return std::nullopt;
+}
+
+namespace {
+// The cards screen's grid: up to four a row, centred, under the title
+Box cardBox(int width, int cardWidth, int cardHeight, std::size_t i, std::size_t count) {
+  const float k = scaleOf(width);
+  const auto perRow = static_cast<std::size_t>(4);
+  const std::size_t row = i / perRow, column = i % perRow;
+  const std::size_t inRow = std::min(perRow, count - row * perRow);
+  const float w = static_cast<float>(cardWidth), h = static_cast<float>(cardHeight);
+  const float gap = 8 * k;
+  const float left = (static_cast<float>(width) -
+                      (static_cast<float>(inRow) * w + static_cast<float>(inRow - 1) * gap)) /
+                     2;
+  return {left + static_cast<float>(column) * (w + gap),
+          20 * k + static_cast<float>(row) * (h + gap), w, h};
+}
+// A card's words, wrapped to the screen, from `y` down
+void cardWords(Canvas &canvas, float y, std::string_view title, std::string_view words,
+               Colour colour) {
+  const float k = scaleOf(canvas);
+  canvas.textCentred(static_cast<float>(canvas.width()) / 2, y, title, kWords,
+                     k >= 1.2f ? 1.5f : 1);
+  const auto lines = ScratchPadd::Scene::wrapText(
+      words, static_cast<float>(canvas.width()) - 24 * k,
+      [](std::string_view line) { return ScratchPadd::Scene::Overlay::inkOf(line).width; });
+  for (std::size_t l = 0; l < lines.size() && l < 3; ++l)
+    canvas.textCentred(static_cast<float>(canvas.width()) / 2,
+                       y + (14 + 11 * static_cast<float>(l)) * k, lines[l], colour);
+}
+} // namespace
+
+void drawCards(Canvas &canvas, const std::vector<HeldCard> &cards, int chosen,
+               CardSprites &sprites) {
+  const float k = scaleOf(canvas);
+  canvas.clear(kBackground);
+  canvas.textCentred(static_cast<float>(canvas.width()) / 2, 9 * k,
+                     cards.empty() ? "No cards yet: buy one from Build" : "Your cards", kDim);
+  for (std::size_t i = 0; i < cards.size() && i < 8; ++i) {
+    const Box box = cardBox(canvas.width(), sprites.width(), sprites.height(), i, cards.size());
+    canvas.blend(sprites.small(cards[i].card), sprites.width(), sprites.height(),
+                 static_cast<int>(box.x), static_cast<int>(box.y),
+                 cards[i].playable ? 1.0f : 0.55f);
+    if (static_cast<int>(i) == chosen)
+      canvas.outline(box.x - 2, box.y - 2, box.w + 4, box.h + 4, kChosen, 2);
+  }
+  if (chosen >= 0 && chosen < static_cast<int>(cards.size())) {
+    const HeldCard &held = cards[static_cast<std::size_t>(chosen)];
+    // What it does always; when it can't be used now, why, in red above
+    const Art::CardWords words = Art::wordsOf(held.card);
+    if (!held.playable)
+      canvas.textCentred(static_cast<float>(canvas.width()) / 2, 112 * k, held.why, kCannot);
+    cardWords(canvas, (held.playable ? 116 : 128) * k, words.title, words.words, kDim);
+    if (held.playable)
+      button(canvas, confirmBox(canvas.width()), held.charter ? "Reveal" : "Play", kConfirm,
+             kConfirmEdge);
+  }
+  button(canvas, backBox(canvas.width()), "Back", kRow, kEdge);
+}
+
+std::optional<Touch> cardsTouch(int width, std::size_t cards, int x, int y) {
+  if (backBox(width).contains(x, y))
+    return Touch{Touch::What::Back};
+  if (confirmBox(width).contains(x, y))
+    return Touch{Touch::What::Confirm};
+  const CardSprites sizes(width);
+  for (std::size_t i = 0; i < cards && i < 8; ++i)
+    if (cardBox(width, sizes.width(), sizes.height(), i, cards).contains(x, y))
+      return Touch{Touch::What::Item, static_cast<int>(i)};
+  return std::nullopt;
+}
+
+void drawKeep(Canvas &canvas, const KeepChoice &choice, int chosen, CardSprites &sprites) {
+  const float k = scaleOf(canvas);
+  canvas.clear(kBackground);
+  canvas.textCentred(static_cast<float>(canvas.width()) / 2, 9 * k, "Keep one of these two", kDim);
+  for (std::size_t i = 0; i < choice.cards.size(); ++i) {
+    const Box box =
+        cardBox(canvas.width(), sprites.width(), sprites.height(), i, choice.cards.size());
+    canvas.blend(sprites.small(choice.cards[i]), sprites.width(), sprites.height(),
+                 static_cast<int>(box.x), static_cast<int>(box.y));
+    if (static_cast<int>(i) == chosen)
+      canvas.outline(box.x - 2, box.y - 2, box.w + 4, box.h + 4, kChosen, 2);
+  }
+  if (chosen >= 0 && chosen < static_cast<int>(choice.cards.size())) {
+    const Art::CardWords words = Art::wordsOf(choice.cards[static_cast<std::size_t>(chosen)]);
+    cardWords(canvas, 116 * k, words.title, words.words, kDim);
+    button(canvas, confirmBox(canvas.width()), "Keep", kConfirm, kConfirmEdge);
+  } else {
+    canvas.textCentred(static_cast<float>(canvas.width()) / 2, 116 * k, "Touch one to read it",
+                       kDim);
+  }
+}
+
+std::optional<Touch> keepTouch(int width, std::size_t cards, int x, int y) {
+  if (confirmBox(width).contains(x, y))
+    return Touch{Touch::What::Confirm};
+  const CardSprites sizes(width);
+  for (std::size_t i = 0; i < cards; ++i)
+    if (cardBox(width, sizes.width(), sizes.height(), i, cards).contains(x, y))
+      return Touch{Touch::What::Item, static_cast<int>(i)};
   return std::nullopt;
 }
 

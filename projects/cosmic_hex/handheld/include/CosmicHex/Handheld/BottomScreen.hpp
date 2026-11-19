@@ -19,6 +19,7 @@
 #include <CosmicHex/Handheld/BoardButtons.hpp>
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BuildMenu.hpp>
+#include <CosmicHex/Handheld/CardChoices.hpp>
 #include <CosmicHex/Handheld/ChoiceScreens.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
 
@@ -36,7 +37,7 @@ using ScratchPadd::Canvas; // (ScratchPadd/Canvas)
 
 class BottomScreen {
 public:
-  enum class Mode { Board, Build, Resources, Players, Placing };
+  enum class Mode { Board, Build, Resources, Players, Placing, Cards, Keep };
 
   BottomScreen(int width, int height);
 
@@ -87,7 +88,8 @@ public:
   // Whether a choosing screen covers the board (else the board shows, with
   // the buttons over it)
   bool coversBoard() const {
-    return mode_ == Mode::Build || mode_ == Mode::Resources || mode_ == Mode::Players;
+    return mode_ == Mode::Build || mode_ == Mode::Resources || mode_ == Mode::Players ||
+           mode_ == Mode::Cards || mode_ == Mode::Keep;
   }
   // The choosing screen, onto `canvas`, when one covers the board
   void draw(Canvas &canvas);
@@ -119,12 +121,17 @@ private:
   bool resourcesCanGoBack_ = false;
   std::optional<Pickers::PlayerChoice> players_;
   int playerChosen_ = -1, cardChosen_ = -1;
-  int resourceFocus_ = 0; // (the D-pad's card on the resource picker)
+  int resourceFocus_ = 0;      // (the D-pad's card on the resource picker)
+  std::vector<HeldCard> held_; // (the cards screen: your cards)
+  int heldChosen_ = -1;
+  std::optional<KeepChoice> keep_; // (after buying: the two to keep one of)
+  int keepChosen_ = -1;
   Info info_ = Info::None;
   // The board's buttons (ScratchPadd's Buttons: placed by BoardButtons'
   // layout, their flash and message when tapped)
   ScratchPadd::Buttons::Panel buttons_;
-  void layOutButtons(); // (buttons_ from the layout, for the situation now)
+  void layOutButtons();    // (buttons_ from the layout, for the situation now)
+  Outcome useChosenCard(); // (the cards screen's Play or Reveal)
   CardSprites cards_;
   std::array<std::vector<Canvas::Colour>, Art::kIcons> icons_;
   int iconSize_ = 0;

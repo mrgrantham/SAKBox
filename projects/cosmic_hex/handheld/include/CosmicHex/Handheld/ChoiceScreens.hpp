@@ -10,6 +10,7 @@
 
 #include <CosmicHex/Art.hpp>
 #include <CosmicHex/Handheld/BuildMenu.hpp>
+#include <CosmicHex/Handheld/CardChoices.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
 #include <ScratchPadd/Canvas/Canvas.hpp>
 
@@ -78,6 +79,19 @@ std::optional<Touch> resourcesTouch(int width, int x, int y);
 void drawPlayers(Canvas &canvas, const Pickers::PlayerChoice &choice, int chosen, int chosenCard,
                  Art::CardBack backs, CardSprites &cards);
 std::optional<Touch> playersTouch(int width, std::size_t players, int x, int y);
+
+// The cards screen: your action cards and Charters as their pictures, up
+// to four a row, `chosen` outlined; under them its title and what it does
+// (or why it can't be used now, in red); Back, and Play (Reveal for a
+// Charter) when the chosen one can be used
+void drawCards(Canvas &canvas, const std::vector<HeldCard> &cards, int chosen,
+               CardSprites &sprites);
+std::optional<Touch> cardsTouch(int width, std::size_t cards, int x, int y);
+
+// After buying: the two cards dealt, side by side, `chosen` outlined, its
+// words under them; Keep once one is chosen (no Back: one must be kept)
+void drawKeep(Canvas &canvas, const KeepChoice &choice, int chosen, CardSprites &sprites);
+std::optional<Touch> keepTouch(int width, std::size_t cards, int x, int y);
 
 } // namespace ChoiceScreens
 
