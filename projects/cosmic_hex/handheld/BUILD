@@ -23,6 +23,7 @@ cc_library(
         "src/Pickers.cpp",
         "src/PointsBars.cpp",
         "src/ScreenFlow.cpp",
+        "src/ScreenPictures.cpp",
         "src/StartMenu.cpp",
         "src/TableGame.cpp",
         "src/TurnBanner.cpp",
@@ -46,6 +47,7 @@ cc_library(
         "include/CosmicHex/Handheld/PlatformProfile.hpp",
         "include/CosmicHex/Handheld/RecipePixels.hpp",
         "include/CosmicHex/Handheld/ScreenFlow.hpp",
+        "include/CosmicHex/Handheld/ScreenPictures.hpp",
         "include/CosmicHex/Handheld/StartMenu.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",
         "include/CosmicHex/Handheld/TurnBanner.hpp",
@@ -254,6 +256,16 @@ cc_test(
     name = "TurnBanner_test",
     size = "small",
     srcs = ["tests/TurnBanner_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ScreenPictures_test",
+    size = "small",
+    srcs = ["tests/ScreenPictures_test.cpp"],
     deps = [
         ":handheld",
         "@gtest//:gtest_main",
