@@ -127,6 +127,9 @@ constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 // How long the title takes to fade in from black, once the start's work
 // is done
 // How long who goes first is shown at the start (A goes on sooner)
+// Show resources' cards: each eases in (and out) over kSecondsCard, each
+// a little after the last
+constexpr float kSecondsCard = 0.25f, kSecondsCardStagger = 0.05f;
 constexpr double kSecondsFirstRoll = 4.0;
 constexpr double kSecondsTitleFadeIn = 0.6;
 
@@ -457,6 +460,12 @@ private:
     // An info view opened or closed (Show resources): the game held while
     // it's open, and let go when it closes, if the view was what held it
     if (bottomScreen_ && bottomScreen_->info() != shownInfo_) {
+      // (Show resources closing: its cards go back off as they came in)
+      if (shownInfo_ == BottomScreen::Info::Resources &&
+          bottomScreen_->info() == BottomScreen::Info::None)
+        infoClosingAt_ = Clock::now();
+      else
+        infoClosingAt_.reset();
       shownInfo_ = bottomScreen_->info();
       infoOpenedAt_ = Clock::now();
       if (flow_.screen() == ScreenFlow::Screen::Game && latest_) {
@@ -939,10 +948,6 @@ private:
     for (const PointsBars::Bar &bar : PointsBars::of(state, kTopWidth))
       overlay.rectangle(bar.x, bar.y, bar.width, bar.height, bar.colour);
     drawCorners(overlay, state);
-    if (flow_.screen() == ScreenFlow::Screen::Paused || latest_->paused)
-      overlay.text(4, PointsBars::bottom(state.players) + 34,
-                   flow_.screen() == ScreenFlow::Screen::Paused ? "paused" : "paused: A",
-                   Palette::kWords);
     // (the -watch builds: memory, measured, above the last move)
     if (kWatchAtStart && !memoryLine_.empty())
       overlay.text(4, kTopHeight - 26, memoryLine_.substr(0, kCharsPerLine), {120, 220, 160});
@@ -965,10 +970,11 @@ private:
     }
     if (kWatchAtStart && !memoryBusiest_.empty())
       overlay.text(4, kTopHeight - 38, memoryBusiest_.substr(0, kCharsPerLine), {120, 220, 160});
-    if (!latest_->lastMoves.empty() && shownInfo_ == BottomScreen::Info::None)
+    if (!latest_->lastMoves.empty() && shownInfo_ == BottomScreen::Info::None && !infoClosingAt_)
       overlay.text(4, kTopHeight - 14, latest_->lastMoves.back().substr(0, kCharsPerLine),
                    Palette::kSoftWords);
-    if (mode_ == Mode::Playing && latest_->yourMove && shownInfo_ == BottomScreen::Info::None)
+    if (mode_ == Mode::Playing && latest_->yourMove && shownInfo_ == BottomScreen::Info::None &&
+        !infoClosingAt_)
       drawMoves(overlay);
     drawInfoWords(overlay, state);
     drawBanner(overlay);
@@ -1031,10 +1037,30 @@ private:
     return {left + static_cast<float>(r) * (w + gap),
             static_cast<float>(kTopHeight) - static_cast<float>(resourceWidth_ * 52 / 63) - 6 * k};
   }
+  // How far card `order` has come in (0 off the screen, 1 in place): each
+  // a little after the last; closing, each going back the same way
   float cardArrived(int order) const {
-    const float since = std::chrono::duration<float>(Clock::now() - infoOpenedAt_).count() -
-                        0.05f * static_cast<float>(order);
-    return ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseInOut, since / 0.25f);
+    const Clock::time_point from = infoClosingAt_ ? *infoClosingAt_ : infoOpenedAt_;
+    const float since = std::chrono::duration<float>(Clock::now() - from).count() -
+                        kSecondsCardStagger * static_cast<float>(order);
+    const float moved =
+        ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseInOut, since / kSecondsCard);
+    return infoClosingAt_ ? 1 - moved : moved;
+  }
+  // Show resources on the top screen: open, or its cards still going off
+  bool showingResources() {
+    if (shownInfo_ == BottomScreen::Info::Resources)
+      return true;
+    if (!infoClosingAt_)
+      return false;
+    // (gone once the last card's off: at most 5 piles of 5 and 12 cards)
+    constexpr int kMostCards = 5 * 5 + 12;
+    if (std::chrono::duration<float>(Clock::now() - *infoClosingAt_).count() >
+        kSecondsCard + kSecondsCardStagger * kMostCards) {
+      infoClosingAt_.reset();
+      return false;
+    }
+    return true;
   }
 
   // Show resources: your resources as piles along the bottom
@@ -1042,7 +1068,7 @@ private:
   // the last showing its band; your action cards across the top half; each
   // card easing in on its own, the piles from below, the cards from above
   void drawInfo(const Scene::Camera &camera) {
-    if (!latest_ || shownInfo_ != BottomScreen::Info::Resources || !pictureSquare_)
+    if (!latest_ || !showingResources() || !pictureSquare_)
       return;
     const State &state = latest_->state;
     const auto &player = state.player[static_cast<std::size_t>(infoPlayer(state))];
@@ -1093,7 +1119,7 @@ private:
   // Show resources' words: each pile's title on its top card, a badge past
   // five; the action cards' titles under them
   void drawInfoWords(Scene::Overlay &overlay, const State &state) {
-    if (shownInfo_ != BottomScreen::Info::Resources)
+    if (!showingResources())
       return;
     const auto &player = state.player[static_cast<std::size_t>(infoPlayer(state))];
     const float k = static_cast<float>(kTopWidth) / 256.0f;
@@ -1145,24 +1171,41 @@ private:
   // The turn banner as it moves (TurnBanner): a band softly in the player's
   // colour with turquoise edges, the words sweeping through the middle
   void drawBanner(Scene::Overlay &overlay) {
-    const auto look = banner_.at(gameClock_.seconds());
-    if (!look)
+    // Paused: the banner still, in a neutral grey, rather than the turn's
+    // (the user's: plainer to see than a word in the corner)
+    // (only when paused by you: not while held for an info view, the board
+    // coming down or who goes first)
+    const bool pausedByYou = latest_ && latest_->paused && mode_ == Mode::Watching &&
+                             !heldForInfo_ && !descentStarted_ && !firstRollShownAt_;
+    if (flow_.screen() == ScreenFlow::Screen::Paused || pausedByYou) {
+      static const std::string kTitle = "PAUSED";
+      const std::string note =
+          flow_.screen() == ScreenFlow::Screen::Paused ? "the menu is below" : "A to go on";
+      drawBand(overlay, {.bandAlpha = 1,
+                         .wordsX = static_cast<float>(kTopWidth) / 2,
+                         .title = kTitle,
+                         .note = note,
+                         .colour = {140, 146, 158}});
       return;
+    }
+    if (const auto look = banner_.at(gameClock_.seconds()))
+      drawBand(overlay, *look);
+  }
+  // A banner's band and words, as `look` says
+  void drawBand(Scene::Overlay &overlay, const TurnBanner::Look &look) {
     const float k = static_cast<float>(kTopWidth) / 256.0f;
     const float y = static_cast<float>(kTopHeight) * 0.42f, h = 32 * k;
-    const auto alpha = [&](float most) {
-      return static_cast<std::uint8_t>(most * look->bandAlpha);
-    };
+    const auto alpha = [&](float most) { return static_cast<std::uint8_t>(most * look.bandAlpha); };
     overlay.rectangle(0, y, static_cast<float>(kTopWidth), h, {12, 20, 36, alpha(225)});
     overlay.rectangle(0, y, static_cast<float>(kTopWidth), h,
-                      {look->colour.r, look->colour.g, look->colour.b, alpha(80)});
+                      {look.colour.r, look.colour.g, look.colour.b, alpha(80)});
     overlay.rectangle(0, y, static_cast<float>(kTopWidth), 1,
                       Palette::withAlpha(Palette::kAccent, alpha(255)));
     overlay.rectangle(0, y + h - 1, static_cast<float>(kTopWidth), 1,
                       Palette::withAlpha(Palette::kAccent, alpha(255)));
-    overlay.textCentred(look->wordsX, y + 11 * k, look->title, {240, 244, 250},
+    overlay.textCentred(look.wordsX, y + 11 * k, look.title, {240, 244, 250},
                         kTopWidth >= 400 ? 2.0f : 1.5f);
-    overlay.textCentred(look->wordsX, y + 24 * k, look->note, {170, 180, 198});
+    overlay.textCentred(look.wordsX, y + 24 * k, look.note, {170, 180, 198});
   }
 
   // The buttons, by screen (ScreenFlow): the title's and the pause menu's
@@ -1710,8 +1753,8 @@ private:
       return false; // (pieces still moving, or a number chip dropping)
     if (banner_.showing(gameClock_.seconds()))
       return false; // (the turn's banner moving)
-    if (shownInfo_ != BottomScreen::Info::None)
-      return false; // (an info view: its cards come in, and the game is held anyway)
+    if (shownInfo_ != BottomScreen::Info::None || infoClosingAt_)
+      return false; // (an info view: its cards come in or go, and the game is held anyway)
     if (snapshots_ != drawnSnapshots_ || turn_ != drawnTurn_ || selected_ != drawnSelection_)
       return false;
     return !kWatchAtStart || Clock::now() - drawnAt_ < std::chrono::seconds(1);
@@ -1777,6 +1820,7 @@ private:
   // whether it holds the game; the cards' pictures for them
   BottomScreen::Info shownInfo_ = BottomScreen::Info::None;
   Clock::time_point infoOpenedAt_{};
+  std::optional<Clock::time_point> infoClosingAt_; // (Show resources' cards going off)
   bool heldForInfo_ = false;
   std::array<Scene::Texture, CosmicHex::Art::kCards> cardPictures_{};
   std::array<Scene::Texture, CosmicHex::kResources> resourcePictures_{};
