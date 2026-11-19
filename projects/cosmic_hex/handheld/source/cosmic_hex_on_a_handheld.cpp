@@ -42,6 +42,7 @@
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
+#include <CosmicHex/Handheld/OtherPlayers.hpp>
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/PlatformProfile.hpp>
 #include <CosmicHex/Handheld/PointsBars.hpp>
@@ -126,6 +127,8 @@ constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 // question on the roadmap page; the scene for now
 // How long the title takes to fade in from black, once the start's work
 // is done
+// How long the other players' view takes to slide down (or up)
+constexpr float kSecondsPanel = 0.3f;
 // How long who goes first is shown at the start (A goes on sooner)
 // Show resources' cards: each eases in (and out) over kSecondsCard, each
 // a little after the last
@@ -461,11 +464,13 @@ private:
     // it's open, and let go when it closes, if the view was what held it
     if (bottomScreen_ && bottomScreen_->info() != shownInfo_) {
       // (Show resources closing: its cards go back off as they came in)
-      if (shownInfo_ == BottomScreen::Info::Resources &&
-          bottomScreen_->info() == BottomScreen::Info::None)
+      if (shownInfo_ != BottomScreen::Info::None &&
+          bottomScreen_->info() == BottomScreen::Info::None) {
         infoClosingAt_ = Clock::now();
-      else
+        closingInfo_ = shownInfo_;
+      } else {
         infoClosingAt_.reset();
+      }
       shownInfo_ = bottomScreen_->info();
       infoOpenedAt_ = Clock::now();
       if (flow_.screen() == ScreenFlow::Screen::Game && latest_) {
@@ -781,6 +786,8 @@ private:
     // layer over every shape, so they'd show through it)
     if (firstRollShownAt_)
       drawFirstRoll(renderer_->overlay());
+    else if (showingPlayer())
+      drawOtherPlayer(renderer_->overlay());
     else
       drawText();
     // The touched corner (or the blockade's hex), ringed on the 3D board too
@@ -1051,7 +1058,7 @@ private:
   bool showingResources() {
     if (shownInfo_ == BottomScreen::Info::Resources)
       return true;
-    if (!infoClosingAt_)
+    if (!infoClosingAt_ || closingInfo_ != BottomScreen::Info::Resources)
       return false;
     // (gone once the last card's off: at most 5 piles of 5 and 12 cards)
     constexpr int kMostCards = 5 * 5 + 12;
@@ -1678,6 +1685,85 @@ private:
   // board, nothing new from the table, nothing moving (the pieces, the
   // dice, the board coming down), the camera and the selection the same.
   // (The -watch builds redraw once a second, for their measurements.)
+  // Another player's view on the top screen (the other players' tabs):
+  // open, or still sliding back up
+  bool showingPlayer() {
+    if (shownInfo_ == BottomScreen::Info::Player) {
+      shownPlayer_ = bottomScreen_->infoPlayer();
+      return true;
+    }
+    if (!infoClosingAt_ || closingInfo_ != BottomScreen::Info::Player)
+      return false;
+    if (std::chrono::duration<float>(Clock::now() - *infoClosingAt_).count() > kSecondsPanel) {
+      infoClosingAt_.reset();
+      return false;
+    }
+    return true;
+  }
+
+  // What everyone can see of a player (OtherPlayers.hpp), over the board,
+  // sliding down from the top (and back up): their name and points, their
+  // cards face down, badges, ships, stations and colonies, the planets
+  // their stations touch with each one's number, their revealed Charters
+  void drawOtherPlayer(Scene::Overlay &overlay) {
+    if (!latest_ || shownPlayer_ < 0)
+      return;
+    const PlayerView view = viewOf(latest_->state, shownPlayer_);
+    const float k = static_cast<float>(kTopWidth) / 256;
+    const Clock::time_point from = infoClosingAt_ ? *infoClosingAt_ : infoOpenedAt_;
+    const float moved = ScratchPadd::Motion::along(
+        ScratchPadd::Motion::Curve::EaseInOut,
+        std::chrono::duration<float>(Clock::now() - from).count() / kSecondsPanel);
+    const float down = infoClosingAt_ ? 1 - moved : moved;
+    const float top = -static_cast<float>(kTopHeight) * (1 - down);
+    const Scene::Colour colour = BoardColours::ofPlayer(view.player);
+    overlay.rectangle(0, top, kTopWidth, kTopHeight, {12, 18, 32, 245});
+    overlay.rectangle(3 * k, top + 3 * k, kTopWidth - 6 * k, 1, colour);
+    overlay.rectangle(3 * k, top + kTopHeight - 4 * k, kTopWidth - 6 * k, 1, colour);
+    // Name and points
+    overlay.text(10 * k, top + 10 * k, "P" + std::to_string(view.player + 1), colour, 2 * k);
+    overlay.text(10 * k, top + 32 * k,
+                 std::to_string(view.points) + (view.points == 1 ? " point" : " points"),
+                 Palette::kWords, k);
+    // Their cards, face down: a small back for each (up to 10), the count
+    const auto backs = [&](float x, float y, int count, std::string_view label) {
+      overlay.text(x, y, label, Palette::kDimWords, k);
+      for (int i = 0; i < std::min(count, 10); ++i)
+        overlay.rectangle(x + static_cast<float>(i) * 5 * k, y + 12 * k, 11 * k, 15 * k,
+                          i == std::min(count, 10) - 1 ? Scene::Colour{60, 74, 110, 255}
+                                                       : Scene::Colour{44, 56, 86, 255});
+      overlay.text(x + (static_cast<float>(std::min(count, 10)) * 5 + 14) * k, y + 16 * k,
+                   std::to_string(count), Palette::kWords, k);
+    };
+    backs(84 * k, top + 10 * k, view.resourceCards, "RESOURCES");
+    backs(180 * k, top + 10 * k, view.actionCards, "CARDS");
+    // Badges, ships, stations, colonies
+    char line[64];
+    std::snprintf(line, sizeof line, "badges %d   ships %d   stations %d   colonies %d",
+                  view.badges, view.ships, view.stations, view.colonies);
+    overlay.text(10 * k, top + 52 * k, line, Palette::kSoftWords, k);
+    // Their planets: a hexagon each in its kind's colour, its number on it
+    overlay.text(10 * k, top + 70 * k, "PLANETS", Palette::kDimWords, k);
+    if (view.planets.empty())
+      overlay.text(64 * k, top + 70 * k, "none yet", Palette::kDimWords, k);
+    for (std::size_t i = 0; i < view.planets.size() && i < 16; ++i) {
+      const float x = (22 + 26 * static_cast<float>(i % 8)) * k;
+      const float y = top + (98 + 28 * static_cast<float>(i / 8)) * k;
+      const PlayerView::Planet &planet = view.planets[i];
+      overlay.hexagon(x, y, 12 * k, BoardColours::ofKind(planet.kind), true);
+      if (planet.colony)
+        overlay.hexagon(x, y, 8 * k, colour, true);
+      overlay.textCentred(x, y, std::to_string(planet.number), {20, 22, 30}, k);
+    }
+    // Their revealed Charters
+    if (!view.charters.empty()) {
+      std::string charters = "Charters:";
+      for (const CosmicHex::Art::Card card : view.charters)
+        charters += " " + std::string(CosmicHex::Art::wordsOf(card).shortTitle);
+      overlay.text(10 * k, top + 158 * k, charters, Palette::kWords, k);
+    }
+  }
+
   // The start's banner: what's being placed and by whom
   void startPlacingBanner(const State &state) {
     const bool ship = state.phase == CosmicHex::Phase::PlaceShip;
@@ -1824,7 +1910,9 @@ private:
   // whether it holds the game; the cards' pictures for them
   BottomScreen::Info shownInfo_ = BottomScreen::Info::None;
   Clock::time_point infoOpenedAt_{};
-  std::optional<Clock::time_point> infoClosingAt_; // (Show resources' cards going off)
+  std::optional<Clock::time_point> infoClosingAt_;            // (an info view going off)
+  BottomScreen::Info closingInfo_ = BottomScreen::Info::None; // (which)
+  int shownPlayer_ = -1; // (the other players' view: whose, kept while it goes off)
   bool heldForInfo_ = false;
   std::array<Scene::Texture, CosmicHex::Art::kCards> cardPictures_{};
   std::array<Scene::Texture, CosmicHex::kResources> resourcePictures_{};

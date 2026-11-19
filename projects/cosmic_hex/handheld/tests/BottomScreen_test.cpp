@@ -116,7 +116,7 @@ TEST(BottomScreenTest, ButtonsAlwaysAnswer) {
   EXPECT_TRUE(screen.showingFeedback());
   screen.clearFeedback();
   EXPECT_FALSE(screen.showingFeedback());
-  screen.tap(10, 36, std::nullopt); // the other players
+  screen.tap(241, 36, std::nullopt); // Trade (its screen still to come)
   EXPECT_FALSE(screen.message().empty());
   // Drawn: the message's band at the bottom
   std::vector<Canvas::Colour> board(static_cast<std::size_t>(kWidth * kHeight), {24, 32, 48, 255});
@@ -312,4 +312,30 @@ TEST(BottomScreenTest, TheCardsScreenPlaysACard) {
   }
   screen.press(BottomScreen::Key::Back);
   EXPECT_EQ(screen.mode(), Mode::Board);
+}
+
+// The other players' tabs: Other players opens them on the first other
+// player, the top screen told whose; a new look at the game (as holding it
+// for the view brings) leaves them open; left and right go through them;
+// Back closes them
+TEST(BottomScreenTest, TheOtherPlayersTabsStayOpenUntilBack) {
+  const State state = newGame(4, agreedRules(boardR3(), 4));
+  const std::vector<Action> legal = Game::legalActions(state);
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, legal, true);
+  for (const auto &place :
+       BoardButtons::layout(kWidth, kHeight, BoardButtons::situationOf(state, legal, true)))
+    if (place.button == BoardButtons::Button::OtherPlayers)
+      screen.tap(static_cast<int>(place.x + place.size / 2),
+                 static_cast<int>(place.y + place.size / 2), std::nullopt);
+  EXPECT_EQ(screen.mode(), Mode::Others);
+  EXPECT_EQ(screen.info(), BottomScreen::Info::Player);
+  EXPECT_EQ(screen.infoPlayer(), 1);
+  screen.update(state, legal, true); // (the start's placing would take the screen)
+  EXPECT_EQ(screen.mode(), Mode::Others);
+  screen.press(BottomScreen::Key::Right);
+  EXPECT_EQ(screen.infoPlayer(), 2);
+  screen.press(BottomScreen::Key::Back);
+  EXPECT_EQ(screen.info(), BottomScreen::Info::None);
+  EXPECT_NE(screen.mode(), Mode::Others);
 }

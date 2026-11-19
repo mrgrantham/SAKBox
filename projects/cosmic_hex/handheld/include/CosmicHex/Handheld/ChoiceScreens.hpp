@@ -11,6 +11,7 @@
 #include <CosmicHex/Art.hpp>
 #include <CosmicHex/Handheld/BuildMenu.hpp>
 #include <CosmicHex/Handheld/CardChoices.hpp>
+#include <CosmicHex/Handheld/OtherPlayers.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
 #include <ScratchPadd/Canvas/Canvas.hpp>
 
@@ -92,6 +93,12 @@ std::optional<Touch> cardsTouch(int width, std::size_t cards, int x, int y);
 // words under them; Keep once one is chosen (no Back: one must be kept)
 void drawKeep(Canvas &canvas, const KeepChoice &choice, int chosen, CardSprites &sprites);
 std::optional<Touch> keepTouch(int width, std::size_t cards, int x, int y);
+
+// The other players' tabs: one for each, their name in their colour and
+// their points, `chosen` (a player) outlined, the top screen showing them;
+// Back. A touch on a tab is that player (Touch::item is the player)
+void drawOthers(Canvas &canvas, const std::vector<PlayerView> &others, int chosen);
+std::optional<Touch> othersTouch(int width, const std::vector<PlayerView> &others, int x, int y);
 
 } // namespace ChoiceScreens
 

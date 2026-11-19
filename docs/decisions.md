@@ -37,6 +37,9 @@ Stations on 3 planets of one kind, Occupier, and the Deep-space relay (1 point o
 
 ## Platform: ScratchPadd and the consoles
 
+**Menu roles and a button library** (2026-11-19)
+`Input::Role` (Confirm, Back, Option1, Option2) mapped by each kind of pad's convention, and `Buttons::Panel` (touch, D-pad focus, feedback, drawn on a Canvas); Cosmic Hex's board buttons, menus and setup built on them. **Why:** positions don't say purpose, and Cosmic Hex had three button systems doing the same things. **Not:** leaving roles to each game's own actions; only the shared logic (each game drawing its own).
+
 **Colours named by role** (2026-11-19)
 Cosmic Hex's `Palette.hpp`: the accent (turquoise: what's always there and whose turn), the highlight (amber: moments and choices), the words, and the players'. **Why:** the same colour had been written out in a dozen places.
 

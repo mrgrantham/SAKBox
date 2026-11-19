@@ -3,6 +3,7 @@
 #include <CosmicHex/Handheld/Palette.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 
+#include <ScratchPadd/Buttons/Buttons.hpp>
 #include <ScratchPadd/Scene/Overlay.hpp>
 #include <ScratchPadd/Scene/TextWrap.hpp>
 
@@ -384,6 +385,59 @@ std::optional<Touch> keepTouch(int width, std::size_t cards, int x, int y) {
   for (std::size_t i = 0; i < cards; ++i)
     if (cardBox(width, sizes.width(), sizes.height(), i, cards).contains(x, y))
       return Touch{Touch::What::Item, static_cast<int>(i)};
+  return std::nullopt;
+}
+
+namespace {
+// The tabs as a panel of buttons (ScratchPadd's Buttons), each's id its
+// player, in a row across the middle
+ScratchPadd::Buttons::Panel othersPanel(int width, const std::vector<PlayerView> &others,
+                                        int chosen) {
+  const float k = scaleOf(width);
+  const float w = 72 * k, gap = 8 * k;
+  const auto count = static_cast<float>(others.size());
+  const float left = (static_cast<float>(width) - (count * w + (count - 1) * gap)) / 2;
+  std::vector<ScratchPadd::Buttons::Button> tabs;
+  for (std::size_t i = 0; i < others.size(); ++i) {
+    const PlayerView &view = others[i];
+    tabs.push_back({.id = view.player,
+                    .area = {left + static_cast<float>(i) * (w + gap), 70 * k, w, 44 * k},
+                    .face = view.player == chosen ? std::optional(kRowChosen) : std::nullopt,
+                    .edge = BoardColours::ofPlayer(view.player)});
+  }
+  ScratchPadd::Buttons::Panel panel;
+  panel.set(std::move(tabs));
+  panel.setFocus(chosen);
+  return panel;
+}
+} // namespace
+
+void drawOthers(Canvas &canvas, const std::vector<PlayerView> &others, int chosen) {
+  const float k = scaleOf(canvas);
+  canvas.clear(kBackground);
+  canvas.textCentred(static_cast<float>(canvas.width()) / 2, 40 * k,
+                     "Other players: touch one, or left and right", kDim);
+  othersPanel(canvas.width(), others, chosen)
+      .draw(canvas, {.face = kRow, .edge = kEdge, .words = kWords, .focus = kChosen});
+  // Each tab's words: the name in the player's colour, the points under it
+  for (const auto &tab : othersPanel(canvas.width(), others, chosen).buttons()) {
+    const auto &a = tab.area;
+    const auto view = std::find_if(others.begin(), others.end(),
+                                   [&](const PlayerView &v) { return v.player == tab.id; });
+    canvas.textCentred(a.x + a.width / 2, a.y + 14 * k, "P" + std::to_string(tab.id + 1),
+                       BoardColours::ofPlayer(tab.id), k >= 1.2f ? 2.0f : 1.5f);
+    canvas.textCentred(a.x + a.width / 2, a.y + 32 * k,
+                       std::to_string(view->points) + (view->points == 1 ? " point" : " points"),
+                       kWords);
+  }
+  button(canvas, backBox(canvas.width()), "Back", kRow, kEdge);
+}
+
+std::optional<Touch> othersTouch(int width, const std::vector<PlayerView> &others, int x, int y) {
+  if (backBox(width).contains(x, y))
+    return Touch{Touch::What::Back};
+  if (const std::optional<int> player = othersPanel(width, others, -1).at(x, y))
+    return Touch{Touch::What::Item, *player};
   return std::nullopt;
 }
 

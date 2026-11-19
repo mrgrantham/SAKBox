@@ -23,19 +23,35 @@ BottomScreen::BottomScreen(int width, int height) : width_(width), height_(heigh
 
 void BottomScreen::update(const State &state, const std::vector<Action> &legal, bool yourMove,
                           bool yourRollWaits) {
+  // A screen you're looking at (your cards, the other players) stays while
+  // the game moves on under it (opening one holds the game, which itself
+  // brings a new look at it); everything else is brought up to date
+  const Mode looking = mode_;
+  follow(state, legal, yourMove, yourRollWaits);
+  if (looking == Mode::Cards || looking == Mode::Others)
+    mode_ = looking;
+}
+
+void BottomScreen::follow(const State &state, const std::vector<Action> &legal, bool yourMove,
+                          bool yourRollWaits) {
   state_ = state;
   legal_ = legal;
   yourMove_ = yourMove;
   situation_ = BoardButtons::situationOf(state, legal, yourMove, yourRollWaits);
   // (before the roll too: each row then says it waits for the roll)
   rows_ = yourMove ? buildRows(state) : std::vector<BuildRow>{};
+  // (the other players, as everyone sees them: from player 1, yours)
+  others_.clear();
+  for (const int p : othersOf(state, 0))
+    others_.push_back(viewOf(state, p));
   // (your cards: player 1's, the one you play; on your move the turn's)
   held_ = heldCards(state, legal, yourMove ? state.turn : 0, yourMove);
   if (heldChosen_ >= static_cast<int>(held_.size()))
     heldChosen_ = -1;
   if (!yourMove) {
-    // (the cards screen stays open to look at, whoever's move it is)
-    if (mode_ != Mode::Cards)
+    // (the cards screen and the other players stay open to look at,
+    // whoever's move it is)
+    if (mode_ != Mode::Cards && mode_ != Mode::Others)
       mode_ = Mode::Board;
     startPlacing_ = false;
     startPlacement_.reset();
@@ -141,7 +157,13 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
         buttons_.say({});
         break;
       case BoardButtons::Button::OtherPlayers:
-        buttons_.say("Other players: not built yet");
+        if (others_.empty())
+          break;
+        mode_ = Mode::Others;
+        info_ = Info::Player;
+        if (othersChosen_ < 0)
+          othersChosen_ = others_.front().player;
+        buttons_.say({});
         break;
       case BoardButtons::Button::Cards:
         if (held_.empty()) {
@@ -286,6 +308,14 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
       return useChosenCard();
     return {std::nullopt, true};
   }
+  case Mode::Others: {
+    const auto touch = ChoiceScreens::othersTouch(width_, others_, x, y);
+    if (touch && touch->what == What::Item)
+      othersChosen_ = touch->item;
+    else if (touch && touch->what == What::Back)
+      closeOthers();
+    return {std::nullopt, true};
+  }
   case Mode::Keep: {
     const auto touch =
         keep_ ? ChoiceScreens::keepTouch(width_, keep_->cards.size(), x, y) : std::nullopt;
@@ -299,6 +329,11 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   }
   }
   return {};
+}
+
+void BottomScreen::closeOthers() {
+  mode_ = Mode::Board;
+  info_ = Info::None;
 }
 
 BottomScreen::Outcome BottomScreen::useChosenCard() {
@@ -433,6 +468,20 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
     }
     return {std::nullopt, true};
   }
+  case Mode::Others: {
+    // (left and right through the tabs; B back)
+    if (key == Key::Back) {
+      closeOthers();
+    } else if ((key == Key::Left || key == Key::Right) && !others_.empty()) {
+      const auto at = std::find_if(others_.begin(), others_.end(),
+                                   [&](const PlayerView &v) { return v.player == othersChosen_; });
+      const int i = at == others_.end() ? 0 : static_cast<int>(at - others_.begin());
+      othersChosen_ = others_[static_cast<std::size_t>(step(i, key == Key::Left ? -1 : 1,
+                                                            static_cast<int>(others_.size())))]
+                          .player;
+    }
+    return {std::nullopt, true};
+  }
   case Mode::Keep: {
     if (!keep_)
       return {std::nullopt, true};
@@ -517,6 +566,9 @@ void BottomScreen::draw(Canvas &canvas) {
   case Mode::Keep:
     if (keep_)
       ChoiceScreens::drawKeep(canvas, *keep_, keepChosen_, cards_);
+    return;
+  case Mode::Others:
+    ChoiceScreens::drawOthers(canvas, others_, othersChosen_);
     return;
   case Mode::Board:
   case Mode::Placing:

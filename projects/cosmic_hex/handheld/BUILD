@@ -21,6 +21,7 @@ cc_library(
         "src/DicePieces.cpp",
         "src/MenuPicture.cpp",
         "src/MoveSpots.cpp",
+        "src/OtherPlayers.cpp",
         "src/Pickers.cpp",
         "src/PointsBars.cpp",
         "src/ScreenFlow.cpp",
@@ -45,6 +46,7 @@ cc_library(
         "include/CosmicHex/Handheld/MenuPicture.hpp",
         "include/CosmicHex/Handheld/MoveSpots.hpp",
         "include/CosmicHex/Handheld/Pickers.hpp",
+        "include/CosmicHex/Handheld/OtherPlayers.hpp",
         "include/CosmicHex/Handheld/Palette.hpp",
         "include/CosmicHex/Handheld/PointsBars.hpp",
         "include/CosmicHex/Handheld/PlatformProfile.hpp",
@@ -281,6 +283,16 @@ cc_test(
     name = "CardsHeld_test",
     size = "small",
     srcs = ["tests/CardsHeld_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "OtherPlayers_test",
+    size = "small",
+    srcs = ["tests/OtherPlayers_test.cpp"],
     deps = [
         ":handheld",
         "@gtest//:gtest_main",

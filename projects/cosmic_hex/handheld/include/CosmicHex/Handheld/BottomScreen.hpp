@@ -21,6 +21,7 @@
 #include <CosmicHex/Handheld/BuildMenu.hpp>
 #include <CosmicHex/Handheld/CardChoices.hpp>
 #include <CosmicHex/Handheld/ChoiceScreens.hpp>
+#include <CosmicHex/Handheld/OtherPlayers.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
 
 #include <ScratchPadd/Buttons/Buttons.hpp>
@@ -37,7 +38,7 @@ using ScratchPadd::Canvas; // (ScratchPadd/Canvas)
 
 class BottomScreen {
 public:
-  enum class Mode { Board, Build, Resources, Players, Placing, Cards, Keep };
+  enum class Mode { Board, Build, Resources, Players, Placing, Cards, Keep, Others };
 
   BottomScreen(int width, int height);
 
@@ -66,8 +67,14 @@ public:
 
   // What's shown on the top screen for looking at, any time (// the user's: they pause the game
   // while open): your resources and cards (Show resources); another tap closes it
-  enum class Info { None, Resources };
-  Info info() const { return info_; }
+  // or another player (the other players' tabs: infoPlayer() whose)
+  enum class Info { None, Resources, Player };
+  Info info() const {
+    // (a player's only while their tabs show: a picker opening by itself
+    // closes them)
+    return info_ == Info::Player && mode_ != Mode::Others ? Info::None : info_;
+  }
+  int infoPlayer() const { return othersChosen_; }
   // In Placing: the corners where the chosen build, or the ship touched,
   // may go, to be marked
   std::vector<Corner> placingCorners() const;
@@ -89,7 +96,7 @@ public:
   // the buttons over it)
   bool coversBoard() const {
     return mode_ == Mode::Build || mode_ == Mode::Resources || mode_ == Mode::Players ||
-           mode_ == Mode::Cards || mode_ == Mode::Keep;
+           mode_ == Mode::Cards || mode_ == Mode::Keep || mode_ == Mode::Others;
   }
   // The choosing screen, onto `canvas`, when one covers the board
   void draw(Canvas &canvas);
@@ -126,12 +133,18 @@ private:
   int heldChosen_ = -1;
   std::optional<KeepChoice> keep_; // (after buying: the two to keep one of)
   int keepChosen_ = -1;
+  std::vector<PlayerView> others_; // (the other players' tabs)
+  int othersChosen_ = -1;
   Info info_ = Info::None;
   // The board's buttons (ScratchPadd's Buttons: placed by BoardButtons'
   // layout, their flash and message when tapped)
   ScratchPadd::Buttons::Panel buttons_;
   void layOutButtons();    // (buttons_ from the layout, for the situation now)
   Outcome useChosenCard(); // (the cards screen's Play or Reveal)
+  // (update's work: the screen following the game)
+  void follow(const State &state, const std::vector<Action> &legal, bool yourMove,
+              bool yourRollWaits);
+  void closeOthers(); // (the other players' Back: the board again)
   CardSprites cards_;
   std::array<std::vector<Canvas::Colour>, Art::kIcons> icons_;
   int iconSize_ = 0;
