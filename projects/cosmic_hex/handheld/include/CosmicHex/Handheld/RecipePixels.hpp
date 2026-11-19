@@ -1,6 +1,6 @@
 // RecipePixels.hpp - a texture recipe drawn as a square of colours: the
 // tile faces and number chips, for the 3D board's textures and the flat
-// map alike (round 92: the app and BoardPicture each had their own copy)
+// map alike (the app and BoardPicture each had their own copy)
 #pragma once
 
 #include <ScratchPadd/Scene/Types.hpp>
@@ -25,7 +25,7 @@ std::vector<ScratchPadd::Scene::Colour> recipePixels(
 // A square picture `from` pixels a side made `to` a side (no bigger), each
 // pixel the average of those it covers, weighted by how opaque they are (so
 // see-through pixels don't darken an edge): for a picture already drawn at
-// one size wanted at a smaller one, quicker than its recipe (round 105)
+// one size wanted at a smaller one, quicker than its recipe
 std::vector<ScratchPadd::Scene::Colour>
 shrunk(const std::vector<ScratchPadd::Scene::Colour> &pixels, int from, int to);
 

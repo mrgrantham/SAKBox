@@ -1,4 +1,4 @@
-// The board as the cameras see it on a DS (round 92, the user's photo: the
+// The board as the cameras see it on a DS (the user's photo: the
 // far find tiles showed wedges of the lighter grid, whole triangles of the
 // tile losing the depth test to the grid a hair under them): every thin
 // layer stays far enough in front of its tile for the DS's coarse depth

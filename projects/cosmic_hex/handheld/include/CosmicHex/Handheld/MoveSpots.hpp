@@ -1,5 +1,5 @@
 // MoveSpots.hpp - where on the board a move happens, so touching a spot can
-// list the moves there (round 71: you choose by touching the board, the
+// list the moves there (you choose by touching the board, the
 // list the fallback for moves that have no place, such as ending a turn).
 //
 //   if (concerns(state, move, touched)) ...   // a move at the touched spot

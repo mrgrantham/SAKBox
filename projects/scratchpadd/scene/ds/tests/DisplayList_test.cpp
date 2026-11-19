@@ -280,7 +280,7 @@ TEST(DisplayListTest, ImageTexturesSendTheirCoordinates) {
   EXPECT_TRUE(has(32u * 16u));
 }
 
-// The overlay's triangles' depths (round 92, the user's: the roll's hexagon
+// The overlay's triangles' depths (the user's: the roll's hexagon
 // lost a slice, as one step apart the DS's depth buffer rounded neighbouring
 // triangles together, and a see-through one over an opaque one failed the
 // depth test; melonDS showed it too, and 16 steps apart it was gone): each

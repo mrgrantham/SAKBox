@@ -1,5 +1,5 @@
 
-// shrunk (round 105): a picture made smaller keeps its colours where it's
+// shrunk: a picture made smaller keeps its colours where it's
 // one colour, its see-through parts see-through, and a half-covered edge
 // keeps the opaque colour (not darkened toward the see-through pixels')
 TEST(RecipePixelsTest, ShrunkAveragesByOpacity) {

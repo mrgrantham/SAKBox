@@ -1,4 +1,4 @@
-// The console's screens (round 90): the flow drawn in ScreenFlow.hpp, each
+// The console's screens: the flow drawn in ScreenFlow.hpp, each
 // event's step (start, stop, hold or quit), and events that mean nothing on
 // a screen ignored; and the button menus the title and pause screens use
 #include <CosmicHex/Handheld/ButtonMenu.hpp>

@@ -1,5 +1,5 @@
 // PlatformProfile.hpp - what the game does differently on each console, in
-// one place (round 92: these were constants scattered through the app,
+// one place (these were constants scattered through the app,
 // each in its own #if). Each value is tuned to what that hardware can do,
 // most of them measured: see the round each comes from. The app reads
 // kThisPlatform; tests on the Mac check both profiles.
@@ -25,15 +25,15 @@ struct PlatformProfile {
   float lineHeight;
 
   // The bots: simulated games a move at most, how they score moves, and
-  // the frame arena each simulated game's memory comes from (round 90)
+  // the frame arena each simulated game's memory comes from
   int botIterations;
   TableSettings::Arithmetic botArithmetic;
   std::size_t frameArenaBytes;
 
   // Drawing: the tile faces' texture size and how smoothly recipes are
-  // drawn (round 92: 2 x 2 samples on the DS, a quarter of the work), the
+  // drawn (2 x 2 samples on the DS, a quarter of the work), the
   // title's stars, and whether an unchanged top screen is left as it is
-  // (the DS's 3D hardware shows its last frame by itself; round 92: the
+  // (the DS's 3D hardware shows its last frame by itself: the
   // bots went from 5 games a move to 84 on a DS)
   int faceSize;
   ScratchPadd::TextureRecipe::Smoothing recipeSmoothing;
@@ -48,14 +48,14 @@ struct PlatformProfile {
 };
 
 // The Nintendo DS: 67 MHz, no floating-point hardware, a 4 KB data cache,
-// memory copies at about 13 MB/s (round 92's bench)
+// memory copies at about 13 MB/s
 inline constexpr PlatformProfile kDsProfile{
     .name = "DS",
     .topWidth = 256,
     .topHeight = 192,
     .bottomWidth = 256,
     .bottomHeight = 192,
-    .charsPerLine = 41, // (stb_easy_font, about 6 pixels a letter at most: round 96)
+    .charsPerLine = 41, // (stb_easy_font, about 6 pixels a letter at most)
     .lineHeight = 10,
     .botIterations = 200,
     .botArithmetic = TableSettings::Arithmetic::FixedPoint,
@@ -78,7 +78,7 @@ inline constexpr PlatformProfile kThreeDsProfile{
     .bottomHeight = 240,
     .charsPerLine = 64,
     .lineHeight = 11,
-    .botIterations = 450, // (round 91, the user's: they reached 400 every move)
+    .botIterations = 450, // (the user's: they reached 400 every move)
     .botArithmetic = TableSettings::Arithmetic::Double,
     .frameArenaBytes = 128 * 1024,
     .faceSize = 64,

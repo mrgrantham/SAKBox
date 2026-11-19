@@ -46,7 +46,7 @@ struct Edge {
   std::int64_t x0, y0, x1, y1; // sample space, 16.16, y0 < y1
   int direction;               // +1 drawn downwards, -1 upwards
   // Where it crosses the current row's centre, stepped a row at a time
-  // (round 92: no division a row; the DS's ARM9 has no divide instruction):
+  // (no division a row; the DS's ARM9 has no divide instruction):
   // the crossing is x0 + |x1 - x0| x (centre - y0) / (y1 - y0), its quotient
   // and remainder kept and stepped by a row's share, signed as x1 - x0
   bool started = false;
@@ -252,7 +252,7 @@ std::expected<Recipe, std::string> read(std::string_view text) {
       line.remove_suffix(1); // (Windows line endings, as git may check a file out there)
     text.remove_prefix(end == std::string_view::npos ? text.size() : end + 1);
     ++lineNumber;
-    // An outline's points, read straight from the line (round 92: a line
+    // An outline's points, read straight from the line (a line
     // can hold 3,000 numbers, and splitting it into words first, the list
     // growing as it went, was most of a recipe's reading time on the DS)
     if (line.starts_with("contour ")) {
@@ -385,7 +385,7 @@ Image draw(const Recipe &recipe, int width, int height, Format format, std::stri
     for (const std::vector<Point> &contour : fill.contours) {
       // The contour's points in sample space, each once, leaving out any
       // within a quarter of a sample of the last one kept: detail finer
-      // than the picture can show, which only costs time (round 92: a
+      // than the picture can show, which only costs time (a
       // number chip has 1,600 points, drawn 15 pixels across on the DS)
       placed.clear();
       for (const Point &point : contour) {
@@ -405,7 +405,7 @@ Image draw(const Recipe &recipe, int width, int height, Format format, std::stri
     }
     std::fill(coverage.begin(), coverage.end(), 0);
     // Only the edges spanning a row are looked at (an active edge list,
-    // Foley et al. 3.6: round 92; a recipe has 1,500 points or more, and
+    // Foley et al. 3.6; a recipe has 1,500 points or more, and
     // checking every edge each row took 0.1 s a face on the DS): the edges
     // by their tops, taken in as the rows reach them, let go below them
     std::sort(edges.begin(), edges.end(), [](const Edge &a, const Edge &b) { return a.y0 < b.y0; });

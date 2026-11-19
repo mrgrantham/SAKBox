@@ -39,7 +39,7 @@ SOURCES = {
 
 # Cosmic Hex on a Nintendo 3DS (../handheld/source/cosmic_hex_on_a_handheld.cpp):
 # the agreed rules, the bots, the board in 3D on the top screen. The first
-# build (round 71): four bots playing, to watch. Needs Docker running (see
+# build: four bots playing, to watch. Needs Docker running (see
 # //tools/devkitpro); `bazel run` opens it in Azahar, and tools/fbi_install
 # installs it on a 3DS.
 devkitpro_3ds_app(

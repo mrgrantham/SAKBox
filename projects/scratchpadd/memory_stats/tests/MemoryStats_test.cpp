@@ -1,4 +1,4 @@
-// Memory statistics (round 89): with the counting allocator linked,
+// Memory statistics: with the counting allocator linked,
 // allocations counted only while something reads, put down to the slot
 // marked on the thread (as Base marks a padd's jobs), each reader its own
 // counts, and the heap's own figures where the platform gives them
@@ -98,7 +98,7 @@ TEST(MemoryStatsTest, TheHeapsOwnFigures) {
 #endif
 }
 
-// The frame arena (round 90): in a frame, allocations come from the arena
+// The frame arena: in a frame, allocations come from the arena
 // (not the heap: not counted), deleting them does nothing, OutOfFrameArena
 // goes to the heap, a full arena falls back to the heap, and reset() gives
 // the whole frame back

@@ -1,6 +1,5 @@
 // IntegerDivide.hpp - whole-number division, quotient and remainder, the
 // same on every platform, each done the fastest way the platform has
-// (round 92).
 //
 // The DS's ARM9 has no divide instruction: `a / b` there is a library call,
 // a few dozen cycles for 32 bits and a few hundred for 64. Its hardware

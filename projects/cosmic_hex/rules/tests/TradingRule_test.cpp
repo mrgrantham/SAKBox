@@ -64,7 +64,7 @@ TEST(TradingRuleTest, AcceptsWhatHelpsButNotTheNearlyWon) {
   EXPECT_EQ(tradingRuleMove(state).kind, Kind::DeclineTrade);
 }
 
-// A free build (round 72's free stations) is nothing to trade for: the next
+// A free build is nothing to trade for: the next
 // build the rule looks at is one that costs something
 TEST(TradingRuleTest, AFreeBuildIsNothingToTradeFor) {
   State state = trading();

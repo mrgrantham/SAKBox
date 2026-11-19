@@ -98,6 +98,8 @@ It leaves files in `.clang-format-ignore` alone. `clang-format -i FILE` does the
 
 ## Code conventions
 
+**Comments and READMEs say why, with the measurement**, not when: "copied a word at a time (byte by byte took up to 30 ms on a DS)", not "(round 105)". The decisions that shape the project, with what was turned down, are in [`docs/decisions.md`](docs/decisions.md).
+
 **Virtual functions use exactly one of `virtual`, `override` or `final`** (as the C++ Core Guidelines, C.128, and Google's style guide recommend):
 
 | Write | When |

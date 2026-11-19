@@ -39,7 +39,7 @@ enum Command : std::uint8_t {
 // of its orthographic projection, 0 the near plane): each a step nearer than
 // the one before, so later shapes are drawn over earlier ones. The step is
 // kOverlayDepthStep, fewer only when a frame has so many triangles that the
-// depths would leave a 16-bit number's range (round 92, the user's: one step
+// depths would leave a 16-bit number's range (the user's: one step
 // apart, the depth buffer rounded neighbours together, and see-through
 // triangles over opaque ones failed the depth test: the roll's hexagon lost
 // a slice, a square its fill).
@@ -65,7 +65,7 @@ inline double zBufferSteps(double nearPlane, double farPlane, double nearer, dou
   return depth(farther) - depth(nearer);
 }
 // The fewest steps that keep a shape in front of the one just under it, a
-// see-through one over an opaque one included (round 92: 8, the overlay's
+// see-through one over an opaque one included (8, the overlay's
 // kOverlayDepthStep, drew whole; half a step lost slices, and the board's
 // 1 to 2 steps lost tile triangles to the grid under them)
 constexpr double kSafeDepthSteps = 8;

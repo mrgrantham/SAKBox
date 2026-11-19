@@ -103,7 +103,7 @@ constexpr bool kWatchAtStart = true;
 constexpr bool kWatchAtStart = false;
 #endif
 
-// The scripted-taps builds (COSMIC_HEX_SCRIPTED_TAPS, round 102): taps the
+// The scripted-taps builds (COSMIC_HEX_SCRIPTED_TAPS): taps the
 // app makes itself at set seconds after starting, as if the stylus had, so
 // a screen reached by touch can be seen in an emulator without touching it
 // (and photographed for screenshot tests). Each: when, where on the bottom
@@ -119,11 +119,11 @@ constexpr std::array<ScriptedTap, 2> kScriptedTaps{{{12, 10, 10}, {18, 10, 10}}}
 constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 #endif
 
-// The title screen: the 3D scene (round 87), or the plain text title
+// The title screen: the 3D scene, or the plain text title
 // (false). Which one a player sees, and how it's chosen, is an open
-// question on the roadmap page (round 87); the scene for now
+// question on the roadmap page; the scene for now
 // How long the title takes to fade in from black, once the start's work
-// is done (round 105)
+// is done
 constexpr double kSecondsTitleFadeIn = 0.6;
 
 constexpr bool kTitleScene = true;
@@ -153,7 +153,7 @@ double secondsSince(Clock::time_point start) {
 constexpr double kSecondsAMove = 0.6;
 constexpr double kSecondsAnimating = 0.35;
 // A planet's number chip, once it's turned over, drops this far onto it
-// and settles in this long (round 103)
+// and settles in this long
 constexpr double kSecondsChipDrop = 0.35;
 constexpr float kChipDropHeight = 1.2f;
 
@@ -167,7 +167,7 @@ struct TableSnapshot {
   bool yourMove = false;
   std::vector<CosmicHex::Action> moves;
   std::vector<std::string> moveText;
-  // The game waits for the dice (round 87): the screen throws them with
+  // The game waits for the dice: the screen throws them with
   // this seed (a new one each roll) and sends back what they show
   bool waitingForDice = false;
   std::uint64_t diceSeed = 0;
@@ -185,12 +185,12 @@ struct StartGame {
   bool finishRound = true; // (the round played out, or the first to the target wins)
   std::array<int, CosmicHex::kMaxPlayers> seatBonus{}; // (the board's, if chosen)
   // Held until the screen lets it go (SetHold off): the board coming down
-  // from the setup first, so no move is made before it's in view (round 101)
+  // from the setup first, so no move is made before it's in view
   bool held = false;
 };
 struct TogglePause {};
 // The pause menu holds the game (true) or lets it go on (false); leaving a
-// game stops it (round 90)
+// game stops it
 struct SetHold {
   bool on;
 };
@@ -215,8 +215,8 @@ public:
       settings.board = start.board;
       settings.finishRound = start.finishRound;
       settings.seatBonus = start.seatBonus;
-      settings.physicsDice = true; // (thrown on the top screen; round 87)
-      // Each simulated game in a frame arena (round 90: the search made
+      settings.physicsDice = true; // (thrown on the top screen)
+      // Each simulated game in a frame arena (the search made
       // 59,000 allocations a second; one game holds up to about 75 KB)
       settings.frameArenaBytes = kThisPlatform.frameArenaBytes;
       settings.botArithmetic = kThisPlatform.botArithmetic;
@@ -365,7 +365,7 @@ public:
     hexRing_ = renderer_->load(pieces.hexRing.data());
     cornerRing_ = renderer_->load(pieces.cornerRing.data());
     die_ = renderer_->load(DicePieces(static_cast<float>(Dice::DiceTray::kDieSize)).die.data());
-    // The title scene (round 87): the 3D title, the rocket, the night sky
+    // The title scene: the 3D title, the rocket, the night sky
     // (fewer stars on the DS: each is two of its 2048 polygons)
     title_.emplace(*renderer_, Assets::kRocket,
                    ScratchPadd::TitleScene::Settings{.title = "COSMIC HEX",
@@ -375,7 +375,7 @@ public:
     // Everything drawn from recipes for the game ahead (the map's tile
     // faces and number chips, the bottom screen's cards and icons, the top
     // screen's faces, chips and cards), now, while the screens are dark,
-    // then the title fades in (round 105, the user's: drawn a picture a
+    // then the title fades in (the user's: drawn a picture a
     // frame during the title, up to a tenth of a second each on a DS, they
     // made the rocket stutter for its first turn). The map's faces first:
     // the top screen's are made from them where they're no smaller.
@@ -386,7 +386,7 @@ public:
     loadFaces();
     loadCardPictures();
     titleStarted_ = Clock::now();
-    // (how long the start took, shown on the -watch builds: round 105)
+    // (how long the start took, shown on the -watch builds)
     startSeconds_ = secondsSince(startedAt);
     // The build that watches by itself (COSMIC_HEX_WATCH_AT_START: the
     // -watch apps), for unattended runs in an emulator or on a console
@@ -420,7 +420,7 @@ private:
       system_->stop();
       return;
     }
-    // Holding X, R and L zoom the bottom board in and out (round 103, the
+    // Holding X, R and L zoom the bottom board in and out (the
     // user's); without X, L and R are left and right on a choosing screen
     const bool zooming = pad.isHeld(Input::Button::FaceTop);
     if (zooming && pressed.pressed(Input::Button::R)) {
@@ -472,7 +472,7 @@ private:
     // pictures, are drawn at the start: starting())
     if (flow_.screen() == ScreenFlow::Screen::Game && !picture_->ready()) {
       // Zoomed in or out: the map shows the whole board's faces scaled at
-      // once, and sharpens a face a frame (round 105)
+      // once, and sharpens a face a frame
       auto timing = profile_.time(kProfileBottom);
       picture_->prepare();
       bottomDirty_ = true;
@@ -491,7 +491,7 @@ private:
       push([this] { frame(); });
       return;
     }
-    // (L and R no longer turn the 3D board: round 103, the user's)
+    // (L and R don't turn the 3D board: the user's choice)
     if (screen == ScreenFlow::Screen::Setup) {
       drawSetup();
     } else if (kThisPlatform.holdStillFrames && topIsStill()) {
@@ -499,7 +499,7 @@ private:
       // DS's 3D hardware show the last frame again, which it does by itself
       // from what it was last sent (GBATEK: the rendering engine draws its
       // polygon memory every frame; only a new flush changes it). The time
-      // goes to the bots' thread while this waits (round 92: on a DS,
+      // goes to the bots' thread while this waits (on a DS,
       // drawing an unchanged board each frame left them 4% of the CPU)
       auto timing = profile_.time(kProfileWait);
       ConsoleScreens::waitForTheRefresh();
@@ -539,7 +539,7 @@ private:
     }
   }
 
-  // Memory (round 89: measuring before optimising, Gregory 10.9): with the
+  // Memory (measuring before optimising, Gregory 10.9): with the
   // counting allocator in the build, every 2 seconds the heap and the
   // allocations a second, logged (a debug build's log) and, in the -watch
   // builds, shown on the top screen
@@ -573,12 +573,12 @@ private:
     memoryBusiest_ = busiest;
   }
 
-  // The dice (round 87): when the game waits for them, they're thrown into
+  // The dice: when the game waits for them, they're thrown into
   // the glass container (DiceTray), stepped once a frame until they settle,
   // shown for a moment, their faces sent to the table, and the container
   // pulled off the screen
   // Whether the dice wait for you to throw them: your turn's roll, when
-  // you're playing (round 104, the user's: never thrown for you)
+  // you're playing (the user's: never thrown for you)
   bool yourRollWaits(const TableSnapshot &snapshot) const {
     return mode_ == Mode::Playing && snapshot.waitingForDice && snapshot.state.turn == 0 &&
            snapshot.diceSeed != thrownSeed_;
@@ -586,7 +586,7 @@ private:
 
   void throwDice() {
     // Yours when you say (Roll, or A); a bot's once its turn's banner has
-    // gone (round 104, the user's)
+    // gone (the user's)
     const bool ready =
         latest_ && (yourRollWaits(*latest_) ? rollAsked_ : !banner_.showing(gameClock_.seconds()));
     if (dice_ == DiceStage::Idle && latest_ && latest_->waitingForDice &&
@@ -663,7 +663,7 @@ private:
           {.shading = Scene::Material::Shading::Lit});
     }
     // Once they've settled, the roll in big words in the middle of the
-    // screen on a hexagon (round 90, the user's), going with the glass as
+    // screen on a hexagon (the user's), going with the glass as
     // it's pulled away (its middle, wherever the glass has got to)
     if (dice_ == DiceStage::Rolling)
       return;
@@ -677,17 +677,17 @@ private:
     std::snprintf(total, sizeof total, "%d", first + second);
     std::snprintf(pair, sizeof pair, "%d + %d", first, second);
     Scene::Overlay &overlay = renderer_->overlay();
-    // (round 96, the user's: a little smaller, so the words sit well inside)
+    // (the user's: a little smaller, so the words sit well inside)
     const float big = kTopWidth >= 400 ? 4 : 3; // (the 3DS's wider screen: bigger)
     const float small = kTopWidth >= 400 ? 1.5f : 1;
     const float radius = kTopWidth >= 400 ? 50.0f : 42.0f;
     const float x = (*middle)[0], y = (*middle)[1];
     // Both solid: a see-through hexagon's six triangles were blended twice
-    // along the edges they share, which showed as dark lines (round 96)
+    // along the edges they share, which showed as dark lines
     overlay.hexagon(x, y, radius + 3, {255, 214, 90, 255}); // (an amber edge)
     overlay.hexagon(x, y, radius, {12, 18, 30, 255});
     // The total over the two dice, the two lines together centred on the
-    // hexagon by their letters' own pixels (Overlay::textCentred; round 96)
+    // hexagon by their letters' own pixels (Overlay::textCentred)
     const auto totalInk = Scene::Overlay::inkOf(total, big),
                pairInk = Scene::Overlay::inkOf(pair, small);
     constexpr float kGap = 6;
@@ -698,7 +698,7 @@ private:
 
   // The board's light: the game's (a lamp above and to one side, toon
   // bands), or, `flat` of the way to it, bright and even (the setup's: the
-  // board seen from above looks like the flat map; round 90, the user's)
+  // board seen from above looks like the flat map, the user's)
   static Scene::Environment boardEnvironment(float flat = 0) {
     const auto mix = [&](float game, float even) { return game + (even - game) * flat; };
     Scene::Environment environment;
@@ -724,7 +724,7 @@ private:
   // The game's board (or none yet), with the dice, the words over it and the
   // selection
   void drawBoard(const State *shown) {
-    // (coming down from above at the start of a game: round 90, the user's)
+    // (coming down from above at the start of a game: the user's idea)
     const float down = descent();
     if (down >= 1 && descentStarted_) {
       descentStarted_.reset();
@@ -769,7 +769,7 @@ private:
     profile_.add(kProfileOverlay, spent(times.overlay));
   }
 
-  // The setup's board, still (round 90, the user's: turning didn't help); on
+  // The setup's board, still (the user's: turning didn't help); on
   // a change of board, the old one slides out and the new one in, on the
   // dice's curve (slideAcross), the way the arrow pointed
   void drawSetup() {
@@ -799,8 +799,8 @@ private:
       drawGaps(preview_, after);
       drawPieces(preview_, after);
     }
-    // The board's name over it, and anything to know about it (round 92,
-    // the user's: the four-cluster boards' longer games)
+    // The board's name over it, and anything to know about it (// the user's: the four-cluster
+    // boards' longer games)
     Scene::Overlay &overlay = renderer_->overlay();
     overlay.text(4, 4, menu_.boardName(), {226, 232, 244});
     if (!menu_.boardNote().empty())
@@ -812,7 +812,7 @@ private:
     }
   }
 
-  // A dim, see-through grey in the gaps between the tiles (round 80: dimmer),
+  // A dim, see-through grey in the gaps between the tiles (dimmer),
   // made when a board is first drawn (another game, or the setup's choice)
   void drawGaps(const State &state, const Scene::Transform &placement) {
     if (const Scene::Mesh gaps = gapsFor(state))
@@ -857,8 +857,8 @@ private:
       const auto turn = motion_.planetTurn(i, t);
       drawTile(state.planets[i].hex, turn, CosmicHex::Art::Face::PlanetFaceDown,
                faceOf(state.planets[i]));
-      // its number chip (round 87), once it's lying face up; one just
-      // turned over drops onto it from above and settles (round 103: a
+      // its number chip, once it's lying face up; one just
+      // turned over drops onto it from above and settles (a
       // short bounce on a curve, the same every time)
       const int number = chipOf(state.planets[i]);
       const Scene::Texture chip = chips_[static_cast<std::size_t>(number)];
@@ -906,7 +906,7 @@ private:
       return;
     const State &state = latest_->state;
     char line[64];
-    // Each player's points as a row of dashes (round 96), the turn's row
+    // Each player's points as a row of dashes, the turn's row
     // outlined
     for (const PointsBars::Bar &bar : PointsBars::of(state, kTopWidth))
       overlay.rectangle(bar.x, bar.y, bar.width, bar.height, bar.colour);
@@ -950,7 +950,7 @@ private:
     }
   }
 
-  // The top corners (round 101, the user's): the round top left, in a
+  // The top corners (the user's): the round top left, in a
   // turquoise hexagon with ROUND under it (calmer than the roll's amber: it's
   // always there), and the badges top right, towards the next point (3 make
   // one at once), the player's own when playing, the turn's when watching
@@ -994,7 +994,7 @@ private:
     float x, y;
   };
   PilePlace pilePlace(int r) const {
-    // Five piles across with a little room between (round 103), their
+    // Five piles across with a little room between, their
     // bottoms just above the screen's edge
     const float k = static_cast<float>(kTopWidth) / 256.0f;
     const float gap = 6 * k, w = static_cast<float>(resourceWidth_);
@@ -1008,7 +1008,7 @@ private:
     return ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseInOut, since / 0.25f);
   }
 
-  // Show resources (round 102): your resources as piles along the bottom
+  // Show resources: your resources as piles along the bottom
   // of the top screen, a card for each you hold (5 at most), each under
   // the last showing its band; your action cards across the top half; each
   // card easing in on its own, the piles from below, the cards from above
@@ -1082,7 +1082,7 @@ private:
       const float in = cardArrived(order - 1);
       const float front = place.y + (1 - in) * (static_cast<float>(kTopHeight) - place.y + 4);
       // The title in the front card's band, dark on a light band (as the
-      // cards are drawn); faint when there are none (round 104: it was
+      // cards are drawn); faint when there are none (it was
       // on the card at the back, too high)
       const Scene::Colour band = resourceBands_[static_cast<std::size_t>(r)];
       const float light = 0.2126f * band.r + 0.7152f * band.g + 0.0722f * band.b;
@@ -1093,7 +1093,7 @@ private:
           middle,
           front + (CosmicHex::Art::kCardTitle.y + CosmicHex::Art::kCardTitle.height / 2) * u,
           CosmicHex::Art::wordsOf(cardOf(static_cast<CosmicHex::Resource>(r))).shortTitle, ink);
-      // Past five, how many in a badge centred above the pile (round 103)
+      // Past five, how many in a badge centred above the pile
       if (held > 5) {
         const std::string count = std::to_string(held);
         const float bw = 14 * k, bh = 10 * k, by = top - 13 * k;
@@ -1384,9 +1384,9 @@ private:
       if (!latest_)
         return;
       // (the map drawn when the game changes, not again each frame of the
-      // fade: round 92)
+      // fade)
       // A choosing screen in the board's place, or the board with its
-      // buttons drawn straight onto it (no copy of the map: round 105)
+      // buttons drawn straight onto it (no copy of the map)
       if (bottomScreen_->coversBoard()) {
         bottomScreen_->draw(*bottomCanvas_);
         drawn = bottomCanvas_->pixels();
@@ -1402,7 +1402,7 @@ private:
           for (const CosmicHex::Corner &corner : bottomScreen_->placingCorners())
             marks.corners.push_back(corner);
           // The map under the buttons, where they were and are, drawn
-          // again, so they're drawn over it once (round 106: the map's
+          // again, so they're drawn over it once (the map's
           // draw changes only what's changed)
           for (const BoardPicture::Area &area : overBoardAreas_)
             picture_->redrawNext(area);
@@ -1425,7 +1425,7 @@ private:
     // menu's picture (menuPicture_, not drawn again in a game) and the map,
     // mixed as they go to the screen, in whole numbers (no floating point
     // and no buffers of their own: the DS has neither the hardware nor the
-    // memory; round 92)
+    // memory)
     const float down = descent();
     const std::vector<Scene::Colour> *from = nullptr;
     int weight = 256; // (of the map, out of 256)
@@ -1449,7 +1449,7 @@ private:
     // A pixel's colour on its way to the screen: the picture's, or mid-fade
     // the menu's moved `weight` / 256 of the way to it. (Plain arithmetic on
     // the bytes: as a lambda a pixel this took 120 ms a frame on the DS,
-    // the copy alone 2 to 6; round 92)
+    // the copy alone 2 to 6)
     const Scene::Colour *to = pixels.data();
     const Scene::Colour *mixFrom = from ? from->data() : nullptr;
     // (the map shown again: only its rows that changed; else all of it)
@@ -1487,12 +1487,12 @@ private:
   std::optional<Scene::Renderer> renderer_;
   // Each tile face (Art.hpp) drawn into a texture from its recipe (kFaceSize a side),
   // once, when the game starts
-  // The cards' pictures for the top screen (ScreenPictures, round 102): each
+  // The cards' pictures for the top screen (ScreenPictures): each
   // card's drawing down to its picture's foot, no words (titles are the
   // overlay's, sharp), cardWidth_ across; once, as the DS hands out its
   // texture memory once (32 wide there: 2 KB a card)
   void loadCardPictures() {
-    // Resources bigger (round 103, the user's: room for their titles, and
+    // Resources bigger (the user's: room for their titles, and
     // the cards under the top one easy to see), action cards smaller: on
     // the DS 44 and 32 pixels wide, 8 and 2 KB each, all of them fitting
     // beside the tile faces in the 128 KB the textures share
@@ -1529,7 +1529,7 @@ private:
     for (int i = 0; i < CosmicHex::Art::kFaces; ++i) {
       const auto face = static_cast<CosmicHex::Art::Face>(i);
       // The map's, shrunk, when it's no smaller (the DS: 35 pixels to 32,
-      // round 105: half the start's drawing); else from its recipe
+      // Half the start's drawing); else from its recipe
       const std::vector<Scene::Colour> pixels =
           picture_->wholeFaceSize() >= kFaceSize
               ? shrunk(picture_->wholeFace(face), picture_->wholeFaceSize(), kFaceSize)
@@ -1540,7 +1540,7 @@ private:
       faces_[static_cast<std::size_t>(i)] =
           renderer_->load(Scene::TextureImage{kFaceSize, kFaceSize, pixels});
     }
-    // and the number chips (round 87), half a face's size
+    // and the number chips, half a face's size
     constexpr int kChipSize = kFaceSize / 2;
     for (int n = CosmicHex::Art::kLowestChip; n <= CosmicHex::Art::kHighestChip; ++n) {
       const std::vector<Scene::Colour> pixels =
@@ -1559,10 +1559,10 @@ private:
   std::optional<ScratchPadd::MemoryStats::Reader> memory_;
   Clock::time_point memoryAt_;
   std::string memoryLine_, memoryBusiest_;
-  // Where each frame's time goes (round 92: the DS's stutter), shown on
+  // Where each frame's time goes (the DS's stutter), shown on
   // the -watch builds: the bottom screen, the dice, the top screen (its
   // wait for the refresh included), and that wait
-  // (and, round 105, the board's pieces, the renderer's own CPU time and
+  // (and, the board's pieces, the renderer's own CPU time and
   // its overlay's, from Scene::FrameTimes, and of the bottom screen, the
   // map and the buttons over it)
   enum : std::size_t {
@@ -1651,7 +1651,7 @@ private:
   float turn_ = 0;
   // The bottom board, its touch and what's selected on it
   std::optional<BoardPicture> picture_;
-  std::optional<BottomScreen> bottomScreen_; // (its buttons and choosing screens: round 101)
+  std::optional<BottomScreen> bottomScreen_; // (its buttons and choosing screens)
   std::optional<Canvas> bottomCanvas_;
   std::optional<Clock::time_point> feedbackSince_;
   bool rollAsked_ = false;                     // (you've said to throw the dice: Roll or A)
@@ -1678,7 +1678,7 @@ private:
   float drawnTurn_ = 0;
   std::optional<BoardPicture::Spot> drawnSelection_;
   Clock::time_point drawnAt_{};
-  // Which screen (round 90: ScreenFlow); in a game, watching or playing
+  // Which screen (ScreenFlow); in a game, watching or playing
   ScreenFlow flow_;
   enum class Mode : std::uint8_t { Watching, Playing };
   Mode mode_ = Mode::Watching;
@@ -1705,7 +1705,7 @@ private:
   int slideWay_ = 1; // (+1: right was pressed, the new board comes in from the right)
   Clock::time_point slideStarted_;
   // The gaps' meshes for the last two boards drawn: while the setup's
-  // boards slide, both show at once (round 105, the user's: the old one's
+  // boards slide, both show at once (the user's: the old one's
   // outlines went missing during the slide), each with the tiles it's for
   struct BoardGaps {
     std::vector<CosmicHex::Hex> tiles;

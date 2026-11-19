@@ -40,7 +40,7 @@ struct Options {
   std::uint64_t seed = 1;
   std::string logs; // a folder to write each game's log to, if given
   std::string csv;  // a file to write one line a game to, if given
-  // The defaults are the rules as agreed (round 70), each with a flag to
+  // The defaults are the rules as agreed, each with a flag to
   // turn it off: corners and edges, the deep-space start, the home's income
   // 2 a turn below 5 points on the home die and the home flipping at 5 (the
   // hybrid), the Imperial Tithe at 7, trading between players, finds beside
@@ -51,10 +51,10 @@ struct Options {
   bool randomFirst = false;                 // a random player goes first, rather than player 1
   std::array<int, kMaxPlayers> seatBonus{}; // extra start resources by turn order
   int empty = 5;    // empty tiles of the zone's 12 (the rest finds, shared out)
-  int outposts = 2; // alien outposts among them (round 60: two)
-  // Costs instead of the rules' (round 61: free stations, and a ship
-  // costing one more), and how common each kind of planet is (round 62)
-  // (The defaults: free stations, round 72; the ship minerals, fuel, water, round 74)
+  int outposts = 2; // alien outposts among them (two)
+  // Costs instead of the rules' (free stations, and a ship
+  // costing one more), and how common each kind of planet is
+  // (The defaults: free stations; the ship minerals, fuel, water)
   std::optional<Resources> stationCost = Resources{0, 0, 0, 0, 0};
   std::optional<Resources> shipCost = Resources{1, 0, 1, 1, 0};
   Resources kindWeights{1, 1, 1, 1, 1};
@@ -62,22 +62,22 @@ struct Options {
   // than chosen
   int exhaustHomesAt = 5;
   bool exhaustedKindRandom = false;
-  // The home's income in steps by points ({from, a turn}, round 67); empty:
+  // The home's income in steps by points ({from, a turn}); empty:
   // the catch-up rule
   std::vector<std::array<int, 2>> homeIncomeSteps;
-  bool homeDie = true;          // the home's resources rolled on the home die (round 66's hybrid)
+  bool homeDie = true;          // the home's resources rolled on the home die
   bool finishRound = true;      // play out the round when someone reaches the points to win
-  bool coreControl = false;     // Core Control's points (off: round 89)
-  bool firstRoundBoost = false; // fuel boosts in the first round (off: the agreed rule, round 90)
-  bool trading = true;          // trading between players (round 57), the bots by the trading rule
+  bool coreControl = false;     // Core Control's points (off since it was dropped)
+  bool firstRoundBoost = false; // fuel boosts in the first round (off: the agreed rule)
+  bool trading = true;          // trading between players, the bots by the trading rule
   int cartelTake = 0; // the Interstellar Cartel takes all (0), or up to this many from each
   // Each simulated game in the bots' search in a frame arena of this many
   // bytes (GameBots' Budget::frameArenaBytes; the simulator links the
-  // counting allocator, so it takes effect: 18% faster on a Mac, round 92;
+  // counting allocator, so it takes effect: 18% faster on a Mac;
   // the same games); 0: none (--arena 0)
   std::size_t frameArenaBytes = 128 * 1024;
   int strongIterations = 0;   // a stronger bot, thinking this much, at one home in turn
-  bool randomOthers = false;  // the other players choose any legal move at random (round 97)
+  bool randomOthers = false;  // the other players choose any legal move at random
   std::string variant;        // a label for the CSV
   std::string core = "seven"; // the core planets: seven (the centre and the six around it) or three
   std::vector<Hex> planets;   // a layout's planets (empty: one every third hex)
@@ -86,7 +86,7 @@ struct Options {
   std::vector<Hex> zone;      // where the finds are (empty: the usual places)
   std::string layout;         // a layout's name in the layouts file
   std::string layoutsFile = "projects/cosmic_hex/layouts/layouts.txt";
-  // The layout's finds beside its small systems (the rule from round 58; a
+  // The layout's finds beside its small systems (the agreed rule; a
   // layout without that list keeps the usual places)
   bool smallFinds = true;
   int win = 0;               // points to win (0: the rules' default)
@@ -126,7 +126,7 @@ struct GameStats {
   int cartels = 0;     // Interstellar Cartels played
   int shipyards = 0;   // Shipyard Surplus played
   int supplyDrops = 0; // Supply drops played
-  // Round 61's statistics, player by player: trades at the bank, at an alien
+  // The flow statistics, player by player: trades at the bank, at an alien
   // outpost by ship and by station, with other players (and the resources
   // that changed hands in them), and offers made
   std::array<int, kMaxPlayers> bankTrades{}, shipOutpostTrades{}, stationOutpostTrades{},

@@ -48,7 +48,7 @@ struct Vector3 {
   // (the DS's) the squares can leave its range (a vector 182 long) or lose
   // its precision (one under 1/16), so a vector outside those is first
   // divided by its largest component; within them, as in float, the squares
-  // are taken straight away (round 105: the divides, three a component,
+  // are taken straight away (the divides, three a component,
   // were most of a DS draw's time)
   Scalar length() const {
     const Scalar most = largestComponent();
@@ -85,7 +85,7 @@ struct Vector3 {
 // and the overlay; a material's own opacity is Material::alpha). A mesh with
 // a see-through vertex is drawn translucent, whatever its material.
 // Aligned as a word, so a whole colour is copied, filled or compared as one
-// (round 105: byte-aligned, the DS, which can't load a word from just any
+// (byte-aligned, the DS, which can't load a word from just any
 // byte, moved every pixel of its pictures a byte at a time)
 struct alignas(4) Colour {
   std::uint8_t r = 255, g = 255, b = 255, a = 255;

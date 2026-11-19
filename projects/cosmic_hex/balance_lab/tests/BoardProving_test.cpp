@@ -1,4 +1,4 @@
-// Proving the solver's boards (round 87): chi-squares from wins, each board
+// Proving the solver's boards: chi-squares from wins, each board
 // screened, the fair ones played deep, the rest left
 #include "../src/BoardProving.hpp"
 

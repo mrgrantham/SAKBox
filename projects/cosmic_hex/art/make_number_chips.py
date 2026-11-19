@@ -1,6 +1,6 @@
 """Writes the number chips' SVGs (number_2.svg ... number_12.svg, no 7).
 
-Round 87 (the user's): a planet's number on a round chip, with dots for how
+A planet's number on a round chip, with dots for how
 likely it is: one dot for each way two dice make it (a 2 or 12: one; a 6 or
 8: five). The digits are drawn as segments (rectangles), in the Tron look,
 so the texture recipes need no font. Run it again after changing a size or

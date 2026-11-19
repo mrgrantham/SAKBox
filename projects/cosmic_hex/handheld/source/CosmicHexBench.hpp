@@ -44,7 +44,7 @@ inline void step(State &state, SeededRandom::Generator &random, const State &res
 
 // The timings, printed (to the console the caller set up)
 inline void run() {
-  std::printf("Cosmic Hex bench (round 92)\n\n");
+  std::printf("Cosmic Hex bench\n\n");
   // A clock read
   {
     const Clock::time_point start = Clock::now();

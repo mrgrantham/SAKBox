@@ -36,13 +36,13 @@ struct BoardColours {
   static Scene::Colour ofFace(Art::Face face);
 };
 
-// The face a tile shows (round 75's designs): a planet face down or by its
+// The face a tile shows: a planet face down or by its
 // kind, a home, an exhausted home by what it gives; a find face down or what
 // was found
 Art::Face faceOf(const Planet &planet);
 Art::Face faceOf(const ZoneSite &site);
 
-// The number chip a tile shows (round 87): a turned-over planet's number, or
+// The number chip a tile shows: a turned-over planet's number, or
 // 0 for none (face down, a moon, a home not yet exhausted)
 int chipOf(const Planet &planet);
 
@@ -52,13 +52,13 @@ inline constexpr float kChipDown = 0.42f;
 inline constexpr float kChipRadius = 0.3f;
 
 // How much of a hex its tile covers, centre to corner: the rest is the grid
-// between the tiles (round 79, the user's)
+// between the tiles (the user's)
 inline constexpr float kTileInset = 0.94f;
 
 // How far the thin layers sit above their tile: the number chip, and the
 // rings marking the chosen corner or hex. Enough that the DS's coarse depth buffer keeps them
 // in front from anywhere the board's cameras see them (BoardView.hpp;
-// round 92: at 0.015 and 0.02 they could lose triangles to the tile)
+// At 0.015 and 0.02 they could lose triangles to the tile)
 inline constexpr float kChipLift = 0.04f;
 inline constexpr float kRingLift = 0.04f;
 
@@ -73,7 +73,7 @@ struct BoardPieces {
   Scene::MeshBuilder ship;       // a dart, pointing along +x
   Scene::MeshBuilder hexRing;    // a thin ring round a hex, for the blockade's chosen hex
   Scene::MeshBuilder cornerRing; // a small ring round a corner, for the touched corner
-  // A sparse, dim starfield below the board (round 72, the user's): small
+  // A sparse, dim starfield below the board (the user's): small
   // squares scattered wide, drawn unlit, the same every game
   Scene::MeshBuilder stars;
 
@@ -83,10 +83,10 @@ struct BoardPieces {
   static Scene::Transform onHex(Hex hex);
   static Scene::Transform onCorner(Corner corner);
 
-  // The gaps between the tiles (round 79, the user's): a thin ring round each
+  // The gaps between the tiles (the user's): a thin ring round each
   // tile, from its edge (kTileInset) out to its hex's, in the tiles' own
   // plane; one mesh for the board, drawn light grey and translucent. Nothing
-  // of it lies under a tile (round 92: a full hexagon a hair under each
+  // of it lies under a tile (a full hexagon a hair under each
   // tile won the DS's depth test for whole triangles of the far tiles)
   static Scene::MeshBuilder gapsBetween(const std::vector<Hex> &tiles);
 };

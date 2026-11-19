@@ -225,7 +225,7 @@ TEST(RulesTest, AHandLimitIsKeptInTheLog) {
   EXPECT_EQ(again.value_or(State{}).settings.discardOver, 7);
 }
 
-// The deck (rounds 61, 63 and 65): one of each Charter, 14 Enforcers, 2
+// The deck: one of each Charter, 14 Enforcers, 2
 // Interstellar Cartels, 2 Shipyard Surplus and 2 Supply drops
 TEST(RulesTest, TheDeck) {
   const State state = newGame(4);
@@ -632,7 +632,7 @@ TEST(RulesTest, BotsPlayAWholeGame) {
   EXPECT_EQ(replay.state, play.state());
 }
 
-// A layout names the planets (round 44's cluster boards): exactly those and
+// A layout names the planets: exactly those and
 // the homes, in board order; the zone's sites leave them out; and a layout
 // reads back from its settings line
 TEST(RulesTest, ALayoutNamesThePlanets) {
@@ -834,7 +834,7 @@ TEST(RulesTest, EveryZoneSiteHasAFind) {
     EXPECT_EQ(state.findsLeft[kind], settings.finds[kind]);
 }
 
-// The planet mix as weights (round 62): gas giants twice as common
+// The planet mix as weights: gas giants twice as common
 TEST(RulesTest, ThePlanetMixFollowsItsWeights) {
   Settings settings;
   for (Hex hex : HexGrid::ring(Hex{}, 2))
@@ -886,7 +886,7 @@ TEST(RulesTest, ACharterIsRevealedOnce) {
     EXPECT_FALSE(action.kind == Action::Kind::RevealContract);
 }
 
-// Trading between players (round 57): after the roll, before the rest of
+// Trading between players: after the roll, before the rest of
 // the turn, offers to anyone in turn or to one player; accept, decline or
 // counter; then the main part
 TEST(RulesTest, TradingBetweenPlayers) {
@@ -931,7 +931,7 @@ TEST(RulesTest, TradingBetweenPlayers) {
     EXPECT_EQ(Game::readAction(Game::writeAction(action)), action);
 }
 
-// A Supply drop (round 65): any 2 resources from the bank, one card a turn
+// A Supply drop: any 2 resources from the bank, one card a turn
 TEST(RulesTest, ASupplyDrop) {
   State state = atMain();
   state.player[0].resources = {0, 0, 0, 0, 0};
@@ -943,7 +943,7 @@ TEST(RulesTest, ASupplyDrop) {
             (Action{Kind::PlaySupplyDrop, 1, 4}));
 }
 
-// The home die (round 66, the hybrid): each of the home's resources is
+// The home die (the hybrid): each of the home's resources is
 // rolled, faces 0 to 4 a resource, the sixth the player's choice; then the
 // roll as usual
 TEST(RulesTest, TheHomeDie) {
@@ -969,7 +969,7 @@ TEST(RulesTest, TheHomeDie) {
             (Action{Kind::RollHomeDie, 5}));
 }
 
-// The home's income in steps (round 67, after Starfarers): 2 a turn below
+// The home's income in steps (after Starfarers): 2 a turn below
 // the second step's points, then 1; and the steps read back from the text
 TEST(RulesTest, HomeIncomeSteps) {
   Settings settings;
@@ -987,9 +987,9 @@ TEST(RulesTest, HomeIncomeSteps) {
   EXPECT_EQ(back->settings.homeIncomeSteps, settings.homeIncomeSteps);
 }
 
-// Finish the round (round 69): reaching the points to win plays out the
+// Finish the round: reaching the points to win plays out the
 // round; then the most points wins; a tie, the most stations and colonies
-// (round 75); still tied, a shared win
+// still tied, a shared win
 TEST(RulesTest, FinishTheRound) {
   const auto playOut = [](State &state, int tiedPlayer, int extraStations) {
     // Player 1 reaches the points to win by cashing badges

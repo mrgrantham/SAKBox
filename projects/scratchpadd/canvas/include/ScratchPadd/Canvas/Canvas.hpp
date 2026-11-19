@@ -3,7 +3,7 @@
 // there): rectangles, outlines, words in the overlay's font (centred by the
 // letters' own pixels, as Overlay::textCentred) and sprites (pictures from
 // texture recipes) blended over. Made for Cosmic Hex's bottom screen (round
-// 101) and moved here for every app (round 106).
+// 101) and moved here for every app.
 //
 //   ScratchPadd::Canvas canvas(256, 192);
 //   canvas.clear(kBackground);
@@ -26,7 +26,7 @@ public:
   Canvas(int width, int height);
   // Drawing over pixels it doesn't own (another picture's, the same size),
   // so a picture drawn by something else needn't be copied to be drawn on
-  // (round 105: the board's buttons drawn straight onto the map, not onto a
+  // (the board's buttons drawn straight onto the map, not onto a
   // copy of it, 196 KB a redraw on a DS)
   static Canvas over(std::span<Colour> pixels, int width, int height);
 

@@ -154,7 +154,7 @@ private:
   std::vector<Solver::SolvedLayout> solvedFigures_;
   bool showLayout_ = false; // a solved layout was chosen: show its tab
   bool showSolver_ = false; // (--solve) the solver's tab, once
-  // Playing the solved boards to see which are fair (round 87)
+  // Playing the solved boards to see which are fair
   BoardProving proving_;
   std::optional<BoardProving::Run> provingRun_; // the batch running for it, if one is
   int boardsToProve_ = 6;

@@ -1,4 +1,4 @@
-// The dice as drawn (round 87): every face's pips on it (21 in all), the
+// The dice as drawn: every face's pips on it (21 in all), the
 // glass container filling the screen in front of the camera, and a die
 // turned as its quaternion says
 #include <CosmicHex/Handheld/DicePieces.hpp>
@@ -71,7 +71,7 @@ TEST(DicePiecesTest, ADieTurnsAsItsQuaternion) {
   EXPECT_NEAR(t.position().y, 2, 1e-5);
 }
 
-// Round 89: where the dice show on the screen, for the roll's words: the
+// Where the dice show on the screen, for the roll's words: the
 // glass's middle in the screen's middle, its right edge to the right,
 // nothing behind the camera
 TEST(DicePiecesTest, PointsOnTheScreen) {
@@ -90,7 +90,7 @@ TEST(DicePiecesTest, PointsOnTheScreen) {
   EXPECT_FALSE(onScreen(camera, 400, 240, camera.eye * 2 - camera.target).has_value());
 }
 
-// Round 90: a slide on the dice's curve: from 0 to 1, halfway at half the
+// A slide on the dice's curve: from 0 to 1, halfway at half the
 // time, speeding up then slowing (each half the same curve), and still
 // moving at the glass's pace (one screen width in a second or two)
 TEST(DicePiecesTest, SlidesOnTheDicesCurve) {

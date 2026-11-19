@@ -349,7 +349,7 @@ TEST(OverlayTest, HexagonsAreSixTrianglesRound) {
   EXPECT_NEAR(highest, -10, 1e-3); // (a corner at the top)
 }
 
-// Text wraps at the spaces to fit a width (round 93): here 1 a letter, as
+// Text wraps at the spaces to fit a width: here 1 a letter, as
 // a fixed-width font measures it
 namespace {
 float oneALetter(std::string_view text) { return static_cast<float>(text.size()); }

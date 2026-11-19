@@ -33,7 +33,7 @@ class ConvertTest(unittest.TestCase):
         self.assertEqual(lines(text, "contour"), ["contour 16 32 64 32 64 96 16 96"])
 
     def test_rounded_rectangles(self):
-        # (round 94: rx was dropped, and the cards' corners came out square)
+        # (rx was dropped, and the cards' corners came out square)
         text = recipe('<rect width="10" height="6" rx="2" fill="#ff0000"/>')
         xs, ys = outline_points(text)
         self.assertEqual(len(xs), 68)  # 4 corners, 17 points each

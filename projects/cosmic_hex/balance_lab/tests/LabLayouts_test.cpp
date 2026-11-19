@@ -25,7 +25,7 @@ LabLayout layoutNamed(const std::string &name) {
 
 TEST(LabLayoutsTest, ReadsTheRepositorysLayouts) {
   const std::vector<LabLayout> all = readLayouts(kLayouts);
-  EXPECT_GE(all.size(), 49u); // rounds 44 and 45's, and later ones
+  EXPECT_GE(all.size(), 49u); // the cluster boards and the R and S layouts, and later ones
   const LabLayout r2 = layoutNamed("R2");
   EXPECT_EQ(r2.homes.size(), 4u);
   EXPECT_EQ(r2.planets.size(), 15u); // (the core included)

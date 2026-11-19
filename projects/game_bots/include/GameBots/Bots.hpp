@@ -43,14 +43,14 @@ namespace GameBots {
 // How long a bot may think: at most `iterations` simulated games, and it
 // stops early once `outOfTime()` says so (checked between games; the DS
 // passes a check against its timer, so a move takes a second or two).
-// Where a search's time went, when Budget::times points at one (round 92:
-// measuring the DS's bots): microseconds summed over the move, by phase
+// Where a search's time went, when Budget::times points at one (// measuring the DS's bots):
+// microseconds summed over the move, by phase
 struct SearchTimes {
   std::int64_t guessing = 0;   // G::determinize: a guess at what's hidden, and its copy
   std::int64_t descending = 0; // down the tree: selection and expansion, their move lists
   // The rollouts: moves listed and applied, timed as a whole (a clock read
   // costs about 13 microseconds on a DS: timing each move more than doubled
-  // a simulated game's time; round 92)
+  // a simulated game's time)
   std::int64_t rollingOut = 0;
   std::int64_t judging = 0; // the results (G::score or G::estimate), backed up the tree
   std::int64_t rolloutActions = 0;
@@ -84,7 +84,7 @@ struct Budget {
   int iterations = 1000;
   std::function<bool()> outOfTime;
   // Each simulated game's copies and lists from a frame arena of this many
-  // bytes, reset after each game (ScratchPadd/FrameArena.hpp; round 90: the
+  // bytes, reset after each game (ScratchPadd/FrameArena.hpp: the
   // search was 59,000 allocations a second on a 3DS). It takes effect only
   // with the counting allocator linked; 0: none
   std::size_t frameArenaBytes = 0;
@@ -131,7 +131,7 @@ public:
     std::function<double(const State &, const Action &)> rolloutWeight;
     // How it scores moves while searching: in double, or in 16.16 fixed
     // point (flexmath's FlexPoint16, its divide and square root on the DS's
-    // hardware; round 92). Without floating-point hardware, as on the DS,
+    // hardware). Without floating-point hardware, as on the DS,
     // each double score is a log, a square root and two divisions in
     // software. The two can choose differently when scores are close.
     enum class Arithmetic : std::uint8_t { Double, FixedPoint };
@@ -309,7 +309,7 @@ private:
     detail::Stopwatch judging(times ? &times->judging : nullptr);
 
     // Each move gets the result for the player who made it: worked out once
-    // a player (it's the same at every move of theirs; round 92: an
+    // a player (it's the same at every move of theirs: an
     // estimate adds up every player's points, and was asked once a move)
     std::array<double, kResultsKept> results{};
     std::array<bool, kResultsKept> known{};

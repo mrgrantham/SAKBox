@@ -40,7 +40,7 @@ public:
   static float lineHeight(float scale = 1);
   // Where a text's letters' own pixels are, from its top left, at `scale`:
   // narrower than textWidth and lineHeight, which count the space round
-  // the letters (round 100: numbers centred by those sat off centre)
+  // the letters (numbers centred by those sat off centre)
   struct Ink {
     float left = 0, top = 0, width = 0, height = 0;
   };

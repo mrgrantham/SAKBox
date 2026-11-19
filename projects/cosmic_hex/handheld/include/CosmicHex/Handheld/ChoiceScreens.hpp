@@ -1,7 +1,6 @@
 // ChoiceScreens.hpp - the bottom screen's choosing screens drawn on a
-// Canvas (round 101): the build screen (round 92's B: a row for each thing,
-// its cost, and why not in red), the resource picker and the player picker
-// (round 100's 1 and 2). Each says what a touch is on, so the app needn't
+// Canvas: the build screen, the resource picker and the player picker
+// Each says what a touch is on, so the app needn't
 // know their layout; sizes follow the screen (256 wide on a DS, in
 // proportion on a 3DS).
 //

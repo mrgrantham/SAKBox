@@ -90,7 +90,7 @@ TEST(TableGameTest, APersonCanOfferTrades) {
   ADD_FAILURE() << "never had anything to offer";
 }
 
-// A table's rules (round 85): the agreed rules on its board, with its play
+// A table's rules: the agreed rules on its board, with its play
 // style; every board on offer plays a game through
 TEST(TableGameTest, EveryBoardAndPlayStylePlays) {
   for (const NamedBoard &choice : boardChoices()) {
@@ -111,7 +111,7 @@ TEST(TableGameTest, EveryBoardAndPlayStylePlays) {
   }
 }
 
-// Physics dice (round 87): the game stops at each roll until the dice are
+// Physics dice: the game stops at each roll until the dice are
 // given, and plays them; a whole game goes through with dice from outside
 TEST(TableGameTest, PhysicsDiceWaitForTheThrow) {
   TableGame game(TableSettings{.botIterations = 5, .seed = 3, .physicsDice = true});

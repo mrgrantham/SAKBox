@@ -1,5 +1,4 @@
-// StartMenu.hpp - the game's settings (round 87's layout C; since round 90
-// its own screen, after the title's Play): on the touch screen as buttons,
+// StartMenu.hpp - the game's settings: on the touch screen as buttons,
 // worked by touch or by the console's buttons. Rows, top to bottom:
 //
 //   Players  < 4 >                 4: you and three bots; 3: you and two
@@ -81,7 +80,7 @@ private:
   std::vector<NamedBoard> boards_;
   std::size_t board_ = 0;
   bool finishRound_ = true;
-  bool seatBonus_ = false; // (off unless chosen: round 89)
+  bool seatBonus_ = false; // (off unless chosen)
   Row focus_ = Row::Players;
   bool back_ = false;     // (the last row's choice)
   bool watching_ = false; // (Mode)

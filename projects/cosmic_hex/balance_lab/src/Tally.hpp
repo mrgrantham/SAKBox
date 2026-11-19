@@ -27,7 +27,7 @@ struct Tally {
                                                                "Badges",   "Charters", "Embargo"};
   std::array<double, 6> winnerPoints{};
   std::array<int, 6> winsWithSource{};
-  // Round 61's statistics, added up: the games' (lead changes, the round
+  // The flow statistics, added up: the games' (lead changes, the round
   // the winner took the lead for good, the most they were behind, 7s and
   // 7s that cost someone resources, cards played), and trades, the
   // winners' and everyone's (kTradeNames' order)

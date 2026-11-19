@@ -1,11 +1,11 @@
-// LayoutSolver.hpp - boards made to order (rounds 56 to 60, the user's): a
+// LayoutSolver.hpp - boards made to order (the user's): a
 // search for Cosmic Hex layouts that meet the constraints you set, ranked by
 // how equal every home's access to planets is, to choose from and simulate.
 //
 // What's kept and how much of it (homes' places, how many singles, pairs and
 // threes, symmetry, clusters never touching, how many finds) can each be
 // fixed, or left free between a floor and a ceiling (Bound). The rest are a
-// menu of constraint kinds (round 58: a menu first, a rule language much
+// menu of constraint kinds (a menu first, a rule language much
 // later). Distances are a ship's moves along edges from the home's corners,
 // as the game is played.
 //
@@ -43,9 +43,9 @@ enum class HomePlaces : std::uint8_t { Edge, Corners, Three };
 struct SolverSpec {
   HomePlaces homes = HomePlaces::Edge;
   // How many clusters of each size (1, 2, 3 and 4 planets), besides the
-  // core; a four is a compact diamond (round 89, the user's: to try)
+  // core; a four is a compact diamond (the user's: to try)
   Bound singles = Bound{2, 6}, pairs = Bound{1, 4}, threes = Bound{1, 2}, fours = Bound{0, 0};
-  // A lone planet at the centre. Off (round 89, the user's): the centre is
+  // A lone planet at the centre. Off (the user's): the centre is
   // like any other hex, free for any cluster to cover, or to stay empty
   bool core = false;
   // The same seen from every home: turned half round with four homes, a
@@ -68,7 +68,7 @@ struct SolverSpec {
   int reachMoves = 4;
   Bound planetsInReach = Bound::atLeast(0);
   // Every home has the same number of planets within each distance up to
-  // this many ship moves (0: off). Round 83's finding: of the solver's
+  // this many ship moves (0: off). What the simulations found: of the solver's
   // boards, the one with equal access overall but a planet fewer within 2
   // moves for two homes was the most unfair (those homes won 20% to the
   // others' 29%); every fair board had equal counts near every home

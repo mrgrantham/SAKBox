@@ -1,7 +1,7 @@
 // divide32 and divide64 give C++'s / and % (rounding towards zero), for
 // every sign and at the ends of each range. (This checks the portable
 // version; the DS's, on its hardware divider, is checked in melonDS by the
-// recipe drawings hashing the same: round 92.)
+// recipe drawings hashing the same.)
 #include <IntegerDivide.hpp>
 
 #include <gtest/gtest.h>

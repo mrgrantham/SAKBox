@@ -1,7 +1,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 # Things moving over time, the same on every platform: curves, tracks,
-# scripts of steps, and fixed steps for physics (Motion.hpp). Round 97.
+# scripts of steps, and fixed steps for physics (Motion.hpp).
 cc_library(
     name = "motion",
     srcs = ["src/Motion.cpp"],

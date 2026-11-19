@@ -1,4 +1,4 @@
-// The turn banner (round 101): the band fading in and out, the words in
+// The turn banner: the band fading in and out, the words in
 // from the right to the middle, held, then off to the left; over after its
 // time, and not before it starts
 #include <CosmicHex/Handheld/TurnBanner.hpp>

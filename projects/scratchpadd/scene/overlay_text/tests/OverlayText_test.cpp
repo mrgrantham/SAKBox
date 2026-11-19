@@ -76,7 +76,7 @@ TEST(OverlayTextTest, LettersAreRectanglesOnWholePoints) {
 
 // A text's ink (its letters' own pixels) sits inside its width and line
 // height; centring by it puts the letters' middle where it was asked
-// (round 100: centring by the width left numbers off centre)
+// (centring by the width left numbers off centre)
 TEST(OverlayTextTest, CentredByItsInk) {
   const Overlay::Ink ink = Overlay::inkOf("7", 3);
   EXPECT_GT(ink.width, 0);
@@ -97,7 +97,7 @@ TEST(OverlayTextTest, CentredByItsInk) {
   EXPECT_EQ(Overlay::inkOf("").width, 0);
 }
 
-// The whole-number walk (fontRectangles, round 105) makes exactly what
+// The whole-number walk (fontRectangles) makes exactly what
 // stb_easy_font_print does, for every character it has, over two lines
 TEST(OverlayTextTest, FontRectanglesMatchStbEasyFont) {
   std::string all;

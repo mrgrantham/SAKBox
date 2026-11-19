@@ -1,5 +1,5 @@
 // ButtonMenu.hpp - a column of buttons on the touch screen, worked by touch
-// or by the buttons (round 90): the title's Play and Quit, and the pause
+// or by the buttons: the title's Play and Quit, and the pause
 // menu's Resume, Restart, Title and Quit. Up and down move between them, A
 // chooses, a touch on one chooses it. MenuPicture draws it.
 //

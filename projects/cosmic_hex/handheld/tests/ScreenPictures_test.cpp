@@ -1,4 +1,4 @@
-// Pictures on the top screen (round 102): a square placed in front of the
+// Pictures on the top screen: a square placed in front of the
 // camera covers exactly the pixels asked for, from the game's own cameras;
 // pictures padded to the DS's texture sizes keep their pixels
 #include <CosmicHex/Handheld/BoardView.hpp>

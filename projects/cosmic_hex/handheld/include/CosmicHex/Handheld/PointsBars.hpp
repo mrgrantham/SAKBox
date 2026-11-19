@@ -1,5 +1,5 @@
 // PointsBars.hpp - each player's points at the top of the top screen
-// (rounds 92 to 96, the user's design): a thin row for each player, a dash
+// (the user's design): a thin row for each player, a dash
 // in their colour for each point and a grey one for each still to win,
 // centred, with no background; the row of the player whose turn it is
 // outlined in a colour none of the players have. Only rectangles, so every

@@ -459,7 +459,7 @@ protected:
    * changes by more than this in a sweep (0: never, every sweep is made).
    * The book's resolver works the same way: it resolves the contact needing
    * the largest change until that's below velocityEpsilon (section 15.3).
-   * Round 106: the Cosmic Hex dice on the DS, two boxes at rest in a glass
+   * The Cosmic Hex dice on the DS, two boxes at rest in a glass
    * box, spent most of their time making sweeps that changed nothing.
    */
   real sweepTolerance = 0;

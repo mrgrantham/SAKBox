@@ -91,7 +91,7 @@ Settings settingsFor(const Options &options) {
   settings.homeHexes = options.homes;
   settings.moons = options.moons;
   settings.zoneHexes = options.zone;
-  // Corners and edges: ships move 2 edges, 1 more for fuel (round 50),
+  // Corners and edges: ships move 2 edges, 1 more for fuel,
   // unless --move and --boost say otherwise
   settings.corners = options.edges;
   settings.deepSpaceStart = options.deepSpace;
@@ -112,7 +112,7 @@ Settings settingsFor(const Options &options) {
   if (!options.charters.empty())
     settings.charters = options.charters;
   else if (options.players == 3)
-    settings.winPoints = kThreePlayerWinPoints; // (the agreed rules' for three; round 85)
+    settings.winPoints = kThreePlayerWinPoints; // (the agreed rules' for three)
   settings.catchUpBelow = options.catchUpBelow;
   settings.catchUpGap = options.catchUpGap;
   settings.discardOver = options.discardOver;
@@ -381,7 +381,7 @@ GameResult playGame(const Options &options, int game, const Bots &bots) {
             state, random,
             {.iterations = options.iterations, .frameArenaBytes = options.frameArenaBytes});
       });
-  // (round 97: does thinking beat chance? the others pick any legal move)
+  // (does thinking beat chance? the others pick any legal move)
   if (options.randomOthers)
     for (auto &player : players)
       player = [&](const State &state) {
@@ -421,7 +421,7 @@ GameResult playGame(const Options &options, int game, const Bots &bots) {
     GameBots::playMatch<Game>(play, players, dealer, 1);
 
   const State &end = play.state();
-  // A shared win (round 75) counted as one of its winners, drawn at random,
+  // A shared win counted as one of its winners, drawn at random,
   // so the seats' win shares stay fair (the rules name the first in turn
   // order)
   result.winner = end.winners.size() > 1
@@ -448,7 +448,7 @@ std::string csvHeader() {
          "points3,points4,"
          "stations,colonies,core,badges,contracts,blockades,thefts,denied,caughtup,discarded,"
          "embargo,enforcers,styles,on_singles,on_pairs,on_threes,badges_all,"
-         // (round 61) the game's, then the winner's and everyone's together
+         // the game's, then the winner's and everyone's together
          "cartels,lead_changes,lead_taken_round,comeback,sevens,sevens_discarding,"
          "w_bank,w_ship_outpost,w_station_outpost,w_player_trades,w_traded,w_offers,"
          "all_bank,all_ship_outpost,all_station_outpost,all_player_trades,all_traded,all_offers,"

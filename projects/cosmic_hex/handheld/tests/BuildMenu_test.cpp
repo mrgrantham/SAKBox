@@ -1,4 +1,4 @@
-// The build screen's rows (round 92's design B): red with why, or where it
+// The build screen's rows: red with why, or where it
 // goes, every answer from the rules' own legal moves
 #include <CosmicHex/Handheld/BuildMenu.hpp>
 

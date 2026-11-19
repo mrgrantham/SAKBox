@@ -2,7 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 # A picture drawn in pixels by the CPU, for a screen with no 3D of its own (a
 # console's bottom screen): rectangles, outlines, words in the overlay's
-# font, sprites blended over (Canvas.hpp). From Cosmic Hex, round 106.
+# font, sprites blended over (Canvas.hpp). From Cosmic Hex.
 cc_library(
     name = "canvas",
     srcs = ["src/Canvas.cpp"],

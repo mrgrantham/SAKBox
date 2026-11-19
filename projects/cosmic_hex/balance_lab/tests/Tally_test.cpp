@@ -64,7 +64,7 @@ TEST(TallyTest, AddsUpWinnersPointsBySource) {
   EXPECT_EQ(tally.winsWithSource, (std::array<int, 6>{2, 2, 1, 2, 1, 0}));
 }
 
-// Round 61's statistics added up: the game's, and trades, the winner's and
+// The flow statistics added up: the game's, and trades, the winner's and
 // everyone's
 TEST(TallyTest, AddsUpTheGamesFlowAndTrades) {
   Tally tally;

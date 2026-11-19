@@ -11,7 +11,7 @@
 namespace CosmicHex::Handheld {
 
 namespace {
-constexpr Scene::Colour kDie{212, 214, 218}; // (round 89: a little greyer)
+constexpr Scene::Colour kDie{212, 214, 218}; // (a little greyer)
 constexpr float kRound = 0.12f;              // how much of a corner is cut off, rounding it
 constexpr Scene::Colour kPip{30, 30, 40};
 constexpr float kPipHalf = 0.075f;  // a pip's half-width
@@ -37,7 +37,7 @@ std::vector<std::pair<int, int>> pipsOf(int number) {
 } // namespace
 
 DicePieces::DicePieces(float size) {
-  // A chamfered cube (round 89: corners that aren't sharp): each face a
+  // A chamfered cube (corners that aren't sharp): each face a
   // smaller square, a bevel along each edge, a triangle at each corner; 44
   // triangles, `size` across
   const float h = 0.5f * size, in = h - kRound * size;

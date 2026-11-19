@@ -1,8 +1,8 @@
 // BoardProving.hpp - the lab proving the layout solver's boards by playing
-// them (round 87, the user's: equal access isn't enough, only games tell a
+// them (the user's: equal access isn't enough, only games tell a
 // fair board). Each board queued plays kScreenGames; one fair by both turn
 // position and home (chi-square under the 5% line) then plays kDeepGames
-// more, on fresh seeds, since a few hundred games flatter a board (round 84).
+// more, on fresh seeds, since a few hundred games flatter a board.
 //
 //   BoardProving proving;
 //   proving.start(6);                         // the solver's first six

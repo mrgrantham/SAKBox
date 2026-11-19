@@ -1,4 +1,4 @@
-// ActivityPadd with the counting allocator linked (round 89): allocations a
+// ActivityPadd with the counting allocator linked: allocations a
 // second in all and for each padd, put down to the padd whose job made
 // them, and the heap in use where the platform says.
 #include <ScratchPadd/ActivityPadd.hpp>

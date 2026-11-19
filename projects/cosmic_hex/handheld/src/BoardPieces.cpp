@@ -106,8 +106,8 @@ BoardPieces::BoardPieces() {
                  onTable({b.x * 0.86f, b.y * 0.86f}, kRingLift),
                  onTable({a.x * 0.86f, a.y * 0.86f}, kRingLift));
   }
-  // A small hexagonal ring round a corner, at the rings' height (round 93,
-  // the user's: a touch marks the corner, not the tile)
+  // A small hexagonal ring round a corner, at the rings' height (// the user's: a touch marks the
+  // corner, not the tile)
   {
     constexpr float kOuter = 0.24f, kInner = 0.15f;
     const auto corners = kLayout.corners(Hex{});
@@ -219,7 +219,7 @@ namespace {
 // Each hex's centre and its two corners (0 and 1, CornersAndEdges.hpp) on
 // the table, worked out once and kept: the layout is in floats, which the
 // DS has no hardware for, and every tile, chip, station and ship asks each
-// frame (round 105). A board's radius is 4; the rest is for the corners,
+// frame. A board's radius is 4; the rest is for the corners,
 // gaps and rings just past its edge.
 constexpr int kKeptRadius = 6;
 constexpr int kKeptSide = 2 * kKeptRadius + 1;

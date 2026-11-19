@@ -1,4 +1,4 @@
-// balance_lab: Cosmic Hex's balance lab (roadmap round 35): choose a
+// balance_lab: Cosmic Hex's balance lab : choose a
 // layout and the rules' settings, run a batch of bot games (eight at once,
 // one per SimulationPadd), and watch the results fill in as charts: wins by
 // turn position and by home against a fair share, how long games last, and

@@ -49,7 +49,7 @@ devkitpro_nds_app(
 )
 
 # The bots' parts timed on their own (COSMIC_HEX_BENCH: CosmicHexBench.hpp),
-# a table on the screen to compare melonDS with a DS (round 92: the
+# a table on the screen to compare melonDS with a DS (the
 # emulator showed the bots about five times as fast as a DS)
 devkitpro_nds_app(
     name = "cosmic-hex-ds-bench",
@@ -73,7 +73,7 @@ devkitpro_nds_app(
 
 # The watching build with scripted taps (COSMIC_HEX_SCRIPTED_TAPS): the app
 # taps its own bottom screen at set times (Show resources, open and closed),
-# so screens reached by touch can be seen in melonDS (round 102)
+# so screens reached by touch can be seen in melonDS
 devkitpro_nds_app(
     name = "cosmic-hex-ds-taps",
     tags = ["blender"],  # (the title screen's rocket: tools/assets)

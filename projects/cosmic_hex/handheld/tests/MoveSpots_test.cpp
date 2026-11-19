@@ -1,6 +1,6 @@
 // Where moves happen: a ship's move at its corner and where it goes, a
 // station's build at its corner, the blockade on its planet; a touch (always
-// on a corner: round 93) finds the moves there, or the blockade's on its hex
+// on a corner) finds the moves there, or the blockade's on its hex
 #include <CosmicHex/Handheld/MoveSpots.hpp>
 
 #include <gtest/gtest.h>

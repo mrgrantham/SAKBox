@@ -23,7 +23,7 @@ namespace TR = ScratchPadd::TextureRecipe;
 // 9 x sqrt(3) hex sizes wide and 14 tall (with a little margin)
 constexpr float kBoardWide = 9 * 1.7320508f + 0.4f, kBoardTall = 14.4f;
 
-// `over` on `under` by over's alpha. Without dividing (round 92): the DS's
+// `over` on `under` by over's alpha. Without dividing: the DS's
 // ARM9 has no divide instruction, so each "/ 255" was a library call, three
 // a pixel, and blending the tiles' faces took most of a redraw's 125 to 260
 // ms. x / 255 is (x + 1 + (x >> 8)) >> 8 for 0 <= x <= 255 * 255, exactly
@@ -269,9 +269,8 @@ void BoardPicture::fillRect(float x, float y, float w, float h, Colour colour) {
 }
 
 namespace {
-// A triangle's corners in whole numbers, 1/256ths of a pixel (round 105:
-// in floats, which the DS hasn't hardware for, each ship's pixels took
-// about a millisecond)
+// A triangle's corners in whole numbers, 1/256ths of a pixel (// in floats, which the DS hasn't
+// hardware for, each ship's pixels took about a millisecond)
 struct FixedPoint2 {
   std::int64_t x, y;
 };
@@ -427,7 +426,7 @@ void BoardPicture::drawPiece(const Piece &piece) {
     break;
   }
   case Piece::Kind::Chip: {
-    // over the face's lower part (round 87)
+    // over the face's lower part
     HexGrid::Point c = where(hex);
     c.y += kChipDown * s;
     const auto n = static_cast<std::size_t>(piece.look[0]);
@@ -482,7 +481,7 @@ void BoardPicture::drawPiece(const Piece &piece) {
 
 void BoardPicture::drawArea(Area area) {
   clip_ = area;
-  // Space, then the grid (round 81: every hex outlined, to plan paths along
+  // Space, then the grid (every hex outlined, to plan paths along
   // the edges, in empty space too), then each piece over it, in order
   for (int y = area.y; y < area.y + area.height; ++y)
     std::fill_n(pixels_.begin() + static_cast<std::ptrdiff_t>(indexOf(area.x, y, width_)),

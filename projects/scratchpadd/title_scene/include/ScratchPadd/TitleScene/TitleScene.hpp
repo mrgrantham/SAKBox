@@ -1,4 +1,4 @@
-// TitleScene.hpp - a game's title screen in 3D (Cosmic Hex's round 87, for
+// TitleScene.hpp - a game's title screen in 3D (made for Cosmic Hex, for
 // any game): its title in blocky letters in front (stb_easy_font's strokes
 // made into boxes, outlined in a bright line: the Tron look), a model turning
 // slowly behind it (a game piece on its pedestal), and a starfield all round

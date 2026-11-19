@@ -45,7 +45,7 @@ using Resources = std::array<int, kResources>;
 
 // A planet's kind; kinds 0-4 each give the resource with the same number.
 // A moon gives nothing (no resource, no number), but turning it over still
-// earns a badge, and it can hold a station (round 42; named in round 44).
+// earns a badge, and it can hold a station.
 enum class PlanetKind : std::uint8_t {
   AsteroidBelt,
   LushPlanet,
@@ -68,20 +68,20 @@ inline constexpr int kDocks = 2; // stations a planet can hold, one per player
 // ---------------------------------------------------------------------------
 // The numbers, all in one table (the design doc's defaults; the bots tune them)
 
-// The Deep-space relay Charter's id (round 63): its holder may build one
+// The Deep-space relay Charter's id: its holder may build one
 // station on a corner touching no planet and no alien outpost; the station
-// scores 1 as any does, the card nothing (round 77)
+// scores 1 as any does, the card nothing
 inline constexpr int kDeepSpaceRelay = 20;
 
 struct Settings {
-  int winPoints = 12; // (10 until round 41)
-  // Finish the round (round 69, for turn order): reaching winPoints doesn't
+  int winPoints = 12; // (10 at first)
+  // Finish the round (for turn order): reaching winPoints doesn't
   // end the game at once; the round is played out so everyone has had as
   // many turns, and the most points wins (a tie: the later in turn order,
   // who had the less time ahead). Off: the first to winPoints on their own
   // turn wins
   bool finishRound = false;
-  // Corners and edges (agreed in rounds 39 to 50; design.md): stations and
+  // Corners and edges (design.md): stations and
   // colonies on corners, each earning from every planet it touches, none on
   // a corner next to another; ships on corners, moving along edges
   // (shipMove edges, boostMove more for fuel); a planet or zone tile turns
@@ -91,28 +91,28 @@ struct Settings {
   // docked on planets, ships moving hex to hex).
   bool corners = false;
   int startShipReach = 3; // (corners) edges from the home colony a starting ship may stand
-  // (corners) The first deep-space mission (round 52, the user's idea): the
+  // (corners) The first deep-space mission (the user's idea): the
   // starting ship goes on any corner that touches no planet, anywhere on the
   // board, rather than near home; ships are still placed in reverse order,
   // so the last to play chooses first; and the finds the ship's corner
   // touches turn over, as where a move ends.
   bool deepSpaceStart = false;
-  // (corners) Fuel boosts the first round (round 89, the user's question:
+  // (corners) Fuel boosts the first round (the user's question:
   // without, a ship starting in empty space can't reach a three's centre
   // corner, 3 edges away, before the others have moved)
   bool firstRoundBoost = true;
   // The piles of planet kinds and numbers made for the board's planets
-  // (round 55): numbers in the genre's mix (2 and 12 half as common as the
+  // numbers in the genre's mix (2 and 12 half as common as the
   // others; Catan's own 18 for 18 planets), kinds shared evenly, one of
   // each for every face-down planet that isn't a moon. Off: planetTiles and
   // numbers as given, with extraTiles and extraNumbers for planets beyond.
   bool fitPiles = true;
-  // The genre's red-number rule (round 55): a 6 or 8 isn't dealt to a planet
+  // The genre's red-number rule: a 6 or 8 isn't dealt to a planet
   // next to a face-up 6 or 8 while the pile has another number
   bool redNumbersApart = true;
   // How common each kind of planet is in the pile that fits the board
   // (fitPiles), as weights: asteroid belts, lush planets, gas giants, ice
-  // moons, nebulae. Even by default; round 62 tries gas giants twice as
+  // moons, nebulae. Even by default; one test made gas giants twice as
   // common (more fuel, so ships move more).
   Resources kindWeights{1, 1, 1, 1, 1};
   int maxShips = 3;
@@ -134,7 +134,7 @@ struct Settings {
   // kinds, from the same pile)
   int moons = 0;
   // Where the deep-space zone's face-down tiles (the finds) are, if a
-  // layout names them, such as round 45's finds beside the small systems;
+  // layout names them, such as finds beside the small systems;
   // otherwise the 12 hexes 2 from the centre, or with zoneCorners the inner
   // six moved to the board's corners. Planets are left out.
   std::vector<Hex> zoneHexes;
@@ -148,12 +148,12 @@ struct Settings {
   // leader (0: off)
   int catchUpBelow = 0;
   int catchUpGap = 0;
-  // Or the home's income in steps by points (round 67, after Starfarers'
+  // Or the home's income in steps by points (after Starfarers'
   // reserve pile: 2 a turn, then 1, then none): each step is {from this
   // many points, this many a turn}, in order; the last one reached counts.
   // Set, it takes the place of catchUpBelow and catchUpGap
   std::vector<std::array<int, 2>> homeIncomeSteps;
-  // The exhausted home (rounds 60 to 62, the user's idea): on a player's
+  // The exhausted home (the user's idea): on a player's
   // first turn with exhaustHomesAt points or more, the resource they choose
   // from their home is its last: the home becomes a planet of that kind,
   // with a number drawn from exhaustedNumbers, paying every station on it
@@ -162,7 +162,7 @@ struct Settings {
   int exhaustHomesAt = 0;
   std::vector<int> exhaustedNumbers{4, 5, 9, 10};
   // Its kind drawn at random (an equal chance of each, as a die would)
-  // instead of the resource chosen (after round 62: simulated both ways)
+  // instead of the resource chosen (simulated both ways)
   bool exhaustedKindRandom = false;
   // The first player goes without their home's income on their first turn
   // (half a resource's worth of making up for going first)
@@ -173,38 +173,38 @@ struct Settings {
   // need no new moves.
   int discardOver = 0; // (named the Imperial Tithe)
   // The card deck: these Charters (ids into contracts()) and this many
-  // Enforcers. The agreed deck (round 37): 25 cards, as the genre's best-known
+  // Enforcers. The agreed deck: 25 cards, as the genre's best-known
   // game has, 14 Enforcers and 11 Charters.
   //
-  // The deck (rounds 61, 63 and 65; 23 cards, close to the genre's 25): one
+  // The deck (23 cards, close to the genre's 25): one
   // of each of three Charters (stations on 3 planets of one kind, Occupier,
   // Deep-space relay), and copies only of the cards that act by themselves:
   // 14 Enforcers, 2 Interstellar Cartels, 2 Shipyard Surplus and 2 Supply
   // drops. (A player can't reveal a Charter twice.)
-  // (round 98, the user's: stations on 3 planets of one kind, 21, in place of
+  // (the user's: stations on 3 planets of one kind, 21, in place of
   // 3 kinds, 0, which 88 to 91% of its keepers met anyway)
   std::vector<int> charters{21, 19, kDeepSpaceRelay};
   int enforcers = 14;
-  // The Interstellar Cartel (round 60, the user's idea, as the genre's
+  // The Interstellar Cartel (the user's idea, as the genre's
   // monopoly card): played in the main part of your turn (one card a turn,
   // not one bought this turn), name a resource, and every other player
   // gives you all of it, or with cartelTake up to that many each
   int cartels = 2;
   int cartelTake = 0; // (0: all of it)
-  // Shipyard Surplus (round 65, the user's idea, as the genre's road
+  // Shipyard Surplus (the user's idea, as the genre's road
   // building): played as you build a ship, a second comes free at the same
   // colony (room for both under the ship limit, or keep the card). "Under
   // budget, ahead of schedule."
   int shipyards = 2;
-  // The home die (round 66, the hybrid): each resource from the home is
+  // The home die (the hybrid): each resource from the home is
   // rolled on a six-sided die, one face for each resource and the sixth
   // "your choice", rather than chosen (and the exhausted home, if on, flips
   // as before). Off: chosen, as before
   bool homeDie = false;
-  // Supply drop (round 65, as the genre's year of plenty): any 2 resources
+  // Supply drop (as the genre's year of plenty): any 2 resources
   // from the bank
   int supplyDrops = 2;
-  // Trading between players (round 57): after the roll is dealt with
+  // Trading between players: after the roll is dealt with
   // (production, or the blockade on a 7) and before anything else in the
   // turn, the player whose turn it is may offer any resources for any
   // resources, to everyone or to one player; each in turn accepts,
@@ -217,27 +217,27 @@ struct Settings {
   int embargoEnforcers = 3;
   int embargoPoints = 2;
   // What the Deep-space relay Charter itself scores once revealed, on top
-  // of its station's 1 (round 77: nothing; round 97, the user's: 1, which
+  // of its station's 1 (nothing, the user's: 1, which
   // made it a goal players chase without tilting the seats)
   int relayPoints = 1;
-  // Imperial Dominion (round 97, the user's idea; off until tried): a bonus
+  // Imperial Dominion (the user's idea; off until tried): a bonus
   // like the Embargo, to whoever has the most colonies on other players'
   // former homes (Settings::exhaustHomesAt), at least dominionColonies;
   // it passes on overtaking. 0 points: no Dominion
   int dominionPoints = 0;
   int dominionColonies = 1;
   int coreStationsForControl = 2;
-  int coreControlPoints = 2; // (0: no Core Control at all; the agreed rules', round 89)
+  int coreControlPoints = 2; // (0: no Core Control at all; the agreed rules')
   int badgesPerPoint = 3;
   // Badges cashed in as soon as there are enough, rather than when their
-  // holder chooses (round 99, agreed: holding them back was nearly always
+  // holder chooses (agreed: holding them back was nearly always
   // the same choice, a tap to forget, and changed the bots' games by 0.3
   // rounds in 1,800; off: held until cashed, as before)
   bool autoCashBadges = true;
   int ruinsBadges = 2;
   int salvageResources = 2;
   int bankRate = 4; // give this many of one resource for 1 of another
-  // The alien outposts (the zone's alien stations; rounds 58 to 60): trade
+  // The alien outposts (the zone's alien stations): trade
   // there at alienRate for 1 with a ship on one of an outpost's corners, at
   // alienStationRate with a station on one. A station may stand by an
   // outpost though it touches no planet, but becomes a colony only if it
@@ -254,7 +254,7 @@ struct Settings {
   Resources planetTiles{3, 3, 3, 3, 3}; // how many of each kind
   std::vector<int> numbers{2, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 11, 12};
   // Nothing, salvage, ruins, alien outposts, pirate hideout (the second
-  // outpost in place of a 'nothing', round 60)
+  // outpost in place of a 'nothing')
   std::array<int, kFinds> finds{5, 2, 2, 2, 1};
   Resources shipCost{1, 0, 1, 0, 0};     // minerals, fuel
   Resources stationCost{0, 1, 0, 1, 0};  // food, water (and the ship)
@@ -383,7 +383,7 @@ struct State {
   int dominionHolder = -1; // who holds Imperial Dominion (Settings::dominionPoints), or -1
   bool cardPlayed = false; // an Enforcer played this turn (one a turn)
   int winner = -1;
-  // Everyone who shares the win (round 75: finishing the round, a tie on
+  // Everyone who shares the win (finishing the round, a tie on
   // points goes to the most stations and colonies, then is shared); the
   // winner is the first of them in turn order
   std::vector<int> winners;
@@ -423,15 +423,15 @@ struct Board {
   std::vector<Hex> homes, planets, zone; // (zone empty: the finds' usual places)
   bool operator==(const Board &) const = default;
 };
-// R3, one of the fairest layouts the simulations found (round 64), with its
+// R3, one of the fairest layouts the simulations found, with its
 // finds beside the small systems
 Board boardR3();
 
-// The rules as agreed (the design doc's, round 70), on a board. Settings'
+// The rules as agreed (the design doc's), on a board. Settings'
 // own defaults are older rules the tests are written against; this is what
 // a real game plays (the consoles), and the simulator's defaults are checked
 // to give the same (AgreedRules_test)
-// With three players the target is 10 points (round 85: games as long as
+// With three players the target is 10 points (games as long as
 // four players' at 12)
 Settings agreedRules(const Board &board, int players = 4);
 inline constexpr int kThreePlayerWinPoints = 10;
@@ -442,15 +442,15 @@ inline constexpr int kThreePlayerWinPoints = 10;
 std::optional<Board> boardFromLine(std::string_view line);
 
 // The boards a game offers for this many players, the default first: for
-// four (round 85), R3 then the others fair by turn and by home at 1,800
-// games, the four-cluster boards last (round 92: fair, games longer); for
-// three (round 87), T4 then T5, both fair at 1,800 games. Their
+// four, R3 then the others fair by turn and by home at 1,800
+// games, the four-cluster boards last (fair, games longer); for
+// three, T4 then T5, both fair at 1,800 games. Their
 // lines are the layouts file's (AgreedRules_test checks they still match)
 struct NamedBoard {
   std::string name;
   Board board;
   // Extra start resources by turn position that even the board's turn order
-  // out, offered as a choice (round 89: R3's 0,0,1,1); all 0 for none
+  // out, offered as a choice (R3's 0,0,1,1); all 0 for none
   std::array<int, kMaxPlayers> seatBonus{};
   // Something a player should know when choosing it ("" for nothing)
   std::string note;
@@ -512,7 +512,7 @@ struct Action {
 inline constexpr int kEnforcerCard = 99;
 // An Interstellar Cartel's card id (Settings::cartels)
 inline constexpr int kCartelCard = 98;
-// Shipyard Surplus's and the Supply drop's card ids (round 65)
+// Shipyard Surplus's and the Supply drop's card ids
 inline constexpr int kShipyardCard = 97;
 inline constexpr int kSupplyDropCard = 96;
 // Whether a card id is a Charter (an index into contracts())

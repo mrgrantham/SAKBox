@@ -1,5 +1,5 @@
 // TextWrap.hpp - text broken into lines that fit a width, at the spaces,
-// for anywhere text is drawn (round 93, the user's: a card's words ran off
+// for anywhere text is drawn (the user's: a card's words ran off
 // its edge). The width is measured by whatever draws it: the overlay's font
 // (Overlay::paragraph), or a picture's own.
 //

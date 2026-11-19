@@ -24,7 +24,7 @@ namespace {
 constexpr int kBoardRadius = 4;
 
 // Functions marked [[gnu::hot]] are the small ones the bots' move listing
-// calls in its loops (round 92, measured): the DS build puts them in ITCM,
+// calls in its loops (measured): the DS build puts them in ITCM,
 // its 32 KB of fast instruction memory (the Makefile's hot_in_itcm step, as
 // for Cyclone's resolver); elsewhere it's only a hint to the compiler
 // The homes: slots on the outer ring, evenly spread (players 0 and 1 face
@@ -185,7 +185,7 @@ struct CornerReach {
 
 // Ships pass anything, so which corners one can reach depends only on the
 // board's shape. For each corner, every other within kReachTabled edges,
-// nearest first (then by number): worked out once, at start (round 92: the
+// nearest first (then by number): worked out once, at start (the
 // search this replaces, with its hash map, was the bots' largest cost)
 constexpr int kReachTabled = 5; // (a move and its boost: 3 + 2; a starting ship's 3)
 const std::vector<std::vector<CornerReach>> &cornerReachTable() {
@@ -229,7 +229,7 @@ std::vector<CornerReach> cornersWithin(Corner from, int steps) {
 // Where a ship can move this turn (corner numbers, with the edges to each):
 // shipMove edges, and boostMove more for 1 fuel. Ships pass anything; only
 // where a move ends matters (discovery). It can't end on a corner taken by
-// a station, a colony or another ship (round 95, the user's)
+// a station, a colony or another ship (the user's)
 std::vector<CornerReach> cornerMovesFor(const State &state, const Ship &ship) {
   const Settings &settings = state.settings;
   const bool canBoost = state.player[static_cast<std::size_t>(ship.owner)]
@@ -438,9 +438,9 @@ int coreStationsOf(const State &state, int player) {
 }
 
 // A Deep-space relay's place: touching no planet (homes included), and no
-// find unless it's turned over and isn't an alien outpost (round 85)
+// find unless it's turned over and isn't an alien outpost
 [[gnu::hot]] bool isRelaySpot(const State &state, Corner corner) {
-  // (what's on the corner's three hexes, looked up: round 92)
+  // (what's on the corner's three hexes, looked up)
   for (Hex hex : HexGrid::hexesTouching(corner)) {
     if (planetAt(state, hex) >= 0)
       return false; // by a planet
@@ -477,7 +477,7 @@ bool mayBuildRelay(const State &state, int player) {
 // (corners) The best alien rate the player has: alienStationRate with a
 // station by an outpost, alienRate with a ship, or 0 with neither
 int alienRateOf(const State &state, int player) {
-  // (no turned-over outpost, usually: nothing to look for; round 92)
+  // (no turned-over outpost, usually: nothing to look for)
   const bool anyOutpost =
       std::any_of(state.zone.begin(), state.zone.end(), [](const ZoneSite &site) {
         return site.flipped && site.find == Find::AlienStation;
@@ -575,7 +575,7 @@ void produce(State &state, int roll) {
   if (state.settings.corners) {
     // Each planet showing the roll pays every station touching it (from
     // the planets' side: two or three of them, rather than every station's
-    // hexes looked up among every planet; round 92)
+    // hexes looked up among every planet)
     for (std::size_t i = 0; i < state.planets.size(); ++i) {
       const Planet &planet = state.planets[i];
       if (!planet.flipped || !givesResources(planet.kind) || planet.number != roll ||
@@ -641,7 +641,7 @@ void discardOverLimit(State &state) {
 }
 
 // (corners) Which players have stations on each planet: bit p for player
-// p, in one pass over the stations (round 92: asked planet by planet, player
+// p, in one pass over the stations (asked planet by planet, player
 // by player, the blockade's moves were the bots' largest cost)
 std::vector<std::uint8_t> planetOwners(const State &state) {
   std::vector<std::uint8_t> owners(state.planets.size(), 0);
@@ -1358,14 +1358,13 @@ std::vector<NamedBoard> boardChoices(int players) {
     out.push_back({std::string(line.substr(0, line.find(' '))), *board, {}, ""});
   }
   // R3 leans to the first player under today's rules; one more resource to
-  // start for the last two evens its turn order (round 88: chi-square 15.0
-  // to 2.0). A choice when setting up (round 89), off unless chosen
+  // start for the last two evens its turn order (chi-square 15.0
+  // to 2.0). A choice when setting up, off unless chosen
   for (NamedBoard &choice : out) {
     if (choice.name == "R3")
       choice.seatBonus = {0, 0, 1, 1};
-    // The four-cluster boards: fair, but their games run longer (round 92:
-    // about 18 rounds, where the others take 15 to 16); said beside them
-    // (round 92, the user's)
+    // The four-cluster boards: fair, but their games run longer (// about 18 rounds, where the
+    // others take 15 to 16); said beside them (the user's)
     if (choice.name.starts_with("FR") || choice.name.starts_with("FS"))
       choice.note = "longer games: about 18 rounds";
   }
@@ -1375,33 +1374,33 @@ std::vector<NamedBoard> boardChoices(int players) {
 Settings agreedRules(const Board &board, int players) {
   Settings s;
   if (players == 3)
-    s.winPoints = kThreePlayerWinPoints; // (round 85)
+    s.winPoints = kThreePlayerWinPoints; //
   s.homeHexes = board.homes;
   s.planetHexes = board.planets;
   s.zoneHexes = board.zone;
   // Corners and edges, ships moving 2 edges and 1 more for a fuel, and the
-  // first deep-space mission (rounds 39 to 52)
+  // first deep-space mission
   s.corners = true;
   s.deepSpaceStart = true;
   s.shipMove = 2;
   s.boostMove = 1;
-  // The hybrid home income (rounds 60 to 69): 2 a turn below 5 points, on
+  // The hybrid home income: 2 a turn below 5 points, on
   // the home die; at 5 the home flips to a planet
   s.catchUpBelow = 5;
   s.homeDie = true;
   s.exhaustHomesAt = 5;
-  s.discardOver = 7;    // the Imperial Tithe (round 69)
-  s.finishRound = true; // the round played out at 12 (round 73)
-  // Free stations (round 72): a ship becomes a station at no cost; the ship
-  // costs minerals, fuel and water (round 74: costs down, the quickest fair
+  s.discardOver = 7;    // the Imperial Tithe
+  s.finishRound = true; // the round played out at 12
+  // Free stations: a ship becomes a station at no cost; the ship
+  // costs minerals, fuel and water (costs down, the quickest fair
   // game measured, about 13 rounds)
   s.stationCost = {0, 0, 0, 0, 0};
   s.shipCost = {1, 0, 1, 1, 0};
-  s.playerTrading = true; // (round 57)
-  // No Core Control (round 89, the user's: it no longer made sense; any
+  s.playerTrading = true; //
+  // No Core Control (the user's: it no longer made sense; any
   // cluster, or none, may use the centre)
   s.coreControlPoints = 0;
-  // No fuel boost in the first round (round 90, the user's): a ship
+  // No fuel boost in the first round (the user's): a ship
   // starting in empty space can't reach a three's centre before the others
   // move; with no Core Control, it makes R3 fair (1,800 games)
   s.firstRoundBoost = false;
@@ -1671,7 +1670,7 @@ const std::vector<Contract> &contracts() {
        [](const State &s, int p) { return kindsCovered(s, p) >= 5; }},
       {"Stations on 2 asteroid belts", 1, twoOf<PlanetKind::AsteroidBelt>},
       {"Stations on 2 lush planets", 1, twoOf<PlanetKind::LushPlanet>},
-      // Round 37: the five above merged into one, and 5 kinds made 4
+      // The five above merged into one, and 5 kinds made 4
       {"Stations on 2 planets of the same kind", 1,
        [](const State &s, int p) {
          const auto kinds = stationKinds(s, p);
@@ -1679,7 +1678,7 @@ const std::vector<Contract> &contracts() {
        }},
       {"Stations on 4 kinds of planet", 3,
        [](const State &s, int p) { return kindsCovered(s, p) >= 4; }},
-      // (19) Round 61: a station or colony by another player's exhausted
+      // (19) A station or colony by another player's exhausted
       // home world (Settings::exhaustHomesAt)
       {"Occupier: a station on another player's exhausted home world", 2,
        [](const State &s, int p) {
@@ -1688,16 +1687,16 @@ const std::vector<Contract> &contracts() {
              return true;
          return false;
        }},
-      // (20) Round 63: a station touching no planet and no outpost, which
+      // (20) A station touching no planet and no outpost, which
       // only a holder of this Charter may build (one). The station scores 1
-      // as any; the card nothing (round 77)
+      // as any; the card nothing
       {"Deep-space relay: a station touching no planet and no alien outpost", 0,
        [](const State &s, int p) {
          return std::any_of(s.stations.begin(), s.stations.end(), [&](const Station &st) {
            return st.owner == p && isRelaySpot(s, st.at);
          });
        }},
-      // (21) Round 97: in place of "3 kinds" (met by 88 to 91% of those who
+      // (21) In place of "3 kinds" (met by 88 to 91% of those who
       // kept it, being what everyone does anyway), its opposite: lean on one
       {"Stations on 3 planets of one kind", 2,
        [](const State &s, int p) {
@@ -1732,7 +1731,7 @@ int stationsOf(const State &state, int player) {
   const Player &p = state.player[static_cast<std::size_t>(player)];
   int total = 0;
   if (state.settings.corners) {
-    // A station 1, a colony 2, the home colony too: one pass (round 92)
+    // A station 1, a colony 2, the home colony too: one pass
     for (const Station &station : state.stations)
       if (station.owner == player)
         total += station.colony ? 2 : 1;
@@ -1808,7 +1807,7 @@ std::vector<int> shipPlaces(const State &state, int player) {
   if (state.settings.deepSpaceStart) {
     // Any corner touching no planet (homes included), with no ship already:
     // the planets' corners marked first (six each, rather than every
-    // corner's hexes looked up among the planets; round 92)
+    // corner's hexes looked up among the planets)
     const std::vector<Corner> &all = boardCorners();
     std::vector<bool> byAPlanet(all.size(), false);
     for (const Planet &planet : state.planets)

@@ -1,4 +1,4 @@
-// The points bars (round 96): a row of dashes a player, a dash a point in
+// The points bars: a row of dashes a player, a dash a point in
 // their colour and grey for the rest of the target, centred; the turn's row
 // outlined in a colour no player has, inside the gaps between rows
 #include <CosmicHex/Handheld/BoardPieces.hpp>

@@ -1,4 +1,4 @@
-// Pickers.hpp - the two choosing screens (round 100's 1 and 2): what's
+// Pickers.hpp - the two choosing screens: what's
 // being chosen, from the rules' legal moves, and which move a choice makes.
 //
 // The resource picker: one screen for every "choose a resource" (your

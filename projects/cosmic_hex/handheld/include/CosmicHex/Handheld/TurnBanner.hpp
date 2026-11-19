@@ -1,5 +1,5 @@
 // TurnBanner.hpp - whose turn it is, across the top screen as each turn
-// starts (round 101, the user's: B, a band softly in the player's colour
+// starts (the user's: B, a band softly in the player's colour
 // with turquoise edges, and moving): the band fades in, the words sweep in
 // from the right and ease to a stop in the middle, hold, then speed off to
 // the left as the band fades away. Motion's curves and a script time it.

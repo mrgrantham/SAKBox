@@ -14,7 +14,7 @@ constexpr real kGravity = -9.81 * 2; // (a die 1 unit across is about 2 cm: heav
 constexpr double kStillSpeed = 0.05; // barely moving: slower than this...
 constexpr double kStillFor = 0.5;    // ...for this long
 // The contacts' sweeps stop once none changes by more than this (a die's
-// speed by three thousandths of a unit a second): round 106, the dice at rest
+// speed by three thousandths of a unit a second): the dice at rest
 // spent most of a DS's physics time on sweeps that changed nothing
 constexpr double kSweepTolerance = 0.003;
 

@@ -217,7 +217,7 @@ TEST(BotsTest, AStyleLeansOnlyTheBotsOwnRolloutMoves) {
   }
 }
 
-// Scoring in fixed point (Arithmetic::FixedPoint, round 92: for the DS) finds
+// Scoring in fixed point (Arithmetic::FixedPoint: for the DS) finds
 // the same win and block, never loses to random play, and beats it at chance
 namespace {
 using Fixed = GameBots::Ismcts<TicTacToe>::Settings::Arithmetic;

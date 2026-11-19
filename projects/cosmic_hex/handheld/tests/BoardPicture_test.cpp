@@ -47,7 +47,7 @@ TEST(BoardPictureTest, TheWholeBoardFitsAndTouchesFindTheirHex) {
       EXPECT_EQ(spot->hex, planet.hex);
     }
   }
-  // A touch anywhere picks the corner nearest it (round 93): on a corner,
+  // A touch anywhere picks the corner nearest it: on a corner,
   // and a little way in from each of a hex's corners towards its middle
   const Hex hex = state.planets[0].hex;
   const HexGrid::Point middle = picture.where(hex);
@@ -84,7 +84,7 @@ TEST(BoardPictureTest, ZoomingEnlargesAndPanningStaysInBounds) {
   EXPECT_FLOAT_EQ(picture.where(Hex{0, 0}).x, 160);
 }
 
-// Round 87: a turned-over planet shows its number chip over its face's
+// A turned-over planet shows its number chip over its face's
 // lower part (cream at the chip's top); a face-down one doesn't
 TEST(BoardPictureTest, TurnedOverPlanetsShowTheirNumberChips) {
   State state = aGame();
@@ -128,7 +128,7 @@ TEST(BoardPictureTest, TurnedOverPlanetsShowTheirNumberChips) {
     EXPECT_EQ(chipOf(planet), 0);
 }
 
-// Preparing the faces a step at a time (round 92: in spare frames, so the
+// Preparing the faces a step at a time (in spare frames, so the
 // DS's first map doesn't stall) draws the same picture as drawing at once
 TEST(BoardPictureTest, PreparingAheadDrawsTheSamePicture) {
   const State state = aGame();
@@ -143,7 +143,7 @@ TEST(BoardPictureTest, PreparingAheadDrawsTheSamePicture) {
   EXPECT_EQ(atOnce.pixels(), ahead.pixels());
 }
 
-// Zooming shows at once (round 105): just after setZoom, before any face is
+// Zooming shows at once: just after setZoom, before any face is
 // drawn at the new size, the map shows the whole board's faces scaled up
 // (a planet's middle isn't the empty space's colour); it's ready, sharp,
 // once prepare() has drawn this zoom's
@@ -172,7 +172,7 @@ TEST(BoardPictureTest, ZoomingShowsAtOnceThenSharpens) {
   EXPECT_GT(close, static_cast<int>(standIn.size() * 9 / 10));
 }
 
-// Drawing only what changed (round 106) gives the same picture as drawing
+// Drawing only what changed gives the same picture as drawing
 // it all, pixel for pixel: through two whole games of bots' moves, with
 // marks coming and going, the zoom changing (and its faces sharpening),
 // panning, and areas drawn over (as the buttons are) asked for again

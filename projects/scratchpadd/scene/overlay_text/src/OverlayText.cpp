@@ -67,7 +67,7 @@ std::vector<TextRectangle> textRectangles(const Overlay::Text &text) {
 
 void appendTextTriangles(const Overlay::Text &text, std::vector<Overlay::Vertex> &triangles) {
   // The strokes into a buffer kept by each thread, straight to triangles:
-  // no vector made a text a frame (round 105: the 3DS's screen made about
+  // no vector made a text a frame (the 3DS's screen made about
   // 130 allocations a frame, most of them here)
   thread_local std::vector<FontRectangle> strokes;
   fontRectangles(text.text, strokes);

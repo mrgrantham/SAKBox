@@ -41,24 +41,23 @@ struct TableSettings {
   // botIterations, which a fast machine reaches first); 0: by iterations
   // alone (the Mac's tests, which must play the same every run)
   double botSeconds = 0;
-  // Each simulated game in a frame arena of this many bytes (round 90:
-  // GameBots' Budget::frameArenaBytes; with the counting allocator linked,
-  // as on the consoles); 0: none
+  // Each simulated game in a frame arena of this many bytes (// GameBots' Budget::frameArenaBytes;
+  // with the counting allocator linked, as on the consoles); 0: none
   std::size_t frameArenaBytes = 0;
-  // Time the bots' searches by phase (lastSearch(); round 92, for measuring)
+  // Time the bots' searches by phase (lastSearch(), for measuring)
   bool measureSearch = false;
   // How the bots score moves while searching (GameBots' Arithmetic: fixed
-  // point is quicker without floating-point hardware, as on the DS; round 92)
+  // point is quicker without floating-point hardware, as on the DS)
   using Arithmetic = GameBots::Ismcts<Game>::Settings::Arithmetic;
   Arithmetic botArithmetic = Arithmetic::Double;
   std::uint64_t seed = 1;
   Board board = boardR3(); // (a choice from boardChoices())
-  // The play style (round 85): the round played out once someone reaches
+  // The play style: the round played out once someone reaches
   // the target (the agreed rule), or the first to reach it wins at once
   bool finishRound = true;
   // Extra start resources by turn position (a board's seat bonus, if chosen)
   std::array<int, kMaxPlayers> seatBonus{};
-  // Physics dice (round 87): the roll is thrown on screen (dice/DiceTray)
+  // Physics dice: the roll is thrown on screen (dice/DiceTray)
   // and given back with rollDice(); off, the dealer rolls at random
   bool physicsDice = false;
 };

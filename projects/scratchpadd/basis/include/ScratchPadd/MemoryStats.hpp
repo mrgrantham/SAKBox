@@ -1,5 +1,5 @@
 // MemoryStats.hpp - what an app's memory costs, measured before optimising
-// anything (round 89, the user's: as message statistics are; Gregory, Game
+// anything (the user's: as message statistics are; Gregory, Game
 // Engine Architecture 6.2 and 10.9). Two kinds of number:
 //
 // - Allocations, counted by the counting allocator (the library

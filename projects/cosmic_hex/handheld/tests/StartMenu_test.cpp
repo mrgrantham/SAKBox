@@ -1,4 +1,4 @@
-// The start menu (round 87): the rows by buttons and by touch, three players
+// The start menu: the rows by buttons and by touch, three players
 // with their own boards, Play and Watch; and its picture (written out to
 // look at, as the board's is)
 #include <CosmicHex/Handheld/MenuPicture.hpp>
@@ -130,7 +130,7 @@ TEST(StartMenuTest, ThePictureDraws) {
   EXPECT_TRUE(amber);
 }
 
-// Round 89: R3's seat bonus, a choice, off unless chosen; a board without
+// R3's seat bonus, a choice, off unless chosen; a board without
 // one has none to choose
 TEST(StartMenuTest, R3sSeatBonusIsAChoice) {
   StartMenu menu;

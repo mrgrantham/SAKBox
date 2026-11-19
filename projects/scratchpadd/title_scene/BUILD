@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
-# A game's title screen in 3D (Cosmic Hex's round 87, for any game): the
+# A game's title screen in 3D (made for Cosmic Hex, for any game): the
 # title in blocky outlined letters in front, a model turning behind, and a
 # slowly turning starfield. See include/ScratchPadd/TitleScene/TitleScene.hpp.
 cc_library(

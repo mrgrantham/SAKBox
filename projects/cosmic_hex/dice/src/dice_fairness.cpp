@@ -1,12 +1,12 @@
 // dice_fairness - throws Cosmic Hex's physics dice (DiceTray) many times and
-// checks they're fair (round 87: the physics decides the roll, so it must be
+// checks they're fair (the physics decides the roll, so it must be
 // fair): how often each face comes up (a sixth each), and each sum against
 // two fair dice, by chi-square; how long throws take to settle; and how many
 // never do.
 //
 //   bazel run -c opt //projects/cosmic_hex/dice:dice_fairness -- 20000 [30]
 //   (the second number: physics steps a second, 60 unless given; the DS
-//   steps at 30, round 92)
+//   steps at 30)
 //   (dice_fairness_float and dice_fairness_flex_point16: the same in float,
 //   and in the DS's 16.16 fixed point)
 #include <CosmicHex/Dice/DiceTray.hpp>

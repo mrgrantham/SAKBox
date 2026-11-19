@@ -1,7 +1,7 @@
 // FrameProfile.hpp - where a frame's time goes (Gregory, Game Engine
 // Architecture 10.8, "In-Game Profiling": named blocks timed every frame,
 // averaged, shown on the screen while the game runs). Measure before
-// optimising: round 92, the DS's frames came in fits and starts.
+// optimising: the DS's frames came in fits and starts.
 //
 // Each frame, time its sections; once a second, line() says, for that
 // second, the frames drawn and each section's average and worst

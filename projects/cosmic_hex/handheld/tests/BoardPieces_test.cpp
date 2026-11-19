@@ -55,7 +55,7 @@ TEST(BoardPiecesTest, TilesShowTheirFaces) {
   EXPECT_EQ(faceOf(site), Art::Face::FindOutpost);
 }
 
-// The kept places (round 105) are where the layout puts them, on the board
+// The kept places are where the layout puts them, on the board
 // and past its edge, and beyond what's kept too
 TEST(BoardPiecesTest, KeptPlacesMatchTheLayout) {
   const HexGrid::Layout layout{};

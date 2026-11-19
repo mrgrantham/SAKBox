@@ -1,5 +1,5 @@
 // Vector.hpp - a list with its room inside it: up to N items, no
-// allocation, copied as one block (round 92). It's C++26's
+// allocation, copied as one block. It's C++26's
 // std::inplace_vector in miniature, the parts the games use, named the
 // same way so it can be swapped for the standard one once every compiler
 // here has it (the Mac's doesn't yet).

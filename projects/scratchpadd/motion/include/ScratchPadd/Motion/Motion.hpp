@@ -37,7 +37,7 @@ namespace ScratchPadd::Motion {
 //              acceleration then braked (Cosmic Hex's dice glass)
 //   Settle     fast, past the end by about a tenth, and back to settle: a
 //              piece dropped into place ("ease out back"; Cosmic Hex's
-//              number chips, round 103). The one curve that goes past 1
+//              number chips). The one curve that goes past 1
 enum class Curve { Linear, EaseIn, EaseOut, EaseInOut, Pull, Settle };
 float along(Curve curve, float t);
 

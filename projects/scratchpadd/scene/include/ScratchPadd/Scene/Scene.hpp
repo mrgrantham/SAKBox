@@ -84,8 +84,8 @@ public:
   // What the last frame drew
   FrameCounts lastFrame() const;
   // How long it took, where the backend can measure it (the 3DS: its GPU's
-  // and its CPU's time, from citro3d; the DS: its CPU's and the overlay's,
-  // round 105); zero elsewhere
+  // and its CPU's time, from citro3d; the DS: its CPU's and the overlay's);
+  // zero elsewhere
   FrameTimes lastFrameTimes() const;
 
   // The backend's own state, for its extras (on desktops, Desktop.hpp)

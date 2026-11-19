@@ -1,5 +1,5 @@
 // The consoles' profiles: each one's settings within what its hardware and
-// the measurements allow (round 92), and this build's profile one of them
+// the measurements allow, and this build's profile one of them
 #include <CosmicHex/Handheld/PlatformProfile.hpp>
 
 #include <gtest/gtest.h>
@@ -16,7 +16,7 @@ void expectSound(const PlatformProfile &p) {
   // with 32-bit pointers; the arena falls back to the heap past it
   EXPECT_GE(p.frameArenaBytes, 32u * 1024);
   // The dice's step: one of those dice_fairness proved fair (20,000
-  // throws each, round 92), and a frame may catch up at least one
+  // throws each), and a frame may catch up at least one
   EXPECT_TRUE(p.diceStep == 1.0 / 30 || p.diceStep == 1.0 / 60);
   EXPECT_GE(p.mostDiceSteps, 1);
   EXPECT_GT(p.faceSize, 0);

@@ -1,4 +1,4 @@
-"""Makes title_models.blend: the title screen's model (round 87), a
+"""Makes title_models.blend: the title screen's model, a
 placeholder to be replaced by the user's own.
 
   blender --background --factory-startup --python make_title_models.py -- title_models.blend
@@ -60,7 +60,7 @@ def box(size, location, rotation=(0, 0, 0)):
 
 
 parts = []
-# The pedestal: two hexagonal steps (round 90, the user's: hexagons, for
+# The pedestal: two hexagonal steps (the user's: hexagons, for
 # the game's name), the foot at z = 0
 parts.append(coloured(cylinder(0.9, 0.2, (0, 0, 0.1), vertices=6), "#2b3a5c"))
 parts.append(coloured(cylinder(0.62, 0.15, (0, 0, 0.275), vertices=6), "#4a6290"))

@@ -1,14 +1,14 @@
 // BoardView.hpp - the cameras the top screen sees the board with: the game's,
 // from above and in front and turned by L and R, and the setup's, from
 // straight above, with the board coming down from one to the other as a game
-// starts (round 90, the user's).
+// starts (the user's).
 //
 //   renderer.beginFrame(cameraBetween(topDownCamera(), gameCamera(turn), down), ...);
 //
 // Their near plane is as far out as the dice allow: a perspective camera's
 // depth buffer is finest near that plane, and the DS's is coarse, so the
 // board's thin layers (the chips, the chosen hex's ring: BoardPieces.hpp)
-// need it there to stay in front of the tiles under them (round 92).
+// need it there to stay in front of the tiles under them.
 #pragma once
 
 #include <ScratchPadd/Scene/Types.hpp>

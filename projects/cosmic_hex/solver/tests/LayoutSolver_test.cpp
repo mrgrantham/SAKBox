@@ -79,7 +79,7 @@ TEST(LayoutSolverTest, ThreeHomesRepeatByThirds) {
   }
 }
 
-// Round 83: every home with the same number of planets within each
+// Every home with the same number of planets within each
 // distance up to 3 moves
 TEST(LayoutSolverTest, SameNearPlanetsFromEveryHome) {
   SolverSpec spec;
@@ -95,7 +95,7 @@ TEST(LayoutSolverTest, SameNearPlanetsFromEveryHome) {
   }
 }
 
-// Round 89: clusters of four (a diamond: four hexes, each touching at least
+// Clusters of four (a diamond: four hexes, each touching at least
 // two of the others), with finds kept off threes and fours
 TEST(LayoutSolverTest, FoursAreDiamondsAndFindsKeepOff) {
   SolverSpec spec;

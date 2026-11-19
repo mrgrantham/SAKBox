@@ -106,7 +106,7 @@ TEST(BottomScreenTest, TheBoardsOwnTapsAndOthersTurns) {
 }
 
 // Every button tap shows: a flash, and a message when it can't do anything
-// yet (round 101: the user couldn't tell taps had landed)
+// yet (the user couldn't tell taps had landed)
 TEST(BottomScreenTest, ButtonsAlwaysAnswer) {
   const State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
   BottomScreen screen(kWidth, kHeight);
@@ -148,7 +148,7 @@ TEST(BottomScreenTest, TouchAShipThenWhereItGoes) {
   }
 }
 
-// The D-pad, A and B on a choosing screen (round 101's question): the home's
+// The D-pad, A and B on a choosing screen: the home's
 // pay picked with Right, Right, A and taken with A; B leaves the build screen
 TEST(BottomScreenTest, TheButtonsWorkTheChoosingScreens) {
   const State state = playUntil([](const State &s) {
@@ -176,7 +176,7 @@ TEST(BottomScreenTest, TheButtonsWorkTheChoosingScreens) {
   EXPECT_EQ(screen.mode(), Mode::Board);
 }
 
-// Show resources opens and closes, your move or not (round 102)
+// Show resources opens and closes, your move or not
 TEST(BottomScreenTest, ShowResourcesAnyTime) {
   const State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
   BottomScreen screen(kWidth, kHeight);
@@ -190,7 +190,7 @@ TEST(BottomScreenTest, ShowResourcesAnyTime) {
   EXPECT_EQ(screen.info(), BottomScreen::Info::None);
 }
 
-// Your roll waits for you (round 104): Roll shows only then, and a tap on
+// Your roll waits for you: Roll shows only then, and a tap on
 // it says to throw the dice
 TEST(BottomScreenTest, RollWhenYourRollWaits) {
   const State state = playUntil([](const State &s) { return s.phase == Phase::Main; });

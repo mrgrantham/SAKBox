@@ -47,7 +47,7 @@ void MenuPicture::outline(float x, float y, float w, float h, Colour colour) {
 void MenuPicture::text(const std::string &words, float x, float y, float w, float h, float scale,
                        Colour colour, bool centred) {
   // Centred by the letters' own pixels (Overlay::inkOf, as the overlay's
-  // textCentred: round 100), down always and across when asked
+  // textCentred), down always and across when asked
   const Scene::Overlay::Ink ink = Scene::Overlay::inkOf(words, scale);
   const float left = centred ? x + (w - ink.width) / 2 - ink.left : x;
   const float top = y + (h - ink.height) / 2 - ink.top;

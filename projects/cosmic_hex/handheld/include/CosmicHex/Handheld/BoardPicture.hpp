@@ -1,5 +1,5 @@
 // BoardPicture.hpp - Cosmic Hex's board drawn flat, into pixels, for a
-// console's bottom screen to show and be touched (round 71: the 3DS and the
+// console's bottom screen to show and be touched (the 3DS and the
 // DS share it; the DS can't draw 3D on both screens). The tiles' faces are
 // the same SVG drawings as the 3D board's (Art.hpp), drawn at the hexes'
 // size; the pieces are simple shapes in the players' colours. It zooms (the
@@ -12,7 +12,7 @@
 //   picture.changed()                     // the areas that draw changed
 //   picture.at(touchX, touchY)            // the corner (and hex) touched
 //
-// A draw changes only what has changed since the last (round 106): each
+// A draw changes only what has changed since the last: each
 // piece (a tile's face, a chip, a station, a ship, the blockade, a mark) is
 // listed with what it looks like and the area it covers; the areas where a
 // piece has gone, come or changed are drawn again from scratch (space, the
@@ -66,13 +66,13 @@ public:
   // 92: the DS's first map stalled the start of a game, so draw() finishes
   // those), then the current zoom's. Until a zoom's own are drawn, draw()
   // shows the whole board's scaled up, so zooming is at once and sharpens
-  // as they come (round 105: it took seconds, every face drawn first)
+  // as they come (it took seconds, every face drawn first)
   bool prepare();
   // Whether every face and chip at this zoom is drawn sharp
   bool ready() const;
   // A tile face as the whole board shows it (zoom 1), once prepare() has
   // drawn it, wholeFaceSize() a side; for other pictures of the same face
-  // to be made from, rather than drawn from its recipe again (round 105)
+  // to be made from, rather than drawn from its recipe again
   const std::vector<ScratchPadd::Scene::Colour> &wholeFace(Art::Face face) const {
     return whole_.faces[static_cast<std::size_t>(face)];
   }
@@ -106,7 +106,7 @@ public:
   std::span<ScratchPadd::Scene::Colour> pixelsToDrawOver() { return pixels_; }
 
   // What's under a touch at (x, y): the hex it's in, and that hex's corner
-  // nearest it (round 93, the user's: a touch picks a corner, where the
+  // nearest it (the user's: a touch picks a corner, where the
   // pieces go, not a whole tile); nothing off the board
   struct Spot {
     Hex hex;
@@ -193,7 +193,7 @@ private:
   Area clip_; // where the drawing functions draw
   inline static const std::vector<ScratchPadd::Scene::Colour> kNoSprite{};
   // The grid's pixels (indexes into pixels_), worked out once for a zoom
-  // and pan rather than its 360 edges drawn each time (round 92)
+  // and pan rather than its 360 edges drawn each time
   std::vector<std::uint32_t> gridPixels_;
   int gridZoom_ = 0;
   HexGrid::Point gridOffset_{};

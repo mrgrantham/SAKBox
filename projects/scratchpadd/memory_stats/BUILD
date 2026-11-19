@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
-# The counting allocator (round 89): the global new and delete replaced so
+# The counting allocator: the global new and delete replaced so
 # MemoryStats (basis, ScratchPadd/MemoryStats.hpp) counts allocations, in
 # all and by padd. An app opts in by depending on it; without it, nothing is
 # counted (MemoryStats::linked() is false) and the heap figures still work.

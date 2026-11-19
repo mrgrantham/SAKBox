@@ -30,7 +30,7 @@ TEST(AgreedRulesTest, TheSimulatorsDefaultsAreTheAgreedRules) {
   EXPECT_EQ(settingsLine(simulated), settingsLine(agreed));
 }
 
-// Three players: 10 points to win (round 85), the same in both
+// Three players: 10 points to win, the same in both
 TEST(AgreedRulesTest, ThreePlayersPlayToTen) {
   Batch::Options options;
   options.players = 3;
@@ -54,7 +54,7 @@ TEST(AgreedRulesTest, TheBoardChoicesAreTheLayoutsFiles) {
     EXPECT_EQ(choice.board.homes.size(), 3u) << choice.name;
   }
   // The four-cluster boards are offered too, each saying its games run
-  // longer (round 92, the user's); the others say nothing
+  // longer (the user's); the others say nothing
   for (const NamedBoard &choice : choices) {
     const bool fours = choice.name.starts_with("FR") || choice.name.starts_with("FS");
     EXPECT_EQ(choice.note.empty(), !fours) << choice.name;

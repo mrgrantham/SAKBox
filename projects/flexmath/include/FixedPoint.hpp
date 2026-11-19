@@ -167,7 +167,7 @@ inline std::uint64_t squareRoot(std::uint64_t value) {
 #if defined(__3DS__)
 // The 3DS: no CORE-MATH either (it needs __int128, which the 3DS's 32-bit
 // compiler doesn't have), so newlib's sin, pow and the rest, as on the DS;
-// its divide and square root are the portable ones below (round 92: the
+// its divide and square root are the portable ones below (the
 // bots' fixed-point scores brought FixedPoint to the 3DS)
 #include <cmath>
 

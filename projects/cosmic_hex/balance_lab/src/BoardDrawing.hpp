@@ -14,7 +14,7 @@
 
 namespace CosmicHex::Lab {
 
-// The board's colours (the user's choice, round 55): planets light green,
+// The board's colours (the user's choice): planets light green,
 // finds a lighter shade of empty space (unexplored space, not a place)
 inline constexpr ImU32 kSpace = IM_COL32(24, 34, 55, 255);
 inline constexpr ImU32 kGrid = IM_COL32(38, 52, 79, 255);

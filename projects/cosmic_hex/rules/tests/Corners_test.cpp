@@ -189,7 +189,7 @@ TEST(CornersTest, ShipsMoveAlongEdges) {
 }
 
 // A ship can't end its move where a station, a colony or another ship is
-// (round 95, the user's); it can pass them
+// (the user's); it can pass them
 TEST(CornersTest, ShipsDontEndOnTakenCorners) {
   State state = atMain();
   const int mine = firstShipOf(state, 0);
@@ -410,7 +410,7 @@ int planetsAt(const State &state, Corner corner) {
 }
 } // namespace
 
-// The alien outposts (rounds 58 to 60): a ship by one trades 3 for 1, a
+// The alien outposts: a ship by one trades 3 for 1, a
 // station 2 for 1; a station may stand by an outpost with no planet beside
 // it, but becomes a colony only if it touches a planet too
 TEST(CornersTest, AlienOutposts) {
@@ -456,7 +456,7 @@ TEST(CornersTest, AlienOutposts) {
   }
 }
 
-// The exhausted home (rounds 60 to 62): at 5 points, the resource chosen is
+// The exhausted home: at 5 points, the resource chosen is
 // the home's last: it becomes a planet of that kind with a number from 4, 5,
 // 9 and 10, paying by the dice; its 1 a turn stops
 TEST(CornersTest, AnExhaustedHomeBecomesAPlanet) {
@@ -558,7 +558,7 @@ bool clearOfStations(const State &state, Corner corner) {
 }
 } // namespace
 
-// Deep-space relay (round 63): only a holder of its Charter may build a
+// Deep-space relay: only a holder of its Charter may build a
 // station touching no planet and no outpost, one; the Charter's then met
 TEST(CornersTest, ADeepSpaceRelay) {
   State state = atMain();
@@ -586,7 +586,7 @@ TEST(CornersTest, ADeepSpaceRelay) {
   state.player[0].contracts = {kDeepSpaceRelay};
   const int before = points(state, 0);
   ASSERT_TRUE(Game::apply(state, {Kind::Settle, mine}));
-  EXPECT_EQ(points(state, 0), before + 1); // (the relay's station: 1, as any; round 77)
+  EXPECT_EQ(points(state, 0), before + 1); // (the relay's station: 1, as any)
   EXPECT_TRUE(contracts()[kDeepSpaceRelay].met(state, 0));
   // A second one: refused
   state.ships.push_back(Ship{0, Hex{}, false, *empty});
@@ -603,7 +603,7 @@ TEST(CornersTest, ADeepSpaceRelay) {
   EXPECT_FALSE(Game::apply(state, {Kind::Settle, static_cast<int>(state.ships.size()) - 1}));
 }
 
-// Shipyard Surplus (round 65): built with a ship, a second comes free at the
+// Shipyard Surplus: built with a ship, a second comes free at the
 // same colony; it needs room for both, and can't be played the turn it's
 // bought
 namespace {
@@ -644,7 +644,7 @@ TEST(CornersTest, ShipyardSurplus) {
             (Action{Kind::PlayShipyard, 3}));
 }
 
-// Round 85: a relay may touch a find only once it's turned over, and never
+// A relay may touch a find only once it's turned over, and never
 // an alien outpost
 TEST(CornersTest, ARelayBesideAFind) {
   State state = atMain();
@@ -688,7 +688,7 @@ TEST(CornersTest, ARelayBesideAFind) {
   EXPECT_EQ(settle(true, Find::AlienStation), std::pair(true, false));
 }
 
-// Round 89: with firstRoundBoost off, a ship can't use fuel in the first
+// With firstRoundBoost off, a ship can't use fuel in the first
 // round (fewer places to go than with it), and can from the second
 TEST(CornersTest, NoBoostInTheFirstRound) {
   State state = atMain();
@@ -709,14 +709,14 @@ TEST(CornersTest, NoBoostInTheFirstRound) {
   EXPECT_EQ(placesToGo(state, false, 2), withBoost); // (later: as before)
 }
 
-// Round 89: no Core Control in the agreed rules: nobody holds it
+// No Core Control in the agreed rules: nobody holds it
 TEST(CornersTest, NoCoreControlInTheAgreedRules) {
   EXPECT_EQ(agreedRules(boardR3()).coreControlPoints, 0);
-  EXPECT_FALSE(agreedRules(boardR3()).firstRoundBoost); // (round 90: no boost the first round)
+  EXPECT_FALSE(agreedRules(boardR3()).firstRoundBoost); // (no boost the first round)
 }
 
 // The relay Charter scores its own points (Settings::relayPoints: 1 since
-// round 97) on top of its station's, once revealed; the other Charters their
+// once agreed) on top of its station's, once revealed; the other Charters their
 // table's
 TEST(CornersTest, TheRelayScoresItsSetting) {
   Settings settings;
@@ -730,7 +730,7 @@ TEST(CornersTest, TheRelayScoresItsSetting) {
   EXPECT_EQ(points(state, 0), before + state.settings.relayPoints);
 }
 
-// "Stations on 3 planets of one kind" (round 97, simulated in place of 3
+// "Stations on 3 planets of one kind" (simulated in place of 3
 // kinds): met with three of one kind, not with three different kinds
 TEST(CornersTest, ThreeOfOneKind) {
   const Contract &threeOfAKind = contracts().at(21);
@@ -768,7 +768,7 @@ TEST(CornersTest, ThreeOfOneKind) {
   EXPECT_TRUE(threeOfAKind.met(state, 0));
 }
 
-// Imperial Dominion (round 97, off by default): whoever has the most
+// Imperial Dominion (off by default): whoever has the most
 // colonies on other players' former homes, at least one, taken by
 // overtaking; none at all with its points 0
 TEST(CornersTest, ImperialDominion) {
@@ -798,7 +798,7 @@ TEST(CornersTest, ImperialDominion) {
   EXPECT_EQ(state.dominionHolder, -1);
 }
 
-// Badges cashed at once (Settings::autoCashBadges, agreed in round 99):
+// Badges cashed at once (Settings::autoCashBadges):
 // three become a point as soon as they're there, with nothing to choose;
 // held (the rule before), they wait for CashBadges
 TEST(CornersTest, BadgesCashedAtOnceWhenThatsTheRule) {

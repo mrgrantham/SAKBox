@@ -1,5 +1,5 @@
 // ScreenPictures.hpp - pictures on the top screen, placed as flat pieces
-// just in front of the camera (round 102, the user's choice A; pictures in
+// just in front of the camera (the user's choice A; pictures in
 // the overlay itself, choice B, kept as a later option): a card, a card's
 // back, a planet's face, covering a rectangle of the screen's pixels as the
 // overlay's shapes do, drawn with the textured meshes every platform has.

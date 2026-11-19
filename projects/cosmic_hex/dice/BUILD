@@ -1,7 +1,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//projects/cyclone:real.bzl", "real_binary")
 
-# Cosmic Hex's physics dice (round 87): two dice thrown in Cyclone into a
+# Cosmic Hex's physics dice: two dice thrown in Cyclone into a
 # glass container the size of the top screen; the faces they settle on are
 # the roll. dice_fairness throws them many times to check they're fair.
 cc_library(

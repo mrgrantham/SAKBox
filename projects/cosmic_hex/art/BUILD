@@ -2,7 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//projects/scratchpadd/texture_recipe:texture_recipe.bzl", "texture_recipe")
 load("//tools/embed_file:embed_file.bzl", "embed_file")
 
-# Cosmic Hex's tile faces, drawn as SVG (the designs agreed in rounds 75 to
+# Cosmic Hex's tile faces, drawn as SVG (the designs agreed on
 # 79): planets face down and by kind, the home world's two sides (its city
 # side one for each resource it can give), and the deep-space zone's finds.
 # The build turns each into a texture recipe; Art.hpp gives a face's recipe,
@@ -141,7 +141,7 @@ texture_recipe(
     symbol = "kPlanetWater",
 )
 
-# The planets' number chips (round 87): a number on a round chip with a dot
+# The planets' number chips: a number on a round chip with a dot
 # for each way two dice make it; the SVGs are written by make_number_chips.py
 CHIP_NUMBERS = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12]
 
@@ -152,7 +152,7 @@ CHIP_NUMBERS = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12]
     symbol = "kNumber%d" % n,
 ) for n in CHIP_NUMBERS]
 
-# The board screen's buttons' icons (round 94: SVG files, to swap for your
+# The board screen's buttons' icons (SVG files, to swap for your
 # own drawings), each drawn on a transparent square
 ICONS = ["roll", "build", "trade", "show_resources", "cards", "end_turn", "other_players"]
 
@@ -163,8 +163,7 @@ ICONS = ["roll", "build", "trade", "show_resources", "cards", "end_turn", "other
     symbol = "kIcon" + "".join([word.capitalize() for word in name.split("_")]),
 ) for name in ICONS]
 
-# The cards' art (round 75's designs, round 94: no words, which the game
-# writes over them, and a title band for two lines), one for each card
+# The cards' art, one for each card
 CARDS = ["resource_minerals", "resource_food", "resource_fuel", "resource_water", "resource_crystals", "enforcer", "interstellar_cartel", "shipyard_surplus", "supply_drop", "charter_three_of_a_kind", "charter_occupier", "charter_deep_space_relay"]
 
 [texture_recipe(
@@ -176,8 +175,8 @@ CARDS = ["resource_minerals", "resource_food", "resource_fuel", "resource_water"
 
 # A card's back, for cards face down (the other players' hands, the deck):
 # the six kinds of planet round an amber hexagon on a starfield for resource
-# cards (round 99's B), rings of hexagons in amber and blue for action cards
-# (round 99's C; round 102, the user's: one for each kind)
+# cards, rings of hexagons in amber and blue for action cards
+#
 [texture_recipe(
     name = "card_back_" + design,
     svg = "cards/back_%s.svg" % design,
@@ -185,7 +184,7 @@ CARDS = ["resource_minerals", "resource_food", "resource_fuel", "resource_water"
     symbol = "kCardBack" + design.capitalize(),
 ) for design in ["rings", "planets"]]
 
-# The cards' words, edited as text (round 97): Art.hpp's wordsOf reads them
+# The cards' words, edited as text: Art.hpp's wordsOf reads them
 embed_file(
     name = "card_words",
     src = "cards/cards.txt",

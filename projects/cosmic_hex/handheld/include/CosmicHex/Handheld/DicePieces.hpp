@@ -1,5 +1,5 @@
 // DicePieces.hpp - the physics dice (dice/DiceTray) as the consoles draw
-// them (round 87): a die's mesh (white, with dark pips; opposite faces add
+// them: a die's mesh (white, with dark pips; opposite faces add
 // to 7, as DiceTray reads them), and where the glass container is: in front
 // of the camera, facing it, its width and depth filling the screen, so the
 // dice seem to roll on the screen's glass, over the board.
@@ -35,7 +35,7 @@ Scene::Transform glassFrame(const Scene::Camera &camera, float aspect, float wid
 
 // Where a point in the world shows on a screen `width` by `height` pixels
 // seen from `camera` (pixels from the top left), or nothing if it's behind
-// the camera: for words over the dice (round 89: the roll, sliding off with
+// the camera: for words over the dice (the roll, sliding off with
 // them)
 std::optional<std::array<float, 2>> onScreen(const Scene::Camera &camera, float width, float height,
                                              const Scene::Vector3 &world);
@@ -44,7 +44,7 @@ std::optional<std::array<float, 2>> onScreen(const Scene::Camera &camera, float 
 // nearer the camera than the floor, so looks bigger: room for it at the edge)
 inline constexpr float kGlassShare = 0.82f;
 
-// A slide across the screen on the dice's curve (round 90, the user's: the
+// A slide across the screen on the dice's curve (the user's: the
 // setup's boards, switched): speeding up as the glass does when it's pulled
 // away (DiceTray::kPullAcceleration, the glass kGlassShare of the screen),
 // then slowing the same way to stop. How far through (0 to 1) after

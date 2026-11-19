@@ -1,5 +1,5 @@
 // BottomScreen.hpp - what the bottom screen shows in a game and what a tap
-// on it does (round 101): the board with its buttons; the build screen;
+// on it does: the board with its buttons; the build screen;
 // the resource and player pickers; and the board again, its corners marked,
 // while you choose where something goes. It decides from the rules' legal
 // moves, so it has no rules of its own; the app draws what it says and
@@ -52,7 +52,7 @@ public:
   // A tap at (x, y), with the board's spot under it in the board modes
   Outcome tap(int x, int y, const std::optional<BoardPicture::Spot> &spot);
 
-  // The buttons on a choosing screen (round 101, the user's question: the
+  // The buttons on a choosing screen (the user's question: the
   // D-pad moves between its rows, cards or players, A picks and then
   // confirms, B goes back). On the board they're the app's (its list of
   // moves), except B, which puts down what's being placed
@@ -61,16 +61,15 @@ public:
 
   Mode mode() const { return mode_; }
 
-  // What's shown on the top screen for looking at, any time (round 102,
-  // the user's: they pause the game while open): your resources and cards
-  // (Show resources); another tap closes it
+  // What's shown on the top screen for looking at, any time (// the user's: they pause the game
+  // while open): your resources and cards (Show resources); another tap closes it
   enum class Info { None, Resources };
   Info info() const { return info_; }
   // In Placing: the corners where the chosen build, or the ship touched,
   // may go, to be marked
   std::vector<Corner> placingCorners() const;
 
-  // Feedback for a tap on a button (round 101, the user's: taps that did
+  // Feedback for a tap on a button (the user's: taps that did
   // nothing gave no sign they'd landed): the button flashes and a short
   // message says what's happening or why not. The app clears it after a
   // moment (clearFeedback), and redraws
@@ -90,7 +89,7 @@ public:
   void drawOverBoard(Canvas &board);
   // The areas drawOverBoard draws on now: the map under them is drawn
   // again before they are (BoardPicture::redrawNext), now and after they
-  // change, so each is drawn over the map once (round 106)
+  // change, so each is drawn over the map once
   std::vector<BoardPicture::Area> overBoardAreas() const;
   // Draws one of its pictures (cards, icons) not yet drawn, for spare
   // frames; whether they're all ready

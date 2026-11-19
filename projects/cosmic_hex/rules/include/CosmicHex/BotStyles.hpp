@@ -1,5 +1,5 @@
 // BotStyles.hpp - ways for Cosmic Hex's bots to play, for testing the rules
-// against different players (round 41): the same search (GameBots::Ismcts),
+// against different players: the same search (GameBots::Ismcts),
 // with the bot's own moves in its imagined games (rollouts) leaning one way.
 //
 //   Plain     every move as likely: the bots as they were

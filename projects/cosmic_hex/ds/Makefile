@@ -23,7 +23,7 @@ BUILD		:=	build
 # (extra_srcs in BUILD), as the 3DS's (../3ds) with the DS's scene backend
 # The libraries' folders come from the Bazel rule (SAKBOX_SOURCES and
 # SAKBOX_INCLUDES: every staged folder with sources, every staged include
-# folder; round 100), so a library added in BUILD needs nothing here.
+# folder), so a library added in BUILD needs nothing here.
 # Cyclone's demos are staged with it but aren't part of this app.
 SOURCES		:=	$(filter-out cyclone/src/demos,$(SAKBOX_SOURCES))
 INCLUDES	:=	include build assets third_party $(SAKBOX_INCLUDES)
@@ -43,7 +43,7 @@ CFLAGS	+=	$(INCLUDE) -DARM9
 # A debug build (bazel build -c dbg): see //projects/scratchpadd/debug_log
 CFLAGS	+=	$(if $(SAKBOX_DEBUG),-DSAKBOX_DEBUG)
 # Release builds without asserts (BlocksDS, "Optimizing code": define
-# NDEBUG; round 92)
+# NDEBUG)
 CFLAGS	+=	$(if $(SAKBOX_DEBUG),,-DNDEBUG)
 # The build's defines (//tools/devkitpro: the app's name and title, and a
 # target's `defines`)

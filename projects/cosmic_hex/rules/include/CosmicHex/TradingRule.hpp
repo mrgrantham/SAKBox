@@ -1,6 +1,6 @@
 // TradingRule.hpp - how the bots trade with each other (Settings::
 // playerTrading), by a simple rule rather than by search (the offers
-// possible are far too many to search), as agreed in round 57: start with
+// possible are far too many to search), as agreed: start with
 // the rule, and measure.
 //
 // A player's next build is the first of a colony, a station, a ship and a

@@ -300,7 +300,7 @@ void Renderer::Backend::drawOverlayShapes(const Overlay &overlay) {
       // A see-through shape's triangles share one ID (a rectangle's two, a
       // hexagon's six: the same colour, touching the last along an edge),
       // so where they meet isn't blended twice: the DS blends a translucent
-      // polygon only over others with a different ID (round 101: a band's
+      // polygon only over others with a different ID (a band's
       // diagonal showed as a dark line)
       if (t > 0 && lastId != 0 && sameShape(corner, corner - 3)) {
         id = lastId;
@@ -330,7 +330,7 @@ void Renderer::Backend::drawOverlayText(const Overlay &overlay) {
   std::vector<std::uint16_t> &colours = textColours;
   colours.clear();
   // Only the rows the last text covered need clearing: the rest are clear
-  // already (round 105: not the whole 48 KB each time the text changes, as
+  // already (not the whole 48 KB each time the text changes, as
   // it does every frame of a moving banner)
   if (textRowsTo > textRowsFrom)
     std::fill(textPixels.begin() + static_cast<std::ptrdiff_t>(textRowsFrom) * kTextWidth,
@@ -348,9 +348,9 @@ void Renderer::Backend::drawOverlayText(const Overlay &overlay) {
     }
     const auto entry = static_cast<std::uint8_t>(found - colours.begin() + 1);
     // stb_easy_font's letters (OverlayText.hpp, as the 3DS and desktops
-    // draw them; round 96), each rectangle filled to whole pixels, at least
+    // draw them), each rectangle filled to whole pixels, at least
     // one each way. Placed in 16.16 fixed point, three floats a text rather
-    // than a dozen a stroke (no floating point hardware here: round 105,
+    // than a dozen a stroke (no floating point hardware here:
     // the text took up to 40 ms a frame)
     fontRectangles(text.text, textStrokes);
     constexpr int kOne = 1 << 16;
@@ -582,7 +582,7 @@ void Renderer::endFrame() {
   });
   // (one count for the frame, meshes then the overlay's shapes: a
   // translucent polygon isn't drawn over a translucent one with the same
-  // ID, so the overlay's mustn't reuse the meshes' IDs; round 92, the roll's
+  // ID, so the overlay's mustn't reuse the meshes' IDs, the roll's
   // hexagon missing two triangles over the dice's glass)
   b.nextTranslucentId = kFirstTranslucentId;
   for (const Backend::Later &item : b.later) {

@@ -1,7 +1,6 @@
-// BuildMenu.hpp - the build screen's rows (round 92's design B, the user's
-// choice): a row for each thing you can buy, red and not selectable when you
-// can't, with why ("needs 1 more Food", "no ship by a free planet"), or where
-// it goes when you can.
+// BuildMenu.hpp - the build screen's rows: a row for each thing you can buy, red and not selectable
+// when you can't, with why ("needs 1 more Food", "no ship by a free planet"), or where it goes when
+// you can.
 //
 // Every answer comes from the rules' own legal moves, so the screen has no
 // rule of its own to get wrong: once as things are (can you build it now?),

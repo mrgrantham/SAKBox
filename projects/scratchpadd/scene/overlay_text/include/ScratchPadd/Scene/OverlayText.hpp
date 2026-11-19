@@ -1,7 +1,7 @@
 // OverlayText.hpp - the overlay's text on every platform: stb_easy_font's
 // letters, built from small rectangles, so a backend draws them as it draws
 // the overlay's shapes (desktops, the 3DS), or fills them into a bitmap (the
-// DS's text layer; round 96: one font on every console), with no font
+// DS's text layer: one font on every console), with no font
 // texture. For backends.
 #pragma once
 
@@ -22,7 +22,7 @@ std::vector<TextRectangle> textRectangles(const Overlay::Text &text);
 
 // A letter's stroke in the font's own units, before it's scaled and placed:
 // whole numbers, the text starting at (0, 0). For a backend without floating
-// point hardware (the DS: round 105, its text took up to 40 ms a frame in
+// point hardware (the DS: its text took up to 40 ms a frame in
 // soft floats), which places them in whole numbers itself
 struct FontRectangle {
   std::int16_t x, y, width, height;

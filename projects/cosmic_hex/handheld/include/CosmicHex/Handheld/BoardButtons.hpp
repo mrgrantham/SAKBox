@@ -1,4 +1,4 @@
-// BoardButtons.hpp - the board screen's buttons (rounds 93 to 100, the
+// BoardButtons.hpp - the board screen's buttons (the
 // user's layout): small icon buttons in the corners the whole board leaves
 // empty. Top left: Show resources, and the other players under it; top
 // right, down the side: Build, Trade, Cards; bottom left Roll and bottom
@@ -27,7 +27,7 @@ struct Situation {
   bool holdsCards = false; // any action cards or Charters
 };
 // The situation from the game: the player to move's legal actions, and
-// whether the dice wait for you to throw them (round 104, the user's: your
+// whether the dice wait for you to throw them (the user's: your
 // roll is yours to make; the rules have the dealer roll, so the app says)
 Situation situationOf(const State &state, const std::vector<Action> &legal, bool yourMove,
                       bool yourRollWaits = false);

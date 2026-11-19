@@ -1,4 +1,4 @@
-// DiceTray.hpp - Cosmic Hex's dice, thrown in Cyclone (round 87, the user's
+// DiceTray.hpp - Cosmic Hex's dice, thrown in Cyclone (the user's
 // design). The top screen is a glass container: a floor, four walls at the
 // screen's edges and a lid. Two dice are thrown in from one side, bounce off
 // the walls and each other, and settle; the faces on top are the roll. Then
@@ -35,11 +35,11 @@ public:
   static constexpr double kWidth = 10;     // across the screen (x)
   static constexpr double kDepth = 6;      // up the screen (z): 5:3, as the 3DS's top screen
   static constexpr double kHeight = 4;     // the lid's height
-  static constexpr double kDieSize = 1.2;  // a die's edge (round 89: a little bigger)
+  static constexpr double kDieSize = 1.2;  // a die's edge (a little bigger)
   static constexpr double kFriction = 0.4; // the glass floor and walls
   static constexpr double kBounce = 0.35;  // restitution: how much a die bounces back
   // How fast the glass speeds up as it's pulled away (units a second, a
-  // second); the setup's boards slide on the same curve (round 90)
+  // second); the setup's boards slide on the same curve
   static constexpr double kPullAcceleration = 30;
 
   DiceTray();

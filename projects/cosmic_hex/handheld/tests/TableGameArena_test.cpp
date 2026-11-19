@@ -1,4 +1,4 @@
-// The bots' search in a frame arena (round 90), with the counting
+// The bots' search in a frame arena, with the counting
 // allocator linked (as on the consoles): the same seed plays the same moves
 // with the arena as without (the arena changes where memory comes from,
 // not what the search does), the arena is used, and far fewer allocations

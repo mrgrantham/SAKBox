@@ -1,6 +1,6 @@
 load("//tools/assets:defs.bzl", "scene_model")
 
-# The title screen's model (round 87): a retro rocket on a pedestal, made by
+# The title screen's model: a retro rocket on a pedestal, made by
 # make_title_models.py into title_models.blend (a placeholder: open the
 # .blend in Blender and change or replace the object named Rocket). The
 # build exports and cooks it for each platform (tools/assets).

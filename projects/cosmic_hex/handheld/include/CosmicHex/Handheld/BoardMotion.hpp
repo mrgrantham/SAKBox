@@ -1,6 +1,6 @@
 // BoardMotion.hpp - the board's animations between one move and the next:
 // ships slide in a straight line from where they were to where they are,
-// and planets and the zone's finds flip over when explored (round 72, the
+// and planets and the zone's finds flip over when explored (the
 // user's: "nothing fancy, a linear slide, an animated flip").
 //
 //   BoardMotion motion(before, after);      // when a move arrives

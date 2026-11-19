@@ -24,7 +24,7 @@ BUILD		:=	build
 # rock_ds_sources)
 # The libraries' folders come from the Bazel rule (SAKBOX_SOURCES and
 # SAKBOX_INCLUDES: every staged folder with sources, every staged include
-# folder; round 101), so a library added in BUILD needs nothing here
+# folder), so a library added in BUILD needs nothing here
 SOURCES		:=	$(SAKBOX_SOURCES)
 INCLUDES	:=	include build assets look/src third_party $(SAKBOX_INCLUDES)
 

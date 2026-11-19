@@ -1,5 +1,5 @@
 // ScreenFlow.hpp - which screen the console shows, and what moves it on
-// (round 90: the user's review of round 89's state diagram; White, Making
+// (the user's review of its state diagram; White, Making
 // Embedded Systems, "State Machines": the states drawn first, then kept
 // apart so each can be tested). The screens:
 //

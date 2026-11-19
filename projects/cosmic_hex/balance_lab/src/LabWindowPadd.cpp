@@ -475,7 +475,7 @@ void LabWindowPadd::drawSettings() {
   ImGui::Checkbox("Trading between players", &options_.trading);
   ImGui::Checkbox("Home income on the home die", &options_.homeDie);
   ImGui::Checkbox("Finish the round at the winning points", &options_.finishRound);
-  // Starfarers' middle step (round 67): 2 a turn, then 1 from this many
+  // Starfarers' middle step: 2 a turn, then 1 from this many
   // points (0: off, the catch-up rule)
   int middleFrom = options_.homeIncomeSteps.size() == 2 ? options_.homeIncomeSteps[1][0] : 0;
   if (ImGui::InputInt("Home: 1 a turn from (points; 0: off)", &middleFrom)) {
@@ -483,7 +483,7 @@ void LabWindowPadd::drawSettings() {
     if (middleFrom > 0)
       options_.homeIncomeSteps = {{0, 2}, {middleFrom, 1}};
   }
-  // Round 61: free stations, and the ship costing a food more with them
+  // Free stations, and the ship costing a food more with them
   bool freeStations = options_.stationCost.has_value();
   if (ImGui::Checkbox("Free stations", &freeStations))
     options_.stationCost = freeStations ? std::optional<Resources>(Resources{}) : std::nullopt;
@@ -491,7 +491,7 @@ void LabWindowPadd::drawSettings() {
   if (ImGui::Checkbox("Ship costs a food more", &dearerShip))
     options_.shipCost =
         dearerShip ? std::optional<Resources>(Resources{1, 1, 1, 0, 0}) : std::nullopt;
-  // Round 62: how common each kind of planet is
+  // How common each kind of planet is
   ImGui::InputScalarN("Planet mix (min, food, fuel, water, cry)", ImGuiDataType_S32,
                       options_.kindWeights.data(), kResources);
   ImGui::PopItemWidth();
@@ -942,7 +942,7 @@ void LabWindowPadd::drawCharts() {
     ImPlot::PlotBars("points", average.data(), kSources, 0.6);
     ImPlot::EndPlot();
   }
-  // Round 61's statistics: the game's flow, and trading, the winner's
+  // The flow statistics: the game's flow, and trading, the winner's
   // beside the average player's
   if (tally_.finished > 0 &&
       ImGui::BeginTable("flow", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {

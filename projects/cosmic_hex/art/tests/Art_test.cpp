@@ -86,8 +86,7 @@ TEST(ArtTest, EveryCardDrawsInItsAreas) {
 
 // Every card's words (cards/cards.txt) are there and fit, in the font every
 // console draws (stb_easy_font): the short title on a small card (46
-// pixels), the words on the cards screen's big card (round 95's A1: 160
-// pixels tall, so its words area is 92 pixels wide less a margin, 7 lines)
+// pixels), the words on the cards screen's big card
 TEST(ArtTest, EveryCardsWordsFit) {
   namespace Scene = ScratchPadd::Scene;
   const auto width = [](std::string_view text) { return Scene::Overlay::textWidth(text); };

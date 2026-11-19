@@ -1,0 +1,68 @@
+# Decisions
+
+The decisions that shape SAKBox, each with why it was made and what was turned down, newest first. The discussion behind each is on the roadmap page (its rounds of questions and answers), and the work is in git's history; this keeps just the outcome, so it can be read without either.
+
+Add an entry when a real choice is made: something a later reader might otherwise undo or wonder about. Keep it short. When a decision is reversed, add a new entry and mark the old one **superseded**, rather than deleting it.
+
+## Format
+
+**Title** (date)
+What was chosen. **Why:** the reasons. **Not:** the alternatives turned down, and why.
+
+## Cosmic Hex: the game
+
+**Starting placement: choose your home and your colony's corner** (2026-11-19)
+Who goes first is shown as a roll of a die each, highest first. Then, in turn order, each player picks one of the board's homeworlds and a corner of it for their home colony; then the ships, in the reverse order. Placing is by touch: what you touch is shown there, and Place (End Turn's button) puts it down. **Why:** a setup you can see and choose reads as fair (Characteristics of Games, ch. 5); the reverse order for ships is the catch-up for placing last. **Not:** colony and ship in one turn (loses the catch-up), homes fixed by seat (the user wanted the choice).
+
+**The splash: words and a small mark** (2026-11-19)
+"Vibe Coding by James / presents" with two turquoise hexagons, fading in and out while the start's work runs. **Why:** the start draws every picture before the title (so the title runs smoothly) and takes about 5 s on a DS; something to watch makes it feel shorter. **Not:** words alone.
+
+**The roll waits for you** (2026-11-18)
+Your dice are thrown when you press Roll (or A), never for you; a bot's dice wait for its turn banner to finish. **Why:** the roll is the player's moment.
+
+**Other players: a top screen each, with tabs** (2026-11-17)
+**Why:** room for everything the table can see. **Not:** one panel with every player's planets, which runs off the screen with three players.
+
+**Badges cash in at once** (2026-11-16)
+Three explorer badges become a point as soon as they're earned. **Why:** hoarding added a dull choice and hid a player's real score.
+
+**The Charters** (2026-11-16)
+Stations on 3 planets of one kind, Occupier, and the Deep-space relay (1 point on top of its station's). **Why:** "3 kinds of planet" was met by nearly everyone who kept it; "3 of one kind" by 22 to 38%. Simulated at 1,800 games a board.
+
+**Imperial Dominion: off** (2026-11-16)
+**Why:** in simulation it barely triggered.
+
+**Boards are judged at 1,800 games**
+**Why:** leaders at 300 and 900 games mostly regressed. Clusters of planets never touch each other or a home; boards are radius 4.
+
+## Platform: ScratchPadd and the consoles
+
+**No "round N" tags in READMEs or comments** (2026-11-19)
+Comments keep the reason and the measurement instead. **Why:** a round number means nothing without the roadmap page open. **Not:** keeping the whole conversation in the repository; git history and the roadmap page hold it.
+
+**Cyclone's sweep tolerance** (2026-11-19)
+The contact solver can stop its sweeps once nothing changes (off unless asked for; the dice use 0.003). **Why:** Millington's resolver stops at its epsilon (15.3); the dice's physics took 44% less time and stayed fair over 20,000 throws.
+
+**The bottom map draws only what changed** (2026-11-19)
+Each piece listed with its look and area; changed areas drawn again from scratch; tested equal to drawing it all. **Why:** a full redraw after each move cost up to 45 ms on a DS. **Not:** 16-bit pictures (every drawing piece would change, for less gain).
+
+**Canvas and ConsoleScreens in ScratchPadd** (2026-11-19)
+**Why:** every app with a touch screen needs them; they'd been inside Cosmic Hex.
+
+**Measured performance rules for the DS** (2026-11-18)
+Whole numbers or fixed point (no floating-point hardware), the hardware divider, word-aligned pixels, nothing drawn that hasn't changed. Listed with where they live in ScratchPadd's README ("Performance on the consoles"). **Why:** each was measured in melonDS before and after; together they doubled the frame rate.
+
+**Fixed-point maths on the consoles**
+flexmath's Q16.16 on the DS, with CORDIC and tables later for identical maths everywhere. **Not:** porting CORE-MATH, which needs 128-bit integers.
+
+**The consoles' Makefiles take their sources from Bazel**
+The Makefiles stay (devkitPro's build), but their source lists are generated from the BUILD files. **Why:** one place lists a target's sources.
+
+**One font on every console**
+stb_easy_font's letters as rectangles, drawn as triangles on desktops and the 3DS, and into the DS's text layer.
+
+**No textures, a Tron look**
+Vertex colours, lines and fog. **Except** pictures drawn from SVG recipes in code (tile faces, icons, cards).
+
+**Games are separate projects**
+Cosmic Hex and Infinifly are their own projects, using ScratchPadd as a library.

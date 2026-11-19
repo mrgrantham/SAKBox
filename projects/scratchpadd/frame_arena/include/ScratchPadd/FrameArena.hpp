@@ -1,6 +1,6 @@
 // FrameArena.hpp - a single-frame allocator (Gregory, Game Engine
 // Architecture 6.2.1, "Single-Frame and Double-Buffered Memory Allocators";
-// round 90, the user's: for the bots' search, measured at 59,000
+// The user's: for the bots' search, measured at 59,000
 // allocations a second on a 3DS). A block taken once; allocations during a
 // frame (here: one simulated game) are handed out from it by moving a
 // pointer along, never freed one by one, and the whole block is reused at

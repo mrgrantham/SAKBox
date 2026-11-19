@@ -5,7 +5,7 @@
 # beside a three or a home). All on the radius-4 board (61 hexes); no
 # cluster touches another cluster, the core or a home.
 #
-# R1-R7, S1-S6 (round 45): every home has its nearest single the same
+# R1-R7, S1-S6: every home has its nearest single the same
 # number of moves away, its nearest pair the same, its nearest three the
 # same (R: homes on the edge, S: on four corners). E1-E17, K1-K19 (round
 # 44): every mix of clusters that fits, every home with the same planets
@@ -61,7 +61,7 @@ K17 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,-4,2,-3,1,-2,-2,-2,-1,-2,2,-2,3,-1,2,-1
 K18 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,-4,2,-3,1,-3,2,-2,-1,-2,4,-1,-3,-1,-1,-1,2,0,-4,0,-3,0,3,0,4,1,-2,1,1,1,3,2,-4,2,1,3,-2,3,-1,4,-2
 K19 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,-4,2,-3,1,-2,-1,-2,2,-2,4,-1,-3,-1,-1,-1,2,0,-4,0,-3,0,3,0,4,1,-2,1,1,1,3,2,-4,2,-2,2,1,3,-1,4,-2
 
-# Round 54: other centres (the user asked why every layout had one planet in the middle).
+# Other centres (the user asked why every layout had one planet in the middle).
 # N...: no planet at the centre; L...: a line of three through it. R or S as before (homes on
 # the edges or on four corners); each kind of system the same moves from every home.
 NR1 reach=3,2,3 homes=4,-2,-4,2,2,2,-2,-2 planets=-4,0,-3,0,-2,3,-1,0,-1,2,-1,3,1,-3,1,-2,1,0,2,-3,3,0,4,0
@@ -79,14 +79,14 @@ LR2 reach=3,2,2 homes=4,-2,-4,2,2,2,-2,-2 planets=-4,0,-4,4,-3,0,-3,3,-3,4,-1,0,
 LS1 reach=2,2,3 homes=4,-4,-4,4,4,0,-4,0 planets=-3,1,-3,2,-2,-2,-2,3,-1,0,-1,4,0,-4,0,-3,0,0,0,3,0,4,1,-4,1,0,2,-3,2,2,3,-2,3,-1
 LS2 reach=2,2,3 homes=4,-4,-4,4,4,0,-4,0 planets=-4,2,-2,-2,-2,-1,-2,2,-2,3,-1,0,-1,4,0,-4,0,-3,0,0,0,3,0,4,1,-4,1,0,2,-3,2,-2,2,1,2,2,4,-2
 LS3 reach=2,4,2 homes=4,-4,-4,4,4,0,-4,0 planets=-4,2,-3,1,-3,2,-2,-1,-2,4,-1,0,-1,2,0,-4,0,-3,0,0,0,3,0,4,1,-2,1,0,2,-4,2,1,3,-2,3,-1,4,-2
-# Round 84: from the layout solver (solve_layouts --homes corners --threes 2 --away 3
+# From the layout solver (solve_layouts --homes corners --threes 2 --away 3
 # --farther yes --same-near 3): fair by turn and by home at 1,800 games
 WS2 reach=2,1,4 homes=4,-4,-4,4,4,0,-4,0 planets=0,0,0,3,-1,4,0,4,0,-3,1,-4,0,-4,2,-3,2,-2,-2,3,-2,2,2,1,2,2,-2,-1,-2,-2,-4,2,4,-2 small_finds=1,-1,-1,1,-1,2,1,-2,-3,1,3,-1
-# Round 83: three-player boards from the solver (--homes three), for three players
+# Three-player boards from the solver (--homes three), for three players
 T4 reach=2,1,1000 homes=4,-2,-2,-2,-2,4 planets=0,0,0,2,-1,2,2,-2,2,-1,-2,0,-1,-1,-4,4,4,0,0,-4,4,-4,-4,0,0,4 small_finds=-4,1,1,3,3,-4,0,-3,-3,3,3,0,0,-2,-2,2,2,0
 T5 reach=2,1,1000 homes=4,-2,-2,-2,-2,4 planets=0,0,-3,1,-3,0,1,2,0,3,2,-3,3,-3,0,-4,-4,4,4,0,2,0,0,-2,-2,2 small_finds=1,0,0,-1,-1,1,3,1,1,-4,-4,3
-# Round 90: four-cluster boards (two clusters of four planets) from the solver;
-# round 92: fair by turn and by home at 1,800 games each under the agreed
+# Four-cluster boards (two clusters of four planets) from the solver;
+# Fair by turn and by home at 1,800 games each under the agreed
 # rules (no Core Control, no first-round boost), games about 17 to 18 rounds
 FR1 reach=2,1,1000,3 homes=4,-2,-4,2,2,2,-2,-2 planets=0,0,1,-2,2,-3,1,-3,2,-4,-1,2,-2,3,-1,3,-2,4,-3,0,-2,0,3,0,2,0,4,-4,-4,4,0,-4,0,4 small_finds=-1,-1,1,1,-2,1,2,-1,-1,0,1,0
 FR3 reach=2,1,1000,3 homes=4,-2,-4,2,2,2,-2,-2 planets=0,0,-2,4,-1,3,-2,3,-1,2,2,-4,1,-3,2,-3,1,-2,4,0,3,0,-4,0,-3,0,-4,4,4,-4,0,-4,0,4 small_finds=-1,0,1,0,2,-1,-2,1,-2,0,2,0

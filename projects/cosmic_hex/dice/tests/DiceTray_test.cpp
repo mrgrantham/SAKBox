@@ -1,4 +1,4 @@
-// The physics dice (round 87): a throw settles in a few seconds with a face
+// The physics dice: a throw settles in a few seconds with a face
 // from 1 to 6 on each die, the same seed throws the same, and the pull takes
 // the container off the screen with the dice still in it
 #include <CosmicHex/Dice/DiceTray.hpp>
