@@ -1063,7 +1063,11 @@ void ContactResolver::endStep() {
   // Each visit adjusts a contact's running totals by what it takes to reach
   // its target now, given what the other contacts have done, keeping the
   // totals within their limits: friction first, then the push.
+  // (the largest change to any impulse this sweep: none worth making, and
+  // the rest of the sweeps are skipped; see sweepTolerance)
+  const auto size = [](real v) { return v < (real)0 ? -v : v; };
   for (unsigned sweep = 0; sweep < sweeps; sweep++, velocityIterationsUsed++) {
+    real largestChange = 0;
     for (SolverContact &solverContact : solverContacts) {
       if (!solverContact.active())
         continue;
@@ -1107,6 +1111,7 @@ void ContactResolver::endStep() {
       });
       solverContact.tangentImpulse[0] = tangentImpulse[0];
       solverContact.tangentImpulse[1] = tangentImpulse[1];
+      largestChange = std::max({largestChange, size(slide[0]), size(slide[1])});
 
       // The push: reach the target normal velocity, pushing but never
       // pulling
@@ -1119,8 +1124,14 @@ void ContactResolver::endStep() {
       apply(solverContact.normal * push,
             [&](int b) { return solverContact.turnPerImpulse[b][0] * push; });
       solverContact.normalImpulse = normalImpulse;
+      largestChange = std::max(largestChange, size(push));
     }
     sweepJoints();
+    if (sweepTolerance > (real)0 && largestChange < sweepTolerance &&
+        solverJoints.empty()) { // (joints' changes aren't measured: all sweeps)
+      ++velocityIterationsUsed;
+      break;
+    }
   }
 }
 

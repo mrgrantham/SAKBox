@@ -110,6 +110,13 @@ public:
      * found.
      */
     unsigned iterations = 0;
+
+    /**
+     * The velocity sweeps stop early once no contact's impulse changes by
+     * more than this in one (ContactResolver::sweepTolerance); 0, every
+     * sweep made.
+     */
+    real sweepTolerance = 0;
   };
 
   /**

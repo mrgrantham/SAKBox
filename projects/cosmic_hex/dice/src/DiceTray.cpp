@@ -13,6 +13,10 @@ using cyclone::Vector3;
 constexpr real kGravity = -9.81 * 2; // (a die 1 unit across is about 2 cm: heavier feel)
 constexpr double kStillSpeed = 0.05; // barely moving: slower than this...
 constexpr double kStillFor = 0.5;    // ...for this long
+// The contacts' sweeps stop once none changes by more than this (a die's
+// speed by three thousandths of a unit a second): round 106, the dice at rest
+// spent most of a DS's physics time on sweeps that changed nothing
+constexpr double kSweepTolerance = 0.003;
 
 cyclone::CollisionPlane plane(Vector3 direction, real offset) {
   cyclone::CollisionPlane p;
@@ -32,7 +36,8 @@ DiceTray::DiceTray()
                                       .subSteps = 4,
                                       .friction = static_cast<real>(kFriction),
                                       .restitution = static_cast<real>(kBounce),
-                                      .iterations = 64 * 8}) {
+                                      .iterations = 64 * 8,
+                                      .sweepTolerance = static_cast<real>(kSweepTolerance)}) {
   // The glass: a floor, a lid, and walls at the screen's edges (each plane
   // facing in)
   world_.addPlane(plane({0, 1, 0}, 0));

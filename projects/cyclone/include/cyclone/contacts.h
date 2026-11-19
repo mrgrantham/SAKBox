@@ -431,6 +431,8 @@ public:
    * a few more: at 1/1/1 a stack of ten never quite stops.)
    */
   void setSweeps(unsigned velocitySweeps, unsigned settleSweeps, unsigned positionSweeps);
+  /** SAKBox: see sweepTolerance. */
+  void setSweepTolerance(real tolerance) { sweepTolerance = tolerance; }
 
   /**
    * SAKBox: a sub-step's share of `sweeps` a step, in a step of `subSteps`
@@ -451,6 +453,16 @@ public:
 protected:
   /** SAKBox: see setMethod. */
   Method method = Method::SequentialImpulses;
+
+  /**
+   * SAKBox: the velocity sweeps stop early once no contact's impulse
+   * changes by more than this in a sweep (0: never, every sweep is made).
+   * The book's resolver works the same way: it resolves the contact needing
+   * the largest change until that's below velocityEpsilon (section 15.3).
+   * Round 106: the Cosmic Hex dice on the DS, two boxes at rest in a glass
+   * box, spent most of their time making sweeps that changed nothing.
+   */
+  real sweepTolerance = 0;
 
   /** SAKBox: see setSweeps (a whole step's). */
   unsigned velocitySweeps = 40;

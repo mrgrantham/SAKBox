@@ -85,7 +85,9 @@ World::World() : World(Settings{}) {}
 
 World::World(const Settings &settings)
     : calculateIterations(settings.iterations == 0), resolver(settings.iterations),
-      contacts(settings.maxContacts), settings(settings) {}
+      contacts(settings.maxContacts), settings(settings) {
+  resolver.setSweepTolerance(settings.sweepTolerance);
+}
 
 World::World(unsigned maxContacts, unsigned iterations)
     : calculateIterations(iterations == 0), resolver(iterations), contacts(maxContacts) {
