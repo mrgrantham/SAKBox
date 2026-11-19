@@ -175,9 +175,9 @@ CARDS = ["resource_minerals", "resource_food", "resource_fuel", "resource_water"
 ) for name in CARDS]
 
 # A card's back, for cards face down (the other players' hands, the deck):
-# two designs, chosen in the settings (round 100, the user's): rings of
-# hexagons in amber and blue (round 99's C), or the six kinds of planet
-# round an amber hexagon on a starfield (round 99's B)
+# the six kinds of planet round an amber hexagon on a starfield for resource
+# cards (round 99's B), rings of hexagons in amber and blue for action cards
+# (round 99's C; round 102, the user's: one for each kind)
 [texture_recipe(
     name = "card_back_" + design,
     svg = "cards/back_%s.svg" % design,
