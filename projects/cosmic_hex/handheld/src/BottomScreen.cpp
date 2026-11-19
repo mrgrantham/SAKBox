@@ -85,7 +85,8 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
             place.usable ? "Trade: its screen is next to be built" : "Trade: after your roll";
         break;
       case BoardButtons::Button::ShowResources:
-        message_ = "Show resources: not built yet";
+        info_ = info_ == Info::Resources ? Info::None : Info::Resources;
+        message_.clear();
         break;
       case BoardButtons::Button::OtherPlayers:
         message_ = "Other players: not built yet";

@@ -14,6 +14,7 @@ cc_library(
         "src/BoardPieces.cpp",
         "src/BottomScreen.cpp",
         "src/BuildMenu.cpp",
+        "src/CardsHeld.cpp",
         "src/Canvas.cpp",
         "src/ChoiceScreens.cpp",
         "src/ButtonMenu.cpp",
@@ -36,6 +37,7 @@ cc_library(
         "include/CosmicHex/Handheld/BottomScreen.hpp",
         "include/CosmicHex/Handheld/BoardView.hpp",
         "include/CosmicHex/Handheld/BuildMenu.hpp",
+        "include/CosmicHex/Handheld/CardsHeld.hpp",
         "include/CosmicHex/Handheld/Canvas.hpp",
         "include/CosmicHex/Handheld/ChoiceScreens.hpp",
         "include/CosmicHex/Handheld/ButtonMenu.hpp",
@@ -266,6 +268,16 @@ cc_test(
     name = "ScreenPictures_test",
     size = "small",
     srcs = ["tests/ScreenPictures_test.cpp"],
+    deps = [
+        ":handheld",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "CardsHeld_test",
+    size = "small",
+    srcs = ["tests/CardsHeld_test.cpp"],
     deps = [
         ":handheld",
         "@gtest//:gtest_main",

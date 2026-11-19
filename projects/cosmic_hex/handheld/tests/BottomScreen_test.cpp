@@ -116,7 +116,7 @@ TEST(BottomScreenTest, ButtonsAlwaysAnswer) {
   EXPECT_TRUE(screen.showingFeedback());
   screen.clearFeedback();
   EXPECT_FALSE(screen.showingFeedback());
-  screen.tap(10, 10, std::nullopt); // Show resources
+  screen.tap(10, 36, std::nullopt); // the other players
   EXPECT_FALSE(screen.message().empty());
   // Drawn: the message's band at the bottom
   Canvas canvas(kWidth, kHeight);
@@ -174,4 +174,18 @@ TEST(BottomScreenTest, TheButtonsWorkTheChoosingScreens) {
   ASSERT_EQ(screen.mode(), Mode::Build);
   EXPECT_TRUE(screen.press(Key::Back).used);
   EXPECT_EQ(screen.mode(), Mode::Board);
+}
+
+// Show resources opens and closes, your move or not (round 102)
+TEST(BottomScreenTest, ShowResourcesAnyTime) {
+  const State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, Game::legalActions(state), false);
+  EXPECT_EQ(screen.info(), BottomScreen::Info::None);
+  screen.tap(10, 10, std::nullopt);
+  EXPECT_EQ(screen.info(), BottomScreen::Info::Resources);
+  screen.update(state, Game::legalActions(state), true); // (stays open as the game goes on)
+  EXPECT_EQ(screen.info(), BottomScreen::Info::Resources);
+  screen.tap(10, 10, std::nullopt);
+  EXPECT_EQ(screen.info(), BottomScreen::Info::None);
 }

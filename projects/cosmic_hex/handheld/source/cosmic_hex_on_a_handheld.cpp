@@ -38,6 +38,7 @@
 #include <CosmicHex/Handheld/BottomScreen.hpp>
 #include <CosmicHex/Handheld/ButtonMenu.hpp>
 #include <CosmicHex/Handheld/Canvas.hpp>
+#include <CosmicHex/Handheld/CardsHeld.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
@@ -45,12 +46,14 @@
 #include <CosmicHex/Handheld/PointsBars.hpp>
 #include <CosmicHex/Handheld/RecipePixels.hpp>
 #include <CosmicHex/Handheld/ScreenFlow.hpp>
+#include <CosmicHex/Handheld/ScreenPictures.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
 #include <CosmicHex/Handheld/TurnBanner.hpp>
 #include <ScratchPadd/FrameProfile.hpp>
 #include <ScratchPadd/GameClock.hpp>
 #include <ScratchPadd/MemoryStats.hpp>
+#include <ScratchPadd/Motion/Motion.hpp>
 #include <ScratchPadd/TitleScene/TitleScene.hpp>
 // The title screen's rocket, as the build cooked it for this console
 #if defined(__NDS__)
@@ -97,6 +100,22 @@ namespace Scene = ScratchPadd::Scene;
 constexpr bool kWatchAtStart = true;
 #else
 constexpr bool kWatchAtStart = false;
+#endif
+
+// The scripted-taps builds (COSMIC_HEX_SCRIPTED_TAPS, round 102): taps the
+// app makes itself at set seconds after starting, as if the stylus had, so
+// a screen reached by touch can be seen in an emulator without touching it
+// (and photographed for screenshot tests). Each: when, where on the bottom
+// screen (DS pixels, scaled to the 3DS's), held for a moment
+struct ScriptedTap {
+  double seconds;
+  int x, y;
+};
+#ifdef COSMIC_HEX_SCRIPTED_TAPS
+// Show resources opened, then closed again
+constexpr std::array<ScriptedTap, 2> kScriptedTaps{{{12, 10, 10}, {18, 10, 10}}};
+#else
+constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 #endif
 
 // The title screen: the 3D scene (round 87), or the plain text title
@@ -344,6 +363,7 @@ public:
                                                      .stars = kThisPlatform.titleStars});
     titleStarted_ = Clock::now();
     loadFaces();
+    loadCardPictures();
     // The build that watches by itself (COSMIC_HEX_WATCH_AT_START: the
     // -watch apps), for unattended runs in an emulator or on a console
     if (kWatchAtStart) {
@@ -386,7 +406,22 @@ private:
       picture_->setZoom(picture_->zoom() - 1);
       bottomDirty_ = true;
     }
-    handleTouch(pad.touch);
+    handleTouch(scripted(pad.touch));
+    // An info view opened or closed (Show resources): the game held while
+    // it's open, and let go when it closes, if the view was what held it
+    if (bottomScreen_ && bottomScreen_->info() != shownInfo_) {
+      shownInfo_ = bottomScreen_->info();
+      infoOpenedAt_ = Clock::now();
+      if (flow_.screen() == ScreenFlow::Screen::Game && latest_) {
+        if (shownInfo_ != BottomScreen::Info::None && !latest_->paused) {
+          send(SetHold{true});
+          heldForInfo_ = true;
+        } else if (shownInfo_ == BottomScreen::Info::None && heldForInfo_) {
+          send(SetHold{false});
+          heldForInfo_ = false;
+        }
+      }
+    }
     // A tapped button's flash and message, for a second and a half
     if (bottomScreen_ && bottomScreen_->showingFeedback()) {
       if (!feedbackSince_) {
@@ -663,6 +698,7 @@ private:
       drawPieces(*shown, Scene::Transform::identity());
     }
     drawDice(camera);
+    drawInfo(camera);
     drawText();
     // The touched corner (or the blockade's hex), ringed on the 3D board too
     if (selected_) {
@@ -838,6 +874,7 @@ private:
                    {200, 208, 222});
     if (mode_ == Mode::Playing && latest_->yourMove)
       drawMoves(overlay);
+    drawInfoWords(overlay, state);
     drawBanner(overlay);
     if (state.winner >= 0) {
       std::snprintf(line, sizeof line, "Player %d wins!", state.winner + 1);
@@ -877,6 +914,95 @@ private:
         hexagonEdge(x, y, 5 * k, kEmpty);
     }
     overlay.textCentred(bx + 12 * k, 30 * k, "BADGES", kDim);
+  }
+
+  // Whose cards an info view shows: yours when playing, the turn's when
+  // watching
+  int infoPlayer(const State &state) const { return mode_ == Mode::Playing ? 0 : state.turn; }
+
+  // Where a pile of resource `r` stands on the top screen, and how far each
+  // card of it has come in (0 to 1), `order` cards after the first
+  struct PilePlace {
+    float x, y;
+  };
+  PilePlace pilePlace(int r) const {
+    const float k = static_cast<float>(kTopWidth) / 256.0f;
+    const float spacing = static_cast<float>(cardWidth_) + 18 * k;
+    const float left = (static_cast<float>(kTopWidth) - (5 * spacing - 18 * k)) / 2;
+    return {left + static_cast<float>(r) * spacing,
+            static_cast<float>(kTopHeight - cardHeight_) - 8 * k};
+  }
+  float cardArrived(int order) const {
+    const float since = std::chrono::duration<float>(Clock::now() - infoOpenedAt_).count() -
+                        0.05f * static_cast<float>(order);
+    return ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseInOut, since / 0.25f);
+  }
+
+  // Show resources (round 102): your resources as piles along the bottom
+  // of the top screen, a card for each you hold (5 at most), each under
+  // the last showing its band; your action cards across the top half; each
+  // card easing in on its own, the piles from below, the cards from above
+  void drawInfo(const Scene::Camera &camera) {
+    if (!latest_ || shownInfo_ != BottomScreen::Info::Resources || !pictureSquare_)
+      return;
+    const State &state = latest_->state;
+    const auto &player = state.player[static_cast<std::size_t>(infoPlayer(state))];
+    const float k = static_cast<float>(kTopWidth) / 256.0f;
+    const auto w = static_cast<float>(cardWidth_), h = static_cast<float>(cardHeight_);
+    int order = 0;
+    for (int r = 0; r < CosmicHex::kResources; ++r) {
+      const int held = player.resources[static_cast<std::size_t>(r)];
+      const int shown = std::max(1, std::min(held, 5));
+      const PilePlace place = pilePlace(r);
+      for (int j = shown - 1; j >= 0; --j) {
+        const float y = place.y - static_cast<float>(j) * 3 * k;
+        const float in = cardArrived(order++);
+        const float slid = y + (1 - in) * (static_cast<float>(kTopHeight) - y + 4);
+        renderer_->draw(pictureSquare_,
+                        onScreenAt(camera, static_cast<float>(kTopWidth),
+                                   static_cast<float>(kTopHeight), place.x, slid, w, h,
+                                   kPictureDistance - 0.02f * static_cast<float>(shown - j)),
+                        {.shading = Scene::Material::Shading::Unlit,
+                         .texture = cardPictures_[static_cast<std::size_t>(r)],
+                         .alpha = static_cast<std::uint8_t>(held == 0 ? 10 : 31)});
+      }
+    }
+    std::vector<CosmicHex::Art::Card> actions;
+    for (int id : player.contracts)
+      if (const auto card = cardOf(id))
+        actions.push_back(*card);
+    const float gap = 6 * k, total = static_cast<float>(actions.size()) * (w + gap) - gap;
+    for (std::size_t i = 0; i < actions.size(); ++i) {
+      const float x =
+          (static_cast<float>(kTopWidth) - total) / 2 + static_cast<float>(i) * (w + gap);
+      const float y = 46 * k;
+      const float in = cardArrived(order++);
+      renderer_->draw(pictureSquare_,
+                      onScreenAt(camera, static_cast<float>(kTopWidth),
+                                 static_cast<float>(kTopHeight), x, y - (1 - in) * (y + h + 4), w,
+                                 h),
+                      {.shading = Scene::Material::Shading::Unlit,
+                       .texture = cardPictures_[static_cast<std::size_t>(actions[i])]});
+    }
+  }
+
+  // Show resources' words: each pile's short title and how many, above it
+  void drawInfoWords(Scene::Overlay &overlay, const State &state) {
+    if (shownInfo_ != BottomScreen::Info::Resources)
+      return;
+    const auto &player = state.player[static_cast<std::size_t>(infoPlayer(state))];
+    const float k = static_cast<float>(kTopWidth) / 256.0f;
+    for (int r = 0; r < CosmicHex::kResources; ++r) {
+      const int held = player.resources[static_cast<std::size_t>(r)];
+      const PilePlace place = pilePlace(r);
+      const float top = place.y - static_cast<float>(std::max(1, std::min(held, 5)) - 1) * 3 * k;
+      const auto words =
+          std::string(
+              CosmicHex::Art::wordsOf(cardOf(static_cast<CosmicHex::Resource>(r))).shortTitle) +
+          " " + std::to_string(held);
+      overlay.textCentred(place.x + static_cast<float>(cardWidth_) / 2, top - 7 * k, words,
+                          held == 0 ? Scene::Colour{120, 128, 145} : Scene::Colour{226, 232, 244});
+    }
   }
 
   // The turn banner as it moves (TurnBanner): a band softly in the player's
@@ -1079,6 +1205,22 @@ private:
     touchWasDown_ = touch.down;
   }
 
+  // The stylus as the scripted-taps builds have it: each tap down for a few
+  // frames at its time (else the stylus as it is)
+  Input::Touch scripted(const Input::Touch &touch) {
+    const double now = std::chrono::duration<double>(Clock::now() - startedAt_).count();
+    for (const ScriptedTap &tap : kScriptedTaps)
+      if (now >= tap.seconds && now < tap.seconds + 0.1) {
+        const float k = static_cast<float>(kBottomWidth) / 256.0f;
+        Input::Touch down = touch;
+        down.down = true;
+        down.x = static_cast<std::int16_t>(static_cast<float>(tap.x) * k);
+        down.y = static_cast<std::int16_t>(static_cast<float>(tap.y) * k);
+        return down;
+      }
+    return touch;
+  }
+
   // Whether the bottom screen shows the board (rather than a choosing screen)
   bool onTheBoard() const {
     return !bottomScreen_ || bottomScreen_->mode() == BottomScreen::Mode::Board ||
@@ -1182,6 +1324,30 @@ private:
   std::optional<Scene::Renderer> renderer_;
   // Each tile face (Art.hpp) drawn into a texture from its recipe (kFaceSize a side),
   // once, when the game starts
+  // The cards' pictures for the top screen (ScreenPictures, round 102): each
+  // card's drawing down to its picture's foot, no words (titles are the
+  // overlay's, sharp), cardWidth_ across; once, as the DS hands out its
+  // texture memory once (32 wide there: 2 KB a card)
+  void loadCardPictures() {
+    cardWidth_ = kTopWidth >= 400 ? 44 : 32;
+    cardHeight_ = cardWidth_ * 52 / 63;
+    float uMax = 1, vMax = 1;
+    for (int c = 0; c < CosmicHex::Art::kCards; ++c) {
+      const auto card = static_cast<CosmicHex::Art::Card>(c);
+      const auto whole = recipePixels(CosmicHex::Art::cardRecipeOf(card), cardWidth_,
+                                      cardWidth_ * 88 / 63, kThisPlatform.recipeSmoothing);
+      if (whole.empty())
+        continue;
+      const std::vector<Scene::Colour> top(whole.begin(), whole.begin() + cardWidth_ * cardHeight_);
+      const PaddedPicture picture = padded(top, cardWidth_, cardHeight_);
+      uMax = picture.uMax;
+      vMax = picture.vMax;
+      cardPictures_[static_cast<std::size_t>(c)] =
+          renderer_->load(Scene::TextureImage{picture.width, picture.height, picture.pixels});
+    }
+    pictureSquare_ = renderer_->load(pictureSquare(uMax, vMax).data());
+  }
+
   void loadFaces() {
     for (int i = 0; i < CosmicHex::Art::kFaces; ++i) {
       const std::vector<Scene::Colour> pixels =
@@ -1230,6 +1396,8 @@ private:
       return false; // (pieces still moving)
     if (banner_.showing(gameClock_.seconds()))
       return false; // (the turn's banner moving)
+    if (shownInfo_ != BottomScreen::Info::None)
+      return false; // (an info view: its cards come in, and the game is held anyway)
     if (snapshots_ != drawnSnapshots_ || turn_ != drawnTurn_ || selected_ != drawnSelection_)
       return false;
     return !kWatchAtStart || Clock::now() - drawnAt_ < std::chrono::seconds(1);
@@ -1280,7 +1448,16 @@ private:
   std::optional<BottomScreen> bottomScreen_; // (its buttons and choosing screens: round 101)
   std::optional<Canvas> bottomCanvas_;
   std::optional<Clock::time_point> feedbackSince_;
+  Clock::time_point startedAt_ = Clock::now(); // (the scripted taps' times)
   TurnBanner banner_{static_cast<float>(kTopWidth)};
+  // The info views (Show resources): which is shown, since when, and
+  // whether it holds the game; the cards' pictures for them
+  BottomScreen::Info shownInfo_ = BottomScreen::Info::None;
+  Clock::time_point infoOpenedAt_{};
+  bool heldForInfo_ = false;
+  std::array<Scene::Texture, CosmicHex::Art::kCards> cardPictures_{};
+  Scene::Mesh pictureSquare_;
+  int cardWidth_ = 32, cardHeight_ = 26;
   std::optional<ConsoleHardware::BottomScreen> bottom_;
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};

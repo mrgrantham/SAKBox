@@ -68,3 +68,18 @@ devkitpro_nds_app(
     extra_srcs = SOURCES,
     icon_letters = "CW",
 )
+
+# The watching build with scripted taps (COSMIC_HEX_SCRIPTED_TAPS): the app
+# taps its own bottom screen at set times (Show resources, open and closed),
+# so screens reached by touch can be seen in melonDS (round 102)
+devkitpro_nds_app(
+    name = "cosmic-hex-ds-taps",
+    tags = ["blender"],  # (the title screen's rocket: tools/assets)
+    srcs = ["Makefile"],
+    defines = [
+        "COSMIC_HEX_WATCH_AT_START",
+        "COSMIC_HEX_SCRIPTED_TAPS",
+    ],
+    extra_srcs = SOURCES,
+    icon_letters = "CT",
+)
