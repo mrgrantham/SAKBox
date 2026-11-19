@@ -2021,38 +2021,46 @@ private:
     overlay.text(10 * k, top + 32 * k,
                  std::to_string(view.points) + (view.points == 1 ? " point" : " points"),
                  Palette::kWords, k);
-    // Their cards, face down, in the agreed backs: a fan of up to 10, the
-    // count beside it
+    // Their cards, face down, in the agreed backs: fanned, six a row, a
+    // second row under the first when there are more (up to 12 shown), the
+    // count by the label. What's under them moves down to make room
+    constexpr int kBacksARow = 6, kBacksShown = 12;
+    const float backW = 28 * k, backH = backW * 88 / 63, backStep = 9 * k, rowStep = 18 * k;
+    const auto rowsOf = [&](int count) {
+      return std::max(1, (std::min(count, kBacksShown) + kBacksARow - 1) / kBacksARow);
+    };
+    const int rows = std::max(rowsOf(view.resourceCards), rowsOf(view.actionCards));
+    const float extra = backH - 34 * k + rowStep * static_cast<float>(rows - 1);
     const auto backs = [&](float x, float y, int count, std::string_view label,
                            CosmicHex::Art::CardBack design) {
-      overlay.text(x, y, label, Palette::kDimWords, k);
-      const float w = 24 * k, h = w * 88 / 63;
-      const int shown = std::min(count, 8);
-      for (int i = 0; i < shown; ++i)
+      overlay.text(x, y, std::string(label) + " " + std::to_string(count), Palette::kDimWords, k);
+      const int shown = std::min(count, kBacksShown);
+      for (int i = 0; i < shown; ++i) {
+        const auto column = static_cast<float>(i % kBacksARow);
+        const auto row = static_cast<float>(i / kBacksARow);
         if (backSquare_ && backPictures_[static_cast<std::size_t>(design)])
           renderer_->draw(backSquare_,
-                          onScreenAt(camera, screenW, screenH, x + static_cast<float>(i) * 7 * k,
-                                     y + 11 * k, w, h,
+                          onScreenAt(camera, screenW, screenH, x + column * backStep,
+                                     y + 11 * k + row * rowStep, backW, backH,
                                      kPictureDistance * (1 - 0.002f * static_cast<float>(i))),
                           {.shading = Scene::Material::Shading::Unlit,
                            .texture = backPictures_[static_cast<std::size_t>(design)]});
-      overlay.text(x + static_cast<float>(std::max(shown, 1) - 1) * 7 * k + w + 4 * k, y + 22 * k,
-                   std::to_string(count), Palette::kWords, k);
+      }
     };
     backs(84 * k, top + 10 * k, view.resourceCards, "RESOURCES", CosmicHex::Art::kResourceBack);
-    backs(178 * k, top + 10 * k, view.actionCards, "CARDS", CosmicHex::Art::kActionBack);
+    backs(170 * k, top + 10 * k, view.actionCards, "CARDS", CosmicHex::Art::kActionBack);
     // Badges, ships, stations, colonies
     char line[64];
     std::snprintf(line, sizeof line, "badges %d   ships %d   stations %d   colonies %d",
                   view.badges, view.ships, view.stations, view.colonies);
-    overlay.text(10 * k, top + 64 * k, line, Palette::kSoftWords, k);
+    overlay.text(10 * k, top + 64 * k + extra, line, Palette::kSoftWords, k);
     // Their planets: a hexagon each in its kind's colour, its number on it
-    overlay.text(10 * k, top + 82 * k, "PLANETS", Palette::kDimWords, k);
+    overlay.text(10 * k, top + 82 * k + extra, "PLANETS", Palette::kDimWords, k);
     if (view.planets.empty())
-      overlay.text(64 * k, top + 82 * k, "none yet", Palette::kDimWords, k);
+      overlay.text(64 * k, top + 82 * k + extra, "none yet", Palette::kDimWords, k);
     for (std::size_t i = 0; i < view.planets.size() && i < 16; ++i) {
       const float x = (22 + 26 * static_cast<float>(i % 8)) * k;
-      const float y = top + (108 + 28 * static_cast<float>(i / 8)) * k;
+      const float y = top + (106 + 26 * static_cast<float>(i / 8)) * k + extra;
       const PlayerView::Planet &planet = view.planets[i];
       overlay.hexagon(x, y, 12 * k, BoardColours::ofKind(planet.kind), true);
       if (planet.colony)
@@ -2064,7 +2072,8 @@ private:
       std::string charters = "Charters:";
       for (const CosmicHex::Art::Card card : view.charters)
         charters += " " + std::string(CosmicHex::Art::wordsOf(card).shortTitle);
-      overlay.text(10 * k, top + 158 * k, charters, Palette::kWords, k);
+      overlay.text(10 * k, std::min(top + 156 * k + extra, top + kTopHeight - 14 * k), charters,
+                   Palette::kWords, k);
     }
   }
 
