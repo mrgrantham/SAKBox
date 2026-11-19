@@ -10,8 +10,10 @@
 //   if (outcome.play) send(*outcome.play);
 //   screen.draw(canvas, boardPixels);              // when it's to be redrawn
 //
-// Taps it doesn't use (on the board, away from a button, when nothing's
-// being placed) are the app's: selecting a corner to list its moves.
+// Touching one of your ships marks where it can go; touching a marked
+// corner moves it there. Taps it doesn't use (elsewhere on the board, when
+// nothing's being placed) are the app's: selecting a corner to list its
+// moves.
 #pragma once
 
 #include <CosmicHex/Handheld/BoardButtons.hpp>
@@ -23,6 +25,7 @@
 
 #include <array>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace CosmicHex::Handheld {
@@ -46,8 +49,17 @@ public:
   Outcome tap(int x, int y, const std::optional<BoardPicture::Spot> &spot);
 
   Mode mode() const { return mode_; }
-  // In Placing: the corners where the chosen build may go, to be marked
+  // In Placing: the corners where the chosen build, or the ship touched,
+  // may go, to be marked
   std::vector<Corner> placingCorners() const;
+
+  // Feedback for a tap on a button (round 101, the user's: taps that did
+  // nothing gave no sign they'd landed): the button flashes and a short
+  // message says what's happening or why not. The app clears it after a
+  // moment (clearFeedback), and redraws
+  const std::string &message() const { return message_; }
+  bool showingFeedback() const { return !message_.empty() || flash_.has_value(); }
+  void clearFeedback();
 
   // Draws the screen onto `canvas`: in the board modes over `board` (the
   // map's pixels, the canvas's size), with the buttons
@@ -71,6 +83,8 @@ private:
   bool resourcesCanGoBack_ = false;
   std::optional<Pickers::PlayerChoice> players_;
   int playerChosen_ = -1;
+  std::string message_;
+  std::optional<BoardButtons::Button> flash_;
   CardSprites cards_;
   std::array<std::vector<Canvas::Colour>, Art::kIcons> icons_;
   int iconSize_ = 0;

@@ -10,6 +10,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 using namespace CosmicHex;
 using namespace CosmicHex::Handheld;
 using Kind = Action::Kind;
@@ -101,4 +103,47 @@ TEST(BottomScreenTest, TheBoardsOwnTapsAndOthersTurns) {
   screen.draw(canvas, board);
   EXPECT_EQ(canvas.at(128, 96).b, 48);
   EXPECT_NE(canvas.at(4, 4).b, 48); // (Show resources' button)
+}
+
+// Every button tap shows: a flash, and a message when it can't do anything
+// yet (round 101: the user couldn't tell taps had landed)
+TEST(BottomScreenTest, ButtonsAlwaysAnswer) {
+  const State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, Game::legalActions(state), false);
+  EXPECT_TRUE(screen.tap(240, 10, std::nullopt).used); // Build, not your move
+  EXPECT_EQ(screen.message(), "Build: on your turn");
+  EXPECT_TRUE(screen.showingFeedback());
+  screen.clearFeedback();
+  EXPECT_FALSE(screen.showingFeedback());
+  screen.tap(10, 10, std::nullopt); // Show resources
+  EXPECT_FALSE(screen.message().empty());
+  // Drawn: the message's band at the bottom
+  Canvas canvas(kWidth, kHeight);
+  std::vector<Canvas::Colour> board(static_cast<std::size_t>(kWidth * kHeight), {24, 32, 48, 255});
+  screen.draw(canvas, board);
+  EXPECT_NE(canvas.at(128, kHeight - 11).b, 48);
+}
+
+// Touching one of your ships marks where it can go; touching one moves it
+TEST(BottomScreenTest, TouchAShipThenWhereItGoes) {
+  State state = playUntil([](const State &s) { return s.phase == Phase::Main; });
+  const auto legal = Game::legalActions(state);
+  const auto move = std::find_if(legal.begin(), legal.end(),
+                                 [](const Action &a) { return a.kind == Kind::Move; });
+  ASSERT_NE(move, legal.end());
+  const Corner from = state.ships[static_cast<std::size_t>(move->a)].corner;
+  BottomScreen screen(kWidth, kHeight);
+  screen.update(state, legal, true);
+  EXPECT_TRUE(screen.tap(128, 96, BoardPicture::Spot{from.hex, from}).used);
+  ASSERT_EQ(screen.mode(), Mode::Placing);
+  const Corner to = boardCorners()[static_cast<std::size_t>(move->b)];
+  const auto marked = screen.placingCorners();
+  EXPECT_NE(std::find(marked.begin(), marked.end(), to), marked.end());
+  const auto moved = screen.tap(128, 96, BoardPicture::Spot{to.hex, to});
+  ASSERT_TRUE(moved.play.has_value());
+  if (moved.play) {
+    EXPECT_EQ(moved.play->kind, Kind::Move);
+    EXPECT_EQ(moved.play->b, move->b);
+  }
 }

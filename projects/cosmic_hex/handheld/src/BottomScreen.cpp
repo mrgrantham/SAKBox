@@ -24,7 +24,8 @@ void BottomScreen::update(const State &state, const std::vector<Action> &legal, 
   legal_ = legal;
   yourMove_ = yourMove;
   situation_ = BoardButtons::situationOf(state, legal, yourMove);
-  rows_ = yourMove && state.phase == Phase::Main ? buildRows(state) : std::vector<BuildRow>{};
+  // (before the roll too: each row then says it waits for the roll)
+  rows_ = yourMove ? buildRows(state) : std::vector<BuildRow>{};
   if (!yourMove) {
     mode_ = Mode::Board;
     return;
@@ -47,8 +48,6 @@ void BottomScreen::update(const State &state, const std::vector<Action> &legal, 
         return std::find(legal.begin(), legal.end(), a) != legal.end();
       }))
     mode_ = Mode::Board;
-  if (mode_ == Mode::Build && state.phase != Phase::Main)
-    mode_ = Mode::Board;
 }
 
 BottomScreen::Outcome BottomScreen::tap(int x, int y,
@@ -58,25 +57,74 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   case Mode::Board:
   case Mode::Placing: {
     const auto buttons = BoardButtons::layout(width_, height_, situation_);
-    if (const auto button = BoardButtons::at(buttons, x, y)) {
-      if (*button == BoardButtons::Button::Build) {
-        mode_ = Mode::Build;
-        buildChosen_ = -1;
-      } else if (*button == BoardButtons::Button::EndTurn) {
+    // Any button, usable or not: it flashes, and says why when it can't
+    for (const BoardButtons::Place &place : buttons) {
+      if (static_cast<float>(x) < place.x || static_cast<float>(x) >= place.x + place.size ||
+          static_cast<float>(y) < place.y || static_cast<float>(y) >= place.y + place.size)
+        continue;
+      flash_ = place.button;
+      switch (place.button) {
+      case BoardButtons::Button::Build:
+        if (yourMove_) {
+          mode_ = Mode::Build;
+          buildChosen_ = -1;
+          message_.clear();
+        } else {
+          message_ = "Build: on your turn";
+        }
+        break;
+      case BoardButtons::Button::EndTurn:
         for (const Action &a : legal_)
-          if (a.kind == Kind::EndTurn || a.kind == Kind::EndTrading)
+          if (a.kind == Kind::EndTurn || a.kind == Kind::EndTrading) {
+            message_.clear();
             return {a, true};
+          }
+        break;
+      case BoardButtons::Button::Trade:
+        message_ =
+            place.usable ? "Trade: its screen is next to be built" : "Trade: after your roll";
+        break;
+      case BoardButtons::Button::ShowResources:
+        message_ = "Show resources: not built yet";
+        break;
+      case BoardButtons::Button::OtherPlayers:
+        message_ = "Other players: not built yet";
+        break;
+      case BoardButtons::Button::Cards:
+        message_ = "Cards: not built yet";
+        break;
+      case BoardButtons::Button::Roll:
+        message_ = "The dice are thrown for you, for now";
+        break;
       }
-      return {std::nullopt, true}; // (the other buttons' screens come next)
+      return {std::nullopt, true};
     }
     if (mode_ == Mode::Placing) {
+      // (a marked corner: that move; anywhere else: put it down again)
       if (spot)
-        for (const Action &a : placing_)
-          if (concerns(state_, a, *spot)) {
+        for (const Action &a : placing_) {
+          const MoveSpot where = spotOf(state_, a);
+          if (!where.corners.empty() && where.corners.back() == spot->corner) {
             mode_ = Mode::Board;
             return {a, true};
           }
+        }
+      mode_ = Mode::Board;
       return {std::nullopt, true};
+    }
+    // One of your ships touched: where it can go, marked, to touch
+    if (yourMove_ && spot) {
+      std::vector<Action> moves;
+      for (const Action &a : legal_)
+        if (a.kind == Kind::Move && a.a >= 0 && a.a < static_cast<int>(state_.ships.size()) &&
+            state_.ships[static_cast<std::size_t>(a.a)].corner == spot->corner)
+          moves.push_back(a);
+      if (!moves.empty()) {
+        placing_ = std::move(moves);
+        mode_ = Mode::Placing;
+        message_.clear();
+        return {std::nullopt, true};
+      }
     }
     // The blockade beside more than one player: whom to steal from
     if (yourMove_ && state_.phase == Phase::Blockade && spot) {
@@ -151,6 +199,11 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
   return {};
 }
 
+void BottomScreen::clearFeedback() {
+  message_.clear();
+  flash_.reset();
+}
+
 std::vector<Corner> BottomScreen::placingCorners() const {
   std::vector<Corner> out;
   if (mode_ != Mode::Placing)
@@ -201,13 +254,25 @@ void BottomScreen::draw(Canvas &canvas, const std::vector<Canvas::Colour> &board
       sprite = recipePixels(Art::iconRecipeOf(static_cast<Art::Icon>(icon)), inner);
     canvas.blend(sprite, inner, inner, static_cast<int>(place.x) + 2, static_cast<int>(place.y) + 2,
                  place.usable ? 1.0f : 0.35f);
+    if (flash_ == place.button)
+      canvas.outline(place.x - 1, place.y - 1, place.size + 2, place.size + 2, kHint, 2);
+  }
+  // A tapped button's message, in a band at the bottom
+  if (!message_.empty() && mode_ == Mode::Board) {
+    const float k = static_cast<float>(width_) / 256;
+    canvas.fillRect(30 * k, static_cast<float>(height_) - 18 * k,
+                    static_cast<float>(width_) - 60 * k, 14 * k, kHintBand);
+    canvas.outline(30 * k, static_cast<float>(height_) - 18 * k,
+                   static_cast<float>(width_) - 60 * k, 14 * k, kHint);
+    canvas.textCentred(static_cast<float>(width_) / 2, static_cast<float>(height_) - 11 * k,
+                       message_, kHint);
   }
   if (mode_ == Mode::Placing) {
     const float k = static_cast<float>(width_) / 256;
     canvas.fillRect(0, static_cast<float>(height_) - 16 * k, static_cast<float>(width_), 16 * k,
                     kHintBand);
     canvas.textCentred(static_cast<float>(width_) / 2, static_cast<float>(height_) - 8 * k,
-                       "Where? Touch a marked corner", kHint);
+                       "Where to? Touch a marked corner", kHint);
   }
 }
 

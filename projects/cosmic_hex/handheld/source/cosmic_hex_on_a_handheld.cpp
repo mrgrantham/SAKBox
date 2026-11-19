@@ -374,6 +374,16 @@ private:
       bottomDirty_ = true;
     }
     handleTouch(pad.touch);
+    // A tapped button's flash and message, for a second and a half
+    if (bottomScreen_ && bottomScreen_->showingFeedback()) {
+      if (!feedbackSince_) {
+        feedbackSince_ = Clock::now();
+      } else if (Clock::now() - *feedbackSince_ > std::chrono::milliseconds(1500)) {
+        bottomScreen_->clearFeedback();
+        feedbackSince_.reset();
+        bottomDirty_ = true;
+      }
+    }
     profile_.frameStarted();
     if (bottomDirty_) {
       auto timing = profile_.time(kProfileBottom);
@@ -1168,6 +1178,7 @@ private:
   std::optional<BoardPicture> picture_;
   std::optional<BottomScreen> bottomScreen_; // (its buttons and choosing screens: round 101)
   std::optional<Canvas> bottomCanvas_;
+  std::optional<Clock::time_point> feedbackSince_;
   std::optional<ConsoleHardware::BottomScreen> bottom_;
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};
