@@ -2056,18 +2056,40 @@ private:
     };
     backs(84 * k, top + 10 * k, view.resourceCards, "RESOURCES", CosmicHex::Art::kResourceBack);
     backs(170 * k, top + 10 * k, view.actionCards, "CARDS", CosmicHex::Art::kActionBack);
-    // Badges, ships, stations, colonies
-    char line[64];
-    std::snprintf(line, sizeof line, "badges %d   ships %d   stations %d   colonies %d",
-                  view.badges, view.ships, view.stations, view.colonies);
-    overlay.text(10 * k, top + 64 * k + extra, line, Palette::kSoftWords, k);
+    // Badges, ships, stations and colonies as the board draws them (the
+    // user's): each a group of its pieces, up to four of them, or one and
+    // how many; its name small under it
+    const auto pieces = [&](float x, int count, std::string_view name, auto &&drawOne) {
+      const float y = top + 66 * k + extra;
+      constexpr int kMostDrawn = 4;
+      const int drawn = count > kMostDrawn ? 1 : count;
+      for (int i = 0; i < drawn; ++i)
+        drawOne(x + 5 * k + static_cast<float>(i) * 11 * k, y);
+      if (count > kMostDrawn)
+        overlay.text(x + 12 * k, y - 4 * k, "x" + std::to_string(count), Palette::kWords, k);
+      if (count == 0)
+        overlay.text(x + 1 * k, y - 4 * k, "none", Palette::kDimWords, k);
+      overlay.text(x, y + 8 * k, name, Palette::kDimWords, k);
+    };
+    pieces(10 * k, view.badges, "badges",
+           [&](float x, float y) { overlay.hexagon(x, y, 4.5f * k, Palette::kHighlight, true); });
+    pieces(72 * k, view.ships, "ships", [&](float x, float y) {
+      overlay.triangle(x, y - 5 * k, x - 4.5f * k, y + 4 * k, x + 4.5f * k, y + 4 * k, colour);
+    });
+    pieces(134 * k, view.stations, "stations", [&](float x, float y) {
+      overlay.rectangle(x - 3.5f * k, y - 3.5f * k, 7 * k, 7 * k, colour);
+    });
+    pieces(196 * k, view.colonies, "colonies", [&](float x, float y) {
+      overlay.rectangle(x - 4.5f * k, y - 4.5f * k, 9 * k, 9 * k, colour);
+      overlay.rectangle(x - 1.5f * k, y - 1.5f * k, 3 * k, 3 * k, {20, 22, 30});
+    });
     // Their planets: a hexagon each in its kind's colour, its number on it
-    overlay.text(10 * k, top + 82 * k + extra, "PLANETS", Palette::kDimWords, k);
+    overlay.text(10 * k, top + 88 * k + extra, "PLANETS", Palette::kDimWords, k);
     if (view.planets.empty())
-      overlay.text(64 * k, top + 82 * k + extra, "none yet", Palette::kDimWords, k);
+      overlay.text(64 * k, top + 88 * k + extra, "none yet", Palette::kDimWords, k);
     for (std::size_t i = 0; i < view.planets.size() && i < 16; ++i) {
       const float x = (22 + 26 * static_cast<float>(i % 8)) * k;
-      const float y = top + (106 + 26 * static_cast<float>(i / 8)) * k + extra;
+      const float y = top + (110 + 25 * static_cast<float>(i / 8)) * k + extra;
       const PlayerView::Planet &planet = view.planets[i];
       overlay.hexagon(x, y, 12 * k, BoardColours::ofKind(planet.kind), true);
       if (planet.colony)
