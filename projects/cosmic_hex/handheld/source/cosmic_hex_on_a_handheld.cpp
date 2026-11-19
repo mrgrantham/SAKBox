@@ -774,8 +774,12 @@ private:
       const float wide = 2 * away * std::tan(camera.fieldOfView * 3.14159265f / 360) *
                          static_cast<float>(kTopWidth) / static_cast<float>(kTopHeight);
       const float sign = static_cast<float>(slideWay_); // (+1: the new one comes from the right)
-      drawPieces(previewBefore_, Scene::Transform::translation(right * (-sign * through * wide)));
-      drawPieces(preview_, Scene::Transform::translation(right * (sign * (1 - through) * wide)));
+      const auto before = Scene::Transform::translation(right * (-sign * through * wide));
+      const auto after = Scene::Transform::translation(right * (sign * (1 - through) * wide));
+      drawGaps(previewBefore_, before);
+      drawPieces(previewBefore_, before);
+      drawGaps(preview_, after);
+      drawPieces(preview_, after);
     }
     // The board's name over it, and anything to know about it (round 92,
     // the user's: the four-cluster boards' longer games)
@@ -791,12 +795,11 @@ private:
   }
 
   // A dim, see-through grey in the gaps between the tiles (round 80: dimmer),
-  // made again when the board changes (another game, or the setup's choice)
+  // made when a board is first drawn (another game, or the setup's choice)
   void drawGaps(const State &state, const Scene::Transform &placement) {
-    updateGaps(state);
-    if (gaps_)
+    if (const Scene::Mesh gaps = gapsFor(state))
       renderer_->draw(
-          gaps_, placement,
+          gaps, placement,
           {.shading = Scene::Material::Shading::Unlit, .colour = {150, 160, 180}, .alpha = 4});
   }
 
@@ -1493,7 +1496,7 @@ private:
     }
   }
 
-  Scene::Mesh hexTile_, numberChip_, station_, colony_, ship_, stars_, gaps_, hexRing_, cornerRing_;
+  Scene::Mesh hexTile_, numberChip_, station_, colony_, ship_, stars_, hexRing_, cornerRing_;
   std::array<Scene::Texture, CosmicHex::Art::kFaces> faces_{};
   std::array<Scene::Texture, CosmicHex::Art::kHighestChip + 1> chips_{}; // (by number)
   // Memory, measured (with the counting allocator in the build)
@@ -1631,7 +1634,15 @@ private:
   bool sliding_ = false;
   int slideWay_ = 1; // (+1: right was pressed, the new board comes in from the right)
   Clock::time_point slideStarted_;
-  std::vector<CosmicHex::Hex> gapsTiles_; // (the tiles gaps_ was made for)
+  // The gaps' meshes for the last two boards drawn: while the setup's
+  // boards slide, both show at once (round 105, the user's: the old one's
+  // outlines went missing during the slide), each with the tiles it's for
+  struct BoardGaps {
+    std::vector<CosmicHex::Hex> tiles;
+    Scene::Mesh mesh;
+  };
+  std::array<BoardGaps, 2> gaps_;
+  std::size_t olderGaps_ = 0; // (which of gaps_ goes next)
 
   static State previewOf(const StartMenu &menu) {
     TableSettings settings{.players = menu.players(), .board = menu.boardItself()};
@@ -1653,18 +1664,23 @@ private:
 
   // The gaps between a state's tiles, made again when its tiles aren't the
   // ones they were made for
-  void updateGaps(const State &state) {
+  Scene::Mesh gapsFor(const State &state) {
     std::vector<CosmicHex::Hex> tiles;
     for (const CosmicHex::Planet &planet : state.planets)
       tiles.push_back(planet.hex);
     for (const CosmicHex::ZoneSite &site : state.zone)
       tiles.push_back(site.hex);
-    if (tiles == gapsTiles_ && gaps_)
-      return;
-    if (gaps_)
-      renderer_->unload(gaps_);
-    gaps_ = renderer_->load(BoardPieces::gapsBetween(tiles).data());
-    gapsTiles_ = std::move(tiles);
+    for (const BoardGaps &kept : gaps_)
+      if (kept.mesh && kept.tiles == tiles)
+        return kept.mesh;
+    // (in place of the older of the two)
+    BoardGaps &replaced = gaps_[olderGaps_];
+    olderGaps_ = 1 - olderGaps_;
+    if (replaced.mesh)
+      renderer_->unload(replaced.mesh);
+    replaced.mesh = renderer_->load(BoardPieces::gapsBetween(tiles).data());
+    replaced.tiles = std::move(tiles);
+    return replaced.mesh;
   }
 
   // A button on the title (Play, Quit) or the pause menu (Resume, Restart,
