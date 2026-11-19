@@ -1,6 +1,7 @@
 // The board's pieces: hexes and corners where the hex grid puts them, and
 // meshes with something in them
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <HexGrid/Layout.hpp>
 
 #include <gtest/gtest.h>
 
@@ -52,4 +53,22 @@ TEST(BoardPiecesTest, TilesShowTheirFaces) {
   site.flipped = true;
   site.find = Find::AlienStation;
   EXPECT_EQ(faceOf(site), Art::Face::FindOutpost);
+}
+
+// The kept places (round 105) are where the layout puts them, on the board
+// and past its edge, and beyond what's kept too
+TEST(BoardPiecesTest, KeptPlacesMatchTheLayout) {
+  const HexGrid::Layout layout{};
+  for (int q = -8; q <= 8; ++q)
+    for (int r = -8; r <= 8; ++r) {
+      const Hex hex{q, r};
+      const HexGrid::Point c = layout.centre(hex);
+      EXPECT_EQ(BoardPieces::centre(hex).x, Scene::Scalar(c.x));
+      EXPECT_EQ(BoardPieces::centre(hex).z, Scene::Scalar(c.y));
+      for (int i = 0; i < 2; ++i) {
+        const HexGrid::Point p = layout.point(Corner{hex, i});
+        EXPECT_EQ(BoardPieces::at(Corner{hex, i}).x, Scene::Scalar(p.x));
+        EXPECT_EQ(BoardPieces::at(Corner{hex, i}).z, Scene::Scalar(p.y));
+      }
+    }
 }

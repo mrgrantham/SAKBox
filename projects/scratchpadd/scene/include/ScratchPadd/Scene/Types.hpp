@@ -44,23 +44,35 @@ struct Vector3 {
   Vector3 cross(const Vector3 &o) const {
     return {y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x};
   }
-  // Its length, and it at length 1 (or zero, if it's zero). Each first
-  // divides by its largest component, so the squares stay small: in Q16.16
-  // (the DS's) a vector 182 long would otherwise square past its range.
+  // Its length, and it at length 1 (or zero, if it's zero). In Q16.16
+  // (the DS's) the squares can leave its range (a vector 182 long) or lose
+  // its precision (one under 1/16), so a vector outside those is first
+  // divided by its largest component; within them, as in float, the squares
+  // are taken straight away (round 105: the divides, three a component,
+  // were most of a DS draw's time)
   Scalar length() const {
     const Scalar most = largestComponent();
     if (!(most > Scalar(0)))
       return Scalar(0);
+    if (squaresFit(most))
+      return squareRoot(dot(*this));
     const Vector3 scaled{x / most, y / most, z / most};
     return most * squareRoot(scaled.dot(scaled));
   }
   Vector3 normalised() const {
-    const Scalar most = largestComponent();
-    if (!(most > Scalar(0)))
+    const Scalar l = length();
+    if (!(l > Scalar(0)))
       return {};
-    const Vector3 scaled{x / most, y / most, z / most};
-    const Scalar l = squareRoot(scaled.dot(scaled));
-    return {scaled.x / l, scaled.y / l, scaled.z / l};
+    return {x / l, y / l, z / l};
+  }
+  // Whether a vector whose largest component is `most` squares safely
+  static bool squaresFit(Scalar most) {
+#if defined(__NDS__) || defined(SCRATCHPADD_SCENE_FIXED_POINT)
+    return most > Scalar(0.0625f) && most < Scalar(104);
+#else
+    (void)most;
+    return true;
+#endif
   }
   Scalar largestComponent() const {
     auto size = [](Scalar v) { return v < Scalar(0) ? -v : v; };
@@ -72,7 +84,10 @@ struct Vector3 {
 // A colour, 0-255 a channel. Alpha is how opaque it is (for vertex colours
 // and the overlay; a material's own opacity is Material::alpha). A mesh with
 // a see-through vertex is drawn translucent, whatever its material.
-struct Colour {
+// Aligned as a word, so a whole colour is copied, filled or compared as one
+// (round 105: byte-aligned, the DS, which can't load a word from just any
+// byte, moved every pixel of its pictures a byte at a time)
+struct alignas(4) Colour {
   std::uint8_t r = 255, g = 255, b = 255, a = 255;
   bool operator==(const Colour &) const = default;
 
@@ -84,6 +99,7 @@ struct Colour {
     return {channel(r), channel(g), channel(b), channel(a)};
   }
 };
+static_assert(sizeof(Colour) == 4, "a colour is four bytes: pixels are packed");
 
 // Where a part is: a 3 x 4 affine matrix (rotation and scale in the first
 // three columns, position in the fourth) taking the part's own coordinates

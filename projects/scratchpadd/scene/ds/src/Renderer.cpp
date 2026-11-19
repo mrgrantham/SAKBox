@@ -147,8 +147,13 @@ void Renderer::Backend::drawNow(Mesh mesh, const Transform &where, const Materia
   int scales[3];
   for (int column = 0; column < 3; ++column) {
     const Vector3 axis{where.m[0][column], where.m[1][column], where.m[2][column]};
+    // (its length once, then each component divided by it: not normalised(),
+    // which would work the length out again)
+    // (length 1, as a move's or a turn's are: no divides at all)
     const Scalar length = axis.length();
-    const Vector3 unit = length > Scalar(0) ? axis.normalised() : axis;
+    const Vector3 unit = length > Scalar(0) && length != Scalar(1)
+                             ? Vector3{axis.x / length, axis.y / length, axis.z / length}
+                             : axis;
     // The DS's matrices take row vectors: its row is the transform's column
     matrix.m[column * 3 + 0] = f32(unit.x);
     matrix.m[column * 3 + 1] = f32(unit.y);

@@ -1370,7 +1370,10 @@ private:
         drawn = bottomCanvas_->pixels();
       } else {
         if (!fading_) {
-          picture_->draw(latest_->state);
+          {
+            auto timing = profile_.time(kProfileMap);
+            picture_->draw(latest_->state);
+          }
           if (selected_ && choosingAHex())
             picture_->markHex(selected_->hex);
           else if (selected_)
@@ -1378,6 +1381,7 @@ private:
           // (where what's being built may go: each place marked)
           for (const CosmicHex::Corner &corner : bottomScreen_->placingCorners())
             picture_->markCorner(corner);
+          auto timing = profile_.time(kProfileButtons);
           Canvas board = Canvas::over(picture_->pixelsToDrawOver(), kBottomWidth, kBottomHeight);
           bottomScreen_->drawOverBoard(board);
         }
@@ -1409,6 +1413,10 @@ private:
     // the copy alone 2 to 6; round 92)
     const Scene::Colour *to = pixels.data();
     const Scene::Colour *mixFrom = from ? from->data() : nullptr;
+    if (!mixFrom) {
+      bottom_->present(kBottomWidth, kBottomHeight, to); // (as it is: the quick copy)
+      return;
+    }
     const auto colourAt = [to, mixFrom, weight](std::size_t i) -> Scene::Colour {
       const Scene::Colour b = to[i];
       if (!mixFrom)
@@ -1495,8 +1503,9 @@ private:
   // Where each frame's time goes (round 92: the DS's stutter), shown on
   // the -watch builds: the bottom screen, the dice, the top screen (its
   // wait for the refresh included), and that wait
-  // (and, round 105, the board's pieces, and the renderer's own CPU time
-  // and its overlay's, from Scene::FrameTimes)
+  // (and, round 105, the board's pieces, the renderer's own CPU time and
+  // its overlay's, from Scene::FrameTimes, and of the bottom screen, the
+  // map and the buttons over it)
   enum : std::size_t {
     kProfileBottom,
     kProfileOut,
@@ -1505,9 +1514,12 @@ private:
     kProfileWait,
     kProfilePieces,
     kProfileRenderer,
-    kProfileOverlay
+    kProfileOverlay,
+    kProfileMap,
+    kProfileButtons
   };
-  ScratchPadd::FrameProfile profile_{"btm", "out", "dice", "top", "wait", "pcs", "3d", "ovl"};
+  ScratchPadd::FrameProfile profile_{"btm", "out", "dice", "top", "wait",
+                                     "pcs", "3d",  "ovl",  "map", "btn"};
   std::string profileLine_;
 
   // Whether the top screen would look as it did when last drawn: a game's
@@ -1542,7 +1554,7 @@ private:
       spdlog::info("frames: {}", profileLine_);
     }
     // (three lines where the screen's narrow)
-    for (std::size_t from = 0, row = 0; from < profileLine_.size() && row < 3;
+    for (std::size_t from = 0, row = 0; from < profileLine_.size() && row < 4;
          from += kCharsPerLine, ++row)
       renderer_->overlay().text(4, kTopHeight - 110 + 12 * static_cast<float>(row),
                                 profileLine_.substr(from, kCharsPerLine), {240, 200, 120});

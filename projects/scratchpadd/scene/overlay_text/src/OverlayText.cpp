@@ -66,9 +66,19 @@ std::vector<TextRectangle> textRectangles(const Overlay::Text &text) {
 }
 
 void appendTextTriangles(const Overlay::Text &text, std::vector<Overlay::Vertex> &triangles) {
-  for (const TextRectangle &r : textRectangles(text)) {
-    const Overlay::Vertex a{r.x, r.y, text.colour}, b{r.x + r.width, r.y, text.colour},
-        c{r.x + r.width, r.y + r.height, text.colour}, d{r.x, r.y + r.height, text.colour};
+  // The strokes into a buffer kept by each thread, straight to triangles:
+  // no vector made a text a frame (round 105: the 3DS's screen made about
+  // 130 allocations a frame, most of them here)
+  thread_local std::vector<FontRectangle> strokes;
+  fontRectangles(text.text, strokes);
+  triangles.reserve(triangles.size() + strokes.size() * 6);
+  for (const FontRectangle &r : strokes) {
+    const float x = text.x + static_cast<float>(r.x) * text.scale,
+                y = text.y + static_cast<float>(r.y) * text.scale;
+    const float right = x + static_cast<float>(r.width) * text.scale,
+                bottom = y + static_cast<float>(r.height) * text.scale;
+    const Overlay::Vertex a{x, y, text.colour}, b{right, y, text.colour},
+        c{right, bottom, text.colour}, d{x, bottom, text.colour};
     triangles.insert(triangles.end(), {a, b, c, a, c, d});
   }
 }

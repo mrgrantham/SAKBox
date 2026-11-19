@@ -215,9 +215,49 @@ Art::Face faceOf(const ZoneSite &site) {
   return Face::FindNothing;
 }
 
-Scene::Vector3 BoardPieces::centre(Hex hex) { return onTable(kLayout.centre(hex)); }
+namespace {
+// Each hex's centre and its two corners (0 and 1, CornersAndEdges.hpp) on
+// the table, worked out once and kept: the layout is in floats, which the
+// DS has no hardware for, and every tile, chip, station and ship asks each
+// frame (round 105). A board's radius is 4; the rest is for the corners,
+// gaps and rings just past its edge.
+constexpr int kKeptRadius = 6;
+constexpr int kKeptSide = 2 * kKeptRadius + 1;
+struct KeptPlaces {
+  // [q][r]: the centre, then corner 0, then corner 1
+  std::array<std::array<std::array<Scene::Vector3, 3>, kKeptSide>, kKeptSide> at{};
+  KeptPlaces() {
+    for (int q = 0; q < kKeptSide; ++q)
+      for (int r = 0; r < kKeptSide; ++r) {
+        const Hex hex{q - kKeptRadius, r - kKeptRadius};
+        auto &places = at[static_cast<std::size_t>(q)][static_cast<std::size_t>(r)];
+        places[0] = onTable(kLayout.centre(hex));
+        places[1] = onTable(kLayout.point(Corner{hex, 0}));
+        places[2] = onTable(kLayout.point(Corner{hex, 1}));
+      }
+  }
+};
+// Hex `hex`'s kept places, or none if it's beyond them
+const std::array<Scene::Vector3, 3> *keptAt(Hex hex) {
+  static const KeptPlaces kept; // (made on first use, once, whatever the thread)
+  const int q = hex.q + kKeptRadius, r = hex.r + kKeptRadius;
+  if (q < 0 || r < 0 || q >= kKeptSide || r >= kKeptSide)
+    return nullptr;
+  return &kept.at[static_cast<std::size_t>(q)][static_cast<std::size_t>(r)];
+}
+} // namespace
 
-Scene::Vector3 BoardPieces::at(Corner corner) { return onTable(kLayout.point(corner)); }
+Scene::Vector3 BoardPieces::centre(Hex hex) {
+  if (const auto *kept = keptAt(hex))
+    return (*kept)[0];
+  return onTable(kLayout.centre(hex));
+}
+
+Scene::Vector3 BoardPieces::at(Corner corner) {
+  if (const auto *kept = keptAt(corner.hex); kept && (corner.index == 0 || corner.index == 1))
+    return (*kept)[static_cast<std::size_t>(1 + corner.index)];
+  return onTable(kLayout.point(corner));
+}
 
 Scene::Transform BoardPieces::onHex(Hex hex) { return Scene::Transform::translation(centre(hex)); }
 

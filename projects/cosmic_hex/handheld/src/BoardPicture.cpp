@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <string_view>
 
 namespace CosmicHex::Handheld {
@@ -249,17 +250,28 @@ void BoardPicture::fillRect(float x, float y, float w, float h, Colour colour) {
 
 void BoardPicture::fillTriangle(HexGrid::Point a, HexGrid::Point b, HexGrid::Point c,
                                 Colour colour) {
-  const float minX = std::min({a.x, b.x, c.x}), maxX = std::max({a.x, b.x, c.x});
-  const float minY = std::min({a.y, b.y, c.y}), maxY = std::max({a.y, b.y, c.y});
-  const auto side = [](HexGrid::Point p, HexGrid::Point q, float x, float y) {
+  // In whole numbers, 1/256ths of a pixel (round 105: in floats, which the
+  // DS hasn't hardware for, each ship's pixels took about a millisecond):
+  // each pixel's middle tested against the three sides
+  struct Fixed {
+    std::int64_t x, y;
+  };
+  const auto fixed = [](HexGrid::Point p) {
+    return Fixed{std::lround(p.x * 256), std::lround(p.y * 256)};
+  };
+  const Fixed p0 = fixed(a), p1 = fixed(b), p2 = fixed(c);
+  const auto side = [](Fixed p, Fixed q, std::int64_t x, std::int64_t y) {
     return (q.x - p.x) * (y - p.y) - (q.y - p.y) * (x - p.x);
   };
-  for (int py = std::max(0, static_cast<int>(minY));
-       py <= std::min(height_ - 1, static_cast<int>(maxY)); ++py)
-    for (int px = std::max(0, static_cast<int>(minX));
-         px <= std::min(width_ - 1, static_cast<int>(maxX)); ++px) {
-      const float x = static_cast<float>(px) + 0.5f, y = static_cast<float>(py) + 0.5f;
-      const float s0 = side(a, b, x, y), s1 = side(b, c, x, y), s2 = side(c, a, x, y);
+  const auto pixel = [](std::int64_t v) { return static_cast<int>(v >> 8); }; // (rounded down)
+  const int fromY = std::max(0, pixel(std::min({p0.y, p1.y, p2.y})));
+  const int toY = std::min(height_ - 1, pixel(std::max({p0.y, p1.y, p2.y})));
+  const int fromX = std::max(0, pixel(std::min({p0.x, p1.x, p2.x})));
+  const int toX = std::min(width_ - 1, pixel(std::max({p0.x, p1.x, p2.x})));
+  for (int py = fromY; py <= toY; ++py)
+    for (int px = fromX; px <= toX; ++px) {
+      const std::int64_t x = px * 256 + 128, y = py * 256 + 128;
+      const std::int64_t s0 = side(p0, p1, x, y), s1 = side(p1, p2, x, y), s2 = side(p2, p0, x, y);
       if ((s0 >= 0 && s1 >= 0 && s2 >= 0) || (s0 <= 0 && s1 <= 0 && s2 <= 0))
         pixels_[indexOf(px, py, width_)] = colour;
     }

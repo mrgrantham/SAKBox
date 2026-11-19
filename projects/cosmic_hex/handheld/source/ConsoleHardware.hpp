@@ -74,6 +74,33 @@ public:
 #endif
   }
 
+  // A picture as it is, `pixels` in rows of `width`: on the DS a tight
+  // copy, each pixel read as one word and two written at a time (round
+  // 105: per pixel through present() below it took up to 30 ms)
+  void present(int width, int height, const ScratchPadd::Scene::Colour *pixels) {
+#if defined(__NDS__)
+    static_assert(sizeof(ScratchPadd::Scene::Colour) == 4);
+    // (a vector's data is aligned for any type: its pixels as words, which
+    // may alias them)
+    using Word [[gnu::may_alias]] = std::uint32_t;
+    const auto *from =
+        static_cast<const Word *>(__builtin_assume_aligned(static_cast<const void *>(pixels), 4));
+    // Red, green and blue bytes (little-endian: red lowest) to 15 bits,
+    // bit 15 set
+    const auto fifteen = [](std::uint32_t c) {
+      return ((c >> 3) & 0x1Fu) | ((c >> 6) & 0x3E0u) | ((c >> 9) & 0x7C00u) | 0x8000u;
+    };
+    for (int y = 0; y < height; ++y) {
+      auto *to = reinterpret_cast<volatile std::uint32_t *>(pixels_ + y * 256);
+      const Word *row = from + static_cast<std::ptrdiff_t>(y) * width;
+      for (int x = 0; x + 1 < width; x += 2)
+        to[x / 2] = fifteen(row[x]) | (fifteen(row[x + 1]) << 16);
+    }
+#else
+    present(width, height, [pixels](std::size_t i) { return pixels[i]; });
+#endif
+  }
+
   // The picture, `colourAt(i)` the colour of pixel i (rows of `width`)
   template <typename ColourAt> void present(int width, int height, ColourAt &&colourAt) {
 #if defined(__NDS__)
