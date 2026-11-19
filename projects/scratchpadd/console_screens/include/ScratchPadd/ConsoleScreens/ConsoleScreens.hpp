@@ -1,7 +1,10 @@
-// ConsoleHardware.hpp - the few calls that differ by console, beside the
-// settings in PlatformProfile.hpp (round 92: they were #ifs through the
-// app): whether the app should keep running, waiting for the screen's
-// refresh, and putting the bottom screen's pixels on it.
+// ConsoleScreens.hpp - the few calls an app makes that differ by console
+// (the DS and the 3DS): setting up their graphics, whether the app should
+// keep running, waiting for the screen's refresh, and putting a picture
+// (a Canvas's pixels, say) on the bottom screen. Made for Cosmic Hex (round
+// 92: they were #ifs through its app) and moved here for every app (round
+// 106). Header only: it includes the console's own headers, so it's built
+// by the consoles' Makefiles, not on a Mac.
 //
 //   BottomScreen bottom;                         // set up once
 //   bottom.present(width, height, colourAt);     // when the picture changes
@@ -18,7 +21,7 @@
 #include <3ds.h>
 #endif
 
-namespace ConsoleHardware {
+namespace ScratchPadd::ConsoleScreens {
 
 // The console's graphics, set up for as long as one lives (the 3DS's gfx
 // library; the DS needs nothing): made first in main, before the screens
@@ -133,4 +136,4 @@ private:
 #endif
 };
 
-} // namespace ConsoleHardware
+} // namespace ScratchPadd::ConsoleScreens

@@ -1,10 +1,11 @@
-// Canvas.hpp - a picture for a console's bottom screen, drawn in pixels
-// (round 101): rectangles, outlines, words in the overlay's font (centred
-// by the letters' own pixels, as Overlay::textCentred) and sprites (tile
-// faces, card art) blended over. The screens drawn on the bottom (the build
-// screen, the pickers) share it; the app copies its pixels to the screen.
+// Canvas.hpp - a picture drawn in pixels by the CPU, for a screen with no
+// 3D of its own (a console's bottom screen: ConsoleScreens.hpp puts it
+// there): rectangles, outlines, words in the overlay's font (centred by the
+// letters' own pixels, as Overlay::textCentred) and sprites (pictures from
+// texture recipes) blended over. Made for Cosmic Hex's bottom screen (round
+// 101) and moved here for every app (round 106).
 //
-//   Canvas canvas(256, 192);
+//   ScratchPadd::Canvas canvas(256, 192);
 //   canvas.clear(kBackground);
 //   canvas.fillRect(4, 4, 60, 20, kButton);
 //   canvas.textCentred(34, 14, "Build", kWords);
@@ -16,7 +17,7 @@
 #include <string_view>
 #include <vector>
 
-namespace CosmicHex::Handheld {
+namespace ScratchPadd {
 
 class Canvas {
 public:
@@ -59,4 +60,4 @@ private:
   std::span<Colour> pixels_;  // what's drawn on: owned_'s, or another's
 };
 
-} // namespace CosmicHex::Handheld
+} // namespace ScratchPadd

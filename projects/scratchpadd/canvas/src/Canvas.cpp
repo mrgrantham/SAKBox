@@ -1,4 +1,4 @@
-#include <CosmicHex/Handheld/Canvas.hpp>
+#include <ScratchPadd/Canvas/Canvas.hpp>
 
 #include <ScratchPadd/Scene/OverlayText.hpp>
 
@@ -6,9 +6,7 @@
 #include <cmath>
 #include <string>
 
-namespace CosmicHex::Handheld {
-
-namespace Scene = ScratchPadd::Scene;
+namespace ScratchPadd {
 
 Canvas::Canvas(int width, int height)
     : width_(width), height_(height),
@@ -99,4 +97,4 @@ void Canvas::blend(const std::vector<Colour> &sprite, int w, int h, int x, int y
     }
 }
 
-} // namespace CosmicHex::Handheld
+} // namespace ScratchPadd

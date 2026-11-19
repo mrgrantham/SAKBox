@@ -11,14 +11,16 @@
 
 #include <CosmicHex/Art.hpp>
 #include <CosmicHex/Handheld/BuildMenu.hpp>
-#include <CosmicHex/Handheld/Canvas.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
+#include <ScratchPadd/Canvas/Canvas.hpp>
 
 #include <array>
 #include <optional>
 #include <vector>
 
 namespace CosmicHex::Handheld {
+
+using ScratchPadd::Canvas; // (ScratchPadd/Canvas)
 
 // The cards' small pictures for a screen `screenWidth` wide, drawn from
 // their recipes once each, when first needed (on a DS each takes a tenth of

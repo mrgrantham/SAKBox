@@ -19,9 +19,9 @@
 #include <CosmicHex/Handheld/BoardButtons.hpp>
 #include <CosmicHex/Handheld/BoardPicture.hpp>
 #include <CosmicHex/Handheld/BuildMenu.hpp>
-#include <CosmicHex/Handheld/Canvas.hpp>
 #include <CosmicHex/Handheld/ChoiceScreens.hpp>
 #include <CosmicHex/Handheld/Pickers.hpp>
+#include <ScratchPadd/Canvas/Canvas.hpp>
 
 #include <array>
 #include <optional>
@@ -29,6 +29,8 @@
 #include <vector>
 
 namespace CosmicHex::Handheld {
+
+using ScratchPadd::Canvas; // (ScratchPadd/Canvas)
 
 class BottomScreen {
 public:

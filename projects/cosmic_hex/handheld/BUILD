@@ -15,7 +15,6 @@ cc_library(
         "src/BottomScreen.cpp",
         "src/BuildMenu.cpp",
         "src/CardsHeld.cpp",
-        "src/Canvas.cpp",
         "src/ChoiceScreens.cpp",
         "src/ButtonMenu.cpp",
         "src/DicePieces.cpp",
@@ -38,7 +37,6 @@ cc_library(
         "include/CosmicHex/Handheld/BoardView.hpp",
         "include/CosmicHex/Handheld/BuildMenu.hpp",
         "include/CosmicHex/Handheld/CardsHeld.hpp",
-        "include/CosmicHex/Handheld/Canvas.hpp",
         "include/CosmicHex/Handheld/ChoiceScreens.hpp",
         "include/CosmicHex/Handheld/ButtonMenu.hpp",
         "include/CosmicHex/Handheld/DicePieces.hpp",
@@ -57,6 +55,7 @@ cc_library(
     strip_include_prefix = "include/",
     visibility = ["//projects/cosmic_hex:__subpackages__"],
     deps = [
+        "//projects/scratchpadd/canvas",
         "//projects/scratchpadd/scene/overlay_text",
         "//projects/scratchpadd/motion",
         "//projects/action_log",

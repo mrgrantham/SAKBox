@@ -38,7 +38,6 @@
 #include <CosmicHex/Handheld/BoardView.hpp>
 #include <CosmicHex/Handheld/BottomScreen.hpp>
 #include <CosmicHex/Handheld/ButtonMenu.hpp>
-#include <CosmicHex/Handheld/Canvas.hpp>
 #include <CosmicHex/Handheld/CardsHeld.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
@@ -51,6 +50,7 @@
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
 #include <CosmicHex/Handheld/TurnBanner.hpp>
+#include <ScratchPadd/Canvas/Canvas.hpp>
 #include <ScratchPadd/FrameProfile.hpp>
 #include <ScratchPadd/GameClock.hpp>
 #include <ScratchPadd/MemoryStats.hpp>
@@ -74,7 +74,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include "ConsoleHardware.hpp"
+#include <ScratchPadd/ConsoleScreens/ConsoleScreens.hpp>
 
 #if defined(COSMIC_HEX_BENCH)
 #include "CosmicHexBench.hpp"
@@ -137,6 +137,7 @@ constexpr std::size_t kCharsPerLine = kThisPlatform.charsPerLine;
 constexpr float kLineHeight = kThisPlatform.lineHeight;
 constexpr int kFaceSize = kThisPlatform.faceSize;
 namespace Input = ScratchPadd::Input;
+namespace ConsoleScreens = ScratchPadd::ConsoleScreens;
 using CosmicHex::State;
 namespace Dice = CosmicHex::Dice;
 using namespace CosmicHex::Handheld;
@@ -401,7 +402,7 @@ public:
 
 private:
   void frame() {
-    if (!ConsoleHardware::keepRunning()) {
+    if (!ConsoleScreens::keepRunning()) {
       system_->stop();
       return;
     }
@@ -501,7 +502,7 @@ private:
       // goes to the bots' thread while this waits (round 92: on a DS,
       // drawing an unchanged board each frame left them 4% of the CPU)
       auto timing = profile_.time(kProfileWait);
-      ConsoleHardware::waitForTheRefresh();
+      ConsoleScreens::waitForTheRefresh();
     } else {
       drawBoard(latest_ ? &latest_->state : nullptr);
       drawnSnapshots_ = snapshots_;
@@ -1642,7 +1643,7 @@ private:
   Scene::Mesh pictureSquare_, resourceSquare_;
   int cardWidth_ = 32, resourceWidth_ = 44;
   static constexpr float kPileStep = 5; // (pixels between a pile's cards: their bands show)
-  std::optional<ConsoleHardware::BottomScreen> bottom_;
+  std::optional<ConsoleScreens::BottomScreen> bottom_;
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};
   std::optional<BoardPicture::Spot> selected_;
@@ -1800,11 +1801,11 @@ int main() {
   // running, then wait to be switched off
   consoleDemoInit();
   CosmicHexBench::run();
-  while (ConsoleHardware::keepRunning())
-    ConsoleHardware::waitForTheRefresh();
+  while (ConsoleScreens::keepRunning())
+    ConsoleScreens::waitForTheRefresh();
   return 0;
 #endif
-  const ConsoleHardware::Graphics graphics; // (before ScreenPadd's Display)
+  const ConsoleScreens::Graphics graphics; // (before ScreenPadd's Display)
 #if defined(SAKBOX_DEBUG)
   ScratchPadd::DebugLog::Session log; // a debug build's log, over Wi-Fi
 #endif
