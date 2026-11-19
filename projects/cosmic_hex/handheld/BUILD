@@ -25,6 +25,7 @@ cc_library(
         "src/ScreenFlow.cpp",
         "src/StartMenu.cpp",
         "src/TableGame.cpp",
+        "src/TurnBanner.cpp",
     ],
     hdrs = [
         "include/CosmicHex/Handheld/BoardButtons.hpp",
@@ -47,6 +48,7 @@ cc_library(
         "include/CosmicHex/Handheld/ScreenFlow.hpp",
         "include/CosmicHex/Handheld/StartMenu.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",
+        "include/CosmicHex/Handheld/TurnBanner.hpp",
     ],
     strip_include_prefix = "include/",
     visibility = ["//projects/cosmic_hex:__subpackages__"],
@@ -244,6 +246,16 @@ cc_test(
         ":handheld",
         "//projects/game_bots",
         "//projects/seeded_random",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "TurnBanner_test",
+    size = "small",
+    srcs = ["tests/TurnBanner_test.cpp"],
+    deps = [
+        ":handheld",
         "@gtest//:gtest_main",
     ],
 )

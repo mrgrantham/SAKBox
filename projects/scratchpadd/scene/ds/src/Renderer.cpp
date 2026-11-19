@@ -79,6 +79,18 @@ v10 v10Of(Scalar value) {
   return static_cast<v10>(std::clamp<std::int32_t>(DisplayList::toFixed(value, 9), -512, 511));
 }
 
+// Whether two overlay triangles are one shape's: the same colour, and two
+// corners in common (an edge between them)
+bool sameShape(const Overlay::Vertex *a, const Overlay::Vertex *b) {
+  if (!(a[0].colour == b[0].colour))
+    return false;
+  int shared = 0;
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      shared += a[i].x == b[j].x && a[i].y == b[j].y;
+  return shared >= 2;
+}
+
 bool sameText(const std::vector<Overlay::Text> &a, const std::vector<Overlay::Text> &b) {
   return std::ranges::equal(a, b, [](const Overlay::Text &x, const Overlay::Text &y) {
     return x.x == y.x && x.y == y.y && x.text == y.text && x.colour == y.colour &&
@@ -272,6 +284,7 @@ void Renderer::Backend::drawOverlayShapes(const Overlay &overlay) {
   const int count = static_cast<int>(triangles.size() / 3);
   GFX_TEX_FORMAT = 0;                          // (untextured)
   unsigned &translucentId = nextTranslucentId; // (after the frame's translucent meshes')
+  unsigned lastId = 0;
   for (int t = 0; t < count; ++t) {
     const Overlay::Vertex *corner = &triangles[static_cast<std::size_t>(t) * 3];
     const unsigned alpha = corner[0].colour.a >> 3;
@@ -279,9 +292,20 @@ void Renderer::Backend::drawOverlayShapes(const Overlay &overlay) {
       continue; // (alpha 0 would be a wireframe)
     unsigned id = 0;
     if (alpha < 31) {
-      id = translucentId;
-      translucentId = translucentId == kLastTranslucentId ? kFirstTranslucentId : translucentId + 1;
+      // A see-through shape's triangles share one ID (a rectangle's two, a
+      // hexagon's six: the same colour, touching the last along an edge),
+      // so where they meet isn't blended twice: the DS blends a translucent
+      // polygon only over others with a different ID (round 101: a band's
+      // diagonal showed as a dark line)
+      if (t > 0 && lastId != 0 && sameShape(corner, corner - 3)) {
+        id = lastId;
+      } else {
+        id = translucentId;
+        translucentId =
+            translucentId == kLastTranslucentId ? kFirstTranslucentId : translucentId + 1;
+      }
     }
+    lastId = id;
     glPolyFmt(POLY_ALPHA(alpha) | POLY_CULL_NONE | POLY_ID(id));
     glBegin(GL_TRIANGLES);
     // (each a depth step nearer than the last: DisplayList::overlayDepth)

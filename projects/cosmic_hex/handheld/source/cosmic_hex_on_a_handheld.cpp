@@ -47,6 +47,7 @@
 #include <CosmicHex/Handheld/ScreenFlow.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
+#include <CosmicHex/Handheld/TurnBanner.hpp>
 #include <ScratchPadd/FrameProfile.hpp>
 #include <ScratchPadd/GameClock.hpp>
 #include <ScratchPadd/MemoryStats.hpp>
@@ -283,6 +284,18 @@ public:
       // What moved since the last, animated from now
       if (latest_)
         motion_ = BoardMotion(latest_->state, snapshot.state);
+      // A new turn (after the setup's placing): its banner
+      const CosmicHex::Phase phase = snapshot.state.phase;
+      const bool placing =
+          phase == CosmicHex::Phase::PlaceColony || phase == CosmicHex::Phase::PlaceShip;
+      if (latest_ && snapshot.state.turn != latest_->state.turn && !placing &&
+          snapshot.state.winner < 0) {
+        const int turn = snapshot.state.turn;
+        const bool yours = mode_ == Mode::Playing && turn == 0;
+        banner_.start(gameClock_.seconds(),
+                      yours ? "YOUR TURN" : "P" + std::to_string(turn + 1) + "'S TURN",
+                      yours ? "roll the dice" : "thinking...", BoardColours::ofPlayer(turn));
+      }
       // (pausing the game pauses its clock, so its animations and dice stop too)
       gameClock_.setPaused(snapshot.paused);
       motionStarted_ = gameClock_.seconds();
@@ -789,15 +802,15 @@ private:
       return;
     const State &state = latest_->state;
     char line[64];
-    std::snprintf(line, sizeof line, "Round %d%s", state.round,
-                  flow_.screen() == ScreenFlow::Screen::Paused ? "  (paused)"
-                  : latest_->paused                            ? "  (paused: A)"
-                                                               : "");
     // Each player's points as a row of dashes (round 96), the turn's row
-    // outlined; the round under them, at the left
+    // outlined
     for (const PointsBars::Bar &bar : PointsBars::of(state, kTopWidth))
       overlay.rectangle(bar.x, bar.y, bar.width, bar.height, bar.colour);
-    overlay.text(4, PointsBars::bottom(state.players) + 3, line, {226, 232, 244});
+    drawCorners(overlay, state);
+    if (flow_.screen() == ScreenFlow::Screen::Paused || latest_->paused)
+      overlay.text(4, PointsBars::bottom(state.players) + 34,
+                   flow_.screen() == ScreenFlow::Screen::Paused ? "paused" : "paused: A",
+                   {226, 232, 244});
     // (the -watch builds: memory, measured, above the last move)
     if (kWatchAtStart && !memoryLine_.empty())
       overlay.text(4, kTopHeight - 26, memoryLine_.substr(0, kCharsPerLine), {120, 220, 160});
@@ -825,10 +838,66 @@ private:
                    {200, 208, 222});
     if (mode_ == Mode::Playing && latest_->yourMove)
       drawMoves(overlay);
+    drawBanner(overlay);
     if (state.winner >= 0) {
       std::snprintf(line, sizeof line, "Player %d wins!", state.winner + 1);
       overlay.text(kTopWidth / 2.0f - 60, kTopHeight / 2.0f - 10, line, {255, 214, 90}, 1.5f);
     }
+  }
+
+  // The top corners (round 101, the user's): the round top left, in a
+  // turquoise hexagon with ROUND under it (calmer than the roll's amber: it's
+  // always there), and the badges top right, towards the next point (3 make
+  // one at once), the player's own when playing, the turn's when watching
+  void drawCorners(Scene::Overlay &overlay, const State &state) {
+    const float k = static_cast<float>(kTopWidth) / 256.0f;
+    constexpr Scene::Colour kTurquoise{64, 224, 208}, kWhite{226, 232, 244}, kDim{138, 148, 168},
+        kAmber{255, 214, 90}, kEmpty{90, 100, 120};
+    const auto hexagonEdge = [&](float x, float y, float r, Scene::Colour colour) {
+      for (int i = 0; i < 6; ++i) {
+        const float a = 3.14159265f / 6 + static_cast<float>(i) * 3.14159265f / 3;
+        const float b = a + 3.14159265f / 3;
+        overlay.line(x + r * std::cos(a), y + r * std::sin(a), x + r * std::cos(b),
+                     y + r * std::sin(b), colour, 1);
+      }
+    };
+    const float rx = 22 * k, ry = 19 * k;
+    hexagonEdge(rx, ry, 13 * k, kTurquoise);
+    overlay.textCentred(rx, ry, std::to_string(state.round), kWhite,
+                        kTopWidth >= 400 ? 2.0f : 1.5f);
+    overlay.textCentred(rx, ry + 20 * k, "ROUND", kDim);
+    const int whose = mode_ == Mode::Playing ? 0 : state.turn;
+    const int badges = whose >= 0 ? state.player[static_cast<std::size_t>(whose)].badges : 0;
+    const float bx = static_cast<float>(kTopWidth) - 36 * k;
+    for (int i = 0; i < 3; ++i) {
+      const float x = bx + static_cast<float>(i) * 12 * k, y = 16 * k;
+      if (i < badges)
+        overlay.hexagon(x, y, 5 * k, kAmber, true);
+      else
+        hexagonEdge(x, y, 5 * k, kEmpty);
+    }
+    overlay.textCentred(bx + 12 * k, 30 * k, "BADGES", kDim);
+  }
+
+  // The turn banner as it moves (TurnBanner): a band softly in the player's
+  // colour with turquoise edges, the words sweeping through the middle
+  void drawBanner(Scene::Overlay &overlay) {
+    const auto look = banner_.at(gameClock_.seconds());
+    if (!look)
+      return;
+    const float k = static_cast<float>(kTopWidth) / 256.0f;
+    const float y = static_cast<float>(kTopHeight) * 0.42f, h = 32 * k;
+    const auto alpha = [&](float most) {
+      return static_cast<std::uint8_t>(most * look->bandAlpha);
+    };
+    overlay.rectangle(0, y, static_cast<float>(kTopWidth), h, {12, 20, 36, alpha(225)});
+    overlay.rectangle(0, y, static_cast<float>(kTopWidth), h,
+                      {look->colour.r, look->colour.g, look->colour.b, alpha(80)});
+    overlay.rectangle(0, y, static_cast<float>(kTopWidth), 1, {64, 224, 208, alpha(255)});
+    overlay.rectangle(0, y + h - 1, static_cast<float>(kTopWidth), 1, {64, 224, 208, alpha(255)});
+    overlay.textCentred(look->wordsX, y + 11 * k, look->title, {240, 244, 250},
+                        kTopWidth >= 400 ? 2.0f : 1.5f);
+    overlay.textCentred(look->wordsX, y + 24 * k, look->note, {170, 180, 198});
   }
 
   // The buttons, by screen (ScreenFlow): the title's and the pause menu's
@@ -1129,6 +1198,8 @@ private:
       return false;
     if (gameClock_.seconds() - motionStarted_ < kSecondsAnimating)
       return false; // (pieces still moving)
+    if (banner_.showing(gameClock_.seconds()))
+      return false; // (the turn's banner moving)
     if (snapshots_ != drawnSnapshots_ || turn_ != drawnTurn_ || selected_ != drawnSelection_)
       return false;
     return !kWatchAtStart || Clock::now() - drawnAt_ < std::chrono::seconds(1);
@@ -1179,6 +1250,7 @@ private:
   std::optional<BottomScreen> bottomScreen_; // (its buttons and choosing screens: round 101)
   std::optional<Canvas> bottomCanvas_;
   std::optional<Clock::time_point> feedbackSince_;
+  TurnBanner banner_{static_cast<float>(kTopWidth)};
   std::optional<ConsoleHardware::BottomScreen> bottom_;
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};
