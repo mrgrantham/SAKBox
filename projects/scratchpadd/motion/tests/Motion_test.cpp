@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 
 using namespace ScratchPadd::Motion;
@@ -31,6 +32,17 @@ TEST(MotionTest, CurvesGoFromNoneToAllAndKeepTheirShape) {
     EXPECT_NEAR(along(curve, 0.2f), 1 - along(curve, 0.8f), 1e-6);
     EXPECT_LT(along(curve, 0.1f), 0.1f);
   }
+}
+
+// Settle goes past the end, by about a tenth, and comes back to it
+TEST(MotionTest, SettleOvershootsThenSettles) {
+  EXPECT_FLOAT_EQ(along(Curve::Settle, 0), 0);
+  EXPECT_NEAR(along(Curve::Settle, 1), 1, 1e-6);
+  float most = 0;
+  for (int i = 0; i <= 100; ++i)
+    most = std::max(most, along(Curve::Settle, static_cast<float>(i) / 100));
+  EXPECT_GT(most, 1.08f);
+  EXPECT_LT(most, 1.12f);
 }
 
 TEST(MotionTest, ATrackCarriesAValueOnTheCallersClock) {

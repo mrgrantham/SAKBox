@@ -35,7 +35,10 @@ namespace ScratchPadd::Motion {
 //   Pull       speeding up evenly to the middle, then slowing the same way:
 //              two parabolas, the curve of something pulled at a constant
 //              acceleration then braked (Cosmic Hex's dice glass)
-enum class Curve { Linear, EaseIn, EaseOut, EaseInOut, Pull };
+//   Settle     fast, past the end by about a tenth, and back to settle: a
+//              piece dropped into place ("ease out back"; Cosmic Hex's
+//              number chips, round 103). The one curve that goes past 1
+enum class Curve { Linear, EaseIn, EaseOut, EaseInOut, Pull, Settle };
 float along(Curve curve, float t);
 
 // A value carried from `from` to `to`, starting at `start` (seconds, on

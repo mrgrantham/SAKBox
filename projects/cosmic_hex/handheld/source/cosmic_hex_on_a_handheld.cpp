@@ -18,8 +18,9 @@
 // four. On your move, the moves you can make are listed on the top screen:
 // touch the board to list those at a spot, up and down to choose, A to make
 // it, B to list them all again. Watching: A pauses or goes on.
-// L/R: turn the board   X/Y: zoom the bottom board in
-// and out   touch: select a hex (drag: move the board when zoomed)   START: quit
+// X held with R/L: zoom the bottom board in and out   L/R: left and right
+// on a choosing screen   touch: a corner, a ship, a button (drag: move the
+// board when zoomed)   START: pause
 #if defined(__NDS__)
 #include <ScratchPadd/Scene/DS/Display.hpp>
 #include <nds.h>
@@ -146,6 +147,10 @@ double secondsSince(Clock::time_point start) {
 // flip takes
 constexpr double kSecondsAMove = 0.6;
 constexpr double kSecondsAnimating = 0.35;
+// A planet's number chip, once it's turned over, drops this far onto it
+// and settles in this long (round 103)
+constexpr double kSecondsChipDrop = 0.35;
+constexpr float kChipDropHeight = 1.2f;
 
 // The game as it stands (TablePadd to ScreenPadd), after each move; and on
 // a person's move, the moves they can make, each in words
@@ -396,16 +401,18 @@ private:
       system_->stop();
       return;
     }
-    handleButtons(pressed);
-    // X and Y zoom the bottom board in and out
-    if (pressed.pressed(Input::Button::FaceTop)) {
+    // Holding X, R and L zoom the bottom board in and out (round 103, the
+    // user's); without X, L and R are left and right on a choosing screen
+    const bool zooming = pad.isHeld(Input::Button::FaceTop);
+    if (zooming && pressed.pressed(Input::Button::R)) {
       picture_->setZoom(picture_->zoom() + 1);
       bottomDirty_ = true;
     }
-    if (pressed.pressed(Input::Button::FaceLeft)) {
+    if (zooming && pressed.pressed(Input::Button::L)) {
       picture_->setZoom(picture_->zoom() - 1);
       bottomDirty_ = true;
     }
+    handleButtons(pressed, zooming);
     handleTouch(scripted(pad.touch));
     // An info view opened or closed (Show resources): the game held while
     // it's open, and let go when it closes, if the view was what held it
@@ -465,11 +472,7 @@ private:
       push([this] { frame(); });
       return;
     }
-    // L and R turn the board while held
-    if (pad.isHeld(Input::Button::L))
-      turn_ -= 0.02f;
-    if (pad.isHeld(Input::Button::R))
-      turn_ += 0.02f;
+    // (L and R no longer turn the 3D board: round 103, the user's)
     if (screen == ScreenFlow::Screen::Setup) {
       drawSetup();
     } else if (kThisPlatform.holdStillFrames && topIsStill()) {
@@ -801,13 +804,25 @@ private:
       const auto turn = motion_.planetTurn(i, t);
       drawTile(state.planets[i].hex, turn, CosmicHex::Art::Face::PlanetFaceDown,
                faceOf(state.planets[i]));
-      // its number chip (round 87), once it's lying face up
+      // its number chip (round 87), once it's lying face up; one just
+      // turned over drops onto it from above and settles (round 103: a
+      // short bounce on a curve, the same every time)
       const int number = chipOf(state.planets[i]);
       const Scene::Texture chip = chips_[static_cast<std::size_t>(number)];
-      if (number > 0 && !turn && chip)
+      if (number > 0 && !turn && chip) {
+        float drop = 0;
+        if (motion_.planetTurn(i, 0)) {
+          const double since = gameClock_.seconds() - motionStarted_ - kSecondsAnimating;
+          const float landed = ScratchPadd::Motion::along(
+              ScratchPadd::Motion::Curve::Settle, static_cast<float>(since / kSecondsChipDrop));
+          drop = since < 0 ? kChipDropHeight : (1 - landed) * kChipDropHeight;
+        }
         renderer_->draw(
-            numberChip_, placement * BoardPieces::onHex(state.planets[i].hex),
+            numberChip_,
+            placement * BoardPieces::onHex(state.planets[i].hex) *
+                Scene::Transform::translation({0, drop, 0}),
             Scene::Material{.shading = Scene::Material::Shading::Toon, .texture = chip});
+      }
     }
     for (std::size_t i = 0; i < state.zone.size(); ++i)
       drawTile(state.zone[i].hex, motion_.siteTurn(i, t), CosmicHex::Art::Face::FindFaceDown,
@@ -920,17 +935,19 @@ private:
   // watching
   int infoPlayer(const State &state) const { return mode_ == Mode::Playing ? 0 : state.turn; }
 
-  // Where a pile of resource `r` stands on the top screen, and how far each
-  // card of it has come in (0 to 1), `order` cards after the first
+  // Where a pile of resource `r` stands on the top screen; how far a card
+  // has come in (0 to 1), `order` cards after the first
   struct PilePlace {
     float x, y;
   };
   PilePlace pilePlace(int r) const {
+    // Five piles across with a little room between (round 103), their
+    // bottoms just above the screen's edge
     const float k = static_cast<float>(kTopWidth) / 256.0f;
-    const float spacing = static_cast<float>(cardWidth_) + 18 * k;
-    const float left = (static_cast<float>(kTopWidth) - (5 * spacing - 18 * k)) / 2;
-    return {left + static_cast<float>(r) * spacing,
-            static_cast<float>(kTopHeight - cardHeight_) - 8 * k};
+    const float gap = 6 * k, w = static_cast<float>(resourceWidth_);
+    const float left = (static_cast<float>(kTopWidth) - (5 * w + 4 * gap)) / 2;
+    return {left + static_cast<float>(r) * (w + gap),
+            static_cast<float>(kTopHeight) - static_cast<float>(resourceWidth_ * 52 / 63) - 6 * k};
   }
   float cardArrived(int order) const {
     const float since = std::chrono::duration<float>(Clock::now() - infoOpenedAt_).count() -
@@ -948,63 +965,90 @@ private:
     const State &state = latest_->state;
     const auto &player = state.player[static_cast<std::size_t>(infoPlayer(state))];
     const float k = static_cast<float>(kTopWidth) / 256.0f;
-    const auto w = static_cast<float>(cardWidth_), h = static_cast<float>(cardHeight_);
+    const auto screenW = static_cast<float>(kTopWidth), screenH = static_cast<float>(kTopHeight);
+    const auto rw = static_cast<float>(resourceWidth_),
+               rh = static_cast<float>(resourceWidth_ * 52 / 63);
     int order = 0;
     for (int r = 0; r < CosmicHex::kResources; ++r) {
       const int held = player.resources[static_cast<std::size_t>(r)];
       const int shown = std::max(1, std::min(held, 5));
       const PilePlace place = pilePlace(r);
       for (int j = shown - 1; j >= 0; --j) {
-        const float y = place.y - static_cast<float>(j) * 3 * k;
+        // (each card under the top one 5 pixels higher: its band shows)
+        const float y = place.y - static_cast<float>(j) * kPileStep * k;
         const float in = cardArrived(order++);
-        const float slid = y + (1 - in) * (static_cast<float>(kTopHeight) - y + 4);
-        renderer_->draw(pictureSquare_,
-                        onScreenAt(camera, static_cast<float>(kTopWidth),
-                                   static_cast<float>(kTopHeight), place.x, slid, w, h,
+        const float slid = y + (1 - in) * (screenH - y + 4);
+        renderer_->draw(resourceSquare_,
+                        onScreenAt(camera, screenW, screenH, place.x, slid, rw, rh,
                                    kPictureDistance - 0.02f * static_cast<float>(shown - j)),
                         {.shading = Scene::Material::Shading::Unlit,
-                         .texture = cardPictures_[static_cast<std::size_t>(r)],
+                         .texture = resourcePictures_[static_cast<std::size_t>(r)],
                          .alpha = static_cast<std::uint8_t>(held == 0 ? 10 : 31)});
       }
     }
-    std::vector<CosmicHex::Art::Card> actions;
-    for (int id : player.contracts)
-      if (const auto card = cardOf(id))
-        actions.push_back(*card);
-    const float gap = 6 * k, total = static_cast<float>(actions.size()) * (w + gap) - gap;
+    // The action cards across the top, smaller, each easing down
+    const auto w = static_cast<float>(cardWidth_), h = static_cast<float>(cardWidth_ * 52 / 63);
+    const std::vector<CosmicHex::Art::Card> actions = actionCardsOf(player);
+    const float gap = 8 * k, total = static_cast<float>(actions.size()) * (w + gap) - gap;
     for (std::size_t i = 0; i < actions.size(); ++i) {
-      const float x =
-          (static_cast<float>(kTopWidth) - total) / 2 + static_cast<float>(i) * (w + gap);
-      const float y = 46 * k;
+      const float x = (screenW - total) / 2 + static_cast<float>(i) * (w + gap), y = 44 * k;
       const float in = cardArrived(order++);
       renderer_->draw(pictureSquare_,
-                      onScreenAt(camera, static_cast<float>(kTopWidth),
-                                 static_cast<float>(kTopHeight), x, y - (1 - in) * (y + h + 4), w,
-                                 h),
+                      onScreenAt(camera, screenW, screenH, x, y - (1 - in) * (y + h + 4), w, h),
                       {.shading = Scene::Material::Shading::Unlit,
                        .texture = cardPictures_[static_cast<std::size_t>(actions[i])]});
     }
   }
 
-  // Show resources' words: each pile's short title and how many, above it
+  static std::vector<CosmicHex::Art::Card> actionCardsOf(const CosmicHex::Player &player) {
+    std::vector<CosmicHex::Art::Card> out;
+    for (int id : player.contracts)
+      if (const auto card = cardOf(id))
+        out.push_back(*card);
+    return out;
+  }
+
+  // Show resources' words: each pile's title on its top card, a badge past
+  // five; the action cards' titles under them
   void drawInfoWords(Scene::Overlay &overlay, const State &state) {
     if (shownInfo_ != BottomScreen::Info::Resources)
       return;
     const auto &player = state.player[static_cast<std::size_t>(infoPlayer(state))];
     const float k = static_cast<float>(kTopWidth) / 256.0f;
+    const float u = static_cast<float>(resourceWidth_) / CosmicHex::Art::kCardWidth;
     for (int r = 0; r < CosmicHex::kResources; ++r) {
       const int held = player.resources[static_cast<std::size_t>(r)];
+      const int shown = std::max(1, std::min(held, 5));
       const PilePlace place = pilePlace(r);
-      const float top = place.y - static_cast<float>(std::max(1, std::min(held, 5)) - 1) * 3 * k;
-      const std::string_view title =
-          CosmicHex::Art::wordsOf(cardOf(static_cast<CosmicHex::Resource>(r))).shortTitle;
-      const Scene::Colour words =
-          held == 0 ? Scene::Colour{120, 128, 145} : Scene::Colour{226, 232, 244};
-      // The title above the pile, how many on its top card's picture
-      overlay.textCentred(place.x + static_cast<float>(cardWidth_) / 2, top - 7 * k, title, words);
-      overlay.textCentred(place.x + static_cast<float>(cardWidth_) / 2,
-                          top + static_cast<float>(cardHeight_) * 0.62f, std::to_string(held),
-                          words, kTopWidth >= 400 ? 2.0f : 1.5f);
+      const float top = place.y - static_cast<float>(shown - 1) * kPileStep * k;
+      const float middle = place.x + static_cast<float>(resourceWidth_) / 2;
+      // The title in the top card's band, dark on a light band (as the
+      // cards are drawn); faint when there are none
+      const Scene::Colour band = resourceBands_[static_cast<std::size_t>(r)];
+      const float light = 0.2126f * band.r + 0.7152f * band.g + 0.0722f * band.b;
+      const Scene::Colour ink = held == 0     ? Scene::Colour{120, 128, 145}
+                                : light > 140 ? Scene::Colour{16, 20, 30}
+                                              : Scene::Colour{242, 245, 251};
+      overlay.textCentred(
+          middle, top + (CosmicHex::Art::kCardTitle.y + CosmicHex::Art::kCardTitle.height / 2) * u,
+          CosmicHex::Art::wordsOf(cardOf(static_cast<CosmicHex::Resource>(r))).shortTitle, ink);
+      // Past five, how many in a badge centred above the pile (round 103)
+      if (held > 5) {
+        const std::string count = std::to_string(held);
+        const float bw = 14 * k, bh = 10 * k, by = top - 13 * k;
+        overlay.rectangle(middle - bw / 2, by, bw, bh, {58, 74, 106});
+        overlay.textCentred(middle, by + bh / 2, count, {226, 232, 244});
+      }
+    }
+    // The action cards' short titles, under each
+    const std::vector<CosmicHex::Art::Card> actions = actionCardsOf(player);
+    const auto w = static_cast<float>(cardWidth_), h = static_cast<float>(cardWidth_ * 52 / 63);
+    const float gap = 8 * k, total = static_cast<float>(actions.size()) * (w + gap) - gap;
+    for (std::size_t i = 0; i < actions.size(); ++i) {
+      const float x =
+          (static_cast<float>(kTopWidth) - total) / 2 + static_cast<float>(i) * (w + gap);
+      overlay.textCentred(x + w / 2, 44 * k + h + 6 * k,
+                          CosmicHex::Art::wordsOf(actions[i]).shortTitle, {226, 232, 244});
     }
   }
 
@@ -1035,7 +1079,7 @@ private:
   // watching: A pauses or goes on; playing, on your move: up and down choose
   // from the list (the moves at the touched spot, or all of them), A makes
   // it, B shows them all again
-  void handleButtons(const Input::Edges &pressed) {
+  void handleButtons(const Input::Edges &pressed, bool zooming = false) {
     using Input::Button;
     switch (flow_.screen()) {
     case ScreenFlow::Screen::Title:
@@ -1093,9 +1137,9 @@ private:
         key = Key::Up;
       else if (pressed.pressed(Button::Down))
         key = Key::Down;
-      else if (pressed.pressed(Button::Left))
+      else if (pressed.pressed(Button::Left) || (!zooming && pressed.pressed(Button::L)))
         key = Key::Left;
-      else if (pressed.pressed(Button::Right))
+      else if (pressed.pressed(Button::Right) || (!zooming && pressed.pressed(Button::R)))
         key = Key::Right;
       else if (pressed.pressed(Button::FaceRight))
         key = Key::Confirm;
@@ -1332,22 +1376,36 @@ private:
   // overlay's, sharp), cardWidth_ across; once, as the DS hands out its
   // texture memory once (32 wide there: 2 KB a card)
   void loadCardPictures() {
+    // Resources bigger (round 103, the user's: room for their titles, and
+    // the cards under the top one easy to see), action cards smaller: on
+    // the DS 44 and 32 pixels wide, 8 and 2 KB each, all of them fitting
+    // beside the tile faces in the 128 KB the textures share
+    resourceWidth_ = kTopWidth >= 400 ? 64 : 44;
     cardWidth_ = kTopWidth >= 400 ? 44 : 32;
-    cardHeight_ = cardWidth_ * 52 / 63;
-    float uMax = 1, vMax = 1;
-    for (int c = 0; c < CosmicHex::Art::kCards; ++c) {
-      const auto card = static_cast<CosmicHex::Art::Card>(c);
-      const auto whole = recipePixels(CosmicHex::Art::cardRecipeOf(card), cardWidth_,
-                                      cardWidth_ * 88 / 63, kThisPlatform.recipeSmoothing);
+    const auto load = [&](CosmicHex::Art::Card card, int width, float &uMax, float &vMax) {
+      const int height = width * 52 / 63;
+      const auto whole = recipePixels(CosmicHex::Art::cardRecipeOf(card), width, width * 88 / 63,
+                                      kThisPlatform.recipeSmoothing);
       if (whole.empty())
-        continue;
-      const std::vector<Scene::Colour> top(whole.begin(), whole.begin() + cardWidth_ * cardHeight_);
-      const PaddedPicture picture = padded(top, cardWidth_, cardHeight_);
+        return Scene::Texture{};
+      const std::vector<Scene::Colour> top(whole.begin(), whole.begin() + width * height);
+      // (the band's colour, for its title's letters: dark on a light band)
+      if (static_cast<int>(card) < CosmicHex::kResources)
+        resourceBands_[static_cast<std::size_t>(card)] =
+            top[static_cast<std::size_t>((width * 11 / 63) * width + width * 6 / 63)];
+      const PaddedPicture picture = padded(top, width, height);
       uMax = picture.uMax;
       vMax = picture.vMax;
+      return renderer_->load(Scene::TextureImage{picture.width, picture.height, picture.pixels});
+    };
+    float uMax = 1, vMax = 1;
+    for (int r = 0; r < CosmicHex::kResources; ++r)
+      resourcePictures_[static_cast<std::size_t>(r)] =
+          load(static_cast<CosmicHex::Art::Card>(r), resourceWidth_, uMax, vMax);
+    resourceSquare_ = renderer_->load(pictureSquare(uMax, vMax).data());
+    for (int c = CosmicHex::kResources; c < CosmicHex::Art::kCards; ++c)
       cardPictures_[static_cast<std::size_t>(c)] =
-          renderer_->load(Scene::TextureImage{picture.width, picture.height, picture.pixels});
-    }
+          load(static_cast<CosmicHex::Art::Card>(c), cardWidth_, uMax, vMax);
     pictureSquare_ = renderer_->load(pictureSquare(uMax, vMax).data());
   }
 
@@ -1395,8 +1453,8 @@ private:
     if (flow_.screen() != ScreenFlow::Screen::Game || !latest_ || descentStarted_ ||
         dice_ != DiceStage::Idle)
       return false;
-    if (gameClock_.seconds() - motionStarted_ < kSecondsAnimating)
-      return false; // (pieces still moving)
+    if (gameClock_.seconds() - motionStarted_ < kSecondsAnimating + kSecondsChipDrop)
+      return false; // (pieces still moving, or a number chip dropping)
     if (banner_.showing(gameClock_.seconds()))
       return false; // (the turn's banner moving)
     if (shownInfo_ != BottomScreen::Info::None)
@@ -1459,8 +1517,11 @@ private:
   Clock::time_point infoOpenedAt_{};
   bool heldForInfo_ = false;
   std::array<Scene::Texture, CosmicHex::Art::kCards> cardPictures_{};
-  Scene::Mesh pictureSquare_;
-  int cardWidth_ = 32, cardHeight_ = 26;
+  std::array<Scene::Texture, CosmicHex::kResources> resourcePictures_{};
+  std::array<Scene::Colour, CosmicHex::kResources> resourceBands_{};
+  Scene::Mesh pictureSquare_, resourceSquare_;
+  int cardWidth_ = 32, resourceWidth_ = 44;
+  static constexpr float kPileStep = 5; // (pixels between a pile's cards: their bands show)
   std::optional<ConsoleHardware::BottomScreen> bottom_;
   bool bottomDirty_ = true, touchWasDown_ = false, dragged_ = false;
   std::array<int, 2> touchStart_{}, touchLast_{};
