@@ -817,3 +817,67 @@ TEST(CornersTest, BadgesCashedAtOnceWhenThatsTheRule) {
   EXPECT_EQ(state.player[0].badges, 0);
   EXPECT_EQ(points(state, 0), before + 1);
 }
+
+// Choosing homes (Settings::chooseHome): nobody's home is set at the start;
+// the first player may put their colony on a corner of any home; placing it
+// makes that home theirs, and the next player may no longer use it; at the
+// end each player has one home, the one their colony is on
+TEST(CornersTest, ChoosingHomesClaimsTheHomeTheColonyIsOn) {
+  Settings settings = cornerSettings();
+  settings.chooseHome = true;
+  State state = newGame(4, settings, 2);
+  for (const Planet &planet : state.planets)
+    EXPECT_LT(planet.homeOf, 0);
+  ASSERT_EQ(state.phase, Phase::PlaceColony);
+  ASSERT_EQ(state.turn, 2);
+  // Corners of every home: four homes, six corners each (all free)
+  const std::vector<Action> first = Game::legalActions(state);
+  EXPECT_EQ(first.size(), 24u);
+  // Player 2 takes the last-listed one's home
+  const Action chosen = first.back();
+  ASSERT_TRUE(Game::apply(state, chosen));
+  const Corner at = boardCorners()[static_cast<std::size_t>(chosen.a)];
+  int claimed = -1;
+  for (std::size_t i = 0; i < state.planets.size(); ++i)
+    if (state.planets[i].homeOf == 2)
+      claimed = static_cast<int>(i);
+  ASSERT_GE(claimed, 0);
+  {
+    const auto touching = HexGrid::hexesTouching(at);
+    EXPECT_NE(std::find(touching.begin(), touching.end(),
+                        state.planets[static_cast<std::size_t>(claimed)].hex),
+              touching.end());
+  }
+  // The next player: corners of the three homes left only
+  EXPECT_EQ(state.turn, 3);
+  const std::vector<Action> next = Game::legalActions(state);
+  EXPECT_EQ(next.size(), 18u);
+  for (const Action &action : next) {
+    const auto touching =
+        HexGrid::hexesTouching(boardCorners()[static_cast<std::size_t>(action.a)]);
+    EXPECT_EQ(std::find(touching.begin(), touching.end(),
+                        state.planets[static_cast<std::size_t>(claimed)].hex),
+              touching.end());
+  }
+  // Through the start: each player one home, their colony on it
+  while (state.phase == Phase::PlaceColony || state.phase == Phase::PlaceShip)
+    ASSERT_TRUE(Game::apply(state, Game::legalActions(state).front()));
+  for (int p = 0; p < 4; ++p) {
+    int homes = 0;
+    for (const Planet &planet : state.planets)
+      if (planet.homeOf == p) {
+        ++homes;
+        bool colonyOnIt = false;
+        for (const Station &station : state.stations)
+          if (station.owner == p && station.colony) {
+            const auto touching = HexGrid::hexesTouching(station.at);
+            colonyOnIt = colonyOnIt ||
+                         std::find(touching.begin(), touching.end(), planet.hex) != touching.end();
+          }
+        EXPECT_TRUE(colonyOnIt) << "player " << p;
+      }
+    EXPECT_EQ(homes, 1) << "player " << p;
+  }
+  // And it reads back from the settings line
+  EXPECT_TRUE(settingsFromLine(settingsLine(settings))->chooseHome);
+}

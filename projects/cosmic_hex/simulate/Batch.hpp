@@ -99,6 +99,7 @@ struct Options {
   bool edges = true;            // corners and edges (Settings::corners)
   int move = 0, boost = 0;      // a ship's move and its fuel boost (0: the default for the rules)
   bool deepSpace = true;        // (edges) the starting ship anywhere touching no planet
+  bool chooseHome = true;       // (edges) each player chooses their home at the start
 };
 
 // "q,r,q,r,...": hexes, or nothing if the text isn't pairs of numbers

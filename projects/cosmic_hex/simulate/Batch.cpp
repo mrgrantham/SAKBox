@@ -95,6 +95,7 @@ Settings settingsFor(const Options &options) {
   // unless --move and --boost say otherwise
   settings.corners = options.edges;
   settings.deepSpaceStart = options.deepSpace;
+  settings.chooseHome = options.chooseHome;
   if (options.edges) {
     settings.shipMove = 2;
     settings.boostMove = 1;

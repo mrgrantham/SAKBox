@@ -97,6 +97,11 @@ struct Settings {
   // so the last to play chooses first; and the finds the ship's corner
   // touches turn over, as where a move ends.
   bool deepSpaceStart = false;
+  // (corners) Each player chooses their home: at the start, in turn order,
+  // a home colony goes on a corner of any of the board's homes not yet
+  // taken, which makes it theirs (the user's choice: a choice of world
+  // and of corner). Off: each seat's home is fixed by the board.
+  bool chooseHome = false;
   // (corners) Fuel boosts the first round (the user's question:
   // without, a ship starting in empty space can't reach a three's centre
   // corner, 3 edges away, before the others have moved)

@@ -1066,7 +1066,8 @@ std::string settingsText(const Settings &s) {
   }
   out << joined(zoneList) << " edges=" << (s.corners ? 1 : 0) << "," << s.startShipReach << ","
       << (s.deepSpaceStart ? 1 : 0) << " firstboost=" << (s.firstRoundBoost ? 1 : 0)
-      << " piles=" << (s.fitPiles ? 1 : 0) << "," << (s.redNumbersApart ? 1 : 0);
+      << " choosehome=" << (s.chooseHome ? 1 : 0) << " piles=" << (s.fitPiles ? 1 : 0) << ","
+      << (s.redNumbersApart ? 1 : 0);
   return out.str();
 }
 
@@ -1173,6 +1174,10 @@ std::optional<Settings> readSettings(std::string_view line) {
       s.corners = (*values)[0] != 0;
       s.startShipReach = (*values)[1];
       s.deepSpaceStart = (*values)[2] != 0;
+      continue;
+    }
+    if (values && key == "choosehome" && values->size() == 1) {
+      s.chooseHome = (*values)[0] != 0;
       continue;
     }
     if (values && key == "firstboost" && values->size() == 1) {
@@ -1382,6 +1387,7 @@ Settings agreedRules(const Board &board, int players) {
   // first deep-space mission
   s.corners = true;
   s.deepSpaceStart = true;
+  s.chooseHome = true; // (each player picks their home and its corner)
   s.shipMove = 2;
   s.boostMove = 1;
   // The hybrid home income: 2 a turn below 5 points, on
@@ -1448,7 +1454,8 @@ State newGame(int players, const Settings &settings, int first) {
         if (homes[static_cast<std::size_t>(p)] == hex) {
           planet.flipped = true;
           planet.kind = PlanetKind::Home;
-          if (p < players) {
+          // (chosen at the start: nobody's until a home colony claims it)
+          if (p < players && !(settings.corners && settings.chooseHome)) {
             planet.homeOf = p;
             if (!settings.corners)
               planet.docks[0] = p; // (with corners, a home colony is placed at the start)
@@ -1787,11 +1794,18 @@ void nextSetupStep(State &state) {
 }
 
 // The corners a player may put their home colony on: corners of their home
-// planet, free under the distance rule
+// planet, free under the distance rule; or, choosing homes, corners of any
+// home not yet taken
+bool homeNotYetTaken(const Planet &planet) {
+  // (homes start face up; a face-down planet's kind isn't set yet)
+  return planet.flipped && planet.kind == PlanetKind::Home && planet.homeOf < 0 &&
+         planet.formerHomeOf < 0;
+}
 std::vector<int> colonyPlaces(const State &state, int player) {
   std::vector<int> out;
+  const bool choosing = state.settings.chooseHome;
   for (const Planet &planet : state.planets) {
-    if (planet.homeOf != player)
+    if (choosing ? !homeNotYetTaken(planet) : planet.homeOf != player)
       continue;
     for (Corner corner : HexGrid::corners(planet.hex))
       if (onBoard(corner) && cornerFree(state, corner))
@@ -2371,8 +2385,16 @@ bool Game::apply(State &state, const Action &action) {
     if (action.kind != Kind::PlaceColony ||
         std::find(places.begin(), places.end(), action.a) == places.end())
       break;
-    state.stations.push_back(
-        Station{boardCorners()[static_cast<std::size_t>(action.a)], state.turn, true});
+    const Corner at = boardCorners()[static_cast<std::size_t>(action.a)];
+    // (choosing homes: the home it's on becomes theirs)
+    if (state.settings.chooseHome)
+      for (Hex hex : HexGrid::hexesTouching(at))
+        if (const int p = planetAt(state, hex);
+            p >= 0 && homeNotYetTaken(state.planets[static_cast<std::size_t>(p)])) {
+          state.planets[static_cast<std::size_t>(p)].homeOf = state.turn;
+          break;
+        }
+    state.stations.push_back(Station{at, state.turn, true});
     nextSetupStep(state);
     done = true;
     break;
