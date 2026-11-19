@@ -35,9 +35,12 @@ TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 # The audio core and miniaudio are staged from their own packages by the
 # Bazel rule (extra_srcs in BUILD)
-SOURCES		:=	source scratchpadd/scene/src scratchpadd/scene_3ds/src scratchpadd/overlay_text/src assets scratchpadd/input/src
+# The libraries' folders come from the Bazel rule (SAKBOX_SOURCES and
+# SAKBOX_INCLUDES: every staged folder with sources, every staged include
+# folder; round 101), so a library added in BUILD needs nothing here
+SOURCES		:=	$(SAKBOX_SOURCES)
 DATA		:=	data
-INCLUDES	:=	include scratchpadd/scene/include scratchpadd/scene_3ds/include scratchpadd/overlay_text/include third_party assets scratchpadd/input/include look/src
+INCLUDES	:=	include assets look/src third_party $(SAKBOX_INCLUDES)
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs

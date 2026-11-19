@@ -21,13 +21,11 @@ GAME_SUBTITLE2	:=	SAKBox
 BUILD		:=	build
 # (cyclone/src/demos is the knock chooser, impact_knocks.cpp; the audio
 # directories are AudioPadd's, as in the ScratchPadd DS demo)
-SOURCES		:=	ragdoll/source scratchpadd/handheld_controls/src scratchpadd/scene/src scratchpadd/scene_ds/src scratchpadd/overlay_text/src cyclone/src cyclone/src/demos scratchpadd/utilities/src scratchpadd/storage/src scratchpadd_ds/platform/src scratchpadd/input/src scratchpadd/debug_log/src/server scratchpadd/debug_log/src/session \
-			scratchpadd_audio/core/src scratchpadd_audio_pcm16 scratchpadd_audio_pcm16/src scratchpadd_audio_wav/src
-INCLUDES	:=	include seeded_random/include scratchpadd/app_ended/include scratchpadd/handheld_controls/include scratchpadd/scene/include scratchpadd/scene_ds/include scratchpadd/overlay_text/include build cyclone/include cyclone/src/demos cyclone/src/demos/ragdoll scratchpadd/input/include scratchpadd/debug_log/include scratchpadd/storage/include \
-			scratchpadd/basis/include scratchpadd/messages/include \
-			scratchpadd/utilities/include third_party/spdlog/include flexmath/include \
-			scratchpadd_audio_pcm16/include scratchpadd_audio/include scratchpadd_audio/messages/include \
-			scratchpadd_audio/core/include scratchpadd_audio_wav/include third_party
+# The libraries' folders come from the Bazel rule (SAKBOX_SOURCES and
+# SAKBOX_INCLUDES: every staged folder with sources, every staged include
+# folder; round 101), so a library added in BUILD needs nothing here
+SOURCES		:=	$(SAKBOX_SOURCES)
+INCLUDES	:=	include build cyclone/src/demos cyclone/src/demos/ragdoll third_party $(SAKBOX_INCLUDES)
 
 #---------------------------------------------------------------------------------
 # options for code generation
