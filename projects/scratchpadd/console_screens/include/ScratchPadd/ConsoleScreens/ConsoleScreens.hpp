@@ -69,8 +69,11 @@ class BottomScreen {
 public:
   BottomScreen() {
 #if defined(__NDS__)
-    videoSetModeSub(MODE_5_2D);
+    // (the bitmap's memory cleared before the screen shows it: what was
+    // left in it showed as a strip of noise for a few frames on hardware)
     vramSetBankC(VRAM_C_SUB_BG);
+    dmaFillWords(0, BG_GFX_SUB, 256 * 256 * 2);
+    videoSetModeSub(MODE_5_2D);
     pixels_ = bgGetGfxPtr(bgInitSub(3, BgType_Bmp16, BgSize_B16_256x256, 0, 0));
 #else
     gfxSetDoubleBuffering(GFX_BOTTOM, false);

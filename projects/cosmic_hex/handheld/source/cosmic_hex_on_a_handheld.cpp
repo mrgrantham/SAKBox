@@ -2242,6 +2242,8 @@ int main() {
     ConsoleScreens::waitForTheRefresh();
   return 0;
 #endif
+  // (black until the splash fades in: the setup below shows nothing)
+  ScratchPadd::StartupSplash::darkenScreens();
   const ConsoleScreens::Graphics graphics; // (before ScreenPadd's Display)
 #if defined(SAKBOX_DEBUG)
   ScratchPadd::DebugLog::Session log; // a debug build's log, over Wi-Fi

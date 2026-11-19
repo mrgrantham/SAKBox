@@ -46,13 +46,18 @@ void MenuPicture::draw(const StartMenu &menu) {
   const auto buttons = menu.buttons(width_, height_);
   std::vector<ScratchPadd::Buttons::Button> panelButtons;
   std::optional<int> focused;
+  std::vector<std::size_t> chosenArrows; // (both of the chosen row's: drawn after)
   for (std::size_t i = 0; i < buttons.size(); ++i) {
     const StartMenu::Button &button = buttons[i];
     const bool chosen =
         menu.focus() == button.row &&
         (button.step != 0 || (button.starts == StartMenu::Outcome::Back) == menu.backChosen());
-    if (chosen)
+    // (the panel's focus is one button: Start or Back; the chosen row's two
+    // arrows are both marked, as either changes its value)
+    if (chosen && button.step == 0)
       focused = static_cast<int>(i);
+    else if (chosen)
+      chosenArrows.push_back(i);
     const bool start = button.starts == StartMenu::Outcome::Start;
     panelButtons.push_back(
         {.id = static_cast<int>(i),
@@ -69,6 +74,12 @@ void MenuPicture::draw(const StartMenu &menu) {
                        .words = kWords,
                        .focus = kChosen,
                        .labelScale = scale * 1.4f});
+  for (const std::size_t i : chosenArrows) {
+    const StartMenu::Button &b = buttons[i];
+    canvas_.outline(b.x, b.y, b.width, b.height, kChosen);
+    canvas_.textCentred(b.x + b.width / 2, b.y + b.height / 2, b.step < 0 ? "<" : ">", kChosen,
+                        scale * 1.4f);
+  }
   // Each row's label (left) and value (between its arrows)
   for (int r = 0; r < static_cast<int>(StartMenu::Row::Start); ++r) {
     const auto row = static_cast<StartMenu::Row>(r);

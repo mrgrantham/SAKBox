@@ -33,6 +33,12 @@ void stepFadeIn() {
 #endif
 } // namespace
 
+void StartupSplash::darkenScreens() {
+#if defined(__NDS__)
+  setBrightness(3, -16);
+#endif
+}
+
 StartupSplash::StartupSplash(Scene::Renderer &renderer, Settings settings)
     : renderer_(renderer), settings_(std::move(settings)) {}
 

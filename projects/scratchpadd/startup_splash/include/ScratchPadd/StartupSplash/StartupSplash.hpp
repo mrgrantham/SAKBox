@@ -40,6 +40,11 @@ public:
 
   StartupSplash(Scene::Renderer &renderer, Settings settings);
 
+  // Both screens black now, the first thing an app's main does, so what
+  // its setup puts on them doesn't show before the splash fades in (on the
+  // DS: their brightness; elsewhere nothing). run() brings them back
+  static void darkenScreens();
+
   // Shows the splash, runs `work`, and fades it out, returning with the
   // screens black
   void run(const std::function<void()> &work);
