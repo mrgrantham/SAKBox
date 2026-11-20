@@ -594,6 +594,7 @@ private:
       ConsoleScreens::waitForTheRefresh();
     } else {
       drawBoard(latest_ ? &latest_->state : nullptr);
+      movedWhenDrawn_ = topMoving();
       drawnSnapshots_ = snapshots_;
       drawnTurn_ = turn_;
       drawnSelection_ = selected_;
@@ -2254,16 +2255,25 @@ private:
     overlay.textCentred(kTopWidth / 2.0f, y + 26 * k, ships + " (back again)", Palette::kWords, k);
   }
 
-  bool topIsStill() const {
+  // Whether anything on the top screen moves now
+  bool topMoving() const {
     if (flow_.screen() != ScreenFlow::Screen::Game || !latest_ || descentStarted_ ||
         dice_ != DiceStage::Idle || firstRollShownAt_)
-      return false;
+      return true;
     if (gameClock_.seconds() - motionStarted_ < kSecondsAnimating + kSecondsChipDrop)
-      return false; // (pieces still moving, or a number chip dropping)
+      return true; // (pieces still moving, or a number chip dropping)
     if (banner_.showing(gameClock_.seconds()))
-      return false; // (the turn's banner moving)
-    if (shownInfo_ != BottomScreen::Info::None || infoClosingAt_ || keepDealtAt_ || outlineMovedAt_)
-      return false; // (an info view or dealt cards: they come in or go)
+      return true; // (the turn's banner moving)
+    if (shownInfo_ != BottomScreen::Info::None || infoClosingAt_ || keepDealtAt_ ||
+        outlineMovedAt_ || discoveryMoment())
+      return true; // (an info view, dealt cards, a discovery: they come in or go)
+    return false;
+  }
+  bool topIsStill() const {
+    // (after something moved, one frame more: its last drawn frame may
+    // still show a trace of it, a banner's band fading, say)
+    if (topMoving() || movedWhenDrawn_)
+      return false;
     if (snapshots_ != drawnSnapshots_ || turn_ != drawnTurn_ || selected_ != drawnSelection_)
       return false;
     return !kWatchAtStart || Clock::now() - drawnAt_ < std::chrono::seconds(1);
@@ -2345,7 +2355,8 @@ private:
   std::vector<Discovery::Found> discoveries_;
   std::optional<Clock::time_point> discoveryAt_;
   bool heldForDiscovery_ = false;
-  bool youPaused_ = false;               // (watching: paused with A, so the PAUSED band shows)
+  bool movedWhenDrawn_ = true; // (the top screen's last frame drawn while something moved)
+  bool youPaused_ = false;     // (watching: paused with A, so the PAUSED band shows)
   std::vector<CosmicHex::Hex> shownBig_; // (shown big since the last move: no flip)
   // Close-ups (PlatformProfile::closeUpSize): a discovered tile's face and
   // the two cards dealt, drawn sharp when they're shown, into textures
