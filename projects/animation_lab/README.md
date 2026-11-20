@@ -4,9 +4,9 @@ Motions made with physics on a desktop, then baked into something small that
 every console can play. Desktop only: the consoles never run it, they play
 what it bakes (ScratchPadd's `Motion::BakedMotion`).
 
-## Three ways to make a motion
+## Four ways to make a motion
 
-All three use Cyclone (`projects/cyclone`), and each records where the thing
+All four use Cyclone (`projects/cyclone`), and each records where the thing
 was at every fixed step (a `Recording`). Each works flat too (`flat`: z stays
 0), for motion on a screen rather than over the board.
 
@@ -26,7 +26,7 @@ was at every fixed step (a `Recording`). Each works flat too (`flat`: z stays
   method), then the best polished by small steps along each axis. Seeded, so
   the same search finds the same throw.
 
-- **`tumbleThrow`**: a thing of a real shape (the user's B) thrown spinning
+- **`tumbleThrow`**: a thing of a real shape thrown spinning
   onto the floor, bouncing and rolling to rest as that shape would. Its
   shape is its hull's corners (`hullCorners`: a model's points furthest out
   in 26 directions), which Cyclone's `CollisionHull` sets on the floor as
@@ -56,13 +56,31 @@ bazel test //projects/animation_lab:Lab_test
 bazel run -c opt //projects/animation_lab:animation_lab
 ```
 
-On the left: the way to make the motion (Throw, Guide or Search) and its
-settings (drag a value and it's made again at once), Flat for 2D, the bake's
-path and timing points with how far the baked motion strays and how many
-floats it takes, and Save (to `animation_lab_motions/NAME.txt`, read back
-with `readText`). On the right: the motion from the side and from above, the
-physics as a line and the baked path as dots, a marker on each playing it
-back on a loop; and the timing, how far along against time.
+Four parts:
+
+- **History** (left): every run, its settings saved once they've been still
+  a moment (so a drag is one run, not hundreds). Click one to go back to
+  it; **vs** plays it beside this one (or on top), in sync, in the 3D view
+  and the plots: the comparison. Runs can be named and deleted.
+- **Making**: the way (Throw, Guide, Search or Tumble) and its settings
+  (drag a value and it's made again at once), Flat for 2D, the shape and
+  its size, the bake's path and timing points with how far the bake strays
+  and how many floats it takes, and Save.
+- **3D** (top right): the shape flying the baked motion as a game would
+  play it (or the physics, to compare), its path as a line, over a floor
+  grid. Drag to turn the view, scroll to zoom.
+- **Plots** (bottom right): from the side, from above, and the timing (how
+  far along against time), the physics as lines and the bake as dots.
+
+The shapes (`app/LabShapes.hpp`) are the games' own: Cosmic Hex's die, a
+card with its SVG picture, the title rocket, and the example ship and rock
+from Blender. Each is centred and 1 across, and its hull is what Tumble
+lands on. `Settings` (`include/AnimationLab/Settings.hpp`) is everything
+that makes one motion; it's what the history keeps.
+
+Files go in the app's folder (`Storage::Folders`; on a Mac
+`~/Library/Application Support/animation_lab/`): `history.txt`, and saved
+motions as `motions/NAME.txt` (read back with `readText`).
 
 Still to come: loading a saved motion in the games (the consoles reading the
 text, or the build turning it into a header), and dragging the keys and ends

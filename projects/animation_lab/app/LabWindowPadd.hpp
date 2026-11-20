@@ -1,19 +1,25 @@
-// LabWindowPadd.hpp - the animation lab's window (desktop only), in two
-// columns:
+// LabWindowPadd.hpp - the animation lab's window (desktop only):
 //
-//   making   the way to make the motion (Throw, Guide or Search, each with
-//            its settings: drag a value and the motion is made again at
-//            once), flat or 3D, then the bake (how many path and timing
-//            points, and how far the baked motion strays), and Save
-//   seeing   the motion from the side (x up y) and from above (x along z),
-//            the recording as a line and the baked motion's path as dots,
-//            a marker on each playing it back; and the timing: how far along
-//            against time, the recording's and the baked
+//   History  every run (the settings, saved once they've been still a
+//            moment): click one to go back to it, "vs" to play it beside
+//            this one; named and deleted here. Kept between sessions
+//   Making   the way (Throw, Guide, Search or Tumble, each with its
+//            settings: drag a value and the motion is made again at once),
+//            flat or 3D, the shape, the bake, and Save
+//   3D       the shape flying the baked motion (as a game will play it),
+//            its path as a line; and the run compared beside it. Drag to
+//            turn the view, scroll to zoom
+//   Plots    from the side, from above, and the timing (how far along
+//            against time): the physics as lines, the bake as dots
 //
-// Saved motions go to animation_lab_motions/NAME.txt (writeText, Lab.hpp).
+// Runs and saved motions are kept in the app's folder (Storage::Folders:
+// ~/Library/Application Support/animation_lab/ on a Mac): history.txt, and
+// motions/NAME.txt (writeText, Lab.hpp).
 #pragma once
 
-#include <AnimationLab/Lab.hpp>
+#include "LabShapes.hpp"
+
+#include <AnimationLab/Settings.hpp>
 
 #include <ScratchPadd/DebugUi/DebugUi.hpp>
 #include <ScratchPadd/Scene/Desktop/Display.hpp>
@@ -22,7 +28,9 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 
 namespace AnimationLab {
 
@@ -36,35 +44,63 @@ public:
   void finishing() override;
 
 private:
-  enum class Way { Throw, Guide, Search };
+  using Clock = std::chrono::steady_clock;
+
+  // A run: settings tried, numbered, perhaps named
+  struct Run {
+    int number = 0;
+    std::string name;
+    Settings settings;
+  };
+  // A run made and ready to play
+  struct Playing {
+    Settings settings;
+    Made made;
+    const LabShape *shape = nullptr;
+  };
 
   void drawFrame();
+  void drawHistory();
   void drawMaking();
-  void drawSeeing();
-  // The motion made again from the settings, and baked
+  void drawView(double t);
+  void drawPlots(double t);
+
+  Playing play(const Settings &settings) const;
+  // The current settings made again; noted for the history once they've
+  // been still a moment
   void remake();
+  void noteRun(); // (if they differ from the newest run)
+  void readHistory();
+  void writeHistory() const;
   void save();
+  // Seconds into the loop both runs play on (a pause at the end)
+  double playTime() const;
 
   std::unique_ptr<ScratchPadd::Scene::Display> display_;
   std::unique_ptr<ScratchPadd::Scene::Renderer> renderer_;
   std::unique_ptr<ScratchPadd::DebugUi::Ui> ui_;
+  std::string folder_; // (the app's, for history.txt and motions/)
 
-  Way way_ = Way::Throw;
-  bool flat_ = false;
-  Throw throw_{.from = {0, 0, 0}, .to = {4, 0, 1}, .seconds = 1.2};
-  Guide guide_{.keys = {{0, {0, 0, 0}}, {0.35, {1.5, 1.2f, 0}}, {0.7, {3, 0, 0}}}};
-  Search search_{.goal = {.from = {0, 1, 0}, .to = {5, 0.3f, 0}, .seconds = 1.5},
-                 .drag = 0.8,
-                 .floor = 0,
-                 .bounce = 0.6};
-  int pathPoints_ = 24, timingPoints_ = 24;
+  std::vector<LabShape> shapes_;
+  std::vector<ScratchPadd::Scene::Mesh> meshes_; // (shapes_'s, loaded)
+  ScratchPadd::Scene::Texture cardPicture_;
 
-  Recording made_;
-  ScratchPadd::Motion::BakedMotion baked_;
-  double miss_ = 0, error_ = 0;
+  Settings settings_;
+  Playing now_;
+  std::optional<Playing> other_; // (the run compared)
+  int otherNumber_ = 0;
+  bool sideBySide_ = true, showPhysics_ = false;
+
+  std::vector<Run> history_;
+  int nextNumber_ = 1;
+  int chosen_ = -1; // (the run whose settings these were, in history_)
+  bool unnoted_ = false;
+  Clock::time_point changedAt_ = Clock::now();
+
+  float yaw_ = -0.6f, pitch_ = 0.35f, zoom_ = 1;
   std::string name_ = "throw";
   std::string saved_;
-  std::chrono::steady_clock::time_point playFrom_ = std::chrono::steady_clock::now();
+  Clock::time_point playFrom_ = Clock::now();
 };
 
 } // namespace AnimationLab

@@ -1,6 +1,7 @@
 // The lab's three ways each make a motion that does what was asked, flat
 // too, and each bakes into a small motion that stays close to it
 #include <AnimationLab/Lab.hpp>
+#include <AnimationLab/Settings.hpp>
 
 #include <gtest/gtest.h>
 
@@ -115,4 +116,27 @@ TEST(LabTest, ATumbleLandsAndSettles) {
   const auto again = readText(writeText(baked));
   ASSERT_TRUE(again.has_value());
   EXPECT_EQ(again.value_or(ScratchPadd::Motion::BakedMotion{}).turns.size(), baked.turns.size());
+}
+
+// Settings as text and back, each way's kept; and made into a motion
+TEST(LabTest, SettingsReadBackAsWritten) {
+  Settings s;
+  s.way = Way::Tumble;
+  s.flat = true;
+  s.shape = "rocket";
+  s.size = 1.5f;
+  s.pathPoints = 30;
+  s.guide.keys.push_back({1.2, {4, 0.5f, 0}});
+  s.tumble.spin = {1, 2, 3};
+  s.tumble.bounce = 0.25;
+  s.search.drag = 0.7;
+  const auto back = readSettings(writeSettings(s));
+  ASSERT_TRUE(back.has_value());
+  EXPECT_EQ(writeSettings(back.value_or(Settings{})), writeSettings(s));
+  EXPECT_FALSE(readSettings("nonsense 1 2").has_value());
+  EXPECT_FALSE(readSettings("").has_value());
+  EXPECT_NE(summary(s).find("Tumble rocket"), std::string::npos);
+  const Made made = make(Settings{}, {});
+  EXPECT_FALSE(made.recording.positions.empty());
+  EXPECT_EQ(made.baked.path.size(), 24u);
 }

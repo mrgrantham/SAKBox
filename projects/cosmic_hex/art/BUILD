@@ -197,7 +197,7 @@ cc_library(
     srcs = ["src/Art.cpp"],
     hdrs = ["include/CosmicHex/Art.hpp"],
     strip_include_prefix = "include/",
-    visibility = ["//projects/cosmic_hex:__subpackages__"],
+    visibility = ["//projects/cosmic_hex:__subpackages__", "//projects/animation_lab:__pkg__"],
     deps = [
         ":find_face_down",
         ":find_nothing",

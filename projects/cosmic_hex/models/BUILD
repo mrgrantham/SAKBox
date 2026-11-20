@@ -12,5 +12,5 @@ scene_model(
     budget = {"ds": 500},
     object = "Rocket",
     over_budget = {"ds": "SIMPLIFY"},
-    visibility = ["//projects/cosmic_hex:__subpackages__"],
+    visibility = ["//projects/cosmic_hex:__subpackages__", "//projects/animation_lab:__pkg__"],
 )
