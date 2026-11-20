@@ -101,6 +101,21 @@ BoardPieces::BoardPieces() {
                  onTable({b.x * 0.86f, b.y * 0.86f}, kRingLift),
                  onTable({a.x * 0.86f, a.y * 0.86f}, kRingLift));
   }
+  // The column: each side of the tile's hexagon raised, both ways round
+  {
+    constexpr float kHeight = 1.6f;
+    const auto corners = kLayout.corners(Hex{});
+    for (int i = 0; i < 6; ++i) {
+      const auto a = corners[static_cast<std::size_t>(i)],
+                 b = corners[static_cast<std::size_t>((i + 1) % 6)];
+      const Scene::Vector3 a0 = onTable({a.x * kTileInset, a.y * kTileInset}),
+                           b0 = onTable({b.x * kTileInset, b.y * kTileInset});
+      const Scene::Vector3 a1 = a0 + Scene::Vector3{0, kHeight, 0},
+                           b1 = b0 + Scene::Vector3{0, kHeight, 0};
+      column.quad(a0, b0, b1, a1);
+      column.quad(b0, a0, a1, b1);
+    }
+  }
   // A small hexagonal ring round a corner, at the rings' height (// the user's: a touch marks the
   // corner, not the tile)
   {

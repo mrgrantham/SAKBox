@@ -28,7 +28,7 @@ namespace CosmicHex::Handheld {
 
 // The pictures the views draw with, loaded once by the app
 struct TopPictures {
-  ScratchPadd::Scene::Mesh hexTile, numberChip; // (the board's own pieces)
+  ScratchPadd::Scene::Mesh hexTile, numberChip, column; // (the board's own pieces)
   // Flat squares, each with its pictures' texture corners (ScreenPictures)
   ScratchPadd::Scene::Mesh pictureSquare, backSquare, closeUpCardSquare;
   std::array<ScratchPadd::Scene::Texture, Art::kFaces> faces{};

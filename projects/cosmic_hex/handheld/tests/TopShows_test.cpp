@@ -190,8 +190,11 @@ TEST(TopShowsTest, ARollsPayFliesCardByCard) {
   ASSERT_NE(paying, nullptr);
   state.stations.push_back({.at = {paying->hex, 0}, .owner = 1});
   RollPayShow show;
-  show.saw({{0, Action{Action::Kind::Roll, 2, 4}}}, state, 10);
+  show.saw({{0, Action{Action::Kind::Roll, 2, 4}}}, state);
   ASSERT_FALSE(show.cards().empty());
+  EXPECT_TRUE(show.waiting()); // (not before the dice have gone)
+  EXPECT_FALSE(show.update(20).hold);
+  show.start(10);
   EXPECT_EQ(show.cards().front().player, 1);
   EXPECT_EQ(show.cards().front().resource, Resource::Fuel);
   EXPECT_FALSE(show.at(0, 9.9).has_value());
@@ -201,6 +204,6 @@ TEST(TopShowsTest, ARollsPayFliesCardByCard) {
   EXPECT_TRUE(show.update(10 + show.seconds()).letGo);
   EXPECT_TRUE(show.cards().empty());
   RollPayShow seven;
-  seven.saw({{0, Action{Action::Kind::Roll, 3, 4}}}, state, 0); // (a 7 pays nothing)
+  seven.saw({{0, Action{Action::Kind::Roll, 3, 4}}}, state); // (a 7 pays nothing)
   EXPECT_TRUE(seven.cards().empty());
 }

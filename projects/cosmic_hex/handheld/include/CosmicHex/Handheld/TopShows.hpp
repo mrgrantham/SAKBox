@@ -253,8 +253,11 @@ public:
     Resource resource;
   };
   // The moves made since the last look: a roll's pay queued (from `before`,
-  // the game as it was when the dice were thrown), starting at `startAt`
-  void saw(const std::vector<TableGame::Played> &moves, const State &before, double startAt);
+  // the game as it was when the dice were thrown), to start once `start`
+  // is called (when the dice have gone: the user's, not over the roll)
+  void saw(const std::vector<TableGame::Played> &moves, const State &before);
+  void start(double now);
+  bool waiting() const { return !cards_.empty() && !started_; }
   const std::vector<Card> &cards() const { return cards_; }
 
   // Card i's moment: how far it's popped out (0 to 1, Settle) and how far
@@ -274,7 +277,7 @@ public:
 private:
   std::vector<Card> cards_;
   double startAt_ = 0;
-  bool held_ = false;
+  bool started_ = false, held_ = false;
 };
 
 } // namespace CosmicHex::Handheld

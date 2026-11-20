@@ -74,6 +74,10 @@ struct BoardPieces {
   Scene::MeshBuilder ship;       // a dart, pointing along +x
   Scene::MeshBuilder hexRing;    // a thin ring round a hex, for the blockade's chosen hex
   Scene::MeshBuilder cornerRing; // a small ring round a corner, for the touched corner
+  // A tall hexagonal column round a tile, its six sides both ways (seen
+  // from in front and behind), drawn see-through: a planet paying on a
+  // roll lit up (the user's)
+  Scene::MeshBuilder column;
   // A sparse, dim starfield below the board (the user's): small
   // squares scattered wide, drawn unlit, the same every game
   Scene::MeshBuilder stars;

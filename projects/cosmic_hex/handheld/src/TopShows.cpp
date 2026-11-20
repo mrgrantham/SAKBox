@@ -272,16 +272,13 @@ HomePayShow::Step HomePayShow::update(double now) {
 
 // --------------------------------------------------------------- Roll pay
 
-void RollPayShow::saw(const std::vector<TableGame::Played> &moves, const State &before,
-                      double startAt) {
+void RollPayShow::saw(const std::vector<TableGame::Played> &moves, const State &before) {
   for (const TableGame::Played &move : moves) {
     if (move.action.kind != Action::Kind::Roll)
       continue;
     const int roll = move.action.a + move.action.b;
     if (roll == 7)
       continue; // (the blockade's, not a pay)
-    if (cards_.empty())
-      startAt_ = startAt;
     for (const Payout &pay : payouts(before, roll))
       for (int n = 0; n < pay.count; ++n)
         cards_.push_back({pay.planet, pay.player, pay.resource});
@@ -294,8 +291,15 @@ float RollPayShow::seconds() const {
   return kStagger * static_cast<float>(cards_.size() - 1) + kSecondsPop + kSecondsFly;
 }
 
+void RollPayShow::start(double now) {
+  if (waiting()) {
+    startAt_ = now;
+    started_ = true;
+  }
+}
+
 std::optional<RollPayShow::Moment> RollPayShow::at(std::size_t i, double now) const {
-  if (i >= cards_.size())
+  if (i >= cards_.size() || !started_)
     return std::nullopt;
   const auto t = static_cast<float>(now - startAt_) - kStagger * static_cast<float>(i);
   if (t < 0 || t >= kSecondsPop + kSecondsFly)
@@ -306,12 +310,12 @@ std::optional<RollPayShow::Moment> RollPayShow::at(std::size_t i, double now) co
 }
 
 bool RollPayShow::moving(double now) const {
-  return !cards_.empty() && now >= startAt_ && now < startAt_ + seconds();
+  return started_ && !cards_.empty() && now >= startAt_ && now < startAt_ + seconds();
 }
 
 RollPayShow::Step RollPayShow::update(double now) {
   Step step;
-  if (cards_.empty() || now < startAt_)
+  if (!started_ || cards_.empty() || now < startAt_)
     return step;
   if (!held_) {
     held_ = true;
@@ -320,7 +324,7 @@ RollPayShow::Step RollPayShow::update(double now) {
   if (now < startAt_ + seconds())
     return step;
   cards_.clear();
-  held_ = false;
+  held_ = started_ = false;
   step.letGo = true;
   return step;
 }

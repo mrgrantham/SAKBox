@@ -412,6 +412,27 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, float since) {
 void drawRollPay(const TopFrame &f, const RollPayShow &show, const State &state, int you) {
   const float k = f.k();
   const TopPictures &p = f.pictures;
+  // Each paying planet lit: a tall see-through column round its tile in its
+  // resource's colour, in as its first card pops out, out as its last lands
+  std::vector<std::pair<int, float>> lit; // (planet, how strongly)
+  for (std::size_t i = 0; i < show.cards().size(); ++i)
+    if (const auto m = show.at(i, f.now)) {
+      const float strength = m->pop * (1 - m->fly * m->fly);
+      const int planet = show.cards()[i].planet;
+      const auto it = std::ranges::find(lit, planet, &std::pair<int, float>::first);
+      if (it == lit.end())
+        lit.emplace_back(planet, strength);
+      else
+        it->second = std::max(it->second, strength);
+    }
+  if (p.column)
+    for (const auto &[planet, strength] : lit) {
+      const Planet &tile = state.planets[static_cast<std::size_t>(planet)];
+      f.renderer.draw(p.column, BoardPieces::onHex(tile.hex),
+                      {.shading = Scene::Material::Shading::Unlit,
+                       .colour = BoardColours::ofKind(tile.kind),
+                       .alpha = static_cast<std::uint8_t>(14 * strength)});
+    }
   for (std::size_t i = 0; i < show.cards().size(); ++i) {
     const auto m = show.at(i, f.now);
     if (!m)

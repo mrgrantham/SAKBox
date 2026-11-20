@@ -140,8 +140,6 @@ constexpr std::array<ScriptedTap, 0> kScriptedTaps{};
 // question on the roadmap page; the scene for now
 // How long the title takes to fade in from black, once the start's work
 // is done
-// A roll's pay starts as the dice are pulled away
-constexpr double kSecondsDicePulled = 0.3;
 // The points bars' outline moving to the next player's row
 constexpr float kSecondsOutline = 0.35f;
 // How long the other players' view takes to slide down (or up)
@@ -379,7 +377,7 @@ public:
       homePay_.saw(snapshot.played, now() + banner_.remaining(gameClock_.seconds()));
       // A roll's pay: once the dice are pulled away (RollPayShow)
       if (latest_)
-        rollPay_.saw(snapshot.played, latest_->state, now() + kSecondsDicePulled);
+        rollPay_.saw(snapshot.played, latest_->state);
       // Your two cards dealt after buying: thrown onto the top screen
       {
         const bool keeping = mode_ == Mode::Playing && snapshot.yourMove &&
@@ -440,6 +438,7 @@ public:
     const BoardPieces pieces;
     pictures_.hexTile = renderer_->load(pieces.hexTile.data());
     pictures_.numberChip = renderer_->load(pieces.numberChip.data());
+    pictures_.column = renderer_->load(pieces.column.data());
     station_ = renderer_->load(pieces.station.data());
     colony_ = renderer_->load(pieces.colony.data());
     ship_ = renderer_->load(pieces.ship.data());
@@ -1743,6 +1742,9 @@ private:
   }
   // Each frame: the game held while a roll's pay flies
   void updateRollPay() {
+    // (once the dice have gone from the screen: not over the roll)
+    if (rollPay_.waiting() && dice_ == DiceStage::Idle)
+      rollPay_.start(now());
     const RollPayShow::Step step = rollPay_.update(now());
     if (step.hold || step.letGo)
       holdFor(Hold::RollPay, step.hold);

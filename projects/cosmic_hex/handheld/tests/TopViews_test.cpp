@@ -116,7 +116,8 @@ TEST_F(TopViewsTest, ARollsPayFromStartToEnd) {
       break;
     }
   RollPayShow show;
-  show.saw({{1, Action{Action::Kind::Roll, 4, 4}}}, state, 0);
+  show.saw({{1, Action{Action::Kind::Roll, 4, 4}}}, state);
+  show.start(0);
   ASSERT_EQ(show.cards().size(), 3u); // (a colony's two, a station's one)
   frames(every(-0.2, show.seconds() + 0.3), [&](const TopFrame &f) {
     show.update(f.now);
