@@ -7,8 +7,14 @@
 //            settings: drag a value and the motion is made again at once),
 //            flat or 3D, the shape, the bake, and Save
 //   3D       the shape flying the baked motion (as a game will play it),
-//            its path as a line; and the run compared beside it. Drag to
-//            turn the view, scroll to zoom
+//            its path as a line; the run compared in a view of its own
+//            beside it, seen from the same camera (or on top, in one).
+//            Moved as Blender's viewport is (OrbitView): middle-drag (or
+//            left, or Alt-left) turns it, with Shift pans, with Ctrl zooms;
+//            the wheel zooms toward the cursor; a trackpad's two-finger
+//            scroll turns it (Shift pans, Ctrl or Cmd zooms); 1, 3, 7 (the
+//            numpad or the number row) look from the front, right and top,
+//            Ctrl for the opposite; Home frames it all; Esc undoes a drag
 //   Plots    from the side, from above, and the timing (how far along
 //            against time): the physics as lines, the bake as dots
 //
@@ -19,6 +25,7 @@
 
 #include "LabShapes.hpp"
 
+#include <AnimationLab/OrbitView.hpp>
 #include <AnimationLab/Settings.hpp>
 
 #include <ScratchPadd/DebugUi/DebugUi.hpp>
@@ -63,6 +70,9 @@ private:
   void drawHistory();
   void drawMaking();
   void drawView(double t);
+  // The mouse, trackpad and keys moving the view, over the 3D's part of the
+  // window (`area`: x, y, width, height in points; `panes` views across it)
+  void moveView(const float area[4], int panes);
   void drawPlots(double t);
 
   Playing play(const Settings &settings) const;
@@ -97,7 +107,8 @@ private:
   bool unnoted_ = false;
   Clock::time_point changedAt_ = Clock::now();
 
-  float yaw_ = -0.6f, pitch_ = 0.35f, zoom_ = 1;
+  OrbitView view_;
+  bool frameNext_ = true; // (frame what's shown: at the start, a run chosen, Home)
   std::string name_ = "throw";
   std::string saved_;
   Clock::time_point playFrom_ = Clock::now();

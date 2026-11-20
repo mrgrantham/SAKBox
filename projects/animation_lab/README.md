@@ -68,7 +68,28 @@ Four parts:
   and how many floats it takes, and Save.
 - **3D** (top right): the shape flying the baked motion as a game would
   play it (or the physics, to compare), its path as a line, over a floor
-  grid. Drag to turn the view, scroll to zoom.
+  grid. Compared side by side, each run has a view of its own, both seen
+  from the same camera (`Renderer::beginView`); else the run compared is
+  on top, in orange.
+
+### Moving the view
+
+As Blender's viewport, by default (`OrbitView`: our own small version of
+the ideas in Blender's view navigation code, no dependency):
+
+| Input | What it does |
+| --- | --- |
+| Middle-drag (or left, or Alt-left) | Turn round (a turntable: the horizon stays level) |
+| Shift + drag | Pan: what's under the cursor stays under it |
+| Ctrl + drag | Zoom |
+| Mouse wheel | Zoom toward the cursor |
+| Trackpad two-finger scroll | Turn round; with Shift pan; with Ctrl or Cmd zoom |
+| 1, 3, 7 (numpad or number row) | Look from the front, the right, the top; with Ctrl the opposite |
+| Home (or the numpad's .) | Frame it all |
+| Esc during a drag | Put the view back as it was |
+
+The view frames what's shown when the lab starts, when a run is chosen or
+compared, and on Home; otherwise it stays where you put it.
 - **Plots** (bottom right): from the side, from above, and the timing (how
   far along against time), the physics as lines and the bake as dots.
 

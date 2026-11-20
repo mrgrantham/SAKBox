@@ -7,10 +7,12 @@ cc_library(
     name = "lab",
     srcs = [
         "src/Lab.cpp",
+        "src/OrbitView.cpp",
         "src/Settings.cpp",
     ],
     hdrs = [
         "include/AnimationLab/Lab.hpp",
+        "include/AnimationLab/OrbitView.hpp",
         "include/AnimationLab/Settings.hpp",
     ],
     strip_include_prefix = "include/",
@@ -18,7 +20,18 @@ cc_library(
     deps = [
         "//projects/cyclone",
         "//projects/scratchpadd/motion",
+        "//projects/scratchpadd/scene",
         "//projects/seeded_random",
+    ],
+)
+
+cc_test(
+    name = "OrbitView_test",
+    size = "small",
+    srcs = ["tests/OrbitView_test.cpp"],
+    deps = [
+        ":lab",
+        "@gtest//:gtest_main",
     ],
 )
 

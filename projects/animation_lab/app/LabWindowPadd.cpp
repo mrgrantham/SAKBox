@@ -251,6 +251,7 @@ void LabWindowPadd::drawHistory() {
       other_ = play(run.settings);
       otherNumber_ = run.number;
       playFrom_ = Clock::now();
+      frameNext_ = true;
     }
     ImGui::SameLine();
     const std::string label = "#" + std::to_string(run.number) + " " +
@@ -262,6 +263,7 @@ void LabWindowPadd::drawHistory() {
       settings_ = run.settings;
       remake();
       unnoted_ = false;
+      frameNext_ = true;
     }
     if (ImGui::IsItemHovered() && !run.name.empty())
       ImGui::SetTooltip("%s", summary(run.settings).c_str());
@@ -388,112 +390,159 @@ void LabWindowPadd::drawMaking() {
     ImGui::TextWrapped("%s", saved_.c_str());
 }
 
+void LabWindowPadd::moveView(const float area[4], int panes) {
+  const ImGuiIO &io = ImGui::GetIO();
+  const float paneWidth = area[2] / static_cast<float>(panes);
+  const bool inside = !io.WantCaptureMouse && io.MousePos.x >= area[0] &&
+                      io.MousePos.x < area[0] + area[2] && io.MousePos.y >= area[1] &&
+                      io.MousePos.y < area[1] + area[3];
+  const bool shift = io.KeyShift, ctrl = io.KeyCtrl || io.KeySuper;
+  // (the cursor in its pane: zooming goes toward it)
+  const float paneX = std::fmod(io.MousePos.x - area[0], paneWidth),
+              paneY = io.MousePos.y - area[1];
+  // A drag: middle (Blender's), left (nothing to select here), or Alt-left
+  // (Blender's three-button emulation, the same)
+  if (inside && (ImGui::IsMouseClicked(ImGuiMouseButton_Middle) ||
+                 ImGui::IsMouseClicked(ImGuiMouseButton_Left)))
+    view_.begin();
+  if (view_.dragging()) {
+    const bool held =
+        ImGui::IsMouseDown(ImGuiMouseButton_Middle) || ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+      view_.cancel(); // (back as it was)
+    } else if (!held) {
+      view_.end();
+    } else if (io.MouseDelta.x != 0 || io.MouseDelta.y != 0) {
+      if (shift)
+        view_.pan(io.MouseDelta.x, io.MouseDelta.y, area[3]);
+      else if (ctrl)
+        view_.zoomAt(-io.MouseDelta.y * 0.05f, paneWidth / 2, area[3] / 2, paneWidth, area[3]);
+      else
+        view_.orbit(io.MouseDelta.x, io.MouseDelta.y);
+    }
+  }
+  // The wheel: a mouse's (whole steps, up and down) zooms toward the
+  // cursor; a trackpad's two-finger scroll (in fractions, or sideways)
+  // turns the view, with Shift pans, with Ctrl or Cmd zooms
+  if (inside && (io.MouseWheel != 0 || io.MouseWheelH != 0)) {
+    const bool trackpad =
+        io.MouseWheelH != 0 || std::fabs(io.MouseWheel - std::round(io.MouseWheel)) > 1e-3f;
+    constexpr float kPixelsAStep = 12;
+    if (!trackpad || ctrl)
+      view_.zoomAt(io.MouseWheel, paneX, paneY, paneWidth, area[3]);
+    else if (shift)
+      view_.pan(io.MouseWheelH * kPixelsAStep, io.MouseWheel * kPixelsAStep, area[3]);
+    else
+      view_.orbit(io.MouseWheelH * kPixelsAStep, io.MouseWheel * kPixelsAStep);
+  }
+  // Keys, when nothing's being typed: the numpad's views (or the number
+  // row's, as Blender's Emulate Numpad, for laptops), Ctrl the opposite;
+  // Home (or the numpad's .) frames it all
+  if (!io.WantCaptureKeyboard) {
+    const auto pressed = [](ImGuiKey pad, ImGuiKey row) {
+      return ImGui::IsKeyPressed(pad, false) || ImGui::IsKeyPressed(row, false);
+    };
+    if (pressed(ImGuiKey_Keypad1, ImGuiKey_1))
+      view_.look(ctrl ? OrbitView::Side::Back : OrbitView::Side::Front);
+    if (pressed(ImGuiKey_Keypad3, ImGuiKey_3))
+      view_.look(ctrl ? OrbitView::Side::Left : OrbitView::Side::Right);
+    if (pressed(ImGuiKey_Keypad7, ImGuiKey_7))
+      view_.look(ctrl ? OrbitView::Side::Bottom : OrbitView::Side::Top);
+    if (ImGui::IsKeyPressed(ImGuiKey_Home, false) ||
+        ImGui::IsKeyPressed(ImGuiKey_KeypadDecimal, false))
+      frameNext_ = true;
+  }
+}
+
 void LabWindowPadd::drawView(double t) {
   const ImVec2 size = ImGui::GetIO().DisplaySize;
   const float left = kHistoryWidth + kMakingWidth, bottom = size.y - kPlotsHeight;
-  // Turned by dragging, zoomed by scrolling, where no panel is
-  const ImGuiIO &io = ImGui::GetIO();
-  if (!io.WantCaptureMouse && io.MousePos.x > left && io.MousePos.y < bottom) {
-    if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-      yaw_ += io.MouseDelta.x * 0.008f;
-      pitch_ = std::clamp(pitch_ + io.MouseDelta.y * 0.008f, -0.2f, 1.45f);
-    }
-    zoom_ = std::clamp(zoom_ * std::pow(0.9f, io.MouseWheel), 0.2f, 5.0f);
-  }
-  // The runs: this one, and the one compared beside it (or on top)
-  struct Shown {
-    const Playing *playing;
-    Scene::Vector3 offset;
-    Scene::Colour colour, path;
-  };
-  std::vector<Shown> shown{{&now_, {}, kNowColour, kNowPath}};
-  if (other_) {
-    float apart = 0;
-    if (sideBySide_) {
-      float lowZ = 1e9f, highZ = -1e9f;
-      for (const Playing *p : {&now_, &*other_})
-        for (const Point &q : p->made.recording.positions) {
-          lowZ = std::min(lowZ, q[2]);
-          highZ = std::max(highZ, q[2]);
-        }
-      apart = (highZ - lowZ) + std::max(now_.settings.size, other_->settings.size) * 2 + 1;
-    }
-    shown.push_back({&*other_, {0, 0, -apart}, kOtherColour, kOtherPath});
-  }
-  // The camera: around the middle of everything shown, far enough back to
-  // see it all, moved sideways so it's in the middle of the clear space
+  // Compared side by side: two views, the same camera (the user's: each
+  // run in a view of its own, seen from the same angle); else one, the run
+  // compared on top
+  const bool twoViews = other_ && sideBySide_;
+  const int panes = twoViews ? 2 : 1;
+  const float area[4] = {left, 0, size.x - left, bottom};
+  moveView(area, panes);
+  // (what's shown, for framing and the floor)
   Scene::Vector3 low{1e9f, 1e9f, 1e9f}, high{-1e9f, -1e9f, -1e9f};
-  for (const Shown &s : shown)
-    for (const Point &q : s.playing->made.recording.positions) {
-      const Scene::Vector3 p = vectorOf(q) + s.offset;
-      low = {std::min(low.x, p.x), std::min(low.y, p.y), std::min(low.z, p.z)};
-      high = {std::max(high.x, p.x), std::max(high.y, p.y), std::max(high.z, p.z)};
-    }
+  for (const Playing *p : {&now_, other_ ? &*other_ : nullptr})
+    if (p)
+      for (const Point &q : p->made.recording.positions) {
+        const Scene::Vector3 v = vectorOf(q);
+        low = {std::min(low.x, v.x), std::min(low.y, v.y), std::min(low.z, v.z)};
+        high = {std::max(high.x, v.x), std::max(high.y, v.y), std::max(high.z, v.z)};
+      }
   if (low.x > high.x)
     low = high = {};
-  const Scene::Vector3 middle = (low + high) * 0.5f;
-  const float radius = (high - low).length() * 0.5f + 1.5f;
-  Scene::Camera camera;
-  camera.fieldOfView = 40;
-  const float tanHalf = std::tan(camera.fieldOfView * 3.14159265f / 360);
-  const float aspect = size.x / size.y;
-  const float shareHigh = bottom / size.y, shareWide = (size.x - left) / size.x;
-  const float distance = radius / (tanHalf * std::min(shareHigh, shareWide * aspect)) * zoom_;
-  const Scene::Vector3 toEye{std::cos(pitch_) * std::sin(yaw_), std::sin(pitch_),
-                             std::cos(pitch_) * std::cos(yaw_)};
-  const Scene::Vector3 right = Scene::Vector3{0, 1, 0}.cross(toEye).normalised();
-  const Scene::Vector3 up = toEye.cross(right);
-  // (the clear space's middle, -1 to 1 across and up the window)
-  const float cx = (left + size.x) / size.x - 1, cy = 1 - bottom / size.y;
-  const Scene::Vector3 shift =
-      right * (-cx * distance * tanHalf * aspect) + up * (-cy * distance * tanHalf);
-  camera.target = middle + shift;
-  camera.eye = middle + toEye * distance + shift;
-  camera.farPlane = distance + radius * 4 + 50;
+  if (frameNext_) {
+    const float margin = std::max(now_.settings.size, other_ ? other_->settings.size : 0.0f);
+    view_.frame(low - Scene::Vector3{margin, margin, margin},
+                high + Scene::Vector3{margin, margin, margin}, area[2] / panes / area[3]);
+    frameNext_ = false;
+  }
+  const Scene::Camera camera = view_.camera();
   Scene::Environment environment;
   environment.background = {24, 26, 32};
   environment.ambient = {90, 90, 100};
   environment.addLight({Scene::Vector3{-0.4f, -1, -0.3f}.normalised(), {255, 250, 240}});
   renderer_->beginFrame(camera, environment);
   // The floor, a grid under it all
+  const auto floorOf = [](const Settings &s) {
+    return s.way == Way::Tumble   ? static_cast<float>(s.tumble.floor)
+           : s.way == Way::Search ? static_cast<float>(s.search.floor)
+                                  : 0.0f;
+  };
+  std::vector<Scene::Vector3> floor;
   {
-    const auto floorOf = [](const Settings &s) {
-      return s.way == Way::Tumble   ? static_cast<float>(s.tumble.floor)
-             : s.way == Way::Search ? static_cast<float>(s.search.floor)
-                                    : 0.0f;
-    };
     const float y = floorOf(now_.settings);
-    std::vector<Scene::Vector3> ends;
     const float x0 = std::floor(low.x) - 3, x1 = std::ceil(high.x) + 3;
     const float z0 = std::floor(low.z) - 3, z1 = std::ceil(high.z) + 3;
     for (float x = x0; x <= x1; x += 1)
-      ends.insert(ends.end(), {{x, y, z0}, {x, y, z1}});
+      floor.insert(floor.end(), {{x, y, z0}, {x, y, z1}});
     for (float z = z0; z <= z1; z += 1)
-      ends.insert(ends.end(), {{x0, y, z}, {x1, y, z}});
-    renderer_->drawLines(ends, kFloor);
+      floor.insert(floor.end(), {{x0, y, z}, {x1, y, z}});
   }
-  for (const Shown &s : shown) {
-    const Playing &p = *s.playing;
+  // A run: its path as a line, the shape where it is now
+  const auto drawRun = [&](const Playing &p, Scene::Colour colour, Scene::Colour path) {
     std::vector<Scene::Vector3> ends;
     const auto &positions = p.made.recording.positions;
     for (std::size_t i = 1; i < positions.size(); ++i)
-      ends.insert(ends.end(),
-                  {vectorOf(positions[i - 1]) + s.offset, vectorOf(positions[i]) + s.offset});
-    renderer_->drawLines(ends, s.path);
+      ends.insert(ends.end(), {vectorOf(positions[i - 1]), vectorOf(positions[i])});
+    renderer_->drawLines(ends, path);
     if (!p.shape)
-      continue;
+      return;
     const Pose pose = poseAt(p.made, t, showPhysics_);
     const Scene::Transform where =
-        turned(pose.turn, vectorOf(pose.at) + s.offset) *
+        turned(pose.turn, vectorOf(pose.at)) *
         Scene::Transform::scaling({p.settings.size, p.settings.size, p.settings.size}) *
         p.shape->fit;
     Scene::Material material;
-    material.colour = s.colour;
+    material.colour = colour;
     if (!p.shape->picture.empty())
       material.texture = cardPicture_;
-    const auto index = static_cast<std::size_t>(p.shape - shapes_.data());
-    renderer_->draw(meshes_[index], where, material);
+    renderer_->draw(meshes_[static_cast<std::size_t>(p.shape - shapes_.data())], where, material);
+  };
+  // Each pane: its view, the floor, its run (or both, on top), named
+  for (int pane = 0; pane < panes; ++pane) {
+    const float x = area[0] + area[2] * static_cast<float>(pane) / static_cast<float>(panes);
+    renderer_->beginView(
+        camera, {x / size.x, 0, area[2] / static_cast<float>(panes) / size.x, bottom / size.y});
+    renderer_->drawLines(floor, kFloor);
+    if (pane == 0)
+      drawRun(now_, kNowColour, kNowPath);
+    if (other_ && (pane == 1 || !twoViews))
+      drawRun(*other_, kOtherColour, kOtherPath);
+    if (other_) {
+      const std::string name = pane == 0 ? "this run" : "#" + std::to_string(otherNumber_);
+      renderer_->overlay().text(
+          x + 10, 8,
+          twoViews ? name : "this run, and #" + std::to_string(otherNumber_) + " (orange) on top",
+          pane == 0 ? kNowPath : kOtherPath, 2);
+    }
   }
+  if (twoViews) // (a line between the views)
+    renderer_->overlay().rectangle(area[0] + area[2] / 2 - 1, 0, 2, bottom, {60, 66, 80});
 }
 
 void LabWindowPadd::drawPlots(double t) {
