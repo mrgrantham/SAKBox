@@ -42,6 +42,7 @@
 #include <CosmicHex/Handheld/CardsHeld.hpp>
 #include <CosmicHex/Handheld/DicePieces.hpp>
 #include <CosmicHex/Handheld/Discovery.hpp>
+#include <CosmicHex/Handheld/Hud.hpp>
 #include <CosmicHex/Handheld/MenuPicture.hpp>
 #include <CosmicHex/Handheld/MoveSpots.hpp>
 #include <CosmicHex/Handheld/OtherPlayers.hpp>
@@ -772,8 +773,8 @@ private:
         latest_ &&
         (yourRollWaits(*latest_) ? rollAsked_ : !banner_.showing(gameClock_.seconds())) &&
         !homePay_.moving(showsNow()); // (and the home's pay shown first)
-    if (dice_ == DiceStage::Idle && latest_ && latest_->waitingForDice &&
-        latest_->diceSeed != thrownSeed_ && ready) {
+    if (roll_.idle() && latest_ && latest_->waitingForDice && latest_->diceSeed != thrownSeed_ &&
+        ready) {
       rollAsked_ = false;
       // (Roll's button goes once they're thrown)
       if (bottomScreen_) {
@@ -781,124 +782,12 @@ private:
                               mode_ == Mode::Playing && latest_->yourMove, false);
         bottomDirty_ = true;
       }
-      tray_.throwDice(latest_->diceSeed);
       thrownSeed_ = latest_->diceSeed;
-      dice_ = DiceStage::Rolling;
-      diceOwed_ = 0;
-      lastDiceTime_ = thrownAt_ = gameClock_.seconds();
+      roll_.throwFrom(thrownSeed_, gameClock_.seconds());
     }
-    if (dice_ == DiceStage::Idle)
-      return;
-    // Fixed steps of PlatformProfile::diceStep, as many as real time has passed (Gregory,
-    // Game Engine Architecture 8.5: integrators want a constant step; Doom's
-    // tics, Black Book 5.4): the same throw whatever the frame rate (the DS
-    // runs 41 to 60), at most mostDiceSteps a frame so a stall slows the
-    // dice rather than snowballing
-    const double now = gameClock_.seconds();
-    diceOwed_ += now - lastDiceTime_;
-    lastDiceTime_ = now;
-    int steps = 0;
-    for (; diceOwed_ >= kThisPlatform.diceStep && steps < kThisPlatform.mostDiceSteps; ++steps) {
-      tray_.step(kThisPlatform.diceStep);
-      diceOwed_ -= kThisPlatform.diceStep;
-    }
-    if (steps == kThisPlatform.mostDiceSteps)
-      diceOwed_ = 0; // (behind: let it go)
-    // A watchdog (White, Making Embedded Systems, "Watchdog"): dice still
-    // moving after kMostSecondsRolling are thrown again (the next seed), so
-    // a roll can't hold the game up (none of 60,000 test throws needed it)
-    if (dice_ == DiceStage::Rolling && !tray_.settled() && now - thrownAt_ > kMostSecondsRolling) {
-      tray_.throwDice(++thrownSeed_);
-      thrownAt_ = now;
-      return;
-    }
-    if (dice_ == DiceStage::Rolling && tray_.settled()) {
-      dice_ = DiceStage::Showing;
-      shownSeconds_ = 0;
-      rolled_ = tray_.faces();
-    } else if (dice_ == DiceStage::Showing &&
-               (shownSeconds_ += steps * kThisPlatform.diceStep) >= kSecondsShowingDice) {
-      const auto [first, second] = tray_.faces();
-      send(DiceRolled{first, second});
-      tray_.startPull();
-      dice_ = DiceStage::Pulling;
-    } else if (dice_ == DiceStage::Pulling && tray_.offScreen()) {
-      dice_ = DiceStage::Idle;
-    }
-  }
-
-  // The dice on the glass, in front of the board
-  void drawDice(const Scene::Camera &camera) {
-    if (dice_ == DiceStage::Idle)
-      return;
-    const auto toFloat = [](cyclone::real r) { return static_cast<float>(static_cast<double>(r)); };
-    const Scene::Transform glass = glassFrame(
-        camera, static_cast<float>(kTopWidth) / static_cast<float>(kTopHeight),
-        static_cast<float>(Dice::DiceTray::kWidth), static_cast<float>(Dice::DiceTray::kDepth));
-    for (int d = 0; d < 2; ++d) {
-      const cyclone::Vector3 at = tray_.position(d);
-      const cyclone::Quaternion turn = tray_.orientation(d);
-      renderer_->draw(
-          die_,
-          dieOnGlass(glass, {toFloat(at.x), toFloat(at.y), toFloat(at.z)},
-                     {toFloat(turn.r), toFloat(turn.i), toFloat(turn.j), toFloat(turn.k)},
-                     static_cast<float>(tray_.offset())),
-          {.shading = Scene::Material::Shading::Lit});
-    }
-    // Once they've settled, the roll in big words in the middle of the
-    // screen on a hexagon (the user's), going with the glass as
-    // it's pulled away (its middle, wherever the glass has got to)
-    if (dice_ == DiceStage::Rolling)
-      return;
-    const auto middle =
-        onScreen(camera, static_cast<float>(kTopWidth), static_cast<float>(kTopHeight),
-                 glass.apply({-static_cast<float>(tray_.offset()), 0, 0}));
-    if (!middle)
-      return;
-    const auto [first, second] = rolled_;
-    char total[8], pair[16];
-    std::snprintf(total, sizeof total, "%d", first + second);
-    std::snprintf(pair, sizeof pair, "%d + %d", first, second);
-    Scene::Overlay &overlay = renderer_->overlay();
-    // (the user's: a little smaller, so the words sit well inside)
-    const float big = kTopWidth >= 400 ? 4 : 3; // (the 3DS's wider screen: bigger)
-    const float small = kTopWidth >= 400 ? 1.5f : 1;
-    const float radius = kTopWidth >= 400 ? 50.0f : 42.0f;
-    const float x = (*middle)[0], y = (*middle)[1];
-    // Popping in as the dice settle (the user's: as the home's card does):
-    // the hexagon growing a little past its size and settling; then, once
-    // it has, its words fading in (never on something still moving)
-    const float popped = ScratchPadd::Motion::along(
-        ScratchPadd::Motion::Curve::Settle,
-        std::min(1.0f, static_cast<float>(shownSeconds_) / kSecondsRollPop));
-    // Both solid: a see-through hexagon's six triangles were blended twice
-    // along the edges they share, which showed as dark lines
-    constexpr Scene::Colour kInside{12, 18, 30, 255};
-    overlay.hexagon(x, y, (radius + 3) * popped, Palette::kHighlight); // (an amber edge)
-    overlay.hexagon(x, y, radius * popped, kInside);
-    const float words =
-        dice_ == DiceStage::Showing
-            ? std::clamp((static_cast<float>(shownSeconds_) - kSecondsRollPop) / kSecondsWordsIn,
-                         0.0f, 1.0f)
-            : 1.0f;
-    if (words <= 0)
-      return;
-    const auto faded = [&](Scene::Colour c) {
-      const auto mix = [words](std::uint8_t from, std::uint8_t to) {
-        return static_cast<std::uint8_t>(std::lround(from + (to - from) * words));
-      };
-      return Scene::Colour{mix(kInside.r, c.r), mix(kInside.g, c.g), mix(kInside.b, c.b), 255};
-    };
-    // The total over the two dice, the two lines together centred on the
-    // hexagon by their letters' own pixels (Overlay::textCentred)
-    const auto totalInk = Scene::Overlay::inkOf(total, big),
-               pairInk = Scene::Overlay::inkOf(pair, small);
-    constexpr float kGap = 6;
-    const float height = totalInk.height + kGap + pairInk.height;
-    overlay.textCentred(x, y - height / 2 + totalInk.height / 2, total, faded(Palette::kHighlight),
-                        big);
-    overlay.textCentred(x, y + height / 2 - pairInk.height / 2, pair, faded(Palette::kWords),
-                        small);
+    // (stepped on the game's clock; the faces, once shown, to the table)
+    if (const auto faces = roll_.update(gameClock_.seconds()))
+      send(DiceRolled{faces->first, faces->second});
   }
 
   // The board's light: the game's (a lamp above and to one side, toon
@@ -955,9 +844,6 @@ private:
       drawGaps(*shown, Scene::Transform::identity());
       drawPieces(*shown, Scene::Transform::identity());
     }
-    // (behind another player's view, the dice wait unseen: the game's held)
-    if (!others_.showing(showsNow()))
-      drawDice(camera);
     // What shows over the board for a while (TopViews; on a DS words are on
     // a layer over every shape, so only one at a time)
     const TopFrame frame{*renderer_,
@@ -968,6 +854,10 @@ private:
                          pictures_,
                          names_,
                          showsNow()};
+    // The roll's dice (behind another player's view they wait unseen: the
+    // game's held)
+    if (!others_.showing(showsNow()))
+      drawRoll(frame, roll_);
     // (a roll's pay, over the board, the HUD's words still showing: the
     // bots' cards fly to their rows of the points bars)
     if (latest_ && rollPay_.moving(showsNow()))
@@ -1000,7 +890,7 @@ private:
       drawDealtCards(frame, dealt_, bottomScreen_ ? bottomScreen_->keepChosen() : -1,
                      closeUpCards_);
     else
-      drawText();
+      drawText(frame);
     // The touched corner (or the blockade's hex), ringed on the 3D board too
     if (selected_) {
       const Scene::Material marked{.shading = Scene::Material::Shading::Unlit,
@@ -1239,15 +1129,13 @@ private:
   // Over the top screen: the round, each player's points and resources in
   // their colour, and the last move in words; before a game, the choice; on
   // your move, the moves you can make
-  void drawText() {
+  void drawText(const TopFrame &frame) {
     Scene::Overlay &overlay = renderer_->overlay();
     if (!latest_)
       return;
     const State &state = latest_->state;
-    char line[64];
-    // Each player's points as a row of dashes, the turn's row
-    // outlined
-    // (the turn's outline easing from the last turn's row to this one)
+    // The HUD (Hud.hpp): the turn's outline easing from the last turn's row
+    // to this one; badges, yours when playing, the turn's when watching
     std::optional<float> outlineRow;
     if (outlineMovedAt_) {
       const float moved = ScratchPadd::Motion::along(
@@ -1259,10 +1147,20 @@ private:
         outlineRow = static_cast<float>(outlineFrom_) +
                      (static_cast<float>(state.turn) - static_cast<float>(outlineFrom_)) * moved;
     }
-    for (const PointsBars::Bar &bar : PointsBars::of(state, kTopWidth, outlineRow))
-      overlay.rectangle(bar.x, bar.y, bar.width, bar.height, bar.colour);
-    drawPointsPopping(overlay, state);
-    drawCorners(overlay, state);
+    const bool lastMoveShows = !latest_->lastMoves.empty() &&
+                               shownInfo_ == BottomScreen::Info::None &&
+                               !cards_.showing(showsNow()) && !others_.showing(showsNow());
+    const std::string lastMove =
+        lastMoveShows ? latest_->lastMoves.back().substr(0, kCharsPerLine) : std::string();
+    drawHud(frame, state,
+            {.outlineRow = outlineRow,
+             .badgesOf = mode_ == Mode::Playing ? 0 : state.turn,
+             .pops = &scorePops_,
+             .lastMove = lastMove,
+             .winner = state.winner < 0 ? std::string()
+                       : mode_ == Mode::Playing && state.winner == 0
+                           ? std::string("You win!")
+                           : names_[state.winner] + " wins!"});
     // (the -watch builds: memory, measured, above the last move)
     if (kWatchAtStart && !memoryLine_.empty())
       overlay.text(4, kTopHeight - 26, memoryLine_.substr(0, kCharsPerLine), {120, 220, 160});
@@ -1285,93 +1183,11 @@ private:
     }
     if (kWatchAtStart && !memoryBusiest_.empty())
       overlay.text(4, kTopHeight - 38, memoryBusiest_.substr(0, kCharsPerLine), {120, 220, 160});
-    if (!latest_->lastMoves.empty() && shownInfo_ == BottomScreen::Info::None &&
-        !cards_.showing(showsNow()) && !others_.showing(showsNow()))
-      overlay.text(4, kTopHeight - 14, latest_->lastMoves.back().substr(0, kCharsPerLine),
-                   Palette::kSoftWords);
     // (the list of moves: debug builds only, when turned on)
     if (mode_ == Mode::Playing && latest_->yourMove && shownInfo_ == BottomScreen::Info::None &&
         !cards_.showing(showsNow()) && bottomScreen_ && bottomScreen_->showingMoveList())
       drawMoves(overlay);
     drawBanner(overlay);
-    if (state.winner >= 0)
-      overlay.textCentred(kTopWidth / 2.0f, kTopHeight / 2.0f,
-                          (mode_ == Mode::Playing && state.winner == 0
-                               ? std::string("You win")
-                               : names_[state.winner] + " wins") +
-                              "!",
-                          BoardColours::ofPlayer(state.winner), kTopWidth >= 400 ? 3.0f : 2.5f);
-  }
-
-  // How big a pop draws something (ScorePops' size): its overshoot made
-  // plain (Settle's is a tenth: on a dash 2 pixels high, nothing to see)
-  static float popped(float size) { return size + 3 * std::max(0.0f, size - 1); }
-
-  // Points just won popping in over their dashes (ScorePops): grey till
-  // its turn, then growing past its size in white and settling in the
-  // player's colour
-  void drawPointsPopping(Scene::Overlay &overlay, const State &state) {
-    const double now = showsNow();
-    if (!scorePops_.popping(now))
-      return;
-    const int target = state.settings.winPoints;
-    const float width = static_cast<float>(target) * PointsBars::kDashWidth +
-                        static_cast<float>(target - 1) * PointsBars::kDashGap;
-    const float left = (static_cast<float>(kTopWidth) - width) / 2;
-    for (int p = 0; p < state.players; ++p)
-      for (int d = 0; d < target; ++d) {
-        const float size = scorePops_.dash(p, d, now);
-        if (size == 1)
-          continue;
-        const float x =
-            left + static_cast<float>(d) * (PointsBars::kDashWidth + PointsBars::kDashGap);
-        const float y = PointsBars::kTop +
-                        static_cast<float>(p) * (PointsBars::kRowHeight + PointsBars::kRowGap);
-        overlay.rectangle(x, y, PointsBars::kDashWidth, PointsBars::kRowHeight,
-                          PointsBars::kStillToWin);
-        const float w = PointsBars::kDashWidth * popped(size);
-        const float h = PointsBars::kRowHeight * (1 + 15 * std::max(0.0f, size - 1));
-        overlay.rectangle(x + PointsBars::kDashWidth / 2 - w / 2,
-                          y + PointsBars::kRowHeight / 2 - h / 2, w, h,
-                          size > 1 ? Palette::kWords : BoardColours::ofPlayer(p));
-      }
-  }
-
-  // The top corners (the user's): the round top left, in a
-  // turquoise hexagon with ROUND under it (calmer than the roll's amber: it's
-  // always there), and the badges top right, towards the next point (3 make
-  // one at once), the player's own when playing, the turn's when watching
-  void drawCorners(Scene::Overlay &overlay, const State &state) {
-    const float k = static_cast<float>(kTopWidth) / 256.0f;
-    constexpr Scene::Colour kTurquoise = Palette::kAccent, kWhite = Palette::kWords,
-                            kDim = Palette::kDimWords, kAmber = Palette::kHighlight,
-                            kEmpty{90, 100, 120};
-    const auto hexagonEdge = [&](float x, float y, float r, Scene::Colour colour) {
-      for (int i = 0; i < 6; ++i) {
-        const float a = 3.14159265f / 6 + static_cast<float>(i) * 3.14159265f / 3;
-        const float b = a + 3.14159265f / 3;
-        overlay.line(x + r * std::cos(a), y + r * std::sin(a), x + r * std::cos(b),
-                     y + r * std::sin(b), colour, 1);
-      }
-    };
-    const float rx = 22 * k, ry = 19 * k;
-    hexagonEdge(rx, ry, 13 * k, kTurquoise);
-    overlay.textCentred(rx, ry, std::to_string(state.round), kWhite,
-                        kTopWidth >= 400 ? 2.0f : 1.5f);
-    overlay.textCentred(rx, ry + 20 * k, "ROUND", kDim);
-    const int whose = mode_ == Mode::Playing ? 0 : state.turn;
-    const int badges = whose >= 0 ? state.player[static_cast<std::size_t>(whose)].badges : 0;
-    const float bx = static_cast<float>(kTopWidth) - 36 * k;
-    for (int i = 0; i < 3; ++i) {
-      const float x = bx + static_cast<float>(i) * 12 * k, y = 16 * k;
-      // (a badge just won popping in: ScorePops)
-      const float size = scorePops_.badge(whose, i, showsNow());
-      if (i < badges && size > 0)
-        overlay.hexagon(x, y, 5 * k * popped(size), kAmber, true);
-      if (i >= badges || size < 1)
-        hexagonEdge(x, y, 5 * k, kEmpty);
-    }
-    overlay.textCentred(bx + 12 * k, 30 * k, "BADGES", kDim);
   }
 
   // Whose cards an info view shows: yours when playing, the turn's when
@@ -1984,7 +1800,7 @@ private:
   // Each frame: the game held while a roll's pay flies
   void updateRollPay() {
     // (once the dice have gone from the screen: not over the roll)
-    if (rollPay_.waiting() && dice_ == DiceStage::Idle)
+    if (rollPay_.waiting() && roll_.idle())
       rollPay_.start(showsNow());
     const RollPayShow::Step step = rollPay_.update(showsNow());
     if (step.hold || step.letGo)
@@ -2010,7 +1826,7 @@ private:
     const double t = showsNow();
     // (the board's pieces moving count too: a discovery comes once they've
     // stopped)
-    const bool busy = dice_ != DiceStage::Idle || rollPay_.moving(t) || rollPay_.waiting() ||
+    const bool busy = !roll_.idle() || rollPay_.moving(t) || rollPay_.waiting() ||
                       gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving ||
                       homePay_.moving(t) || pick_.at(t) || discovery_.moving(t) || dealt_.on() ||
                       cardPlay_.moving(t) || cards_.showing(t) || firstRoll_.on();
@@ -2072,7 +1888,7 @@ private:
   // Whether anything on the top screen moves now
   bool topMoving() const {
     if (flow_.screen() != ScreenFlow::Screen::Game || !latest_ || descentStarted_ ||
-        dice_ != DiceStage::Idle || firstRoll_.moving())
+        !roll_.idle() || firstRoll_.moving())
       return true;
     if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
       return true; // (pieces still moving, or a number chip dropping)
@@ -2133,18 +1949,10 @@ private:
   // The title scene
   std::optional<ScratchPadd::TitleScene::TitleScene> title_;
   Clock::time_point titleStarted_;
-  // The physics dice
-  enum class DiceStage : std::uint8_t { Idle, Rolling, Showing, Pulling };
-  static constexpr double kSecondsShowingDice = 1.0; // (the pop, the words, a moment to read)
-  static constexpr float kSecondsRollPop = 0.3f;     // (the roll's number popping in)
-  Dice::DiceTray tray_;
+  // The roll's physics dice (RollDice), and the table's seed last thrown
+  RollDice roll_{kThisPlatform.diceStep, kThisPlatform.mostDiceSteps};
   Scene::Mesh die_;
-  DiceStage dice_ = DiceStage::Idle;
   std::uint64_t thrownSeed_ = 0;
-  double shownSeconds_ = 0, diceOwed_ = 0;
-  std::pair<int, int> rolled_{};           // (what they settled on, shown over them)
-  double lastDiceTime_ = 0, thrownAt_ = 0; // (game seconds)
-  static constexpr double kMostSecondsRolling = 8;
   std::optional<TableSnapshot> latest_;
   BoardMotion motion_;
   // The game's own time (Gregory 8.4): moves animate and dice roll on it,
@@ -2259,7 +2067,7 @@ private:
   bool skippable() const {
     if (flow_.screen() != ScreenFlow::Screen::Game || !latest_)
       return false;
-    if (dice_ != DiceStage::Idle || firstRoll_.on() || celebration_)
+    if (!roll_.idle() || firstRoll_.on() || celebration_)
       return true;
     if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
       return true;
@@ -2285,28 +2093,7 @@ private:
     // The board's pieces where they were going, the turn's banner gone
     motionStarted_ = std::min(motionStarted_, gameClock_.seconds() - kSecondsBoardMoving);
     banner_.stop();
-    skipDice();
-  }
-  // The dice a stage on: rolling, the physics run on to where they land
-  // (all at once: a moment on a DS) and the roll shown; showing, sent and
-  // pulled away; being pulled, gone
-  void skipDice() {
-    if (dice_ == DiceStage::Rolling) {
-      const auto most = static_cast<int>(kMostSecondsRolling / kThisPlatform.diceStep);
-      for (int i = 0; i < most && !tray_.settled(); ++i)
-        tray_.step(kThisPlatform.diceStep);
-      if (!tray_.settled())
-        return; // (the watchdog throws them again)
-      dice_ = DiceStage::Showing;
-      shownSeconds_ = 0;
-      rolled_ = tray_.faces();
-      diceOwed_ = 0;
-      lastDiceTime_ = gameClock_.seconds();
-    } else if (dice_ == DiceStage::Showing) {
-      shownSeconds_ = kSecondsShowingDice; // (sent and pulled next frame)
-    } else if (dice_ == DiceStage::Pulling) {
-      dice_ = DiceStage::Idle;
-    }
+    roll_.skip(gameClock_.seconds());
   }
 
   // Close-ups (PlatformProfile::closeUpSize): a discovered tile's face and
@@ -2455,7 +2242,7 @@ private:
       send(StopGame{});
       latest_.reset();
       motion_ = BoardMotion();
-      dice_ = DiceStage::Idle;
+      roll_.stop();
       selected_.reset();
       cursor_ = 0;
     }
@@ -2478,7 +2265,7 @@ private:
     const bool play = !menu_.watching();
     mode_ = play ? Mode::Playing : Mode::Watching;
     latest_.reset();
-    dice_ = DiceStage::Idle;
+    roll_.stop();
     bottomDirty_ = true;
     youPaused_ = false;
     holds_ = descentStarted_ ? static_cast<std::uint8_t>(Hold::Start) : 0;

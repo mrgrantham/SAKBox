@@ -283,6 +283,80 @@ void drawCardPlay(const TopFrame &f, const CardPlayShow &show, const State &stat
   (void)state;
 }
 
+// -------------------------------------------------------------------- Roll
+
+// The dice on the glass, in front of the board; once they've settled, the
+// roll in big words in the middle of the screen on a hexagon (the user's),
+// going with the glass as it's pulled away
+void drawRoll(const TopFrame &f, const RollDice &dice) {
+  if (dice.idle() || !f.pictures.die)
+    return;
+  const Dice::DiceTray &tray = dice.tray();
+  const auto toFloat = [](cyclone::real r) { return static_cast<float>(static_cast<double>(r)); };
+  const Scene::Transform glass =
+      glassFrame(f.camera, f.width / f.height, static_cast<float>(Dice::DiceTray::kWidth),
+                 static_cast<float>(Dice::DiceTray::kDepth));
+  for (int d = 0; d < 2; ++d) {
+    const cyclone::Vector3 at = tray.position(d);
+    const cyclone::Quaternion turn = tray.orientation(d);
+    f.renderer.draw(f.pictures.die,
+                    dieOnGlass(glass, {toFloat(at.x), toFloat(at.y), toFloat(at.z)},
+                               {toFloat(turn.r), toFloat(turn.i), toFloat(turn.j), toFloat(turn.k)},
+                               static_cast<float>(tray.offset())),
+                    {.shading = Scene::Material::Shading::Lit});
+  }
+  // Once they've settled, the roll in big words in the middle of the
+  // screen on a hexagon (the user's), going with the glass as
+  // it's pulled away (its middle, wherever the glass has got to)
+  if (dice.stage() == RollDice::Stage::Rolling)
+    return;
+  const auto middle = onScreen(f.camera, f.width, f.height,
+                               glass.apply({-static_cast<float>(tray.offset()), 0, 0}));
+  if (!middle)
+    return;
+  const auto [first, second] = dice.rolled();
+  char total[8], pair[16];
+  std::snprintf(total, sizeof total, "%d", first + second);
+  std::snprintf(pair, sizeof pair, "%d + %d", first, second);
+  Scene::Overlay &overlay = f.overlay;
+  // (the user's: a little smaller, so the words sit well inside)
+  const float big = f.width >= 400 ? 4 : 3; // (the 3DS's wider screen: bigger)
+  const float small = f.width >= 400 ? 1.5f : 1;
+  const float radius = f.width >= 400 ? 50.0f : 42.0f;
+  const float x = (*middle)[0], y = (*middle)[1];
+  // Popping in as the dice settle (the user's: as the home's card does):
+  // the hexagon growing a little past its size and settling; then, once
+  // it has, its words fading in (never on something still moving)
+  const float popped = Motion::along(Motion::Curve::Settle,
+                                     std::min(1.0f, dice.shownSeconds() / RollDice::kSecondsPop));
+  // Both solid: a see-through hexagon's six triangles were blended twice
+  // along the edges they share, which showed as dark lines
+  constexpr Scene::Colour kInside{12, 18, 30, 255};
+  overlay.hexagon(x, y, (radius + 3) * popped, Palette::kHighlight); // (an amber edge)
+  overlay.hexagon(x, y, radius * popped, kInside);
+  const float words =
+      dice.stage() == RollDice::Stage::Showing
+          ? std::clamp((dice.shownSeconds() - RollDice::kSecondsPop) / kSecondsWordsIn, 0.0f, 1.0f)
+          : 1.0f;
+  if (words <= 0)
+    return;
+  const auto faded = [&](Scene::Colour c) {
+    const auto mix = [words](std::uint8_t from, std::uint8_t to) {
+      return static_cast<std::uint8_t>(std::lround(from + (to - from) * words));
+    };
+    return Scene::Colour{mix(kInside.r, c.r), mix(kInside.g, c.g), mix(kInside.b, c.b), 255};
+  };
+  // The total over the two dice, the two lines together centred on the
+  // hexagon by their letters' own pixels (Overlay::textCentred)
+  const auto totalInk = Scene::Overlay::inkOf(total, big),
+             pairInk = Scene::Overlay::inkOf(pair, small);
+  constexpr float kGap = 6;
+  const float height = totalInk.height + kGap + pairInk.height;
+  overlay.textCentred(x, y - height / 2 + totalInk.height / 2, total, faded(Palette::kHighlight),
+                      big);
+  overlay.textCentred(x, y + height / 2 - pairInk.height / 2, pair, faded(Palette::kWords), small);
+}
+
 // --------------------------------------------------------- Show resources
 
 namespace {

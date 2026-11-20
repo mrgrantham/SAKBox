@@ -2,6 +2,7 @@
 // renderer (the Mac's): none may crash or draw outside what it's given, at
 // any moment from before it starts to after it ends
 #include <CosmicHex/Handheld/BoardPieces.hpp>
+#include <CosmicHex/Handheld/Hud.hpp>
 #include <CosmicHex/Handheld/TopViews.hpp>
 
 #include <ExpectedCapabilities/ExpectedCapabilities.hpp>
@@ -159,4 +160,22 @@ TEST_F(TopViewsTest, CardsGainedFromStartToEnd) {
   hand.start(0);
   Resources held{2, 0, 1, 4, 0};
   frames(every(-0.1, 2.5, 0.05), [&](const TopFrame &f) { drawGained(f, held, hand); });
+}
+
+// The HUD: the bars, the outline between rows, points popping, the corners,
+// the last move and who won
+TEST_F(TopViewsTest, TheHudDraws) {
+  ScorePops pops;
+  pops.saw({0, 0, 0, 0}, {0, 0, 0, 0}, 0);
+  pops.saw({3, 1, 0, 2}, {1, 0, 0, 0}, 0);
+  State won = state;
+  won.winner = 2;
+  frames(every(0, 1, 0.1), [&](const TopFrame &f) {
+    drawHud(f, f.now < 0.5 ? state : won,
+            {.outlineRow = static_cast<float>(f.now) * 3,
+             .badgesOf = 0,
+             .pops = &pops,
+             .lastMove = "Lyra builds a station.",
+             .winner = "Vega wins!"});
+  });
 }

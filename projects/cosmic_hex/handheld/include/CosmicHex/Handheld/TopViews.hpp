@@ -16,6 +16,7 @@
 #include <CosmicHex/Handheld/CardChoices.hpp>
 #include <CosmicHex/Handheld/OtherPlayers.hpp>
 #include <CosmicHex/Handheld/PlayerNames.hpp>
+#include <CosmicHex/Handheld/RollDice.hpp>
 #include <CosmicHex/Handheld/TopShows.hpp>
 
 #include <ScratchPadd/PictureSlot/PictureSlot.hpp>
@@ -84,6 +85,10 @@ void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
 // Cards gained (HandShow): your piles, `held` (the new cards counted in),
 // rising into view, the new ones dropping into the backs of their piles
 void drawGained(const TopFrame &f, const Resources &held, const HandShow &show);
+
+// A roll's dice on the glass and, once they settle, the roll popping in
+// over them (RollDice)
+void drawRoll(const TopFrame &f, const RollDice &dice);
 
 // Who goes first: each player's die in the glass in their colour, their
 // numbers by their names as they land, then the order by name

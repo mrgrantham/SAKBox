@@ -10,7 +10,9 @@ cc_library(
         "src/BoardButtons.cpp",
         "src/BoardMotion.cpp",
         "src/BoardPicture.cpp",
+        "src/Hud.cpp",
         "src/RecipePixels.cpp",
+        "src/RollDice.cpp",
         "src/BoardPieces.cpp",
         "src/BottomScreen.cpp",
         "src/BuildMenu.cpp",
@@ -60,7 +62,9 @@ cc_library(
         "include/CosmicHex/Handheld/Palette.hpp",
         "include/CosmicHex/Handheld/PointsBars.hpp",
         "include/CosmicHex/Handheld/PlatformProfile.hpp",
+        "include/CosmicHex/Handheld/Hud.hpp",
         "include/CosmicHex/Handheld/RecipePixels.hpp",
+        "include/CosmicHex/Handheld/RollDice.hpp",
         "include/CosmicHex/Handheld/ScreenFlow.hpp",
         "include/CosmicHex/Handheld/ScreenPictures.hpp",
         "include/CosmicHex/Handheld/ScorePops.hpp",
@@ -360,6 +364,16 @@ cc_test(
         ":handheld",
         "//projects/expected_capabilities",
         "//projects/scratchpadd/scene/desktop",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "RollDice_test",
+    size = "small",
+    srcs = ["tests/RollDice_test.cpp"],
+    deps = [
+        ":handheld",
         "@gtest//:gtest_main",
     ],
 )
