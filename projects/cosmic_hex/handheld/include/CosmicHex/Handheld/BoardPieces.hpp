@@ -75,6 +75,9 @@ struct BoardPieces {
   Scene::MeshBuilder flame;      // a thin spike along -x from its base, 1 long (scaled to the burn)
   Scene::MeshBuilder hexRing;    // a thin ring round a hex, for the blockade's chosen hex
   Scene::MeshBuilder cornerRing; // a small ring round a corner, for the touched corner
+  // A flat chevron pointing down (a V, its point at the origin), over the
+  // ship that's selected (the user's), drawn both sides as it turns
+  Scene::MeshBuilder chevron;
   // A tall hexagonal column round a tile, its six sides both ways (seen
   // from in front and behind), drawn see-through: a planet paying on a
   // roll lit up (the user's)

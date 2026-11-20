@@ -102,6 +102,8 @@ public:
   struct Marks {
     std::optional<Hex> hex;
     std::vector<Corner> corners;
+    // ...and corners marked as an outline (a ship's moves that need fuel)
+    std::vector<Corner> fuelCorners;
     // A piece shown where it would go, before it's placed (the start's
     // home colony or ship), over everything
     struct Preview {

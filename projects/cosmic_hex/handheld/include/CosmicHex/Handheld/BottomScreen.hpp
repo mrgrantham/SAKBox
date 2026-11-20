@@ -96,6 +96,12 @@ public:
   // In Placing: the corners where the chosen build, or the ship touched,
   // may go, to be marked
   std::vector<Corner> placingCorners() const;
+  // ...of those, for a ship's move, the ones it needs fuel to reach (the
+  // boost), to mark differently
+  std::vector<Corner> placingCornersWithFuel() const;
+  // The ship touched, whose moves are marked (an index into the state's
+  // ships), to show it selected
+  std::optional<int> selectedShip() const;
   // At the start (placing your home colony, then your ship), what's been
   // touched and End Turn would place, to show there; nothing before a touch.
   // Touching another place moves it, touching it again (or B) takes it back,
@@ -146,6 +152,8 @@ private:
   std::vector<BuildRow> rows_;
   int buildChosen_ = -1;
   std::vector<Action> placing_;     // (Placing: the chosen build's actions)
+  std::vector<bool> placingFuel_;   // (a ship's moves: each one's fuel needed)
+  int placingShip_ = -1;            // (a ship's moves: whose)
   bool placingEndsTrading_ = false; // (and building ends the turn's offers first)
   // A build's move: at once, or after ending the turn's offers to players
   Outcome build(const Action &action, bool endsTrading);

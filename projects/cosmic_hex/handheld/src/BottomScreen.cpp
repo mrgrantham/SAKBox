@@ -97,6 +97,7 @@ void BottomScreen::follow(const State &state, const std::vector<Action> &legal, 
         std::find(placing_.begin(), placing_.end(), *startPlacement_) == placing_.end())
       startPlacement_.reset();
     startPlacing_ = true;
+    placingShip_ = -1; // (not a ship's moves)
     mode_ = Mode::Placing;
     situation_.placing = true;
     situation_.placeChosen = startPlacement_.has_value();
@@ -244,11 +245,26 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
         }
         const auto index = static_cast<int>(shipHere - state_.ships.begin());
         std::vector<Action> moves;
+        std::vector<bool> fuel;
+        State from = state_;
+        if (trading)
+          Game::apply(from, Action{Kind::EndTrading});
+        const auto fuelOf = [](const State &s) {
+          return s.player[static_cast<std::size_t>(s.turn)]
+              .resources[static_cast<std::size_t>(Resource::Fuel)];
+        };
         for (const Action &a : legal)
-          if (a.kind == Kind::Move && a.a == index)
+          if (a.kind == Kind::Move && a.a == index) {
             moves.push_back(a);
+            // (the boost: moving there costs a fuel)
+            State after = from;
+            Game::apply(after, a);
+            fuel.push_back(fuelOf(after) < fuelOf(from));
+          }
         if (!moves.empty()) {
           placing_ = std::move(moves);
+          placingFuel_ = std::move(fuel);
+          placingShip_ = index;
           placingEndsTrading_ = trading;
           mode_ = Mode::Placing;
           buttons_.say({});
@@ -295,6 +311,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
       if (row.canBuild) {
         placing_ = row.actions; // (more than one place: chosen on the board)
         placingEndsTrading_ = row.endsTrading;
+        placingShip_ = -1; // (not a ship's moves)
         mode_ = Mode::Placing;
       }
     }
@@ -458,6 +475,7 @@ BottomScreen::Outcome BottomScreen::useChosenCard() {
     for (const Action &a : legal_)
       if (a.kind == Kind::PlayShipyard)
         placing_.push_back(a);
+    placingShip_ = -1; // (not a ship's moves)
     mode_ = Mode::Placing;
     return {std::nullopt, true};
   }
@@ -653,6 +671,25 @@ void BottomScreen::layOutButtons() {
                                                      30 * k, static_cast<float>(height_) - 18 * k,
                                                      static_cast<float>(width_) - 60 * k, 14 * k})
                                                : std::nullopt);
+}
+
+std::vector<Corner> BottomScreen::placingCornersWithFuel() const {
+  std::vector<Corner> out;
+  if (mode_ != Mode::Placing || placingShip_ < 0)
+    return out;
+  for (std::size_t i = 0; i < placing_.size() && i < placingFuel_.size(); ++i)
+    if (placingFuel_[i]) {
+      const MoveSpot spot = spotOf(state_, placing_[i]);
+      if (!spot.corners.empty())
+        out.push_back(spot.corners.back());
+    }
+  return out;
+}
+
+std::optional<int> BottomScreen::selectedShip() const {
+  if (mode_ != Mode::Placing || placingShip_ < 0)
+    return std::nullopt;
+  return placingShip_;
 }
 
 std::vector<Corner> BottomScreen::placingCorners() const {

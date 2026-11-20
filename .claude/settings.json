@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ioreg *)",
+      "Bash(bazel info *)",
+      "Bash(bazel query *)",
+      "Bash(bazel cquery *)",
+      "Bash(bazel aquery *)",
+      "Bash(xcrun simctl list *)",
+      "Bash(xcrun xcresulttool get *)",
+      "Bash(sips -g *)",
+      "Bash(plutil -lint *)",
+      "Bash(prlctl list *)",
+      "Bash(xcrun devicectl list *)",
+      "Bash(xcrun simctl bootstatus *)",
+      "Bash(log show *)",
+      "Bash(defaults read *)",
+      "mcp__claude-artifacts__guide",
+      "mcp__claude-artifacts__get_artifact",
+      "mcp__claude-artifacts__read_artifact"
+    ]
+  }
+}

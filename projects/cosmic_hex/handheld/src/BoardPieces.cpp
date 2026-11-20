@@ -157,6 +157,16 @@ BoardPieces::BoardPieces() {
   station.box({0, 0.2f, 0}, {0.2f, 0.2f, 0.2f});
   colony.box({0, 0.3f, 0}, {0.24f, 0.3f, 0.24f});
   colony.box({0, 0.68f, 0}, {0.12f, 0.08f, 0.12f});
+  // The chevron: a V of two broad bars meeting at its point, twice, in
+  // the x-y and z-y planes, so it reads as it turns, even edge on
+  // (counter-clockwise from +x and +z; drawn double-sided)
+  {
+    constexpr float kHalf = 0.4f, kInner = 0.16f, kTop = 0.48f, kNotch = 0.22f;
+    chevron.quad({-kHalf, kTop, 0}, {0, 0, 0}, {0, kNotch, 0}, {-kInner, kTop, 0});
+    chevron.quad({0, 0, 0}, {kHalf, kTop, 0}, {kInner, kTop, 0}, {0, kNotch, 0});
+    chevron.quad({0, kTop, kHalf}, {0, 0, 0}, {0, kNotch, 0}, {0, kTop, kInner});
+    chevron.quad({0, 0, 0}, {0, kTop, -kHalf}, {0, kTop, -kInner}, {0, kNotch, 0});
+  }
   // The ship: a flat dart, nose along +x
   const Scene::Vector3 nose{0.45f, 0.15f, 0}, left{-0.3f, 0.15f, -0.26f},
       right{-0.3f, 0.15f, 0.26f}, top{-0.18f, 0.36f, 0};

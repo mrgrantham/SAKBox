@@ -206,7 +206,7 @@ The bottom screen (`BottomScreen`) is the board with its buttons (`BoardButtons`
 On the board:
 
 - **Touch a corner** to select it (a small ring on both screens; the hex, outlined, when moving the blockade). A touch picks the corner nearest it.
-- **Move a ship:** touch it, and where it can go is marked; touch a marked corner to move it. After the roll the turn's offers to players are open (the trading phase), and a ship can still be moved: choosing where ends the offers first, as building does. A ship that can't move says why (roll first, or it has moved this turn).
+- **Move a ship:** touch it, and it shows as selected (a white chevron turning over it on the top screen), and where it can go is marked on both screens, the moves that take a fuel told apart (orange rings on the top screen, outlined squares on the map; the rest highlight-coloured rings and filled dots). Touch a marked corner to move it. After the roll the turn's offers to players are open (the trading phase), and a ship can still be moved: choosing where ends the offers first, as building does. A ship that can't move says why (roll first, or it has moved this turn).
 - **Drag** to move the board when zoomed in; **X held with R and L** zooms in and out (L and R alone are left and right on a choosing screen).
 - **B** takes whatever is animating straight to its end ([Animation](#animation)).
 

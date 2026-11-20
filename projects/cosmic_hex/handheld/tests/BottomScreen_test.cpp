@@ -173,6 +173,13 @@ TEST(BottomScreenTest, AShipMovesFromTheTradingPhase) {
   screen.update(state, Game::legalActions(state), true);
   EXPECT_TRUE(screen.tap(128, 96, BoardPicture::Spot{from.hex, from}).used);
   ASSERT_EQ(screen.mode(), Mode::Placing);
+  EXPECT_EQ(screen.selectedShip(), move.a); // (shown selected)
+  // The moves that take a fuel, among those marked (none without fuel to spend)
+  const auto fuelled = screen.placingCornersWithFuel();
+  const auto marked = screen.placingCorners();
+  for (const Corner &c : fuelled) {
+    EXPECT_NE(std::find(marked.begin(), marked.end(), c), marked.end());
+  }
   const Corner to = boardCorners()[static_cast<std::size_t>(move.b)];
   const auto first = screen.tap(128, 96, BoardPicture::Spot{to.hex, to});
   ASSERT_TRUE(first.play.has_value());

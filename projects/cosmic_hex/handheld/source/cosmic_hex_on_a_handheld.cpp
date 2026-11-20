@@ -491,6 +491,7 @@ public:
     stars_ = renderer_->load(pieces.stars.data());
     hexRing_ = renderer_->load(pieces.hexRing.data());
     cornerRing_ = renderer_->load(pieces.cornerRing.data());
+    chevron_ = renderer_->load(pieces.chevron.data());
     die_ = renderer_->load(DicePieces(static_cast<float>(Dice::DiceTray::kDieSize)).die.data());
     pictures_.die = die_;
     {
@@ -907,6 +908,7 @@ private:
       else
         renderer_->draw(cornerRing_, BoardPieces::onCorner(selected_->corner), marked);
     }
+    drawSelectedShip();
     showProfile();
     {
       auto timing = profile_.time(kProfileWait);
@@ -1558,6 +1560,7 @@ private:
           for (const CosmicHex::Corner &corner : bottomScreen_->placingCorners())
             if (corner != chosenAt)
               marks.corners.push_back(corner);
+          marks.fuelCorners = bottomScreen_->placingCornersWithFuel();
           if (chosen)
             marks.preview = BoardPicture::Marks::Preview{
                 *chosenAt, latest_->state.turn, chosen->kind == CosmicHex::Action::Kind::PlaceShip};
@@ -1740,7 +1743,7 @@ private:
     }
   }
 
-  Scene::Mesh station_, colony_, ship_, flame_, stars_, hexRing_, cornerRing_;
+  Scene::Mesh station_, colony_, ship_, flame_, stars_, hexRing_, cornerRing_, chevron_;
   // The pictures the board and the views over it draw with (TopViews)
   TopPictures pictures_;
   // Memory, measured (with the counting allocator in the build)
@@ -1908,6 +1911,36 @@ private:
     if (latest_)
       startPlacingBanner(latest_->state);
   }
+  // A ship touched (the user's): a white chevron over it, turning and
+  // bobbing, and a ring at each corner it can reach, fuel's orange where
+  // the move takes a fuel; where a build may go is ringed the same way
+  void drawSelectedShip() {
+    if (!bottomScreen_ || !latest_)
+      return;
+    const std::vector<CosmicHex::Corner> fuel = bottomScreen_->placingCornersWithFuel();
+    for (const CosmicHex::Corner &corner : bottomScreen_->placingCorners()) {
+      const bool withFuel = std::ranges::find(fuel, corner) != fuel.end();
+      renderer_->draw(cornerRing_, BoardPieces::onCorner(corner),
+                      {.shading = Scene::Material::Shading::Unlit,
+                       .colour = withFuel ? kFuelOrange : Palette::kHighlight});
+    }
+    const std::optional<int> ship = bottomScreen_->selectedShip();
+    const auto &ships = latest_->state.ships;
+    if (!ship || *ship < 0 || *ship >= static_cast<int>(ships.size()))
+      return;
+    const auto t = static_cast<float>(showsNow());
+    constexpr float kTurn = 6.2831853f; // (a whole turn, radians)
+    const float bob = 0.06f * std::sin(t * kTurn * 0.8f);
+    renderer_->draw(chevron_,
+                    BoardPieces::onCorner(ships[static_cast<std::size_t>(*ship)].corner) *
+                        Scene::Transform::translation({0, 0.8f + bob, 0}) *
+                        Scene::Transform::rotation({0, 1, 0}, t * 2.2f),
+                    {.shading = Scene::Material::Shading::Unlit,
+                     .colour = {255, 255, 255},
+                     .doubleSided = true});
+  }
+  static constexpr Scene::Colour kFuelOrange{235, 150, 80}; // (fuel's, as its card's band)
+
   // Whether anything on the top screen moves now
   bool topMoving() const {
     if (flow_.screen() != ScreenFlow::Screen::Game || !latest_ || descentStarted_ ||
@@ -1915,6 +1948,8 @@ private:
       return true;
     if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
       return true; // (pieces still moving, or a number chip dropping)
+    if (bottomScreen_ && bottomScreen_->selectedShip())
+      return true; // (the selected ship's chevron turning)
     if (banner_.showing(gameClock_.seconds()))
       return true; // (the turn's banner moving)
     if (shownInfo_ != BottomScreen::Info::None || cards_.moving(showsNow()) || outlineMovedAt_)

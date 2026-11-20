@@ -534,8 +534,12 @@ void BoardPicture::listPieces(const State &state, const Marks &marks,
   for (const Corner &corner : marks.corners) {
     const HexGrid::Point c = where(corner);
     const float r = 0.2f * s;
-    out.push_back(
-        {Piece::Kind::MarkCorner, at(corner), {0, 0}, rectArea(c.x - r, c.y - r, 2 * r, 2 * r)});
+    // (look 1: outlined, a move that needs fuel)
+    const bool fuel = std::ranges::find(marks.fuelCorners, corner) != marks.fuelCorners.end();
+    out.push_back({Piece::Kind::MarkCorner,
+                   at(corner),
+                   {static_cast<std::int16_t>(fuel), 0},
+                   rectArea(c.x - r, c.y - r, 2 * r, 2 * r)});
   }
   if (marks.preview) {
     // (as the piece itself will be, drawn last)
@@ -624,7 +628,15 @@ void BoardPicture::drawPiece(const Piece &piece) {
   case Piece::Kind::MarkCorner: {
     const HexGrid::Point c = where(corner);
     const float r = 0.2f * s;
-    fillRect(c.x - r, c.y - r, 2 * r, 2 * r, kHighlight);
+    if (piece.look[0] == 0) {
+      fillRect(c.x - r, c.y - r, 2 * r, 2 * r, kHighlight);
+    } else {
+      // (an outline, a pixel thick: reached with fuel)
+      fillRect(c.x - r, c.y - r, 2 * r, 1, kHighlight);
+      fillRect(c.x - r, c.y + r - 1, 2 * r, 1, kHighlight);
+      fillRect(c.x - r, c.y - r, 1, 2 * r, kHighlight);
+      fillRect(c.x + r - 1, c.y - r, 1, 2 * r, kHighlight);
+    }
     break;
   }
   }
