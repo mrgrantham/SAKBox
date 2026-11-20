@@ -50,8 +50,12 @@ void Panel::move(Direction direction) {
     return std::pair{a.x + a.width / 2, a.y + a.height / 2};
   };
   const auto [fx, fy] = middle(from->area);
-  const Button *best = nullptr;
+  // The nearest button within 45 degrees of the way pressed, if there is
+  // one (a keyboard's staggered rows: right from Q is W, not A below it);
+  // else, as before, the nearest along that way, then across
+  const Button *best = nullptr, *inCone = nullptr;
   float bestAlong = std::numeric_limits<float>::max(), bestAcross = bestAlong;
+  float bestDistance = std::numeric_limits<float>::max();
   for (const Button &button : buttons_) {
     if (!button.usable || &button == from)
       continue;
@@ -73,12 +77,18 @@ void Panel::move(Direction direction) {
     }
     if (along <= 0.5f)
       continue; // (not that way)
+    if (across <= along && along * along + across * across < bestDistance) {
+      inCone = &button;
+      bestDistance = along * along + across * across;
+    }
     if (along < bestAlong - 0.5f || (std::fabs(along - bestAlong) <= 0.5f && across < bestAcross)) {
       best = &button;
       bestAlong = along;
       bestAcross = across;
     }
   }
+  if (inCone)
+    best = inCone;
   if (best)
     focus_ = best->id;
 }
@@ -117,9 +127,9 @@ void Panel::draw(Canvas &canvas, const Style &style) const {
       const bool focused = focus_ == button.id;
       Colour words = focused ? style.focus : style.words;
       if (!button.usable) {
-        words.r = static_cast<std::uint8_t>(words.r * style.dimmed + 0.5f);
-        words.g = static_cast<std::uint8_t>(words.g * style.dimmed + 0.5f);
-        words.b = static_cast<std::uint8_t>(words.b * style.dimmed + 0.5f);
+        words.r = static_cast<std::uint8_t>(std::lround(words.r * style.dimmed));
+        words.g = static_cast<std::uint8_t>(std::lround(words.g * style.dimmed));
+        words.b = static_cast<std::uint8_t>(std::lround(words.b * style.dimmed));
       }
       canvas.textCentred(a.x + a.width / 2, a.y + a.height / 2, button.label, words,
                          style.labelScale);

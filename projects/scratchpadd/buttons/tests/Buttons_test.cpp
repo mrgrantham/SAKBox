@@ -112,3 +112,19 @@ TEST(ButtonsTest, DrawsFacesFocusAndMessage) {
   const auto areas = panel.areas();
   EXPECT_EQ(areas.size(), 5u);
 }
+
+// The D-pad prefers a button within 45 degrees of the way pressed: right
+// from a key on a staggered keyboard is the next key along, not the nearer
+// one on the row below
+TEST(ButtonsTest, TheDPadPrefersTheWayPressed) {
+  Panel panel;
+  panel.set({{.id = 1, .area = {0, 0, 20, 20}},     // Q
+             {.id = 2, .area = {24, 0, 20, 20}},    // W, along the row
+             {.id = 3, .area = {12, 30, 20, 20}}}); // A, below and a little right
+  panel.setFocus(1);
+  panel.move(Direction::Right);
+  EXPECT_EQ(panel.focus(), 2);
+  panel.setFocus(1);
+  panel.move(Direction::Down);
+  EXPECT_EQ(panel.focus(), 3);
+}
