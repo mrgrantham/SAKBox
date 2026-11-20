@@ -75,8 +75,17 @@ public:
   // if it couldn't be (another width, rows past the bottom, no such texture)
   bool replace(Texture texture, const TextureImage &image, int firstRow = 0);
 
-  // Starts a frame: clears it to the environment's background
+  // Starts a frame: clears it to the environment's background, the camera
+  // seeing all of it
   void beginFrame(const Camera &camera, const Environment &environment);
+  // What's drawn next is seen by `camera` in `viewport`, a part of the
+  // screen (its aspect the view's), until the next view or the frame's end:
+  // two players' views side by side, or the same scene from two angles.
+  // The translucent meshes drawn so far are drawn first, in their own view.
+  // Views side by side: each starts as the frame's start cleared it (a view
+  // drawn over another one shares its depth, for now). The overlay is
+  // always the whole screen; toScreen is the current view's.
+  void beginView(const Camera &camera, const Viewport &viewport);
   void draw(Mesh mesh, const Transform &where, const Material &material);
   // Lines, unlit, from ends[0] to ends[1], ends[2] to ends[3], and so on
   void drawLines(std::span<const Vector3> ends, Colour colour);

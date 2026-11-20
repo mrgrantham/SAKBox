@@ -401,3 +401,44 @@ TEST_F(RendererTest, AReplacedTextureShowsItsNewPicture) {
   expectNear(frame(draw, {middle})[0], {0, 0, 255});
   EXPECT_FALSE(renderer->replace(Texture{}, TextureImage{8, 8, std::vector<Colour>(64)}));
 }
+
+// Two views side by side, each its own camera in its half of the screen:
+// what's drawn in one stays in it (a box filling the left view leaves the
+// right as the background), each is centred in its own half, a translucent
+// mesh is drawn in the view it was given in, and toScreen is the view's
+TEST_F(RendererTest, ViewsDrawIntoTheirPartOfTheScreen) {
+  const Material red{.shading = Material::Shading::Unlit, .colour = {255, 0, 0}};
+  const Material green{.shading = Material::Shading::Unlit, .colour = {0, 255, 0}};
+  const Material seeThrough{
+      .shading = Material::Shading::Unlit, .colour = {255, 255, 255}, .alpha = 15};
+  const float w = static_cast<float>(display.width()), h = static_cast<float>(display.height());
+  Camera close = camera;
+  close.eye = {0, 0, 1.2f}; // (inside the box's reach: it fills the view)
+  float leftX = 0, leftY = 0, rightX = 0, rightY = 0;
+  renderer->beginFrame(camera, environment);
+  renderer->beginView(close, {0, 0, 0.5f, 1});
+  renderer->draw(box, Transform::scaling({3, 3, 0.1f}), red);
+  renderer->draw(box,
+                 Transform::translation({0, 0, 0.5f}) * Transform::scaling({0.2f, 0.2f, 0.05f}),
+                 seeThrough);
+  ASSERT_TRUE(renderer->toScreen({0, 0, 0}, leftX, leftY));
+  renderer->beginView(camera, {0.5f, 0, 0.5f, 1});
+  renderer->draw(box, Transform::scaling({0.2f, 0.2f, 0.2f}), green);
+  ASSERT_TRUE(renderer->toScreen({0, 0, 0}, rightX, rightY));
+  renderer->endFrame();
+  EXPECT_NEAR(leftX, w / 4, 0.5f);
+  EXPECT_NEAR(rightX, w * 3 / 4, 0.5f);
+  EXPECT_NEAR(rightY, h / 2, 0.5f);
+  const auto at = [&](float x, float y) {
+    const Colour c = Desktop::readPixel(*renderer, x, y);
+    return Pixel{c.r, c.g, c.b};
+  };
+  // The left: red, under the see-through box (blended towards white)
+  const float a = 15 / 31.0f;
+  expectNear(at(w / 4, h / 2), {255, static_cast<int>(255 * a), static_cast<int>(255 * a)}, 4);
+  expectNear(at(w / 2 - 3, 5), {255, 0, 0});
+  // The right: the small green box in its middle, the background round it
+  expectNear(at(w * 3 / 4, h / 2), {0, 255, 0});
+  expectNear(at(w / 2 + 3, 5), {0, 0, 40});
+  expectNear(at(w * 3 / 4 + 40, h / 2), {0, 0, 40});
+}

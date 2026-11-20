@@ -124,12 +124,28 @@ struct Transform {
   Vector3 position() const { return {m[0][3], m[1][3], m[2][3]}; }
 };
 
-// What the frame is seen from. The aspect ratio is the display's.
+// What the frame is seen from. The aspect ratio is its view's (the whole
+// display's, unless Renderer::beginView gave a part of it).
 struct Camera {
   Vector3 eye{0, 0, 5}, target{0, 0, 0}, up{0, 1, 0};
   Scalar fieldOfView = 60; // vertical, degrees
   Scalar nearPlane = 0.1f, farPlane = 100;
 };
+
+// A part of the screen a view is drawn into (Renderer::beginView), as
+// fractions of the screen from its top left: {0, 0, 0.5, 1} is its left
+// half. The default is all of it.
+struct Viewport {
+  Scalar x = 0, y = 0, width = 1, height = 1;
+  bool operator==(const Viewport &) const = default;
+};
+// The viewport in whole pixels of a screen `width` x `height`, from its top
+// left; views side by side share their edge, with no gap or overlap
+struct PixelRect {
+  int x = 0, y = 0, width = 0, height = 0;
+  bool operator==(const PixelRect &) const = default;
+};
+PixelRect pixelsOf(const Viewport &viewport, int width, int height);
 
 // A directional light: `direction` is the way its light travels
 struct Light {

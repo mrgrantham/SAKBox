@@ -719,20 +719,8 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   depth->setClearDepth(1.0);
   b.encoder = b.commands->renderCommandEncoder(pass)->retain();
 
-  b.eye = toGlm(camera.eye);
-  const glm::mat4 view = glm::lookAt(b.eye, toGlm(camera.target), toGlm(camera.up));
-  // Metal's depth goes from 0 to 1, not OpenGL's -1 to 1
-  const glm::mat4 projection =
-      glm::perspectiveRH_ZO(glm::radians(camera.fieldOfView),
-                            static_cast<float>(width) / static_cast<float>(std::max(height, 1)),
-                            camera.nearPlane, camera.farPlane);
-  b.viewProj = projection * view;
-  b.frustum.emplace(camera, static_cast<float>(width) / static_cast<float>(std::max(height, 1)));
   Backend::FrameUniforms &f = b.frameUniforms;
   f = {};
-  std::memcpy(f.viewProj, glm::value_ptr(b.viewProj), sizeof(f.viewProj));
-  f.viewport[0] = static_cast<float>(width);
-  f.viewport[1] = static_cast<float>(height);
   const glm::vec3 ambient = toGlm(environment.ambient);
   f.ambient[0] = ambient.r;
   f.ambient[1] = ambient.g;
@@ -751,8 +739,50 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   f.fogColour[1] = fog.g;
   f.fogColour[2] = fog.b;
   f.fogDensity = environment.fog.density;
-  b.encoder->setVertexBytes(&f, sizeof(f), kFrameBuffer);
-  b.encoder->setFragmentBytes(&f, sizeof(f), kFrameBuffer);
+  b.useCamera(camera, {0, 0, width, height});
+}
+
+void Renderer::Backend::useCamera(const Camera &camera, PixelRect rect) {
+  view = rect;
+  const float aspect =
+      static_cast<float>(rect.width) / static_cast<float>(std::max(rect.height, 1));
+  eye = toGlm(camera.eye);
+  const glm::mat4 look = glm::lookAt(eye, toGlm(camera.target), toGlm(camera.up));
+  // Metal's depth goes from 0 to 1, not OpenGL's -1 to 1
+  const glm::mat4 projection = glm::perspectiveRH_ZO(glm::radians(camera.fieldOfView), aspect,
+                                                     camera.nearPlane, camera.farPlane);
+  viewProj = projection * look;
+  frustum.emplace(camera, aspect);
+  FrameUniforms &f = frameUniforms;
+  std::memcpy(f.viewProj, glm::value_ptr(viewProj), sizeof(f.viewProj));
+  f.viewport[0] = static_cast<float>(rect.width);
+  f.viewport[1] = static_cast<float>(rect.height);
+  encoder->setViewport(MTL::Viewport{static_cast<double>(rect.x), static_cast<double>(rect.y),
+                                     static_cast<double>(rect.width),
+                                     static_cast<double>(rect.height), 0.0, 1.0});
+  encoder->setScissorRect(MTL::ScissorRect{
+      static_cast<NS::UInteger>(rect.x), static_cast<NS::UInteger>(rect.y),
+      static_cast<NS::UInteger>(rect.width), static_cast<NS::UInteger>(rect.height)});
+  encoder->setVertexBytes(&f, sizeof(f), kFrameBuffer);
+  encoder->setFragmentBytes(&f, sizeof(f), kFrameBuffer);
+}
+
+void Renderer::Backend::drawLater() {
+  // Translucent meshes over the solid ones, farthest first, each blending
+  // over what's behind it without hiding what's drawn after
+  std::ranges::stable_sort(later,
+                           [](const Later &x, const Later &y) { return x.distance > y.distance; });
+  for (const Later &item : later)
+    drawNow(item.mesh, item.where, item.material);
+  later.clear();
+}
+
+void Renderer::beginView(const Camera &camera, const Viewport &viewport) {
+  Backend &b = *backend_;
+  if (!b.encoder)
+    return;
+  b.drawLater();
+  b.useCamera(camera, pixelsOf(viewport, b.display.pixelWidth(), b.display.pixelHeight()));
 }
 
 void Renderer::draw(Mesh mesh, const Transform &where, const Material &material) {
@@ -811,14 +841,12 @@ void Renderer::endFrame() {
   if (!b.encoder)
     return;
   NS::AutoreleasePool *pool = NS::AutoreleasePool::alloc()->init();
-  // Translucent meshes over the solid ones, farthest first, each blending
-  // over what's behind it without hiding what's drawn after
-  std::ranges::stable_sort(b.later, [](const Backend::Later &x, const Backend::Later &y) {
-    return x.distance > y.distance;
-  });
-  for (const Backend::Later &item : b.later)
-    b.drawNow(item.mesh, item.where, item.material);
-  b.later.clear();
+  b.drawLater();
+  // (the overlay and the outlines: the whole screen again)
+  b.encoder->setViewport(MTL::Viewport{0.0, 0.0, static_cast<double>(b.surface.width),
+                                       static_cast<double>(b.surface.height), 0.0, 1.0});
+  b.encoder->setScissorRect(MTL::ScissorRect{0, 0, static_cast<NS::UInteger>(b.surface.width),
+                                             static_cast<NS::UInteger>(b.surface.height)});
   if (b.screenEdges)
     b.drawEdges();
   b.drawOverlay(overlay_);
@@ -864,11 +892,19 @@ void Renderer::endFrame() {
 }
 
 bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
-  const glm::vec4 clip = backend_->viewProj * glm::vec4(toGlm(point), 1.0f);
+  const Backend &b = *backend_;
+  const glm::vec4 clip = b.viewProj * glm::vec4(toGlm(point), 1.0f);
   if (clip.w <= 0)
     return false;
-  x = (clip.x / clip.w * 0.5f + 0.5f) * static_cast<float>(backend_->display.width());
-  y = (0.5f - clip.y / clip.w * 0.5f) * static_cast<float>(backend_->display.height());
+  // (in the view, then from pixels to the overlay's points)
+  const float points = static_cast<float>(b.display.width()) /
+                       static_cast<float>(std::max(b.display.pixelWidth(), 1));
+  x = (static_cast<float>(b.view.x) +
+       (clip.x / clip.w * 0.5f + 0.5f) * static_cast<float>(b.view.width)) *
+      points;
+  y = (static_cast<float>(b.view.y) +
+       (0.5f - clip.y / clip.w * 0.5f) * static_cast<float>(b.view.height)) *
+      points;
   return true;
 }
 

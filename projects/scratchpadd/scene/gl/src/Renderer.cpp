@@ -580,16 +580,7 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   }
 
   glUseProgram(b.program);
-  b.eye = toGlm(camera.eye);
-  const glm::mat4 view = glm::lookAt(b.eye, toGlm(camera.target), toGlm(camera.up));
-  const glm::mat4 projection =
-      glm::perspective(glm::radians(camera.fieldOfView),
-                       static_cast<float>(width) / static_cast<float>(std::max(height, 1)),
-                       camera.nearPlane, camera.farPlane);
-  b.viewProj = projection * view;
-  b.frustum.emplace(camera, static_cast<float>(width) / static_cast<float>(std::max(height, 1)));
-  glUniformMatrix4fv(b.uniform.viewProj, 1, GL_FALSE, glm::value_ptr(b.viewProj));
-  glUniform2f(b.uniform.viewport, static_cast<float>(width), static_cast<float>(height));
+  b.useCamera(camera, {0, 0, width, height});
   const glm::vec3 ambient = toGlm(environment.ambient);
   glUniform3f(b.uniform.ambient, ambient.r, ambient.g, ambient.b);
   glm::vec3 directions[Environment::kMostLights], colours[Environment::kMostLights];
@@ -604,11 +595,58 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   glUniform3f(b.uniform.fogColour, fog.r, fog.g, fog.b);
   glUniform1f(b.uniform.fogDensity, environment.fog.density);
   b.environment = environment;
-  b.camera = camera;
   b.worldSnap = b.screenSnap = 0;
   b.later.clear();
   b.counting = {};
   overlay_.clear();
+}
+
+void Renderer::Backend::drawLater() {
+  // Translucent meshes over the solid ones, farthest first, each blending
+  // over what's behind it without hiding what's drawn after
+  if (later.empty())
+    return;
+  std::ranges::stable_sort(later,
+                           [](const Later &x, const Later &y) { return x.distance > y.distance; });
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glDepthMask(GL_FALSE);
+  if (screenEdges)
+    glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE,
+                 GL_FALSE); // (see-through: no surface of its own)
+  for (const Later &item : later)
+    drawNow(item.mesh, item.where, item.material);
+  glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+  glDepthMask(GL_TRUE);
+  glDisable(GL_BLEND);
+  later.clear();
+}
+
+void Renderer::Backend::useCamera(const Camera &seen, PixelRect rect) {
+  camera = seen;
+  view = rect;
+  const float aspect =
+      static_cast<float>(rect.width) / static_cast<float>(std::max(rect.height, 1));
+  eye = toGlm(seen.eye);
+  const glm::mat4 look = glm::lookAt(eye, toGlm(seen.target), toGlm(seen.up));
+  const glm::mat4 projection =
+      glm::perspective(glm::radians(seen.fieldOfView), aspect, seen.nearPlane, seen.farPlane);
+  viewProj = projection * look;
+  frustum.emplace(seen, aspect);
+  // (GL counts up from the bottom)
+  const int fromBottom = display.pixelHeight() - rect.y - rect.height;
+  glViewport(rect.x, fromBottom, rect.width, rect.height);
+  glEnable(GL_SCISSOR_TEST);
+  glScissor(rect.x, fromBottom, rect.width, rect.height);
+  glUseProgram(program);
+  glUniformMatrix4fv(uniform.viewProj, 1, GL_FALSE, glm::value_ptr(viewProj));
+  glUniform2f(uniform.viewport, static_cast<float>(rect.width), static_cast<float>(rect.height));
+}
+
+void Renderer::beginView(const Camera &camera, const Viewport &viewport) {
+  Backend &b = *backend_;
+  b.drawLater();
+  b.useCamera(camera, pixelsOf(viewport, b.display.pixelWidth(), b.display.pixelHeight()));
 }
 
 void Renderer::draw(Mesh mesh, const Transform &where, const Material &material) {
@@ -658,25 +696,10 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
 
 void Renderer::endFrame() {
   Backend &b = *backend_;
-  // Translucent meshes over the solid ones, farthest first, each blending
-  // over what's behind it without hiding what's drawn after
-  std::ranges::stable_sort(b.later, [](const Backend::Later &x, const Backend::Later &y) {
-    return x.distance > y.distance;
-  });
-  if (!b.later.empty()) {
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDepthMask(GL_FALSE);
-    if (b.screenEdges)
-      glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE,
-                   GL_FALSE); // (see-through: no surface of its own)
-    for (const Backend::Later &item : b.later)
-      b.drawNow(item.mesh, item.where, item.material);
-    glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glDepthMask(GL_TRUE);
-    glDisable(GL_BLEND);
-    b.later.clear();
-  }
+  b.drawLater();
+  // (the outlines and the overlay: the whole screen again)
+  glDisable(GL_SCISSOR_TEST);
+  glViewport(0, 0, b.display.pixelWidth(), b.display.pixelHeight());
   if (b.screenEdges)
     b.drawEdges();
   b.drawOverlay(overlay_);
@@ -687,11 +710,19 @@ void Renderer::endFrame() {
 }
 
 bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
-  const glm::vec4 clip = backend_->viewProj * glm::vec4(toGlm(point), 1.0f);
+  const Backend &b = *backend_;
+  const glm::vec4 clip = b.viewProj * glm::vec4(toGlm(point), 1.0f);
   if (clip.w <= 0)
     return false;
-  x = (clip.x / clip.w * 0.5f + 0.5f) * static_cast<float>(backend_->display.width());
-  y = (0.5f - clip.y / clip.w * 0.5f) * static_cast<float>(backend_->display.height());
+  // (in the view, then from pixels to the overlay's points)
+  const float points = static_cast<float>(b.display.width()) /
+                       static_cast<float>(std::max(b.display.pixelWidth(), 1));
+  x = (static_cast<float>(b.view.x) +
+       (clip.x / clip.w * 0.5f + 0.5f) * static_cast<float>(b.view.width)) *
+      points;
+  y = (static_cast<float>(b.view.y) +
+       (0.5f - clip.y / clip.w * 0.5f) * static_cast<float>(b.view.height)) *
+      points;
   return true;
 }
 

@@ -373,3 +373,18 @@ TEST(TextWrapTest, NewLinesAreKeptAndLongWordsBroken) {
   // Even a line too narrow for one letter gets one a line, so it ends
   EXPECT_EQ(ScratchPadd::Scene::wrapText("abc", 0.5f, oneALetter), (Lines{"a", "b", "c"}));
 }
+
+// A viewport in pixels: views side by side meet exactly, at any size
+TEST(SceneTest, ViewportsSideBySideMeetExactly) {
+  for (const int width : {255, 256, 401}) {
+    const PixelRect left = pixelsOf({0, 0, 1 / 3.0f, 1}, width, 240),
+                    middle = pixelsOf({1 / 3.0f, 0, 1 / 3.0f, 1}, width, 240),
+                    right = pixelsOf({2 / 3.0f, 0, 1 / 3.0f, 1}, width, 240);
+    EXPECT_EQ(left.x, 0);
+    EXPECT_EQ(left.x + left.width, middle.x);
+    EXPECT_EQ(middle.x + middle.width, right.x);
+    EXPECT_EQ(right.x + right.width, width);
+    EXPECT_EQ(right.height, 240);
+  }
+  EXPECT_EQ(pixelsOf({}, 320, 240), (PixelRect{0, 0, 320, 240}));
+}

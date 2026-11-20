@@ -47,6 +47,12 @@ struct Renderer::Backend {
   };
 
   void drawNow(Mesh mesh, const Transform &where, const Material &material);
+  // The translucent meshes kept so far, farthest first, in the current view
+  void drawLater();
+  // What's drawn next seen by `camera` in `view` (pixels, from the top
+  // left): its uniforms in the next of the frame's slices, that slice's set
+  // bound
+  void useCamera(const Camera &camera, PixelRect view);
   void drawOverlay(const Overlay &overlay);
   // `bytes` copied into this frame's buffers, kept until the frame's drawn
   Slice frameBytes(const void *bytes, std::size_t length);
@@ -93,7 +99,13 @@ struct Renderer::Backend {
   void makeEdgeImages(int width, int height);
   void drawEdges();
   VkDescriptorPool descriptors = VK_NULL_HANDLE;
-  VkDescriptorSet frameSet = VK_NULL_HANDLE;
+  // Each view's FrameUniforms in a slice of frameUniformBuffer (the GPU
+  // reads them when the frame runs, so each view keeps its own), each with
+  // its set: at most kMostViews a frame (more draw with the last one's)
+  static constexpr int kMostViews = 8;
+  static constexpr VkDeviceSize kViewStride = 256; // (the most any GPU aligns to)
+  std::array<VkDescriptorSet, kMostViews> frameSets{};
+  int views = 0; // this frame's so far
   // Materials' textures (set 1 of the scene's layout): each one's image and
   // set, by Texture::id - 1 (unloaded ones have no set), and a 1 x 1 white
   // one for materials without
@@ -115,7 +127,7 @@ struct Renderer::Backend {
   };
   std::vector<KeptPixels> kept;
   LoadedTexture blank;
-  Vulkan::Buffer frameUniformBuffer; // FrameUniforms, written each frame
+  Vulkan::Buffer frameUniformBuffer; // each view's FrameUniforms, written each frame
   std::vector<LoadedMesh> meshes;    // by Mesh::id - 1; unloaded ones have no vertices
   std::vector<Later> later;
   FrameCounts counting, last;                    // this frame's so far; the last one's
@@ -130,7 +142,8 @@ struct Renderer::Backend {
   Environment environment; // (toon bands, outlines)
   glm::vec3 eye{0.0f};
   glm::mat4 viewProj{1.0f};
-  std::optional<Frustum> frustum; // this frame's
+  std::optional<Frustum> frustum; // this view's
+  PixelRect view;                 // this view's, in pixels
   // The uniforms each draw shares (the shaders' Frame), and Desktop.hpp's
   // vertex snapping, for the rest of the frame
   struct FrameUniforms {
@@ -144,7 +157,7 @@ struct Renderer::Backend {
     float fogDensity;
     int lightCount;
     float pad1[2];
-  };
+  } frameUniforms{}; // (this frame's; each view's camera written into it)
   float worldSnap = 0, screenSnap = 0;
 };
 

@@ -57,6 +57,13 @@ struct Renderer::Backend {
   const std::vector<DisplayList::Packed> &listsFor(LoadedMesh &mesh,
                                                    const DisplayList::Variant &variant);
   void drawNow(Mesh mesh, const Transform &where, const Material &material, unsigned polygonId);
+  // The translucent meshes kept so far, farthest first, in the current view
+  void drawLater();
+  // What's drawn next seen by `camera` in `view` (pixels, from the top
+  // left): its projection, its view, the viewport, and the lights again (the
+  // DS turns a light's direction by the view as it's set)
+  void useCamera(const Camera &seen, PixelRect view);
+  void setLights();
   void setFog(const Fog &fog);
   // Toon shading's texture for `mesh` in the material's `colour`, made the
   // first time (TEXIMAGE_PARAM's value, or 0 if there's no room)
@@ -69,15 +76,18 @@ struct Renderer::Backend {
   std::vector<Later> later;
 
   // This frame's
-  Camera camera;
+  Camera camera;  // this view's
+  PixelRect view; // this view's, in pixels
   Colour ambient;
+  std::array<Light, Environment::kMostLights> lights{}; // this frame's
+  unsigned lightCount = 0;
   std::uint32_t lightBits = 0; // the polygon format's bits for the lights in use
   FrameCounts last;
   // The frame's CPU time (FrameTimes): when it began, and the last's
   std::chrono::steady_clock::time_point began;
   FrameTimes times;
   unsigned draws = 0, culled = 0; // this frame's so far
-  std::optional<Frustum> frustum; // this frame's
+  std::optional<Frustum> frustum; // this view's
   // Fog: the polygon format's bit for it (0 without), and the fog and
   // camera its table was worked out for (only again when they change)
   std::uint32_t fogBit = 0;

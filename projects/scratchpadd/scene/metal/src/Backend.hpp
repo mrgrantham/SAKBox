@@ -53,6 +53,10 @@ struct Renderer::Backend {
   };
 
   void drawNow(Mesh mesh, const Transform &where, const Material &material);
+  // The translucent meshes kept so far, farthest first, in the current view
+  void drawLater();
+  // What's drawn next seen by `camera` in `view` (pixels, from the top left)
+  void useCamera(const Camera &camera, PixelRect view);
   void drawOverlay(const Overlay &overlay);
   // A buffer holding `bytes`, kept until the frame's drawn
   MTL::Buffer *frameBuffer(const void *bytes, std::size_t length);
@@ -83,7 +87,8 @@ struct Renderer::Backend {
   Environment environment;            // this frame's (toon bands, outlines)
   glm::vec3 eye{0.0f};
   glm::mat4 viewProj{1.0f};
-  std::optional<Frustum> frustum; // this frame's
+  std::optional<Frustum> frustum; // this view's
+  PixelRect view;                 // this view's, in pixels
   // The uniforms each draw shares (the shaders' Frame), and Desktop.hpp's
   // vertex snapping, for the rest of the frame
   struct FrameUniforms {

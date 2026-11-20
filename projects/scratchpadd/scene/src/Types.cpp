@@ -1,5 +1,7 @@
 #include <ScratchPadd/Scene/Types.hpp>
 
+#include <cmath>
+
 namespace ScratchPadd::Scene {
 
 Transform Transform::translation(const Vector3 &v) {
@@ -69,6 +71,17 @@ Colour Environment::backgroundSeen(Scalar farPlane) const {
   };
   return {mix(background.r, fog.colour.r), mix(background.g, fog.colour.g),
           mix(background.b, fog.colour.b), background.a};
+}
+
+PixelRect pixelsOf(const Viewport &viewport, int width, int height) {
+  // (each edge rounded on its own, so neighbours meet exactly)
+  const auto edge = [](Scalar fraction, int size) {
+    const int at = static_cast<int>(std::lround(static_cast<double>(fraction) * size));
+    return at < 0 ? 0 : (at > size ? size : at);
+  };
+  const int x0 = edge(viewport.x, width), x1 = edge(viewport.x + viewport.width, width);
+  const int y0 = edge(viewport.y, height), y1 = edge(viewport.y + viewport.height, height);
+  return {x0, y0, x1 > x0 ? x1 - x0 : 0, y1 > y0 ? y1 - y0 : 0};
 }
 
 } // namespace ScratchPadd::Scene

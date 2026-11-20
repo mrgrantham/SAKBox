@@ -376,28 +376,33 @@ Renderer::Backend::Backend(Display &display)
                                            .pPushConstantRanges = &screenRange};
   vkCreatePipelineLayout(device(), &overlay, nullptr, &overlayLayout);
 
+  static_assert(sizeof(FrameUniforms) <= kViewStride);
   frameUniformBuffer =
-      Vulkan::makeBuffer(sizeof(FrameUniforms), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-  const VkDescriptorPoolSize poolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1};
+      Vulkan::makeBuffer(kViewStride * kMostViews, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+  const VkDescriptorPoolSize poolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, kMostViews};
   const VkDescriptorPoolCreateInfo pool{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-                                        .maxSets = 1,
+                                        .maxSets = kMostViews,
                                         .poolSizeCount = 1,
                                         .pPoolSizes = &poolSize};
   vkCreateDescriptorPool(device(), &pool, nullptr, &descriptors);
-  const VkDescriptorSetAllocateInfo allocate{.sType =
-                                                 VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-                                             .descriptorPool = descriptors,
-                                             .descriptorSetCount = 1,
-                                             .pSetLayouts = &frameLayout};
-  vkAllocateDescriptorSets(device(), &allocate, &frameSet);
-  const VkDescriptorBufferInfo bufferInfo{frameUniformBuffer.buffer, 0, sizeof(FrameUniforms)};
-  const VkWriteDescriptorSet write{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                   .dstSet = frameSet,
-                                   .dstBinding = 0,
-                                   .descriptorCount = 1,
-                                   .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                   .pBufferInfo = &bufferInfo};
-  vkUpdateDescriptorSets(device(), 1, &write, 0, nullptr);
+  for (int i = 0; i < kMostViews; ++i) {
+    const VkDescriptorSetAllocateInfo allocate{.sType =
+                                                   VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                                               .descriptorPool = descriptors,
+                                               .descriptorSetCount = 1,
+                                               .pSetLayouts = &frameLayout};
+    vkAllocateDescriptorSets(device(), &allocate, &frameSets[static_cast<std::size_t>(i)]);
+    const VkDescriptorBufferInfo bufferInfo{frameUniformBuffer.buffer,
+                                            kViewStride * static_cast<VkDeviceSize>(i),
+                                            sizeof(FrameUniforms)};
+    const VkWriteDescriptorSet write{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                     .dstSet = frameSets[static_cast<std::size_t>(i)],
+                                     .dstBinding = 0,
+                                     .descriptorCount = 1,
+                                     .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                     .pBufferInfo = &bufferInfo};
+    vkUpdateDescriptorSets(device(), 1, &write, 0, nullptr);
+  }
   // Textures' sets (one each, kMostTextures at most), their sampler, and
   // the blank one for materials without a texture
   const VkDescriptorPoolSize texturePoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -858,18 +863,8 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   const int width = b.display.pixelWidth(), height = b.display.pixelHeight();
   s.resize(width, height);
 
-  b.eye = toGlm(camera.eye);
-  const glm::mat4 view = glm::lookAt(b.eye, toGlm(camera.target), toGlm(camera.up));
-  // Vulkan's depth goes from 0 to 1, not OpenGL's -1 to 1
-  const glm::mat4 projection = glm::perspectiveRH_ZO(
-      glm::radians(camera.fieldOfView), static_cast<float>(s.width) / static_cast<float>(s.height),
-      camera.nearPlane, camera.farPlane);
-  b.viewProj = projection * view;
-  b.frustum.emplace(camera, static_cast<float>(s.width) / static_cast<float>(s.height));
-  Backend::FrameUniforms f{};
-  std::memcpy(f.viewProj, glm::value_ptr(b.viewProj), sizeof(f.viewProj));
-  f.viewport[0] = static_cast<float>(s.width);
-  f.viewport[1] = static_cast<float>(s.height);
+  Backend::FrameUniforms &f = b.frameUniforms;
+  f = {};
   const glm::vec3 ambient = toGlm(environment.ambient);
   f.ambient[0] = ambient.r;
   f.ambient[1] = ambient.g;
@@ -888,7 +883,6 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
   f.fogColour[1] = fog.g;
   f.fogColour[2] = fog.b;
   f.fogDensity = environment.fog.density;
-  std::memcpy(b.frameUniformBuffer.mapped, &f, sizeof(f));
 
   const VkCommandBufferBeginInfo begin{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
@@ -970,20 +964,66 @@ void Renderer::beginFrame(const Camera &camera, const Environment &environment) 
                                   .pColorAttachments = colours,
                                   .pDepthAttachment = &depth};
   Vulkan::beginRendering(s.commands, rendering);
+  vkCmdBindDescriptorSets(s.commands, VK_PIPELINE_BIND_POINT_GRAPHICS, b.sceneLayout, 1, 1,
+                          &b.blank.set, 0, nullptr); // (lines aren't textured)
+  b.recording = true;
+  b.views = 0;
+  b.useCamera(camera, {0, 0, s.width, s.height});
+}
+
+void Renderer::Backend::useCamera(const Camera &camera, PixelRect rect) {
+  view = rect;
+  const float aspect =
+      static_cast<float>(rect.width) / static_cast<float>(std::max(rect.height, 1));
+  eye = toGlm(camera.eye);
+  const glm::mat4 look = glm::lookAt(eye, toGlm(camera.target), toGlm(camera.up));
+  // Vulkan's depth goes from 0 to 1, not OpenGL's -1 to 1
+  const glm::mat4 projection = glm::perspectiveRH_ZO(glm::radians(camera.fieldOfView), aspect,
+                                                     camera.nearPlane, camera.farPlane);
+  viewProj = projection * look;
+  frustum.emplace(camera, aspect);
+  FrameUniforms &f = frameUniforms;
+  std::memcpy(f.viewProj, glm::value_ptr(viewProj), sizeof(f.viewProj));
+  f.viewport[0] = static_cast<float>(rect.width);
+  f.viewport[1] = static_cast<float>(rect.height);
+  const int slot = std::min(views, kMostViews - 1);
+  views = std::min(views + 1, kMostViews);
+  std::memcpy(static_cast<std::byte *>(frameUniformBuffer.mapped) +
+                  kViewStride * static_cast<VkDeviceSize>(slot),
+              &f, sizeof(f));
+  VkCommandBuffer commands = surface.commands;
+  vkCmdBindDescriptorSets(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, sceneLayout, 0, 1,
+                          &frameSets[static_cast<std::size_t>(slot)], 0, nullptr);
   // Flipped (y from the bottom), so clip space's y is up as in OpenGL
-  const VkViewport viewport{0,
-                            static_cast<float>(s.height),
-                            static_cast<float>(s.width),
-                            -static_cast<float>(s.height),
+  const VkViewport viewport{static_cast<float>(rect.x),
+                            static_cast<float>(rect.y + rect.height),
+                            static_cast<float>(rect.width),
+                            -static_cast<float>(rect.height),
                             0.0f,
                             1.0f};
-  const VkRect2D scissor{{0, 0}, extent};
-  vkCmdSetViewport(s.commands, 0, 1, &viewport);
-  vkCmdSetScissor(s.commands, 0, 1, &scissor);
-  const VkDescriptorSet sets[2] = {b.frameSet, b.blank.set}; // (lines aren't textured)
-  vkCmdBindDescriptorSets(s.commands, VK_PIPELINE_BIND_POINT_GRAPHICS, b.sceneLayout, 0, 2, sets, 0,
-                          nullptr);
-  b.recording = true;
+  const VkRect2D scissor{
+      {rect.x, rect.y},
+      {static_cast<std::uint32_t>(rect.width), static_cast<std::uint32_t>(rect.height)}};
+  vkCmdSetViewport(commands, 0, 1, &viewport);
+  vkCmdSetScissor(commands, 0, 1, &scissor);
+}
+
+void Renderer::Backend::drawLater() {
+  // Translucent meshes over the solid ones, farthest first, each blending
+  // over what's behind it without hiding what's drawn after
+  std::ranges::stable_sort(later,
+                           [](const Later &x, const Later &y) { return x.distance > y.distance; });
+  for (const Later &item : later)
+    drawNow(item.mesh, item.where, item.material);
+  later.clear();
+}
+
+void Renderer::beginView(const Camera &camera, const Viewport &viewport) {
+  Backend &b = *backend_;
+  if (!b.recording)
+    return;
+  b.drawLater();
+  b.useCamera(camera, pixelsOf(viewport, b.surface.width, b.surface.height));
 }
 
 void Renderer::draw(Mesh mesh, const Transform &where, const Material &material) {
@@ -1036,14 +1076,18 @@ void Renderer::endFrame() {
   Vulkan::Surface &s = b.surface;
   if (!b.recording)
     return;
-  // Translucent meshes over the solid ones, farthest first, each blending
-  // over what's behind it without hiding what's drawn after
-  std::ranges::stable_sort(b.later, [](const Backend::Later &x, const Backend::Later &y) {
-    return x.distance > y.distance;
-  });
-  for (const Backend::Later &item : b.later)
-    b.drawNow(item.mesh, item.where, item.material);
-  b.later.clear();
+  b.drawLater();
+  // (the outlines and the overlay: the whole screen again)
+  const VkViewport whole{0,
+                         static_cast<float>(s.height),
+                         static_cast<float>(s.width),
+                         -static_cast<float>(s.height),
+                         0.0f,
+                         1.0f};
+  const VkRect2D all{{0, 0},
+                     {static_cast<std::uint32_t>(s.width), static_cast<std::uint32_t>(s.height)}};
+  vkCmdSetViewport(s.commands, 0, 1, &whole);
+  vkCmdSetScissor(s.commands, 0, 1, &all);
   if (b.screenEdges)
     b.drawEdges();
   b.drawOverlay(overlay_);
@@ -1140,11 +1184,19 @@ void Renderer::endFrame() {
 }
 
 bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
-  const glm::vec4 clip = backend_->viewProj * glm::vec4(toGlm(point), 1.0f);
+  const Backend &b = *backend_;
+  const glm::vec4 clip = b.viewProj * glm::vec4(toGlm(point), 1.0f);
   if (clip.w <= 0)
     return false;
-  x = (clip.x / clip.w * 0.5f + 0.5f) * static_cast<float>(backend_->display.width());
-  y = (0.5f - clip.y / clip.w * 0.5f) * static_cast<float>(backend_->display.height());
+  // (in the view, then from pixels to the overlay's points)
+  const float points = static_cast<float>(b.display.width()) /
+                       static_cast<float>(std::max(b.display.pixelWidth(), 1));
+  x = (static_cast<float>(b.view.x) +
+       (clip.x / clip.w * 0.5f + 0.5f) * static_cast<float>(b.view.width)) *
+      points;
+  y = (static_cast<float>(b.view.y) +
+       (0.5f - clip.y / clip.w * 0.5f) * static_cast<float>(b.view.height)) *
+      points;
   return true;
 }
 

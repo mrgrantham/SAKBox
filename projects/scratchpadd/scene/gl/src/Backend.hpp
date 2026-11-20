@@ -60,6 +60,10 @@ struct Renderer::Backend {
   };
 
   void drawNow(Mesh mesh, const Transform &where, const Material &material);
+  // The translucent meshes kept so far, farthest first, in the current view
+  void drawLater();
+  // What's drawn next seen by `camera` in `view` (pixels, from the top left)
+  void useCamera(const Camera &camera, PixelRect view);
   void drawOutline(const LoadedMesh &loaded, const Material &material);
   void useEdgeTarget(int width, int height);
   void drawEdges();
@@ -91,8 +95,9 @@ struct Renderer::Backend {
   int edgeWidth = 0, edgeHeight = 0;
   GLuint edgeProgram = 0, edgeVao = 0;
   glm::vec3 eye{0.0f};
-  glm::mat4 viewProj{1.0f}; // this frame's
+  glm::mat4 viewProj{1.0f}; // this view's
   std::optional<Frustum> frustum;
+  PixelRect view; // this view's, in pixels
   // Desktop.hpp's vertex snapping, for the rest of the frame
   float worldSnap = 0, screenSnap = 0;
 };

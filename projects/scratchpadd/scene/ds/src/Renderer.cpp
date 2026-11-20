@@ -521,42 +521,16 @@ void Renderer::unload(Mesh mesh) {
 void Renderer::beginFrame(const Camera &camera, const Environment &environment) {
   Backend &b = *backend_;
   b.began = std::chrono::steady_clock::now();
-  b.camera = camera;
-  b.frustum.emplace(camera, Scalar(b.display.width()) / Scalar(b.display.height()));
   b.ambient = environment.ambient;
+  b.lights = environment.lights;
+  b.lightCount = environment.lightCount;
+  b.nextTranslucentId = kFirstTranslucentId;
   b.later.clear();
   overlay_.clear();
   const Colour &background = environment.background;
   glClearColor(background.r >> 3, background.g >> 3, background.b >> 3, 31);
 
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-  {
-    HardwareMathsLock lock; // these use the divider and square root unit
-    glMatrixMode(GL_PROJECTION);
-    // The field of view in libnds' angles (32768 a turn)
-    const int angle = static_cast<int>(static_cast<std::int64_t>(f32(camera.fieldOfView)) *
-                                       DEGREES_IN_CIRCLE / (360 * 4096));
-    gluPerspectivef32(angle, inttof32(b.display.width()) / b.display.height(),
-                      f32(camera.nearPlane), f32(camera.farPlane));
-    glMatrixMode(GL_MODELVIEW);
-    gluLookAtf32(f32(camera.eye.x), f32(camera.eye.y), f32(camera.eye.z), f32(camera.target.x),
-                 f32(camera.target.y), f32(camera.target.z), f32(camera.up.x), f32(camera.up.y),
-                 f32(camera.up.z));
-  }
-
-  // The lights, set after the view: the DS turns a light's direction by the
-  // view as it's set, so they're given in the world
-  b.lightBits = 0;
-  for (unsigned i = 0; i < environment.lightCount; ++i) {
-    const Light &light = environment.lights[i];
-    const Vector3 direction = light.direction.normalised();
-    glLight(static_cast<int>(i), DisplayList::rgb15(light.colour), v10Of(direction.x),
-            v10Of(direction.y), v10Of(direction.z));
-    b.lightBits |= POLY_FORMAT_LIGHT0 << i;
-  }
+  b.useCamera(camera, {0, 0, b.display.width(), b.display.height()});
   b.setFog(environment.fog);
 
   // Toon shading's table, and how it's used (ToonTable.hpp): one for the frame
@@ -634,25 +608,74 @@ void Renderer::drawLines(std::span<const Vector3> ends, Colour colour) {
   glPopMatrix(1);
 }
 
-void Renderer::endFrame() {
-  Backend &b = *backend_;
+void Renderer::Backend::drawLater() {
   // Translucent meshes, farthest first (drawn in this order: the frame is
   // flushed with manual sorting), each with its own polygon ID so they
   // blend over each other
-  std::ranges::stable_sort(b.later, [](const Backend::Later &x, const Backend::Later &y) {
-    return x.distance > y.distance;
-  });
+  std::ranges::stable_sort(later,
+                           [](const Later &x, const Later &y) { return x.distance > y.distance; });
   // (one count for the frame, meshes then the overlay's shapes: a
   // translucent polygon isn't drawn over a translucent one with the same
   // ID, so the overlay's mustn't reuse the meshes' IDs, the roll's
   // hexagon missing two triangles over the dice's glass)
-  b.nextTranslucentId = kFirstTranslucentId;
-  for (const Backend::Later &item : b.later) {
-    unsigned &id = b.nextTranslucentId;
-    b.drawNow(item.mesh, item.where, item.material, id);
+  for (const Later &item : later) {
+    unsigned &id = nextTranslucentId;
+    drawNow(item.mesh, item.where, item.material, id);
     id = id == kLastTranslucentId ? kFirstTranslucentId : id + 1;
   }
-  b.later.clear();
+  later.clear();
+}
+
+void Renderer::Backend::useCamera(const Camera &seen, PixelRect rect) {
+  camera = seen;
+  view = rect;
+  frustum.emplace(seen, Scalar(rect.width) / Scalar(rect.height > 0 ? rect.height : 1));
+  // (the hardware's viewport: corners inclusive, y up from the bottom)
+  const int bottom = display.height() - 1;
+  glViewport(rect.x, bottom - (rect.y + rect.height - 1), rect.x + rect.width - 1, bottom - rect.y);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+  {
+    HardwareMathsLock lock; // these use the divider and square root unit
+    glMatrixMode(GL_PROJECTION);
+    // The field of view in libnds' angles (32768 a turn)
+    const int angle = static_cast<int>(static_cast<std::int64_t>(f32(seen.fieldOfView)) *
+                                       DEGREES_IN_CIRCLE / (360 * 4096));
+    gluPerspectivef32(angle, inttof32(rect.width) / (rect.height > 0 ? rect.height : 1),
+                      f32(seen.nearPlane), f32(seen.farPlane));
+    glMatrixMode(GL_MODELVIEW);
+    gluLookAtf32(f32(seen.eye.x), f32(seen.eye.y), f32(seen.eye.z), f32(seen.target.x),
+                 f32(seen.target.y), f32(seen.target.z), f32(seen.up.x), f32(seen.up.y),
+                 f32(seen.up.z));
+  }
+  setLights();
+}
+
+void Renderer::Backend::setLights() {
+  // Set after the view: the DS turns a light's direction by the view as
+  // it's set, so they're given in the world
+  lightBits = 0;
+  for (unsigned i = 0; i < lightCount; ++i) {
+    const Light &light = lights[i];
+    const Vector3 direction = light.direction.normalised();
+    glLight(static_cast<int>(i), DisplayList::rgb15(light.colour), v10Of(direction.x),
+            v10Of(direction.y), v10Of(direction.z));
+    lightBits |= POLY_FORMAT_LIGHT0 << i;
+  }
+}
+
+void Renderer::beginView(const Camera &camera, const Viewport &viewport) {
+  Backend &b = *backend_;
+  b.drawLater();
+  b.useCamera(camera, pixelsOf(viewport, b.display.width(), b.display.height()));
+}
+
+void Renderer::endFrame() {
+  Backend &b = *backend_;
+  b.drawLater();
+  glViewport(0, 0, 255, 191); // (the overlay: the whole screen again)
   using Clock = std::chrono::steady_clock;
   const auto milliseconds = [](Clock::duration d) {
     return std::chrono::duration<float, std::milli>(d).count();
@@ -732,12 +755,13 @@ bool Renderer::toScreen(const Vector3 &point, float &x, float &y) const {
               depth = dot(forward, relative); // in front of the eye: positive
   if (depth <= 0)
     return false;
-  const float width = static_cast<float>(backend_->display.width()),
-              height = static_cast<float>(backend_->display.height());
+  // (in the current view)
+  const PixelRect &view = backend_->view;
+  const float width = static_cast<float>(view.width), height = static_cast<float>(view.height);
   const float focal = 1 / std::tan(static_cast<float>(camera.fieldOfView) * 3.14159265f / 360);
   const float ndcX = focal * height / width * viewX / depth, ndcY = focal * viewY / depth;
-  x = (ndcX * 0.5f + 0.5f) * width;
-  y = (0.5f - ndcY * 0.5f) * height;
+  x = static_cast<float>(view.x) + (ndcX * 0.5f + 0.5f) * width;
+  y = static_cast<float>(view.y) + (0.5f - ndcY * 0.5f) * height;
   return true;
 }
 
