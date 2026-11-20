@@ -72,7 +72,7 @@ TEST(DiscoveryTest, TheGamesWordsMatchItsThings) {
   EXPECT_EQ(GameWords::of(PlanetKind::GasGiant), "Gas giant");
   EXPECT_EQ(GameWords::of(PlanetKind::Moon), "Barren moon");
   EXPECT_EQ(GameWords::of(Find::AlienStation), "Alien outpost");
-  EXPECT_EQ(GameWords::kFinds_.size(), static_cast<std::size_t>(kFinds));
+  EXPECT_EQ(GameWords::kFindNames.size(), static_cast<std::size_t>(kFinds));
 }
 
 // The whimsy (docs/research/animation-whimsy.md): the tile dips into the

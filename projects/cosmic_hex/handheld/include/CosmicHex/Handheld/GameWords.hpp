@@ -15,21 +15,21 @@
 
 namespace CosmicHex::Handheld::GameWords {
 
-inline constexpr std::array<std::string_view, kResources> kResources_{"Minerals", "Food", "Fuel",
-                                                                      "Water", "Crystals"};
+inline constexpr std::array<std::string_view, kResources> kResourceNames{"Minerals", "Food", "Fuel",
+                                                                         "Water", "Crystals"};
 inline constexpr std::array<std::string_view, 7> kPlanetKinds{
     "Asteroid belt", "Lush planet", "Gas giant", "Ice moon", "Nebula", "Home world", "Barren moon"};
-inline constexpr std::array<std::string_view, kFinds> kFinds_{
+inline constexpr std::array<std::string_view, kFinds> kFindNames{
     "Deep space", "Salvage", "Ancient ruins", "Alien outpost", "Pirate hideout"};
 
 constexpr std::string_view of(Resource resource) {
-  return kResources_[static_cast<std::size_t>(resource)];
+  return kResourceNames[static_cast<std::size_t>(resource)];
 }
 // (by a resource's number, 0 to kResources - 1)
-constexpr std::string_view resource(std::size_t r) { return kResources_[r]; }
+constexpr std::string_view resource(std::size_t r) { return kResourceNames[r]; }
 constexpr std::string_view of(PlanetKind kind) {
   return kPlanetKinds[static_cast<std::size_t>(kind)];
 }
-constexpr std::string_view of(Find find) { return kFinds_[static_cast<std::size_t>(find)]; }
+constexpr std::string_view of(Find find) { return kFindNames[static_cast<std::size_t>(find)]; }
 
 } // namespace CosmicHex::Handheld::GameWords

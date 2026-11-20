@@ -368,8 +368,8 @@ void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down) {
       return;
     for (int i = 0; i < std::min(count, kBacksShown); ++i)
       picture(f, f.pictures.backSquare, back, x + static_cast<float>(i % kBacksARow) * backStep,
-              y + 11 * k + static_cast<float>(i / kBacksARow) * rowStep, backW, backH,
-              kPictureDistance * (1 - 0.002f * static_cast<float>(i)));
+              y + 11 * k + static_cast<float>(static_cast<int>(i / kBacksARow)) * rowStep, backW,
+              backH, kPictureDistance * (1 - 0.002f * static_cast<float>(i)));
   };
   backs(84 * k, top + 10 * k, view.resourceCards, "RESOURCES", Art::kResourceBack);
   backs(170 * k, top + 10 * k, view.actionCards, "CARDS", Art::kActionBack);
@@ -405,7 +405,7 @@ void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down) {
     overlay.text(64 * k, top + 88 * k + extra, "none yet", Palette::kDimWords, k);
   for (std::size_t i = 0; i < view.planets.size() && i < 16; ++i) {
     const float x = (22 + 26 * static_cast<float>(i % 8)) * k;
-    const float y = top + (110 + 25 * static_cast<float>(i / 8)) * k + extra;
+    const float y = top + (110 + 25 * static_cast<float>(static_cast<int>(i / 8))) * k + extra;
     const PlayerView::Planet &planet = view.planets[i];
     overlay.hexagon(x, y, 12 * k, BoardColours::ofKind(planet.kind), true);
     if (planet.colony)
@@ -582,10 +582,10 @@ void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
   const float x = midX + dir * travel * (1 - m->in);
   card(m->shown, x);
   if (m->in >= 1) {
-    f.overlay.textCentred(x, midY - h / 2 + h * 11 / 52, std::string(GameWords::of(m->shown)),
-                          Palette::kWords, 1.5f * k);
+    f.overlay.textCentred(x, midY - h / 2 + h * 11 / 52, GameWords::of(m->shown), Palette::kWords,
+                          1.5f * k);
   }
-  f.overlay.textCentred(f.width / 2, 12 * k, std::string(title), Palette::kWords, k);
+  f.overlay.textCentred(f.width / 2, 12 * k, title, Palette::kWords, k);
   // What you could build with it: a ship, a station, a colony, a card,
   // each dimmed when you couldn't even with this one
   Resources after = held;
@@ -716,7 +716,7 @@ void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state,
   // (its name on its label band, 3 to 19 of the card's 52-unit picture,
   // once it's full size)
   if (m.away <= 0 && m.card >= 1)
-    overlay.textCentred(cx, cy - h / 2 + h * 11 / 52, std::string(GameWords::of(*pay->resource)),
+    overlay.textCentred(cx, cy - h / 2 + h * 11 / 52, GameWords::of(*pay->resource),
                         Palette::kWords, 1.5f * k);
   if (m.away <= 0 && m.card >= 1)
     overlay.textCentred(f.width / 2, heldY + bigH / 2 + 10 * k,

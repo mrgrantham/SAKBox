@@ -293,7 +293,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
     } else if (touch->what == What::Confirm) {
       if (const auto action = resources_->actionFor(picked_)) {
         mode_ = Mode::Board;
-        return {*action, true};
+        return {action, true};
       }
     }
     return {std::nullopt, true};
@@ -498,7 +498,7 @@ BottomScreen::Outcome BottomScreen::press(Key key) {
       if (static_cast<int>(picked_.size()) == resources_->howMany) {
         if (const auto action = resources_->actionFor(picked_)) {
           mode_ = Mode::Board;
-          return {*action, true};
+          return {action, true};
         }
       }
       const auto resource = static_cast<Resource>(resourceFocus_);
