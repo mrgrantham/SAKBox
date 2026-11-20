@@ -33,6 +33,10 @@
 
 namespace CosmicHex::Handheld {
 
+// How long words take to fade in, once what they're over has settled (the
+// user's: never on something still moving, and never just appearing)
+inline constexpr float kSecondsWordsIn = 0.25f;
+
 // ---------------------------------------------------------------------------
 // Tiles turned over, shown one after another
 
@@ -104,6 +108,8 @@ public:
   // Card i: how far thrown in (0 to 1, eased) and turned over (0 to 1)
   float thrown(std::size_t i, double now) const;
   float turned(std::size_t i, double now) const;
+  // Card i's words fading in once it's turned over (0 to 1)
+  float words(std::size_t i, double now) const;
 
 private:
   ScratchPadd::Motion::Showing shown_;
@@ -199,6 +205,8 @@ public:
   // in turn (`order`: 0 the first to move), straight through time (the
   // view gives it its curve)
   float sorted(double now, int order = 0) const;
+  // ...and its place (1st, 2nd...) fading in once it's there
+  float sortedWords(double now, int order) const;
 
 private:
   void beginRound(std::size_t round, double now);
@@ -264,6 +272,7 @@ public:
   struct Moment {
     float up, tumble, settle, card, away;
     bool waitingForChoice; // (the star, its resource not chosen yet: held)
+    float words;           // (the card's words fading in once it's full size)
   };
   Moment at(float seconds) const;
 
@@ -349,6 +358,7 @@ public:
   // (0 to 1); nothing when none shows
   struct Moment {
     float up, turned, away;
+    float words; // (the card's words fading in once it's turned over)
   };
   std::optional<Moment> at(double now) const;
   bool moving(double now) const { return at(now).has_value(); }
@@ -380,6 +390,7 @@ public:
     Resource shown;
     std::optional<Resource> leaving;
     float in;      // (0 just arrived at the side, 1 in the middle)
+    float words;   // (its name fading in once it's in the middle)
     int direction; // (1: moving right, so in from the right)
   };
   std::optional<Moment> at(double now) const;

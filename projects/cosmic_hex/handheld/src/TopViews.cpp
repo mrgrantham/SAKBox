@@ -25,6 +25,17 @@ namespace Scene = ScratchPadd::Scene;
 namespace Motion = ScratchPadd::Motion;
 
 namespace {
+// Words fading in (the user's: never just appearing): `colour` blended up
+// from `under` (what they're over, as near as can be: the DS's text layer
+// can't be see-through) by `amount`, 0 to 1
+Scene::Colour fadedIn(Scene::Colour colour, float amount, Scene::Colour under = {8, 12, 22}) {
+  const float a = std::clamp(amount, 0.0f, 1.0f);
+  const auto mix = [a](std::uint8_t from, std::uint8_t to) {
+    return static_cast<std::uint8_t>(std::lround(from + (to - from) * a));
+  };
+  return {mix(under.r, colour.r), mix(under.g, colour.g), mix(under.b, colour.b), colour.a};
+}
+
 constexpr float kPi = 3.14159265f;
 
 // A flat picture covering screen pixels (x, y) to (x + w, y + h)
@@ -49,7 +60,7 @@ void backdrop(const TopFrame &f, float top, Scene::Colour colour, float alpha) {
 
 namespace {
 // A number token's number over its chip, on a tile at `pose` facing you
-void tokenNumber(const TopFrame &f, const Scene::Transform &pose, int number) {
+void tokenNumber(const TopFrame &f, const Scene::Transform &pose, int number, float shown) {
   const float digitsDown = kChipDown - 0.24f * kChipRadius; // (the digits' middle)
   float x = 0, y = 0, edgeX = 0, edgeY = 0;
   if (!f.renderer.toScreen(pose.apply({0, kChipLift, digitsDown}), x, y) ||
@@ -64,7 +75,7 @@ void tokenNumber(const TopFrame &f, const Scene::Transform &pose, int number) {
   constexpr Scene::Colour kChip{242, 234, 216}, kInk{30, 30, 36}; // (make_number_chips.py's)
   const float w = std::max(ink.width + 4, 0.62f * across), h = ink.height + 4;
   f.overlay.rectangle(x - w / 2, y - h / 2, w, h, kChip);
-  f.overlay.textCentred(x, y, words, kInk, scale);
+  f.overlay.textCentred(x, y, words, fadedIn(kInk, shown, kChip), scale);
 }
 } // namespace
 
@@ -132,18 +143,21 @@ void drawDiscovery(const TopFrame &f, const DiscoveryShow &show,
   if (lifted > 0.98f) {
     f.overlay.textCentred(f.width / 2, 10 * k, f.names[found->by] + " discovers",
                           BoardColours::ofPlayer(found->by), k);
-    if (moment->turn >= 1) {
-      f.overlay.textCentred(f.width / 2, f.height / 2 - 66 * k, found->name, Palette::kWords,
-                            2 * k);
-      f.overlay.textCentred(f.width / 2, f.height / 2 + 64 * k, found->gives, Palette::kSoftWords,
-                            1.5f * k);
+    // (once it's turned over, fading in)
+    if (moment->named > 0) {
+      f.overlay.textCentred(f.width / 2, f.height / 2 - 66 * k, found->name,
+                            fadedIn(Palette::kWords, moment->named), 2 * k);
+      f.overlay.textCentred(f.width / 2, f.height / 2 + 64 * k, found->gives,
+                            fadedIn(Palette::kSoftWords, moment->named), 1.5f * k);
     }
     // The token's number written sharp over its picture once it's landed
     // (the user's A: a small texture's digits blur; the words are crisp
     // on every screen), on the chip's own cream, where its digits are (the
     // upper part: 20 to 56 of its picture's 100)
-    if (found->number > 0 && moment->chip >= 1)
-      tokenNumber(f, pose, found->number);
+    // (once the token's down: its drop overshoots, so not as it first
+    // reaches its place)
+    if (found->number > 0 && moment->numbered > 0)
+      tokenNumber(f, pose, found->number, moment->numbered);
   }
 }
 
@@ -155,7 +169,7 @@ namespace {
 // its picture (sharp when `closeUp` shows it), its body, and once flat its
 // title and words
 void actionCardFace(const TopFrame &f, Art::Card card, float x, float y, float w, float turned,
-                    const ScratchPadd::PictureSlot *closeUp) {
+                    const ScratchPadd::PictureSlot *closeUp, float shown = 1) {
   const float k = f.k();
   const float pictureH = w * 52 / 63, cardH = w * 88 / 63;
   const float across = std::abs(std::cos(turned * kPi));
@@ -166,7 +180,7 @@ void actionCardFace(const TopFrame &f, Art::Card card, float x, float y, float w
           pictureH);
   // The card's body under its picture, and once flat, its words
   f.overlay.rectangle(cx, y + pictureH, cw, cardH - pictureH, {236, 232, 220, 255});
-  if (turned < 1)
+  if (turned < 1 || shown <= 0)
     return;
   const Art::CardWords words = Art::wordsOf(card);
   // (the title white, centred on the label band, 3 to 19 of the card's
@@ -174,14 +188,15 @@ void actionCardFace(const TopFrame &f, Art::Card card, float x, float y, float w
   float titleScale = 2 * k;
   while (titleScale > k && Scene::Overlay::textWidth(words.shortTitle, titleScale) > w * 54 / 63)
     titleScale -= 0.25f * k;
-  f.overlay.textCentred(x + w / 2, y + w * 11 / 63, words.shortTitle, Palette::kWords, titleScale);
+  f.overlay.textCentred(x + w / 2, y + w * 11 / 63, words.shortTitle,
+                        fadedIn(Palette::kWords, shown), titleScale);
   // (wrapped by the width the letters take as drawn, spacing included)
   const auto lines = Scene::wrapText(words.words, w - 8 * k, [k](std::string_view line) {
     return Scene::Overlay::textWidth(line, k);
   });
   for (std::size_t l = 0; l < lines.size() && l < 6; ++l)
     f.overlay.text(x + 4 * k, y + pictureH + (3 + 9 * static_cast<float>(l)) * k, lines[l],
-                   {40, 40, 48}, k);
+                   fadedIn({40, 40, 48}, shown, {236, 232, 220}), k);
 }
 } // namespace
 
@@ -214,7 +229,7 @@ void drawDealtCards(const TopFrame &f, const DealtShow &show, int chosen,
     }
     const Art::Card card = cards[i];
     const ScratchPadd::PictureSlot *closeUp = i < closeUps.size() ? &closeUps[i] : nullptr;
-    actionCardFace(f, card, x, y, w, turned, closeUp);
+    actionCardFace(f, card, x, y, w, turned, closeUp, show.words(i, f.now));
     if (turned < 1)
       continue;
     if (static_cast<int>(i) == chosen) {
@@ -255,7 +270,7 @@ void drawCardPlay(const TopFrame &f, const CardPlayShow &show, const State &stat
     picture(f, f.pictures.backSquare, f.pictures.backs[static_cast<std::size_t>(Art::kActionBack)],
             x + cw * (1 - across) / 2, y, cw * across, cw * 88 / 63);
   } else {
-    actionCardFace(f, play->card, x, y, cw, m->away > 0 ? 0.999f : m->turned, nullptr);
+    actionCardFace(f, play->card, x, y, cw, m->away > 0 ? 0.999f : m->turned, nullptr, m->words);
   }
   if (m->away <= 0) {
     const bool charter = play->card >= Art::Card::CharterThreeOfAKind;
@@ -547,9 +562,11 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
                                  : 0.5f + 0.5f * Motion::along(Motion::Curve::Settle, 2 * t - 1);
     const float x = laneX(p) + (laneX(rankOf(p)) - laneX(p)) * swung;
     const float hop = rankOf(p) == p ? 0 : -14 * k * std::sin(kPi * t);
-    if (show.sorted(f.now, rankOf(p)) >= 1 && rankOf(p) < static_cast<int>(kOrdinals.size()))
-      overlay.textCentred(x, 60 * k, kOrdinals[static_cast<std::size_t>(rankOf(p))],
-                          rankOf(p) == 0 ? Palette::kHighlight : Palette::kDimWords, k);
+    if (const float in = show.sortedWords(f.now, rankOf(p));
+        in > 0 && rankOf(p) < static_cast<int>(kOrdinals.size()))
+      overlay.textCentred(
+          x, 60 * k, kOrdinals[static_cast<std::size_t>(rankOf(p))],
+          fadedIn(rankOf(p) == 0 ? Palette::kHighlight : Palette::kDimWords, in, {10, 15, 26}), k);
     const auto round = static_cast<std::size_t>(show.round());
     const bool winner = show.allLanded() && p == roll.first;
     // (sorted: those who sat out the last round's ties show their last throw)
@@ -683,10 +700,11 @@ void drawPick(const TopFrame &f, const PickShow &show, std::string_view title,
     card(*m->leaving, midX - dir * travel * m->in);
   const float x = midX + dir * travel * (1 - m->in);
   card(m->shown, x);
-  if (m->in >= 1) {
-    f.overlay.textCentred(x, midY - h / 2 + h * 11 / 52, GameWords::of(m->shown), Palette::kWords,
+  if (m->words > 0)
+    f.overlay.textCentred(x, midY - h / 2 + h * 11 / 52, GameWords::of(m->shown),
+                          fadedIn(Palette::kWords, m->words,
+                                  f.pictures.resourceBands[static_cast<std::size_t>(m->shown)]),
                           1.5f * k);
-  }
   f.overlay.textCentred(f.width / 2, 12 * k, title, Palette::kWords, k);
   // What you could build with it: a ship, a station, a colony, a card,
   // each dimmed when you couldn't even with this one
@@ -817,13 +835,16 @@ void drawHomePay(const TopFrame &f, const HomePayShow &show, const State &state,
             sharp ? closeUp.texture() : f.pictures.resources[r], cx - w / 2, cy - h / 2, w, h);
   // (its name on its label band, 3 to 19 of the card's 52-unit picture,
   // once it's full size)
-  if (m.away <= 0 && m.card >= 1)
+  // (its words once it's full size, fading in)
+  if (m.away <= 0 && m.words > 0) {
     overlay.textCentred(cx, cy - h / 2 + h * 11 / 52, GameWords::of(*pay->resource),
-                        Palette::kWords, 1.5f * k);
-  if (m.away <= 0 && m.card >= 1)
-    overlay.textCentred(f.width / 2, heldY + bigH / 2 + 10 * k,
-                        "+1 " + std::string(GameWords::of(*pay->resource)), Palette::kWords,
+                        fadedIn(Palette::kWords, m.words,
+                                f.pictures.resourceBands[static_cast<std::size_t>(*pay->resource)]),
                         1.5f * k);
+    overlay.textCentred(f.width / 2, heldY + bigH / 2 + 10 * k,
+                        "+1 " + std::string(GameWords::of(*pay->resource)),
+                        fadedIn(Palette::kWords, m.words), 1.5f * k);
+  }
 }
 
 } // namespace CosmicHex::Handheld

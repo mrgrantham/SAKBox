@@ -90,6 +90,8 @@ Moment at(float seconds) {
           .chip = along(Curve::Settle, part(seconds, kChipFrom, kSecondsChip)),
           .down = along(Curve::Settle, part(seconds, kDownFrom, kSecondsDown)),
           .fade = part(seconds, kFadeFrom, kSecondsFade),
+          .named = part(seconds, kChipFrom, kSecondsWordsIn),
+          .numbered = part(seconds, kChipFrom + kSecondsChip, kSecondsWordsIn),
           .back = seconds >= kFadeFrom,
           .done = seconds >= kSeconds};
 }

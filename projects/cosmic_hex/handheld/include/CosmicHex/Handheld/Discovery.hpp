@@ -39,12 +39,13 @@ struct Found {
 std::vector<Found> between(const State &before, const State &after);
 
 // The show's parts, in seconds
-inline constexpr float kSecondsUp = 0.6f;   // lifting off the board, face down
-inline constexpr float kSecondsTurn = 0.5f; // turning over, facing you
-inline constexpr float kSecondsChip = 0.4f; // the number dropping on
-inline constexpr float kSecondsHold = 1.4f; // read it
-inline constexpr float kSecondsDown = 0.6f; // back down flat in its place
-inline constexpr float kSecondsFade = 0.4f; // the bottom screen's tile fading in
+inline constexpr float kSecondsUp = 0.6f;       // lifting off the board, face down
+inline constexpr float kSecondsTurn = 0.5f;     // turning over, facing you
+inline constexpr float kSecondsChip = 0.4f;     // the number dropping on
+inline constexpr float kSecondsWordsIn = 0.25f; // words fading in, once settled
+inline constexpr float kSecondsHold = 1.4f;     // read it
+inline constexpr float kSecondsDown = 0.6f;     // back down flat in its place
+inline constexpr float kSecondsFade = 0.4f;     // the bottom screen's tile fading in
 inline constexpr float kSeconds =
     kSecondsUp + kSecondsTurn + kSecondsChip + kSecondsHold + kSecondsDown + kSecondsFade;
 
@@ -53,13 +54,17 @@ inline constexpr float kSeconds =
 // (docs/research/animation-whimsy.md: a wind-up before it lifts, a settle
 // as it lands, an arc between)
 struct Moment {
-  float up = 0;      // 0 on the board, 1 facing you: a small dip first (the
-                     // wind-up, below 0), then Gentle
-  float turn = 0;    // face down at 0, face up at 1 (Gentle)
-  float chip = 0;    // the token's drop (Settle: a small bounce)
-  float down = 0;    // 0 facing you, 1 back flat on the board: Settle, past 1
-                     // a hair (it sinks a touch and comes back)
-  float fade = 0;    // the bottom screen's tile: 0 face down, 1 shown
+  float up = 0;   // 0 on the board, 1 facing you: a small dip first (the
+                  // wind-up, below 0), then Gentle
+  float turn = 0; // face down at 0, face up at 1 (Gentle)
+  float chip = 0; // the token's drop (Settle: a small bounce)
+  float down = 0; // 0 facing you, 1 back flat on the board: Settle, past 1
+                  // a hair (it sinks a touch and comes back)
+  float fade = 0; // the bottom screen's tile: 0 face down, 1 shown
+  // Words fading in once what they're over has settled (the user's): its
+  // name and what it gives once it's turned over, the token's number once
+  // the token's down (0 none yet, 1 all there)
+  float named = 0, numbered = 0;
   bool back = false; // (down's time is up: it lies on the board again)
   bool done = false;
   // How far off the board it is: 0 on it, 1 facing you

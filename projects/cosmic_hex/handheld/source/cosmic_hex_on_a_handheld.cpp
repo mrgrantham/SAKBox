@@ -866,31 +866,39 @@ private:
     const float radius = kTopWidth >= 400 ? 50.0f : 42.0f;
     const float x = (*middle)[0], y = (*middle)[1];
     // Popping in as the dice settle (the user's: as the home's card does):
-    // the hexagon growing a little past its size and settling, the words
-    // growing with it in whole steps (the overlay's sharpest), the pair's
-    // line once it's full size
+    // the hexagon growing a little past its size and settling; then, once
+    // it has, its words fading in (never on something still moving)
     const float popped = ScratchPadd::Motion::along(
         ScratchPadd::Motion::Curve::Settle,
         std::min(1.0f, static_cast<float>(shownSeconds_) / kSecondsRollPop));
     // Both solid: a see-through hexagon's six triangles were blended twice
     // along the edges they share, which showed as dark lines
+    constexpr Scene::Colour kInside{12, 18, 30, 255};
     overlay.hexagon(x, y, (radius + 3) * popped, Palette::kHighlight); // (an amber edge)
-    overlay.hexagon(x, y, radius * popped, {12, 18, 30, 255});
-    if (popped < 0.3f)
+    overlay.hexagon(x, y, radius * popped, kInside);
+    const float words =
+        dice_ == DiceStage::Showing
+            ? std::clamp((static_cast<float>(shownSeconds_) - kSecondsRollPop) / kSecondsWordsIn,
+                         0.0f, 1.0f)
+            : 1.0f;
+    if (words <= 0)
       return;
-    const float grown = std::max(1.0f, std::round(big * std::min(1.0f, popped)));
-    if (popped < 0.95f && dice_ == DiceStage::Showing) {
-      overlay.textCentred(x, y, total, Palette::kHighlight, grown);
-      return;
-    }
+    const auto faded = [&](Scene::Colour c) {
+      const auto mix = [words](std::uint8_t from, std::uint8_t to) {
+        return static_cast<std::uint8_t>(std::lround(from + (to - from) * words));
+      };
+      return Scene::Colour{mix(kInside.r, c.r), mix(kInside.g, c.g), mix(kInside.b, c.b), 255};
+    };
     // The total over the two dice, the two lines together centred on the
     // hexagon by their letters' own pixels (Overlay::textCentred)
     const auto totalInk = Scene::Overlay::inkOf(total, big),
                pairInk = Scene::Overlay::inkOf(pair, small);
     constexpr float kGap = 6;
     const float height = totalInk.height + kGap + pairInk.height;
-    overlay.textCentred(x, y - height / 2 + totalInk.height / 2, total, Palette::kHighlight, big);
-    overlay.textCentred(x, y + height / 2 - pairInk.height / 2, pair, Palette::kWords, small);
+    overlay.textCentred(x, y - height / 2 + totalInk.height / 2, total, faded(Palette::kHighlight),
+                        big);
+    overlay.textCentred(x, y + height / 2 - pairInk.height / 2, pair, faded(Palette::kWords),
+                        small);
   }
 
   // The board's light: the game's (a lamp above and to one side, toon
@@ -2108,8 +2116,8 @@ private:
   Clock::time_point titleStarted_;
   // The physics dice
   enum class DiceStage : std::uint8_t { Idle, Rolling, Showing, Pulling };
-  static constexpr double kSecondsShowingDice = 0.75;
-  static constexpr float kSecondsRollPop = 0.3f; // (the roll's number popping in)
+  static constexpr double kSecondsShowingDice = 1.0; // (the pop, the words, a moment to read)
+  static constexpr float kSecondsRollPop = 0.3f;     // (the roll's number popping in)
   Dice::DiceTray tray_;
   Scene::Mesh die_;
   DiceStage dice_ = DiceStage::Idle;

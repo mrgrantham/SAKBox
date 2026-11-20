@@ -116,6 +116,14 @@ float DealtShow::thrown(std::size_t i, double now) const {
                        (since - kThrowStagger * static_cast<float>(i)) / kSecondsThrow);
 }
 
+float DealtShow::words(std::size_t i, double now) const {
+  const auto since = static_cast<float>(shown_.seconds(now));
+  return std::clamp(
+      (since - kSecondsThrow - kTurnAfter - kTurnStagger * static_cast<float>(i) - kSecondsTurn) /
+          kSecondsWordsIn,
+      0.0f, 1.0f);
+}
+
 float DealtShow::turned(std::size_t i, double now) const {
   const auto since = static_cast<float>(shown_.seconds(now));
   return std::clamp((since - kSecondsThrow - kTurnAfter - kTurnStagger * static_cast<float>(i)) /
@@ -298,6 +306,15 @@ float FirstRollShow::sorted(double now, int order) const {
   return std::clamp(t, 0.0f, 1.0f);
 }
 
+float FirstRollShow::sortedWords(double now, int order) const {
+  if (!finishedAt_)
+    return 0;
+  constexpr float kPause = 0.4f; // (as sorted's)
+  const float since = static_cast<float>(now - *finishedAt_) - kPause -
+                      kSortStagger * static_cast<float>(order) - kSecondsSort;
+  return std::clamp(since / kSecondsWordsIn, 0.0f, 1.0f);
+}
+
 bool FirstRollShow::done(double now) const {
   return on_ && finishedAt_ && now - *finishedAt_ >= kSecondsRead;
 }
@@ -354,7 +371,8 @@ HomePayShow::Moment HomePayShow::at(float s) const {
           .settle = part(kSecondsUp + kSecondsTumble, kSecondsSettle),
           .card = choosing ? 0 : part(cardFrom, kSecondsCard),
           .away = choosing ? 0 : part(cardFrom + kSecondsCard + kSecondsHold, kSecondsAway),
-          .waitingForChoice = choosing && s >= kDieSeconds};
+          .waitingForChoice = choosing && s >= kDieSeconds,
+          .words = choosing ? 0 : part(cardFrom + kSecondsCard, kSecondsWordsIn)};
 }
 
 HomePayShow::Step HomePayShow::update(double now) {
@@ -564,7 +582,8 @@ std::optional<CardPlayShow::Moment> CardPlayShow::at(double now) const {
       .up = Motion::along(Motion::Curve::Settle, part(0, kSecondsUp)),
       .turned = Motion::along(Motion::Curve::EaseInOut, part(kSecondsUp * 0.3f, kSecondsUp)),
       .away =
-          Motion::along(Motion::Curve::Anticipate, part(kSecondsUp + kSecondsHold, kSecondsAway))};
+          Motion::along(Motion::Curve::Anticipate, part(kSecondsUp + kSecondsHold, kSecondsAway)),
+      .words = part(kSecondsUp * 1.3f, kSecondsWordsIn)};
 }
 
 CardPlayShow::Step CardPlayShow::update(double now) {
@@ -609,8 +628,10 @@ std::optional<PickShow::Moment> PickShow::at(double now) const {
   if (!shown_)
     return std::nullopt;
   const float t = std::clamp(static_cast<float>(now - since_) / kSecondsSlide, 0.0f, 1.0f);
+  const auto words =
+      std::clamp(static_cast<float>(now - since_ - kSecondsSlide) / kSecondsWordsIn, 0.0f, 1.0f);
   return Moment{*shown_, t < 1 ? leaving_ : std::nullopt, Motion::along(Motion::Curve::EaseOut, t),
-                direction_};
+                words, direction_};
 }
 
 bool PickShow::moving(double now) const { return shown_ && now - since_ < kSecondsSlide; }
