@@ -42,13 +42,19 @@ std::optional<std::pair<int, int>> RollDice::update(double now) {
     stage_ = Stage::Showing;
     shownSeconds_ = 0;
     rolled_ = tray_.faces();
-  } else if (stage_ == Stage::Showing && (shownSeconds_ += steps * step_) >= kSecondsShowing) {
-    tray_.startPull();
-    stage_ = Stage::Pulling;
-    return tray_.faces();
-  } else if (stage_ == Stage::Pulling && tray_.offScreen()) {
-    stage_ = Stage::Idle;
+    return std::nullopt;
   }
+  if (stage_ == Stage::Showing) {
+    shownSeconds_ += steps * step_;
+    if (shownSeconds_ >= kSecondsShowing) {
+      tray_.startPull();
+      stage_ = Stage::Pulling;
+      return tray_.faces();
+    }
+    return std::nullopt;
+  }
+  if (stage_ == Stage::Pulling && tray_.offScreen())
+    stage_ = Stage::Idle;
   return std::nullopt;
 }
 
