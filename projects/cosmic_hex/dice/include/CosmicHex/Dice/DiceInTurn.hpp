@@ -17,7 +17,10 @@
 //   dice.settleNow(0);                         // or: at rest at once (A)
 //   draw die i at dice.position(i), turned dice.orientation(i)
 //
-// The container is DiceTray's (its size, walls and glass).
+// The container is DiceTray's (its size, walls and glass). With lanes (the
+// user's), the glass is split across into one lane a die, walls between
+// them, and each die is thrown down its own lane from the top (z = -depth
+// / 2, towards +z), so no die hits another.
 #pragma once
 
 #include <cyclone/collide_fine.h>
@@ -29,11 +32,22 @@
 
 namespace CosmicHex::Dice {
 
+// Lanes: how many (0: none, the whole glass, thrown in from the left), and
+// the dice's size
+struct DiceLanes {
+  int count = 0;
+  double dieSize = 1.2; // (DiceTray::kDieSize)
+};
+
 class DiceInTurn {
 public:
   static constexpr int kMostDice = 4;
 
-  explicit DiceInTurn(double stepSeconds);
+  explicit DiceInTurn(double stepSeconds, DiceLanes lanes = {});
+  // Lane `lane`'s middle, across the glass (x), and its width
+  double laneMiddle(int lane) const;
+  double laneWidth() const;
+  double dieSize() const { return lanes_.dieSize; }
   ~DiceInTurn();
   DiceInTurn(const DiceInTurn &) = delete;
   DiceInTurn &operator=(const DiceInTurn &) = delete;
@@ -70,6 +84,7 @@ private:
   std::unique_ptr<Throw> makeThrow(int die, std::uint64_t seed) const;
 
   double step_;
+  DiceLanes lanes_;
   std::array<Slot, kMostDice> slots_{};
   std::unique_ptr<Throw> live_;
   int moving_ = -1;

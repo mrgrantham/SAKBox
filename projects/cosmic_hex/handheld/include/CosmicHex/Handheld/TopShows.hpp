@@ -181,13 +181,16 @@ public:
   void hurry(double now);
   bool done(double now) const;
 
-  // For drawing: this round's glass and whose die is which (its index the
-  // die's), each player's numbers so far, and whether the order's known
+  // For drawing: this round's glass (die p, in lane p, player p's), who
+  // throws this round, each player's numbers so far and when each came
+  // (for the odometer), and whether the order's known
   const Dice::DiceInTurn *dice() const { return dice_.get(); }
   const std::vector<int> &throwers() const { return throwers_; }
   int round() const { return round_; }
   // Player p's settled number in round r (0: none yet, or not thrown)
   int shown(std::size_t round, int player) const;
+  double shownAt(std::size_t round, int player) const;
+  static constexpr double kDieSize = 0.85; // (the roll's are 1.2)
   bool allLanded() const { return finishedAt_.has_value(); }
 
 private:
@@ -201,6 +204,7 @@ private:
   std::size_t round_ = 0, next_ = 0;
   std::vector<int> throwers_; // (this round's: die i is throwers_[i]'s)
   std::vector<std::vector<int>> shown_;
+  std::vector<std::vector<double>> shownAt_;
   std::unique_ptr<Dice::DiceInTurn> dice_;
   std::optional<double> landedAt_, finishedAt_;
 };

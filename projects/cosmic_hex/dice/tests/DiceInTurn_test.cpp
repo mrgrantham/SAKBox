@@ -71,3 +71,20 @@ TEST(DiceInTurnTest, ImpatientSetsItDownAtOnce) {
   EXPECT_TRUE(dice.settled(0));
   EXPECT_EQ(shownOnTop(dice.orientation(0)), 4);
 }
+
+// In lanes: each die lands on its number inside its own lane
+TEST(DiceInTurnTest, InLanesEachStaysInItsLane) {
+  DiceInTurn dice(1.0 / 30, {.count = 4, .dieSize = 0.9});
+  const std::array<int, 4> wanted{3, 6, 1, 4};
+  for (int i = 0; i < 4; ++i) {
+    dice.throwDie(i, 50 + static_cast<std::uint64_t>(i), wanted[static_cast<std::size_t>(i)]);
+    int steps = 0;
+    while (!dice.settled(i) && steps++ < 400)
+      dice.step();
+    ASSERT_TRUE(dice.settled(i));
+    EXPECT_EQ(shownOnTop(dice.orientation(i)), wanted[static_cast<std::size_t>(i)]);
+    const double x = static_cast<double>(dice.position(i).x);
+    EXPECT_GT(x, dice.laneMiddle(i) - dice.laneWidth() / 2);
+    EXPECT_LT(x, dice.laneMiddle(i) + dice.laneWidth() / 2);
+  }
+}

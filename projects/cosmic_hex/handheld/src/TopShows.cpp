@@ -194,6 +194,7 @@ void FirstRollShow::start(const FirstRoll &roll, std::uint64_t seed, double step
   step_ = stepSeconds;
   on_ = !roll.rounds.empty();
   shown_.assign(roll.rounds.size(), std::vector<int>(kMaxPlayers, 0));
+  shownAt_.assign(roll.rounds.size(), std::vector<double>(kMaxPlayers, 0));
   finishedAt_.reset();
   if (on_)
     beginRound(0, now);
@@ -212,7 +213,10 @@ void FirstRollShow::beginRound(std::size_t round, double now) {
   for (std::size_t p = 0; p < faces.size(); ++p)
     if (faces[p] > 0)
       throwers_.push_back(static_cast<int>(p));
-  dice_ = std::make_unique<Dice::DiceInTurn>(step_);
+  // (a lane each, the user's: each die down its own lane from the top,
+  // walls between, so none hits another; smaller dice than the roll's)
+  dice_ = std::make_unique<Dice::DiceInTurn>(
+      step_, Dice::DiceLanes{.count = static_cast<int>(faces.size()), .dieSize = kDieSize});
   simulated_ = now;
   landedAt_ = now - kSecondsBetween; // (the first thrown at once)
 }
@@ -221,7 +225,7 @@ void FirstRollShow::throwNext(double now) {
   if (!dice_ || next_ >= throwers_.size())
     return;
   const int player = throwers_[next_];
-  dice_->throwDie(static_cast<int>(next_), seed_ * 31 + round_ * 7 + next_,
+  dice_->throwDie(player, seed_ * 31 + round_ * 7 + next_,
                   roll_.rounds[round_][static_cast<std::size_t>(player)]);
   ++next_;
   landedAt_.reset();
@@ -242,10 +246,13 @@ void FirstRollShow::update(double now) {
   if (dice_->moving())
     return;
   // A die has landed: its number by its player's name
-  for (std::size_t i = 0; i < next_; ++i)
-    if (dice_->settled(static_cast<int>(i)))
-      shown_[round_][static_cast<std::size_t>(throwers_[i])] =
-          roll_.rounds[round_][static_cast<std::size_t>(throwers_[i])];
+  for (std::size_t i = 0; i < next_; ++i) {
+    const auto player = static_cast<std::size_t>(throwers_[i]);
+    if (dice_->settled(throwers_[i]) && shown_[round_][player] == 0) {
+      shown_[round_][player] = roll_.rounds[round_][player];
+      shownAt_[round_][player] = now;
+    }
+  }
   if (!landedAt_)
     landedAt_ = now;
   if (next_ < throwers_.size()) {
@@ -276,13 +283,19 @@ void FirstRollShow::hurry(double now) {
   // (the round's last die moving, or the round done: the next round now)
   if (dice_ && dice_->moving())
     for (std::size_t i = 0; i < next_; ++i)
-      dice_->settleNow(static_cast<int>(i));
+      dice_->settleNow(throwers_[i]);
   landedAt_ = now - kSecondsBetweenRounds;
   update(now);
 }
 
 bool FirstRollShow::done(double now) const {
   return on_ && finishedAt_ && now - *finishedAt_ >= kSecondsRead;
+}
+
+double FirstRollShow::shownAt(std::size_t round, int player) const {
+  if (round >= shownAt_.size() || player < 0 || player >= kMaxPlayers)
+    return 0;
+  return shownAt_[round][static_cast<std::size_t>(player)];
 }
 
 int FirstRollShow::shown(std::size_t round, int player) const {

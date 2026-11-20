@@ -424,6 +424,31 @@ void drawOtherPlayer(const TopFrame &f, const PlayerView &view, float down) {
 
 // -------------------------------------------------------------- First roll
 
+namespace {
+// A number rolling up into place like an odometer (the user's): 1, 2, ...
+// up to `value`, each sliding up through a window a line high, slowing as
+// it comes to `value`, over half a second from `seconds` 0. The window's
+// edges are masked in the first roll's backdrop colour (the overlay draws
+// whatever it's given: no clipping), so draw what's over it after
+void odometer(const TopFrame &f, float x, float y, int value, float seconds, Scene::Colour colour) {
+  const float k = f.k(), scale = std::round(1.5f * k);
+  const float line = Scene::Overlay::inkOf("8", scale).height + 4 * k;
+  constexpr float kSeconds = 0.5f;
+  // (q: how far it's rolled, -1 nothing yet to value - 1 at rest)
+  const float t = std::clamp(seconds / kSeconds, 0.0f, 1.0f);
+  const float q = -1 + Motion::along(Motion::Curve::EaseOut, t) * static_cast<float>(value);
+  for (int d = 1; d <= value; ++d) {
+    const float offset = static_cast<float>(d - 1) - q; // (in lines: 0 in the window)
+    if (offset > -1 && offset < 1)
+      f.overlay.textCentred(x, y + offset * line, std::to_string(d), colour, scale);
+  }
+  constexpr Scene::Colour kBackdrop{10, 15, 26}; // (drawFirstRoll's)
+  const float w = 12 * k;
+  f.overlay.rectangle(x - w, y - 1.6f * line, 2 * w, 1.1f * line, kBackdrop);
+  f.overlay.rectangle(x - w, y + 0.5f * line, 2 * w, 1.1f * line, kBackdrop);
+}
+} // namespace
+
 void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow &show) {
   if (roll.rounds.empty())
     return;
@@ -434,45 +459,66 @@ void drawFirstRoll(const TopFrame &f, const FirstRoll &roll, const FirstRollShow
   f.renderer.draw(f.pictures.pictureSquare,
                   onScreenAt(f.camera, f.width, f.height, 0, 0, f.width, f.height, 7.5f),
                   {.shading = Scene::Material::Shading::Unlit, .colour = {10, 15, 26}});
-  // The dice of this round, each in its player's colour
-  if (const Dice::DiceInTurn *dice = show.dice(); dice && f.pictures.die) {
-    const Scene::Transform glass =
-        glassFrame(f.camera, f.width / f.height, static_cast<float>(Dice::DiceTray::kWidth),
-                   static_cast<float>(Dice::DiceTray::kDepth));
+  // The glass, and where a point on its floor shows on the screen
+  const Scene::Transform glass =
+      glassFrame(f.camera, f.width / f.height, static_cast<float>(Dice::DiceTray::kWidth),
+                 static_cast<float>(Dice::DiceTray::kDepth));
+  const auto onFloor = [&](double x, double z) {
+    return onScreen(f.camera, f.width, f.height,
+                    glass.apply({static_cast<float>(x), 0, static_cast<float>(z)}));
+  };
+  const int players = static_cast<int>(roll.rounds.front().size());
+  const Dice::DiceInTurn *dice = show.dice();
+  // The dice of this round, each in its player's colour, in its own lane
+  if (dice && f.pictures.die) {
     const auto toFloat = [](cyclone::real r) { return static_cast<float>(static_cast<double>(r)); };
-    for (std::size_t i = 0; i < show.throwers().size(); ++i) {
-      const int die = static_cast<int>(i);
-      if (!dice->thrown(die))
+    const auto smaller = static_cast<float>(dice->dieSize() / Dice::DiceTray::kDieSize);
+    for (int p = 0; p < players; ++p) {
+      if (!dice->thrown(p))
         continue;
-      const cyclone::Vector3 at = dice->position(die);
-      const cyclone::Quaternion turn = dice->orientation(die);
+      const cyclone::Vector3 at = dice->position(p);
+      const cyclone::Quaternion turn = dice->orientation(p);
       f.renderer.draw(
           f.pictures.die,
           dieOnGlass(glass, {toFloat(at.x), toFloat(at.y), toFloat(at.z)},
-                     {toFloat(turn.r), toFloat(turn.i), toFloat(turn.j), toFloat(turn.k)}, 0),
-          {.shading = Scene::Material::Shading::Lit,
-           .colour = Palette::player(show.throwers()[i])});
+                     {toFloat(turn.r), toFloat(turn.i), toFloat(turn.j), toFloat(turn.k)}, 0) *
+              Scene::Transform::scaling({smaller, smaller, smaller}),
+          {.shading = Scene::Material::Shading::Lit, .colour = Palette::player(p)});
+    }
+    // The walls between the lanes: faint lines down the glass
+    for (int p = 1; p < players; ++p) {
+      const double x = dice->laneMiddle(p) - dice->laneWidth() / 2;
+      const auto top = onFloor(x, -Dice::DiceTray::kDepth / 2),
+                 bottom = onFloor(x, Dice::DiceTray::kDepth / 2);
+      if (top && bottom)
+        overlay.line((*top)[0], std::max((*top)[1], 50 * k), (*bottom)[0], (*bottom)[1],
+                     {60, 72, 98}, 1);
     }
   }
   overlay.textCentred(f.width / 2, 12 * k, "WHO GOES FIRST", Palette::kWords, 2 * k);
-  // Each player's name, and under it their numbers as their dice land
-  const int players = static_cast<int>(roll.rounds.front().size());
-  const float gap = 58 * k;
-  const float left = f.width / 2 - gap * static_cast<float>(players - 1) / 2;
+  // Each player's name over their lane, and under it their number rolling
+  // into place as their die lands (an odometer, the user's); the numbers of
+  // rounds before (the ties') small under it
   for (int p = 0; p < players; ++p) {
-    const float x = left + gap * static_cast<float>(p);
-    overlay.textCentred(x, 28 * k, f.names.shortOf(p), Palette::player(p), k);
-    std::string numbers;
-    for (std::size_t r = 0; r <= static_cast<std::size_t>(show.round()) && r < roll.rounds.size();
-         ++r)
-      if (const int n = show.shown(r, p))
-        numbers += (numbers.empty() ? "" : " ") + std::to_string(n);
+    float x = f.width / 2 + (static_cast<float>(p) - static_cast<float>(players - 1) / 2) * 58 * k;
+    if (dice)
+      if (const auto top = onFloor(dice->laneMiddle(p), -Dice::DiceTray::kDepth / 2))
+        x = (*top)[0];
+    const auto round = static_cast<std::size_t>(show.round());
     const bool winner = show.allLanded() && p == roll.first;
-    overlay.textCentred(x, 42 * k, numbers, winner ? Palette::kHighlight : Palette::kWords,
-                        1.5f * k);
+    if (const int n = show.shown(round, p))
+      odometer(f, x, 44 * k, n, static_cast<float>(f.now - show.shownAt(round, p)),
+               winner ? Palette::kHighlight : Palette::kWords);
+    std::string before;
+    for (std::size_t r = 0; r < round && r < roll.rounds.size(); ++r)
+      if (const int n = show.shown(r, p))
+        before += (before.empty() ? "" : " ") + std::to_string(n);
+    if (!before.empty())
+      overlay.textCentred(x, 58 * k, before, Palette::kDimWords, k);
+    overlay.textCentred(x, 28 * k, f.names.shortOf(p), Palette::player(p), k);
   }
   if (show.round() > 0 && !show.allLanded())
-    overlay.textCentred(f.width / 2, 56 * k, "tied: they throw again", Palette::kHighlight, k);
+    overlay.textCentred(f.width / 2, 70 * k, "tied: they throw again", Palette::kHighlight, k);
   // Once all have landed: the order, by name
   if (!show.allLanded())
     return;

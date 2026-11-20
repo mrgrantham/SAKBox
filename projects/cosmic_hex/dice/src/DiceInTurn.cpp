@@ -100,12 +100,20 @@ struct DiceInTurn::Throw {
   Die moving;
 };
 
-DiceInTurn::DiceInTurn(double stepSeconds) : step_(stepSeconds) {}
+DiceInTurn::DiceInTurn(double stepSeconds, DiceLanes lanes) : step_(stepSeconds), lanes_(lanes) {}
+
+double DiceInTurn::laneWidth() const {
+  return lanes_.count > 0 ? DiceTray::kWidth / lanes_.count : DiceTray::kWidth;
+}
+
+double DiceInTurn::laneMiddle(int lane) const {
+  return -DiceTray::kWidth / 2 + laneWidth() * (lane + 0.5);
+}
 DiceInTurn::~DiceInTurn() = default;
 
 std::unique_ptr<DiceInTurn::Throw> DiceInTurn::makeThrow(int die, std::uint64_t seed) const {
   auto t = std::make_unique<Throw>();
-  const auto half = static_cast<real>(DiceTray::kDieSize / 2);
+  const auto half = static_cast<real>(lanes_.dieSize / 2);
   // The glass: a floor, a lid and walls, facing in
   t->world.addPlane(plane({0, 1, 0}, 0));
   t->world.addPlane(plane({0, -1, 0}, static_cast<real>(-DiceTray::kHeight)));
@@ -145,20 +153,35 @@ std::unique_ptr<DiceInTurn::Throw> DiceInTurn::makeThrow(int die, std::uint64_t 
     t->world.addShape(d.get());
     t->fixed.push_back(std::move(d));
   }
-  // The die thrown: in from the left, at the seed's height, speed, angle
-  // and spin, turned at random (as DiceTray's)
+  // In lanes: walls either side of this die's lane (facing in)
+  if (lanes_.count > 0) {
+    const double left = laneMiddle(die) - laneWidth() / 2, right = left + laneWidth();
+    t->world.addPlane(plane({1, 0, 0}, static_cast<real>(left)));
+    t->world.addPlane(plane({-1, 0, 0}, static_cast<real>(-right)));
+  }
+  // The die thrown, at the seed's height, speed, angle and spin, turned at
+  // random: in from the left (as DiceTray's), or down its lane from the top
   SeededRandom::Generator random(seed);
   Die &d = t->moving;
   d.body = &d.rigid;
   d.halfSize = Vector3(half, half, half);
   cyclone::RigidBody &body = d.rigid;
-  body.setPosition(Vector3(static_cast<real>(-DiceTray::kWidth / 2 + 0.8),
-                           between(random, 1.5, 3.2), between(random, -1.6, 1.6)));
+  if (lanes_.count > 0)
+    body.setPosition(Vector3(static_cast<real>(laneMiddle(die)), between(random, 1.5, 3.2),
+                             static_cast<real>(-DiceTray::kDepth / 2 + 0.8)));
+  else
+    body.setPosition(Vector3(static_cast<real>(-DiceTray::kWidth / 2 + 0.8),
+                             between(random, 1.5, 3.2), between(random, -1.6, 1.6)));
   cyclone::Quaternion turn(between(random, -1, 1), between(random, -1, 1), between(random, -1, 1),
                            between(random, -1, 1));
   turn.normalise();
   body.setOrientation(turn);
-  body.setVelocity(Vector3(between(random, 8, 14), between(random, -2, 3), between(random, -3, 3)));
+  if (lanes_.count > 0) // (down its lane: a little sideways at most)
+    body.setVelocity(
+        Vector3(between(random, -0.6, 0.6), between(random, -2, 2), between(random, 5, 9)));
+  else
+    body.setVelocity(
+        Vector3(between(random, 8, 14), between(random, -2, 3), between(random, -3, 3)));
   body.setRotation(
       Vector3(between(random, -25, 25), between(random, -25, 25), between(random, -25, 25)));
   body.setMass(1);
