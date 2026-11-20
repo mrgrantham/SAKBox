@@ -525,7 +525,14 @@ private:
         }
       }
     }
-    // A tapped button's flash and message, for a second and a half
+    // A pressed button's glow (drawn again while it fades), and a tapped
+    // button's message, for a second and a half
+    if (bottomScreen_) {
+      bottomScreen_->setTime(secondsSince(startedAt_));
+      if (bottomScreen_->pressing() || pressDrawn_)
+        bottomDirty_ = true;
+      pressDrawn_ = bottomScreen_->pressing(); // (and once more, to clear it)
+    }
     if (bottomScreen_ && bottomScreen_->showingFeedback()) {
       if (!feedbackSince_) {
         feedbackSince_ = Clock::now();
@@ -2336,6 +2343,7 @@ private:
   std::optional<BottomScreen> bottomScreen_; // (its buttons and choosing screens)
   std::optional<Canvas> bottomCanvas_;
   std::optional<Clock::time_point> feedbackSince_;
+  bool pressDrawn_ = false;                    // (a button's press glow drawn last frame)
   bool rollAsked_ = false;                     // (you've said to throw the dice: Roll or A)
   Clock::time_point startedAt_ = Clock::now(); // (the scripted taps' times)
   TurnBanner banner_{static_cast<float>(kTopWidth)};

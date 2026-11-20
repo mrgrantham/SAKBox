@@ -54,15 +54,41 @@ TEST(ButtonsTest, TheDpadMovesToTheNearestUsableButton) {
   EXPECT_FALSE(panel.focus().has_value());
 }
 
-// Feedback: a flash and a message, until cleared
-TEST(ButtonsTest, AUsedButtonFlashesAndSays) {
+// Feedback: a press glows a moment (in, then out), and a message stays
+// until cleared
+TEST(ButtonsTest, APressGlowsAMomentAndSays) {
   Panel panel = aPanel();
   EXPECT_FALSE(panel.showingFeedback());
-  panel.flash(3, "C: not yet");
-  EXPECT_EQ(panel.flashed(), 3);
+  panel.press(3, 10.0, "C: not yet");
+  EXPECT_EQ(panel.pressed(), 3);
   EXPECT_EQ(panel.message(), "C: not yet");
+  EXPECT_FLOAT_EQ(panel.pressGlow(10.0), 0);
+  EXPECT_NEAR(panel.pressGlow(10.0 + Panel::kPressSeconds * 0.2), 1, 1e-5);
+  EXPECT_GT(panel.pressGlow(10.0 + Panel::kPressSeconds * 0.6), 0);
+  EXPECT_LT(panel.pressGlow(10.0 + Panel::kPressSeconds * 0.6), 1);
+  EXPECT_FALSE(panel.pressing(10.0 + Panel::kPressSeconds));
   panel.clearFeedback();
   EXPECT_FALSE(panel.showingFeedback());
+}
+
+// The glow is a see-through white over the button's inside; a toggle
+// that's on keeps its outline
+TEST(ButtonsTest, AGlowLightensAndAnOnToggleIsOutlined) {
+  Panel panel;
+  panel.set({{.id = 1, .area = {10, 10, 20, 20}, .label = ""},
+             {.id = 2, .area = {50, 10, 20, 20}, .label = "", .on = true}});
+  const Buttons::Style style;
+  Canvas canvas(100, 40);
+  canvas.clear({0, 0, 0, 255});
+  panel.draw(canvas, style);
+  const Buttons::Colour face = canvas.pixels()[20 * 100 + 20];
+  panel.press(1, 0.0);
+  panel.setTime(Panel::kPressSeconds * 0.2);
+  panel.draw(canvas, style);
+  const Buttons::Colour glowing = canvas.pixels()[20 * 100 + 20];
+  EXPECT_GT(glowing.r, face.r);
+  EXPECT_GT(glowing.b, face.b);
+  EXPECT_EQ(canvas.pixels()[9 * 100 + 60], style.on); // (the on outline, just outside)
 }
 
 // Drawn: each button's face, a focused one's outline in the focus colour,

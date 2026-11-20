@@ -44,6 +44,9 @@ public:
   // Another picture of the same size, as it is (nothing if it isn't)
   void copy(std::span<const Colour> pixels);
   void fillRect(float x, float y, float w, float h, Colour colour);
+  // The same, see-through: `colour` laid over what's there, `opacity` of it
+  // (0 to 1; a button's press glow)
+  void blendRect(float x, float y, float w, float h, Colour colour, float opacity);
   void outline(float x, float y, float w, float h, Colour colour, float thickness = 1);
   // Words from their top left, or with their letters' pixels centred on
   // (x, y); `scale` as the overlay's

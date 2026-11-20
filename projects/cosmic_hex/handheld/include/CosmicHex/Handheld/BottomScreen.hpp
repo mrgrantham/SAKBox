@@ -103,6 +103,10 @@ public:
   // moment (clearFeedback), and redraws
   const std::string &message() const { return buttons_.message(); }
   bool showingFeedback() const { return buttons_.showingFeedback(); }
+  // The time now (seconds, the app's clock), each frame: a pressed
+  // button glows a moment, and pressing() says to draw again meanwhile
+  void setTime(double now) { now_ = now; }
+  bool pressing() const { return buttons_.pressing(now_); }
   void clearFeedback();
 
   // Whether a choosing screen covers the board (else the board shows, with
@@ -150,6 +154,7 @@ private:
   int heldChosen_ = -1;
   std::optional<KeepChoice> keep_; // (after buying: the two to keep one of)
   int keepChosen_ = -1;
+  double now_ = 0;                                 // (setTime)
   bool moveListButton_ = false, moveList_ = false; // (debug builds' list of moves)
   TradeRoom trade_;                                // (the trade room)
   std::vector<Action> queued_;                     // (its moves still to make)

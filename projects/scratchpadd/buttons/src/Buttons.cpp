@@ -15,8 +15,8 @@ void Panel::set(std::vector<Button> buttons) {
   buttons_ = std::move(buttons);
   if (focus_ && !find(*focus_))
     focus_.reset();
-  if (flashed_ && !find(*flashed_))
-    flashed_.reset();
+  if (pressed_ && !find(*pressed_))
+    pressed_.reset();
 }
 
 const Button *Panel::find(int id) const {
@@ -83,15 +83,23 @@ void Panel::move(Direction direction) {
     focus_ = best->id;
 }
 
-void Panel::flash(int id, std::string message) {
-  flashed_ = id;
-  message_ = std::move(message);
+void Panel::press(int id, double now, std::string message) {
+  pressed_ = id;
+  pressedAt_ = now;
+  if (!message.empty())
+    message_ = std::move(message);
 }
 
-void Panel::clearFeedback() {
-  flashed_.reset();
-  message_.clear();
+float Panel::pressGlow(double now) const {
+  if (!pressed_)
+    return 0;
+  const double t = (now - pressedAt_) / kPressSeconds;
+  if (t < 0 || t >= 1)
+    return 0;
+  return static_cast<float>(t < 0.2 ? t / 0.2 : 1 - (t - 0.2) / 0.8);
 }
+
+void Panel::clearFeedback() { message_.clear(); }
 
 void Panel::draw(Canvas &canvas, const Style &style) const {
   for (const Button &button : buttons_) {
@@ -120,8 +128,13 @@ void Panel::draw(Canvas &canvas, const Style &style) const {
       canvas.outline(a.x, a.y, a.width, a.height, style.focus);
       canvas.outline(a.x + 1, a.y + 1, a.width - 2, a.height - 2, style.focus);
     }
-    if (flashed_ == button.id)
-      canvas.outline(a.x - 1, a.y - 1, a.width + 2, a.height + 2, style.flash, 2);
+    if (button.on)
+      canvas.outline(a.x - 1, a.y - 1, a.width + 2, a.height + 2, style.on, 2);
+    if (pressed_ == button.id) {
+      if (const float glow = pressGlow(now_); glow > 0)
+        canvas.blendRect(a.x + 1, a.y + 1, a.width - 2, a.height - 2, style.press,
+                         style.pressOpacity * glow);
+    }
   }
   if (!message_.empty() && messageArea_) {
     const Area &m = *messageArea_;
@@ -135,7 +148,7 @@ std::vector<Area> Panel::areas() const {
   std::vector<Area> out;
   for (const Button &button : buttons_) {
     const Area &a = button.area;
-    out.push_back({a.x - 2, a.y - 2, a.width + 4, a.height + 4}); // (the flash's outline too)
+    out.push_back({a.x - 2, a.y - 2, a.width + 4, a.height + 4}); // (the on outline too)
   }
   if (messageArea_)
     out.push_back(*messageArea_);

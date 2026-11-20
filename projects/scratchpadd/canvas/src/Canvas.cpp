@@ -59,6 +59,26 @@ void Canvas::fillRect(float x, float y, float w, float h, Colour colour) {
                 std::max(0, x1 - x0), colour);
 }
 
+void Canvas::blendRect(float x, float y, float w, float h, Colour colour, float opacity) {
+  const int x0 = std::max(0, static_cast<int>(std::lround(x)));
+  const int y0 = std::max(0, static_cast<int>(std::lround(y)));
+  const int x1 = std::min(width_, static_cast<int>(std::lround(x + w)));
+  const int y1 = std::min(height_, static_cast<int>(std::lround(y + h)));
+  // (in 256ths, whole numbers: no floating point per pixel on a DS)
+  const int a = std::clamp(static_cast<int>(std::lround(opacity * 256)), 0, 256);
+  if (a == 0)
+    return;
+  const auto mix = [a](std::uint8_t under, std::uint8_t over) {
+    return static_cast<std::uint8_t>((under * (256 - a) + over * a) >> 8);
+  };
+  for (int py = y0; py < y1; ++py)
+    for (int px = x0; px < x1; ++px) {
+      Colour &under = pixels_[static_cast<std::size_t>(py) * static_cast<std::size_t>(width_) +
+                              static_cast<std::size_t>(px)];
+      under = {mix(under.r, colour.r), mix(under.g, colour.g), mix(under.b, colour.b), under.a};
+    }
+}
+
 void Canvas::outline(float x, float y, float w, float h, Colour colour, float thickness) {
   fillRect(x, y, w, thickness, colour);
   fillRect(x, y + h - thickness, w, thickness, colour);

@@ -131,7 +131,7 @@ BottomScreen::Outcome BottomScreen::tap(int x, int y,
     if (const std::optional<int> touched = buttons_.at(x, y)) {
       const auto button = static_cast<BoardButtons::Button>(*touched);
       const bool usable = buttons_.find(*touched)->usable;
-      buttons_.flash(*touched);
+      buttons_.press(*touched, now_);
       switch (button) {
       case BoardButtons::Button::Build:
         if (yourMove_) {
@@ -615,13 +615,17 @@ void BottomScreen::layOutButtons() {
     if (sprite.empty())
       sprite = recipePixels(Art::iconRecipeOf(static_cast<Art::Icon>(icon)), inner);
     const bool roll = place.button == BoardButtons::Button::Roll; // (Roll stands out)
-    buttons.push_back({.id = static_cast<int>(place.button),
-                       .area = {place.x, place.y, place.size, place.size},
-                       .icon = &sprite,
-                       .iconSize = inner,
-                       .usable = place.usable,
-                       .face = roll ? std::optional(kRollButton) : std::nullopt,
-                       .edge = roll ? std::optional(kRollEdge) : std::nullopt});
+    buttons.push_back(
+        {.id = static_cast<int>(place.button),
+         .area = {place.x, place.y, place.size, place.size},
+         .icon = &sprite,
+         .iconSize = inner,
+         .usable = place.usable,
+         // (the toggles, while what they show is open)
+         .on = (place.button == BoardButtons::Button::ShowResources && info_ == Info::Resources) ||
+               (place.button == BoardButtons::Button::MoveList && moveList_),
+         .face = roll ? std::optional(kRollButton) : std::nullopt,
+         .edge = roll ? std::optional(kRollEdge) : std::nullopt});
   }
   buttons_.set(std::move(buttons));
   // (a tapped button's message in a band at the bottom; while placing, the
@@ -684,9 +688,10 @@ void BottomScreen::draw(Canvas &canvas) {
 void BottomScreen::drawOverBoard(Canvas &canvas) {
   // The buttons over the board, and a tapped one's message
   layOutButtons();
+  buttons_.setTime(now_);
   buttons_.draw(canvas, {.face = kButton,
                          .edge = kButtonEdge,
-                         .flash = kHint,
+                         .on = kHint,
                          .band = kHintBand,
                          .message = kHint,
                          .dimmed = 0.35f});

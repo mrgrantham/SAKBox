@@ -105,7 +105,7 @@ TEST(BottomScreenTest, TheBoardsOwnTapsAndOthersTurns) {
   EXPECT_NE(canvas.at(4, 4).b, 48); // (Show resources' button)
 }
 
-// Every button tap shows: a flash, and a message when it can't do anything
+// Every button tap shows: a glow, and a message when it can't do anything
 // yet (the user couldn't tell taps had landed)
 TEST(BottomScreenTest, ButtonsAlwaysAnswer) {
   const State state = playUntil([](const State &s) { return s.phase == Phase::Main; });

@@ -40,6 +40,10 @@ struct Button {
   const std::vector<Colour> *icon = nullptr;
   int iconSize = 0;
   bool usable = true; // dimmed, and can't be confirmed, when not
+  // A toggle that's on (Show resources open, say): outlined in the style's
+  // `on` colour for as long as it is. The highlight means chosen or on,
+  // never just touched (the user's)
+  bool on = false;
   // Its own face and edge colours, when it should stand out (a Play
   // button's green); otherwise the style's
   std::optional<Colour> face, edge;
@@ -51,8 +55,12 @@ struct Style {
   Colour edge{58, 74, 106, 255};
   Colour words{226, 232, 244, 255};
   Colour focus{255, 214, 90, 255}; // the D-pad's button: a double outline
-  Colour flash{255, 214, 90, 255}; // a button just used
-  Colour band{10, 15, 26, 255};    // the message's band
+  Colour on{255, 214, 90, 255};    // a toggle that's on (Button::on)
+  // A press: a see-through white over the button's inside, in quickly and
+  // out (just to show the touch was taken and nothing froze)
+  Colour press{255, 255, 255, 255};
+  float pressOpacity = 0.35f;
+  Colour band{10, 15, 26, 255}; // the message's band
   Colour message{255, 214, 90, 255};
   float labelScale = 1;
   float dimmed = 0.35f; // an unusable button's icon, how strongly drawn
@@ -78,12 +86,21 @@ public:
   // middle, the closest along that way, then the closest across)
   void move(Direction direction);
 
-  // A button used: it flashes, and `message` shows (if any) in the band
-  void flash(int id, std::string message = {});
+  // A button pressed at `now` (seconds, on the caller's clock): it glows
+  // for kPressSeconds, and `message` shows (if any) in the band until
+  // cleared
+  static constexpr double kPressSeconds = 0.25;
+  void press(int id, double now, std::string message = {});
+  // How strongly the press glows at `now` (0 to 1: in over the first fifth,
+  // out over the rest), and whether it still does: redraw while it does
+  float pressGlow(double now) const;
+  bool pressing(double now) const { return pressGlow(now) > 0; }
+  std::optional<int> pressed() const { return pressed_; }
+  // The time draw() shows the press at
+  void setTime(double now) { now_ = now; }
   void say(std::string message) { message_ = std::move(message); }
   void clearFeedback();
-  bool showingFeedback() const { return flashed_.has_value() || !message_.empty(); }
-  std::optional<int> flashed() const { return flashed_; }
+  bool showingFeedback() const { return !message_.empty(); }
   const std::string &message() const { return message_; }
   // Where the message goes when there is one (nothing drawn without)
   void setMessageArea(std::optional<Area> area) { messageArea_ = area; }
@@ -96,7 +113,8 @@ public:
 
 private:
   std::vector<Button> buttons_;
-  std::optional<int> focus_, flashed_;
+  std::optional<int> focus_, pressed_;
+  double pressedAt_ = 0, now_ = 0;
   std::string message_;
   std::optional<Area> messageArea_;
 };
