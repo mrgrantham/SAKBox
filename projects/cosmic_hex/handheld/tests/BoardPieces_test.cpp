@@ -35,6 +35,18 @@ TEST(BoardPiecesTest, ThePiecesHaveShape) {
   EXPECT_NE(BoardColours::ofPlayer(0), BoardColours::ofPlayer(1));
 }
 
+// The flat pieces face up (their fronts, counter-clockwise, towards the
+// camera above): back faces are culled, so one facing down isn't drawn
+TEST(BoardPiecesTest, TheFlatPiecesFaceUp) {
+  const BoardPieces pieces;
+  for (const auto *mesh :
+       {&pieces.hexTile, &pieces.numberChip, &pieces.hexRing, &pieces.cornerRing}) {
+    const Scene::MeshData data = mesh->data();
+    for (const Scene::Vertex &v : data.vertices)
+      EXPECT_GT(v.normal.y, 0.9f);
+  }
+}
+
 // Each tile shows the face for what it is: face down until explored, then
 // its kind; a home, and an exhausted home by what it now gives
 TEST(BoardPiecesTest, TilesShowTheirFaces) {

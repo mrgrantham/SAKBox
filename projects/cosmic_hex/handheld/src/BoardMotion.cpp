@@ -17,6 +17,7 @@ BoardMotion::BoardMotion(const State &before, const State &after, const BoardMot
       before.ships.size() == after.ships.size() &&
       std::equal(before.ships.begin(), before.ships.end(), after.ships.begin(),
                  [](const Ship &a, const Ship &b) { return a.owner == b.owner; });
+  shipsCameOrWent_ = !sameShips;
   for (std::size_t i = 0; i < after.ships.size(); ++i) {
     shipTo_.push_back(BoardPieces::at(after.ships[i].corner));
     shipFrom_.push_back(sameShips ? BoardPieces::at(before.ships[i].corner) : shipTo_.back());
@@ -32,6 +33,11 @@ BoardMotion::BoardMotion(const State &before, const State &after, const BoardMot
       heading = last->headingAtRest_[i];
     headingAtRest_.push_back(heading);
   }
+  // Stations built: in `after` and not in `before` as they are (a
+  // station become a colony is built again)
+  for (const Station &station : after.stations)
+    stationBuilt_.push_back(std::find(before.stations.begin(), before.stations.end(), station) ==
+                            before.stations.end());
   // Tiles turning over: face down before, face up after
   for (std::size_t i = 0; i < after.planets.size(); ++i)
     planetFlipping_.push_back(i < before.planets.size() && !before.planets[i].flipped &&
@@ -79,6 +85,38 @@ ShipPose BoardMotion::ship(std::size_t ship, float t) const {
   if (pose.flame > 0)
     pose.gimbal = std::clamp(std::atan2(-sideways, forward), -kMostGimbal, kMostGimbal);
   return pose;
+}
+
+bool BoardMotion::anything() const {
+  if (shipsCameOrWent_)
+    return true;
+  for (std::size_t i = 0; i < shipTo_.size(); ++i)
+    if ((shipTo_[i] - shipFrom_[i]).length() > 1e-4f)
+      return true;
+  const auto any = [](const std::vector<bool> &flags) {
+    return std::find(flags.begin(), flags.end(), true) != flags.end();
+  };
+  return any(stationBuilt_) || any(planetFlipping_) || any(siteFlipping_);
+}
+
+Landing BoardMotion::landing(std::size_t station, float t) const {
+  Landing landing;
+  if (station >= stationBuilt_.size() || !stationBuilt_[station] || t >= kLandingEnds)
+    return landing;
+  if (t < kLanded) {
+    // Falling: faster and faster, as under gravity
+    const float falling = std::max(0.0f, t) / kLanded;
+    landing.drop = kDropHeight * (1 - falling * falling);
+    return landing;
+  }
+  // Down: squashed at first, springing back (Settle's overshoot), the dust
+  // spreading out and fading
+  const float since = (t - kLanded) / (kLandingEnds - kLanded);
+  const float spring =
+      ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::Settle, std::min(1.0f, since * 3));
+  landing.squash = 0.7f + 0.3f * spring;
+  landing.dust = since;
+  return landing;
 }
 
 namespace {

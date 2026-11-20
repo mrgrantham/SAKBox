@@ -85,3 +85,36 @@ TEST(BoardMotionTest, AnExploredPlanetTurnsOver) {
     EXPECT_NEAR(*turn, std::numbers::pi_v<float> / 2, 1e-5);
   }
 }
+
+// A station built drops in, lands, squashes and springs back, its dust
+// spreading; one already there doesn't move; a station become a colony
+// lands again
+TEST(BoardMotionTest, ABuildingDropsInWithDust) {
+  State before = twoShips();
+  before.stations = {Station{Corner{{0, 0}, 0}, 0, false}, Station{Corner{{1, 0}, 0}, 1, false}};
+  State after = before;
+  after.stations[1].colony = true;
+  after.stations.push_back(Station{Corner{{0, 1}, 1}, 0, false});
+  const BoardMotion motion(before, after);
+  EXPECT_FLOAT_EQ(motion.landing(0, 0.2f).drop, 0); // (already there)
+  EXPECT_FALSE(motion.landing(0, 0.8f).dust.has_value());
+  for (const std::size_t built : {std::size_t{1}, std::size_t{2}}) {
+    EXPECT_FLOAT_EQ(motion.landing(built, 0).drop, BoardMotion::kDropHeight);
+    EXPECT_GT(motion.landing(built, 0.2f).drop, motion.landing(built, 0.4f).drop);
+    EXPECT_FLOAT_EQ(motion.landing(built, BoardMotion::kLanded).drop, 0);
+    EXPECT_LT(motion.landing(built, BoardMotion::kLanded + 0.01f).squash, 0.8f);
+    ASSERT_TRUE(motion.landing(built, 1.0f).dust.has_value());
+    EXPECT_GT(*motion.landing(built, 1.0f).dust, 0);
+    EXPECT_FALSE(motion.landing(built, BoardMotion::kLandingEnds).dust.has_value());
+    EXPECT_FLOAT_EQ(motion.landing(built, BoardMotion::kLandingEnds).squash, 1);
+  }
+}
+
+// Whether anything moves: nothing between the same states
+TEST(BoardMotionTest, NothingMovesBetweenTheSameStates) {
+  const State state = twoShips();
+  EXPECT_FALSE(BoardMotion(state, state).anything());
+  State moved = state;
+  moved.ships[0].corner = Corner{{0, 1}, 0};
+  EXPECT_TRUE(BoardMotion(state, moved).anything());
+}

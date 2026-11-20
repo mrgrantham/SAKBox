@@ -179,6 +179,10 @@ constexpr double kSecondsAnimating = 0.5;
 // and settles in this long
 constexpr double kSecondsChipDrop = 0.35;
 constexpr float kChipDropHeight = 1.2f;
+// How long the board moves after a move: the pieces, a chip dropping, a
+// building's dust fading
+constexpr double kSecondsBoardMoving =
+    std::max(kSecondsAnimating + kSecondsChipDrop, BoardMotion::kLandingEnds *kSecondsAnimating);
 
 // The game as it stands (TablePadd to ScreenPadd), after each move; and on
 // a person's move, the moves they can make, each in words
@@ -354,8 +358,14 @@ public:
     paceAnimations();
     receive<TableSnapshot>([this](const TableSnapshot &snapshot) {
       // What moved since the last, animated from now
+      // (only when something moves: a snapshot that moves nothing, a hold
+      // or a choice, leaves what's moving going)
+      bool moved = false;
       if (latest_) {
-        motion_ = BoardMotion(latest_->state, snapshot.state, &motion_);
+        if (BoardMotion next(latest_->state, snapshot.state, &motion_); next.anything()) {
+          motion_ = std::move(next);
+          moved = true;
+        }
         // Tiles turned over: each shown big on the top screen, one after
         // another, once the ship's slide is done (DiscoveryShow)
         discovery_.arrived(latest_->state, snapshot.state, showsNow() + kSecondsAnimating);
@@ -398,7 +408,8 @@ public:
       }
       // (pausing the game pauses its clock, so its animations and dice stop too)
       gameClock_.setPaused(snapshot.paused);
-      motionStarted_ = gameClock_.seconds();
+      if (moved)
+        motionStarted_ = gameClock_.seconds();
       latest_ = snapshot;
       ++snapshots_; // (the top screen has something new to show)
       bottomDirty_ = true;
@@ -1067,10 +1078,26 @@ private:
         drawTile(hex, discovery_.shownBig(hex) ? std::nullopt : motion_.siteTurn(i, t),
                  CosmicHex::Art::Face::FindFaceDown, faceOf(state.zone[i]));
     }
-    for (const CosmicHex::Station &station : state.stations)
+    // Stations and colonies, one just built dropping in with a puff of
+    // dust (BoardMotion's landing)
+    for (std::size_t i = 0; i < state.stations.size(); ++i) {
+      const CosmicHex::Station &station = state.stations[i];
+      const Landing landing = motion_.landing(i, t);
+      const Scene::Transform corner = placement * BoardPieces::onCorner(station.at);
       renderer_->draw(station.colony ? colony_ : station_,
-                      placement * BoardPieces::onCorner(station.at),
+                      corner * Scene::Transform::translation({0, landing.drop, 0}) *
+                          Scene::Transform::scaling({1, landing.squash, 1}),
                       toon(BoardColours::ofPlayer(station.owner)));
+      if (landing.dust) {
+        // (from under it out to three times a ring's size)
+        const float spread =
+            1 + 2 * ScratchPadd::Motion::along(ScratchPadd::Motion::Curve::EaseOut, *landing.dust);
+        renderer_->draw(cornerRing_, corner * Scene::Transform::scaling({spread, 1, spread}),
+                        {.shading = Scene::Material::Shading::Unlit,
+                         .colour = {236, 226, 204},
+                         .alpha = static_cast<std::uint8_t>(26 * (1 - *landing.dust))});
+      }
+    }
     // Ships, flying from where they were, nose first, their engines
     // burning as they speed up (BoardMotion)
     for (std::size_t i = 0; i < state.ships.size(); ++i) {
@@ -1843,7 +1870,7 @@ private:
     if (flow_.screen() != ScreenFlow::Screen::Game || !latest_ || descentStarted_ ||
         dice_ != DiceStage::Idle || firstRoll_.moving())
       return true;
-    if (gameClock_.seconds() - motionStarted_ < kSecondsAnimating + kSecondsChipDrop)
+    if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
       return true; // (pieces still moving, or a number chip dropping)
     if (banner_.showing(gameClock_.seconds()))
       return true; // (the turn's banner moving)
@@ -2021,7 +2048,7 @@ private:
       return false;
     if (dice_ != DiceStage::Idle || firstRoll_.on())
       return true;
-    if (gameClock_.seconds() - motionStarted_ < kSecondsAnimating + kSecondsChipDrop)
+    if (gameClock_.seconds() - motionStarted_ < kSecondsBoardMoving)
       return true;
     if (banner_.showing(gameClock_.seconds()))
       return true;
@@ -2042,8 +2069,7 @@ private:
     if (firstRoll_.done(showsNow()))
       endFirstRoll();
     // The board's pieces where they were going, the turn's banner gone
-    motionStarted_ =
-        std::min(motionStarted_, gameClock_.seconds() - kSecondsAnimating - kSecondsChipDrop);
+    motionStarted_ = std::min(motionStarted_, gameClock_.seconds() - kSecondsBoardMoving);
     banner_.stop();
     skipDice();
   }

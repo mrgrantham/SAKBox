@@ -9,6 +9,10 @@
 // against the push's sideways part, which turns the ship along the arc.
 // It then coasts in, its flame out, and keeps facing the way it flew.
 //
+// A station or colony built drops in from above (falling faster and
+// faster), squashes a little as it lands and springs back (a settle), and
+// a ring of dust spreads from it and fades.
+//
 //   BoardMotion motion(before, after, &lastMotion); // when a move arrives
 //   const ShipPose pose = motion.ship(i, t);         // t from 0 to 1
 //   motion.planetTurn(i, t)                          // planet i's turn, if it's flipping
@@ -34,6 +38,15 @@ struct ShipPose {
   float gimbal = 0;
 };
 
+// A building at a moment of its landing: how high above its place, how
+// squashed (its height times this), and its dust ring once it's down (0
+// just landed to 1 gone)
+struct Landing {
+  float drop = 0;
+  float squash = 1;
+  std::optional<float> dust;
+};
+
 class BoardMotion {
 public:
   BoardMotion() = default;
@@ -41,12 +54,25 @@ public:
   // heading they had at the end of `last`
   BoardMotion(const State &before, const State &after, const BoardMotion *last = nullptr);
 
+  // Whether anything moves: a ship flying, a building landing, a tile
+  // turning over, or ships coming or going (a snapshot that changes none
+  // of them shouldn't restart what's moving)
+  bool anything() const;
+
   // Ship `ship` (of `after`) at `t` (0: where it was, 1: where it is). A
   // new ship, or one when ships came or went (one settled), is where it is
   ShipPose ship(std::size_t ship, float t) const;
   ScratchPadd::Scene::Vector3 shipAt(std::size_t ship, float t) const {
     return this->ship(ship, t).at;
   }
+
+  // Station `station` (of `after`) at `t`: one built (new, or a station
+  // become a colony) landing; any other where it is. `t` runs on past 1
+  // while the dust fades (to kLandingEnds)
+  Landing landing(std::size_t station, float t) const;
+  static constexpr float kDropHeight = 1.4f; // (hexes above the board)
+  static constexpr float kLanded = 0.55f;    // (when it touches down)
+  static constexpr float kLandingEnds = 1.6f;
 
   // How far the arc bows out, as a share of the flight's length
   static constexpr float kBow = 0.12f;
@@ -63,7 +89,8 @@ private:
 
   std::vector<ScratchPadd::Scene::Vector3> shipFrom_, shipTo_;
   std::vector<float> headingAtRest_; // (each ship's, once it's arrived)
-  std::vector<bool> planetFlipping_, siteFlipping_;
+  std::vector<bool> planetFlipping_, siteFlipping_, stationBuilt_;
+  bool shipsCameOrWent_ = false;
 };
 
 } // namespace CosmicHex::Handheld

@@ -96,10 +96,12 @@ BoardPieces::BoardPieces() {
                      onTable({a.x * kTileInset, a.y * kTileInset}), {},
                      {Scene::TexCoord{0.5f, 0.5f}, uv(b), uv(a)});
     // and its rim, a thin ring for the chosen hex
+    // (wound as the tile is, facing up: the other way faced down and was
+    // culled from above)
     hexRing.quad(onTable({a.x * 0.98f, a.y * 0.98f}, kRingLift),
-                 onTable({b.x * 0.98f, b.y * 0.98f}, kRingLift),
+                 onTable({a.x * 0.86f, a.y * 0.86f}, kRingLift),
                  onTable({b.x * 0.86f, b.y * 0.86f}, kRingLift),
-                 onTable({a.x * 0.86f, a.y * 0.86f}, kRingLift));
+                 onTable({b.x * 0.98f, b.y * 0.98f}, kRingLift));
   }
   // The column: each side of the tile's hexagon raised, both ways round
   {
@@ -125,9 +127,9 @@ BoardPieces::BoardPieces() {
       const auto a = corners[static_cast<std::size_t>(i)],
                  b = corners[static_cast<std::size_t>((i + 1) % 6)];
       cornerRing.quad(onTable({a.x * kOuter, a.y * kOuter}, kRingLift),
-                      onTable({b.x * kOuter, b.y * kOuter}, kRingLift),
+                      onTable({a.x * kInner, a.y * kInner}, kRingLift),
                       onTable({b.x * kInner, b.y * kInner}, kRingLift),
-                      onTable({a.x * kInner, a.y * kInner}, kRingLift));
+                      onTable({b.x * kOuter, b.y * kOuter}, kRingLift));
     }
   }
   // The number chip: a square just above the tile (kChipLift), kChipDown towards the
