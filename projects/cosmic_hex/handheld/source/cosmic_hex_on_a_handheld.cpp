@@ -54,7 +54,6 @@
 #include <CosmicHex/Handheld/ScreenPictures.hpp>
 #include <CosmicHex/Handheld/StartMenu.hpp>
 #include <CosmicHex/Handheld/TableGame.hpp>
-#include <CosmicHex/Handheld/TurnBanner.hpp>
 #include <ScratchPadd/Canvas/Canvas.hpp>
 #include <ScratchPadd/FrameProfile.hpp>
 #include <ScratchPadd/GameClock.hpp>
@@ -79,6 +78,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <ScratchPadd/Banner/Banner.hpp>
 #include <ScratchPadd/ConsoleScreens/ConsoleScreens.hpp>
 #include <ScratchPadd/OwnerName/OwnerName.hpp>
 #include <ScratchPadd/Scene/TextWrap.hpp>
@@ -1275,7 +1275,7 @@ private:
     }
   }
 
-  // The turn banner as it moves (TurnBanner): a band softly in the player's
+  // The turn banner as it moves (ScratchPadd::Banner): a band softly in the player's
   // colour with turquoise edges, the words sweeping through the middle
   void drawBanner(Scene::Overlay &overlay) {
     // Paused: the banner still, in a neutral grey, rather than the turn's
@@ -1297,21 +1297,15 @@ private:
     if (const auto look = banner_.at(gameClock_.seconds()))
       drawBand(overlay, *look);
   }
-  // A banner's band and words, as `look` says
-  void drawBand(Scene::Overlay &overlay, const TurnBanner::Look &look) {
-    const float k = static_cast<float>(kTopWidth) / 256.0f;
-    const float y = static_cast<float>(kTopHeight) * 0.42f, h = 32 * k;
-    const auto alpha = [&](float most) { return static_cast<std::uint8_t>(most * look.bandAlpha); };
-    overlay.rectangle(0, y, static_cast<float>(kTopWidth), h, {12, 20, 36, alpha(225)});
-    overlay.rectangle(0, y, static_cast<float>(kTopWidth), h,
-                      {look.colour.r, look.colour.g, look.colour.b, alpha(80)});
-    overlay.rectangle(0, y, static_cast<float>(kTopWidth), 1,
-                      Palette::withAlpha(Palette::kAccent, alpha(255)));
-    overlay.rectangle(0, y + h - 1, static_cast<float>(kTopWidth), 1,
-                      Palette::withAlpha(Palette::kAccent, alpha(255)));
-    overlay.textCentred(look.wordsX, y + 11 * k, look.title, {240, 244, 250},
-                        kTopWidth >= 400 ? 2.0f : 1.5f);
-    overlay.textCentred(look.wordsX, y + 24 * k, look.note, {170, 180, 198});
+  // A banner's band and words, as `look` says (ScratchPadd::Banner::draw,
+  // in the game's colours)
+  void drawBand(Scene::Overlay &overlay, const ScratchPadd::Banner::Look &look) {
+    ScratchPadd::Banner::draw(overlay, look,
+                              {.screenWidth = static_cast<float>(kTopWidth),
+                               .screenHeight = static_cast<float>(kTopHeight),
+                               .scale = static_cast<float>(kTopWidth) / 256.0f,
+                               .accent = Palette::kAccent,
+                               .titleScale = kTopWidth >= 400 ? 2.0f : 1.5f});
   }
 
   // The buttons, by screen (ScreenFlow): the title's and the pause menu's
@@ -2393,7 +2387,7 @@ private:
   bool pressDrawn_ = false;                    // (a button's press glow drawn last frame)
   bool rollAsked_ = false;                     // (you've said to throw the dice: Roll or A)
   Clock::time_point startedAt_ = Clock::now(); // (the scripted taps' times)
-  TurnBanner banner_{static_cast<float>(kTopWidth)};
+  ScratchPadd::Banner banner_{static_cast<float>(kTopWidth)};
   // The info views (Show resources): which is shown, since when, and
   // whether it holds the game; the cards' pictures for them
   BottomScreen::Info shownInfo_ = BottomScreen::Info::None;

@@ -1,10 +1,8 @@
-#include <CosmicHex/Handheld/TurnBanner.hpp>
+#include <ScratchPadd/Banner/Banner.hpp>
 
-namespace CosmicHex::Handheld {
+namespace ScratchPadd {
 
-namespace Motion = ScratchPadd::Motion;
-
-TurnBanner::TurnBanner(float screenWidth) : width_(screenWidth) {
+Banner::Banner(float screenWidth) : width_(screenWidth) {
   // The band fades in as the words come; they hold in the middle long
   // enough to read twice, then go as the band fades
   fadeIn_ = script_.add(0.25f);
@@ -14,19 +12,18 @@ TurnBanner::TurnBanner(float screenWidth) : width_(screenWidth) {
   fadeOut_ = script_.with(sweepOut_, 0.3f, 0.1f);
 }
 
-void TurnBanner::start(double now, std::string title, std::string note,
-                       ScratchPadd::Scene::Colour colour) {
+void Banner::start(double now, std::string title, std::string note, Scene::Colour colour) {
   started_ = now;
   title_ = std::move(title);
   note_ = std::move(note);
   colour_ = colour;
 }
 
-bool TurnBanner::showing(double now) const {
+bool Banner::showing(double now) const {
   return started_ && !script_.done(static_cast<float>(now - *started_));
 }
 
-std::optional<TurnBanner::Look> TurnBanner::at(double now) const {
+std::optional<Banner::Look> Banner::at(double now) const {
   if (!showing(now))
     return std::nullopt;
   const auto elapsed = static_cast<float>(now - *started_);
@@ -41,4 +38,17 @@ std::optional<TurnBanner::Look> TurnBanner::at(double now) const {
   return Look{band, x, title_, note_, colour_};
 }
 
-} // namespace CosmicHex::Handheld
+void Banner::draw(Scene::Overlay &overlay, const Look &look, const Style &style) {
+  const float k = style.scale;
+  const float y = style.screenHeight * 0.42f, h = 32 * k;
+  const auto alpha = [&](float most) { return static_cast<std::uint8_t>(most * look.bandAlpha); };
+  const auto with = [](Scene::Colour c, std::uint8_t a) { return Scene::Colour{c.r, c.g, c.b, a}; };
+  overlay.rectangle(0, y, style.screenWidth, h, with(style.back, alpha(225)));
+  overlay.rectangle(0, y, style.screenWidth, h, with(look.colour, alpha(80)));
+  overlay.rectangle(0, y, style.screenWidth, 1, with(style.accent, alpha(255)));
+  overlay.rectangle(0, y + h - 1, style.screenWidth, 1, with(style.accent, alpha(255)));
+  overlay.textCentred(look.wordsX, y + 11 * k, look.title, {240, 244, 250}, style.titleScale);
+  overlay.textCentred(look.wordsX, y + 24 * k, look.note, {170, 180, 198});
+}
+
+} // namespace ScratchPadd

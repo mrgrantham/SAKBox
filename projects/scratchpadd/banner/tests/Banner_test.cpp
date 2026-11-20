@@ -1,14 +1,14 @@
-// The turn banner: the band fading in and out, the words in
+// A banner: the band fading in and out, the words in
 // from the right to the middle, held, then off to the left; over after its
 // time, and not before it starts
-#include <CosmicHex/Handheld/TurnBanner.hpp>
+#include <ScratchPadd/Banner/Banner.hpp>
 
 #include <gtest/gtest.h>
 
-using namespace CosmicHex::Handheld;
+using ScratchPadd::Banner;
 
-TEST(TurnBannerTest, InHoldOut) {
-  TurnBanner banner(256);
+TEST(BannerTest, InHoldOut) {
+  Banner banner(256);
   EXPECT_FALSE(banner.at(0).has_value()); // (not started)
   banner.start(10, "YOUR TURN", "roll the dice", {235, 70, 70});
   const auto first = banner.at(10);

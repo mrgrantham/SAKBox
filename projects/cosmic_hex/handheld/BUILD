@@ -31,7 +31,6 @@ cc_library(
         "src/StartMenu.cpp",
         "src/TableGame.cpp",
         "src/TradeRoom.cpp",
-        "src/TurnBanner.cpp",
     ],
     hdrs = [
         "include/CosmicHex/Handheld/BoardButtons.hpp",
@@ -61,12 +60,14 @@ cc_library(
         "include/CosmicHex/Handheld/StartMenu.hpp",
         "include/CosmicHex/Handheld/TableGame.hpp",
         "include/CosmicHex/Handheld/TradeRoom.hpp",
-        "include/CosmicHex/Handheld/TurnBanner.hpp",
     ],
     strip_include_prefix = "include/",
     visibility = ["//projects/cosmic_hex:__subpackages__"],
     deps = [
+        "//projects/scratchpadd/banner",
         "//projects/scratchpadd/buttons",
+        "//projects/scratchpadd/picture_slot",
+        "//projects/scratchpadd/still_frames",
         "//projects/scratchpadd/canvas",
         "//projects/scratchpadd/scene/overlay_text",
         "//projects/scratchpadd/motion",
@@ -265,15 +266,6 @@ cc_test(
     ],
 )
 
-cc_test(
-    name = "TurnBanner_test",
-    size = "small",
-    srcs = ["tests/TurnBanner_test.cpp"],
-    deps = [
-        ":handheld",
-        "@gtest//:gtest_main",
-    ],
-)
 
 cc_test(
     name = "ScreenPictures_test",
